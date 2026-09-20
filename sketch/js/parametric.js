@@ -224,6 +224,42 @@ export function opoWaves({
   };
 }
 
+// A bounded energy budget for one seeded optical-parametric amplifier pass.
+// The caller supplies average powers at the crystal, a small-signal POWER
+// gain, the largest fraction of pump power this stage may remove, the
+// temporal-overlap factor, and the signal's Manley–Rowe share of converted
+// pump power. This is intentionally a stage-level engineering model: it does
+// not infer gain from d_eff, crystal length, fluence or phase matching.
+export function opcpaTransfer({
+  seedPowerW, pumpPowerW, smallSignalGain = 1, maxPumpDepletion = 0,
+  overlap = 1, signalShare = 0.5,
+} = {}) {
+  const seed = Math.max(0, Number(seedPowerW) || 0);
+  const pump = Math.max(0, Number(pumpPowerW) || 0);
+  const gain = Math.max(1, Number(smallSignalGain) || 1);
+  const depletion = Math.min(MAX_OPO_DEPLETION, Math.max(0, Number(maxPumpDepletion) || 0));
+  const temporal = Math.min(1, Math.max(0, Number(overlap) || 0));
+  const share = Math.min(1 - 1e-9, Math.max(1e-9, Number(signalShare) || 0.5));
+  const requestedSignalGainW = seed * (gain - 1) * temporal;
+  const availablePumpW = pump * depletion * temporal;
+  const pumpTransferredW = Math.min(availablePumpW, requestedSignalGainW / share);
+  const signalGainW = pumpTransferredW * share;
+  const idlerPowerW = pumpTransferredW - signalGainW;
+  return {
+    seedPowerW: seed,
+    pumpPowerW: pump,
+    overlap: temporal,
+    requestedGain: gain,
+    actualGain: seed > 0 ? 1 + signalGainW / seed : 1,
+    pumpTransferredW,
+    pumpDepletion: pump > 0 ? pumpTransferredW / pump : 0,
+    signalGainW,
+    signalOutputW: seed + signalGainW,
+    idlerPowerW,
+    residualPumpW: pump - pumpTransferredW,
+  };
+}
+
 // Pulse metadata for a generated wave. It keeps the pump train's timing and
 // gates but is a train of its own, so detectors can tell pump, signal and
 // idler apart while still knowing they are synchronised. Only fields that

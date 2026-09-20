@@ -1,5998 +1,391 @@
-// Structured content for the OpticalSetup wiki. One entry per visible
-// component. `tools/build-wiki.mjs` turns this into static pages, pulling
-// the live icon and current defaults straight from the component registry
-// so the wiki can never silently drift from what the app actually ships.
-//
-// Every claim under `inOpticalSetup` must be verified against the actual
-// implementation (js/raytrace.js, js/polarization.js) before it's written
-// here â€” see the physics verification pass in the branch's history.
-//
-// Citations: whenever a factual claim in the prose needs a source, cite it
-// inline, academic-style, with `cite(n)` or `cite(n, m, ...)` at the point
-// the claim is made, e.g. `...sub-arcsecond alignment tolerance${cite(1, 2)}.`
-// The numbers are 1-indexed positions into that entry's own `citations`
-// array; each renders as a clickable [n] linking to the matching numbered
-// entry in the page's "References" section (built by build-wiki.mjs). Use
-// `resources` instead for general further-reading links not tied to one
-// specific claim.
-function cite(...nums) {
-  return `<sup class="cite">[${nums.map(n => `<a href="#ref-${n}">${n}</a>`).join(',')}]</sup>`;
-}
-
-
-// Wiki subjects that are drawing tools rather than registry components. A
-// fiber is a path in state.beams, so it has no registry svg() or metadata to
-// read â€” it supplies its own icon and tagline here instead.
-export const wikiToolSubjects = [
-  {
-    type: 'fiber',
-    label: 'Optical fiber',
-    tagline: 'Routes light along a drawn path between two connectorized ends, with its own acceptance angle, loss, and output cone.',
-    icon: `<path d="M -20,6 Q -4,6 0,0 Q 4,-6 20,-6" fill="none" stroke="#e8a800" stroke-width="4" stroke-linecap="round"/>`
-      + `<g transform="translate(-20 6) rotate(-20)"><rect x="-11" y="-5" width="11" height="10" rx="1.5" fill="#4d565f"/><rect x="-15" y="-2.5" width="4" height="5" fill="#8d98a5"/></g>`
-      + `<g transform="translate(20 -6) rotate(160)"><rect x="-11" y="-5" width="11" height="10" rx="1.5" fill="#4d565f"/><rect x="-15" y="-2.5" width="4" height="5" fill="#8d98a5"/></g>`,
-  },
-  {
-    type: 'barefiber',
-    label: 'Bare fiber',
-    tagline: 'The same guided path with the connector plugs omitted and flat-cleaved ends, for custom laboratory assemblies.',
-    icon: `<path d="M -20,6 Q -4,6 0,0 Q 4,-6 20,-6" fill="none" stroke="#e8a800" stroke-width="4" stroke-linecap="butt"/>`,
-  },
-];
-
-export const wikiEntries = [
-  {
-    type: 'cwlaser',
-    summary: "Emits a steady, collimated beam with a chosen wavelength and power, for tracing continuous illumination through an optical setup.",
-    title: 'CW Laser',
-    category: 'Sources',
-    realWorld: {
-      html: `
-        <p>Laser technology occupies a central position within photonics because laser
-        light exhibits several properties that distinguish it from conventional light
-        sources, beyond simple monochromaticity. A laser beam is characterized by high
-        spatial coherence, which permits propagation over considerable distances with
-        minimal divergence â€” frequently limited only by diffraction â€” and allows the beam
-        to be focused to a very small spot, yielding a correspondingly high intensity.</p>
-        <p>This coherence typically extends to the temporal domain as well: a
-        continuous-wave laser emits within a very narrow spectral bandwidth, in contrast
-        to sources such as incandescent or gas-discharge lamps, which radiate across a
-        broad spectral range. Emission is steady rather than pulsed: the output power a
-        detector reads is the same at every instant.</p>
-        <p>The theoretical foundation for the laser predates its experimental realization:
-        Townes, Schawlow, Basov, and Prokhorov independently developed the theory of
-        stimulated emission as a mechanism for light amplification, building on the
-        microwave maser Townes had demonstrated in 1953 â€” the concept was initially termed
-        the "optical maser" before "laser" became standard usage. Theodore Maiman first
-        realized this theory experimentally in 1960, constructing the first laser: a
-        pulsed, lamp-pumped ruby crystal. The same year saw two further milestones: the
-        heliumâ€“neon laser, the first to operate with a gaseous gain medium, and the first
-        semiconductor laser diode.</p>
-        <p>Real laser beams are not perfectly collimated: they exhibit Gaussian
-        propagation and diverge with distance. For a beam of waist radius
-        <span class="w">wâ‚€</span>, the far-field half-angle divergence is given by</p>`,
-      formulas: [
-        { tex: '\\theta \\approx \\frac{\\lambda}{\\pi w_0}', caption: 'Far-field divergence half-angle of a Gaussian beam (small-angle, TEMâ‚€â‚€ mode).' },
-        { tex: 'E_{\\text{photon}} = \\frac{hc}{\\lambda}', caption: 'Photon energy â€” why shorter wavelengths (blue, UV) carry more energy per photon than longer ones (red, IR).' },
-      ],
-      html2: `
-        <p>These properties originate from stimulated emission within a resonant cavity:
-        a gain medium bounded by two mirrors amplifies a specific wavelength on each round
-        trip, while losses â€” mirror transmission, absorption, scattering â€” deplete it.
-        Above threshold, the pump rate at which round-trip gain first equals round-trip
-        loss, the cavity sustains the stable, highly monochromatic, spatially coherent
-        beam described above.</p>
-        <h3>Coherence length</h3>
-        <p>No real laser is perfectly monochromatic. The emission occupies a finite
-        linewidth, and the physical meaning of that linewidth is that the optical phase
-        drifts: predict the phase far enough ahead and the prediction stops being right.
-        <em>Coherence length</em> is the distance over which the phase stays predictable â€”
-        formally the coherence time times the vacuum speed of light${cite(1)}.</p>
-        <p>It matters because it decides whether an experiment sees fringes. Split a beam,
-        send the halves down two arms and recombine them: the two waves can only interfere
-        if the one arriving from the long arm still remembers the phase of the one from the
-        short arm. Make the arms differ by much more than the coherence length and the
-        fringes vanish, leaving the ports simply to add their powers${cite(1)}. The same
-        constraint sets how deep a hologram can be recorded, and how far apart the two arms
-        of an interferometric sensor may be.</p>
-        <p>Linewidth and coherence length are inversely related, though the exact prefactor
-        depends on the lineshape and is not universal${cite(1, 2)}. For the Lorentzian spectrum produced
-        by a random walk of the optical phase, the expression is${cite(1)}</p>`,
-      formulas2: [
-        { tex: 'L_{\\text{coh}} = c\\,\\tau_{\\text{coh}} = \\frac{c}{\\pi\\,\\Delta\\nu}', caption: 'Lorentzian lineshape: the distance at which the coherence function falls to 1/e, for a FWHM linewidth Î”Î½. The literature often quotes this without the Ï€ when only an order of magnitude is wanted.' },
-      ],
-      html3: `
-        <p>The span across real sources is enormous. A stabilised single-frequency
-        solid-state laser at 10&nbsp;kHz linewidth reaches roughly 9.5&nbsp;km; systems
-        built for optical clocks, stabilised below 1&nbsp;Hz, exceed 300 000&nbsp;km. A
-        laser diode is far shorter, limited by phase noise from spontaneous emission in a
-        short, strongly out-coupled resonator. At the opposite extreme, the superluminescent
-        diodes used for optical coherence tomography are made <em>deliberately</em>
-        broadband â€” tens of nanometres â€” precisely because a coherence length of a few
-        micrometres is what gives that technique its axial resolution: only light returning
-        from one narrow depth can still interfere with the reference${cite(1)}.</p>
-        <p>Two cautions are worth carrying. The shape and width of a spectrum do not by
-        themselves fully determine coherence: a frequency comb has a broad spectrum and
-        excellent long-range coherence, and no single-number coherence length describes
-        it${cite(1)}. And â€œcoherence lengthâ€ is not one quantity but a family of them â€”
-        several inequivalent definitions are in use, and which is meant matters as soon as
-        a real source departs from an idealised lineshape${cite(2)}.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The CW Laser emits either a single collimated ray or, in <em>Beam with
-        size</em> mode, a fan of 25 parallel rays sampling a finite beam width â€” this is
-        what lets the tracer show a lens actually focusing a beam of nonzero extent,
-        rather than a single infinitesimal ray that can never miss an aperture.</p>
-        <p>Its spectrum is monochromatic by construction: the beam carries one wavelength
-        and is drawn and detected as one colour. That is the point of the split between the
-        three laser sources â€” a bench that needs real spectral <em>width</em>, with distinct
-        wavelengths propagating and dispersing separately, needs the Pulsed Laser or the
-        Supercontinuum laser instead, both of which model where that width comes from.
-        Polarization is set directly as a Stokes vector rather than emerging from a modeled
-        cavity.</p>
-        <p>What the CW Laser does carry is a <strong>coherence length</strong>, and it is
-        the one place a linewidth enters this source. It changes no ray and no colour; it
-        decides how far the two arms of an interferometer may differ before their fringes
-        fade. Fields recombining at a beamsplitter are weighted, pair by pair, by a Gaussian
-        visibility in their path difference.</p>`,
-      formulas: [
-        { tex: 'V(\\Delta L) = \\exp\\!\\left[-4\\ln 2\\left(\\frac{\\Delta L}{l_c}\\right)^{2}\\right]', caption: 'Fringe visibility against arm mismatch. The coherence length l_c is the full width at half maximum of this envelope, so Î”L = l_c/2 halves the contrast.' },
-        { tex: 'l_c = \\frac{2\\ln 2}{\\pi}\\,\\frac{\\lambda^{2}}{\\Delta\\lambda}', caption: 'The linewidth the inspector reports as implied by a given coherence length â€” the Gaussian convention standard in optical coherence tomography, where l_c is the axial resolution.' },
-      ],
-      html2: `
-        <p>Zero, the default, means the idealised source: the arms interfere perfectly
-        however far apart they are, which is how every scene behaved before this parameter
-        existed. Give it a finite value and the bench becomes a ruler â€” sweep the delay line
-        and fringes appear only where the arms match, which is the measurement an
-        interferometer is actually for. The inspector reports the linewidth that coherence
-        length implies, so the two ways of describing the same source stay visible together:
-        50&nbsp;nm at 840&nbsp;nm gives 6.2&nbsp;Âµm, the familiar axial resolution of a
-        broadband OCT source.</p>
-        <p>Note the convention. This model uses the Gaussian form standard in optical
-        coherence tomography, in which <span class="w">l<sub>c</sub></span> is the
-        <em>full width at half maximum</em> of the visibility envelope. The Lorentzian
-        expression quoted above${cite(1)} is a different definition â€” the 1/e point of a
-        differently shaped coherence function â€” and the two disagree by a numerical factor.
-        Neither is more correct: they describe different lineshapes under different
-        conventions, and real source spectra are non-Gaussian often enough that the choice
-        of definition is itself a documented source of disagreement${cite(2)}.</p>
-        <p>Energy is conserved at every visibility: the self-powers of the recombining
-        fields always add, and only their cross term is scaled by
-        <span class="w">V</span>. The two ports of an interferometer therefore always sum to
-        the input, whether they are fringing hard or have washed out to a flat half
-        each.</p>`,
-      limitations: `<p>There is no modeled gain medium, cavity round trip, or threshold â€”
-        wavelength, polarization, and power are configured directly as source parameters,
-        not derived from first principles. Divergence and MÂ² are not modeled: a collimated
-        beam stays perfectly parallel over any distance.</p>
-        <p>Coherence length is a visibility envelope applied at recombination, not a
-        simulated phase-noise process: the beam carries no actual linewidth, so the source
-        stays exactly one wavelength for colour, dispersion, and every spectral readout, and
-        the implied linewidth is reported rather than propagated. Spatial coherence is not
-        modelled at all â€” only the temporal kind â€” and the envelope is Gaussian by
-        assumption, so a lineshape that behaves differently, a frequency comb above all,
-        cannot be represented by this single number.</p>`,
-    },
-    related: ['pulsedlaser', 'sclaser', 'pointsource', 'mirror'],
-    citations: [
-      { label: 'â€œCoherence Length,â€ RP Photonics Encyclopedia', url: 'https://www.rp-photonics.com/coherence_length.html' },
-      { label: 'C. Akcay, P. Parrein and J. P. Rolland, â€œEstimation of longitudinal resolution in optical coherence imaging,â€ Applied Optics 41(25), 5256â€“5262 (2002) â€” compares several definitions of coherence length and the limits of the Gaussian assumption for real source spectra', url: 'https://doi.org/10.1364/AO.41.005256' },
-    ],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Lasers', url: 'https://www.rp-photonics.com/lasers.html' },
-      { label: 'RP Photonics Encyclopedia â€” Laser Light', url: 'https://www.rp-photonics.com/laser_light.html' },
-    ],
-  },
-
-  {
-    type: 'pulsedlaser',
-    summary: "Emits a train of short laser pulses with adjustable duration and repetition rate, for exploring bandwidth, dispersion, and arrival timing.",
-    title: 'Pulsed Laser',
-    category: 'Sources',
-    realWorld: {
-      html: `
-        <p>A pulsed laser concentrates its output into short bursts separated by a fixed
-        repetition period, rather than emitting steadily. Concentrating a given pulse
-        energy into a shorter duration â€” in addition to spatial concentration at a focus â€”
-        enables substantially higher intensities than continuous-wave operation can
-        achieve; the most extreme intensities produced this way are employed in high-field
-        physics, and more modest ones drive the nonlinear processes behind multiphoton
-        microscopy and two-photon polymerization.</p>
-        <p>Pulse durations range from microseconds down to a few femtoseconds. The average
-        power a power meter reads is the pulse energy divided by the repetition period; the
-        peak power reached within a pulse is far larger, by roughly the ratio of the
-        repetition period to the pulse duration.</p>
-        <p>Ultrafast lasers are inherently broadband: a sufficiently short pulse duration
-        necessarily corresponds to a correspondingly broad frequency spectrum. A pulse
-        whose spectral width is exactly the minimum its duration allows is called
-        transform-limited â€” it carries no residual chirp, and it is the shortest pulse
-        that spectrum could possibly support. The dimensionless product below depends only
-        on the envelope shape.</p>`,
-      formulas: [
-        { tex: '\\Delta\\nu \\, \\Delta t \\geq K', caption: 'Timeâ€“bandwidth product. K = 0.441 for a Gaussian envelope, 0.315 for a sechÂ². Equality is the transform-limited case.' },
-        { tex: 'P_{\\text{peak}} \\approx K_{s} \\, \\frac{P_{\\text{avg}}}{f_{\\text{rep}} \\, \\tau}', caption: 'Peak power: the pulse energy P_avg / f_rep delivered within one pulse duration Ï„, with a shape factor K_s (0.94 Gaussian, 0.88 sechÂ²).' },
-      ],
-      html2: `
-        <p>Short pulses are produced by mode locking: a fixed phase relationship is
-        enforced across many longitudinal cavity modes, so that they interfere
-        constructively for a brief instant on each cavity round trip and destructively the
-        rest of the time. The repetition rate that results is set by the cavity round-trip
-        time, which is why typical mode-locked oscillators sit in the tens of MHz.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The Pulsed Laser emits the same collimated ray or 25-ray sampled beam as the CW
-        Laser, plus a pulse train: a repetition rate, a pulse duration, and an emission
-        offset that shifts this source's pulses in time relative to any other. That timing
-        is what drives the travelling packet overlay, the oscilloscope view on a
-        photodetector, chopper and AOM/EOM gating, and the two-colour temporal overlap
-        that CARS and SFG require.</p>
-        <p><em>Transform-limited pulses</em> decides what you author. On, you set the pulse
-        duration and envelope shape, and the bandwidth beneath is computed from them, so a
-        shorter pulse automatically becomes a wider spectrum. Off, you set the bandwidth, the
-        chirp's sign â€” <em>Positively</em> or <em>Negatively chirped (quadratic)</em> â€” and its
-        GDD in fsÂ²; the transform-limited duration and the emitted pulse duration beneath are
-        computed. The duration is therefore always derived and can never fall below the limit
-        the bandwidth sets. Switching to chirped initializes the bandwidth from the current
-        transform-limited pulse and resets the GDD to zero, so the emitted pulse is unchanged;
-        previous chirped settings are replaced. Switching to transform-limited restores the
-        last transform-limited duration and can change the spectrum. Pulse
-        energy (average power Ã· repetition rate) and peak power are readouts, never entered;
-        for a chirped sechÂ² pulse the peak power is an estimate, since a dispersed sechÂ² pulse
-        does not keep an exact sechÂ² profile.</p>
-        <p>The laser offers no â€œphase unknownâ€. That is a simplification of authoring, not a
-        claim that every real laser carries a known quadratic phase: a multi-longitudinal-mode
-        nanosecond laser, for instance, is far longer than its bandwidth's transform limit
-        without being chirped, and cannot be described this way â€” author it transform-limited
-        at its duration. Light generated on the bench can still have an unknown phase (see
-        the crystal and OPO pages). A sketch saved before these controls opens with its
-        bandwidth and the GDD that reproduces its saved duration, with the sign it was saved
-        with or positive â€” provided that GDD fits the 10â·&nbsp;fsÂ² range; beyond it the GDD
-        is clamped and the duration changes. A train saved at 0&nbsp;nm opens
-        transform-limited at its duration. The bandwidth field's fixed bounds hold the
-        transform-limited bandwidth of every authorable pulse (1&nbsp;fs to 1&nbsp;ms) at
-        every allowed wavelength, so the spectrum a switch to chirped starts from is kept
-        through a save and reload, and no wavelength or shape edit moves it. A chirped
-        bandwidth can imply a transform limit outside the 1&nbsp;fs â€“ 1&nbsp;ms the
-        transform-limited field accepts; that is why switching to transform-limited does not
-        derive a duration from it.</p>
-        <p><em>Show pulse dynamics</em> is a drawing choice only â€” switching it off leaves
-        the beam rendered as a steady CW line while every bit of the pulse physics above
-        keeps running.</p>
-        <h3>Dispersion and pulse stretching</h3>
-        <p>Every pulsed detector reports accumulated group-delay dispersion (GDD) in
-        fsÂ². Catalogue-glass bodies add their traced distance through the selected
-        Sellmeier material; zero-thickness lenses and objectives add the clearly marked
-        estimates described on their own pages. A chirped laser's GDD is its own
-        quadratic phase, added once to the path's: glass of the opposite sign therefore
-        compresses the pulse to its transform limit before stretching it again. Light whose
-        phase nobody authored â€” an OPO or crystal output declared â€œspectral phase unknownâ€,
-        say â€” reports its configured duration only where the path's modeled dispersion adds
-        up to zero (â€œConfigured duration Â· zero net modeled dispersionâ€), and is shown as
-        unavailable anywhere else. Unknown does not mean uncompressible; it means the phase
-        that would decide it is not known.</p>
-        <p>When a filter, dichroic, etalon or AOTF reshapes the pulse's spectrum, the
-        duration is worked out from the spectrum that survives. An ideal filter changes the
-        spectrum's amplitude and not its phase, so the pulse at a detector is the numerical
-        transform of the surviving spectrum with the source's chirp plus every GDD on the
-        path, wherever the filter stands; a slice cut from a band that glass has fanned out
-        carries the glass's GDD at its own wavelength. One effective quadratic phase stands
-        for the band, so where the glass's GDD varies across the surviving band enough to move
-        its edge phase by more than half a radian â€” a broad band behind thick glass â€” the
-        duration is unavailable rather than approximated. A hard-edged passband gives a
-        sinc-like pulse with side lobes, and the reading is its full width at half maximum;
-        an autocorrelator draws the shape it assumes at that width. An etalon's output keeps
-        its power but not its fringe comb or its transfer phase, so it is not timed. A
-        filtered supercontinuum, which has a duration but no phase, is an assumed-sweep
-        estimate: its duration is taken as a sweep linear in frequency across its band, a
-        slice keeps the share its width spans, and that share adds in quadrature to the
-        slice's own dispersed duration as a source part no compressor removes â€” a stated
-        convention, not a reconstruction of the continuum's phase. The model also
-        declines, and says why on the detector's <em>Duration model</em> row, when parts of
-        one beam reach a detector by paths whose dispersion differs â€” separate paths do not compensate each
-        other the way glass and a compressor in sequence do, so equal and opposite GDD on two
-        arms is not one transform-limited pulse. Small differences, within 0.1&nbsp;rad of
-        quadratic phase across the bandwidth and 2&nbsp;% in duration, are treated as one path;
-        that is a display tolerance, not a claim that distinct fields combine. The model also
-        declines when an aperture catches only part of a pulse that a prism or grating has
-        fanned out by wavelength: the arriving samples must carry at least 95&nbsp;% of the
-        emitted spectral weight. Elements that transmit the pulse's whole band evenly, such
-        as a neutral density filter or a dichroic far from its edge, leave the duration
-        alone.</p>
-        <p>SechÂ² pulses use the same signed-phase construction, but their dispersed FWHM is
-        read from a deterministic numerical Fourier-propagation table rather than the
-        Gaussian formula. Interpolation was checked against a denser calculation to 0.12%
-        over |GDD|/Ï„â‚€Â² â‰¤ 20 and continues with the 2Ï€Â·0.315 large-dispersion asymptote.
-        Detector, autocorrelator, probe, scope, and travelling packet all consume this one
-        duration model. GDD remains the
-        primary number because it is additive and meaningful even when a 150&nbsp;fs pulse
-        changes too little to notice.</p>`,
-      formulas: [
-        { tex: '\\tau_{out}=\\tau_0\\sqrt{1+\\left(4\\ln 2\\,(\\phi_{in}+\\mathrm{GDD})/\\tau_0^{2}\\right)^2}', caption: 'Gaussian duration from the bandwidth-limited width Ï„â‚€ and the signed sum of input and path GDD.' },
-        { tex: '\\tau_0 = K\\,\\lambda^2/(c\\,\\Delta\\lambda)', caption: 'Transform-limited duration of the authored bandwidth, with K = 0.441 (Gaussian) or 0.315 (sechÂ²). A chirped laser emits Ï„_out with Ï†_in its authored signed GDD and no path GDD.' },
-      ],
-      limitations: `<p>There is no modeled gain medium, cavity, or mode-locking mechanism â€”
-        repetition rate, duration, and shape are configured directly. The duration estimate
-        represents only quadratic phase for Gaussian and sechÂ² inputs. It does not reconstruct
-        arbitrary spectral phase, higher-order dispersion, self-phase modulation, pulse-shape
-        distortion, or material absorption. Source GDD is bounded to Â±10â·&nbsp;fsÂ², a range
-        for input, not a physical validity threshold; a quadratic phase alone does not make a
-        stretched pulse an accurate model of a real stretcher's output. A filtered pulse keeps
-        only quadratic phase, evaluated at the wavelengths that pass. Spectral reshaping is detected from a filter's or dichroic's
-        passband edges falling inside the pulse's emitted band, and, for smooth transmissions
-        such as an etalon or AOTF, from the band sampled and cross-checked against the integrated
-        transmission. Wavelength-dependent clipping inside one fanned-out sample is not
-        detected, only samples that miss entirely. Divergence and
-        MÂ² are not modeled.</p>`,
-    },
-    related: ['cwlaser', 'sclaser', 'pulsecompressor', 'objective', 'stage'],
-    citations: [
-      { label: 'M. KarpiÅ„ski et al., â€œControl and Measurement of Quantum Light Pulses for Quantum Information Science and Technology,â€ Advanced Quantum Technologies 4, 2000150 (2021) â€” quadratic spectral phase and dispersive pulse broadening', url: 'https://doi.org/10.1002/qute.202000150' },
-      { label: 'P. Lazaridis, G. Debarge and P. Gallion, â€œTimeâ€“bandwidth product of chirped sechÂ² pulses,â€ Optics Letters 20, 1160â€“1162 (1995) â€” exact sechÂ² chirp/time-bandwidth relation', url: 'https://doi.org/10.1364/OL.20.001160' },
-    ],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Mode Locking', url: 'https://www.rp-photonics.com/mode_locking.html' },
-      { label: 'RP Photonics Encyclopedia â€” Timeâ€“Bandwidth Product', url: 'https://www.rp-photonics.com/time_bandwidth_product.html' },
-    ],
-  },
-
-  {
-    type: 'pulsecompressor',
-    summary: "Adds positive or negative group-delay dispersion to a pulse, shortening it when the correction cancels dispersion accumulated earlier in the setup.",
-    title: 'Pulse Compressor',
-    category: 'Pulse Timing',
-    realWorld: {
-      html: `
-        <p>An ultrashort pulse is shortest when its frequency components arrive with the
-        spectral phase required by its transform limit. Material dispersion makes those
-        components acquire different delays, producing chirp and a longer temporal
-        envelope. A pulse compressor introduces the opposite spectral-phase curvature so
-        the accumulated group-delay dispersion (GDD) approaches zero and the pulse becomes
-        shorter again.</p>
-        <p>Real compressors commonly use diffraction-grating pairs, prism pairs, chirped
-        mirrors, or combinations of them. Their geometry determines not only second-order
-        GDD but also third- and higher-order dispersion, throughput, spatial chirp, and
-        alignment sensitivity. The useful setting therefore compensates the measured
-        upstream dispersion rather than having a universally correct negative value.</p>`,
-      formulas: [
-        { tex: '\\mathrm{GDD}_{out}=\\mathrm{GDD}_{in}+\\mathrm{GDD}_{comp}', caption: 'Second-order compensation is additive; shortest duration occurs near zero net GDD for a transform-limited Gaussian input.' },
-        { tex: '\\tau_{out}=\\tau_{0}\\sqrt{1+\\left(4\\ln 2\\,\\mathrm{GDD}_{out}/\\tau_{0}^{2}\\right)^2}', caption: 'Gaussian pulse duration under the second-order-only model used by OpticalSetup.' },
-      ],
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The Pulse Compressor is a straight-through, zero-thickness GDD element. Set
-        <em>Applied GDD</em> positive or negative; the value is added to every pulsed ray
-        crossing its clear aperture, while transmission efficiency applies the configured
-        loss. A negative setting compresses only when it cancels positive GDD already on
-        the path â€” placed before any glass, the same negative magnitude broadens a
-        transform-limited pulse instead.</p>
-        <p>For Gaussian and sechÂ² sources, the travelling packet overlay reads the local
-        accumulated GDD along each traced segment. A chirped source also carries a signed
-        input GDD inferred from its bandwidth and duration, so a compressor can shorten it
-        to the transform limit and further GDD stretches it again. Flat-top supercontinua
-        use the endpoint group-delay difference across their full band. The true duration,
-        model name, GDD, and stretch or compression factor remain available numerically at a
-        downstream detector.</p>`,
-      formulas: [],
-      limitations: `<p>This is a lumped second-order phase proxy, not a physical compressor
-        prescription. It does not trace the compressor's internal grating, prism, or
-        chirped-mirror geometry; it does not model carrier phase, third-order dispersion,
-        spatial chirp, pulse-front tilt, nonlinear phase, or arbitrary spectral phase. Input
-        chirp is limited to the positive/negative quadratic-phase estimate implied by the
-        authored duration and bandwidth; a pulse whose phase is unknown or whose paths
-        disagree reads unavailable at a detector, and its packet keeps
-        its configured length on the canvas as a glyph, not a prediction. On-screen packet length is a qualitative glyph;
-        detector numbers retain the unclamped second-order result.</p>`,
-    },
-    related: ['pulsedlaser', 'glassrod', 'prism', 'detector'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Pulse Compression', url: 'https://www.rp-photonics.com/pulse_compression.html' },
-      { label: 'RP Photonics Encyclopedia â€” Group Delay Dispersion', url: 'https://www.rp-photonics.com/group_delay_dispersion.html' },
-    ],
-  },
-
-  {
-    type: 'sclaser',
-    summary: "Emits a pulsed beam across a configurable spectral band, for exploring wavelength separation, filtering, and broadband illumination in one setup.",
-    title: 'Supercontinuum laser',
-    category: 'Sources',
-    realWorld: {
-      html: `
-        <p>A supercontinuum source produces light spanning hundreds of nanometres â€” often
-        the whole visible range and beyond â€” while retaining the spatial coherence and
-        collimation of a laser beam. It is, in effect, white light that behaves optically
-        like a laser: it can be focused to a diffraction-limited spot and coupled into a
-        single-mode fibre, neither of which a lamp of comparable bandwidth allows.</p>
-        <p>The broadening is not produced by the gain medium. A pump laser â€” typically a
-        mode-locked oscillator delivering high peak power â€” is launched into a strongly
-        nonlinear medium, most often a photonic crystal fibre engineered so that its zero
-        dispersion wavelength sits near the pump. Over a few centimetres, a cascade of
-        nonlinear processes redistributes the pump energy across a vastly wider spectrum:
-        self-phase modulation broadens it initially, then soliton fission, Raman
-        self-frequency shift, and dispersive wave generation extend the edges.</p>
-        <p>Because the process is pump-driven, the output inherits the pump's pulse train:
-        a supercontinuum is emitted as pulses at the pump's repetition rate, not as steady
-        light, even though it looks white. Spectral flatness and pulse-to-pulse stability
-        vary considerably with how far into the anomalous-dispersion regime the source is
-        driven.</p>`,
-      formulas: [
-        { tex: '\\gamma = \\frac{2\\pi n_2}{\\lambda A_{\\text{eff}}}', caption: 'Nonlinear coefficient of the broadening fibre â€” small effective area A_eff is what makes photonic crystal fibre so much more nonlinear than standard fibre.' },
-      ],
-      html2: `
-        <p>Supercontinuum sources became practical laboratory instruments after photonic
-        crystal fibre made it possible to place the zero-dispersion wavelength wherever the
-        available pump happened to be, rather than the other way round. They are now
-        standard in broadband spectroscopy, optical coherence tomography, and as tunable
-        excitation sources for fluorescence microscopy, where a single box replaces a rack
-        of discrete laser lines.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The Supercontinuum laser replaces a single wavelength with a spectrum minimum
-        and maximum, and emits a flat-top band between them. Downstream wavelength-selective
-        elements â€” filters, dichroics, etalons, the spectrometer â€” integrate against that
-        true flat profile rather than a centroid, so a 20&nbsp;nm bandpass placed on a
-        400&nbsp;nm-wide source transmits the fraction of power it actually overlaps.</p>
-        <p>Dispersive elements (prisms, gratings) sample the band at several discrete
-        wavelengths and fan them out individually, each carrying its own wavelength-derived
-        colour â€” which is why a prism turns this source into a visible rainbow even though
-        the undispersed beam is drawn as a single broadband white line.</p>
-        <p>It carries the same pulse train as the Pulsed Laser, since a real supercontinuum
-        inherits its pump's timing. Its pulse duration and envelope (Gaussian or
-        sechÂ²) are set directly rather than derived: in a real source they depend on the
-        pump and on the nonlinear fibre that generated the continuum, neither of which is
-        modelled here, and a continuum fresh out of the fibre is typically heavily chirped
-        and picoseconds long. The duration you set is therefore the input to the propagation
-        estimate, not a claim that the continuum is transform-limited.</p>
-        <p>The one limit the setting cannot cross is the transform limit. No pulse can be
-        shorter than its own spectrum allows, so the duration has a floor set by the
-        band, which the inspector shows as <em>Transform limit</em>. For a band hundreds of
-        nanometres wide that floor is around a femtosecond and never gets in the way. A
-        narrow band raises it: 690â€“700&nbsp;nm cannot carry a Gaussian pulse shorter than
-        71&nbsp;fs. Narrowing the band or changing the envelope lifts a duration that has
-        fallen below the new floor. Widening the band never shortens the duration you set.
-        The two endpoints are kept at least 10&nbsp;nm apart: typing one past the other
-        stops it a step short, because a band of zero width has no transform limit at
-        all.</p>
-        <h3>Broad-band temporal spread</h3>
-        <p>A centre-wavelength GDD is not extended across this flat band. For every traced
-        length of catalogue glass, OpticalSetup evaluates the Sellmeier group index at both
-        authored endpoints and accumulates their signed group-delay difference. The displayed
-        duration is the input duration and that endpoint spread added in quadrature. This is
-        a robust first arrival-to-last arrival estimate for the declared flat spectrum, and
-        detector, scope, probe and pulse packets use the same accumulated value.</p>
-        <p>The authored duration acts as a floor. A compressor can take the path's spread back
-        out, but not the chirp the source was authored with, so a fully compensated continuum
-        returns to the duration you set, not towards its transform limit. Compensation is also
-        only ever partial: a single GDD value cancels the glass's dispersion at one wavelength,
-        while the Sellmeier curvature across hundreds of nanometres remains. Through 100&nbsp;mm
-        of N-BK7, a 400â€“900&nbsp;nm continuum spreads to about 20&nbsp;ps; a compressor set to
-        exactly cancel the centre-wavelength GDD still leaves about 4&nbsp;ps, and the best
-        a single GDD reaches is under 1&nbsp;ps.</p>
-        <p>Once a filter, dichroic or AOTF cuts into the continuum, the duration is shown as
-        unavailable, whether the filter sits before the glass or after it. The accumulated
-        spread belongs to endpoints the filter may have removed, and reconstructing the slice
-        would need each wavelength's own delay history rather than a single number.</p>`,
-      formulas: [
-        { tex: '\\Delta t_{\\min} = \\frac{K}{c\\left(1/\\lambda_{\\min} - 1/\\lambda_{\\max}\\right)}', caption: 'The shortest pulse the band can carry. The denominator is the exact frequency span of the band, not the Î»Â²/Î”Î» approximation, which drifts by several percent once the band is hundreds of nanometres wide. K is the timeâ€“bandwidth product of the chosen envelope: 0.441 for Gaussian, 0.315 for sechÂ².' },
-        { tex: '\\Delta T=L\\,[n_g(\\lambda_{max})-n_g(\\lambda_{min})]/c,\\qquad \\tau_{out}\\approx\\sqrt{\\tau_{in}^{2}+\\Delta T^{2}}', caption: 'Flat-band endpoint group-delay-spread model used for each traced catalogue-glass length.' },
-      ],
-      limitations: `<p>The spectrum is an idealized flat top, not a measured shape with the
-        peaks, dips, and edge roll-off of a real continuum, and its shape does not change
-        with pump power. No broadening is simulated: the band is declared, not generated
-        from a pump and a nonlinear fibre. Pulse-to-pulse spectral noise, a real limitation
-        of these sources, is not represented. The endpoint estimate is not a propagated
-        complex field: it cannot reproduce sub-pulses, wavelength-dependent intensity,
-        non-monotonic group delay, higher-order phase inside the band, or nonlinear evolution.
-        It is a bounded temporal-span estimate, not a pulse-reconstruction claim.</p>`,
-    },
-    related: ['cwlaser', 'pulsedlaser', 'prism', 'filter'],
-    citations: [
-      { label: 'J. M. Dudley, G. Genty and S. Coen, â€œSupercontinuum generation in photonic crystal fiber,â€ Reviews of Modern Physics 78, 1135â€“1184 (2006) â€” temporal structure, coherence and higher-order dispersion limits of real continua', url: 'https://doi.org/10.1103/RevModPhys.78.1135' },
-    ],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Supercontinuum Generation', url: 'https://www.rp-photonics.com/supercontinuum_generation.html' },
-      { label: 'RP Photonics Encyclopedia â€” Photonic Crystal Fibers', url: 'https://www.rp-photonics.com/photonic_crystal_fibers.html' },
-    ],
-  },
-
-  {
-    type: 'pointsource',
-    summary: "Emits light in all directions with a monochromatic, broadband, or gas-discharge spectrum, for exploring collection and collimation by nearby optics.",
-    title: 'Point source',
-    category: 'Sources',
-    realWorld: {
-      html: `
-        <p>Not every source is a laser, and most of optics predates the ones that are. A
-        point source is the opposite limit: light leaving a region small enough to treat as
-        a point, spreading into every direction at once, with no fixed phase relationship
-        between one direction and the next. A fluorescing molecule, the tip of a fiber, an
-        arc between two electrodes and a pinhole in a screen all behave this way.</p>
-        <p>Two consequences follow, and between them they explain most of what such a
-        source is like to work with. The first is that the power falls as
-        <span class="w">1/r&sup2;</span> â€” spread over a sphere whose area grows with the
-        square of the distance â€” so an isotropic emitter is dim at any useful range unless
-        something gathers its light. The second is that you cannot get the brightness back.
-        Ã‰tendue, the product of source area and solid angle, cannot be reduced by any
-        passive optic; a lens can redirect an emitter's output but not concentrate it
-        beyond what its own size and spread allow. This is exactly why a laser can be
-        focused to a diffraction-limited spot and a lamp cannot, and it is a geometric
-        limit rather than an engineering one.</p>
-        <h3>Gas discharge lamps</h3>
-        <p>The most useful incoherent point sources in a laboratory are gas discharge
-        lamps, and what makes them useful is that they do not emit a continuum. Passing a
-        current through a low-pressure gas excites its atoms, and they radiate on the
-        discrete transitions that atom happens to have â€” a <strong>line spectrum</strong>,
-        fixed by atomic structure rather than by temperature${cite(1)}. Low pressure is part
-        of the design and not an accident: it keeps collisions rare, so the lines stay
-        narrow instead of being pressure-broadened into a smear${cite(2)}.</p>
-        <p>Those wavelengths are reproducible to a small fraction of a nanometre, which is
-        why such lamps are also called <em>calibration lamps</em>: mercury's 546.074&nbsp;nm
-        green, sodium's 589&nbsp;nm doublet and helium's 587.5618&nbsp;nm yellow are
-        standard lines an instrument can be checked against${cite(2)}.</p>
-        <p>The line <em>strengths</em> are a different matter, and it is worth being blunt
-        about it. Relative intensities depend on how the discharge is excited and drift with
-        drive current and lamp age; they are usually not specified at all${cite(2)}. The
-        standard tabulations carry the same warning â€” the RIT compilation of discharge
-        spectra, built from Reader and Corliss's <em>Line Spectra of the Elements</em>, notes
-        that its line intensities "may be quite different in the lamp you observe" and that
-        the excitation conditions behind the tabulated values are not
-        recorded${cite(1)}. Wavelengths are data; intensities are an
-        illustration.</p>
-        <p>What you can rely on is the pattern. Sodium's pair of close yellow lines, neon's
-        dense red-orange group, hydrogen's four Balmer lines and mercury's blue-green-yellow
-        set are recognisable on sight, and that recognisability is the whole reason a
-        spectroscopy course starts here.</p>`,
-      formulas: [
-        { tex: 'E = \\frac{P}{4\\pi r^{2}}', caption: 'Irradiance from an isotropic emitter: the inverse-square law is the reason uncollected point-source light is gone within a short distance.' },
-      ],
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The point source emits rays evenly over its <strong>emission angle</strong> â€”
-        the full 360&deg; by default â€” and those rays are drawn as a glow that
-        <strong>fades within a short range unless something collects them</strong>. That
-        fading is the model's one strong opinion, and it is there because the alternative
-        is worse: an isotropic emitter whose rays ran forever would light up every detector
-        on the bench at full strength, which is the opposite of how such a source behaves.</p>
-        <p>A lens, a microscope objective, a fiber tip or a <a href="../mirror/">mirror</a>
-        within range collects the light, and from that point on it is ordinary light that
-        propagates normally. The embedded bench above shows the arrangement that makes this
-        clearest: a <a href="../oap/">parabolic mirror</a> with the source exactly at its
-        focus, 25&nbsp;mm in front of the vertex, turning isotropic emission into a parallel
-        beam. That is how a lamp or an arc is collimated in a real instrument, and a
-        parabola does it without chromatic aberration â€” which matters here, because a lamp
-        emits many wavelengths at once.</p>
-        <h3>Lamp mode</h3>
-        <p>Setting <strong>Source</strong> to <em>Gas discharge lamp</em> changes what the
-        element emits and how it is drawn: a pen-ray tube rather than a star, tinted by its
-        own lines, and emitting a fixed line spectrum instead of a wavelength you type.
-        Eight lamps are available â€” mercury, sodium, cadmium, helium, hydrogen, neon,
-        caesium and argon â€” each carrying the standard lines it is bought for.</p>
-        <p>The lines are carried as lines, not as a sampled curve. A
-        <a href="../grating/">grating</a> fans exactly the wavelengths that are present and
-        none in between, a <a href="../filter/">filter</a> passes or blocks each one on its
-        own, and the <a href="../spectrometer/">spectrometer</a> draws them as separate
-        peaks. Sodium ships as its D doublet rather than as the single mean wavelength,
-        because the pair is what makes sodium recognisable and the two do resolve.</p>
-        <p>Relative line strengths are nominal, and deliberately coarse. They are set to
-        make each lamp look like itself, not to be photometry â€” for the reason given above,
-        a real lamp's ratios are not a fixed property of the element at all.</p>
-        <p><strong>Neither mode can interfere</strong>, and that is correct rather than a
-        limitation. Coherent field reconstruction in this tracer is reserved for a sized,
-        monochromatic continuous-wave laser; every other source carries power only. A lamp
-        in an interferometer therefore produces no fringes, which is what an incoherent
-        source does.</p>`,
-      formulas: [],
-      limitations: `<p>The near-field fade is a modelling device, not physics. Real
-        isotropic light does not stop at a boundary â€” it keeps going, growing weaker as
-        1/r&sup2; â€” and the range here is a fixed distance rather than anything derived from
-        the source's power or the detector's sensitivity. A collector just outside it gathers
-        nothing when a real one would gather a little.</p>
-        <p>The source is a true point, so it has no Ã©tendue: the one property that most
-        constrains real incoherent sources is absent, and a lens can focus this light to a
-        spot no real lamp could reach. There is no arc length, no electrode geometry, and no
-        angular distribution other than uniform â€” a real discharge is neither a point nor
-        isotropic.</p>
-        <p>Lamp line strengths are illustrative and no absolute radiometry is attached to
-        them, so a lamp's output is a relative weight rather than watts. Line widths are not
-        modelled at all: each line is treated as monochromatic, with no Doppler, pressure or
-        Stark broadening, and no self-absorption of the strong resonance lines â€” which is a
-        real effect in sodium lamps in particular. Nor is there any continuum background
-        beneath the lines, which a real discharge always has to some degree.</p>`,
-    },
-    related: ['cwlaser', 'sclaser', 'oap', 'spectrometer', 'grating'],
-    citations: [
-      { label: 'M. Richmond, â€œSpectra of Gas Discharges,â€ RIT PHYS 230 â€” simulated discharge spectra from Reader &amp; Corliss, â€œLine Spectra of the Elementsâ€ (CRC Handbook / NSRDS-NBS 68), with the author\'s own warning that tabulated line intensities need not match the lamp in front of you', url: 'http://spiff.rit.edu/classes/phys230/lectures/spectrographs/spectral_lines/index.html' },
-      { label: 'R. Paschotta, â€œSpectral Lamps,â€ RP Photonics Encyclopedia; doi:10.61835/zgq', url: 'https://www.rp-photonics.com/spectral_lamps.html' },
-    ],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Gas Discharge Lamps', url: 'https://www.rp-photonics.com/gas_discharge_lamps.html' },
-      { label: 'NIST Atomic Spectra Database â€” line wavelengths and relative intensities', url: 'https://www.nist.gov/pml/atomic-spectra-database' },
-      { label: 'RP Photonics Encyclopedia â€” Etendue', url: 'https://www.rp-photonics.com/etendue.html' },
-    ],
-  },
-
-  {
-    type: 'mirror',
-    summary: "Reflects light from a flat surface with adjustable size and reflectivity, for folding beam paths and controlling the power sent onward.",
-    title: 'Mirror',
-    category: 'Mirrors',
-    realWorld: {
-      html: `
-        <p>Reflection at a smooth interface follows the law of reflection: the angle of
-        incidence equals the angle of reflection, both measured from the surface normal,
-        with the incident and reflected rays in the same plane. In vector form, an
-        incident direction <span class="w">dÌ‚</span> reflecting off a surface with unit
-        normal <span class="w">nÌ‚</span> becomes:</p>`,
-      formulas: [
-        { tex: "\\hat{d}' = \\hat{d} - 2(\\hat{d}\\cdot\\hat{n})\\,\\hat{n}", caption: 'Vector form of the law of reflection.' },
-        { tex: 'R = \\left(\\frac{n_1 - n_2}{n_1 + n_2}\\right)^{2}', caption: 'Fresnel reflectance at normal incidence for an uncoated dielectric interface â€” real mirrors instead use a metal or multilayer dielectric coating engineered for R close to 1 (or a deliberately partial value for an output coupler).' },
-      ],
-    },
-    inOpticalSetup: {
-      html: `
-        <p>OpticalSetup implements the exact vector law of reflection shown above â€” the
-        mirror surface's normal is computed from its two drawn endpoints, so rotating or
-        resizing a mirror changes the reflected direction correctly at any angle.
-        Reflectivity is a single configurable percentage: at 100% every ray reflects; below
-        that, each incident ray splits into a reflected branch carrying fraction
-        <span class="w">R</span> of the intensity and a transmitted branch carrying
-        <span class="w">1 âˆ’ R</span>, which is how a partially-reflective cavity mirror or
-        output coupler is modeled.</p>`,
-      formulas: [],
-      limitations: `<p>Reflectivity is a single flat number: real coatings vary with angle
-        of incidence and polarization (s- vs p-plane), and a metal mirror's reflectance
-        varies with wavelength. None of that is modeled â€” <span class="w">R</span> is
-        constant regardless of incidence angle, polarization, or color.</p>`,
-    },
-    related: ['cmirror', 'cmirrorx', 'oap', 'galvo', 'retroreflector', 'bs'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Mirrors', url: 'https://www.rp-photonics.com/mirrors.html' },
-    ],
-  },
-
-  {
-    type: 'lens',
-    summary: "Focuses light with a positive thin-lens focal length, providing a simple paraxial model for collimation, image formation, and beam relays.",
-    title: 'Thin convex lens',
-    category: 'Lenses',
-    realWorld: {
-      html: `
-        <p>A thin lens bends light by refraction at its two curved surfaces. In the
-        paraxial approximation â€” rays close to the optical axis, at small angles â€” those
-        two refractions collapse into a single relationship between object distance
-        <span class="w">dâ‚’</span>, image distance <span class="w">dáµ¢</span>, and focal
-        length <span class="w">f</span>:</p>`,
-      formulas: [
-        { tex: '\\frac{1}{f} = \\frac{1}{d_o} + \\frac{1}{d_i}', caption: 'The thin-lens equation.' },
-        { tex: 'm = -\\frac{d_i}{d_o}', caption: 'Transverse magnification â€” negative sign means an inverted image for a real image from a positive lens.' },
-      ],
-    },
-    inOpticalSetup: {
-      html: `
-        <p>Rather than tracing the thin-lens equation for one axial object point at a
-        time, OpticalSetup applies the equivalent <strong>paraxial ray-transfer
-        relation</strong> to every individual ray that crosses the lens plane. For a ray
-        crossing at height <span class="w">h</span> from the optical axis with incoming
-        slope <span class="w">u</span> (the ratio of its transverse to axial direction
-        components), the outgoing slope is:</p>`,
-      formulas: [
-        { tex: "u' = u - \\frac{h}{f}", caption: 'Paraxial ray-transfer equation for a thin lens â€” the same physics as the lens equation above, applied per-ray so any bundle of rays (not just one object point) focuses correctly.' },
-      ],
-      limitations: `<p>This is genuine paraxial optics, not a hand-wavy "bend toward
-        focus": a beam of parallel rays offset from the axis really does converge at the
-        back focal point, and an object arrow really does form an inverted, magnified, or
-        demagnified image at the position the lens equation predicts. What's missing is
-        everything paraxial theory leaves out by construction â€” spherical and chromatic
-        aberration, finite lens geometry, and any behavior for rays far from the axis or
-        at large angles. For pulse reporting only, the lens silently assumes N-BK7 and a
-        centre thickness from spherical sag plus 2.5&nbsp;mm edge thickness. That
-        diameter-aware estimate is typically within about 10% for ordinary plano-convex
-        catalogue singlets; it does not change the traced ray geometry.</p>`,
-    },
-    related: ['lensc', 'metalens', 'thicklens', 'telescope', 'objective', 'cmirror'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Lenses', url: 'https://www.rp-photonics.com/lenses.html' },
-    ],
-  },
-
-  {
-    type: 'metalens',
-    summary: "Focuses light through a flat phase-gradient model with adjustable efficiency, using either diffractive chromatic focusing or an idealized achromatic band.",
-    title: 'Metalens',
-    category: 'Lenses',
-    realWorld: {
-      html: `
-        <p>A metalens is a flat optical surface patterned with subwavelength
-        structures. Those meta-atoms impose a position-dependent phase delay instead
-        of relying on the curved entrance and exit faces of a glass lens. An ideal
-        focusing phase profile at design wavelength <span class="w">Î»â‚€</span> is
-        hyperbolic rather than the quadratic profile of the paraxial limit:</p>`,
-      formulas: [
-        { tex: '\\phi(r,\\lambda_0) = -\\frac{2\\pi}{\\lambda_0}\\left(\\sqrt{f_0^2+r^2}-f_0\\right) \\pmod{2\\pi}', caption: 'Ideal phase required to bring a normally incident plane wave to a focus fâ‚€ from radius r.' },
-        { tex: '\\mathrm{NA} = \\sin\\!\\left[\\arctan\\!\\left(\\frac{D}{2|f_0|}\\right)\\right]', caption: 'Geometric numerical aperture in air for clear diameter D and focal length fâ‚€.' },
-      ],
-      html2: `
-        <p>The direction of that colour error is the surprising part, and worth
-        holding on to: a metalens is chromatic the <em>opposite</em> way round from
-        glass. A refractive lens has a higher index in the blue, so blue comes to a
-        focus <em>nearer</em> than red. A diffractive surface has a focal length
-        inversely proportional to wavelength, so <strong>red focuses nearer and blue
-        further away</strong>. Their colour fringes therefore run in opposite
-        directions â€” which is also why a diffractive surface can be used to cancel
-        the chromatic aberration of a refractive one rather than compounding it.</p>
-        <p>A phase pattern fabricated for one wavelength normally has strong
-        diffractive chromaticity: longer wavelengths focus nearer and shorter
-        wavelengths focus farther away. Achromatic metalenses add engineered group
-        delay, but bandwidth, aperture, NA, polarization response, and efficiency are
-        coupled design constraints rather than independent knobs${cite(1)}. Practical
-        focusing efficiency also sends some incident power into zeroth order, unwanted
-        diffraction orders, reflection, absorption, and scatter${cite(2)}.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>OpticalSetup treats the patterned surface as a zero-thickness paraxial
-        phase-gradient proxy. In <strong>Chromatic</strong> mode, the nominal focal
-        length <span class="w">fâ‚€</span> is exact at the design wavelength and every
-        sampled wavelength follows the ordinary diffractive scaling:</p>`,
-      formulas: [
-        { tex: 'f(\\lambda) = f_0\\frac{\\lambda_0}{\\lambda}', caption: 'The wavelength-dependent focal length used by the chromatic metalens trace.' },
-        { tex: "u' = u - \\frac{h}{f(\\lambda)}", caption: 'Each sampled wavelength then uses the same paraxial ray-transfer relation as the ideal thin lens.' },
-      ],
-      html2: `
-        <p>A broadband ray is expanded into the same weighted wavelength samples used
-        by prisms and gratings, making axial color visible in the actual traced paths.
-        <strong>Idealized achromatic band</strong> holds <span class="w">f=fâ‚€</span>
-        inside the chosen range and transitions continuously back to diffractive
-        scaling outside it. Focusing efficiency attenuates the focused output by the
-        configured power fraction.</p>`,
-      limitations: `<p>No phase map or electromagnetic field is propagated. The
-        simulator does not design meta-atoms, derive efficiency, show the unfocused
-        zeroth order, validate group-delay feasibility, or calculate polarization
-        conversion, PSF, MTF, Strehl ratio, diffraction-limited spot size, field angle,
-        aberrations, substrate effects, or fabrication tolerances. Achromatic mode is
-        explicitly an idealized system-level behavior, not proof that the selected
-        diameter, NA, bandwidth, and efficiency can be fabricated together.</p>`,
-    },
-    related: ['lens', 'thicklens', 'grating', 'slm', 'objective'],
-    // These two back the cited claims in the prose, so they belong in
-    // `citations` -- that is what emits the #ref anchors the [1]/[2]
-    // superscripts link to. Left only in `resources`, both links were dead.
-    citations: [
-      { label: 'Arbabi et al., â€œSubwavelength-thick lenses with high numerical apertures and large efficiency,â€ Nature Communications 6, 7069 (2015)', url: 'https://doi.org/10.1038/ncomms8069' },
-      { label: 'Khorasaninejad et al., â€œMetalenses at visible wavelengths,â€ Science 352, 1190â€“1194 (2016)', url: 'https://doi.org/10.1126/science.aaf6644' },
-    ],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Diffractive Optics', url: 'https://www.rp-photonics.com/diffractive_optics.html' },
-      { label: 'RP Photonics Encyclopedia â€” Chromatic Aberrations', url: 'https://www.rp-photonics.com/chromatic_aberrations.html' },
-    ],
-  },
-
-  {
-    type: 'lensc',
-    summary: "Spreads light with a negative thin-lens focal length, for exploring virtual foci, beam expansion, and the behavior of diverging optical systems.",
-    title: 'Thin concave lens',
-    category: 'Lenses',
-    realWorld: {
-      html: `
-        <p>A concave (diverging) lens obeys the exact same thin-lens equation as a convex
-        one â€” the only difference is the sign of <span class="w">f</span>. A negative
-        focal length always produces a negative image distance for a real object, which
-        means a concave lens can <em>never</em> form a real image on its own: the rays
-        always appear to diverge from a virtual, upright, reduced image on the same side
-        as the object.</p>`,
-      formulas: [
-        { tex: '\\frac{1}{f} = \\frac{1}{d_o} + \\frac{1}{d_i}, \\qquad f < 0', caption: 'The thin-lens equation with a negative focal length â€” the defining property of a diverging lens.' },
-      ],
-      html2: `
-        <p>Concave lenses correct myopia (short-sightedness) in eyeglasses, and paired
-        with a convex lens they make a compact Galilean telescope or beam expander â€” see
-        the telescope page.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>This is literally the same component as the <a href="../lens/">convex
-        lens</a> â€” same paraxial ray-transfer relation <span class="w">u' = u âˆ’
-        h/f</span>, same registry entry under the hood â€” just defaulting to a negative
-        focal length. Setting a positive focal length on this element makes it behave
-        exactly like a convex lens, and vice versa: the sign of <span class="w">f</span>
-        is the only thing that determines converging versus diverging behavior anywhere
-        in OpticalSetup.</p>`,
-      formulas: [],
-      limitations: `<p>Same caveats as the thin convex lens: exact paraxial geometry with no
-        spherical or chromatic aberration. GDD alone uses the same diameter-aware N-BK7
-        sag estimate (roughly a 10% class estimate); the assumed thickness never becomes
-        traced geometry.</p>`,
-    },
-    related: ['lens', 'metalens', 'thicklens', 'telescope', 'objective'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Lenses', url: 'https://www.rp-photonics.com/lenses.html' },
-    ],
-  },
-
-  {
-    type: 'thicklens',
-    summary: "Refracts light through two separated spherical or flat glass surfaces, exposing the effects of thickness, spherical aberration, chromatic focus, and dispersion.",
-    title: 'Thick spherical lens',
-    category: 'Lenses',
-    realWorld: {
-      html: `
-        <p>A real singlet has finite centre thickness and two separately refracting
-        surfaces${cite(1)}. Its paraxial power therefore depends on both signed radii, the
-        glass index, and the separation between the faces${cite(2)}. Effective focal length is
-        measured between principal planes; back focal distance is the rear-vertex-to-focus
-        distance for collimated light, so the two numbers are not generally equal.</p>
-        <p>At a large aperture, a spherical surface does not send every ray height to one
-        axial point: marginal rays focus closer to a positive lens than paraxial rays,
-        producing longitudinal spherical aberration and its visible caustic${cite(3)}.
-        Optical-glass index also varies with wavelength, so an uncorrected singlet has
-        longitudinal chromatic aberration.</p>`,
-      formulas: [
-        {
-          tex: '\\Phi=(n-1)\\left(\\frac{1}{R_1}-\\frac{1}{R_2}+\\frac{(n-1)d}{nR_1R_2}\\right),\\qquad f=\\frac{1}{\\Phi}',
-          caption: 'Thick lensmaker equation in air.',
-        },
-        {
-          tex: '\\mathrm{BFD}=f\\left(1-\\frac{(n-1)d}{nR_1}\\right)',
-          caption: 'Back focal distance from the rear vertex for collimated input along the element\'s local +x direction.',
-        },
-        {
-          tex: 'V_d=\\frac{n_d-1}{n_F-n_C}',
-          caption: 'Abbe number: lower values mean stronger dispersion between the visible F and C reference lines.',
-        },
-      ],
-    },
-    inOpticalSetup: {
-      html: `
-        <p>OpticalSetup intersects each ray with the two drawn plane or exact circular-arc
-        faces, applies vector Snell refraction at each boundary, tracks the ray while it
-        is inside the glass, and supports total internal reflection. Focal length and
-        back focal distance are derived paraxial summaries of that geometry at the
-        587.6&nbsp;nm d line; the tracer never aims rays at either reported point.
-        Spherical and chromatic aberration therefore emerge from the traced surfaces and
-        wavelength-dependent index rather than being drawn as an effect.</p>
-        <p>In the default left-to-right orientation, positive radius means the centre of
-        curvature lies toward local +x. A biconvex singlet is therefore
-        <span class="w">Râ‚ &gt; 0</span> and <span class="w">Râ‚‚ &lt; 0</span>;
-        <span class="w">R = 0</span> makes that face plane. The Shape readout names the
-        resulting profile so the sign convention can be checked directly.</p>
-        <p>The selectable N-BK7, fused-silica, N-SF5, and N-SF11 models use each glass's
-        published d-line index and Abbe number${cite(4)}. If a requested radius is too
-        small for the clear aperture, or the centre thickness would make the faces cross,
-        the inspector shows the exact constructible geometry the tracer uses instead of
-        hiding the adjustment.</p>
-        <p><strong>Two glass bodies must not touch.</strong> The tracer ignores any
-        intersection closer than 0.05&nbsp;mm along a ray, so a pair of coincident
-        interfaces loses one of them and the ray wrongly exits into air. Building a
-        cemented doublet by pushing two singlets together therefore gives an answer that
-        is not obviously broken, just wrong â€” measured on a crown+flint pair, the focus
-        lands 4&nbsp;mm short with one interface silently skipped. Leave at least
-        0.06&nbsp;mm between them and both interfaces come back; the inspector warns when
-        anything is closer. That gap costs about 0.1% of the back focal distance, and a
-        real cemented group is a 10â€“20&nbsp;Âµm layer of not-quite-glass anyway. Nested or
-        fully overlapping bodies are a separate unsupported case â€” boundaries are never
-        merged.</p>`,
-      formulas: [
-        {
-          tex: 'n^2(\\lambda)=1+\\sum_i\\frac{B_i\\lambda^2}{\\lambda^2-C_i}',
-          caption: 'Three-term Sellmeier curve used for catalogue-glass index and dispersion.',
-        },
-      ],
-      limitations: `<p>This is a 2D meridional geometric trace with spherical or plane
-        faces only. It does not model skew rays, diffraction, aspheres, full 3D off-axis
-        aberrations, Fresnel/coating behavior, stress birefringence, manufacturing
-        tolerances, temperature dependence, or absorption bands. GDD uses the analytic
-        second derivative of the selected Sellmeier curve and the actual traced distance
-        in glass; the material contribution is generally within a few percent where the
-        catalogue curve is valid. Per-surface transmission is a flat
-        configured percentage applied at each face, not a Fresnel or coating calculation. Treat axial spherical and visible chromatic behavior as
-        meaningful within this model and off-axis behavior as qualitative.</p>`,
-    },
-    related: ['lens', 'lensc', 'objective', 'prism', 'freeglass'],
-    citations: [
-      { label: 'The Physics Hypertextbook â€” Spherical lenses', url: 'https://physics.info/lenses/' },
-      { label: 'Thorlabs â€” N-BK7 plano-convex lenses: the lensmaker equation for a thick lens', url: 'https://www.thorlabs.com/n-bk7-plano-convex-lenses-uncoated?tabName=Tutorial' },
-      { label: 'RP Photonics Encyclopedia â€” Spherical aberrations', url: 'https://www.rp-photonics.com/spherical_aberrations.html' },
-      { label: 'SCHOTT â€” Optical-glass collection datasheets', url: 'https://www.schott.com/en-gb/products/optical-glass/-/media/Project/OnEx/Products/O/optical-glass/Downloads/schott-optical-glass-collection-datasheets-english-may2019.pdf' },
-    ],
-    resources: [
-      { label: 'SCHOTT â€” Optical-glass technical properties', url: 'https://www.schott.com/en-gb/products/optical-glass/technical-details' },
-    ],
-  },
-
-  {
-    type: 'asphericlens',
-    summary: "Refracts light through conic and polynomial lens surfaces, so changing the surface shape directly changes ray intersections, focusing, and spherical aberration.",
-    title: 'Aspheric lens',
-    category: 'Lenses',
-    realWorld: {
-      html: `
-        <p>A sphere is easy to make and wrong for the job. Grinding two glass surfaces
-        against each other with rotation and pressure naturally produces spheres, which is
-        why almost every lens ever made has been one â€” but a sphere does not bring a wide
-        collimated beam to a single point. Rays through the outer part of the lens cross the
-        axis closer than rays near it, and that gap is
-        <a href="../thicklens/">spherical aberration</a>${cite(3)}. It is not a
-        manufacturing defect; it is what the shape does.</p>
-        <p>The classical fix is more glass: split the power over several elements so each
-        bends the light less, and the aberration each contributes partly cancels. That works,
-        and it is why a fast camera lens has many elements. An asphere takes the other route
-        â€” keep one element and give it the surface the problem actually calls for.</p>
-        <h3>The surface that has no spherical aberration</h3>
-        <p>For one conjugate pair the exact surface is known in closed form. Take a
-        plano-convex singlet with the <em>flat</em> face toward a collimated beam: light
-        enters without deviation, and the curved exit face has to turn a plane wavefront into
-        a perfect spherical one converging on the focus. The surface that does it exactly is a
-        <strong>hyperboloid</strong> of conic constant</p>`,
-      formulas: [
-        { tex: 'k = -n^{2}', caption: 'The conic constant that eliminates spherical aberration for a plano-convex singlet focusing a collimated beam, with the curved face toward the focus. For N-BK7 at 587.6 nm, n = 1.5168 and k = âˆ’2.301.' },
-        { tex: 'x(y) = \\frac{c\\,y^{2}}{1 + \\sqrt{1 - (1+k)c^{2}y^{2}}} + A_{4}y^{4} + A_{6}y^{6} + A_{8}y^{8}', caption: 'The even-asphere sag, the standard prescription form. c = 1/R is the vertex curvature; k selects the conic; the polynomial terms correct what the conic alone cannot.' },
-      ],
-      html2: `
-        <p>The conic constant names the family: <span class="w">k = 0</span> is a sphere,
-        <span class="w">âˆ’1 &lt; k &lt; 0</span> an ellipsoid, <span class="w">k = âˆ’1</span> a
-        paraboloid, and <span class="w">k &lt; âˆ’1</span> a hyperboloid. A parabola is the
-        shape that collimates a point source <em>by reflection</em> â€” which is why the
-        <a href="../oap/">parabolic mirror</a> exists â€” but refraction has an index in it, so
-        the shape that does the equivalent job in glass is a hyperbola instead.</p>
-        <p>One conjugate is all a conic can fix. Correct a lens for a collimated input and it
-        is no longer corrected for a nearby object, and nothing about the conic addresses
-        off-axis aberrations â€” coma and astigmatism survive untouched. The
-        <span class="w">Aâ‚„, Aâ‚†, Aâ‚ˆ</span> terms exist for that: extra degrees of freedom, each
-        beginning at a higher power of the ray height, that let a designer trade residual
-        aberrations against each other across a field rather than perfecting a single point.
-        They start at fourth order precisely so they leave the paraxial focal length
-        alone.</p>
-        <h3>Why they are everywhere now</h3>
-        <p>Aspheres were long a specialist item because a non-spherical surface cannot be
-        made by the natural grinding process. Moulded glass and plastic, single-point diamond
-        turning, and deterministic polishing changed the economics, and the result is that
-        one moulded asphere now routinely replaces a two- or three-element spherical
-        assembly${cite(1)}. Laser diode collimators, fiber-coupling lenses, condensers and
-        every phone camera stack rely on them â€” anywhere the alternative is more elements,
-        more weight, more surfaces to coat and more light lost.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>Both faces carry an independent radius, conic constant and
-        <span class="w">Aâ‚„/Aâ‚†/Aâ‚ˆ</span> set. What matters is that these are not a drawing
-        instruction: the tracer <strong>isolates intersections on the analytic profile and
-        refracts off its local derivative</strong>, including paired crossings near tangency.
-        The same realized analytic faces determine whether a source begins inside the glass.
-        Changing <span class="w">k</span> therefore changes where rays actually cross the
-        glass and where they end up. There is no paraxial correction applied afterwards â€”
-        the aberration is whatever the surface produces.</p>
-        <p>That claim is checkable, and worth checking, because it is the whole point of the
-        element. Set up the classic case â€” flat face toward a collimated beam, curved face
-        toward the focus â€” and sweep the conic while measuring the focused spot:</p>
-        <p><strong>k = 0</strong> gives 1.08&nbsp;mm. <strong>k = âˆ’2</strong> gives
-        0.14&nbsp;mm. <strong>k = âˆ’2.3</strong> gives <strong>0.0009&nbsp;mm</strong>.
-        <strong>k = âˆ’2.6</strong> is back to 0.14&nbsp;mm. The collapse sits at âˆ’2.301, which
-        is âˆ’nÂ² for N-BK7 at that wavelength, and it moves when you change glass: N-SF11 wants
-        âˆ’3.19, fused silica âˆ’2.13. Nothing puts those numbers in â€” they come out of the
-        geometry.</p>
-        <p>With <span class="w">k = 0</span> and no polynomial terms the element reduces to
-        the <a href="../thicklens/">spherical singlet</a> exactly, which is the other half of
-        the same claim: same throughput, same focus, same aberration. Radii follow the same
-        Cartesian sign convention, so a prescription can be moved between the two.</p>
-        <h3>Realized versus requested</h3>
-        <p>Three constraints are applied to keep a prescription physical, and all three are
-        reported rather than applied quietly. A conic with
-        <span class="w">1 + k &gt; 0</span> has a finite radial extent, so a radius too short
-        for the requested aperture is increased until the aperture fits on the surface.
-        Centre thickness is increased when needed to leave a real edge. And the aspheric
-        departure is bounded: if <span class="w">Aâ‚„yâ´ + Aâ‚†yâ¶ + Aâ‚ˆyâ¸</span> exceeds the
-        semi-aperture anywhere across the clear aperture, all three coefficients are scaled
-        by a common factor until it does not.</p>
-        <p>That third one is easier to reach than it looks, and it is worth knowing where.
-        At the default 25.4&nbsp;mm diameter the departure bound bites at about
-        <span class="w">Aâ‚„ = 5&nbsp;Ã—&nbsp;10â»â´</span>, so a typed
-        <span class="w">Aâ‚„ = 0.001</span> is traced at roughly half its value. Because the
-        three terms are scaled together the ratio between them is preserved, but the surface
-        traced is not the surface requested â€” it is a smaller relative of it. Real catalogue
-        aspheres sit far below this, in the <span class="w">10â»âµ</span> range and below,
-        where nothing is rescaled; the guard exists so that a hand-edited or stale scene
-        cannot produce a metre-deep surface. The inspector reports the geometry actually
-        traced, so a rescaled prescription is visible rather than inferred.</p>`,
-      formulas: [],
-      limitations: `<p>This is a 2D meridional section of a rotationally symmetric lens, so
-        only aberrations that live in that plane can appear. Spherical aberration and
-        defocus do; coma, astigmatism and field curvature need the third dimension or a real
-        off-axis field and do not â€” which means the <span class="w">Aâ‚„/Aâ‚†/Aâ‚ˆ</span> terms
-        cannot be used here for the field-balancing job they mostly exist to do in real
-        designs. There are no skew rays.</p>
-        <p>The paraxial focal length and back focal distance in the panel are computed from
-        vertex curvature and centre thickness, exactly as for a spherical singlet, because
-        neither the conic nor the polynomial terms change curvature at the vertex. They
-        therefore describe the paraxial limit and say nothing about the aberration the rest
-        of the surface produces. How little they say is easy to measure: for the default
-        prescription the panel quotes a back focal distance of 54.094&nbsp;mm, and a traced
-        ray at the very edge of the clear aperture crosses the axis 11&nbsp;Âµm from it â€”
-        while the <em>same</em> lens with <span class="w">kâ‚</span> set to 0 keeps the
-        identical quoted number and focuses its edge ray 2.8&nbsp;mm short. Two lenses,
-        one readout, a 250-fold difference in what actually happens. The ray trace is the
-        thing to look at.</p>
-        <p>Nothing here is manufactured: there is no surface figure error, no roughness, no
-        centring tolerance, and no coating, so reflectivity does not vary with wavelength or
-        angle. A real asphere is corrected for one conjugate and one wavelength; this one is
-        as good as its prescription at every wavelength the glass transmits, with only the
-        catalogue dispersion moving the answer.</p>`,
-    },
-    related: ['thicklens', 'lens', 'lensgroup', 'oap', 'metalens'],
-    citations: [
-      { label: 'Edmund Optics â€” â€œAll About Aspheric Lensesâ€: how aspheres replace multi-element spherical assemblies, and how they are manufactured', url: 'https://www.edmundoptics.com/knowledge-center/application-notes/optics/all-about-aspheric-lenses/' },
-      { label: 'R. Paschotta, â€œAspheric Optics,â€ RP Photonics Encyclopedia', url: 'https://www.rp-photonics.com/aspheric_optics.html' },
-      { label: 'R. Paschotta, â€œSpherical Aberrations,â€ RP Photonics Encyclopedia', url: 'https://www.rp-photonics.com/spherical_aberrations.html' },
-    ],
-    resources: [
-      { label: 'ISO 10110-12 â€” the even-asphere surface description used for optical prescriptions', url: 'https://www.iso.org/standard/61143.html' },
-      { label: 'Thorlabs â€” Aspheric lens selection guide', url: 'https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=6975' },
-    ],
-  },
-
-  {
-    type: 'lensgroup',
-    summary: "Traces an editable sequence of glass surfaces and air gaps, for exploring compound lenses, achromatic doublets, aperture stops, and material dispersion.",
-    title: 'Lens group',
-    category: 'Lenses',
-    realWorld: {
-      html: `
-        <p>A compound lens is specified as an ordered <strong>surface table</strong>.
-        Each row names one refracting surface by its signed radius, gives the axial
-        distance to the next surface, and names the optical medium after it. The
-        convention is compact because the same rows describe both shape and topology:
-        consecutive glass media form neighbouring elements in a cemented group, while
-        an air medium followed by another glass creates a real air space.</p>
-        <p>Achromatic doublets exploit that topology by pairing crown and flint glasses
-        whose dispersion and powers oppose one another. Their net focal power remains
-        useful while the first-order F- and C-line focal shift approaches zero. Published
-        optical-glass catalogues therefore specify both the d-line index and the Abbe
-        number used to compare dispersion${cite(1)}.</p>`,
-      formulas: [
-        {
-          tex: '\\omega^+=\\omega^- - y\\frac{n_2-n_1}{R},\\qquad y^+=y^-+t\\frac{\\omega}{n}',
-          caption: 'Paraxial refraction and transfer in reduced angle Ï‰ = nu, applied in surface-table order.',
-        },
-        {
-          tex: '\\frac{\\Phi_1}{V_1}+\\frac{\\Phi_2}{V_2}\\approx 0',
-          caption: 'First-order achromat condition: crown and flint chromatic powers cancel while their ordinary powers add.',
-        },
-      ],
-    },
-    inOpticalSetup: {
-      html: `
-        <p>Each editable row is <strong>radius R Â· thickness to next Â· medium
-        after</strong>. Radius uses exactly the thick-singlet convention: for the
-        default left-to-right direction, positive R puts the centre of curvature toward
-        local +x, negative R puts it toward âˆ’x, and zero is a plane. The last row always
-        exits into air and has no following thickness.</p>
-        <p>The table is turned into one closed boundary per glass body. Every ray meets
-        the drawn plane or exact circular-arc faces and refracts with the selected
-        glass's wavelength-dependent index. The focal length and back focal distance
-        readouts are a separate paraxial surface-by-surface summary; the tracer never
-        aims rays at them. Longitudinal colour is reported as the difference between the
-        F- and C-line back focal distances, so the supplied singlet and achromat presets
-        can be compared at the same nominal 100&nbsp;mm focal length.</p>
-        <p>Cemented and air-spaced groups are not separate element types. Consecutive
-        glass rows make a cemented interface; an air row makes an authored air gap. A
-        cemented interface is realized as two equal-radius faces separated by
-        0.06&nbsp;mm of air. That tiny gap is deliberate: the tracer ignores a new hit
-        within 0.05&nbsp;mm of the previous one, so coincident glass boundaries would
-        silently lose an interaction and send the ray into the wrong medium. The gap,
-        the outlines, the exact trace, and every cardinal readout all use the same
-        realized prescription.</p>
-        <p>The clear aperture can also change that prescription. If widening it would
-        make two spherical faces cross at the rim, OpticalSetup thickens that body until
-        at least 0.4&nbsp;mm of edge remains and moves every downstream surface with it.
-        The readouts follow the adjusted geometry rather than continuing to quote the
-        impossible typed shape.</p>
-        <p>An air row can carry an aperture stop. Its two absorbing segments block light
-        outside the configured clear diameter without adding power; stopping down a
-        fast group therefore reduces its visible spherical caustic by rejecting the
-        marginal rays. â€œNull Fâ€“C colourâ€ varies the chosen row's radius by deterministic
-        bisection, but accepts a solution only when it keeps a finite focal length with
-        the original sign and comparable power. Any first row edit â€” including the
-        purple on-canvas last-radius control â€” copies an active preset into a custom
-        table instead of pretending a preset was edited when it was still authoritative.</p>`,
-      formulas: [
-        {
-          tex: '\\Delta z_{FC}=\\mathrm{BFD}(486.1\\,\\mathrm{nm})-\\mathrm{BFD}(656.3\\,\\mathrm{nm})',
-          caption: 'The axial-colour readout and the quantity the row action nulls.',
-        },
-      ],
-      limitations: `<p>This is a 2D meridional geometric model with spherical or plane
-        faces. On-axis spherical and visible longitudinal chromatic behavior emerge from
-        the geometry and are meaningful within that scope; off-axis behavior is
-        qualitative. The model does not include skew rays, aspheres, diffraction,
-        quantitative coma or astigmatism, field curvature, coatings, Fresnel reflection,
-        cement index, manufacturing tolerances, or a full optical-design merit function.
-        The 0.06&nbsp;mm cement gap is a tracer workaround rather than a physical cement
-        model. Catalogue glasses use two-term visible-band Cauchy fits anchored to nd and
-        Abbe number${cite(1)}, not full Sellmeier curves; deep-UV, infrared, and temporal
-        dispersion claims are outside this element's scope. Per-surface transmission is
-        a configured percentage, not coating physics.</p>`,
-    },
-    related: ['thicklens', 'lens', 'objective', 'prism', 'freeglass'],
-    citations: [
-      { label: 'SCHOTT â€” Optical-glass collection datasheets', url: 'https://www.schott.com/en-gb/products/optical-glass/-/media/Project/OnEx/Products/O/optical-glass/Downloads/schott-optical-glass-collection-datasheets-english-may2019.pdf' },
-    ],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Achromatic Optics', url: 'https://www.rp-photonics.com/achromatic_optics.html' },
-      { label: 'The Physics Hypertextbook â€” Spherical lenses', url: 'https://physics.info/lenses/' },
-    ],
-  },
-
-  {
-    type: 'telescope',
-    summary: "Combines two thin lenses separated by their focal lengths, for changing beam diameter and comparing the geometry of afocal optical relays.",
-    title: 'Conjugated thin lens pair',
-    category: 'Lenses',
-    realWorld: {
-      html: `
-        <p>An afocal telescope pairs two lenses a distance
-        <span class="w">fâ‚ + fâ‚‚</span> apart so that parallel rays in produce parallel
-        rays out â€” no net focusing power, just a change in beam diameter and angular
-        magnification. A <strong>Keplerian</strong> telescope uses two convex lenses and
-        has a real, inverted intermediate image at the shared focus between them; a
-        <strong>Galilean</strong> telescope uses a convex objective and a concave
-        eyepiece, stays upright, and needs no space for an intermediate image â€” the
-        arrangement behind classic opera glasses and compact laser beam expanders.</p>`,
-      formulas: [
-        { tex: 'M = -\\frac{f_1}{f_2}', caption: 'Angular magnification â€” negative for the inverted Keplerian case (both lenses convex), positive and upright when fâ‚‚ is negative (Galilean).' },
-      ],
-    },
-    inOpticalSetup: {
-      html: `
-        <p>Two independent <a href="../lens/">lens</a> surfaces, each applying the same
-        paraxial ray-transfer relation, separated by exactly
-        <span class="w">fâ‚ + fâ‚‚</span> â€” the afocal spacing shown by the dashed
-        centerline through the icon. Either lens's focal length can be set negative
-        independently, so the same element models both configurations: two positive
-        focal lengths gives a Keplerian telescope with a real crossing point in the
-        middle, while a negative second focal length gives a Galilean telescope that
-        never focuses the beam down to a point at all.</p>`,
-      formulas: [],
-      limitations: `<p>Same paraxial-only physics as a single lens, with no eyepiece
-        field-of-view limits, eye relief, or exit-pupil modeling â€” just the afocal
-        geometry and magnification. Each of the two zero-thickness surfaces contributes
-        the same silent, diameter-aware N-BK7 sag estimate used by a standalone thin lens,
-        typically a roughly 10% class estimate for pulse GDD.</p>`,
-    },
-    related: ['lens', 'lensc', 'thicklens', 'objective'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Beam Expanders', url: 'https://www.rp-photonics.com/beam_expanders.html' },
-    ],
-  },
-
-  {
-    type: 'objective',
-    summary: "Focuses light through an equivalent lens and pupil model, with adjustable working distance, numerical aperture, immersion medium, and generic objective presets.",
-    title: 'Objective',
-    category: 'Lenses',
-    realWorld: {
-      html: `
-        <p>A real microscope or camera objective is a highly corrected assembly of many
-        lens elements, not a single piece of glass â€” the element count exists almost
-        entirely to cancel spherical and chromatic aberration, flatten the field, and
-        reach a high numerical aperture without the image falling apart. Numerical
-        aperture <span class="w">NA</span> is the single number that matters most: it
-        sets the objective's light-gathering cone and, through diffraction, the finest
-        detail it can ever resolve, regardless of magnification:</p>`,
-      formulas: [
-        { tex: '\\mathrm{NA} = n\\sin\\theta', caption: "Numerical aperture depends on both the accepted half-angle and the refractive index of the objective's designed front medium; NA above 1 therefore requires immersion." },
-        { tex: 'd \\approx \\frac{\\lambda}{2\\,\\mathrm{NA}}', caption: "The Abbe diffraction limit â€” the smallest resolvable feature size, set by wavelength and numerical aperture alone." },
-        { tex: 'r_{\\text{BFP}} \\approx f \\cdot \\mathrm{NA}', caption: "Entrance-pupil radius at the back focal plane, for a well-corrected objective (the Abbe sine condition)." },
-        { tex: 'M = \\frac{f_{\\text{tube}}}{f_{\\text{objective}}}', caption: "Magnification of an infinity-corrected objective, set purely by comparing its focal length to the tube lens's." },
-        { tex: '\\mathrm{NA}_{\\text{eff}} \\approx \\frac{D}{2f} \\le \\mathrm{NA}', caption: "The NA you actually work at when a beam of diameter D underfills the back pupil â€” the rating is a ceiling, not a guarantee." },
-      ],
-      html2: `
-        <p>Modern objectives are almost always <strong>infinity-corrected</strong>: a
-        point at the sample (the front focal plane) emits a cone that leaves the back of
-        the objective as a <em>collimated</em> beam, which a separate tube lens then
-        focuses onto a camera or eyepiece â€” nothing focuses light directly behind an
-        infinity objective on its own. The reference plane a focal length
-        <span class="w">f</span> behind the objective, on that tube-lens side, is the
-        <strong>back focal plane (BFP)</strong> â€” where the objective's entrance pupil
-        (radius above) is imaged. It matters most in laser-scanning microscopy: a scan
-        mirror, or its relayed image via a scan lens and tube lens, is deliberately
-        positioned at a plane conjugate to the BFP, so that as the mirror tilts, the beam
-        pivots around a fixed point inside the pupil instead of walking across it â€”
-        keeping the full aperture illuminated at every scan angle.</p>
-        <p>That same magnification formula is also why widefield imaging systems pick
-        the objective focal length they do. A high-power compound-microscope objective
-        (60Ã—, 100Ã—) has a very short effective focal length â€” often just a couple of
-        millimeters â€” paired with a long tube lens. Its <strong>working distance</strong>,
-        however, is a separate catalogue dimension: the axial clearance from the front
-        boundary to the in-focus specimen plane. High-magnification objectives often have
-        short working distances because of their practical optical and mechanical design,
-        but working distance is not obtained from the magnification formula and
-        long-working-distance objectives are specifically engineered exceptions. A
-        <strong>stereomicroscope</strong> uses low-to-moderate magnification, a wide field
-        of view, and enough working distance to get hands or tools under the lens; its zoom
-        system can vary magnification without turning working distance into focal length.</p>
-        <p>One practical consequence of that pupil: the NA on the barrel is a
-        <em>ceiling</em>, not a promise. You only work at the rated NA if your beam actually
-        fills the back pupil. A laser beam narrower than the pupil converges at a
-        proportionally smaller angle, giving a bigger focal spot and worse resolution than
-        the label implies â€” which is why laser-scanning systems deliberately
-        <strong>overfill</strong> the back aperture, accepting the power clipped off at the
-        rim in exchange for the full aperture and the tightest spot the objective can make.
-        Working distance, meanwhile, is a separate catalogue dimension set by the complete
-        prescription. It is often shorter than EFL in high-power objectives, but there is
-        no universal <span class="w">WD&nbsp;&le;&nbsp;EFL</span> rule for real compound
-        objectives; specialized long-working-distance designs are the obvious exception.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The inspector begins with a starting point grouped by immersion class â€”
-        <strong>Dry</strong>, <strong>Water</strong>, <strong>Oil</strong>, and
-        <strong>Long working distance</strong> â€” each offering the magnification and NA
-        pairs people actually buy. They are plausible catalogue-shaped specs, not one
-        manufacturer's prescriptions; choosing one sets EFL, working distance, medium, NA,
-        and front aperture together. The labels carry NA and WD precisely because the two
-        trade off: at a fixed magnification, every step up in NA costs clearance. Exact
-        values remain editable in the collapsed <strong>Advanced parameters</strong>
-        section, and any edit there drops the selector to Custom.</p>
-        <p>An objective here is set by three things you would read off a real catalogue â€”
-        <strong>effective focal length (EFL)</strong>, <strong>working distance</strong>,
-        and <strong>rated NA</strong> â€” plus the front aperture that controls how big the
-        nose is drawn. EFL is the focal length of the whole multi-element assembly treated
-        as one equivalent lens, which is what "focal length" means on an objective; the
-        inspector label spells that out. Magnification is not something you type in. It is <em>reported</em> from the EFL against a 200&nbsp;mm reference
-        tube lens, because magnification belongs to the objective plus whichever tube lens
-        you actually place in the sketch, not to the objective alone. A fresh objective uses
-        the 20Ã— dry starting point: EFL 10&nbsp;mm, WD 1.2&nbsp;mm, NA 0.40, and 100%
-        transmission.</p>
-
-        <h3>Where the refracting plane sits, and why</h3>
-        <p>OpticalSetup traces the objective as one equivalent refracting plane of focal
-        length EFL, but it does <em>not</em> put that plane at the front tip. It sits one
-        focal length short of the nominal focus â€” at the front tip plus
-        <span class="w">WD&nbsp;&minus;&nbsp;EFL</span> â€” which for most objectives means
-        somewhere inside the barrel, and for long-working-distance designs ahead of the front
-        tip (see below). That single choice is what makes three things true at once:</p>
-        <ul>
-          <li>Collimated light from the tube-lens side focuses <em>exactly</em> one working
-          distance beyond the physical front tip, so the drawn focus is the working
-          distance you typed.</li>
-          <li>The plane still carries the objective's real focal length, so an external
-          200&nbsp;mm tube lens really does produce the reported magnification rather than
-          a decorative label.</li>
-          <li>The plane one EFL behind it is a genuine <strong>back focal plane (BFP)</strong>:
-          light focused there leaves the objective collimated. That is what widefield
-          (KÃ¶hler-style) illumination needs, and it is the plane a laser-scanning relay has
-          to image the scan mirror onto.</li>
-        </ul>
-        <p>The BFP is drawn as a labelled marker next to the WD focus, and it is a traced
-        conjugate rather than an annotation â€” put a source at it and the output really does
-        come out collimated.</p>
-        <p>Working distance is <em>not</em> capped at EFL. Real long-working-distance
-        objectives focus well beyond their own focal length â€” a 100Ã— Plan Apo NIR reaches
-        about 12&nbsp;mm on a 2&nbsp;mm EFL â€” by putting the equivalent principal plane
-        <em>ahead</em> of the front glass, and the model reproduces that: when WD exceeds
-        EFL the equivalent plane sits in front of the tip, exactly where the real one is.
-        The only bound is a catalogue ceiling of 40&nbsp;mm, or the objective's own EFL if
-        that is longer, so older sketches that recorded WD equal to a long EFL keep their
-        focus exactly where it was. Missing legacy values still fall back to EFL.
-        Nothing is drawn at the equivalent plane â€”
-        an objective is an opaque barrel, not a visible singlet. When a short working
-        distance pushes the plane behind the default rear face, only the straight rear
-        section of the barrel lengthens; the tapered nose is fixed geometry.</p>
-
-        <h3>Rated NA is a real aperture, not a label</h3>
-        <p>The back pupil has diameter <span class="w">2fNA</span> and is the objective's
-        aperture stop. A beam that fills it converges at the rated angle: raise NA and the
-        focusing cone opens, lower it and the cone closes. Nothing else in the objective
-        sets the cone, so NA is a control rather than a caption.</p>
-        <p>That stop sits <em>at the back focal plane</em>, where an infinity objective's
-        entrance pupil belongs, and this is what makes relaying a scan mirror onto the BFP
-        marker do real work: a beam pivoting there stays centred in the pupil at every scan
-        angle and loses nothing, while a pivot anywhere else walks across the pupil and is
-        cut. (The single-plane model can push the BFP further back than any plausible barrel;
-        the stop is then clamped into the housing rather than left blocking light in mid-air
-        behind it, so the zero-walk property degrades for very long focal lengths.)</p>
-        <p>The metal around that opening blocks. Overfilling the back pupil is normal
-        laboratory practice â€” it is how you actually reach the full rated NA â€” and the
-        overflow is genuinely lost, so the objective reports what it costs. Two readouts sit
-        under the NA control:</p>
-        <ul>
-          <li><strong>Back-pupil fill</strong> â€” the beam diameter arriving, the pupil it has
-          to get through, and a first-order estimate of the fraction that survives. That
-          estimate is the area ratio for a uniform round beam, so doubling the fill costs
-          about three quarters of the power.</li>
-          <li><strong>Effective NA in use</strong> â€” underfilling does not merely waste the
-          rating, it hands you a smaller NA and a correspondingly wider focal spot. Fill half
-          the pupil and you are running at half the NA; the readout says so, and by how much
-          the spot widens. Overfilling is capped at the rating: you cannot buy more NA than
-          the objective has.</li>
-        </ul>
-        <p>A large <span class="w">2fNA</span> makes the housing physically wider rather than
-        silently clipping at the drawn outline, and the dark bars across the barrel's rear
-        face show the pupil diameter the beam has to fit through.</p>
-
-        <h3>Medium and acceptance angle</h3>
-        <p>The objective owns its medium; there is no separately placeable liquid
-        component. Dry/air caps rated NA at 0.85 â€” the practical ceiling for real dry
-        designs, rather than the physical <span class="w">n&nbsp;=&nbsp;1</span> limit â€”
-        water at 1.27, oil at 1.49, and a custom medium at the lesser of its index
-        <span class="w">n</span> and 1.49. The medium's index and the rated NA give the
-        object-side half-angle <span class="w">Î¸&nbsp;=&nbsp;asin(NA/n)</span> shown as a
-        readout; changing medium may clamp an out-of-range NA but never changes working
-        distance. Alongside the pupil, the tracer also rejects object-side rays steeper than
-        that half-angle. <strong>Show acceptance angle</strong> â€” off by default, because
-        most sketches want a plain barrel â€” draws it as a dashed sector at the actual
-        contact or nominal focus.</p>
-        <p>Water, oil, and custom objectives derive a non-selectable
-        <strong>immersion bridge</strong> to the nearest compatible contact in front: a
-        Sample, a Sample on piezo stage, or a facing fiber endpoint. The target is chosen
-        from the authored geometry, so a scanning stage carries the same relationship while
-        it remains aligned and in range, then disconnects instead of making the objective
-        jump between nearby samples.</p>
-        <p>The bridge spans the objective's complete front aperture and the contacted
-        specimen or fiber face. Two cubic BÃ©zier curves bow inward between those edges to
-        make a legible meniscus in the canvas and in SVG, PNG, and GIF output. This is an
-        authored schematic, not a capillary-surface calculation. If no contact is available,
-        no liquid is drawn. Older high-NA sketches that never recorded a medium remain
-        explicitly unresolved until one is chosen.</p>
-
-        <h3>Controls and markers</h3>
-        <p>The blue resize handle changes the front aperture. EFL is intentionally an exact
-        Advanced field rather than a free-drag canvas knob, and is bounded to
-        2â€“60&nbsp;mm: 2&nbsp;mm is a 100Ã— objective, 60&nbsp;mm a 3.3Ã—, and past that an
-        "objective" is simply a lens whose derived barrel and internal planes stop being
-        drawable at any usable zoom. Editing working distance
-        moves the refracting plane without touching EFL or the reported magnification; raising
-        EFL leaves an already-configured working distance alone, while lowering EFL past it
-        carries the working distance down with it. Toggle
-        "Show focal points" (the <span class="w">Æ’</span> button) or select the objective to
-        see both marked planes: <span class="w">BFP</span> on the tube-lens side and the
-        nominal <span class="w">WD focus</span> on the sample side.</p>
-        <p>When this objective sits between a pulsed laser and an illuminated
-        photocurable-resin sample, its NA is one of the values OpticalSetup can hand off
-        to the dedicated Two-Photon Lithography Lab, alongside the laser's wavelength,
-        power, repetition rate, and pulse duration â€” see the inspector on a resin
-        sample's stage.</p>
-        <p>For pulse reporting, the equivalent plane silently contributes 30&nbsp;mm of
-        N-BK7. This is a class-typical GDD estimate, not a prescription: real objectives
-        can be roughly half to twice that value, and the estimate does not scale with NA,
-        magnification, immersion medium, or barrel geometry.</p>`,
-      formulas: [],
-      limitations: `<p>The 200&nbsp;mm reference tube length is a real, common convention
-        (Nikon and Leica both design infinity objectives against 200&nbsp;mm) but not a
-        universal one â€” Olympus uses 180&nbsp;mm and Zeiss 165&nbsp;mm â€” and OpticalSetup
-        doesn't model a manufacturer choice or a separate tube-lens element the way the
-        standalone <a href="../telescope/">telescope</a> pairs two real lenses; the
-        reference length is used only for effective-focal-length metadata and the
-        first-order pupil estimate; it does not define the trace boundary or focus map.
-        Working distance is a saved property bounded by EFL in this model, not a value
-        predicted by magnification, NA, or immersion medium: a real catalogue pairs them
-        through the internal design and can include long-working-distance prescriptions that
-        violate this simplified cap. The supplied high-power starting points do retain
-        plausible sub-millimetre clearances. The equivalent lens plane and the
-        back focal plane it defines are first-order stand-ins for a compound objective's
-        principal plane and pupil, not the real internal conjugates: one plane cannot
-        reproduce a real objective's aberration correction, field curvature, or the axial
-        spacing of its actual groups. The pupil stop and NA clipping remain qualitative and do not model
-        diffraction, aberration correction, internal stops, or polarization at high
-        angle. The pupil is a paraxial stop in a thin-lens tracer, so a beam filling it
-        converges at <span class="w">atan(NA)</span> rather than the sine-condition
-        <span class="w">asin(NA/n)</span> that the rated half-angle readout quotes; the
-        two agree closely at moderate NA and separate as NA approaches its ceiling. The
-        overfill estimate is a uniform-beam area ratio, not a Gaussian truncation or a
-        vignetting calculation. Dry objectives cap at NA 0.85, the practical ceiling for
-        real dry designs rather than the physical <span class="w">n = 1</span> limit. The drawn meniscus does not solve wetting, contact angle, surface tension,
-        volume, or gravity; it adds no refracting boundary and does not model cover glass,
-        index mismatch, focal shift, or immersion aberrations. The fixed 30&nbsp;mm
-        N-BK7 GDD equivalent can be wrong by about a factor of two for a particular
-        objective; detector readouts report the combined path total, while this page
-        identifies which part of that total is only assumed.</p>`,
-    },
-    related: ['lens', 'thicklens', 'telescope'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Microscope Objectives', url: 'https://www.rp-photonics.com/microscope_objectives.html' },
-      { label: 'RP Photonics Encyclopedia â€” Numerical Aperture', url: 'https://www.rp-photonics.com/numerical_aperture.html' },
-      { label: 'ZEISS â€” Oil immersion, refractive index, and lens design', url: 'https://www.zeiss.com/microscopy/en/resources/insights-hub/foundational-knowledge/oil-immersion-refractive-index-and-lens-design.html' },
-    ],
-  },
-
-  {
-    type: 'fiber',
-    summary: "Guides light along a drawn path between connectorized ends, with configurable acceptance, propagation loss, group delay, and an output cone at each end.",
-    title: 'Optical fiber',
-    category: 'Fibers',
-    realWorld: {
-      html: `
-        <p>An optical fiber guides light along its own length instead of across open
-        space. A cylindrical <strong>core</strong> of slightly higher refractive index is
-        surrounded by a <strong>cladding</strong> of slightly lower index, and light that
-        strikes the boundary at a shallow enough angle is totally internally reflected back
-        into the core. Repeated indefinitely, that confinement carries a beam around bends
-        and over distances that no free-space path could survive, which is why fiber
-        underpins both global telecommunications and a great deal of everyday optics on the
-        bench.</p>
-        <p>Two numbers govern how light gets in. The <strong>numerical aperture</strong>
-        is set by the two indices and defines a cone of acceptance: light arriving within
-        that half-angle couples into the guided mode, and light outside it does not. The
-        <strong>core diameter</strong> then decides how many spatial modes the fiber
-        supports â€” a large multimode core carries many, while a single-mode core of a few
-        micrometres carries exactly one and therefore preserves a clean wavefront.</p>`,
-      formulas: [
-        { tex: '\\mathrm{NA} = \\sqrt{n_{\\text{core}}^{2} - n_{\\text{clad}}^{2}}', caption: 'Numerical aperture from the index step â€” it sets both the acceptance cone on the way in and the divergence cone on the way out.' },
-        { tex: '\\theta_{\\max} = \\arcsin\\left(\\frac{\\mathrm{NA}}{n_0}\\right)', caption: 'Half-angle of the acceptance cone in a medium of index nâ‚€ â€” in air, simply arcsin(NA).' },
-        { tex: 'P(L) = P_0 \\, 10^{-\\alpha L / 10}', caption: 'Attenuation along a fiber of length L for a loss coefficient Î± in dB per unit length.' },
-        { tex: 't = \\frac{n_g L}{c}', caption: 'Transit time through the fiber â€” the group index n_g, not the phase index, sets the delay a pulse or an interferometer actually sees.' },
-      ],
-      html2: `
-        <p>What emerges at the far end is not the beam that went in. A fiber scrambles the
-        spatial information it carries, so a multimode fiber illuminated with coherent light
-        produces speckle rather than an image; the output simply diverges into a cone set by
-        the fiber's NA. Light is attenuated along the way, by absorption and by scattering,
-        at a rate conventionally quoted in decibels per kilometre â€” around 0.2&nbsp;dB/km for
-        silica telecom fiber at 1550&nbsp;nm, which is the wavelength band the material is
-        most transparent to and the reason that band dominates long-haul communication.</p>
-        <p>Fiber also delays light. The group index of silica is close to 1.47, so a pulse
-        travels at roughly two-thirds of its vacuum speed and a fiber path is optically much
-        longer than its physical length â€” a distinction that matters enormously in
-        interferometry, where the optical path difference is what sets the fringes.</p>
-        <p>A separate and very active line of work turns the fiber's scrambling into
-        something useful. Because the mixing is deterministic, it can be measured and
-        inverted: a wavefront shaped correctly at the input emerges from a multimode fiber
-        as a diffraction-limited focus at a chosen point in the output plane, and scanning
-        that focus turns a hair-thin fiber into a microscope objective. These
-        <strong>lensless endoscopes</strong> image deep inside tissue through a probe no
-        wider than the fiber itself.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>A fiber is drawn rather than placed: pick the tool, click waypoints along the
-        route you want, and double-click to finish. The result is a path, not a component,
-        so it curves smoothly through its waypoints and can be reshaped afterwards by
-        dragging the round handles. Everything optical about it lives on that path.</p>
-        
-        <p>The connectors drawn at each end are the terminated patch cable you would pick
-        up off a bench. For the same component without them â€” a cleaved or spliced fiber,
-        as used in custom laboratory assemblies â€” draw a <a href="../barefiber/">bare
-        fiber</a> instead; it behaves identically and differs only in how it renders and in
-        the width of the end face a beam has to hit.</p>
-        <p>A new fiber starts as <strong>diagram only</strong>. Its ends block whatever
-        light reaches them, and nothing comes out â€” which is the honest depiction of an
-        unconnected cable lying on a table. Tick <strong>Beam propagates</strong> to make it
-        an optical path, and the inspector then exposes the properties that make it one.</p>
-
-        <h3>Getting light in</h3>
-        <p>Coupling is a real test, not an assumption. A ray reaching an end face couples
-        in only if it arrives within the acceptance cone â€” the <strong>Input NA</strong>,
-        0.22 by default â€” measured against that end's own axis. A beam that arrives too
-        steeply is simply not accepted, exactly as it would not be on a bench. An
-        <a href="../objective/">objective</a> aimed at a fiber end couples into it the same
-        way, which is how the lensless-endoscope setups in the community gallery are built.</p>
-
-        <h3>What the fiber does to the light</h3>
-        <p>Three saved properties act along the drawn length. <strong>Loss</strong>, in
-        dB/m (0.2 by default), attenuates the light over the path's true geometric length.
-        The <strong>group index</strong> (1.468 by default, fused silica) multiplies that
-        length into optical path, so a fiber arm in an interferometer contributes the delay
-        it really would, and a pulse arrives when it should rather than when a free-space
-        path of the same drawn length would deliver it.</p>
-        <p>Wavelength, spectrum, polarization state, and pulse envelope all survive the
-        journey, as does any group-delay dispersion the light picked up <em>before</em> it
-        coupled in. Speckle does not: light emerges from the far end as a clean cone or
-        focus rather than as the grain a real multimode fiber would impose.</p>
-
-        <h3>Getting light out</h3>
-        <p>Each end carries its own independent output specification, so the two ends can
-        behave differently and coupling works in both directions â€” light entering end A
-        leaves from B under B's spec, and vice versa. Two styles are available:</p>
-        <ul>
-          <li><strong>Diverging</strong> â€” the ordinary case. Light leaves the tip as a
-          cone of half-angle arcsin(NA), using that end's output NA (0.12 by default),
-          which is what a real fiber tip does.</li>
-          <li><strong>Focused</strong> â€” light leaves as a converging fan of a chosen
-          output diameter that comes to a focus a chosen distance ahead. This is not what a
-          plain cleaved fiber does; it is there for <strong>lensless endoscopes</strong> and
-          for the lensed and GRIN-terminated fibers that deliver a focus directly from the
-          fiber tip. It is what lets you sketch a fiber probe that images a sample without
-          drawing an objective in front of it.</li>
-        </ul>`,
-      limitations: `
-        <p>The fiber is modelled as a guided path with an acceptance cone, a loss, and a
-        delay â€” not as a waveguide. Nothing here computes modes, so single-mode and
-        multimode fibers are not distinguished, and the mode scrambling that dominates a
-        real multimode output is absent: the output is a clean cone or focus, never
-        speckle. Bend loss is not modelled either, so a tightly drawn path costs no more
-        than a straight one, and the loss figure is applied uniformly rather than varying
-        with wavelength. Nine rays are launched from the output end, which sets how finely
-        the emerging cone is sampled.</p>
-        <p>The fiber's own chromatic dispersion is a <strong>single signed Î²â‚‚</strong>,
-        entered in psÂ²/km at a reference wavelength and applied, as a constant across the band, as a lumped GDD of
-        Î²â‚‚ Ã— length: 1&nbsp;psÂ²/km is 1&nbsp;fsÂ²/mm, so 36&nbsp;psÂ²/km over 1&nbsp;m adds
-        36&nbsp;000&nbsp;fsÂ². It adds to whatever dispersion the pulse already carries, and a
-        compressor of the opposite sign takes it back out. <em>Physical length</em> sets the
-        length used for delay, loss and dispersion together, so a coil of many metres can be
-        drawn as a short cable; left at 0 the drawn length is used, as in sketches from
-        before these controls existed, and Î²â‚‚ at 0 adds no dispersion. A broad band gains
-        the endpoint delay spread that one Î²â‚‚ implies, the same approximation the pulse
-        compressor uses. Duration readouts downstream follow the pulse's authored phase, and
-        read unavailable where that phase is unknown.</p>
-        <p>One Î²â‚‚ is all there is: no third- or higher-order dispersion, no wavelength
-        dependence of Î²â‚‚ across a broad band, no modal or polarisation-mode dispersion, and
-        no nonlinear propagation â€” self-phase modulation, soliton dynamics and wavelength
-        conversion in the fiber itself are not simulated, except in the opt-in hollow-core
-        model below.</p>
-        <p><em>Fiber model â†’ Hollow core Â· argon</em> turns the fiber into a gas-filled
-        capillary: its Î²â‚‚ and group index come from the argon pressure and the core diameter,
-        and a bounded split-step calculation adds Kerr self-phase modulation for one intact,
-        transform-limited Gaussian pulse train, so the spectrum broadens and a compressor
-        downstream can shorten the pulse. The cable's panel says which of four states it is
-        in: a computed envelope; Kerr off, which is linear propagation within the Î²â‚‚ model; a linear-only
-        approximation, when the pulse is outside the solver's bounds or not one it can take â€”
-        the light then continues with argon's linear dispersion and every readout downstream,
-        spectrum and power included, is labelled as such; or no argon data, outside
-        468â€“2059&nbsp;nm, where the light continues geometrically and no argon dispersion is
-        claimed. With no coupled pulse energy the capillary stays dark. Its loss is computed
-        by default as the ideal smooth fused-silica capillary's (Marcatiliâ€“Schmeltzer, 0.615&nbsp;dB/m
-        for 250&nbsp;Âµm at 800&nbsp;nm, scaling as Î»Â²/aÂ³), with an optional extra distributed loss,
-        or typed as a manual total. The model has no
-        ionization, higher modes, wall resonances, Raman response or self-steepening; its
-        effective area is the Gaussian Ï€(0.64a)Â², which makes Î³ about 16&nbsp;% larger than
-        the exact capillary mode would.</p>`,
-    },
-    related: ['barefiber', 'objective', 'sclaser', 'detector'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Optical Fibers', url: 'https://www.rp-photonics.com/fibers.html' },
-      { label: 'RP Photonics Encyclopedia â€” Numerical Aperture', url: 'https://www.rp-photonics.com/numerical_aperture.html' },
-      { label: 'Thorlabs â€” Optical Fiber Tutorial', url: 'https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=6835' },
-    ],
-  },
-  {
-    type: 'barefiber',
-    summary: "Guides light along a drawn path with exposed, flat-cleaved ends, using the same acceptance, loss, delay, and output controls as connectorized fiber.",
-    title: 'Bare fiber',
-    category: 'Fibers',
-    realWorld: {
-      html: `
-        <p>An optical fiber guides light along its own length instead of across open
-        space. A cylindrical <strong>core</strong> of slightly higher refractive index is
-        surrounded by a <strong>cladding</strong> of slightly lower index, and light that
-        strikes the boundary at a shallow enough angle is totally internally reflected back
-        into the core. Repeated indefinitely, that confinement carries a beam around bends
-        and over distances that no free-space path could survive, which is why fiber
-        underpins both global telecommunications and a great deal of everyday optics on the
-        bench.</p>
-        <p>Two numbers govern how light gets in. The <strong>numerical aperture</strong>
-        is set by the two indices and defines a cone of acceptance: light arriving within
-        that half-angle couples into the guided mode, and light outside it does not. The
-        <strong>core diameter</strong> then decides how many spatial modes the fiber
-        supports â€” a large multimode core carries many, while a single-mode core of a few
-        micrometres carries exactly one and therefore preserves a clean wavefront.</p>`,
-      formulas: [
-        { tex: '\\mathrm{NA} = \\sqrt{n_{\\text{core}}^{2} - n_{\\text{clad}}^{2}}', caption: 'Numerical aperture from the index step â€” it sets both the acceptance cone on the way in and the divergence cone on the way out.' },
-        { tex: '\\theta_{\\max} = \\arcsin\\left(\\frac{\\mathrm{NA}}{n_0}\\right)', caption: 'Half-angle of the acceptance cone in a medium of index nâ‚€ â€” in air, simply arcsin(NA).' },
-        { tex: 'P(L) = P_0 \\, 10^{-\\alpha L / 10}', caption: 'Attenuation along a fiber of length L for a loss coefficient Î± in dB per unit length.' },
-        { tex: 't = \\frac{n_g L}{c}', caption: 'Transit time through the fiber â€” the group index n_g, not the phase index, sets the delay a pulse or an interferometer actually sees.' },
-      ],
-      html2: `
-        <p>What emerges at the far end is not the beam that went in. A fiber scrambles the
-        spatial information it carries, so a multimode fiber illuminated with coherent light
-        produces speckle rather than an image; the output simply diverges into a cone set by
-        the fiber's NA. Light is attenuated along the way, by absorption and by scattering,
-        at a rate conventionally quoted in decibels per kilometre â€” around 0.2&nbsp;dB/km for
-        silica telecom fiber at 1550&nbsp;nm, which is the wavelength band the material is
-        most transparent to and the reason that band dominates long-haul communication.</p>
-        <p>Fiber also delays light. The group index of silica is close to 1.47, so a pulse
-        travels at roughly two-thirds of its vacuum speed and a fiber path is optically much
-        longer than its physical length â€” a distinction that matters enormously in
-        interferometry, where the optical path difference is what sets the fringes.</p>
-        <p>A separate and very active line of work turns the fiber's scrambling into
-        something useful. Because the mixing is deterministic, it can be measured and
-        inverted: a wavefront shaped correctly at the input emerges from a multimode fiber
-        as a diffraction-limited focus at a chosen point in the output plane, and scanning
-        that focus turns a hair-thin fiber into a microscope objective. These
-        <strong>lensless endoscopes</strong> image deep inside tissue through a probe no
-        wider than the fiber itself â€” and are typically built from bare, cleaved fiber
-        rather than from connectorized cable.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>A bare fiber is drawn rather than placed: pick the tool, click waypoints along the
-        route you want, and double-click to finish. The result is a path, not a component,
-        so it curves smoothly through its waypoints and can be reshaped afterwards by
-        dragging the round handles. Everything optical about it lives on that path.</p>
-        
-        <p>A bare fiber is the same optical component as the connectorized
-        <a href="../fiber/">optical fiber</a> â€” identical acceptance cone, loss, delay, and
-        output behaviour â€” drawn without the connector plugs and with flat-cleaved rather
-        than rounded ends. It is there for the many laboratory setups that are assembled
-        from bare cleaved or spliced fiber rather than from terminated patch cables, where
-        drawing an FC/PC plug would misrepresent the hardware. The one functional
-        difference follows from the geometry: the end face a beam has to hit is narrower,
-        since it is the fiber itself rather than the wider connector body, so aligning a
-        source onto a bare end is correspondingly fussier â€” as it is on a real bench.</p>
-        <p>A new fiber starts as <strong>diagram only</strong>. Its ends block whatever
-        light reaches them, and nothing comes out â€” which is the honest depiction of an
-        unconnected cable lying on a table. Tick <strong>Beam propagates</strong> to make it
-        an optical path, and the inspector then exposes the properties that make it one.</p>
-
-        <h3>Getting light in</h3>
-        <p>Coupling is a real test, not an assumption. A ray reaching an end face couples
-        in only if it arrives within the acceptance cone â€” the <strong>Input NA</strong>,
-        0.22 by default â€” measured against that end's own axis. A beam that arrives too
-        steeply is simply not accepted, exactly as it would not be on a bench. An
-        <a href="../objective/">objective</a> aimed at a fiber end couples into it the same
-        way, which is how the lensless-endoscope setups in the community gallery are built.</p>
-
-        <h3>What the fiber does to the light</h3>
-        <p>Three saved properties act along the drawn length. <strong>Loss</strong>, in
-        dB/m (0.2 by default), attenuates the light over the path's true geometric length.
-        The <strong>group index</strong> (1.468 by default, fused silica) multiplies that
-        length into optical path, so a fiber arm in an interferometer contributes the delay
-        it really would, and a pulse arrives when it should rather than when a free-space
-        path of the same drawn length would deliver it.</p>
-        <p>Wavelength, spectrum, polarization state, and pulse envelope all survive the
-        journey, as does any group-delay dispersion the light picked up <em>before</em> it
-        coupled in. Speckle does not: light emerges from the far end as a clean cone or
-        focus rather than as the grain a real multimode fiber would impose.</p>
-
-        <h3>Getting light out</h3>
-        <p>Each end carries its own independent output specification, so the two ends can
-        behave differently and coupling works in both directions â€” light entering end A
-        leaves from B under B's spec, and vice versa. Two styles are available:</p>
-        <ul>
-          <li><strong>Diverging</strong> â€” the ordinary case. Light leaves the tip as a
-          cone of half-angle arcsin(NA), using that end's output NA (0.12 by default),
-          which is what a real fiber tip does.</li>
-          <li><strong>Focused</strong> â€” light leaves as a converging fan of a chosen
-          output diameter that comes to a focus a chosen distance ahead. This is not what a
-          plain cleaved fiber does; it is there for <strong>lensless endoscopes</strong> and
-          for the lensed and GRIN-terminated fibers that deliver a focus directly from the
-          fiber tip. It is what lets you sketch a fiber probe that images a sample without
-          drawing an objective in front of it.</li>
-        </ul>`,
-      limitations: `
-        <p>The fiber is modelled as a guided path with an acceptance cone, a loss, and a
-        delay â€” not as a waveguide. Nothing here computes modes, so single-mode and
-        multimode fibers are not distinguished, and the mode scrambling that dominates a
-        real multimode output is absent: the output is a clean cone or focus, never
-        speckle. Bend loss is not modelled either, so a tightly drawn path costs no more
-        than a straight one, and the loss figure is applied uniformly rather than varying
-        with wavelength. Nine rays are launched from the output end, which sets how finely
-        the emerging cone is sampled.</p>
-        <p>The fiber's own chromatic dispersion is a <strong>single signed Î²â‚‚</strong>,
-        entered in psÂ²/km at a reference wavelength and applied, as a constant across the band, as a lumped GDD of
-        Î²â‚‚ Ã— length: 1&nbsp;psÂ²/km is 1&nbsp;fsÂ²/mm, so 36&nbsp;psÂ²/km over 1&nbsp;m adds
-        36&nbsp;000&nbsp;fsÂ². It adds to whatever dispersion the pulse already carries, and a
-        compressor of the opposite sign takes it back out. <em>Physical length</em> sets the
-        length used for delay, loss and dispersion together, so a coil of many metres can be
-        drawn as a short cable; left at 0 the drawn length is used, as in sketches from
-        before these controls existed, and Î²â‚‚ at 0 adds no dispersion. A broad band gains
-        the endpoint delay spread that one Î²â‚‚ implies, the same approximation the pulse
-        compressor uses. Duration readouts downstream follow the pulse's authored phase, and
-        read unavailable where that phase is unknown.</p>
-        <p>One Î²â‚‚ is all there is: no third- or higher-order dispersion, no wavelength
-        dependence of Î²â‚‚ across a broad band, no modal or polarisation-mode dispersion, and
-        no nonlinear propagation â€” self-phase modulation, soliton dynamics and wavelength
-        conversion in the fiber itself are not simulated, except in the opt-in hollow-core
-        model below.</p>
-        <p><em>Fiber model â†’ Hollow core Â· argon</em> turns the fiber into a gas-filled
-        capillary: its Î²â‚‚ and group index come from the argon pressure and the core diameter,
-        and a bounded split-step calculation adds Kerr self-phase modulation for one intact,
-        transform-limited Gaussian pulse train, so the spectrum broadens and a compressor
-        downstream can shorten the pulse. The cable's panel says which of four states it is
-        in: a computed envelope; Kerr off, which is linear propagation within the Î²â‚‚ model; a linear-only
-        approximation, when the pulse is outside the solver's bounds or not one it can take â€”
-        the light then continues with argon's linear dispersion and every readout downstream,
-        spectrum and power included, is labelled as such; or no argon data, outside
-        468â€“2059&nbsp;nm, where the light continues geometrically and no argon dispersion is
-        claimed. With no coupled pulse energy the capillary stays dark. Its loss is computed
-        by default as the ideal smooth fused-silica capillary's (Marcatiliâ€“Schmeltzer, 0.615&nbsp;dB/m
-        for 250&nbsp;Âµm at 800&nbsp;nm, scaling as Î»Â²/aÂ³), with an optional extra distributed loss,
-        or typed as a manual total. The model has no
-        ionization, higher modes, wall resonances, Raman response or self-steepening; its
-        effective area is the Gaussian Ï€(0.64a)Â², which makes Î³ about 16&nbsp;% larger than
-        the exact capillary mode would.</p>`,
-    },
-    related: ['fiber', 'objective', 'sclaser', 'detector'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Optical Fibers', url: 'https://www.rp-photonics.com/fibers.html' },
-      { label: 'RP Photonics Encyclopedia â€” Numerical Aperture', url: 'https://www.rp-photonics.com/numerical_aperture.html' },
-      { label: 'Thorlabs â€” Optical Fiber Tutorial', url: 'https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=6835' },
-    ],
-  },
-  {
-    type: 'prism',
-    summary: "Refracts light at its triangular glass boundaries, separating wavelengths through material dispersion and adding pulse dispersion according to the traced path.",
-    title: 'Prism',
-    category: 'Dispersive elements',
-    realWorld: {
-      html: `
-        <p>A prism disperses light because its refractive index depends on wavelength.
-        Each face refracts according to Snell's law:</p>`,
-      formulas: [
-        { tex: 'n_1 \\sin\\theta_1 = n_2 \\sin\\theta_2', caption: "Snell's law at each face." },
-      ],
-      html2: `
-        <p>Since <span class="w">n</span> itself varies with <span class="w">Î»</span>,
-        different colors refract by different amounts and separate â€” this is why white
-        light fans into a rainbow. Real optical glass is characterized by a Sellmeier
-        equation, a sum of resonance terms fit to measured data, not a single simple
-        formula.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>Each face is a genuine refracting boundary â€” incident rays bend by real vector
-        Snell's law, and a ray that exceeds the critical angle undergoes total internal
-        reflection instead of exiting, exactly as a real prism does. For dispersion,
-        broadband and supercontinuum beams are sampled at several discrete wavelengths
-        across their band, and each sample refracts with its own wavelength-dependent
-        index, so the beam visibly fans into a spectrum. N-BK7, fused silica, N-SF5, and
-        N-SF11 are selectable; existing sketches still default to N-BK7. Pulsed rays add
-        GDD from their actual traced distance inside the selected glass.</p>`,
-      formulas: [
-        { tex: 'n^2(\\lambda)=1+\\sum_i\\frac{B_i\\lambda^2}{\\lambda^2-C_i}', caption: 'The selected glass\'s published three-term Sellmeier curve.' },
-      ],
-      limitations: `<p>The Sellmeier curves make refractive index and GDD accurate to a
-        few percent over their valid transparent ranges, but absorption bands,
-        temperature, coatings, and surface quality are not modeled; the fixed per-face
-        transmission is the only loss.</p>`,
-    },
-    related: ['grating', 'glassrod', 'freeglass', 'thicklens', 'dichroic'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Prisms', url: 'https://www.rp-photonics.com/prisms.html' },
-    ],
-  },
-
-  {
-    type: 'grating',
-    summary: "Separates light into selected diffraction orders using the grating equation, with adjustable groove density, order efficiency, and a choice of spectral illumination.",
-    title: 'Diffraction grating',
-    category: 'Dispersive elements',
-    realWorld: {
-      html: `
-        <p>A diffraction grating is a surface ruled with closely, evenly spaced lines
-        (period <span class="w">d</span>). Light diffracting from it interferes
-        constructively only at angles satisfying the grating equation:</p>`,
-      formulas: [
-        { tex: 'd\\,(\\sin\\theta_i + \\sin\\theta_m) = m\\lambda', caption: 'The grating equation: incidence angle Î¸áµ¢, diffraction angle Î¸â‚˜, integer order m, line spacing d.' },
-      ],
-      html2: `<p>Because the equation depends on <span class="w">Î»</span>, each nonzero
-        order spreads white light into a spectrum â€” the same effect a prism produces
-        through dispersion, but from interference rather than refractive-index variation.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>This is one of the few components where OpticalSetup implements the textbook
-        formula directly and exactly, solving the grating equation per sampled wavelength
-        for every configured diffraction order, in either reflective or transmissive
-        mode. Orders where the equation has no real solution (<span class="w">|sinÎ¸â‚˜| &gt;
-        1</span>) are simply dropped, matching a real grating's behavior of only lighting
-        up the orders that geometrically exist. Their light is not dropped with them: it
-        goes to the orders that do exist, as it does on a real grating when an order
-        passes off. A 2400&nbsp;lines/mm grating at 532&nbsp;nm has nowhere to send the
-        beam but the zeroth order, and sends all of it there.</p>`,
-      formulas: [],
-      limitations: `<p>Diffraction efficiency is split evenly across the configured
-        orders that propagate, rather than computed from the groove profile (a real
-        blazed grating concentrates most of the light into one order by design) â€” order
-        existence and angle are exact, relative brightness between orders is not. Since
-        which orders propagate depends on wavelength, a broadband beam whose orders pass
-        off inside its band divides its power differently at each end of the band.</p>`,
-    },
-    related: ['prism', 'dmd', 'slm'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Diffraction Gratings', url: 'https://www.rp-photonics.com/diffraction_gratings.html' },
-    ],
-  },
-
-  {
-    type: 'freeglass',
-    summary: "Refracts light through an editable outline of straight edges and circular arcs, with a constant refractive index or wavelength-dependent catalogue glass.",
-    title: 'Freeform glass',
-    category: 'Dispersive elements',
-    realWorld: {
-      html: `
-        <p>Real glass optics are rarely limited to a lens's spherical curve or a
-        prism's flat triangular faces â€” aspheric correctors, light pipes, freeform
-        illumination optics, and hand-ground custom prisms all refract light through an
-        arbitrary boundary shape. However exotic the outline, the physics at every point
-        on the surface is the same vector Snell's law that governs a plain prism or lens
-        face; only the local surface normal changes from point to point.</p>
-        <p>This is also literally how any CAD or ray-tracing renderer handles a smoothly
-        curved optical surface in practice: an arbitrarily smooth boundary is approximated
-        as a fine mesh of flat facets (or, for a closer fit, circular arcs), each
-        refracting independently, with the approximation error shrinking as the facets get
-        smaller. A coarse hand-built approximation and a smooth manufactured asphere differ
-        only in how fine that mesh is.</p>`,
-      formulas: [
-        { tex: 'n_1 \\sin\\theta_1 = n_2 \\sin\\theta_2', caption: "Snell's law, applied independently at every straight or curved boundary segment â€” the only physics a freeform refracting surface needs." },
-        { tex: 'n^2(\\lambda)=1+\\sum_i\\frac{B_i\\lambda^2}{\\lambda^2-C_i}', caption: 'The optional catalogue glasses use the same Sellmeier curves as the thick spherical lens.' },
-      ],
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The boundary is drawn as a chain of straight edges and true circular arcs â€”
-        editable directly on the canvas by dragging anchor and curve-control points â€” and
-        each segment becomes its own independent refracting surface, so a completely
-        custom cross-section (a light pipe's tapered profile, a freeform prism, a
-        corrective wedge) refracts and totally-internally-reflects exactly like the
-        fixed-geometry <a href="../prism/">Prism</a>, just without being locked to a
-        triangle. Choose a constant refractive index or one of four catalogue models:
-        N-BK7, fused silica, N-SF5, and N-SF11. A broadband beam through a catalogue-glass
-        boundary is sampled by wavelength and visibly disperses into a spectrum.</p>`,
-      formulas: [],
-      limitations: `<p>The catalogue options use published Sellmeier curves, so GDD
-        follows the actual traced distance and is generally within a few percent where
-        those curves are valid. Absorption bands and temperature are not modeled;
-        per-surface transmission is a flat configured number rather than a computed
-        coating or bulk loss. Circular-arc segments are true 2D arcs, but the whole element
-        is still a 2D cross-section â€” it represents a freeform profile, not a true freeform
-        3D surface. Nested or overlapping glass bodies are not surface-merged.</p>`,
-    },
-    related: ['prism', 'glassrod', 'lens', 'thicklens'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Prisms', url: 'https://www.rp-photonics.com/prisms.html' },
-    ],
-  },
-
-  {
-    type: 'diffuser',
-    summary: "Spreads incident light into an adjustable angular fan, providing a qualitative model for comparing illumination coverage and the light collected downstream.",
-    title: 'Diffuser',
-    category: 'Dispersive elements',
-    realWorld: {
-      html: `
-        <p>An optical diffuser scatters a beam into a cone of directions by refracting
-        light through a microscopically rough or engineered surface â€” ground or frosted
-        glass, a holographic diffuser with an embossed random microstructure, or an
-        engineered "top-hat" diffuser designed for a specific divergence angle and
-        intensity profile. Each microscopic facet still obeys ordinary Snell's law; what
-        differs from a diffuser to a plain glass window is only the local surface normal,
-        which varies randomly (or by design) from point to point at a scale far smaller
-        than the beam.</p>
-        <p>Diffusers homogenize illumination and convert a laser's narrow beam into broad,
-        uniform lighting â€” and, critically for coherent sources, reduce speckle. A static
-        diffuser illuminated by coherent laser light produces a grainy interference
-        pattern (speckle) from the random path-length differences between scattered
-        wavelets; spinning the diffuser fast enough that its pattern changes within a
-        camera's or eye's integration time averages that speckle out into smooth
-        illumination.</p>`,
-      formulas: [
-        { tex: 'I(\\theta) \\propto \\exp\\!\\left(-\\frac{\\theta^{2}}{2\\sigma^{2}}\\right), \\qquad \\text{FWHM} \\approx 2.355\\,\\sigma', caption: "A common engineering model for a ground-glass diffuser's angular scattering profile â€” its divergence is usually specified by this FWHM cone angle." },
-      ],
-    },
-    inOpticalSetup: {
-      html: `
-        <p>Each incident ray is split into a small fan of rays (five, for a single traced
-        ray), scattered within the configured divergence half-angle around the original
-        direction. The scatter angle for each ray isn't randomized frame to frame â€” it's a
-        deterministic pseudo-random offset computed from the surface's own ID, so the same
-        diffuser always produces the exact same fan on every render, which is what keeps
-        the speckled pattern stable and inspectable rather than flickering as you pan or
-        re-render the sketch.</p>`,
-      formulas: [],
-      limitations: `<p>Divergence is set directly as a configured half-angle rather than
-        derived from any surface-roughness or microstructure spec, and the scattered
-        directions are a small fixed-count sample (five rays for a single incident ray)
-        rather than a continuous or wavelength-dependent angular distribution â€” there's no
-        Gaussian or top-hat irradiance profile actually computed, just a jittered fan. The
-        speckled look is a fixed, deterministic pattern with no real interference behind
-        it: unlike true laser speckle, it never changes with viewing angle, beam position,
-        or a spinning diffuser, since no coherence or interference is modeled anywhere in
-        the app.</p>`,
-    },
-    related: ['freeglass', 'prism', 'slm'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Diffusers', url: 'https://www.rp-photonics.com/diffusers.html' },
-      { label: 'RP Photonics Encyclopedia â€” Scattering', url: 'https://www.rp-photonics.com/scattering.html' },
-    ],
-  },
-
-  {
-    type: 'glassrod',
-    summary: "Refracts light through a glass rod with adjustable dimensions and material, including total internal reflection and pulse dispersion along the traced path.",
-    title: 'Glass rod',
-    category: 'Dispersive elements',
-    realWorld: {
-      html: `
-        <p>The geometry OpticalSetup draws for a glass rod is a plane-parallel slab: two
-        flat, parallel long faces and two flat ends â€” the classic "glass block" of an
-        introductory optics course. At normal incidence, light passes straight through
-        with no net angular deviation but a real velocity change: phase velocity inside
-        the medium drops to <span class="w">c/n</span>, so light takes longer to cross the
-        same physical distance than it would in vacuum or air â€” the basis of every optical
-        delay produced by inserting glass into a beam path, from picosecond fiber-stretcher
-        spools to the fraction-of-a-picosecond thickness of a camera sensor's cover
-        glass.</p>
-        <p>At any nonzero angle of incidence, Snell's law bends the ray at entry and bends
-        it back by the same amount at exit â€” the two parallel faces cancel the angular
-        deviation exactly â€” but the beam still emerges shifted sideways from where it would
-        have gone straight through, a lateral displacement that grows with thickness,
-        incidence angle, and index. It's the same "apparent depth" effect that makes a
-        straw look bent in a glass of water, just viewed from the side instead of from
-        above.</p>`,
-      formulas: [
-        { tex: '\\Delta t = \\frac{nL}{c} - \\frac{L}{c} = \\frac{(n-1)L}{c}', caption: 'Extra transit time a slab of thickness L and refractive index n adds compared to the same distance in vacuum â€” equivalently, an extra optical path length of (n âˆ’ 1)L.' },
-        { tex: 'd = t\\,\\sec r\\,\\sin(i-r)', caption: 'Lateral displacement of a beam through a plane-parallel slab of thickness t, for incidence angle i and refraction angle r (related by Snell\'s law) â€” zero at normal incidence, growing with angle, thickness, and index.' },
-      ],
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The rod is four independent flat refracting boundaries â€” two long faces and two
-        ends â€” each obeying the exact vector form of Snell's law and total internal
-        reflection used by every dielectric surface in the app, so tilting the rod at an
-        angle reproduces the real lateral-displacement geometry above, not an idealized
-        straight pass-through. Inside the medium, the tracer accumulates optical path
-        length as geometric distance Ã— refractive index; on the shared pulse-timing
-        overlay this means a packet visibly slows down while crossing the rod, lagging a
-        same-time packet on a vacuum path by exactly the extra delay the formula above
-        predicts for the configured index. The rod's fill is deliberately translucent so
-        that lag is something you can actually watch happen, rather than a number hidden
-        behind an opaque block. Choose the legacy constant index or one of the four
-        catalogue Sellmeier glasses. A catalogue material also accumulates GDD from the
-        actual distance each ray travels inside the rod.</p>`,
-      formulas: [],
-      limitations: `<p>The default remains a single constant index so every existing
-        saved rod keeps its authored behavior; that mode has no material GDD. Selecting a
-        catalogue glass enables Sellmeier refraction and path-length GDD, generally within
-        a few percent where the curve is valid, but still omits absorption, temperature,
-        coatings, and higher-order pulse effects. There's no
-        cylindrical or lensing geometry either: despite the name, this is a rectangular
-        slab cross-section with flat ends, not a focusing rod lens.</p>`,
-    },
-    related: ['freeglass', 'prism', 'delayline'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Group Velocity', url: 'https://www.rp-photonics.com/group_velocity.html' },
-      { label: 'RP Photonics Encyclopedia â€” Group Index', url: 'https://www.rp-photonics.com/group_index.html' },
-    ],
-  },
-
-  {
-    type: 'bs',
-    summary: "Divides incident light into transmitted and reflected paths with an adjustable splitting ratio, for building beam pickoffs, interferometers, and parallel optical branches.",
-    title: 'Beamsplitter',
-    category: 'Filters & Splitters',
-    realWorld: {
-      html: `
-        <p>A beamsplitter divides an incident beam into a transmitted and a reflected
-        branch, typically using a thin dielectric or metallic coating on a glass cube or
-        plate. Real coatings are rarely perfectly neutral: the reflect/transmit ratio
-        usually depends on both wavelength and polarization, since s- and p-polarized
-        light reflect differently off any dielectric interface away from normal
-        incidence.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The beamsplitter is modeled as an ideal, polarization-independent divider: a
-        single configurable ratio sets what fraction of each incident ray's intensity
-        continues straight through versus reflects at the drawn diagonal, with no
-        wavelength or angle dependence.</p>`,
-      formulas: [
-        { tex: 'I_T = rI_0, \\qquad I_R = (1-r)I_0', caption: 'Transmitted and reflected intensity for split ratio r.' },
-      ],
-      limitations: `<p>A real 50/50 cube is rarely exactly 50/50 across the visible
-        spectrum, and its ratio shifts with polarization â€” none of that is modeled here.
-        For a splitter whose two outputs are cleanly separated by polarization state
-        rather than a fixed ratio, see the Polarizing BS instead.</p>`,
-    },
-    related: ['pbs', 'dichroic', 'filter', 'mirror'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Beam Splitters', url: 'https://www.rp-photonics.com/beam_splitters.html' },
-    ],
-  },
-
-  {
-    type: 'polarizer',
-    summary: "Selects a linear polarization direction and attenuates light according to its input state, for exploring Malusâ€™s law and polarization-dependent optical transmission.",
-    title: 'Polarizer',
-    category: 'Polarization',
-    realWorld: {
-      html: `
-        <p>An ideal linear polarizer transmits only the field component parallel to its
-        transmission axis. For fully polarized light arriving at angle
-        <span class="w">Î¸</span> to that axis, the classic form of Malus's law gives the
-        transmitted intensity:</p>`,
-      formulas: [
-        { tex: 'I = I_0 \\cos^{2}\\theta', caption: "Malus's law for fully (linearly) polarized input." },
-      ],
-      html2: `<p>That scalar formula only covers fully linearly polarized light, though â€”
-        it says nothing about partially polarized, unpolarized, or elliptically
-        polarized input, which is most real light sources.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>Polarization state throughout OpticalSetup is tracked as a full normalized
-        Stokes vector <span class="w">(sâ‚, sâ‚‚, sâ‚ƒ)</span>, not a single angle â€” so a
-        polarizer's transmission is computed with the general form of Malus's law, which
-        reduces to the scalar equation above for fully linear light but also gives the
-        correct partial transmission for unpolarized, partially polarized, or circular
-        input:</p>`,
-      formulas: [
-        { tex: 'T = \\tfrac{1}{2}\\left(1 + s_1\\cos 2\\theta + s_2\\sin 2\\theta\\right)', caption: "The Stokes-vector form of Malus's law that OpticalSetup evaluates at every polarizer." },
-      ],
-      limitations: `<p>The polarizer is ideal â€” perfect extinction on the blocked axis,
-        no wavelength dependence, no insertion loss on the transmission axis.</p>`,
-    },
-    related: ['hwp', 'qwp', 'pbs', 'eom'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Polarizers', url: 'https://www.rp-photonics.com/polarizers.html' },
-    ],
-  },
-
-  {
-    type: 'hwp',
-    summary: "Applies half-wave retardance around an adjustable fast axis, for rotating linear polarization and controlling how light divides at a polarizing beamsplitter.",
-    title: 'Half-wave plate',
-    category: 'Polarization',
-    realWorld: {
-      html: `
-        <p>A waveplate is a slice of birefringent crystal â€” quartz, magnesium fluoride,
-        calcite â€” in which the refractive index depends on the direction the light is
-        polarized. Two perpendicular directions in the plate face are special: the
-        <strong>fast axis</strong>, along which light sees the lower index and travels
-        quicker, and the <strong>slow axis</strong> perpendicular to it. Any incoming
-        polarization can be resolved into components along those two axes, and because the
-        components travel at different speeds, one emerges behind the other. Nothing is
-        absorbed; only the relative phase between the two components changes.</p>
-        <p>How much phase separates them is the <strong>retardance</strong>, and it depends
-        on the index difference, the plate thickness, and the wavelength:</p>`,
-      formulas: [
-        { tex: '\\Gamma = \\frac{2\\pi\\,\\Delta n\\,d}{\\lambda}', caption: 'Retardance of a plate of thickness d, for an index difference Î”n between the slow and fast axes.' },
-        { tex: 'd = \\frac{\\lambda}{2\\,\\Delta n}', caption: 'The thickness that makes Î“ exactly Ï€ â€” half a wave. For quartz at 633 nm, Î”n â‰ˆ 0.009, so this is about 35 Âµm: real plates are either bonded to a substrate or made an odd multiple of this thickness.' },
-        { tex: '\\theta_{\\text{out}} = 2\\alpha - \\theta_{\\text{in}}', caption: 'A half-wave plate mirrors the polarization about its fast axis. Linear light at Î¸ to that axis therefore comes out rotated by 2Î¸.' },
-      ],
-      html2: `
-        <p>At exactly half a wave, one component is inverted relative to the other, and the
-        effect on linear polarization is a <em>reflection about the fast axis</em>. The
-        practical consequence is the one everybody uses: rotating the plate by some angle
-        rotates the polarization by twice that angle. A plate turned 22.5Â° rotates the light
-        45Â°; turned 45Â°, it rotates it a full 90Â°. Because it is a phase device rather than
-        an absorbing one, this rotation is lossless â€” which is exactly why a half-wave plate
-        followed by a polarizer is the standard way to control laser power continuously
-        without touching the laser.</p>
-        <p>On circularly polarized light the same mirror operation reverses the handedness,
-        turning left-circular into right-circular.</p>
-        <p>Retardance depends on wavelength, so a plate is specified for one. Used far from
-        that wavelength it is no longer half-wave and the rotation degrades. A
-        <strong>zero-order</strong> plate is genuinely as thin as the formula demands and is
-        relatively forgiving of wavelength, angle, and temperature; a
-        <strong>multi-order</strong> plate is a thicker, cheaper piece that adds several
-        whole waves on top and is correspondingly fussier. <strong>Achromatic</strong>
-        designs combine two materials so that the retardance stays near half a wave across a
-        broad band.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The plate has one control that matters: the <strong>fast axis</strong> angle, on
-        the purple canvas knob or in the inspector. Polarization is carried through the
-        whole sketch as a Stokes vector, and the plate applies an exact 180Â° retardance
-        about that axis â€” geometrically, a rotation of the polarization state on the
-        PoincarÃ© sphere.</p>
-        <p>The behaviour that follows is the real one, not an approximation of it. Linear
-        light at 0Â° through a plate with its axis at 22.5Â° comes out at exactly 45Â°; set the
-        axis to 45Â° and the same input comes out at 90Â°. Align the axis with the input
-        polarization, or put it perpendicular, and nothing changes â€” a half-wave plate does
-        nothing to light already polarized along one of its own axes. Send circular light
-        through and the handedness flips.</p>
-        <p>Two consequences are worth knowing. The plate is <strong>lossless</strong>: it
-        changes the state, never the intensity, so a power-control stage needs the polarizer
-        after it to convert the rotation into attenuation. And <strong>unpolarized light
-        passes through unchanged</strong>, which is correct rather than a shortcut â€” there
-        is no preferred direction for the plate to act on. Put a
-        <a href="../polarizer/">polarizer</a> before it if you want a defined state to
-        rotate.</p>
-        <p>Polarization modulation survives the plate too: a beam being switched between two
-        states by an <a href="../aom/">electro-optic modulator</a> keeps alternating after
-        the waveplate, with both states rotated together, rather than having the modulation
-        flattened away.</p>`,
-      limitations: `<p>The retardance is exactly half a wave at every wavelength. Nothing
-        here models Î”n, the plate thickness, or their dispersion, so there is no distinction
-        between zero-order, multi-order, and achromatic plates, and no degradation when a
-        plate is used away from its design wavelength â€” in a real setup that is the single
-        most common reason a waveplate underperforms. The plate is also perfectly lossless
-        and perfectly aligned: no Fresnel reflection at the faces, no absorption, no
-        sensitivity to angle of incidence or temperature, and no walk-off between the two
-        rays inside a birefringent crystal. Its optical thickness is not modelled either, so
-        it contributes no group-delay dispersion to a pulse.</p>`,
-    },
-    related: ['qwp', 'polarizer', 'pbs', 'eom'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Waveplates', url: 'https://www.rp-photonics.com/waveplates.html' },
-      { label: 'RP Photonics Encyclopedia â€” Birefringence', url: 'https://www.rp-photonics.com/birefringence.html' },
-    ],
-  },
-  {
-    type: 'qwp',
-    summary: "Applies quarter-wave retardance around an adjustable fast axis, for converting input polarization between linear, elliptical, and circular states in an optical setup.",
-    title: 'Quarter-wave plate',
-    category: 'Polarization',
-    realWorld: {
-      html: `
-        <p>A quarter-wave plate is the same birefringent slice as a
-        <a href="../hwp/">half-wave plate</a>, cut half as thick. It splits the incoming
-        polarization into components along its fast and slow axes and delays one by a
-        quarter of a wave â€” 90Â° of phase â€” relative to the other.</p>
-        <p>That quarter wave is the amount that converts <em>between</em> linear and
-        circular polarization rather than moving light around within either family. Two
-        equal components 90Â° out of phase trace a circle as they add; the same two
-        components in phase trace a straight line. So the plate's effect depends entirely on
-        how the input is oriented relative to its axes:</p>`,
-      formulas: [
-        { tex: '\\Gamma = \\frac{2\\pi\\,\\Delta n\\,d}{\\lambda} = \\frac{\\pi}{2}', caption: 'Quarter-wave condition â€” the same retardance expression as any waveplate, set to 90Â°.' },
-        { tex: 'd = \\frac{\\lambda}{4\\,\\Delta n}', caption: 'The thickness that achieves it: about 18 Âµm of quartz at 633 nm, which is why true zero-order plates are usually bonded to a thicker window.' },
-      ],
-      html2: `
-        <p>At <strong>45Â°</strong> to the fast axis, the input splits into two equal
-        components and the plate turns linear light into circular. At <strong>0Â° or
-        90Â°</strong>, all the light is already along one axis, there is no second component
-        to delay, and the polarization passes through untouched. At any angle in between the
-        two components are unequal and the result is <strong>elliptical</strong> â€” the
-        general case, of which linear and circular are the two limits.</p>
-        <p>The conversion runs both ways, and that reversibility is what makes the plate so
-        useful. Circular light entering a quarter-wave plate comes out linear. Pairing one
-        with a polarizer therefore builds a simple optical gate: light passes the polarizer,
-        becomes circular, reflects off something â€” which reverses the handedness â€” returns
-        through the plate as linear light rotated 90Â° from the original, and is rejected by
-        the polarizer it came through. That trick suppresses back-reflections in everything
-        from optical drives to interferometers, and it is the reason quarter-wave plates
-        turn up wherever a beam has to go out and come back along the same path.</p>
-        <p>Circular polarization is also worth having in its own right. It carries no
-        preferred direction in the plane, so it excites molecules regardless of their
-        orientation, and its two handednesses interact differently with chiral matter â€”
-        the basis of circular dichroism spectroscopy.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>Like the half-wave plate, the quarter-wave plate exposes one control, the
-        <strong>fast axis</strong> angle, and applies an exact retardance to the beam's
-        Stokes vector â€” 90Â° in this case. It starts at 45Â°, the angle that produces circular
-        light from a horizontally polarized input.</p>
-        <p>The full range of behaviour is there and can be read off any detector that
-        reports polarization. Linear light at 0Â° with the axis at 45Â° comes out fully
-        circular. Rotate the axis to 0Â° or 90Â° and the light passes through still linear.
-        Set it to 22.5Â° and the output is elliptical, with the tilt of the ellipse and the
-        amount of circularity both visible in a <a href="../detector/">polarimeter's</a>
-        Stokes readout. Feed circular light in and linear light comes out.</p>
-        <p>Two quarter-wave plates in series with the same axis are equivalent to one
-        half-wave plate â€” worth trying, because it makes concrete that retardance simply
-        accumulates.</p>
-        <p>As with any waveplate here, the element is lossless and does nothing at all to
-        unpolarized light, which has no defined phase relationship for the plate to act on.
-        Establish a state with a <a href="../polarizer/">polarizer</a> first.</p>`,
-      limitations: `<p>The retardance is exactly a quarter wave at every wavelength, so
-        there is no wavelength dependence, no distinction between zero-order, multi-order,
-        and achromatic plates, and no degradation away from a design wavelength. The plate
-        is lossless and insensitive to angle of incidence and temperature, there is no
-        walk-off inside the crystal, and it adds no group-delay dispersion to a pulse. The
-        circular light it produces is mathematically perfect; a real plate leaves a small
-        residual ellipticity that matters in sensitive polarimetry.</p>`,
-    },
-    related: ['hwp', 'polarizer', 'pbs', 'isolator'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Waveplates', url: 'https://www.rp-photonics.com/waveplates.html' },
-      { label: 'RP Photonics Encyclopedia â€” Circular Polarization', url: 'https://www.rp-photonics.com/circular_polarization.html' },
-    ],
-  },
-  {
-    type: 'pbs',
-    summary: "Separates orthogonal polarizations of light into transmitted and reflected beams.",
-    title: 'Polarizing beamsplitter',
-    category: 'Polarization',
-    realWorld: {
-      html: `
-        <p>An ordinary beamsplitter divides a beam by intensity and does not care how it is
-        polarized. A polarizing beamsplitter divides it by polarization instead: one linear
-        state is transmitted, the orthogonal state is reflected, and â€” unlike a
-        <a href="../polarizer/">polarizer</a>, which absorbs or dumps what it rejects â€”
-        both halves leave as usable beams. Nothing is thrown away, which is what makes the
-        device a router rather than a filter.</p>
-        <p>The usual form is a cube: two right-angle prisms cemented along their
-        hypotenuses, with a multilayer dielectric coating sandwiched between them. Light
-        meets that internal interface at 45Â°, and the layer stack is designed so that the
-        <em>p</em>-polarized component (electric field in the plane of incidence) is
-        transmitted while the <em>s</em>-polarized component is reflected through 90Â°. The
-        two outputs are therefore linearly polarized and perpendicular to one another.</p>
-        <p>How the incoming power divides follows Malus's law, so the split is set by the
-        input polarization angle rather than by the cube:</p>`,
-      formulas: [
-        { tex: 'T = \\cos^{2}\\theta, \\qquad R = \\sin^{2}\\theta', caption: 'Fraction transmitted and reflected for linearly polarized light at Î¸ to the transmission axis. Unpolarized light averages to 50/50.' },
-      ],
-      html2: `
-        <p>Putting a <a href="../hwp/">half-wave plate</a> in front turns this into a
-        <strong>continuously variable beamsplitter</strong>: rotating the plate rotates the
-        input polarization, sweeping the split from all-transmitted to all-reflected without
-        any absorption anywhere. That pairing is one of the most common two-element
-        combinations on an optical bench, used for power control, for balanced splitting,
-        and for routing a beam between two experiments.</p>
-        <p>Run backwards, the same cube <em>combines</em> two orthogonally polarized beams
-        into one path â€” the standard way to overlap two lasers with no loss, which no
-        intensity beamsplitter can do.</p>
-        <p>One asymmetry matters in practice. The transmitted port is usually very pure,
-        with extinction ratios of 1000:1 or better, because the coating is good at rejecting
-        <em>s</em>. The reflected port is markedly worse, often nearer 20:1, since some
-        <em>p</em> light leaks into it. If an experiment needs a clean state, take it from
-        the transmitted port, or clean the reflected one up with a polarizer afterwards.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The cube is drawn with its coated diagonal, and that diagonal is the traced
-        surface. It transmits horizontal polarization along the incoming axis and reflects
-        vertical polarization through 90Â°, splitting a single incoming ray into two outgoing
-        beams that the tracer follows independently.</p>
-        <p>The division follows Malus's law exactly: linear light at 0Â° goes fully through,
-        at 90Â° fully across, at 45Â° splits half and half, and at 30Â° divides 75/25.
-        Unpolarized light splits evenly, as it should. Both outputs emerge in
-        <em>pure</em> linear states â€” horizontal on the transmitted port, vertical on the
-        reflected one â€” regardless of what arrived, which is what makes a PBS a polarization
-        <em>cleanup</em> element and not merely a splitter. A port receiving less than 2% of
-        the light is dropped rather than drawn as a hairline that suggests a beam nobody
-        could use.</p>
-        <p>Because the cube resolves polarization into two paths, it is also how the sketch
-        makes polarization <em>visible</em>: put one after a
-        <a href="../hwp/">half-wave plate</a> and rotating the plate's axis visibly shifts
-        power from one output arm to the other, with no attenuation anywhere in the path.</p>
-        <p>The cube also handles fast polarization switching properly. A beam alternating
-        between two states pulse by pulse leaves each port as a genuinely gated pulse train,
-        with the two ports complementary â€” so an
-        <a href="../aom/">electro-optic modulator</a> followed by a PBS produces two real
-        interleaved trains rather than two steady half-power beams.</p>`,
-      limitations: `<p>The cube is ideal. Both ports are perfectly pure, which the
-        reflected port of a real cube is emphatically not â€” expect nearer 20:1 there â€” so
-        an experiment whose result depends on reflected-port purity will look better here
-        than on a bench. There is no coating loss, no residual reflection at the entrance
-        and exit faces, and no angular or spectral acceptance: the split is the same at
-        every wavelength and every angle of incidence, whereas a real cube is specified for
-        a band and degrades outside it. The glass path through the cube is not modelled
-        either, so it adds no optical path and no group-delay dispersion to a pulse.</p>`,
-    },
-    related: ['polarizer', 'hwp', 'bs', 'isolator'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Polarizers', url: 'https://www.rp-photonics.com/polarizers.html' },
-      { label: 'RP Photonics Encyclopedia â€” Beam Splitters', url: 'https://www.rp-photonics.com/beam_splitters.html' },
-    ],
-  },
-  {
-    type: 'isolator',
-    summary: "Passes light along its forward direction and blocks reverse propagation, providing an idealized way to isolate a source from returning optical paths.",
-    title: 'Optical isolator',
-    category: 'Polarization',
-    realWorld: {
-      html: `
-        <p>An optical isolator is a one-way valve for light: it passes a beam in the forward
-        direction and blocks anything coming back. Lasers need one because they are unusually
-        vulnerable to their own reflected light. A few per cent returning into the cavity can
-        destabilise the output power, broaden the linewidth, drive a diode into mode-hopping,
-        or â€” with enough power â€” damage the facet outright. Every optic downstream reflects
-        something, so on any serious laser bench the isolator goes in first.</p>
-        <p>What makes it possible is a genuinely unusual piece of physics. Almost everything
-        in optics is <strong>reciprocal</strong>: reverse the direction of propagation and
-        the light retraces its path exactly. A <a href="../hwp/">waveplate</a> that rotates
-        polarization one way on the way out rotates it back on the way in, so no arrangement
-        of ordinary optics can distinguish forward from backward. The
-        <strong>Faraday effect</strong> can. A magneto-optic material in a strong axial
-        magnetic field rotates polarization by an angle fixed by the field direction, not by
-        the direction the light travels â€” a beam going the other way is rotated the
-        <em>same</em> absolute way, not back.</p>`,
-      formulas: [
-        { tex: '\\beta = V B d', caption: 'Faraday rotation angle: the Verdet constant of the material times the axial field times the path length. The isolator is built so that Î² = 45Â°.' },
-      ],
-      html2: `
-        <p>A standard isolator stacks three parts: an input polarizer, a 45Â° Faraday
-        rotator, and an output polarizer set 45Â° from the input one. Forward, light is
-        polarized, rotated 45Â°, and arrives aligned with the output polarizer â€” it passes.
-        Backward, light entering the output polarizer is rotated a further 45Â° <em>in the
-        same absolute sense</em>, reaching the input polarizer at 90Â° to it, and is
-        rejected. The non-reciprocity is the whole mechanism; without it the return trip
-        would simply undo the outward one.</p>
-        <p>Real devices reach 30â€“40&nbsp;dB of isolation while costing 1â€“2&nbsp;dB going
-        forward. Because the Verdet constant and the required rotation both depend on
-        wavelength, an isolator is specified for a particular one, and its performance falls
-        off away from it.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The isolator is modelled as what it does rather than how it does it: a
-        directional gate. Rays travelling along the element's forward direction pass through
-        untouched; rays with any backward component are removed from the trace entirely.
-        Rotating the element sets which way is forward, so an isolator turned 180Â° blocks
-        the beam it previously passed â€” the simplest way to see the element working.</p>
-        <p>Its use here is the same as on a bench. Put one right after a laser, aim a mirror
-        or a partially reflecting surface downstream, and the return beam that would
-        otherwise travel back into the source stops at the isolator instead. Because the
-        sketch traces reflections as real rays, that back-propagating beam is genuinely
-        there to be blocked rather than merely implied.</p>
-        <p>Note that despite living in the Polarization category, this element does not
-        touch polarization at all. A beam's Stokes state is identical before and after it.
-        That is a deliberate simplification, and it differs from a real isolator in a way
-        worth knowing about â€” see below.</p>`,
-      limitations: `<p>The Faraday mechanism is not modelled. There is no rotator and there
-        are no internal polarizers, so the element does not polarize its output the way a
-        real isolator does: light leaves in whatever state it arrived, whereas a real device
-        emits light polarized along its output polarizer regardless of the input. If your
-        setup depends on that, place an explicit <a href="../polarizer/">polarizer</a> after
-        the isolator to represent it. Isolation is also perfect and instantaneous rather than
-        the 30â€“40&nbsp;dB a real device achieves, forward transmission is lossless rather
-        than costing 1â€“2&nbsp;dB, and there is no wavelength, temperature, or field
-        dependence â€” a real isolator works properly only near the wavelength it was built
-        for. Nothing outside the clear aperture is affected.</p>`,
-    },
-    related: ['polarizer', 'qwp', 'pbs', 'cwlaser'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Faraday Isolators', url: 'https://www.rp-photonics.com/faraday_isolators.html' },
-      { label: 'RP Photonics Encyclopedia â€” Faraday Effect', url: 'https://www.rp-photonics.com/faraday_effect.html' },
-    ],
-  },
-  {
-    type: 'aom',
-    summary: "Deflects light into a first diffraction order with adjustable efficiency, optional zero order, and square, sine, or sawtooth modulation of the drive.",
-    title: 'Acousto-optic modulator (AOM)',
-    category: 'Modulators',
-    realWorld: {
-      html: `
-        <p>An AOM diffracts light off a traveling sound wave launched into a crystal by a
-        piezoelectric transducer driven at an RF frequency. In the Bragg regime, light
-        incident at the Bragg angle diffracts efficiently into a single order, shifted in
-        frequency by exactly the drive frequency (up-shifted or down-shifted depending on
-        propagation direction relative to the sound wave):</p>`,
-      formulas: [
-        { tex: '\\sin\\theta_B = \\frac{\\lambda}{2\\Lambda}, \\qquad \\Lambda = \\frac{v_s}{f_{RF}}', caption: 'Bragg angle, set by the acoustic wavelength Î› (sound velocity vâ‚› over drive frequency).' },
-        { tex: 'f_{\\text{out}} = f_{\\text{in}} \\pm f_{RF}', caption: 'The diffracted beam is frequency-shifted by exactly the RF drive frequency.' },
-      ],
-    },
-    inOpticalSetup: {
-      html: `
-        <p>Deflection and modulation efficiency are direct configurable parameters
-        rather than quantities derived from crystal or drive properties. The optical
-        frequency shift is <strong>not</strong> applied, and there is no drive-frequency
-        control: the shift is real &mdash; it is the whole basis of heterodyne detection
-        &mdash; but at 7.6&times;10<sup>&minus;5</sup>&nbsp;nm for 80&nbsp;MHz at
-        532&nbsp;nm it is a thousand times finer than any wavelength difference this
-        workbench resolves, since every readout here rounds to the nearest nanometre.
-        Carrying it only ever moved a number nothing could report. The
-        <a href="../aod/">AOD</a> had already declined it for the same reason.
-        Gating support lets the modeled RF drive vary in time, which the pulse-timing
-        overlay reads as a temporal gate on the beam. Three waveforms are offered, named
-        for the drive a function generator would supply: <strong>square</strong> switches
-        the diffracted order fully on and off and is the only one with a
-        <em>duty cycle</em>; <strong>sine</strong> and <strong>sawtooth</strong> sweep the
-        drive continuously and are described by a <em>modulation depth</em> instead,
-        swinging between 1&minus;depth and full transmission. Both continuous shapes
-        therefore average 1&nbsp;&minus;&nbsp;depth/2 over a period, which is the power a
-        detector with no temporal resolution reads.</p>
-        <p>The ramp carries the symmetry control a function generator puts on its own
-        ramp output. <em>Rise fraction</em> is how much of the period is spent climbing:
-        1 is the rising sawtooth, 0 the falling one, 0.5 a triangle, and anything
-        between an asymmetric triangle peaking at exactly that point in the period.
-        Sweeping it changes the shape without changing the average, so it never doubles
-        as a brightness control.</p>
-        <p>A square gate switches the diffracted order fully on and off, so it can be
-        drawn in chunks rather than as a uniformly dimmed line &mdash; the same schematic
-        footprint the <a href="../chopper/">chopper</a> already uses for gated CW light.
-        <em>Draw gated beam chopped</em> controls it, and it is a drawing choice alone:
-        the traced power stays duty-averaged and every detector reading is identical
-        either way. The continuous waveforms are never chunked, because they have no
-        on/off edges to draw.</p>
-        <p>With <em>Keep 0th order</em> on, both orders are chunked <strong>in
-        opposition</strong>: light returns to the undiffracted beam exactly while the RF
-        is off, so one is lit wherever the other is dark. Both beams still carry their
-        duty-averaged power, and the two orders always sum to the incident power.</p>
-        <p>A detector's time trace shows the levels rather than just the shape. Its
-        vertical axis is absolute for a single beam â€” full height is one whole source
-        beam, and light lost upstream draws short rather than being rescaled back â€” so
-        <em>modulation efficiency</em> is visible as the contrast it really sets: at
-        &eta;&nbsp;=&nbsp;0.5 the diffracted order peaks at half height while the
-        undiffracted one only falls to half, in opposition, and the two sum to the beam at
-        every instant. At &eta;&nbsp;=&nbsp;1 both swing the whole way. Light lost
-        anywhere upstream shortens the trace in the same way, instead of being normalized
-        back to full scale.</p>`,
-      formulas: [],
-      limitations: `<p>Deflection angle and modulation efficiency are set directly by
-        you, not derived from the Bragg condition, RF power, or interaction length â€” this
-        is a schematic acousto-optic model, not a Bragg-cell simulator.
-        <em>Modulation efficiency</em> is the crystal's
-        diffraction efficiency under another name: it is the fraction of the beam that can
-        be switched, which is exactly what limits the contrast of both orders. The chunk spacing is schematic too: a real
-        megahertz gate would put its chunks micrometres apart, so a fixed on-screen
-        period is drawn instead, exactly as pulse markers are spaced for legibility
-        rather than to scale, and the two orders share that period rather than each
-        following its own RF timing. The chunks are also idealized in depth: both
-        orders are drawn fully dark between chunks, while a real diffracted order
-        only reaches the configured efficiency and a real zeroth order keeps
-        1&minus;efficiency of the beam rather than extinguishing. Drawing that
-        residual as its own branch would have let a display setting change a detector
-        reading, which the chunks must never do.</p>`,
-    },
-    related: ['aod', 'aotf', 'eom', 'chopper'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Acousto-optic Modulators', url: 'https://www.rp-photonics.com/acousto_optic_modulators.html' },
-    ],
-  },
-
-  {
-    type: 'eom',
-    summary: "Changes polarization through voltage-controlled retardance, held fixed or switched periodically, so a downstream analyzer can convert the change into intensity modulation.",
-    title: 'Electro-optic modulator (EOM)',
-    category: 'Modulators',
-    realWorld: {
-      html: `
-        <p>An electro-optic modulator controls light with a voltage. Almost all of them
-        work through the <em>Pockels effect</em>: in a crystal without inversion symmetry,
-        an applied electric field changes the refractive index in proportion to the field
-        strength${cite(1)}${cite(3)}. Put a few hundred volts across a centimetre of lithium
-        niobate and the optical path through it changes by a fraction of a wavelength â€”
-        with no moving part, and in nanoseconds.</p>
-        <p>The quantity that describes a device is the voltage needed to shift the phase by
-        Ï€, the <strong>half-wave voltage</strong>. For a bulk Pockels cell it is hundreds
-        or thousands of volts, which is why these devices come with high-voltage drivers;
-        a waveguide modulator, where the electrodes sit micrometres apart rather than
-        millimetres, needs far less and switches far faster${cite(1)}${cite(2)}.</p>`,
-      formulas: [
-        { tex: '\\Delta n \\propto E \\qquad\\Longrightarrow\\qquad \\Delta\\varphi = \\pi\\,\\frac{V}{V_\\pi}', caption: 'The Pockels effect is linear in the applied field, so the phase shift is linear in the voltage. VÏ€, the half-wave voltage, is the whole specification in one number.' },
-      ],
-      html2: `
-        <p>What makes the family confusing is that one physical device â€” a crystal with
-        electrodes on it â€” becomes three quite different instruments depending on how the
-        light is sent through it and what is placed after it.</p>
-        <h3>Phase modulator</h3>
-        <p>The simplest arrangement, and the one everything else is built from: the input
-        polarisation is aligned to one of the crystal's optical axes, so the polarisation
-        state is untouched and only the phase moves${cite(1)}. Drive it sinusoidally and the
-        output is not one frequency but a comb â€” the carrier plus sidebands at every
-        multiple of the drive frequency, with amplitudes given by Bessel
-        functions${cite(2)}.</p>`,
-      formulas2: [
-        { tex: 'e^{i\\beta\\sin\\Omega t} = \\sum_{n=-\\infty}^{\\infty} J_n(\\beta)\\, e^{in\\Omega t}', caption: 'The Jacobiâ€“Anger expansion: phase modulation of depth Î² puts sidebands at Ï‰ Â± nÎ© with amplitude Jâ‚™(Î²). Drive hard enough and dozens of them appear, which is how a modulator becomes a comb generator.' },
-      ],
-      html3: `
-        <p>Those sidebands are the point of the device in laser stabilisation: the
-        Poundâ€“Dreverâ€“Hall technique locks a laser to a cavity by asking how the sidebands
-        it wrote come back${cite(1)}. Worth noting what a phase modulator is <em>not</em>
-        good for: it cannot produce a sustained frequency shift, since that would need a
-        phase ramp increasing without limit${cite(1)}. An <a href="../aom/">AOM</a> does that
-        instead.</p>
-        <h3>Polarisation modulator</h3>
-        <p>Orient the crystal so the two polarisation axes see different index changes, and
-        the cell becomes a <strong>voltage-controlled waveplate</strong>${cite(1)}${cite(2)}.
-        Linear light entering at 45Â° to the axes leaves elliptical in general; at exactly a
-        half wave of relative retardance it leaves linear again, rotated by 90Â°. Drive it
-        randomly and it is a polarisation scrambler.</p>
-        <h3>Amplitude modulator</h3>
-        <p>Two routes, and they belong to different worlds. Put a polariser after a
-        polarisation modulator and the polarisation swing becomes an intensity swing â€” the
-        classic bulk arrangement, and the basis of Q-switches, cavity dumpers and pulse
-        pickers${cite(1)}. Or put a phase modulator in one arm of a Machâ€“Zehnder
-        interferometer, so the two arms interfere constructively or destructively according
-        to the drive${cite(1)}${cite(2)}. The interferometric route is what integrated optics
-        uses, because on a chip the phase stability that arrangement demands is far easier
-        to hold than on a bench â€” and it is the workhorse of optical
-        telecommunications.</p>
-        <h3>Beyond the Pockels effect</h3>
-        <p>Kerr cells use the quadratic electro-optic effect and are uncommon${cite(1)}.
-        Electro-absorption modulators change absorption rather than index, through the
-        Franzâ€“Keldysh effect or the quantum-confined Stark effect in a semiconductor, and
-        so are not electro-optic in the same sense at all${cite(1)}${cite(2)}. Plasmonic
-        modulators, exploiting surface plasmon polaritons at metal surfaces, are extremely
-        fast at low energy${cite(1)}.</p>
-        <p>Materials matter, and the trade-offs are specific: KD*P gives excellent optical
-        quality and high extinction over large apertures, which makes it the standard for
-        Q-switches, but it is hygroscopic and rings piezoelectrically, limiting the
-        repetition rate. BBO handles high average power and switches faster. Lithium
-        niobate dominates waveguide devices for its large electro-optic
-        coefficients${cite(1)}. Devices intended for stability often use two matched cells
-        in an athermal pairing that cancels the temperature drift of the relative phase, or
-        four crystals to cancel walk-off as well${cite(1)}.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>This element is the <strong>polarisation modulator</strong> of the three: a
-        Pockels cell used as a voltage-controlled waveplate. It applies a retardance
-        between the two axes of a crystal whose orientation you set, either as a fixed
-        value or switching between two states as a square wave on the shared simulation
-        clock.</p>
-        <p>The default switching mode flips between orthogonal linear polarisations, which
-        is the half-wave switch a Pockels cell is usually bought for and needs no
-        crystal-axis reasoning at all. Put a <a href="../polarizer/">polariser</a> or a
-        <a href="../pbs/">polarising beamsplitter</a> after it and that becomes real
-        intensity modulation â€” the bulk amplitude modulator above, built the way it is built
-        on a bench. With a pulsed source, individual pulses are routed by whichever state
-        they meet, so a photodetector on a screen shows the modulated train and the element
-        works as a pulse picker.</p>`,
-      formulas: [],
-      limitations: `<p>This element is the polarisation modulator alone. The phase
-        modulator is a separate component â€” see
-        <a href="../phasemodulator/">Phase modulator</a> â€” and the amplitude modulator is
-        built rather than provided: a polariser after this one, which works with any source,
-        or a phase modulator in one arm of an interferometer, which needs a sized
-        monochromatic CW laser for the arms to interfere at all.</p>
-        <p>Nothing here is a voltage. Retardance is set in degrees directly, so there is no
-        half-wave voltage, no drive amplitude, and no relation between the two â€” which also
-        means the linearity of the Pockels effect, the whole basis of the device, is
-        assumed rather than shown. The crystal is ideal and achromatic: a retardance set
-        here applies equally at 405 nm and 1550 nm, where a real cell is calibrated for one
-        wavelength and scales roughly as 1/Î». No material is chosen, so none of the
-        material trade-offs appear.</p>
-        <p>Switching is instantaneous and perfectly square. Rise time, driver bandwidth,
-        piezoelectric ringing, thermal drift of the operating point, and the residual
-        static birefringence a real cell has at zero volts are all absent, as is any
-        insertion loss. Resonant and travelling-wave designs, which is how real devices
-        reach gigahertz, have no counterpart.</p>`,
-    },
-    related: ['phasemodulator', 'polarizer', 'pbs', 'qwp', 'aom'],
-    citations: [
-      { label: 'â€œElectro-optic Modulators,â€ RP Photonics Encyclopedia (DOI 10.61835/7rv)', url: 'https://www.rp-photonics.com/electro_optic_modulators.html' },
-      { label: 'Electro-optic modulator â€” Wikipedia', url: 'https://en.wikipedia.org/wiki/Electro-optic_modulator' },
-      { label: 'T. A. Maldonado, â€œElectro-Optic Modulators,â€ ch. 13 in M. Bass (ed.), Handbook of Optics, Vol. 2, McGraw-Hill (1995) â€” the standard reference treatment: crystal optics and the index ellipsoid, the electro-optic effect, and modulator devices', url: 'https://www.accessengineeringlibrary.com/browse/handbook-of-optics-volume-v-atmospheric-optics-modulators-fiber-optics-x-ray-and-neutron-optics-third-edition' },
-    ],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Pockels Cells', url: 'https://www.rp-photonics.com/pockels_cells.html' },
-      { label: 'IEEE TechNav â€” Electrooptic Modulators', url: 'https://technav.ieee.org/topic/electrooptic-modulators/' },
-    ],
-  },
-
-  {
-    type: 'phasemodulator',
-    summary: "Changes optical path without changing polarization, making a driven phase shift visible as intensity modulation when placed in a supported interferometer.",
-    title: 'Phase modulator',
-    category: 'Modulators',
-    realWorld: {
-      html: `
-        <p>A phase modulator is the simplest electro-optic device there is: a Pockels
-        cell with the input polarisation aligned to one of the crystal's optical axes, so
-        the polarisation state is untouched and the voltage moves only the
-        phase${cite(1)}. Nothing about the beam changes that a detector can see. It is the
-        component every other electro-optic modulator is built from, and on its own it is
-        completely invisible.</p>
-        <p>What the crystal actually fixes is the optical path: the Pockels effect changes
-        the refractive index in proportion to the applied field, so a given drive writes
-        the same Î”nÂ·L at every wavelength. The <em>phase</em> that corresponds to therefore
-        scales as 1/Î», which is why a modulator is specified together with a
-        wavelength â€” a device that is half-wave at 532 nm is quarter-wave at
-        1064 nm${cite(1)}${cite(3)}.</p>`,
-      formulas: [
-        { tex: '\\Delta\\varphi = \\frac{2\\pi}{\\lambda}\\,\\Delta n\\,L = \\pi\\,\\frac{V}{V_\\pi}', caption: 'The path written is fixed by the crystal and the voltage; the phase follows from it and the wavelength. VÏ€, the half-wave voltage, is hundreds to thousands of volts for a bulk cell, far less for a waveguide.' },
-      ],
-      html2: `
-        <p>Drive it sinusoidally and the output spectrum is no longer one frequency. A
-        phase varying as Î² sin Î©t produces the carrier plus a pair of sidebands at every
-        multiple of the drive frequency, with amplitudes given by Bessel
-        functions${cite(2)}. Drive hard enough â€” a resonant modulator can reach large depth
-        at modest voltage â€” and dozens of sidebands appear, which is how a modulator
-        becomes a comb generator${cite(1)}.</p>`,
-      formulas2: [
-        { tex: 'e^{i\\beta\\sin\\Omega t} = \\sum_{n=-\\infty}^{\\infty} J_n(\\beta)\\,e^{in\\Omega t}', caption: 'The Jacobiâ€“Anger expansion: modulation depth Î² sets how the light is divided among the carrier and the sidebands at Ï‰ Â± nÎ©.' },
-      ],
-      html3: `
-        <p>Those sidebands are what the device is usually bought for. Poundâ€“Dreverâ€“Hall
-        laser stabilisation writes them deliberately and asks how they come back from a
-        cavity, deriving from that an error signal that says which way the laser has
-        drifted${cite(1)}. It is worth being clear about what a phase modulator cannot do:
-        it cannot produce a sustained frequency shift, because that would require a phase
-        ramp increasing without bound${cite(1)}. An <a href="../aom/">AOM</a> shifts
-        frequency; a phase modulator only wobbles it.</p>
-        <h3>Making it visible</h3>
-        <p>Since phase alone is undetectable, a phase modulator is put to work by letting
-        it interfere with something. Place it in one arm of a Machâ€“Zehnder interferometer
-        and the two arms recombine constructively or destructively according to the drive,
-        so the phase becomes power at the output${cite(1)}${cite(2)}. That is the
-        <strong>Machâ€“Zehnder modulator</strong>, and its transfer function is the
-        interferometer's own.</p>`,
-      formulas3: [
-        { tex: 'P_{\\text{out}} = P_{\\text{in}}\\cos^{2}\\!\\left(\\frac{\\Delta\\varphi}{2}\\right)', caption: 'Half a wave of drive takes the output from fully bright to fully dark. The light is not absorbed â€” it leaves by the other port.' },
-      ],
-      html4: `
-        <p>Almost all high-speed optical telecommunications runs on this arrangement, built
-        as a waveguide interferometer on lithium niobate or silicon. On a chip the phase
-        stability the layout demands is far easier to hold than on a bench, the electrodes
-        sit micrometres apart so the drive voltage is low, and travelling-wave electrodes
-        matched to the optical velocity push the bandwidth into the tens of
-        gigahertz${cite(1)}${cite(2)}.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The modulator writes one optical path across the whole beam â€” uniform, unlike
-        the <a href="../phaseplate/">phase object</a>, which varies its path across the
-        aperture. It does not touch polarisation, intensity, or direction, so on its own it
-        does nothing measurable at all: put a detector after it and the reading is exactly
-        what it was.</p>
-        <p>The drive is set as the phase it writes at full deflection, in degrees at a
-        design wavelength, which is how a device is chosen â€” half-wave, quarter-wave. That
-        is converted to the fixed optical path the crystal really applies, so a modulator
-        set to half a wave at 532 nm writes a quarter wave at 1064 nm, as a real one does.
-        Hold it static, or drive it with a sine or square wave on the shared simulation
-        clock.</p>
-        <p>In one arm of an interferometer it becomes the amplitude modulator above,
-        following cosÂ²(Î”Ï†/2) exactly: half a wave takes the output from full to nothing,
-        and the light that leaves one port arrives at the other, so the two always sum to
-        the input.</p>
-        <p>That holds only where the tracer can reconstruct a coherent field, which means
-        a <strong>CW laser in <em>Beam with size</em> mode with no bandwidth</strong> â€” the
-        one source whose samples carry a recoverable phase. Drive the same interferometer
-        with a pulsed or supercontinuum source, or with a CW laser in <em>Simple line</em>
-        mode, and the two arms are added as intensities instead: both ports sit at half the
-        light and the modulator changes nothing, whatever it is set to. The reading says so
-        rather than leaving it to be inferred â€” it reports insufficient coherent overlap.</p>`,
-      formulas: [],
-      limitations: `<p>The interferometric behaviour above needs a sized monochromatic CW
-        laser. That is not a property of this element but of what the tracer can reconstruct
-        a phase through, and it applies to every interference effect in the app; it is
-        repeated here because it decides whether this component appears to do anything at
-        all.</p>
-        <p>Sidebands are not modelled, and could not usefully be: a 1 GHz
-        drive at 532 nm puts them 9Ã—10â»â´ nm from the carrier, and at 1 MHz it is 9Ã—10â»â· nm,
-        against a spectrometer that resolves 0.1 nm. Everything the sidebands are used for
-        â€” Poundâ€“Dreverâ€“Hall locking, comb generation, anything reading the modulation in
-        the spectrum rather than in time â€” is therefore out of reach. What is modelled is
-        the phase itself, and what interference makes of it.</p>
-        <p>Nothing here is a voltage. The drive is set as a phase directly, so there is no
-        half-wave voltage, no drive amplitude, no crystal and no material â€” which means the
-        linearity of the Pockels effect is assumed rather than shown. The modulator is
-        ideal: no insertion loss, no residual static birefringence, no thermal drift of the
-        operating point, and a square drive that switches instantaneously with no driver
-        bandwidth behind it. Resonant and travelling-wave designs, which is how real
-        devices reach gigahertz, have no counterpart.</p>`,
-    },
-    related: ['eom', 'phaseplate', 'bs', 'camera', 'aom'],
-    citations: [
-      { label: 'â€œElectro-optic Modulators,â€ RP Photonics Encyclopedia (DOI 10.61835/7rv)', url: 'https://www.rp-photonics.com/electro_optic_modulators.html' },
-      { label: 'Electro-optic modulator â€” Wikipedia', url: 'https://en.wikipedia.org/wiki/Electro-optic_modulator' },
-      { label: 'T. A. Maldonado, â€œElectro-Optic Modulators,â€ ch. 13 in M. Bass (ed.), Handbook of Optics, Vol. 2, McGraw-Hill (1995)', url: 'https://www.accessengineeringlibrary.com/browse/handbook-of-optics-volume-v-atmospheric-optics-modulators-fiber-optics-x-ray-and-neutron-optics-third-edition' },
-    ],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Phase Modulators', url: 'https://www.rp-photonics.com/phase_modulators.html' },
-      { label: 'RP Photonics Encyclopedia â€” Poundâ€“Dreverâ€“Hall Technique', url: 'https://www.rp-photonics.com/pound_drever_hall_technique.html' },
-    ],
-  },
-
-  {
-    type: 'aod',
-    summary: "Steers diffracted light through a fixed or swept angle with wavelength-dependent deflection, for exploring angular scanning and optional zero-order beam routing.",
-    title: 'Acousto-optic deflector (AOD)',
-    category: 'Modulators',
-    realWorld: {
-      html: `
-        <p>An acousto-optic deflector steers a laser beam by changing a frequency. A
-        piezoelectric transducer bonded to a transparent crystal launches a sound wave
-        through it; the travelling compression makes a moving grating of refractive
-        index, and light crossing that grating is diffracted. Change the drive
-        frequency and the acoustic wavelength changes with it, so the diffracted beam
-        leaves at a different angle â€” a scanner with nothing in it that moves${cite(1)}.</p>
-        <p>It is the same interaction an <a href="../aom/">AOM</a> uses. The difference
-        is entirely in the drive: a modulator is run at a fixed frequency and varying
-        power, to switch a beam on and off, while a deflector is run at constant power
-        and varying frequency, to point it${cite(1)}. The deflection angle follows from
-        the Bragg condition, and for an isotropic medium it is</p>`,
-      formulas: [
-        { tex: '\\theta = \\frac{\\lambda f}{v}', caption: 'Deflection angle: Î» the vacuum wavelength, f the acoustic drive frequency, v the speed of sound in the crystal. It is also just the ratio of the optical to the acoustic wavelength, the latter typically 10â€“100 Âµm.' },
-      ],
-      html2: `
-        <p>Three things follow from that one expression, and between them they explain
-        every specification on an AOD datasheet.</p>
-        <p><strong>The angles are small.</strong> Sound is slow and its wavelength is
-        enormous next to light's, so the ratio is tiny. A 1064 nm beam in fused silica â€”
-        sound speed 5.9 km/s â€” driven at 100 MHz deflects by 18 mrad, about one
-        degree${cite(1)}. The usable range of a real deflector is "rather small â€” a few
-        degrees"${cite(1)}, with published devices quoting scan angles from roughly 5 to
-        60 mrad${cite(2)}. Anyone needing more puts a telescope after it, which trades
-        beam width for angle.</p>
-        <p><strong>Slow crystals are better.</strong> Since the angle goes as 1/v, a
-        material with a slow sound wave gives more deflection for the same frequency
-        range. This is why the standard choice for the visible and near infrared is
-        tellurium dioxide driven on its slow shear mode, where sound travels at about
-        620 m/s â€” roughly a tenth of the speed in fused silica${cite(1)}${cite(2)}. Fused
-        silica is used in the ultraviolet and germanium in the mid infrared, in each case
-        because the crystal has to be transparent before anything else matters${cite(1)}.</p>
-        <p><strong>The scan is chromatic.</strong> The angle is proportional to
-        wavelength, so two colours entering together leave at different angles. That is
-        a nuisance for a broadband beam and the whole point of an
-        <a href="../aotf/">AOTF</a>, which uses the same physics to select colours
-        rather than to steer them.</p>
-        <h3>Resolvable spots</h3>
-        <p>The number that actually matters when choosing a deflector is usually not the
-        scan angle but how many distinguishable directions fit inside it${cite(1)}. A
-        beam cannot be pointed more precisely than its own divergence, so the resolution
-        is the scan range divided by that divergence â€” equivalently, the time the sound
-        takes to cross the beam multiplied by the frequency range it is driven
-        over${cite(1)}.</p>`,
-      formulas2: [
-        { tex: 'N = \\frac{\\Delta\\theta}{\\theta_{\\text{div}}} = \\tau\\,\\Delta f', caption: 'Resolvable spots: the aperture time Ï„ â€” how long sound takes to cross the beam â€” times the RF bandwidth. Around 1.5 Âµs per mm of beam in TeOâ‚‚, so a 5 mm beam and a 40 MHz bandwidth give roughly 300 spots.' },
-      ],
-      html3: `
-        <p>That product is why a deflector wants a wide, well-collimated beam: widening
-        it lengthens the aperture time and buys resolution. It is also why resolution and
-        speed pull against each other. The device cannot settle faster than sound crosses
-        the beam, so the same choice that gives many spots makes each jump slower, and a
-        crystal chosen for its slow sound wave is slow in both senses${cite(1)}.</p>
-        <p>Two deflectors mounted at right angles steer in two dimensions${cite(1)}. Because
-        the beam can be sent to any angle in the range as fast as it can be sent to the
-        neighbouring one, an AOD pair can address points in an arbitrary order rather than
-        rastering through them â€” the basis of random-access scanning in multiphoton
-        microscopy, where the interesting neurons are visited and the space between them
-        is not.</p>
-        <h3>What a datasheet reports</h3>
-        <p>Diffraction efficiency is typically 50â€“80%, sometimes near 90%, and lower at
-        longer wavelengths${cite(1)}. It is polarisation dependent, and it peaks at the
-        centre of the frequency range and falls away toward both ends â€” which is why it
-        should be checked at the edges of the scan and not only in the middle${cite(1)}.
-        Some devices compensate by raising the drive power at the extremes, and
-        beam-steered designs use a phased array of electrodes to swing the acoustic wave
-        direction and hold efficiency across a wider scan${cite(1)}.</p>
-        <p>The undiffracted zero order carries whatever was not deflected. It does not
-        move with the drive and is normally dumped${cite(1)}.</p>
-        <p>One effect is worth knowing because it is invisible: the diffracted beam comes
-        away shifted in optical frequency by exactly the drive frequency, since it has
-        scattered from a moving grating. For a deflector this is "usually irrelevant"${cite(1)}
-        â€” 80 MHz on a 532 nm beam is a shift of 7.6Ã—10â»âµ nm â€” but it is the same effect
-        an AOM is bought for.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The deflector is specified the way you would choose one: by the angles. Set
-        the <strong>centre deflection</strong> and, for a scan, the <strong>total scan
-        angle</strong> swept around it. The drive frequency behind those angles is left
-        implicit â€” reading Î¸ = Î»f/v forwards, a scan linear in frequency is linear in
-        angle, so the angles are the honest parameterisation and the crystal never has
-        to be named.</p>
-        <p>The defaults are a real device: 4Â° of centre deflection and 2Â° of scan is what
-        a TeOâ‚‚ slow-shear deflector gives at 532 nm on an 80 MHz drive across a 40 MHz
-        bandwidth. The wavelength scaling is kept, referenced to the design wavelength, so
-        a beam at twice that wavelength deflects twice as far and a broadband beam fans
-        out â€” which is the chromatic behaviour a real deflector has.</p>
-        <p>Four drives are available. <em>Static</em> holds one angle. <em>Triangle</em>
-        sweeps and retraces, <em>sawtooth</em> sweeps and flies back, and <em>random
-        step</em> addresses one angle per step in an unpredictable order and holds it
-        until the next â€” the random-access mode, rather than a sweep. The scan runs on the
-        shared simulation clock at the rate set in kilohertz, so it stays phase-locked to
-        pulses and to any other modulator on the bench.</p>
-        <p>The scan rate is bounded by the same physics that sets the resolution. The
-        inspector reports the <strong>access time</strong> for the aperture in use, taken
-        as 1.5&nbsp;Âµs per millimetre for TeOâ‚‚ slow shear, and the rate that implies: a
-        20&nbsp;mm aperture takes 30&nbsp;Âµs to fill and so cannot be re-pointed faster
-        than about 33&nbsp;kHz, which is why catalogue random-access cycle rates sit
-        between roughly 40 and 170&nbsp;kHz${cite(2)} rather than in the megahertz. Ask for
-        more and the readout says the crystal cannot settle that fast.</p>`,
-      formulas: [],
-      limitations: `<p>The angles are configured, not derived. Nothing here knows a
-        crystal, an acoustic velocity, or an RF bandwidth, so a combination set on this
-        element need not correspond to any device that could be built â€” and the ceilings
-        allowed are deliberately looser than reality so an illustrative sketch stays
-        readable. Real deflectors reach a few degrees at most.</p>
-        <p>Diffraction efficiency is a flat user-set fraction across the whole scan. A
-        real one peaks at the centre frequency and falls away toward both ends, which is
-        the specification that most often decides whether a device is usable, and it is
-        polarisation dependent, which is not modelled either. There is no relation
-        between drive power and efficiency.</p>
-        <p>The optical frequency shift is not applied. It is real, but at 7.6Ã—10â»âµ nm for
-        80 MHz at 532 nm it is more than a thousand times finer than the finest wavelength
-        difference anything in this workbench resolves. The <a href="../aom/">AOM</a> does
-        not carry it either, for the same reason.</p>
-        <p>Access time is reported but not enforced: the beam jumps instantly between
-        angles, with no settling and no transient while the acoustic wave refills the
-        aperture. The number of resolvable spots â€” arguably the figure that decides a real
-        deflector's worth â€” is not computed at all, and neither is the cylindrical lensing
-        a fast scan produces when different parts of the beam see different acoustic
-        frequencies at once. Multi-tone drive, which addresses several
-        angles at once, is not available: one drive, one deflected beam.</p>`,
-    },
-    related: ['aom', 'aotf', 'galvo', 'slm'],
-    citations: [
-      { label: 'â€œAcousto-optic Deflectors,â€ RP Photonics Encyclopedia', url: 'https://www.rp-photonics.com/acousto_optic_deflectors.html' },
-      { label: 'Gooch & Housego â€” Acousto-optic deflectors: product specifications for TeOâ‚‚ and fused-silica devices', url: 'https://gandh.com/products/acousto-optics/deflectors' },
-    ],
-    resources: [
-      { label: 'AA Opto-Electronic â€” High Resolution Deflectors', url: 'https://aaoptoelectronic.com/ao-devices/high-resolution-deflectors/' },
-      { label: 'RP Photonics Encyclopedia â€” Acousto-optic Modulators', url: 'https://www.rp-photonics.com/acousto_optic_modulators.html' },
-    ],
-  },
-
-  {
-    type: 'beamdump',
-    summary: "Absorbs any light that reaches it, terminating an unwanted beam.",
-    title: 'Beam dump',
-    category: 'Beam Block',
-    realWorld: {
-      html: `
-        <p>A beam dump ends a beam. Every optical setup produces light that has done its
-        job â€” the unused port of a beamsplitter, the rejected polarization, the zeroth order
-        off a grating, the beam left over when an experiment is realigned â€” and all of it
-        has to stop somewhere deliberate. Left alone it lands on a wall, a colleague, or
-        back in the laser.</p>
-        <p>Doing that well is harder than it sounds, because "absorbing" light is really
-        <em>converting it to heat</em> while reflecting as little as possible. The usual
-        design is geometric rather than material: a cone, a wedge, or a stack of angled
-        vanes, anodised matte black, arranged so that any light not absorbed on first
-        contact reflects <em>deeper into</em> the cavity rather than back out. Several
-        bounces at a few per cent reflectivity each leave a negligible fraction escaping.
-        The black surface does the absorbing; the geometry catches what the surface
-        misses.</p>
-
-        <h3>Why high-power dumps need cooling</h3>
-        <p>A dump absorbs essentially the entire beam, so it receives the laser's full
-        average power as heat in a small volume. That is a genuine thermal engineering
-        problem, and it sets how a dump is built:</p>
-        <ul>
-          <li>Up to a few watts, a black-anodised aluminium cone with fins radiates and
-          convects the heat away passively.</li>
-          <li>From tens of watts, passive cooling stops keeping up and the dump needs
-          forced air or a substantial heat sink.</li>
-          <li>At hundreds of watts and above â€” industrial and materials-processing lasers â€”
-          dumps are <strong>water-cooled</strong>, with flow interlocks that shut the laser
-          down if circulation fails.</li>
-        </ul>
-        <p>Exceeding a dump's rating is not a small mistake. The anodised layer can burn
-        away, destroying the absorption it was providing and releasing particulates;
-        absorbing glass can crack from thermal shock; and a dump that starts reflecting is
-        worse than no dump at all, because nobody is expecting a beam to come back out of
-        it. Ultrafast lasers add a second constraint: a femtosecond pulse train of modest
-        <em>average</em> power carries enormous <em>peak</em> intensity, and can ablate an
-        absorber that would handle the same average power from a CW source without
-        complaint. Dumps are rated for both.</p>`,
-      formulas: [
-        { tex: 'P_{\\text{abs}} \\approx P_{\\text{in}}', caption: 'The defining property: a dump converts essentially the whole beam to heat, so its thermal load is the full incident power â€” not a fraction of it.' },
-        { tex: 'R_{\\text{eff}} \\approx R^{N}', caption: 'Why the geometry matters more than the coating: N bounces inside the cavity at surface reflectivity R leave only R^N escaping. Four bounces at 5% reflect back about 6 parts per million.' },
-      ],
-      html2: `
-        <h3>Safety practice around beam blocks</h3>
-        <p>Beam dumps are the most basic piece of laser safety hardware on a bench, and they
-        work only as part of a wider practice:</p>
-        <ul>
-          <li><strong>Terminate every beam, including the ones you did not plan.</strong>
-          An uncoated glass surface reflects about 4% per face at normal incidence, so every
-          window, sample, and filter throws off stray beams. Those are what actually reach
-          people's eyes; the main beam is usually the one everybody is watching.</li>
-          <li><strong>Keep every beam in one horizontal plane, well below seated eye
-          level</strong>, and never raise your eyes to that plane. Most accidents happen
-          when someone bends down to look at something.</li>
-          <li><strong>Remove watches, rings, and badges</strong> before working near an open
-          beam. A polished surface at an unlucky angle is an unplanned mirror.</li>
-          <li><strong>Wear eyewear matched to both wavelength and optical density.</strong>
-          Goggles that block 1064&nbsp;nm may transmit 532&nbsp;nm freely â€” a real hazard in
-          multi-wavelength setups such as a two-colour Raman microscope, where the pump,
-          Stokes, and generated signal are all different colours.</li>
-          <li><strong>Never look along a beam axis</strong>, even attenuated. Use a viewing
-          card, a fluorescent target, or an IR viewer.</li>
-          <li><strong>Enclose the beam path</strong> where you can, and use interlocks and
-          warning signage where you cannot.</li>
-          <li>For <strong>Class 4</strong> lasers, remember that even <em>diffuse</em>
-          reflections can be hazardous to eyes and skin, and that the beam is a credible
-          ignition source for paper, cloth, and solvents.</li>
-        </ul>
-        <p>None of this is modelled by a ray tracer, and a sketch that looks tidy on screen
-        can still describe a setup that is unsafe to build. Treat a drawing as a plan, not
-        a risk assessment.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The dump is drawn as a closed body whose faces are all absorbing, so any ray that
-        reaches it from any direction stops there and is removed from the trace. Nothing is
-        transmitted, nothing is reflected, and no ray continues past it. The only control is
-        the clear aperture, which sets how large a target it presents.</p>
-        <p>Its practical use here is the same as on a bench: give the unused ports somewhere
-        to end. Put one on the second output of a <a href="../bs/">beamsplitter</a>, on the
-        rejected port of a <a href="../pbs/">polarizing beamsplitter</a>, or on an
-        unwanted diffraction order from a <a href="../grating/">grating</a>, and the figure
-        stops showing a beam wandering off into empty space. It makes a diagram read as a
-        deliberate design rather than an unfinished one, and it is what a reviewer of your
-        figure will look for.</p>
-        <p>Because a dumped ray is removed rather than attenuated, a dump is also a clean
-        way to isolate one branch of a setup while you study another â€” block one arm of an
-        interferometer and the remaining path is all that is traced.</p>`,
-      limitations: `<p>Absorption is total and perfect: there is no residual reflectivity,
-        no wavelength dependence, and no angular limit, whereas a real dump reflects a small
-        fraction and does so more at grazing incidence. Nothing thermal is modelled at all â€”
-        no absorbed power, no temperature rise, no damage threshold, and no warning when a
-        sketch dumps a kilowatt into a component that could not survive it. The dump's
-        rating and its cooling requirement are entirely the designer's responsibility, and
-        the section above is the only place this tool addresses them.</p>`,
-    },
-    related: ['blocker', 'slit', 'bs', 'pbs'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Beam Dumps', url: 'https://www.rp-photonics.com/beam_dumps.html' },
-      { label: 'RP Photonics Encyclopedia â€” Laser Safety', url: 'https://www.rp-photonics.com/laser_safety.html' },
-    ],
-  },
-  {
-    type: 'slit',
-    summary: "Passes light through an adjustable gap and blocks everything outside it.",
-    title: 'Slit',
-    category: 'Beam Block',
-    realWorld: {
-      html: `
-        <p>A slit is an aperture: two opaque jaws with a gap between them. Unlike a
-        <a href="../beamdump/">beam dump</a>, whose job is to stop a beam entirely, a slit
-        stops only part of one â€” it passes the light within its gap and absorbs everything
-        outside it. That makes it a shaping and selecting element, though the light it
-        rejects still has to be absorbed, and at high power the jaws face the same thermal
-        problem a dump does.</p>
-        <p>Slits do two quite different jobs depending on where they sit. In a plane where
-        the beam is <em>spatially</em> spread out, a slit trims the beam's cross-section â€”
-        cutting off a tail, defining a sheet of light, or setting the illuminated strip in a
-        line-scan system. In a plane where wavelengths have been spread out by a
-        <a href="../grating/">grating</a> or <a href="../prism/">prism</a>, exactly the same
-        component becomes a <em>wavelength</em> selector: it passes a band and rejects the
-        rest. A monochromator is, in essence, a dispersing element with a slit at each end,
-        and the slit width sets the spectral resolution directly.</p>
-        <p>There is a limit to how far this can be pushed. Narrowing a slit does not narrow
-        the transmitted beam indefinitely, because diffraction sets in: the narrower the
-        aperture, the more the light spreads after it.</p>`,
-      formulas: [
-        { tex: '\\theta \\approx \\frac{\\lambda}{a}', caption: 'Diffraction spreading after a slit of width a â€” the angular half-width of the central lobe. Below roughly a millimetre for visible light, closing the slit further makes the far-field beam wider, not narrower.' },
-        { tex: '\\Delta\\lambda \\approx \\frac{a}{f}\\,\\frac{d\\lambda}{d\\theta}', caption: 'Spectral bandwidth passed by a slit of width a at the focal plane of a spectrograph of focal length f â€” the slit width and the dispersion together set the resolution.' },
-      ],
-      html2: `
-        <p>Because a slit rejects most of the light reaching it, it is a lossy component by
-        design, and in a spectrograph the trade-off is explicit: a narrower slit buys
-        resolution at the cost of signal. Choosing the width is choosing where on that curve
-        to sit.</p>
-        <p>The rejected light does not vanish. On a low-power source it simply warms the
-        jaws; on a high-power one the jaws need the same treatment as a beam dump â€” an
-        absorbing surface that can shed heat, and at high enough power, active cooling. A
-        pair of thin blackened blades that works at milliwatts will not survive tens of
-        watts.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The slit is drawn as two absorbing jaws with a gap between them, and it is traced
-        exactly that way: rays passing through the gap continue completely unchanged, and
-        rays striking either jaw are absorbed and removed. Two controls set it â€” the
-        <strong>gap</strong>, and the overall optic size that fixes how far the jaws
-        extend.</p>
-        <p>The useful consequence is that a slit here is a genuine spatial filter. Send a
-        wide beam at one and only the central portion survives, so you can define a beam
-        width mid-path, clip the wings off a diverging beam, or take one branch of a fan and
-        discard the rest. Place one after a <a href="../grating/">grating</a> or a
-        <a href="../prism/">prism</a> and it becomes a wavelength selector, because the
-        colours have been separated in space by then and the slit is choosing among
-        positions.</p>
-        <p>The purple canvas knob adjusts the gap directly, which makes the selection easy
-        to explore: widen it until the branch you want passes, then narrow it until only
-        that branch does.</p>`,
-      limitations: `<p><strong>Diffraction is not modelled</strong>, and for a slit that is
-        the significant omission: narrowing the gap here simply passes a narrower bundle of
-        rays, whereas a real slit below about a millimetre starts spreading the light it
-        transmits, and a very narrow one produces a broad diffraction pattern rather than a
-        thin beam. Nothing in this element will ever show that reversal. Transmission
-        through the gap is also perfect and edge effects are absent â€” no partial
-        transmission at the jaw edges, no scattering off them, and no wavelength dependence.
-        As with the beam dump, the absorbed light produces no heat and carries no damage
-        threshold, so a sketch will happily throw arbitrary power at a pair of thin
-        blades.</p>`,
-    },
-    related: ['beamdump', 'blocker', 'grating', 'prism'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Monochromators', url: 'https://www.rp-photonics.com/monochromators.html' },
-      { label: 'RP Photonics Encyclopedia â€” Diffraction', url: 'https://www.rp-photonics.com/diffraction.html' },
-    ],
-  },
-  {
-    type: 'blocker',
-    summary: "Stops rays inside an adjustable rectangular region while remaining hidden in exported figures, for controlling beam endpoints without adding visible hardware.",
-    title: 'Invisible blocker',
-    category: 'Beam Block',
-    realWorld: {
-      html: `
-        <p>This element has no laboratory counterpart. It is a figure-making tool: a region
-        that absorbs any ray entering it, drawn on the canvas while you work and then
-        <strong>omitted from exported figures</strong>.</p>
-        <p>The need it answers is a real one, though. A ray tracer follows every branch it
-        generates, including ones that are physically correct but irrelevant to the point a
-        figure is making â€” a weak back-reflection wandering across the frame, a stray
-        diffraction order, the ghost from a beamsplitter's second surface. On a bench you
-        would put a card in the way and forget about it. The equivalent here is a blocker:
-        it takes the unwanted branch out of the trace without adding a component to the
-        drawing that a reader would have to interpret.</p>
-        <p>The honest framing is that this is a <em>presentation</em> control, not physics.
-        If a stray beam exists in your setup it exists in reality too, and hiding it from a
-        figure is a choice about what the figure is for. Use it to remove distractions from
-        a teaching diagram; do not use it to make a setup look cleaner than it is, and never
-        use it to hide a beam that would need terminating in the real build â€” see the
-        safety notes on the <a href="../beamdump/">beam dump</a> page.</p>`,
-      formulas: [],
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The blocker is a rectangle whose faces all absorb. Any ray reaching it stops
-        there, exactly as with a <a href="../beamdump/">beam dump</a> â€” the difference is
-        purely in the drawing. It carries <code>hideInExport</code>, so it is visible on the
-        canvas while you compose and absent from SVG and PNG exports. In the exported
-        figure the blocked beam simply ends, with nothing to explain why.</p>
-        <p>Two controls set its width and height, and the blue handles resize it on the
-        canvas, so it can be shaped to catch exactly the branch you want and nothing
-        else.</p>
-        <p>Its bounds are still counted when a figure is fitted for export, so a blocker
-        parked far from the setup will pad the exported crop with empty space even though it
-        is not drawn. Keep it close to the beam it is catching, or use a
-        <a href="../figureframe/">figure frame</a> to define the crop explicitly.</p>`,
-      limitations: `<p>Absorption is perfect and total, like the beam dump's. The single
-        thing to understand about this element is that it changes what a figure
-        <em>shows</em>, not what the setup <em>is</em>: the trace it removes was a real
-        branch of the light, and its absence from the exported drawing is your editorial
-        decision rather than a physical result. A reader of the figure has no way to tell a
-        blocker was used.</p>`,
-    },
-    related: ['beamdump', 'slit', 'figureframe'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Beam Dumps', url: 'https://www.rp-photonics.com/beam_dumps.html' },
-    ],
-  },
-  {
-    type: 'slm',
-    summary: "Reflects light through configurable lens-array, grating, steering, and speckle functions, offering a qualitative model of spatial wavefront shaping and beam routing.",
-    title: 'Spatial light modulator',
-    category: 'Wavefront Shaping',
-    realWorld: {
-      html: `
-        <p>A spatial light modulator is a programmable optic. Instead of grinding a surface
-        into a fixed shape, it imposes a phase pattern that software can change frame by
-        frame â€” so one device can act as a lens, a grating, a corrector for aberrations it
-        measures on the fly, or a hologram that paints an arbitrary intensity pattern in a
-        distant plane.</p>
-
-        <h3>How liquid crystals do it</h3>
-        <p>The working substance is a <strong>nematic liquid crystal</strong>: rod-shaped
-        molecules that share a common orientation â€” the <em>director</em> â€” while remaining
-        free to move past one another like a liquid. That orientational order without
-        positional order is what makes the phase useful. Aligned rods are optically
-        <strong>birefringent</strong>: light polarized along the director sees the
-        extraordinary index <span class="w">n<sub>e</sub></span>, light polarized across it
-        sees the ordinary index <span class="w">n<sub>o</sub></span>, and the difference is
-        large â€” around 0.1 to 0.2, roughly ten times that of a quartz
-        <a href="../hwp/">waveplate</a>.</p>
-        <p>Applying a voltage across a pixel tilts the director toward the field. The index
-        seen by light polarized along the original director slides continuously from
-        <span class="w">n<sub>e</sub></span> toward <span class="w">n<sub>o</sub></span>, so
-        the optical path through that pixel â€” and therefore the phase of the light leaving
-        it â€” becomes a smooth function of the applied voltage:</p>`,
-      formulas: [
-        { tex: '\\Gamma(V) = \\frac{2\\pi\\,\\Delta n(V)\\,d}{\\lambda}', caption: 'Phase retardance of one pixel: the voltage-dependent index difference times the liquid-crystal layer thickness. This is the same expression as a waveplate, with Î”n now under electrical control.' },
-        { tex: '\\Gamma_{\\text{LCOS}} = 2 \\times \\frac{2\\pi\\,\\Delta n(V)\\,d}{\\lambda}', caption: 'A reflective device doubles it: light crosses the layer on the way in and again on the way out, so half the thickness achieves a full 2Ï€ stroke.' },
-      ],
-      html2: `
-        <p>Nearly all phase-only modulators are <strong>LCOS</strong> â€” liquid crystal on
-        silicon. A CMOS backplane addresses each pixel and carries a mirror beneath it, with
-        the liquid-crystal layer above; light enters, reflects off the pixel mirror, and
-        leaves having crossed the modulating layer twice. Pixels are a few micrometres
-        across, the phase is quantised to 8 bits, and the device is calibrated so that its
-        full drive range corresponds to exactly 2Ï€ at one design wavelength.</p>
-        <p>Two consequences follow from the physics and are worth knowing before you design
-        around one. First, <strong>the input must be linearly polarized along the
-        director</strong>: only that component is modulated, so light in the orthogonal
-        state passes through unchanged and dilutes the pattern. Every SLM setup therefore
-        has a <a href="../polarizer/">polarizer</a> in front of it. Second, liquid crystals
-        are <strong>slow</strong> â€” reorientation takes milliseconds, so refresh rates are
-        tens of hertz, not the megahertz an acousto-optic device reaches.</p>
-
-        <h3>The zero-order problem</h3>
-        <p>An SLM never modulates all the light that lands on it, and the unmodulated
-        fraction leaves along the direction of a plain mirror â€” the specular, or
-        <strong>zeroth-order</strong>, beam. It sits on the optical axis, undiffracted,
-        while the pattern you asked for is formed around it. Several causes contribute:</p>
-        <ul>
-          <li><strong>Fill factor below 100%.</strong> The gaps between pixels, and the
-          circuitry at their edges, are not modulated. That light reflects with no phase
-          structure at all.</li>
-          <li><strong>Front-surface reflection</strong> from the protective cover glass,
-          which never reaches the liquid crystal.</li>
-          <li><strong>Incomplete 2Ï€ stroke.</strong> If the calibration is off, or the
-          device is used away from its design wavelength, the phase never wraps cleanly and
-          a residual unmodulated component survives.</li>
-          <li><strong>Phase quantisation and flicker</strong> from the digital drive
-          scheme.</li>
-        </ul>
-        <p>Together these typically leave a few per cent up to about ten per cent of the
-        incident power in the zeroth order â€” which, concentrated in a single undiffracted
-        spot, is frequently the <em>brightest</em> feature in the output plane. In
-        holographic optical tweezers it is a trap nobody asked for; in a
-        <a href="../objective/">microscope</a> it is a bright spot at the centre of the
-        field; at high power it can damage a sample outright.</p>
-        <p>The standard remedy is to steer the useful light away from it. Adding a linear
-        phase ramp â€” a blazed grating â€” to the displayed hologram deflects the whole pattern
-        off-axis, leaving the zeroth order behind on the axis where it can be removed with a
-        <a href="../beamdump/">beam block</a> at an intermediate focus. Careful
-        per-wavelength calibration of the 2Ï€ lookup table reduces the residue at the source,
-        and slightly tilting the device separates the cover-glass reflection from the
-        modulated beam.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The SLM is <strong>reflective</strong> by default, matching an LCOS device, with
-        a <strong>Transmissive</strong> toggle for the less common transmissive kind. Its
-        active size sets how much of a beam it intercepts, and the blue handle resizes it on
-        the canvas.</p>
-        <p>What it does to light is set by a stack of <strong>optical function</strong>
-        layers, applied in order â€” up to four:</p>
-        <ul>
-          <li><strong>Lens array</strong> â€” divides the aperture into lenslets of a chosen
-          count and focal length, so one beam becomes several focused spots. Each lenslet is
-          tracked separately, so beams do not blend between them.</li>
-          <li><strong>Grating</strong> â€” a programmable diffraction grating with a chosen
-          line density and list of orders, which is how a real SLM steers and splits.</li>
-          <li><strong>Beam steer</strong> â€” a plain angular deflection, the simplest thing a
-          phase ramp does.</li>
-          <li><strong>Speckle / diffuser</strong> â€” scatters into a cone, standing in for a
-          random phase pattern.</li>
-        </ul>
-
-        <h3>The zeroth order, on a toggle</h3>
-        <p>Because the undiffracted beam is a real and often dominant feature of any SLM
-        setup, it is available here rather than quietly ignored â€” but it is
-        <strong>off by default</strong>, so a teaching diagram is not cluttered by a stray
-        beam nobody asked about.</p>
-        <p>Turn on <strong>0th-order reflection</strong> and set the fraction (0.1, ten per
-        cent, by default â€” a realistic figure for a good device) and the element splits its
-        output: that fraction leaves along the plain specular direction, exactly where a
-        mirror would send it, while the patterned light carries the rest. With a grating
-        layer on a device at 45Â°, you can watch the two separate â€” the diffracted beam
-        steered by the pattern, the zeroth order going straight on, and the balance between
-        them shifting as you change the fraction.</p>
-        <p>The toggle correctly does nothing on an unpatterned SLM. With no layers
-        configured the device is simply a mirror, and there is no diffracted order for a
-        "zeroth" to be measured against.</p>
-        <p>This makes the standard mitigation something you can actually draw: add a grating
-        layer to steer the useful light off-axis, then put a <a href="../beamdump/">beam
-        dump</a> in the path of the zeroth order and terminate it.</p>`,
-      limitations: `<p>No phase map is computed. The layers are geometric ray operations
-        chosen to stand in for what a hologram does, not a diffraction calculation over a
-        pixel array â€” so there is no pixel pitch, no fill factor, no 8-bit quantisation, no
-        2Ï€ stroke, and no wavelength dependence of Î”n. The zeroth-order fraction is a number
-        you set, not one derived from the fill factor and calibration that actually cause it.
-        The polarization requirement is not enforced either: a real device modulates only
-        the component along its director, whereas this one acts on any input state, so a
-        sketch will not warn you about the missing polarizer. Grating orders share the light
-        evenly rather than following a blaze, and the millisecond response and frame rate of
-        a real liquid crystal are not represented at all â€” the pattern here changes
-        instantly.</p>`,
-    },
-    related: ['dmd', 'dm', 'polarizer', 'grating', 'beamdump'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Spatial Light Modulators', url: 'https://www.rp-photonics.com/spatial_light_modulators.html' },
-      { label: 'RP Photonics Encyclopedia â€” Liquid Crystal Modulators', url: 'https://www.rp-photonics.com/liquid_crystal_modulators.html' },
-    ],
-  },
-  {
-    type: 'metasurface',
-    summary: "Transmits light through a patterned layer with lens-array, grating, steering, or speckle functions, representing a fixed optical pattern with optional zero-order light.",
-    title: 'Metasurface',
-    category: 'Wavefront Shaping',
-    realWorld: {
-      html: `
-        <p>A metasurface is a flat optic that works by pattern rather than by shape.
-        Instead of bending light with a curved glass surface, it carries an array of
-        <strong>meta-atoms</strong> â€” pillars, fins, or slots smaller than the wavelength â€”
-        each imposing its own local phase delay on the light passing through. Choose the
-        phase at every point across the aperture and you choose what the surface does.</p>
-        <p>Because the structures are subwavelength, they do not diffract individually; the
-        surface behaves as a continuous phase profile <span class="w">Î¦(x)</span>. What
-        steers the light is the <em>gradient</em> of that profile, which generalises
-        Snell's law: a phase that varies along the surface adds momentum to the transmitted
-        beam.</p>`,
-      formulas: [
-        { tex: 'n_t\\sin\\theta_t - n_i\\sin\\theta_i = \\frac{\\lambda_0}{2\\pi}\\frac{d\\Phi}{dx}', caption: "The generalised Snell's law. With no phase gradient this collapses to ordinary refraction; a constant gradient deflects the beam, and a position-dependent one focuses, splits, or scatters it." },
-        { tex: '\\Phi(r) = -\\frac{2\\pi}{\\lambda_0}\\left(\\sqrt{f^2+r^2}-f\\right)', caption: 'The particular profile that focuses. A metasurface carrying this one is a <a href="../metalens/">metalens</a> â€” the same device, given a lens\\u2019s job.' },
-      ],
-      html2: `
-        <p>What makes the idea powerful is that the profile is arbitrary. The same
-        fabrication process yields a lens, a blazed grating, a beam splitter, a vortex
-        plate carrying orbital angular momentum, a polarisation-selective element that
-        does different things to each state, or a hologram â€” decided entirely by the
-        pattern. And because the whole optic is a film a fraction of a micrometre thick on
-        a carrier, it replaces components that would otherwise be centimetres of glass,
-        which is why metasurfaces are pursued for phone cameras, endoscopes, AR displays,
-        and satellite instruments.</p>
-        <p>The costs are real. Efficiency is finite, so some light leaves undiffracted in
-        the <strong>zeroth order</strong> along with scatter and reflection. Most designs
-        are strongly chromatic, since the phase is set for one wavelength and every other
-        colour sees the wrong profile. Many are polarisation-sensitive by construction.
-        And the pattern is <strong>fixed at fabrication</strong> â€” which is the sharp
-        distinction from an <a href="../slm/">SLM</a>, whose liquid crystal lets the same
-        aperture display a new profile thousands of times a second. A metasurface trades
-        that programmability for being thin, passive, fast at the speed of light, and
-        needing no drive electronics.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The metasurface is drawn as what it is: a patterned layer on a thin transparent
-        carrier. It is <strong>transmissive by default</strong>, since that is how these
-        optics are almost always used, with a toggle for the reflective case.</p>
-        <p>It shares its phase engine with the <a href="../slm/">SLM</a> â€” deliberately,
-        because a phase profile does the same thing to a ray whether liquid crystal or
-        etched silicon put it there. The difference between the two elements is what they
-        represent, not what the light does. So the same stack of <strong>optical
-        functions</strong> applies, up to four, in order:</p>
-        <ul>
-          <li><strong>Lens array</strong> â€” divides the aperture into lenslets, the
-          multi-focus profile a metasurface array carries.</li>
-          <li><strong>Grating</strong> â€” a fixed blazed deflector with chosen line density
-          and orders. Verified against the grating equation: 600 lines/mm at 532&nbsp;nm
-          sends the first order to 18.61Â°, exactly arcsin(Î»/d).</li>
-          <li><strong>Beam steer</strong> â€” the constant phase gradient of the generalised
-          Snell's law above, the simplest metasurface there is.</li>
-          <li><strong>Speckle / diffuser</strong> â€” a randomised profile.</li>
-        </ul>
-        <p>Layers compose in sequence, so a steer of 5Â° followed by a 600&nbsp;lines/mm
-        grating puts the output at 23.98Â° â€” the two sines adding, as they should.</p>
-        <p>The <strong>undiffracted 0th order</strong> toggle models finite efficiency:
-        turn it on and the chosen fraction leaves along the original path while the
-        patterned light carries the rest, so a design can be drawn with its leakage and a
-        <a href="../beamdump/">beam dump</a> put where the waste goes. It is off by
-        default so a teaching figure stays clean.</p>
-        <p>For the specific case of a focusing metasurface with a wavelength-dependent
-        focal length, use the <a href="../metalens/">metalens</a> instead â€” it models the
-        diffractive <span class="w">f(Î») = fâ‚€Î»â‚€/Î»</span> scaling that this element's
-        geometric layers do not.</p>`,
-      limitations: `<p>No phase map is computed and no field is propagated. The layers are
-        geometric ray operations standing in for what a profile does, so there are no
-        meta-atoms, no subwavelength geometry, no fill factor, and no diffraction
-        calculation â€” an aperture that would be far too small to work in reality traces
-        exactly like a large one. The steering here is also achromatic where a real
-        metasurface is strongly chromatic: only the grating layer disperses, through the
-        grating equation, while a steer or lens-array layer treats every wavelength alike.
-        Polarisation is untouched, though polarisation sensitivity is a defining property
-        of many real designs, and the zeroth-order fraction is a number you set rather
-        than one derived from the structure. Efficiency, scatter, substrate reflections,
-        and fabrication tolerance are all absent.</p>`,
-    },
-    related: ['slm', 'metalens', 'dmd', 'grating', 'beamdump'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Metasurfaces', url: 'https://www.rp-photonics.com/metasurfaces.html' },
-      { label: 'RP Photonics Encyclopedia â€” Diffractive Optics', url: 'https://www.rp-photonics.com/diffractive_optics.html' },
-    ],
-  },
-  {
-    type: 'dmd',
-    summary: "Routes light through a configurable binary micromirror pattern into ON and optional OFF orders, for exploring spatial switching and reflected beam selection.",
-    title: 'Digital micromirror device',
-    category: 'Wavefront Shaping',
-    realWorld: {
-      html: `
-        <p>A DMD is an array of hundreds of thousands of aluminium mirrors, each a few
-        micrometres across, sitting on a CMOS memory cell. Every mirror has exactly two
-        stable positions â€” tilted one way or the other about its diagonal, typically by
-        <strong>Â±12Â°</strong> â€” and is held there electrostatically against mechanical
-        landing posts. Writing a bit to the cell underneath flips it.</p>
-        <p>That makes the device fundamentally different from a
-        <a href="../slm/">liquid-crystal SLM</a>. An SLM is <em>analogue</em> and works on
-        <em>phase</em>: it retards light and can therefore redirect it. A DMD is
-        <em>binary</em> and works on <em>amplitude</em>: each mirror either sends its light
-        toward the target or throws it away. There is no in-between position.</p>
-        <p>Because a mirror tilted by Î¸ deflects a beam by 2Î¸, the two states send light in
-        directions separated by four times the tilt angle:</p>`,
-      formulas: [
-        { tex: '\\delta = 2\\theta', caption: 'A mirror tilted by Î¸ deflects the reflected beam by 2Î¸ â€” the reason a small mechanical tilt buys a large optical separation.' },
-        { tex: '\\Delta = 4\\theta', caption: 'Angle between the ON and OFF beams, since the two mirror states tilt opposite ways. At the standard Â±12Â° that is 48Â°, which is why a DLP projection lens sits well off the illumination axis.' },
-        { tex: 'd\\sin\\theta_m = m\\lambda', caption: 'The mirror array is periodic, so it is also a grating. At roughly 7.6 Âµm pitch this matters as soon as the illumination is coherent.' },
-      ],
-      html2: `
-        <h3>Grey levels out of a binary device</h3>
-        <p>If each mirror is only ever fully on or fully off, brightness has to come from
-        somewhere else â€” and it comes from <strong>time</strong>. The mirror is switched on
-        and off thousands of times per frame, and the fraction of the frame it spends in the
-        ON state sets the perceived brightness. The eye, or any detector slower than the
-        switching, integrates the result. Pulse-width modulation in space's place.</p>
-        <p>This is why DMDs are <em>fast</em>. A micromirror flips in microseconds, giving
-        binary frame rates in the tens of kilohertz â€” three or four orders of magnitude
-        quicker than liquid crystal, which has to physically reorient. It also explains the
-        colour-fringing "rainbow effect" some people see in single-chip DLP projectors,
-        where red, green and blue are displayed sequentially rather than together.</p>
-
-        <h3>What it is good and bad at</h3>
-        <p>Being a mirror rather than a birefringent layer, a DMD is
-        <strong>polarization-insensitive</strong> and <strong>broadband</strong> â€” aluminium
-        reflects from the ultraviolet well into the infrared, so one device works at any
-        wavelength. It has a high fill factor, around 92%, and tolerates far more optical
-        power than liquid crystal. Those properties took it well beyond projectors: maskless
-        photolithography, structured-illumination microscopy, hyperspectral imaging,
-        single-pixel and compressive-sensing cameras, and patterned optogenetic
-        stimulation.</p>
-        <p>The cost is efficiency. Because it works by discarding light rather than
-        redirecting it, everything in the OFF state is simply thrown away â€” at 50% duty you
-        lose half the beam, and that light has to be caught by a
-        <a href="../beamdump/">beam dump</a>, which at high power needs to be a real cooled
-        one. A phase SLM steering the same light into the pattern wastes almost none of it.
-        The periodicity is the other complication: with coherent illumination the array
-        behaves as a blazed grating and splits the beam into diffraction orders, so a
-        laser-illuminated DMD needs its geometry chosen so that the wanted order and the
-        blaze direction coincide.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The device is traced as a binary mirror array. Rays are sorted into ON and OFF
-        by where they land, and each state reflects into its own direction â€” the ON beam
-        deflected one way from the specular direction, the OFF beam the other:</p>
-        <ul>
-          <li><strong>Micromirror tilt</strong> sets the deflection. The ON and OFF beams
-          emerge separated by exactly four times this angle, so the default 12Â° puts 48Â°
-          between them, matching a real device.</li>
-          <li><strong>Pattern pitch</strong> and <strong>ON fraction</strong> define the
-          pattern itself as periodic stripes across the aperture â€” the fraction of each
-          period whose mirrors are ON.</li>
-          <li><strong>Show OFF order</strong> decides whether the discarded beam is drawn.</li>
-        </ul>
-        <p>That last toggle is worth understanding. It is <strong>off by default</strong>,
-        so the rejected light simply stops at the device â€” which is what a setup with a
-        properly dumped OFF path looks like, and keeps a teaching figure uncluttered. Turn
-        it on and the OFF beam is traced to wherever it actually goes, which is the honest
-        picture while you are designing: you can see the 48Â° separation, confirm nothing
-        downstream is sitting in that path, and put a <a href="../beamdump/">beam dump</a>
-        there to terminate it.</p>
-        <p>Sweeping the tilt is the quickest way to see the geometry that makes DLP work.
-        At 6Â° the two beams leave 24Â° apart and are awkward to separate; at 20Â° they are
-        80Â° apart and trivially separable, but the device would be harder to build. The
-        real Â±12Â° is the compromise.</p>`,
-      limitations: `<p><strong>Diffraction is not modelled</strong>, and for a DMD that is
-        the significant omission: a real array is periodic at roughly 7.6&nbsp;Âµm and acts
-        as a blazed grating, so coherent illumination produces a set of diffraction orders
-        that a laser-based design has to be built around. Here reflection is purely
-        geometric and a single beam produces a single ON beam. The pattern is also
-        periodic stripes measured in millimetres of canvas rather than an addressable array
-        of micromirrors, so it cannot display an image, and there is no time dimension â€”
-        no pulse-width modulation, no grey levels, no switching time, and no colour
-        sequencing. Fill-factor loss, aluminium reflectivity, absorption, and the damage
-        threshold are all absent, so the ON and OFF beams together carry the full incident
-        power.</p>`,
-    },
-    related: ['slm', 'dm', 'beamdump', 'grating'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Spatial Light Modulators', url: 'https://www.rp-photonics.com/spatial_light_modulators.html' },
-      { label: 'Texas Instruments â€” DLP Technology', url: 'https://www.ti.com/dlp-chip/overview.html' },
-    ],
-  },
-  {
-    type: 'dm',
-    summary: "Reflects light with adjustable tip, tilt, and paraxial defocus, providing a simple model for steering a beam and changing its wavefront curvature.",
-    title: 'Deformable mirror',
-    category: 'Wavefront Shaping',
-    realWorld: {
-      html: `
-        <p>A deformable mirror corrects a wavefront by changing its own shape. Light does
-        not always arrive with the flat, well-behaved wavefront that optical design assumes:
-        the atmosphere scrambles starlight, the eye's own cornea and lens distort a view of
-        the retina, and tissue aberrates a focus long before a microscope reaches the depth
-        it was built for. In every case the instrument is fine and the wavefront is not, so
-        the fix is to add the <em>conjugate</em> of the distortion and cancel it.</p>
-        <p>The device is a thin reflective faceplate â€” a metallised membrane or a polished
-        silicon layer â€” sitting on an array of actuators that push and pull it. Piezoelectric
-        stacks, electrostatic pads, voice coils, and MEMS all appear, but the principle is
-        the same: drive each actuator and the surface bends locally.</p>
-        <p>Reflection is what makes the mechanics easy. Displacing the surface by
-        <span class="w">h</span> shortens or lengthens the path twice, once on the way in
-        and once on the way out, so a very small movement buys a large optical
-        correction:</p>`,
-      formulas: [
-        { tex: '\\text{OPD} = 2h', caption: 'Optical path difference from a surface displacement h. A quarter-wavelength of mechanical stroke produces half a wavelength of optical correction â€” which is why deformable mirrors move by micrometres, not millimetres.' },
-        { tex: 'S \\approx \\exp\\!\\left[-\\left(\\frac{2\\pi\\sigma}{\\lambda}\\right)^{2}\\right]', caption: 'MarÃ©chal approximation for Strehl ratio from residual wavefront error Ïƒ. Getting Ïƒ down to about Î»/14 gives S â‰ˆ 0.8 â€” the usual definition of "diffraction limited", and the target a correction loop aims at.' },
-        { tex: '\\delta = 2\\theta', caption: 'Tilting a mirror by Î¸ deflects the beam by 2Î¸. Worth remembering when reading this elementâ€™s controls â€” see below.' },
-      ],
-      html2: `
-        <h3>Working in a loop</h3>
-        <p>A deformable mirror is almost never set by hand. It runs closed-loop with a
-        wavefront sensor â€” usually a Shackâ€“Hartmann, a lenslet array whose spot
-        displacements measure local wavefront slope. The measured wavefront is decomposed
-        into <strong>Zernike modes</strong> â€” tip, tilt, defocus, astigmatism, coma,
-        spherical aberration, and higher â€” the actuator commands that best cancel them are
-        computed, and the cycle repeats at hundreds or thousands of hertz, fast enough to
-        keep up with atmospheric turbulence.</p>
-        <p>The low-order modes carry most of the power. Tip and tilt alone account for the
-        largest share of atmospheric distortion, so big telescopes often split the job: a
-        small, fast tipâ€“tilt mirror handles the bulk motion while the deformable mirror,
-        with hundreds or thousands of actuators, takes the higher orders. How well the
-        higher orders can be corrected is set by actuator count and spacing â€” a mirror
-        cannot reproduce structure finer than its actuator pitch, and the residue left over
-        is called fitting error.</p>
-        <p>Designs trade smoothness against independence. A <strong>continuous
-        facesheet</strong> gives a smooth surface but neighbouring actuators pull on each
-        other, so each has an influence function rather than acting alone. A
-        <strong>segmented</strong> mirror gives independent control at the price of gaps
-        between segments, which diffract. <strong>MEMS</strong> devices are compact and
-        cheap with limited stroke; <strong>bimorph</strong> and <strong>voice-coil</strong>
-        mirrors offer large stroke with fewer actuators.</p>
-        <p>The applications are wherever a wavefront arrives spoiled: ground-based astronomy,
-        adaptive-optics retinal imaging, deep-tissue and two-photon microscopy, laser beam
-        shaping, and free-space optical communication.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>This element models the two lowest-order corrections a deformable mirror makes â€”
-        the ones that dominate real aberration budgets â€” as a mirror with an adjustable
-        curvature and an adjustable deflection. Three controls:</p>
-        <ul>
-          <li><strong>Aperture</strong>, the size of the reflective face; the blue handle
-          resizes it.</li>
-          <li><strong>Defocus focal length</strong>, which curves the surface. Positive
-          values make it concave: light reflects converging, and the focus lands that many
-          millimetres in front of the mirror â€” set 100&nbsp;mm and the beam crosses the axis
-          100&nbsp;mm away, set 200&nbsp;mm and it crosses at 200. Negative values make it
-          convex, so the return beam diverges from a virtual focus behind the surface.
-          Leave it at zero for a flat mirror.</li>
-          <li><strong>Tip / tilt</strong>, on the purple knob, which steers the reflected
-          beam.</li>
-        </ul>
-        <p>Pair one with a <a href="../detector/">wavefront detector</a> and the correction
-        becomes measurable rather than merely drawn: a flat mirror returns a collimated
-        beam, a positive focal length returns a converging one, and a negative focal length
-        a diverging one, with the detector naming the state and reporting the cone
-        angle.</p>
-
-        <h3>One convention to know</h3>
-        <p>The <strong>Tip / tilt</strong> control applies its angle directly to the
-        outgoing beam: set 5Â° and the reflected beam leaves 5Â° away from where it would have
-        gone. That is the <em>beam deviation</em>, not the mechanical tilt of the surface â€”
-        a real mirror tilted by 5Â° would deflect the beam by 10Â°. Rotating the whole element
-        on the canvas does behave physically, giving the usual factor of two, so the two
-        routes to a tilt are not equivalent. If you are reasoning about actuator stroke,
-        halve the number.</p>`,
-      limitations: `<p>Only <strong>tip, tilt, and defocus</strong> are modelled â€” the
-        lowest Zernike orders. There is no astigmatism, coma, spherical aberration, or
-        arbitrary surface shape, which is awkward given that correcting exactly those higher
-        orders is the reason deformable mirrors exist; this element captures what they do
-        first, not what makes them special. Nothing represents the mechanism either: no
-        actuators, no actuator count or pitch, no influence functions or inter-actuator
-        coupling, no stroke limit, and therefore no fitting error. The surface is perfectly
-        smooth, so segment gaps and print-through never diffract, and there is no temporal
-        response â€” the shape changes instantly rather than over the milliseconds a real
-        mirror needs. Nothing closes the loop: there is no sensor driving the correction, so
-        the shape is one you set by hand rather than one the system finds.</p>`,
-    },
-    related: ['slm', 'dmd', 'cmirror', 'detector'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Adaptive Optics', url: 'https://www.rp-photonics.com/adaptive_optics.html' },
-      { label: 'RP Photonics Encyclopedia â€” Deformable Mirrors', url: 'https://www.rp-photonics.com/deformable_mirrors.html' },
-    ],
-  },
-  {
-    type: 'aotf',
-    summary: "Selects spectral lines from incoming light, either simultaneously or sequentially, and routes the remaining spectrum toward a separately configurable deflected output.",
-    title: 'Acousto-optic tunable filter',
-    category: 'Modulators',
-    realWorld: {
-      html: `
-        <p>An AOTF selects colours electronically. Sound travelling through a crystal
-        compresses and rarefies it, and since the refractive index follows density, an
-        acoustic wave is a moving index grating that light can diffract from. That much it
-        shares with an <a href="../aom/">acousto-optic modulator</a>. The difference â€” and
-        the whole point of the device â€” is that an AOTF arranges the interaction so only
-        <em>one wavelength at a time</em> can diffract from a given tone.</p>
-        <p>It does this in a <strong>birefringent</strong> crystal, usually tellurium
-        dioxide, in a geometry where the diffracted light emerges in the orthogonal
-        polarization state. Because the two states have different refractive indices, the
-        momentum-matching condition between the optical and acoustic waves is satisfied at
-        only one optical wavelength per acoustic frequency. An AOM diffracts whatever you
-        send it; an AOTF picks a line out of it.</p>
-        <p>Change the RF drive frequency and you change the line. That is the tuning
-        mechanism, and it is purely electronic â€” no filter wheel to rotate, no grating to
-        turn. The RF <em>power</em> sets the diffraction efficiency, so the same device
-        controls how much of that line gets through.</p>`,
-      formulas: [
-        { tex: '\\tau \\approx \\frac{D}{v_{a}}', caption: 'Switching time is the acoustic transit across the beam. In TeOâ‚‚ the shear wave travels around 650 m/s, so a 1 mm beam switches in roughly 1.5 Âµs â€” against the tens of milliseconds a filter wheel needs.' },
-        { tex: 'P_{\\text{line}} \\approx P_{\\text{in}}\\,\\frac{\\Delta\\lambda}{\\Delta\\lambda_{\\text{source}}}\\,\\eta', caption: 'What a narrow selection actually costs: picking 2 nm out of a 280 nm supercontinuum keeps well under 1% of the power, however efficient the diffraction is.' },
-      ],
-      html2: `
-        <h3>Multiplexed and sequential drive</h3>
-        <p>The property that makes AOTFs indispensable is that the crystal does not have to
-        be driven with one tone. Apply <strong>several RF frequencies simultaneously</strong>
-        and each selects its own wavelength, with its own amplitude setting that line's
-        intensity independently. That is <strong>multiplexing</strong>: every selected line
-        is present in the output at the same time. One small crystal thereby replaces a rack
-        of shutters, filters, and attenuators â€” which is why the laser combiner in a confocal
-        or multiphoton microscope is almost always an AOTF.</p>
-        <p>Driving one tone at a time instead, stepping from line to line, is
-        <strong>sequential</strong> operation. Only one wavelength is present at any instant.
-        Because switching takes microseconds, the sequence can be faster than a pixel dwell,
-        so a scan can step excitation wavelengths line by line or even pixel by pixel and
-        build a separate image per colour â€” which is exactly what multiplexed drive cannot
-        do, since there every colour arrives at once and the detector cannot tell them
-        apart.</p>
-        <p>Typical passbands are one to a few nanometres â€” narrow enough to isolate one
-        laser line from its neighbour. The light that is not selected is not absorbed; it
-        simply fails to diffract and continues on, which means a real installation always
-        has somewhere for it to go, usually a <a href="../beamdump/">beam dump</a>.</p>
-        <p>Beyond microscopy, AOTFs appear in hyperspectral and multispectral imaging, Raman
-        instruments, fluorescence spectroscopy, and space-borne instruments where a filter
-        wheel's mass and mechanism are unwelcome.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The element is built around a list of <strong>selected lines</strong>, one per RF
-        tone, in the same spirit as the <a href="../slm/">SLM's</a> stacked functions. A
-        fresh AOTF has a single line; press <em>Add line</em> to stack more, up to sixteen.
-        Each line carries its own wavelength and efficiency, so a weak line and a strong one
-        can be selected together, while the passband is a property of the device and is
-        shared by all of them â€” as it is in a real crystal, where the resolution follows
-        from the interaction length rather than from which tone is applied.</p>
-        <p>That passband is a sincÂ², the phase-matching response of the acousto-optic
-        interaction itself. The width set in the inspector is its full width at half
-        maximum; either side of the central lobe it passes through true zeros, with
-        sidelobes at 4.7% and 1.7% of the peak between them. Those sidelobes are the
-        device's real rejection floor: a line sitting in the first one still gets a few
-        percent through, which no rectangular passband would ever show.</p>
-
-        <h3>Where the light goes</h3>
-        <p>The selected lines leave along the <strong>incoming axis</strong>, so the
-        selection stays on the optical axis and the rest of a setup can be built downstream
-        of it in a straight line. Everything not selected â€” the beam
-        <strong>depleted</strong> of those lines â€” is deflected to an angle you choose.</p>
-        <p>That depleted beam is <strong>hidden by default</strong>, because in a working
-        instrument it goes straight into a dump and drawing it only clutters the figure.
-        Turn on <em>Show depleted beam</em> while designing and it is traced to wherever it
-        actually goes, so you can confirm nothing downstream is sitting in its path and put
-        a <a href="../beamdump/">beam dump</a> there. Hiding it changes only the drawing:
-        the power accounting is the same either way.</p>
-
-        <h3>Driving the lines</h3>
-        <p><strong>Multiplexed</strong> drive opens every selected line at once, so all of
-        them are in the output together and a spectrometer downstream shows the whole set.
-        <strong>Sequential</strong> drive steps through them one at a time at a rate you set,
-        so exactly one line is present at any instant and the spectrometer shows it change
-        as the sequence advances.</p>
-        <p>The sequence runs on the canvas clock, slowed to a step or two a second â€” a real
-        driver steps at kilohertz, far too fast to read â€” in the same illustrative spirit as
-        a scanning galvo or a chopper wheel. Each line is fully open while it is its turn;
-        the sequence chooses <em>which</em> line, not how much of it gets through.</p>
-
-        <h3>What the numbers do</h3>
-        <p>Selection is exact and conserves energy. A 20&nbsp;nm window on a 420â€“700&nbsp;nm
-        supercontinuum passes 20/280 of the power and the depleted port carries the rest,
-        summing to one. Efficiency multiplies on top, so three multiplexed lines at 0.9
-        selected from three matching laser lines deliver 2.7Ã— a single line's worth. Narrow
-        selections work too: a 0.5&nbsp;nm line out of that supercontinuum is 0.18% of the
-        beam and still traces correctly rather than being discarded as negligible.</p>`,
-      limitations: `<p><strong>The geometry is the reverse of a physical device.</strong> In
-        a real AOTF the selected light is the <em>diffracted</em> first order and leaves at
-        an angle, while the remainder passes straight through as the zeroth order. This
-        element draws the opposite assignment â€” the selection continues along the incoming
-        axis and the remainder is deflected â€” because it keeps a multi-line selection on the
-        optical axis where the rest of a setup is built. The power accounting is identical
-        either way; only which port is bent differs.</p>
-        <p>The passband is set directly rather than following from an acoustic frequency:
-        in a real device one RF tone fixes the selected wavelength, the diffraction angle,
-        and the polarization rotation together through phase matching, so a combination set
-        here need not correspond to any crystal. Its <em>shape</em> is modelled â€” the
-        sincÂ² below â€” but its sidelobes are truncated at the third zero rather than
-        continuing to fall away forever, so the deepest rejection a real device gives out
-        in the far wings is not reproduced. The
-        polarization rotation itself is not modelled, so the selected light leaves in the
-        state it arrived and cannot be cleaned up with a <a href="../polarizer/">polarizer</a>
-        the way a real one is. There is no relation between RF power and efficiency, no
-        acoustic transit time â€” lines switch instantly â€” and no crystal transmission range,
-        so a line can be selected at any wavelength the source provides.</p>`,
-    },
-    related: ['aom', 'aod', 'eom', 'filter', 'beamdump'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Acousto-optic Tunable Filters', url: 'https://www.rp-photonics.com/acousto_optic_tunable_filters.html' },
-      { label: 'RP Photonics Encyclopedia â€” Acousto-optic Modulators', url: 'https://www.rp-photonics.com/acousto_optic_modulators.html' },
-    ],
-  },
-  {
-    type: 'detector',
-    summary: "Measures the relative intensity of light reaching its active surface.",
-    title: 'Photodetector',
-    category: 'Detectors',
-    realWorld: {
-      html: `
-        <p>A photodetector is a semiconductor <strong>photodiode</strong>: a p-n (or p-i-n)
-        junction that absorbs a photon and, if the photon carries enough energy to cross the
-        material's bandgap, promotes an electron into the conduction band. The junction's
-        built-in field sweeps that electron and the hole it left behind apart before they can
-        recombine, and the result is a photocurrent proportional to the incident optical
-        power. How efficiently that conversion happens is the <strong>quantum efficiency</strong>
-        <span class="w">Î·</span> â€” the fraction of incident photons that produce a
-        collected charge carrier â€” and how much current comes out per watt of light in is
-        the <strong>responsivity</strong> <span class="w">R</span>:</p>`,
-      formulas: [
-        { tex: 'R = \\frac{\\eta e}{h\\nu} = \\frac{\\eta e \\lambda}{hc} \\quad [\\text{A/W}]', caption: 'Responsivity at optical frequency Î½ (equivalently, wavelength Î»). For a fixed Î·, R rises with wavelength â€” a 1550 nm photon carries less energy than a 500 nm one, so the same absorbed photon flux yields more amps per watt at the longer wavelength.' },
-      ],
-      html2: `
-        <h3>Sensor material sets the usable colours</h3>
-        <p>Î· is not a constant â€” it is a function of wavelength set by the semiconductor's
-        <strong>bandgap</strong>, and it is the reason a detector has to be chosen for the
-        wavelength it needs to see rather than assumed to work everywhere. A photon below the
-        bandgap energy simply cannot promote an electron, however bright the beam: Î· drops to
-        zero at a sharp cutoff wavelength, not a gentle roll-off.</p>
-        <p><strong>Silicon</strong> is the default choice for anything visible or near-infrared.
-        Its 1.12 eV bandgap gives it a cutoff around 1100&nbsp;nm, and a typical
-        commercial Si photodiode's responsivity climbs from a few tenths of an A/W in the
-        visible to a peak near 0.5â€“0.6&nbsp;A/W around 900â€“1000&nbsp;nm, right before that
-        cutoff${cite(1)}. It covers essentially every laser wavelength in this app's own
-        palette below 1064&nbsp;nm.</p>
-        <p><strong>InGaAs</strong> (indium gallium arsenide) is the standard choice once a
-        setup reaches into the <strong>short-wave infrared</strong> â€” the telecom bands
-        around 1310 and 1550&nbsp;nm, or Er-doped fiber sources. Its smaller ~0.75 eV
-        bandgap pushes the cutoff out to roughly 1.7&nbsp;Âµm, with peak responsivity around
-        0.9â€“1.0&nbsp;A/W near 1550&nbsp;nm${cite(1)} â€” silicon is completely blind out
-        there; those photons simply don't carry enough energy to cross its wider gap.</p>
-        <p><strong>Germanium</strong> was the original short-wave infrared material, and is
-        still around: a smaller ~0.67 eV bandgap stretches its cutoff out to roughly
-        1.8&nbsp;Âµm, past even InGaAs, with peak responsivity around 0.7â€“0.8&nbsp;A/W near
-        1.5â€“1.6&nbsp;Âµm${cite(1)}. What displaced it from most telecom and low-light work is
-        dark current â€” the reverse-bias leakage current a photodiode carries with no light at
-        all, which competes directly with a weak real signal. Germanium's is roughly
-        two to three orders of magnitude higher than InGaAs at the same reverse bias and room
-        temperature${cite(1)}, so germanium detectors usually need cooling to be
-        useful for anything faint, while InGaAs does not. It remains a cheaper option where
-        that noise floor doesn't matter. Beyond these three, extended-range InGaAs and HgCdTe
-        push further into the mid-infrared at the cost of even more dark current and, for
-        HgCdTe, mandatory cooling â€” but silicon, InGaAs, and germanium between them cover the
-        overwhelming majority of laboratory optics.</p>
-        <h3>Frequency response</h3>
-        <p>A photodiode also cannot follow an arbitrarily fast amplitude modulation. Its
-        junction behaves as a capacitor <span class="w">C_j</span> discharging through a load
-        resistance <span class="w">R_L</span>, and that RC time constant â€” together with how
-        long a photo-generated carrier takes to drift across the depletion region â€” sets a
-        3 dB electrical bandwidth beyond which the output can no longer track the optical
-        signal:</p>`,
-      formulas2: [
-        { tex: 'f_{3\\text{dB}} \\approx \\frac{1}{2\\pi R_L C_j}', caption: 'A larger sensor area collects more light but adds junction capacitance Câ±¼, so higher sensitivity and higher speed pull in opposite directions â€” which is why detector datasheets fork into two families that rarely overlap.' },
-      ],
-      html3: `
-        <p>A large-area photodiode built for power metering â€” like the
-        <a href="../powermeter/">power meter</a> in this palette â€” trades bandwidth for active
-        area and sensitivity, and is typically limited to the kHz range or slower. A
-        telecom-grade InGaAs photodiode with a 250&nbsp;Âµm active area, by contrast, is built
-        for the opposite trade and can exceed 10&nbsp;GHz${cite(2)} â€” fast enough to demodulate
-        a digital data stream, but far too small and insensitive to usefully catch a divergent
-        free-space beam. Choosing a photodetector for a real setup means picking a point on
-        that speed-versus-area curve, not just a material.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The photodetector reports a <em>qualitative</em> relative signal â€” the sum of every
-        ray's power reaching its front face, in arbitrary units â€” plus the wavelength or
-        detected spectral band, polarization state, and spot extent of whatever light
-        arrives, all read directly off the traced rays. If the arriving light is pulsed, it
-        also reports the accumulated <a href="../pulsecompressor/">GDD</a>, optical path
-        delay, and arrival spread, the same as every other instrument in the Detectors
-        category. This is genuinely useful for seeing <em>whether</em> light reaches a given
-        point, roughly how strong it is relative to other configurations, and what its
-        spectral or polarization content is â€” regardless of what real sensor a lab bench
-        would need there.</p>
-        <h3>The oscilloscope, and why it has a floor</h3>
-        <p>Pulsed light turns the readout into a scope trace: the pulse train against time,
-        with any chopper or modulator envelope behind it. The window defaults to two periods
-        of the slowest thing on the beam, and <strong>Time interval</strong> and
-        <strong>Time offset</strong> override it.</p>
-        <p>What that trace shows is the train <em>convolved with the detector's own
-        response</em>, set by <strong>Response time</strong> and defaulting to 1&nbsp;ns.
-        This is not decoration. Two pulses closer together than the response merge into one
-        bump, exactly as they would on a bench, and a detector slower than the pulse spacing
-        stops resolving the train at all and reads the flat average instead â€” put a 15&nbsp;ns
-        response on an 80&nbsp;MHz train and the trace goes level, which is what such a
-        detector really outputs. The window will not zoom below five response times either,
-        because nothing there is anything the instrument could have seen.</p>
-        <p><strong>Sync</strong> puts several detectors on one axis <em>and one time origin</em>,
-        so light that took a longer route is drawn where it actually arrives. That is where the
-        limit bites hardest, and where it is most worth understanding: an arm 50&nbsp;mm longer
-        delays its pulses by 167&nbsp;ps, and a 1&nbsp;ns photodiode cannot see that â€” the
-        readout names the delay but marks it <strong>unresolved</strong>, because the geometry
-        knows it and the instrument does not. Give the detector a 50&nbsp;ps response, as a
-        small fibre-coupled diode really has, and the same shift is resolved. This is precisely
-        why timing two ultrashort pulse trains against each other is a job for an
-        <a href="../autocorrelator/">autocorrelator</a> rather than a photodiode and a scope:
-        the autocorrelator sidesteps detector speed entirely by using the pulses themselves as
-        the clock.</p>`,
-      formulas: [],
-      limitations: `<p>The reported signal is not calibrated to any real unit, and there is no
-        concept of sensor material at all: a photodetector in this app reads every wavelength
-        in its traced light with equal weight, whether that light is 405&nbsp;nm (well inside
-        silicon's range) or 1550&nbsp;nm (which silicon cannot detect at all and would need
-        InGaAs). There is no responsivity curve, no bandgap cutoff, and no way to configure or
-        even see which material is assumed. The response time shapes the <em>time trace</em>
-        and sets how finely the axis can be read, but it is not a filter on anything else: the
-        relative signal is still an instantaneous sum, so a beam modulated far beyond what the
-        configured response could follow still reads at full strength as a single number, and
-        there is no roll-off, no 3&nbsp;dB point, and no phase response. Nor is the response
-        tied to the active area, though on a real device those trade against each other
-        directly. Dark
-        current, noise-equivalent power, and saturation are likewise not modeled here; the
-        PMT variant is the only detector in this category with any qualitative gain/saturation
-        behavior at all. Treat every reading as relative and instantaneous, never as a
-        prediction of what a specific real sensor would output.</p>`,
-    },
-    related: ['pmt', 'camera', 'powermeter', 'eye'],
-    citations: [
-      { label: 'Thorlabs â€” Photodiode Tutorial (responsivity vs. wavelength for Si, Ge, and InGaAs detectors)', url: 'https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=285' },
-      { label: 'RP Photonics Encyclopedia â€” Photodiodes', url: 'https://www.rp-photonics.com/photodiodes.html' },
-    ],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Photodetectors', url: 'https://www.rp-photonics.com/photodetectors.html' },
-      { label: 'RP Photonics Encyclopedia â€” Responsivity', url: 'https://www.rp-photonics.com/responsivity.html' },
-    ],
-  },
-
-  {
-    type: 'pmt',
-    summary: "Amplifies weak incident light with adjustable gain, dark floor, and saturation, for exploring qualitative signal detection in fluorescence and other low-light setups.",
-    title: 'Photomultiplier (PMT)',
-    category: 'Detectors',
-    realWorld: {
-      html: `
-        <p>A <a href="../detector/">photodiode</a> turns one absorbed photon into one
-        electron. That is a vanishingly small amount of charge, and once the signal is
-        weak enough, the amplifier reading it contributes more electrical noise than the
-        light contributes current â€” the measurement stops being about the light at all. A
-        <strong>photomultiplier tube</strong> solves this by amplifying the photoelectron
-        <em>before</em> any electronics touch it.</p>
-        <p>Light lands on a <strong>photocathode</strong>, a thin film in an evacuated glass
-        envelope, and ejects a photoelectron. A strong electric field accelerates it onto a
-        <strong>dynode</strong> â€” an electrode held at a few hundred volts more positive â€”
-        hard enough that the impact knocks loose several <em>secondary</em> electrons. Those
-        are accelerated onto the next dynode, and so on down a chain of typically 8 to 12
-        stages before the whole shower is collected at the anode. If each stage yields
-        <span class="w">Î´</span> secondary electrons per incident one, the total gain over
-        <span class="w">n</span> stages compounds:</p>`,
-      formulas: [
-        { tex: 'G = \\delta^{\\,n}, \\qquad \\delta \\propto V_{\\text{stage}}^{\\,k}', caption: 'A modest per-stage yield compounds into an enormous total: Î´ â‰ˆ 4 over 10 dynodes is a gain near 10â¶. Because Î´ depends on the accelerating voltage, gain is set by the supply voltage â€” and is steeply sensitive to it, which is why PMT gain is always plotted on a log axis against voltage.' },
-      ],
-      html2: `
-        <p>A single photoelectron therefore arrives at the anode as a pulse of ~10â¶
-        electrons â€” far above the noise of any reasonable amplifier. This is what makes a PMT
-        able to register <strong>individual photons</strong>, and it is the entire reason the
-        instrument exists.</p>
-
-        <h3>Gain is not sensitivity</h3>
-        <p>The most common misconception about PMTs is that turning up the gain makes the
-        instrument more sensitive. It does not. Gain multiplies everything arriving at the
-        first dynode â€” the signal and the tube's own noise alike â€” so the ratio between them
-        is fixed before any amplification happens.</p>
-        <p>That noise has a specific source. The photocathode is warm, so electrons
-        occasionally escape it by thermal energy alone, with no photon involved. Each one is
-        amplified into a full-size output pulse indistinguishable from a real detection. This
-        is <strong>dark current</strong>, and its rate is what a datasheet quotes as
-        <strong>dark counts</strong> per second. Cooling the tube reduces it â€” which is why
-        photon-counting instruments often run their PMTs cooled â€” but no amount of gain will,
-        because gain amplifies the dark electrons by exactly the same factor.</p>
-        <p>So the useful figure of merit is the ratio of signal to dark, and the only ways to
-        improve it are to collect more light or to lower the dark rate. Where the gain
-        genuinely matters is in getting the signal clear of the <em>downstream</em>
-        electronics' noise floor â€” which it does spectacularly well.</p>
-
-        <h3>What it costs</h3>
-        <p>A PMT is not simply a better photodiode. Its photocathode <strong>quantum
-        efficiency</strong> â€” the fraction of arriving photons that eject a photoelectron at
-        all â€” is typically only 20â€“40% at its peak, and falls off sharply outside the band the
-        cathode material was chosen for${cite(1)}. A silicon photodiode reaches 80â€“90%
-        over a much broader range. The PMT wins not by converting more photons, but by
-        amplifying the few it does convert before anything can bury them.</p>
-        <p>Photocathode material sets the accessible band much as semiconductor bandgap does
-        for a photodiode: bialkali cathodes peak in the blue and are effectively blind past
-        ~650&nbsp;nm, while extended-red and multialkali types reach into the near
-        infrared${cite(1)}. Beyond roughly 900&nbsp;nm there is no practical photocathode at
-        all, which is why near-infrared work returns to semiconductor detectors.</p>
-        <p>Two practical constraints matter on a real bench. Output is linear only up to a
-        maximum anode current; beyond it, space charge in the last dynode stages compresses
-        the response and a brighter input stops reading brighter. And a PMT exposed to room
-        light while powered can be <strong>permanently damaged</strong> â€” which is why they
-        live in light-tight housings, are interlocked to the room lights in some labs, and are
-        always powered down before anything is opened.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The PMT reads the same relative ray weight every detector in this palette does,
-        then applies an <strong>electron gain</strong> to it. Gain is set as a power of ten,
-        from Ã—1 to Ã—10â·, matching how a real tube's gain-versus-voltage curve is specified.
-        This is the element to reach for when a signal is genuinely faint: specimen
-        fluorescence collected through an objective typically arrives carrying somewhere
-        around 10â»â´ to 10â»Â³ of relative weight, which a plain photodetector reports as a
-        number too small to compare against anything. A gain of 10âµ lifts exactly that
-        signal into a readable range.</p>
-
-        <h3>Speed, and the transit-time limit</h3>
-        <p>Pulsed light gives the PMT the same scope trace the
-        <a href="../detector/">photodetector</a> draws, with the same Time interval, Time
-        offset and Sync controls â€” and the same convolution with its own
-        <strong>Response time</strong>, which here defaults to 2&nbsp;ns. That default is not
-        arbitrary: a photomultiplier's speed is limited by the <em>spread</em> in how long
-        electrons take to cross the tube, which for a standard electrode design can put the
-        rise time above 10&nbsp;ns, while optimized designs reach well below
-        1&nbsp;ns${cite(2)}. A slow tube on a fast train does not draw a blurred train â€” it
-        draws a flat level, because it never resolved the pulses at all.</p>
-        <h3>The dark floor, and why gain cannot beat it</h3>
-        <p>The <strong>equivalent dark input</strong> is the tube's own dark current
-        expressed as the light level that would produce the same output â€” referred to the
-        photocathode, so it sits alongside the signal and is amplified by the same gain. The
-        panel reports both the amplified dark floor and the <strong>signal / dark</strong>
-        ratio, and that ratio is deliberately <em>independent of gain</em>: sweep the gain
-        across every decade it offers and the ratio does not move at all. Lower the dark
-        floor, or collect more light, and it does. That is the single most useful thing this
-        model has to say.</p>
-        <p>The state line answers the questions in the order they matter. <strong>Saturated</strong>
-        comes first, because once the output clips at the configured maximum the number is no
-        longer trustworthy at all â€” a brighter input reads the same as a dimmer one.
-        Otherwise it reports whether the signal clears the dark floor:
-        <strong>below dark floor</strong> when the tube's own noise is larger than the signal,
-        <strong>marginal</strong> when it is less than three times larger, and
-        <strong>linear range</strong> when it is comfortably measurable.</p>`,
-      formulas: [
-        { tex: '\\text{output} = \\min(\\text{max}, \\; \\Sigma w \\cdot G), \\qquad \\frac{S}{D} = \\frac{\\Sigma w}{d}', caption: 'Amplified output clips at the configured maximum. The signal-to-dark ratio divides the summed ray weight by the equivalent dark input â€” G cancels, which is exactly the point.' },
-      ],
-      limitations: `<p>Gain here is a plain multiplier on relative ray weight, not a dynode
-        cascade: there is no supply voltage, no stage count, no Î´, and no gain drift with
-        voltage or temperature. The dark floor is a fixed threshold you set, not a rate â€” the
-        tracer is deterministic, so nothing fluctuates, there are no dark <em>counts</em> to
-        integrate, and no shot noise on the signal itself. That means the reported ratio is a
-        clean comparison of two configured levels, not a predicted measurement SNR, and it
-        will never reproduce the âˆšN behaviour that governs how long a real experiment must
-        integrate.</p>
-        <p>Nothing about the photocathode is modelled: no quantum efficiency, no spectral
-        response, and no blindness past the red cutoff â€” so a PMT here reads 900&nbsp;nm light
-        exactly as readily as 400&nbsp;nm, which no real bialkali tube would. Saturation is a
-        hard clip rather than the gradual space-charge compression of a real tube, there is no
-        afterpulsing, no dead time, no dynode fatigue, and no damage from overexposure.
-        Compare readings between configurations, never as an absolute count rate.</p>`,
-    },
-    related: ['detector', 'camera', 'powermeter', 'sample', 'objective'],
-    citations: [
-      { label: 'Hamamatsu â€” Photomultiplier Tubes: Basics and Applications (photocathode quantum efficiency and spectral response)', url: 'https://www.hamamatsu.com/content/dam/hamamatsu-photonics/sites/documents/99_SALES_LIBRARY/etd/PMT_handbook_v4E.pdf' },
-      { label: 'R. Paschotta, â€œPhotomultipliers,â€ RP Photonics Encyclopedia â€” electron transit time spread, and the rise time that follows from it', url: 'https://www.rp-photonics.com/photomultipliers.html' },
-    ],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Photon Counting', url: 'https://www.rp-photonics.com/photon_counting.html' },
-    ],
-  },
-
-  {
-    type: 'powermeter',
-    summary: "Reports optical power from the configured source watts and traced losses, for comparing how filters, splitters, and apertures affect power at the sensor.",
-    title: 'Power meter',
-    category: 'Detectors',
-    realWorld: {
-      html: `
-        <p>A <a href="../detector/">photodetector</a> reports a photocurrent; a power meter
-        reports <strong>watts</strong>. The difference is calibration: a power meter's sensor
-        has a known, measured relationship between what it outputs and the optical power that
-        produced it, so the console can show an absolute number instead of an arbitrary one. Every
-        commercial power meter is really two parts â€” a sensor head and a console that knows how
-        to read it â€” and the sensor is where the real design tradeoff lives.</p>
-        <p>A <strong>photodiode sensor</strong> is the same physical device as a plain
-        photodetector, just factory-calibrated: its responsivity <span class="w">R(Î»)</span>
-        is measured at each wavelength, so the console can recover power from photocurrent.
-        That calibration is the whole catch â€” <span class="w">R(Î»)</span> is not flat, exactly as
-        on the <a href="../detector/">photodetector page</a>, so the meter has to be told which
-        wavelength it's reading. Set the wrong one and the number is wrong by the ratio of the
-        two responsivities, silently.</p>`,
-      formulas: [
-        { tex: 'P = \\frac{I_{\\text{pd}}}{R(\\lambda)}', caption: 'A photodiode sensor recovers power by dividing the measured photocurrent by the responsivity at the configured wavelength. The reading is only as correct as that wavelength setting.' },
-      ],
-      html2: `
-        <p>A <strong>thermal sensor</strong> â€” a thermopile, or a pyroelectric detector for
-        single pulses â€” sidesteps that problem entirely. Incident light is absorbed by a black
-        coating and converted to heat, and the sensor reads the resulting temperature rise (or,
-        for a pyroelectric, the heat pulse from one shot). Absorption into heat is, to good
-        approximation, the same process at every wavelength, so a thermal sensor's calibration
-        holds across a broad spectral range with no wavelength setting to get wrong${cite(1)}.
-        The tradeoff is speed: a thermopile takes seconds to reach thermal equilibrium, against
-        microseconds for a photodiode, and needs more power to produce a measurable temperature
-        rise at all â€” which is why thermal sensors dominate at higher powers and photodiode
-        sensors dominate at low ones.</p>
-        <p>Either sensor has a hard <strong>damage threshold</strong>. A photodiode sensor can
-        saturate or be burned out by too much continuous power â€” or, just as easily, by the
-        instantaneous peak power of a pulsed beam whose <em>average</em> power looks perfectly
-        safe. A thermal sensor's coating can be scorched by a tightly focused beam even within
-        its rated average-power range. Every real power meter publishes a maximum power (and
-        often a maximum power <em>density</em>) that the reading itself gives no warning of
-        approaching.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The power meter measures the same relative ray weight every detector in this
-        palette does. On its own â€” selected in the canvas, read from its inspector panel â€” that
-        relative number is all it shows, identical to a plain photodetector. The Watts reading
-        appears once it drives a <a href="../display/">detector screen</a> ("Connect to a
-        detector screen" in its inspector does this in one click).</p>
-        <p>That figure is built per source. Every source launches rays whose weights sum to
-        one, and each interaction along the way scales that weight by what it actually
-        transmits â€” a beamsplitter's ratio, a filter's transmission, an aperture that clips
-        part of the beam, a chopper's duty cycle, a nonlinear crystal's conversion efficiency.
-        The weight that survives to the sensor face is therefore the whole source-to-detector
-        efficiency chain in one number, and multiplying it by that source's
-        <strong>Average power (W)</strong> gives the watts it delivered here. Several sources
-        landing on the same meter simply add:</p>`,
-      formulas: [
-        { tex: 'P_{\\text{det}} = \\sum_{s\\,\\to\\,\\text{det}} \\eta_{s}\\, P_{s}, \\qquad \\eta_{s} = \\!\\!\\sum_{\\text{rays from } s} \\!\\! w_{\\text{ray}}', caption: 'Only sources whose light actually arrives contribute. Î· is the surviving fraction of that source\'s own emitted power, so a 100 mW laser behind two filters passing 50% and 25% reads 12.5 mW, and a second laser on the same meter adds its own term.' },
-      ],
-      html2: `
-        <p>Attribution follows the light through wavelength changes too. When a specimen
-        fluoresces, the emission is new light at a new colour, but its power is still a
-        fraction of the laser that pumped it â€” so it is charged to that laser, not to the
-        specimen. In the <a href="../pmt/">PMT</a>'s fluorescence example the meter would read
-        the pump power times the roughly 2&times;10â»Â³ that survives excitation focusing,
-        conversion efficiency, collection solid angle, and the emission filter.</p>
-        <p>If some of the light arriving carries no power rating at all â€” the point source has
-        no Average power field â€” the screen reports the rated contribution and marks the
-        reading <em>+ unrated source</em>, because that number is then a floor rather than the
-        total. When nothing arriving is rated, it falls back to showing relative weight.</p>`,
-      limitations: `<p>The conversion is wavelength-flat: one watt of 400&nbsp;nm and one watt
-        of 1550&nbsp;nm read identically, so the element behaves like an idealized broadband
-        thermal sensor no matter which real sensor type you have in mind, and there is no way
-        to select one or to get the wavelength-setting error that a real photodiode meter
-        punishes you for. Power is average power only â€” a pulsed and a CW source of the same
-        average read the same, with no peak-power figure and no notion of a pulsed beam
-        damaging a sensor a CW beam of equal average power would not.</p>
-        <p>There is no damage threshold, no saturation, no noise floor, and no response time,
-        so nothing distinguishes a thermopile's seconds-long settling from a photodiode's
-        microseconds. The watts are exact arithmetic on the traced efficiencies rather than a
-        measurement: they inherit every idealization upstream of them â€” hard-edged filter
-        passbands, flat per-surface transmission instead of Fresnel losses, no scatter and no
-        absorption that the tracer was not told about â€” so treat the number as what this
-        idealized bench delivers, not as what a real one would.</p>`,
-    },
-    related: ['detector', 'pmt', 'display', 'cwlaser'],
-    citations: [
-      { label: 'RP Photonics Encyclopedia â€” Thermal Detectors', url: 'https://www.rp-photonics.com/thermal_detectors.html' },
-    ],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Optical Power Meters', url: 'https://www.rp-photonics.com/optical_power_meters.html' },
-      { label: 'RP Photonics Encyclopedia â€” Photodiodes', url: 'https://www.rp-photonics.com/photodiodes.html' },
-    ],
-  },
-
-  {
-    type: 'wavefrontdetector',
-    summary: "Estimates beam convergence from ray angle versus position, reporting whether light is collimated, converging, or diverging and the corresponding full cone angle.",
-    title: 'Wavefront detector',
-    category: 'Detectors',
-    realWorld: {
-      html: `
-        <p>Every other detector on this bench answers <em>how much</em> light arrived, and
-        maybe what colour it was. A wavefront sensor answers a different question entirely:
-        <strong>what shape</strong> is the light. A beam's wavefront is the surface joining
-        points of equal phase, and it is always perpendicular to the local direction of
-        travel. A perfectly collimated beam has flat wavefronts; a beam converging to a focus
-        has spherical ones centred on that focus. Real optics never produce either exactly â€”
-        aberrations, thermal lensing, atmospheric turbulence and mounting stress all leave the
-        wavefront misshapen, and that misshape is what limits how tightly a beam can be
-        focused.</p>
-        <p>You cannot photograph a wavefront. Detectors respond to intensity, and phase
-        information is lost the instant light is absorbed. So every wavefront sensor works
-        indirectly, by converting phase structure into something an intensity detector
-        <em>can</em> see. The <strong>Shackâ€“Hartmann sensor</strong> does it by measuring
-        direction.</p>
-
-        <h3>From Hartmann's mask to Shack's lenslets</h3>
-        <p>The lineage starts with a mask. In 1904 Johannes Hartmann tested telescope optics
-        by covering the aperture with a screen of holes and photographing where each pencil of
-        light landed${cite(1)} â€” displaced spots meant the rays were not going where a perfect
-        optic would send them. The method worked but wasted almost all the light and gave
-        fuzzy shadow spots that were hard to locate precisely.</p>
-        <p>In the late 1960s Roland Shack and Ben Platt made the change that turned it into an
-        instrument: they replaced each hole with a small <strong>lenslet</strong>${cite(1)}.
-        A hole casts a shadow; a lenslet <em>focuses</em>. The array now uses essentially all
-        the incident light, and each sub-aperture produces a tight, bright spot whose centroid
-        can be located to a small fraction of a pixel. That single substitution is what makes
-        the modern sensor both efficient and precise.</p>
-
-        <h3>What the spots actually measure</h3>
-        <p>Each lenslet samples one small patch of the incoming wavefront. Over a patch that
-        small the wavefront is essentially a tilted plane, and a tilted plane wave focuses to a
-        spot displaced from the lenslet's axis in proportion to that tilt. With lenslet focal
-        length <span class="w">f</span>, a local wavefront slope <span class="w">Î¸</span>
-        moves the spot by</p>`,
-      formulas: [
-        { tex: '\\Delta x = f\\,\\theta = f\\,\\frac{\\partial W}{\\partial x}', caption: 'Spot displacement measures the local gradient of the wavefront W, not the wavefront itself. Every lenslet returns one slope sample; the surface has to be reconstructed from the whole map of them.' },
-      ],
-      html2: `
-        <p>So a Shackâ€“Hartmann sensor is fundamentally a <strong>gradient</strong> sensor. It
-        returns an array of local slopes, and the wavefront is recovered afterwards by
-        integrating them â€” either zonally, stitching patch to patch, or modally, by
-        least-squares fitting an orthogonal set such as the <strong>Zernike
-        polynomials</strong>, whose low-order terms are the familiar named aberrations: tilt,
-        defocus, astigmatism, coma, spherical. Reporting a beam as "0.2 waves RMS with 0.15
-        waves of coma" means exactly this fit was performed on the slope map.</p>
-
-        <h3>The tradeoff every design lives with</h3>
-        <p>Two numbers fight each other. <strong>Sensitivity</strong> improves with lenslet
-        focal length, since a longer <span class="w">f</span> converts the same small slope
-        into a larger, more measurable displacement. <strong>Dynamic range</strong> works the
-        other way: a spot must stay inside its own sub-aperture cell to remain attributable to
-        its lenslet, so the largest measurable slope is roughly the lenslet pitch
-        <span class="w">p</span> over twice the focal length${cite(2)}.</p>`,
-      formulas2: [
-        { tex: '\\theta_{\\max} \\approx \\frac{p}{2f}, \\qquad \\delta\\theta_{\\min} \\approx \\frac{\\delta x_{\\text{centroid}}}{f}', caption: 'Longer lenslets measure smaller slopes but tolerate a narrower range of them. Finer spatial sampling means smaller p, which shortens f as well â€” so resolution, sensitivity and dynamic range cannot all be maximised at once.' },
-      ],
-      html3: `
-        <p>Spatial resolution is a third constraint: the wavefront is only sampled once per
-        lenslet, so structure finer than the pitch is simply averaged away. Conventional
-        refractive arrays sit around a hundred lenslets per square millimetre, which is why
-        classical Shackâ€“Hartmann sensors suit smooth, slowly varying wavefronts and not sharply
-        structured ones. Recent work replaces the refractive lenslets with
-        <a href="../metasurface/">metasurfaces</a>, which set phase by subwavelength structure
-        rather than by curvature and so decouple the packing density from the focal length: a
-        2024 demonstration reached a sampling density of 5963&nbsp;lenslets/mmÂ² with an 8Â°
-        acceptance angle, and used it for single-shot phase imaging of biological
-        tissue${cite(3)}.</p>
-        <p>One limit is structural rather than technical. Because the instrument measures a
-        gradient, a genuine <strong>discontinuity</strong> in the wavefront is invisible to
-        it${cite(1)} â€” a step or a branch point has no finite slope to sample, so no amount of
-        sensitivity or sampling density recovers it.</p>
-
-        <h3>Where they are used</h3>
-        <p>In <strong>adaptive optics</strong>, a wavefront sensor and a
-        <a href="../dm/">deformable mirror</a> form a closed loop: the sensor measures the
-        distortion, the mirror applies its negative, and an astronomical telescope recovers
-        near-diffraction-limited imaging through atmospheric turbulence. The same loop
-        sharpens deep imaging in multiphoton microscopy, where the specimen itself is the
-        aberrating medium. In <strong>ophthalmology</strong>, aberrometry of the eye's own
-        wavefront is what makes wavefront-guided LASIK and PRK possible${cite(1)}. And in the
-        laboratory, wavefront sensors characterise laser beam quality and
-        <span class="w">MÂ²</span>, verify collimation, test optical surfaces in transmission or
-        double-pass reflection, and align systems in real time${cite(4)}.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>OpticalSetup traces rays, and a ray is by definition perpendicular to the
-        wavefront â€” so ray direction <em>is</em> local wavefront slope, already available
-        without any lenslets. The wavefront detector uses that directly: at its sensor face it
-        takes every arriving ray's height <span class="w">h</span> across the face and its
-        angle <span class="w">Î¸</span> to the face normal, and least-squares fits a straight
-        line through the resulting <span class="w">Î¸(h)</span>.</p>
-        <p>That fit is the measurement. Its <em>intercept</em> is the mean tilt of the whole
-        bundle and is discarded, which is why steering the beam in at an angle does not change
-        the reading â€” a tilted flat wavefront is still flat. Its <em>gradient</em>
-        <span class="w">dÎ¸/dh</span> is the wavefront curvature, and its sign says which way:
-        negative for a converging beam, positive for a diverging one, and a magnitude below
-        0.05Â° across the beam reports as collimated.</p>`,
-      formulas: [
-        { tex: '\\frac{d\\theta}{dh} = \\frac{1}{R}, \\qquad \\Theta_{\\text{full}} = \\left|\\frac{d\\theta}{dh}\\right| \\cdot D', caption: 'The fitted gradient is the reciprocal of the wavefront radius of curvature R, and multiplying it by the illuminated diameter D gives the full convergence or divergence cone angle â€” the number the panel reports.' },
-      ],
-      html2: `
-        <p>Both quantities come out exact rather than approximate. A 20&nbsp;mm beam through
-        an <span class="w">f</span>&nbsp;=&nbsp;100&nbsp;mm lens gives a measured full angle of
-        11.43Â°, against 11.42Â° from the geometry; and the fitted
-        <span class="w">1/R</span> tracks the signed distance to focus to the tenth of a
-        millimetre â€” âˆ’20.0&nbsp;mm when the sensor face sits 80&nbsp;mm past that lens, +5.0&nbsp;mm
-        when it sits 5&nbsp;mm beyond the focus. The reported cone angle is constant on both
-        sides of the focus, as it should be: the beam narrows and re-expands, but the cone it
-        belongs to does not change.</p>`,
-      limitations: `<p>A straight line through <span class="w">Î¸(h)</span> has exactly one
-        shape term in it, and that term is <strong>defocus</strong>. Tilt is fitted and thrown
-        away; everything above defocus â€” astigmatism, coma, spherical aberration, and every
-        higher Zernike â€” has nowhere to go. Send a deliberately aberrated beam in (a fast
-        singlet with visible spherical aberration, say) and the fan of ray angles is still
-        collapsed to one average slope and reported as a single clean convergence angle. The
-        aberration is precisely the departure from that straight line, and it is exactly what
-        the fit discards. This instrument tells you whether a beam is converging, diverging or
-        collimated, and how hard; it does not tell you whether it is any good.</p>
-        <p>Some of that is structural rather than unimplemented. The tracer is a 2D meridional
-        section with one transverse axis, so astigmatism â€” different curvature in
-        <span class="w">x</span> and <span class="w">y</span> â€” is not representable in the
-        first place, and neither is any azimuthal aberration. There is also no sensor:
-        no lenslet array, no spots, no centroiding, no pixel noise, and therefore none of the
-        sensitivity-versus-dynamic-range tradeoff that dominates real instrument design. Every
-        arriving ray is used at full precision, so there is no maximum measurable slope and no
-        minimum detectable one.</p>
-        <p>The reading is geometric throughout: an angle in degrees, never an optical path
-        difference in waves, and with no wavelength dependence at all. There is no RMS or
-        peak-to-valley wavefront error, no Zernike decomposition, and no Strehl ratio. Finally,
-        the fit needs at least two rays at different heights â€” a single ray, or a source in
-        line mode, has no gradient to measure and reports collimated by default rather than
-        declining to answer.</p>`,
-    },
-    related: ['dm', 'detector', 'camera', 'lens', 'metasurface'],
-    citations: [
-      { label: 'Shackâ€“Hartmann wavefront sensor â€” Wikipedia (Hartmannâ€™s 1904 mask, Shack and Plattâ€™s lenslet substitution, insensitivity to wavefront discontinuities, ophthalmic and astronomical use)', url: 'https://en.wikipedia.org/wiki/Shack%E2%80%93Hartmann_wavefront_sensor' },
-      { label: 'RP Photonics Encyclopedia â€” Shackâ€“Hartmann Wavefront Sensors (lenslet geometry, sensitivity and dynamic-range limits)', url: 'https://www.rp-photonics.com/shack_hartmann_wavefront_sensors.html' },
-      { label: 'Go et al., â€œMeta Shackâ€“Hartmann wavefront sensor with large sampling density and large angular field of view,â€ Light: Science & Applications 13, 187 (2024)', url: 'https://doi.org/10.1038/s41377-024-01528-9' },
-      { label: 'Axiom Optics â€” Wavefront sensing applications (optical testing, beam diagnostics and MÂ², adaptive optics, real-time alignment)', url: 'https://www.axiomoptics.com/application/wavefront-sensing-aaplications/' },
-    ],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Adaptive Optics', url: 'https://www.rp-photonics.com/adaptive_optics.html' },
-      { label: 'RP Photonics Encyclopedia â€” Wavefronts', url: 'https://www.rp-photonics.com/wavefronts.html' },
-    ],
-  },
-
-  {
-    type: 'camera',
-    summary: "Records a one-dimensional intensity profile across its pixels, including interference from coherent beams.",
-    title: 'Camera',
-    category: 'Detectors',
-    realWorld: {
-      html: `
-        <p>A consumer camera is built to produce a pleasing picture. A scientific camera is
-        built to produce a <em>number</em>: one that is proportional to how many photons
-        arrived at a given place, by a known factor, with a known uncertainty. Everything
-        that distinguishes the sensors below follows from that one change of purpose.</p>
-        <p>The chain is short and every link loses something. Photons land on silicon and a
-        fraction of them free an electron â€” that fraction is the <em>quantum efficiency</em>.
-        The freed electrons accumulate in a potential well under each pixel for the duration
-        of the exposure. At the end the accumulated charge is converted to a voltage,
-        amplified, and digitised into an integer count. Read that integer back through the
-        chain and you have an estimate of the photon flux, plus everything the chain added
-        on the way.</p>`,
-      formulas: [
-        { tex: 'S_{\\text{ADU}} = \\frac{\\eta\\, N_{\\gamma} + D t}{g} + \\text{offset}', caption: 'What a pixel actually reports: incident photons N_Î³ scaled by quantum efficiency Î·, plus dark current D accumulated over exposure t, divided by the gain g in electrons per count.' },
-        { tex: '\\sigma_{\\text{total}} = \\sqrt{\\underbrace{\\eta N_{\\gamma}}_{\\text{shot}} + \\underbrace{D t}_{\\text{dark}} + \\underbrace{\\sigma_{\\text{read}}^{2}}_{\\text{read}}}', caption: 'The three noise sources add in quadrature, in electrons. Shot noise is the photons themselves and cannot be engineered away; the other two are what a camera is designed to minimise.' },
-      ],
-      html2: `
-        <p>Because shot noise grows as the square root of the signal, it dominates in bright
-        light and read noise dominates in dim light. That single fact explains why scientific
-        cameras are specified the way they are, and why the three architectures below
-        divide the work between them.</p>
-        <h3>CCD</h3>
-        <p>A charge-coupled device shifts the charge packet from pixel to pixel across the
-        chip to a single readout node, where one amplifier converts every pixel in
-        turn${cite(1)}. One amplifier for the whole sensor is what makes a CCD so uniform â€”
-        there is no pixel-to-pixel variation in gain or offset to calibrate, because every
-        pixel is measured by the same electronics. Back-thinned devices, illuminated from
-        the rear so light does not cross the wiring layers, reach a quantum efficiency
-        around 95% near 550&nbsp;nm${cite(1)}. The cost is speed: serialising millions of
-        pixels through one amplifier is slow, and reading faster raises the read noise.</p>
-        <h3>EMCCD</h3>
-        <p>The electron-multiplying CCD, introduced around 2001, attacks read noise by
-        amplifying the signal <em>before</em> it reaches the amplifier. Charge is clocked
-        through a long multiplication register â€” 536 elements in the e2v CCD97 â€” where a
-        high voltage gives each transfer a small probability of impact ionisation, so the
-        packet grows geometrically${cite(1)}. With 30 electrons of read noise and a gain of
-        100, the noise referred back to the input is 0.3 electrons.</p>
-        <p>The catch is that multiplication is itself stochastic. Each electron either does
-        or does not multiply at each stage, and that randomness adds a noise contribution of
-        its own â€” an excess noise factor of âˆš2, conventionally handled by treating the camera
-        as though its quantum efficiency were <em>halved</em>${cite(1)}${cite(3)}. A 95% QE
-        back-illuminated EMCCD is therefore quoted with an effective QE near 0.48 when it is
-        run at high gain${cite(3)}. It buys the ability to count almost nothing at the price
-        of counting everything else less well.</p>
-        <h3>sCMOS</h3>
-        <p>Scientific CMOS reverses the CCD's arrangement: each pixel carries its own
-        amplifier, and each column its own analogue-to-digital converter, so millions of
-        pixels are converted in parallel rather than in series${cite(1)}. The technology
-        arrived in 2009 from a consortium of Fairchild Imaging, Andor and PCO, combining
-        properties that had not previously coexisted â€” read noise near one electron,
-        quantum efficiency of 60â€“70% or more, high frame rate, high resolution and wide
-        dynamic range at once${cite(2)}.</p>
-        <p>A current sensor reads about 5 megapixels at 100 frames per second with an
-        effective read noise around one electron and a peak QE of 82%, linear across almost
-        four orders of magnitude${cite(1)}. Read noise is not even uniform: on a measured
-        sCMOS sensor the median is around 0.9&nbsp;electrons, and more than half the pixels
-        contribute either one noise electron or none in a given frame${cite(2)}. The price of
-        per-pixel amplifiers is that every pixel has its own gain, offset and dark current,
-        so a scientific camera ships with a per-pixel calibration applied in firmware â€”
-        which is a large part of what separates a scientific sensor from the same silicon
-        sold as an industrial one${cite(3)}.</p>
-        <h3>Which one wins</h3>
-        <p>Less obvious than the datasheets suggest. A controlled comparison that put an
-        sCMOS, an EMCCD and an industry-grade CMOS camera on the two arms of one 50/50
-        beamsplitter â€” so all three saw the same photons frame by frame â€” found the sCMOS
-        delivering 1.5Ã— to 2.4Ã— the signal-to-noise of the industrial CMOS, but the
-        industrial CMOS <em>slightly outperforming</em> the EMCCD, by 1.2Ã— to 1.4Ã—, at the
-        photon levels of fluorescence fluctuation imaging${cite(3)}. The EMCCD's higher
-        quantum efficiency could not compensate for the excess noise of its multiplication
-        stage. EMCCDs remain the right answer where the photon count really is very low â€”
-        spinning-disk confocal is the standard example${cite(1)}${cite(3)} â€” while sCMOS
-        wins wherever field of view and speed matter, which is most of super-resolution and
-        light-sheet imaging${cite(1)}.</p>
-        <p>The same comparison found one thing that no datasheet reports: the industrial
-        camera introduced spurious correlations between neighbouring pixels, which the
-        calibrated scientific sensors did not${cite(3)}. For any method that reads
-        <em>correlations</em> rather than intensities, that is disqualifying regardless of
-        how good the SNR looks.</p>
-        <h3>Full well capacity and bit depth</h3>
-        <p>Two numbers set the range of a scientific camera, and they are routinely
-        confused with each other.</p>
-        <p>The <strong>full well capacity</strong> is a property of the silicon: the maximum
-        number of charge carriers a pixel can hold before it overflows${cite(2)}. Fill it and
-        the pixel saturates â€” further photons are simply not recorded, and on a CCD the
-        excess charge can spill into neighbours as blooming. It scales with pixel area,
-        which is one of the real reasons EMCCDs use large 16&nbsp;Âµm pixels where sCMOS uses
-        6.5&nbsp;Âµm${cite(1)}${cite(3)}. Typical sCMOS sensors hold around 30&nbsp;000
-        electrons${cite(2)}.</p>
-        <p>Divide that ceiling by the smallest signal the camera can distinguish â€” its read
-        noise â€” and you have the <strong>dynamic range</strong>, the ratio of the brightest
-        to the faintest thing measurable in one exposure${cite(2)}.</p>`,
-      formulas2: [
-        { tex: '\\mathrm{DR} = \\frac{N_{\\text{well}}}{\\sigma_{\\text{read}}} \\qquad\\Longrightarrow\\qquad N_{\\text{bits}} \\ge \\log_{2}\\mathrm{DR}', caption: 'Intra-scene dynamic range, and the number of bits an ADC needs before it stops being the limiting element. Published sCMOS figures run from about 1:5000 to 1:33 000.' },
-      ],
-      html3: `
-        <p><strong>Bit depth</strong> is a property of the electronics, not the silicon: how
-        many discrete levels the converter divides the signal into. It does not create
-        dynamic range, it only decides whether the sensor's own range survives digitisation.
-        The link between the two is the <em>gain</em>, in electrons per count.</p>
-        <p>Take a sensor holding 30&nbsp;000 electrons with 1.1 electrons of read noise â€”
-        a dynamic range near 27&nbsp;000:1${cite(2)}. Since logâ‚‚(27&nbsp;000) â‰ˆ 14.7, a
-        16-bit converter carries it comfortably, at about 0.46 electrons per count. A 12-bit
-        converter has only 4096 levels, so each count is worth about 7.3 electrons: the
-        quantisation step alone is now several times the read noise, and the low-light
-        performance the sensor was built for has been discarded in the last stage of the
-        chain. More bits than the dynamic range justifies is equally pointless â€” it digitises
-        noise into finer and finer slices without adding information.</p>
-        <p>The engineering difficulty is that a fast converter with many bits is itself
-        noisy. The solution now standard in sCMOS is to stop trying: each column carries
-        <em>two</em> amplifierâ€“converter pairs, one high-gain and low-noise for small
-        signals, one low-gain and high-capacity for large ones, sampling every pixel
-        simultaneously and reconstructing one image from both. Two 11-bit converters used
-        this way contribute less noise than a single faster 16-bit converter would, while
-        the combined output still spans a 16-bit range${cite(2)}.</p>
-        <p>One consequence catches people out, and it is a display problem rather than a
-        camera one: 16-bit data has to be squeezed into the 8-bit range of an ordinary
-        monitor before anyone can look at it, so choosing which part of the range to show is
-        a decision the user has to make and can easily make badly${cite(2)}.</p>
-        <p>A related trap appears whenever two cameras are compared by swapping them onto
-        the same port. If their pixel sizes differ, they are not seeing the same thing: a
-        signal that filled one 12&nbsp;Âµm pixel is divided among four 6&nbsp;Âµm pixels, so
-        the smaller-pixel camera reports a quarter of the signal per pixel and looks less
-        sensitive than it is${cite(2)}. A fair comparison matches the projected pixel size
-        through the optics, which is exactly what the SOFI study did â€” it set each camera's
-        tube lens so all three landed within 97â€“102&nbsp;nm at the sample${cite(3)}.</p>
-        <p>Finally, most scientific cameras are monochrome by design, and deliberately so. A
-        colour sensor puts a mosaic of filters over the pixels â€” the Bayer pattern gives half
-        the pixels to green and a quarter each to red and blue â€” so each pixel measures only
-        about a third of the spectrum and the missing values are interpolated, a step that
-        introduces artefacts of its own and is usually accompanied by a deliberate blur
-        filter to suppress them${cite(4)}. For quantitative work, the wavelength is selected
-        by a filter in front of an unfiltered sensor instead: every pixel then measures the
-        same band, with no interpolation and no sampling artefacts. It is worth noting that
-        this is also why silicon's response varies so strongly across the spectrum â€” short
-        wavelengths are absorbed within a fraction of a micrometre of the surface while red
-        and near-infrared light penetrates several micrometres before being absorbed, if it
-        is absorbed at all${cite(4)}.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The Camera measures a <strong>one-dimensional intensity profile</strong> across
-        its sensor face. Its two geometric settings are the sensor height and the number of
-        pixels that height is divided into; each ray that lands is deposited into the pixels
-        its ray tube actually covers, rather than being counted at a single point, so a beam
-        that falls between two pixel centres still contributes to both.</p>
-        <p>That is what makes the profile a measurement rather than a histogram of ray
-        arrivals: the number under it is conserved, and a beam clipped by an aperture
-        upstream reports exactly the fraction that survived. The reading is reported as
-        Î£w, a fraction of one source's emitted power, and a linked Detector screen draws the
-        profile.</p>`,
-      formulas: [],
-      html2: `
-        <p>When the interference option is on, the camera resolves fringes formed by a sized
-        monochromatic CW laser whose routes recombine with a modelled carrier phase â€” the
-        two ports of an interferometer come out complementary, and a phase object in one arm
-        writes a real pattern across the pixels. Where a route's phase cannot be
-        reconstructed, the camera falls back to depositing intensity conservatively rather
-        than inventing a fringe, and says so in its reading.</p>
-        <p>Profile height can track the reading absolutely, so a port carrying a tenth of
-        the light draws a tenth as tall, or auto-fit to its own peak when only the shape
-        matters.</p>`,
-      limitations: `<p>This is a geometric intensity model, not a sensor model. Nothing above
-        about noise, sensitivity or dynamic range is simulated: there is no quantum
-        efficiency, so every ray is detected with equal weight at every wavelength; no read
-        noise, dark current, or shot noise, so repeating an exposure gives an identical
-        answer; and no full well capacity, so a pixel never saturates, never blooms, and
-        responds linearly without limit. There is no bit depth either â€” readings are
-        continuous numbers, never quantised into counts â€” which means none of the
-        full-well-versus-gain reasoning above can be demonstrated here.</p>
-        <p>The sensor is one-dimensional, matching the tracer's 2D meridional plane, so
-        there is no second transverse axis and no image in the ordinary sense: a
-        â€œcamera imageâ€ here is a line profile, not a picture. It is monochrome with no
-        colour filter array, has no exposure time, no frame rate, and no shutter â€” global or
-        rolling â€” so the rolling-shutter distortions and synchronisation problems that
-        dominate real fast imaging cannot appear. Pixels are perfectly uniform, with no
-        per-pixel gain or offset variation, no hot or blinking pixels, and no inter-pixel
-        crosstalk, which is precisely the set of imperfections that separates camera
-        technologies from one another in practice.</p>`,
-    },
-    related: ['detector', 'pmt', 'display', 'phaseplate', 'bs'],
-    citations: [
-      { label: 'N. Stuurman and R. D. Vale, â€œImpact of new camera technologies on discoveries in cell biology,â€ The Biological Bulletin 231(1), 5â€“13 (2016)', url: 'https://doi.org/10.1086/689587' },
-      { label: 'G. Holst, â€œScientific CMOS camera technology: a breeding ground for new microscopy techniques,â€ Microscopy and Analysis 28(1), S4â€“S12 (2014)', url: 'https://analyticalscience.wiley.com/content/article-do/scientific-cmos-camera-technology-breeding-ground-new-microscopy-techniques' },
-      { label: 'R. Van den Eynde, A. Sandmeyer, W. Vandenberg, S. DuwÃ©, W. HÃ¼bner, T. Huser, P. Dedecker and M. MÃ¼ller, â€œQuantitative comparison of camera technologies for cost-effective super-resolution optical fluctuation imaging (SOFI),â€ Journal of Physics: Photonics 1, 044001 (2019)', url: 'https://doi.org/10.1088/2515-7647/ab36ae' },
-      { label: 'R. F. Lyon and P. M. Hubel, â€œEyeing the camera: into the next century,â€ Proc. IS&amp;T/SID 10th Color Imaging Conference, 349â€“355 (2002)', url: 'https://doi.org/10.2352/CIC.2002.10.1.art00064' },
-    ],
-    resources: [
-      { label: 'Andor / Oxford Instruments â€” Dual Amplifier Dynamic Range (how the split-gain sCMOS readout works)', url: 'https://andor.oxinst.com/learning/view/article/dual-amplifier-dynamic-range' },
-      { label: 'Hamamatsu â€” Photon counting and camera noise fundamentals', url: 'https://camera.hamamatsu.com/jp/en/learns_more/technical_guides.html' },
-    ],
-  },
-  {
-    type: 'phaseplate',
-    summary: "Adds optical path across part of a beam without deflecting it, creating a spatial phase pattern that a supported interferometer can reveal.",
-    title: 'Phase object',
-    category: 'Specimens',
-    realWorld: {
-      html: `
-        <p>Most of what a microscope is pointed at does not absorb light. A living cell in
-        culture medium, a gas flow, a flame, a fibre being drawn, a layer of transparent
-        polymer â€” all of them are close to perfectly clear. Shine light through and almost
-        exactly as much comes out the other side, so a detector that measures intensity
-        sees nothing at all. Such an object is called a <em>phase object</em>: it is
-        invisible not because it fails to affect the light, but because everything it does
-        happens in a quantity ordinary detection throws away.</p>
-        <p>What it does affect is the arrival time. Light slows in a medium of refractive
-        index <span class="w">n</span>, so a thickness <span class="w">t</span> of material
-        with an index different from its surroundings advances or retards the wave that
-        crosses it relative to the wave beside it. The accumulated optical path difference
-        is</p>`,
-      formulas: [
-        { tex: '\\mathrm{OPD} = (n_{\\text{object}} - n_{\\text{medium}})\\, t', caption: 'Optical path difference written by a transparent object of thickness t.' },
-        { tex: '\\Delta\\varphi = \\frac{2\\pi}{\\lambda}\\,\\mathrm{OPD}', caption: 'The phase shift that path difference corresponds to, at vacuum wavelength Î».' },
-      ],
-      html2: `
-        <p>The numbers involved are small and stubbornly invisible. A typical cell is
-        perhaps 5&nbsp;Âµm thick with an index around 1.37 in medium of index 1.33, giving
-        an OPD near 0.2&nbsp;Âµm â€” well under half a wavelength of green light. No amount of
-        contrast stretching recovers it from an intensity image, because the intensity
-        image genuinely does not contain it.</p>
-        <p>Every technique for seeing such an object works the same way underneath:
-        interfere the light that passed through it with a reference that did not, so the
-        phase difference becomes a difference in brightness. Two beams of intensity
-        <span class="w">Iâ‚</span> and <span class="w">Iâ‚‚</span> meeting with a phase
-        difference <span class="w">Î”Ï†</span> give</p>`,
-      formulas2: [
-        { tex: 'I = I_1 + I_2 + 2\\sqrt{I_1 I_2}\\,\\cos\\Delta\\varphi', caption: 'Two-beam interference: the cross term is what carries the phase into intensity.' },
-      ],
-      html3: `
-        <p>Frits Zernike built the first practical instrument on exactly this idea. His
-        phase-contrast microscope splits the light a specimen scatters from the light that
-        passes it undisturbed, retards one against the other by a quarter wave in a ring
-        etched into a glass plate at the back focal plane, and lets them recombine â€” turning
-        a phase object into a bright-and-dark image without staining or killing it. It won
-        the 1953 Nobel Prize in Physics and remains the reason live-cell microscopy is
-        possible at all${cite(1)}.</p>
-        <p>The same principle scales far beyond a microscope. Differential interference
-        contrast interferes each point of the specimen with a slightly sheared copy of
-        itself, so the image reports the phase <em>gradient</em>. Quantitative phase imaging
-        recovers the OPD map as a calibrated number per pixel, which for a cell of known
-        index is essentially a dry-mass measurement. And a Machâ€“Zehnder interferometer with
-        a wind tunnel in one arm turns the density field of a shock wave into countable
-        fringes${cite(2)} â€” the technique that made compressible flow visible long before
-        computational fluid dynamics.</p>
-        <p>The practical rule in every one of these is the same. A phase object shifted by a
-        whole wavelength is indistinguishable from no object at all, because the wave
-        recombines exactly as it started. Contrast is maximised near half a wave, where the
-        recombination is fully destructive, and that is the condition instruments are
-        designed around.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The Phase object writes optical path across the beam without bending it. It has
-        no index and no thickness to configure; it is specified directly by the quantity
-        that matters, the peak path difference it adds, and by how that path is distributed
-        across its clear aperture. Four profiles are available:</p>
-        <ul>
-          <li><strong>Central bar</strong> â€” the middle third of the aperture retarded, the
-          rest untouched. A phase-contrast test object, and the default.</li>
-          <li><strong>Wedge</strong> â€” path rising linearly from one edge to the other, the
-          classic tilted-plate fringe generator.</li>
-          <li><strong>Step</strong> â€” half the aperture retarded, half clear.</li>
-          <li><strong>Curved</strong> â€” quadratic, thickest at the centre and falling to
-          zero at both edges, like a lenslet or a droplet.</li>
-        </ul>
-        <p>Each ray crossing the plate picks up the path its own crossing point calls for,
-        so the phase written across the beam is a real spatial pattern rather than a single
-        number. Recombine that arm against a reference and the pattern becomes intensity â€”
-        which is the whole reason the element exists. The default is a central bar of
-        0.27&nbsp;Âµm, half a wave at 532&nbsp;nm: the phase-contrast condition.</p>`,
-      formulas: [
-        { tex: 'N_{\\text{fringes}} = \\frac{\\mathrm{OPD}_{\\text{peak}}}{\\lambda}\\times\\frac{d_{\\text{beam}}}{d_{\\text{aperture}}}', caption: 'What the inspector reports as â€œFringes across the beamâ€: only the illuminated part of the profile is written onto the light.' },
-      ],
-      html2: `
-        <p>Two behaviours surprise people, and both are real optics rather than
-        simplifications.</p>
-        <p><strong>The profile spans the clear aperture, not the beam.</strong> A narrow
-        beam through a wide wedge samples only a short section of the ramp and picks up an
-        almost uniform delay â€” a piston, not a tilt, and pistons produce no fringes. Match
-        the aperture to the beam and the full profile is written. The inspector's â€œFringes
-        across the beamâ€ readout uses the span the trace actually lit, so it reports what
-        the light picks up rather than what the plate could write.</p>
-        <p><strong>Some settings move a port total and some cannot, and the difference is
-        not about strength.</strong> Averaging the two-beam formula across the beam leaves
-        the port at half the light plus a term that swings with the reference arm, and the
-        size of that swing is the length of the mean phasor of the written phase â€”
-        <span class="w">|âŸ¨e<sup>iÎ”Ï†(u)</sup>âŸ©|</span> over the illuminated aperture. When
-        the phases written across the beam cancel as a phasor, the total is pinned at half
-        the light however the reference is set, and the fringes merely slide sideways
-        underneath an unchanging number.</p>
-        <p>That happens at particular settings rather than for particular profiles. A wedge
-        spanning exactly one whole fringe cancels, and so does one spanning two, or twenty;
-        but the same wedge at <em>half</em> a fringe swings harder than anything else here,
-        between 0.19 and 0.81 of the input. A half-aperture step cancels when its step is
-        exactly half a wave, and swings once it is not. The central bar is asymmetric â€” a
-        third of the beam against two thirds â€” so it swings by a third, between 0.67 and
-        0.33, which is why it makes the most legible default. When the current setting
-        genuinely cannot move the total, the readout says <em>total stays put, read the
-        profile</em> rather than leaving the element looking inert.</p>
-        <p>The added path is genuine, not a bookkeeping phase: a pulse crossing the plate
-        arrives later by OPD/c, which a photodetector or autocorrelator downstream will
-        report. And on its own the element is exactly as invisible as its physical
-        counterpart â€” put a detector straight after it at any setting and the reading is
-        unchanged. It takes a reference arm to reveal it.</p>`,
-      limitations: `<p>This is a pure phase screen. It has no absorption and, more
-        significantly, no refraction: a real transparent object with an index step both
-        delays light <em>and</em> bends it, and a strong phase gradient deflects a ray by an
-        angle this element does not apply. The rays leave exactly parallel to how they
-        arrived, carrying only the added path.</p>
-        <p>The profile is one-dimensional across the aperture, matching the tracer's 2D
-        meridional plane â€” there is no second transverse axis, so a true 2D phase map such
-        as a real cell presents cannot be authored. The four shapes are fixed; arbitrary
-        OPD maps, measured phase data, and the Zernike quarter-wave <em>ring</em> at a back
-        focal plane are not available, so the phase-contrast <em>microscope</em> cannot be
-        reproduced as an instrument even though the physics it exploits is here.</p>
-        <p>The path difference is specified in micrometres and held fixed across
-        wavelength, which correctly makes the resulting phase scale as 1/Î» but means the
-        element carries no material dispersion of its own: a real object's index varies with
-        wavelength and its OPD varies with it. Nothing scatters, and there is no partially
-        coherent imaging theory â€” the fringes come from the tracer's coherent recombination,
-        so the contrast a real instrument loses to finite condenser aperture and source
-        extent is not modelled.</p>`,
-    },
-    related: ['sample', 'stage', 'camera', 'bs', 'delayline'],
-    citations: [
-      { label: 'F. Zernike, â€œHow I discovered phase contrast,â€ Science 121(3141), 345â€“349 (1955) â€” the Nobel lecture account of the method', url: 'https://doi.org/10.1126/science.121.3141.345' },
-      { label: 'W. Merzkirch, â€œFlow Visualization,â€ 2nd ed., Academic Press (1987) â€” interferometric density measurement in compressible flow', url: 'https://www.sciencedirect.com/book/9780124913516/flow-visualization' },
-    ],
-    resources: [
-      { label: 'Nikon MicroscopyU â€” Introduction to Phase Contrast Microscopy', url: 'https://www.microscopyu.com/techniques/phase-contrast/introduction-to-phase-contrast-microscopy' },
-      { label: 'RP Photonics Encyclopedia â€” Optical Path Length', url: 'https://www.rp-photonics.com/optical_path_length.html' },
-    ],
-  },
-  {
-    type: 'spectrometer',
-    summary: "Reports the wavelength range, centre wavelength, and bandwidth of arriving light, with a qualitative spectrum for comparing sources and spectral filtering.",
-    title: 'Spectrometer',
-    category: 'Detectors',
-    realWorld: {
-      html: `
-        <p>A spectrometer answers one question: how is this light's power distributed
-        across wavelength? That is enough to characterise a laser or an LED, to check the
-        channels of a wavelength-division-multiplexed link and their signal-to-noise
-        ratios, to measure a component's transmission by comparing spectra taken with and
-        without it, and to read the wavelength-dependent gain and noise figure of a fibre
-        amplifier${cite(1)}.</p>
-        <p>What is worth knowing is that instruments answering that one question are built
-        on several quite different principles, and the principle decides what the
-        instrument is good at${cite(1)}.</p>
-        <h3>Spectrograph</h3>
-        <p>A grating disperses the light and a detector array â€” a photodiode array, or a
-        linear CCD â€” catches all the wavelengths at once. Nothing moves, so acquisition is
-        fast, and the resolution is set by the detector rather than by the optics. The
-        costs are that spatially resolving detectors exist only for limited spectral
-        regions, poorly into the infrared, and that stray light inside the instrument caps
-        the dynamic range${cite(1)}. This is the compact instrument most people mean by
-        "a spectrometer", and the pattern behind the small, inexpensive designs that put a
-        grating and a scanning reflector in a package a few centimetres
-        across${cite(3)}.</p>
-        <h3>Scanning monochromator</h3>
-        <p>Rather than catching every wavelength at once, send the light through a tunable
-        bandpass filter and measure the transmitted power with a single detector, sweeping
-        the filter across the range of interest${cite(1)}. The filter is a grating
-        monochromator â€” Czernyâ€“Turner, typically â€” turned by a precise motor, and the
-        resolution is set by its slit width and grating.</p>
-        <p>This is how high-performance instruments are built, and the reason is dynamic
-        range. One monochromator manages perhaps 30&nbsp;dB, because strong light at one
-        wavelength scatters inside it and lifts the reading everywhere else. Two in series,
-        held on the same wavelength, reach beyond 70&nbsp;dB${cite(1)}. The price is time:
-        a sweep takes longer for finer resolution, and longer again for more sensitivity.</p>
-        <h3>Fourier transform</h3>
-        <p>A Michelson interferometer measures something else entirely â€” the output power
-        against arm-length difference â€” and Fourier transforms it${cite(1)}. Monochromatic
-        light gives a sinusoid whose period is the wavelength, which is how a wavemeter
-        works. Here the resolution is set by how far the arm was scanned, not by any slit:
-        the wavenumber resolution is simply the inverse of the path-difference range, so a
-        15&nbsp;mm scan gives about 10&nbsp;GHz, roughly 0.03&nbsp;nm at 1&nbsp;Âµm${cite(1)}.</p>
-        <p>Its weakness is instructive. A strong line does not produce a perfectly clean
-        sinusoid, and the noise on it transforms into a background spread across the whole
-        spectrum â€” so sensitivity to a weak line gets <em>worse</em> when a strong one is
-        present, and no amount of extra scan range fixes it. Dynamic range lands around
-        30â€“40&nbsp;dB${cite(1)}.</p>
-        <h3>Acousto-optic</h3>
-        <p>A diffraction grating is not the only way to disperse light. A Bragg cell driven
-        by a surface acoustic wave diffracts each optical frequency to its own angle, and
-        integrated-optic spectrum analysers were built on exactly that â€” a guided wave
-        interacting with a surface acoustic wave on a single chip${cite(5)}. The same
-        interaction, run as a filter rather than as a disperser, is the
-        <a href="../aotf/">AOTF</a>.</p>`,
-      formulas: [
-        { tex: '\\text{PSD}(\\lambda) = \\frac{P_{\\text{measured}}}{\\text{RBW}}', caption: 'Power spectral density is the measured power divided by the resolution bandwidth the instrument was set to. It is the honest vertical axis, and the one that lets a narrow line and a broad band be compared.' },
-      ],
-      html2: `
-        <p>That division is subtler than it looks, and it is the single most common way of
-        misreading a spectrum. An analyser's vertical axis often shows measured power, not
-        power spectral density${cite(1)}. Converting between them means dividing by the
-        resolution bandwidth â€” but the calibration is usually done for quasi-monochromatic
-        light, and when the bandwidth is quoted as a full width at half maximum, how well
-        power-divided-by-bandwidth matches the true density depends on the shape of the
-        instrument's filter${cite(1)}. Log scales in dBm are common precisely because the
-        interesting range spans orders of magnitude.</p>
-        <p>One warning from the same source is worth repeating: a spectrum analyser is not
-        the instrument to measure optical power with. Coupling efficiencies in the delivery
-        path are rarely known well enough. Use a <a href="../powermeter/">power
-        meter</a>${cite(1)}.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The Spectrometer reports the centre wavelength, the detected range, the
-        bandwidth, and a plotted spectrum of everything reaching its face. Wire it to a
-        <a href="../display/">Detector screen</a> to see the spectrum drawn.</p>
-        <p>Its vertical axis offers exactly the choice above. <strong>Spectral density</strong>
-        is the honest one â€” power per nanometre, so a band's height does not depend on how
-        finely it happened to be sampled. It carries the consequence that makes real
-        instruments awkward too: a laser line has no width of its own, so it is spread over
-        a nominal 0.1&nbsp;nm to give it a height at all, and it then towers over any
-        continuum beside it. That is what a real spectrometer shows, and it is useless when
-        the point is to see a weak Raman line next to its own pump â€” so
-        <strong>relative</strong> mode scales each source to its own peak instead.</p>
-        <p>Two behaviours are worth knowing because they were built deliberately.
-        <strong>Bands that do not touch stay apart.</strong> One source can arrive carrying
-        several disjoint bands â€” an <a href="../aotf/">AOTF</a> selecting three lines out of
-        a supercontinuum is the standard case â€” and each is measured and drawn on its own,
-        rather than being summarised across the gaps between them into a single smear.
-        Overlapping passbands are one band, correctly, and the grid inside it is fine enough
-        to keep whatever structure it has: several narrow lines cutting a pulsed laser's
-        envelope come back as separate peaks whose heights still trace that envelope.</p>
-        <p>And <strong>the axis is sized from the measurement</strong>, spanning whatever
-        clears a thousandth of each feature's own peak. Per feature, not against one global
-        maximum â€” otherwise a line's towering density would push a perfectly real broadband
-        source off the plot for the crime of sharing a detector with a laser. A manual range
-        is available when a fixed window is wanted.</p>`,
-      formulas: [],
-      limitations: `<p>This is not an instrument, it is a readout. There is no
-        monochromator, no slit, and so no resolution bandwidth: a real spectrometer shows
-        the true spectrum convolved with its own filter function, and reports something
-        broader than reality for anything narrower than that filter. Here the modelled
-        spectrum is reported directly. Nothing sets a sweep time, and there is no
-        distinction between a spectrograph, a scanning instrument and a Fourier-transform
-        one â€” all of which would answer differently.</p>
-        <p>There is no dynamic range and no noise floor. Stray light does not exist, so the
-        30&nbsp;dB that limits a single monochromator and the 30â€“40&nbsp;dB that limits a
-        Fourier-transform instrument have no counterpart, and a weak line beside a strong one
-        is read as easily as if it were alone â€” which is precisely the measurement real
-        instruments find hardest. There is no logarithmic or dBm scale.</p>
-        <p>The plotted samples are a display budget, not a physical resolution, and
-        wavelengths are keyed to 0.1&nbsp;nm, so two lines closer together than that are
-        reported as one. Readings are fractions of a source's emitted power rather than
-        absolute values in watts; for power, use the <a href="../powermeter/">power
-        meter</a>, which is the advice for real instruments too.</p>`,
-    },
-    related: ['detector', 'display', 'aotf', 'grating', 'powermeter'],
-    citations: [
-      { label: 'â€œOptical Spectrum Analyzers,â€ RP Photonics Encyclopedia', url: 'https://www.rp-photonics.com/optical_spectrum_analyzers.html' },
-      { label: 'Optical spectrum analyzer â€” ScienceDirect Topics (engineering overview)', url: 'https://www.sciencedirect.com/topics/engineering/optical-spectrum-analyzer' },
-      { label: 'J. A. Moon et al., â€œOptical spectrum analyzer,â€ US patent 7,253,897 B2, Cidra Corp (granted 2007) â€” a compact dual-pass grating analyser with a pivoting reflector and reference mirrors', url: 'https://patents.google.com/patent/US7253897B2/en' },
-      { label: 'Review article, Review of Scientific Instruments 94(8), 081501 (2023)', url: 'https://pubs.aip.org/aip/rsi/article/94/8/081501/2905189' },
-      { label: 'M. Barnoski, B.-U. Chen, T. Joseph, J. Lee and O. Ramer, â€œIntegrated-optic spectrum analyzer,â€ IEEE Transactions on Circuits and Systems 26(12), 1113â€“1124 (1979) â€” a Bragg analyser built from a guided wave and a surface acoustic wave', url: 'https://ieeexplore.ieee.org/abstract/document/1084599' },
-    ],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Spectrometers', url: 'https://www.rp-photonics.com/spectrometers.html' },
-      { label: 'RP Photonics Encyclopedia â€” Wavemeters', url: 'https://www.rp-photonics.com/wavemeters.html' },
-    ],
-  },
-
-  {
-    type: 'polarimeter',
-    summary: "Reports the polarization of arriving light using normalized Stokes parameters and a visual state display, for comparing linear, elliptical, circular, and unpolarized illumination.",
-    title: 'Polarimeter',
-    category: 'Detectors',
-    realWorld: {
-      html: `
-        <p>Polarization is the direction the electric field oscillates in as light
-        travels. Describing it fully means describing an <strong>ellipse</strong> â€” the
-        figure the field vector traces out in the plane transverse to propagation â€” with its
-        orientation, its ellipticity, and its handedness. The trouble is that this ellipse is
-        an amplitude description, and amplitude is not something a detector can see. Detectors
-        respond to intensity, so the ellipse "can neither be observed nor
-        measured"${cite(1)} directly.</p>
-        <p>George Gabriel Stokes solved this in 1852 by describing the polarization state
-        with four quantities that are all <em>intensities</em>, and so all measurable. The
-        <strong>Stokes parameters</strong> are, in the modern convention:</p>`,
-      formulas: [
-        { tex: '\\begin{aligned} S_0 &= I_{0Â°} + I_{90Â°} &&\\text{total intensity} \\\\ S_1 &= I_{0Â°} - I_{90Â°} &&\\text{horizontal vs. vertical} \\\\ S_2 &= I_{45Â°} - I_{135Â°} &&\\text{diagonal vs. anti-diagonal} \\\\ S_3 &= I_{\\text{RCP}} - I_{\\text{LCP}} &&\\text{right vs. left circular} \\end{aligned}', caption: 'Each parameter is a difference of two intensities through opposite analyzers, which is exactly why the set is measurable when the polarization ellipse is not. Sâ‚€ is the total power; the other three say how it is distributed between each pair of opposite states.' },
-      ],
-      html2: `
-        <p>Dividing the last three by <span class="w">Sâ‚€</span> gives normalized parameters
-        <span class="w">sâ‚, sâ‚‚, sâ‚ƒ</span>, each between âˆ’1 and +1, and these are the Cartesian
-        coordinates of a point on or inside the <strong>PoincarÃ© sphere</strong>. The equator
-        holds every linear state, the poles the two circular ones, and everything between is
-        elliptical. A lossless waveplate does not change how polarized the light is, only
-        which state it is in, so it moves the point around the surface â€” which is why the
-        sphere is such a natural way to think about retarders.</p>
-        <p>The radius of that point is the <strong>degree of polarization</strong>:</p>`,
-      formulas2: [
-        { tex: 'P = \\frac{\\sqrt{S_1^{\\,2} + S_2^{\\,2} + S_3^{\\,2}}}{S_0}, \\qquad 0 \\le P \\le 1', caption: 'P = 1 is fully polarized (a point on the surface), P = 0 is unpolarized (the centre), and anything between is partially polarized. Crucially, Sâ‚Â² + Sâ‚‚Â² + Sâ‚ƒÂ² < Sâ‚€Â² is possible â€” a fact no single polarization ellipse can express.' },
-      ],
-      html3: `
-        <p>That last point is what makes the Stokes description more than a change of
-        notation. Unpolarized light is not one state; it is an <em>incoherent mixture</em> of
-        states, and mixtures add as Stokes vectors. Two equally strong orthogonal beams
-        superposed give <span class="w">Sâ‚ = Sâ‚‚ = Sâ‚ƒ = 0</span> with
-        <span class="w">Sâ‚€</span> unchanged: the sphere's centre, genuinely unpolarized. No
-        single ellipse can represent that, which is why real sources â€” sunlight, a lamp, an
-        LED â€” need the Stokes formalism and not the ellipse.</p>
-
-        <h3>Measuring the four parameters</h3>
-        <p>A polarimeter is whatever apparatus turns the four definitions above into four
-        numbers. The <strong>classical method</strong> follows them almost literally: send the
-        beam through a rotatable linear polarizer onto a power meter and record the
-        transmitted intensity at a few analyzer angles. With the analyzer at
-        <span class="w">Î¸</span> and an optional waveplate of retardance
-        <span class="w">Ï†</span> in front of it, the transmitted intensity
-        is${cite(1)}</p>`,
-      formulas3: [
-        { tex: 'I(\\theta, \\varphi) = \\tfrac{1}{2}\\left(S_0 + S_1\\cos 2\\theta + S_2 \\sin 2\\theta \\cos\\varphi - S_3 \\sin 2\\theta \\sin\\varphi \\right)', caption: 'Three measurements with no waveplate (Î¸ = 0Â°, 45Â°, 90Â°) give Sâ‚€, Sâ‚ and Sâ‚‚; a fourth with a quarter-wave plate inserted (Ï† = 90Â°) at Î¸ = 45Â° gives Sâ‚ƒ, since Sâ‚ƒ = Sâ‚€ âˆ’ 2I(45Â°, 90Â°).' },
-      ],
-      html4: `
-        <p>It works, but Schaefer and colleagues list its weaknesses plainly${cite(1)}: the
-        analyzer has to be aligned accurately at each angle, the waveplate has to be inserted
-        and aligned for the last reading, inserting it absorbs light and so changes the very
-        equations being used, and only four data points are taken â€” so a single bad reading
-        has nothing to average against.</p>
-        <p>The <strong>rotating quarter-wave plate method</strong> fixes all four at once. Put
-        the waveplate <em>first</em> and rotate it through an angle
-        <span class="w">Î¸</span>, keep the analyzer fixed, and record intensity continuously.
-        Nothing is inserted or removed mid-measurement, only one element moves, and the
-        transmitted intensity becomes a truncated Fourier series${cite(1)}:</p>`,
-      formulas4: [
-        { tex: 'I(\\theta) = \\tfrac{1}{2}\\left(A + B\\sin 2\\theta + C\\cos 4\\theta + D\\sin 4\\theta\\right), \\qquad \\begin{aligned} S_0 &= A - C & S_1 &= 2C \\\\ S_2 &= 2D & S_3 &= B \\end{aligned}', caption: 'All four parameters fall out of the harmonic content of one continuous scan. Because the highest term is the fourth harmonic, Nyquist requires at least eight samples per rotation â€” and in practice many more are taken and least-squares fitted, so every point improves the result instead of one point being decisive.' },
-      ],
-      html5: `
-        <p>Thorlabs have a short build video that walks through both methods on a real bench,
-        with a polarizer, a quarter-wave plate and a power meter, and shows the actual mounts
-        and the data reduction${cite(2)} â€” a good companion to the algebra above if you intend
-        to assemble one.</p>
-        <p>Commercial polarimeters mostly avoid moving parts altogether: a division-of-amplitude
-        instrument splits the beam into four paths with fixed analyzers and reads all four
-        detectors at once, and rotating-waveplate designs are still common where speed matters
-        less than cost. Polarimetry underpins fiber and telecom monitoring, stress birefringence
-        measurement in glass and plastics, ellipsometry for thin-film thickness, remote sensing,
-        and polarization-resolved microscopy of ordered biological structure such as collagen.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>Every ray in OpticalSetup carries a normalized Stokes vector, and the polarization
-        elements transform it exactly as the PoincarÃ©-sphere picture says they should. A
-        <a href="../polarizer/">polarizer</a> projects onto its axis by Malus's law in Stokes
-        form, and a <a href="../qwp/">waveplate</a> rotates the vector about the axis set by
-        its own fast axis, through an angle equal to its retardance. Prepared states land
-        where they should: a linear source reads
-        <span class="w">(1, 0, 0)</span>, the same beam through a quarter-wave plate at 45Â°
-        reads <span class="w">(0, 0, âˆ’1)</span> â€” circular â€” and at 22.5Â° reads
-        <span class="w">(0.5, 0.5, âˆ’0.707)</span>, still fully polarized.</p>
-        <p>The polarimeter reports <span class="w">Sâ‚€</span> as the arriving intensity,
-        the three normalized components scaled to it, the degree of polarization, and a plain
-        description of the state. It gets those from the power-weighted mean of every ray
-        landing on its face â€” which means <strong>partially polarized and unpolarized light
-        are representable</strong>, even though no individual ray can be either. Two equally
-        strong counter-polarized beams on one face average to the centre of the sphere and are
-        correctly reported as unpolarized, with <span class="w">Sâ‚€</span> undiminished.</p>
-
-        <h3>The instrument is a shortcut, not a separate physics</h3>
-        <p>This element does not measure anything: it reads out a vector the tracer has been
-        carrying all along. The measurement it stands in for can nevertheless be performed
-        properly on the bench, out of ordinary parts, because the polarizer really does
-        implement <span class="w">I = Â½(Sâ‚€ + Sâ‚cos2Î¸ + Sâ‚‚sin2Î¸)</span> â€” the same equation the
-        classical method inverts.</p>
-        <p>Both published methods have been checked against it. Building the classical
-        four-intensity measurement out of a polarizer, a quarter-wave plate and a plain
-        <a href="../detector/">photodetector</a>, then applying
-        <span class="w">Sâ‚€ = I(0Â°)+I(90Â°)</span> and the rest, recovers the polarimeter's own
-        numbers to better than one part in 10Â¹âµ. So does the rotating-waveplate method:
-        sixteen intensities through a rotating quarter-wave plate and a fixed analyzer,
-        Fourier-analyzed into <span class="w">A, B, C, D</span>, give back the same Stokes
-        vector. Both are locked in as regression tests, so the shortcut and the honest
-        measurement cannot drift apart.</p>`,
-      limitations: `<p>Waveplates here are perfectly achromatic: a quarter-wave plate applies
-        exactly 90Â° of retardance at 405&nbsp;nm and at 1550&nbsp;nm alike. A real waveplate is
-        quarter-wave only near its design wavelength, with retardance scaling roughly as
-        1/Î», so a genuine polarimeter's calibration is wavelength-specific and this one's is
-        not. Polarizers are ideal too â€” perfect extinction on one axis, no leakage, no
-        wavelength dependence, and no insertion loss beyond the projection itself, so the
-        "inserting the waveplate absorbs light" problem that motivates the rotating method
-        cannot be reproduced here.</p>
-        <p>Nothing depolarizes. Scattering, stress birefringence, thermal effects and
-        multimode fiber all scramble polarization in reality; here the only route to a
-        partially polarized reading is incoherently mixing distinct beams on one detector
-        face. There is no Mueller-matrix generality either: elements apply their specific
-        transformations rather than an arbitrary 4Ã—4 matrix, so diattenuation and
-        depolarization cannot be authored as element properties.</p>
-        <p>The readout itself is noiseless and instantaneous â€” no detector noise, no analyzer
-        misalignment, no waveplate retardance error, and none of the systematic
-        error budget that dominates real polarimetry. And because the tracer works in a 2D
-        meridional plane, the Stokes vector is carried as an abstract state attached to rays
-        rather than as a field orientation in three dimensions; it is exact within that model,
-        but it is not a full vector-field treatment.</p>`,
-    },
-    related: ['polarizer', 'qwp', 'hwp', 'pbs', 'detector'],
-    citations: [
-      { label: 'B. Schaefer, E. Collett, R. Smyth, D. Barrett and B. Fraher, â€œMeasuring the Stokes polarization parameters,â€ American Journal of Physics 75(2), 163â€“168 (2007)', url: 'https://doi.org/10.1119/1.2386162' },
-      { label: 'Thorlabs Insights â€” â€œBuild a Polarimeter to Find Stokes Values, Polarization State (Viewer Inspired)â€ (YouTube, 2021): both the classical and rotating-waveplate methods built on a real bench', url: 'https://www.youtube.com/watch?v=pR4r7gMyN5U' },
-    ],
-    resources: [
-      { label: 'Stokes parameters â€” Wikipedia', url: 'https://en.wikipedia.org/wiki/Stokes_parameters' },
-      { label: 'RP Photonics Encyclopedia â€” Polarization of Light', url: 'https://www.rp-photonics.com/polarization_of_light.html' },
-    ],
-  },
-  {
-    type: 'autocorrelator',
-    summary: "Calculates an intensity autocorrelation and infers pulse duration using a selected pulse-shape assumption, for examining temporal broadening and the limits of duration estimates.",
-    title: 'Autocorrelator',
-    category: 'Detectors',
-    realWorld: {
-      html: `
-        <p>A femtosecond pulse cannot be timed by anything electronic. The fastest
-        photodiodes and sampling oscilloscopes reach a few picoseconds; a 100&nbsp;fs pulse
-        is two orders of magnitude shorter than that, and no detector exists whose response
-        is short enough to resolve it${cite(1)}. The way out is to stop looking for a faster
-        clock and instead use the pulse to measure itself.</p>
-        <p>That is what an autocorrelator does. A beam splitter makes two copies of the
-        incoming pulse; one travels through a variable delay line; the two are then brought
-        together in a medium with a &chi;<sup>(2)</sup> nonlinearity â€” typically a thin
-        second-harmonic crystal â€” where they mix only while they physically overlap in
-        time${cite(1)}. Sum-frequency light appears at a new, shorter wavelength, and its
-        power depends on how much of the two envelopes coincide. Sweep the delay, record
-        that power, and the resulting curve â€” the autocorrelation trace â€” is about as wide as the
-        pulse is long. Nothing in the detection chain needs to be fast: the photodiode only
-        has to read an <em>average</em> power for each delay setting, because a mode-locked
-        laser supplies a regular train of nominally identical pulses${cite(1)}.</p>
-        <h3>Intensity autocorrelation</h3>
-        <p>In the standard arrangement the two copies cross at a small angle in the crystal,
-        so the sum-frequency beam leaves along its own direction, between the two inputs.
-        Because that beam only exists where the pulses overlap, the signal falls to zero at
-        large delay: the measurement is <strong>background-free</strong>${cite(1)}, and this
-        non-collinear geometry is what gives an intensity autocorrelator its high dynamic
-        range${cite(2)}. The trace it records is</p>`,
-      formulas: [
-        { tex: 'I_{\\mathrm{ac}}(\\tau)=\\int_{-\\infty}^{\\infty} P(t)\\,P(t+\\tau)\\,\\mathrm{d}t', caption: 'The intensity autocorrelation: the optical power of the pulse multiplied by a delayed copy of itself, integrated over time, as a function of the delay Ï„ set by the moving arm.' },
-      ],
-      html2: `
-        <h3>Why the trace is always wider than the pulse</h3>
-        <p>Look at that integral at zero delay: the two copies sit exactly on top of one
-        another and the product is maximal. Now shift by a delay smaller than the pulse
-        duration. The overlap has shrunk, but it has not vanished â€” the trailing part of one
-        copy is still sitting on the leading part of the other, so a real signal is still
-        produced. Only when the delay exceeds roughly the pulse length does the product
-        finally go to zero. The curve cannot collapse to something narrower than the pulse,
-        and this is not an instrumental defect that better optics would remove; it is a
-        property of the operation.</p>
-        <p>Made exact, the statement is about second moments: correlating a function with
-        itself <strong>doubles the variance</strong>, so the root-mean-square width of the
-        trace is larger than the pulse's by exactly &radic;2 &mdash; for every envelope,
-        with no assumption at all. Full width at half maximum, which is what an instrument
-        actually reads off, is the shape-dependent one. It is worth knowing that the
-        broadening can vanish entirely under that measure: a rectangular pulse of width
-        <em>T</em> has a triangular autocorrelation whose FWHM is also <em>T</em>, even
-        though its rms width has still grown by &radic;2. For the smooth envelopes real
-        mode-locked lasers produce, the trace is genuinely wider.</p>
-        <p>How much wider depends on the shape of the envelope. For a Gaussian pulse the
-        autocorrelation is itself Gaussian and about <strong>1.41 times</strong> wider â€”
-        exactly &radic;2, because Gaussian widths add in quadrature and
-        &radic;(&tau;&sup2;&nbsp;+&nbsp;&tau;&sup2;)&nbsp;=&nbsp;&radic;2&nbsp;&tau;${cite(1)}. For a sechÂ² pulse, the shape most
-        mode-locked oscillators actually produce, the pulse duration is about
-        <strong>0.65 times</strong> the width of the trace${cite(1)} â€” a factor of roughly
-        1.543 the other way. So the instrument never reports a duration directly. It reports
-        a trace width, and someone must divide out a <em>deconvolution factor</em>:</p>`,
-      formulas2: [
-        { tex: '\\tau_{\\mathrm{p}}=\\frac{\\Delta\\tau_{\\mathrm{ac}}}{k},\\qquad k_{\\mathrm{Gauss}}=\\sqrt{2}\\approx 1.414,\\qquad k_{\\mathrm{sech}^2}\\approx 1.543', caption: 'The pulse duration is the measured autocorrelation FWHM divided by a factor that depends entirely on the pulse shape you assume it has.' },
-      ],
-      html3: `
-        <p>And there is the catch that defines the technique. The factor depends on a shape
-        the measurement itself cannot establish. Gaussian and sechÂ² traces do not look
-        dramatically different, so fitting one to the data is a sanity check rather than a
-        proof${cite(1)}. Yet the two factors differ by 9%, so assuming the wrong one puts
-        the answer out by 9% before any other error is counted â€” and for genuinely odd pulse
-        shapes, by far more. A quoted "150&nbsp;fs, assuming sechÂ²" is an honest reading;
-        a quoted "150&nbsp;fs" is an incomplete one.</p>
-        <h3>What an autocorrelation cannot tell you</h3>
-        <p>The deeper limitation is structural: <strong>the autocorrelation trace is always
-        symmetric about zero delay, even when the pulse is not</strong>${cite(1)}. Swapping
-        <em>t</em>&nbsp;&rarr;&nbsp;&minus;<em>t</em> in the integral leaves it unchanged, so a pulse with a steep rise and a slow
-        decay produces exactly the same trace as its mirror image. The direction of time is
-        simply not in the data${cite(2)}. Neither is the phase: an intensity autocorrelation
-        responds only to optical power, so it carries no information about chirp, and
-        different pulses can yield indistinguishable traces${cite(1,3)}. Usefully, the
-        symmetry works as a diagnostic in reverse â€” an <em>asymmetric</em> trace means a
-        misaligned autocorrelator, not an asymmetric pulse${cite(1)}.</p>
-        <p>Noise makes this worse in a specific and notorious way. When a laser is not
-        mode-locking cleanly, each pulse in the train differs from the last, and the
-        averaged trace can show a narrow spike sitting on a much broader pedestal. Taking
-        that spike as the pulse duration is wrong: it is a <strong>coherent
-        artifact</strong>, and in such a situation the trace conveys very little about the
-        real pulse${cite(1,5)}. A distorted train can look like a beautifully short
-        pulse.</p>
-        <h3>Interferometric autocorrelation</h3>
-        <p>Send the two copies collinearly instead â€” same path, same polarization â€” and they
-        interfere before the crystal sees them. The recorded signal then resolves the
-        optical fringes: successive constructive peaks are one optical period apart on the
-        delay axis, which in a double-pass arm is reached by moving the mirror only half a
-        wavelength, since the mirror changes the path twice over${cite(1)}. Plots are
-        labelled in both coordinates, so it is worth checking which one an axis
-        means:</p>`,
-      formulas3: [
-        { tex: 'I_{\\mathrm{iac}}(\\tau)=\\int \\bigl(E(t)+E(t+\\tau)\\bigr)^{4}\\,\\mathrm{d}t', caption: 'The interferometric (fringe-resolved) autocorrelation. Because the fields add before being squared twice, perfect constructive interference gives four times the intensity and sixteen times the second-harmonic signal â€” against a background of twice that from one arm alone.' },
-      ],
-      html4: `
-        <p>That arithmetic gives the technique its built-in alignment check: a properly
-        aligned interferometric autocorrelator always produces a trace whose peak is exactly
-        <strong>eight times</strong> its wings${cite(1)}. If the fringes are averaged out,
-        as they are for longer pulses, the ratio becomes 3:1 rather than 4:1, because the
-        oscillation is not sinusoidal${cite(1)}. Unlike the intensity version, this trace
-        <em>is</em> sensitive to chirp â€” although a chirped pulse's duration is
-        underestimated if one simply reads off the width, and post-processing methods such as
-        MOSAIC exist to make the chirp legible${cite(1)}. The collinear geometry avoids the
-        geometric smearing that a crossing angle causes, which is why interferometric designs
-        dominate at the few-femtosecond end${cite(1,2)}.</p>
-        <h3>Practical variants</h3>
-        <p><strong>Scanning versus single-shot.</strong> Most traces are built from many
-        pulses, one or more per delay setting, which quietly assumes the train is regular â€”
-        fine for a mode-locked oscillator, unreliable for a low-repetition-rate amplifier.
-        A single-shot autocorrelator instead focuses with a <em>cylindrical</em> lens so that
-        position across the crystal maps to delay, and reads the whole trace off a camera
-        from one pulse${cite(1)}. Scanning units suit stable high-rate trains; single-shot
-        units are what a 10&nbsp;Hz or 1&nbsp;kHz amplifier needs, and the only way to see
-        shot-to-shot fluctuation${cite(1)}.</p>
-        <p><strong>Two-photon detectors.</strong> A photodiode with a band gap too large to
-        absorb the light linearly still responds through two-photon absorption, which is
-        itself the required nonlinearity â€” so the crystal disappears entirely, and with it
-        the phase-matching alignment${cite(1)}. LEDs run backwards as detectors work
-        too${cite(1)}. These are the compact, nearly alignment-free instruments, at the cost
-        of sensitivity: quoted as the product of average and peak power, a TPA head reaches
-        around 10<sup>&minus;2</sup>&nbsp;W&sup2; where a photomultiplier-based unit reaches
-        10<sup>&minus;6</sup>&nbsp;W&sup2;${cite(2)}.</p>
-        <p><strong>Dynamic range.</strong> Weak pedestals and satellite pulses â€” a
-        speciality of mode-locked fiber lasers â€” need far more range than a standard trace
-        offers. Type-II phase matching, two-frequency chopping with lock-in detection, and
-        photomultiplier detection push background-free measurements to 80 or even
-        100&nbsp;dB${cite(1)}. A third-order autocorrelator, mixing the light with its own
-        second harmonic, breaks the symmetry altogether and can distinguish a pre-pulse from
-        a post-pulse â€” at much lower sensitivity${cite(1)}.</p>
-        <p><strong>When to stop autocorrelating.</strong> Below about 10&nbsp;fs the
-        phase-matching bandwidth of even a very thin crystal becomes the limit, and
-        frequency-resolved optical gating (FROG) and spectral phase interferometry (SPIDER)
-        are both more accurate and able to return the phase the autocorrelation discards
-        ${cite(1,3,6)}. FROG is in one sense just an autocorrelator that spectrally resolves
-        its output â€” spectrum versus delay instead of energy versus delay â€” and that one
-        extra axis is enough to lift the ambiguity${cite(2)}.</p>
-        <h3>Cross-correlation: two different pulses</h3>
-        <p>Nothing in the layout requires the two arms to carry copies of the same pulse.
-        Feed the nonlinear crystal from two <em>different</em> beams and the same delay scan
-        measures their <strong>cross-correlation</strong>:</p>`,
-      formulas4: [
-        { tex: 'I_{\\mathrm{cc}}(\\tau)=\\int_{-\\infty}^{\\infty} I_1(t)\\,I_2(t+\\tau)\\,\\mathrm{d}t,\\qquad \\Delta\\tau_{\\mathrm{cc}}=\\sqrt{\\tau_1^{2}+\\tau_2^{2}}\\ \\ (\\text{Gaussians})', caption: 'The cross-correlation of two pulses, and â€” for Gaussian envelopes â€” the width of the resulting trace, which adds the two durations in quadrature.' },
-      ],
-      html5: `
-        <p>Two things change, and both are improvements. First, the trace is no longer
-        forced to be symmetric, so an asymmetric pulse now shows its asymmetry and the
-        direction of time survives the measurement. Second, if one of the two pulses is
-        already known and much shorter than the other, it acts as a fast optical gate:
-        <em>I</em><sub>1</sub> approaches a delta function, the integral collapses to <em>I</em><sub>2</sub>(&tau;), and the
-        trace <em>is</em> the unknown envelope, sampled directly rather than
-        deconvolved${cite(1)}. This is why a characterized reference pulse is worth so much,
-        and why the quadrature relation above matters â€” with &tau;<sub>1</sub>&nbsp;&#8810;&nbsp;&tau;<sub>2</sub> the
-        measured width is just &tau;<sub>2</sub>.</p>
-        <h3>Finding time zero for multi-beam overlap</h3>
-        <p>The most common use of a cross-correlation in a working laboratory is not
-        measuring a duration at all. It is answering a blunter question: <em>when do these
-        two beams actually arrive at the same place at the same time?</em></p>
-        <p>Any experiment driven by two or more synchronized pulses has this problem. The
-        beams travel different paths â€” different numbers of mirrors, different lengths of
-        glass, an optical parametric oscillator in one arm and none in the other â€” and a
-        single millimetre of path difference is 3.3&nbsp;ps of timing error, which for
-        100&nbsp;fs pulses means no overlap whatsoever. Spatial alignment can be judged by
-        eye or on a camera; temporal alignment cannot be seen at all. Worse, the search space
-        is large and the signal is exactly zero everywhere outside it, so scanning blind is
-        hopeless without a signal that appears the moment the pulses coincide.</p>
-        <p>The cross-correlation provides exactly that. Combine the two beams on a dichroic
-        mirror, focus them into a thin nonlinear crystal, and scan one arm's delay while
-        watching for sum-frequency light. Because 1/&lambda;<sub>SF</sub>&nbsp;=&nbsp;1/&lambda;<sub>1</sub>&nbsp;+&nbsp;1/&lambda;<sub>2</sub>, that light appears at a wavelength lying between the two
-        second harmonics â€” a colour that <strong>only</strong> exists when both beams are
-        present together, which makes it unmistakable. The delay-stage position that
-        maximises it is <strong>time zero</strong>, and the width of the peak around it tells
-        you how much timing slop the experiment can tolerate${cite(4)}.</p>
-        <p>Coherent Raman microscopy is the textbook case. In coherent anti-Stokes Raman
-        scattering (CARS), a pump photon and a Stokes photon drive a molecular vibration
-        whose frequency is their difference, and a third photon probes it â€” so the signal
-        exists only where and when both beams overlap in the focal volume${cite(4)}. The
-        pump typically comes from a femtosecond oscillator and the Stokes from an optical
-        parametric oscillator pumped by it: synchronized by construction, but arriving at the
-        sample at quite different times until a delay line is set. The standard procedure is
-        to focus the combined beams into a type-I BBO crystal and maximise the
-        sum-frequency signal${cite(4)}.</p>
-        <p>Two subtleties make this more than an alignment step. The overlap that matters is
-        at the <em>focus of the objective</em>, not at the entrance to the microscope, and a
-        high-NA objective is a substantial piece of glass â€” so a measurement made on the
-        bench with an external autocorrelator does not describe the pulses that actually
-        reach the sample${cite(4)}. And when the pulses are deliberately chirped for
-        <em>spectral focusing</em> â€” stretched so that their instantaneous frequency
-        difference stays constant across the overlap â€” the delay no longer merely switches
-        the signal on. It <em>tunes the Raman shift</em>. Time zero then defines the origin
-        of the spectroscopic axis, and getting it wrong shifts every measured vibrational
-        frequency${cite(4)}.</p>
-        <p>A neat consequence, exploited by Piazza and co-workers, is that the delay line
-        already present in every such microscope is enough to characterize both pulses
-        without any autocorrelator at all. Scanning it while recording two different
-        nonlinear signals from a sample â€” the sum-frequency signal, which mixes one pump
-        photon with one Stokes photon, and the non-resonant four-wave-mixing signal, which
-        takes two pump photons and one Stokes photon â€” gives two cross-correlation widths
-        that depend differently on the two durations. Two equations, two unknowns: both
-        durations fall out, and tracking how the centre wavelength of each signal drifts with
-        delay yields each pulse's chirp as well${cite(4)}.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The Autocorrelator reports the pulse duration of whatever pulse train reaches its
-        face â€” and reports it the way a real instrument does, as a trace width with an
-        assumption divided out, rather than as a number read off the source.</p>
-        <p><strong>Time span</strong> sets the horizontal axis &mdash; &plusmn;0.5, &plusmn;1,
-        &plusmn;5, &plusmn;10 or &plusmn;25&nbsp;ps, or <strong>Auto</strong>, the default for a
-        new autocorrelator. Auto takes the narrowest of those spans whose half-width is at least
-        1.5 trace FWHMs, where a Gaussian trace has fallen to 0.2&nbsp;% of its peak, so the wings
-        are drawn rather than clipped; it steps between the standard spans rather than
-        rescaling continuously, labels the axis <em>AUTO</em>, and applies to autocorrelation
-        only. A fixed span keeps two traces of different duration looking as different as they
-        are, which is why cross-correlation stays fixed. A trace too wide for the chosen window
-        is reported rather than clipped, and an unavailable duration draws no trace.</p>
-        <p>A pulse whose envelope was computed rather than assumed â€” the output of the
-        hollow-core capillary â€” is autocorrelated numerically: the screen draws its own
-        intensity autocorrelation, not a Gaussian or sechÂ² curve, and the duration is still that
-        trace's FWHM divided by the assumed shape's factor. Because the true envelope is known
-        there, the reading shows it beside the inferred one (<em>FIELD</em>), so the error of the
-        assumption is visible â€” about 16&nbsp;% for the compressed pulse of the hollow-core
-        example.</p>
-        <p>The one control that matters is <strong>Assumed pulse shape</strong>: Gaussian
-        (Ã·1.414) or sechÂ² (Ã·1.543). This is deliberately a user choice and not something the
-        instrument works out for itself, because in a laboratory it is not something the
-        instrument <em>can</em> work out for itself. Set it to the wrong shape and the
-        reading changes â€” a Gaussian assumption on a sechÂ² source reads about 9% long, and
-        the inspector says so explicitly, naming the true duration beside the inferred one.
-        That disagreement is the lesson the component exists to teach.</p>
-        <p>The reading is taken from the pulse that
-        <em>arrives</em> rather than the one that was emitted. Put a
-        <a href="../glassrod/">glass rod</a> in the path and the autocorrelator measures the
-        stretched duration; add a <a href="../pulsecompressor/">pulse compressor</a> with the
-        opposite group delay dispersion and it measures the pulse recovering. The bundled
-        <em>Ultrashort pulse chirping</em> example is built around exactly that comparison,
-        with three autocorrelators reading the same pulse under three different dispersion
-        conditions.</p>
-        <p>The duration-model row states where that arriving width came from: closed-form
-        Gaussian GDD, numerically tabulated sechÂ² GDD, a bandwidth-derived positive or negative
-        input chirp, a flat-band endpoint group-delay spread, the numerical transform of a
-        filtered spectrum, or the explicit 0&nbsp;nm bandwidth exception. Where the model
-        declines â€” unknown spectral phase, or paths of different dispersion â€” the instrument shows <em>Duration
-        unavailable</em> and names the reason, with the source's configured duration listed as
-        the setting it is, not as a measurement. The autocorrelation still cannot determine chirp itself; it is
-        displaying the scene's propagation model and then applying the instrument's chosen
-        deconvolution factor.</p>
-        <h3>Cross-correlation mode</h3>
-        <p><strong>Measurement mode</strong> switches the same box between correlating one
-        source against itself and correlating <em>two</em> sources against each other. In
-        cross-correlation mode the assumed-shape control disappears, because the instrument
-        is no longer inferring a duration &mdash; it is reporting a timing relationship.</p>
-        <p>The screen also changes what it is plotting, and the change is worth stating
-        carefully. An autocorrelation is a <strong>scan-delay</strong> plot: the instrument
-        sweeps one arm against the other and the peak sits at zero by construction. A
-        cross-correlation screen here is a <strong>laboratory arrival-time</strong> plot
-        instead &mdash; the view you get on a scope while walking a delay line, and the reason
-        the two peaks move. The axis is labelled so the two cannot be confused.</p>
-        <p>On it are the two pulses, each at its own arrival time, each drawn at
-        <em>constant height</em>: a beam's own second harmonic does not care where the other
-        beam is. What grows between them is the <strong>sum-frequency signal</strong>, which
-        exists only where the two overlap, so it appears at the midpoint and rises as the arms
-        converge. Bring the pulses together and watch the middle peak light up &mdash; that is
-        the whole procedure, and it is what a real cross-correlator detects. At the meeting
-        point the readout says <strong>TIME ZERO</strong> and the overlap reads 100%.</p>
-        <p>Switching to cross-correlation also picks a sensible <strong>time span</strong> once,
-        framing whatever separation the arms currently have &mdash; a 3&nbsp;ps mismatch selects
-        &plusmn;5&nbsp;ps, a merged pair selects &plusmn;0.5&nbsp;ps. After that the setting is
-        yours, and it does not move again. That combination is deliberate: re-ranging on every
-        frame would rescale the axis under the pulses exactly as they approached, so they would
-        never appear to travel, and fixing the axis is what lets you watch them walk. It is the
-        same reason a real oscilloscope makes the timebase a knob rather than an automatic, and
-        the same reason it is worth setting once for you rather than leaving you to find the
-        pulses in an arbitrary window.</p>
-        <p>Pick a wide span to find the pulses, then narrow it as they close. When they sit beyond
-        the window the screen stops drawing and reports the gap instead &mdash; how far apart they
-        are, and how many millimetres to take out of which arm, since a delay line is set in
-        millimetres rather than femtoseconds. With only one beam arriving there is nothing to
-        correlate, and it says <strong>only one beam present</strong> rather than quietly showing
-        an empty axis.</p>
-        <p>The bench below the autocorrelation example does the whole thing on its own: time zero
-        sits at 100.000&nbsp;mm and the delay line sweeps &plusmn;0.2&nbsp;mm either side of it, so
-        the pulses walk through each other and back every ten seconds while the sum-frequency peak
-        flares up at the crossing. Stop the sweep and hunt it by hand to see how sharp the merge
-        is &mdash; a hundredth of a millimetre either way is 33&nbsp;fs.</p>
-        <p>Beside the plot the inspector carries the numbers the screen has no room for,
-        including the autocorrelation each arm would give <em>on its own</em>. Those widths
-        deliberately stay off the plot: on an arrival-time axis what physically sits at each
-        peak is the pulse, not its autocorrelation.</p>
-        <p>Two details are modelled because leaving them out would teach the wrong lesson.
-        Trains with different repetition rates are reported as <strong>unsynchronised</strong>
-        rather than given a trace, since without a fixed phase relationship there is nothing
-        stable to average up. And the mismatch is measured against the <em>nearest</em> pulse
-        of the other train, not the nominally corresponding one: pulses repeat, so arms can
-        only ever be nulled modulo the repetition period, and an arm 12.5&nbsp;ns long at
-        80&nbsp;MHz is perfectly overlapped rather than hopelessly late.</p>
-        <p>Wired to a Detector screen, it draws the trace: delay on
-        the horizontal axis rather than laboratory time, the curve symmetric about zero delay
-        as a real autocorrelation always is, the half-maximum chord that <em>is</em> the
-        measurement marked across it, and the inferred duration printed above. A continuous-wave
-        source produces no trace and says so; and pulse trains whose <em>timing</em> disagrees â€”
-        different repetition rate, duration, or phase â€” are reported as mixed rather than
-        averaged into a meaningless number.</p>`,
-      formulas: [],
-      limitations: `<p>No scan is simulated. The trace is drawn from the arriving duration
-        and the assumed shape rather than being accumulated by stepping a delay line through
-        a nonlinear crystal, so there is no scan time, no delay-line travel limit setting a
-        maximum measurable duration, and no acquisition noise. Everything downstream of that
-        choice follows: no crystal, no phase matching, no group velocity mismatch, and
-        therefore none of the difficulties that dominate real measurements below about
-        20&nbsp;fs.</p>
-        <p>Only the intensity autocorrelation is modelled. There is no interferometric mode,
-        so the fringes, the diagnostic 8:1 peak-to-background ratio, and the chirp sensitivity
-        that comes with a collinear geometry have no counterpart here. There is no dynamic
-        range and no noise floor, so pedestals, satellite pulses, and the coherent artifact
-        cannot appear â€” the trace is always the clean curve of a well-behaved pulse. Pulse
-        shapes other than Gaussian and sechÂ² are not available, and since the modelled
-        envelope is symmetric, the asymmetry that a real autocorrelation famously hides is
-        not there to be hidden.</p>
-        <p>Mixing is detected by timing settings only. Two sources agreeing in repetition rate,
-        pulse duration, and phase are treated as one train even when their shapes, path delays,
-        or accumulated dispersion differ, in which case the trace is drawn from the first of
-        them and the averaged group delay dispersion. That is a real gap: two genuinely
-        different pulses can be measured as one.</p>
-        <p>Cross-correlation is between exactly two arriving trains. One is not enough and
-        three cannot be reduced to a single pair, and both cases say so rather than picking
-        two. The two arms are two sources whose light lands on one detector face, not two
-        ports the instrument delays against each other, so the delay is whatever the scene
-        builds rather than something the box scans internally &mdash; which is why nulling
-        the mismatch is a job for a <a href="../glassrod/">path</a> or a delay line rather
-        than a control on the instrument.</p>
-        <p>The trace width uses the exact result that variance adds under correlation, and is
-        scaled so that both limiting cases come out right: two matched pulses reproduce their
-        own autocorrelation factor, and a reference much shorter than the pulse returns the
-        pulse's own width, since a short enough gate samples the envelope directly. Between
-        those limits it is an interpolation, within a couple of percent of a numerically
-        integrated sech&sup2; correlation. Mixed shapes &mdash; a Gaussian against a
-        sech&sup2; &mdash; have no closed form at all, and are flagged as approximate. Chirp is not carried into the width:
-        the arriving durations are used as they stand, so matched-chirp spectral focusing,
-        where the delay tunes the Raman shift rather than merely switching the signal on, is
-        described above but not modelled.</p>`,
-    },
-    extraDemos: [{
-      demo: 'crosscorrelator',
-      heading: 'The same instrument in cross-correlation mode',
-      caption: 'Two synchronized sources â€” 790&nbsp;nm and 1030&nbsp;nm â€” combined on a dichroic and read by one cross-correlator. '
-        + 'The delay line sweeps through time zero at 100.000&nbsp;mm and back, so the two pulses walk across each other every ten '
-        + 'seconds while the sum-frequency peak flares up between them at the crossing. Click the delay line to stop the sweep and '
-        + 'hunt time zero by hand.',
-    }],
-    related: ['pulsedlaser', 'glassrod', 'pulsecompressor', 'detector', 'spectrometer'],
-    citations: [
-      { label: 'R. Paschotta, â€œAutocorrelators,â€ RP Photonics Encyclopedia; doi:10.61835/y7n', url: 'https://www.rp-photonics.com/autocorrelators.html' },
-      { label: 'â€œUltrashort laser pulse characterisation: Optical autocorrelators,â€ MEETOPTICS Academy', url: 'https://www.meetoptics.com/academy/autocorrelators' },
-      { label: 'D. J. Kane, â€œUltrafast Laser Techniques: Pulse Characterization Techniques,â€ in Encyclopedia of Modern Optics, Elsevier (2005), pp. 227â€“239; doi:10.1016/B0-12-369395-0/00842-3', url: 'https://www.sciencedirect.com/science/article/pii/B0123693950008423' },
-      { label: 'V. Piazza, G. de Vito, E. Farrokhtakin, G. Ciofani and V. Mattoli, â€œFemtosecond-laser-pulse characterization and optimization for CARS microscopy,â€ PLoS ONE 11(5), e0156371 (2016)', url: 'https://doi.org/10.1371/journal.pone.0156371' },
-      { label: 'R. A. Fisher and J. A. Fleck Jr., â€œOn the phase characteristics and compression of picosecond pulses,â€ Appl. Phys. Lett. 15, 287 (1969) â€” the origin of the coherent-artifact warning', url: 'https://doi.org/10.1063/1.1653002' },
-      { label: 'D. J. Kane and R. Trebino, â€œCharacterization of arbitrary femtosecond pulses using frequency-resolved optical gating,â€ IEEE J. Quantum Electron. 29(2), 571â€“579 (1993)', url: 'https://doi.org/10.1109/3.199311' },
-    ],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Pulse Characterization', url: 'https://www.rp-photonics.com/pulse_characterization.html' },
-      { label: 'RP Photonics Encyclopedia â€” Pulse Duration', url: 'https://www.rp-photonics.com/pulse_duration.html' },
-    ],
-  },
-
-  {
-    type: 'dichroic',
-    summary: "Splits light by wavelength around an adjustable cutoff, transmitting one spectral region and reflecting another for excitation routing and emission collection.",
-    title: 'Dichroic mirror',
-    category: 'Filters & Splitters',
-    realWorld: {
-      html: `
-        <p>A dichroic mirror is a multilayer thin-film coating engineered so
-        constructive and destructive interference between the layers reflects one band
-        of wavelengths while transmitting another. The transmission spectrum
-        <span class="w">T(Î»)</span> it produces depends on the full layer stack â€” there's
-        no single closed-form equation, and real coatings have a finite-width transition
-        (not a hard cutoff) that also shifts with the angle of incidence.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>OpticalSetup models the idealized target behavior a dichroic coating is
-        designed to approximate: a hard-edged passband. Longpass, shortpass, and bandpass
-        variants each define a wavelength range that transmits completely, reflecting
-        everything else. The band reflector is the reverse of the bandpass: it reflects one
-        band and transmits both sides of it, like the high-reflection coating on a laser or
-        optical parametric oscillator mirror that returns the resonant wave while passing the
-        pump and other wavelengths. Its in-band reflectivity can be lowered below 100 % to make
-        an output coupler, which transmits the remainder of the band along with everything
-        outside it. For a broadband beam, the transmitted and reflected branches
-        each carry the actual spectral overlap between the beam's band and the passband â€”
-        so a supercontinuum beam through a longpass dichroic correctly comes out
-        color-shifted on both branches, not just dimmed.</p>`,
-      formulas: [
-        { tex: 'T(\\lambda) = \\begin{cases} 1 & \\lambda \\in \\text{passband} \\\\ 0 & \\text{otherwise} \\end{cases}', caption: 'The ideal step-function transmission OpticalSetup evaluates, versus a real coating\'s smooth, angle-dependent roll-off.' },
-      ],
-      limitations: `<p>No thin-film interference is modeled, the cutoff is a hard edge
-        rather than a smooth transition, and â€” unlike a real coating, whose cutoff
-        wavelength shifts at non-normal incidence â€” the configured cutoff is fixed
-        regardless of the angle the dichroic is drawn at.</p>`,
-    },
-    related: ['filter', 'bs', 'etalon', 'prism'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Dichroic Mirrors', url: 'https://www.rp-photonics.com/dichroic_mirrors.html' },
-    ],
-  },
-
-  {
-    type: 'filter',
-    summary: "Transmits a selected wavelength band or attenuates light as a neutral-density filter, for isolating spectral signals and controlling power along a beam path.",
-    title: 'Filter',
-    category: 'Filters & Splitters',
-    realWorld: {
-      html: `
-        <p>Optical filters reject unwanted wavelengths by one of two physical
-        mechanisms. <strong>Absorptive filters</strong> â€” colored or doped glass, or a
-        dye suspended in a polymer â€” remove light by genuine absorption: photons in the
-        rejected band are converted to heat inside the material. <strong>Interference
-        filters</strong> instead use the same multilayer dielectric-coating physics as a
-        dichroic mirror, engineered so the rejected band destructively interferes in
-        transmission â€” which usually means it reflects back out rather than being
-        absorbed. A <strong>neutral-density (ND) filter</strong> is the wavelength-flat
-        special case of an absorptive or partially-reflective metallic coating, meant to
-        attenuate intensity uniformly across the visible band rather than reject a
-        specific color.</p>
-        <p>Absorptive and interference designs behave very differently under high power:
-        an absorptive filter converts the rejected light to heat and can be damaged or
-        even cracked if that exceeds its thermal budget, while an interference filter's
-        rejected light reflects back toward the source â€” a real hazard when placed near a
-        laser cavity, since that reflection can re-enter the gain medium.</p>`,
-      formulas: [
-        { tex: 'T(\\lambda) = e^{-\\alpha(\\lambda) L}', caption: "Beerâ€“Lambert absorption through a filter of thickness L and wavelength-dependent absorption coefficient Î±(Î») â€” why a real absorptive filter's cut-on or cut-off is always a gradual slope, not a sharp step." },
-        { tex: '\\text{OD} = -\\log_{10} T, \\qquad T = 10^{-\\text{OD}}', caption: 'Optical density â€” the standard way neutral-density filters are specified and stacked: ODs simply add when filters are combined in series.' },
-      ],
-    },
-    inOpticalSetup: {
-      html: `
-        <p>One element models four filter families, selected by type: <em>Bandpass</em>,
-        <em>Longpass</em>, and <em>Shortpass</em> each define an idealized passband â€”
-        exactly the same hard-edged step-function model used by the <a
-        href="../dichroic/">dichroic mirror</a> â€” while <em>Neutral density</em> instead
-        attenuates every wavelength by the same configured transmission fraction. For a
-        broadband or supercontinuum beam, the transmitted spectrum is the exact overlap
-        between the beam's band and the passband, so a wide beam through a narrow
-        bandpass filter correctly comes out both dimmer and spectrally narrowed. This
-        also holds after dispersive glass or a prism has split the beam into wavelength
-        samples: each sample carries its own slice of the spectrum, and the filter cuts
-        inside that slice, so a 1&nbsp;nm bandpass passes 1&nbsp;nm of light rather than a
-        whole sample. A pulse's duration after the filter is worked out from what passes â€”
-        the transform of the surviving spectrum with the chirp it carries (see the <a
-        href="../pulsedlaser/">pulsed laser</a>) â€” and the passed band is kept however thin
-        it is, so it still reaches the optics after the filter.</p>`,
-      formulas: [
-        { tex: 'T(\\lambda) = \\begin{cases} 1 & \\lambda \\in \\text{passband} \\\\ 0 & \\text{otherwise} \\end{cases}, \\qquad I_{\\text{nd}} = \\text{trans} \\cdot I_0', caption: 'The idealized step-function passband used for bandpass/longpass/shortpass, and the flat scalar attenuation used for neutral density.' },
-      ],
-      limitations: `<p>Rejected light simply vanishes rather than reflecting â€” this
-        matches the physical picture of an absorptive colored-glass filter, but not a
-        reflective interference filter (for a component that reflects its rejected band
-        instead, use the Dichroic mirror). The passband edge is a hard step with no
-        transition slope, no per-wavelength optical density curve, and no angle
-        dependence. The neutral-density mode is perfectly grey at every wavelength â€” real
-        ND filters have some spectral ripple â€” and there's no damage-threshold or thermal
-        modeling for either absorptive heating or reflected back-power.</p>`,
-    },
-    related: ['dichroic', 'bs', 'aotf'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Optical Filters', url: 'https://www.rp-photonics.com/optical_filters.html' },
-      { label: 'RP Photonics Encyclopedia â€” Interference Filters', url: 'https://www.rp-photonics.com/interference_filters.html' },
-    ],
-  },
-
-  {
-    type: 'etalon',
-    summary: "Uses repeated reflections between closely spaced coatings to produce periodic transmission resonances, with angle tuning and configurable spectral resolution and free spectral range.",
-    title: 'Etalon (Fabryâ€“PÃ©rot)',
-    category: 'Filters & Splitters',
-    realWorld: {
-      html: `
-        <p>A Fabryâ€“PÃ©rot etalon is just two closely spaced, parallel, partially
-        reflective surfaces â€” but unlike a single partial mirror, light inside that gap
-        bounces back and forth indefinitely, and every one of those internal reflections
-        leaks a little light out and interferes with all the others. Sum that infinite
-        series of multiply-reflected beams and, at most wavelengths, the interference is
-        destructive enough that the etalon simply reflects, behaving like an ordinary
-        partial mirror. But at a resonance â€” where the round-trip phase is a multiple of
-        2Ï€ â€” every reflected component cancels almost perfectly, and transmission surges
-        to a coating-limited peak that can approach 100% even through two mirrors that are
-        individually 99% reflective. That counterintuitive buildup, not a simple partial
-        transmission, is the entire operating principle.</p>
-        <p>Resonances repeat periodically in wavelength at the free spectral range (FSR),
-        and how sharp each resonance is â€” how far you can detune before transmission
-        collapses back toward zero â€” is set by the finesse, which climbs steeply as the
-        mirror reflectivity approaches 1.</p>`,
-      formulas: [
-        { tex: 'T(\\delta) = \\frac{T_{\\max}}{1 + F_c \\sin^2(\\delta/2)}, \\qquad F_c = \\frac{4R}{(1-R)^{2}}', caption: 'The Airy function â€” Fabryâ€“PÃ©rot transmission versus round-trip phase Î´, for two matched mirrors of reflectivity R.' },
-        { tex: '\\text{FSR} = \\frac{\\lambda^{2}}{2nd\\cos\\theta}, \\qquad \\mathcal{F} = \\frac{\\pi\\sqrt{R}}{1-R} = \\frac{\\text{FSR}}{\\text{FWHM}}', caption: 'Free spectral range (spacing between resonances, set by cavity length d and refractive index n) and finesse (resonance sharpness, set by reflectivity alone) â€” together they fix the resonance linewidth.' },
-      ],
-      html2: `
-        <p>Because the round-trip phase Î´ depends on the incidence angle through
-        <span class="w">cos Î¸</span>, tilting an etalon shifts its resonance wavelength
-        without changing the mirrors at all â€” a standard tuning technique in real optical
-        systems, alongside temperature tuning of the spacing itself. Etalons are used
-        intracavity in lasers to force single-longitudinal-mode operation, and standalone
-        as narrowband spectral filters and scanning spectrum analyzers.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The Etalon is specified the way a real one is speced on a datasheet â€” center
-        wavelength, transmission bandwidth (FWHM), free spectral range, and peak
-        transmission â€” rather than by the raw mirror spacing and reflectivity the Airy
-        function actually needs. Those spectral targets are inverted internally into the
-        matched-mirror reflectivity <span class="w">R</span> and cavity spacing that
-        produce them, then the exact closed-form Airy function above is evaluated at every
-        ray's real incidence angle: off-resonance light reflects, on-resonance light
-        transmits up to the configured peak, and rotating the element on the canvas shifts
-        the resonance exactly like tilting a real etalon â€” because the tracer uses the
-        ray's actual hit angle, not a separately stored tilt parameter.</p>`,
-      formulas: [],
-      limitations: `<p>This is one of only two elements in the library implementing genuine
-        multi-beam interference rather than an idealized on/off band â€” the app's ray
-        tracer otherwise never tracks phase, so the etalon is special-cased as a single
-        surface driven by the closed-form Airy result instead of actually summing repeated
-        internal bounces. There's no mirror-parallelism defect (wedge), no temperature
-        drift of the spacing, and peak transmission below 100% is reached with a single
-        lumped loss term rather than a modeled absorption or scatter mechanism on each
-        coating.</p>`,
-    },
-    related: ['vipa', 'dichroic', 'filter'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Etalons', url: 'https://www.rp-photonics.com/etalons.html' },
-      { label: 'RP Photonics Encyclopedia â€” Finesse', url: 'https://www.rp-photonics.com/finesse.html' },
-      { label: 'RP Photonics Encyclopedia â€” Tilt Tuning of Etalons', url: 'https://www.rp-photonics.com/spotlight_2009_12_31.html' },
-    ],
-  },
-
-  {
-    type: 'vipa',
-    summary: "Produces spatially offset leakage beams through repeated reflections inside a tilted plate, providing a geometric model of the walk-off used in VIPA dispersers.",
-    title: 'VIPA (Virtually Imaged Phased Array)',
-    category: 'Filters & Splitters',
-    realWorld: {
-      html: `
-        <p>A VIPA is, at heart, the same tilted Fabryâ€“PÃ©rot cavity as an etalon â€” two
-        closely spaced reflective coatings â€” but illuminated and read out completely
-        differently. Light enters through a small uncoated window in an otherwise
-        near-perfectly reflective front face, focused to a line inside the cavity. Because
-        the plate is tilted relative to that incoming beam, each internal bounce off the
-        partially transmitting back face leaks light out at a slightly different lateral
-        position instead of retracing the same path â€” producing a fan of many spatially
-        offset, mutually coherent beams that interfere in the far field exactly like light
-        emerging from a real phased array of point sources, except every one of those
-        virtual sources is actually a single physical cavity imaged multiple times${cite(1)}.
-        That's the "virtually imaged" half of the name.</p>
-        <p>The result is angular dispersion 10â€“20Ã— higher than an ordinary diffraction
-        grating in a device a few millimeters thick, at the cost of a much smaller free
-        spectral range â€” which is why VIPAs are typically paired with a grating in a
-        cross-dispersed configuration (the grating separates orders that would otherwise
-        overlap) in high-resolution spectrometers, optical coherence tomography systems,
-        and dense wavelength-division-multiplexing demultiplexers.</p>`,
-      formulas: [
-        { tex: '\\Delta\\lambda_{\\text{res}} = \\frac{\\text{FSR}}{\\mathcal{F}}, \\qquad \\mathcal{F} = \\frac{\\pi\\sqrt{R_{\\text{out}}}}{1-R_{\\text{out}}}', caption: "Spectral resolution and finesse â€” set by the output face's reflectivity, exactly as in an ordinary etalon; only the readout geometry differs." },
-      ],
-    },
-    inOpticalSetup: {
-      html: `
-        <p>Because the walk-off between successive leaked beams is a purely geometric
-        consequence of the tilt â€” each bounce genuinely exits at a different point along
-        the plate â€” OpticalSetup traces it directly as repeated ordinary mirror
-        reflections rather than borrowing the Etalon's closed-form Airy transmission: an
-        entrance window in the front coating lets rays in, and each subsequent bounce off
-        the partially reflective rear face spawns both a continuing internal ray and a
-        leaked output ray, exactly reproducing the fan of offset beams a real VIPA
-        produces. Only the output face's reflectivity needs the Fabryâ€“PÃ©rot mathematics,
-        and it's derived the same way the Etalon derives its mirror reflectivity: you
-        specify center wavelength, resolution (FWHM), and free spectral range, and
-        <code>resolveVipaPhysical()</code> solves for the plate spacing and coating
-        reflectivity that would actually produce them â€” sharing its solver with the Etalon
-        element, since spectrally the two are the same cavity.</p>`,
-      formulas: [],
-      limitations: `<p>The fan of leaked beams is genuine ray-traced geometry, but each
-        individual leaked ray still carries only the ordinary (incoherent) intensity
-        propagated by the rest of the tracer â€” the far-field interference between those
-        beams that a real VIPA relies on to build its angular dispersion pattern isn't
-        computed; what you see is the correct geometric walk-off, not a simulated
-        diffraction pattern. There's also no modeled anti-reflection coating on the
-        entrance window, no cylindrical input-lens focusing, and no cross-dispersing
-        grating stage â€” this element models the VIPA plate alone.</p>`,
-    },
-    related: ['etalon', 'grating', 'dichroic'],
-    citations: [
-      { label: 'M. Shirasaki, "Large angular dispersion by a virtually imaged phased array and its application to a wavelength demultiplexer," Opt. Lett. 21, 366 (1996)', url: 'https://opg.optica.org/ol/abstract.cfm?uri=ol-21-5-366' },
-    ],
-    resources: [
-      { label: 'Wikipedia â€” Virtually imaged phased array', url: 'https://en.wikipedia.org/wiki/Virtually_imaged_phased_array' },
-      { label: 'RP Photonics Encyclopedia â€” Etalons', url: 'https://www.rp-photonics.com/etalons.html' },
-    ],
-  },
-
-  {
-    type: 'cmirrorx',
-    summary: "Diverges light from a real convex spherical surface, including its spherical aberration.",
-    title: 'Convex mirror',
-    category: 'Mirrors',
-    realWorld: {
-      html: `
-        <p>A convex (diverging) spherical mirror bulges toward the incoming light and
-        spreads a reflected beam out rather than focusing it. It obeys the same mirror
-        equation as a concave mirror, but with a negative focal length â€” object rays
-        reflect as if diverging from a virtual focus behind the mirror, forming an
-        upright, reduced virtual image. This is the geometry behind car passenger-side
-        mirrors and wide-field security mirrors, both chosen for their expanded field of
-        view rather than any focusing power.</p>`,
-      formulas: [
-        { tex: 'f = \\frac{R}{2} < 0, \\qquad \\frac{1}{f} = \\frac{1}{d_o} + \\frac{1}{d_i}', caption: 'Same mirror equation as the concave case, with f negative by convention.' },
-      ],
-    },
-    inOpticalSetup: {
-      html: `
-        <p>Identical implementation to the <a href="../cmirror/">concave mirror</a> â€” a real
-        spherical surface of radius <span class="w">R = 2f</span>, intersected and reflected
-        analytically â€” just with the curvature the other way round, which is why the beam
-        here spreads instead of converging. The aberration is present for the same reason and
-        by the same mechanism; it simply matters less, because a diverging mirror is rarely
-        asked to form an image.</p>`,
-      formulas: [],
-      limitations: `<p>Same caveats as the concave mirror: a 2D cross-section of a sphere
-        rather than a full 3D surface, so only aberrations expressible in the meridional
-        plane appear; no coating model, and so no wavelength- or angle-dependent
-        reflectivity; and a mirror cannot be wider than its own sphere, so a very short focal
-        length silently limits the aperture â€” the panel reports the size actually used.</p>`,
-    },
-    related: ['cmirror', 'mirror', 'oap'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Mirrors', url: 'https://www.rp-photonics.com/mirrors.html' },
-    ],
-  },
-
-  {
-    type: 'cmirror',
-    summary: "Focuses light from a real concave spherical surface, including its spherical aberration.",
-    title: 'Concave mirror',
-    category: 'Mirrors',
-    realWorld: {
-      html: `
-        <p>A concave (converging) spherical mirror focuses light by reflection the same
-        way a lens focuses it by refraction. For a mirror of radius of curvature
-        <span class="w">R</span>, the paraxial focal length is half the radius, and object
-        and image distances obey the same mirror equation as a lens:</p>`,
-      formulas: [
-        { tex: 'f = \\frac{R}{2}', caption: 'Paraxial focal length from the radius of curvature.' },
-        { tex: '\\frac{1}{f} = \\frac{1}{d_o} + \\frac{1}{d_i}, \\qquad m = -\\frac{d_i}{d_o}', caption: 'The mirror equation and transverse magnification â€” identical in form to the thin-lens equation.' },
-      ],
-      html2: `
-        <p>That formula is only exact for rays close to the axis. A real sphere brings
-        marginal (off-axis) rays to a focus slightly closer to the mirror than paraxial
-        rays â€” spherical aberration â€” which is why fast astronomical mirrors are ground as
-        parabolas instead (see the parabolic mirror page).</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The mirror is a <strong>real spherical surface</strong>: radius
-        <span class="w">R = 2f</span>, vertex at the element's origin, centre of curvature in
-        front of it. Rays are intersected against that circle analytically and reflected off
-        its true normal, with no paraxial correction applied anywhere. Nothing about the
-        focusing is imposed â€” it falls out of the geometry, and so does the aberration.</p>
-        <p>That means this element behaves like a sphere rather than like an idealisation of
-        one. Put a <a href="../pointsource/">point source</a> at the focus and the returning
-        beam is <em>not</em> collimated: marginal rays leave at a different angle from
-        paraxial ones, and the beam widens as it travels. How badly depends entirely on how
-        fast the mirror is:</p>
-        <p><strong>f/3.9</strong> â€” 0.07Â°, near enough to collimated to use.
-        <strong>f/2.0</strong> â€” 0.14Â°. <strong>f/0.5</strong> â€” 5.7Â°, useless for the
-        purpose. Same source, same focus, only the aperture-to-focal-length ratio changing.
-        That steep dependence is the whole reason a fast system is built round a
-        <a href="../oap/">parabola</a> instead, and the two elements are worth putting
-        side by side to see it.</p>`,
-      formulas: [],
-      limitations: `<p>The surface is a 2D cross-section of a sphere, so only aberrations
-        that live in the meridional plane can appear â€” spherical aberration and defocus do,
-        while astigmatism and coma, which need the third dimension or a full off-axis field,
-        do not. There is no coating model, so reflectivity does not vary with wavelength or
-        angle of incidence. And a mirror cannot be wider than its own sphere: a short focal
-        length with a wide aperture is limited to what the radius allows, and the panel
-        reports the aperture actually used rather than the one requested.</p>`,
-    },
-    related: ['cmirrorx', 'mirror', 'oap'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Mirrors', url: 'https://www.rp-photonics.com/mirrors.html' },
-    ],
-  },
-
-  {
-    type: 'oap',
-    summary: "Reflects light from an exact parabola, collimating a source at its focus without spherical aberration.",
-    title: 'Parabolic mirror',
-    category: 'Mirrors',
-    realWorld: {
-      html: `
-        <p>A parabola has an exact geometric property a sphere only approximates: every
-        ray traveling parallel to its axis, at <em>any</em> distance from that axis,
-        reflects through a single focus. There is no spherical aberration to correct for,
-        which is why fast telescope primaries, off-axis paraboloid (OAP) mirrors in
-        ultrafast laser labs, and satellite dishes are all parabolic rather than
-        spherical. In this 2D side view, the mirror profile is the parabola with vertex at
-        the origin and focus a distance <span class="w">f</span> behind it:</p>`,
-      formulas: [
-        { tex: 'x = -\\frac{y^{2}}{4f}', caption: 'The parabola profile traced by the mirror, opening toward the incoming beam.' },
-      ],
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The mirror is traced as its real curve. Short flat facets locate <em>where</em> a
-        ray lands, but the reflection uses the parabola's own normal at that point, found
-        analytically: the surface <span class="w">x = âˆ’yÂ²/4f</span> has gradient
-        <span class="w">(1, y/2f)</span>, and the exact rayâ€“curve intersection is solved
-        rather than taken from the facet chord. The facet count therefore sets positional
-        accuracy only, never angular â€” which is what makes the defining property hold at
-        <em>any</em> aperture rather than only at gentle ones.</p>
-        <p>The consequence is worth checking against the
-        <a href="../cmirror/">spherical mirror</a> directly. With a point source at the focus
-        of each, f&nbsp;=&nbsp;25 and a 100&nbsp;mm aperture, the parabola returns a beam
-        98&nbsp;mm wide at 400&nbsp;mm and still 98&nbsp;mm wide at 1200&nbsp;mm â€” collimated,
-        exactly. The sphere returns 468&nbsp;mm widening to 792&nbsp;mm: about 11Â°. Neither
-        number is put in by hand; both come out of the two surfaces.</p>`,
-      formulas: [],
-      limitations: `<p>This is closer to first-principles optics than most elements in the
-        library, but it is still a 2D on-axis cross-section â€” a real OAP is typically an
-        off-axis section of a 3D paraboloid, which this side view cannot represent. Being
-        exact in reflection also means it is exact in a way no manufactured mirror is: there
-        is no surface figure error, no roughness, and no coating model, so reflectivity does
-        not vary with wavelength or angle.</p>`,
-    },
-    related: ['cmirror', 'cmirrorx', 'mirror'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Mirrors', url: 'https://www.rp-photonics.com/mirrors.html' },
-    ],
-  },
-
-  {
-    type: 'galvo',
-    summary: "Steers reflected light with a fixed or animated mechanical mirror angle, for exploring scan geometry with a slowed preview at high drive frequencies.",
-    title: 'Galvo mirror',
-    category: 'Mirrors',
-    realWorld: {
-      html: `
-        <p>A galvanometer scanner ("galvo") is a small mirror mounted on a limited-rotation
-        motor, used to steer a beam electronically instead of by hand â€” the core
-        building block of laser scanning microscopes, laser marking and cutting systems,
-        LiDAR, and laser light shows. Because reflection doubles an angle change, a small
-        mechanical rotation produces twice as much angular deflection in the reflected
-        beam:</p>`,
-      formulas: [
-        { tex: '\\theta_{\\text{beam}} = 2\\,\\theta_{\\text{mechanical}}', caption: 'The optical scan angle is always twice the mechanical mirror rotation â€” the same doubling that applies to any steering mirror.' },
-      ],
-      html2: `
-        <p>Real galvo systems pair two mirrors on perpendicular axes (X and Y) to raster-
-        or vector-scan a beam over a 2D field, and their achievable speed is limited by
-        the mirror's rotational inertia â€” large, fast angular steps take longer to settle
-        than small ones.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The galvo reflects rays with the same exact vector law of reflection as a
-        plain mirror, but its surface angle is recomputed every frame from a configurable
-        command: <em>Static</em> holds a fixed mechanical angle; <em>Sine</em> and
-        <em>Triangle</em> continuously sweep it around that center at a set frequency and
-        peak amplitude. In sweep mode the mirror actually rotates and the reflected beam
-        visibly sweeps back and forth on its own â€” this is the one component in the
-        library that animates continuously in real time, driven by its own clock rather
-        than the pulse-timing playback controls used elsewhere.</p>`,
-      formulas: [],
-      limitations: `<p>The peak mechanical sweep is capped at 10Â°, and defaults to a
-        modest 1Â° â€” enough to demonstrate scanning clearly without the swing dominating a
-        sketch. There's no modeled inertia, bandwidth, or settling time: the mirror
-        follows the commanded sine or triangle wave instantly and perfectly at any
-        frequency, which a real galvo's mechanical response could not do.</p>`,
-    },
-    related: ['mirror', 'cmirror', 'cmirrorx'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Mirrors', url: 'https://www.rp-photonics.com/mirrors.html' },
-      { label: 'RP Photonics Encyclopedia â€” Laser Beam Delivery', url: 'https://www.rp-photonics.com/laser_beam_delivery.html' },
-    ],
-  },
-
-  {
-    type: 'conicmirror',
-    title: 'Conic mirror',
-    category: 'Mirrors',
-    summary: 'Reflects from an exact conic surface â€” sphere, parabola, ellipse or hyperbola â€” with an optional real central opening.',
-    realWorld: {
-      html: `
-        <p>A spherical mirror is easy to make and wrong in a specific way: rays striking
-        it far from the axis cross ahead of the ones near the axis, so a distant star
-        never quite comes to a point. That is spherical aberration, and it is not a
-        manufacturing defect â€” it is what a sphere does. The conic sections fix it, each
-        one exactly, for one particular pair of conjugate points.</p>
-        <p>The surface is described by a vertex radius and a <strong>conic constant</strong>
-        k, which selects the section: k = 0 is a sphere, k = âˆ’1 a parabola, âˆ’1 &lt; k &lt; 0
-        a prolate ellipse, k &lt; âˆ’1 a hyperbola, and k &gt; 0 an oblate ellipse.</p>`,
-      formulas: [
-        { tex: 'z(y) = \\frac{y^{2}/R}{1 + \\sqrt{1 - (1+k)\\,y^{2}/R^{2}}}', caption: 'The conic sag: how far the surface has departed from its vertex plane at height y. One radius and one conic constant describe every shape in the family.' },
-      ],
-      html2: `
-        <p>Each conic images one pair of points perfectly. A <strong>parabola</strong>
-        takes a source at infinity to its focus, which is why it is the shape of a
-        telescope primary and of the <a href="../oap/">off-axis parabolic mirror</a>. An
-        <strong>ellipse</strong> images one of its two foci onto the other, both at finite
-        distance. A <strong>hyperbola</strong> does the same for one real and one virtual
-        focus.</p>
-        <p>Combining two of them is how reflecting telescopes and objectives are built: a
-        Cassegrain pairs a parabolic primary with a hyperbolic secondary, a Gregorian with
-        an elliptical one, and a Ritcheyâ€“ChrÃ©tien uses two hyperbolas to clear coma as
-        well. The same two-mirror idea, turned into a microscope objective, is the
-        standard tool of infrared microscopy and FTIR: mirrors have no dispersion at all,
-        so the focus does not move with wavelength, and no glass is asked to transmit
-        light it would simply absorb.</p>
-        <p>What every on-axis two-mirror system pays is the <strong>central
-        obstruction</strong>. The secondary sits in the beam, so the aperture is an
-        annulus: some light is lost outright, and in a real instrument the rest is
-        redistributed, with a diffraction pattern whose rings are stronger than an
-        unobstructed aperture's.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The mirror is a real conic surface, intersected analytically. Each ray's hit
-        point and surface normal are solved on the conic itself rather than on a paraxial
-        stand-in, so aberration is a <em>result</em> here: give a mirror k = 0 and the
-        marginal rays really do cross ahead of the paraxial ones, by an amount you can
-        measure with a detector.</p>
-        <p>The <strong>signed vertex radius</strong> sets curvature and which way the
-        surface bends â€” a radius of zero is a plane â€” and the <strong>coated side</strong>
-        chooses which face reflects; the other is opaque, and reflectivity below 100% is
-        absorbed rather than transmitted, as a solid mirror substrate would.</p>
-        <p>The <strong>central opening</strong> is a real hole, not a drawing. Rays inside
-        it pass through the mirror entirely, and â€” because the search does not stop at the
-        opening â€” a ray that enters through the hole at an angle can still strike the
-        annulus further along, which is exactly the path the light takes in a Cassegrain.
-        Because a requested radius can be too short for the requested aperture to exist,
-        the <em>Geometry used</em> readout always reports the radius and opening actually
-        realized, so a silently adjusted prescription cannot pass unnoticed.</p>`,
-      formulas: [],
-      limitations: `<p>This is a two-dimensional meridional section. There is no
-        sagittal plane, so nothing here reproduces astigmatism or field curvature as a
-        real conic would show them off-axis, and a rotational surface's behaviour is only
-        being sampled along one cut.</p>
-        <p>Nothing is diffractive: there is no Airy pattern, none of the ring
-        redistribution a central obstruction causes, and no spider vanes, so the
-        geometric point focus a well-matched conic pair produces is sharper than any real
-        instrument's. Reflectivity is a single flat percentage with no angle,
-        polarization or wavelength dependence, so a coating's spectrum and an infrared
-        detector's responsivity are both outside the model. The conic constant is bounded
-        to Â±20 and the radius to Â±5000&nbsp;mm.</p>`,
-    },
-    related: ['oap', 'cmirror', 'mirror', 'objective'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Parabolic Mirrors', url: 'https://www.rp-photonics.com/parabolic_mirrors.html' },
-      { label: 'RP Photonics Encyclopedia â€” Mirrors', url: 'https://www.rp-photonics.com/mirrors.html' },
-    ],
-  },
-
-  {
-    type: 'polygonscanner',
-    title: 'Polygon scanner',
-    category: 'Mirrors',
-    summary: 'Traces reflection from every facet of a rotating regular polygon.',
-    realWorld: {
-      html: `
-        <p>A <strong>rotating polygon scanner</strong> is a prism of flat mirror facets
-        cut around a wheel, spun continuously by a motor. Each facet sweeps the beam
-        through one line; as it passes out of the beam the next facet picks it up at the
-        start of the next line. The idea is old enough to be everywhere without being
-        noticed â€” it is the mechanism inside laser printers, supermarket barcode
-        scanners, many LiDAR heads, and the line-scanning laser processing systems used
-        for high-throughput marking and ablation.</p>
-        <p>Its advantage over a <a href="../galvo/">galvo mirror</a> is that the motion
-        never reverses. A galvo has to decelerate, stop and accelerate back at the end of
-        every line, and the settling that follows is what limits how fast it can scan. A
-        polygon turns one way at constant speed, so there is no turnaround to wait for
-        and the line rate is set purely by how fast the motor spins and how many facets
-        it carries:</p>`,
-      formulas: [
-        { tex: 'f_{\\text{line}} = \\frac{N \\cdot \\text{RPM}}{60}', caption: 'Lines per second, for N facets. A 12-facet wheel at 30,000 RPM delivers 6,000 lines per second â€” a rate no galvo of comparable aperture can approach.' },
-        { tex: '\\Delta\\theta_{\\text{optical}} = \\frac{4\\pi}{N}', caption: 'The optical sweep one facet delivers. Reflection doubles a mechanical angle, and the wheel turns through a full facet pitch 2Ï€/N while one facet crosses the beam, so fewer facets buy a wider scan and a lower line rate.' },
-      ],
-      html2: `
-        <p>What you pay for that speed is <strong>pupil walk</strong>. A galvo pivots
-        about its own face, so the beam leaves from roughly the same place and only the
-        angle changes. A polygon facet is offset from the rotation axis, so as the wheel
-        turns the reflection point slides bodily along the facet and the beam translates
-        as well as tilting. Scan lenses for polygon systems are designed around that
-        moving pupil, and facets are made generously larger than the beam so it has room
-        to walk.</p>
-        <p>The other cost is the gap between facets. For part of every rotation the beam
-        straddles the edge between two facets and is split in two, each half leaving at a
-        completely different angle. Nothing useful can be done with that light, so the
-        source is gated off across the transition â€” the scanner's <em>duty cycle</em> is
-        the fraction of each facet period that survives. A wider beam eats more of the
-        facet and leaves less duty, which is the trade behind the large wheels in
-        high-power line-scanning heads.</p>
-        <p>Because every facet is cut and mounted separately, real wheels also carry
-        facet-to-facet angular errors. A facet tilted a fraction of a milliradian out of
-        plane puts its line slightly above or below the others, and since the error
-        repeats once per revolution it shows up as periodic banding in the scanned
-        image â€” the reason precision systems either specify pyramidal error tightly or
-        correct it actively.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The component is a regular polygon centred on its rotation axis, and the
-        vertices that draw it are the same vertices that get traced: every facet you can
-        see is a real mirror surface, so there is no separate abstract scan angle that
-        could disagree with the picture. Each facet reflects by the ordinary vector law
-        of reflection used by the plain <a href="../mirror/">mirror</a>, which means the
-        2Ã— angle doubling and the pupil walk are not written into the model â€” they simply
-        come out of turning the geometry.</p>
-        <p><strong>Rotation</strong> runs the wheel continuously at a set RPM, or holds a
-        <em>static phase</em> so you can step through a facet by hand. The
-        <em>facet rate</em> readout gives the physical lines per second at all times,
-        even when playback is slowing the visible motion down for inspection.</p>
-        <p>The <strong>usable scan window</strong> is an ideal synchronized blanker: a
-        centred fraction of each facet period during which the facets reflect, with the
-        hub drawn green. Outside it the facets absorb, the hub turns amber, and no
-        outgoing ray remains â€” the modelled equivalent of gating the source across a
-        facet transition.</p>
-        <p>The wheel is opaque, so a facet reflectivity below 100% loses the remainder to
-        the coating rather than transmitting it. That is deliberate: a solid metal wheel
-        has no way to pass light, and letting it through would produce spurious
-        reflections off the inside faces of the far facets.</p>`,
-      formulas: [
-        { tex: 'w_{\\text{facet}} = D \\sin\\!\\left(\\frac{\\pi}{N}\\right)', caption: 'The facet width readout â€” the chord of one facet. This is the number to compare a beam width against: over one facet period the facet travels its whole chord through the beam, so a beam occupying a fraction f of it is on a single facet for only about 1 âˆ’ f of the period.' },
-      ],
-      limitations: `<p>The scan window is <strong>not derived from your beam</strong>.
-        It is a fraction of the facet period centred on the facet, and the component has
-        no knowledge of what is illuminating it, so a window left wider than the geometry
-        supports will show the beam splitting across two facets while the hub still reads
-        open. That split is real behaviour â€” it is what the blanking exists to hide â€” but
-        choosing the window to suit the beam is left to you. Oblique incidence tightens
-        it further and asymmetrically: the footprint on the facet is the beam width
-        divided by the cosine of the incidence angle, and that angle grows on one side of
-        the sweep and shrinks on the other, so the clean window is both narrower than the
-        facet ratio suggests and not centred on the facet.</p>
-        <p>Blanking is an ideal switch synchronized to the facet, not a model of how any
-        particular controller drives a source. Every facet is perfect and identical:
-        there is no pyramidal or facet-to-facet angular error, so none of the periodic
-        line banding that characterizes real wheels appears, and no bearing wobble,
-        windage, or timing jitter. There is no f-theta or telecentric scan lens â€” put an
-        ordinary lens after the wheel and the focus moves as fÂ·tan Î¸, with the pincushion
-        that implies. Nothing here predicts a diffraction-limited spot size, and the
-        second scan axis that turns lines into an area is out of the plane and not
-        modelled.</p>`,
-    },
-    related: ['galvo', 'mirror', 'aod'],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Laser Scanners', url: 'https://www.rp-photonics.com/laser_scanners.html' },
-      { label: 'RP Photonics Encyclopedia â€” Mirrors', url: 'https://www.rp-photonics.com/mirrors.html' },
-    ],
-  },
-
-  {
-    type: 'retroreflector',
-    summary: "Returns light antiparallel through a right-angle mirror pair, with optional translation that lengthens the round-trip optical path for mechanical delay demonstrations.",
-    title: 'Retroreflector',
-    category: 'Mirrors',
-    realWorld: {
-      html: `
-        <p>A single flat mirror sends a ray back at whatever angle the law of reflection
-        dictates â€” tilt the mirror even slightly and the returned beam walks off target. A
-        <strong>corner retroreflector</strong> solves that by pairing two flat mirrors at
-        exactly a right angle. Each bounce still obeys the ordinary law of reflection, but
-        the composition of two perpendicular reflections has a special property: the
-        outgoing ray is always exactly antiparallel to the incoming one, independent of
-        the angle of incidence, for any ray that enters within the device's aperture.</p>
-        <p>The three-dimensional version of this idea â€” three mutually perpendicular
-        mirror facets meeting at a corner, called a <em>corner cube</em> â€” is why bicycle
-        reflectors and road signs throw a car's headlights straight back at the driver
-        regardless of the exact angle the light arrives from, and why the retroreflector
-        arrays left on the Moon by the Apollo missions still return laser pulses fired
-        from Earth decades later with sub-arcsecond alignment tolerance${cite(1, 2)}. The 2D version
-        modeled here â€” two mirrors at 90Â°, sometimes called a "roof" or "porro" reflector
-        â€” is the working element inside a Michelson interferometer arm that needs
-        alignment-insensitive retroreflection, and inside mechanical delay lines: mounting
-        one on a translation stage and sliding it changes the round-trip path length by
-        twice the stage's travel, without ever needing to re-align the returned beam.</p>`,
-      formulas: [
-        { tex: "\\hat{d}' = -\\hat{d}", caption: 'The defining property of a corner retroreflector: the outgoing direction is exactly the negative of the incoming one, for any incidence angle within the aperture â€” unlike a single flat mirror, whose return direction depends on incidence angle.' },
-        { tex: '\\Delta L = 2\\,\\Delta x', caption: 'Translating a retroreflector by Î”x along its own axis changes the round-trip optical path by twice that distance â€” the basis of every retroreflecting mechanical delay line, from tabletop pulse stretchers to gravitational-wave interferometer arms.' },
-      ],
-    },
-    inOpticalSetup: {
-      html: `
-        <p>The Retroreflector is built from the same two flat mirror surfaces, each
-        obeying the exact vector law of reflection used by the plain <a
-        href="../mirror/">mirror</a>, joined at a shared apex at exactly 90Â°. Ray tracing
-        finds the first mirror hit, reflects it, then finds the second mirror hit and
-        reflects again â€” two ordinary reflections, composed â€” which is enough for the
-        antiparallel-return property to fall directly out of the vector reflection law
-        rather than being special-cased.</p>
-        <p>Its <strong>delay-line movement</strong> section adds an optional periodic
-        motion: set to <em>Periodic linear</em>, the whole element slides back and forth
-        along its own apex axis, rotation-aware, so it works at any angle you place it on
-        the table. The motion always starts at the position you placed it â€” the shortest
-        path â€” and moves only in the direction that adds path length, sweeping up to the
-        configured travel range (50&nbsp;mm by default, up to 200&nbsp;mm) at the
-        configured frequency, then back. Because it's a true retroreflector rather than
-        an abstract path-length tag, this doubles as a physical model of a mechanical
-        retroreflecting delay stage: moving it by Î”x really does add 2Î”x of round-trip
-        path, computed from the actual traced geometry.</p>`,
-      formulas: [],
-      limitations: `<p>Reflectivity is a single flat percentage applied identically to
-        both mirror surfaces, with the same caveats as the plain mirror: no angle- or
-        polarization-dependence, and no wavelength-dependent coating behavior. The
-        delay-line motion is an idealized triangle wave â€” no modeled stage inertia, servo
-        settling time, or velocity ripple â€” and, like the piezo stage's scanning, it
-        drives the traced geometry directly rather than a separate abstract path-length
-        parameter.</p>`,
-    },
-    related: ['mirror', 'cmirror', 'cmirrorx', 'galvo'],
-    citations: [
-      { label: 'NASA â€” Retroreflectors from Apollo & Mars', url: 'https://www.nasa.gov/image-article/retroreflectors-from-apollo-mars/' },
-      { label: 'Wikipedia â€” List of retroreflectors on the Moon', url: 'https://en.wikipedia.org/wiki/List_of_retroreflectors_on_the_Moon' },
-    ],
-    resources: [
-      { label: 'RP Photonics Encyclopedia â€” Retroreflectors', url: 'https://www.rp-photonics.com/retroreflectors.html' },
-    ],
-  },
-  {
-    type: 'eye', title: 'Human eye', category: 'Detectors',
-    summary: "Focuses light through an adjustable pupil onto a modeled retina, for exploring how focal length and pupil size change the detected spot.",
-    realWorld: { html: `<p>The eye forms an image on the retina using the refractive power of the cornea and crystalline lens. The iris controls the pupil opening, while accommodation changes the lens shape to bring different object distances into focus.</p>` },
-    inOpticalSetup: {
-      html: `<p>The pupil clips incoming rays, an equivalent thin lens bends the accepted light, and a retinal detector records the resulting signal. Adjust <em>Eye diameter</em>, <em>Pupil diameter</em>, and <em>Lens focal length</em> to compare the illuminated spot. A linked detector screen makes the retinal reading visible beside the eye.</p><p>In the example, a parallel beam enters the pupil. Change the focal length to move the best focus relative to the retinal plane, or narrow the pupil to admit less of the beam.</p>`,
-      limitations: `<p>This is a geometric teaching model, not an anatomical eye prescription. It does not predict visual acuity, diffraction, accommodation dynamics, retinal physiology, or laser exposure limits.</p>`,
-    }, related: ['lens', 'camera', 'display'],
-  },
-  {
-    type: 'generaldetector', title: 'General detector', category: 'Detectors',
-    summary: "Collects light at one sensor face and reports multiple beam properties, combining power, spectrum, polarization, wavefront, and pulse information in one instrument.",
-    realWorld: { html: `<p>A laboratory normally measures optical power, spectrum, polarization, beam shape, and pulse timing with different instruments. Each instrument has its own acceptance, resolution, and calibration; no single generic detector replaces all of them.</p>` },
-    inOpticalSetup: {
-      html: `<p>The general detector combines the workbench's supported readings at one active face. Point the face toward the incoming beam and attach a detector screen to inspect the available views. The example uses a pulsed source so both spectral and temporal properties are present.</p><p>Reduce the active height or move the detector off-axis to see how clipping changes the collected signal. Power in watts depends on the source power specified in the scene.</p>`,
-      limitations: `<p>This is a convenient composite diagnostic, not a model of one physical instrument. Its wavefront and spectral readings inherit the ray tracer's approximations; it does not add a calibrated noise floor or independent laboratory measurements.</p>`,
-    }, related: ['detector', 'powermeter', 'spectrometer', 'polarimeter', 'display'],
-  },
-  {
-    type: 'display', title: 'Detector screen', category: 'Detectors',
-    summary: "Shows the live readings of a linked detector on the canvas, with sensor-specific views and a data cable that never changes optical propagation.",
-    realWorld: { html: `<p>A detector's readout electronics turn its electrical output into numbers or plots. A display shows the information measured by the connected instrument; a cable to the display is a signal connection, not another optical path.</p>` },
-    inOpticalSetup: {
-      html: `<p>Select <em>Sensor input</em> to link the screen to a detector. Available views follow that sensor's capabilities, and the display adapts its information density to its drawn size. The cable carries data only: moving the screen or routing its cable across a beam cannot attenuate or deflect the light.</p><p>The example links a screen to a power meter behind a neutral-density filter. Change the filter transmission to change the reading, then move the screen to see that its position has no optical effect.</p>`,
-      limitations: `<p>The screen does not measure light itself or add properties absent from the linked sensor. It models no electronics noise, cable delay, or acquisition hardware.</p><p>The pulse entry shows the duration that arrives: dispersed where the duration model answers, <em>Unavailable</em> where it declines, and the source's configured duration only where no model applies, such as a mixture of trains. Before this, it always repeated the configured duration, so a screen on a setup with glass in the beam now reads a different, dispersed number.</p>`,
-    }, related: ['generaldetector', 'powermeter', 'camera', 'probe'],
-  },
-  {
-    type: 'delayline', title: 'Mechanical delay line', category: 'Pulse Timing',
-    summary: "Adds an adjustable optical path to delay pulses, keeping the outgoing beam on its axis.",
-    realWorld: {
-      html: `<p>A mechanical optical delay line changes the distance traveled by light using a translation stage and folding mirrors or a retroreflector. Time-resolved experiments use this change to vary the arrival of one pulse relative to another. The path multiplier depends on the number of passes through the moving section${cite(1)}.</p>`,
-      formulas: [{ tex: String.raw`\Delta t = \frac{\Delta L}{c}`, caption: 'For an extra optical path Î”L in vacuum. A simple double-pass stage moving by x adds Î”L = 2x.' }],
-    },
-    inOpticalSetup: {
-      html: `<p><em>Extra optical path</em> specifies the added path directly, in millimetres. Do not multiply it by two again. Static mode holds one value; periodic sweep moves between the configured path limits. The outgoing beam keeps its axis while downstream pulse timing includes the added path.</p><p>The example adds 100 mm, corresponding to about 334 ps in vacuum. Compare the beam probes before and after the element, then change the path to see the timing offset change.</p>`,
-      limitations: `<p>The folded path is represented by a compact element, not individually traced moving mirrors. It does not calculate carriage vibration, alignment drift, or stage acceleration. It delays pulses; it does not compensate their dispersion.</p>`,
-    }, citations: [{ label: 'Newport â€” Selecting delay lines for optical time-resolved measurements', url: 'https://api.p1.mks.com/medias/sys_master/images/images/hda/h0d/8797261398046/Selecting-delay-lines-for-optical-measurements.pdf' }],
-    related: ['retroreflector', 'pulsecompressor', 'pulsedlaser', 'autocorrelator'],
-  },
-  {
-    type: 'chopper', title: 'Chopper', category: 'Modulators',
-    summary: "Periodically interrupts light with an adjustable frequency and duty cycle, showing gated pulse trains and a schematic chopped pattern for continuous beams.",
-    realWorld: { html: `<p>An optical chopper uses a rotating slotted wheel to interrupt a beam. Chopping frequency describes how often the beam is interrupted, while duty cycle describes the fraction of each cycle that remains open. Commercial systems offer different wheel patterns and frequency ranges${cite(1)}.</p>` },
-    inOpticalSetup: {
-      html: `<p>Enable <em>Modulate on/off</em>, set <em>Chop frequency</em> in hertz, and adjust the on fraction and gate offset. Pulsed illumination is gated in time. CW light is drawn in visible chunks, while its detector reading uses duty-averaged power.</p><p>The example sends CW light through a 50% gate to a detector. Lower the on fraction to shorten the drawn illuminated sections and reduce the average reading. Disable modulation to restore uninterrupted transmission.</p>`,
-      limitations: `<p>The chunk spacing is schematic, not the physical distance traveled between openings. Blade-edge transit, motor jitter, and diffraction are omitted; the drawn wheel is not a specification for a particular commercial chopper.</p>`,
-    }, citations: [{ label: 'Thorlabs â€” Optical Chopper System and Chopper Wheels', url: 'https://www.thorlabs.com/optical-chopper-system-and-chopper-wheels' }], related: ['aom', 'pulsedlaser', 'detector', 'probe'],
-  },
-  {
-    type: 'crystal', title: 'Crystal', category: 'Nonlinear Optics',
-    summary: "Converts a chosen fraction of incident light into harmonic, parametric, mixed, supercontinuum, or custom output, with an option to retain the residual pump.",
-    realWorld: {
-      html: `
-        <p>A <strong>nonlinear optical crystal</strong> responds to intense light with a polarization that is no longer simply proportional to the optical field. In the perturbative regime the nonlinear contributions are usually small compared with the linear polarization, and the induced polarization can be expanded in powers of the field: the linear susceptibility Ï‡â½Â¹â¾ gives the linear refractive response, the second-order susceptibility Ï‡â½Â²â¾ mixes pairs of fields, and the third-order Ï‡â½Â³â¾ mixes three${cite(1)}. Written this way the expansion is a scalar shorthand: the susceptibilities are tensors and depend on the frequencies of the interacting fields${cite(1)}. Symmetry determines which terms are allowed, and intense laser fields make many nonlinear effects readily observable${cite(1)}. The laser enabled landmark optical frequency-conversion experiments, including the 1961 demonstration by Franken and colleagues, who focused a pulsed ruby laser into crystalline quartz and detected its second harmonic${cite(2)}.</p>`,
-      formulas: [
-        { tex: 'P = \\varepsilon_0\\left(\\chi^{(1)}E + \\chi^{(2)}E^{2} + \\chi^{(3)}E^{3} + \\dots\\right)', caption: 'Scalar shorthand for the induced polarization expanded in powers of the optical field E; the full response is tensorial and frequency dependent.' },
-      ],
-      html2: `
-        <h3>Nonlinear processes</h3>
-        <p>For the bulk electric-dipole response, Ï‡â½Â²â¾ vanishes in any inversion-symmetric medium â€” an unbiased isotropic gas, liquid or glass, or a centrosymmetric crystal â€” so second-order processes need a material without inversion symmetry. The rule concerns the bulk: surfaces and interfaces break the symmetry, which is why SHG also serves as a diagnostic of surface properties${cite(3)}. Ï‡â½Â³â¾ is symmetry-allowed in centrosymmetric media as well${cite(1)}. The main processes are:</p>
-        <ul>
-          <li><strong>Second-harmonic generation</strong> (SHG): two photons at Ï‰ combine into one at 2Ï‰${cite(1, 3)}.</li>
-          <li><strong>Sum- and difference-frequency generation</strong> (SFG, DFG): two input frequencies Ï‰<sub>1</sub> and Ï‰<sub>2</sub> produce Ï‰<sub>1</sub> + Ï‰<sub>2</sub> or |Ï‰<sub>1</sub> âˆ’ Ï‰<sub>2</sub>|${cite(1)}.</li>
-          <li><strong>Parametric amplification and oscillation</strong>: one pump photon splits into a signal and an idler photon. In a single pass it can amplify a weaker input wave, as an optical parametric amplifier (OPA); in a resonator that feeds the signal or idler back it can sustain oscillation above threshold, as an optical parametric oscillator (OPO), described below${cite(1)}.</li>
-          <li><strong>Third-harmonic generation</strong> (THG): light at Ï‰ produces 3Ï‰, either directly through Ï‡â½Â³â¾ or sequentially through two second-order steps, SHG to 2Ï‰ followed by sum-frequency mixing of 2Ï‰ with the remaining Ï‰${cite(1, 3)}. The sequential route can be implemented with separate SHG and SFG stages, and in well-designed systems it can be far more efficient than the direct one${cite(3)}.</li>
-        </ul>
-        <p>The strength of a Ï‡â½Â²â¾ interaction is expressed by an effective coefficient d<sub>eff</sub>, a combination of Ï‡â½Â²â¾ tensor components set by the crystal, the propagation direction and the polarizations; it is not a single material constant${cite(1)}.</p>
-        <h3>Phase mismatch</h3>
-        <p>Energy conservation is not enough. In collinear SHG the harmonic is driven by a polarization wave that travels with the fundamental, at wavevector 2k<sub>Ï‰</sub>, but it propagates freely with its own wavevector k<sub>2Ï‰</sub>, and dispersion generally makes the two differ. Harmonic light generated at different depths in the crystal then adds with different phases. Over one <strong>coherence length</strong> the driven and free waves slip by Ï€; beyond it, newly generated contributions interfere destructively with the existing harmonic, and, without pump depletion, the harmonic intensity oscillates with crystal length instead of growing${cite(4)}. For an undepleted plane-wave fundamental, negligible absorption and no harmonic at the input, the magnitude of the harmonic field after a crystal of length L is proportional to LÂ·|d<sub>eff</sub>|Â·|sinc(Î”kL/2)| for a fixed fundamental field, with sinc(x) = sin(x)/x and sinc(0) = 1, so the harmonic intensity is quadratic in the fundamental intensity and falls away once |Î”k|L is no longer small${cite(4)}.</p>`,
-      formulas2: [
-        { tex: '\\Delta k = k_{2\\omega} - 2k_{\\omega}, \\qquad \\ell_c = \\frac{\\pi}{|\\Delta k|} = \\frac{\\lambda}{4\\,|n_{2\\omega} - n_{\\omega}|}', caption: 'Phase mismatch and coherence length for SHG, with Î» the fundamental vacuum wavelength and the refractive indices those of the chosen propagation direction and polarizations. At perfect phase matching â„“_c is unbounded.' },
-        { tex: 'I_{2\\omega} \\propto d_{\\text{eff}}^{2}\\,L^{2}\\,I_{\\omega}^{2}\\,\\operatorname{sinc}^{2}\\!\\left(\\frac{\\Delta k\\,L}{2}\\right)', caption: 'Undepleted plane-wave SHG, with sinc(x) = sin(x)/x and sinc(0) = 1: quadratic in the fundamental intensity and peaked at Î”k = 0.' },
-      ],
-      html3: `
-        <h3>Phase matching</h3>
-        <p><strong>Phase matching</strong> makes Î”k vanish. In <strong>birefringent phase matching</strong> the interacting waves travel with different polarizations, so that birefringence offsets the dispersion between fundamental and harmonic â€” in a uniaxial crystal, through the difference between ordinary and extraordinary refractive indices${cite(4)}. Giordmaine, and Maker and colleagues, reported it in 1962${cite(5, 6)}. It is often tuned by the angle between the beam and the crystal's optic axis${cite(7)}. For general propagation directions in a birefringent medium, an extraordinary wave's energy flow is not parallel to its wavevector, so the beams drift apart. This <strong>spatial walk-off</strong> can reduce beam overlap and limit the useful interaction length; suitable principal-axis geometries avoid it${cite(4, 7)}.</p>
-        <p>In the sincÂ² law above the tolerable phase mismatch scales as 1/L: a longer crystal gives more phase-matched, undepleted conversion but tolerates a smaller Î”k. Acceptance in wavelength, angle or temperature inherits that 1/L scaling where Î”k varies linearly with the tuning parameter near the operating point${cite(8)}. If the first derivative vanishes but the second does not, the leading mismatch is quadratic in the detuning and the acceptance scales as L<sup>âˆ’1/2</sup> instead.</p>
-        <p>Temperature changes the refractive indices and hence the phase mismatch. Where a suitable principal-axis configuration exists â€” in a uniaxial crystal, propagation at 90Â° to the optic axis â€” temperature can tune phase matching with reduced first-order angular sensitivity and no birefringent spatial walk-off. This is <strong>noncritical phase matching</strong>; temperature tuning alone does not imply it${cite(7)}.</p>
-        <p><strong>Quasi-phase matching</strong> takes a different route. Instead of matching phase velocities, the sign of the nonlinear coefficient is periodically reversed, compensating the phase slip before new contributions start to cancel the harmonic; for the simplest first-order grating with a 50 % duty cycle, the reversal comes every coherence length. It was proposed by Armstrong, Bloembergen and colleagues in 1962 and became widely practical once patterned poling of ferroelectrics such as lithium niobate developed from the late 1980s. Because it does not require birefringent phase matching, all waves can share one polarization and access a large tensor component allowed by the material and geometry, propagation along a crystal axis can avoid birefringent spatial walk-off, and non-birefringent materials such as GaAs can be used. The price for a first-order grating is an effective coefficient of at most 2/Ï€ of d<sub>eff</sub>${cite(4, 9)}.</p>`,
-      formulas3: [
-        { tex: '\\Delta k_{\\text{QPM}} = \\Delta k - s\\,\\frac{2\\pi}{\\Lambda}, \\quad s = \\pm 1, \\qquad |d_1| = \\frac{2}{\\pi}\\,|d_{\\text{eff}}|\\,\\sin(\\pi D)', caption: 'First-order quasi-phase matching with a grating of period Î› and duty cycle D (0 â‰¤ D â‰¤ 1), with s chosen to match the sign of Î”k: matched when Î”k_QPM = 0, so that Î› = 2Ï€/|Î”k| = 2â„“_c, with the effective coefficient |d_1| largest at D = Â½.' },
-      ],
-      html4: `
-        <h3>Temporal walk-off and practical design</h3>
-        <p>Spatial walk-off separates beams in space. Ultrashort pulses can also separate in time, because their group velocities differ: over a length L the relative delay between pulses a and b is LÂ·|1/v<sub>g,a</sub> âˆ’ 1/v<sub>g,b</sub>|. Once this <strong>temporal walk-off</strong> is comparable to the pulse duration, the loss of temporal overlap limits the useful interaction length${cite(4, 8)}.</p>
-        <p>Walk-off can also be put to use. In a long crystal where the fundamental and the second harmonic travel at very different group velocities, the phase-matching bandwidth for the harmonic becomes very narrow while a broad fundamental spectrum can still sum into it, so a broadband femtosecond fundamental is doubled into a <strong>narrowband picosecond second harmonic</strong>: spectral compression rather than the broadening a thin crystal gives. Marangoni and co-workers used a 25 mm periodically poled stoichiometric lithium tantalate crystal to turn tunable femtosecond pulses into 200 nJ second-harmonic pulses narrower than 8.5 cmâ»Â¹, tunable from 720 to 890 nm, at 20 % conversion efficiency${cite(10)}. The same spectral-compression approach can produce narrowband green light to pump a picosecond optical parametric oscillator: Genchi and co-workers doubled a 1030 nm femtosecond laser in LBO to 515 nm with spectral compression, at about 40 % conversion, and used the picosecond green to pump a picosecond OPO for broadband stimulated Raman scattering microspectroscopy${cite(11)}.</p>
-        <p>A real conversion stage is therefore designed around more than one phase-matching condition: the wavelengths involved and the crystal's transparency and absorption there, the allowed polarizations with the crystal cut or poling period, the operating temperature, the crystal length and focusing, the pulse duration, and coating and optical-damage limits. d<sub>eff</sub>, the acceptance bandwidths and the walk-off must be evaluated for the selected material, wavelengths and geometry.</p>
-        <h3>Supercontinuum</h3>
-        <p><strong>Supercontinuum generation</strong> turns intense pulses into a broad continuum, often spanning hundreds of nanometres, rather than a new discrete line${cite(12)}. Early demonstrations came in 1970, when Alfano and Shapiro broadened picosecond pulses in glasses and crystals${cite(13, 14)}. In glass and optical fibers the broadening arises mainly from third-order effects: depending on pump duration and dispersion it can involve self-phase modulation, modulation instability, soliton dynamics, dispersive waves, four-wave mixing and Raman scattering, and in photonic crystal fibers it can exceed an octave${cite(12)}.</p>
-        <p>A bulk crystal or glass does the same with a focused femtosecond beam: above the critical power for self-focusing the beam collapses into a filament, and self-phase modulation in it broadens the spectrum${cite(15)}. Where the spectrum ends depends on the medium, the pump wavelength and the conditions. Multiphoton absorption and plasma clamp the filament's intensity, and the higher the order of that absorption, set by the bandgap over the photon energy, the higher the clamped intensity and the broader the spectrum, so wide-bandgap media reach furthest into the blue; the blue cut-off is also constrained by the material's dispersion. Once the beam breaks up into several filaments, more energy adds no further broadening; chirping the input or moving its focus tunes the blue cut-off, while a low numerical aperture and a longer medium extend the red side, which also grows with the pump wavelength${cite(15)}. Pumped near 800 nm, sapphire typically spans about 410â€“1100 nm, YAG about 420â€“1600 nm, fused silica about 390â€“1000 nm and CaFâ‚‚ about 300â€“2000 nm; with 1.1â€“1.6 Âµm pumping YAG's blue cut-off holds near 530 nm while its infrared side keeps extending${cite(15)}. The near-infrared half is useful in its own right: a 10 mm YAG plate pumped at 1035 nm has provided a 1050â€“1300 nm Stokes band for multiplex CARS microscopy${cite(16)}.</p>`,
-      html5: `
-        <h3>Optical parametric oscillators</h3>
-        <p>In an <strong>optical parametric oscillator (OPO)</strong> the process runs the other way: inside a Ï‡â½Â²â¾ crystal each converted pump photon splits into two lower-energy photons, the <em>signal</em> and the <em>idler</em>. Naming varies: the signal often denotes the higher-frequency output${cite(17)}, or the desired one${cite(1)}; this page instead calls the resonant wave the signal. Placing the crystal in a cavity that feeds one of them back lets the parametric gain overcome the cavity losses above threshold, making a tunable coherent source for spectral ranges that direct laser emission covers poorly or not at all${cite(17, 18)}.</p>`,
-      formulas5: [
-        { tex: '\\frac{1}{\\lambda_p} = \\frac{1}{\\lambda_s} + \\frac{1}{\\lambda_i}', caption: 'Energy conservation: one converted pump photon becomes one signal and one idler photon.' },
-        { tex: '\\frac{P_s}{P_i} = \\frac{\\nu_s}{\\nu_i} = \\frac{\\lambda_i}{\\lambda_s}', caption: 'Manleyâ€“Rowe: signal and idler are generated with equal photon fluxes, so the generated powers divide in proportion to photon energy.' },
-      ],
-      html6: `
-        <p>Because the photon fluxes are equal, the longer-wavelength output is always generated with the smaller share of the power; what finally leaves a resonator also depends on its output coupling and losses. Pumped at 532 nm with an 800 nm signal, the idler lies at 1588 nm and receives about a third of the converted power. The penalty grows with the wavelength ratio: for a single conversion step that extracts only the 5 Âµm output, a 1 Âµm pump supplies at most 20 % of its converted power to that wave${cite(19)}.</p>
-        <p><strong>Threshold.</strong> Like a laser, an OPO oscillates only once the round-trip parametric gain overcomes the cavity losses; at threshold the two balance${cite(18, 19)}. Unlike a laser, it relies on no stored population inversion: parametric gain requires the pump to be present. For a singly resonant OPO, where only the signal is fed back, the ideal plane-wave model predicts complete pump depletion at (Ï€/2)Â² â‰ˆ 2.5 times threshold${cite(20)}; this is a theoretical limit, not a general operating point. Driven harder, signal and idler start converting back into pump light, so increasing pump power need not keep increasing the conversion efficiency${cite(19)}.</p>`,
-      html7: `
-        <p><strong>Linewidth.</strong> Energy conservation also holds for instantaneous frequency fluctuations, Î´Î½<sub>p</sub> = Î´Î½<sub>s</sub> + Î´Î½<sub>i</sub>, so pump fluctuations must appear on the signal, the idler or both. The cavity constrains the resonant wave, and the non-resonant wave takes up what the pump and resonant wave leave. Pump frequency fluctuations that the resonant wave does not follow appear on the non-resonant one, so imposing them on the resonant wave with active feedback is a way to remove them from the other${cite(20)}. This page and OpticalSetup call the resonant wave the signal; real OPOs resonate either. If pump and resonant wave fluctuate independently and both spectra are Gaussian, the non-resonant wave's frequency width is the quadrature sum of theirs; correlated fluctuations change that, which is why an idler can be narrower than its pump.</p>
-        <p><strong>Common operating regimes:</strong></p>
-        <ul>
-          <li><strong>Synchronously pumped fs and ps OPOs.</strong> In the usual arrangement with one pulse per round trip, the cavity round trip is matched to the repetition period of a mode-locked pump, so each signal pulse is amplified by the next pump pulse, and the output pulse trains stay locked to the pump's. One MgO:PPLN oscillator pumped by 80â€“100 fs pulses near 1 Âµm at 80 MHz produced 400â€“600 fs signal pulses and an idler tunable from 3132 to 4273 nm${cite(21)}. Frequency-doubled mode-locked lasers can pump picosecond OPO sources for coherent Raman imaging; near-transform-limited pulses of a few picoseconds can provide bandwidths comparable to many molecular Raman bands, balancing spectral selectivity against peak intensity${cite(22)}.</li>
-          <li><strong>Nanosecond OPOs</strong> pumped by Q-switched lasers are often used for high-energy pulses. Without spectral narrowing their linewidth is typically set mainly by the crystal's phase-matching bandwidth and the cavity, and is much broader than a single-frequency laser's${cite(19)}. The oscillation needs time to build up from noise during each pump pulse, which raises the threshold${cite(19)} and often makes the output pulses somewhat shorter than the pump's${cite(18)}.</li>
-          <li><strong>Continuous-wave singly resonant OPOs</strong> pass the pump frequency fluctuations that the resonant wave does not follow on to the non-resonant wave${cite(20)}.</li>
-        </ul>`,
-    },
-    inOpticalSetup: {
-      html: `<p>Choose a conversion mode before expecting any output: with the default <em>None</em> the crystal does not interact with light at all. Every converting mode is a wavelength-and-power proxy that converts a fixed, authored fraction of the eligible incident light, whatever its intensity, and <em>Transmit residual pump</em> can keep the unconverted remainder on the same path; no residual branch is drawn at efficiencies of 99.9 % or more, and in non-OPO modes it is also omitted when the output centre wavelength equals the input centre wavelength.</p>
-        <p><strong>The Ï‡â½Â²â¾ mode</strong> halves the wavelength of any incident light, and <strong>THG</strong> divides it by three: there is no phase-matching condition, so every input wavelength converts. THG maps a wavelength directly to a third of it; it does not simulate a cascaded SHG and SFG apparatus. The spectrum is scaled with the wavelength and the pulse keeps its train and duration, which makes the harmonic's frequency width n times the input's. Spectral compression in a long crystal with large group-velocity mismatch, described above, is not modelled: to draw a narrowband harmonic, use a narrowband fundamental or a Custom output line. This is not a calculated nonlinear pulse transformation: an undepleted, instantaneous n-th-order process acting on a transform-limited Gaussian pulse, without walk-off or phase-matching filtering, would give âˆšn times the input frequency width, with a âˆšn shorter pulse. The example doubles a 1064 nm pulsed laser to 532 nm and separates the harmonic from the remaining pump with a dichroic, with a beam probe on each branch.</p>
-        <p><strong>Supercontinuum</strong> replaces the converted light with a flat band. By default its edges come from the pump that arrives and the chosen medium â€” YAG, sapphire, fused silica or CaFâ‚‚ â€” using spectra reported in a review of bulk supercontinuum generation at a few pump wavelengths per medium${cite(15)}. At a pump the table includes, the band is the reference one â€” a single experiment, or a typical span or pump range the review summarises; between two, each edge is interpolated linearly, which is an illustration rather than a prediction, so a 1035 nm pump in YAG gives about 506â€“1776 nm. A pump outside the reference data this estimate includes, and continuous-wave input, draw no continuum; the literature reports other pumps too, and a manual range draws any band. The <em>Continuum</em> readout gives the band, says which kind of reference or interpolation it comes from, and notes when its red edge rests on a measurement limited by the detector. <em>Set manually</em> draws an authored band from any pump instead; scenes saved before the estimate existed open with their old 430â€“870 nm band as a manual range. <strong>Custom output</strong> is an authored output rather than a named physical process: it emits a single line at the entered wavelength, whatever the pump's bandwidth.</p>
-        <p><strong>The same mode also mixes two beams</strong>, because one Ï‡â½Â²â¾ does both: a crystal that doubles a beam sums two of them as well. Each beam's second harmonic is drawn whatever else is present, and when a second wavelength reaches the crystal the pair also produces its sum frequency, 1/Î»â‚ƒ = 1/Î»â‚ + 1/Î»â‚‚. Doubling takes its authored fraction of each beam first, and the mixing then takes its own fraction of what is left of <em>both</em> beams, which is what puts the mixed line in the same range as the two harmonics beside it: 30 % doubling with a 30 % mixing share turns two equal beams into harmonics at 0.30 each and a sum frequency at 0.42. No single-pass conversion fraction can be set above 60 % here. That is a cap this workbench imposes to keep authored fractions conservative, not a physical limit: published single-pass second-harmonic conversion reaches higher. OPO mode's pump depletion is a multi-pass result and has its own control and ceiling. The crystal pairs the incident light with every other wavelength present at least 1 nm away, each pair emitted once by its shorter beam, so three colours give three mixed lines. <em>Also generate difference frequency</em> adds 1/Î»â‚ âˆ’ 1/Î»â‚‚ with Î»â‚ the shorter input, which is longer than that input but not necessarily longer than the other one â€” 400 nm with 1000 nm gives 667 nm, between the two; it is off by default, since that line usually falls outside the range a two-colour bench looks at. The <em>Two-beam mixing</em> readout names the pair, the output, and how far apart the two pulses arrive.</p>
-        <p><strong>Only the mixing needs the two pulses together.</strong> Doubling needs one beam and happens whatever the timing, which is exactly what makes the mixed line a measurement: with two colours in one crystal the two second harmonics sit there unchanged, and the sum frequency appears between them only as the delay is brought to zero. That is how time zero is found on a bench. Each beam's arrival is its own optical path plus its emission offset, so moving a source, adding glass, or scanning a delay stage shifts it. For two Gaussian intensity envelopes of FWHM Ï„â‚ and Ï„â‚‚ arriving Î”t apart, the signal is scaled by the overlap integral exp(âˆ’4 ln2 Î”tÂ²/(Ï„â‚Â² + Ï„â‚‚Â²)) and disappears below 2 % of its peak: scanning a delay through zero traces that curve, which is how time zero is found on a real bench. The mixed pulse is the product of the two envelopes, so its duration is (Ï„â‚â»Â² + Ï„â‚‚â»Â²)^(âˆ’1/2) â€” following the shorter input â€” and it peaks at the weighted mean of the two arrivals rather than at either one. A gate on either beam gates the signal, because both have to be there.</p>
-        <p>Only trains at the <strong>same repetition rate</strong> are modelled, together with a continuous beam, which is always present and needs no timing. Different rates are not drawn at all: they are not a physical impossibility â€” 80 MHz and 60 MHz coincide at 20 MHz, and slightly detuned trains sweep through the delay, which is what asynchronous optical sampling uses â€” but this model keeps no pulse-by-pulse bookkeeping for them, so it reports the timing as not modelled instead of inventing a result. Whenever a pair is present and no signal is drawn, the workbench says which of the two reasons applies.</p>
-        <p><strong>OPO mode</strong> models a singly resonant oscillator phenomenologically. Set the pump wavelength the crystal is phase-matched for, its acceptance window, and the resonant signal wavelength; the idler is shown as a readout. Pump light converts when its centre lies inside the acceptance window, whatever its bandwidth. The signal stays where the cavity holds it and the idler follows the arriving pump by energy conservation. Signal and idler light generated by this OPO, and its descendants, is not converted again by the same OPO; a returning residual pump may convert again, and another crystal can convert the generated light. Its figure is <em>Pump depletion</em>, the fraction of the pump the oscillator removes, divided between signal and idler by the lossless Manleyâ€“Rowe split. It is a separate control from the single-pass modes' conversion efficiency because it is a different measurement: depletion builds up as the resonant signal is amplified over many round trips, and singly resonant OPOs are reported at 78 % depletion${cite(21)}. It goes up to 95 %; scenes saved when the OPO shared the conversion efficiency carry that value over.</p>
-        <p><strong>Linewidths</strong> are handled as FWHM in wavenumber. <em>Signal as wide as the pump</em> is a heuristic for synchronously pumped fs and ps OPOs; <em>Signal width set</em> suits ns and CW OPOs, where the cavity sets it; in both, the idler is derived as the uncorrelated Gaussian sum. <em>Signal and idler widths set</em> takes both from a measured or specified system. A zero width is a single line and a narrow width a Gaussian in wavelength; an output wider than 1 % of its frequency is represented by a finite sampled wavelength distribution drawn from its Gaussian in wavenumber, which leans toward long wavelengths. Dichroics, filters and spectrometers downstream act on these new spectra rather than on the pump's. At exactly twice the pump wavelength, signal and idler with equal widths form one degenerate beam; with different widths they stay two coincident beams, each with its own spectrum.</p>
-        <p><strong>Pulses.</strong> Signal and idler are pulse trains of their own, synchronised to the pump: they keep its repetition rate, arrival timing and modulation gates, so with a pulsed pump and <em>Transmit residual pump</em> on, a detector reached by all three outputs sees a non-degenerate pump, signal and idler as three separate trains. There are three choices. By default they are <em>Transform-limited</em>: each duration follows from its own bandwidth. The two <em>Duration set</em> choices make each output last the pump's duration times <em>Output duration (Ã— pump duration)</em> â€” 1 matches the pump, 2 is twice as long â€” and a duration shorter than the output's transform limit is raised to the limit. With <em>spectral phase unknown</em> nothing is claimed about the phase, so the model cannot predict compression and a compressor does not shorten the drawn pulse. <em>Positively chirped (assumed Gaussian)</em> is an explicit assumption that the output is a coherent Gaussian whose only spectral phase is a positive quadratic one: it is drawn as the transform-limited pulse carrying the group delay dispersion that stretches it to the set duration, so a compressor downstream can remove it. Duration and bandwidth alone do not establish that â€” excess bandwidth can be incoherent, as in a nanosecond OPO â€” which is why it is a choice rather than a default. An output with zero linewidth is a drawing convention for an idealised monochromatic pulse train, like a pulsed source set to 0 nm: it has no finite transform-limited duration, so it keeps its set one with its spectral phase unknown. Group delay dispersion is counted from the crystal exit. The inspector's <em>Outputs</em> readout lists each output's bandwidth, in nm and cmâ»Â¹, and its duration, marked transform limited, chirped or spectral phase unknown.</p>`,
-      limitations: `<p>Mixing gates on arrival time only. No phase matching, polarization condition, focusing or spatial overlap is checked, so any two wavelengths mix if they coincide in time â€” a real crystal at one angle would not produce two second harmonics and their sum frequency with comparable efficiency, and each process would need its own polarizations. Doubling reserves its authored fraction of each beam first, and the mixing draws an authored share of what is left of both beams of a pair, each debited for what it gave; every pair a beam takes part in shares that one budget. The proportions are a drawing convention chosen to put the three lines in the same range â€” equal fractional contributions from both beams, not the photon-energy-weighted depletion a real stage would show â€” and not a power-dependent conversion prediction, and the two harmonics staying put while a mixed line rises is a weak-conversion convention. Every unordered pair of colours is formed, each emitted once by its shorter wavelength, so three colours give three mixed lines. Light this crystal generated is not mixed again by it. The mixed output's width is the two inputs' widths added in quadrature in wavenumber, which is the uncorrelated-Gaussian estimate rather than a calculated conversion spectrum, and the overlap factor is an ideal-Gaussian timing proxy rather than a cross-correlation of the real pulse shapes.</p><p>No mode calculates phase matching, d<sub>eff</sub>, crystal length, acceptance bandwidths, spatial or temporal walk-off, or the dependence of conversion on intensity: SHG and THG convert every wavelength at the authored fraction, and no crystal material is selected. Supercontinuum is a flat band, not a model of filamentation, self-phase modulation or soliton dynamics. Its estimated edges come from reported experiments and review summaries with different focusing, energies, durations and crystal lengths, none of which the estimate reads, and bands between reported pumps are linear interpolations. Red edges reported at 2 Âµm and beyond were limited by the detector, so the band understates the red side there. Whether the pump exceeds the critical power, the damage threshold, disconnected bands such as CaFâ‚‚ shows at longer pumps, and the spectral shape inside the band are not modelled; the converted fraction is authored like the other modes. The continuum's duration is not modelled either: it is timed to the pump's pulses, but its detectors read the duration as unavailable rather than repeating the pump's. Harmonic spectra are scaled rather than calculated from the field, as described above.</p><p>OPO mode is a phenomenological model rather than a cavity simulation. Phase matching is not calculated from material data: the signal wavelength and acceptance window are authored, and crystal choice or temperature do not affect them. No threshold, resonant gain or self-consistent pump-depletion dynamics are calculated: the authored depletion removes the same fraction at any pump power, and that fraction is removed from a retained pump. Ray round trips and authored output-coupler losses are traced; resonant gain, synchronisation-dependent conversion, build-up time, group-velocity walk-off and spatial mode overlap are not calculated. Output durations are authored or set from the Gaussian transform limit; no general spectral-phase evolution is calculated. Pump spectra are reduced to a Gaussian of the same FWHM, taken from the spectrum where available and otherwise from the bandwidth, so structured spectral shapes are not carried into the outputs; and the idler width assumes uncorrelated Gaussian fluctuations unless both widths are set. A detector retains separate trains; its aggregate pulse summary suppresses duration and repetition-rate fields when train settings differ, and otherwise uses the shared settings with aggregate dispersion information. Use separate detectors for output-specific pulse readings.</p>`,
-    },
-    citations: [
-      { label: 'R. W. Boyd, â€œThe Nonlinear Optical Susceptibility,â€ chapter 1 of Nonlinear Optics, 3rd edition, Academic Press (2008)', url: 'https://doi.org/10.1016/B978-0-12-369470-6.00001-0' },
-      { label: 'P. A. Franken, A. E. Hill, C. W. Peters, G. Weinreich, â€œGeneration of Optical Harmonics,â€ Physical Review Letters 7, 118â€“119 (1961)', url: 'https://doi.org/10.1103/PhysRevLett.7.118' },
-      { label: 'R. W. Boyd, â€œSecond- and Higher-Order Harmonic Generation,â€ chapter 6 of B. R. Masters, P. T. C. So (eds.), Handbook of Biomedical Nonlinear Optical Microscopy, Oxford University Press (2008), pp. 153â€“163', url: 'https://www.hajim.rochester.edu/optics/sites/boyd/assets/pdf/publications/Boyd-Master2-SO%20pp.153-163.pdf' },
-      { label: 'D. S. Hum, M. M. Fejer, â€œQuasi-phasematching,â€ C. R. Physique 8, 180â€“198 (2007)', url: 'https://doi.org/10.1016/j.crhy.2006.10.022' },
-      { label: 'J. A. Giordmaine, â€œMixing of Light Beams in Crystals,â€ Physical Review Letters 8, 19â€“20 (1962)', url: 'https://doi.org/10.1103/PhysRevLett.8.19' },
-      { label: 'P. D. Maker, R. W. Terhune, M. Nisenoff, C. M. Savage, â€œEffects of Dispersion and Focusing on the Production of Optical Harmonics,â€ Physical Review Letters 8, 21â€“22 (1962)', url: 'https://doi.org/10.1103/PhysRevLett.8.21' },
-      { label: 'RP Photonics Encyclopedia â€” Noncritical Phase Matching', url: 'https://www.rp-photonics.com/noncritical_phase_matching.html' },
-      { label: 'RP Photonics Encyclopedia â€” Phase-matching Bandwidth', url: 'https://www.rp-photonics.com/phase_matching_bandwidth.html' },
-      { label: 'J. A. Armstrong, N. Bloembergen, J. Ducuing, P. S. Pershan, â€œInteractions between Light Waves in a Nonlinear Dielectric,â€ Physical Review 127, 1918â€“1939 (1962)', url: 'https://doi.org/10.1103/PhysRev.127.1918' },
-      { label: 'M. Marangoni, D. Brida, M. Quintavalle, G. Cirmi, F. M. Pigozzo, C. Manzoni, F. Baronio, A. D. Capobianco, G. Cerullo, â€œNarrow-bandwidth picosecond pulses by spectral compression of femtosecond pulses in a second-order nonlinear crystal,â€ Optics Express 15, 8884â€“8891 (2007)', url: 'https://doi.org/10.1364/OE.15.008884' },
-      { label: 'L. Genchi, S. P. Laptenok, D. Gonzalez-Hernandez, J. Menzies, M. Aranda, C. Liberale, â€œBroadband background-free stimulated Raman scattering microspectroscopy with a novel frequency modulation scheme,â€ APL Photonics 9, 126112 (2024)', url: 'https://pubs.aip.org/aip/app/article/9/12/126112/3325119/Broadband-background-free-stimulated-Raman' },
-      { label: 'J. M. Dudley, G. Genty, S. Coen, â€œSupercontinuum generation in photonic crystal fiber,â€ Reviews of Modern Physics 78, 1135â€“1184 (2006)', url: 'https://doi.org/10.1103/RevModPhys.78.1135' },
-      { label: 'R. R. Alfano, S. L. Shapiro, â€œEmission in the Region 4000 to 7000 Ã… Via Four-Photon Coupling in Glass,â€ Physical Review Letters 24, 584â€“587 (1970)', url: 'https://doi.org/10.1103/PhysRevLett.24.584' },
-      { label: 'R. R. Alfano, S. L. Shapiro, â€œObservation of Self-Phase Modulation and Small-Scale Filaments in Crystals and Glasses,â€ Physical Review Letters 24, 592â€“594 (1970)', url: 'https://doi.org/10.1103/PhysRevLett.24.592' },
-      { label: 'A. Dubietis, G. TamoÅ¡auskas, R. Å uminas, V. Jukna, A. Couairon, â€œUltrafast supercontinuum generation in bulk condensed media,â€ Lithuanian Journal of Physics 57, 113â€“157 (2017); preprint arXiv:1706.04356', url: 'https://www.lmaleidykla.lt/ojs/index.php/physics/article/view/3541' },
-      { label: 'F. Vernuccio, A. Bresci, B. Talone, A. de la Cadena, C. Ceconello, S. Mantero, C. Sobacchi, R. Vanna, G. Cerullo, D. Polli, â€œFingerprint multiplex CARS at high speed based on supercontinuum generation in bulk media and deep learning spectral denoising,â€ Optics Express 30, 30135â€“30148 (2022)', url: 'https://doi.org/10.1364/OE.463032' },
-      { label: 'J.-M. Melkonian, J.-B. Dherbecourt, M. Raybaut, A. Godard, â€œOptical Parametric Oscillators,â€ Photoniques no. 110, 53â€“57 (2021)', url: 'https://doi.org/10.1051/photon/202111053' },
-      { label: 'RP Photonics Encyclopedia â€” Optical Parametric Oscillators', url: 'https://www.rp-photonics.com/optical_parametric_oscillators.html' },
-      { label: 'A. Berrou, J.-M. Melkonian, M. Raybaut, A. Godard, E. Rosencher, M. Lefebvre, â€œSpecific architectures for optical parametric oscillators,â€ C. R. Physique 8, 1162â€“1173 (2007)', url: 'https://doi.org/10.1016/j.crhy.2007.09.012' },
-      { label: 'A. Ly, B. Szymanski, F. Bretenaker, â€œFrequency stabilization of the non-resonant wave of a continuous-wave singly resonant optical parametric oscillator,â€ Applied Physics B 120, 201â€“205 (2015)', url: 'https://doi.org/10.1007/s00340-015-6122-0' },
-      { label: 'C. F. Oâ€™Donnell, S. Chaitanya Kumar, M. Ebrahim-Zadeh, â€œEnhancement of efficiency in femtosecond optical parametric oscillators using group-velocity-matching in long nonlinear crystals,â€ APL Photonics 4, 050801 (2019)', url: 'https://doi.org/10.1063/1.5094550' },
-      { label: 'K. Kieu, B. G. Saar, G. R. Holtom, X. S. Xie, F. W. Wise, â€œHigh-power picosecond fiber source for coherent Raman microscopy,â€ Optics Letters 34, 2051â€“2053 (2009)', url: 'https://doi.org/10.1364/OL.34.002051' },
-    ],
-    extraDemos: [{
-      demo: 'crystal-thg',
-      heading: 'Third harmonic',
-      caption: '1030&nbsp;nm in, 343&nbsp;nm out, separated from the residual fundamental by a dichroic. '
-        + 'This is the appâ€™s authored conversion proxy â€” one crystal emitting Î»/3 at a set fraction â€” not a simulated cascade of a doubling and a sum-frequency crystal.',
-    }, {
-      demo: 'crystal-supercontinuum',
-      heading: 'Supercontinuum in bulk YAG',
-      caption: 'A 1035&nbsp;nm, 270&nbsp;fs pump in YAG. The band on the spectrometer is estimated from the arriving pump and the medium: '
-        + 'interpolated between reference spectra, an illustration rather than a prediction. Change the pump wavelength or the medium and the band follows; '
-        + 'outside the reference data the crystal draws no continuum and asks for a manual range.',
-    }],
-    related: ['sample', 'dichroic', 'filter', 'pulsedlaser', 'sclaser', 'spectrometer'],
-  },
-  {
-    type: 'opo', title: 'OPO', category: 'Nonlinear Optics',
-    summary: "An optical parametric oscillator packaged like a laser: a pump beam goes in at the back, a tunable signal and an optional idler come out of the front.",
-    realWorld: {
-      html: `
-        <p>An <strong>optical parametric oscillator</strong> turns a pump beam into two longer wavelengths, the signal and the idler, whose photon energies add up to the pump's: 1/Î»<sub>p</sub> = 1/Î»<sub>s</sub> + 1/Î»<sub>i</sub>. A second-order nonlinear crystal inside a resonator provides parametric gain, and once that gain overcomes the cavity losses the resonant wave builds up from noise${cite(1, 2)}. Tuning the phase matching â€” the crystal angle, its temperature or the poling period â€” tunes the signal, and the idler follows by energy conservation${cite(2)}.</p>
-        <p>On a bench an OPO usually arrives as a closed instrument. Synchronously pumped femtosecond and picosecond OPOs are pumped by a mode-locked laser, often frequency-doubled, with the cavity round trip matched to the pump's repetition period, so the outputs stay locked to the pump's pulse train${cite(3)}. Their pump depletion builds up as the resonant signal is amplified over many round trips and can exceed 75 %${cite(3)}. A picosecond OPO pumped by the second harmonic of a femtosecond laser, spectrally compressed to a narrow green line, is one way to obtain two synchronised narrowband colours for stimulated Raman microscopy${cite(4)}.</p>`,
-    },
-    inOpticalSetup: {
-      html: `
-        <p>Point a pump beam into the <strong>rear aperture</strong>. There is no pump wavelength to set: whatever arrives within 20Â° of the body axis is the pump, and the only condition on it is that the signal must be longer. Light arriving at a steeper angle stays inside the box, and the <em>Oscillation</em> readout says why nothing came out â€” no pump yet, a misaligned pump, a signal not longer than the pump, an empty tuning list or zero depletion. When it works, the readout names the pump it received and the signal and idler it made. The unconverted pump is always discarded inside.</p>
-        <p>The <strong>signal</strong> leaves the port marked S on the body axis, and the <strong>idler</strong> the port marked I, a fixed distance below it and parallel to it; both rotate with the body. <em>Output idler</em> switches that port off, which removes the idler's power from the bench rather than handing it to the signal. If the signal is set equal to the idler wavelength â€” degeneracy â€” the two leave together through the signal port. Each output's <em>beam diameter</em> is its full, unclipped envelope, whatever the pump's width, and a diameter of 0 draws it as a single line. A sized pump beam's samples keep their order across that envelope, so a pump clipped by the aperture loses the part that did not get in and its output covers only part of the diameter; a single-line pump is spread across the diameter in nine samples of equal power. The diameter is an authored drawing envelope, not a calculated cavity mode or a 1/eÂ² Gaussian width. The ports and the body grow with the diameters so the two beams never overlap. The outputs take no path inside the box: their timing is referenced to the pump's arrival at the aperture, not to a cavity length.</p>
-        <p>The conversion is the crystal's <a href="../crystal/">OPO mode</a>, shared rather than copied: <em>Pump depletion</em> up to 95 %, the Manleyâ€“Rowe split between signal and idler, the three output-linewidth choices, and the three <em>Output pulses</em> choices â€” transform-limited, duration set with spectral phase unknown, or duration set and positively chirped as an assumed Gaussian. Light the OPO generated is never converted by it again.</p>
-        <p><strong>Signal tuning</strong> is <em>Fixed</em>, <em>Sweep</em> â€” from the first wavelength at the start of the animation to the second at half the period and back â€” or <em>Steps</em>, which holds each listed wavelength for the set time and then jumps to the next, in the order written, repeats included. Entries that are not wavelengths between 100 and 11000 nm are skipped and counted in the <em>Tuning</em> readout, and a list with none left produces no output; a valid wavelength that leaves no idler keeps its place in the sequence and reads as an invalid signal while it plays. The <em>Oscillation</em> readout gives the current step and the signal and idler actually generated, following the animation. Tuning runs on the motion clock, independently of pulse playback: <em>Pause pulse animation</em> stops the pulses, not the tuning, as with the other moving elements. A static SVG or PNG export shows the start of the tuning program, while animation frames show their own moment. The saved signal wavelength is never changed by tuning. A spectrometer reads the instantaneous line; it does not accumulate a sweep.</p>`,
-      limitations: `<p>This is the same phenomenological model as the crystal's OPO mode, not a cavity simulation. There is no threshold, gain, build-up, saturation or back-conversion, and no dependence on pump power, cavity length or synchronisation: an accepted pump converts its authored depletion whatever its intensity, and a pump that could not reach threshold on a real bench still converts here. Phase matching is not calculated: the signal wavelength is set directly rather than by a crystal angle, temperature or poling period, and a sweep or a list of steps is an authored tuning program, not a prediction of how fast a real OPO can tune or whether it keeps oscillating across the range.</p><p>The ports, their spacing and the rear aperture are a packaging convention for this workbench, not the layout of any particular instrument, the output beam diameters are authored rather than calculated from a cavity mode, and the fixed 20Â° angular acceptance is a geometric rule rather than a calculation of mode matching or coupling efficiency. Any pump wavelength converts: phase matching, and whether a real OPO could be pumped at that wavelength at all, are not checked. No path inside the box is added to the outputs. Pulse durations, spectral widths and the chirp assumption follow the crystal's OPO mode and share its limitations.</p>`,
-    },
-    citations: [
-      { label: 'J.-M. Melkonian, J.-B. Dherbecourt, M. Raybaut, A. Godard, â€œOptical Parametric Oscillators,â€ Photoniques no. 110, 53â€“57 (2021)', url: 'https://doi.org/10.1051/photon/202111053' },
-      { label: 'RP Photonics Encyclopedia â€” Optical Parametric Oscillators', url: 'https://www.rp-photonics.com/optical_parametric_oscillators.html' },
-      { label: 'C. F. Oâ€™Donnell, S. Chaitanya Kumar, M. Ebrahim-Zadeh, â€œEnhancement of efficiency in femtosecond optical parametric oscillators using group-velocity-matching in long nonlinear crystals,â€ APL Photonics 4, 050801 (2019)', url: 'https://doi.org/10.1063/1.5094550' },
-      { label: 'L. Genchi, S. P. Laptenok, D. Gonzalez-Hernandez, J. Menzies, M. Aranda, C. Liberale, â€œBroadband background-free stimulated Raman scattering microspectroscopy with a novel frequency modulation scheme,â€ APL Photonics 9, 126112 (2024)', url: 'https://pubs.aip.org/aip/app/article/9/12/126112/3325119/Broadband-background-free-stimulated-Raman' },
-    ],
-    related: ['crystal', 'pulsedlaser', 'dichroic', 'spectrometer', 'probe'],
-  },
-  {
-    type: 'sample', title: 'Sample', category: 'Specimens',
-    summary: "Represents an illuminated specimen with configurable transmission and stacked signal channels, including two-beam signals that appear only while both pulses reach the spot together.",
-    realWorld: { html: `<p>A specimen can transmit or absorb excitation light and generate an optical signal. Fluorescence and coherent nonlinear signals arise through different processes; nonlinear microscopy includes two-photon fluorescence, second-harmonic generation, and coherent anti-Stokes Raman scattering${cite(1)}.</p>` },
-    inOpticalSetup: {
-      html: `<p>Orient the sample across the beam: at zero rotation its long axis is horizontal, so a horizontal incoming beam needs a 90Â° sample rotation. Choose the specimen mode, excitation transmission, and desired channels. The model supports stacked fluorescence, Raman, phase contrast, two- and three-photon fluorescence, second-order (Ï‡â½Â²â¾), THG, CARS and stimulated Raman signals.</p><p>The <strong>Ï‡â½Â²â¾ channel</strong> covers both second-order processes at once, as one susceptibility does: each beam's second harmonic, and the sum frequency of any two different colours on the spot. There is no separate sum-frequency channel; a scene saved with one is read as this channel, and a scene that carried both keeps its second-harmonic channel â€” the surviving one covers both processes, so the retired entry's own settings go with it rather than the specimen emitting each signal twice.</p><p><strong>Two-beam signals need the pulses together.</strong> Sum frequency, CARS and stimulated Raman only happen while both pulses are at the spot, so the model gates them on the Gaussian overlap of the two arrivals and drops them below 2 % of the peak â€” the second harmonic of each beam, which needs one beam only, is unaffected. Arrival is each beam's own optical path plus its emission offset, judged beam to beam, so a millimetre of unmatched arm is 3.3 ps and enough to switch a picosecond CARS signal off; the workbench says so rather than leaving an empty detector to interpret. Only trains at the same repetition rate are mixed, and <em>Needs pulse overlap</em> switches the requirement off per channel for a schematic that is about the signal rather than the timing.</p><p>That gate is one qualitative envelope for every two-beam channel, not a process-specific delay response. A real CARS signal in the instantaneous non-resonant limit weights the pump twice, going as I<sub>p</sub>Â²I<sub>s</sub> rather than as the product of two intensities, and a resonant vibration adds dynamics of its own; none of that is modelled here. Each beam's own path is grouped across the sampling rays that draw it, so the spread of arrival times across a focused cone is not treated as a timing spread â€” two beams on different paths, however, stay separate, and a colour arriving on two arms pairs with whichever arm meets the pulse.</p><p>The example produces a fluorescent signal under 488 nm illumination. Adjust its emission and transmission, then use a filter and detector to distinguish emitted light from the excitation. Parametric channels use a forward lobe with an optional weaker backward contribution.</p>`,
-      limitations: `<p>Signals are bounded qualitative proxies, not measured cross-sections or calibrated conversion efficiencies. Each channel is bounded by its own authored efficiency, not by a shared energy budget: signals never deplete the excitation, so stacking channels â€” or adding a second colour, which adds a mixed pair â€” adds drawn signal power rather than dividing it. The sum frequency of a pair scales with the shorter beam's intensity alone, not with the product of the two. Stimulated Raman transfer is a normalised display of the modulation, not a Raman gain or loss law: whatever contrast the modulated beam has is stretched to the channel's full authored excursion â€” a loss on the shorter-wavelength pump, a gain on the longer-wavelength Stokes â€” timed to the photons of that beam that actually reach the spot, and a steady beam transfers nothing. It covers one unmodulated beam receiving the modulation of one other beam through one modulator; with both beams modulated, more than one modulated partner, or a modulated beam behind several modulators, no transfer is drawn and the specimen's timing readout says why. Sum frequency is gated on arrival time alone â€” no phase matching, polarization condition or focusing overlap is checked â€” and the pulses' own path spread across a focused cone is not treated as a timing spread. The model does not reconstruct a three-dimensional specimen or predict photochemistry, bleaching, or a diffraction-limited point-spread function.</p>`,
-    }, citations: [{ label: 'Boston University Biomicroscopy Lab â€” Nonlinear microscopy', url: 'https://sites.bu.edu/biomicroscopy/research/nonlinear/' }], related: ['stage', 'crystal', 'objective', 'filter', 'pmt'],
-  },
-  {
-    type: 'stage', title: 'Sample on piezo stage', category: 'Specimens',
-    summary: "Moves a mounted sample through static, lateral, depth or raster scans, and can record writing in resin.",
-    realWorld: { html: `<p>A sample stage translates the specimen relative to the illumination and collection optics. Lateral motion samples different positions across a specimen; axial motion changes its position along the optical axis. A physical stage has finite travel, response time, and positioning accuracy.</p>` },
-    inOpticalSetup: {
-      html: `<p>The stage combines a mounting aperture with the sample's optical modes, including the Ï‡â½Â²â¾ channel that gives each beam's second harmonic and the sum frequency of a pair, and the two-beam signals â€” sum frequency, CARS and stimulated Raman â€” that only appear while both pulses reach the specimen together. Select a static position, long-axis scan, beam-axis depth scan, or synchronized raster, then set the travel and frequency. At 90Â° rotation, a horizontal beam crosses the sample and a long-axis scan moves it vertically on the canvas.</p><p>Scanning moves the specimen, not the arms, so it does not change the arrival difference between two beams: that is set by their optical paths, and a delay line or a matched arm is what fixes it.</p><p>The example moves an illuminated sample laterally. For a writing demonstration, choose photocurable resin, enable voxel preview, and use a pulsed source. Marks record traced pulse arrivals in the moving sample.</p>`,
-      limitations: `<p>The workbench shows a two-dimensional projection. Resin marks are a visual arrival history, not a prediction of dose, polymerization threshold, cure kinetics, voxel size, or three-dimensional fabrication. Piezo hysteresis and mechanical settling are not simulated.</p>`,
-    }, related: ['sample', 'objective', 'pulsedlaser', 'galvo'],
-  },
-  {
-    type: 'objarrow', title: 'Object', category: 'Sources',
-    summary: "Places an arrow, letter, or tree as an imaging object, with an optional ray fan and computed paraxial image for lens demonstrations.",
-    realWorld: { html: `<p>Ray diagrams represent an extended object with a recognizable shape so that image position, orientation, and magnification can be compared. A converging lens can form a real inverted image or a virtual upright image depending on object distance.</p>` },
-    inOpticalSetup: {
-      html: `<p>Choose an arrow, letter F, or tree, set its height, and enable the image marker. The optional ray fan originates at the object's on-axis anchor; it is not a full collection of rays from every point of the shape. The paraxial image marker is calculated separately.</p><p>The example places an object 200 mm before a 100 mm lens. Its paraxial image appears 200 mm beyond the lens with equal size and inverted orientation. Move the lens to explore magnification and virtual images.</p>`,
-      limitations: `<p>The image marker does not account for downstream clipping or represent a rendered camera image. The model does not calculate diffraction, image texture, or radiometric brightness across the object.</p>`,
-    }, related: ['lens', 'lensc', 'telescope', 'camera'],
-  },
-  {
-    type: 'probe', title: 'Beam probe', category: 'Annotations',
-    summary: "Reads the nearby traced beam without intercepting it, showing a selected spectrum, wavelength, power, polarization, pulse duration, or intensity-over-time view.",
-    realWorld: { html: `<p>Laboratory beam diagnostics normally require a sensor or pickoff that interacts with the light. A non-intercepting label in a ray diagram instead communicates a property already known from the model; it is not a physical measuring instrument.</p>` },
-    inOpticalSetup: {
-      html: `<p>Place the crosshair near a traced beam and select the property to show. Spectrum and time views provide range controls; pulse duration requires suitable pulsed light. The probe reads the nearest traced beam rather than integrating all light over a detector face.</p><p>The example puts a spectrum probe between a broadband source and a detector. Move it away from the beam, then back, to see its dependence on the selected location. It never absorbs light or creates a new optical branch.</p>`,
-      limitations: `<p>This is a diagnostic annotation with direct access to traced properties. It does not represent a laboratory probe's aperture, calibration, noise, or disturbance of the beam.</p>`,
-    }, related: ['display', 'spectrometer', 'polarimeter', 'detector'],
-  },
-  {
-    type: 'figureframe', title: 'Figure frame', category: 'Annotations',
-    summary: "Sets the exact export crop on the canvas; its border and handles never appear in the exported figure.",
-    realWorld: { html: `<p>A figure's crop determines which parts of a setup appear in a publication or presentation. It is a composition choice, separate from any optical aperture or physical enclosure shown in the drawing.</p>` },
-    inOpticalSetup: {
-      html: `<p>Place a frame around the desired composition and resize its edges or corners. The frame controls the export bounds, while its own border and editing handles remain canvas-only. Leave room inside the crop for component names, probe readouts, and any beam endpoints you want to show.</p><p>The example frames a small lens bench. Resize the frame and export the scene to compare the crop. Light continues to propagate beyond the frame on the workbench.</p>`,
-      limitations: `<p>The frame never clips traced rays or acts as an optical stop. Content outside its bounds can be omitted from the exported picture while still contributing to the simulation.</p>`,
-    }, related: ['highlight', 'textlabel', 'blocker'],
-  },
-  {
-    type: 'highlight', title: 'Highlight', category: 'Annotations',
-    summary: "Adds a coloured background region behind part of the setup, without affecting any rays.",
-    realWorld: { html: `<p>Shaded regions in optical diagrams can identify a subsystem, distinguish experimental stages, or mark an area of interest. Such visual grouping has no physical optical meaning unless the caption explicitly assigns one.</p>` },
-    inOpticalSetup: {
-      html: `<p>Resize and position the highlight behind the components you want to group, then choose its appearance. It remains behind both rays and elements, so the beam path and hardware stay visible. Use a text label to explain what the shaded region means.</p><p>The example marks the lens area on a simple bench. Move or resize the highlight across the incoming and outgoing beam to confirm that only the composition changes.</p>`,
-      limitations: `<p>A highlight is diagram-only. Its color and shape do not represent refractive index, absorption, an aperture, or a boundary between optical media.</p>`,
-    }, related: ['textlabel', 'figureframe', 'box'],
-  },
-  {
-    type: 'box', title: 'Custom box', category: 'Custom',
-    summary: "Draws a labelled enclosure that either blocks beams or lets them pass through.",
-    realWorld: { html: `<p>An enclosure in an optical diagram can stand for a housing or a device whose internal optical train is not shown. The drawing alone does not specify whether the real device transmits, absorbs, focuses, or converts light.</p>` },
-    inOpticalSetup: {
-      html: `<p>Set the label, width, height, and fill, then choose the beam behavior. <em>Blocks beam</em>, the default, absorbs rays at the rectangular boundary. <em>Beam passes through</em> adds no optical interaction.</p><p>The example places a blocking box in a laser path. Switch it to pass-through and the detector receives light again. If the box is meant to focus, split, or convert light, use the corresponding native optical elements to represent that behavior.</p>`,
-      limitations: `<p>The enclosure does not simulate hidden internal components. Pass-through mode adds no optical delay or material properties; blocking mode does not model thermal loading or scattered light.</p>`,
-    }, related: ['beamdump', 'blocker', 'textlabel', 'highlight'],
-  },
-  {
-    type: 'textlabel', title: 'Text label', category: 'Annotations',
-    summary: "Adds formatted Markdown notes to the canvas, with headings, lists and clickable links.",
-    realWorld: { html: `<p>Labels explain component roles, operating conditions, and the assumptions behind a diagram. Keeping interpretation beside the relevant hardware helps readers distinguish measured parameters from illustrative choices.</p>` },
-    inOpticalSetup: {
-      html: `<p>Place a text label and double-click it, press Enter when selected, or use <em>Edit text</em> to edit on the canvas. Markdown supports headings, lists, emphasis, and code; web and DOI addresses become clickable links. The font-size and color controls set its base appearance.</p><p>The example demonstrates several formatting styles. Keep a short explanation beside the setup and use a link for longer background material. Text grows from its left anchor, while resizing changes the base font size.</p>`,
-      limitations: `<p>Text is diagram-only and never changes traced rays or scene parameters. Writing a wavelength, efficiency, or model claim in a label does not configure the corresponding optical element.</p>`,
-    }, related: ['highlight', 'figureframe', 'probe'],
-  },
-  {
-    type: 'gascell', title: 'Gas cell', category: 'Lab elements',
-    summary: "Draws a gas-cell housing for laboratory context, without any optical effect on the beam.",
-    realWorld: { html: `<p>A gas cell contains a gas along an optical path. Its physical behavior depends on the gas, pressure, path length, and windows. A housing may also provide connections for gas flow or for a fiber passing through the cell.</p>` },
-    inOpticalSetup: {
-      html: `<p>The gas cell is deliberately diagram-only. Set its dimensions, optional windows, extension side, gas-port appearance, and transparency to show the hardware context. The transparency control changes the drawing, not optical transmission.</p><p>The example sends a beam through the housing. Toggle its windows or change its appearance and the traced path stays the same. A fiber drawn through a gas cell remains an independent fiber path; the housing does not bind to it or change its propagation settings.</p>`,
-      limitations: `<p>No pressure, gas absorption, nonlinear response, window refraction, or flow is calculated. The housing must not be interpreted as a gas-filled-fiber or spectroscopy solver.</p>`,
-    }, related: ['window', 'barefiber', 'freeglass', 'textlabel'],
-  },
-  {
-    type: 'window', title: 'Optical window', category: 'Lab elements',
-    summary: "Draws an optical window as laboratory hardware, without any optical effect on the beam.",
-    realWorld: { html: `<p>An optical window separates environments while admitting light. A real window can introduce refraction, reflection, absorption, and dispersion depending on its material, thickness, coatings, and incidence angle.</p>` },
-    inOpticalSetup: {
-      html: `<p>This window is a diagram-only symbol. Adjust its size, orientation, and transparency to place it in the drawing. It never bends, blocks, or absorbs a ray, and it adds no optical path or pulse dispersion.</p><p>The example shows uninterrupted light through the symbol. Rotate it to confirm that the beam stays unchanged. To study the optical effects of a glass plate, use a rectangular freeform-glass boundary with a suitable material instead.</p>`,
-      limitations: `<p>The visible symbol is not a traced glass plate. Its transparency is a drawing setting, not a transmission coefficient; it does not model Fresnel losses, coatings, or a change of medium.</p>`,
-    }, related: ['gascell', 'freeglass', 'glassrod'],
-  },
-];
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éí×¯7ï”èµ©hºÚn¶X§zÍKËÈÝXÝ\™YÛÛ[›ÜˆHÜXØ[Ù]\ÚZÚKˆÛ™H[žH\ˆš\ÚX›B‹ËÈÛÛ\Û™[ˆÛÛËØZ[]ÚZÚK›ZœØ\›œÈ\È[ÈÝ]XÈYÙ\Ë[[™Â‹ËÈH]™HXÛÛˆ[™Ý\œ™[Y˜][ÈÝ˜ZYÚœ›ÛHHÛÛ\Û™[™YÚ\ÝžB‹ËÈÛÈHÚZÚHØ[ˆ™]™\ˆÚ[[HšYœ›ÛHÚ]H\XÝX[HÚ\Ë‚‹ËÂ‹ËÈ]™\žHÛZ[H[™\ˆ[“ÜXØ[Ù]\]\Ý™H™\šYšYYYØZ[œÝHXÝX[‹ËÈ[\[Y[][Ûˆ
+œËÜ˜^]˜XÙKšœËœËÜÛ\š^˜][Û‹šœÊH™Y›Ü™H]	ÜÈÜš][‚‹ËÈ\™H8 %ÙYHH\ÚXÜÈ™\šYšXØ][Ûˆ\ÜÈ[ˆHœ˜[˜Ú	ÜÈ\ÝÜžK‚‹ËÂ‹ËÈÚ]][ÛœÎˆÚ[™]™\ˆH˜XÝX[ÛZ[H[ˆH›ÜÙH™YYÈHÛÝ\˜ÙKÚ]H]‹ËÈ[›[™KXØY[ZXË\Ý[KÚ]Ú]JŠXÜˆÚ]J‹K‹‹ŠX]HÚ[‹ËÈHÛZ[H\ÈXYKK™Ëˆ‹‹œÝX‹X\˜ÜÙXÛÛ™[YÛ›Y[Û\˜[˜ÙIØÚ]JKŠ_K˜‹ËÈH[X™\œÈ\™HKZ[™^YÜÚ][ÛœÈ[È][žIÜÈÝÛˆÚ]][ÛœØ‹ËÈ\œ˜^NÈXXÚ™[™\œÈ\ÈHÛXÚØX›HÛ—H[šÚ[™ÈÈHX]Ú[™È[X™\™Y‹ËÈ[žH[ˆHYÙIÜÈ”™Y™\™[˜Ù\ÈˆÙXÝ[Ûˆ
+Z[žHZ[]ÚZÚK›ZœÊKˆ\ÙB‹ËÈ™\ÛÝ\˜Ù\Ø[œÝXY›ÜˆÙ[™\˜[\\‹\™XY[™È[šÜÈ›ÝYYÈÛ™B‹ËÈÜXÚYšXÈÛZ[K‚™[˜Ý[ÛˆÚ]J‹‹›[\ÊHÂˆ™]\›ˆÝ\Û\ÜÏH˜Ú]H–ÉÛ[\Ë›X\
+ˆOˆH™YHˆÜ™Y‹IÛŸH‰ÛŸOØO˜
+Kš›Ú[Š	Ë	Ê_WOÜÝ\˜ÂŸB‚‚‹ËÈÚZÚHÝXš™XÝÈ]\™H˜]Ú[™ÈÛÛÈ˜]\ˆ[ˆ™YÚ\ÝžHÛÛ\Û™[ËˆB‹ËÈšX™\ˆ\ÈH][ˆÝ]K˜™X[\ËÛÈ]\È›È™YÚ\ÝžHÝ™Ê
+HÜˆY]Y]HÂ‹ËÈ™XY8 %]Ý\Y\È]ÈÝÛˆXÛÛˆ[™YÛ[™H\™H[œÝXY‚™^ÜÛÛœÝÚZÚUÛÛÝXš™XÝÈHÂˆÂˆ\Nˆ	ÙšX™\‰ËˆX™[ˆ	ÓÜXØ[šX™\‰ËˆYÛ[™Nˆ	Ô›Ý]\ÈYÚ[Û™ÈH˜]Ûˆ]™]ÙY[ˆÛÈÛÛ›™XÝÜš^™Y[™ËÚ]]ÈÝÛˆXØÙ\[˜ÙH[™ÛKÜÜË[™Ý]]ÛÛ™K‰ËˆXÛÛŽˆ]H“HLŒˆHMˆHMˆŒMˆˆš[H››Û™HˆÝ›ÚÙOHˆÙNNˆÝ›ÚÙK]ÚYHˆÝ›ÚÙK[[™XØ\Hœ›Ý[™‹Ï˜ˆ
+ÈÈ˜[œÙ›Ü›OH˜[œÛ]JLŒŠH›Ý]JLŒ
+H™XÝH‹LLHˆOH‹MHˆÚYHŒLHˆZYÚHŒLˆžHŒKHˆš[HˆÍMYˆ‹Ï™XÝH‹LMHˆOH‹L‹HˆÚYHˆZYÚHHˆš[HˆÎNMH‹ÏÙÏ˜ˆ
+ÈÈ˜[œÙ›Ü›OH˜[œÛ]JŒMŠH›Ý]JMŒ
+H™XÝH‹LLHˆOH‹MHˆÚYHŒLHˆZYÚHŒLˆžHŒKHˆš[HˆÍMYˆ‹Ï™XÝH‹LMHˆOH‹L‹HˆÚYHˆZYÚHHˆš[HˆÎNMH‹ÏÙÏ˜ˆKˆÂˆ\Nˆ	Ø˜\™YšX™\‰ËˆX™[ˆ	Ð˜\™HšX™\‰ËˆYÛ[™Nˆ	ÕHØ[YHÝZYY]Ú]HÛÛ›™XÝÜˆYÜÈÛZ]Y[™›]XÛX]™Y[™Ë›ÜˆÝ\ÝÛHX›Ü˜]ÜžH\ÜÙ[X›Y\Ë‰ËˆXÛÛŽˆ]H“HLŒˆHMˆHMˆŒMˆˆš[H››Û™HˆÝ›ÚÙOHˆÙNNˆÝ›ÚÙK]ÚYHˆÝ›ÚÙK[[™XØ\H˜]‹Ï˜ˆK—NÂ‚™^ÜÛÛœÝÚZÚQ[šY\ÈHÂˆÂˆ\Nˆ	ØÝÛ\Ù\‰ËˆÝ[[X\žNˆ‘[Z]ÈHÝXYKÛÛ[X]Y™X[HÚ]HÚÜÙ[ˆØ]™[[™Ý[™ÝÙ\‹›Üˆ˜XÚ[™ÈÛÛ[[Ý\È[[Z[˜][Ûˆ›ÝYÚ[ˆÜXØ[Ù]\ˆ‹ˆ]Nˆ	ÐÕÈ\Ù\‰ËˆØ]YÛÜžNˆ	ÔÛÝ\˜Ù\ÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆ“\Ù\ˆXÚ›ÛÙÞHØØÝ\Y\ÈHÙ[˜[ÜÚ][ÛˆÚ][ˆÝÛšXÜÈ™XØ]\ÙH\Ù\‚ˆYÚ^Xš]ÈÙ]™\˜[›Ü\Y\È]\Ý[™ÝZ\Ú]œ›ÛHÛÛ™[[Û˜[YÚˆÛÝ\˜Ù\Ë™^[Û™Ú[\H[Û›ØÚ›ÛX]XÚ]KˆH\Ù\ˆ™X[H\ÈÚ\˜XÝ\š^™YžHYÚˆÜ]X[ÛÚ\™[˜ÙKÚXÚ\›Z]È›ÜYØ][ÛˆÝ™\ˆÛÛœÚY\˜X›H\Ý[˜Ù\ÈÚ]ˆZ[š[X[]™\™Ù[˜ÙH8 %œ™\]Y[H[Z]YÛ›HžHY™œ˜XÝ[Ûˆ8 %[™[ÝÜÈH™X[BˆÈ™H›ØÝ\ÙYÈH™\žHÛX[ÜÝZY[[™ÈHÛÜœ™\ÜÛ™[™ÛHYÚ[[œÚ]KÜ‚ˆ•\ÈÛÚ\™[˜ÙH\XØ[H^[™ÈÈH[\Ü˜[ÛXZ[ˆ\ÈÙ[ˆBˆÛÛ[[Ý\Ë]Ø]™H\Ù\ˆ[Z]ÈÚ][ˆH™\žH˜\œ›ÝÈÜXÝ˜[˜[™ÚY[ˆÛÛ˜\ÝˆÈÛÝ\˜Ù\ÈÝXÚ\È[˜Ø[™\ØÙ[ÜˆØ\ËY\ØÚ\™ÙH[\ËÚXÚ˜YX]HXÜ›ÜÜÈBˆœ›ØYÜXÝ˜[˜[™ÙKˆ[Z\ÜÚ[Ûˆ\ÈÝXYH˜]\ˆ[ˆ[ÙYˆHÝ]]ÝÙ\ˆBˆ]XÝÜˆ™XYÈ\ÈHØ[YH]]™\žH[œÝ[Ü‚ˆ•H[Ü™]XØ[›Ý[™][Ûˆ›ÜˆH\Ù\ˆ™Y]\È]È^\š[Y[[™X[^˜][ÛŽ‚ˆÝÛ™\ËØÚ]ÛÝË˜\ÛÝ‹[™›ÚÚÜ›Ýˆ[™\[™[H]™[ÜYH[ÜžHÙ‚ˆÝ[][]Y[Z\ÜÚ[Ûˆ\ÈHYXÚ[š\ÛH›ÜˆYÚ[\YšXØ][Û‹Z[[™ÈÛˆBˆZXÜ›ÝØ]™HX\Ù\ˆÝÛ™\ÈY[[ÛœÝ˜]Y[ˆNMLÈ8 %HÛÛ˜Ù\Ø\È[š]X[H\›YYˆH›ÜXØ[X\Ù\ˆˆ™Y›Ü™H›\Ù\ˆˆ™XØ[YHÝ[™\™\ØYÙKˆ[ÙÜ™HXZ[X[ˆš\œÝˆ™X[^™Y\È[ÜžH^\š[Y[[H[ˆNMŒÛÛœÝXÝ[™ÈHš\œÝ\Ù\ŽˆBˆ[ÙY[\\[\YXžHÜž\Ý[ˆHØ[YHYX\ˆØ]ÈÛÈ\\ˆZ[\ÝÛ™\ÎˆBˆ[][x $Û™[Ûˆ\Ù\‹Hš\œÝÈÜ\˜]HÚ]HØ\Ù[Ý\ÈØZ[ˆYY][K[™Hš\œÝˆÙ[ZXÛÛ™XÝÜˆ\Ù\ˆ[ÙKÜ‚ˆ”™X[\Ù\ˆ™X[\È\™H›Ý\™™XÝHÛÛ[X]Yˆ^H^Xš]Ø]\ÜÚX[‚ˆ›ÜYØ][Ûˆ[™]™\™ÙHÚ]\Ý[˜ÙKˆ›ÜˆH™X[HÙˆØZ\Ý˜Y]\ÂˆÜ[ˆÛ\ÜÏHÈø  ÜÜ[‹H˜\‹YšY[[‹X[™ÛH]™\™Ù[˜ÙH\ÈÚ]™[ˆžOÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×]H\›Þœ˜XÞ×[X™_^×H×ÌIËØ\[ÛŽˆ	Ñ˜\‹YšY[]™\™Ù[˜ÙH[‹X[™ÛHÙˆHØ]\ÜÚX[ˆ™X[H
+ÛX[X[™ÛKSx  8  [ÙJK‰ÈKˆÈ^ˆ	ÑWÞ×^ÜÝÛŸ_HHœ˜XÞÚß^×[X™_IËØ\[ÛŽˆ	ÔÝÛˆ[™\™ÞH8 %ÚHÚÜ\ˆØ]™[[™ÝÈ
+›YKUŠHØ\œžH[Ü™H[™\™ÞH\ˆÝÛˆ[ˆÛ™Ù\ˆÛ™\È
+™YTŠK‰ÈKˆKˆ[Žˆˆ•\ÙH›Ü\Y\ÈÜšYÚ[˜]Hœ›ÛHÝ[][]Y[Z\ÜÚ[ÛˆÚ][ˆH™\ÛÛ˜[Ø]š]N‚ˆHØZ[ˆYY][H›Ý[™YžHÛÈZ\œ›ÜœÈ[\YšY\ÈHÜXÚYšXÈØ]™[[™ÝÛˆXXÚ›Ý[™ˆš\Ú[HÜÜÙ\È8 %Z\œ›Üˆ˜[œÛZ\ÜÚ[Û‹XœÛÜœ[Û‹ØØ]\š[™È8 %\]H]‚ˆX›Ý™H™\ÚÛH[\˜]H]ÚXÚ›Ý[™]š\ØZ[ˆš\œÝ\]X[È›Ý[™]š\ˆÜÜËHØ]š]HÝ\ÝZ[œÈHÝX›KYÚH[Û›ØÚ›ÛX]XËÜ]X[HÛÚ\™[ˆ™X[H\ØÜšX™YX›Ý™KÜ‚ˆÏÛÚ\™[˜ÙH[™ÝÚÏ‚ˆ“›È™X[\Ù\ˆ\È\™™XÝH[Û›ØÚ›ÛX]XËˆH[Z\ÜÚ[ÛˆØØÝ\Y\ÈHš[š]Bˆ[™]ÚY[™H\ÚXØ[YX[š[™ÈÙˆ][™]ÚY\È]HÜXØ[\ÙBˆšYÎˆ™YXÝH\ÙH˜\ˆ[›ÝYÚZXY[™H™YXÝ[ÛˆÝÜÈ™Z[™ÈšYÚ‚ˆ[OÛÚ\™[˜ÙH[™ÝÙ[Oˆ\ÈH\Ý[˜ÙHÝ™\ˆÚXÚH\ÙHÝ^\È™YXÝX›H8 %ˆ›Ü›X[HHÛÚ\™[˜ÙH[YH[Y\ÈH˜XÝ][HÜYYÙˆYÚ	ØÚ]JJ_KÜ‚ˆ’]X]\œÈ™XØ]\ÙH]XÚY\ÈÚ]\ˆ[ˆ^\š[Y[ÙY\Èœš[™Ù\ËˆÜ]H™X[KˆÙ[™H[™\ÈÝÛˆÛÈ\›\È[™™XÛÛXš[™H[NˆHÛÈØ]™\ÈØ[ˆÛ›H[\™™\™BˆYˆHÛ™H\œš]š[™Èœ›ÛHHÛ™È\›HÝ[™[Y[X™\œÈH\ÙHÙˆHÛ™Hœ›ÛHBˆÚÜ\›KˆXZÙHH\›\ÈY™™\ˆžH]XÚ[Ü™H[ˆHÛÚ\™[˜ÙH[™Ý[™Bˆœš[™Ù\È˜[š\ÚX]š[™ÈHÜÈÚ[\HÈYZ\ˆÝÙ\œÉØÚ]JJ_KˆHØ[YBˆÛÛœÝ˜Z[Ù]ÈÝÈY\HÛÙÜ˜[HØ[ˆ™H™XÛÜ™Y[™ÝÈ˜\ˆ\\HÛÈ\›\ÂˆÙˆ[ˆ[\™™\›ÛY]šXÈÙ[œÛÜˆX^H™KÜ‚ˆ“[™]ÚY[™ÛÚ\™[˜ÙH[™Ý\™H[™\œÙ[H™[]YÝYÚH^XÝ™Y˜XÝÜ‚ˆ\[™ÈÛˆH[™\Ú\H[™\È›Ý[š]™\œØ[	ØÚ]JKŠ_Kˆ›ÜˆHÜ™[šX[ˆÜXÝ[H›ÙXÙYˆžHH˜[™ÛHØ[ÈÙˆHÜXØ[\ÙKH^™\ÜÚ[Ûˆ\ÉØÚ]JJ_OÜ˜ˆ›Ü›][\ÌŽˆÂˆÈ^ˆ	ÓÞ×^ØÛÚ_HH×]WÞ×^ØÛÚ_HHœ˜XÞØß^×W[W_IËØ\[ÛŽˆ	ÓÜ™[šX[ˆ[™\Ú\NˆH\Ý[˜ÙH]ÚXÚHÛÚ\™[˜ÙH[˜Ý[Ûˆ˜[ÈÈKÙK›ÜˆH•ÒH[™]ÚY3¥3¯KˆH]\˜]\™HÙ[ˆ][Ý\È\ÈÚ]Ý]H3àÚ[ˆÛ›H[ˆÜ™\ˆÙˆXYÛš]YH\ÈØ[Y‰ÈKˆKˆ[Îˆˆ•HÜ[ˆXÜ›ÜÜÈ™X[ÛÝ\˜Ù\È\È[›Ü›[Ý\ËˆHÝXš[\ÙYÚ[™ÛKYœ™\]Y[˜ÞBˆÛÛY\Ý]H\Ù\ˆ]L	›˜œÜÚÒˆ[™]ÚY™XXÚ\È›ÝYÚHKI›˜œÜÚÛNÈÞ\Ý[\ÂˆZ[›ÜˆÜXØ[ÛØÚÜËÝXš[\ÙY™[ÝÈI›˜œÜÒ‹^ÙYYÌ	›˜œÜÚÛKˆBˆ\Ù\ˆ[ÙH\È˜\ˆÚÜ\‹[Z]YžH\ÙH›Ú\ÙHœ›ÛHÜÛ[™[Ý\È[Z\ÜÚ[Ûˆ[ˆBˆÚÜÝ›Û™ÛHÝ]XÛÝ\Y™\ÛÛ˜]Ü‹ˆ]HÜÜÚ]H^™[YKHÝ\\›[Z[™\ØÙ[ˆ[Ù\È\ÙY›ÜˆÜXØ[ÛÚ\™[˜ÙHÛ[ÙÜ˜\H\™HXYH[O™[X™\˜][OÙ[O‚ˆœ›ØY˜[™8 %[œÈÙˆ˜[›ÛY]™\È8 %™XÚ\Ù[H™XØ]\ÙHHÛÚ\™[˜ÙH[™ÝÙˆH™]ÂˆZXÜ›ÛY]™\È\ÈÚ]Ú]™\È]XÚš\]YH]È^X[™\ÛÛ][ÛŽˆÛ›HYÚ™]\›š[™Âˆœ›ÛHÛ™H˜\œ›ÝÈ\Ø[ˆÝ[[\™™\™HÚ]H™Y™\™[˜ÙIØÚ]JJ_KÜ‚ˆ•ÛÈØ]][ÛœÈ\™HÛÜØ\œžZ[™ËˆHÚ\H[™ÚYÙˆHÜXÝ[HÈ›ÝžBˆ[\Ù[™\È[H]\›Z[™HÛÚ\™[˜ÙNˆHœ™\]Y[˜ÞHÛÛXˆ\ÈHœ›ØYÜXÝ[H[™ˆ^Ù[[Û™Ë\˜[™ÙHÛÚ\™[˜ÙK[™›ÈÚ[™ÛK[[X™\ˆÛÚ\™[˜ÙH[™Ý\ØÜšX™\Âˆ]	ØÚ]JJ_Kˆ[™8 'ÛÚ\™[˜ÙH[™Ý8 'H\È›ÝÛ™H]X[]H]H˜[Z[HÙˆ[H8 %ˆÙ]™\˜[[™\]Z]˜[[Yš[š][ÛœÈ\™H[ˆ\ÙK[™ÚXÚ\ÈYX[X]\œÈ\ÈÛÛÛˆ\ÂˆH™X[ÛÝ\˜ÙH\\Èœ›ÛH[ˆYX[\ÙY[™\Ú\IØÚ]JŠ_KÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•HÕÈ\Ù\ˆ[Z]ÈZ]\ˆHÚ[™ÛHÛÛ[X]Y˜^HÜ‹[ˆ[O™X[HÚ]ˆÚ^™OÙ[Oˆ[ÙKH˜[ˆÙˆH\˜[[˜^\ÈØ[\[™ÈHš[š]H™X[HÚY8 %\È\ÂˆÚ]]ÈH˜XÙ\ˆÚÝÈH[œÈXÝX[H›ØÝ\Ú[™ÈH™X[HÙˆ›Ûž™\›È^[ˆ˜]\ˆ[ˆHÚ[™ÛH[™š[š]\Ú[X[˜^H]Ø[ˆ™]™\ˆZ\ÜÈ[ˆ\\\™KÜ‚ˆ’]ÈÜXÝ[H\È[Û›ØÚ›ÛX]XÈžHÛÛœÝXÝ[ÛŽˆH™X[HØ\œšY\ÈÛ™HØ]™[[™Ýˆ[™\È˜]Ûˆ[™]XÝY\ÈÛ™HÛÛÝ\‹ˆ]\ÈHÚ[ÙˆHÜ]™]ÙY[ˆBˆ™YH\Ù\ˆÛÝ\˜Ù\È8 %H™[˜Ú]™YYÈ™X[ÜXÝ˜[[OÚYÙ[O‹Ú]\Ý[˜ÝˆØ]™[[™ÝÈ›ÜYØ][™È[™\Ü\œÚ[™ÈÙ\\˜][K™YYÈH[ÙY\Ù\ˆÜˆBˆÝ\\˜ÛÛ[][H\Ù\ˆ[œÝXY›ÝÙˆÚXÚ[Ù[Ú\™H]ÚYÛÛY\Èœ›ÛK‚ˆÛ\š^˜][Ûˆ\ÈÙ]\™XÝH\ÈHÝÚÙ\È™XÝÜˆ˜]\ˆ[ˆ[Y\™Ú[™Èœ›ÛHH[Ù[YˆØ]š]KÜ‚ˆ•Ú]HÕÈ\Ù\ˆÙ\ÈØ\œžH\ÈHÝ›Û™Ï˜ÛÚ\™[˜ÙH[™ÝÜÝ›Û™Ï‹[™]\ÂˆHÛ™HXÙHH[™]ÚY[\œÈ\ÈÛÝ\˜ÙKˆ]Ú[™Ù\È›È˜^H[™›ÈÛÛÝ\ŽÈ]ˆXÚY\ÈÝÈ˜\ˆHÛÈ\›\ÈÙˆ[ˆ[\™™\›ÛY]\ˆX^HY™™\ˆ™Y›Ü™HZ\ˆœš[™Ù\Âˆ˜YKˆšY[È™XÛÛXš[š[™È]H™X[\Ü]\ˆ\™HÙZYÚYZ\ˆžHZ\‹žHHØ]\ÜÚX[‚ˆš\ÚXš[]H[ˆZ\ˆ]Y™™\™[˜ÙKÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	ÕŠ[H
+HH^WYËMˆ—Y
+œ˜XÞ×[H^ÛØßWšYÚ
+WžÌŸWšYÚIËØ\[ÛŽˆ	Ñœš[™ÙHš\ÚXš[]HYØZ[œÝ\›HZ\ÛX]ÚˆHÛÚ\™[˜ÙH[™ÝØÈ\ÈH[ÚY][ˆX^[][HÙˆ\È[™[ÜKÛÈ3¥HØËÌˆ[™\ÈHÛÛ˜\Ý‰ÈKˆÈ^ˆ	ÛØÈHœ˜XÞÌ—ˆŸ^×_Wœ˜XÞ×[X™WžÌŸ_^×[W[X™_IËØ\[ÛŽˆ	ÕH[™]ÚYH[œÜXÝÜˆ™\ÜÈ\È[\YYžHHÚ]™[ˆÛÚ\™[˜ÙH[™Ý8 %HØ]\ÜÚX[ˆÛÛ™[[ÛˆÝ[™\™[ˆÜXØ[ÛÚ\™[˜ÙHÛ[ÙÜ˜\KÚ\™HØÈ\ÈH^X[™\ÛÛ][Û‹‰ÈKˆKˆ[Žˆˆ–™\›ËHY˜][YX[œÈHYX[\ÙYÛÝ\˜ÙNˆH\›\È[\™™\™H\™™XÝBˆÝÙ]™\ˆ˜\ˆ\\^H\™KÚXÚ\ÈÝÈ]™\žHØÙ[™H™Z]™Y™Y›Ü™H\È\˜[Y]\‚ˆ^\ÝYˆÚ]™H]Hš[š]H˜[YH[™H™[˜Ú™XÛÛY\ÈH[\ˆ8 %ÝÙY\H[^H[™Bˆ[™œš[™Ù\È\X\ˆÛ›HÚ\™HH\›\ÈX]ÚÚXÚ\ÈHYX\Ý\™[Y[[‚ˆ[\™™\›ÛY]\ˆ\ÈXÝX[H›Ü‹ˆH[œÜXÝÜˆ™\ÜÈH[™]ÚY]ÛÚ\™[˜ÙBˆ[™Ý[\Y\ËÛÈHÛÈØ^\ÈÙˆ\ØÜšXš[™ÈHØ[YHÛÝ\˜ÙHÝ^Hš\ÚX›HÙÙ]\Ž‚ˆL	›˜œÜÛ›H]	›˜œÜÛ›HÚ]™\È‹Œ‰›˜œÜð­[KH˜[Z[X\ˆ^X[™\ÛÛ][ÛˆÙˆBˆœ›ØY˜[™ÐÕÛÝ\˜ÙKÜ‚ˆ“›ÝHHÛÛ™[[Û‹ˆ\È[Ù[\Ù\ÈHØ]\ÜÚX[ˆ›Ü›HÝ[™\™[ˆÜXØ[ˆÛÚ\™[˜ÙHÛ[ÙÜ˜\K[ˆÚXÚÜ[ˆÛ\ÜÏHÈ›ÝX˜ÏÜÝXÜÜ[ˆ\ÈBˆ[O™[ÚY][ˆX^[][OÙ[OˆÙˆHš\ÚXš[]H[™[ÜKˆHÜ™[šX[‚ˆ^™\ÜÚ[Ûˆ][ÝYX›Ý™IØÚ]JJ_H\ÈHY™™\™[Yš[š][Ûˆ8 %HKÙHÚ[ÙˆBˆY™™\™[HÚ\YÛÚ\™[˜ÙH[˜Ý[Ûˆ8 %[™HÛÈ\ØYÜ™YHžHH[Y\šXØ[˜XÝÜ‹‚ˆ™Z]\ˆ\È[Ü™HÛÜœ™XÝˆ^H\ØÜšX™HY™™\™[[™\Ú\\È[™\ˆY™™\™[ˆÛÛ™[[ÛœË[™™X[ÛÝ\˜ÙHÜXÝ˜H\™H›Û‹QØ]\ÜÚX[ˆÙ[ˆ[›ÝYÚ]HÚÚXÙBˆÙˆYš[š][Ûˆ\È]Ù[ˆHØÝ[Y[YÛÝ\˜ÙHÙˆ\ØYÜ™Y[Y[	ØÚ]JŠ_KÜ‚ˆ‘[™\™ÞH\ÈÛÛœÙ\™Y]]™\žHš\ÚXš[]NˆHÙ[‹\ÝÙ\œÈÙˆH™XÛÛXš[š[™ÂˆšY[È[Ø^\ÈY[™Û›HZ\ˆÜ›ÜÜÈ\›H\ÈØØ[YžBˆÜ[ˆÛ\ÜÏHÈ•ÜÜ[‹ˆHÛÈÜÈÙˆ[ˆ[\™™\›ÛY]\ˆ\™Y›Ü™H[Ø^\ÈÝ[HÂˆH[œ]Ú]\ˆ^H\™Hœš[™Ú[™È\™Üˆ]™HØ\ÚYÝ]ÈH›][‚ˆXXÚÜ˜ˆ[Z]][ÛœÎˆ•\™H\È›È[Ù[YØZ[ˆYY][KØ]š]H›Ý[™š\Üˆ™\ÚÛ8 %ˆØ]™[[™ÝÛ\š^˜][Û‹[™ÝÙ\ˆ\™HÛÛ™šYÝ\™Y\™XÝH\ÈÛÝ\˜ÙH\˜[Y]\œËˆ›Ý\š]™Yœ›ÛHš\œÝš[˜Ú\\Ëˆ]™\™Ù[˜ÙH[™p¬ˆ\™H›Ý[Ù[YˆHÛÛ[X]Yˆ™X[HÝ^\È\™™XÝH\˜[[Ý™\ˆ[žH\Ý[˜ÙKÜ‚ˆÛÚ\™[˜ÙH[™Ý\ÈHš\ÚXš[]H[™[ÜH\YY]™XÛÛXš[˜][Û‹›ÝBˆÚ[][]Y\ÙK[›Ú\ÙH›ØÙ\ÜÎˆH™X[HØ\œšY\È›ÈXÝX[[™]ÚYÛÈHÛÝ\˜ÙBˆÝ^\È^XÝHÛ™HØ]™[[™Ý›ÜˆÛÛÝ\‹\Ü\œÚ[Û‹[™]™\žHÜXÝ˜[™XYÝ][™ˆH[\YY[™]ÚY\È™\ÜY˜]\ˆ[ˆ›ÜYØ]YˆÜ]X[ÛÚ\™[˜ÙH\È›Ýˆ[Ù[Y][8 %Û›HH[\Ü˜[Ú[™8 %[™H[™[ÜH\ÈØ]\ÜÚX[ˆžBˆ\ÜÝ[\[Û‹ÛÈH[™\Ú\H]™Z]™\ÈY™™\™[KHœ™\]Y[˜ÞHÛÛXˆX›Ý™H[ˆØ[››Ý™H™\™\Ù[YžH\ÈÚ[™ÛH[X™\‹Ü˜ˆKˆ™[]YˆÉÜ[ÙY\Ù\‰Ë	ÜØÛ\Ù\‰Ë	ÜÚ[ÛÝ\˜ÙIË	ÛZ\œ›Ü‰×KˆÚ]][ÛœÎˆÂˆÈX™[ˆ	ø 'ÛÚ\™[˜ÙH[™Ý8 'H”ÝÛšXÜÈ[˜ÞXÛÜYXIË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKØÛÚ\™[˜ÙWÛ[™Ýš[	ÈKˆÈX™[ˆ	ÐËˆZØØ^Kˆ\œ™Z[ˆ[™‹ˆˆ›Û[™8 '\Ý[X][ÛˆÙˆÛ™Ú]Y[˜[™\ÛÛ][Ûˆ[ˆÜXØ[ÛÚ\™[˜ÙH[XYÚ[™Ë8 'H\YYÜXÜÈJJKLM¸ $ÍLŒˆ
+ŒŠH8 %ÛÛ\\™\ÈÙ]™\˜[Yš[š][ÛœÈÙˆÛÚ\™[˜ÙH[™Ý[™H[Z]ÈÙˆHØ]\ÜÚX[ˆ\ÜÝ[\[Ûˆ›Üˆ™X[ÛÝ\˜ÙHÜXÝ˜IË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLÍÐSËKŒLM‰ÈKˆKˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %\Ù\œÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛ\Ù\œËš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %\Ù\ˆYÚ	Ë\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛ\Ù\—ÛYÚš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	Ü[ÙY\Ù\‰ËˆÝ[[X\žNˆ‘[Z]ÈH˜Z[ˆÙˆÚÜ\Ù\ˆ[Ù\ÈÚ]Y\ÝX›H\˜][Ûˆ[™™\]][Ûˆ˜]K›Üˆ^Üš[™È˜[™ÚY\Ü\œÚ[Û‹[™\œš]˜[[Z[™Ëˆ‹ˆ]Nˆ	Ô[ÙY\Ù\‰ËˆØ]YÛÜžNˆ	ÔÛÝ\˜Ù\ÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆH[ÙY\Ù\ˆÛÛ˜Ù[˜]\È]ÈÝ]][ÈÚÜ\œÝÈÙ\\˜]YžHHš^Yˆ™\]][Ûˆ\š[Ù˜]\ˆ[ˆ[Z][™ÈÝXY[KˆÛÛ˜Ù[˜][™ÈHÚ]™[ˆ[ÙBˆ[™\™ÞH[ÈHÚÜ\ˆ\˜][Ûˆ8 %[ˆY][ÛˆÈÜ]X[ÛÛ˜Ù[˜][Ûˆ]H›ØÝ\È8 %ˆ[˜X›\ÈÝXœÝ[X[HYÚ\ˆ[[œÚ]Y\È[ˆÛÛ[[Ý\Ë]Ø]™HÜ\˜][ÛˆØ[‚ˆXÚY]™NÈH[ÜÝ^™[YH[[œÚ]Y\È›ÙXÙY\ÈØ^H\™H[\ÞYY[ˆYÚYšY[ˆ\ÚXÜË[™[Ü™H[Ù\ÝÛ™\Èš]™HH›Û›[™X\ˆ›ØÙ\ÜÙ\È™Z[™][\ÝÛ‚ˆZXÜ›ÜØÛÜH[™ÛË\ÝÛˆÛ[Y\š^˜][Û‹Ü‚ˆ”[ÙH\˜][ÛœÈ˜[™ÙHœ›ÛHZXÜ›ÜÙXÛÛ™ÈÝÛˆÈH™]È™[]ÜÙXÛÛ™ËˆH]™\˜YÙBˆÝÙ\ˆHÝÙ\ˆY]\ˆ™XYÈ\ÈH[ÙH[™\™ÞH]šYYžHH™\]][Ûˆ\š[ÙÈBˆXZÈÝÙ\ˆ™XXÚYÚ][ˆH[ÙH\È˜\ˆ\™Ù\‹žH›ÝYÚHH˜][ÈÙˆBˆ™\]][Ûˆ\š[ÙÈH[ÙH\˜][Û‹Ü‚ˆ•[˜Y˜\Ý\Ù\œÈ\™H[š\™[Hœ›ØY˜[™ˆHÝY™šXÚY[HÚÜ[ÙH\˜][Û‚ˆ™XÙ\ÜØ\š[HÛÜœ™\ÜÛ™ÈÈHÛÜœ™\ÜÛ™[™ÛHœ›ØYœ™\]Y[˜ÞHÜXÝ[KˆH[ÙBˆÚÜÙHÜXÝ˜[ÚY\È^XÝHHZ[š[][H]È\˜][Ûˆ[ÝÜÈ\ÈØ[Yˆ˜[œÙ›Ü›K[[Z]Y8 %]Ø\œšY\È›È™\ÚYX[Ú\œ[™]\ÈHÚÜ\Ý[ÙBˆ]ÜXÝ[HÛÝ[ÜÜÚX›HÝ\ÜˆH[Y[œÚ[Û›\ÜÈ›ÙXÝ™[ÝÈ\[™ÈÛ›BˆÛˆH[™[ÜHÚ\KÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×[WH[HÙ\HÉËØ\[ÛŽˆ	Õ[Yx $Ø˜[™ÚY›ÙXÝˆÈHH›ÜˆHØ]\ÜÚX[ˆ[™[ÜKŒÌMH›ÜˆHÙXÚ0¬‹ˆ\]X[]H\ÈH˜[œÙ›Ü›K[[Z]YØ\ÙK‰ÈKˆÈ^ˆ	ÔÞ×^ÜXZß_H\›Þ×ÞÜßHœ˜XÞÔÞ×^Ø]™ß__^Ù—Þ×^Ü™\_H]_IËØ\[ÛŽˆ	ÔXZÈÝÙ\ŽˆH[ÙH[™\™ÞHØ]™ÈÈ—Ü™\[]™\™YÚ][ˆÛ™H[ÙH\˜][Ûˆ3áÚ]HÚ\H˜XÝÜˆ×ÜÈ
+ŽMØ]\ÜÚX[‹ŽÙXÚ0¬ŠK‰ÈKˆKˆ[Žˆˆ”ÚÜ[Ù\È\™H›ÙXÙYžH[ÙHØÚÚ[™ÎˆHš^Y\ÙH™[][ÛœÚ\\Âˆ[™›Ü˜ÙYXÜ›ÜÜÈX[žHÛ™Ú]Y[˜[Ø]š]H[Ù\ËÛÈ]^H[\™™\™BˆÛÛœÝXÝ]™[H›ÜˆHœšYYˆ[œÝ[ÛˆXXÚØ]š]H›Ý[™š\[™\ÝXÝ]™[HBˆ™\ÝÙˆH[YKˆH™\]][Ûˆ˜]H]™\Ý[È\ÈÙ]žHHØ]š]H›Ý[™]š\ˆ[YKÚXÚ\ÈÚH\XØ[[ÙK[ØÚÙYÜØÚ[]ÜœÈÚ][ˆH[œÈÙˆR‹Ü˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•H[ÙY\Ù\ˆ[Z]ÈHØ[YHÛÛ[X]Y˜^HÜˆK\˜^HØ[\Y™X[H\ÈHÕÂˆ\Ù\‹\ÈH[ÙH˜Z[ŽˆH™\]][Ûˆ˜]KH[ÙH\˜][Û‹[™[ˆ[Z\ÜÚ[Û‚ˆÙ™œÙ]]ÚYÈ\ÈÛÝ\˜ÙIÜÈ[Ù\È[ˆ[YH™[]]™HÈ[žHÝ\‹ˆ][Z[™Âˆ\ÈÚ]š]™\ÈH˜]™[[™ÈXÚÙ]Ý™\›^KHÜØÚ[ÜØÛÜHšY]ÈÛˆBˆÝÙ]XÝÜ‹ÚÜ\ˆ[™SÓKÑSÓHØ][™Ë[™HÛËXÛÛÝ\ˆ[\Ü˜[Ý™\›\ˆ]ÐT”È[™Ñ‘È™\]Z\™KÜ‚ˆ[O•˜[œÙ›Ü›K[[Z]Y[Ù\ÏÙ[OˆXÚY\ÈÚ][ÝH]]Ü‹ˆÛ‹[ÝHÙ]H[ÙBˆ\˜][Ûˆ[™[™[ÜHÚ\K[™H˜[™ÚY™[™X]\ÈÛÛ\]Yœ›ÛH[KÛÈBˆÚÜ\ˆ[ÙH]]ÛX]XØ[H™XÛÛY\ÈHÚY\ˆÜXÝ[KˆÙ™‹[ÝHÙ]H˜[™ÚYBˆÚ\œ	ÜÈÚYÛˆ8 %[O”ÜÚ]]™[OÙ[OˆÜˆ[O“™YØ]]™[HÚ\œY
+]XY˜]XÊOÙ[Oˆ8 %[™]ÂˆÑ[ˆœð¬ŽÈH˜[œÙ›Ü›K[[Z]Y\˜][Ûˆ[™H[Z]Y[ÙH\˜][Ûˆ™[™X]\™BˆÛÛ\]YˆH\˜][Ûˆ\È\™Y›Ü™H[Ø^\È\š]™Y[™Ø[ˆ™]™\ˆ˜[™[ÝÈH[Z]ˆH˜[™ÚYÙ]ËˆÝÚ]Ú[™ÈÈÚ\œY[š]X[^™\ÈH˜[™ÚYœ›ÛHHÝ\œ™[ˆ˜[œÙ›Ü›K[[Z]Y[ÙH[™™\Ù]ÈHÑÈ™\›ËÛÈH[Z]Y[ÙH\È[˜Ú[™ÙYÂˆ™]š[Ý\ÈÚ\œYÙ][™ÜÈ\™H™\XÙYˆÝÚ]Ú[™ÈÈ˜[œÙ›Ü›K[[Z]Y™\ÝÜ™\ÈBˆ\Ý˜[œÙ›Ü›K[[Z]Y\˜][Ûˆ[™Ø[ˆÚ[™ÙHHÜXÝ[Kˆ[ÙBˆ[™\™ÞH
+]™\˜YÙHÝÙ\ˆ0íÈ™\]][Ûˆ˜]JH[™XZÈÝÙ\ˆ\™H™XYÝ]Ë™]™\ˆ[\™YÂˆ›ÜˆHÚ\œYÙXÚ0¬ˆ[ÙHHXZÈÝÙ\ˆ\È[ˆ\Ý[X]KÚ[˜ÙHH\Ü\œÙYÙXÚ0¬ˆ[ÙBˆÙ\È›ÝÙY\[ˆ^XÝÙXÚ0¬ˆ›Ùš[KÜ‚ˆ•H\Ù\ˆÙ™™\œÈ›È8 '\ÙH[šÛ›ÝÛ¸ 'Kˆ]\ÈHÚ[\YšXØ][ÛˆÙˆ]]Üš[™Ë›ÝBˆÛZ[H]]™\žH™X[\Ù\ˆØ\œšY\ÈHÛ›ÝÛˆ]XY˜]XÈ\ÙNˆH][K[Û™Ú]Y[˜[[[ÙBˆ˜[›ÜÙXÛÛ™\Ù\‹›Üˆ[œÝ[˜ÙK\È˜\ˆÛ™Ù\ˆ[ˆ]È˜[™ÚY	ÜÈ˜[œÙ›Ü›H[Z]ˆÚ]Ý]™Z[™ÈÚ\œY[™Ø[››Ý™H\ØÜšX™Y\ÈØ^H8 %]]Üˆ]˜[œÙ›Ü›K[[Z]Yˆ]]È\˜][Û‹ˆYÚÙ[™\˜]YÛˆH™[˜ÚØ[ˆÝ[]™H[ˆ[šÛ›ÝÛˆ\ÙH
+ÙYBˆHÜž\Ý[[™ÔÈYÙ\ÊKˆHÚÙ]ÚØ]™Y™Y›Ü™H\ÙHÛÛ›ÛÈÜ[œÈÚ]]Âˆ˜[™ÚY[™HÑ]™\›ÙXÙ\È]ÈØ]™Y\˜][Û‹Ú]HÚYÛˆ]Ø\ÈØ]™YˆÚ]ÜˆÜÚ]]™H8 %›ÝšYY]Ñš]ÈHL8 mÉ›˜œÜÙœð¬ˆ˜[™ÙNÈ™^[Û™]HÑˆ\ÈÛ[\Y[™H\˜][ÛˆÚ[™Ù\ËˆH˜Z[ˆØ]™Y]	›˜œÜÛ›HÜ[œÂˆ˜[œÙ›Ü›K[[Z]Y]]È\˜][Û‹ˆH˜[™ÚYšY[	ÜÈš^Y›Ý[™ÈÛBˆ˜[œÙ›Ü›K[[Z]Y˜[™ÚYÙˆ]™\žH]]Ü˜X›H[ÙH
+I›˜œÜÙœÈÈI›˜œÜÛ\ÊH]ˆ]™\žH[ÝÙYØ]™[[™ÝÛÈHÜXÝ[HHÝÚ]ÚÈÚ\œYÝ\Èœ›ÛH\ÈÙ\ˆ›ÝYÚHØ]™H[™™[ØY[™›ÈØ]™[[™ÝÜˆÚ\HY][Ý™\È]ˆHÚ\œYˆ˜[™ÚYØ[ˆ[\HH˜[œÙ›Ü›H[Z]Ý]ÚYHHI›˜œÜÙœÈ8 $ÈI›˜œÜÛ\ÈBˆ˜[œÙ›Ü›K[[Z]YšY[XØÙ\ÎÈ]\ÈÚHÝÚ]Ú[™ÈÈ˜[œÙ›Ü›K[[Z]YÙ\È›Ýˆ\š]™HH\˜][Ûˆœ›ÛH]Ü‚ˆ[O”ÚÝÈ[ÙH[˜[ZXÜÏÙ[Oˆ\ÈH˜]Ú[™ÈÚÚXÙHÛ›H8 %ÝÚ]Ú[™È]Ù™ˆX]™\ÂˆH™X[H™[™\™Y\ÈHÝXYHÕÈ[™HÚ[H]™\žHš]ÙˆH[ÙH\ÚXÜÈX›Ý™BˆÙY\È[›š[™ËÜ‚ˆÏ‘\Ü\œÚ[Ûˆ[™[ÙHÝ™]Ú[™ÏÚÏ‚ˆ‘]™\žH[ÙY]XÝÜˆ™\ÜÈXØÝ[][]YÜ›Ý\Y[^H\Ü\œÚ[Ûˆ
+Ñ
+H[‚ˆœð¬‹ˆØ][ÙÝYKYÛ\ÜÈ›ÙY\ÈYZ\ˆ˜XÙY\Ý[˜ÙH›ÝYÚHÙ[XÝYˆÙ[YZY\ˆX]\šX[È™\›Ë]XÚÛ™\ÜÈ[œÙ\È[™Øš™XÝ]™\ÈYHÛX\›HX\šÙYˆ\Ý[X]\È\ØÜšX™YÛˆZ\ˆÝÛˆYÙ\ËˆHÚ\œY\Ù\‰ÜÈÑ\È]ÈÝÛ‚ˆ]XY˜]XÈ\ÙKYYÛ˜ÙHÈH]	ÜÎˆÛ\ÜÈÙˆHÜÜÚ]HÚYÛˆ\™Y›Ü™BˆÛÛ\™\ÜÙ\ÈH[ÙHÈ]È˜[œÙ›Ü›H[Z]™Y›Ü™HÝ™]Ú[™È]YØZ[‹ˆYÚÚÜÙBˆ\ÙH›Ø›ÙH]]Ü™Y8 %[ˆÔÈÜˆÜž\Ý[Ý]]XÛ\™Y8 'ÜXÝ˜[\ÙH[šÛ›ÝÛ¸ 'KˆØ^H8 %™\ÜÈ]ÈÛÛ™šYÝ\™Y\˜][ÛˆÛ›HÚ\™HH]	ÜÈ[Ù[Y\Ü\œÚ[ÛˆYÂˆ\È™\›È
+8 'ÛÛ™šYÝ\™Y\˜][Ûˆ0­È™\›È™][Ù[Y\Ü\œÚ[Û¸ 'JK[™\ÈÚÝÛˆ\Âˆ[˜]˜Z[X›H[ž]Ú\™H[ÙKˆ[šÛ›ÝÛˆÙ\È›ÝYX[ˆ[˜ÛÛ\™\ÜÚX›NÈ]YX[œÈH\ÙBˆ]ÛÝ[XÚYH]\È›ÝÛ›ÝÛ‹Ü‚ˆ•Ú[ˆHš[\‹XÚ›ÚXË][ÛˆÜˆSÕˆ™\Ú\\ÈH[ÙIÜÈÜXÝ[KBˆ\˜][Ûˆ\ÈÛÜšÙYÝ]œ›ÛHHÜXÝ[H]Ý\š]™\Ëˆ[ˆYX[š[\ˆÚ[™Ù\ÈBˆÜXÝ[IÜÈ[\]YH[™›Ý]È\ÙKÛÈH[ÙH]H]XÝÜˆ\ÈH[Y\šXØ[ˆ˜[œÙ›Ü›HÙˆHÝ\š]š[™ÈÜXÝ[HÚ]HÛÝ\˜ÙIÜÈÚ\œ\È]™\žHÑÛˆBˆ]Ú\™]™\ˆHš[\ˆÝ[™ÎÈHÛXÙHÝ]œ›ÛHH˜[™]Û\ÜÈ\È˜[›™YÝ]ˆØ\œšY\ÈHÛ\ÜÉÜÈÑ]]ÈÝÛˆØ]™[[™ÝˆÛ™HY™™XÝ]™H]XY˜]XÈ\ÙHÝ[™Âˆ›ÜˆH˜[™ÛÈÚ\™HHÛ\ÜÉÜÈÑ˜\šY\ÈXÜ›ÜÜÈHÝ\š]š[™È˜[™[›ÝYÚÈ[Ý™Bˆ]ÈYÙH\ÙHžH[Ü™H[ˆ[ˆH˜YX[ˆ8 %Hœ›ØY˜[™™Z[™XÚÈÛ\ÜÈ8 %Bˆ\˜][Ûˆ\È[˜]˜Z[X›H˜]\ˆ[ˆ\›Þ[X]YˆH\™YYÙY\ÜØ˜[™Ú]™\ÈBˆÚ[˜Ë[ZÙH[ÙHÚ]ÚYHØ™\Ë[™H™XY[™È\È]È[ÚY][ˆX^[][NÂˆ[ˆ]]ØÛÜœ™[]Üˆ˜]ÜÈHÚ\H]\ÜÝ[Y\È]]ÚYˆ[ˆ][Û‰ÜÈÝ]]ÙY\Âˆ]ÈÝÙ\ˆ]›Ý]Èœš[™ÙHÛÛXˆÜˆ]È˜[œÙ™\ˆ\ÙKÛÈ]\È›Ý[YYˆBˆš[\™YÝ\\˜ÛÛ[][KÚXÚ\ÈH\˜][Ûˆ]›È\ÙK\È[ˆ\ÜÝ[YY\ÝÙY\ˆ\Ý[X]Nˆ]È\˜][Ûˆ\ÈZÙ[ˆ\ÈHÝÙY\[™X\ˆ[ˆœ™\]Y[˜ÞHXÜ›ÜÜÈ]È˜[™BˆÛXÙHÙY\ÈHÚ\™H]ÈÚYÜ[œË[™]Ú\™HYÈ[ˆ]XY˜]\™HÈBˆÛXÙIÜÈÝÛˆ\Ü\œÙY\˜][Ûˆ\ÈHÛÝ\˜ÙH\›ÈÛÛ\™\ÜÛÜˆ™[[Ý™\È8 %HÝ]YˆÛÛ™[[Û‹›ÝH™XÛÛœÝXÝ[ÛˆÙˆHÛÛ[][IÜÈ\ÙKˆH[Ù[[ÛÂˆXÛ[™\Ë[™Ø^\ÈÚHÛˆH]XÝÜ‰ÜÈ[O‘\˜][Ûˆ[Ù[Ù[Oˆ›ÝËÚ[ˆ\ÈÙ‚ˆÛ™H™X[H™XXÚH]XÝÜˆžH]ÈÚÜÙH\Ü\œÚ[ÛˆY™™\œÈ8 %Ù\\˜]H]ÈÈ›ÝÛÛ\[œØ]HXXÚˆÝ\ˆHØ^HÛ\ÜÈ[™HÛÛ\™\ÜÛÜˆ[ˆÙ\]Y[˜ÙHËÛÈ\]X[[™ÜÜÚ]HÑÛˆÛÂˆ\›\È\È›ÝÛ™H˜[œÙ›Ü›K[[Z]Y[ÙKˆÛX[Y™™\™[˜Ù\ËÚ][ˆŒI›˜œÜÜ˜YÙ‚ˆ]XY˜]XÈ\ÙHXÜ›ÜÜÈH˜[™ÚY[™‰›˜œÜÉH[ˆ\˜][Û‹\™H™X]Y\ÈÛ™H]Âˆ]\ÈH\Ü^HÛ\˜[˜ÙK›ÝHÛZ[H]\Ý[˜ÝšY[ÈÛÛXš[™KˆH[Ù[[ÛÂˆXÛ[™\ÈÚ[ˆ[ˆ\\\™HØ]Ú\ÈÛ›H\ÙˆH[ÙH]Hš\ÛHÜˆÜ˜][™È\Âˆ˜[›™YÝ]žHØ]™[[™ÝˆH\œš]š[™ÈØ[\\È]\ÝØ\œžH]X\ÝMI›˜œÜÉHÙˆBˆ[Z]YÜXÝ˜[ÙZYÚˆ[[Y[È]˜[œÛZ]H[ÙIÜÈÚÛH˜[™]™[›KÝXÚˆ\ÈH™]]˜[[œÚ]Hš[\ˆÜˆHXÚ›ÚXÈ˜\ˆœ›ÛH]ÈYÙKX]™HH\˜][Û‚ˆ[Û™KÜ‚ˆ”ÙXÚ0¬ˆ[Ù\È\ÙHHØ[YHÚYÛ™Y\\ÙHÛÛœÝXÝ[Û‹]Z\ˆ\Ü\œÙY•ÒH\Âˆ™XYœ›ÛHH]\›Z[š\ÝXÈ[Y\šXØ[›Ý\šY\‹\›ÜYØ][ÛˆX›H˜]\ˆ[ˆBˆØ]\ÜÚX[ˆ›Ü›][Kˆ[\œÛ][ÛˆØ\ÈÚXÚÙYYØZ[œÝH[œÙ\ˆØ[Ý[][ÛˆÈŒL‰BˆÝ™\ˆÑóá8  0¬ˆ8¢iŒ[™ÛÛ[Y\ÈÚ]H³à0­ÌŒÌMH\™ÙKY\Ü\œÚ[Ûˆ\Þ[\ÝK‚ˆ]XÝÜ‹]]ØÛÜœ™[]Ü‹›Ø™KØÛÜK[™˜]™[[™ÈXÚÙ][ÛÛœÝ[YH\ÈÛ™Bˆ\˜][Ûˆ[Ù[ˆÑ™[XZ[œÈBˆš[X\žH[X™\ˆ™XØ]\ÙH]\ÈY]]™H[™YX[š[™Ù[]™[ˆÚ[ˆHML	›˜œÜÙœÈ[ÙBˆÚ[™Ù\ÈÛÈ]HÈ›ÝXÙKÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×]WÞÛÝ]OW]WÌÜ\ÌJ×Y
+ˆ—
+WÞÚ[ŸJ×X]›^ÑÑJK×]WÌžÌŸWšYÚ
+WŒŸIËØ\[ÛŽˆ	ÑØ]\ÜÚX[ˆ\˜][Ûˆœ›ÛHH˜[™ÚY[[Z]YÚY3á8  [™HÚYÛ™YÝ[HÙˆ[œ][™]Ñ‰ÈKˆÈ^ˆ	×]WÌH×[X™WŒ‹Ê×[W[X™JIËØ\[ÛŽˆ	Õ˜[œÙ›Ü›K[[Z]Y\˜][ÛˆÙˆH]]Ü™Y˜[™ÚYÚ]ÈHH
+Ø]\ÜÚX[ŠHÜˆŒÌMH
+ÙXÚ0¬ŠKˆHÚ\œY\Ù\ˆ[Z]È3áÛÝ]Ú]3á—Ú[ˆ]È]]Ü™YÚYÛ™YÑ[™›È]Ñ‰ÈKˆKˆ[Z]][ÛœÎˆ•\™H\È›È[Ù[YØZ[ˆYY][KØ]š]KÜˆ[ÙK[ØÚÚ[™ÈYXÚ[š\ÛH8 %ˆ™\]][Ûˆ˜]K\˜][Û‹[™Ú\H\™HÛÛ™šYÝ\™Y\™XÝKˆH\˜][Ûˆ\Ý[X]Bˆ™\™\Ù[ÈÛ›H]XY˜]XÈ\ÙH›ÜˆØ]\ÜÚX[ˆ[™ÙXÚ0¬ˆ[œ]Ëˆ]Ù\È›Ý™XÛÛœÝXÝˆ\˜š]˜\žHÜXÝ˜[\ÙKYÚ\‹[Ü™\ˆ\Ü\œÚ[Û‹Ù[‹\\ÙH[Ù[][Û‹[ÙK\Ú\Bˆ\ÝÜ[Û‹ÜˆX]\šX[XœÛÜœ[Û‹ˆÛÝ\˜ÙHÑ\È›Ý[™YÈ0¬LL8 mÉ›˜œÜÙœð¬‹H˜[™ÙBˆ›Üˆ[œ]›ÝH\ÚXØ[˜[Y]H™\ÚÛÈH]XY˜]XÈ\ÙH[Û™HÙ\È›ÝXZÙHBˆÝ™]ÚY[ÙH[ˆXØÝ\˜]H[Ù[ÙˆH™X[Ý™]Ú\‰ÜÈÝ]]ˆHš[\™Y[ÙHÙY\ÂˆÛ›H]XY˜]XÈ\ÙK]˜[X]Y]HØ]™[[™ÝÈ]\ÜËˆÜXÝ˜[™\Ú\[™È\È]XÝYœ›ÛHHš[\‰ÜÈÜˆXÚ›ÚXÉÜÂˆ\ÜØ˜[™YÙ\È˜[[™È[œÚYHH[ÙIÜÈ[Z]Y˜[™[™›ÜˆÛ[ÛÝ˜[œÛZ\ÜÚ[ÛœÂˆÝXÚ\È[ˆ][ÛˆÜˆSÕ‹œ›ÛHH˜[™Ø[\Y[™Ü›ÜÜËXÚXÚÙYYØZ[œÝH[YÜ˜]Yˆ˜[œÛZ\ÜÚ[Û‹ˆØ]™[[™ÝY\[™[Û\[™È[œÚYHÛ™H˜[›™Y[Ý]Ø[\H\È›Ýˆ]XÝYÛ›HØ[\\È]Z\ÜÈ[\™[Kˆ]™\™Ù[˜ÙH[™ˆp¬ˆ\™H›Ý[Ù[YÜ˜ˆKˆ™[]YˆÉØÝÛ\Ù\‰Ë	ÜØÛ\Ù\‰Ë	Ü[ÙXÛÛ\™\ÜÛÜ‰Ë	ÛØš™XÝ]™IË	ÜÝYÙI×KˆÚ]][ÛœÎˆÂˆÈX™[ˆ	ÓKˆØ\œqaÚÚH][‹8 'ÛÛ›Û[™YX\Ý\™[Y[Ùˆ]X[[HYÚ[Ù\È›Üˆ]X[[H[™›Ü›X][ÛˆØÚY[˜ÙH[™XÚ›ÛÙÞK8 'HY˜[˜ÙY]X[[HXÚ›ÛÙÚY\ÈŒML
+ŒŒJH8 %]XY˜]XÈÜXÝ˜[\ÙH[™\Ü\œÚ]™H[ÙHœ›ØY[š[™ÉË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒL‹Ü]]KŒŒŒML	ÈKˆÈX™[ˆ	Ôˆ^˜\šY\ËËˆX˜\™ÙH[™ˆØ[[Û‹8 '[Yx $Ø˜[™ÚY›ÙXÝÙˆÚ\œYÙXÚ0¬ˆ[Ù\Ë8 'HÜXÜÈ]\œÈŒLMŒ8 $ÌLMŒˆ
+NNMJH8 %^XÝÙXÚ0¬ˆÚ\œÝ[YKX˜[™ÚY™[][Û‰Ë\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLÍÓÓŒŒŒLMŒ	ÈKˆKˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %[ÙHØÚÚ[™ÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛ[ÙWÛØÚÚ[™Ëš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %[Yx $Ð˜[™ÚY›ÙXÝ	Ë\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÝ[YWØ˜[™ÚYÜ›ÙXÝš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	Ü[ÙXÛÛ\™\ÜÛÜ‰ËˆÝ[[X\žNˆYÈÜÚ]]™HÜˆ™YØ]]™HÜ›Ý\Y[^H\Ü\œÚ[ÛˆÈH[ÙKÚÜ[š[™È]Ú[ˆHÛÜœ™XÝ[ÛˆØ[˜Ù[È\Ü\œÚ[ÛˆXØÝ[][]YX\›Y\ˆ[ˆHÙ]\ˆ‹ˆ]Nˆ	Ô[ÙHÛÛ\™\ÜÛÜ‰ËˆØ]YÛÜžNˆ	Ô[ÙH[Z[™ÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆ[ˆ[˜\ÚÜ[ÙH\ÈÚÜ\ÝÚ[ˆ]Èœ™\]Y[˜ÞHÛÛ\Û™[È\œš]™HÚ]BˆÜXÝ˜[\ÙH™\]Z\™YžH]È˜[œÙ›Ü›H[Z]ˆX]\šX[\Ü\œÚ[ÛˆXZÙ\ÈÜÙBˆÛÛ\Û™[ÈXÜ]Z\™HY™™\™[[^\Ë›ÙXÚ[™ÈÚ\œ[™HÛ™Ù\ˆ[\Ü˜[ˆ[™[ÜKˆH[ÙHÛÛ\™\ÜÛÜˆ[›ÙXÙ\ÈHÜÜÚ]HÜXÝ˜[\\ÙHÝ\˜]\™HÛÂˆHXØÝ[][]YÜ›Ý\Y[^H\Ü\œÚ[Ûˆ
+Ñ
+H\›ØXÚ\È™\›È[™H[ÙH™XÛÛY\ÂˆÚÜ\ˆYØZ[‹Ü‚ˆ”™X[ÛÛ\™\ÜÛÜœÈÛÛ[[Û›H\ÙHY™œ˜XÝ[Û‹YÜ˜][™ÈZ\œËš\ÛHZ\œËÚ\œYˆZ\œ›ÜœËÜˆÛÛXš[˜][ÛœÈÙˆ[KˆZ\ˆÙ[ÛY]žH]\›Z[™\È›ÝÛ›HÙXÛÛ™[Ü™\‚ˆÑ][ÛÈ\™H[™YÚ\‹[Ü™\ˆ\Ü\œÚ[Û‹›ÝYÚ]Ü]X[Ú\œ[™ˆ[YÛ›Y[Ù[œÚ]]š]KˆH\ÙY[Ù][™È\™Y›Ü™HÛÛ\[œØ]\ÈHYX\Ý\™Yˆ\Ý™X[H\Ü\œÚ[Ûˆ˜]\ˆ[ˆ]š[™ÈH[š]™\œØ[HÛÜœ™XÝ™YØ]]™H˜[YKÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×X]›^ÑÑWÞÛÝ]OWX]›^ÑÑWÞÚ[ŸJ×X]›^ÑÑWÞØÛÛ\IËØ\[ÛŽˆ	ÔÙXÛÛ™[Ü™\ˆÛÛ\[œØ][Ûˆ\ÈY]]™NÈÚÜ\Ý\˜][ÛˆØØÝ\œÈ™X\ˆ™\›È™]Ñ›ÜˆH˜[œÙ›Ü›K[[Z]YØ]\ÜÚX[ˆ[œ]‰ÈKˆÈ^ˆ	×]WÞÛÝ]OW]WÞÌWÜ\ÌJ×Y
+ˆ—X]›^ÑÑWÞÛÝ]K×]WÞÌWžÌŸWšYÚ
+WŒŸIËØ\[ÛŽˆ	ÑØ]\ÜÚX[ˆ[ÙH\˜][Ûˆ[™\ˆHÙXÛÛ™[Ü™\‹[Û›H[Ù[\ÙYžHÜXØ[Ù]\‰ÈKˆKˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•H[ÙHÛÛ\™\ÜÛÜˆ\ÈHÝ˜ZYÚ]›ÝYÚ™\›Ë]XÚÛ™\ÜÈÑ[[Y[ˆÙ]ˆ[O\YYÑÙ[OˆÜÚ]]™HÜˆ™YØ]]™NÈH˜[YH\ÈYYÈ]™\žH[ÙY˜^BˆÜ›ÜÜÚ[™È]ÈÛX\ˆ\\\™KÚ[H˜[œÛZ\ÜÚ[ÛˆY™šXÚY[˜ÞH\Y\ÈHÛÛ™šYÝ\™YˆÜÜËˆH™YØ]]™HÙ][™ÈÛÛ\™\ÜÙ\ÈÛ›HÚ[ˆ]Ø[˜Ù[ÈÜÚ]]™HÑ[™XYHÛ‚ˆH]8 %XÙY™Y›Ü™H[žHÛ\ÜËHØ[YH™YØ]]™HXYÛš]YHœ›ØY[œÈBˆ˜[œÙ›Ü›K[[Z]Y[ÙH[œÝXYÜ‚ˆ‘›ÜˆØ]\ÜÚX[ˆ[™ÙXÚ0¬ˆÛÝ\˜Ù\ËH˜]™[[™ÈXÚÙ]Ý™\›^H™XYÈHØØ[ˆXØÝ[][]YÑ[Û™ÈXXÚ˜XÙYÙYÛY[ˆHÚ\œYÛÝ\˜ÙH[ÛÈØ\œšY\ÈHÚYÛ™Yˆ[œ]Ñ[™™\œ™Yœ›ÛH]È˜[™ÚY[™\˜][Û‹ÛÈHÛÛ\™\ÜÛÜˆØ[ˆÚÜ[ˆ]ˆÈH˜[œÙ›Ü›H[Z][™\\ˆÑÝ™]Ú\È]YØZ[‹ˆ›]]ÜÝ\\˜ÛÛ[XBˆ\ÙHH[™Ú[Ü›Ý\Y[^HY™™\™[˜ÙHXÜ›ÜÜÈZ\ˆ[˜[™ˆHYH\˜][Û‹ˆ[Ù[˜[YKÑ[™Ý™]ÚÜˆÛÛ\™\ÜÚ[Ûˆ˜XÝÜˆ™[XZ[ˆ]˜Z[X›H[Y\šXØ[H]BˆÝÛœÝ™X[H]XÝÜ‹Ü˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ•\È\ÈH[\YÙXÛÛ™[Ü™\ˆ\ÙH›ÞK›ÝH\ÚXØ[ÛÛ\™\ÜÛÜ‚ˆ™\ØÜš\[Û‹ˆ]Ù\È›Ý˜XÙHHÛÛ\™\ÜÛÜ‰ÜÈ[\›˜[Ü˜][™Ëš\ÛKÜ‚ˆÚ\œY[Z\œ›ÜˆÙ[ÛY]žNÈ]Ù\È›Ý[Ù[Ø\œšY\ˆ\ÙK\™[Ü™\ˆ\Ü\œÚ[Û‹ˆÜ]X[Ú\œ[ÙKYœ›Û[›Û›[™X\ˆ\ÙKÜˆ\˜š]˜\žHÜXÝ˜[\ÙKˆ[œ]ˆÚ\œ\È[Z]YÈHÜÚ]]™KÛ™YØ]]™H]XY˜]XË\\ÙH\Ý[X]H[\YYžHBˆ]]Ü™Y\˜][Ûˆ[™˜[™ÚYÈH[ÙHÚÜÙH\ÙH\È[šÛ›ÝÛˆÜˆÚÜÙH]Âˆ\ØYÜ™YH™XYÈ[˜]˜Z[X›H]H]XÝÜ‹[™]ÈXÚÙ]ÙY\Âˆ]ÈÛÛ™šYÝ\™Y[™ÝÛˆHØ[˜\È\ÈHÛ\›ÝH™YXÝ[Û‹ˆÛ‹\ØÜ™Y[ˆXÚÙ][™Ý\ÈH]X[]]]™HÛ\Âˆ]XÝÜˆ[X™\œÈ™]Z[ˆH[˜Û[\YÙXÛÛ™[Ü™\ˆ™\Ý[Ü˜ˆKˆ™[]YˆÉÜ[ÙY\Ù\‰Ë	ÙÛ\ÜÜ›Ù	Ë	Üš\ÛIË	Ù]XÝÜ‰×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %[ÙHÛÛ\™\ÜÚ[Û‰Ë\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜ[ÙWØÛÛ\™\ÜÚ[Û‹š[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Ü›Ý\[^H\Ü\œÚ[Û‰Ë\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÙÜ›Ý\Ù[^WÙ\Ü\œÚ[Û‹š[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ÜØÛ\Ù\‰ËˆÝ[[X\žNˆ‘[Z]ÈH[ÙY™X[HXÜ›ÜÜÈHÛÛ™šYÝ\˜X›HÜXÝ˜[˜[™›Üˆ^Üš[™ÈØ]™[[™ÝÙ\\˜][Û‹š[\š[™Ë[™œ›ØY˜[™[[Z[˜][Ûˆ[ˆÛ™HÙ]\ˆ‹ˆ]Nˆ	ÔÝ\\˜ÛÛ[][H\Ù\‰ËˆØ]YÛÜžNˆ	ÔÛÝ\˜Ù\ÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆHÝ\\˜ÛÛ[][HÛÝ\˜ÙH›ÙXÙ\ÈYÚÜ[›š[™È[™™YÈÙˆ˜[›ÛY]™\È8 %Ù[‚ˆHÚÛHš\ÚX›H˜[™ÙH[™™^[Û™8 %Ú[H™]Z[š[™ÈHÜ]X[ÛÚ\™[˜ÙH[™ˆÛÛ[X][ÛˆÙˆH\Ù\ˆ™X[Kˆ]\Ë[ˆY™™XÝÚ]HYÚ]™Z]™\ÈÜXØ[BˆZÙHH\Ù\Žˆ]Ø[ˆ™H›ØÝ\ÙYÈHY™œ˜XÝ[Û‹[[Z]YÜÝ[™ÛÝ\Y[ÈBˆÚ[™ÛK[[ÙHšXœ™K™Z]\ˆÙˆÚXÚH[\ÙˆÛÛ\\˜X›H˜[™ÚY[ÝÜËÜ‚ˆ•Hœ›ØY[š[™È\È›Ý›ÙXÙYžHHØZ[ˆYY][KˆH[\\Ù\ˆ8 %\XØ[HBˆ[ÙK[ØÚÙYÜØÚ[]Üˆ[]™\š[™ÈYÚXZÈÝÙ\ˆ8 %\È][˜ÚY[ÈHÝ›Û™ÛBˆ›Û›[™X\ˆYY][K[ÜÝÙ[ˆHÝÛšXÈÜž\Ý[šXœ™H[™Ú[™Y\™YÛÈ]]È™\›Âˆ\Ü\œÚ[ÛˆØ]™[[™ÝÚ]È™X\ˆH[\ˆÝ™\ˆH™]ÈÙ[[Y]™\ËHØ\ØØYHÙ‚ˆ›Û›[™X\ˆ›ØÙ\ÜÙ\È™Y\ÝšX]\ÈH[\[™\™ÞHXÜ›ÜÜÈH˜\ÝHÚY\ˆÜXÝ[N‚ˆÙ[‹\\ÙH[Ù[][Ûˆœ›ØY[œÈ][š]X[K[ˆÛÛ]Ûˆš\ÜÚ[Û‹˜[X[‚ˆÙ[‹Yœ™\]Y[˜ÞHÚY[™\Ü\œÚ]™HØ]™HÙ[™\˜][Ûˆ^[™HYÙ\ËÜ‚ˆ™XØ]\ÙHH›ØÙ\ÜÈ\È[\Yš]™[‹HÝ]][š\š]ÈH[\	ÜÈ[ÙH˜Z[Ž‚ˆHÝ\\˜ÛÛ[][H\È[Z]Y\È[Ù\È]H[\	ÜÈ™\]][Ûˆ˜]K›Ý\ÈÝXYBˆYÚ]™[ˆÝYÚ]ÛÚÜÈÚ]KˆÜXÝ˜[›]™\ÜÈ[™[ÙK]Ë\[ÙHÝXš[]Bˆ˜\žHÛÛœÚY\˜X›HÚ]ÝÈ˜\ˆ[ÈH[›ÛX[Ý\ËY\Ü\œÚ[Ûˆ™YÚ[YHHÛÝ\˜ÙH\Âˆš]™[‹Ü˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×Ø[[XHHœ˜XÞÌ—H—ÌŸ^×[X™HWÞ×^ÙY™Ÿ__IËØ\[ÛŽˆ	Ó›Û›[™X\ˆÛÙY™šXÚY[ÙˆHœ›ØY[š[™ÈšXœ™H8 %ÛX[Y™™XÝ]™H\™XHWÙY™ˆ\ÈÚ]XZÙ\ÈÝÛšXÈÜž\Ý[šXœ™HÛÈ]XÚ[Ü™H›Û›[™X\ˆ[ˆÝ[™\™šXœ™K‰ÈKˆKˆ[Žˆˆ”Ý\\˜ÛÛ[][HÛÝ\˜Ù\È™XØ[YH˜XÝXØ[X›Ü˜]ÜžH[œÝ[Y[ÈY\ˆÝÛšXÂˆÜž\Ý[šXœ™HXYH]ÜÜÚX›HÈXÙHH™\›ËY\Ü\œÚ[ÛˆØ]™[[™ÝÚ\™]™\ˆBˆ]˜Z[X›H[\\[™YÈ™K˜]\ˆ[ˆHÝ\ˆØ^H›Ý[™ˆ^H\™H›ÝÂˆÝ[™\™[ˆœ›ØY˜[™ÜXÝ›ÜØÛÜKÜXØ[ÛÚ\™[˜ÙHÛ[ÙÜ˜\K[™\È[˜X›Bˆ^Ú]][ÛˆÛÝ\˜Ù\È›Üˆ›[Ü™\ØÙ[˜ÙHZXÜ›ÜØÛÜKÚ\™HHÚ[™ÛH›Þ™\XÙ\ÈH˜XÚÂˆÙˆ\ØÜ™]H\Ù\ˆ[™\ËÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•HÝ\\˜ÛÛ[][H\Ù\ˆ™\XÙ\ÈHÚ[™ÛHØ]™[[™ÝÚ]HÜXÝ[HZ[š[][Bˆ[™X^[][K[™[Z]ÈH›]]Ü˜[™™]ÙY[ˆ[KˆÝÛœÝ™X[HØ]™[[™Ý\Ù[XÝ]™Bˆ[[Y[È8 %š[\œËXÚ›ÚXÜË][ÛœËHÜXÝ›ÛY]\ˆ8 %[YÜ˜]HYØZ[œÝ]ˆYH›]›Ùš[H˜]\ˆ[ˆHÙ[›ÚYÛÈHŒ	›˜œÜÛ›H˜[™\ÜÈXÙYÛˆBˆ	›˜œÜÛ›K]ÚYHÛÝ\˜ÙH˜[œÛZ]ÈHœ˜XÝ[ÛˆÙˆÝÙ\ˆ]XÝX[HÝ™\›\ËÜ‚ˆ‘\Ü\œÚ]™H[[Y[È
+š\Û\ËÜ˜][™ÜÊHØ[\HH˜[™]Ù]™\˜[\ØÜ™]BˆØ]™[[™ÝÈ[™˜[ˆ[HÝ][™]šYX[KXXÚØ\œžZ[™È]ÈÝÛˆØ]™[[™ÝY\š]™YˆÛÛÝ\ˆ8 %ÚXÚ\ÈÚHHš\ÛH\›œÈ\ÈÛÝ\˜ÙH[ÈHš\ÚX›H˜Z[˜›ÝÈ]™[ˆÝYÚˆH[™\Ü\œÙY™X[H\È˜]Ûˆ\ÈHÚ[™ÛHœ›ØY˜[™Ú]H[™KÜ‚ˆ’]Ø\œšY\ÈHØ[YH[ÙH˜Z[ˆ\ÈH[ÙY\Ù\‹Ú[˜ÙHH™X[Ý\\˜ÛÛ[][Bˆ[š\š]È]È[\	ÜÈ[Z[™Ëˆ]È[ÙH\˜][Ûˆ[™[™[ÜH
+Ø]\ÜÚX[ˆÜ‚ˆÙXÚ0¬ŠH\™HÙ]\™XÝH˜]\ˆ[ˆ\š]™Yˆ[ˆH™X[ÛÝ\˜ÙH^H\[™ÛˆBˆ[\[™ÛˆH›Û›[™X\ˆšXœ™H]Ù[™\˜]YHÛÛ[][K™Z]\ˆÙˆÚXÚ\Âˆ[Ù[Y\™K[™HÛÛ[][Hœ™\ÚÝ]ÙˆHšXœ™H\È\XØ[HX]š[HÚ\œYˆ[™XÛÜÙXÛÛ™ÈÛ™ËˆH\˜][Ûˆ[ÝHÙ]\È\™Y›Ü™HH[œ]ÈH›ÜYØ][Û‚ˆ\Ý[X]K›ÝHÛZ[H]HÛÛ[][H\È˜[œÙ›Ü›K[[Z]YÜ‚ˆ•HÛ™H[Z]HÙ][™ÈØ[››ÝÜ›ÜÜÈ\ÈH˜[œÙ›Ü›H[Z]ˆ›È[ÙHØ[ˆ™BˆÚÜ\ˆ[ˆ]ÈÝÛˆÜXÝ[H[ÝÜËÛÈH\˜][Ûˆ\ÈH›ÛÜˆÙ]žHBˆ˜[™ÚXÚH[œÜXÝÜˆÚÝÜÈ\È[O•˜[œÙ›Ü›H[Z]Ù[O‹ˆ›ÜˆH˜[™[™™YÈÙ‚ˆ˜[›ÛY]™\ÈÚYH]›ÛÜˆ\È\›Ý[™H™[]ÜÙXÛÛ™[™™]™\ˆÙ]È[ˆHØ^KˆBˆ˜\œ›ÝÈ˜[™˜Z\Ù\È]ˆŽL8 $ÍÌ	›˜œÜÛ›HØ[››ÝØ\œžHHØ]\ÜÚX[ˆ[ÙHÚÜ\ˆ[‚ˆÌI›˜œÜÙœËˆ˜\œ›ÝÚ[™ÈH˜[™ÜˆÚ[™Ú[™ÈH[™[ÜHYÈH\˜][Ûˆ]\Âˆ˜[[ˆ™[ÝÈH™]È›ÛÜ‹ˆÚY[š[™ÈH˜[™™]™\ˆÚÜ[œÈH\˜][Ûˆ[ÝHÙ]‚ˆHÛÈ[™Ú[È\™HÙ\]X\ÝL	›˜œÜÛ›H\\ˆ\[™ÈÛ™H\ÝHÝ\‚ˆÝÜÈ]HÝ\ÚÜ™XØ]\ÙHH˜[™Ùˆ™\›ÈÚY\È›È˜[œÙ›Ü›H[Z]]ˆ[Ü‚ˆÏœ›ØYX˜[™[\Ü˜[Ü™XYÚÏ‚ˆHÙ[™K]Ø]™[[™ÝÑ\È›Ý^[™YXÜ›ÜÜÈ\È›]˜[™ˆ›Üˆ]™\žH˜XÙYˆ[™ÝÙˆØ][ÙÝYHÛ\ÜËÜXØ[Ù]\]˜[X]\ÈHÙ[YZY\ˆÜ›Ý\[™^]›Ýˆ]]Ü™Y[™Ú[È[™XØÝ[][]\ÈZ\ˆÚYÛ™YÜ›Ý\Y[^HY™™\™[˜ÙKˆH\Ü^YYˆ\˜][Ûˆ\ÈH[œ]\˜][Ûˆ[™][™Ú[Ü™XYYY[ˆ]XY˜]\™Kˆ\È\ÂˆH›Ø\Ýš\œÝ\œš]˜[]Ë[\Ý\œš]˜[\Ý[X]H›ÜˆHXÛ\™Y›]ÜXÝ[K[™ˆ]XÝÜ‹ØÛÜK›Ø™H[™[ÙHXÚÙ]È\ÙHHØ[YHXØÝ[][]Y˜[YKÜ‚ˆ•H]]Ü™Y\˜][ÛˆXÝÈ\ÈH›ÛÜ‹ˆHÛÛ\™\ÜÛÜˆØ[ˆZÙHH]	ÜÈÜ™XY˜XÚÂˆÝ]]›ÝHÚ\œHÛÝ\˜ÙHØ\È]]Ü™YÚ]ÛÈH[HÛÛ\[œØ]YÛÛ[][Bˆ™]\›œÈÈH\˜][Ûˆ[ÝHÙ]›ÝÝØ\™È]È˜[œÙ›Ü›H[Z]ˆÛÛ\[œØ][Ûˆ\È[ÛÂˆÛ›H]™\ˆ\X[ˆHÚ[™ÛHÑ˜[YHØ[˜Ù[ÈHÛ\ÜÉÜÈ\Ü\œÚ[Ûˆ]Û™HØ]™[[™ÝˆÚ[HHÙ[YZY\ˆÝ\˜]\™HXÜ›ÜÜÈ[™™YÈÙˆ˜[›ÛY]™\È™[XZ[œËˆ›ÝYÚL	›˜œÜÛ[BˆÙˆ‹P’ÍËH8 $ÎL	›˜œÜÛ›HÛÛ[][HÜ™XYÈÈX›Ý]Œ	›˜œÜÜÎÈHÛÛ\™\ÜÛÜˆÙ]Âˆ^XÝHØ[˜Ù[HÙ[™K]Ø]™[[™ÝÑÝ[X]™\ÈX›Ý]	›˜œÜÜË[™H™\ÝˆHÚ[™ÛHÑ™XXÚ\È\È[™\ˆI›˜œÜÜËÜ‚ˆ“Û˜ÙHHš[\‹XÚ›ÚXÈÜˆSÕˆÝ]È[ÈHÛÛ[][KH\˜][Ûˆ\ÈÚÝÛˆ\Âˆ[˜]˜Z[X›KÚ]\ˆHš[\ˆÚ]È™Y›Ü™HHÛ\ÜÈÜˆY\ˆ]ˆHXØÝ[][]YˆÜ™XY™[Û™ÜÈÈ[™Ú[ÈHš[\ˆX^H]™H™[[Ý™Y[™™XÛÛœÝXÝ[™ÈHÛXÙBˆÛÝ[™YYXXÚØ]™[[™Ý	ÜÈÝÛˆ[^H\ÝÜžH˜]\ˆ[ˆHÚ[™ÛH[X™\‹Ü˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×[HÞ×Z[ŸHHœ˜XÞÒß^Ø×Y
+K×[X™WÞ×Z[ŸHHK×[X™WÞ×X^WšYÚ
+_IËØ\[ÛŽˆ	ÕHÚÜ\Ý[ÙHH˜[™Ø[ˆØ\œžKˆH[›ÛZ[˜]Üˆ\ÈH^XÝœ™\]Y[˜ÞHÜ[ˆÙˆH˜[™›ÝH3®ð¬‹ó¥3®È\›Þ[X][Û‹ÚXÚšYÈžHÙ]™\˜[\˜Ù[Û˜ÙHH˜[™\È[™™YÈÙˆ˜[›ÛY]™\ÈÚYKˆÈ\ÈH[Yx $Ø˜[™ÚY›ÙXÝÙˆHÚÜÙ[ˆ[™[ÜNˆH›ÜˆØ]\ÜÚX[‹ŒÌMH›ÜˆÙXÚ0¬‹‰ÈKˆÈ^ˆ	×[HSÛ—ÙÊ[X™WÞÛX^JK[—ÙÊ[X™WÞÛZ[ŸJWKØË\]XY]WÞÛÝ]W\›ÞÜ\×]WÞÚ[ŸWžÌŸJ×[HžÌŸ_IËØ\[ÛŽˆ	Ñ›]X˜[™[™Ú[Ü›Ý\Y[^K\Ü™XY[Ù[\ÙY›ÜˆXXÚ˜XÙYØ][ÙÝYKYÛ\ÜÈ[™Ý‰ÈKˆKˆ[Z]][ÛœÎˆ•HÜXÝ[H\È[ˆYX[^™Y›]Ü›ÝHYX\Ý\™YÚ\HÚ]BˆXZÜË\Ë[™YÙH›Û[Ù™ˆÙˆH™X[ÛÛ[][K[™]ÈÚ\HÙ\È›ÝÚ[™ÙBˆÚ][\ÝÙ\‹ˆ›Èœ›ØY[š[™È\ÈÚ[][]YˆH˜[™\ÈXÛ\™Y›ÝÙ[™\˜]Yˆœ›ÛHH[\[™H›Û›[™X\ˆšXœ™Kˆ[ÙK]Ë\[ÙHÜXÝ˜[›Ú\ÙKH™X[[Z]][Û‚ˆÙˆ\ÙHÛÝ\˜Ù\Ë\È›Ý™\™\Ù[YˆH[™Ú[\Ý[X]H\È›ÝH›ÜYØ]YˆÛÛ\^šY[ˆ]Ø[››Ý™\›ÙXÙHÝX‹\[Ù\ËØ]™[[™ÝY\[™[[[œÚ]Kˆ›Û‹[[Û›ÝÛšXÈÜ›Ý\[^KYÚ\‹[Ü™\ˆ\ÙH[œÚYHH˜[™Üˆ›Û›[™X\ˆ]›Û][Û‹‚ˆ]\ÈH›Ý[™Y[\Ü˜[\Ü[ˆ\Ý[X]K›ÝH[ÙK\™XÛÛœÝXÝ[ÛˆÛZ[KÜ˜ˆKˆ™[]YˆÉØÝÛ\Ù\‰Ë	Ü[ÙY\Ù\‰Ë	Üš\ÛIË	Ùš[\‰×KˆÚ]][ÛœÎˆÂˆÈX™[ˆ	Ò‹ˆKˆY^KËˆÙ[H[™ËˆÛÙ[‹8 'Ý\\˜ÛÛ[][HÙ[™\˜][Ûˆ[ˆÝÛšXÈÜž\Ý[šX™\‹8 'H™]šY]ÜÈÙˆ[Ù\›ˆ\ÚXÜÈÎLLÍx $ÌLN
+ŒŠH8 %[\Ü˜[ÝXÝ\™KÛÚ\™[˜ÙH[™YÚ\‹[Ü™\ˆ\Ü\œÚ[Ûˆ[Z]ÈÙˆ™X[ÛÛ[XIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLLËÔ™]“[Ù\ËÎŒLLÍIÈKˆKˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Ý\\˜ÛÛ[][HÙ[™\˜][Û‰Ë\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜÝ\\˜ÛÛ[][WÙÙ[™\˜][Û‹š[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %ÝÛšXÈÜž\Ý[šX™\œÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜÝÛšX×ØÜž\Ý[ÙšX™\œËš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ÜÚ[ÛÝ\˜ÙIËˆÝ[[X\žNˆ‘[Z]ÈYÚ[ˆ[\™XÝ[ÛœÈÚ]H[Û›ØÚ›ÛX]XËœ›ØY˜[™ÜˆØ\ËY\ØÚ\™ÙHÜXÝ[K›Üˆ^Üš[™ÈÛÛXÝ[Ûˆ[™ÛÛ[X][ÛˆžH™X\˜žHÜXÜËˆ‹ˆ]Nˆ	ÔÚ[ÛÝ\˜ÙIËˆØ]YÛÜžNˆ	ÔÛÝ\˜Ù\ÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆ“›Ý]™\žHÛÝ\˜ÙH\ÈH\Ù\‹[™[ÜÝÙˆÜXÜÈ™Y]\ÈHÛ™\È]\™KˆBˆÚ[ÛÝ\˜ÙH\ÈHÜÜÚ]H[Z]ˆYÚX]š[™ÈH™YÚ[ÛˆÛX[[›ÝYÚÈ™X]\ÂˆHÚ[Ü™XY[™È[È]™\žH\™XÝ[Ûˆ]Û˜ÙKÚ]›Èš^Y\ÙH™[][ÛœÚ\ˆ™]ÙY[ˆÛ™H\™XÝ[Ûˆ[™H™^ˆH›[Ü™\ØÚ[™È[ÛXÝ[KH\ÙˆHšX™\‹[‚ˆ\˜È™]ÙY[ˆÛÈ[XÝ›Ù\È[™H[šÛH[ˆHØÜ™Y[ˆ[™Z]™H\ÈØ^KÜ‚ˆ•ÛÈÛÛœÙ\]Y[˜Ù\È›ÛÝË[™™]ÙY[ˆ[H^H^Z[ˆ[ÜÝÙˆÚ]ÝXÚBˆÛÝ\˜ÙH\ÈZÙHÈÛÜšÈÚ]ˆHš\œÝ\È]HÝÙ\ˆ˜[È\ÂˆÜ[ˆÛ\ÜÏHÈŒKÜ‰œÝ\ŽÏÜÜ[ˆ8 %Ü™XYÝ™\ˆHÜ\™HÚÜÙH\™XHÜ›ÝÜÈÚ]BˆÜ]X\™HÙˆH\Ý[˜ÙH8 %ÛÈ[ˆ\ÛÝ›ÜXÈ[Z]\ˆ\È[H][žH\ÙY[˜[™ÙH[›\ÜÂˆÛÛY][™ÈØ]\œÈ]ÈYÚˆHÙXÛÛ™\È][ÝHØ[››ÝÙ]HœšYÚ™\ÜÈ˜XÚË‚ˆ0â][™YKH›ÙXÝÙˆÛÝ\˜ÙH\™XH[™ÛÛY[™ÛKØ[››Ý™H™YXÙYžH[žBˆ\ÜÚ]™HÜXÎÈH[œÈØ[ˆ™Y\™XÝ[ˆ[Z]\‰ÜÈÝ]]]›ÝÛÛ˜Ù[˜]H]ˆ™^[Û™Ú]]ÈÝÛˆÚ^™H[™Ü™XY[ÝËˆ\È\È^XÝHÚHH\Ù\ˆØ[ˆ™Bˆ›ØÝ\ÙYÈHY™œ˜XÝ[Û‹[[Z]YÜÝ[™H[\Ø[››Ý[™]\ÈHÙ[ÛY]šXÂˆ[Z]˜]\ˆ[ˆ[ˆ[™Ú[™Y\š[™ÈÛ™KÜ‚ˆÏ‘Ø\È\ØÚ\™ÙH[\ÏÚÏ‚ˆ•H[ÜÝ\ÙY[[˜ÛÚ\™[Ú[ÛÝ\˜Ù\È[ˆHX›Ü˜]ÜžH\™HØ\È\ØÚ\™ÙBˆ[\Ë[™Ú]XZÙ\È[H\ÙY[\È]^HÈ›Ý[Z]HÛÛ[][Kˆ\ÜÚ[™ÈBˆÝ\œ™[›ÝYÚHÝË\™\ÜÝ\™HØ\È^Ú]\È]È]Û\Ë[™^H˜YX]HÛˆBˆ\ØÜ™]H˜[œÚ][ÛœÈ]]ÛH\[œÈÈ]™H8 %HÝ›Û™Ï›[™HÜXÝ[OÜÝ›Û™Ï‹ˆš^YžH]ÛZXÈÝXÝ\™H˜]\ˆ[ˆžH[\\˜]\™IØÚ]JJ_KˆÝÈ™\ÜÝ\™H\È\ˆÙˆH\ÚYÛˆ[™›Ý[ˆXØÚY[ˆ]ÙY\ÈÛÛ\Ú[ÛœÈ˜\™KÛÈH[™\ÈÝ^Bˆ˜\œ›ÝÈ[œÝXYÙˆ™Z[™È™\ÜÝ\™KXœ›ØY[™Y[ÈHÛYX\‰ØÚ]JŠ_KÜ‚ˆ•ÜÙHØ]™[[™ÝÈ\™H™\›ÙXÚX›HÈHÛX[œ˜XÝ[ÛˆÙˆH˜[›ÛY]™KÚXÚ\ÂˆÚHÝXÚ[\È\™H[ÛÈØ[Y[O˜Ø[Xœ˜][Ûˆ[\ÏÙ[OŽˆY\˜Ý\žIÜÈM‹ŒÍ	›˜œÜÛ›BˆÜ™Y[‹ÛÙ][IÜÈNI›˜œÜÛ›HÝX›][™[][IÜÈNËMŒN	›˜œÜÛ›HY[ÝÈ\™BˆÝ[™\™[™\È[ˆ[œÝ[Y[Ø[ˆ™HÚXÚÙYYØZ[œÝ	ØÚ]JŠ_KÜ‚ˆ•H[™H[OœÝ™[™ÝÏÙ[Oˆ\™HHY™™\™[X]\‹[™]\ÈÛÜ™Z[™È›[ˆX›Ý]]ˆ™[]]™H[[œÚ]Y\È\[™ÛˆÝÈH\ØÚ\™ÙH\È^Ú]Y[™šYÚ]ˆš]™HÝ\œ™[[™[\YÙNÈ^H\™H\ÝX[H›ÝÜXÚYšYY][	ØÚ]JŠ_KˆBˆÝ[™\™X[][ÛœÈØ\œžHHØ[YHØ\›š[™È8 %H’UÛÛ\[][ÛˆÙˆ\ØÚ\™ÙBˆÜXÝ˜KZ[œ›ÛH™XY\ˆ[™ÛÜ›\ÜÉÜÈ[O“[™HÜXÝ˜HÙˆH[[Y[ÏÙ[O‹›Ý\Âˆ]]È[™H[[œÚ]Y\È›X^H™H]Z]HY™™\™[[ˆH[\[ÝHØœÙ\™Hˆ[™]ˆH^Ú]][ÛˆÛÛ™][ÛœÈ™Z[™HX[]Y˜[Y\È\™H›Ýˆ™XÛÜ™Y	ØÚ]JJ_KˆØ]™[[™ÝÈ\™H]NÈ[[œÚ]Y\È\™H[‚ˆ[\Ý˜][Û‹Ü‚ˆ•Ú][ÝHØ[ˆ™[HÛˆ\ÈH]\›‹ˆÛÙ][IÜÈZ\ˆÙˆÛÜÙHY[ÝÈ[™\Ë™[Û‰ÜÂˆ[œÙH™Y[Ü˜[™ÙHÜ›Ý\Y›ÙÙ[‰ÜÈ›Ý\ˆ˜[Y\ˆ[™\È[™Y\˜Ý\žIÜÈ›YKYÜ™Y[‹^Y[ÝÂˆÙ]\™H™XÛÙÛš\ØX›HÛˆÚYÚ[™]™XÛÙÛš\ØXš[]H\ÈHÚÛH™X\ÛÛˆBˆÜXÝ›ÜØÛÜHÛÝ\œÙHÝ\È\™KÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	ÑHHœ˜XÞÔ^ÍH—žÌŸ_IËØ\[ÛŽˆ	Ò\œ˜YX[˜ÙHœ›ÛH[ˆ\ÛÝ›ÜXÈ[Z]\ŽˆH[™\œÙK\Ü]X\™H]È\ÈH™X\ÛÛˆ[˜ÛÛXÝYÚ[\ÛÝ\˜ÙHYÚ\ÈÛÛ™HÚ][ˆHÚÜ\Ý[˜ÙK‰ÈKˆKˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•HÚ[ÛÝ\˜ÙH[Z]È˜^\È]™[›HÝ™\ˆ]ÈÝ›Û™Ï™[Z\ÜÚ[Ûˆ[™ÛOÜÝ›Û™Ïˆ8 %ˆH[ÍŒ	™YÎÈžHY˜][8 %[™ÜÙH˜^\È\™H˜]Ûˆ\ÈHÛÝÈ]ˆÝ›Û™Ï™˜Y\ÈÚ][ˆHÚÜ˜[™ÙH[›\ÜÈÛÛY][™ÈÛÛXÝÈ[OÜÝ›Û™Ï‹ˆ]ˆ˜Y[™È\ÈH[Ù[	ÜÈÛ™HÝ›Û™ÈÜ[š[Û‹[™]\È\™H™XØ]\ÙHH[\›˜]]™Bˆ\ÈÛÜœÙNˆ[ˆ\ÛÝ›ÜXÈ[Z]\ˆÚÜÙH˜^\È˜[ˆ›Ü™]™\ˆÛÝ[YÚ\]™\žH]XÝÜ‚ˆÛˆH™[˜Ú][Ý™[™ÝÚXÚ\ÈHÜÜÚ]HÙˆÝÈÝXÚHÛÝ\˜ÙH™Z]™\ËÜ‚ˆH[œËHZXÜ›ÜØÛÜHØš™XÝ]™KHšX™\ˆ\ÜˆHH™YH‹‹‹ÛZ\œ›Ü‹È›Z\œ›ÜØO‚ˆÚ][ˆ˜[™ÙHÛÛXÝÈHYÚ[™œ›ÛH]Ú[Ûˆ]\ÈÜ™[˜\žHYÚ]ˆ›ÜYØ]\È›Ü›X[KˆH[X™YY™[˜ÚX›Ý™HÚÝÜÈH\œ˜[™Ù[Y[]XZÙ\È\ÂˆÛX\™\ÝˆHH™YH‹‹‹ÛØ\Èœ\˜X›ÛXÈZ\œ›ÜØOˆÚ]HÛÝ\˜ÙH^XÝH]]Âˆ›ØÝ\ËI›˜œÜÛ[H[ˆœ›ÛÙˆH™\^\›š[™È\ÛÝ›ÜXÈ[Z\ÜÚ[Ûˆ[ÈH\˜[[ˆ™X[Kˆ]\ÈÝÈH[\Üˆ[ˆ\˜È\ÈÛÛ[X]Y[ˆH™X[[œÝ[Y[[™Bˆ\˜X›ÛHÙ\È]Ú]Ý]Ú›ÛX]XÈX™\œ˜][Ûˆ8 %ÚXÚX]\œÈ\™K™XØ]\ÙHH[\ˆ[Z]ÈX[žHØ]™[[™ÝÈ]Û˜ÙKÜ‚ˆÏ“[\[ÙOÚÏ‚ˆ”Ù][™ÈÝ›Û™Ï”ÛÝ\˜ÙOÜÝ›Û™ÏˆÈ[O‘Ø\È\ØÚ\™ÙH[\Ù[OˆÚ[™Ù\ÈÚ]Bˆ[[Y[[Z]È[™ÝÈ]\È˜]ÛŽˆH[‹\˜^HX™H˜]\ˆ[ˆHÝ\‹[YžH]ÂˆÝÛˆ[™\Ë[™[Z][™ÈHš^Y[™HÜXÝ[H[œÝXYÙˆHØ]™[[™Ý[ÝH\K‚ˆZYÚ[\È\™H]˜Z[X›H8 %Y\˜Ý\žKÛÙ][KØYZ][K[][KY›ÙÙ[‹™[Û‹ˆØY\Ú][H[™\™ÛÛˆ8 %XXÚØ\œžZ[™ÈHÝ[™\™[™\È]\È›ÝYÚ›Ü‹Ü‚ˆ•H[™\È\™HØ\œšYY\È[™\Ë›Ý\ÈHØ[\YÝ\™KˆBˆH™YH‹‹‹ÙÜ˜][™ËÈ™Ü˜][™ÏØOˆ˜[œÈ^XÝHHØ]™[[™ÝÈ]\™H™\Ù[[™ˆ›Û™H[ˆ™]ÙY[‹HH™YH‹‹‹Ùš[\‹È™š[\ØOˆ\ÜÙ\ÈÜˆ›ØÚÜÈXXÚÛ™HÛˆ]ÂˆÝÛ‹[™HH™YH‹‹‹ÜÜXÝ›ÛY]\‹ÈœÜXÝ›ÛY]\ØOˆ˜]ÜÈ[H\ÈÙ\\˜]BˆXZÜËˆÛÙ][HÚ\È\È]ÈÝX›]˜]\ˆ[ˆ\ÈHÚ[™ÛHYX[ˆØ]™[[™Ýˆ™XØ]\ÙHHZ\ˆ\ÈÚ]XZÙ\ÈÛÙ][H™XÛÙÛš\ØX›H[™HÛÈÈ™\ÛÛ™KÜ‚ˆ”™[]]™H[™HÝ™[™ÝÈ\™H›ÛZ[˜[[™[X™\˜][HÛØ\œÙKˆ^H\™HÙ]ÂˆXZÙHXXÚ[\ÛÚÈZÙH]Ù[‹›ÝÈ™HÝÛY]žH8 %›ÜˆH™X\ÛÛˆÚ]™[ˆX›Ý™KˆH™X[[\	ÜÈ˜][ÜÈ\™H›ÝHš^Y›Ü\HÙˆH[[Y[][Ü‚ˆÝ›Û™Ï“™Z]\ˆ[ÙHØ[ˆ[\™™\™OÜÝ›Û™Ï‹[™]\ÈÛÜœ™XÝ˜]\ˆ[ˆBˆ[Z]][Û‹ˆÛÚ\™[šY[™XÛÛœÝXÝ[Ûˆ[ˆ\È˜XÙ\ˆ\È™\Ù\™Y›ÜˆHÚ^™Yˆ[Û›ØÚ›ÛX]XÈÛÛ[[Ý\Ë]Ø]™H\Ù\ŽÈ]™\žHÝ\ˆÛÝ\˜ÙHØ\œšY\ÈÝÙ\ˆÛ›KˆH[\ˆ[ˆ[ˆ[\™™\›ÛY]\ˆ\™Y›Ü™H›ÙXÙ\È›Èœš[™Ù\ËÚXÚ\ÈÚ][ˆ[˜ÛÚ\™[ˆÛÝ\˜ÙHÙ\ËÜ˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ•H™X\‹YšY[˜YH\ÈH[Ù[[™È]šXÙK›Ý\ÚXÜËˆ™X[ˆ\ÛÝ›ÜXÈYÚÙ\È›ÝÝÜ]H›Ý[™\žH8 %]ÙY\ÈÛÚ[™ËÜ›ÝÚ[™ÈÙXZÙ\ˆ\ÂˆKÜ‰œÝ\ŽÈ8 %[™H˜[™ÙH\™H\ÈHš^Y\Ý[˜ÙH˜]\ˆ[ˆ[ž][™È\š]™Yœ›ÛBˆHÛÝ\˜ÙIÜÈÝÙ\ˆÜˆH]XÝÜ‰ÜÈÙ[œÚ]]š]KˆHÛÛXÝÜˆ\ÝÝ]ÚYH]Ø]\œÂˆ›Ý[™ÈÚ[ˆH™X[Û™HÛÝ[Ø]\ˆH]KÜ‚ˆ•HÛÝ\˜ÙH\ÈHYHÚ[ÛÈ]\È›È0ê][™YNˆHÛ™H›Ü\H][ÜÝˆÛÛœÝ˜Z[œÈ™X[[˜ÛÚ\™[ÛÝ\˜Ù\È\ÈXœÙ[[™H[œÈØ[ˆ›ØÝ\È\ÈYÚÈBˆÜÝ›È™X[[\ÛÝ[™XXÚˆ\™H\È›È\˜È[™Ý›È[XÝ›ÙHÙ[ÛY]žK[™›Âˆ[™Ý[\ˆ\ÝšX][ÛˆÝ\ˆ[ˆ[šY›Ü›H8 %H™X[\ØÚ\™ÙH\È™Z]\ˆHÚ[›Ü‚ˆ\ÛÝ›ÜXËÜ‚ˆ“[\[™HÝ™[™ÝÈ\™H[\Ý˜]]™H[™›ÈXœÛÛ]H˜Y[ÛY]žH\È]XÚYÂˆ[KÛÈH[\	ÜÈÝ]]\ÈH™[]]™HÙZYÚ˜]\ˆ[ˆØ]Ëˆ[™HÚYÈ\™H›Ýˆ[Ù[Y][ˆXXÚ[™H\È™X]Y\È[Û›ØÚ›ÛX]XËÚ]›ÈÜ\‹™\ÜÝ\™HÜ‚ˆÝ\šÈœ›ØY[š[™Ë[™›ÈÙ[‹XXœÛÜœ[ÛˆÙˆHÝ›Û™È™\ÛÛ˜[˜ÙH[™\È8 %ÚXÚ\ÈBˆ™X[Y™™XÝ[ˆÛÙ][H[\È[ˆ\XÝ[\‹ˆ›Üˆ\È\™H[žHÛÛ[][H˜XÚÙÜ›Ý[™ˆ™[™X]H[™\ËÚXÚH™X[\ØÚ\™ÙH[Ø^\È\ÈÈÛÛYHYÜ™YKÜ˜ˆKˆ™[]YˆÉØÝÛ\Ù\‰Ë	ÜØÛ\Ù\‰Ë	ÛØ\	Ë	ÜÜXÝ›ÛY]\‰Ë	ÙÜ˜][™É×KˆÚ]][ÛœÎˆÂˆÈX™[ˆ	ÓKˆšXÚ[Û™8 'ÜXÝ˜HÙˆØ\È\ØÚ\™Ù\Ë8 'H’UTÈŒÌ8 %Ú[][]Y\ØÚ\™ÙHÜXÝ˜Hœ›ÛH™XY\ˆ	˜[\ÈÛÜ›\ÜË8 '[™HÜXÝ˜HÙˆH[[Y[ø 'H
+ÔÈ[™›ÛÚÈÈ”Ô‘ËS”ÈŽ
+KÚ]H]]Ü—	ÜÈÝÛˆØ\›š[™È]X[]Y[™H[[œÚ]Y\È™YY›ÝX]ÚH[\[ˆœ›ÛÙˆ[ÝIË\›ˆ	Ú‹ËÜÜY™‹œš]™YKØÛ\ÜÙ\ËÜ\ÌŒÌÛXÝ\™\ËÜÜXÝ›ÙÜ˜\ËÜÜXÝ˜[Û[™\ËÚ[™^š[	ÈKˆÈX™[ˆ	Ô‹ˆ\ØÚÝK8 'ÜXÝ˜[[\Ë8 'H”ÝÛšXÜÈ[˜ÞXÛÜYXNÈÚNŒLŒNÍKÞ™ÜIË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜÜXÝ˜[Û[\Ëš[	ÈKˆKˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Ø\È\ØÚ\™ÙH[\ÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÙØ\×Ù\ØÚ\™ÙWÛ[\Ëš[	ÈKˆÈX™[ˆ	Ó’TÕ]ÛZXÈÜXÝ˜H]X˜\ÙH8 %[™HØ]™[[™ÝÈ[™™[]]™H[[œÚ]Y\ÉË\›ˆ	ÚÎ‹ËÝÝÝË›š\Ý™ÛÝ‹Ü[Ø]ÛZXË\ÜXÝ˜KY]X˜\ÙIÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %][™YIË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÙ][™YKš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ÛZ\œ›Ü‰ËˆÝ[[X\žNˆ”™Y›XÝÈYÚœ›ÛHH›]Ý\™˜XÙHÚ]Y\ÝX›HÚ^™H[™™Y›XÝ]š]K›Üˆ›Û[™È™X[H]È[™ÛÛ›Û[™ÈHÝÙ\ˆÙ[ÛØ\™ˆ‹ˆ]Nˆ	ÓZ\œ›Ü‰ËˆØ]YÛÜžNˆ	ÓZ\œ›ÜœÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆ”™Y›XÝ[Ûˆ]HÛ[ÛÝ[\™˜XÙH›ÛÝÜÈH]ÈÙˆ™Y›XÝ[ÛŽˆH[™ÛHÙ‚ˆ[˜ÚY[˜ÙH\]X[ÈH[™ÛHÙˆ™Y›XÝ[Û‹›ÝYX\Ý\™Yœ›ÛHHÝ\™˜XÙH›Ü›X[ˆÚ]H[˜ÚY[[™™Y›XÝY˜^\È[ˆHØ[YH[™Kˆ[ˆ™XÝÜˆ›Ü›K[‚ˆ[˜ÚY[\™XÝ[ÛˆÜ[ˆÛ\ÜÏHÈ™3 ÜÜ[ˆ™Y›XÝ[™ÈÙ™ˆHÝ\™˜XÙHÚ][š]ˆ›Ü›X[Ü[ˆÛ\ÜÏHÈ›³ ÜÜ[ˆ™XÛÛY\ÎÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ—]ÙIÈH]ÙHHŠ]ÙWÙÝ]ÛŸJW]ÛŸH‹Ø\[ÛŽˆ	Õ™XÝÜˆ›Ü›HÙˆH]ÈÙˆ™Y›XÝ[Û‹‰ÈKˆÈ^ˆ	ÔˆHY
+œ˜XÞÛ—ÌHH—ÌŸ^Û—ÌH
+È—ÌŸWšYÚ
+WžÌŸIËØ\[ÛŽˆ	Ñœ™\Û™[™Y›XÝ[˜ÙH]›Ü›X[[˜ÚY[˜ÙH›Üˆ[ˆ[˜ÛØ]YY[XÝšXÈ[\™˜XÙH8 %™X[Z\œ›ÜœÈ[œÝXY\ÙHHY][Üˆ][[^Y\ˆY[XÝšXÈÛØ][™È[™Ú[™Y\™Y›ÜˆˆÛÜÙHÈH
+ÜˆH[X™\˜][H\X[˜[YH›Üˆ[ˆÝ]]ÛÝ\\ŠK‰ÈKˆKˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ“ÜXØ[Ù]\[\[Y[ÈH^XÝ™XÝÜˆ]ÈÙˆ™Y›XÝ[ÛˆÚÝÛˆX›Ý™H8 %BˆZ\œ›ÜˆÝ\™˜XÙIÜÈ›Ü›X[\ÈÛÛ\]Yœ›ÛH]ÈÛÈ˜]Ûˆ[™Ú[ËÛÈ›Ý][™ÈÜ‚ˆ™\Ú^š[™ÈHZ\œ›ÜˆÚ[™Ù\ÈH™Y›XÝY\™XÝ[ÛˆÛÜœ™XÝH][žH[™ÛK‚ˆ™Y›XÝ]š]H\ÈHÚ[™ÛHÛÛ™šYÝ\˜X›H\˜Ù[YÙNˆ]L	H]™\žH˜^H™Y›XÝÎÈ™[ÝÂˆ]XXÚ[˜ÚY[˜^HÜ]È[ÈH™Y›XÝYœ˜[˜ÚØ\œžZ[™Èœ˜XÝ[Û‚ˆÜ[ˆÛ\ÜÏHÈ”ÜÜ[ˆÙˆH[[œÚ]H[™H˜[œÛZ]Yœ˜[˜ÚØ\œžZ[™ÂˆÜ[ˆÛ\ÜÏHÈŒH8¢$ˆÜÜ[‹ÚXÚ\ÈÝÈH\X[K\™Y›XÝ]™HØ]š]HZ\œ›ÜˆÜ‚ˆÝ]]ÛÝ\\ˆ\È[Ù[YÜ˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ”™Y›XÝ]š]H\ÈHÚ[™ÛH›][X™\Žˆ™X[ÛØ][™ÜÈ˜\žHÚ][™ÛBˆÙˆ[˜ÚY[˜ÙH[™Û\š^˜][Ûˆ
+ËHœÈ\[™JK[™HY][Z\œ›Ü‰ÜÈ™Y›XÝ[˜ÙBˆ˜\šY\ÈÚ]Ø]™[[™Ýˆ›Û™HÙˆ]\È[Ù[Y8 %Ü[ˆÛ\ÜÏHÈ”ÜÜ[ˆ\ÂˆÛÛœÝ[™YØ\™\ÜÈÙˆ[˜ÚY[˜ÙH[™ÛKÛ\š^˜][Û‹ÜˆÛÛÜ‹Ü˜ˆKˆ™[]YˆÉØÛZ\œ›Ü‰Ë	ØÛZ\œ›Üž	Ë	ÛØ\	Ë	ÙØ[›ÉË	Ü™]›Ü™Y›XÝÜ‰Ë	ØœÉ×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Z\œ›ÜœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛZ\œ›ÜœËš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	Û[œÉËˆÝ[[X\žNˆ‘›ØÝ\Ù\ÈYÚÚ]HÜÚ]]™H[‹[[œÈ›ØØ[[™Ý›ÝšY[™ÈHÚ[\H\˜^X[[Ù[›ÜˆÛÛ[X][Û‹[XYÙH›Ü›X][Û‹[™™X[H™[^\Ëˆ‹ˆ]Nˆ	Õ[ˆÛÛ™^[œÉËˆØ]YÛÜžNˆ	Ó[œÙ\ÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆH[ˆ[œÈ™[™ÈYÚžH™Yœ˜XÝ[Ûˆ]]ÈÛÈÝ\™YÝ\™˜XÙ\Ëˆ[ˆBˆ\˜^X[\›Þ[X][Ûˆ8 %˜^\ÈÛÜÙHÈHÜXØ[^\Ë]ÛX[[™Û\È8 %ÜÙBˆÛÈ™Yœ˜XÝ[ÛœÈÛÛ\ÙH[ÈHÚ[™ÛH™[][ÛœÚ\™]ÙY[ˆØš™XÝ\Ý[˜ÙBˆÜ[ˆÛ\ÜÏHÈ™8 ¤ÜÜ[‹[XYÙH\Ý[˜ÙHÜ[ˆÛ\ÜÏHÈ™8mhÜÜ[‹[™›ØØ[ˆ[™ÝÜ[ˆÛ\ÜÏHÈ™ÜÜ[ŽÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×œ˜XÞÌ_^ÙŸHHœ˜XÞÌ_^ÙÛßH
+Èœ˜XÞÌ_^ÙÚ_IËØ\[ÛŽˆ	ÕH[‹[[œÈ\]X][Û‹‰ÈKˆÈ^ˆ	ÛHHWœ˜XÞÙÚ_^ÙÛßIËØ\[ÛŽˆ	Õ˜[œÝ™\œÙHXYÛšYšXØ][Ûˆ8 %™YØ]]™HÚYÛˆYX[œÈ[ˆ[™\Y[XYÙH›ÜˆH™X[[XYÙHœ›ÛHHÜÚ]]™H[œË‰ÈKˆKˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ”˜]\ˆ[ˆ˜XÚ[™ÈH[‹[[œÈ\]X][Ûˆ›ÜˆÛ™H^X[Øš™XÝÚ[]Bˆ[YKÜXØ[Ù]\\Y\ÈH\]Z]˜[[Ý›Û™Ïœ\˜^X[˜^K]˜[œÙ™\‚ˆ™[][ÛÜÝ›Û™ÏˆÈ]™\žH[™]šYX[˜^H]Ü›ÜÜÙ\ÈH[œÈ[™Kˆ›ÜˆH˜^BˆÜ›ÜÜÚ[™È]ZYÚÜ[ˆÛ\ÜÏHÈšÜÜ[ˆœ›ÛHHÜXØ[^\ÈÚ][˜ÛÛZ[™ÂˆÛÜHÜ[ˆÛ\ÜÏHÈOÜÜ[ˆ
+H˜][ÈÙˆ]È˜[œÝ™\œÙHÈ^X[\™XÝ[Û‚ˆÛÛ\Û™[ÊKHÝ]ÛÚ[™ÈÛÜH\ÎÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆIÈHHHœ˜XÞÚ^ÙŸH‹Ø\[ÛŽˆ	Ô\˜^X[˜^K]˜[œÙ™\ˆ\]X][Ûˆ›ÜˆH[ˆ[œÈ8 %HØ[YH\ÚXÜÈ\ÈH[œÈ\]X][ÛˆX›Ý™K\YY\‹\˜^HÛÈ[žH[™HÙˆ˜^\È
+›Ý\ÝÛ™HØš™XÝÚ[
+H›ØÝ\Ù\ÈÛÜœ™XÝK‰ÈKˆKˆ[Z]][ÛœÎˆ•\È\ÈÙ[Z[™H\˜^X[ÜXÜË›ÝH[™]Ø]žH˜™[™ÝØ\™ˆ›ØÝ\ÈŽˆH™X[HÙˆ\˜[[˜^\ÈÙ™œÙ]œ›ÛHH^\È™X[HÙ\ÈÛÛ™\™ÙH]Bˆ˜XÚÈ›ØØ[Ú[[™[ˆØš™XÝ\œ›ÝÈ™X[HÙ\È›Ü›H[ˆ[™\YXYÛšYšYYÜ‚ˆ[XYÛšYšYY[XYÙH]HÜÚ][ÛˆH[œÈ\]X][Ûˆ™YXÝËˆÚ]	ÜÈZ\ÜÚ[™È\Âˆ]™\ž][™È\˜^X[[ÜžHX]™\ÈÝ]žHÛÛœÝXÝ[Ûˆ8 %Ü\šXØ[[™Ú›ÛX]XÂˆX™\œ˜][Û‹š[š]H[œÈÙ[ÛY]žK[™[žH™Z]š[Üˆ›Üˆ˜^\È˜\ˆœ›ÛHH^\ÈÜ‚ˆ]\™ÙH[™Û\Ëˆ›Üˆ[ÙH™\Ü[™ÈÛ›KH[œÈÚ[[H\ÜÝ[Y\È‹P’ÍÈ[™BˆÙ[™HXÚÛ™\ÜÈœ›ÛHÜ\šXØ[ØYÈ\È‹I›˜œÜÛ[HYÙHXÚÛ™\ÜËˆ]ˆX[Y]\‹X]Ø\™H\Ý[X]H\È\XØ[HÚ][ˆX›Ý]L	H›ÜˆÜ™[˜\žH[›ËXÛÛ™^ˆØ][ÙÝYHÚ[™Û]ÎÈ]Ù\È›ÝÚ[™ÙHH˜XÙY˜^HÙ[ÛY]žKÜ˜ˆKˆ™[]YˆÉÛ[œØÉË	ÛY][[œÉË	ÝXÚÛ[œÉË	Ý[\ØÛÜIË	ÛØš™XÝ]™IË	ØÛZ\œ›Ü‰×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %[œÙ\ÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛ[œÙ\Ëš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ÛY][[œÉËˆÝ[[X\žNˆ‘›ØÝ\Ù\ÈYÚ›ÝYÚH›]\ÙKYÜ˜YY[[Ù[Ú]Y\ÝX›HY™šXÚY[˜ÞK\Ú[™ÈZ]\ˆY™œ˜XÝ]™HÚ›ÛX]XÈ›ØÝ\Ú[™ÈÜˆ[ˆYX[^™YXÚ›ÛX]XÈ˜[™ˆ‹ˆ]Nˆ	ÓY][[œÉËˆØ]YÛÜžNˆ	Ó[œÙ\ÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆHY][[œÈ\ÈH›]ÜXØ[Ý\™˜XÙH]\›™YÚ]ÝXØ]™[[™ÝˆÝXÝ\™\ËˆÜÙHY]KX]Û\È[\ÜÙHHÜÚ][Û‹Y\[™[\ÙH[^H[œÝXYˆÙˆ™[Z[™ÈÛˆHÝ\™Y[˜[˜ÙH[™^]˜XÙ\ÈÙˆHÛ\ÜÈ[œËˆ[ˆYX[ˆ›ØÝ\Ú[™È\ÙH›Ùš[H]\ÚYÛˆØ]™[[™ÝÜ[ˆÛ\ÜÏHÈ³®ø  ÜÜ[ˆ\Âˆ\\˜›ÛXÈ˜]\ˆ[ˆH]XY˜]XÈ›Ùš[HÙˆH\˜^X[[Z]Ü˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×J‹[X™WÌ
+HHWœ˜XÞÌ—_^×[X™WÌWY
+Ü\Ù—ÌŒŠÜ—ŒŸKY—ÌšYÚ
+H[ÙÌ—_IËØ\[ÛŽˆ	ÒYX[\ÙH™\]Z\™YÈœš[™ÈH›Ü›X[H[˜ÚY[[™HØ]™HÈH›ØÝ\È¸  œ›ÛH˜Y]\È‹‰ÈKˆÈ^ˆ	×X]›^Ó_HHÚ[—WY×\˜Ý[—WY
+œ˜XÞÑ^ÌŸ—ÌWšYÚ
+WšYÚIËØ\[ÛŽˆ	ÑÙ[ÛY]šXÈ[Y\šXØ[\\\™H[ˆZ\ˆ›ÜˆÛX\ˆX[Y]\ˆ[™›ØØ[[™Ý¸  ‰ÈKˆKˆ[Žˆˆ•H\™XÝ[ÛˆÙˆ]ÛÛÝ\ˆ\œ›Üˆ\ÈHÝ\œš\Ú[™È\[™ÛÜˆÛ[™ÈÛˆÎˆHY][[œÈ\ÈÚ›ÛX]XÈH[O›ÜÜÚ]OÙ[OˆØ^H›Ý[™œ›ÛBˆÛ\ÜËˆH™Yœ˜XÝ]™H[œÈ\ÈHYÚ\ˆ[™^[ˆH›YKÛÈ›YHÛÛY\ÈÈBˆ›ØÝ\È[O›™X\™\Ù[Oˆ[ˆ™YˆHY™œ˜XÝ]™HÝ\™˜XÙH\ÈH›ØØ[[™Ýˆ[™\œÙ[H›ÜÜ[Û˜[ÈØ]™[[™ÝÛÈÝ›Û™Ïœ™Y›ØÝ\Ù\È™X\™\ˆ[™›YBˆ\\ˆ]Ø^OÜÝ›Û™Ï‹ˆZ\ˆÛÛÝ\ˆœš[™Ù\È\™Y›Ü™H[ˆ[ˆÜÜÚ]Bˆ\™XÝ[ÛœÈ8 %ÚXÚ\È[ÛÈÚHHY™œ˜XÝ]™HÝ\™˜XÙHØ[ˆ™H\ÙYÈØ[˜Ù[ˆHÚ›ÛX]XÈX™\œ˜][ÛˆÙˆH™Yœ˜XÝ]™HÛ™H˜]\ˆ[ˆÛÛ\Ý[™[™È]Ü‚ˆH\ÙH]\›ˆ˜XœšXØ]Y›ÜˆÛ™HØ]™[[™Ý›Ü›X[H\ÈÝ›Û™ÂˆY™œ˜XÝ]™HÚ›ÛX]XÚ]NˆÛ™Ù\ˆØ]™[[™ÝÈ›ØÝ\È™X\™\ˆ[™ÚÜ\‚ˆØ]™[[™ÝÈ›ØÝ\È˜\\ˆ]Ø^KˆXÚ›ÛX]XÈY][[œÙ\ÈY[™Ú[™Y\™YÜ›Ý\ˆ[^K]˜[™ÚY\\\™KKÛ\š^˜][Ûˆ™\ÜÛœÙK[™Y™šXÚY[˜ÞH\™BˆÛÝ\Y\ÚYÛˆÛÛœÝ˜Z[È˜]\ˆ[ˆ[™\[™[Û›ØœÉØÚ]JJ_Kˆ˜XÝXØ[ˆ›ØÝ\Ú[™ÈY™šXÚY[˜ÞH[ÛÈÙ[™ÈÛÛYH[˜ÚY[ÝÙ\ˆ[È™\›ÝÜ™\‹[Ø[YˆY™œ˜XÝ[ÛˆÜ™\œË™Y›XÝ[Û‹XœÛÜœ[Û‹[™ØØ]\‰ØÚ]JŠ_KÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ“ÜXØ[Ù]\™X]ÈH]\›™YÝ\™˜XÙH\ÈH™\›Ë]XÚÛ™\ÜÈ\˜^X[ˆ\ÙKYÜ˜YY[›ÞKˆ[ˆÝ›Û™ÏÚ›ÛX]XÏÜÝ›Û™Ïˆ[ÙKH›ÛZ[˜[›ØØ[ˆ[™ÝÜ[ˆÛ\ÜÏHÈ™¸  ÜÜ[ˆ\È^XÝ]H\ÚYÛˆØ]™[[™Ý[™]™\žBˆØ[\YØ]™[[™Ý›ÛÝÜÈHÜ™[˜\žHY™œ˜XÝ]™HØØ[[™ÎÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	ÙŠ[X™JHH—Ìœ˜XÞ×[X™WÌ^×[X™_IËØ\[ÛŽˆ	ÕHØ]™[[™ÝY\[™[›ØØ[[™Ý\ÙYžHHÚ›ÛX]XÈY][[œÈ˜XÙK‰ÈKˆÈ^ˆIÈHHHœ˜XÞÚ^ÙŠ[X™J_H‹Ø\[ÛŽˆ	ÑXXÚØ[\YØ]™[[™Ý[ˆ\Ù\ÈHØ[YH\˜^X[˜^K]˜[œÙ™\ˆ™[][Ûˆ\ÈHYX[[ˆ[œË‰ÈKˆKˆ[ŽˆˆHœ›ØY˜[™˜^H\È^[™Y[ÈHØ[YHÙZYÚYØ]™[[™ÝØ[\\È\ÙYˆžHš\Û\È[™Ü˜][™ÜËXZÚ[™È^X[ÛÛÜˆš\ÚX›H[ˆHXÝX[˜XÙY]Ë‚ˆÝ›Û™Ï’YX[^™YXÚ›ÛX]XÈ˜[™ÜÝ›Û™ÏˆÛÈÜ[ˆÛ\ÜÏHÈ™Y¸  ÜÜ[‚ˆ[œÚYHHÚÜÙ[ˆ˜[™ÙH[™˜[œÚ][ÛœÈÛÛ[[Ý\ÛH˜XÚÈÈY™œ˜XÝ]™BˆØØ[[™ÈÝ]ÚYH]ˆ›ØÝ\Ú[™ÈY™šXÚY[˜ÞH][X]\ÈH›ØÝ\ÙYÝ]]žHBˆÛÛ™šYÝ\™YÝÙ\ˆœ˜XÝ[Û‹Ü˜ˆ[Z]][ÛœÎˆ“›È\ÙHX\Üˆ[XÝ›ÛXYÛ™]XÈšY[\È›ÜYØ]YˆBˆÚ[][]ÜˆÙ\È›Ý\ÚYÛˆY]KX]Û\Ë\š]™HY™šXÚY[˜ÞKÚÝÈH[™›ØÝ\ÙYˆ™\›ÝÜ™\‹˜[Y]HÜ›Ý\Y[^H™X\ÚXš[]KÜˆØ[Ý[]HÛ\š^˜][Û‚ˆÛÛ™\œÚ[Û‹Ñ‹U‹Ý™Z˜][ËY™œ˜XÝ[Û‹[[Z]YÜÝÚ^™KšY[[™ÛKˆX™\œ˜][ÛœËÝXœÝ˜]HY™™XÝËÜˆ˜XœšXØ][ÛˆÛ\˜[˜Ù\ËˆXÚ›ÛX]XÈ[ÙH\Âˆ^XÚ]H[ˆYX[^™YÞ\Ý[K[]™[™Z]š[Ü‹›Ý›ÛÙˆ]HÙ[XÝYˆX[Y]\‹K˜[™ÚY[™Y™šXÚY[˜ÞHØ[ˆ™H˜XœšXØ]YÙÙ]\‹Ü˜ˆKˆ™[]YˆÉÛ[œÉË	ÝXÚÛ[œÉË	ÙÜ˜][™ÉË	ÜÛIË	ÛØš™XÝ]™I×KˆËÈ\ÙHÛÈ˜XÚÈHÚ]YÛZ[\È[ˆH›ÜÙKÛÈ^H™[Û™È[‚ˆËÈÚ]][ÛœØKH]\ÈÚ][Z]ÈHÜ™Yˆ[˜ÚÜœÈHÌWKÖÌ—BˆËÈÝ\\œØÜš\È[šÈËˆYÛ›H[ˆ™\ÛÝ\˜Ù\Ø›Ý[šÜÈÙ\™HXY‚ˆÚ]][ÛœÎˆÂˆÈX™[ˆ	Ð\˜˜XšH][‹8 'ÝXØ]™[[™Ý]XÚÈ[œÙ\ÈÚ]YÚ[Y\šXØ[\\\™\È[™\™ÙHY™šXÚY[˜ÞK8 'H˜]\™HÛÛ[][šXØ][ÛœÈ‹ÌŽH
+ŒMJIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLÎÛ˜ÛÛ[\ÎŽIÈKˆÈX™[ˆ	ÒÚÜ˜\Ø[š[™Z˜Y][‹8 'Y][[œÙ\È]š\ÚX›HØ]™[[™ÝË8 'HØÚY[˜ÙHÍL‹LNL8 $ÌLNM
+ŒMŠIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLL‹ÜØÚY[˜ÙK˜XY	ÈKˆKˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Y™œ˜XÝ]™HÜXÜÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÙY™œ˜XÝ]™WÛÜXÜËš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Ú›ÛX]XÈX™\œ˜][ÛœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKØÚ›ÛX]X×ØX™\œ˜][ÛœËš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	Û[œØÉËˆÝ[[X\žNˆ”Ü™XYÈYÚÚ]H™YØ]]™H[‹[[œÈ›ØØ[[™Ý›Üˆ^Üš[™Èš\X[›ØÚK™X[H^[œÚ[Û‹[™H™Z]š[ÜˆÙˆ]™\™Ú[™ÈÜXØ[Þ\Ý[\Ëˆ‹ˆ]Nˆ	Õ[ˆÛÛ˜Ø]™H[œÉËˆØ]YÛÜžNˆ	Ó[œÙ\ÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆHÛÛ˜Ø]™H
+]™\™Ú[™ÊH[œÈØ™^\ÈH^XÝØ[YH[‹[[œÈ\]X][Ûˆ\ÈHÛÛ™^ˆÛ™H8 %HÛ›HY™™\™[˜ÙH\ÈHÚYÛˆÙˆÜ[ˆÛ\ÜÏHÈ™ÜÜ[‹ˆH™YØ]]™Bˆ›ØØ[[™Ý[Ø^\È›ÙXÙ\ÈH™YØ]]™H[XYÙH\Ý[˜ÙH›ÜˆH™X[Øš™XÝÚXÚˆYX[œÈHÛÛ˜Ø]™H[œÈØ[ˆ[O›™]™\Ù[Oˆ›Ü›HH™X[[XYÙHÛˆ]ÈÝÛŽˆH˜^\Âˆ[Ø^\È\X\ˆÈ]™\™ÙHœ›ÛHHš\X[\šYÚ™YXÙY[XYÙHÛˆHØ[YHÚYBˆ\ÈHØš™XÝÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×œ˜XÞÌ_^ÙŸHHœ˜XÞÌ_^ÙÛßH
+Èœ˜XÞÌ_^ÙÚ_K\]XYˆ	ËØ\[ÛŽˆ	ÕH[‹[[œÈ\]X][ÛˆÚ]H™YØ]]™H›ØØ[[™Ý8 %HYš[š[™È›Ü\HÙˆH]™\™Ú[™È[œË‰ÈKˆKˆ[ŽˆˆÛÛ˜Ø]™H[œÙ\ÈÛÜœ™XÝ^[ÜXH
+ÚÜ\ÚYÚY™\ÜÊH[ˆ^YYÛ\ÜÙ\Ë[™Z\™YˆÚ]HÛÛ™^[œÈ^HXZÙHHÛÛ\XÝØ[[X[ˆ[\ØÛÜHÜˆ™X[H^[™\ˆ8 %ÙYBˆH[\ØÛÜHYÙKÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•\È\È]\˜[HHØ[YHÛÛ\Û™[\ÈHH™YH‹‹‹Û[œËÈ˜ÛÛ™^ˆ[œÏØOˆ8 %Ø[YH\˜^X[˜^K]˜[œÙ™\ˆ™[][ÛˆÜ[ˆÛ\ÜÏHÈIÈHH8¢$‚ˆÙÜÜ[‹Ø[YH™YÚ\ÝžH[žH[™\ˆHÛÙ8 %\ÝY˜][[™ÈÈH™YØ]]™Bˆ›ØØ[[™ÝˆÙ][™ÈHÜÚ]]™H›ØØ[[™ÝÛˆ\È[[Y[XZÙ\È]™Z]™Bˆ^XÝHZÙHHÛÛ™^[œË[™šXÙH™\œØNˆHÚYÛˆÙˆÜ[ˆÛ\ÜÏHÈ™ÜÜ[‚ˆ\ÈHÛ›H[™È]]\›Z[™\ÈÛÛ™\™Ú[™È™\œÝ\È]™\™Ú[™È™Z]š[Üˆ[ž]Ú\™Bˆ[ˆÜXØ[Ù]\Ü˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ”Ø[YHØ]™X]È\ÈH[ˆÛÛ™^[œÎˆ^XÝ\˜^X[Ù[ÛY]žHÚ]›ÂˆÜ\šXØ[ÜˆÚ›ÛX]XÈX™\œ˜][Û‹ˆÑ[Û™H\Ù\ÈHØ[YHX[Y]\‹X]Ø\™H‹P’ÍÂˆØYÈ\Ý[X]H
+›ÝYÚHHL	HÛ\ÜÈ\Ý[X]JNÈH\ÜÝ[YYXÚÛ™\ÜÈ™]™\ˆ™XÛÛY\Âˆ˜XÙYÙ[ÛY]žKÜ˜ˆKˆ™[]YˆÉÛ[œÉË	ÛY][[œÉË	ÝXÚÛ[œÉË	Ý[\ØÛÜIË	ÛØš™XÝ]™I×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %[œÙ\ÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛ[œÙ\Ëš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ÝXÚÛ[œÉËˆÝ[[X\žNˆ”™Yœ˜XÝÈYÚ›ÝYÚÛÈÙ\\˜]YÜ\šXØ[Üˆ›]Û\ÜÈÝ\™˜XÙ\Ë^ÜÚ[™ÈHY™™XÝÈÙˆXÚÛ™\ÜËÜ\šXØ[X™\œ˜][Û‹Ú›ÛX]XÈ›ØÝ\Ë[™\Ü\œÚ[Û‹ˆ‹ˆ]Nˆ	ÕXÚÈÜ\šXØ[[œÉËˆØ]YÛÜžNˆ	Ó[œÙ\ÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆH™X[Ú[™Û]\Èš[š]HÙ[™HXÚÛ™\ÜÈ[™ÛÈÙ\\˜][H™Yœ˜XÝ[™ÂˆÝ\™˜XÙ\ÉØÚ]JJ_Kˆ]È\˜^X[ÝÙ\ˆ\™Y›Ü™H\[™ÈÛˆ›ÝÚYÛ™Y˜YZKBˆÛ\ÜÈ[™^[™HÙ\\˜][Ûˆ™]ÙY[ˆH˜XÙ\ÉØÚ]JŠ_KˆY™™XÝ]™H›ØØ[[™Ý\ÂˆYX\Ý\™Y™]ÙY[ˆš[˜Ú\[[™\ÎÈ˜XÚÈ›ØØ[\Ý[˜ÙH\ÈH™X\‹]™\^]ËY›ØÝ\Âˆ\Ý[˜ÙH›ÜˆÛÛ[X]YYÚÛÈHÛÈ[X™\œÈ\™H›ÝÙ[™\˜[H\]X[Ü‚ˆ]H\™ÙH\\\™KHÜ\šXØ[Ý\™˜XÙHÙ\È›ÝÙ[™]™\žH˜^HZYÚÈÛ™Bˆ^X[Ú[ˆX\™Ú[˜[˜^\È›ØÝ\ÈÛÜÙ\ˆÈHÜÚ]]™H[œÈ[ˆ\˜^X[˜^\Ëˆ›ÙXÚ[™ÈÛ™Ú]Y[˜[Ü\šXØ[X™\œ˜][Ûˆ[™]Èš\ÚX›HØ]\ÝXÉØÚ]JÊ_K‚ˆÜXØ[YÛ\ÜÈ[™^[ÛÈ˜\šY\ÈÚ]Ø]™[[™ÝÛÈ[ˆ[˜ÛÜœ™XÝYÚ[™Û]\ÂˆÛ™Ú]Y[˜[Ú›ÛX]XÈX™\œ˜][Û‹Ü˜ˆ›Ü›][\ÎˆÂˆÂˆ^ˆ	×OJ‹LJWY
+œ˜XÞÌ_^Ô—Ì_KWœ˜XÞÌ_^Ô—ÌŸJ×œ˜XÞÊ‹LJY^Û”—ÌT—ÌŸWšYÚ
+K\]XYWœ˜XÞÌ_^×_IËˆØ\[ÛŽˆ	ÕXÚÈ[œÛXZÙ\ˆ\]X][Ûˆ[ˆZ\‹‰ËˆKˆÂˆ^ˆ	×X]›^Ð‘‘OY—Y
+KWœ˜XÞÊ‹LJY^Û”—Ì_WšYÚ
+IËˆØ\[ÛŽˆ	Ð˜XÚÈ›ØØ[\Ý[˜ÙHœ›ÛHH™X\ˆ™\^›ÜˆÛÛ[X]Y[œ][Û™ÈH[[Y[	ÜÈØØ[
+Þ\™XÝ[Û‹‰ËˆKˆÂˆ^ˆ	Õ—ÙWœ˜XÞÛ—ÙL_^Û—Ñ‹[—ÐßIËˆØ\[ÛŽˆ	ÐX˜™H[X™\ŽˆÝÙ\ˆ˜[Y\ÈYX[ˆÝ›Û™Ù\ˆ\Ü\œÚ[Ûˆ™]ÙY[ˆHš\ÚX›Hˆ[™È™Y™\™[˜ÙH[™\Ë‰ËˆKˆKˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ“ÜXØ[Ù]\[\œÙXÝÈXXÚ˜^HÚ]HÛÈ˜]Ûˆ[™HÜˆ^XÝÚ\˜Ý[\‹X\˜Âˆ˜XÙ\Ë\Y\È™XÝÜˆÛ™[™Yœ˜XÝ[Ûˆ]XXÚ›Ý[™\žK˜XÚÜÈH˜^HÚ[H]ˆ\È[œÚYHHÛ\ÜË[™Ý\ÜÈÝ[[\›˜[™Y›XÝ[Û‹ˆ›ØØ[[™Ý[™ˆ˜XÚÈ›ØØ[\Ý[˜ÙH\™H\š]™Y\˜^X[Ý[[X\šY\ÈÙˆ]Ù[ÛY]žH]BˆNË‰›˜œÜÛ›H[™NÈH˜XÙ\ˆ™]™\ˆZ[\È˜^\È]Z]\ˆ™\ÜYÚ[‚ˆÜ\šXØ[[™Ú›ÛX]XÈX™\œ˜][Ûˆ\™Y›Ü™H[Y\™ÙHœ›ÛHH˜XÙYÝ\™˜XÙ\È[™ˆØ]™[[™ÝY\[™[[™^˜]\ˆ[ˆ™Z[™È˜]Ûˆ\È[ˆY™™XÝÜ‚ˆ’[ˆHY˜][Y]Ë\šYÚÜšY[][Û‹ÜÚ]]™H˜Y]\ÈYX[œÈHÙ[™HÙ‚ˆÝ\˜]\™HY\ÈÝØ\™ØØ[
+ÞˆHšXÛÛ™^Ú[™Û]\È\™Y›Ü™BˆÜ[ˆÛ\ÜÏHÈ”¸  H	™ÝÈÜÜ[ˆ[™Ü[ˆÛ\ÜÏHÈ”¸  ˆ	›ÈÜÜ[ŽÂˆÜ[ˆÛ\ÜÏHÈ”ˆHÜÜ[ˆXZÙ\È]˜XÙH[™KˆHÚ\H™XYÝ]˜[Y\ÈBˆ™\Ý[[™È›Ùš[HÛÈHÚYÛˆÛÛ™[[ÛˆØ[ˆ™HÚXÚÙY\™XÝKÜ‚ˆ•HÙ[XÝX›H‹P’ÍË\ÙY\Ú[XØK‹TÑK[™‹TÑŒLH[Ù[È\ÙHXXÚÛ\ÜÉÜÂˆX›\ÚY[[™H[™^[™X˜™H[X™\‰ØÚ]J
+_KˆYˆH™\]Y\ÝY˜Y]\È\ÈÛÂˆÛX[›ÜˆHÛX\ˆ\\\™KÜˆHÙ[™HXÚÛ™\ÜÈÛÝ[XZÙHH˜XÙ\ÈÜ›ÜÜËˆH[œÜXÝÜˆÚÝÜÈH^XÝÛÛœÝXÝX›HÙ[ÛY]žHH˜XÙ\ˆ\Ù\È[œÝXYÙ‚ˆY[™ÈHY\ÝY[Ü‚ˆÝ›Û™Ï•ÛÈÛ\ÜÈ›ÙY\È]\Ý›ÝÝXÚÜÝ›Û™ÏˆH˜XÙ\ˆYÛ›Ü™\È[žBˆ[\œÙXÝ[ÛˆÛÜÙ\ˆ[ˆŒI›˜œÜÛ[H[Û™ÈH˜^KÛÈHZ\ˆÙˆÛÚ[˜ÚY[ˆ[\™˜XÙ\ÈÜÙ\ÈÛ™HÙˆ[H[™H˜^HÜ›Û™ÛH^]È[ÈZ\‹ˆZ[[™ÈBˆÙ[Y[YÝX›]žH\Ú[™ÈÛÈÚ[™Û]ÈÙÙ]\ˆ\™Y›Ü™HÚ]™\È[ˆ[œÝÙ\ˆ]ˆ\È›ÝØš[Ý\ÛHœ›ÚÙ[‹\ÝÜ›Û™È8 %YX\Ý\™YÛˆHÜ›ÝÛŠÙ›[Z\‹H›ØÝ\Âˆ[™È	›˜œÜÛ[HÚÜÚ]Û™H[\™˜XÙHÚ[[HÚÚ\YˆX]™H]X\ÝˆŒ‰›˜œÜÛ[H™]ÙY[ˆ[H[™›Ý[\™˜XÙ\ÈÛÛYH˜XÚÎÈH[œÜXÝÜˆØ\›œÈÚ[‚ˆ[ž][™È\ÈÛÜÙ\‹ˆ]Ø\ÛÜÝÈX›Ý]ŒIHÙˆH˜XÚÈ›ØØ[\Ý[˜ÙK[™Bˆ™X[Ù[Y[YÜ›Ý\\ÈHL8 $ÌŒ	›˜œÜð­[H^Y\ˆÙˆ›Ý\]Z]KYÛ\ÜÈ[ž]Ø^Kˆ™\ÝYÜ‚ˆ[HÝ™\›\[™È›ÙY\È\™HHÙ\\˜]H[œÝ\ÜYØ\ÙH8 %›Ý[™\šY\È\™H™]™\‚ˆY\™ÙYÜ˜ˆ›Ü›][\ÎˆÂˆÂˆ^ˆ	Û—ŒŠ[X™JOLJ×Ý[WÚWœ˜XÞÐ—ÚW[X™WŒŸ^×[X™WŒ‹P×Ú_IËˆØ\[ÛŽˆ	Õ™YK]\›HÙ[YZY\ˆÝ\™H\ÙY›ÜˆØ][ÙÝYKYÛ\ÜÈ[™^[™\Ü\œÚ[Û‹‰ËˆKˆKˆ[Z]][ÛœÎˆ•\È\ÈH‘Y\šY[Û˜[Ù[ÛY]šXÈ˜XÙHÚ]Ü\šXØ[Üˆ[™Bˆ˜XÙ\ÈÛ›Kˆ]Ù\È›Ý[Ù[ÚÙ]È˜^\ËY™œ˜XÝ[Û‹\Ü\™\Ë[ÑÙ™‹X^\ÂˆX™\œ˜][ÛœËœ™\Û™[ØÛØ][™È™Z]š[Ü‹Ý™\ÜÈš\™Yœš[™Ù[˜ÙKX[Y˜XÝ\š[™ÂˆÛ\˜[˜Ù\Ë[\\˜]\™H\[™[˜ÙKÜˆXœÛÜœ[Ûˆ˜[™ËˆÑ\Ù\ÈH[˜[]XÂˆÙXÛÛ™\š]˜]]™HÙˆHÙ[XÝYÙ[YZY\ˆÝ\™H[™HXÝX[˜XÙY\Ý[˜ÙBˆ[ˆÛ\ÜÎÈHX]\šX[ÛÛšX][Ûˆ\ÈÙ[™\˜[HÚ][ˆH™]È\˜Ù[Ú\™HBˆØ][ÙÝYHÝ\™H\È˜[Yˆ\‹\Ý\™˜XÙH˜[œÛZ\ÜÚ[Ûˆ\ÈH›]ˆÛÛ™šYÝ\™Y\˜Ù[YÙH\YY]XXÚ˜XÙK›ÝHœ™\Û™[ÜˆÛØ][™ÈØ[Ý[][Û‹ˆ™X]^X[Ü\šXØ[[™š\ÚX›HÚ›ÛX]XÈ™Z]š[Üˆ\ÂˆYX[š[™Ù[Ú][ˆ\È[Ù[[™Ù™‹X^\È™Z]š[Üˆ\È]X[]]]™KÜ˜ˆKˆ™[]YˆÉÛ[œÉË	Û[œØÉË	ÛØš™XÝ]™IË	Üš\ÛIË	Ùœ™YYÛ\ÜÉ×KˆÚ]][ÛœÎˆÂˆÈX™[ˆ	ÕH\ÚXÜÈ\\^›ÛÚÈ8 %Ü\šXØ[[œÙ\ÉË\›ˆ	ÚÎ‹ËÜ\ÚXÜËš[™›ËÛ[œÙ\ËÉÈKˆÈX™[ˆ	ÕÜ›XœÈ8 %‹P’ÍÈ[›ËXÛÛ™^[œÙ\ÎˆH[œÛXZÙ\ˆ\]X][Ûˆ›ÜˆHXÚÈ[œÉË\›ˆ	ÚÎ‹ËÝÝÝËÜ›XœË˜ÛÛKÛ‹XšÍË\[›ËXÛÛ™^[[œÙ\Ë][˜ÛØ]YÝX“˜[YOU]ÜšX[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Ü\šXØ[X™\œ˜][ÛœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜÜ\šXØ[ØX™\œ˜][ÛœËš[	ÈKˆÈX™[ˆ	ÔÐÒÕ8 %ÜXØ[YÛ\ÜÈÛÛXÝ[Ûˆ]\ÚY]ÉË\›ˆ	ÚÎ‹ËÝÝÝËœØÚÝ˜ÛÛKÙ[‹YØ‹Ü›ÙXÝËÛÜXØ[YÛ\ÜËËKÛYYXKÔ›Ú™XÝÓÛ‘^Ô›ÙXÝËÓËÛÜXØ[YÛ\ÜËÑÝÛ›ØYËÜØÚÝ[ÜXØ[YÛ\ÜËXÛÛXÝ[Û‹Y]\ÚY]ËY[™Û\Ú[X^LŒNKœ‰ÈKˆKˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	ÔÐÒÕ8 %ÜXØ[YÛ\ÜÈXÚšXØ[›Ü\Y\ÉË\›ˆ	ÚÎ‹ËÝÝÝËœØÚÝ˜ÛÛKÙ[‹YØ‹Ü›ÙXÝËÛÜXØ[YÛ\ÜËÝXÚšXØ[Y]Z[ÉÈKˆKˆK‚ˆÂˆ\Nˆ	Ø\Ü\šXÛ[œÉËˆÝ[[X\žNˆ”™Yœ˜XÝÈYÚ›ÝYÚÛÛšXÈ[™Û[›ÛZX[[œÈÝ\™˜XÙ\ËÛÈÚ[™Ú[™ÈHÝ\™˜XÙHÚ\H\™XÝHÚ[™Ù\È˜^H[\œÙXÝ[ÛœË›ØÝ\Ú[™Ë[™Ü\šXØ[X™\œ˜][Û‹ˆ‹ˆ]Nˆ	Ð\Ü\šXÈ[œÉËˆØ]YÛÜžNˆ	Ó[œÙ\ÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆHÜ\™H\ÈX\ÞHÈXZÙH[™Ü›Û™È›ÜˆH›Ø‹ˆÜš[™[™ÈÛÈÛ\ÜÈÝ\™˜XÙ\ÂˆYØZ[œÝXXÚÝ\ˆÚ]›Ý][Ûˆ[™™\ÜÝ\™H˜]\˜[H›ÙXÙ\ÈÜ\™\ËÚXÚ\ÂˆÚH[[ÜÝ]™\žH[œÈ]™\ˆXYH\È™Y[ˆÛ™H8 %]HÜ\™HÙ\È›Ýœš[™ÈHÚYBˆÛÛ[X]Y™X[HÈHÚ[™ÛHÚ[ˆ˜^\È›ÝYÚHÝ]\ˆ\ÙˆH[œÈÜ›ÜÜÈBˆ^\ÈÛÜÙ\ˆ[ˆ˜^\È™X\ˆ][™]Ø\\ÂˆH™YH‹‹‹ÝXÚÛ[œËÈœÜ\šXØ[X™\œ˜][ÛØO‰ØÚ]JÊ_Kˆ]\È›ÝBˆX[Y˜XÝ\š[™ÈY™XÝÈ]\ÈÚ]HÚ\HÙ\ËÜ‚ˆ•HÛ\ÜÚXØ[š^\È[Ü™HÛ\ÜÎˆÜ]HÝÙ\ˆÝ™\ˆÙ]™\˜[[[Y[ÈÛÈXXÚˆ™[™ÈHYÚ\ÜË[™HX™\œ˜][ÛˆXXÚÛÛšX]\È\HØ[˜Ù[Ëˆ]ÛÜšÜËˆ[™]\ÈÚHH˜\ÝØ[Y\˜H[œÈ\ÈX[žH[[Y[Ëˆ[ˆ\Ü\™HZÙ\ÈHÝ\ˆ›Ý]Bˆ8 %ÙY\Û™H[[Y[[™Ú]™H]HÝ\™˜XÙHH›Ø›[HXÝX[HØ[È›Ü‹Ü‚ˆÏ•HÝ\™˜XÙH]\È›ÈÜ\šXØ[X™\œ˜][ÛÚÏ‚ˆ‘›ÜˆÛ™HÛÛšYØ]HZ\ˆH^XÝÝ\™˜XÙH\ÈÛ›ÝÛˆ[ˆÛÜÙY›Ü›KˆZÙHBˆ[›ËXÛÛ™^Ú[™Û]Ú]H[O™›]Ù[Oˆ˜XÙHÝØ\™HÛÛ[X]Y™X[NˆYÚˆ[\œÈÚ]Ý]]šX][Û‹[™HÝ\™Y^]˜XÙH\ÈÈ\›ˆH[™HØ]™Yœ›Û[ÂˆH\™™XÝÜ\šXØ[Û™HÛÛ™\™Ú[™ÈÛˆH›ØÝ\ËˆHÝ\™˜XÙH]Ù\È]^XÝH\ÈBˆÝ›Û™Ïš\\˜›ÛÚYÜÝ›Û™ÏˆÙˆÛÛšXÈÛÛœÝ[Ü˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	ÚÈH[—žÌŸIËØ\[ÛŽˆ	ÕHÛÛšXÈÛÛœÝ[][[Z[˜]\ÈÜ\šXØ[X™\œ˜][Ûˆ›ÜˆH[›ËXÛÛ™^Ú[™Û]›ØÝ\Ú[™ÈHÛÛ[X]Y™X[KÚ]HÝ\™Y˜XÙHÝØ\™H›ØÝ\Ëˆ›Üˆ‹P’ÍÈ]NËˆ›KˆHKLMŽ[™ÈH8¢$Œ‹ŒÌK‰ÈKˆÈ^ˆ	Þ
+JHHœ˜XÞØ×WžÌŸ_^ÌH
+ÈÜ\ÌHH
+JÚÊX×žÌŸ^WžÌŸ__H
+ÈWÞÍ^WžÍH
+ÈWÞÍŸ^WžÍŸH
+ÈWÞÎ^WžÎIËØ\[ÛŽˆ	ÕH]™[‹X\Ü\™HØYËHÝ[™\™™\ØÜš\[Ûˆ›Ü›KˆÈHKÔˆ\ÈH™\^Ý\˜]\™NÈÈÙ[XÝÈHÛÛšXÎÈHÛ[›ÛZX[\›\ÈÛÜœ™XÝÚ]HÛÛšXÈ[Û™HØ[››Ý‰ÈKˆKˆ[Žˆˆ•HÛÛšXÈÛÛœÝ[˜[Y\ÈH˜[Z[NˆÜ[ˆÛ\ÜÏHÈšÈHÜÜ[ˆ\ÈHÜ\™KˆÜ[ˆÛ\ÜÏHÈ¸¢$ŒH	›ÈÈ	›ÈÜÜ[ˆ[ˆ[\ÛÚYÜ[ˆÛ\ÜÏHÈšÈH8¢$ŒOÜÜ[ˆBˆ\˜X›ÛÚY[™Ü[ˆÛ\ÜÏHÈšÈ	›È8¢$ŒOÜÜ[ˆH\\˜›ÛÚYˆH\˜X›ÛH\ÈBˆÚ\H]ÛÛ[X]\ÈHÚ[ÛÝ\˜ÙH[O˜žH™Y›XÝ[ÛÙ[Oˆ8 %ÚXÚ\ÈÚHBˆH™YH‹‹‹ÛØ\Èœ\˜X›ÛXÈZ\œ›ÜØOˆ^\ÝÈ8 %]™Yœ˜XÝ[Ûˆ\È[ˆ[™^[ˆ]ÛÂˆHÚ\H]Ù\ÈH\]Z]˜[[›Øˆ[ˆÛ\ÜÈ\ÈH\\˜›ÛH[œÝXYÜ‚ˆ“Û™HÛÛšYØ]H\È[HÛÛšXÈØ[ˆš^ˆÛÜœ™XÝH[œÈ›ÜˆHÛÛ[X]Y[œ][™]ˆ\È›ÈÛ™Ù\ˆÛÜœ™XÝY›ÜˆH™X\˜žHØš™XÝ[™›Ý[™ÈX›Ý]HÛÛšXÈY™\ÜÙ\ÂˆÙ™‹X^\ÈX™\œ˜][ÛœÈ8 %ÛÛXH[™\ÝYÛX]\ÛHÝ\š]™H[ÝXÚYˆBˆÜ[ˆÛ\ÜÏHÈx ¡x ¡‹x ¢ÜÜ[ˆ\›\È^\Ý›Üˆ]ˆ^˜HYÜ™Y\ÈÙˆœ™YYÛKXXÚˆ™YÚ[›š[™È]HYÚ\ˆÝÙ\ˆÙˆH˜^HZYÚ]]H\ÚYÛ™\ˆ˜YH™\ÚYX[ˆX™\œ˜][ÛœÈYØZ[œÝXXÚÝ\ˆXÜ›ÜÜÈHšY[˜]\ˆ[ˆ\™™XÝ[™ÈHÚ[™ÛHÚ[‚ˆ^HÝ\]›Ý\Ü™\ˆ™XÚ\Ù[HÛÈ^HX]™HH\˜^X[›ØØ[[™Ýˆ[Û™KÜ‚ˆÏ•ÚH^H\™H]™\ž]Ú\™H›ÝÏÚÏ‚ˆ\Ü\™\ÈÙ\™HÛ™ÈHÜXÚX[\Ý][H™XØ]\ÙHH›Û‹\Ü\šXØ[Ý\™˜XÙHØ[››Ý™BˆXYHžHH˜]\˜[Üš[™[™È›ØÙ\ÜËˆ[Ý[YÛ\ÜÈ[™\ÝXËÚ[™ÛK\Ú[X[[Û™ˆ\›š[™Ë[™]\›Z[š\ÝXÈÛ\Ú[™ÈÚ[™ÙYHXÛÛ›ÛZXÜË[™H™\Ý[\È]ˆÛ™H[Ý[Y\Ü\™H›ÝÈ›Ý][™[H™\XÙ\ÈHÛËHÜˆ™YKY[[Y[Ü\šXØ[ˆ\ÜÙ[X›IØÚ]JJ_Kˆ\Ù\ˆ[ÙHÛÛ[X]ÜœËšX™\‹XÛÝ\[™È[œÙ\ËÛÛ™[œÙ\œÈ[™ˆ]™\žHÛ™HØ[Y\˜HÝXÚÈ™[HÛˆ[H8 %[ž]Ú\™HH[\›˜]]™H\È[Ü™H[[Y[Ëˆ[Ü™HÙZYÚ[Ü™HÝ\™˜XÙ\ÈÈÛØ][™[Ü™HYÚÜÝÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ›Ý˜XÙ\ÈØ\œžH[ˆ[™\[™[˜Y]\ËÛÛšXÈÛÛœÝ[[™ˆÜ[ˆÛ\ÜÏHÈx ¡Ðx ¡‹Ðx ¢ÜÜ[ˆÙ]ˆÚ]X]\œÈ\È]\ÙH\™H›ÝH˜]Ú[™Âˆ[œÝXÝ[ÛŽˆH˜XÙ\ˆÝ›Û™Ïš\ÛÛ]\È[\œÙXÝ[ÛœÈÛˆH[˜[]XÈ›Ùš[H[™ˆ™Yœ˜XÝÈÙ™ˆ]ÈØØ[\š]˜]]™OÜÝ›Û™Ï‹[˜ÛY[™ÈZ\™YÜ›ÜÜÚ[™ÜÈ™X\ˆ[™Ù[˜ÞK‚ˆHØ[YH™X[^™Y[˜[]XÈ˜XÙ\È]\›Z[™HÚ]\ˆHÛÝ\˜ÙH™YÚ[œÈ[œÚYHHÛ\ÜË‚ˆÚ[™Ú[™ÈÜ[ˆÛ\ÜÏHÈšÏÜÜ[ˆ\™Y›Ü™HÚ[™Ù\ÈÚ\™H˜^\ÈXÝX[HÜ›ÜÜÈBˆÛ\ÜÈ[™Ú\™H^H[™\ˆ\™H\È›È\˜^X[ÛÜœ™XÝ[Ûˆ\YYY\Ø\™È8 %ˆHX™\œ˜][Ûˆ\ÈÚ]]™\ˆHÝ\™˜XÙH›ÙXÙ\ËÜ‚ˆ•]ÛZ[H\ÈÚXÚØX›K[™ÛÜÚXÚÚ[™Ë™XØ]\ÙH]\ÈHÚÛHÚ[ÙˆBˆ[[Y[ˆÙ]\HÛ\ÜÚXÈØ\ÙH8 %›]˜XÙHÝØ\™HÛÛ[X]Y™X[KÝ\™Y˜XÙBˆÝØ\™H›ØÝ\È8 %[™ÝÙY\HÛÛšXÈÚ[HYX\Ý\š[™ÈH›ØÝ\ÙYÜÝÜ‚ˆÝ›Û™ÏšÈHÜÝ›Û™ÏˆÚ]™\ÈKŒ	›˜œÜÛ[KˆÝ›Û™ÏšÈH8¢$ŒÜÝ›Û™ÏˆÚ]™\ÂˆŒM	›˜œÜÛ[KˆÝ›Û™ÏšÈH8¢$Œ‹ŒÏÜÝ›Û™ÏˆÚ]™\ÈÝ›Û™ÏŒŒI›˜œÜÛ[OÜÝ›Û™Ï‹‚ˆÝ›Û™ÏšÈH8¢$Œ‹ÜÝ›Û™Ïˆ\È˜XÚÈÈŒM	›˜œÜÛ[KˆHÛÛ\ÙHÚ]È]8¢$Œ‹ŒÌKÚXÚˆ\È8¢$›°¬ˆ›Üˆ‹P’ÍÈ]]Ø]™[[™Ý[™][Ý™\ÈÚ[ˆ[ÝHÚ[™ÙHÛ\ÜÎˆ‹TÑŒLHØ[Âˆ8¢$ŒËŒNK\ÙYÚ[XØH8¢$Œ‹ŒLËˆ›Ý[™È]ÈÜÙH[X™\œÈ[ˆ8 %^HÛÛYHÝ]ÙˆBˆÙ[ÛY]žKÜ‚ˆ•Ú]Ü[ˆÛ\ÜÏHÈšÈHÜÜ[ˆ[™›ÈÛ[›ÛZX[\›\ÈH[[Y[™YXÙ\ÈÂˆHH™YH‹‹‹ÝXÚÛ[œËÈœÜ\šXØ[Ú[™Û]ØOˆ^XÝKÚXÚ\ÈHÝ\ˆ[ˆÙ‚ˆHØ[YHÛZ[NˆØ[YH›ÝYÚ]Ø[YH›ØÝ\ËØ[YHX™\œ˜][Û‹ˆ˜YZH›ÛÝÈHØ[YBˆØ\\ÚX[ˆÚYÛˆÛÛ™[[Û‹ÛÈH™\ØÜš\[ÛˆØ[ˆ™H[Ý™Y™]ÙY[ˆHÛËÜ‚ˆÏ”™X[^™Y™\œÝ\È™\]Y\ÝYÚÏ‚ˆ•™YHÛÛœÝ˜Z[È\™H\YYÈÙY\H™\ØÜš\[Ûˆ\ÚXØ[[™[™YH\™Bˆ™\ÜY˜]\ˆ[ˆ\YY]ZY]KˆHÛÛšXÈÚ]ˆÜ[ˆÛ\ÜÏHÈŒH
+ÈÈ	™ÝÈÜÜ[ˆ\ÈHš[š]H˜YX[^[ÛÈH˜Y]\ÈÛÈÚÜˆ›ÜˆH™\]Y\ÝY\\\™H\È[˜Ü™X\ÙY[[H\\\™Hš]ÈÛˆHÝ\™˜XÙK‚ˆÙ[™HXÚÛ™\ÜÈ\È[˜Ü™X\ÙYÚ[ˆ™YYYÈX]™HH™X[YÙKˆ[™H\Ü\šXÂˆ\\\™H\È›Ý[™YˆYˆÜ[ˆÛ\ÜÏHÈx ¡x m
+Èx ¡žx mˆ
+Èx ¢x nÜÜ[ˆ^ÙYYÈBˆÙ[ZKX\\\™H[ž]Ú\™HXÜ›ÜÜÈHÛX\ˆ\\\™K[™YHÛÙY™šXÚY[È\™HØØ[YˆžHHÛÛ[[Ûˆ˜XÝÜˆ[[]Ù\È›ÝÜ‚ˆ•]\™Û™H\ÈX\ÚY\ˆÈ™XXÚ[ˆ]ÛÚÜË[™]\ÈÛÜÛ›ÝÚ[™ÈÚ\™K‚ˆ]HY˜][K	›˜œÜÛ[HX[Y]\ˆH\\\™H›Ý[™š]\È]X›Ý]ˆÜ[ˆÛ\ÜÏHÈx ¡HI›˜œÜðåÉ›˜œÜÌL8 nø mÜÜ[‹ÛÈH\YˆÜ[ˆÛ\ÜÏHÈx ¡HŒOÜÜ[ˆ\È˜XÙY]›ÝYÚH[ˆ]È˜[YKˆ™XØ]\ÙHBˆ™YH\›\È\™HØØ[YÙÙ]\ˆH˜][È™]ÙY[ˆ[H\È™\Ù\™Y]HÝ\™˜XÙBˆ˜XÙY\È›ÝHÝ\™˜XÙH™\]Y\ÝY8 %]\ÈHÛX[\ˆ™[]]™HÙˆ]ˆ™X[Ø][ÙÝYBˆ\Ü\™\ÈÚ]˜\ˆ™[ÝÈ\Ë[ˆHÜ[ˆÛ\ÜÏHÈŒL8 nø mOÜÜ[ˆ˜[™ÙH[™™[ÝËˆÚ\™H›Ý[™È\È™\ØØ[YÈHÝX\™^\ÝÈÛÈ]H[™YY]YÜˆÝ[HØÙ[™BˆØ[››Ý›ÙXÙHHY]™KYY\Ý\™˜XÙKˆH[œÜXÝÜˆ™\ÜÈHÙ[ÛY]žHXÝX[Bˆ˜XÙYÛÈH™\ØØ[Y™\ØÜš\[Ûˆ\Èš\ÚX›H˜]\ˆ[ˆ[™™\œ™YÜ˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ•\È\ÈH‘Y\šY[Û˜[ÙXÝ[ÛˆÙˆH›Ý][Û˜[HÞ[[Y]šXÈ[œËÛÂˆÛ›HX™\œ˜][ÛœÈ]]™H[ˆ][™HØ[ˆ\X\‹ˆÜ\šXØ[X™\œ˜][Ûˆ[™ˆY›ØÝ\ÈÎÈÛÛXK\ÝYÛX]\ÛH[™šY[Ý\˜]\™H™YYH\™[Y[œÚ[ÛˆÜˆH™X[ˆÙ™‹X^\ÈšY[[™È›Ý8 %ÚXÚYX[œÈHÜ[ˆÛ\ÜÏHÈx ¡Ðx ¡‹Ðx ¢ÜÜ[ˆ\›\ÂˆØ[››Ý™H\ÙY\™H›ÜˆHšY[X˜[[˜Ú[™È›Øˆ^H[ÜÝH^\ÝÈÈ[ˆ™X[ˆ\ÚYÛœËˆ\™H\™H›ÈÚÙ]È˜^\ËÜ‚ˆ•H\˜^X[›ØØ[[™Ý[™˜XÚÈ›ØØ[\Ý[˜ÙH[ˆH[™[\™HÛÛ\]Yœ›ÛBˆ™\^Ý\˜]\™H[™Ù[™HXÚÛ™\ÜË^XÝH\È›ÜˆHÜ\šXØ[Ú[™Û]™XØ]\ÙBˆ™Z]\ˆHÛÛšXÈ›ÜˆHÛ[›ÛZX[\›\ÈÚ[™ÙHÝ\˜]\™H]H™\^ˆ^Bˆ\™Y›Ü™H\ØÜšX™HH\˜^X[[Z][™Ø^H›Ý[™ÈX›Ý]HX™\œ˜][ÛˆH™\ÝˆÙˆHÝ\™˜XÙH›ÙXÙ\ËˆÝÈ]H^HØ^H\ÈX\ÞHÈYX\Ý\™Nˆ›ÜˆHY˜][ˆ™\ØÜš\[ÛˆH[™[][Ý\ÈH˜XÚÈ›ØØ[\Ý[˜ÙHÙˆMŒM	›˜œÜÛ[K[™H˜XÙYˆ˜^H]H™\žHYÙHÙˆHÛX\ˆ\\\™HÜ›ÜÜÙ\ÈH^\ÈLI›˜œÜð­[Hœ›ÛH]8 %ˆÚ[HH[OœØ[YOÙ[Oˆ[œÈÚ]Ü[ˆÛ\ÜÏHÈšø  OÜÜ[ˆÙ]ÈÙY\ÈBˆY[XØ[][ÝY[X™\ˆ[™›ØÝ\Ù\È]ÈYÙH˜^H‹Ž	›˜œÜÛ[HÚÜˆÛÈ[œÙ\ËˆÛ™H™XYÝ]HLY›ÛY™™\™[˜ÙH[ˆÚ]XÝX[H\[œËˆH˜^H˜XÙH\ÈBˆ[™ÈÈÛÚÈ]Ü‚ˆ“›Ý[™È\™H\ÈX[Y˜XÝ\™Yˆ\™H\È›ÈÝ\™˜XÙHšYÝ\™H\œ›Ü‹›È›ÝYÚ™\ÜË›ÂˆÙ[š[™ÈÛ\˜[˜ÙK[™›ÈÛØ][™ËÛÈ™Y›XÝ]š]HÙ\È›Ý˜\žHÚ]Ø]™[[™ÝÜ‚ˆ[™ÛKˆH™X[\Ü\™H\ÈÛÜœ™XÝY›ÜˆÛ™HÛÛšYØ]H[™Û™HØ]™[[™ÝÈ\ÈÛ™H\Âˆ\ÈÛÛÙ\È]È™\ØÜš\[Ûˆ]]™\žHØ]™[[™ÝHÛ\ÜÈ˜[œÛZ]ËÚ]Û›HBˆØ][ÙÝYH\Ü\œÚ[Ûˆ[Ýš[™ÈH[œÝÙ\‹Ü˜ˆKˆ™[]YˆÉÝXÚÛ[œÉË	Û[œÉË	Û[œÙÜ›Ý\	Ë	ÛØ\	Ë	ÛY][[œÉ×KˆÚ]][ÛœÎˆÂˆÈX™[ˆ	ÑY][™ÜXÜÈ8 %8 '[X›Ý]\Ü\šXÈ[œÙ\ø 'NˆÝÈ\Ü\™\È™\XÙH][KY[[Y[Ü\šXØ[\ÜÙ[X›Y\Ë[™ÝÈ^H\™HX[Y˜XÝ\™Y	Ë\›ˆ	ÚÎ‹ËÝÝÝË™Y][™ÜXÜË˜ÛÛKÚÛ›ÝÛYÙKXÙ[\‹Ø\XØ][Û‹[›Ý\ËÛÜXÜËØ[XX›Ý]X\Ü\šXË[[œÙ\ËÉÈKˆÈX™[ˆ	Ô‹ˆ\ØÚÝK8 '\Ü\šXÈÜXÜË8 'H”ÝÛšXÜÈ[˜ÞXÛÜYXIË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKØ\Ü\šX×ÛÜXÜËš[	ÈKˆÈX™[ˆ	Ô‹ˆ\ØÚÝK8 'Ü\šXØ[X™\œ˜][ÛœË8 'H”ÝÛšXÜÈ[˜ÞXÛÜYXIË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜÜ\šXØ[ØX™\œ˜][ÛœËš[	ÈKˆKˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	ÒTÓÈLLLLLˆ8 %H]™[‹X\Ü\™HÝ\™˜XÙH\ØÜš\[Ûˆ\ÙY›ÜˆÜXØ[™\ØÜš\[ÛœÉË\›ˆ	ÚÎ‹ËÝÝÝËš\ÛË›Ü™ËÜÝ[™\™ÍŒLMËš[	ÈKˆÈX™[ˆ	ÕÜ›XœÈ8 %\Ü\šXÈ[œÈÙ[XÝ[ÛˆÝZYIË\›ˆ	ÚÎ‹ËÝÝÝËÜ›XœË˜ÛÛKÛ™]ÙÜ›Ý\YÙNK˜Ù›OÛØš™XÝÜ›Ý\ÚYMŽMÍIÈKˆKˆK‚ˆÂˆ\Nˆ	Û[œÙÜ›Ý\	ËˆÝ[[X\žNˆ•˜XÙ\È[ˆY]X›HÙ\]Y[˜ÙHÙˆÛ\ÜÈÝ\™˜XÙ\È[™Z\ˆØ\Ë›Üˆ^Üš[™ÈÛÛ\Ý[™[œÙ\ËXÚ›ÛX]XÈÝX›]Ë\\\™HÝÜË[™X]\šX[\Ü\œÚ[Û‹ˆ‹ˆ]Nˆ	Ó[œÈÜ›Ý\	ËˆØ]YÛÜžNˆ	Ó[œÙ\ÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆHÛÛ\Ý[™[œÈ\ÈÜXÚYšYY\È[ˆÜ™\™YÝ›Û™ÏœÝ\™˜XÙHX›OÜÝ›Û™Ï‹‚ˆXXÚ›ÝÈ˜[Y\ÈÛ™H™Yœ˜XÝ[™ÈÝ\™˜XÙHžH]ÈÚYÛ™Y˜Y]\ËÚ]™\ÈH^X[ˆ\Ý[˜ÙHÈH™^Ý\™˜XÙK[™˜[Y\ÈHÜXØ[YY][HY\ˆ]ˆBˆÛÛ™[[Ûˆ\ÈÛÛ\XÝ™XØ]\ÙHHØ[YH›ÝÜÈ\ØÜšX™H›ÝÚ\H[™ÜÛÙÞN‚ˆÛÛœÙXÝ]]™HÛ\ÜÈYYXH›Ü›H™ZYÚ›Ý\š[™È[[Y[È[ˆHÙ[Y[YÜ›Ý\Ú[Bˆ[ˆZ\ˆYY][H›ÛÝÙYžH[›Ý\ˆÛ\ÜÈÜ™X]\ÈH™X[Z\ˆÜXÙKÜ‚ˆXÚ›ÛX]XÈÝX›]È^Ú]]ÜÛÙÞHžHZ\š[™ÈÜ›ÝÛˆ[™›[Û\ÜÙ\ÂˆÚÜÙH\Ü\œÚ[Ûˆ[™ÝÙ\œÈÜÜÙHÛ™H[›Ý\‹ˆZ\ˆ™]›ØØ[ÝÙ\ˆ™[XZ[œÂˆ\ÙY[Ú[HHš\œÝ[Ü™\ˆ‹H[™Ë[[™H›ØØ[ÚY\›ØXÚ\È™\›ËˆX›\ÚYˆÜXØ[YÛ\ÜÈØ][ÙÝY\È\™Y›Ü™HÜXÚYžH›ÝH[[™H[™^[™HX˜™Bˆ[X™\ˆ\ÙYÈÛÛ\\™H\Ü\œÚ[Û‰ØÚ]JJ_KÜ˜ˆ›Ü›][\ÎˆÂˆÂˆ^ˆ	×ÛYYØWŠÏWÛYYØW‹HHWœ˜XÞÛ—Ì‹[—Ì_^ÔŸK\]XYWŠÏ^W‹JÝœ˜XÞ×ÛYYØ_^ÛŸIËˆØ\[ÛŽˆ	Ô\˜^X[™Yœ˜XÝ[Ûˆ[™˜[œÙ™\ˆ[ˆ™YXÙY[™ÛH3âHHK\YY[ˆÝ\™˜XÙK]X›HÜ™\‹‰ËˆKˆÂˆ^ˆ	×œ˜XÞ×WÌ_^Õ—Ì_J×œ˜XÞ×WÌŸ^Õ—ÌŸW\›Þ	ËˆØ\[ÛŽˆ	Ñš\œÝ[Ü™\ˆXÚ›ÛX]ÛÛ™][ÛŽˆÜ›ÝÛˆ[™›[Ú›ÛX]XÈÝÙ\œÈØ[˜Ù[Ú[HZ\ˆÜ™[˜\žHÝÙ\œÈY‰ËˆKˆKˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ‘XXÚY]X›H›ÝÈ\ÈÝ›Û™Ïœ˜Y]\Èˆ0­ÈXÚÛ™\ÜÈÈ™^0­ÈYY][BˆY\ÜÝ›Û™Ï‹ˆ˜Y]\È\Ù\È^XÝHHXÚË\Ú[™Û]ÛÛ™[[ÛŽˆ›ÜˆBˆY˜][Y]Ë\šYÚ\™XÝ[Û‹ÜÚ]]™Hˆ]ÈHÙ[™HÙˆÝ\˜]\™HÝØ\™ˆØØ[
+Þ™YØ]]™Hˆ]È]ÝØ\™8¢$ž[™™\›È\ÈH[™KˆH\Ý›ÝÈ[Ø^\Âˆ^]È[ÈZ\ˆ[™\È›È›ÛÝÚ[™ÈXÚÛ™\ÜËÜ‚ˆ•HX›H\È\›™Y[ÈÛ™HÛÜÙY›Ý[™\žH\ˆÛ\ÜÈ›ÙKˆ]™\žH˜^HYY]ÂˆH˜]Ûˆ[™HÜˆ^XÝÚ\˜Ý[\‹X\˜È˜XÙ\È[™™Yœ˜XÝÈÚ]HÙ[XÝYˆÛ\ÜÉÜÈØ]™[[™ÝY\[™[[™^ˆH›ØØ[[™Ý[™˜XÚÈ›ØØ[\Ý[˜ÙBˆ™XYÝ]È\™HHÙ\\˜]H\˜^X[Ý\™˜XÙKXžK\Ý\™˜XÙHÝ[[X\žNÈH˜XÙ\ˆ™]™\‚ˆZ[\È˜^\È][KˆÛ™Ú]Y[˜[ÛÛÝ\ˆ\È™\ÜY\ÈHY™™\™[˜ÙH™]ÙY[ˆBˆ‹H[™Ë[[™H˜XÚÈ›ØØ[\Ý[˜Ù\ËÛÈHÝ\YYÚ[™Û][™XÚ›ÛX]™\Ù]ÂˆØ[ˆ™HÛÛ\\™Y]HØ[YH›ÛZ[˜[L	›˜œÜÛ[H›ØØ[[™ÝÜ‚ˆÙ[Y[Y[™Z\‹\ÜXÙYÜ›Ý\È\™H›ÝÙ\\˜]H[[Y[\\ËˆÛÛœÙXÝ]]™BˆÛ\ÜÈ›ÝÜÈXZÙHHÙ[Y[Y[\™˜XÙNÈ[ˆZ\ˆ›ÝÈXZÙ\È[ˆ]]Ü™YZ\ˆØ\ˆBˆÙ[Y[Y[\™˜XÙH\È™X[^™Y\ÈÛÈ\]X[\˜Y]\È˜XÙ\ÈÙ\\˜]YžBˆŒ‰›˜œÜÛ[HÙˆZ\‹ˆ][žHØ\\È[X™\˜]NˆH˜XÙ\ˆYÛ›Ü™\ÈH™]È]ˆÚ][ˆŒI›˜œÜÛ[HÙˆH™]š[Ý\ÈÛ™KÛÈÛÚ[˜ÚY[Û\ÜÈ›Ý[™\šY\ÈÛÝ[ˆÚ[[HÜÙH[ˆ[\˜XÝ[Ûˆ[™Ù[™H˜^H[ÈHÜ›Û™ÈYY][KˆHØ\ˆHÝ][™\ËH^XÝ˜XÙK[™]™\žHØ\™[˜[™XYÝ][\ÙHHØ[YBˆ™X[^™Y™\ØÜš\[Û‹Ü‚ˆ•HÛX\ˆ\\\™HØ[ˆ[ÛÈÚ[™ÙH]™\ØÜš\[Û‹ˆYˆÚY[š[™È]ÛÝ[ˆXZÙHÛÈÜ\šXØ[˜XÙ\ÈÜ›ÜÜÈ]Hš[KÜXØ[Ù]\XÚÙ[œÈ]›ÙH[[ˆ]X\Ý	›˜œÜÛ[HÙˆYÙH™[XZ[œÈ[™[Ý™\È]™\žHÝÛœÝ™X[HÝ\™˜XÙHÚ]]‚ˆH™XYÝ]È›ÛÝÈHY\ÝYÙ[ÛY]žH˜]\ˆ[ˆÛÛ[Z[™ÈÈ][ÝHBˆ[\ÜÜÚX›H\YÚ\KÜ‚ˆ[ˆZ\ˆ›ÝÈØ[ˆØ\œžH[ˆ\\\™HÝÜˆ]ÈÛÈXœÛÜ˜š[™ÈÙYÛY[È›ØÚÈYÚˆÝ]ÚYHHÛÛ™šYÝ\™YÛX\ˆX[Y]\ˆÚ]Ý]Y[™ÈÝÙ\ŽÈÝÜ[™ÈÝÛˆBˆ˜\ÝÜ›Ý\\™Y›Ü™H™YXÙ\È]Èš\ÚX›HÜ\šXØ[Ø]\ÝXÈžH™Z™XÝ[™ÈBˆX\™Ú[˜[˜^\Ëˆ8 '[¸ $ÐÈÛÛÝ\¸ 'H˜\šY\ÈHÚÜÙ[ˆ›ÝÉÜÈ˜Y]\ÈžH]\›Z[š\ÝXÂˆš\ÙXÝ[Û‹]XØÙ\ÈHÛÛ][ÛˆÛ›HÚ[ˆ]ÙY\ÈHš[š]H›ØØ[[™ÝÚ]ˆHÜšYÚ[˜[ÚYÛˆ[™ÛÛ\\˜X›HÝÙ\‹ˆ[žHš\œÝ›ÝÈY]8 %[˜ÛY[™ÈBˆ\œHÛ‹XØ[˜\È\Ý\˜Y]\ÈÛÛ›Û8 %ÛÜY\È[ˆXÝ]™H™\Ù][ÈHÝ\ÝÛBˆX›H[œÝXYÙˆ™][™[™ÈH™\Ù]Ø\ÈY]YÚ[ˆ]Ø\ÈÝ[]]Üš]]]™KÜ˜ˆ›Ü›][\ÎˆÂˆÂˆ^ˆ	×[H—ÞÑßOWX]›^Ð‘‘J‹ŒWX]›^Û›_JKWX]›^Ð‘‘JM‹Œ×X]›^Û›_JIËˆØ\[ÛŽˆ	ÕH^X[XÛÛÝ\ˆ™XYÝ][™H]X[]HH›ÝÈXÝ[Ûˆ[Ë‰ËˆKˆKˆ[Z]][ÛœÎˆ•\È\ÈH‘Y\šY[Û˜[Ù[ÛY]šXÈ[Ù[Ú]Ü\šXØ[Üˆ[™Bˆ˜XÙ\ËˆÛ‹X^\ÈÜ\šXØ[[™š\ÚX›HÛ™Ú]Y[˜[Ú›ÛX]XÈ™Z]š[Üˆ[Y\™ÙHœ›ÛBˆHÙ[ÛY]žH[™\™HYX[š[™Ù[Ú][ˆ]ØÛÜNÈÙ™‹X^\È™Z]š[Üˆ\Âˆ]X[]]]™KˆH[Ù[Ù\È›Ý[˜ÛYHÚÙ]È˜^\Ë\Ü\™\ËY™œ˜XÝ[Û‹ˆ]X[]]]™HÛÛXHÜˆ\ÝYÛX]\ÛKšY[Ý\˜]\™KÛØ][™ÜËœ™\Û™[™Y›XÝ[Û‹ˆÙ[Y[[™^X[Y˜XÝ\š[™ÈÛ\˜[˜Ù\ËÜˆH[ÜXØ[Y\ÚYÛˆY\š][˜Ý[Û‹‚ˆHŒ‰›˜œÜÛ[HÙ[Y[Ø\\ÈH˜XÙ\ˆÛÜšØ\›Ý[™˜]\ˆ[ˆH\ÚXØ[Ù[Y[ˆ[Ù[ˆØ][ÙÝYHÛ\ÜÙ\È\ÙHÛË]\›Hš\ÚX›KX˜[™Ø]XÚHš]È[˜ÚÜ™YÈ™[™ˆX˜™H[X™\‰ØÚ]JJ_K›Ý[Ù[YZY\ˆÝ\™\ÎÈY\UU‹[™œ˜\™Y[™[\Ü˜[ˆ\Ü\œÚ[ÛˆÛZ[\È\™HÝ]ÚYH\È[[Y[	ÜÈØÛÜKˆ\‹\Ý\™˜XÙH˜[œÛZ\ÜÚ[Ûˆ\ÂˆHÛÛ™šYÝ\™Y\˜Ù[YÙK›ÝÛØ][™È\ÚXÜËÜ˜ˆKˆ™[]YˆÉÝXÚÛ[œÉË	Û[œÉË	ÛØš™XÝ]™IË	Üš\ÛIË	Ùœ™YYÛ\ÜÉ×KˆÚ]][ÛœÎˆÂˆÈX™[ˆ	ÔÐÒÕ8 %ÜXØ[YÛ\ÜÈÛÛXÝ[Ûˆ]\ÚY]ÉË\›ˆ	ÚÎ‹ËÝÝÝËœØÚÝ˜ÛÛKÙ[‹YØ‹Ü›ÙXÝËÛÜXØ[YÛ\ÜËËKÛYYXKÔ›Ú™XÝÓÛ‘^Ô›ÙXÝËÓËÛÜXØ[YÛ\ÜËÑÝÛ›ØYËÜØÚÝ[ÜXØ[YÛ\ÜËXÛÛXÝ[Û‹Y]\ÚY]ËY[™Û\Ú[X^LŒNKœ‰ÈKˆKˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %XÚ›ÛX]XÈÜXÜÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKØXÚ›ÛX]X×ÛÜXÜËš[	ÈKˆÈX™[ˆ	ÕH\ÚXÜÈ\\^›ÛÚÈ8 %Ü\šXØ[[œÙ\ÉË\›ˆ	ÚÎ‹ËÜ\ÚXÜËš[™›ËÛ[œÙ\ËÉÈKˆKˆK‚ˆÂˆ\Nˆ	Ý[\ØÛÜIËˆÝ[[X\žNˆÛÛXš[™\ÈÛÈ[ˆ[œÙ\ÈÙ\\˜]YžHZ\ˆ›ØØ[[™ÝË›ÜˆÚ[™Ú[™È™X[HX[Y]\ˆ[™ÛÛ\\š[™ÈHÙ[ÛY]žHÙˆY›ØØ[ÜXØ[™[^\Ëˆ‹ˆ]Nˆ	ÐÛÛšYØ]Y[ˆ[œÈZ\‰ËˆØ]YÛÜžNˆ	Ó[œÙ\ÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆ[ˆY›ØØ[[\ØÛÜHZ\œÈÛÈ[œÙ\ÈH\Ý[˜ÙBˆÜ[ˆÛ\ÜÏHÈ™¸  H
+È¸  ÜÜ[ˆ\\ÛÈ]\˜[[˜^\È[ˆ›ÙXÙH\˜[[ˆ˜^\ÈÝ]8 %›È™]›ØÝ\Ú[™ÈÝÙ\‹\ÝHÚ[™ÙH[ˆ™X[HX[Y]\ˆ[™[™Ý[\‚ˆXYÛšYšXØ][Û‹ˆHÝ›Û™Ï’Ù\\šX[ÜÝ›Û™Ïˆ[\ØÛÜH\Ù\ÈÛÈÛÛ™^[œÙ\È[™ˆ\ÈH™X[[™\Y[\›YYX]H[XYÙH]HÚ\™Y›ØÝ\È™]ÙY[ˆ[NÈBˆÝ›Û™Ï‘Ø[[X[ÜÝ›Û™Ïˆ[\ØÛÜH\Ù\ÈHÛÛ™^Øš™XÝ]™H[™HÛÛ˜Ø]™Bˆ^Y\YXÙKÝ^\È\šYÚ[™™YYÈ›ÈÜXÙH›Üˆ[ˆ[\›YYX]H[XYÙH8 %Bˆ\œ˜[™Ù[Y[™Z[™Û\ÜÚXÈÜ\˜HÛ\ÜÙ\È[™ÛÛ\XÝ\Ù\ˆ™X[H^[™\œËÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	ÓHHWœ˜XÞÙ—Ì_^Ù—ÌŸIËØ\[ÛŽˆ	Ð[™Ý[\ˆXYÛšYšXØ][Ûˆ8 %™YØ]]™H›ÜˆH[™\YÙ\\šX[ˆØ\ÙH
+›Ý[œÙ\ÈÛÛ™^
+KÜÚ]]™H[™\šYÚÚ[ˆ¸  ˆ\È™YØ]]™H
+Ø[[X[ŠK‰ÈKˆKˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•ÛÈ[™\[™[H™YH‹‹‹Û[œËÈ›[œÏØOˆÝ\™˜XÙ\ËXXÚ\Z[™ÈHØ[YBˆ\˜^X[˜^K]˜[œÙ™\ˆ™[][Û‹Ù\\˜]YžH^XÝBˆÜ[ˆÛ\ÜÏHÈ™¸  H
+È¸  ÜÜ[ˆ8 %HY›ØØ[ÜXÚ[™ÈÚÝÛˆžHH\ÚYˆÙ[\›[™H›ÝYÚHXÛÛ‹ˆZ]\ˆ[œÉÜÈ›ØØ[[™ÝØ[ˆ™HÙ]™YØ]]™Bˆ[™\[™[KÛÈHØ[YH[[Y[[Ù[È›ÝÛÛ™šYÝ\˜][ÛœÎˆÛÈÜÚ]]™Bˆ›ØØ[[™ÝÈÚ]™\ÈHÙ\\šX[ˆ[\ØÛÜHÚ]H™X[Ü›ÜÜÚ[™ÈÚ[[ˆBˆZYKÚ[HH™YØ]]™HÙXÛÛ™›ØØ[[™ÝÚ]™\ÈHØ[[X[ˆ[\ØÛÜH]ˆ™]™\ˆ›ØÝ\Ù\ÈH™X[HÝÛˆÈHÚ[][Ü˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ”Ø[YH\˜^X[[Û›H\ÚXÜÈ\ÈHÚ[™ÛH[œËÚ]›È^Y\YXÙBˆšY[[Ù‹]šY]È[Z]Ë^YH™[YY‹Üˆ^]\\[[Ù[[™È8 %\ÝHY›ØØ[ˆÙ[ÛY]žH[™XYÛšYšXØ][Û‹ˆXXÚÙˆHÛÈ™\›Ë]XÚÛ™\ÜÈÝ\™˜XÙ\ÈÛÛšX]\ÂˆHØ[YHÚ[[X[Y]\‹X]Ø\™H‹P’ÍÈØYÈ\Ý[X]H\ÙYžHHÝ[™[Û™H[ˆ[œËˆ\XØ[HH›ÝYÚHL	HÛ\ÜÈ\Ý[X]H›Üˆ[ÙHÑÜ˜ˆKˆ™[]YˆÉÛ[œÉË	Û[œØÉË	ÝXÚÛ[œÉË	ÛØš™XÝ]™I×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %™X[H^[™\œÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKØ™X[WÙ^[™\œËš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ÛØš™XÝ]™IËˆÝ[[X\žNˆ‘›ØÝ\Ù\ÈYÚ›ÝYÚ[ˆ\]Z]˜[[[œÈ[™\[[Ù[Ú]Y\ÝX›HÛÜšÚ[™È\Ý[˜ÙK[Y\šXØ[\\\™K[[Y\œÚ[ÛˆYY][K[™Ù[™\šXÈØš™XÝ]™H™\Ù]Ëˆ‹ˆ]Nˆ	ÓØš™XÝ]™IËˆØ]YÛÜžNˆ	Ó[œÙ\ÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆH™X[ZXÜ›ÜØÛÜHÜˆØ[Y\˜HØš™XÝ]™H\ÈHYÚHÛÜœ™XÝY\ÜÙ[X›HÙˆX[žBˆ[œÈ[[Y[Ë›ÝHÚ[™ÛHYXÙHÙˆÛ\ÜÈ8 %H[[Y[ÛÝ[^\ÝÈ[[ÜÝˆ[\™[HÈØ[˜Ù[Ü\šXØ[[™Ú›ÛX]XÈX™\œ˜][Û‹›][ˆHšY[[™ˆ™XXÚHYÚ[Y\šXØ[\\\™HÚ]Ý]H[XYÙH˜[[™È\\ˆ[Y\šXØ[ˆ\\\™HÜ[ˆÛ\ÜÏHÈ“OÜÜ[ˆ\ÈHÚ[™ÛH[X™\ˆ]X]\œÈ[ÜÝˆ]ˆÙ]ÈHØš™XÝ]™IÜÈYÚYØ]\š[™ÈÛÛ™H[™›ÝYÚY™œ˜XÝ[Û‹Hš[™\Ýˆ]Z[]Ø[ˆ]™\ˆ™\ÛÛ™K™YØ\™\ÜÈÙˆXYÛšYšXØ][ÛŽÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×X]›^Ó_HH—Ú[—]IËØ\[ÛŽˆ“[Y\šXØ[\\\™H\[™ÈÛˆ›ÝHXØÙ\Y[‹X[™ÛH[™H™Yœ˜XÝ]™H[™^ÙˆHØš™XÝ]™IÜÈ\ÚYÛ™Yœ›ÛYY][NÈHX›Ý™HH\™Y›Ü™H™\]Z\™\È[[Y\œÚ[Û‹ˆˆKˆÈ^ˆ	Ù\›Þœ˜XÞ×[X™_^Ì—X]›^Ó__IËØ\[ÛŽˆ•HX˜™HY™œ˜XÝ[Ûˆ[Z]8 %HÛX[\Ý™\ÛÛ˜X›H™X]\™HÚ^™KÙ]žHØ]™[[™Ý[™[Y\šXØ[\\\™H[Û™KˆˆKˆÈ^ˆ	Ü—Þ×^Ð‘”_H\›ÞˆÙÝX]›^Ó_IËØ\[ÛŽˆ‘[˜[˜ÙK\\[˜Y]\È]H˜XÚÈ›ØØ[[™K›ÜˆHÙ[XÛÜœ™XÝYØš™XÝ]™H
+HX˜™HÚ[™HÛÛ™][ÛŠKˆˆKˆÈ^ˆ	ÓHHœ˜XÞÙ—Þ×^ÝX™___^Ù—Þ×^ÛØš™XÝ]™___IËØ\[ÛŽˆ“XYÛšYšXØ][ÛˆÙˆ[ˆ[™š[š]KXÛÜœ™XÝYØš™XÝ]™KÙ]\™[HžHÛÛ\\š[™È]È›ØØ[[™ÝÈHX™H[œÉÜËˆˆKˆÈ^ˆ	×X]›^Ó_WÞ×^ÙY™Ÿ_H\›Þœ˜XÞÑ^Ì™ŸHHX]›^Ó_IËØ\[ÛŽˆ•HH[ÝHXÝX[HÛÜšÈ]Ú[ˆH™X[HÙˆX[Y]\ˆ[™\™š[ÈH˜XÚÈ\[8 %H˜][™È\ÈHÙZ[[™Ë›ÝHÝX\˜[YKˆˆKˆKˆ[Žˆˆ“[Ù\›ˆØš™XÝ]™\È\™H[[ÜÝ[Ø^\ÈÝ›Û™Ïš[™š[š]KXÛÜœ™XÝYÜÝ›Û™ÏŽˆBˆÚ[]HØ[\H
+Hœ›Û›ØØ[[™JH[Z]ÈHÛÛ™H]X]™\ÈH˜XÚÈÙ‚ˆHØš™XÝ]™H\ÈH[O˜ÛÛ[X]YÙ[Oˆ™X[KÚXÚHÙ\\˜]HX™H[œÈ[‚ˆ›ØÝ\Ù\ÈÛÈHØ[Y\˜HÜˆ^Y\YXÙH8 %›Ý[™È›ØÝ\Ù\ÈYÚ\™XÝH™Z[™[‚ˆ[™š[š]HØš™XÝ]™HÛˆ]ÈÝÛ‹ˆH™Y™\™[˜ÙH[™HH›ØØ[[™ÝˆÜ[ˆÛ\ÜÏHÈ™ÜÜ[ˆ™Z[™HØš™XÝ]™KÛˆ]X™K[[œÈÚYK\ÈBˆÝ›Û™Ï˜˜XÚÈ›ØØ[[™H
+‘”
+OÜÝ›Û™Ïˆ8 %Ú\™HHØš™XÝ]™IÜÈ[˜[˜ÙH\[ˆ
+˜Y]\ÈX›Ý™JH\È[XYÙYˆ]X]\œÈ[ÜÝ[ˆ\Ù\‹\ØØ[›š[™ÈZXÜ›ÜØÛÜNˆHØØ[‚ˆZ\œ›Ü‹Üˆ]È™[^YY[XYÙHšXHHØØ[ˆ[œÈ[™X™H[œË\È[X™\˜][BˆÜÚ][Û™Y]H[™HÛÛšYØ]HÈH‘”ÛÈ]\ÈHZ\œ›Üˆ[ËH™X[Bˆ]›ÝÈ\›Ý[™Hš^YÚ[[œÚYHH\[[œÝXYÙˆØ[Ú[™ÈXÜ›ÜÜÈ]8 %ˆÙY\[™ÈH[\\\™H[[Z[˜]Y]]™\žHØØ[ˆ[™ÛKÜ‚ˆ•]Ø[YHXYÛšYšXØ][Ûˆ›Ü›][H\È[ÛÈÚHÚYYšY[[XYÚ[™ÈÞ\Ý[\ÈXÚÂˆHØš™XÝ]™H›ØØ[[™Ý^HËˆHYÚ\ÝÙ\ˆÛÛ\Ý[™[ZXÜ›ÜØÛÜHØš™XÝ]™Bˆ
+Œ0åËL0åÊH\ÈH™\žHÚÜY™™XÝ]™H›ØØ[[™Ý8 %Ù[ˆ\ÝHÛÝ\HÙ‚ˆZ[[Y]\œÈ8 %Z\™YÚ]HÛ™ÈX™H[œËˆ]ÈÝ›Û™ÏÛÜšÚ[™È\Ý[˜ÙOÜÝ›Û™Ï‹ˆÝÙ]™\‹\ÈHÙ\\˜]HØ][ÙÝYH[Y[œÚ[ÛŽˆH^X[ÛX\˜[˜ÙHœ›ÛHHœ›Ûˆ›Ý[™\žHÈH[‹Y›ØÝ\ÈÜXÚ[Y[ˆ[™KˆYÚ[XYÛšYšXØ][ÛˆØš™XÝ]™\ÈÙ[ˆ]™BˆÚÜÛÜšÚ[™È\Ý[˜Ù\È™XØ]\ÙHÙˆZ\ˆ˜XÝXØ[ÜXØ[[™YXÚ[šXØ[\ÚYÛ‹ˆ]ÛÜšÚ[™È\Ý[˜ÙH\È›ÝØZ[™Yœ›ÛHHXYÛšYšXØ][Ûˆ›Ü›][H[™ˆÛ™Ë]ÛÜšÚ[™ËY\Ý[˜ÙHØš™XÝ]™\È\™HÜXÚYšXØ[H[™Ú[™Y\™Y^Ù\[ÛœËˆBˆÝ›Û™ÏœÝ\™[ÛZXÜ›ÜØÛÜOÜÝ›Û™Ïˆ\Ù\ÈÝË]Ë[[Ù\˜]HXYÛšYšXØ][Û‹HÚYHšY[ˆÙˆšY]Ë[™[›ÝYÚÛÜšÚ[™È\Ý[˜ÙHÈÙ][™ÈÜˆÛÛÈ[™\ˆH[œÎÈ]È›ÛÛBˆÞ\Ý[HØ[ˆ˜\žHXYÛšYšXØ][ÛˆÚ]Ý]\›š[™ÈÛÜšÚ[™È\Ý[˜ÙH[È›ØØ[[™ÝÜ‚ˆ“Û™H˜XÝXØ[ÛÛœÙ\]Y[˜ÙHÙˆ]\[ˆHHÛˆH˜\œ™[\ÈBˆ[O˜ÙZ[[™ÏÙ[O‹›ÝH›ÛZ\ÙKˆ[ÝHÛ›HÛÜšÈ]H˜]YHYˆ[Ý\ˆ™X[HXÝX[Bˆš[ÈH˜XÚÈ\[ˆH\Ù\ˆ™X[H˜\œ›ÝÙ\ˆ[ˆH\[ÛÛ™\™Ù\È]Bˆ›ÜÜ[Û˜[HÛX[\ˆ[™ÛKÚ]š[™ÈHšYÙÙ\ˆ›ØØ[ÜÝ[™ÛÜœÙH™\ÛÛ][Ûˆ[‚ˆHX™[[\Y\È8 %ÚXÚ\ÈÚH\Ù\‹\ØØ[›š[™ÈÞ\Ý[\È[X™\˜][BˆÝ›Û™Ï›Ý™\™š[ÜÝ›Û™ÏˆH˜XÚÈ\\\™KXØÙ\[™ÈHÝÙ\ˆÛ\YÙ™ˆ]Bˆš[H[ˆ^Ú[™ÙH›ÜˆH[\\\™H[™HYÚ\ÝÜÝHØš™XÝ]™HØ[ˆXZÙK‚ˆÛÜšÚ[™È\Ý[˜ÙKYX[Ú[K\ÈHÙ\\˜]HØ][ÙÝYH[Y[œÚ[ÛˆÙ]žHHÛÛ\]Bˆ™\ØÜš\[Û‹ˆ]\ÈÙ[ˆÚÜ\ˆ[ˆQ“[ˆYÚ\ÝÙ\ˆØš™XÝ]™\Ë]\™H\Âˆ›È[š]™\œØ[Ü[ˆÛ\ÜÏHÈ•Ñ	›˜œÜÉ›NÉ›˜œÜÑQ“ÜÜ[ˆ[H›Üˆ™X[ÛÛ\Ý[™ˆØš™XÝ]™\ÎÈÜXÚX[^™YÛ™Ë]ÛÜšÚ[™ËY\Ý[˜ÙH\ÚYÛœÈ\™HHØš[Ý\È^Ù\[Û‹Ü˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•H[œÜXÝÜˆ™YÚ[œÈÚ]HÝ\[™ÈÚ[Ü›Ý\YžH[[Y\œÚ[ÛˆÛ\ÜÈ8 %ˆÝ›Û™Ï‘žOÜÝ›Û™Ï‹Ý›Û™Ï•Ø]\ÜÝ›Û™Ï‹Ý›Û™Ï“Ú[ÜÝ›Û™Ï‹[™ˆÝ›Û™Ï“Û™ÈÛÜšÚ[™È\Ý[˜ÙOÜÝ›Û™Ïˆ8 %XXÚÙ™™\š[™ÈHXYÛšYšXØ][Ûˆ[™BˆZ\œÈ[ÜHXÝX[H^Kˆ^H\™H]\ÚX›HØ][ÙÝYK\Ú\YÜXÜË›ÝÛ™BˆX[Y˜XÝ\™\‰ÜÈ™\ØÜš\[ÛœÎÈÚÛÜÚ[™ÈÛ™HÙ]ÈQ“ÛÜšÚ[™È\Ý[˜ÙKYY][KKˆ[™œ›Û\\\™HÙÙ]\‹ˆHX™[ÈØ\œžHH[™Ñ™XÚ\Ù[H™XØ]\ÙHHÛÂˆ˜YHÙ™Žˆ]Hš^YXYÛšYšXØ][Û‹]™\žHÝ\\[ˆHÛÜÝÈÛX\˜[˜ÙKˆ^XÝˆ˜[Y\È™[XZ[ˆY]X›H[ˆHÛÛ\ÙYÝ›Û™ÏY˜[˜ÙY\˜[Y]\œÏÜÝ›Û™Ï‚ˆÙXÝ[Û‹[™[žHY]\™H›ÜÈHÙ[XÝÜˆÈÝ\ÝÛKÜ‚ˆ[ˆØš™XÝ]™H\™H\ÈÙ]žH™YH[™ÜÈ[ÝHÛÝ[™XYÙ™ˆH™X[Ø][ÙÝYH8 %ˆÝ›Û™Ï™Y™™XÝ]™H›ØØ[[™Ý
+Q“
+OÜÝ›Û™Ï‹Ý›Û™ÏÛÜšÚ[™È\Ý[˜ÙOÜÝ›Û™Ï‹ˆ[™Ý›Û™Ïœ˜]YOÜÝ›Û™Ïˆ8 %\ÈHœ›Û\\\™H]ÛÛ›ÛÈÝÈšYÈBˆ›ÜÙH\È˜]Û‹ˆQ“\ÈH›ØØ[[™ÝÙˆHÚÛH][KY[[Y[\ÜÙ[X›H™X]Yˆ\ÈÛ™H\]Z]˜[[[œËÚXÚ\ÈÚ]™›ØØ[[™ÝˆYX[œÈÛˆ[ˆØš™XÝ]™NÈBˆ[œÜXÝÜˆX™[Ü[È]Ý]ˆXYÛšYšXØ][Ûˆ\È›ÝÛÛY][™È[ÝH\H[‹ˆ]\È[Oœ™\ÜYÙ[Oˆœ›ÛHHQ“YØZ[œÝHŒ	›˜œÜÛ[H™Y™\™[˜ÙBˆX™H[œË™XØ]\ÙHXYÛšYšXØ][Ûˆ™[Û™ÜÈÈHØš™XÝ]™H\ÈÚXÚ]™\ˆX™H[œÂˆ[ÝHXÝX[HXÙH[ˆHÚÙ]Ú›ÝÈHØš™XÝ]™H[Û™KˆHœ™\ÚØš™XÝ]™H\Ù\ÂˆHŒ0åÈžHÝ\[™ÈÚ[ˆQ“L	›˜œÜÛ[KÑKŒ‰›˜œÜÛ[KH[™L	Bˆ˜[œÛZ\ÜÚ[Û‹Ü‚‚ˆÏ•Ú\™HH™Yœ˜XÝ[™È[™HÚ]Ë[™ÚOÚÏ‚ˆ“ÜXØ[Ù]\˜XÙ\ÈHØš™XÝ]™H\ÈÛ™H\]Z]˜[[™Yœ˜XÝ[™È[™HÙˆ›ØØ[ˆ[™ÝQ“]]Ù\È[O››ÝÙ[Oˆ]][™H]Hœ›Û\ˆ]Ú]ÈÛ™Bˆ›ØØ[[™ÝÚÜÙˆH›ÛZ[˜[›ØÝ\È8 %]Hœ›Û\\ÂˆÜ[ˆÛ\ÜÏHÈ•Ñ	›˜œÜÉ›Z[\ÎÉ›˜œÜÑQ“ÜÜ[ˆ8 %ÚXÚ›Üˆ[ÜÝØš™XÝ]™\ÈYX[œÂˆÛÛY]Ú\™H[œÚYHH˜\œ™[[™›ÜˆÛ™Ë]ÛÜšÚ[™ËY\Ý[˜ÙH\ÚYÛœÈZXYÙˆHœ›Ûˆ\
+ÙYH™[ÝÊKˆ]Ú[™ÛHÚÚXÙH\ÈÚ]XZÙ\È™YH[™ÜÈYH]Û˜ÙNÜ‚ˆ[‚ˆOÛÛ[X]YYÚœ›ÛHHX™K[[œÈÚYH›ØÝ\Ù\È[O™^XÝOÙ[OˆÛ™HÛÜšÚ[™Âˆ\Ý[˜ÙH™^[Û™H\ÚXØ[œ›Û\ÛÈH˜]Ûˆ›ØÝ\È\ÈHÛÜšÚ[™Âˆ\Ý[˜ÙH[ÝH\YÛO‚ˆO•H[™HÝ[Ø\œšY\ÈHØš™XÝ]™IÜÈ™X[›ØØ[[™ÝÛÈ[ˆ^\›˜[ˆŒ	›˜œÜÛ[HX™H[œÈ™X[HÙ\È›ÙXÙHH™\ÜYXYÛšYšXØ][Ûˆ˜]\ˆ[‚ˆHXÛÜ˜]]™HX™[ÛO‚ˆO•H[™HÛ™HQ“™Z[™]\ÈHÙ[Z[™HÝ›Û™Ï˜˜XÚÈ›ØØ[[™H
+‘”
+OÜÝ›Û™ÏŽ‚ˆYÚ›ØÝ\ÙY\™HX]™\ÈHØš™XÝ]™HÛÛ[X]Yˆ]\ÈÚ]ÚYYšY[ˆ
+ðíš\‹\Ý[JH[[Z[˜][Ûˆ™YYË[™]\ÈH[™HH\Ù\‹\ØØ[›š[™È™[^H\ÂˆÈ[XYÙHHØØ[ˆZ\œ›ÜˆÛËÛO‚ˆÝ[‚ˆ•H‘”\È˜]Ûˆ\ÈHX™[YX\šÙ\ˆ™^ÈHÑ›ØÝ\Ë[™]\ÈH˜XÙYˆÛÛšYØ]H˜]\ˆ[ˆ[ˆ[››Ý][Ûˆ8 %]HÛÝ\˜ÙH]][™HÝ]]™X[HÙ\ÂˆÛÛYHÝ]ÛÛ[X]YÜ‚ˆ•ÛÜšÚ[™È\Ý[˜ÙH\È[O››ÝÙ[OˆØ\Y]Q“ˆ™X[Û™Ë]ÛÜšÚ[™ËY\Ý[˜ÙBˆØš™XÝ]™\È›ØÝ\ÈÙ[™^[Û™Z\ˆÝÛˆ›ØØ[[™Ý8 %HL0åÈ[ˆ\È’Tˆ™XXÚ\ÂˆX›Ý]L‰›˜œÜÛ[HÛˆH‰›˜œÜÛ[HQ“8 %žH][™ÈH\]Z]˜[[š[˜Ú\[[™Bˆ[O˜ZXYÙ[OˆÙˆHœ›ÛÛ\ÜË[™H[Ù[™\›ÙXÙ\È]ˆÚ[ˆÑ^ÙYYÂˆQ“H\]Z]˜[[[™HÚ]È[ˆœ›ÛÙˆH\^XÝHÚ\™HH™X[Û™H\Ë‚ˆHÛ›H›Ý[™\ÈHØ][ÙÝYHÙZ[[™ÈÙˆ	›˜œÜÛ[KÜˆHØš™XÝ]™IÜÈÝÛˆQ“Y‚ˆ]\ÈÛ™Ù\‹ÛÈÛ\ˆÚÙ]Ú\È]™XÛÜ™YÑ\]X[ÈHÛ™ÈQ“ÙY\Z\‚ˆ›ØÝ\È^XÝHÚ\™H]Ø\ËˆZ\ÜÚ[™ÈYØXÞH˜[Y\ÈÝ[˜[˜XÚÈÈQ“‚ˆ›Ý[™È\È˜]Ûˆ]H\]Z]˜[[[™H8 %ˆ[ˆØš™XÝ]™H\È[ˆÜ\]YH˜\œ™[›ÝHš\ÚX›HÚ[™Û]ˆÚ[ˆHÚÜÛÜšÚ[™Âˆ\Ý[˜ÙH\Ú\ÈH[™H™Z[™HY˜][™X\ˆ˜XÙKÛ›HHÝ˜ZYÚ™X\‚ˆÙXÝ[ÛˆÙˆH˜\œ™[[™Ý[œÎÈH\\™Y›ÜÙH\Èš^YÙ[ÛY]žKÜ‚‚ˆÏ”˜]YH\ÈH™X[\\\™K›ÝHX™[ÚÏ‚ˆ•H˜XÚÈ\[\ÈX[Y]\ˆÜ[ˆÛ\ÜÏHÈŒ™“OÜÜ[ˆ[™\ÈHØš™XÝ]™IÜÂˆ\\\™HÝÜˆH™X[H]š[È]ÛÛ™\™Ù\È]H˜]Y[™ÛNˆ˜Z\ÙHH[™Bˆ›ØÝ\Ú[™ÈÛÛ™HÜ[œËÝÙ\ˆ][™HÛÛ™HÛÜÙ\Ëˆ›Ý[™È[ÙH[ˆHØš™XÝ]™BˆÙ]ÈHÛÛ™KÛÈH\ÈHÛÛ›Û˜]\ˆ[ˆHØ\[Û‹Ü‚ˆ•]ÝÜÚ]È[O˜]H˜XÚÈ›ØØ[[™OÙ[O‹Ú\™H[ˆ[™š[š]HØš™XÝ]™IÜÂˆ[˜[˜ÙH\[™[Û™ÜË[™\È\ÈÚ]XZÙ\È™[^Z[™ÈHØØ[ˆZ\œ›ÜˆÛÈH‘”ˆX\šÙ\ˆÈ™X[ÛÜšÎˆH™X[H]›Ý[™È\™HÝ^\ÈÙ[™Y[ˆH\[]]™\žHØØ[‚ˆ[™ÛH[™ÜÙ\È›Ý[™ËÚ[HH]›Ý[ž]Ú\™H[ÙHØ[ÜÈXÜ›ÜÜÈH\[[™\ÂˆÝ]ˆ
+HÚ[™ÛK\[™H[Ù[Ø[ˆ\ÚH‘”\\ˆ˜XÚÈ[ˆ[žH]\ÚX›H˜\œ™[ÂˆHÝÜ\È[ˆÛ[\Y[ÈHÝ\Ú[™È˜]\ˆ[ˆY›ØÚÚ[™ÈYÚ[ˆZYXZ\‚ˆ™Z[™]ÛÈH™\›Ë]Ø[È›Ü\HYÜ˜Y\È›Üˆ™\žHÛ™È›ØØ[[™ÝËŠOÜ‚ˆ•HY][\›Ý[™]Ü[š[™È›ØÚÜËˆÝ™\™š[[™ÈH˜XÚÈ\[\È›Ü›X[ˆX›Ü˜]ÜžH˜XÝXÙH8 %]\ÈÝÈ[ÝHXÝX[H™XXÚH[˜]YH8 %[™BˆÝ™\™›ÝÈ\ÈÙ[Z[™[HÜÝÛÈHØš™XÝ]™H™\ÜÈÚ]]ÛÜÝËˆÛÈ™XYÝ]ÈÚ]ˆ[™\ˆHHÛÛ›ÛÜ‚ˆ[‚ˆOÝ›Û™Ï˜XÚË\\[š[ÜÝ›Û™Ïˆ8 %H™X[HX[Y]\ˆ\œš]š[™ËH\[]\ÂˆÈÙ]›ÝYÚ[™Hš\œÝ[Ü™\ˆ\Ý[X]HÙˆHœ˜XÝ[Ûˆ]Ý\š]™\Ëˆ]ˆ\Ý[X]H\ÈH\™XH˜][È›ÜˆH[šY›Ü›H›Ý[™™X[KÛÈÝX›[™ÈHš[ÛÜÝÂˆX›Ý]™YH]X\\œÈÙˆHÝÙ\‹ÛO‚ˆOÝ›Û™Ï‘Y™™XÝ]™HH[ˆ\ÙOÜÝ›Û™Ïˆ8 %[™\™š[[™ÈÙ\È›ÝY\™[HØ\ÝHBˆ˜][™Ë][™È[ÝHHÛX[\ˆH[™HÛÜœ™\ÜÛ™[™ÛHÚY\ˆ›ØØ[ÜÝˆš[[‚ˆH\[[™[ÝH\™H[›š[™È][ˆHNÈH™XYÝ]Ø^\ÈÛË[™žHÝÈ]XÚˆHÜÝÚY[œËˆÝ™\™š[[™È\ÈØ\Y]H˜][™Îˆ[ÝHØ[››Ý^H[Ü™HH[‚ˆHØš™XÝ]™H\ËÛO‚ˆÝ[‚ˆH\™ÙHÜ[ˆÛ\ÜÏHÈŒ™“OÜÜ[ˆXZÙ\ÈHÝ\Ú[™È\ÚXØ[HÚY\ˆ˜]\ˆ[‚ˆÚ[[HÛ\[™È]H˜]ÛˆÝ][™K[™H\šÈ˜\œÈXÜ›ÜÜÈH˜\œ™[	ÜÈ™X\‚ˆ˜XÙHÚÝÈH\[X[Y]\ˆH™X[H\ÈÈš]›ÝYÚÜ‚‚ˆÏ“YY][H[™XØÙ\[˜ÙH[™ÛOÚÏ‚ˆ•HØš™XÝ]™HÝÛœÈ]ÈYY][NÈ\™H\È›ÈÙ\\˜][HXÙXX›H\]ZYˆÛÛ\Û™[ˆžKØZ\ˆØ\È˜]YH]ŽH8 %H˜XÝXØ[ÙZ[[™È›Üˆ™X[žBˆ\ÚYÛœË˜]\ˆ[ˆH\ÚXØ[Ü[ˆÛ\ÜÏHÈ›‰›˜œÜÏI›˜œÜÌOÜÜ[ˆ[Z]8 %ˆØ]\ˆ]KŒËÚ[]KK[™HÝ\ÝÛHYY][H]H\ÜÙ\ˆÙˆ]È[™^ˆÜ[ˆÛ\ÜÏHÈ›ÜÜ[ˆ[™KKˆHYY][IÜÈ[™^[™H˜]YHÚ]™HBˆØš™XÝ\ÚYH[‹X[™ÛHÜ[ˆÛ\ÜÏHÈ³®	›˜œÜÏI›˜œÜØ\Ú[ŠKÛŠOÜÜ[ˆÚÝÛˆ\ÈBˆ™XYÝ]ÈÚ[™Ú[™ÈYY][HX^HÛ[\[ˆÝ][Ù‹\˜[™ÙHH]™]™\ˆÚ[™Ù\ÈÛÜšÚ[™Âˆ\Ý[˜ÙKˆ[Û™ÜÚYHH\[H˜XÙ\ˆ[ÛÈ™Z™XÝÈØš™XÝ\ÚYH˜^\ÈÝY\\ˆ[‚ˆ][‹X[™ÛKˆÝ›Û™Ï”ÚÝÈXØÙ\[˜ÙH[™ÛOÜÝ›Û™Ïˆ8 %Ù™ˆžHY˜][™XØ]\ÙBˆ[ÜÝÚÙ]Ú\ÈØ[HZ[ˆ˜\œ™[8 %˜]ÜÈ]\ÈH\ÚYÙXÝÜˆ]HXÝX[ˆÛÛXÝÜˆ›ÛZ[˜[›ØÝ\ËÜ‚ˆ•Ø]\‹Ú[[™Ý\ÝÛHØš™XÝ]™\È\š]™HH›Û‹\Ù[XÝX›BˆÝ›Û™Ïš[[Y\œÚ[ÛˆœšYÙOÜÝ›Û™ÏˆÈH™X\™\ÝÛÛ\]X›HÛÛXÝ[ˆœ›ÛˆBˆØ[\KHØ[\HÛˆY^›ÈÝYÙKÜˆH˜XÚ[™ÈšX™\ˆ[™Ú[ˆH\™Ù]\ÈÚÜÙ[‚ˆœ›ÛHH]]Ü™YÙ[ÛY]žKÛÈHØØ[›š[™ÈÝYÙHØ\œšY\ÈHØ[YH™[][ÛœÚ\Ú[Bˆ]™[XZ[œÈ[YÛ™Y[™[ˆ˜[™ÙK[ˆ\ØÛÛ›™XÝÈ[œÝXYÙˆXZÚ[™ÈHØš™XÝ]™Bˆ[\™]ÙY[ˆ™X\˜žHØ[\\ËÜ‚ˆ•HœšYÙHÜ[œÈHØš™XÝ]™IÜÈÛÛ\]Hœ›Û\\\™H[™HÛÛXÝYˆÜXÚ[Y[ˆÜˆšX™\ˆ˜XÙKˆÛÈÝXšXÈ°ê^šY\ˆÝ\™\È›ÝÈ[Ø\™™]ÙY[ˆÜÙHYÙ\ÈÂˆXZÙHHYÚX›HY[š\ØÝ\È[ˆHØ[˜\È[™[ˆÕ‘Ë‘Ë[™ÒQˆÝ]]ˆ\È\È[‚ˆ]]Ü™YØÚ[X]XË›ÝHØ\[\žK\Ý\™˜XÙHØ[Ý[][Û‹ˆYˆ›ÈÛÛXÝ\È]˜Z[X›Kˆ›È\]ZY\È˜]Û‹ˆÛ\ˆYÚSHÚÙ]Ú\È]™]™\ˆ™XÛÜ™YHYY][H™[XZ[‚ˆ^XÚ]H[œ™\ÛÛ™Y[[Û™H\ÈÚÜÙ[‹Ü‚‚ˆÏÛÛ›ÛÈ[™X\šÙ\œÏÚÏ‚ˆ•H›YH™\Ú^™H[™HÚ[™Ù\ÈHœ›Û\\\™KˆQ“\È[[[Û˜[H[ˆ^XÝˆY˜[˜ÙYšY[˜]\ˆ[ˆHœ™YKY˜YÈØ[˜\ÈÛ›Ø‹[™\È›Ý[™YÂˆ¸ $ÍŒ	›˜œÜÛ[Nˆ‰›˜œÜÛ[H\ÈHL0åÈØš™XÝ]™KŒ	›˜œÜÛ[HHËŒðåË[™\Ý][‚ˆ›Øš™XÝ]™Hˆ\ÈÚ[\HH[œÈÚÜÙH\š]™Y˜\œ™[[™[\›˜[[™\ÈÝÜ™Z[™Âˆ˜]ØX›H][žH\ØX›H›ÛÛKˆY][™ÈÛÜšÚ[™È\Ý[˜ÙBˆ[Ý™\ÈH™Yœ˜XÝ[™È[™HÚ]Ý]ÝXÚ[™ÈQ“ÜˆH™\ÜYXYÛšYšXØ][ÛŽÈ˜Z\Ú[™ÂˆQ“X]™\È[ˆ[™XYKXÛÛ™šYÝ\™YÛÜšÚ[™È\Ý[˜ÙH[Û™KÚ[HÝÙ\š[™ÈQ“\Ý]ˆØ\œšY\ÈHÛÜšÚ[™È\Ý[˜ÙHÝÛˆÚ]]ˆÙÙÛBˆ”ÚÝÈ›ØØ[Ú[Èˆ
+HÜ[ˆÛ\ÜÏHÈ±¤ÜÜ[ˆ]ÛŠHÜˆÙ[XÝHØš™XÝ]™HÂˆÙYH›ÝX\šÙY[™\ÎˆÜ[ˆÛ\ÜÏHÈ‘”ÜÜ[ˆÛˆHX™K[[œÈÚYH[™Bˆ›ÛZ[˜[Ü[ˆÛ\ÜÏHÈ•Ñ›ØÝ\ÏÜÜ[ˆÛˆHØ[\HÚYKÜ‚ˆ•Ú[ˆ\ÈØš™XÝ]™HÚ]È™]ÙY[ˆH[ÙY\Ù\ˆ[™[ˆ[[Z[˜]YˆÝØÝ\˜X›K\™\Ú[ˆØ[\K]ÈH\ÈÛ™HÙˆH˜[Y\ÈÜXØ[Ù]\Ø[ˆ[™Ù™‚ˆÈHYXØ]YÛËTÝÛˆ]ÙÜ˜\HX‹[Û™ÜÚYHH\Ù\‰ÜÈØ]™[[™ÝˆÝÙ\‹™\]][Ûˆ˜]K[™[ÙH\˜][Ûˆ8 %ÙYHH[œÜXÝÜˆÛˆH™\Ú[‚ˆØ[\IÜÈÝYÙKÜ‚ˆ‘›Üˆ[ÙH™\Ü[™ËH\]Z]˜[[[™HÚ[[HÛÛšX]\ÈÌ	›˜œÜÛ[HÙ‚ˆ‹P’ÍËˆ\È\ÈHÛ\ÜË]\XØ[Ñ\Ý[X]K›ÝH™\ØÜš\[ÛŽˆ™X[Øš™XÝ]™\ÂˆØ[ˆ™H›ÝYÚH[ˆÈÚXÙH]˜[YK[™H\Ý[X]HÙ\È›ÝØØ[HÚ]KˆXYÛšYšXØ][Û‹[[Y\œÚ[ÛˆYY][KÜˆ˜\œ™[Ù[ÛY]žKÜ˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ•HŒ	›˜œÜÛ[H™Y™\™[˜ÙHX™H[™Ý\ÈH™X[ÛÛ[[ÛˆÛÛ™[[Û‚ˆ
+šZÛÛˆ[™ZXØH›Ý\ÚYÛˆ[™š[š]HØš™XÝ]™\ÈYØZ[œÝŒ	›˜œÜÛ[JH]›ÝBˆ[š]™\œØ[Û™H8 %Û[\\È\Ù\ÈN	›˜œÜÛ[H[™™Z\ÜÈMI›˜œÜÛ[H8 %[™ÜXØ[Ù]\ˆÙ\Û‰Ý[Ù[HX[Y˜XÝ\™\ˆÚÚXÙHÜˆHÙ\\˜]HX™K[[œÈ[[Y[HØ^HBˆÝ[™[Û™HH™YH‹‹‹Ý[\ØÛÜKÈ[\ØÛÜOØOˆZ\œÈÛÈ™X[[œÙ\ÎÈBˆ™Y™\™[˜ÙH[™Ý\È\ÙYÛ›H›ÜˆY™™XÝ]™KY›ØØ[[[™ÝY]Y]H[™Bˆš\œÝ[Ü™\ˆ\[\Ý[X]NÈ]Ù\È›ÝYš[™HH˜XÙH›Ý[™\žHÜˆ›ØÝ\ÈX\‚ˆÛÜšÚ[™È\Ý[˜ÙH\ÈHØ]™Y›Ü\H›Ý[™YžHQ“[ˆ\È[Ù[›ÝH˜[YBˆ™YXÝYžHXYÛšYšXØ][Û‹KÜˆ[[Y\œÚ[ÛˆYY][NˆH™X[Ø][ÙÝYHZ\œÈ[Bˆ›ÝYÚH[\›˜[\ÚYÛˆ[™Ø[ˆ[˜ÛYHÛ™Ë]ÛÜšÚ[™ËY\Ý[˜ÙH™\ØÜš\[ÛœÈ]ˆš[Û]H\ÈÚ[\YšYYØ\ˆHÝ\YYYÚ\ÝÙ\ˆÝ\[™ÈÚ[ÈÈ™]Z[‚ˆ]\ÚX›HÝX‹[Z[[Y]™HÛX\˜[˜Ù\ËˆH\]Z]˜[[[œÈ[™H[™Bˆ˜XÚÈ›ØØ[[™H]Yš[™\È\™Hš\œÝ[Ü™\ˆÝ[™Z[œÈ›ÜˆHÛÛ\Ý[™Øš™XÝ]™IÜÂˆš[˜Ú\[[™H[™\[›ÝH™X[[\›˜[ÛÛšYØ]\ÎˆÛ™H[™HØ[››Ýˆ™\›ÙXÙHH™X[Øš™XÝ]™IÜÈX™\œ˜][ÛˆÛÜœ™XÝ[Û‹šY[Ý\˜]\™KÜˆH^X[ˆÜXÚ[™ÈÙˆ]ÈXÝX[Ü›Ý\ËˆH\[ÝÜ[™HÛ\[™È™[XZ[ˆ]X[]]]™H[™È›Ý[Ù[ˆY™œ˜XÝ[Û‹X™\œ˜][ÛˆÛÜœ™XÝ[Û‹[\›˜[ÝÜËÜˆÛ\š^˜][Ûˆ]YÚˆ[™ÛKˆH\[\ÈH\˜^X[ÝÜ[ˆH[‹[[œÈ˜XÙ\‹ÛÈH™X[Hš[[™È]ˆÛÛ™\™Ù\È]Ü[ˆÛ\ÜÏHÈ˜][ŠJOÜÜ[ˆ˜]\ˆ[ˆHÚ[™KXÛÛ™][Û‚ˆÜ[ˆÛ\ÜÏHÈ˜\Ú[ŠKÛŠOÜÜ[ˆ]H˜]Y[‹X[™ÛH™XYÝ]][Ý\ÎÈBˆÛÈYÜ™YHÛÜÙ[H][Ù\˜]HH[™Ù\\˜]H\ÈH\›ØXÚ\È]ÈÙZ[[™ËˆBˆÝ™\™š[\Ý[X]H\ÈH[šY›Ü›KX™X[H\™XH˜][Ë›ÝHØ]\ÜÚX[ˆ[˜Ø][ÛˆÜˆBˆšYÛ™][™ÈØ[Ý[][Û‹ˆžHØš™XÝ]™\ÈØ\]HŽKH˜XÝXØ[ÙZ[[™È›Ü‚ˆ™X[žH\ÚYÛœÈ˜]\ˆ[ˆH\ÚXØ[Ü[ˆÛ\ÜÏHÈ›ˆHOÜÜ[ˆ[Z]ˆH˜]ÛˆY[š\ØÝ\ÈÙ\È›ÝÛÛ™HÙ][™ËÛÛXÝ[™ÛKÝ\™˜XÙH[œÚ[Û‹ˆ›Û[YKÜˆÜ˜]š]NÈ]YÈ›È™Yœ˜XÝ[™È›Ý[™\žH[™Ù\È›Ý[Ù[ÛÝ™\ˆÛ\ÜËˆ[™^Z\ÛX]Ú›ØØ[ÚYÜˆ[[Y\œÚ[ÛˆX™\œ˜][ÛœËˆHš^YÌ	›˜œÜÛ[Bˆ‹P’ÍÈÑ\]Z]˜[[Ø[ˆ™HÜ›Û™ÈžHX›Ý]H˜XÝÜˆÙˆÛÈ›ÜˆH\XÝ[\‚ˆØš™XÝ]™NÈ]XÝÜˆ™XYÝ]È™\ÜHÛÛXš[™Y]Ý[Ú[H\ÈYÙBˆY[YšY\ÈÚXÚ\Ùˆ]Ý[\ÈÛ›H\ÜÝ[YYÜ˜ˆKˆ™[]YˆÉÛ[œÉË	ÝXÚÛ[œÉË	Ý[\ØÛÜI×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %ZXÜ›ÜØÛÜHØš™XÝ]™\ÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛZXÜ›ÜØÛÜWÛØš™XÝ]™\Ëš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %[Y\šXØ[\\\™IË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛ[Y\šXØ[Ø\\\™Kš[	ÈKˆÈX™[ˆ	Ö‘RTÔÈ8 %Ú[[[Y\œÚ[Û‹™Yœ˜XÝ]™H[™^[™[œÈ\ÚYÛ‰Ë\›ˆ	ÚÎ‹ËÝÝÝËž™Z\ÜË˜ÛÛKÛZXÜ›ÜØÛÜKÙ[‹Ü™\ÛÝ\˜Ù\ËÚ[œÚYÚËZX‹Ù›Ý[™][Û˜[ZÛ›ÝÛYÙKÛÚ[Z[[Y\œÚ[Û‹\™Yœ˜XÝ]™KZ[™^X[™[[œËY\ÚYÛ‹š[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ÙšX™\‰ËˆÝ[[X\žNˆ‘ÝZY\ÈYÚ[Û™ÈH˜]Ûˆ]™]ÙY[ˆÛÛ›™XÝÜš^™Y[™ËÚ]ÛÛ™šYÝ\˜X›HXØÙ\[˜ÙK›ÜYØ][ÛˆÜÜËÜ›Ý\[^K[™[ˆÝ]]ÛÛ™H]XXÚ[™ˆ‹ˆ]Nˆ	ÓÜXØ[šX™\‰ËˆØ]YÛÜžNˆ	ÑšX™\œÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆ[ˆÜXØ[šX™\ˆÝZY\ÈYÚ[Û™È]ÈÝÛˆ[™Ý[œÝXYÙˆXÜ›ÜÜÈÜ[‚ˆÜXÙKˆHÞ[[™šXØ[Ý›Û™Ï˜ÛÜ™OÜÝ›Û™ÏˆÙˆÛYÚHYÚ\ˆ™Yœ˜XÝ]™H[™^\ÂˆÝ\œ›Ý[™YžHHÝ›Û™Ï˜ÛY[™ÏÜÝ›Û™ÏˆÙˆÛYÚHÝÙ\ˆ[™^[™YÚ]ˆÝšZÙ\ÈH›Ý[™\žH]HÚ[ÝÈ[›ÝYÚ[™ÛH\ÈÝ[H[\›˜[H™Y›XÝY˜XÚÂˆ[ÈHÛÜ™Kˆ™\X]Y[™Yš[š][K]ÛÛ™š[™[Y[Ø\œšY\ÈH™X[H\›Ý[™™[™Âˆ[™Ý™\ˆ\Ý[˜Ù\È]›Èœ™YK\ÜXÙH]ÛÝ[Ý\š]™KÚXÚ\ÈÚHšX™\‚ˆ[™\œ[œÈ›ÝÛØ˜[[XÛÛ[][šXØ][ÛœÈ[™HÜ™X]X[Ùˆ]™\žY^HÜXÜÈÛˆBˆ™[˜ÚÜ‚ˆ•ÛÈ[X™\œÈÛÝ™\›ˆÝÈYÚÙ]È[‹ˆHÝ›Û™Ï›[Y\šXØ[\\\™OÜÝ›Û™Ï‚ˆ\ÈÙ]žHHÛÈ[™XÙ\È[™Yš[™\ÈHÛÛ™HÙˆXØÙ\[˜ÙNˆYÚ\œš]š[™ÈÚ][‚ˆ][‹X[™ÛHÛÝ\\È[ÈHÝZYY[ÙK[™YÚÝ]ÚYH]Ù\È›ÝˆBˆÝ›Û™Ï˜ÛÜ™HX[Y]\ÜÝ›Û™Ïˆ[ˆXÚY\ÈÝÈX[žHÜ]X[[Ù\ÈHšX™\‚ˆÝ\ÜÈ8 %H\™ÙH][[[ÙHÛÜ™HØ\œšY\ÈX[žKÚ[HHÚ[™ÛK[[ÙHÛÜ™HÙˆH™]ÂˆZXÜ›ÛY]™\ÈØ\œšY\È^XÝHÛ™H[™\™Y›Ü™H™\Ù\™\ÈHÛX[ˆØ]™Yœ›ÛÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×X]›^Ó_HHÜ\Û—Þ×^ØÛÜ™__WžÌŸHH—Þ×^ØÛY_WžÌŸ_IËØ\[ÛŽˆ	Ó[Y\šXØ[\\\™Hœ›ÛHH[™^Ý\8 %]Ù]È›ÝHXØÙ\[˜ÙHÛÛ™HÛˆHØ^H[ˆ[™H]™\™Ù[˜ÙHÛÛ™HÛˆHØ^HÝ]‰ÈKˆÈ^ˆ	×]WÞ×X^HH\˜ÜÚ[—Y
+œ˜XÞ×X]›^Ó__^Û—ÌWšYÚ
+IËØ\[ÛŽˆ	Ò[‹X[™ÛHÙˆHXØÙ\[˜ÙHÛÛ™H[ˆHYY][HÙˆ[™^¸  8 %[ˆZ\‹Ú[\H\˜ÜÚ[ŠJK‰ÈKˆÈ^ˆ	Ô
+
+HHÌLžËW[HÈLIËØ\[ÛŽˆ	Ð][X][Ûˆ[Û™ÈHšX™\ˆÙˆ[™Ý›ÜˆHÜÜÈÛÙY™šXÚY[3¬H[ˆˆ\ˆ[š][™Ý‰ÈKˆÈ^ˆ	ÝHœ˜XÞÛ—ÙÈ^ØßIËØ\[ÛŽˆ	Õ˜[œÚ][YH›ÝYÚHšX™\ˆ8 %HÜ›Ý\[™^—ÙË›ÝH\ÙH[™^Ù]ÈH[^HH[ÙHÜˆ[ˆ[\™™\›ÛY]\ˆXÝX[HÙY\Ë‰ÈKˆKˆ[Žˆˆ•Ú][Y\™Ù\È]H˜\ˆ[™\È›ÝH™X[H]Ù[[‹ˆHšX™\ˆØÜ˜[X›\ÈBˆÜ]X[[™›Ü›X][Ûˆ]Ø\œšY\ËÛÈH][[[ÙHšX™\ˆ[[Z[˜]YÚ]ÛÚ\™[YÚˆ›ÙXÙ\ÈÜXÚÛH˜]\ˆ[ˆ[ˆ[XYÙNÈHÝ]]Ú[\H]™\™Ù\È[ÈHÛÛ™HÙ]žBˆHšX™\‰ÜÈKˆYÚ\È][X]Y[Û™ÈHØ^KžHXœÛÜœ[Ûˆ[™žHØØ]\š[™Ëˆ]H˜]HÛÛ™[[Û˜[H][ÝY[ˆXÚX™[È\ˆÚ[ÛY]™H8 %\›Ý[™Œ‰›˜œÜÙ‹ÚÛH›Ü‚ˆÚ[XØH[XÛÛHšX™\ˆ]MML	›˜œÜÛ›KÚXÚ\ÈHØ]™[[™Ý˜[™HX]\šX[\Âˆ[ÜÝ˜[œÜ\™[È[™H™X\ÛÛˆ]˜[™ÛZ[˜]\ÈÛ™ËZ][ÛÛ[][šXØ][Û‹Ü‚ˆ‘šX™\ˆ[ÛÈ[^\ÈYÚˆHÜ›Ý\[™^ÙˆÚ[XØH\ÈÛÜÙHÈKËÛÈH[ÙBˆ˜]™[È]›ÝYÚHÛË]\™ÈÙˆ]È˜XÝ][HÜYY[™HšX™\ˆ]\ÈÜXØ[H]XÚˆÛ™Ù\ˆ[ˆ]È\ÚXØ[[™Ý8 %H\Ý[˜Ý[Ûˆ]X]\œÈ[›Ü›[Ý\ÛH[‚ˆ[\™™\›ÛY]žKÚ\™HHÜXØ[]Y™™\™[˜ÙH\ÈÚ]Ù]ÈHœš[™Ù\ËÜ‚ˆHÙ\\˜]H[™™\žHXÝ]™H[™HÙˆÛÜšÈ\›œÈHšX™\‰ÜÈØÜ˜[X›[™È[ÂˆÛÛY][™È\ÙY[ˆ™XØ]\ÙHHZ^[™È\È]\›Z[š\ÝXË]Ø[ˆ™HYX\Ý\™Y[™ˆ[™\YˆHØ]™Yœ›ÛÚ\YÛÜœ™XÝH]H[œ][Y\™Ù\Èœ›ÛHH][[[ÙHšX™\‚ˆ\ÈHY™œ˜XÝ[Û‹[[Z]Y›ØÝ\È]HÚÜÙ[ˆÚ[[ˆHÝ]][™K[™ØØ[›š[™Âˆ]›ØÝ\È\›œÈHZ\‹][ˆšX™\ˆ[ÈHZXÜ›ÜØÛÜHØš™XÝ]™Kˆ\ÙBˆÝ›Û™Ï›[œÛ\ÜÈ[™ÜØÛÜ\ÏÜÝ›Û™Ïˆ[XYÙHY\[œÚYH\ÜÝYH›ÝYÚH›Ø™H›ÂˆÚY\ˆ[ˆHšX™\ˆ]Ù[‹Ü˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆHšX™\ˆ\È˜]Ûˆ˜]\ˆ[ˆXÙYˆXÚÈHÛÛÛXÚÈØ^\Ú[È[Û™ÈBˆ›Ý]H[ÝHØ[[™ÝX›KXÛXÚÈÈš[š\ÚˆH™\Ý[\ÈH]›ÝHÛÛ\Û™[ˆÛÈ]Ý\™\ÈÛ[ÛÝH›ÝYÚ]ÈØ^\Ú[È[™Ø[ˆ™H™\Ú\YY\Ø\™ÈžBˆ˜YÙÚ[™ÈH›Ý[™[™\Ëˆ]™\ž][™ÈÜXØ[X›Ý]]]™\ÈÛˆ]]Ü‚ˆˆ•HÛÛ›™XÝÜœÈ˜]Ûˆ]XXÚ[™\™HH\›Z[˜]Y]ÚØX›H[ÝHÛÝ[XÚÂˆ\Ù™ˆH™[˜Úˆ›ÜˆHØ[YHÛÛ\Û™[Ú]Ý][H8 %HÛX]™YÜˆÜXÙYšX™\‹ˆ\È\ÙY[ˆÝ\ÝÛHX›Ü˜]ÜžH\ÜÙ[X›Y\È8 %˜]ÈHH™YH‹‹‹Ø˜\™YšX™\‹È˜˜\™BˆšX™\ØOˆ[œÝXYÈ]™Z]™\ÈY[XØ[H[™Y™™\œÈÛ›H[ˆÝÈ]™[™\œÈ[™[‚ˆHÚYÙˆH[™˜XÙHH™X[H\ÈÈ]Ü‚ˆH™]ÈšX™\ˆÝ\È\ÈÝ›Û™Ï™XYÜ˜[HÛ›OÜÝ›Û™Ï‹ˆ]È[™È›ØÚÈÚ]]™\‚ˆYÚ™XXÚ\È[K[™›Ý[™ÈÛÛY\ÈÝ]8 %ÚXÚ\ÈHÛ™\Ý\XÝ[ÛˆÙˆ[‚ˆ[˜ÛÛ›™XÝYØX›HZ[™ÈÛˆHX›KˆXÚÈÝ›Û™Ï™X[H›ÜYØ]\ÏÜÝ›Û™ÏˆÈXZÙH]ˆ[ˆÜXØ[][™H[œÜXÝÜˆ[ˆ^ÜÙ\ÈH›Ü\Y\È]XZÙH]Û™KÜ‚‚ˆÏ‘Ù][™ÈYÚ[ÚÏ‚ˆÛÝ\[™È\ÈH™X[\Ý›Ý[ˆ\ÜÝ[\[Û‹ˆH˜^H™XXÚ[™È[ˆ[™˜XÙHÛÝ\\Âˆ[ˆÛ›HYˆ]\œš]™\ÈÚ][ˆHXØÙ\[˜ÙHÛÛ™H8 %HÝ›Û™Ï’[œ]OÜÝ›Û™Ï‹ˆŒŒˆžHY˜][8 %YX\Ý\™YYØZ[œÝ][™	ÜÈÝÛˆ^\ËˆH™X[H]\œš]™\ÈÛÂˆÝY\H\ÈÚ[\H›ÝXØÙ\Y^XÝH\È]ÛÝ[›Ý™HÛˆH™[˜Úˆ[‚ˆH™YH‹‹‹ÛØš™XÝ]™KÈ›Øš™XÝ]™OØOˆZ[YY]HšX™\ˆ[™ÛÝ\\È[È]HØ[YBˆØ^KÚXÚ\ÈÝÈH[œÛ\ÜËY[™ÜØÛÜHÙ]\È[ˆHÛÛ[][š]HØ[\žH\™HZ[Ü‚‚ˆÏ•Ú]HšX™\ˆÙ\ÈÈHYÚÚÏ‚ˆ•™YHØ]™Y›Ü\Y\ÈXÝ[Û™ÈH˜]Ûˆ[™ÝˆÝ›Û™Ï“ÜÜÏÜÝ›Û™Ï‹[‚ˆ‹ÛH
+ŒˆžHY˜][
+K][X]\ÈHYÚÝ™\ˆH]	ÜÈYHÙ[ÛY]šXÈ[™Ý‚ˆHÝ›Û™Ï™Ü›Ý\[™^ÜÝ›Û™Ïˆ
+KŽžHY˜][\ÙYÚ[XØJH][\Y\È]ˆ[™Ý[ÈÜXØ[]ÛÈHšX™\ˆ\›H[ˆ[ˆ[\™™\›ÛY]\ˆÛÛšX]\ÈH[^Bˆ]™X[HÛÝ[[™H[ÙH\œš]™\ÈÚ[ˆ]ÚÝ[˜]\ˆ[ˆÚ[ˆHœ™YK\ÜXÙBˆ]ÙˆHØ[YH˜]Ûˆ[™ÝÛÝ[[]™\ˆ]Ü‚ˆ•Ø]™[[™ÝÜXÝ[KÛ\š^˜][ÛˆÝ]K[™[ÙH[™[ÜH[Ý\š]™HBˆ›Ý\›™^K\ÈÙ\È[žHÜ›Ý\Y[^H\Ü\œÚ[ÛˆHYÚXÚÙY\[O˜™Y›Ü™OÙ[Oˆ]ˆÛÝ\Y[‹ˆÜXÚÛHÙ\È›ÝˆYÚ[Y\™Ù\Èœ›ÛHH˜\ˆ[™\ÈHÛX[ˆÛÛ™HÜ‚ˆ›ØÝ\È˜]\ˆ[ˆ\ÈHÜ˜Z[ˆH™X[][[[ÙHšX™\ˆÛÝ[[\ÜÙKÜ‚‚ˆÏ‘Ù][™ÈYÚÝ]ÚÏ‚ˆ‘XXÚ[™Ø\œšY\È]ÈÝÛˆ[™\[™[Ý]]ÜXÚYšXØ][Û‹ÛÈHÛÈ[™ÈØ[‚ˆ™Z]™HY™™\™[H[™ÛÝ\[™ÈÛÜšÜÈ[ˆ›Ý\™XÝ[ÛœÈ8 %YÚ[\š[™È[™BˆX]™\Èœ›ÛHˆ[™\ˆ‰ÜÈÜXË[™šXÙH™\œØKˆÛÈÝ[\È\™H]˜Z[X›NÜ‚ˆ[‚ˆOÝ›Û™Ï‘]™\™Ú[™ÏÜÝ›Û™Ïˆ8 %HÜ™[˜\žHØ\ÙKˆYÚX]™\ÈH\\ÈBˆÛÛ™HÙˆ[‹X[™ÛH\˜ÜÚ[ŠJK\Ú[™È][™	ÜÈÝ]]H
+ŒLˆžHY˜][
+KˆÚXÚ\ÈÚ]H™X[šX™\ˆ\Ù\ËÛO‚ˆOÝ›Û™Ï‘›ØÝ\ÙYÜÝ›Û™Ïˆ8 %YÚX]™\È\ÈHÛÛ™\™Ú[™È˜[ˆÙˆHÚÜÙ[‚ˆÝ]]X[Y]\ˆ]ÛÛY\ÈÈH›ØÝ\ÈHÚÜÙ[ˆ\Ý[˜ÙHZXYˆ\È\È›ÝÚ]BˆZ[ˆÛX]™YšX™\ˆÙ\ÎÈ]\È\™H›ÜˆÝ›Û™Ï›[œÛ\ÜÈ[™ÜØÛÜ\ÏÜÝ›Û™Ïˆ[™ˆ›ÜˆH[œÙY[™Ô’S‹]\›Z[˜]YšX™\œÈ][]™\ˆH›ØÝ\È\™XÝHœ›ÛHBˆšX™\ˆ\ˆ]\ÈÚ]]È[ÝHÚÙ]ÚHšX™\ˆ›Ø™H][XYÙ\ÈHØ[\HÚ]Ý]ˆ˜]Ú[™È[ˆØš™XÝ]™H[ˆœ›ÛÙˆ]ÛO‚ˆÝ[˜ˆ[Z]][ÛœÎˆˆ•HšX™\ˆ\È[Ù[Y\ÈHÝZYY]Ú][ˆXØÙ\[˜ÙHÛÛ™KHÜÜË[™Bˆ[^H8 %›Ý\ÈHØ]™YÝZYKˆ›Ý[™È\™HÛÛ\]\È[Ù\ËÛÈÚ[™ÛK[[ÙH[™ˆ][[[ÙHšX™\œÈ\™H›Ý\Ý[™ÝZ\ÚY[™H[ÙHØÜ˜[X›[™È]ÛZ[˜]\ÈBˆ™X[][[[ÙHÝ]]\ÈXœÙ[ˆHÝ]]\ÈHÛX[ˆÛÛ™HÜˆ›ØÝ\Ë™]™\‚ˆÜXÚÛKˆ™[™ÜÜÈ\È›Ý[Ù[YZ]\‹ÛÈHYÚH˜]Ûˆ]ÛÜÝÈ›È[Ü™Bˆ[ˆHÝ˜ZYÚÛ™K[™HÜÜÈšYÝ\™H\È\YY[šY›Ü›[H˜]\ˆ[ˆ˜\žZ[™ÂˆÚ]Ø]™[[™Ýˆš[™H˜^\È\™H][˜ÚYœ›ÛHHÝ]][™ÚXÚÙ]ÈÝÈš[™[BˆH[Y\™Ú[™ÈÛÛ™H\ÈØ[\YÜ‚ˆ•HšX™\‰ÜÈÝÛˆÚ›ÛX]XÈ\Ü\œÚ[Ûˆ\ÈHÝ›Û™ÏœÚ[™ÛHÚYÛ™Y3¬¸  ÜÝ›Û™Ï‹ˆ[\™Y[ˆð¬‹ÚÛH]H™Y™\™[˜ÙHØ]™[[™Ý[™\YY\ÈHÛÛœÝ[XÜ›ÜÜÈH˜[™\ÈH[\YÑÙ‚ˆ3¬¸  ˆ0åÈ[™ÝˆI›˜œÜÜð¬‹ÚÛH\ÈI›˜œÜÙœð¬‹Û[KÛÈÍ‰›˜œÜÜð¬‹ÚÛHÝ™\ˆI›˜œÜÛHYÂˆÍ‰›˜œÜÌ	›˜œÜÙœð¬‹ˆ]YÈÈÚ]]™\ˆ\Ü\œÚ[ÛˆH[ÙH[™XYHØ\œšY\Ë[™BˆÛÛ\™\ÜÛÜˆÙˆHÜÜÚ]HÚYÛˆZÙ\È]˜XÚÈÝ]ˆ[O”\ÚXØ[[™ÝÙ[OˆÙ]ÈBˆ[™Ý\ÙY›Üˆ[^KÜÜÈ[™\Ü\œÚ[ÛˆÙÙ]\‹ÛÈHÛÚ[ÙˆX[žHY]™\ÈØ[ˆ™Bˆ˜]Ûˆ\ÈHÚÜØX›NÈY]H˜]Ûˆ[™Ý\È\ÙY\È[ˆÚÙ]Ú\Èœ›ÛBˆ™Y›Ü™H\ÙHÛÛ›ÛÈ^\ÝY[™3¬¸  ˆ]YÈ›È\Ü\œÚ[Û‹ˆHœ›ØY˜[™ØZ[œÂˆH[™Ú[[^HÜ™XY]Û™H3¬¸  ˆ[\Y\ËHØ[YH\›Þ[X][ÛˆH[ÙBˆÛÛ\™\ÜÛÜˆ\Ù\Ëˆ\˜][Ûˆ™XYÝ]ÈÝÛœÝ™X[H›ÛÝÈH[ÙIÜÈ]]Ü™Y\ÙK[™ˆ™XY[˜]˜Z[X›HÚ\™H]\ÙH\È[šÛ›ÝÛ‹Ü‚ˆ“Û™H3¬¸  ˆ\È[\™H\Îˆ›È\™HÜˆYÚ\‹[Ü™\ˆ\Ü\œÚ[Û‹›ÈØ]™[[™Ýˆ\[™[˜ÙHÙˆ3¬¸  ˆXÜ›ÜÜÈHœ›ØY˜[™›È[Ù[ÜˆÛ\š\Ø][Û‹[[ÙH\Ü\œÚ[Û‹[™ˆ›È›Û›[™X\ˆ›ÜYØ][Ûˆ8 %Ù[‹\\ÙH[Ù[][Û‹ÛÛ]Ûˆ[˜[ZXÜÈ[™Ø]™[[™ÝˆÛÛ™\œÚ[Ûˆ[ˆHšX™\ˆ]Ù[ˆ\™H›ÝÚ[][]Y^Ù\[ˆHÜZ[ˆÛÝËXÛÜ™Bˆ[Ù[™[ÝËÜ‚ˆ[O‘šX™\ˆ[Ù[8¡¤ˆÛÝÈÛÜ™H0­È\™ÛÛÙ[Oˆ\›œÈHšX™\ˆ[ÈHØ\ËYš[YˆØ\[\žNˆ]È3¬¸  ˆ[™Ü›Ý\[™^ÛÛYHœ›ÛHH\™ÛÛˆ™\ÜÝ\™H[™HÛÜ™HX[Y]\‹ˆ[™H›Ý[™YÜ]\Ý\Ø[Ý[][ÛˆYÈÙ\œˆÙ[‹\\ÙH[Ù[][Ûˆ›ÜˆÛ™H[XÝˆ˜[œÙ›Ü›K[[Z]YØ]\ÜÚX[ˆ[ÙH˜Z[‹ÛÈHÜXÝ[Hœ›ØY[œÈ[™HÛÛ\™\ÜÛÜ‚ˆÝÛœÝ™X[HØ[ˆÚÜ[ˆH[ÙKˆHØX›IÜÈ[™[Ø^\ÈÚXÚÙˆ›Ý\ˆÝ]\È]\Âˆ[ŽˆHÛÛ\]Y[™[ÜNÈÙ\œˆÙ™‹ÚXÚ\È[™X\ˆ›ÜYØ][ÛˆÚ][ˆH3¬¸  ˆ[Ù[ÈH[™X\‹[Û›Bˆ\›Þ[X][Û‹Ú[ˆH[ÙH\ÈÝ]ÚYHHÛÛ™\‰ÜÈ›Ý[™ÈÜˆ›ÝÛ™H]Ø[ˆZÙH8 %ˆHYÚ[ˆÛÛ[Y\ÈÚ]\™ÛÛ‰ÜÈ[™X\ˆ\Ü\œÚ[Ûˆ[™]™\žH™XYÝ]ÝÛœÝ™X[KˆÜXÝ[H[™ÝÙ\ˆ[˜ÛYY\ÈX™[Y\ÈÝXÚÈÜˆ›È\™ÛÛˆ]KÝ]ÚYBˆŽ8 $ÌŒNI›˜œÜÛ›KÚ\™HHYÚÛÛ[Y\ÈÙ[ÛY]šXØ[H[™›È\™ÛÛˆ\Ü\œÚ[Ûˆ\ÂˆÛZ[YYˆÚ]›ÈÛÝ\Y[ÙH[™\™ÞHHØ\[\žHÝ^\È\šËˆ]ÈÜÜÈ\ÈÛÛ\]YˆžHY˜][\ÈHYX[Û[ÛÝ\ÙY\Ú[XØHØ\[\žIÜÈ
+X\˜Ø][x $ÔØÚY[™\‹ŒMI›˜œÜÙ‹ÛBˆ›ÜˆL	›˜œÜð­[H]	›˜œÜÛ›KØØ[[™È\È3®ð¬‹Øp¬ÊKÚ][ˆÜ[Û˜[^˜H\ÝšX]YÜÜËˆÜˆ\Y\ÈHX[X[Ý[ˆH[Ù[\È›Âˆ[Ûš^˜][Û‹YÚ\ˆ[Ù\ËØ[™\ÛÛ˜[˜Ù\Ë˜[X[ˆ™\ÜÛœÙHÜˆÙ[‹\ÝY\[š[™ÎÈ]ÂˆY™™XÝ]™H\™XH\ÈHØ]\ÜÚX[ˆ3à
+Jp¬‹ÚXÚXZÙ\È3¬ÈX›Ý]M‰›˜œÜÉH\™Ù\ˆ[‚ˆH^XÝØ\[\žH[ÙHÛÝ[Ü˜ˆKˆ™[]YˆÉØ˜\™YšX™\‰Ë	ÛØš™XÝ]™IË	ÜØÛ\Ù\‰Ë	Ù]XÝÜ‰×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %ÜXØ[šX™\œÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÙšX™\œËš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %[Y\šXØ[\\\™IË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛ[Y\šXØ[Ø\\\™Kš[	ÈKˆÈX™[ˆ	ÕÜ›XœÈ8 %ÜXØ[šX™\ˆ]ÜšX[	Ë\›ˆ	ÚÎ‹ËÝÝÝËÜ›XœË˜ÛÛKÛ™]ÙÜ›Ý\YÙNK˜Ù›OÛØš™XÝÜ›Ý\ÚYMŽÍIÈKˆKˆKˆÂˆ\Nˆ	Ø˜\™YšX™\‰ËˆÝ[[X\žNˆ‘ÝZY\ÈYÚ[Û™ÈH˜]Ûˆ]Ú]^ÜÙY›]XÛX]™Y[™Ë\Ú[™ÈHØ[YHXØÙ\[˜ÙKÜÜË[^K[™Ý]]ÛÛ›ÛÈ\ÈÛÛ›™XÝÜš^™YšX™\‹ˆ‹ˆ]Nˆ	Ð˜\™HšX™\‰ËˆØ]YÛÜžNˆ	ÑšX™\œÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆ[ˆÜXØ[šX™\ˆÝZY\ÈYÚ[Û™È]ÈÝÛˆ[™Ý[œÝXYÙˆXÜ›ÜÜÈÜ[‚ˆÜXÙKˆHÞ[[™šXØ[Ý›Û™Ï˜ÛÜ™OÜÝ›Û™ÏˆÙˆÛYÚHYÚ\ˆ™Yœ˜XÝ]™H[™^\ÂˆÝ\œ›Ý[™YžHHÝ›Û™Ï˜ÛY[™ÏÜÝ›Û™ÏˆÙˆÛYÚHÝÙ\ˆ[™^[™YÚ]ˆÝšZÙ\ÈH›Ý[™\žH]HÚ[ÝÈ[›ÝYÚ[™ÛH\ÈÝ[H[\›˜[H™Y›XÝY˜XÚÂˆ[ÈHÛÜ™Kˆ™\X]Y[™Yš[š][K]ÛÛ™š[™[Y[Ø\œšY\ÈH™X[H\›Ý[™™[™Âˆ[™Ý™\ˆ\Ý[˜Ù\È]›Èœ™YK\ÜXÙH]ÛÝ[Ý\š]™KÚXÚ\ÈÚHšX™\‚ˆ[™\œ[œÈ›ÝÛØ˜[[XÛÛ[][šXØ][ÛœÈ[™HÜ™X]X[Ùˆ]™\žY^HÜXÜÈÛˆBˆ™[˜ÚÜ‚ˆ•ÛÈ[X™\œÈÛÝ™\›ˆÝÈYÚÙ]È[‹ˆHÝ›Û™Ï›[Y\šXØ[\\\™OÜÝ›Û™Ï‚ˆ\ÈÙ]žHHÛÈ[™XÙ\È[™Yš[™\ÈHÛÛ™HÙˆXØÙ\[˜ÙNˆYÚ\œš]š[™ÈÚ][‚ˆ][‹X[™ÛHÛÝ\\È[ÈHÝZYY[ÙK[™YÚÝ]ÚYH]Ù\È›ÝˆBˆÝ›Û™Ï˜ÛÜ™HX[Y]\ÜÝ›Û™Ïˆ[ˆXÚY\ÈÝÈX[žHÜ]X[[Ù\ÈHšX™\‚ˆÝ\ÜÈ8 %H\™ÙH][[[ÙHÛÜ™HØ\œšY\ÈX[žKÚ[HHÚ[™ÛK[[ÙHÛÜ™HÙˆH™]ÂˆZXÜ›ÛY]™\ÈØ\œšY\È^XÝHÛ™H[™\™Y›Ü™H™\Ù\™\ÈHÛX[ˆØ]™Yœ›ÛÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×X]›^Ó_HHÜ\Û—Þ×^ØÛÜ™__WžÌŸHH—Þ×^ØÛY_WžÌŸ_IËØ\[ÛŽˆ	Ó[Y\šXØ[\\\™Hœ›ÛHH[™^Ý\8 %]Ù]È›ÝHXØÙ\[˜ÙHÛÛ™HÛˆHØ^H[ˆ[™H]™\™Ù[˜ÙHÛÛ™HÛˆHØ^HÝ]‰ÈKˆÈ^ˆ	×]WÞ×X^HH\˜ÜÚ[—Y
+œ˜XÞ×X]›^Ó__^Û—ÌWšYÚ
+IËØ\[ÛŽˆ	Ò[‹X[™ÛHÙˆHXØÙ\[˜ÙHÛÛ™H[ˆHYY][HÙˆ[™^¸  8 %[ˆZ\‹Ú[\H\˜ÜÚ[ŠJK‰ÈKˆÈ^ˆ	Ô
+
+HHÌLžËW[HÈLIËØ\[ÛŽˆ	Ð][X][Ûˆ[Û™ÈHšX™\ˆÙˆ[™Ý›ÜˆHÜÜÈÛÙY™šXÚY[3¬H[ˆˆ\ˆ[š][™Ý‰ÈKˆÈ^ˆ	ÝHœ˜XÞÛ—ÙÈ^ØßIËØ\[ÛŽˆ	Õ˜[œÚ][YH›ÝYÚHšX™\ˆ8 %HÜ›Ý\[™^—ÙË›ÝH\ÙH[™^Ù]ÈH[^HH[ÙHÜˆ[ˆ[\™™\›ÛY]\ˆXÝX[HÙY\Ë‰ÈKˆKˆ[Žˆˆ•Ú][Y\™Ù\È]H˜\ˆ[™\È›ÝH™X[H]Ù[[‹ˆHšX™\ˆØÜ˜[X›\ÈBˆÜ]X[[™›Ü›X][Ûˆ]Ø\œšY\ËÛÈH][[[ÙHšX™\ˆ[[Z[˜]YÚ]ÛÚ\™[YÚˆ›ÙXÙ\ÈÜXÚÛH˜]\ˆ[ˆ[ˆ[XYÙNÈHÝ]]Ú[\H]™\™Ù\È[ÈHÛÛ™HÙ]žBˆHšX™\‰ÜÈKˆYÚ\È][X]Y[Û™ÈHØ^KžHXœÛÜœ[Ûˆ[™žHØØ]\š[™Ëˆ]H˜]HÛÛ™[[Û˜[H][ÝY[ˆXÚX™[È\ˆÚ[ÛY]™H8 %\›Ý[™Œ‰›˜œÜÙ‹ÚÛH›Ü‚ˆÚ[XØH[XÛÛHšX™\ˆ]MML	›˜œÜÛ›KÚXÚ\ÈHØ]™[[™Ý˜[™HX]\šX[\Âˆ[ÜÝ˜[œÜ\™[È[™H™X\ÛÛˆ]˜[™ÛZ[˜]\ÈÛ™ËZ][ÛÛ[][šXØ][Û‹Ü‚ˆ‘šX™\ˆ[ÛÈ[^\ÈYÚˆHÜ›Ý\[™^ÙˆÚ[XØH\ÈÛÜÙHÈKËÛÈH[ÙBˆ˜]™[È]›ÝYÚHÛË]\™ÈÙˆ]È˜XÝ][HÜYY[™HšX™\ˆ]\ÈÜXØ[H]XÚˆÛ™Ù\ˆ[ˆ]È\ÚXØ[[™Ý8 %H\Ý[˜Ý[Ûˆ]X]\œÈ[›Ü›[Ý\ÛH[‚ˆ[\™™\›ÛY]žKÚ\™HHÜXØ[]Y™™\™[˜ÙH\ÈÚ]Ù]ÈHœš[™Ù\ËÜ‚ˆHÙ\\˜]H[™™\žHXÝ]™H[™HÙˆÛÜšÈ\›œÈHšX™\‰ÜÈØÜ˜[X›[™È[ÂˆÛÛY][™È\ÙY[ˆ™XØ]\ÙHHZ^[™È\È]\›Z[š\ÝXË]Ø[ˆ™HYX\Ý\™Y[™ˆ[™\YˆHØ]™Yœ›ÛÚ\YÛÜœ™XÝH]H[œ][Y\™Ù\Èœ›ÛHH][[[ÙHšX™\‚ˆ\ÈHY™œ˜XÝ[Û‹[[Z]Y›ØÝ\È]HÚÜÙ[ˆÚ[[ˆHÝ]][™K[™ØØ[›š[™Âˆ]›ØÝ\È\›œÈHZ\‹][ˆšX™\ˆ[ÈHZXÜ›ÜØÛÜHØš™XÝ]™Kˆ\ÙBˆÝ›Û™Ï›[œÛ\ÜÈ[™ÜØÛÜ\ÏÜÝ›Û™Ïˆ[XYÙHY\[œÚYH\ÜÝYH›ÝYÚH›Ø™H›ÂˆÚY\ˆ[ˆHšX™\ˆ]Ù[ˆ8 %[™\™H\XØ[HZ[œ›ÛH˜\™KÛX]™YšX™\‚ˆ˜]\ˆ[ˆœ›ÛHÛÛ›™XÝÜš^™YØX›KÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆH˜\™HšX™\ˆ\È˜]Ûˆ˜]\ˆ[ˆXÙYˆXÚÈHÛÛÛXÚÈØ^\Ú[È[Û™ÈBˆ›Ý]H[ÝHØ[[™ÝX›KXÛXÚÈÈš[š\ÚˆH™\Ý[\ÈH]›ÝHÛÛ\Û™[ˆÛÈ]Ý\™\ÈÛ[ÛÝH›ÝYÚ]ÈØ^\Ú[È[™Ø[ˆ™H™\Ú\YY\Ø\™ÈžBˆ˜YÙÚ[™ÈH›Ý[™[™\Ëˆ]™\ž][™ÈÜXØ[X›Ý]]]™\ÈÛˆ]]Ü‚ˆˆH˜\™HšX™\ˆ\ÈHØ[YHÜXØ[ÛÛ\Û™[\ÈHÛÛ›™XÝÜš^™YˆH™YH‹‹‹ÙšX™\‹È›ÜXØ[šX™\ØOˆ8 %Y[XØ[XØÙ\[˜ÙHÛÛ™KÜÜË[^K[™ˆÝ]]™Z]š[Ý\ˆ8 %˜]ÛˆÚ]Ý]HÛÛ›™XÝÜˆYÜÈ[™Ú]›]XÛX]™Y˜]\‚ˆ[ˆ›Ý[™Y[™Ëˆ]\È\™H›ÜˆHX[žHX›Ü˜]ÜžHÙ]\È]\™H\ÜÙ[X›Yˆœ›ÛH˜\™HÛX]™YÜˆÜXÙYšX™\ˆ˜]\ˆ[ˆœ›ÛH\›Z[˜]Y]ÚØX›\ËÚ\™Bˆ˜]Ú[™È[ˆËÔÈYÈÛÝ[Z\Ü™\™\Ù[H\™Ø\™KˆHÛ™H[˜Ý[Û˜[ˆY™™\™[˜ÙH›ÛÝÜÈœ›ÛHHÙ[ÛY]žNˆH[™˜XÙHH™X[H\ÈÈ]\È˜\œ›ÝÙ\‹ˆÚ[˜ÙH]\ÈHšX™\ˆ]Ù[ˆ˜]\ˆ[ˆHÚY\ˆÛÛ›™XÝÜˆ›ÙKÛÈ[YÛš[™ÈBˆÛÝ\˜ÙHÛÈH˜\™H[™\ÈÛÜœ™\ÜÛ™[™ÛH\ÜÚY\ˆ8 %\È]\ÈÛˆH™X[™[˜ÚÜ‚ˆH™]ÈšX™\ˆÝ\È\ÈÝ›Û™Ï™XYÜ˜[HÛ›OÜÝ›Û™Ï‹ˆ]È[™È›ØÚÈÚ]]™\‚ˆYÚ™XXÚ\È[K[™›Ý[™ÈÛÛY\ÈÝ]8 %ÚXÚ\ÈHÛ™\Ý\XÝ[ÛˆÙˆ[‚ˆ[˜ÛÛ›™XÝYØX›HZ[™ÈÛˆHX›KˆXÚÈÝ›Û™Ï™X[H›ÜYØ]\ÏÜÝ›Û™ÏˆÈXZÙH]ˆ[ˆÜXØ[][™H[œÜXÝÜˆ[ˆ^ÜÙ\ÈH›Ü\Y\È]XZÙH]Û™KÜ‚‚ˆÏ‘Ù][™ÈYÚ[ÚÏ‚ˆÛÝ\[™È\ÈH™X[\Ý›Ý[ˆ\ÜÝ[\[Û‹ˆH˜^H™XXÚ[™È[ˆ[™˜XÙHÛÝ\\Âˆ[ˆÛ›HYˆ]\œš]™\ÈÚ][ˆHXØÙ\[˜ÙHÛÛ™H8 %HÝ›Û™Ï’[œ]OÜÝ›Û™Ï‹ˆŒŒˆžHY˜][8 %YX\Ý\™YYØZ[œÝ][™	ÜÈÝÛˆ^\ËˆH™X[H]\œš]™\ÈÛÂˆÝY\H\ÈÚ[\H›ÝXØÙ\Y^XÝH\È]ÛÝ[›Ý™HÛˆH™[˜Úˆ[‚ˆH™YH‹‹‹ÛØš™XÝ]™KÈ›Øš™XÝ]™OØOˆZ[YY]HšX™\ˆ[™ÛÝ\\È[È]HØ[YBˆØ^KÚXÚ\ÈÝÈH[œÛ\ÜËY[™ÜØÛÜHÙ]\È[ˆHÛÛ[][š]HØ[\žH\™HZ[Ü‚‚ˆÏ•Ú]HšX™\ˆÙ\ÈÈHYÚÚÏ‚ˆ•™YHØ]™Y›Ü\Y\ÈXÝ[Û™ÈH˜]Ûˆ[™ÝˆÝ›Û™Ï“ÜÜÏÜÝ›Û™Ï‹[‚ˆ‹ÛH
+ŒˆžHY˜][
+K][X]\ÈHYÚÝ™\ˆH]	ÜÈYHÙ[ÛY]šXÈ[™Ý‚ˆHÝ›Û™Ï™Ü›Ý\[™^ÜÝ›Û™Ïˆ
+KŽžHY˜][\ÙYÚ[XØJH][\Y\È]ˆ[™Ý[ÈÜXØ[]ÛÈHšX™\ˆ\›H[ˆ[ˆ[\™™\›ÛY]\ˆÛÛšX]\ÈH[^Bˆ]™X[HÛÝ[[™H[ÙH\œš]™\ÈÚ[ˆ]ÚÝ[˜]\ˆ[ˆÚ[ˆHœ™YK\ÜXÙBˆ]ÙˆHØ[YH˜]Ûˆ[™ÝÛÝ[[]™\ˆ]Ü‚ˆ•Ø]™[[™ÝÜXÝ[KÛ\š^˜][ÛˆÝ]K[™[ÙH[™[ÜH[Ý\š]™HBˆ›Ý\›™^K\ÈÙ\È[žHÜ›Ý\Y[^H\Ü\œÚ[ÛˆHYÚXÚÙY\[O˜™Y›Ü™OÙ[Oˆ]ˆÛÝ\Y[‹ˆÜXÚÛHÙ\È›ÝˆYÚ[Y\™Ù\Èœ›ÛHH˜\ˆ[™\ÈHÛX[ˆÛÛ™HÜ‚ˆ›ØÝ\È˜]\ˆ[ˆ\ÈHÜ˜Z[ˆH™X[][[[ÙHšX™\ˆÛÝ[[\ÜÙKÜ‚‚ˆÏ‘Ù][™ÈYÚÝ]ÚÏ‚ˆ‘XXÚ[™Ø\œšY\È]ÈÝÛˆ[™\[™[Ý]]ÜXÚYšXØ][Û‹ÛÈHÛÈ[™ÈØ[‚ˆ™Z]™HY™™\™[H[™ÛÝ\[™ÈÛÜšÜÈ[ˆ›Ý\™XÝ[ÛœÈ8 %YÚ[\š[™È[™BˆX]™\Èœ›ÛHˆ[™\ˆ‰ÜÈÜXË[™šXÙH™\œØKˆÛÈÝ[\È\™H]˜Z[X›NÜ‚ˆ[‚ˆOÝ›Û™Ï‘]™\™Ú[™ÏÜÝ›Û™Ïˆ8 %HÜ™[˜\žHØ\ÙKˆYÚX]™\ÈH\\ÈBˆÛÛ™HÙˆ[‹X[™ÛH\˜ÜÚ[ŠJK\Ú[™È][™	ÜÈÝ]]H
+ŒLˆžHY˜][
+KˆÚXÚ\ÈÚ]H™X[šX™\ˆ\Ù\ËÛO‚ˆOÝ›Û™Ï‘›ØÝ\ÙYÜÝ›Û™Ïˆ8 %YÚX]™\È\ÈHÛÛ™\™Ú[™È˜[ˆÙˆHÚÜÙ[‚ˆÝ]]X[Y]\ˆ]ÛÛY\ÈÈH›ØÝ\ÈHÚÜÙ[ˆ\Ý[˜ÙHZXYˆ\È\È›ÝÚ]BˆZ[ˆÛX]™YšX™\ˆÙ\ÎÈ]\È\™H›ÜˆÝ›Û™Ï›[œÛ\ÜÈ[™ÜØÛÜ\ÏÜÝ›Û™Ïˆ[™ˆ›ÜˆH[œÙY[™Ô’S‹]\›Z[˜]YšX™\œÈ][]™\ˆH›ØÝ\È\™XÝHœ›ÛHBˆšX™\ˆ\ˆ]\ÈÚ]]È[ÝHÚÙ]ÚHšX™\ˆ›Ø™H][XYÙ\ÈHØ[\HÚ]Ý]ˆ˜]Ú[™È[ˆØš™XÝ]™H[ˆœ›ÛÙˆ]ÛO‚ˆÝ[˜ˆ[Z]][ÛœÎˆˆ•HšX™\ˆ\È[Ù[Y\ÈHÝZYY]Ú][ˆXØÙ\[˜ÙHÛÛ™KHÜÜË[™Bˆ[^H8 %›Ý\ÈHØ]™YÝZYKˆ›Ý[™È\™HÛÛ\]\È[Ù\ËÛÈÚ[™ÛK[[ÙH[™ˆ][[[ÙHšX™\œÈ\™H›Ý\Ý[™ÝZ\ÚY[™H[ÙHØÜ˜[X›[™È]ÛZ[˜]\ÈBˆ™X[][[[ÙHÝ]]\ÈXœÙ[ˆHÝ]]\ÈHÛX[ˆÛÛ™HÜˆ›ØÝ\Ë™]™\‚ˆÜXÚÛKˆ™[™ÜÜÈ\È›Ý[Ù[YZ]\‹ÛÈHYÚH˜]Ûˆ]ÛÜÝÈ›È[Ü™Bˆ[ˆHÝ˜ZYÚÛ™K[™HÜÜÈšYÝ\™H\È\YY[šY›Ü›[H˜]\ˆ[ˆ˜\žZ[™ÂˆÚ]Ø]™[[™Ýˆš[™H˜^\È\™H][˜ÚYœ›ÛHHÝ]][™ÚXÚÙ]ÈÝÈš[™[BˆH[Y\™Ú[™ÈÛÛ™H\ÈØ[\YÜ‚ˆ•HšX™\‰ÜÈÝÛˆÚ›ÛX]XÈ\Ü\œÚ[Ûˆ\ÈHÝ›Û™ÏœÚ[™ÛHÚYÛ™Y3¬¸  ÜÝ›Û™Ï‹ˆ[\™Y[ˆð¬‹ÚÛH]H™Y™\™[˜ÙHØ]™[[™Ý[™\YY\ÈHÛÛœÝ[XÜ›ÜÜÈH˜[™\ÈH[\YÑÙ‚ˆ3¬¸  ˆ0åÈ[™ÝˆI›˜œÜÜð¬‹ÚÛH\ÈI›˜œÜÙœð¬‹Û[KÛÈÍ‰›˜œÜÜð¬‹ÚÛHÝ™\ˆI›˜œÜÛHYÂˆÍ‰›˜œÜÌ	›˜œÜÙœð¬‹ˆ]YÈÈÚ]]™\ˆ\Ü\œÚ[ÛˆH[ÙH[™XYHØ\œšY\Ë[™BˆÛÛ\™\ÜÛÜˆÙˆHÜÜÚ]HÚYÛˆZÙ\È]˜XÚÈÝ]ˆ[O”\ÚXØ[[™ÝÙ[OˆÙ]ÈBˆ[™Ý\ÙY›Üˆ[^KÜÜÈ[™\Ü\œÚ[ÛˆÙÙ]\‹ÛÈHÛÚ[ÙˆX[žHY]™\ÈØ[ˆ™Bˆ˜]Ûˆ\ÈHÚÜØX›NÈY]H˜]Ûˆ[™Ý\È\ÙY\È[ˆÚÙ]Ú\Èœ›ÛBˆ™Y›Ü™H\ÙHÛÛ›ÛÈ^\ÝY[™3¬¸  ˆ]YÈ›È\Ü\œÚ[Û‹ˆHœ›ØY˜[™ØZ[œÂˆH[™Ú[[^HÜ™XY]Û™H3¬¸  ˆ[\Y\ËHØ[YH\›Þ[X][ÛˆH[ÙBˆÛÛ\™\ÜÛÜˆ\Ù\Ëˆ\˜][Ûˆ™XYÝ]ÈÝÛœÝ™X[H›ÛÝÈH[ÙIÜÈ]]Ü™Y\ÙK[™ˆ™XY[˜]˜Z[X›HÚ\™H]\ÙH\È[šÛ›ÝÛ‹Ü‚ˆ“Û™H3¬¸  ˆ\È[\™H\Îˆ›È\™HÜˆYÚ\‹[Ü™\ˆ\Ü\œÚ[Û‹›ÈØ]™[[™Ýˆ\[™[˜ÙHÙˆ3¬¸  ˆXÜ›ÜÜÈHœ›ØY˜[™›È[Ù[ÜˆÛ\š\Ø][Û‹[[ÙH\Ü\œÚ[Û‹[™ˆ›È›Û›[™X\ˆ›ÜYØ][Ûˆ8 %Ù[‹\\ÙH[Ù[][Û‹ÛÛ]Ûˆ[˜[ZXÜÈ[™Ø]™[[™ÝˆÛÛ™\œÚ[Ûˆ[ˆHšX™\ˆ]Ù[ˆ\™H›ÝÚ[][]Y^Ù\[ˆHÜZ[ˆÛÝËXÛÜ™Bˆ[Ù[™[ÝËÜ‚ˆ[O‘šX™\ˆ[Ù[8¡¤ˆÛÝÈÛÜ™H0­È\™ÛÛÙ[Oˆ\›œÈHšX™\ˆ[ÈHØ\ËYš[YˆØ\[\žNˆ]È3¬¸  ˆ[™Ü›Ý\[™^ÛÛYHœ›ÛHH\™ÛÛˆ™\ÜÝ\™H[™HÛÜ™HX[Y]\‹ˆ[™H›Ý[™YÜ]\Ý\Ø[Ý[][ÛˆYÈÙ\œˆÙ[‹\\ÙH[Ù[][Ûˆ›ÜˆÛ™H[XÝˆ˜[œÙ›Ü›K[[Z]YØ]\ÜÚX[ˆ[ÙH˜Z[‹ÛÈHÜXÝ[Hœ›ØY[œÈ[™HÛÛ\™\ÜÛÜ‚ˆÝÛœÝ™X[HØ[ˆÚÜ[ˆH[ÙKˆHØX›IÜÈ[™[Ø^\ÈÚXÚÙˆ›Ý\ˆÝ]\È]\Âˆ[ŽˆHÛÛ\]Y[™[ÜNÈÙ\œˆÙ™‹ÚXÚ\È[™X\ˆ›ÜYØ][ÛˆÚ][ˆH3¬¸  ˆ[Ù[ÈH[™X\‹[Û›Bˆ\›Þ[X][Û‹Ú[ˆH[ÙH\ÈÝ]ÚYHHÛÛ™\‰ÜÈ›Ý[™ÈÜˆ›ÝÛ™H]Ø[ˆZÙH8 %ˆHYÚ[ˆÛÛ[Y\ÈÚ]\™ÛÛ‰ÜÈ[™X\ˆ\Ü\œÚ[Ûˆ[™]™\žH™XYÝ]ÝÛœÝ™X[KˆÜXÝ[H[™ÝÙ\ˆ[˜ÛYY\ÈX™[Y\ÈÝXÚÈÜˆ›È\™ÛÛˆ]KÝ]ÚYBˆŽ8 $ÌŒNI›˜œÜÛ›KÚ\™HHYÚÛÛ[Y\ÈÙ[ÛY]šXØ[H[™›È\™ÛÛˆ\Ü\œÚ[Ûˆ\ÂˆÛZ[YYˆÚ]›ÈÛÝ\Y[ÙH[™\™ÞHHØ\[\žHÝ^\È\šËˆ]ÈÜÜÈ\ÈÛÛ\]YˆžHY˜][\ÈHYX[Û[ÛÝ\ÙY\Ú[XØHØ\[\žIÜÈ
+X\˜Ø][x $ÔØÚY[™\‹ŒMI›˜œÜÙ‹ÛBˆ›ÜˆL	›˜œÜð­[H]	›˜œÜÛ›KØØ[[™È\È3®ð¬‹Øp¬ÊKÚ][ˆÜ[Û˜[^˜H\ÝšX]YÜÜËˆÜˆ\Y\ÈHX[X[Ý[ˆH[Ù[\È›Âˆ[Ûš^˜][Û‹YÚ\ˆ[Ù\ËØ[™\ÛÛ˜[˜Ù\Ë˜[X[ˆ™\ÜÛœÙHÜˆÙ[‹\ÝY\[š[™ÎÈ]ÂˆY™™XÝ]™H\™XH\ÈHØ]\ÜÚX[ˆ3à
+Jp¬‹ÚXÚXZÙ\È3¬ÈX›Ý]M‰›˜œÜÉH\™Ù\ˆ[‚ˆH^XÝØ\[\žH[ÙHÛÝ[Ü˜ˆKˆ™[]YˆÉÙšX™\‰Ë	ÛØš™XÝ]™IË	ÜØÛ\Ù\‰Ë	Ù]XÝÜ‰×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %ÜXØ[šX™\œÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÙšX™\œËš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %[Y\šXØ[\\\™IË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛ[Y\šXØ[Ø\\\™Kš[	ÈKˆÈX™[ˆ	ÕÜ›XœÈ8 %ÜXØ[šX™\ˆ]ÜšX[	Ë\›ˆ	ÚÎ‹ËÝÝÝËÜ›XœË˜ÛÛKÛ™]ÙÜ›Ý\YÙNK˜Ù›OÛØš™XÝÜ›Ý\ÚYMŽÍIÈKˆKˆKˆÂˆ\Nˆ	Üš\ÛIËˆÝ[[X\žNˆ”™Yœ˜XÝÈYÚ]]ÈšX[™Ý[\ˆÛ\ÜÈ›Ý[™\šY\ËÙ\\˜][™ÈØ]™[[™ÝÈ›ÝYÚX]\šX[\Ü\œÚ[Ûˆ[™Y[™È[ÙH\Ü\œÚ[ÛˆXØÛÜ™[™ÈÈH˜XÙY]ˆ‹ˆ]Nˆ	Ôš\ÛIËˆØ]YÛÜžNˆ	Ñ\Ü\œÚ]™H[[Y[ÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆHš\ÛH\Ü\œÙ\ÈYÚ™XØ]\ÙH]È™Yœ˜XÝ]™H[™^\[™ÈÛˆØ]™[[™Ý‚ˆXXÚ˜XÙH™Yœ˜XÝÈXØÛÜ™[™ÈÈÛ™[	ÜÈ]ÎÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	Û—ÌHÚ[—]WÌHH—ÌˆÚ[—]WÌ‰ËØ\[ÛŽˆ”Û™[	ÜÈ]È]XXÚ˜XÙKˆˆKˆKˆ[Žˆˆ”Ú[˜ÙHÜ[ˆÛ\ÜÏHÈ›ÜÜ[ˆ]Ù[ˆ˜\šY\ÈÚ]Ü[ˆÛ\ÜÏHÈ³®ÏÜÜ[‹ˆY™™\™[ÛÛÜœÈ™Yœ˜XÝžHY™™\™[[[Ý[È[™Ù\\˜]H8 %\È\ÈÚHÚ]BˆYÚ˜[œÈ[ÈH˜Z[˜›ÝËˆ™X[ÜXØ[Û\ÜÈ\ÈÚ\˜XÝ\š^™YžHHÙ[YZY\‚ˆ\]X][Û‹HÝ[HÙˆ™\ÛÛ˜[˜ÙH\›\Èš]ÈYX\Ý\™Y]K›ÝHÚ[™ÛHÚ[\Bˆ›Ü›][KÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ‘XXÚ˜XÙH\ÈHÙ[Z[™H™Yœ˜XÝ[™È›Ý[™\žH8 %[˜ÚY[˜^\È™[™žH™X[™XÝÜ‚ˆÛ™[	ÜÈ]Ë[™H˜^H]^ÙYYÈHÜš]XØ[[™ÛH[™\™ÛÙ\ÈÝ[[\›˜[ˆ™Y›XÝ[Ûˆ[œÝXYÙˆ^][™Ë^XÝH\ÈH™X[š\ÛHÙ\Ëˆ›Üˆ\Ü\œÚ[Û‹ˆœ›ØY˜[™[™Ý\\˜ÛÛ[][H™X[\È\™HØ[\Y]Ù]™\˜[\ØÜ™]HØ]™[[™ÝÂˆXÜ›ÜÜÈZ\ˆ˜[™[™XXÚØ[\H™Yœ˜XÝÈÚ]]ÈÝÛˆØ]™[[™ÝY\[™[ˆ[™^ÛÈH™X[Hš\ÚX›H˜[œÈ[ÈHÜXÝ[Kˆ‹P’ÍË\ÙYÚ[XØK‹TÑK[™ˆ‹TÑŒLH\™HÙ[XÝX›NÈ^\Ý[™ÈÚÙ]Ú\ÈÝ[Y˜][È‹P’ÍËˆ[ÙY˜^\ÈYˆÑœ›ÛHZ\ˆXÝX[˜XÙY\Ý[˜ÙH[œÚYHHÙ[XÝYÛ\ÜËÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	Û—ŒŠ[X™JOLJ×Ý[WÚWœ˜XÞÐ—ÚW[X™WŒŸ^×[X™WŒ‹P×Ú_IËØ\[ÛŽˆ	ÕHÙ[XÝYÛ\Ü×	ÜÈX›\ÚY™YK]\›HÙ[YZY\ˆÝ\™K‰ÈKˆKˆ[Z]][ÛœÎˆ•HÙ[YZY\ˆÝ\™\ÈXZÙH™Yœ˜XÝ]™H[™^[™ÑXØÝ\˜]HÈBˆ™]È\˜Ù[Ý™\ˆZ\ˆ˜[Y˜[œÜ\™[˜[™Ù\Ë]XœÛÜœ[Ûˆ˜[™Ëˆ[\\˜]\™KÛØ][™ÜË[™Ý\™˜XÙH]X[]H\™H›Ý[Ù[YÈHš^Y\‹Y˜XÙBˆ˜[œÛZ\ÜÚ[Ûˆ\ÈHÛ›HÜÜËÜ˜ˆKˆ™[]YˆÉÙÜ˜][™ÉË	ÙÛ\ÜÜ›Ù	Ë	Ùœ™YYÛ\ÜÉË	ÝXÚÛ[œÉË	ÙXÚ›ÚXÉ×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %š\Û\ÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜš\Û\Ëš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ÙÜ˜][™ÉËˆÝ[[X\žNˆ”Ù\\˜]\ÈYÚ[ÈÙ[XÝYY™œ˜XÝ[ÛˆÜ™\œÈ\Ú[™ÈHÜ˜][™È\]X][Û‹Ú]Y\ÝX›HÜ›ÛÝ™H[œÚ]KÜ™\ˆY™šXÚY[˜ÞK[™HÚÚXÙHÙˆÜXÝ˜[[[Z[˜][Û‹ˆ‹ˆ]Nˆ	ÑY™œ˜XÝ[ÛˆÜ˜][™ÉËˆØ]YÛÜžNˆ	Ñ\Ü\œÚ]™H[[Y[ÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆHY™œ˜XÝ[ÛˆÜ˜][™È\ÈHÝ\™˜XÙH[YÚ]ÛÜÙ[K]™[›HÜXÙY[™\Âˆ
+\š[ÙÜ[ˆÛ\ÜÏHÈ™ÜÜ[ŠKˆYÚY™œ˜XÝ[™Èœ›ÛH][\™™\™\ÂˆÛÛœÝXÝ]™[HÛ›H][™Û\ÈØ]\ÙžZ[™ÈHÜ˜][™È\]X][ÛŽÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	Ù
+Ú[—]WÚH
+ÈÚ[—]WÛJHHW[X™IËØ\[ÛŽˆ	ÕHÜ˜][™È\]X][ÛŽˆ[˜ÚY[˜ÙH[™ÛH3®8mh‹Y™œ˜XÝ[Ûˆ[™ÛH3®8 ¦[YÙ\ˆÜ™\ˆK[™HÜXÚ[™È‰ÈKˆKˆ[Žˆ™XØ]\ÙHH\]X][Ûˆ\[™ÈÛˆÜ[ˆÛ\ÜÏHÈ³®ÏÜÜ[‹XXÚ›Ûž™\›ÂˆÜ™\ˆÜ™XYÈÚ]HYÚ[ÈHÜXÝ[H8 %HØ[YHY™™XÝHš\ÛH›ÙXÙ\Âˆ›ÝYÚ\Ü\œÚ[Û‹]œ›ÛH[\™™\™[˜ÙH˜]\ˆ[ˆ™Yœ˜XÝ]™KZ[™^˜\šX][Û‹Ü˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•\È\ÈÛ™HÙˆH™]ÈÛÛ\Û™[ÈÚ\™HÜXØ[Ù]\[\[Y[ÈH^›ÛÚÂˆ›Ü›][H\™XÝH[™^XÝKÛÛš[™ÈHÜ˜][™È\]X][Ûˆ\ˆØ[\YØ]™[[™Ýˆ›Üˆ]™\žHÛÛ™šYÝ\™YY™œ˜XÝ[ÛˆÜ™\‹[ˆZ]\ˆ™Y›XÝ]™HÜˆ˜[œÛZ\ÜÚ]™Bˆ[ÙKˆÜ™\œÈÚ\™HH\]X][Ûˆ\È›È™X[ÛÛ][Ûˆ
+Ü[ˆÛ\ÜÏHÈŸÚ[³®8 ¦	™ÝÂˆOÜÜ[ŠH\™HÚ[\H›ÜYX]Ú[™ÈH™X[Ü˜][™ÉÜÈ™Z]š[ÜˆÙˆÛ›HYÚ[™Âˆ\HÜ™\œÈ]Ù[ÛY]šXØ[H^\ÝˆZ\ˆYÚ\È›Ý›ÜYÚ][Nˆ]ˆÛÙ\ÈÈHÜ™\œÈ]È^\Ý\È]Ù\ÈÛˆH™X[Ü˜][™ÈÚ[ˆ[ˆÜ™\‚ˆ\ÜÙ\ÈÙ™‹ˆH	›˜œÜÛ[™\ËÛ[HÜ˜][™È]LÌ‰›˜œÜÛ›H\È›ÝÚ\™HÈÙ[™Bˆ™X[H]H™\›ÝÜ™\‹[™Ù[™È[Ùˆ]\™KÜ˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ‘Y™œ˜XÝ[ÛˆY™šXÚY[˜ÞH\ÈÜ]]™[›HXÜ›ÜÜÈHÛÛ™šYÝ\™YˆÜ™\œÈ]›ÜYØ]K˜]\ˆ[ˆÛÛ\]Yœ›ÛHHÜ›ÛÝ™H›Ùš[H
+H™X[ˆ›^™YÜ˜][™ÈÛÛ˜Ù[˜]\È[ÜÝÙˆHYÚ[ÈÛ™HÜ™\ˆžH\ÚYÛŠH8 %Ü™\‚ˆ^\Ý[˜ÙH[™[™ÛH\™H^XÝ™[]]™HœšYÚ™\ÜÈ™]ÙY[ˆÜ™\œÈ\È›ÝˆÚ[˜ÙBˆÚXÚÜ™\œÈ›ÜYØ]H\[™ÈÛˆØ]™[[™ÝHœ›ØY˜[™™X[HÚÜÙHÜ™\œÈ\ÜÂˆÙ™ˆ[œÚYH]È˜[™]šY\È]ÈÝÙ\ˆY™™\™[H]XXÚ[™ÙˆH˜[™Ü˜ˆKˆ™[]YˆÉÜš\ÛIË	ÙY	Ë	ÜÛI×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Y™œ˜XÝ[ÛˆÜ˜][™ÜÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÙY™œ˜XÝ[Û—ÙÜ˜][™ÜËš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	Ùœ™YYÛ\ÜÉËˆÝ[[X\žNˆ”™Yœ˜XÝÈYÚ›ÝYÚ[ˆY]X›HÝ][™HÙˆÝ˜ZYÚYÙ\È[™Ú\˜Ý[\ˆ\˜ÜËÚ]HÛÛœÝ[™Yœ˜XÝ]™H[™^ÜˆØ]™[[™ÝY\[™[Ø][ÙÝYHÛ\ÜËˆ‹ˆ]Nˆ	Ñœ™YY›Ü›HÛ\ÜÉËˆØ]YÛÜžNˆ	Ñ\Ü\œÚ]™H[[Y[ÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆ”™X[Û\ÜÈÜXÜÈ\™H˜\™[H[Z]YÈH[œÉÜÈÜ\šXØ[Ý\™HÜˆBˆš\ÛIÜÈ›]šX[™Ý[\ˆ˜XÙ\È8 %\Ü\šXÈÛÜœ™XÝÜœËYÚ\\Ëœ™YY›Ü›Bˆ[[Z[˜][ÛˆÜXÜË[™[™YÜ›Ý[™Ý\ÝÛHš\Û\È[™Yœ˜XÝYÚ›ÝYÚ[‚ˆ\˜š]˜\žH›Ý[™\žHÚ\KˆÝÙ]™\ˆ^ÝXÈHÝ][™KH\ÚXÜÈ]]™\žHÚ[ˆÛˆHÝ\™˜XÙH\ÈHØ[YH™XÝÜˆÛ™[	ÜÈ]È]ÛÝ™\›œÈHZ[ˆš\ÛHÜˆ[œÂˆ˜XÙNÈÛ›HHØØ[Ý\™˜XÙH›Ü›X[Ú[™Ù\Èœ›ÛHÚ[ÈÚ[Ü‚ˆ•\È\È[ÛÈ]\˜[HÝÈ[žHÐQÜˆ˜^K]˜XÚ[™È™[™\™\ˆ[™\ÈHÛ[ÛÝBˆÝ\™YÜXØ[Ý\™˜XÙH[ˆ˜XÝXÙNˆ[ˆ\˜š]˜\š[HÛ[ÛÝ›Ý[™\žH\È\›Þ[X]Yˆ\ÈHš[™HY\ÚÙˆ›]˜XÙ]È
+Ü‹›ÜˆHÛÜÙ\ˆš]Ú\˜Ý[\ˆ\˜ÜÊKXXÚˆ™Yœ˜XÝ[™È[™\[™[KÚ]H\›Þ[X][Ûˆ\œ›ÜˆÚš[šÚ[™È\ÈH˜XÙ]ÈÙ]ˆÛX[\‹ˆHÛØ\œÙH[™XZ[\›Þ[X][Ûˆ[™HÛ[ÛÝX[Y˜XÝ\™Y\Ü\™HY™™\‚ˆÛ›H[ˆÝÈš[™H]Y\Ú\ËÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	Û—ÌHÚ[—]WÌHH—ÌˆÚ[—]WÌ‰ËØ\[ÛŽˆ”Û™[	ÜÈ]Ë\YY[™\[™[H]]™\žHÝ˜ZYÚÜˆÝ\™Y›Ý[™\žHÙYÛY[8 %HÛ›H\ÚXÜÈHœ™YY›Ü›H™Yœ˜XÝ[™ÈÝ\™˜XÙH™YYËˆˆKˆÈ^ˆ	Û—ŒŠ[X™JOLJ×Ý[WÚWœ˜XÞÐ—ÚW[X™WŒŸ^×[X™WŒ‹P×Ú_IËØ\[ÛŽˆ	ÕHÜ[Û˜[Ø][ÙÝYHÛ\ÜÙ\È\ÙHHØ[YHÙ[YZY\ˆÝ\™\È\ÈHXÚÈÜ\šXØ[[œË‰ÈKˆKˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•H›Ý[™\žH\È˜]Ûˆ\ÈHÚZ[ˆÙˆÝ˜ZYÚYÙ\È[™YHÚ\˜Ý[\ˆ\˜ÜÈ8 %ˆY]X›H\™XÝHÛˆHØ[˜\ÈžH˜YÙÚ[™È[˜ÚÜˆ[™Ý\™KXÛÛ›ÛÚ[È8 %[™ˆXXÚÙYÛY[™XÛÛY\È]ÈÝÛˆ[™\[™[™Yœ˜XÝ[™ÈÝ\™˜XÙKÛÈHÛÛ\][BˆÝ\ÝÛHÜ›ÜÜË\ÙXÝ[Ûˆ
+HYÚ\IÜÈ\\™Y›Ùš[KHœ™YY›Ü›Hš\ÛKBˆÛÜœ™XÝ]™HÙYÙJH™Yœ˜XÝÈ[™Ý[KZ[\›˜[K\™Y›XÝÈ^XÝHZÙHBˆš^YYÙ[ÛY]žHH™YH‹‹‹Üš\ÛKÈ”š\ÛOØO‹\ÝÚ]Ý]™Z[™ÈØÚÙYÈBˆšX[™ÛKˆÚÛÜÙHHÛÛœÝ[™Yœ˜XÝ]™H[™^ÜˆÛ™HÙˆ›Ý\ˆØ][ÙÝYH[Ù[Î‚ˆ‹P’ÍË\ÙYÚ[XØK‹TÑK[™‹TÑŒLKˆHœ›ØY˜[™™X[H›ÝYÚHØ][ÙÝYKYÛ\ÜÂˆ›Ý[™\žH\ÈØ[\YžHØ]™[[™Ý[™š\ÚX›H\Ü\œÙ\È[ÈHÜXÝ[KÜ˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ•HØ][ÙÝYHÜ[ÛœÈ\ÙHX›\ÚYÙ[YZY\ˆÝ\™\ËÛÈÑˆ›ÛÝÜÈHXÝX[˜XÙY\Ý[˜ÙH[™\ÈÙ[™\˜[HÚ][ˆH™]È\˜Ù[Ú\™BˆÜÙHÝ\™\È\™H˜[YˆXœÛÜœ[Ûˆ˜[™È[™[\\˜]\™H\™H›Ý[Ù[YÂˆ\‹\Ý\™˜XÙH˜[œÛZ\ÜÚ[Ûˆ\ÈH›]ÛÛ™šYÝ\™Y[X™\ˆ˜]\ˆ[ˆHÛÛ\]YˆÛØ][™ÈÜˆ[ÈÜÜËˆÚ\˜Ý[\‹X\˜ÈÙYÛY[È\™HYH‘\˜ÜË]HÚÛH[[Y[ˆ\ÈÝ[H‘Ü›ÜÜË\ÙXÝ[Ûˆ8 %]™\™\Ù[ÈHœ™YY›Ü›H›Ùš[K›ÝHYHœ™YY›Ü›BˆÑÝ\™˜XÙKˆ™\ÝYÜˆÝ™\›\[™ÈÛ\ÜÈ›ÙY\È\™H›ÝÝ\™˜XÙK[Y\™ÙYÜ˜ˆKˆ™[]YˆÉÜš\ÛIË	ÙÛ\ÜÜ›Ù	Ë	Û[œÉË	ÝXÚÛ[œÉ×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %š\Û\ÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜš\Û\Ëš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ÙY™\Ù\‰ËˆÝ[[X\žNˆ”Ü™XYÈ[˜ÚY[YÚ[È[ˆY\ÝX›H[™Ý[\ˆ˜[‹›ÝšY[™ÈH]X[]]]™H[Ù[›ÜˆÛÛ\\š[™È[[Z[˜][ÛˆÛÝ™\˜YÙH[™HYÚÛÛXÝYÝÛœÝ™X[Kˆ‹ˆ]Nˆ	ÑY™\Ù\‰ËˆØ]YÛÜžNˆ	Ñ\Ü\œÚ]™H[[Y[ÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆ[ˆÜXØ[Y™\Ù\ˆØØ]\œÈH™X[H[ÈHÛÛ™HÙˆ\™XÝ[ÛœÈžH™Yœ˜XÝ[™ÂˆYÚ›ÝYÚHZXÜ›ÜØÛÜXØ[H›ÝYÚÜˆ[™Ú[™Y\™YÝ\™˜XÙH8 %Ü›Ý[™Üˆœ›ÜÝYˆÛ\ÜËHÛÙÜ˜\XÈY™\Ù\ˆÚ][ˆ[X›ÜÜÙY˜[™ÛHZXÜ›ÜÝXÝ\™KÜˆ[‚ˆ[™Ú[™Y\™YÜZ]ˆY™\Ù\ˆ\ÚYÛ™Y›ÜˆHÜXÚYšXÈ]™\™Ù[˜ÙH[™ÛH[™ˆ[[œÚ]H›Ùš[KˆXXÚZXÜ›ÜØÛÜXÈ˜XÙ]Ý[Ø™^\ÈÜ™[˜\žHÛ™[	ÜÈ]ÎÈÚ]ˆY™™\œÈœ›ÛHHY™\Ù\ˆÈHZ[ˆÛ\ÜÈÚ[™ÝÈ\ÈÛ›HHØØ[Ý\™˜XÙH›Ü›X[ˆÚXÚ˜\šY\È˜[™Û[H
+ÜˆžH\ÚYÛŠHœ›ÛHÚ[ÈÚ[]HØØ[H˜\ˆÛX[\‚ˆ[ˆH™X[KÜ‚ˆ‘Y™\Ù\œÈÛ[ÙÙ[š^™H[[Z[˜][Ûˆ[™ÛÛ™\H\Ù\‰ÜÈ˜\œ›ÝÈ™X[H[Èœ›ØYˆ[šY›Ü›HYÚ[™È8 %[™Üš]XØ[H›ÜˆÛÚ\™[ÛÝ\˜Ù\Ë™YXÙHÜXÚÛKˆHÝ]XÂˆY™\Ù\ˆ[[Z[˜]YžHÛÚ\™[\Ù\ˆYÚ›ÙXÙ\ÈHÜ˜Z[žH[\™™\™[˜ÙBˆ]\›ˆ
+ÜXÚÛJHœ›ÛHH˜[™ÛH][[™ÝY™™\™[˜Ù\È™]ÙY[ˆØØ]\™YˆØ]™[]ÎÈÜ[›š[™ÈHY™\Ù\ˆ˜\Ý[›ÝYÚ]]È]\›ˆÚ[™Ù\ÈÚ][ˆBˆØ[Y\˜IÜÈÜˆ^YIÜÈ[YÜ˜][Ûˆ[YH]™\˜YÙ\È]ÜXÚÛHÝ][ÈÛ[ÛÝˆ[[Z[˜][Û‹Ü˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	ÒJ]JH›ÜÈ^WY
+Wœ˜XÞ×]WžÌŸ_^Ì—ÚYÛXWžÌŸ_WšYÚ
+K\]XY^Ñ•Ò_H\›Þ‹ŒÍMWÚYÛXIËØ\[ÛŽˆHÛÛ[[Ûˆ[™Ú[™Y\š[™È[Ù[›ÜˆHÜ›Ý[™YÛ\ÜÈY™\Ù\‰ÜÈ[™Ý[\ˆØØ]\š[™È›Ùš[H8 %]È]™\™Ù[˜ÙH\È\ÝX[HÜXÚYšYYžH\È•ÒHÛÛ™H[™ÛKˆˆKˆKˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ‘XXÚ[˜ÚY[˜^H\ÈÜ][ÈHÛX[˜[ˆÙˆ˜^\È
+š]™K›ÜˆHÚ[™ÛH˜XÙYˆ˜^JKØØ]\™YÚ][ˆHÛÛ™šYÝ\™Y]™\™Ù[˜ÙH[‹X[™ÛH\›Ý[™HÜšYÚ[˜[ˆ\™XÝ[Û‹ˆHØØ]\ˆ[™ÛH›ÜˆXXÚ˜^H\Û‰Ý˜[™ÛZ^™Yœ˜[YHÈœ˜[YH8 %]	ÜÈBˆ]\›Z[š\ÝXÈÙ]YË\˜[™ÛHÙ™œÙ]ÛÛ\]Yœ›ÛHHÝ\™˜XÙIÜÈÝÛˆQÛÈHØ[YBˆY™\Ù\ˆ[Ø^\È›ÙXÙ\ÈH^XÝØ[YH˜[ˆÛˆ]™\žH™[™\‹ÚXÚ\ÈÚ]ÙY\ÂˆHÜXÚÛY]\›ˆÝX›H[™[œÜXÝX›H˜]\ˆ[ˆ›XÚÙ\š[™È\È[ÝH[ˆÜ‚ˆ™K\™[™\ˆHÚÙ]ÚÜ˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ‘]™\™Ù[˜ÙH\ÈÙ]\™XÝH\ÈHÛÛ™šYÝ\™Y[‹X[™ÛH˜]\ˆ[‚ˆ\š]™Yœ›ÛH[žHÝ\™˜XÙK\›ÝYÚ™\ÜÈÜˆZXÜ›ÜÝXÝ\™HÜXË[™HØØ]\™Yˆ\™XÝ[ÛœÈ\™HHÛX[š^YXÛÝ[Ø[\H
+š]™H˜^\È›ÜˆHÚ[™ÛH[˜ÚY[˜^JBˆ˜]\ˆ[ˆHÛÛ[[Ý\ÈÜˆØ]™[[™ÝY\[™[[™Ý[\ˆ\ÝšX][Ûˆ8 %\™IÜÈ›ÂˆØ]\ÜÚX[ˆÜˆÜZ]\œ˜YX[˜ÙH›Ùš[HXÝX[HÛÛ\]Y\ÝHš]\™Y˜[‹ˆBˆÜXÚÛYÛÚÈ\ÈHš^Y]\›Z[š\ÝXÈ]\›ˆÚ]›È™X[[\™™\™[˜ÙH™Z[™ˆ]ˆ[›ZÙHYH\Ù\ˆÜXÚÛK]™]™\ˆÚ[™Ù\ÈÚ]šY]Ú[™È[™ÛK™X[HÜÚ][Û‹ˆÜˆHÜ[›š[™ÈY™\Ù\‹Ú[˜ÙH›ÈÛÚ\™[˜ÙHÜˆ[\™™\™[˜ÙH\È[Ù[Y[ž]Ú\™H[‚ˆH\Ü˜ˆKˆ™[]YˆÉÙœ™YYÛ\ÜÉË	Üš\ÛIË	ÜÛI×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Y™\Ù\œÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÙY™\Ù\œËš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %ØØ]\š[™ÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜØØ]\š[™Ëš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ÙÛ\ÜÜ›Ù	ËˆÝ[[X\žNˆ”™Yœ˜XÝÈYÚ›ÝYÚHÛ\ÜÈ›ÙÚ]Y\ÝX›H[Y[œÚ[ÛœÈ[™X]\šX[[˜ÛY[™ÈÝ[[\›˜[™Y›XÝ[Ûˆ[™[ÙH\Ü\œÚ[Ûˆ[Û™ÈH˜XÙY]ˆ‹ˆ]Nˆ	ÑÛ\ÜÈ›Ù	ËˆØ]YÛÜžNˆ	Ñ\Ü\œÚ]™H[[Y[ÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆ•HÙ[ÛY]žHÜXØ[Ù]\˜]ÜÈ›ÜˆHÛ\ÜÈ›Ù\ÈH[™K\\˜[[ÛXŽˆÛÂˆ›]\˜[[Û™È˜XÙ\È[™ÛÈ›][™È8 %HÛ\ÜÚXÈ™Û\ÜÈ›ØÚÈˆÙˆ[‚ˆ[›ÙXÝÜžHÜXÜÈÛÝ\œÙKˆ]›Ü›X[[˜ÚY[˜ÙKYÚ\ÜÙ\ÈÝ˜ZYÚ›ÝYÚˆÚ]›È™][™Ý[\ˆ]šX][Ûˆ]H™X[™[ØÚ]HÚ[™ÙNˆ\ÙH™[ØÚ]H[œÚYBˆHYY][H›ÜÈÈÜ[ˆÛ\ÜÏHÈ˜ËÛÜÜ[‹ÛÈYÚZÙ\ÈÛ™Ù\ˆÈÜ›ÜÜÈBˆØ[YH\ÚXØ[\Ý[˜ÙH[ˆ]ÛÝ[[ˆ˜XÝ][HÜˆZ\ˆ8 %H˜\Ú\ÈÙˆ]™\žHÜXØ[ˆ[^H›ÙXÙYžH[œÙ\[™ÈÛ\ÜÈ[ÈH™X[H]œ›ÛHXÛÜÙXÛÛ™šX™\‹\Ý™]Ú\‚ˆÜÛÛÈÈHœ˜XÝ[Û‹[Ù‹XK\XÛÜÙXÛÛ™XÚÛ™\ÜÈÙˆHØ[Y\˜HÙ[œÛÜ‰ÜÈÛÝ™\‚ˆÛ\ÜËÜ‚ˆ][žH›Ûž™\›È[™ÛHÙˆ[˜ÚY[˜ÙKÛ™[	ÜÈ]È™[™ÈH˜^H][žH[™™[™Âˆ]˜XÚÈžHHØ[YH[[Ý[]^]8 %HÛÈ\˜[[˜XÙ\ÈØ[˜Ù[H[™Ý[\‚ˆ]šX][Ûˆ^XÝH8 %]H™X[HÝ[[Y\™Ù\ÈÚYYÚY]Ø^\Èœ›ÛHÚ\™H]ÛÝ[ˆ]™HÛÛ™HÝ˜ZYÚ›ÝYÚH]\˜[\ÜXÙ[Y[]Ü›ÝÜÈÚ]XÚÛ™\ÜËˆ[˜ÚY[˜ÙH[™ÛK[™[™^ˆ]	ÜÈHØ[YH˜\\™[\ˆY™™XÝ]XZÙ\ÈBˆÝ˜]ÈÛÚÈ™[[ˆHÛ\ÜÈÙˆØ]\‹\ÝšY]ÙYœ›ÛHHÚYH[œÝXYÙˆœ›ÛBˆX›Ý™KÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×[HHœ˜XÞÛ“^ØßHHœ˜XÞÓ^ØßHHœ˜XÞÊ‹LJS^ØßIËØ\[ÛŽˆ	Ñ^˜H˜[œÚ][YHHÛXˆÙˆXÚÛ™\ÜÈ[™™Yœ˜XÝ]™H[™^ˆYÈÛÛ\\™YÈHØ[YH\Ý[˜ÙH[ˆ˜XÝ][H8 %\]Z]˜[[K[ˆ^˜HÜXØ[][™ÝÙˆ
+ˆ8¢$ˆJS‰ÈKˆÈ^ˆ	ÙHÙXÈ—Ú[ŠK\ŠIËØ\[ÛŽˆ	Ó]\˜[\ÜXÙ[Y[ÙˆH™X[H›ÝYÚH[™K\\˜[[ÛXˆÙˆXÚÛ™\ÜÈ›Üˆ[˜ÚY[˜ÙH[™ÛHH[™™Yœ˜XÝ[Ûˆ[™ÛHˆ
+™[]YžHÛ™[	ÜÈ]ÊH8 %™\›È]›Ü›X[[˜ÚY[˜ÙKÜ›ÝÚ[™ÈÚ][™ÛKXÚÛ™\ÜË[™[™^‰ÈKˆKˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•H›Ù\È›Ý\ˆ[™\[™[›]™Yœ˜XÝ[™È›Ý[™\šY\È8 %ÛÈÛ™È˜XÙ\È[™ÛÂˆ[™È8 %XXÚØ™^Z[™ÈH^XÝ™XÝÜˆ›Ü›HÙˆÛ™[	ÜÈ]È[™Ý[[\›˜[ˆ™Y›XÝ[Ûˆ\ÙYžH]™\žHY[XÝšXÈÝ\™˜XÙH[ˆH\ÛÈ[[™ÈH›Ù][‚ˆ[™ÛH™\›ÙXÙ\ÈH™X[]\˜[Y\ÜXÙ[Y[Ù[ÛY]žHX›Ý™K›Ý[ˆYX[^™YˆÝ˜ZYÚ\ÜË]›ÝYÚˆ[œÚYHHYY][KH˜XÙ\ˆXØÝ[][]\ÈÜXØ[]ˆ[™Ý\ÈÙ[ÛY]šXÈ\Ý[˜ÙH0åÈ™Yœ˜XÝ]™H[™^ÈÛˆHÚ\™Y[ÙK][Z[™ÂˆÝ™\›^H\ÈYX[œÈHXÚÙ]š\ÚX›HÛÝÜÈÝÛˆÚ[HÜ›ÜÜÚ[™ÈH›ÙYÙÚ[™ÈBˆØ[YK][YHXÚÙ]ÛˆH˜XÝ][H]žH^XÝHH^˜H[^HH›Ü›][HX›Ý™Bˆ™YXÝÈ›ÜˆHÛÛ™šYÝ\™Y[™^ˆH›Ù	ÜÈš[\È[X™\˜][H˜[œÛXÙ[ÛÂˆ]YÈ\ÈÛÛY][™È[ÝHØ[ˆXÝX[HØ]Ú\[‹˜]\ˆ[ˆH[X™\ˆY[‚ˆ™Z[™[ˆÜ\]YH›ØÚËˆÚÛÜÙHHYØXÞHÛÛœÝ[[™^ÜˆÛ™HÙˆH›Ý\‚ˆØ][ÙÝYHÙ[YZY\ˆÛ\ÜÙ\ËˆHØ][ÙÝYHX]\šX[[ÛÈXØÝ[][]\ÈÑœ›ÛHBˆXÝX[\Ý[˜ÙHXXÚ˜^H˜]™[È[œÚYHH›ÙÜ˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ•HY˜][™[XZ[œÈHÚ[™ÛHÛÛœÝ[[™^ÛÈ]™\žH^\Ý[™ÂˆØ]™Y›ÙÙY\È]È]]Ü™Y™Z]š[ÜŽÈ][ÙH\È›ÈX]\šX[ÑˆÙ[XÝ[™ÈBˆØ][ÙÝYHÛ\ÜÈ[˜X›\ÈÙ[YZY\ˆ™Yœ˜XÝ[Ûˆ[™][[™ÝÑÙ[™\˜[HÚ][‚ˆH™]È\˜Ù[Ú\™HHÝ\™H\È˜[Y]Ý[ÛZ]ÈXœÛÜœ[Û‹[\\˜]\™KˆÛØ][™ÜË[™YÚ\‹[Ü™\ˆ[ÙHY™™XÝËˆ\™IÜÈ›ÂˆÞ[[™šXØ[Üˆ[œÚ[™ÈÙ[ÛY]žHZ]\Žˆ\Ü]HH˜[YK\È\ÈH™XÝ[™Ý[\‚ˆÛXˆÜ›ÜÜË\ÙXÝ[ÛˆÚ]›][™Ë›ÝH›ØÝ\Ú[™È›Ù[œËÜ˜ˆKˆ™[]YˆÉÙœ™YYÛ\ÜÉË	Üš\ÛIË	Ù[^[[™I×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Ü›Ý\™[ØÚ]IË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÙÜ›Ý\Ý™[ØÚ]Kš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Ü›Ý\[™^	Ë\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÙÜ›Ý\Ú[™^š[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ØœÉËˆÝ[[X\žNˆ‘]šY\È[˜ÚY[YÚ[È˜[œÛZ]Y[™™Y›XÝY]ÈÚ][ˆY\ÝX›HÜ][™È˜][Ë›ÜˆZ[[™È™X[HXÚÛÙ™œË[\™™\›ÛY]\œË[™\˜[[ÜXØ[œ˜[˜Ú\Ëˆ‹ˆ]Nˆ	Ð™X[\Ü]\‰ËˆØ]YÛÜžNˆ	Ñš[\œÈ	ˆÜ]\œÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆH™X[\Ü]\ˆ]šY\È[ˆ[˜ÚY[™X[H[ÈH˜[œÛZ]Y[™H™Y›XÝYˆœ˜[˜Ú\XØ[H\Ú[™ÈH[ˆY[XÝšXÈÜˆY][XÈÛØ][™ÈÛˆHÛ\ÜÈÝX™HÜ‚ˆ]Kˆ™X[ÛØ][™ÜÈ\™H˜\™[H\™™XÝH™]]˜[ˆH™Y›XÝÝ˜[œÛZ]˜][Âˆ\ÝX[H\[™ÈÛˆ›ÝØ]™[[™Ý[™Û\š^˜][Û‹Ú[˜ÙHËH[™\Û\š^™YˆYÚ™Y›XÝY™™\™[HÙ™ˆ[žHY[XÝšXÈ[\™˜XÙH]Ø^Hœ›ÛH›Ü›X[ˆ[˜ÚY[˜ÙKÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•H™X[\Ü]\ˆ\È[Ù[Y\È[ˆYX[Û\š^˜][Û‹Z[™\[™[]šY\ŽˆBˆÚ[™ÛHÛÛ™šYÝ\˜X›H˜][ÈÙ]ÈÚ]œ˜XÝ[ÛˆÙˆXXÚ[˜ÚY[˜^IÜÈ[[œÚ]BˆÛÛ[Y\ÈÝ˜ZYÚ›ÝYÚ™\œÝ\È™Y›XÝÈ]H˜]ÛˆXYÛÛ˜[Ú]›ÂˆØ]™[[™ÝÜˆ[™ÛH\[™[˜ÙKÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	ÒWÕH’WÌ\]XYWÔˆH
+K\ŠRWÌ	ËØ\[ÛŽˆ	Õ˜[œÛZ]Y[™™Y›XÝY[[œÚ]H›ÜˆÜ]˜][È‹‰ÈKˆKˆ[Z]][ÛœÎˆH™X[LÍLÝX™H\È˜\™[H^XÝHLÍLXÜ›ÜÜÈHš\ÚX›BˆÜXÝ[K[™]È˜][ÈÚYÈÚ]Û\š^˜][Ûˆ8 %›Û™HÙˆ]\È[Ù[Y\™K‚ˆ›ÜˆHÜ]\ˆÚÜÙHÛÈÝ]]È\™HÛX[›HÙ\\˜]YžHÛ\š^˜][ÛˆÝ]Bˆ˜]\ˆ[ˆHš^Y˜][ËÙYHHÛ\š^š[™È”È[œÝXYÜ˜ˆKˆ™[]YˆÉÜœÉË	ÙXÚ›ÚXÉË	Ùš[\‰Ë	ÛZ\œ›Ü‰×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %™X[HÜ]\œÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKØ™X[WÜÜ]\œËš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ÜÛ\š^™\‰ËˆÝ[[X\žNˆ”Ù[XÝÈH[™X\ˆÛ\š^˜][Ûˆ\™XÝ[Ûˆ[™][X]\ÈYÚXØÛÜ™[™ÈÈ]È[œ]Ý]K›Üˆ^Üš[™ÈX[\ø &\È]È[™Û\š^˜][Û‹Y\[™[ÜXØ[˜[œÛZ\ÜÚ[Û‹ˆ‹ˆ]Nˆ	ÔÛ\š^™\‰ËˆØ]YÛÜžNˆ	ÔÛ\š^˜][Û‰Ëˆ™X[ÛÜ›ˆÂˆ[ˆˆ[ˆYX[[™X\ˆÛ\š^™\ˆ˜[œÛZ]ÈÛ›HHšY[ÛÛ\Û™[\˜[[È]Âˆ˜[œÛZ\ÜÚ[Ûˆ^\Ëˆ›Üˆ[HÛ\š^™YYÚ\œš]š[™È][™ÛBˆÜ[ˆÛ\ÜÏHÈ³®ÜÜ[ˆÈ]^\ËHÛ\ÜÚXÈ›Ü›HÙˆX[\ÉÜÈ]ÈÚ]™\ÈBˆ˜[œÛZ]Y[[œÚ]NÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	ÒHHWÌÛÜ×žÌŸW]IËØ\[ÛŽˆ“X[\ÉÜÈ]È›Üˆ[H
+[™X\›JHÛ\š^™Y[œ]ˆˆKˆKˆ[Žˆ•]ØØ[\ˆ›Ü›][HÛ›HÛÝ™\œÈ[H[™X\›HÛ\š^™YYÚÝYÚ8 %ˆ]Ø^\È›Ý[™ÈX›Ý]\X[HÛ\š^™Y[œÛ\š^™YÜˆ[\XØ[BˆÛ\š^™Y[œ]ÚXÚ\È[ÜÝ™X[YÚÛÝ\˜Ù\ËÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ”Û\š^˜][ÛˆÝ]H›ÝYÚÝ]ÜXØ[Ù]\\È˜XÚÙY\ÈH[›Ü›X[^™YˆÝÚÙ\È™XÝÜˆÜ[ˆÛ\ÜÏHÈŠø  Kø  ‹ø  ÊOÜÜ[‹›ÝHÚ[™ÛH[™ÛH8 %ÛÈBˆÛ\š^™\‰ÜÈ˜[œÛZ\ÜÚ[Ûˆ\ÈÛÛ\]YÚ]HÙ[™\˜[›Ü›HÙˆX[\ÉÜÈ]ËÚXÚˆ™YXÙ\ÈÈHØØ[\ˆ\]X][ÛˆX›Ý™H›Üˆ[H[™X\ˆYÚ][ÛÈÚ]™\ÈBˆÛÜœ™XÝ\X[˜[œÛZ\ÜÚ[Ûˆ›Üˆ[œÛ\š^™Y\X[HÛ\š^™YÜˆÚ\˜Ý[\‚ˆ[œ]Ü˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	ÕHœ˜XÞÌ_^ÌŸWY
+H
+È×ÌWÛÜÈ—]H
+È×Ì—Ú[ˆ—]WšYÚ
+IËØ\[ÛŽˆ•HÝÚÙ\Ë]™XÝÜˆ›Ü›HÙˆX[\ÉÜÈ]È]ÜXØ[Ù]\]˜[X]\È]]™\žHÛ\š^™\‹ˆˆKˆKˆ[Z]][ÛœÎˆ•HÛ\š^™\ˆ\ÈYX[8 %\™™XÝ^[˜Ý[ÛˆÛˆH›ØÚÙY^\Ëˆ›ÈØ]™[[™Ý\[™[˜ÙK›È[œÙ\[ÛˆÜÜÈÛˆH˜[œÛZ\ÜÚ[Ûˆ^\ËÜ˜ˆKˆ™[]YˆÉÚÜ	Ë	Ü]Ü	Ë	ÜœÉË	Ù[ÛI×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Û\š^™\œÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜÛ\š^™\œËš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ÚÜ	ËˆÝ[[X\žNˆ\Y\È[‹]Ø]™H™]\™[˜ÙH\›Ý[™[ˆY\ÝX›H˜\Ý^\Ë›Üˆ›Ý][™È[™X\ˆÛ\š^˜][Ûˆ[™ÛÛ›Û[™ÈÝÈYÚ]šY\È]HÛ\š^š[™È™X[\Ü]\‹ˆ‹ˆ]Nˆ	Ò[‹]Ø]™H]IËˆØ]YÛÜžNˆ	ÔÛ\š^˜][Û‰Ëˆ™X[ÛÜ›ˆÂˆ[ˆˆHØ]™\]H\ÈHÛXÙHÙˆš\™Yœš[™Ù[Üž\Ý[8 %]X\‹XYÛ™\Ú][H›[ÜšYKˆØ[Ú]H8 %[ˆÚXÚH™Yœ˜XÝ]™H[™^\[™ÈÛˆH\™XÝ[ÛˆHYÚ\ÂˆÛ\š^™YˆÛÈ\œ[™XÝ[\ˆ\™XÝ[ÛœÈ[ˆH]H˜XÙH\™HÜXÚX[ˆBˆÝ›Û™Ï™˜\Ý^\ÏÜÝ›Û™Ï‹[Û™ÈÚXÚYÚÙY\ÈHÝÙ\ˆ[™^[™˜]™[Âˆ]ZXÚÙ\‹[™HÝ›Û™ÏœÛÝÈ^\ÏÜÝ›Û™Ïˆ\œ[™XÝ[\ˆÈ]ˆ[žH[˜ÛÛZ[™ÂˆÛ\š^˜][ÛˆØ[ˆ™H™\ÛÛ™Y[ÈÛÛ\Û™[È[Û™ÈÜÙHÛÈ^\Ë[™™XØ]\ÙHBˆÛÛ\Û™[È˜]™[]Y™™\™[ÜYYËÛ™H[Y\™Ù\È™Z[™HÝ\‹ˆ›Ý[™È\ÂˆXœÛÜ˜™YÈÛ›HH™[]]™H\ÙH™]ÙY[ˆHÛÈÛÛ\Û™[ÈÚ[™Ù\ËÜ‚ˆ’ÝÈ]XÚ\ÙHÙ\\˜]\È[H\ÈHÝ›Û™Ïœ™]\™[˜ÙOÜÝ›Û™Ï‹[™]\[™ÂˆÛˆH[™^Y™™\™[˜ÙKH]HXÚÛ™\ÜË[™HØ]™[[™ÝÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×Ø[[XHHœ˜XÞÌ—W[H—^×[X™_IËØ\[ÛŽˆ	Ô™]\™[˜ÙHÙˆH]HÙˆXÚÛ™\ÜÈ›Üˆ[ˆ[™^Y™™\™[˜ÙH3¥ˆ™]ÙY[ˆHÛÝÈ[™˜\Ý^\Ë‰ÈKˆÈ^ˆ	ÙHœ˜XÞ×[X™_^Ì—[HŸIËØ\[ÛŽˆ	ÕHXÚÛ™\ÜÈ]XZÙ\È3¤È^XÝH3à8 %[ˆHØ]™Kˆ›Üˆ]X\ˆ]ŒÌÈ›K3¥ˆ8¢bŒKÛÈ\È\ÈX›Ý]ÍH0­[Nˆ™X[]\È\™HZ]\ˆ›Û™YÈHÝXœÝ˜]HÜˆXYH[ˆÙ][\HÙˆ\ÈXÚÛ™\ÜË‰ÈKˆÈ^ˆ	×]WÞ×^ÛÝ]_HH—[HH]WÞ×^Ú[Ÿ_IËØ\[ÛŽˆ	ÐH[‹]Ø]™H]HZ\œ›ÜœÈHÛ\š^˜][ÛˆX›Ý]]È˜\Ý^\Ëˆ[™X\ˆYÚ]3®È]^\È\™Y›Ü™HÛÛY\ÈÝ]›Ý]YžH³®‰ÈKˆKˆ[Žˆˆ]^XÝH[ˆHØ]™KÛ™HÛÛ\Û™[\È[™\Y™[]]™HÈHÝ\‹[™BˆY™™XÝÛˆ[™X\ˆÛ\š^˜][Ûˆ\ÈH[Oœ™Y›XÝ[ÛˆX›Ý]H˜\Ý^\ÏÙ[O‹ˆBˆ˜XÝXØ[ÛÛœÙ\]Y[˜ÙH\ÈHÛ™H]™\žX›ÙH\Ù\Îˆ›Ý][™ÈH]HžHÛÛYH[™ÛBˆ›Ý]\ÈHÛ\š^˜][ÛˆžHÚXÙH][™ÛKˆH]H\›™YŒ‹p¬›Ý]\ÈHYÚˆp¬È\›™Yp¬]›Ý]\È]H[L0¬ˆ™XØ]\ÙH]\ÈH\ÙH]šXÙH˜]\ˆ[‚ˆ[ˆXœÛÜ˜š[™ÈÛ™K\È›Ý][Ûˆ\ÈÜÜÛ\ÜÈ8 %ÚXÚ\È^XÝHÚHH[‹]Ø]™H]Bˆ›ÛÝÙYžHHÛ\š^™\ˆ\ÈHÝ[™\™Ø^HÈÛÛ›Û\Ù\ˆÝÙ\ˆÛÛ[[Ý\ÛBˆÚ]Ý]ÝXÚ[™ÈH\Ù\‹Ü‚ˆ“ÛˆÚ\˜Ý[\›HÛ\š^™YYÚHØ[YHZ\œ›ÜˆÜ\˜][Ûˆ™]™\œÙ\ÈH[™Y™\ÜËˆ\›š[™ÈYXÚ\˜Ý[\ˆ[ÈšYÚXÚ\˜Ý[\‹Ü‚ˆ”™]\™[˜ÙH\[™ÈÛˆØ]™[[™ÝÛÈH]H\ÈÜXÚYšYY›ÜˆÛ™Kˆ\ÙY˜\ˆœ›ÛBˆ]Ø]™[[™Ý]\È›ÈÛ™Ù\ˆ[‹]Ø]™H[™H›Ý][ÛˆYÜ˜Y\ËˆBˆÝ›Û™Ïž™\›Ë[Ü™\ÜÝ›Û™Ïˆ]H\ÈÙ[Z[™[H\È[ˆ\ÈH›Ü›][H[X[™È[™\Âˆ™[]]™[H›Ü™Ú]š[™ÈÙˆØ]™[[™Ý[™ÛK[™[\\˜]\™NÈBˆÝ›Û™Ï›][K[Ü™\ÜÝ›Û™Ïˆ]H\ÈHXÚÙ\‹ÚX\\ˆYXÙH]YÈÙ]™\˜[ˆÚÛHØ]™\ÈÛˆÜ[™\ÈÛÜœ™\ÜÛ™[™ÛH\ÜÚY\‹ˆÝ›Û™ÏXÚ›ÛX]XÏÜÝ›Û™Ï‚ˆ\ÚYÛœÈÛÛXš[™HÛÈX]\šX[ÈÛÈ]H™]\™[˜ÙHÝ^\È™X\ˆ[ˆHØ]™HXÜ›ÜÜÈBˆœ›ØY˜[™Ü˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•H]H\ÈÛ™HÛÛ›Û]X]\œÎˆHÝ›Û™Ï™˜\Ý^\ÏÜÝ›Û™Ïˆ[™ÛKÛ‚ˆH\œHØ[˜\ÈÛ›ØˆÜˆ[ˆH[œÜXÝÜ‹ˆÛ\š^˜][Ûˆ\ÈØ\œšYY›ÝYÚBˆÚÛHÚÙ]Ú\ÈHÝÚÙ\È™XÝÜ‹[™H]H\Y\È[ˆ^XÝN0¬™]\™[˜ÙBˆX›Ý]]^\È8 %Ù[ÛY]šXØ[KH›Ý][ÛˆÙˆHÛ\š^˜][ÛˆÝ]HÛˆBˆÚ[˜Ø\°êHÜ\™KÜ‚ˆ•H™Z]š[Ý\ˆ]›ÛÝÜÈ\ÈH™X[Û™K›Ý[ˆ\›Þ[X][ÛˆÙˆ]ˆ[™X\‚ˆYÚ]0¬›ÝYÚH]HÚ]]È^\È]Œ‹p¬ÛÛY\ÈÝ]]^XÝHp¬ÈÙ]Bˆ^\ÈÈp¬[™HØ[YH[œ]ÛÛY\ÈÝ]]L0¬ˆ[YÛˆH^\ÈÚ]H[œ]ˆÛ\š^˜][Û‹Üˆ]]\œ[™XÝ[\‹[™›Ý[™ÈÚ[™Ù\È8 %H[‹]Ø]™H]HÙ\Âˆ›Ý[™ÈÈYÚ[™XYHÛ\š^™Y[Û™ÈÛ™HÙˆ]ÈÝÛˆ^\ËˆÙ[™Ú\˜Ý[\ˆYÚˆ›ÝYÚ[™H[™Y™\ÜÈ›\ËÜ‚ˆ•ÛÈÛÛœÙ\]Y[˜Ù\È\™HÛÜÛ›ÝÚ[™ËˆH]H\ÈÝ›Û™Ï›ÜÜÛ\ÜÏÜÝ›Û™ÏŽˆ]ˆÚ[™Ù\ÈHÝ]K™]™\ˆH[[œÚ]KÛÈHÝÙ\‹XÛÛ›ÛÝYÙH™YYÈHÛ\š^™\‚ˆY\ˆ]ÈÛÛ™\H›Ý][Ûˆ[È][X][Û‹ˆ[™Ý›Û™Ï[œÛ\š^™YYÚˆ\ÜÙ\È›ÝYÚ[˜Ú[™ÙYÜÝ›Û™Ï‹ÚXÚ\ÈÛÜœ™XÝ˜]\ˆ[ˆHÚÜÝ]8 %\™Bˆ\È›È™Y™\œ™Y\™XÝ[Ûˆ›ÜˆH]HÈXÝÛ‹ˆ]BˆH™YH‹‹‹ÜÛ\š^™\‹ÈœÛ\š^™\ØOˆ™Y›Ü™H]Yˆ[ÝHØ[HYš[™YÝ]HÂˆ›Ý]KÜ‚ˆ”Û\š^˜][Ûˆ[Ù[][ÛˆÝ\š]™\ÈH]HÛÎˆH™X[H™Z[™ÈÝÚ]ÚY™]ÙY[ˆÛÂˆÝ]\ÈžH[ˆH™YH‹‹‹Ø[ÛKÈ™[XÝ›Ë[ÜXÈ[Ù[]ÜØOˆÙY\È[\›˜][™ÈY\‚ˆHØ]™\]KÚ]›ÝÝ]\È›Ý]YÙÙ]\‹˜]\ˆ[ˆ]š[™ÈH[Ù[][Û‚ˆ›][™Y]Ø^KÜ˜ˆ[Z]][ÛœÎˆ•H™]\™[˜ÙH\È^XÝH[ˆHØ]™H]]™\žHØ]™[[™Ýˆ›Ý[™Âˆ\™H[Ù[È3¥‹H]HXÚÛ™\ÜËÜˆZ\ˆ\Ü\œÚ[Û‹ÛÈ\™H\È›È\Ý[˜Ý[Û‚ˆ™]ÙY[ˆ™\›Ë[Ü™\‹][K[Ü™\‹[™XÚ›ÛX]XÈ]\Ë[™›ÈYÜ˜Y][ÛˆÚ[ˆBˆ]H\È\ÙY]Ø^Hœ›ÛH]È\ÚYÛˆØ]™[[™Ý8 %[ˆH™X[Ù]\]\ÈHÚ[™ÛBˆ[ÜÝÛÛ[[Ûˆ™X\ÛÛˆHØ]™\]H[™\œ\™›Ü›\ËˆH]H\È[ÛÈ\™™XÝHÜÜÛ\ÜÂˆ[™\™™XÝH[YÛ™Yˆ›Èœ™\Û™[™Y›XÝ[Ûˆ]H˜XÙ\Ë›ÈXœÛÜœ[Û‹›ÂˆÙ[œÚ]]š]HÈ[™ÛHÙˆ[˜ÚY[˜ÙHÜˆ[\\˜]\™K[™›ÈØ[Ë[Ù™ˆ™]ÙY[ˆHÛÂˆ˜^\È[œÚYHHš\™Yœš[™Ù[Üž\Ý[ˆ]ÈÜXØ[XÚÛ™\ÜÈ\È›Ý[Ù[YZ]\‹ÛÂˆ]ÛÛšX]\È›ÈÜ›Ý\Y[^H\Ü\œÚ[ÛˆÈH[ÙKÜ˜ˆKˆ™[]YˆÉÜ]Ü	Ë	ÜÛ\š^™\‰Ë	ÜœÉË	Ù[ÛI×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Ø]™\]\ÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÝØ]™\]\Ëš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %š\™Yœš[™Ù[˜ÙIË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKØš\™Yœš[™Ù[˜ÙKš[	ÈKˆKˆKˆÂˆ\Nˆ	Ü]Ü	ËˆÝ[[X\žNˆ\Y\È]X\\‹]Ø]™H™]\™[˜ÙH\›Ý[™[ˆY\ÝX›H˜\Ý^\Ë›ÜˆÛÛ™\[™È[œ]Û\š^˜][Ûˆ™]ÙY[ˆ[™X\‹[\XØ[[™Ú\˜Ý[\ˆÝ]\È[ˆ[ˆÜXØ[Ù]\ˆ‹ˆ]Nˆ	Ô]X\\‹]Ø]™H]IËˆØ]YÛÜžNˆ	ÔÛ\š^˜][Û‰Ëˆ™X[ÛÜ›ˆÂˆ[ˆˆH]X\\‹]Ø]™H]H\ÈHØ[YHš\™Yœš[™Ù[ÛXÙH\ÈBˆH™YH‹‹‹ÚÜÈš[‹]Ø]™H]OØO‹Ý][ˆ\ÈXÚËˆ]Ü]ÈH[˜ÛÛZ[™ÂˆÛ\š^˜][Ûˆ[ÈÛÛ\Û™[È[Û™È]È˜\Ý[™ÛÝÈ^\È[™[^\ÈÛ™HžHBˆ]X\\ˆÙˆHØ]™H8 %L0¬Ùˆ\ÙH8 %™[]]™HÈHÝ\‹Ü‚ˆ•]]X\\ˆØ]™H\ÈH[[Ý[]ÛÛ™\È[O˜™]ÙY[Ù[Oˆ[™X\ˆ[™ˆÚ\˜Ý[\ˆÛ\š^˜][Ûˆ˜]\ˆ[ˆ[Ýš[™ÈYÚ\›Ý[™Ú][ˆZ]\ˆ˜[Z[KˆÛÂˆ\]X[ÛÛ\Û™[ÈL0¬Ý]Ùˆ\ÙH˜XÙHHÚ\˜ÛH\È^HYÈHØ[YHÛÂˆÛÛ\Û™[È[ˆ\ÙH˜XÙHHÝ˜ZYÚ[™KˆÛÈH]IÜÈY™™XÝ\[™È[\™[HÛ‚ˆÝÈH[œ]\ÈÜšY[Y™[]]™HÈ]È^\ÎÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×Ø[[XHHœ˜XÞÌ—W[H—^×[X™_HHœ˜XÞ×_^ÌŸIËØ\[ÛŽˆ	Ô]X\\‹]Ø]™HÛÛ™][Ûˆ8 %HØ[YH™]\™[˜ÙH^™\ÜÚ[Ûˆ\È[žHØ]™\]KÙ]ÈL0¬‰ÈKˆÈ^ˆ	ÙHœ˜XÞ×[X™_^Í[HŸIËØ\[ÛŽˆ	ÕHXÚÛ™\ÜÈ]XÚY]™\È]ˆX›Ý]N0­[HÙˆ]X\ˆ]ŒÌÈ›KÚXÚ\ÈÚHYH™\›Ë[Ü™\ˆ]\È\™H\ÝX[H›Û™YÈHXÚÙ\ˆÚ[™ÝË‰ÈKˆKˆ[Žˆˆ]Ý›Û™Ïp¬ÜÝ›Û™ÏˆÈH˜\Ý^\ËH[œ]Ü]È[ÈÛÈ\]X[ˆÛÛ\Û™[È[™H]H\›œÈ[™X\ˆYÚ[ÈÚ\˜Ý[\‹ˆ]Ý›Û™ÏŒ0¬Ü‚ˆL0¬ÜÝ›Û™Ï‹[HYÚ\È[™XYH[Û™ÈÛ™H^\Ë\™H\È›ÈÙXÛÛ™ÛÛ\Û™[ˆÈ[^K[™HÛ\š^˜][Ûˆ\ÜÙ\È›ÝYÚ[ÝXÚYˆ][žH[™ÛH[ˆ™]ÙY[ˆBˆÛÈÛÛ\Û™[È\™H[™\]X[[™H™\Ý[\ÈÝ›Û™Ï™[\XØ[ÜÝ›Û™Ïˆ8 %BˆÙ[™\˜[Ø\ÙKÙˆÚXÚ[™X\ˆ[™Ú\˜Ý[\ˆ\™HHÛÈ[Z]ËÜ‚ˆ•HÛÛ™\œÚ[Ûˆ[œÈ›ÝØ^\Ë[™]™]™\œÚXš[]H\ÈÚ]XZÙ\ÈH]HÛÂˆ\ÙY[ˆÚ\˜Ý[\ˆYÚ[\š[™ÈH]X\\‹]Ø]™H]HÛÛY\ÈÝ][™X\‹ˆZ\š[™ÈÛ™BˆÚ]HÛ\š^™\ˆ\™Y›Ü™HZ[ÈHÚ[\HÜXØ[Ø]NˆYÚ\ÜÙ\ÈHÛ\š^™\‹ˆ™XÛÛY\ÈÚ\˜Ý[\‹™Y›XÝÈÙ™ˆÛÛY][™È8 %ÚXÚ™]™\œÙ\ÈH[™Y™\ÜÈ8 %™]\›œÂˆ›ÝYÚH]H\È[™X\ˆYÚ›Ý]YL0¬œ›ÛHHÜšYÚ[˜[[™\È™Z™XÝYžBˆHÛ\š^™\ˆ]Ø[YH›ÝYÚˆ]šXÚÈÝ\™\ÜÙ\È˜XÚË\™Y›XÝ[ÛœÈ[ˆ]™\ž][™Âˆœ›ÛHÜXØ[š]™\ÈÈ[\™™\›ÛY]\œË[™]\ÈH™X\ÛÛˆ]X\\‹]Ø]™H]\Âˆ\›ˆ\Ú\™]™\ˆH™X[H\ÈÈÛÈÝ][™ÛÛYH˜XÚÈ[Û™ÈHØ[YH]Ü‚ˆÚ\˜Ý[\ˆÛ\š^˜][Ûˆ\È[ÛÈÛÜ]š[™È[ˆ]ÈÝÛˆšYÚˆ]Ø\œšY\È›Âˆ™Y™\œ™Y\™XÝ[Ûˆ[ˆH[™KÛÈ]^Ú]\È[ÛXÝ[\È™YØ\™\ÜÈÙˆZ\‚ˆÜšY[][Û‹[™]ÈÛÈ[™Y™\ÜÙ\È[\˜XÝY™™\™[HÚ]Ú\˜[X]\ˆ8 %ˆH˜\Ú\ÈÙˆÚ\˜Ý[\ˆXÚ›Ú\ÛHÜXÝ›ÜØÛÜKÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ“ZÙHH[‹]Ø]™H]KH]X\\‹]Ø]™H]H^ÜÙ\ÈÛ™HÛÛ›ÛBˆÝ›Û™Ï™˜\Ý^\ÏÜÝ›Û™Ïˆ[™ÛK[™\Y\È[ˆ^XÝ™]\™[˜ÙHÈH™X[IÜÂˆÝÚÙ\È™XÝÜˆ8 %L0¬[ˆ\ÈØ\ÙKˆ]Ý\È]p¬H[™ÛH]›ÙXÙ\ÈÚ\˜Ý[\‚ˆYÚœ›ÛHHÜš^›Û[HÛ\š^™Y[œ]Ü‚ˆ•H[˜[™ÙHÙˆ™Z]š[Ý\ˆ\È\™H[™Ø[ˆ™H™XYÙ™ˆ[žH]XÝÜˆ]ˆ™\ÜÈÛ\š^˜][Û‹ˆ[™X\ˆYÚ]0¬Ú]H^\È]p¬ÛÛY\ÈÝ][BˆÚ\˜Ý[\‹ˆ›Ý]HH^\ÈÈ0¬ÜˆL0¬[™HYÚ\ÜÙ\È›ÝYÚÝ[[™X\‹‚ˆÙ]]ÈŒ‹p¬[™HÝ]]\È[\XØ[Ú]H[ÙˆH[\ÙH[™Bˆ[[Ý[ÙˆÚ\˜Ý[\š]H›Ýš\ÚX›H[ˆHH™YH‹‹‹Ù]XÝÜ‹ÈœÛ\š[Y]\‰ÜÏØO‚ˆÝÚÙ\È™XYÝ]ˆ™YYÚ\˜Ý[\ˆYÚ[ˆ[™[™X\ˆYÚÛÛY\ÈÝ]Ü‚ˆ•ÛÈ]X\\‹]Ø]™H]\È[ˆÙ\šY\ÈÚ]HØ[YH^\È\™H\]Z]˜[[ÈÛ™Bˆ[‹]Ø]™H]H8 %ÛÜžZ[™Ë™XØ]\ÙH]XZÙ\ÈÛÛ˜Ü™]H]™]\™[˜ÙHÚ[\BˆXØÝ[][]\ËÜ‚ˆ\ÈÚ][žHØ]™\]H\™KH[[Y[\ÈÜÜÛ\ÜÈ[™Ù\È›Ý[™È][Âˆ[œÛ\š^™YYÚÚXÚ\È›ÈYš[™Y\ÙH™[][ÛœÚ\›ÜˆH]HÈXÝÛ‹‚ˆ\ÝX›\ÚHÝ]HÚ]HH™YH‹‹‹ÜÛ\š^™\‹ÈœÛ\š^™\ØOˆš\œÝÜ˜ˆ[Z]][ÛœÎˆ•H™]\™[˜ÙH\È^XÝHH]X\\ˆØ]™H]]™\žHØ]™[[™ÝÛÂˆ\™H\È›ÈØ]™[[™Ý\[™[˜ÙK›È\Ý[˜Ý[Ûˆ™]ÙY[ˆ™\›Ë[Ü™\‹][K[Ü™\‹ˆ[™XÚ›ÛX]XÈ]\Ë[™›ÈYÜ˜Y][Ûˆ]Ø^Hœ›ÛHH\ÚYÛˆØ]™[[™ÝˆH]Bˆ\ÈÜÜÛ\ÜÈ[™[œÙ[œÚ]]™HÈ[™ÛHÙˆ[˜ÚY[˜ÙH[™[\\˜]\™K\™H\È›ÂˆØ[Ë[Ù™ˆ[œÚYHHÜž\Ý[[™]YÈ›ÈÜ›Ý\Y[^H\Ü\œÚ[ÛˆÈH[ÙKˆBˆÚ\˜Ý[\ˆYÚ]›ÙXÙ\È\ÈX][X]XØ[H\™™XÝÈH™X[]HX]™\ÈHÛX[ˆ™\ÚYX[[\XÚ]H]X]\œÈ[ˆÙ[œÚ]]™HÛ\š[Y]žKÜ˜ˆKˆ™[]YˆÉÚÜ	Ë	ÜÛ\š^™\‰Ë	ÜœÉË	Ú\ÛÛ]Ü‰×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Ø]™\]\ÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÝØ]™\]\Ëš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Ú\˜Ý[\ˆÛ\š^˜][Û‰Ë\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKØÚ\˜Ý[\—ÜÛ\š^˜][Û‹š[	ÈKˆKˆKˆÂˆ\Nˆ	ÜœÉËˆÝ[[X\žNˆ”Ù\\˜]\ÈÜÙÛÛ˜[Û\š^˜][ÛœÈÙˆYÚ[È˜[œÛZ]Y[™™Y›XÝY™X[\Ëˆ‹ˆ]Nˆ	ÔÛ\š^š[™È™X[\Ü]\‰ËˆØ]YÛÜžNˆ	ÔÛ\š^˜][Û‰Ëˆ™X[ÛÜ›ˆÂˆ[ˆˆ[ˆÜ™[˜\žH™X[\Ü]\ˆ]šY\ÈH™X[HžH[[œÚ]H[™Ù\È›ÝØ\™HÝÈ]\ÂˆÛ\š^™YˆHÛ\š^š[™È™X[\Ü]\ˆ]šY\È]žHÛ\š^˜][Ûˆ[œÝXYˆÛ™H[™X\‚ˆÝ]H\È˜[œÛZ]YHÜÙÛÛ˜[Ý]H\È™Y›XÝY[™8 %[›ZÙHBˆH™YH‹‹‹ÜÛ\š^™\‹ÈœÛ\š^™\ØO‹ÚXÚXœÛÜ˜œÈÜˆ[\ÈÚ]]™Z™XÝÈ8 %ˆ›Ý[™\ÈX]™H\È\ØX›H™X[\Ëˆ›Ý[™È\È›ÝÛˆ]Ø^KÚXÚ\ÈÚ]XZÙ\ÈBˆ]šXÙHH›Ý]\ˆ˜]\ˆ[ˆHš[\‹Ü‚ˆ•H\ÝX[›Ü›H\ÈHÝX™NˆÛÈšYÚX[™ÛHš\Û\ÈÙ[Y[Y[Û™ÈZ\‚ˆ\Ý[\Ù\ËÚ]H][[^Y\ˆY[XÝšXÈÛØ][™ÈØ[™ÚXÚY™]ÙY[ˆ[KˆYÚˆYY]È][\›˜[[\™˜XÙH]p¬[™H^Y\ˆÝXÚÈ\È\ÚYÛ™YÛÈ]Bˆ[OœÙ[O‹\Û\š^™YÛÛ\Û™[
+[XÝšXÈšY[[ˆH[™HÙˆ[˜ÚY[˜ÙJH\Âˆ˜[œÛZ]YÚ[HH[OœÏÙ[O‹\Û\š^™YÛÛ\Û™[\È™Y›XÝY›ÝYÚL0¬ˆBˆÛÈÝ]]È\™H\™Y›Ü™H[™X\›HÛ\š^™Y[™\œ[™XÝ[\ˆÈÛ™H[›Ý\‹Ü‚ˆ’ÝÈH[˜ÛÛZ[™ÈÝÙ\ˆ]šY\È›ÛÝÜÈX[\ÉÜÈ]ËÛÈHÜ]\ÈÙ]žHBˆ[œ]Û\š^˜][Ûˆ[™ÛH˜]\ˆ[ˆžHHÝX™NÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	ÕHÛÜ×žÌŸW]K\]XYˆHÚ[—žÌŸW]IËØ\[ÛŽˆ	Ñœ˜XÝ[Ûˆ˜[œÛZ]Y[™™Y›XÝY›Üˆ[™X\›HÛ\š^™YYÚ]3®ÈH˜[œÛZ\ÜÚ[Ûˆ^\Ëˆ[œÛ\š^™YYÚ]™\˜YÙ\ÈÈLÍL‰ÈKˆKˆ[Žˆˆ”][™ÈHH™YH‹‹‹ÚÜÈš[‹]Ø]™H]OØOˆ[ˆœ›Û\›œÈ\È[ÈBˆÝ›Û™Ï˜ÛÛ[[Ý\ÛH˜\šXX›H™X[\Ü]\ÜÝ›Û™ÏŽˆ›Ý][™ÈH]H›Ý]\ÈBˆ[œ]Û\š^˜][Û‹ÝÙY\[™ÈHÜ]œ›ÛH[]˜[œÛZ]YÈ[\™Y›XÝYÚ]Ý]ˆ[žHXœÛÜœ[Ûˆ[ž]Ú\™Kˆ]Z\š[™È\ÈÛ™HÙˆH[ÜÝÛÛ[[ÛˆÛËY[[Y[ˆÛÛXš[˜][ÛœÈÛˆ[ˆÜXØ[™[˜Ú\ÙY›ÜˆÝÙ\ˆÛÛ›Û›Üˆ˜[[˜ÙYÜ][™Ëˆ[™›Üˆ›Ý][™ÈH™X[H™]ÙY[ˆÛÈ^\š[Y[ËÜ‚ˆ”[ˆ˜XÚÝØ\™ËHØ[YHÝX™H[O˜ÛÛXš[™\ÏÙ[OˆÛÈÜÙÛÛ˜[HÛ\š^™Y™X[\Âˆ[ÈÛ™H]8 %HÝ[™\™Ø^HÈÝ™\›\ÛÈ\Ù\œÈÚ]›ÈÜÜËÚXÚ›Âˆ[[œÚ]H™X[\Ü]\ˆØ[ˆËÜ‚ˆ“Û™H\Þ[[Y]žHX]\œÈ[ˆ˜XÝXÙKˆH˜[œÛZ]YÜ\È\ÝX[H™\žH\™KˆÚ]^[˜Ý[Ûˆ˜][ÜÈÙˆLŒHÜˆ™]\‹™XØ]\ÙHHÛØ][™È\ÈÛÛÙ]™Z™XÝ[™Âˆ[OœÏÙ[O‹ˆH™Y›XÝYÜ\ÈX\šÙYHÛÜœÙKÙ[ˆ™X\™\ˆŒŒKÚ[˜ÙHÛÛYBˆ[OœÙ[OˆYÚXZÜÈ[È]ˆYˆ[ˆ^\š[Y[™YYÈHÛX[ˆÝ]KZÙH]œ›ÛBˆH˜[œÛZ]YÜÜˆÛX[ˆH™Y›XÝYÛ™H\Ú]HÛ\š^™\ˆY\Ø\™ËÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•HÝX™H\È˜]ÛˆÚ]]ÈÛØ]YXYÛÛ˜[[™]XYÛÛ˜[\ÈH˜XÙYˆÝ\™˜XÙKˆ]˜[œÛZ]ÈÜš^›Û[Û\š^˜][Ûˆ[Û™ÈH[˜ÛÛZ[™È^\È[™™Y›XÝÂˆ™\XØ[Û\š^˜][Ûˆ›ÝYÚL0¬Ü][™ÈHÚ[™ÛH[˜ÛÛZ[™È˜^H[ÈÛÈÝ]ÛÚ[™Âˆ™X[\È]H˜XÙ\ˆ›ÛÝÜÈ[™\[™[KÜ‚ˆ•H]š\Ú[Ûˆ›ÛÝÜÈX[\ÉÜÈ]È^XÝNˆ[™X\ˆYÚ]0¬ÛÙ\È[H›ÝYÚˆ]L0¬[HXÜ›ÜÜË]p¬Ü]È[ˆ[™[‹[™]Ì0¬]šY\ÈÍKÌK‚ˆ[œÛ\š^™YYÚÜ]È]™[›K\È]ÚÝ[ˆ›ÝÝ]]È[Y\™ÙH[‚ˆ[Oœ\™OÙ[Oˆ[™X\ˆÝ]\È8 %Üš^›Û[ÛˆH˜[œÛZ]YÜ™\XØ[ÛˆBˆ™Y›XÝYÛ™H8 %™YØ\™\ÜÈÙˆÚ]\œš]™YÚXÚ\ÈÚ]XZÙ\ÈH”ÈHÛ\š^˜][Û‚ˆ[O˜ÛX[\Ù[Oˆ[[Y[[™›ÝY\™[HHÜ]\‹ˆHÜ™XÙZ]š[™È\ÜÈ[ˆ‰HÙ‚ˆHYÚ\È›ÜY˜]\ˆ[ˆ˜]Ûˆ\ÈHZ\›[™H]ÝYÙÙ\ÝÈH™X[H›Ø›ÙBˆÛÝ[\ÙKÜ‚ˆ™XØ]\ÙHHÝX™H™\ÛÛ™\ÈÛ\š^˜][Ûˆ[ÈÛÈ]Ë]\È[ÛÈÝÈHÚÙ]ÚˆXZÙ\ÈÛ\š^˜][Ûˆ[Oš\ÚX›OÙ[OŽˆ]Û™HY\ˆBˆH™YH‹‹‹ÚÜÈš[‹]Ø]™H]OØOˆ[™›Ý][™ÈH]IÜÈ^\Èš\ÚX›HÚYÂˆÝÙ\ˆœ›ÛHÛ™HÝ]]\›HÈHÝ\‹Ú]›È][X][Ûˆ[ž]Ú\™H[ˆH]Ü‚ˆ•HÝX™H[ÛÈ[™\È˜\ÝÛ\š^˜][ÛˆÝÚ]Ú[™È›Ü\›KˆH™X[H[\›˜][™Âˆ™]ÙY[ˆÛÈÝ]\È[ÙHžH[ÙHX]™\ÈXXÚÜ\ÈHÙ[Z[™[HØ]Y[ÙH˜Z[‹ˆÚ]HÛÈÜÈÛÛ\[Y[\žH8 %ÛÈ[‚ˆH™YH‹‹‹Ø[ÛKÈ™[XÝ›Ë[ÜXÈ[Ù[]ÜØOˆ›ÛÝÙYžHH”È›ÙXÙ\ÈÛÈ™X[ˆ[\›X]™Y˜Z[œÈ˜]\ˆ[ˆÛÈÝXYH[‹\ÝÙ\ˆ™X[\ËÜ˜ˆ[Z]][ÛœÎˆ•HÝX™H\ÈYX[ˆ›ÝÜÈ\™H\™™XÝH\™KÚXÚBˆ™Y›XÝYÜÙˆH™X[ÝX™H\È[\]XØ[H›Ý8 %^XÝ™X\™\ˆŒŒH\™H8 %ÛÂˆ[ˆ^\š[Y[ÚÜÙH™\Ý[\[™ÈÛˆ™Y›XÝY\Ü\š]HÚ[ÛÚÈ™]\ˆ\™Bˆ[ˆÛˆH™[˜Úˆ\™H\È›ÈÛØ][™ÈÜÜË›È™\ÚYX[™Y›XÝ[Ûˆ]H[˜[˜ÙBˆ[™^]˜XÙ\Ë[™›È[™Ý[\ˆÜˆÜXÝ˜[XØÙ\[˜ÙNˆHÜ]\ÈHØ[YH]ˆ]™\žHØ]™[[™Ý[™]™\žH[™ÛHÙˆ[˜ÚY[˜ÙKÚ\™X\ÈH™X[ÝX™H\ÈÜXÚYšYY›Ü‚ˆH˜[™[™YÜ˜Y\ÈÝ]ÚYH]ˆHÛ\ÜÈ]›ÝYÚHÝX™H\È›Ý[Ù[YˆZ]\‹ÛÈ]YÈ›ÈÜXØ[][™›ÈÜ›Ý\Y[^H\Ü\œÚ[ÛˆÈH[ÙKÜ˜ˆKˆ™[]YˆÉÜÛ\š^™\‰Ë	ÚÜ	Ë	ØœÉË	Ú\ÛÛ]Ü‰×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Û\š^™\œÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜÛ\š^™\œËš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %™X[HÜ]\œÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKØ™X[WÜÜ]\œËš[	ÈKˆKˆKˆÂˆ\Nˆ	Ú\ÛÛ]Ü‰ËˆÝ[[X\žNˆ”\ÜÙ\ÈYÚ[Û™È]È›ÜØ\™\™XÝ[Ûˆ[™›ØÚÜÈ™]™\œÙH›ÜYØ][Û‹›ÝšY[™È[ˆYX[^™YØ^HÈ\ÛÛ]HHÛÝ\˜ÙHœ›ÛH™]\›š[™ÈÜXØ[]Ëˆ‹ˆ]Nˆ	ÓÜXØ[\ÛÛ]Ü‰ËˆØ]YÛÜžNˆ	ÔÛ\š^˜][Û‰Ëˆ™X[ÛÜ›ˆÂˆ[ˆˆ[ˆÜXØ[\ÛÛ]Üˆ\ÈHÛ™K]Ø^H˜[™H›ÜˆYÚˆ]\ÜÙ\ÈH™X[H[ˆH›ÜØ\™ˆ\™XÝ[Ûˆ[™›ØÚÜÈ[ž][™ÈÛÛZ[™È˜XÚËˆ\Ù\œÈ™YYÛ™H™XØ]\ÙH^H\™H[\ÝX[Bˆ[™\˜X›HÈZ\ˆÝÛˆ™Y›XÝYYÚˆH™]È\ˆÙ[™]\›š[™È[ÈHØ]š]HØ[‚ˆ\ÝXš[\ÙHHÝ]]ÝÙ\‹œ›ØY[ˆH[™]ÚYš]™HH[ÙH[È[ÙKZÜ[™ËˆÜˆ8 %Ú][›ÝYÚÝÙ\ˆ8 %[XYÙHH˜XÙ]Ý]šYÚˆ]™\žHÜXÈÝÛœÝ™X[H™Y›XÝÂˆÛÛY][™ËÛÈÛˆ[žHÙ\š[Ý\È\Ù\ˆ™[˜ÚH\ÛÛ]ÜˆÛÙ\È[ˆš\œÝÜ‚ˆ•Ú]XZÙ\È]ÜÜÚX›H\ÈHÙ[Z[™[H[\ÝX[YXÙHÙˆ\ÚXÜËˆ[[ÜÝ]™\ž][™Âˆ[ˆÜXÜÈ\ÈÝ›Û™Ïœ™XÚ\›ØØ[ÜÝ›Û™ÏŽˆ™]™\œÙHH\™XÝ[ÛˆÙˆ›ÜYØ][Ûˆ[™ˆHYÚ™]˜XÙ\È]È]^XÝKˆHH™YH‹‹‹ÚÜÈØ]™\]OØOˆ]›Ý]\ÂˆÛ\š^˜][ÛˆÛ™HØ^HÛˆHØ^HÝ]›Ý]\È]˜XÚÈÛˆHØ^H[‹ÛÈ›È\œ˜[™Ù[Y[ˆÙˆÜ™[˜\žHÜXÜÈØ[ˆ\Ý[™ÝZ\Ú›ÜØ\™œ›ÛH˜XÚÝØ\™ˆBˆÝ›Û™Ï‘˜\˜Y^HY™™XÝÜÝ›Û™ÏˆØ[‹ˆHXYÛ™]Ë[ÜXÈX]\šX[[ˆHÝ›Û™È^X[ˆXYÛ™]XÈšY[›Ý]\ÈÛ\š^˜][ÛˆžH[ˆ[™ÛHš^YžHHšY[\™XÝ[Û‹›ÝžBˆH\™XÝ[ÛˆHYÚ˜]™[È8 %H™X[HÛÚ[™ÈHÝ\ˆØ^H\È›Ý]YBˆ[OœØ[YOÙ[OˆXœÛÛ]HØ^K›Ý˜XÚËÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×™]HHˆˆ	ËØ\[ÛŽˆ	Ñ˜\˜Y^H›Ý][Ûˆ[™ÛNˆH™\™]ÛÛœÝ[ÙˆHX]\šX[[Y\ÈH^X[šY[[Y\ÈH][™ÝˆH\ÛÛ]Üˆ\ÈZ[ÛÈ]3¬ˆHp¬‰ÈKˆKˆ[ŽˆˆHÝ[™\™\ÛÛ]ÜˆÝXÚÜÈ™YH\Îˆ[ˆ[œ]Û\š^™\‹Hp¬˜\˜Y^Bˆ›Ý]Ü‹[™[ˆÝ]]Û\š^™\ˆÙ]p¬œ›ÛHH[œ]Û™Kˆ›ÜØ\™YÚ\ÂˆÛ\š^™Y›Ý]Yp¬[™\œš]™\È[YÛ™YÚ]HÝ]]Û\š^™\ˆ8 %]\ÜÙ\Ë‚ˆ˜XÚÝØ\™YÚ[\š[™ÈHÝ]]Û\š^™\ˆ\È›Ý]YH\\ˆp¬[Oš[ˆBˆØ[YHXœÛÛ]HÙ[œÙOÙ[O‹™XXÚ[™ÈH[œ]Û\š^™\ˆ]L0¬È][™\Âˆ™Z™XÝYˆH›Û‹\™XÚ\›ØÚ]H\ÈHÚÛHYXÚ[š\ÛNÈÚ]Ý]]H™]\›ˆš\ˆÛÝ[Ú[\H[™ÈHÝ]Ø\™Û™KÜ‚ˆ”™X[]šXÙ\È™XXÚÌ8 $Í	›˜œÜÙˆÙˆ\ÛÛ][ÛˆÚ[HÛÜÝ[™Èx $Ì‰›˜œÜÙˆÛÚ[™Âˆ›ÜØ\™ˆ™XØ]\ÙHH™\™]ÛÛœÝ[[™H™\]Z\™Y›Ý][Ûˆ›Ý\[™Û‚ˆØ]™[[™Ý[ˆ\ÛÛ]Üˆ\ÈÜXÚYšYY›ÜˆH\XÝ[\ˆÛ™K[™]È\™›Ü›X[˜ÙH˜[ÂˆÙ™ˆ]Ø^Hœ›ÛH]Ü˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•H\ÛÛ]Üˆ\È[Ù[Y\ÈÚ]]Ù\È˜]\ˆ[ˆÝÈ]Ù\È]ˆBˆ\™XÝ[Û˜[Ø]Kˆ˜^\È˜]™[[™È[Û™ÈH[[Y[	ÜÈ›ÜØ\™\™XÝ[Ûˆ\ÜÈ›ÝYÚˆ[ÝXÚYÈ˜^\ÈÚ][žH˜XÚÝØ\™ÛÛ\Û™[\™H™[[Ý™Yœ›ÛHH˜XÙH[\™[K‚ˆ›Ý][™ÈH[[Y[Ù]ÈÚXÚØ^H\È›ÜØ\™ÛÈ[ˆ\ÛÛ]Üˆ\›™YN0¬›ØÚÜÂˆH™X[H]™]š[Ý\ÛH\ÜÙY8 %HÚ[\\ÝØ^HÈÙYHH[[Y[ÛÜšÚ[™ËÜ‚ˆ’]È\ÙH\™H\ÈHØ[YH\ÈÛˆH™[˜Úˆ]Û™HšYÚY\ˆH\Ù\‹Z[HHZ\œ›Ü‚ˆÜˆH\X[H™Y›XÝ[™ÈÝ\™˜XÙHÝÛœÝ™X[K[™H™]\›ˆ™X[H]ÛÝ[ˆÝ\Ú\ÙH˜]™[˜XÚÈ[ÈHÛÝ\˜ÙHÝÜÈ]H\ÛÛ]Üˆ[œÝXYˆ™XØ]\ÙHBˆÚÙ]Ú˜XÙ\È™Y›XÝ[ÛœÈ\È™X[˜^\Ë]˜XÚË\›ÜYØ][™È™X[H\ÈÙ[Z[™[Bˆ\™HÈ™H›ØÚÙY˜]\ˆ[ˆY\™[H[\YYÜ‚ˆ“›ÝH]\Ü]H]š[™È[ˆHÛ\š^˜][ÛˆØ]YÛÜžK\È[[Y[Ù\È›ÝˆÝXÚÛ\š^˜][Ûˆ][ˆH™X[IÜÈÝÚÙ\ÈÝ]H\ÈY[XØ[™Y›Ü™H[™Y\ˆ]‚ˆ]\ÈH[X™\˜]HÚ[\YšXØ][Û‹[™]Y™™\œÈœ›ÛHH™X[\ÛÛ]Üˆ[ˆHØ^BˆÛÜÛ›ÝÚ[™ÈX›Ý]8 %ÙYH™[ÝËÜ˜ˆ[Z]][ÛœÎˆ•H˜\˜Y^HYXÚ[š\ÛH\È›Ý[Ù[Yˆ\™H\È›È›Ý]Üˆ[™\™Bˆ\™H›È[\›˜[Û\š^™\œËÛÈH[[Y[Ù\È›ÝÛ\š^™H]ÈÝ]]HØ^HBˆ™X[\ÛÛ]ÜˆÙ\ÎˆYÚX]™\È[ˆÚ]]™\ˆÝ]H]\œš]™YÚ\™X\ÈH™X[]šXÙBˆ[Z]ÈYÚÛ\š^™Y[Û™È]ÈÝ]]Û\š^™\ˆ™YØ\™\ÜÈÙˆH[œ]ˆYˆ[Ý\‚ˆÙ]\\[™ÈÛˆ]XÙH[ˆ^XÚ]H™YH‹‹‹ÜÛ\š^™\‹ÈœÛ\š^™\ØOˆY\‚ˆH\ÛÛ]ÜˆÈ™\™\Ù[]ˆ\ÛÛ][Ûˆ\È[ÛÈ\™™XÝ[™[œÝ[[™[Ý\È˜]\ˆ[‚ˆHÌ8 $Í	›˜œÜÙˆH™X[]šXÙHXÚY]™\Ë›ÜØ\™˜[œÛZ\ÜÚ[Ûˆ\ÈÜÜÛ\ÜÈ˜]\‚ˆ[ˆÛÜÝ[™Èx $Ì‰›˜œÜÙ‹[™\™H\È›ÈØ]™[[™Ý[\\˜]\™KÜˆšY[ˆ\[™[˜ÙH8 %H™X[\ÛÛ]ÜˆÛÜšÜÈ›Ü\›HÛ›H™X\ˆHØ]™[[™Ý]Ø\ÈZ[ˆ›Ü‹ˆ›Ý[™ÈÝ]ÚYHHÛX\ˆ\\\™H\ÈY™™XÝYÜ˜ˆKˆ™[]YˆÉÜÛ\š^™\‰Ë	Ü]Ü	Ë	ÜœÉË	ØÝÛ\Ù\‰×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %˜\˜Y^H\ÛÛ]ÜœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÙ˜\˜Y^WÚ\ÛÛ]ÜœËš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %˜\˜Y^HY™™XÝ	Ë\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÙ˜\˜Y^WÙY™™XÝš[	ÈKˆKˆKˆÂˆ\Nˆ	Ø[ÛIËˆÝ[[X\žNˆ‘Y›XÝÈYÚ[ÈHš\œÝY™œ˜XÝ[ÛˆÜ™\ˆÚ]Y\ÝX›HY™šXÚY[˜ÞKÜ[Û˜[™\›ÈÜ™\‹[™Ü]X\™KÚ[™KÜˆØ]ÝÛÝ[Ù[][ÛˆÙˆHš]™Kˆ‹ˆ]Nˆ	ÐXÛÝ\ÝË[ÜXÈ[Ù[]Üˆ
+SÓJIËˆØ]YÛÜžNˆ	Ó[Ù[]ÜœÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆ[ˆSÓHY™œ˜XÝÈYÚÙ™ˆH˜]™[[™ÈÛÝ[™Ø]™H][˜ÚY[ÈHÜž\Ý[žHBˆY^›Ù[XÝšXÈ˜[œÙXÙ\ˆš]™[ˆ][ˆ‘ˆœ™\]Y[˜ÞKˆ[ˆHœ˜YÙÈ™YÚ[YKYÚˆ[˜ÚY[]Hœ˜YÙÈ[™ÛHY™œ˜XÝÈY™šXÚY[H[ÈHÚ[™ÛHÜ™\‹ÚYY[‚ˆœ™\]Y[˜ÞHžH^XÝHHš]™Hœ™\]Y[˜ÞH
+\\ÚYYÜˆÝÛ‹\ÚYY\[™[™ÈÛ‚ˆ›ÜYØ][Ûˆ\™XÝ[Ûˆ™[]]™HÈHÛÝ[™Ø]™JNÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×Ú[—]WÐˆHœ˜XÞ×[X™_^Ì—[X™_K\]XY[X™HHœ˜XÞÝ—Üß^Ù—ÞÔ‘Ÿ_IËØ\[ÛŽˆ	Ðœ˜YÙÈ[™ÛKÙ]žHHXÛÝ\ÝXÈØ]™[[™Ý3¦È
+ÛÝ[™™[ØÚ]H¸ ¦ÈÝ™\ˆš]™Hœ™\]Y[˜ÞJK‰ÈKˆÈ^ˆ	Ù—Þ×^ÛÝ]_HH—Þ×^Ú[Ÿ_HH—ÞÔ‘ŸIËØ\[ÛŽˆ	ÕHY™œ˜XÝY™X[H\Èœ™\]Y[˜ÞK\ÚYYžH^XÝHH‘ˆš]™Hœ™\]Y[˜ÞK‰ÈKˆKˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ‘Y›XÝ[Ûˆ[™[Ù[][ÛˆY™šXÚY[˜ÞH\™H\™XÝÛÛ™šYÝ\˜X›H\˜[Y]\œÂˆ˜]\ˆ[ˆ]X[]Y\È\š]™Yœ›ÛHÜž\Ý[Üˆš]™H›Ü\Y\ËˆHÜXØ[ˆœ™\]Y[˜ÞHÚY\ÈÝ›Û™Ï››ÝÜÝ›Û™Ïˆ\YY[™\™H\È›Èš]™KYœ™\]Y[˜ÞBˆÛÛ›ÛˆHÚY\È™X[	›Y\ÚÈ]\ÈHÚÛH˜\Ú\ÈÙˆ]\›Ù[™H]XÝ[Û‚ˆ	›Y\ÚÈ]]Ë‰[Y\ÎÌLÝ\‰›Z[\ÎÍOÜÝ\‰›˜œÜÛ›H›Üˆ	›˜œÜÓRˆ]ˆLÌ‰›˜œÜÛ›H]\ÈHÝ\Ø[™[Y\Èš[™\ˆ[ˆ[žHØ]™[[™ÝY™™\™[˜ÙH\ÂˆÛÜšØ™[˜Ú™\ÛÛ™\ËÚ[˜ÙH]™\žH™XYÝ]\™H›Ý[™ÈÈH™X\™\Ý˜[›ÛY]™K‚ˆØ\œžZ[™È]Û›H]™\ˆ[Ý™YH[X™\ˆ›Ý[™ÈÛÝ[™\ÜˆBˆH™YH‹‹‹Ø[ÙÈSÑØOˆY[™XYHXÛ[™Y]›ÜˆHØ[YH™X\ÛÛ‹‚ˆØ][™ÈÝ\Ü]ÈH[Ù[Y‘ˆš]™H˜\žH[ˆ[YKÚXÚH[ÙK][Z[™ÂˆÝ™\›^H™XYÈ\ÈH[\Ü˜[Ø]HÛˆH™X[Kˆ™YHØ]™Y›Ü›\È\™HÙ™™\™Y˜[YYˆ›ÜˆHš]™HH[˜Ý[ÛˆÙ[™\˜]ÜˆÛÝ[Ý\NˆÝ›Û™ÏœÜ]X\™OÜÝ›Û™ÏˆÝÚ]Ú\ÂˆHY™œ˜XÝYÜ™\ˆ[HÛˆ[™Ù™ˆ[™\ÈHÛ›HÛ™HÚ]Bˆ[O™]HÞXÛOÙ[OŽÈÝ›Û™ÏœÚ[™OÜÝ›Û™Ïˆ[™Ý›Û™ÏœØ]ÝÛÝÜÝ›Û™ÏˆÝÙY\Bˆš]™HÛÛ[[Ý\ÛH[™\™H\ØÜšX™YžHH[O›[Ù[][Ûˆ\Ù[Oˆ[œÝXYˆÝÚ[™Ú[™È™]ÙY[ˆI›Z[\ÎÙ\[™[˜[œÛZ\ÜÚ[Û‹ˆ›ÝÛÛ[[Ý\ÈÚ\\Âˆ\™Y›Ü™H]™\˜YÙHI›˜œÜÉ›Z[\ÎÉ›˜œÜÙ\ÌˆÝ™\ˆH\š[ÙÚXÚ\ÈHÝÙ\ˆBˆ]XÝÜˆÚ]›È[\Ü˜[™\ÛÛ][Ûˆ™XYËÜ‚ˆ•H˜[\Ø\œšY\ÈHÞ[[Y]žHÛÛ›ÛH[˜Ý[ÛˆÙ[™\˜]Üˆ]ÈÛˆ]ÈÝÛ‚ˆ˜[\Ý]]ˆ[O”š\ÙHœ˜XÝ[ÛÙ[Oˆ\ÈÝÈ]XÚÙˆH\š[Ù\ÈÜ[Û[Xš[™Î‚ˆH\ÈHš\Ú[™ÈØ]ÝÛÝH˜[[™ÈÛ™KHHšX[™ÛK[™[ž][™Âˆ™]ÙY[ˆ[ˆ\Þ[[Y]šXÈšX[™ÛHXZÚ[™È]^XÝH]Ú[[ˆH\š[Ù‚ˆÝÙY\[™È]Ú[™Ù\ÈHÚ\HÚ]Ý]Ú[™Ú[™ÈH]™\˜YÙKÛÈ]™]™\ˆÝX›\Âˆ\ÈHœšYÚ™\ÜÈÛÛ›ÛÜ‚ˆHÜ]X\™HØ]HÝÚ]Ú\ÈHY™œ˜XÝYÜ™\ˆ[HÛˆ[™Ù™‹ÛÈ]Ø[ˆ™Bˆ˜]Ûˆ[ˆÚ[šÜÈ˜]\ˆ[ˆ\ÈH[šY›Ü›[H[[YY[™H	›Y\ÚÈHØ[YHØÚ[X]XÂˆ›ÛÝš[HH™YH‹‹‹ØÚÜ\‹È˜ÚÜ\ØOˆ[™XYH\Ù\È›ÜˆØ]YÕÈYÚ‚ˆ[O‘˜]ÈØ]Y™X[HÚÜYÙ[OˆÛÛ›ÛÈ][™]\ÈH˜]Ú[™ÈÚÚXÙH[Û™N‚ˆH˜XÙYÝÙ\ˆÝ^\È]KX]™\˜YÙY[™]™\žH]XÝÜˆ™XY[™È\ÈY[XØ[ˆZ]\ˆØ^KˆHÛÛ[[Ý\ÈØ]™Y›Ü›\È\™H™]™\ˆÚ[šÙY™XØ]\ÙH^H]™H›ÂˆÛ‹ÛÙ™ˆYÙ\ÈÈ˜]ËÜ‚ˆ•Ú][O’ÙY\Ü™\Ù[OˆÛ‹›ÝÜ™\œÈ\™HÚ[šÙYÝ›Û™Ïš[‚ˆÜÜÚ][ÛÜÝ›Û™ÏŽˆYÚ™]\›œÈÈH[™Y™œ˜XÝY™X[H^XÝHÚ[HH‘‚ˆ\ÈÙ™‹ÛÈÛ™H\È]Ú\™]™\ˆHÝ\ˆ\È\šËˆ›Ý™X[\ÈÝ[Ø\œžHZ\‚ˆ]KX]™\˜YÙYÝÙ\‹[™HÛÈÜ™\œÈ[Ø^\ÈÝ[HÈH[˜ÚY[ÝÙ\‹Ü‚ˆH]XÝÜ‰ÜÈ[YH˜XÙHÚÝÜÈH]™[È˜]\ˆ[ˆ\ÝHÚ\Kˆ]Âˆ™\XØ[^\È\ÈXœÛÛ]H›ÜˆHÚ[™ÛH™X[H8 %[ZYÚ\ÈÛ™HÚÛHÛÝ\˜ÙBˆ™X[K[™YÚÜÝ\Ý™X[H˜]ÜÈÚÜ˜]\ˆ[ˆ™Z[™È™\ØØ[Y˜XÚÈ8 %ÛÂˆ[O›[Ù[][ÛˆY™šXÚY[˜ÞOÙ[Oˆ\Èš\ÚX›H\ÈHÛÛ˜\Ý]™X[HÙ]Îˆ]ˆ	™]NÉ›˜œÜÏI›˜œÜÌHHY™œ˜XÝYÜ™\ˆXZÜÈ][ˆZYÚÚ[HBˆ[™Y™œ˜XÝYÛ™HÛ›H˜[ÈÈ[‹[ˆÜÜÚ][Û‹[™HÛÈÝ[HÈH™X[H]ˆ]™\žH[œÝ[ˆ]	™]NÉ›˜œÜÏI›˜œÜÌH›ÝÝÚ[™ÈHÚÛHØ^KˆYÚÜÝˆ[ž]Ú\™H\Ý™X[HÚÜ[œÈH˜XÙH[ˆHØ[YHØ^K[œÝXYÙˆ™Z[™È›Ü›X[^™Yˆ˜XÚÈÈ[ØØ[KÜ˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ‘Y›XÝ[Ûˆ[™ÛH[™[Ù[][ÛˆY™šXÚY[˜ÞH\™HÙ]\™XÝHžBˆ[ÝK›Ý\š]™Yœ›ÛHHœ˜YÙÈÛÛ™][Û‹‘ˆÝÙ\‹Üˆ[\˜XÝ[Ûˆ[™Ý8 %\Âˆ\ÈHØÚ[X]XÈXÛÝ\ÝË[ÜXÈ[Ù[›ÝHœ˜YÙËXÙ[Ú[][]Ü‹‚ˆ[O“[Ù[][ÛˆY™šXÚY[˜ÞOÙ[Oˆ\ÈHÜž\Ý[	ÜÂˆY™œ˜XÝ[ÛˆY™šXÚY[˜ÞH[™\ˆ[›Ý\ˆ˜[YNˆ]\ÈHœ˜XÝ[ÛˆÙˆH™X[H]Ø[‚ˆ™HÝÚ]ÚYÚXÚ\È^XÝHÚ][Z]ÈHÛÛ˜\ÝÙˆ›ÝÜ™\œËˆHÚ[šÈÜXÚ[™È\ÈØÚ[X]XÈÛÎˆH™X[ˆYYØZ\ˆØ]HÛÝ[]]ÈÚ[šÜÈZXÜ›ÛY]™\È\\ÛÈHš^YÛ‹\ØÜ™Y[‚ˆ\š[Ù\È˜]Ûˆ[œÝXY^XÝH\È[ÙHX\šÙ\œÈ\™HÜXÙY›ÜˆYÚXš[]Bˆ˜]\ˆ[ˆÈØØ[K[™HÛÈÜ™\œÈÚ\™H]\š[Ù˜]\ˆ[ˆXXÚˆ›ÛÝÚ[™È]ÈÝÛˆ‘ˆ[Z[™ËˆHÚ[šÜÈ\™H[ÛÈYX[^™Y[ˆ\ˆ›ÝˆÜ™\œÈ\™H˜]Ûˆ[H\šÈ™]ÙY[ˆÚ[šÜËÚ[HH™X[Y™œ˜XÝYÜ™\‚ˆÛ›H™XXÚ\ÈHÛÛ™šYÝ\™YY™šXÚY[˜ÞH[™H™X[™\›ÝÜ™\ˆÙY\ÂˆI›Z[\ÎÙY™šXÚY[˜ÞHÙˆH™X[H˜]\ˆ[ˆ^[™ÝZ\Ú[™Ëˆ˜]Ú[™È]ˆ™\ÚYX[\È]ÈÝÛˆœ˜[˜ÚÛÝ[]™H]H\Ü^HÙ][™ÈÚ[™ÙHH]XÝÜ‚ˆ™XY[™ËÚXÚHÚ[šÜÈ]\Ý™]™\ˆËÜ˜ˆKˆ™[]YˆÉØ[Ù	Ë	Ø[Ý‰Ë	Ù[ÛIË	ØÚÜ\‰×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %XÛÝ\ÝË[ÜXÈ[Ù[]ÜœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKØXÛÝ\Ý×ÛÜX×Û[Ù[]ÜœËš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	Ù[ÛIËˆÝ[[X\žNˆÚ[™Ù\ÈÛ\š^˜][Ûˆ›ÝYÚ›ÛYÙKXÛÛ›ÛY™]\™[˜ÙK[š^YÜˆÝÚ]ÚY\š[ÙXØ[KÛÈHÝÛœÝ™X[H[˜[^™\ˆØ[ˆÛÛ™\HÚ[™ÙH[È[[œÚ]H[Ù[][Û‹ˆ‹ˆ]Nˆ	Ñ[XÝ›Ë[ÜXÈ[Ù[]Üˆ
+SÓJIËˆØ]YÛÜžNˆ	Ó[Ù[]ÜœÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆ[ˆ[XÝ›Ë[ÜXÈ[Ù[]ÜˆÛÛ›ÛÈYÚÚ]H›ÛYÙKˆ[[ÜÝ[Ùˆ[BˆÛÜšÈ›ÝYÚH[O”ØÚÙ[ÈY™™XÝÙ[OŽˆ[ˆHÜž\Ý[Ú]Ý][™\œÚ[ÛˆÞ[[Y]žKˆ[ˆ\YY[XÝšXÈšY[Ú[™Ù\ÈH™Yœ˜XÝ]™H[™^[ˆ›ÜÜ[ÛˆÈHšY[ˆÝ™[™Ý	ØÚ]JJ_IØÚ]JÊ_Kˆ]H™]È[™™Y›ÛÈXÜ›ÜÜÈHÙ[[Y]™HÙˆ]][Bˆš[Ø˜]H[™HÜXØ[]›ÝYÚ]Ú[™Ù\ÈžHHœ˜XÝ[ÛˆÙˆHØ]™[[™Ý8 %ˆÚ]›È[Ýš[™È\[™[ˆ˜[›ÜÙXÛÛ™ËÜ‚ˆ•H]X[]H]\ØÜšX™\ÈH]šXÙH\ÈH›ÛYÙH™YYYÈÚYH\ÙHžBˆ3àHÝ›Û™Ïš[‹]Ø]™H›ÛYÙOÜÝ›Û™Ï‹ˆ›ÜˆH[ÈØÚÙ[ÈÙ[]\È[™™YÂˆÜˆÝ\Ø[™ÈÙˆ›ÛËÚXÚ\ÈÚH\ÙH]šXÙ\ÈÛÛYHÚ]YÚ]›ÛYÙHš]™\œÎÂˆHØ]™YÝZYH[Ù[]Ü‹Ú\™HH[XÝ›Ù\ÈÚ]ZXÜ›ÛY]™\È\\˜]\ˆ[‚ˆZ[[Y]™\Ë™YYÈ˜\ˆ\ÜÈ[™ÝÚ]Ú\È˜\ˆ˜\Ý\‰ØÚ]JJ_IØÚ]JŠ_KÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×[Hˆ›ÜÈH\]XYÛ™ÜšYÚ\œ›Ý×\]XY[W˜\œHHWœ˜XÞÕŸ^Õ—×_IËØ\[ÛŽˆ	ÕHØÚÙ[ÈY™™XÝ\È[™X\ˆ[ˆH\YYšY[ÛÈH\ÙHÚY\È[™X\ˆ[ˆH›ÛYÙKˆ³àH[‹]Ø]™H›ÛYÙK\ÈHÚÛHÜXÚYšXØ][Ûˆ[ˆÛ™H[X™\‹‰ÈKˆKˆ[Žˆˆ•Ú]XZÙ\ÈH˜[Z[HÛÛ™\Ú[™È\È]Û™H\ÚXØ[]šXÙH8 %HÜž\Ý[Ú]ˆ[XÝ›Ù\ÈÛˆ]8 %™XÛÛY\È™YH]Z]HY™™\™[[œÝ[Y[È\[™[™ÈÛˆÝÈBˆYÚ\ÈÙ[›ÝYÚ][™Ú]\ÈXÙYY\ˆ]Ü‚ˆÏ”\ÙH[Ù[]ÜÚÏ‚ˆ•HÚ[\\Ý\œ˜[™Ù[Y[[™HÛ™H]™\ž][™È[ÙH\ÈZ[œ›ÛNˆH[œ]ˆÛ\š\Ø][Ûˆ\È[YÛ™YÈÛ™HÙˆHÜž\Ý[	ÜÈÜXØ[^\ËÛÈHÛ\š\Ø][Û‚ˆÝ]H\È[ÝXÚY[™Û›HH\ÙH[Ý™\ÉØÚ]JJ_Kˆš]™H]Ú[\ÛÚY[H[™BˆÝ]]\È›ÝÛ™Hœ™\]Y[˜ÞH]HÛÛXˆ8 %HØ\œšY\ˆ\ÈÚYX˜[™È]]™\žBˆ][\HÙˆHš]™Hœ™\]Y[˜ÞKÚ][\]Y\ÈÚ]™[ˆžH™\ÜÙ[ˆ[˜Ý[ÛœÉØÚ]JŠ_KÜ˜ˆ›Ü›][\ÌŽˆÂˆÈ^ˆ	ÙWžÚW™]WÚ[—ÛYYØHHHÝ[WÞÛKW[™_Wž×[™_H—ÛŠ™]JWWžÚ[—ÛYYØHIËØ\[ÛŽˆ	ÕH˜XÛØšx $Ð[™Ù\ˆ^[œÚ[ÛŽˆ\ÙH[Ù[][ÛˆÙˆ\3¬ˆ]ÈÚYX˜[™È]3âH0¬H³ªHÚ][\]YH¸ ¦J3¬ŠKˆš]™H\™[›ÝYÚ[™Þ™[œÈÙˆ[H\X\‹ÚXÚ\ÈÝÈH[Ù[]Üˆ™XÛÛY\ÈHÛÛXˆÙ[™\˜]Ü‹‰ÈKˆKˆ[Îˆˆ•ÜÙHÚYX˜[™È\™HHÚ[ÙˆH]šXÙH[ˆ\Ù\ˆÝXš[\Ø][ÛŽˆBˆÝ[™8 $Ñ™]™\¸ $Ò[XÚš\]YHØÚÜÈH\Ù\ˆÈHØ]š]HžH\ÚÚ[™ÈÝÈHÚYX˜[™Âˆ]Ü›ÝHÛÛYH˜XÚÉØÚ]JJ_KˆÛÜ›Ý[™ÈÚ]H\ÙH[Ù[]Üˆ\È[O››ÝÙ[O‚ˆÛÛÙ›ÜŽˆ]Ø[››Ý›ÙXÙHHÝ\ÝZ[™Yœ™\]Y[˜ÞHÚYÚ[˜ÙH]ÛÝ[™YYBˆ\ÙH˜[\[˜Ü™X\Ú[™ÈÚ]Ý][Z]	ØÚ]JJ_Kˆ[ˆH™YH‹‹‹Ø[ÛKÈSÓOØOˆÙ\È]ˆ[œÝXYÜ‚ˆÏ”Û\š\Ø][Ûˆ[Ù[]ÜÚÏ‚ˆ“ÜšY[HÜž\Ý[ÛÈHÛÈÛ\š\Ø][Ûˆ^\ÈÙYHY™™\™[[™^Ú[™Ù\Ë[™ˆHÙ[™XÛÛY\ÈHÝ›Û™Ï›ÛYÙKXÛÛ›ÛYØ]™\]OÜÝ›Û™Ï‰ØÚ]JJ_IØÚ]JŠ_K‚ˆ[™X\ˆYÚ[\š[™È]p¬ÈH^\ÈX]™\È[\XØ[[ˆÙ[™\˜[È]^XÝHBˆ[ˆØ]™HÙˆ™[]]™H™]\™[˜ÙH]X]™\È[™X\ˆYØZ[‹›Ý]YžHL0¬ˆš]™H]ˆ˜[™Û[H[™]\ÈHÛ\š\Ø][ÛˆØÜ˜[X›\‹Ü‚ˆÏ[\]YH[Ù[]ÜÚÏ‚ˆ•ÛÈ›Ý]\Ë[™^H™[Û™ÈÈY™™\™[ÛÜ›Ëˆ]HÛ\š\Ù\ˆY\ˆBˆÛ\š\Ø][Ûˆ[Ù[]Üˆ[™HÛ\š\Ø][ÛˆÝÚ[™È™XÛÛY\È[ˆ[[œÚ]HÝÚ[™È8 %BˆÛ\ÜÚXÈ[È\œ˜[™Ù[Y[[™H˜\Ú\ÈÙˆK\ÝÚ]Ú\ËØ]š]H[\\œÈ[™[ÙBˆXÚÙ\œÉØÚ]JJ_KˆÜˆ]H\ÙH[Ù[]Üˆ[ˆÛ™H\›HÙˆHXXÚ8 $Ö™Z™\‚ˆ[\™™\›ÛY]\‹ÛÈHÛÈ\›\È[\™™\™HÛÛœÝXÝ]™[HÜˆ\ÝXÝ]™[HXØÛÜ™[™ÂˆÈHš]™IØÚ]JJ_IØÚ]JŠ_KˆH[\™™\›ÛY]šXÈ›Ý]H\ÈÚ][YÜ˜]YÜXÜÂˆ\Ù\Ë™XØ]\ÙHÛˆHÚ\H\ÙHÝXš[]H]\œ˜[™Ù[Y[[X[™È\È˜\ˆX\ÚY\‚ˆÈÛ[ˆÛˆH™[˜Ú8 %[™]\ÈHÛÜšÚÜœÙHÙˆÜXØ[ˆ[XÛÛ[][šXØ][ÛœËÜ‚ˆÏ™^[Û™HØÚÙ[ÈY™™XÝÚÏ‚ˆ’Ù\œˆÙ[È\ÙHH]XY˜]XÈ[XÝ›Ë[ÜXÈY™™XÝ[™\™H[˜ÛÛ[[Û‰ØÚ]JJ_K‚ˆ[XÝ›ËXXœÛÜœ[Ûˆ[Ù[]ÜœÈÚ[™ÙHXœÛÜœ[Ûˆ˜]\ˆ[ˆ[™^›ÝYÚBˆœ˜[ž¸ $ÒÙ[\ÚY™™XÝÜˆH]X[[KXÛÛ™š[™YÝ\šÈY™™XÝ[ˆHÙ[ZXÛÛ™XÝÜ‹[™ˆÛÈ\™H›Ý[XÝ›Ë[ÜXÈ[ˆHØ[YHÙ[œÙH][	ØÚ]JJ_IØÚ]JŠ_Kˆ\Û[ÛšXÂˆ[Ù[]ÜœË^Ú][™ÈÝ\™˜XÙH\Û[ÛˆÛ\š]ÛœÈ]Y][Ý\™˜XÙ\Ë\™H^™[Y[Bˆ˜\Ý]ÝÈ[™\™ÞIØÚ]JJ_KÜ‚ˆ“X]\šX[ÈX]\‹[™H˜YK[Ù™œÈ\™HÜXÚYšXÎˆÑ
+”Ú]™\È^Ù[[ÜXØ[ˆ]X[]H[™YÚ^[˜Ý[ÛˆÝ™\ˆ\™ÙH\\\™\ËÚXÚXZÙ\È]HÝ[™\™›Ü‚ˆK\ÝÚ]Ú\Ë]]\ÈYÜ›ÜØÛÜXÈ[™š[™ÜÈY^›Ù[XÝšXØ[K[Z][™ÈBˆ™\]][Ûˆ˜]Kˆ“È[™\ÈYÚ]™\˜YÙHÝÙ\ˆ[™ÝÚ]Ú\È˜\Ý\‹ˆ]][Bˆš[Ø˜]HÛZ[˜]\ÈØ]™YÝZYH]šXÙ\È›Üˆ]È\™ÙH[XÝ›Ë[ÜXÂˆÛÙY™šXÚY[ÉØÚ]JJ_Kˆ]šXÙ\È[[™Y›ÜˆÝXš[]HÙ[ˆ\ÙHÛÈX]ÚYÙ[Âˆ[ˆ[ˆ]\›X[Z\š[™È]Ø[˜Ù[ÈH[\\˜]\™HšYÙˆH™[]]™H\ÙKÜ‚ˆ›Ý\ˆÜž\Ý[ÈÈØ[˜Ù[Ø[Ë[Ù™ˆ\ÈÙ[	ØÚ]JJ_KÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•\È[[Y[\ÈHÝ›Û™ÏœÛ\š\Ø][Ûˆ[Ù[]ÜÜÝ›Û™ÏˆÙˆH™YNˆBˆØÚÙ[ÈÙ[\ÙY\ÈH›ÛYÙKXÛÛ›ÛYØ]™\]Kˆ]\Y\ÈH™]\™[˜ÙBˆ™]ÙY[ˆHÛÈ^\ÈÙˆHÜž\Ý[ÚÜÙHÜšY[][Ûˆ[ÝHÙ]Z]\ˆ\ÈHš^Yˆ˜[YHÜˆÝÚ]Ú[™È™]ÙY[ˆÛÈÝ]\È\ÈHÜ]X\™HØ]™HÛˆHÚ\™YÚ[][][Û‚ˆÛØÚËÜ‚ˆ•HY˜][ÝÚ]Ú[™È[ÙH›\È™]ÙY[ˆÜÙÛÛ˜[[™X\ˆÛ\š\Ø][ÛœËÚXÚˆ\ÈH[‹]Ø]™HÝÚ]ÚHØÚÙ[ÈÙ[\È\ÝX[H›ÝYÚ›Üˆ[™™YYÈ›ÂˆÜž\Ý[X^\È™X\ÛÛš[™È][ˆ]HH™YH‹‹‹ÜÛ\š^™\‹ÈœÛ\š\Ù\ØOˆÜˆBˆH™YH‹‹‹ÜœËÈœÛ\š\Ú[™È™X[\Ü]\ØOˆY\ˆ][™]™XÛÛY\È™X[ˆ[[œÚ]H[Ù[][Ûˆ8 %H[È[\]YH[Ù[]ÜˆX›Ý™KZ[HØ^H]\ÈZ[ˆÛˆH™[˜ÚˆÚ]H[ÙYÛÝ\˜ÙK[™]šYX[[Ù\È\™H›Ý]YžHÚXÚ]™\ˆÝ]Bˆ^HYY]ÛÈHÝÙ]XÝÜˆÛˆHØÜ™Y[ˆÚÝÜÈH[Ù[]Y˜Z[ˆ[™H[[Y[ˆÛÜšÜÈ\ÈH[ÙHXÚÙ\‹Ü˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ•\È[[Y[\ÈHÛ\š\Ø][Ûˆ[Ù[]Üˆ[Û™KˆH\ÙBˆ[Ù[]Üˆ\ÈHÙ\\˜]HÛÛ\Û™[8 %ÙYBˆH™YH‹‹‹Ü\Ù[[Ù[]Ü‹È”\ÙH[Ù[]ÜØOˆ8 %[™H[\]YH[Ù[]Üˆ\ÂˆZ[˜]\ˆ[ˆ›ÝšYYˆHÛ\š\Ù\ˆY\ˆ\ÈÛ™KÚXÚÛÜšÜÈÚ][žHÛÝ\˜ÙKˆÜˆH\ÙH[Ù[]Üˆ[ˆÛ™H\›HÙˆ[ˆ[\™™\›ÛY]\‹ÚXÚ™YYÈHÚ^™Yˆ[Û›ØÚ›ÛX]XÈÕÈ\Ù\ˆ›ÜˆH\›\ÈÈ[\™™\™H][Ü‚ˆ“›Ý[™È\™H\ÈH›ÛYÙKˆ™]\™[˜ÙH\ÈÙ][ˆYÜ™Y\È\™XÝKÛÈ\™H\È›Âˆ[‹]Ø]™H›ÛYÙK›Èš]™H[\]YK[™›È™[][Ûˆ™]ÙY[ˆHÛÈ8 %ÚXÚ[ÛÂˆYX[œÈH[™X\š]HÙˆHØÚÙ[ÈY™™XÝHÚÛH˜\Ú\ÈÙˆH]šXÙK\Âˆ\ÜÝ[YY˜]\ˆ[ˆÚÝÛ‹ˆHÜž\Ý[\ÈYX[[™XÚ›ÛX]XÎˆH™]\™[˜ÙHÙ]ˆ\™H\Y\È\]X[H]H›H[™MML›KÚ\™HH™X[Ù[\ÈØ[Xœ˜]Y›ÜˆÛ™BˆØ]™[[™Ý[™ØØ[\È›ÝYÚH\ÈKó®Ëˆ›ÈX]\šX[\ÈÚÜÙ[‹ÛÈ›Û™HÙˆBˆX]\šX[˜YK[Ù™œÈ\X\‹Ü‚ˆ”ÝÚ]Ú[™È\È[œÝ[[™[Ý\È[™\™™XÝHÜ]X\™Kˆš\ÙH[YKš]™\ˆ˜[™ÚYˆY^›Ù[XÝšXÈš[™Ú[™Ë\›X[šYÙˆHÜ\˜][™ÈÚ[[™H™\ÚYX[ˆÝ]XÈš\™Yœš[™Ù[˜ÙHH™X[Ù[\È]™\›È›ÛÈ\™H[XœÙ[\È\È[žBˆ[œÙ\[ÛˆÜÜËˆ™\ÛÛ˜[[™˜]™[[™Ë]Ø]™H\ÚYÛœËÚXÚ\ÈÝÈ™X[]šXÙ\Âˆ™XXÚÚYØZ\‹]™H›ÈÛÝ[\œ\Ü˜ˆKˆ™[]YˆÉÜ\Ù[[Ù[]Ü‰Ë	ÜÛ\š^™\‰Ë	ÜœÉË	Ü]Ü	Ë	Ø[ÛI×KˆÚ]][ÛœÎˆÂˆÈX™[ˆ	ø '[XÝ›Ë[ÜXÈ[Ù[]ÜœË8 'H”ÝÛšXÜÈ[˜ÞXÛÜYXH
+ÒHLŒNÍKÍÜŠIË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÙ[XÝ›×ÛÜX×Û[Ù[]ÜœËš[	ÈKˆÈX™[ˆ	Ñ[XÝ›Ë[ÜXÈ[Ù[]Üˆ8 %ÚZÚ\YXIË\›ˆ	ÚÎ‹ËÙ[‹ÚZÚ\YXK›Ü™ËÝÚZÚKÑ[XÝ›Ë[ÜX×Û[Ù[]Ü‰ÈKˆÈX™[ˆ	ÕˆKˆX[Û˜YË8 '[XÝ›ËSÜXÈ[Ù[]ÜœË8 'HÚˆLÈ[ˆKˆ˜\ÜÈ
+YŠK[™›ÛÚÈÙˆÜXÜË›Ûˆ‹XÑÜ˜]ËR[
+NNMJH8 %HÝ[™\™™Y™\™[˜ÙH™X]Y[ˆÜž\Ý[ÜXÜÈ[™H[™^[\ÛÚYH[XÝ›Ë[ÜXÈY™™XÝ[™[Ù[]Üˆ]šXÙ\ÉË\›ˆ	ÚÎ‹ËÝÝÝË˜XØÙ\ÜÙ[™Ú[™Y\š[™ÛXœ˜\žK˜ÛÛKØœ›ÝÜÙKÚ[™›ÛÚË[Ù‹[ÜXÜË]›Û[YK]‹X][ÜÜ\šXË[ÜXÜË[[Ù[]ÜœËYšX™\‹[ÜXÜË^\˜^KX[™[™]]›Û‹[ÜXÜË]\™YY][Û‰ÈKˆKˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %ØÚÙ[ÈÙ[ÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜØÚÙ[×ØÙ[Ëš[	ÈKˆÈX™[ˆ	ÒQQQHXÚ˜]ˆ8 %[XÝ›ÛÜXÈ[Ù[]ÜœÉË\›ˆ	ÚÎ‹ËÝXÚ˜]‹šYYYK›Ü™ËÝÜXËÙ[XÝ›ÛÜXË[[Ù[]ÜœËÉÈKˆKˆK‚ˆÂˆ\Nˆ	Ü\Ù[[Ù[]Ü‰ËˆÝ[[X\žNˆÚ[™Ù\ÈÜXØ[]Ú]Ý]Ú[™Ú[™ÈÛ\š^˜][Û‹XZÚ[™ÈHš]™[ˆ\ÙHÚYš\ÚX›H\È[[œÚ]H[Ù[][ÛˆÚ[ˆXÙY[ˆHÝ\ÜY[\™™\›ÛY]\‹ˆ‹ˆ]Nˆ	Ô\ÙH[Ù[]Ü‰ËˆØ]YÛÜžNˆ	Ó[Ù[]ÜœÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆH\ÙH[Ù[]Üˆ\ÈHÚ[\\Ý[XÝ›Ë[ÜXÈ]šXÙH\™H\ÎˆHØÚÙ[ÂˆÙ[Ú]H[œ]Û\š\Ø][Ûˆ[YÛ™YÈÛ™HÙˆHÜž\Ý[	ÜÈÜXØ[^\ËÛÂˆHÛ\š\Ø][ÛˆÝ]H\È[ÝXÚY[™H›ÛYÙH[Ý™\ÈÛ›HBˆ\ÙIØÚ]JJ_Kˆ›Ý[™ÈX›Ý]H™X[HÚ[™Ù\È]H]XÝÜˆØ[ˆÙYKˆ]\ÈBˆÛÛ\Û™[]™\žHÝ\ˆ[XÝ›Ë[ÜXÈ[Ù[]Üˆ\ÈZ[œ›ÛK[™Ûˆ]ÈÝÛˆ]\ÂˆÛÛ\][H[š\ÚX›KÜ‚ˆ•Ú]HÜž\Ý[XÝX[Hš^\È\ÈHÜXØ[]ˆHØÚÙ[ÈY™™XÝÚ[™Ù\ÂˆH™Yœ˜XÝ]™H[™^[ˆ›ÜÜ[ÛˆÈH\YYšY[ÛÈHÚ]™[ˆš]™HÜš]\ÂˆHØ[YH3¥°­Ó]]™\žHØ]™[[™ÝˆH[Oœ\ÙOÙ[Oˆ]ÛÜœ™\ÜÛ™ÈÈ\™Y›Ü™BˆØØ[\È\ÈKó®ËÚXÚ\ÈÚHH[Ù[]Üˆ\ÈÜXÚYšYYÙÙ]\ˆÚ]BˆØ]™[[™Ý8 %H]šXÙH]\È[‹]Ø]™H]LÌˆ›H\È]X\\‹]Ø]™H]ˆL›IØÚ]JJ_IØÚ]JÊ_KÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×[W˜\œHHœ˜XÞÌ—_^×[X™_W[H—HWœ˜XÞÕŸ^Õ—×_IËØ\[ÛŽˆ	ÕH]Üš][ˆ\Èš^YžHHÜž\Ý[[™H›ÛYÙNÈH\ÙH›ÛÝÜÈœ›ÛH][™HØ]™[[™Ýˆ³àH[‹]Ø]™H›ÛYÙK\È[™™YÈÈÝ\Ø[™ÈÙˆ›ÛÈ›ÜˆH[ÈÙ[˜\ˆ\ÜÈ›ÜˆHØ]™YÝZYK‰ÈKˆKˆ[Žˆˆ‘š]™H]Ú[\ÛÚY[H[™HÝ]]ÜXÝ[H\È›ÈÛ™Ù\ˆÛ™Hœ™\]Y[˜ÞKˆBˆ\ÙH˜\žZ[™È\È3¬ˆÚ[ˆ3ª]›ÙXÙ\ÈHØ\œšY\ˆ\ÈHZ\ˆÙˆÚYX˜[™È]]™\žBˆ][\HÙˆHš]™Hœ™\]Y[˜ÞKÚ][\]Y\ÈÚ]™[ˆžH™\ÜÙ[ˆ[˜Ý[ÛœÉØÚ]JŠ_Kˆš]™H\™[›ÝYÚ8 %H™\ÛÛ˜[[Ù[]ÜˆØ[ˆ™XXÚ\™ÙH\ˆ][Ù\Ý›ÛYÙH8 %[™Þ™[œÈÙˆÚYX˜[™È\X\‹ÚXÚ\ÈÝÈH[Ù[]Ü‚ˆ™XÛÛY\ÈHÛÛXˆÙ[™\˜]Ü‰ØÚ]JJ_KÜ˜ˆ›Ü›][\ÌŽˆÂˆÈ^ˆ	ÙWžÚW™]WÚ[—ÛYYØHHHÝ[WÞÛKW[™_Wž×[™_H—ÛŠ™]JWWžÚ[—ÛYYØHIËØ\[ÛŽˆ	ÕH˜XÛØšx $Ð[™Ù\ˆ^[œÚ[ÛŽˆ[Ù[][Ûˆ\3¬ˆÙ]ÈÝÈHYÚ\È]šYY[[Û™ÈHØ\œšY\ˆ[™HÚYX˜[™È]3âH0¬H³ªK‰ÈKˆKˆ[Îˆˆ•ÜÙHÚYX˜[™È\™HÚ]H]šXÙH\È\ÝX[H›ÝYÚ›Ü‹ˆÝ[™8 $Ñ™]™\¸ $Ò[ˆ\Ù\ˆÝXš[\Ø][ÛˆÜš]\È[H[X™\˜][H[™\ÚÜÈÝÈ^HÛÛYH˜XÚÈœ›ÛHBˆØ]š]K\š]š[™Èœ›ÛH][ˆ\œ›ÜˆÚYÛ˜[]Ø^\ÈÚXÚØ^HH\Ù\ˆ\ÂˆšYY	ØÚ]JJ_Kˆ]\ÈÛÜ™Z[™ÈÛX\ˆX›Ý]Ú]H\ÙH[Ù[]ÜˆØ[››ÝÎ‚ˆ]Ø[››Ý›ÙXÙHHÝ\ÝZ[™Yœ™\]Y[˜ÞHÚY™XØ]\ÙH]ÛÝ[™\]Z\™HH\ÙBˆ˜[\[˜Ü™X\Ú[™ÈÚ]Ý]›Ý[™	ØÚ]JJ_Kˆ[ˆH™YH‹‹‹Ø[ÛKÈSÓOØOˆÚYÂˆœ™\]Y[˜ÞNÈH\ÙH[Ù[]ÜˆÛ›HÛØ˜›\È]Ü‚ˆÏ“XZÚ[™È]š\ÚX›OÚÏ‚ˆ”Ú[˜ÙH\ÙH[Û™H\È[™]XÝX›KH\ÙH[Ù[]Üˆ\È]ÈÛÜšÈžH][™Âˆ][\™™\™HÚ]ÛÛY][™ËˆXÙH][ˆÛ™H\›HÙˆHXXÚ8 $Ö™Z™\ˆ[\™™\›ÛY]\‚ˆ[™HÛÈ\›\È™XÛÛXš[™HÛÛœÝXÝ]™[HÜˆ\ÝXÝ]™[HXØÛÜ™[™ÈÈHš]™KˆÛÈH\ÙH™XÛÛY\ÈÝÙ\ˆ]HÝ]]	ØÚ]JJ_IØÚ]JŠ_Kˆ]\ÈBˆÝ›Û™Ï“XXÚ8 $Ö™Z™\ˆ[Ù[]ÜÜÝ›Û™Ï‹[™]È˜[œÙ™\ˆ[˜Ý[Ûˆ\ÈBˆ[\™™\›ÛY]\‰ÜÈÝÛ‹Ü˜ˆ›Ü›][\ÌÎˆÂˆÈ^ˆ	ÔÞ×^ÛÝ]_HHÞ×^Ú[Ÿ_WÛÜ×žÌŸWWY
+œ˜XÞ×[W˜\œ_^ÌŸWšYÚ
+IËØ\[ÛŽˆ	Ò[ˆHØ]™HÙˆš]™HZÙ\ÈHÝ]]œ›ÛH[HœšYÚÈ[H\šËˆHYÚ\È›ÝXœÛÜ˜™Y8 %]X]™\ÈžHHÝ\ˆÜ‰ÈKˆKˆ[ˆˆ[[ÜÝ[YÚ\ÜYYÜXØ[[XÛÛ[][šXØ][ÛœÈ[œÈÛˆ\È\œ˜[™Ù[Y[Z[ˆ\ÈHØ]™YÝZYH[\™™\›ÛY]\ˆÛˆ]][Hš[Ø˜]HÜˆÚ[XÛÛ‹ˆÛˆHÚ\H\ÙBˆÝXš[]HH^[Ý][X[™È\È˜\ˆX\ÚY\ˆÈÛ[ˆÛˆH™[˜ÚH[XÝ›Ù\ÂˆÚ]ZXÜ›ÛY]™\È\\ÛÈHš]™H›ÛYÙH\ÈÝË[™˜]™[[™Ë]Ø]™H[XÝ›Ù\ÂˆX]ÚYÈHÜXØ[™[ØÚ]H\ÚH˜[™ÚY[ÈH[œÈÙ‚ˆÚYØZ\‰ØÚ]JJ_IØÚ]JŠ_KÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•H[Ù[]ÜˆÜš]\ÈÛ™HÜXØ[]XÜ›ÜÜÈHÚÛH™X[H8 %[šY›Ü›K[›ZÙBˆHH™YH‹‹‹Ü\Ù\]KÈœ\ÙHØš™XÝØO‹ÚXÚ˜\šY\È]È]XÜ›ÜÜÈBˆ\\\™Kˆ]Ù\È›ÝÝXÚÛ\š\Ø][Û‹[[œÚ]KÜˆ\™XÝ[Û‹ÛÈÛˆ]ÈÝÛˆ]ˆÙ\È›Ý[™ÈYX\Ý\˜X›H][ˆ]H]XÝÜˆY\ˆ][™H™XY[™È\È^XÝBˆÚ]]Ø\ËÜ‚ˆ•Hš]™H\ÈÙ]\ÈH\ÙH]Üš]\È][Y›XÝ[Û‹[ˆYÜ™Y\È]Bˆ\ÚYÛˆØ]™[[™ÝÚXÚ\ÈÝÈH]šXÙH\ÈÚÜÙ[ˆ8 %[‹]Ø]™K]X\\‹]Ø]™Kˆ]ˆ\ÈÛÛ™\YÈHš^YÜXØ[]HÜž\Ý[™X[H\Y\ËÛÈH[Ù[]Ü‚ˆÙ]È[ˆHØ]™H]LÌˆ›HÜš]\ÈH]X\\ˆØ]™H]L›K\ÈH™X[Û™HÙ\Ë‚ˆÛ]Ý]XËÜˆš]™H]Ú]HÚ[™HÜˆÜ]X\™HØ]™HÛˆHÚ\™YÚ[][][Û‚ˆÛØÚËÜ‚ˆ’[ˆÛ™H\›HÙˆ[ˆ[\™™\›ÛY]\ˆ]™XÛÛY\ÈH[\]YH[Ù[]ÜˆX›Ý™Kˆ›ÛÝÚ[™ÈÛÜð¬Š3¥3á‹ÌŠH^XÝNˆ[ˆHØ]™HZÙ\ÈHÝ]]œ›ÛH[È›Ý[™Ëˆ[™HYÚ]X]™\ÈÛ™HÜ\œš]™\È]HÝ\‹ÛÈHÛÈ[Ø^\ÈÝ[HÂˆH[œ]Ü‚ˆ•]ÛÈÛ›HÚ\™HH˜XÙ\ˆØ[ˆ™XÛÛœÝXÝHÛÚ\™[šY[ÚXÚYX[œÂˆHÝ›Û™ÏÕÈ\Ù\ˆ[ˆ[O™X[HÚ]Ú^™OÙ[Oˆ[ÙHÚ]›È˜[™ÚYÜÝ›Û™Ïˆ8 %BˆÛ™HÛÝ\˜ÙHÚÜÙHØ[\\ÈØ\œžHH™XÛÝ™\˜X›H\ÙKˆš]™HHØ[YH[\™™\›ÛY]\‚ˆÚ]H[ÙYÜˆÝ\\˜ÛÛ[][HÛÝ\˜ÙKÜˆÚ]HÕÈ\Ù\ˆ[ˆ[O”Ú[\H[™OÙ[O‚ˆ[ÙK[™HÛÈ\›\È\™HYY\È[[œÚ]Y\È[œÝXYˆ›ÝÜÈÚ]][ˆBˆYÚ[™H[Ù[]ÜˆÚ[™Ù\È›Ý[™ËÚ]]™\ˆ]\ÈÙ]ËˆH™XY[™ÈØ^\ÈÛÂˆ˜]\ˆ[ˆX]š[™È]È™H[™™\œ™Y8 %]™\ÜÈ[œÝY™šXÚY[ÛÚ\™[Ý™\›\Ü˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ•H[\™™\›ÛY]šXÈ™Z]š[Ý\ˆX›Ý™H™YYÈHÚ^™Y[Û›ØÚ›ÛX]XÈÕÂˆ\Ù\‹ˆ]\È›ÝH›Ü\HÙˆ\È[[Y[]ÙˆÚ]H˜XÙ\ˆØ[ˆ™XÛÛœÝXÝˆH\ÙH›ÝYÚ[™]\Y\ÈÈ]™\žH[\™™\™[˜ÙHY™™XÝ[ˆH\È]\Âˆ™\X]Y\™H™XØ]\ÙH]XÚY\ÈÚ]\ˆ\ÈÛÛ\Û™[\X\œÈÈÈ[ž][™È]ˆ[Ü‚ˆ”ÚYX˜[™È\™H›Ý[Ù[Y[™ÛÝ[›Ý\ÙY[H™NˆHHÒ‚ˆš]™H]LÌˆ›H]È[HpåÌL8 nø m›Hœ›ÛHHØ\œšY\‹[™]HRˆ]\ÈpåÌL8 nø mÈ›KˆYØZ[œÝHÜXÝ›ÛY]\ˆ]™\ÛÛ™\ÈŒH›Kˆ]™\ž][™ÈHÚYX˜[™È\™H\ÙY›Ü‚ˆ8 %Ý[™8 $Ñ™]™\¸ $Ò[ØÚÚ[™ËÛÛXˆÙ[™\˜][Û‹[ž][™È™XY[™ÈH[Ù[][Ûˆ[‚ˆHÜXÝ[H˜]\ˆ[ˆ[ˆ[YH8 %\È\™Y›Ü™HÝ]Ùˆ™XXÚˆÚ]\È[Ù[Y\ÂˆH\ÙH]Ù[‹[™Ú][\™™\™[˜ÙHXZÙ\ÈÙˆ]Ü‚ˆ“›Ý[™È\™H\ÈH›ÛYÙKˆHš]™H\ÈÙ]\ÈH\ÙH\™XÝKÛÈ\™H\È›Âˆ[‹]Ø]™H›ÛYÙK›Èš]™H[\]YK›ÈÜž\Ý[[™›ÈX]\šX[8 %ÚXÚYX[œÈBˆ[™X\š]HÙˆHØÚÙ[ÈY™™XÝ\È\ÜÝ[YY˜]\ˆ[ˆÚÝÛ‹ˆH[Ù[]Üˆ\ÂˆYX[ˆ›È[œÙ\[ÛˆÜÜË›È™\ÚYX[Ý]XÈš\™Yœš[™Ù[˜ÙK›È\›X[šYÙˆBˆÜ\˜][™ÈÚ[[™HÜ]X\™Hš]™H]ÝÚ]Ú\È[œÝ[[™[Ý\ÛHÚ]›Èš]™\‚ˆ˜[™ÚY™Z[™]ˆ™\ÛÛ˜[[™˜]™[[™Ë]Ø]™H\ÚYÛœËÚXÚ\ÈÝÈ™X[ˆ]šXÙ\È™XXÚÚYØZ\‹]™H›ÈÛÝ[\œ\Ü˜ˆKˆ™[]YˆÉÙ[ÛIË	Ü\Ù\]IË	ØœÉË	ØØ[Y\˜IË	Ø[ÛI×KˆÚ]][ÛœÎˆÂˆÈX™[ˆ	ø '[XÝ›Ë[ÜXÈ[Ù[]ÜœË8 'H”ÝÛšXÜÈ[˜ÞXÛÜYXH
+ÒHLŒNÍKÍÜŠIË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÙ[XÝ›×ÛÜX×Û[Ù[]ÜœËš[	ÈKˆÈX™[ˆ	Ñ[XÝ›Ë[ÜXÈ[Ù[]Üˆ8 %ÚZÚ\YXIË\›ˆ	ÚÎ‹ËÙ[‹ÚZÚ\YXK›Ü™ËÝÚZÚKÑ[XÝ›Ë[ÜX×Û[Ù[]Ü‰ÈKˆÈX™[ˆ	ÕˆKˆX[Û˜YË8 '[XÝ›ËSÜXÈ[Ù[]ÜœË8 'HÚˆLÈ[ˆKˆ˜\ÜÈ
+YŠK[™›ÛÚÈÙˆÜXÜË›Ûˆ‹XÑÜ˜]ËR[
+NNMJIË\›ˆ	ÚÎ‹ËÝÝÝË˜XØÙ\ÜÙ[™Ú[™Y\š[™ÛXœ˜\žK˜ÛÛKØœ›ÝÜÙKÚ[™›ÛÚË[Ù‹[ÜXÜË]›Û[YK]‹X][ÜÜ\šXË[ÜXÜË[[Ù[]ÜœËYšX™\‹[ÜXÜË^\˜^KX[™[™]]›Û‹[ÜXÜË]\™YY][Û‰ÈKˆKˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %\ÙH[Ù[]ÜœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜ\ÙWÛ[Ù[]ÜœËš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Ý[™8 $Ñ™]™\¸ $Ò[XÚš\]YIË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜÝ[™Ù™]™\—Ú[ÝXÚš\]YKš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	Ø[Ù	ËˆÝ[[X\žNˆ”ÝY\œÈY™œ˜XÝYYÚ›ÝYÚHš^YÜˆÝÙ\[™ÛHÚ]Ø]™[[™ÝY\[™[Y›XÝ[Û‹›Üˆ^Üš[™È[™Ý[\ˆØØ[›š[™È[™Ü[Û˜[™\›Ë[Ü™\ˆ™X[H›Ý][™Ëˆ‹ˆ]Nˆ	ÐXÛÝ\ÝË[ÜXÈY›XÝÜˆ
+SÑ
+IËˆØ]YÛÜžNˆ	Ó[Ù[]ÜœÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆ[ˆXÛÝ\ÝË[ÜXÈY›XÝÜˆÝY\œÈH\Ù\ˆ™X[HžHÚ[™Ú[™ÈHœ™\]Y[˜ÞKˆBˆY^›Ù[XÝšXÈ˜[œÙXÙ\ˆ›Û™YÈH˜[œÜ\™[Üž\Ý[][˜Ú\ÈHÛÝ[™Ø]™Bˆ›ÝYÚ]ÈH˜]™[[™ÈÛÛ\™\ÜÚ[ÛˆXZÙ\ÈH[Ýš[™ÈÜ˜][™ÈÙˆ™Yœ˜XÝ]™Bˆ[™^[™YÚÜ›ÜÜÚ[™È]Ü˜][™È\ÈY™œ˜XÝYˆÚ[™ÙHHš]™Bˆœ™\]Y[˜ÞH[™HXÛÝ\ÝXÈØ]™[[™ÝÚ[™Ù\ÈÚ]]ÛÈHY™œ˜XÝY™X[BˆX]™\È]HY™™\™[[™ÛH8 %HØØ[›™\ˆÚ]›Ý[™È[ˆ]][Ý™\ÉØÚ]JJ_KÜ‚ˆ’]\ÈHØ[YH[\˜XÝ[Ûˆ[ˆH™YH‹‹‹Ø[ÛKÈSÓOØOˆ\Ù\ËˆHY™™\™[˜ÙBˆ\È[\™[H[ˆHš]™NˆH[Ù[]Üˆ\È[ˆ]Hš^Yœ™\]Y[˜ÞH[™˜\žZ[™ÂˆÝÙ\‹ÈÝÚ]ÚH™X[HÛˆ[™Ù™‹Ú[HHY›XÝÜˆ\È[ˆ]ÛÛœÝ[ÝÙ\‚ˆ[™˜\žZ[™Èœ™\]Y[˜ÞKÈÚ[]	ØÚ]JJ_KˆHY›XÝ[Ûˆ[™ÛH›ÛÝÜÈœ›ÛBˆHœ˜YÙÈÛÛ™][Û‹[™›Üˆ[ˆ\ÛÝ›ÜXÈYY][H]\ÏÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×]HHœ˜XÞ×[X™HŸ^ÝŸIËØ\[ÛŽˆ	ÑY›XÝ[Ûˆ[™ÛNˆ3®ÈH˜XÝ][HØ]™[[™ÝˆHXÛÝ\ÝXÈš]™Hœ™\]Y[˜ÞKˆHÜYYÙˆÛÝ[™[ˆHÜž\Ý[ˆ]\È[ÛÈ\ÝH˜][ÈÙˆHÜXØ[ÈHXÛÝ\ÝXÈØ]™[[™ÝH]\ˆ\XØ[HL8 $ÌL0­[K‰ÈKˆKˆ[Žˆˆ•™YH[™ÜÈ›ÛÝÈœ›ÛH]Û™H^™\ÜÚ[Û‹[™™]ÙY[ˆ[H^H^Z[‚ˆ]™\žHÜXÚYšXØ][ÛˆÛˆ[ˆSÑ]\ÚY]Ü‚ˆÝ›Û™Ï•H[™Û\È\™HÛX[ÜÝ›Û™ÏˆÛÝ[™\ÈÛÝÈ[™]ÈØ]™[[™Ý\Âˆ[›Ü›[Ý\È™^ÈYÚ	ÜËÛÈH˜][È\È[žKˆHL›H™X[H[ˆ\ÙYÚ[XØH8 %ˆÛÝ[™ÜYYKŽHÛKÜÈ8 %š]™[ˆ]LRˆY›XÝÈžHN\˜YX›Ý]Û™BˆYÜ™YIØÚ]JJ_KˆH\ØX›H˜[™ÙHÙˆH™X[Y›XÝÜˆ\Èœ˜]\ˆÛX[8 %H™]ÂˆYÜ™Y\È‰ØÚ]JJ_KÚ]X›\ÚY]šXÙ\È][Ý[™ÈØØ[ˆ[™Û\Èœ›ÛH›ÝYÚHHÂˆŒ\˜Y	ØÚ]JŠ_Kˆ[ž[Û™H™YY[™È[Ü™H]ÈH[\ØÛÜHY\ˆ]ÚXÚ˜Y\Âˆ™X[HÚY›Üˆ[™ÛKÜ‚ˆÝ›Û™Ï”ÛÝÈÜž\Ý[È\™H™]\‹ÜÝ›Û™ÏˆÚ[˜ÙHH[™ÛHÛÙ\È\ÈKÝ‹BˆX]\šX[Ú]HÛÝÈÛÝ[™Ø]™HÚ]™\È[Ü™HY›XÝ[Ûˆ›ÜˆHØ[YHœ™\]Y[˜ÞBˆ˜[™ÙKˆ\È\ÈÚHHÝ[™\™ÚÚXÙH›ÜˆHš\ÚX›H[™™X\ˆ[™œ˜\™Y\Âˆ[\š][H[ÞYHš]™[ˆÛˆ]ÈÛÝÈÚX\ˆ[ÙKÚ\™HÛÝ[™˜]™[È]X›Ý]ˆŒŒKÜÈ8 %›ÝYÚHH[ÙˆHÜYY[ˆ\ÙYÚ[XØIØÚ]JJ_IØÚ]JŠ_Kˆ\ÙYˆÚ[XØH\È\ÙY[ˆH[˜]š[Û][™Ù\›X[š][H[ˆHZY[™œ˜\™Y[ˆXXÚØ\ÙBˆ™XØ]\ÙHHÜž\Ý[\ÈÈ™H˜[œÜ\™[™Y›Ü™H[ž][™È[ÙHX]\œÉØÚ]JJ_KÜ‚ˆÝ›Û™Ï•HØØ[ˆ\ÈÚ›ÛX]XËÜÝ›Û™ÏˆH[™ÛH\È›ÜÜ[Û˜[ÂˆØ]™[[™ÝÛÈÛÈÛÛÝ\œÈ[\š[™ÈÙÙ]\ˆX]™H]Y™™\™[[™Û\Ëˆ]\ÂˆHZ\Ø[˜ÙH›ÜˆHœ›ØY˜[™™X[H[™HÚÛHÚ[Ùˆ[‚ˆH™YH‹‹‹Ø[Ý‹ÈSÕØO‹ÚXÚ\Ù\ÈHØ[YH\ÚXÜÈÈÙ[XÝÛÛÝ\œÂˆ˜]\ˆ[ˆÈÝY\ˆ[KÜ‚ˆÏ”™\ÛÛ˜X›HÜÝÏÚÏ‚ˆ•H[X™\ˆ]XÝX[HX]\œÈÚ[ˆÚÛÜÚ[™ÈHY›XÝÜˆ\È\ÝX[H›ÝBˆØØ[ˆ[™ÛH]ÝÈX[žH\Ý[™ÝZ\ÚX›H\™XÝ[ÛœÈš][œÚYH]	ØÚ]JJ_KˆBˆ™X[HØ[››Ý™HÚ[Y[Ü™H™XÚ\Ù[H[ˆ]ÈÝÛˆ]™\™Ù[˜ÙKÛÈH™\ÛÛ][Û‚ˆ\ÈHØØ[ˆ˜[™ÙH]šYYžH]]™\™Ù[˜ÙH8 %\]Z]˜[[KH[YHHÛÝ[™ˆZÙ\ÈÈÜ›ÜÜÈH™X[H][\YYžHHœ™\]Y[˜ÞH˜[™ÙH]\Èš]™[‚ˆÝ™\‰ØÚ]JJ_KÜ˜ˆ›Ü›][\ÌŽˆÂˆÈ^ˆ	ÓˆHœ˜XÞ×[W]_^×]WÞ×^Ù]Ÿ__HH]W[H‰ËØ\[ÛŽˆ	Ô™\ÛÛ˜X›HÜÝÎˆH\\\™H[YH3á8 %ÝÈÛ™ÈÛÝ[™ZÙ\ÈÈÜ›ÜÜÈH™X[H8 %[Y\ÈH‘ˆ˜[™ÚYˆ\›Ý[™KH0­\È\ˆ[HÙˆ™X[H[ˆSø  ‹ÛÈHH[H™X[H[™HRˆ˜[™ÚYÚ]™H›ÝYÚHÌÜÝË‰ÈKˆKˆ[Îˆˆ•]›ÙXÝ\ÈÚHHY›XÝÜˆØ[ÈHÚYKÙ[XÛÛ[X]Y™X[NˆÚY[š[™Âˆ][™Ý[œÈH\\\™H[YH[™^\È™\ÛÛ][Û‹ˆ]\È[ÛÈÚH™\ÛÛ][Ûˆ[™ˆÜYY[YØZ[œÝXXÚÝ\‹ˆH]šXÙHØ[››ÝÙ]H˜\Ý\ˆ[ˆÛÝ[™Ü›ÜÜÙ\ÂˆH™X[KÛÈHØ[YHÚÚXÙH]Ú]™\ÈX[žHÜÝÈXZÙ\ÈXXÚ[\ÛÝÙ\‹[™BˆÜž\Ý[ÚÜÙ[ˆ›Üˆ]ÈÛÝÈÛÝ[™Ø]™H\ÈÛÝÈ[ˆ›ÝÙ[œÙ\ÉØÚ]JJ_KÜ‚ˆ•ÛÈY›XÝÜœÈ[Ý[Y]šYÚ[™Û\ÈÝY\ˆ[ˆÛÈ[Y[œÚ[ÛœÉØÚ]JJ_Kˆ™XØ]\ÙBˆH™X[HØ[ˆ™HÙ[È[žH[™ÛH[ˆH˜[™ÙH\È˜\Ý\È]Ø[ˆ™HÙ[ÈBˆ™ZYÚ›Ý\š[™ÈÛ™K[ˆSÑZ\ˆØ[ˆY™\ÜÈÚ[È[ˆ[ˆ\˜š]˜\žHÜ™\ˆ˜]\ˆ[‚ˆ˜\Ý\š[™È›ÝYÚ[H8 %H˜\Ú\ÈÙˆ˜[™ÛKXXØÙ\ÜÈØØ[›š[™È[ˆ][\ÝÛ‚ˆZXÜ›ÜØÛÜKÚ\™HH[\™\Ý[™È™]\›ÛœÈ\™Hš\Ú]Y[™HÜXÙH™]ÙY[ˆ[Bˆ\È›ÝÜ‚ˆÏ•Ú]H]\ÚY]™\ÜÏÚÏ‚ˆ‘Y™œ˜XÝ[ÛˆY™šXÚY[˜ÞH\È\XØ[HL8 $Î	KÛÛY][Y\È™X\ˆL	K[™ÝÙ\ˆ]ˆÛ™Ù\ˆØ]™[[™ÝÉØÚ]JJ_Kˆ]\ÈÛ\š\Ø][Ûˆ\[™[[™]XZÜÈ]BˆÙ[™HÙˆHœ™\]Y[˜ÞH˜[™ÙH[™˜[È]Ø^HÝØ\™›Ý[™È8 %ÚXÚ\ÈÚH]ˆÚÝ[™HÚXÚÙY]HYÙ\ÈÙˆHØØ[ˆ[™›ÝÛ›H[ˆHZYIØÚ]JJ_K‚ˆÛÛYH]šXÙ\ÈÛÛ\[œØ]HžH˜Z\Ú[™ÈHš]™HÝÙ\ˆ]H^™[Y\Ë[™ˆ™X[K\ÝY\™Y\ÚYÛœÈ\ÙHH\ÙY\œ˜^HÙˆ[XÝ›Ù\ÈÈÝÚ[™ÈHXÛÝ\ÝXÈØ]™Bˆ\™XÝ[Ûˆ[™ÛY™šXÚY[˜ÞHXÜ›ÜÜÈHÚY\ˆØØ[‰ØÚ]JJ_KÜ‚ˆ•H[™Y™œ˜XÝY™\›ÈÜ™\ˆØ\œšY\ÈÚ]]™\ˆØ\È›ÝY›XÝYˆ]Ù\È›Ýˆ[Ý™HÚ]Hš]™H[™\È›Ü›X[H[\Y	ØÚ]JJ_KÜ‚ˆ“Û™HY™™XÝ\ÈÛÜÛ›ÝÚ[™È™XØ]\ÙH]\È[š\ÚX›NˆHY™œ˜XÝY™X[HÛÛY\Âˆ]Ø^HÚYY[ˆÜXØ[œ™\]Y[˜ÞHžH^XÝHHš]™Hœ™\]Y[˜ÞKÚ[˜ÙH]\ÂˆØØ]\™Yœ›ÛHH[Ýš[™ÈÜ˜][™Ëˆ›ÜˆHY›XÝÜˆ\È\È\ÝX[H\œ™[]˜[‰ØÚ]JJ_Bˆ8 %RˆÛˆHLÌˆ›H™X[H\ÈHÚYÙˆË°åÌL8 nø mH›H8 %]]\ÈHØ[YHY™™XÝˆ[ˆSÓH\È›ÝYÚ›Ü‹Ü˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•HY›XÝÜˆ\ÈÜXÚYšYYHØ^H[ÝHÛÝ[ÚÛÜÙHÛ™NˆžHH[™Û\ËˆÙ]ˆHÝ›Û™Ï˜Ù[™HY›XÝ[ÛÜÝ›Û™Ïˆ[™›ÜˆHØØ[‹HÝ›Û™ÏÝ[ØØ[‚ˆ[™ÛOÜÝ›Û™ÏˆÝÙ\\›Ý[™]ˆHš]™Hœ™\]Y[˜ÞH™Z[™ÜÙH[™Û\È\ÈYˆ[\XÚ]8 %™XY[™È3®H3®Ù‹Ýˆ›ÜØ\™ËHØØ[ˆ[™X\ˆ[ˆœ™\]Y[˜ÞH\È[™X\ˆ[‚ˆ[™ÛKÛÈH[™Û\È\™HHÛ™\Ý\˜[Y]\š\Ø][Ûˆ[™HÜž\Ý[™]™\ˆ\ÂˆÈ™H˜[YYÜ‚ˆ•HY˜][È\™HH™X[]šXÙNˆ0¬ÙˆÙ[™HY›XÝ[Ûˆ[™°¬ÙˆØØ[ˆ\ÈÚ]ˆHSø  ˆÛÝË\ÚX\ˆY›XÝÜˆÚ]™\È]LÌˆ›HÛˆ[ˆRˆš]™HXÜ›ÜÜÈHR‚ˆ˜[™ÚYˆHØ]™[[™ÝØØ[[™È\ÈÙ\™Y™\™[˜ÙYÈH\ÚYÛˆØ]™[[™ÝÛÂˆH™X[H]ÚXÙH]Ø]™[[™ÝY›XÝÈÚXÙH\È˜\ˆ[™Hœ›ØY˜[™™X[H˜[œÂˆÝ]8 %ÚXÚ\ÈHÚ›ÛX]XÈ™Z]š[Ý\ˆH™X[Y›XÝÜˆ\ËÜ‚ˆ‘›Ý\ˆš]™\È\™H]˜Z[X›Kˆ[O”Ý]XÏÙ[OˆÛÈÛ™H[™ÛKˆ[O•šX[™ÛOÙ[O‚ˆÝÙY\È[™™]˜XÙ\Ë[OœØ]ÝÛÝÙ[OˆÝÙY\È[™›Y\È˜XÚË[™[Oœ˜[™ÛBˆÝ\Ù[OˆY™\ÜÙ\ÈÛ™H[™ÛH\ˆÝ\[ˆ[ˆ[œ™YXÝX›HÜ™\ˆ[™ÛÈ]ˆ[[H™^8 %H˜[™ÛKXXØÙ\ÜÈ[ÙK˜]\ˆ[ˆHÝÙY\ˆHØØ[ˆ[œÈÛˆBˆÚ\™YÚ[][][ÛˆÛØÚÈ]H˜]HÙ][ˆÚ[Ú\‹ÛÈ]Ý^\È\ÙK[ØÚÙYÂˆ[Ù\È[™È[žHÝ\ˆ[Ù[]ÜˆÛˆH™[˜ÚÜ‚ˆ•HØØ[ˆ˜]H\È›Ý[™YžHHØ[YH\ÚXÜÈ]Ù]ÈH™\ÛÛ][Û‹ˆBˆ[œÜXÝÜˆ™\ÜÈHÝ›Û™Ï˜XØÙ\ÜÈ[YOÜÝ›Û™Ïˆ›ÜˆH\\\™H[ˆ\ÙKZÙ[‚ˆ\ÈKI›˜œÜð­\È\ˆZ[[Y]™H›ÜˆSø  ˆÛÝÈÚX\‹[™H˜]H][\Y\ÎˆBˆŒ	›˜œÜÛ[H\\\™HZÙ\ÈÌ	›˜œÜð­\ÈÈš[[™ÛÈØ[››Ý™H™K\Ú[Y˜\Ý\‚ˆ[ˆX›Ý]ÌÉ›˜œÜÚÒ‹ÚXÚ\ÈÚHØ][ÙÝYH˜[™ÛKXXØÙ\ÜÈÞXÛH˜]\ÈÚ]ˆ™]ÙY[ˆ›ÝYÚH[™MÌ	›˜œÜÚÒ‰ØÚ]JŠ_H˜]\ˆ[ˆ[ˆHYYØZ\‹ˆ\ÚÈ›Ü‚ˆ[Ü™H[™H™XYÝ]Ø^\ÈHÜž\Ý[Ø[››ÝÙ]H]˜\ÝÜ˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ•H[™Û\È\™HÛÛ™šYÝ\™Y›Ý\š]™Yˆ›Ý[™È\™HÛ›ÝÜÈBˆÜž\Ý[[ˆXÛÝ\ÝXÈ™[ØÚ]KÜˆ[ˆ‘ˆ˜[™ÚYÛÈHÛÛXš[˜][ÛˆÙ]Ûˆ\Âˆ[[Y[™YY›ÝÛÜœ™\ÜÛ™È[žH]šXÙH]ÛÝ[™HZ[8 %[™HÙZ[[™ÜÂˆ[ÝÙY\™H[X™\˜][HÛÜÙ\ˆ[ˆ™X[]HÛÈ[ˆ[\Ý˜]]™HÚÙ]ÚÝ^\Âˆ™XYX›Kˆ™X[Y›XÝÜœÈ™XXÚH™]ÈYÜ™Y\È][ÜÝÜ‚ˆ‘Y™œ˜XÝ[ÛˆY™šXÚY[˜ÞH\ÈH›]\Ù\‹\Ù]œ˜XÝ[ÛˆXÜ›ÜÜÈHÚÛHØØ[‹ˆBˆ™X[Û™HXZÜÈ]HÙ[™Hœ™\]Y[˜ÞH[™˜[È]Ø^HÝØ\™›Ý[™ËÚXÚ\ÂˆHÜXÚYšXØ][Ûˆ][ÜÝÙ[ˆXÚY\ÈÚ]\ˆH]šXÙH\È\ØX›K[™]\ÂˆÛ\š\Ø][Ûˆ\[™[ÚXÚ\È›Ý[Ù[YZ]\‹ˆ\™H\È›È™[][Û‚ˆ™]ÙY[ˆš]™HÝÙ\ˆ[™Y™šXÚY[˜ÞKÜ‚ˆ•HÜXØ[œ™\]Y[˜ÞHÚY\È›Ý\YYˆ]\È™X[]]Ë°åÌL8 nø mH›H›Ü‚ˆRˆ]LÌˆ›H]\È[Ü™H[ˆHÝ\Ø[™[Y\Èš[™\ˆ[ˆHš[™\ÝØ]™[[™ÝˆY™™\™[˜ÙH[ž][™È[ˆ\ÈÛÜšØ™[˜Ú™\ÛÛ™\ËˆHH™YH‹‹‹Ø[ÛKÈSÓOØOˆÙ\Âˆ›ÝØ\œžH]Z]\‹›ÜˆHØ[YH™X\ÛÛ‹Ü‚ˆXØÙ\ÜÈ[YH\È™\ÜY]›Ý[™›Ü˜ÙYˆH™X[H[\È[œÝ[H™]ÙY[‚ˆ[™Û\ËÚ]›ÈÙ][™È[™›È˜[œÚY[Ú[HHXÛÝ\ÝXÈØ]™H™Yš[ÈBˆ\\\™KˆH[X™\ˆÙˆ™\ÛÛ˜X›HÜÝÈ8 %\™ÝXX›HHšYÝ\™H]XÚY\ÈH™X[ˆY›XÝÜ‰ÜÈÛÜ8 %\È›ÝÛÛ\]Y][[™™Z]\ˆ\ÈHÞ[[™šXØ[[œÚ[™ÂˆH˜\ÝØØ[ˆ›ÙXÙ\ÈÚ[ˆY™™\™[\ÈÙˆH™X[HÙYHY™™\™[XÛÝ\ÝXÂˆœ™\]Y[˜ÚY\È]Û˜ÙKˆ][K]Û™Hš]™KÚXÚY™\ÜÙ\ÈÙ]™\˜[ˆ[™Û\È]Û˜ÙK\È›Ý]˜Z[X›NˆÛ™Hš]™KÛ™HY›XÝY™X[KÜ˜ˆKˆ™[]YˆÉØ[ÛIË	Ø[Ý‰Ë	ÙØ[›ÉË	ÜÛI×KˆÚ]][ÛœÎˆÂˆÈX™[ˆ	ø 'XÛÝ\ÝË[ÜXÈY›XÝÜœË8 'H”ÝÛšXÜÈ[˜ÞXÛÜYXIË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKØXÛÝ\Ý×ÛÜX×ÙY›XÝÜœËš[	ÈKˆÈX™[ˆ	ÑÛÛØÚ	ˆÝ\ÙYÛÈ8 %XÛÝ\ÝË[ÜXÈY›XÝÜœÎˆ›ÙXÝÜXÚYšXØ][ÛœÈ›ÜˆSø  ˆ[™\ÙY\Ú[XØH]šXÙ\ÉË\›ˆ	ÚÎ‹ËÙØ[™˜ÛÛKÜ›ÙXÝËØXÛÝ\ÝË[ÜXÜËÙY›XÝÜœÉÈKˆKˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	ÐPHÜËQ[XÝ›ÛšXÈ8 %YÚ™\ÛÛ][ÛˆY›XÝÜœÉË\›ˆ	ÚÎ‹ËØX[ÜÙ[XÝ›ÛšXË˜ÛÛKØ[ËY]šXÙ\ËÚYÚ\™\ÛÛ][Û‹YY›XÝÜœËÉÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %XÛÝ\ÝË[ÜXÈ[Ù[]ÜœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKØXÛÝ\Ý×ÛÜX×Û[Ù[]ÜœËš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	Ø™X[Y[\	ËˆÝ[[X\žNˆXœÛÜ˜œÈ[žHYÚ]™XXÚ\È]\›Z[˜][™È[ˆ[Ø[Y™X[Kˆ‹ˆ]Nˆ	Ð™X[H[\	ËˆØ]YÛÜžNˆ	Ð™X[H›ØÚÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆH™X[H[\[™ÈH™X[Kˆ]™\žHÜXØ[Ù]\›ÙXÙ\ÈYÚ]\ÈÛ™H]Âˆ›Øˆ8 %H[\ÙYÜÙˆH™X[\Ü]\‹H™Z™XÝYÛ\š^˜][Û‹H™\›ÝÜ™\‚ˆÙ™ˆHÜ˜][™ËH™X[HYÝ™\ˆÚ[ˆ[ˆ^\š[Y[\È™X[YÛ™Y8 %[™[Ùˆ]ˆ\ÈÈÝÜÛÛY]Ú\™H[X™\˜]KˆY[Û™H][™ÈÛˆHØ[HÛÛXYÝYKÜ‚ˆ˜XÚÈ[ˆH\Ù\‹Ü‚ˆ‘Ú[™È]Ù[\È\™\ˆ[ˆ]ÛÝ[™Ë™XØ]\ÙH˜XœÛÜ˜š[™ÈˆYÚ\È™X[Bˆ[O˜ÛÛ™\[™È]ÈX]Ù[OˆÚ[H™Y›XÝ[™È\È]H\ÈÜÜÚX›KˆH\ÝX[ˆ\ÚYÛˆ\ÈÙ[ÛY]šXÈ˜]\ˆ[ˆX]\šX[ˆHÛÛ™KHÙYÙKÜˆHÝXÚÈÙˆ[™ÛYˆ˜[™\Ë[›Ù\ÙYX]H›XÚË\œ˜[™ÙYÛÈ][žHYÚ›ÝXœÛÜ˜™YÛˆš\œÝˆÛÛXÝ™Y›XÝÈ[O™Y\\ˆ[ÏÙ[OˆHØ]š]H˜]\ˆ[ˆ˜XÚÈÝ]ˆÙ]™\˜[ˆ›Ý[˜Ù\È]H™]È\ˆÙ[™Y›XÝ]š]HXXÚX]™HH™YÛYÚX›Hœ˜XÝ[Ûˆ\ØØ\[™Ë‚ˆH›XÚÈÝ\™˜XÙHÙ\ÈHXœÛÜ˜š[™ÎÈHÙ[ÛY]žHØ]Ú\ÈÚ]HÝ\™˜XÙBˆZ\ÜÙ\ËÜ‚‚ˆÏ•ÚHYÚ\ÝÙ\ˆ[\È™YYÛÛÛ[™ÏÚÏ‚ˆH[\XœÛÜ˜œÈ\ÜÙ[X[HH[\™H™X[KÛÈ]™XÙZ]™\ÈH\Ù\‰ÜÈ[ˆ]™\˜YÙHÝÙ\ˆ\ÈX][ˆHÛX[›Û[YKˆ]\ÈHÙ[Z[™H\›X[[™Ú[™Y\š[™Âˆ›Ø›[K[™]Ù]ÈÝÈH[\\ÈZ[Ü‚ˆ[‚ˆO•\ÈH™]ÈØ]ËH›XÚËX[›Ù\ÙY[[Z[š][HÛÛ™HÚ]š[œÈ˜YX]\È[™ˆÛÛ™XÝÈHX]]Ø^H\ÜÚ]™[KÛO‚ˆO‘œ›ÛH[œÈÙˆØ]Ë\ÜÚ]™HÛÛÛ[™ÈÝÜÈÙY\[™È\[™H[\™YYÂˆ›Ü˜ÙYZ\ˆÜˆHÝXœÝ[X[X]Ú[šËÛO‚ˆO][™™YÈÙˆØ]È[™X›Ý™H8 %[™\ÝšX[[™X]\šX[Ë\›ØÙ\ÜÚ[™È\Ù\œÈ8 %ˆ[\È\™HÝ›Û™ÏØ]\‹XÛÛÛYÜÝ›Û™Ï‹Ú]›ÝÈ[\›ØÚÜÈ]Ú]H\Ù\‚ˆÝÛˆYˆÚ\˜Ý[][Ûˆ˜Z[ËÛO‚ˆÝ[‚ˆ‘^ÙYY[™ÈH[\	ÜÈ˜][™È\È›ÝHÛX[Z\ÝZÙKˆH[›Ù\ÙY^Y\ˆØ[ˆ\›‚ˆ]Ø^K\Ý›ÞZ[™ÈHXœÛÜœ[Ûˆ]Ø\È›ÝšY[™È[™™[X\Ú[™È\XÝ[]\ÎÂˆXœÛÜ˜š[™ÈÛ\ÜÈØ[ˆÜ˜XÚÈœ›ÛH\›X[ÚØÚÎÈ[™H[\]Ý\È™Y›XÝ[™È\ÂˆÛÜœÙH[ˆ›È[\][™XØ]\ÙH›Ø›ÙH\È^XÝ[™ÈH™X[HÈÛÛYH˜XÚÈÝ]Ù‚ˆ]ˆ[˜Y˜\Ý\Ù\œÈYHÙXÛÛ™ÛÛœÝ˜Z[ˆH™[]ÜÙXÛÛ™[ÙH˜Z[ˆÙˆ[Ù\Ýˆ[O˜]™\˜YÙOÙ[OˆÝÙ\ˆØ\œšY\È[›Ü›[Ý\È[OœXZÏÙ[Oˆ[[œÚ]K[™Ø[ˆX›]H[‚ˆXœÛÜ˜™\ˆ]ÛÝ[[™HHØ[YH]™\˜YÙHÝÙ\ˆœ›ÛHHÕÈÛÝ\˜ÙHÚ]Ý]ˆÛÛ\Z[ˆ[\È\™H˜]Y›Üˆ›ÝÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	ÔÞ×^ØXœß_H\›ÞÞ×^Ú[Ÿ_IËØ\[ÛŽˆ	ÕHYš[š[™È›Ü\NˆH[\ÛÛ™\È\ÜÙ[X[HHÚÛH™X[HÈX]ÛÈ]È\›X[ØY\ÈH[[˜ÚY[ÝÙ\ˆ8 %›ÝHœ˜XÝ[ÛˆÙˆ]‰ÈKˆÈ^ˆ	Ô—Þ×^ÙY™Ÿ_H\›Þ—žÓŸIËØ\[ÛŽˆ	ÕÚHHÙ[ÛY]žHX]\œÈ[Ü™H[ˆHÛØ][™Îˆˆ›Ý[˜Ù\È[œÚYHHØ]š]H]Ý\™˜XÙH™Y›XÝ]š]HˆX]™HÛ›H—“ˆ\ØØ\[™Ëˆ›Ý\ˆ›Ý[˜Ù\È]IH™Y›XÝ˜XÚÈX›Ý]ˆ\È\ˆZ[[Û‹‰ÈKˆKˆ[ŽˆˆÏ”ØY™]H˜XÝXÙH\›Ý[™™X[H›ØÚÜÏÚÏ‚ˆ™X[H[\È\™HH[ÜÝ˜\ÚXÈYXÙHÙˆ\Ù\ˆØY™]H\™Ø\™HÛˆH™[˜Ú[™^BˆÛÜšÈÛ›H\È\ÙˆHÚY\ˆ˜XÝXÙNÜ‚ˆ[‚ˆOÝ›Û™Ï•\›Z[˜]H]™\žH™X[K[˜ÛY[™ÈHÛ™\È[ÝHY›Ý[‹ÜÝ›Û™Ï‚ˆ[ˆ[˜ÛØ]YÛ\ÜÈÝ\™˜XÙH™Y›XÝÈX›Ý]	H\ˆ˜XÙH]›Ü›X[[˜ÚY[˜ÙKÛÈ]™\žBˆÚ[™ÝËØ[\K[™š[\ˆ›ÝÜÈÙ™ˆÝ˜^H™X[\ËˆÜÙH\™HÚ]XÝX[H™XXÚˆ[ÜIÜÈ^Y\ÎÈHXZ[ˆ™X[H\È\ÝX[HHÛ™H]™\žX›ÙH\ÈØ]Ú[™ËÛO‚ˆOÝ›Û™Ï’ÙY\]™\žH™X[H[ˆÛ™HÜš^›Û[[™KÙ[™[ÝÈÙX]Y^YBˆ]™[ÜÝ›Û™Ï‹[™™]™\ˆ˜Z\ÙH[Ý\ˆ^Y\ÈÈ][™Kˆ[ÜÝXØÚY[È\[‚ˆÚ[ˆÛÛY[Û™H™[™ÈÝÛˆÈÛÚÈ]ÛÛY][™ËÛO‚ˆOÝ›Û™Ï”™[[Ý™HØ]Ú\Ëš[™ÜË[™˜YÙ\ÏÜÝ›Û™Ïˆ™Y›Ü™HÛÜšÚ[™È™X\ˆ[ˆÜ[‚ˆ™X[KˆHÛ\ÚYÝ\™˜XÙH][ˆ[›XÚÞH[™ÛH\È[ˆ[œ[›™YZ\œ›Ü‹ÛO‚ˆOÝ›Û™Ï•ÙX\ˆ^Y]ÙX\ˆX]ÚYÈ›ÝØ]™[[™Ý[™ÜXØ[[œÚ]KÜÝ›Û™Ï‚ˆÛÙÙÛ\È]›ØÚÈL	›˜œÜÛ›HX^H˜[œÛZ]LÌ‰›˜œÜÛ›Hœ™Y[H8 %H™X[^˜\™[‚ˆ][K]Ø]™[[™ÝÙ]\ÈÝXÚ\ÈHÛËXÛÛÝ\ˆ˜[X[ˆZXÜ›ÜØÛÜKÚ\™HH[\ˆÝÚÙ\Ë[™Ù[™\˜]YÚYÛ˜[\™H[Y™™\™[ÛÛÝ\œËÛO‚ˆOÝ›Û™Ï“™]™\ˆÛÚÈ[Û™ÈH™X[H^\ÏÜÝ›Û™Ï‹]™[ˆ][X]Yˆ\ÙHHšY]Ú[™ÂˆØ\™H›[Ü™\ØÙ[\™Ù]Üˆ[ˆTˆšY]Ù\‹ÛO‚ˆOÝ›Û™Ï‘[˜ÛÜÙHH™X[H]ÜÝ›Û™ÏˆÚ\™H[ÝHØ[‹[™\ÙH[\›ØÚÜÈ[™ˆØ\›š[™ÈÚYÛ˜YÙHÚ\™H[ÝHØ[››ÝÛO‚ˆO‘›ÜˆÝ›Û™ÏÛ\ÜÈÜÝ›Û™Ïˆ\Ù\œË™[Y[X™\ˆ]]™[ˆ[O™Y™\ÙOÙ[O‚ˆ™Y›XÝ[ÛœÈØ[ˆ™H^˜\™Ý\ÈÈ^Y\È[™ÚÚ[‹[™]H™X[H\ÈHÜ™YX›BˆYÛš][ÛˆÛÝ\˜ÙH›Üˆ\\‹ÛÝ[™ÛÛ™[ËÛO‚ˆÝ[‚ˆ“›Û™HÙˆ\È\È[Ù[YžHH˜^H˜XÙ\‹[™HÚÙ]Ú]ÛÚÜÈYHÛˆØÜ™Y[‚ˆØ[ˆÝ[\ØÜšX™HHÙ]\]\È[œØY™HÈZ[ˆ™X]H˜]Ú[™È\ÈH[‹›ÝˆHš\ÚÈ\ÜÙ\ÜÛY[Ü˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•H[\\È˜]Ûˆ\ÈHÛÜÙY›ÙHÚÜÙH˜XÙ\È\™H[XœÛÜ˜š[™ËÛÈ[žH˜^H]ˆ™XXÚ\È]œ›ÛH[žH\™XÝ[ÛˆÝÜÈ\™H[™\È™[[Ý™Yœ›ÛHH˜XÙKˆ›Ý[™È\Âˆ˜[œÛZ]Y›Ý[™È\È™Y›XÝY[™›È˜^HÛÛ[Y\È\Ý]ˆHÛ›HÛÛ›Û\ÂˆHÛX\ˆ\\\™KÚXÚÙ]ÈÝÈ\™ÙHH\™Ù]]™\Ù[ËÜ‚ˆ’]È˜XÝXØ[\ÙH\™H\ÈHØ[YH\ÈÛˆH™[˜ÚˆÚ]™HH[\ÙYÜÈÛÛY]Ú\™BˆÈ[™ˆ]Û™HÛˆHÙXÛÛ™Ý]]ÙˆHH™YH‹‹‹ØœËÈ˜™X[\Ü]\ØO‹ÛˆBˆ™Z™XÝYÜÙˆHH™YH‹‹‹ÜœËÈœÛ\š^š[™È™X[\Ü]\ØO‹ÜˆÛˆ[‚ˆ[Ø[YY™œ˜XÝ[ÛˆÜ™\ˆœ›ÛHHH™YH‹‹‹ÙÜ˜][™ËÈ™Ü˜][™ÏØO‹[™HšYÝ\™BˆÝÜÈÚÝÚ[™ÈH™X[HØ[™\š[™ÈÙ™ˆ[È[\HÜXÙKˆ]XZÙ\ÈHXYÜ˜[H™XY\ÈBˆ[X™\˜]H\ÚYÛˆ˜]\ˆ[ˆ[ˆ[™š[š\ÚYÛ™K[™]\ÈÚ]H™]šY]Ù\ˆÙˆ[Ý\‚ˆšYÝ\™HÚ[ÛÚÈ›Ü‹Ü‚ˆ™XØ]\ÙHH[\Y˜^H\È™[[Ý™Y˜]\ˆ[ˆ][X]YH[\\È[ÛÈHÛX[‚ˆØ^HÈ\ÛÛ]HÛ™Hœ˜[˜ÚÙˆHÙ]\Ú[H[ÝHÝYH[›Ý\ˆ8 %›ØÚÈÛ™H\›HÙˆ[‚ˆ[\™™\›ÛY]\ˆ[™H™[XZ[š[™È]\È[]\È˜XÙYÜ˜ˆ[Z]][ÛœÎˆXœÛÜœ[Ûˆ\ÈÝ[[™\™™XÝˆ\™H\È›È™\ÚYX[™Y›XÝ]š]Kˆ›ÈØ]™[[™Ý\[™[˜ÙK[™›È[™Ý[\ˆ[Z]Ú\™X\ÈH™X[[\™Y›XÝÈHÛX[ˆœ˜XÝ[Ûˆ[™Ù\ÈÛÈ[Ü™H]Ü˜^š[™È[˜ÚY[˜ÙKˆ›Ý[™È\›X[\È[Ù[Y][8 %ˆ›ÈXœÛÜ˜™YÝÙ\‹›È[\\˜]\™Hš\ÙK›È[XYÙH™\ÚÛ[™›ÈØ\›š[™ÈÚ[ˆBˆÚÙ]Ú[\ÈHÚ[ÝØ][ÈHÛÛ\Û™[]ÛÝ[›ÝÝ\š]™H]ˆH[\	ÜÂˆ˜][™È[™]ÈÛÛÛ[™È™\]Z\™[Y[\™H[\™[HH\ÚYÛ™\‰ÜÈ™\ÜÛœÚXš[]K[™ˆHÙXÝ[ÛˆX›Ý™H\ÈHÛ›HXÙH\ÈÛÛY™\ÜÙ\È[KÜ˜ˆKˆ™[]YˆÉØ›ØÚÙ\‰Ë	ÜÛ]	Ë	ØœÉË	ÜœÉ×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %™X[H[\ÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKØ™X[WÙ[\Ëš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %\Ù\ˆØY™]IË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛ\Ù\—ÜØY™]Kš[	ÈKˆKˆKˆÂˆ\Nˆ	ÜÛ]	ËˆÝ[[X\žNˆ”\ÜÙ\ÈYÚ›ÝYÚ[ˆY\ÝX›HØ\[™›ØÚÜÈ]™\ž][™ÈÝ]ÚYH]ˆ‹ˆ]Nˆ	ÔÛ]	ËˆØ]YÛÜžNˆ	Ð™X[H›ØÚÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆHÛ]\È[ˆ\\\™NˆÛÈÜ\]YH˜]ÜÈÚ]HØ\™]ÙY[ˆ[Kˆ[›ZÙHBˆH™YH‹‹‹Ø™X[Y[\È˜™X[H[\ØO‹ÚÜÙH›Øˆ\ÈÈÝÜH™X[H[\™[KHÛ]ˆÝÜÈÛ›H\ÙˆÛ™H8 %]\ÜÙ\ÈHYÚÚ][ˆ]ÈØ\[™XœÛÜ˜œÈ]™\ž][™ÂˆÝ]ÚYH]ˆ]XZÙ\È]HÚ\[™È[™Ù[XÝ[™È[[Y[ÝYÚHYÚ]ˆ™Z™XÝÈÝ[\ÈÈ™HXœÛÜ˜™Y[™]YÚÝÙ\ˆH˜]ÜÈ˜XÙHHØ[YH\›X[ˆ›Ø›[HH[\Ù\ËÜ‚ˆ”Û]ÈÈÛÈ]Z]HY™™\™[›ØœÈ\[™[™ÈÛˆÚ\™H^HÚ]ˆ[ˆH[™HÚ\™BˆH™X[H\È[OœÜ]X[OÙ[OˆÜ™XYÝ]HÛ]š[\ÈH™X[IÜÈÜ›ÜÜË\ÙXÝ[Ûˆ8 %ˆÝ][™ÈÙ™ˆHZ[Yš[š[™ÈHÚY]ÙˆYÚÜˆÙ][™ÈH[[Z[˜]YÝš\[ˆBˆ[™K\ØØ[ˆÞ\Ý[Kˆ[ˆH[™HÚ\™HØ]™[[™ÝÈ]™H™Y[ˆÜ™XYÝ]žHBˆH™YH‹‹‹ÙÜ˜][™ËÈ™Ü˜][™ÏØOˆÜˆH™YH‹‹‹Üš\ÛKÈœš\ÛOØO‹^XÝHHØ[YBˆÛÛ\Û™[™XÛÛY\ÈH[OØ]™[[™ÝÙ[OˆÙ[XÝÜŽˆ]\ÜÙ\ÈH˜[™[™™Z™XÝÈBˆ™\ÝˆH[Û›ØÚ›ÛX]Üˆ\Ë[ˆ\ÜÙ[˜ÙKH\Ü\œÚ[™È[[Y[Ú]HÛ]]XXÚ[™ˆ[™HÛ]ÚYÙ]ÈHÜXÝ˜[™\ÛÛ][Ûˆ\™XÝKÜ‚ˆ•\™H\ÈH[Z]ÈÝÈ˜\ˆ\ÈØ[ˆ™H\ÚYˆ˜\œ›ÝÚ[™ÈHÛ]Ù\È›Ý˜\œ›ÝÂˆH˜[œÛZ]Y™X[H[™Yš[š][K™XØ]\ÙHY™œ˜XÝ[ÛˆÙ]È[ŽˆH˜\œ›ÝÙ\ˆBˆ\\\™KH[Ü™HHYÚÜ™XYÈY\ˆ]Ü˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×]H\›Þœ˜XÞ×[X™_^Ø_IËØ\[ÛŽˆ	ÑY™œ˜XÝ[ÛˆÜ™XY[™ÈY\ˆHÛ]ÙˆÚYH8 %H[™Ý[\ˆ[‹]ÚYÙˆHÙ[˜[Ø™Kˆ™[ÝÈ›ÝYÚHHZ[[Y]™H›Üˆš\ÚX›HYÚÛÜÚ[™ÈHÛ]\\ˆXZÙ\ÈH˜\‹YšY[™X[HÚY\‹›Ý˜\œ›ÝÙ\‹‰ÈKˆÈ^ˆ	×[W[X™H\›Þœ˜XÞØ_^ÙŸWœ˜XÞÙ[X™_^Ù]_IËØ\[ÛŽˆ	ÔÜXÝ˜[˜[™ÚY\ÜÙYžHHÛ]ÙˆÚYH]H›ØØ[[™HÙˆHÜXÝ›ÙÜ˜\Ùˆ›ØØ[[™Ýˆ8 %HÛ]ÚY[™H\Ü\œÚ[ÛˆÙÙ]\ˆÙ]H™\ÛÛ][Û‹‰ÈKˆKˆ[Žˆˆ™XØ]\ÙHHÛ]™Z™XÝÈ[ÜÝÙˆHYÚ™XXÚ[™È]]\ÈHÜÜÞHÛÛ\Û™[žBˆ\ÚYÛ‹[™[ˆHÜXÝ›ÙÜ˜\H˜YK[Ù™ˆ\È^XÚ]ˆH˜\œ›ÝÙ\ˆÛ]^\Âˆ™\ÛÛ][Ûˆ]HÛÜÝÙˆÚYÛ˜[ˆÚÛÜÚ[™ÈHÚY\ÈÚÛÜÚ[™ÈÚ\™HÛˆ]Ý\™BˆÈÚ]Ü‚ˆ•H™Z™XÝYYÚÙ\È›Ý˜[š\ÚˆÛˆHÝË\ÝÙ\ˆÛÝ\˜ÙH]Ú[\HØ\›\ÈBˆ˜]ÜÎÈÛˆHYÚ\ÝÙ\ˆÛ™HH˜]ÜÈ™YYHØ[YH™X]Y[\ÈH™X[H[\8 %[‚ˆXœÛÜ˜š[™ÈÝ\™˜XÙH]Ø[ˆÚYX][™]YÚ[›ÝYÚÝÙ\‹XÝ]™HÛÛÛ[™ËˆBˆZ\ˆÙˆ[ˆ›XÚÙ[™Y›Y\È]ÛÜšÜÈ]Z[]Ø]ÈÚ[›ÝÝ\š]™H[œÈÙ‚ˆØ]ËÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•HÛ]\È˜]Ûˆ\ÈÛÈXœÛÜ˜š[™È˜]ÜÈÚ]HØ\™]ÙY[ˆ[K[™]\È˜XÙYˆ^XÝH]Ø^Nˆ˜^\È\ÜÚ[™È›ÝYÚHØ\ÛÛ[YHÛÛ\][H[˜Ú[™ÙY[™ˆ˜^\ÈÝšZÚ[™ÈZ]\ˆ˜]È\™HXœÛÜ˜™Y[™™[[Ý™YˆÛÈÛÛ›ÛÈÙ]]8 %BˆÝ›Û™Ï™Ø\ÜÝ›Û™Ï‹[™HÝ™\˜[ÜXÈÚ^™H]š^\ÈÝÈ˜\ˆH˜]ÜÂˆ^[™Ü‚ˆ•H\ÙY[ÛÛœÙ\]Y[˜ÙH\È]HÛ]\™H\ÈHÙ[Z[™HÜ]X[š[\‹ˆÙ[™BˆÚYH™X[H]Û™H[™Û›HHÙ[˜[Ü[ÛˆÝ\š]™\ËÛÈ[ÝHØ[ˆYš[™HH™X[BˆÚYZY\]Û\HÚ[™ÜÈÙ™ˆH]™\™Ú[™È™X[KÜˆZÙHÛ™Hœ˜[˜ÚÙˆH˜[ˆ[™ˆ\ØØ\™H™\ÝˆXÙHÛ™HY\ˆHH™YH‹‹‹ÙÜ˜][™ËÈ™Ü˜][™ÏØOˆÜˆBˆH™YH‹‹‹Üš\ÛKÈœš\ÛOØOˆ[™]™XÛÛY\ÈHØ]™[[™ÝÙ[XÝÜ‹™XØ]\ÙHBˆÛÛÝ\œÈ]™H™Y[ˆÙ\\˜]Y[ˆÜXÙHžH[ˆ[™HÛ]\ÈÚÛÜÚ[™È[[Û™ÂˆÜÚ][ÛœËÜ‚ˆ•H\œHØ[˜\ÈÛ›ØˆY\ÝÈHØ\\™XÝKÚXÚXZÙ\ÈHÙ[XÝ[ÛˆX\ÞBˆÈ^Ü™NˆÚY[ˆ][[Hœ˜[˜Ú[ÝHØ[\ÜÙ\Ë[ˆ˜\œ›ÝÈ][[Û›Bˆ]œ˜[˜ÚÙ\ËÜ˜ˆ[Z]][ÛœÎˆÝ›Û™Ï‘Y™œ˜XÝ[Ûˆ\È›Ý[Ù[YÜÝ›Û™Ï‹[™›ÜˆHÛ]]\ÂˆHÚYÛšYšXØ[ÛZ\ÜÚ[ÛŽˆ˜\œ›ÝÚ[™ÈHØ\\™HÚ[\H\ÜÙ\ÈH˜\œ›ÝÙ\ˆ[™HÙ‚ˆ˜^\ËÚ\™X\ÈH™X[Û]™[ÝÈX›Ý]HZ[[Y]™HÝ\ÈÜ™XY[™ÈHYÚ]ˆ˜[œÛZ]Ë[™H™\žH˜\œ›ÝÈÛ™H›ÙXÙ\ÈHœ›ØYY™œ˜XÝ[Ûˆ]\›ˆ˜]\ˆ[ˆBˆ[ˆ™X[Kˆ›Ý[™È[ˆ\È[[Y[Ú[]™\ˆÚÝÈ]™]™\œØ[ˆ˜[œÛZ\ÜÚ[Û‚ˆ›ÝYÚHØ\\È[ÛÈ\™™XÝ[™YÙHY™™XÝÈ\™HXœÙ[8 %›È\X[ˆ˜[œÛZ\ÜÚ[Ûˆ]H˜]ÈYÙ\Ë›ÈØØ]\š[™ÈÙ™ˆ[K[™›ÈØ]™[[™Ý\[™[˜ÙK‚ˆ\ÈÚ]H™X[H[\HXœÛÜ˜™YYÚ›ÙXÙ\È›ÈX][™Ø\œšY\È›È[XYÙBˆ™\ÚÛÛÈHÚÙ]ÚÚ[\[H›ÝÈ\˜š]˜\žHÝÙ\ˆ]HZ\ˆÙˆ[‚ˆ›Y\ËÜ˜ˆKˆ™[]YˆÉØ™X[Y[\	Ë	Ø›ØÚÙ\‰Ë	ÙÜ˜][™ÉË	Üš\ÛI×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %[Û›ØÚ›ÛX]ÜœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛ[Û›ØÚ›ÛX]ÜœËš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Y™œ˜XÝ[Û‰Ë\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÙY™œ˜XÝ[Û‹š[	ÈKˆKˆKˆÂˆ\Nˆ	Ø›ØÚÙ\‰ËˆÝ[[X\žNˆ”ÝÜÈ˜^\È[œÚYH[ˆY\ÝX›H™XÝ[™Ý[\ˆ™YÚ[ÛˆÚ[H™[XZ[š[™ÈY[ˆ[ˆ^ÜYšYÝ\™\Ë›ÜˆÛÛ›Û[™È™X[H[™Ú[ÈÚ]Ý]Y[™Èš\ÚX›H\™Ø\™Kˆ‹ˆ]Nˆ	Ò[š\ÚX›H›ØÚÙ\‰ËˆØ]YÛÜžNˆ	Ð™X[H›ØÚÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆ•\È[[Y[\È›ÈX›Ü˜]ÜžHÛÝ[\œ\ˆ]\ÈHšYÝ\™K[XZÚ[™ÈÛÛˆH™YÚ[Û‚ˆ]XœÛÜ˜œÈ[žH˜^H[\š[™È]˜]ÛˆÛˆHØ[˜\ÈÚ[H[ÝHÛÜšÈ[™[‚ˆÝ›Û™Ï›ÛZ]Yœ›ÛH^ÜYšYÝ\™\ÏÜÝ›Û™Ï‹Ü‚ˆ•H™YY][œÝÙ\œÈ\ÈH™X[Û™KÝYÚˆH˜^H˜XÙ\ˆ›ÛÝÜÈ]™\žHœ˜[˜Ú]ˆÙ[™\˜]\Ë[˜ÛY[™ÈÛ™\È]\™H\ÚXØ[HÛÜœ™XÝ]\œ™[]˜[ÈHÚ[BˆšYÝ\™H\ÈXZÚ[™È8 %HÙXZÈ˜XÚË\™Y›XÝ[ÛˆØ[™\š[™ÈXÜ›ÜÜÈHœ˜[YKHÝ˜^BˆY™œ˜XÝ[ÛˆÜ™\‹HÚÜÝœ›ÛHH™X[\Ü]\‰ÜÈÙXÛÛ™Ý\™˜XÙKˆÛˆH™[˜Ú[ÝBˆÛÝ[]HØ\™[ˆHØ^H[™›Ü™Ù]X›Ý]]ˆH\]Z]˜[[\™H\ÈH›ØÚÙ\Ž‚ˆ]ZÙ\ÈH[Ø[Yœ˜[˜ÚÝ]ÙˆH˜XÙHÚ]Ý]Y[™ÈHÛÛ\Û™[ÈBˆ˜]Ú[™È]H™XY\ˆÛÝ[]™HÈ[\œ™]Ü‚ˆ•HÛ™\Ýœ˜[Z[™È\È]\È\ÈH[Oœ™\Ù[][ÛÙ[OˆÛÛ›Û›Ý\ÚXÜË‚ˆYˆHÝ˜^H™X[H^\ÝÈ[ˆ[Ý\ˆÙ]\]^\ÝÈ[ˆ™X[]HÛË[™Y[™È]œ›ÛHBˆšYÝ\™H\ÈHÚÚXÙHX›Ý]Ú]HšYÝ\™H\È›Ü‹ˆ\ÙH]È™[[Ý™H\Ý˜XÝ[ÛœÈœ›ÛBˆHXXÚ[™ÈXYÜ˜[NÈÈ›Ý\ÙH]ÈXZÙHHÙ]\ÛÚÈÛX[™\ˆ[ˆ]\Ë[™™]™\‚ˆ\ÙH]ÈYHH™X[H]ÛÝ[™YY\›Z[˜][™È[ˆH™X[Z[8 %ÙYHBˆØY™]H›Ý\ÈÛˆHH™YH‹‹‹Ø™X[Y[\È˜™X[H[\ØOˆYÙKÜ˜ˆ›Ü›][\Îˆ×KˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•H›ØÚÙ\ˆ\ÈH™XÝ[™ÛHÚÜÙH˜XÙ\È[XœÛÜ˜‹ˆ[žH˜^H™XXÚ[™È]ÝÜÂˆ\™K^XÝH\ÈÚ]HH™YH‹‹‹Ø™X[Y[\È˜™X[H[\ØOˆ8 %HY™™\™[˜ÙH\Âˆ\™[H[ˆH˜]Ú[™Ëˆ]Ø\œšY\ÈÛÙOšYR[‘^ÜØÛÙO‹ÛÈ]\Èš\ÚX›HÛˆBˆØ[˜\ÈÚ[H[ÝHÛÛ\ÜÙH[™XœÙ[œ›ÛHÕ‘È[™‘È^ÜËˆ[ˆH^ÜYˆšYÝ\™HH›ØÚÙY™X[HÚ[\H[™ËÚ]›Ý[™ÈÈ^Z[ˆÚKÜ‚ˆ•ÛÈÛÛ›ÛÈÙ]]ÈÚY[™ZYÚ[™H›YH[™\È™\Ú^™H]ÛˆBˆØ[˜\ËÛÈ]Ø[ˆ™HÚ\YÈØ]Ú^XÝHHœ˜[˜Ú[ÝHØ[[™›Ý[™Âˆ[ÙKÜ‚ˆ’]È›Ý[™È\™HÝ[ÛÝ[YÚ[ˆHšYÝ\™H\Èš]Y›Üˆ^ÜÛÈH›ØÚÙ\‚ˆ\šÙY˜\ˆœ›ÛHHÙ]\Ú[YH^ÜYÜ›ÜÚ][\HÜXÙH]™[ˆÝYÚ]ˆ\È›Ý˜]Û‹ˆÙY\]ÛÜÙHÈH™X[H]\ÈØ]Ú[™ËÜˆ\ÙHBˆH™YH‹‹‹ÙšYÝ\™Yœ˜[YKÈ™šYÝ\™Hœ˜[YOØOˆÈYš[™HHÜ›Ü^XÚ]KÜ˜ˆ[Z]][ÛœÎˆXœÛÜœ[Ûˆ\È\™™XÝ[™Ý[ZÙHH™X[H[\	ÜËˆHÚ[™ÛBˆ[™ÈÈ[™\œÝ[™X›Ý]\È[[Y[\È]]Ú[™Ù\ÈÚ]HšYÝ\™Bˆ[OœÚÝÜÏÙ[O‹›ÝÚ]HÙ]\[Oš\ÏÙ[OŽˆH˜XÙH]™[[Ý™\ÈØ\ÈH™X[ˆœ˜[˜ÚÙˆHYÚ[™]ÈXœÙ[˜ÙHœ›ÛHH^ÜY˜]Ú[™È\È[Ý\ˆY]ÜšX[ˆXÚ\Ú[Ûˆ˜]\ˆ[ˆH\ÚXØ[™\Ý[ˆH™XY\ˆÙˆHšYÝ\™H\È›ÈØ^HÈ[Bˆ›ØÚÙ\ˆØ\È\ÙYÜ˜ˆKˆ™[]YˆÉØ™X[Y[\	Ë	ÜÛ]	Ë	ÙšYÝ\™Yœ˜[YI×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %™X[H[\ÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKØ™X[WÙ[\Ëš[	ÈKˆKˆKˆÂˆ\Nˆ	ÜÛIËˆÝ[[X\žNˆ”™Y›XÝÈYÚ›ÝYÚÛÛ™šYÝ\˜X›H[œËX\œ˜^KÜ˜][™ËÝY\š[™Ë[™ÜXÚÛH[˜Ý[ÛœËÙ™™\š[™ÈH]X[]]]™H[Ù[ÙˆÜ]X[Ø]™Yœ›ÛÚ\[™È[™™X[H›Ý][™Ëˆ‹ˆ]Nˆ	ÔÜ]X[YÚ[Ù[]Ü‰ËˆØ]YÛÜžNˆ	ÕØ]™Yœ›ÛÚ\[™ÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆHÜ]X[YÚ[Ù[]Üˆ\ÈH›ÙÜ˜[[XX›HÜXËˆ[œÝXYÙˆÜš[™[™ÈHÝ\™˜XÙBˆ[ÈHš^YÚ\K][\ÜÙ\ÈH\ÙH]\›ˆ]ÛÙØ\™HØ[ˆÚ[™ÙHœ˜[YHžBˆœ˜[YH8 %ÛÈÛ™H]šXÙHØ[ˆXÝ\ÈH[œËHÜ˜][™ËHÛÜœ™XÝÜˆ›ÜˆX™\œ˜][ÛœÈ]ˆYX\Ý\™\ÈÛˆH›KÜˆHÛÙÜ˜[H]Z[È[ˆ\˜š]˜\žH[[œÚ]H]\›ˆ[ˆBˆ\Ý[[™KÜ‚‚ˆÏ’ÝÈ\]ZYÜž\Ý[ÈÈ]ÚÏ‚ˆ•HÛÜšÚ[™ÈÝXœÝ[˜ÙH\ÈHÝ›Û™Ï›™[X]XÈ\]ZYÜž\Ý[ÜÝ›Û™ÏŽˆ›Ù\Ú\Yˆ[ÛXÝ[\È]Ú\™HHÛÛ[[ÛˆÜšY[][Ûˆ8 %H[O™\™XÝÜÙ[Oˆ8 %Ú[H™[XZ[š[™Âˆœ™YHÈ[Ý™H\ÝÛ™H[›Ý\ˆZÙHH\]ZYˆ]ÜšY[][Û˜[Ü™\ˆÚ]Ý]ˆÜÚ][Û˜[Ü™\ˆ\ÈÚ]XZÙ\ÈH\ÙH\ÙY[ˆ[YÛ™Y›ÙÈ\™HÜXØ[BˆÝ›Û™Ï˜š\™Yœš[™Ù[ÜÝ›Û™ÏŽˆYÚÛ\š^™Y[Û™ÈH\™XÝÜˆÙY\ÈBˆ^˜[Ü™[˜\žH[™^Ü[ˆÛ\ÜÏHÈ›ÝX™OÜÝXÜÜ[‹YÚÛ\š^™YXÜ›ÜÜÈ]ˆÙY\ÈHÜ™[˜\žH[™^Ü[ˆÛ\ÜÏHÈ›ÝX›ÏÜÝXÜÜ[‹[™HY™™\™[˜ÙH\Âˆ\™ÙH8 %\›Ý[™ŒHÈŒ‹›ÝYÚH[ˆ[Y\È]ÙˆH]X\‚ˆH™YH‹‹‹ÚÜÈØ]™\]OØO‹Ü‚ˆ\Z[™ÈH›ÛYÙHXÜ›ÜÜÈH^[[ÈH\™XÝÜˆÝØ\™HšY[ˆH[™^ˆÙY[ˆžHYÚÛ\š^™Y[Û™ÈHÜšYÚ[˜[\™XÝÜˆÛY\ÈÛÛ[[Ý\ÛHœ›ÛBˆÜ[ˆÛ\ÜÏHÈ›ÝX™OÜÝXÜÜ[ˆÝØ\™Ü[ˆÛ\ÜÏHÈ›ÝX›ÏÜÝXÜÜ[‹ÛÂˆHÜXØ[]›ÝYÚ]^[8 %[™\™Y›Ü™HH\ÙHÙˆHYÚX]š[™Âˆ]8 %™XÛÛY\ÈHÛ[ÛÝ[˜Ý[ÛˆÙˆH\YY›ÛYÙNÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×Ø[[XJŠHHœ˜XÞÌ—W[HŠŠW^×[X™_IËØ\[ÛŽˆ	Ô\ÙH™]\™[˜ÙHÙˆÛ™H^[ˆH›ÛYÙKY\[™[[™^Y™™\™[˜ÙH[Y\ÈH\]ZYXÜž\Ý[^Y\ˆXÚÛ™\ÜËˆ\È\ÈHØ[YH^™\ÜÚ[Ûˆ\ÈHØ]™\]KÚ]3¥ˆ›ÝÈ[™\ˆ[XÝšXØ[ÛÛ›Û‰ÈKˆÈ^ˆ	×Ø[[XWÞ×^ÓÓÔß_HHˆ[Y\Èœ˜XÞÌ—W[HŠŠW^×[X™_IËØ\[ÛŽˆ	ÐH™Y›XÝ]™H]šXÙHÝX›\È]ˆYÚÜ›ÜÜÙ\ÈH^Y\ˆÛˆHØ^H[ˆ[™YØZ[ˆÛˆHØ^HÝ]ÛÈ[ˆHXÚÛ™\ÜÈXÚY]™\ÈH[³àÝ›ÚÙK‰ÈKˆKˆ[Žˆˆ“™X\›H[\ÙK[Û›H[Ù[]ÜœÈ\™HÝ›Û™Ï“ÓÔÏÜÝ›Û™Ïˆ8 %\]ZYÜž\Ý[Û‚ˆÚ[XÛÛ‹ˆHÓSÔÈ˜XÚÜ[™HY™\ÜÙ\ÈXXÚ^[[™Ø\œšY\ÈHZ\œ›Üˆ™[™X]]Ú]ˆH\]ZYXÜž\Ý[^Y\ˆX›Ý™NÈYÚ[\œË™Y›XÝÈÙ™ˆH^[Z\œ›Ü‹[™ˆX]™\È]š[™ÈÜ›ÜÜÙYH[Ù[][™È^Y\ˆÚXÙKˆ^[È\™HH™]ÈZXÜ›ÛY]™\ÂˆXÜ›ÜÜËH\ÙH\È]X[\ÙYÈš]Ë[™H]šXÙH\ÈØ[Xœ˜]YÛÈ]]Âˆ[š]™H˜[™ÙHÛÜœ™\ÜÛ™ÈÈ^XÝH³à]Û™H\ÚYÛˆØ]™[[™ÝÜ‚ˆ•ÛÈÛÛœÙ\]Y[˜Ù\È›ÛÝÈœ›ÛHH\ÚXÜÈ[™\™HÛÜÛ›ÝÚ[™È™Y›Ü™H[ÝH\ÚYÛ‚ˆ\›Ý[™Û™Kˆš\œÝÝ›Û™ÏH[œ]]\Ý™H[™X\›HÛ\š^™Y[Û™ÈBˆ\™XÝÜÜÝ›Û™ÏŽˆÛ›H]ÛÛ\Û™[\È[Ù[]YÛÈYÚ[ˆHÜÙÛÛ˜[ˆÝ]H\ÜÙ\È›ÝYÚ[˜Ú[™ÙY[™[]\ÈH]\›‹ˆ]™\žHÓHÙ]\\™Y›Ü™Bˆ\ÈHH™YH‹‹‹ÜÛ\š^™\‹ÈœÛ\š^™\ØOˆ[ˆœ›ÛÙˆ]ˆÙXÛÛ™\]ZYÜž\Ý[Âˆ\™HÝ›Û™ÏœÛÝÏÜÝ›Û™Ïˆ8 %™[ÜšY[][ÛˆZÙ\ÈZ[\ÙXÛÛ™ËÛÈ™Yœ™\Ú˜]uó~ù¶‰žËkºwµçX[YHØZ[‹ˆBˆ[™[™\ÜÈ›ÝH[\YšYY\šÈ›ÛÜˆ[™HÝ›Û™ÏœÚYÛ˜[È\šÏÜÝ›Û™Ï‚ˆ˜][Ë[™]˜][È\È[X™\˜][H[Oš[™\[™[ÙˆØZ[Ù[OŽˆÝÙY\HØZ[‚ˆXÜ›ÜÜÈ]™\žHXØYH]Ù™™\œÈ[™H˜][ÈÙ\È›Ý[Ý™H][ˆÝÙ\ˆH\šÂˆ›ÛÜ‹ÜˆÛÛXÝ[Ü™HYÚ[™]Ù\Ëˆ]\ÈHÚ[™ÛH[ÜÝ\ÙY[[™È\Âˆ[Ù[\ÈÈØ^KÜ‚ˆ•HÝ]H[™H[œÝÙ\œÈH]Y\Ý[ÛœÈ[ˆHÜ™\ˆ^HX]\‹ˆÝ›Û™Ï”Ø]\˜]YÜÝ›Û™Ï‚ˆÛÛY\Èš\œÝ™XØ]\ÙHÛ˜ÙHHÝ]]Û\È]HÛÛ™šYÝ\™YX^[][HH[X™\ˆ\È›ÂˆÛ™Ù\ˆ\ÝÛÜH][8 %HœšYÚ\ˆ[œ]™XYÈHØ[YH\ÈH[[Y\ˆÛ™K‚ˆÝ\Ú\ÙH]™\ÜÈÚ]\ˆHÚYÛ˜[ÛX\œÈH\šÈ›ÛÜŽ‚ˆÝ›Û™Ï˜™[ÝÈ\šÈ›ÛÜÜÝ›Û™ÏˆÚ[ˆHX™IÜÈÝÛˆ›Ú\ÙH\È\™Ù\ˆ[ˆHÚYÛ˜[ˆÝ›Û™Ï›X\™Ú[˜[ÜÝ›Û™ÏˆÚ[ˆ]\È\ÜÈ[ˆ™YH[Y\È\™Ù\‹[™ˆÝ›Û™Ï›[™X\ˆ˜[™ÙOÜÝ›Û™ÏˆÚ[ˆ]\ÈÛÛY›ÜX›HYX\Ý\˜X›KÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×^ÛÝ]]HHZ[Š^ÛX^KÈÚYÛXHÈÙÝÊK\]XYœ˜XÞÔß^ÑHHœ˜XÞ×ÚYÛXHß^ÙIËØ\[ÛŽˆ	Ð[\YšYYÝ]]Û\È]HÛÛ™šYÝ\™YX^[][KˆHÚYÛ˜[]ËY\šÈ˜][È]šY\ÈHÝ[[YY˜^HÙZYÚžHH\]Z]˜[[\šÈ[œ]8 %ÈØ[˜Ù[ËÚXÚ\È^XÝHHÚ[‰ÈKˆKˆ[Z]][ÛœÎˆ‘ØZ[ˆ\™H\ÈHZ[ˆ][\Y\ˆÛˆ™[]]™H˜^HÙZYÚ›ÝH[›ÙBˆØ\ØØYNˆ\™H\È›ÈÝ\H›ÛYÙK›ÈÝYÙHÛÝ[›È3­[™›ÈØZ[ˆšYÚ]ˆ›ÛYÙHÜˆ[\\˜]\™KˆH\šÈ›ÛÜˆ\ÈHš^Y™\ÚÛ[ÝHÙ]›ÝH˜]H8 %Bˆ˜XÙ\ˆ\È]\›Z[š\ÝXËÛÈ›Ý[™È›XÝX]\Ë\™H\™H›È\šÈ[O˜ÛÝ[ÏÙ[OˆÂˆ[YÜ˜]K[™›ÈÚÝ›Ú\ÙHÛˆHÚYÛ˜[]Ù[‹ˆ]YX[œÈH™\ÜY˜][È\ÈBˆÛX[ˆÛÛ\\š\ÛÛˆÙˆÛÈÛÛ™šYÝ\™Y]™[Ë›ÝH™YXÝYYX\Ý\™[Y[Ó”‹[™]ˆÚ[™]™\ˆ™\›ÙXÙHH8¢&“ˆ™Z]š[Ý\ˆ]ÛÝ™\›œÈÝÈÛ™ÈH™X[^\š[Y[]\Ýˆ[YÜ˜]KÜ‚ˆ“›Ý[™ÈX›Ý]HÝØØ]ÙH\È[Ù[Yˆ›È]X[[HY™šXÚY[˜ÞK›ÈÜXÝ˜[ˆ™\ÜÛœÙK[™›È›[™™\ÜÈ\ÝH™YÝ]Ù™ˆ8 %ÛÈHU\™H™XYÈL	›˜œÜÛ›HYÚˆ^XÝH\È™XY[H\È	›˜œÜÛ›KÚXÚ›È™X[šX[Ø[HX™HÛÝ[ˆØ]\˜][Ûˆ\ÈBˆ\™Û\˜]\ˆ[ˆHÜ˜YX[ÜXÙKXÚ\™ÙHÛÛ\™\ÜÚ[ÛˆÙˆH™X[X™K\™H\È›ÂˆY\œ[Ú[™Ë›ÈXY[YK›È[›ÙH˜]YÝYK[™›È[XYÙHœ›ÛHÝ™\™^ÜÝ\™K‚ˆÛÛ\\™H™XY[™ÜÈ™]ÙY[ˆÛÛ™šYÝ\˜][ÛœË™]™\ˆ\È[ˆXœÛÛ]HÛÝ[˜]KÜ˜ˆKˆ™[]YˆÉÙ]XÝÜ‰Ë	ØØ[Y\˜IË	ÜÝÙ\›Y]\‰Ë	ÜØ[\IË	ÛØš™XÝ]™I×KˆÚ]][ÛœÎˆÂˆÈX™[ˆ	Ò[X[X]ÝH8 %ÝÛ][\Y\ˆX™\Îˆ˜\ÚXÜÈ[™\XØ][ÛœÈ
+ÝØØ]ÙH]X[[HY™šXÚY[˜ÞH[™ÜXÝ˜[™\ÜÛœÙJIË\›ˆ	ÚÎ‹ËÝÝÝËš[X[X]ÝK˜ÛÛKØÛÛ[Ù[KÚ[X[X]ÝK\ÝÛšXÜËÜÚ]\ËÙØÝ[Y[ËÎNWÔÐST×ÓP”T–KÙ]ÔUÚ[™›ÛÚ×ÝKœ‰ÈKˆÈX™[ˆ	Ô‹ˆ\ØÚÝK8 'ÝÛ][\Y\œË8 'H”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %[XÝ›Ûˆ˜[œÚ][YHÜ™XY[™Hš\ÙH[YH]›ÛÝÜÈœ›ÛH]	Ë\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜÝÛ][\Y\œËš[	ÈKˆKˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %ÝÛˆÛÝ[[™ÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜÝÛ—ØÛÝ[[™Ëš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ÜÝÙ\›Y]\‰ËˆÝ[[X\žNˆ”™\ÜÈÜXØ[ÝÙ\ˆœ›ÛHHÛÛ™šYÝ\™YÛÝ\˜ÙHØ]È[™˜XÙYÜÜÙ\Ë›ÜˆÛÛ\\š[™ÈÝÈš[\œËÜ]\œË[™\\\™\ÈY™™XÝÝÙ\ˆ]HÙ[œÛÜ‹ˆ‹ˆ]Nˆ	ÔÝÙ\ˆY]\‰ËˆØ]YÛÜžNˆ	Ñ]XÝÜœÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆHH™YH‹‹‹Ù]XÝÜ‹ÈœÝÙ]XÝÜØOˆ™\ÜÈHÝØÝ\œ™[ÈHÝÙ\ˆY]\‚ˆ™\ÜÈÝ›Û™ÏØ]ÏÜÝ›Û™Ï‹ˆHY™™\™[˜ÙH\ÈØ[Xœ˜][ÛŽˆHÝÙ\ˆY]\‰ÜÈÙ[œÛÜ‚ˆ\ÈHÛ›ÝÛ‹YX\Ý\™Y™[][ÛœÚ\™]ÙY[ˆÚ]]Ý]]È[™HÜXØ[ÝÙ\ˆ]ˆ›ÙXÙY]ÛÈHÛÛœÛÛHØ[ˆÚÝÈ[ˆXœÛÛ]H[X™\ˆ[œÝXYÙˆ[ˆ\˜š]˜\žHÛ™Kˆ]™\žBˆÛÛ[Y\˜ÚX[ÝÙ\ˆY]\ˆ\È™X[HÛÈ\È8 %HÙ[œÛÜˆXY[™HÛÛœÛÛH]Û›ÝÜÈÝÂˆÈ™XY]8 %[™HÙ[œÛÜˆ\ÈÚ\™HH™X[\ÚYÛˆ˜Y[Ù™ˆ]™\ËÜ‚ˆHÝ›Û™ÏœÝÙ[ÙHÙ[œÛÜÜÝ›Û™Ïˆ\ÈHØ[YH\ÚXØ[]šXÙH\ÈHZ[‚ˆÝÙ]XÝÜ‹\Ý˜XÝÜžKXØ[Xœ˜]Yˆ]È™\ÜÛœÚ]š]HÜ[ˆÛ\ÜÏHÈ”Š3®ÊOÜÜ[‚ˆ\ÈYX\Ý\™Y]XXÚØ]™[[™ÝÛÈHÛÛœÛÛHØ[ˆ™XÛÝ™\ˆÝÙ\ˆœ›ÛHÝØÝ\œ™[‚ˆ]Ø[Xœ˜][Ûˆ\ÈHÚÛHØ]Ú8 %Ü[ˆÛ\ÜÏHÈ”Š3®ÊOÜÜ[ˆ\È›Ý›]^XÝH\ÂˆÛˆHH™YH‹‹‹Ù]XÝÜ‹ÈœÝÙ]XÝÜˆYÙOØO‹ÛÈHY]\ˆ\ÈÈ™HÛÚXÚˆØ]™[[™Ý]	ÜÈ™XY[™ËˆÙ]HÜ›Û™ÈÛ™H[™H[X™\ˆ\ÈÜ›Û™ÈžHH˜][ÈÙˆBˆÛÈ™\ÜÛœÚ]š]Y\ËÚ[[KÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	ÔHœ˜XÞÒWÞ×^Ü__^ÔŠ[X™J_IËØ\[ÛŽˆ	ÐHÝÙ[ÙHÙ[œÛÜˆ™XÛÝ™\œÈÝÙ\ˆžH]šY[™ÈHYX\Ý\™YÝØÝ\œ™[žHH™\ÜÛœÚ]š]H]HÛÛ™šYÝ\™YØ]™[[™ÝˆH™XY[™È\ÈÛ›H\ÈÛÜœ™XÝ\È]Ø]™[[™ÝÙ][™Ë‰ÈKˆKˆ[ŽˆˆHÝ›Û™Ï\›X[Ù[œÛÜÜÝ›Û™Ïˆ8 %H\›[Ü[KÜˆH\›Ù[XÝšXÈ]XÝÜˆ›Ü‚ˆÚ[™ÛH[Ù\È8 %ÚY\Ý\È]›Ø›[H[\™[Kˆ[˜ÚY[YÚ\ÈXœÛÜ˜™YžHH›XÚÂˆÛØ][™È[™ÛÛ™\YÈX][™HÙ[œÛÜˆ™XYÈH™\Ý[[™È[\\˜]\™Hš\ÙH
+Ü‹ˆ›ÜˆH\›Ù[XÝšXËHX][ÙHœ›ÛHÛ™HÚÝ
+KˆXœÛÜœ[Ûˆ[ÈX]\ËÈÛÛÙˆ\›Þ[X][Û‹HØ[YH›ØÙ\ÜÈ]]™\žHØ]™[[™ÝÛÈH\›X[Ù[œÛÜ‰ÜÈØ[Xœ˜][Û‚ˆÛÈXÜ›ÜÜÈHœ›ØYÜXÝ˜[˜[™ÙHÚ]›ÈØ]™[[™ÝÙ][™ÈÈÙ]Ü›Û™ÉØÚ]JJ_K‚ˆH˜Y[Ù™ˆ\ÈÜYYˆH\›[Ü[HZÙ\ÈÙXÛÛ™ÈÈ™XXÚ\›X[\]Z[Xœš][KYØZ[œÝˆZXÜ›ÜÙXÛÛ™È›ÜˆHÝÙ[ÙK[™™YYÈ[Ü™HÝÙ\ˆÈ›ÙXÙHHYX\Ý\˜X›H[\\˜]\™Bˆš\ÙH][8 %ÚXÚ\ÈÚH\›X[Ù[œÛÜœÈÛZ[˜]H]YÚ\ˆÝÙ\œÈ[™ÝÙ[ÙBˆÙ[œÛÜœÈÛZ[˜]H]ÝÈÛ™\ËÜ‚ˆ‘Z]\ˆÙ[œÛÜˆ\ÈH\™Ý›Û™Ï™[XYÙH™\ÚÛÜÝ›Û™Ï‹ˆHÝÙ[ÙHÙ[œÛÜˆØ[‚ˆØ]\˜]HÜˆ™H\›™YÝ]žHÛÈ]XÚÛÛ[[Ý\ÈÝÙ\ˆ8 %Ü‹\Ý\ÈX\Ú[KžHBˆ[œÝ[[™[Ý\ÈXZÈÝÙ\ˆÙˆH[ÙY™X[HÚÜÙH[O˜]™\˜YÙOÙ[OˆÝÙ\ˆÛÚÜÈ\™™XÝBˆØY™KˆH\›X[Ù[œÛÜ‰ÜÈÛØ][™ÈØ[ˆ™HØÛÜ˜ÚYžHHYÚH›ØÝ\ÙY™X[H]™[ˆÚ][‚ˆ]È˜]Y]™\˜YÙK\ÝÙ\ˆ˜[™ÙKˆ]™\žH™X[ÝÙ\ˆY]\ˆX›\Ú\ÈHX^[][HÝÙ\ˆ
+[™ˆÙ[ˆHX^[][HÝÙ\ˆ[O™[œÚ]OÙ[OŠH]H™XY[™È]Ù[ˆÚ]™\È›ÈØ\›š[™ÈÙ‚ˆ\›ØXÚ[™ËÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•HÝÙ\ˆY]\ˆYX\Ý\™\ÈHØ[YH™[]]™H˜^HÙZYÚ]™\žH]XÝÜˆ[ˆ\Âˆ[]HÙ\ËˆÛˆ]ÈÝÛˆ8 %Ù[XÝY[ˆHØ[˜\Ë™XYœ›ÛH]È[œÜXÝÜˆ[™[8 %]ˆ™[]]™H[X™\ˆ\È[]ÚÝÜËY[XØ[ÈHZ[ˆÝÙ]XÝÜ‹ˆHØ]È™XY[™Âˆ\X\œÈÛ˜ÙH]š]™\ÈHH™YH‹‹‹Ù\Ü^KÈ™]XÝÜˆØÜ™Y[ØOˆ
+ÛÛ›™XÝÈBˆ]XÝÜˆØÜ™Y[ˆˆ[ˆ]È[œÜXÝÜˆÙ\È\È[ˆÛ™HÛXÚÊKÜ‚ˆ•]šYÝ\™H\ÈZ[\ˆÛÝ\˜ÙKˆ]™\žHÛÝ\˜ÙH][˜Ú\È˜^\ÈÚÜÙHÙZYÚÈÝ[HÂˆÛ™K[™XXÚ[\˜XÝ[Ûˆ[Û™ÈHØ^HØØ[\È]ÙZYÚžHÚ]]XÝX[Bˆ˜[œÛZ]È8 %H™X[\Ü]\‰ÜÈ˜][ËHš[\‰ÜÈ˜[œÛZ\ÜÚ[Û‹[ˆ\\\™H]Û\Âˆ\ÙˆH™X[KHÚÜ\‰ÜÈ]HÞXÛKH›Û›[™X\ˆÜž\Ý[	ÜÈÛÛ™\œÚ[ÛˆY™šXÚY[˜ÞK‚ˆHÙZYÚ]Ý\š]™\ÈÈHÙ[œÛÜˆ˜XÙH\È\™Y›Ü™HHÚÛHÛÝ\˜ÙK]ËY]XÝÜ‚ˆY™šXÚY[˜ÞHÚZ[ˆ[ˆÛ™H[X™\‹[™][\Z[™È]žH]ÛÝ\˜ÙIÜÂˆÝ›Û™Ï]™\˜YÙHÝÙ\ˆ
+ÊOÜÝ›Û™ÏˆÚ]™\ÈHØ]È][]™\™Y\™KˆÙ]™\˜[ÛÝ\˜Ù\Âˆ[™[™ÈÛˆHØ[YHY]\ˆÚ[\HYÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	ÔÞ×^Ù]_HHÝ[WÞÜ××^Ù]_H]WÞÜßWÞÜßK\]XY]WÞÜßHHWWÝ[WÞ×^Ü˜^\Èœ›ÛHHßHWH×Þ×^Ü˜^__IËØ\[ÛŽˆ	ÓÛ›HÛÝ\˜Ù\ÈÚÜÙHYÚXÝX[H\œš]™\ÈÛÛšX]Kˆ3­È\ÈHÝ\š]š[™Èœ˜XÝ[ÛˆÙˆ]ÛÝ\˜ÙW	ÜÈÝÛˆ[Z]YÝÙ\‹ÛÈHLUÈ\Ù\ˆ™Z[™ÛÈš[\œÈ\ÜÚ[™ÈL	H[™IH™XYÈL‹HUË[™HÙXÛÛ™\Ù\ˆÛˆHØ[YHY]\ˆYÈ]ÈÝÛˆ\›K‰ÈKˆKˆ[Žˆˆ]šX][Ûˆ›ÛÝÜÈHYÚ›ÝYÚØ]™[[™ÝÚ[™Ù\ÈÛËˆÚ[ˆHÜXÚ[Y[‚ˆ›[Ü™\ØÙ\ËH[Z\ÜÚ[Ûˆ\È™]ÈYÚ]H™]ÈÛÛÝ\‹]]ÈÝÙ\ˆ\ÈÝ[Bˆœ˜XÝ[ÛˆÙˆH\Ù\ˆ][\Y]8 %ÛÈ]\ÈÚ\™ÙYÈ]\Ù\‹›ÝÈBˆÜXÚ[Y[‹ˆ[ˆHH™YH‹‹‹Ü]È”UØO‰ÜÈ›[Ü™\ØÙ[˜ÙH^[\HHY]\ˆÛÝ[™XYˆH[\ÝÙ\ˆ[Y\ÈH›ÝYÚH‰[Y\ÎÌL8 nð¬È]Ý\š]™\È^Ú]][Ûˆ›ØÝ\Ú[™ËˆÛÛ™\œÚ[ÛˆY™šXÚY[˜ÞKÛÛXÝ[ÛˆÛÛY[™ÛK[™H[Z\ÜÚ[Ûˆš[\‹Ü‚ˆ’YˆÛÛYHÙˆHYÚ\œš]š[™ÈØ\œšY\È›ÈÝÙ\ˆ˜][™È][8 %HÚ[ÛÝ\˜ÙH\Âˆ›È]™\˜YÙHÝÙ\ˆšY[8 %HØÜ™Y[ˆ™\ÜÈH˜]YÛÛšX][Ûˆ[™X\šÜÈBˆ™XY[™È[OŠÈ[œ˜]YÛÝ\˜ÙOÙ[O‹™XØ]\ÙH][X™\ˆ\È[ˆH›ÛÜˆ˜]\ˆ[ˆBˆÝ[ˆÚ[ˆ›Ý[™È\œš]š[™È\È˜]Y]˜[È˜XÚÈÈÚÝÚ[™È™[]]™HÙZYÚÜ˜ˆ[Z]][ÛœÎˆ•HÛÛ™\œÚ[Ûˆ\ÈØ]™[[™ÝY›]ˆÛ™HØ]Ùˆ	›˜œÜÛ›H[™Û™HØ]ˆÙˆMML	›˜œÜÛ›H™XYY[XØ[KÛÈH[[Y[™Z]™\ÈZÙH[ˆYX[^™Yœ›ØY˜[™ˆ\›X[Ù[œÛÜˆ›ÈX]\ˆÚXÚ™X[Ù[œÛÜˆ\H[ÝH]™H[ˆZ[™[™\™H\È›ÈØ^BˆÈÙ[XÝÛ™HÜˆÈÙ]HØ]™[[™Ý\Ù][™È\œ›Üˆ]H™X[ÝÙ[ÙHY]\‚ˆ[š\Ú\È[ÝH›Ü‹ˆÝÙ\ˆ\È]™\˜YÙHÝÙ\ˆÛ›H8 %H[ÙY[™HÕÈÛÝ\˜ÙHÙˆHØ[YBˆ]™\˜YÙH™XYHØ[YKÚ]›ÈXZË\ÝÙ\ˆšYÝ\™H[™›È›Ý[ÛˆÙˆH[ÙY™X[Bˆ[XYÚ[™ÈHÙ[œÛÜˆHÕÈ™X[HÙˆ\]X[]™\˜YÙHÝÙ\ˆÛÝ[›ÝÜ‚ˆ•\™H\È›È[XYÙH™\ÚÛ›ÈØ]\˜][Û‹›È›Ú\ÙH›ÛÜ‹[™›È™\ÜÛœÙH[YKˆÛÈ›Ý[™È\Ý[™ÝZ\Ú\ÈH\›[Ü[IÜÈÙXÛÛ™Ë[Û™ÈÙ][™Èœ›ÛHHÝÙ[ÙIÜÂˆZXÜ›ÜÙXÛÛ™ËˆHØ]È\™H^XÝ\š]Y]XÈÛˆH˜XÙYY™šXÚY[˜ÚY\È˜]\ˆ[ˆBˆYX\Ý\™[Y[ˆ^H[š\š]]™\žHYX[^˜][Ûˆ\Ý™X[HÙˆ[H8 %\™YYÙYš[\‚ˆ\ÜØ˜[™Ë›]\‹\Ý\™˜XÙH˜[œÛZ\ÜÚ[Ûˆ[œÝXYÙˆœ™\Û™[ÜÜÙ\Ë›ÈØØ]\ˆ[™›ÂˆXœÛÜœ[Ûˆ]H˜XÙ\ˆØ\È›ÝÛX›Ý]8 %ÛÈ™X]H[X™\ˆ\ÈÚ]\ÂˆYX[^™Y™[˜Ú[]™\œË›Ý\ÈÚ]H™X[Û™HÛÝ[Ü˜ˆKˆ™[]YˆÉÙ]XÝÜ‰Ë	Ü]	Ë	Ù\Ü^IË	ØÝÛ\Ù\‰×KˆÚ]][ÛœÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %\›X[]XÝÜœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÝ\›X[Ù]XÝÜœËš[	ÈKˆKˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %ÜXØ[ÝÙ\ˆY]\œÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛÜXØ[ÜÝÙ\—ÛY]\œËš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %ÝÙ[Ù\ÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜÝÙ[Ù\Ëš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ÝØ]™Yœ›Û]XÝÜ‰ËˆÝ[[X\žNˆ‘\Ý[X]\È™X[HÛÛ™\™Ù[˜ÙHœ›ÛH˜^H[™ÛH™\œÝ\ÈÜÚ][Û‹™\Ü[™ÈÚ]\ˆYÚ\ÈÛÛ[X]YÛÛ™\™Ú[™ËÜˆ]™\™Ú[™È[™HÛÜœ™\ÜÛ™[™È[ÛÛ™H[™ÛKˆ‹ˆ]Nˆ	ÕØ]™Yœ›Û]XÝÜ‰ËˆØ]YÛÜžNˆ	Ñ]XÝÜœÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆ‘]™\žHÝ\ˆ]XÝÜˆÛˆ\È™[˜Ú[œÝÙ\œÈ[OšÝÈ]XÚÙ[OˆYÚ\œš]™Y[™ˆX^X™HÚ]ÛÛÝ\ˆ]Ø\ËˆHØ]™Yœ›ÛÙ[œÛÜˆ[œÝÙ\œÈHY™™\™[]Y\Ý[Ûˆ[\™[N‚ˆÝ›Û™ÏÚ]Ú\OÜÝ›Û™Ïˆ\ÈHYÚˆH™X[IÜÈØ]™Yœ›Û\ÈHÝ\™˜XÙH›Ú[š[™ÂˆÚ[ÈÙˆ\]X[\ÙK[™]\È[Ø^\È\œ[™XÝ[\ˆÈHØØ[\™XÝ[ÛˆÙ‚ˆ˜]™[ˆH\™™XÝHÛÛ[X]Y™X[H\È›]Ø]™Yœ›ÛÎÈH™X[HÛÛ™\™Ú[™ÈÈH›ØÝ\Âˆ\ÈÜ\šXØ[Û™\ÈÙ[™YÛˆ]›ØÝ\Ëˆ™X[ÜXÜÈ™]™\ˆ›ÙXÙHZ]\ˆ^XÝH8 %ˆX™\œ˜][ÛœË\›X[[œÚ[™Ë][ÜÜ\šXÈ\˜[[˜ÙH[™[Ý[[™ÈÝ™\ÜÈ[X]™HBˆØ]™Yœ›ÛZ\ÜÚ\[‹[™]Z\ÜÚ\H\ÈÚ][Z]ÈÝÈYÚHH™X[HØ[ˆ™Bˆ›ØÝ\ÙYÜ‚ˆ–[ÝHØ[››ÝÝÙÜ˜\HØ]™Yœ›Ûˆ]XÝÜœÈ™\ÜÛ™È[[œÚ]K[™\ÙBˆ[™›Ü›X][Ûˆ\ÈÜÝH[œÝ[YÚ\ÈXœÛÜ˜™YˆÛÈ]™\žHØ]™Yœ›ÛÙ[œÛÜˆÛÜšÜÂˆ[™\™XÝKžHÛÛ™\[™È\ÙHÝXÝ\™H[ÈÛÛY][™È[ˆ[[œÚ]H]XÝÜ‚ˆ[O˜Ø[Ù[OˆÙYKˆHÝ›Û™Ï”ÚXÚø $Ò\X[›ˆÙ[œÛÜÜÝ›Û™ÏˆÙ\È]žHYX\Ý\š[™Âˆ\™XÝ[Û‹Ü‚‚ˆÏ‘œ›ÛH\X[›‰ÜÈX\ÚÈÈÚXÚÉÜÈ[œÛ]ÏÚÏ‚ˆ•H[™XYÙHÝ\ÈÚ]HX\ÚËˆ[ˆNL›Ú[›™\È\X[›ˆ\ÝY[\ØÛÜHÜXÜÂˆžHÛÝ™\š[™ÈH\\\™HÚ]HØÜ™Y[ˆÙˆÛ\È[™ÝÙÜ˜\[™ÈÚ\™HXXÚ[˜Ú[Ù‚ˆYÚ[™Y	ØÚ]JJ_H8 %\ÜXÙYÜÝÈYX[H˜^\ÈÙ\™H›ÝÛÚ[™ÈÚ\™HH\™™XÝˆÜXÈÛÝ[Ù[™[KˆHY]ÙÛÜšÙY]Ø\ÝY[[ÜÝ[HYÚ[™Ø]™Bˆ^žžHÚYÝÈÜÝÈ]Ù\™H\™ÈØØ]H™XÚ\Ù[KÜ‚ˆ’[ˆH]HNMŒÈ›Û[™ÚXÚÈ[™™[ˆ]XYHHÚ[™ÙH]\›™Y][È[‚ˆ[œÝ[Y[ˆ^H™\XÙYXXÚÛHÚ]HÛX[Ý›Û™Ï›[œÛ]ÜÝ›Û™Ï‰ØÚ]JJ_K‚ˆHÛHØ\ÝÈHÚYÝÎÈH[œÛ][O™›ØÝ\Ù\ÏÙ[O‹ˆH\œ˜^H›ÝÈ\Ù\È\ÜÙ[X[H[ˆH[˜ÚY[YÚ[™XXÚÝX‹X\\\™H›ÙXÙ\ÈHYÚœšYÚÜÝÚÜÙHÙ[›ÚYˆØ[ˆ™HØØ]YÈHÛX[œ˜XÝ[ÛˆÙˆH^[ˆ]Ú[™ÛHÝXœÝ]][Ûˆ\ÈÚ]XZÙ\ÂˆH[Ù\›ˆÙ[œÛÜˆ›ÝY™šXÚY[[™™XÚ\ÙKÜ‚‚ˆÏ•Ú]HÜÝÈXÝX[HYX\Ý\™OÚÏ‚ˆ‘XXÚ[œÛ]Ø[\\ÈÛ™HÛX[]ÚÙˆH[˜ÛÛZ[™ÈØ]™Yœ›ÛˆÝ™\ˆH]Ú]ˆÛX[HØ]™Yœ›Û\È\ÜÙ[X[HH[Y[™K[™H[Y[™HØ]™H›ØÝ\Ù\ÈÈBˆÜÝ\ÜXÙYœ›ÛHH[œÛ]	ÜÈ^\È[ˆ›ÜÜ[ÛˆÈ][ˆÚ][œÛ]›ØØ[ˆ[™ÝÜ[ˆÛ\ÜÏHÈ™ÜÜ[‹HØØ[Ø]™Yœ›ÛÛÜHÜ[ˆÛ\ÜÏHÈ³®ÜÜ[‚ˆ[Ý™\ÈHÜÝžOÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×[HH—]HH—œ˜XÞ×\X[ß^×\X[IËØ\[ÛŽˆ	ÔÜÝ\ÜXÙ[Y[YX\Ý\™\ÈHØØ[Ü˜YY[ÙˆHØ]™Yœ›ÛË›ÝHØ]™Yœ›Û]Ù[‹ˆ]™\žH[œÛ]™]\›œÈÛ™HÛÜHØ[\NÈHÝ\™˜XÙH\ÈÈ™H™XÛÛœÝXÝYœ›ÛHHÚÛHX\Ùˆ[K‰ÈKˆKˆ[Žˆˆ”ÛÈHÚXÚø $Ò\X[›ˆÙ[œÛÜˆ\È[™[Y[[HHÝ›Û™Ï™Ü˜YY[ÜÝ›Û™ÏˆÙ[œÛÜ‹ˆ]ˆ™]\›œÈ[ˆ\œ˜^HÙˆØØ[ÛÜ\Ë[™HØ]™Yœ›Û\È™XÛÝ™\™YY\Ø\™ÈžBˆ[YÜ˜][™È[H8 %Z]\ˆ›Û˜[KÝ]Ú[™È]ÚÈ]ÚÜˆ[Ù[KžBˆX\Ý\Ü]X\™\Èš][™È[ˆÜÙÛÛ˜[Ù]ÝXÚ\ÈHÝ›Û™Ï–™\›šZÙBˆÛ[›ÛZX[ÏÜÝ›Û™Ï‹ÚÜÙHÝË[Ü™\ˆ\›\È\™HH˜[Z[X\ˆ˜[YYX™\œ˜][ÛœÎˆ[ˆY›ØÝ\Ë\ÝYÛX]\ÛKÛÛXKÜ\šXØ[ˆ™\Ü[™ÈH™X[H\ÈŒŒˆØ]™\È“TÈÚ]ŒMBˆØ]™\ÈÙˆÛÛXHˆYX[œÈ^XÝH\Èš]Ø\È\™›Ü›YYÛˆHÛÜHX\Ü‚‚ˆÏ•H˜Y[Ù™ˆ]™\žH\ÚYÛˆ]™\ÈÚ]ÚÏ‚ˆ•ÛÈ[X™\œÈšYÚXXÚÝ\‹ˆÝ›Û™Ï”Ù[œÚ]]š]OÜÝ›Û™Ïˆ[\›Ý™\ÈÚ][œÛ]ˆ›ØØ[[™ÝÚ[˜ÙHHÛ™Ù\ˆÜ[ˆÛ\ÜÏHÈ™ÜÜ[ˆÛÛ™\ÈHØ[YHÛX[ÛÜBˆ[ÈH\™Ù\‹[Ü™HYX\Ý\˜X›H\ÜXÙ[Y[ˆÝ›Û™Ï‘[˜[ZXÈ˜[™ÙOÜÝ›Û™ÏˆÛÜšÜÈBˆÝ\ˆØ^NˆHÜÝ]\ÝÝ^H[œÚYH]ÈÝÛˆÝX‹X\\\™HÙ[È™[XZ[ˆ]šX]X›HÂˆ]È[œÛ]ÛÈH\™Ù\ÝYX\Ý\˜X›HÛÜH\È›ÝYÚHH[œÛ]]ÚˆÜ[ˆÛ\ÜÏHÈœÜÜ[ˆÝ™\ˆÚXÙHH›ØØ[[™Ý	ØÚ]JŠ_KÜ˜ˆ›Ü›][\ÌŽˆÂˆÈ^ˆ	×]WÞ×X^H\›Þœ˜XÞÜ^Ì™ŸK\]XY[W]WÞ×Z[ŸH\›Þœ˜XÞ×[HÞ×^ØÙ[›ÚY__^ÙŸIËØ\[ÛŽˆ	ÓÛ™Ù\ˆ[œÛ]ÈYX\Ý\™HÛX[\ˆÛÜ\È]Û\˜]HH˜\œ›ÝÙ\ˆ˜[™ÙHÙˆ[Kˆš[™\ˆÜ]X[Ø[\[™ÈYX[œÈÛX[\ˆÚXÚÚÜ[œÈˆ\ÈÙ[8 %ÛÈ™\ÛÛ][Û‹Ù[œÚ]]š]H[™[˜[ZXÈ˜[™ÙHØ[››Ý[™HX^[Z\ÙY]Û˜ÙK‰ÈKˆKˆ[Îˆˆ”Ü]X[™\ÛÛ][Ûˆ\ÈH\™ÛÛœÝ˜Z[ˆHØ]™Yœ›Û\ÈÛ›HØ[\YÛ˜ÙH\‚ˆ[œÛ]ÛÈÝXÝ\™Hš[™\ˆ[ˆH]Ú\ÈÚ[\H]™\˜YÙY]Ø^KˆÛÛ™[[Û˜[ˆ™Yœ˜XÝ]™H\œ˜^\ÈÚ]\›Ý[™H[™™Y[œÛ]È\ˆÜ]X\™HZ[[Y]™KÚXÚ\ÈÚBˆÛ\ÜÚXØ[ÚXÚø $Ò\X[›ˆÙ[œÛÜœÈÝZ]Û[ÛÝÛÝÛH˜\žZ[™ÈØ]™Yœ›ÛÈ[™›ÝÚ\œBˆÝXÝ\™YÛ™\Ëˆ™XÙ[ÛÜšÈ™\XÙ\ÈH™Yœ˜XÝ]™H[œÛ]ÈÚ]ˆH™YH‹‹‹ÛY]\Ý\™˜XÙKÈ›Y]\Ý\™˜XÙ\ÏØO‹ÚXÚÙ]\ÙHžHÝXØ]™[[™ÝÝXÝ\™Bˆ˜]\ˆ[ˆžHÝ\˜]\™H[™ÛÈXÛÝ\HHXÚÚ[™È[œÚ]Hœ›ÛHH›ØØ[[™ÝˆBˆŒ[[ÛœÝ˜][Ûˆ™XXÚYHØ[\[™È[œÚ]HÙˆNMŒÉ›˜œÜÛ[œÛ]ËÛ[p¬ˆÚ][ˆ0¬ˆXØÙ\[˜ÙH[™ÛK[™\ÙY]›ÜˆÚ[™ÛK\ÚÝ\ÙH[XYÚ[™ÈÙˆš[ÛÙÚXØ[ˆ\ÜÝYIØÚ]JÊ_KÜ‚ˆ“Û™H[Z]\ÈÝXÝ\˜[˜]\ˆ[ˆXÚšXØ[ˆ™XØ]\ÙHH[œÝ[Y[YX\Ý\™\ÈBˆÜ˜YY[HÙ[Z[™HÝ›Û™Ï™\ØÛÛ[Z]OÜÝ›Û™Ïˆ[ˆHØ]™Yœ›Û\È[š\ÚX›HÂˆ]	ØÚ]JJ_H8 %HÝ\ÜˆHœ˜[˜ÚÚ[\È›Èš[š]HÛÜHÈØ[\KÛÈ›È[[Ý[Ù‚ˆÙ[œÚ]]š]HÜˆØ[\[™È[œÚ]H™XÛÝ™\œÈ]Ü‚‚ˆÏ•Ú\™H^H\™H\ÙYÚÏ‚ˆ’[ˆÝ›Û™Ï˜Y\]™HÜXÜÏÜÝ›Û™Ï‹HØ]™Yœ›ÛÙ[œÛÜˆ[™BˆH™YH‹‹‹ÙKÈ™Y›Ü›XX›HZ\œ›ÜØOˆ›Ü›HHÛÜÙYÛÜˆHÙ[œÛÜˆYX\Ý\™\ÈBˆ\ÝÜ[Û‹HZ\œ›Üˆ\Y\È]È™YØ]]™K[™[ˆ\Ý›Û›ÛZXØ[[\ØÛÜH™XÛÝ™\œÂˆ™X\‹YY™œ˜XÝ[Û‹[[Z]Y[XYÚ[™È›ÝYÚ][ÜÜ\šXÈ\˜[[˜ÙKˆHØ[YHÛÜˆÚ\œ[œÈY\[XYÚ[™È[ˆ][\ÝÛˆZXÜ›ÜØÛÜKÚ\™HHÜXÚ[Y[ˆ]Ù[ˆ\ÈBˆX™\œ˜][™ÈYY][Kˆ[ˆÝ›Û™Ï›Ü[[ÛÙÞOÜÝ›Û™Ï‹X™\œ›ÛY]žHÙˆH^YIÜÈÝÛ‚ˆØ]™Yœ›Û\ÈÚ]XZÙ\ÈØ]™Yœ›ÛYÝZYYTÒRÈ[™’ÈÜÜÚX›IØÚ]JJ_Kˆ[™[ˆBˆX›Ü˜]ÜžKØ]™Yœ›ÛÙ[œÛÜœÈÚ\˜XÝ\š\ÙH\Ù\ˆ™X[H]X[]H[™ˆÜ[ˆÛ\ÜÏHÈ“p¬ÜÜ[‹™\šYžHÛÛ[X][Û‹\ÝÜXØ[Ý\™˜XÙ\È[ˆ˜[œÛZ\ÜÚ[ÛˆÜ‚ˆÝX›K\\ÜÈ™Y›XÝ[Û‹[™[YÛˆÞ\Ý[\È[ˆ™X[[YIØÚ]J
+_KÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ“ÜXØ[Ù]\˜XÙ\È˜^\Ë[™H˜^H\ÈžHYš[š][Ûˆ\œ[™XÝ[\ˆÈBˆØ]™Yœ›Û8 %ÛÈ˜^H\™XÝ[Ûˆ[Oš\ÏÙ[OˆØØ[Ø]™Yœ›ÛÛÜK[™XYH]˜Z[X›BˆÚ]Ý][žH[œÛ]ËˆHØ]™Yœ›Û]XÝÜˆ\Ù\È]\™XÝNˆ]]ÈÙ[œÛÜˆ˜XÙH]ˆZÙ\È]™\žH\œš]š[™È˜^IÜÈZYÚÜ[ˆÛ\ÜÏHÈšÜÜ[ˆXÜ›ÜÜÈH˜XÙH[™]Âˆ[™ÛHÜ[ˆÛ\ÜÏHÈ³®ÜÜ[ˆÈH˜XÙH›Ü›X[[™X\Ý\Ü]X\™\Èš]ÈHÝ˜ZYÚˆ[™H›ÝYÚH™\Ý[[™ÈÜ[ˆÛ\ÜÏHÈ³®
+
+OÜÜ[‹Ü‚ˆ•]š]\ÈHYX\Ý\™[Y[ˆ]È[Oš[\˜Ù\Ù[Oˆ\ÈHYX[ˆ[ÙˆHÚÛBˆ[™H[™\È\ØØ\™YÚXÚ\ÈÚHÝY\š[™ÈH™X[H[ˆ][ˆ[™ÛHÙ\È›ÝÚ[™ÙBˆH™XY[™È8 %H[Y›]Ø]™Yœ›Û\ÈÝ[›]ˆ]È[O™Ü˜YY[Ù[O‚ˆÜ[ˆÛ\ÜÏHÈ™3®ÙÜÜ[ˆ\ÈHØ]™Yœ›ÛÝ\˜]\™K[™]ÈÚYÛˆØ^\ÈÚXÚØ^N‚ˆ™YØ]]™H›ÜˆHÛÛ™\™Ú[™È™X[KÜÚ]]™H›ÜˆH]™\™Ú[™ÈÛ™K[™HXYÛš]YH™[ÝÂˆŒp¬XÜ›ÜÜÈH™X[H™\ÜÈ\ÈÛÛ[X]YÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×œ˜XÞÙ]_^ÙHHœ˜XÞÌ_^ÔŸK\]XY]WÞ×^Ù[_HHYœ˜XÞÙ]_^ÙWšYÚÙÝ	ËØ\[ÛŽˆ	ÕHš]YÜ˜YY[\ÈH™XÚ\›ØØ[ÙˆHØ]™Yœ›Û˜Y]\ÈÙˆÝ\˜]\™H‹[™][\Z[™È]žHH[[Z[˜]YX[Y]\ˆÚ]™\ÈH[ÛÛ™\™Ù[˜ÙHÜˆ]™\™Ù[˜ÙHÛÛ™H[™ÛH8 %H[X™\ˆH[™[™\ÜË‰ÈKˆKˆ[Žˆˆ›Ý]X[]Y\ÈÛÛYHÝ]^XÝ˜]\ˆ[ˆ\›Þ[X]KˆHŒ	›˜œÜÛ[H™X[H›ÝYÚˆ[ˆÜ[ˆÛ\ÜÏHÈ™ÜÜ[‰›˜œÜÏI›˜œÜÌL	›˜œÜÛ[H[œÈÚ]™\ÈHYX\Ý\™Y[[™ÛHÙ‚ˆLKð¬YØZ[œÝLK°¬œ›ÛHHÙ[ÛY]žNÈ[™Hš]YˆÜ[ˆÛ\ÜÏHÈŒKÔÜÜ[ˆ˜XÚÜÈHÚYÛ™Y\Ý[˜ÙHÈ›ØÝ\ÈÈH[ÙˆBˆZ[[Y]™H8 %8¢$ŒŒŒ	›˜œÜÛ[HÚ[ˆHÙ[œÛÜˆ˜XÙHÚ]È	›˜œÜÛ[H\Ý][œË
+ÍKŒ	›˜œÜÛ[BˆÚ[ˆ]Ú]ÈI›˜œÜÛ[H™^[Û™H›ØÝ\ËˆH™\ÜYÛÛ™H[™ÛH\ÈÛÛœÝ[Ûˆ›ÝˆÚY\ÈÙˆH›ØÝ\Ë\È]ÚÝ[™NˆH™X[H˜\œ›ÝÜÈ[™™KY^[™Ë]HÛÛ™H]ˆ™[Û™ÜÈÈÙ\È›ÝÚ[™ÙKÜ˜ˆ[Z]][ÛœÎˆHÝ˜ZYÚ[™H›ÝYÚÜ[ˆÛ\ÜÏHÈ³®
+
+OÜÜ[ˆ\È^XÝHÛ™BˆÚ\H\›H[ˆ][™]\›H\ÈÝ›Û™Ï™Y›ØÝ\ÏÜÝ›Û™Ï‹ˆ[\Èš]Y[™›ÝÛ‚ˆ]Ø^NÈ]™\ž][™ÈX›Ý™HY›ØÝ\È8 %\ÝYÛX]\ÛKÛÛXKÜ\šXØ[X™\œ˜][Û‹[™]™\žBˆYÚ\ˆ™\›šZÙH8 %\È›ÝÚ\™HÈÛËˆÙ[™H[X™\˜][HX™\œ˜]Y™X[H[ˆ
+H˜\ÝˆÚ[™Û]Ú]š\ÚX›HÜ\šXØ[X™\œ˜][Û‹Ø^JH[™H˜[ˆÙˆ˜^H[™Û\È\ÈÝ[ˆÛÛ\ÙYÈÛ™H]™\˜YÙHÛÜH[™™\ÜY\ÈHÚ[™ÛHÛX[ˆÛÛ™\™Ù[˜ÙH[™ÛKˆBˆX™\œ˜][Ûˆ\È™XÚ\Ù[HH\\\™Hœ›ÛH]Ý˜ZYÚ[™K[™]\È^XÝHÚ]ˆHš]\ØØ\™Ëˆ\È[œÝ[Y[[È[ÝHÚ]\ˆH™X[H\ÈÛÛ™\™Ú[™Ë]™\™Ú[™ÈÜ‚ˆÛÛ[X]Y[™ÝÈ\™È]Ù\È›Ý[[ÝHÚ]\ˆ]\È[žHÛÛÙÜ‚ˆ”ÛÛYHÙˆ]\ÈÝXÝ\˜[˜]\ˆ[ˆ[š[\[Y[YˆH˜XÙ\ˆ\ÈH‘Y\šY[Û˜[ˆÙXÝ[ÛˆÚ]Û™H˜[œÝ™\œÙH^\ËÛÈ\ÝYÛX]\ÛH8 %Y™™\™[Ý\˜]\™H[‚ˆÜ[ˆÛ\ÜÏHÈžÜÜ[ˆ[™Ü[ˆÛ\ÜÏHÈžOÜÜ[ˆ8 %\È›Ý™\™\Ù[X›H[ˆBˆš\œÝXÙK[™™Z]\ˆ\È[žH^š[]][X™\œ˜][Û‹ˆ\™H\È[ÛÈ›ÈÙ[œÛÜŽ‚ˆ›È[œÛ]\œ˜^K›ÈÜÝË›ÈÙ[›ÚY[™Ë›È^[›Ú\ÙK[™\™Y›Ü™H›Û™HÙˆBˆÙ[œÚ]]š]K]™\œÝ\ËY[˜[ZXË\˜[™ÙH˜Y[Ù™ˆ]ÛZ[˜]\È™X[[œÝ[Y[\ÚYÛ‹ˆ]™\žBˆ\œš]š[™È˜^H\È\ÙY][™XÚ\Ú[Û‹ÛÈ\™H\È›ÈX^[][HYX\Ý\˜X›HÛÜH[™›ÂˆZ[š[][H]XÝX›HÛ™KÜ‚ˆ•H™XY[™È\ÈÙ[ÛY]šXÈ›ÝYÚÝ]ˆ[ˆ[™ÛH[ˆYÜ™Y\Ë™]™\ˆ[ˆÜXØ[]ˆY™™\™[˜ÙH[ˆØ]™\Ë[™Ú]›ÈØ]™[[™Ý\[™[˜ÙH][ˆ\™H\È›È“TÈÜ‚ˆXZË]Ë]˜[^HØ]™Yœ›Û\œ›Ü‹›È™\›šZÙHXÛÛ\ÜÚ][Û‹[™›ÈÝ™Z˜][Ëˆš[˜[KˆHš]™YYÈ]X\ÝÛÈ˜^\È]Y™™\™[ZYÚÈ8 %HÚ[™ÛH˜^KÜˆHÛÝ\˜ÙH[‚ˆ[™H[ÙK\È›ÈÜ˜YY[ÈYX\Ý\™H[™™\ÜÈÛÛ[X]YžHY˜][˜]\ˆ[‚ˆXÛ[š[™ÈÈ[œÝÙ\‹Ü˜ˆKˆ™[]YˆÉÙIË	Ù]XÝÜ‰Ë	ØØ[Y\˜IË	Û[œÉË	ÛY]\Ý\™˜XÙI×KˆÚ]][ÛœÎˆÂˆÈX™[ˆ	ÔÚXÚø $Ò\X[›ˆØ]™Yœ›ÛÙ[œÛÜˆ8 %ÚZÚ\YXH
+\X[›¸ &\ÈNLX\ÚËÚXÚÈ[™]8 &\È[œÛ]ÝXœÝ]][Û‹[œÙ[œÚ]]š]HÈØ]™Yœ›Û\ØÛÛ[Z]Y\ËÜ[ZXÈ[™\Ý›Û›ÛZXØ[\ÙJIË\›ˆ	ÚÎ‹ËÙ[‹ÚZÚ\YXK›Ü™ËÝÚZÚKÔÚXÚÉQL‰N	NLÒ\X[›—ÝØ]™Yœ›ÛÜÙ[œÛÜ‰ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %ÚXÚø $Ò\X[›ˆØ]™Yœ›ÛÙ[œÛÜœÈ
+[œÛ]Ù[ÛY]žKÙ[œÚ]]š]H[™[˜[ZXË\˜[™ÙH[Z]ÊIË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜÚXÚ×Ú\X[›—ÝØ]™Yœ›ÛÜÙ[œÛÜœËš[	ÈKˆÈX™[ˆ	ÑÛÈ][‹8 'Y]HÚXÚø $Ò\X[›ˆØ]™Yœ›ÛÙ[œÛÜˆÚ]\™ÙHØ[\[™È[œÚ]H[™\™ÙH[™Ý[\ˆšY[ÙˆšY]Ë8 'HYÚˆØÚY[˜ÙH	ˆ\XØ][ÛœÈLËNÈ
+Œ
+IË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLÎÜÍLÍÍËLLMLŽNIÈKˆÈX™[ˆ	Ð^[ÛHÜXÜÈ8 %Ø]™Yœ›ÛÙ[œÚ[™È\XØ][ÛœÈ
+ÜXØ[\Ý[™Ë™X[HXYÛ›ÜÝXÜÈ[™p¬‹Y\]™HÜXÜË™X[][YH[YÛ›Y[
+IË\›ˆ	ÚÎ‹ËÝÝÝË˜^[Û[ÜXÜË˜ÛÛKØ\XØ][Û‹ÝØ]™Yœ›Û\Ù[œÚ[™ËXX\XØ][ÛœËÉÈKˆKˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Y\]™HÜXÜÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKØY\]™WÛÜXÜËš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Ø]™Yœ›ÛÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÝØ]™Yœ›ÛËš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ØØ[Y\˜IËˆÝ[[X\žNˆ”™XÛÜ™ÈHÛ™KY[Y[œÚ[Û˜[[[œÚ]H›Ùš[HXÜ›ÜÜÈ]È^[Ë[˜ÛY[™È[\™™\™[˜ÙHœ›ÛHÛÚ\™[™X[\Ëˆ‹ˆ]Nˆ	ÐØ[Y\˜IËˆØ]YÛÜžNˆ	Ñ]XÝÜœÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆHÛÛœÝ[Y\ˆØ[Y\˜H\ÈZ[È›ÙXÙHHX\Ú[™ÈXÝ\™KˆHØÚY[YšXÈØ[Y\˜H\ÂˆZ[È›ÙXÙHH[O›[X™\Ù[OŽˆÛ™H]\È›ÜÜ[Û˜[ÈÝÈX[žHÝÛœÂˆ\œš]™Y]HÚ]™[ˆXÙKžHHÛ›ÝÛˆ˜XÝÜ‹Ú]HÛ›ÝÛˆ[˜Ù\Z[Kˆ]™\ž][™Âˆ]\Ý[™ÝZ\Ú\ÈHÙ[œÛÜœÈ™[ÝÈ›ÛÝÜÈœ›ÛH]Û™HÚ[™ÙHÙˆ\œÜÙKÜ‚ˆ•HÚZ[ˆ\ÈÚÜ[™]™\žH[šÈÜÙ\ÈÛÛY][™ËˆÝÛœÈ[™ÛˆÚ[XÛÛˆ[™Bˆœ˜XÝ[ÛˆÙˆ[Hœ™YH[ˆ[XÝ›Ûˆ8 %]œ˜XÝ[Ûˆ\ÈH[Oœ]X[[HY™šXÚY[˜ÞOÙ[O‹‚ˆHœ™YY[XÝ›ÛœÈXØÝ[][]H[ˆHÝ[X[Ù[[™\ˆXXÚ^[›ÜˆH\˜][Û‚ˆÙˆH^ÜÝ\™Kˆ]H[™HXØÝ[][]YÚ\™ÙH\ÈÛÛ™\YÈH›ÛYÙKˆ[\YšYY[™YÚ]\ÙY[È[ˆ[YÙ\ˆÛÝ[ˆ™XY][YÙ\ˆ˜XÚÈ›ÝYÚBˆÚZ[ˆ[™[ÝH]™H[ˆ\Ý[X]HÙˆHÝÛˆ›^\È]™\ž][™ÈHÚZ[ˆYYˆÛˆHØ^KÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	Ô×Þ×^ÐQ__HHœ˜XÞ×]W—Þ×Ø[[X_H
+È^ÙßH
+È^ÛÙ™œÙ]IËØ\[ÛŽˆ	ÕÚ]H^[XÝX[H™\ÜÎˆ[˜ÚY[ÝÛœÈ—ó¬ÈØØ[YžH]X[[HY™šXÚY[˜ÞH3­Ë\È\šÈÝ\œ™[XØÝ[][]YÝ™\ˆ^ÜÝ\™H]šYYžHHØZ[ˆÈ[ˆ[XÝ›ÛœÈ\ˆÛÝ[‰ÈKˆÈ^ˆ	×ÚYÛXWÞ×^ÝÝ[_HHÜ\×[™\˜œ˜XÙ^×]H—Þ×Ø[[X__WÞ×^ÜÚÝ_H
+È[™\˜œ˜XÙ^ÑWÞ×^Ù\šß_H
+È[™\˜œ˜XÙ^×ÚYÛXWÞ×^Ü™XY_WžÌŸ_WÞ×^Ü™XY__IËØ\[ÛŽˆ	ÕH™YH›Ú\ÙHÛÝ\˜Ù\ÈY[ˆ]XY˜]\™K[ˆ[XÝ›ÛœËˆÚÝ›Ú\ÙH\ÈHÝÛœÈ[\Ù[™\È[™Ø[››Ý™H[™Ú[™Y\™Y]Ø^NÈHÝ\ˆÛÈ\™HÚ]HØ[Y\˜H\È\ÚYÛ™YÈZ[š[Z\ÙK‰ÈKˆKˆ[Žˆˆ™XØ]\ÙHÚÝ›Ú\ÙHÜ›ÝÜÈ\ÈHÜ]X\™H›ÛÝÙˆHÚYÛ˜[]ÛZ[˜]\È[ˆœšYÚˆYÚ[™™XY›Ú\ÙHÛZ[˜]\È[ˆ[HYÚˆ]Ú[™ÛH˜XÝ^Z[œÈÚHØÚY[YšXÂˆØ[Y\˜\È\™HÜXÚYšYYHØ^H^H\™K[™ÚHH™YH\˜Ú]XÝ\™\È™[ÝÂˆ]šYHHÛÜšÈ™]ÙY[ˆ[KÜ‚ˆÏÐÑÚÏ‚ˆHÚ\™ÙKXÛÝ\Y]šXÙHÚYÈHÚ\™ÙHXÚÙ]œ›ÛH^[È^[XÜ›ÜÜÈBˆÚ\ÈHÚ[™ÛH™XYÝ]›ÙKÚ\™HÛ™H[\YšY\ˆÛÛ™\È]™\žH^[[‚ˆ\›‰ØÚ]JJ_KˆÛ™H[\YšY\ˆ›ÜˆHÚÛHÙ[œÛÜˆ\ÈÚ]XZÙ\ÈHÐÑÛÈ[šY›Ü›H8 %ˆ\™H\È›È^[]Ë\^[˜\šX][Ûˆ[ˆØZ[ˆÜˆÙ™œÙ]ÈØ[Xœ˜]K™XØ]\ÙH]™\žBˆ^[\ÈYX\Ý\™YžHHØ[YH[XÝ›ÛšXÜËˆ˜XÚË][›™Y]šXÙ\Ë[[Z[˜]Yœ›ÛBˆH™X\ˆÛÈYÚÙ\È›ÝÜ›ÜÜÈHÚ\š[™È^Y\œË™XXÚH]X[[HY™šXÚY[˜ÞBˆ\›Ý[™MIH™X\ˆML	›˜œÜÛ›IØÚ]JJ_KˆHÛÜÝ\ÈÜYYˆÙ\šX[\Ú[™ÈZ[[ÛœÈÙ‚ˆ^[È›ÝYÚÛ™H[\YšY\ˆ\ÈÛÝË[™™XY[™È˜\Ý\ˆ˜Z\Ù\ÈH™XY›Ú\ÙKÜ‚ˆÏ‘SPÐÑÚÏ‚ˆ•H[XÝ›Û‹[][\Z[™ÈÐÑ[›ÙXÙY\›Ý[™ŒK]XÚÜÈ™XY›Ú\ÙHžBˆ[\YžZ[™ÈHÚYÛ˜[[O˜™Y›Ü™OÙ[Oˆ]™XXÚ\ÈH[\YšY\‹ˆÚ\™ÙH\ÈÛØÚÙYˆ›ÝYÚHÛ™È][\XØ][Ûˆ™YÚ\Ý\ˆ8 %LÍˆ[[Y[È[ˆHLˆÐÑMÈ8 %Ú\™HBˆYÚ›ÛYÙHÚ]™\ÈXXÚ˜[œÙ™\ˆHÛX[›Ø˜Xš[]HÙˆ[\XÝ[Ûš\Ø][Û‹ÛÈBˆXÚÙ]Ü›ÝÜÈÙ[ÛY]šXØ[IØÚ]JJ_KˆÚ]Ì[XÝ›ÛœÈÙˆ™XY›Ú\ÙH[™HØZ[ˆÙ‚ˆLH›Ú\ÙH™Y™\œ™Y˜XÚÈÈH[œ]\ÈŒÈ[XÝ›ÛœËÜ‚ˆ•HØ]Ú\È]][\XØ][Ûˆ\È]Ù[ˆÝØÚ\ÝXËˆXXÚ[XÝ›ÛˆZ]\ˆÙ\ÂˆÜˆÙ\È›Ý][\H]XXÚÝYÙK[™]˜[™Û[™\ÜÈYÈH›Ú\ÙHÛÛšX][ÛˆÙ‚ˆ]ÈÝÛˆ8 %[ˆ^Ù\ÜÈ›Ú\ÙH˜XÝÜˆÙˆ8¢&Œ‹ÛÛ™[[Û˜[H[™YžH™X][™ÈHØ[Y\˜Bˆ\ÈÝYÚ]È]X[[HY™šXÚY[˜ÞHÙ\™H[Oš[™YÙ[O‰ØÚ]JJ_IØÚ]JÊ_KˆHMIHQBˆ˜XÚËZ[[Z[˜]YSPÐÑ\È\™Y›Ü™H][ÝYÚ][ˆY™™XÝ]™HQH™X\ˆÚ[ˆ]\Âˆ[ˆ]YÚØZ[‰ØÚ]JÊ_Kˆ]^\ÈHXš[]HÈÛÝ[[[ÜÝ›Ý[™È]HšXÙBˆÙˆÛÝ[[™È]™\ž][™È[ÙH\ÜÈÙ[Ü‚ˆÏœÐÓSÔÏÚÏ‚ˆ”ØÚY[YšXÈÓSÔÈ™]™\œÙ\ÈHÐÑ	ÜÈ\œ˜[™Ù[Y[ˆXXÚ^[Ø\œšY\È]ÈÝÛ‚ˆ[\YšY\‹[™XXÚÛÛ[[ˆ]ÈÝÛˆ[˜[ÙÝYK]ËYYÚ][ÛÛ™\\‹ÛÈZ[[ÛœÈÙ‚ˆ^[È\™HÛÛ™\Y[ˆ\˜[[˜]\ˆ[ˆ[ˆÙ\šY\ÉØÚ]JJ_KˆHXÚ›ÛÙÞBˆ\œš]™Y[ˆŒHœ›ÛHHÛÛœÛÜ][HÙˆ˜Z\˜Ú[[XYÚ[™Ë[™Üˆ[™ÓËÛÛXš[š[™Âˆ›Ü\Y\È]Y›Ý™]š[Ý\ÛHÛÙ^\ÝY8 %™XY›Ú\ÙH™X\ˆÛ™H[XÝ›Û‹ˆ]X[[HY™šXÚY[˜ÞHÙˆŒ8 $ÍÌ	HÜˆ[Ü™KYÚœ˜[YH˜]KYÚ™\ÛÛ][Ûˆ[™ÚYBˆ[˜[ZXÈ˜[™ÙH]Û˜ÙIØÚ]JŠ_KÜ‚ˆHÝ\œ™[Ù[œÛÜˆ™XYÈX›Ý]HYYØ\^[È]Lœ˜[Y\È\ˆÙXÛÛ™Ú][‚ˆY™™XÝ]™H™XY›Ú\ÙH\›Ý[™Û™H[XÝ›Ûˆ[™HXZÈQHÙˆ‰K[™X\ˆXÜ›ÜÜÈ[[ÜÝˆ›Ý\ˆÜ™\œÈÙˆXYÛš]YIØÚ]JJ_Kˆ™XY›Ú\ÙH\È›Ý]™[ˆ[šY›Ü›NˆÛˆHYX\Ý\™YˆÐÓSÔÈÙ[œÛÜˆHYYX[ˆ\È\›Ý[™ŽI›˜œÜÙ[XÝ›ÛœË[™[Ü™H[ˆ[ˆH^[ÂˆÛÛšX]HZ]\ˆÛ™H›Ú\ÙH[XÝ›ÛˆÜˆ›Û™H[ˆHÚ]™[ˆœ˜[YIØÚ]JŠ_KˆHšXÙHÙ‚ˆ\‹\^[[\YšY\œÈ\È]]™\žH^[\È]ÈÝÛˆØZ[‹Ù™œÙ][™\šÈÝ\œ™[ˆÛÈHØÚY[YšXÈØ[Y\˜HÚ\ÈÚ]H\‹\^[Ø[Xœ˜][Ûˆ\YY[ˆš\›]Ø\™H8 %ˆÚXÚ\ÈH\™ÙH\ÙˆÚ]Ù\\˜]\ÈHØÚY[YšXÈÙ[œÛÜˆœ›ÛHHØ[YHÚ[XÛÛ‚ˆÛÛ\È[ˆ[™\ÝšX[Û™IØÚ]JÊ_KÜ‚ˆÏ•ÚXÚÛ™HÚ[œÏÚÏ‚ˆ“\ÜÈØš[Ý\È[ˆH]\ÚY]ÈÝYÙÙ\ÝˆHÛÛ›ÛYÛÛ\\š\ÛÛˆ]][‚ˆÐÓSÔË[ˆSPÐÑ[™[ˆ[™\ÝžKYÜ˜YHÓSÔÈØ[Y\˜HÛˆHÛÈ\›\ÈÙˆÛ™HLÍLˆ™X[\Ü]\ˆ8 %ÛÈ[™YHØ]ÈHØ[YHÝÛœÈœ˜[YHžHœ˜[YH8 %›Ý[™HÐÓSÔÂˆ[]™\š[™ÈKpåÈÈ‹0åÈHÚYÛ˜[]Ë[›Ú\ÙHÙˆH[™\ÝšX[ÓSÔË]Bˆ[™\ÝšX[ÓSÔÈ[OœÛYÚHÝ]\™›Ü›Z[™ÏÙ[OˆHSPÐÑžHKŒ°åÈÈK0åË]BˆÝÛˆ]™[ÈÙˆ›[Ü™\ØÙ[˜ÙH›XÝX][Ûˆ[XYÚ[™ÉØÚ]JÊ_KˆHSPÐÑ	ÜÈYÚ\‚ˆ]X[[HY™šXÚY[˜ÞHÛÝ[›ÝÛÛ\[œØ]H›ÜˆH^Ù\ÜÈ›Ú\ÙHÙˆ]È][\XØ][Û‚ˆÝYÙKˆSPÐÑÈ™[XZ[ˆHšYÚ[œÝÙ\ˆÚ\™HHÝÛˆÛÝ[™X[H\È™\žHÝÈ8 %ˆÜ[›š[™ËY\ÚÈÛÛ™›ØØ[\ÈHÝ[™\™^[\IØÚ]JJ_IØÚ]JÊ_H8 %Ú[HÐÓSÔÂˆÚ[œÈÚ\™]™\ˆšY[ÙˆšY]È[™ÜYYX]\‹ÚXÚ\È[ÜÝÙˆÝ\\‹\™\ÛÛ][Ûˆ[™ˆYÚ\ÚY][XYÚ[™ÉØÚ]JJ_KÜ‚ˆ•HØ[YHÛÛ\\š\ÛÛˆ›Ý[™Û™H[™È]›È]\ÚY]™\ÜÎˆH[™\ÝšX[ˆØ[Y\˜H[›ÙXÙYÜ\š[Ý\ÈÛÜœ™[][ÛœÈ™]ÙY[ˆ™ZYÚ›Ý\š[™È^[ËÚXÚBˆØ[Xœ˜]YØÚY[YšXÈÙ[œÛÜœÈY›Ý	ØÚ]JÊ_Kˆ›Üˆ[žHY]Ù]™XYÂˆ[O˜ÛÜœ™[][ÛœÏÙ[Oˆ˜]\ˆ[ˆ[[œÚ]Y\Ë]\È\Ü]X[YžZ[™È™YØ\™\ÜÈÙ‚ˆÝÈÛÛÙHÓ”ˆÛÚÜËÜ‚ˆÏ‘[Ù[Ø\XÚ]H[™š]\ÚÏ‚ˆ•ÛÈ[X™\œÈÙ]H˜[™ÙHÙˆHØÚY[YšXÈØ[Y\˜K[™^H\™H›Ý][™[BˆÛÛ™\ÙYÚ]XXÚÝ\‹Ü‚ˆ•HÝ›Û™Ï™[Ù[Ø\XÚ]OÜÝ›Û™Ïˆ\ÈH›Ü\HÙˆHÚ[XÛÛŽˆHX^[][Bˆ[X™\ˆÙˆÚ\™ÙHØ\œšY\œÈH^[Ø[ˆÛ™Y›Ü™H]Ý™\™›ÝÜÉØÚ]JŠ_Kˆš[][™ˆH^[Ø]\˜]\È8 %\\ˆÝÛœÈ\™HÚ[\H›Ý™XÛÜ™Y[™ÛˆHÐÑBˆ^Ù\ÜÈÚ\™ÙHØ[ˆÜ[[È™ZYÚ›Ý\œÈ\È›ÛÛZ[™Ëˆ]ØØ[\ÈÚ]^[\™XKˆÚXÚ\ÈÛ™HÙˆH™X[™X\ÛÛœÈSPÐÑÈ\ÙH\™ÙHM‰›˜œÜð­[H^[ÈÚ\™HÐÓSÔÈ\Ù\Âˆ‹I›˜œÜð­[IØÚ]JJ_IØÚ]JÊ_Kˆ\XØ[ÐÓSÔÈÙ[œÛÜœÈÛ\›Ý[™Ì	›˜œÜÌˆ[XÝ›ÛœÉØÚ]JŠ_KÜ‚ˆ‘]šYH]ÙZ[[™ÈžHHÛX[\ÝÚYÛ˜[HØ[Y\˜HØ[ˆ\Ý[™ÝZ\Ú8 %]È™XYˆ›Ú\ÙH8 %[™[ÝH]™HHÝ›Û™Ï™[˜[ZXÈ˜[™ÙOÜÝ›Û™Ï‹H˜][ÈÙˆHœšYÚ\ÝˆÈH˜Z[\Ý[™ÈYX\Ý\˜X›H[ˆÛ™H^ÜÝ\™IØÚ]JŠ_KÜ˜ˆ›Ü›][\ÌŽˆÂˆÈ^ˆ	×X]›^ÑŸHHœ˜XÞÓ—Þ×^ÝÙ[__^×ÚYÛXWÞ×^Ü™XY__H\]XYÛ™ÜšYÚ\œ›Ý×\]XY—Þ×^Øš]ß_HÙHÙ×ÞÌŸWX]›^ÑŸIËØ\[ÛŽˆ	Ò[˜K\ØÙ[™H[˜[ZXÈ˜[™ÙK[™H[X™\ˆÙˆš]È[ˆQÈ™YYÈ™Y›Ü™H]ÝÜÈ™Z[™ÈH[Z][™È[[Y[ˆX›\ÚYÐÓSÔÈšYÝ\™\È[ˆœ›ÛHX›Ý]NLÈNŒÌÈ‰ÈKˆKˆ[ÎˆˆÝ›Û™Ïš]\ÜÝ›Û™Ïˆ\ÈH›Ü\HÙˆH[XÝ›ÛšXÜË›ÝHÚ[XÛÛŽˆÝÂˆX[žH\ØÜ™]H]™[ÈHÛÛ™\\ˆ]šY\ÈHÚYÛ˜[[Ëˆ]Ù\È›ÝÜ™X]Bˆ[˜[ZXÈ˜[™ÙK]Û›HXÚY\ÈÚ]\ˆHÙ[œÛÜ‰ÜÈÝÛˆ˜[™ÙHÝ\š]™\ÈYÚ]\Ø][Û‹‚ˆH[šÈ™]ÙY[ˆHÛÈ\ÈH[O™ØZ[Ù[O‹[ˆ[XÝ›ÛœÈ\ˆÛÝ[Ü‚ˆ•ZÙHHÙ[œÛÜˆÛ[™ÈÌ	›˜œÜÌ[XÝ›ÛœÈÚ]KŒH[XÝ›ÛœÈÙˆ™XY›Ú\ÙH8 %ˆH[˜[ZXÈ˜[™ÙH™X\ˆÉ›˜œÜÌŒIØÚ]JŠ_KˆÚ[˜ÙHÙø  ŠÉ›˜œÜÌ
+H8¢bMËBˆM‹Xš]ÛÛ™\\ˆØ\œšY\È]ÛÛY›ÜX›K]X›Ý]ˆ[XÝ›ÛœÈ\ˆÛÝ[ˆHL‹Xš]ˆÛÛ™\\ˆ\ÈÛ›HMˆ]™[ËÛÈXXÚÛÝ[\ÈÛÜX›Ý]ËŒÈ[XÝ›ÛœÎˆBˆ]X[\Ø][ÛˆÝ\[Û™H\È›ÝÈÙ]™\˜[[Y\ÈH™XY›Ú\ÙK[™HÝË[YÚˆ\™›Ü›X[˜ÙHHÙ[œÛÜˆØ\ÈZ[›Üˆ\È™Y[ˆ\ØØ\™Y[ˆH\ÝÝYÙHÙˆBˆÚZ[‹ˆ[Ü™Hš]È[ˆH[˜[ZXÈ˜[™ÙH\ÝYšY\È\È\]X[HÚ[\ÜÈ8 %]YÚ]\Ù\Âˆ›Ú\ÙH[Èš[™\ˆ[™š[™\ˆÛXÙ\ÈÚ]Ý]Y[™È[™›Ü›X][Û‹Ü‚ˆ•H[™Ú[™Y\š[™ÈY™šXÝ[H\È]H˜\ÝÛÛ™\\ˆÚ]X[žHš]È\È]Ù[‚ˆ›Ú\ÞKˆHÛÛ][Ûˆ›ÝÈÝ[™\™[ˆÐÓSÔÈ\ÈÈÝÜžZ[™ÎˆXXÚÛÛ[[ˆØ\œšY\Âˆ[OÛÏÙ[Oˆ[\YšY\¸ $ØÛÛ™\\ˆZ\œËÛ™HYÚYØZ[ˆ[™ÝË[›Ú\ÙH›ÜˆÛX[ˆÚYÛ˜[ËÛ™HÝËYØZ[ˆ[™YÚXØ\XÚ]H›Üˆ\™ÙHÛ™\ËØ[\[™È]™\žH^[ˆÚ[][[™[Ý\ÛH[™™XÛÛœÝXÝ[™ÈÛ™H[XYÙHœ›ÛH›ÝˆÛÈLKXš]ÛÛ™\\œÈ\ÙYˆ\ÈØ^HÛÛšX]H\ÜÈ›Ú\ÙH[ˆHÚ[™ÛH˜\Ý\ˆM‹Xš]ÛÛ™\\ˆÛÝ[Ú[BˆHÛÛXš[™YÝ]]Ý[Ü[œÈHM‹Xš]˜[™ÙIØÚ]JŠ_KÜ‚ˆ“Û™HÛÛœÙ\]Y[˜ÙHØ]Ú\È[ÜHÝ][™]\ÈH\Ü^H›Ø›[H˜]\ˆ[ˆBˆØ[Y\˜HÛ™NˆM‹Xš]]H\ÈÈ™HÜ]YY^™Y[ÈHXš]˜[™ÙHÙˆ[ˆÜ™[˜\žBˆ[Ûš]Üˆ™Y›Ü™H[ž[Û™HØ[ˆÛÚÈ]]ÛÈÚÛÜÚ[™ÈÚXÚ\ÙˆH˜[™ÙHÈÚÝÈ\ÂˆHXÚ\Ú[ÛˆH\Ù\ˆ\ÈÈXZÙH[™Ø[ˆX\Ú[HXZÙH˜YIØÚ]JŠ_KÜ‚ˆH™[]Y˜\\X\œÈÚ[™]™\ˆÛÈØ[Y\˜\È\™HÛÛ\\™YžHÝØ\[™È[HÛÂˆHØ[YHÜˆYˆZ\ˆ^[Ú^™\ÈY™™\‹^H\™H›ÝÙYZ[™ÈHØ[YH[™ÎˆBˆÚYÛ˜[]š[YÛ™HL‰›˜œÜð­[H^[\È]šYY[[Û™È›Ý\ˆ‰›˜œÜð­[H^[ËÛÂˆHÛX[\‹\^[Ø[Y\˜H™\ÜÈH]X\\ˆÙˆHÚYÛ˜[\ˆ^[[™ÛÚÜÈ\ÜÂˆÙ[œÚ]]™H[ˆ]\ÉØÚ]JŠ_KˆH˜Z\ˆÛÛ\\š\ÛÛˆX]Ú\ÈH›Ú™XÝY^[Ú^™Bˆ›ÝYÚHÜXÜËÚXÚ\È^XÝHÚ]HÓÑ’HÝYHY8 %]Ù]XXÚØ[Y\˜IÜÂˆX™H[œÈÛÈ[™YH[™YÚ][ˆMø $ÌL‰›˜œÜÛ›H]HØ[\IØÚ]JÊ_KÜ‚ˆ‘š[˜[K[ÜÝØÚY[YšXÈØ[Y\˜\È\™H[Û›ØÚ›ÛYHžH\ÚYÛ‹[™[X™\˜][HÛËˆBˆÛÛÝ\ˆÙ[œÛÜˆ]ÈH[ÜØZXÈÙˆš[\œÈÝ™\ˆH^[È8 %H˜^Y\ˆ]\›ˆÚ]™\È[‚ˆH^[ÈÈÜ™Y[ˆ[™H]X\\ˆXXÚÈ™Y[™›YH8 %ÛÈXXÚ^[YX\Ý\™\ÈÛ›BˆX›Ý]H\™ÙˆHÜXÝ[H[™HZ\ÜÚ[™È˜[Y\È\™H[\œÛ]YHÝ\]ˆ[›ÙXÙ\È\Y˜XÝÈÙˆ]ÈÝÛˆ[™\È\ÝX[HXØÛÛ\[šYYžHH[X™\˜]H›\‚ˆš[\ˆÈÝ\™\ÜÈ[IØÚ]J
+_Kˆ›Üˆ]X[]]]™HÛÜšËHØ]™[[™Ý\ÈÙ[XÝYˆžHHš[\ˆ[ˆœ›ÛÙˆ[ˆ[™š[\™YÙ[œÛÜˆ[œÝXYˆ]™\žH^[[ˆYX\Ý\™\ÈBˆØ[YH˜[™Ú]›È[\œÛ][Ûˆ[™›ÈØ[\[™È\Y˜XÝËˆ]\ÈÛÜ›Ý[™È]ˆ\È\È[ÛÈÚHÚ[XÛÛ‰ÜÈ™\ÜÛœÙH˜\šY\ÈÛÈÝ›Û™ÛHXÜ›ÜÜÈHÜXÝ[H8 %ÚÜˆØ]™[[™ÝÈ\™HXœÛÜ˜™YÚ][ˆHœ˜XÝ[ÛˆÙˆHZXÜ›ÛY]™HÙˆHÝ\™˜XÙHÚ[H™Yˆ[™™X\‹Z[™œ˜\™YYÚ[™]˜]\ÈÙ]™\˜[ZXÜ›ÛY]™\È™Y›Ü™H™Z[™ÈXœÛÜ˜™YYˆ]ˆ\ÈXœÛÜ˜™Y][	ØÚ]J
+_KÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•HØ[Y\˜HYX\Ý\™\ÈHÝ›Û™Ï›Û™KY[Y[œÚ[Û˜[[[œÚ]H›Ùš[OÜÝ›Û™ÏˆXÜ›ÜÜÂˆ]ÈÙ[œÛÜˆ˜XÙKˆ]ÈÛÈÙ[ÛY]šXÈÙ][™ÜÈ\™HHÙ[œÛÜˆZYÚ[™H[X™\ˆÙ‚ˆ^[È]ZYÚ\È]šYY[ÎÈXXÚ˜^H][™È\È\ÜÚ]Y[ÈH^[Âˆ]È˜^HX™HXÝX[HÛÝ™\œË˜]\ˆ[ˆ™Z[™ÈÛÝ[Y]HÚ[™ÛHÚ[ÛÈH™X[Bˆ]˜[È™]ÙY[ˆÛÈ^[Ù[™\ÈÝ[ÛÛšX]\ÈÈ›ÝÜ‚ˆ•]\ÈÚ]XZÙ\ÈH›Ùš[HHYX\Ý\™[Y[˜]\ˆ[ˆH\ÝÙÜ˜[HÙˆ˜^Bˆ\œš]˜[ÎˆH[X™\ˆ[™\ˆ]\ÈÛÛœÙ\™Y[™H™X[HÛ\YžH[ˆ\\\™Bˆ\Ý™X[H™\ÜÈ^XÝHHœ˜XÝ[Ûˆ]Ý\š]™YˆH™XY[™È\È™\ÜY\Âˆ3¨ÝËHœ˜XÝ[ÛˆÙˆÛ™HÛÝ\˜ÙIÜÈ[Z]YÝÙ\‹[™H[šÙY]XÝÜˆØÜ™Y[ˆ˜]ÜÈBˆ›Ùš[KÜ˜ˆ›Ü›][\Îˆ×Kˆ[Žˆˆ•Ú[ˆH[\™™\™[˜ÙHÜ[Ûˆ\ÈÛ‹HØ[Y\˜H™\ÛÛ™\Èœš[™Ù\È›Ü›YYžHHÚ^™Yˆ[Û›ØÚ›ÛX]XÈÕÈ\Ù\ˆÚÜÙH›Ý]\È™XÛÛXš[™HÚ]H[Ù[YØ\œšY\ˆ\ÙH8 %BˆÛÈÜÈÙˆ[ˆ[\™™\›ÛY]\ˆÛÛYHÝ]ÛÛ\[Y[\žK[™H\ÙHØš™XÝ[ˆÛ™H\›BˆÜš]\ÈH™X[]\›ˆXÜ›ÜÜÈH^[ËˆÚ\™HH›Ý]IÜÈ\ÙHØ[››Ý™Bˆ™XÛÛœÝXÝYHØ[Y\˜H˜[È˜XÚÈÈ\ÜÚ][™È[[œÚ]HÛÛœÙ\˜]]™[H˜]\‚ˆ[ˆ[™[[™ÈHœš[™ÙK[™Ø^\ÈÛÈ[ˆ]È™XY[™ËÜ‚ˆ”›Ùš[HZYÚØ[ˆ˜XÚÈH™XY[™ÈXœÛÛ][KÛÈHÜØ\œžZ[™ÈH[Ù‚ˆHYÚ˜]ÜÈH[\È[Üˆ]]ËYš]È]ÈÝÛˆXZÈÚ[ˆÛ›HHÚ\BˆX]\œËÜ˜ˆ[Z]][ÛœÎˆ•\È\ÈHÙ[ÛY]šXÈ[[œÚ]H[Ù[›ÝHÙ[œÛÜˆ[Ù[ˆ›Ý[™ÈX›Ý™BˆX›Ý]›Ú\ÙKÙ[œÚ]]š]HÜˆ[˜[ZXÈ˜[™ÙH\ÈÚ[][]Yˆ\™H\È›È]X[[BˆY™šXÚY[˜ÞKÛÈ]™\žH˜^H\È]XÝYÚ]\]X[ÙZYÚ]]™\žHØ]™[[™ÝÈ›È™XYˆ›Ú\ÙK\šÈÝ\œ™[ÜˆÚÝ›Ú\ÙKÛÈ™\X][™È[ˆ^ÜÝ\™HÚ]™\È[ˆY[XØ[ˆ[œÝÙ\ŽÈ[™›È[Ù[Ø\XÚ]KÛÈH^[™]™\ˆØ]\˜]\Ë™]™\ˆ›ÛÛ\Ë[™ˆ™\ÜÛ™È[™X\›HÚ]Ý][Z]ˆ\™H\È›Èš]\Z]\ˆ8 %™XY[™ÜÈ\™BˆÛÛ[[Ý\È[X™\œË™]™\ˆ]X[\ÙY[ÈÛÝ[È8 %ÚXÚYX[œÈ›Û™HÙˆBˆ[]Ù[]™\œÝ\ËYØZ[ˆ™X\ÛÛš[™ÈX›Ý™HØ[ˆ™H[[ÛœÝ˜]Y\™KÜ‚ˆ•HÙ[œÛÜˆ\ÈÛ™KY[Y[œÚ[Û˜[X]Ú[™ÈH˜XÙ\‰ÜÈ‘Y\šY[Û˜[[™KÛÂˆ\™H\È›ÈÙXÛÛ™˜[œÝ™\œÙH^\È[™›È[XYÙH[ˆHÜ™[˜\žHÙ[œÙNˆBˆ8 'Ø[Y\˜H[XYÙx 'H\™H\ÈH[™H›Ùš[K›ÝHXÝ\™Kˆ]\È[Û›ØÚ›ÛYHÚ]›ÂˆÛÛÝ\ˆš[\ˆ\œ˜^K\È›È^ÜÝ\™H[YK›Èœ˜[YH˜]K[™›ÈÚ]\ˆ8 %ÛØ˜[Ü‚ˆ›Û[™È8 %ÛÈH›Û[™Ë\Ú]\ˆ\ÝÜ[ÛœÈ[™Þ[˜Ú›Ûš\Ø][Ûˆ›Ø›[\È]ˆÛZ[˜]H™X[˜\Ý[XYÚ[™ÈØ[››Ý\X\‹ˆ^[È\™H\™™XÝH[šY›Ü›KÚ]›Âˆ\‹\^[ØZ[ˆÜˆÙ™œÙ]˜\šX][Û‹›ÈÝÜˆ›[šÚ[™È^[Ë[™›È[\‹\^[ˆÜ›ÜÜÝ[ËÚXÚ\È™XÚ\Ù[HHÙ]Ùˆ[\\™™XÝ[ÛœÈ]Ù\\˜]\ÈØ[Y\˜BˆXÚ›ÛÙÚY\Èœ›ÛHÛ™H[›Ý\ˆ[ˆ˜XÝXÙKÜ˜ˆKˆ™[]YˆÉÙ]XÝÜ‰Ë	Ü]	Ë	Ù\Ü^IË	Ü\Ù\]IË	ØœÉ×KˆÚ]][ÛœÎˆÂˆÈX™[ˆ	Ó‹ˆÝ]\›X[ˆ[™‹ˆˆ˜[K8 '[\XÝÙˆ™]ÈØ[Y\˜HXÚ›ÛÙÚY\ÈÛˆ\ØÛÝ™\šY\È[ˆÙ[š[ÛÙÞK8 'HHš[ÛÙÚXØ[[][ˆŒÌJJKx $ÌLÈ
+ŒMŠIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒL‹ÍŽMNÉÈKˆÈX™[ˆ	ÑËˆÛÝ8 'ØÚY[YšXÈÓSÔÈØ[Y\˜HXÚ›ÛÙÞNˆHœ™YY[™ÈÜ›Ý[™›Üˆ™]ÈZXÜ›ÜØÛÜHXÚš\]Y\Ë8 'HZXÜ›ÜØÛÜH[™[˜[\Ú\ÈŽ
+JKÍ8 $ÔÌLˆ
+ŒM
+IË\›ˆ	ÚÎ‹ËØ[˜[]XØ[ØÚY[˜ÙKÚ[^K˜ÛÛKØÛÛ[Ø\XÛKYËÜØÚY[YšXËXÛ[ÜËXØ[Y\˜K]XÚ›ÛÙÞKXœ™YY[™ËYÜ›Ý[™[™]Ë[ZXÜ›ÜØÛÜK]XÚš\]Y\ÉÈKˆÈX™[ˆ	Ô‹ˆ˜[ˆ[ˆ^[™KKˆØ[™Y^Y\‹Ëˆ˜[™[˜™\™ËËˆ]ðêKËˆ0ï›™\‹ˆ\Ù\‹ˆYXÚÙ\ˆ[™Kˆpï\‹8 ']X[]]]™HÛÛ\\š\ÛÛˆÙˆØ[Y\˜HXÚ›ÛÙÚY\È›ÜˆÛÜÝYY™™XÝ]™HÝ\\‹\™\ÛÛ][ÛˆÜXØ[›XÝX][Ûˆ[XYÚ[™È
+ÓÑ’JK8 'H›Ý\›˜[Ùˆ\ÚXÜÎˆÝÛšXÜÈKH
+ŒNJIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLÌLMKMÍËØXŒÍ˜YIÈKˆÈX™[ˆ	Ô‹ˆ‹ˆ[Ûˆ[™ˆKˆX™[8 '^YZ[™ÈHØ[Y\˜Nˆ[ÈH™^Ù[\žK8 'H›ØËˆTÉ˜[\ÕÔÒQLÛÛÜˆ[XYÚ[™ÈÛÛ™™\™[˜ÙKÍx $ÌÍMH
+ŒŠIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒŒÍL‹ÐÒPËŒŒ‹ŒLŒK˜\	ÈKˆKˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ð[™ÜˆÈÞ›Ü™[œÝ[Y[È8 %X[[\YšY\ˆ[˜[ZXÈ˜[™ÙH
+ÝÈHÜ]YØZ[ˆÐÓSÔÈ™XYÝ]ÛÜšÜÊIË\›ˆ	ÚÎ‹ËØ[™Ü‹›Þ[œÝ˜ÛÛKÛX\›š[™ËÝšY]ËØ\XÛKÙX[X[\YšY\‹Y[˜[ZXË\˜[™ÙIÈKˆÈX™[ˆ	Ò[X[X]ÝH8 %ÝÛˆÛÝ[[™È[™Ø[Y\˜H›Ú\ÙH[™[Y[[ÉË\›ˆ	ÚÎ‹ËØØ[Y\˜Kš[X[X]ÝK˜ÛÛKÚœÙ[‹ÛX\›œ×Û[Ü™KÝXÚšXØ[ÙÝZY\Ëš[	ÈKˆKˆKˆÂˆ\Nˆ	Ü\Ù\]IËˆÝ[[X\žNˆYÈÜXØ[]XÜ›ÜÜÈ\ÙˆH™X[HÚ]Ý]Y›XÝ[™È]Ü™X][™ÈHÜ]X[\ÙH]\›ˆ]HÝ\ÜY[\™™\›ÛY]\ˆØ[ˆ™]™X[ˆ‹ˆ]Nˆ	Ô\ÙHØš™XÝ	ËˆØ]YÛÜžNˆ	ÔÜXÚ[Y[œÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆ“[ÜÝÙˆÚ]HZXÜ›ÜØÛÜH\ÈÚ[Y]Ù\È›ÝXœÛÜ˜ˆYÚˆH]š[™ÈÙ[[‚ˆÝ[\™HYY][KHØ\È›ÝËH›[YKHšXœ™H™Z[™È˜]Û‹H^Y\ˆÙˆ˜[œÜ\™[ˆÛ[Y\ˆ8 %[Ùˆ[H\™HÛÜÙHÈ\™™XÝHÛX\‹ˆÚ[™HYÚ›ÝYÚ[™[[ÜÝˆ^XÝH\È]XÚÛÛY\ÈÝ]HÝ\ˆÚYKÛÈH]XÝÜˆ]YX\Ý\™\È[[œÚ]BˆÙY\È›Ý[™È][ˆÝXÚ[ˆØš™XÝ\ÈØ[YH[Oœ\ÙHØš™XÝÙ[OŽˆ]\Âˆ[š\ÚX›H›Ý™XØ]\ÙH]˜Z[ÈÈY™™XÝHYÚ]™XØ]\ÙH]™\ž][™È]Ù\Âˆ\[œÈ[ˆH]X[]HÜ™[˜\žH]XÝ[Ûˆ›ÝÜÈ]Ø^KÜ‚ˆ•Ú]]Ù\ÈY™™XÝ\ÈH\œš]˜[[YKˆYÚÛÝÜÈ[ˆHYY][HÙˆ™Yœ˜XÝ]™Bˆ[™^Ü[ˆÛ\ÜÏHÈ›ÜÜ[‹ÛÈHXÚÛ™\ÜÈÜ[ˆÛ\ÜÏHÈÜÜ[ˆÙˆX]\šX[ˆÚ][ˆ[™^Y™™\™[œ›ÛH]ÈÝ\œ›Ý[™[™ÜÈY˜[˜Ù\ÈÜˆ™]\™ÈHØ]™H]ˆÜ›ÜÜÙ\È]™[]]™HÈHØ]™H™\ÚYH]ˆHXØÝ[][]YÜXØ[]Y™™\™[˜ÙBˆ\ÏÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×X]›^ÓÔHH
+—Þ×^ÛØš™XÝ_HH—Þ×^ÛYY][__JW	ËØ\[ÛŽˆ	ÓÜXØ[]Y™™\™[˜ÙHÜš][ˆžHH˜[œÜ\™[Øš™XÝÙˆXÚÛ™\ÜÈ‰ÈKˆÈ^ˆ	×[W˜\œHHœ˜XÞÌ—_^×[X™_WX]›^ÓÔIËØ\[ÛŽˆ	ÕH\ÙHÚY]]Y™™\™[˜ÙHÛÜœ™\ÜÛ™ÈË]˜XÝ][HØ]™[[™Ý3®Ë‰ÈKˆKˆ[Žˆˆ•H[X™\œÈ[›Û™Y\™HÛX[[™ÝX˜›Ü››H[š\ÚX›KˆH\XØ[Ù[\Âˆ\š\ÈI›˜œÜð­[HXÚÈÚ][ˆ[™^\›Ý[™KŒÍÈ[ˆYY][HÙˆ[™^KŒÌËÚ]š[™Âˆ[ˆÔ™X\ˆŒ‰›˜œÜð­[H8 %Ù[[™\ˆ[ˆHØ]™[[™ÝÙˆÜ™Y[ˆYÚˆ›È[[Ý[Ù‚ˆÛÛ˜\ÝÝ™]Ú[™È™XÛÝ™\œÈ]œ›ÛH[ˆ[[œÚ]H[XYÙK™XØ]\ÙHH[[œÚ]Bˆ[XYÙHÙ[Z[™[HÙ\È›ÝÛÛZ[ˆ]Ü‚ˆ‘]™\žHXÚš\]YH›ÜˆÙYZ[™ÈÝXÚ[ˆØš™XÝÛÜšÜÈHØ[YHØ^H[™\›™X]‚ˆ[\™™\™HHYÚ]\ÜÙY›ÝYÚ]Ú]H™Y™\™[˜ÙH]Y›ÝÛÈBˆ\ÙHY™™\™[˜ÙH™XÛÛY\ÈHY™™\™[˜ÙH[ˆœšYÚ™\ÜËˆÛÈ™X[\ÈÙˆ[[œÚ]BˆÜ[ˆÛ\ÜÏHÈ’x  OÜÜ[ˆ[™Ü[ˆÛ\ÜÏHÈ’x  ÜÜ[ˆYY][™ÈÚ]H\ÙBˆY™™\™[˜ÙHÜ[ˆÛ\ÜÏHÈ³¥3áÜÜ[ˆÚ]™OÜ˜ˆ›Ü›][\ÌŽˆÂˆÈ^ˆ	ÒHHWÌH
+ÈWÌˆ
+È—Ü\ÒWÌHWÌŸWÛÜ×[W˜\œIËØ\[ÛŽˆ	ÕÛËX™X[H[\™™\™[˜ÙNˆHÜ›ÜÜÈ\›H\ÈÚ]Ø\œšY\ÈH\ÙH[È[[œÚ]K‰ÈKˆKˆ[Îˆˆ‘œš]È™\›šZÙHZ[Hš\œÝ˜XÝXØ[[œÝ[Y[Ûˆ^XÝH\ÈYXKˆ\Âˆ\ÙKXÛÛ˜\ÝZXÜ›ÜØÛÜHÜ]ÈHYÚHÜXÚ[Y[ˆØØ]\œÈœ›ÛHHYÚ]ˆ\ÜÙ\È][™\Ý\˜™Y™]\™ÈÛ™HYØZ[œÝHÝ\ˆžHH]X\\ˆØ]™H[ˆHš[™Âˆ]ÚY[ÈHÛ\ÜÈ]H]H˜XÚÈ›ØØ[[™K[™]È[H™XÛÛXš[™H8 %\›š[™ÂˆH\ÙHØš™XÝ[ÈHœšYÚX[™Y\šÈ[XYÙHÚ]Ý]ÝZ[š[™ÈÜˆÚ[[™È]ˆ]ÛÛ‚ˆHNMLÈ›Ø™[š^™H[ˆ\ÚXÜÈ[™™[XZ[œÈH™X\ÛÛˆ]™KXÙ[ZXÜ›ÜØÛÜH\ÂˆÜÜÚX›H][	ØÚ]JJ_KÜ‚ˆ•HØ[YHš[˜Ú\HØØ[\È˜\ˆ™^[Û™HZXÜ›ÜØÛÜKˆY™™\™[X[[\™™\™[˜ÙBˆÛÛ˜\Ý[\™™\™\ÈXXÚÚ[ÙˆHÜXÚ[Y[ˆÚ]HÛYÚHÚX\™YÛÜHÙ‚ˆ]Ù[‹ÛÈH[XYÙH™\ÜÈH\ÙH[O™Ü˜YY[Ù[O‹ˆ]X[]]]™H\ÙH[XYÚ[™Âˆ™XÛÝ™\œÈHÔX\\ÈHØ[Xœ˜]Y[X™\ˆ\ˆ^[ÚXÚ›ÜˆHÙ[ÙˆÛ›ÝÛ‚ˆ[™^\È\ÜÙ[X[HHžK[X\ÜÈYX\Ý\™[Y[ˆ[™HXXÚ8 $Ö™Z™\ˆ[\™™\›ÛY]\ˆÚ]ˆHÚ[™[›™[[ˆÛ™H\›H\›œÈH[œÚ]HšY[ÙˆHÚØÚÈØ]™H[ÈÛÝ[X›Bˆœš[™Ù\ÉØÚ]JŠ_H8 %HXÚš\]YH]XYHÛÛ\™\ÜÚX›H›ÝÈš\ÚX›HÛ™È™Y›Ü™BˆÛÛ\]][Û˜[›ZY[˜[ZXÜËÜ‚ˆ•H˜XÝXØ[[H[ˆ]™\žHÛ™HÙˆ\ÙH\ÈHØ[YKˆH\ÙHØš™XÝÚYYžHBˆÚÛHØ]™[[™Ý\È[™\Ý[™ÝZ\ÚX›Hœ›ÛH›ÈØš™XÝ][™XØ]\ÙHHØ]™Bˆ™XÛÛXš[™\È^XÝH\È]Ý\YˆÛÛ˜\Ý\ÈX^[Z\ÙY™X\ˆ[ˆHØ]™KÚ\™HBˆ™XÛÛXš[˜][Ûˆ\È[H\ÝXÝ]™K[™]\ÈHÛÛ™][Ûˆ[œÝ[Y[È\™Bˆ\ÚYÛ™Y\›Ý[™Ü˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•H\ÙHØš™XÝÜš]\ÈÜXØ[]XÜ›ÜÜÈH™X[HÚ]Ý]™[™[™È]ˆ]\Âˆ›È[™^[™›ÈXÚÛ™\ÜÈÈÛÛ™šYÝ\™NÈ]\ÈÜXÚYšYY\™XÝHžHH]X[]Bˆ]X]\œËHXZÈ]Y™™\™[˜ÙH]YË[™žHÝÈ]]\È\ÝšX]YˆXÜ›ÜÜÈ]ÈÛX\ˆ\\\™Kˆ›Ý\ˆ›Ùš[\È\™H]˜Z[X›NÜ‚ˆ[‚ˆOÝ›Û™ÏÙ[˜[˜\ÜÝ›Û™Ïˆ8 %HZYH\™ÙˆH\\\™H™]\™YBˆ™\Ý[ÝXÚYˆH\ÙKXÛÛ˜\Ý\ÝØš™XÝ[™HY˜][ÛO‚ˆOÝ›Û™Ï•ÙYÙOÜÝ›Û™Ïˆ8 %]š\Ú[™È[™X\›Hœ›ÛHÛ™HYÙHÈHÝ\‹BˆÛ\ÜÚXÈ[Y\]Hœš[™ÙHÙ[™\˜]Ü‹ÛO‚ˆOÝ›Û™Ï”Ý\ÜÝ›Û™Ïˆ8 %[ˆH\\\™H™]\™Y[ˆÛX\‹ÛO‚ˆOÝ›Û™ÏÝ\™YÜÝ›Û™Ïˆ8 %]XY˜]XËXÚÙ\Ý]HÙ[™H[™˜[[™ÈÂˆ™\›È]›ÝYÙ\ËZÙHH[œÛ]ÜˆH›Ü]ÛO‚ˆÝ[‚ˆ‘XXÚ˜^HÜ›ÜÜÚ[™ÈH]HXÚÜÈ\H]]ÈÝÛˆÜ›ÜÜÚ[™ÈÚ[Ø[È›Ü‹ˆÛÈH\ÙHÜš][ˆXÜ›ÜÜÈH™X[H\ÈH™X[Ü]X[]\›ˆ˜]\ˆ[ˆHÚ[™ÛBˆ[X™\‹ˆ™XÛÛXš[™H]\›HYØZ[œÝH™Y™\™[˜ÙH[™H]\›ˆ™XÛÛY\È[[œÚ]H8 %ˆÚXÚ\ÈHÚÛH™X\ÛÛˆH[[Y[^\ÝËˆHY˜][\ÈHÙ[˜[˜\ˆÙ‚ˆŒÉ›˜œÜð­[K[ˆHØ]™H]LÌ‰›˜œÜÛ›NˆH\ÙKXÛÛ˜\ÝÛÛ™][Û‹Ü˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	Ó—Þ×^Ùœš[™Ù\ß_HHœ˜XÞ×X]›^ÓÔWÞ×^ÜXZß__^×[X™_W[Y\×œ˜XÞÙÞ×^Ø™X[___^ÙÞ×^Ø\\\™___IËØ\[ÛŽˆ	ÕÚ]H[œÜXÝÜˆ™\ÜÈ\È8 'œš[™Ù\ÈXÜ›ÜÜÈH™X[x 'NˆÛ›HH[[Z[˜]Y\ÙˆH›Ùš[H\ÈÜš][ˆÛÈHYÚ‰ÈKˆKˆ[Žˆˆ•ÛÈ™Z]š[Ý\œÈÝ\œš\ÙH[ÜK[™›Ý\™H™X[ÜXÜÈ˜]\ˆ[‚ˆÚ[\YšXØ][ÛœËÜ‚ˆÝ›Û™Ï•H›Ùš[HÜ[œÈHÛX\ˆ\\\™K›ÝH™X[KÜÝ›Û™ÏˆH˜\œ›ÝÂˆ™X[H›ÝYÚHÚYHÙYÙHØ[\\ÈÛ›HHÚÜÙXÝ[ÛˆÙˆH˜[\[™XÚÜÈ\[‚ˆ[[ÜÝ[šY›Ü›H[^H8 %H\ÝÛ‹›ÝH[[™\ÝÛœÈ›ÙXÙH›Èœš[™Ù\ËˆX]ÚˆH\\\™HÈH™X[H[™H[›Ùš[H\ÈÜš][‹ˆH[œÜXÝÜ‰ÜÈ8 'œš[™Ù\ÂˆXÜ›ÜÜÈH™X[x 'H™XYÝ]\Ù\ÈHÜ[ˆH˜XÙHXÝX[H]ÛÈ]™\ÜÈÚ]ˆHYÚXÚÜÈ\˜]\ˆ[ˆÚ]H]HÛÝ[Üš]KÜ‚ˆÝ›Û™Ï”ÛÛYHÙ][™ÜÈ[Ý™HHÜÝ[[™ÛÛYHØ[››Ý[™HY™™\™[˜ÙH\Âˆ›ÝX›Ý]Ý™[™ÝÜÝ›Û™Ïˆ]™\˜YÚ[™ÈHÛËX™X[H›Ü›][HXÜ›ÜÜÈH™X[HX]™\ÂˆHÜ][ˆHYÚ\ÈH\›H]ÝÚ[™ÜÈÚ]H™Y™\™[˜ÙH\›K[™BˆÚ^™HÙˆ]ÝÚ[™È\ÈH[™ÝÙˆHYX[ˆ\ÛÜˆÙˆHÜš][ˆ\ÙH8 %ˆÜ[ˆÛ\ÜÏHÈŸ8§êOÝ\šs¥3áŠJOÜÝ\¸§ê_ÜÜ[ˆÝ™\ˆH[[Z[˜]Y\\\™KˆÚ[‚ˆH\Ù\ÈÜš][ˆXÜ›ÜÜÈH™X[HØ[˜Ù[\ÈH\ÛÜ‹HÝ[\È[›™Y][‚ˆHYÚÝÙ]™\ˆH™Y™\™[˜ÙH\ÈÙ][™Hœš[™Ù\ÈY\™[HÛYHÚY]Ø^\Âˆ[™\›™X][ˆ[˜Ú[™Ú[™È[X™\‹Ü‚ˆ•]\[œÈ]\XÝ[\ˆÙ][™ÜÈ˜]\ˆ[ˆ›Üˆ\XÝ[\ˆ›Ùš[\ËˆHÙYÙBˆÜ[›š[™È^XÝHÛ™HÚÛHœš[™ÙHØ[˜Ù[Ë[™ÛÈÙ\ÈÛ™HÜ[›š[™ÈÛËÜˆÙ[NÂˆ]HØ[YHÙYÙH][Oš[Ù[OˆHœš[™ÙHÝÚ[™ÜÈ\™\ˆ[ˆ[ž][™È[ÙH\™Kˆ™]ÙY[ˆŒNH[™ŽHÙˆH[œ]ˆH[‹X\\\™HÝ\Ø[˜Ù[ÈÚ[ˆ]ÈÝ\\Âˆ^XÝH[ˆHØ]™K[™ÝÚ[™ÜÈÛ˜ÙH]\È›ÝˆHÙ[˜[˜\ˆ\È\Þ[[Y]šXÈ8 %Bˆ\™ÙˆH™X[HYØZ[œÝÛÈ\™È8 %ÛÈ]ÝÚ[™ÜÈžHH\™™]ÙY[ˆÈ[™ˆŒÌËÚXÚ\ÈÚH]XZÙ\ÈH[ÜÝYÚX›HY˜][ˆÚ[ˆHÝ\œ™[Ù][™ÂˆÙ[Z[™[HØ[››Ý[Ý™HHÝ[H™XYÝ]Ø^\È[OÝ[Ý^\È]™XYBˆ›Ùš[OÙ[Oˆ˜]\ˆ[ˆX]š[™ÈH[[Y[ÛÚÚ[™È[™\Ü‚ˆ•HYY]\ÈÙ[Z[™K›ÝH›ÛÚÚÙY\[™È\ÙNˆH[ÙHÜ›ÜÜÚ[™ÈH]Bˆ\œš]™\È]\ˆžHÔØËÚXÚHÝÙ]XÝÜˆÜˆ]]ØÛÜœ™[]ÜˆÝÛœÝ™X[HÚ[ˆ™\Üˆ[™Ûˆ]ÈÝÛˆH[[Y[\È^XÝH\È[š\ÚX›H\È]È\ÚXØ[ˆÛÝ[\œ\8 %]H]XÝÜˆÝ˜ZYÚY\ˆ]][žHÙ][™È[™H™XY[™È\Âˆ[˜Ú[™ÙYˆ]ZÙ\ÈH™Y™\™[˜ÙH\›HÈ™]™X[]Ü˜ˆ[Z]][ÛœÎˆ•\È\ÈH\™H\ÙHØÜ™Y[‹ˆ]\È›ÈXœÛÜœ[Ûˆ[™[Ü™BˆÚYÛšYšXØ[K›È™Yœ˜XÝ[ÛŽˆH™X[˜[œÜ\™[Øš™XÝÚ][ˆ[™^Ý\›Ýˆ[^\ÈYÚ[O˜[™Ù[Oˆ™[™È][™HÝ›Û™È\ÙHÜ˜YY[Y›XÝÈH˜^HžH[‚ˆ[™ÛH\È[[Y[Ù\È›Ý\KˆH˜^\ÈX]™H^XÝH\˜[[ÈÝÈ^Bˆ\œš]™YØ\œžZ[™ÈÛ›HHYY]Ü‚ˆ•H›Ùš[H\ÈÛ™KY[Y[œÚ[Û˜[XÜ›ÜÜÈH\\\™KX]Ú[™ÈH˜XÙ\‰ÜÈ‘ˆY\šY[Û˜[[™H8 %\™H\È›ÈÙXÛÛ™˜[œÝ™\œÙH^\ËÛÈHYH‘\ÙHX\ÝXÚˆ\ÈH™X[Ù[™\Ù[ÈØ[››Ý™H]]Ü™YˆH›Ý\ˆÚ\\È\™Hš^YÈ\˜š]˜\žBˆÔX\ËYX\Ý\™Y\ÙH]K[™H™\›šZÙH]X\\‹]Ø]™H[Oœš[™ÏÙ[Oˆ]H˜XÚÂˆ›ØØ[[™H\™H›Ý]˜Z[X›KÛÈH\ÙKXÛÛ˜\Ý[O›ZXÜ›ÜØÛÜOÙ[OˆØ[››Ý™Bˆ™\›ÙXÙY\È[ˆ[œÝ[Y[]™[ˆÝYÚH\ÚXÜÈ]^Ú]È\È\™KÜ‚ˆ•H]Y™™\™[˜ÙH\ÈÜXÚYšYY[ˆZXÜ›ÛY]™\È[™[š^YXÜ›ÜÜÂˆØ]™[[™ÝÚXÚÛÜœ™XÝHXZÙ\ÈH™\Ý[[™È\ÙHØØ[H\ÈKó®È]YX[œÈBˆ[[Y[Ø\œšY\È›ÈX]\šX[\Ü\œÚ[ÛˆÙˆ]ÈÝÛŽˆH™X[Øš™XÝ	ÜÈ[™^˜\šY\ÈÚ]ˆØ]™[[™Ý[™]ÈÔ˜\šY\ÈÚ]]ˆ›Ý[™ÈØØ]\œË[™\™H\È›È\X[BˆÛÚ\™[[XYÚ[™È[ÜžH8 %Hœš[™Ù\ÈÛÛYHœ›ÛHH˜XÙ\‰ÜÈÛÚ\™[™XÛÛXš[˜][Û‹ˆÛÈHÛÛ˜\ÝH™X[[œÝ[Y[ÜÙ\ÈÈš[š]HÛÛ™[œÙ\ˆ\\\™H[™ÛÝ\˜ÙBˆ^[\È›Ý[Ù[YÜ˜ˆKˆ™[]YˆÉÜØ[\IË	ÜÝYÙIË	ØØ[Y\˜IË	ØœÉË	Ù[^[[™I×KˆÚ]][ÛœÎˆÂˆÈX™[ˆ	Ñ‹ˆ™\›šZÙK8 'ÝÈH\ØÛÝ™\™Y\ÙHÛÛ˜\Ý8 'HØÚY[˜ÙHLŒJÌMJKÍx $ÌÍH
+NMMJH8 %H›Ø™[XÝ\™HXØÛÝ[ÙˆHY]Ù	Ë\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLL‹ÜØÚY[˜ÙKŒLŒKŒÌMKŒÍIÈKˆÈX™[ˆ	ÕËˆY\žšÚ\˜Ú8 '›ÝÈš\ÝX[^˜][Û‹8 'H›™Y‹XØY[ZXÈ™\ÜÈ
+NNÊH8 %[\™™\›ÛY]šXÈ[œÚ]HYX\Ý\™[Y[[ˆÛÛ\™\ÜÚX›H›ÝÉË\›ˆ	ÚÎ‹ËÝÝÝËœØÚY[˜ÙY\™XÝ˜ÛÛKØ›ÛÚËÎMÎLLLÍLM‹Ù›ÝË]š\ÝX[^˜][Û‰ÈKˆKˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	ÓšZÛÛˆZXÜ›ÜØÛÜUH8 %[›ÙXÝ[ÛˆÈ\ÙHÛÛ˜\ÝZXÜ›ÜØÛÜIË\›ˆ	ÚÎ‹ËÝÝÝË›ZXÜ›ÜØÛÜ]K˜ÛÛKÝXÚš\]Y\ËÜ\ÙKXÛÛ˜\ÝÚ[›ÙXÝ[Û‹]Ë\\ÙKXÛÛ˜\Ý[ZXÜ›ÜØÛÜIÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %ÜXØ[][™Ý	Ë\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛÜXØ[Ü]Û[™Ýš[	ÈKˆKˆKˆÂˆ\Nˆ	ÜÜXÝ›ÛY]\‰ËˆÝ[[X\žNˆ”™\ÜÈHØ]™[[™Ý˜[™ÙKÙ[™HØ]™[[™Ý[™˜[™ÚYÙˆ\œš]š[™ÈYÚÚ]H]X[]]]™HÜXÝ[H›ÜˆÛÛ\\š[™ÈÛÝ\˜Ù\È[™ÜXÝ˜[š[\š[™Ëˆ‹ˆ]Nˆ	ÔÜXÝ›ÛY]\‰ËˆØ]YÛÜžNˆ	Ñ]XÝÜœÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆHÜXÝ›ÛY]\ˆ[œÝÙ\œÈÛ™H]Y\Ý[ÛŽˆÝÈ\È\ÈYÚ	ÜÈÝÙ\ˆ\ÝšX]YˆXÜ›ÜÜÈØ]™[[™ÝÈ]\È[›ÝYÚÈÚ\˜XÝ\š\ÙHH\Ù\ˆÜˆ[ˆQÈÚXÚÈBˆÚ[›™[ÈÙˆHØ]™[[™ÝY]š\Ú[Û‹[][\^Y[šÈ[™Z\ˆÚYÛ˜[]Ë[›Ú\ÙBˆ˜][ÜËÈYX\Ý\™HHÛÛ\Û™[	ÜÈ˜[œÛZ\ÜÚ[ÛˆžHÛÛ\\š[™ÈÜXÝ˜HZÙ[ˆÚ][™ˆÚ]Ý]][™È™XYHØ]™[[™ÝY\[™[ØZ[ˆ[™›Ú\ÙHšYÝ\™HÙˆHšXœ™Bˆ[\YšY\‰ØÚ]JJ_KÜ‚ˆ•Ú]\ÈÛÜÛ›ÝÚ[™È\È][œÝ[Y[È[œÝÙ\š[™È]Û™H]Y\Ý[Ûˆ\™HZ[ˆÛˆÙ]™\˜[]Z]HY™™\™[š[˜Ú\\Ë[™Hš[˜Ú\HXÚY\ÈÚ]Bˆ[œÝ[Y[\ÈÛÛÙ]	ØÚ]JJ_KÜ‚ˆÏ”ÜXÝ›ÙÜ˜\ÚÏ‚ˆHÜ˜][™È\Ü\œÙ\ÈHYÚ[™H]XÝÜˆ\œ˜^H8 %HÝÙ[ÙH\œ˜^KÜˆBˆ[™X\ˆÐÑ8 %Ø]Ú\È[HØ]™[[™ÝÈ]Û˜ÙKˆ›Ý[™È[Ý™\ËÛÈXÜ]Z\Ú][Ûˆ\Âˆ˜\Ý[™H™\ÛÛ][Ûˆ\ÈÙ]žHH]XÝÜˆ˜]\ˆ[ˆžHHÜXÜËˆBˆÛÜÝÈ\™H]Ü]X[H™\ÛÛš[™È]XÝÜœÈ^\ÝÛ›H›Üˆ[Z]YÜXÝ˜[ˆ™YÚ[ÛœËÛÜ›H[ÈH[™œ˜\™Y[™]Ý˜^HYÚ[œÚYHH[œÝ[Y[Ø\ÂˆH[˜[ZXÈ˜[™ÙIØÚ]JJ_Kˆ\È\ÈHÛÛ\XÝ[œÝ[Y[[ÜÝ[ÜHYX[ˆžBˆ˜HÜXÝ›ÛY]\ˆ‹[™H]\›ˆ™Z[™HÛX[[™^[œÚ]™H\ÚYÛœÈ]]BˆÜ˜][™È[™HØØ[›š[™È™Y›XÝÜˆ[ˆHXÚØYÙHH™]ÈÙ[[Y]™\ÂˆXÜ›ÜÜÉØÚ]JÊ_KÜ‚ˆÏ”ØØ[›š[™È[Û›ØÚ›ÛX]ÜÚÏ‚ˆ”˜]\ˆ[ˆØ]Ú[™È]™\žHØ]™[[™Ý]Û˜ÙKÙ[™HYÚ›ÝYÚH[˜X›Bˆ˜[™\ÜÈš[\ˆ[™YX\Ý\™HH˜[œÛZ]YÝÙ\ˆÚ]HÚ[™ÛH]XÝÜ‹ÝÙY\[™ÂˆHš[\ˆXÜ›ÜÜÈH˜[™ÙHÙˆ[\™\Ý	ØÚ]JJ_KˆHš[\ˆ\ÈHÜ˜][™Âˆ[Û›ØÚ›ÛX]Üˆ8 %Þ™\›žx $Õ\›™\‹\XØ[H8 %\›™YžHH™XÚ\ÙH[ÝÜ‹[™Bˆ™\ÛÛ][Ûˆ\ÈÙ]žH]ÈÛ]ÚY[™Ü˜][™ËÜ‚ˆ•\È\ÈÝÈYÚ\\™›Ü›X[˜ÙH[œÝ[Y[È\™HZ[[™H™X\ÛÛˆ\È[˜[ZXÂˆ˜[™ÙKˆÛ™H[Û›ØÚ›ÛX]ÜˆX[˜YÙ\È\š\ÈÌ	›˜œÜÙ‹™XØ]\ÙHÝ›Û™ÈYÚ]Û™BˆØ]™[[™ÝØØ]\œÈ[œÚYH][™YÈH™XY[™È]™\ž]Ú\™H[ÙKˆÛÈ[ˆÙ\šY\Ëˆ[ÛˆHØ[YHØ]™[[™Ý™XXÚ™^[Û™Ì	›˜œÜÙ‰ØÚ]JJ_KˆHšXÙH\È[YN‚ˆHÝÙY\ZÙ\ÈÛ™Ù\ˆ›Üˆš[™\ˆ™\ÛÛ][Û‹[™Û™Ù\ˆYØZ[ˆ›Üˆ[Ü™HÙ[œÚ]]š]KÜ‚ˆÏ‘›Ý\šY\ˆ˜[œÙ›Ü›OÚÏ‚ˆHZXÚ[ÛÛˆ[\™™\›ÛY]\ˆYX\Ý\™\ÈÛÛY][™È[ÙH[\™[H8 %HÝ]]ÝÙ\‚ˆYØZ[œÝ\›K[[™ÝY™™\™[˜ÙH8 %[™›Ý\šY\ˆ˜[œÙ›Ü›\È]	ØÚ]JJ_Kˆ[Û›ØÚ›ÛX]XÂˆYÚÚ]™\ÈHÚ[\ÛÚYÚÜÙH\š[Ù\ÈHØ]™[[™ÝÚXÚ\ÈÝÈHØ]™[Y]\‚ˆÛÜšÜËˆ\™HH™\ÛÛ][Ûˆ\ÈÙ]žHÝÈ˜\ˆH\›HØ\ÈØØ[›™Y›ÝžH[žHÛ]‚ˆHØ]™[[X™\ˆ™\ÛÛ][Ûˆ\ÈÚ[\HH[™\œÙHÙˆH]YY™™\™[˜ÙH˜[™ÙKÛÈBˆMI›˜œÜÛ[HØØ[ˆÚ]™\ÈX›Ý]L	›˜œÜÑÒ‹›ÝYÚHŒÉ›˜œÜÛ›H]I›˜œÜð­[IØÚ]JJ_KÜ‚ˆ’]ÈÙXZÛ™\ÜÈ\È[œÝXÝ]™KˆHÝ›Û™È[™HÙ\È›Ý›ÙXÙHH\™™XÝHÛX[‚ˆÚ[\ÛÚY[™H›Ú\ÙHÛˆ]˜[œÙ›Ü›\È[ÈH˜XÚÙÜ›Ý[™Ü™XYXÜ›ÜÜÈHÚÛBˆÜXÝ[H8 %ÛÈÙ[œÚ]]š]HÈHÙXZÈ[™HÙ]È[OÛÜœÙOÙ[OˆÚ[ˆHÝ›Û™ÈÛ™H\Âˆ™\Ù[[™›È[[Ý[Ùˆ^˜HØØ[ˆ˜[™ÙHš^\È]ˆ[˜[ZXÈ˜[™ÙH[™È\›Ý[™ˆÌ8 $Í	›˜œÜÙ‰ØÚ]JJ_KÜ‚ˆÏXÛÝ\ÝË[ÜXÏÚÏ‚ˆHY™œ˜XÝ[ÛˆÜ˜][™È\È›ÝHÛ›HØ^HÈ\Ü\œÙHYÚˆHœ˜YÙÈÙ[š]™[‚ˆžHHÝ\™˜XÙHXÛÝ\ÝXÈØ]™HY™œ˜XÝÈXXÚÜXØ[œ™\]Y[˜ÞHÈ]ÈÝÛˆ[™ÛK[™ˆ[YÜ˜]Y[ÜXÈÜXÝ[H[˜[\Ù\œÈÙ\™HZ[Ûˆ^XÝH]8 %HÝZYYØ]™Bˆ[\˜XÝ[™ÈÚ]HÝ\™˜XÙHXÛÝ\ÝXÈØ]™HÛˆHÚ[™ÛHÚ\	ØÚ]JJ_KˆHØ[YBˆ[\˜XÝ[Û‹[ˆ\ÈHš[\ˆ˜]\ˆ[ˆ\ÈH\Ü\œÙ\‹\ÈBˆH™YH‹‹‹Ø[Ý‹ÈSÕØO‹Ü˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×^ÔÑJ[X™JHHœ˜XÞÔÞ×^ÛYX\Ý\™Y__^×^Ô•ß_IËØ\[ÛŽˆ	ÔÝÙ\ˆÜXÝ˜[[œÚ]H\ÈHYX\Ý\™YÝÙ\ˆ]šYYžHH™\ÛÛ][Ûˆ˜[™ÚYH[œÝ[Y[Ø\ÈÙ]Ëˆ]\ÈHÛ™\Ý™\XØ[^\Ë[™HÛ™H]]ÈH˜\œ›ÝÈ[™H[™Hœ›ØY˜[™™HÛÛ\\™Y‰ÈKˆKˆ[Žˆˆ•]]š\Ú[Ûˆ\ÈÝX\ˆ[ˆ]ÛÚÜË[™]\ÈHÚ[™ÛH[ÜÝÛÛ[[ÛˆØ^HÙ‚ˆZ\Ü™XY[™ÈHÜXÝ[Kˆ[ˆ[˜[\Ù\‰ÜÈ™\XØ[^\ÈÙ[ˆÚÝÜÈYX\Ý\™YÝÙ\‹›ÝˆÝÙ\ˆÜXÝ˜[[œÚ]IØÚ]JJ_KˆÛÛ™\[™È™]ÙY[ˆ[HYX[œÈ]šY[™ÈžHBˆ™\ÛÛ][Ûˆ˜[™ÚY8 %]HØ[Xœ˜][Ûˆ\È\ÝX[HÛ™H›Üˆ]X\ÚK[[Û›ØÚ›ÛX]XÂˆYÚ[™Ú[ˆH˜[™ÚY\È][ÝY\ÈH[ÚY][ˆX^[][KÝÈÙ[ˆÝÙ\‹Y]šYYXžKX˜[™ÚYX]Ú\ÈHYH[œÚ]H\[™ÈÛˆHÚ\HÙˆBˆ[œÝ[Y[	ÜÈš[\‰ØÚ]JJ_KˆÙÈØØ[\È[ˆ›H\™HÛÛ[[Ûˆ™XÚ\Ù[H™XØ]\ÙHBˆ[\™\Ý[™È˜[™ÙHÜ[œÈÜ™\œÈÙˆXYÛš]YKÜ‚ˆ“Û™HØ\›š[™Èœ›ÛHHØ[YHÛÝ\˜ÙH\ÈÛÜ™\X][™ÎˆHÜXÝ[H[˜[\Ù\ˆ\È›ÝˆH[œÝ[Y[ÈYX\Ý\™HÜXØ[ÝÙ\ˆÚ]ˆÛÝ\[™ÈY™šXÚY[˜ÚY\È[ˆH[]™\žBˆ]\™H˜\™[HÛ›ÝÛˆÙ[[›ÝYÚˆ\ÙHHH™YH‹‹‹ÜÝÙ\›Y]\‹ÈœÝÙ\‚ˆY]\ØO‰ØÚ]JJ_KÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•HÜXÝ›ÛY]\ˆ™\ÜÈHÙ[™HØ]™[[™ÝH]XÝY˜[™ÙKBˆ˜[™ÚY[™HÝYÜXÝ[HÙˆ]™\ž][™È™XXÚ[™È]È˜XÙKˆÚ\™H]ÈBˆH™YH‹‹‹Ù\Ü^KÈ‘]XÝÜˆØÜ™Y[ØOˆÈÙYHHÜXÝ[H˜]Û‹Ü‚ˆ’]È™\XØ[^\ÈÙ™™\œÈ^XÝHHÚÚXÙHX›Ý™KˆÝ›Û™Ï”ÜXÝ˜[[œÚ]OÜÝ›Û™Ï‚ˆ\ÈHÛ™\ÝÛ™H8 %ÝÙ\ˆ\ˆ˜[›ÛY]™KÛÈH˜[™	ÜÈZYÚÙ\È›Ý\[™ÛˆÝÂˆš[™[H]\[™YÈ™HØ[\Yˆ]Ø\œšY\ÈHÛÛœÙ\]Y[˜ÙH]XZÙ\È™X[ˆ[œÝ[Y[È]ÚÝØ\™ÛÎˆH\Ù\ˆ[™H\È›ÈÚYÙˆ]ÈÝÛ‹ÛÈ]\ÈÜ™XYÝ™\‚ˆH›ÛZ[˜[ŒI›˜œÜÛ›HÈÚ]™H]HZYÚ][[™][ˆÝÙ\œÈÝ™\ˆ[žBˆÛÛ[][H™\ÚYH]ˆ]\ÈÚ]H™X[ÜXÝ›ÛY]\ˆÚÝÜË[™]\È\Ù[\ÜÈÚ[‚ˆHÚ[\ÈÈÙYHHÙXZÈ˜[X[ˆ[™H™^È]ÈÝÛˆ[\8 %ÛÂˆÝ›Û™Ïœ™[]]™OÜÝ›Û™Ïˆ[ÙHØØ[\ÈXXÚÛÝ\˜ÙHÈ]ÈÝÛˆXZÈ[œÝXYÜ‚ˆ•ÛÈ™Z]š[Ý\œÈ\™HÛÜÛ›ÝÚ[™È™XØ]\ÙH^HÙ\™HZ[[X™\˜][K‚ˆÝ›Û™Ï˜[™È]È›ÝÝXÚÝ^H\\ÜÝ›Û™ÏˆÛ™HÛÝ\˜ÙHØ[ˆ\œš]™HØ\œžZ[™ÂˆÙ]™\˜[\Ú›Ú[˜[™È8 %[ˆH™YH‹‹‹Ø[Ý‹ÈSÕØOˆÙ[XÝ[™È™YH[™\ÈÝ]Ù‚ˆHÝ\\˜ÛÛ[][H\ÈHÝ[™\™Ø\ÙH8 %[™XXÚ\ÈYX\Ý\™Y[™˜]ÛˆÛˆ]ÈÝÛ‹ˆ˜]\ˆ[ˆ™Z[™ÈÝ[[X\š\ÙYXÜ›ÜÜÈHØ\È™]ÙY[ˆ[H[ÈHÚ[™ÛHÛYX\‹‚ˆÝ™\›\[™È\ÜØ˜[™È\™HÛ™H˜[™ÛÜœ™XÝK[™HÜšY[œÚYH]\Èš[™H[›ÝYÚˆÈÙY\Ú]]™\ˆÝXÝ\™H]\ÎˆÙ]™\˜[˜\œ›ÝÈ[™\ÈÝ][™ÈH[ÙY\Ù\‰ÜÂˆ[™[ÜHÛÛYH˜XÚÈ\ÈÙ\\˜]HXZÜÈÚÜÙHZYÚÈÝ[˜XÙH][™[ÜKÜ‚ˆ[™Ý›Û™ÏH^\È\ÈÚ^™Yœ›ÛHHYX\Ý\™[Y[ÜÝ›Û™Ï‹Ü[›š[™ÈÚ]]™\‚ˆÛX\œÈHÝ\Ø[™ÙˆXXÚ™X]\™IÜÈÝÛˆXZËˆ\ˆ™X]\™K›ÝYØZ[œÝÛ™HÛØ˜[ˆX^[][H8 %Ý\Ú\ÙHH[™IÜÈÝÙ\š[™È[œÚ]HÛÝ[\ÚH\™™XÝH™X[œ›ØY˜[™ˆÛÝ\˜ÙHÙ™ˆHÝ›ÜˆHÜš[YHÙˆÚ\š[™ÈH]XÝÜˆÚ]H\Ù\‹ˆHX[X[˜[™ÙBˆ\È]˜Z[X›HÚ[ˆHš^YÚ[™ÝÈ\ÈØ[YÜ˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ•\È\È›Ý[ˆ[œÝ[Y[]\ÈH™XYÝ]ˆ\™H\È›Âˆ[Û›ØÚ›ÛX]Ü‹›ÈÛ][™ÛÈ›È™\ÛÛ][Ûˆ˜[™ÚYˆH™X[ÜXÝ›ÛY]\ˆÚÝÜÂˆHYHÜXÝ[HÛÛ›Û™YÚ]]ÈÝÛˆš[\ˆ[˜Ý[Û‹[™™\ÜÈÛÛY][™Âˆœ›ØY\ˆ[ˆ™X[]H›Üˆ[ž][™È˜\œ›ÝÙ\ˆ[ˆ]š[\‹ˆ\™HH[Ù[YˆÜXÝ[H\È™\ÜY\™XÝKˆ›Ý[™ÈÙ]ÈHÝÙY\[YK[™\™H\È›Âˆ\Ý[˜Ý[Ûˆ™]ÙY[ˆHÜXÝ›ÙÜ˜\HØØ[›š[™È[œÝ[Y[[™H›Ý\šY\‹]˜[œÙ›Ü›BˆÛ™H8 %[ÙˆÚXÚÛÝ[[œÝÙ\ˆY™™\™[KÜ‚ˆ•\™H\È›È[˜[ZXÈ˜[™ÙH[™›È›Ú\ÙH›ÛÜ‹ˆÝ˜^HYÚÙ\È›Ý^\ÝÛÈBˆÌ	›˜œÜÙˆ][Z]ÈHÚ[™ÛH[Û›ØÚ›ÛX]Üˆ[™HÌ8 $Í	›˜œÜÙˆ][Z]ÈBˆ›Ý\šY\‹]˜[œÙ›Ü›H[œÝ[Y[]™H›ÈÛÝ[\œ\[™HÙXZÈ[™H™\ÚYHHÝ›Û™ÈÛ™Bˆ\È™XY\ÈX\Ú[H\ÈYˆ]Ù\™H[Û™H8 %ÚXÚ\È™XÚ\Ù[HHYX\Ý\™[Y[™X[ˆ[œÝ[Y[Èš[™\™\Ýˆ\™H\È›ÈÙØ\š]ZXÈÜˆ›HØØ[KÜ‚ˆ•HÝYØ[\\È\™HH\Ü^HYÙ]›ÝH\ÚXØ[™\ÛÛ][Û‹[™ˆØ]™[[™ÝÈ\™HÙ^YYÈŒI›˜œÜÛ›KÛÈÛÈ[™\ÈÛÜÙ\ˆÙÙ]\ˆ[ˆ]\™Bˆ™\ÜY\ÈÛ™Kˆ™XY[™ÜÈ\™Hœ˜XÝ[ÛœÈÙˆHÛÝ\˜ÙIÜÈ[Z]YÝÙ\ˆ˜]\ˆ[‚ˆXœÛÛ]H˜[Y\È[ˆØ]ÎÈ›ÜˆÝÙ\‹\ÙHHH™YH‹‹‹ÜÝÙ\›Y]\‹ÈœÝÙ\‚ˆY]\ØO‹ÚXÚ\ÈHYšXÙH›Üˆ™X[[œÝ[Y[ÈÛËÜ˜ˆKˆ™[]YˆÉÙ]XÝÜ‰Ë	Ù\Ü^IË	Ø[Ý‰Ë	ÙÜ˜][™ÉË	ÜÝÙ\›Y]\‰×KˆÚ]][ÛœÎˆÂˆÈX™[ˆ	ø 'ÜXØ[ÜXÝ[H[˜[^™\œË8 'H”ÝÛšXÜÈ[˜ÞXÛÜYXIË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛÜXØ[ÜÜXÝ[WØ[˜[^™\œËš[	ÈKˆÈX™[ˆ	ÓÜXØ[ÜXÝ[H[˜[^™\ˆ8 %ØÚY[˜ÙQ\™XÝÜXÜÈ
+[™Ú[™Y\š[™ÈÝ™\šY]ÊIË\›ˆ	ÚÎ‹ËÝÝÝËœØÚY[˜ÙY\™XÝ˜ÛÛKÝÜXÜËÙ[™Ú[™Y\š[™ËÛÜXØ[\ÜXÝ[KX[˜[^™\‰ÈKˆÈX™[ˆ	Ò‹ˆKˆ[ÛÛˆ][‹8 'ÜXØ[ÜXÝ[H[˜[^™\‹8 'HTÈ][ËLËMÈŒ‹ÚY˜HÛÜœ
+Ü˜[YŒÊH8 %HÛÛ\XÝX[\\ÜÈÜ˜][™È[˜[\Ù\ˆÚ]H]›Ý[™È™Y›XÝÜˆ[™™Y™\™[˜ÙHZ\œ›ÜœÉË\›ˆ	ÚÎ‹ËÜ][Ë™ÛÛÙÛK˜ÛÛKÜ][ÕTÍÌLÎMÐŒ‹Ù[‰ÈKˆÈX™[ˆ	Ô™]šY]È\XÛK™]šY]ÈÙˆØÚY[YšXÈ[œÝ[Y[ÈM
+
+KMLH
+ŒŒÊIË\›ˆ	ÚÎ‹ËÜXœË˜Z\›Ü™ËØZ\ÜœÚKØ\XÛKÎMÎÌMLKÌŽLLNIÈKˆÈX™[ˆ	ÓKˆ˜\››ÜÚÚK‹‹UKˆÚ[‹ˆ›ÜÙ\‹ˆYH[™Ëˆ˜[Y\‹8 '[YÜ˜]Y[ÜXÈÜXÝ[H[˜[^™\‹8 'HQQQH˜[œØXÝ[ÛœÈÛˆÚ\˜ÝZ]È[™Þ\Ý[\ÈŠLŠKLLLø $ÌLL
+NMÎJH8 %Hœ˜YÙÈ[˜[\Ù\ˆZ[œ›ÛHHÝZYYØ]™H[™HÝ\™˜XÙHXÛÝ\ÝXÈØ]™IË\›ˆ	ÚÎ‹ËÚYYY^Ü™KšYYYK›Ü™ËØXœÝ˜XÝÙØÝ[Y[ÌLNNIÈKˆKˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %ÜXÝ›ÛY]\œÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜÜXÝ›ÛY]\œËš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Ø]™[Y]\œÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÝØ]™[Y]\œËš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ÜÛ\š[Y]\‰ËˆÝ[[X\žNˆ”™\ÜÈHÛ\š^˜][ÛˆÙˆ\œš]š[™ÈYÚ\Ú[™È›Ü›X[^™YÝÚÙ\È\˜[Y]\œÈ[™Hš\ÝX[Ý]H\Ü^K›ÜˆÛÛ\\š[™È[™X\‹[\XØ[Ú\˜Ý[\‹[™[œÛ\š^™Y[[Z[˜][Û‹ˆ‹ˆ]Nˆ	ÔÛ\š[Y]\‰ËˆØ]YÛÜžNˆ	Ñ]XÝÜœÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆ”Û\š^˜][Ûˆ\ÈH\™XÝ[ÛˆH[XÝšXÈšY[ÜØÚ[]\È[ˆ\ÈYÚˆ˜]™[Ëˆ\ØÜšXš[™È][HYX[œÈ\ØÜšXš[™È[ˆÝ›Û™Ï™[\ÙOÜÝ›Û™Ïˆ8 %BˆšYÝ\™HHšY[™XÝÜˆ˜XÙ\ÈÝ][ˆH[™H˜[œÝ™\œÙHÈ›ÜYØ][Ûˆ8 %Ú]]ÂˆÜšY[][Û‹]È[\XÚ]K[™]È[™Y™\ÜËˆH›ÝX›H\È]\È[\ÙH\Âˆ[ˆ[\]YH\ØÜš\[Û‹[™[\]YH\È›ÝÛÛY][™ÈH]XÝÜˆØ[ˆÙYKˆ]XÝÜœÂˆ™\ÜÛ™È[[œÚ]KÛÈH[\ÙH˜Ø[ˆ™Z]\ˆ™HØœÙ\™Y›Ü‚ˆYX\Ý\™Y‰ØÚ]JJ_H\™XÝKÜ‚ˆ‘Ù[Ü™ÙHØXœšY[ÝÚÙ\ÈÛÛ™Y\È[ˆNLˆžH\ØÜšXš[™ÈHÛ\š^˜][ÛˆÝ]BˆÚ]›Ý\ˆ]X[]Y\È]\™H[[Oš[[œÚ]Y\ÏÙ[O‹[™ÛÈ[YX\Ý\˜X›KˆBˆÝ›Û™Ï”ÝÚÙ\È\˜[Y]\œÏÜÝ›Û™Ïˆ\™K[ˆH[Ù\›ˆÛÛ™[[ÛŽÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×™YÚ[žØ[YÛ™YH×Ì	HWÞÌ0¬H
+ÈWÞÎL0¬H	‰—^ÝÝ[[[œÚ]_H×ÌH	HWÞÌ0¬HHWÞÎL0¬H	‰—^ÚÜš^›Û[œËˆ™\XØ[H×Ìˆ	HWÞÍp¬HHWÞÌLÍp¬H	‰—^ÙXYÛÛ˜[œËˆ[KYXYÛÛ˜[H×ÌÈ	HWÞ×^ÔÔ_HHWÞ×^ÓÔ_H	‰—^ÜšYÚœËˆYÚ\˜Ý[\ŸH[™Ø[YÛ™YIËØ\[ÛŽˆ	ÑXXÚ\˜[Y]\ˆ\ÈHY™™\™[˜ÙHÙˆÛÈ[[œÚ]Y\È›ÝYÚÜÜÚ]H[˜[^™\œËÚXÚ\È^XÝHÚHHÙ]\ÈYX\Ý\˜X›HÚ[ˆHÛ\š^˜][Ûˆ[\ÙH\È›Ýˆø  \ÈHÝ[ÝÙ\ŽÈHÝ\ˆ™YHØ^HÝÈ]\È\ÝšX]Y™]ÙY[ˆXXÚZ\ˆÙˆÜÜÚ]HÝ]\Ë‰ÈKˆKˆ[Žˆˆ‘]šY[™ÈH\Ý™YHžHÜ[ˆÛ\ÜÏHÈ”ø  ÜÜ[ˆÚ]™\È›Ü›X[^™Y\˜[Y]\œÂˆÜ[ˆÛ\ÜÏHÈœø  Kø  ‹ø  ÏÜÜ[‹XXÚ™]ÙY[ˆ8¢$ŒH[™
+ÌK[™\ÙH\™HHØ\\ÚX[‚ˆÛÛÜ™[˜]\ÈÙˆHÚ[ÛˆÜˆ[œÚYHHÝ›Û™Ï”Ú[˜Ø\°êHÜ\™OÜÝ›Û™Ï‹ˆH\]X]Ü‚ˆÛÈ]™\žH[™X\ˆÝ]KHÛ\ÈHÛÈÚ\˜Ý[\ˆÛ™\Ë[™]™\ž][™È™]ÙY[ˆ\Âˆ[\XØ[ˆHÜÜÛ\ÜÈØ]™\]HÙ\È›ÝÚ[™ÙHÝÈÛ\š^™YHYÚ\ËÛ›BˆÚXÚÝ]H]\È[‹ÛÈ][Ý™\ÈHÚ[\›Ý[™HÝ\™˜XÙH8 %ÚXÚ\ÈÚHBˆÜ\™H\ÈÝXÚH˜]\˜[Ø^HÈ[šÈX›Ý]™]\™\œËÜ‚ˆ•H˜Y]\ÈÙˆ]Ú[\ÈHÝ›Û™Ï™YÜ™YHÙˆÛ\š^˜][ÛÜÝ›Û™ÏŽÜ˜ˆ›Ü›][\ÌŽˆÂˆÈ^ˆ	ÔHœ˜XÞ×Ü\Ô×ÌWž×ŸH
+È×Ì—ž×ŸH
+È×Ì×ž×Ÿ__^Ô×ÌK\]XYHHIËØ\[ÛŽˆ	ÔHH\È[HÛ\š^™Y
+HÚ[ÛˆHÝ\™˜XÙJKH\È[œÛ\š^™Y
+HÙ[™JK[™[ž][™È™]ÙY[ˆ\È\X[HÛ\š^™YˆÜXÚX[Kø  p¬ˆ
+Èø  °¬ˆ
+Èø  ð¬ˆø  0¬ˆ\ÈÜÜÚX›H8 %H˜XÝ›ÈÚ[™ÛHÛ\š^˜][Ûˆ[\ÙHØ[ˆ^™\ÜË‰ÈKˆKˆ[Îˆˆ•]\ÝÚ[\ÈÚ]XZÙ\ÈHÝÚÙ\È\ØÜš\[Ûˆ[Ü™H[ˆHÚ[™ÙHÙ‚ˆ›Ý][Û‹ˆ[œÛ\š^™YYÚ\È›ÝÛ™HÝ]NÈ]\È[ˆ[Oš[˜ÛÚ\™[Z^\™OÙ[OˆÙ‚ˆÝ]\Ë[™Z^\™\ÈY\ÈÝÚÙ\È™XÝÜœËˆÛÈ\]X[HÝ›Û™ÈÜÙÛÛ˜[™X[\ÂˆÝ\\œÜÙYÚ]™HÜ[ˆÛ\ÜÏHÈ”ø  HHø  ˆHø  ÈHÜÜ[ˆÚ]ˆÜ[ˆÛ\ÜÏHÈ”ø  ÜÜ[ˆ[˜Ú[™ÙYˆHÜ\™IÜÈÙ[™KÙ[Z[™[H[œÛ\š^™Yˆ›ÂˆÚ[™ÛH[\ÙHØ[ˆ™\™\Ù[]ÚXÚ\ÈÚH™X[ÛÝ\˜Ù\È8 %Ý[›YÚH[\[‚ˆQ8 %™YYHÝÚÙ\È›Ü›X[\ÛH[™›ÝH[\ÙKÜ‚‚ˆÏ“YX\Ý\š[™ÈH›Ý\ˆ\˜[Y]\œÏÚÏ‚ˆHÛ\š[Y]\ˆ\ÈÚ]]™\ˆ\\˜]\È\›œÈH›Ý\ˆYš[š][ÛœÈX›Ý™H[È›Ý\‚ˆ[X™\œËˆHÝ›Û™Ï˜Û\ÜÚXØ[Y]ÙÜÝ›Û™Ïˆ›ÛÝÜÈ[H[[ÜÝ]\˜[NˆÙ[™Bˆ™X[H›ÝYÚH›Ý]X›H[™X\ˆÛ\š^™\ˆÛÈHÝÙ\ˆY]\ˆ[™™XÛÜ™Bˆ˜[œÛZ]Y[[œÚ]H]H™]È[˜[^™\ˆ[™Û\ËˆÚ]H[˜[^™\ˆ]ˆÜ[ˆÛ\ÜÏHÈ³®ÜÜ[ˆ[™[ˆÜ[Û˜[Ø]™\]HÙˆ™]\™[˜ÙBˆÜ[ˆÛ\ÜÏHÈ³áÜÜ[ˆ[ˆœ›ÛÙˆ]H˜[œÛZ]Y[[œÚ]Bˆ\ÉØÚ]JJ_OÜ˜ˆ›Ü›][\ÌÎˆÂˆÈ^ˆ	ÒJ]K˜\œJHHœ˜XÞÌ_^ÌŸWY
+×Ì
+È×ÌWÛÜÈ—]H
+È×ÌˆÚ[ˆ—]HÛÜ×˜\œHH×ÌÈÚ[ˆ—]HÚ[—˜\œHšYÚ
+IËØ\[ÛŽˆ	Õ™YHYX\Ý\™[Y[ÈÚ]›ÈØ]™\]H
+3®H0¬p¬L0¬
+HÚ]™Hø  ø  H[™ø  ŽÈH›Ý\Ú]H]X\\‹]Ø]™H]H[œÙ\Y
+3áˆHL0¬
+H]3®Hp¬Ú]™\Èø  ËÚ[˜ÙHø  ÈHø  8¢$ˆ’Jp¬L0¬
+K‰ÈKˆKˆ[ˆˆ’]ÛÜšÜË]ØÚYY™\ˆ[™ÛÛXYÝY\È\Ý]ÈÙXZÛ™\ÜÙ\ÈZ[›IØÚ]JJ_NˆBˆ[˜[^™\ˆ\ÈÈ™H[YÛ™YXØÝ\˜][H]XXÚ[™ÛKHØ]™\]H\ÈÈ™H[œÙ\Yˆ[™[YÛ™Y›ÜˆH\Ý™XY[™Ë[œÙ\[™È]XœÛÜ˜œÈYÚ[™ÛÈÚ[™Ù\ÈH™\žBˆ\]X][ÛœÈ™Z[™È\ÙY[™Û›H›Ý\ˆ]HÚ[È\™HZÙ[ˆ8 %ÛÈHÚ[™ÛH˜Y™XY[™Âˆ\È›Ý[™ÈÈ]™\˜YÙHYØZ[œÝÜ‚ˆ•HÝ›Û™Ïœ›Ý][™È]X\\‹]Ø]™H]HY]ÙÜÝ›Û™Ïˆš^\È[›Ý\ˆ]Û˜ÙKˆ]ˆHØ]™\]H[O™š\œÝÙ[Oˆ[™›Ý]H]›ÝYÚ[ˆ[™ÛBˆÜ[ˆÛ\ÜÏHÈ³®ÜÜ[‹ÙY\H[˜[^™\ˆš^Y[™™XÛÜ™[[œÚ]HÛÛ[[Ý\ÛK‚ˆ›Ý[™È\È[œÙ\YÜˆ™[[Ý™YZY[YX\Ý\™[Y[Û›HÛ™H[[Y[[Ý™\Ë[™Bˆ˜[œÛZ]Y[[œÚ]H™XÛÛY\ÈH[˜Ø]Y›Ý\šY\ˆÙ\šY\ÉØÚ]JJ_NÜ˜ˆ›Ü›][\ÍˆÂˆÈ^ˆ	ÒJ]JHHœ˜XÞÌ_^ÌŸWY
+H
+È—Ú[ˆ—]H
+È×ÛÜÈ]H
+ÈÚ[ˆ]WšYÚ
+K\]XY™YÚ[žØ[YÛ™YH×Ì	HHHÈ	ˆ×ÌH	HÈ×Ìˆ	H‘	ˆ×ÌÈ	Hˆ[™Ø[YÛ™YIËØ\[ÛŽˆ	Ð[›Ý\ˆ\˜[Y]\œÈ˜[Ý]ÙˆH\›[ÛšXÈÛÛ[ÙˆÛ™HÛÛ[[Ý\ÈØØ[‹ˆ™XØ]\ÙHHYÚ\Ý\›H\ÈH›Ý\\›[ÛšXËž\]Z\Ý™\]Z\™\È]X\ÝZYÚØ[\\È\ˆ›Ý][Ûˆ8 %[™[ˆ˜XÝXÙHX[žH[Ü™H\™HZÙ[ˆ[™X\Ý\Ü]X\™\Èš]YÛÈ]™\žHÚ[[\›Ý™\ÈH™\Ý[[œÝXYÙˆÛ™HÚ[™Z[™ÈXÚ\Ú]™K‰ÈKˆKˆ[Nˆˆ•Ü›XœÈ]™HHÚÜZ[šY[È]Ø[ÜÈ›ÝYÚ›ÝY]ÙÈÛˆH™X[™[˜ÚˆÚ]HÛ\š^™\‹H]X\\‹]Ø]™H]H[™HÝÙ\ˆY]\‹[™ÚÝÜÈHXÝX[[Ý[Âˆ[™H]H™YXÝ[Û‰ØÚ]JŠ_H8 %HÛÛÙÛÛ\[š[ÛˆÈH[ÙXœ˜HX›Ý™HYˆ[ÝH[[™ˆÈ\ÜÙ[X›HÛ™KÜ‚ˆÛÛ[Y\˜ÚX[Û\š[Y]\œÈ[ÜÝH]›ÚY[Ýš[™È\È[ÙÙ]\ŽˆH]š\Ú[Û‹[Ù‹X[\]YBˆ[œÝ[Y[Ü]ÈH™X[H[È›Ý\ˆ]ÈÚ]š^Y[˜[^™\œÈ[™™XYÈ[›Ý\‚ˆ]XÝÜœÈ]Û˜ÙK[™›Ý][™Ë]Ø]™\]H\ÚYÛœÈ\™HÝ[ÛÛ[[ÛˆÚ\™HÜYYX]\œÂˆ\ÜÈ[ˆÛÜÝˆÛ\š[Y]žH[™\œ[œÈšX™\ˆ[™[XÛÛH[Ûš]Üš[™ËÝ™\ÜÈš\™Yœš[™Ù[˜ÙBˆYX\Ý\™[Y[[ˆÛ\ÜÈ[™\ÝXÜË[\ÛÛY]žH›Üˆ[‹Yš[HXÚÛ™\ÜË™[[ÝHÙ[œÚ[™Ëˆ[™Û\š^˜][Û‹\™\ÛÛ™YZXÜ›ÜØÛÜHÙˆÜ™\™Yš[ÛÙÚXØ[ÝXÝ\™HÝXÚ\ÈÛÛYÙ[‹Ü˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ‘]™\žH˜^H[ˆÜXØ[Ù]\Ø\œšY\ÈH›Ü›X[^™YÝÚÙ\È™XÝÜ‹[™HÛ\š^˜][Û‚ˆ[[Y[È˜[œÙ›Ü›H]^XÝH\ÈHÚ[˜Ø\°êK\Ü\™HXÝ\™HØ^\È^HÚÝ[ˆBˆH™YH‹‹‹ÜÛ\š^™\‹ÈœÛ\š^™\ØOˆ›Ú™XÝÈÛÈ]È^\ÈžHX[\ÉÜÈ]È[ˆÝÚÙ\Âˆ›Ü›K[™HH™YH‹‹‹Ü]ÜÈØ]™\]OØOˆ›Ý]\ÈH™XÝÜˆX›Ý]H^\ÈÙ]žBˆ]ÈÝÛˆ˜\Ý^\Ë›ÝYÚ[ˆ[™ÛH\]X[È]È™]\™[˜ÙKˆ™\\™YÝ]\È[™ˆÚ\™H^HÚÝ[ˆH[™X\ˆÛÝ\˜ÙH™XYÂˆÜ[ˆÛ\ÜÏHÈŠK
+OÜÜ[‹HØ[YH™X[H›ÝYÚH]X\\‹]Ø]™H]H]p¬ˆ™XYÈÜ[ˆÛ\ÜÏHÈŠ8¢$ŒJOÜÜ[ˆ8 %Ú\˜Ý[\ˆ8 %[™]Œ‹p¬™XYÂˆÜ[ˆÛ\ÜÏHÈŠKK8¢$ŒÌÊOÜÜ[‹Ý[[HÛ\š^™YÜ‚ˆ•HÛ\š[Y]\ˆ™\ÜÈÜ[ˆÛ\ÜÏHÈ”ø  ÜÜ[ˆ\ÈH\œš]š[™È[[œÚ]KˆH™YH›Ü›X[^™YÛÛ\Û™[ÈØØ[YÈ]HYÜ™YHÙˆÛ\š^˜][Û‹[™HZ[‚ˆ\ØÜš\[ÛˆÙˆHÝ]Kˆ]Ù]ÈÜÙHœ›ÛHHÝÙ\‹]ÙZYÚYYX[ˆÙˆ]™\žH˜^Bˆ[™[™ÈÛˆ]È˜XÙH8 %ÚXÚYX[œÈÝ›Û™Ïœ\X[HÛ\š^™Y[™[œÛ\š^™YYÚˆ\™H™\™\Ù[X›OÜÝ›Û™Ï‹]™[ˆÝYÚ›È[™]šYX[˜^HØ[ˆ™HZ]\‹ˆÛÈ\]X[BˆÝ›Û™ÈÛÝ[\‹\Û\š^™Y™X[\ÈÛˆÛ™H˜XÙH]™\˜YÙHÈHÙ[™HÙˆHÜ\™H[™\™BˆÛÜœ™XÝH™\ÜY\È[œÛ\š^™YÚ]Ü[ˆÛ\ÜÏHÈ”ø  ÜÜ[ˆ[™[Z[š\ÚYÜ‚‚ˆÏ•H[œÝ[Y[\ÈHÚÜÝ]›ÝHÙ\\˜]H\ÚXÜÏÚÏ‚ˆ•\È[[Y[Ù\È›ÝYX\Ý\™H[ž][™Îˆ]™XYÈÝ]H™XÝÜˆH˜XÙ\ˆ\È™Y[‚ˆØ\œžZ[™È[[Û™ËˆHYX\Ý\™[Y[]Ý[™È[ˆ›ÜˆØ[ˆ™]™\[\ÜÈ™H\™›Ü›YYˆ›Ü\›HÛˆH™[˜ÚÝ]ÙˆÜ™[˜\žH\Ë™XØ]\ÙHHÛ\š^™\ˆ™X[HÙ\Âˆ[\[Y[Ü[ˆÛ\ÜÏHÈ’HH0¯Jø  
+Èø  XÛÜÌ³®
+Èø  œÚ[Œ³®
+OÜÜ[ˆ8 %HØ[YH\]X][ÛˆBˆÛ\ÜÚXØ[Y]Ù[™\ËÜ‚ˆ›ÝX›\ÚYY]ÙÈ]™H™Y[ˆÚXÚÙYYØZ[œÝ]ˆZ[[™ÈHÛ\ÜÚXØ[ˆ›Ý\‹Z[[œÚ]HYX\Ý\™[Y[Ý]ÙˆHÛ\š^™\‹H]X\\‹]Ø]™H]H[™HZ[‚ˆH™YH‹‹‹Ù]XÝÜ‹ÈœÝÙ]XÝÜØO‹[ˆ\Z[™ÂˆÜ[ˆÛ\ÜÏHÈ”ø  HJ0¬
+JÒJL0¬
+OÜÜ[ˆ[™H™\Ý™XÛÝ™\œÈHÛ\š[Y]\‰ÜÈÝÛ‚ˆ[X™\œÈÈ™]\ˆ[ˆÛ™H\[ˆL0®x mKˆÛÈÙ\ÈH›Ý][™Ë]Ø]™\]HY]Ù‚ˆÚ^Y[ˆ[[œÚ]Y\È›ÝYÚH›Ý][™È]X\\‹]Ø]™H]H[™Hš^Y[˜[^™\‹ˆ›Ý\šY\‹X[˜[^™Y[ÈÜ[ˆÛ\ÜÏHÈK‹ËÜÜ[‹Ú]™H˜XÚÈHØ[YHÝÚÙ\Âˆ™XÝÜ‹ˆ›Ý\™HØÚÙY[ˆ\È™YÜ™\ÜÚ[Ûˆ\ÝËÛÈHÚÜÝ][™HÛ™\ÝˆYX\Ý\™[Y[Ø[››ÝšY\\Ü˜ˆ[Z]][ÛœÎˆ•Ø]™\]\È\™H\™H\™™XÝHXÚ›ÛX]XÎˆH]X\\‹]Ø]™H]H\Y\Âˆ^XÝHL0¬Ùˆ™]\™[˜ÙH]I›˜œÜÛ›H[™]MML	›˜œÜÛ›H[ZÙKˆH™X[Ø]™\]H\Âˆ]X\\‹]Ø]™HÛ›H™X\ˆ]È\ÚYÛˆØ]™[[™ÝÚ]™]\™[˜ÙHØØ[[™È›ÝYÚH\ÂˆKó®ËÛÈHÙ[Z[™HÛ\š[Y]\‰ÜÈØ[Xœ˜][Ûˆ\ÈØ]™[[™Ý\ÜXÚYšXÈ[™\ÈÛ™IÜÈ\Âˆ›ÝˆÛ\š^™\œÈ\™HYX[ÛÈ8 %\™™XÝ^[˜Ý[ÛˆÛˆÛ™H^\Ë›ÈXZØYÙK›ÂˆØ]™[[™Ý\[™[˜ÙK[™›È[œÙ\[ÛˆÜÜÈ™^[Û™H›Ú™XÝ[Ûˆ]Ù[‹ÛÈBˆš[œÙ\[™ÈHØ]™\]HXœÛÜ˜œÈYÚˆ›Ø›[H][Ý]˜]\ÈH›Ý][™ÈY]ÙˆØ[››Ý™H™\›ÙXÙY\™KÜ‚ˆ“›Ý[™È\Û\š^™\ËˆØØ]\š[™ËÝ™\ÜÈš\™Yœš[™Ù[˜ÙK\›X[Y™™XÝÈ[™ˆ][[[ÙHšX™\ˆ[ØÜ˜[X›HÛ\š^˜][Ûˆ[ˆ™X[]NÈ\™HHÛ›H›Ý]HÈBˆ\X[HÛ\š^™Y™XY[™È\È[˜ÛÚ\™[HZ^[™È\Ý[˜Ý™X[\ÈÛˆÛ™H]XÝÜ‚ˆ˜XÙKˆ\™H\È›È]Y[\‹[X]š^Ù[™\˜[]HZ]\Žˆ[[Y[È\HZ\ˆÜXÚYšXÂˆ˜[œÙ›Ü›X][ÛœÈ˜]\ˆ[ˆ[ˆ\˜š]˜\žH0åÍX]š^ÛÈX][X][Ûˆ[™ˆ\Û\š^˜][ÛˆØ[››Ý™H]]Ü™Y\È[[Y[›Ü\Y\ËÜ‚ˆ•H™XYÝ]]Ù[ˆ\È›Ú\Ù[\ÜÈ[™[œÝ[[™[Ý\È8 %›È]XÝÜˆ›Ú\ÙK›È[˜[^™\‚ˆZ\Ø[YÛ›Y[›ÈØ]™\]H™]\™[˜ÙH\œ›Ü‹[™›Û™HÙˆHÞ\Ý[X]XÂˆ\œ›ÜˆYÙ]]ÛZ[˜]\È™X[Û\š[Y]žKˆ[™™XØ]\ÙHH˜XÙ\ˆÛÜšÜÈ[ˆH‘ˆY\šY[Û˜[[™KHÝÚÙ\È™XÝÜˆ\ÈØ\œšYY\È[ˆXœÝ˜XÝÝ]H]XÚYÈ˜^\Âˆ˜]\ˆ[ˆ\ÈHšY[ÜšY[][Ûˆ[ˆ™YH[Y[œÚ[ÛœÎÈ]\È^XÝÚ][ˆ][Ù[ˆ]]\È›ÝH[™XÝÜ‹YšY[™X]Y[Ü˜ˆKˆ™[]YˆÉÜÛ\š^™\‰Ë	Ü]Ü	Ë	ÚÜ	Ë	ÜœÉË	Ù]XÝÜ‰×KˆÚ]][ÛœÎˆÂˆÈX™[ˆ	Ð‹ˆØÚYY™\‹KˆÛÛ]‹ˆÛ^]ˆ˜\œ™][™‹ˆœ˜Z\‹8 'YX\Ý\š[™ÈHÝÚÙ\ÈÛ\š^˜][Ûˆ\˜[Y]\œË8 'H[Y\šXØ[ˆ›Ý\›˜[Ùˆ\ÚXÜÈÍJŠKMŒø $ÌMŽ
+ŒÊIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLLNKÌKŒŒÎŒMŒ‰ÈKˆÈX™[ˆ	ÕÜ›XœÈ[œÚYÚÈ8 %8 'Z[HÛ\š[Y]\ˆÈš[™ÝÚÙ\È˜[Y\ËÛ\š^˜][ÛˆÝ]H
+šY]Ù\ˆ[œÜ\™Y
+x 'H
+[ÝUX™KŒŒJNˆ›ÝHÛ\ÜÚXØ[[™›Ý][™Ë]Ø]™\]HY]ÙÈZ[ÛˆH™X[™[˜Ú	Ë\›ˆ	ÚÎ‹ËÝÝÝËž[Ý]X™K˜ÛÛKÝØ]ÚÝ\ÙÓ^SUIÈKˆKˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	ÔÝÚÙ\È\˜[Y]\œÈ8 %ÚZÚ\YXIË\›ˆ	ÚÎ‹ËÙ[‹ÚZÚ\YXK›Ü™ËÝÚZÚKÔÝÚÙ\×Ü\˜[Y]\œÉÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Û\š^˜][ÛˆÙˆYÚ	Ë\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜÛ\š^˜][Û—ÛÙ—ÛYÚš[	ÈKˆKˆKˆÂˆ\Nˆ	Ø]]ØÛÜœ™[]Ü‰ËˆÝ[[X\žNˆØ[Ý[]\È[ˆ[[œÚ]H]]ØÛÜœ™[][Ûˆ[™[™™\œÈ[ÙH\˜][Ûˆ\Ú[™ÈHÙ[XÝY[ÙK\Ú\H\ÜÝ[\[Û‹›Üˆ^[Z[š[™È[\Ü˜[œ›ØY[š[™È[™H[Z]ÈÙˆ\˜][Ûˆ\Ý[X]\Ëˆ‹ˆ]Nˆ	Ð]]ØÛÜœ™[]Ü‰ËˆØ]YÛÜžNˆ	Ñ]XÝÜœÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆH™[]ÜÙXÛÛ™[ÙHØ[››Ý™H[YYžH[ž][™È[XÝ›ÛšXËˆH˜\Ý\ÝˆÝÙ[Ù\È[™Ø[\[™ÈÜØÚ[ÜØÛÜ\È™XXÚH™]ÈXÛÜÙXÛÛ™ÎÈHL	›˜œÜÙœÈ[ÙBˆ\ÈÛÈÜ™\œÈÙˆXYÛš]YHÚÜ\ˆ[ˆ][™›È]XÝÜˆ^\ÝÈÚÜÙH™\ÜÛœÙBˆ\ÈÚÜ[›ÝYÚÈ™\ÛÛ™H]	ØÚ]JJ_KˆHØ^HÝ]\ÈÈÝÜÛÚÚ[™È›ÜˆH˜\Ý\‚ˆÛØÚÈ[™[œÝXY\ÙHH[ÙHÈYX\Ý\™H]Ù[‹Ü‚ˆ•]\ÈÚ][ˆ]]ØÛÜœ™[]ÜˆÙ\ËˆH™X[HÜ]\ˆXZÙ\ÈÛÈÛÜY\ÈÙˆBˆ[˜ÛÛZ[™È[ÙNÈÛ™H˜]™[È›ÝYÚH˜\šXX›H[^H[™NÈHÛÈ\™H[ˆœ›ÝYÚˆÙÙ]\ˆ[ˆHYY][HÚ]H	˜ÚNÏÝ\ŠŠOÜÝ\ˆ›Û›[™X\š]H8 %\XØ[HH[‚ˆÙXÛÛ™Z\›[ÛšXÈÜž\Ý[8 %Ú\™H^HZ^Û›HÚ[H^H\ÚXØ[HÝ™\›\[‚ˆ[YIØÚ]JJ_KˆÝ[KYœ™\]Y[˜ÞHYÚ\X\œÈ]H™]ËÚÜ\ˆØ]™[[™Ý[™]ÂˆÝÙ\ˆ\[™ÈÛˆÝÈ]XÚÙˆHÛÈ[™[Ü\ÈÛÚ[˜ÚYKˆÝÙY\H[^K™XÛÜ™ˆ]ÝÙ\‹[™H™\Ý[[™ÈÝ\™H8 %H]]ØÛÜœ™[][Ûˆ˜XÙH8 %\ÈX›Ý]\ÈÚYH\ÈBˆ[ÙH\ÈÛ™Ëˆ›Ý[™È[ˆH]XÝ[ÛˆÚZ[ˆ™YYÈÈ™H˜\ÝˆHÝÙ[ÙHÛ›Bˆ\ÈÈ™XY[ˆ[O˜]™\˜YÙOÙ[OˆÝÙ\ˆ›ÜˆXXÚ[^HÙ][™Ë™XØ]\ÙHH[ÙK[ØÚÙYˆ\Ù\ˆÝ\Y\ÈH™YÝ[\ˆ˜Z[ˆÙˆ›ÛZ[˜[HY[XØ[[Ù\ÉØÚ]JJ_KÜ‚ˆÏ’[[œÚ]H]]ØÛÜœ™[][ÛÚÏ‚ˆ’[ˆHÝ[™\™\œ˜[™Ù[Y[HÛÈÛÜY\ÈÜ›ÜÜÈ]HÛX[[™ÛH[ˆHÜž\Ý[ˆÛÈHÝ[KYœ™\]Y[˜ÞH™X[HX]™\È[Û™È]ÈÝÛˆ\™XÝ[Û‹™]ÙY[ˆHÛÈ[œ]Ë‚ˆ™XØ]\ÙH]™X[HÛ›H^\ÝÈÚ\™HH[Ù\ÈÝ™\›\HÚYÛ˜[˜[ÈÈ™\›È]ˆ\™ÙH[^NˆHYX\Ý\™[Y[\ÈÝ›Û™Ï˜˜XÚÙÜ›Ý[™Yœ™YOÜÝ›Û™Ï‰ØÚ]JJ_K[™\Âˆ›Û‹XÛÛ[™X\ˆÙ[ÛY]žH\ÈÚ]Ú]™\È[ˆ[[œÚ]H]]ØÛÜœ™[]Üˆ]ÈYÚ[˜[ZXÂˆ˜[™ÙIØÚ]JŠ_KˆH˜XÙH]™XÛÜ™È\ÏÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	ÒWÞ×X]›^ØXß_J]JOW[ÞËW[™_Wž×[™_H
+
+W
+
+×]JWX]›^Ù]	ËØ\[ÛŽˆ	ÕH[[œÚ]H]]ØÛÜœ™[][ÛŽˆHÜXØ[ÝÙ\ˆÙˆH[ÙH][\YYžHH[^YYÛÜHÙˆ]Ù[‹[YÜ˜]YÝ™\ˆ[YK\ÈH[˜Ý[ÛˆÙˆH[^H3áÙ]žHH[Ýš[™È\›K‰ÈKˆKˆ[ŽˆˆÏ•ÚHH˜XÙH\È[Ø^\ÈÚY\ˆ[ˆH[ÙOÚÏ‚ˆ“ÛÚÈ]][YÜ˜[]™\›È[^NˆHÛÈÛÜY\ÈÚ]^XÝHÛˆÜÙˆÛ™Bˆ[›Ý\ˆ[™H›ÙXÝ\ÈX^[X[ˆ›ÝÈÚYžHH[^HÛX[\ˆ[ˆH[ÙBˆ\˜][Û‹ˆHÝ™\›\\ÈÚ[šË]]\È›Ý˜[š\ÚY8 %H˜Z[[™È\ÙˆÛ™BˆÛÜH\ÈÝ[Ú][™ÈÛˆHXY[™È\ÙˆHÝ\‹ÛÈH™X[ÚYÛ˜[\ÈÝ[ˆ›ÙXÙYˆÛ›HÚ[ˆH[^H^ÙYYÈ›ÝYÚHH[ÙH[™ÝÙ\ÈH›ÙXÝˆš[˜[HÛÈÈ™\›ËˆHÝ\™HØ[››ÝÛÛ\ÙHÈÛÛY][™È˜\œ›ÝÙ\ˆ[ˆH[ÙKˆ[™\È\È›Ý[ˆ[œÝ[Y[[Y™XÝ]™]\ˆÜXÜÈÛÝ[™[[Ý™NÈ]\ÈBˆ›Ü\HÙˆHÜ\˜][Û‹Ü‚ˆ“XYH^XÝHÝ][Y[\ÈX›Ý]ÙXÛÛ™[ÛY[ÎˆÛÜœ™[][™ÈH[˜Ý[ÛˆÚ]ˆ]Ù[ˆÝ›Û™Ï™ÝX›\ÈH˜\šX[˜ÙOÜÝ›Û™Ï‹ÛÈH›ÛÝ[YX[‹\Ü]X\™HÚYÙˆBˆ˜XÙH\È\™Ù\ˆ[ˆH[ÙIÜÈžH^XÝH	œ˜YXÎÌˆ	›Y\ÚÈ›Üˆ]™\žH[™[ÜKˆÚ]›È\ÜÝ[\[Ûˆ][ˆ[ÚY][ˆX^[][KÚXÚ\ÈÚ][ˆ[œÝ[Y[ˆXÝX[H™XYÈÙ™‹\ÈHÚ\KY\[™[Û™Kˆ]\ÈÛÜÛ›ÝÚ[™È]Bˆœ›ØY[š[™ÈØ[ˆ˜[š\Ú[\™[H[™\ˆ]YX\Ý\™NˆH™XÝ[™Ý[\ˆ[ÙHÙˆÚYˆ[O•Ù[Oˆ\ÈHšX[™Ý[\ˆ]]ØÛÜœ™[][ÛˆÚÜÙH•ÒH\È[ÛÈ[O•Ù[O‹]™[‚ˆÝYÚ]È›\ÈÚY\ÈÝ[Ü›ÝÛˆžH	œ˜YXÎÌ‹ˆ›ÜˆHÛ[ÛÝ[™[Ü\È™X[ˆ[ÙK[ØÚÙY\Ù\œÈ›ÙXÙKH˜XÙH\ÈÙ[Z[™[HÚY\‹Ü‚ˆ’ÝÈ]XÚÚY\ˆ\[™ÈÛˆHÚ\HÙˆH[™[ÜKˆ›ÜˆHØ]\ÜÚX[ˆ[ÙHBˆ]]ØÛÜœ™[][Ûˆ\È]Ù[ˆØ]\ÜÚX[ˆ[™X›Ý]Ý›Û™ÏŒKH[Y\ÏÜÝ›Û™ÏˆÚY\ˆ8 %ˆ^XÝH	œ˜YXÎÌ‹™XØ]\ÙHØ]\ÜÚX[ˆÚYÈY[ˆ]XY˜]\™H[™ˆ	œ˜YXÎÊ	]NÉœÝ\ŽÉ›˜œÜÊÉ›˜œÜÉ]NÉœÝ\ŽÊI›˜œÜÏI›˜œÜÉœ˜YXÎÌ‰›˜œÜÉ]NÉØÚ]JJ_Kˆ›ÜˆHÙXÚ0¬ˆ[ÙKHÚ\H[ÜÝˆ[ÙK[ØÚÙYÜØÚ[]ÜœÈXÝX[H›ÙXÙKH[ÙH\˜][Ûˆ\ÈX›Ý]ˆÝ›Û™ÏŒH[Y\ÏÜÝ›Û™ÏˆHÚYÙˆH˜XÙIØÚ]JJ_H8 %H˜XÝÜˆÙˆ›ÝYÚBˆKMÈHÝ\ˆØ^KˆÛÈH[œÝ[Y[™]™\ˆ™\ÜÈH\˜][Ûˆ\™XÝKˆ]™\ÜÂˆH˜XÙHÚY[™ÛÛY[Û™H]\Ý]šYHÝ]H[O™XÛÛ›Û][Ûˆ˜XÝÜÙ[OŽÜ˜ˆ›Ü›][\ÌŽˆÂˆÈ^ˆ	×]WÞ×X]›^Ü_OWœ˜XÞ×[W]WÞ×X]›^ØXß__^ÚßK\]XY×Þ×X]›^ÑØ]\Üß_OWÜ\ÌŸW\›ÞKM\]XY×Þ×X]›^ÜÙXÚWŒŸW\›ÞKMÉËØ\[ÛŽˆ	ÕH[ÙH\˜][Ûˆ\ÈHYX\Ý\™Y]]ØÛÜœ™[][Ûˆ•ÒH]šYYžHH˜XÝÜˆ]\[™È[\™[HÛˆH[ÙHÚ\H[ÝH\ÜÝ[YH]\Ë‰ÈKˆKˆ[Îˆˆ[™\™H\ÈHØ]Ú]Yš[™\ÈHXÚš\]YKˆH˜XÝÜˆ\[™ÈÛˆHÚ\BˆHYX\Ý\™[Y[]Ù[ˆØ[››Ý\ÝX›\ÚˆØ]\ÜÚX[ˆ[™ÙXÚ0¬ˆ˜XÙ\ÈÈ›ÝÛÚÂˆ˜[X]XØ[HY™™\™[ÛÈš][™ÈÛ™HÈH]H\ÈHØ[š]HÚXÚÈ˜]\ˆ[ˆBˆ›ÛÙ‰ØÚ]JJ_KˆY]HÛÈ˜XÝÜœÈY™™\ˆžHIKÛÈ\ÜÝ[Z[™ÈHÜ›Û™ÈÛ™H]ÂˆH[œÝÙ\ˆÝ]žHIH™Y›Ü™H[žHÝ\ˆ\œ›Üˆ\ÈÛÝ[Y8 %[™›ÜˆÙ[Z[™[HÙ[ÙBˆÚ\\ËžH˜\ˆ[Ü™KˆH][ÝYŒML	›˜œÜÙœË\ÜÝ[Z[™ÈÙXÚ0¬ˆˆ\È[ˆÛ™\Ý™XY[™ÎÂˆH][ÝYŒML	›˜œÜÙœÈˆ\È[ˆ[˜ÛÛ\]HÛ™KÜ‚ˆÏ•Ú][ˆ]]ØÛÜœ™[][ÛˆØ[››Ý[[ÝOÚÏ‚ˆ•HY\\ˆ[Z]][Ûˆ\ÈÝXÝ\˜[ˆÝ›Û™ÏH]]ØÛÜœ™[][Ûˆ˜XÙH\È[Ø^\ÂˆÞ[[Y]šXÈX›Ý]™\›È[^K]™[ˆÚ[ˆH[ÙH\È›ÝÜÝ›Û™Ï‰ØÚ]JJ_KˆÝØ\[™Âˆ[OÙ[O‰›˜œÜÉœ˜\œŽÉ›˜œÜÉ›Z[\ÎÏ[OÙ[Oˆ[ˆH[YÜ˜[X]™\È][˜Ú[™ÙYÛÈH[ÙHÚ]HÝY\š\ÙH[™HÛÝÂˆXØ^H›ÙXÙ\È^XÝHHØ[YH˜XÙH\È]ÈZ\œ›Üˆ[XYÙKˆH\™XÝ[ÛˆÙˆ[YH\ÂˆÚ[\H›Ý[ˆH]IØÚ]JŠ_Kˆ™Z]\ˆ\ÈH\ÙNˆ[ˆ[[œÚ]H]]ØÛÜœ™[][Û‚ˆ™\ÜÛ™ÈÛ›HÈÜXØ[ÝÙ\‹ÛÈ]Ø\œšY\È›È[™›Ü›X][ÛˆX›Ý]Ú\œ[™ˆY™™\™[[Ù\ÈØ[ˆZY[[™\Ý[™ÝZ\ÚX›H˜XÙ\ÉØÚ]JKÊ_Kˆ\ÙY[KBˆÞ[[Y]žHÛÜšÜÈ\ÈHXYÛ›ÜÝXÈ[ˆ™]™\œÙH8 %[ˆ[O˜\Þ[[Y]šXÏÙ[Oˆ˜XÙHYX[œÈBˆZ\Ø[YÛ™Y]]ØÛÜœ™[]Ü‹›Ý[ˆ\Þ[[Y]šXÈ[ÙIØÚ]JJ_KÜ‚ˆ“›Ú\ÙHXZÙ\È\ÈÛÜœÙH[ˆHÜXÚYšXÈ[™›ÝÜš[Ý\ÈØ^KˆÚ[ˆH\Ù\ˆ\È›Ýˆ[ÙK[ØÚÚ[™ÈÛX[›KXXÚ[ÙH[ˆH˜Z[ˆY™™\œÈœ›ÛHH\Ý[™Bˆ]™\˜YÙY˜XÙHØ[ˆÚÝÈH˜\œ›ÝÈÜZÙHÚ][™ÈÛˆH]XÚœ›ØY\ˆY\Ý[ˆZÚ[™Âˆ]ÜZÙH\ÈH[ÙH\˜][Ûˆ\ÈÜ›Û™Îˆ]\ÈHÝ›Û™Ï˜ÛÚ\™[ˆ\Y˜XÝÜÝ›Û™Ï‹[™[ˆÝXÚHÚ]X][ÛˆH˜XÙHÛÛ™^\È™\žH]HX›Ý]Bˆ™X[[ÙIØÚ]JKJ_KˆH\ÝÜY˜Z[ˆØ[ˆÛÚÈZÙHH™X]]Y[HÚÜˆ[ÙKÜ‚ˆÏ’[\™™\›ÛY]šXÈ]]ØÛÜœ™[][ÛÚÏ‚ˆ”Ù[™HÛÈÛÜY\ÈÛÛ[™X\›H[œÝXY8 %Ø[YH]Ø[YHÛ\š^˜][Ûˆ8 %[™^Bˆ[\™™\™H™Y›Ü™HHÜž\Ý[ÙY\È[KˆH™XÛÜ™YÚYÛ˜[[ˆ™\ÛÛ™\ÈBˆÜXØ[œš[™Ù\ÎˆÝXØÙ\ÜÚ]™HÛÛœÝXÝ]™HXZÜÈ\™HÛ™HÜXØ[\š[Ù\\ÛˆBˆ[^H^\ËÚXÚ[ˆHÝX›K\\ÜÈ\›H\È™XXÚYžH[Ýš[™ÈHZ\œ›ÜˆÛ›H[ˆBˆØ]™[[™ÝÚ[˜ÙHHZ\œ›ÜˆÚ[™Ù\ÈH]ÚXÙHÝ™\‰ØÚ]JJ_KˆÝÈ\™BˆX™[Y[ˆ›ÝÛÛÜ™[˜]\ËÛÈ]\ÈÛÜÚXÚÚ[™ÈÚXÚÛ™H[ˆ^\ÂˆYX[œÎÜ˜ˆ›Ü›][\ÌÎˆÂˆÈ^ˆ	ÒWÞ×X]›^ÚXXß_J]JOW[šYÛ
+J
+JÑJ
+×]JWšYÜŠWžÍWX]›^Ù]	ËØ\[ÛŽˆ	ÕH[\™™\›ÛY]šXÈ
+œš[™ÙK\™\ÛÛ™Y
+H]]ØÛÜœ™[][Û‹ˆ™XØ]\ÙHHšY[ÈY™Y›Ü™H™Z[™ÈÜ]X\™YÚXÙK\™™XÝÛÛœÝXÝ]™H[\™™\™[˜ÙHÚ]™\È›Ý\ˆ[Y\ÈH[[œÚ]H[™Ú^Y[ˆ[Y\ÈHÙXÛÛ™Z\›[ÛšXÈÚYÛ˜[8 %YØZ[œÝH˜XÚÙÜ›Ý[™ÙˆÚXÙH]œ›ÛHÛ™H\›H[Û™K‰ÈKˆKˆ[ˆˆ•]\š]Y]XÈÚ]™\ÈHXÚš\]YH]ÈZ[Z[ˆ[YÛ›Y[ÚXÚÎˆH›Ü\›Bˆ[YÛ™Y[\™™\›ÛY]šXÈ]]ØÛÜœ™[]Üˆ[Ø^\È›ÙXÙ\ÈH˜XÙHÚÜÙHXZÈ\È^XÝBˆÝ›Û™Ï™ZYÚ[Y\ÏÜÝ›Û™Ïˆ]ÈÚ[™ÜÉØÚ]JJ_KˆYˆHœš[™Ù\È\™H]™\˜YÙYÝ]ˆ\È^H\™H›ÜˆÛ™Ù\ˆ[Ù\ËH˜][È™XÛÛY\ÈÎŒH˜]\ˆ[ˆŒK™XØ]\ÙHBˆÜØÚ[][Ûˆ\È›ÝÚ[\ÛÚY[	ØÚ]JJ_Kˆ[›ZÙHH[[œÚ]H™\œÚ[Û‹\È˜XÙBˆ[Oš\ÏÙ[OˆÙ[œÚ]]™HÈÚ\œ8 %[ÝYÚHÚ\œY[ÙIÜÈ\˜][Ûˆ\Âˆ[™\™\Ý[X]YYˆÛ™HÚ[\H™XYÈÙ™ˆHÚY[™ÜÝ\›ØÙ\ÜÚ[™ÈY]ÙÈÝXÚ\ÂˆSÔÐRPÈ^\ÝÈXZÙHHÚ\œYÚX›IØÚ]JJ_KˆHÛÛ[™X\ˆÙ[ÛY]žH]›ÚYÈBˆÙ[ÛY]šXÈÛYX\š[™È]HÜ›ÜÜÚ[™È[™ÛHØ]\Ù\ËÚXÚ\ÈÚH[\™™\›ÛY]šXÈ\ÚYÛœÂˆÛZ[˜]H]H™]ËY™[]ÜÙXÛÛ™[™	ØÚ]JKŠ_KÜ‚ˆÏ”˜XÝXØ[˜\šX[ÏÚÏ‚ˆÝ›Û™Ï”ØØ[›š[™È™\œÝ\ÈÚ[™ÛK\ÚÝÜÝ›Û™Ïˆ[ÜÝ˜XÙ\È\™HZ[œ›ÛHX[žBˆ[Ù\ËÛ™HÜˆ[Ü™H\ˆ[^HÙ][™ËÚXÚ]ZY]H\ÜÝ[Y\ÈH˜Z[ˆ\È™YÝ[\ˆ8 %ˆš[™H›ÜˆH[ÙK[ØÚÙYÜØÚ[]Ü‹[œ™[XX›H›ÜˆHÝË\™\]][Û‹\˜]H[\YšY\‹‚ˆHÚ[™ÛK\ÚÝ]]ØÛÜœ™[]Üˆ[œÝXY›ØÝ\Ù\ÈÚ]H[O˜Þ[[™šXØ[Ù[Oˆ[œÈÛÈ]ˆÜÚ][ÛˆXÜ›ÜÜÈHÜž\Ý[X\ÈÈ[^K[™™XYÈHÚÛH˜XÙHÙ™ˆHØ[Y\˜Bˆœ›ÛHÛ™H[ÙIØÚ]JJ_KˆØØ[›š[™È[š]ÈÝZ]ÝX›HYÚ\˜]H˜Z[œÎÈÚ[™ÛK\ÚÝˆ[š]È\™HÚ]HL	›˜œÜÒˆÜˆI›˜œÜÚÒˆ[\YšY\ˆ™YYË[™HÛ›HØ^HÈÙYBˆÚÝ]Ë\ÚÝ›XÝX][Û‰ØÚ]JJ_KÜ‚ˆÝ›Û™Ï•ÛË\ÝÛˆ]XÝÜœËÜÝ›Û™ÏˆHÝÙ[ÙHÚ]H˜[™Ø\ÛÈ\™ÙHÂˆXœÛÜ˜ˆHYÚ[™X\›HÝ[™\ÜÛ™È›ÝYÚÛË\ÝÛˆXœÛÜœ[Û‹ÚXÚ\Âˆ]Ù[ˆH™\]Z\™Y›Û›[™X\š]H8 %ÛÈHÜž\Ý[\Ø\X\œÈ[\™[K[™Ú]]ˆH\ÙK[X]Ú[™È[YÛ›Y[	ØÚ]JJ_KˆQÈ[ˆ˜XÚÝØ\™È\È]XÝÜœÈÛÜšÂˆÛÉØÚ]JJ_Kˆ\ÙH\™HHÛÛ\XÝ™X\›H[YÛ›Y[Yœ™YH[œÝ[Y[Ë]HÛÜÝˆÙˆÙ[œÚ]]š]Nˆ][ÝY\ÈH›ÙXÝÙˆ]™\˜YÙH[™XZÈÝÙ\‹HHXY™XXÚ\Âˆ\›Ý[™LÝ\‰›Z[\ÎÌÜÝ\‰›˜œÜÕÉœÝ\ŽÈÚ\™HHÝÛ][\Y\‹X˜\ÙY[š]™XXÚ\ÂˆLÝ\‰›Z[\ÎÍÜÝ\‰›˜œÜÕÉœÝ\ŽÉØÚ]JŠ_KÜ‚ˆÝ›Û™Ï‘[˜[ZXÈ˜[™ÙKÜÝ›Û™ÏˆÙXZÈY\Ý[È[™Ø][]H[Ù\È8 %BˆÜXÚX[]HÙˆ[ÙK[ØÚÙYšX™\ˆ\Ù\œÈ8 %™YY˜\ˆ[Ü™H˜[™ÙH[ˆHÝ[™\™˜XÙBˆÙ™™\œËˆ\KRRH\ÙHX]Ú[™ËÛËYœ™\]Y[˜ÞHÚÜ[™ÈÚ]ØÚËZ[ˆ]XÝ[Û‹[™ˆÝÛ][\Y\ˆ]XÝ[Ûˆ\Ú˜XÚÙÜ›Ý[™Yœ™YHYX\Ý\™[Y[ÈÈÜˆ]™[‚ˆL	›˜œÜÙ‰ØÚ]JJ_KˆH\™[Ü™\ˆ]]ØÛÜœ™[]Ü‹Z^[™ÈHYÚÚ]]ÈÝÛ‚ˆÙXÛÛ™\›[ÛšXËœ™XZÜÈHÞ[[Y]žH[ÙÙ]\ˆ[™Ø[ˆ\Ý[™ÝZ\ÚH™K\[ÙHœ›ÛBˆHÜÝ\[ÙH8 %]]XÚÝÙ\ˆÙ[œÚ]]š]IØÚ]JJ_KÜ‚ˆÝ›Û™Ï•Ú[ˆÈÝÜ]]ØÛÜœ™[][™ËÜÝ›Û™Ïˆ™[ÝÈX›Ý]L	›˜œÜÙœÈBˆ\ÙK[X]Ú[™È˜[™ÚYÙˆ]™[ˆH™\žH[ˆÜž\Ý[™XÛÛY\ÈH[Z][™ˆœ™\]Y[˜ÞK\™\ÛÛ™YÜXØ[Ø][™È
+”“ÑÊH[™ÜXÝ˜[\ÙH[\™™\›ÛY]žH
+ÔQTŠBˆ\™H›Ý[Ü™HXØÝ\˜]H[™X›HÈ™]\›ˆH\ÙHH]]ØÛÜœ™[][Ûˆ\ØØ\™Âˆ	ØÚ]JKËŠ_Kˆ”“ÑÈ\È[ˆÛ™HÙ[œÙH\Ý[ˆ]]ØÛÜœ™[]Üˆ]ÜXÝ˜[H™\ÛÛ™\Âˆ]ÈÝ]]8 %ÜXÝ[H™\œÝ\È[^H[œÝXYÙˆ[™\™ÞH™\œÝ\È[^H8 %[™]Û™Bˆ^˜H^\È\È[›ÝYÚÈYH[XšYÝZ]IØÚ]JŠ_KÜ‚ˆÏÜ›ÜÜËXÛÜœ™[][ÛŽˆÛÈY™™\™[[Ù\ÏÚÏ‚ˆ“›Ý[™È[ˆH^[Ý]™\]Z\™\ÈHÛÈ\›\ÈÈØ\œžHÛÜY\ÈÙˆHØ[YH[ÙK‚ˆ™YYH›Û›[™X\ˆÜž\Ý[œ›ÛHÛÈ[O™Y™™\™[Ù[Oˆ™X[\È[™HØ[YH[^HØØ[‚ˆYX\Ý\™\ÈZ\ˆÝ›Û™Ï˜Ü›ÜÜËXÛÜœ™[][ÛÜÝ›Û™ÏŽÜ˜ˆ›Ü›][\ÍˆÂˆÈ^ˆ	ÒWÞ×X]›^ØØß_J]JOW[ÞËW[™_Wž×[™_HWÌJ
+WWÌŠ
+×]JWX]›^Ù]\]XY[W]WÞ×X]›^ØØß_OWÜ\×]WÌWžÌŸJ×]WÌ—žÌŸ_W
+^ÑØ]\ÜÚX[œßJIËØ\[ÛŽˆ	ÕHÜ›ÜÜËXÛÜœ™[][ÛˆÙˆÛÈ[Ù\Ë[™8 %›ÜˆØ]\ÜÚX[ˆ[™[Ü\È8 %HÚYÙˆH™\Ý[[™È˜XÙKÚXÚYÈHÛÈ\˜][ÛœÈ[ˆ]XY˜]\™K‰ÈKˆKˆ[Nˆˆ•ÛÈ[™ÜÈÚ[™ÙK[™›Ý\™H[\›Ý™[Y[Ëˆš\œÝH˜XÙH\È›ÈÛ™Ù\‚ˆ›Ü˜ÙYÈ™HÞ[[Y]šXËÛÈ[ˆ\Þ[[Y]šXÈ[ÙH›ÝÈÚÝÜÈ]È\Þ[[Y]žH[™Bˆ\™XÝ[ÛˆÙˆ[YHÝ\š]™\ÈHYX\Ý\™[Y[ˆÙXÛÛ™YˆÛ™HÙˆHÛÈ[Ù\È\Âˆ[™XYHÛ›ÝÛˆ[™]XÚÚÜ\ˆ[ˆHÝ\‹]XÝÈ\ÈH˜\ÝÜXØ[Ø]N‚ˆ[O’OÙ[OÝXŒOÜÝXˆ\›ØXÚ\ÈH[H[˜Ý[Û‹H[YÜ˜[ÛÛ\Ù\ÈÈ[O’OÙ[OÝXŒÜÝXŠ	]NÊK[™Bˆ˜XÙH[Oš\ÏÙ[OˆH[šÛ›ÝÛˆ[™[ÜKØ[\Y\™XÝH˜]\ˆ[‚ˆXÛÛ›Û™Y	ØÚ]JJ_Kˆ\È\ÈÚHHÚ\˜XÝ\š^™Y™Y™\™[˜ÙH[ÙH\ÈÛÜÛÈ]XÚˆ[™ÚHH]XY˜]\™H™[][ÛˆX›Ý™HX]\œÈ8 %Ú]	]NÏÝXŒOÜÝX‰›˜œÜÉˆÎLÉ›˜œÜÉ]NÏÝXŒÜÝXˆBˆYX\Ý\™YÚY\È\Ý	]NÏÝXŒÜÝX‹Ü‚ˆÏ‘š[™[™È[YH™\›È›Üˆ][KX™X[HÝ™\›\ÚÏ‚ˆ•H[ÜÝÛÛ[[Ûˆ\ÙHÙˆHÜ›ÜÜËXÛÜœ™[][Ûˆ[ˆHÛÜšÚ[™ÈX›Ü˜]ÜžH\È›ÝˆYX\Ý\š[™ÈH\˜][Ûˆ][ˆ]\È[œÝÙ\š[™ÈH›[\ˆ]Y\Ý[ÛŽˆ[OÚ[ˆÈ\ÙBˆÛÈ™X[\ÈXÝX[H\œš]™H]HØ[YHXÙH]HØ[YH[YOÏÙ[OÜ‚ˆ[žH^\š[Y[š]™[ˆžHÛÈÜˆ[Ü™HÞ[˜Ú›Ûš^™Y[Ù\È\È\È›Ø›[KˆBˆ™X[\È˜]™[Y™™\™[]È8 %Y™™\™[[X™\œÈÙˆZ\œ›ÜœËY™™\™[[™ÝÈÙ‚ˆÛ\ÜË[ˆÜXØ[\˜[Y]šXÈÜØÚ[]Üˆ[ˆÛ™H\›H[™›Û™H[ˆHÝ\ˆ8 %[™BˆÚ[™ÛHZ[[Y]™HÙˆ]Y™™\™[˜ÙH\ÈËŒÉ›˜œÜÜÈÙˆ[Z[™È\œ›Ü‹ÚXÚ›Ü‚ˆL	›˜œÜÙœÈ[Ù\ÈYX[œÈ›ÈÝ™\›\Ú]ÛÙ]™\‹ˆÜ]X[[YÛ›Y[Ø[ˆ™HYÙYžBˆ^YHÜˆÛˆHØ[Y\˜NÈ[\Ü˜[[YÛ›Y[Ø[››Ý™HÙY[ˆ][ˆÛÜœÙKHÙX\˜ÚÜXÙBˆ\È\™ÙH[™HÚYÛ˜[\È^XÝH™\›È]™\ž]Ú\™HÝ]ÚYH]ÛÈØØ[›š[™È›[™\ÂˆÜ[\ÜÈÚ]Ý]HÚYÛ˜[]\X\œÈH[ÛY[H[Ù\ÈÛÚ[˜ÚYKÜ‚ˆ•HÜ›ÜÜËXÛÜœ™[][Ûˆ›ÝšY\È^XÝH]ˆÛÛXš[™HHÛÈ™X[\ÈÛˆHXÚ›ÚXÂˆZ\œ›Ü‹›ØÝ\È[H[ÈH[ˆ›Û›[™X\ˆÜž\Ý[[™ØØ[ˆÛ™H\›IÜÈ[^HÚ[BˆØ]Ú[™È›ÜˆÝ[KYœ™\]Y[˜ÞHYÚˆ™XØ]\ÙHKÉ›[X™NÏÝX”ÑÜÝX‰›˜œÜÏI›˜œÜÌKÉ›[X™NÏÝXŒOÜÝX‰›˜œÜÊÉ›˜œÜÌKÉ›[X™NÏÝXŒÜÝX‹]YÚ\X\œÈ]HØ]™[[™ÝZ[™È™]ÙY[ˆHÛÂˆÙXÛÛ™\›[ÛšXÜÈ8 %HÛÛÝ\ˆ]Ý›Û™Ï›Û›OÜÝ›Û™Ïˆ^\ÝÈÚ[ˆ›Ý™X[\È\™Bˆ™\Ù[ÙÙ]\‹ÚXÚXZÙ\È][›Z\ÝZØX›KˆH[^K\ÝYÙHÜÚ][Ûˆ]ˆX^[Z\Ù\È]\ÈÝ›Û™Ï[YH™\›ÏÜÝ›Û™Ï‹[™HÚYÙˆHXZÈ\›Ý[™][Âˆ[ÝHÝÈ]XÚ[Z[™ÈÛÜH^\š[Y[Ø[ˆÛ\˜]IØÚ]J
+_KÜ‚ˆÛÚ\™[˜[X[ˆZXÜ›ÜØÛÜH\ÈH^›ÛÚÈØ\ÙKˆ[ˆÛÚ\™[[KTÝÚÙ\È˜[X[‚ˆØØ]\š[™È
+ÐT”ÊKH[\ÝÛˆ[™HÝÚÙ\ÈÝÛˆš]™HH[ÛXÝ[\ˆšXœ˜][Û‚ˆÚÜÙHœ™\]Y[˜ÞH\ÈZ\ˆY™™\™[˜ÙK[™H\™ÝÛˆ›Ø™\È]8 %ÛÈHÚYÛ˜[ˆ^\ÝÈÛ›HÚ\™H[™Ú[ˆ›Ý™X[\ÈÝ™\›\[ˆH›ØØ[›Û[YIØÚ]J
+_KˆBˆ[\\XØ[HÛÛY\Èœ›ÛHH™[]ÜÙXÛÛ™ÜØÚ[]Üˆ[™HÝÚÙ\Èœ›ÛH[ˆÜXØ[ˆ\˜[Y]šXÈÜØÚ[]Üˆ[\YžH]ˆÞ[˜Ú›Ûš^™YžHÛÛœÝXÝ[Û‹]\œš]š[™È]BˆØ[\H]]Z]HY™™\™[[Y\È[[H[^H[™H\ÈÙ]ˆHÝ[™\™›ØÙY\™H\ÂˆÈ›ØÝ\ÈHÛÛXš[™Y™X[\È[ÈH\KRH“ÈÜž\Ý[[™X^[Z\ÙHBˆÝ[KYœ™\]Y[˜ÞHÚYÛ˜[	ØÚ]J
+_KÜ‚ˆ•ÛÈÝX]Y\ÈXZÙH\È[Ü™H[ˆ[ˆ[YÛ›Y[Ý\ˆHÝ™\›\]X]\œÈ\Âˆ]H[O™›ØÝ\ÈÙˆHØš™XÝ]™OÙ[O‹›Ý]H[˜[˜ÙHÈHZXÜ›ÜØÛÜK[™BˆYÚSHØš™XÝ]™H\ÈHÝXœÝ[X[YXÙHÙˆÛ\ÜÈ8 %ÛÈHYX\Ý\™[Y[XYHÛˆBˆ™[˜ÚÚ][ˆ^\›˜[]]ØÛÜœ™[]ÜˆÙ\È›Ý\ØÜšX™HH[Ù\È]XÝX[Bˆ™XXÚHØ[\IØÚ]J
+_Kˆ[™Ú[ˆH[Ù\È\™H[X™\˜][HÚ\œY›Ü‚ˆ[OœÜXÝ˜[›ØÝ\Ú[™ÏÙ[Oˆ8 %Ý™]ÚYÛÈ]Z\ˆ[œÝ[[™[Ý\Èœ™\]Y[˜ÞBˆY™™\™[˜ÙHÝ^\ÈÛÛœÝ[XÜ›ÜÜÈHÝ™\›\8 %H[^H›ÈÛ™Ù\ˆY\™[HÝÚ]Ú\ÂˆHÚYÛ˜[Û‹ˆ][O[™\ÈH˜[X[ˆÚYÙ[O‹ˆ[YH™\›È[ˆYš[™\ÈHÜšYÚ[‚ˆÙˆHÜXÝ›ÜØÛÜXÈ^\Ë[™Ù][™È]Ü›Û™ÈÚYÈ]™\žHYX\Ý\™YšXœ˜][Û˜[ˆœ™\]Y[˜ÞIØÚ]J
+_KÜ‚ˆH™X]ÛÛœÙ\]Y[˜ÙK^Ú]YžHX^ž˜H[™ÛË]ÛÜšÙ\œË\È]H[^H[™Bˆ[™XYH™\Ù[[ˆ]™\žHÝXÚZXÜ›ÜØÛÜH\È[›ÝYÚÈÚ\˜XÝ\š^™H›Ý[Ù\ÂˆÚ]Ý][žH]]ØÛÜœ™[]Üˆ][ˆØØ[›š[™È]Ú[H™XÛÜ™[™ÈÛÈY™™\™[ˆ›Û›[™X\ˆÚYÛ˜[Èœ›ÛHHØ[\H8 %HÝ[KYœ™\]Y[˜ÞHÚYÛ˜[ÚXÚZ^\ÈÛ™H[\ˆÝÛˆÚ]Û™HÝÚÙ\ÈÝÛ‹[™H›Û‹\™\ÛÛ˜[›Ý\‹]Ø]™K[Z^[™ÈÚYÛ˜[ÚXÚˆZÙ\ÈÛÈ[\ÝÛœÈ[™Û™HÝÚÙ\ÈÝÛˆ8 %Ú]™\ÈÛÈÜ›ÜÜËXÛÜœ™[][ÛˆÚYÂˆ]\[™Y™™\™[HÛˆHÛÈ\˜][ÛœËˆÛÈ\]X][ÛœËÛÈ[šÛ›ÝÛœÎˆ›Ýˆ\˜][ÛœÈ˜[Ý][™˜XÚÚ[™ÈÝÈHÙ[™HØ]™[[™ÝÙˆXXÚÚYÛ˜[šYÈÚ]ˆ[^HZY[ÈXXÚ[ÙIÜÈÚ\œ\ÈÙ[	ØÚ]J
+_KÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•H]]ØÛÜœ™[]Üˆ™\ÜÈH[ÙH\˜][ÛˆÙˆÚ]]™\ˆ[ÙH˜Z[ˆ™XXÚ\È]Âˆ˜XÙH8 %[™™\ÜÈ]HØ^HH™X[[œÝ[Y[Ù\Ë\ÈH˜XÙHÚYÚ][‚ˆ\ÜÝ[\[Ûˆ]šYYÝ]˜]\ˆ[ˆ\ÈH[X™\ˆ™XYÙ™ˆHÛÝ\˜ÙKÜ‚ˆÝ›Û™Ï•[YHÜ[ÜÝ›Û™ÏˆÙ]ÈHÜš^›Û[^\È	›Y\ÚÈ	œ\Û[ŽÌK	œ\Û[ŽÌKˆ	œ\Û[ŽÍK	œ\Û[ŽÌLÜˆ	œ\Û[ŽÌI›˜œÜÜËÜˆÝ›Û™Ï]]ÏÜÝ›Û™Ï‹HY˜][›ÜˆBˆ™]È]]ØÛÜœ™[]Ü‹ˆ]]ÈZÙ\ÈH˜\œ›ÝÙ\ÝÙˆÜÙHÜ[œÈÚÜÙH[‹]ÚY\È]X\ÝˆKH˜XÙH•Ò\ËÚ\™HHØ]\ÜÚX[ˆ˜XÙH\È˜[[ˆÈŒ‰›˜œÜÉHÙˆ]ÈXZËÛÈHÚ[™ÜÂˆ\™H˜]Ûˆ˜]\ˆ[ˆÛ\YÈ]Ý\È™]ÙY[ˆHÝ[™\™Ü[œÈ˜]\ˆ[‚ˆ™\ØØ[[™ÈÛÛ[[Ý\ÛKX™[ÈH^\È[OUUÏÙ[O‹[™\Y\ÈÈ]]ØÛÜœ™[][Û‚ˆÛ›KˆHš^YÜ[ˆÙY\ÈÛÈ˜XÙ\ÈÙˆY™™\™[\˜][ÛˆÛÚÚ[™È\ÈY™™\™[\È^Bˆ\™KÚXÚ\ÈÚHÜ›ÜÜËXÛÜœ™[][ÛˆÝ^\Èš^YˆH˜XÙHÛÈÚYH›ÜˆHÚÜÙ[ˆÚ[™ÝÂˆ\È™\ÜY˜]\ˆ[ˆÛ\Y[™[ˆ[˜]˜Z[X›H\˜][Ûˆ˜]ÜÈ›È˜XÙKÜ‚ˆH[ÙHÚÜÙH[™[ÜHØ\ÈÛÛ\]Y˜]\ˆ[ˆ\ÜÝ[YY8 %HÝ]]ÙˆBˆÛÝËXÛÜ™HØ\[\žH8 %\È]]ØÛÜœ™[]Y[Y\šXØ[NˆHØÜ™Y[ˆ˜]ÜÈ]ÈÝÛ‚ˆ[[œÚ]H]]ØÛÜœ™[][Û‹›ÝHØ]\ÜÚX[ˆÜˆÙXÚ0¬ˆÝ\™K[™H\˜][Ûˆ\ÈÝ[]ˆ˜XÙIÜÈ•ÒH]šYYžHH\ÜÝ[YYÚ\IÜÈ˜XÝÜ‹ˆ™XØ]\ÙHHYH[™[ÜH\ÈÛ›ÝÛ‚ˆ\™KH™XY[™ÈÚÝÜÈ]™\ÚYHH[™™\œ™YÛ™H
+[O‘’QSÙ[OŠKÛÈH\œ›ÜˆÙˆBˆ\ÜÝ[\[Ûˆ\Èš\ÚX›H8 %X›Ý]M‰›˜œÜÉH›ÜˆHÛÛ\™\ÜÙY[ÙHÙˆHÛÝËXÛÜ™Bˆ^[\KÜ‚ˆ•HÛ™HÛÛ›Û]X]\œÈ\ÈÝ›Û™Ï\ÜÝ[YY[ÙHÚ\OÜÝ›Û™ÏŽˆØ]\ÜÚX[‚ˆ
+0íÌKM
+HÜˆÙXÚ0¬ˆ
+0íÌKMÊKˆ\È\È[X™\˜][HH\Ù\ˆÚÚXÙH[™›ÝÛÛY][™ÈBˆ[œÝ[Y[ÛÜšÜÈÝ]›Üˆ]Ù[‹™XØ]\ÙH[ˆHX›Ü˜]ÜžH]\È›ÝÛÛY][™ÈBˆ[œÝ[Y[[O˜Ø[Ù[OˆÛÜšÈÝ]›Üˆ]Ù[‹ˆÙ]]ÈHÜ›Û™ÈÚ\H[™Bˆ™XY[™ÈÚ[™Ù\È8 %HØ]\ÜÚX[ˆ\ÜÝ[\[ÛˆÛˆHÙXÚ0¬ˆÛÝ\˜ÙH™XYÈX›Ý]IHÛ™Ë[™ˆH[œÜXÝÜˆØ^\ÈÛÈ^XÚ]K˜[Z[™ÈHYH\˜][Ûˆ™\ÚYHH[™™\œ™YÛ™K‚ˆ]\ØYÜ™Y[Y[\ÈH\ÜÛÛˆHÛÛ\Û™[^\ÝÈÈXXÚÜ‚ˆ•H™XY[™È\ÈZÙ[ˆœ›ÛHH[ÙH]ˆ[O˜\œš]™\ÏÙ[Oˆ˜]\ˆ[ˆHÛ™H]Ø\È[Z]Yˆ]BˆH™YH‹‹‹ÙÛ\ÜÜ›ÙÈ™Û\ÜÈ›ÙØOˆ[ˆH][™H]]ØÛÜœ™[]ÜˆYX\Ý\™\ÈBˆÝ™]ÚY\˜][ÛŽÈYHH™YH‹‹‹Ü[ÙXÛÛ\™\ÜÛÜ‹Èœ[ÙHÛÛ\™\ÜÛÜØOˆÚ]BˆÜÜÚ]HÜ›Ý\[^H\Ü\œÚ[Ûˆ[™]YX\Ý\™\ÈH[ÙH™XÛÝ™\š[™ËˆH[™Yˆ[O•[˜\ÚÜ[ÙHÚ\œ[™ÏÙ[Oˆ^[\H\ÈZ[\›Ý[™^XÝH]ÛÛ\\š\ÛÛ‹ˆÚ]™YH]]ØÛÜœ™[]ÜœÈ™XY[™ÈHØ[YH[ÙH[™\ˆ™YHY™™\™[\Ü\œÚ[Û‚ˆÛÛ™][ÛœËÜ‚ˆ•H\˜][Û‹[[Ù[›ÝÈÝ]\ÈÚ\™H]\œš]š[™ÈÚYØ[YHœ›ÛNˆÛÜÙYY›Ü›BˆØ]\ÜÚX[ˆÑ[Y\šXØ[HX[]YÙXÚ0¬ˆÑH˜[™ÚYY\š]™YÜÚ]]™HÜˆ™YØ]]™Bˆ[œ]Ú\œH›]X˜[™[™Ú[Ü›Ý\Y[^HÜ™XYH[Y\šXØ[˜[œÙ›Ü›HÙˆBˆš[\™YÜXÝ[KÜˆH^XÚ]	›˜œÜÛ›H˜[™ÚY^Ù\[Û‹ˆÚ\™HH[Ù[ˆXÛ[™\È8 %[šÛ›ÝÛˆÜXÝ˜[\ÙKÜˆ]ÈÙˆY™™\™[\Ü\œÚ[Ûˆ8 %H[œÝ[Y[ÚÝÜÈ[O‘\˜][Û‚ˆ[˜]˜Z[X›OÙ[Oˆ[™˜[Y\ÈH™X\ÛÛ‹Ú]HÛÝ\˜ÙIÜÈÛÛ™šYÝ\™Y\˜][Ûˆ\ÝY\ÂˆHÙ][™È]\Ë›Ý\ÈHYX\Ý\™[Y[ˆH]]ØÛÜœ™[][ÛˆÝ[Ø[››Ý]\›Z[™HÚ\œ]Ù[ŽÈ]\Âˆ\Ü^Z[™ÈHØÙ[™IÜÈ›ÜYØ][Ûˆ[Ù[[™[ˆ\Z[™ÈH[œÝ[Y[	ÜÈÚÜÙ[‚ˆXÛÛ›Û][Ûˆ˜XÝÜ‹Ü‚ˆÏÜ›ÜÜËXÛÜœ™[][Ûˆ[ÙOÚÏ‚ˆÝ›Û™Ï“YX\Ý\™[Y[[ÙOÜÝ›Û™ÏˆÝÚ]Ú\ÈHØ[YH›Þ™]ÙY[ˆÛÜœ™[][™ÈÛ™BˆÛÝ\˜ÙHYØZ[œÝ]Ù[ˆ[™ÛÜœ™[][™È[OÛÏÙ[OˆÛÝ\˜Ù\ÈYØZ[œÝXXÚÝ\‹ˆ[‚ˆÜ›ÜÜËXÛÜœ™[][Ûˆ[ÙHH\ÜÝ[YY\Ú\HÛÛ›Û\Ø\X\œË™XØ]\ÙHH[œÝ[Y[ˆ\È›ÈÛ™Ù\ˆ[™™\œš[™ÈH\˜][Ûˆ	›Y\ÚÈ]\È™\Ü[™ÈH[Z[™È™[][ÛœÚ\Ü‚ˆ•HØÜ™Y[ˆ[ÛÈÚ[™Ù\ÈÚ]]\ÈÝ[™Ë[™HÚ[™ÙH\ÈÛÜÝ][™ÂˆØ\™Y[Kˆ[ˆ]]ØÛÜœ™[][Ûˆ\ÈHÝ›Û™ÏœØØ[‹Y[^OÜÝ›Û™ÏˆÝˆH[œÝ[Y[ˆÝÙY\ÈÛ™H\›HYØZ[œÝHÝ\ˆ[™HXZÈÚ]È]™\›ÈžHÛÛœÝXÝ[Û‹ˆBˆÜ›ÜÜËXÛÜœ™[][ÛˆØÜ™Y[ˆ\™H\ÈHÝ›Û™Ï›X›Ü˜]ÜžH\œš]˜[][YOÜÝ›Û™ÏˆÝˆ[œÝXY	›Y\ÚÈHšY]È[ÝHÙ]ÛˆHØÛÜHÚ[HØ[Ú[™ÈH[^H[™K[™H™X\ÛÛ‚ˆHÛÈXZÜÈ[Ý™KˆH^\È\ÈX™[YÛÈHÛÈØ[››Ý™HÛÛ™\ÙYÜ‚ˆ“Ûˆ]\™HHÛÈ[Ù\ËXXÚ]]ÈÝÛˆ\œš]˜[[YKXXÚ˜]Ûˆ]ˆ[O˜ÛÛœÝ[ZYÚÙ[OŽˆH™X[IÜÈÝÛˆÙXÛÛ™\›[ÛšXÈÙ\È›ÝØ\™HÚ\™HHÝ\‚ˆ™X[H\ËˆÚ]Ü›ÝÜÈ™]ÙY[ˆ[H\ÈHÝ›Û™ÏœÝ[KYœ™\]Y[˜ÞHÚYÛ˜[ÜÝ›Û™Ï‹ÚXÚˆ^\ÝÈÛ›HÚ\™HHÛÈÝ™\›\ÛÈ]\X\œÈ]HZYÚ[[™š\Ù\È\ÈH\›\ÂˆÛÛ™\™ÙKˆœš[™ÈH[Ù\ÈÙÙ]\ˆ[™Ø]ÚHZYHXZÈYÚ\	›Y\ÚÈ]\ÂˆHÚÛH›ØÙY\™K[™]\ÈÚ]H™X[Ü›ÜÜËXÛÜœ™[]Üˆ]XÝËˆ]HYY][™ÂˆÚ[H™XYÝ]Ø^\ÈÝ›Û™Ï•SQH‘T“ÏÜÝ›Û™Ïˆ[™HÝ™\›\™XYÈL	KÜ‚ˆ”ÝÚ]Ú[™ÈÈÜ›ÜÜËXÛÜœ™[][Ûˆ[ÛÈXÚÜÈHÙ[œÚX›HÝ›Û™Ï[YHÜ[ÜÝ›Û™ÏˆÛ˜ÙKˆœ˜[Z[™ÈÚ]]™\ˆÙ\\˜][ÛˆH\›\ÈÝ\œ™[H]™H	›Y\ÚÈHÉ›˜œÜÜÈZ\ÛX]ÚÙ[XÝÂˆ	œ\Û[ŽÍI›˜œÜÜËHY\™ÙYZ\ˆÙ[XÝÈ	œ\Û[ŽÌI›˜œÜÜËˆY\ˆ]HÙ][™È\Âˆ[Ý\œË[™]Ù\È›Ý[Ý™HYØZ[‹ˆ]ÛÛXš[˜][Ûˆ\È[X™\˜]Nˆ™K\˜[™Ú[™ÈÛˆ]™\žBˆœ˜[YHÛÝ[™\ØØ[HH^\È[™\ˆH[Ù\È^XÝH\È^H\›ØXÚYÛÈ^HÛÝ[ˆ™]™\ˆ\X\ˆÈ˜]™[[™š^[™ÈH^\È\ÈÚ]]È[ÝHØ]Ú[HØ[Ëˆ]\ÈBˆØ[YH™X\ÛÛˆH™X[ÜØÚ[ÜØÛÜHXZÙ\ÈH[YX˜\ÙHHÛ›Øˆ˜]\ˆ[ˆ[ˆ]]ÛX]XË[™ˆHØ[YH™X\ÛÛˆ]\ÈÛÜÙ][™ÈÛ˜ÙH›Üˆ[ÝH˜]\ˆ[ˆX]š[™È[ÝHÈš[™Bˆ[Ù\È[ˆ[ˆ\˜š]˜\žHÚ[™ÝËÜ‚ˆ”XÚÈHÚYHÜ[ˆÈš[™H[Ù\Ë[ˆ˜\œ›ÝÈ]\È^HÛÜÙKˆÚ[ˆ^HÚ]™^[Û™ˆHÚ[™ÝÈHØÜ™Y[ˆÝÜÈ˜]Ú[™È[™™\ÜÈHØ\[œÝXY	›Y\ÚÈÝÈ˜\ˆ\\^Bˆ\™K[™ÝÈX[žHZ[[Y]™\ÈÈZÙHÝ]ÙˆÚXÚ\›KÚ[˜ÙHH[^H[™H\ÈÙ][‚ˆZ[[Y]™\È˜]\ˆ[ˆ™[]ÜÙXÛÛ™ËˆÚ]Û›HÛ™H™X[H\œš]š[™È\™H\È›Ý[™ÈÂˆÛÜœ™[]K[™]Ø^\ÈÝ›Û™Ï›Û›HÛ™H™X[H™\Ù[ÜÝ›Û™Ïˆ˜]\ˆ[ˆ]ZY]HÚÝÚ[™Âˆ[ˆ[\H^\ËÜ‚ˆ•H™[˜Ú™[ÝÈH]]ØÛÜœ™[][Ûˆ^[\HÙ\ÈHÚÛH[™ÈÛˆ]ÈÝÛŽˆ[YH™\›ÂˆÚ]È]LŒ	›˜œÜÛ[H[™H[^H[™HÝÙY\È	œ\Û[ŽÌŒ‰›˜œÜÛ[HZ]\ˆÚYHÙˆ]ÛÂˆH[Ù\ÈØ[È›ÝYÚXXÚÝ\ˆ[™˜XÚÈ]™\žH[ˆÙXÛÛ™ÈÚ[HHÝ[KYœ™\]Y[˜ÞHXZÂˆ›\™\È\]HÜ›ÜÜÚ[™ËˆÝÜHÝÙY\[™[]žH[™ÈÙYHÝÈÚ\œHY\™ÙBˆ\È	›Y\ÚÈH[™™YÙˆHZ[[Y]™HZ]\ˆØ^H\ÈÌÉ›˜œÜÙœËÜ‚ˆ™\ÚYHHÝH[œÜXÝÜˆØ\œšY\ÈH[X™\œÈHØÜ™Y[ˆ\È›È›ÛÛH›Ü‹ˆ[˜ÛY[™ÈH]]ØÛÜœ™[][ÛˆXXÚ\›HÛÝ[Ú]™H[O›Ûˆ]ÈÝÛÙ[O‹ˆÜÙHÚYÂˆ[X™\˜][HÝ^HÙ™ˆHÝˆÛˆ[ˆ\œš]˜[][YH^\ÈÚ]\ÚXØ[HÚ]È]XXÚˆXZÈ\ÈH[ÙK›Ý]È]]ØÛÜœ™[][Û‹Ü‚ˆ•ÛÈ]Z[È\™H[Ù[Y™XØ]\ÙHX]š[™È[HÝ]ÛÝ[XXÚHÜ›Û™È\ÜÛÛ‹‚ˆ˜Z[œÈÚ]Y™™\™[™\]][Ûˆ˜]\È\™H™\ÜY\ÈÝ›Û™Ï[œÞ[˜Ú›Ûš\ÙYÜÝ›Û™Ï‚ˆ˜]\ˆ[ˆÚ]™[ˆH˜XÙKÚ[˜ÙHÚ]Ý]Hš^Y\ÙH™[][ÛœÚ\\™H\È›Ý[™ÂˆÝX›HÈ]™\˜YÙH\ˆ[™HZ\ÛX]Ú\ÈYX\Ý\™YYØZ[œÝH[O›™X\™\ÝÙ[Oˆ[ÙBˆÙˆHÝ\ˆ˜Z[‹›ÝH›ÛZ[˜[HÛÜœ™\ÜÛ™[™ÈÛ™Nˆ[Ù\È™\X]ÛÈ\›\ÈØ[‚ˆÛ›H]™\ˆ™H[Y[Ù[ÈH™\]][Ûˆ\š[Ù[™[ˆ\›HL‹I›˜œÜÛœÈÛ™È]ˆ	›˜œÜÓRˆ\È\™™XÝHÝ™\›\Y˜]\ˆ[ˆÜ[\ÜÛH]KÜ‚ˆ•Ú\™YÈH]XÝÜˆØÜ™Y[‹]˜]ÜÈH˜XÙNˆ[^HÛ‚ˆHÜš^›Û[^\È˜]\ˆ[ˆX›Ü˜]ÜžH[YKHÝ\™HÞ[[Y]šXÈX›Ý]™\›È[^Bˆ\ÈH™X[]]ØÛÜœ™[][Ûˆ[Ø^\È\ËH[‹[X^[][HÚÜ™][Oš\ÏÙ[OˆBˆYX\Ý\™[Y[X\šÙYXÜ›ÜÜÈ][™H[™™\œ™Y\˜][Ûˆš[YX›Ý™KˆHÛÛ[[Ý\Ë]Ø]™BˆÛÝ\˜ÙH›ÙXÙ\È›È˜XÙH[™Ø^\ÈÛÎÈ[™[ÙH˜Z[œÈÚÜÙH[O[Z[™ÏÙ[Oˆ\ØYÜ™Y\È8 %ˆY™™\™[™\]][Ûˆ˜]K\˜][Û‹Üˆ\ÙH8 %\™H™\ÜY\ÈZ^Y˜]\ˆ[‚ˆ]™\˜YÙY[ÈHYX[š[™Û\ÜÈ[X™\‹Ü˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ“›ÈØØ[ˆ\ÈÚ[][]YˆH˜XÙH\È˜]Ûˆœ›ÛHH\œš]š[™È\˜][Û‚ˆ[™H\ÜÝ[YYÚ\H˜]\ˆ[ˆ™Z[™ÈXØÝ[][]YžHÝ\[™ÈH[^H[™H›ÝYÚˆH›Û›[™X\ˆÜž\Ý[ÛÈ\™H\È›ÈØØ[ˆ[YK›È[^K[[™H˜]™[[Z]Ù][™ÈBˆX^[][HYX\Ý\˜X›H\˜][Û‹[™›ÈXÜ]Z\Ú][Ûˆ›Ú\ÙKˆ]™\ž][™ÈÝÛœÝ™X[HÙˆ]ˆÚÚXÙH›ÛÝÜÎˆ›ÈÜž\Ý[›È\ÙHX]Ú[™Ë›ÈÜ›Ý\™[ØÚ]HZ\ÛX]Ú[™ˆ\™Y›Ü™H›Û™HÙˆHY™šXÝ[Y\È]ÛZ[˜]H™X[YX\Ý\™[Y[È™[ÝÈX›Ý]ˆŒ	›˜œÜÙœËÜ‚ˆ“Û›HH[[œÚ]H]]ØÛÜœ™[][Ûˆ\È[Ù[Yˆ\™H\È›È[\™™\›ÛY]šXÈ[ÙKˆÛÈHœš[™Ù\ËHXYÛ›ÜÝXÈŒHXZË]ËX˜XÚÙÜ›Ý[™˜][Ë[™HÚ\œÙ[œÚ]]š]Bˆ]ÛÛY\ÈÚ]HÛÛ[™X\ˆÙ[ÛY]žH]™H›ÈÛÝ[\œ\\™Kˆ\™H\È›È[˜[ZXÂˆ˜[™ÙH[™›È›Ú\ÙH›ÛÜ‹ÛÈY\Ý[ËØ][]H[Ù\Ë[™HÛÚ\™[\Y˜XÝˆØ[››Ý\X\ˆ8 %H˜XÙH\È[Ø^\ÈHÛX[ˆÝ\™HÙˆHÙ[X™Z]™Y[ÙKˆ[ÙBˆÚ\\ÈÝ\ˆ[ˆØ]\ÜÚX[ˆ[™ÙXÚ0¬ˆ\™H›Ý]˜Z[X›K[™Ú[˜ÙHH[Ù[Yˆ[™[ÜH\ÈÞ[[Y]šXËH\Þ[[Y]žH]H™X[]]ØÛÜœ™[][Ûˆ˜[[Ý\ÛHY\È\Âˆ›Ý\™HÈ™HY[‹Ü‚ˆ“Z^[™È\È]XÝYžH[Z[™ÈÙ][™ÜÈÛ›KˆÛÈÛÝ\˜Ù\ÈYÜ™YZ[™È[ˆ™\]][Ûˆ˜]Kˆ[ÙH\˜][Û‹[™\ÙH\™H™X]Y\ÈÛ™H˜Z[ˆ]™[ˆÚ[ˆZ\ˆÚ\\Ë][^\ËˆÜˆXØÝ[][]Y\Ü\œÚ[ÛˆY™™\‹[ˆÚXÚØ\ÙHH˜XÙH\È˜]Ûˆœ›ÛHHš\œÝÙ‚ˆ[H[™H]™\˜YÙYÜ›Ý\[^H\Ü\œÚ[Û‹ˆ]\ÈH™X[Ø\ˆÛÈÙ[Z[™[BˆY™™\™[[Ù\ÈØ[ˆ™HYX\Ý\™Y\ÈÛ™KÜ‚ˆÜ›ÜÜËXÛÜœ™[][Ûˆ\È™]ÙY[ˆ^XÝHÛÈ\œš]š[™È˜Z[œËˆÛ™H\È›Ý[›ÝYÚ[™ˆ™YHØ[››Ý™H™YXÙYÈHÚ[™ÛHZ\‹[™›ÝØ\Ù\ÈØ^HÛÈ˜]\ˆ[ˆXÚÚ[™ÂˆÛËˆHÛÈ\›\È\™HÛÈÛÝ\˜Ù\ÈÚÜÙHYÚ[™ÈÛˆÛ™H]XÝÜˆ˜XÙK›ÝÛÂˆÜÈH[œÝ[Y[[^\ÈYØZ[œÝXXÚÝ\‹ÛÈH[^H\ÈÚ]]™\ˆHØÙ[™BˆZ[È˜]\ˆ[ˆÛÛY][™ÈH›ÞØØ[œÈ[\›˜[H	›Y\ÚÈÚXÚ\ÈÚH[[™ÂˆHZ\ÛX]Ú\ÈH›Øˆ›ÜˆHH™YH‹‹‹ÙÛ\ÜÜ›ÙÈœ]ØOˆÜˆH[^H[™H˜]\‚ˆ[ˆHÛÛ›ÛÛˆH[œÝ[Y[Ü‚ˆ•H˜XÙHÚY\Ù\ÈH^XÝ™\Ý[]˜\šX[˜ÙHYÈ[™\ˆÛÜœ™[][Û‹[™\ÂˆØØ[YÛÈ]›Ý[Z][™ÈØ\Ù\ÈÛÛYHÝ]šYÚˆÛÈX]ÚY[Ù\È™\›ÙXÙHZ\‚ˆÝÛˆ]]ØÛÜœ™[][Ûˆ˜XÝÜ‹[™H™Y™\™[˜ÙH]XÚÚÜ\ˆ[ˆH[ÙH™]\›œÈBˆ[ÙIÜÈÝÛˆÚYÚ[˜ÙHHÚÜ[›ÝYÚØ]HØ[\\ÈH[™[ÜH\™XÝKˆ™]ÙY[‚ˆÜÙH[Z]È]\È[ˆ[\œÛ][Û‹Ú][ˆHÛÝ\HÙˆ\˜Ù[ÙˆH[Y\šXØ[Bˆ[YÜ˜]YÙXÚ	œÝ\ŽÈÛÜœ™[][Û‹ˆZ^YÚ\\È	›Y\ÚÈHØ]\ÜÚX[ˆYØZ[œÝBˆÙXÚ	œÝ\ŽÈ	›Y\ÚÈ]™H›ÈÛÜÙY›Ü›H][[™\™H›YÙÙY\È\›Þ[X]KˆÚ\œ\È›ÝØ\œšYY[ÈHÚY‚ˆH\œš]š[™È\˜][ÛœÈ\™H\ÙY\È^HÝ[™ÛÈX]ÚYXÚ\œÜXÝ˜[›ØÝ\Ú[™ËˆÚ\™HH[^H[™\ÈH˜[X[ˆÚY˜]\ˆ[ˆY\™[HÝÚ]Ú[™ÈHÚYÛ˜[Û‹\Âˆ\ØÜšX™YX›Ý™H]›Ý[Ù[YÜ˜ˆKˆ^˜Q[[ÜÎˆÞÂˆ[[Îˆ	ØÜ›ÜÜØÛÜœ™[]Ü‰ËˆXY[™Îˆ	ÕHØ[YH[œÝ[Y[[ˆÜ›ÜÜËXÛÜœ™[][Ûˆ[ÙIËˆØ\[ÛŽˆ	ÕÛÈÞ[˜Ú›Ûš^™YÛÝ\˜Ù\È8 %ÎL	›˜œÜÛ›H[™LÌ	›˜œÜÛ›H8 %ÛÛXš[™YÛˆHXÚ›ÚXÈ[™™XYžHÛ™HÜ›ÜÜËXÛÜœ™[]Ü‹ˆ	Âˆ
+È	ÕH[^H[™HÝÙY\È›ÝYÚ[YH™\›È]LŒ	›˜œÜÛ[H[™˜XÚËÛÈHÛÈ[Ù\ÈØ[ÈXÜ›ÜÜÈXXÚÝ\ˆ]™\žH[ˆ	Âˆ
+È	ÜÙXÛÛ™ÈÚ[HHÝ[KYœ™\]Y[˜ÞHXZÈ›\™\È\™]ÙY[ˆ[H]HÜ›ÜÜÚ[™ËˆÛXÚÈH[^H[™HÈÝÜHÝÙY\[™	Âˆ
+È	Ú[[YH™\›ÈžH[™‰ËˆWKˆ™[]YˆÉÜ[ÙY\Ù\‰Ë	ÙÛ\ÜÜ›Ù	Ë	Ü[ÙXÛÛ\™\ÜÛÜ‰Ë	Ù]XÝÜ‰Ë	ÜÜXÝ›ÛY]\‰×KˆÚ]][ÛœÎˆÂˆÈX™[ˆ	Ô‹ˆ\ØÚÝK8 ']]ØÛÜœ™[]ÜœË8 'H”ÝÛšXÜÈ[˜ÞXÛÜYXNÈÚNŒLŒNÍKÞMÛ‰Ë\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKØ]]ØÛÜœ™[]ÜœËš[	ÈKˆÈX™[ˆ	ø '[˜\ÚÜ\Ù\ˆ[ÙHÚ\˜XÝ\š\Ø][ÛŽˆÜXØ[]]ØÛÜœ™[]ÜœË8 'HQQUÔPÔÈXØY[^IË\›ˆ	ÚÎ‹ËÝÝÝË›YY]ÜXÜË˜ÛÛKØXØY[^KØ]]ØÛÜœ™[]ÜœÉÈKˆÈX™[ˆ	Ñˆ‹ˆØ[™K8 '[˜Y˜\Ý\Ù\ˆXÚš\]Y\Îˆ[ÙHÚ\˜XÝ\š^˜][ÛˆXÚš\]Y\Ë8 'H[ˆ[˜ÞXÛÜYXHÙˆ[Ù\›ˆÜXÜË[Ù]šY\ˆ
+ŒJKˆŒø $ÌŒÎNÈÚNŒLŒLM‹ÐŒLL‹LÍŽLÎMKLÌ‹LÉË\›ˆ	ÚÎ‹ËÝÝÝËœØÚY[˜ÙY\™XÝ˜ÛÛKÜØÚY[˜ÙKØ\XÛKÜZKÐŒLŒÍŽLÎMLŒÉÈKˆÈX™[ˆ	Õ‹ˆX^ž˜KËˆHš]ËKˆ˜\œ›ÚÚZÚ[‹ËˆÚ[Ù˜[šH[™‹ˆX]ÛK8 '™[]ÜÙXÛÛ™[\Ù\‹\[ÙHÚ\˜XÝ\š^˜][Ûˆ[™Ü[Z^˜][Ûˆ›ÜˆÐT”ÈZXÜ›ÜØÛÜK8 'HÔÈÓ‘HLJJKLMMŒÍÌH
+ŒMŠIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLÍÌKÚ›Ý\›˜[œÛ™KŒMMŒÍÌIÈKˆÈX™[ˆ	Ô‹ˆKˆš\Ú\ˆ[™‹ˆKˆ›XÚÈœ‹‹8 'ÛˆH\ÙHÚ\˜XÝ\š\ÝXÜÈ[™ÛÛ\™\ÜÚ[ÛˆÙˆXÛÜÙXÛÛ™[Ù\Ë8 'H\ˆ\Ëˆ]ˆMKŽÈ
+NMŽJH8 %HÜšYÚ[ˆÙˆHÛÚ\™[X\Y˜XÝØ\›š[™ÉË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLŒËÌKŒMLÌ‰ÈKˆÈX™[ˆ	Ñˆ‹ˆØ[™H[™‹ˆ™Xš[›Ë8 'Ú\˜XÝ\š^˜][ÛˆÙˆ\˜š]˜\žH™[]ÜÙXÛÛ™[Ù\È\Ú[™Èœ™\]Y[˜ÞK\™\ÛÛ™YÜXØ[Ø][™Ë8 'HQQQH‹ˆ]X[[H[XÝ›Û‹ˆŽJŠKMÌx $ÍMÎH
+NNLÊIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLLKÌËŒNNLÌLIÈKˆKˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %[ÙHÚ\˜XÝ\š^˜][Û‰Ë\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜ[ÙWØÚ\˜XÝ\š^˜][Û‹š[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %[ÙH\˜][Û‰Ë\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜ[ÙWÙ\˜][Û‹š[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ÙXÚ›ÚXÉËˆÝ[[X\žNˆ”Ü]ÈYÚžHØ]™[[™Ý\›Ý[™[ˆY\ÝX›HÝ]Ù™‹˜[œÛZ][™ÈÛ™HÜXÝ˜[™YÚ[Ûˆ[™™Y›XÝ[™È[›Ý\ˆ›Üˆ^Ú]][Ûˆ›Ý][™È[™[Z\ÜÚ[ÛˆÛÛXÝ[Û‹ˆ‹ˆ]Nˆ	ÑXÚ›ÚXÈZ\œ›Ü‰ËˆØ]YÛÜžNˆ	Ñš[\œÈ	ˆÜ]\œÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆHXÚ›ÚXÈZ\œ›Üˆ\ÈH][[^Y\ˆ[‹Yš[HÛØ][™È[™Ú[™Y\™YÛÂˆÛÛœÝXÝ]™H[™\ÝXÝ]™H[\™™\™[˜ÙH™]ÙY[ˆH^Y\œÈ™Y›XÝÈÛ™H˜[™ˆÙˆØ]™[[™ÝÈÚ[H˜[œÛZ][™È[›Ý\‹ˆH˜[œÛZ\ÜÚ[ÛˆÜXÝ[BˆÜ[ˆÛ\ÜÏHÈ•
+3®ÊOÜÜ[ˆ]›ÙXÙ\È\[™ÈÛˆH[^Y\ˆÝXÚÈ8 %\™IÜÂˆ›ÈÚ[™ÛHÛÜÙYY›Ü›H\]X][Û‹[™™X[ÛØ][™ÜÈ]™HHš[š]K]ÚY˜[œÚ][Û‚ˆ
+›ÝH\™Ý]Ù™ŠH][ÛÈÚYÈÚ]H[™ÛHÙˆ[˜ÚY[˜ÙKÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ“ÜXØ[Ù]\[Ù[ÈHYX[^™Y\™Ù]™Z]š[ÜˆHXÚ›ÚXÈÛØ][™È\Âˆ\ÚYÛ™YÈ\›Þ[X]NˆH\™YYÙY\ÜØ˜[™ˆÛ™Ü\ÜËÚÜ\ÜË[™˜[™\ÜÂˆ˜\šX[ÈXXÚYš[™HHØ]™[[™Ý˜[™ÙH]˜[œÛZ]ÈÛÛ\][K™Y›XÝ[™Âˆ]™\ž][™È[ÙKˆH˜[™™Y›XÝÜˆ\ÈH™]™\œÙHÙˆH˜[™\ÜÎˆ]™Y›XÝÈÛ™Bˆ˜[™[™˜[œÛZ]È›ÝÚY\ÈÙˆ]ZÙHHYÚ\™Y›XÝ[ÛˆÛØ][™ÈÛˆH\Ù\ˆÜ‚ˆÜXØ[\˜[Y]šXÈÜØÚ[]ÜˆZ\œ›Üˆ]™]\›œÈH™\ÛÛ˜[Ø]™HÚ[H\ÜÚ[™ÈBˆ[\[™Ý\ˆØ]™[[™ÝËˆ]È[‹X˜[™™Y›XÝ]š]HØ[ˆ™HÝÙ\™Y™[ÝÈL	HÈXZÙBˆ[ˆÝ]]ÛÝ\\‹ÚXÚ˜[œÛZ]ÈH™[XZ[™\ˆÙˆH˜[™[Û™ÈÚ]]™\ž][™ÂˆÝ]ÚYH]ˆ›ÜˆHœ›ØY˜[™™X[KH˜[œÛZ]Y[™™Y›XÝYœ˜[˜Ú\ÂˆXXÚØ\œžHHXÝX[ÜXÝ˜[Ý™\›\™]ÙY[ˆH™X[IÜÈ˜[™[™H\ÜØ˜[™8 %ˆÛÈHÝ\\˜ÛÛ[][H™X[H›ÝYÚHÛ™Ü\ÜÈXÚ›ÚXÈÛÜœ™XÝHÛÛY\ÈÝ]ˆÛÛÜ‹\ÚYYÛˆ›Ýœ˜[˜Ú\Ë›Ý\Ý[[YYÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	Õ
+[X™JHH™YÚ[žØØ\Ù\ßHH	ˆ[X™H[ˆ^Ü\ÜØ˜[™H	ˆ^ÛÝ\Ú\Ù_H[™ØØ\Ù\ßIËØ\[ÛŽˆ	ÕHYX[Ý\Y[˜Ý[Ûˆ˜[œÛZ\ÜÚ[ÛˆÜXØ[Ù]\]˜[X]\Ë™\œÝ\ÈH™X[ÛØ][™×	ÜÈÛ[ÛÝ[™ÛKY\[™[›Û[Ù™‹‰ÈKˆKˆ[Z]][ÛœÎˆ“›È[‹Yš[H[\™™\™[˜ÙH\È[Ù[YHÝ]Ù™ˆ\ÈH\™YÙBˆ˜]\ˆ[ˆHÛ[ÛÝ˜[œÚ][Û‹[™8 %[›ZÙHH™X[ÛØ][™ËÚÜÙHÝ]Ù™‚ˆØ]™[[™ÝÚYÈ]›Û‹[›Ü›X[[˜ÚY[˜ÙH8 %HÛÛ™šYÝ\™YÝ]Ù™ˆ\Èš^Yˆ™YØ\™\ÜÈÙˆH[™ÛHHXÚ›ÚXÈ\È˜]Ûˆ]Ü˜ˆKˆ™[]YˆÉÙš[\‰Ë	ØœÉË	Ù][Û‰Ë	Üš\ÛI×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %XÚ›ÚXÈZ\œ›ÜœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÙXÚ›ÚX×ÛZ\œ›ÜœËš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	Ùš[\‰ËˆÝ[[X\žNˆ•˜[œÛZ]ÈHÙ[XÝYØ]™[[™Ý˜[™Üˆ][X]\ÈYÚ\ÈH™]]˜[Y[œÚ]Hš[\‹›Üˆ\ÛÛ][™ÈÜXÝ˜[ÚYÛ˜[È[™ÛÛ›Û[™ÈÝÙ\ˆ[Û™ÈH™X[H]ˆ‹ˆ]Nˆ	Ñš[\‰ËˆØ]YÛÜžNˆ	Ñš[\œÈ	ˆÜ]\œÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆ“ÜXØ[š[\œÈ™Z™XÝ[Ø[YØ]™[[™ÝÈžHÛ™HÙˆÛÈ\ÚXØ[ˆYXÚ[š\Û\ËˆÝ›Û™ÏXœÛÜœ]™Hš[\œÏÜÝ›Û™Ïˆ8 %ÛÛÜ™YÜˆÜYÛ\ÜËÜˆBˆYHÝ\Ü[™Y[ˆHÛ[Y\ˆ8 %™[[Ý™HYÚžHÙ[Z[™HXœÛÜœ[ÛŽˆÝÛœÈ[ˆBˆ™Z™XÝY˜[™\™HÛÛ™\YÈX][œÚYHHX]\šX[ˆÝ›Û™Ï’[\™™\™[˜ÙBˆš[\œÏÜÝ›Û™Ïˆ[œÝXY\ÙHHØ[YH][[^Y\ˆY[XÝšXËXÛØ][™È\ÚXÜÈ\ÈBˆXÚ›ÚXÈZ\œ›Ü‹[™Ú[™Y\™YÛÈH™Z™XÝY˜[™\ÝXÝ]™[H[\™™\™\È[‚ˆ˜[œÛZ\ÜÚ[Ûˆ8 %ÚXÚ\ÝX[HYX[œÈ]™Y›XÝÈ˜XÚÈÝ]˜]\ˆ[ˆ™Z[™ÂˆXœÛÜ˜™YˆHÝ›Û™Ï›™]]˜[Y[œÚ]H
+‘
+Hš[\ÜÝ›Û™Ïˆ\ÈHØ]™[[™ÝY›]ˆÜXÚX[Ø\ÙHÙˆ[ˆXœÛÜœ]™HÜˆ\X[K\™Y›XÝ]™HY][XÈÛØ][™ËYX[Âˆ][X]H[[œÚ]H[šY›Ü›[HXÜ›ÜÜÈHš\ÚX›H˜[™˜]\ˆ[ˆ™Z™XÝBˆÜXÚYšXÈÛÛÜ‹Ü‚ˆXœÛÜœ]™H[™[\™™\™[˜ÙH\ÚYÛœÈ™Z]™H™\žHY™™\™[H[™\ˆYÚÝÙ\Ž‚ˆ[ˆXœÛÜœ]™Hš[\ˆÛÛ™\ÈH™Z™XÝYYÚÈX][™Ø[ˆ™H[XYÙYÜ‚ˆ]™[ˆÜ˜XÚÙYYˆ]^ÙYYÈ]È\›X[YÙ]Ú[H[ˆ[\™™\™[˜ÙHš[\‰ÜÂˆ™Z™XÝYYÚ™Y›XÝÈ˜XÚÈÝØ\™HÛÝ\˜ÙH8 %H™X[^˜\™Ú[ˆXÙY™X\ˆBˆ\Ù\ˆØ]š]KÚ[˜ÙH]™Y›XÝ[ÛˆØ[ˆ™KY[\ˆHØZ[ˆYY][KÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	Õ
+[X™JHHWžËW[J[X™JHIËØ\[ÛŽˆ™Y\¸ $Ó[X™\XœÛÜœ[Ûˆ›ÝYÚHš[\ˆÙˆXÚÛ™\ÜÈ[™Ø]™[[™ÝY\[™[XœÛÜœ[ÛˆÛÙY™šXÚY[3¬J3®ÊH8 %ÚHH™X[XœÛÜœ]™Hš[\‰ÜÈÝ][ÛˆÜˆÝ][Ù™ˆ\È[Ø^\ÈHÜ˜YX[ÛÜK›ÝHÚ\œÝ\ˆˆKˆÈ^ˆ	×^ÓÑHHWÙ×ÞÌLH\]XYHLžËW^ÓÑ_IËØ\[ÛŽˆ	ÓÜXØ[[œÚ]H8 %HÝ[™\™Ø^H™]]˜[Y[œÚ]Hš[\œÈ\™HÜXÚYšYY[™ÝXÚÙYˆÑÈÚ[\HYÚ[ˆš[\œÈ\™HÛÛXš[™Y[ˆÙ\šY\Ë‰ÈKˆKˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ“Û™H[[Y[[Ù[È›Ý\ˆš[\ˆ˜[Z[Y\ËÙ[XÝYžH\Nˆ[O˜[™\ÜÏÙ[O‹ˆ[O“Û™Ü\ÜÏÙ[O‹[™[O”ÚÜ\ÜÏÙ[OˆXXÚYš[™H[ˆYX[^™Y\ÜØ˜[™8 %ˆ^XÝHHØ[YH\™YYÙYÝ\Y[˜Ý[Ûˆ[Ù[\ÙYžHHBˆ™YH‹‹‹ÙXÚ›ÚXËÈ™XÚ›ÚXÈZ\œ›ÜØOˆ8 %Ú[H[O“™]]˜[[œÚ]OÙ[Oˆ[œÝXYˆ][X]\È]™\žHØ]™[[™ÝžHHØ[YHÛÛ™šYÝ\™Y˜[œÛZ\ÜÚ[Ûˆœ˜XÝ[Û‹ˆ›ÜˆBˆœ›ØY˜[™ÜˆÝ\\˜ÛÛ[][H™X[KH˜[œÛZ]YÜXÝ[H\ÈH^XÝÝ™\›\ˆ™]ÙY[ˆH™X[IÜÈ˜[™[™H\ÜØ˜[™ÛÈHÚYH™X[H›ÝYÚH˜\œ›ÝÂˆ˜[™\ÜÈš[\ˆÛÜœ™XÝHÛÛY\ÈÝ]›Ý[[Y\ˆ[™ÜXÝ˜[H˜\œ›ÝÙYˆ\Âˆ[ÛÈÛÈY\ˆ\Ü\œÚ]™HÛ\ÜÈÜˆHš\ÛH\ÈÜ]H™X[H[ÈØ]™[[™ÝˆØ[\\ÎˆXXÚØ[\HØ\œšY\È]ÈÝÛˆÛXÙHÙˆHÜXÝ[K[™Hš[\ˆÝ]Âˆ[œÚYH]ÛXÙKÛÈHI›˜œÜÛ›H˜[™\ÜÈ\ÜÙ\ÈI›˜œÜÛ›HÙˆYÚ˜]\ˆ[ˆBˆÚÛHØ[\KˆH[ÙIÜÈ\˜][ÛˆY\ˆHš[\ˆ\ÈÛÜšÙYÝ]œ›ÛHÚ]\ÜÙ\È8 %ˆH˜[œÙ›Ü›HÙˆHÝ\š]š[™ÈÜXÝ[HÚ]HÚ\œ]Ø\œšY\È
+ÙYHHBˆ™YH‹‹‹Ü[ÙY\Ù\‹Èœ[ÙY\Ù\ØOŠH8 %[™H\ÜÙY˜[™\ÈÙ\ÝÙ]™\ˆ[‚ˆ]\ËÛÈ]Ý[™XXÚ\ÈHÜXÜÈY\ˆHš[\‹Ü˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	Õ
+[X™JHH™YÚ[žØØ\Ù\ßHH	ˆ[X™H[ˆ^Ü\ÜØ˜[™H	ˆ^ÛÝ\Ú\Ù_H[™ØØ\Ù\ßK\]XYWÞ×^Û™_HH^Ý˜[œßHÙÝWÌ	ËØ\[ÛŽˆ	ÕHYX[^™YÝ\Y[˜Ý[Ûˆ\ÜØ˜[™\ÙY›Üˆ˜[™\ÜËÛÛ™Ü\ÜËÜÚÜ\ÜË[™H›]ØØ[\ˆ][X][Ûˆ\ÙY›Üˆ™]]˜[[œÚ]K‰ÈKˆKˆ[Z]][ÛœÎˆ”™Z™XÝYYÚÚ[\H˜[š\Ú\È˜]\ˆ[ˆ™Y›XÝ[™È8 %\ÂˆX]Ú\ÈH\ÚXØ[XÝ\™HÙˆ[ˆXœÛÜœ]™HÛÛÜ™YYÛ\ÜÈš[\‹]›ÝBˆ™Y›XÝ]™H[\™™\™[˜ÙHš[\ˆ
+›ÜˆHÛÛ\Û™[]™Y›XÝÈ]È™Z™XÝY˜[™ˆ[œÝXY\ÙHHXÚ›ÚXÈZ\œ›ÜŠKˆH\ÜØ˜[™YÙH\ÈH\™Ý\Ú]›Âˆ˜[œÚ][ÛˆÛÜK›È\‹]Ø]™[[™ÝÜXØ[[œÚ]HÝ\™K[™›È[™ÛBˆ\[™[˜ÙKˆH™]]˜[Y[œÚ]H[ÙH\È\™™XÝHÜ™^H]]™\žHØ]™[[™Ý8 %™X[ˆ‘š[\œÈ]™HÛÛYHÜXÝ˜[š\H8 %[™\™IÜÈ›È[XYÙK]™\ÚÛÜˆ\›X[ˆ[Ù[[™È›ÜˆZ]\ˆXœÛÜœ]™HX][™ÈÜˆ™Y›XÝY˜XÚË\ÝÙ\‹Ü˜ˆKˆ™[]YˆÉÙXÚ›ÚXÉË	ØœÉË	Ø[Ý‰×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %ÜXØ[š[\œÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛÜXØ[Ùš[\œËš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %[\™™\™[˜ÙHš[\œÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÚ[\™™\™[˜ÙWÙš[\œËš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	Ù][Û‰ËˆÝ[[X\žNˆ•\Ù\È™\X]Y™Y›XÝ[ÛœÈ™]ÙY[ˆÛÜÙ[HÜXÙYÛØ][™ÜÈÈ›ÙXÙH\š[ÙXÈ˜[œÛZ\ÜÚ[Ûˆ™\ÛÛ˜[˜Ù\ËÚ][™ÛH[š[™È[™ÛÛ™šYÝ\˜X›HÜXÝ˜[™\ÛÛ][Ûˆ[™œ™YHÜXÝ˜[˜[™ÙKˆ‹ˆ]Nˆ	Ñ][Ûˆ
+˜Xœžx $Ô0ê\›Ý
+IËˆØ]YÛÜžNˆ	Ñš[\œÈ	ˆÜ]\œÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆH˜Xœžx $Ô0ê\›Ý][Ûˆ\È\ÝÛÈÛÜÙ[HÜXÙY\˜[[\X[Bˆ™Y›XÝ]™HÝ\™˜XÙ\È8 %][›ZÙHHÚ[™ÛH\X[Z\œ›Ü‹YÚ[œÚYH]Ø\ˆ›Ý[˜Ù\È˜XÚÈ[™›Ü[™Yš[š][K[™]™\žHÛ™HÙˆÜÙH[\›˜[™Y›XÝ[ÛœÂˆXZÜÈH]HYÚÝ][™[\™™\™\ÈÚ][HÝ\œËˆÝ[H][™š[š]BˆÙ\šY\ÈÙˆ][\K\™Y›XÝY™X[\È[™][ÜÝØ]™[[™ÝËH[\™™\™[˜ÙH\Âˆ\ÝXÝ]™H[›ÝYÚ]H][ÛˆÚ[\H™Y›XÝË™Z]š[™ÈZÙH[ˆÜ™[˜\žBˆ\X[Z\œ›Ü‹ˆ]]H™\ÛÛ˜[˜ÙH8 %Ú\™HH›Ý[™]š\\ÙH\ÈH][\HÙ‚ˆ³à8 %]™\žH™Y›XÝYÛÛ\Û™[Ø[˜Ù[È[[ÜÝ\™™XÝK[™˜[œÛZ\ÜÚ[ÛˆÝ\™Ù\ÂˆÈHÛØ][™Ë[[Z]YXZÈ]Ø[ˆ\›ØXÚL	H]™[ˆ›ÝYÚÛÈZ\œ›ÜœÈ]\™Bˆ[™]šYX[HNIH™Y›XÝ]™Kˆ]ÛÝ[\š[Z]]™HZ[\›ÝHÚ[\H\X[ˆ˜[œÛZ\ÜÚ[Û‹\ÈH[\™HÜ\˜][™Èš[˜Ú\KÜ‚ˆ”™\ÛÛ˜[˜Ù\È™\X]\š[ÙXØ[H[ˆØ]™[[™Ý]Hœ™YHÜXÝ˜[˜[™ÙH
+”ÔŠKˆ[™ÝÈÚ\œXXÚ™\ÛÛ˜[˜ÙH\È8 %ÝÈ˜\ˆ[ÝHØ[ˆ][™H™Y›Ü™H˜[œÛZ\ÜÚ[Û‚ˆÛÛ\Ù\È˜XÚÈÝØ\™™\›È8 %\ÈÙ]žHHš[™\ÜÙKÚXÚÛ[XœÈÝY\H\ÈBˆZ\œ›Üˆ™Y›XÝ]š]H\›ØXÚ\ÈKÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	Õ
+[JHHœ˜XÞÕÞ×X^_^ÌH
+È—ØÈÚ[—ŒŠ[KÌŠ_K\]XY—ØÈHœ˜XÞÍŸ^ÊKTŠWžÌŸ_IËØ\[ÛŽˆ	ÕHZ\žH[˜Ý[Ûˆ8 %˜Xœžx $Ô0ê\›Ý˜[œÛZ\ÜÚ[Ûˆ™\œÝ\È›Ý[™]š\\ÙH3­›ÜˆÛÈX]ÚYZ\œ›ÜœÈÙˆ™Y›XÝ]š]H‹‰ÈKˆÈ^ˆ	×^Ñ”ÔŸHHœ˜XÞ×[X™WžÌŸ_^Ì›™ÛÜ×]_K\]XYX]Ø[ÑŸHHœ˜XÞ×WÜ\ÔŸ_^ÌKTŸHHœ˜XÞ×^Ñ”ÔŸ_^×^Ñ•Ò__IËØ\[ÛŽˆ	Ñœ™YHÜXÝ˜[˜[™ÙH
+ÜXÚ[™È™]ÙY[ˆ™\ÛÛ˜[˜Ù\ËÙ]žHØ]š]H[™Ý[™™Yœ˜XÝ]™H[™^ŠH[™š[™\ÜÙH
+™\ÛÛ˜[˜ÙHÚ\œ™\ÜËÙ]žH™Y›XÝ]š]H[Û™JH8 %ÙÙ]\ˆ^Hš^H™\ÛÛ˜[˜ÙH[™]ÚY‰ÈKˆKˆ[Žˆˆ™XØ]\ÙHH›Ý[™]š\\ÙH3­\[™ÈÛˆH[˜ÚY[˜ÙH[™ÛH›ÝYÚˆÜ[ˆÛ\ÜÏHÈ˜ÛÜÈ3®ÜÜ[‹[[™È[ˆ][ÛˆÚYÈ]È™\ÛÛ˜[˜ÙHØ]™[[™ÝˆÚ]Ý]Ú[™Ú[™ÈHZ\œ›ÜœÈ][8 %HÝ[™\™[š[™ÈXÚš\]YH[ˆ™X[ÜXØ[ˆÞ\Ý[\Ë[Û™ÜÚYH[\\˜]\™H[š[™ÈÙˆHÜXÚ[™È]Ù[‹ˆ][ÛœÈ\™H\ÙYˆ[˜XØ]š]H[ˆ\Ù\œÈÈ›Ü˜ÙHÚ[™ÛK[Û™Ú]Y[˜[[[ÙHÜ\˜][Û‹[™Ý[™[Û™Bˆ\È˜\œ›ÝØ˜[™ÜXÝ˜[š[\œÈ[™ØØ[›š[™ÈÜXÝ[H[˜[^™\œËÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•H][Ûˆ\ÈÜXÚYšYYHØ^HH™X[Û™H\ÈÜXÙYÛˆH]\ÚY]8 %Ù[\‚ˆØ]™[[™Ý˜[œÛZ\ÜÚ[Ûˆ˜[™ÚY
+•ÒJKœ™YHÜXÝ˜[˜[™ÙK[™XZÂˆ˜[œÛZ\ÜÚ[Ûˆ8 %˜]\ˆ[ˆžHH˜]ÈZ\œ›ÜˆÜXÚ[™È[™™Y›XÝ]š]HHZ\žBˆ[˜Ý[ÛˆXÝX[H™YYËˆÜÙHÜXÝ˜[\™Ù]È\™H[™\Y[\›˜[H[ÈBˆX]ÚY[Z\œ›Üˆ™Y›XÝ]š]HÜ[ˆÛ\ÜÏHÈ”ÜÜ[ˆ[™Ø]š]HÜXÚ[™È]ˆ›ÙXÙH[K[ˆH^XÝÛÜÙYY›Ü›HZ\žH[˜Ý[ÛˆX›Ý™H\È]˜[X]Y]]™\žBˆ˜^IÜÈ™X[[˜ÚY[˜ÙH[™ÛNˆÙ™‹\™\ÛÛ˜[˜ÙHYÚ™Y›XÝËÛ‹\™\ÛÛ˜[˜ÙHYÚˆ˜[œÛZ]È\ÈHÛÛ™šYÝ\™YXZË[™›Ý][™ÈH[[Y[ÛˆHØ[˜\ÈÚYÂˆH™\ÛÛ˜[˜ÙH^XÝHZÙH[[™ÈH™X[][Ûˆ8 %™XØ]\ÙHH˜XÙ\ˆ\Ù\ÈBˆ˜^IÜÈXÝX[][™ÛK›ÝHÙ\\˜][HÝÜ™Y[\˜[Y]\‹Ü˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ•\È\ÈÛ™HÙˆÛ›HÛÈ[[Y[È[ˆHXœ˜\žH[\[Y[[™ÈÙ[Z[™Bˆ][KX™X[H[\™™\™[˜ÙH˜]\ˆ[ˆ[ˆYX[^™YÛ‹ÛÙ™ˆ˜[™8 %H\	ÜÈ˜^Bˆ˜XÙ\ˆÝ\Ú\ÙH™]™\ˆ˜XÚÜÈ\ÙKÛÈH][Ûˆ\ÈÜXÚX[XØ\ÙY\ÈHÚ[™ÛBˆÝ\™˜XÙHš]™[ˆžHHÛÜÙYY›Ü›HZ\žH™\Ý[[œÝXYÙˆXÝX[HÝ[[Z[™È™\X]Yˆ[\›˜[›Ý[˜Ù\Ëˆ\™IÜÈ›ÈZ\œ›Ü‹\\˜[[\ÛHY™XÝ
+ÙYÙJK›È[\\˜]\™BˆšYÙˆHÜXÚ[™Ë[™XZÈ˜[œÛZ\ÜÚ[Ûˆ™[ÝÈL	H\È™XXÚYÚ]HÚ[™ÛBˆ[\YÜÜÈ\›H˜]\ˆ[ˆH[Ù[YXœÛÜœ[ÛˆÜˆØØ]\ˆYXÚ[š\ÛHÛˆXXÚˆÛØ][™ËÜ˜ˆKˆ™[]YˆÉÝš\IË	ÙXÚ›ÚXÉË	Ùš[\‰×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %][ÛœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÙ][ÛœËš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %š[™\ÜÙIË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÙš[™\ÜÙKš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %[[š[™ÈÙˆ][ÛœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜÜÝYÚÌŒWÌL—ÌÌKš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	Ýš\IËˆÝ[[X\žNˆ”›ÙXÙ\ÈÜ]X[HÙ™œÙ]XZØYÙH™X[\È›ÝYÚ™\X]Y™Y›XÝ[ÛœÈ[œÚYHH[Y]K›ÝšY[™ÈHÙ[ÛY]šXÈ[Ù[ÙˆHØ[Ë[Ù™ˆ\ÙY[ˆ’TH\Ü\œÙ\œËˆ‹ˆ]Nˆ	Õ’TH
+š\X[H[XYÙY\ÙY\œ˜^JIËˆØ]YÛÜžNˆ	Ñš[\œÈ	ˆÜ]\œÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆH’TH\Ë]X\HØ[YH[Y˜Xœžx $Ô0ê\›ÝØ]š]H\È[ˆ][Ûˆ8 %ÛÂˆÛÜÙ[HÜXÙY™Y›XÝ]™HÛØ][™ÜÈ8 %][[Z[˜]Y[™™XYÝ]ÛÛ\][BˆY™™\™[KˆYÚ[\œÈ›ÝYÚHÛX[[˜ÛØ]YÚ[™ÝÈ[ˆ[ˆÝ\Ú\ÙBˆ™X\‹\\™™XÝH™Y›XÝ]™Hœ›Û˜XÙK›ØÝ\ÙYÈH[™H[œÚYHHØ]š]Kˆ™XØ]\ÙBˆH]H\È[Y™[]]™HÈ][˜ÛÛZ[™È™X[KXXÚ[\›˜[›Ý[˜ÙHÙ™ˆBˆ\X[H˜[œÛZ][™È˜XÚÈ˜XÙHXZÜÈYÚÝ]]HÛYÚHY™™\™[]\˜[ˆÜÚ][Ûˆ[œÝXYÙˆ™]˜XÚ[™ÈHØ[YH]8 %›ÙXÚ[™ÈH˜[ˆÙˆX[žHÜ]X[BˆÙ™œÙ]]]X[HÛÚ\™[™X[\È][\™™\™H[ˆH˜\ˆšY[^XÝHZÙHYÚˆ[Y\™Ú[™Èœ›ÛHH™X[\ÙY\œ˜^HÙˆÚ[ÛÝ\˜Ù\Ë^Ù\]™\žHÛ™HÙˆÜÙBˆš\X[ÛÝ\˜Ù\È\ÈXÝX[HHÚ[™ÛH\ÚXØ[Ø]š]H[XYÙY][\H[Y\ÉØÚ]JJ_K‚ˆ]	ÜÈHš\X[H[XYÙYˆ[ˆÙˆH˜[YKÜ‚ˆ•H™\Ý[\È[™Ý[\ˆ\Ü\œÚ[ÛˆL8 $ÌŒ0åÈYÚ\ˆ[ˆ[ˆÜ™[˜\žHY™œ˜XÝ[Û‚ˆÜ˜][™È[ˆH]šXÙHH™]ÈZ[[Y]\œÈXÚË]HÛÜÝÙˆH]XÚÛX[\ˆœ™YBˆÜXÝ˜[˜[™ÙH8 %ÚXÚ\ÈÚH’T\È\™H\XØ[HZ\™YÚ]HÜ˜][™È[ˆBˆÜ›ÜÜËY\Ü\œÙYÛÛ™šYÝ\˜][Ûˆ
+HÜ˜][™ÈÙ\\˜]\ÈÜ™\œÈ]ÛÝ[Ý\Ú\ÙBˆÝ™\›\
+H[ˆYÚ\™\ÛÛ][ÛˆÜXÝ›ÛY]\œËÜXØ[ÛÚ\™[˜ÙHÛ[ÙÜ˜\HÞ\Ý[\Ëˆ[™[œÙHØ]™[[™ÝY]š\Ú[Û‹[][\^[™È[][\^\œËÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×[W[X™WÞ×^Ü™\ß_HHœ˜XÞ×^Ñ”ÔŸ_^×X]Ø[ÑŸ_K\]XYX]Ø[ÑŸHHœ˜XÞ×WÜ\Ô—Þ×^ÛÝ]___^ÌKT—Þ×^ÛÝ]__IËØ\[ÛŽˆ”ÜXÝ˜[™\ÛÛ][Ûˆ[™š[™\ÜÙH8 %Ù]žHHÝ]]˜XÙIÜÈ™Y›XÝ]š]K^XÝH\È[ˆ[ˆÜ™[˜\žH][ÛŽÈÛ›HH™XYÝ]Ù[ÛY]žHY™™\œËˆˆKˆKˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ™XØ]\ÙHHØ[Ë[Ù™ˆ™]ÙY[ˆÝXØÙ\ÜÚ]™HXZÙY™X[\È\ÈH\™[HÙ[ÛY]šXÂˆÛÛœÙ\]Y[˜ÙHÙˆH[8 %XXÚ›Ý[˜ÙHÙ[Z[™[H^]È]HY™™\™[Ú[[Û™ÂˆH]H8 %ÜXØ[Ù]\˜XÙ\È]\™XÝH\È™\X]YÜ™[˜\žHZ\œ›Ü‚ˆ™Y›XÝ[ÛœÈ˜]\ˆ[ˆ›Üœ›ÝÚ[™ÈH][Û‰ÜÈÛÜÙYY›Ü›HZ\žH˜[œÛZ\ÜÚ[ÛŽˆ[‚ˆ[˜[˜ÙHÚ[™ÝÈ[ˆHœ›ÛÛØ][™È]È˜^\È[‹[™XXÚÝXœÙ\]Y[›Ý[˜ÙHÙ™‚ˆH\X[H™Y›XÝ]™H™X\ˆ˜XÙHÜ]ÛœÈ›ÝHÛÛ[Z[™È[\›˜[˜^H[™BˆXZÙYÝ]]˜^K^XÝH™\›ÙXÚ[™ÈH˜[ˆÙˆÙ™œÙ]™X[\ÈH™X[’TBˆ›ÙXÙ\ËˆÛ›HHÝ]]˜XÙIÜÈ™Y›XÝ]š]H™YYÈH˜Xœžx $Ô0ê\›ÝX][X]XÜËˆ[™]	ÜÈ\š]™YHØ[YHØ^HH][Ûˆ\š]™\È]ÈZ\œ›Üˆ™Y›XÝ]š]Nˆ[ÝBˆÜXÚYžHÙ[\ˆØ]™[[™Ý™\ÛÛ][Ûˆ
+•ÒJK[™œ™YHÜXÝ˜[˜[™ÙK[™ˆÛÙOœ™\ÛÛ™Uš\T\ÚXØ[
+
+OØÛÙOˆÛÛ™\È›ÜˆH]HÜXÚ[™È[™ÛØ][™Âˆ™Y›XÝ]š]H]ÛÝ[XÝX[H›ÙXÙH[H8 %Ú\š[™È]ÈÛÛ™\ˆÚ]H][Û‚ˆ[[Y[Ú[˜ÙHÜXÝ˜[HHÛÈ\™HHØ[YHØ]š]KÜ˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ•H˜[ˆÙˆXZÙY™X[\È\ÈÙ[Z[™H˜^K]˜XÙYÙ[ÛY]žK]XXÚˆ[™]šYX[XZÙY˜^HÝ[Ø\œšY\ÈÛ›HHÜ™[˜\žH
+[˜ÛÚ\™[
+H[[œÚ]Bˆ›ÜYØ]YžHH™\ÝÙˆH˜XÙ\ˆ8 %H˜\‹YšY[[\™™\™[˜ÙH™]ÙY[ˆÜÙBˆ™X[\È]H™X[’TH™[Y\ÈÛˆÈZ[]È[™Ý[\ˆ\Ü\œÚ[Ûˆ]\›ˆ\Û‰ÝˆÛÛ\]YÈÚ][ÝHÙYH\ÈHÛÜœ™XÝÙ[ÛY]šXÈØ[Ë[Ù™‹›ÝHÚ[][]YˆY™œ˜XÝ[Ûˆ]\›‹ˆ\™IÜÈ[ÛÈ›È[Ù[Y[K\™Y›XÝ[ÛˆÛØ][™ÈÛˆBˆ[˜[˜ÙHÚ[™ÝË›ÈÞ[[™šXØ[[œ][[œÈ›ØÝ\Ú[™Ë[™›ÈÜ›ÜÜËY\Ü\œÚ[™ÂˆÜ˜][™ÈÝYÙH8 %\È[[Y[[Ù[ÈH’TH]H[Û™KÜ˜ˆKˆ™[]YˆÉÙ][Û‰Ë	ÙÜ˜][™ÉË	ÙXÚ›ÚXÉ×KˆÚ]][ÛœÎˆÂˆÈX™[ˆ	ÓKˆÚ\˜\ØZÚK“\™ÙH[™Ý[\ˆ\Ü\œÚ[ÛˆžHHš\X[H[XYÙY\ÙY\œ˜^H[™]È\XØ][ÛˆÈHØ]™[[™Ý[][\^\‹ˆÜˆ]ˆŒKÍˆ
+NNMŠIË\›ˆ	ÚÎ‹ËÛÜË›ÜXØK›Ü™ËÛÛØXœÝ˜XÝ˜Ù›OÝ\šO[ÛLŒKMKLÍ‰ÈKˆKˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	ÕÚZÚ\YXH8 %š\X[H[XYÙY\ÙY\œ˜^IË\›ˆ	ÚÎ‹ËÙ[‹ÚZÚ\YXK›Ü™ËÝÚZÚKÕš\X[WÚ[XYÙYÜ\ÙYØ\œ˜^IÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %][ÛœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÙ][ÛœËš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ØÛZ\œ›Üž	ËˆÝ[[X\žNˆ‘]™\™Ù\ÈYÚœ›ÛHH™X[ÛÛ™^Ü\šXØ[Ý\™˜XÙK[˜ÛY[™È]ÈÜ\šXØ[X™\œ˜][Û‹ˆ‹ˆ]Nˆ	ÐÛÛ™^Z\œ›Ü‰ËˆØ]YÛÜžNˆ	ÓZ\œ›ÜœÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆHÛÛ™^
+]™\™Ú[™ÊHÜ\šXØ[Z\œ›Üˆ[Ù\ÈÝØ\™H[˜ÛÛZ[™ÈYÚ[™ˆÜ™XYÈH™Y›XÝY™X[HÝ]˜]\ˆ[ˆ›ØÝ\Ú[™È]ˆ]Ø™^\ÈHØ[YHZ\œ›Ü‚ˆ\]X][Ûˆ\ÈHÛÛ˜Ø]™HZ\œ›Ü‹]Ú]H™YØ]]™H›ØØ[[™Ý8 %Øš™XÝ˜^\Âˆ™Y›XÝ\ÈYˆ]™\™Ú[™Èœ›ÛHHš\X[›ØÝ\È™Z[™HZ\œ›Ü‹›Ü›Z[™È[‚ˆ\šYÚ™YXÙYš\X[[XYÙKˆ\È\ÈHÙ[ÛY]žH™Z[™Ø\ˆ\ÜÙ[™Ù\‹\ÚYBˆZ\œ›ÜœÈ[™ÚYKYšY[ÙXÝ\š]HZ\œ›ÜœË›ÝÚÜÙ[ˆ›ÜˆZ\ˆ^[™YšY[Ù‚ˆšY]È˜]\ˆ[ˆ[žH›ØÝ\Ú[™ÈÝÙ\‹Ü˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	ÙˆHœ˜XÞÔŸ^ÌŸH\]XYœ˜XÞÌ_^ÙŸHHœ˜XÞÌ_^ÙÛßH
+Èœ˜XÞÌ_^ÙÚ_IËØ\[ÛŽˆ	ÔØ[YHZ\œ›Üˆ\]X][Ûˆ\ÈHÛÛ˜Ø]™HØ\ÙKÚ]ˆ™YØ]]™HžHÛÛ™[[Û‹‰ÈKˆKˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ’Y[XØ[[\[Y[][ÛˆÈHH™YH‹‹‹ØÛZ\œ›Ü‹È˜ÛÛ˜Ø]™HZ\œ›ÜØOˆ8 %H™X[ˆÜ\šXØ[Ý\™˜XÙHÙˆ˜Y]\ÈÜ[ˆÛ\ÜÏHÈ”ˆH™ÜÜ[‹[\œÙXÝY[™™Y›XÝYˆ[˜[]XØ[H8 %\ÝÚ]HÝ\˜]\™HHÝ\ˆØ^H›Ý[™ÚXÚ\ÈÚHH™X[Bˆ\™HÜ™XYÈ[œÝXYÙˆÛÛ™\™Ú[™ËˆHX™\œ˜][Ûˆ\È™\Ù[›ÜˆHØ[YH™X\ÛÛˆ[™ˆžHHØ[YHYXÚ[š\ÛNÈ]Ú[\HX]\œÈ\ÜË™XØ]\ÙHH]™\™Ú[™ÈZ\œ›Üˆ\È˜\™[Bˆ\ÚÙYÈ›Ü›H[ˆ[XYÙKÜ˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ”Ø[YHØ]™X]È\ÈHÛÛ˜Ø]™HZ\œ›ÜŽˆH‘Ü›ÜÜË\ÙXÝ[ÛˆÙˆHÜ\™Bˆ˜]\ˆ[ˆH[ÑÝ\™˜XÙKÛÈÛ›HX™\œ˜][ÛœÈ^™\ÜÚX›H[ˆHY\šY[Û˜[ˆ[™H\X\ŽÈ›ÈÛØ][™È[Ù[[™ÛÈ›ÈØ]™[[™ÝHÜˆ[™ÛKY\[™[ˆ™Y›XÝ]š]NÈ[™HZ\œ›ÜˆØ[››Ý™HÚY\ˆ[ˆ]ÈÝÛˆÜ\™KÛÈH™\žHÚÜ›ØØ[ˆ[™ÝÚ[[H[Z]ÈH\\\™H8 %H[™[™\ÜÈHÚ^™HXÝX[H\ÙYÜ˜ˆKˆ™[]YˆÉØÛZ\œ›Ü‰Ë	ÛZ\œ›Ü‰Ë	ÛØ\	×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Z\œ›ÜœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛZ\œ›ÜœËš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ØÛZ\œ›Ü‰ËˆÝ[[X\žNˆ‘›ØÝ\Ù\ÈYÚœ›ÛHH™X[ÛÛ˜Ø]™HÜ\šXØ[Ý\™˜XÙK[˜ÛY[™È]ÈÜ\šXØ[X™\œ˜][Û‹ˆ‹ˆ]Nˆ	ÐÛÛ˜Ø]™HZ\œ›Ü‰ËˆØ]YÛÜžNˆ	ÓZ\œ›ÜœÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆHÛÛ˜Ø]™H
+ÛÛ™\™Ú[™ÊHÜ\šXØ[Z\œ›Üˆ›ØÝ\Ù\ÈYÚžH™Y›XÝ[ÛˆHØ[YBˆØ^HH[œÈ›ØÝ\Ù\È]žH™Yœ˜XÝ[Û‹ˆ›ÜˆHZ\œ›ÜˆÙˆ˜Y]\ÈÙˆÝ\˜]\™BˆÜ[ˆÛ\ÜÏHÈ”ÜÜ[‹H\˜^X[›ØØ[[™Ý\È[ˆH˜Y]\Ë[™Øš™XÝˆ[™[XYÙH\Ý[˜Ù\ÈØ™^HHØ[YHZ\œ›Üˆ\]X][Ûˆ\ÈH[œÎÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	ÙˆHœ˜XÞÔŸ^ÌŸIËØ\[ÛŽˆ	Ô\˜^X[›ØØ[[™Ýœ›ÛHH˜Y]\ÈÙˆÝ\˜]\™K‰ÈKˆÈ^ˆ	×œ˜XÞÌ_^ÙŸHHœ˜XÞÌ_^ÙÛßH
+Èœ˜XÞÌ_^ÙÚ_K\]XYHHWœ˜XÞÙÚ_^ÙÛßIËØ\[ÛŽˆ	ÕHZ\œ›Üˆ\]X][Ûˆ[™˜[œÝ™\œÙHXYÛšYšXØ][Ûˆ8 %Y[XØ[[ˆ›Ü›HÈH[‹[[œÈ\]X][Û‹‰ÈKˆKˆ[Žˆˆ•]›Ü›][H\ÈÛ›H^XÝ›Üˆ˜^\ÈÛÜÙHÈH^\ËˆH™X[Ü\™Hœš[™ÜÂˆX\™Ú[˜[
+Ù™‹X^\ÊH˜^\ÈÈH›ØÝ\ÈÛYÚHÛÜÙ\ˆÈHZ\œ›Üˆ[ˆ\˜^X[ˆ˜^\È8 %Ü\šXØ[X™\œ˜][Ûˆ8 %ÚXÚ\ÈÚH˜\Ý\Ý›Û›ÛZXØ[Z\œ›ÜœÈ\™HÜ›Ý[™\Âˆ\˜X›Û\È[œÝXY
+ÙYHH\˜X›ÛXÈZ\œ›ÜˆYÙJKÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•HZ\œ›Üˆ\ÈHÝ›Û™Ïœ™X[Ü\šXØ[Ý\™˜XÙOÜÝ›Û™ÏŽˆ˜Y]\ÂˆÜ[ˆÛ\ÜÏHÈ”ˆH™ÜÜ[‹™\^]H[[Y[	ÜÈÜšYÚ[‹Ù[™HÙˆÝ\˜]\™H[‚ˆœ›ÛÙˆ]ˆ˜^\È\™H[\œÙXÝYYØZ[œÝ]Ú\˜ÛH[˜[]XØ[H[™™Y›XÝYÙ™‚ˆ]ÈYH›Ü›X[Ú]›È\˜^X[ÛÜœ™XÝ[Ûˆ\YY[ž]Ú\™Kˆ›Ý[™ÈX›Ý]Bˆ›ØÝ\Ú[™È\È[\ÜÙY8 %]˜[ÈÝ]ÙˆHÙ[ÛY]žK[™ÛÈÙ\ÈHX™\œ˜][Û‹Ü‚ˆ•]YX[œÈ\È[[Y[™Z]™\ÈZÙHHÜ\™H˜]\ˆ[ˆZÙH[ˆYX[\Ø][ÛˆÙ‚ˆÛ™Kˆ]HH™YH‹‹‹ÜÚ[ÛÝ\˜ÙKÈœÚ[ÛÝ\˜ÙOØOˆ]H›ØÝ\È[™H™]\›š[™Âˆ™X[H\È[O››ÝÙ[OˆÛÛ[X]YˆX\™Ú[˜[˜^\ÈX]™H]HY™™\™[[™ÛHœ›ÛBˆ\˜^X[Û™\Ë[™H™X[HÚY[œÈ\È]˜]™[ËˆÝÈ˜YH\[™È[\™[HÛˆÝÂˆ˜\ÝHZ\œ›Üˆ\ÎÜ‚ˆÝ›Û™Ï™‹ÌËŽOÜÝ›Û™Ïˆ8 %Œð¬™X\ˆ[›ÝYÚÈÛÛ[X]YÈ\ÙK‚ˆÝ›Û™Ï™‹Ì‹ŒÜÝ›Û™Ïˆ8 %ŒM0¬ˆÝ›Û™Ï™‹ÌOÜÝ›Û™Ïˆ8 %Kð¬\Ù[\ÜÈ›ÜˆBˆ\œÜÙKˆØ[YHÛÝ\˜ÙKØ[YH›ØÝ\ËÛ›HH\\\™K]ËY›ØØ[[[™Ý˜][ÈÚ[™Ú[™Ë‚ˆ]ÝY\\[™[˜ÙH\ÈHÚÛH™X\ÛÛˆH˜\ÝÞ\Ý[H\ÈZ[›Ý[™BˆH™YH‹‹‹ÛØ\Èœ\˜X›ÛOØOˆ[œÝXY[™HÛÈ[[Y[È\™HÛÜ][™ÂˆÚYHžHÚYHÈÙYH]Ü˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ•HÝ\™˜XÙH\ÈH‘Ü›ÜÜË\ÙXÝ[ÛˆÙˆHÜ\™KÛÈÛ›HX™\œ˜][ÛœÂˆ]]™H[ˆHY\šY[Û˜[[™HØ[ˆ\X\ˆ8 %Ü\šXØ[X™\œ˜][Ûˆ[™Y›ØÝ\ÈËˆÚ[H\ÝYÛX]\ÛH[™ÛÛXKÚXÚ™YYH\™[Y[œÚ[ÛˆÜˆH[Ù™‹X^\ÈšY[ˆÈ›Ýˆ\™H\È›ÈÛØ][™È[Ù[ÛÈ™Y›XÝ]š]HÙ\È›Ý˜\žHÚ]Ø]™[[™ÝÜ‚ˆ[™ÛHÙˆ[˜ÚY[˜ÙKˆ[™HZ\œ›ÜˆØ[››Ý™HÚY\ˆ[ˆ]ÈÝÛˆÜ\™NˆHÚÜ›ØØ[ˆ[™ÝÚ]HÚYH\\\™H\È[Z]YÈÚ]H˜Y]\È[ÝÜË[™H[™[ˆ™\ÜÈH\\\™HXÝX[H\ÙY˜]\ˆ[ˆHÛ™H™\]Y\ÝYÜ˜ˆKˆ™[]YˆÉØÛZ\œ›Üž	Ë	ÛZ\œ›Ü‰Ë	ÛØ\	×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Z\œ›ÜœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛZ\œ›ÜœËš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ÛØ\	ËˆÝ[[X\žNˆ”™Y›XÝÈYÚœ›ÛH[ˆ^XÝ\˜X›ÛKÛÛ[X][™ÈHÛÝ\˜ÙH]]È›ØÝ\ÈÚ]Ý]Ü\šXØ[X™\œ˜][Û‹ˆ‹ˆ]Nˆ	Ô\˜X›ÛXÈZ\œ›Ü‰ËˆØ]YÛÜžNˆ	ÓZ\œ›ÜœÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆH\˜X›ÛH\È[ˆ^XÝÙ[ÛY]šXÈ›Ü\HHÜ\™HÛ›H\›Þ[X]\Îˆ]™\žBˆ˜^H˜]™[[™È\˜[[È]È^\Ë][O˜[žOÙ[Oˆ\Ý[˜ÙHœ›ÛH]^\Ëˆ™Y›XÝÈ›ÝYÚHÚ[™ÛH›ØÝ\Ëˆ\™H\È›ÈÜ\šXØ[X™\œ˜][ÛˆÈÛÜœ™XÝ›Ü‹ˆÚXÚ\ÈÚH˜\Ý[\ØÛÜHš[X\šY\ËÙ™‹X^\È\˜X›ÛÚY
+ÐT
+HZ\œ›ÜœÈ[‚ˆ[˜Y˜\Ý\Ù\ˆXœË[™Ø][]H\Ú\È\™H[\˜X›ÛXÈ˜]\ˆ[‚ˆÜ\šXØ[ˆ[ˆ\È‘ÚYHšY]ËHZ\œ›Üˆ›Ùš[H\ÈH\˜X›ÛHÚ]™\^]ˆHÜšYÚ[ˆ[™›ØÝ\ÈH\Ý[˜ÙHÜ[ˆÛ\ÜÏHÈ™ÜÜ[ˆ™Z[™]Ü˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	ÞHWœ˜XÞÞWžÌŸ_^ÍŸIËØ\[ÛŽˆ	ÕH\˜X›ÛH›Ùš[H˜XÙYžHHZ\œ›Ü‹Ü[š[™ÈÝØ\™H[˜ÛÛZ[™È™X[K‰ÈKˆKˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•HZ\œ›Üˆ\È˜XÙY\È]È™X[Ý\™KˆÚÜ›]˜XÙ]ÈØØ]H[OÚ\™OÙ[OˆBˆ˜^H[™Ë]H™Y›XÝ[Ûˆ\Ù\ÈH\˜X›ÛIÜÈÝÛˆ›Ü›X[]]Ú[›Ý[™ˆ[˜[]XØ[NˆHÝ\™˜XÙHÜ[ˆÛ\ÜÏHÈžH8¢$žp¬‹ÍÜÜ[ˆ\ÈÜ˜YY[ˆÜ[ˆÛ\ÜÏHÈŠKKÌ™ŠOÜÜ[‹[™H^XÝ˜^x $ØÝ\™H[\œÙXÝ[Ûˆ\ÈÛÛ™Yˆ˜]\ˆ[ˆZÙ[ˆœ›ÛHH˜XÙ]ÚÜ™ˆH˜XÙ]ÛÝ[\™Y›Ü™HÙ]ÈÜÚ][Û˜[ˆXØÝ\˜XÞHÛ›K™]™\ˆ[™Ý[\ˆ8 %ÚXÚ\ÈÚ]XZÙ\ÈHYš[š[™È›Ü\HÛ]ˆ[O˜[žOÙ[Oˆ\\\™H˜]\ˆ[ˆÛ›H]Ù[HÛ™\ËÜ‚ˆ•HÛÛœÙ\]Y[˜ÙH\ÈÛÜÚXÚÚ[™ÈYØZ[œÝBˆH™YH‹‹‹ØÛZ\œ›Ü‹ÈœÜ\šXØ[Z\œ›ÜØOˆ\™XÝKˆÚ]HÚ[ÛÝ\˜ÙH]H›ØÝ\ÂˆÙˆXXÚ‰›˜œÜÏI›˜œÜÌH[™HL	›˜œÜÛ[H\\\™KH\˜X›ÛH™]\›œÈH™X[BˆN	›˜œÜÛ[HÚYH]	›˜œÜÛ[H[™Ý[N	›˜œÜÛ[HÚYH]LŒ	›˜œÜÛ[H8 %ÛÛ[X]Yˆ^XÝKˆHÜ\™H™]\›œÈŽ	›˜œÜÛ[HÚY[š[™ÈÈÎL‰›˜œÜÛ[NˆX›Ý]Lp¬ˆ™Z]\‚ˆ[X™\ˆ\È][ˆžH[™È›ÝÛÛYHÝ]ÙˆHÛÈÝ\™˜XÙ\ËÜ˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ•\È\ÈÛÜÙ\ˆÈš\œÝ\š[˜Ú\\ÈÜXÜÈ[ˆ[ÜÝ[[Y[È[ˆBˆXœ˜\žK]]\ÈÝ[H‘Û‹X^\ÈÜ›ÜÜË\ÙXÝ[Ûˆ8 %H™X[ÐT\È\XØ[H[‚ˆÙ™‹X^\ÈÙXÝ[ÛˆÙˆHÑ\˜X›ÛÚYÚXÚ\ÈÚYHšY]ÈØ[››Ý™\™\Ù[ˆ™Z[™Âˆ^XÝ[ˆ™Y›XÝ[Ûˆ[ÛÈYX[œÈ]\È^XÝ[ˆHØ^H›ÈX[Y˜XÝ\™YZ\œ›Üˆ\Îˆ\™Bˆ\È›ÈÝ\™˜XÙHšYÝ\™H\œ›Ü‹›È›ÝYÚ™\ÜË[™›ÈÛØ][™È[Ù[ÛÈ™Y›XÝ]š]HÙ\Âˆ›Ý˜\žHÚ]Ø]™[[™ÝÜˆ[™ÛKÜ˜ˆKˆ™[]YˆÉØÛZ\œ›Ü‰Ë	ØÛZ\œ›Üž	Ë	ÛZ\œ›Ü‰×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Z\œ›ÜœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛZ\œ›ÜœËš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ÙØ[›ÉËˆÝ[[X\žNˆ”ÝY\œÈ™Y›XÝYYÚÚ]Hš^YÜˆ[š[X]YYXÚ[šXØ[Z\œ›Üˆ[™ÛK›Üˆ^Üš[™ÈØØ[ˆÙ[ÛY]žHÚ]HÛÝÙY™]šY]È]YÚš]™Hœ™\]Y[˜ÚY\Ëˆ‹ˆ]Nˆ	ÑØ[›ÈZ\œ›Ü‰ËˆØ]YÛÜžNˆ	ÓZ\œ›ÜœÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆHØ[˜[›ÛY]\ˆØØ[›™\ˆ
+™Ø[›ÈŠH\ÈHÛX[Z\œ›Üˆ[Ý[YÛˆH[Z]Y\›Ý][Û‚ˆ[ÝÜ‹\ÙYÈÝY\ˆH™X[H[XÝ›ÛšXØ[H[œÝXYÙˆžH[™8 %HÛÜ™BˆZ[[™È›ØÚÈÙˆ\Ù\ˆØØ[›š[™ÈZXÜ›ÜØÛÜ\Ë\Ù\ˆX\šÚ[™È[™Ý][™ÈÞ\Ý[\ËˆQT‹[™\Ù\ˆYÚÚÝÜËˆ™XØ]\ÙH™Y›XÝ[ÛˆÝX›\È[ˆ[™ÛHÚ[™ÙKHÛX[ˆYXÚ[šXØ[›Ý][Ûˆ›ÙXÙ\ÈÚXÙH\È]XÚ[™Ý[\ˆY›XÝ[Ûˆ[ˆH™Y›XÝYˆ™X[NÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×]WÞ×^Ø™X[__HH—]WÞ×^ÛYXÚ[šXØ[_IËØ\[ÛŽˆ	ÕHÜXØ[ØØ[ˆ[™ÛH\È[Ø^\ÈÚXÙHHYXÚ[šXØ[Z\œ›Üˆ›Ý][Ûˆ8 %HØ[YHÝX›[™È]\Y\ÈÈ[žHÝY\š[™ÈZ\œ›Ü‹‰ÈKˆKˆ[Žˆˆ”™X[Ø[›ÈÞ\Ý[\ÈZ\ˆÛÈZ\œ›ÜœÈÛˆ\œ[™XÝ[\ˆ^\È
+[™JHÈ˜\Ý\‹BˆÜˆ™XÝÜ‹\ØØ[ˆH™X[HÝ™\ˆH‘šY[[™Z\ˆXÚY]˜X›HÜYY\È[Z]YžBˆHZ\œ›Ü‰ÜÈ›Ý][Û˜[[™\XH8 %\™ÙK˜\Ý[™Ý[\ˆÝ\ÈZÙHÛ™Ù\ˆÈÙ]Bˆ[ˆÛX[Û™\ËÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•HØ[›È™Y›XÝÈ˜^\ÈÚ]HØ[YH^XÝ™XÝÜˆ]ÈÙˆ™Y›XÝ[Ûˆ\ÈBˆZ[ˆZ\œ›Ü‹]]ÈÝ\™˜XÙH[™ÛH\È™XÛÛ\]Y]™\žHœ˜[YHœ›ÛHHÛÛ™šYÝ\˜X›BˆÛÛ[X[™ˆ[O”Ý]XÏÙ[OˆÛÈHš^YYXÚ[šXØ[[™ÛNÈ[O”Ú[™OÙ[Oˆ[™ˆ[O•šX[™ÛOÙ[OˆÛÛ[[Ý\ÛHÝÙY\]\›Ý[™]Ù[\ˆ]HÙ]œ™\]Y[˜ÞH[™ˆXZÈ[\]YKˆ[ˆÝÙY\[ÙHHZ\œ›ÜˆXÝX[H›Ý]\È[™H™Y›XÝY™X[Bˆš\ÚX›HÝÙY\È˜XÚÈ[™›ÜÛˆ]ÈÝÛˆ8 %\È\ÈHÛ™HÛÛ\Û™[[ˆBˆXœ˜\žH][š[X]\ÈÛÛ[[Ý\ÛH[ˆ™X[[YKš]™[ˆžH]ÈÝÛˆÛØÚÈ˜]\‚ˆ[ˆH[ÙK][Z[™È^X˜XÚÈÛÛ›ÛÈ\ÙY[Ù]Ú\™KÜ˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ•HXZÈYXÚ[šXØ[ÝÙY\\ÈØ\Y]L0¬[™Y˜][ÈÈBˆ[Ù\Ýp¬8 %[›ÝYÚÈ[[ÛœÝ˜]HØØ[›š[™ÈÛX\›HÚ]Ý]HÝÚ[™ÈÛZ[˜][™ÈBˆÚÙ]Úˆ\™IÜÈ›È[Ù[Y[™\XK˜[™ÚYÜˆÙ][™È[YNˆHZ\œ›Ü‚ˆ›ÛÝÜÈHÛÛ[X[™YÚ[™HÜˆšX[™ÛHØ]™H[œÝ[H[™\™™XÝH][žBˆœ™\]Y[˜ÞKÚXÚH™X[Ø[›ÉÜÈYXÚ[šXØ[™\ÜÛœÙHÛÝ[›ÝËÜ˜ˆKˆ™[]YˆÉÛZ\œ›Ü‰Ë	ØÛZ\œ›Ü‰Ë	ØÛZ\œ›Üž	×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Z\œ›ÜœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛZ\œ›ÜœËš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %\Ù\ˆ™X[H[]™\žIË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛ\Ù\—Ø™X[WÙ[]™\žKš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ØÛÛšXÛZ\œ›Ü‰Ëˆ]Nˆ	ÐÛÛšXÈZ\œ›Ü‰ËˆØ]YÛÜžNˆ	ÓZ\œ›ÜœÉËˆÝ[[X\žNˆ	Ô™Y›XÝÈœ›ÛH[ˆ^XÝÛÛšXÈÝ\™˜XÙH8 %Ü\™K\˜X›ÛK[\ÙHÜˆ\\˜›ÛH8 %Ú][ˆÜ[Û˜[™X[Ù[˜[Ü[š[™Ë‰Ëˆ™X[ÛÜ›ˆÂˆ[ˆˆHÜ\šXØ[Z\œ›Üˆ\ÈX\ÞHÈXZÙH[™Ü›Û™È[ˆHÜXÚYšXÈØ^Nˆ˜^\ÈÝšZÚ[™Âˆ]˜\ˆœ›ÛHH^\ÈÜ›ÜÜÈZXYÙˆHÛ™\È™X\ˆH^\ËÛÈH\Ý[Ý\‚ˆ™]™\ˆ]Z]HÛÛY\ÈÈHÚ[ˆ]\ÈÜ\šXØ[X™\œ˜][Û‹[™]\È›ÝBˆX[Y˜XÝ\š[™ÈY™XÝ8 %]\ÈÚ]HÜ\™HÙ\ËˆHÛÛšXÈÙXÝ[ÛœÈš^]XXÚˆÛ™H^XÝK›ÜˆÛ™H\XÝ[\ˆZ\ˆÙˆÛÛšYØ]HÚ[ËÜ‚ˆ•HÝ\™˜XÙH\È\ØÜšX™YžHH™\^˜Y]\È[™HÝ›Û™Ï˜ÛÛšXÈÛÛœÝ[ÜÝ›Û™Ï‚ˆËÚXÚÙ[XÝÈHÙXÝ[ÛŽˆÈH\ÈHÜ\™KÈH8¢$ŒHH\˜X›ÛK8¢$ŒH	›ÈÈ	›ÈˆH›Û]H[\ÙKÈ	›È8¢$ŒHH\\˜›ÛK[™È	™ÝÈ[ˆØ›]H[\ÙKÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	ÞŠJHHœ˜XÞÞWžÌŸKÔŸ^ÌH
+ÈÜ\ÌHH
+JÚÊWWžÌŸKÔ—žÌŸ__IËØ\[ÛŽˆ	ÕHÛÛšXÈØYÎˆÝÈ˜\ˆHÝ\™˜XÙH\È\\Yœ›ÛH]È™\^[™H]ZYÚKˆÛ™H˜Y]\È[™Û™HÛÛšXÈÛÛœÝ[\ØÜšX™H]™\žHÚ\H[ˆH˜[Z[K‰ÈKˆKˆ[Žˆˆ‘XXÚÛÛšXÈ[XYÙ\ÈÛ™HZ\ˆÙˆÚ[È\™™XÝKˆHÝ›Û™Ïœ\˜X›ÛOÜÝ›Û™Ï‚ˆZÙ\ÈHÛÝ\˜ÙH][™š[š]HÈ]È›ØÝ\ËÚXÚ\ÈÚH]\ÈHÚ\HÙˆBˆ[\ØÛÜHš[X\žH[™ÙˆHH™YH‹‹‹ÛØ\È›Ù™‹X^\È\˜X›ÛXÈZ\œ›ÜØO‹ˆ[‚ˆÝ›Û™Ï™[\ÙOÜÝ›Û™Ïˆ[XYÙ\ÈÛ™HÙˆ]ÈÛÈ›ØÚHÛÈHÝ\‹›Ý]š[š]Bˆ\Ý[˜ÙKˆHÝ›Û™Ïš\\˜›ÛOÜÝ›Û™ÏˆÙ\ÈHØ[YH›ÜˆÛ™H™X[[™Û™Hš\X[ˆ›ØÝ\ËÜ‚ˆÛÛXš[š[™ÈÛÈÙˆ[H\ÈÝÈ™Y›XÝ[™È[\ØÛÜ\È[™Øš™XÝ]™\È\™HZ[ˆBˆØ\ÜÙYÜ˜Z[ˆZ\œÈH\˜X›ÛXÈš[X\žHÚ]H\\˜›ÛXÈÙXÛÛ™\žKHÜ™YÛÜšX[ˆÚ]ˆ[ˆ[\XØ[Û™K[™Hš]Ú^x $ÐÚ°ê]Y[ˆ\Ù\ÈÛÈ\\˜›Û\ÈÈÛX\ˆÛÛXH\ÂˆÙ[ˆHØ[YHÛË[Z\œ›ÜˆYXK\›™Y[ÈHZXÜ›ÜØÛÜHØš™XÝ]™K\ÈBˆÝ[™\™ÛÛÙˆ[™œ˜\™YZXÜ›ÜØÛÜH[™•TŽˆZ\œ›ÜœÈ]™H›È\Ü\œÚ[Ûˆ][ˆÛÈH›ØÝ\ÈÙ\È›Ý[Ý™HÚ]Ø]™[[™Ý[™›ÈÛ\ÜÈ\È\ÚÙYÈ˜[œÛZ]ˆYÚ]ÛÝ[Ú[\HXœÛÜ˜‹Ü‚ˆ•Ú]]™\žHÛ‹X^\ÈÛË[Z\œ›ÜˆÞ\Ý[H^\È\ÈHÝ›Û™Ï˜Ù[˜[ˆØœÝXÝ[ÛÜÝ›Û™Ï‹ˆHÙXÛÛ™\žHÚ]È[ˆH™X[KÛÈH\\\™H\È[‚ˆ[›[\ÎˆÛÛYHYÚ\ÈÜÝÝ]šYÚ[™[ˆH™X[[œÝ[Y[H™\Ý\Âˆ™Y\ÝšX]YÚ]HY™œ˜XÝ[Ûˆ]\›ˆÚÜÙHš[™ÜÈ\™HÝ›Û™Ù\ˆ[ˆ[‚ˆ[›ØœÝXÝY\\\™IÜËÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•HZ\œ›Üˆ\ÈH™X[ÛÛšXÈÝ\™˜XÙK[\œÙXÝY[˜[]XØ[KˆXXÚ˜^IÜÈ]ˆÚ[[™Ý\™˜XÙH›Ü›X[\™HÛÛ™YÛˆHÛÛšXÈ]Ù[ˆ˜]\ˆ[ˆÛˆH\˜^X[ˆÝ[™Z[‹ÛÈX™\œ˜][Ûˆ\ÈH[Oœ™\Ý[Ù[Oˆ\™NˆÚ]™HHZ\œ›ÜˆÈH[™BˆX\™Ú[˜[˜^\È™X[HÈÜ›ÜÜÈZXYÙˆH\˜^X[Û™\ËžH[ˆ[[Ý[[ÝHØ[‚ˆYX\Ý\™HÚ]H]XÝÜ‹Ü‚ˆ•HÝ›Û™ÏœÚYÛ™Y™\^˜Y]\ÏÜÝ›Û™ÏˆÙ]ÈÝ\˜]\™H[™ÚXÚØ^HBˆÝ\™˜XÙH™[™È8 %H˜Y]\ÈÙˆ™\›È\ÈH[™H8 %[™HÝ›Û™Ï˜ÛØ]YÚYOÜÝ›Û™Ï‚ˆÚÛÜÙ\ÈÚXÚ˜XÙH™Y›XÝÎÈHÝ\ˆ\ÈÜ\]YK[™™Y›XÝ]š]H™[ÝÈL	H\ÂˆXœÛÜ˜™Y˜]\ˆ[ˆ˜[œÛZ]Y\ÈHÛÛYZ\œ›ÜˆÝXœÝ˜]HÛÝ[Ü‚ˆ•HÝ›Û™Ï˜Ù[˜[Ü[š[™ÏÜÝ›Û™Ïˆ\ÈH™X[ÛK›ÝH˜]Ú[™Ëˆ˜^\È[œÚYBˆ]\ÜÈ›ÝYÚHZ\œ›Üˆ[\™[K[™8 %™XØ]\ÙHHÙX\˜ÚÙ\È›ÝÝÜ]BˆÜ[š[™È8 %H˜^H][\œÈ›ÝYÚHÛH][ˆ[™ÛHØ[ˆÝ[ÝšZÙHBˆ[›[\È\\ˆ[Û™ËÚXÚ\È^XÝHH]HYÚZÙ\È[ˆHØ\ÜÙYÜ˜Z[‹‚ˆ™XØ]\ÙHH™\]Y\ÝY˜Y]\ÈØ[ˆ™HÛÈÚÜ›ÜˆH™\]Y\ÝY\\\™HÈ^\ÝˆH[O‘Ù[ÛY]žH\ÙYÙ[Oˆ™XYÝ][Ø^\È™\ÜÈH˜Y]\È[™Ü[š[™ÈXÝX[Bˆ™X[^™YÛÈHÚ[[HY\ÝY™\ØÜš\[ÛˆØ[››Ý\ÜÈ[››ÝXÙYÜ˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ•\È\ÈHÛËY[Y[œÚ[Û˜[Y\šY[Û˜[ÙXÝ[Û‹ˆ\™H\È›ÂˆØYÚ][[™KÛÈ›Ý[™È\™H™\›ÙXÙ\È\ÝYÛX]\ÛHÜˆšY[Ý\˜]\™H\ÈBˆ™X[ÛÛšXÈÛÝ[ÚÝÈ[HÙ™‹X^\Ë[™H›Ý][Û˜[Ý\™˜XÙIÜÈ™Z]š[Ý\ˆ\ÈÛ›Bˆ™Z[™ÈØ[\Y[Û™ÈÛ™HÝ]Ü‚ˆ“›Ý[™È\ÈY™œ˜XÝ]™Nˆ\™H\È›ÈZ\žH]\›‹›Û™HÙˆHš[™Âˆ™Y\ÝšX][ÛˆHÙ[˜[ØœÝXÝ[ÛˆØ]\Ù\Ë[™›ÈÜY\ˆ˜[™\ËÛÈBˆÙ[ÛY]šXÈÚ[›ØÝ\ÈHÙ[[X]ÚYÛÛšXÈZ\ˆ›ÙXÙ\È\ÈÚ\œ\ˆ[ˆ[žH™X[ˆ[œÝ[Y[	ÜËˆ™Y›XÝ]š]H\ÈHÚ[™ÛH›]\˜Ù[YÙHÚ]›È[™ÛKˆÛ\š^˜][ÛˆÜˆØ]™[[™Ý\[™[˜ÙKÛÈHÛØ][™ÉÜÈÜXÝ[H[™[ˆ[™œ˜\™Yˆ]XÝÜ‰ÜÈ™\ÜÛœÚ]š]H\™H›ÝÝ]ÚYHH[Ù[ˆHÛÛšXÈÛÛœÝ[\È›Ý[™YˆÈ0¬LŒ[™H˜Y]\ÈÈ0¬ML	›˜œÜÛ[KÜ˜ˆKˆ™[]YˆÉÛØ\	Ë	ØÛZ\œ›Ü‰Ë	ÛZ\œ›Ü‰Ë	ÛØš™XÝ]™I×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %\˜X›ÛXÈZ\œ›ÜœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜ\˜X›ÛX×ÛZ\œ›ÜœËš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Z\œ›ÜœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛZ\œ›ÜœËš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	ÜÛYÛÛœØØ[›™\‰Ëˆ]Nˆ	ÔÛYÛÛˆØØ[›™\‰ËˆØ]YÛÜžNˆ	ÓZ\œ›ÜœÉËˆÝ[[X\žNˆ	Õ˜XÙ\È™Y›XÝ[Ûˆœ›ÛH]™\žH˜XÙ]ÙˆH›Ý][™È™YÝ[\ˆÛYÛÛ‹‰Ëˆ™X[ÛÜ›ˆÂˆ[ˆˆHÝ›Û™Ïœ›Ý][™ÈÛYÛÛˆØØ[›™\ÜÝ›Û™Ïˆ\ÈHš\ÛHÙˆ›]Z\œ›Üˆ˜XÙ]ÂˆÝ]\›Ý[™HÚY[Ü[ˆÛÛ[[Ý\ÛHžHH[ÝÜ‹ˆXXÚ˜XÙ]ÝÙY\ÈH™X[Bˆ›ÝYÚÛ™H[™NÈ\È]\ÜÙ\ÈÝ]ÙˆH™X[HH™^˜XÙ]XÚÜÈ]\]BˆÝ\ÙˆH™^[™KˆHYXH\ÈÛ[›ÝYÚÈ™H]™\ž]Ú\™HÚ]Ý]™Z[™Âˆ›ÝXÙY8 %]\ÈHYXÚ[š\ÛH[œÚYH\Ù\ˆš[\œËÝ\\›X\šÙ]˜\˜ÛÙBˆØØ[›™\œËX[žHQTˆXYË[™H[™K\ØØ[›š[™È\Ù\ˆ›ØÙ\ÜÚ[™ÈÞ\Ý[\È\ÙYˆ›ÜˆYÚ]›ÝYÚ]X\šÚ[™È[™X›][Û‹Ü‚ˆ’]ÈY˜[YÙHÝ™\ˆHH™YH‹‹‹ÙØ[›ËÈ™Ø[›ÈZ\œ›ÜØOˆ\È]H[Ý[Û‚ˆ™]™\ˆ™]™\œÙ\ËˆHØ[›È\ÈÈXÙ[\˜]KÝÜ[™XØÙ[\˜]H˜XÚÈ]H[™Ù‚ˆ]™\žH[™K[™HÙ][™È]›ÛÝÜÈ\ÈÚ][Z]ÈÝÈ˜\Ý]Ø[ˆØØ[‹ˆBˆÛYÛÛˆ\›œÈÛ™HØ^H]ÛÛœÝ[ÜYYÛÈ\™H\È›È\›˜\›Ý[™ÈØZ]›Ü‚ˆ[™H[™H˜]H\ÈÙ]\™[HžHÝÈ˜\ÝH[ÝÜˆÜ[œÈ[™ÝÈX[žH˜XÙ]Âˆ]Ø\œšY\ÎÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	Ù—Þ×^Û[™__HHœ˜XÞÓˆÙÝ^Ô”__^ÍŒIËØ\[ÛŽˆ	Ó[™\È\ˆÙXÛÛ™›Üˆˆ˜XÙ]ËˆHL‹Y˜XÙ]ÚY[]Ì”H[]™\œÈ‹[™\È\ˆÙXÛÛ™8 %H˜]H›ÈØ[›ÈÙˆÛÛ\\˜X›H\\\™HØ[ˆ\›ØXÚ‰ÈKˆÈ^ˆ	×[W]WÞ×^ÛÜXØ[_HHœ˜XÞÍ_^ÓŸIËØ\[ÛŽˆ	ÕHÜXØ[ÝÙY\Û™H˜XÙ][]™\œËˆ™Y›XÝ[ÛˆÝX›\ÈHYXÚ[šXØ[[™ÛK[™HÚY[\›œÈ›ÝYÚH[˜XÙ]]Ú³àÓˆÚ[HÛ™H˜XÙ]Ü›ÜÜÙ\ÈH™X[KÛÈ™]Ù\ˆ˜XÙ]È^HHÚY\ˆØØ[ˆ[™HÝÙ\ˆ[™H˜]K‰ÈKˆKˆ[Žˆˆ•Ú][ÝH^H›Üˆ]ÜYY\ÈÝ›Û™Ïœ\[Ø[ÏÜÝ›Û™Ï‹ˆHØ[›È]›ÝÂˆX›Ý]]ÈÝÛˆ˜XÙKÛÈH™X[HX]™\Èœ›ÛH›ÝYÚHHØ[YHXÙH[™Û›HBˆ[™ÛHÚ[™Ù\ËˆHÛYÛÛˆ˜XÙ]\ÈÙ™œÙ]œ›ÛHH›Ý][Ûˆ^\ËÛÈ\ÈHÚY[ˆ\›œÈH™Y›XÝ[ÛˆÚ[ÛY\È›Ù[H[Û™ÈH˜XÙ][™H™X[H˜[œÛ]\Âˆ\ÈÙ[\È[[™ËˆØØ[ˆ[œÙ\È›ÜˆÛYÛÛˆÞ\Ý[\È\™H\ÚYÛ™Y\›Ý[™]ˆ[Ýš[™È\[[™˜XÙ]È\™HXYHÙ[™\›Ý\ÛH\™Ù\ˆ[ˆH™X[HÛÈ]\È›ÛÛBˆÈØ[ËÜ‚ˆ•HÝ\ˆÛÜÝ\ÈHØ\™]ÙY[ˆ˜XÙ]Ëˆ›Üˆ\Ùˆ]™\žH›Ý][ÛˆH™X[BˆÝ˜Y\ÈHYÙH™]ÙY[ˆÛÈ˜XÙ]È[™\ÈÜ][ˆÛËXXÚ[ˆX]š[™È]BˆÛÛ\][HY™™\™[[™ÛKˆ›Ý[™È\ÙY[Ø[ˆ™HÛ™HÚ]]YÚÛÈBˆÛÝ\˜ÙH\ÈØ]YÙ™ˆXÜ›ÜÜÈH˜[œÚ][Ûˆ8 %HØØ[›™\‰ÜÈ[O™]HÞXÛOÙ[Oˆ\ÂˆHœ˜XÝ[ÛˆÙˆXXÚ˜XÙ]\š[Ù]Ý\š]™\ËˆHÚY\ˆ™X[HX]È[Ü™HÙˆBˆ˜XÙ][™X]™\È\ÜÈ]KÚXÚ\ÈH˜YH™Z[™H\™ÙHÚY[È[‚ˆYÚ\ÝÙ\ˆ[™K\ØØ[›š[™ÈXYËÜ‚ˆ™XØ]\ÙH]™\žH˜XÙ]\ÈÝ][™[Ý[YÙ\\˜][K™X[ÚY[È[ÛÈØ\œžBˆ˜XÙ]]ËY˜XÙ][™Ý[\ˆ\œ›ÜœËˆH˜XÙ][YHœ˜XÝ[ÛˆÙˆHZ[\˜YX[ˆÝ]Ù‚ˆ[™H]È]È[™HÛYÚHX›Ý™HÜˆ™[ÝÈHÝ\œË[™Ú[˜ÙHH\œ›Ü‚ˆ™\X]ÈÛ˜ÙH\ˆ™]›Û][Ûˆ]ÚÝÜÈ\\È\š[ÙXÈ˜[™[™È[ˆHØØ[›™Yˆ[XYÙH8 %H™X\ÛÛˆ™XÚ\Ú[ÛˆÞ\Ý[\ÈZ]\ˆÜXÚYžH\˜[ZY[\œ›ÜˆYÚHÜ‚ˆÛÜœ™XÝ]XÝ]™[KÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•HÛÛ\Û™[\ÈH™YÝ[\ˆÛYÛÛˆÙ[™YÛˆ]È›Ý][Ûˆ^\Ë[™Bˆ™\XÙ\È]˜]È]\™HHØ[YH™\XÙ\È]Ù]˜XÙYˆ]™\žH˜XÙ][ÝHØ[‚ˆÙYH\ÈH™X[Z\œ›ÜˆÝ\™˜XÙKÛÈ\™H\È›ÈÙ\\˜]HXœÝ˜XÝØØ[ˆ[™ÛH]ˆÛÝ[\ØYÜ™YHÚ]HXÝ\™KˆXXÚ˜XÙ]™Y›XÝÈžHHÜ™[˜\žH™XÝÜˆ]ÂˆÙˆ™Y›XÝ[Ûˆ\ÙYžHHZ[ˆH™YH‹‹‹ÛZ\œ›Ü‹È›Z\œ›ÜØO‹ÚXÚYX[œÈBˆ°åÈ[™ÛHÝX›[™È[™H\[Ø[È\™H›ÝÜš][ˆ[ÈH[Ù[8 %^HÚ[\BˆÛÛYHÝ]Ùˆ\›š[™ÈHÙ[ÛY]žKÜ‚ˆÝ›Û™Ï”›Ý][ÛÜÝ›Û™Ïˆ[œÈHÚY[ÛÛ[[Ý\ÛH]HÙ]”KÜˆÛÈBˆ[OœÝ]XÈ\ÙOÙ[OˆÛÈ[ÝHØ[ˆÝ\›ÝYÚH˜XÙ]žH[™ˆBˆ[O™˜XÙ]˜]OÙ[Oˆ™XYÝ]Ú]™\ÈH\ÚXØ[[™\È\ˆÙXÛÛ™][[Y\Ëˆ]™[ˆÚ[ˆ^X˜XÚÈ\ÈÛÝÚ[™ÈHš\ÚX›H[Ý[ÛˆÝÛˆ›Üˆ[œÜXÝ[Û‹Ü‚ˆ•HÝ›Û™Ï\ØX›HØØ[ˆÚ[™ÝÏÜÝ›Û™Ïˆ\È[ˆYX[Þ[˜Ú›Ûš^™Y›[šÙ\ŽˆBˆÙ[™Yœ˜XÝ[ÛˆÙˆXXÚ˜XÙ]\š[Ù\š[™ÈÚXÚH˜XÙ]È™Y›XÝÚ]BˆXˆ˜]ÛˆÜ™Y[‹ˆÝ]ÚYH]H˜XÙ]ÈXœÛÜ˜‹HXˆ\›œÈ[X™\‹[™›ÂˆÝ]ÛÚ[™È˜^H™[XZ[œÈ8 %H[Ù[Y\]Z]˜[[ÙˆØ][™ÈHÛÝ\˜ÙHXÜ›ÜÜÈBˆ˜XÙ]˜[œÚ][Û‹Ü‚ˆ•HÚY[\ÈÜ\]YKÛÈH˜XÙ]™Y›XÝ]š]H™[ÝÈL	HÜÙ\ÈH™[XZ[™\ˆÂˆHÛØ][™È˜]\ˆ[ˆ˜[œÛZ][™È]ˆ]\È[X™\˜]NˆHÛÛYY][ÚY[ˆ\È›ÈØ^HÈ\ÜÈYÚ[™][™È]›ÝYÚÛÝ[›ÙXÙHÜ\š[Ý\Âˆ™Y›XÝ[ÛœÈÙ™ˆH[œÚYH˜XÙ\ÈÙˆH˜\ˆ˜XÙ]ËÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	Ý×Þ×^Ù˜XÙ]_HHÚ[—WY
+œ˜XÞ×_^ÓŸWšYÚ
+IËØ\[ÛŽˆ	ÕH˜XÙ]ÚY™XYÝ]8 %HÚÜ™ÙˆÛ™H˜XÙ]ˆ\È\ÈH[X™\ˆÈÛÛ\\™HH™X[HÚYYØZ[œÝˆÝ™\ˆÛ™H˜XÙ]\š[ÙH˜XÙ]˜]™[È]ÈÚÛHÚÜ™›ÝYÚH™X[KÛÈH™X[HØØÝ\Z[™ÈHœ˜XÝ[ÛˆˆÙˆ]\ÈÛˆHÚ[™ÛH˜XÙ]›ÜˆÛ›HX›Ý]H8¢$ˆˆÙˆH\š[Ù‰ÈKˆKˆ[Z]][ÛœÎˆ•HØØ[ˆÚ[™ÝÈ\ÈÝ›Û™Ï››Ý\š]™Yœ›ÛH[Ý\ˆ™X[OÜÝ›Û™Ï‹‚ˆ]\ÈHœ˜XÝ[ÛˆÙˆH˜XÙ]\š[ÙÙ[™YÛˆH˜XÙ][™HÛÛ\Û™[\Âˆ›ÈÛ›ÝÛYÙHÙˆÚ]\È[[Z[˜][™È]ÛÈHÚ[™ÝÈYÚY\ˆ[ˆHÙ[ÛY]žBˆÝ\ÜÈÚ[ÚÝÈH™X[HÜ][™ÈXÜ›ÜÜÈÛÈ˜XÙ]ÈÚ[HHXˆÝ[™XYÂˆÜ[‹ˆ]Ü]\È™X[™Z]š[Ý\ˆ8 %]\ÈÚ]H›[šÚ[™È^\ÝÈÈYH8 %]ˆÚÛÜÚ[™ÈHÚ[™ÝÈÈÝZ]H™X[H\ÈYÈ[ÝKˆØ›\]YH[˜ÚY[˜ÙHYÚ[œÂˆ]\\ˆ[™\Þ[[Y]šXØ[NˆH›ÛÝš[ÛˆH˜XÙ]\ÈH™X[HÚYˆ]šYYžHHÛÜÚ[™HÙˆH[˜ÚY[˜ÙH[™ÛK[™][™ÛHÜ›ÝÜÈÛˆÛ™HÚYHÙ‚ˆHÝÙY\[™Úš[šÜÈÛˆHÝ\‹ÛÈHÛX[ˆÚ[™ÝÈ\È›Ý˜\œ›ÝÙ\ˆ[ˆBˆ˜XÙ]˜][ÈÝYÙÙ\ÝÈ[™›ÝÙ[™YÛˆH˜XÙ]Ü‚ˆ›[šÚ[™È\È[ˆYX[ÝÚ]ÚÞ[˜Ú›Ûš^™YÈH˜XÙ]›ÝH[Ù[ÙˆÝÈ[žBˆ\XÝ[\ˆÛÛ›Û\ˆš]™\ÈHÛÝ\˜ÙKˆ]™\žH˜XÙ]\È\™™XÝ[™Y[XØ[‚ˆ\™H\È›È\˜[ZY[Üˆ˜XÙ]]ËY˜XÙ][™Ý[\ˆ\œ›Ü‹ÛÈ›Û™HÙˆH\š[ÙXÂˆ[™H˜[™[™È]Ú\˜XÝ\š^™\È™X[ÚY[È\X\œË[™›È™X\š[™ÈÛØ˜›KˆÚ[™YÙKÜˆ[Z[™Èš]\‹ˆ\™H\È›È‹]]HÜˆ[XÙ[šXÈØØ[ˆ[œÈ8 %][‚ˆÜ™[˜\žH[œÈY\ˆHÚY[[™H›ØÝ\È[Ý™\È\È°­Ý[ˆ3®Ú]H[˜Ý\Ú[Û‚ˆ][\Y\Ëˆ›Ý[™È\™H™YXÝÈHY™œ˜XÝ[Û‹[[Z]YÜÝÚ^™K[™BˆÙXÛÛ™ØØ[ˆ^\È]\›œÈ[™\È[È[ˆ\™XH\ÈÝ]ÙˆH[™H[™›Ýˆ[Ù[YÜ˜ˆKˆ™[]YˆÉÙØ[›ÉË	ÛZ\œ›Ü‰Ë	Ø[Ù	×Kˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %\Ù\ˆØØ[›™\œÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛ\Ù\—ÜØØ[›™\œËš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %Z\œ›ÜœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛZ\œ›ÜœËš[	ÈKˆKˆK‚ˆÂˆ\Nˆ	Ü™]›Ü™Y›XÝÜ‰ËˆÝ[[X\žNˆ”™]\›œÈYÚ[\\˜[[›ÝYÚHšYÚX[™ÛHZ\œ›ÜˆZ\‹Ú]Ü[Û˜[˜[œÛ][Ûˆ][™Ý[œÈH›Ý[™]š\ÜXØ[]›ÜˆYXÚ[šXØ[[^H[[ÛœÝ˜][ÛœËˆ‹ˆ]Nˆ	Ô™]›Ü™Y›XÝÜ‰ËˆØ]YÛÜžNˆ	ÓZ\œ›ÜœÉËˆ™X[ÛÜ›ˆÂˆ[ˆˆHÚ[™ÛH›]Z\œ›ÜˆÙ[™ÈH˜^H˜XÚÈ]Ú]]™\ˆ[™ÛHH]ÈÙˆ™Y›XÝ[Û‚ˆXÝ]\È8 %[HZ\œ›Üˆ]™[ˆÛYÚH[™H™]\›™Y™X[HØ[ÜÈÙ™ˆ\™Ù]ˆBˆÝ›Û™Ï˜ÛÜ›™\ˆ™]›Ü™Y›XÝÜÜÝ›Û™ÏˆÛÛ™\È]žHZ\š[™ÈÛÈ›]Z\œ›ÜœÈ]ˆ^XÝHHšYÚ[™ÛKˆXXÚ›Ý[˜ÙHÝ[Ø™^\ÈHÜ™[˜\žH]ÈÙˆ™Y›XÝ[Û‹]ˆHÛÛ\ÜÚ][ÛˆÙˆÛÈ\œ[™XÝ[\ˆ™Y›XÝ[ÛœÈ\ÈHÜXÚX[›Ü\NˆBˆÝ]ÛÚ[™È˜^H\È[Ø^\È^XÝH[\\˜[[ÈH[˜ÛÛZ[™ÈÛ™K[™\[™[Ù‚ˆH[™ÛHÙˆ[˜ÚY[˜ÙK›Üˆ[žH˜^H][\œÈÚ][ˆH]šXÙIÜÈ\\\™KÜ‚ˆ•H™YKY[Y[œÚ[Û˜[™\œÚ[ÛˆÙˆ\ÈYXH8 %™YH]]X[H\œ[™XÝ[\‚ˆZ\œ›Üˆ˜XÙ]ÈYY][™È]HÛÜ›™\‹Ø[YH[O˜ÛÜ›™\ˆÝX™OÙ[Oˆ8 %\ÈÚHšXÞXÛBˆ™Y›XÝÜœÈ[™›ØYÚYÛœÈ›ÝÈHØ\‰ÜÈXYYÚÈÝ˜ZYÚ˜XÚÈ]Hš]™\‚ˆ™YØ\™\ÜÈÙˆH^XÝ[™ÛHHYÚ\œš]™\Èœ›ÛK[™ÚHH™]›Ü™Y›XÝÜ‚ˆ\œ˜^\ÈYÛˆH[ÛÛˆžHH\ÛÈZ\ÜÚ[ÛœÈÝ[™]\›ˆ\Ù\ˆ[Ù\Èš\™Yˆœ›ÛHX\XØY\È]\ˆÚ]ÝX‹X\˜ÜÙXÛÛ™[YÛ›Y[Û\˜[˜ÙIØÚ]JKŠ_KˆH‘™\œÚ[Û‚ˆ[Ù[Y\™H8 %ÛÈZ\œ›ÜœÈ]L0¬ÛÛY][Y\ÈØ[YHœ›ÛÙˆˆÜˆœÜœ›Èˆ™Y›XÝÜ‚ˆ8 %\ÈHÛÜšÚ[™È[[Y[[œÚYHHZXÚ[ÛÛˆ[\™™\›ÛY]\ˆ\›H]™YYÂˆ[YÛ›Y[Z[œÙ[œÚ]]™H™]›Ü™Y›XÝ[Û‹[™[œÚYHYXÚ[šXØ[[^H[™\Îˆ[Ý[[™ÂˆÛ™HÛˆH˜[œÛ][ÛˆÝYÙH[™ÛY[™È]Ú[™Ù\ÈH›Ý[™]š\][™ÝžBˆÚXÙHHÝYÙIÜÈ˜]™[Ú]Ý]]™\ˆ™YY[™ÈÈ™KX[YÛˆH™]\›™Y™X[KÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ—]ÙIÈHW]ÙH‹Ø\[ÛŽˆ	ÕHYš[š[™È›Ü\HÙˆHÛÜ›™\ˆ™]›Ü™Y›XÝÜŽˆHÝ]ÛÚ[™È\™XÝ[Ûˆ\È^XÝHH™YØ]]™HÙˆH[˜ÛÛZ[™ÈÛ™K›Üˆ[žH[˜ÚY[˜ÙH[™ÛHÚ][ˆH\\\™H8 %[›ZÙHHÚ[™ÛH›]Z\œ›Ü‹ÚÜÙH™]\›ˆ\™XÝ[Ûˆ\[™ÈÛˆ[˜ÚY[˜ÙH[™ÛK‰ÈKˆÈ^ˆ	×[HH—[H	ËØ\[ÛŽˆ	Õ˜[œÛ][™ÈH™]›Ü™Y›XÝÜˆžH3¥[Û™È]ÈÝÛˆ^\ÈÚ[™Ù\ÈH›Ý[™]š\ÜXØ[]žHÚXÙH]\Ý[˜ÙH8 %H˜\Ú\ÈÙˆ]™\žH™]›Ü™Y›XÝ[™ÈYXÚ[šXØ[[^H[™Kœ›ÛHX›]Ü[ÙHÝ™]Ú\œÈÈÜ˜]š]][Û˜[]Ø]™H[\™™\›ÛY]\ˆ\›\Ë‰ÈKˆKˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•H™]›Ü™Y›XÝÜˆ\ÈZ[œ›ÛHHØ[YHÛÈ›]Z\œ›ÜˆÝ\™˜XÙ\ËXXÚˆØ™^Z[™ÈH^XÝ™XÝÜˆ]ÈÙˆ™Y›XÝ[Ûˆ\ÙYžHHZ[ˆBˆ™YH‹‹‹ÛZ\œ›Ü‹È›Z\œ›ÜØO‹›Ú[™Y]HÚ\™Y\^]^XÝHL0¬ˆ˜^H˜XÚ[™Âˆš[™ÈHš\œÝZ\œ›Üˆ]™Y›XÝÈ][ˆš[™ÈHÙXÛÛ™Z\œ›Üˆ][™ˆ™Y›XÝÈYØZ[ˆ8 %ÛÈÜ™[˜\žH™Y›XÝ[ÛœËÛÛ\ÜÙY8 %ÚXÚ\È[›ÝYÚ›ÜˆBˆ[\\˜[[\™]\›ˆ›Ü\HÈ˜[\™XÝHÝ]ÙˆH™XÝÜˆ™Y›XÝ[Ûˆ]Âˆ˜]\ˆ[ˆ™Z[™ÈÜXÚX[XØ\ÙYÜ‚ˆ’]ÈÝ›Û™Ï™[^K[[™H[Ý™[Y[ÜÝ›Û™ÏˆÙXÝ[ÛˆYÈ[ˆÜ[Û˜[\š[ÙXÂˆ[Ý[ÛŽˆÙ]È[O”\š[ÙXÈ[™X\Ù[O‹HÚÛH[[Y[ÛY\È˜XÚÈ[™›Üˆ[Û™È]ÈÝÛˆ\^^\Ë›Ý][Û‹X]Ø\™KÛÈ]ÛÜšÜÈ][žH[™ÛH[ÝHXÙH]Û‚ˆHX›KˆH[Ý[Ûˆ[Ø^\ÈÝ\È]HÜÚ][Ûˆ[ÝHXÙY]8 %HÚÜ\Ýˆ]8 %[™[Ý™\ÈÛ›H[ˆH\™XÝ[Ûˆ]YÈ][™ÝÝÙY\[™È\ÈBˆÛÛ™šYÝ\™Y˜]™[˜[™ÙH
+L	›˜œÜÛ[HžHY˜][\ÈŒ	›˜œÜÛ[JH]BˆÛÛ™šYÝ\™Yœ™\]Y[˜ÞK[ˆ˜XÚËˆ™XØ]\ÙH]	ÜÈHYH™]›Ü™Y›XÝÜˆ˜]\ˆ[‚ˆ[ˆXœÝ˜XÝ][[™ÝYË\ÈÝX›\È\ÈH\ÚXØ[[Ù[ÙˆHYXÚ[šXØ[ˆ™]›Ü™Y›XÝ[™È[^HÝYÙNˆ[Ýš[™È]žH3¥™X[HÙ\ÈY³¥Ùˆ›Ý[™]š\ˆ]ÛÛ\]Yœ›ÛHHXÝX[˜XÙYÙ[ÛY]žKÜ˜ˆ›Ü›][\Îˆ×Kˆ[Z]][ÛœÎˆ”™Y›XÝ]š]H\ÈHÚ[™ÛH›]\˜Ù[YÙH\YYY[XØ[HÂˆ›ÝZ\œ›ÜˆÝ\™˜XÙ\ËÚ]HØ[YHØ]™X]È\ÈHZ[ˆZ\œ›ÜŽˆ›È[™ÛKHÜ‚ˆÛ\š^˜][Û‹Y\[™[˜ÙK[™›ÈØ]™[[™ÝY\[™[ÛØ][™È™Z]š[Ü‹ˆBˆ[^K[[™H[Ý[Ûˆ\È[ˆYX[^™YšX[™ÛHØ]™H8 %›È[Ù[YÝYÙH[™\XKÙ\›ÂˆÙ][™È[YKÜˆ™[ØÚ]Hš\H8 %[™ZÙHHY^›ÈÝYÙIÜÈØØ[›š[™Ë]ˆš]™\ÈH˜XÙYÙ[ÛY]žH\™XÝH˜]\ˆ[ˆHÙ\\˜]HXœÝ˜XÝ][[™Ýˆ\˜[Y]\‹Ü˜ˆKˆ™[]YˆÉÛZ\œ›Ü‰Ë	ØÛZ\œ›Ü‰Ë	ØÛZ\œ›Üž	Ë	ÙØ[›É×KˆÚ]][ÛœÎˆÂˆÈX™[ˆ	ÓTÐH8 %™]›Ü™Y›XÝÜœÈœ›ÛH\ÛÈ	ˆX\œÉË\›ˆ	ÚÎ‹ËÝÝÝË›˜\ØK™ÛÝ‹Ú[XYÙKX\XÛKÜ™]›Ü™Y›XÝÜœËYœ›ÛKX\ÛË[X\œËÉÈKˆÈX™[ˆ	ÕÚZÚ\YXH8 %\ÝÙˆ™]›Ü™Y›XÝÜœÈÛˆH[ÛÛ‰Ë\›ˆ	ÚÎ‹ËÙ[‹ÚZÚ\YXK›Ü™ËÝÚZÚKÓ\ÝÛÙ—Ü™]›Ü™Y›XÝÜœ×ÛÛ—ÝWÓ[ÛÛ‰ÈKˆKˆ™\ÛÝ\˜Ù\ÎˆÂˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %™]›Ü™Y›XÝÜœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜ™]›Ü™Y›XÝÜœËš[	ÈKˆKˆKˆÂˆ\Nˆ	Ù^YIË]Nˆ	Ò[X[ˆ^YIËØ]YÛÜžNˆ	Ñ]XÝÜœÉËˆÝ[[X\žNˆ‘›ØÝ\Ù\ÈYÚ›ÝYÚ[ˆY\ÝX›H\[ÛÈH[Ù[Y™][˜K›Üˆ^Üš[™ÈÝÈ›ØØ[[™Ý[™\[Ú^™HÚ[™ÙHH]XÝYÜÝˆ‹ˆ™X[ÛÜ›ˆÈ[ˆ•H^YH›Ü›\È[ˆ[XYÙHÛˆH™][˜H\Ú[™ÈH™Yœ˜XÝ]™HÝÙ\ˆÙˆHÛÜ›™XH[™Üž\Ý[[™H[œËˆH\š\ÈÛÛ›ÛÈH\[Ü[š[™ËÚ[HXØÛÛ[[Ù][ÛˆÚ[™Ù\ÈH[œÈÚ\HÈœš[™ÈY™™\™[Øš™XÝ\Ý[˜Ù\È[È›ØÝ\ËÜ˜Kˆ[“ÜXØ[Ù]\ˆÂˆ[ˆ•H\[Û\È[˜ÛÛZ[™È˜^\Ë[ˆ\]Z]˜[[[ˆ[œÈ™[™ÈHXØÙ\YYÚ[™H™][˜[]XÝÜˆ™XÛÜ™ÈH™\Ý[[™ÈÚYÛ˜[ˆY\Ý[O‘^YHX[Y]\Ù[O‹[O”\[X[Y]\Ù[O‹[™[O“[œÈ›ØØ[[™ÝÙ[OˆÈÛÛ\\™HH[[Z[˜]YÜÝˆH[šÙY]XÝÜˆØÜ™Y[ˆXZÙ\ÈH™][˜[™XY[™Èš\ÚX›H™\ÚYHH^YKÜ’[ˆH^[\KH\˜[[™X[H[\œÈH\[ˆÚ[™ÙHH›ØØ[[™ÝÈ[Ý™HH™\Ý›ØÝ\È™[]]™HÈH™][˜[[™KÜˆ˜\œ›ÝÈH\[ÈYZ]\ÜÈÙˆH™X[KÜ˜ˆ[Z]][ÛœÎˆ•\È\ÈHÙ[ÛY]šXÈXXÚ[™È[Ù[›Ý[ˆ[˜]ÛZXØ[^YH™\ØÜš\[Û‹ˆ]Ù\È›Ý™YXÝš\ÝX[XÝZ]KY™œ˜XÝ[Û‹XØÛÛ[[Ù][Ûˆ[˜[ZXÜË™][˜[\Ú[ÛÙÞKÜˆ\Ù\ˆ^ÜÝ\™H[Z]ËÜ˜ˆK™[]YˆÉÛ[œÉË	ØØ[Y\˜IË	Ù\Ü^I×KˆKˆÂˆ\Nˆ	ÙÙ[™\˜[]XÝÜ‰Ë]Nˆ	ÑÙ[™\˜[]XÝÜ‰ËØ]YÛÜžNˆ	Ñ]XÝÜœÉËˆÝ[[X\žNˆÛÛXÝÈYÚ]Û™HÙ[œÛÜˆ˜XÙH[™™\ÜÈ][\H™X[H›Ü\Y\ËÛÛXš[š[™ÈÝÙ\‹ÜXÝ[KÛ\š^˜][Û‹Ø]™Yœ›Û[™[ÙH[™›Ü›X][Ûˆ[ˆÛ™H[œÝ[Y[ˆ‹ˆ™X[ÛÜ›ˆÈ[ˆHX›Ü˜]ÜžH›Ü›X[HYX\Ý\™\ÈÜXØ[ÝÙ\‹ÜXÝ[KÛ\š^˜][Û‹™X[HÚ\K[™[ÙH[Z[™ÈÚ]Y™™\™[[œÝ[Y[ËˆXXÚ[œÝ[Y[\È]ÈÝÛˆXØÙ\[˜ÙK™\ÛÛ][Û‹[™Ø[Xœ˜][ÛŽÈ›ÈÚ[™ÛHÙ[™\šXÈ]XÝÜˆ™\XÙ\È[Ùˆ[KÜ˜Kˆ[“ÜXØ[Ù]\ˆÂˆ[ˆ•HÙ[™\˜[]XÝÜˆÛÛXš[™\ÈHÛÜšØ™[˜Ú	ÜÈÝ\ÜY™XY[™ÜÈ]Û™HXÝ]™H˜XÙKˆÚ[H˜XÙHÝØ\™H[˜ÛÛZ[™È™X[H[™]XÚH]XÝÜˆØÜ™Y[ˆÈ[œÜXÝH]˜Z[X›HšY]ÜËˆH^[\H\Ù\ÈH[ÙYÛÝ\˜ÙHÛÈ›ÝÜXÝ˜[[™[\Ü˜[›Ü\Y\È\™H™\Ù[Ü”™YXÙHHXÝ]™HZYÚÜˆ[Ý™HH]XÝÜˆÙ™‹X^\ÈÈÙYHÝÈÛ\[™ÈÚ[™Ù\ÈHÛÛXÝYÚYÛ˜[ˆÝÙ\ˆ[ˆØ]È\[™ÈÛˆHÛÝ\˜ÙHÝÙ\ˆÜXÚYšYY[ˆHØÙ[™KÜ˜ˆ[Z]][ÛœÎˆ•\È\ÈHÛÛ™[šY[ÛÛ\ÜÚ]HXYÛ›ÜÝXË›ÝH[Ù[ÙˆÛ™H\ÚXØ[[œÝ[Y[ˆ]ÈØ]™Yœ›Û[™ÜXÝ˜[™XY[™ÜÈ[š\š]H˜^H˜XÙ\‰ÜÈ\›Þ[X][ÛœÎÈ]Ù\È›ÝYHØ[Xœ˜]Y›Ú\ÙH›ÛÜˆÜˆ[™\[™[X›Ü˜]ÜžHYX\Ý\™[Y[ËÜ˜ˆK™[]YˆÉÙ]XÝÜ‰Ë	ÜÝÙ\›Y]\‰Ë	ÜÜXÝ›ÛY]\‰Ë	ÜÛ\š[Y]\‰Ë	Ù\Ü^I×KˆKˆÂˆ\Nˆ	Ù\Ü^IË]Nˆ	Ñ]XÝÜˆØÜ™Y[‰ËØ]YÛÜžNˆ	Ñ]XÝÜœÉËˆÝ[[X\žNˆ”ÚÝÜÈH]™H™XY[™ÜÈÙˆH[šÙY]XÝÜˆÛˆHØ[˜\ËÚ]Ù[œÛÜ‹\ÜXÚYšXÈšY]ÜÈ[™H]HØX›H]™]™\ˆÚ[™Ù\ÈÜXØ[›ÜYØ][Û‹ˆ‹ˆ™X[ÛÜ›ˆÈ[ˆH]XÝÜ‰ÜÈ™XYÝ][XÝ›ÛšXÜÈ\›ˆ]È[XÝšXØ[Ý]][È[X™\œÈÜˆÝËˆH\Ü^HÚÝÜÈH[™›Ü›X][ÛˆYX\Ý\™YžHHÛÛ›™XÝY[œÝ[Y[ÈHØX›HÈH\Ü^H\ÈHÚYÛ˜[ÛÛ›™XÝ[Û‹›Ý[›Ý\ˆÜXØ[]Ü˜Kˆ[“ÜXØ[Ù]\ˆÂˆ[ˆ”Ù[XÝ[O”Ù[œÛÜˆ[œ]Ù[OˆÈ[šÈHØÜ™Y[ˆÈH]XÝÜ‹ˆ]˜Z[X›HšY]ÜÈ›ÛÝÈ]Ù[œÛÜ‰ÜÈØ\Xš[]Y\Ë[™H\Ü^HY\È]È[™›Ü›X][Ûˆ[œÚ]HÈ]È˜]ÛˆÚ^™KˆHØX›HØ\œšY\È]HÛ›Nˆ[Ýš[™ÈHØÜ™Y[ˆÜˆ›Ý][™È]ÈØX›HXÜ›ÜÜÈH™X[HØ[››Ý][X]HÜˆY›XÝHYÚÜ•H^[\H[šÜÈHØÜ™Y[ˆÈHÝÙ\ˆY]\ˆ™Z[™H™]]˜[Y[œÚ]Hš[\‹ˆÚ[™ÙHHš[\ˆ˜[œÛZ\ÜÚ[ÛˆÈÚ[™ÙHH™XY[™Ë[ˆ[Ý™HHØÜ™Y[ˆÈÙYH]]ÈÜÚ][Ûˆ\È›ÈÜXØ[Y™™XÝÜ˜ˆ[Z]][ÛœÎˆ•HØÜ™Y[ˆÙ\È›ÝYX\Ý\™HYÚ]Ù[ˆÜˆY›Ü\Y\ÈXœÙ[œ›ÛHH[šÙYÙ[œÛÜ‹ˆ][Ù[È›È[XÝ›ÛšXÜÈ›Ú\ÙKØX›H[^KÜˆXÜ]Z\Ú][Ûˆ\™Ø\™KÜ•H[ÙH[žHÚÝÜÈH\˜][Ûˆ]\œš]™\Îˆ\Ü\œÙYÚ\™HH\˜][Ûˆ[Ù[[œÝÙ\œË[O•[˜]˜Z[X›OÙ[OˆÚ\™H]XÛ[™\Ë[™HÛÝ\˜ÙIÜÈÛÛ™šYÝ\™Y\˜][ÛˆÛ›HÚ\™H›È[Ù[\Y\ËÝXÚ\ÈHZ^\™HÙˆ˜Z[œËˆ™Y›Ü™H\Ë][Ø^\È™\X]YHÛÛ™šYÝ\™Y\˜][Û‹ÛÈHØÜ™Y[ˆÛˆHÙ]\Ú]Û\ÜÈ[ˆH™X[H›ÝÈ™XYÈHY™™\™[\Ü\œÙY[X™\‹Ü˜ˆK™[]YˆÉÙÙ[™\˜[]XÝÜ‰Ë	ÜÝÙ\›Y]\‰Ë	ØØ[Y\˜IË	Ü›Ø™I×KˆKˆÂˆ\Nˆ	Ù[^[[™IË]Nˆ	ÓYXÚ[šXØ[[^H[™IËØ]YÛÜžNˆ	Ô[ÙH[Z[™ÉËˆÝ[[X\žNˆYÈ[ˆY\ÝX›HÜXØ[]È[^H[Ù\ËÙY\[™ÈHÝ]ÛÚ[™È™X[HÛˆ]È^\Ëˆ‹ˆ™X[ÛÜ›ˆÂˆ[ˆHYXÚ[šXØ[ÜXØ[[^H[™HÚ[™Ù\ÈH\Ý[˜ÙH˜]™[YžHYÚ\Ú[™ÈH˜[œÛ][ÛˆÝYÙH[™›Û[™ÈZ\œ›ÜœÈÜˆH™]›Ü™Y›XÝÜ‹ˆ[YK\™\ÛÛ™Y^\š[Y[È\ÙH\ÈÚ[™ÙHÈ˜\žHH\œš]˜[ÙˆÛ™H[ÙH™[]]™HÈ[›Ý\‹ˆH]][\Y\ˆ\[™ÈÛˆH[X™\ˆÙˆ\ÜÙ\È›ÝYÚH[Ýš[™ÈÙXÝ[Û‰ØÚ]JJ_KÜ˜ˆ›Ü›][\ÎˆÞÈ^ˆÝš[™Ëœ˜]Ø[HHœ˜XÞ×[H^ØßXØ\[ÛŽˆ	Ñ›Üˆ[ˆ^˜HÜXØ[]3¥[ˆ˜XÝ][KˆHÚ[\HÝX›K\\ÜÈÝYÙH[Ýš[™ÈžHYÈ3¥Hž‰ÈWKˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆ[O‘^˜HÜXØ[]Ù[OˆÜXÚYšY\ÈHYY]\™XÝK[ˆZ[[Y]™\ËˆÈ›Ý][\H]žHÛÈYØZ[‹ˆÝ]XÈ[ÙHÛÈÛ™H˜[YNÈ\š[ÙXÈÝÙY\[Ý™\È™]ÙY[ˆHÛÛ™šYÝ\™Y][Z]ËˆHÝ]ÛÚ[™È™X[HÙY\È]È^\ÈÚ[HÝÛœÝ™X[H[ÙH[Z[™È[˜ÛY\ÈHYY]Ü•H^[\HYÈL[KÛÜœ™\ÜÛ™[™ÈÈX›Ý]ÌÍÈ[ˆ˜XÝ][KˆÛÛ\\™HH™X[H›Ø™\È™Y›Ü™H[™Y\ˆH[[Y[[ˆÚ[™ÙHH]ÈÙYHH[Z[™ÈÙ™œÙ]Ú[™ÙKÜ˜ˆ[Z]][ÛœÎˆ•H›ÛY]\È™\™\Ù[YžHHÛÛ\XÝ[[Y[›Ý[™]šYX[H˜XÙY[Ýš[™ÈZ\œ›ÜœËˆ]Ù\È›ÝØ[Ý[]HØ\œšXYÙHšXœ˜][Û‹[YÛ›Y[šYÜˆÝYÙHXØÙ[\˜][Û‹ˆ][^\È[Ù\ÎÈ]Ù\È›ÝÛÛ\[œØ]HZ\ˆ\Ü\œÚ[Û‹Ü˜ˆKÚ]][ÛœÎˆÞÈX™[ˆ	Ó™]ÜÜ8 %Ù[XÝ[™È[^H[™\È›ÜˆÜXØ[[YK\™\ÛÛ™YYX\Ý\™[Y[ÉË\›ˆ	ÚÎ‹ËØ\KœK›ZÜË˜ÛÛKÛYYX\ËÜÞ\×ÛX\Ý\‹Ú[XYÙ\ËÚ[XYÙ\ËÚKÚÎÎMÌŒLÎN‹ÔÙ[XÝ[™ËY[^K[[™\ËY›Ü‹[ÜXØ[[YX\Ý\™[Y[Ëœ‰ÈWKˆ™[]YˆÉÜ™]›Ü™Y›XÝÜ‰Ë	Ü[ÙXÛÛ\™\ÜÛÜ‰Ë	Ü[ÙY\Ù\‰Ë	Ø]]ØÛÜœ™[]Ü‰×KˆKˆÂˆ\Nˆ	ØÚÜ\‰Ë]Nˆ	ÐÚÜ\‰ËØ]YÛÜžNˆ	Ó[Ù[]ÜœÉËˆÝ[[X\žNˆ”\š[ÙXØ[H[\œ\ÈYÚÚ][ˆY\ÝX›Hœ™\]Y[˜ÞH[™]HÞXÛKÚÝÚ[™ÈØ]Y[ÙH˜Z[œÈ[™HØÚ[X]XÈÚÜY]\›ˆ›ÜˆÛÛ[[Ý\È™X[\Ëˆ‹ˆ™X[ÛÜ›ˆÈ[ˆ[ˆÜXØ[ÚÜ\ˆ\Ù\ÈH›Ý][™ÈÛÝYÚY[È[\œ\H™X[KˆÚÜ[™Èœ™\]Y[˜ÞH\ØÜšX™\ÈÝÈÙ[ˆH™X[H\È[\œ\YÚ[H]HÞXÛH\ØÜšX™\ÈHœ˜XÝ[ÛˆÙˆXXÚÞXÛH]™[XZ[œÈÜ[‹ˆÛÛ[Y\˜ÚX[Þ\Ý[\ÈÙ™™\ˆY™™\™[ÚY[]\›œÈ[™œ™\]Y[˜ÞH˜[™Ù\ÉØÚ]JJ_KÜ˜Kˆ[“ÜXØ[Ù]\ˆÂˆ[ˆ‘[˜X›H[O“[Ù[]HÛ‹ÛÙ™Ù[O‹Ù][OÚÜœ™\]Y[˜ÞOÙ[Oˆ[ˆ\‹[™Y\ÝHÛˆœ˜XÝ[Ûˆ[™Ø]HÙ™œÙ]ˆ[ÙY[[Z[˜][Ûˆ\ÈØ]Y[ˆ[YKˆÕÈYÚ\È˜]Ûˆ[ˆš\ÚX›HÚ[šÜËÚ[H]È]XÝÜˆ™XY[™È\Ù\È]KX]™\˜YÙYÝÙ\‹Ü•H^[\HÙ[™ÈÕÈYÚ›ÝYÚHL	HØ]HÈH]XÝÜ‹ˆÝÙ\ˆHÛˆœ˜XÝ[ÛˆÈÚÜ[ˆH˜]Ûˆ[[Z[˜]YÙXÝ[ÛœÈ[™™YXÙHH]™\˜YÙH™XY[™Ëˆ\ØX›H[Ù[][ÛˆÈ™\ÝÜ™H[š[\œ\Y˜[œÛZ\ÜÚ[Û‹Ü˜ˆ[Z]][ÛœÎˆ•HÚ[šÈÜXÚ[™È\ÈØÚ[X]XË›ÝH\ÚXØ[\Ý[˜ÙH˜]™[Y™]ÙY[ˆÜ[š[™ÜËˆ›YKYYÙH˜[œÚ][ÝÜˆš]\‹[™Y™œ˜XÝ[Ûˆ\™HÛZ]YÈH˜]ÛˆÚY[\È›ÝHÜXÚYšXØ][Ûˆ›ÜˆH\XÝ[\ˆÛÛ[Y\˜ÚX[ÚÜ\‹Ü˜ˆKÚ]][ÛœÎˆÞÈX™[ˆ	ÕÜ›XœÈ8 %ÜXØ[ÚÜ\ˆÞ\Ý[H[™ÚÜ\ˆÚY[ÉË\›ˆ	ÚÎ‹ËÝÝÝËÜ›XœË˜ÛÛKÛÜXØ[XÚÜ\‹\Þ\Ý[KX[™XÚÜ\‹]ÚY[ÉÈWK™[]YˆÉØ[ÛIË	Ü[ÙY\Ù\‰Ë	Ù]XÝÜ‰Ë	Ü›Ø™I×KˆKˆÂˆ\Nˆ	ØÜž\Ý[	Ë]Nˆ	ÐÜž\Ý[	ËØ]YÛÜžNˆ	Ó›Û›[™X\ˆÜXÜÉËˆÝ[[X\žNˆÛÛ™\ÈHÚÜÙ[ˆœ˜XÝ[ÛˆÙˆ[˜ÚY[YÚ[È\›[ÛšXË\˜[Y]šXËZ^YÝ\\˜ÛÛ[][KÜˆÝ\ÝÛHÝ]]Ú][ˆÜ[ÛˆÈ™]Z[ˆH™\ÚYX[[\ˆ‹ˆ™X[ÛÜ›ˆÂˆ[ˆˆHÝ›Û™Ï››Û›[™X\ˆÜXØ[Üž\Ý[ÜÝ›Û™Ïˆ™\ÜÛ™ÈÈ[[œÙHYÚÚ]HÛ\š^˜][Ûˆ]\È›ÈÛ™Ù\ˆÚ[\H›ÜÜ[Û˜[ÈHÜXØ[šY[ˆ[ˆH\\˜˜]]™H™YÚ[YHH›Û›[™X\ˆÛÛšX][ÛœÈ\™H\ÝX[HÛX[ÛÛ\\™YÚ]H[™X\ˆÛ\š^˜][Û‹[™H[™XÙYÛ\š^˜][ÛˆØ[ˆ™H^[™Y[ˆÝÙ\œÈÙˆHšY[ˆH[™X\ˆÝ\ØÙ\Xš[]H3áø op®x oˆÚ]™\ÈH[™X\ˆ™Yœ˜XÝ]™H™\ÜÛœÙKHÙXÛÛ™[Ü™\ˆÝ\ØÙ\Xš[]H3áø op¬¸ oˆZ^\ÈZ\œÈÙˆšY[Ë[™H\™[Ü™\ˆ3áø op¬ø oˆZ^\È™YIØÚ]JJ_KˆÜš][ˆ\ÈØ^HH^[œÚ[Ûˆ\ÈHØØ[\ˆÚÜ[™ˆHÝ\ØÙ\Xš[]Y\È\™H[œÛÜœÈ[™\[™ÛˆHœ™\]Y[˜ÚY\ÈÙˆH[\˜XÝ[™ÈšY[ÉØÚ]JJ_KˆÞ[[Y]žH]\›Z[™\ÈÚXÚ\›\È\™H[ÝÙY[™[[œÙH\Ù\ˆšY[ÈXZÙHX[žH›Û›[™X\ˆY™™XÝÈ™XY[HØœÙ\˜X›IØÚ]JJ_KˆH\Ù\ˆ[˜X›Y[™X\šÈÜXØ[œ™\]Y[˜ÞKXÛÛ™\œÚ[Ûˆ^\š[Y[Ë[˜ÛY[™ÈHNMŒH[[ÛœÝ˜][ÛˆžHœ˜[šÙ[ˆ[™ÛÛXYÝY\ËÚÈ›ØÝ\ÙYH[ÙYXžH\Ù\ˆ[ÈÜž\Ý[[™H]X\ˆ[™]XÝY]ÈÙXÛÛ™\›[ÛšXÉØÚ]JŠ_KÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	ÔH˜\™\Ú[Û—ÌY
+ÚWžÊJ_QH
+ÈÚWžÊŠ_QWžÌŸH
+ÈÚWžÊÊ_QWžÌßH
+ÈÝ×šYÚ
+IËØ\[ÛŽˆ	ÔØØ[\ˆÚÜ[™›ÜˆH[™XÙYÛ\š^˜][Ûˆ^[™Y[ˆÝÙ\œÈÙˆHÜXØ[šY[NÈH[™\ÜÛœÙH\È[œÛÜšX[[™œ™\]Y[˜ÞH\[™[‰ÈKˆKˆ[ŽˆˆÏ“›Û›[™X\ˆ›ØÙ\ÜÙ\ÏÚÏ‚ˆ‘›ÜˆH[È[XÝšXËY\ÛH™\ÜÛœÙK3áø op¬¸ oˆ˜[š\Ú\È[ˆ[žH[™\œÚ[Û‹\Þ[[Y]šXÈYY][H8 %[ˆ[˜šX\ÙY\ÛÝ›ÜXÈØ\Ë\]ZYÜˆÛ\ÜËÜˆHÙ[›ÜÞ[[Y]šXÈÜž\Ý[8 %ÛÈÙXÛÛ™[Ü™\ˆ›ØÙ\ÜÙ\È™YYHX]\šX[Ú]Ý][™\œÚ[ÛˆÞ[[Y]žKˆH[HÛÛ˜Ù\›œÈH[ÎˆÝ\™˜XÙ\È[™[\™˜XÙ\Èœ™XZÈHÞ[[Y]žKÚXÚ\ÈÚHÒÈ[ÛÈÙ\™\È\ÈHXYÛ›ÜÝXÈÙˆÝ\™˜XÙH›Ü\Y\ÉØÚ]JÊ_Kˆ3áø op¬ø oˆ\ÈÞ[[Y]žKX[ÝÙY[ˆÙ[›ÜÞ[[Y]šXÈYYXH\ÈÙ[	ØÚ]JJ_KˆHXZ[ˆ›ØÙ\ÜÙ\È\™NÜ‚ˆ[‚ˆOÝ›Û™Ï”ÙXÛÛ™Z\›[ÛšXÈÙ[™\˜][ÛÜÝ›Û™Ïˆ
+ÒÊNˆÛÈÝÛœÈ]3âHÛÛXš[™H[ÈÛ™H]³âIØÚ]JKÊ_KÛO‚ˆOÝ›Û™Ï”Ý[KH[™Y™™\™[˜ÙKYœ™\]Y[˜ÞHÙ[™\˜][ÛÜÝ›Û™Ïˆ
+Ñ‘Ë‘ÊNˆÛÈ[œ]œ™\]Y[˜ÚY\È3âOÝXŒOÜÝXˆ[™3âOÝXŒÜÝXˆ›ÙXÙH3âOÝXŒOÜÝXˆ
+È3âOÝXŒÜÝXˆÜˆ3âOÝXŒOÜÝXˆ8¢$ˆ3âOÝXŒÜÝXŸ	ØÚ]JJ_KÛO‚ˆOÝ›Û™Ï”\˜[Y]šXÈ[\YšXØ][Ûˆ[™ÜØÚ[][ÛÜÝ›Û™ÏŽˆÛ™H[\ÝÛˆÜ]È[ÈHÚYÛ˜[[™[ˆY\ˆÝÛ‹ˆ[ˆHÚ[™ÛH\ÜÈ]Ø[ˆ[\YžHHÙXZÙ\ˆ[œ]Ø]™K\È[ˆÜXØ[\˜[Y]šXÈ[\YšY\ˆ
+ÔJNÈ[ˆH™\ÛÛ˜]Üˆ]™YYÈHÚYÛ˜[ÜˆY\ˆ˜XÚÈ]Ø[ˆÝ\ÝZ[ˆÜØÚ[][ÛˆX›Ý™H™\ÚÛ\È[ˆÜXØ[\˜[Y]šXÈÜØÚ[]Üˆ
+ÔÊK\ØÜšX™Y™[ÝÉØÚ]JJ_KÛO‚ˆOÝ›Û™Ï•\™Z\›[ÛšXÈÙ[™\˜][ÛÜÝ›Û™Ïˆ
+ÊNˆYÚ]3âH›ÙXÙ\ÈóâKZ]\ˆ\™XÝH›ÝYÚ3áø op¬ø oˆÜˆÙ\]Y[X[H›ÝYÚÛÈÙXÛÛ™[Ü™\ˆÝ\ËÒÈÈ³âH›ÛÝÙYžHÝ[KYœ™\]Y[˜ÞHZ^[™ÈÙˆ³âHÚ]H™[XZ[š[™È3âIØÚ]JKÊ_KˆHÙ\]Y[X[›Ý]HØ[ˆ™H[\[Y[YÚ]Ù\\˜]HÒÈ[™Ñ‘ÈÝYÙ\Ë[™[ˆÙ[Y\ÚYÛ™YÞ\Ý[\È]Ø[ˆ™H˜\ˆ[Ü™HY™šXÚY[[ˆH\™XÝÛ™IØÚ]JÊ_KÛO‚ˆÝ[‚ˆ•HÝ™[™ÝÙˆH3áø op¬¸ oˆ[\˜XÝ[Ûˆ\È^™\ÜÙYžH[ˆY™™XÝ]™HÛÙY™šXÚY[ÝX™Y™ÜÝX‹HÛÛXš[˜][ÛˆÙˆ3áø op¬¸ oˆ[œÛÜˆÛÛ\Û™[ÈÙ]žHHÜž\Ý[H›ÜYØ][Ûˆ\™XÝ[Ûˆ[™HÛ\š^˜][ÛœÎÈ]\È›ÝHÚ[™ÛHX]\šX[ÛÛœÝ[	ØÚ]JJ_KÜ‚ˆÏ”\ÙHZ\ÛX]ÚÚÏ‚ˆ‘[™\™ÞHÛÛœÙ\˜][Ûˆ\È›Ý[›ÝYÚˆ[ˆÛÛ[™X\ˆÒÈH\›[ÛšXÈ\Èš]™[ˆžHHÛ\š^˜][ÛˆØ]™H]˜]™[ÈÚ]H[™[Y[[]Ø]™]™XÝÜˆšÏÝX³âOÜÝX‹]]›ÜYØ]\Èœ™Y[HÚ]]ÈÝÛˆØ]™]™XÝÜˆÏÝXŒ³âOÜÝX‹[™\Ü\œÚ[ÛˆÙ[™\˜[HXZÙ\ÈHÛÈY™™\‹ˆ\›[ÛšXÈYÚÙ[™\˜]Y]Y™™\™[\È[ˆHÜž\Ý[[ˆYÈÚ]Y™™\™[\Ù\ËˆÝ™\ˆÛ™HÝ›Û™Ï˜ÛÚ\™[˜ÙH[™ÝÜÝ›Û™ÏˆHš]™[ˆ[™œ™YHØ]™\ÈÛ\žH3àÈ™^[Û™]™]ÛHÙ[™\˜]YÛÛšX][ÛœÈ[\™™\™H\ÝXÝ]™[HÚ]H^\Ý[™È\›[ÛšXË[™Ú]Ý][\\][Û‹H\›[ÛšXÈ[[œÚ]HÜØÚ[]\ÈÚ]Üž\Ý[[™Ý[œÝXYÙˆÜ›ÝÚ[™ÉØÚ]J
+_Kˆ›Üˆ[ˆ[™\]Y[™K]Ø]™H[™[Y[[™YÛYÚX›HXœÛÜœ[Ûˆ[™›È\›[ÛšXÈ]H[œ]HXYÛš]YHÙˆH\›[ÛšXÈšY[Y\ˆHÜž\Ý[Ùˆ[™Ý\È›ÜÜ[Û˜[È0­ßÝX™Y™ÜÝXŸ0­ßÚ[˜Ê3¥ÓÌŠ_›ÜˆHš^Y[™[Y[[šY[Ú]Ú[˜Ê
+HHÚ[Š
+KÞ[™Ú[˜Ê
+HHKÛÈH\›[ÛšXÈ[[œÚ]H\È]XY˜]XÈ[ˆH[™[Y[[[[œÚ]H[™˜[È]Ø^HÛ˜ÙH3¥ß\È›ÈÛ™Ù\ˆÛX[	ØÚ]J
+_KÜ˜ˆ›Ü›][\ÌŽˆÂˆÈ^ˆ	×[HÈH×ÞÌ—ÛYYØ_HHš×Þ×ÛYYØ_K\]XY[ØÈHœ˜XÞ×_^ß[HßHHœ˜XÞ×[X™_^Í—ÞÌ—ÛYYØ_HH—Þ×ÛYYØ__IËØ\[ÛŽˆ	Ô\ÙHZ\ÛX]Ú[™ÛÚ\™[˜ÙH[™Ý›ÜˆÒËÚ]3®ÈH[™[Y[[˜XÝ][HØ]™[[™Ý[™H™Yœ˜XÝ]™H[™XÙ\ÈÜÙHÙˆHÚÜÙ[ˆ›ÜYØ][Ûˆ\™XÝ[Ûˆ[™Û\š^˜][ÛœËˆ]\™™XÝ\ÙHX]Ú[™È8¡$×ØÈ\È[˜›Ý[™Y‰ÈKˆÈ^ˆ	ÒWÞÌ—ÛYYØ_H›ÜÈÞ×^ÙY™Ÿ_WžÌŸWžÌŸWWÞ×ÛYYØ_WžÌŸWÜ\˜]Ü›˜[Y^ÜÚ[˜ßWžÌŸWWY
+œ˜XÞ×[H×^ÌŸWšYÚ
+IËØ\[ÛŽˆ	Õ[™\]Y[™K]Ø]™HÒËÚ]Ú[˜Ê
+HHÚ[Š
+KÞ[™Ú[˜Ê
+HHNˆ]XY˜]XÈ[ˆH[™[Y[[[[œÚ]H[™XZÙY]3¥ÈH‰ÈKˆKˆ[ÎˆˆÏ”\ÙHX]Ú[™ÏÚÏ‚ˆÝ›Û™Ï”\ÙHX]Ú[™ÏÜÝ›Û™ÏˆXZÙ\È3¥È˜[š\Úˆ[ˆÝ›Û™Ï˜š\™Yœš[™Ù[\ÙHX]Ú[™ÏÜÝ›Û™ÏˆH[\˜XÝ[™ÈØ]™\È˜]™[Ú]Y™™\™[Û\š^˜][ÛœËÛÈ]š\™Yœš[™Ù[˜ÙHÙ™œÙ]ÈH\Ü\œÚ[Ûˆ™]ÙY[ˆ[™[Y[[[™\›[ÛšXÈ8 %[ˆH[šX^X[Üž\Ý[›ÝYÚHY™™\™[˜ÙH™]ÙY[ˆÜ™[˜\žH[™^˜[Ü™[˜\žH™Yœ˜XÝ]™H[™XÙ\ÉØÚ]J
+_KˆÚ[Ü™XZ[™K[™XZÙ\ˆ[™ÛÛXYÝY\Ë™\ÜY][ˆNMŒ‰ØÚ]JKŠ_Kˆ]\ÈÙ[ˆ[™YžHH[™ÛH™]ÙY[ˆH™X[H[™HÜž\Ý[	ÜÈÜXÈ^\ÉØÚ]JÊ_Kˆ›ÜˆÙ[™\˜[›ÜYØ][Ûˆ\™XÝ[ÛœÈ[ˆHš\™Yœš[™Ù[YY][K[ˆ^˜[Ü™[˜\žHØ]™IÜÈ[™\™ÞH›ÝÈ\È›Ý\˜[[È]ÈØ]™]™XÝÜ‹ÛÈH™X[\ÈšY\\ˆ\ÈÝ›Û™ÏœÜ]X[Ø[Ë[Ù™ÜÝ›Û™ÏˆØ[ˆ™YXÙH™X[HÝ™\›\[™[Z]H\ÙY[[\˜XÝ[Ûˆ[™ÝÈÝZ]X›Hš[˜Ú\[X^\ÈÙ[ÛY]šY\È]›ÚY]	ØÚ]JÊ_KÜ‚ˆ’[ˆHÚ[˜ð¬ˆ]ÈX›Ý™HHÛ\˜X›H\ÙHZ\ÛX]ÚØØ[\È\ÈKÓˆHÛ™Ù\ˆÜž\Ý[Ú]™\È[Ü™H\ÙK[X]ÚY[™\]YÛÛ™\œÚ[Ûˆ]Û\˜]\ÈHÛX[\ˆ3¥ËˆXØÙ\[˜ÙH[ˆØ]™[[™Ý[™ÛHÜˆ[\\˜]\™H[š\š]È]KÓØØ[[™ÈÚ\™H3¥È˜\šY\È[™X\›HÚ]H[š[™È\˜[Y]\ˆ™X\ˆHÜ\˜][™ÈÚ[	ØÚ]J
+_KˆYˆHš\œÝ\š]˜]]™H˜[š\Ú\È]HÙXÛÛ™Ù\È›ÝHXY[™ÈZ\ÛX]Ú\È]XY˜]XÈ[ˆH][š[™È[™HXØÙ\[˜ÙHØØ[\È\ÈÝ\¸¢$ŒKÌÜÝ\ˆ[œÝXYÜ‚ˆ•[\\˜]\™HÚ[™Ù\ÈH™Yœ˜XÝ]™H[™XÙ\È[™[˜ÙHH\ÙHZ\ÛX]ÚˆÚ\™HHÝZ]X›Hš[˜Ú\[X^\ÈÛÛ™šYÝ\˜][Ûˆ^\ÝÈ8 %[ˆH[šX^X[Üž\Ý[›ÜYØ][Ûˆ]L0¬ÈHÜXÈ^\È8 %[\\˜]\™HØ[ˆ[™H\ÙHX]Ú[™ÈÚ]™YXÙYš\œÝ[Ü™\ˆ[™Ý[\ˆÙ[œÚ]]š]H[™›Èš\™Yœš[™Ù[Ü]X[Ø[Ë[Ù™‹ˆ\È\ÈÝ›Û™Ï››Û˜Üš]XØ[\ÙHX]Ú[™ÏÜÝ›Û™ÏŽÈ[\\˜]\™H[š[™È[Û™HÙ\È›Ý[\H]	ØÚ]JÊ_KÜ‚ˆÝ›Û™Ï”]X\ÚK\\ÙHX]Ú[™ÏÜÝ›Û™ÏˆZÙ\ÈHY™™\™[›Ý]Kˆ[œÝXYÙˆX]Ú[™È\ÙH™[ØÚ]Y\ËHÚYÛˆÙˆH›Û›[™X\ˆÛÙY™šXÚY[\È\š[ÙXØ[H™]™\œÙYÛÛ\[œØ][™ÈH\ÙHÛ\™Y›Ü™H™]ÈÛÛšX][ÛœÈÝ\ÈØ[˜Ù[H\›[ÛšXÎÈ›ÜˆHÚ[\\Ýš\œÝ[Ü™\ˆÜ˜][™ÈÚ]HL	H]HÞXÛKH™]™\œØ[ÛÛY\È]™\žHÛÚ\™[˜ÙH[™Ýˆ]Ø\È›ÜÜÙYžH\›\Ý›Û™Ë›Ù[X™\™Ù[ˆ[™ÛÛXYÝY\È[ˆNMŒˆ[™™XØ[YHÚY[H˜XÝXØ[Û˜ÙH]\›™YÛ[™ÈÙˆ™\œ›Ù[XÝšXÜÈÝXÚ\È]][Hš[Ø˜]H]™[ÜYœ›ÛHH]HNNËˆ™XØ]\ÙH]Ù\È›Ý™\]Z\™Hš\™Yœš[™Ù[\ÙHX]Ú[™Ë[Ø]™\ÈØ[ˆÚ\™HÛ™HÛ\š^˜][Ûˆ[™XØÙ\ÜÈH\™ÙH[œÛÜˆÛÛ\Û™[[ÝÙYžHHX]\šX[[™Ù[ÛY]žK›ÜYØ][Ûˆ[Û™ÈHÜž\Ý[^\ÈØ[ˆ]›ÚYš\™Yœš[™Ù[Ü]X[Ø[Ë[Ù™‹[™›Û‹Xš\™Yœš[™Ù[X]\šX[ÈÝXÚ\ÈØP\ÈØ[ˆ™H\ÙYˆHšXÙH›ÜˆHš\œÝ[Ü™\ˆÜ˜][™È\È[ˆY™™XÝ]™HÛÙY™šXÚY[Ùˆ][ÜÝ‹óàÙˆÝX™Y™ÜÝX‰ØÚ]JJ_KÜ˜ˆ›Ü›][\ÌÎˆÂˆÈ^ˆ	×[H×Þ×^ÔT__HH[HÈH×œ˜XÞÌ—_^×[X™_K]XYÈHHK\]XYÌ_Hœ˜XÞÌŸ^×_WÞ×^ÙY™Ÿ__Ú[ŠH
+IËØ\[ÛŽˆ	Ñš\œÝ[Ü™\ˆ]X\ÚK\\ÙHX]Ú[™ÈÚ]HÜ˜][™ÈÙˆ\š[Ù3¦È[™]HÞXÛH
+8¢i8¢iJKÚ]ÈÚÜÙ[ˆÈX]ÚHÚYÛˆÙˆ3¥ÎˆX]ÚYÚ[ˆ3¥×ÔTHHÛÈ]3¦ÈH³àß3¥ßH¸¡$×ØËÚ]HY™™XÝ]™HÛÙY™šXÚY[Ì_\™Ù\Ý]H0¯K‰ÈKˆKˆ[ˆˆÏ•[\Ü˜[Ø[Ë[Ù™ˆ[™˜XÝXØ[\ÚYÛÚÏ‚ˆ”Ü]X[Ø[Ë[Ù™ˆÙ\\˜]\È™X[\È[ˆÜXÙKˆ[˜\ÚÜ[Ù\ÈØ[ˆ[ÛÈÙ\\˜]H[ˆ[YK™XØ]\ÙHZ\ˆÜ›Ý\™[ØÚ]Y\ÈY™™\ŽˆÝ™\ˆH[™ÝH™[]]™H[^H™]ÙY[ˆ[Ù\ÈH[™ˆ\È0­ßKÝÝX™ËOÜÝXˆ8¢$ˆKÝÝX™ËÜÝXŸˆÛ˜ÙH\ÈÝ›Û™Ï[\Ü˜[Ø[Ë[Ù™ÜÝ›Û™Ïˆ\ÈÛÛ\\˜X›HÈH[ÙH\˜][Û‹HÜÜÈÙˆ[\Ü˜[Ý™\›\[Z]ÈH\ÙY[[\˜XÝ[Ûˆ[™Ý	ØÚ]J
+_KÜ‚ˆ•Ø[Ë[Ù™ˆØ[ˆ[ÛÈ™H]È\ÙKˆ[ˆHÛ™ÈÜž\Ý[Ú\™HH[™[Y[[[™HÙXÛÛ™\›[ÛšXÈ˜]™[]™\žHY™™\™[Ü›Ý\™[ØÚ]Y\ËH\ÙK[X]Ú[™È˜[™ÚY›ÜˆH\›[ÛšXÈ™XÛÛY\È™\žH˜\œ›ÝÈÚ[HHœ›ØY[™[Y[[ÜXÝ[HØ[ˆÝ[Ý[H[È]ÛÈHœ›ØY˜[™™[]ÜÙXÛÛ™[™[Y[[\ÈÝX›Y[ÈHÝ›Û™Ï›˜\œ›ÝØ˜[™XÛÜÙXÛÛ™ÙXÛÛ™\›[ÛšXÏÜÝ›Û™ÏŽˆÜXÝ˜[ÛÛ\™\ÜÚ[Ûˆ˜]\ˆ[ˆHœ›ØY[š[™ÈH[ˆÜž\Ý[Ú]™\ËˆX\˜[™ÛÛšH[™ÛË]ÛÜšÙ\œÈ\ÙYHH[H\š[ÙXØ[HÛYÝÚXÚ[ÛY]šXÈ]][H[[]HÜž\Ý[È\›ˆ[˜X›H™[]ÜÙXÛÛ™[Ù\È[ÈŒ’ˆÙXÛÛ™Z\›[ÛšXÈ[Ù\È˜\œ›ÝÙ\ˆ[ˆHÛx nð®K[˜X›Hœ›ÛHÌŒÈL›K]Œ	HÛÛ™\œÚ[ÛˆY™šXÚY[˜ÞIØÚ]JL
+_KˆHØ[YHÜXÝ˜[XÛÛ\™\ÜÚ[Ûˆ\›ØXÚØ[ˆ›ÙXÙH˜\œ›ÝØ˜[™Ü™Y[ˆYÚÈ[\HXÛÜÙXÛÛ™ÜXØ[\˜[Y]šXÈÜØÚ[]ÜŽˆÙ[˜ÚH[™ÛË]ÛÜšÙ\œÈÝX›YHLÌ›H™[]ÜÙXÛÛ™\Ù\ˆ[ˆ“ÈÈLMH›HÚ]ÜXÝ˜[ÛÛ\™\ÜÚ[Û‹]X›Ý]	HÛÛ™\œÚ[Û‹[™\ÙYHXÛÜÙXÛÛ™Ü™Y[ˆÈ[\HXÛÜÙXÛÛ™ÔÈ›Üˆœ›ØY˜[™Ý[][]Y˜[X[ˆØØ]\š[™ÈZXÜ›ÜÜXÝ›ÜØÛÜIØÚ]JLJ_KÜ‚ˆH™X[ÛÛ™\œÚ[ÛˆÝYÙH\È\™Y›Ü™H\ÚYÛ™Y\›Ý[™[Ü™H[ˆÛ™H\ÙK[X]Ú[™ÈÛÛ™][ÛŽˆHØ]™[[™ÝÈ[›Û™Y[™HÜž\Ý[	ÜÈ˜[œÜ\™[˜ÞH[™XœÛÜœ[Ûˆ\™KH[ÝÙYÛ\š^˜][ÛœÈÚ]HÜž\Ý[Ý]ÜˆÛ[™È\š[ÙHÜ\˜][™È[\\˜]\™KHÜž\Ý[[™Ý[™›ØÝ\Ú[™ËH[ÙH\˜][Û‹[™ÛØ][™È[™ÜXØ[Y[XYÙH[Z]ËˆÝX™Y™ÜÝX‹HXØÙ\[˜ÙH˜[™ÚYÈ[™HØ[Ë[Ù™ˆ]\Ý™H]˜[X]Y›ÜˆHÙ[XÝYX]\šX[Ø]™[[™ÝÈ[™Ù[ÛY]žKÜ‚ˆÏ”Ý\\˜ÛÛ[][OÚÏ‚ˆÝ›Û™Ï”Ý\\˜ÛÛ[][HÙ[™\˜][ÛÜÝ›Û™Ïˆ\›œÈ[[œÙH[Ù\È[ÈHœ›ØYÛÛ[][KÙ[ˆÜ[›š[™È[™™YÈÙˆ˜[›ÛY]™\Ë˜]\ˆ[ˆH™]È\ØÜ™]H[™IØÚ]JLŠ_KˆX\›H[[ÛœÝ˜][ÛœÈØ[YH[ˆNMÌÚ[ˆ[˜[›È[™Ú\\›Èœ›ØY[™YXÛÜÙXÛÛ™[Ù\È[ˆÛ\ÜÙ\È[™Üž\Ý[ÉØÚ]JLËM
+_Kˆ[ˆÛ\ÜÈ[™ÜXØ[šX™\œÈHœ›ØY[š[™È\š\Ù\ÈXZ[›Hœ›ÛH\™[Ü™\ˆY™™XÝÎˆ\[™[™ÈÛˆ[\\˜][Ûˆ[™\Ü\œÚ[Ûˆ]Ø[ˆ[›Û™HÙ[‹\\ÙH[Ù[][Û‹[Ù[][Ûˆ[œÝXš[]KÛÛ]Ûˆ[˜[ZXÜË\Ü\œÚ]™HØ]™\Ë›Ý\‹]Ø]™HZ^[™È[™˜[X[ˆØØ]\š[™Ë[™[ˆÝÛšXÈÜž\Ý[šX™\œÈ]Ø[ˆ^ÙYY[ˆØÝ]™IØÚ]JLŠ_KÜ‚ˆH[ÈÜž\Ý[ÜˆÛ\ÜÈÙ\ÈHØ[YHÚ]H›ØÝ\ÙY™[]ÜÙXÛÛ™™X[NˆX›Ý™HHÜš]XØ[ÝÙ\ˆ›ÜˆÙ[‹Y›ØÝ\Ú[™ÈH™X[HÛÛ\Ù\È[ÈHš[[Y[[™Ù[‹\\ÙH[Ù[][Ûˆ[ˆ]œ›ØY[œÈHÜXÝ[IØÚ]JMJ_KˆÚ\™HHÜXÝ[H[™È\[™ÈÛˆHYY][KH[\Ø]™[[™Ý[™HÛÛ™][ÛœËˆ][\ÝÛˆXœÛÜœ[Ûˆ[™\ÛXHÛ[\Hš[[Y[	ÜÈ[[œÚ]K[™HYÚ\ˆHÜ™\ˆÙˆ]XœÛÜœ[Û‹Ù]žHH˜[™Ø\Ý™\ˆHÝÛˆ[™\™ÞKHYÚ\ˆHÛ[\Y[[œÚ]H[™Hœ›ØY\ˆHÜXÝ[KÛÈÚYKX˜[™Ø\YYXH™XXÚ\\Ý[ÈH›YNÈH›YHÝ][Ù™ˆ\È[ÛÈÛÛœÝ˜Z[™YžHHX]\šX[	ÜÈ\Ü\œÚ[Û‹ˆÛ˜ÙHH™X[Hœ™XZÜÈ\[ÈÙ]™\˜[š[[Y[Ë[Ü™H[™\™ÞHYÈ›È\\ˆœ›ØY[š[™ÎÈÚ\œ[™ÈH[œ]Üˆ[Ýš[™È]È›ØÝ\È[™\ÈH›YHÝ][Ù™‹Ú[HHÝÈ[Y\šXØ[\\\™H[™HÛ™Ù\ˆYY][H^[™H™YÚYKÚXÚ[ÛÈÜ›ÝÜÈÚ]H[\Ø]™[[™Ý	ØÚ]JMJ_Kˆ[\Y™X\ˆ›KØ\\™H\XØ[HÜ[œÈX›Ý]L8 $ÌLL›KPQÈX›Ý]Œ8 $ÌMŒ›K\ÙYÚ[XØHX›Ý]ÎL8 $ÌL›H[™ØQ¸  ˆX›Ý]Ì8 $ÌŒ›NÈÚ]KŒx $ÌKˆ0­[H[\[™ÈPQÉÜÈ›YHÝ][Ù™ˆÛÈ™X\ˆLÌ›HÚ[H]È[™œ˜\™YÚYHÙY\È^[™[™ÉØÚ]JMJ_KˆH™X\‹Z[™œ˜\™Y[ˆ\È\ÙY[[ˆ]ÈÝÛˆšYÚˆHL[HPQÈ]H[\Y]LÍH›H\È›ÝšYYHLL8 $ÌLÌ›HÝÚÙ\È˜[™›Üˆ][\^ÐT”ÈZXÜ›ÜØÛÜIØÚ]JMŠ_KÜ˜ˆ[NˆˆÏ“ÜXØ[\˜[Y]šXÈÜØÚ[]ÜœÏÚÏ‚ˆ’[ˆ[ˆÝ›Û™Ï›ÜXØ[\˜[Y]šXÈÜØÚ[]Üˆ
+ÔÊOÜÝ›Û™ÏˆH›ØÙ\ÜÈ[œÈHÝ\ˆØ^Nˆ[œÚYHH3áø op¬¸ oˆÜž\Ý[XXÚÛÛ™\Y[\ÝÛˆÜ]È[ÈÛÈÝÙ\‹Y[™\™ÞHÝÛœËH[OœÚYÛ˜[Ù[Oˆ[™H[OšY\Ù[O‹ˆ˜[Z[™È˜\šY\ÎˆHÚYÛ˜[Ù[ˆ[›Ý\ÈHYÚ\‹Yœ™\]Y[˜ÞHÝ]]	ØÚ]JMÊ_KÜˆH\Ú\™YÛ™IØÚ]JJ_NÈ\ÈYÙH[œÝXYØ[ÈH™\ÛÛ˜[Ø]™HHÚYÛ˜[ˆXÚ[™ÈHÜž\Ý[[ˆHØ]š]H]™YYÈÛ™HÙˆ[H˜XÚÈ]ÈH\˜[Y]šXÈØZ[ˆÝ™\˜ÛÛYHHØ]š]HÜÜÙ\ÈX›Ý™H™\ÚÛXZÚ[™ÈH[˜X›HÛÚ\™[ÛÝ\˜ÙH›ÜˆÜXÝ˜[˜[™Ù\È]\™XÝ\Ù\ˆ[Z\ÜÚ[ÛˆÛÝ™\œÈÛÜ›HÜˆ›Ý][	ØÚ]JMËN
+_KÜ˜ˆ›Ü›][\ÍNˆÂˆÈ^ˆ	×œ˜XÞÌ_^×[X™WÜHHœ˜XÞÌ_^×[X™WÜßH
+Èœ˜XÞÌ_^×[X™WÚ_IËØ\[ÛŽˆ	Ñ[™\™ÞHÛÛœÙ\˜][ÛŽˆÛ™HÛÛ™\Y[\ÝÛˆ™XÛÛY\ÈÛ™HÚYÛ˜[[™Û™HY\ˆÝÛ‹‰ÈKˆÈ^ˆ	×œ˜XÞÔÜß^ÔÚ_HHœ˜XÞ×WÜß^×WÚ_HHœ˜XÞ×[X™WÚ_^×[X™WÜßIËØ\[ÛŽˆ	ÓX[›^x $Ô›ÝÙNˆÚYÛ˜[[™Y\ˆ\™HÙ[™\˜]YÚ]\]X[ÝÛˆ›^\ËÛÈHÙ[™\˜]YÝÙ\œÈ]šYH[ˆ›ÜÜ[ÛˆÈÝÛˆ[™\™ÞK‰ÈKˆKˆ[Žˆˆ™XØ]\ÙHHÝÛˆ›^\È\™H\]X[HÛ™Ù\‹]Ø]™[[™ÝÝ]]\È[Ø^\ÈÙ[™\˜]YÚ]HÛX[\ˆÚ\™HÙˆHÝÙ\ŽÈÚ]š[˜[HX]™\ÈH™\ÛÛ˜]Üˆ[ÛÈ\[™ÈÛˆ]ÈÝ]]ÛÝ\[™È[™ÜÜÙ\Ëˆ[\Y]LÌˆ›HÚ][ˆ›HÚYÛ˜[HY\ˆY\È]MN›H[™™XÙZ]™\ÈX›Ý]H\™ÙˆHÛÛ™\YÝÙ\‹ˆH[˜[HÜ›ÝÜÈÚ]HØ]™[[™Ý˜][Îˆ›ÜˆHÚ[™ÛHÛÛ™\œÚ[ÛˆÝ\]^˜XÝÈÛ›HHH0­[HÝ]]HH0­[H[\Ý\Y\È][ÜÝŒ	HÙˆ]ÈÛÛ™\YÝÙ\ˆÈ]Ø]™IØÚ]JNJ_KÜ‚ˆÝ›Û™Ï•™\ÚÛÜÝ›Û™ÏˆZÙHH\Ù\‹[ˆÔÈÜØÚ[]\ÈÛ›HÛ˜ÙHH›Ý[™]š\\˜[Y]šXÈØZ[ˆÝ™\˜ÛÛY\ÈHØ]š]HÜÜÙ\ÎÈ]™\ÚÛHÛÈ˜[[˜ÙIØÚ]JNNJ_Kˆ[›ZÙHH\Ù\‹]™[Y\ÈÛˆ›ÈÝÜ™YÜ[][Ûˆ[™\œÚ[ÛŽˆ\˜[Y]šXÈØZ[ˆ™\]Z\™\ÈH[\È™H™\Ù[ˆ›ÜˆHÚ[™ÛH™\ÛÛ˜[ÔËÚ\™HÛ›HHÚYÛ˜[\È™Y˜XÚËHYX[[™K]Ø]™H[Ù[™YXÝÈÛÛ\]H[\\][Ûˆ]
+3àÌŠp¬ˆ8¢b‹H[Y\È™\ÚÛ	ØÚ]JŒ
+_NÈ\È\ÈH[Ü™]XØ[[Z]›ÝHÙ[™\˜[Ü\˜][™ÈÚ[ˆš]™[ˆ\™\‹ÚYÛ˜[[™Y\ˆÝ\ÛÛ™\[™È˜XÚÈ[È[\YÚÛÈ[˜Ü™X\Ú[™È[\ÝÙ\ˆ™YY›ÝÙY\[˜Ü™X\Ú[™ÈHÛÛ™\œÚ[ÛˆY™šXÚY[˜ÞIØÚ]JNJ_KÜ˜ˆ[ÎˆˆÝ›Û™Ï“[™]ÚYÜÝ›Û™Ïˆ[™\™ÞHÛÛœÙ\˜][Ûˆ[ÛÈÛÈ›Üˆ[œÝ[[™[Ý\Èœ™\]Y[˜ÞH›XÝX][ÛœË3­3¯OÝXœÜÝXˆH3­3¯OÝXœÏÜÝXˆ
+È3­3¯OÝXšOÜÝX‹ÛÈ[\›XÝX][ÛœÈ]\Ý\X\ˆÛˆHÚYÛ˜[HY\ˆÜˆ›ÝˆHØ]š]HÛÛœÝ˜Z[œÈH™\ÛÛ˜[Ø]™K[™H›Û‹\™\ÛÛ˜[Ø]™HZÙ\È\Ú]H[\[™™\ÛÛ˜[Ø]™HX]™Kˆ[\œ™\]Y[˜ÞH›XÝX][ÛœÈ]H™\ÛÛ˜[Ø]™HÙ\È›Ý›ÛÝÈ\X\ˆÛˆH›Û‹\™\ÛÛ˜[Û™KÛÈ[\ÜÚ[™È[HÛˆH™\ÛÛ˜[Ø]™HÚ]XÝ]™H™YY˜XÚÈ\ÈHØ^HÈ™[[Ý™H[Hœ›ÛHHÝ\‰ØÚ]JŒ
+_Kˆ\ÈYÙH[™ÜXØ[Ù]\Ø[H™\ÛÛ˜[Ø]™HHÚYÛ˜[È™X[ÔÜÈ™\ÛÛ˜]HZ]\‹ˆYˆ[\[™™\ÛÛ˜[Ø]™H›XÝX]H[™\[™[H[™›ÝÜXÝ˜H\™HØ]\ÜÚX[‹H›Û‹\™\ÛÛ˜[Ø]™IÜÈœ™\]Y[˜ÞHÚY\ÈH]XY˜]\™HÝ[HÙˆZ\œÎÈÛÜœ™[]Y›XÝX][ÛœÈÚ[™ÙH]ÚXÚ\ÈÚH[ˆY\ˆØ[ˆ™H˜\œ›ÝÙ\ˆ[ˆ]È[\Ü‚ˆÝ›Û™ÏÛÛ[[ÛˆÜ\˜][™È™YÚ[Y\ÎÜÝ›Û™ÏÜ‚ˆ[‚ˆOÝ›Û™Ï”Þ[˜Ú›Û›Ý\ÛH[\YœÈ[™ÈÔÜËÜÝ›Û™Ïˆ[ˆH\ÝX[\œ˜[™Ù[Y[Ú]Û™H[ÙH\ˆ›Ý[™š\HØ]š]H›Ý[™š\\ÈX]ÚYÈH™\]][Ûˆ\š[ÙÙˆH[ÙK[ØÚÙY[\ÛÈXXÚÚYÛ˜[[ÙH\È[\YšYYžHH™^[\[ÙK[™HÝ]][ÙH˜Z[œÈÝ^HØÚÙYÈH[\	ÜËˆÛ™HYÓÎ”ˆÜØÚ[]Üˆ[\YžH8 $ÌLœÈ[Ù\È™X\ˆH0­[H]Rˆ›ÙXÙY8 $ÍŒœÈÚYÛ˜[[Ù\È[™[ˆY\ˆ[˜X›Hœ›ÛHÌLÌˆÈÌÈ›IØÚ]JŒJ_Kˆœ™\]Y[˜ÞKYÝX›Y[ÙK[ØÚÙY\Ù\œÈØ[ˆ[\XÛÜÙXÛÛ™ÔÈÛÝ\˜Ù\È›ÜˆÛÚ\™[˜[X[ˆ[XYÚ[™ÎÈ™X\‹]˜[œÙ›Ü›K[[Z]Y[Ù\ÈÙˆH™]ÈXÛÜÙXÛÛ™ÈØ[ˆ›ÝšYH˜[™ÚYÈÛÛ\\˜X›HÈX[žH[ÛXÝ[\ˆ˜[X[ˆ˜[™Ë˜[[˜Ú[™ÈÜXÝ˜[Ù[XÝ]š]HYØZ[œÝXZÈ[[œÚ]IØÚ]JŒŠ_KÛO‚ˆOÝ›Û™Ï“˜[›ÜÙXÛÛ™ÔÜÏÜÝ›Û™Ïˆ[\YžHK\ÝÚ]ÚY\Ù\œÈ\™HÙ[ˆ\ÙY›ÜˆYÚY[™\™ÞH[Ù\ËˆÚ]Ý]ÜXÝ˜[˜\œ›ÝÚ[™ÈZ\ˆ[™]ÚY\È\XØ[HÙ]XZ[›HžHHÜž\Ý[	ÜÈ\ÙK[X]Ú[™È˜[™ÚY[™HØ]š]K[™\È]XÚœ›ØY\ˆ[ˆHÚ[™ÛKYœ™\]Y[˜ÞH\Ù\‰ÜÉØÚ]JNJ_KˆHÜØÚ[][Ûˆ™YYÈ[YHÈZ[\œ›ÛH›Ú\ÙH\š[™ÈXXÚ[\[ÙKÚXÚ˜Z\Ù\ÈH™\ÚÛ	ØÚ]JNJ_H[™Ù[ˆXZÙ\ÈHÝ]][Ù\ÈÛÛY]Ú]ÚÜ\ˆ[ˆH[\	ÜÉØÚ]JN
+_KÛO‚ˆOÝ›Û™ÏÛÛ[[Ý\Ë]Ø]™HÚ[™ÛH™\ÛÛ˜[ÔÜÏÜÝ›Û™Ïˆ\ÜÈH[\œ™\]Y[˜ÞH›XÝX][ÛœÈ]H™\ÛÛ˜[Ø]™HÙ\È›Ý›ÛÝÈÛˆÈH›Û‹\™\ÛÛ˜[Ø]™IØÚ]JŒ
+_KÛO‚ˆÝ[˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆÚÛÜÙHHÛÛ™\œÚ[Ûˆ[ÙH™Y›Ü™H^XÝ[™È[žHÝ]]ˆÚ]HY˜][[O“›Û™OÙ[OˆHÜž\Ý[Ù\È›Ý[\˜XÝÚ]YÚ][ˆ]™\žHÛÛ™\[™È[ÙH\ÈHØ]™[[™ÝX[™\ÝÙ\ˆ›ÞH]ÛÛ™\ÈHš^Y]]Ü™Yœ˜XÝ[ÛˆÙˆH[YÚX›H[˜ÚY[YÚÚ]]™\ˆ]È[[œÚ]K[™[O•˜[œÛZ]™\ÚYX[[\Ù[OˆØ[ˆÙY\H[˜ÛÛ™\Y™[XZ[™\ˆÛˆHØ[YH]È›È™\ÚYX[œ˜[˜Ú\È˜]Ûˆ]Y™šXÚY[˜ÚY\ÈÙˆNKŽH	HÜˆ[Ü™K[™[ˆ›Û‹SÔÈ[Ù\È]\È[ÛÈÛZ]YÚ[ˆHÝ]]Ù[™HØ]™[[™Ý\]X[ÈH[œ]Ù[™HØ]™[[™ÝÜ‚ˆÝ›Û™Ï•H3áø op¬¸ oˆ[ÙOÜÝ›Û™Ïˆ[™\ÈHØ]™[[™ÝÙˆ[žH[˜ÚY[YÚ[™Ý›Û™Ï•ÏÜÝ›Û™Ïˆ]šY\È]žH™YNˆ\™H\È›È\ÙK[X]Ú[™ÈÛÛ™][Û‹ÛÈ]™\žH[œ]Ø]™[[™ÝÛÛ™\ËˆÈX\ÈHØ]™[[™Ý\™XÝHÈH\™Ùˆ]È]Ù\È›ÝÚ[][]HHØ\ØØYYÒÈ[™Ñ‘È\\˜]\ËˆHÜXÝ[H\ÈØØ[YÚ]HØ]™[[™Ý[™H[ÙHÙY\È]È˜Z[ˆ[™\˜][Û‹ÚXÚXZÙ\ÈH\›[ÛšXÉÜÈœ™\]Y[˜ÞHÚYˆ[Y\ÈH[œ]	ÜËˆÜXÝ˜[ÛÛ\™\ÜÚ[Ûˆ[ˆHÛ™ÈÜž\Ý[Ú]\™ÙHÜ›Ý\]™[ØÚ]HZ\ÛX]Ú\ØÜšX™YX›Ý™K\È›Ý[Ù[YˆÈ˜]ÈH˜\œ›ÝØ˜[™\›[ÛšXË\ÙHH˜\œ›ÝØ˜[™[™[Y[[ÜˆHÝ\ÝÛHÝ]][™Kˆ\È\È›ÝHØ[Ý[]Y›Û›[™X\ˆ[ÙH˜[œÙ›Ü›X][ÛŽˆ[ˆ[™\]Y[œÝ[[™[Ý\È‹][Ü™\ˆ›ØÙ\ÜÈXÝ[™ÈÛˆH˜[œÙ›Ü›K[[Z]YØ]\ÜÚX[ˆ[ÙKÚ]Ý]Ø[Ë[Ù™ˆÜˆ\ÙK[X]Ú[™Èš[\š[™ËÛÝ[Ú]™H8¢&›ˆ[Y\ÈH[œ]œ™\]Y[˜ÞHÚYÚ]H8¢&›ˆÚÜ\ˆ[ÙKˆH^[\HÝX›\ÈHL›H[ÙY\Ù\ˆÈLÌˆ›H[™Ù\\˜]\ÈH\›[ÛšXÈœ›ÛHH™[XZ[š[™È[\Ú]HXÚ›ÚXËÚ]H™X[H›Ø™HÛˆXXÚœ˜[˜ÚÜ‚ˆÝ›Û™Ï”Ý\\˜ÛÛ[][OÜÝ›Û™Ïˆ™\XÙ\ÈHÛÛ™\YYÚÚ]H›]˜[™ˆžHY˜][]ÈYÙ\ÈÛÛYHœ›ÛHH[\]\œš]™\È[™HÚÜÙ[ˆYY][H8 %PQËØ\\™K\ÙYÚ[XØHÜˆØQ¸  ˆ8 %\Ú[™ÈÜXÝ˜H™\ÜY[ˆH™]šY]ÈÙˆ[ÈÝ\\˜ÛÛ[][HÙ[™\˜][Ûˆ]H™]È[\Ø]™[[™ÝÈ\ˆYY][IØÚ]JMJ_Kˆ]H[\HX›H[˜ÛY\ËH˜[™\ÈH™Y™\™[˜ÙHÛ™H8 %HÚ[™ÛH^\š[Y[ÜˆH\XØ[Ü[ˆÜˆ[\˜[™ÙHH™]šY]ÈÝ[[X\š\Ù\ÎÈ™]ÙY[ˆÛËXXÚYÙH\È[\œÛ]Y[™X\›KÚXÚ\È[ˆ[\Ý˜][Ûˆ˜]\ˆ[ˆH™YXÝ[Û‹ÛÈHLÍH›H[\[ˆPQÈÚ]™\ÈX›Ý]L¸ $ÌMÍÍˆ›KˆH[\Ý]ÚYHH™Y™\™[˜ÙH]H\È\Ý[X]H[˜ÛY\Ë[™ÛÛ[[Ý\Ë]Ø]™H[œ]˜]È›ÈÛÛ[][NÈH]\˜]\™H™\ÜÈÝ\ˆ[\ÈÛË[™HX[X[˜[™ÙH˜]ÜÈ[žH˜[™ˆH[OÛÛ[][OÙ[Oˆ™XYÝ]Ú]™\ÈH˜[™Ø^\ÈÚXÚÚ[™Ùˆ™Y™\™[˜ÙHÜˆ[\œÛ][Ûˆ]ÛÛY\Èœ›ÛK[™›Ý\ÈÚ[ˆ]È™YYÙH™\ÝÈÛˆHYX\Ý\™[Y[[Z]YžHH]XÝÜ‹ˆ[O”Ù]X[X[OÙ[Oˆ˜]ÜÈ[ˆ]]Ü™Y˜[™œ›ÛH[žH[\[œÝXYÈØÙ[™\ÈØ]™Y™Y›Ü™HH\Ý[X]H^\ÝYÜ[ˆÚ]Z\ˆÛÌ8 $ÎÌ›H˜[™\ÈHX[X[˜[™ÙKˆÝ›Û™ÏÝ\ÝÛHÝ]]ÜÝ›Û™Ïˆ\È[ˆ]]Ü™YÝ]]˜]\ˆ[ˆH˜[YY\ÚXØ[›ØÙ\ÜÎˆ][Z]ÈHÚ[™ÛH[™H]H[\™YØ]™[[™ÝÚ]]™\ˆH[\	ÜÈ˜[™ÚYÜ‚ˆÝ›Û™Ï•HØ[YH[ÙH[ÛÈZ^\ÈÛÈ™X[\ÏÜÝ›Û™Ï‹™XØ]\ÙHÛ™H3áø op¬¸ oˆÙ\È›ÝˆHÜž\Ý[]ÝX›\ÈH™X[HÝ[\ÈÛÈÙˆ[H\ÈÙ[ˆXXÚ™X[IÜÈÙXÛÛ™\›[ÛšXÈ\È˜]ÛˆÚ]]™\ˆ[ÙH\È™\Ù[[™Ú[ˆHÙXÛÛ™Ø]™[[™Ý™XXÚ\ÈHÜž\Ý[HZ\ˆ[ÛÈ›ÙXÙ\È]ÈÝ[Hœ™\]Y[˜ÞKKó®ø  ÈHKó®ø  H
+ÈKó®ø  ‹ˆÝX›[™ÈZÙ\È]È]]Ü™Yœ˜XÝ[ÛˆÙˆXXÚ™X[Hš\œÝ[™HZ^[™È[ˆZÙ\È]ÈÝÛˆœ˜XÝ[ÛˆÙˆÚ]\ÈYÙˆ[O˜›ÝÙ[Oˆ™X[\ËÚXÚ\ÈÚ]]ÈHZ^Y[™H[ˆHØ[YH˜[™ÙH\ÈHÛÈ\›[ÛšXÜÈ™\ÚYH]ˆÌ	HÝX›[™ÈÚ]HÌ	HZ^[™ÈÚ\™H\›œÈÛÈ\]X[™X[\È[È\›[ÛšXÜÈ]ŒÌXXÚ[™HÝ[Hœ™\]Y[˜ÞH]‹ˆ›ÈÚ[™ÛK\\ÜÈÛÛ™\œÚ[Ûˆœ˜XÝ[ÛˆØ[ˆ™HÙ]X›Ý™HŒ	H\™Kˆ]\ÈHØ\\ÈÛÜšØ™[˜Ú[\ÜÙ\ÈÈÙY\]]Ü™Yœ˜XÝ[ÛœÈÛÛœÙ\˜]]™K›ÝH\ÚXØ[[Z]ˆX›\ÚYÚ[™ÛK\\ÜÈÙXÛÛ™Z\›[ÛšXÈÛÛ™\œÚ[Ûˆ™XXÚ\ÈYÚ\‹ˆÔÈ[ÙIÜÈ[\\][Ûˆ\ÈH][K\\ÜÈ™\Ý[[™\È]ÈÝÛˆÛÛ›Û[™ÙZ[[™ËˆHÜž\Ý[Z\œÈH[˜ÚY[YÚÚ]]™\žHÝ\ˆØ]™[[™Ý™\Ù[]X\ÝH›H]Ø^KXXÚZ\ˆ[Z]YÛ˜ÙHžH]ÈÚÜ\ˆ™X[KÛÈ™YHÛÛÝ\œÈÚ]™H™YHZ^Y[™\Ëˆ[O[ÛÈÙ[™\˜]HY™™\™[˜ÙHœ™\]Y[˜ÞOÙ[OˆYÈKó®ø  H8¢$ˆKó®ø  ˆÚ]3®ø  HHÚÜ\ˆ[œ]ÚXÚ\ÈÛ™Ù\ˆ[ˆ][œ]]›Ý™XÙ\ÜØ\š[HÛ™Ù\ˆ[ˆHÝ\ˆÛ™H8 %›HÚ]L›HÚ]™\ÈÈ›K™]ÙY[ˆHÛÎÈ]\ÈÙ™ˆžHY˜][Ú[˜ÙH][™H\ÝX[H˜[ÈÝ]ÚYHH˜[™ÙHHÛËXÛÛÝ\ˆ™[˜ÚÛÚÜÈ]ˆH[O•ÛËX™X[HZ^[™ÏÙ[Oˆ™XYÝ]˜[Y\ÈHZ\‹HÝ]][™ÝÈ˜\ˆ\\HÛÈ[Ù\È\œš]™KÜ‚ˆÝ›Û™Ï“Û›HHZ^[™È™YYÈHÛÈ[Ù\ÈÙÙ]\‹ÜÝ›Û™ÏˆÝX›[™È™YYÈÛ™H™X[H[™\[œÈÚ]]™\ˆH[Z[™ËÚXÚ\È^XÝHÚ]XZÙ\ÈHZ^Y[™HHYX\Ý\™[Y[ˆÚ]ÛÈÛÛÝ\œÈ[ˆÛ™HÜž\Ý[HÛÈÙXÛÛ™\›[ÛšXÜÈÚ]\™H[˜Ú[™ÙY[™HÝ[Hœ™\]Y[˜ÞH\X\œÈ™]ÙY[ˆ[HÛ›H\ÈH[^H\Èœ›ÝYÚÈ™\›Ëˆ]\ÈÝÈ[YH™\›È\È›Ý[™ÛˆH™[˜ÚˆXXÚ™X[IÜÈ\œš]˜[\È]ÈÝÛˆÜXØ[]\È]È[Z\ÜÚ[ÛˆÙ™œÙ]ÛÈ[Ýš[™ÈHÛÝ\˜ÙKY[™ÈÛ\ÜËÜˆØØ[›š[™ÈH[^HÝYÙHÚYÈ]ˆ›ÜˆÛÈØ]\ÜÚX[ˆ[[œÚ]H[™[Ü\ÈÙˆ•ÒH3á8  H[™3á8  ˆ\œš]š[™È3¥\\HÚYÛ˜[\ÈØØ[YžHHÝ™\›\[YÜ˜[^
+8¢$Œˆ3¥0¬‹Ê3á8  p¬ˆ
+È3á8  °¬ŠJH[™\Ø\X\œÈ™[ÝÈˆ	HÙˆ]ÈXZÎˆØØ[›š[™ÈH[^H›ÝYÚ™\›È˜XÙ\È]Ý\™KÚXÚ\ÈÝÈ[YH™\›È\È›Ý[™ÛˆH™X[™[˜ÚˆHZ^Y[ÙH\ÈH›ÙXÝÙˆHÛÈ[™[Ü\ËÛÈ]È\˜][Ûˆ\È
+3á8  x nð¬ˆ
+È3á8  ¸ nð¬ŠWŠ8¢$ŒKÌŠH8 %›ÛÝÚ[™ÈHÚÜ\ˆ[œ]8 %[™]XZÜÈ]HÙZYÚYYX[ˆÙˆHÛÈ\œš]˜[È˜]\ˆ[ˆ]Z]\ˆÛ™KˆHØ]HÛˆZ]\ˆ™X[HØ]\ÈHÚYÛ˜[™XØ]\ÙH›Ý]™HÈ™H\™KÜ‚ˆ“Û›H˜Z[œÈ]HÝ›Û™ÏœØ[YH™\]][Ûˆ˜]OÜÝ›Û™Ïˆ\™H[Ù[YÙÙ]\ˆÚ]HÛÛ[[Ý\È™X[KÚXÚ\È[Ø^\È™\Ù[[™™YYÈ›È[Z[™ËˆY™™\™[˜]\È\™H›Ý˜]Ûˆ][ˆ^H\™H›ÝH\ÚXØ[[\ÜÜÚXš[]H8 %Rˆ[™ŒRˆÛÚ[˜ÚYH]ŒR‹[™ÛYÚH][™Y˜Z[œÈÝÙY\›ÝYÚH[^KÚXÚ\ÈÚ]\Þ[˜Ú›Û›Ý\ÈÜXØ[Ø[\[™È\Ù\È8 %]\È[Ù[ÙY\È›È[ÙKXžK\[ÙH›ÛÚÚÙY\[™È›Üˆ[KÛÈ]™\ÜÈH[Z[™È\È›Ý[Ù[Y[œÝXYÙˆ[™[[™ÈH™\Ý[ˆÚ[™]™\ˆHZ\ˆ\È™\Ù[[™›ÈÚYÛ˜[\È˜]Û‹HÛÜšØ™[˜ÚØ^\ÈÚXÚÙˆHÛÈ™X\ÛÛœÈ\Y\ËÜ‚ˆÝ›Û™Ï“ÔÈ[ÙOÜÝ›Û™Ïˆ[Ù[ÈHÚ[™ÛH™\ÛÛ˜[ÜØÚ[]Üˆ[›ÛY[›ÛÙÚXØ[KˆÙ]H[\Ø]™[[™ÝHÜž\Ý[\È\ÙK[X]ÚY›Ü‹]ÈXØÙ\[˜ÙHÚ[™ÝË[™H™\ÛÛ˜[ÚYÛ˜[Ø]™[[™ÝÈHY\ˆ\ÈÚÝÛˆ\ÈH™XYÝ]ˆ[\YÚÛÛ™\ÈÚ[ˆ]ÈÙ[™HY\È[œÚYHHXØÙ\[˜ÙHÚ[™ÝËÚ]]™\ˆ]È˜[™ÚYˆHÚYÛ˜[Ý^\ÈÚ\™HHØ]š]HÛÈ][™HY\ˆ›ÛÝÜÈH\œš]š[™È[\žH[™\™ÞHÛÛœÙ\˜][Û‹ˆÚYÛ˜[[™Y\ˆYÚÙ[™\˜]YžH\ÈÔË[™]È\ØÙ[™[Ë\È›ÝÛÛ™\YYØZ[ˆžHHØ[YHÔÎÈH™]\›š[™È™\ÚYX[[\X^HÛÛ™\YØZ[‹[™[›Ý\ˆÜž\Ý[Ø[ˆÛÛ™\HÙ[™\˜]YYÚˆ]ÈšYÝ\™H\È[O”[\\][ÛÙ[O‹Hœ˜XÝ[ÛˆÙˆH[\HÜØÚ[]Üˆ™[[Ý™\Ë]šYY™]ÙY[ˆÚYÛ˜[[™Y\ˆžHHÜÜÛ\ÜÈX[›^x $Ô›ÝÙHÜ]ˆ]\ÈHÙ\\˜]HÛÛ›Ûœ›ÛHHÚ[™ÛK\\ÜÈ[Ù\ÉÈÛÛ™\œÚ[ÛˆY™šXÚY[˜ÞH™XØ]\ÙH]\ÈHY™™\™[YX\Ý\™[Y[ˆ\][ÛˆZ[È\\ÈH™\ÛÛ˜[ÚYÛ˜[\È[\YšYYÝ™\ˆX[žH›Ý[™š\Ë[™Ú[™ÛH™\ÛÛ˜[ÔÜÈ\™H™\ÜY]Î	H\][Û‰ØÚ]JŒJ_Kˆ]ÛÙ\È\ÈMH	NÈØÙ[™\ÈØ]™YÚ[ˆHÔÈÚ\™YHÛÛ™\œÚ[ÛˆY™šXÚY[˜ÞHØ\œžH]˜[YHÝ™\‹Ü‚ˆÝ›Û™Ï“[™]ÚYÏÜÝ›Û™Ïˆ\™H[™Y\È•ÒH[ˆØ]™[[X™\‹ˆ[O”ÚYÛ˜[\ÈÚYH\ÈH[\Ù[Oˆ\ÈH]\š\ÝXÈ›ÜˆÞ[˜Ú›Û›Ý\ÛH[\YœÈ[™ÈÔÜÎÈ[O”ÚYÛ˜[ÚYÙ]Ù[OˆÝZ]ÈœÈ[™ÕÈÔÜËÚ\™HHØ]š]HÙ]È]È[ˆ›ÝHY\ˆ\È\š]™Y\ÈH[˜ÛÜœ™[]YØ]\ÜÚX[ˆÝ[Kˆ[O”ÚYÛ˜[[™Y\ˆÚYÈÙ]Ù[OˆZÙ\È›Ýœ›ÛHHYX\Ý\™YÜˆÜXÚYšYYÞ\Ý[KˆH™\›ÈÚY\ÈHÚ[™ÛH[™H[™H˜\œ›ÝÈÚYHØ]\ÜÚX[ˆ[ˆØ]™[[™ÝÈ[ˆÝ]]ÚY\ˆ[ˆH	HÙˆ]Èœ™\]Y[˜ÞH\È™\™\Ù[YžHHš[š]HØ[\YØ]™[[™Ý\ÝšX][Ûˆ˜]Ûˆœ›ÛH]ÈØ]\ÜÚX[ˆ[ˆØ]™[[X™\‹ÚXÚX[œÈÝØ\™Û™ÈØ]™[[™ÝËˆXÚ›ÚXÜËš[\œÈ[™ÜXÝ›ÛY]\œÈÝÛœÝ™X[HXÝÛˆ\ÙH™]ÈÜXÝ˜H˜]\ˆ[ˆÛˆH[\	ÜËˆ]^XÝHÚXÙHH[\Ø]™[[™ÝÚYÛ˜[[™Y\ˆÚ]\]X[ÚYÈ›Ü›HÛ™HYÙ[™\˜]H™X[NÈÚ]Y™™\™[ÚYÈ^HÝ^HÛÈÛÚ[˜ÚY[™X[\ËXXÚÚ]]ÈÝÛˆÜXÝ[KÜ‚ˆÝ›Û™Ï”[Ù\ËÜÝ›Û™ÏˆÚYÛ˜[[™Y\ˆ\™H[ÙH˜Z[œÈÙˆZ\ˆÝÛ‹Þ[˜Ú›Ûš\ÙYÈH[\ˆ^HÙY\]È™\]][Ûˆ˜]K\œš]˜[[Z[™È[™[Ù[][ÛˆØ]\ËÛÈÚ]H[ÙY[\[™[O•˜[œÛZ]™\ÚYX[[\Ù[OˆÛ‹H]XÝÜˆ™XXÚYžH[™YHÝ]]ÈÙY\ÈH›Û‹YYÙ[™\˜]H[\ÚYÛ˜[[™Y\ˆ\È™YHÙ\\˜]H˜Z[œËˆ\™H\™H™YHÚÚXÙ\ËˆžHY˜][^H\™H[O•˜[œÙ›Ü›K[[Z]YÙ[OŽˆXXÚ\˜][Ûˆ›ÛÝÜÈœ›ÛH]ÈÝÛˆ˜[™ÚYˆHÛÈ[O‘\˜][ÛˆÙ]Ù[OˆÚÚXÙ\ÈXZÙHXXÚÝ]]\ÝH[\	ÜÈ\˜][Ûˆ[Y\È[O“Ý]]\˜][Ûˆ
+0åÈ[\\˜][ÛŠOÙ[Oˆ8 %HX]Ú\ÈH[\ˆ\ÈÚXÙH\ÈÛ™È8 %[™H\˜][ÛˆÚÜ\ˆ[ˆHÝ]]	ÜÈ˜[œÙ›Ü›H[Z]\È˜Z\ÙYÈH[Z]ˆÚ][OœÜXÝ˜[\ÙH[šÛ›ÝÛÙ[Oˆ›Ý[™È\ÈÛZ[YYX›Ý]H\ÙKÛÈH[Ù[Ø[››Ý™YXÝÛÛ\™\ÜÚ[Ûˆ[™HÛÛ\™\ÜÛÜˆÙ\È›ÝÚÜ[ˆH˜]Ûˆ[ÙKˆ[O”ÜÚ]]™[HÚ\œY
+\ÜÝ[YYØ]\ÜÚX[ŠOÙ[Oˆ\È[ˆ^XÚ]\ÜÝ[\[Ûˆ]HÝ]]\ÈHÛÚ\™[Ø]\ÜÚX[ˆÚÜÙHÛ›HÜXÝ˜[\ÙH\ÈHÜÚ]]™H]XY˜]XÈÛ™Nˆ]\È˜]Ûˆ\ÈH˜[œÙ›Ü›K[[Z]Y[ÙHØ\œžZ[™ÈHÜ›Ý\[^H\Ü\œÚ[Ûˆ]Ý™]Ú\È]ÈHÙ]\˜][Û‹ÛÈHÛÛ\™\ÜÛÜˆÝÛœÝ™X[HØ[ˆ™[[Ý™H]ˆ\˜][Ûˆ[™˜[™ÚY[Û™HÈ›Ý\ÝX›\Ú]8 %^Ù\ÜÈ˜[™ÚYØ[ˆ™H[˜ÛÚ\™[\È[ˆH˜[›ÜÙXÛÛ™ÔÈ8 %ÚXÚ\ÈÚH]\ÈHÚÚXÙH˜]\ˆ[ˆHY˜][ˆ[ˆÝ]]Ú]™\›È[™]ÚY\ÈH˜]Ú[™ÈÛÛ™[[Ûˆ›Üˆ[ˆYX[\ÙY[Û›ØÚ›ÛX]XÈ[ÙH˜Z[‹ZÙHH[ÙYÛÝ\˜ÙHÙ]È›Nˆ]\È›Èš[š]H˜[œÙ›Ü›K[[Z]Y\˜][Û‹ÛÈ]ÙY\È]ÈÙ]Û™HÚ]]ÈÜXÝ˜[\ÙH[šÛ›ÝÛ‹ˆÜ›Ý\[^H\Ü\œÚ[Ûˆ\ÈÛÝ[Yœ›ÛHHÜž\Ý[^]ˆH[œÜXÝÜ‰ÜÈ[O“Ý]]ÏÙ[Oˆ™XYÝ]\ÝÈXXÚÝ]]	ÜÈ˜[™ÚY[ˆ›H[™Ûx nð®K[™]È\˜][Û‹X\šÙY˜[œÙ›Ü›H[Z]YÚ\œYÜˆÜXÝ˜[\ÙH[šÛ›ÝÛ‹Ü˜ˆ[Z]][ÛœÎˆ“Z^[™ÈØ]\ÈÛˆ\œš]˜[[YHÛ›Kˆ›È\ÙHX]Ú[™ËÛ\š^˜][ÛˆÛÛ™][Û‹›ØÝ\Ú[™ÈÜˆÜ]X[Ý™\›\\ÈÚXÚÙYÛÈ[žHÛÈØ]™[[™ÝÈZ^Yˆ^HÛÚ[˜ÚYH[ˆ[YH8 %H™X[Üž\Ý[]Û™H[™ÛHÛÝ[›Ý›ÙXÙHÛÈÙXÛÛ™\›[ÛšXÜÈ[™Z\ˆÝ[Hœ™\]Y[˜ÞHÚ]ÛÛ\\˜X›HY™šXÚY[˜ÞK[™XXÚ›ØÙ\ÜÈÛÝ[™YY]ÈÝÛˆÛ\š^˜][ÛœËˆÝX›[™È™\Ù\™\È]È]]Ü™Yœ˜XÝ[ÛˆÙˆXXÚ™X[Hš\œÝ[™HZ^[™È˜]ÜÈ[ˆ]]Ü™YÚ\™HÙˆÚ]\ÈYÙˆ›Ý™X[\ÈÙˆHZ\‹XXÚXš]Y›ÜˆÚ]]Ø]™NÈ]™\žHZ\ˆH™X[HZÙ\È\[ˆÚ\™\È]Û™HYÙ]ˆH›ÜÜ[ÛœÈ\™HH˜]Ú[™ÈÛÛ™[[ÛˆÚÜÙ[ˆÈ]H™YH[™\È[ˆHØ[YH˜[™ÙH8 %\]X[œ˜XÝ[Û˜[ÛÛšX][ÛœÈœ›ÛH›Ý™X[\Ë›ÝHÝÛ‹Y[™\™ÞK]ÙZYÚY\][ÛˆH™X[ÝYÙHÛÝ[ÚÝÈ8 %[™›ÝHÝÙ\‹Y\[™[ÛÛ™\œÚ[Ûˆ™YXÝ[Û‹[™HÛÈ\›[ÛšXÜÈÝ^Z[™È]Ú[HHZ^Y[™Hš\Ù\È\ÈHÙXZËXÛÛ™\œÚ[ÛˆÛÛ™[[Û‹ˆ]™\žH[›Ü™\™YZ\ˆÙˆÛÛÝ\œÈ\È›Ü›YYXXÚ[Z]YÛ˜ÙHžH]ÈÚÜ\ˆØ]™[[™ÝÛÈ™YHÛÛÝ\œÈÚ]™H™YHZ^Y[™\ËˆYÚ\ÈÜž\Ý[Ù[™\˜]Y\È›ÝZ^YYØZ[ˆžH]ˆHZ^YÝ]]	ÜÈÚY\ÈHÛÈ[œ]ÉÈÚYÈYY[ˆ]XY˜]\™H[ˆØ]™[[X™\‹ÚXÚ\ÈH[˜ÛÜœ™[]YQØ]\ÜÚX[ˆ\Ý[X]H˜]\ˆ[ˆHØ[Ý[]YÛÛ™\œÚ[ÛˆÜXÝ[K[™HÝ™\›\˜XÝÜˆ\È[ˆYX[QØ]\ÜÚX[ˆ[Z[™È›ÞH˜]\ˆ[ˆHÜ›ÜÜËXÛÜœ™[][ÛˆÙˆH™X[[ÙHÚ\\ËÜ“›È[ÙHØ[Ý[]\È\ÙHX]Ú[™ËÝX™Y™ÜÝX‹Üž\Ý[[™ÝXØÙ\[˜ÙH˜[™ÚYËÜ]X[Üˆ[\Ü˜[Ø[Ë[Ù™‹ÜˆH\[™[˜ÙHÙˆÛÛ™\œÚ[ÛˆÛˆ[[œÚ]NˆÒÈ[™ÈÛÛ™\]™\žHØ]™[[™Ý]H]]Ü™Yœ˜XÝ[Û‹[™›ÈÜž\Ý[X]\šX[\ÈÙ[XÝYˆÝ\\˜ÛÛ[][H\ÈH›]˜[™›ÝH[Ù[Ùˆš[[Y[][Û‹Ù[‹\\ÙH[Ù[][ÛˆÜˆÛÛ]Ûˆ[˜[ZXÜËˆ]È\Ý[X]YYÙ\ÈÛÛYHœ›ÛH™\ÜY^\š[Y[È[™™]šY]ÈÝ[[X\šY\ÈÚ]Y™™\™[›ØÝ\Ú[™Ë[™\™ÚY\Ë\˜][ÛœÈ[™Üž\Ý[[™ÝË›Û™HÙˆÚXÚH\Ý[X]H™XYË[™˜[™È™]ÙY[ˆ™\ÜY[\È\™H[™X\ˆ[\œÛ][ÛœËˆ™YYÙ\È™\ÜY]ˆ0­[H[™™^[Û™Ù\™H[Z]YžHH]XÝÜ‹ÛÈH˜[™[™\œÝ]\ÈH™YÚYH\™KˆÚ]\ˆH[\^ÙYYÈHÜš]XØ[ÝÙ\‹H[XYÙH™\ÚÛ\ØÛÛ›™XÝY˜[™ÈÝXÚ\ÈØQ¸  ˆÚÝÜÈ]Û™Ù\ˆ[\Ë[™HÜXÝ˜[Ú\H[œÚYHH˜[™\™H›Ý[Ù[YÈHÛÛ™\Yœ˜XÝ[Ûˆ\È]]Ü™YZÙHHÝ\ˆ[Ù\ËˆHÛÛ[][IÜÈ\˜][Ûˆ\È›Ý[Ù[YZ]\Žˆ]\È[YYÈH[\	ÜÈ[Ù\Ë]]È]XÝÜœÈ™XYH\˜][Ûˆ\È[˜]˜Z[X›H˜]\ˆ[ˆ™\X][™ÈH[\	ÜËˆ\›[ÛšXÈÜXÝ˜H\™HØØ[Y˜]\ˆ[ˆØ[Ý[]Yœ›ÛHHšY[\È\ØÜšX™YX›Ý™KÜ“ÔÈ[ÙH\ÈH[›ÛY[›ÛÙÚXØ[[Ù[˜]\ˆ[ˆHØ]š]HÚ[][][Û‹ˆ\ÙHX]Ú[™È\È›ÝØ[Ý[]Yœ›ÛHX]\šX[]NˆHÚYÛ˜[Ø]™[[™Ý[™XØÙ\[˜ÙHÚ[™ÝÈ\™H]]Ü™Y[™Üž\Ý[ÚÚXÙHÜˆ[\\˜]\™HÈ›ÝY™™XÝ[Kˆ›È™\ÚÛ™\ÛÛ˜[ØZ[ˆÜˆÙ[‹XÛÛœÚ\Ý[[\Y\][Ûˆ[˜[ZXÜÈ\™HØ[Ý[]YˆH]]Ü™Y\][Ûˆ™[[Ý™\ÈHØ[YHœ˜XÝ[Ûˆ][žH[\ÝÙ\‹[™]œ˜XÝ[Ûˆ\È™[[Ý™Yœ›ÛHH™]Z[™Y[\ˆ˜^H›Ý[™š\È[™]]Ü™YÝ]]XÛÝ\\ˆÜÜÙ\È\™H˜XÙYÈ™\ÛÛ˜[ØZ[‹Þ[˜Ú›Ûš\Ø][Û‹Y\[™[ÛÛ™\œÚ[Û‹Z[]\[YKÜ›Ý\]™[ØÚ]HØ[Ë[Ù™ˆ[™Ü]X[[ÙHÝ™\›\\™H›ÝØ[Ý[]YˆÝ]]\˜][ÛœÈ\™H]]Ü™YÜˆÙ]œ›ÛHHØ]\ÜÚX[ˆ˜[œÙ›Ü›H[Z]È›ÈÙ[™\˜[ÜXÝ˜[\\ÙH]›Û][Ûˆ\ÈØ[Ý[]Yˆ[\ÜXÝ˜H\™H™YXÙYÈHØ]\ÜÚX[ˆÙˆHØ[YH•ÒKZÙ[ˆœ›ÛHHÜXÝ[HÚ\™H]˜Z[X›H[™Ý\Ú\ÙHœ›ÛHH˜[™ÚYÛÈÝXÝ\™YÜXÝ˜[Ú\\È\™H›ÝØ\œšYY[ÈHÝ]]ÎÈ[™HY\ˆÚY\ÜÝ[Y\È[˜ÛÜœ™[]YØ]\ÜÚX[ˆ›XÝX][ÛœÈ[›\ÜÈ›ÝÚYÈ\™HÙ]ˆH]XÝÜˆ™]Z[œÈÙ\\˜]H˜Z[œÎÈ]ÈYÙÜ™YØ]H[ÙHÝ[[X\žHÝ\™\ÜÙ\È\˜][Ûˆ[™™\]][Û‹\˜]HšY[ÈÚ[ˆ˜Z[ˆÙ][™ÜÈY™™\‹[™Ý\Ú\ÙH\Ù\ÈHÚ\™YÙ][™ÜÈÚ]YÙÜ™YØ]H\Ü\œÚ[Ûˆ[™›Ü›X][Û‹ˆ\ÙHÙ\\˜]H]XÝÜœÈ›ÜˆÝ]]\ÜXÚYšXÈ[ÙH™XY[™ÜËÜ˜ˆKˆÚ]][ÛœÎˆÂˆÈX™[ˆ	Ô‹ˆËˆ›ÞY8 'H›Û›[™X\ˆÜXØ[Ý\ØÙ\Xš[]K8 'HÚ\\ˆHÙˆ›Û›[™X\ˆÜXÜËÜ™Y][Û‹XØY[ZXÈ™\ÜÈ
+Œ
+IË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLM‹ÐŽMÎLLL‹LÍŽMÌM‹ŒKL	ÈKˆÈX™[ˆ	ÔˆKˆœ˜[šÙ[‹KˆKˆ[ËˆËˆ]\œËËˆÙZ[œ™ZXÚ8 'Ù[™\˜][ÛˆÙˆÜXØ[\›[ÛšXÜË8 'H\ÚXØ[™]šY]È]\œÈËLN8 $ÌLNH
+NMŒJIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLLËÔ\Ô™]“]ËŒLN	ÈKˆÈX™[ˆ	Ô‹ˆËˆ›ÞY8 'ÙXÛÛ™H[™YÚ\‹SÜ™\ˆ\›[ÛšXÈÙ[™\˜][Û‹8 'HÚ\\ˆˆÙˆ‹ˆ‹ˆX\Ý\œËˆˆËˆÛÈ
+YËŠK[™›ÛÚÈÙˆš[ÛYYXØ[›Û›[™X\ˆÜXØ[ZXÜ›ÜØÛÜKÞ›Ü™[š]™\œÚ]H™\ÜÈ
+Œ
+KˆMLø $ÌMŒÉË\›ˆ	ÚÎ‹ËÝÝÝËšZš[Kœ›ØÚ\Ý\‹™YKÛÜXÜËÜÚ]\ËØ›ÞYØ\ÜÙ]ËÜ‹ÜX›XØ][ÛœËÐ›ÞYSX\Ý\Œ‹TÓÉLŒŒMLËLMŒËœ‰ÈKˆÈX™[ˆ	ÑˆËˆ[KKˆKˆ™Z™\‹8 ']X\ÚK\\Ù[X]Ú[™Ë8 'HËˆ‹ˆ\Ú\]YHN8 $ÌNN
+ŒÊIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLM‹Ú‹˜ÜšKŒŒ‹ŒLŒŒ‰ÈKˆÈX™[ˆ	Ò‹ˆKˆÚ[Ü™XZ[™K8 'Z^[™ÈÙˆYÚ™X[\È[ˆÜž\Ý[Ë8 'H\ÚXØ[™]šY]È]\œÈNx $ÌŒ
+NMŒŠIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLLËÔ\Ô™]“]ŽŒNIÈKˆÈX™[ˆ	ÔˆˆXZÙ\‹‹ˆËˆ\š[™KKˆš\Ù[›Ù™‹ËˆKˆØ]˜YÙK8 'Y™™XÝÈÙˆ\Ü\œÚ[Ûˆ[™›ØÝ\Ú[™ÈÛˆH›ÙXÝ[ÛˆÙˆÜXØ[\›[ÛšXÜË8 'H\ÚXØ[™]šY]È]\œÈŒx $ÌŒˆ
+NMŒŠIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLLËÔ\Ô™]“]ŽŒŒIÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %›Û˜Üš]XØ[\ÙHX]Ú[™ÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛ›Û˜Üš]XØ[Ü\ÙWÛX]Ú[™Ëš[	ÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %\ÙK[X]Ú[™È˜[™ÚY	Ë\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÜ\ÙWÛX]Ú[™×Ø˜[™ÚYš[	ÈKˆÈX™[ˆ	Ò‹ˆKˆ\›\Ý›Û™Ë‹ˆ›Ù[X™\™Ù[‹‹ˆXÝZ[™ËˆËˆ\œÚ[‹8 '[\˜XÝ[ÛœÈ™]ÙY[ˆYÚØ]™\È[ˆH›Û›[™X\ˆY[XÝšXË8 'H\ÚXØ[™]šY]ÈLËNLN8 $ÌNLÎH
+NMŒŠIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLLËÔ\Ô™]‹ŒLËŒNLN	ÈKˆÈX™[ˆ	ÓKˆX\˜[™ÛÛšKˆœšYKKˆ]Z[]˜[KËˆÚ\›ZK‹ˆKˆYÛÞž›ËËˆX[ž›ÛšK‹ˆ˜\›Ûš[ËKˆˆØ\ØšX[˜ÛËËˆÙ\[Ë8 '˜\œ›ÝËX˜[™ÚYXÛÜÙXÛÛ™[Ù\ÈžHÜXÝ˜[ÛÛ\™\ÜÚ[ÛˆÙˆ™[]ÜÙXÛÛ™[Ù\È[ˆHÙXÛÛ™[Ü™\ˆ›Û›[™X\ˆÜž\Ý[8 'HÜXÜÈ^™\ÜÈMK8 $ÎLH
+ŒÊIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLÍÓÑKŒMKŒ	ÈKˆÈX™[ˆ	ÓˆÙ[˜ÚKËˆˆ\[›ÚËˆÛÛž˜[^‹R\›˜[™^‹‹ˆY[žšY\ËKˆ\˜[™KËˆX™\˜[K8 'œ›ØY˜[™˜XÚÙÜ›Ý[™Yœ™YHÝ[][]Y˜[X[ˆØØ]\š[™ÈZXÜ›ÜÜXÝ›ÜØÛÜHÚ]H›Ý™[œ™\]Y[˜ÞH[Ù[][ÛˆØÚ[YK8 'HTÝÛšXÜÈKLŒLLˆ
+Œ
+IË\›ˆ	ÚÎ‹ËÜXœË˜Z\›Ü™ËØZ\Ø\Ø\XÛKÎKÌL‹ÌLŒLL‹ÌÌÌLLNKÐœ›ØY˜[™X˜XÚÙÜ›Ý[™Yœ™YK\Ý[][]YT˜[X[‰ÈKˆÈX™[ˆ	Ò‹ˆKˆY^KËˆÙ[KËˆÛÙ[‹8 'Ý\\˜ÛÛ[][HÙ[™\˜][Ûˆ[ˆÝÛšXÈÜž\Ý[šX™\‹8 'H™]šY]ÜÈÙˆ[Ù\›ˆ\ÚXÜÈÎLLÍx $ÌLN
+ŒŠIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLLËÔ™]“[Ù\ËÎŒLLÍIÈKˆÈX™[ˆ	Ô‹ˆ‹ˆ[˜[›ËËˆˆÚ\\›Ë8 '[Z\ÜÚ[Ûˆ[ˆH™YÚ[ÛˆÈÌ0áHšXH›Ý\‹TÝÛˆÛÝ\[™È[ˆÛ\ÜË8 'H\ÚXØ[™]šY]È]\œÈN8 $ÍNÈ
+NMÌ
+IË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLLËÔ\Ô™]“]ŒN	ÈKˆÈX™[ˆ	Ô‹ˆ‹ˆ[˜[›ËËˆˆÚ\\›Ë8 'ØœÙ\˜][ÛˆÙˆÙ[‹T\ÙH[Ù[][Ûˆ[™ÛX[TØØ[Hš[[Y[È[ˆÜž\Ý[È[™Û\ÜÙ\Ë8 'H\ÚXØ[™]šY]È]\œÈNL¸ $ÍNM
+NMÌ
+IË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLLËÔ\Ô™]“]ŒNL‰ÈKˆÈX™[ˆ	ÐKˆXšY]\ËËˆ[[ñhX]\ÚØ\Ë‹ˆ1h[Z[˜\Ë‹ˆZÛ˜KKˆÛÝXZ\›Û‹8 '[˜Y˜\ÝÝ\\˜ÛÛ[][HÙ[™\˜][Ûˆ[ˆ[ÈÛÛ™[œÙYYYXK8 'H]X[šX[ˆ›Ý\›˜[Ùˆ\ÚXÜÈMËLLø $ÌMMÈ
+ŒMÊNÈ™\š[\–]ŽŒMÌ‹ŒÍM‰Ë\›ˆ	ÚÎ‹ËÝÝÝË›X[ZYZÛK›ÛÚœËÚ[™^œÜ\ÚXÜËØ\XÛKÝšY]ËÌÍMIÈKˆÈX™[ˆ	Ñ‹ˆ™\›XØÚ[ËKˆœ™\ØÚK‹ˆ[Û™KKˆHHØY[˜KËˆÙXÛÛ™[ËËˆX[\›ËËˆÛØ˜XØÚK‹ˆ˜[›˜KËˆÙ\[ËˆÛK8 'š[™Ù\œš[][\^ÐT”È]YÚÜYY˜\ÙYÛˆÝ\\˜ÛÛ[][HÙ[™\˜][Ûˆ[ˆ[ÈYYXH[™Y\X\›š[™ÈÜXÝ˜[[›Ú\Ú[™Ë8 'HÜXÜÈ^™\ÜÈÌÌLÍx $ÌÌM
+ŒŒŠIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLÍÓÑKŒÌÌ‰ÈKˆÈX™[ˆ	Ò‹‹SKˆY[ÛÛšX[‹‹‹P‹ˆ\˜™XÛÝ\Kˆ˜^X˜]]KˆÛÙ\™8 'ÜXØ[\˜[Y]šXÈÜØÚ[]ÜœË8 'HÝÛš\]Y\È›ËˆLLLø $ÍMÈ
+ŒŒJIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLLKÜÝÛ‹ÌŒŒLLLLÉÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %ÜXØ[\˜[Y]šXÈÜØÚ[]ÜœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛÜXØ[Ü\˜[Y]šX×ÛÜØÚ[]ÜœËš[	ÈKˆÈX™[ˆ	ÐKˆ™\œ›ÝK‹‹SKˆY[ÛÛšX[‹Kˆ˜^X˜]]KˆÛÙ\™Kˆ›ÜÙ[˜Ú\‹KˆY™Xœ™K8 'ÜXÚYšXÈ\˜Ú]XÝ\™\È›ÜˆÜXØ[\˜[Y]šXÈÜØÚ[]ÜœË8 'HËˆ‹ˆ\Ú\]YHLMŒ¸ $ÌLMÌÈ
+ŒÊIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLM‹Ú‹˜ÜšKŒŒËŒKŒL‰ÈKˆÈX™[ˆ	ÐKˆK‹ˆÞž[X[œÚÚK‹ˆœ™][˜ZÙ\‹8 'œ™\]Y[˜ÞHÝXš[^˜][ÛˆÙˆH›Û‹\™\ÛÛ˜[Ø]™HÙˆHÛÛ[[Ý\Ë]Ø]™HÚ[™ÛH™\ÛÛ˜[ÜXØ[\˜[Y]šXÈÜØÚ[]Ü‹8 'H\YY\ÚXÜÈˆLŒŒx $ÌŒH
+ŒMJIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLËÜÌÍLMKMŒLŒ‹L	ÈKˆÈX™[ˆ	ÐËˆ‹ˆø &QÛ›™[ËˆÚZ][žXHÝ[X\‹KˆXœ˜Z[KV˜YZ8 '[š[˜Ù[Y[ÙˆY™šXÚY[˜ÞH[ˆ™[]ÜÙXÛÛ™ÜXØ[\˜[Y]šXÈÜØÚ[]ÜœÈ\Ú[™ÈÜ›Ý\]™[ØÚ]K[X]Ú[™È[ˆÛ™È›Û›[™X\ˆÜž\Ý[Ë8 'HTÝÛšXÜÈLH
+ŒNJIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLŒËÌKLMML	ÈKˆÈX™[ˆ	ÒËˆÚY]K‹ˆËˆØX\‹Ëˆ‹ˆÛÛKˆËˆYK‹ˆËˆÚ\ÙK8 'YÚ\ÝÙ\ˆXÛÜÙXÛÛ™šX™\ˆÛÝ\˜ÙH›ÜˆÛÚ\™[˜[X[ˆZXÜ›ÜØÛÜK8 'HÜXÜÈ]\œÈÍŒLx $ÌŒLÈ
+ŒJIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLÍÓÓŒÍŒŒLIÈKˆKˆ^˜Q[[ÜÎˆÞÂˆ[[Îˆ	ØÜž\Ý[]ÉËˆXY[™Îˆ	Õ\™\›[ÛšXÉËˆØ\[ÛŽˆ	ÌLÌ	›˜œÜÛ›H[‹ÍÉ›˜œÜÛ›HÝ]Ù\\˜]Yœ›ÛHH™\ÚYX[[™[Y[[žHHXÚ›ÚXËˆ	Âˆ
+È	Õ\È\ÈH\8 &\È]]Ü™YÛÛ™\œÚ[Ûˆ›ÞH8 %Û™HÜž\Ý[[Z][™È3®ËÌÈ]HÙ]œ˜XÝ[Ûˆ8 %›ÝHÚ[][]YØ\ØØYHÙˆHÝX›[™È[™HÝ[KYœ™\]Y[˜ÞHÜž\Ý[‰ËˆKÂˆ[[Îˆ	ØÜž\Ý[\Ý\\˜ÛÛ[][IËˆXY[™Îˆ	ÔÝ\\˜ÛÛ[][H[ˆ[ÈPQÉËˆØ\[ÛŽˆ	ÐHLÍI›˜œÜÛ›KÌ	›˜œÜÙœÈ[\[ˆPQËˆH˜[™ÛˆHÜXÝ›ÛY]\ˆ\È\Ý[X]Yœ›ÛHH\œš]š[™È[\[™HYY][Nˆ	Âˆ
+È	Ú[\œÛ]Y™]ÙY[ˆ™Y™\™[˜ÙHÜXÝ˜K[ˆ[\Ý˜][Ûˆ˜]\ˆ[ˆH™YXÝ[Û‹ˆÚ[™ÙHH[\Ø]™[[™ÝÜˆHYY][H[™H˜[™›ÛÝÜÎÈ	Âˆ
+È	ÛÝ]ÚYHH™Y™\™[˜ÙH]HHÜž\Ý[˜]ÜÈ›ÈÛÛ[][H[™\ÚÜÈ›ÜˆHX[X[˜[™ÙK‰ËˆWKˆ™[]YˆÉÜØ[\IË	ÙXÚ›ÚXÉË	Ùš[\‰Ë	Ü[ÙY\Ù\‰Ë	ÜØÛ\Ù\‰Ë	ÜÜXÝ›ÛY]\‰×KˆKˆÂˆ\Nˆ	ÛÜÜIË]Nˆ	ÓÔÔIËØ]YÛÜžNˆ	Ó›Û›[™X\ˆÜXÜÉËˆÝ[[X\žNˆ[\YšY\ÈHÚ\œYÙYYÚ]HÞ[˜Ú›Ûš^™Y[\™\Ü[™È[\Ü˜[Ý™\›\Ø]\˜]YØZ[‹ÚYÛ˜[[™Y\ˆÝÙ\‹[™™\ÚYX[[\ÝÙ\‹ˆ‹ˆ™X[ÛÜ›ˆÂˆ[ˆˆ[ˆÝ›Û™Ï›ÜXØ[\˜[Y]šXÈÚ\œY\[ÙH[\YšY\ˆ
+ÔÔJOÜÝ›Û™ÏˆÝ™]Ú\ÈHœ›ØY˜[™ÙYY[ÙK[\YšY\È]›ÝYÚÜXØ[\˜[Y]šXÈ[\YšXØ][Û‹[™ÛÛ\™\ÜÙ\È]Y\Ø\™ËˆH[\ÝÛˆ\ÈÜ][ÈÚYÛ˜[[™Y\ˆÝÛœÈÚ[HH[š™XÝYÚYÛ˜[Ý[][]\ÈH›ØÙ\ÜËÛÈHÚYÛ˜[\È[\YšYYÚ]Ý]ÝÜš[™È[™\™ÞH[ˆHÜ[][Ûˆ[™\œÚ[Û‹ˆ[™\™ÞHÛÛœÙ\˜][ÛˆÚ]™\ÈKó®ÏÝXœÜÝXˆHKó®ÏÝXœÏÜÝXˆ
+ÈKó®ÏÝXšOÜÝX‹[™HÙ[™\˜]YÚYÛ˜[[™Y\ˆÝÛˆ›^\È\™H\]X[Ü‚ˆ”Ý™]Ú[™ÈÝÙ\œÈHÙYYXZÈ[[œÚ]H\š[™È[\YšXØ][Ûˆ[™XZÙ\È]X\ÚY\ˆÈÝ™\›\HÙYYÚ]HÛ™Ù\ˆ[™\™Ù]XÈ[\[ÙKˆ˜XÝXØ[ØZ[ˆ\[™ÈÛˆÜž\Ý[X]\šX[[™[™Ý›Û›[™X\ˆÛÙY™šXÚY[[\›Y[˜ÙK›ØÝ\Ú[™Ë\ÙHX]Ú[™ËÜ]X[[™[\Ü˜[Ý™\›\Ø[Ë[Ù™‹Ø]\˜][Ûˆ[™[XYÙH[Z]Ëˆ][K\ÝYÙHÞ\Ý[\È\ÝšX]HØZ[ˆ[™[\[™\™ÞHXÜ›ÜÜÈÙ]™\˜[Üž\Ý[È™Y›Ü™HH[\YšYYÚYÛ˜[\È™XÛÛ\™\ÜÙYÜ˜ˆ›Ü›][\ÎˆÂˆÈ^ˆ	×œ˜XÞÌ_^×[X™WÜOWœ˜XÞÌ_^×[X™WÜßJ×œ˜XÞÌ_^×[X™WÚ_IËØ\[ÛŽˆ	Ñ[™\™ÞHÛÛœÙ\˜][Ûˆ›Üˆ[\ÙYYYÚYÛ˜[[™Ù[™\˜]YY\‹‰ÈKˆÈ^ˆ	×œ˜XÞÔÞÜËÙ[Ÿ_^ÔÚ_OWœ˜XÞ×WÜß^×WÚ_OWœ˜XÞ×[X™WÚ_^×[X™WÜßIËØ\[ÛŽˆ	ÓX[›^x $Ô›ÝÙHÚ\š[™È›ÜˆH™]ÛHÙ[™\˜]YÚYÛ˜[[™Y\ˆÝÙ\‹‰ÈKˆKˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ•HXÚØYÙYÔÔH\ÈÙ\\˜]HY\ÚYHÜÈX\šÙYÝ›Û™Ï”ÏÜÝ›Û™Ïˆ›ÜˆHÚ\œYÚYÛ˜[ÙYY[™Ý›Û™Ï”ÜÝ›Û™Ïˆ›ÜˆH[\ˆÙ]H[\Ø]™[[™Ý[™XØÙ\[˜ÙHÚ[™ÝË[ˆ›Ý]H[ÙY™X[\È]HØ[YH™\]][Ûˆ˜]H[ÈHÛÈÜËˆH[\YšYYÙYYX]™\ÈHšYÚ\ÚYHÈÜHY\ˆX]™\ÈK[™H™[XZ[š[™È[\X]™\ÈÚ[ˆÜÙHÝ]]È\™H[˜X›YÜ‚ˆ[O”ÛX[\ÚYÛ˜[ÝÙ\ˆØZ[Ù[Oˆ\ÈHØZ[ˆHÝYÙHÛÝ[\H™Y›Ü™H[\Ø]\˜][Û‹ˆ[O“X^[][H[\\][ÛÙ[OˆØ\ÈÝÈ]XÚ[\ÝÙ\ˆHÝYÙHØ[ˆ˜[œÙ™\‹ˆHXÝX[˜[œÙ™\ˆ\ÈHÛX[\ˆÙˆ][\YÙ][™HÝÙ\ˆ™\]Z\™YžHH™\]Y\ÝYØZ[‹][\YYžHHØ]\ÜÚX[ˆ[\Ü˜[[Ý™\›\˜XÝÜ‹ˆHÙ[™\˜]YÝÙ\ˆ\È]šYY™]ÙY[ˆÚYÛ˜[[™Y\ˆžHX[›^x $Ô›ÝÙNÈHÜšYÚ[˜[ÙYYÝÙ\ˆ™[XZ[œÈ[ˆHÚYÛ˜[ˆHÝYÙH™XYÝ]È™\ÜÝ™\›\™X[^™YØZ[‹[\\][Ûˆ[™[™YHÝ]]ÝÙ\œËÜ‚ˆ•H[\YšYYÚYÛ˜[ÙY\ÈHÙYYÜXÝ[K[ÙH˜Z[ˆ[™ÚYÛ™YÑÛÈHÝÛœÝ™X[H[ÙHÛÛ\™\ÜÛÜˆØ[ˆ™[[Ý™HH]]Ü™YÚ\œˆ[Ýš[™ÈHÛÝ\˜ÙKY[™ÈH[^H[™HÜˆÚ[™Ú[™ÈH[ÙH\ÙHÚ[™Ù\ÈHÝ™\›\[™\™Y›Ü™HHØZ[‹ˆH[Z[™ÈZ\ÛX]Ú™[ÝÈ‰HÝ™\›\\È™\ÜY\È›È[\YšXØ][Ûˆ˜]\ˆ[ˆ\ÈH˜[š\Ú[™ÈÝ]]Ü˜ˆ[Z]][ÛœÎˆ•\È\ÈHÝYÙK[]™[[™\™ÞKXYÙ][Ù[›ÝH›Û›[™X\ˆ›ÜYØ][ÛˆÛÛ™\‹ˆØZ[ˆ[™X^[][H\][Ûˆ\™H]]Ü™YÈÜž\Ý[X]\šX[ÝX™Y™ÜÝX‹[™Ý™X[H\™XK›Y[˜ÙK\ÙK[X]Ú[™È˜[™ÚYÜ]X[Ý™\›\Ø[Ë[Ù™‹˜XÚËXÛÛ™\œÚ[Û‹ØZ[ˆ˜\œ›ÝÚ[™ËYÚ\‹[Ü™\ˆÜXÝ˜[\ÙH[™[XYÙH\™H›ÝØ[Ý[]YˆÛ™H[\[™Û™HÛ™Ù\‹]Ø]™[[™ÝÙYY\™HÙ[XÝY]HÝYÙKˆH[\YšYYÙYY[™[ÜH\È™]Z[™Y˜]\ˆ[ˆ™\Ú\YžHHš[š]H[\Ú[HHY\ˆ\˜][Ûˆ›ÛÝÜÈHØ]\ÜÚX[ˆ›ÙXÝÙˆHÛÈ[œ][Ù\ËˆHš^YÜÈ\™HHÛÜšØ™[˜ÚXÚØYÚ[™ÈÛÛ™[[Û‹›ÝH™\ØÜš\[Ûˆ›ÜˆH\XÝ[\ˆ\Ù\‹Ü˜ˆKˆ™[]YˆÉØÜž\Ý[	Ë	ÛÜÉË	Ü[ÙY\Ù\‰Ë	Ü[ÙXÛÛ\™\ÜÛÜ‰Ë	Ù[^[[™I×KˆKˆÂˆ\Nˆ	ÛÜÉË]Nˆ	ÓÔÉËØ]YÛÜžNˆ	Ó›Û›[™X\ˆÜXÜÉËˆÝ[[X\žNˆ[ˆÜXØ[\˜[Y]šXÈÜØÚ[]ÜˆXÚØYÙYZÙHH\Ù\ŽˆH[\™X[HÛÙ\È[ˆ]H˜XÚËH[˜X›HÚYÛ˜[[™[ˆÜ[Û˜[Y\ˆÛÛYHÝ]ÙˆHœ›Ûˆ‹ˆ™X[ÛÜ›ˆÂˆ[ˆˆ[ˆÝ›Û™Ï›ÜXØ[\˜[Y]šXÈÜØÚ[]ÜÜÝ›Û™Ïˆ\›œÈH[\™X[H[ÈÛÈÛ™Ù\ˆØ]™[[™ÝËHÚYÛ˜[[™HY\‹ÚÜÙHÝÛˆ[™\™ÚY\ÈY\ÈH[\	ÜÎˆKó®ÏÝXœÜÝXˆHKó®ÏÝXœÏÜÝXˆ
+ÈKó®ÏÝXšOÜÝX‹ˆHÙXÛÛ™[Ü™\ˆ›Û›[™X\ˆÜž\Ý[[œÚYHH™\ÛÛ˜]Üˆ›ÝšY\È\˜[Y]šXÈØZ[‹[™Û˜ÙH]ØZ[ˆÝ™\˜ÛÛY\ÈHØ]š]HÜÜÙ\ÈH™\ÛÛ˜[Ø]™HZ[È\œ›ÛH›Ú\ÙIØÚ]JKŠ_Kˆ[š[™ÈH\ÙHX]Ú[™È8 %HÜž\Ý[[™ÛK]È[\\˜]\™HÜˆHÛ[™È\š[Ù8 %[™\ÈHÚYÛ˜[[™HY\ˆ›ÛÝÜÈžH[™\™ÞHÛÛœÙ\˜][Û‰ØÚ]JŠ_KÜ‚ˆ“ÛˆH™[˜Ú[ˆÔÈ\ÝX[H\œš]™\È\ÈHÛÜÙY[œÝ[Y[ˆÞ[˜Ú›Û›Ý\ÛH[\Y™[]ÜÙXÛÛ™[™XÛÜÙXÛÛ™ÔÜÈ\™H[\YžHH[ÙK[ØÚÙY\Ù\‹Ù[ˆœ™\]Y[˜ÞKYÝX›YÚ]HØ]š]H›Ý[™š\X]ÚYÈH[\	ÜÈ™\]][Ûˆ\š[ÙÛÈHÝ]]ÈÝ^HØÚÙYÈH[\	ÜÈ[ÙH˜Z[‰ØÚ]JÊ_KˆZ\ˆ[\\][ÛˆZ[È\\ÈH™\ÛÛ˜[ÚYÛ˜[\È[\YšYYÝ™\ˆX[žH›Ý[™š\È[™Ø[ˆ^ÙYYÍH	IØÚ]JÊ_KˆHXÛÜÙXÛÛ™ÔÈ[\YžHHÙXÛÛ™\›[ÛšXÈÙˆH™[]ÜÙXÛÛ™\Ù\‹ÜXÝ˜[HÛÛ\™\ÜÙYÈH˜\œ›ÝÈÜ™Y[ˆ[™K\ÈÛ™HØ^HÈØZ[ˆÛÈÞ[˜Ú›Ûš\ÙY˜\œ›ÝØ˜[™ÛÛÝ\œÈ›ÜˆÝ[][]Y˜[X[ˆZXÜ›ÜØÛÜIØÚ]J
+_KÜ˜ˆKˆ[“ÜXØ[Ù]\ˆÂˆ[ˆˆ”Ú[H[\™X[H[ÈHÝ›Û™Ïœ™X\ˆ\\\™OÜÝ›Û™Ï‹ˆ\™H\È›È[\Ø]™[[™ÝÈÙ]ˆÚ]]™\ˆ\œš]™\ÈÚ][ˆŒ0¬ÙˆH›ÙH^\È\ÈH[\[™HÛ›HÛÛ™][ÛˆÛˆ]\È]HÚYÛ˜[]\Ý™HÛ™Ù\‹ˆYÚ\œš]š[™È]HÝY\\ˆ[™ÛHÝ^\È[œÚYHH›Þ[™H[O“ÜØÚ[][ÛÙ[Oˆ™XYÝ]Ø^\ÈÚH›Ý[™ÈØ[YHÝ]8 %›È[\Y]HZ\Ø[YÛ™Y[\HÚYÛ˜[›ÝÛ™Ù\ˆ[ˆH[\[ˆ[\H[š[™È\ÝÜˆ™\›È\][Û‹ˆÚ[ˆ]ÛÜšÜËH™XYÝ]˜[Y\ÈH[\]™XÙZ]™Y[™HÚYÛ˜[[™Y\ˆ]XYKˆH[˜ÛÛ™\Y[\\È[Ø^\È\ØØ\™Y[œÚYKÜ‚ˆ•HÝ›Û™ÏœÚYÛ˜[ÜÝ›Û™ÏˆX]™\ÈHÜX\šÙYÈÛˆH›ÙH^\Ë[™HÝ›Û™ÏšY\ÜÝ›Û™ÏˆHÜX\šÙYKHš^Y\Ý[˜ÙH™[ÝÈ][™\˜[[È]È›Ý›Ý]HÚ]H›ÙKˆ[O“Ý]]Y\Ù[OˆÝÚ]Ú\È]ÜÙ™‹ÚXÚ™[[Ý™\ÈHY\‰ÜÈÝÙ\ˆœ›ÛHH™[˜Ú˜]\ˆ[ˆ[™[™È]ÈHÚYÛ˜[ˆYˆHÚYÛ˜[\ÈÙ]\]X[ÈHY\ˆØ]™[[™Ý8 %YÙ[™\˜XÞH8 %HÛÈX]™HÙÙ]\ˆ›ÝYÚHÚYÛ˜[ÜˆXXÚÝ]]	ÜÈ[O˜™X[HX[Y]\Ù[Oˆ\È]È[[˜Û\Y[™[ÜKÚ]]™\ˆH[\	ÜÈÚY[™HX[Y]\ˆÙˆ˜]ÜÈ]\ÈHÚ[™ÛH[™KˆHÚ^™Y[\™X[IÜÈØ[\\ÈÙY\Z\ˆÜ™\ˆXÜ›ÜÜÈ][™[ÜKÛÈH[\Û\YžHH\\\™HÜÙ\ÈH\]Y›ÝÙ][ˆ[™]ÈÝ]]ÛÝ™\œÈÛ›H\ÙˆHX[Y]\ŽÈHÚ[™ÛK[[™H[\\ÈÜ™XYXÜ›ÜÜÈHX[Y]\ˆ[ˆš[™HØ[\\ÈÙˆ\]X[ÝÙ\‹ˆHX[Y]\ˆ\È[ˆ]]Ü™Y˜]Ú[™È[™[ÜK›ÝHØ[Ý[]YØ]š]H[ÙHÜˆHKÙp¬ˆØ]\ÜÚX[ˆÚYˆHÜÈ[™H›ÙHÜ›ÝÈÚ]HX[Y]\œÈÛÈHÛÈ™X[\È™]™\ˆÝ™\›\ˆHÝ]]ÈZÙH›È][œÚYHH›ÞˆZ\ˆ[Z[™È\È™Y™\™[˜ÙYÈH[\	ÜÈ\œš]˜[]H\\\™K›ÝÈHØ]š]H[™ÝÜ‚ˆ•HÛÛ™\œÚ[Ûˆ\ÈHÜž\Ý[	ÜÈH™YH‹‹‹ØÜž\Ý[È“ÔÈ[ÙOØO‹Ú\™Y˜]\ˆ[ˆÛÜYYˆ[O”[\\][ÛÙ[Oˆ\ÈMH	KHX[›^x $Ô›ÝÙHÜ]™]ÙY[ˆÚYÛ˜[[™Y\‹H™YHÝ]][[™]ÚYÚÚXÙ\Ë[™H™YH[O“Ý]][Ù\ÏÙ[OˆÚÚXÙ\È8 %˜[œÙ›Ü›K[[Z]Y\˜][ÛˆÙ]Ú]ÜXÝ˜[\ÙH[šÛ›ÝÛ‹Üˆ\˜][ÛˆÙ][™ÜÚ]]™[HÚ\œY\È[ˆ\ÜÝ[YYØ]\ÜÚX[‹ˆYÚHÔÈÙ[™\˜]Y\È™]™\ˆÛÛ™\YžH]YØZ[‹Ü‚ˆÝ›Û™Ï”ÚYÛ˜[[š[™ÏÜÝ›Û™Ïˆ\È[O‘š^YÙ[O‹[O”ÝÙY\Ù[Oˆ8 %œ›ÛHHš\œÝØ]™[[™Ý]HÝ\ÙˆH[š[X][ÛˆÈHÙXÛÛ™][ˆH\š[Ù[™˜XÚÈ8 %Üˆ[O”Ý\ÏÙ[O‹ÚXÚÛÈXXÚ\ÝYØ]™[[™Ý›ÜˆHÙ][YH[™[ˆ[\ÈÈH™^[ˆHÜ™\ˆÜš][‹™\X]È[˜ÛYYˆ[šY\È]\™H›ÝØ]™[[™ÝÈ™]ÙY[ˆL[™LL›H\™HÚÚ\Y[™ÛÝ[Y[ˆH[O•[š[™ÏÙ[Oˆ™XYÝ][™H\ÝÚ]›Û™HY›ÙXÙ\È›ÈÝ]]ÈH˜[YØ]™[[™Ý]X]™\È›ÈY\ˆÙY\È]ÈXÙH[ˆHÙ\]Y[˜ÙH[™™XYÈ\È[ˆ[˜[YÚYÛ˜[Ú[H]^\ËˆH[O“ÜØÚ[][ÛÙ[Oˆ™XYÝ]Ú]™\ÈHÝ\œ™[Ý\[™HÚYÛ˜[[™Y\ˆXÝX[HÙ[™\˜]Y›ÛÝÚ[™ÈH[š[X][Û‹ˆ[š[™È[œÈÛˆH[Ý[ÛˆÛØÚË[™\[™[HÙˆ[ÙH^X˜XÚÎˆ[O”]\ÙH[ÙH[š[X][ÛÙ[OˆÝÜÈH[Ù\Ë›ÝH[š[™Ë\ÈÚ]HÝ\ˆ[Ýš[™È[[Y[ËˆHÝ]XÈÕ‘ÈÜˆ‘È^ÜÚÝÜÈHÝ\ÙˆH[š[™È›ÙÜ˜[KÚ[H[š[X][Ûˆœ˜[Y\ÈÚÝÈZ\ˆÝÛˆ[ÛY[ˆHØ]™YÚYÛ˜[Ø]™[[™Ý\È™]™\ˆÚ[™ÙYžH[š[™ËˆHÜXÝ›ÛY]\ˆ™XYÈH[œÝ[[™[Ý\È[™NÈ]Ù\È›ÝXØÝ[][]HHÝÙY\Ü˜ˆ[Z]][ÛœÎˆ•\È\ÈHØ[YH[›ÛY[›ÛÙÚXØ[[Ù[\ÈHÜž\Ý[	ÜÈÔÈ[ÙK›ÝHØ]š]HÚ[][][Û‹ˆ\™H\È›È™\ÚÛØZ[‹Z[]\Ø]\˜][ÛˆÜˆ˜XÚËXÛÛ™\œÚ[Û‹[™›È\[™[˜ÙHÛˆ[\ÝÙ\‹Ø]š]H[™ÝÜˆÞ[˜Ú›Ûš\Ø][ÛŽˆ[ˆXØÙ\Y[\ÛÛ™\È]È]]Ü™Y\][ÛˆÚ]]™\ˆ]È[[œÚ]K[™H[\]ÛÝ[›Ý™XXÚ™\ÚÛÛˆH™X[™[˜ÚÝ[ÛÛ™\È\™Kˆ\ÙHX]Ú[™È\È›ÝØ[Ý[]YˆHÚYÛ˜[Ø]™[[™Ý\ÈÙ]\™XÝH˜]\ˆ[ˆžHHÜž\Ý[[™ÛK[\\˜]\™HÜˆÛ[™È\š[Ù[™HÝÙY\ÜˆH\ÝÙˆÝ\È\È[ˆ]]Ü™Y[š[™È›ÙÜ˜[K›ÝH™YXÝ[ÛˆÙˆÝÈ˜\ÝH™X[ÔÈØ[ˆ[™HÜˆÚ]\ˆ]ÙY\ÈÜØÚ[][™ÈXÜ›ÜÜÈH˜[™ÙKÜ•HÜËZ\ˆÜXÚ[™È[™H™X\ˆ\\\™H\™HHXÚØYÚ[™ÈÛÛ™[[Ûˆ›Üˆ\ÈÛÜšØ™[˜Ú›ÝH^[Ý]Ùˆ[žH\XÝ[\ˆ[œÝ[Y[HÝ]]™X[HX[Y]\œÈ\™H]]Ü™Y˜]\ˆ[ˆØ[Ý[]Yœ›ÛHHØ]š]H[ÙK[™Hš^YŒ0¬[™Ý[\ˆXØÙ\[˜ÙH\ÈHÙ[ÛY]šXÈ[H˜]\ˆ[ˆHØ[Ý[][ÛˆÙˆ[ÙHX]Ú[™ÈÜˆÛÝ\[™ÈY™šXÚY[˜ÞKˆ[žH[\Ø]™[[™ÝÛÛ™\Îˆ\ÙHX]Ú[™Ë[™Ú]\ˆH™X[ÔÈÛÝ[™H[\Y]]Ø]™[[™Ý][\™H›ÝÚXÚÙYˆ›È][œÚYHH›Þ\ÈYYÈHÝ]]Ëˆ[ÙH\˜][ÛœËÜXÝ˜[ÚYÈ[™HÚ\œ\ÜÝ[\[Ûˆ›ÛÝÈHÜž\Ý[	ÜÈÔÈ[ÙH[™Ú\™H]È[Z]][ÛœËÜ˜ˆKˆÚ]][ÛœÎˆÂˆÈX™[ˆ	Ò‹‹SKˆY[ÛÛšX[‹‹‹P‹ˆ\˜™XÛÝ\Kˆ˜^X˜]]KˆÛÙ\™8 'ÜXØ[\˜[Y]šXÈÜØÚ[]ÜœË8 'HÝÛš\]Y\È›ËˆLLLø $ÍMÈ
+ŒŒJIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLLKÜÝÛ‹ÌŒŒLLLLÉÈKˆÈX™[ˆ	Ô”ÝÛšXÜÈ[˜ÞXÛÜYXH8 %ÜXØ[\˜[Y]šXÈÜØÚ[]ÜœÉË\›ˆ	ÚÎ‹ËÝÝÝËœœ\ÝÛšXÜË˜ÛÛKÛÜXØ[Ü\˜[Y]šX×ÛÜØÚ[]ÜœËš[	ÈKˆÈX™[ˆ	ÐËˆ‹ˆø &QÛ›™[ËˆÚZ][žXHÝ[X\‹KˆXœ˜Z[KV˜YZ8 '[š[˜Ù[Y[ÙˆY™šXÚY[˜ÞH[ˆ™[]ÜÙXÛÛ™ÜXØ[\˜[Y]šXÈÜØÚ[]ÜœÈ\Ú[™ÈÜ›Ý\]™[ØÚ]K[X]Ú[™È[ˆÛ™È›Û›[™X\ˆÜž\Ý[Ë8 'HTÝÛšXÜÈLH
+ŒNJIË\›ˆ	ÚÎ‹ËÙÚK›Ü™ËÌLŒLŒËÌKLMML	ÈKˆÈX™[ˆ	ÓˆÙ[˜ÚKËˆˆ\[›ÚËˆÛÛž˜[^‹R\›˜[™^‹‹ˆY[žšY\ËKˆ\˜[™KËˆX™\˜[K8 'œ›ØY˜[™˜XÚÙÜ›Ý[™Yœ™YHÝ[][]Y˜[X[ˆØØ]\š[™ÈZXÜ›ÜÜXÝ›ÜØÛÜHÚ]H›Ý™[œ™\]Y[˜ÞH[Ù[][ÛˆØÚ[YK8 'HTÝÛšXÜÈKLŒLLˆ
+Œ
+IË\›ˆ	ÚÎ‹ËÜXœË˜Z\›Ü™ËØZ\Ø\Ø\XÛKÎKÌL‹ÌLŒLL‹ÌÌÌLLNKÐœ›ØY˜[™X˜XÚÙÜ›Ý[™Yœ™YK\Ý[][]YT˜[X[‰ÈKˆKˆ™[]YˆÉØÜž\Ý[	Ë	Ü[ÙY\Ù\‰Ë	ÙXÚ›ÚXÉË	ÜÜXÝ›ÛY]\‰Ë	Ü›Ø™I×KˆKˆÂˆ\Nˆ	ÜØ[\IË]Nˆ	ÔØ[\IËØ]YÛÜžNˆ	ÔÜXÚ[Y[œÉËˆÝ[[X\žNˆ”™\™\Ù[È[ˆ[[Z[˜]YÜXÚ[Y[ˆÚ]ÛÛ™šYÝ\˜X›H˜[œÛZ\ÜÚ[Ûˆ[™ÝXÚÙYÚYÛ˜[Ú[›™[Ë[˜ÛY[™ÈÛËX™X[HÚYÛ˜[È]\X\ˆÛ›HÚ[H›Ý[Ù\È™XXÚHÜÝÙÙ]\‹ˆ‹ˆ™X[ÛÜ›ˆÈ[ˆHÜXÚ[Y[ˆØ[ˆ˜[œÛZ]ÜˆXœÛÜ˜ˆ^Ú]][ÛˆYÚ[™Ù[™\˜]H[ˆÜXØ[ÚYÛ˜[ˆ›[Ü™\ØÙ[˜ÙH[™ÛÚ\™[›Û›[™X\ˆÚYÛ˜[È\š\ÙH›ÝYÚY™™\™[›ØÙ\ÜÙ\ÎÈ›Û›[™X\ˆZXÜ›ÜØÛÜH[˜ÛY\ÈÛË\ÝÛˆ›[Ü™\ØÙ[˜ÙKÙXÛÛ™Z\›[ÛšXÈÙ[™\˜][Û‹[™ÛÚ\™[[KTÝÚÙ\È˜[X[ˆØØ]\š[™ÉØÚ]JJ_KÜ˜Kˆ[“ÜXØ[Ù]\ˆÂˆ[ˆ“ÜšY[HØ[\HXÜ›ÜÜÈH™X[Nˆ]™\›È›Ý][Ûˆ]ÈÛ™È^\È\ÈÜš^›Û[ÛÈHÜš^›Û[[˜ÛÛZ[™È™X[H™YYÈHL0¬Ø[\H›Ý][Û‹ˆÚÛÜÙHHÜXÚ[Y[ˆ[ÙK^Ú]][Ûˆ˜[œÛZ\ÜÚ[Û‹[™\Ú\™YÚ[›™[ËˆH[Ù[Ý\ÜÈÝXÚÙY›[Ü™\ØÙ[˜ÙK˜[X[‹\ÙHÛÛ˜\ÝÛËH[™™YK\ÝÛˆ›[Ü™\ØÙ[˜ÙKÙXÛÛ™[Ü™\ˆ
+3áø op¬¸ oŠKËÐT”È[™Ý[][]Y˜[X[ˆÚYÛ˜[ËÜ•HÝ›Û™Ï³áø op¬¸ oˆÚ[›™[ÜÝ›Û™ÏˆÛÝ™\œÈ›ÝÙXÛÛ™[Ü™\ˆ›ØÙ\ÜÙ\È]Û˜ÙK\ÈÛ™HÝ\ØÙ\Xš[]HÙ\ÎˆXXÚ™X[IÜÈÙXÛÛ™\›[ÛšXË[™HÝ[Hœ™\]Y[˜ÞHÙˆ[žHÛÈY™™\™[ÛÛÝ\œÈÛˆHÜÝˆ\™H\È›ÈÙ\\˜]HÝ[KYœ™\]Y[˜ÞHÚ[›™[ÈHØÙ[™HØ]™YÚ]Û™H\È™XY\È\ÈÚ[›™[[™HØÙ[™H]Ø\œšYY›ÝÙY\È]ÈÙXÛÛ™Z\›[ÛšXÈÚ[›™[8 %HÝ\š]š[™ÈÛ™HÛÝ™\œÈ›Ý›ØÙ\ÜÙ\ËÛÈH™]\™Y[žIÜÈÝÛˆÙ][™ÜÈÛÈÚ]]˜]\ˆ[ˆHÜXÚ[Y[ˆ[Z][™ÈXXÚÚYÛ˜[ÚXÙKÜÝ›Û™Ï•ÛËX™X[HÚYÛ˜[È™YYH[Ù\ÈÙÙ]\‹ÜÝ›Û™ÏˆÝ[Hœ™\]Y[˜ÞKÐT”È[™Ý[][]Y˜[X[ˆÛ›H\[ˆÚ[H›Ý[Ù\È\™H]HÜÝÛÈH[Ù[Ø]\È[HÛˆHØ]\ÜÚX[ˆÝ™\›\ÙˆHÛÈ\œš]˜[È[™›ÜÈ[H™[ÝÈˆ	HÙˆHXZÈ8 %HÙXÛÛ™\›[ÛšXÈÙˆXXÚ™X[KÚXÚ™YYÈÛ™H™X[HÛ›K\È[˜Y™™XÝYˆ\œš]˜[\ÈXXÚ™X[IÜÈÝÛˆÜXØ[]\È]È[Z\ÜÚ[ÛˆÙ™œÙ]YÙY™X[HÈ™X[KÛÈHZ[[Y]™HÙˆ[›X]ÚY\›H\ÈËŒÈÈ[™[›ÝYÚÈÝÚ]ÚHXÛÜÙXÛÛ™ÐT”ÈÚYÛ˜[Ù™ŽÈHÛÜšØ™[˜ÚØ^\ÈÛÈ˜]\ˆ[ˆX]š[™È[ˆ[\H]XÝÜˆÈ[\œ™]ˆÛ›H˜Z[œÈ]HØ[YH™\]][Ûˆ˜]H\™HZ^Y[™[O“™YYÈ[ÙHÝ™\›\Ù[OˆÝÚ]Ú\ÈH™\]Z\™[Y[Ù™ˆ\ˆÚ[›™[›ÜˆHØÚ[X]XÈ]\ÈX›Ý]HÚYÛ˜[˜]\ˆ[ˆH[Z[™ËÜ•]Ø]H\ÈÛ™H]X[]]]™H[™[ÜH›Üˆ]™\žHÛËX™X[HÚ[›™[›ÝH›ØÙ\ÜË\ÜXÚYšXÈ[^H™\ÜÛœÙKˆH™X[ÐT”ÈÚYÛ˜[[ˆH[œÝ[[™[Ý\È›Û‹\™\ÛÛ˜[[Z]ÙZYÚÈH[\ÚXÙKÛÚ[™È\ÈOÝXœÜÝX°¬’OÝXœÏÜÝXˆ˜]\ˆ[ˆ\ÈH›ÙXÝÙˆÛÈ[[œÚ]Y\Ë[™H™\ÛÛ˜[šXœ˜][ÛˆYÈ[˜[ZXÜÈÙˆ]ÈÝÛŽÈ›Û™HÙˆ]\È[Ù[Y\™KˆXXÚ™X[IÜÈÝÛˆ]\ÈÜ›Ý\YXÜ›ÜÜÈHØ[\[™È˜^\È]˜]È]ÛÈHÜ™XYÙˆ\œš]˜[[Y\ÈXÜ›ÜÜÈH›ØÝ\ÙYÛÛ™H\È›Ý™X]Y\ÈH[Z[™ÈÜ™XY8 %ÛÈ™X[\ÈÛˆY™™\™[]ËÝÙ]™\‹Ý^HÙ\\˜]K[™HÛÛÝ\ˆ\œš]š[™ÈÛˆÛÈ\›\ÈZ\œÈÚ]ÚXÚ]™\ˆ\›HYY]ÈH[ÙKÜ•H^[\H›ÙXÙ\ÈH›[Ü™\ØÙ[ÚYÛ˜[[™\ˆ›H[[Z[˜][Û‹ˆY\Ý]È[Z\ÜÚ[Ûˆ[™˜[œÛZ\ÜÚ[Û‹[ˆ\ÙHHš[\ˆ[™]XÝÜˆÈ\Ý[™ÝZ\Ú[Z]YYÚœ›ÛHH^Ú]][Û‹ˆ\˜[Y]šXÈÚ[›™[È\ÙHH›ÜØ\™Ø™HÚ][ˆÜ[Û˜[ÙXZÙ\ˆ˜XÚÝØ\™ÛÛšX][Û‹Ü˜ˆ[Z]][ÛœÎˆ”ÚYÛ˜[È\™H›Ý[™Y]X[]]]™H›ÞY\Ë›ÝYX\Ý\™YÜ›ÜÜË\ÙXÝ[ÛœÈÜˆØ[Xœ˜]YÛÛ™\œÚ[ÛˆY™šXÚY[˜ÚY\ËˆXXÚÚ[›™[\È›Ý[™YžH]ÈÝÛˆ]]Ü™YY™šXÚY[˜ÞK›ÝžHHÚ\™Y[™\™ÞHYÙ]ˆÚYÛ˜[È™]™\ˆ\]HH^Ú]][Û‹ÛÈÝXÚÚ[™ÈÚ[›™[È8 %ÜˆY[™ÈHÙXÛÛ™ÛÛÝ\‹ÚXÚYÈHZ^YZ\ˆ8 %YÈ˜]ÛˆÚYÛ˜[ÝÙ\ˆ˜]\ˆ[ˆ]šY[™È]ˆHÝ[Hœ™\]Y[˜ÞHÙˆHZ\ˆØØ[\ÈÚ]HÚÜ\ˆ™X[IÜÈ[[œÚ]H[Û™K›ÝÚ]H›ÙXÝÙˆHÛËˆÝ[][]Y˜[X[ˆ˜[œÙ™\ˆ\ÈH›Ü›X[\ÙY\Ü^HÙˆH[Ù[][Û‹›ÝH˜[X[ˆØZ[ˆÜˆÜÜÈ]ÎˆÚ]]™\ˆÛÛ˜\ÝH[Ù[]Y™X[H\È\ÈÝ™]ÚYÈHÚ[›™[	ÜÈ[]]Ü™Y^Ý\œÚ[Ûˆ8 %HÜÜÈÛˆHÚÜ\‹]Ø]™[[™Ý[\HØZ[ˆÛˆHÛ™Ù\‹]Ø]™[[™ÝÝÚÙ\È8 %[YYÈHÝÛœÈÙˆ]™X[H]XÝX[H™XXÚHÜÝ[™HÝXYH™X[H˜[œÙ™\œÈ›Ý[™Ëˆ]ÛÝ™\œÈÛ™H[›[Ù[]Y™X[H™XÙZ]š[™ÈH[Ù[][ÛˆÙˆÛ™HÝ\ˆ™X[H›ÝYÚÛ™H[Ù[]ÜŽÈÚ]›Ý™X[\È[Ù[]Y[Ü™H[ˆÛ™H[Ù[]Y\™\‹ÜˆH[Ù[]Y™X[H™Z[™Ù]™\˜[[Ù[]ÜœË›È˜[œÙ™\ˆ\È˜]Ûˆ[™HÜXÚ[Y[‰ÜÈ[Z[™È™XYÝ]Ø^\ÈÚKˆÝ[Hœ™\]Y[˜ÞH\ÈØ]YÛˆ\œš]˜[[YH[Û™H8 %›È\ÙHX]Ú[™ËÛ\š^˜][ÛˆÛÛ™][ÛˆÜˆ›ØÝ\Ú[™ÈÝ™\›\\ÈÚXÚÙY8 %[™H[Ù\ÉÈÝÛˆ]Ü™XYXÜ›ÜÜÈH›ØÝ\ÙYÛÛ™H\È›Ý™X]Y\ÈH[Z[™ÈÜ™XYˆH[Ù[Ù\È›Ý™XÛÛœÝXÝH™YKY[Y[œÚ[Û˜[ÜXÚ[Y[ˆÜˆ™YXÝÝØÚ[Z\ÝžK›XXÚ[™ËÜˆHY™œ˜XÝ[Û‹[[Z]YÚ[\Ü™XY[˜Ý[Û‹Ü˜ˆKÚ]][ÛœÎˆÞÈX™[ˆ	Ð›ÜÝÛˆ[š]™\œÚ]Hš[ÛZXÜ›ÜØÛÜHXˆ8 %›Û›[™X\ˆZXÜ›ÜØÛÜIË\›ˆ	ÚÎ‹ËÜÚ]\Ë˜K™YKØš[ÛZXÜ›ÜØÛÜKÜ™\ÙX\˜ÚÛ›Û›[™X\‹ÉÈWK™[]YˆÉÜÝYÙIË	ØÜž\Ý[	Ë	ÛØš™XÝ]™IË	Ùš[\‰Ë	Ü]	×KˆKˆÂˆ\Nˆ	ÜÝYÙIË]Nˆ	ÔØ[\HÛˆY^›ÈÝYÙIËØ]YÛÜžNˆ	ÔÜXÚ[Y[œÉËˆÝ[[X\žNˆ“[Ý™\ÈH[Ý[YØ[\H›ÝYÚÝ]XË]\˜[\Üˆ˜\Ý\ˆØØ[œË[™Ø[ˆ™XÛÜ™Üš][™È[ˆ™\Ú[‹ˆ‹ˆ™X[ÛÜ›ˆÈ[ˆHØ[\HÝYÙH˜[œÛ]\ÈHÜXÚ[Y[ˆ™[]]™HÈH[[Z[˜][Ûˆ[™ÛÛXÝ[ÛˆÜXÜËˆ]\˜[[Ý[ÛˆØ[\\ÈY™™\™[ÜÚ][ÛœÈXÜ›ÜÜÈHÜXÚ[Y[ŽÈ^X[[Ý[ÛˆÚ[™Ù\È]ÈÜÚ][Ûˆ[Û™ÈHÜXØ[^\ËˆH\ÚXØ[ÝYÙH\Èš[š]H˜]™[™\ÜÛœÙH[YK[™ÜÚ][Ûš[™ÈXØÝ\˜XÞKÜ˜Kˆ[“ÜXØ[Ù]\ˆÂˆ[ˆ•HÝYÙHÛÛXš[™\ÈH[Ý[[™È\\\™HÚ]HØ[\IÜÈÜXØ[[Ù\Ë[˜ÛY[™ÈH3áø op¬¸ oˆÚ[›™[]Ú]™\ÈXXÚ™X[IÜÈÙXÛÛ™\›[ÛšXÈ[™HÝ[Hœ™\]Y[˜ÞHÙˆHZ\‹[™HÛËX™X[HÚYÛ˜[È8 %Ý[Hœ™\]Y[˜ÞKÐT”È[™Ý[][]Y˜[X[ˆ8 %]Û›H\X\ˆÚ[H›Ý[Ù\È™XXÚHÜXÚ[Y[ˆÙÙ]\‹ˆÙ[XÝHÝ]XÈÜÚ][Û‹Û™ËX^\ÈØØ[‹™X[KX^\È\ØØ[‹ÜˆÞ[˜Ú›Ûš^™Y˜\Ý\‹[ˆÙ]H˜]™[[™œ™\]Y[˜ÞKˆ]L0¬›Ý][Û‹HÜš^›Û[™X[HÜ›ÜÜÙ\ÈHØ[\H[™HÛ™ËX^\ÈØØ[ˆ[Ý™\È]™\XØ[HÛˆHØ[˜\ËÜ”ØØ[›š[™È[Ý™\ÈHÜXÚ[Y[‹›ÝH\›\ËÛÈ]Ù\È›ÝÚ[™ÙHH\œš]˜[Y™™\™[˜ÙH™]ÙY[ˆÛÈ™X[\Îˆ]\ÈÙ]žHZ\ˆÜXØ[]Ë[™H[^H[™HÜˆHX]ÚY\›H\ÈÚ]š^\È]Ü•H^[\H[Ý™\È[ˆ[[Z[˜]YØ[\H]\˜[Kˆ›ÜˆHÜš][™È[[ÛœÝ˜][Û‹ÚÛÜÙHÝØÝ\˜X›H™\Ú[‹[˜X›H›Þ[™]šY]Ë[™\ÙHH[ÙYÛÝ\˜ÙKˆX\šÜÈ™XÛÜ™˜XÙY[ÙH\œš]˜[È[ˆH[Ýš[™ÈØ[\KÜ˜ˆ[Z]][ÛœÎˆ•HÛÜšØ™[˜ÚÚÝÜÈHÛËY[Y[œÚ[Û˜[›Ú™XÝ[Û‹ˆ™\Ú[ˆX\šÜÈ\™HHš\ÝX[\œš]˜[\ÝÜžK›ÝH™YXÝ[ÛˆÙˆÜÙKÛ[Y\š^˜][Ûˆ™\ÚÛÝ\™HÚ[™]XÜË›Þ[Ú^™KÜˆ™YKY[Y[œÚ[Û˜[˜XœšXØ][Û‹ˆY^›È\Ý\™\Ú\È[™YXÚ[šXØ[Ù][™È\™H›ÝÚ[][]YÜ˜ˆK™[]YˆÉÜØ[\IË	ÛØš™XÝ]™IË	Ü[ÙY\Ù\‰Ë	ÙØ[›É×KˆKˆÂˆ\Nˆ	ÛØš˜\œ›ÝÉË]Nˆ	ÓØš™XÝ	ËØ]YÛÜžNˆ	ÔÛÝ\˜Ù\ÉËˆÝ[[X\žNˆ”XÙ\È[ˆ\œ›ÝË]\‹Üˆ™YH\È[ˆ[XYÚ[™ÈØš™XÝÚ][ˆÜ[Û˜[˜^H˜[ˆ[™ÛÛ\]Y\˜^X[[XYÙH›Üˆ[œÈ[[ÛœÝ˜][ÛœËˆ‹ˆ™X[ÛÜ›ˆÈ[ˆ”˜^HXYÜ˜[\È™\™\Ù[[ˆ^[™YØš™XÝÚ]H™XÛÙÛš^˜X›HÚ\HÛÈ][XYÙHÜÚ][Û‹ÜšY[][Û‹[™XYÛšYšXØ][ÛˆØ[ˆ™HÛÛ\\™YˆHÛÛ™\™Ú[™È[œÈØ[ˆ›Ü›HH™X[[™\Y[XYÙHÜˆHš\X[\šYÚ[XYÙH\[™[™ÈÛˆØš™XÝ\Ý[˜ÙKÜ˜Kˆ[“ÜXØ[Ù]\ˆÂˆ[ˆÚÛÜÙH[ˆ\œ›ÝË]\ˆ‹Üˆ™YKÙ]]ÈZYÚ[™[˜X›HH[XYÙHX\šÙ\‹ˆHÜ[Û˜[˜^H˜[ˆÜšYÚ[˜]\È]HØš™XÝ	ÜÈÛ‹X^\È[˜ÚÜŽÈ]\È›ÝH[ÛÛXÝ[ÛˆÙˆ˜^\Èœ›ÛH]™\žHÚ[ÙˆHÚ\KˆH\˜^X[[XYÙHX\šÙ\ˆ\ÈØ[Ý[]YÙ\\˜][KÜ•H^[\HXÙ\È[ˆØš™XÝŒ[H™Y›Ü™HHL[H[œËˆ]È\˜^X[[XYÙH\X\œÈŒ[H™^[Û™H[œÈÚ]\]X[Ú^™H[™[™\YÜšY[][Û‹ˆ[Ý™HH[œÈÈ^Ü™HXYÛšYšXØ][Ûˆ[™š\X[[XYÙ\ËÜ˜ˆ[Z]][ÛœÎˆ•H[XYÙHX\šÙ\ˆÙ\È›ÝXØÛÝ[›ÜˆÝÛœÝ™X[HÛ\[™ÈÜˆ™\™\Ù[H™[™\™YØ[Y\˜H[XYÙKˆH[Ù[Ù\È›ÝØ[Ý[]HY™œ˜XÝ[Û‹[XYÙH^\™KÜˆ˜Y[ÛY]šXÈœšYÚ™\ÜÈXÜ›ÜÜÈHØš™XÝÜ˜ˆK™[]YˆÉÛ[œÉË	Û[œØÉË	Ý[\ØÛÜIË	ØØ[Y\˜I×KˆKˆÂˆ\Nˆ	Ü›Ø™IË]Nˆ	Ð™X[H›Ø™IËØ]YÛÜžNˆ	Ð[››Ý][ÛœÉËˆÝ[[X\žNˆ”™XYÈH™X\˜žH˜XÙY™X[HÚ]Ý][\˜Ù\[™È]ÚÝÚ[™ÈHÙ[XÝYÜXÝ[KØ]™[[™ÝÝÙ\‹Û\š^˜][Û‹[ÙH\˜][Û‹Üˆ[[œÚ]K[Ý™\‹][YHšY]Ëˆ‹ˆ™X[ÛÜ›ˆÈ[ˆ“X›Ü˜]ÜžH™X[HXYÛ›ÜÝXÜÈ›Ü›X[H™\]Z\™HHÙ[œÛÜˆÜˆXÚÛÙ™ˆ][\˜XÝÈÚ]HYÚˆH›Û‹Z[\˜Ù\[™ÈX™[[ˆH˜^HXYÜ˜[H[œÝXYÛÛ[][šXØ]\ÈH›Ü\H[™XYHÛ›ÝÛˆœ›ÛHH[Ù[È]\È›ÝH\ÚXØ[YX\Ý\š[™È[œÝ[Y[Ü˜Kˆ[“ÜXØ[Ù]\ˆÂˆ[ˆ”XÙHHÜ›ÜÜÚZ\ˆ™X\ˆH˜XÙY™X[H[™Ù[XÝH›Ü\HÈÚÝËˆÜXÝ[H[™[YHšY]ÜÈ›ÝšYH˜[™ÙHÛÛ›ÛÎÈ[ÙH\˜][Ûˆ™\]Z\™\ÈÝZ]X›H[ÙYYÚˆH›Ø™H™XYÈH™X\™\Ý˜XÙY™X[H˜]\ˆ[ˆ[YÜ˜][™È[YÚÝ™\ˆH]XÝÜˆ˜XÙKÜ•H^[\H]ÈHÜXÝ[H›Ø™H™]ÙY[ˆHœ›ØY˜[™ÛÝ\˜ÙH[™H]XÝÜ‹ˆ[Ý™H]]Ø^Hœ›ÛHH™X[K[ˆ˜XÚËÈÙYH]È\[™[˜ÙHÛˆHÙ[XÝYØØ][Û‹ˆ]™]™\ˆXœÛÜ˜œÈYÚÜˆÜ™X]\ÈH™]ÈÜXØ[œ˜[˜ÚÜ˜ˆ[Z]][ÛœÎˆ•\È\ÈHXYÛ›ÜÝXÈ[››Ý][ÛˆÚ]\™XÝXØÙ\ÜÈÈ˜XÙY›Ü\Y\Ëˆ]Ù\È›Ý™\™\Ù[HX›Ü˜]ÜžH›Ø™IÜÈ\\\™KØ[Xœ˜][Û‹›Ú\ÙKÜˆ\Ý\˜˜[˜ÙHÙˆH™X[KÜ˜ˆK™[]YˆÉÙ\Ü^IË	ÜÜXÝ›ÛY]\‰Ë	ÜÛ\š[Y]\‰Ë	Ù]XÝÜ‰×KˆKˆÂˆ\Nˆ	ÙšYÝ\™Yœ˜[YIË]Nˆ	ÑšYÝ\™Hœ˜[YIËØ]YÛÜžNˆ	Ð[››Ý][ÛœÉËˆÝ[[X\žNˆ”Ù]ÈH^XÝ^ÜÜ›ÜÛˆHØ[˜\ÎÈ]È›Ü™\ˆ[™[™\È™]™\ˆ\X\ˆ[ˆH^ÜYšYÝ\™Kˆ‹ˆ™X[ÛÜ›ˆÈ[ˆHšYÝ\™IÜÈÜ›Ü]\›Z[™\ÈÚXÚ\ÈÙˆHÙ]\\X\ˆ[ˆHX›XØ][ÛˆÜˆ™\Ù[][Û‹ˆ]\ÈHÛÛ\ÜÚ][ÛˆÚÚXÙKÙ\\˜]Hœ›ÛH[žHÜXØ[\\\™HÜˆ\ÚXØ[[˜ÛÜÝ\™HÚÝÛˆ[ˆH˜]Ú[™ËÜ˜Kˆ[“ÜXØ[Ù]\ˆÂˆ[ˆ”XÙHHœ˜[YH\›Ý[™H\Ú\™YÛÛ\ÜÚ][Ûˆ[™™\Ú^™H]ÈYÙ\ÈÜˆÛÜ›™\œËˆHœ˜[YHÛÛ›ÛÈH^Ü›Ý[™ËÚ[H]ÈÝÛˆ›Ü™\ˆ[™Y][™È[™\È™[XZ[ˆØ[˜\Ë[Û›KˆX]™H›ÛÛH[œÚYHHÜ›Ü›ÜˆÛÛ\Û™[˜[Y\Ë›Ø™H™XYÝ]Ë[™[žH™X[H[™Ú[È[ÝHØ[ÈÚÝËÜ•H^[\Hœ˜[Y\ÈHÛX[[œÈ™[˜Úˆ™\Ú^™HHœ˜[YH[™^ÜHØÙ[™HÈÛÛ\\™HHÜ›ÜˆYÚÛÛ[Y\ÈÈ›ÜYØ]H™^[Û™Hœ˜[YHÛˆHÛÜšØ™[˜ÚÜ˜ˆ[Z]][ÛœÎˆ•Hœ˜[YH™]™\ˆÛ\È˜XÙY˜^\ÈÜˆXÝÈ\È[ˆÜXØ[ÝÜˆÛÛ[Ý]ÚYH]È›Ý[™ÈØ[ˆ™HÛZ]Yœ›ÛHH^ÜYXÝ\™HÚ[HÝ[ÛÛšX][™ÈÈHÚ[][][Û‹Ü˜ˆK™[]YˆÉÚYÚYÚ	Ë	Ý^X™[	Ë	Ø›ØÚÙ\‰×KˆKˆÂˆ\Nˆ	ÚYÚYÚ	Ë]Nˆ	ÒYÚYÚ	ËØ]YÛÜžNˆ	Ð[››Ý][ÛœÉËˆÝ[[X\žNˆYÈHÛÛÝ\™Y˜XÚÙÜ›Ý[™™YÚ[Ûˆ™Z[™\ÙˆHÙ]\Ú]Ý]Y™™XÝ[™È[žH˜^\Ëˆ‹ˆ™X[ÛÜ›ˆÈ[ˆ”ÚYY™YÚ[ÛœÈ[ˆÜXØ[XYÜ˜[\ÈØ[ˆY[YžHHÝXœÞ\Ý[K\Ý[™ÝZ\Ú^\š[Y[[ÝYÙ\ËÜˆX\šÈ[ˆ\™XHÙˆ[\™\ÝˆÝXÚš\ÝX[Ü›Ý\[™È\È›È\ÚXØ[ÜXØ[YX[š[™È[›\ÜÈHØ\[Ûˆ^XÚ]H\ÜÚYÛœÈÛ™KÜ˜Kˆ[“ÜXØ[Ù]\ˆÂˆ[ˆ”™\Ú^™H[™ÜÚ][ÛˆHYÚYÚ™Z[™HÛÛ\Û™[È[ÝHØ[ÈÜ›Ý\[ˆÚÛÜÙH]È\X\˜[˜ÙKˆ]™[XZ[œÈ™Z[™›Ý˜^\È[™[[Y[ËÛÈH™X[H][™\™Ø\™HÝ^Hš\ÚX›Kˆ\ÙHH^X™[È^Z[ˆÚ]HÚYY™YÚ[ÛˆYX[œËÜ•H^[\HX\šÜÈH[œÈ\™XHÛˆHÚ[\H™[˜Úˆ[Ý™HÜˆ™\Ú^™HHYÚYÚXÜ›ÜÜÈH[˜ÛÛZ[™È[™Ý]ÛÚ[™È™X[HÈÛÛ™š\›H]Û›HHÛÛ\ÜÚ][ÛˆÚ[™Ù\ËÜ˜ˆ[Z]][ÛœÎˆHYÚYÚ\ÈXYÜ˜[K[Û›Kˆ]ÈÛÛÜˆ[™Ú\HÈ›Ý™\™\Ù[™Yœ˜XÝ]™H[™^XœÛÜœ[Û‹[ˆ\\\™KÜˆH›Ý[™\žH™]ÙY[ˆÜXØ[YYXKÜ˜ˆK™[]YˆÉÝ^X™[	Ë	ÙšYÝ\™Yœ˜[YIË	Ø›Þ	×KˆKˆÂˆ\Nˆ	Ø›Þ	Ë]Nˆ	ÐÝ\ÝÛH›Þ	ËØ]YÛÜžNˆ	ÐÝ\ÝÛIËˆÝ[[X\žNˆ‘˜]ÜÈHX™[Y[˜ÛÜÝ\™H]Z]\ˆ›ØÚÜÈ™X[\ÈÜˆ]È[H\ÜÈ›ÝYÚˆ‹ˆ™X[ÛÜ›ˆÈ[ˆ[ˆ[˜ÛÜÝ\™H[ˆ[ˆÜXØ[XYÜ˜[HØ[ˆÝ[™›ÜˆHÝ\Ú[™ÈÜˆH]šXÙHÚÜÙH[\›˜[ÜXØ[˜Z[ˆ\È›ÝÚÝÛ‹ˆH˜]Ú[™È[Û™HÙ\È›ÝÜXÚYžHÚ]\ˆH™X[]šXÙH˜[œÛZ]ËXœÛÜ˜œË›ØÝ\Ù\ËÜˆÛÛ™\ÈYÚÜ˜Kˆ[“ÜXØ[Ù]\ˆÂˆ[ˆ”Ù]HX™[ÚYZYÚ[™š[[ˆÚÛÜÙHH™X[H™Z]š[Ü‹ˆ[O›ØÚÜÈ™X[OÙ[O‹HY˜][XœÛÜ˜œÈ˜^\È]H™XÝ[™Ý[\ˆ›Ý[™\žKˆ[O™X[H\ÜÙ\È›ÝYÚÙ[OˆYÈ›ÈÜXØ[[\˜XÝ[Û‹Ü•H^[\HXÙ\ÈH›ØÚÚ[™È›Þ[ˆH\Ù\ˆ]ˆÝÚ]Ú]È\ÜË]›ÝYÚ[™H]XÝÜˆ™XÙZ]™\ÈYÚYØZ[‹ˆYˆH›Þ\ÈYX[È›ØÝ\ËÜ]ÜˆÛÛ™\YÚ\ÙHHÛÜœ™\ÜÛ™[™È˜]]™HÜXØ[[[Y[ÈÈ™\™\Ù[]™Z]š[Ü‹Ü˜ˆ[Z]][ÛœÎˆ•H[˜ÛÜÝ\™HÙ\È›ÝÚ[][]HY[ˆ[\›˜[ÛÛ\Û™[Ëˆ\ÜË]›ÝYÚ[ÙHYÈ›ÈÜXØ[[^HÜˆX]\šX[›Ü\Y\ÎÈ›ØÚÚ[™È[ÙHÙ\È›Ý[Ù[\›X[ØY[™ÈÜˆØØ]\™YYÚÜ˜ˆK™[]YˆÉØ™X[Y[\	Ë	Ø›ØÚÙ\‰Ë	Ý^X™[	Ë	ÚYÚYÚ	×KˆKˆÂˆ\Nˆ	Ý^X™[	Ë]Nˆ	Õ^X™[	ËØ]YÛÜžNˆ	Ð[››Ý][ÛœÉËˆÝ[[X\žNˆYÈ›Ü›X]YX\šÙÝÛˆ›Ý\ÈÈHØ[˜\ËÚ]XY[™ÜË\ÝÈ[™ÛXÚØX›H[šÜËˆ‹ˆ™X[ÛÜ›ˆÈ[ˆ“X™[È^Z[ˆÛÛ\Û™[›Û\ËÜ\˜][™ÈÛÛ™][ÛœË[™H\ÜÝ[\[ÛœÈ™Z[™HXYÜ˜[KˆÙY\[™È[\œ™]][Ûˆ™\ÚYHH™[]˜[\™Ø\™H[È™XY\œÈ\Ý[™ÝZ\ÚYX\Ý\™Y\˜[Y]\œÈœ›ÛH[\Ý˜]]™HÚÚXÙ\ËÜ˜Kˆ[“ÜXØ[Ù]\ˆÂˆ[ˆ”XÙHH^X™[[™ÝX›KXÛXÚÈ]™\ÜÈ[\ˆÚ[ˆÙ[XÝYÜˆ\ÙH[O‘Y]^Ù[OˆÈY]ÛˆHØ[˜\ËˆX\šÙÝÛˆÝ\ÜÈXY[™ÜË\ÝË[\\Ú\Ë[™ÛÙNÈÙXˆ[™ÒHY™\ÜÙ\È™XÛÛYHÛXÚØX›H[šÜËˆH›Û\Ú^™H[™ÛÛÜˆÛÛ›ÛÈÙ]]È˜\ÙH\X\˜[˜ÙKÜ•H^[\H[[ÛœÝ˜]\ÈÙ]™\˜[›Ü›X][™ÈÝ[\ËˆÙY\HÚÜ^[˜][Ûˆ™\ÚYHHÙ]\[™\ÙHH[šÈ›ÜˆÛ™Ù\ˆ˜XÚÙÜ›Ý[™X]\šX[ˆ^Ü›ÝÜÈœ›ÛH]ÈY[˜ÚÜ‹Ú[H™\Ú^š[™ÈÚ[™Ù\ÈH˜\ÙH›ÛÚ^™KÜ˜ˆ[Z]][ÛœÎˆ•^\ÈXYÜ˜[K[Û›H[™™]™\ˆÚ[™Ù\È˜XÙY˜^\ÈÜˆØÙ[™H\˜[Y]\œËˆÜš][™ÈHØ]™[[™ÝY™šXÚY[˜ÞKÜˆ[Ù[ÛZ[H[ˆHX™[Ù\È›ÝÛÛ™šYÝ\™HHÛÜœ™\ÜÛ™[™ÈÜXØ[[[Y[Ü˜ˆK™[]YˆÉÚYÚYÚ	Ë	ÙšYÝ\™Yœ˜[YIË	Ü›Ø™I×KˆKˆÂˆ\Nˆ	ÙØ\ØÙ[	Ë]Nˆ	ÑØ\ÈÙ[	ËØ]YÛÜžNˆ	ÓXˆ[[Y[ÉËˆÝ[[X\žNˆ‘˜]ÜÈHØ\ËXÙ[Ý\Ú[™È›ÜˆX›Ü˜]ÜžHÛÛ^Ú]Ý][žHÜXØ[Y™™XÝÛˆH™X[Kˆ‹ˆ™X[ÛÜ›ˆÈ[ˆHØ\ÈÙ[ÛÛZ[œÈHØ\È[Û™È[ˆÜXØ[]ˆ]È\ÚXØ[™Z]š[Üˆ\[™ÈÛˆHØ\Ë™\ÜÝ\™K][™Ý[™Ú[™ÝÜËˆHÝ\Ú[™ÈX^H[ÛÈ›ÝšYHÛÛ›™XÝ[ÛœÈ›ÜˆØ\È›ÝÈÜˆ›ÜˆHšX™\ˆ\ÜÚ[™È›ÝYÚHÙ[Ü˜Kˆ[“ÜXØ[Ù]\ˆÂˆ[ˆ•HØ\ÈÙ[\È[X™\˜][HXYÜ˜[K[Û›KˆÙ]]È[Y[œÚ[ÛœËÜ[Û˜[Ú[™ÝÜË^[œÚ[ÛˆÚYKØ\Ë\Ü\X\˜[˜ÙK[™˜[œÜ\™[˜ÞHÈÚÝÈH\™Ø\™HÛÛ^ˆH˜[œÜ\™[˜ÞHÛÛ›ÛÚ[™Ù\ÈH˜]Ú[™Ë›ÝÜXØ[˜[œÛZ\ÜÚ[Û‹Ü•H^[\HÙ[™ÈH™X[H›ÝYÚHÝ\Ú[™ËˆÙÙÛH]ÈÚ[™ÝÜÈÜˆÚ[™ÙH]È\X\˜[˜ÙH[™H˜XÙY]Ý^\ÈHØ[YKˆHšX™\ˆ˜]Ûˆ›ÝYÚHØ\ÈÙ[™[XZ[œÈ[ˆ[™\[™[šX™\ˆ]ÈHÝ\Ú[™ÈÙ\È›Ýš[™È]ÜˆÚ[™ÙH]È›ÜYØ][ÛˆÙ][™ÜËÜ˜ˆ[Z]][ÛœÎˆ“›È™\ÜÝ\™KØ\ÈXœÛÜœ[Û‹›Û›[™X\ˆ™\ÜÛœÙKÚ[™ÝÈ™Yœ˜XÝ[Û‹Üˆ›ÝÈ\ÈØ[Ý[]YˆHÝ\Ú[™È]\Ý›Ý™H[\œ™]Y\ÈHØ\ËYš[YYšX™\ˆÜˆÜXÝ›ÜØÛÜHÛÛ™\‹Ü˜ˆK™[]YˆÉÝÚ[™ÝÉË	Ø˜\™YšX™\‰Ë	Ùœ™YYÛ\ÜÉË	Ý^X™[	×KˆKˆÂˆ\Nˆ	ÝÚ[™ÝÉË]Nˆ	ÓÜXØ[Ú[™ÝÉËØ]YÛÜžNˆ	ÓXˆ[[Y[ÉËˆÝ[[X\žNˆ‘˜]ÜÈ[ˆÜXØ[Ú[™ÝÈ\ÈX›Ü˜]ÜžH\™Ø\™KÚ]Ý][žHÜXØ[Y™™XÝÛˆH™X[Kˆ‹ˆ™X[ÛÜ›ˆÈ[ˆ[ˆÜXØ[Ú[™ÝÈÙ\\˜]\È[š\›Û›Y[ÈÚ[HYZ][™ÈYÚˆH™X[Ú[™ÝÈØ[ˆ[›ÙXÙH™Yœ˜XÝ[Û‹™Y›XÝ[Û‹XœÛÜœ[Û‹[™\Ü\œÚ[Ûˆ\[™[™ÈÛˆ]ÈX]\šX[XÚÛ™\ÜËÛØ][™ÜË[™[˜ÚY[˜ÙH[™ÛKÜ˜Kˆ[“ÜXØ[Ù]\ˆÂˆ[ˆ•\ÈÚ[™ÝÈ\ÈHXYÜ˜[K[Û›HÞ[X›ÛˆY\Ý]ÈÚ^™KÜšY[][Û‹[™˜[œÜ\™[˜ÞHÈXÙH][ˆH˜]Ú[™Ëˆ]™]™\ˆ™[™Ë›ØÚÜËÜˆXœÛÜ˜œÈH˜^K[™]YÈ›ÈÜXØ[]Üˆ[ÙH\Ü\œÚ[Û‹Ü•H^[\HÚÝÜÈ[š[\œ\YYÚ›ÝYÚHÞ[X›Ûˆ›Ý]H]ÈÛÛ™š\›H]H™X[HÝ^\È[˜Ú[™ÙYˆÈÝYHHÜXØ[Y™™XÝÈÙˆHÛ\ÜÈ]K\ÙHH™XÝ[™Ý[\ˆœ™YY›Ü›KYÛ\ÜÈ›Ý[™\žHÚ]HÝZ]X›HX]\šX[[œÝXYÜ˜ˆ[Z]][ÛœÎˆ•Hš\ÚX›HÞ[X›Û\È›ÝH˜XÙYÛ\ÜÈ]Kˆ]È˜[œÜ\™[˜ÞH\ÈH˜]Ú[™ÈÙ][™Ë›ÝH˜[œÛZ\ÜÚ[ÛˆÛÙY™šXÚY[È]Ù\È›Ý[Ù[œ™\Û™[ÜÜÙ\ËÛØ][™ÜËÜˆHÚ[™ÙHÙˆYY][KÜ˜ˆK™[]YˆÉÙØ\ØÙ[	Ë	Ùœ™YYÛ\ÜÉË	ÙÛ\ÜÜ›Ù	×KˆK—NÂ

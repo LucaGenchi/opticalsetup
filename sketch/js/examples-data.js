@@ -110,6 +110,12 @@ export const examples = [
   },
   {
     "group": "Ultrashort Pulses",
+    "name": "Marvel ATLAS laser — public architecture",
+    "path": "../Examples/Ultrashort%20Pulses/Marvel%20ATLAS%20laser%20%E2%80%94%20public%20architecture.json",
+    "slug": "marvel-atlas-laser-public-architecture"
+  },
+  {
+    "group": "Ultrashort Pulses",
     "name": "Ultrashort pulse chirping",
     "path": "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json",
     "slug": "ultrashort-pulse-chirping"
