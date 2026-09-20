@@ -94,9 +94,16 @@ the toolbar, palette, canvas, and inspector do not overflow.
 ## License
 
 OpticalSetup is free software under the GNU General Public License,
-version 3 or (at your option) any later version; see `LICENSE`. Every
-contribution is accepted under the same terms. Do not add code or content
-under a license that is incompatible with the GPL.
+version 3 or (at your option) any later version; see `LICENSE`. Code and
+content contributed to the program are accepted under the same terms. Do not
+add code or content under a license that is incompatible with the GPL.
+
+Community submissions are the exception: a submitted scene and its
+description stay their author's, published under CC BY 4.0 with credit when
+the author granted that on the submission form. The grant is recorded in the
+submission's `license` field, and a page states only the terms its own
+submission recorded — never a blanket notice. Third-party files the site
+ships keep their own notices; see `THIRD-PARTY-NOTICES.md`.
 
 ## Git and delivery
 

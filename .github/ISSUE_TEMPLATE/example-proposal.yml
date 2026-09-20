@@ -50,3 +50,5 @@ body:
       options:
         - label: I created or have permission to share this setup, and I understand that it will be publicly reviewed and may be modified if accepted.
           required: true
+        - label: I have the right to license this setup and its description, and I publish them under CC BY 4.0 (credit to me, reuse and adaptation allowed). The app itself stays GPL-3.0-or-later.
+          required: true

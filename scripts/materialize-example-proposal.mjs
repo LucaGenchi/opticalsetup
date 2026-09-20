@@ -182,6 +182,11 @@ export function materializeProposal({ issueNumber, issueBody, userLogin, created
     reference: fields.reference,
     author: { github: userLogin, profile: `https://github.com/${userLogin}` },
     source: { issue: issueURL, submittedAt: submittedAt.toISOString() },
+    // The grant the submitter ticked on the form, recorded with the
+    // submission so a page never states terms nobody agreed to. Submissions
+    // accepted before the form asked for it carry no `license`, and their
+    // pages say only that they were shared for publication here.
+    license: { content: 'CC-BY-4.0', acknowledgedAt: submittedAt.toISOString(), form: 'example-proposal#contribution-acknowledgement' },
     sceneSha256: createHash('sha256').update(sceneJSON).digest('hex'),
     scene: canonicalScene,
   };

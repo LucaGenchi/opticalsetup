@@ -56,6 +56,20 @@ function uniqueSlug(base, issueNumber, taken) {
   return `${withNumber}-${n}`;
 }
 
+// What a page may say about reuse comes from the grant recorded with the
+// submission, never from a blanket string: a setup accepted before the form
+// asked for a licence carries none, and its page claims no reuse rights.
+function licenseNote(entry) {
+  if (entry.license?.content !== 'CC-BY-4.0') {
+    return `<p class="community-license">Shared by its author for publication here. No further reuse terms were recorded, so ask the author before reusing it elsewhere.</p>`;
+  }
+  const credit = `Adapted from "${entry.name}" by @${entry.author.github}, ${SITE_URL}/community/${entry.slug}/, CC BY 4.0`;
+  return `<p class="community-license">This setup and its description are published under
+    <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>:
+    reuse or adapt them, with credit and a link to the licence, saying what you changed.
+    Credit line to copy: <code>${esc(credit)}</code></p>`;
+}
+
 function referenceHTML(reference) {
   if (!reference) return '';
   let isURL = false;
@@ -143,6 +157,7 @@ ${header(base)}
       <div class="crumb"><a href="${base}/community/">Community</a> / ${esc(entry.name)}</div>
       <h1>${esc(entry.name)}</h1>
       <p class="community-byline">By <a href="${esc(entry.author.profile)}" target="_blank" rel="noopener">@${esc(entry.author.github)}</a>${dateText ? ` · ${dateText}` : ''} · <a href="${esc(entry.source.issue)}" target="_blank" rel="noopener">source discussion</a></p>
+      ${licenseNote(entry)}
 
       <p class="tagline" style="margin-top: 18px; white-space: pre-wrap;">${esc(entry.description)}</p>
       ${referenceHTML(entry.reference)}
@@ -156,7 +171,7 @@ ${header(base)}
       <a class="place-cta" href="${base}/sketch/?community=${encodeURIComponent(entry.slug)}">Open in the full canvas →</a>
     </main>
   </div>
-  <footer class="wiki-footer">Community setups are submitted and reviewed via <a href="https://github.com/LucaGenchi/opticalsetup/issues" target="_blank" rel="noopener">GitHub issues</a> — they show how people actually use OpticalSetup, and haven't been vetted for pedagogical accuracy the way <a href="${base}/sketch/">Examples</a> have. Shared setups and their descriptions are published under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, credited to their author.</footer>
+  <footer class="wiki-footer">Community setups are submitted and reviewed via <a href="https://github.com/LucaGenchi/opticalsetup/issues" target="_blank" rel="noopener">GitHub issues</a> — they show how people actually use OpticalSetup, and haven't been vetted for pedagogical accuracy the way <a href="${base}/sketch/">Examples</a> have. Each setup states its own terms on its page.</footer>
 </body>
 </html>
 `;
@@ -213,7 +228,7 @@ ${header(base)}
       <p class="community-empty">No community setups are published yet — be the first to propose one from the canvas.</p>`}
     </div>
   </div>
-  <footer class="wiki-footer">Community setups are submitted and reviewed via <a href="https://github.com/LucaGenchi/opticalsetup/issues" target="_blank" rel="noopener">GitHub issues</a> — see the <a href="${base}/wiki/">wiki</a> for how each component actually works. This setup and its description are published under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, credited to its author.</footer>
+  <footer class="wiki-footer">Community setups are submitted and reviewed via <a href="https://github.com/LucaGenchi/opticalsetup/issues" target="_blank" rel="noopener">GitHub issues</a> — see the <a href="${base}/wiki/">wiki</a> for how each component actually works. Setups submitted since the form asked for it are published under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, credited to their authors; earlier ones state their own terms.</footer>
 </body>
 </html>
 `;

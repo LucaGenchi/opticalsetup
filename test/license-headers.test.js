@@ -53,3 +53,23 @@ test('generated pages carry it too, and the app can show the licence offline', (
   assert.match(app, /without any warranty/i, 'it carries the no-warranty notice');
   assert.match(app, /href="\/license\.html"/, 'and links the licence text');
 });
+
+test('a community page states only the terms its own submission recorded', async () => {
+  const { readdirSync } = await import('node:fs');
+  const dir = join(ROOT, 'community-submissions');
+  const submissions = readdirSync(dir).filter(f => f.endsWith('.json'))
+    .map(f => JSON.parse(readFileSync(join(dir, f), 'utf8')));
+  assert.ok(submissions.length, 'there are published submissions');
+  for (const submission of submissions) {
+    const slug = readdirSync(join(ROOT, 'community')).find(entry => {
+      const page = join(ROOT, 'community', entry, 'index.html');
+      try { return readFileSync(page, 'utf8').includes(submission.source.issue); } catch { return false; }
+    });
+    if (!slug) continue;
+    const page = readFileSync(join(ROOT, 'community', slug, 'index.html'), 'utf8');
+    const granted = submission.license?.content === 'CC-BY-4.0';
+    if (granted) assert.match(page, /CC BY 4\.0/, `${slug} states the recorded grant`);
+    else assert.doesNotMatch(page, /class="community-license">[^<]*CC BY/,
+      `${slug} has no recorded licence, so its page must not claim CC BY`);
+  }
+});
