@@ -11,8 +11,9 @@ derivation and its unit bookkeeping, not the coefficients.
 The coefficients themselves are anchored separately, against the refractive
 indices the N-BK7 data sheet tabulates for the spectral lines (Schott data
 sheet 517642.251, 2007-09-19). Those numbers are measured values the fit was
-made to, not outputs of the fit, so they check the coefficients and the
-evaluation together. The data sheet quotes five decimals, so the anchor
+made to, so they are catalogue tabulated values rather than an independent
+measurement -- they still catch a transcription or evaluation error, which is
+what they are for. The data sheet quotes five decimals, so the anchor
 tolerance is 1e-5 absolute; the app reproduces all sixteen lines to within
 8e-6, and Malitson quotes an absolute residual of 1.05e-5 for the silica fit.
 
@@ -106,12 +107,15 @@ def anchor_cases():
         "name": "nbk7 Abbe number versus the data sheet",
         "inputs": {"glass": "nbk7"},
         "expected": {"abbe": NBK7_ABBE},
-        # nF - nC is 0.008054 on the data sheet and 0.008057 from the fit; that
-        # 3e-6 difference, divided into nd - 1, moves the Abbe number by 0.03.
-        # The catalogue value is not reproducible from the fit more closely
-        # than this, and the app derives it from the fit.
+        # The app evaluates the d, F and C lines at 587.6, 486.1 and 656.3 nm.
+        # Their true wavelengths are 587.5618, 486.1327 and 656.2725 nm, and
+        # with those the same coefficients give 64.16733624, which rounds to
+        # the catalogue 64.17; with the rounded ones they give 64.14146730.
+        # So this tolerance accommodates the app rounding its line
+        # wavelengths -- it is not a limit of the fit, and correcting
+        # glassAbbe would remove it. Recorded rather than silently allowed.
         "tolerance": {"abbe": 1e-3},
-        "note": "data sheet 64.17; the fit gives 64.14, the residual amplified by the small nF - nC",
+        "note": "data sheet 64.17; the app gives 64.1415 because it evaluates d/F/C at 587.6/486.1/656.3 nm rather than 587.5618/486.1327/656.2725 nm, which give 64.1673",
     })
     out.append({
         "name": "nbk7 principal dispersion versus the data sheet",
@@ -171,9 +175,10 @@ MODEL = {
         "SCHOTT AG, optical glass collection data sheets (N-SF5, N-SF11) — https://www.schott.com/en-gb/products/optical-glass",
         "I. H. Malitson, 'Interspecimen comparison of the refractive index of fused silica', J. Opt. Soc. Am. 55, 1205-1208 (1965), doi:10.1364/JOSA.55.001205 (absolute residual 1.05e-5 over 0.21-3.71 um)",
     ],
-    "provenance": "Coefficients transcribed from the manufacturer data sheets and Malitson's paper; the anchor indices are that data sheet's own tabulated measurements.",
+    "provenance": "Coefficients transcribed from the manufacturer data sheets and Malitson's paper; the anchors are the same data sheet's tabulated catalogue values, not established as independent of the data behind the fit.",
     "domain": "365-2325 nm for N-BK7 (the data sheet's own line list); 400-1550 nm evaluated for every catalogue glass.",
-    "convergence": "Derivatives by five-point finite differences at h = 1e-4 um; halving h changes the GVD by less than 1e-9 relative.",
+    "convergence": "Derivatives by five-point finite differences at h = 1e-4 um. The measured refinement below is what bounds them; the wavelength derivative of a Sellmeier sum is smooth, so the step, not the function, sets the error.",
+    "convergence_keys": ["GVD of"],
     "tolerance_rationale": "Index 1e-7 and group index 1e-6 are algebraic agreement between two evaluations of the same closed form. GVD 2e-4 covers the finite-difference truncation; 2e-3 at 587.6 nm covers the app's 1 nm GVD bucket, which evaluates 588 nm. The published anchors use 1e-5 absolute, the data sheet's own rounding.",
     "outside_scope": "Clamps: `glassIndex` and `glassGVD` evaluate the fit at the nearest edge of the glass's range and return that value (N-SF11 at 300 nm returns its 370 nm index). `isWavelengthInGlassRange` reports whether a wavelength is inside; the tracer uses it to colour out-of-range light, but the getters themselves do not refuse.",
     "fidelity": "computed",

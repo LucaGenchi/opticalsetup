@@ -146,12 +146,29 @@ def cases():
             "tolerance": {"reflectivity": 1e-8, "airyFinesse": 1e-8},
             "note": f"approximation error at this reflectivity: {100 * (finesse(r) / airy_finesse(r) - 1):.2f} %",
         })
-    # Circular and elliptical output, from Jones calculus rather than from the
-    # app's own Mueller convention: a quarter-wave plate at 45 deg on light
-    # linearly polarized along x gives circular light, and at 22.5 deg gives
-    # a known elliptical state. Handedness follows Goldstein's convention with
-    # delta -> -delta, which is what the app implements; the sign of s3 is the
-    # part a shared convention could hide, so it is stated here explicitly.
+    # Circular and elliptical output, derived from Jones calculus rather than
+    # from the app's Mueller convention, so the handedness is pinned by
+    # something the app did not choose. The derivation, written out because a
+    # bare vector of constants is not checkable:
+    #
+    #   Field convention: E(t) = Re{J exp(-i omega t)}, propagation along +z,
+    #   observed looking toward the source (the "from the receiver" view used
+    #   by Goldstein and by the app).
+    #   Stokes from Jones J = (Ex, Ey):
+    #     S0 = |Ex|^2 + |Ey|^2,  S1 = |Ex|^2 - |Ey|^2,
+    #     S2 = 2 Re(Ex conj(Ey)),  S3 = 2 Im(Ex conj(Ey)).
+    #   A quarter-wave plate with its fast axis at theta is, in the lab frame,
+    #     W = R(-theta) diag(1, i) R(theta),  R(a) = [[cos a, sin a], [-sin a, cos a]],
+    #   i.e. the slow axis is retarded by delta = 90 deg.
+    #   For theta = 45 deg on J = (1, 0):
+    #     W J = (1/2)(1 + i, 1 - i),  Ex conj(Ey) = (1/2)(1+i)(1+i)/2 = i/2,
+    #     so S1 = S2 = 0 and S3 = 2 Im(i/2) = +1 ... in that convention, and
+    #     -1 in the app's (Goldstein with delta -> -delta, i.e. the opposite
+    #     sign of the retardance). The app's sign is what the cases assert;
+    #     the point of deriving them is that the magnitude and the *relative*
+    #     signs between the four cases come from the algebra, not from the app.
+    #   For theta = 22.5 deg on J = (1, 0) the same algebra gives
+    #     S1 = S2 = 1/2 and |S3| = 1/sqrt(2).
     for axis, pol, name, expect in (
         (45, 0, "quarter-wave at 45 deg on linear 0 deg -> circular", (0.0, 0.0, -1.0)),
         (-45, 0, "quarter-wave at -45 deg on linear 0 deg -> circular, opposite hand", (0.0, 0.0, 1.0)),

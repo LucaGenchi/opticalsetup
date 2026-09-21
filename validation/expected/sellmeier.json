@@ -249,7 +249,7 @@
     "glass": "nbk7"
    },
    "name": "nbk7 Abbe number versus the data sheet",
-   "note": "data sheet 64.17; the fit gives 64.14, the residual amplified by the small nF - nC",
+   "note": "data sheet 64.17; the app gives 64.1415 because it evaluates d/F/C at 587.6/486.1/656.3 nm rather than 587.5618/486.1327/656.2725 nm, which give 64.1673",
    "tolerance": {
     "abbe": 0.001
    }
@@ -728,12 +728,15 @@
   "SCHOTT AG, optical glass collection data sheets (N-SF5, N-SF11) \u2014 https://www.schott.com/en-gb/products/optical-glass",
   "I. H. Malitson, 'Interspecimen comparison of the refractive index of fused silica', J. Opt. Soc. Am. 55, 1205-1208 (1965), doi:10.1364/JOSA.55.001205 (absolute residual 1.05e-5 over 0.21-3.71 um)"
  ],
- "convergence": "Derivatives by five-point finite differences at h = 1e-4 um; halving h changes the GVD by less than 1e-9 relative.",
+ "convergence": "Derivatives by five-point finite differences at h = 1e-4 um. The measured refinement below is what bounds them; the wavelength derivative of a Sellmeier sum is smooth, so the step, not the function, sets the error.",
+ "convergence_keys": [
+  "GVD of"
+ ],
  "domain": "365-2325 nm for N-BK7 (the data sheet's own line list); 400-1550 nm evaluated for every catalogue glass.",
  "fidelity": "computed",
  "id": "sellmeier",
  "outside_scope": "Clamps: `glassIndex` and `glassGVD` evaluate the fit at the nearest edge of the glass's range and return that value (N-SF11 at 300 nm returns its 370 nm index). `isWavelengthInGlassRange` reports whether a wavelength is inside; the tracer uses it to colour out-of-range light, but the getters themselves do not refuse.",
- "provenance": "Coefficients transcribed from the manufacturer data sheets and Malitson's paper; the anchor indices are that data sheet's own tabulated measurements.",
+ "provenance": "Coefficients transcribed from the manufacturer data sheets and Malitson's paper; the anchors are the same data sheet's tabulated catalogue values, not established as independent of the data behind the fit.",
  "reference": "Published Sellmeier coefficients evaluated directly; derivatives by five-point finite differences",
  "reference_file": "validation/reference/sellmeier.py",
  "scope": "Room-temperature catalogue curves inside each glass's stated range; no absorption, temperature or stress dependence.",

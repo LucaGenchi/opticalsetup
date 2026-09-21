@@ -14,6 +14,9 @@ validation/
   reference/   one plain-Python module per model: equations, sources, cases
   expected/    generated JSON (inputs, expected outputs, tolerances); committed
   run.py       regenerates expected/ and docs/validation.md; --check verifies
+  convergence.py  refines each discretisation and records what moved; the
+                  report quotes its numbers, so a convergence claim is a
+                  measurement rather than a sentence
 ```
 
 - `python3 validation/run.py` rewrites the expected files and the report in

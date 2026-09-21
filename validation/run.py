@@ -20,6 +20,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REFERENCE = os.path.join(ROOT, "validation", "reference")
 EXPECTED = os.path.join(ROOT, "validation", "expected")
 REPORT = os.path.join(ROOT, "docs", "validation.md")
+CONVERGENCE = os.path.join(ROOT, "validation", "expected", "convergence.json")
 MODULES = ["sellmeier", "pulse", "argon_capillary", "nlse", "paraxial"]
 
 sys.path.insert(0, REFERENCE)
@@ -51,6 +52,27 @@ UNCOVERED = [
     ("Aspheric and multi-surface lens-group cardinal points", "sketch/js/asphere.js, sketch/js/lensgroup.js"),
     ("Fluorescence, two-photon and Raman signal yields (qualitative by design)", "sketch/js/raytrace.js"),
 ]
+
+
+def convergence_rows(keys):
+    """Measured refinement results for one model, from convergence.py.
+
+    The numbers in the report come from that script's output rather than from
+    a sentence someone wrote: a claim about convergence is only worth as much
+    as the measurement behind it.
+    """
+    if not os.path.exists(CONVERGENCE):
+        return ["- _No convergence study recorded; run `python3 validation/convergence.py`._"]
+    with open(CONVERGENCE) as handle:
+        study = json.load(handle)
+    rows = [s for s in study["studies"] if any(k in s["quantity"] for k in keys)]
+    if not rows:
+        return ["- _No refinement recorded for this model._"]
+    return [
+        f"- {s['quantity']}: {s['setting']} → {s['refined']} moves it by "
+        f"{s['relativeChange']:.3g} relative ({s['value']:.10g} → {s['refinedValue']:.10g})."
+        for s in rows
+    ]
 
 
 def report(results):
@@ -103,10 +125,14 @@ def report(results):
     for r in results:
         lines.append(f"### {r['title']}")
         lines.append("")
-        for label, key in (("Provenance", "provenance"), ("Tested domain", "domain"),
-                           ("Convergence", "convergence"), ("Tolerances", "tolerance_rationale")):
+        for label, key in (("Provenance", "provenance"), ("Cases run", "domain"),
+                           ("Method", "convergence"), ("Tolerances", "tolerance_rationale")):
             if r.get(key):
                 lines.append(f"- **{label}.** {r[key]}")
+        if r.get("convergence_keys"):
+            lines.append("- **Measured convergence** (`validation/convergence.py`):")
+            for row in convergence_rows(r["convergence_keys"]):
+                lines.append(f"  {row}")
         lines.append("")
         lines.append("Sources:")
         lines.append("")

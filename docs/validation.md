@@ -57,10 +57,14 @@ table above.
 
 ### Catalogue glass dispersion (Sellmeier)
 
-- **Provenance.** Coefficients transcribed from the manufacturer data sheets and Malitson's paper; the anchor indices are that data sheet's own tabulated measurements.
-- **Tested domain.** 365-2325 nm for N-BK7 (the data sheet's own line list); 400-1550 nm evaluated for every catalogue glass.
-- **Convergence.** Derivatives by five-point finite differences at h = 1e-4 um; halving h changes the GVD by less than 1e-9 relative.
+- **Provenance.** Coefficients transcribed from the manufacturer data sheets and Malitson's paper; the anchors are the same data sheet's tabulated catalogue values, not established as independent of the data behind the fit.
+- **Cases run.** 365-2325 nm for N-BK7 (the data sheet's own line list); 400-1550 nm evaluated for every catalogue glass.
+- **Method.** Derivatives by five-point finite differences at h = 1e-4 um. The measured refinement below is what bounds them; the wavelength derivative of a Sellmeier sum is smooth, so the step, not the function, sets the error.
 - **Tolerances.** Index 1e-7 and group index 1e-6 are algebraic agreement between two evaluations of the same closed form. GVD 2e-4 covers the finite-difference truncation; 2e-3 at 587.6 nm covers the app's 1 nm GVD bucket, which evaluates 588 nm. The published anchors use 1e-5 absolute, the data sheet's own rounding.
+- **Measured convergence** (`validation/convergence.py`):
+  - GVD of nbk7 at 800 nm: h = 1e-4 um → h = 5e-5 um moves it by 6.84e-06 relative (44.6518432 → 44.65214853).
+  - GVD of nbk7 at 1550 nm: h = 1e-4 um → h = 5e-5 um moves it by 7.08e-05 relative (-24.63182683 → -24.63008194).
+  - GVD of silica at 800 nm: h = 1e-4 um → h = 5e-5 um moves it by 1.35e-06 relative (36.16201741 → 36.16196876).
 
 Sources:
 
@@ -71,9 +75,14 @@ Sources:
 ### Transform limit, quadratic-phase stretching, autocorrelation factors
 
 - **Provenance.** The constants the app ships (0.441, 0.315, sqrt(2), 1.543) are the published ones; this module does not read them back but derives each from the envelope by Fourier transform and numerical autocorrelation, so a transcription error in the app would show as disagreement.
-- **Tested domain.** 10 fs to 10 ps, 400-2000 nm, |GDD| up to 1e6 fs^2 (stretching factors up to about 300).
-- **Convergence.** 16384-point grids over 48-64 pulse widths; doubling either the grid or the window changes each derived constant by under 1e-5 relative.
+- **Cases run.** Cases run: 100 fs at 800 nm for the bandwidth conversion, and stretching from q = 0.25 to 10, i.e. GDD 2500 to 100000 fs^2 on a 100 fs pulse. The relations are dimensionless in q = GDD / T0^2, so the mathematics carries further, but the unit conversions are exercised only at these inputs.
+- **Method.** 16384-point grids over a 64-pulse-width window. Refining the grid changes nothing measurable; the window is what matters, since a sech^2 envelope's wings leave it slowly. Measured below.
 - **Tolerances.** 1e-3 to 2e-3: the derived constants agree with the published ones to about 5e-4 (0.4413 versus the app's 0.441 is already 7e-4 by rounding), and the FWHM of a sampled envelope carries the grid's own resolution. The tolerances are set by those two, not by a generic rule.
+- **Measured convergence** (`validation/convergence.py`):
+  - gauss time-bandwidth product: window 64 tau, 16384 points → window 128 tau, 16384 points moves it by 6.84e-05 relative (0.4413216895 → 0.4412915238).
+  - gauss time-bandwidth product: window 64 tau, 16384 points → window 64 tau, 32768 points moves it by 1.61e-13 relative (0.4413216895 → 0.4413216895).
+  - sech2 time-bandwidth product: window 64 tau, 16384 points → window 128 tau, 16384 points moves it by 0.000131 relative (0.3149060984 → 0.3148649417).
+  - sech2 time-bandwidth product: window 64 tau, 16384 points → window 64 tau, 32768 points moves it by 2.71e-13 relative (0.3149060984 → 0.3149060984).
 
 Sources:
 
@@ -84,9 +93,12 @@ Sources:
 ### Argon hollow capillary: dispersion, Kerr coefficient, ideal loss
 
 - **Provenance.** Peck and Fisher's published dispersion formula and Marcatili and Schmeltzer's published waveguide terms, transcribed and evaluated here; Zahedpour's Table 1 value for n2, read from the paper. The 1.85 dB/km worked example is the paper's own number, not ours.
-- **Tested domain.** 468-2059 nm (the refractivity fit's range), cores 100-500 um, 0.5-5 bar, 293.15 K.
-- **Convergence.** Refractivity derivatives by five-point finite differences on n - 1 rather than n (differencing a number near 1.0 loses eight digits and showed up as a 0.5 % GVD error); h = 1e-3 um, and halving it changes the gas GVD by under 1e-7 relative.
+- **Cases run.** 468-2059 nm (the refractivity fit's range), cores 100-500 um, 0.5-5 bar, 293.15 K.
+- **Method.** Refractivity derivatives by five-point finite differences on n - 1 rather than n (differencing a number near 1.0 loses eight digits and showed up as a 0.5 % GVD error), h = 1e-3 um. Measured below.
 - **Tolerances.** Dispersion and waveguide terms are held to 1e-6 to 1e-4, the finite-difference truncation, because both sides evaluate the same published formulas. The loss anchor uses 3e-3, the rounding of the paper's quoted 1.85 dB/km. Anything proportional to n2 inherits the measurement's 10 % uncertainty, which is stated rather than folded into a tight tolerance.
+- **Measured convergence** (`validation/convergence.py`):
+  - argon d2(n-1)/dl2 at 800 nm: h = 1e-3 um → h = 5e-4 um moves it by 1.87e-08 relative (2.033316627e-05 → 2.033316665e-05).
+  - argon d2(n-1)/dl2 at 1500 nm: h = 1e-3 um → h = 5e-4 um moves it by 1.1e-07 relative (1.60284495e-06 → 1.602844774e-06).
 
 Sources:
 
@@ -97,9 +109,14 @@ Sources:
 ### Scalar envelope propagation: GDD, Kerr SPM and loss (hollow-core solver)
 
 - **Provenance.** Written from Agrawal's equations; the conventions (A_tilde(w) = int A(T) exp(+i w T) dT, so d2/dT2 -> -w^2, giving exp(+i beta2 w^2 h / 2) and exp(+i gamma |A|^2 h)) are stated in the module and were checked against an independently published form of the same equation.
-- **Tested domain.** 100 fs, 30-60 uJ, 1 m, beta2 0-2000 fs^2/m, gamma 0-1.17e-8 /W/m, loss 0-3 dB/m, input chirp 0 to -3000 fs^2; B-integral up to about 3 rad.
-- **Convergence.** The app's FWHM readout is interpolated from its sampled grid and reads 100.0097 fs for an unpropagated 100 fs pulse at its default sampling -- a fixed 1e-4 offset, independent of the physics. The bundled example, refined from 2048 points / 384 steps to 4096 / 768, moves the output FWHM from 102.218435 to 102.216635 fs, the compressed FWHM from 46.823091 to 46.822727 fs and the spectral RMS by 1.2e-10 THz -- parts in 1e5, an order below the 5e-3 tolerance. The stronger case (60 uJ, B about 3 rad) was refined the same way and moves by parts in 1e4.
+- **Cases run.** 100 fs, 30-60 uJ, 1 m, beta2 0-2000 fs^2/m, gamma 0-1.17e-8 /W/m, loss 0-3 dB/m, input chirp 0 to -3000 fs^2; B-integral up to about 3 rad.
+- **Method.** The app's FWHM readout is interpolated from its sampled grid and reads 100.0097 fs for an unpropagated 100 fs pulse at its default sampling -- a fixed 1e-4 offset, independent of the physics. The solver's own discretisation is measured below, on the bundled example.
 - **Tolerances.** 5e-3 on widths and spectral RMS covers the difference between two split-step discretisations at these step counts, as the refinement above bounds; 1e-2 on the B-integral and the compressed width covers the same difference where the compressed pulse's wings make its FWHM more sensitive; 1e-6 on energy is the loss factor's algebra. The analytic limit is held to 1e-4, the split-step mid-step sampling error at 256 steps.
+- **Measured convergence** (`validation/convergence.py`):
+  - hollow-core example: output FWHM: 2048 points, 384 steps → 4096 points, 768 steps moves it by 1.76e-05 relative (102.2184352 → 102.2166354).
+  - hollow-core example: compressed FWHM: 2048 points, 384 steps → 4096 points, 768 steps moves it by 7.78e-06 relative (46.82309081 → 46.8227267).
+  - hollow-core example: spectral RMS: 2048 points, 384 steps → 4096 points, 768 steps moves it by 3.26e-08 relative (3.829573481 → 3.829573356).
+  - hollow-core example: B-integral: 2048 points, 384 steps → 4096 points, 768 steps moves it by 2.19e-08 relative (2.036293359 → 2.036293315).
 
 Sources:
 
@@ -109,8 +126,8 @@ Sources:
 ### Thick singlet cardinal points, Stokes retarder and analyzer, etalon finesse
 
 - **Provenance.** Textbook closed forms, transcribed and evaluated here; the Airy finesse from Ismail et al. Eq. (32).
-- **Tested domain.** Lens radii 30-100 mm with 4-12 mm centre thickness at 587.6 nm; retardances 45-270 deg on linear and circular input; finesse 5-200.
-- **Convergence.** Closed forms, no discretisation. The finesse inversion bisects 200 times, far past double precision.
+- **Cases run.** Lens radii 30-100 mm with 4-12 mm centre thickness at 587.6 nm; retardances 45-270 deg on linear and circular input; finesse 5-200.
+- **Method.** Closed forms, no discretisation. The finesse inversion bisects 200 times, far past double precision.
 - **Tolerances.** 1e-9 is agreement between two evaluations of the same algebra in different languages; 1e-8 on the finesse covers the bisection's own convergence.
 
 Sources:

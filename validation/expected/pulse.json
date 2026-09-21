@@ -231,8 +231,11 @@
   "G. P. Agrawal, Nonlinear Fiber Optics, 5th ed. (Academic Press, 2013), section 3.2: a Gaussian of width T0 under GDD broadens as T0 sqrt(1 + (beta2 z / T0^2)^2), the closed form the app uses.",
   "R. Trebino, Frequency-Resolved Optical Gating (Kluwer, 2000), ch. 2, for the sech^2 autocorrelation width ratio 1.543 as instruments quote it."
  ],
- "convergence": "16384-point grids over 48-64 pulse widths; doubling either the grid or the window changes each derived constant by under 1e-5 relative.",
- "domain": "10 fs to 10 ps, 400-2000 nm, |GDD| up to 1e6 fs^2 (stretching factors up to about 300).",
+ "convergence": "16384-point grids over a 64-pulse-width window. Refining the grid changes nothing measurable; the window is what matters, since a sech^2 envelope's wings leave it slowly. Measured below.",
+ "convergence_keys": [
+  "time-bandwidth product"
+ ],
+ "domain": "Cases run: 100 fs at 800 nm for the bandwidth conversion, and stretching from q = 0.25 to 10, i.e. GDD 2500 to 100000 fs^2 on a 100 fs pulse. The relations are dimensionless in q = GDD / T0^2, so the mathematics carries further, but the unit conversions are exercised only at these inputs.",
  "fidelity": "computed",
  "id": "pulse",
  "outside_scope": "No range gate: `transformLimitedBandwidthNm` returns a bandwidth for any positive duration, including unphysical ones (0.1 fs at 800 nm gives 9415 nm). The pulsed laser's own controls bound what a user can author; the functions do not.",

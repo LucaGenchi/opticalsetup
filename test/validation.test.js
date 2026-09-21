@@ -12,11 +12,13 @@ import { thickLensCardinals } from '../sketch/js/elements.js';
 import { analyzerTransmission, linearStokes, retarder } from '../sketch/js/polarization.js';
 import { finesseForReflectivity, reflectivityForFinesse } from '../sketch/js/etalon.js';
 
-// Every quantitative model the app ships is checked against an independent
-// reference implementation (validation/reference/*.py, plain Python). The
+// The quantitative models listed in docs/validation.md are checked against
+// separately written reference implementations (validation/reference/*.py,
+// plain Python) and, where they exist, against published values. Coverage is
+// partial: that report also lists the models shipped without a check. The
 // references write validation/expected/*.json; this file calls the
 // JavaScript with the same inputs and demands agreement inside the tolerance
-// each case states. docs/validation.md is generated from the same files.
+// each case states.
 //
 // A failure here means the app and the reference disagree. Fix whichever is
 // wrong; never loosen a tolerance to make the test pass without saying why
@@ -128,4 +130,8 @@ for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial']
 test('validation: expected files and docs/validation.md are current', { skip: !(process.env.CI || process.env.VALIDATE_PYTHON) && 'set VALIDATE_PYTHON=1 to re-run the Python references' }, () => {
   const result = spawnSync('python3', ['validation/run.py', '--check'], { cwd: root, encoding: 'utf8' });
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  // The convergence study too: the report quotes its numbers, so a reference
+  // whose discretisation changed must not keep the old evidence.
+  const study = spawnSync('python3', ['validation/convergence.py', '--check'], { cwd: root, encoding: 'utf8' });
+  assert.equal(study.status, 0, `${study.stdout}\n${study.stderr}`);
 });

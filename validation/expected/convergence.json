@@ -1,0 +1,109 @@
+{
+ "note": "Each row refines one discretisation and records what moved.",
+ "studies": [
+  {
+   "quantity": "GVD of nbk7 at 800 nm",
+   "refined": "h = 5e-5 um",
+   "refinedValue": 44.65214853,
+   "relativeChange": 6.84e-06,
+   "setting": "h = 1e-4 um",
+   "value": 44.6518432
+  },
+  {
+   "quantity": "GVD of nbk7 at 1550 nm",
+   "refined": "h = 5e-5 um",
+   "refinedValue": -24.63008194,
+   "relativeChange": 7.08e-05,
+   "setting": "h = 1e-4 um",
+   "value": -24.63182683
+  },
+  {
+   "quantity": "GVD of silica at 800 nm",
+   "refined": "h = 5e-5 um",
+   "refinedValue": 36.16196876,
+   "relativeChange": 1.35e-06,
+   "setting": "h = 1e-4 um",
+   "value": 36.16201741
+  },
+  {
+   "quantity": "argon d2(n-1)/dl2 at 800 nm",
+   "refined": "h = 5e-4 um",
+   "refinedValue": 2.033316665e-05,
+   "relativeChange": 1.87e-08,
+   "setting": "h = 1e-3 um",
+   "value": 2.033316627e-05
+  },
+  {
+   "quantity": "argon d2(n-1)/dl2 at 1500 nm",
+   "refined": "h = 5e-4 um",
+   "refinedValue": 1.602844774e-06,
+   "relativeChange": 1.1e-07,
+   "setting": "h = 1e-3 um",
+   "value": 1.60284495e-06
+  },
+  {
+   "quantity": "gauss time-bandwidth product",
+   "refined": "window 128 tau, 16384 points",
+   "refinedValue": 0.4412915238,
+   "relativeChange": 6.84e-05,
+   "setting": "window 64 tau, 16384 points",
+   "value": 0.4413216895
+  },
+  {
+   "quantity": "gauss time-bandwidth product",
+   "refined": "window 64 tau, 32768 points",
+   "refinedValue": 0.4413216895,
+   "relativeChange": 1.61e-13,
+   "setting": "window 64 tau, 16384 points",
+   "value": 0.4413216895
+  },
+  {
+   "quantity": "sech2 time-bandwidth product",
+   "refined": "window 128 tau, 16384 points",
+   "refinedValue": 0.3148649417,
+   "relativeChange": 0.000131,
+   "setting": "window 64 tau, 16384 points",
+   "value": 0.3149060984
+  },
+  {
+   "quantity": "sech2 time-bandwidth product",
+   "refined": "window 64 tau, 32768 points",
+   "refinedValue": 0.3149060984,
+   "relativeChange": 2.71e-13,
+   "setting": "window 64 tau, 16384 points",
+   "value": 0.3149060984
+  },
+  {
+   "quantity": "hollow-core example: output FWHM",
+   "refined": "4096 points, 768 steps",
+   "refinedValue": 102.2166354,
+   "relativeChange": 1.76e-05,
+   "setting": "2048 points, 384 steps",
+   "value": 102.2184352
+  },
+  {
+   "quantity": "hollow-core example: compressed FWHM",
+   "refined": "4096 points, 768 steps",
+   "refinedValue": 46.8227267,
+   "relativeChange": 7.78e-06,
+   "setting": "2048 points, 384 steps",
+   "value": 46.82309081
+  },
+  {
+   "quantity": "hollow-core example: spectral RMS",
+   "refined": "4096 points, 768 steps",
+   "refinedValue": 3.829573356,
+   "relativeChange": 3.26e-08,
+   "setting": "2048 points, 384 steps",
+   "value": 3.829573481
+  },
+  {
+   "quantity": "hollow-core example: B-integral",
+   "refined": "4096 points, 768 steps",
+   "refinedValue": 2.036293315,
+   "relativeChange": 2.19e-08,
+   "setting": "2048 points, 384 steps",
+   "value": 2.036293359
+  }
+ ]
+}
