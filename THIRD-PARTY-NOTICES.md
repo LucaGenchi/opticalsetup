@@ -3,6 +3,10 @@
 
 # Third-party notices
 
+> The notice above covers this document's own wording. The licence texts
+> reproduced below belong to their authors and are quoted here to satisfy
+> those licences; they are not offered under the GPL.
+
 OpticalSetup itself is GPL-3.0-or-later (see `LICENSE`). The files below are
 other people's work, shipped with the site under their own terms, and those
 terms travel with them.

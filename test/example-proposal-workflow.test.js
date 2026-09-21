@@ -38,6 +38,7 @@ function issueBody({
   checkmark = 'x',
   description = 'Shows a simple focusing path with a labelled source and lens.',
   reference = '_No response_',
+  acknowledgement = null,
 } = {}) {
   return `### Setup name
 
@@ -57,7 +58,7 @@ ${reference}
 
 ### Contribution acknowledgement
 
-- [${checked ? checkmark : ' '}] I created or have permission to share this setup.
+${acknowledgement ?? `- [${checked ? checkmark : ' '}] I created or have permission to share this setup.`}
 `;
 }
 
@@ -149,4 +150,29 @@ test('proposal materialization rejects duplicate IDs and unsupported encodings',
     createdAt: '2026-07-22T10:30:00Z',
   }), /unique ID/i);
   assert.throws(() => sceneFromShareURL(shareURL(scene, 'opticalsetup.com', 'x')), /unsupported encoding/i);
+});
+
+const GRANT = '- [x] I have the right to license this setup and its description, and I publish them under CC BY 4.0 (credit to me, reuse and adaptation allowed). The app itself stays GPL-3.0-or-later.';
+const SHARE_BOX = '- [x] I created or have permission to share this setup, and I understand that it will be publicly reviewed and may be modified if accepted.';
+const materialize = acknowledgement => materializeProposal({
+  issueNumber: '42',
+  issueBody: issueBody(acknowledgement === undefined ? {} : { acknowledgement }),
+  userLogin: 'example-contributor',
+  createdAt: '2026-07-22T10:30:00Z',
+}).proposal;
+
+test('a licence is recorded only when its own box is ticked', () => {
+  // The old form had one checkbox, about permission to share. Re-running an
+  // issue written against it must not manufacture a CC BY grant.
+  assert.equal(materialize(SHARE_BOX).license, undefined, 'no grant was given, so none is recorded');
+  assert.equal(materialize(undefined).license, undefined, 'the default fixture has no grant either');
+  assert.equal(materialize([SHARE_BOX, GRANT.replace('- [x]', '- [ ]')].join('\n')).license, undefined,
+    'an unticked grant is not a grant');
+
+  const granted = materialize([SHARE_BOX, GRANT].join('\n')).license;
+  assert.equal(granted.content, 'CC-BY-4.0');
+  assert.match(granted.text, /CC BY 4\.0/, 'the text that was ticked is kept with the record');
+  assert.equal(granted.evidence, 'https://github.com/LucaGenchi/opticalsetup/issues/42',
+    'and where it can be read');
+  assert.ok(Date.parse(granted.recordedAt) > 0, 'recordedAt says when this record was written');
 });

@@ -84,7 +84,17 @@ export function extractProposalIssue(body) {
   const reference = cleanReference(optionalIssueField(body, 'Reference (optional)', 'Contribution acknowledgement'));
   const acknowledgement = issueField(body, 'Contribution acknowledgement');
   if (!/- \[[xX]\]/.test(acknowledgement)) throw new Error('Contribution acknowledgement is required');
-  return { name, description, reference, shareURL };
+  // The licence grant is recorded only when its own box is ticked, with the
+  // text that was ticked. Any other checked box -- the older form had just
+  // one, about permission to share -- leaves the submission unlicensed, so
+  // reprocessing an old issue cannot manufacture a grant nobody gave.
+  const grant = acknowledgement.split('\n')
+    .filter(line => /- \[[xX]\]/.test(line))
+    .find(line => /CC\s*BY\s*4\.0/i.test(line));
+  const license = grant
+    ? { content: 'CC-BY-4.0', text: grant.replace(/^\s*- \[[xX]\]\s*/, '').trim() }
+    : null;
+  return { name, description, reference, shareURL, license };
 }
 
 function decodeBase64URL(value) {
@@ -182,11 +192,21 @@ export function materializeProposal({ issueNumber, issueBody, userLogin, created
     reference: fields.reference,
     author: { github: userLogin, profile: `https://github.com/${userLogin}` },
     source: { issue: issueURL, submittedAt: submittedAt.toISOString() },
-    // The grant the submitter ticked on the form, recorded with the
-    // submission so a page never states terms nobody agreed to. Submissions
-    // accepted before the form asked for it carry no `license`, and their
-    // pages say only that they were shared for publication here.
-    license: { content: 'CC-BY-4.0', acknowledgedAt: submittedAt.toISOString(), form: 'example-proposal#contribution-acknowledgement' },
+    // The grant the submitter ticked, with the text they ticked and where it
+    // can be read. Absent when the form did not carry the licence checkbox or
+    // it was left unticked: those submissions stay unlicensed, and their pages
+    // claim no reuse rights. `recordedAt` is when this record was written --
+    // an issue can be edited, so it is not evidence of when consent was given;
+    // the issue URL is where the acknowledgement itself can be read.
+    ...(fields.license ? {
+      license: {
+        content: fields.license.content,
+        text: fields.license.text,
+        evidence: issueURL,
+        form: 'example-proposal#contribution-acknowledgement',
+        recordedAt: new Date().toISOString(),
+      },
+    } : {}),
     sceneSha256: createHash('sha256').update(sceneJSON).digest('hex'),
     scene: canonicalScene,
   };

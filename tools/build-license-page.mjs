@@ -55,4 +55,8 @@ const page = `<!DOCTYPE html>
 </html>
 `;
 await writeFile(join(ROOT, 'license.html'), page, 'utf-8');
-console.log('Built license.html from LICENSE');
+// A second copy inside /sketch/, because the service worker's scope is
+// /sketch/: a top-level navigation to /license.html is not controlled by it
+// and would fail with no network. The app's About dialog links this one.
+await writeFile(join(ROOT, 'sketch', 'license.html'), page.replace('href="/sketch/">Back to the sketch', 'href="./">Back to the sketch'), 'utf-8');
+console.log('Built license.html and sketch/license.html from LICENSE');

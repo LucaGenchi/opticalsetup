@@ -42,7 +42,11 @@ test('generated pages carry it too, and the app can show the licence offline', (
     assert.match(head, /^<!DOCTYPE html>/i, page);
   }
   const worker = readFileSync(join(ROOT, 'sketch/service-worker.js'), 'utf8');
-  assert.match(worker, /"\.\.\/license\.html"/, 'the licence page is precached with the app');
+  // Inside /sketch/, because that is the service worker's scope: a top-level
+  // navigation to a page outside it is not controlled and fails offline.
+  assert.match(worker, /"\.\/license\.html"/, 'the licence page is precached with the app');
+  const inScope = readFileSync(join(ROOT, 'sketch/license.html'), 'utf8');
+  assert.match(inScope, /GNU GENERAL PUBLIC LICENSE/, 'and it carries the licence text');
   // license.html is generated from LICENSE and must not drift from it.
   const license = readFileSync(join(ROOT, 'LICENSE'), 'utf8');
   const page = readFileSync(join(ROOT, 'license.html'), 'utf8');
@@ -51,7 +55,20 @@ test('generated pages carry it too, and the app can show the licence offline', (
   const app = readFileSync(join(ROOT, 'sketch/index.html'), 'utf8');
   assert.match(app, /id="aboutDialog"/, 'the app has an about dialog');
   assert.match(app, /without any warranty/i, 'it carries the no-warranty notice');
-  assert.match(app, /href="\/license\.html"/, 'and links the licence text');
+  assert.match(app, /href="\.\/license\.html"/, 'and links the copy inside its own scope');
+});
+
+test('a bundled third-party file keeps its own notice, not ours', () => {
+  // KaTeX's stylesheet is Khan Academy's work, shipped unmodified. A header
+  // script once stamped it as ours under the GPL; it must not happen again.
+  const katex = readFileSync(join(ROOT, 'wiki/assets/katex.min.css'), 'utf8').slice(0, 400);
+  assert.match(katex, /KaTeX v\d+\.\d+/, 'it names the upstream version');
+  assert.match(katex, /Khan Academy/, 'and its copyright holder');
+  assert.match(katex, /SPDX-License-Identifier: MIT/, 'and its licence');
+  assert.doesNotMatch(katex, /Luca Genchi/, 'it is not ours to claim');
+  assert.doesNotMatch(katex, /GPL-3\.0/, 'and not under our licence');
+  const notices = readFileSync(join(ROOT, 'THIRD-PARTY-NOTICES.md'), 'utf8');
+  assert.match(notices, /not offered under the GPL/, 'the quoted licence texts are excluded from this file\'s own notice');
 });
 
 test('a community page states only the terms its own submission recorded', async () => {

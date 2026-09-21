@@ -1,13 +1,13 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
-const CACHE_NAME = 'opticalsetup-pwa-v114';
+const CACHE_NAME = 'opticalsetup-pwa-v115';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
 const PRECACHE_PATHS = [
   "./",
   "./index.html",
-  "../license.html",
+  "./license.html",
   "./manifest.webmanifest",
   "./css/style.css",
   "./icons/icon.svg",
