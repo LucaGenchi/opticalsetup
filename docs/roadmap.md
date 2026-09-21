@@ -60,10 +60,10 @@ for one more part of the code, without breaking the live site.
 | --- | --- | --- |
 | 0.1 License plumbing | GPL-3.0 declared in `package.json`, README, landing page; stale `optics-sketch` references fixed; `AGENTS.md` states the real compatibility policy | GitHub shows the license, every LLM-facing file points at `opticalsetup` |
 | 0.2 CI | A workflow that runs `node --check`, `npm test` and `git diff --check` on every PR and on `main` | Luca makes it a required status check and enables admin enforcement |
-| 0.3 Golden snapshots | `tools/update-golden.mjs` traces every bundled example and community scene and writes every readout to `test/golden/`; `test/golden.test.js` compares | Any physics change that alters a readout shows up as a reviewable diff |
+| 0.3 Golden snapshots | `tools/update-golden.mjs` traces every bundled example and community scene and records its drawables, drawn elements, pulse tracks, hits and readouts in `test/golden/`; `test/golden.test.js` compares | A physics change that alters a recorded readout shows up as a reviewable diff. Covering every readout the UI can show, including instrument-derived ones, is the acceptance target |
 | 0.4 Reference checks and coverage inventory | `validation/` with independent references and committed expected values; `test/validation.test.js` checks the JavaScript against them; `docs/validation.md` lists every quantitative model the app ships as **covered** or **not yet covered**, with reference, tolerance and provenance for the covered ones | The inventory is complete, and a first set of models (Sellmeier, GDD, argon capillary, split-step NLSE, thick lens, polarization) is covered. The rest is listed, not claimed |
 | 0.5 Adding-physics protocol | `docs/adding-physics.md`: model statement, reference first, then expected values, then the JavaScript, then tests (including edges), then the labels | A new model cannot merge without a reference and a tolerance |
-| 0.6 Light-state inheritance rules | The rules for what a child ray inherits at an interaction — pulse record, spectrum and its slices, filtered pieces, caveats and provenance flags such as "reshaped" or "etalon comb" — written as one explicit table, with tests that send one pulse through every chain of interaction kinds (filter → etalon, glass → filter → grating, splitter → recombination) and assert the flags survive | Losing a provenance flag at a second optic is caught by a test. The etalon-after-filter bug found in #169's review is the first case |
+| 0.6 Light-state inheritance rules | The rules for what a child ray inherits at an interaction — pulse record, spectrum and its slices, filtered pieces, caveats and provenance flags such as "reshaped" or "etalon comb" — written as one explicit table saying for each interaction kind and field whether it is inherited, transformed, reset or makes the readout decline, with tests over representative multi-step and recombination cases (filter → etalon, glass → filter → grating, splitter → recombination) | Losing a provenance flag at a second optic is caught by a test. The etalon-after-filter bug found in #169's review is the first case |
 | 0.7 Browser behaviour tests | A small suite driving the real page: save and reload, undo and redo, an inspector edit, share link, SVG/PNG export | Refactors in later phases cannot silently break the editor |
 
 Steps 0.6 and 0.7 come before any restructuring: the bugs recent reviews found
@@ -72,13 +72,15 @@ tests of single functions catch.
 
 ## Phase 1: fidelity as data
 
-The README's simulation-scope essay exists because fidelity is encoded
-nowhere machine-readable. This phase moves it into the engine.
+The README's simulation-scope essay exists because fidelity is not yet
+represented uniformly per readout: the registry carries capability metadata,
+but a number on screen does not say what it is. This phase moves it into the
+engine.
 
 | Step | Deliverable | Done when |
 | --- | --- | --- |
 | 1.1 Fidelity vocabulary | `sketch/js/fidelity.js`: approximation levels and evidence levels, and structured caveat codes replacing the free-text strings (`LINEAR_ONLY`, `ARGON_OUT_OF_RANGE`, `phaseIssue`, `fieldIssue`, the `DISPERSION_UNAVAILABLE` reasons). It builds on the capability metadata the element registry already carries (`readoutKind`, `source`, the simulated/setup/diagram badges) rather than starting over | The strings exist in one place, with a code, a short reason and an optional element id |
-| 1.2 Readouts carry fidelity | Every readout value the inspector, display and probes show is `{ value, unit, approximation, evidence, caveats }`; start with the pulse stack (duration, GDD, spectrum, energy) and detector power | The inspector renders one uniform badge; tests assert the transitions — a narrow filtered pulse is an *estimate* with an effective quadratic phase, a filtered continuum an *estimate* with an assumed sweep, and unknown phase, an etalon's output or a band too broad for one quadratic phase are *unavailable* with their reason |
+| 1.2 Readouts carry fidelity | Every readout value the inspector, display and probes show is `{ value, unit, approximation, evidence, caveats }`; start with the pulse stack (duration, GDD, spectrum, energy) and detector power | The inspector renders one uniform badge; tests assert the transitions — a filtered pulse whose phase and provenance are supported is an *estimate* with an effective quadratic phase, a filtered continuum an *estimate* with an assumed sweep, and unknown phase, an etalon's output or a band too broad for one quadratic phase make the **duration and envelope readouts** unavailable with their reason, leaving power, spectrum and the other quantities untouched |
 | 1.3 Model cards | Each element type gets a machine-readable `model` block: modelled effects, ignored effects, valid ranges, references, per-readout fidelity | The wiki's "In OpticalSetup" section is generated from it; `wiki.test.js` checks agreement instead of existence |
 | 1.4 Reference-check page | A generated page on the site listing every reference-checked quantity with its reference, tolerance and agreement, and the models not yet covered | Researchers can read why a number is trustworthy without opening the repository |
 | 1.5 Units and schema contract | One stated convention for units and field names in scenes, readouts and the engine's inputs and outputs | Calculators, the scene schema (5.1) and exported readouts use the same names and units |
@@ -114,10 +116,40 @@ First candidates, all already standalone functions in the engine:
 Later, as estimators land (Phase 4): Gaussian-beam spot size and Rayleigh
 range, fluence and peak intensity, B-integral, undepleted SHG efficiency.
 
-Order: a calculator may ship once its function is listed in the coverage
-inventory (0.4). It shows *not yet reference-checked* until its check exists,
-and uses the labels of 1.1 once they land. Calculators need no restructuring
-of the engine, so this track can start as soon as Phase 0 is in, and run
+**Release rule.** An existing engine calculation may ship as a calculator once
+it has an inventory entry (0.4), a stated model and supported domain, explicit
+units and conventions, visible approximation and evidence labels, and tests of
+the page's input/output wiring and boundaries. Sharing the engine
+implementation establishes consistency with the app, not independent
+correctness, so the tests must check that the page supplies the tracer the
+same effective inputs, not merely that it calls the same function. Invalid or
+out-of-domain input produces a reason, never an old result or a silent
+fallback; where a helper clamps internally, the page validates first or shows
+the effective input it used. Assumptions and evidence travel with any copied
+or downloaded result. A new quantitative model, or a change to an existing
+model's physics, still needs the reference and tolerance of 0.5 — the
+"not yet reference-checked" label is not a way in for new physics, and a
+calculation known to be wrong is not exposed at all.
+
+**Decided (Luca, 2026-09-21): the first calculators are reference-checked
+ones only.** Unchecked existing calculations may follow later under the rule
+above, labelled *not yet reference-checked*. The first release is two or
+three small pages sharing one template — transform limit and GDD, material
+dispersion, pulse energy and peak power — whichever of those already have
+their reference checks when the work starts. The list above is a backlog, not
+a commitment to ship it whole, and the calculator catalogue has one owner
+before pages are written in parallel.
+
+Each page states the assumptions that decide its answer: the pulse shape and
+width convention; that a GDD inferred from a duration alone has no sign; the
+material's wavelength range; that the etalon relation is the high-finesse
+approximation; that an objective's rated NA is not the paraxial tracer's
+convergence angle; and that an OPO wavelength calculator gives wavelength
+relations only, not phase matching, threshold or efficiency.
+
+Calculators need no restructuring of the engine, so this track can start once
+the small agreed subset of 1.1 and 1.5 exists — names, units, approximation
+and evidence vocabulary, valid domain and decline behaviour — and run
 alongside Phases 1–3.
 
 ## Phase 2: a pure, checked engine
@@ -152,9 +184,14 @@ element types share code. The golden snapshots (0.3) must not change.
 
 ## Phase 4: estimators researchers ask for
 
-Each estimator is a pure function on what the trace already provides, with a
-reference check first, and lands as its own PR with an inventory entry and a
-calculator:
+Each estimator is a pure function on explicitly defined trace data plus any
+additional stated model inputs — a geometric ray trace alone does not fix a
+Gaussian q-parameter, absolute watts, fluence, nonlinear overlap or
+third-order dispersion. Each names its required inputs, normalization,
+supported paths and refusal cases before it is written; missing beam, source
+or material information is supplied explicitly or the estimator declines.
+Each has a reference check first and lands as its own PR with an inventory
+entry and a calculator:
 
 - spot size and Rayleigh range (Gaussian-beam q-parameter along a path);
 - power budget in watts from each source to every detector;
@@ -207,6 +244,8 @@ one after another.
 - GPL-3.0-only or GPL-3.0-or-later (0.1 assumes or-later; see that PR).
 - Whether to make CI a required status check and enable admin enforcement (0.2).
 - Whether fidelity badges appear on exported figures or only in the editor (1.2).
+- Which approximation levels mean what: "computed" says the model was
+  evaluated exactly as stated, not that it matches an experiment.
 - Whether and when a build tool is ever adopted (2.1 does without one).
 - Whether Codex session transcripts and the marketing playbook stay in this repository (5.2).
 - Which calculators come first, and where the section sits on the site.
