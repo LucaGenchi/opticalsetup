@@ -23,12 +23,21 @@
 // it is called a physics change. A 32-bit digest is a regression aid, not a
 // guarantee against collisions.
 //
-// What this covers: everything reachable from traceScene() plus the readout
-// getters listed below, each element's drawn SVG, the pulse tracks and the
-// write/signal hits. It is a tracer and drawing baseline, not a proof of
-// visual equivalence and not a substitute for the instrument-level tests: a
-// value an instrument helper derives after detectorReading() (an
-// autocorrelation trace, say) is covered only through the record it reads.
+// What this covers: the readout getters listed below, each element's drawn
+// SVG, the pulse tracks and the write/signal hits, as the summaries in this
+// file define them. What it does not cover:
+//
+//   - a value an instrument helper derives after detectorReading() -- an
+//     autocorrelation trace, say -- except through the record it reads;
+//   - probeAt() and other position-sampled readouts;
+//   - anything deeper than twelve levels in a readout, which snapshot()
+//     truncates to "[depth]";
+//   - `el` back-references, functions and undefined fields, which are skipped;
+//   - fields outside the explicit schemas that drawableSummary, trackSummary
+//     and hitSummary record.
+//
+// It is a tracer and drawing baseline, not a proof of visual equivalence and
+// not a substitute for the instrument-level tests.
 
 import { readdir, readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -262,7 +271,7 @@ export function hitSummary(hits, label) {
 
 // Each element as the canvas and the SVG export draw it. A drawing bug that
 // does not move a ray -- #177's negative sensor bar, say -- shows up here.
-function elementDrawings(elements) {
+export function elementDrawings(elements) {
   const out = {};
   for (const el of elements) {
     const def = registry[el.type];
@@ -282,7 +291,10 @@ function elementDrawings(elements) {
 }
 
 // Cleared per scene: `goldenFor` reports what it found through `nonFiniteSeen`.
+// `resetNonFinite` is for callers that summarise something without going
+// through `goldenFor`, so each check starts from a known state.
 export function nonFiniteSeen() { return [...nonFinite]; }
+export function resetNonFinite() { nonFinite.length = 0; }
 export function goldenFor(scene) {
   nonFinite.length = 0;
   const result = traceScene(scene.elements, scene.beams);

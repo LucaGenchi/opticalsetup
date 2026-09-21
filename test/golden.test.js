@@ -86,17 +86,50 @@ test('golden: every snapshot belongs to a scene that still exists', async () => 
 // A test over today's scenes cannot show that, because they are all clean.
 
 test('golden: invalid numbers are reported wherever they occur', async () => {
-  const { snapshot, nonFiniteSeen, drawableSummary, trackSummary, hitSummary } =
+  const { snapshot, nonFiniteSeen, resetNonFinite, drawableSummary, trackSummary, hitSummary } =
     await import('../tools/update-golden.mjs');
-  const seen = fn => { fn(); return nonFiniteSeen(); };
+  // The reporter accumulates until it is cleared, so each probe starts from
+  // empty and must produce its own diagnostic naming the field it found.
+  // Reading a running total instead would let one probe's error satisfy
+  // every later assertion.
+  const probe = fn => { resetNonFinite(); fn(); return nonFiniteSeen(); };
   const probes = [
-    ['a drawable with a NaN opacity', () => drawableSummary([{ type: 'path', color: '#fff', opacity: NaN, w: 1, pts: [{ x: 0, y: 0 }] }])],
-    ['a dot with an infinite radius', () => drawableSummary([{ type: 'dots', color: '#fff', opacity: 1, dots: [{ x: 1, y: 2, r: Infinity, o: 1 }] }])],
-    ['a coordinate sum that overflows', () => snapshot(Array(64).fill(1e308))],
-    ['a track carrying a NaN gate duty', () => trackSummary([{ wl: 800, intensity: 1, pts: [], opls: [0, 1], pulse: { gates: [{ duty: NaN }] } }])],
-    ['a hit whose nested pulse holds an infinity', () => hitSummary([{ x: 1, y: 2, pulse: { pathDelayNs: Infinity } }], 'writeHits')],
+    ['a drawable with a NaN opacity', /opacity/i, () => drawableSummary([{ type: 'path', color: '#fff', opacity: NaN, w: 1, pts: [{ x: 0, y: 0 }] }])],
+    ['a dot with an infinite radius', /\.r = Infinity/, () => drawableSummary([{ type: 'dots', color: '#fff', opacity: 1, dots: [{ x: 1, y: 2, r: Infinity, o: 1 }] }])],
+    ['a coordinate sum that overflows', /sum = Infinity/, () => snapshot(Array(64).fill(1e308))],
+    ['a track carrying a NaN gate duty', /gates\[0\]\.duty = NaN/, () => trackSummary([{ wl: 800, intensity: 1, pts: [], opls: [0, 1], pulse: { gates: [{ duty: NaN }] } }])],
+    ['a hit whose nested pulse holds an infinity', /writeHits\[0\]\.pulse\.pathDelayNs = Infinity/, () => hitSummary([{ x: 1, y: 2, pulse: { pathDelayNs: Infinity } }], 'writeHits')],
   ];
-  for (const [label, fn] of probes) assert.ok(seen(fn).length > 0, `${label} must be reported`);
+  for (const [label, pattern, fn] of probes) {
+    const found = probe(fn);
+    assert.equal(found.length > 0, true, `${label} must be reported`);
+    assert.ok(found.some(entry => pattern.test(entry)), `${label}: reported ${JSON.stringify(found)}`);
+  }
+  // A control: valid input must add nothing, or the probes above prove little.
+  const clean = probe(() => {
+    drawableSummary([{ type: 'path', color: '#fff', opacity: 1, w: 1, pts: [{ x: 0, y: 0 }, { x: 1, y: 1 }] }]);
+    trackSummary([{ wl: 800, intensity: 1, pts: [{ x: 0, y: 0 }], opls: [0, 1], pulse: { gates: [{ duty: 0.5 }] } }]);
+    hitSummary([{ x: 1, y: 2, pulse: { pathDelayNs: 3 } }], 'writeHits');
+    snapshot(Array(64).fill(1));
+  });
+  assert.deepEqual(clean, [], 'valid input must produce no diagnostics');
+});
+
+test('golden: a component that cannot draw is reported, not digested', async () => {
+  const { elementDrawings, nonFiniteSeen, resetNonFinite } = await import('../tools/update-golden.mjs');
+  const { registry } = await import('../sketch/js/elements.js');
+  const type = 'test-throwing-element';
+  registry[type] = { svg: () => { throw new Error('cannot draw'); }, params: [] };
+  try {
+    resetNonFinite();
+    const drawings = elementDrawings([{ id: 'x1', type, params: {} }]);
+    assert.ok(drawings[`${type}:x1`], 'it still records a digest so the diff shows the change');
+    assert.ok(nonFiniteSeen().some(entry => /failed to draw: cannot draw/.test(entry)),
+      `a throwing component must be reported: ${JSON.stringify(nonFiniteSeen())}`);
+  } finally {
+    delete registry[type];
+    resetNonFinite();
+  }
 });
 
 test('golden: nested pulse and gate contents reach the digests', async () => {
