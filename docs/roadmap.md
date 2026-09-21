@@ -22,6 +22,10 @@ be checked carefully and an exact formula can be checked not at all:
 - **Evidence**: what the number has been checked against —
   *none*, *reference-checked*, or *experimentally validated*.
 
+Both labels belong to **one quantity over one stated domain**, never to a
+module or a file. Checking an index does not certify the derivatives taken
+from it, and checking a model at 800 nm says nothing about 2 µm.
+
 A quantity is **reference-checked** when all of the following hold. This
 verifies that the code computes its stated model correctly at the tested
 inputs; it does not by itself show that the model matches an experiment.
@@ -96,6 +100,14 @@ evidence, with a link to the reference check where there is one. They are
 also a way for users to check the app against their own hand calculations and
 lab values.
 
+A calculator does not have to be a window onto the tracer. It may also
+implement a published formula the app does not model at all — a grating
+equation, a Gaussian-beam relation, a phase-matching condition — provided the
+formula is cited to a textbook or paper and the page says the app's tracer
+does not use it. Such a page is new quantitative code, so it follows the
+protocol of 0.5 like any other model: reference, tolerance, tests, labels. A
+citation is what makes the formula reviewable; it is not by itself the check.
+
 First candidates, all already standalone functions in the engine:
 
 - **Pulses:** transform limit from bandwidth and back (Gaussian and sech²);
@@ -115,6 +127,13 @@ First candidates, all already standalone functions in the engine:
 
 Later, as estimators land (Phase 4): Gaussian-beam spot size and Rayleigh
 range, fluence and peak intensity, B-integral, undepleted SHG efficiency.
+
+Candidates from theory that the tracer does not model, each needing its own
+reference and check: grating resolving power and angular dispersion, prism
+minimum deviation, Gaussian-beam propagation through an ABCD system, the
+Rayleigh and Abbe resolution limits, depth of field, phase-matching angles
+for common crystals, and thermal-lens estimates. Each page states plainly
+that the number comes from the cited formula and not from a traced scene.
 
 **Release rule.** An existing engine calculation may ship as a calculator once
 it has an inventory entry (0.4), a stated model and supported domain, explicit
@@ -249,6 +268,8 @@ one after another.
 - Whether and when a build tool is ever adopted (2.1 does without one).
 - Whether Codex session transcripts and the marketing playbook stay in this repository (5.2).
 - Which calculators come first, and where the section sits on the site.
+- Which theory-only calculators are worth having, given that each is new
+  quantitative code rather than a window onto the tracer.
 
 ## Rules that apply from now on
 
