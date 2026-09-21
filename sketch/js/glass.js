@@ -117,12 +117,26 @@ export function glassIndex(id, wavelength = LAMBDA_D) {
   return index;
 }
 
+// The true wavelengths of the Fraunhofer lines the Abbe number is defined on.
+// LAMBDA_D/F/C above are the rounded values used for everything else, where a
+// tenth of a nanometre is far below what the drawing or the tracer can show.
+// The Abbe number cannot use them: it divides nd - 1 by nF - nC, a difference
+// of about 0.008, so rounding the lines by 0.04 nm moves the result by 0.03 --
+// enough to report 64.14 for a glass every catalogue lists as 64.17.
+const LINE_D = 587.5618, LINE_F = 486.1327, LINE_C = 656.2725;
+
 // Derive the displayed Abbe number from the same curve used for ray tracing,
-// so the material label and its actual dispersion cannot drift apart.
+// so the material label and its actual dispersion cannot drift apart. The
+// curve is evaluated directly here rather than through glassIndex, whose
+// cache buckets wavelengths to 0.1 nm.
 export function glassAbbe(id) {
-  const nd = glassIndex(id, LAMBDA_D);
-  const nF = glassIndex(id, LAMBDA_F);
-  const nC = glassIndex(id, LAMBDA_C);
+  const glass = GLASSES.get(id);
+  if (!glass) return null;
+  const at = nm => {
+    const { squaredIndex } = sellmeierTerms(glass, nm);
+    return squaredIndex > 0 && Number.isFinite(squaredIndex) ? Math.sqrt(squaredIndex) : NaN;
+  };
+  const nd = at(LINE_D), nF = at(LINE_F), nC = at(LINE_C);
   return [nd, nF, nC].every(Number.isFinite) && nF !== nC
     ? (nd - 1) / (nF - nC)
     : null;
