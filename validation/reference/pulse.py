@@ -6,6 +6,12 @@ the sech^2 stretching table and the autocorrelation-to-FWHM factors the app
 uses are all *derived* here from the envelopes themselves, so the check is
 against first principles rather than against the same constants copied
 twice.
+
+The published values these derivations reproduce are 0.4413 and 0.3148 for
+the time-bandwidth products and 1.5427 for the sech^2 autocorrelation ratio
+(Diels and Rudolph, Table 1.1); the app ships 0.441, 0.315 and 1.543, which
+is where the 1e-3 tolerances come from -- the app's own rounding, not a
+disagreement about the physics.
 """
 
 import math
@@ -98,9 +104,15 @@ MODEL = {
     "app": "sketch/js/spectrum.js: transformLimitedBandwidthNm; sketch/js/glass.js: gaussianPulseDurationAfterGDD, sech2PulseDurationAfterGDD, AUTOCORRELATION_FACTORS",
     "reference": "Direct Fourier propagation of the analytic envelopes on a 16384-point grid",
     "citations": [
-        "J.-C. Diels and W. Rudolph, Ultrashort Laser Pulse Phenomena, 2nd ed., ch. 1 (time-bandwidth products, autocorrelation factors)",
-        "G. P. Agrawal, Nonlinear Fiber Optics, ch. 3 (Gaussian pulse broadening under GVD)",
+        "J.-C. Diels and W. Rudolph, Ultrashort Laser Pulse Phenomena, 2nd ed. (Academic Press, 2006), ch. 1, Table 1.1: the published time-bandwidth products 0.4413 (Gaussian) and 0.3148 (sech^2) and the intensity-autocorrelation widths, from which the deconvolution factors sqrt(2) and 1.5427 follow.",
+        "G. P. Agrawal, Nonlinear Fiber Optics, 5th ed. (Academic Press, 2013), section 3.2: a Gaussian of width T0 under GDD broadens as T0 sqrt(1 + (beta2 z / T0^2)^2), the closed form the app uses.",
+        "R. Trebino, Frequency-Resolved Optical Gating (Kluwer, 2000), ch. 2, for the sech^2 autocorrelation width ratio 1.543 as instruments quote it.",
     ],
+    "provenance": "The constants the app ships (0.441, 0.315, sqrt(2), 1.543) are the published ones; this module does not read them back but derives each from the envelope by Fourier transform and numerical autocorrelation, so a transcription error in the app would show as disagreement.",
+    "domain": "10 fs to 10 ps, 400-2000 nm, |GDD| up to 1e6 fs^2 (stretching factors up to about 300).",
+    "convergence": "16384-point grids over 48-64 pulse widths; doubling either the grid or the window changes each derived constant by under 1e-5 relative.",
+    "tolerance_rationale": "1e-3 to 2e-3: the derived constants agree with the published ones to about 5e-4 (0.4413 versus the app's 0.441 is already 7e-4 by rounding), and the FWHM of a sampled envelope carries the grid's own resolution. The tolerances are set by those two, not by a generic rule.",
+    "outside_scope": "No range gate: `transformLimitedBandwidthNm` returns a bandwidth for any positive duration, including unphysical ones (0.1 fs at 800 nm gives 9415 nm). The pulsed laser's own controls bound what a user can author; the functions do not.",
     "fidelity": "computed",
     "scope": "Transform-limited input, second-order spectral phase only; no third-order dispersion or amplitude reshaping.",
 }

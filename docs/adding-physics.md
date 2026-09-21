@@ -2,14 +2,28 @@
 
 This is the protocol for any change that makes OpticalSetup report a number
 a researcher might act on: a duration, a power, a bandwidth, an efficiency,
-a spot size. It exists so that "the app says 46.8 fs" always means "an
-independent implementation says 46.8 fs too, inside a stated scope". It
+a spot size. It exists so that "the app says 46.8 fs" always means "the model
+it claims to evaluate gives 46.8 fs too, inside a stated scope, checked
+against something written from the sources rather than from the app". It
 applies to new models and to changes that move an existing model's output.
 Qualitative or diagram-only behaviour (a mirror folds, a filter dims a beam
 by a user-set fraction) does not need it, but must not pretend otherwise.
 
 The steps are ordered on purpose: the reference comes first, the JavaScript
-last. Writing the reference first is what makes it independent.
+last. Writing it first helps, but it is not what makes a check independent.
+Three things do, and each step below asks for them:
+
+- **a separate derivation** — the reference is written from the published
+  equations, not from the app's code, and states the conventions it chose;
+- **provenance** — which source, which edition or version, and which numbers
+  in it are being reproduced;
+- **an error budget** — the reference's own convergence, the app's stated
+  approximations, and a tolerance that follows from both rather than from a
+  habit.
+
+An analytic limit, or a published measurement, is worth more than a second
+program: two programs written from the same idea can make the same mistake.
+Where a closed form exists for a special case, check it as well.
 
 ## 1. Write the model statement
 
@@ -20,7 +34,10 @@ Before any code, write down, in the wiki entry of the element (or a new
 - the equations, with every symbol and unit named;
 - the assumptions (scalar, paraxial, single mode, undepleted, ...);
 - the parameter ranges inside which the model is valid, and what the app
-  reports outside them (it must say "unavailable", never extrapolate);
+  actually does outside them. Saying "unavailable" with a reason is the
+  behaviour to aim for; where a function instead clamps to the edge of a fit
+  (as the glass catalogue does), the table records that, because a reader
+  must not be left thinking a clamped number was checked;
 - the sources, cited so that a reader can check the equations;
 - the conventions where the literature offers more than one (sign of the
   chirp, effective-area definition, FWHM versus 1/e² widths, handedness).
@@ -86,7 +103,10 @@ without a reason is a bug report.
 
 ## What reviewers check
 
-- Is there a reference file, and was it written independently of the app?
+- Is there a reference file written from the sources, with its conventions,
+  provenance, tested domain, convergence and tolerance rationale stated?
+- Is there an analytic limit or a published value among the cases, not only
+  agreement between two programs?
 - Do the tolerances follow from the method?
 - Does the app return `null`/"unavailable" outside the scope, and is the
   scope stated where users read it?

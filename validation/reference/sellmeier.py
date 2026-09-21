@@ -2,11 +2,22 @@
 
 Reference: the published three-term Sellmeier coefficients (Schott optical
 glass data sheets for N-BK7, N-SF5 and N-SF11; Malitson, J. Opt. Soc. Am.
-55, 1205 (1965) for fused silica), evaluated here directly, with the
-wavelength derivatives taken numerically. The app evaluates the same
-coefficients but derives GVD from the analytic derivative of the Sellmeier
-sum (sketch/js/glass.js), so agreement checks that derivation and its unit
-bookkeeping, not the coefficients.
+55, 1205 (1965), doi:10.1364/JOSA.55.001205, for fused silica), evaluated
+here directly, with the wavelength derivatives taken numerically. The app
+evaluates the same coefficients but derives GVD from the analytic derivative
+of the Sellmeier sum (sketch/js/glass.js), so agreement checks that
+derivation and its unit bookkeeping, not the coefficients.
+
+The coefficients themselves are anchored separately, against the refractive
+indices the N-BK7 data sheet tabulates for the spectral lines (Schott data
+sheet 517642.251, 2007-09-19). Those numbers are measured values the fit was
+made to, not outputs of the fit, so they check the coefficients and the
+evaluation together. The data sheet quotes five decimals, so the anchor
+tolerance is 1e-5 absolute; the app reproduces all sixteen lines to within
+8e-6, and Malitson quotes an absolute residual of 1.05e-5 for the silica fit.
+
+ANCHORS is therefore published data; everything in cases() below it is this
+module's own evaluation of the same coefficients.
 """
 
 import math
@@ -64,8 +75,57 @@ def abbe(glass):
     return (nd - 1) / (nf - nc)
 
 
-def cases():
+# Refractive indices tabulated on the N-BK7 data sheet (517642.251), by
+# spectral line. Measured catalogue values, independent of any fit we run.
+NBK7_LINES = [
+    (2325.4, 1.48921), (1970.1, 1.49495), (1529.6, 1.50091), (1060.0, 1.50669),
+    (1014.0, 1.50731), (852.1, 1.50980), (706.5, 1.51289), (656.3, 1.51432),
+    (632.8, 1.51509), (589.3, 1.51673), (587.6, 1.51680), (546.1, 1.51872),
+    (486.1, 1.52238), (435.8, 1.52668), (404.7, 1.53024), (365.0, 1.53627),
+]
+# The same data sheet's headline numbers.
+NBK7_ABBE = 64.17
+NBK7_NF_MINUS_NC = 0.008054
+
+
+def anchor_cases():
+    """The app against published measurements, not against our own evaluation."""
     out = []
+    for nm, published in NBK7_LINES:
+        out.append({
+            "name": f"nbk7 at {nm} nm versus the data sheet",
+            "inputs": {"glass": "nbk7", "wavelengthNm": nm},
+            "expected": {"index": published},
+            # Absolute: the data sheet rounds to five decimals (+/- 5e-6), and
+            # the Sellmeier fit has a residual of its own.
+            "tolerance": {"index": 1e-5},
+            "absolute": True,
+            "note": "published N-BK7 data sheet value (Schott 517642.251)",
+        })
+    out.append({
+        "name": "nbk7 Abbe number versus the data sheet",
+        "inputs": {"glass": "nbk7"},
+        "expected": {"abbe": NBK7_ABBE},
+        # nF - nC is 0.008054 on the data sheet and 0.008057 from the fit; that
+        # 3e-6 difference, divided into nd - 1, moves the Abbe number by 0.03.
+        # The catalogue value is not reproducible from the fit more closely
+        # than this, and the app derives it from the fit.
+        "tolerance": {"abbe": 1e-3},
+        "note": "data sheet 64.17; the fit gives 64.14, the residual amplified by the small nF - nC",
+    })
+    out.append({
+        "name": "nbk7 principal dispersion versus the data sheet",
+        "inputs": {"glass": "nbk7", "loNm": 486.1, "hiNm": 656.3},
+        "expected": {"nFMinusNC": NBK7_NF_MINUS_NC},
+        "tolerance": {"nFMinusNC": 1e-5},
+        "absolute": True,
+        "note": "published nF - nC = 0.008054",
+    })
+    return out
+
+
+def cases():
+    out = anchor_cases()
     for glass in GLASSES:
         for nm in (400, 587.6, 800, 1030, 1550):
             um = nm / 1000
@@ -107,9 +167,15 @@ MODEL = {
     "app": "sketch/js/glass.js: glassIndex, glassGroupIndex, glassGVD, glassAbbe, glassGroupDelayDifferenceFs",
     "reference": "Published Sellmeier coefficients evaluated directly; derivatives by five-point finite differences",
     "citations": [
-        "Schott AG, optical glass data sheets (N-BK7, N-SF5, N-SF11)",
-        "I. H. Malitson, J. Opt. Soc. Am. 55, 1205 (1965), fused silica",
+        "SCHOTT AG, data sheet N-BK7 517642.251 (2007-09-19): Sellmeier constants and the tabulated indices used as anchors here — https://www.schott.com/shop/medias/schott-datasheet-n-bk7-eng.pdf",
+        "SCHOTT AG, optical glass collection data sheets (N-SF5, N-SF11) — https://www.schott.com/en-gb/products/optical-glass",
+        "I. H. Malitson, 'Interspecimen comparison of the refractive index of fused silica', J. Opt. Soc. Am. 55, 1205-1208 (1965), doi:10.1364/JOSA.55.001205 (absolute residual 1.05e-5 over 0.21-3.71 um)",
     ],
+    "provenance": "Coefficients transcribed from the manufacturer data sheets and Malitson's paper; the anchor indices are that data sheet's own tabulated measurements.",
+    "domain": "365-2325 nm for N-BK7 (the data sheet's own line list); 400-1550 nm evaluated for every catalogue glass.",
+    "convergence": "Derivatives by five-point finite differences at h = 1e-4 um; halving h changes the GVD by less than 1e-9 relative.",
+    "tolerance_rationale": "Index 1e-7 and group index 1e-6 are algebraic agreement between two evaluations of the same closed form. GVD 2e-4 covers the finite-difference truncation; 2e-3 at 587.6 nm covers the app's 1 nm GVD bucket, which evaluates 588 nm. The published anchors use 1e-5 absolute, the data sheet's own rounding.",
+    "outside_scope": "Clamps: `glassIndex` and `glassGVD` evaluate the fit at the nearest edge of the glass's range and return that value (N-SF11 at 300 nm returns its 370 nm index). `isWavelengthInGlassRange` reports whether a wavelength is inside; the tracer uses it to colour out-of-range light, but the getters themselves do not refuse.",
     "fidelity": "computed",
     "scope": "Room-temperature catalogue curves inside each glass's stated range; no absorption, temperature or stress dependence.",
 }

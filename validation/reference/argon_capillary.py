@@ -14,11 +14,25 @@ from common import C_M_PER_S, first_derivative, second_derivative, sig
 from sellmeier import index as glass_index
 
 U11 = 2.4048255577
-N2_PER_ATM = 1.01e-23  # m^2/W, near-IR argon at 1 atm (Zahedpour et al., Table 1)
+# Zahedpour et al., Table 1, column (d): argon's electronic Kerr coefficient
+# measured at 800 nm is (10.1 +/- 1.0) x 10^-20 cm^2/W at atmospheric
+# pressure, i.e. 1.01e-23 m^2/W, which is the value the app uses. The same
+# table gives 10.5 +/- 1.4 at 1250 nm, 10.9 +/- 1.0 at 1650 nm, 9.3 +/- 1.0
+# at 2200 nm and 9.9 +/- 1.7 at 2400 nm: dispersionless within the 10 %
+# measurement error, which is what justifies one constant across the app's
+# range. The 10 % experimental uncertainty dominates every tolerance here
+# that depends on n2, and no tolerance in this file claims better knowledge
+# of the gas than the measurement has.
+N2_PER_ATM = 1.01e-23  # m^2/W
 
 
 def argon_refractivity(wavelength_um, pressure_bar, temperature_k=293.15):
-    """Peck & Fisher (1964), n-1 at 0 C and 1 atm, scaled by number density."""
+    """Peck & Fisher (1964), n-1 at 0 C and 1 atm, scaled by number density.
+
+    The paper gives (n - 1) x 10^7 = 643.2135 + 286060.21 / (144 - sigma^2) at
+    15 C and 760 torr, and the 0 C form used here, with sigma the wavenumber
+    in inverse micrometres. The fit covers 0.4679-2.0587 um.
+    """
     sigma2 = 1 / (wavelength_um * wavelength_um)  # um^-2
     n_minus_1 = 6.7867e-5 + 3.0182943e-2 / (144 - sigma2)
     density = pressure_bar / 1.01325 * 273.15 / temperature_k
@@ -96,10 +110,15 @@ MODEL = {
     "app": "sketch/js/fiber.js: hollowCoreCoefficients, marcatiliLossDbPerM",
     "reference": "Peck-Fisher refractivity with finite-difference derivatives; Marcatili-Schmeltzer HE11 formulas evaluated directly, including the paper's worked value",
     "citations": [
-        "E. R. Peck and D. J. Fisher, J. Opt. Soc. Am. 54, 1362 (1964), argon refractivity",
-        "E. A. J. Marcatili and R. A. Schmeltzer, Bell Syst. Tech. J. 43, 1783 (1964), hollow dielectric waveguides",
-        "S. Zahedpour, J. K. Wahlstrand and H. M. Milchberg, Opt. Lett. 40, 5794 (2015), argon n2",
+        "E. R. Peck and D. J. Fisher, 'Dispersion of argon', J. Opt. Soc. Am. 54, 1362-1364 (1964), doi:10.1364/JOSA.54.001362. Measured for 17 vacuum wavelengths from 4679 to 20586 A; the dispersion formula used here is theirs.",
+        "E. A. J. Marcatili and R. A. Schmeltzer, 'Hollow metallic and dielectric waveguides for long distance optical transmission and lasers', Bell Syst. Tech. J. 43, 1783-1809 (1964), doi:10.1002/j.1538-7305.1964.tb04108.x. Their worked example -- wall index 1.50, 1 um, 1 mm radius -- gives 1.85 dB/km for the lowest-loss hybrid mode (EH11 in their notation, HE11 in modern usage), which is checked here.",
+        "S. Zahedpour, J. K. Wahlstrand and H. M. Milchberg, 'Measurement of the nonlinear refractive index of air constituents at mid-infrared wavelengths', Opt. Lett. 40, 5794-5797 (2015), doi:10.1364/OL.40.005794 (arXiv:1509.02232), Table 1(d): argon n2 = (10.1 +/- 1.0) x 10^-20 cm^2/W at 800 nm, atmospheric pressure.",
     ],
+    "provenance": "Peck and Fisher's published dispersion formula and Marcatili and Schmeltzer's published waveguide terms, transcribed and evaluated here; Zahedpour's Table 1 value for n2, read from the paper. The 1.85 dB/km worked example is the paper's own number, not ours.",
+    "domain": "468-2059 nm (the refractivity fit's range), cores 100-500 um, 0.5-5 bar, 293.15 K.",
+    "convergence": "Refractivity derivatives by five-point finite differences on n - 1 rather than n (differencing a number near 1.0 loses eight digits and showed up as a 0.5 % GVD error); h = 1e-3 um, and halving it changes the gas GVD by under 1e-7 relative.",
+    "tolerance_rationale": "Dispersion and waveguide terms are held to 1e-6 to 1e-4, the finite-difference truncation, because both sides evaluate the same published formulas. The loss anchor uses 3e-3, the rounding of the paper's quoted 1.85 dB/km. Anything proportional to n2 inherits the measurement's 10 % uncertainty, which is stated rather than folded into a tight tolerance.",
+    "outside_scope": "Declines: `hollowCoreCoefficients` returns null outside 468-2059 nm, and the fiber reports ARGON_OUT_OF_RANGE with the light continuing on argon's linear dispersion. `marcatiliLossDbPerM` has no gate of its own and evaluates silica's clamped index outside its range.",
     "fidelity": "computed",
     "scope": "468-2059 nm (the refractivity fit), smooth straight silica capillary, Gaussian effective-area convention pi (0.64 a)^2, n2 scaled with pressure only.",
 }

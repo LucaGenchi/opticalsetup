@@ -2,6 +2,275 @@
  "app": "sketch/js/glass.js: glassIndex, glassGroupIndex, glassGVD, glassAbbe, glassGroupDelayDifferenceFs",
  "cases": [
   {
+   "absolute": true,
+   "expected": {
+    "index": 1.48921
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 2325.4
+   },
+   "name": "nbk7 at 2325.4 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.49495
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 1970.1
+   },
+   "name": "nbk7 at 1970.1 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.50091
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 1529.6
+   },
+   "name": "nbk7 at 1529.6 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.50669
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 1060.0
+   },
+   "name": "nbk7 at 1060.0 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.50731
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 1014.0
+   },
+   "name": "nbk7 at 1014.0 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.5098
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 852.1
+   },
+   "name": "nbk7 at 852.1 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.51289
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 706.5
+   },
+   "name": "nbk7 at 706.5 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.51432
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 656.3
+   },
+   "name": "nbk7 at 656.3 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.51509
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 632.8
+   },
+   "name": "nbk7 at 632.8 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.51673
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 589.3
+   },
+   "name": "nbk7 at 589.3 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.5168
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 587.6
+   },
+   "name": "nbk7 at 587.6 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.51872
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 546.1
+   },
+   "name": "nbk7 at 546.1 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.52238
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 486.1
+   },
+   "name": "nbk7 at 486.1 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.52668
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 435.8
+   },
+   "name": "nbk7 at 435.8 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.53024
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 404.7
+   },
+   "name": "nbk7 at 404.7 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.53627
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 365.0
+   },
+   "name": "nbk7 at 365.0 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "expected": {
+    "abbe": 64.17
+   },
+   "inputs": {
+    "glass": "nbk7"
+   },
+   "name": "nbk7 Abbe number versus the data sheet",
+   "note": "data sheet 64.17; the fit gives 64.14, the residual amplified by the small nF - nC",
+   "tolerance": {
+    "abbe": 0.001
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "nFMinusNC": 0.008054
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "hiNm": 656.3,
+    "loNm": 486.1
+   },
+   "name": "nbk7 principal dispersion versus the data sheet",
+   "note": "published nF - nC = 0.008054",
+   "tolerance": {
+    "nFMinusNC": 1e-05
+   }
+  },
+  {
    "expected": {
     "groupIndex": 1.584113757,
     "gvdFs2PerMm": 122.0363197,
@@ -455,13 +724,19 @@
   }
  ],
  "citations": [
-  "Schott AG, optical glass data sheets (N-BK7, N-SF5, N-SF11)",
-  "I. H. Malitson, J. Opt. Soc. Am. 55, 1205 (1965), fused silica"
+  "SCHOTT AG, data sheet N-BK7 517642.251 (2007-09-19): Sellmeier constants and the tabulated indices used as anchors here \u2014 https://www.schott.com/shop/medias/schott-datasheet-n-bk7-eng.pdf",
+  "SCHOTT AG, optical glass collection data sheets (N-SF5, N-SF11) \u2014 https://www.schott.com/en-gb/products/optical-glass",
+  "I. H. Malitson, 'Interspecimen comparison of the refractive index of fused silica', J. Opt. Soc. Am. 55, 1205-1208 (1965), doi:10.1364/JOSA.55.001205 (absolute residual 1.05e-5 over 0.21-3.71 um)"
  ],
+ "convergence": "Derivatives by five-point finite differences at h = 1e-4 um; halving h changes the GVD by less than 1e-9 relative.",
+ "domain": "365-2325 nm for N-BK7 (the data sheet's own line list); 400-1550 nm evaluated for every catalogue glass.",
  "fidelity": "computed",
  "id": "sellmeier",
+ "outside_scope": "Clamps: `glassIndex` and `glassGVD` evaluate the fit at the nearest edge of the glass's range and return that value (N-SF11 at 300 nm returns its 370 nm index). `isWavelengthInGlassRange` reports whether a wavelength is inside; the tracer uses it to colour out-of-range light, but the getters themselves do not refuse.",
+ "provenance": "Coefficients transcribed from the manufacturer data sheets and Malitson's paper; the anchor indices are that data sheet's own tabulated measurements.",
  "reference": "Published Sellmeier coefficients evaluated directly; derivatives by five-point finite differences",
  "reference_file": "validation/reference/sellmeier.py",
  "scope": "Room-temperature catalogue curves inside each glass's stated range; no absorption, temperature or stress dependence.",
- "title": "Catalogue glass dispersion (Sellmeier)"
+ "title": "Catalogue glass dispersion (Sellmeier)",
+ "tolerance_rationale": "Index 1e-7 and group index 1e-6 are algebraic agreement between two evaluations of the same closed form. GVD 2e-4 covers the finite-difference truncation; 2e-3 at 587.6 nm covers the app's 1 nm GVD bucket, which evaluates 588 nm. The published anchors use 1e-5 absolute, the data sheet's own rounding."
 }

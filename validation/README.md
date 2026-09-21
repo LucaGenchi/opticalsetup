@@ -1,7 +1,13 @@
-# Validation references
+# Reference checks
 
-Independent implementations of every quantitative model the app ships, and
-the expected values the JavaScript is tested against.
+Separately written implementations of some of the quantitative models the app
+ships, and the expected values the JavaScript is tested against. What is
+covered, and what is not, is listed in
+[docs/validation.md](../docs/validation.md).
+
+A check here shows that the app evaluates the model it claims to evaluate, at
+the inputs tested. Except where a case cites a published measurement, it does
+not show that the model matches an experiment.
 
 ```
 validation/
@@ -18,7 +24,14 @@ validation/
   references and fails if an expected file or the report is out of date.
 - How to add a model: `docs/adding-physics.md`.
 
-The references are written to be independent of the app: finite differences
+Coverage is partial: `docs/validation.md` lists both the models checked here
+and the ones that ship without a check. A model's absence is a statement
+about this suite, not about the model.
+
+The references are written from published sources rather than from the app's
+code, and each states its provenance, tested domain, convergence and the
+reason for its tolerance. Where a closed form exists it is checked too, since
+two programs written from the same idea can share a mistake: finite differences
 where the app differentiates analytically, a system matrix where the app has
 a closed form, a finer split-step grid where the app uses a coarse one, and
 published worked examples wherever a source gives one. Agreement therefore

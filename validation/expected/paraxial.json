@@ -251,6 +251,7 @@
     "finesse": 5
    },
    "name": "mirror reflectivity for finesse 5",
+   "note": "reflectivity finesse pi sqrt(R)/(1-R), the high-finesse approximation the app uses",
    "tolerance": {
     "finesse": 1e-08,
     "reflectivity": 1e-08
@@ -265,6 +266,7 @@
     "finesse": 19
    },
    "name": "mirror reflectivity for finesse 19",
+   "note": "reflectivity finesse pi sqrt(R)/(1-R), the high-finesse approximation the app uses",
    "tolerance": {
     "finesse": 1e-08,
     "reflectivity": 1e-08
@@ -279,6 +281,7 @@
     "finesse": 50
    },
    "name": "mirror reflectivity for finesse 50",
+   "note": "reflectivity finesse pi sqrt(R)/(1-R), the high-finesse approximation the app uses",
    "tolerance": {
     "finesse": 1e-08,
     "reflectivity": 1e-08
@@ -293,21 +296,172 @@
     "finesse": 200
    },
    "name": "mirror reflectivity for finesse 200",
+   "note": "reflectivity finesse pi sqrt(R)/(1-R), the high-finesse approximation the app uses",
    "tolerance": {
     "finesse": 1e-08,
     "reflectivity": 1e-08
    }
+  },
+  {
+   "expected": {
+    "airyFinesse": 4.915328851,
+    "reflectivity": 0.5387967552
+   },
+   "inputs": {
+    "finesse": 5,
+    "quantity": "airy"
+   },
+   "name": "exact Airy finesse at the reflectivity chosen for finesse 5",
+   "note": "approximation error at this reflectivity: 1.72 %",
+   "tolerance": {
+    "airyFinesse": 1e-08,
+    "reflectivity": 1e-08
+   }
+  },
+  {
+   "expected": {
+    "airyFinesse": 18.97831407,
+    "reflectivity": 0.8477587271
+   },
+   "inputs": {
+    "finesse": 19,
+    "quantity": "airy"
+   },
+   "name": "exact Airy finesse at the reflectivity chosen for finesse 19",
+   "note": "approximation error at this reflectivity: 0.11 %",
+   "tolerance": {
+    "airyFinesse": 1e-08,
+    "reflectivity": 1e-08
+   }
+  },
+  {
+   "expected": {
+    "airyFinesse": 49.99177303,
+    "reflectivity": 0.9391110692
+   },
+   "inputs": {
+    "finesse": 50,
+    "quantity": "airy"
+   },
+   "name": "exact Airy finesse at the reflectivity chosen for finesse 50",
+   "note": "approximation error at this reflectivity: 0.02 %",
+   "tolerance": {
+    "airyFinesse": 1e-08,
+    "reflectivity": 1e-08
+   }
+  },
+  {
+   "expected": {
+    "airyFinesse": 199.9979438,
+    "reflectivity": 0.9844149223
+   },
+   "inputs": {
+    "finesse": 200,
+    "quantity": "airy"
+   },
+   "name": "exact Airy finesse at the reflectivity chosen for finesse 200",
+   "note": "approximation error at this reflectivity: 0.00 %",
+   "tolerance": {
+    "airyFinesse": 1e-08,
+    "reflectivity": 1e-08
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "s1": 0.0,
+    "s2": 0.0,
+    "s3": -1.0
+   },
+   "inputs": {
+    "axisDeg": 45,
+    "inputAngleDeg": 0,
+    "retardanceDeg": 90
+   },
+   "name": "quarter-wave at 45 deg on linear 0 deg -> circular",
+   "note": "Jones-derived Stokes vector; Goldstein convention with delta -> -delta",
+   "tolerance": {
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "s1": 0.0,
+    "s2": 0.0,
+    "s3": 1.0
+   },
+   "inputs": {
+    "axisDeg": -45,
+    "inputAngleDeg": 0,
+    "retardanceDeg": 90
+   },
+   "name": "quarter-wave at -45 deg on linear 0 deg -> circular, opposite hand",
+   "note": "Jones-derived Stokes vector; Goldstein convention with delta -> -delta",
+   "tolerance": {
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "s1": 0.0,
+    "s2": 0.0,
+    "s3": 1.0
+   },
+   "inputs": {
+    "axisDeg": 45,
+    "inputAngleDeg": 90,
+    "retardanceDeg": 90
+   },
+   "name": "quarter-wave at 45 deg on linear 90 deg -> circular, opposite hand",
+   "note": "Jones-derived Stokes vector; Goldstein convention with delta -> -delta",
+   "tolerance": {
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "s1": 0.5,
+    "s2": 0.5,
+    "s3": -0.7071067812
+   },
+   "inputs": {
+    "axisDeg": 22.5,
+    "inputAngleDeg": 0,
+    "retardanceDeg": 90
+   },
+   "name": "quarter-wave at 22.5 deg on linear 0 deg -> elliptical",
+   "note": "Jones-derived Stokes vector; Goldstein convention with delta -> -delta",
+   "tolerance": {
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
   }
  ],
  "citations": [
-  "E. Hecht, Optics, 5th ed., section 6.2 (thick lens), section 8.13 (Stokes parameters and Mueller matrices)",
-  "D. H. Goldstein, Polarized Light, 3rd ed., ch. 6 (Mueller matrices of retarders and polarizers)",
-  "M. Born and E. Wolf, Principles of Optics, section 7.6 (Fabry-Perot finesse)"
+  "E. Hecht, Optics, 5th ed., section 6.2 (thick lens cardinal points), section 8.13 (Stokes parameters and Mueller matrices)",
+  "D. H. Goldstein, Polarized Light, 3rd ed. (CRC Press, 2011), ch. 6: Mueller matrices of retarders and polarizers. The app follows this convention with delta -> -delta; the circular cases here are derived from Jones calculus instead, so the handedness is pinned by something other than the app's own convention.",
+  "M. Born and E. Wolf, Principles of Optics, 7th ed., section 7.6 (Fabry-Perot), for the reflectivity finesse",
+  "N. Ismail, C. C. Kores, D. Geskus and M. Pollnau, 'Fabry-Perot resonator: spectral line shapes, generic and related Airy distributions, linewidths, finesses, and performance at low or frequency-dependent reflectivity', Opt. Express 24, 16366-16389 (2016), doi:10.1364/OE.24.016366, Eq. (32) for the exact Airy finesse"
  ],
+ "convergence": "Closed forms, no discretisation. The finesse inversion bisects 200 times, far past double precision.",
+ "domain": "Lens radii 30-100 mm with 4-12 mm centre thickness at 587.6 nm; retardances 45-270 deg on linear and circular input; finesse 5-200.",
  "fidelity": "computed",
  "id": "paraxial",
- "reference": "ABCD system matrix; Goldstein Mueller matrices; Airy finesse inverted by bisection",
+ "outside_scope": "No range gate. The finesse inversion accepts settings well below the high-finesse limit: at the minimum linewidth the etalon allows (finesse about 1.67, R about 0.19) the approximation is more than 10 % from the Airy value, and below R = 0.172 the Airy linewidth does not exist at all while the app still reports a finesse.",
+ "provenance": "Textbook closed forms, transcribed and evaluated here; the Airy finesse from Ismail et al. Eq. (32).",
+ "reference": "ABCD system matrix; Goldstein Mueller matrices with Jones-derived circular cases; reflectivity finesse inverted by bisection, with the exact Airy finesse recorded alongside",
  "reference_file": "validation/reference/paraxial.py",
  "scope": "Paraxial (Gaussian) optics for the lens; fully polarized Stokes vectors; lossless etalon mirrors of equal reflectivity.",
- "title": "Thick singlet cardinal points, Stokes retarder and analyzer, etalon finesse"
+ "title": "Thick singlet cardinal points, Stokes retarder and analyzer, etalon finesse",
+ "tolerance_rationale": "1e-9 is agreement between two evaluations of the same algebra in different languages; 1e-8 on the finesse covers the bisection's own convergence."
 }

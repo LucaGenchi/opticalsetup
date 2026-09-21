@@ -108,8 +108,53 @@ def case(name, params, compress_fs2=None, steps=256, tolerance=None):
     }
 
 
+def analytic_spm_with_loss():
+    """The one case with a closed form: no dispersion, so the envelope keeps
+    its shape and only accumulates phase.
+
+    With beta2 = 0 the peak power decays as P(z) = P0 exp(-alpha z) and the
+    nonlinear phase integrates exactly:
+
+        B = gamma P0 (1 - exp(-alpha L)) / alpha,     alpha = ln(10) * dB/m / 10.
+
+    Both solvers take the same symmetric split step, so if they shared a
+    discretisation error they would agree with each other and disagree with
+    this. It is the one check here that neither solver can satisfy by being
+    wrong in the same way.
+    """
+    tau, energy, length = 100.0, 30e-6, 1.0
+    gamma, loss_db = 7e-9, 0.615
+    alpha = math.log(10) * loss_db / 10
+    # Peak power of a Gaussian of this energy and FWHM, the same relation the
+    # field builder uses: P0 = E / (tau * sqrt(pi / (4 ln 2))).
+    shape = math.sqrt(math.pi / (4 * math.log(2)))
+    peak = energy / (tau * 1e-15 * shape)
+    b_analytic = gamma * peak * (1 - math.exp(-alpha * length)) / alpha
+    return {
+        "name": "analytic limit: no dispersion, Kerr phase with loss",
+        "inputs": {"pulseWidthFs": tau, "energyJ": energy, "lengthM": length,
+                   "wavelengthNm": 800, "beta2Fs2PerM": 0, "gammaPerWM": gamma, "lossDbPerM": loss_db},
+        "expected": {
+            "bIntegral": sig(b_analytic),
+            "energyJ": sig(energy * math.exp(-alpha * length)),
+            "fwhmFs": sig(tau),
+        },
+        # The split step samples the decaying power at mid-step, so its
+        # B-integral differs from the exact integral by O((alpha dz)^2): with
+        # 256 steps over 1 m that is below 1e-5. Nothing disperses the pulse,
+        # so its width should be unchanged -- and the app returns 100.0097 fs,
+        # because it measures the FWHM by interpolating half-maximum crossings
+        # on its own time grid (dt = 2.34 fs here). That 1e-4 offset is the
+        # readout's resolution, not propagation: it is the same with the Kerr
+        # term and the loss switched off, and it is what this tolerance allows.
+        "tolerance": {"bIntegral": 1e-4, "energyJ": 1e-6, "fwhmFs": 2e-4},
+        "note": "closed form B = gamma P0 (1 - exp(-alpha L)) / alpha; not a split-step result. The app's FWHM carries a +1e-4 grid-resolution offset, measured with the nonlinearity off.",
+    }
+
+
 def cases():
     return [
+        analytic_spm_with_loss(),
         case("linear: 2000 fs^2/m and 3 dB/m", {**BASE, "wavelengthNm": 800, "beta2Fs2PerM": 2000, "lossDbPerM": 3}, steps=64),
         case("pure self-phase modulation, gamma 7e-9", {**BASE, "wavelengthNm": 800, "gammaPerWM": 7e-9}),
         case("chirped input -3000 fs^2 through 2000 fs^2/m, no Kerr",
@@ -127,10 +172,16 @@ MODEL = {
     "id": "nlse",
     "title": "Scalar envelope propagation: GDD, Kerr SPM and loss (hollow-core solver)",
     "app": "sketch/js/pulse-field.js: propagateEnvelope, fieldMetrics",
-    "reference": "Independent symmetric split-step Fourier solver in Agrawal's convention on a 2048-point grid with 4-8x more steps",
+    "reference": "Independent symmetric split-step Fourier solver in Agrawal's convention on a 2048-point grid with 4-8x more steps, plus one analytic zero-dispersion limit",
     "citations": [
-        "G. P. Agrawal, Nonlinear Fiber Optics, 5th ed., sections 2.3 and 4.1 (NLSE, SPM broadening)",
+        "G. P. Agrawal, Nonlinear Fiber Optics, 5th ed. (Academic Press, 2013), sections 2.3 (the NLSE and the split-step method) and 4.1 (SPM broadening)",
+        "Sign convention cross-checked against the physical-field NLSE of F. Oliari et al., Nat. Commun. 11, 933 (2020), Eq. (1), doi:10.1038/s41467-020-14503-w",
     ],
+    "provenance": "Written from Agrawal's equations; the conventions (A_tilde(w) = int A(T) exp(+i w T) dT, so d2/dT2 -> -w^2, giving exp(+i beta2 w^2 h / 2) and exp(+i gamma |A|^2 h)) are stated in the module and were checked against an independently published form of the same equation.",
+    "domain": "100 fs, 30-60 uJ, 1 m, beta2 0-2000 fs^2/m, gamma 0-1.17e-8 /W/m, loss 0-3 dB/m, input chirp 0 to -3000 fs^2; B-integral up to about 3 rad.",
+    "convergence": "The app's FWHM readout is interpolated from its sampled grid and reads 100.0097 fs for an unpropagated 100 fs pulse at its default sampling -- a fixed 1e-4 offset, independent of the physics. The bundled example, refined from 2048 points / 384 steps to 4096 / 768, moves the output FWHM from 102.218435 to 102.216635 fs, the compressed FWHM from 46.823091 to 46.822727 fs and the spectral RMS by 1.2e-10 THz -- parts in 1e5, an order below the 5e-3 tolerance. The stronger case (60 uJ, B about 3 rad) was refined the same way and moves by parts in 1e4.",
+    "tolerance_rationale": "5e-3 on widths and spectral RMS covers the difference between two split-step discretisations at these step counts, as the refinement above bounds; 1e-2 on the B-integral and the compressed width covers the same difference where the compressed pulse's wings make its FWHM more sensitive; 1e-6 on energy is the loss factor's algebra. The analytic limit is held to 1e-4, the split-step mid-step sampling error at 256 steps.",
+    "outside_scope": "Declines: `propagateEnvelope` refuses a pulse it cannot represent (unknown energy, reshaped spectrum, a field that leaves its time window) and the light continues with linear dispersion only, carrying a caveat to every downstream readout.",
     "fidelity": "computed",
     "scope": "Single mode, scalar, instantaneous Kerr response, second-order dispersion only; no Raman, self-steepening, ionisation or mode coupling.",
 }

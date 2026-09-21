@@ -31,7 +31,11 @@ const C_NM_PER_FS = 299.792458;
 // same keys as the case's `expected`.
 const APP = {
   sellmeier: ({ glass, wavelengthNm, loNm, hiNm, lengthMm }) => {
-    if (loNm !== undefined) return { groupDelayDifferenceFs: glassGroupDelayDifferenceFs(glass, loNm, hiNm, lengthMm) };
+    if (loNm !== undefined) {
+      // The data sheet's principal dispersion: the F and C line indices, not a delay.
+      if (lengthMm === undefined) return { nFMinusNC: glassIndex(glass, loNm) - glassIndex(glass, hiNm) };
+      return { groupDelayDifferenceFs: glassGroupDelayDifferenceFs(glass, loNm, hiNm, lengthMm) };
+    }
     if (wavelengthNm === undefined) return { abbe: glassAbbe(glass) };
     return {
       index: glassIndex(glass, wavelengthNm),
@@ -78,7 +82,7 @@ const APP = {
     }
     return out;
   },
-  paraxial: ({ r1, r2, thickness, glass, dia, wavelengthNm, axisDeg, retardanceDeg, inputAngleDeg, finesse }) => {
+  paraxial: ({ r1, r2, thickness, glass, dia, wavelengthNm, axisDeg, retardanceDeg, inputAngleDeg, finesse, quantity }) => {
     if (r1 !== undefined) {
       const c = thickLensCardinals({ r1, r2, thickness, glass, dia }, wavelengthNm);
       return { f: c.f, bfd: c.bfd };
@@ -89,6 +93,13 @@ const APP = {
     }
     if (axisDeg !== undefined) return { transmission: analyzerTransmission(linearStokes(inputAngleDeg), axisDeg) };
     const reflectivity = reflectivityForFinesse(finesse);
+    if (quantity === 'airy') {
+      // What the app's reflectivity means for a measured linewidth: the exact
+      // Airy finesse, pi / (2 arcsin((1 - R) / (2 sqrt(R)))) for equal mirrors
+      // (Ismail et al., Opt. Express 24, 16366 (2016), Eq. 32). The app states
+      // the reflectivity finesse instead, which is the high-finesse limit.
+      return { reflectivity, airyFinesse: Math.PI / (2 * Math.asin((1 - reflectivity) / (2 * Math.sqrt(reflectivity)))) };
+    }
     return { reflectivity, finesse: finesseForReflectivity(reflectivity) };
   },
 };

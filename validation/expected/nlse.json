@@ -3,6 +3,29 @@
  "cases": [
   {
    "expected": {
+    "bIntegral": 1.839500444,
+    "energyJ": 2.603881732e-05,
+    "fwhmFs": 100.0
+   },
+   "inputs": {
+    "beta2Fs2PerM": 0,
+    "energyJ": 3e-05,
+    "gammaPerWM": 7e-09,
+    "lengthM": 1.0,
+    "lossDbPerM": 0.615,
+    "pulseWidthFs": 100.0,
+    "wavelengthNm": 800
+   },
+   "name": "analytic limit: no dispersion, Kerr phase with loss",
+   "note": "closed form B = gamma P0 (1 - exp(-alpha L)) / alpha; not a split-step result. The app's FWHM carries a +1e-4 grid-resolution offset, measured with the nonlinearity off.",
+   "tolerance": {
+    "bIntegral": 0.0001,
+    "energyJ": 1e-06,
+    "fwhmFs": 0.0002
+   }
+  },
+  {
+   "expected": {
     "bIntegral": 0.0,
     "energyJ": 1.503561701e-05,
     "fwhmFs": 114.3481769,
@@ -138,12 +161,18 @@
   }
  ],
  "citations": [
-  "G. P. Agrawal, Nonlinear Fiber Optics, 5th ed., sections 2.3 and 4.1 (NLSE, SPM broadening)"
+  "G. P. Agrawal, Nonlinear Fiber Optics, 5th ed. (Academic Press, 2013), sections 2.3 (the NLSE and the split-step method) and 4.1 (SPM broadening)",
+  "Sign convention cross-checked against the physical-field NLSE of F. Oliari et al., Nat. Commun. 11, 933 (2020), Eq. (1), doi:10.1038/s41467-020-14503-w"
  ],
+ "convergence": "The app's FWHM readout is interpolated from its sampled grid and reads 100.0097 fs for an unpropagated 100 fs pulse at its default sampling -- a fixed 1e-4 offset, independent of the physics. The bundled example, refined from 2048 points / 384 steps to 4096 / 768, moves the output FWHM from 102.218435 to 102.216635 fs, the compressed FWHM from 46.823091 to 46.822727 fs and the spectral RMS by 1.2e-10 THz -- parts in 1e5, an order below the 5e-3 tolerance. The stronger case (60 uJ, B about 3 rad) was refined the same way and moves by parts in 1e4.",
+ "domain": "100 fs, 30-60 uJ, 1 m, beta2 0-2000 fs^2/m, gamma 0-1.17e-8 /W/m, loss 0-3 dB/m, input chirp 0 to -3000 fs^2; B-integral up to about 3 rad.",
  "fidelity": "computed",
  "id": "nlse",
- "reference": "Independent symmetric split-step Fourier solver in Agrawal's convention on a 2048-point grid with 4-8x more steps",
+ "outside_scope": "Declines: `propagateEnvelope` refuses a pulse it cannot represent (unknown energy, reshaped spectrum, a field that leaves its time window) and the light continues with linear dispersion only, carrying a caveat to every downstream readout.",
+ "provenance": "Written from Agrawal's equations; the conventions (A_tilde(w) = int A(T) exp(+i w T) dT, so d2/dT2 -> -w^2, giving exp(+i beta2 w^2 h / 2) and exp(+i gamma |A|^2 h)) are stated in the module and were checked against an independently published form of the same equation.",
+ "reference": "Independent symmetric split-step Fourier solver in Agrawal's convention on a 2048-point grid with 4-8x more steps, plus one analytic zero-dispersion limit",
  "reference_file": "validation/reference/nlse.py",
  "scope": "Single mode, scalar, instantaneous Kerr response, second-order dispersion only; no Raman, self-steepening, ionisation or mode coupling.",
- "title": "Scalar envelope propagation: GDD, Kerr SPM and loss (hollow-core solver)"
+ "title": "Scalar envelope propagation: GDD, Kerr SPM and loss (hollow-core solver)",
+ "tolerance_rationale": "5e-3 on widths and spectral RMS covers the difference between two split-step discretisations at these step counts, as the refinement above bounds; 1e-2 on the B-integral and the compressed width covers the same difference where the compressed pulse's wings make its FWHM more sensitive; 1e-6 on energy is the loss factor's algebra. The analytic limit is held to 1e-4, the split-step mid-step sampling error at 256 steps."
 }

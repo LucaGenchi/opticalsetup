@@ -62,7 +62,24 @@ def analyzer(stokes, axis_deg):
 
 
 def finesse(reflectivity):
+    """The reflectivity finesse, pi sqrt(R) / (1 - R).
+
+    This is the high-finesse approximation, and it is what the app inverts.
+    It is exact only in the limit R -> 1; the Airy linewidth gives the exact
+    finesse below.
+    """
     return math.pi * math.sqrt(reflectivity) / (1 - reflectivity)
+
+
+def airy_finesse(reflectivity):
+    """The exact Airy finesse: FSR divided by the Airy linewidth.
+
+    F = pi / (2 arcsin((1 - R) / (2 sqrt(R)))) for equal mirrors, which is the
+    finesse a measured linewidth would give. At the app's nominal finesse 5
+    this is 4.915, 1.7 % lower, and the two converge as R -> 1.
+    Ismail et al., Opt. Express 24, 16366 (2016), Eq. (32).
+    """
+    return math.pi / (2 * math.asin((1 - reflectivity) / (2 * math.sqrt(reflectivity))))
 
 
 def reflectivity_for_finesse(target):
@@ -115,6 +132,39 @@ def cases():
             "inputs": {"finesse": target},
             "expected": {"reflectivity": sig(r), "finesse": sig(finesse(r))},
             "tolerance": {"reflectivity": 1e-8, "finesse": 1e-8},
+            "note": "reflectivity finesse pi sqrt(R)/(1-R), the high-finesse approximation the app uses",
+        })
+    # What the same reflectivity means for a measured linewidth. This is not a
+    # check of the app -- it is the size of the approximation, recorded so a
+    # user reading "finesse 5" knows the Airy linewidth gives 4.92.
+    for target in (5, 19, 50, 200):
+        r = reflectivity_for_finesse(target)
+        out.append({
+            "name": f"exact Airy finesse at the reflectivity chosen for finesse {target}",
+            "inputs": {"finesse": target, "quantity": "airy"},
+            "expected": {"reflectivity": sig(r), "airyFinesse": sig(airy_finesse(r))},
+            "tolerance": {"reflectivity": 1e-8, "airyFinesse": 1e-8},
+            "note": f"approximation error at this reflectivity: {100 * (finesse(r) / airy_finesse(r) - 1):.2f} %",
+        })
+    # Circular and elliptical output, from Jones calculus rather than from the
+    # app's own Mueller convention: a quarter-wave plate at 45 deg on light
+    # linearly polarized along x gives circular light, and at 22.5 deg gives
+    # a known elliptical state. Handedness follows Goldstein's convention with
+    # delta -> -delta, which is what the app implements; the sign of s3 is the
+    # part a shared convention could hide, so it is stated here explicitly.
+    for axis, pol, name, expect in (
+        (45, 0, "quarter-wave at 45 deg on linear 0 deg -> circular", (0.0, 0.0, -1.0)),
+        (-45, 0, "quarter-wave at -45 deg on linear 0 deg -> circular, opposite hand", (0.0, 0.0, 1.0)),
+        (45, 90, "quarter-wave at 45 deg on linear 90 deg -> circular, opposite hand", (0.0, 0.0, 1.0)),
+        (22.5, 0, "quarter-wave at 22.5 deg on linear 0 deg -> elliptical", (0.5, 0.5, -1 / math.sqrt(2))),
+    ):
+        out.append({
+            "name": name,
+            "inputs": {"axisDeg": axis, "retardanceDeg": 90, "inputAngleDeg": pol},
+            "expected": {"s1": sig(expect[0]), "s2": sig(expect[1]), "s3": sig(expect[2])},
+            "tolerance": {"s1": 1e-9, "s2": 1e-9, "s3": 1e-9},
+            "absolute": True,
+            "note": "Jones-derived Stokes vector; Goldstein convention with delta -> -delta",
         })
     return out
 
@@ -123,12 +173,18 @@ MODEL = {
     "id": "paraxial",
     "title": "Thick singlet cardinal points, Stokes retarder and analyzer, etalon finesse",
     "app": "sketch/js/elements.js: thickLensCardinals; sketch/js/polarization.js: retarder, analyzerTransmission; sketch/js/etalon.js: reflectivityForFinesse, finesseForReflectivity",
-    "reference": "ABCD system matrix; Goldstein Mueller matrices; Airy finesse inverted by bisection",
+    "reference": "ABCD system matrix; Goldstein Mueller matrices with Jones-derived circular cases; reflectivity finesse inverted by bisection, with the exact Airy finesse recorded alongside",
     "citations": [
-        "E. Hecht, Optics, 5th ed., section 6.2 (thick lens), section 8.13 (Stokes parameters and Mueller matrices)",
-        "D. H. Goldstein, Polarized Light, 3rd ed., ch. 6 (Mueller matrices of retarders and polarizers)",
-        "M. Born and E. Wolf, Principles of Optics, section 7.6 (Fabry-Perot finesse)",
+        "E. Hecht, Optics, 5th ed., section 6.2 (thick lens cardinal points), section 8.13 (Stokes parameters and Mueller matrices)",
+        "D. H. Goldstein, Polarized Light, 3rd ed. (CRC Press, 2011), ch. 6: Mueller matrices of retarders and polarizers. The app follows this convention with delta -> -delta; the circular cases here are derived from Jones calculus instead, so the handedness is pinned by something other than the app's own convention.",
+        "M. Born and E. Wolf, Principles of Optics, 7th ed., section 7.6 (Fabry-Perot), for the reflectivity finesse",
+        "N. Ismail, C. C. Kores, D. Geskus and M. Pollnau, 'Fabry-Perot resonator: spectral line shapes, generic and related Airy distributions, linewidths, finesses, and performance at low or frequency-dependent reflectivity', Opt. Express 24, 16366-16389 (2016), doi:10.1364/OE.24.016366, Eq. (32) for the exact Airy finesse",
     ],
+    "provenance": "Textbook closed forms, transcribed and evaluated here; the Airy finesse from Ismail et al. Eq. (32).",
+    "domain": "Lens radii 30-100 mm with 4-12 mm centre thickness at 587.6 nm; retardances 45-270 deg on linear and circular input; finesse 5-200.",
+    "convergence": "Closed forms, no discretisation. The finesse inversion bisects 200 times, far past double precision.",
+    "tolerance_rationale": "1e-9 is agreement between two evaluations of the same algebra in different languages; 1e-8 on the finesse covers the bisection's own convergence.",
+    "outside_scope": "No range gate. The finesse inversion accepts settings well below the high-finesse limit: at the minimum linewidth the etalon allows (finesse about 1.67, R about 0.19) the approximation is more than 10 % from the Airy value, and below R = 0.172 the Airy linewidth does not exist at all while the app still reports a finesse.",
     "fidelity": "computed",
     "scope": "Paraxial (Gaussian) optics for the lens; fully polarized Stokes vectors; lossless etalon mirrors of equal reflectivity.",
 }
