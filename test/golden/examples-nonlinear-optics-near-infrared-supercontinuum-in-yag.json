@@ -23,7 +23,7 @@
    1083,
    483
   ],
-  "digest": "96b32e30"
+  "digest": "f43efda0"
  },
  "drawnElements": {
   "figureframe:frame": "36bdea3c",
@@ -57,7 +57,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "c934037e"
+   "digest": "d1b0e716"
   },
   {
    "intensity": 0.5,
@@ -75,7 +75,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "46642b46"
+   "digest": "2954f4fe"
   },
   {
    "intensity": 0.499990854,
@@ -93,7 +93,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "13a6d3dd"
+   "digest": "8b2d7f37"
   },
   {
    "intensity": 0.5,
@@ -111,7 +111,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "4333574e"
+   "digest": "ae8a4a00"
   },
   {
    "intensity": 0.214093563,
@@ -129,7 +129,7 @@
     "spectrumReshaped": true,
     "gates": 0
    },
-   "digest": "d98afd15"
+   "digest": "3f7dccde"
   },
   {
    "intensity": 0.285906437,
@@ -147,7 +147,7 @@
     "spectrumReshaped": true,
     "gates": 0
    },
-   "digest": "3aef6d5f"
+   "digest": "9125baf1"
   },
   {
    "intensity": 0.0984187389,
@@ -165,7 +165,7 @@
     "spectrumReshaped": true,
     "gates": 0
    },
-   "digest": "217933af"
+   "digest": "579dc58c"
   }
  ],
  "writeHits": {

@@ -4,17 +4,24 @@
 //   node tools/update-golden.mjs --check    # exit 1 if any snapshot differs
 //
 // Every example under Examples/ and every published community submission is
-// traced, and everything the app could show about the result is recorded:
-// the drawables, the pulse tracks, and each element's readout (detector
-// readings, fiber envelopes, OPO and compressor states, ...). test/golden.test.js
-// compares the live tracer against these files, so a physics change that
-// moves any number anywhere shows up as a reviewable diff instead of a
-// surprise on the live site.
+// traced, and what the tracer reports is recorded: the drawables, each
+// element as it is drawn, the pulse tracks, the recorded hits, and each
+// element's readout (detector readings, fiber envelopes, OPO and compressor
+// states, ...). test/golden.test.js compares the live tracer against these
+// files, so a change that moves a recorded number shows up as a reviewable
+// diff instead of a surprise on the live site. What is not recorded is listed
+// below.
 //
 // Numbers are rounded to 9 significant digits. Long numeric arrays keep a
 // human summary (length, sum, min, max, every 16th sample) plus an ordered
 // digest of every rounded sample, so a feature that moves inside an array --
 // which sum, min, max and a sparse sample all survive -- still shows up.
+//
+// A digest compares those rounded values exactly, which is stricter than the
+// 1e-6 tolerance the test applies to a scalar it can see. A digest-only
+// difference is therefore worth reproducing on the supported runtime before
+// it is called a physics change. A 32-bit digest is a regression aid, not a
+// guarantee against collisions.
 //
 // What this covers: everything reachable from traceScene() plus the readout
 // getters listed below, each element's drawn SVG, the pulse tracks and the
@@ -72,6 +79,40 @@ const round = n => (Number.isFinite(n) ? Number(n.toPrecision(SIGNIFICANT)) : n)
 const nonFinite = [];
 const marker = n => `non-finite:${Number.isNaN(n) ? 'NaN' : n > 0 ? 'Infinity' : '-Infinity'}`;
 
+// A stable string for any value, walked in full: nested records reach the
+// digest instead of collapsing to "[object Object]", every number is checked
+// before it is hashed, and a cycle is marked rather than followed. Values
+// that legitimately repeat are not cycles, so only ancestors are tracked.
+function canonical(value, path = '', ancestors = new Set()) {
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) { nonFinite.push(`${path || '(root)'} = ${value}`); return marker(value); }
+    return String(round(value));
+  }
+  if (value === null || value === undefined) return 'null';
+  if (typeof value === 'string') return JSON.stringify(value);
+  if (typeof value !== 'object') return String(value);
+  if (ancestors.has(value)) return '[cycle]';
+  if (ArrayBuffer.isView(value)) value = Array.from(value);
+  ancestors.add(value);
+  let text;
+  if (Array.isArray(value)) {
+    text = `[${value.map((v, i) => canonical(v, `${path}[${i}]`, ancestors)).join(',')}]`;
+  } else {
+    const keys = Object.keys(value).sort()
+      .filter(key => key !== 'el' && typeof value[key] !== 'function' && value[key] !== undefined);
+    text = `{${keys.map(key => `${key}:${canonical(value[key], path ? `${path}.${key}` : key, ancestors)}`).join(',')}}`;
+  }
+  ancestors.delete(value);
+  return text;
+}
+
+// A number that a summary computed rather than read: a sum of finite terms
+// can still overflow to infinity, and must not reach a snapshot unnoticed.
+function checked(value, path) {
+  if (!Number.isFinite(value)) { nonFinite.push(`${path} = ${value}`); return marker(value); }
+  return round(value);
+}
+
 // An order-sensitive digest. Two arrays with the same values in a different
 // order, or one feature displaced, give different digests.
 function digestOf(values) {
@@ -101,7 +142,7 @@ export function snapshot(value, depth = 0, path = '') {
       const finite = value.filter(Number.isFinite);
       return {
         length: value.length,
-        sum: round(finite.reduce((a, b) => a + b, 0)),
+        sum: checked(finite.reduce((a, b) => a + b, 0), `${path || '(root)'}.sum`),
         min: finite.length ? round(Math.min(...finite)) : null,
         max: finite.length ? round(Math.max(...finite)) : null,
         every16th: rounded.filter((_, i) => i % 16 === 0),
@@ -141,24 +182,32 @@ const READOUTS = {
 // type, the colour histogram, the bounding box, coordinate sums and a digest
 // of every rounded coordinate. Any moved vertex changes the digest and the
 // sums; the counts and box say roughly what changed.
-function drawableSummary(drawables) {
+export function drawableSummary(drawables) {
   const byType = {}, colors = {};
   let points = 0, sumX = 0, sumY = 0;
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   const parts = [];
-  for (const d of drawables) {
+  for (const [index, d] of drawables.entries()) {
     byType[d.type] = (byType[d.type] || 0) + 1;
     colors[d.color] = (colors[d.color] || 0) + 1;
     // Everything both renderers read: the dash pattern and where it starts
     // (a chopper's chunk alignment), and each speckle dot's radius and
     // opacity.
-    parts.push(`${d.type}|${d.color}|${round(d.opacity)}|${round(d.w)}|${d.dash ?? ''}|${round(d.dashOffset) ?? ''}`);
+    parts.push(canonical({
+      type: d.type, color: d.color, opacity: d.opacity, w: d.w,
+      dash: d.dash ?? null, dashOffset: d.dashOffset ?? null,
+    }, `drawables[${index}]`));
     for (const p of d.pts || d.dots || []) {
       points++;
       const x = Number(p.x.toFixed(4)), y = Number(p.y.toFixed(4));
       sumX += x; sumY += y;
       if (x < minX) minX = x; if (x > maxX) maxX = x;
       if (y < minY) minY = y; if (y > maxY) maxY = y;
+      // Coordinates are rounded for the digest, so they are validated here
+      // rather than through canonical().
+      for (const [name, v] of [['x', p.x], ['y', p.y], ['r', p.r], ['o', p.o]]) {
+        if (v !== undefined && !Number.isFinite(v)) nonFinite.push(`drawables[${index}].${name} = ${v}`);
+      }
       parts.push(p.r !== undefined || p.o !== undefined
         ? `${x},${y},${round(p.r) ?? ''},${round(p.o) ?? ''}` : `${x},${y}`);
     }
@@ -166,8 +215,8 @@ function drawableSummary(drawables) {
   const digest = digestOf(parts);
   return {
     count: drawables.length, byType, colors: Object.fromEntries(Object.entries(colors).sort()),
-    points, sum: [round(sumX), round(sumY)],
-    bbox: points ? [minX, minY, maxX, maxY].map(round) : null,
+    points, sum: [checked(sumX, 'drawables.sum[0]'), checked(sumY, 'drawables.sum[1]')],
+    bbox: points ? [minX, minY, maxX, maxY].map((v, i) => checked(v, `drawables.bbox[${i}]`)) : null,
     digest,
   };
 }
@@ -176,8 +225,8 @@ function drawableSummary(drawables) {
 // digest of its geometry and of the dispersion it accumulates along it. A
 // changed path delay, gate, packet width or route changes this even when the
 // number of tracks does not.
-function trackSummary(tracks) {
-  return tracks.map(track => ({
+export function trackSummary(tracks) {
+  return tracks.map((track, index) => ({
     wl: round(track.wl),
     intensity: round(track.intensity),
     color: track.color ?? null,
@@ -191,21 +240,23 @@ function trackSummary(tracks) {
       spectrumReshaped: Boolean(track.pulse.spectrumReshaped),
       gates: (track.pulse.gates || []).length,
     } : null,
-    digest: digestOf([
-      ...(track.pts || []).map(p => `${Number(p.x.toFixed(4))},${Number(p.y.toFixed(4))}`),
-      ...(track.opls || []).map(round),
-      ...(track.gddTrace || []).map(event => `${round(event.opl)}:${round(event.gdd)}:${event.linear ? 1 : 0}`),
-      ...(track.groupDelayDifferenceTrace || []).map(event => `${round(event.opl)}:${round(event.value)}`),
-    ]),
+    // The whole record, not a chosen few fields: a gate's duty, a
+    // group-delay event's interpolation flag, the sampled field and the
+    // provenance flags all reach the digest.
+    digest: digestOf([canonical({
+      pts: (track.pts || []).map(p => [Number(p.x.toFixed(4)), Number(p.y.toFixed(4))]),
+      opls: track.opls, gddTrace: track.gddTrace,
+      groupDelayDifferenceTrace: track.groupDelayDifferenceTrace,
+      pulse: track.pulse, wl: track.wl, intensity: track.intensity, color: track.color ?? null,
+    }, `pulseTracks[${index}]`)]),
   }));
 }
 
 // Where light was recorded on a specimen or sample stage, and what it carried.
-function hitSummary(hits) {
+export function hitSummary(hits, label) {
   return {
     count: hits.length,
-    digest: digestOf(hits.map(hit => Object.keys(hit).sort()
-      .map(key => `${key}=${typeof hit[key] === 'number' ? round(hit[key]) : String(hit[key])}`).join('|'))),
+    digest: digestOf(hits.map((hit, index) => canonical(hit, `${label}[${index}]`))),
   };
 }
 
@@ -217,7 +268,14 @@ function elementDrawings(elements) {
     const def = registry[el.type];
     if (typeof def?.svg !== 'function') continue;
     let svg;
-    try { svg = String(def.svg(el, elements)); } catch (error) { svg = `threw: ${error.message}`; }
+    try {
+      svg = String(def.svg(el, elements));
+    } catch (error) {
+      // A component that cannot draw is a failure to report, not a digest to
+      // record: a regeneration must not bless it.
+      nonFinite.push(`${el.type}:${el.id} failed to draw: ${error.message}`);
+      svg = `threw: ${error.message}`;
+    }
     out[`${el.type}:${el.id}`] = digestOf([svg]);
   }
   return out;
@@ -249,8 +307,8 @@ export function goldenFor(scene) {
     drawables: drawableSummary(result.drawables),
     drawnElements: elementDrawings(scene.elements),
     pulseTracks: trackSummary(result.pulseTracks),
-    writeHits: hitSummary(result.writeHits || []),
-    signalHits: hitSummary(result.signalHits || []),
+    writeHits: hitSummary(result.writeHits || [], 'writeHits'),
+    signalHits: hitSummary(result.signalHits || [], 'signalHits'),
     readouts: elements,
     fibers,
   };

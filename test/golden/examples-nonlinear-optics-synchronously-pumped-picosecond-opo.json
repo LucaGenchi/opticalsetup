@@ -22,7 +22,7 @@
    1199.4818,
    587.5056
   ],
-  "digest": "c6ca81f5"
+  "digest": "f0764b6f"
  },
  "drawnElements": {
   "figureframe:frame": "7f0f3f62",
@@ -68,7 +68,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "e77b7215"
+   "digest": "99b1e9c1"
   },
   {
    "intensity": 0.5,
@@ -86,7 +86,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "f56f0c1d"
+   "digest": "5e62eceb"
   },
   {
    "intensity": 0.499990854,
@@ -104,7 +104,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "72be1363"
+   "digest": "129a92ab"
   },
   {
    "intensity": 0.5,
@@ -122,7 +122,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "f56f0c1d"
+   "digest": "029ab433"
   },
   {
    "intensity": 0.499990854,
@@ -140,7 +140,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "1ce1889a"
+   "digest": "cc95a506"
   },
   {
    "intensity": 0.499990854,
@@ -158,7 +158,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "4d77865e"
+   "digest": "6310b078"
   },
   {
    "intensity": 0.324994055,
@@ -176,7 +176,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "a2d98e70"
+   "digest": "85a2cb74"
   },
   {
    "intensity": 0.324994055,
@@ -194,7 +194,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "635a110b"
+   "digest": "66218307"
   },
   {
    "intensity": 0.324994055,
@@ -212,7 +212,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "2ef21e6d"
+   "digest": "70828ae3"
   },
   {
    "intensity": 0.0621238637,
@@ -230,7 +230,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "76e03807"
+   "digest": "c7a173ac"
   },
   {
    "intensity": 0.0621227274,
@@ -248,7 +248,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "c9e6e3f6"
+   "digest": "8e07d732"
   },
   {
    "intensity": 0.0621227274,
@@ -266,7 +266,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "e6f21e96"
+   "digest": "069b5cc6"
   },
   {
    "intensity": 0.112872935,
@@ -284,7 +284,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "716fb392"
+   "digest": "90167af2"
   },
   {
    "intensity": 0.112870871,
@@ -302,7 +302,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "5761823a"
+   "digest": "3de01d01"
   },
   {
    "intensity": 0.0112870871,
@@ -320,7 +320,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "95d50a0a"
+   "digest": "8871219d"
   },
   {
    "intensity": 0.101583784,
@@ -338,7 +338,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "40c8cf55"
+   "digest": "9c711988"
   },
   {
    "intensity": 0.101583784,
@@ -356,7 +356,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "345619e5"
+   "digest": "6f9a8db0"
   },
   {
    "intensity": 0.101583784,
@@ -374,7 +374,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "9b1b0622"
+   "digest": "72c2c76b"
   },
   {
    "intensity": 0.101583784,
@@ -392,7 +392,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "f437a963"
+   "digest": "2632fb2a"
   },
   {
    "intensity": 0.101583784,
@@ -410,7 +410,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "1c615177"
+   "digest": "f5d7e466"
   },
   {
    "intensity": 0.0101583784,
@@ -428,7 +428,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "3c1ae8d1"
+   "digest": "d1ecb028"
   },
   {
    "intensity": 0.0914254054,
@@ -446,7 +446,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "8c8dfcd1"
+   "digest": "de11a2bb"
   },
   {
    "intensity": 0.0914254054,
@@ -464,7 +464,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "e9cf64ba"
+   "digest": "a9576d72"
   },
   {
    "intensity": 0.0914254054,
@@ -482,7 +482,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "f32b0063"
+   "digest": "5535f423"
   },
   {
    "intensity": 0.0914254054,
@@ -500,7 +500,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "2f0e356a"
+   "digest": "bad2a5da"
   },
   {
    "intensity": 0.0914254054,
@@ -518,7 +518,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "90039b47"
+   "digest": "493a360d"
   },
   {
    "intensity": 0.00914254054,
@@ -536,7 +536,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "425cf752"
+   "digest": "1c723fd8"
   },
   {
    "intensity": 0.0822828648,
@@ -554,7 +554,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "04313ad0"
+   "digest": "006322c0"
   },
   {
    "intensity": 0.0822828648,
@@ -572,7 +572,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "302a8394"
+   "digest": "d9a76452"
   },
   {
    "intensity": 0.0822828648,
@@ -590,7 +590,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "03a7f70d"
+   "digest": "9a699563"
   },
   {
    "intensity": 0.0822828648,
@@ -608,7 +608,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "8fc2949f"
+   "digest": "83295ef1"
   },
   {
    "intensity": 0.0822828648,
@@ -626,7 +626,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "02917ff0"
+   "digest": "a5a03b56"
   },
   {
    "intensity": 0.00822828648,
@@ -644,7 +644,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "d3a94c60"
+   "digest": "a5ffeb82"
   },
   {
    "intensity": 0.0740545784,
@@ -662,7 +662,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "43df4de3"
+   "digest": "7ccf0d9f"
   },
   {
    "intensity": 0.0740545784,
@@ -680,7 +680,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "296458bf"
+   "digest": "07e4f705"
   },
   {
    "intensity": 0.0740545784,
@@ -698,7 +698,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "a1db1e06"
+   "digest": "93717c3a"
   },
   {
    "intensity": 0.0740545784,
@@ -716,7 +716,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "3b1cf9ea"
+   "digest": "a8e0ce5c"
   },
   {
    "intensity": 0.0740545784,
@@ -734,7 +734,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "bcd6b0f7"
+   "digest": "c293592b"
   },
   {
    "intensity": 0.00740545784,
@@ -752,7 +752,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "fa7f78dd"
+   "digest": "77b09071"
   },
   {
    "intensity": 0.0666491205,
@@ -770,7 +770,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "4ce7ca28"
+   "digest": "49b72515"
   },
   {
    "intensity": 0.0666491205,
@@ -788,7 +788,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "1042f2b2"
+   "digest": "5178c35b"
   },
   {
    "intensity": 0.0666491205,
@@ -806,7 +806,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "08556a77"
+   "digest": "d6bea348"
   },
   {
    "intensity": 0.0666491205,
@@ -824,7 +824,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "3dafc920"
+   "digest": "337e90c1"
   },
   {
    "intensity": 0.0666491205,
@@ -842,7 +842,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "6d87c586"
+   "digest": "a6369d1f"
   },
   {
    "intensity": 0.00666491205,
@@ -860,7 +860,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "b1c38de5"
+   "digest": "3fdeceb4"
   },
   {
    "intensity": 0.0599842085,
@@ -878,7 +878,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "b3b7fb6f"
+   "digest": "8c174f2b"
   },
   {
    "intensity": 0.0599842085,
@@ -896,7 +896,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "6e5b9052"
+   "digest": "dbe9658c"
   },
   {
    "intensity": 0.0599842085,
@@ -914,7 +914,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "86fe6181"
+   "digest": "8987ec17"
   }
  ],
  "writeHits": {

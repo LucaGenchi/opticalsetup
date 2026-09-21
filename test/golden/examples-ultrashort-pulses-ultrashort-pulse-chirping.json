@@ -22,7 +22,7 @@
    472,
    625
   ],
-  "digest": "8834180e"
+  "digest": "6987c052"
  },
  "drawnElements": {
   "textlabel:e1": "85323a07",
@@ -62,7 +62,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "7c42f84c"
+   "digest": "5337ec94"
   },
   {
    "intensity": 1,
@@ -80,7 +80,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "9d5eefda"
+   "digest": "80fa3c74"
   },
   {
    "intensity": 0.180195859,
@@ -98,7 +98,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "99fe2082"
+   "digest": "2cec3c47"
   },
   {
    "intensity": 0.55504232,
@@ -116,7 +116,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "ac9c2b77"
+   "digest": "55be6869"
   },
   {
    "intensity": 0.180195859,
@@ -134,7 +134,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "b57e24d6"
+   "digest": "05b2db9b"
   },
   {
    "intensity": 1,
@@ -152,7 +152,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "827eaef9"
+   "digest": "8dfe15fb"
   },
   {
    "intensity": 0.180195859,
@@ -170,7 +170,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "48558ee7"
+   "digest": "b8e68a28"
   },
   {
    "intensity": 0.55504232,
@@ -188,7 +188,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "807c73fb"
+   "digest": "5318a197"
   },
   {
    "intensity": 0.180195859,
@@ -206,7 +206,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "109350e4"
+   "digest": "8acbfc13"
   }
  ],
  "writeHits": {

@@ -21,7 +21,7 @@
    669.9,
    377
   ],
-  "digest": "88c7bd67"
+  "digest": "0a0142b7"
  },
  "drawnElements": {
   "figureframe:frame": "d73bdb35",
@@ -55,7 +55,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "afe19e27"
+   "digest": "511aa019"
   },
   {
    "intensity": 0.867919125,
@@ -73,7 +73,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "0876ea09"
+   "digest": "a7388394"
   },
   {
    "intensity": 0.0867919125,
@@ -91,7 +91,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "99fca7e0"
+   "digest": "5404b413"
   },
   {
    "intensity": 0.781127213,
@@ -109,7 +109,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "89eab3b6"
+   "digest": "df4617a9"
   }
  ],
  "writeHits": {

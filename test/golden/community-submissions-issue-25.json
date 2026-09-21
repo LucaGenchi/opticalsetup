@@ -22,7 +22,7 @@
    796,
    378
   ],
-  "digest": "4a9a8d61"
+  "digest": "8eaf14a1"
  },
  "drawnElements": {
   "figureframe:lp4-frame": "d687d824",
@@ -58,7 +58,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "47858bb3"
+   "digest": "1b04a73f"
   },
   {
    "intensity": 0.999981709,
@@ -76,7 +76,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "7db5805f"
+   "digest": "8addbaad"
   }
  ],
  "writeHits": {
@@ -85,7 +85,7 @@
  },
  "signalHits": {
   "count": 2,
-  "digest": "39a38c6d"
+  "digest": "e504efeb"
  },
  "readouts": {},
  "fibers": {}

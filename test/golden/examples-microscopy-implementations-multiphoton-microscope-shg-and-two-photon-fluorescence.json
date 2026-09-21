@@ -23,7 +23,7 @@
    999.5069,
    257.2333
   ],
-  "digest": "8294dbae"
+  "digest": "5e8447a4"
  },
  "drawnElements": {
   "pulsedlaser:evgazbrh": "4c624357",
@@ -72,7 +72,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "858df2cf"
+   "digest": "04d51a4b"
   },
   {
    "intensity": 1,
@@ -90,7 +90,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "1e2a44d1"
+   "digest": "3dc58dd9"
   },
   {
    "intensity": 1,
@@ -108,7 +108,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "6b36498b"
+   "digest": "32473cf7"
   },
   {
    "intensity": 0.999981709,
@@ -126,7 +126,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "c229b59d"
+   "digest": "0f805197"
   },
   {
    "intensity": 0.0999981709,
@@ -144,7 +144,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "419dfba1"
+   "digest": "b61ee752"
   },
   {
    "intensity": 0.799985367,
@@ -162,7 +162,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "6dd9e4e8"
+   "digest": "51d617b8"
   },
   {
    "intensity": 0.799985367,
@@ -180,7 +180,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "1c957591"
+   "digest": "7d2f2453"
   }
  ],
  "writeHits": {
@@ -189,7 +189,7 @@
  },
  "signalHits": {
   "count": 1,
-  "digest": "1316c902"
+  "digest": "28d69cd0"
  },
  "readouts": {
   "objective:etsvxovm": {

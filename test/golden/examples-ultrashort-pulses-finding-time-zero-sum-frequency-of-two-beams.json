@@ -23,7 +23,7 @@
    1393,
    540
   ],
-  "digest": "7ee6bf89"
+  "digest": "9331acb5"
  },
  "drawnElements": {
   "figureframe:frame": "45df7f27",
@@ -62,7 +62,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "9d6fc615"
+   "digest": "ad538337"
   },
   {
    "intensity": 0.999981709,
@@ -80,7 +80,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "b0119a2e"
+   "digest": "32e71668"
   },
   {
    "intensity": 0.489991037,
@@ -98,7 +98,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "5be13480"
+   "digest": "c625764b"
   },
   {
    "intensity": 0.489991037,
@@ -116,7 +116,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "2d436db1"
+   "digest": "f61f1204"
   },
   {
    "intensity": 0.299994513,
@@ -134,7 +134,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "5be13480"
+   "digest": "dbfc3090"
   },
   {
    "intensity": 0.299994513,
@@ -152,7 +152,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "a2c5bfb6"
+   "digest": "27c45440"
   },
   {
    "intensity": 1,
@@ -170,7 +170,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "9d619f75"
+   "digest": "2a4a0fd8"
   },
   {
    "intensity": 0.999981709,
@@ -188,7 +188,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "bace5f36"
+   "digest": "54fc3be9"
   },
   {
    "intensity": 0.489991037,
@@ -206,7 +206,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "3be894a0"
+   "digest": "09292470"
   },
   {
    "intensity": 0.489991037,
@@ -224,7 +224,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "42c2534f"
+   "digest": "7fe198ef"
   },
   {
    "intensity": 0.419992318,
@@ -242,7 +242,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "bca64a33"
+   "digest": "2a5007ad"
   },
   {
    "intensity": 0.419984636,
@@ -260,7 +260,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "29202b63"
+   "digest": "e15f4e13"
   },
   {
    "intensity": 0.299994513,
@@ -278,7 +278,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "3be894a0"
+   "digest": "826009ab"
   },
   {
    "intensity": 0.299994513,
@@ -296,7 +296,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "cb432516"
+   "digest": "689bbbdb"
   }
  ],
  "writeHits": {
