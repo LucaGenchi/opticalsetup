@@ -113,7 +113,7 @@
     },
     {
       "id": "hcf-output",
-      "type": "generaldetector",
+      "type": "autocorrelator",
       "x": 170,
       "y": 300,
       "rot": 180,
@@ -125,7 +125,7 @@
     },
     {
       "id": "hcf-before",
-      "type": "generaldetector",
+      "type": "autocorrelator",
       "x": 560,
       "y": 405,
       "rot": 90,
@@ -174,7 +174,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "CONTROLS \u00b7 Pressure 0: vacuum. Kerr off: linear. Increase pulse energy: stronger broadening.\nCOMPRESSION \u00b7 Tune GDD to minimize pulse FWHM.\nREADOUTS \u00b7 Select detectors for pulse curves. Switch screens to Spectrum for bandwidth.",
+        "text": "CONTROLS \u00b7 Pressure 0: vacuum. Kerr off: linear. Increase pulse energy: stronger broadening.\nCOMPRESSION \u00b7 Tune GDD to minimize pulse FWHM.\nREADOUTS \u00b7 Each screen is an autocorrelator: the duration assumes a Gaussian; FIELD is the computed pulse\u2019s true FWHM.",
         "fontSize": 13,
         "fill": "#334155"
       }

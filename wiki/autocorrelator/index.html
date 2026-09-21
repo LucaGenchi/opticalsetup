@@ -394,6 +394,13 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
         only. A fixed span keeps two traces of different duration looking as different as they
         are, which is why cross-correlation stays fixed. A trace too wide for the chosen window
         is reported rather than clipped, and an unavailable duration draws no trace.</p>
+        <p>A pulse whose envelope was computed rather than assumed — the output of the
+        hollow-core capillary — is autocorrelated numerically: the screen draws its own
+        intensity autocorrelation, not a Gaussian or sech² curve, and the duration is still that
+        trace's FWHM divided by the assumed shape's factor. Because the true envelope is known
+        there, the reading shows it beside the inferred one (<em>FIELD</em>), so the error of the
+        assumption is visible — about 16&nbsp;% for the compressed pulse of the hollow-core
+        example.</p>
         <p>The one control that matters is <strong>Assumed pulse shape</strong>: Gaussian
         (÷1.414) or sech² (÷1.543). This is deliberately a user choice and not something the
         instrument works out for itself, because in a laboratory it is not something the
@@ -411,9 +418,9 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
         conditions.</p>
         <p>The duration-model row states where that arriving width came from: closed-form
         Gaussian GDD, numerically tabulated sech² GDD, a bandwidth-derived positive or negative
-        input chirp, a flat-band endpoint group-delay spread, or the explicit 0&nbsp;nm
-        bandwidth exception. Where the model declines — unknown spectral phase, a reshaped
-        spectrum, or paths of different dispersion — the instrument shows <em>Duration
+        input chirp, a flat-band endpoint group-delay spread, the numerical transform of a
+        filtered spectrum, or the explicit 0&nbsp;nm bandwidth exception. Where the model
+        declines — unknown spectral phase, or paths of different dispersion — the instrument shows <em>Duration
         unavailable</em> and names the reason, with the source's configured duration listed as
         the setting it is, not as a measurement. The autocorrelation still cannot determine chirp itself; it is
         displaying the scene's propagation model and then applying the instrument's chosen
