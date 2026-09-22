@@ -84,17 +84,52 @@ export function extractProposalIssue(body) {
   const reference = cleanReference(optionalIssueField(body, 'Reference (optional)', 'Contribution acknowledgement'));
   const acknowledgement = issueField(body, 'Contribution acknowledgement');
   if (!/- \[[xX]\]/.test(acknowledgement)) throw new Error('Contribution acknowledgement is required');
-  // The licence grant is recorded only when its own box is ticked, with the
-  // text that was ticked. Any other checked box -- the older form had just
-  // one, about permission to share -- leaves the submission unlicensed, so
-  // reprocessing an old issue cannot manufacture a grant nobody gave.
-  const grant = acknowledgement.split('\n')
-    .filter(line => /- \[[xX]\]/.test(line))
-    .find(line => /CC\s*BY\s*4\.0/i.test(line));
-  const license = grant
-    ? { content: 'CC-BY-4.0', text: grant.replace(/^\s*- \[[xX]\]\s*/, '').trim() }
-    : null;
+  const license = grantFrom(acknowledgement);
   return { name, description, reference, shareURL, license };
+}
+
+// The affirmative grant, exactly as each supported version of the form words
+// it. Recognising the licence *name* is not enough: an issue body is editable,
+// and "I do NOT license this setup under CC BY 4.0" mentions it too. A line
+// only grants the licence when it matches one of these word for word, so a
+// reworded or unfamiliar line leaves the submission unlicensed rather than
+// being guessed at.
+const GRANT_TEXTS = [
+  {
+    version: 'example-proposal/2026-09',
+    content: 'CC-BY-4.0',
+    text: 'I have the right to license this setup and its description, and I publish them under CC BY 4.0 '
+      + '(credit to me, reuse and adaptation allowed). The app itself stays GPL-3.0-or-later.',
+  },
+];
+
+const normalizeGrant = line => line.replace(/\s+/g, ' ').trim().toLowerCase();
+
+// Lines a reader would see as ticked boxes: not inside a fenced code block,
+// not quoted, and starting with the checkbox itself.
+function checkedLines(section) {
+  const out = [];
+  let fenced = false;
+  for (const raw of section.split('\n')) {
+    const line = raw.trim();
+    if (/^(```|~~~)/.test(line)) { fenced = !fenced; continue; }
+    if (fenced || line.startsWith('>')) continue;
+    const match = line.match(/^- \[[xX]\]\s*(.*)$/);
+    if (match) out.push(match[1].trim());
+  }
+  return out;
+}
+
+// The licence grant is recorded only when its own box is ticked, with the
+// text that was ticked and which form version it came from. The older form
+// had one box, about permission to share, so reprocessing an old issue
+// cannot manufacture a grant nobody gave.
+export function grantFrom(acknowledgement) {
+  for (const text of checkedLines(acknowledgement)) {
+    const known = GRANT_TEXTS.find(grant => normalizeGrant(grant.text) === normalizeGrant(text));
+    if (known) return { content: known.content, text, formVersion: known.version };
+  }
+  return null;
 }
 
 function decodeBase64URL(value) {
@@ -204,6 +239,7 @@ export function materializeProposal({ issueNumber, issueBody, userLogin, created
         text: fields.license.text,
         evidence: issueURL,
         form: 'example-proposal#contribution-acknowledgement',
+        formVersion: fields.license.formVersion,
         recordedAt: new Date().toISOString(),
       },
     } : {}),

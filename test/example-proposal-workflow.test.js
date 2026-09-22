@@ -169,10 +169,23 @@ test('a licence is recorded only when its own box is ticked', () => {
   assert.equal(materialize([SHARE_BOX, GRANT.replace('- [x]', '- [ ]')].join('\n')).license, undefined,
     'an unticked grant is not a grant');
 
+  // The licence name is not the grant: an issue body is editable, and a line
+  // can name CC BY while refusing it. Only the affirmative wording counts,
+  // and only as a real ticked box -- not quoted, not inside a code fence.
+  assert.equal(materialize([SHARE_BOX, '- [x] I do NOT license this setup under CC BY 4.0.'].join('\n')).license,
+    undefined, 'a refusal that names the licence is not a grant');
+  assert.equal(materialize([SHARE_BOX, '- [x] I might license this under CC BY 4.0 later.'].join('\n')).license,
+    undefined, 'neither is a reworded line');
+  assert.equal(materialize([SHARE_BOX, `> ${GRANT}`].join('\n')).license,
+    undefined, 'a quoted grant is someone citing the form, not ticking it');
+  assert.equal(materialize([SHARE_BOX, '```', GRANT, '```'].join('\n')).license,
+    undefined, 'nor is one inside a code fence');
+
   const granted = materialize([SHARE_BOX, GRANT].join('\n')).license;
   assert.equal(granted.content, 'CC-BY-4.0');
   assert.match(granted.text, /CC BY 4\.0/, 'the text that was ticked is kept with the record');
   assert.equal(granted.evidence, 'https://github.com/LucaGenchi/opticalsetup/issues/42',
     'and where it can be read');
   assert.ok(Date.parse(granted.recordedAt) > 0, 'recordedAt says when this record was written');
+  assert.equal(granted.formVersion, 'example-proposal/2026-09', 'and which wording was accepted');
 });
