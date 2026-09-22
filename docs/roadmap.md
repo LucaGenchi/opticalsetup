@@ -93,8 +93,9 @@ engine.
 
 A **Calculators** section on the site gives experimentalists direct access to
 the models the app uses, one small page per calculation, with no scene to
-draw. Each calculator calls the same functions as the tracer — not a copy — so
-a number checked in a calculator is the number the app computes, and each
+draw. Calculators exposing existing engine models call the same functions as
+the tracer — not a copy — so a number checked in such a calculator is the
+number the app computes, and each
 shows the model statement, its range, its approximation level and its
 evidence, with a link to the reference check where there is one. They are
 also a way for users to check the app against their own hand calculations and
