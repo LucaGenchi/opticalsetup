@@ -155,9 +155,98 @@ export const transformLimitFs = widthCm => (widthCm > 0 ? GAUSS_TBP / (C_CM_PER_
 // Idler wavelength from energy conservation, or null when the signal leaves
 // no positive idler frequency (signal at or beyond the pump frequency).
 export function idlerWavelength(pumpWl, signalWl) {
-  if (!(pumpWl > 0) || !(signalWl > 0)) return null;
+  if (!(Number.isFinite(pumpWl) && pumpWl > 0 && Number.isFinite(signalWl) && signalWl > 0)) return null;
   const inv = 1 / pumpWl - 1 / signalWl;
   return inv > 1e-9 ? 1 / inv : null;
+}
+
+// Shared OPO/OPA photon accounting. Wavelengths are nm. The practical idler
+// bound is inherited from idlerWavelength; null means unsupported, not an
+// emitted ray at infinity. Shares apply to GENERATED power, not to a seed.
+export function parametricPair(pumpWl, signalWl) {
+  const idlerWl = idlerWavelength(pumpWl, signalWl);
+  if (idlerWl === null) return null;
+  const signalShare = pumpWl / signalWl;
+  return {
+    pumpWl, signalWl, idlerWl, signalShare, idlerShare: 1 - signalShare,
+    degenerate: Math.abs(idlerWl - signalWl) <= 1e-9 * Math.max(idlerWl, signalWl),
+  };
+}
+
+// Collinear phase mismatch, in rad/m, with optional FIRST-order QPM.
+// The caller supplies the three refractive indices at their respective
+// wavelengths/polarizations. This is not a material dispersion database or
+// an angle/temperature solver. null rejects invalid input; zero is matched.
+export function parametricMismatch({ pumpWl, signalWl, nPump, nSignal, nIdler, polingPeriodUm = 0 }) {
+  const pair = parametricPair(pumpWl, signalWl);
+  if (!pair || ![nPump, nSignal, nIdler].every(n => Number.isFinite(n) && n > 0)
+      || !Number.isFinite(polingPeriodUm) || polingPeriodUm < 0) return null;
+  const mismatch = 2 * Math.PI * (1e9 * (nPump / pumpWl - nSignal / signalWl - nIdler / pair.idlerWl)
+    - (polingPeriodUm > 0 ? 1e6 / polingPeriodUm : 0));
+  return Number.isFinite(mismatch) ? mismatch : null;
+}
+
+// Plane-wave amplitude gain Γ0 in 1/m (Baumgartner & Byer, 1979, eq. 46).
+// dEffPmV is the EFFECTIVE coefficient, including any QPM duty-cycle factor;
+// pumpIntensityWm2 is the supplied local intensity, not average laser power.
+// No implicit pulse-duty or Gaussian-beam conversion happens here.
+export function parametricGainCoefficient({ pumpWl, signalWl, nPump, nSignal, nIdler, dEffPmV, pumpIntensityWm2 }) {
+  const pair = parametricPair(pumpWl, signalWl);
+  if (!pair || ![nPump, nSignal, nIdler].every(n => Number.isFinite(n) && n > 0)
+      || !Number.isFinite(dEffPmV) || !Number.isFinite(pumpIntensityWm2) || pumpIntensityWm2 < 0) return null;
+  if (dEffPmV === 0 || pumpIntensityWm2 === 0) return 0;
+  // Log space avoids intermediate overflow/underflow for malformed extreme
+  // inputs. A coefficient outside finite JS arithmetic is rejected.
+  const logSquared = Math.log(8 * Math.PI ** 2 / (8.8541878128e-12 * 299792458))
+    + 2 * (Math.log(Math.abs(dEffPmV)) - Math.log(1e12)) + Math.log(pumpIntensityWm2)
+    - Math.log(signalWl * 1e-9) - Math.log(pair.idlerWl * 1e-9)
+    - Math.log(nPump) - Math.log(nSignal) - Math.log(nIdler);
+  const coefficient = Math.exp(logSquared / 2);
+  return Number.isFinite(coefficient) ? coefficient : null;
+}
+
+// Finite diagnostic ceiling, NOT a physical saturation law. The budget layer
+// must still debit the pump. Returning the log excess also lets that layer
+// allocate highly unequal requests without using this numerical ceiling.
+export const MAX_PARAMETRIC_GAIN = 1e100;
+
+// Unseeded-idler, nondegenerate, undepleted plane-wave SIGNAL power gain:
+// G = 1 + Γ0² sinh²(gL)/g², g² = Γ0² - (Δk/2)².
+// For imaginary g use sin; at g=0 use the continuous limit 1+(Γ0 L)².
+// Unlike the restricted cosh²(gL) approximation, this stays >=1 in the
+// oscillatory mismatch regime. It is NOT same-mode phase-sensitive gain.
+// See docs/opa-physics.md for sources and the deliberate v1 boundary.
+export function parametricSmallSignalGain({ gammaPerM, lengthM, deltaKPerM = 0 }) {
+  if (![gammaPerM, lengthM, deltaKPerM].every(Number.isFinite) || gammaPerM < 0 || lengthM < 0) return null;
+  if (gammaPerM === 0 || lengthM === 0) return { gain: 1, excess: 0, logExcess: null, regime: 'unity', capped: false };
+  const mismatch = Math.abs(deltaKPerM) / 2;
+  const scale = Math.max(gammaPerM, mismatch);
+  const squared = (gammaPerM / scale) ** 2 - (mismatch / scale) ** 2;
+  const logA = Math.log(gammaPerM) + Math.log(lengthM);
+  let logExcess, regime;
+  if (squared === 0) {
+    regime = 'boundary'; logExcess = 2 * logA;
+  } else {
+    regime = squared > 0 ? 'exponential' : 'oscillatory';
+    const root = Math.sqrt(Math.abs(squared));
+    const logX = Math.log(scale) + Math.log(root) + Math.log(lengthM);
+    const x = Math.exp(logX);
+    if (!Number.isFinite(x)) return null;
+    if (x < 1e-4) {
+      // sinh(x)/x and sin(x)/x approach 1 without cancellation.
+      logExcess = 2 * logA + 2 * Math.log1p(Math.sign(squared) * x * x / 6 + x ** 4 / 120);
+    } else {
+      const logRatio = Math.log(gammaPerM / scale) - Math.log(root);
+      const logWave = squared > 0
+        ? (x > 20 ? x - Math.LN2 + Math.log1p(-Math.exp(-2 * x)) : Math.log(Math.sinh(x)))
+        : Math.log(Math.abs(Math.sin(x)));
+      logExcess = 2 * (logRatio + logWave);
+    }
+  }
+  if (Number.isNaN(logExcess) || logExcess === Infinity) return null;
+  const capped = logExcess > Math.log(MAX_PARAMETRIC_GAIN);
+  const excess = Math.exp(Math.min(Math.log(MAX_PARAMETRIC_GAIN), logExcess));
+  return { gain: 1 + excess, excess, logExcess: Number.isFinite(logExcess) ? logExcess : null, regime, capped };
 }
 
 // Spectral FWHM of the arriving pump, in nm. A filtered or structured
@@ -208,18 +297,19 @@ export function waveSpectrum(wl, widthCm) {
 export function opoWaves({
   pumpWl, pumpFwhmNm = 0, signalWl, linewidthMode = 'pump', signalLinewidthCm = 0, idlerLinewidthCm = 0,
 }) {
-  const idler = idlerWavelength(pumpWl, signalWl);
-  if (idler === null) return null;
+  const pair = parametricPair(pumpWl, signalWl);
+  if (!pair) return null;
+  const idler = pair.idlerWl;
   const pumpCm = nmToWavenumberWidth(pumpWl, pumpFwhmNm);
   const authored = v => Math.max(0, Number(v) || 0);
   const signalCm = linewidthMode === 'signal' || linewidthMode === 'both' ? authored(signalLinewidthCm) : pumpCm;
   const idlerCm = linewidthMode === 'both' ? authored(idlerLinewidthCm) : Math.hypot(pumpCm, signalCm);
-  const degenerate = Math.abs(idler - signalWl) <= 1e-9 * Math.max(idler, signalWl);
+  const degenerate = pair.degenerate;
   const signal = waveSpectrum(signalWl, signalCm);
   return {
     pumpCm,
     degenerate,
-    signalShare: idler / (signalWl + idler),
+    signalShare: pair.signalShare,
     signal,
     idler: waveSpectrum(degenerate ? signalWl : idler, idlerCm),
     merged: degenerate && Math.abs(signalCm - idlerCm) <= 1e-12 * Math.max(1, signalCm) ? signal : null,
