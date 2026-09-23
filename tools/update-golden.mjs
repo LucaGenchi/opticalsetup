@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Golden snapshots of what the tracer reports for every bundled scene.
 //
 //   node tools/update-golden.mjs            # rewrite test/golden/*.json
