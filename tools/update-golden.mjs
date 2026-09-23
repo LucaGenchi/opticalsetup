@@ -15,11 +15,13 @@
 // below.
 //
 // Numbers are rounded to 9 significant digits. Long numeric arrays keep a
-// human summary (length, sum, min, max, every 16th sample) plus an ordered
-// digest of every rounded sample, so a feature that moves inside an array --
-// which sum, min, max and a sparse sample all survive -- still shows up.
+// human summary (length, sum, min, max, every 16th sample) plus every rounded
+// sample in order. The tests and --check compare each sample with the same
+// 1e-6 relative tolerance as scalars (scale floor 1e-12). Hashing these arrays
+// exactly rejected harmless FFT-tail differences between V8 math backends;
+// keeping samples makes the tolerance real without missing displaced features.
 //
-// A digest compares those rounded values exactly, which is stricter than the
+// Geometry, packet and SVG digests still compare exactly, stricter than the
 // 1e-6 tolerance the test applies to a scalar it can see. A digest-only
 // difference is therefore worth reproducing on the supported runtime before
 // it is called a physics change. A 32-bit digest is a regression aid, not a
@@ -41,9 +43,10 @@
 // It is a tracer and drawing baseline, not a proof of visual equivalence and
 // not a substitute for the instrument-level tests.
 
-import { readdir, readFile, writeFile, mkdir, stat } from 'node:fs/promises';
+import { readdir, readFile, writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { basename, dirname, join, relative } from 'node:path';
+import { goldenDifferences } from './golden-compare.mjs';
 import { parseSketch } from '../sketch/js/state.js';
 import { registry } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
@@ -157,7 +160,7 @@ export function snapshot(value, depth = 0, path = '') {
         min: finite.length ? round(Math.min(...finite)) : null,
         max: finite.length ? round(Math.max(...finite)) : null,
         every16th: rounded.filter((_, i) => i % 16 === 0),
-        digest: digestOf(rounded),
+        samples: rounded,
       };
     }
     return value.map((v, i) => snapshot(v, depth + 1, `${path}[${i}]`));
@@ -332,7 +335,15 @@ async function main() {
   const check = process.argv.includes('--check');
   await mkdir(GOLDEN_DIR, { recursive: true });
   let stale = 0;
-  for (const { path, slug } of await sceneFiles()) {
+  const scenes = await sceneFiles();
+  const targets = new Set(scenes.map(({ slug }) => `${slug}.json`));
+  for (const file of await readdir(GOLDEN_DIR)) {
+    if (file.endsWith('.json') && !targets.has(file)) {
+      console.error(`orphan: ${relative(ROOT, join(GOLDEN_DIR, file))}; remove the obsolete snapshot`);
+      process.exitCode = 1;
+    }
+  }
+  for (const { path, slug } of scenes) {
     const scene = sceneFromFile(await readFile(path, 'utf8'));
     const golden = goldenFor(scene);
     const bad = nonFiniteSeen();
@@ -346,12 +357,17 @@ async function main() {
     const target = join(GOLDEN_DIR, `${slug}.json`);
     const current = await readFile(target, 'utf8').catch(() => null);
     if (current === text) continue;
+    if (check && current !== null) {
+      let expected;
+      try { expected = JSON.parse(current); } catch { /* A malformed snapshot is stale. */ }
+      if (expected !== undefined && !goldenDifferences(expected, golden).length) continue;
+    }
     stale++;
     if (check) console.error(`stale: ${relative(ROOT, target)}`);
     else { await writeFile(target, text); console.log(`wrote ${relative(ROOT, target)}`); }
   }
   if (check && stale) process.exit(1);
-  if (!stale) console.log('golden snapshots are current');
+  if (!stale && !process.exitCode) console.log('golden snapshots are current');
 }
 
 if (process.argv[1] && basename(process.argv[1]) === 'update-golden.mjs') {

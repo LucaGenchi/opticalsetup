@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { goldenDifferences as differences } from '../tools/golden-compare.mjs';
 import { GOLDEN_DIR, goldenFor, sceneFiles, sceneFromFile } from '../tools/update-golden.mjs';
 
 // Every bundled scene is traced and compared with its committed snapshot.
@@ -13,42 +14,6 @@ import { GOLDEN_DIR, goldenFor, sceneFiles, sceneFromFile } from '../tools/updat
 // tools/update-golden.mjs` produces, decide whether it is the intended
 // consequence of the change, and commit the updated snapshot with the reason
 // in the PR description.
-
-const REL_TOL = 1e-6;
-
-function differences(expected, actual, path = '', out = []) {
-  if (typeof expected === 'number' || typeof actual === 'number') {
-    // A NaN is equal to nothing and an infinity makes the relative scale
-    // infinite, so neither can be allowed into the tolerance comparison:
-    // both would pass as "no difference".
-    // Either side being non-finite is a difference, even if both are: a
-    // committed snapshot can never hold one (they are recorded as markers),
-    // so this keeps the comparator's own contract simple.
-    if (!Number.isFinite(expected) || !Number.isFinite(actual)) {
-      out.push(`${path}: ${JSON.stringify(expected)} → ${JSON.stringify(actual)}`);
-      return out;
-    }
-    const scale = Math.max(Math.abs(expected), Math.abs(actual), 1e-12);
-    if (Math.abs(expected - actual) > REL_TOL * scale) out.push(`${path}: ${expected} → ${actual}`);
-    return out;
-  }
-  if (Array.isArray(expected) || Array.isArray(actual)) {
-    if (!Array.isArray(expected) || !Array.isArray(actual) || expected.length !== actual.length) {
-      out.push(`${path}: array ${JSON.stringify(expected)?.slice(0, 80)} → ${JSON.stringify(actual)?.slice(0, 80)}`);
-      return out;
-    }
-    expected.forEach((v, i) => differences(v, actual[i], `${path}[${i}]`, out));
-    return out;
-  }
-  if (expected && actual && typeof expected === 'object' && typeof actual === 'object') {
-    for (const key of new Set([...Object.keys(expected), ...Object.keys(actual)])) {
-      differences(expected[key], actual[key], path ? `${path}.${key}` : key, out);
-    }
-    return out;
-  }
-  if (expected !== actual) out.push(`${path}: ${JSON.stringify(expected)} → ${JSON.stringify(actual)}`);
-  return out;
-}
 
 // The snapshot records a non-finite number as a "non-finite:NaN" marker
 // rather than as a number, so one appearing (or disappearing) is a visible
@@ -86,6 +51,44 @@ test('golden: every snapshot belongs to a scene that still exists', async () => 
 
 // --- Fault injection: does the reporter see what it claims to see? ---------
 // A test over today's scenes cannot show that, because they are all clean.
+
+test('golden: numeric arrays tolerate roundoff but still compare every sample in order', async () => {
+  const { snapshot } = await import('../tools/update-golden.mjs');
+  const values = Array.from({ length: 64 }, (_, i) => i + 1);
+  const expected = snapshot(values);
+  const roundoff = [...values];
+  roundoff[7] *= 1 + 1e-8;
+  assert.deepEqual(differences(expected, snapshot(roundoff)), []);
+  const moved = [...values];
+  [moved[7], moved[8]] = [moved[8], moved[7]];
+  const actual = snapshot(moved);
+  // These summaries all survive the swap: only the complete ordered samples
+  // can detect it. Neither location is in every16th.
+  for (const key of ['length', 'sum', 'min', 'max', 'every16th']) {
+    assert.deepEqual(actual[key], expected[key]);
+  }
+  assert.ok(differences(expected, actual).some(line => line.startsWith('samples[7]')));
+  const changed = [...values];
+  changed[7] *= 1 + 1e-4;
+  assert.ok(differences(expected, snapshot(changed)).length > 0);
+  const tail = Array(64).fill(1);
+  tail[7] = 1e-25;
+  const otherTail = [...tail];
+  otherTail[7] = 2e-25;
+  assert.deepEqual(differences(snapshot(tail), snapshot(otherTail)), [],
+    'sub-floor FFT tails must not make the supported math backends disagree');
+});
+
+test('golden: comparator rejects non-finite values and structural changes', () => {
+  for (const value of [NaN, Infinity, -Infinity]) {
+    assert.ok(differences(value, value).length > 0);
+    assert.ok(differences(1, value).length > 0);
+    assert.ok(differences(value, 1).length > 0);
+  }
+  assert.ok(differences([1, 2], [1]).length > 0);
+  assert.ok(differences({ signal: 1 }, {}).length > 0);
+  assert.ok(differences(1, '1').length > 0);
+});
 
 test('golden: invalid numbers are reported wherever they occur', async () => {
   const { snapshot, nonFiniteSeen, resetNonFinite, drawableSummary, trackSummary, hitSummary } =
