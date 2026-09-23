@@ -74,22 +74,46 @@ the toolbar, palette, canvas, and inspector do not overflow.
   rendering/export code. Clamp user-controlled numerical inputs at their schema
   boundary.
 - Diagram-only elements must not silently absorb or redirect rays.
-- Preserve save-file compatibility. Normalize legacy/malformed sketches instead
-  of assuming all fields are present.
+- Normalize malformed sketches instead of assuming all fields are present.
+- **A saved setup must keep opening.** A scene saved or shared today is
+  expected to open and behave in a later version, either because the format
+  stayed compatible or because the app converts it on load. Conversions that
+  were explicitly approved stay: the pulsed-laser source controls (#148) and
+  the argon fiber opening without `lossModel` at its computed loss (#143).
+  Never delete or weaken an existing conversion to satisfy a policy sentence.
+  A change that cannot stay compatible needs the scene version raised, a
+  conversion on load, or — where the old scene genuinely cannot be
+  reproduced — a clear "unsupported version" message naming what is missing,
+  never a silent wrong result. Say in the PR description which of these a
+  format change uses.
 - Keep visual hierarchy workbench-like: the canvas is primary, wavelength color
   communicates optical energy, and controls should explain their current mode.
 - Do not add advanced physics merely to make a component look functional. A
   clear capability note is preferable to misleading behavior.
 
+## License
+
+OpticalSetup is free software under the GNU General Public License,
+version 3 or (at your option) any later version; see `LICENSE`. Code and
+content contributed to the program are accepted under the same terms. Do not
+add code or content under a license that is incompatible with the GPL.
+
+Community submissions are the exception: a submitted scene and its
+description stay their author's, published under CC BY 4.0 with credit when
+the author granted that on the submission form. The grant is recorded in the
+submission's `license` field, and a page states only the terms its own
+submission recorded — never a blanket notice. Third-party files the site
+ships keep their own notices; see `THIRD-PARTY-NOTICES.md`.
+
 ## Git and delivery
 
-- `origin` is `https://github.com/LucaGenchi/optics-sketch.git`.
+- `origin` is `https://github.com/LucaGenchi/opticalsetup.git`.
 - `main` must require the `CI / test` status check (`.github/workflows/ci.yml`)
   and enforce it for administrators too, so a red suite can never reach the
   live site. This is a repository setting only Luca can change: **Settings →
   Branches → main → Require status checks to pass → add "test"; enable "Do not
   allow bypassing the above settings"**. Status: NOT YET ENABLED as of
-  2026-09-19; anyone reading this before it is done should remind Luca.
+  2026-09-23; anyone reading this before it is done should remind Luca.
 - Keep commits focused and describe behavior, not implementation trivia.
 - Run the full verification above before committing or opening a PR.
 - In PR descriptions, state user-visible behavior, physics limitations, and the

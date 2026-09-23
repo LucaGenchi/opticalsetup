@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // The pulsed laser's temporal controls: transform-limited pulses are authored
 // as a duration; chirped ones as a bandwidth, a quadratic chirp's sign and its
 // GDD, with every duration derived so it can never fall below the transform

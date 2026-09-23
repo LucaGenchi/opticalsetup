@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // The contract this file guards: every generated page frames its scene twice,
 // and the two framings must not drift into each other.
 //

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Rotationally symmetric asphere helpers for the 2D meridional tracer.
 //
 // The local optical axis is +x and y is the radial coordinate. Each face uses

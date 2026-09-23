@@ -742,7 +742,7 @@ Review:
 
 All pages below were checked on 2026-07-29. Re-check before use.
 
-- OpticalSetup repository and current product description: https://github.com/LucaGenchi/optics-sketch
+- OpticalSetup repository and current product description: https://github.com/LucaGenchi/opticalsetup
 - OpticalSetup website: https://opticalsetup.com/
 - Photonics Media contact information: https://www.photonics.com/Articles/Contact-Information/a35705
 - Photonics Media press-release submission: https://www.photonics.com/prsubmit

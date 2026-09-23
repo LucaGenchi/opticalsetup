@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Static Examples page generator: `node tools/build-examples-pages.mjs`.
 //
 // Reads content from examples-content.mjs, matches each entry against the
@@ -158,6 +160,8 @@ function pageHTML(entry, manifestEntry, scene) {
   const related = (entry.related || []).filter(t => registry[t] && !registry[t].hidden && WIKI_TYPES.has(t));
 
   return `<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -240,6 +244,8 @@ function hubHTML(entries) {
         </a>`;
 
   return `<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
