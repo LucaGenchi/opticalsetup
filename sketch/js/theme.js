@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 export const THEME_STORAGE_KEY = 'opticalsetup-theme';
 
 export function resolveTheme(storedTheme, prefersDark = false) {

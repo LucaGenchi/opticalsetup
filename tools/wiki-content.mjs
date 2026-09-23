@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Structured content for the OpticalSetup wiki. One entry per visible
 // component. `tools/build-wiki.mjs` turns this into static pages, pulling
 // the live icon and current defaults straight from the component registry

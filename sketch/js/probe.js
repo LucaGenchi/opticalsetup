@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // What the beam probe reports, separated from how it draws. Each function
 // takes a probe reading (raytrace.js probeAt) and returns a number or a label,
 // so the rules can be tested without an SVG or a DOM.

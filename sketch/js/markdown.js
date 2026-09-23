@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Dependency-free Markdown rendering for SVG text annotations. This is a
 // deliberately small, figure-oriented subset: headings, lists, quotes,
 // emphasis, strong text, strike-through, inline code, links, and line breaks.

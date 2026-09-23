@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Pixel-integrated camera reconstruction.
 //
 // Rays across a sized beam are quadrature samples, not bright/dark camera

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Regenerate the authored scene: node tools/build-cassegrain-example.mjs
 import { writeFile } from 'node:fs/promises';
 import { createElement } from '../sketch/js/elements.js';

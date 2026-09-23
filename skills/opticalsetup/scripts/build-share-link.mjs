@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 import { readFile } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';

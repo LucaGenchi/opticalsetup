@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Geometry helpers for editable closed boundaries. Straight polygons remain
 // the default. A point with `arc: true` is a point on the circular arc between
 // the preceding and following anchors, matching the compact three-point

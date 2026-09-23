@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Self-contained share links. Scene data lives in the URL fragment, so it is
 // never sent to the static host and no server-side storage is required.
 

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { glassIndex } from './glass.js';
 // Shared fiber propagation settings. Length 0 retains the drawn-path length
 // used by older sketches; a positive value represents cable stored in a coil.

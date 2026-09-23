@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Generates the two OPO examples: `node tools/build-opo-example.mjs`.
 //
 // Both are singly resonant: every cavity mirror is a band reflector that

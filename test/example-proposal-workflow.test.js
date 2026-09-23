@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 import assert from 'node:assert/strict';
 import { gzipSync } from 'node:zlib';
 import { readFile } from 'node:fs/promises';
@@ -36,6 +38,7 @@ function issueBody({
   checkmark = 'x',
   description = 'Shows a simple focusing path with a labelled source and lens.',
   reference = '_No response_',
+  acknowledgement = null,
 } = {}) {
   return `### Setup name
 
@@ -55,7 +58,7 @@ ${reference}
 
 ### Contribution acknowledgement
 
-- [${checked ? checkmark : ' '}] I created or have permission to share this setup.
+${acknowledgement ?? `- [${checked ? checkmark : ' '}] I created or have permission to share this setup.`}
 `;
 }
 
@@ -87,7 +90,7 @@ test('proposal materialization normalizes, traces, exports, and records provenan
   assert.equal(result.proposal.name, 'Green focusing path');
   assert.equal(result.proposal.reference, null);
   assert.equal(result.proposal.author.github, 'example-contributor');
-  assert.equal(result.proposal.source.issue, 'https://github.com/LucaGenchi/optics-sketch/issues/42');
+  assert.equal(result.proposal.source.issue, 'https://github.com/LucaGenchi/opticalsetup/issues/42');
   assert.equal(result.proposal.scene.elements.length, 2);
   assert.match(result.proposal.sceneSha256, /^[0-9a-f]{64}$/);
   assert.match(result.prBody, /parsed and normalized/);
@@ -147,4 +150,57 @@ test('proposal materialization rejects duplicate IDs and unsupported encodings',
     createdAt: '2026-07-22T10:30:00Z',
   }), /unique ID/i);
   assert.throws(() => sceneFromShareURL(shareURL(scene, 'opticalsetup.com', 'x')), /unsupported encoding/i);
+});
+
+const GRANT = '- [x] I have the right to license this setup and its description, and I publish them under CC BY 4.0 (credit to me, reuse and adaptation allowed). The app itself stays GPL-3.0-or-later.';
+const SHARE_BOX = '- [x] I created or have permission to share this setup, and I understand that it will be publicly reviewed and may be modified if accepted.';
+const materialize = acknowledgement => materializeProposal({
+  issueNumber: '42',
+  issueBody: issueBody(acknowledgement === undefined ? {} : { acknowledgement }),
+  userLogin: 'example-contributor',
+  createdAt: '2026-07-22T10:30:00Z',
+}).proposal;
+
+test('a licence is recorded only when its own box is ticked', () => {
+  // The old form had one checkbox, about permission to share. Re-running an
+  // issue written against it must not manufacture a CC BY grant.
+  assert.equal(materialize(SHARE_BOX).license, undefined, 'no grant was given, so none is recorded');
+  assert.equal(materialize(undefined).license, undefined, 'the default fixture has no grant either');
+  assert.equal(materialize([SHARE_BOX, GRANT.replace('- [x]', '- [ ]')].join('\n')).license, undefined,
+    'an unticked grant is not a grant');
+
+  // The licence name is not the grant: an issue body is editable, and a line
+  // can name CC BY while refusing it. Only the affirmative wording counts,
+  // and only as a real ticked box -- not quoted, not inside a code fence.
+  assert.equal(materialize([SHARE_BOX, '- [x] I do NOT license this setup under CC BY 4.0.'].join('\n')).license,
+    undefined, 'a refusal that names the licence is not a grant');
+  assert.equal(materialize([SHARE_BOX, '- [x] I might license this under CC BY 4.0 later.'].join('\n')).license,
+    undefined, 'neither is a reworded line');
+  assert.equal(materialize([SHARE_BOX, `> ${GRANT}`].join('\n')).license,
+    undefined, 'a quoted grant is someone citing the form, not ticking it');
+  assert.equal(materialize([SHARE_BOX, '```', GRANT, '```'].join('\n')).license,
+    undefined, 'nor is one inside a code fence');
+
+  // A body is editable Markdown, so a line that looks like a checkbox may be
+  // inside a code block. CommonMark closes a fence only on the same character
+  // and at least the same length, and four spaces of indent is itself code.
+  assert.equal(materialize(['````', '```', GRANT, '````'].join('\n')).license, undefined,
+    'a shorter run does not close a longer fence');
+  assert.equal(materialize(['```', '~~~', GRANT, '```'].join('\n')).license, undefined,
+    'tildes do not close a backtick fence');
+  assert.equal(materialize(`    ${GRANT}`).license, undefined,
+    'four spaces of indent is an example, not a box');
+  assert.equal(materialize([SHARE_BOX, `  ${GRANT}`].join('\n')).license, undefined,
+    'the form writes its boxes flush left');
+  // And a genuine tick after a properly closed fence still counts.
+  const afterFence = materialize(['```', 'an example someone pasted', '```', SHARE_BOX, GRANT].join('\n')).license;
+  assert.equal(afterFence?.content, 'CC-BY-4.0', 'a real box after a closed fence is a grant');
+
+  const granted = materialize([SHARE_BOX, GRANT].join('\n')).license;
+  assert.equal(granted.content, 'CC-BY-4.0');
+  assert.match(granted.text, /CC BY 4\.0/, 'the text that was ticked is kept with the record');
+  assert.equal(granted.evidence, 'https://github.com/LucaGenchi/opticalsetup/issues/42',
+    'and where it can be read');
+  assert.ok(Date.parse(granted.recordedAt) > 0, 'recordedAt says when this record was written');
+  assert.equal(granted.formVersion, 'example-proposal/2026-09', 'and which wording was accepted');
 });
