@@ -105,3 +105,71 @@ supercontinuum spectral-slice handling, native teaching scenes and generated
 wiki/Examples pages. Cascaded amplifiers need an incident-state solution that
 includes upstream gain and depletion; a single passive probe pre-pass is not
 sufficient. The PWA cache must be bumped when runtime behavior is connected.
+
+## Seeded event allocation (second foundation PR)
+
+`allocateParametricAmplifier()` in `sketch/js/parametric-amplifier.js` accepts
+one pump and up to 256 eligible seed beam records. Every record uses an
+explicit `powerW` on a common physical basis; seed keys must be unique. The
+caller supplies each seed's `gammaPerM` at the current local pump intensity,
+its `deltaKPerM`, and the interaction `lengthM`. A zero-power pump cannot
+amplify even if a caller mistakenly supplies nonzero gamma.
+
+For each supported seed, the requested extra signal power is
+`seedPowerW * (G - 1) * overlap`; dividing by the Manley–Rowe signal share
+converts that into a pump request. Each request is bounded by the overlapping
+fraction of `pumpPowerW * maxDepletion`. When the requests together exhaust
+the pump, all are reduced by a common factor. The result includes original
+seed plus its gain, generated idler, and the actual pump debit. This conserves
+energy and generated photon flux, and it has no spontaneous noise floor.
+Processing keys in sorted order makes the result independent of input order.
+The log excess from the gain core avoids overflow before saturation is applied.
+
+The model reuses `mixOverlap()` for pulse arrival and Gaussian envelope
+correlation, including nearest-period coincidence, the existing 0.02 overlap
+floor, and the convention that CW light is always present. Unequal repetition
+rates return `repetitionUnsupported`; they are not asserted never to overlap
+in reality. Gates and unknown pulse durations are rejected explicitly because
+this allocator does not solve gate epochs or unknown temporal envelopes.
+
+This timing factor applied to output power is a teaching approximation. It is
+not the time integral of nonlinear gain over the two pulse profiles; mixed CW
+and pulsed operation is especially not a calibrated average-power prediction.
+The caller must use one consistent power convention for the budget and state
+how its supplied peak intensity was obtained. This layer never infers peak
+intensity from `powerW`.
+
+Same-wavelength degeneracy is reported as `degenerateUnsupported`, leaving the
+seed and pump intact with no duplicate idler. Two populated conjugate inputs
+are reported as `doubleSeedUnsupported`: their relative phase would affect
+transfer, so adding two independent singly seeded gains is not defensible.
+Independent supported seed channels can still share the remaining budget.
+Invalid gain/wavelength/timing channels also pass unchanged with a status;
+invalid batch structure, non-finite powers, duplicate keys or an unrepresentable
+total input power reject the entire call with `null`.
+
+`smallSignalGainCapped` and `achievedGainCapped` identify finite diagnostic
+ceilings. Output powers are computed from the physical budget and are not
+inferred from a capped gain readout. Saturation here means a conservative
+budget allocation, not measured depletion dynamics or back-conversion.
+
+### Required tracer adapter acceptance checks
+
+1. Convert each source's incident ray weights to a common watt basis using
+   supported source metadata; reject unknown calibration rather than guessing.
+2. Establish spatial and directional eligibility at the same interaction
+   region. Existing crystal mixing pairs colours over the aperture; it does
+   not itself prove pump/seed spatial overlap.
+3. Gather a complete pump event before allocating. One beam with more spatial
+   samples must not acquire more pump power; two seeds must not spend the pump
+   independently. A pump shared by multiple surfaces/stages needs one debit.
+4. Preserve the original seed while routing generated signal/idler increments;
+   carry the correct power provenance, pulse timing, spectra and gates to
+   detectors, beam probes, drawing and export. Never relabel borrowed pump
+   watts as a fraction of the seed's original laser power.
+5. Solve or explicitly reject cascades that a passive probe pass cannot know.
+   Broadband supercontinuum seeds require weighted spectral slices, not gain
+   at the centroid applied to the whole continuum.
+6. Verify seed-off, time-zero scan, pump-power scan, wavelength retuning,
+   physical energy conservation, sampling/source-order independence and
+   save/reload in the actual tracer before adding public OPA capability claims.
