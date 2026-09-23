@@ -10,9 +10,11 @@ Audience: repo maintainers with merge rights on `main` (currently Luca Genchi an
 4. Merging triggers the **"Publish approved community setups"** workflow, which runs `node tools/build-community.mjs` (deterministic — same input always produces the same output) and opens a *second* pull request titled **"Publish approved community setups"**, containing only the two generated files it produced: `community/<slug>/index.html` and `sketch/js/community-data.js`.
 5. **Merging that second PR is what actually makes the setup go live** — it's what appears on the public Community page and in the app's "From the community" dropdown.
 
-**Licensing.** The submission form asks the author to grant
+**Licensing.** The submission form *offers* the author
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) for the scene and its
-description, and the accepted submission records that grant in its `license` field. A
+description. That box is optional: a submission without it is still acceptable,
+and is published with no reuse terms. The accepted submission records the grant,
+when given, in its `license` field. A
 published page states only what its own submission recorded: setups accepted before the
 form asked say that no reuse terms were recorded, and claim no reuse rights. Do not add a
 `license` field to an older submission without the author's written agreement in the issue

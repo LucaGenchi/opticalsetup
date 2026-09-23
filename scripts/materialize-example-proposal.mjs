@@ -48,6 +48,18 @@ function issueField(body, heading, nextHeading = null, { last = false } = {}) {
   return value;
 }
 
+// The same slice, with its line structure intact. issueField() trims, which
+// would turn an indented code example at the start of a section into a line
+// flush left -- exactly the disguise the checkbox scan must see through.
+function rawIssueField(body, heading, nextHeading = null) {
+  const marker = `### ${heading}`;
+  const startAt = body.indexOf(marker);
+  if (startAt < 0) return '';
+  const valueStart = startAt + marker.length;
+  const valueEnd = nextHeading ? body.lastIndexOf(`### ${nextHeading}`) : body.indexOf('\n### ', valueStart);
+  return body.slice(valueStart, valueEnd < valueStart ? body.length : valueEnd).replace(/^\r?\n/, '');
+}
+
 function optionalIssueField(body, heading, nextHeading = null, { last = false } = {}) {
   try { return issueField(body, heading, nextHeading, { last }); }
   catch (_) { return ''; }
@@ -84,7 +96,7 @@ export function extractProposalIssue(body) {
   const reference = cleanReference(optionalIssueField(body, 'Reference (optional)', 'Contribution acknowledgement'));
   const acknowledgement = issueField(body, 'Contribution acknowledgement');
   if (!/- \[[xX]\]/.test(acknowledgement)) throw new Error('Contribution acknowledgement is required');
-  const license = grantFrom(acknowledgement);
+  const license = grantFrom(rawIssueField(body, 'Contribution acknowledgement'));
   return { name, description, reference, shareURL, license };
 }
 
@@ -105,16 +117,36 @@ const GRANT_TEXTS = [
 
 const normalizeGrant = line => line.replace(/\s+/g, ' ').trim().toLowerCase();
 
-// Lines a reader would see as ticked boxes: not inside a fenced code block,
-// not quoted, and starting with the checkbox itself.
+// Lines a reader would see as ticked boxes. An issue body is Markdown that
+// anyone can edit, so a line that merely looks like a checkbox is not one:
+// it may be inside a code block, quoted, or indented as an example. The
+// fence rules follow CommonMark -- a block opened with N backticks closes
+// only on at least N backticks, never on tildes or a shorter run -- because
+// toggling on any fence let `````` ``` G ``` `````` and "``` ~~~ G ```" both
+// leave G outside, and trimming indentation let four leading spaces pass an
+// indented code example off as a real checkbox.
 function checkedLines(section) {
   const out = [];
-  let fenced = false;
+  let fence = null;
   for (const raw of section.split('\n')) {
-    const line = raw.trim();
-    if (/^(```|~~~)/.test(line)) { fenced = !fenced; continue; }
-    if (fenced || line.startsWith('>')) continue;
-    const match = line.match(/^- \[[xX]\]\s*(.*)$/);
+    const line = raw.replace(/\t/g, '    ');
+    const indent = line.match(/^ */)[0].length;
+    const rest = line.slice(indent);
+    // A fence may be indented up to three spaces; four or more is code.
+    const fenceMatch = indent <= 3 ? rest.match(/^(`{3,}|~{3,})(.*)$/) : null;
+    if (fence) {
+      const closes = fenceMatch
+        && fenceMatch[1][0] === fence.char
+        && fenceMatch[1].length >= fence.length
+        && fenceMatch[2].trim() === '';   // a closing fence carries no info string
+      if (closes) fence = null;
+      continue;                            // everything until then is code
+    }
+    if (fenceMatch) { fence = { char: fenceMatch[1][0], length: fenceMatch[1].length }; continue; }
+    if (indent >= 4) continue;             // an indented code block
+    if (rest.startsWith('>')) continue;    // quoted from somewhere else
+    if (indent > 0) continue;              // the form writes its boxes flush left
+    const match = rest.match(/^- \[[xX]\]\s*(.*)$/);
     if (match) out.push(match[1].trim());
   }
   return out;

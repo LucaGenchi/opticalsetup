@@ -47,8 +47,13 @@ body:
     id: acknowledgement
     attributes:
       label: Contribution acknowledgement
+      description: |
+        The first box is required. The second is your choice: tick it to let
+        others reuse your setup with credit, or leave it unticked and it is
+        published with no reuse terms — people would have to ask you first.
+        Either way the setup can be accepted.
       options:
         - label: I created or have permission to share this setup, and I understand that it will be publicly reviewed and may be modified if accepted.
           required: true
         - label: I have the right to license this setup and its description, and I publish them under CC BY 4.0 (credit to me, reuse and adaptation allowed). The app itself stays GPL-3.0-or-later.
-          required: true
+          required: false

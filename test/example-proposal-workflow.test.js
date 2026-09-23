@@ -181,6 +181,21 @@ test('a licence is recorded only when its own box is ticked', () => {
   assert.equal(materialize([SHARE_BOX, '```', GRANT, '```'].join('\n')).license,
     undefined, 'nor is one inside a code fence');
 
+  // A body is editable Markdown, so a line that looks like a checkbox may be
+  // inside a code block. CommonMark closes a fence only on the same character
+  // and at least the same length, and four spaces of indent is itself code.
+  assert.equal(materialize(['````', '```', GRANT, '````'].join('\n')).license, undefined,
+    'a shorter run does not close a longer fence');
+  assert.equal(materialize(['```', '~~~', GRANT, '```'].join('\n')).license, undefined,
+    'tildes do not close a backtick fence');
+  assert.equal(materialize(`    ${GRANT}`).license, undefined,
+    'four spaces of indent is an example, not a box');
+  assert.equal(materialize([SHARE_BOX, `  ${GRANT}`].join('\n')).license, undefined,
+    'the form writes its boxes flush left');
+  // And a genuine tick after a properly closed fence still counts.
+  const afterFence = materialize(['```', 'an example someone pasted', '```', SHARE_BOX, GRANT].join('\n')).license;
+  assert.equal(afterFence?.content, 'CC-BY-4.0', 'a real box after a closed fence is a grant');
+
   const granted = materialize([SHARE_BOX, GRANT].join('\n')).license;
   assert.equal(granted.content, 'CC-BY-4.0');
   assert.match(granted.text, /CC BY 4\.0/, 'the text that was ticked is kept with the record');
