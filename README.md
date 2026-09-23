@@ -25,6 +25,12 @@ figures as SVG or PNG.
   nodes. Text annotations render headings, lists, emphasis, code, and links from
   Markdown; place one or double-click it to edit directly on the canvas. Right-click
   offers duplicate, rotate, and delete without leaving the canvas.
+- **Appearance controls**: change opacity for any component and use Bring to
+  front / Send to back in the inspector or right-click menu. Lasers retain
+  beam-width resizing on their top/bottom handles; the rear handle changes only
+  housing length, keeping the beam exit and optical settings fixed. Appearance
+  survives save/reload, undo, and SVG/PNG export. Background highlights remain
+  behind devices and beams.
 - **Instrument-grade inspector**: the panel leads with the selected element's own
   settings, with bounded numeric ranges getting a slider synced to an exact-entry
   field; position and label controls collapse into their own disclosure sections.

@@ -310,6 +310,8 @@ function normalizeElement(raw, definitions, used) {
     id: freshId('e', raw.id, used), type: raw.type, x, y, rot,
     label: typeof raw.label === 'string' ? raw.label : '',
     showLabel: raw.showLabel === true,
+    ...(raw.opacity !== undefined ? { opacity: clamp(finite(raw.opacity) ? raw.opacity : 100, 0, 100) } : {}),
+    ...(raw.displayOrder !== undefined ? { displayOrder: clamp(finite(raw.displayOrder) ? raw.displayOrder : 0, -1000000, 1000000) } : {}),
     ...(raw.labelPos && ['b', 't', 'l', 'r'].includes(raw.labelPos) ? { labelPos: raw.labelPos } : {}),
     params,
   };

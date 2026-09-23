@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Export the sketch as standalone SVG or PNG.
+import { displayOpacity, displayOrder } from './appearance.js';
 
 import { state } from './state.js';
 import {
@@ -149,6 +150,13 @@ export function buildSVG({ whiteBg = false, animation = null, bounds = null } = 
 
   if (whiteBg || frame?.params.background === 'white') body += `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="#ffffff"/>`;
 
+  for (const el of displayOrder(elements).filter(el => registry[el.type]?.background)) {
+    const def = registry[el.type];
+    if (def.hideInExport) continue;
+    body += `<g transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})" opacity="${displayOpacity(el)}">${def.svg(el, elements)}</g>`;
+    body += `<g opacity="${displayOpacity(el)}">${labelSVG(el)}</g>`;
+  }
+
   // Objective-owned medium is derived from authored target identity, then
   // follows the current animation pose. Draw it below optical energy and
   // components so it reads as a relationship rather than a selectable part.
@@ -171,11 +179,11 @@ export function buildSVG({ whiteBg = false, animation = null, bounds = null } = 
     if (el.type === 'display') body += displayCableSVG(el, elements);
   }
 
-  for (const el of elements) {
+  for (const el of displayOrder(elements)) {
     const def = registry[el.type];
-    if (!def || def.hideInExport) continue;
-    body += `<g transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})">${def.svg(el, elements)}</g>`;
-    body += labelSVG(el);
+    if (!def || def.hideInExport || def.background) continue;
+    body += `<g transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})" opacity="${displayOpacity(el)}">${def.svg(el, elements)}</g>`;
+    body += `<g opacity="${displayOpacity(el)}">${labelSVG(el)}</g>`;
   }
 
   const defs = '<defs><linearGradient id="pulseSpectrum" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7c3aed"/><stop offset="0.22" stop-color="#2563eb"/><stop offset="0.45" stop-color="#10b981"/><stop offset="0.65" stop-color="#eab308"/><stop offset="0.82" stop-color="#f97316"/><stop offset="1" stop-color="#ef4444"/></linearGradient></defs>';

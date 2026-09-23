@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Right-hand inspector: edit properties of the selected element or manual beam.
+import { moveToEdge } from './appearance.js';
 
 import { state, changed, pushUndo, findSelected } from './state.js';
 import { MAX_AOTF_CHANNELS, newAotfChannel, normalizeAotfChannels } from './aotf.js';
@@ -1009,6 +1010,10 @@ export function renderInspector() {
         });
       }
       h += inspectorSection('position', 'Position & rotation', positionFields, { open: false });
+      let styleFields = numberField('Opacity (%)', 'data-k="opacity"', sel.opacity ?? 100, { min: 0, max: 100, step: 1, slider: true });
+      styleFields += '<p class="hint">Visual only; optical interactions stay unchanged.</p>';
+      if (!state.embedMode) styleFields += '<div class="btnrow"><button type="button" data-stack="back">Send to back</button><button type="button" data-stack="front">Bring to front</button></div>';
+      h += inspectorSection('style', 'Appearance & order', styleFields);
       if (!def.noLabel) {
         let appearanceFields = '';
         for (const p of def.params || []) {
@@ -1115,6 +1120,13 @@ export function renderInspector() {
   panel.querySelectorAll('[data-section]').forEach(section => {
     section.addEventListener('toggle', () => sectionState.set(section.dataset.section, section.open));
   });
+  panel.querySelectorAll('[data-stack]').forEach(button => button.addEventListener('click', () => {
+    const selected = findSelected();
+    if (!selected?.type) return;
+    pushUndo();
+    moveToEdge(state.elements, selected, button.dataset.stack);
+    changed();
+  }));
   const del = panel.querySelector('#inspDel');
   if (del) del.addEventListener('click', () => document.dispatchEvent(new CustomEvent('optics:delete')));
   const dup = panel.querySelector('#inspDup');
@@ -1474,6 +1486,7 @@ export function applyInput(inp, rebuild = false) {
     return;
   }
 
+  if (key === 'opacity') val = Math.max(0, Math.min(100, Number.isFinite(val) ? val : 100));
   if (key) sel[key] = key === 'rot' ? ((val % 360) + 360) % 360 : val;
   else if (pkey) {
     sel.params[pkey] = val;

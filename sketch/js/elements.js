@@ -5202,13 +5202,28 @@ registry.sclaser = {
   },
 };
 
+// Stretch only the housing artwork; its exit remains at x=52 and its
+// source and absorbing surfaces retain the original optical geometry.
+for (const type of ['cwlaser', 'pulsedlaser', 'sclaser']) {
+  const def = registry[type], originalSVG = def.svg, originalSize = def.size_;
+  const lengthScale = el => {
+    const value = Number(el.params?.housingLength ?? 104);
+    return (Number.isFinite(value) ? Math.max(20, Math.min(500, value)) : 104) / 104;
+  };
+  def.params.push({ key: 'housingLength', label: 'Housing length (mm)', type: 'number',
+    min: 20, max: 500, step: 1, def: 104, appearance: true });
+  def.svg = (el, elements) => `<g transform="translate(52 0) scale(${lengthScale(el)} 1) translate(-52 0)">${originalSVG(el, elements)}</g>`;
+  def.size_ = el => ({ ...originalSize(el), w: 104 * lengthScale(el) });
+  def.boxAnchor = el => ({ x: 52 * (1 - lengthScale(el)), y: 0 });
+}
+
 // Registry-owned direct-manipulation semantics. Canvas code only understands
 // generic resize/tune descriptors; the component definition decides which
 // real physical parameter a handle changes.
 const DIRECT = {
-  cwlaser: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'wavelength', short: 'λ' } },
-  pulsedlaser: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'wavelength', short: 'λ' } },
-  sclaser: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'scMax', short: 'λ max' } },
+  cwlaser: { resize: { x: 'housingLength', y: 'beamWidth', independentAxes: true, fixedRight: 52, set: { beamMode: 'beam' } }, tune: { key: 'wavelength', short: 'λ' } },
+  pulsedlaser: { resize: { x: 'housingLength', y: 'beamWidth', independentAxes: true, fixedRight: 52, set: { beamMode: 'beam' } }, tune: { key: 'wavelength', short: 'λ' } },
+  sclaser: { resize: { x: 'housingLength', y: 'beamWidth', independentAxes: true, fixedRight: 52, set: { beamMode: 'beam' } }, tune: { key: 'scMax', short: 'λ max' } },
   pointsource: { resize: { uniform: 'displayScale' }, tune: { key: 'spread', short: 'angle' } },
   objarrow: { resize: { y: 'height' }, tune: { key: 'spread', short: 'fan', when: p => p.raysMode === 'fan' } },
   mirror: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },

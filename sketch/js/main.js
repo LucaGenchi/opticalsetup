@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // App bootstrap: palette, toolbar, keyboard shortcuts.
 
+import { moveToEdge } from './appearance.js';
 import { copyableSelection, pasteObjects } from './clipboard.js';
 import { state, changed, onChange, pushUndo, undo, redo, canUndo, canRedo, findSelected, serialize, parseSketch, replaceScene, loadAutosave } from './state.js';
 import {
@@ -1687,6 +1688,7 @@ function bindContextMenu() {
     const duplicate = menu.querySelector('[data-action="duplicate"]');
     if (rotate) rotate.hidden = detail.kind !== 'element' || !detail.rotatable;
     if (duplicate) duplicate.hidden = detail.duplicable === false;
+    for (const action of ['front', 'back']) menu.querySelector(`[data-action="${action}"]`).hidden = detail.kind !== 'element';
     menu.hidden = false;
     const width = menu.offsetWidth || 178, height = menu.offsetHeight || 116;
     menu.style.left = `${Math.max(6, Math.min(rect.width - width - 6, detail.clientX - rect.left))}px`;
@@ -1700,6 +1702,14 @@ function bindContextMenu() {
     if (action === 'duplicate') duplicateSelected();
     else if (action === 'rotate') rotateSelected(45);
     else if (action === 'delete') deleteSelected();
+    else if (action === 'front' || action === 'back') {
+      const selected = findSelected();
+      if (selected?.type) {
+        pushUndo();
+        moveToEdge(state.elements, selected, action);
+        changed();
+      }
+    }
   });
   window.addEventListener('pointerdown', event => { if (!menu.hidden && !menu.contains(event.target)) hide(); }, true);
   window.addEventListener('blur', hide);

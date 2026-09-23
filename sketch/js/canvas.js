@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SVG canvas: rendering + pointer interactions (select, move, rotate, pan, zoom,
+import { displayOpacity, displayOrder } from './appearance.js';
 // element placement, manual beam drawing/editing).
 
 import { state, changed, pushUndo, findSelected } from './state.js';
@@ -762,25 +763,25 @@ const isBackground = el => registry[el.type]?.background === true;
 
 function renderHighlights() {
   let s = '';
-  for (const el of state.elements) {
+  for (const el of displayOrder(state.elements)) {
     if (!isBackground(el)) continue;
-    s += `<g data-element-id="${esc(el.id)}" transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})" vector-effect="non-scaling-stroke">${registry[el.type].svg(el)}</g>`;
-    s += labelSVG(el);
+    s += `<g data-element-id="${esc(el.id)}" transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})" vector-effect="non-scaling-stroke" opacity="${displayOpacity(el)}">${registry[el.type].svg(el)}</g>`;
+    s += `<g opacity="${displayOpacity(el)}">${labelSVG(el)}</g>`;
   }
   highlightLayer.innerHTML = s;
 }
 
 function renderElements() {
   let s = '';
-  const elements = animatedVisualElements().filter(el => !isBackground(el));
+  const elements = displayOrder(animatedVisualElements()).filter(el => !isBackground(el));
   for (const el of elements) {
     if (el.type === 'display') s += displayCableSVG(el, elements);
   }
   for (const el of elements) {
     const def = registry[el.type];
     if (!def) continue;
-    s += `<g data-element-id="${esc(el.id)}" transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})" vector-effect="non-scaling-stroke">${def.svg(el, elements)}</g>`;
-    s += labelSVG(el);
+    s += `<g data-element-id="${esc(el.id)}" transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})" vector-effect="non-scaling-stroke" opacity="${displayOpacity(el)}">${def.svg(el, elements)}</g>`;
+    s += `<g opacity="${displayOpacity(el)}">${labelSVG(el)}</g>`;
   }
   // placement ghost
   if (placing && placing.pos) {
@@ -937,6 +938,10 @@ function directValueLabel(el, tune) {
 }
 
 function resizeHandleLocations(resize, hw, hh) {
+  if (resize.independentAxes) return [
+    { x: -hw, y: 0, sx: -1, sy: 0 },
+    { x: 0, y: -hh, sx: 0, sy: -1 }, { x: 0, y: hh, sx: 0, sy: 1 },
+  ];
   if (resize.uniform || (resize.x && resize.y)) {
     return [{ x: -hw, y: -hh, sx: -1, sy: -1 }, { x: hw, y: -hh, sx: 1, sy: -1 },
       { x: hw, y: hh, sx: 1, sy: 1 }, { x: -hw, y: hh, sx: -1, sy: 1 }];
@@ -954,8 +959,9 @@ function hitElement(w) {
   // background. Test everything else in normal top-to-bottom order first,
   // then fall back to highlights in the same order.
   const front = [], back = [];
-  for (let i = state.elements.length - 1; i >= 0; i--) {
-    (isBackground(state.elements[i]) ? back : front).push(state.elements[i]);
+  const ordered = displayOrder(state.elements);
+  for (let i = ordered.length - 1; i >= 0; i--) {
+    (isBackground(ordered[i]) ? back : front).push(ordered[i]);
   }
   for (const el of [...front, ...back]) {
     const def = registry[el.type];
@@ -1051,7 +1057,7 @@ function hitTuneHandle(sel, w) {
 // from the moment you drag it.
 function readParam(el, key) {
   const spec = (registry[el.type]?.params || []).find(param => param.key === key);
-  return spec?.type === 'derived' ? spec.get(el.params) : el.params[key];
+  return spec?.type === 'derived' ? spec.get(el.params) : (el.params[key] ?? spec?.def);
 }
 function writeParam(el, key, value) {
   const spec = (registry[el.type]?.params || []).find(param => param.key === key);
@@ -1843,14 +1849,19 @@ function onMove(e) {
     const sx = Math.max(0.08, Math.abs(local.x) / Math.max(1, drag.hw));
     const sy = Math.max(0.08, Math.abs(local.y) / Math.max(1, drag.hh));
     const assignments = [];
-    if (drag.direct.x) assignments.push([drag.direct.x, sx]);
-    if (drag.direct.y) assignments.push([drag.direct.y, sy]);
+    if (drag.direct.x && (!drag.direct.independentAxes || drag.corner.sx)) {
+      const ratio = Number.isFinite(drag.direct.fixedRight)
+        ? Math.max(0.01, (drag.direct.fixedRight - local.x - 6) / drag.values[drag.direct.x])
+        : sx;
+      assignments.push([drag.direct.x, ratio]);
+    }
+    if (drag.direct.y && (!drag.direct.independentAxes || drag.corner.sy)) assignments.push([drag.direct.y, sy]);
     if (drag.direct.uniform) assignments.push([drag.direct.uniform, Math.max(sx, sy)]);
     const changes = assignments.map(([key, ratio]) => [key, boundedParam(drag.el, key, drag.values[key] * ratio)])
       .filter(([key, next]) => next !== readParam(drag.el, key));
     if (!changes.length) return;
     if (!drag.moved) { pushUndo(); drag.moved = true; }
-    for (const [key, value] of Object.entries(drag.direct.set || {})) drag.el.params[key] = value;
+    if (!drag.direct.independentAxes || drag.corner.sy) for (const [key, value] of Object.entries(drag.direct.set || {})) drag.el.params[key] = value;
     for (const [key, next] of changes) writeParam(drag.el, key, next);
     const labels = assignments.map(([key]) => `${key} ${readParam(drag.el, key)}`).join(' · ');
     setStatus(labels);
