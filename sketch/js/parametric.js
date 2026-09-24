@@ -234,14 +234,14 @@ export function opoWaves({
 // seed and pump durations at the crystal. It is a stage-level model: gain is
 // authored rather than derived from d_eff, crystal length or phase matching.
 //
-// Two textbook dependences are kept. The seeded parametric gain is
-// G = cosh²(ΓL) with Γ ∝ √I_pump, so a seed that meets a fraction f of the
-// peak pump intensity sees G(f) = cosh²(√f · arcosh √G₀) rather than a
-// linearly scaled gain. And only the part of the pump pulse the seed overlaps
-// can give up energy: for Gaussian envelopes that fraction is
-// τs / √(τs² + τp²) at zero delay, times the timing factor. A seed much shorter
-// than its pump therefore reaches little of the pump energy, which is why the
-// seed is stretched before amplification.
+// Two heuristics, both stated in the wiki. The gain uses the seeded,
+// phase-matched, undepleted-pump law G = cosh²(ΓL) with Γ ∝ √I_pump: a seed
+// meeting a fraction f of the peak pump intensity sees
+// G(f) = cosh²(√f · arcosh √G₀); the caller passes the envelope
+// cross-correlation as f. The pump budget is weighted by the temporal overlap
+// τs / √(τs² + τp²) × the timing factor (the pump envelope integrated against
+// the peak-normalized seed envelope), so a seed much shorter than its pump
+// reaches little of it. Neither is a solution of the saturated equations.
 export function opcpaGainAtIntensity(smallSignalGain, intensityFraction) {
   const g0 = Math.max(1, Number(smallSignalGain) || 1);
   const f = Math.min(1, Math.max(0, Number(intensityFraction) || 0));

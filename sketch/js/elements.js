@@ -2008,19 +2008,22 @@ function opcpaStateText(reading) {
   if (reading.state === 'unsupported') return 'Seed and pump repetition rates differ; asynchronous overlap is not modelled';
   if (reading.state === 'invalid') return 'No idler: the seed must be longer in wavelength than the pump';
   if (reading.state === 'noPower') return 'Seed and pump must both carry non-zero average power';
+  if (reading.state === 'durationUnavailable') return `No gain estimate — ${reading.reason}`;
+  if (reading.state === 'cascadeTooLong') return 'No gain estimate: more than six parametric stages in one chain are not resolved';
   const transfer = reading.transfer;
   if (!transfer) return 'Waiting for a usable seed–pump pair';
   const delay = reading.timing?.skewNs == null ? 'continuous overlap' : `${formatMixDelay(reading.timing.skewNs)} timing offset`;
   if (reading.state === 'noOverlap') return `No amplification: ${delay}, ${sig3(transfer.overlap * 100)}% temporal overlap`;
   return `${sig3(transfer.actualGain)}× signal power · ${sig3(transfer.pumpDepletion * 100)}% pump depletion · `
-    + `${sig3(transfer.overlap * 100)}% overlap (${delay}) · seed reaches ${sig3(transfer.pumpCoverage * 100)}% of the pump pulse`;
+    + `${sig3(transfer.overlap * 100)}% overlap (${delay}) · ${sig3(transfer.pumpCoverage * 100)}% weighted seed–pump overlap`;
 }
 
 function opcpaEnergyText(reading) {
   const t = reading?.transfer;
   if (!t) return '—';
   return `Seed ${formatPower(t.seedPowerW)} → ${formatPower(t.signalOutputW)}\n`
-    + `Idler ${formatPower(t.idlerPowerW)} · residual pump ${formatPower(t.residualPumpW)}`;
+    + `Idler ${formatPower(t.idlerPowerW)} · residual pump ${formatPower(t.residualPumpW)}\n`
+    + 'Idler chirp not modelled: its duration after dispersion is not predicted';
 }
 
 // Inspector text for a supercontinuum crystal on the last trace.
@@ -5425,7 +5428,7 @@ export function getDirectManipulation(el) {
 // mode, and diagram-only elements are honest visual annotations/placeholders.
 const ELEMENT_HELP = {
   opo: 'An optical parametric oscillator in a box: pump light entering the rear aperture within its angular and wavelength acceptance becomes a signal on the front axis and an optional idler on a parallel port, by the same phenomenological model as the crystal\'s OPO mode. The signal can be fixed, swept or stepped through a list. The unconverted pump is discarded inside; threshold, gain, cavity length and synchronisation are not simulated.',
-  opcpa: 'A seeded optical parametric chirped-pulse amplifier stage with separate seed and pump inputs. Its gain falls with the pump intensity the seed meets (cosh² law), extraction is capped by the part of the pump pulse the seed overlaps (so stretching matters) and by an authored depletion limit. It conserves the stage energy budget with Manley–Rowe signal/idler shares, preserves the seed chirp, and reports residual pump. Crystal length, d_eff, fluence, spatial overlap, phase matching, damage and walk-off are not simulated.',
+  opcpa: 'A seeded optical parametric chirped-pulse amplifier stage with separate seed and pump inputs. An effective gain falls with the pump intensity the seed meets (cosh² law), and extraction is capped by a weighted seed–pump temporal overlap (so stretching matters) and an authored depletion limit; both are stated heuristics. It conserves the stage energy budget with Manley–Rowe signal/idler shares, preserves the seed chirp, and reports residual pump. Crystal length, d_eff, fluence, spatial overlap, phase matching, damage and walk-off are not simulated.',
   cwlaser: 'Emits a steady monochromatic collimated beam at one wavelength.',
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
@@ -5481,7 +5484,7 @@ const ELEMENT_HELP = {
   pulsecompressor: 'Adds a bounded second-order spectral-phase correction as positive or negative GDD. It can compress a pulse only by cancelling opposite accumulated GDD; higher-order phase and a physical grating, prism, or chirped-mirror layout are not modeled.',
   eom: 'Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.',
   chopper: 'Gates finite-duration pulse trains in time and draws CW light as a chunked on/off pattern matching its duty cycle; detector readings use the duty-averaged CW power.',
-  crystal: 'Converts light into second-order (SHG and two-beam SFG), THG, supercontinuum, OPO, seeded OPCPA, or a custom output. The OPCPA mode uses the arriving seed and pump, a gain that falls with the pump intensity the seed meets, and a depletion ceiling applied to the part of the pump pulse the seed overlaps; it preserves the seed chirp and produces an energy-balanced idler and residual pump. The supercontinuum band is estimated from the pump wavelength and medium, or set by hand. OPO mode uses authored multi-pass depletion and Manley–Rowe signal/idler sharing. Detailed phase matching, crystal propagation, damage and cavity dynamics are not simulated.',
+  crystal: 'Converts light into second-order (SHG and two-beam SFG), THG, supercontinuum, OPO, seeded OPCPA, or a custom output. The OPCPA mode uses the arriving seed and pump, an effective gain that falls with the pump intensity the seed meets, and a depletion ceiling weighted by the seed–pump temporal overlap; it preserves the seed chirp and produces an energy-balanced idler and residual pump. The supercontinuum band is estimated from the pump wavelength and medium, or set by hand. OPO mode uses authored multi-pass depletion and Manley–Rowe signal/idler sharing. Detailed phase matching, crystal propagation, damage and cavity dynamics are not simulated.',
   sample: 'Attenuates excitation and can emit up to five stacked signals at once — fluorescence, SHG, THG, SFG, and CARS. Parametric signals are forward-generated with an optional weaker epi (backward) lobe; SFG and CARS additionally require two different excitation wavelengths at the same spot.',
   stage: 'Mechanically clips rays outside its clear aperture and optionally contains a sample. The piezo stage can scan the sample along its long axis (XY), along the beam axis (Z, depth), or raster both together; a resin sample can also show pulsed 2PP voxel marks.',
   probe: 'Reads spectrum, wavelength, or polarization from the nearest traced beam.',

@@ -36,6 +36,7 @@ export function formatPowerMw(watts) {
 export function probeDurationLabel(reading, sourceType) {
   if (!reading) return '—';
   if (!reading.pulse) return 'CW source';
+  if (reading.pulse.durationIssue) return 'Unavailable';
   const fs = Number(reading.pulse.pulseWidthFs);
   if (!Number.isFinite(fs) || fs <= 0) return 'Undefined';
   if (fs >= 1e6) return `${(fs / 1e6).toPrecision(3)} ns`;

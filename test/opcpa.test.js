@@ -4,7 +4,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createElement } from '../sketch/js/elements.js';
-import { detectorReading, opcpaReading, traceScene } from '../sketch/js/raytrace.js';
+import { detectorReading, opcpaReading, probeAt, traceScene } from '../sketch/js/raytrace.js';
+import { probeDurationLabel } from '../sketch/js/probe.js';
+import '../sketch/js/etalon.js'; // registers registry.etalon
 import { opcpaGainAtIntensity, opcpaPumpCoverage, opcpaTransfer } from '../sketch/js/parametric.js';
 
 const near = (actual, expected, tolerance = 1e-9) =>
@@ -113,4 +115,77 @@ test('a non-degenerate stage splits converted pump power by Manley–Rowe', () =
   // Equal photon numbers: power ratio signal : idler = λi : λs.
   near(t.signalGainW / t.idlerPowerW, idlerWl / 800, 1e-9);
   near(t.signalGainW + t.idlerPowerW, t.pumpTransferredW, 1e-12);
+});
+
+function pulsed(x, y, params) {
+  const laser = createElement('pulsedlaser', x, y);
+  Object.assign(laser.params, { repRateMHz: 0.001, beamMode: 'line', ...params });
+  return laser;
+}
+
+function packagedStage(x, y, params = {}) {
+  const amp = createElement('opcpa', x, y);
+  Object.assign(amp.params, {
+    pumpWl: 527, smallSignalGain: 20, maxPumpDepletion: 0.6,
+    signalBeamMm: 0, idlerBeamMm: 0, pumpBeamMm: 0, ...params,
+  });
+  return amp;
+}
+
+test('a second OPCPA stage discovers the amplified seed of the first', () => {
+  const seed = pulsed(60, 160, { wavelength: 1053, avgPowerW: 1, pulseWidthFs: 1000 });
+  const pump1 = pulsed(60, 184, { wavelength: 527, avgPowerW: 100, pulseWidthFs: 1000 });
+  const first = packagedStage(220, 160, { outputIdler: false, transmitPump: false });
+  const pump2 = pulsed(290, 184, { wavelength: 527, avgPowerW: 100, pulseWidthFs: 1000 });
+  const second = packagedStage(420, 160, { outputIdler: false, transmitPump: false });
+  const out = createElement('detector', 600, 160);
+  const scene = [seed, pump1, first, pump2, second, out];
+  traceScene(scene);
+  // Time the second pump to the seed's longer path through the first stage.
+  pump2.params.pulsePhaseNs = opcpaReading(second.id).timing.skewNs;
+  traceScene(scene);
+  const a = opcpaReading(first.id), b = opcpaReading(second.id);
+  near(b.transfer.overlap, 1, 1e-9);
+  assert.deepEqual([a.state, b.state], ['amplifying', 'amplifying']);
+  // The second stage is seeded with what the first delivered, not the 1 W seed.
+  near(b.transfer.seedPowerW, a.transfer.signalOutputW, 1e-9);
+  near(out.id && detectorReading(out.id).signal, a.transfer.actualGain * b.transfer.actualGain, 1e-9);
+});
+
+test('an OPCPA declines to estimate gain when a pulse duration is unavailable', () => {
+  const seed = pulsed(60, 160, { wavelength: 1053, avgPowerW: 10, pulseWidthFs: 1000 });
+  const etalon = createElement('etalon', 140, 160);
+  const pump = pulsed(60, 184, { wavelength: 527, avgPowerW: 100, pulseWidthFs: 1000 });
+  const amp = packagedStage(260, 160);
+  traceScene([seed, etalon, pump, amp]);
+  const state = opcpaReading(amp.id);
+  assert.equal(state.state, 'durationUnavailable');
+  assert.match(state.reason, /^Seed: /);
+  assert.equal(state.transfer, undefined, 'no gain, depletion or overlap is reported');
+});
+
+test('a beam probe reports an unavailable duration rather than the source width', () => {
+  const laser = pulsed(0, 0, { wavelength: 800, avgPowerW: 1, pulseWidthFs: 20 });
+  const etalon = createElement('etalon', 100, 0);
+  traceScene([laser, etalon]);
+  const reading = probeAt(200, 0);
+  assert.ok(reading?.pulse, 'the probe found the pulsed beam');
+  assert.equal(reading.pulse.pulseWidthFs, null);
+  assert.ok(reading.pulse.durationIssue);
+  assert.equal(probeDurationLabel(reading, 'pulsedlaser'), 'Unavailable');
+});
+
+test('the idler duration after dispersion is declined, not predicted', () => {
+  const seed = pulsed(60, 160, { wavelength: 800, avgPowerW: 10, pulseWidthFs: 1000 });
+  const pump = pulsed(60, 184, { wavelength: 527, avgPowerW: 100, pulseWidthFs: 1000 });
+  const amp = packagedStage(220, 160, { transmitPump: false });
+  const compressor = createElement('pulsecompressor', 330, 184);
+  Object.assign(compressor.params, { gddFs2: -20000 });
+  const idler = createElement('detector', 420, 184);
+  traceScene([seed, pump, amp, compressor, idler]);
+  const reading = detectorReading(idler.id);
+  assert.ok(reading?.pulse, 'the idler reached its detector');
+  near(reading.pulse.totalGddFs2, -20000, 1e-9);
+  assert.equal(reading.pulse.stretchedPulseWidthFs, null);
+  assert.match(reading.pulse.dispersionModel, /Spectral phase unknown/);
 });

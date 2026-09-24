@@ -362,7 +362,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "**Model boundary:** OPCPA is a seeded, single-pass energy budget: gain follows the pump intensity the seed meets, extraction is limited to the part of the pump pulse the seed overlaps, and signal and idler share energy by Manley–Rowe.\nNd:glass gain, crystal propagation, phase matching, walk-off, damage, contrast, thermal loading, diffraction and plasma are not simulated.",
+        "text": "**Model boundary:** OPCPA is a seeded, single-pass energy budget: an effective gain follows the pump intensity the seed meets, extraction is weighted by the seed–pump temporal overlap, and signal and idler share energy by Manley–Rowe.\nNd:glass gain, crystal propagation, phase matching, walk-off, damage, contrast, thermal loading, diffraction and plasma are not simulated.",
         "fontSize": 11,
         "fill": "#5d4534"
       }
