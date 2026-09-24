@@ -1,0 +1,181 @@
+{
+ "app": "sketch/js/pulse-field.js: propagateEnvelope, fieldMetrics",
+ "cases": [
+  {
+   "expected": {
+    "bIntegral": 1.839500444,
+    "energyJ": 2.603881732e-05,
+    "fwhmFs": 100.0
+   },
+   "inputs": {
+    "beta2Fs2PerM": 0,
+    "energyJ": 3e-05,
+    "gammaPerWM": 7e-09,
+    "lengthM": 1.0,
+    "lossDbPerM": 0.615,
+    "pulseWidthFs": 100.0,
+    "wavelengthNm": 800
+   },
+   "name": "analytic limit: no dispersion, Kerr phase with loss",
+   "note": "closed form B = gamma P0 (1 - exp(-alpha L)) / alpha; not a split-step result. The app's FWHM carries a +1e-4 grid-resolution offset, measured with the nonlinearity off.",
+   "tolerance": {
+    "bIntegral": 0.0001,
+    "energyJ": 1e-06,
+    "fwhmFs": 0.0002
+   }
+  },
+  {
+   "expected": {
+    "bIntegral": 0.0,
+    "energyJ": 1.503561701e-05,
+    "fwhmFs": 114.3481769,
+    "rmsFs": 48.55807395,
+    "spectralRmsTHz": 1.873906251
+   },
+   "inputs": {
+    "beta2Fs2PerM": 2000,
+    "energyJ": 3e-05,
+    "lengthM": 1,
+    "lossDbPerM": 3,
+    "pulseWidthFs": 100,
+    "wavelengthNm": 800
+   },
+   "name": "linear: 2000 fs^2/m and 3 dB/m",
+   "tolerance": {
+    "bIntegral": 0.01,
+    "compressedFwhmFs": 0.01,
+    "energyJ": 1e-06,
+    "fwhmFs": 0.005,
+    "rmsFs": 0.005,
+    "spectralRmsTHz": 0.005
+   }
+  },
+  {
+   "expected": {
+    "bIntegral": 1.972818285,
+    "energyJ": 3e-05,
+    "fwhmFs": 100.0023184,
+    "rmsFs": 42.46609001,
+    "spectralRmsTHz": 3.74597198
+   },
+   "inputs": {
+    "energyJ": 3e-05,
+    "gammaPerWM": 7e-09,
+    "lengthM": 1,
+    "pulseWidthFs": 100,
+    "wavelengthNm": 800
+   },
+   "name": "pure self-phase modulation, gamma 7e-9",
+   "tolerance": {
+    "bIntegral": 0.01,
+    "compressedFwhmFs": 0.01,
+    "energyJ": 1e-06,
+    "fwhmFs": 0.005,
+    "rmsFs": 0.005,
+    "spectralRmsTHz": 0.005
+   }
+  },
+  {
+   "expected": {
+    "bIntegral": 0.0,
+    "energyJ": 3e-05,
+    "fwhmFs": 103.7731689,
+    "rmsFs": 44.06810907,
+    "spectralRmsTHz": 1.873906251
+   },
+   "inputs": {
+    "beta2Fs2PerM": 2000,
+    "energyJ": 3e-05,
+    "inputGddFs2": -3000,
+    "lengthM": 1,
+    "pulseWidthFs": 100,
+    "wavelengthNm": 800
+   },
+   "name": "chirped input -3000 fs^2 through 2000 fs^2/m, no Kerr",
+   "tolerance": {
+    "bIntegral": 0.01,
+    "compressedFwhmFs": 0.01,
+    "energyJ": 1e-06,
+    "fwhmFs": 0.005,
+    "rmsFs": 0.005,
+    "spectralRmsTHz": 0.005
+   }
+  },
+  {
+   "expected": {
+    "bIntegral": 2.036293359,
+    "compressedFwhmFs": 46.82309081,
+    "energyJ": 2.603881732e-05,
+    "fwhmFs": 102.2184352,
+    "rmsFs": 42.71452165,
+    "spectralRmsTHz": 3.829573481
+   },
+   "inputs": {
+    "beta2Fs2PerM": 28.37,
+    "compressorGddFs2": -650,
+    "energyJ": 3e-05,
+    "gammaPerWM": 7.79e-09,
+    "lengthM": 1,
+    "lossDbPerM": 0.615,
+    "pulseWidthFs": 100,
+    "wavelengthNm": 800
+   },
+   "name": "bundled hollow-core example (250 um, 2 bar, 0.615 dB/m) then -650 fs^2",
+   "tolerance": {
+    "bIntegral": 0.01,
+    "compressedFwhmFs": 0.01,
+    "energyJ": 1e-06,
+    "fwhmFs": 0.005,
+    "rmsFs": 0.005,
+    "spectralRmsTHz": 0.005
+   }
+  },
+  {
+   "expected": {
+    "bIntegral": 6.011367466,
+    "compressedFwhmFs": 31.7405049,
+    "energyJ": 5.207763464e-05,
+    "fwhmFs": 109.5563555,
+    "rmsFs": 43.57564764,
+    "spectralRmsTHz": 9.898226252
+   },
+   "inputs": {
+    "beta2Fs2PerM": 42.5,
+    "compressorGddFs2": -900,
+    "energyJ": 6e-05,
+    "gammaPerWM": 1.17e-08,
+    "lengthM": 1,
+    "lossDbPerM": 0.615,
+    "pulseWidthFs": 100,
+    "wavelengthNm": 800
+   },
+   "name": "stronger case: 60 uJ, 3 bar equivalent then -900 fs^2",
+   "tolerance": {
+    "bIntegral": 0.01,
+    "compressedFwhmFs": 0.01,
+    "energyJ": 1e-06,
+    "fwhmFs": 0.005,
+    "rmsFs": 0.005,
+    "spectralRmsTHz": 0.005
+   }
+  }
+ ],
+ "citations": [
+  "G. P. Agrawal, Nonlinear Fiber Optics, 5th ed. (Academic Press, 2013), sections 2.3 (the NLSE and the split-step method) and 4.1 (SPM broadening)",
+  "Sign convention cross-checked against the physical-field NLSE of F. Oliari et al., Nat. Commun. 11, 933 (2020), Eq. (1), doi:10.1038/s41467-020-14503-w"
+ ],
+ "convergence": "The app's FWHM readout is interpolated from its sampled grid and reads 100.0097 fs for an unpropagated 100 fs pulse at its default sampling -- a fixed 1e-4 offset, independent of the physics. The solver's own discretisation is measured below, on the bundled example.",
+ "convergence_keys": [
+  "hollow-core example"
+ ],
+ "domain": "100 fs, 30-60 uJ, 1 m, beta2 0-2000 fs^2/m, gamma 0-1.17e-8 /W/m, loss 0-3 dB/m, input chirp 0 to -3000 fs^2; B-integral up to about 3 rad.",
+ "fidelity": "computed",
+ "id": "nlse",
+ "outside_scope": "Declines: `propagateEnvelope` refuses a pulse it cannot represent (unknown energy, reshaped spectrum, a field that leaves its time window) and the light continues with linear dispersion only, carrying a caveat to every downstream readout.",
+ "provenance": "Written from Agrawal's equations; the conventions (A_tilde(w) = int A(T) exp(+i w T) dT, so d2/dT2 -> -w^2, giving exp(+i beta2 w^2 h / 2) and exp(+i gamma |A|^2 h)) are stated in the module and were checked against an independently published form of the same equation.",
+ "reference": "Independent symmetric split-step Fourier solver in Agrawal's convention on a 2048-point grid with 4-8x more steps, plus one analytic zero-dispersion limit",
+ "reference_file": "validation/reference/nlse.py",
+ "scope": "Single mode, scalar, instantaneous Kerr response, second-order dispersion only; no Raman, self-steepening, ionisation or mode coupling.",
+ "title": "Scalar envelope propagation: GDD, Kerr SPM and loss (hollow-core solver)",
+ "tolerance_rationale": "5e-3 on widths and spectral RMS sits well above the change observed when the grid and step count are doubled together (below 2e-5 on the bundled example), which is sensitivity evidence at those settings rather than an error bound; the time window was not varied; 1e-2 on the B-integral and the compressed width covers the same difference where the compressed pulse's wings make its FWHM more sensitive; 1e-6 on energy is the loss factor's algebra. The analytic limit is held to 1e-4, the split-step mid-step sampling error at 256 steps."
+}

@@ -269,6 +269,17 @@ normal is ambiguous. Nested or overlapping glass bodies are not surface-merged,
 and the model does not include Fresnel reflection, coatings, stress birefringence,
 phase, or manufacturing tolerances.
 
+## Validation
+
+The quantitative models behind those readouts (catalogue glass dispersion,
+transform limits and quadratic-phase stretching, the argon capillary's
+dispersion and loss, the split-step envelope solver, thick-lens cardinal
+points, Stokes polarization optics and etalon finesse) are checked in the
+test suite against independent reference implementations written in plain
+Python. [docs/validation.md](docs/validation.md) lists each model, its
+reference, sources, tolerance and scope; [docs/adding-physics.md](docs/adding-physics.md)
+is the protocol a new model has to follow to earn a place there.
+
 ## Feedback
 
 Use the app, then send your exported `.json` sketch and notes to Luca. The canvas
