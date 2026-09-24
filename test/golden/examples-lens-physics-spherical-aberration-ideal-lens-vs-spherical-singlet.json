@@ -1,0 +1,62 @@
+{
+ "elements": 24,
+ "beams": 0,
+ "drawables": {
+  "count": 20,
+  "byType": {
+   "path": 20
+  },
+  "colors": {
+   "#65ff00": 20
+  },
+  "points": 90,
+  "sum": [
+   31262.1726,
+   44100
+  ],
+  "bbox": [
+   120,
+   245.2374,
+   548,
+   694.7626
+  ],
+  "digest": "8c1901b2"
+ },
+ "drawnElements": {
+  "textlabel:title": "7059c226",
+  "textlabel:sub": "43d33ec1",
+  "textlabel:h1": "767a34ea",
+  "textlabel:h1b": "dfa40092",
+  "pointsource:s1": "4b9e1bf0",
+  "lens:c1": "b70d3f64",
+  "lens:l1": "89a5ac15",
+  "box:scr1": "a2d43191",
+  "textlabel:n1": "d1662172",
+  "textlabel:h2": "f1a64d6c",
+  "textlabel:h2b": "03e06e87",
+  "pointsource:s2": "4b9e1bf0",
+  "lens:c2": "b70d3f64",
+  "thicklens:l2": "1c1fe83c",
+  "box:scr2": "a2d43191",
+  "textlabel:n2": "44ca297d",
+  "textlabel:n3": "fd734a65",
+  "textlabel:f1": "e4daf37d",
+  "textlabel:f2": "bf5ba29f",
+  "textlabel:f3": "26bd14d4",
+  "textlabel:f4": "b3db5bb5",
+  "textlabel:f5": "d470dec8",
+  "textlabel:f6": "d3fe72bf",
+  "textlabel:f7": "1fa966ec"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "readouts": {},
+ "fibers": {}
+}

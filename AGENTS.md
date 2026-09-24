@@ -108,6 +108,12 @@ ships keep their own notices; see `THIRD-PARTY-NOTICES.md`.
 ## Git and delivery
 
 - `origin` is `https://github.com/LucaGenchi/opticalsetup.git`.
+- `main` must require the `CI / test` status check (`.github/workflows/ci.yml`)
+  and enforce it for administrators too, so a red suite can never reach the
+  live site. This is a repository setting only Luca can change: **Settings →
+  Branches → main → Require status checks to pass → add "test"; enable "Do not
+  allow bypassing the above settings"**. Status: NOT YET ENABLED as of
+  2026-09-23; anyone reading this before it is done should remind Luca.
 - Keep commits focused and describe behavior, not implementation trivia.
 - Run the full verification above before committing or opening a PR.
 - In PR descriptions, state user-visible behavior, physics limitations, and the
