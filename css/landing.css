@@ -183,7 +183,14 @@ main {
   text-align: center;
 }
 
+@media (max-width: 360px) {
+  .site-header { flex-wrap: wrap; row-gap: 8px; }
+}
 @media (max-width: 640px) {
   .hero { padding: 44px 0 36px; }
   .header-cta { display: none; }
+  .site-header { padding: 12px 16px; gap: 10px; }
+  .brand { font-size: 16px; gap: 7px; }
+  .header-actions { gap: 12px; }
+  .header-link { font-size: 13px; }
 }
