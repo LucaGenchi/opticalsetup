@@ -132,6 +132,44 @@ test('the gain falls continuously through the old 0.02 visibility floor', () => 
   assert.ok(after.achievedGain > 5 && Math.abs(before.achievedGain / after.achievedGain - 1) < 0.02);
 });
 
+test('a negligible CW seed does not widen a pulsed seed\'s reach into the period', () => {
+  // Andrea's case against a771a21: merged trapezoid nodes at the pulsed
+  // window edge borrowed half of the CW grid spacing outside it (39.6x).
+  const pump = { wl: 532, powerW: 1 };
+  const pulsedSeed = seed('pulse', { pulse: pulse() });
+  const cw = seed('cw', { wl: 900, powerW: 1e-12, gammaPerM: 0.001 });
+  const alone = run({ pump, lengthM: 1, seeds: [pulsedSeed] });
+  const both = run({ pump, lengthM: 1, seeds: [pulsedSeed, cw] });
+  near(both.channels.find(c => c.key === 'pulse').depletedPumpW, alone.depletedPumpW, 1e-12);
+  conserved(both);
+});
+
+test('adding a negligible channel leaves every other channel unchanged (random mixed timing)', () => {
+  // Deterministic pseudo-random pulsed/CW pumps and seeds, 10 fs to 3 ps,
+  // partially overlapping windows, low to very high gain. New window edges
+  // only re-subdivide the cells, so the change is quadrature error.
+  let state = 12345;
+  const rnd = () => (state = (state * 1103515245 + 12345) % 2147483648) / 2147483648;
+  const pick = list => list[Math.floor(rnd() * list.length)];
+  const widths = [10, 50, 100, 300, 1000, 3000];
+  const timing = () => (rnd() < 0.7 ? { pulse: { ...pulse((rnd() - 0.5) * 4e-3), pulseWidthFs: pick(widths) } } : {});
+  for (let trial = 0; trial < 150; trial++) {
+    const pump = { wl: 532, powerW: 1, ...(rnd() < 0.6 ? { pulse: { ...pulse(), pulseWidthFs: pick(widths) } } : {}) };
+    const seeds = Array.from({ length: 1 + Math.floor(rnd() * 3) }, (_, i) =>
+      seed(`s${i}`, { wl: 700 + 60 * i, powerW: 10 ** (-9 + 6 * rnd()), gammaPerM: 10 ** (2 + 2.5 * rnd()), ...timing() }));
+    const lengthM = pick([1e-3, 3e-3, 1e-2]);
+    const base = allocateParametricAmplifier({ pump, seeds, lengthM });
+    const more = allocateParametricAmplifier({ pump, lengthM,
+      seeds: [...seeds, seed('zz', { wl: 1000, powerW: 1e-30, gammaPerM: 1, ...timing() })] });
+    conserved(more);
+    for (const c of base.channels) {
+      const d = more.channels.find(x => x.key === c.key).depletedPumpW;
+      assert.ok(Math.abs(d - c.depletedPumpW) <= 1e-3 * c.depletedPumpW + 1e-12 * pump.powerW,
+        `trial ${trial} ${c.key}: ${c.depletedPumpW} -> ${d}`);
+    }
+  }
+});
+
 test('with a CW pump, pulsed seeds at another repetition rate cannot share the grid', () => {
   const result = run({ seeds: [seed('a', { pulse: pulse() }), seed('b', { wl: 900, pulse: pulse(0, 60) })] });
   assert.equal(result.channels[0].state, 'amplifying');

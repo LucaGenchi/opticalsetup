@@ -41,13 +41,14 @@ const validTiming = beam => {
 };
 const sameWavelength = (a, b) => Math.abs(a - b) <= 1e-9 * Math.max(a, b);
 
-// Quasi-static quadrature over one pulse period on ONE time grid shared by
-// every seed, so seeds that meet the same pump instant share that instant's
-// energy. Times are fs from the pump peak (from the first pulsed seed when the
-// pump is CW); widths are intensity FWHM. A window stops where the pump no
-// longer gives gain (2.5 FWHM: amplitude-gain scale below 2e-4) and where a
-// seed has no power left (4 FWHM: 1e-19 of its peak).
-const PUMP_REACH_FWHM = 2.5, SEED_REACH_FWHM = 4, NODES_PER_WINDOW = 401;
+// Quasi-static quadrature over one pulse period on ONE set of time cells
+// shared by every seed, so seeds that meet the same pump instant share that
+// instant's energy. Times are fs from the pump peak (from the first pulsed
+// seed when the pump is CW); widths are intensity FWHM. A window stops where
+// the pump no longer gives gain (2.5 FWHM: amplitude-gain scale below 2e-4)
+// and where a seed has no power left (4 FWHM: 1e-19 of its peak).
+const PUMP_REACH_FWHM = 2.5, SEED_REACH_FWHM = 4;
+const CELLS_PER_FWHM = 64, MAX_CELLS_PER_PIECE = 4096;
 const GAUSSIAN_AREA_FWHM = Math.sqrt(Math.PI / (4 * Math.LN2));
 const envelope = (t, fwhm) => Math.exp(-4 * Math.LN2 * (t / fwhm) ** 2);
 const pulsed = beam => beam.pulse?.repRateMHz > 0 ? beam.pulse : null;
@@ -58,28 +59,37 @@ const powerDensity = (pulse, centreFs, periodFs, t) => pulse
   ? envelope(t - centreFs, pulse.pulseWidthFs) / (pulse.pulseWidthFs * GAUSSIAN_AREA_FWHM)
   : 1 / periodFs;
 
-// Nodes of all windows with trapezoid widths. Overlapping windows merge into
-// one interval with all their nodes; disjoint intervals are integrated apart,
-// so no slice ever spans the empty time between two seeds. Without any pulse
-// there is no time structure: one slice holding everything.
-function sharedGrid(windows, periodFs) {
-  if (periodFs === null) return [{ t: 0, width: 1 }];
-  const sorted = windows.filter(([lo, hi]) => hi > lo).sort((a, b) => a[0] - b[0]);
-  const intervals = [];
-  for (const [lo, hi] of sorted) {
-    const last = intervals.at(-1);
-    if (last && lo <= last.hi) { last.hi = Math.max(last.hi, hi); last.windows.push([lo, hi]); }
-    else intervals.push({ hi, windows: [[lo, hi]] });
+// Midpoint cells that never cross a window edge. The time axis is cut at every
+// edge; inside each piece the same seeds are present throughout, and the
+// piece is split finely enough for the shortest pulse that shapes it. A cell's
+// weight is therefore only time where its seeds and the pump really are, and
+// adding or removing a seed cannot widen another seed's cells' reach.
+// Each cell lists the channels present. Without any pulse there is no time
+// structure: one cell holding everything.
+function sharedCells(channels, periodFs, pumpPulse, lengthM) {
+  if (periodFs === null) return [{ t: 0, width: 1, present: channels }];
+  const edges = [...new Set(channels.flatMap(channel => channel.live.window))].sort((x, y) => x - y);
+  const cells = [];
+  for (let k = 0; k + 1 < edges.length; k++) {
+    const lo = edges[k], hi = edges[k + 1], mid = (lo + hi) / 2;
+    if (!(hi > lo)) continue;
+    const present = channels.filter(channel => channel.live.window[0] <= mid && mid <= channel.live.window[1]);
+    if (!present.length) continue;
+    const widths = present.map(channel => channel.live.pulse?.pulseWidthFs).filter(Boolean);
+    // High gain sharpens the pump envelope: cosh^2(Gamma_peak L sqrt(I_p/I_peak))
+    // is about exp(2 Gamma_peak L) times a Gaussian of width tau_p/sqrt(Gamma_peak L).
+    if (pumpPulse) {
+      const peakGammaL = Math.max(1, ...present.map(channel => channel.live.seed.gammaPerM * lengthM));
+      widths.push(pumpPulse.pulseWidthFs / Math.sqrt(peakGammaL));
+    }
+    // Only CW light on this piece: a constant integrand, one cell is exact.
+    const count = widths.length
+      ? Math.min(MAX_CELLS_PER_PIECE, Math.max(1, Math.ceil((hi - lo) * CELLS_PER_FWHM / Math.min(...widths))))
+      : 1;
+    const width = (hi - lo) / count;
+    for (let j = 0; j < count; j++) cells.push({ t: lo + (j + 0.5) * width, width, present });
   }
-  const grid = [];
-  for (const { windows: group } of intervals) {
-    const nodes = group.flatMap(([lo, hi]) =>
-      Array.from({ length: NODES_PER_WINDOW }, (_, k) => lo + (hi - lo) * k / (NODES_PER_WINDOW - 1)));
-    nodes.sort((x, y) => x - y);
-    const unique = nodes.filter((t, k) => k === 0 || t - nodes[k - 1] > 1e-12 * Math.max(1, Math.abs(t)));
-    unique.forEach((t, k) => grid.push({ t, width: ((unique[k + 1] ?? t) - (unique[k - 1] ?? t)) / 2 }));
-  }
-  return grid;
+  return cells;
 }
 
 export function allocateParametricAmplifier({ pump, seeds = [], lengthM, maxDepletion = 1 } = {}) {
@@ -169,21 +179,19 @@ export function allocateParametricAmplifier({ pump, seeds = [], lengthM, maxDepl
     // origin keeps its whole envelope.
     channel.live.window = [Math.max(own[0], pumpWindow[0]), Math.min(own[1], pumpWindow[1])];
   }
-  const active = live.filter(channel => channel.live);
-  const grid = sharedGrid(active.map(channel => channel.live.window), periodFs);
-  // In each slice, the seeds present together ask for pump energy; if they
-  // ask for more than the slice holds, all are cut by the same factor. Logs
+  const active = live.filter(channel => channel.live && !(channel.live.window && !(channel.live.window[1] > channel.live.window[0])));
+  // In each cell, the seeds present together ask for pump energy; if they
+  // ask for more than the cell holds, all are cut by the same factor. Logs
   // keep enormous formal gain finite.
   const logBudgetW = Math.log(budgetW);
-  for (const { t, width } of grid) {
+  for (const { t, width, present } of sharedCells(active, periodFs, pumpPulse, lengthM)) {
     const pumpShare = (periodFs === null ? 1 : powerDensity(pumpPulse, 0, periodFs, t)) * width;
     if (!(pumpShare > 0)) continue;
     const gammaScale = pumpPulse ? Math.sqrt(envelope(t, pumpPulse.pulseWidthFs)) : 1;
     const logAvailableW = logBudgetW + Math.log(pumpShare);
     const demands = [];
-    for (const channel of active) {
+    for (const channel of present) {
       const seedLive = channel.live;
-      if (periodFs !== null && !(t >= seedLive.window[0] && t <= seedLive.window[1])) continue;
       const seedShare = (periodFs === null ? 1 : powerDensity(seedLive.pulse, seedLive.centreFs, periodFs, t)) * width;
       if (!(seedShare > 0)) continue;
       const local = parametricSmallSignalGain({

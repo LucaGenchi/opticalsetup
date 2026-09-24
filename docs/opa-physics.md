@@ -156,10 +156,15 @@ Gamma(t) = Gamma_peak * sqrt(I_p(t) / I_peak)
 dP_pump(t) = min( P_seed(t) * [G(Gamma(t)) - 1] / signalShare ,  maxDepletion * P_pump(t) )
 ```
 
-on Gaussian intensity envelopes, on **one time grid shared by all seeds**
-(401 trapezoid nodes per window where the pump still gives gain and a seed
-still has power; overlapping windows merge, disjoint ones are integrated
-apart). A pulsed train holds its
+on Gaussian intensity envelopes, on **one set of time cells shared by all
+seeds**. Each seed's window runs where the pump still gives gain and the seed
+still has power. The time axis is cut at every window edge, so inside each
+piece the same seeds are present throughout, and no cell ever reaches outside
+the windows it serves (adding a negligible seed therefore changes the others
+only by quadrature error, tested below 1e-3 over random mixed timings). Each
+piece is split into midpoint cells, 64 per shortest relevant width: the pulse
+FWHMs present and the pump's high-gain window `tau_p / sqrt(Gamma_peak L)`. A
+pulsed train holds its
 whole average power inside the pulse envelope; a CW beam holds only
 `f_rep * dt` of it in each slice. Consequences, all tested against an
 independent quadrature:
