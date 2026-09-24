@@ -100,15 +100,15 @@ export const examples = [
   },
   {
     "group": "Ultrashort Pulses",
-    "name": "High energy OPCPA laser — architecture sketch",
-    "path": "../Examples/Ultrashort%20Pulses/High-energy%20OPCPA%20laser%20%E2%80%94%20architecture%20sketch.json",
-    "slug": "high-energy-opcpa-laser-architecture-sketch"
-  },
-  {
-    "group": "Ultrashort Pulses",
     "name": "Hollow core pulse compressor",
     "path": "../Examples/Ultrashort%20Pulses/Hollow-core%20pulse%20compressor.json",
     "slug": "hollow-core-pulse-compressor"
+  },
+  {
+    "group": "Ultrashort Pulses",
+    "name": "Marvel ATLAS laser — public architecture",
+    "path": "../Examples/Ultrashort%20Pulses/Marvel%20ATLAS%20laser%20%E2%80%94%20public%20architecture.json",
+    "slug": "marvel-atlas-laser-public-architecture"
   },
   {
     "group": "Ultrashort Pulses",

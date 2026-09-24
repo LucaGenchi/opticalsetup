@@ -11,7 +11,7 @@ import { opcpaReading, probeAt, traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
 
 const raw = readFileSync(new URL(
-  '../Examples/Ultrashort Pulses/High-energy OPCPA laser — architecture sketch.json',
+  '../Examples/Ultrashort Pulses/Marvel ATLAS laser — public architecture.json',
   import.meta.url,
 ), 'utf8');
 

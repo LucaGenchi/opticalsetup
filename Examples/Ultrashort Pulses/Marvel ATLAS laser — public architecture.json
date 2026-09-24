@@ -21,7 +21,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "# High-energy OPCPA laser — architecture sketch\n**Illustrative architecture, not any facility's optical prescription** · 1053 nm → 526.5 nm · 100 fs",
+        "text": "# Marvel ATLAS laser — public architecture\n**Illustrative architecture, not the facility's optical prescription** · 1053 nm → 526.5 nm · 100 fs",
         "fontSize": 14,
         "fill": "#203047"
       }
