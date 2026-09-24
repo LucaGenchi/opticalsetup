@@ -123,13 +123,54 @@ def study():
     return {"note": "Each row is the observed change in one quantity between two listed settings; the hollow-core rows change grid and step count together. Sensitivity evidence, not an error bound.", "studies": out}
 
 
+# A change below this is round-off, and its digits differ between Python
+# builds and platforms: the report prints it as "below 1e-9" and the check
+# treats any two such values as equal.
+ROUNDOFF = 1e-9
+
+
+def same_study(expected, actual):
+    """Whether a recorded study still describes the references.
+
+    Compared with tolerances rather than byte for byte: the values agree to
+    1e-9 relative, and each observed change either stays at round-off level
+    on both sides or agrees to 10 %. A byte comparison failed on the hosted
+    runner over the last digit of a 1e-13 change.
+    """
+    key = lambda s: (s["quantity"], s["setting"], s["refined"])
+    want = {key(s): s for s in expected.get("studies", [])}
+    got = {key(s): s for s in actual.get("studies", [])}
+    if want.keys() != got.keys():
+        return False
+    for k, a in want.items():
+        b = got[k]
+        for field in ("value", "refinedValue"):
+            scale = max(abs(a[field]), abs(b[field]), 1e-300)
+            if abs(a[field] - b[field]) > 1e-9 * scale:
+                return False
+        ra, rb = a["relativeChange"], b["relativeChange"]
+        if ra < ROUNDOFF and rb < ROUNDOFF:
+            continue
+        if abs(ra - rb) > 0.1 * max(ra, rb):
+            return False
+    return True
+
+
 def main():
     check = "--check" in sys.argv
-    text = json.dumps(study(), indent=1, sort_keys=True) + "\n"
+    result = study()
+    text = json.dumps(result, indent=1, sort_keys=True) + "\n"
     current = open(OUT).read() if os.path.exists(OUT) else None
     if current == text:
         print("convergence study is current")
         return
+    if check and current is not None:
+        try:
+            if same_study(json.loads(current), result):
+                print("convergence study is current (within tolerance)")
+                return
+        except (ValueError, KeyError):
+            pass
     if check:
         print(f"stale: {os.path.relpath(OUT, ROOT)}", file=sys.stderr)
         sys.exit(1)

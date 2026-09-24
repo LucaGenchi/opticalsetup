@@ -76,13 +76,13 @@ Sources:
 
 - **Provenance.** The constants the app ships (0.441, 0.315, sqrt(2), 1.543) are the published ones; this module does not read them back but derives each from the envelope by Fourier transform and numerical autocorrelation, so a transcription error in the app would show as disagreement.
 - **Cases run.** Cases run: 100 fs at 800 nm for the bandwidth conversion, and stretching from q = 0.25 to 10, i.e. GDD 2500 to 100000 fs^2 on a 100 fs pulse. The relations are dimensionless in q = GDD / T0^2, so the mathematics carries further, but the unit conversions are exercised only at these inputs.
-- **Method.** 16384-point grids over a 64-pulse-width window, for the time-bandwidth products. Refining the time grid at a fixed window changes them by about 1e-13. Widening the window changes them by about 1e-4 because the frequency spacing is 1/window and the spectral FWHM is interpolated between frequency bins -- not because the envelope is truncated: at +/-32 pulse widths the sech^2 field is already about 6e-25. The Gaussian shows the same frequency-grid effect. These studies cover the time-bandwidth products only; the stretching and autocorrelation widths were not refined.
+- **Method.** 16384-point grids over a 64-pulse-width window, for the time-bandwidth products. Refining the time grid at a fixed window changes them only at round-off level, below 1e-9. Widening the window changes them by about 1e-4 because the frequency spacing is 1/window and the spectral FWHM is interpolated between frequency bins -- not because the envelope is truncated: at +/-32 pulse widths the sech^2 field is already about 6e-25. The Gaussian shows the same frequency-grid effect. These studies cover the time-bandwidth products only; the stretching and autocorrelation widths were not refined.
 - **Tolerances.** 1e-3 to 2e-3: the derived constants agree with the published ones to about 5e-4 (0.4413 versus the app's 0.441 is already 7e-4 by rounding), and the FWHM of a sampled envelope carries the grid's own resolution. The tolerances are set by those two, not by a generic rule.
 - **Observed change on refinement** (`validation/convergence.py`; sensitivity at the listed settings, not a bound on the total error):
   - gauss time-bandwidth product: window 64 tau, 16384 points → window 128 tau, 16384 points changes it by 6.84e-05 relative (0.4413216895 → 0.4412915238).
-  - gauss time-bandwidth product: window 64 tau, 16384 points → window 64 tau, 32768 points changes it by 1.61e-13 relative (0.4413216895 → 0.4413216895).
+  - gauss time-bandwidth product: window 64 tau, 16384 points → window 64 tau, 32768 points changes it by less than 1e-9 relative (round-off level).
   - sech2 time-bandwidth product: window 64 tau, 16384 points → window 128 tau, 16384 points changes it by 0.000131 relative (0.3149060984 → 0.3148649417).
-  - sech2 time-bandwidth product: window 64 tau, 16384 points → window 64 tau, 32768 points changes it by 2.71e-13 relative (0.3149060984 → 0.3149060984).
+  - sech2 time-bandwidth product: window 64 tau, 16384 points → window 64 tau, 32768 points changes it by less than 1e-9 relative (round-off level).
 
 Sources:
 

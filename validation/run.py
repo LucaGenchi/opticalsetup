@@ -70,11 +70,13 @@ def convergence_rows(keys):
     rows = [s for s in study["studies"] if any(k in s["quantity"] for k in keys)]
     if not rows:
         return ["- _No refinement recorded for this model._"]
-    return [
-        f"- {s['quantity']}: {s['setting']} → {s['refined']} changes it by "
-        f"{s['relativeChange']:.3g} relative ({s['value']:.10g} → {s['refinedValue']:.10g})."
-        for s in rows
-    ]
+    def change(s):
+        # Below 1e-9 the digits are round-off and differ between machines.
+        if s["relativeChange"] < 1e-9:
+            return "by less than 1e-9 relative (round-off level)"
+        return (f"by {s['relativeChange']:.3g} relative "
+                f"({s['value']:.10g} → {s['refinedValue']:.10g})")
+    return [f"- {s['quantity']}: {s['setting']} → {s['refined']} changes it {change(s)}." for s in rows]
 
 
 def report(results):
