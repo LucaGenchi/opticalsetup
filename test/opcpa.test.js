@@ -189,3 +189,36 @@ test('the idler duration after dispersion is declined, not predicted', () => {
   assert.equal(reading.pulse.stretchedPulseWidthFs, null);
   assert.match(reading.pulse.dispersionModel, /Spectral phase unknown/);
 });
+
+// Seven stages, one more than discovery resolves, in both source orders.
+function sevenStages(pumpsFirst) {
+  const seed = pulsed(60, 160, { wavelength: 1053, avgPowerW: 1, pulseWidthFs: 1e6 });
+  const boxes = [], pumps = [];
+  for (let i = 0; i < 7; i++) {
+    const x = 220 + 220 * i;
+    pumps.push(pulsed(x - 120, 184, { wavelength: 527, avgPowerW: 1000, pulseWidthFs: 1e6 }));
+    boxes.push(packagedStage(x, 160, {
+      smallSignalGain: 2, maxPumpDepletion: 0.6, outputIdler: false, transmitPump: i === 6,
+    }));
+  }
+  const signalOut = createElement('detector', 220 + 220 * 6 + 120, 160);
+  const residualOut = createElement('detector', 220 + 220 * 6 + 120, 202);
+  const order = pumpsFirst ? [...pumps, seed] : [seed, ...pumps];
+  traceScene([...order, ...boxes, signalOut, residualOut]);
+  return { states: boxes.map(b => opcpaReading(b.id)), signal: detectorReading(signalOut.id), residual: detectorReading(residualOut.id) };
+}
+
+for (const pumpsFirst of [false, true]) {
+  test(`a seventh cascaded stage declines consistently (${pumpsFirst ? 'pumps' : 'seed'} listed first)`, () => {
+    const { states, signal, residual } = sevenStages(pumpsFirst);
+    for (const state of states.slice(0, 6)) assert.ok(state.transfer, `stage ${state.state} should be resolved`);
+    const last = states[6];
+    assert.equal(last.state, 'cascadeTooLong');
+    assert.equal(last.transfer, undefined, 'no gain estimate from an unresolved seed');
+    // The signal passes the seventh stage unchanged ...
+    const delivered = states.slice(0, 6).reduce((g, s) => g * s.transfer.actualGain, 1);
+    near(signal.signal, delivered, 1e-9);
+    // ... and so does its pump: nothing is converted without a resolved seed.
+    near(residual.signal, 1, 1e-9);
+  });
+}

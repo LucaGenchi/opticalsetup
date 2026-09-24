@@ -1570,6 +1570,10 @@ function recordProbeBeam(surface, ray) {
   if (!seen) specimenProbe.set(surface.id, seen = []);
   const key = probeBeamKey(ray);
   const weight = Math.max(0, ray.intensity || 0);
+  // How many parametric stages this beam has passed, converted or not, so a
+  // stage can refuse a cascade deeper than discovery resolves, whichever of
+  // its input rays arrives last.
+  const depth = Number(ray.opcpaDepth) || 0;
   const already = seen.find(b => b.key === key);
   // A beam sampled by several rays is one beam: its power is theirs together,
   // and it arrives when its power arrives.
@@ -1579,6 +1583,7 @@ function recordProbeBeam(surface, ray) {
     already.oplWeight += weight;
     already.oplSum += weight * (ray.opl || 0);
     already.oplMin = Math.min(already.oplMin, ray.opl || 0);
+    if (depth > (already.parametricDepth || 0)) already.parametricDepth = depth;
     return;
   }
   seen.push({
@@ -1595,6 +1600,7 @@ function recordProbeBeam(surface, ray) {
     groupDelayDifferenceFs: Number.isFinite(ray.groupDelayDifferenceFs) ? ray.groupDelayDifferenceFs : 0,
     pulse: ray.pulse ? { ...ray.pulse } : null,
     gates: (ray.pulse?.gates || []).map(g => ({ ...g })),
+    ...(depth ? { parametricDepth: depth } : {}),
   });
 }
 
@@ -4203,7 +4209,9 @@ function interact(ray, hit) {
       if (enteringAs !== data.inputRole) return [];
       const result = opcpaConversion(ray, data, el.id || null);
       const axis = rotPt(1, 0, el.rot || 0);
+      const depth = (Number(ray.opcpaDepth) || 0) + 1;
       const launch = output => {
+        output = { ...output, ray: { ...output.ray, opcpaDepth: depth } };
         const local = opcpaPortLocal(`${output.role}Out`, data);
         const diameter = Number(data[`${output.role}BeamMm`]) || 0;
         const at = offset => toWorld(el, local.x, local.y + offset);
@@ -4317,13 +4325,14 @@ function interact(ray, hit) {
         // During the discovery pass every input continues unchanged so later
         // two-beam elements can still see it. The real pass uses the complete
         // incident-beam record gathered above.
-        if (specimenProbe && !Array.isArray(data.incidentBeams)) return [{ d }];
+        const opcpaDepth = (Number(ray.opcpaDepth) || 0) + 1;
+        if (specimenProbe && !Array.isArray(data.incidentBeams)) return [{ d, opcpaDepth }];
         const result = opcpaConversion(ray, data, s.el?.id || null);
         if (result.state === 'reconverted') return [{ d }];
-        const outputs = Object.values(result.outputs || {}).map(output => ({ d, ...output.ray }));
+        const outputs = Object.values(result.outputs || {}).map(output => ({ d, ...output.ray, opcpaDepth }));
         if (outputs.length) return outputs;
         const isPump = Math.abs(ray.wl - Number(data.pumpWl ?? 527)) <= Math.max(0, Number(data.pumpAcceptanceNm ?? 2));
-        return isPump && data.transmitPump === false ? [] : [{ d }];
+        return isPump && data.transmitPump === false ? [] : [{ d, opcpaDepth }];
       }
       if (data.convert === 'opo') {
         // Optical parametric oscillation (see parametric.js for the model).
@@ -4445,10 +4454,12 @@ function opcpaConversion(ray, data, elementId) {
     return { state, currentRole, ...extra };
   };
   if (!pump) return finish('missingPump');
-  if (Array.isArray(ray.parametricPath) && ray.parametricPath.length >= MAX_PARAMETRIC_CASCADE) {
+  if (!seed) return finish('missingSeed');
+  // Decided from the discovery records of both inputs, so the seed and pump
+  // rays of the stage reach the same verdict in either arrival order.
+  if (Math.max(seed.parametricDepth || 0, pump.parametricDepth || 0) >= MAX_PARAMETRIC_CASCADE) {
     return finish('cascadeTooLong');
   }
-  if (!seed) return finish('missingSeed');
   if (!pump.pulse || !seed.pulse) return finish('unpulsed');
   // Durations as the beams arrive, stretching included, the same way a beam
   // probe reports them.
@@ -5254,6 +5265,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           // what the linear-only continuation left out.
           approximation: r.approximation || c.approximation || null,
           parametricPath: 'parametricPath' in c ? c.parametricPath : r.parametricPath,
+          opcpaDepth: 'opcpaDepth' in c ? c.opcpaDepth : r.opcpaDepth,
           intensity: childIntensity,
           power: c.power !== undefined ? c.power : Number.isFinite(r.power)
             ? r.power * (c.intensity !== undefined && r.intensity > 0 ? c.intensity / r.intensity : 1)
