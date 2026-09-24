@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Acousto-optic tunable filter: the selected lines and how they are driven.
 //
 // A real AOTF is driven by RF tones. One tone selects one optical wavelength;

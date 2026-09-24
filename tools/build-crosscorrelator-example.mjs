@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Generates the time-zero example: `node tools/build-crosscorrelator-example.mjs`.
 //
 // FINDING TIME ZERO BETWEEN TWO BEAMS. This is what a bench actually does.

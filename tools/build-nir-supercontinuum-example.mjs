@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Generates the near-infrared supercontinuum example:
 // `node tools/build-nir-supercontinuum-example.mjs`.
 //

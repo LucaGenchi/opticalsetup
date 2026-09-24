@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Pure viewport and pointer-gesture decisions shared by the workbench.
 
 export const VIEW_MIN_ZOOM = 0.15;

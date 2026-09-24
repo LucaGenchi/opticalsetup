@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // App bootstrap: palette, toolbar, keyboard shortcuts.
 
 import { copyableSelection, pasteObjects } from './clipboard.js';
@@ -1433,6 +1435,12 @@ function showToast(message) {
 
 function bindToolbar() {
   let shareUrl = '', shareQrSvg = '', shareSceneText = '';
+  const about = $('aboutDialog');
+  const openAbout = () => { $('mobileMenu').close(); about.showModal(); };
+  $('btnAbout').addEventListener('click', openAbout);
+  $('btnMobileAbout').addEventListener('click', openAbout);
+  $('aboutClose').addEventListener('click', () => about.close());
+  about.addEventListener('click', event => { if (event.target === about) about.close(); });
   const closeShare = () => $('shareDialog').close();
   $('shareClose').addEventListener('click', closeShare);
   $('shareDialog').addEventListener('click', event => { if (event.target === $('shareDialog')) closeShare(); });

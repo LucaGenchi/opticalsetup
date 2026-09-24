@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // When the dispersed-duration model may answer, and when it must decline.
 //
 // The model derives a duration from bandwidth and accumulated GDD, which

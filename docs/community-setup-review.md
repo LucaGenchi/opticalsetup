@@ -10,6 +10,19 @@ Audience: repo maintainers with merge rights on `main` (currently Luca Genchi an
 4. Merging triggers the **"Publish approved community setups"** workflow, which runs `node tools/build-community.mjs` (deterministic — same input always produces the same output) and opens a *second* pull request titled **"Publish approved community setups"**, containing only the two generated files it produced: `community/<slug>/index.html` and `sketch/js/community-data.js`.
 5. **Merging that second PR is what actually makes the setup go live** — it's what appears on the public Community page and in the app's "From the community" dropdown.
 
+**Licensing.** The submission form *offers* the author
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) for the scene and its
+description. That box is optional: a submission without it is still acceptable,
+and is published with no reuse terms. The accepted submission records the grant,
+when given, in its `license` field. A
+published page states only what its own submission recorded: setups accepted before the
+form asked say that no reuse terms were recorded, and claim no reuse rights. Do not add a
+`license` field to an older submission without the author's written agreement in the issue
+thread; link that comment in the field if you do. The app itself stays GPL-3.0-or-later.
+
+Close a submission whose author cannot grant those rights — material copied from a paper,
+say. Citing a paper or describing published apparatus independently is fine.
+
 Two merges, both on github.com, both just the ordinary green **Merge pull request** button. No repository settings, admin overrides, or local terminal needed for the normal path.
 
 (Why two PRs instead of one: `main` requires a reviewed pull request with no bypass for any bot identity, on purpose — publishing should never get a direct-push shortcut, regardless of what any current or future workflow tries to do. Every touch to `main` costs a human click.)
@@ -18,7 +31,7 @@ Two merges, both on github.com, both just the ordinary green **Merge pull reques
 
 ### Step 1 — review and approve the submission
 
-1. Open the [Pull Requests tab](https://github.com/LucaGenchi/optics-sketch/pulls).
+1. Open the [Pull Requests tab](https://github.com/LucaGenchi/opticalsetup/pulls).
 2. Open the PR titled **"Propose community setup: ..."**.
 3. Read the description (it links back to the source GitHub issue and the submitter's write-up) and check the **Files changed** tab for the raw scene JSON.
 4. Optional — sanity-check it visually before merging; see "Verifying locally" below.
@@ -27,14 +40,14 @@ Two merges, both on github.com, both just the ordinary green **Merge pull reques
 
 ### Step 2 — publish the generated pages
 
-1. Give it a minute or two after merging Step 1 for the "Publish approved community setups" workflow to run. You can watch it on the [Actions tab](https://github.com/LucaGenchi/optics-sketch/actions) if you want.
+1. Give it a minute or two after merging Step 1 for the "Publish approved community setups" workflow to run. You can watch it on the [Actions tab](https://github.com/LucaGenchi/opticalsetup/actions) if you want.
 2. A new PR titled **"Publish approved community setups"** appears automatically.
 3. Open it and check the **Files changed** tab — it should touch exactly `community/<slug>/index.html` and `sketch/js/community-data.js`, nothing else. There's nothing to hand-edit; it's pure generated output.
 4. Click **Merge pull request**. The setup is now live.
 
 ### If the "Publish" PR never shows up
 
-Check the [Actions tab](https://github.com/LucaGenchi/optics-sketch/actions) for a failed "Publish approved community setups" run and read its log. If the workflow itself is broken and you need to publish manually from a local checkout:
+Check the [Actions tab](https://github.com/LucaGenchi/opticalsetup/actions) for a failed "Publish approved community setups" run and read its log. If the workflow itself is broken and you need to publish manually from a local checkout:
 
 ```bash
 git checkout main && git pull

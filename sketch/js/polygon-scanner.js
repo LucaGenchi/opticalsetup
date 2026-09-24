@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Ideal regular polygon mirror, viewed in the plane of rotation. All drawn
 // facets are real traced surfaces; there is no invented pivoting scan plane.
 const bounded = (value, fallback, min, max) =>

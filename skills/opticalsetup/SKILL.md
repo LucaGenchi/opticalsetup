@@ -1,7 +1,7 @@
 ---
 name: opticalsetup
 description: Build, validate, and encode OpticalSetup scenes from natural-language descriptions, then return working self-contained OpticalSetup share links. Use for optical bench diagrams, ray-tracing scenes, experiment layouts, and requests that should open directly in opticalsetup.com.
-compatibility: Requires access to the public OpticalSetup repository or website. The bundled Node script is intended to run from a checkout of LucaGenchi/optics-sketch.
+compatibility: Requires access to the public OpticalSetup repository or website. The bundled Node script is intended to run from a checkout of LucaGenchi/opticalsetup.
 metadata:
   author: OpticalSetup
   version: "1.0"
@@ -18,15 +18,15 @@ Treat the current repository as authoritative. Do not rely on a remembered list 
 Read these files before constructing a nontrivial scene:
 
 - Scene envelope, parsing, normalization, and serialization:
-  https://github.com/LucaGenchi/optics-sketch/blob/main/sketch/js/state.js
+  https://github.com/LucaGenchi/opticalsetup/blob/main/sketch/js/state.js
 - Main element registry, defaults, parameter specifications, drawing, and optical behavior:
-  https://github.com/LucaGenchi/optics-sketch/blob/main/sketch/js/elements.js
+  https://github.com/LucaGenchi/opticalsetup/blob/main/sketch/js/elements.js
 - Detector definitions added to the registry:
-  https://github.com/LucaGenchi/optics-sketch/blob/main/sketch/js/detector-instruments.js
+  https://github.com/LucaGenchi/opticalsetup/blob/main/sketch/js/detector-instruments.js
 - Share-link encoding and decoding:
-  https://github.com/LucaGenchi/optics-sketch/blob/main/sketch/js/share.js
+  https://github.com/LucaGenchi/opticalsetup/blob/main/sketch/js/share.js
 - Working scene examples:
-  https://github.com/LucaGenchi/optics-sketch/tree/main/Examples
+  https://github.com/LucaGenchi/opticalsetup/tree/main/Examples
 
 The application is a qualitative geometric-optics workbench, not a calibrated optical design package. Do not imply unsupported phase, coherent interference, diffraction-limited propagation, laboratory calibration, or manufacturing accuracy.
 

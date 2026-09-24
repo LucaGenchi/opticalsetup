@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // One rotational conic, seen in a meridional section. The vertex is the
 // element origin; +R puts its curvature centre on local +x.
 import { asphereSag, realizeAsphereProfile } from './asphere.js';
