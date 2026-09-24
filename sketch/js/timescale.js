@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { polygonScannerState } from './polygon-scanner.js';
 
 // Canvas simulation time scale: how many simulated nanoseconds elapse per

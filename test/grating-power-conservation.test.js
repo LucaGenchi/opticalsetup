@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // A grating splits light; it must not create or destroy it.
 //
 // Two separate ways the model used to lose power, both of which read out as a

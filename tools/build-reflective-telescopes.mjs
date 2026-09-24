@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Generates the two-mirror telescope examples: `node tools/build-reflective-telescopes.mjs`.
 //
 // Both share one geometry so the comparison is about surface shape alone: a

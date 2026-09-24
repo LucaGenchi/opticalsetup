@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // A filter, dichroic, etalon or AOTF that reshapes a pulse's spectrum leaves a
 // pulse whose duration follows from what survives: an ideal filter changes the
 // spectrum's amplitude and not its phase, so the pulse at a detector is the

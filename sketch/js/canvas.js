@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // SVG canvas: rendering + pointer interactions (select, move, rotate, pan, zoom,
 // element placement, manual beam drawing/editing).
 

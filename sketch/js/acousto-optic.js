@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Shared, bounded acousto-optic behavior used by the AOM and AOD elements.
 //
 // A real deflector is steered by the frequency of its RF drive: the Bragg

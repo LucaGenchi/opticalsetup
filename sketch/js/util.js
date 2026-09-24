@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Small math + misc helpers. Convention: 1 px = 1 mm, angles in degrees CW (SVG y-down).
 
 export const D2R = Math.PI / 180;

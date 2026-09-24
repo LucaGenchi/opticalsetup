@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Small dependency-free GIF89a encoder for deterministic browser exports.
 // Frames use one fixed RGB332 palette: this keeps memory and output bounded
 // while remaining honest about GIF's 256-colour limitation.

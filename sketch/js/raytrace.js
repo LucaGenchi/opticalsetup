@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // 2D ray-tracing engine.
 // Builds world-space surfaces from elements, propagates rays from every source,
 // and returns drawables: stroked polylines (line-mode / beam edges) and filled

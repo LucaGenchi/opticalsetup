@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Cross-site handoff from an illuminated 2PP resin sample to the dedicated
 // two-photon lithography lab. The query contract is deliberately small and
 // versioned so the destination can validate every value independently.

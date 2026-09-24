@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Multi-element lens groups from a surface table.
 //
 // A surface table is how real lens prescriptions are written: one row per

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Consolidated sitemap generator: `node tools/build-sitemap.mjs`.
 //
 // sitemap.xml lists the wiki, the community section, and Examples pages
