@@ -94,8 +94,8 @@ main {
 
 .hero {
   padding: 72px 0 56px;
-  max-width: 720px;
 }
+.hero-sub, .hero-lead { max-width: 760px; }
 .hero h1 {
   font-size: clamp(28px, 4.4vw, 42px);
   line-height: 1.14;
