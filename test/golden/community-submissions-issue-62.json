@@ -1,0 +1,244 @@
+{
+ "elements": 22,
+ "beams": 1,
+ "drawables": {
+  "count": 161,
+  "byType": {
+   "path": 33,
+   "poly": 128
+  },
+  "colors": {
+   "#ff3900": 161
+  },
+  "points": 578,
+  "sum": [
+   406190.171,
+   194481.673
+  ],
+  "bbox": [
+   126,
+   220,
+   1081,
+   505.1156
+  ],
+  "digest": "757ad883"
+ },
+ "drawnElements": {
+  "figureframe:e-frame": "77a7fb21",
+  "textlabel:e-title": "b3f78123",
+  "textlabel:e-citation": "c871e952",
+  "textlabel:e-sample-arm-label": "4ec4e009",
+  "textlabel:e-reference-arm-label": "9ed694dc",
+  "textlabel:e-limit-note": "d5871bad",
+  "cwlaser:e-laser": "6af07fd0",
+  "lens:e-l1": "21f36c16",
+  "mirror:e-fold-in": "81e74feb",
+  "bs:e-bs1": "948cfc36",
+  "galvo:e-galvo": "49dc3d7a",
+  "lens:e-l2": "f2f7b085",
+  "objective:e-condenser-objective": "3a507a28",
+  "sample:e-sample": "78d9f54b",
+  "objective:e-imaging-objective": "3a507a28",
+  "textlabel:e-objective-group-label": "6f69f73f",
+  "textlabel:e-objective-note": "059b0f3c",
+  "lens:e-l3": "f2f7b085",
+  "mirror:e-ref-mirror": "81e74feb",
+  "bs:e-bs2": "948cfc36",
+  "camera:e-camera": "0117225b",
+  "blocker:e119ya1a": "1b7eb70b"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "readouts": {
+  "objective:e-condenser-objective": {
+   "objectivePupil": {
+    "beamDiameter": 0.4978475,
+    "fill": 0.024892375,
+    "pupilDiameter": 20,
+    "transmitted": 1
+   }
+  },
+  "objective:e-imaging-objective": {
+   "objectivePupil": {
+    "beamDiameter": 0.739594389,
+    "fill": 0.0369797195,
+    "pupilDiameter": 20,
+    "transmitted": 1
+   }
+  },
+  "camera:e-camera": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 635,
+    "bandMin": 635,
+    "centroid": -1,
+    "coherentPaths": 0,
+    "color": "#ff3900",
+    "convergence": {
+     "diverging": true,
+     "fullAngleDeg": 0.0354820206,
+     "slopePerMm": 0.000059560094
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0.0667294389,
+     0.0974894152,
+     0.0979046353,
+     0.0976308443,
+     0.08615997,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "depositedSignal": 0.445914304,
+    "detectorType": "Camera sensor",
+    "gain": null,
+    "interference": {
+     "applied": false,
+     "coherentSources": 0,
+     "excludedHits": 0,
+     "fallbackReason": null,
+     "partial": false,
+     "pathCount": 0,
+     "phaseIssues": [],
+     "reason": "insufficient coherent overlap"
+    },
+    "normalizedStokes": {
+     "s1": 1,
+     "s2": 0,
+     "s3": 0
+    },
+    "outputSignal": 0.445914304,
+    "polarization": "Linear 0°",
+    "profile": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0.0667294389,
+     0.0974894152,
+     0.0979046353,
+     0.0976308443,
+     0.08615997,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "profileColors": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     "#ff3900",
+     "#ff3900",
+     "#ff3900",
+     "#ff3900",
+     "#ff3900",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "profileMode": "deposited",
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "camera",
+    "samples": 18,
+    "saturated": false,
+    "signal": 0.445914304,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.445914304,
+      "sourceId": "e-laser"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#ff3900",
+      "continuum": false,
+      "power": 0.445914304,
+      "sourceId": "e-laser",
+      "wavelength": 635,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 11.7054879,
+    "wavelength": 635
+   }
+  }
+ },
+ "fibers": {}
+}

@@ -1,0 +1,66 @@
+name: CI
+
+# Runs the same checks AGENTS.md asks for before any hand-off, on every pull
+# request and on every push to main. Make this a required status check on
+# main so that a red suite can never reach the live site.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history, so the whitespace check below can diff against the
+          # base branch (pull requests) or across the pushed range (pushes).
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # The reference checks are plain Python with no packages; pinning the
+      # version keeps their numbers reproducible from one run to the next.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Syntax check every JavaScript entry point
+        run: |
+          set -e
+          git ls-files '*.js' '*.mjs' | while read -r file; do
+            node --check "$file"
+          done
+
+      # Event values reach the shell as environment variables rather than
+      # being pasted into the script text.
+      - name: Whitespace and patch sanity
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -e
+          if [ -n "$BASE_REF" ]; then
+            git diff --check "origin/$BASE_REF...HEAD"
+          elif [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] \
+               && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            # The whole pushed range, not only its last commit.
+            git diff --check "$BEFORE" HEAD
+          else
+            git diff --check HEAD~1 HEAD
+          fi
+
+      - name: Regression suite
+        run: npm test

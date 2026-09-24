@@ -9,10 +9,16 @@
 // tools/build-examples-pages.mjs's generated pages.
 export const examples = [
   {
-    "group": null,
-    "name": "OPTICAL SETUP — pulsed component panorama",
-    "path": "../Examples/OPTICAL%20SETUP%20%E2%80%94%20pulsed%20component%20panorama.json",
-    "slug": "optical-setup-pulsed-component-panorama"
+    "group": "Interferometers",
+    "name": "Mach–Zehnder interferometer",
+    "path": "../Examples/Interferometers/Mach%E2%80%93Zehnder%20interferometer.json",
+    "slug": "mach-zehnder-interferometer"
+  },
+  {
+    "group": "Interferometers",
+    "name": "Michelson interferometer",
+    "path": "../Examples/Interferometers/Michelson%20interferometer.json",
+    "slug": "michelson-interferometer"
   },
   {
     "group": "Lens Physics",
@@ -61,18 +67,6 @@ export const examples = [
     "name": "Synchronously pumped picosecond OPO",
     "path": "../Examples/Nonlinear%20Optics/Synchronously%20pumped%20picosecond%20OPO.json",
     "slug": "synchronously-pumped-picosecond-opo"
-  },
-  {
-    "group": "Optics Bench",
-    "name": "Mach–Zehnder interferometer",
-    "path": "../Examples/Optics%20Bench/Mach%E2%80%93Zehnder%20interferometer.json",
-    "slug": "mach-zehnder-interferometer"
-  },
-  {
-    "group": "Optics Bench",
-    "name": "Michelson interferometer",
-    "path": "../Examples/Optics%20Bench/Michelson%20interferometer.json",
-    "slug": "michelson-interferometer"
   },
   {
     "group": "Reflective Imaging Systems",
