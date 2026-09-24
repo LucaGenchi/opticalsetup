@@ -6,7 +6,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OpticalSetup — draw, trace, measure and share optical setups</title>
-<meta name="description" content="Draw a 2D optical setup and trace it live: exact geometric optics plus checked estimates of pulse duration, spectra, power and polarization. Free, no signup, runs in your browser. Export SVG/PNG or share a self-contained link.">
+<meta name="description" content="Draw a 2D optical setup and trace it live: reflection and refraction on real surface geometry, plus power, spectrum, polarization and pulse-duration readouts. Free, no signup, runs in your browser. Export SVG/PNG or share a self-contained link.">
 <link rel="canonical" href="https://opticalsetup.com/">
 <meta name="robots" content="index, follow">
 
@@ -19,7 +19,7 @@
 <meta property="og:image:width" content="1254">
 <meta property="og:image:height" content="1254">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="OpticalSetup — 2D optical setup builder with live ray tracing">
+<meta name="twitter:title" content="OpticalSetup — draw, trace, measure and share optical setups">
 <meta name="twitter:description" content="Draw a 2D optical setup, trace it live, read what your detectors receive, and share it as a link or a paper-ready figure. Free, no signup.">
 <meta name="twitter:image" content="https://opticalsetup.com/assets/og-image.jpg">
 
@@ -86,12 +86,12 @@
 
     <section class="features" aria-label="Highlights">
       <div class="feature">
-        <h2>Geometric optics, traced exactly</h2>
-        <p>Refraction, reflection, diffraction orders and dispersion are computed
-          from the real surface geometry and catalogue glass data every time a
-          component moves. Spherical, conic and aspheric surfaces are intersected
-          analytically, so a parabola collimates and a sphere aberrates, as on
-          the bench.</p>
+        <h2>Live ray tracing</h2>
+        <p>Trace reflection and refraction on supported 2D optical surfaces,
+          including spherical, conic and aspheric profiles, recomputed every
+          time a component moves. Catalogue glass models add
+          wavelength-dependent refraction and dispersion; paraxial and other
+          approximations are described in the wiki.</p>
       </div>
       <div class="feature">
         <h2>A real element library</h2>
@@ -119,13 +119,14 @@
           account, no server-side scene storage.</p>
       </div>
       <div class="feature">
-        <h2>Estimates you can check</h2>
-        <p>Pulse duration after dispersion, the spectrum out of a hollow-core
-          fiber, power at a detector, polarization through waveplates: the
-          quantitative models are tested against independent reference
-          implementations, and every readout says whether it is exact, an
-          estimate, or outside the model. The wiki states, element by element,
-          what is modelled and what is not.</p>
+        <h2>Readouts with stated limits</h2>
+        <p>Inspect the signal, spectrum, polarization and pulse timing
+          computed for your setup. Selected calculations — pulse duration
+          after dispersion, hollow-core fiber spectra, detector power,
+          polarization through waveplates — are checked against independent
+          numerical references; <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/docs/validation.md" target="_blank" rel="noopener">the validation table</a>
+          lists the covered cases and tolerances. Component pages explain the
+          model assumptions and limitations.</p>
       </div>
     </section>
 

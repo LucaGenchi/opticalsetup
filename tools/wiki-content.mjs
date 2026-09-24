@@ -1840,7 +1840,7 @@ export const wikiEntries = [
 
   {
     type: 'diffuser',
-    summary: "Spreads incident light into an adjustable angular fan, a simple model for comparing illumination coverage and the light collected downstream.",
+    summary: "Spreads incident light into an adjustable angular fan, a qualitative model for comparing illumination coverage and the light collected downstream.",
     title: 'Diffuser',
     category: 'Dispersive elements',
     realWorld: {
@@ -3702,7 +3702,7 @@ export const wikiEntries = [
 
   {
     type: 'pmt',
-    summary: "Amplifies weak incident light with adjustable gain, dark floor, and saturation, for exploring signal, noise floor and saturation in fluorescence and other low-light setups.",
+    summary: "Amplifies weak incident light with adjustable gain, dark floor, and saturation, for exploring qualitative signal, noise floor and saturation in fluorescence and other low-light setups.",
     title: 'Photomultiplier (PMT)',
     category: 'Detectors',
     realWorld: {

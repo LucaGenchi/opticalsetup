@@ -143,9 +143,10 @@ classical Cassegrain on and off axis.
 ## Simulation scope
 
 OpticalSetup is a 2D optical workbench, not a calibrated optical design package:
-geometric ray paths are exact for the surfaces it draws, and its quantitative
-estimates are bounded, labelled, and checked against independent references
-(see the Validation section). It models ray paths, bounded relative power, spectral bands, Stokes
+it traces reflection and refraction on the surfaces you draw, and its
+quantitative estimates are bounded and labelled, with selected calculations
+checked against independent references (see the Validation section). It
+models ray paths, bounded relative power, spectral bands, Stokes
 polarization, thin-lens elements, refractive boundaries, timed pulse trains,
 second-order material and compensator GDD, and simple detector responses. Thick
 spherical singlets and lens groups use a 2D meridional section with spherical or flat faces;
