@@ -933,43 +933,6 @@ export const exampleEntries = [
     resources: [],
     related: ['crystal', 'dichroic', 'mirror', 'pulsedlaser', 'probe'],
   },
-
-  {
-    match: 'OPTICAL SETUP — pulsed component panorama',
-    title: 'OPTICAL SETUP — pulsed component panorama',
-    tagline: "OpticalSetup's own flagship demo: the words \"OPTICAL SETUP\" traced entirely in live pulsed light, exercising nearly every category in the component library.",
-    html: `
-      <p>This one isn't a recreation of a textbook or laboratory setup — it's
-      a self-referential showcase built to put as much of the component
-      library on screen at once as a single readable scene allows. Every
-      visible letter stroke is a real traced beam path, not a drawn shape:
-      acousto-optic and electro-optic modulators, a chopper, a nonlinear
-      crystal, a mechanical delay line, dichroics and filters, a grating,
-      waveplates, an isolator, an objective, a polarizing beamsplitter, a
-      PMT, polarizers, a specimen and its stage, a spatial light modulator,
-      and a supercontinuum laser all contribute strokes — including one
-      letter, the "U," that is carried by an actual propagating fiber path
-      rather than a free-space beam.</p>`,
-    inOpticalSetupTitle: 'What this setup demonstrates',
-    inOpticalSetupHtml: `
-      <p>Select any component in the embedded canvas below to inspect its
-      live parameters and its capability badge — simulated, needs setup, or
-      diagram-only — the same three-way distinction used everywhere in
-      OpticalSetup. Because pulsed timing drives the animation, the scene
-      also doubles as a stress test of the pulse-timing overlay across very
-      different component types at once: modulators gating in time, a
-      mechanical delay line adding path length, and a fiber carrying a pulse
-      train through a completely different rendering path than a free-space
-      beam.</p>`,
-    limitations: `<p>Because this scene exists to showcase breadth rather than
-      to teach one physical setup, treat individual component behavior as the
-      subject — for the physics and simplifications behind any single
-      component visible here, follow the related links below to its wiki
-      page rather than reading this scene as a coherent experiment.</p>`,
-    citations: [],
-    resources: [],
-    related: ['aom', 'grating', 'dichroic', 'polarizer', 'objective'],
-  },
   {
     match: 'Finding time zero — sum frequency of two beams',
     title: 'Finding time zero — sum frequency of two beams',

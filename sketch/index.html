@@ -11,15 +11,15 @@
 <meta name="apple-mobile-web-app-title" content="OpticalSetup">
 <meta name="color-scheme" content="light dark">
 <title>OpticalSetup — 2D optical setup builder</title>
-<meta name="description" content="Build and share a live optical setup: place lasers, lenses, and mirrors on a virtual table and watch the ray paths trace instantly.">
+<meta name="description" content="Draw an optical setup on a virtual table, trace it live, read what the detectors receive, and share it as a link or a figure.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="OpticalSetup — 2D optical setup builder">
-<meta property="og:description" content="Build and share a live optical setup: place lasers, lenses, and mirrors on a virtual table and watch the ray paths trace instantly.">
+<meta property="og:description" content="Draw an optical setup on a virtual table, trace it live, read what the detectors receive, and share it as a link or a figure.">
 <meta property="og:site_name" content="OpticalSetup">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="OpticalSetup — 2D optical setup builder">
-<meta name="twitter:description" content="Build and share a live optical setup: place lasers, lenses, and mirrors on a virtual table and watch the ray paths trace instantly.">
+<meta name="twitter:description" content="Draw an optical setup on a virtual table, trace it live, read what the detectors receive, and share it as a link or a figure.">
 <meta name="twitter:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
@@ -41,23 +41,36 @@
     <div class="brandblock">
       <a class="brand" href="/">
         <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
-          <g stroke="#1361fa" stroke-width="6" stroke-linecap="round">
+          <g class="mark-accent" stroke-width="4" stroke-linecap="round">
             <line x1="22" y1="45" x2="29" y2="45"/>
+            <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
             <line x1="18" y1="49" x2="18" y2="56"/>
+            <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
             <line x1="14" y1="45" x2="7" y2="45"/>
+            <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
             <line x1="18" y1="41" x2="18" y2="34"/>
+            <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
           </g>
-          <line x1="29" y1="45" x2="77" y2="45" stroke="#1361fa" stroke-width="6" stroke-linecap="round"/>
-          <polygon points="64,12 42,68 86,68" fill="none" stroke="#0a1a33" stroke-width="7" stroke-linejoin="round"/>
-          <g stroke="#1361fa" stroke-width="4" stroke-linecap="round">
-            <line x1="77" y1="45" x2="112" y2="28"/>
-            <line x1="77" y1="45" x2="112" y2="45"/>
-            <line x1="77" y1="45" x2="112" y2="62"/>
+          <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+          <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+          <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+            <line x1="77" y1="45" x2="108" y2="22"/>
+            <line x1="77" y1="45" x2="108" y2="34"/>
+            <line x1="77" y1="45" x2="108" y2="45"/>
+            <line x1="77" y1="45" x2="108" y2="56"/>
+            <line x1="77" y1="45" x2="108" y2="68"/>
+          </g>
+          <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+          <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+            <line x1="108" y1="22" x2="115" y2="22"/>
+            <line x1="108" y1="34" x2="115" y2="34"/>
+            <line x1="108" y1="45" x2="115" y2="45"/>
+            <line x1="108" y1="56" x2="115" y2="56"/>
+            <line x1="108" y1="68" x2="115" y2="68"/>
           </g>
         </svg>
         <span class="brand-word"><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></span>
       </a>
-      <span class="model-badge">Qualitative ray tracing</span>
     </div>
     <div class="toolgroup file-group" aria-label="File actions">
       <button type="button" id="btnNew" title="New sketch">New</button>
