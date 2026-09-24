@@ -1,7 +1,7 @@
 {
   "name": "OpticalSetup — 2D Optical Workbench",
   "short_name": "OpticalSetup",
-  "description": "Build, ray-trace, save, and share 2D optical setups.",
+  "description": "Draw, trace, measure and share 2D optical setups.",
   "id": "./",
   "start_url": "./",
   "scope": "./",

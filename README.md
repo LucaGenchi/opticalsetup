@@ -1,6 +1,6 @@
 # OpticalSetup
 
-A 2D optical-setup sketch builder for scientific illustrations, with live ray tracing.
+A 2D optical workbench: draw a setup, trace it live, read what the detectors receive, and export a paper-ready figure or a self-contained link.
 
 **➡ Try it in your browser: https://opticalsetup.com/sketch/**
 (mirror: https://lucagenchi.github.io/opticalsetup/sketch/)
@@ -80,7 +80,7 @@ figures as SVG or PNG.
   sample can continue into the dedicated Two-Photon Lithography Lab with the
   compatible pulsed-laser settings prefilled. When one objective is
   unambiguously present on the traced path, its NA is transferred too.
-- **Qualitative detector readouts**: photodetectors, PMTs, cameras, and the eye
+- **Detector readouts in relative units**: photodetectors, PMTs, cameras, and the eye
   report relative ray signal, spectrum, polarization, and spot span at their active
   surface; pulsed paths add optical-path delay and path spread. A data-only sensor
   display can be linked to any of them and mirrors the live output directly on the
@@ -93,8 +93,8 @@ figures as SVG or PNG.
   ray-weight units rather than implying a calibrated percentage.
 - **Physics that responds**: thin-lens/paraxial transfer, thick spherical singlets,
   conic-plus-A₄/A₆/A₈ aspheric singlets, and multi-element surface tables with
-  aperture stops and emergent axial colour, with exact curved-surface intersections,
-  exact surface normals, and catalogue-glass dispersion,
+  aperture stops and emergent axial colour, with ray intersections and surface
+  normals computed on the true curved surface, and catalogue-glass dispersion,
   spectral band arithmetic at filters, Malus's law, grating equation,
   Sellmeier glass/prism dispersion and second-order pulse GDD, cavity round trips
   with partial mirrors, image formation with magnification (arrow / letter F / tree
@@ -142,16 +142,25 @@ classical Cassegrain on and off axis.
 
 ## Simulation scope
 
-OpticalSetup is a qualitative geometric-optics workbench, not a calibrated optical
-design package. It models ray paths, bounded relative power, spectral bands, Stokes
-polarization, thin-lens elements, refractive boundaries, timed pulse trains,
+OpticalSetup computes what it shows: rays are traced from the surfaces on the
+canvas, dispersion comes from catalogue glass data, and detector readouts are
+computed from traced light and the detector model. Every model has stated limits, listed below and on
+each component's wiki page, and selected calculations are checked against
+independent references (see the Validation section). It is built for designing,
+understanding and communicating setups, not as a replacement for dedicated
+optical design software: it does not do tolerancing, full lens optimization or
+3D analysis. A power reading combines the configured source powers weighted by
+the modelled transmission, collection and conversion; it is relative, or marked
+partial, when a source has no power set, and it is not a calibrated
+measurement. It models ray paths,
+bounded relative power, spectral bands, Stokes polarization, thin-lens elements, refractive boundaries, timed pulse trains,
 second-order material and compensator GDD, and simple detector responses. Thick
 spherical singlets and lens groups use a 2D meridional section with spherical or flat faces;
 lens-group readouts follow the same aperture-aware realized prescription as the trace,
 including the tracer-safe 0.06 mm air gap used at nominally cemented interfaces. They
 do not apply aspheric terms. The dedicated aspheric singlet uses the standard conic sag
-plus even A₄, A₆, and A₈ coefficients on either face, with analytic intersections and
-normals; its paraxial readouts still depend only on vertex curvature. It does not model
+plus even A₄, A₆, and A₈ coefficients on either face, with intersections solved
+numerically on that surface equation and analytic normals; its paraxial readouts still depend only on vertex curvature. It does not model
   skew rays, diffraction, coatings, cement index, manufacturing tolerances, or
   calibrated off-axis aberrations. Outside the bounded coherent cases below,
   the app does not model carrier
@@ -269,6 +278,17 @@ normal is ambiguous. Nested or overlapping glass bodies are not surface-merged,
 and the model does not include Fresnel reflection, coatings, stress birefringence,
 phase, or manufacturing tolerances.
 
+## Validation
+
+The quantitative models behind those readouts (catalogue glass dispersion,
+transform limits and quadratic-phase stretching, the argon capillary's
+dispersion and loss, the split-step envelope solver, thick-lens cardinal
+points, Stokes polarization optics and etalon finesse) are checked in the
+test suite against independent reference implementations written in plain
+Python. [docs/validation.md](docs/validation.md) lists each model, its
+reference, sources, tolerance and scope; [docs/adding-physics.md](docs/adding-physics.md)
+is the protocol a new model has to follow to earn a place there.
+
 ## Feedback
 
 Use the app, then send your exported `.json` sketch and notes to Luca. The canvas
@@ -299,7 +319,7 @@ content file rather than hand-written HTML:
   share this copy; detailed behavior belongs in the article sections. Icons,
   palette order, and categories continue to follow the component registry.
 - `example-setups/` — one page per curated Example with real-world
-  background, an honest note on what the qualitative tracer won't show, and
+  background, a plain statement of what the model does and does not compute, and
   references, generated by `tools/build-examples-pages.mjs` from
   `tools/examples-content.mjs`. (Named `example-setups/`, not `examples/` —
   the source scene files live in `Examples/`, and the two names collide on

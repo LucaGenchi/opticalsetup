@@ -204,7 +204,7 @@ ${header(base)}
       <a class="place-cta" href="${base}/sketch/?community=${encodeURIComponent(entry.slug)}">Open in the full canvas →</a>
     </main>
   </div>
-  <footer class="wiki-footer">Community setups are submitted and reviewed via <a href="https://github.com/LucaGenchi/opticalsetup/issues" target="_blank" rel="noopener">GitHub issues</a> — they show how people actually use OpticalSetup, and haven't been vetted for pedagogical accuracy the way <a href="${base}/sketch/">Examples</a> have. Each setup states its own terms on its page.</footer>
+  <footer class="wiki-footer">Community setups are submitted and reviewed via <a href="https://github.com/LucaGenchi/opticalsetup/issues" target="_blank" rel="noopener">GitHub issues</a> — they show how people use OpticalSetup in their own work. Each setup states its own terms on its page.</footer>
 </body>
 </html>
 `;
