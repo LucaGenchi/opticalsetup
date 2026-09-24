@@ -121,9 +121,9 @@
       <div class="feature">
         <h2>Readouts with stated limits</h2>
         <p>Inspect the signal, spectrum, polarization and pulse timing
-          computed for your setup. Selected calculations — pulse duration
-          after dispersion, hollow-core fiber spectra, detector power,
-          polarization through waveplates — are checked against independent
+          computed for your setup. Selected calculations — catalogue glass
+          dispersion, pulse duration after dispersion, hollow-core fiber
+          spectra, polarization through waveplates — are checked against independent
           numerical references; <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/docs/validation.md" target="_blank" rel="noopener">the validation table</a>
           lists the covered cases and tolerances. Component pages explain the
           model assumptions and limitations.</p>
@@ -144,11 +144,12 @@
   </main>
 
   <footer class="site-footer">
-    <p>OpticalSetup is a 2D optical workbench: ray tracing on the surfaces you
-      draw, plus estimates of dispersion, spectra, power and polarization.
-      Selected calculations are checked against independent references, and
-      the wiki states what each component models and what it does not. It is
-      not a calibrated lens-design package.
+    <p>OpticalSetup computes what it shows: ray paths from the surfaces you
+      draw, dispersion from catalogue glass data, and detector readings from
+      the light that actually arrives, each within limits stated on the
+      component's wiki page. It is built for designing, understanding and
+      communicating setups; for tolerancing, full lens optimization or 3D
+      analysis, use dedicated optical design software.
       <a href="https://github.com/LucaGenchi/opticalsetup">Source on GitHub</a>,
       free software under the
       <a href="/license.html">GNU GPL v3 or later</a>.</p>

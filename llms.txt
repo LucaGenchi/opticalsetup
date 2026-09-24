@@ -1,6 +1,6 @@
 # OpticalSetup
 
-> OpticalSetup is a browser-based 2D optical workbench: ray tracing on drawn surfaces, plus bounded, labelled estimates of dispersion, spectra, power and polarization, with selected calculations checked against independent references. Its scene files are versioned JSON, and self-contained share links store the complete scene in the URL fragment.
+> OpticalSetup is a browser-based 2D optical workbench: rays are traced from the drawn surfaces, and detectors report power, spectrum, polarization and pulse duration from bounded models with stated limits; selected calculations are checked against independent references. It is not a replacement for dedicated optical design software. Its scene files are versioned JSON, and self-contained share links store the complete scene in the URL fragment.
 
 Use the scene-builder skill when a user asks an LLM or implementation agent to create an OpticalSetup scene from natural language and return a working share link. The repository remains authoritative for supported components, parameters, validation, and serialization.
 

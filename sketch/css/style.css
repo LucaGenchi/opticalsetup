@@ -107,7 +107,6 @@ body {
 .brand-accent { color: var(--accent); }
 .brand-mark g, .brand-mark > line { stroke: var(--accent); }
 .brand-mark polygon { stroke: var(--ink); }
-.model-badge { color: var(--muted); font-size: 9px; letter-spacing: 0.35px; text-transform: uppercase; }
 .toolgroup { display: flex; align-items: center; gap: 3px; }
 .toolgroup + .toolgroup { border-left: 1px solid var(--border); padding-left: 10px; }
 /* The file actions start the tool run, so they get air after the wordmark
@@ -551,7 +550,6 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 @media (max-width: 1500px) {
   #toolbar { gap: 7px; padding: 7px 9px; }
   .brandblock { min-width: 118px; }
-  .model-badge { font-size: 8px; }
   .toolgroup + .toolgroup { padding-left: 7px; }
   #toolbar button { padding-left: 6px; padding-right: 6px; }
   #toolbar select { max-width: 210px; }
@@ -563,7 +561,6 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
   .toolgroup + .toolgroup { padding-left: 4px; }
   #palette { flex-basis: 220px; }
   #inspector { flex-basis: 278px; padding-right: 13px; padding-left: 13px; }
-  .model-badge { display: none; }
   .brandblock { min-width: auto; }
   .pulse-controls { bottom: 8px; }
   #status { bottom: 48px; max-width: calc(100% - 20px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -574,7 +571,7 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
   #toolbar { min-height: 54px; gap: 7px; padding: 6px 10px; }
   .brandblock { min-width: 0; }
   .brand { font-size: 14px; }
-  .model-badge, #toolbar .file-group, #toolbar .nav-group,
+  #toolbar .file-group, #toolbar .nav-group,
   #toolbar .export-group, #toolbar .spacer { display: none; }
   #toolbar .history-group { margin-left: auto; border-left: 0; padding-left: 0; gap: 2px; }
   #toolbar .history-group button { min-width: 38px; min-height: 38px; padding: 4px; font-size: 18px; }

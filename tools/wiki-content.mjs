@@ -3019,7 +3019,7 @@ export const wikiEntries = [
   },
   {
     type: 'slm',
-    summary: "Reflects light through configurable lens-array, grating, steering, and speckle functions, a first-order model of spatial wavefront shaping and beam routing.",
+    summary: "Reflects light through configurable lens-array, grating, steering, and speckle functions, a geometric model of beam routing.",
     title: 'Spatial light modulator',
     category: 'Wavefront Shaping',
     realWorld: {
