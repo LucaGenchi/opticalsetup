@@ -1,5 +1,5 @@
 {
- "elements": 30,
+ "elements": 32,
  "beams": 0,
  "drawables": {
   "count": 38,
@@ -10,18 +10,18 @@
    "#50ff00": 19,
    "#8b1a1a": 19
   },
-  "points": 122,
+  "points": 113,
   "sum": [
-   184696.928,
-   39773.7667
+   87188,
+   48818
   ],
   "bbox": [
    152,
-   -2152.3864,
-   6511.8902,
+   414,
+   1446,
    542
   ],
-  "digest": "d62e6fc2"
+  "digest": "dd1c6acb"
  },
  "drawnElements": {
   "figureframe:frame": "f3b1e9cd",
@@ -44,6 +44,8 @@
   "mirror:pump-fold": "81e74feb",
   "opcpa:opcpa-stage": "2fed542c",
   "pulsecompressor:compressor": "7ce88109",
+  "beamdump:idler-dump": "6f0cb409",
+  "beamdump:pump-dump": "6f0cb409",
   "probe:duration-probe": "61e1230f",
   "box:power-amplifier-proxy": "83acb2e8",
   "crystal:shg": "f8ad2288",
@@ -75,12 +77,12 @@
    "digest": "6a1c7d30"
   },
   {
-   "intensity": 20.3991115,
+   "intensity": 20.6051631,
    "color": "#8b1a1a",
-   "points": 3,
+   "points": 2,
    "opl": [
     177,
-    6750
+    200
    ],
    "pulse": {
     "sourceId": "seed›opcpa-stage:opcpa-idler",
@@ -90,7 +92,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "36aa1fcf"
+   "digest": "315adb99"
   },
   {
    "intensity": 20.524905,
@@ -152,7 +154,7 @@
    "points": 2,
    "opl": [
     177,
-    6177
+    200
    ],
    "pulse": {
     "sourceId": "pump",
@@ -162,7 +164,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "f9a88045"
+   "digest": "d1cd472c"
   }
  ],
  "writeHits": {
@@ -170,8 +172,8 @@
   "digest": "811c9dc5"
  },
  "signalHits": {
-  "count": 11,
-  "digest": "746d90c3"
+  "count": 9,
+  "digest": "990db32e"
  },
  "readouts": {
   "opcpa:opcpa-stage": {

@@ -216,6 +216,26 @@
       "params": { "gddFs2": -30000, "aperture": 18, "transEff": 95 }
     },
     {
+      "id": "idler-dump",
+      "type": "beamdump",
+      "x": 480,
+      "y": 444,
+      "rot": 0,
+      "label": "idler dump",
+      "showLabel": false,
+      "params": { "aperture": 8 }
+    },
+    {
+      "id": "pump-dump",
+      "type": "beamdump",
+      "x": 480,
+      "y": 462,
+      "rot": 0,
+      "label": "residual pump dump",
+      "showLabel": false,
+      "params": { "aperture": 8 }
+    },
+    {
       "id": "duration-probe",
       "type": "probe",
       "x": 620,
