@@ -106,8 +106,8 @@ body {
 .brand-word { display: inline-flex; gap: 0.5em; }
 .brand-ink { color: var(--ink); }
 .brand-accent { color: var(--accent); }
-.brand-mark g, .brand-mark > line { stroke: var(--accent); }
-.brand-mark polygon { stroke: var(--ink); }
+.brand-mark .mark-accent { stroke: var(--accent); }
+.brand-mark .mark-ink { stroke: var(--ink); }
 .toolgroup { display: flex; align-items: center; gap: 3px; }
 .toolgroup + .toolgroup { border-left: 1px solid var(--border); padding-left: 10px; }
 /* The file actions start the tool run, so they get air after the wordmark

@@ -220,7 +220,7 @@ ${header(base)}
       </ul>` : ''}
     </main>
   </div>
-  <footer class="wiki-footer">Examples are curated and reviewed for pedagogical accuracy — see the <a href="${base}/community/">community section</a> for setups submitted directly by users, and the <a href="${base}/wiki/">wiki</a> for how each component actually works.</footer>
+  <footer class="wiki-footer">Examples are written and maintained with the project. For setups shared by users, see the <a href="${base}/community/">community section</a>; for how each component works, see the <a href="${base}/wiki/">wiki</a>.</footer>
 </body>
 </html>
 `;
@@ -268,7 +268,7 @@ ${header(base)}
     <div>
       <div class="hub-hero">
         <h1>Curated optical setups</h1>
-        <p>Real interferometer layouts and lab techniques, each with the background physics, a plain statement of what the model does and does not compute, and a locked live canvas to click through. Reviewed for pedagogical accuracy, unlike the <a href="${base}/community/">community section</a>.</p>
+        <p>Worked optical setups, from interferometers and telescopes to microscopes, pulse compressors and nonlinear sources. Each comes with the background physics, a plain statement of what the model does and does not compute, and a live canvas to click through and open in the editor.</p>
       </div>
       ${entries.length ? groupNames.map(name => `
       <div class="hub-groups">

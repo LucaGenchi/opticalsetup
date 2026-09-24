@@ -9,12 +9,6 @@
 // tools/build-examples-pages.mjs's generated pages.
 export const examples = [
   {
-    "group": null,
-    "name": "OPTICAL SETUP — pulsed component panorama",
-    "path": "../Examples/OPTICAL%20SETUP%20%E2%80%94%20pulsed%20component%20panorama.json",
-    "slug": "optical-setup-pulsed-component-panorama"
-  },
-  {
     "group": "Lens Physics",
     "name": "Singlet vs achromat — axial colour",
     "path": "../Examples/Lens%20Physics/Singlet%20vs%20achromat%20%E2%80%94%20axial%20colour.json",
