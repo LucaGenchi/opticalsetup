@@ -154,8 +154,10 @@ Gamma(t) = Gamma_peak * sqrt(I_p(t) / I_peak)
 dP_pump(t) = min( P_seed(t) * [G(Gamma(t)) - 1] / signalShare ,  maxDepletion * P_pump(t) )
 ```
 
-on Gaussian intensity envelopes (401-point trapezoid over the window where the
-pump still gives gain and the seed still has power). A pulsed train holds its
+on Gaussian intensity envelopes, on **one time grid shared by all seeds**
+(401 trapezoid nodes per window where the pump still gives gain and a seed
+still has power; overlapping windows merge, disjoint ones are integrated
+apart). A pulsed train holds its
 whole average power inside the pulse envelope; a CW beam holds only
 `f_rep * dt` of it in each slice. Consequences, all tested against an
 independent quadrature:
@@ -170,19 +172,25 @@ independent quadrature:
 - a CW pump can only lose the energy that meets the seed pulses.
 
 Dividing the extra signal by the Manley–Rowe signal share converts it into a
-pump debit; each slice may give up at most its own share of
-`pumpPowerW * maxDepletion`, so the saturation is local in time, as it is in a
-real OPA. When several seeds together exhaust the pump, all requests are
-reduced by a common factor (exact for one seed, an allocation rule for
-several). The result includes original seed plus its gain, generated idler, and
+pump debit. In each slice, the seeds present together ask for pump energy;
+when they ask for more than the slice holds (`maxDepletion` of its share of
+`pumpPowerW`), all their requests in that slice are cut by the same factor. So
+saturation is local in time, as in a real OPA, and two seeds meeting the same
+pump instant spend its energy once. The common cut is an allocation rule, not
+the coupled depleted-field solution for several seeds. The result includes original seed plus its gain, generated idler, and
 the actual pump debit. This conserves energy and generated photon flux, and it
 has no spontaneous noise floor. Processing keys in sorted order makes the
 result independent of input order. Logs avoid overflow before the clamp.
 
 The model reuses `mixOverlap()` for pulse arrival and nearest-period
-coincidence, including the existing 0.02 visibility floor below which the
-channel is reported `unsynchronized`. Unequal repetition rates return
-`repetitionUnsupported`; they are not asserted never to overlap in reality.
+coincidence; its signed `offsetNs` places each seed early or late on the
+shared grid. With a CW pump, the first pulsed seed (key order) sets the time
+origin and period. Crystal mixing drops a pair below 0.02 envelope visibility;
+here that is only the `lowOverlap` label, since the quadrature already takes
+the gain continuously to zero. `unsynchronized` means the seed never meets the
+pump window at all. Unequal repetition rates (with the pump, or between pulsed
+seeds on a CW pump) return `repetitionUnsupported`; they are not asserted never
+to overlap in reality.
 Gates and unknown pulse durations are rejected explicitly because this
 allocator does not solve gate epochs or unknown temporal envelopes.
 

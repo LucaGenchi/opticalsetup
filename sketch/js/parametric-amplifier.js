@@ -27,7 +27,9 @@ import { mixOverlap, parametricPair, parametricSmallSignalGain } from './paramet
 // same-mode degeneracy and jointly seeded conjugate modes need more physics;
 // they must never silently receive the nondegenerate singly-seeded gain.
 const MAX_CHANNELS = 256;
-const MIN_OVERLAP = 0.02; // same visibility floor as existing crystal mixing
+// Below the visibility floor crystal mixing drops a pair. Here it is only a
+// label: the quadrature already takes the gain continuously to zero.
+const MIN_OVERLAP = 0.02;
 const finitePower = value => Number.isFinite(value) && value >= 0;
 const validTiming = beam => {
   if (!beam.pulse) return true;
@@ -39,48 +41,45 @@ const validTiming = beam => {
 };
 const sameWavelength = (a, b) => Math.abs(a - b) <= 1e-9 * Math.max(a, b);
 
-// Quadrature of one pump-seed coincidence. Times are fs from the pump peak;
-// widths are intensity FWHM. The window stops where the pump no longer gives
-// gain (2.5 FWHM: amplitude gain scale below 2e-4) and where the seed has no
-// power left (4 FWHM: 1e-19 of its peak).
-const PUMP_REACH_FWHM = 2.5, SEED_REACH_FWHM = 4, SLICES = 401;
+// Quasi-static quadrature over one pulse period on ONE time grid shared by
+// every seed, so seeds that meet the same pump instant share that instant's
+// energy. Times are fs from the pump peak (from the first pulsed seed when the
+// pump is CW); widths are intensity FWHM. A window stops where the pump no
+// longer gives gain (2.5 FWHM: amplitude-gain scale below 2e-4) and where a
+// seed has no power left (4 FWHM: 1e-19 of its peak).
+const PUMP_REACH_FWHM = 2.5, SEED_REACH_FWHM = 4, NODES_PER_WINDOW = 401;
 const GAUSSIAN_AREA_FWHM = Math.sqrt(Math.PI / (4 * Math.LN2));
 const envelope = (t, fwhm) => Math.exp(-4 * Math.LN2 * (t / fwhm) ** 2);
 const pulsed = beam => beam.pulse?.repRateMHz > 0 ? beam.pulse : null;
+const sameRate = (a, b) => Math.abs(a - b) <= 1e-9 * Math.max(a, b);
+// Fraction of a beam's average power per fs at time t: a pulse holds the
+// train's whole average power in its envelope, a CW beam 1/period of it.
+const powerDensity = (pulse, centreFs, periodFs, t) => pulse
+  ? envelope(t - centreFs, pulse.pulseWidthFs) / (pulse.pulseWidthFs * GAUSSIAN_AREA_FWHM)
+  : 1 / periodFs;
 
-// Each slice carries the fraction of the seed's and of the pump's average
-// power it holds, and the local amplitude-gain scale sqrt(I_p/I_peak).
-function coincidenceSlices(pump, seed, skewFs) {
-  const pumpPulse = pulsed(pump), seedPulse = pulsed(seed);
-  if (!pumpPulse && !seedPulse) return [{ seedFraction: 1, pumpFraction: 1, gammaScale: 1 }];
-  const repHz = (pumpPulse || seedPulse).repRateMHz * 1e6;
-  const tauP = pumpPulse && Math.max(1, pumpPulse.pulseWidthFs);
-  const tauS = seedPulse && Math.max(1, seedPulse.pulseWidthFs);
-  const centre = pumpPulse && seedPulse ? skewFs : 0;
-  let lo = -Infinity, hi = Infinity;
-  if (pumpPulse) { lo = -PUMP_REACH_FWHM * tauP; hi = PUMP_REACH_FWHM * tauP; }
-  if (seedPulse) {
-    lo = Math.max(lo, centre - SEED_REACH_FWHM * tauS);
-    hi = Math.min(hi, centre + SEED_REACH_FWHM * tauS);
+// Nodes of all windows with trapezoid widths. Overlapping windows merge into
+// one interval with all their nodes; disjoint intervals are integrated apart,
+// so no slice ever spans the empty time between two seeds. Without any pulse
+// there is no time structure: one slice holding everything.
+function sharedGrid(windows, periodFs) {
+  if (periodFs === null) return [{ t: 0, width: 1 }];
+  const sorted = windows.filter(([lo, hi]) => hi > lo).sort((a, b) => a[0] - b[0]);
+  const intervals = [];
+  for (const [lo, hi] of sorted) {
+    const last = intervals.at(-1);
+    if (last && lo <= last.hi) { last.hi = Math.max(last.hi, hi); last.windows.push([lo, hi]); }
+    else intervals.push({ hi, windows: [[lo, hi]] });
   }
-  if (!(hi > lo)) return [];
-  const step = (hi - lo) / (SLICES - 1);
-  const slices = [];
-  for (let k = 0; k < SLICES; k++) {
-    const t = lo + k * step;
-    const width = (k === 0 || k === SLICES - 1 ? 0.5 : 1) * step; // trapezoid
-    // A pulse holds a train's whole average power in its envelope; a CW beam
-    // holds f_rep*dt of it in each slice of the period.
-    const share = (pulse, tau, at) => pulse
-      ? envelope(t - at, tau) * width / (tau * GAUSSIAN_AREA_FWHM)
-      : width * 1e-15 * repHz;
-    slices.push({
-      seedFraction: share(seedPulse, tauS, centre),
-      pumpFraction: share(pumpPulse, tauP, 0),
-      gammaScale: pumpPulse ? Math.sqrt(envelope(t, tauP)) : 1,
-    });
+  const grid = [];
+  for (const { windows: group } of intervals) {
+    const nodes = group.flatMap(([lo, hi]) =>
+      Array.from({ length: NODES_PER_WINDOW }, (_, k) => lo + (hi - lo) * k / (NODES_PER_WINDOW - 1)));
+    nodes.sort((x, y) => x - y);
+    const unique = nodes.filter((t, k) => k === 0 || t - nodes[k - 1] > 1e-12 * Math.max(1, Math.abs(t)));
+    unique.forEach((t, k) => grid.push({ t, width: ((unique[k + 1] ?? t) - (unique[k - 1] ?? t)) / 2 }));
   }
-  return slices;
+  return grid;
 }
 
 export function allocateParametricAmplifier({ pump, seeds = [], lengthM, maxDepletion = 1 } = {}) {
@@ -107,7 +106,7 @@ export function allocateParametricAmplifier({ pump, seeds = [], lengthM, maxDepl
       signalGainW: 0, idlerOutW: 0, depletedPumpW: 0, pumpFraction: 0,
       smallSignalGain: 1, smallSignalGainCapped: false, achievedGain: 1,
       achievedGainCapped: false,
-      overlap: 0, skewNs: null, saturated: false,
+      overlap: 0, skewNs: null, lowOverlap: false, saturated: false,
     };
     const stop = state => ({ ...channel, state, requestFraction: 0 });
     if (!pair) return stop('invalidWavelength');
@@ -126,37 +125,96 @@ export function allocateParametricAmplifier({ pump, seeds = [], lengthM, maxDepl
     channel.overlap = overlap.factor;
     channel.skewNs = overlap.skewNs;
     if (overlap.unsupported) return stop('repetitionUnsupported');
-    if (overlap.factor < MIN_OVERLAP) return stop('unsynchronized');
+    channel.lowOverlap = overlap.factor < MIN_OVERLAP;
     const gain = parametricSmallSignalGain({ gammaPerM: seed.gammaPerM, lengthM, deltaKPerM: seed.deltaKPerM ?? 0 });
     if (!gain) return stop('invalidGain');
     channel.smallSignalGain = gain.gain;
     channel.smallSignalGainCapped = gain.capped;
     if (budgetW === 0 || gain.logExcess === null) return stop('inactive');
-    // Work in logs, never exponentiate an unbounded demand, and let each
-    // slice convert at most its own pump energy: enormous formal gain must not
-    // consume pump energy that never meets the seed.
-    const logSeedPumpW = Math.log(seed.powerW) - Math.log(pair.signalShare);
-    let requestW = 0;
-    for (const slice of coincidenceSlices(pump, seed, (overlap.skewNs ?? 0) * 1e6)) {
-      if (!(slice.seedFraction > 0 && slice.pumpFraction > 0)) continue;
-      const local = parametricSmallSignalGain({
-        gammaPerM: seed.gammaPerM * slice.gammaScale, lengthM, deltaKPerM: seed.deltaKPerM ?? 0,
-      });
-      if (!local) return stop('invalidGain');
-      if (local.logExcess === null) continue;
-      const logDemandW = logSeedPumpW + Math.log(slice.seedFraction) + local.logExcess;
-      const logAvailableW = Math.log(budgetW) + Math.log(slice.pumpFraction);
-      if (logDemandW > logAvailableW) channel.saturated = true;
-      requestW += Math.exp(Math.min(logDemandW, logAvailableW));
-    }
-    const requestFraction = requestW / budgetW;
-    return { ...channel, state: requestFraction > 0 ? 'amplifying' : 'inactive', requestFraction, pair };
+    const pulse = pulsed(seed);
+    return { ...channel, state: 'amplifying', requestFraction: 0, pair, live: {
+      seed, pulse, overlap, requestW: 0, window: null,
+      logSeedPumpW: Math.log(seed.powerW) - Math.log(pair.signalShare),
+    } };
   });
+
+  // One period frame for all live seeds. With a pulsed pump its peak is t = 0;
+  // with a CW pump the first pulsed seed (key order) sets t = 0 and the period,
+  // and a pulsed seed at another repetition rate cannot share the grid.
+  const live = channels.filter(channel => channel.live);
+  const pumpPulse = pulsed(pump);
+  const reference = pumpPulse ? null : live.find(channel => channel.live.pulse);
+  const repMHz = pumpPulse?.repRateMHz ?? reference?.live.pulse.repRateMHz ?? null;
+  const periodFs = repMHz === null ? null : 1e9 / repMHz;
+  const wrap = t => ((t % periodFs) + periodFs * 1.5) % periodFs - periodFs / 2;
+  const pumpWindow = pumpPulse
+    ? [-PUMP_REACH_FWHM * pumpPulse.pulseWidthFs, PUMP_REACH_FWHM * pumpPulse.pulseWidthFs]
+    : [-Infinity, Infinity];
+  for (const channel of live) {
+    const { pulse, overlap } = channel.live;
+    if (!pumpPulse && pulse && !sameRate(pulse.repRateMHz, repMHz)) {
+      Object.assign(channel, { state: 'repetitionUnsupported', live: null });
+      continue;
+    }
+    if (periodFs === null) continue;
+    // Pulsed pump: offsetNs is pump minus seed, so the seed sits at -offset.
+    // CW pump: centerNs is the seed's own arrival.
+    const centreFs = !pulse ? 0 : pumpPulse ? -overlap.offsetNs * 1e6
+      : wrap((overlap.centerNs - reference.live.overlap.centerNs) * 1e6);
+    const own = pulse
+      ? [centreFs - SEED_REACH_FWHM * pulse.pulseWidthFs, centreFs + SEED_REACH_FWHM * pulse.pulseWidthFs]
+      : [-periodFs / 2, periodFs / 2];
+    channel.live.centreFs = centreFs;
+    // Not clipped to the period: a seed pulse near half a period from the
+    // origin keeps its whole envelope.
+    channel.live.window = [Math.max(own[0], pumpWindow[0]), Math.min(own[1], pumpWindow[1])];
+  }
+  const active = live.filter(channel => channel.live);
+  const grid = sharedGrid(active.map(channel => channel.live.window), periodFs);
+  // In each slice, the seeds present together ask for pump energy; if they
+  // ask for more than the slice holds, all are cut by the same factor. Logs
+  // keep enormous formal gain finite.
+  const logBudgetW = Math.log(budgetW);
+  for (const { t, width } of grid) {
+    const pumpShare = (periodFs === null ? 1 : powerDensity(pumpPulse, 0, periodFs, t)) * width;
+    if (!(pumpShare > 0)) continue;
+    const gammaScale = pumpPulse ? Math.sqrt(envelope(t, pumpPulse.pulseWidthFs)) : 1;
+    const logAvailableW = logBudgetW + Math.log(pumpShare);
+    const demands = [];
+    for (const channel of active) {
+      const seedLive = channel.live;
+      if (periodFs !== null && !(t >= seedLive.window[0] && t <= seedLive.window[1])) continue;
+      const seedShare = (periodFs === null ? 1 : powerDensity(seedLive.pulse, seedLive.centreFs, periodFs, t)) * width;
+      if (!(seedShare > 0)) continue;
+      const local = parametricSmallSignalGain({
+        gammaPerM: seedLive.seed.gammaPerM * gammaScale, lengthM, deltaKPerM: seedLive.seed.deltaKPerM ?? 0,
+      });
+      if (!local || local.logExcess === null) continue;
+      demands.push([channel, seedLive.logSeedPumpW + Math.log(seedShare) + local.logExcess]);
+    }
+    if (!demands.length) continue;
+    const top = Math.max(...demands.map(([, logDemand]) => logDemand));
+    const logTotalW = top + Math.log(demands.reduce((sum, [, logDemand]) => sum + Math.exp(logDemand - top), 0));
+    const logCut = Math.min(0, logAvailableW - logTotalW);
+    for (const [channel, logDemandW] of demands) {
+      channel.live.requestW += Math.exp(logDemandW + logCut);
+      // Flag a cut only where this seed's own demand was significant.
+      if (logCut < 0 && logDemandW > logAvailableW - Math.log(1e6)) channel.saturated = true;
+    }
+  }
+  for (const channel of channels) {
+    if (!channel.live) continue;
+    channel.requestFraction = channel.live.requestW / budgetW;
+    if (!(channel.requestFraction > 0)) {
+      channel.state = channel.live.window && !(channel.live.window[1] > channel.live.window[0]) ? 'unsynchronized' : 'inactive';
+    }
+    channel.live = null;
+  }
   const totalRequest = channels.reduce((sum, channel) => sum + channel.requestFraction, 0);
   const scale = totalRequest > 1 ? 1 / totalRequest : 1;
   let remainingW = budgetW;
   let depletedPumpW = 0;
-  const outputs = channels.map(({ requestFraction, pair, ...channel }) => {
+  const outputs = channels.map(({ requestFraction, pair, live: _live, ...channel }) => {
     const takeW = Math.min(remainingW, budgetW * requestFraction * scale);
     remainingW = Math.max(0, remainingW - takeW);
     depletedPumpW += takeW;

@@ -92,6 +92,54 @@ test('a CW pump can only give up the energy that meets the seed pulses, even at 
   conserved(result);
 });
 
+test('seeds that meet the same pump instant share its energy once', () => {
+  // Andrea's case: CW pump, two simultaneous 100 fs seeds at 800 and 900 nm.
+  // Together they can take only the 6.4e-5 W that one seed window holds.
+  const pump = { wl: 532, powerW: 1 };
+  const both = run({ pump, lengthM: 1, seeds: [seed('a', { pulse: pulse() }), seed('b', { wl: 900, pulse: pulse() })] });
+  assert.ok(both.depletedPumpW <= 800e-15 * 80e6 * (1 + 1e-9));
+  assert.ok(both.channels.every(c => c.saturated && c.depletedPumpW > 0));
+  conserved(both);
+  // Seeds 1 ns apart meet different pump instants, so each gets its own.
+  const apart = run({ pump, lengthM: 1, seeds: [seed('a', { pulse: pulse() }), seed('b', { wl: 900, pulse: pulse(1) })] });
+  near(apart.depletedPumpW, 2 * run({ pump, lengthM: 1, seeds: [seed('a', { pulse: pulse() })] }).depletedPumpW, 1e-9);
+  conserved(apart);
+});
+
+test('the seed delay keeps its sign on the shared grid', () => {
+  const pump = { wl: 532, powerW: 1, pulse: pulse() };
+  const at = delayFs => seed('s', { powerW: 1e-9, pulse: pulse(delayFs * 1e-6) });
+  const early = run({ pump, seeds: [at(-80)] }), late = run({ pump, seeds: [at(80)] });
+  near(early.channels[0].achievedGain, late.channels[0].achievedGain, 1e-9);
+  // One seed early and one late on the same pump: saturated, they split the
+  // pulse between its halves instead of both spending the whole of it.
+  const pair = [seed('e', { pulse: pulse(-80e-6) }), seed('l', { wl: 900, pulse: pulse(80e-6) })];
+  const shared = run({ pump, lengthM: 1, seeds: pair });
+  assert.deepEqual(shared, run({ pump, lengthM: 1, seeds: pair.slice().reverse() }));
+  assert.ok(shared.depletedPumpW <= 1 + 1e-9);
+  assert.ok(shared.channels.every(c => c.depletedPumpW > 0.2 && c.depletedPumpW < 0.8));
+  conserved(shared);
+});
+
+test('the gain falls continuously through the old 0.02 visibility floor', () => {
+  // 100 fs pulses: visibility exp(-4 ln2 d^2 / 2e4 fs^2) reaches 0.02 at d = 167.98 fs.
+  const pump = { wl: 532, powerW: 1e9, pulse: pulse() };
+  const at = delayFs => run({ pump, seeds: [seed('s', { powerW: 1e-9, gammaPerM: 5000, pulse: pulse(delayFs * 1e-6) })] }).channels[0];
+  const before = at(167.9), after = at(168.1);
+  assert.equal(before.lowOverlap, false);
+  assert.equal(after.lowOverlap, true);
+  assert.equal(after.state, 'amplifying');
+  assert.ok(after.achievedGain > 5 && Math.abs(before.achievedGain / after.achievedGain - 1) < 0.02);
+});
+
+test('with a CW pump, pulsed seeds at another repetition rate cannot share the grid', () => {
+  const result = run({ seeds: [seed('a', { pulse: pulse() }), seed('b', { wl: 900, pulse: pulse(0, 60) })] });
+  assert.equal(result.channels[0].state, 'amplifying');
+  assert.equal(result.channels[1].state, 'repetitionUnsupported');
+  assert.equal(result.channels[1].depletedPumpW, 0);
+  conserved(result);
+});
+
 // Reference values from an independent 4001-point quadrature of
 // integral Is(t - delay) cosh^2(Gamma0 L sqrt(Ip(t)/Ip0)) dt / integral Is dt
 // (seed small enough that the pump is not depleted).
