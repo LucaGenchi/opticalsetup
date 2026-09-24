@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -136,4 +136,70 @@ test('validation: expected files and docs/validation.md are current', { skip: !(
   // whose discretisation changed must not keep the old evidence.
   const study = spawnSync('python3', ['validation/convergence.py', '--check'], { cwd: root, encoding: 'utf8' });
   assert.equal(study.status, 0, `${study.stdout}\n${study.stderr}`);
+});
+
+// same_study() must reject a non-finite value rather than let NaN/Infinity
+// slip past its tolerance comparisons (abs(a - b) > tolerance is false for
+// NaN, and can also be false for Infinity), and must reject a duplicate row
+// key rather than silently keep only the last one.
+const CORRUPTIONS = `
+import copy
+import math
+import sys
+
+sys.path.insert(0, 'validation')
+import convergence as c
+
+base = c.study()
+row = base['studies'][0]
+
+def corrupted(field, bad_value):
+    mutated = copy.deepcopy(base)
+    mutated['studies'][0] = dict(mutated['studies'][0])
+    mutated['studies'][0][field] = bad_value
+    return mutated
+
+for field in ('value', 'refinedValue', 'relativeChange'):
+    for bad in (math.nan, math.inf, -math.inf):
+        mutated = corrupted(field, bad)
+        assert c.same_study(base, mutated) is False, f'{field}={bad} was accepted as equal'
+        assert c.same_study(mutated, base) is False, f'{field}={bad} was accepted as equal (swapped)'
+
+negative = corrupted('relativeChange', -1.0)
+assert c.same_study(base, negative) is False, 'a negative relativeChange was accepted'
+
+duplicated = copy.deepcopy(base)
+duplicated['studies'].append(dict(row))
+try:
+    c.same_study(base, duplicated)
+    raise AssertionError('a duplicate row key did not raise')
+except ValueError:
+    pass
+
+print('same_study negative cases: ok')
+`;
+
+test('validation: convergence same_study() rejects non-finite and duplicate rows', {
+  skip: !(process.env.CI || process.env.VALIDATE_PYTHON) && 'set VALIDATE_PYTHON=1 to re-run the Python references',
+}, () => {
+  const result = spawnSync('python3', ['-c', CORRUPTIONS], { cwd: root, encoding: 'utf8' });
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+});
+
+// The CLI path itself: a non-finite result must fail generation loudly
+// rather than write invalid JSON (Python's json module accepts NaN/Infinity
+// by default, which is not valid JSON) or report success.
+test('validation: convergence.py --check exits nonzero on a corrupted expected file', {
+  skip: !(process.env.CI || process.env.VALIDATE_PYTHON) && 'set VALIDATE_PYTHON=1 to re-run the Python references',
+}, () => {
+  const path = new URL('../validation/expected/convergence.json', import.meta.url);
+  const original = readFileSync(path, 'utf8');
+  const corrupted = JSON.stringify({ ...JSON.parse(original), studies: [] });
+  try {
+    writeFileSync(path, corrupted);
+    const result = spawnSync('python3', ['validation/convergence.py', '--check'], { cwd: root, encoding: 'utf8' });
+    assert.notEqual(result.status, 0, 'an emptied studies list should not read as current');
+  } finally {
+    writeFileSync(path, original);
+  }
 });

@@ -48,6 +48,8 @@ def rel(a, b):
 
 
 def entry(quantity, setting, refined, a, b):
+    if not (math.isfinite(a) and math.isfinite(b)):
+        raise ValueError(f"non-finite result for {quantity!r}: {a!r}, {b!r}")
     return {
         "quantity": quantity,
         "setting": setting,
@@ -129,6 +131,22 @@ def study():
 ROUNDOFF = 1e-9
 
 
+def _index_by_key(studies):
+    """Key each row by (quantity, setting, refined), rejecting duplicates.
+
+    A silently overwritten duplicate would let a stale or contradictory row
+    hide behind one that happens to pass.
+    """
+    key = lambda s: (s["quantity"], s["setting"], s["refined"])
+    indexed = {}
+    for s in studies:
+        k = key(s)
+        if k in indexed:
+            raise ValueError(f"duplicate convergence row: {k}")
+        indexed[k] = s
+    return indexed
+
+
 def same_study(expected, actual):
     """Whether a recorded study still describes the references.
 
@@ -136,14 +154,24 @@ def same_study(expected, actual):
     1e-9 relative, and each observed change either stays at round-off level
     on both sides or agrees to 10 %. A byte comparison failed on the hosted
     runner over the last digit of a 1e-13 change.
+
+    Every field must be finite and every relative change non-negative on
+    both sides before any tolerance is applied: `abs(a - b) > tolerance` is
+    false for NaN, and can be false for Infinity too, so an unchecked
+    non-finite value would otherwise pass as equal to anything.
     """
-    key = lambda s: (s["quantity"], s["setting"], s["refined"])
-    want = {key(s): s for s in expected.get("studies", [])}
-    got = {key(s): s for s in actual.get("studies", [])}
+    want = _index_by_key(expected.get("studies", []))
+    got = _index_by_key(actual.get("studies", []))
     if want.keys() != got.keys():
         return False
     for k, a in want.items():
         b = got[k]
+        fields = (a["value"], a["refinedValue"], a["relativeChange"],
+                  b["value"], b["refinedValue"], b["relativeChange"])
+        if not all(math.isfinite(v) for v in fields):
+            return False
+        if a["relativeChange"] < 0 or b["relativeChange"] < 0:
+            return False
         for field in ("value", "refinedValue"):
             scale = max(abs(a[field]), abs(b[field]), 1e-300)
             if abs(a[field] - b[field]) > 1e-9 * scale:
