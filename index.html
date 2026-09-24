@@ -100,8 +100,8 @@
       </div>
       <div class="feature">
         <h2>Direct manipulation</h2>
-        <p>Every component has on-canvas handles to resize, rotate and tune its
-          main parameter, so the setup changes as fast as you think.</p>
+        <p>Resize and rotate components on the canvas, with tuning handles for
+          supported parameters.</p>
       </div>
       <div class="feature">
         <h2>Paper-ready export</h2>
@@ -115,8 +115,8 @@
       </div>
       <div class="feature">
         <h2>Readouts with stated limits</h2>
-        <p>Detectors read power, spectrum, polarization and pulse duration.
-          Selected calculations are checked against
+        <p>Inspect simulated power, spectra, polarization and pulse timing with
+          the appropriate detectors. Selected calculations are checked against
           <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/docs/validation.md" target="_blank" rel="noopener">independent references</a>;
           each model's limits are in the wiki.</p>
       </div>
@@ -144,16 +144,19 @@
       <ol class="how-steps">
         <li><strong>Open the <a href="/sketch/">canvas</a></strong> once while
           you are online.</li>
-        <li><strong>Install it</strong>: in Chrome or Edge, click the install
-          icon in the address bar (or the browser menu → Install OpticalSetup);
-          in Safari on a Mac, File → Add to Dock; on iPhone or iPad, Share →
-          Add to Home Screen; on Android, the browser menu → Install app.</li>
+        <li><strong>Install it</strong> with your browser's Install app or Add
+          to Home Screen command, where available. For example: in Chrome or
+          Edge, the install icon in the address bar; in Safari on a Mac, File →
+          Add to Dock; on iPhone or iPad, Share → Add to Home Screen; on
+          Android, the browser menu → Install app.</li>
         <li><strong>Launch it</strong> from your dock, start menu or home
-          screen, with or without a connection. It updates itself the next
-          time you are online.</li>
+          screen, with or without a connection. When you next open or reload
+          it online, it checks for updates.</li>
       </ol>
-      <p class="how-intro how-after">In other browsers the canvas stays
-        available offline at the same address after your first visit. To run it
+      <p class="how-intro how-after">In browsers supporting offline storage,
+        the canvas remains available at the same address after its initial
+        offline download completes; open it once offline to check before you
+        rely on it. To run it
         from the source code instead, download it from
         <a href="https://github.com/LucaGenchi/opticalsetup">GitHub</a> and
         follow the README.</p>
@@ -162,9 +165,9 @@
 
   <footer class="site-footer">
     <p>OpticalSetup computes what it shows: ray paths from the surfaces you
-      draw, dispersion from catalogue glass data, and detector readings from
-      the light that actually arrives, each within limits stated on the
-      component's wiki page. It is built for designing, understanding and
+      draw and dispersion from catalogue glass data. Detector readouts are
+      computed from traced light and the detector model, within the limits
+      stated on each component page. It is built for designing, understanding and
       communicating setups; for tolerancing, full lens optimization or 3D
       analysis, use dedicated optical design software.</p>
     <p><a href="https://github.com/LucaGenchi/opticalsetup">Source on GitHub</a>,

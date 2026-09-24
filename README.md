@@ -143,14 +143,16 @@ classical Cassegrain on and off axis.
 ## Simulation scope
 
 OpticalSetup computes what it shows: rays are traced from the surfaces on the
-canvas, dispersion comes from catalogue glass data, and detectors read the light
-that actually reaches them. Every model has stated limits, listed below and on
+canvas, dispersion comes from catalogue glass data, and detector readouts are
+computed from traced light and the detector model. Every model has stated limits, listed below and on
 each component's wiki page, and selected calculations are checked against
 independent references (see the Validation section). It is built for designing,
 understanding and communicating setups, not as a replacement for dedicated
 optical design software: it does not do tolerancing, full lens optimization or
-3D analysis, and a power reading is the source power you enter reduced by the
-losses the model traces, not a calibrated measurement. It models ray paths,
+3D analysis. A power reading combines the configured source powers weighted by
+the modelled transmission, collection and conversion; it is relative, or marked
+partial, when a source has no power set, and it is not a calibrated
+measurement. It models ray paths,
 bounded relative power, spectral bands, Stokes polarization, thin-lens elements, refractive boundaries, timed pulse trains,
 second-order material and compensator GDD, and simple detector responses. Thick
 spherical singlets and lens groups use a 2D meridional section with spherical or flat faces;

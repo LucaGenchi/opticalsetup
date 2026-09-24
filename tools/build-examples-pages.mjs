@@ -268,7 +268,7 @@ ${header(base)}
     <div>
       <div class="hub-hero">
         <h1>Curated optical setups</h1>
-        <p>Worked optical setups, from interferometers and telescopes to microscopes, pulse compressors and nonlinear sources. Each comes with the background physics, a plain statement of what the model does and does not compute, and a live canvas to click through and open in the editor.</p>
+        <p>Worked optical setups, from interferometers and telescopes to microscopes, pulse compressors and nonlinear sources. Each comes with the background physics, a plain statement of what the model does and does not compute, and a live canvas to click through and open in the editor. The list of examples expands over time.</p>
       </div>
       ${entries.length ? groupNames.map(name => `
       <div class="hub-groups">
@@ -280,7 +280,7 @@ ${header(base)}
       <p class="community-empty">No example pages are published yet.</p>`}
     </div>
   </div>
-  <footer class="wiki-footer">More Examples get a page here over time — the full curated set is always available from the in-app Examples menu, whether or not it has a dedicated page yet.</footer>
+  <footer class="wiki-footer">OpticalSetup computes what it shows: ray paths from the surfaces you draw and dispersion from catalogue glass data. Detector readouts are computed from traced light and the detector model, within the limits stated on each component page. It is built for designing, understanding and communicating setups; for tolerancing, full lens optimization or 3D analysis, use dedicated optical design software.<br><a href="https://github.com/LucaGenchi/opticalsetup">Source on GitHub</a>, free software under the <a href="${base}/license.html">GNU GPL v3 or later</a>.</footer>
 </body>
 </html>
 `;
