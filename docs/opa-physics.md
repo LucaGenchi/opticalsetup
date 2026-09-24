@@ -21,6 +21,13 @@ not silently change it into a threshold or cavity-dynamics model.
   The parametric-amplification section, equation 71, gives the general excess
   signal gain `Gamma² sinh²(g L)/g²`. This resolves the mismatch approximation
   in the issue brief and is the expression implemented here.
+- C. Manzoni and G. Cerullo, *Design criteria for ultrafast optical parametric
+  amplifiers*, J. Opt. **18**, 103501 (2016), open access,
+  https://doi.org/10.1088/2040-8978/18/10/103501. Equations 2.9–2.13 give the
+  same Gamma (written with omega_1 omega_2 / c^3) and the same general gain
+  `G = 1 + [Gamma sinh(g L)/g]^2`, for an undepleted pump and no input idler.
+  This is the verifiable citation for the general expression; the numbering
+  of the Byer chapter above has not been independently checked.
 
 ## Equations and units
 
