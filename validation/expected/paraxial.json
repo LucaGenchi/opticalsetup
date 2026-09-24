@@ -449,7 +449,7 @@
  ],
  "citations": [
   "E. Hecht, Optics, 5th ed., section 6.2 (thick lens cardinal points), section 8.13 (Stokes parameters and Mueller matrices)",
-  "D. H. Goldstein, Polarized Light, 3rd ed. (CRC Press, 2011), ch. 6: Mueller matrices of retarders and polarizers. The app follows this convention with delta -> -delta; the circular cases here are derived from Jones calculus instead, so the handedness is pinned by something other than the app's own convention.",
+  "D. H. Goldstein, Polarized Light, 3rd ed. (CRC Press, 2011), ch. 6: Mueller matrices of retarders and polarizers. The app follows this convention with delta -> -delta, equivalent to the Jones matrix R(-theta) diag(1, -i) R(theta); the circular cases here are derived from that matrix by hand, an algebraic check of the declared convention rather than an experimental one.",
   "M. Born and E. Wolf, Principles of Optics, 7th ed., section 7.6 (Fabry-Perot), for the reflectivity finesse",
   "N. Ismail, C. C. Kores, D. Geskus and M. Pollnau, 'Fabry-Perot resonator: spectral line shapes, generic and related Airy distributions, linewidths, finesses, and performance at low or frequency-dependent reflectivity', Opt. Express 24, 16366-16389 (2016), doi:10.1364/OE.24.016366, Eq. (32) for the exact Airy finesse"
  ],

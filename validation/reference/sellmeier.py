@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Catalogue glass dispersion: index, Abbe number, group index and GVD.
 
 Reference: the published three-term Sellmeier coefficients (Schott optical
@@ -69,10 +71,16 @@ def gvd_fs2_per_mm(glass, wavelength_um):
     return beta2_s2_per_m * 1e30 / 1e3  # s^2/m -> fs^2/mm
 
 
+# The Fraunhofer lines the Abbe number is defined on, at their true
+# wavelengths in micrometres. The denominator nF - nC is about 0.008, so
+# rounding these to 587.6 / 486.1 / 656.3 nm moves the result by 0.03.
+LINE_D, LINE_F, LINE_C = 0.5875618, 0.4861327, 0.6562725
+
+
 def abbe(glass):
-    nd = index(glass, 0.5876)
-    nf = index(glass, 0.4861)
-    nc = index(glass, 0.6563)
+    nd = index(glass, LINE_D)
+    nf = index(glass, LINE_F)
+    nc = index(glass, LINE_C)
     return (nd - 1) / (nf - nc)
 
 
@@ -107,15 +115,14 @@ def anchor_cases():
         "name": "nbk7 Abbe number versus the data sheet",
         "inputs": {"glass": "nbk7"},
         "expected": {"abbe": NBK7_ABBE},
-        # The app evaluates the d, F and C lines at 587.6, 486.1 and 656.3 nm.
-        # Their true wavelengths are 587.5618, 486.1327 and 656.2725 nm, and
-        # with those the same coefficients give 64.16733624, which rounds to
-        # the catalogue 64.17; with the rounded ones they give 64.14146730.
-        # So this tolerance accommodates the app rounding its line
-        # wavelengths -- it is not a limit of the fit, and correcting
-        # glassAbbe would remove it. Recorded rather than silently allowed.
-        "tolerance": {"abbe": 1e-3},
-        "note": "data sheet 64.17; the app gives 64.1415 because it evaluates d/F/C at 587.6/486.1/656.3 nm rather than 587.5618/486.1327/656.2725 nm, which give 64.1673",
+        # The data sheet quotes 64.17, two decimals, so the anchor allows its
+        # rounding and no more: 0.005 absolute. Evaluated at the true line
+        # wavelengths the coefficients give 64.16733624. (Until #179 the app
+        # used the rounded 587.6 / 486.1 / 656.3 nm and gave 64.1415, which
+        # this anchor would now reject.)
+        "tolerance": {"abbe": 0.005},
+        "absolute": True,
+        "note": "published 64.17, held to its own rounding",
     })
     out.append({
         "name": "nbk7 principal dispersion versus the data sheet",
@@ -177,7 +184,7 @@ MODEL = {
     ],
     "provenance": "Coefficients transcribed from the manufacturer data sheets and Malitson's paper; the anchors are the same data sheet's tabulated catalogue values, not established as independent of the data behind the fit.",
     "domain": "365-2325 nm for N-BK7 (the data sheet's own line list); 400-1550 nm evaluated for every catalogue glass.",
-    "convergence": "Derivatives by five-point finite differences at h = 1e-4 um. The measured refinement below is what bounds them; the wavelength derivative of a Sellmeier sum is smooth, so the step, not the function, sets the error.",
+    "convergence": "Derivatives by five-point finite differences at h = 1e-4 um. Halving the step changes the GVD by the amounts below -- evidence that the tolerance sits well above the step's influence at these wavelengths, not a bound on the total error.",
     "convergence_keys": ["GVD of"],
     "tolerance_rationale": "Index 1e-7 and group index 1e-6 are algebraic agreement between two evaluations of the same closed form. GVD 2e-4 covers the finite-difference truncation; 2e-3 at 587.6 nm covers the app's 1 nm GVD bucket, which evaluates 588 nm. The published anchors use 1e-5 absolute, the data sheet's own rounding.",
     "outside_scope": "Clamps: `glassIndex` and `glassGVD` evaluate the fit at the nearest edge of the glass's range and return that value (N-SF11 at 300 nm returns its 370 nm index). `isWavelengthInGlassRange` reports whether a wavelength is inside; the tracer uses it to colour out-of-range light, but the getters themselves do not refuse.",

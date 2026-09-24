@@ -242,6 +242,7 @@
    }
   },
   {
+   "absolute": true,
    "expected": {
     "abbe": 64.17
    },
@@ -249,9 +250,9 @@
     "glass": "nbk7"
    },
    "name": "nbk7 Abbe number versus the data sheet",
-   "note": "data sheet 64.17; the app gives 64.1415 because it evaluates d/F/C at 587.6/486.1/656.3 nm rather than 587.5618/486.1327/656.2725 nm, which give 64.1673",
+   "note": "published 64.17, held to its own rounding",
    "tolerance": {
-    "abbe": 0.001
+    "abbe": 0.005
    }
   },
   {
@@ -358,7 +359,7 @@
   },
   {
    "expected": {
-    "abbe": 64.1414673
+    "abbe": 64.16733624
    },
    "inputs": {
     "glass": "nbk7"
@@ -471,7 +472,7 @@
   },
   {
    "expected": {
-    "abbe": 67.79419956
+    "abbe": 67.82143198
    },
    "inputs": {
     "glass": "silica"
@@ -584,7 +585,7 @@
   },
   {
    "expected": {
-    "abbe": 32.23766655
+    "abbe": 32.25120346
    },
    "inputs": {
     "glass": "nsf5"
@@ -697,7 +698,7 @@
   },
   {
    "expected": {
-    "abbe": 25.66908424
+    "abbe": 25.67999784
    },
    "inputs": {
     "glass": "nsf11"
@@ -728,7 +729,7 @@
   "SCHOTT AG, optical glass collection data sheets (N-SF5, N-SF11) \u2014 https://www.schott.com/en-gb/products/optical-glass",
   "I. H. Malitson, 'Interspecimen comparison of the refractive index of fused silica', J. Opt. Soc. Am. 55, 1205-1208 (1965), doi:10.1364/JOSA.55.001205 (absolute residual 1.05e-5 over 0.21-3.71 um)"
  ],
- "convergence": "Derivatives by five-point finite differences at h = 1e-4 um. The measured refinement below is what bounds them; the wavelength derivative of a Sellmeier sum is smooth, so the step, not the function, sets the error.",
+ "convergence": "Derivatives by five-point finite differences at h = 1e-4 um. Halving the step changes the GVD by the amounts below -- evidence that the tolerance sits well above the step's influence at these wavelengths, not a bound on the total error.",
  "convergence_keys": [
   "GVD of"
  ],

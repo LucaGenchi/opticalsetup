@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Shared numerics for the reference implementations.
 
 Everything here is deliberately plain Python (no numpy) so that the

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Regenerate the expected values and the validation report.
 
     python3 validation/run.py            # write validation/expected/*.json and docs/validation.md
@@ -69,7 +71,7 @@ def convergence_rows(keys):
     if not rows:
         return ["- _No refinement recorded for this model._"]
     return [
-        f"- {s['quantity']}: {s['setting']} → {s['refined']} moves it by "
+        f"- {s['quantity']}: {s['setting']} → {s['refined']} changes it by "
         f"{s['relativeChange']:.3g} relative ({s['value']:.10g} → {s['refinedValue']:.10g})."
         for s in rows
     ]
@@ -130,7 +132,8 @@ def report(results):
             if r.get(key):
                 lines.append(f"- **{label}.** {r[key]}")
         if r.get("convergence_keys"):
-            lines.append("- **Measured convergence** (`validation/convergence.py`):")
+            lines.append("- **Observed change on refinement** (`validation/convergence.py`; "
+                         "sensitivity at the listed settings, not a bound on the total error):")
             for row in convergence_rows(r["convergence_keys"]):
                 lines.append(f"  {row}")
         lines.append("")

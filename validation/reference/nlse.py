@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Scalar nonlinear envelope propagation (second-order dispersion, Kerr
 self-phase modulation, distributed loss).
 
@@ -181,7 +183,7 @@ MODEL = {
     "domain": "100 fs, 30-60 uJ, 1 m, beta2 0-2000 fs^2/m, gamma 0-1.17e-8 /W/m, loss 0-3 dB/m, input chirp 0 to -3000 fs^2; B-integral up to about 3 rad.",
     "convergence": "The app's FWHM readout is interpolated from its sampled grid and reads 100.0097 fs for an unpropagated 100 fs pulse at its default sampling -- a fixed 1e-4 offset, independent of the physics. The solver's own discretisation is measured below, on the bundled example.",
     "convergence_keys": ["hollow-core example"],
-    "tolerance_rationale": "5e-3 on widths and spectral RMS covers the difference between two split-step discretisations at these step counts, as the refinement above bounds; 1e-2 on the B-integral and the compressed width covers the same difference where the compressed pulse's wings make its FWHM more sensitive; 1e-6 on energy is the loss factor's algebra. The analytic limit is held to 1e-4, the split-step mid-step sampling error at 256 steps.",
+    "tolerance_rationale": "5e-3 on widths and spectral RMS sits well above the change observed when the grid and step count are doubled together (below 2e-5 on the bundled example), which is sensitivity evidence at those settings rather than an error bound; the time window was not varied; 1e-2 on the B-integral and the compressed width covers the same difference where the compressed pulse's wings make its FWHM more sensitive; 1e-6 on energy is the loss factor's algebra. The analytic limit is held to 1e-4, the split-step mid-step sampling error at 256 steps.",
     "outside_scope": "Declines: `propagateEnvelope` refuses a pulse it cannot represent (unknown energy, reshaped spectrum, a field that leaves its time window) and the light continues with linear dispersion only, carrying a caveat to every downstream readout.",
     "fidelity": "computed",
     "scope": "Single mode, scalar, instantaneous Kerr response, second-order dispersion only; no Raman, self-steepening, ionisation or mode coupling.",

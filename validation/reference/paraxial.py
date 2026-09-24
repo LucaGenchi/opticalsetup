@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Thick spherical singlet cardinal points, Stokes polarization optics and
 Fabry-Perot etalon relations.
 
@@ -147,9 +149,11 @@ def cases():
             "note": f"approximation error at this reflectivity: {100 * (finesse(r) / airy_finesse(r) - 1):.2f} %",
         })
     # Circular and elliptical output, derived from Jones calculus rather than
-    # from the app's Mueller convention, so the handedness is pinned by
-    # something the app did not choose. The derivation, written out because a
-    # bare vector of constants is not checkable:
+    # read from the app's Mueller matrices. This is an algebraic check that the
+    # app implements the convention it declares -- not an independent
+    # experimental confirmation of which physical hand is called "left". The
+    # derivation, written out because a bare vector of constants is not
+    # checkable:
     #
     #   Field convention: E(t) = Re{J exp(-i omega t)}, propagation along +z,
     #   observed looking toward the source (the "from the receiver" view used
@@ -161,14 +165,16 @@ def cases():
     #     W = R(-theta) diag(1, i) R(theta),  R(a) = [[cos a, sin a], [-sin a, cos a]],
     #   i.e. the slow axis is retarded by delta = 90 deg.
     #   For theta = 45 deg on J = (1, 0):
-    #     W J = (1/2)(1 + i, 1 - i),  Ex conj(Ey) = (1/2)(1+i)(1+i)/2 = i/2,
-    #     so S1 = S2 = 0 and S3 = 2 Im(i/2) = +1 ... in that convention, and
-    #     -1 in the app's (Goldstein with delta -> -delta, i.e. the opposite
-    #     sign of the retardance). The app's sign is what the cases assert;
-    #     the point of deriving them is that the magnitude and the *relative*
-    #     signs between the four cases come from the algebra, not from the app.
-    #   For theta = 22.5 deg on J = (1, 0) the same algebra gives
-    #     S1 = S2 = 1/2 and |S3| = 1/sqrt(2).
+    #     W J = (1/2)(1 + i, 1 - i),  Ex conj(Ey) = (1/4)(1+i)(1+i) = i/2,
+    #     so S1 = S2 = 0 and S3 = 2 Im(i/2) = +1 in that convention.
+    #   The app uses the opposite sign of the retardance (Goldstein with
+    #   delta -> -delta). Its equivalent Jones matrix is therefore
+    #     W_app = R(-theta) diag(1, -i) R(theta),
+    #   which gives, on J = (1, 0):
+    #     theta = +45 deg:   S = (0, 0, -1)
+    #     theta = -45 deg:   S = (0, 0, +1)
+    #     theta = 22.5 deg:  S = (1/2, 1/2, -1/sqrt(2))
+    #   and on J = (0, 1) at +45 deg, S3 = +1. These are the values asserted.
     for axis, pol, name, expect in (
         (45, 0, "quarter-wave at 45 deg on linear 0 deg -> circular", (0.0, 0.0, -1.0)),
         (-45, 0, "quarter-wave at -45 deg on linear 0 deg -> circular, opposite hand", (0.0, 0.0, 1.0)),
@@ -193,7 +199,7 @@ MODEL = {
     "reference": "ABCD system matrix; Goldstein Mueller matrices with Jones-derived circular cases; reflectivity finesse inverted by bisection, with the exact Airy finesse recorded alongside",
     "citations": [
         "E. Hecht, Optics, 5th ed., section 6.2 (thick lens cardinal points), section 8.13 (Stokes parameters and Mueller matrices)",
-        "D. H. Goldstein, Polarized Light, 3rd ed. (CRC Press, 2011), ch. 6: Mueller matrices of retarders and polarizers. The app follows this convention with delta -> -delta; the circular cases here are derived from Jones calculus instead, so the handedness is pinned by something other than the app's own convention.",
+        "D. H. Goldstein, Polarized Light, 3rd ed. (CRC Press, 2011), ch. 6: Mueller matrices of retarders and polarizers. The app follows this convention with delta -> -delta, equivalent to the Jones matrix R(-theta) diag(1, -i) R(theta); the circular cases here are derived from that matrix by hand, an algebraic check of the declared convention rather than an experimental one.",
         "M. Born and E. Wolf, Principles of Optics, 7th ed., section 7.6 (Fabry-Perot), for the reflectivity finesse",
         "N. Ismail, C. C. Kores, D. Geskus and M. Pollnau, 'Fabry-Perot resonator: spectral line shapes, generic and related Airy distributions, linewidths, finesses, and performance at low or frequency-dependent reflectivity', Opt. Express 24, 16366-16389 (2016), doi:10.1364/OE.24.016366, Eq. (32) for the exact Airy finesse",
     ],

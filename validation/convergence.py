@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
-"""Measure how far each reference's own numerics still move.
+# SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Measure how much each reference's numerics move when refined.
 
     python3 validation/convergence.py            # write validation/expected/convergence.json
     python3 validation/convergence.py --check    # exit 1 if that file is out of date
 
-A tolerance is only justified if the reference is converged well inside it,
-and "well inside" has to be measured rather than asserted. This script
-refines each discretisation the references depend on -- the finite-difference
-step, the Fourier window and grid, the split-step count -- and records what
-changes. The `convergence` note in each reference's MODEL block quotes these
-numbers, and `validation/run.py` checks that it quotes them correctly.
+A tolerance should sit well above how much a reference's own result moves
+when its discretisation is refined, and that has to be measured rather than
+asserted. This script refines some of the settings the references depend on
+and records the observed change. The report quotes these numbers.
 
-Each entry records the quantity, the two settings compared, both values and
-the relative difference. The refined setting is not what the suite runs: it
-is the evidence that the setting it does run is converged.
+What a row is: the change in one quantity between two listed settings. It is
+evidence of sensitivity at those settings, not a bound on the total numerical
+error -- two settings cannot show a convergence regime, and a joint change
+cannot separate the effect of each setting or rule out cancellation.
+
+What is studied, one setting at a time unless noted: the finite-difference
+step (Sellmeier GVD, argon refractivity), the Fourier window and, separately,
+the grid for the time-bandwidth products. The hollow-core rows change the
+grid and the step count together. Not studied: the pulse-stretching and
+autocorrelation widths, and the envelope solver's time window.
 """
 
 import json
@@ -113,7 +120,7 @@ def study():
         out.append(entry(
             f"hollow-core example: {label}", "2048 points, 384 steps",
             "4096 points, 768 steps", coarse[index], fine[index]))
-    return {"note": "Each row refines one discretisation and records what moved.", "studies": out}
+    return {"note": "Each row is the observed change in one quantity between two listed settings; the hollow-core rows change grid and step count together. Sensitivity evidence, not an error bound.", "studies": out}
 
 
 def main():

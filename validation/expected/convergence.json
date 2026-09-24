@@ -1,5 +1,5 @@
 {
- "note": "Each row refines one discretisation and records what moved.",
+ "note": "Each row is the observed change in one quantity between two listed settings; the hollow-core rows change grid and step count together. Sensitivity evidence, not an error bound.",
  "studies": [
   {
    "quantity": "GVD of nbk7 at 800 nm",
