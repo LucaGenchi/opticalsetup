@@ -13,7 +13,7 @@ import {
   fluorophoreSpec, fluorophoreAbsorption, metalensFocalLength, opoPortLocal, OPO_ACCEPTANCE_DEG,
 } from './elements.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
-import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
+import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap, traceValueAt } from './pulses.js';
 import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband } from './aotf.js';
 import { aodDeflectionDeg } from './acousto-optic.js';
 import { capillaryLossDbPerM, fiberPropagation, hollowCoreCoefficients } from './fiber.js';
@@ -1226,8 +1226,33 @@ export function detectorReading(elementId) {
 }
 
 // sample the beam nearest to (x,y): returns {wl, bw, pol, intensity} or null
+// The pulse duration where a probe sits on a traced path, not where the path
+// ends: a path can run on through glass or a compressor past the probe. The
+// GDD and group-delay spread in force at that optical path come from the
+// path's own dispersion trace, as the travelling pulse packets read them.
+// When the tracer cannot state a duration it says so instead of quoting the
+// source's configured width.
+function probePulseDuration(path, segment, along) {
+  const pulse = path.pulse;
+  if (pulse.fieldIssue) return { durationFs: null, issue: pulse.fieldIssue };
+  const a = path.opls?.[segment], b = path.opls?.[segment + 1];
+  const opl = Number.isFinite(a) && Number.isFinite(b) ? a + (b - a) * along : path.opl;
+  const gdd = path.gddTrace ? traceValueAt(path.gddTrace, opl, 'gdd') : (path.gdd || 0);
+  const spread = path.groupDelayDifferenceTrace
+    ? traceValueAt(path.groupDelayDifferenceTrace, opl, 'value') : (path.groupDelayDifferenceFs || 0);
+  if (pulse.field) {
+    const fwhm = fieldMetrics(pulse.field, gdd)?.fwhmFs;
+    return Number.isFinite(fwhm) && fwhm > 0
+      ? { durationFs: fwhm, issue: null }
+      : { durationFs: null, issue: DISPERSION_UNAVAILABLE.sampled };
+  }
+  const derived = pulseDurationAfterDispersion(pulse, gdd, spread);
+  if (derived?.available !== false && derived?.durationFs > 0) return { durationFs: derived.durationFs, issue: null };
+  return { durationFs: null, issue: derived?.model || 'Pulse duration unavailable' };
+}
+
 export function probeAt(x, y, tol = 16) {
-  let best = null, bd = tol;
+  let best = null, bd = tol, bestSegment = 0, bestAlong = 0;
   const p = { x, y };
   for (const r of lastPaths) {
     for (let i = 0; i < r.pts.length - 1; i++) {
@@ -1236,9 +1261,14 @@ export function probeAt(x, y, tol = 16) {
       if (dd < bd - 1e-9 || (Math.abs(dd - bd) <= 1e-9 && intensity > (best?.intensity ?? -Infinity))) {
         bd = dd;
         best = { ...r, intensity };
+        const ax = r.pts[i + 1].x - r.pts[i].x, ay = r.pts[i + 1].y - r.pts[i].y;
+        const len2 = ax * ax + ay * ay;
+        bestSegment = i;
+        bestAlong = len2 > 0 ? Math.min(1, Math.max(0, ((x - r.pts[i].x) * ax + (y - r.pts[i].y) * ay) / len2)) : 0;
       }
     }
   }
+  const duration = best?.pulse ? probePulseDuration(best, bestSegment, bestAlong) : null;
   return best ? {
     wl: best.wl, bw: best.bw || 0, spec: best.spec || null, pol: best.pol,
     stokes: cloneStokes(best.stokes), intensity: best.intensity,
@@ -1249,7 +1279,8 @@ export function probeAt(x, y, tol = 16) {
     approximation: best.approximation || null,
     pulse: best.pulse ? {
       repRateMHz: best.pulse.repRateMHz,
-      pulseWidthFs: best.pulse.field || best.pulse.fieldIssue ? null : best.pulse.pulseWidthFs,
+      pulseWidthFs: duration.durationFs,
+      durationIssue: duration.issue,
       phaseNs: best.pulse.phaseNs,
       pulseShape: best.pulse.pulseShape || 'gauss',
       gates: (best.pulse.gates || []).map(g => ({ ...g })),

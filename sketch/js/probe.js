@@ -31,11 +31,14 @@ export function formatPowerMw(watts) {
   return `${mw.toExponential(1)} mW`;
 }
 
-// Report the configured pulse envelope carried by the tracer. Supercontinuum
-// duration is an independent source input, not inferred from its spectrum.
+// Report the pulse duration at the probe, with the dispersion accumulated up
+// to that point. Supercontinuum duration is an independent source input, not
+// inferred from its spectrum. When the tracer cannot state a duration there,
+// the probe says so rather than quoting the configured width.
 export function probeDurationLabel(reading, sourceType) {
   if (!reading) return '—';
   if (!reading.pulse) return 'CW source';
+  if (reading.pulse.durationIssue) return 'Unavailable';
   const fs = Number(reading.pulse.pulseWidthFs);
   if (!Number.isFinite(fs) || fs <= 0) return 'Undefined';
   if (fs >= 1e6) return `${(fs / 1e6).toPrecision(3)} ns`;
