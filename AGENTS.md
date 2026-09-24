@@ -108,12 +108,13 @@ ships keep their own notices; see `THIRD-PARTY-NOTICES.md`.
 ## Git and delivery
 
 - `origin` is `https://github.com/LucaGenchi/opticalsetup.git`.
-- `main` must require the `CI / test` status check (`.github/workflows/ci.yml`)
-  and enforce it for administrators too, so a red suite can never reach the
-  live site. This is a repository setting only Luca can change: **Settings →
-  Branches → main → Require status checks to pass → add "test"; enable "Do not
-  allow bypassing the above settings"**. Status: NOT YET ENABLED as of
-  2026-09-23; anyone reading this before it is done should remind Luca.
+- `main` is protected (enabled 2026-09-24, enforced for administrators too,
+  so `gh pr merge --admin` does not bypass it): changes arrive only through a
+  pull request; the `CI / test` status check (`.github/workflows/ci.yml`) must
+  pass; the branch must be up to date with `main`; one approving review is
+  required. A red suite therefore cannot reach the live site. Only Luca can
+  change these settings (**Settings → Branches → main**); do not ask for them
+  to be relaxed to get a change merged.
 - Keep commits focused and describe behavior, not implementation trivia.
 - Run the full verification above before committing or opening a PR.
 - In PR descriptions, state user-visible behavior, physics limitations, and the
