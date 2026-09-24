@@ -111,8 +111,10 @@ ships keep their own notices; see `THIRD-PARTY-NOTICES.md`.
 - `main` is protected (enabled 2026-09-24, enforced for administrators too,
   so `gh pr merge --admin` does not bypass it): changes arrive only through a
   pull request; the `CI / test` status check (`.github/workflows/ci.yml`) must
-  pass; the branch must be up to date with `main`; one approving review is
-  required. A red suite therefore cannot reach the live site. Only Luca can
+  pass; the branch must be up to date with `main`. No approving review is
+  required: Andrea's `/andrea-review` comments inform the merge but do not
+  gate it, and Luca decides when to merge. A red suite therefore cannot reach
+  the live site. Only Luca can
   change these settings (**Settings → Branches → main**); do not ask for them
   to be relaxed to get a change merged.
 - Keep commits focused and describe behavior, not implementation trivia.
