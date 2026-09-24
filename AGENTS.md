@@ -114,9 +114,8 @@ ships keep their own notices; see `THIRD-PARTY-NOTICES.md`.
   pass; the branch must be up to date with `main`. No approving review is
   required: Andrea's `/andrea-review` comments inform the merge but do not
   gate it, and Luca decides when to merge. A red suite therefore cannot reach
-  the live site. Only Luca can
-  change these settings (**Settings → Branches → main**); do not ask for them
-  to be relaxed to get a change merged.
+  the live site. Only Luca can change these settings (**Settings → Branches →
+  main**); do not ask for them to be relaxed to get a change merged.
 - Keep commits focused and describe behavior, not implementation trivia.
 - Run the full verification above before committing or opening a PR.
 - In PR descriptions, state user-visible behavior, physics limitations, and the
