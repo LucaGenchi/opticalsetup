@@ -5884,6 +5884,27 @@ export const wikiEntries = [
     related: ['sample', 'dichroic', 'filter', 'pulsedlaser', 'sclaser', 'spectrometer'],
   },
   {
+    type: 'opcpa', title: 'OPCPA', category: 'Nonlinear Optics',
+    summary: "Amplifies a chirped seed with a synchronized pump, reporting temporal overlap, saturated gain, signal and idler power, and residual pump power.",
+    realWorld: {
+      html: `
+        <p>An <strong>optical parametric chirped-pulse amplifier (OPCPA)</strong> stretches a broadband seed pulse, amplifies it through optical parametric amplification, and compresses it afterwards. A pump photon is split into signal and idler photons while the injected signal stimulates the process, so the signal is amplified without storing energy in a population inversion. Energy conservation gives 1/λ<sub>p</sub> = 1/λ<sub>s</sub> + 1/λ<sub>i</sub>, and the generated signal and idler photon fluxes are equal.</p>
+        <p>Stretching lowers the seed peak intensity during amplification and makes it easier to overlap the seed with a longer energetic pump pulse. Practical gain depends on crystal material and length, nonlinear coefficient, pump fluence, focusing, phase matching, spatial and temporal overlap, walk-off, saturation and damage limits. Multi-stage systems distribute gain and pump energy across several crystals before the amplified signal is recompressed.</p>`,
+      formulas: [
+        { tex: '\\frac{1}{\\lambda_p}=\\frac{1}{\\lambda_s}+\\frac{1}{\\lambda_i}', caption: 'Energy conservation for pump, seeded signal and generated idler.' },
+        { tex: '\\frac{P_{s,gen}}{P_i}=\\frac{\\nu_s}{\\nu_i}=\\frac{\\lambda_i}{\\lambda_s}', caption: 'Manley–Rowe sharing for the newly generated signal and idler power.' },
+      ],
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The packaged OPCPA has separate left-side ports marked <strong>S</strong> for the chirped signal seed and <strong>P</strong> for the pump. Set the pump wavelength and acceptance window, then route pulsed beams at the same repetition rate into the two ports. The amplified seed leaves the right-side S port, the idler leaves I, and the remaining pump leaves P when those outputs are enabled.</p>
+        <p><em>Small-signal power gain</em> is the gain the stage would apply before pump saturation. <em>Maximum pump depletion</em> caps how much pump power the stage can transfer. The actual transfer is the smaller of that pump budget and the power required by the requested gain, multiplied by the Gaussian temporal-overlap factor. The generated power is divided between signal and idler by Manley–Rowe; the original seed power remains in the signal. The stage readouts report overlap, realized gain, pump depletion and all three output powers.</p>
+        <p>The amplified signal keeps the seed spectrum, pulse train and signed GDD, so a downstream Pulse Compressor can remove the authored chirp. Moving a source, adding a delay line or changing a pulse phase changes the overlap and therefore the gain. A timing mismatch below 2% overlap is reported as no amplification rather than as a vanishing output.</p>`,
+      limitations: `<p>This is a stage-level energy-budget model, not a nonlinear propagation solver. Gain and maximum depletion are authored; crystal material, d<sub>eff</sub>, length, beam area, fluence, phase-matching bandwidth, spatial overlap, walk-off, back-conversion, gain narrowing, higher-order spectral phase and damage are not calculated. One pump and one longer-wavelength seed are selected at a stage. The amplified seed envelope is retained rather than reshaped by the finite pump, while the idler duration follows the Gaussian product of the two input pulses. The fixed ports are a workbench packaging convention, not a prescription for a particular laser.</p>`,
+    },
+    related: ['crystal', 'opo', 'pulsedlaser', 'pulsecompressor', 'delayline'],
+  },
+  {
     type: 'opo', title: 'OPO', category: 'Nonlinear Optics',
     summary: "An optical parametric oscillator packaged like a laser: a pump beam goes in at the back, a tunable signal and an optional idler come out of the front.",
     realWorld: {

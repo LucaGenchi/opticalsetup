@@ -1891,6 +1891,7 @@
      "oplMin": 748,
      "oplSum": 18703.3657,
      "oplWeight": 24.9995427,
+     "power": 0.999981709,
      "pulse": {
       "avgPowerW": 1,
       "bandwidthNm": 8.30046232,
