@@ -186,9 +186,10 @@ test('validation: convergence same_study() rejects non-finite and duplicate rows
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 });
 
-// The CLI path itself: a non-finite result must fail generation loudly
-// rather than write invalid JSON (Python's json module accepts NaN/Infinity
-// by default, which is not valid JSON) or report success.
+// The CLI path itself, on a structurally incomplete file: an expected file
+// whose studies were emptied out from under it must not read as current --
+// same_study()'s key comparison should catch the mismatch and --check
+// should exit nonzero, not report success.
 test('validation: convergence.py --check exits nonzero on a corrupted expected file', {
   skip: !(process.env.CI || process.env.VALIDATE_PYTHON) && 'set VALIDATE_PYTHON=1 to re-run the Python references',
 }, () => {
