@@ -134,10 +134,13 @@ main {
 }
 
 .how {
-  padding: 20px 0 72px;
+  padding: 20px 0 40px;
   border-top: 1px solid var(--border);
-  max-width: 640px;
 }
+.how.offline { padding-bottom: 72px; }
+.how-intro { font-size: 14px; color: var(--muted); margin-bottom: 18px; }
+.how-intro.how-after { margin: 18px 0 0; }
+.how a { color: var(--accent); }
 .how h2 {
   font-size: 20px;
   margin-bottom: 18px;
