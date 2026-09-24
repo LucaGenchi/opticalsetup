@@ -25,9 +25,11 @@ not silently change it into a threshold or cavity-dynamics model.
   amplifiers*, J. Opt. **18**, 103501 (2016), open access,
   https://doi.org/10.1088/2040-8978/18/10/103501. Equations 2.9–2.13 give the
   same Gamma (written with omega_1 omega_2 / c^3) and the same general gain
-  `G = 1 + [Gamma sinh(g L)/g]^2`; section 2.3.1 explains why the gain exists
-  only during the pump pulse and how group-velocity mismatch ends it after the
-  pulse-splitting length. G. Cerullo and S. De Silvestri, *Ultrafast optical
+  `G = 1 + [Gamma sinh(g L)/g]^2`, for an undepleted pump and no input idler.
+  This is the verifiable citation for the general expression; the numbering
+  of the Byer chapter above has not been independently checked. Section 2.3.1
+  explains why the gain exists only during the pump pulse and how
+  group-velocity mismatch ends it after the pulse-splitting length. G. Cerullo and S. De Silvestri, *Ultrafast optical
   parametric amplifiers*, Rev. Sci. Instrum. **74**, 1 (2003),
   https://doi.org/10.1063/1.1523642, is the longer review.
 - I. N. Ross, P. Matousek, G. H. C. New and K. Osvay, *Analysis and
