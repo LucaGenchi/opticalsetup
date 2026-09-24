@@ -935,6 +935,8 @@
      "branch": "laser",
      "bw": 0.783334556,
      "gates": [],
+     "gdd": 0,
+     "groupDelayDifferenceFs": 0,
      "intensity": 1,
      "key": "1032.000000000/laser/80/0/2000/",
      "opl": 78,

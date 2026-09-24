@@ -704,6 +704,8 @@
      "branch": "evgazbrh>eaceg0bp:hwp>eg3ksg58:pol>eapb46vw:T>e227dxsg:R",
      "bw": 0.895231636,
      "gates": [],
+     "gdd": 1859.19433,
+     "groupDelayDifferenceFs": -13.1262009,
      "intensity": 24.9995427,
      "key": "780.000000000/evgazbrh>eaceg0bp:hwp>eg3ksg58:pol>eapb46vw:T>e227dxsg:R/80/0/1000/",
      "opl": 1302.1783,
@@ -827,6 +829,8 @@
        "shape": "square"
       }
      ],
+     "gdd": 1002.90985,
+     "groupDelayDifferenceFs": -7.08074648,
      "intensity": 12.4997714,
      "key": "1030.000000000/ex99xumu>e5ercpjt:hwp>ebij0qw1:pol>ex1nikcx:ret>ertk38vw:pol>egy525hq:T>eapb46vw:R>e227dxsg:R/80/0/1000/476|20|0.5|0|square",
      "opl": 1302.1783,

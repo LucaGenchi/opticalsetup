@@ -1591,6 +1591,8 @@ function recordProbeBeam(surface, ray) {
     bw: ray.bw, spec: ray.spec,
     intensity: weight,
     power: Math.max(0, Number(ray.power) || 0),
+    gdd: Number.isFinite(ray.gdd) ? ray.gdd : 0,
+    groupDelayDifferenceFs: Number.isFinite(ray.groupDelayDifferenceFs) ? ray.groupDelayDifferenceFs : 0,
     pulse: ray.pulse ? { ...ray.pulse } : null,
     gates: (ray.pulse?.gates || []).map(g => ({ ...g })),
   });
@@ -4442,7 +4444,13 @@ function opcpaConversion(ray, data, elementId) {
   if (!pump) return finish('missingPump');
   if (!seed) return finish('missingSeed');
   if (!pump.pulse || !seed.pulse) return finish('unpulsed');
-  const timing = mixOverlap(seed, pump);
+  // Durations as the beams arrive, stretching included, the same way a beam
+  // probe reports them.
+  const arrivingFs = beam => pulseDurationAfterDispersion(beam.pulse, beam.gdd || 0, beam.groupDelayDifferenceFs || 0)?.durationFs
+    ?? beam.pulse.pulseWidthFs;
+  const seedDurationFs = arrivingFs(seed), pumpDurationFs = arrivingFs(pump);
+  const atCrystal = (beam, fs) => ({ ...beam, pulse: { ...beam.pulse, pulseWidthFs: fs } });
+  const timing = mixOverlap(atCrystal(seed, seedDurationFs), atCrystal(pump, pumpDurationFs));
   if (timing.unsupported) return finish('unsupported', { timing });
   const waves = opoWaves({
     pumpWl: pump.wl,
@@ -4462,6 +4470,8 @@ function opcpaConversion(ray, data, elementId) {
     maxPumpDepletion: data.maxPumpDepletion,
     overlap: timing.factor,
     signalShare: waves.signalShare,
+    seedDurationFs,
+    pumpDurationFs,
   });
   const idlerPulse = mixPulse(seed.pulse, pump.pulse, {
     crystalId: elementId,

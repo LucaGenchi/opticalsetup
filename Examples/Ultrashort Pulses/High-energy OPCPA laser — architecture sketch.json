@@ -21,7 +21,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "# Marvel ATLAS laser — public architecture\n**Illustrative, not a proprietary optical prescription** · 1053 nm → 527 nm · 100 fs · 10 Hz · order-200 J green output",
+        "text": "# High-energy OPCPA laser — architecture sketch\n**Illustrative architecture, not any facility's optical prescription** · 1053 nm → 526.5 nm · 100 fs",
         "fontSize": 14,
         "fill": "#203047"
       }
@@ -35,7 +35,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "## Published architecture overview",
+        "text": "## Architecture overview",
         "fontSize": 12,
         "fill": "#315a79"
       }
@@ -98,7 +98,7 @@
       "rot": 0,
       "label": "",
       "showLabel": false,
-      "params": { "text": "focus on\nnanostructured target", "w": 190, "h": 64, "behavior": "block", "fill": "#ffe9e2" }
+      "params": { "text": "focus on\ntarget", "w": 190, "h": 64, "behavior": "block", "fill": "#ffe9e2" }
     },
     { "id": "a1", "type": "arrowann", "x": 245, "y": 185, "rot": 0, "label": "", "showLabel": false, "params": { "len": 90, "width": 2, "fill": "#557086" } },
     { "id": "a2", "type": "arrowann", "x": 495, "y": 185, "rot": 0, "label": "", "showLabel": false, "params": { "len": 90, "width": 2, "fill": "#557086" } },
@@ -120,7 +120,7 @@
       }
     },
     {
-      "id": "atlas-seed",
+      "id": "seed",
       "type": "pulsedlaser",
       "x": 100,
       "y": 420,
@@ -147,7 +147,7 @@
       }
     },
     {
-      "id": "atlas-pump",
+      "id": "pump",
       "type": "pulsedlaser",
       "x": 250,
       "y": 594,
@@ -233,7 +233,7 @@
       "rot": 0,
       "label": "",
       "showLabel": false,
-      "params": { "text": "Nd:glass power amplifier\npublic block · no gain model", "w": 170, "h": 58, "behavior": "pass", "fill": "#eaf7ef" }
+      "params": { "text": "Nd:glass power amplifier\nplaceholder · no gain model", "w": 170, "h": 58, "behavior": "pass", "fill": "#eaf7ef" }
     },
     {
       "id": "shg",
@@ -301,7 +301,7 @@
       "x": 1450,
       "y": 420,
       "rot": 90,
-      "label": "nanostructured target plane",
+      "label": "target plane",
       "showLabel": true,
       "labelPos": "r",
       "params": {
@@ -328,7 +328,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "**ATLAS target (annotation, not a disclosed stage prescription):** order-200 J · 100 fs · 10 Hz at about 527 nm.\nThe live model is normalized to the app's 1 kHz / 1 kW bounds; change the OPCPA gain, depletion or pump timing and watch the stage readout.",
+        "text": "**Scale:** facilities built this way deliver far more energy per pulse, at far lower repetition rates, than the app's bounds allow.\nThe live model is normalized to 1 kHz / 1 kW: change the OPCPA gain, depletion, seed stretch or pump timing and watch the stage readout.",
         "fontSize": 11,
         "fill": "#5d4534"
       }
@@ -342,7 +342,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "**Model boundary:** OPCPA is a seeded, single-pass energy budget with temporal overlap and Manley–Rowe sharing.\nNd:glass gain, crystal propagation, phase matching, walk-off, damage, contrast, thermal loading, diffraction, plasma and fusion are not simulated.",
+        "text": "**Model boundary:** OPCPA is a seeded, single-pass energy budget: gain follows the pump intensity the seed meets, extraction is limited to the part of the pump pulse the seed overlaps, and signal and idler share energy by Manley–Rowe.\nNd:glass gain, crystal propagation, phase matching, walk-off, damage, contrast, thermal loading, diffraction and plasma are not simulated.",
         "fontSize": 11,
         "fill": "#5d4534"
       }

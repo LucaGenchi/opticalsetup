@@ -21,39 +21,39 @@
    6511.8902,
    542
   ],
-  "digest": "5dc6dbca"
+  "digest": "d62e6fc2"
  },
  "drawnElements": {
   "figureframe:frame": "f3b1e9cd",
-  "textlabel:title": "92b2e6db",
-  "textlabel:architecture-note": "f8854c78",
+  "textlabel:title": "00f2d4a8",
+  "textlabel:architecture-note": "27eb26ee",
   "box:arch-seed": "28a12c0b",
   "box:arch-opcpa": "24ff2af5",
   "box:arch-amplifier": "94a8d377",
   "box:arch-compressor": "59afea4d",
   "box:arch-shg": "7d5965fa",
-  "box:arch-target": "1be091f0",
+  "box:arch-target": "b1654f1a",
   "arrowann:a1": "6a32de3c",
   "arrowann:a2": "6a32de3c",
   "arrowann:a3": "6a32de3c",
   "arrowann:a4": "0c4f8e8b",
   "arrowann:a5": "6a32de3c",
   "textlabel:trace-heading": "ad673931",
-  "pulsedlaser:atlas-seed": "bc05eac0",
-  "pulsedlaser:atlas-pump": "bc05eac0",
+  "pulsedlaser:seed": "bc05eac0",
+  "pulsedlaser:pump": "bc05eac0",
   "mirror:pump-fold": "81e74feb",
   "opcpa:opcpa-stage": "2fed542c",
   "pulsecompressor:compressor": "7ce88109",
   "probe:duration-probe": "61e1230f",
-  "box:power-amplifier-proxy": "53e7a25d",
+  "box:power-amplifier-proxy": "83acb2e8",
   "crystal:shg": "f8ad2288",
   "probe:wavelength-probe": "1e13333f",
-  "probe:power-probe": "9cf48685",
+  "probe:power-probe": "7ac99397",
   "telescope:beam-expander": "e341eda1",
   "lens:focus": "d40c579d",
   "sample:target": "2ea50f34",
-  "textlabel:energy-note": "68073724",
-  "textlabel:limits-note": "b3cdb67b"
+  "textlabel:energy-note": "0f685aac",
+  "textlabel:limits-note": "4a3b7577"
  },
  "pulseTracks": [
   {
@@ -65,17 +65,17 @@
     177
    ],
    "pulse": {
-    "sourceId": "atlas-seed",
+    "sourceId": "seed",
     "repRateMHz": 0.001,
     "pulseWidthFs": 837.228573,
     "phaseNs": 0,
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "51d8179a"
+   "digest": "6a1c7d30"
   },
   {
-   "intensity": 23.76,
+   "intensity": 20.3991115,
    "color": "#8b1a1a",
    "points": 3,
    "opl": [
@@ -83,17 +83,17 @@
     6750
    ],
    "pulse": {
-    "sourceId": "atlas-seed›opcpa-stage:opcpa-idler",
+    "sourceId": "seed›opcpa-stage:opcpa-idler",
     "repRateMHz": 0.001,
     "pulseWidthFs": 429.274232,
     "phaseNs": 1.11022302e-16,
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "ce0904ca"
+   "digest": "36aa1fcf"
   },
   {
-   "intensity": 23.75,
+   "intensity": 20.524905,
    "color": "#8b1a1a",
    "points": 3,
    "opl": [
@@ -101,17 +101,17 @@
     595
    ],
    "pulse": {
-    "sourceId": "atlas-seed",
+    "sourceId": "seed",
     "repRateMHz": 0.001,
     "pulseWidthFs": 837.228573,
     "phaseNs": 0,
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "82b23aa0"
+   "digest": "5be9c266"
   },
   {
-   "intensity": 13.8267607,
+   "intensity": 11.9491769,
    "color": "#50ff00",
    "points": 5,
    "opl": [
@@ -119,14 +119,14 @@
     1176.27669
    ],
    "pulse": {
-    "sourceId": "atlas-seed",
+    "sourceId": "seed",
     "repRateMHz": 0.001,
     "pulseWidthFs": 837.228573,
     "phaseNs": 0,
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "7bd7a107"
+   "digest": "fc614338"
   },
   {
    "intensity": 1,
@@ -137,17 +137,17 @@
     177
    ],
    "pulse": {
-    "sourceId": "atlas-pump",
+    "sourceId": "pump",
     "repRateMHz": 0.001,
     "pulseWidthFs": 500,
     "phaseNs": 0,
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "60c610c2"
+   "digest": "e21710a8"
   },
   {
-   "intensity": 0.4,
+   "intensity": 0.484870921,
    "color": "#50ff00",
    "points": 2,
    "opl": [
@@ -155,14 +155,14 @@
     6177
    ],
    "pulse": {
-    "sourceId": "atlas-pump",
+    "sourceId": "pump",
     "repRateMHz": 0.001,
     "pulseWidthFs": 500,
     "phaseNs": 0,
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "73066034"
+   "digest": "f9a88045"
   }
  ],
  "writeHits": {
@@ -171,17 +171,19 @@
  },
  "signalHits": {
   "count": 11,
-  "digest": "fa385e1d"
+  "digest": "746d90c3"
  },
  "readouts": {
   "opcpa:opcpa-stage": {
    "specimenIncident": [
     {
-     "branch": "atlas-seed",
+     "branch": "seed",
      "bw": 16.3,
      "gates": [],
+     "gdd": 0,
+     "groupDelayDifferenceFs": 0,
      "intensity": 1,
-     "key": "1053.000000000/atlas-seed/0.001/0/837.2285725684557/",
+     "key": "1053.000000000/seed/0.001/0/837.2285725684557/",
      "opl": 177,
      "oplMin": 177,
      "oplSum": 177,
@@ -197,7 +199,7 @@
       "pulseShape": "gauss",
       "pulseWidthFs": 837.228573,
       "repRateMHz": 0.001,
-      "sourceId": "atlas-seed",
+      "sourceId": "seed",
       "spectrumHiNm": 1073.76592,
       "spectrumKind": "gauss",
       "spectrumLoNm": 1032.23408,
@@ -212,11 +214,13 @@
      "wl": 1053
     },
     {
-     "branch": "atlas-pump",
+     "branch": "pump",
      "bw": 0.81553881,
      "gates": [],
+     "gdd": 0,
+     "groupDelayDifferenceFs": 0,
      "intensity": 1,
-     "key": "526.500000000/atlas-pump/0.001/0/500/",
+     "key": "526.500000000/pump/0.001/0/500/",
      "opl": 177,
      "oplMin": 177,
      "oplSum": 177,
@@ -230,7 +234,7 @@
       "pulseShape": "gauss",
       "pulseWidthFs": 500,
       "repRateMHz": 0.001,
-      "sourceId": "atlas-pump",
+      "sourceId": "pump",
       "spectrumHiNm": 527.538982,
       "spectrumKind": "gauss",
       "spectrumLoNm": 525.461018,
