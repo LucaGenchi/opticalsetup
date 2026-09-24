@@ -83,12 +83,35 @@ test('pulse overlap uses the existing Gaussian integral and disappears off time 
   conserved(good); conserved(bad);
 });
 
-test('partial temporal overlap bounds depletion even at enormous formal gain', () => {
-  const pump = { wl: 532, powerW: 1, pulse: pulse() };
-  const s = seed('s', { pulse: pulse(0.0001) });
-  const result = run({ pump, seeds: [s], lengthM: 1 });
-  near(result.depletedPumpW, mixOverlap(pump, s).factor);
-  assert.ok(result.depletedPumpW > 0 && result.depletedPumpW < 1);
+test('a CW pump can only give up the energy that meets the seed pulses, even at enormous formal gain', () => {
+  // 100 fs seed pulses at 80 MHz: the seed window is 8 FWHM = 800 fs per
+  // 12.5 ns period, so at most 6.4e-5 of the CW pump can ever be converted.
+  const result = run({ pump: { wl: 532, powerW: 1 }, seeds: [seed('s', { pulse: pulse() })], lengthM: 1 });
+  assert.ok(result.channels[0].saturated);
+  assert.ok(result.depletedPumpW > 6e-5 && result.depletedPumpW <= 800e-15 * 80e6 * (1 + 1e-9));
+  conserved(result);
+});
+
+// Reference values from an independent 4001-point quadrature of
+// integral Is(t - delay) cosh^2(Gamma0 L sqrt(Ip(t)/Ip0)) dt / integral Is dt
+// (seed small enough that the pump is not depleted).
+test('pulsed gain follows the local pump intensity across the seed, not a peak gain times overlap', () => {
+  const pulsedGain = (tauP, tauS, delayFs) => run({
+    pump: { wl: 532, powerW: 1e9, pulse: { ...pulse(), pulseWidthFs: tauP } },
+    seeds: [seed('s', { powerW: 1e-9, gammaPerM: 5000, pulse: { ...pulse(delayFs * 1e-6), pulseWidthFs: tauS } })],
+  }).channels[0].achievedGain;
+  const close = (a, b) => assert.ok(Math.abs(a / b - 1) < 1e-3, `${a} != ${b}`);
+  close(pulsedGain(100, 100, 0), 2313);     // peak-intensity cosh^2(5) would be 5507
+  close(pulsedGain(100, 100, 100), 247.9);  // delay: gain collapses far faster than the overlap
+  close(pulsedGain(1000, 100, 0), 5375);    // short seed on a long pump sees nearly the peak
+  close(pulsedGain(100, 1000, 0), 257.8);   // long seed: only its middle meets the pump
+});
+
+test('a CW seed is amplified only while the pump pulse is present', () => {
+  // Time-averaged gain 1 + f_rep * integral (cosh^2(Gamma(t) L) - 1) dt for a
+  // 100 fs, 80 MHz pump with Gamma0 L = 5 (same independent quadrature).
+  const result = run({ pump: { wl: 532, powerW: 1e9, pulse: pulse() }, seeds: [seed('s', { powerW: 1e-9, gammaPerM: 5000 })] });
+  assert.ok(Math.abs(result.channels[0].achievedGain / 1.02189 - 1) < 1e-4);
   conserved(result);
 });
 

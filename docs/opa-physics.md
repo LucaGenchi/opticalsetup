@@ -21,6 +21,35 @@ not silently change it into a threshold or cavity-dynamics model.
   The parametric-amplification section, equation 71, gives the general excess
   signal gain `Gamma² sinh²(g L)/g²`. This resolves the mismatch approximation
   in the issue brief and is the expression implemented here.
+- C. Manzoni and G. Cerullo, *Design criteria for ultrafast optical parametric
+  amplifiers*, J. Opt. **18**, 103501 (2016), open access,
+  https://doi.org/10.1088/2040-8978/18/10/103501. Equations 2.9–2.13 give the
+  same Gamma (written with omega_1 omega_2 / c^3) and the same general gain
+  `G = 1 + [Gamma sinh(g L)/g]^2`; section 2.3.1 explains why the gain exists
+  only during the pump pulse and how group-velocity mismatch ends it after the
+  pulse-splitting length. G. Cerullo and S. De Silvestri, *Ultrafast optical
+  parametric amplifiers*, Rev. Sci. Instrum. **74**, 1 (2003),
+  https://doi.org/10.1063/1.1523642, is the longer review.
+- I. N. Ross, P. Matousek, G. H. C. New and K. Osvay, *Analysis and
+  optimization of optical parametric chirped pulse amplification*, JOSA B
+  **19**, 2945 (2002), https://doi.org/10.1364/JOSAB.19.002945: gain evaluated
+  across the pump's temporal profile, the basis of the quasi-static timing
+  below.
+- G. Arisholm, R. Paschotta and T. Südmeyer, *Limits to the power scalability
+  of high-gain optical parametric oscillators and amplifiers*, JOSA B **21**,
+  578 (2004), https://doi.org/10.1364/JOSAB.21.000578: gain guiding, one of the
+  transverse effects this plane-wave model leaves out.
+- RP Photonics Encyclopedia, *Optical parametric amplifiers* and *Parametric
+  amplification*, https://www.rp-photonics.com/optical_parametric_amplifiers.html:
+  instantaneous saturation, no energy storage, seeding, degenerate
+  phase-sensitive gain.
+
+Checked independently for review: the gain core agrees with a direct RK4
+integration of the plane-wave coupled-amplitude equations to 4e-12 relative
+error over Gamma L = 0.1–6 and Delta k/(2 Gamma) = 0–10, including the
+oscillatory regime. The same integration with pump depletion shows what the
+budget clamp below omits: past the optimum length, the plane-wave pump
+regenerates (back-conversion) while the clamp holds full conversion.
 
 ## Equations and units
 
@@ -111,33 +140,59 @@ sufficient. The PWA cache must be bumped when runtime behavior is connected.
 `allocateParametricAmplifier()` in `sketch/js/parametric-amplifier.js` accepts
 one pump and up to 256 eligible seed beam records. Every record uses an
 explicit `powerW` on a common physical basis; seed keys must be unique. The
-caller supplies each seed's `gammaPerM` at the current local pump intensity,
-its `deltaKPerM`, and the interaction `lengthM`. A zero-power pump cannot
+caller supplies each seed's `gammaPerM` at the **peak** local pump intensity
+(for a CW pump, its intensity), its `deltaKPerM`, and the interaction
+`lengthM`. A zero-power pump cannot
 amplify even if a caller mistakenly supplies nonzero gamma.
 
-For each supported seed, the requested extra signal power is
-`seedPowerW * (G - 1) * overlap`; dividing by the Manley–Rowe signal share
-converts that into a pump request. Each request is bounded by the overlapping
-fraction of `pumpPowerW * maxDepletion`. When the requests together exhaust
-the pump, all are reduced by a common factor. The result includes original
-seed plus its gain, generated idler, and the actual pump debit. This conserves
-energy and generated photon flux, and it has no spontaneous noise floor.
-Processing keys in sorted order makes the result independent of input order.
-The log excess from the gain core avoids overflow before saturation is applied.
+Parametric gain has no energy storage, so the allocator is **quasi-static in
+time**: each instant of the seed is amplified by the pump intensity present at
+that instant. Over one pulse period it integrates
 
-The model reuses `mixOverlap()` for pulse arrival and Gaussian envelope
-correlation, including nearest-period coincidence, the existing 0.02 overlap
-floor, and the convention that CW light is always present. Unequal repetition
-rates return `repetitionUnsupported`; they are not asserted never to overlap
-in reality. Gates and unknown pulse durations are rejected explicitly because
-this allocator does not solve gate epochs or unknown temporal envelopes.
+```
+Gamma(t) = Gamma_peak * sqrt(I_p(t) / I_peak)
+dP_pump(t) = min( P_seed(t) * [G(Gamma(t)) - 1] / signalShare ,  maxDepletion * P_pump(t) )
+```
 
-This timing factor applied to output power is a teaching approximation. It is
-not the time integral of nonlinear gain over the two pulse profiles; mixed CW
-and pulsed operation is especially not a calibrated average-power prediction.
-The caller must use one consistent power convention for the budget and state
-how its supplied peak intensity was obtained. This layer never infers peak
-intensity from `powerW`.
+on Gaussian intensity envelopes (401-point trapezoid over the window where the
+pump still gives gain and the seed still has power). A pulsed train holds its
+whole average power inside the pulse envelope; a CW beam holds only
+`f_rep * dt` of it in each slice. Consequences, all tested against an
+independent quadrature:
+
+- a short seed on a long pump sees nearly the peak gain;
+- a long seed on a short pump is amplified only where the pump is
+  (1 ps seed, 100 fs pump, Gamma_peak L = 5: G = 258, not cosh²(5) = 5507);
+- a delayed seed sees the pump's wing, so the gain falls much faster than the
+  envelope overlap (100 fs pulses, 100 fs delay: 248 versus 2313 at zero delay);
+- a CW seed with an 80 MHz, 100 fs pump gains only while the pump pulse is
+  there (average-power gain 1.022 at Gamma_peak L = 5);
+- a CW pump can only lose the energy that meets the seed pulses.
+
+Dividing the extra signal by the Manley–Rowe signal share converts it into a
+pump debit; each slice may give up at most its own share of
+`pumpPowerW * maxDepletion`, so the saturation is local in time, as it is in a
+real OPA. When several seeds together exhaust the pump, all requests are
+reduced by a common factor (exact for one seed, an allocation rule for
+several). The result includes original seed plus its gain, generated idler, and
+the actual pump debit. This conserves energy and generated photon flux, and it
+has no spontaneous noise floor. Processing keys in sorted order makes the
+result independent of input order. Logs avoid overflow before the clamp.
+
+The model reuses `mixOverlap()` for pulse arrival and nearest-period
+coincidence, including the existing 0.02 visibility floor below which the
+channel is reported `unsynchronized`. Unequal repetition rates return
+`repetitionUnsupported`; they are not asserted never to overlap in reality.
+Gates and unknown pulse durations are rejected explicitly because this
+allocator does not solve gate epochs or unknown temporal envelopes.
+
+Limits of the timing model: the pulses are Gaussian and unchirped at the
+crystal; group-velocity mismatch (which stops the interaction after the
+pulse-splitting length, Manzoni & Cerullo 2016, section 2.3.1), the spatial
+beam profile and gain guiding are not modelled; the per-slice clamp is not the
+depleted coupled-field solution and never back-converts. The caller must use
+one consistent power convention for the budget and state how its supplied peak
+intensity was obtained. This layer never infers peak intensity from `powerW`.
 
 Same-wavelength degeneracy is reported as `degenerateUnsupported`, leaving the
 seed and pump intact with no duplicate idler. Two populated conjugate inputs
