@@ -38,7 +38,7 @@ function meter(y) {
 }
 // Trace a bench and read the three output meters in watts.
 function bench({ pump = laser(-18, 515, 1), seed = laser(18, 780, 1e-6), opa = opaElement(), extra = [] } = {}) {
-  const meters = { pump: meter(-18), signal: meter(0), idler: meter(18) };
+  const meters = { pump: meter(-18), idler: meter(0), signal: meter(18) };
   const elements = [pump, seed, opa, ...Object.values(meters), ...extra].filter(Boolean);
   traceScene(elements, []);
   const watts = Object.fromEntries(Object.entries(meters).map(([k, m]) => [k, enhancedReading(m, elements)?.detectedPowerW ?? 0]));
@@ -146,8 +146,9 @@ test('sources without a power setting cannot be amplified: the element says so',
 
 test('outputs are finite and drawn: the probe reads signal and idler behind the ports', () => {
   const { elements, plan } = bench();
-  assert.equal(probeAt(400, 0, 3)?.wl, 780);
-  near(probeAt(400, 18, 3)?.wl, plan.seeds[0].idlerWl, 1e-6);
+  // Each output at its input's height: signal opposite the seed port, idler on the axis.
+  assert.equal(probeAt(400, 18, 3)?.wl, 780);
+  near(probeAt(400, 0, 3)?.wl, plan.seeds[0].idlerWl, 1e-6);
   assert.ok(elements.every(e => e.x !== undefined));
   const values = JSON.stringify(plan, (k, v) => (k === 'record' ? undefined : v));
   assert.ok(!/NaN|Infinity/.test(values));
@@ -162,7 +163,7 @@ test('saved and reopened, the OPA keeps its settings; the registry links an exis
 
 test('the result does not depend on the order the sources are traced in', () => {
   const pump = laser(-18, 515, 1), seed = laser(18, 780, 1e-6), opa = opaElement();
-  const meters = [meter(-18), meter(0), meter(18)];
+  const meters = [meter(-18), meter(0), meter(18)]; // pump, idler, signal
   const read = order => {
     traceScene([...order, opa, ...meters], []);
     return meters.map(m => enhancedReading(m, [pump, seed, opa, ...meters])?.detectedPowerW ?? 0);
@@ -220,8 +221,8 @@ test('a monochromatic seed is one line: the amplified light is a line too', () =
 test('light from an upstream OPA passes a second OPA unamplified, and the readout says why', () => {
   const pump = laser(-18, 515, 1), seed = laser(18, 780, 1e-6), first = opaElement();
   // A second OPA directly behind the first: its seed port sits on the first
-  // one's signal output.
-  const second = createElement('opa', 460, 18);
+  // one's signal output (y = 18).
+  const second = createElement('opa', 460, 0);
   Object.assign(second.params, { signalWl: 780, gainBandwidthNm: 40, smallSignalGainDb: 40 });
   traceScene([pump, seed, first, second], []);
   const plan = opaReading(second.id);

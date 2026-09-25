@@ -2200,8 +2200,11 @@ function opoElementStateText(reading, p) {
 
 // ---- Integrated OPA element ----
 // A packaged, seeded optical parametric amplifier: the pump and the seed
-// enter two rear ports, and the amplified signal, the idler and what is left
-// of the pump leave three front ports along the body axis. The settings are
+// enter two rear ports, and what is left of the pump, the idler and the
+// amplified signal leave three front ports parallel to the body axis. Each
+// input continues at its own height -- the residual pump opposite the pump
+// port, the signal opposite the seed port -- with the idler between them, so
+// a setup can be aligned straight through the box. The settings are
 // the ones a data sheet quotes (tuned wavelength, gain bandwidth, small-signal
 // gain, conversion limit); sketch/js/opa.js maps them onto the reviewed
 // parametric core. The port layout is a convention of this workbench.
@@ -2209,8 +2212,8 @@ const OPA_BODY_W = 112;
 export const OPA_ACCEPTANCE_DEG = 20;
 const opaApertureMm = p => Math.min(20, Math.max(1, Number(p?.aperture) || 6));
 export const opaBeamMm = p => Math.min(20, Math.max(0, Number(p?.outputBeamMm) || 0));
-// Rear ports (pump above, seed below) and front ports (pump above, signal on
-// the axis, idler below) sit far enough apart that no two beams overlap.
+// Rear ports (pump above, seed below) and front ports (pump above, idler on
+// the axis, signal below) sit far enough apart that no two beams overlap.
 const opaPortOffset = p => Math.max(18, opaApertureMm(p) / 2 + 6, opaBeamMm(p) + 6);
 const opaBodyH = p => 2 * (opaPortOffset(p) + Math.max(opaApertureMm(p), opaBeamMm(p)) / 2 + 7);
 export function opaPortLocal(role, params) {
@@ -2219,8 +2222,8 @@ export function opaPortLocal(role, params) {
   if (role === 'pumpIn') return { x: -x, y: -off };
   if (role === 'seedIn') return { x: -x, y: off };
   if (role === 'pump') return { x: x + 6, y: -off };
-  if (role === 'idler') return { x: x + 6, y: off };
-  return { x: x + 6, y: 0 };
+  if (role === 'idler') return { x: x + 6, y: 0 };
+  return { x: x + 6, y: off };
 }
 
 const fmtW = w => (w >= 1 ? `${sig3(w)} W` : w >= 1e-3 ? `${sig3(w * 1e3)} mW` : w >= 1e-6 ? `${sig3(w * 1e6)} µW` : `${w.toExponential(2)} W`);
@@ -4744,9 +4747,9 @@ export const registry = {
       return `<rect x="${-x}" y="${-hh}" width="${OPA_BODY_W}" height="${2 * hh}" rx="4" fill="#2f4c3f" stroke="#1d2f27" stroke-width="1.5"/>`
         + `<text x="0" y="0" ${flip} text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.5" fill="#fff">OPA</text>`
         + port(-x - 5, -off, ap, 'P', 'start') + port(-x - 5, off, ap, 'S', 'start')
-        + port(x, 0, out, 'S', 'end')
+        + port(x, off, out, 'S', 'end')
         + (p.outputPump !== false ? port(x, -off, out, 'P', 'end') : '')
-        + (p.outputIdler !== false ? port(x, off, out, 'I', 'end') : '');
+        + (p.outputIdler !== false ? port(x, 0, out, 'I', 'end') : '');
     },
     surfaces(el) {
       const p = el.params, hh = opaBodyH(p) / 2, x = OPA_BODY_W / 2, off = opaPortOffset(p);
@@ -5452,7 +5455,7 @@ export function getDirectManipulation(el) {
 // simulated elements affect traced rays, configurable elements need an active
 // mode, and diagram-only elements are honest visual annotations/placeholders.
 const ELEMENT_HELP = {
-  opa: 'A seeded optical parametric amplifier in a box. The pump enters the upper rear port and the seed the lower one; the amplified signal leaves the front on the axis, the idler below it and what is left of the pump above it. Set it like a data sheet: the tuned signal wavelength, the gain bandwidth (a Gaussian gain spectrum) and the peak small-signal gain at the pump\'s peak intensity. The amplification itself is computed: instant by instant through the pulses, one pump photon for one signal and one idler photon, with the pump energy as the limit, and only the part of a broadband seed that falls in the gain band grows. The sources need an average-power setting. Phase matching, beam profiles, walk-off, back-conversion, parametric noise, modulated (gated) beams, seeds whose spectrum was filtered upstream and cascaded OPAs are not simulated; the OPA calculator explains the model and its limitations.',
+  opa: 'A seeded optical parametric amplifier in a box. The pump enters the upper rear port and the seed the lower one; each continues at its own height, so the residual pump leaves opposite the pump port and the amplified signal opposite the seed port, with the idler between them. Set it like a data sheet: the tuned signal wavelength, the gain bandwidth (a Gaussian gain spectrum) and the peak small-signal gain at the pump\'s peak intensity. The amplification itself is computed: instant by instant through the pulses, one pump photon for one signal and one idler photon, with the pump energy as the limit, and only the part of a broadband seed that falls in the gain band grows. The sources need an average-power setting. Phase matching, beam profiles, walk-off, back-conversion, parametric noise, modulated (gated) beams, seeds whose spectrum was filtered upstream and cascaded OPAs are not simulated; the OPA calculator explains the model and its limitations.',
   opo: 'An optical parametric oscillator in a box: pump light entering the rear aperture within its angular and wavelength acceptance becomes a signal on the front axis and an optional idler on a parallel port, by the same phenomenological model as the crystal\'s OPO mode. The signal can be fixed, swept or stepped through a list. The unconverted pump is discarded inside; threshold, gain, cavity length and synchronisation are not simulated.',
   cwlaser: 'Emits a steady monochromatic collimated beam at one wavelength.',
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
