@@ -259,7 +259,6 @@ export function coupledWaveCurve(v, lengthsMm) {
   if (tauS) { lo = Math.max(lo, centre - 4 * tauS); hi = Math.min(hi, centre + 4 * tauS); }
   if ((tauP || tauS) && !(hi > lo)) return zeros;
   const lengthsM = lengthsMm.map(l => l * 1e-3);
-  const lengthMax = lengthsM.at(-1) ?? 0;
   const deltaKPerM = v.deltaKPerMm * 1e3;
 
   const cellsOf = n => {
@@ -278,7 +277,7 @@ export function coupledWaveCurve(v, lengthsMm) {
     share: c.pumpShare, gammaPerM: gammaPeak * c.scale, deltaKPerM,
     seedPhotonRatio: (v.seedPowerW * c.seedShare) / (v.pumpPowerW * c.pumpShare) * (v.seedWl / v.pumpWl),
   }));
-  const cost = list => list.reduce((sum, p) => sum + coupledWaveStepCount({ ...p, lengthM: lengthMax }), 0);
+  const cost = list => list.reduce((sum, p) => sum + coupledWaveStepCount({ ...p, lengthsM }), 0);
   const solve = list => {
     const out = lengthsMm.map(() => 0);
     for (const p of list) {

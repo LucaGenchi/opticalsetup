@@ -14,7 +14,7 @@ import {
   OPA_INPUTS, OPA_DEFAULTS, validateOpaInputs, computeOpa, allocatorInputs,
   delayScan, lengthScan, intensityScan, coupledWaveCurve, stateText, REFERENCE_TOLERANCE,
 } from '../calculators/opa/opa-calculator.js';
-import { coupledWaveConversion } from '../calculators/opa/coupled-wave.js';
+import { coupledWaveConversion, coupledWaveStepCount } from '../calculators/opa/coupled-wave.js';
 import { formatNumber, formatSI } from '../calculators/assets/calculator-kit.js';
 import { parametricGainCoefficient, parametricSmallSignalGain } from '../sketch/js/parametric.js';
 import { allocateParametricAmplifier } from '../sketch/js/parametric-amplifier.js';
@@ -149,6 +149,15 @@ test('coupled-wave solver: undepleted limit equals the gain core, including mism
   assert.equal(coupledWaveConversion({ gammaPerM: -1, seedPhotonRatio: 1, lengthsM: [1] }), null);
   assert.equal(coupledWaveConversion({ gammaPerM: 1, seedPhotonRatio: 1, lengthsM: [2, 1] }), null);
   assert.deepEqual(coupledWaveConversion({ gammaPerM: 1000, seedPhotonRatio: 0, lengthsM: [0.001] }), [0]);
+});
+
+test('coupled-wave step count covers the shortened step at every requested length', () => {
+  // Gamma sqrt(1+r) = 1 /m gives h = 0.05 m (Andrea's examples).
+  const count = lengthsM => coupledWaveStepCount({ gammaPerM: 1, seedPhotonRatio: 1e-30, lengthsM });
+  assert.equal(count([0.03, 0.06]), 2);
+  assert.equal(count([0.01, 0.02, 0.03]), 3);
+  assert.equal(count([0.1]), 2);
+  assert.equal(count([0, 0.05, 0.1]), 2);
 });
 
 test('continuous waves: the exact curve is the single plane-wave solution', () => {

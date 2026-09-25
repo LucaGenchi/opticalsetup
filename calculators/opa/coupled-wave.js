@@ -29,11 +29,20 @@ const stepLength = (gammaPerM, deltaKPerM, seedPhotonRatio, stepScale = 1) =>
   Math.min(STEP_GAIN / (gammaPerM * Math.sqrt(1 + seedPhotonRatio)),
     deltaKPerM ? STEP_PHASE / Math.abs(deltaKPerM) : Infinity) * stepScale;
 
-// Runge-Kutta steps coupledWaveConversion takes to reach lengthM (0 when
-// there is nothing to integrate), so a caller can budget before solving.
-export function coupledWaveStepCount({ gammaPerM, deltaKPerM = 0, seedPhotonRatio, lengthM }) {
-  if (!(gammaPerM > 0) || !(seedPhotonRatio > 0) || !(lengthM > 0)) return 0;
-  return Math.ceil(lengthM / stepLength(gammaPerM, deltaKPerM, seedPhotonRatio));
+// Runge-Kutta steps coupledWaveConversion takes for the ascending lengths
+// in `lengthsM` (0 when there is nothing to integrate), so a caller can
+// budget before solving. The solver shortens one step to land on each
+// requested length, so the count is summed per interval, not taken from the
+// last length alone.
+export function coupledWaveStepCount({ gammaPerM, deltaKPerM = 0, seedPhotonRatio, lengthsM }) {
+  if (!(gammaPerM > 0) || !(seedPhotonRatio > 0) || !Array.isArray(lengthsM)) return 0;
+  const h = stepLength(gammaPerM, deltaKPerM, seedPhotonRatio);
+  let steps = 0, z = 0;
+  for (const target of lengthsM) {
+    if (target - z > 1e-12 * target) steps += Math.ceil((target - z) / h - 1e-12);
+    z = Math.max(z, target);
+  }
+  return steps;
 }
 
 // Pump power conversion (fraction of input pump photons converted) at each
