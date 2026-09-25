@@ -44,7 +44,8 @@ figures as SVG or PNG.
   optical functions, modulators (AOM/AOD/AOTF/EOM/chopper), mechanical pulse-delay lines,
   a signed-GDD pulse compressor,
   nonlinear crystals (SHG, THG,
-  supercontinuum, OPO), fibers with per-end output specs, physical length and a
+  supercontinuum, OPO), a packaged OPO and a seeded OPA (pump and seed in;
+  amplified signal, idler and residual pump out), fibers with per-end output specs, physical length and a
   signed β₂, detectors, a focusing
   human eye, freeform glass/prisms with straight or circular-arc sides, and free
   annotations (arrows, labels, beam probes, and a canvas-only figure frame).
