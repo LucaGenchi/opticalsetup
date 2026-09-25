@@ -25,6 +25,7 @@ import '../sketch/js/etalon.js';
 import '../sketch/js/vipa.js';
 import '../sketch/js/detector-instruments.js';
 import { wikiEntries, wikiToolSubjects } from './wiki-content.mjs';
+import { calculators } from './calculators-content.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SITE_URL = 'https://opticalsetup.com';
@@ -249,7 +250,8 @@ ${header(base)}
         </div>
       </div>
       <p class="tagline">${esc(tagline)}</p>
-      <a class="place-cta" href="${base}/sketch/?demo=${entry.type}">Open in the canvas →</a>
+      <a class="place-cta" href="${base}/sketch/?demo=${entry.type}">Open in the canvas →</a>${entry.calculator ? `
+      <a class="place-cta calc-cta" href="${base}/calculators/${entry.calculator}/">Open the ${esc(entry.title)} calculator →</a>` : ''}
 
       <div class="embed-wrap">
         <iframe class="embed-frame" src="${base}/sketch/?demo=${entry.type}&amp;embed=1"
@@ -378,6 +380,9 @@ async function main() {
     }
     if (registry[entry.type] && entry.category !== registry[entry.type].category) {
       throw new Error(`${entry.type}: wiki category differs from the component registry`);
+    }
+    if (entry.calculator && !calculators.some(c => c.slug === entry.calculator)) {
+      throw new Error(`${entry.type}: calculator "${entry.calculator}" does not exist in calculators-content.mjs`);
     }
     for (const related of entry.related || []) {
       if (!types.has(related)) throw new Error(`${entry.type}: related wiki page ${related} is missing`);

@@ -23,7 +23,7 @@ export const calculators = [
     facts: [
       { label: 'Model', html: 'Plane waves, collinear; gain evaluated instant by instant through the pulses (quasi-static); pump depletion as an energy limit, without back-conversion.' },
       { label: 'Evidence', html: `Reference-checked against independent solutions of the same equations, including an exact solution with pump depletion: <a href="${GITHUB}/docs/validation.md" target="_blank" rel="noopener">validation table</a>. Not compared with a measurement.` },
-      { label: 'Code', html: `<a href="${GITHUB}/sketch/js/parametric.js" target="_blank" rel="noopener">parametric.js</a> and <a href="${GITHUB}/sketch/js/parametric-amplifier.js" target="_blank" rel="noopener">parametric-amplifier.js</a>, the functions the canvas’s OPA element is being built on (the element itself is not in the canvas yet).` },
+      { label: 'Code', html: `<a href="${GITHUB}/sketch/js/parametric.js" target="_blank" rel="noopener">parametric.js</a> and <a href="${GITHUB}/sketch/js/parametric-amplifier.js" target="_blank" rel="noopener">parametric-amplifier.js</a>, the functions the canvas’s <a href="../../wiki/opa/">OPA element</a> uses. The element takes a simpler set of inputs (tuned wavelength, gain bandwidth, gain in dB) and maps them onto the same core.` },
     ],
     graphs: [
       { id: 'delay', title: 'Signal gain against seed delay', note: 'Average-power gain of the seed as its arrival time moves across the pump pulse.' },

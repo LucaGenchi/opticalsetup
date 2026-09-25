@@ -415,6 +415,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://opticalsetup.com/wiki/opa/</loc>
+    <lastmod>2026-09-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://opticalsetup.com/wiki/sample/</loc>
     <lastmod>2026-09-18</lastmod>
     <changefreq>monthly</changefreq>

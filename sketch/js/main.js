@@ -134,6 +134,21 @@ const demoScenes = {
     mkDemo('detector', 600, 200),
     mkDemo('detector', 600, 214),
   ],
+  // A pump and a seed into the two rear ports; the three outputs each end on
+  // a detector, so the gain, the idler and what the pump lost can be read.
+  opa: () => [
+    mkDemo('pulsedlaser', 60, 182, 0, { wavelength: 515, avgPowerW: 1, pulseWidthFs: 300, repRateMHz: 0.2, beamMode: 'line' },
+      { label: 'Pump 515 nm · 1 W', showLabel: true, labelPos: 't' }),
+    mkDemo('pulsedlaser', 60, 218, 0, { wavelength: 780, avgPowerW: 0.000001, pulseWidthFs: 300, repRateMHz: 0.2, beamMode: 'line' },
+      { label: 'Seed 780 nm · 1 µW', showLabel: true, labelPos: 'b' }),
+    mkDemo('opa', 300, 200, 0, { signalWl: 780, gainBandwidthNm: 40, smallSignalGainDb: 40, maxDepletion: 0.5 },
+      { label: 'OPA', showLabel: true, labelPos: 't' }),
+    mkDemo('probe', 420, 200, 0, { prop: 'wl' }),
+    mkDemo('probe', 480, 218, 0, { prop: 'wl' }),
+    mkDemo('detector', 560, 182, 0, { aperture: 12 }),
+    mkDemo('detector', 560, 200, 0, { aperture: 12 }),
+    mkDemo('detector', 560, 218, 0, { aperture: 12 }),
+  ],
   // The crystal's other single-beam modes, as extra embeds on its page. The
   // continuum reads its band from the arriving pump: 1035 nm femtosecond
   // pulses in YAG, the near-infrared case a multiplex CARS bench uses.

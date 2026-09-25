@@ -5908,6 +5908,44 @@ export const wikiEntries = [
     related: ['crystal', 'pulsedlaser', 'dichroic', 'spectrometer', 'probe'],
   },
   {
+    type: 'opa', title: 'OPA', category: 'Nonlinear Optics',
+    calculator: 'opa',
+    summary: "A seeded optical parametric amplifier in a box: a pump and a seed go in, the amplified signal, a new idler and the leftover pump come out.",
+    realWorld: {
+      html: `
+        <p>An <strong>optical parametric amplifier</strong> (OPA) moves energy from a strong pump to a weak seed inside a crystal with a second-order nonlinearity. Each pump photon that disappears creates one signal photon, which amplifies the seed, and one <strong>idler</strong> photon at the difference frequency, so 1/λ<sub>p</sub> = 1/λ<sub>s</sub> + 1/λ<sub>i</sub>${cite(1, 2)}. Nothing is stored in the crystal: the gain exists only while the pump is there, which is why pulsed pumps reach gains of 10<sup>4</sup>–10<sup>8</sup> in a few millimetres, and why pump and seed pulses must arrive together${cite(2, 3)}.</p>
+        <p>Packaged ultrafast OPAs are usually pumped by an amplified femtosecond laser or its harmonics and seeded by a white-light supercontinuum made from a small part of the same pump. The crystal angle selects which slice of the continuum is phase matched and amplified; turning it tunes the signal, and the idler follows${cite(3, 4)}. A noncollinear geometry (NOPA) broadens the gain band enough to amplify pulses of a few femtoseconds${cite(5)}, and stretching the seed before amplification — optical parametric chirped-pulse amplification (OPCPA) — scales the energy${cite(6)}. What a data sheet quotes is roughly what this element asks for: the tuning range, the gain bandwidth, the gain and the conversion efficiency.</p>`,
+      formulas: [
+        { tex: '\\frac{1}{\\lambda_p} = \\frac{1}{\\lambda_s} + \\frac{1}{\\lambda_i}, \\qquad \\Delta P_i = \\frac{\\lambda_s}{\\lambda_i}\\,\\Delta P_s, \\qquad -\\Delta P_p = \\frac{\\lambda_s}{\\lambda_p}\\,\\Delta P_s', caption: 'Energy conservation and the Manley–Rowe split: one signal and one idler photon per pump photon.' },
+        { tex: 'G = \\cosh^2(\\Gamma L) \;\\approx\; \\tfrac14 e^{2\\Gamma L}, \\qquad \\Gamma \\propto d_\\text{eff}\\sqrt{I_p}', caption: 'Undepleted, phase-matched signal gain. The gain grows exponentially with the crystal length and with the square root of the pump intensity.' },
+      ],
+    },
+    inOpticalSetup: {
+      html: `
+        <p>Send the <strong>pump</strong> into the upper rear port (P) and the <strong>seed</strong> into the lower one (S), each within 20° of the body axis. The amplified <strong>signal</strong> leaves the front port S on the axis, the <strong>idler</strong> the port I below it and the <strong>residual pump</strong> the port P above it; <em>Output idler</em> and <em>Output residual pump</em> switch those ports off, which removes that light from the bench.</p>
+        <p>Set it like a data sheet. <em>Tuned signal λ</em> is the centre of the gain band — the phase-matched wavelength a crystal angle would select — and the idler readout gives the wavelength the arriving pump makes of it. <em>Gain bandwidth</em> is the full width at half maximum of a Gaussian gain spectrum around it. <em>Peak small-signal gain</em> is the gain in dB at the pump's peak intensity and the band centre. <em>Pump depletion limit</em> is the largest fraction of the pump that can be converted at any instant.</p>`,
+      formulas: [
+        { tex: 'G_0(\\lambda) = 1 + \\left(10^{G_\\text{dB}/10} - 1\\right)\\, e^{-4\\ln 2\\,(\\lambda - \\lambda_0)^2/\\Delta\\lambda^2}', caption: 'The gain spectrum this element uses at the pump’s peak: a Gaussian of the authored bandwidth Δλ around the tuned wavelength λ₀.' },
+      ],
+      html2: `
+        <p>From there the amplification is computed, not authored, by the same functions as the <a href="../../calculators/opa/">OPA calculator</a>: the gain at each wavelength becomes an equivalent ΓL, the gain is evaluated instant by instant through the pump and seed pulses (so the delay matters, and a continuous seed gains only while a pump pulse is there), the pump pays for every signal and idler photon, and no instant can give up more than the depletion limit allows. A broadband seed — a supercontinuum — is cut into spectral slices, each amplified with the gain at its own wavelength, so only the part inside the gain band grows and the rest passes through. The <em>Amplifier</em> readout gives the pulse-averaged gain, the output powers, the conversion and, when nothing is amplified, the reason: no pump, no seed, a seed outside the band or shorter than the pump, or pulses that never meet.</p>
+        <p>The gain moves watts from the pump to the seed, so both sources need an average-power setting; detectors then read the amplified signal, the idler and the residual pump in watts, and they add up to what went in. The seed itself passes through unchanged and the generated light is counted against the pump laser.</p>`,
+      limitations: `<p>The gain spectrum is a Gaussian stand-in for the crystal's phase matching: no crystal, angle, temperature or dispersion is modelled, and the gain band does not move with the pump. Plane waves at the pump's peak intensity: no beam profile, walk-off, gain guiding or diffraction, and no group-velocity mismatch or chirp inside the crystal. The depletion limit is an energy cap per instant, not the depleted coupled-wave solution: past the optimum a real amplifier converts energy back into the pump, which this element does not show (the calculator's exact curve does). There is no parametric noise — an unseeded OPA gives nothing — and no degenerate, phase-sensitive case. The idler's and signal gain's optical phase and pulse duration are not computed (their pulses take the pump–seed overlap). One pump per element; light this element generates is not amplified again by another OPA downstream in the same trace.</p>`,
+    },
+    citations: [
+      { label: 'R. A. Baumgartner and R. L. Byer, “Optical parametric amplification,” IEEE J. Quantum Electron. 15, 432–444 (1979)', url: 'https://doi.org/10.1109/JQE.1979.1070043' },
+      { label: 'RP Photonics Encyclopedia — Optical Parametric Amplifiers', url: 'https://www.rp-photonics.com/optical_parametric_amplifiers.html' },
+      { label: 'G. Cerullo and S. De Silvestri, “Ultrafast optical parametric amplifiers,” Rev. Sci. Instrum. 74, 1–18 (2003)', url: 'https://doi.org/10.1063/1.1523642' },
+      { label: 'C. Manzoni and G. Cerullo, “Design criteria for ultrafast optical parametric amplifiers,” J. Opt. 18, 103501 (2016)', url: 'https://doi.org/10.1088/2040-8978/18/10/103501' },
+      { label: 'T. Wilhelm, J. Piel and E. Riedle, “Sub-20-fs pulses tunable across the visible from a blue-pumped single-pass noncollinear parametric converter,” Opt. Lett. 22, 1494 (1997)', url: 'https://doi.org/10.1364/OL.22.001494' },
+      { label: 'A. Dubietis, G. Jonušauskas and A. Piskarskas, “Powerful femtosecond pulse generation by chirped and stretched pulse parametric amplification in BBO crystal,” Opt. Commun. 88, 437–440 (1992)', url: 'https://doi.org/10.1016/0030-4018(92)90070-8' },
+    ],
+    resources: [
+      { label: 'OPA calculator: the full physics behind this element, with formulas, graphs, precision and references', url: '../../calculators/opa/' },
+    ],
+    related: ['opo', 'crystal', 'pulsedlaser', 'sclaser', 'dichroic', 'delayline', 'spectrometer', 'powermeter'],
+  },
+  {
     type: 'sample', title: 'Sample', category: 'Specimens',
     summary: "Represents an illuminated specimen with configurable transmission and stacked signal channels, including two-beam signals that appear only while both pulses reach the spot together.",
     realWorld: { html: `<p>A specimen can transmit or absorb excitation light and generate an optical signal. Fluorescence and coherent nonlinear signals arise through different processes; nonlinear microscopy includes two-photon fluorescence, second-harmonic generation, and coherent anti-Stokes Raman scattering${cite(1)}.</p>` },
