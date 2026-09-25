@@ -38,7 +38,7 @@ not silently change it into a threshold or cavity-dynamics model.
   across the pump's temporal profile, the basis of the quasi-static timing
   below.
 - G. Arisholm, R. Paschotta and T. Südmeyer, *Limits to the power scalability
-  of high-gain optical parametric oscillators and amplifiers*, JOSA B **21**,
+  of high-gain optical parametric amplifiers*, JOSA B **21**,
   578 (2004), https://doi.org/10.1364/JOSAB.21.000578: gain guiding, one of the
   transverse effects this plane-wave model leaves out.
 - RP Photonics Encyclopedia, *Optical parametric amplifiers* and *Parametric
