@@ -5884,6 +5884,29 @@ export const wikiEntries = [
     related: ['sample', 'dichroic', 'filter', 'pulsedlaser', 'sclaser', 'spectrometer'],
   },
   {
+    type: 'opcpa', title: 'OPCPA', category: 'Nonlinear Optics',
+    summary: "Amplifies a chirped seed with a synchronized pump, reporting temporal overlap, saturated gain, signal and idler power, and residual pump power.",
+    realWorld: {
+      html: `
+        <p>An <strong>optical parametric chirped-pulse amplifier (OPCPA)</strong> stretches a broadband seed pulse, amplifies it through optical parametric amplification, and compresses it afterwards. A pump photon is split into signal and idler photons while the injected signal stimulates the process, so the signal is amplified without storing energy in a population inversion. Energy conservation gives 1/λ<sub>p</sub> = 1/λ<sub>s</sub> + 1/λ<sub>i</sub>, and the generated signal and idler photon fluxes are equal.</p>
+        <p>Stretching lowers the seed peak intensity during amplification and makes it easier to overlap the seed with a longer energetic pump pulse. Practical gain depends on crystal material and length, nonlinear coefficient, pump fluence, focusing, phase matching, spatial and temporal overlap, walk-off, saturation and damage limits. Multi-stage systems distribute gain and pump energy across several crystals before the amplified signal is recompressed.</p>`,
+      formulas: [
+        { tex: '\\frac{1}{\\lambda_p}=\\frac{1}{\\lambda_s}+\\frac{1}{\\lambda_i}', caption: 'Energy conservation for pump, seeded signal and generated idler.' },
+        { tex: '\\frac{P_{s,gen}}{P_i}=\\frac{\\nu_s}{\\nu_i}=\\frac{\\lambda_i}{\\lambda_s}', caption: 'Manley–Rowe sharing for the newly generated signal and idler power.' },
+        { tex: 'G=\\cosh^2(\\Gamma L)=1+\\sinh^2(\\Gamma L),\\quad \\Gamma\\propto\\sqrt{I_p}', caption: 'Seeded signal power gain for exact phase matching and an undepleted pump; the gain coefficient grows with the square root of the pump intensity. Saturation (pump depletion, back-conversion) is outside this relation.' },
+      ],
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The packaged OPCPA has separate left-side ports marked <strong>S</strong> for the chirped signal seed and <strong>P</strong> for the pump. Set the pump wavelength and acceptance window, then route pulsed beams at the same repetition rate into the two ports. The amplified seed leaves the right-side S port, the idler leaves I, and the remaining pump leaves P when those outputs are enabled.</p>
+        <p><em>Small-signal power gain</em> G₀ is the gain at full pump intensity, before saturation. The stage computes an <em>effective, heuristic</em> gain: it takes the Gaussian cross-correlation of the seed and pump envelopes as the pump-intensity fraction f the seed meets and applies cosh²(√f · arcosh √G₀), so a timing offset collapses the gain much faster than linearly.</p>
+        <p>The energy budget is a second heuristic. The stage may remove at most <em>Maximum pump depletion</em> times a weighted temporal overlap, τ<sub>s</sub>/√(τ<sub>s</sub>² + τ<sub>p</sub>²) times the same timing factor. That is the integral of the pump envelope weighted by the peak-normalized seed envelope, using both durations as they arrive, stretching included. It is a modelling choice, not a physical bound on extractable energy, but it makes a seed much shorter than its pump reach little of the pump, which is why real OPCPA seeds are stretched. The actual transfer is the smaller of that budget and the power the gain asks for, a phenomenological clip rather than a solution of the saturated coupled equations. The generated power is divided between signal and idler by Manley–Rowe; the original seed power remains in the signal. Stages can be cascaded, each seeded by what the previous stage delivers, up to six in one chain. The stage readouts report overlap, realized gain, pump depletion, the weighted overlap, and all three output powers. When the tracer cannot state a seed or pump duration (after an etalon, for example), the stage reports why and gives no gain estimate.</p>
+        <p>The amplified signal keeps the seed spectrum, pulse train and signed GDD, so a downstream Pulse Compressor can remove the authored chirp. Moving a source, adding a delay line or changing a pulse phase changes the overlap and therefore the gain. A timing mismatch below 2% overlap is reported as no amplification rather than as a vanishing output.</p>`,
+      limitations: `<p>This is a stage-level energy-budget model, not a nonlinear propagation solver. Gain and maximum depletion are authored; crystal material, d<sub>eff</sub>, length, beam area, fluence, phase-matching bandwidth, spatial overlap, walk-off, back-conversion, gain narrowing, higher-order spectral phase and damage are not calculated. One pump and one longer-wavelength seed are selected at a stage. Durations are Gaussian FWHM estimates. At zero delay f = 1 even for a seed much longer than its pump, so the peak gain is applied to the whole seed; the amplified seed envelope is not reshaped or clipped by the finite pump, and gain narrowing is not shown. Resolving that would need the local gain integrated over the seed envelope. The idler duration follows the Gaussian product of the two input pulses; its spectral phase is not carried, so its duration after any dispersion is reported as unavailable rather than predicted; the stage readout says so too. The fixed ports are a workbench packaging convention, not a prescription for a particular laser.</p>`,
+    },
+    related: ['crystal', 'opo', 'pulsedlaser', 'pulsecompressor', 'delayline'],
+  },
+  {
     type: 'opo', title: 'OPO', category: 'Nonlinear Optics',
     summary: "An optical parametric oscillator packaged like a laser: a pump beam goes in at the back, a tunable signal and an optional idler come out of the front.",
     realWorld: {

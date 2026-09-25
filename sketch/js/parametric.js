@@ -316,6 +316,68 @@ export function opoWaves({
   };
 }
 
+// A bounded energy budget for one seeded optical-parametric amplifier pass.
+// The caller supplies average powers at the crystal, the small-signal POWER
+// gain at full pump intensity, the largest fraction of the pump the seed
+// overlaps that this stage may remove, the temporal-overlap factor, the
+// signal's Manley–Rowe share of converted pump power and, when known, the
+// seed and pump durations at the crystal. It is a stage-level model: gain is
+// authored rather than derived from d_eff, crystal length or phase matching.
+//
+// Two heuristics, both stated in the wiki. The gain uses the seeded,
+// phase-matched, undepleted-pump law G = cosh²(ΓL) with Γ ∝ √I_pump: a seed
+// meeting a fraction f of the peak pump intensity sees
+// G(f) = cosh²(√f · arcosh √G₀); the caller passes the envelope
+// cross-correlation as f. The pump budget is weighted by the temporal overlap
+// τs / √(τs² + τp²) × the timing factor (the pump envelope integrated against
+// the peak-normalized seed envelope), so a seed much shorter than its pump
+// reaches little of it. Neither is a solution of the saturated equations.
+export function opcpaGainAtIntensity(smallSignalGain, intensityFraction) {
+  const g0 = Math.max(1, Number(smallSignalGain) || 1);
+  const f = Math.min(1, Math.max(0, Number(intensityFraction) || 0));
+  return Math.cosh(Math.sqrt(f) * Math.acosh(Math.sqrt(g0))) ** 2;
+}
+
+export function opcpaPumpCoverage(seedDurationFs, pumpDurationFs) {
+  const s = Number(seedDurationFs), p = Number(pumpDurationFs);
+  if (!(s > 0) || !(p > 0)) return 1;
+  return s / Math.sqrt(s * s + p * p);
+}
+
+export function opcpaTransfer({
+  seedPowerW, pumpPowerW, smallSignalGain = 1, maxPumpDepletion = 0,
+  overlap = 1, signalShare = 0.5, seedDurationFs = null, pumpDurationFs = null,
+} = {}) {
+  const seed = Math.max(0, Number(seedPowerW) || 0);
+  const pump = Math.max(0, Number(pumpPowerW) || 0);
+  const gain = Math.max(1, Number(smallSignalGain) || 1);
+  const depletion = Math.min(MAX_OPO_DEPLETION, Math.max(0, Number(maxPumpDepletion) || 0));
+  const temporal = Math.min(1, Math.max(0, Number(overlap) || 0));
+  const share = Math.min(1 - 1e-9, Math.max(1e-9, Number(signalShare) || 0.5));
+  const coverage = opcpaPumpCoverage(seedDurationFs, pumpDurationFs);
+  const unsaturatedGain = opcpaGainAtIntensity(gain, temporal);
+  const requestedSignalGainW = seed * (unsaturatedGain - 1);
+  const availablePumpW = pump * depletion * coverage * temporal;
+  const pumpTransferredW = Math.min(availablePumpW, requestedSignalGainW / share);
+  const signalGainW = pumpTransferredW * share;
+  const idlerPowerW = pumpTransferredW - signalGainW;
+  return {
+    seedPowerW: seed,
+    pumpPowerW: pump,
+    overlap: temporal,
+    pumpCoverage: coverage,
+    requestedGain: gain,
+    unsaturatedGain,
+    actualGain: seed > 0 ? 1 + signalGainW / seed : 1,
+    pumpTransferredW,
+    pumpDepletion: pump > 0 ? pumpTransferredW / pump : 0,
+    signalGainW,
+    signalOutputW: seed + signalGainW,
+    idlerPowerW,
+    residualPumpW: pump - pumpTransferredW,
+  };
+}
+
 // Pulse metadata for a generated wave. It keeps the pump train's timing and
 // gates but is a train of its own, so detectors can tell pump, signal and
 // idler apart while still knowing they are synchronised. Only fields that

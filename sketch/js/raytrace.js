@@ -10,7 +10,7 @@ import {
   ISOTROPIC_KINDS, MODIFIER_KINDS, EMISSION_ORDER, EMISSION_OFFSET_NM,
   sumFrequencyWl, carsAntiStokesWl, ramanShifts, ramanStokesWl,
   drivingExcitationWl, channelNeedsExcitationProbe, specimenTypeOf,
-  fluorophoreSpec, fluorophoreAbsorption, metalensFocalLength, opoPortLocal, OPO_ACCEPTANCE_DEG,
+  fluorophoreSpec, fluorophoreAbsorption, metalensFocalLength, opcpaPortLocal, opoPortLocal, OPO_ACCEPTANCE_DEG,
 } from './elements.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
@@ -54,7 +54,10 @@ import {
   transformLimitedBandwidthNm,
 } from './spectrum.js';
 import { cameraProfileFromHits } from './camera-profile.js';
-import { MAX_CONVERSION, MAX_OPO_DEPLETION, opoPulse, supercontinuumRange, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength, mixWidthNm } from './parametric.js';
+import {
+  MAX_CONVERSION, MAX_OPO_DEPLETION, mixOverlap, mixPulse, mixWavelength, mixWidthNm,
+  nmToWavenumberWidth, opcpaTransfer, opoPulse, opoWaves, pumpWidthNm, supercontinuumRange,
+} from './parametric.js';
 import { asphereSag, asphereSlope } from './asphere.js';
 
 // polylines from the most recent traceAll, kept for beam probes
@@ -170,6 +173,17 @@ export function opoReading(elementId) {
   return opoStates.get(elementId) || null;
 }
 
+// OPCPA element/crystal id -> the seeded-amplifier state its last trace found.
+let opcpaStates = new Map();
+
+function recordOpcpa(elementId, state) {
+  if (elementId) opcpaStates.set(elementId, state);
+}
+
+export function opcpaReading(elementId) {
+  return opcpaStates.get(elementId) || null;
+}
+
 // crystal element id -> the band its last pump ray drew as a supercontinuum.
 let supercontinuumStates = new Map();
 
@@ -180,7 +194,7 @@ export function supercontinuumReading(elementId) {
 // The crystal conversion modes that mix two beams rather than acting on one.
 // The crystal mode with a chi(2) response: it doubles every beam and mixes
 // any pair, so it needs to know what else is at the crystal.
-export const MIX_CONVERTS = new Set(['shg']);
+export const MIX_CONVERTS = new Set(['shg', 'opcpa']);
 
 // crystal element id -> every pair that met at it during this trace, keyed by
 // the two beams' identities so the same pair is not counted once per sampling
@@ -1239,6 +1253,9 @@ export function probeAt(x, y, tol = 16) {
       }
     }
   }
+  const dispersedPulse = best?.pulse
+    ? pulseDurationAfterDispersion(best.pulse, best.gdd, best.groupDelayDifferenceFs)
+    : null;
   return best ? {
     wl: best.wl, bw: best.bw || 0, spec: best.spec || null, pol: best.pol,
     stokes: cloneStokes(best.stokes), intensity: best.intensity,
@@ -1249,7 +1266,9 @@ export function probeAt(x, y, tol = 16) {
     approximation: best.approximation || null,
     pulse: best.pulse ? {
       repRateMHz: best.pulse.repRateMHz,
-      pulseWidthFs: best.pulse.field || best.pulse.fieldIssue ? null : best.pulse.pulseWidthFs,
+      pulseWidthFs: best.pulse.field || best.pulse.fieldIssue ? null : dispersedPulse?.durationFs ?? null,
+      durationIssue: best.pulse.fieldIssue
+        || (dispersedPulse && dispersedPulse.available === false ? dispersedPulse.model : null),
       phaseNs: best.pulse.phaseNs,
       pulseShape: best.pulse.pulseShape || 'gauss',
       gates: (best.pulse.gates || []).map(g => ({ ...g })),
@@ -1551,14 +1570,20 @@ function recordProbeBeam(surface, ray) {
   if (!seen) specimenProbe.set(surface.id, seen = []);
   const key = probeBeamKey(ray);
   const weight = Math.max(0, ray.intensity || 0);
+  // How many parametric stages this beam has passed, converted or not, so a
+  // stage can refuse a cascade deeper than discovery resolves, whichever of
+  // its input rays arrives last.
+  const depth = Number(ray.opcpaDepth) || 0;
   const already = seen.find(b => b.key === key);
   // A beam sampled by several rays is one beam: its power is theirs together,
   // and it arrives when its power arrives.
   if (already) {
     already.intensity += weight;
+    already.power += Math.max(0, Number(ray.power) || 0);
     already.oplWeight += weight;
     already.oplSum += weight * (ray.opl || 0);
     already.oplMin = Math.min(already.oplMin, ray.opl || 0);
+    if (depth > (already.parametricDepth || 0)) already.parametricDepth = depth;
     return;
   }
   seen.push({
@@ -1570,8 +1595,12 @@ function recordProbeBeam(surface, ray) {
     // width -- including whatever a filter upstream did to it.
     bw: ray.bw, spec: ray.spec,
     intensity: weight,
+    power: Math.max(0, Number(ray.power) || 0),
+    gdd: Number.isFinite(ray.gdd) ? ray.gdd : 0,
+    groupDelayDifferenceFs: Number.isFinite(ray.groupDelayDifferenceFs) ? ray.groupDelayDifferenceFs : 0,
     pulse: ray.pulse ? { ...ray.pulse } : null,
     gates: (ray.pulse?.gates || []).map(g => ({ ...g })),
+    ...(depth ? { parametricDepth: depth } : {}),
   });
 }
 
@@ -4161,6 +4190,56 @@ function interact(ray, hit) {
       }
       return out;
     }
+    case 'opcpain': {
+      // A packaged OPCPA has separate seed and pump apertures but one shared
+      // interaction. The probe pass gathers both inputs first; the real pass
+      // then routes amplified signal, idler and residual pump to fixed ports.
+      if (specimenProbe) {
+        recordProbeBeam(s, ray);
+        // The first discovery pass only gathers inputs. On later passes a stage
+        // whose inputs are known emits what it really produces, so the next
+        // stage of a cascade discovers the amplified seed, not nothing.
+        if (!Array.isArray(data.incidentBeams)) return [];
+      }
+      const el = s.el;
+      if (!el) return [];
+      const pumpWl = Number(data.pumpWl ?? 527);
+      const acceptance = Math.max(0, Number(data.pumpAcceptanceNm ?? 2));
+      const enteringAs = Math.abs(ray.wl - pumpWl) <= acceptance ? 'pump' : 'signal';
+      if (enteringAs !== data.inputRole) return [];
+      const result = opcpaConversion(ray, data, el.id || null);
+      const axis = rotPt(1, 0, el.rot || 0);
+      const depth = (Number(ray.opcpaDepth) || 0) + 1;
+      const launch = output => {
+        output = { ...output, ray: { ...output.ray, opcpaDepth: depth } };
+        const local = opcpaPortLocal(`${output.role}Out`, data);
+        const diameter = Number(data[`${output.role}BeamMm`]) || 0;
+        const at = offset => toWorld(el, local.x, local.y + offset);
+        const sampled = Number.isInteger(ray.sample) && ray.sampleCount > 1;
+        if (!(diameter > 0)) return [{ d: axis, origin: at(0), ...output.ray }];
+        if (sampled) {
+          return [{ d: axis, origin: at(diameter * (ray.sample / (ray.sampleCount - 1) - 0.5)), ...output.ray }];
+        }
+        const n = OPO_OUTPUT_SAMPLES;
+        const inputPower = Number.isFinite(ray.power) ? ray.power : ray.intensity;
+        const outputPower = ray.intensity > 0 ? inputPower * output.ray.intensity / ray.intensity : 0;
+        return Array.from({ length: n }, (_, i) => ({
+          d: axis,
+          origin: at(diameter * (i / (n - 1) - 0.5)),
+          ...output.ray,
+          power: outputPower / n,
+          sample: i,
+          sampleCount: n,
+          sampleGrid: 'even',
+        }));
+      };
+      const outputs = Object.values(result.outputs || {});
+      if (outputs.length) return outputs.flatMap(launch);
+      // With no usable partner, the box behaves as a routed pass-through so
+      // a mistimed or disconnected stage stays diagnosable downstream.
+      if (enteringAs === 'pump' && data.transmitPump === false) return [];
+      return launch({ role: enteringAs, ray: { intensity: ray.intensity, tag: `opcpa-${enteringAs}-pass` } });
+    }
     case 'opoin': {
       // The integrated OPO's rear aperture. Accepted pump light is converted
       // by the same model as the crystal's OPO mode and leaves the front
@@ -4242,6 +4321,19 @@ function interact(ray, hit) {
       // happens on that pass, so a harmonic made upstream is available as a
       // colour further downstream.
       if (specimenProbe && MIX_CONVERTS.has(data.convert)) recordProbeBeam(s, ray);
+      if (data.convert === 'opcpa') {
+        // During the discovery pass every input continues unchanged so later
+        // two-beam elements can still see it. The real pass uses the complete
+        // incident-beam record gathered above.
+        const opcpaDepth = (Number(ray.opcpaDepth) || 0) + 1;
+        if (specimenProbe && !Array.isArray(data.incidentBeams)) return [{ d, opcpaDepth }];
+        const result = opcpaConversion(ray, data, s.el?.id || null);
+        if (result.state === 'reconverted') return [{ d }];
+        const outputs = Object.values(result.outputs || {}).map(output => ({ d, ...output.ray, opcpaDepth }));
+        if (outputs.length) return outputs;
+        const isPump = Math.abs(ray.wl - Number(data.pumpWl ?? 527)) <= Math.max(0, Number(data.pumpAcceptanceNm ?? 2));
+        return isPump && data.transmitPump === false ? [] : [{ d, opcpaDepth }];
+      }
       if (data.convert === 'opo') {
         // Optical parametric oscillation (see parametric.js for the model).
         const pass = () => [{ d }];
@@ -4333,7 +4425,138 @@ function interact(ray, hit) {
   }
 }
 
-// How many rays an integrated OPO spreads a single-ray pump over, per output,
+function opcpaBeamPowerW(beam) {
+  const sourcePower = Number(beam?.pulse?.avgPowerW);
+  const fraction = Number(beam?.power);
+  return sourcePower > 0 && fraction > 0 ? sourcePower * fraction : 0;
+}
+
+// Resolve one pump + seeded-signal pair and turn it into a bounded single-pass
+// OPCPA energy budget. The real signal keeps its spectrum, chirp and timing;
+// the generated idler is a new mixed pulse. The model is deliberately
+// phenomenological: gain and the pump-depletion ceiling are authored rather
+// than derived from a crystal prescription.
+function opcpaConversion(ray, data, elementId) {
+  if (elementId && Array.isArray(ray.parametricPath) && ray.parametricPath.includes(elementId)) {
+    return { state: 'reconverted', currentRole: 'other' };
+  }
+  const beams = Array.isArray(data.incidentBeams) ? data.incidentBeams : [];
+  const pumpWl = Number(data.pumpWl ?? 527);
+  const acceptance = Math.max(0, Number(data.pumpAcceptanceNm ?? 2));
+  const pumpCandidates = beams.filter(beam => Math.abs(beam.wl - pumpWl) <= acceptance);
+  const strongest = list => [...list].sort((a, b) => opcpaBeamPowerW(b) - opcpaBeamPowerW(a))[0] || null;
+  const pump = strongest(pumpCandidates);
+  const seed = strongest(beams.filter(beam => beam !== pump && (!pump || beam.wl > pump.wl + 1e-9)));
+  const current = beamRecordFor(ray, beams);
+  const currentRole = current === pump ? 'pump' : current === seed ? 'signal' : 'other';
+  const finish = (state, extra = {}) => {
+    recordOpcpa(elementId, { state, pumpNm: pump?.wl ?? null, signalWl: seed?.wl ?? null, ...extra });
+    return { state, currentRole, ...extra };
+  };
+  if (!pump) return finish('missingPump');
+  if (!seed) return finish('missingSeed');
+  // Decided from the discovery records of both inputs, so the seed and pump
+  // rays of the stage reach the same verdict in either arrival order.
+  if (Math.max(seed.parametricDepth || 0, pump.parametricDepth || 0) >= MAX_PARAMETRIC_CASCADE) {
+    return finish('cascadeTooLong');
+  }
+  if (!pump.pulse || !seed.pulse) return finish('unpulsed');
+  // Durations as the beams arrive, stretching included, the same way a beam
+  // probe reports them.
+  const arriving = beam => {
+    if (beam.pulse.field || beam.pulse.fieldIssue) {
+      return { fs: null, reason: beam.pulse.fieldIssue || DISPERSION_UNAVAILABLE.sampled };
+    }
+    const d = pulseDurationAfterDispersion(beam.pulse, beam.gdd || 0, beam.groupDelayDifferenceFs || 0);
+    return d?.available !== false && d?.durationFs > 0
+      ? { fs: d.durationFs, reason: null }
+      : { fs: null, reason: d?.model || 'Pulse duration unavailable' };
+  };
+  const seedArrival = arriving(seed), pumpArrival = arriving(pump);
+  // Overlap, coverage and gain all need both durations. When the tracer
+  // cannot state one, the stage says so instead of amplifying on a guess.
+  if (!(seedArrival.fs > 0)) return finish('durationUnavailable', { reason: `Seed: ${seedArrival.reason}` });
+  if (!(pumpArrival.fs > 0)) return finish('durationUnavailable', { reason: `Pump: ${pumpArrival.reason}` });
+  const seedDurationFs = seedArrival.fs, pumpDurationFs = pumpArrival.fs;
+  const atCrystal = (beam, fs) => ({ ...beam, pulse: { ...beam.pulse, pulseWidthFs: fs } });
+  const timing = mixOverlap(atCrystal(seed, seedDurationFs), atCrystal(pump, pumpDurationFs));
+  if (timing.unsupported) return finish('unsupported', { timing });
+  const waves = opoWaves({
+    pumpWl: pump.wl,
+    pumpFwhmNm: pumpWidthNm(pump),
+    signalWl: seed.wl,
+    linewidthMode: 'signal',
+    signalLinewidthCm: nmToWavenumberWidth(seed.wl, pumpWidthNm(seed)),
+  });
+  if (!waves) return finish('invalid', { timing });
+  const seedPowerW = opcpaBeamPowerW(seed);
+  const pumpPowerW = opcpaBeamPowerW(pump);
+  if (!(seedPowerW > 0) || !(pumpPowerW > 0)) return finish('noPower', { timing, waves });
+  const transfer = opcpaTransfer({
+    seedPowerW,
+    pumpPowerW,
+    smallSignalGain: data.smallSignalGain,
+    maxPumpDepletion: data.maxPumpDepletion,
+    overlap: timing.factor,
+    signalShare: waves.signalShare,
+    seedDurationFs,
+    pumpDurationFs,
+  });
+  const idlerPulse = mixPulse(seed.pulse, pump.pulse, {
+    crystalId: elementId,
+    kind: 'opcpa-idler',
+    wl: waves.idler.wl,
+    bandwidthNm: waves.idler.bw,
+    centerNs: timing.centerNs,
+    oplMm: seed.opl || 0,
+    repRateMHz: timing.repRateMHz,
+    partnerPulseOffset: timing.partnerPulseOffset,
+    periodNs: timing.periodNs,
+  });
+  const path = [...(Array.isArray(ray.parametricPath) ? ray.parametricPath : []), elementId].filter(Boolean);
+  const phase = {
+    phaseValid: false,
+    phaseIssue: 'OPCPA output phase relative to the pump is not modelled',
+    parametricPath: path,
+  };
+  const outputs = {};
+  if (currentRole === 'signal') {
+    outputs.signal = {
+      role: 'signal',
+      ray: { intensity: ray.intensity * transfer.actualGain, tag: 'opcpa-s', ...phase },
+    };
+    if (data.outputIdler !== false && transfer.idlerPowerW > 0) {
+      const factor = transfer.idlerPowerW / seedPowerW;
+      outputs.idler = {
+        role: 'idler',
+        ray: {
+          wl: waves.idler.wl,
+          bw: waves.idler.bw,
+          spec: waves.idler.spec,
+          intensity: ray.intensity * factor,
+          tag: 'opcpa-i',
+          pulse: idlerPulse,
+          sourceId: idlerPulse?.sourceId || `${ray.sourceId || ''}›${elementId || 'opcpa'}:idler`,
+          gdd: 0,
+          ...phase,
+        },
+      };
+    }
+  } else if (currentRole === 'pump' && data.transmitPump !== false && transfer.residualPumpW > 0) {
+    outputs.pump = {
+      role: 'pump',
+      ray: { intensity: ray.intensity * (1 - transfer.pumpDepletion), tag: 'opcpa-p', parametricPath: path },
+    };
+  }
+  const state = transfer.overlap <= 0.02 ? 'noOverlap' : transfer.pumpTransferredW > 0 ? 'amplifying' : 'idle';
+  return finish(state, { timing, waves, transfer, idlerPulse, outputs });
+}
+
+// Parametric stages resolved in sequence by the discovery passes; a longer
+// chain would leave its last stages without a discovered seed.
+const MAX_PARAMETRIC_CASCADE = 6;
+
+// How many rays an integrated OPO or OPCPA spreads a single-ray input over, per output,
 // with equal power weights across the authored diameter.
 const OPO_OUTPUT_SAMPLES = 9;
 
@@ -5042,6 +5265,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           // what the linear-only continuation left out.
           approximation: r.approximation || c.approximation || null,
           parametricPath: 'parametricPath' in c ? c.parametricPath : r.parametricPath,
+          opcpaDepth: 'opcpaDepth' in c ? c.opcpaDepth : r.opcpaDepth,
           intensity: childIntensity,
           power: c.power !== undefined ? c.power : Number.isFinite(r.power)
             ? r.power * (c.intensity !== undefined && r.intensity > 0 ? c.intensity / r.intensity : 1)
@@ -5338,6 +5562,7 @@ export function traceScene(elements, beams = []) {
   cellSpectrumCache = new Map();
   specimenIncident = new Map();
   opoStates = new Map();
+  opcpaStates = new Map();
   supercontinuumStates = new Map();
   mixStates = new Map();
   specimenTimingStates = new Map();
@@ -5482,16 +5707,27 @@ export function traceScene(elements, beams = []) {
   const needsProbe = surfaces.some(s =>
     (s.kind === 'specimen' && (s.data.channels || []).some(channelNeedsExcitationProbe))
     || (s.kind === 'transmit' && MIX_CONVERTS.has(s.data.convert))
+    || s.kind === 'opcpain'
     || (s.kind === 'attenuate' && s.data.specimen && s.el
         && ['linear', 'nonlinear'].includes(specimenTypeOf(s.el.params))));
-  if (needsProbe) {
+  // A cascade of parametric stages resolves one stage per discovery pass:
+  // stage k only knows its seed once stage k−1 has been resolved.
+  const parametricStages = new Set(surfaces
+    .filter(s => s.kind === 'opcpain' || (s.kind === 'transmit' && s.data.convert === 'opcpa'))
+    .map(s => s.el?.id || s.id)).size;
+  const discoveryPasses = needsProbe ? Math.max(1, Math.min(MAX_PARAMETRIC_CASCADE, parametricStages)) : 0;
+  for (let pass = 0; pass < discoveryPasses; pass++) {
     specimenProbe = new Map();
     try {
       emitSources(false);
       for (const s of surfaces) {
-        if (s.kind !== 'specimen' && !(s.kind === 'transmit' && MIX_CONVERTS.has(s.data.convert))
+        if (s.kind !== 'specimen' && s.kind !== 'opcpain' && !(s.kind === 'transmit' && MIX_CONVERTS.has(s.data.convert))
             && !(s.kind === 'attenuate' && s.data.specimen)) continue;
-        const beams = (specimenProbe.get(s.id) || []).map(settleProbeBeam);
+        const records = s.kind === 'opcpain' && s.el
+          ? surfaces.filter(peer => peer.kind === 'opcpain' && peer.el?.id === s.el.id)
+            .flatMap(peer => specimenProbe.get(peer.id) || [])
+          : specimenProbe.get(s.id) || [];
+        const beams = records.map(settleProbeBeam);
         s.data.incidentBeams = beams;
         s.data.incidentWls = [...new Set(beams.map(b => b.wl))];
         if (s.el) specimenIncident.set(s.el.id, beams);
