@@ -13,6 +13,9 @@ import { propagateEnvelope, fieldMetrics } from '../sketch/js/pulse-field.js';
 import { thickLensCardinals } from '../sketch/js/elements.js';
 import { analyzerTransmission, linearStokes, retarder } from '../sketch/js/polarization.js';
 import { finesseForReflectivity, reflectivityForFinesse } from '../sketch/js/etalon.js';
+import { parametricGainCoefficient, parametricPair, parametricSmallSignalGain } from '../sketch/js/parametric.js';
+import { allocateParametricAmplifier } from '../sketch/js/parametric-amplifier.js';
+import { coupledWaveConversion } from '../calculators/opa/coupled-wave.js';
 
 // The quantitative models listed in docs/validation.md are checked against
 // separately written reference implementations (validation/reference/*.py,
@@ -106,9 +109,33 @@ const APP = {
     }
     return { reflectivity, finesse: finesseForReflectivity(reflectivity) };
   },
+  opa: ({ kind, ...inputs }) => {
+    if (kind === 'gamma') return { gammaPerM: parametricGainCoefficient(inputs) };
+    if (kind === 'gain') return { gain: parametricSmallSignalGain(inputs).gain };
+    if (kind === 'depleted') {
+      const { gammaPerM, lengthM, deltaKPerM, seedPhotonRatio } = inputs;
+      return { conversion: coupledWaveConversion({ gammaPerM, deltaKPerM, seedPhotonRatio, lengthsM: [lengthM] })[0] };
+    }
+    if (kind === 'photons') {
+      // The allocator's generated increments for a small seed: idler and
+      // pump debit per watt of signal gain.
+      const c = allocateParametricAmplifier({ pump: { wl: inputs.pumpWl, powerW: 1 },
+        seeds: [{ key: 's', wl: inputs.signalWl, powerW: 1e-9, gammaPerM: 1000 }], lengthM: 1e-3 }).channels[0];
+      return { idlerWl: parametricPair(inputs.pumpWl, inputs.signalWl).idlerWl,
+        idlerPerSignalW: c.idlerOutW / c.signalGainW, pumpPerSignalW: c.depletedPumpW / c.signalGainW };
+    }
+    // kind === 'pulsed': the allocator's average-power gain for a tiny seed
+    // (undepleted), Gamma_peak L = 5 at 1 mm.
+    const { gammaPeakL, pumpFwhmFs, seedFwhmFs, delayFs, repRateMHz } = inputs;
+    const pulse = (widthFs, phaseNs = 0) => ({ repRateMHz, pulseWidthFs: widthFs, phaseNs });
+    const seed = { key: 's', wl: 800, powerW: 1e-9, gammaPerM: gammaPeakL * 1000,
+      ...(seedFwhmFs ? { pulse: pulse(seedFwhmFs, delayFs * 1e-6) } : {}) };
+    return { gain: allocateParametricAmplifier({ pump: { wl: 532, powerW: 1e9, pulse: pulse(pumpFwhmFs) },
+      seeds: [seed], lengthM: 1e-3 }).channels[0].achievedGain };
+  },
 };
 
-for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial']) {
+for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa']) {
   const model = expected(name);
   for (const c of model.cases) {
     test(`${model.id}: ${c.name}`, () => {

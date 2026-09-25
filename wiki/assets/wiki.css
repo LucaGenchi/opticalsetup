@@ -110,6 +110,12 @@ a:hover { text-decoration: underline; }
 @media (max-width: 640px) {
   .header-actions .btn { display: none; }
 }
+/* Four header links do not fit beside the brand on a phone: they take a
+   row of their own under it. */
+@media (max-width: 520px) {
+  .site-header { flex-wrap: wrap; row-gap: 8px; padding: 12px 16px; }
+  .header-actions { flex-basis: 100%; gap: 14px; }
+}
 
 /* ---------- article ---------- */
 .wiki-article { padding: 28px 0 72px; max-width: 700px; }
