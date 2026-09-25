@@ -35,6 +35,9 @@ export const OPA_REFERENCE_LENGTH_M = 1e-3;
 // is narrower, so a 0.1 nm band inside a 600 nm continuum and a narrow seed
 // inside a wide band are both integrated, not sampled on a coarse grid.
 export const SEED_SLICES = 65;
+// OPA stages the tracer plans in a cascade, one planning pass per stage
+// (sketch/js/raytrace.js, traceScene).
+export const MAX_OPA_STAGES = 6;
 const GAIN_REACH_FWHM = 2.5;
 
 const clamp = (value, lo, hi, fallback) => {
@@ -66,17 +69,24 @@ export const gammaLForGain = gain => (gain > 1 ? Math.acosh(Math.sqrt(gain)) : 0
 function profileArea(spec) {
   if (spec.kind === 'gauss') return spec.fwhm * Math.sqrt(Math.PI / (4 * Math.LN2));
   if (spec.kind === 'flat') return spec.hi - spec.lo;
+  if (spec.kind === 'sampled' && spec.opaOutput && Array.isArray(spec.w) && spec.w.length > 1) {
+    const n = spec.w.length, dx = (spec.hi - spec.lo) / (n - 1);
+    return spec.w.reduce((sum, w, i) => sum + (i === 0 || i === n - 1 ? 0.5 : 1) * Math.max(0, w), 0) * dx;
+  }
   return 0;
 }
 
 // A seed beam's spectral slices: { wl, fraction, line } of its power in the
 // part of its spectrum the gain band reaches. Supported seeds are the ones
-// sources emit: a monochromatic line, a Gaussian line, a flat continuum and a
-// lamp's discrete lines. A Gaussian or flat profile is smooth and single, so
-// 65 slices across its overlap with the band resolve both. A reshaped
-// (sampled) spectrum, for instance a filtered continuum, can hide structure
-// narrower than any fixed slicing: it returns null, and the seed is reported
-// as unsupported rather than silently mis-sampled.
+// sources emit -- a monochromatic line, a Gaussian line, a flat continuum and
+// a lamp's discrete lines -- and the signal or idler of another OPA (the next
+// stage of a cascade): a piecewise-linear profile this module built itself on
+// SEED_SLICES points (spectrumOf), with no structure between them. A Gaussian
+// or flat profile is smooth and single, so 65 slices across its overlap with
+// the band resolve both. Any other reshaped (sampled) spectrum, for instance a
+// filtered continuum, can hide structure narrower than any fixed slicing: it
+// returns null, and the seed is reported as unsupported rather than silently
+// mis-sampled.
 export function seedSlices(settings, { wl, bw, spec }) {
   const profile = spec || (bw > 0 ? gaussianSpectrum(wl, bw) : null);
   const reach = GAIN_REACH_FWHM * settings.gainBandwidthNm;
@@ -86,7 +96,8 @@ export function seedSlices(settings, { wl, bw, spec }) {
     const total = profile.lines.reduce((sum, l) => sum + l.w, 0);
     return total > 0 ? profile.lines.filter(l => inBand(l.nm)).map(l => ({ wl: l.nm, fraction: l.w / total, line: true })) : [];
   }
-  if (profile.kind !== 'gauss' && profile.kind !== 'flat') return null;
+  const supported = profile.kind === 'gauss' || profile.kind === 'flat' || (profile.kind === 'sampled' && profile.opaOutput);
+  if (!supported) return null;
   const [supportLo, supportHi] = spectrumSupport(profile);
   const lo = Math.max(supportLo, settings.signalWl - reach), hi = Math.min(supportHi, settings.signalWl + reach);
   const area = profileArea(profile);
@@ -117,7 +128,7 @@ function spectrumOf(points, fallbackBw = 0, lines = false) {
   if (kept.length === 1) {
     return { wl: centroid, bw: fallbackBw, spec: fallbackBw > 0 ? gaussianSpectrum(centroid, fallbackBw) : null };
   }
-  const lo = kept[0].wl, hi = kept.at(-1).wl, n = 65, w = [];
+  const lo = kept[0].wl, hi = kept.at(-1).wl, n = SEED_SLICES, w = [];
   // Power per unit wavelength at each point: its power over the span it
   // stands for (half-way to each neighbour). The idler's slices are not
   // evenly spaced in wavelength even when the signal's are.
@@ -135,7 +146,9 @@ function spectrumOf(points, fallbackBw = 0, lines = false) {
     w.push(density[k] + (density[k + 1] - density[k]) * t);
   }
   const peak = Math.max(...w);
-  const spec = peak > 0 ? { kind: 'sampled', lo, hi, w: w.map(v => v / peak) } : null;
+  // Marked as this module's own smooth output: a later OPA stage may slice it
+  // (seedSlices). Any element that reshapes it builds a new, unmarked profile.
+  const spec = peak > 0 ? { kind: 'sampled', lo, hi, w: w.map(v => v / peak), opaOutput: true } : null;
   const stats = spec ? spectrumStats(spec) : null;
   return { wl: centroid, bw: stats?.fwhm ?? 0, spec };
 }
