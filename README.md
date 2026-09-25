@@ -336,7 +336,9 @@ content file rather than hand-written HTML:
   calls the app's own functions, so a number checked there is the number the
   app computes; the text below states the model, the formulas, the precision
   and the references. `calculators/assets/calculator-kit.js` holds the shared
-  form and chart code for the next calculators.
+  form and chart code for the next calculators. After editing the content,
+  run `node tools/build-calculators.mjs`; the test suite (and CI) fails if a
+  committed page is out of date.
 
 Every page in all three links to a locked, click-to-inspect embed of the
 actual live canvas (`sketch/?demo=`, `?example=`, or `?community=`). After
@@ -348,6 +350,7 @@ finish with `node tools/build-sitemap.mjs`, which assembles the combined
 ## Run locally
 
 ```bash
+npm ci                # once: dev dependencies (KaTeX) for the page generators
 node serve.mjs        # landing page: http://localhost:5182
                        # app: http://localhost:5182/sketch/
 npm test               # runs the regression suite

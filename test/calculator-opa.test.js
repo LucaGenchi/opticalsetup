@@ -198,9 +198,9 @@ test('every input has a label, a help text and a default inside its range', () =
   assert.deepEqual(validateOpaInputs(OPA_DEFAULTS).reasons, []);
 });
 
-// The generator pre-renders formulas with KaTeX, a dev dependency that CI
-// does not install (it runs npm test on a bare checkout), so there the check
-// is skipped with its reason, as the optional Python re-run is.
+// The generator pre-renders formulas with KaTeX, a dev dependency (npm ci).
+// CI installs it, so there a stale page fails; on a bare checkout without
+// it the check skips with its reason.
 const katexInstalled = (() => {
   try { return spawnSync(process.execPath, ['-e', "import('katex').then(() => process.exit(0), () => process.exit(1))"], { cwd: root }).status === 0; } catch { return false; }
 })();
