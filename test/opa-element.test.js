@@ -183,3 +183,48 @@ test('a pump-power scan: the conversion grows with the pump and saturates at the
     last = converted;
   }
 });
+
+// Andrea's reproductions against 11dbd8b: a 0.1 nm gain band inside a
+// 400-1000 nm continuum was sampled on the seed's 9.4 nm grid, so tuning to
+// 780 nm read 'outside the band' and 775 nm amplified a whole grid cell's
+// power, with the seed's full 600 nm width.
+function scSeed() {
+  const sc = createElement('sclaser', 0, 18);
+  Object.assign(sc.params, { scMin: 400, scMax: 1000, avgPowerW: 1e-6, repRateMHz: 0.2, pulseWidthFs: 300, beamMode: 'line' });
+  return sc;
+}
+test('a narrow gain band inside a broad continuum is integrated wherever it is tuned', () => {
+  const gains = [775, 777.3, 780, 781.9].map(signalWl => {
+    const { plan, watts } = bench({ seed: scSeed(), opa: opaElement({ signalWl, gainBandwidthNm: 0.1 }) });
+    const seed = plan.seeds[0];
+    assert.equal(seed.state, 'amplifying', `${signalWl} nm`);
+    // The amplified light has the band's width, not the continuum's.
+    assert.ok(seed.signal.bw > 0.03 && seed.signal.bw < 0.2, `signal width ${seed.signal.bw} nm at ${signalWl} nm`);
+    assert.ok(seed.idler.bw < 1, `idler width ${seed.idler.bw} nm`);
+    near(watts.pump + watts.signal + watts.idler, 1 + 1e-6, 1e-12);
+    return seed.gainW;
+  });
+  // A flat continuum: the same slice power wherever the band sits (the gain
+  // itself changes slightly with wavelength through the idler, Gamma^2 ~ 1/(lambda_s lambda_i)).
+  for (const g of gains) assert.ok(rel(g, gains[0]) < 0.02, `${g} vs ${gains[0]}`);
+});
+
+test('a monochromatic seed is one line: the amplified light is a line too', () => {
+  const plan = planOpa({ signalWl: 780, gainBandwidthNm: 40, smallSignalGainDb: 40 },
+    { pump: { key: 'p', wl: 515, bw: 0, powerW: 1 }, pumps: [{}], seeds: [{ key: 's', wl: 781, bw: 0, spec: null, powerW: 1e-6 }] });
+  assert.equal(plan.seeds[0].state, 'amplifying');
+  assert.equal(plan.seeds[0].signal.bw, 0);
+  assert.equal(plan.seeds[0].signal.wl, 781);
+});
+
+test('light from an upstream OPA passes a second OPA unamplified, and the readout says why', () => {
+  const pump = laser(-18, 515, 1), seed = laser(18, 780, 1e-6), first = opaElement();
+  // A second OPA directly behind the first: its seed port sits on the first
+  // one's signal output.
+  const second = createElement('opa', 460, 18);
+  Object.assign(second.params, { signalWl: 780, gainBandwidthNm: 40, smallSignalGainDb: 40 });
+  traceScene([pump, seed, first, second], []);
+  const plan = opaReading(second.id);
+  assert.ok(plan.unplannedInput, 'the second OPA saw light the probe pass did not');
+  assert.match(registry.opa.params.find(p => p.key === 'opaState').readout(second.params, second), /cascaded OPAs are not modelled/);
+});

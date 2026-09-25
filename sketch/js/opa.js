@@ -24,14 +24,18 @@
 
 import { parametricPair, mixWidthNm } from './parametric.js';
 import { allocateParametricAmplifier } from './parametric-amplifier.js';
-import { spectrumSamples, gaussianSpectrum, spectrumStats } from './spectrum.js';
+import { gaussianSpectrum, spectrumStats, spectrumSupport, spectrumWeight } from './spectrum.js';
 
 // The allocator works with Gamma (1/m) and a length; any length works as
 // long as Gamma L is right, so a fixed 1 mm reference is used.
 export const OPA_REFERENCE_LENGTH_M = 1e-3;
-// Slices of a broadband seed; samples whose gain is negligible are dropped.
-const SEED_SLICES = 65;
-const NEGLIGIBLE_GAIN = 1e-6;
+// A seed is sliced where the gain is: across the overlap of its spectrum
+// with the gain band, out to where the band's excess gain is below 1e-6 of
+// its peak (2.23 FWHM; 2.5 is used). The slices resolve whichever of the two
+// is narrower, so a 0.1 nm band inside a 600 nm continuum and a narrow seed
+// inside a wide band are both integrated, not sampled on a coarse grid.
+export const SEED_SLICES = 65;
+const GAIN_REACH_FWHM = 2.5;
 
 const clamp = (value, lo, hi, fallback) => {
   const n = Number(value);
@@ -57,15 +61,43 @@ export function opaGainAt(settings, wl) {
 // The Gamma L that gives power gain G at zero mismatch: G = cosh^2(Gamma L).
 export const gammaLForGain = gain => (gain > 1 ? Math.acosh(Math.sqrt(gain)) : 0);
 
-// A seed beam's spectral slices: { wl, fraction } of its power, keeping only
-// those the gain band reaches. A line (no width) is one slice.
+// The area under a profile's weight (peak 1): the normaliser that turns its
+// weight into a density. Exact for Gaussian and flat profiles, trapezoid for
+// a sampled one.
+function profileArea(spec) {
+  if (spec.kind === 'gauss') return spec.fwhm * Math.sqrt(Math.PI / (4 * Math.LN2));
+  if (spec.kind === 'flat') return spec.hi - spec.lo;
+  if (spec.kind === 'sampled' && Array.isArray(spec.w) && spec.w.length > 1) {
+    const n = spec.w.length, dx = (spec.hi - spec.lo) / (n - 1);
+    return spec.w.reduce((sum, w, i) => sum + (i === 0 || i === n - 1 ? 0.5 : 1) * Math.max(0, w), 0) * dx;
+  }
+  return 0;
+}
+
+// A seed beam's spectral slices: { wl, fraction } of its power, in the part
+// of its spectrum the gain band reaches. A monochromatic seed is one slice;
+// a line spectrum gives one slice per line inside the band.
 export function seedSlices(settings, { wl, bw, spec }) {
   const profile = spec || (bw > 0 ? gaussianSpectrum(wl, bw) : null);
-  const samples = profile ? spectrumSamples(profile, SEED_SLICES) : [{ wl, weight: 1 }];
-  const g0 = 10 ** (settings.smallSignalGainDb / 10);
-  return (samples || [])
-    .filter(s => s.weight > 0 && (g0 <= 1 || opaGainAt(settings, s.wl) - 1 > NEGLIGIBLE_GAIN * (g0 - 1)))
-    .map(s => ({ wl: s.wl, fraction: s.weight }));
+  const reach = GAIN_REACH_FWHM * settings.gainBandwidthNm;
+  const inBand = x => Math.abs(x - settings.signalWl) <= reach;
+  if (!profile) return inBand(wl) ? [{ wl, fraction: 1 }] : [];
+  if (profile.kind === 'lines') {
+    const total = profile.lines.reduce((sum, l) => sum + l.w, 0);
+    return total > 0 ? profile.lines.filter(l => inBand(l.nm)).map(l => ({ wl: l.nm, fraction: l.w / total })) : [];
+  }
+  const [supportLo, supportHi] = spectrumSupport(profile);
+  const lo = Math.max(supportLo, settings.signalWl - reach), hi = Math.min(supportHi, settings.signalWl + reach);
+  const area = profileArea(profile);
+  if (!(hi > lo) || !(area > 0)) return [];
+  const width = (hi - lo) / SEED_SLICES;
+  const slices = [];
+  for (let k = 0; k < SEED_SLICES; k++) {
+    const x = lo + (k + 0.5) * width;
+    const fraction = Math.max(0, spectrumWeight(profile, x)) * width / area;
+    if (fraction > 0) slices.push({ wl: x, fraction });
+  }
+  return slices;
 }
 
 // A spectrum from (wavelength, power) points: one line, or a sampled profile
@@ -142,10 +174,12 @@ export function planOpa(params, { pump, pumps = [], seeds = [] }) {
     const mine = channels.filter(c => c.seedKey === seed.key).map(c => ({ ...c, out: byKey.get(c.key) }));
     const amplifying = mine.filter(c => c.out?.state === 'amplifying');
     const states = [...new Set(mine.map(c => c.out?.state).filter(Boolean))];
-    const signal = spectrumOf(amplifying.map(c => ({ wl: c.wl, powerW: c.out.signalGainW })), seed.bw || 0);
+    // The amplified light's spectrum is the amplified slices' own: one slice
+    // is a line (a monochromatic seed), never the whole seed's width.
+    const signal = spectrumOf(amplifying.map(c => ({ wl: c.wl, powerW: c.out.signalGainW })), 0);
     const idlerPoints = amplifying.map(c => ({ wl: c.out.idlerWl, powerW: c.out.idlerOutW }));
     const idler = spectrumOf(idlerPoints, signal && idlerPoints.length === 1
-      ? mixWidthNm(idlerPoints[0].wl, pump.wl, pump.bw || 0, signal.wl, seed.bw || 0) : 0);
+      ? mixWidthNm(idlerPoints[0].wl, pump.wl, pump.bw || 0, signal.wl, 0) : 0);
     const gainW = amplifying.reduce((sum, c) => sum + c.out.signalGainW, 0);
     const idlerW = amplifying.reduce((sum, c) => sum + c.out.idlerOutW, 0);
     const pumpW = amplifying.reduce((sum, c) => sum + c.out.depletedPumpW, 0);

@@ -4203,10 +4203,19 @@ function interact(ray, hit) {
         const offset = data.outputBeamMm > 0 && sampled ? data.outputBeamMm * (ray.sample / (ray.sampleCount - 1) - 0.5) : 0;
         return [{ d: axis, origin: toWorld(el, local.x, local.y + offset), ...fields }];
       };
+      // Light the probe pass did not see here -- above all what an upstream
+      // OPA generated, which the probe pass does not trace -- was not part
+      // of the plan. It passes through unchanged and the readout says why.
+      const key = probeBeamKey(ray);
+      const planned = k === 'opaseed'
+        ? plan.seeds.some(seed => seed.record?.key === key)
+        : plan.pumpRecord?.key === key;
+      if (!planned) plan.unplannedInput = true;
       // The seed itself is not split or converted: it continues unchanged.
       // Tagged children leave from their port; an untagged single child would
       // be continued from the input face instead (the tracer's shortcut).
       if (k === 'opaseed') return launch('signal', { tag: 'opaSeed' });
+      if (!planned) return data.outputPump ? launch('pump', { tag: 'opaPump' }) : [];
       const out = [];
       if (data.outputPump && plan.pumpScale > 0) out.push(...launch('pump', { tag: 'opaPump', intensity: ray.intensity * plan.pumpScale }));
       const pumpRecord = plan.pumpRecord;
