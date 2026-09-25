@@ -4242,10 +4242,10 @@ function interact(ray, hit) {
       // OPA generated, which the probe pass does not trace -- was not part
       // of the plan. It passes through unchanged and the readout says why.
       const key = probeBeamKey(ray);
-      const planned = k === 'opaseed'
-        ? plan.seeds.some(seed => seed.record?.key === key)
-        : plan.pumpRecord?.key === key;
-      if (!planned) plan.unplannedInput = true;
+      if (!plan.seen?.[k === 'opaseed' ? 'seed' : 'pump']?.has(key)) plan.unplannedInput = true;
+      // A pump ray is converted only as the planned pump; anything else at the
+      // pump port passes through.
+      const planned = k === 'opaseed' || plan.pumpRecord?.key === key;
       // The seed itself is not split or converted: it continues unchanged.
       // Tagged children leave from their port; an untagged single child would
       // be continued from the input face instead (the tracer's shortcut).
@@ -5467,6 +5467,9 @@ function planOpaElements(surfaces) {
       pump: pumpRecords.length === 1 ? pumpRecords[0] : null, pumps: pumpRecords, seeds: seedRecords,
     });
     plan.pumpRecord = pumpRecords.length === 1 ? pumpRecords[0] : null;
+    // Every beam the probe pass saw at each port, whether or not it could be
+    // amplified: what the real pass checks its arrivals against.
+    plan.seen = { pump: new Set(pumpRecords.map(r => r.key)), seed: new Set(seedRecords.map(r => r.key)) };
     for (const seed of plan.seeds) seed.record = seedRecords.find(r => r.key === seed.key) || null;
     opaStates.set(id, plan);
   }

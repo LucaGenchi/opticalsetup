@@ -228,3 +228,36 @@ test('light from an upstream OPA passes a second OPA unamplified, and the readou
   assert.ok(plan.unplannedInput, 'the second OPA saw light the probe pass did not');
   assert.match(registry.opa.params.find(p => p.key === 'opaState').readout(second.params, second), /cascaded OPAs are not modelled/);
 });
+
+// Andrea's reproductions against 647d7c1.
+const cwPump = { key: 'p', wl: 515, bw: 0, powerW: 1 };
+const wide = { signalWl: 800, gainBandwidthNm: 100, smallSignalGainDb: 20 };
+test('a reshaped (sampled) seed spectrum is reported unsupported, never mis-sampled into no overlap', () => {
+  const spike = { kind: 'sampled', lo: 700, hi: 900, w: Array.from({ length: 1001 }, (_, i) => (i === 400 ? 1 : 0)) };
+  const plan = planOpa(wide, { pump: cwPump, pumps: [cwPump], seeds: [{ key: 's', wl: 780, bw: 0.2, spec: spike, powerW: 1e-6 }] });
+  assert.equal(plan.seeds[0].state, 'spectrumUnsupported');
+  assert.equal(plan.seeds[0].gainW, 0);
+  assert.match(registry.opa.params.find(p => p.key === 'opaState').readout(wide, null) || '', /Tuned/);
+});
+
+test('discrete seed lines stay discrete lines in the signal and the idler', () => {
+  const plan = planOpa(wide, { pump: cwPump, pumps: [cwPump],
+    seeds: [{ key: 's', wl: 800, bw: 50, spec: { kind: 'lines', lines: [{ nm: 775, w: 1 }, { nm: 825, w: 1 }] }, powerW: 1e-6 }] });
+  const seed = plan.seeds[0];
+  assert.equal(seed.state, 'amplifying');
+  assert.equal(seed.signal.spec.kind, 'lines');
+  assert.deepEqual(seed.signal.spec.lines.map(l => l.nm), [775, 825]);
+  assert.equal(seed.idler.spec.kind, 'lines');
+  // Idlers sorted by wavelength: 825 nm's (1370.6 nm) comes before 775 nm's (1535.1 nm).
+  const idlers = [825, 775].map(wl => 1 / (1 / 515 - 1 / wl));
+  seed.idler.spec.lines.forEach((l, k) => near(l.nm, idlers[k], 1e-9));
+});
+
+test('a seed with no pump is an ordinary seed, not an upstream OPA', () => {
+  const opa = opaElement();
+  traceScene([laser(18, 780, 1e-6), opa], []);
+  const plan = opaReading(opa.id);
+  assert.equal(plan.state, 'noPump');
+  assert.ok(!plan.unplannedInput);
+  assert.doesNotMatch(registry.opa.params.find(p => p.key === 'opaState').readout(opa.params, opa), /upstream/);
+});

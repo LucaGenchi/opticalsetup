@@ -2263,6 +2263,7 @@ function opaStateCore(plan, p) {
         degenerateUnsupported: 'at exactly twice the pump wavelength (degenerate, phase-sensitive): not modelled',
         doubleSeedUnsupported: 'another seed sits at its idler wavelength: not modelled',
         durationUnsupported: 'a pulse duration is unknown: not modelled',
+        spectrumUnsupported: 'its spectrum was reshaped upstream (a filtered continuum): not modelled, passes through unamplified',
         gatesUnsupported: 'the beam is modulated (gated): not modelled',
       }[seed.state] || 'no gain at these settings';
       lines.push(`${head}: ${why}`);
@@ -5451,7 +5452,7 @@ export function getDirectManipulation(el) {
 // simulated elements affect traced rays, configurable elements need an active
 // mode, and diagram-only elements are honest visual annotations/placeholders.
 const ELEMENT_HELP = {
-  opa: 'A seeded optical parametric amplifier in a box. The pump enters the upper rear port and the seed the lower one; the amplified signal leaves the front on the axis, the idler below it and what is left of the pump above it. Set it like a data sheet: the tuned signal wavelength, the gain bandwidth (a Gaussian gain spectrum) and the peak small-signal gain at the pump\'s peak intensity. The amplification itself is computed: instant by instant through the pulses, one pump photon for one signal and one idler photon, with the pump energy as the limit, and only the part of a broadband seed that falls in the gain band grows. The sources need an average-power setting. Phase matching, beam profiles, walk-off, back-conversion, parametric noise, modulated (gated) beams and cascaded OPAs are not simulated; the OPA calculator explains the model and its limitations.',
+  opa: 'A seeded optical parametric amplifier in a box. The pump enters the upper rear port and the seed the lower one; the amplified signal leaves the front on the axis, the idler below it and what is left of the pump above it. Set it like a data sheet: the tuned signal wavelength, the gain bandwidth (a Gaussian gain spectrum) and the peak small-signal gain at the pump\'s peak intensity. The amplification itself is computed: instant by instant through the pulses, one pump photon for one signal and one idler photon, with the pump energy as the limit, and only the part of a broadband seed that falls in the gain band grows. The sources need an average-power setting. Phase matching, beam profiles, walk-off, back-conversion, parametric noise, modulated (gated) beams, seeds whose spectrum was filtered upstream and cascaded OPAs are not simulated; the OPA calculator explains the model and its limitations.',
   opo: 'An optical parametric oscillator in a box: pump light entering the rear aperture within its angular and wavelength acceptance becomes a signal on the front axis and an optional idler on a parallel port, by the same phenomenological model as the crystal\'s OPO mode. The signal can be fixed, swept or stepped through a list. The unconverted pump is discarded inside; threshold, gain, cavity length and synchronisation are not simulated.',
   cwlaser: 'Emits a steady monochromatic collimated beam at one wavelength.',
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',

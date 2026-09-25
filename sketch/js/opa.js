@@ -24,7 +24,7 @@
 
 import { parametricPair, mixWidthNm } from './parametric.js';
 import { allocateParametricAmplifier } from './parametric-amplifier.js';
-import { gaussianSpectrum, spectrumStats, spectrumSupport, spectrumWeight } from './spectrum.js';
+import { gaussianSpectrum, lineSpectrum, spectrumStats, spectrumSupport, spectrumWeight } from './spectrum.js';
 
 // The allocator works with Gamma (1/m) and a length; any length works as
 // long as Gamma L is right, so a fixed 1 mm reference is used.
@@ -62,30 +62,31 @@ export function opaGainAt(settings, wl) {
 export const gammaLForGain = gain => (gain > 1 ? Math.acosh(Math.sqrt(gain)) : 0);
 
 // The area under a profile's weight (peak 1): the normaliser that turns its
-// weight into a density. Exact for Gaussian and flat profiles, trapezoid for
-// a sampled one.
+// weight into a density. Exact for the two continuous profiles sources emit.
 function profileArea(spec) {
   if (spec.kind === 'gauss') return spec.fwhm * Math.sqrt(Math.PI / (4 * Math.LN2));
   if (spec.kind === 'flat') return spec.hi - spec.lo;
-  if (spec.kind === 'sampled' && Array.isArray(spec.w) && spec.w.length > 1) {
-    const n = spec.w.length, dx = (spec.hi - spec.lo) / (n - 1);
-    return spec.w.reduce((sum, w, i) => sum + (i === 0 || i === n - 1 ? 0.5 : 1) * Math.max(0, w), 0) * dx;
-  }
   return 0;
 }
 
-// A seed beam's spectral slices: { wl, fraction } of its power, in the part
-// of its spectrum the gain band reaches. A monochromatic seed is one slice;
-// a line spectrum gives one slice per line inside the band.
+// A seed beam's spectral slices: { wl, fraction, line } of its power in the
+// part of its spectrum the gain band reaches. Supported seeds are the ones
+// sources emit: a monochromatic line, a Gaussian line, a flat continuum and a
+// lamp's discrete lines. A Gaussian or flat profile is smooth and single, so
+// 65 slices across its overlap with the band resolve both. A reshaped
+// (sampled) spectrum, for instance a filtered continuum, can hide structure
+// narrower than any fixed slicing: it returns null, and the seed is reported
+// as unsupported rather than silently mis-sampled.
 export function seedSlices(settings, { wl, bw, spec }) {
   const profile = spec || (bw > 0 ? gaussianSpectrum(wl, bw) : null);
   const reach = GAIN_REACH_FWHM * settings.gainBandwidthNm;
   const inBand = x => Math.abs(x - settings.signalWl) <= reach;
-  if (!profile) return inBand(wl) ? [{ wl, fraction: 1 }] : [];
+  if (!profile) return inBand(wl) ? [{ wl, fraction: 1, line: true }] : [];
   if (profile.kind === 'lines') {
     const total = profile.lines.reduce((sum, l) => sum + l.w, 0);
-    return total > 0 ? profile.lines.filter(l => inBand(l.nm)).map(l => ({ wl: l.nm, fraction: l.w / total })) : [];
+    return total > 0 ? profile.lines.filter(l => inBand(l.nm)).map(l => ({ wl: l.nm, fraction: l.w / total, line: true })) : [];
   }
+  if (profile.kind !== 'gauss' && profile.kind !== 'flat') return null;
   const [supportLo, supportHi] = spectrumSupport(profile);
   const lo = Math.max(supportLo, settings.signalWl - reach), hi = Math.min(supportHi, settings.signalWl + reach);
   const area = profileArea(profile);
@@ -95,16 +96,22 @@ export function seedSlices(settings, { wl, bw, spec }) {
   for (let k = 0; k < SEED_SLICES; k++) {
     const x = lo + (k + 0.5) * width;
     const fraction = Math.max(0, spectrumWeight(profile, x)) * width / area;
-    if (fraction > 0) slices.push({ wl: x, fraction });
+    if (fraction > 0) slices.push({ wl: x, fraction, line: false });
   }
   return slices;
 }
 
 // A spectrum from (wavelength, power) points: one line, or a sampled profile
 // on a uniform grid, with its centroid and FWHM.
-function spectrumOf(points, fallbackBw = 0) {
+function spectrumOf(points, fallbackBw = 0, lines = false) {
   const kept = points.filter(p => p.powerW > 0).sort((a, b) => a.wl - b.wl);
   if (!kept.length) return null;
+  // Discrete inputs give discrete outputs: never interpolate between lines.
+  if (lines && kept.length > 1) {
+    const spec = lineSpectrum(kept.map(p => ({ nm: p.wl, w: p.powerW })));
+    const strongest = kept.reduce((best, p) => (p.powerW > best.powerW ? p : best));
+    return { wl: strongest.wl, bw: spectrumStats(spec)?.fwhm ?? 0, spec };
+  }
   const total = kept.reduce((sum, p) => sum + p.powerW, 0);
   const centroid = kept.reduce((sum, p) => sum + p.wl * p.powerW, 0) / total;
   if (kept.length === 1) {
@@ -153,8 +160,13 @@ export function planOpa(params, { pump, pumps = [], seeds = [] }) {
 
   // One allocator channel per seed slice.
   const channels = [];
+  const unsupported = new Set();
+  const lineSeeds = new Set();
   for (const seed of seeds) {
-    for (const [i, slice] of seedSlices(settings, seed).entries()) {
+    const slices = seedSlices(settings, seed);
+    if (slices === null) { unsupported.add(seed.key); continue; }
+    if (slices.some(slice => slice.line)) lineSeeds.add(seed.key);
+    for (const [i, slice] of slices.entries()) {
       const gain = opaGainAt(settings, slice.wl);
       channels.push({
         seedKey: seed.key, key: `${seed.key}#${i}`, wl: slice.wl,
@@ -176,14 +188,15 @@ export function planOpa(params, { pump, pumps = [], seeds = [] }) {
     const states = [...new Set(mine.map(c => c.out?.state).filter(Boolean))];
     // The amplified light's spectrum is the amplified slices' own: one slice
     // is a line (a monochromatic seed), never the whole seed's width.
-    const signal = spectrumOf(amplifying.map(c => ({ wl: c.wl, powerW: c.out.signalGainW })), 0);
+    const lines = lineSeeds.has(seed.key);
+    const signal = spectrumOf(amplifying.map(c => ({ wl: c.wl, powerW: c.out.signalGainW })), 0, lines);
     const idlerPoints = amplifying.map(c => ({ wl: c.out.idlerWl, powerW: c.out.idlerOutW }));
     const idler = spectrumOf(idlerPoints, signal && idlerPoints.length === 1
-      ? mixWidthNm(idlerPoints[0].wl, pump.wl, pump.bw || 0, signal.wl, 0) : 0);
+      ? mixWidthNm(idlerPoints[0].wl, pump.wl, pump.bw || 0, signal.wl, 0) : 0, lines);
     const gainW = amplifying.reduce((sum, c) => sum + c.out.signalGainW, 0);
     const idlerW = amplifying.reduce((sum, c) => sum + c.out.idlerOutW, 0);
     const pumpW = amplifying.reduce((sum, c) => sum + c.out.depletedPumpW, 0);
-    let state = amplifying.length ? 'amplifying' : !mine.length ? 'outsideBand'
+    let state = unsupported.has(seed.key) ? 'spectrumUnsupported' : amplifying.length ? 'amplifying' : !mine.length ? 'outsideBand'
       : states.length === 1 ? states[0] : states.find(s => s !== 'inactive') || 'inactive';
     if (state === 'invalidWavelength') state = 'seedBelowPump';
     return {
