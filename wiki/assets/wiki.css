@@ -139,6 +139,8 @@ a:hover { text-decoration: underline; }
   background: var(--accent); color: #fff; font-weight: 650; font-size: 14px;
 }
 .place-cta:hover { text-decoration: none; opacity: .92; }
+/* A second, quieter button beside it: the element's calculator page. */
+.place-cta.calc-cta { background: var(--panel); color: var(--accent); border: 1px solid var(--accent); margin-left: 8px; }
 
 .embed-wrap {
   margin-top: 20px;
