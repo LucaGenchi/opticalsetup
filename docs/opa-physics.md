@@ -243,3 +243,43 @@ budget allocation, not measured depletion dynamics or back-conversion.
 6. Verify seed-off, time-zero scan, pump-power scan, wavelength retuning,
    physical energy conservation, sampling/source-order independence and
    save/reload in the actual tracer before adding public OPA capability claims.
+
+## The canvas OPA element (tracer adapter)
+
+`sketch/js/opa.js` and the `opapump` / `opaseed` ports in
+`sketch/js/raytrace.js` connect the allocator above to traced rays. The
+element's settings are a data sheet's: tuned signal wavelength λ₀, gain
+bandwidth Δλ (FWHM of a Gaussian gain spectrum) and peak small-signal gain
+G_dB at the pump's peak intensity, plus the depletion limit. The gain at
+each wavelength, G₀(λ) = 1 + (10^(G_dB/10) − 1) exp(−4 ln2 (λ−λ₀)²/Δλ²), is
+passed to the allocator as `gammaPerM = arcosh(√G₀)/1 mm` with Δk = 0. The
+Gaussian spectrum is phenomenological; everything after it is the reviewed
+core. How the element meets the acceptance checks above:
+
+1. **Watt basis.** A beam's watts are its source's `avgPowerW` times the
+   fraction of that source's emitted power the probe pass recorded arriving
+   (the same basis detectors use). A source without a power setting makes
+   the element report `uncalibrated` and convert nothing.
+2. **Spatial eligibility.** The pump and the seed enter two separate ports
+   of one packaged element, each within 20° of its axis; their overlap inside
+   is assumed, as a packaged instrument's alignment provides. No beam-profile
+   overlap is computed.
+3. **One event.** Each element is planned once per trace from everything its
+   two ports received; a sampled beam's rays share its result by power, and
+   all seeds share one pump through the allocator. Tested: sampled vs single
+   ray, source order.
+4. **Provenance.** The seed passes through unchanged under its own source.
+   The signal gain and the idler are children of the pump ray, so they keep
+   the pump laser's `originId` and detectors charge their watts to it; their
+   pulses are the pump–seed overlap (`mixPulse`, gates rebased). Spectra are
+   built from the amplified slices. Tested: residual pump + signal + idler =
+   pump + seed at real detectors to 1e-12, Manley–Rowe at the detectors.
+5. **Cascades and broadband seeds.** Light an OPA generates is not seen by the
+   probe pass, so a second OPA downstream does not amplify it (it passes the
+   seed port unchanged and finds no pump plan); stated in the wiki. A
+   broadband seed is cut into 65 spectral slices weighted by its spectrum,
+   each amplified with the gain at its own wavelength.
+6. **Tracer checks.** Seed off, pump off, seed outside the band or shorter
+   than the pump, a seed 10 ps late, a CW seed, a supercontinuum seed, port
+   switches, sampling and source-order independence, a pump-power scan and
+   save/reload are tested in `test/opa-element.test.js`.

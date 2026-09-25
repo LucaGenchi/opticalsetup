@@ -159,3 +159,27 @@ test('saved and reopened, the OPA keeps its settings; the registry links an exis
   for (const key of ['signalWl', 'gainBandwidthNm', 'smallSignalGainDb', 'maxDepletion', 'outputIdler']) assert.equal(back.params[key], el.params[key], key);
   assert.ok(calculators.some(c => c.slug === registry.opa.calculator));
 });
+
+test('the result does not depend on the order the sources are traced in', () => {
+  const pump = laser(-18, 515, 1), seed = laser(18, 780, 1e-6), opa = opaElement();
+  const meters = [meter(-18), meter(0), meter(18)];
+  const read = order => {
+    traceScene([...order, opa, ...meters], []);
+    return meters.map(m => enhancedReading(m, [pump, seed, opa, ...meters])?.detectedPowerW ?? 0);
+  };
+  const a = read([pump, seed]), b = read([seed, pump]);
+  a.forEach((w, k) => assert.ok(rel(b[k], w) < 1e-12, `${w} vs ${b[k]}`));
+});
+
+test('a pump-power scan: the conversion grows with the pump and saturates at the limit', () => {
+  // The gain is authored at the pump's peak, so the pump power sets the
+  // energy budget: a strong seed saturates a weak pump and not a strong one.
+  let last = -1;
+  for (const watts of [0.001, 0.01, 0.1, 1, 10]) {
+    const { plan } = bench({ pump: laser(-18, 515, watts), seed: laser(18, 780, 0.001), opa: opaElement({ maxDepletion: 0.4 }) });
+    const converted = plan.pumpInW - plan.pumpOutW;
+    assert.ok(converted >= last - 1e-15, `converted power never falls as the pump grows (${watts} W)`);
+    assert.ok(plan.conversion <= 0.4 + 1e-12);
+    last = converted;
+  }
+});
