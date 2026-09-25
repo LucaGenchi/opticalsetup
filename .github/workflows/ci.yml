@@ -30,6 +30,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+
+      # The dev dependencies (KaTeX) let the suite rebuild the generated
+      # pages in memory and fail if a committed page is out of date with its
+      # source (calculators/, from tools/build-calculators.mjs).
+      - name: Install dev dependencies
+        run: npm ci
 
       # The reference checks are plain Python with no packages; pinning the
       # version keeps their numbers reproducible from one run to the next.

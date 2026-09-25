@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
-const CACHE_NAME = 'opticalsetup-pwa-v120';
+const CACHE_NAME = 'opticalsetup-pwa-v123';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -43,6 +43,7 @@ const PRECACHE_PATHS = [
   "./js/markdown.js",
   "./js/objective.js",
   "./js/parametric.js",
+  "./js/parametric-amplifier.js",
   "./js/polarization.js",
   "./js/polygon.js",
   "./js/proposal.js",

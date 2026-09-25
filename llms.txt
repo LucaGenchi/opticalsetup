@@ -22,6 +22,7 @@ Use the scene-builder skill when a user asks an LLM or implementation agent to c
 
 - [OpticalSetup canvas](https://opticalsetup.com/sketch/): Open, inspect, and verify generated scenes.
 - [OpticalSetup wiki](https://opticalsetup.com/wiki/): Component explanations and simulation scope.
+- [OpticalSetup calculators](https://opticalsetup.com/calculators/): The physics models behind the app, one per page, with formulas, precision and references.
 
 ## Optional
 
