@@ -519,8 +519,10 @@ export function mixOverlap(a, b) {
   // pulse, which is what pins the signal down in time.
   const weightA = 1 / (widthA * widthA), weightB = 1 / (widthB * widthB);
   const centerNs = (tA * weightA + (tA - wrapped) * weightB) / (weightA + weightB);
+  // offsetNs keeps the sign skewNs drops: how far a's nearest coincidence
+  // arrives after b's (negative when a is early).
   return {
-    factor, skewNs: Math.abs(wrapped), comparable: true, unsupported: false,
+    factor, skewNs: Math.abs(wrapped), offsetNs: wrapped, comparable: true, unsupported: false,
     centerNs, repRateMHz: repA, partnerPulseOffset, periodNs,
   };
 }
