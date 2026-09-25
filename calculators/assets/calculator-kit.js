@@ -67,8 +67,11 @@ export function renderForm(form, inputs, groups, values) {
       } else {
         control.type = 'number';
         control.inputMode = 'decimal';
-        control.step = 'any';
-        control.min = input.min;
+        // Arrows move by arrowStep (1 without one). The browser counts steps
+        // from `min`, so it is aligned to the step: 300 fs goes to 350, not
+        // 301. Range checks are the schema's, done by the page, not here.
+        control.step = input.arrowStep ?? 'any';
+        control.min = input.arrowStep ? Math.floor(input.min / input.arrowStep) * input.arrowStep : input.min;
         control.max = input.max;
         control.value = values[input.id];
         label.append(document.createTextNode(input.label));

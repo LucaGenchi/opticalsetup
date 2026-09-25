@@ -107,7 +107,7 @@ export const calculators = [
           ['n<sub>p</sub>, n<sub>s</sub>, n<sub>i</sub>', 'Refractive indices', '—', 'At each wave’s wavelength and polarization. They enter Γ and Δk.'],
           ['L', 'Crystal length', 'mm', 'Interaction length. Pulses are assumed to stay together over it (no group-velocity walk-off).'],
           ['Δk', 'Phase mismatch', '1/mm', 'k<sub>p</sub> − k<sub>s</sub> − k<sub>i</sub>, minus 2π/Λ for quasi-phase matching. Enter it from your own phase-matching calculation; this page has no dispersion data.'],
-          ['η<sub>max</sub>', 'Depletion limit', '—', 'Largest fraction of the pump energy converted in any instant. 1 is the plane-wave limit; real beams convert less because their wings are pumped weakly.'],
+          ['η<sub>max</sub>', 'Depletion limit', '—', `Largest fraction of the pump energy converted in any instant. 1 is the plane-wave limit, reached only at one crystal length. Measured amplifiers convert less, because the wings of real beams and pulses are pumped weakly: typically about 35 % of the pump in chirped-pulse parametric amplifiers ${cite(22)}; 41 % of the pump energy into the signal alone in a 13 J amplifier with a flat-top pump ${cite(23)}; and 85 % pump depletion in a variant that absorbs the idler to stop back-conversion ${cite(22)}. The page starts at 0.5 and keeps the range 0–1, so that such results can be reproduced. It limits each instant: averaged over Gaussian pulses the total conversion is lower.`],
           ['λ<sub>s</sub>, P<sub>s</sub>', 'Seed wavelength and average power', 'nm, W', 'The signal to be amplified. Without a seed there is no output: parametric noise (optical parametric generation) is not modelled.'],
           ['Δt', 'Seed delay', 'fs', 'Arrival of the seed peak after the pump peak, taken at the nearest pulse of the train.'],
           ['λ<sub>i</sub>', 'Idler wavelength', 'nm', 'From energy conservation.'],
@@ -190,6 +190,8 @@ export const calculators = [
       { label: 'T. Wilhelm, J. Piel and E. Riedle, “Sub-20-fs pulses tunable across the visible from a blue-pumped single-pass noncollinear parametric converter”, Opt. Lett. 22, 1494 (1997)', url: 'https://doi.org/10.1364/OL.22.001494' },
       { label: 'NIST Digital Library of Mathematical Functions, chapter 22: Jacobian elliptic functions', url: 'https://dlmf.nist.gov/22' },
       { label: 'R. Paschotta, “Optical parametric amplifiers” and “Parametric amplification”, RP Photonics Encyclopedia', url: 'https://www.rp-photonics.com/optical_parametric_amplifiers.html' },
+      { label: 'J. Ma, K. Xiong, P. Yuan, X. Tu et al., “Demonstration of 85% pump depletion and 10⁻⁶ noise content in quasi-parametric chirped-pulse amplification”, Light Sci. Appl. 11, 269 (2022), open access', url: 'https://doi.org/10.1038/s41377-022-00967-6' },
+      { label: 'I. A. Begishev, C. Dorrer, S.-W. Bahk, S. Bucht et al., “Final amplifier of an ultra-intense all-OPCPA system with 13-J output signal energy and 41% pump-to-signal conversion efficiency”, Opt. Express 31, 24785 (2023)', url: 'https://doi.org/10.1364/OE.492745' },
     ],
   },
 ];

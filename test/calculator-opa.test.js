@@ -34,7 +34,7 @@ test('the page hands the allocator the typed values, converted to SI once', () =
   const expected = {
     pump: { wl: 515, powerW: 1, pulse: { repRateMHz: 0.2, pulseWidthFs: 300, phaseNs: 0 } },
     seeds: [{ key: 'seed', wl: 780, powerW: 1e-6, gammaPerM: gamma, deltaKPerM: 400, pulse: { repRateMHz: 0.2, pulseWidthFs: 300, phaseNs: 120e-6 } }],
-    lengthM: 3e-3, maxDepletion: 1,
+    lengthM: 3e-3, maxDepletion: 0.5,
   };
   // Same fields, same values to 12 significant figures (unit conversions
   // such as 120 * 1e-6 differ from 120e-6 in the last bit).
@@ -165,6 +165,20 @@ test('number formatting for results and axes', () => {
   assert.equal(formatNumber(NaN), '—');
   assert.equal(formatSI(1.2e-5, 'W'), '12 µW');
   assert.equal(formatSI(0.916, 'W'), '916 mW');
+});
+
+test('arrow increments as Luca set them (2026-09-25); powers, intensity and the rest step by 1', () => {
+  const steps = Object.fromEntries(OPA_INPUTS.filter(i => i.arrowStep).map(i => [i.id, i.arrowStep]));
+  assert.deepEqual(steps, {
+    pumpWl: 5, pumpFwhmFs: 50, repRateMHz: 0.1, nPump: 0.01, nSignal: 0.01, nIdler: 0.01,
+    maxDepletion: 0.05, seedWl: 5, seedFwhmFs: 50, seed2Wl: 5,
+  });
+  // Defaults sit on their step grids, so the first arrow press lands on a round value.
+  for (const input of OPA_INPUTS.filter(i => i.arrowStep)) {
+    const k = input.value / input.arrowStep;
+    assert.ok(Math.abs(k - Math.round(k)) < 1e-9, input.id);
+  }
+  assert.equal(OPA_DEFAULTS.maxDepletion, 0.5);
 });
 
 test('every input has a label, a help text and a default inside its range', () => {
