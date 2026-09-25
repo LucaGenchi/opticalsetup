@@ -198,7 +198,13 @@ test('every input has a label, a help text and a default inside its range', () =
   assert.deepEqual(validateOpaInputs(OPA_DEFAULTS).reasons, []);
 });
 
-test('the committed calculator pages match their generator', () => {
+// The generator pre-renders formulas with KaTeX, a dev dependency that CI
+// does not install (it runs npm test on a bare checkout), so there the check
+// is skipped with its reason, as the optional Python re-run is.
+const katexInstalled = (() => {
+  try { return spawnSync(process.execPath, ['-e', "import('katex').then(() => process.exit(0), () => process.exit(1))"], { cwd: root }).status === 0; } catch { return false; }
+})();
+test('the committed calculator pages match their generator', { skip: !katexInstalled && 'KaTeX is not installed (npm install); the page generator cannot run' }, () => {
   const result = spawnSync(process.execPath, ['tools/build-calculators.mjs', '--check'], { cwd: root, encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
 });
