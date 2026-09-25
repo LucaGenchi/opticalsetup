@@ -12,7 +12,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
   OPA_INPUTS, OPA_DEFAULTS, validateOpaInputs, computeOpa, allocatorInputs,
-  delayScan, lengthScan, intensityScan, coupledWaveCurve, stateText,
+  delayScan, lengthScan, intensityScan, coupledWaveCurve, stateText, REFERENCE_TOLERANCE,
 } from '../calculators/opa/opa-calculator.js';
 import { coupledWaveConversion } from '../calculators/opa/coupled-wave.js';
 import { formatNumber, formatSI } from '../calculators/assets/calculator-kit.js';
@@ -108,8 +108,34 @@ test('the exact curve agrees with the model while the pump is barely depleted, t
   const peak = scan.reduce((best, p) => (p.reference > best.reference ? p : best));
   assert.ok(scan.at(-1).reference < 0.5 * peak.reference);
   assert.ok(scan.at(-1).model >= peak.model);
-  // A second seed: no single-seed exact solution to draw.
-  assert.ok(lengthScan(valid({ seed2On: true }), 5).every(p => p.reference === null));
+  assert.ok(scan.reference.change <= REFERENCE_TOLERANCE);
+  // A second seed: no single-seed exact solution to draw, and it says so.
+  const two = lengthScan(valid({ seed2On: true }), 5);
+  assert.ok(two.every(p => p.reference === null) && /one seed/.test(two.reference.reason));
+});
+
+// Andrea's three reproductions against 355b7c1.
+test('exact curve: a delay of whole periods changes nothing, as in the model', () => {
+  const at = delayFs => coupledWaveCurve(valid({ repRateMHz: 100, delayFs }), [0, 2]).values[1];
+  assert.ok(Math.abs(at(1e7) - at(0)) < 1e-12);
+  assert.ok(Math.abs(at(-1e7) - at(0)) < 1e-12);
+  assert.ok(at(0) > 0.07);
+});
+
+test('exact curve: the seed-to-pump ratio is never altered, however seed-dominated', () => {
+  const v = valid({ pumpPulsed: false, seedPulsed: false, pumpPowerW: 0.001, seedPowerW: 10000, pumpIntensityGWcm2: 0.000001, lengthMm: 2 });
+  assert.ok(Math.abs(coupledWaveCurve(v, [0, 2]).values[1] - 0.2471393149) < 1e-9);
+});
+
+test('exact curve: the time average is converged or not drawn', () => {
+  const v = valid({ pumpIntensityGWcm2: 500, lengthMm: 8 });
+  // At 8 mm alone: converges to the 2001-slice value 0.0801849957 (Andrea).
+  const one = coupledWaveCurve(v, [0, 8]);
+  assert.ok(one.change <= REFERENCE_TOLERANCE && Math.abs(one.values[1] - 0.0801849957) < REFERENCE_TOLERANCE);
+  // The full scan to 20 mm would need more work than the page allows:
+  // declared unavailable with a reason, never drawn from 121 slices.
+  const scan = lengthScan(v, 81).reference;
+  assert.ok(scan.values ? scan.change <= REFERENCE_TOLERANCE : /too much computation/.test(scan.reason));
 });
 
 test('coupled-wave solver: undepleted limit equals the gain core, including mismatch', () => {
@@ -129,7 +155,7 @@ test('continuous waves: the exact curve is the single plane-wave solution', () =
   const v = valid({ pumpPulsed: false, seedPulsed: false, pumpIntensityGWcm2: 0.5, seedPowerW: 0.01 });
   const gamma = parametricGainCoefficient({ pumpWl: 515, signalWl: 780, nPump: 1.67, nSignal: 1.66, nIdler: 1.64, dEffPmV: 2, pumpIntensityWm2: 0.5e13 });
   const [direct] = coupledWaveConversion({ gammaPerM: gamma, seedPhotonRatio: 0.01 * 780 / 515, lengthsM: [0.02] });
-  assert.ok(rel(coupledWaveCurve(v, [20])[0], direct) < 1e-12);
+  assert.ok(rel(coupledWaveCurve(v, [20]).values[0], direct) < 1e-12);
 });
 
 test('number formatting for results and axes', () => {

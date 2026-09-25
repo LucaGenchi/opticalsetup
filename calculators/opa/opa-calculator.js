@@ -10,7 +10,7 @@
 
 import { parametricPair, parametricGainCoefficient, parametricSmallSignalGain } from '../../sketch/js/parametric.js';
 import { allocateParametricAmplifier } from '../../sketch/js/parametric-amplifier.js';
-import { coupledWaveConversion } from './coupled-wave.js';
+import { coupledWaveConversion, coupledWaveStepCount } from './coupled-wave.js';
 
 const GAUSSIAN_PEAK_FACTOR = 2 * Math.sqrt(Math.LN2 / Math.PI); // P_peak = 0.939 E / tau (FWHM)
 const GW_PER_CM2 = 1e13; // W/m^2
@@ -215,57 +215,95 @@ export function lengthScan(v, n = 81) {
   const top = Math.max(1, 2.5 * v.lengthMm);
   const lengths = range(0, top, n);
   const model = lengths.map(lengthMm => allocateParametricAmplifier(allocatorInputs(v, { lengthMm }))?.conversionFraction ?? null);
-  const reference = v.seed2On ? null : coupledWaveCurve(v, lengths);
-  return lengths.map((x, k) => ({ x, model: model[k], reference: reference ? reference[k] : null }));
+  const reference = v.seed2On ? { values: null, reason: 'the exact curve is drawn for one seed only.' } : coupledWaveCurve(v, lengths);
+  const points = lengths.map((x, k) => ({ x, model: model[k], reference: reference.values ? reference.values[k] : null }));
+  points.reference = reference;
+  return points;
 }
 
 const GAUSSIAN_AREA_FWHM = Math.sqrt(Math.PI / (4 * Math.LN2));
 const envelope = (t, fwhm) => Math.exp(-4 * Math.LN2 * (t / fwhm) ** 2);
-const REFERENCE_CELLS = 121;
+
+// Convergence control of the exact curve's time average. The window is cut
+// into N equal midpoint cells; N doubles until two successive grids agree at
+// every plotted length within REFERENCE_TOLERANCE (a fraction of the pump
+// energy), or until the Runge-Kutta work would exceed REFERENCE_STEP_BUDGET,
+// in which case the curve is declared unavailable rather than drawn wrong.
+export const REFERENCE_TOLERANCE = 0.002;
+const REFERENCE_FIRST_CELLS = 121;
+const REFERENCE_STEP_BUDGET = 2.5e6;
 
 // Pump conversion of the depleted coupled-wave solution, quasi-static in
-// time: the pulse period is cut into cells; each cell has its own pump
-// intensity (Gamma scales with its square root) and its own seed-to-pump
-// photon ratio, and is solved exactly as a plane wave with depletion. The
-// cells' converted pump energies are summed. One seed only.
+// time: each cell of the pulse period has its own pump intensity (Gamma
+// scales with its square root) and its own seed-to-pump photon ratio, and
+// is solved as a plane wave with depletion; the converted pump energies of
+// the cells are summed. One seed only. Returns { values, cells, change } or
+// { values: null, reason }.
 export function coupledWaveCurve(v, lengthsMm) {
+  const zeros = { values: lengthsMm.map(() => 0), cells: 0, change: 0 };
   const pair = parametricPair(v.pumpWl, v.seedWl);
-  if (!pair || pair.degenerate || !v.seedOn || !(v.seedPowerW > 0) || !(v.pumpPowerW > 0)) return lengthsMm.map(() => 0);
+  if (!pair || pair.degenerate || !v.seedOn || !(v.seedPowerW > 0) || !(v.pumpPowerW > 0)) return zeros;
   const gammaPeak = parametricGainCoefficient({
     pumpWl: v.pumpWl, signalWl: v.seedWl, nPump: v.nPump, nSignal: v.nSignal, nIdler: v.nIdler,
     dEffPmV: v.dEffPmV, pumpIntensityWm2: v.pumpIntensityGWcm2 * GW_PER_CM2,
   });
-  if (!(gammaPeak > 0)) return lengthsMm.map(() => 0);
+  if (!(gammaPeak > 0)) return zeros;
   const periodFs = 1e9 / v.repRateMHz;
   const tauP = v.pumpPulsed ? v.pumpFwhmFs : null, tauS = v.seedPulsed ? v.seedFwhmFs : null;
-  const centre = tauS ? v.delayFs : 0;
+  // The delay of the nearest seed pulse, in the same convention as the
+  // allocator (mixOverlap): a whole number of periods does not matter.
+  const centre = tauP && tauS ? ((v.delayFs % periodFs) + 1.5 * periodFs) % periodFs - periodFs / 2 : 0;
   let lo = -Infinity, hi = Infinity;
   if (tauP) { lo = -2.5 * tauP; hi = 2.5 * tauP; }
   if (tauS) { lo = Math.max(lo, centre - 4 * tauS); hi = Math.min(hi, centre + 4 * tauS); }
-  const cells = [];
-  if (!tauP && !tauS) cells.push({ pumpShare: 1, seedShare: 1, scale: 1 });
-  else if (hi > lo) {
-    const width = (hi - lo) / REFERENCE_CELLS;
-    for (let k = 0; k < REFERENCE_CELLS; k++) {
+  if ((tauP || tauS) && !(hi > lo)) return zeros;
+  const lengthsM = lengthsMm.map(l => l * 1e-3);
+  const lengthMax = lengthsM.at(-1) ?? 0;
+  const deltaKPerM = v.deltaKPerMm * 1e3;
+
+  const cellsOf = n => {
+    if (!tauP && !tauS) return [{ pumpShare: 1, seedShare: 1, scale: 1 }];
+    const width = (hi - lo) / n;
+    return Array.from({ length: n }, (_, k) => {
       const t = lo + (k + 0.5) * width;
       const density = (tau, at) => (tau ? envelope(t - at, tau) / (tau * GAUSSIAN_AREA_FWHM) : 1 / periodFs);
-      cells.push({ pumpShare: density(tauP, 0) * width, seedShare: density(tauS, centre) * width, scale: tauP ? Math.sqrt(envelope(t, tauP)) : 1 });
+      return { pumpShare: density(tauP, 0) * width, seedShare: density(tauS, centre) * width, scale: tauP ? Math.sqrt(envelope(t, tauP)) : 1 };
+    }).filter(c => c.pumpShare > 0 && c.seedShare > 0);
+  };
+  // The true seed-to-pump photon flux ratio of each cell: powers times
+  // wavelength. Never altered; a cell the solver cannot afford makes the
+  // whole curve unavailable.
+  const problems = cells => cells.map(c => ({
+    share: c.pumpShare, gammaPerM: gammaPeak * c.scale, deltaKPerM,
+    seedPhotonRatio: (v.seedPowerW * c.seedShare) / (v.pumpPowerW * c.pumpShare) * (v.seedWl / v.pumpWl),
+  }));
+  const cost = list => list.reduce((sum, p) => sum + coupledWaveStepCount({ ...p, lengthM: lengthMax }), 0);
+  const solve = list => {
+    const out = lengthsMm.map(() => 0);
+    for (const p of list) {
+      const conversion = coupledWaveConversion({ ...p, lengthsM });
+      if (!conversion) return null;
+      conversion.forEach((c, k) => { out[k] += p.share * c; });
     }
+    return out;
+  };
+  const unavailable = reason => ({ values: null, reason });
+  const tooCostly = 'the exact curve would need too much computation at these settings (very high gain or a very long crystal); only the model is drawn.';
+
+  let n = REFERENCE_FIRST_CELLS, list = problems(cellsOf(n)), spent = cost(list);
+  if (spent > REFERENCE_STEP_BUDGET) return unavailable(tooCostly);
+  let previous = solve(list);
+  if (!previous) return unavailable(tooCostly);
+  if (!tauP && !tauS) return { values: previous, cells: 1, change: 0 };
+  for (;;) {
+    n *= 2;
+    list = problems(cellsOf(n));
+    spent += cost(list);
+    if (spent > REFERENCE_STEP_BUDGET) return unavailable(tooCostly);
+    const next = solve(list);
+    if (!next) return unavailable(tooCostly);
+    const change = Math.max(...next.map((x, k) => Math.abs(x - previous[k])));
+    if (change <= REFERENCE_TOLERANCE) return { values: next, cells: n, change };
+    previous = next;
   }
-  const lengthsM = lengthsMm.map(l => l * 1e-3);
-  const converted = lengthsMm.map(() => 0);
-  let skippedShare = 0;
-  for (const cell of cells) {
-    if (!(cell.pumpShare > 1e-12) || !(cell.seedShare > 0)) continue;
-    // Seed-to-pump photon flux ratio in this cell: powers times wavelength.
-    const ratio = (v.seedPowerW * cell.seedShare) / (v.pumpPowerW * cell.pumpShare) * (v.seedWl / v.pumpWl);
-    const conversion = coupledWaveConversion({
-      gammaPerM: gammaPeak * cell.scale, deltaKPerM: v.deltaKPerMm * 1e3, seedPhotonRatio: Math.min(ratio, 1e6), lengthsM,
-    });
-    // A cell too stiff for the step budget is left out; if it held a
-    // visible part of the pump, the curve is not drawn at all.
-    if (!conversion) { skippedShare += cell.pumpShare; continue; }
-    conversion.forEach((c, k) => { converted[k] += cell.pumpShare * c; });
-  }
-  return skippedShare > 1e-3 ? null : converted;
 }

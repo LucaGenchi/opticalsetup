@@ -58,15 +58,15 @@ export const calculators = [
 <p>A parametric amplifier stores no energy: it amplifies only while the pump is present ${cite(14, 17, 21)}. The calculator therefore evaluates the gain separately at each instant of the pulse, with the pump intensity of that instant (Gaussian intensity envelopes, FWHM durations), and averages the result over the seed ${cite(13)}:</p>`,
         formulas5: [
           { tex: String.raw`I_p(t) = I_p\, e^{-4\ln 2\, t^2/\tau_p^2}, \qquad \Gamma(t) = \Gamma\,\sqrt{I_p(t)/I_p}` },
-          { tex: String.raw`\bar G = \frac{\int P_s(t - \Delta t)\; G\big(\Gamma(t)\big)\, dt}{\int P_s(t)\, dt} \qquad\text{(pulsed seed)}, \qquad \bar G = 1 + f_\text{rep}\!\int \big[G\big(\Gamma(t)\big) - 1\big]\, dt \qquad\text{(CW seed)}`, caption: 'The “achieved signal gain” is this average-power gain. In the high-gain regime the effective gain window is much shorter than the pump pulse (about τ<sub>p</sub>/√(ΓL)), because the exponent follows the intensity.' },
+          { tex: String.raw`\bar G_0 = \frac{\int P_s(t - \Delta t)\; G\big(\Gamma(t)\big)\, dt}{\int P_s(t)\, dt} \qquad\text{(pulsed seed)}, \qquad \bar G_0 = 1 + f_\text{rep}\!\int \big[G\big(\Gamma(t)\big) - 1\big]\, dt \qquad\text{(CW seed)}`, caption: 'Ḡ<sub>0</sub> is the average-power gain without depletion, shown next to the achieved gain Ḡ in the results; Ḡ is the same average after the energy limit below. In the high-gain regime the effective gain window is much shorter than the pump pulse (about τ<sub>p</sub>/√(ΓL)), because the exponent follows the intensity.' },
         ],
         html6: `<p><b>Pump depletion.</b> The undepleted gain can ask for more energy than the pump holds. In each instant the model converts at most the fraction η<sub>max</sub> of the pump energy present in that instant, and several seeds present at the same instant share it:</p>`,
         formulas6: [
-          { tex: String.raw`\delta E_p(t) = \min\!\left[\,\frac{\lambda_s}{\lambda_p}\,\big(G(t) - 1\big)\,\delta E_s(t),\;\; \eta_\text{max}\, \delta E_p(t)\right]`, caption: 'δE is the energy in one time slice. This is an energy limit, not a solution of the depleted equations: past the optimum length it keeps full conversion, where real plane waves give energy back to the pump. Graph 2 shows the difference.' },
+          { tex: String.raw`\delta E_\text{conv}(t) = \min\!\left[\,\frac{\lambda_s}{\lambda_p}\,\big(G(t) - 1\big)\,\delta E_{s,\text{in}}(t),\;\; \eta_\text{max}\, \delta E_{p,\text{in}}(t)\right]`, caption: 'δE<sub>conv</sub> is the pump energy converted in one time slice, δE<sub>s,in</sub> and δE<sub>p,in</sub> the seed and pump energies entering it. This is an energy limit, not a solution of the depleted equations: past the optimum length it keeps full conversion, where real plane waves give energy back to the pump. Graph 2 shows the difference.' },
         ],
         html7: `<p><b>The exact solution with depletion</b> (the orange curve in graph 2). With depletion the coupled equations are still solvable: at Δk = 0 the converted fraction of pump photons is a Jacobi elliptic function of the length ${cite(1, 6)}. Derived here from the Manley–Rowe invariants, with r the seed-to-pump photon ratio:</p>`,
         formulas7: [
-          { tex: String.raw`\eta(L) = \frac{r}{1+r}\;\mathrm{sd}^2\!\left(\Gamma L\sqrt{1+r}\;\middle|\;\frac{1}{1+r}\right), \qquad r = \frac{\lambda_s P_s}{\lambda_p P_p}`, caption: `sd = sn/dn ${cite(20)}. η rises to 1 (complete conversion), then falls back to 0: the pump regenerates, and the cycle repeats. The page solves the coupled equations numerically for any Δk, in every time slice of the pulses, and the Python reference checks it against this closed form.` },
+          { tex: String.raw`\eta(L) = \frac{r}{1+r}\;\mathrm{sd}^2\!\left(\Gamma L\sqrt{1+r}\;\middle|\;\frac{1}{1+r}\right), \qquad r = \frac{\lambda_s P_s}{\lambda_p P_p}`, caption: `sd = sn/dn; the second argument is the parameter m = k², not the modulus k ${cite(20)}. η rises to 1 (complete conversion), then falls back to 0: the pump regenerates, and the cycle repeats. The page solves the coupled equations numerically for any Δk, in every time slice of the pulses, and the Python reference checks it against this closed form.` },
         ],
         html8: `<p><b>Quantities derived from your inputs.</b> The pulse energy, its peak power and, from the peak intensity you entered, the pump beam radius that intensity implies for a Gaussian beam. A radius that is implausibly small or large means the inputs do not describe the same beam.</p>`,
         formulas8: [
@@ -81,16 +81,16 @@ export const calculators = [
           { tex: String.raw`P^{(2)}(\omega_i) \;\propto\; \varepsilon_0\, d_\text{eff}\; E(\omega_p)\, E^{*}(\omega_s), \qquad \chi^{(2)} = 2d`, caption: 'The numerical prefactor depends on how the field amplitudes are defined (Boyd, section 2.2 [7]); Γ above already includes it.' },
         ],
         html2: `<p><b>Units.</b> ε<sub>0</sub>E already has the units of a polarization, so the product d·E must be a pure number: d has the units of an inverse field, metres per volt. The values are around 10⁻¹² m/V, hence <b>picometres per volt</b>. A field of 1 GV/m (an intensity of about 210 GW/cm² in a crystal of index 1.6, from I = ½nε<sub>0</sub>cE²) times 2 pm/V gives 0.002: the nonlinear response is a small correction to the linear one, and needs intense light to matter.</p>
-<p><b>“Effective”.</b> A crystal has a tensor of coefficients d<sub>ij</sub>. d<sub>eff</sub> is the single number that remains for your propagation direction and your three polarizations (for birefringent phase matching it depends on the crystal angles). For quasi-phase matching, where the sign of d is flipped every half period, the first-order Fourier factor 2/π applies: d<sub>eff</sub> = (2/π) d<sub>33</sub> ${cite(11)}.</p>
+<p><b>“Effective”.</b> A crystal has a tensor of coefficients d<sub>ij</sub>. d<sub>eff</sub> is the single number that remains for your propagation direction and your three polarizations (for birefringent phase matching it depends on the crystal angles). For quasi-phase matching, where the sign of d is flipped every half period, the first-order Fourier factor 2/π applies: d<sub>eff</sub> = (2/π) d<sub>33</sub>, for ideal poling with a 50 % duty cycle and all three waves polarized along the axis that uses d<sub>33</sub> ${cite(11)}.</p>
 <table class="param-table">
   <thead><tr><th>Crystal</th><th>Coefficient measured</th><th>Typical d<sub>eff</sub> for an OPA</th></tr></thead>
   <tbody>
-    <tr><td>β-barium borate (BBO), type I</td><td>d<sub>22</sub> = 2.2 pm/V at 1064 nm ${cite(10)}</td><td>about 2 pm/V (d<sub>22</sub> times a factor near 1 that depends on the angles)</td></tr>
+    <tr><td>β-barium borate (BBO), type I</td><td>d<sub>22</sub> = 2.2 pm/V at 1064 nm (2.16 before rounding) ${cite(10)}</td><td>about 2 pm/V (d<sub>22</sub> times a factor near 1 that depends on the angles)</td></tr>
     <tr><td>Periodically poled lithium niobate (PPLN)</td><td>d<sub>33</sub> = 25.2 pm/V at 1064 nm ${cite(9)}</td><td>about 16 pm/V = (2/π) d<sub>33</sub> ${cite(11)}</td></tr>
-    <tr><td>Periodically poled KTP (PPKTP)</td><td>d<sub>33</sub> ≈ 15 pm/V at 1064 nm ${cite(9)}</td><td>about 9–10 pm/V = (2/π) d<sub>33</sub></td></tr>
+    <tr><td>Periodically poled KTP (PPKTP)</td><td>d<sub>33</sub> = 14.6 pm/V at 1064 nm ${cite(9)}</td><td>about 9 pm/V = (2/π) d<sub>33</sub></td></tr>
   </tbody>
 </table>
-<p>These are orders of magnitude, not design values: the coefficients depend on wavelength (they fall towards the infrared), on the crystal’s composition and on the measurement, which Eckardt et al. quote to about 10 % ${cite(10)}. Use the d<sub>eff</sub> of your crystal cut from its data sheet or a crystal handbook ${cite(8)}.</p>`,
+<p>These are orders of magnitude, not design values: the coefficients depend on wavelength (they fall towards the infrared), on the crystal’s composition and on the measurement: Eckardt et al. give about 4 % reproducibility and about 10 % absolute accuracy ${cite(10)}. Use the d<sub>eff</sub> of your crystal cut from its data sheet or a crystal handbook ${cite(8)}.</p>`,
       },
       {
         id: 'parameters',
@@ -113,7 +113,7 @@ export const calculators = [
           ['λ<sub>i</sub>', 'Idler wavelength', 'nm', 'From energy conservation.'],
           ['Γ, ΓL', 'Gain coefficient and gain length', '1/mm, —', 'Γ at the peak pump intensity. ΓL ≈ 1 is the start of useful gain; ΓL ≈ 10 gives G ~ 10⁸.'],
           ['G', 'Peak small-signal gain', '—, dB', 'Undepleted gain at the pulse peak, with its regime (exponential, boundary, oscillatory).'],
-          ['Ḡ', 'Achieved signal gain', '—', 'Average-power gain of the seed after the pulse averaging and the energy limit. The undepleted average is shown beside it.'],
+          ['Ḡ, Ḡ<sub>0</sub>', 'Achieved signal gain, and without depletion', '—', 'Average-power gain of the seed after the pulse averaging, with (Ḡ) and without (Ḡ<sub>0</sub>) the energy limit.'],
           ['η', 'Pump conversion', '%', 'Fraction of the pump energy converted to signal plus idler.'],
           ['w', 'Implied pump beam radius', 'µm', 'The 1/e² radius for which P<sub>peak</sub> gives I<sub>p</sub>.'],
         ],
@@ -122,7 +122,7 @@ export const calculators = [
         id: 'graphs',
         title: 'Reading the graphs',
         html: `<p><b>1. Signal gain against seed delay.</b> Each point is the whole calculation repeated with the seed arriving earlier or later. The blue curve includes the energy limit, the green one does not. Their gap shows where the pump is being depleted: the blue curve flattens where the seed takes all the pump energy it meets. The gain falls much faster than the pulses’ overlap, because the exponent follows the pump intensity. Shown only when both pump and seed are pulsed.</p>
-<p><b>2. Pump conversion against crystal length.</b> The blue curve is the model the app uses: undepleted gain limited by the pump energy in each instant. The <b>orange curve is an exact reference</b>: the same pulses, cut into the same kind of instants, but in each instant the coupled equations are solved with pump depletion instead of the energy limit. Where the two agree, the limit is a good approximation. Past the optimum length they separate: a real plane wave converts energy back into the pump (back-conversion), so the orange curve peaks and then falls, while the model stays at its limit. A single plane wave would fall to zero and rise again periodically; the orange curve is smoother because each instant of the pulse reaches its optimum at a different length. In a real beam, the transverse profile smooths it further ${cite(15, 13)}. The orange curve ignores η<sub>max</sub> and is drawn for one seed only.</p>
+<p><b>2. Pump conversion against crystal length.</b> The blue curve is the model the app uses: undepleted gain limited by the pump energy in each instant. The <b>orange curve is an exact reference for plane waves</b>: the same pulses, timing and seed, cut into time slices, but in each slice the coupled equations are solved with pump depletion instead of the energy limit; the note under the graph says how well its time average has converged. Where the two agree, the limit is a good approximation. Past the optimum length they separate: a real plane wave converts energy back into the pump (back-conversion), so the orange curve peaks and then falls, while the model stays at its limit. A single plane wave would fall to zero and rise again periodically; the orange curve is smoother because each instant of the pulse reaches its optimum at a different length. In a real beam, the transverse profile smooths it further ${cite(15, 13)}. The orange curve ignores η<sub>max</sub> and is drawn for one seed only.</p>
 <p><b>3. Signal gain against peak pump intensity.</b> The whole calculation repeated at other pump intensities, with and without the energy limit. At low intensity both follow the exponential growth; where they separate, the pump starts to be depleted and the gain saturates.</p>
 <p>Hover or tap a graph to read its values; each graph also has a table of its data.</p>`,
       },
@@ -137,21 +137,22 @@ export const calculators = [
     <tr><td>Gain coefficient Γ</td><td>The angular-frequency form of Manzoni &amp; Cerullo’s eq. 2.9 ${cite(17)}</td><td>1 × 10⁻¹⁰</td></tr>
     <tr><td>Undepleted gain G, all regimes</td><td>The analytic cosh²(ΓL) and a Runge–Kutta integration of the coupled equations</td><td>4 × 10⁻¹⁰</td></tr>
     <tr><td>Pulse-averaged gain Ḡ</td><td>Simpson integration on a 20 000-interval grid</td><td>1 × 10⁻¹⁰ (tolerance 10⁻⁶)</td></tr>
-    <tr><td>Depleted conversion (orange curve)</td><td>The elliptic closed form above, and a 60 000-step Runge–Kutta at Δk ≠ 0</td><td>3.4 × 10⁻⁷ absolute</td></tr>
+    <tr><td>Depleted conversion, one time slice</td><td>The elliptic closed form above, and a 60 000-step Runge–Kutta at Δk ≠ 0</td><td>3.4 × 10⁻⁷ absolute</td></tr>
+    <tr><td>Orange curve, averaged over the pulses</td><td>Itself on a grid of twice as many time slices: the slices are doubled until two successive grids agree within 0.2 percentage points at every plotted length. If that would need too much computation (very high gain or long crystals), the curve is not drawn and the graph says why.</td><td>≤ 0.2 percentage points between the last two grids (shown under the graph)</td></tr>
     <tr><td>Energy and photon balance</td><td>Pump in = pump out + signal gain + idler, in every result</td><td>rounding (≈ 10⁻¹⁶ W)</td></tr>
   </tbody>
 </table>
 <p>The references are written separately in Python from the published equations (<a href="${GITHUB}/validation/reference/opa.py" target="_blank" rel="noopener">opa.py</a>) and run on every change; see the <a href="${GITHUB}/docs/validation.md" target="_blank" rel="noopener">validation table</a>. A test also checks that this page passes the app’s functions the same inputs, in the same units, that you typed.</p>
-<h3>Physical accuracy: an upper estimate and a guide to trends</h3>
-<p>Manzoni &amp; Cerullo describe the undepleted plane-wave calculation as giving “the upper limit for the parametric gain” ${cite(17)}. Real amplifiers fall below it because:</p>
+<h3>Physical accuracy: a guide to trends and orders of magnitude</h3>
+<p>Manzoni &amp; Cerullo describe the undepleted, monochromatic plane-wave calculation as giving “the upper limit for the parametric gain” ${cite(17)}; the peak small-signal gain here is that quantity, under the assumptions stated above. Real amplifiers fall below it because:</p>
 <ul>
   <li>only the centre of a real beam sees the peak intensity, and the beam profile changes during amplification (gain guiding) ${cite(15)};</li>
   <li>signal, idler and pump travel at different group velocities and separate after the pulse-splitting length, which ends the gain for short pulses ${cite(17, 14)};</li>
   <li>birefringent walk-off separates the beams in space, and dispersion inside the crystal chirps the pulses;</li>
-  <li>the idler may be absorbed, which strongly reduces the gain ${cite(18)};</li>
+  <li>absorption of the idler changes the energy transfer: it reduces the small-signal gain, while in pulsed oscillators it can even raise the efficiency by suppressing back-conversion ${cite(18)}; either way it needs a model with losses;</li>
   <li>a real crystal is never exactly phase matched over the whole seed spectrum.</li>
 </ul>
-<p>The gain is also very sensitive to its inputs. At high gain G ≈ ¼e<sup>2ΓL</sup>, so a 10 % error in d<sub>eff</sub> (typical of the measured coefficients ${cite(10)}), or 20 % in the intensity, changes ΓL by 10 % and, at ΓL = 7, the gain by a factor of about 4. Read the page for orders of magnitude, trends, the idler wavelength, the energy balance and the timing tolerance; for design, use a model that includes the beams’ transverse profile and the pulses’ propagation ${cite(13, 15)}.</p>`,
+<p>The gain is also very sensitive to its inputs. At high gain G ≈ ¼e<sup>2ΓL</sup>. At ΓL = 7, a 10 % error in d<sub>eff</sub> (the absolute accuracy of the measured coefficients ${cite(10)}) changes the small-signal gain by a factor of about 4.1, and a 20 % error in the intensity by about 3.8. Read the page for orders of magnitude, trends, the idler wavelength, the energy balance and the timing tolerance; for design, use a model that includes the beams’ transverse profile and the pulses’ propagation ${cite(13, 15)}.</p>`,
       },
       {
         id: 'limits',
@@ -162,7 +163,7 @@ export const calculators = [
   <li>Noncollinear geometry (NOPA) and its broadband phase matching ${cite(19, 14)}; the phase mismatch is a number you enter, not computed from dispersion data.</li>
   <li>Parametric noise: an unseeded crystal gives nothing here, while a real one produces parametric fluorescence (optical parametric generation) ${cite(5)}.</li>
   <li>The degenerate case λ<sub>s</sub> = 2λ<sub>p</sub> with signal and idler in one mode, which is phase-sensitive ${cite(21)}; the calculator declines it.</li>
-  <li>A seeded idler, absorption, thermal effects and crystal damage.</li>
+  <li>A seeded idler, absorption (of any wave), thermal effects and crystal damage.</li>
   <li>Back-conversion in the model itself: only the orange reference curve shows it, for plane waves.</li>
 </ul>`,
       },

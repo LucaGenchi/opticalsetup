@@ -92,7 +92,7 @@ function renderResults(v, r) {
   row('Peak small-signal gain G', '#physics', r.small ? formatNumber(r.small.gain) : '—',
     r.small ? `${formatNumber(10 * Math.log10(r.small.gain))} dB · ${REGIME[r.small.regime] ?? r.small.regime}${r.small.capped ? ' · beyond 10¹⁰⁰, shown capped' : ''}` : '');
   row('Achieved signal gain Ḡ (average power)', '#physics', seed ? formatNumber(seed.achievedGain) : '—',
-    r.undepletedGain ? `without the energy limit: ${formatNumber(r.undepletedGain)}` : '');
+    r.undepletedGain ? `without the energy limit, Ḡ₀: ${formatNumber(r.undepletedGain)}` : '');
   group('Powers');
   const perPulse = e => (e === null ? '' : `${formatSI(e, 'J')} per pulse`);
   row('Signal out', '#physics', seed ? formatSI(seed.signalOutW, 'W') : '—', seed ? `in: ${formatSI(seed.signalInW, 'W')}${r.signalEnergyJ !== null ? ` · ${perPulse(r.signalEnergyJ)}` : ''}` : '');
@@ -147,17 +147,20 @@ function renderCharts(v, r) {
   // 2. length
   const length = seedOk ? lengthScan(v) : null;
   const series = length ? [{ name: 'Model: energy limit', color: '--series-1', values: length.map(p => (p.model === null ? null : 100 * p.model)) }] : [];
-  if (length && length.some(p => p.reference !== null)) {
+  if (length && length.reference.values) {
     series.push({ name: 'Exact plane-wave solution', color: '--series-2', values: length.map(p => (p.reference === null ? null : 100 * p.reference)) });
   }
   lineChart(hosts.length, tables.length, length ? {
     x: length.map(p => p.x), xLabel: 'Crystal length L (mm)', xUnit: 'mm', yLabel: 'Pump conversion η (%)', yMin: 0, yMax: 100,
     series, marker: { x: v.lengthMm, y: 100 * r.allocation.conversionFraction },
   } : { message: off });
-  if (length && series.length === 1) {
+  if (length) {
     const p = document.createElement('p');
     p.className = 'chart-note';
-    p.textContent = v.seed2On ? 'The exact curve is drawn for one seed only.' : 'The exact curve could not be computed at these settings.';
+    const ref = length.reference;
+    p.textContent = ref.values
+      ? (ref.cells > 1 ? `Exact curve: ${ref.cells} time slices; doubling them changed it by at most ${formatNumber(100 * ref.change, 2)} percentage points.` : 'Exact curve: continuous waves, a single plane-wave solution.')
+      : `No exact curve: ${ref.reason}`;
     hosts.length.append(p);
   }
   // 3. intensity

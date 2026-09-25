@@ -25,16 +25,27 @@ const STEP_GAIN = 0.05;   // h * Gamma_eff: resolves exponential growth and depl
 const STEP_PHASE = 0.1;   // h * |dk|: resolves the mismatch oscillation
 const MAX_STEPS = 200000;
 
+const stepLength = (gammaPerM, deltaKPerM, seedPhotonRatio, stepScale = 1) =>
+  Math.min(STEP_GAIN / (gammaPerM * Math.sqrt(1 + seedPhotonRatio)),
+    deltaKPerM ? STEP_PHASE / Math.abs(deltaKPerM) : Infinity) * stepScale;
+
+// Runge-Kutta steps coupledWaveConversion takes to reach lengthM (0 when
+// there is nothing to integrate), so a caller can budget before solving.
+export function coupledWaveStepCount({ gammaPerM, deltaKPerM = 0, seedPhotonRatio, lengthM }) {
+  if (!(gammaPerM > 0) || !(seedPhotonRatio > 0) || !(lengthM > 0)) return 0;
+  return Math.ceil(lengthM / stepLength(gammaPerM, deltaKPerM, seedPhotonRatio));
+}
+
 // Pump power conversion (fraction of input pump photons converted) at each
-// of the ascending lengths in `lengthsM`. Returns null for invalid input.
+// of the ascending lengths in `lengthsM`. Returns null for invalid input or
+// when the integration would exceed MAX_STEPS.
 export function coupledWaveConversion({ gammaPerM, deltaKPerM = 0, seedPhotonRatio, lengthsM, stepScale = 1 }) {
   if (![gammaPerM, deltaKPerM, seedPhotonRatio, stepScale].every(Number.isFinite)
       || gammaPerM < 0 || seedPhotonRatio < 0 || !(stepScale > 0)
       || !Array.isArray(lengthsM) || lengthsM.some((l, k) => !(l >= 0) || (k && l < lengthsM[k - 1]))) return null;
   if (gammaPerM === 0 || seedPhotonRatio === 0) return lengthsM.map(() => 0);
   const lengthMax = lengthsM.at(-1) ?? 0;
-  const gammaEff = gammaPerM * Math.sqrt(1 + seedPhotonRatio);
-  const h0 = Math.min(STEP_GAIN / gammaEff, deltaKPerM ? STEP_PHASE / Math.abs(deltaKPerM) : Infinity) * stepScale;
+  const h0 = stepLength(gammaPerM, deltaKPerM, seedPhotonRatio, stepScale);
   if (lengthMax / h0 > MAX_STEPS) return null;
   // State: [sRe, sIm, iRe, iIm, pRe, pIm].
   let y = [Math.sqrt(seedPhotonRatio), 0, 0, 0, 1, 0];
