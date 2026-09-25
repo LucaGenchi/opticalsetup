@@ -14,7 +14,8 @@ import { uid } from './util.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
-import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opoReading, phasePlateIllumination, probeAt, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
+import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
+import { opaSettings, opaGainAt } from './opa.js';
 import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
 import {
   probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
@@ -2195,6 +2196,72 @@ function opoElementStateText(reading, p) {
     default:
       return '—';
   }
+}
+
+// ---- Integrated OPA element ----
+// A packaged, seeded optical parametric amplifier: the pump and the seed
+// enter two rear ports, and the amplified signal, the idler and what is left
+// of the pump leave three front ports along the body axis. The settings are
+// the ones a data sheet quotes (tuned wavelength, gain bandwidth, small-signal
+// gain, conversion limit); sketch/js/opa.js maps them onto the reviewed
+// parametric core. The port layout is a convention of this workbench.
+const OPA_BODY_W = 112;
+export const OPA_ACCEPTANCE_DEG = 20;
+const opaApertureMm = p => Math.min(20, Math.max(1, Number(p?.aperture) || 6));
+export const opaBeamMm = p => Math.min(20, Math.max(0, Number(p?.outputBeamMm) || 0));
+// Rear ports (pump above, seed below) and front ports (pump above, signal on
+// the axis, idler below) sit far enough apart that no two beams overlap.
+const opaPortOffset = p => Math.max(18, opaApertureMm(p) / 2 + 6, opaBeamMm(p) + 6);
+const opaBodyH = p => 2 * (opaPortOffset(p) + Math.max(opaApertureMm(p), opaBeamMm(p)) / 2 + 7);
+export function opaPortLocal(role, params) {
+  const off = opaPortOffset(params);
+  const x = OPA_BODY_W / 2;
+  if (role === 'pumpIn') return { x: -x, y: -off };
+  if (role === 'seedIn') return { x: -x, y: off };
+  if (role === 'pump') return { x: x + 6, y: -off };
+  if (role === 'idler') return { x: x + 6, y: off };
+  return { x: x + 6, y: 0 };
+}
+
+const fmtW = w => (w >= 1 ? `${sig3(w)} W` : w >= 1e-3 ? `${sig3(w * 1e3)} mW` : w >= 1e-6 ? `${sig3(w * 1e6)} µW` : `${w.toExponential(2)} W`);
+const fmtGain = g => (g >= 1e4 ? `${g.toExponential(2).replace('e+', ' × 10^')}` : `${sig3(g)}`);
+const dB = g => `${sig3(10 * Math.log10(g))} dB`;
+
+function opaStateText(plan, p) {
+  const settings = opaSettings(p);
+  const tuned = `Tuned to ${nm4(settings.signalWl)} nm · gain band ${sig3(settings.gainBandwidthNm)} nm FWHM · peak small-signal gain ${sig3(settings.smallSignalGainDb)} dB`;
+  if (!plan) return `${tuned}\nNo light has reached the input ports yet`;
+  const pumpLine = Number.isFinite(plan.pumpWl) ? `Pump ${nm4(plan.pumpWl)} nm` : '';
+  switch (plan.state) {
+    case 'idle': return `${tuned}\nNo light at the input ports`;
+    case 'noPump': return `${tuned}\nNo pump: a seed arrives but nothing reaches the pump port, so there is no gain`;
+    case 'multiplePumps': return `${tuned}\nMore than one beam reaches the pump port: this element amplifies with one pump only, so nothing is converted`;
+    case 'tunedBelowPump': return `${tuned}\nThe tuned signal wavelength must be longer than the ${nm4(plan.pumpWl)} nm pump`;
+    case 'noSeed': return `${tuned}\n${pumpLine}${Number.isFinite(plan.tunedIdlerWl) ? ` · idler would be ${nm4(plan.tunedIdlerWl)} nm` : ''}\nNo seed: nothing to amplify (parametric noise is not modelled). The pump passes through`;
+    case 'uncalibrated': return `${tuned}\nThe pump and seed sources need an average-power setting: the gain moves watts from one to the other`;
+    default: break;
+  }
+  const lines = [tuned, `${pumpLine}${plan.pumpInW > 0 ? ` · ${fmtW(plan.pumpInW)} in, ${fmtW(plan.pumpOutW)} out (${sig3(plan.conversion * 100)} % converted)` : ''}`];
+  for (const seed of plan.seeds) {
+    const head = `Seed ${nm4(seed.wl)} nm · ${fmtW(seed.seedW)}`;
+    if (seed.state === 'amplifying') {
+      lines.push(`${head} → signal ${nm4(seed.signal.wl)} nm · ${fmtW(seed.seedW + seed.gainW)} (gain ${fmtGain(seed.achievedGain)}, ${dB(seed.achievedGain)}, pulse-averaged)`
+        + ` · idler ${nm4(seed.idler.wl)} nm · ${fmtW(seed.idlerW)}${seed.saturated ? ' · limited by the pump (depletion limit)' : ''}${seed.lowOverlap ? ' · pulses barely overlap' : ''}`);
+    } else {
+      const why = {
+        outsideBand: `outside the gain band around ${nm4(settings.signalWl)} nm: passes through unamplified`,
+        seedBelowPump: 'shorter than the pump: no idler is possible, passes through',
+        unsynchronized: 'never meets the pump pulse: adjust the delay',
+        repetitionUnsupported: 'pump and seed must share one repetition rate',
+        degenerateUnsupported: 'at exactly twice the pump wavelength (degenerate, phase-sensitive): not modelled',
+        doubleSeedUnsupported: 'another seed sits at its idler wavelength: not modelled',
+        durationUnsupported: 'a pulse duration is unknown: not modelled',
+        gatesUnsupported: 'the beam is modulated (gated): not modelled',
+      }[seed.state] || 'no gain at these settings';
+      lines.push(`${head}: ${why}`);
+    }
+  }
+  return lines.join('\n');
 }
 
 export const registry = {
@@ -4627,6 +4694,73 @@ export const registry = {
     },
   },
 
+  opa: {
+    label: 'OPA', category: 'Nonlinear Optics', size: { w: 120, h: 60 },
+    liveReadouts: true,
+    calculator: 'opa',
+    aliases: ['optical parametric amplifier', 'parametric amplifier', 'seeded opa', 'nopa', 'opcpa', 'signal idler', 'difference frequency', 'seed idler'],
+    size_: el => ({ w: OPA_BODY_W + 12, h: opaBodyH(el.params) + 4 }),
+    params: [
+      { key: 'signalWl', label: 'Tuned signal λ (nm)', type: 'number', min: 200, max: 20000, step: 5, def: 800 },
+      {
+        key: 'tunedIdler', label: 'Idler λ', type: 'readout',
+        readout: (p, el) => {
+          const plan = el ? opaReading(el.id) : null;
+          return Number.isFinite(plan?.tunedIdlerWl) ? `${nm4(plan.tunedIdlerWl)} nm (from the arriving ${nm4(plan.pumpWl)} nm pump)` : 'Set by the pump that arrives';
+        },
+      },
+      { key: 'gainBandwidthNm', label: 'Gain bandwidth, FWHM (nm)', type: 'number', min: 0.1, max: 5000, step: 5, def: 40 },
+      { key: 'smallSignalGainDb', label: 'Peak small-signal gain (dB)', type: 'number', min: 0, max: 100, step: 1, def: 40 },
+      {
+        key: 'gainFactor', label: 'Peak gain', type: 'readout',
+        readout: p => { const s = opaSettings(p); return `× ${fmtGain(opaGainAt(s, s.signalWl))} at the pump's peak intensity`; },
+      },
+      { key: 'maxDepletion', label: 'Pump depletion limit', type: 'number', min: 0, max: 1, step: 0.05, def: 0.5 },
+      { key: 'aperture', label: 'Input apertures (mm)', type: 'number', min: 1, max: 20, step: 0.5, def: 6 },
+      { key: 'outputBeamMm', label: 'Output beam diameter (mm)', type: 'number', min: 0, max: 20, step: 0.5, def: 3 },
+      // Switching a port off removes that light from the bench; it is not
+      // handed to another output.
+      { key: 'outputIdler', label: 'Output idler', type: 'checkbox', def: true },
+      { key: 'outputPump', label: 'Output residual pump', type: 'checkbox', def: true },
+      {
+        key: 'opaState', label: 'Amplifier', type: 'readout', wide: true,
+        readout: (p, el) => opaStateText(el ? opaReading(el.id) : null, p),
+      },
+    ],
+    svg(el) {
+      const p = el.params, hh = opaBodyH(p) / 2, x = OPA_BODY_W / 2, off = opaPortOffset(p);
+      const ap = opaApertureMm(p) / 2, out = Math.max(1.5, opaBeamMm(p) / 2);
+      const flip = isFlipped(el) ? 'transform="rotate(180)"' : '';
+      const port = (px, py, half, label, anchor) => `<rect x="${px}" y="${py - half}" width="5" height="${2 * half}" fill="#666" stroke="#444" stroke-width="1"/>`
+        + `<text x="${anchor === 'start' ? px + 8 : px - 3}" y="${py}" text-anchor="${anchor}" dominant-baseline="central" font-size="6" fill="#c9d3dc">${label}</text>`;
+      return `<rect x="${-x}" y="${-hh}" width="${OPA_BODY_W}" height="${2 * hh}" rx="4" fill="#2f4c3f" stroke="#1d2f27" stroke-width="1.5"/>`
+        + `<text x="0" y="0" ${flip} text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.5" fill="#fff">OPA</text>`
+        + port(-x - 5, -off, ap, 'P', 'start') + port(-x - 5, off, ap, 'S', 'start')
+        + port(x, 0, out, 'S', 'end')
+        + (p.outputPump !== false ? port(x, -off, out, 'P', 'end') : '')
+        + (p.outputIdler !== false ? port(x, off, out, 'I', 'end') : '');
+    },
+    surfaces(el) {
+      const p = el.params, hh = opaBodyH(p) / 2, x = OPA_BODY_W / 2, off = opaPortOffset(p);
+      const ap = opaApertureMm(p) / 2;
+      const data = {
+        ...opaSettings(p), aperture: opaApertureMm(p), outputBeamMm: opaBeamMm(p),
+        outputIdler: p.outputIdler !== false, outputPump: p.outputPump !== false,
+      };
+      return [
+        { x1: -x, y1: -hh, x2: x, y2: -hh, kind: 'absorb' },
+        { x1: x, y1: -hh, x2: x, y2: hh, kind: 'absorb' },
+        { x1: x, y1: hh, x2: -x, y2: hh, kind: 'absorb' },
+        // Rear face: absorbing everywhere except the two input ports.
+        { x1: -x, y1: hh, x2: -x, y2: off + ap, kind: 'absorb' },
+        { x1: -x, y1: off + ap, x2: -x, y2: off - ap, kind: 'opaseed', data },
+        { x1: -x, y1: off - ap, x2: -x, y2: -off + ap, kind: 'absorb' },
+        { x1: -x, y1: -off + ap, x2: -x, y2: -off - ap, kind: 'opapump', data },
+        { x1: -x, y1: -off - ap, x2: -x, y2: -hh, kind: 'absorb' },
+      ];
+    },
+  },
+
   glassrod: {
     label: 'Glass rod', category: 'Dispersive elements', size: { w: 64, h: 14 },
     params: [
@@ -5270,6 +5404,7 @@ const DIRECT = {
   chopper: { resize: { uniform: 'diameter' }, tune: { key: 'chopDuty', short: 'duty', when: p => p.modulate } },
   crystal: { resize: { y: 'aperture' }, tune: { key: p => p.convert === 'opo' ? 'opoDepletion' : 'efficiency', short: 'η', when: p => p.convert !== 'none' } },
   opo: { resize: { y: 'aperture' }, tune: { key: 'signalWl', short: 'λs', when: p => (p.tuneMode || 'fixed') === 'fixed' } },
+  opa: { resize: { y: 'aperture' }, tune: { key: 'signalWl', short: 'λs' } },
   glassrod: { resize: { x: 'rodlen', y: 'dia' }, tune: { key: 'ior', short: 'n', when: p => p.material === 'constant' } },
   sample: { resize: { x: 'aperture' }, tune: { key: 'transmission', short: 'T', when: p => p.transmitExc } },
   stage: { resize: { x: 'aperture' } },
@@ -5309,6 +5444,7 @@ export function getDirectManipulation(el) {
 // simulated elements affect traced rays, configurable elements need an active
 // mode, and diagram-only elements are honest visual annotations/placeholders.
 const ELEMENT_HELP = {
+  opa: 'A seeded optical parametric amplifier in a box. The pump enters the upper rear port and the seed the lower one; the amplified signal leaves the front on the axis, the idler below it and what is left of the pump above it. Set it like a data sheet: the tuned signal wavelength, the gain bandwidth (a Gaussian gain spectrum) and the peak small-signal gain at the pump\'s peak intensity. The amplification itself is computed: instant by instant through the pulses, one pump photon for one signal and one idler photon, with the pump energy as the limit, and only the part of a broadband seed that falls in the gain band grows. The sources need an average-power setting. Phase matching, beam profiles, walk-off, back-conversion and parametric noise are not simulated; the OPA calculator shows the full physics.',
   opo: 'An optical parametric oscillator in a box: pump light entering the rear aperture within its angular and wavelength acceptance becomes a signal on the front axis and an optional idler on a parallel port, by the same phenomenological model as the crystal\'s OPO mode. The signal can be fixed, swept or stepped through a list. The unconverted pump is discarded inside; threshold, gain, cavity length and synchronisation are not simulated.',
   cwlaser: 'Emits a steady monochromatic collimated beam at one wavelength.',
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',

@@ -941,6 +941,8 @@
      "oplMin": 78,
      "oplSum": 78,
      "oplWeight": 1,
+     "originId": "laser",
+     "power": 1,
      "pulse": {
       "avgPowerW": 8,
       "bandwidthNm": 0.783334556,
