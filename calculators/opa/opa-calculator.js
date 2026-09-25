@@ -44,7 +44,7 @@ export const OPA_INPUTS = [
   { id: 'deltaKPerMm', group: 'crystal', label: 'Phase mismatch', symbol: 'Δk', unit: '1/mm', value: 0, min: -1e4, max: 1e4,
     help: 'Δk = k_p − k_s − k_i (− 2π/Λ with quasi-phase matching). Zero is perfect phase matching.' },
   { id: 'maxDepletion', group: 'crystal', label: 'Depletion limit', symbol: 'η<sub>max</sub>', value: 0.5, arrowStep: 0.05, min: 0, max: 1,
-    help: 'Largest fraction of the pump the model may convert at any instant. 1 is the ideal plane-wave limit; measured amplifiers reach about 0.35 typically and up to 0.85 (see “Every parameter”).' },
+    help: 'Largest fraction of the pump the model may convert at any instant. 1 is the ideal plane-wave limit; measured amplifiers typically deplete about 35 % of the pump (see “Every parameter”).' },
   { id: 'seedOn', group: 'seed', label: 'Seed on', type: 'checkbox', value: true,
     help: 'Without a seed there is nothing to amplify: this model has no parametric noise (OPG).' },
   { id: 'seedWl', group: 'seed', label: 'Wavelength', symbol: 'λ<sub>s</sub>', unit: 'nm', value: 780, arrowStep: 5, min: 200, max: 20000,
