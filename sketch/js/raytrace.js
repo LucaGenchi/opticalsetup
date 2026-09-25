@@ -407,6 +407,8 @@ function detectorConvergence(hits) {
   const pts = [];
   for (const h of hits) {
     if (!Number.isFinite(h.dx) || !Number.isFinite(h.tx)) continue;
+    const weight = Math.max(0, Number(h.power) || 0);
+    if (!(weight > 0)) continue;
     const tlen = Math.hypot(h.tx, h.ty);
     if (!(tlen > 1e-9)) continue;
     const tx = h.tx / tlen, ty = h.ty / tlen;   // unit tangent (across the face)
@@ -415,21 +417,33 @@ function detectorConvergence(hits) {
     pts.push({
       height: (h.u - 0.5) * (h.aperture || tlen),
       theta: Math.atan2(along, Math.abs(axial)),
+      weight,
     });
   }
   if (pts.length < 2) return null;
-  const n = pts.length;
-  const mh = pts.reduce((s, p) => s + p.height, 0) / n;
-  const mt = pts.reduce((s, p) => s + p.theta, 0) / n;
+  // A retained fluorescence tail or highly attenuated branch is still real
+  // light, but it must not steer the fitted wavefront as much as the main
+  // beam.  Use the same arrived-power weights as the rest of the detector
+  // readout instead of giving every tracing sample one vote.
+  const totalWeight = pts.reduce((sum, point) => sum + point.weight, 0);
+  if (!(totalWeight > 0)) return null;
+  const mh = pts.reduce((sum, point) => sum + point.height * point.weight, 0) / totalWeight;
+  const mt = pts.reduce((sum, point) => sum + point.theta * point.weight, 0) / totalWeight;
   let num = 0, den = 0;
-  for (const p of pts) { num += (p.height - mh) * (p.theta - mt); den += (p.height - mh) ** 2; }
+  for (const point of pts) {
+    const fraction = point.weight / totalWeight;
+    num += fraction * (point.height - mh) * (point.theta - mt);
+    den += fraction * (point.height - mh) ** 2;
+  }
   if (!(den > 1e-12)) return null; // every ray at the same height: nothing to fit
-  const slope = num / den; // radians of tilt per mm of height
+  const fittedSlope = num / den; // radians of tilt per mm of height
   const heights = pts.map(p => p.height);
   const span = Math.max(...heights) - Math.min(...heights);
+  const fullAngleDeg = Math.abs(fittedSlope) * span * 180 / Math.PI;
+  const slope = fullAngleDeg < 1e-12 ? 0 : fittedSlope;
   return {
     slopePerMm: slope,
-    fullAngleDeg: Math.abs(slope) * span * 180 / Math.PI,
+    fullAngleDeg: slope === 0 ? 0 : fullAngleDeg,
     diverging: slope > 0,
   };
 }

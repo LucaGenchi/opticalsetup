@@ -491,9 +491,9 @@
     "coherentPaths": 0,
     "color": "#ff5900",
     "convergence": {
-     "diverging": true,
-     "fullAngleDeg": 5.87179326e-15,
-     "slopePerMm": 1.70803542e-17
+     "diverging": false,
+     "fullAngleDeg": 0,
+     "slopePerMm": 0
     },
     "dark": false,
     "darkOutput": 0.0001,
@@ -594,9 +594,9 @@
     "coherentPaths": 0,
     "color": "#ff5900",
     "convergence": {
-     "diverging": true,
-     "fullAngleDeg": 9.90865112e-16,
-     "slopePerMm": 2.88230978e-18
+     "diverging": false,
+     "fullAngleDeg": 0,
+     "slopePerMm": 0
     },
     "dark": false,
     "darkOutput": 0.0001,
@@ -956,9 +956,9 @@
     "coherentPaths": 0,
     "color": "#ff3030",
     "convergence": {
-     "diverging": true,
-     "fullAngleDeg": 2.93589663e-15,
-     "slopePerMm": 8.54017711e-18
+     "diverging": false,
+     "fullAngleDeg": 0,
+     "slopePerMm": 0
     },
     "dark": false,
     "darkOutput": null,
