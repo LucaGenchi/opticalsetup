@@ -7,6 +7,7 @@ import { createElement } from '../sketch/js/elements.js';
 import { probeAt, traceScene } from '../sketch/js/raytrace.js';
 import { probeDurationLabel } from '../sketch/js/probe.js';
 import { glassGVD } from '../sketch/js/glass.js';
+import { pulseTransmissionAt, traceValueAt } from '../sketch/js/pulses.js';
 import '../sketch/js/etalon.js'; // registers registry.etalon
 
 // A beam probe reads the pulse where it sits. One traced path can run on
@@ -33,7 +34,7 @@ function compressor(x, gddFs2) {
   return element;
 }
 
-const durationAt = x => probeAt(x, 0)?.pulse?.pulseWidthFs;
+const durationAt = x => probeAt(x, 0)?.pulse?.durationFs;
 
 test('a probe between two compressors on one path reads the pulse there', () => {
   traceScene([source(), compressor(150, -30000), compressor(300, 30000)]);
@@ -61,7 +62,7 @@ test('a probe after an etalon says the duration is unavailable', () => {
   traceScene([source({ pulseWidthFs: 20 }), etalon]);
   const reading = probeAt(200, 0);
   assert.ok(reading?.pulse, 'the probe found the pulsed beam');
-  assert.equal(reading.pulse.pulseWidthFs, null);
+  assert.equal(reading.pulse.durationFs, null);
   assert.match(reading.pulse.durationIssue, /etalon/i);
   assert.equal(probeDurationLabel(reading, 'pulsedlaser'), 'Unavailable');
 });
@@ -70,4 +71,35 @@ test('a probe before any dispersion still reads the configured duration', () => 
   traceScene([source({ pulseWidthFs: 250 })]);
   near(durationAt(100), 250, 1e-9);
   assert.equal(probeDurationLabel(probeAt(100, 0), 'pulsedlaser'), '250 fs');
+});
+
+// Andrea's and Codex's reproduction on 0587e2d: the time-mode probe hands its
+// pulse record to scopeTrace, which evaluates the upstream gates with
+// pulseWidthFs. Dispersion after a gate must not change, in hindsight, what
+// that gate let through.
+test('dispersion after a gate does not change what the gate let through', () => {
+  const laser = source({ pulseWidthFs: 2, repRateMHz: 1000 });
+  const aom = createElement('aom', 100, 0);
+  Object.assign(aom.params, { deflect: 0, eff: 1, modulate: true, modShape: 'square', modFreqMHz: 1000, chopDuty: 0.5 });
+  traceScene([laser, aom, compressor(300, 1e6)]);
+  const before = probeAt(200, 0), after = probeAt(400, 0);
+  assert.ok(before?.pulse?.gates?.length && after?.pulse?.gates?.length, 'both probes see the gated train');
+  near(pulseTransmissionAt(after.pulse, 0), pulseTransmissionAt(before.pulse, 0), 1e-12);
+  // The duration readout still follows the compressor.
+  near(before.pulse.durationFs, 2, 1e-9);
+  near(after.pulse.durationFs, gaussianAfter(2, 1e6), 1e-6 * gaussianAfter(2, 1e6));
+});
+
+// traceValueAt is continuous from the right at a step: a probe exactly at the
+// optical path of a compressor already reads the new GDD (the convention of
+// the pulse packets), with a 1e-9 tolerance on the path; a linear event
+// (inside glass) interpolates.
+test('the GDD trace at a step: before, exactly at and after the event', () => {
+  const step = [{ opl: 0, gdd: 0 }, { opl: 10, gdd: 30000 }];
+  assert.equal(traceValueAt(step, 9.999, 'gdd'), 0);
+  assert.equal(traceValueAt(step, 10, 'gdd'), 30000);
+  assert.equal(traceValueAt(step, 10 - 1e-10, 'gdd'), 30000);
+  assert.equal(traceValueAt(step, 10.001, 'gdd'), 30000);
+  const ramp = [{ opl: 0, gdd: 0 }, { opl: 10, gdd: 1000, linear: true }];
+  assert.equal(traceValueAt(ramp, 2.5, 'gdd'), 250);
 });

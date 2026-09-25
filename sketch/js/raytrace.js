@@ -1279,7 +1279,11 @@ export function probeAt(x, y, tol = 16) {
     approximation: best.approximation || null,
     pulse: best.pulse ? {
       repRateMHz: best.pulse.repRateMHz,
-      pulseWidthFs: duration.durationFs,
+      // The width the gates on the way were evaluated with. The duration at
+      // this point is a separate field: dispersion after a gate must not
+      // change, in hindsight, what that gate let through.
+      pulseWidthFs: best.pulse.pulseWidthFs,
+      durationFs: duration.durationFs,
       durationIssue: duration.issue,
       phaseNs: best.pulse.phaseNs,
       pulseShape: best.pulse.pulseShape || 'gauss',
