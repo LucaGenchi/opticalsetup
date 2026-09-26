@@ -154,6 +154,33 @@ test('wavefront detector reports collimation and intensity', () => {
   assert.match(svg, /DIVERGENCE 0\.00°/);
 });
 
+test('a negligible tilted branch cannot steer the wavefront fit', () => {
+  const laser = createElement('cwlaser', 0, 0);
+  laser.params.beamMode = 'beam';
+  laser.params.beamWidth = 10;
+
+  const weak = createElement('cwlaser', 0, 20);
+  weak.params.beamMode = 'line';
+  weak.rot = -3;
+
+  const attenuator = createElement('filter', 150, 12.14);
+  attenuator.params.length = 3;
+  attenuator.params.ftype = 'nd';
+  attenuator.params.trans = 1e-6;
+
+  const detector = createElement('wavefrontdetector', 300, 0);
+  detector.params.aperture = 60;
+  const elements = [laser, weak, attenuator, detector];
+  traceAll(elements);
+
+  const reading = enhancedReading(detector, elements);
+  assert.ok(reading);
+  assert.ok(reading.signal > 1 && reading.signal < 1.00001,
+    `expected a one-millionth-power outlier, got ${reading.signal}`);
+  assert.equal(reading.wavefront.state, 'COLLIMATED');
+  assert.equal(reading.wavefront.divergenceDeg, 0);
+});
+
 test('polarimeter reports state, Stokes parameters, and a visual glyph', () => {
   const laser = createElement('cwlaser', 0, 0);
   laser.params.pol = 30;
