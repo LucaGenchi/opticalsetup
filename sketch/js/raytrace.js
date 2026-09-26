@@ -1274,7 +1274,7 @@ export function probeAt(x, y, tol = 16) {
       const intensity = r.segmentIntensities?.[i] ?? r.intensity;
       if (dd < bd - 1e-9 || (Math.abs(dd - bd) <= 1e-9 && intensity > (best?.intensity ?? -Infinity))) {
         bd = dd;
-        best = { ...r, intensity };
+        best = { ...r, intensity, ray: r };
         const ax = r.pts[i + 1].x - r.pts[i].x, ay = r.pts[i + 1].y - r.pts[i].y;
         const len2 = ax * ax + ay * ay;
         bestSegment = i;
@@ -1283,6 +1283,24 @@ export function probeAt(x, y, tol = 16) {
     }
   }
   const duration = best?.pulse ? probePulseDuration(best, bestSegment, bestAlong) : null;
+  // The rays drawn along exactly this segment, in the same direction and
+  // colour, are one beam made of several contributions -- an OPA's signal
+  // port sends the seed on under its own laser and the gain under the
+  // pump's -- so the power reading adds them. Two coherent rays of the same
+  // source (the arms of an interferometer) are not added: combining them is
+  // the interference model's job, and the probe keeps showing one.
+  const beams = [];
+  if (best) {
+    const a = best.pts[bestSegment], b = best.pts[bestSegment + 1];
+    const same = (p, q) => Math.abs(p.x - q.x) <= 1e-6 && Math.abs(p.y - q.y) <= 1e-6;
+    for (const r of lastPaths) {
+      const i = r.pts.findIndex((p, k) => k < r.pts.length - 1 && same(p, a) && same(r.pts[k + 1], b));
+      if (i < 0 || Math.abs(r.wl - best.wl) >= 1) continue;
+      const coherentTwin = r.phaseValid && best.phaseValid && (r.originId || r.sourceId) === (best.originId || best.sourceId);
+      if (r !== best.ray && coherentTwin) continue;
+      beams.push({ sourceId: r.sourceId || null, intensity: r.segmentIntensities?.[i] ?? r.intensity });
+    }
+  }
   return best ? {
     wl: best.wl, bw: best.bw || 0, spec: best.spec || null, pol: best.pol,
     stokes: cloneStokes(best.stokes), intensity: best.intensity,
@@ -1290,6 +1308,7 @@ export function probeAt(x, y, tol = 16) {
     // configured watts, and what its train looks like here -- including any
     // gates picked up on the way, which is what the time plot draws.
     sourceId: best.sourceId || null,
+    beams,
     approximation: best.approximation || null,
     pulse: best.pulse ? {
       repRateMHz: best.pulse.repRateMHz,
@@ -1595,6 +1614,15 @@ function probeBeamKey(ray) {
   ].join('/');
 }
 
+// The parametric elements (OPAs, crystals) a beam has been through, merged
+// from several beams without repeats: light made from two beams carries both
+// histories, so it cannot be fed back into an element either one went through.
+function unionPath(...paths) {
+  const merged = [];
+  for (const path of paths) for (const id of Array.isArray(path) ? path : []) if (id && !merged.includes(id)) merged.push(id);
+  return merged;
+}
+
 function recordProbeBeam(surface, ray) {
   let seen = specimenProbe.get(surface.id);
   if (!seen) specimenProbe.set(surface.id, seen = []);
@@ -1610,6 +1638,8 @@ function recordProbeBeam(surface, ray) {
     already.oplWeight += weight;
     already.oplSum += weight * (ray.opl || 0);
     already.oplMin = Math.min(already.oplMin, ray.opl || 0);
+    const history = unionPath(already.parametricPath, ray.parametricPath);
+    if (history.length) already.parametricPath = history;
     return;
   }
   seen.push({
@@ -1627,6 +1657,8 @@ function recordProbeBeam(surface, ray) {
     originId: ray.originId || null,
     pulse: ray.pulse ? { ...ray.pulse } : null,
     gates: (ray.pulse?.gates || []).map(g => ({ ...g })),
+    // Only light that went through a parametric element has a history.
+    ...(ray.parametricPath?.length ? { parametricPath: unionPath(ray.parametricPath) } : {}),
   });
 }
 
@@ -2105,6 +2137,9 @@ function fiberEmissionRays(c) {
     power: Number.isFinite(c.power) ? c.power * transmission / K : undefined,
     pol: c.pol, stokes: cloneStokes(c.stokes), pulse, approximation, sourceId: c.sourceId || null,
     originId: c.originId || null,
+    // The parametric elements this light went through before the fiber: an
+    // OPA must still recognise it when the fiber brings it back.
+    parametricPath: unionPath(c.parametricPath),
     oplStart: (c.opl || 0) + lengthMm * ng + 2,
     // Dispersion accumulated before coupling survives the relaunch, and the
     // fiber's own signed GDD adds to it.
@@ -4288,7 +4323,9 @@ function interact(ray, hit) {
               centerNs: overlap.centerNs, oplMm: ray.opl, repRateMHz: overlap.repRateMHz,
               partnerPulseOffset: overlap.partnerPulseOffset, periodNs: overlap.periodNs,
             }),
-            parametricPath: throughHere,
+            // Made from the pump and the seed together, it carries both
+            // histories: it can go back into neither's earlier stages.
+            parametricPath: unionPath(throughHere, seed.record.parametricPath),
             gdd: 0,
             phaseValid: false,
             phaseIssue: 'OPA output: optical phase relative to the inputs is not modelled',
@@ -4959,6 +4996,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             sourceId: r.sourceId || null,
             originId: r.originId || null,
             coherenceLengthMm: r.coherenceLengthMm || 0,
+            parametricPath: unionPath(r.parametricPath),
           });
         }
         break; // the connector absorbs the incoming beam either way
@@ -5474,6 +5512,7 @@ function planOpaElements(surfaces) {
       return {
         key: beam.key, wl: beam.wl, bw: beam.bw || 0, spec: beam.spec || null, opl: beam.opl,
         pulse: beam.pulse, power: beam.power, originId: beam.originId,
+        parametricPath: beam.parametricPath || [],
         powerW: Number.isFinite(watts) ? watts * beam.power : null,
       };
     };
@@ -5726,6 +5765,7 @@ export function traceScene(elements, beams = []) {
       prev.incompatibleEnvelope ||= c.wl !== prev.wl || c.spec !== prev.spec
         || Math.abs((c.gdd || 0) - (prev.gdd || 0)) > 1e-6 || Math.abs((c.opl || 0) - (prev.opl || 0)) > 1e-4;
       prev.power = (Number.isFinite(prev.power) ? prev.power : 0) + (Number.isFinite(c.power) ? c.power : 0);
+      prev.parametricPath = unionPath(prev.parametricPath, c.parametricPath);
     }
     // Two sources into one capillary end form no single envelope.
     const argonGroups = [...argon.values()];
@@ -5733,8 +5773,15 @@ export function traceScene(elements, beams = []) {
       c.incompatibleEnvelope ||= argonGroups.some(other => other !== c && other.beam.id === c.beam.id
         && other.end === c.end && other.sourceId !== c.sourceId);
     }
+    // Couplings merged into one emission below keep every history among them.
+    const emissionKey = c => c.beam.id + ':' + c.end + ':' + Math.round(c.wl || 0) + ':' + (c.pulse?.sourceId || 'cw') + ':' + Math.round(c.opl || 0);
+    const histories = new Map();
     for (const c of [...ordinary, ...argonGroups]) {
-      const key = c.beam.id + ':' + c.end + ':' + Math.round(c.wl || 0) + ':' + (c.pulse?.sourceId || 'cw') + ':' + Math.round(c.opl || 0);
+      histories.set(emissionKey(c), unionPath(histories.get(emissionKey(c)), c.parametricPath));
+    }
+    for (const c of [...ordinary, ...argonGroups]) {
+      const key = emissionKey(c);
+      c.parametricPath = histories.get(key);
       if (emitted.has(key)) continue;
       emitted.add(key);
       const rays0 = fiberEmissionRays(c);

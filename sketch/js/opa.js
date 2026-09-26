@@ -23,7 +23,7 @@
 //   supercontinuum grows.
 
 import { parametricPair, mixWidthNm } from './parametric.js';
-import { allocateParametricAmplifier } from './parametric-amplifier.js';
+import { allocateParametricAmplifier, MAX_CHANNELS } from './parametric-amplifier.js';
 import { gaussianSpectrum, lineSpectrum, spectrumStats, spectrumSupport, spectrumWeight } from './spectrum.js';
 
 // The allocator works with Gamma (1/m) and a length; any length works as
@@ -35,6 +35,10 @@ export const OPA_REFERENCE_LENGTH_M = 1e-3;
 // is narrower, so a 0.1 nm band inside a 600 nm continuum and a narrow seed
 // inside a wide band are both integrated, not sampled on a coarse grid.
 export const SEED_SLICES = 65;
+// The fewest slices a continuous seed is cut into when several seeds share
+// the allocator's channels (a later stage of a cascade); below this, the
+// seeds are reported as too many rather than sampled too coarsely.
+export const MIN_SEED_SLICES = 9;
 // OPA stages the tracer plans in a cascade, one planning pass per stage
 // (sketch/js/raytrace.js, traceScene).
 export const MAX_OPA_STAGES = 6;
@@ -64,15 +68,26 @@ export function opaGainAt(settings, wl) {
 // The Gamma L that gives power gain G at zero mismatch: G = cosh^2(Gamma L).
 export const gammaLForGain = gain => (gain > 1 ? Math.acosh(Math.sqrt(gain)) : 0);
 
+// The integral of a piecewise-linear sampled profile from a to b: exact,
+// segment by segment, so slices of it add up to its whole area.
+function sampledIntegral(spec, a, b) {
+  const n = spec.w.length, dx = (spec.hi - spec.lo) / (n - 1);
+  let sum = 0;
+  for (let i = 0; i < n - 1; i++) {
+    const u = Math.max(a, spec.lo + i * dx), v = Math.min(b, spec.lo + (i + 1) * dx);
+    if (v > u) sum += (v - u) * (spectrumWeight(spec, u) + spectrumWeight(spec, v)) / 2;
+  }
+  return sum;
+}
+const opaSampled = spec => spec.kind === 'sampled' && spec.opaOutput && Array.isArray(spec.w) && spec.w.length > 1;
+
 // The area under a profile's weight (peak 1): the normaliser that turns its
-// weight into a density. Exact for the two continuous profiles sources emit.
+// weight into a density. Exact for the two continuous profiles sources emit
+// and for an OPA's own sampled output.
 function profileArea(spec) {
   if (spec.kind === 'gauss') return spec.fwhm * Math.sqrt(Math.PI / (4 * Math.LN2));
   if (spec.kind === 'flat') return spec.hi - spec.lo;
-  if (spec.kind === 'sampled' && spec.opaOutput && Array.isArray(spec.w) && spec.w.length > 1) {
-    const n = spec.w.length, dx = (spec.hi - spec.lo) / (n - 1);
-    return spec.w.reduce((sum, w, i) => sum + (i === 0 || i === n - 1 ? 0.5 : 1) * Math.max(0, w), 0) * dx;
-  }
+  if (opaSampled(spec)) return sampledIntegral(spec, spec.lo, spec.hi);
   return 0;
 }
 
@@ -80,14 +95,15 @@ function profileArea(spec) {
 // part of its spectrum the gain band reaches. Supported seeds are the ones
 // sources emit -- a monochromatic line, a Gaussian line, a flat continuum and
 // a lamp's discrete lines -- and the signal or idler of another OPA (the next
-// stage of a cascade): a piecewise-linear profile this module built itself on
-// SEED_SLICES points (spectrumOf), with no structure between them. A Gaussian
-// or flat profile is smooth and single, so 65 slices across its overlap with
-// the band resolve both. Any other reshaped (sampled) spectrum, for instance a
-// filtered continuum, can hide structure narrower than any fixed slicing: it
-// returns null, and the seed is reported as unsupported rather than silently
-// mis-sampled.
-export function seedSlices(settings, { wl, bw, spec }) {
+// stage of a cascade), a piecewise-linear profile this module built itself
+// (spectrumOf). A Gaussian or flat profile is smooth and single, so `count`
+// slices (65 unless several seeds share the allocator) across its overlap
+// with the band resolve both; an OPA's own profile is integrated exactly over
+// each slice, so its slices add up to its power. Any other reshaped (sampled)
+// spectrum, for instance a filtered continuum, can hide structure narrower
+// than any fixed slicing: it returns null, and the seed is reported as
+// unsupported rather than silently mis-sampled.
+export function seedSlices(settings, { wl, bw, spec }, count = SEED_SLICES) {
   const profile = spec || (bw > 0 ? gaussianSpectrum(wl, bw) : null);
   const reach = GAIN_REACH_FWHM * settings.gainBandwidthNm;
   const inBand = x => Math.abs(x - settings.signalWl) <= reach;
@@ -96,17 +112,19 @@ export function seedSlices(settings, { wl, bw, spec }) {
     const total = profile.lines.reduce((sum, l) => sum + l.w, 0);
     return total > 0 ? profile.lines.filter(l => inBand(l.nm)).map(l => ({ wl: l.nm, fraction: l.w / total, line: true })) : [];
   }
-  const supported = profile.kind === 'gauss' || profile.kind === 'flat' || (profile.kind === 'sampled' && profile.opaOutput);
-  if (!supported) return null;
+  const sampled = opaSampled(profile);
+  if (profile.kind !== 'gauss' && profile.kind !== 'flat' && !sampled) return null;
   const [supportLo, supportHi] = spectrumSupport(profile);
   const lo = Math.max(supportLo, settings.signalWl - reach), hi = Math.min(supportHi, settings.signalWl + reach);
   const area = profileArea(profile);
   if (!(hi > lo) || !(area > 0)) return [];
-  const width = (hi - lo) / SEED_SLICES;
+  const width = (hi - lo) / count;
   const slices = [];
-  for (let k = 0; k < SEED_SLICES; k++) {
+  for (let k = 0; k < count; k++) {
     const x = lo + (k + 0.5) * width;
-    const fraction = Math.max(0, spectrumWeight(profile, x)) * width / area;
+    const fraction = sampled
+      ? sampledIntegral(profile, lo + k * width, lo + (k + 1) * width) / area
+      : Math.max(0, spectrumWeight(profile, x)) * width / area;
     if (fraction > 0) slices.push({ wl: x, fraction, line: false });
   }
   return slices;
@@ -171,12 +189,27 @@ export function planOpa(params, { pump, pumps = [], seeds = [] }) {
   const watts = w => Number.isFinite(w) && w >= 0; // null >= 0 is true in JavaScript
   if (!watts(pump.powerW) || seeds.some(s => !watts(s.powerW))) return { ...withPump, state: 'uncalibrated' };
 
-  // One allocator channel per seed slice.
+  // One allocator channel per seed slice. Several continuous seeds -- the
+  // branches a cascade builds up, stage after stage -- share the allocator's
+  // channels: each is cut into fewer slices, down to MIN_SEED_SLICES, and
+  // beyond that the seeds are reported as too many, never dropped silently.
   const channels = [];
   const unsupported = new Set();
   const lineSeeds = new Set();
-  for (const seed of seeds) {
-    const slices = seedSlices(settings, seed);
+  const sliced = seeds.map(seed => seedSlices(settings, seed));
+  const lineChannels = sliced.reduce((sum, s) => sum + (s?.some(slice => slice.line) ? s.length : 0), 0);
+  const continuous = sliced.filter(s => s?.length && !s.some(slice => slice.line)).length;
+  const count = continuous ? Math.min(SEED_SLICES, Math.floor((MAX_CHANNELS - lineChannels) / continuous)) : SEED_SLICES;
+  if (lineChannels > MAX_CHANNELS || (continuous && count < MIN_SEED_SLICES)) {
+    const tooMany = seeds.map(seed => ({ key: seed.key, wl: seed.wl, seedW: seed.powerW, gainW: 0, idlerW: 0, pumpW: 0,
+      achievedGain: 1, saturated: false, lowOverlap: false, overlap: null, skewNs: null, peakGain: 1,
+      signal: null, idler: null, idlerWl: idlerAt(seed.wl), state: 'tooManySeeds' }));
+    return { ...withPump, state: 'tooManySeeds', seeds: tooMany };
+  }
+  for (const [index, seed] of seeds.entries()) {
+    const first = sliced[index];
+    const slices = first && first.length && !first.some(slice => slice.line) && count < SEED_SLICES
+      ? seedSlices(settings, seed, count) : first;
     if (slices === null) { unsupported.add(seed.key); continue; }
     if (slices.some(slice => slice.line)) lineSeeds.add(seed.key);
     for (const [i, slice] of slices.entries()) {

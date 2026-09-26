@@ -281,15 +281,26 @@ core. How the element meets the acceptance checks above:
    seed and is planned in turn. Passes stop when the plans' fingerprint no
    longer changes (at most `MAX_OPA_STAGES` = 6 stages, plus the confirming
    pass); a bench still changing after that is flagged in every OPA's readout.
-   Every output carries the OPA in its `parametricPath`, so light that comes
-   back to an OPA it already went through is stopped at the port (a feedback
-   loop is not modelled) and the readout says so. A later stage slices an
-   earlier stage's signal or idler, whose spectrum `spectrumOf` built on 65
-   points and marks `opaOutput`; any element that reshapes it builds a new,
-   unmarked profile, which is reported unsupported. Tested: stage 2's pump is
-   stage 1's residual pump and its seed is stage 1's whole signal, energy
-   adds up to 1e-12, stage 1 is planned the same with or without stage 2, a
-   filter between the stages, and a loop. A broadband seed is cut into 65
+   Every output carries the OPA in its `parametricPath`; generated light
+   carries the union of its pump's and its seed's histories, and a fiber
+   keeps the history of what it couples in. Light that comes back to an OPA
+   it already went through is stopped at the port (a feedback loop is not
+   modelled) and the readout says so. A later stage slices an earlier
+   stage's signal or idler, whose piecewise-linear spectrum `spectrumOf`
+   built on 65 points and marks `opaOutput`; each slice integrates it
+   exactly, so the slices add up to its power. Any element that reshapes it
+   builds a new, unmarked profile, which is reported unsupported. A cascade
+   multiplies the seed beams (each stage passes its seeds on and adds a gain
+   beam), so a stage with many continuous seeds cuts each into fewer slices
+   to stay within the allocator's 256 channels, down to 9; beyond that its
+   seeds are reported `tooManySeeds`. Tested: stage 2's pump is stage 1's
+   residual pump and its seed is stage 1's whole signal, energy adds up to
+   1e-12 over two stages, four pulsed stages all amplify, stage 1 is planned
+   the same with or without stage 2, a filter between the stages, a loop
+   through mirrors, a loop through an independently pumped second OPA, and a
+   loop through a fiber. Over four stages the watts fall short by ~1e-5 W of
+   1 W: gain beams below the tracer's weak-ray floor (1e-5 of their source's
+   watts) are dropped where they meet the next stage. A broadband seed is cut into 65
    spectral slices weighted by its spectrum, each amplified with the gain at
    its own wavelength.
 6. **Tracer checks.** Seed off, pump off, seed outside the band or shorter

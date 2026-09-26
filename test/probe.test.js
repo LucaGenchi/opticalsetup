@@ -54,6 +54,13 @@ test('power is null when nothing upstream declares any', () => {
   assert.equal(probeAveragePowerW(null, []), null);
 });
 
+test('a beam of several coincident rays reads their watts together, or nothing if one is unknown', () => {
+  const sources = [{ id: 'pump', params: { avgPowerW: 1 } }, { id: 'seed', params: { avgPowerW: 1e-3 } }, { id: 'dark', params: {} }];
+  const beams = [{ sourceId: 'seed', intensity: 1 }, { sourceId: 'pump', intensity: 0.004 }];
+  assert.ok(Math.abs(probeAveragePowerW({ sourceId: 'seed', intensity: 1, beams }, sources) - 0.005) < 1e-15);
+  assert.equal(probeAveragePowerW({ sourceId: 'seed', intensity: 1, beams: [...beams, { sourceId: 'dark', intensity: 1 }] }, sources), null);
+});
+
 test('power formatting steps through the units it is likely to meet', () => {
   assert.equal(formatPowerMw(0.2), '200 mW');
   assert.equal(formatPowerMw(2), '2.00 W');

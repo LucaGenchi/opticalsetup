@@ -2269,6 +2269,7 @@ function opaStateCore(plan, p) {
         durationUnsupported: 'a pulse duration is unknown: not modelled',
         spectrumUnsupported: 'its spectrum was reshaped upstream (a filtered continuum): not modelled, passes through unamplified',
         gatesUnsupported: 'the beam is modulated (gated): not modelled',
+        tooManySeeds: 'too many seed beams share this stage (a long cascade) for the spectral slicing: not modelled, passes through unamplified',
       }[seed.state] || 'no gain at these settings';
       lines.push(`${head}: ${why}`);
     }
