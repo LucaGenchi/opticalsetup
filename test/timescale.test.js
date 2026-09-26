@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  TIME_SCALES, MIN_TIME_SCALE, MAX_TIME_SCALE, CW_FALLBACK_RATIO,
+  TIME_SCALES, MIN_TIME_SCALE, MAX_TIME_SCALE, CW_FALLBACK_RATIO, MAX_PACKET_SCALE, packetsTooFast,
   snapTimeScale, pulsePeriodNs, pulsesReadAsCW, elementDriveHz, recommendedTimeScale,
 } from '../sketch/js/timescale.js';
 import { createElement, galvoAngleAt, registry } from '../sketch/js/elements.js';
@@ -27,20 +27,40 @@ test('the canvas offers exactly the seven requested time scales, 1 ns/s through 
   assert.equal(MAX_TIME_SCALE, 1e6);
 });
 
-test('pulsed-source defaults follow the requested repetition-rate tiers', () => {
+test('pulsed-source defaults follow the repetition-rate tiers, never above 1 µs/s', () => {
   assert.equal(scaleOf([pulsedLaser(80)]), 10, '80 MHz (>50 MHz) -> 10 ns/s');
   assert.equal(scaleOf([pulsedLaser(200)]), 10, '200 MHz -> 10 ns/s');
-  assert.equal(scaleOf([pulsedLaser(10)]), 1e3, '10 MHz (500 kHz–50 MHz) -> 1 µs/s');
+  assert.equal(scaleOf([pulsedLaser(10)]), 1e3, '10 MHz (20 kHz–50 MHz) -> 1 µs/s');
   assert.equal(scaleOf([pulsedLaser(1)]), 1e3, '1 MHz -> 1 µs/s');
-  assert.equal(scaleOf([pulsedLaser(0.1)]), 1e5, '100 kHz (<500 kHz) -> 100 µs/s');
-  assert.equal(scaleOf([pulsedLaser(0.01)]), 1e5, '10 kHz -> 100 µs/s');
+  assert.equal(scaleOf([pulsedLaser(0.2)]), 1e3, '200 kHz -> 1 µs/s (was 100 µs/s: packets crossed the bench in a frame)');
+  assert.equal(scaleOf([pulsedLaser(0.1)]), 1e3, '100 kHz -> 1 µs/s');
+  assert.equal(scaleOf([pulsedLaser(0.001)]), 10, '1 kHz cannot be shown as packets comfortably: it asks for nothing');
+  assert.equal(recommendedTimeScale([pulsedLaser(0.001)]).driver, null);
 });
 
 test('the repetition-rate tier boundaries land on the documented side', () => {
   assert.equal(scaleOf([pulsedLaser(50)]), 1e3, 'exactly 50 MHz is not >50 MHz, so it takes the middle tier');
   assert.equal(scaleOf([pulsedLaser(50.0001)]), 10, 'just above 50 MHz takes the fast tier');
-  assert.equal(scaleOf([pulsedLaser(0.5)]), 1e3, 'exactly 500 kHz is included in the middle tier');
-  assert.equal(scaleOf([pulsedLaser(0.4999)]), 1e5, 'just below 500 kHz takes the slow tier');
+  assert.equal(scaleOf([pulsedLaser(0.02)]), 1e3, 'exactly 20 kHz (a 50 µs period, 50 x 1 µs/s) is still drawn as packets');
+  assert.equal(scaleOf([pulsedLaser(0.0199)]), 10, 'just below 20 kHz asks for no scale');
+});
+
+test('no automatic choice for a pulsed source draws packets faster than 1 µs/s', () => {
+  assert.equal(MAX_PACKET_SCALE, 1e3);
+  for (const repRateMHz of [1000, 200, 80, 50, 10, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.001, 1e-5]) {
+    assert.ok(scaleOf([pulsedLaser(repRateMHz)]) <= MAX_PACKET_SCALE, `${repRateMHz} MHz`);
+  }
+});
+
+test('above 1 µs/s packets are drawn as the steady beam, however the scale was set', () => {
+  assert.equal(packetsTooFast(1e3), false, '1 µs/s: 0.3 m/s on the bench');
+  assert.equal(packetsTooFast(1e4), true, '10 µs/s: 3 m/s');
+  assert.equal(packetsTooFast(1e5), true);
+  // A 10 kHz AOD asks for 100 µs/s: the scanning animates, a 200 kHz train
+  // that would otherwise be a match is not drawn flying across the bench.
+  assert.equal(pulsesReadAsCW(pulsePeriodNs(0.2), 1e5), true);
+  assert.equal(pulsesReadAsCW(pulsePeriodNs(0.2), 1e3), false);
+  assert.equal(packetsTooFast(NaN), false);
 });
 
 test('the fastest source in the scene sets the pulsed tier', () => {
@@ -180,14 +200,15 @@ test('packets fall back to CW when the pulse period is far from the time scale, 
 test('packets stay packets whenever the scale is a reasonable match', () => {
   assert.equal(pulsesReadAsCW(12.5, 10), false, '80 MHz at its own 10 ns/s default');
   assert.equal(pulsesReadAsCW(1000, 1e3), false, '1 MHz at its own 1 µs/s default');
-  assert.equal(pulsesReadAsCW(1e5, 1e5), false, '10 kHz at its own 100 µs/s default');
+  assert.equal(pulsesReadAsCW(5000, 1e3), false, '200 kHz at its own 1 µs/s default');
   assert.equal(pulsesReadAsCW(CW_FALLBACK_RATIO, 1), false, 'exactly at the ratio limit is still drawn');
 });
 
 test('every auto-selected default keeps its own pulses drawn as packets', () => {
   // The auto-selection and the CW fallback must not disagree: whatever scale
   // the app picks for a source, that source must still read as pulsed.
-  for (const repRateMHz of [200, 80, 50, 10, 1, 0.5, 0.1, 0.01, 0.001]) {
+  // Below 20 kHz the source picks no scale (see above) and is drawn steady.
+  for (const repRateMHz of [200, 80, 50, 10, 1, 0.5, 0.1, 0.02]) {
     const scale = scaleOf([pulsedLaser(repRateMHz)]);
     const period = pulsePeriodNs(repRateMHz);
     assert.equal(pulsesReadAsCW(period, scale), false,

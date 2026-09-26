@@ -27,7 +27,7 @@ import {
   VIEW_MAX_ZOOM, VIEW_MIN_ZOOM, zoomViewAt,
 } from './viewport.js';
 import {
-  MAX_TIME_SCALE, MIN_TIME_SCALE, pulsePeriodNs, pulsesReadAsCW,
+  MAX_TIME_SCALE, MIN_TIME_SCALE, pulsePeriodNs, pulsesReadAsCW, packetsTooFast,
 } from './timescale.js';
 
 let svg, viewport, gridLayer, highlightLayer, immersionLayer, beamLayer, pulseLayer, manualLayer, elementLayer, voxelLayer, overlayLayer;
@@ -657,7 +657,13 @@ function syncPulseAnimation() {
 }
 
 export function getPulsePlayback() {
-  return { ...pulsePlayback, hasPulses: pulseTracks.length > 0, cwFallback: cwFallbackActive };
+  return {
+    ...pulsePlayback, hasPulses: pulseTracks.length > 0, cwFallback: cwFallbackActive,
+    // Why the packets are steady: too fast to watch at this scale, or a
+    // repetition rate too far from it.
+    cwFallbackReason: cwFallbackActive && !pulsePlayback.mechanicsMode && packetsTooFast(pulsePlayback.speedNsPerSecond)
+      ? 'tooFast' : cwFallbackActive ? 'rate' : null,
+  };
 }
 
 export function setPulsePlaying(playing) {
