@@ -10,15 +10,24 @@ import { spectrumSamples } from './spectrum.js';
 // down by everything it passes through. Every ray of a uniform beam is
 // attenuated identically, so that surviving fraction is also the fraction of
 // the beam's power still present -- and the source's configured average power
-// times that fraction is the power here.
+// times that fraction is the power here. A beam made of several coincident
+// rays from different sources (an OPA's output: the seed passed on, and the
+// gain counted against the pump laser) adds each ray's watts.
 export function probeAveragePowerW(reading, elements = []) {
   if (!reading?.sourceId) return null;
-  const source = elements.find(el => el?.id === reading.sourceId);
-  const configured = Number(source?.params?.avgPowerW);
-  if (!Number.isFinite(configured) || configured < 0) return null;
-  const fraction = Number(reading.intensity);
-  if (!Number.isFinite(fraction) || fraction < 0) return null;
-  return configured * fraction;
+  // One beam may be several coincident rays from different sources (see
+  // probeAt): its watts are theirs together, and unknown if any is unknown.
+  const parts = Array.isArray(reading.beams) && reading.beams.length ? reading.beams : [reading];
+  let total = 0;
+  for (const part of parts) {
+    const source = elements.find(el => el?.id === part.sourceId);
+    const configured = Number(source?.params?.avgPowerW);
+    if (!Number.isFinite(configured) || configured < 0) return null;
+    const fraction = Number(part.intensity);
+    if (!Number.isFinite(fraction) || fraction < 0) return null;
+    total += configured * fraction;
+  }
+  return total;
 }
 
 export function formatPowerMw(watts) {

@@ -13,7 +13,8 @@ import '../sketch/js/detector-instruments.js';
 import { traceScene, opaReading, probeAt } from '../sketch/js/raytrace.js';
 import { enhancedReading } from '../sketch/js/detector-measurements.js';
 import { parseSketch } from '../sketch/js/state.js';
-import { opaGainAt, opaSettings, planOpa, gammaLForGain, seedSlices } from '../sketch/js/opa.js';
+import { opaGainAt, opaSettings, planOpa, gammaLForGain, seedSlices, MIN_SEED_SLICES } from '../sketch/js/opa.js';
+import { probeAveragePowerW } from '../sketch/js/probe.js';
 import { calculators } from '../tools/calculators-content.mjs';
 
 const near = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg ?? ''} ${a} vs ${b} (tolerance ${tol})`);
@@ -218,16 +219,191 @@ test('a monochromatic seed is one line: the amplified light is a line too', () =
   assert.equal(plan.seeds[0].signal.wl, 781);
 });
 
-test('light from an upstream OPA passes a second OPA unamplified, and the readout says why', () => {
-  const pump = laser(-18, 515, 1), seed = laser(18, 780, 1e-6), first = opaElement();
-  // A second OPA directly behind the first: its seed port sits on the first
-  // one's signal output (y = 18).
-  const second = createElement('opa', 460, 0);
-  Object.assign(second.params, { signalWl: 780, gainBandwidthNm: 40, smallSignalGainDb: 40 });
-  traceScene([pump, seed, first, second], []);
-  const plan = opaReading(second.id);
-  assert.ok(plan.unplannedInput, 'the second OPA saw light the probe pass did not');
-  assert.match(registry.opa.params.find(p => p.key === 'opaState').readout(second.params, second), /cascaded OPAs are not modelled/);
+// Two OPAs in line: the outputs leave at their inputs' heights, so stage 1's
+// residual pump lands on stage 2's pump port and its signal on stage 2's seed
+// port, as in a preamplifier followed by a power amplifier. Stage 1's idler
+// (on the axis) is dumped by stage 2's rear face.
+function twoStage(stage2 = {}, between = []) {
+  const pump = laser(-18, 515, 1), seed = laser(18, 780, 1e-6);
+  const first = opaElement({ smallSignalGainDb: 40, maxDepletion: 0.5 });
+  const second = createElement('opa', 500, 0);
+  Object.assign(second.params, { signalWl: 780, gainBandwidthNm: 40, smallSignalGainDb: 20, maxDepletion: 0.5, ...stage2 });
+  const meters = { pump: createElement('powermeter', 650, -18), idler: createElement('powermeter', 650, 0), signal: createElement('powermeter', 650, 18) };
+  for (const m of Object.values(meters)) m.params.aperture = 10;
+  const elements = [pump, seed, first, second, ...between, ...Object.values(meters)];
+  traceScene(elements, []);
+  const watts = Object.fromEntries(Object.entries(meters).map(([k, m]) => [k, enhancedReading(m, elements)?.detectedPowerW ?? 0]));
+  return { one: opaReading(first.id), two: opaReading(second.id), watts, second };
+}
+
+test('a two-stage OPA: stage 2 is pumped by what stage 1 left and seeded by its signal', () => {
+  const { one, two, watts } = twoStage();
+  assert.equal(one.state, 'amplifying');
+  assert.equal(two.state, 'amplifying', 'the second stage is planned from the first one\'s outputs');
+  assert.ok(!two.unplannedInput && !two.cascadeUnresolved && !one.cascadeUnresolved);
+  // Stage 2's pump is stage 1's residual pump, in watts.
+  near(two.pumpInW, one.pumpOutW, 1e-12);
+  // Its seed is stage 1's whole signal: the seed that passed through and the gain stage 1 added.
+  near(two.seeds.reduce((sum, seed) => sum + seed.seedW, 0), 1e-6 + one.seeds[0].gainW, 1e-15);
+  assert.ok(watts.signal > 1e-6 * one.seeds[0].achievedGain * 2, `two stages amplify more than one: ${watts.signal}`);
+  // Every watt accounted for: the outputs after stage 2 plus stage 1's idler, dumped on stage 2's face.
+  near(watts.pump + watts.idler + watts.signal + one.seeds[0].idlerW, 1 + 1e-6, 1e-12);
+});
+
+test('the first stage is planned the same with or without a second stage behind it', () => {
+  const alone = bench().plan;
+  const { one } = twoStage();
+  near(one.pumpOutW, alone.pumpOutW, 1e-15);
+  near(one.seeds[0].gainW, alone.seeds[0].gainW, 1e-18);
+});
+
+test('a filter between the stages reshapes the seed: stage 2 reports it unsupported, not mis-sampled', () => {
+  const filter = createElement('filter', 400, 18);
+  Object.assign(filter.params, { ftype: 'bandpass', center: 780, band: 200 });
+  const { two } = twoStage({}, [filter]);
+  assert.ok(two.seeds.length > 0);
+  for (const seed of two.seeds) assert.equal(seed.state, 'spectrumUnsupported');
+  // The flag that lets a later stage slice an OPA output belongs to that output alone.
+  const plan = bench().plan;
+  const spec = plan.seeds[0].signal.spec;
+  assert.equal(spec.opaOutput, true);
+  const settings = opaSettings({ signalWl: 780, gainBandwidthNm: 40, smallSignalGainDb: 20 });
+  assert.ok(seedSlices(settings, { wl: 780, bw: 1, spec }).length > 0);
+  assert.equal(seedSlices(settings, { wl: 780, bw: 1, spec: { ...spec, opaOutput: undefined } }), null);
+});
+
+test('an OPA whose signal is sent back into its own seed port is not amplified again: a loop is refused', () => {
+  // Signal out at (362, 18) -> up, left along y = -80, down, and through a
+  // cube beamsplitter back into the seed port, which the seed laser also
+  // reaches through the same cube.
+  const turn = (type, x, y, rot) => Object.assign(createElement(type, x, y), { rot });
+  const opa = opaElement({ outputIdler: false, outputPump: false });
+  const elements = [laser(-18, 515, 1), laser(18, 780, 1e-6), opa,
+    turn('mirror', 420, 18, 45), turn('mirror', 420, -80, -45), turn('mirror', 200, -80, 45), turn('bs', 200, 18, 90)];
+  traceScene(elements, []);
+  const plan = opaReading(opa.id);
+  assert.equal(plan.loopInput, true, 'the returning light reached the seed port and was refused');
+  assert.ok(!plan.cascadeUnresolved, 'the plan settles: the returning light is never planned');
+  assert.equal(plan.state, 'amplifying');
+  // The only seed is the laser's transmitted half, planned once.
+  assert.equal(plan.seeds.length, 1);
+  near(plan.seeds[0].seedW, 5e-7, 1e-18);
+  const text = registry.opa.params.find(p => p.key === 'opaState').readout(opa.params, opa);
+  assert.match(text, /comes back to one of its ports/);
+  assert.doesNotMatch(text, /still changing/);
+});
+
+test('a four-stage pulsed cascade amplifies at every stage and every watt is accounted for', () => {
+  // Codex on f7c22cd: the branches a cascade builds up (each stage passes
+  // its seeds on and adds a gain beam) exceeded the allocator's 256 channels
+  // at 65 slices each, and the fourth stage went silently inactive.
+  const stages = [0, 1, 2, 3].map(i => {
+    const el = createElement('opa', 300 + 200 * i, 0);
+    Object.assign(el.params, { signalWl: 780, gainBandwidthNm: 40, smallSignalGainDb: i ? 10 : 40, maxDepletion: 0.5 });
+    return el;
+  });
+  const meters = [-18, 0, 18].map(y => Object.assign(createElement('powermeter', 1100, y), {}));
+  for (const m of meters) m.params.aperture = 10;
+  const elements = [laser(-18, 515, 1), laser(18, 780, 1e-6), ...stages, ...meters];
+  traceScene(elements, []);
+  const plans = stages.map(s => opaReading(s.id));
+  for (const [i, plan] of plans.entries()) {
+    assert.equal(plan.state, 'amplifying', `stage ${i + 1}`);
+    assert.ok(plan.seeds.every(seed => seed.state === 'amplifying'), `stage ${i + 1}: ${plan.seeds.map(seed => seed.state)}`);
+    assert.ok(!plan.cascadeUnresolved);
+  }
+  assert.ok(plans[3].seeds.length * 65 > 256, 'the last stage needs fewer slices per seed');
+  for (let i = 1; i < 4; i++) near(plans[i].pumpInW, plans[i - 1].pumpOutW, 1e-12);
+  // Outputs after the last stage, plus the idlers the earlier stages send into the next stage's rear face.
+  const metered = meters.reduce((sum, m) => sum + (enhancedReading(m, elements)?.detectedPowerW ?? 0), 0);
+  const dumped = plans.slice(0, 3).reduce((sum, plan) => sum + plan.seeds.reduce((a, seed) => a + seed.idlerW, 0), 0);
+  // Never more than went in. Less only by the tracer's weak-ray floor: the
+  // gain of the unamplified 1 uW branch is a few uW, below 1e-5 of the pump
+  // laser's watts, and is dropped where it meets the next stage's port.
+  assert.ok(metered + dumped <= 1 + 1e-6 + 1e-12, `${metered + dumped}`);
+  near(metered + dumped, 1 + 1e-6, 2e-5);
+});
+
+test('too many seed beams for the spectral slicing are reported, not dropped silently', () => {
+  const pump = { key: 'p', wl: 515, bw: 0, powerW: 1 };
+  const seeds = Array.from({ length: Math.floor(256 / MIN_SEED_SLICES) + 1 }, (_, i) => ({ key: `s${i}`, wl: 760 + i, bw: 2, spec: null, powerW: 1e-6 }));
+  const plan = planOpa({ signalWl: 780, gainBandwidthNm: 40, smallSignalGainDb: 20 }, { pump, pumps: [pump], seeds });
+  assert.equal(plan.state, 'tooManySeeds');
+  assert.equal(plan.pumpOutW, 1);
+  assert.ok(plan.seeds.every(seed => seed.state === 'tooManySeeds' && seed.gainW === 0));
+  // One fewer seed still fits, with fewer slices each.
+  assert.equal(planOpa({ signalWl: 780, gainBandwidthNm: 40, smallSignalGainDb: 20 }, { pump, pumps: [pump], seeds: seeds.slice(1) }).state, 'amplifying');
+});
+
+test('an OPA output is sliced exactly: its slices add up to its whole power at any slice count', () => {
+  // Andrea's case on f7c22cd: midpoint slicing of the piecewise-linear
+  // output gave fractions summing to 1.00086.
+  const pump = { key: 'p', wl: 515, bw: 0, powerW: 1 };
+  const plan = planOpa({ signalWl: 780, gainBandwidthNm: 0.1, smallSignalGainDb: 40 },
+    { pump, pumps: [pump], seeds: [{ key: 's', wl: 700, bw: 600, spec: { kind: 'flat', lo: 400, hi: 1000 }, powerW: 1e-6 }] });
+  const spec = plan.seeds[0].signal.spec;
+  assert.equal(spec.opaOutput, true);
+  const wide = opaSettings({ signalWl: 780, gainBandwidthNm: 10, smallSignalGainDb: 20 });
+  for (const count of [65, 20, MIN_SEED_SLICES]) {
+    const total = seedSlices(wide, { wl: 780, bw: 0.1, spec }, count).reduce((sum, slice) => sum + slice.fraction, 0);
+    near(total, 1, 1e-12, `${count} slices`);
+  }
+});
+
+test('the beam probe reads an OPA output\'s whole power: the seed passed on and the gain added', () => {
+  const { watts } = twoStage();
+  const pump = laser(-18, 515, 1), seed = laser(18, 780, 1e-6), opa = opaElement();
+  const m = meter(18);
+  const elements = [pump, seed, opa, m];
+  traceScene(elements, []);
+  const reading = probeAt(400, 18);
+  assert.equal(reading.beams.length, 2, 'the seed and the gain travel together');
+  near(probeAveragePowerW(reading, elements), enhancedReading(m, elements).detectedPowerW, 1e-12);
+  // And after two stages, where four contributions travel together.
+  const two = twoStage();
+  near(two.watts.signal, watts.signal, 0);
+});
+
+// Andrea's loop reproductions against f7c22cd: two routes back into an OPA
+// that must be recognised as loops.
+const cw = (x, y, wavelength, avgPowerW) => {
+  const l = createElement('cwlaser', x, y);
+  Object.assign(l.params, { wavelength, avgPowerW, beamMode: 'line' });
+  return l;
+};
+const turned = (type, x, y, rot) => Object.assign(createElement(type, x, y), { rot });
+
+test('light amplified by a second, independently pumped OPA cannot seed the first one again', () => {
+  const stage = x => {
+    const el = createElement('opa', x, 0);
+    Object.assign(el.params, { signalWl: 780, gainBandwidthNm: 40, smallSignalGainDb: 20, maxDepletion: 0.5, outputIdler: false, outputPump: false });
+    return el;
+  };
+  const a = stage(300), b = stage(500);
+  // B's own pump starts between the stages; B's signal goes round and back
+  // into A's seed port through the cube the seed also crosses.
+  traceScene([cw(0, -18, 515, 1), cw(370, -18, 515, 1), cw(0, 18, 780, 1e-6), a, b,
+    turned('mirror', 620, 18, 45), turned('mirror', 620, -80, -45), turned('mirror', 200, -80, 45), turned('bs', 200, 18, 90)], []);
+  const first = opaReading(a.id), second = opaReading(b.id);
+  assert.equal(first.seeds.length, 1, 'A plans only the seed laser');
+  near(first.seeds[0].seedW, 5e-7, 1e-18);
+  assert.equal(first.loopInput, true);
+  assert.ok(!first.cascadeUnresolved && !second.cascadeUnresolved);
+  assert.equal(second.state, 'amplifying');
+});
+
+test('light a fiber brings back to the OPA that amplified it is recognised as a loop', () => {
+  const opa = opaElement({ outputIdler: false, outputPump: false });
+  const fiber = {
+    id: 'loop-fiber', kind: 'fiber', pts: [{ x: 420, y: 18 }, { x: 470, y: 18 }, { x: 200, y: -100 }, { x: 200, y: -50 }],
+    color: '#e8a800', width: 4, propagate: true, inputNA: 0.22, groupIndex: 1.468, lossDbPerM: 0,
+    out0: { mode: 'diverge', na: 0.01, focal: 20, dia: 6 }, out1: { mode: 'diverge', na: 0.01, focal: 20, dia: 6 },
+  };
+  traceScene([cw(0, -18, 515, 1), cw(0, 18, 780, 1e-2), opa, turned('bs', 200, 18, 90)], [fiber]);
+  const plan = opaReading(opa.id);
+  assert.equal(plan.loopInput, true, 'the fiber keeps the light\'s history');
+  assert.ok(!plan.unplannedInput);
+  assert.equal(plan.seeds.length, 1);
 });
 
 // Andrea's reproductions against 647d7c1.
