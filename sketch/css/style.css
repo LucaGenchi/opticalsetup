@@ -114,8 +114,8 @@ body {
    instead of butting straight up against it. */
 #toolbar .file-group { margin-left: 12px; }
 #toolbar .spacer { flex: 1; }
-/* Wiki / Examples / Community, matching the landing page's header links so
-   the same three destinations look the same wherever you meet them. */
+/* Wiki / Examples / Calculators / Community, matching the landing page's
+   header links so the same destinations look the same wherever you meet them. */
 .nav-group { gap: 2px; }
 .toolbar-link {
   color: var(--muted); font-weight: 600; font-size: 14px; text-decoration: none;
@@ -560,11 +560,19 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
   #toolbar select { max-width: 155px; }
   #toolbar button { padding-left: 4px; padding-right: 4px; }
   .toolgroup + .toolgroup { padding-left: 4px; }
+  /* Four site links plus About must still fit a 1024-1100 px toolbar. */
+  .toolbar-link { padding-left: 5px; padding-right: 5px; font-size: 13px; }
   #palette { flex-basis: 220px; }
   #inspector { flex-basis: 278px; padding-right: 13px; padding-left: 13px; }
   .brandblock { min-width: auto; }
   .pulse-controls { bottom: 8px; }
   #status { bottom: 48px; max-width: calc(100% - 20px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+/* Below 1024 px the toolbar has no room for the Calculators link; the mobile
+   menu (under 900 px) and every site page header still carry it. */
+@media (max-width: 1023px) {
+  #toolbar .toolbar-link-wide { display: none; }
 }
 
 @media (max-width: 899px) {

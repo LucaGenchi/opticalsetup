@@ -710,6 +710,8 @@
      "oplMin": 1302.02537,
      "oplSum": 32553.8619,
      "oplWeight": 24.9995427,
+     "originId": "evgazbrh",
+     "power": 0.999981709,
      "pulse": {
       "avgPowerW": 1,
       "bandwidthNm": 0.894967144,
@@ -832,6 +834,8 @@
      "oplMin": 1302.02537,
      "oplSum": 16276.931,
      "oplWeight": 12.4997714,
+     "originId": "ex99xumu",
+     "power": 0.499990854,
      "pulse": {
       "avgPowerW": 1,
       "bandwidthNm": 1.56060264,

@@ -160,6 +160,15 @@ their reference checks when the work starts. The list above is a backlog, not
 a commitment to ship it whole, and the calculator catalogue has one owner
 before pages are written in parallel.
 
+**Decided (Luca, 2026-09-25): the first page is the optical parametric
+amplifier, and it is the template for the others.** It shipped with its own
+reference check (`validation/reference/opa.py`), so the reference-checked
+rule above holds. Its layout is the model: inputs from the calculator's
+schema, results, graphs with a data table, then the physics with every
+formula, each parameter explained, numerical precision separated from
+physical accuracy, what is not modelled, and the references. The section is
+linked from every site header as "Calculators".
+
 Each page states the assumptions that decide its answer: the pulse shape and
 width convention; that a GDD inferred from a duration alone has no sign; the
 material's wavelength range; that the etalon relation is the high-finesse

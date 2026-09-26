@@ -1,0 +1,182 @@
+/* SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+   SPDX-License-Identifier: GPL-3.0-or-later
+   Calculators: layered on wiki.css (tokens, header, prose, formulas). */
+
+:root {
+  /* Chart series: slots 1-2 of a colour-blind-validated categorical order,
+     slot 3 for the "without depletion" comparison. */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --chart-grid: #e6eaf1;
+  --chart-axis: #b8c1cf;
+  --error: #b3261e;
+  --error-soft: #fdecea;
+  --good: #1e7a3c;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --chart-grid: #1f2a3f;
+    --chart-axis: #3a4a66;
+    --error: #ff8a80;
+    --error-soft: #3a1d1d;
+    --good: #6fd08c;
+  }
+}
+
+.header-actions a.plain[aria-current="page"] { color: var(--accent); font-weight: 650; }
+
+.calc-page { max-width: 1180px; margin: 0 auto; padding: 28px 20px 72px; }
+.calc-page h1 { font-size: 30px; letter-spacing: -.015em; color: var(--ink); text-wrap: balance; }
+.calc-page .tagline { max-width: 75ch; }
+.calc-page .cite { font-size: .78em; vertical-align: super; line-height: 0; margin-left: 1px; }
+
+/* Model / evidence / code facts under the title */
+.calc-facts {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px;
+  margin: 18px 0 26px;
+}
+.calc-facts > div { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; }
+.calc-facts dt { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; font-weight: 700; color: var(--muted); }
+.calc-facts dd { font-size: 13.5px; margin-top: 3px; }
+
+/* ---------- the calculator: inputs | results ---------- */
+.calc-app {
+  display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 18px; align-items: start;
+}
+@media (max-width: 960px) { .calc-app { grid-template-columns: 1fr; } }
+
+.calc-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.calc-group {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  padding: 12px 14px 8px; margin: 0; min-width: 0;
+}
+.calc-group legend { font-weight: 700; font-size: 13px; color: var(--ink); padding: 0 4px; }
+.calc-group.optional { grid-column: 1 / -1; }
+.calc-field { display: grid; grid-template-columns: 1fr 108px; gap: 2px 10px; align-items: center; margin: 7px 0 9px; }
+.calc-field label { font-size: 13px; color: var(--text); }
+.calc-field label .sym { color: var(--muted); font-style: italic; margin-left: 4px; }
+.calc-field .unit { color: var(--muted); font-size: 12px; }
+.calc-field .control { display: flex; align-items: center; gap: 5px; }
+.calc-field input[type=number] {
+  width: 100%; min-width: 0; padding: 4px 7px; font: inherit; font-size: 13.5px;
+  font-variant-numeric: tabular-nums; color: var(--text);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+}
+.calc-field input[type=number]:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.calc-field input[aria-invalid="true"] { border-color: var(--error); background: var(--error-soft); }
+.calc-field .help { grid-column: 1 / -1; font-size: 11.8px; color: var(--muted); line-height: 1.4; }
+.calc-field.check { grid-template-columns: auto 1fr; justify-content: start; }
+.calc-field.check label { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+.calc-field.is-off { opacity: .45; }
+
+.calc-output { position: sticky; top: 14px; display: flex; flex-direction: column; gap: 10px; }
+@media (max-width: 960px) { .calc-output { position: static; } }
+.calc-status {
+  border-radius: 10px; padding: 9px 13px; font-size: 13.5px;
+  background: var(--sim-tint); border: 1px solid var(--sim-border);
+}
+.calc-status:empty { display: none; }
+.calc-status.is-error { background: var(--error-soft); border-color: var(--error); color: var(--text); }
+.calc-status.is-error ul { margin: 4px 0 0 18px; }
+.calc-status .state-good { color: var(--good); font-weight: 650; }
+
+.calc-results {
+  width: 100%; border-collapse: collapse; background: var(--panel);
+  border: 1px solid var(--border); border-radius: 12px; overflow: hidden; font-size: 13.5px;
+}
+.calc-results th, .calc-results td { padding: 6px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.calc-results tr:last-child th, .calc-results tr:last-child td { border-bottom: 0; }
+.calc-results th { font-weight: 500; color: var(--muted); }
+.calc-results th a { color: inherit; }
+.calc-results td { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+.calc-results td small { display: block; color: var(--muted); font-size: 11.8px; }
+.calc-results tr.group th { color: var(--ink); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; background: var(--bg); }
+.calc-notes { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.calc-notes li { font-size: 12.8px; color: var(--muted); padding-left: 12px; border-left: 2px solid var(--sim-border); }
+
+/* ---------- graphs ---------- */
+.calc-graphs { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; margin-top: 22px; }
+@media (max-width: 420px) { .calc-graphs { grid-template-columns: 1fr; } }
+.calc-chart { margin: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px 10px; min-width: 0; }
+.calc-chart figcaption { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: var(--ink); line-height: 1.35; }
+.chart-num {
+  flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center;
+  font-size: 12px; font-weight: 700; color: var(--accent); background: var(--accent-soft);
+}
+.chart-note { color: var(--muted); font-size: 12.5px; }
+.chart-host { position: relative; margin-top: 8px; min-height: 250px; }
+.chart-host svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart-host svg:focus { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.chart-message { color: var(--muted); font-size: 13px; padding: 90px 10px; text-align: center; }
+.chart-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--text); margin: 2px 0 2px 46px; }
+.chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.chart-legend i { display: inline-block; width: 16px; height: 2px; border-radius: 2px; }
+.chart-tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart-label { fill: var(--text); font-size: 12px; }
+.chart-grid { stroke: var(--chart-grid); stroke-width: 1; }
+.chart-axis { stroke: var(--chart-axis); stroke-width: 1; }
+.chart-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart-marker { stroke: var(--panel); stroke-width: 2; }
+.chart-cross { stroke: var(--muted); stroke-width: 1; }
+.chart-tooltip {
+  position: absolute; pointer-events: none; z-index: 2; min-width: 130px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(10, 26, 51, .14); padding: 7px 10px; font-size: 12px;
+}
+.chart-tooltip[hidden] { display: none; }
+.chart-tooltip .tt-x { color: var(--muted); margin-bottom: 3px; }
+.chart-tooltip .tt-row { display: flex; align-items: center; gap: 7px; }
+.chart-tooltip .tt-row i { width: 12px; height: 2px; border-radius: 2px; flex: 0 0 auto; }
+.chart-tooltip .tt-row b { font-variant-numeric: tabular-nums; color: var(--ink); }
+.chart-tooltip .tt-row span { color: var(--muted); }
+.chart-data { margin-top: 6px; font-size: 12.5px; }
+.chart-data summary { color: var(--muted); cursor: pointer; }
+.chart-table { max-height: 260px; overflow: auto; margin-top: 6px; }
+.chart-table table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+.chart-table th, .chart-table td { padding: 3px 8px; border-bottom: 1px solid var(--border); text-align: right; }
+.chart-table th { position: sticky; top: 0; background: var(--panel); color: var(--muted); font-weight: 600; }
+
+/* ---------- article ---------- */
+.calc-toc { display: flex; flex-wrap: wrap; gap: 8px; margin: 34px 0 0; }
+.calc-toc a {
+  padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel);
+  font-size: 13px; color: var(--text);
+}
+.calc-toc a:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+.calc-article { max-width: 780px; padding-top: 0; }
+.calc-article section { scroll-margin-top: 16px; }
+.calc-article p, .calc-article ul, .calc-article h3 { max-width: 72ch; }
+.table-scroll { overflow-x: auto; margin: 10px 0 18px; }
+.param-table { border-collapse: collapse; width: 100%; font-size: 13.5px; margin: 10px 0 18px; background: var(--panel); }
+.table-scroll .param-table { margin: 0; }
+.param-table th, .param-table td { border: 1px solid var(--border); padding: 7px 10px; text-align: left; vertical-align: top; }
+.param-table th { background: var(--bg); font-weight: 650; color: var(--ink); }
+.param-table td.sym { white-space: nowrap; font-style: italic; }
+.param-table td.unit { white-space: nowrap; color: var(--muted); }
+
+/* ---------- hub ---------- */
+.calc-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 26px; }
+.calc-card {
+  display: flex; flex-direction: column; gap: 6px; padding: 18px 20px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 12px; color: var(--text);
+}
+.calc-card b { color: var(--ink); font-size: 16px; }
+.calc-card span { color: var(--muted); font-size: 14px; }
+.calc-card:hover { border-color: var(--accent); text-decoration: none; }
+
+@media (max-width: 640px) {
+  .calc-page { padding: 20px 16px 56px; }
+  .calc-page h1 { font-size: 25px; }
+  .calc-field { grid-template-columns: 1fr 96px; }
+}
+
+.calc-reset {
+  grid-column: 1 / -1; justify-self: start; font: inherit; font-size: 12.5px; color: var(--muted);
+  background: none; border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; cursor: pointer;
+}
+.calc-reset:hover { color: var(--accent); border-color: var(--accent); }
+.chart-host .chart-note { font-size: 12px; margin-top: 4px; }

@@ -11,9 +11,11 @@ import {
   sumFrequencyWl, carsAntiStokesWl, ramanShifts, ramanStokesWl,
   drivingExcitationWl, channelNeedsExcitationProbe, specimenTypeOf,
   fluorophoreSpec, fluorophoreAbsorption, metalensFocalLength, opoPortLocal, OPO_ACCEPTANCE_DEG,
+  opaPortLocal, OPA_ACCEPTANCE_DEG,
 } from './elements.js';
+import { planOpa } from './opa.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
-import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
+import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap, traceValueAt } from './pulses.js';
 import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband } from './aotf.js';
 import { aodDeflectionDeg } from './acousto-optic.js';
 import { capillaryLossDbPerM, fiberPropagation, hollowCoreCoefficients } from './fiber.js';
@@ -169,6 +171,18 @@ function recordOpo(elementId, state) {
 export function opoReading(elementId) {
   return opoStates.get(elementId) || null;
 }
+
+// OPA element id -> its plan for this trace: what reached each port, what
+// each seed gained, and what is left of the pump (sketch/js/opa.js).
+let opaStates = new Map();
+
+export function opaReading(elementId) {
+  return opaStates.get(elementId) || null;
+}
+
+// Source element id -> its average-power setting (W): the one watt basis the
+// OPA needs to move power from the pump to the seed, as detectors use.
+let sourceWattsById = new Map();
 
 // crystal element id -> the band its last pump ray drew as a supercontinuum.
 let supercontinuumStates = new Map();
@@ -1240,8 +1254,33 @@ export function detectorReading(elementId) {
 }
 
 // sample the beam nearest to (x,y): returns {wl, bw, pol, intensity} or null
+// The pulse duration where a probe sits on a traced path, not where the path
+// ends: a path can run on through glass or a compressor past the probe. The
+// GDD and group-delay spread in force at that optical path come from the
+// path's own dispersion trace, as the travelling pulse packets read them.
+// When the tracer cannot state a duration it says so instead of quoting the
+// source's configured width.
+function probePulseDuration(path, segment, along) {
+  const pulse = path.pulse;
+  if (pulse.fieldIssue) return { durationFs: null, issue: pulse.fieldIssue };
+  const a = path.opls?.[segment], b = path.opls?.[segment + 1];
+  const opl = Number.isFinite(a) && Number.isFinite(b) ? a + (b - a) * along : path.opl;
+  const gdd = path.gddTrace ? traceValueAt(path.gddTrace, opl, 'gdd') : (path.gdd || 0);
+  const spread = path.groupDelayDifferenceTrace
+    ? traceValueAt(path.groupDelayDifferenceTrace, opl, 'value') : (path.groupDelayDifferenceFs || 0);
+  if (pulse.field) {
+    const fwhm = fieldMetrics(pulse.field, gdd)?.fwhmFs;
+    return Number.isFinite(fwhm) && fwhm > 0
+      ? { durationFs: fwhm, issue: null }
+      : { durationFs: null, issue: DISPERSION_UNAVAILABLE.sampled };
+  }
+  const derived = pulseDurationAfterDispersion(pulse, gdd, spread);
+  if (derived?.available !== false && derived?.durationFs > 0) return { durationFs: derived.durationFs, issue: null };
+  return { durationFs: null, issue: derived?.model || 'Pulse duration unavailable' };
+}
+
 export function probeAt(x, y, tol = 16) {
-  let best = null, bd = tol;
+  let best = null, bd = tol, bestSegment = 0, bestAlong = 0;
   const p = { x, y };
   for (const r of lastPaths) {
     for (let i = 0; i < r.pts.length - 1; i++) {
@@ -1250,9 +1289,14 @@ export function probeAt(x, y, tol = 16) {
       if (dd < bd - 1e-9 || (Math.abs(dd - bd) <= 1e-9 && intensity > (best?.intensity ?? -Infinity))) {
         bd = dd;
         best = { ...r, intensity };
+        const ax = r.pts[i + 1].x - r.pts[i].x, ay = r.pts[i + 1].y - r.pts[i].y;
+        const len2 = ax * ax + ay * ay;
+        bestSegment = i;
+        bestAlong = len2 > 0 ? Math.min(1, Math.max(0, ((x - r.pts[i].x) * ax + (y - r.pts[i].y) * ay) / len2)) : 0;
       }
     }
   }
+  const duration = best?.pulse ? probePulseDuration(best, bestSegment, bestAlong) : null;
   return best ? {
     wl: best.wl, bw: best.bw || 0, spec: best.spec || null, pol: best.pol,
     stokes: cloneStokes(best.stokes), intensity: best.intensity,
@@ -1263,7 +1307,12 @@ export function probeAt(x, y, tol = 16) {
     approximation: best.approximation || null,
     pulse: best.pulse ? {
       repRateMHz: best.pulse.repRateMHz,
-      pulseWidthFs: best.pulse.field || best.pulse.fieldIssue ? null : best.pulse.pulseWidthFs,
+      // The width the gates on the way were evaluated with. The duration at
+      // this point is a separate field: dispersion after a gate must not
+      // change, in hindsight, what that gate let through.
+      pulseWidthFs: best.pulse.pulseWidthFs,
+      durationFs: duration.durationFs,
+      durationIssue: duration.issue,
       phaseNs: best.pulse.phaseNs,
       pulseShape: best.pulse.pulseShape || 'gauss',
       gates: (best.pulse.gates || []).map(g => ({ ...g })),
@@ -1568,8 +1617,10 @@ function recordProbeBeam(surface, ray) {
   const already = seen.find(b => b.key === key);
   // A beam sampled by several rays is one beam: its power is theirs together,
   // and it arrives when its power arrives.
+  const power = Math.max(0, Number(ray.power) || 0);
   if (already) {
     already.intensity += weight;
+    already.power += power;
     already.oplWeight += weight;
     already.oplSum += weight * (ray.opl || 0);
     already.oplMin = Math.min(already.oplMin, ray.opl || 0);
@@ -1584,6 +1635,10 @@ function recordProbeBeam(surface, ray) {
     // width -- including whatever a filter upstream did to it.
     bw: ray.bw, spec: ray.spec,
     intensity: weight,
+    // The fraction of its source's emitted power this beam brings, and which
+    // source that is: with the source's watt setting, the beam's watts.
+    power,
+    originId: ray.originId || null,
     pulse: ray.pulse ? { ...ray.pulse } : null,
     gates: (ray.pulse?.gates || []).map(g => ({ ...g })),
   });
@@ -4175,6 +4230,76 @@ function interact(ray, hit) {
       }
       return out;
     }
+    case 'opapump':
+    case 'opaseed': {
+      // The integrated OPA's two input ports. The probe pass records what
+      // arrives; the real pass sends the seed on from the signal port and
+      // turns each pump ray into its share of the residual pump, the signal
+      // gain and the idler, as planned for the whole event (planOpaElements).
+      const el = s.el;
+      if (!el) return [];
+      const axis = rotPt(1, 0, el.rot || 0);
+      const angleDeg = Math.acos(Math.max(-1, Math.min(1, dot(d, axis)))) / D2R;
+      if (!(angleDeg <= OPA_ACCEPTANCE_DEG + 1e-9)) return [];
+      if (specimenProbe) { recordProbeBeam(s, ray); return []; }
+      const plan = opaStates.get(el.id);
+      if (!plan) return [];
+      // Outputs leave along the body axis; a sampled beam keeps its samples'
+      // order across the output diameter, a single ray leaves on the port axis.
+      const launch = (role, fields) => {
+        const local = opaPortLocal(role, el.params);
+        const sampled = Number.isInteger(ray.sample) && ray.sampleCount > 1;
+        const offset = data.outputBeamMm > 0 && sampled ? data.outputBeamMm * (ray.sample / (ray.sampleCount - 1) - 0.5) : 0;
+        return [{ d: axis, origin: toWorld(el, local.x, local.y + offset), ...fields }];
+      };
+      // Light the probe pass did not see here -- above all what an upstream
+      // OPA generated, which the probe pass does not trace -- was not part
+      // of the plan. It passes through unchanged and the readout says why.
+      const key = probeBeamKey(ray);
+      if (!plan.seen?.[k === 'opaseed' ? 'seed' : 'pump']?.has(key)) plan.unplannedInput = true;
+      // A pump ray is converted only as the planned pump; anything else at the
+      // pump port passes through.
+      const planned = k === 'opaseed' || plan.pumpRecord?.key === key;
+      // The seed itself is not split or converted: it continues unchanged.
+      // Tagged children leave from their port; an untagged single child would
+      // be continued from the input face instead (the tracer's shortcut).
+      if (k === 'opaseed') return launch('signal', { tag: 'opaSeed' });
+      if (!planned) return data.outputPump ? launch('pump', { tag: 'opaPump' }) : [];
+      const out = [];
+      if (data.outputPump && plan.pumpScale > 0) out.push(...launch('pump', { tag: 'opaPump', intensity: ray.intensity * plan.pumpScale }));
+      const pumpRecord = plan.pumpRecord;
+      const pumpSourceW = sourceWattsById.get(ray.originId);
+      const share = pumpRecord?.power > 0 && Number.isFinite(ray.power) ? ray.power / pumpRecord.power : 0;
+      if (!(share > 0) || !(pumpSourceW > 0) || !(ray.power > 0)) return out;
+      for (const seed of plan.seeds) {
+        if (seed.state !== 'amplifying' || !seed.record) continue;
+        const overlap = mixOverlap({ opl: pumpRecord.opl, pulse: ray.pulse }, seed.record);
+        // Generated light: new watts taken from the pump, so it stays a child
+        // of the pump ray and counts against the pump laser's power.
+        const generated = (wave, powerW, kind) => {
+          const power = share * powerW / pumpSourceW;
+          return {
+            wl: wave.wl, bw: wave.bw || 0, spec: wave.spec || null, tag: kind,
+            intensity: ray.intensity * power / ray.power, power,
+            // A small fraction of a strong pump is still a real beam: held to
+            // the weak-ray floor, like a band an AOTF selects, not culled.
+            keepWeak: true,
+            pulse: mixPulse(ray.pulse, seed.record.pulse, {
+              crystalId: el.id, kind, wl: wave.wl, bandwidthNm: wave.bw || 0,
+              centerNs: overlap.centerNs, oplMm: ray.opl, repRateMHz: overlap.repRateMHz,
+              partnerPulseOffset: overlap.partnerPulseOffset, periodNs: overlap.periodNs,
+            }),
+            parametricPath: [...(Array.isArray(ray.parametricPath) ? ray.parametricPath : []), el.id],
+            gdd: 0,
+            phaseValid: false,
+            phaseIssue: 'OPA output: optical phase relative to the inputs is not modelled',
+          };
+        };
+        if (seed.gainW > 0 && seed.signal) out.push(...launch('signal', generated(seed.signal, seed.gainW, 'opaSignal')));
+        if (data.outputIdler && seed.idlerW > 0 && seed.idler) out.push(...launch('idler', generated(seed.idler, seed.idlerW, 'opaIdler')));
+      }
+      return out;
+    }
     case 'opoin': {
       // The integrated OPO's rear aperture. Accepted pump light is converted
       // by the same model as the crystal's OPO mode and leaves the front
@@ -5330,6 +5455,40 @@ function traceWithCoherentGrouping(rays0, surfaces, couplings, writeHits, signal
 
 // Trace everything. The static drawables remain export-safe while pulseTracks
 // carry absolute optical path lengths for the canvas-only animation layer.
+// Each OPA's plan, from the beams its two ports recorded in the probe pass.
+// Light an OPA generates is not seen by the probe pass, so one OPA feeding
+// another is not planned from the first one's output (no cascades).
+function planOpaElements(surfaces) {
+  const ports = new Map();
+  for (const s of surfaces) {
+    if ((s.kind !== 'opapump' && s.kind !== 'opaseed') || !s.el) continue;
+    const entry = ports.get(s.el.id) || { el: s.el, pumps: [], seeds: [] };
+    const beams = (specimenProbe.get(s.id) || []).map(settleProbeBeam);
+    (s.kind === 'opapump' ? entry.pumps : entry.seeds).push(...beams);
+    ports.set(s.el.id, entry);
+  }
+  for (const [id, { el, pumps, seeds }] of ports) {
+    const record = beam => {
+      const watts = sourceWattsById.get(beam.originId);
+      return {
+        key: beam.key, wl: beam.wl, bw: beam.bw || 0, spec: beam.spec || null, opl: beam.opl,
+        pulse: beam.pulse, power: beam.power, originId: beam.originId,
+        powerW: Number.isFinite(watts) ? watts * beam.power : null,
+      };
+    };
+    const pumpRecords = pumps.map(record), seedRecords = seeds.map(record);
+    const plan = planOpa(el.params, {
+      pump: pumpRecords.length === 1 ? pumpRecords[0] : null, pumps: pumpRecords, seeds: seedRecords,
+    });
+    plan.pumpRecord = pumpRecords.length === 1 ? pumpRecords[0] : null;
+    // Every beam the probe pass saw at each port, whether or not it could be
+    // amplified: what the real pass checks its arrivals against.
+    plan.seen = { pump: new Set(pumpRecords.map(r => r.key)), seed: new Set(seedRecords.map(r => r.key)) };
+    for (const seed of plan.seeds) seed.record = seedRecords.find(r => r.key === seed.key) || null;
+    opaStates.set(id, plan);
+  }
+}
+
 export function traceScene(elements, beams = []) {
   const surfaces = buildSurfaces(elements, beams);
   const drawables = [];
@@ -5352,6 +5511,10 @@ export function traceScene(elements, beams = []) {
   cellSpectrumCache = new Map();
   specimenIncident = new Map();
   opoStates = new Map();
+  opaStates = new Map();
+  sourceWattsById = new Map(elements
+    .filter(e => registry[e.type]?.source && Number.isFinite(Number(e.params?.avgPowerW)))
+    .map(e => [e.id, Math.max(0, Number(e.params.avgPowerW))]));
   supercontinuumStates = new Map();
   mixStates = new Map();
   specimenTimingStates = new Map();
@@ -5496,6 +5659,7 @@ export function traceScene(elements, beams = []) {
   const needsProbe = surfaces.some(s =>
     (s.kind === 'specimen' && (s.data.channels || []).some(channelNeedsExcitationProbe))
     || (s.kind === 'transmit' && MIX_CONVERTS.has(s.data.convert))
+    || s.kind === 'opapump' || s.kind === 'opaseed'
     || (s.kind === 'attenuate' && s.data.specimen && s.el
         && ['linear', 'nonlinear'].includes(specimenTypeOf(s.el.params))));
   if (needsProbe) {
@@ -5510,6 +5674,7 @@ export function traceScene(elements, beams = []) {
         s.data.incidentWls = [...new Set(beams.map(b => b.wl))];
         if (s.el) specimenIncident.set(s.el.id, beams);
       }
+      planOpaElements(surfaces);
     } finally {
       specimenProbe = null;
       detectorHits = new Map();

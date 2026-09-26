@@ -272,7 +272,7 @@ export function pointAtOpticalPath(track, target) {
   return sample ? { x: sample.x, y: sample.y, angle: sample.angle } : null;
 }
 
-function traceValueAt(events, target, key) {
+export function traceValueAt(events, target, key) {
   let value = 0, previous = null;
   for (const event of (Array.isArray(events) ? events : [])) {
     if (!Number.isFinite(event?.opl) || !Number.isFinite(event?.[key])) continue;

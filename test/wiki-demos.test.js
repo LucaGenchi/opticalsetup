@@ -13,7 +13,9 @@ const demos = new Function('createElement', helper + '\nreturn ({' + definitions
 // Execute the actual page fixtures with the tracer, without booting the DOM UI.
 // Keep scene construction in main.js, where the existing wiki demos live.
 for (const [type, build] of Object.entries(demos)) test(`wiki ${type} demo traces its documented behavior`, () => {
-  const elements = build();
+  // A demo is an element array, or { elements, timeScaleNs } when it fixes its time scale.
+  const built = build();
+  const elements = Array.isArray(built) ? built : built.elements;
   const result = traceScene(elements);
   assert.ok(result.drawables.length, type + ': no light');
   assert.ok(!JSON.stringify(result).includes('NaN'), type);
