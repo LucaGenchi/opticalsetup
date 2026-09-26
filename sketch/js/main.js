@@ -138,8 +138,8 @@ const demoScenes = {
   // a detector, so the gain, the idler and what the pump lost can be read.
   // Each output leaves at the height of its input: pump above, signal below,
   // the idler between them.
-  // At 0.2 MHz the automatic scale is 100 µs/s, too fast to follow the
-  // pulses meeting in the OPA; 1 µs/s shows them.
+  // 1 µs/s shows the 0.2 MHz pulses meeting in the OPA (the automatic
+  // scale for this rate too, stated so the demo does not depend on it).
   opa: () => ({
     timeScaleNs: 1e3,
     elements: [
@@ -1371,7 +1371,9 @@ function syncPulseControls(detail = getPulsePlayback()) {
   $('pulseScaleNote').textContent = detail.mechanicsMode
     ? 'mechanics illustrative · pulses not synced'
     : detail.cwFallback
-      ? 'shown as CW · pulse rate far from time scale'
+      ? detail.cwFallbackReason === 'tooFast'
+        ? 'shown as CW · packets too fast above 1 µs/s'
+        : 'shown as CW · pulse rate far from time scale'
       : detail.mode === 'physical'
         ? 'spacing physical · packets enlarged'
         : 'packets schematic · timing physical';

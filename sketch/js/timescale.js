@@ -32,6 +32,15 @@ export const MAX_TIME_SCALE = TIME_SCALES[TIME_SCALES.length - 1].ns;
 // renderer drops the packet overlay and leaves the steady traced beam.
 export const CW_FALLBACK_RATIO = 50;
 
+// The fastest scale at which pulse packets are drawn moving. Light covers
+// 0.3 mm per simulated nanosecond, so at 1 µs/s a packet crosses the bench
+// at 0.3 m/s -- about two seconds across a 60 cm setup. At 10 µs/s it would
+// cross in a fifth of a second and at 100 µs/s in a single frame: a flicker
+// that is uncomfortable to watch, not an animation. Above this scale the
+// packets are drawn as the steady beam instead, whichever way the scale was
+// set; choppers, galvos and the like still animate.
+export const MAX_PACKET_SCALE = 1e3;
+
 export function snapTimeScale(desiredNsPerSecond) {
   if (!Number.isFinite(desiredNsPerSecond) || desiredNsPerSecond <= 0) return 10;
   const clamped = Math.min(MAX_TIME_SCALE, Math.max(MIN_TIME_SCALE, desiredNsPerSecond));
@@ -52,19 +61,30 @@ export function pulsePeriodNs(repRateMHz) {
   return 1000 / mhz; // 1 MHz -> 1000 ns
 }
 
-// True when packets should be replaced by a CW-style steady beam.
+// True when packets at this scale would move too fast to watch comfortably.
+export function packetsTooFast(scaleNsPerSecond) {
+  return Number.isFinite(scaleNsPerSecond) && scaleNsPerSecond > MAX_PACKET_SCALE;
+}
+
+// True when packets should be replaced by a CW-style steady beam: too fast
+// to watch, or a period too far from the scale to read as pulses.
 export function pulsesReadAsCW(periodNs, scaleNsPerSecond) {
   if (!Number.isFinite(periodNs) || periodNs <= 0) return false;
   if (!Number.isFinite(scaleNsPerSecond) || scaleNsPerSecond <= 0) return false;
+  if (packetsTooFast(scaleNsPerSecond)) return true;
   const ratio = periodNs / scaleNsPerSecond;
   return ratio > CW_FALLBACK_RATIO || ratio < 1 / CW_FALLBACK_RATIO;
 }
 
-// The repetition-rate tiers requested for pulsed sources.
+// The repetition-rate tiers for pulsed sources, never faster than
+// MAX_PACKET_SCALE. A train slower than 20 kHz (a period over 50 µs) cannot
+// read as pulses at any comfortable scale: it asks for no scale, and its
+// packets are drawn as the steady beam.
+const SLOWEST_PACKET_RATE_HZ = 1e9 / (CW_FALLBACK_RATIO * MAX_PACKET_SCALE); // 20 kHz
 function laserScaleFor(maxRepRateHz) {
-  if (maxRepRateHz > 50e6) return 10;      // >50 MHz    -> 10 ns/s
-  if (maxRepRateHz >= 500e3) return 1e3;   // 500 kHz–50 MHz -> 1 µs/s
-  return 1e5;                              // <500 kHz   -> 100 µs/s
+  if (maxRepRateHz > 50e6) return 10;                              // >50 MHz        -> 10 ns/s
+  if (maxRepRateHz >= SLOWEST_PACKET_RATE_HZ) return MAX_PACKET_SCALE; // 20 kHz–50 MHz -> 1 µs/s
+  return null;                                                     // <20 kHz: none
 }
 
 // Aim for roughly two real seconds per cycle, then snap to a listed scale.
