@@ -181,3 +181,21 @@ export function recommendedTimeScale(elements = [], { mode = 'schematic' } = {})
 
   return best || { scaleNsPerSecond: 10, driver: null, mechanics: false };
 }
+
+// Whether the automatic time scale should change now. `key` is the current
+// recommendation (a scale in ns/s, or 'mechanics'); `lastAuto` is the one
+// last applied (null before any); `manualFor` is the recommendation that was
+// in force when the user picked a scale by hand (null when they have not).
+// A hand-picked scale holds while the recommendation stays what it was when
+// it was picked, and is released as soon as the scene or the display mode
+// calls for a different one -- never for the rest of the session.
+export function nextAutoScale(key, { lastAuto = null, manualFor = null } = {}) {
+  if (manualFor !== null) {
+    if (key === manualFor) return { apply: false, lastAuto, manualFor };
+    return { apply: true, lastAuto: key, manualFor: null };
+  }
+  if (key === lastAuto) return { apply: false, lastAuto, manualFor };
+  // The first recommendation of a session that is the startup default needs
+  // no change and no announcement.
+  return { apply: !(lastAuto === null && key === 10), lastAuto: key, manualFor };
+}

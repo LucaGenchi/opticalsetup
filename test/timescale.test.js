@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 
 import {
   TIME_SCALES, MIN_TIME_SCALE, MAX_TIME_SCALE, CW_FALLBACK_RATIO,
-  snapTimeScale, pulsePeriodNs, pulsesReadAsCW, elementDriveHz, recommendedTimeScale,
+  snapTimeScale, pulsePeriodNs, pulsesReadAsCW, elementDriveHz, recommendedTimeScale, nextAutoScale,
 } from '../sketch/js/timescale.js';
 import { createElement, galvoAngleAt, registry } from '../sketch/js/elements.js';
 import { gateTransmissionAt, pulseMarkers } from '../sketch/js/pulses.js';
@@ -295,4 +295,40 @@ test('scaling simulated time rescales galvo motion proportionally', () => {
   // cycle; at 1 ns/s it is a million times less, i.e. essentially frozen.
   assert.ok(Math.abs(angleAfterOneRealSecondAt(1e6)) > Math.abs(angleAfterOneRealSecondAt(1)),
     'a coarser time scale advances the galvo further per real second');
+});
+
+// The automatic scale over a session: follow the scene, hold a hand-picked
+// scale while the scene still calls for the same default, and release it as
+// soon as it calls for a different one.
+function session(keys, manualAt = {}) {
+  let status = { lastAuto: null, manualFor: null };
+  const applied = [];
+  keys.forEach((key, i) => {
+    if (i in manualAt) status = { ...status, manualFor: manualAt[i] };
+    const next = nextAutoScale(key, status);
+    status = { lastAuto: next.lastAuto, manualFor: next.manualFor };
+    applied.push(next.apply ? key : null);
+  });
+  return { applied, status };
+}
+
+test('the automatic scale follows the scene and stays quiet when nothing changes', () => {
+  // 10 ns/s is the startup default: no change, no announcement.
+  assert.deepEqual(session([10, 10, 1e3, 1e3, 10]).applied, [null, null, 1e3, null, 10]);
+  assert.deepEqual(session(['mechanics', 'mechanics']).applied, ['mechanics', null]);
+});
+
+test('a hand-picked scale holds only until the scene calls for a different default', () => {
+  // A 40 MHz source (10 ns/s); the user picks another scale by hand while the
+  // recommendation is 10 ns/s; edits that keep it at 10 ns/s leave the pick
+  // alone; adding a 1 kHz chopper (1 ms/s) releases it.
+  const { applied, status } = session([10, 10, 10, 1e6, 1e6, 10], { 1: 10 });
+  assert.deepEqual(applied, [null, null, null, 1e6, null, 10]);
+  assert.equal(status.manualFor, null, 'released, not held for the rest of the session');
+  // Switching to physical spacing (1 ns/s) also releases it.
+  assert.deepEqual(session([10, 1], { 1: 10 }).applied, [null, 1]);
+  // Released even when the new recommendation is the one applied before the pick.
+  assert.deepEqual(nextAutoScale(1e3, { lastAuto: 1e3, manualFor: 10 }), { apply: true, lastAuto: 1e3, manualFor: null });
+  // A demo that fixes its scale holds it the same way (no scale applied yet).
+  assert.deepEqual(nextAutoScale(1e3, { lastAuto: null, manualFor: 1e3 }), { apply: false, lastAuto: null, manualFor: 1e3 });
 });
