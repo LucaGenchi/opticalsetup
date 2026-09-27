@@ -199,6 +199,18 @@ as intensities. An incomplete trace or a route through an optic whose carrier ph
 not represented falls back to conservative deposited intensity rather than inventing a
 phase.
 
+Point-source rays activate when they intersect a reflective, refractive, or
+diffractive optical surface or a fiber input within 5 m, then propagate through
+the normal tracer. Rays that miss retain a short 110 mm visual fade. This
+intersection-based display convention limits canvas clutter; it is not physical
+attenuation or evanescence. Blocking surfaces still prevent activation of optics
+behind them.
+
+Overlapping traced rays use isolated screen color blending on the canvas and in
+exports, so different wavelength colors combine where their strokes overlap.
+Separated rays retain their wavelength colors. This is a qualitative display
+mixture, not calibrated colorimetry or an additional interference calculation.
+
 The metalens is a zero-thickness paraxial phase-gradient proxy rather than an
 electromagnetic metasurface solver. In chromatic mode its focal length follows the
 ordinary diffractive relation `f(λ) = f₀λ₀/λ`; broadband light is sampled into the

@@ -1314,6 +1314,15 @@ export function signalHitsFromLastTrace(stageId) {
 }
 
 const MAXLEN = 6000, MAX_DEPTH = 60, MIN_INT = 0.02;
+
+// Surface behavior, rather than component names, determines point-source
+// activation. Refractive boundaries cover freeform glass, prisms, thick lenses,
+// and lens groups alike. Absorbers and diagram-only objects never activate rays.
+const POINT_SOURCE_ACTIVATORS = new Set([
+  'lens', 'metalens', 'fiberin', 'refract', 'mirror', 'cmirror', 'conicmirror',
+  'dichroic', 'split', 'pbs', 'etalon', 'grating', 'diffuser',
+  'dmd', 'dm', 'shaper', 'aom', 'aotf', 'aod',
+]);
 // Coherent branches are amplitudes, so the ordinary ray-visibility cutoff is
 // much too large: a 1%-power branch can change an 81%-power branch by 18%.
 // This lower budget remains finite; crossing it disables interference for
@@ -4752,32 +4761,18 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         break;
       }
       if (r.evan) {
-        // evanescent (isotropic fluorescence, or a diagram point source):
-        // the glow decays like 1/r² and dies within the ray's evanescent
-        // range (fluorescence: 25 mm, point source: 110 mm) unless a lens /
-        // objective / fiber tip collects it first. The collector must sit
-        // within 1.5x that range (a small grace margin so an optic right at
-        // the fade boundary still counts); otherwise the light is simply
-        // gone and never reaches downstream detectors.
-        // `??`, not `||`: a range of exactly zero means exhausted, and falling
-        // back to the default there would hand a spent branch a fresh 22 mm.
+        // Keep uncollected source fans visually short, but search for a real
+        // intersection out to the independent capture range. Point sources
+        // activate on ray-directing optics; generated fluorescence retains its
+        // own collection policy and range. The nearest surface still wins,
+        // so an absorber cannot be bypassed to reach an optic behind it.
+        // Zero means exhausted; do not restore the default range there.
         const EVAN_LEN = r.evanLen ?? 22;
-        // How far the glow is DRAWN and how far an optic can still collect it
-        // are separate: a collection lens routinely sits well outside the few
-        // centimetres of visible glow, and the light is really there.
         const CAPTURE = r.captureLen ?? EVAN_LEN * 1.5;
-        // Mirrors collect too. A parabolic mirror with an emitter at its focus
-        // is the standard way to collimate a lamp or an arc without chromatic
-        // aberration, and a collection mirror round a fluorescing sample is
-        // ordinary spectroscopy -- leaving them off this list meant a point
-        // source's light passed straight through any mirror as if it were not
-        // there, which is what made a parabola fail to collimate it.
-        // `cmirror` is the concave/convex pair, which is what an actual
-        // collection mirror around a sample usually is -- leaving it out
-        // would have fixed the flat and parabolic cases and left the two
-        // components most likely to be used for collection still broken.
-        const COLLECTORS = new Set(['lens', 'metalens', 'fiberin', 'mirror', 'cmirror']);
-        const captured = hit && hit.t <= CAPTURE && COLLECTORS.has(hit.surface.kind);
+        const captured = hit && hit.t <= CAPTURE
+          && (r.captureMode === 'optical'
+            ? POINT_SOURCE_ACTIVATORS.has(hit.surface.kind)
+            : ['lens', 'metalens', 'fiberin', 'mirror', 'cmirror'].includes(hit.surface.kind));
         if (!captured) {
           const L = hit ? Math.min(hit.t, EVAN_LEN) : EVAN_LEN;
           appendPoint(r, { x: r.x + r.dx * L, y: r.y + r.dy * L }, L);
@@ -4793,10 +4788,11 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // The transmitted child starts AT the collector, having already used
         // up hit.t of its range. Handing it the full range again would let a
         // chain of partial mirrors walk near-field light across the bench.
-        r.carriedEvan = {
+        r.carriedEvan = ['mirror', 'cmirror'].includes(hit.surface.kind) ? {
           evanLen: Math.max(0, EVAN_LEN - hit.t),
           captureLen: Math.max(0, CAPTURE - hit.t),
-        };
+          captureMode: r.captureMode,
+        } : null;
         if (!coherent?.dryRun) recordCameraNearMisses(r, cameraSurfaces, hit?.t ?? MAXLEN);
       }
       if (!hit) {
@@ -5124,6 +5120,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           evan: c.evan || Boolean(c.tag === 'T' && carriedEvan),
           evanLen: c.evanLen ?? (c.tag === 'T' ? carriedEvan?.evanLen : undefined),
           captureLen: c.captureLen ?? (c.tag === 'T' ? carriedEvan?.captureLen : undefined),
+          captureMode: c.captureMode ?? (c.tag === 'T' ? carriedEvan?.captureMode : undefined),
           pol: 'pol' in c ? c.pol : r.pol,
           stokes: 'stokes' in c ? cloneStokes(c.stokes) : cloneStokes(r.stokes),
           polMod: 'polMod' in c ? c.polMod : r.polMod,
@@ -5589,6 +5586,7 @@ export function traceScene(elements, beams = []) {
         pulse,
         objectives: [],
         evan: r.evan || false, evanLen: r.evanLen,
+        captureLen: r.captureLen, captureMode: r.captureMode,
         medium: initialBody?.id || null, mediumMaterial: initialMaterial, ior: initialIor,
         groupDelayDifferenceFs: 0,
         intensity: 1, power: 1 / Math.max(1, K), sample: r.sample !== undefined ? r.sample : null,
