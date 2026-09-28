@@ -60,17 +60,25 @@ export function pulsesReadAsCW(periodNs, scaleNsPerSecond) {
   return ratio > CW_FALLBACK_RATIO || ratio < 1 / CW_FALLBACK_RATIO;
 }
 
-// The repetition-rate tiers requested for pulsed sources.
-function laserScaleFor(maxRepRateHz) {
-  if (maxRepRateHz > 50e6) return 10;      // >50 MHz    -> 10 ns/s
-  if (maxRepRateHz >= 500e3) return 1e3;   // 500 kHz–50 MHz -> 1 µs/s
-  return 1e5;                              // <500 kHz   -> 100 µs/s
-}
-
 // Aim for roughly two real seconds per cycle, then snap to a listed scale.
 function motionScaleFor(freqHz) {
   if (!Number.isFinite(freqHz) || freqHz <= 0) return null;
   return snapTimeScale((1e9 / freqHz) / 2);
+}
+
+// The scale that makes a pulse train's packets move at a watchable speed in
+// the display mode shown (pulses.js, pulseMarkers):
+// - Schematic packets sit about 140 mm apart and each advances one spacing
+//   per repetition period, so what the eye follows is the period in real
+//   seconds. The train is paced like any other periodic motion, about two
+//   real seconds per period: 0.6-6 s after snapping to a listed scale, so a
+//   packet moves roughly 20-220 mm/s whatever the repetition rate (40 MHz
+//   at 1 µs/s would move 5.6 m/s; at 10 ns/s it moves 56 mm/s).
+// - Physical packets move at the speed of light on the drawing, c x scale:
+//   300 mm/s at 1 ns/s, about two seconds across a 60 cm setup, and ten
+//   times faster at every step up. Only the slowest scale is watchable.
+function laserScaleFor(maxRepRateHz, mode) {
+  return mode === 'physical' ? MIN_TIME_SCALE : motionScaleFor(maxRepRateHz);
 }
 
 // Characteristic drive frequency (Hz) of each time-varying element, or null
@@ -143,8 +151,10 @@ const ILLUSTRATIVE_ONLY_TYPES = new Set(['stage', 'retroreflector', 'delayline']
 
 // Pick the scale that keeps the slowest moving thing on the table watchable.
 // Returns either a numeric scale or the Mechanics mode, plus what drove the
-// choice, so the UI can explain itself when it auto-adjusts.
-export function recommendedTimeScale(elements = []) {
+// choice, so the UI can explain itself when it auto-adjusts. `mode` is the
+// pulse display mode ('schematic' or 'physical'), which sets how fast the
+// packets actually move at a given scale.
+export function recommendedTimeScale(elements = [], { mode = 'schematic' } = {}) {
   const list = Array.isArray(elements) ? elements : [];
 
   const illustrativeDriver = list.find(el => ILLUSTRATIVE_ONLY_TYPES.has(el?.type) && elementDriveHz(el) !== null);
@@ -160,7 +170,7 @@ export function recommendedTimeScale(elements = []) {
 
   const repRates = list.map(el => (el?.type === 'pulsedlaser' || el?.type === 'sclaser') ? elementDriveHz(el) : null)
     .filter(Number.isFinite);
-  if (repRates.length) consider(laserScaleFor(Math.max(...repRates)), 'the pulsed source');
+  if (repRates.length) consider(laserScaleFor(Math.max(...repRates), mode), 'the pulsed source');
 
   for (const el of list) {
     if (el?.type === 'pulsedlaser' || el?.type === 'sclaser') continue;
@@ -170,4 +180,22 @@ export function recommendedTimeScale(elements = []) {
   }
 
   return best || { scaleNsPerSecond: 10, driver: null, mechanics: false };
+}
+
+// Whether the automatic time scale should change now. `key` is the current
+// recommendation (a scale in ns/s, or 'mechanics'); `lastAuto` is the one
+// last applied (null before any); `manualFor` is the recommendation that was
+// in force when the user picked a scale by hand (null when they have not).
+// A hand-picked scale holds while the recommendation stays what it was when
+// it was picked, and is released as soon as the scene or the display mode
+// calls for a different one -- never for the rest of the session.
+export function nextAutoScale(key, { lastAuto = null, manualFor = null } = {}) {
+  if (manualFor !== null) {
+    if (key === manualFor) return { apply: false, lastAuto, manualFor };
+    return { apply: true, lastAuto: key, manualFor: null };
+  }
+  if (key === lastAuto) return { apply: false, lastAuto, manualFor };
+  // The first recommendation of a session that is the startup default needs
+  // no change and no announcement.
+  return { apply: !(lastAuto === null && key === 10), lastAuto: key, manualFor };
 }
