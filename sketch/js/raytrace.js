@@ -1417,9 +1417,13 @@ export function probeBeamsAt(x, y, radius) {
     // delay -- 200 fs of arm difference must stay readable. Continuous light
     // has no instant to compare: its routes are one beam.
     const pulse = routes[0].main.ray.pulse;
-    const periodMm = pulse?.repRateMHz > 0 ? C_MM_PER_NS * 1000 / pulse.repRateMHz : null;
+    // Folding by the period is exact only for a bare train. A gated train
+    // delayed by one period meets its modulation at another point, so its
+    // arms stay apart at any delay (Andrea, #192: two arms 12.5 ns apart
+    // behind a 10 MHz AOM had the gate open on one and closed on the other).
+    const periodMm = pulse?.repRateMHz > 0 && !(pulse.gates || []).length ? C_MM_PER_NS * 1000 / pulse.repRateMHz : null;
     const toleranceMm = C_MM_PER_NS * Math.max(0, pulse?.pulseWidthFs || 0) * 1e-6 * 0.01;
-    const phaseOf = route => (periodMm ? ((route.opl % periodMm) + periodMm) % periodMm : 0);
+    const phaseOf = route => (periodMm ? ((route.opl % periodMm) + periodMm) % periodMm : pulse ? route.opl : 0);
     const clusters = [];
     for (const route of routes.sort((p, q) => phaseOf(p) - phaseOf(q))) {
       const last = clusters.at(-1);

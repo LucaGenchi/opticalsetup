@@ -233,3 +233,38 @@ test('a spectrum without every source\'s watts says it is relative, on the card'
   assert.match(card, /data-probe-weights="relative"/);
   assert.match(card, /· relative</);
 });
+
+// Andrea's findings on f4a9d56.
+test('gated arms a whole laser period apart stay two beams: the modulation does not repeat with the laser', () => {
+  const elements = pulsedMachZehnder();
+  const aom = createElement('aom', 200, 200);
+  Object.assign(aom.params, { modulate: true, modFreqMHz: 10, chopDuty: 0.5, modShape: 'square', deflect: 0, eff: 1 });
+  elements.push(aom);
+  elements.find(e => e.type === 'delayline').params.delayMm = C_MM_PER_NS * 12.5; // one 80 MHz period
+  traceScene(elements, []);
+  const arms = probeBeamsAt(700, 400, 5);
+  assert.equal(arms.length, 2, 'was one beam with routes: 2');
+  near(arms[1].arrivalNs - arms[0].arrivalNs, 12.5, 1e-6);
+  // Without the gate the same two arms land on the same pulses: one beam.
+  const bare = pulsedMachZehnder();
+  bare.find(e => e.type === 'delayline').params.delayMm = C_MM_PER_NS * 12.5;
+  traceScene(bare, []);
+  assert.equal(probeBeamsAt(700, 400, 5).length, 1);
+});
+
+test('a dense train in the several-beam time view is drawn under its envelope, across the whole window', () => {
+  const elements = pulsedMachZehnder();
+  const chop = (x, y, frequencyHz) => Object.assign(createElement('chopper', x, y), {}, {
+    params: { ...createElement('chopper', x, y).params, frequencyHz },
+  });
+  elements.push(chop(400, 200, 1000), chop(450, 400, 2000));
+  const probe = createElement('probe', 700, 400);
+  probe.params.prop = 'time';
+  traceScene([...elements, probe], []);
+  const card = registry.probe.svg(probe, [...elements, probe]);
+  assert.equal([...card.matchAll(/data-probe-time="dense"/g)].length, 2, 'both 80 MHz trains, in a 2 ms window');
+  // The envelope reaches the far end of the axis, not just its first microseconds.
+  const xs = [...card.matchAll(/<path d="M ([\d.]+),[\d.]+ L ([^"]+) Z" fill="#/g)]
+    .map(m => Math.max(...m[2].split(' L ').map(pt => Number(pt.split(',')[0]))));
+  assert.ok(xs.length === 2 && xs.every(x => x > 80), `envelopes end at ${xs}`);
+});

@@ -1304,11 +1304,19 @@ function probeMultiCard(el, prop, beams, elements) {
         traces += `<line data-probe-time="cw" x1="${x0}" y1="${(y0 - ph).toFixed(2)}" x2="${x0 + pw}" y2="${(y0 - ph).toFixed(2)}" stroke="${colour}" stroke-width="1.2" opacity="0.8"/>`;
         continue;
       }
-      const peak = Math.max(1e-9, ...trace.pulses.map(p => p.amplitude || 0));
-      traces += `<g data-probe-time-delay-ns="${delayOf(beam).toFixed(9)}" data-probe-first-pulse-ns="${(trace.pulses[0]?.tNs ?? NaN).toFixed(6)}">` + trace.pulses.filter(p => p.amplitude > 1e-6).slice(0, 120).map(p => {
-        const x = xAt(p.tNs).toFixed(2);
-        return `<line x1="${x}" y1="${y0}" x2="${x}" y2="${(y0 - Math.min(1, p.amplitude / peak) * ph).toFixed(2)}" stroke="${colour}" stroke-width="1.2" stroke-linecap="round" opacity="0.8"/>`;
-      }).join('') + '</g>';
+      const peak = Math.max(1e-9, ...trace.pulses.map(p => p.amplitude || 0), ...trace.envelope.map(e => e.value || 0));
+      const yAt = v => (y0 - Math.max(0, Math.min(1, v / peak)) * ph).toFixed(2);
+      // Too many pulses to separate at this timebase: the train is filled in
+      // under its own envelope, as the single-beam view draws it (Andrea,
+      // #192: a kHz chopper's 2 ms window showed only its first 1.5 us).
+      const dense = trace.pulses.length > pw / 2 || trace.truncated;
+      const body = dense
+        ? `<path d="M ${xAt(trace.startNs).toFixed(2)},${y0} L ${trace.envelope.map(pt => `${xAt(pt.tNs).toFixed(2)},${yAt(pt.value)}`).join(' L ')} L ${xAt(trace.startNs + spanNs).toFixed(2)},${y0} Z" fill="${colour}" opacity="0.35" stroke="none"/>`
+        : trace.pulses.filter(p => p.amplitude > 1e-6).map(p => {
+          const x = xAt(p.tNs).toFixed(2);
+          return `<line x1="${x}" y1="${y0}" x2="${x}" y2="${yAt(p.amplitude)}" stroke="${colour}" stroke-width="1.2" stroke-linecap="round" opacity="0.8"/>`;
+        }).join('');
+      traces += `<g data-probe-time="${dense ? 'dense' : trace.pulses.length}" data-probe-time-delay-ns="${delayOf(beam).toFixed(9)}" data-probe-first-pulse-ns="${(trace.pulses[0]?.tNs ?? NaN).toFixed(6)}">${body}</g>`;
     }
     const axis = ns => esc(formatTimeAxisNs(ns));
     return {
