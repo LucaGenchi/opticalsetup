@@ -14,11 +14,12 @@ import { uid } from './util.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
-import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probePowerAt, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
+import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
 import { opaSettings, opaGainAt, MAX_OPA_STAGES } from './opa.js';
 import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
 import {
   probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
+  probeBeamWeights, probeSpectrumRangeAll, combinedSpectrumSamples, probeTimingSummary, probeTimingLabel, syncedTimeWindowNs,
   formatTimeAxisNs,
 } from './probe.js';
 import {
@@ -969,8 +970,62 @@ export const OBJ_SHAPES = {
 // The diameter of the circle the power reading adds up over, in mm.
 export const probeSampleDiameterMm = p => Math.min(150, Math.max(0.1, Number(p?.sampleDiameterMm) || 10));
 
+// One beam's polarization: the state drawn on a disc, named underneath.
+function probePolCard(rd) {
+  let icon, lab, labSize = 8;
+  if (rd.polMod) {
+    // A modulated segment alternates between two states, so its average is
+    // a meaningless (often zero-length) Stokes vector. Name both states and
+    // the rate instead — that is what is physically there.
+    const name = s => polarizationDescription(s).replace(/^Linear /, '').replace('°', '°');
+    const mhz = rd.polMod.frequencyMHz;
+    const rate = mhz >= 1000 ? `${(mhz / 1000).toFixed(2)} GHz`
+      : mhz >= 1 ? `${mhz.toFixed(mhz < 10 ? 2 : 1)} MHz`
+        : `${(mhz * 1000).toFixed(0)} kHz`;
+    icon = `<g stroke="#7c3aed" stroke-width="1.6"><line x1="-8.5" y1="0" x2="8.5" y2="0"/>` +
+      `<line x1="0" y1="-8.5" x2="0" y2="8.5"/></g>` +
+      `<path d="M -6,-11 L 6,-11 M 3,-13.5 L 6,-11 L 3,-8.5" fill="none" stroke="#7c3aed" stroke-width="1.2"/>`;
+    lab = `${name(rd.polMod.stokesLow)} ↔ ${name(rd.polMod.stokesHigh)} · ${rate}`;
+    labSize = 7;
+  } else if (rd.pol === 'c') {
+    icon = `<path d="M 8,2 A 8.2 8.2 0 1 1 3,-7.7" fill="none" stroke="#333" stroke-width="1.6"/>` +
+      `<path d="M 3,-7.7 L 7.5,-8.5 L 4.5,-3.6 Z" fill="#333"/>`;
+    lab = 'circular';
+  } else if (typeof rd.pol === 'number') {
+    icon = `<g transform="rotate(${-rd.pol})"><line x1="-8.5" y1="0" x2="8.5" y2="0" stroke="#333" stroke-width="1.6"/>` +
+      `<path d="M 10,0 L 4.5,-3 L 4.5,3 Z M -10,0 L -4.5,-3 L -4.5,3 Z" fill="#333"/></g>`;
+    lab = `linear ${Math.round(rd.pol)}°`;
+  } else if (rd.pol === 'e') {
+    // Elliptical: partial retardance (e.g. a waveplate not at 0/45/90° to
+    // the input) leaves a nonzero circular component (s3) without being
+    // purely circular — distinct from, and must not collapse into, the
+    // true "no polarization at all" case below.
+    const angle = rd.stokes ? stokesAngleDeg(rd.stokes) : 0;
+    icon = `<g transform="rotate(${-angle})"><ellipse cx="0" cy="0" rx="8.5" ry="4" fill="none" stroke="#333" stroke-width="1.6"/>` +
+      `<path d="M 8.5,0 L 4,-2.6 L 4,2.6 Z" fill="#333"/></g>`;
+    lab = `elliptical ${Math.round(angle)}°`;
+  } else {
+    icon = `<g stroke="#666" stroke-width="1.3"><line x1="-8" y1="0" x2="8" y2="0"/><line x1="0" y1="-8" x2="0" y2="8"/><line x1="-5.7" y1="-5.7" x2="5.7" y2="5.7"/><line x1="-5.7" y1="5.7" x2="5.7" y2="-5.7"/></g>`;
+    lab = 'unpolarized';
+  }
+  // Sized to the label so a long modulation caption never spills outside
+  // the box the caller uses for placement and export bounds.
+  const w = Math.max(56, lab.length * labSize * 0.56 + 12);
+  return {
+    w,
+    h: 44,
+    body: `<g transform="translate(${w / 2},14)"><circle r="14" fill="#fff" stroke="#c9ced6"/>${icon}</g>` +
+      `<text x="${w / 2}" y="38" text-anchor="middle" font-size="${labSize}" fill="#333">${lab}</text>`,
+  };
+}
+
 function probeCard(el, rd, elements = []) {
   const prop = el.params.prop;
+  // Two or more beams crossing the sampling circle: the spectrum, wavelength,
+  // polarization and time views describe all of them. With one, every view
+  // reads the nearest beam, as it always has.
+  const multi = probeMultiBeams(el);
+  if (multi) return probeMultiCard(el, prop, multi, elements);
   // Power is read over the sampling circle, like a meter's face, rather than
   // from the one nearest ray the other readings describe.
   const area = prop === 'power' ? probePowerAt(el.x, el.y, probeSampleDiameterMm(el.params) / 2) : null;
@@ -999,53 +1054,7 @@ function probeCard(el, rd, elements = []) {
     };
   }
 
-  if (prop === 'pol') {
-    let icon, lab, labSize = 8;
-    if (rd.polMod) {
-      // A modulated segment alternates between two states, so its average is
-      // a meaningless (often zero-length) Stokes vector. Name both states and
-      // the rate instead — that is what is physically there.
-      const name = s => polarizationDescription(s).replace(/^Linear /, '').replace('°', '°');
-      const mhz = rd.polMod.frequencyMHz;
-      const rate = mhz >= 1000 ? `${(mhz / 1000).toFixed(2)} GHz`
-        : mhz >= 1 ? `${mhz.toFixed(mhz < 10 ? 2 : 1)} MHz`
-          : `${(mhz * 1000).toFixed(0)} kHz`;
-      icon = `<g stroke="#7c3aed" stroke-width="1.6"><line x1="-8.5" y1="0" x2="8.5" y2="0"/>` +
-        `<line x1="0" y1="-8.5" x2="0" y2="8.5"/></g>` +
-        `<path d="M -6,-11 L 6,-11 M 3,-13.5 L 6,-11 L 3,-8.5" fill="none" stroke="#7c3aed" stroke-width="1.2"/>`;
-      lab = `${name(rd.polMod.stokesLow)} ↔ ${name(rd.polMod.stokesHigh)} · ${rate}`;
-      labSize = 7;
-    } else if (rd.pol === 'c') {
-      icon = `<path d="M 8,2 A 8.2 8.2 0 1 1 3,-7.7" fill="none" stroke="#333" stroke-width="1.6"/>` +
-        `<path d="M 3,-7.7 L 7.5,-8.5 L 4.5,-3.6 Z" fill="#333"/>`;
-      lab = 'circular';
-    } else if (typeof rd.pol === 'number') {
-      icon = `<g transform="rotate(${-rd.pol})"><line x1="-8.5" y1="0" x2="8.5" y2="0" stroke="#333" stroke-width="1.6"/>` +
-        `<path d="M 10,0 L 4.5,-3 L 4.5,3 Z M -10,0 L -4.5,-3 L -4.5,3 Z" fill="#333"/></g>`;
-      lab = `linear ${Math.round(rd.pol)}°`;
-    } else if (rd.pol === 'e') {
-      // Elliptical: partial retardance (e.g. a waveplate not at 0/45/90° to
-      // the input) leaves a nonzero circular component (s3) without being
-      // purely circular — distinct from, and must not collapse into, the
-      // true "no polarization at all" case below.
-      const angle = rd.stokes ? stokesAngleDeg(rd.stokes) : 0;
-      icon = `<g transform="rotate(${-angle})"><ellipse cx="0" cy="0" rx="8.5" ry="4" fill="none" stroke="#333" stroke-width="1.6"/>` +
-        `<path d="M 8.5,0 L 4,-2.6 L 4,2.6 Z" fill="#333"/></g>`;
-      lab = `elliptical ${Math.round(angle)}°`;
-    } else {
-      icon = `<g stroke="#666" stroke-width="1.3"><line x1="-8" y1="0" x2="8" y2="0"/><line x1="0" y1="-8" x2="0" y2="8"/><line x1="-5.7" y1="-5.7" x2="5.7" y2="5.7"/><line x1="-5.7" y1="5.7" x2="5.7" y2="-5.7"/></g>`;
-      lab = 'unpolarized';
-    }
-    // Sized to the label so a long modulation caption never spills outside
-    // the box the caller uses for placement and export bounds.
-    const w = Math.max(56, lab.length * labSize * 0.56 + 12);
-    return {
-      w,
-      h: 44,
-      body: `<g transform="translate(${w / 2},14)"><circle r="14" fill="#fff" stroke="#c9ced6"/>${icon}</g>` +
-        `<text x="${w / 2}" y="38" text-anchor="middle" font-size="${labSize}" fill="#333">${lab}</text>`,
-    };
-  }
+  if (prop === 'pol') return probePolCard(rd);
 
   // A plain value in a box: the reading is the whole content, with nothing
   // captioning what the probe is already set to show.
@@ -1149,19 +1158,7 @@ function probeCard(el, rd, elements = []) {
         curve = `<line x1="${x}" y1="${y0}" x2="${x}" y2="${(y0 - height).toFixed(2)}" stroke="${wavelengthToColor(sample.wl)}" stroke-width="2" stroke-linecap="round"/>`;
       }
     } else {
-      const points = samples.map(s => ({ x: xAt(s.wl), y: y0 - Math.max(0, (s.weight / peak) * ph) }));
-      const fillPoints = [{ x: points[0].x, y: y0 }, ...points, { x: points[points.length - 1].x, y: y0 }];
-      const clipId = `probeSpecClip${esc(el.id)}`, gradientId = `probeSpecGrad${esc(el.id)}`;
-      const stops = samples.map((s, i) => {
-        const offset = samples.length > 1 ? (i / (samples.length - 1) * 100).toFixed(1) : 0;
-        return `<stop offset="${offset}%" stop-color="${wavelengthToColor(s.wl)}"/>`;
-      }).join('');
-      curve = `<defs><clipPath id="${clipId}"><rect x="${x0}" y="${(y0 - ph - 2).toFixed(2)}" width="${pw}" height="${(ph + 3).toFixed(2)}"/></clipPath>` +
-        `<linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="0%">${stops}</linearGradient></defs>` +
-        `<g clip-path="url(#${clipId})">` +
-        `<path data-spectrum-points="${samples.length}" d="${smoothPath(fillPoints)} Z" fill="url(#${gradientId})" opacity="0.3" stroke="none"/>` +
-        `<path d="${smoothPath(points)}" fill="none" stroke="url(#${gradientId})" stroke-width="1.6" stroke-linecap="round"/>` +
-        `</g>`;
+      curve = spectrumAreaSvg(el, samples, peak, { xAt, x0, y0, pw, ph });
     }
   } else {
     const x = xAt(rd.wl).toFixed(2);
@@ -1184,6 +1181,163 @@ function probeCard(el, rd, elements = []) {
       tick(lo, 'start') + tick((lo + hi) / 2, 'middle') + tick(hi, 'end') +
       `<text x="${x0 - 4}" y="${y0 - ph}" text-anchor="middle" font-size="5.5" fill="#888" transform="rotate(-90 ${x0 - 4} ${y0 - ph})">I (a.u.)</text>` +
       `<text x="${x0 + pw}" y="${y0 - ph - 1}" text-anchor="end" font-size="6.5" fill="#333">${vlabel}</text>`,
+  };
+}
+
+// A sampled spectrum as a filled, wavelength-coloured curve, clipped to the
+// plot: shared by the one-beam and the several-beam spectrum views.
+function spectrumAreaSvg(el, samples, peak, { xAt, x0, y0, pw, ph }) {
+  const points = samples.map(s => ({ x: xAt(s.wl), y: y0 - Math.max(0, (s.weight / peak) * ph) }));
+  const fillPoints = [{ x: points[0].x, y: y0 }, ...points, { x: points[points.length - 1].x, y: y0 }];
+  const clipId = `probeSpecClip${esc(el.id)}`, gradientId = `probeSpecGrad${esc(el.id)}`;
+  const stops = samples.map((s, i) => {
+    const offset = samples.length > 1 ? (i / (samples.length - 1) * 100).toFixed(1) : 0;
+    return `<stop offset="${offset}%" stop-color="${wavelengthToColor(s.wl)}"/>`;
+  }).join('');
+  return `<defs><clipPath id="${clipId}"><rect x="${x0}" y="${(y0 - ph - 2).toFixed(2)}" width="${pw}" height="${(ph + 3).toFixed(2)}"/></clipPath>` +
+    `<linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="0%">${stops}</linearGradient></defs>` +
+    `<g clip-path="url(#${clipId})">` +
+    `<path data-spectrum-points="${samples.length}" d="${smoothPath(fillPoints)} Z" fill="url(#${gradientId})" opacity="0.3" stroke="none"/>` +
+    `<path d="${smoothPath(points)}" fill="none" stroke="url(#${gradientId})" stroke-width="1.6" stroke-linecap="round"/>` +
+    `</g>`;
+}
+
+// The views that read every beam crossing the sampling circle when there is
+// more than one (the power view always reads the circle; the duration view
+// reads the nearest beam).
+const PROBE_AREA_VIEWS = new Set(['spectrum', 'wl', 'pol', 'time']);
+const PROBE_MAX_BEAMS_SHOWN = 4;
+const probeWlLabel = rd => (rd.bw >= 200 ? `SC ${Math.round(rd.wl - rd.bw / 2)}–${Math.round(rd.wl + rd.bw / 2)} nm`
+  : rd.bw > 0 ? `${Math.round(rd.wl)} ± ${Math.round(rd.bw / 2)} nm` : `${Math.round(rd.wl)} nm`);
+
+// Several beams crossing the sampling circle, in the spectrum, wavelength,
+// polarization or time view.
+// What a view lists from several beams: the wavelength and polarization
+// views show what differs -- beams of one colour (and, for polarization, one
+// state) that differ only in timing appear once -- the spectrum view names
+// each colour once, and the time view keeps every beam.
+function probeListedBeams(prop, beams) {
+  const distinct = keyOf => beams.filter((beam, i) => beams.findIndex(other => keyOf(other) === keyOf(beam)) === i);
+  return prop === 'wl' ? distinct(probeWlLabel)
+    : prop === 'pol' ? distinct(beam => `${probeWlLabel(beam)}|${JSON.stringify([beam.pol, beam.stokes, beam.polMod?.frequencyMHz ?? null])}`)
+      : prop === 'spectrum' ? distinct(beam => Math.round(beam.wl))
+        : beams;
+}
+
+// The beams a probe describes together, or null when its view reads the one
+// nearest beam as it always has: fewer than two beams in the circle, or
+// several that this view would show as one.
+function probeMultiBeams(el) {
+  const prop = el.params.prop;
+  if (!PROBE_AREA_VIEWS.has(prop)) return null;
+  const beams = probeBeamsAt(el.x, el.y, probeSampleDiameterMm(el.params) / 2);
+  return beams.length >= 2 && probeListedBeams(prop, beams).length >= 2 ? beams : null;
+}
+
+function probeMultiCard(el, prop, beams, elements) {
+  const listed = probeListedBeams(prop, beams);
+  const shown = listed.slice(0, PROBE_MAX_BEAMS_SHOWN);
+  const more = listed.length - shown.length;
+  const frame = (w, h) => `<rect x="0" y="0" width="${w}" height="${h}" rx="4" fill="#fff" stroke="#c9ced6"/>`;
+  const dot = (cx, cy, rd) => (rd.bw >= 200
+    ? `<circle cx="${cx}" cy="${cy}" r="4" fill="#fff" stroke="#888"/><path d="M ${cx - 4},${cy} A 4 4 0 0 1 ${cx + 4},${cy}" fill="#e04040"/><path d="M ${cx - 4},${cy} A 4 4 0 0 0 ${cx + 4},${cy}" fill="#3050e0"/>`
+    : `<circle cx="${cx}" cy="${cy}" r="4" fill="${wavelengthToColor(rd.wl)}"/>`);
+
+  if (prop === 'wl') {
+    // One row per beam, as the single-beam label shows it.
+    const rows = shown.map(probeWlLabel);
+    if (more > 0) rows.push(`+${more} more`);
+    const w = Math.max(...rows.map(r => r.length * 5.8 + 26));
+    const h = 8 + rows.length * 13;
+    return {
+      w, h,
+      body: frame(w, h) + rows.map((label, i) => {
+        const y = 10.5 + i * 13;
+        return (shown[i] ? dot(11, y, shown[i]) : '') +
+          `<text x="20" y="${y}" font-size="9" dominant-baseline="central" fill="#333">${esc(label)}</text>`;
+      }).join('') + `<g data-probe-beams="${beams.length}"></g>`,
+    };
+  }
+
+  if (prop === 'pol') {
+    // One polarization card per beam, side by side, each named by its colour.
+    const cards = shown.map(beam => ({ beam, card: probePolCard(beam) }));
+    const gap = 4;
+    let x = 0, body = '';
+    for (const { beam, card } of cards) {
+      body += `<g transform="translate(${x},0)">${card.body}` +
+        `${dot(card.w / 2 - 14, card.h + 5, beam)}` +
+        `<text x="${card.w / 2 - 8}" y="${card.h + 5}" font-size="7" dominant-baseline="central" fill="#333">${esc(`${Math.round(beam.wl)} nm`)}</text></g>`;
+      x += card.w + gap;
+    }
+    if (more > 0) body += `<text x="${x}" y="14" font-size="7" fill="#666">+${more}</text>`;
+    const w = x - gap + (more > 0 ? 14 : 0);
+    const h = Math.max(...cards.map(c => c.card.h)) + 11;
+    return { w, h, body: body + `<g data-probe-beams="${beams.length}"></g>` };
+  }
+
+  if (prop === 'time') {
+    // Every train on one axis, each drawn where its pulses arrive, with the
+    // verdict -- synced, or which beam comes first and by how much -- above.
+    const summary = probeTimingSummary(beams);
+    const verdict = probeTimingLabel(summary) || 'no pulsed beams to compare';
+    // Wide enough for the verdict, which is the point of this view.
+    const W = Math.max(90, Math.ceil(verdict.length * 3.5 + 12)), H = 56, x0 = 9, y0 = H - 12, pw = W - 16, ph = H - 30;
+    const window = syncedTimeWindowNs(beams.map(beam => ({ reading: beam, params: el.params })));
+    const { startNs, spanNs } = window;
+    const xAt = ns => x0 + pw * (spanNs > 0 ? (ns - startNs) / spanNs : 0);
+    const delayOf = beam => summary?.beams.find(entry => entry.beam === beam)?.delayNs ?? 0;
+    let traces = '';
+    for (const beam of shown) {
+      const colour = wavelengthToColor(beam.wl);
+      const trace = scopeTrace(beam.pulse, { spanNs, startNs, samples: 160, delayNs: delayOf(beam) });
+      if (!trace) {
+        traces += `<line data-probe-time="cw" x1="${x0}" y1="${(y0 - ph).toFixed(2)}" x2="${x0 + pw}" y2="${(y0 - ph).toFixed(2)}" stroke="${colour}" stroke-width="1.2" opacity="0.8"/>`;
+        continue;
+      }
+      const peak = Math.max(1e-9, ...trace.pulses.map(p => p.amplitude || 0));
+      traces += `<g data-probe-time-delay-ns="${delayOf(beam).toFixed(9)}">` + trace.pulses.filter(p => p.amplitude > 1e-6).slice(0, 120).map(p => {
+        const x = xAt(p.tNs).toFixed(2);
+        return `<line x1="${x}" y1="${y0}" x2="${x}" y2="${(y0 - Math.min(1, p.amplitude / peak) * ph).toFixed(2)}" stroke="${colour}" stroke-width="1.2" stroke-linecap="round" opacity="0.8"/>`;
+      }).join('') + '</g>';
+    }
+    const axis = ns => esc(formatTimeAxisNs(ns));
+    return {
+      w: W, h: H,
+      body: frame(W, H) +
+        `<line x1="${x0}" y1="${y0}" x2="${x0 + pw}" y2="${y0}" stroke="#888" stroke-width="1"/>` +
+        `<line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y0 - ph - 2}" stroke="#888" stroke-width="1"/>` +
+        traces +
+        `<text x="${x0}" y="${y0 + 6}" font-size="4.6" fill="#666">${axis(startNs)}</text>` +
+        `<text x="${x0 + pw}" y="${y0 + 6}" text-anchor="end" font-size="4.6" fill="#666">${axis(startNs + spanNs)}</text>` +
+        `<text data-probe-timing="${summary?.state || 'none'}" x="${W / 2}" y="8" text-anchor="middle" font-size="5.8" font-weight="700" fill="#333">${esc(verdict)}</text>` +
+        `<text x="${W / 2}" y="15" text-anchor="middle" font-size="4.8" fill="#666">${esc(shown.map(b => `${Math.round(b.wl)} nm`).join(' · ') + (more > 0 ? ` +${more}` : ''))}</text>`,
+    };
+  }
+
+  // Spectrum: the beams' summed spectral density, weighted by their watts.
+  const W = 74, H = 50, x0 = 10, y0 = H - 13, pw = W - 18, ph = H - 24;
+  const { lo, hi } = probeSpectrumRangeAll(beams, el.params);
+  const span = Math.max(1e-6, hi - lo);
+  const xAt = wl => x0 + pw * (wl - lo) / span;
+  const { weights, absolute } = probeBeamWeights(beams, elements);
+  const samples = combinedSpectrumSamples(beams, weights, lo, hi, 160);
+  const peak = Math.max(...samples.map(p => p.weight), 1e-30);
+  const curve = spectrumAreaSvg(el, samples, peak, { xAt, x0, y0, pw, ph });
+  const tick = (wl, anchor) => {
+    const x = xAt(wl).toFixed(2);
+    return `<line x1="${x}" y1="${y0}" x2="${x}" y2="${(y0 + 1.6).toFixed(2)}" stroke="#888" stroke-width="0.7"/>` +
+      `<text x="${x}" y="${(y0 + 6).toFixed(2)}" text-anchor="${anchor}" font-size="4.6" fill="#666">${Math.round(wl)}</text>`;
+  };
+  const names = shown.map(b => Math.round(b.wl)).join(' · ') + (more > 0 ? ` +${more}` : '') + ' nm';
+  return {
+    w: W, h: H,
+    body: frame(W, H) +
+      `<line x1="${x0}" y1="${y0}" x2="${x0 + pw}" y2="${y0}" stroke="#888" stroke-width="1"/>` +
+      `<line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y0 - ph - 2}" stroke="#888" stroke-width="1"/>` +
+      curve + tick(lo, 'start') + tick((lo + hi) / 2, 'middle') + tick(hi, 'end') +
+      `<text x="${x0 - 4}" y="${y0 - ph}" text-anchor="middle" font-size="5.5" fill="#888" transform="rotate(-90 ${x0 - 4} ${y0 - ph})">I (a.u.)</text>` +
+      `<text data-probe-beams="${beams.length}" data-probe-weights="${absolute ? 'watts' : 'relative'}" x="${x0 + pw}" y="${y0 - ph - 1}" text-anchor="end" font-size="6" fill="#333">${esc(names)}</text>`,
   };
 }
 
@@ -4975,9 +5129,11 @@ export const registry = {
       { key: 'timeOffsetNs', label: 'Time offset (ns)', type: 'number', min: -1e6, max: 1e6, step: 0.1, def: 0,
         show: p => p.prop === 'time' },
       // Power is everything crossing this circle, drawn dashed around the
-      // crosshair: set it to take in one beam, or several.
+      // crosshair; the spectrum, wavelength, polarization and time views
+      // describe every beam crossing it when there is more than one. Set it
+      // to take in one beam, or several.
       { key: 'sampleDiameterMm', label: 'Sampling diameter (mm)', type: 'number', min: 0.1, max: 150, step: 1, def: 10,
-        show: p => p.prop === 'power' },
+        show: p => p.prop === 'power' || PROBE_AREA_VIEWS.has(p.prop) },
     ],
     svg(el, elements = []) {
       const scale = probeScale(el);
@@ -4992,7 +5148,9 @@ export const registry = {
         `<line x1="0" y1="-8" x2="0" y2="8" stroke="#e07020" stroke-width="1"/>` +
         `<line x1="-8" y1="0" x2="8" y2="0" stroke="#e07020" stroke-width="1"/>` +
         `<line x1="0" y1="-9" x2="0" y2="${-PROBE_LEADER}" stroke="#e07020" stroke-width="1"/>`;
-      const sampling = el.params.prop === 'power'
+      // The circle is drawn whenever it decides the reading: always for
+      // power, and for the other views when they are showing several beams.
+      const sampling = el.params.prop === 'power' || probeMultiBeams(el)
         ? `<circle r="${(probeSampleDiameterMm(el.params) / 2).toFixed(2)}" fill="none" stroke="#e07020" stroke-width="0.8" stroke-dasharray="2 1.5" opacity="0.8"/>`
         : '';
       return crosshair + sampling +
@@ -5530,7 +5688,7 @@ const ELEMENT_HELP = {
   crystal: 'Converts a configurable fraction of pump power — single-pass fractions are capped at 60 %, a conservative application limit rather than a physical one — into second-order (SHG and two-beam SFG), THG, supercontinuum, OPO, or custom output. The supercontinuum band is estimated from the pump wavelength and the chosen medium, or set by hand. The χ⁽²⁾ mode doubles every beam and, when a second wavelength is present, also mixes the pair, drawing on what doubling leaves of both beams so the mixed line sits alongside the two harmonics — but only while their pulses reach the crystal together, which is how time zero is found. OPO mode removes an authored pump depletion, up to 95 % since it builds over many round trips, splits it by Manley–Rowe and gives signal and idler their own linewidths and pulse durations. Phase matching, threshold and cavity dynamics are not simulated.',
   sample: 'Attenuates excitation and can emit up to five stacked signals at once — fluorescence, SHG, THG, SFG, and CARS. Parametric signals are forward-generated with an optional weaker epi (backward) lobe; SFG and CARS additionally require two different excitation wavelengths at the same spot.',
   stage: 'Mechanically clips rays outside its clear aperture and optionally contains a sample. The piezo stage can scan the sample along its long axis (XY), along the beam axis (Z, depth), or raster both together; a resin sample can also show pulsed 2PP voxel marks.',
-  probe: 'Reads spectrum, wavelength, or polarization from the nearest traced beam; its average power adds up every beam crossing its sampling circle, as a power meter would.',
+  probe: 'Reads the light crossing its sampling circle: average power adds up every beam there, as a power meter would; with several beams, the spectrum sums them, the wavelength view lists them, polarization shows each, and the time view says whether their pulses arrive together or how far apart. With one beam it reads that beam; pulse duration reads the nearest beam.',
   arrowann: 'Diagram annotation; does not interact with rays.',
   figureframe: 'Canvas-only export crop. Its border and handles never appear in the exported figure.',
   textlabel: 'Markdown annotation with headings, lists, emphasis, and code; web and DOI addresses become clickable links. It does not interact with rays.',
