@@ -41,9 +41,11 @@ export function formatPowerMw(watts) {
   if (!Number.isFinite(watts)) return '—';
   const mw = watts * 1000;
   if (mw === 0) return '0 mW';
-  if (mw >= 1000) return `${(mw / 1000).toPrecision(3)} W`;
-  if (mw >= 1) return `${mw.toPrecision(3)} mW`;
-  if (mw >= 1e-3) return `${(mw * 1000).toPrecision(3)} µW`;
+  // Each unit starts where the one below would round to 1000 at three
+  // significant figures: 999.6 mW is "1.00 W", never "1.00e+3 mW".
+  if (mw >= 999.5) return `${(mw / 1000).toPrecision(3)} W`;
+  if (mw >= 0.9995) return `${mw.toPrecision(3)} mW`;
+  if (mw >= 0.9995e-3) return `${(mw * 1000).toPrecision(3)} µW`;
   return `${mw.toExponential(1)} mW`;
 }
 

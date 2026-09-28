@@ -116,6 +116,11 @@ test('power formatting steps through the units it is likely to meet', () => {
   assert.equal(formatPowerMw(1e-6), '1.00 µW');
   assert.equal(formatPowerMw(0), '0 mW');
   assert.equal(formatPowerMw(null), '—');
+  // Values that round up to the next unit move to it.
+  assert.equal(formatPowerMw(0.999538), '1.00 W', 'an OPA residual pump of 999.538 mW');
+  assert.equal(formatPowerMw(0.9994), '999 mW');
+  assert.equal(formatPowerMw(0.99971e-3), '1.00 mW');
+  assert.equal(formatPowerMw(0.9996e-6), '1.00 µW');
 });
 
 // ---------------- pulse duration ----------------
