@@ -168,7 +168,7 @@
       "power": 0.00388803295,
       "sourceId": "source",
       "wavelength": 530.5,
-      "widthNm": 0.0752342446
+      "widthNm": 0.150468489
      },
      {
       "bandId": "source#0",
@@ -195,7 +195,7 @@
       "power": 0.0125101303,
       "sourceId": "source",
       "wavelength": 530.8,
-      "widthNm": 0.0752342446
+      "widthNm": 0.150468489
      },
      {
       "bandId": "source#0",
@@ -222,7 +222,7 @@
       "power": 0.0310459072,
       "sourceId": "source",
       "wavelength": 531.1,
-      "widthNm": 0.0752342446
+      "widthNm": 0.150468489
      },
      {
       "bandId": "source#0",
@@ -249,7 +249,7 @@
       "power": 0.0594238611,
       "sourceId": "source",
       "wavelength": 531.4,
-      "widthNm": 0.0752342446
+      "widthNm": 0.150468489
      },
      {
       "bandId": "source#0",
@@ -276,7 +276,7 @@
       "power": 0.0877271051,
       "sourceId": "source",
       "wavelength": 531.7,
-      "widthNm": 0.0752342446
+      "widthNm": 0.150468489
      },
      {
       "bandId": "source#0",
@@ -303,7 +303,7 @@
       "power": 0.0998905978,
       "sourceId": "source",
       "wavelength": 532,
-      "widthNm": 0.0752342446
+      "widthNm": 0.150468489
      },
      {
       "bandId": "source#0",
@@ -330,7 +330,7 @@
       "power": 0.0877271051,
       "sourceId": "source",
       "wavelength": 532.3,
-      "widthNm": 0.0752342446
+      "widthNm": 0.150468489
      },
      {
       "bandId": "source#0",
@@ -357,7 +357,7 @@
       "power": 0.0594238611,
       "sourceId": "source",
       "wavelength": 532.6,
-      "widthNm": 0.0752342446
+      "widthNm": 0.150468489
      },
      {
       "bandId": "source#0",
@@ -384,7 +384,7 @@
       "power": 0.0310459072,
       "sourceId": "source",
       "wavelength": 532.9,
-      "widthNm": 0.0752342446
+      "widthNm": 0.150468489
      },
      {
       "bandId": "source#0",
@@ -411,7 +411,7 @@
       "power": 0.0125101303,
       "sourceId": "source",
       "wavelength": 533.2,
-      "widthNm": 0.0752342446
+      "widthNm": 0.150468489
      },
      {
       "bandId": "source#0",
@@ -438,7 +438,7 @@
       "power": 0.00388803295,
       "sourceId": "source",
       "wavelength": 533.5,
-      "widthNm": 0.0752342446
+      "widthNm": 0.150468489
      },
      {
       "bandId": "source#0",
