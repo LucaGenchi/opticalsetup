@@ -5,7 +5,9 @@ import assert from 'node:assert/strict';
 
 import { createElement, registry } from '../sketch/js/elements.js';
 import { detectorResponseNs } from '../sketch/js/detector-instruments.js';
-import { traceAll } from '../sketch/js/raytrace.js';
+import { traceAll, traceScene, probePowerAt } from '../sketch/js/raytrace.js';
+import { enhancedReading } from '../sketch/js/detector-measurements.js';
+import { parseSketch } from '../sketch/js/state.js';
 import '../sketch/js/detector-instruments.js';
 import {
   probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
@@ -54,11 +56,58 @@ test('power is null when nothing upstream declares any', () => {
   assert.equal(probeAveragePowerW(null, []), null);
 });
 
-test('a beam of several coincident rays reads their watts together, or nothing if one is unknown', () => {
+test('an area reading adds each source\'s watts, like a power meter, skipping sources without a power setting', () => {
   const sources = [{ id: 'pump', params: { avgPowerW: 1 } }, { id: 'seed', params: { avgPowerW: 1e-3 } }, { id: 'dark', params: {} }];
-  const beams = [{ sourceId: 'seed', intensity: 1 }, { sourceId: 'pump', intensity: 0.004 }];
-  assert.ok(Math.abs(probeAveragePowerW({ sourceId: 'seed', intensity: 1, beams }, sources) - 0.005) < 1e-15);
-  assert.equal(probeAveragePowerW({ sourceId: 'seed', intensity: 1, beams: [...beams, { sourceId: 'dark', intensity: 1 }] }, sources), null);
+  const sourceFractions = [{ sourceId: 'seed', fraction: 1 }, { sourceId: 'pump', fraction: 0.004 }];
+  assert.ok(Math.abs(probeAveragePowerW({ sourceFractions }, sources) - 0.005) < 1e-15);
+  // The meter reports the attributable watts when some light has no power figure; so does the probe.
+  assert.ok(Math.abs(probeAveragePowerW({ sourceFractions: [...sourceFractions, { sourceId: 'dark', fraction: 1 }] }, sources) - 0.005) < 1e-15);
+  assert.equal(probeAveragePowerW({ sourceFractions: [{ sourceId: 'dark', fraction: 1 }] }, sources), null);
+});
+
+// A probe and a power meter on the same light read the same watts.
+const meterAt = (x, y, rot = 0, aperture = 30) => Object.assign(createElement('powermeter', x, y), { rot }, { params: { ...createElement('powermeter', x, y).params, aperture } });
+const probeWatts = (x, y, elements, diameter = 10) => probeAveragePowerW(probePowerAt(x, y, diameter / 2), elements);
+const lineLaser = (x, y, avgPowerW, extra = {}) => {
+  const l = createElement('cwlaser', x, y);
+  Object.assign(l.params, { avgPowerW, beamMode: 'line', ...extra });
+  return l;
+};
+
+test('the probe counts a beam hidden from the drawing, as the meter does', () => {
+  // A 90 % mirror at 45 degrees: the 10 % it transmits is not drawn
+  // (Display transmitted beam off) but reaches the meter all the same.
+  const mirror = Object.assign(createElement('mirror', 200, 0), { rot: 45 });
+  mirror.params.refl = 90;
+  const meter = meterAt(400, 0);
+  const elements = [lineLaser(0, 0, 0.1), mirror, meter];
+  traceScene(elements, []);
+  const metered = enhancedReading(meter, elements).detectedPowerW;
+  assert.ok(Math.abs(metered - 0.01) < 1e-12, `${metered}`);
+  assert.ok(Math.abs(probeWatts(300, 0, elements) - metered) < 1e-15);
+});
+
+test('the probe adds every beam crossing its circle, and only those', () => {
+  const elements = [lineLaser(0, 0, 0.1), lineLaser(0, 6, 0.05, { wavelength: 633 })];
+  traceScene(elements, []);
+  assert.ok(Math.abs(probeWatts(150, 3, elements, 10) - 0.15) < 1e-15, 'both beams, 6 mm apart, inside a 10 mm circle');
+  assert.ok(Math.abs(probeWatts(150, 0, elements, 4) - 0.1) < 1e-15, 'a 4 mm circle on one beam takes that beam alone');
+  assert.equal(probePowerAt(150, 30, 5), null, 'nothing crosses a circle away from the beams');
+});
+
+test('light split inside the probe circle is counted once, where it entered', () => {
+  const cube = createElement('bs', 150, 0);
+  const elements = [lineLaser(0, 0, 0.1), cube];
+  traceScene(elements, []);
+  assert.ok(Math.abs(probeWatts(150, 0, elements, 20) - 0.1) < 1e-15, 'the cube sits inside the circle: 100 mW in, not 150');
+  assert.ok(Math.abs(probeWatts(250, 0, elements) - 0.05) < 1e-15, 'past the cube: the transmitted half');
+});
+
+test('a probe saved before the sampling circle existed opens with the 10 mm default', () => {
+  const probe = createElement('probe', 0, 0);
+  delete probe.params.sampleDiameterMm;
+  const parsed = parseSketch(JSON.stringify({ app: 'optics2d', version: 1, elements: [probe], beams: [] }), registry);
+  assert.equal(parsed.elements[0].params.sampleDiameterMm, 10);
 });
 
 test('power formatting steps through the units it is likely to meet', () => {

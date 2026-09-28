@@ -14,7 +14,7 @@ import { uid } from './util.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
-import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
+import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probePowerAt, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
 import { opaSettings, opaGainAt, MAX_OPA_STAGES } from './opa.js';
 import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
 import {
@@ -966,8 +966,15 @@ export const OBJ_SHAPES = {
 // top-left corner at the local origin and reports its own {w, h}, so the
 // caller can place the card relative to the sampled point and keep it upright
 // no matter how the probe itself is rotated — see probeCardPlacement().
+// The diameter of the circle the power reading adds up over, in mm.
+export const probeSampleDiameterMm = p => Math.min(150, Math.max(0.1, Number(p?.sampleDiameterMm) || 10));
+
 function probeCard(el, rd, elements = []) {
-  if (!rd) {
+  const prop = el.params.prop;
+  // Power is read over the sampling circle, like a meter's face, rather than
+  // from the one nearest ray the other readings describe.
+  const area = prop === 'power' ? probePowerAt(el.x, el.y, probeSampleDiameterMm(el.params) / 2) : null;
+  if (prop === 'power' ? !area : !rd) {
     return {
       w: 56,
       h: 24,
@@ -975,9 +982,8 @@ function probeCard(el, rd, elements = []) {
         `<text x="28" y="12" text-anchor="middle" dominant-baseline="central" font-size="8" fill="#9aa2ad">no beam</text>`,
     };
   }
-  const prop = el.params.prop;
-  const isSC = rd.bw >= 200;
-  const c = wavelengthToColor(rd.wl);
+  const isSC = rd?.bw >= 200;
+  const c = rd ? wavelengthToColor(rd.wl) : null;
 
   if (prop === 'wl') {
     const label = isSC ? `SC ${Math.round(rd.wl - rd.bw / 2)}–${Math.round(rd.wl + rd.bw / 2)} nm`
@@ -1054,7 +1060,7 @@ function probeCard(el, rd, elements = []) {
   };
 
   if (prop === 'power') {
-    const watts = probeAveragePowerW(rd, elements);
+    const watts = probeAveragePowerW(area, elements);
     // Without a source carrying a configured wattage there is no absolute
     // number to give, and the relative weight is not one -- say so, in place
     // of the number rather than under it.
@@ -4968,6 +4974,10 @@ export const registry = {
         show: p => p.prop === 'time' },
       { key: 'timeOffsetNs', label: 'Time offset (ns)', type: 'number', min: -1e6, max: 1e6, step: 0.1, def: 0,
         show: p => p.prop === 'time' },
+      // Power is everything crossing this circle, drawn dashed around the
+      // crosshair: set it to take in one beam, or several.
+      { key: 'sampleDiameterMm', label: 'Sampling diameter (mm)', type: 'number', min: 0.1, max: 150, step: 1, def: 10,
+        show: p => p.prop === 'power' },
     ],
     svg(el, elements = []) {
       const scale = probeScale(el);
@@ -4982,7 +4992,10 @@ export const registry = {
         `<line x1="0" y1="-8" x2="0" y2="8" stroke="#e07020" stroke-width="1"/>` +
         `<line x1="-8" y1="0" x2="8" y2="0" stroke="#e07020" stroke-width="1"/>` +
         `<line x1="0" y1="-9" x2="0" y2="${-PROBE_LEADER}" stroke="#e07020" stroke-width="1"/>`;
-      return crosshair +
+      const sampling = el.params.prop === 'power'
+        ? `<circle r="${(probeSampleDiameterMm(el.params) / 2).toFixed(2)}" fill="none" stroke="#e07020" stroke-width="0.8" stroke-dasharray="2 1.5" opacity="0.8"/>`
+        : '';
+      return crosshair + sampling +
         `<g class="probe-card" transform="rotate(${-place.rot}) translate(${place.x.toFixed(2)},${place.y.toFixed(2)}) scale(${scale})">` +
         card.body + `</g>`;
     },
@@ -5517,7 +5530,7 @@ const ELEMENT_HELP = {
   crystal: 'Converts a configurable fraction of pump power — single-pass fractions are capped at 60 %, a conservative application limit rather than a physical one — into second-order (SHG and two-beam SFG), THG, supercontinuum, OPO, or custom output. The supercontinuum band is estimated from the pump wavelength and the chosen medium, or set by hand. The χ⁽²⁾ mode doubles every beam and, when a second wavelength is present, also mixes the pair, drawing on what doubling leaves of both beams so the mixed line sits alongside the two harmonics — but only while their pulses reach the crystal together, which is how time zero is found. OPO mode removes an authored pump depletion, up to 95 % since it builds over many round trips, splits it by Manley–Rowe and gives signal and idler their own linewidths and pulse durations. Phase matching, threshold and cavity dynamics are not simulated.',
   sample: 'Attenuates excitation and can emit up to five stacked signals at once — fluorescence, SHG, THG, SFG, and CARS. Parametric signals are forward-generated with an optional weaker epi (backward) lobe; SFG and CARS additionally require two different excitation wavelengths at the same spot.',
   stage: 'Mechanically clips rays outside its clear aperture and optionally contains a sample. The piezo stage can scan the sample along its long axis (XY), along the beam axis (Z, depth), or raster both together; a resin sample can also show pulsed 2PP voxel marks.',
-  probe: 'Reads spectrum, wavelength, or polarization from the nearest traced beam.',
+  probe: 'Reads spectrum, wavelength, or polarization from the nearest traced beam; its average power adds up every beam crossing its sampling circle, as a power meter would.',
   arrowann: 'Diagram annotation; does not interact with rays.',
   figureframe: 'Canvas-only export crop. Its border and handles never appear in the exported figure.',
   textlabel: 'Markdown annotation with headings, lists, emphasis, and code; web and DOI addresses become clickable links. It does not interact with rays.',

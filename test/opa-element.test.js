@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 
 import { createElement, registry } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
-import { traceScene, opaReading, probeAt } from '../sketch/js/raytrace.js';
+import { traceScene, opaReading, probeAt, probePowerAt } from '../sketch/js/raytrace.js';
 import { enhancedReading } from '../sketch/js/detector-measurements.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { opaGainAt, opaSettings, planOpa, gammaLForGain, seedSlices, MIN_SEED_SLICES } from '../sketch/js/opa.js';
@@ -233,7 +233,7 @@ function twoStage(stage2 = {}, between = []) {
   const elements = [pump, seed, first, second, ...between, ...Object.values(meters)];
   traceScene(elements, []);
   const watts = Object.fromEntries(Object.entries(meters).map(([k, m]) => [k, enhancedReading(m, elements)?.detectedPowerW ?? 0]));
-  return { one: opaReading(first.id), two: opaReading(second.id), watts, second };
+  return { one: opaReading(first.id), two: opaReading(second.id), watts, second, elements };
 }
 
 test('a two-stage OPA: stage 2 is pumped by what stage 1 left and seeded by its signal', () => {
@@ -350,18 +350,28 @@ test('an OPA output is sliced exactly: its slices add up to its whole power at a
   }
 });
 
-test('the beam probe reads an OPA output\'s whole power: the seed passed on and the gain added', () => {
-  const { watts } = twoStage();
-  const pump = laser(-18, 515, 1), seed = laser(18, 780, 1e-6), opa = opaElement();
-  const m = meter(18);
-  const elements = [pump, seed, opa, m];
-  traceScene(elements, []);
-  const reading = probeAt(400, 18);
-  assert.equal(reading.beams.length, 2, 'the seed and the gain travel together');
-  near(probeAveragePowerW(reading, elements), enhancedReading(m, elements).detectedPowerW, 1e-12);
-  // And after two stages, where four contributions travel together.
-  const two = twoStage();
-  near(two.watts.signal, watts.signal, 0);
+test('a beam probe on an OPA output reads what a power meter reads: the seed passed on and the gain added', () => {
+  const probeWatts = (x, y, elements) => probeAveragePowerW(probePowerAt(x, y, 5), elements);
+  // One stage, a monochromatic seed.
+  const one = [laser(-18, 515, 1), laser(18, 780, 1e-6), opaElement(), meter(18)];
+  traceScene(one, []);
+  near(probeWatts(400, 18, one), enhancedReading(one[3], one).detectedPowerW, 1e-12);
+  // Andrea's case on 09d549e: a flat 400-1000 nm continuum seed, the OPA
+  // tuned to 800 nm. The seed passing through is centred at 700 nm and the
+  // gain near 800 nm, and a colour-matching rule read 1 uW for 298 uW.
+  const sc = createElement('sclaser', 0, 18);
+  Object.assign(sc.params, { scMin: 400, scMax: 1000, avgPowerW: 1e-6, repRateMHz: 0.2, pulseWidthFs: 300, temporalMode: 'pulsed', beamMode: 'line' });
+  const broad = [laser(-18, 515, 1), sc, opaElement({ signalWl: 800 }), meter(18)];
+  traceScene(broad, []);
+  const metered = enhancedReading(broad[3], broad).detectedPowerW;
+  assert.ok(metered > 1e-4, `the continuum's in-band slice is amplified: ${metered} W`);
+  near(probeWatts(400, 18, broad), metered, 1e-12);
+  // After two stages, where several contributions travel together; the
+  // probe circle takes in the signal line only, not the idler 18 mm away.
+  const { watts, elements } = twoStage();
+  near(probeWatts(600, 18, elements), watts.signal, 1e-12);
+  near(probeWatts(600, 0, elements), watts.idler, 1e-12);
+  near(probeWatts(600, -18, elements), watts.pump, 1e-12);
 });
 
 // Andrea's loop reproductions against f7c22cd: two routes back into an OPA

@@ -61,6 +61,10 @@ import { asphereSag, asphereSlope } from './asphere.js';
 
 // polylines from the most recent traceAll, kept for beam probes
 let lastPaths = [];
+// Every traced ray, including those hidden from the drawing (a partial
+// mirror's leak with its display switched off): a power meter receives them,
+// so the beam probe's power reading must count them too (probePowerAt).
+let lastPowerPaths = [];
 let lastSignalHits = [];
 let detectorHits = new Map();
 // Rays whose centres cross a camera plane just outside its finite face still
@@ -1274,7 +1278,7 @@ export function probeAt(x, y, tol = 16) {
       const intensity = r.segmentIntensities?.[i] ?? r.intensity;
       if (dd < bd - 1e-9 || (Math.abs(dd - bd) <= 1e-9 && intensity > (best?.intensity ?? -Infinity))) {
         bd = dd;
-        best = { ...r, intensity, ray: r };
+        best = { ...r, intensity };
         const ax = r.pts[i + 1].x - r.pts[i].x, ay = r.pts[i + 1].y - r.pts[i].y;
         const len2 = ax * ax + ay * ay;
         bestSegment = i;
@@ -1283,24 +1287,6 @@ export function probeAt(x, y, tol = 16) {
     }
   }
   const duration = best?.pulse ? probePulseDuration(best, bestSegment, bestAlong) : null;
-  // The rays drawn along exactly this segment, in the same direction and
-  // colour, are one beam made of several contributions -- an OPA's signal
-  // port sends the seed on under its own laser and the gain under the
-  // pump's -- so the power reading adds them. Two coherent rays of the same
-  // source (the arms of an interferometer) are not added: combining them is
-  // the interference model's job, and the probe keeps showing one.
-  const beams = [];
-  if (best) {
-    const a = best.pts[bestSegment], b = best.pts[bestSegment + 1];
-    const same = (p, q) => Math.abs(p.x - q.x) <= 1e-6 && Math.abs(p.y - q.y) <= 1e-6;
-    for (const r of lastPaths) {
-      const i = r.pts.findIndex((p, k) => k < r.pts.length - 1 && same(p, a) && same(r.pts[k + 1], b));
-      if (i < 0 || Math.abs(r.wl - best.wl) >= 1) continue;
-      const coherentTwin = r.phaseValid && best.phaseValid && (r.originId || r.sourceId) === (best.originId || best.sourceId);
-      if (r !== best.ray && coherentTwin) continue;
-      beams.push({ sourceId: r.sourceId || null, intensity: r.segmentIntensities?.[i] ?? r.intensity });
-    }
-  }
   return best ? {
     wl: best.wl, bw: best.bw || 0, spec: best.spec || null, pol: best.pol,
     stokes: cloneStokes(best.stokes), intensity: best.intensity,
@@ -1308,7 +1294,6 @@ export function probeAt(x, y, tol = 16) {
     // configured watts, and what its train looks like here -- including any
     // gates picked up on the way, which is what the time plot draws.
     sourceId: best.sourceId || null,
-    beams,
     approximation: best.approximation || null,
     pulse: best.pulse ? {
       repRateMHz: best.pulse.repRateMHz,
@@ -1326,6 +1311,38 @@ export function probeAt(x, y, tol = 16) {
     // probe reports the alternation itself rather than its average.
     polMod: best.polMod || null,
   } : null;
+}
+
+// The light crossing a circular area around (x, y), counted the way a power
+// meter counts what reaches its face: every ray that enters the circle, with
+// its power where it enters, attributed to the source it originated from
+// (sourceFractions, as detectorReading gives them). A ray is counted when it
+// crosses into the circle, not while it is inside, so light split, reflected
+// or converted within the area is not counted a second time; light emitted
+// inside the area is not counted at all. Returns null when nothing enters.
+export function probePowerAt(x, y, radius) {
+  const R = Math.max(1e-6, Number(radius) || 0);
+  const p = { x, y };
+  const inside = q => Math.hypot(q.x - x, q.y - y) <= R;
+  const byOrigin = new Map();
+  let entries = 0;
+  for (const r of lastPowerPaths) {
+    const finalIntensity = r.intensity;
+    for (let i = 0; i < r.pts.length - 1; i++) {
+      if (inside(r.pts[i]) || distToSegment(p, r.pts[i], r.pts[i + 1]) > R) continue;
+      // Power scales with the drawn intensity along one traced ray, so the
+      // power on this segment follows from the ray's final power.
+      const segmentIntensity = r.segmentIntensities?.[i] ?? finalIntensity;
+      const power = Number.isFinite(r.power) && finalIntensity > 0
+        ? r.power * segmentIntensity / finalIntensity : null;
+      if (!(power > 1e-12)) continue;
+      const key = r.originId || null;
+      byOrigin.set(key, (byOrigin.get(key) || 0) + power);
+      entries++;
+    }
+  }
+  if (!entries) return null;
+  return { sourceFractions: [...byOrigin].map(([sourceId, fraction]) => ({ sourceId, fraction })), entries };
 }
 
 export function signalHitsFromLastTrace(stageId) {
@@ -5543,6 +5560,7 @@ export function traceScene(elements, beams = []) {
   lastSignalHits = [];
   const couplings = [];
   lastPaths = [];
+  lastPowerPaths = [];
   hollowReadings.clear();
   detectorHits = new Map();
   detectorMisses = new Map();
@@ -5684,6 +5702,7 @@ export function traceScene(elements, beams = []) {
     // visual surface: drawables, pulse animation, and the beam probe.
     const paths = allPaths.filter(r => !r.hidden);
     lastPaths.push(...paths);
+    lastPowerPaths.push(...allPaths);
     assembleDrawables(paths, {
       K, isBeam: p.beamMode === 'beam',
       fixedColor: p.autoColor === false && p.color ? baseColor : null,
@@ -5786,7 +5805,9 @@ export function traceScene(elements, beams = []) {
       emitted.add(key);
       const rays0 = fiberEmissionRays(c);
       if (!rays0) continue;
-      const paths = traceRays(rays0, surfaces, couplings, writeHits, signalHits).filter(r => !r.hidden);
+      const traced = traceRays(rays0, surfaces, couplings, writeHits, signalHits);
+      lastPowerPaths.push(...traced);
+      const paths = traced.filter(r => !r.hidden);
       lastPaths.push(...paths);
       assembleDrawables(paths, { K: rays0.length, isBeam: true, fixedColor: null }, drawables);
       collectPulseTracks(paths, rays0.length, null, pulseTracks);

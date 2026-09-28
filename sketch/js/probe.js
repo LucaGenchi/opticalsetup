@@ -6,28 +6,35 @@
 
 import { spectrumSamples } from './spectrum.js';
 
-// The probe sits on one ray, which launches at intensity 1 and is multiplied
-// down by everything it passes through. Every ray of a uniform beam is
-// attenuated identically, so that surviving fraction is also the fraction of
-// the beam's power still present -- and the source's configured average power
-// times that fraction is the power here. A beam made of several coincident
-// rays from different sources (an OPA's output: the seed passed on, and the
-// gain counted against the pump laser) adds each ray's watts.
+// The power reading adds up what crosses the probe's sampling area, the way
+// a power meter adds up what reaches its face (raytrace.js, probePowerAt):
+// for each originating source, the fraction of its emitted power that
+// arrives, times the watts it is configured for. Light from a source with no
+// power setting cannot be put in watts; with nothing else there, there is no
+// reading.
+//
+// A reading from a single ray (probeAt) is still accepted: the ray launches
+// at intensity 1 and is multiplied down by everything it passes through, so
+// its source's watts times that fraction is its beam's power.
 export function probeAveragePowerW(reading, elements = []) {
-  if (!reading?.sourceId) return null;
-  // One beam may be several coincident rays from different sources (see
-  // probeAt): its watts are theirs together, and unknown if any is unknown.
-  const parts = Array.isArray(reading.beams) && reading.beams.length ? reading.beams : [reading];
-  let total = 0;
-  for (const part of parts) {
-    const source = elements.find(el => el?.id === part.sourceId);
-    const configured = Number(source?.params?.avgPowerW);
-    if (!Number.isFinite(configured) || configured < 0) return null;
-    const fraction = Number(part.intensity);
-    if (!Number.isFinite(fraction) || fraction < 0) return null;
-    total += configured * fraction;
+  if (Array.isArray(reading?.sourceFractions)) {
+    let watts = 0, attributed = 0;
+    for (const { sourceId, fraction } of reading.sourceFractions) {
+      const source = elements.find(el => el?.id === sourceId);
+      const configured = Number(source?.params?.avgPowerW);
+      if (!Number.isFinite(configured) || configured < 0 || !(fraction >= 0)) continue;
+      watts += configured * fraction;
+      attributed++;
+    }
+    return attributed ? watts : null;
   }
-  return total;
+  if (!reading?.sourceId) return null;
+  const source = elements.find(el => el?.id === reading.sourceId);
+  const configured = Number(source?.params?.avgPowerW);
+  if (!Number.isFinite(configured) || configured < 0) return null;
+  const fraction = Number(reading.intensity);
+  if (!Number.isFinite(fraction) || fraction < 0) return null;
+  return configured * fraction;
 }
 
 export function formatPowerMw(watts) {
