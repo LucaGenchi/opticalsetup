@@ -68,9 +68,9 @@ test('an ordinary mirror also reflects point-source light now', () => {
 });
 
 test('collection still respects the capture range', () => {
-  // A mirror far outside the near field cannot collect what never reaches it.
+  // A mirror beyond the point source's 5 m activation range stays inactive.
   const source = mk('pointsource', 175, 200, 0, { spread: 360, nrays: 24, bwMode: 'mono' });
-  const far = mk('oap', -400, 200, 180, { length: 110, f: 575 });
+  const far = mk('oap', -5400, 200, 180, { length: 110, f: 5575 });
   const detector = mk('detector', 600, 200, 0, { aperture: 130 });
   traceAll([source, far, detector], []);
   const reading = detectorReading(detector.id);
@@ -215,7 +215,11 @@ test('the parabola stays exact at short focal length and large aperture', () => 
   // f = 25 was already exact and so could not catch it.
   for (const [f, length] of [[5, 25.4], [5, 150], [5, 500]]) {
     let near = null, far = null;
-    for (const distance of [400, 1200]) {
+    // The longer capture range illuminates the whole deep parabola. Measure
+    // beyond its rim, not inside the bowl where rays are still incident:
+    // the f=5, 500 mm aperture has a sag of 3125 mm.
+    const nearX = 100 + length * length / (16 * f) + 400;
+    for (const distance of [nearX, nearX + 800]) {
       let lo = null, hi = null;
       for (let y = -400; y <= 800; y += 2) {
         const source = mk('pointsource', 100 + f, 200, 0, { spread: 360, nrays: 300, bwMode: 'mono' });
@@ -224,10 +228,10 @@ test('the parabola stays exact at short focal length and large aperture', () => 
         traceAll([source, mirror, probe], []);
         if ((detectorReading(probe.id)?.signal ?? 0) > 0) { if (lo === null) lo = y; hi = y; }
       }
-      if (distance === 400) near = lo === null ? null : hi - lo; else far = lo === null ? null : hi - lo;
+      if (distance === nearX) near = lo === null ? null : hi - lo; else far = lo === null ? null : hi - lo;
     }
     assert.ok(near > 0, `f=${f} length=${length} produces a beam`);
-    assert.equal(far, near, `f=${f} length=${length}: ${near} mm at 400, ${far} mm at 1200`);
+    assert.equal(far, near, `f=${f} length=${length}: ${near} mm at ${nearX}, ${far} mm at ${nearX + 800}`);
   }
 });
 
@@ -237,7 +241,9 @@ test('collected light is not re-evanesced by a later splitter', () => {
   // transmitted child of every later splitter would die for no reason.
   const build = withSplitter => {
     const parts = [
-      mk('pointsource', 175, 200, 0, { spread: 360, nrays: 200, bwMode: 'mono' }),
+      // Aim at the collecting parabola so the downstream splitter does not
+      // independently collect forward source rays at the new 5 m range.
+      mk('pointsource', 175, 200, 180, { spread: 160, nrays: 200, bwMode: 'mono' }),
       // a parabola, so the beam really is collimated and the test measures
               // evanescence rather than the sphere's aberration
       mk('oap', 150, 200, 180, { f: 25, length: 100 }),

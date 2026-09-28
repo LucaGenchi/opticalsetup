@@ -2582,9 +2582,9 @@ export const registry = {
   },
 
   // Unified replacement for the old LED + Light source: one isotropic point
-  // emitter. Rays are evanescent — they fade within ~110 mm (5x a fluorescent
-  // specimen's range) unless a nearby lens / objective / fiber tip collects
-  // them, which keeps 360° emission from flooding the canvas.
+  // emitter. Uncollected rays fade visually within 110 mm to avoid flooding
+  // the canvas, but intersections with ray-directing optics activate normal
+  // propagation up to 5 m away. This is a display convention, not evanescence.
   pointsource: {
     label: 'Point source', category: 'Sources', paletteOrder: 3, size: { w: 30, h: 30 },
     aliases: ['led', 'lamp', 'light source', 'bulb', 'isotropic source', 'point emitter'],
@@ -2610,7 +2610,7 @@ export const registry = {
       },
       { key: 'linesReadout', label: 'Lines', type: 'readout', readout: p => lampLineSummary(p.lampType), show: p => p.sourceKind === 'lamp' },
       { key: 'spread', label: 'Emission angle (°)', type: 'number', min: 10, max: 360, step: 10, def: 360 },
-      { key: 'nrays', label: 'Rays', type: 'number', min: 4, max: 32, step: 2, def: 12 },
+      { key: 'nrays', label: 'Rays', type: 'number', min: 4, max: 128, step: 2, def: 12 },
       P.autoColor, P.color,
     ],
     svg(el) {
@@ -2647,7 +2647,10 @@ export const registry = {
           ? 360 * i / n
           : (n === 1 ? 0 : -spread / 2 + spread * i / (n - 1));
         const a = aDeg * Math.PI / 180;
-        out.push({ x: 0, y: 0, dx: Math.cos(a), dy: Math.sin(a), evan: true, evanLen: 110 });
+        out.push({
+          x: 0, y: 0, dx: Math.cos(a), dy: Math.sin(a),
+          evan: true, evanLen: 110, captureLen: 5000, captureMode: 'optical',
+        });
       }
       return out;
     },
@@ -5653,7 +5656,7 @@ const ELEMENT_HELP = {
   cwlaser: 'Emits a steady monochromatic collimated beam at one wavelength.',
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
-  pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp — that fades over a short evanescent range unless captured by a nearby lens, objective, mirror, or fiber tip. A parabolic mirror with the source at its focus collimates it.',
+  pointsource: 'Emits isotropic light — monochromatic, broadband, or a gas discharge lamp spectrum — with up to 128 rays. Rays activate on intersection with reflective, refractive, or diffractive optics or a fiber tip within 5 m; rays that miss fade visually within 110 mm. This is a display convention, not physical attenuation.',
   objarrow: 'Traces a ray fan from the object’s anchor on the optical axis and separately draws an ideal paraxial image; the image marker does not model downstream clipping.',
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',

@@ -154,11 +154,16 @@ export function buildSVG({ whiteBg = false, animation = null, bounds = null } = 
   // components so it reads as a relationship rather than a selectable part.
   body += immersionLayerSVG(elements, state.beams, { baseElements: state.elements });
 
+  // Mix overlapping light inside a transparent isolated group. Including the
+  // white page in screen blending would wash every ray out; optics and the
+  // background must remain outside. This is display mixing, not interference.
+  body += '<g style="isolation:isolate">';
   for (const d of traced.drawables) {
-    if (d.type === 'poly') body += `<polygon points="${ptsAttr(d.pts)}" fill="${d.color}" opacity="${d.opacity}"/>`;
-    else if (d.type === 'dots') body += `<g fill="${d.color}">` + d.dots.map(o => `<circle cx="${o.x.toFixed(1)}" cy="${o.y.toFixed(1)}" r="${o.r.toFixed(2)}" opacity="${o.o.toFixed(2)}"/>`).join('') + `</g>`;
-    else body += `<polyline points="${ptsAttr(d.pts)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round" ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}${d.dash && d.dashOffset ? ` stroke-dashoffset="${d.dashOffset}"` : ''}/>`;
+    if (d.type === 'poly') body += `<polygon style="mix-blend-mode:screen" points="${ptsAttr(d.pts)}" fill="${d.color}" opacity="${d.opacity}"/>`;
+    else if (d.type === 'dots') body += `<g style="mix-blend-mode:screen" fill="${d.color}">` + d.dots.map(o => `<circle cx="${o.x.toFixed(1)}" cy="${o.y.toFixed(1)}" r="${o.r.toFixed(2)}" opacity="${o.o.toFixed(2)}"/>`).join('') + `</g>`;
+    else body += `<polyline style="mix-blend-mode:screen" points="${ptsAttr(d.pts)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round" ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}${d.dash && d.dashOffset ? ` stroke-dashoffset="${d.dashOffset}"` : ''}/>`;
   }
+  body += '</g>';
 
   if (animation) {
     const speed = Math.max(1, Number(playback.speedNsPerSecond) || 10);
