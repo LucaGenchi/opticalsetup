@@ -2259,6 +2259,20 @@ function hollowCoreEmission(c, b, lengthMm, lossDbPerM) {
   };
 }
 
+// Adds one fiber coupling to another of the same light at the same end:
+// the power adds, and so does every history and caveat among them. Merged
+// light is one envelope only if it agrees in wavelength, spectrum, dispersion
+// and path; the argon capillary's Kerr model refuses anything else.
+function mergeCoupling(into, c) {
+  into.measureOnly = Boolean(into.measureOnly && c.measureOnly);
+  into.incompatibleEnvelope ||= Boolean(c.incompatibleEnvelope) || c.wl !== into.wl || c.spec !== into.spec
+    || Math.abs((c.gdd || 0) - (into.gdd || 0)) > 1e-6 || Math.abs((c.opl || 0) - (into.opl || 0)) > 1e-4;
+  // Light of unknown power adds nothing, and does not make the sum zero.
+  if (Number.isFinite(c.power)) into.power = (Number.isFinite(into.power) ? into.power : 0) + c.power;
+  into.parametricPath = unionPath(into.parametricPath, c.parametricPath);
+  into.approximation ||= c.approximation || null;
+}
+
 function fiberEmissionRays(c) {
   const b = c.beam, pts = b.pts;
   const outEnd = c.end === 0 ? 1 : 0;
@@ -6035,11 +6049,7 @@ export function traceScene(elements, beams = [], options = {}) {
       const key = c.beam.id + ':' + c.end + ':' + (c.sourceId || 'cw');
       const prev = argon.get(key);
       if (!prev) { argon.set(key, { ...c }); continue; }
-      prev.measureOnly = Boolean(prev.measureOnly && c.measureOnly);
-      prev.incompatibleEnvelope ||= c.wl !== prev.wl || c.spec !== prev.spec
-        || Math.abs((c.gdd || 0) - (prev.gdd || 0)) > 1e-6 || Math.abs((c.opl || 0) - (prev.opl || 0)) > 1e-4;
-      prev.power = (Number.isFinite(prev.power) ? prev.power : 0) + (Number.isFinite(c.power) ? c.power : 0);
-      prev.parametricPath = unionPath(prev.parametricPath, c.parametricPath);
+      mergeCoupling(prev, c);
     }
     // Two sources into one capillary end form no single envelope.
     const argonGroups = [...argon.values()];
@@ -6054,13 +6064,18 @@ export function traceScene(elements, beams = [], options = {}) {
     // is kept apart from drawn light, so it can never displace it.
     const emissionKey = c => c.beam.id + ':' + c.end + ':' + Math.round(c.wl || 0) + ':' + (c.pulse?.sourceId || 'cw') + ':' + Math.round(c.opl || 0)
       + ':' + (c.originId || '') + (c.measureOnly ? ':measure' : '');
-    const histories = new Map();
-    for (const c of [...ordinary, ...argonGroups]) {
-      histories.set(emissionKey(c), unionPath(histories.get(emissionKey(c)), c.parametricPath));
-    }
+    // One emission carries all the light merged into it: a beam-mode source
+    // couples its 25 samples one by one, and relaunching only the first
+    // delivered 1/25 of its power. The relaunch keeps the first coupling's
+    // spectrum, polarization and dispersion, as before.
+    const emissions = new Map();
     for (const c of [...ordinary, ...argonGroups]) {
       const key = emissionKey(c);
-      c.parametricPath = histories.get(key);
+      const prev = emissions.get(key);
+      if (!prev) emissions.set(key, { ...c });
+      else mergeCoupling(prev, c);
+    }
+    for (const [key, c] of emissions) {
       if (emitted.has(key)) continue;
       emitted.add(key);
       const rays0 = fiberEmissionRays(c);
