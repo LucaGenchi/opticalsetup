@@ -313,3 +313,35 @@ test('the sinc squared passband has the sidelobes a real AOTF has', () => {
   // Truncated at the third zero, so beyond that nothing.
   assert.equal(at(532 + 3.5 * zero), 0, 'the passband ends at the third zero');
 });
+
+// Several sources on one spectrometer are weighed by the watts each delivers
+// (Luca, 2026-09-28): a hit's power is its fraction of its own source, so a
+// 1 uW line used to stand as tall as a 1 W one.
+function twoLines(pumpW, seedW) {
+  const cw = (y, wavelength, avgPowerW) => {
+    const l = createElement('cwlaser', 0, y);
+    Object.assign(l.params, { wavelength, beamMode: 'line' });
+    if (avgPowerW !== undefined) l.params.avgPowerW = avgPowerW;
+    else delete l.params.avgPowerW;
+    return l;
+  };
+  const spectrometer = createElement('spectrometer', 300, 0);
+  traceAll([cw(-3, 515, pumpW), cw(3, 780, seedW), spectrometer]);
+  const reading = detectorReading(spectrometer.id);
+  const at = wl => reading.spectrum.filter(s => Math.abs(s.wavelength - wl) < 2).reduce((sum, s) => sum + s.power, 0);
+  return { reading, ratio: at(515) / at(780), total: reading.spectrum.reduce((sum, s) => sum + s.power, 0) };
+}
+
+test('two sources on one spectrometer stand in proportion to their watts', () => {
+  const unequal = twoLines(1, 1e-6);
+  assert.ok(Math.abs(unequal.ratio / 1e6 - 1) < 1e-9, `1 W against 1 uW: ${unequal.ratio}`);
+  // The balance changes, the total does not: it is still the detector's signal.
+  assert.ok(Math.abs(unequal.total - unequal.reading.signal) < 1e-9);
+  const equal = twoLines(0.5, 0.5);
+  assert.ok(Math.abs(equal.ratio - 1) < 1e-9, 'equal watts: equal lines, as before');
+});
+
+test('without every source\'s watts, the spectrometer keeps each source\'s own fraction', () => {
+  const { ratio } = twoLines(1, undefined);
+  assert.ok(Math.abs(ratio - 1) < 1e-9, `no watts to compare: ${ratio}`);
+});
