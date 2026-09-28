@@ -345,3 +345,26 @@ test('without every source\'s watts, the spectrometer keeps each source\'s own f
   const { ratio } = twoLines(1, undefined);
   assert.ok(Math.abs(ratio - 1) < 1e-9, `no watts to compare: ${ratio}`);
 });
+
+test('the relative view still frames a weak source beside a strong one', async () => {
+  // Andrea on eada16a: weighing by watts put a 1 uW line below the range's
+  // 0.1 % floor, so the relative view -- each source to its own peak -- lost
+  // it before it could be scaled up.
+  const { wavelengthToColor } = await import('../sketch/js/util.js');
+  const render = intensityScale => {
+    const cw = (y, wavelength, avgPowerW) => Object.assign(createElement('cwlaser', 0, y), {}, {
+      params: { ...createElement('cwlaser', 0, y).params, wavelength, avgPowerW, beamMode: 'line' },
+    });
+    const spectrometer = createElement('spectrometer', 300, 0);
+    spectrometer.params.intensityScale = intensityScale;
+    const display = createElement('display', 430, 80);
+    display.params.sensorId = spectrometer.id;
+    const scene = [cw(-3, 515, 1), cw(3, 780, 1e-6), spectrometer, display];
+    traceAll(scene);
+    return registry.display.svg(display, scene);
+  };
+  const relative = render('relative');
+  assert.ok(relative.includes(wavelengthToColor(515)) && relative.includes(wavelengthToColor(780)), 'both lines drawn');
+  // On the density axis the seed is a millionth of the pump: out of the frame, as before.
+  assert.ok(!render('density').includes(wavelengthToColor(780)));
+});
