@@ -73,11 +73,12 @@ let lastPowerPaths = [];
 let weakProbeSegments = [];
 // Light below the drawing floor is still followed, undrawn, so that detectors
 // and the probe further on receive it (see traceRays). That continuation has
-// its own budget of rays per trace; what it could not follow is recorded here
-// per originating source, as the fraction of that source's emitted power, so
-// a reading that may be missing some of it can say so.
+// its own budget of rays per trace; what it could not follow (for want of
+// budget, or at the depth limit) is recorded here per originating source, as
+// the fraction of that source's emitted power, and every reading of the trace
+// then says it may be low.
 export const MEASUREMENT_RAY_BUDGET = 1024;
-export const WEAK_LIGHT_NOTE = 'Weak light untraced: some light too faint to draw ran past the tracer’s measurement budget, so this reading may be low';
+export const WEAK_LIGHT_NOTE = 'Weak light untraced: somewhere in this sketch, light too faint to draw ran past the tracer’s measurement budget or depth limit; it may have reached this sensor, so the reading may be low';
 let measurementRayBudget = MEASUREMENT_RAY_BUDGET;
 let weakLightShortfall = new Map();
 let lastSignalHits = [];
@@ -1227,9 +1228,10 @@ export function detectorReading(elementId) {
   // only continue it linearly, say. Spectrum, power and every other readout
   // of this detector describe light the model did not fully compute.
   const approximations = [...new Set(activeHits.map(h => h.approximation).filter(Boolean))];
-  // Weak light from a source arriving here ran past the measurement budget
-  // somewhere, so this reading may be short of what reaches the face.
-  const weakLightIncomplete = sourceFractions.some(f => weakLightShortfall.has(f.sourceId));
+  // Weak light ran past the measurement budget somewhere in this trace. Where
+  // it would have gone is unknown -- possibly here, from a source that shows
+  // no trace in this reading at all -- so every reading says it may be low.
+  const weakLightIncomplete = weakLightShortfall.size > 0;
   if (weakLightIncomplete) approximations.push(WEAK_LIGHT_NOTE);
   return {
     signal,
@@ -1366,13 +1368,14 @@ export function probePowerAt(x, y, radius) {
   if (!entries) return null;
   return {
     sourceFractions: [...byOrigin].map(([sourceId, fraction]) => ({ sourceId, fraction })), entries,
-    ...([...byOrigin.keys()].some(id => weakLightShortfall.has(id)) ? { weakLightIncomplete: true } : {}),
+    // As for a detector: dropped light could have crossed this circle.
+    ...(weakLightShortfall.size ? { weakLightIncomplete: true } : {}),
   };
 }
 
 // The weak light the last trace could not follow for want of measurement
-// budget, per originating source (fraction of its emitted power). Empty when
-// every weak ray was followed to where it ends.
+// budget or at the depth limit, per originating source (fraction of its
+// emitted power). Empty when every weak ray was followed to where it ends.
 export function weakLightShortfallFromLastTrace() {
   return [...weakLightShortfall].map(([sourceId, fraction]) => ({ sourceId, fraction }));
 }
@@ -2189,6 +2192,9 @@ function fiberEmissionRays(c) {
     // The parametric elements this light went through before the fiber: an
     // OPA must still recognise it when the fiber brings it back.
     parametricPath: unionPath(c.parametricPath),
+    // Weak light followed for measurement leaves the fiber the same way:
+    // traced for power, never drawn or animated.
+    ...(c.measureOnly ? { measureOnly: true, hidden: true } : {}),
     oplStart: (c.opl || 0) + lengthMm * ng + 2,
     // Dispersion accumulated before coupling survives the relaunch, and the
     // fiber's own signed GDD adds to it.
@@ -4866,6 +4872,9 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
     for (; ;) {
       if (r.depth > MAX_DEPTH) {
         markIncompleteCoherence(r, 'coherent path exceeded the trace-depth budget');
+        // Weak light followed for measurement is not dropped silently here
+        // either: a cavity can outlast the depth limit with power to spare.
+        if (r.measureOnly) noteWeakLightShortfall(r.originId, r.power);
         break;
       }
       const hit = nearestHit({ x: r.x, y: r.y }, { x: r.dx, y: r.dy }, surfaces, r.last);
@@ -5113,6 +5122,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             originId: r.originId || null,
             coherenceLengthMm: r.coherenceLengthMm || 0,
             parametricPath: unionPath(r.parametricPath),
+            // Light too faint to draw stays undrawn after the fiber too.
+            measureOnly: Boolean(r.measureOnly),
           });
         }
         break; // the connector absorbs the incoming beam either way
@@ -5898,6 +5909,7 @@ export function traceScene(elements, beams = [], options = {}) {
       const key = c.beam.id + ':' + c.end + ':' + (c.sourceId || 'cw');
       const prev = argon.get(key);
       if (!prev) { argon.set(key, { ...c }); continue; }
+      prev.measureOnly = Boolean(prev.measureOnly && c.measureOnly);
       prev.incompatibleEnvelope ||= c.wl !== prev.wl || c.spec !== prev.spec
         || Math.abs((c.gdd || 0) - (prev.gdd || 0)) > 1e-6 || Math.abs((c.opl || 0) - (prev.opl || 0)) > 1e-4;
       prev.power = (Number.isFinite(prev.power) ? prev.power : 0) + (Number.isFinite(c.power) ? c.power : 0);
@@ -5912,12 +5924,17 @@ export function traceScene(elements, beams = [], options = {}) {
     // Couplings merged into one emission below keep every history among them.
     const emissionKey = c => c.beam.id + ':' + c.end + ':' + Math.round(c.wl || 0) + ':' + (c.pulse?.sourceId || 'cw') + ':' + Math.round(c.opl || 0);
     const histories = new Map();
+    // An emission is drawn when any light coupled into it is: it is undrawn
+    // only when every coupling is weak light followed for measurement.
+    const measuredOnly = new Map();
     for (const c of [...ordinary, ...argonGroups]) {
       histories.set(emissionKey(c), unionPath(histories.get(emissionKey(c)), c.parametricPath));
+      measuredOnly.set(emissionKey(c), (measuredOnly.get(emissionKey(c)) ?? true) && Boolean(c.measureOnly));
     }
     for (const c of [...ordinary, ...argonGroups]) {
       const key = emissionKey(c);
       c.parametricPath = histories.get(key);
+      c.measureOnly = measuredOnly.get(key);
       if (emitted.has(key)) continue;
       emitted.add(key);
       const rays0 = fiberEmissionRays(c);

@@ -150,3 +150,72 @@ test('weak light followed round a cavity stays bounded by the budget', () => {
     assert.ok(Math.max(...drawnPoints(drawables).map(p => p.x)) <= 200 + 1e-6);
   }
 });
+
+test('weak light stays undrawn through a fiber, CW or pulsed, and still reaches the meter', () => {
+  // Andrea's reproduction on ebeeca4: the fiber relaunched the light as
+  // ordinary rays, drawn and animated from the far connector.
+  const cable = {
+    id: 'cable', kind: 'fiber', pts: [{ x: 400, y: 0 }, { x: 600, y: 0 }],
+    propagate: true, lossDbPerM: 0, outMode: 'diverge', na: 0.01,
+  };
+  for (const type of ['cwlaser', 'pulsedlaser']) {
+    for (const trans of [0.01, 1]) {
+      const laser = createElement(type, 0, 0);
+      Object.assign(laser.params, { avgPowerW: 0.1, beamMode: 'line' });
+      const m = meter(800, 0);
+      const elements = [laser, nd(200, trans), createElement('lens', 300, 0), m];
+      const { drawables, pulseTracks } = traceScene(elements, [cable]);
+      close(read(m, elements).detectedPowerW, 0.1 * trans, `${type}, ND ${trans}`);
+      const drawnAfter = drawables.filter(d => (d.pts || []).some(p => p.x > 601)).length;
+      const animatedAfter = pulseTracks.filter(t => (t.pts || []).some(p => p.x > 601)).length;
+      if (trans < 1) {
+        assert.equal(drawnAfter, 0, `${type}: nothing drawn after the fiber`);
+        assert.equal(animatedAfter, 0, `${type}: nothing animated after the fiber`);
+      } else {
+        // The control: at full strength the same relaunch is drawn.
+        assert.ok(drawnAfter > 0, `${type}: a strong beam is drawn after the fiber`);
+        if (type === 'pulsedlaser') assert.ok(animatedAfter > 0, 'and animated');
+      }
+    }
+  }
+});
+
+test('weak light the depth limit cuts off is reported too', () => {
+  // Codex's finding on ebeeca4: in the 99 % cavity the default budget is
+  // never reached, but each chain stops at the depth limit with power left.
+  const left = createElement('mirror', 300, 0), right = createElement('mirror', 340, 0);
+  left.params.refl = 99;
+  right.params.refl = 99;
+  const m = meter(500, 0);
+  const laser = lineLaser(0, 0, 0.1);
+  const elements = [laser, nd(200, 0.01), left, right, m];
+  traceScene(elements, []);
+  const shortfall = weakLightShortfallFromLastTrace();
+  assert.equal(shortfall.length, 1);
+  assert.equal(shortfall[0].sourceId, laser.id);
+  assert.ok(shortfall[0].fraction > 0 && shortfall[0].fraction < 0.01, `${shortfall[0].fraction}`);
+  assert.equal(read(m, elements).weakLightIncomplete, true);
+});
+
+test('a source missing entirely from a mixed reading still flags it', () => {
+  // Andrea's reproduction on ebeeca4: a second, strong source reaches the
+  // same meter directly, so the reading exists and names only that source;
+  // the weak one, cut off by the budget, left no trace in it at all.
+  const m = meter(500, 0, 0);
+  m.params.aperture = 60;
+  const weak = lineLaser(0, 0, 0.1), strong = lineLaser(0, 20, 0.1);
+  const lens = createElement('lens', 300, 0);
+  lens.params.aperture = 10;
+  const elements = [weak, strong, nd(200, 0.01), lens, m];
+  traceScene(elements, []);
+  close(read(m, elements).detectedPowerW, 0.101, 'both sources, full budget');
+  assert.equal(read(m, elements).weakLightIncomplete, undefined);
+  traceScene(elements, [], { measurementRayBudget: 0 });
+  const reading = read(m, elements);
+  close(reading.detectedPowerW, 0.1, 'the strong source alone');
+  assert.deepEqual(reading.sourceFractions.map(f => f.sourceId), [strong.id]);
+  assert.equal(reading.weakLightIncomplete, true, 'the meter says it may read low');
+  const area = probePowerAt(400, 20, 5);
+  assert.deepEqual(area.sourceFractions.map(f => f.sourceId), [strong.id]);
+  assert.equal(area.weakLightIncomplete, true, 'and so does a probe on the strong beam alone');
+});
