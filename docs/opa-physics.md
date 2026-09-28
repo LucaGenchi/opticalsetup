@@ -135,7 +135,8 @@ integrated registry element/readouts, material/phase-matching controls,
 supercontinuum spectral-slice handling, native teaching scenes and generated
 wiki/Examples pages. Cascaded amplifiers need an incident-state solution that
 includes upstream gain and depletion; a single passive probe pre-pass is not
-sufficient. The PWA cache must be bumped when runtime behavior is connected.
+sufficient (solved for the OPA element by stage-by-stage planning passes; see
+item 5 of the element section). The PWA cache must be bumped when runtime behavior is connected.
 
 ## Seeded event allocation (second foundation PR)
 
@@ -274,11 +275,34 @@ core. How the element meets the acceptance checks above:
    pulses are the pump–seed overlap (`mixPulse`, gates rebased). Spectra are
    built from the amplified slices. Tested: residual pump + signal + idler =
    pump + seed at real detectors to 1e-12, Manley–Rowe at the detectors.
-5. **Cascades and broadband seeds.** Light an OPA generates is not seen by the
-   probe pass, so a second OPA downstream does not amplify it (it passes the
-   seed port unchanged and finds no pump plan); stated in the wiki. A
-   broadband seed is cut into 65 spectral slices weighted by its spectrum,
-   each amplified with the gain at its own wavelength.
+5. **Cascades and broadband seeds.** A cascade is planned stage by stage:
+   `traceScene` repeats the probe pass, and in each pass the OPAs planned in
+   the pass before emit their outputs, so the next stage records its pump and
+   seed and is planned in turn. Passes stop when the plans' fingerprint no
+   longer changes (at most `MAX_OPA_STAGES` = 6 stages, plus the confirming
+   pass); a bench still changing after that is flagged in every OPA's readout.
+   Every output carries the OPA in its `parametricPath`; generated light
+   carries the union of its pump's and its seed's histories, and a fiber
+   keeps the history of what it couples in. Light that comes back to an OPA
+   it already went through is stopped at the port (a feedback loop is not
+   modelled) and the readout says so. A later stage slices an earlier
+   stage's signal or idler, whose piecewise-linear spectrum `spectrumOf`
+   built on 65 points and marks `opaOutput`; each slice integrates it
+   exactly, so the slices add up to its power. Any element that reshapes it
+   builds a new, unmarked profile, which is reported unsupported. A cascade
+   multiplies the seed beams (each stage passes its seeds on and adds a gain
+   beam), so a stage with many continuous seeds cuts each into fewer slices
+   to stay within the allocator's 256 channels, down to 9; beyond that its
+   seeds are reported `tooManySeeds`. Tested: stage 2's pump is stage 1's
+   residual pump and its seed is stage 1's whole signal, energy adds up to
+   1e-12 over two stages, four pulsed stages all amplify, stage 1 is planned
+   the same with or without stage 2, a filter between the stages, a loop
+   through mirrors, a loop through an independently pumped second OPA, and a
+   loop through a fiber. Over four stages the watts fall short by ~1e-5 W of
+   1 W: gain beams below the tracer's weak-ray floor (1e-5 of their source's
+   watts) are dropped where they meet the next stage. A broadband seed is cut into 65
+   spectral slices weighted by its spectrum, each amplified with the gain at
+   its own wavelength.
 6. **Tracer checks.** Seed off, pump off, seed outside the band or shorter
    than the pump, a seed 10 ps late, a CW seed, a supercontinuum seed, port
    switches, sampling and source-order independence, a pump-power scan and

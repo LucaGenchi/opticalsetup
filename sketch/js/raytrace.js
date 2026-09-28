@@ -13,7 +13,7 @@ import {
   fluorophoreSpec, fluorophoreAbsorption, metalensFocalLength, opoPortLocal, OPO_ACCEPTANCE_DEG,
   opaPortLocal, OPA_ACCEPTANCE_DEG,
 } from './elements.js';
-import { planOpa } from './opa.js';
+import { planOpa, MAX_OPA_STAGES } from './opa.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap, traceValueAt } from './pulses.js';
 import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband } from './aotf.js';
@@ -61,6 +61,15 @@ import { asphereSag, asphereSlope } from './asphere.js';
 
 // polylines from the most recent traceAll, kept for beam probes
 let lastPaths = [];
+// Every traced ray, including those hidden from the drawing (a partial
+// mirror's leak with its display switched off): a power meter receives them,
+// so the beam probe's power reading must count them too (probePowerAt).
+let lastPowerPaths = [];
+// The last stretch of each ray the tracer stopped following because it fell
+// below the drawing floor: a power meter placed on that stretch receives it
+// (the detector exception in traceRays), so a probe placed there must count
+// it too. Kept apart so it changes neither the drawing nor any other reading.
+let weakProbeSegments = [];
 let lastSignalHits = [];
 let detectorHits = new Map();
 // Rays whose centres cross a camera plane just outside its finite face still
@@ -1309,6 +1318,36 @@ export function probeAt(x, y, tol = 16) {
   } : null;
 }
 
+// The light crossing a circular area around (x, y), counted the way a power
+// meter counts what reaches its face: every ray that enters the circle, with
+// its power where it enters, attributed to the source it originated from
+// (sourceFractions, as detectorReading gives them). A ray is counted when it
+// crosses into the circle, not while it is inside, so light split, reflected
+// or converted within the area is not counted a second time; light emitted
+// inside the area is not counted at all. Returns null when nothing enters.
+export function probePowerAt(x, y, radius) {
+  const R = Math.max(1e-6, Number(radius) || 0);
+  const p = { x, y };
+  const inside = q => Math.hypot(q.x - x, q.y - y) <= R;
+  const byOrigin = new Map();
+  let entries = 0;
+  for (const r of [...lastPowerPaths, ...weakProbeSegments]) {
+    for (let i = 0; i < r.pts.length - 1; i++) {
+      if (inside(r.pts[i]) || distToSegment(p, r.pts[i], r.pts[i + 1]) > R) continue;
+      // The power the ray carried on this segment, as recorded when it was
+      // traced: an element further on that absorbs everything (an ND at 0)
+      // must not erase what passed before it.
+      const power = r.segmentPowers?.[i];
+      if (!(power > 1e-12)) continue;
+      const key = r.originId || null;
+      byOrigin.set(key, (byOrigin.get(key) || 0) + power);
+      entries++;
+    }
+  }
+  if (!entries) return null;
+  return { sourceFractions: [...byOrigin].map(([sourceId, fraction]) => ({ sourceId, fraction })), entries };
+}
+
 export function signalHitsFromLastTrace(stageId) {
   return lastSignalHits.filter(hit => hit.stageId === stageId);
 }
@@ -1595,6 +1634,15 @@ function probeBeamKey(ray) {
   ].join('/');
 }
 
+// The parametric elements (OPAs, crystals) a beam has been through, merged
+// from several beams without repeats: light made from two beams carries both
+// histories, so it cannot be fed back into an element either one went through.
+function unionPath(...paths) {
+  const merged = [];
+  for (const path of paths) for (const id of Array.isArray(path) ? path : []) if (id && !merged.includes(id)) merged.push(id);
+  return merged;
+}
+
 function recordProbeBeam(surface, ray) {
   let seen = specimenProbe.get(surface.id);
   if (!seen) specimenProbe.set(surface.id, seen = []);
@@ -1610,6 +1658,8 @@ function recordProbeBeam(surface, ray) {
     already.oplWeight += weight;
     already.oplSum += weight * (ray.opl || 0);
     already.oplMin = Math.min(already.oplMin, ray.opl || 0);
+    const history = unionPath(already.parametricPath, ray.parametricPath);
+    if (history.length) already.parametricPath = history;
     return;
   }
   seen.push({
@@ -1627,6 +1677,8 @@ function recordProbeBeam(surface, ray) {
     originId: ray.originId || null,
     pulse: ray.pulse ? { ...ray.pulse } : null,
     gates: (ray.pulse?.gates || []).map(g => ({ ...g })),
+    // Only light that went through a parametric element has a history.
+    ...(ray.parametricPath?.length ? { parametricPath: unionPath(ray.parametricPath) } : {}),
   });
 }
 
@@ -2105,6 +2157,9 @@ function fiberEmissionRays(c) {
     power: Number.isFinite(c.power) ? c.power * transmission / K : undefined,
     pol: c.pol, stokes: cloneStokes(c.stokes), pulse, approximation, sourceId: c.sourceId || null,
     originId: c.originId || null,
+    // The parametric elements this light went through before the fiber: an
+    // OPA must still recognise it when the fiber brings it back.
+    parametricPath: unionPath(c.parametricPath),
     oplStart: (c.opl || 0) + lengthMm * ng + 2,
     // Dispersion accumulated before coupling survives the relaunch, and the
     // fiber's own signed GDD adds to it.
@@ -4227,8 +4282,18 @@ function interact(ray, hit) {
       const axis = rotPt(1, 0, el.rot || 0);
       const angleDeg = Math.acos(Math.max(-1, Math.min(1, dot(d, axis)))) / D2R;
       if (!(angleDeg <= OPA_ACCEPTANCE_DEG + 1e-9)) return [];
-      if (specimenProbe) { recordProbeBeam(s, ray); return []; }
+      const path = Array.isArray(ray.parametricPath) ? ray.parametricPath : [];
       const plan = opaStates.get(el.id);
+      // Light that already went through this OPA and comes back to it would
+      // amplify itself again in a loop: it is refused, and the readout says so.
+      if (path.includes(el.id)) {
+        if (!specimenProbe && plan) plan.loopInput = true;
+        return [];
+      }
+      // Planning passes (see traceScene): record what arrives; once this OPA
+      // has a plan from the previous pass, also emit its outputs, so the next
+      // stage of a cascade sees them and can be planned in turn.
+      if (specimenProbe) recordProbeBeam(s, ray);
       if (!plan) return [];
       // Outputs leave along the body axis; a sampled beam keeps its samples'
       // order across the output diameter, a single ray leaves on the port axis.
@@ -4242,17 +4307,20 @@ function interact(ray, hit) {
       // OPA generated, which the probe pass does not trace -- was not part
       // of the plan. It passes through unchanged and the readout says why.
       const key = probeBeamKey(ray);
-      if (!plan.seen?.[k === 'opaseed' ? 'seed' : 'pump']?.has(key)) plan.unplannedInput = true;
+      if (!specimenProbe && !plan.seen?.[k === 'opaseed' ? 'seed' : 'pump']?.has(key)) plan.unplannedInput = true;
       // A pump ray is converted only as the planned pump; anything else at the
       // pump port passes through.
       const planned = k === 'opaseed' || plan.pumpRecord?.key === key;
       // The seed itself is not split or converted: it continues unchanged.
       // Tagged children leave from their port; an untagged single child would
       // be continued from the input face instead (the tracer's shortcut).
-      if (k === 'opaseed') return launch('signal', { tag: 'opaSeed' });
-      if (!planned) return data.outputPump ? launch('pump', { tag: 'opaPump' }) : [];
+      // Every output carries this element in its parametric path, so none of
+      // it can come back and be amplified by the same element again.
+      const throughHere = [...path, el.id];
+      if (k === 'opaseed') return launch('signal', { tag: 'opaSeed', parametricPath: throughHere });
+      if (!planned) return data.outputPump ? launch('pump', { tag: 'opaPump', parametricPath: throughHere }) : [];
       const out = [];
-      if (data.outputPump && plan.pumpScale > 0) out.push(...launch('pump', { tag: 'opaPump', intensity: ray.intensity * plan.pumpScale }));
+      if (data.outputPump && plan.pumpScale > 0) out.push(...launch('pump', { tag: 'opaPump', intensity: ray.intensity * plan.pumpScale, parametricPath: throughHere }));
       const pumpRecord = plan.pumpRecord;
       const pumpSourceW = sourceWattsById.get(ray.originId);
       const share = pumpRecord?.power > 0 && Number.isFinite(ray.power) ? ray.power / pumpRecord.power : 0;
@@ -4275,7 +4343,9 @@ function interact(ray, hit) {
               centerNs: overlap.centerNs, oplMm: ray.opl, repRateMHz: overlap.repRateMHz,
               partnerPulseOffset: overlap.partnerPulseOffset, periodNs: overlap.periodNs,
             }),
-            parametricPath: [...(Array.isArray(ray.parametricPath) ? ray.parametricPath : []), el.id],
+            // Made from the pump and the seed together, it carries both
+            // histories: it can go back into neither's earlier stages.
+            parametricPath: unionPath(throughHere, seed.record.parametricPath),
             gdd: 0,
             phaseValid: false,
             phaseIssue: 'OPA output: optical phase relative to the inputs is not modelled',
@@ -4686,7 +4756,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       gddTrace: visualizesDispersion ? [{ opl, gdd, linear: false }] : null,
       groupDelayDifferenceTrace: visualizesDispersion
         ? [{ opl, value: groupDelayDifferenceFs, linear: false }] : null,
-      segmentIntensities: [], segmentHistories: [], segmentEvents: [],
+      segmentIntensities: [], segmentPowers: [], segmentHistories: [], segmentEvents: [],
       sig: '', depth: 0, last: null,
     };
   });
@@ -4721,6 +4791,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       }
     }
     r.segmentIntensities.push(r.intensity);
+    r.segmentPowers.push(r.power);
     r.segmentHistories.push(r.sig);
     r.segmentEvents.push(null);
     r.pts.push(p);
@@ -4748,6 +4819,15 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // coherent source incomplete and therefore forces safe deposition.
         if (!r.coherentlySuppressed && hit && hit.surface.kind !== 'absorb') {
           markIncompleteCoherence(r, 'coherent path fell below the bounded trace threshold');
+        }
+        // What a meter would still have received on this stretch, for the
+        // beam probe's power reading (final pass only).
+        if (!specimenProbe && !coherent?.dryRun && Number.isFinite(r.power) && r.power > 1e-12) {
+          const end = hit ? hit.p : { x: r.x + r.dx * MAXLEN, y: r.y + r.dy * MAXLEN };
+          weakProbeSegments.push({
+            pts: [{ x: r.x, y: r.y }, { x: end.x, y: end.y }],
+            segmentPowers: [r.power], intensity: r.intensity, power: r.power, originId: r.originId || null,
+          });
         }
         break;
       }
@@ -4897,6 +4977,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         const extraOpl = peak * phasePlateOpdFraction(hit.surface.data.profile, hit.u);
         if (extraOpl > 0) {
           r.segmentIntensities.push(r.intensity);
+          r.segmentPowers.push(r.power);
           r.segmentHistories.push(r.sig);
           r.segmentEvents.push(interactionKey);
           r.pts.push({ x: hit.p.x, y: hit.p.y });
@@ -4911,6 +4992,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         const extraOpl = Number(hit.surface.data.opdMm) || 0;
         if (Math.abs(extraOpl) > 0) {
           r.segmentIntensities.push(r.intensity);
+          r.segmentPowers.push(r.power);
           r.segmentHistories.push(r.sig);
           r.segmentEvents.push(interactionKey);
           r.pts.push({ x: hit.p.x, y: hit.p.y });
@@ -4924,6 +5006,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         const extraOpl = Math.min(100000, Math.max(0, hit.surface.data.delayMm || 0));
         if (extraOpl > 0) {
           r.segmentIntensities.push(r.intensity);
+          r.segmentPowers.push(r.power);
           r.segmentHistories.push(r.sig);
           r.segmentEvents.push(interactionKey);
           r.pts.push({ x: hit.p.x, y: hit.p.y });
@@ -4946,6 +5029,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             sourceId: r.sourceId || null,
             originId: r.originId || null,
             coherenceLengthMm: r.coherenceLengthMm || 0,
+            parametricPath: unionPath(r.parametricPath),
           });
         }
         break; // the connector absorbs the incoming beam either way
@@ -5184,6 +5268,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           opl: r.opl,
           opls: [r.opl],
           segmentIntensities: [],
+          segmentPowers: [],
           segmentHistories: [],
           segmentEvents: [],
           sig: r.sig + '/' + (c.tag || 'w'),
@@ -5441,10 +5526,12 @@ function traceWithCoherentGrouping(rays0, surfaces, couplings, writeHits, signal
 
 // Trace everything. The static drawables remain export-safe while pulseTracks
 // carry absolute optical path lengths for the canvas-only animation layer.
-// Each OPA's plan, from the beams its two ports recorded in the probe pass.
-// Light an OPA generates is not seen by the probe pass, so one OPA feeding
-// another is not planned from the first one's output (no cascades).
+// Each OPA's plan, from the beams its two ports recorded in one planning
+// pass. Returns a fingerprint of the plans, so traceScene can tell when a
+// further pass (which lets planned OPAs emit, revealing the next stage of a
+// cascade) no longer changes anything.
 function planOpaElements(surfaces) {
+  const plans = new Map();
   const ports = new Map();
   for (const s of surfaces) {
     if ((s.kind !== 'opapump' && s.kind !== 'opaseed') || !s.el) continue;
@@ -5459,6 +5546,7 @@ function planOpaElements(surfaces) {
       return {
         key: beam.key, wl: beam.wl, bw: beam.bw || 0, spec: beam.spec || null, opl: beam.opl,
         pulse: beam.pulse, power: beam.power, originId: beam.originId,
+        parametricPath: beam.parametricPath || [],
         powerW: Number.isFinite(watts) ? watts * beam.power : null,
       };
     };
@@ -5471,9 +5559,14 @@ function planOpaElements(surfaces) {
     // amplified: what the real pass checks its arrivals against.
     plan.seen = { pump: new Set(pumpRecords.map(r => r.key)), seed: new Set(seedRecords.map(r => r.key)) };
     for (const seed of plan.seeds) seed.record = seedRecords.find(r => r.key === seed.key) || null;
-    opaStates.set(id, plan);
+    plans.set(id, plan);
   }
+  opaStates = plans;
+  const round = x => (Number.isFinite(x) ? Number(x.toPrecision(10)) : x);
+  return JSON.stringify([...plans].map(([id, plan]) => [id, plan.state, round(plan.pumpInW), round(plan.pumpOutW),
+    plan.seeds.map(seed => [seed.key, seed.state, round(seed.seedW), round(seed.gainW), round(seed.idlerW)])]));
 }
+
 
 export function traceScene(elements, beams = []) {
   const surfaces = buildSurfaces(elements, beams);
@@ -5484,6 +5577,8 @@ export function traceScene(elements, beams = []) {
   lastSignalHits = [];
   const couplings = [];
   lastPaths = [];
+  lastPowerPaths = [];
+  weakProbeSegments = [];
   hollowReadings.clear();
   detectorHits = new Map();
   detectorMisses = new Map();
@@ -5625,6 +5720,7 @@ export function traceScene(elements, beams = []) {
     // visual surface: drawables, pulse animation, and the beam probe.
     const paths = allPaths.filter(r => !r.hidden);
     lastPaths.push(...paths);
+    lastPowerPaths.push(...allPaths);
     assembleDrawables(paths, {
       K, isBeam: p.beamMode === 'beam',
       fixedColor: p.autoColor === false && p.color ? baseColor : null,
@@ -5648,8 +5744,16 @@ export function traceScene(elements, beams = []) {
     || s.kind === 'opapump' || s.kind === 'opaseed'
     || (s.kind === 'attenuate' && s.data.specimen && s.el
         && ['linear', 'nonlinear'].includes(specimenTypeOf(s.el.params))));
-  if (needsProbe) {
+  // An OPA cascade is planned stage by stage: in each pass, OPAs planned in
+  // the pass before emit their outputs, so the next stage sees its seed (or
+  // its pump) and is planned in turn. Passes stop when the plans no longer
+  // change; a bench still changing after MAX_OPA_STAGES stages is flagged.
+  const opaCount = new Set(surfaces.filter(s => s.kind === 'opapump' || s.kind === 'opaseed').map(s => s.el?.id)).size;
+  const planningPasses = opaCount ? Math.min(MAX_OPA_STAGES, opaCount) + 1 : 1;
+  let previousPlans = null;
+  for (let pass = 0; needsProbe && pass < planningPasses; pass++) {
     specimenProbe = new Map();
+    let converged = false;
     try {
       emitSources(false);
       for (const s of surfaces) {
@@ -5660,7 +5764,12 @@ export function traceScene(elements, beams = []) {
         s.data.incidentWls = [...new Set(beams.map(b => b.wl))];
         if (s.el) specimenIncident.set(s.el.id, beams);
       }
-      planOpaElements(surfaces);
+      const fingerprint = planOpaElements(surfaces);
+      converged = !opaCount || fingerprint === previousPlans;
+      if (!converged && pass === planningPasses - 1) {
+        for (const plan of opaStates.values()) plan.cascadeUnresolved = true;
+      }
+      previousPlans = fingerprint;
     } finally {
       specimenProbe = null;
       detectorHits = new Map();
@@ -5672,6 +5781,7 @@ export function traceScene(elements, beams = []) {
       metalensHits = new Map();
       gateTransmissionCache = new Map();
     }
+    if (converged) break;
   }
   emitSources(true);
 
@@ -5692,6 +5802,7 @@ export function traceScene(elements, beams = []) {
       prev.incompatibleEnvelope ||= c.wl !== prev.wl || c.spec !== prev.spec
         || Math.abs((c.gdd || 0) - (prev.gdd || 0)) > 1e-6 || Math.abs((c.opl || 0) - (prev.opl || 0)) > 1e-4;
       prev.power = (Number.isFinite(prev.power) ? prev.power : 0) + (Number.isFinite(c.power) ? c.power : 0);
+      prev.parametricPath = unionPath(prev.parametricPath, c.parametricPath);
     }
     // Two sources into one capillary end form no single envelope.
     const argonGroups = [...argon.values()];
@@ -5699,13 +5810,22 @@ export function traceScene(elements, beams = []) {
       c.incompatibleEnvelope ||= argonGroups.some(other => other !== c && other.beam.id === c.beam.id
         && other.end === c.end && other.sourceId !== c.sourceId);
     }
+    // Couplings merged into one emission below keep every history among them.
+    const emissionKey = c => c.beam.id + ':' + c.end + ':' + Math.round(c.wl || 0) + ':' + (c.pulse?.sourceId || 'cw') + ':' + Math.round(c.opl || 0);
+    const histories = new Map();
     for (const c of [...ordinary, ...argonGroups]) {
-      const key = c.beam.id + ':' + c.end + ':' + Math.round(c.wl || 0) + ':' + (c.pulse?.sourceId || 'cw') + ':' + Math.round(c.opl || 0);
+      histories.set(emissionKey(c), unionPath(histories.get(emissionKey(c)), c.parametricPath));
+    }
+    for (const c of [...ordinary, ...argonGroups]) {
+      const key = emissionKey(c);
+      c.parametricPath = histories.get(key);
       if (emitted.has(key)) continue;
       emitted.add(key);
       const rays0 = fiberEmissionRays(c);
       if (!rays0) continue;
-      const paths = traceRays(rays0, surfaces, couplings, writeHits, signalHits).filter(r => !r.hidden);
+      const traced = traceRays(rays0, surfaces, couplings, writeHits, signalHits);
+      lastPowerPaths.push(...traced);
+      const paths = traced.filter(r => !r.hidden);
       lastPaths.push(...paths);
       assembleDrawables(paths, { K: rays0.length, isBeam: true, fixedColor: null }, drawables);
       collectPulseTracks(paths, rays0.length, null, pulseTracks);
