@@ -1218,9 +1218,12 @@ const probeWlLabel = rd => (rd.bw >= 200 ? `SC ${Math.round(rd.wl - rd.bw / 2)}�
 // each colour once, and the time view keeps every beam.
 function probeListedBeams(prop, beams) {
   const distinct = keyOf => beams.filter((beam, i) => beams.findIndex(other => keyOf(other) === keyOf(beam)) === i);
+  // The spectrum sums whole spectra, so it merges only beams whose spectra
+  // are the same shape -- two 800 nm lasers of 1 and 100 nm width are two
+  // (Andrea, #192); the rounded centres are only its caption.
   return prop === 'wl' ? distinct(probeWlLabel)
-    : prop === 'pol' ? distinct(beam => `${probeWlLabel(beam)}|${JSON.stringify([beam.pol, beam.stokes, beam.polMod?.frequencyMHz ?? null])}`)
-      : prop === 'spectrum' ? distinct(beam => Math.round(beam.wl))
+    : prop === 'pol' ? distinct(beam => `${probeWlLabel(beam)}|${JSON.stringify([beam.pol, beam.stokes, beam.polMod])}`)
+      : prop === 'spectrum' ? distinct(beam => JSON.stringify([Number(beam.wl.toFixed(3)), Number((beam.bw || 0).toFixed(3)), beam.spec]))
         : beams;
 }
 
@@ -1287,16 +1290,22 @@ function probeMultiCard(el, prop, beams, elements) {
     const { startNs, spanNs } = window;
     const xAt = ns => x0 + pw * (spanNs > 0 ? (ns - startNs) / spanNs : 0);
     const delayOf = beam => summary?.beams.find(entry => entry.beam === beam)?.delayNs ?? 0;
+    // Each train is drawn where it arrives, relative to the first: its
+    // record already carries its emission phase, so the plot shifts it by
+    // its flight time alone (Andrea, #192: adding the arrival counted the
+    // phase twice).
+    const lead = summary?.beams[0]?.beam || null;
+    const shiftOf = beam => (lead && Number.isFinite(beam.propagationNs) ? beam.propagationNs - lead.arrivalNs : 0);
     let traces = '';
     for (const beam of shown) {
       const colour = wavelengthToColor(beam.wl);
-      const trace = scopeTrace(beam.pulse, { spanNs, startNs, samples: 160, delayNs: delayOf(beam) });
+      const trace = scopeTrace(beam.pulse, { spanNs, startNs, samples: 160, delayNs: shiftOf(beam) });
       if (!trace) {
         traces += `<line data-probe-time="cw" x1="${x0}" y1="${(y0 - ph).toFixed(2)}" x2="${x0 + pw}" y2="${(y0 - ph).toFixed(2)}" stroke="${colour}" stroke-width="1.2" opacity="0.8"/>`;
         continue;
       }
       const peak = Math.max(1e-9, ...trace.pulses.map(p => p.amplitude || 0));
-      traces += `<g data-probe-time-delay-ns="${delayOf(beam).toFixed(9)}">` + trace.pulses.filter(p => p.amplitude > 1e-6).slice(0, 120).map(p => {
+      traces += `<g data-probe-time-delay-ns="${delayOf(beam).toFixed(9)}" data-probe-first-pulse-ns="${(trace.pulses[0]?.tNs ?? NaN).toFixed(6)}">` + trace.pulses.filter(p => p.amplitude > 1e-6).slice(0, 120).map(p => {
         const x = xAt(p.tNs).toFixed(2);
         return `<line x1="${x}" y1="${y0}" x2="${x}" y2="${(y0 - Math.min(1, p.amplitude / peak) * ph).toFixed(2)}" stroke="${colour}" stroke-width="1.2" stroke-linecap="round" opacity="0.8"/>`;
       }).join('') + '</g>';
@@ -1329,7 +1338,10 @@ function probeMultiCard(el, prop, beams, elements) {
     return `<line x1="${x}" y1="${y0}" x2="${x}" y2="${(y0 + 1.6).toFixed(2)}" stroke="#888" stroke-width="0.7"/>` +
       `<text x="${x}" y="${(y0 + 6).toFixed(2)}" text-anchor="${anchor}" font-size="4.6" fill="#666">${Math.round(wl)}</text>`;
   };
-  const names = shown.map(b => Math.round(b.wl)).join(' · ') + (more > 0 ? ` +${more}` : '') + ' nm';
+  const colours = shown.map(b => Math.round(b.wl)).filter((wl, i, all) => all.indexOf(wl) === i);
+  // Without every source's watts the beams can only be compared by their
+  // share of their own source: said on the card, not only in its markup.
+  const names = colours.join(' · ') + (more > 0 ? ` +${more}` : '') + ' nm' + (absolute ? '' : ' · relative');
   return {
     w: W, h: H,
     body: frame(W, H) +

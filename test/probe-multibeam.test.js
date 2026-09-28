@@ -54,11 +54,18 @@ test('the probe finds each beam crossing its circle, and one beam for one laser 
   near(one[0].power, 1, 1e-12);
 });
 
-test('two arms of one pulsed laser are two beams when their pulses arrive apart', () => {
+// The Mach-Zehnder fixture with a pulsed source; the second beamsplitter's
+// output port is at (700, 400).
+function pulsedMachZehnder() {
   const scene = parseSketch(readFileSync('test/fixtures/mach-zehnder.json', 'utf8'), registry);
   const elements = scene.elements.filter(e => !['camera', 'display', 'textlabel'].includes(e.type));
   const cw = elements.find(e => e.type === 'cwlaser');
   elements.splice(elements.indexOf(cw), 1, pulsed(cw.x, cw.y, 800, 0.1, { pulseWidthFs: 100 }));
+  return elements;
+}
+
+test('two arms of one pulsed laser are two beams when their pulses arrive apart', () => {
+  const elements = pulsedMachZehnder();
   const delay = elements.find(e => e.type === 'delayline');
   delay.params.delayMm = 0;
   traceScene(elements, []);
@@ -94,10 +101,12 @@ test('round trips of a synchronously pumped cavity, a whole period apart, are on
 });
 
 test('the time view says whether pulses arrive together, which comes first, and by how much', () => {
-  const beam = (wl, arrivalNs, extra = {}) => ({ wl, arrivalNs, pulse: { repRateMHz: 80, pulseWidthFs: 300, ...extra } });
+  const beam = (wl, arrivalNs, extra = {}) => ({ wl, arrivalNs, pulse: { repRateMHz: 80, pulseWidthFs: 300, durationFs: 300, ...extra } });
   const together = probeTimingSummary([beam(800, 1), beam(1040, 1 + 100e-6)]);
   assert.equal(together.state, 'synced', '100 fs apart, within half of a 300 fs pulse');
   assert.equal(probeTimingLabel(together), 'synced');
+  // Without a known duration at the probe, the verdict says what it used.
+  assert.equal(probeTimingLabel(probeTimingSummary([beam(800, 1, { durationFs: null }), beam(1040, 1)])), 'synced (by source widths)');
   const apart = probeTimingSummary([beam(800, 1 + 0.01), beam(1040, 1)]);
   assert.equal(apart.state, 'delayed');
   assert.equal(probeTimingLabel(apart), '800 nm 10 ps after 1040 nm');
@@ -154,4 +163,73 @@ test('with one beam in the circle every view reads it as before, and more than f
   const many = [0, 2, 4, 6, 8].map((y, i) => pulsed(0, y - 4, 700 + 50 * i, 0.1));
   const wl = probeCard('wl', many, 300, 0);
   assert.match(wl, /\+1 more/);
+});
+
+// Andrea's findings on c9b8470.
+test('a broad band and a line together: each integrates to its own watts', () => {
+  const beams = [
+    { wl: 800, bw: 200, spec: { kind: 'flat', lo: 700, hi: 900 }, power: 1, originId: 'band' },
+    { wl: 800, bw: 0, spec: null, power: 1, originId: 'line' },
+    { wl: 900, bw: 100, spec: { kind: 'gauss', center: 900, fwhm: 100 }, power: 1, originId: 'gauss' },
+  ];
+  const weights = [0.1, 0.1, 0.1];
+  const samples = combinedSpectrumSamples(beams, weights, 400, 1300, 4000);
+  const area = samples.slice(1).reduce((sum, s, i) => sum + (s.wl - samples[i].wl) * (s.weight + samples[i].weight) / 2, 0);
+  near(area, 0.3, 2e-3, 'was ~57 W: the band alone integrated to ~40 W');
+});
+
+test('two lasers at one centre but different widths are summed, not reduced to the nearest', () => {
+  const narrow = pulsed(0, 0, 800, 0.1, { pulseWidthFs: 1000 });
+  const broad = pulsed(0, 3, 800, 0.1, { pulseWidthFs: 10 });
+  const card = probeCard('spectrum', [narrow, broad]);
+  assert.match(card, /data-probe-beams="2"/);
+  assert.match(card, />800 nm</, 'one colour in the caption');
+});
+
+test('two arms gated at different frequencies are two beams, each with its own gate', () => {
+  const elements = pulsedMachZehnder();
+  const chop = (x, y, frequencyHz) => Object.assign(createElement('chopper', x, y), {}, {
+    params: { ...createElement('chopper', x, y).params, frequencyHz },
+  });
+  elements.push(chop(400, 200, 1000), chop(450, 400, 2000));
+  traceScene(elements, []);
+  const beams = probeBeamsAt(700, 400, 5);
+  const rates = beams.map(beam => beam.pulse.gates.map(g => g.frequencyMHz)).flat().sort();
+  assert.equal(beams.length, 2, `${beams.length} beams`);
+  assert.deepEqual(rates, [0.001, 0.002], 'was one beam carrying the 2 kHz gate');
+});
+
+test('the sampling rays of a focused beam are one beam; a 200 fs arm difference is two', () => {
+  const wide = pulsed(0, 0, 800, 0.1, { beamMode: 'beam', beamWidth: 20, pulseWidthFs: 100 });
+  const lens = createElement('lens', 100, 0);
+  lens.params.f = 30;
+  traceScene([wide, lens], []);
+  assert.equal(probeBeamsAt(130, 0, 5).length, 1, 'was nine beams, up to 5.41 ps apart');
+  const elements = pulsedMachZehnder();
+  elements.find(e => e.type === 'delayline').params.delayMm = 0.06;
+  traceScene(elements, []);
+  const arms = probeBeamsAt(700, 400, 5);
+  assert.equal(arms.length, 2, 'was one beam below the old 0.1 mm floor');
+  near(arms[1].arrivalNs - arms[0].arrivalNs, 0.06 / C_MM_PER_NS, 1e-9);
+  assert.match(probeTimingLabel(probeTimingSummary(arms)), /^delayed 0\.2 ps/);
+});
+
+test('the time plot draws each train at its arrival, counting the emission phase once', () => {
+  // Same path, the second source emitting 1 ns later: first pulses at 0 and 1 ns.
+  const a = pulsed(0, 0, 800, 0.1);
+  const b = pulsed(0, 3, 1040, 0.1, { pulsePhaseNs: 1 });
+  const card = probeCard('time', [a, b]);
+  const firsts = [...card.matchAll(/data-probe-first-pulse-ns="([^"]+)"/g)].map(m => Number(m[1])).sort((p, q) => p - q);
+  assert.equal(firsts.length, 2);
+  near(firsts[0], 0, 1e-9);
+  near(firsts[1], 1, 1e-9, 'was drawn at 2 ns');
+  assert.match(card, /1040 nm 1 ns after 800 nm/);
+});
+
+test('a spectrum without every source\'s watts says it is relative, on the card', () => {
+  const a = pulsed(0, 0, 800, 0.1), b = pulsed(0, 3, 1040, 0.1);
+  delete b.params.avgPowerW;
+  const card = probeCard('spectrum', [a, b]);
+  assert.match(card, /data-probe-weights="relative"/);
+  assert.match(card, /· relative</);
 });

@@ -4,7 +4,7 @@
 // takes a probe reading (raytrace.js probeAt) and returns a number or a label,
 // so the rules can be tested without an SVG or a DOM.
 
-import { spectrumSamples, spectrumWeight as spectrumWeightOf } from './spectrum.js';
+import { spectrumSamples, spectrumSupport, spectrumWeight as spectrumWeightOf } from './spectrum.js';
 
 // The power reading adds up what crosses the probe's sampling area, the way
 // a power meter adds up what reaches its face (raytrace.js, probePowerAt):
@@ -226,11 +226,17 @@ export function combinedSpectrumSamples(beams, weights, lo, hi, count = 160) {
       const s = Math.max(sigma, width / 2.355);
       return wl => gauss(wl - beam.wl, s);
     }
-    const samples = spectrumSamples(spec, 400) || [];
+    // Normalised by the integral of the very function it is evaluated with,
+    // so each beam's density integrates to its own weight (Andrea, #192:
+    // spectrumSamples() is normalised differently, and a 0.1 W band came out
+    // as 40 W against a line).
+    const [from, to] = spectrumSupport(spec);
+    const steps = 2000, dx = (to - from) / steps;
     let area = 0;
-    for (let i = 1; i < samples.length; i++) {
-      area += (samples[i].wl - samples[i - 1].wl) * (samples[i].weight + samples[i - 1].weight) / 2;
+    for (let i = 0; i <= steps; i++) {
+      area += (i === 0 || i === steps ? 0.5 : 1) * Math.max(0, spectrumWeightOf(spec, from + i * dx));
     }
+    area *= dx;
     return area > 0 ? wl => Math.max(0, spectrumWeightOf(spec, wl)) / area : () => 0;
   });
   const points = [];
@@ -265,14 +271,17 @@ export function probeTimingSummary(beams) {
   const widthNs = beam => Math.max(0, beam.pulse.durationFs ?? beam.pulse.pulseWidthFs ?? 0) * 1e-6;
   const spread = list.at(-1).delayNs;
   const synced = spread <= Math.max(...pulsed.map(widthNs)) / 2;
-  return { state: synced ? 'synced' : 'delayed', periodNs: period, beams: list };
+  // Where the tracer cannot state a pulse's duration here, "synced" is judged
+  // against the width the source emits, and says so.
+  const estimated = pulsed.some(beam => !Number.isFinite(beam.pulse.durationFs));
+  return { state: synced ? 'synced' : 'delayed', periodNs: period, beams: list, estimated };
 }
 
 // The one-line verdict the time view prints above its traces.
 export function probeTimingLabel(summary) {
   if (!summary) return '';
   if (summary.state === 'rates') return 'different rep. rates: not synced';
-  if (summary.state === 'synced') return 'synced';
+  if (summary.state === 'synced') return summary.estimated ? 'synced (by source widths)' : 'synced';
   const name = entry => `${Math.round(entry.beam.wl)} nm`;
   const [lead, ...rest] = summary.beams;
   const sameColour = summary.beams.every(entry => Math.round(entry.beam.wl) === Math.round(lead.beam.wl));
