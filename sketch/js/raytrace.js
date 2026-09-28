@@ -579,7 +579,12 @@ function addSample(samples, wl, power, continuum = false, sourceId = null, width
     || { wavelength, power: 0, continuum: false, sourceId: sourceId || null, bandId: bandId || null, widthNm: null };
   sample.power += power;
   if (continuum) sample.continuum = true;
-  if (widthNm > 0) sample.widthNm = Math.max(sample.widthNm || 0, widthNm);
+  // A band sampled more finely than the 0.1 nm slot drops several grid
+  // points into one slot: the slot holds their power together and spans
+  // their widths together, or its density (power / width) comes out as many
+  // times too high as points it merged -- 16x for a 10 ps pulse's 0.09 nm
+  // band. Each band calls this once per grid point, so the widths add.
+  if (widthNm > 0) sample.widthNm = continuum ? (sample.widthNm || 0) + widthNm : Math.max(sample.widthNm || 0, widthNm);
   samples.set(key, sample);
 }
 

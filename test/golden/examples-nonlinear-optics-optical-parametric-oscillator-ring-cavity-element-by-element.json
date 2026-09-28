@@ -2422,7 +2422,7 @@
       "power": 0.000207180823,
       "sourceId": "pump",
       "wavelength": 799.4,
-      "widthNm": 0.0255265347
+      "widthNm": 0.0510530695
      },
      {
       "bandId": "pump#0",
@@ -2431,7 +2431,7 @@
       "power": 0.00154606275,
       "sourceId": "pump",
       "wavelength": 799.5,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2440,7 +2440,7 @@
       "power": 0.00487546842,
       "sourceId": "pump",
       "wavelength": 799.6,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2449,7 +2449,7 @@
       "power": 0.0119096399,
       "sourceId": "pump",
       "wavelength": 799.7,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2458,7 +2458,7 @@
       "power": 0.0225375001,
       "sourceId": "pump",
       "wavelength": 799.8,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2467,7 +2467,7 @@
       "power": 0.0330424733,
       "sourceId": "pump",
       "wavelength": 799.9,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2476,7 +2476,7 @@
       "power": 0.0375470174,
       "sourceId": "pump",
       "wavelength": 800,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2485,7 +2485,7 @@
       "power": 0.0330424733,
       "sourceId": "pump",
       "wavelength": 800.1,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2494,7 +2494,7 @@
       "power": 0.0225375001,
       "sourceId": "pump",
       "wavelength": 800.2,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2503,7 +2503,7 @@
       "power": 0.0119096399,
       "sourceId": "pump",
       "wavelength": 800.3,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2512,7 +2512,7 @@
       "power": 0.00487546842,
       "sourceId": "pump",
       "wavelength": 800.4,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2521,7 +2521,7 @@
       "power": 0.00154606275,
       "sourceId": "pump",
       "wavelength": 800.5,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2530,7 +2530,7 @@
       "power": 0.000207180823,
       "sourceId": "pump",
       "wavelength": 800.6,
-      "widthNm": 0.0255265347
+      "widthNm": 0.0510530695
      }
     ],
     "spotSpan": 3.52102991e-9,

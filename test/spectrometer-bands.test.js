@@ -368,3 +368,28 @@ test('the relative view still frames a weak source beside a strong one', async (
   // On the density axis the seed is a millionth of the pump: out of the frame, as before.
   assert.ok(!render('density').includes(wavelengthToColor(780)));
 });
+
+test('a narrow band\'s plotted density is its true power spectral density, at the 0.1 nm resolution', () => {
+  // A band sampled more finely than the 0.1 nm slot used to keep one grid
+  // point's width for several points' power: 2x too tall at 1 ps, 16x at 10 ps.
+  const peakRatio = pulseWidthFs => {
+    const laser = createElement('pulsedlaser', 0, 0);
+    Object.assign(laser.params, { wavelength: 800, avgPowerW: 1, pulseWidthFs, beamMode: 'line' });
+    const spectrometer = createElement('spectrometer', 300, 0);
+    traceAll([laser, spectrometer]);
+    const spectrum = detectorReading(spectrometer.id).spectrum;
+    const density = s => s.power / (s.continuum && s.widthNm > 0 ? s.widthNm : 0.1);
+    const fwhmNm = 0.441 * 800 * 800 / (299792.458 * pulseWidthFs) * 1000; // transform-limited Gaussian
+    const total = spectrum.reduce((sum, s) => sum + s.power, 0);
+    assert.ok(Math.abs(total - 1) < 1e-9, `${pulseWidthFs} fs: all the power is still there (${total})`);
+    return Math.max(...spectrum.map(density)) * 1.0645 * fwhmNm; // plotted peak / true peak
+  };
+  for (const fs of [100, 300, 1000, 3000]) {
+    const ratio = peakRatio(fs);
+    assert.ok(Math.abs(ratio - 1) < 0.03, `${fs} fs: plotted peak ${ratio.toFixed(3)} x the true one`);
+  }
+  // Narrower than the slot, the peak is averaged over 0.1 nm, as an
+  // instrument of that resolution would show it -- never inflated.
+  const tenPs = peakRatio(10000);
+  assert.ok(tenPs > 0.7 && tenPs <= 1, `10 ps: ${tenPs.toFixed(3)}`);
+});
