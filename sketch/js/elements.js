@@ -1064,7 +1064,10 @@ function probeCard(el, rd, elements = []) {
     // Without a source carrying a configured wattage there is no absolute
     // number to give, and the relative weight is not one -- say so, in place
     // of the number rather than under it.
-    return valueCard(watts === null ? 'no source power' : formatPowerMw(watts));
+    // Weak light the tracer's measurement budget could not follow may be
+    // missing here, so the figure is a floor and is shown as one.
+    return valueCard(watts === null ? 'no source power'
+      : `${area.weakLightIncomplete ? '≥ ' : ''}${formatPowerMw(watts)}`);
   }
 
   if (prop === 'duration') {

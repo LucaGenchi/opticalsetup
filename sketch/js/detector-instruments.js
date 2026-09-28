@@ -249,7 +249,8 @@ function caveatStrip(reading) {
   if (!notes.length) return '';
   const text = notes.some(n => /^Linear-only/.test(n)) ? 'LINEAR-ONLY APPROX · NONLINEAR N/A'
     : notes.some(n => /^Argon dispersion unavailable/.test(n)) ? 'ARGON DISPERSION N/A · GEOMETRIC ONLY'
-      : 'APPROXIMATION · SEE INSPECTOR';
+      : notes.length === 1 && /^Weak light untraced/.test(notes[0]) ? 'WEAK LIGHT UNTRACED · MAY READ LOW'
+        : 'APPROXIMATION · SEE INSPECTOR';
   return `<g data-caveat="${esc(notes.join(' | '))}"><rect x="-42.2" y="11.6" width="84.4" height="5.6" fill="#3b2a05"/>`
     + `<text x="0" y="15.6" text-anchor="middle" font-size="3.3" font-weight="760" fill="#fbbf24">${esc(text)}</text></g>`;
 }
