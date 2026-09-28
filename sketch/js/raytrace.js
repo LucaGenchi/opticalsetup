@@ -65,6 +65,11 @@ let lastPaths = [];
 // mirror's leak with its display switched off): a power meter receives them,
 // so the beam probe's power reading must count them too (probePowerAt).
 let lastPowerPaths = [];
+// The last stretch of each ray the tracer stopped following because it fell
+// below the drawing floor: a power meter placed on that stretch receives it
+// (the detector exception in traceRays), so a probe placed there must count
+// it too. Kept apart so it changes neither the drawing nor any other reading.
+let weakProbeSegments = [];
 let lastSignalHits = [];
 let detectorHits = new Map();
 // Rays whose centres cross a camera plane just outside its finite face still
@@ -1326,15 +1331,13 @@ export function probePowerAt(x, y, radius) {
   const inside = q => Math.hypot(q.x - x, q.y - y) <= R;
   const byOrigin = new Map();
   let entries = 0;
-  for (const r of lastPowerPaths) {
-    const finalIntensity = r.intensity;
+  for (const r of [...lastPowerPaths, ...weakProbeSegments]) {
     for (let i = 0; i < r.pts.length - 1; i++) {
       if (inside(r.pts[i]) || distToSegment(p, r.pts[i], r.pts[i + 1]) > R) continue;
-      // Power scales with the drawn intensity along one traced ray, so the
-      // power on this segment follows from the ray's final power.
-      const segmentIntensity = r.segmentIntensities?.[i] ?? finalIntensity;
-      const power = Number.isFinite(r.power) && finalIntensity > 0
-        ? r.power * segmentIntensity / finalIntensity : null;
+      // The power the ray carried on this segment, as recorded when it was
+      // traced: an element further on that absorbs everything (an ND at 0)
+      // must not erase what passed before it.
+      const power = r.segmentPowers?.[i];
       if (!(power > 1e-12)) continue;
       const key = r.originId || null;
       byOrigin.set(key, (byOrigin.get(key) || 0) + power);
@@ -4753,7 +4756,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       gddTrace: visualizesDispersion ? [{ opl, gdd, linear: false }] : null,
       groupDelayDifferenceTrace: visualizesDispersion
         ? [{ opl, value: groupDelayDifferenceFs, linear: false }] : null,
-      segmentIntensities: [], segmentHistories: [], segmentEvents: [],
+      segmentIntensities: [], segmentPowers: [], segmentHistories: [], segmentEvents: [],
       sig: '', depth: 0, last: null,
     };
   });
@@ -4788,6 +4791,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       }
     }
     r.segmentIntensities.push(r.intensity);
+    r.segmentPowers.push(r.power);
     r.segmentHistories.push(r.sig);
     r.segmentEvents.push(null);
     r.pts.push(p);
@@ -4815,6 +4819,15 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // coherent source incomplete and therefore forces safe deposition.
         if (!r.coherentlySuppressed && hit && hit.surface.kind !== 'absorb') {
           markIncompleteCoherence(r, 'coherent path fell below the bounded trace threshold');
+        }
+        // What a meter would still have received on this stretch, for the
+        // beam probe's power reading (final pass only).
+        if (!specimenProbe && !coherent?.dryRun && Number.isFinite(r.power) && r.power > 1e-12) {
+          const end = hit ? hit.p : { x: r.x + r.dx * MAXLEN, y: r.y + r.dy * MAXLEN };
+          weakProbeSegments.push({
+            pts: [{ x: r.x, y: r.y }, { x: end.x, y: end.y }],
+            segmentPowers: [r.power], intensity: r.intensity, power: r.power, originId: r.originId || null,
+          });
         }
         break;
       }
@@ -4964,6 +4977,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         const extraOpl = peak * phasePlateOpdFraction(hit.surface.data.profile, hit.u);
         if (extraOpl > 0) {
           r.segmentIntensities.push(r.intensity);
+          r.segmentPowers.push(r.power);
           r.segmentHistories.push(r.sig);
           r.segmentEvents.push(interactionKey);
           r.pts.push({ x: hit.p.x, y: hit.p.y });
@@ -4978,6 +4992,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         const extraOpl = Number(hit.surface.data.opdMm) || 0;
         if (Math.abs(extraOpl) > 0) {
           r.segmentIntensities.push(r.intensity);
+          r.segmentPowers.push(r.power);
           r.segmentHistories.push(r.sig);
           r.segmentEvents.push(interactionKey);
           r.pts.push({ x: hit.p.x, y: hit.p.y });
@@ -4991,6 +5006,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         const extraOpl = Math.min(100000, Math.max(0, hit.surface.data.delayMm || 0));
         if (extraOpl > 0) {
           r.segmentIntensities.push(r.intensity);
+          r.segmentPowers.push(r.power);
           r.segmentHistories.push(r.sig);
           r.segmentEvents.push(interactionKey);
           r.pts.push({ x: hit.p.x, y: hit.p.y });
@@ -5252,6 +5268,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           opl: r.opl,
           opls: [r.opl],
           segmentIntensities: [],
+          segmentPowers: [],
           segmentHistories: [],
           segmentEvents: [],
           sig: r.sig + '/' + (c.tag || 'w'),
@@ -5561,6 +5578,7 @@ export function traceScene(elements, beams = []) {
   const couplings = [];
   lastPaths = [];
   lastPowerPaths = [];
+  weakProbeSegments = [];
   hollowReadings.clear();
   detectorHits = new Map();
   detectorMisses = new Map();

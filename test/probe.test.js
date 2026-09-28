@@ -103,6 +103,32 @@ test('light split inside the probe circle is counted once, where it entered', ()
   assert.ok(Math.abs(probeWatts(250, 0, elements) - 0.05) < 1e-15, 'past the cube: the transmitted half');
 });
 
+// Andrea's reproductions on 1dfeab6.
+const nd = (x, trans) => Object.assign(createElement('filter', x, 0), {}, { params: { ...createElement('filter', x, 0).params, ftype: 'nd', trans } });
+
+test('an element that absorbs everything further on does not erase the reading before it', () => {
+  for (const withMeter of [false, true]) {
+    const elements = [lineLaser(0, 0, 0.1), nd(200, 0), ...(withMeter ? [meterAt(400, 0)] : [])];
+    traceScene(elements, []);
+    assert.ok(Math.abs(probeWatts(100, 0, elements) - 0.1) < 1e-15, `before an ND at 0${withMeter ? ', meter downstream' : ''}`);
+    assert.equal(probePowerAt(300, 0, 5), null, 'nothing after it');
+  }
+});
+
+test('a beam too weak to be drawn is still read, with or without a meter further on', () => {
+  // A 1 % ND leaves 1 mW, below the tracer's drawing floor: it stops being
+  // followed unless a detector is next, and the probe used to read nothing.
+  let withMeter = null;
+  for (const meter of [null, meterAt(400, 0)]) {
+    const elements = [lineLaser(0, 0, 0.1), nd(200, 0.01), ...(meter ? [meter] : [])];
+    traceScene(elements, []);
+    const read = probeWatts(300, 0, elements);
+    assert.ok(Math.abs(read - 0.001) < 1e-15, `${read} W${meter ? ' with a meter' : ''}`);
+    if (meter) withMeter = enhancedReading(meter, elements).detectedPowerW;
+  }
+  assert.ok(Math.abs(withMeter - 0.001) < 1e-15, 'and the meter agrees');
+});
+
 test('a probe saved before the sampling circle existed opens with the 10 mm default', () => {
   const probe = createElement('probe', 0, 0);
   delete probe.params.sampleDiameterMm;
