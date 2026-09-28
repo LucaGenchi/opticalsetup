@@ -4,7 +4,7 @@
 // takes a probe reading (raytrace.js probeAt) and returns a number or a label,
 // so the rules can be tested without an SVG or a DOM.
 
-import { spectrumSamples } from './spectrum.js';
+import { spectrumSamples, spectrumSupport, spectrumWeight as spectrumWeightOf } from './spectrum.js';
 
 // The power reading adds up what crosses the probe's sampling area, the way
 // a power meter adds up what reaches its face (raytrace.js, probePowerAt):
@@ -171,4 +171,123 @@ export function probeSpectrumRange(reading, params = {}) {
     low = mid - MIN_SPAN_NM / 2; high = mid + MIN_SPAN_NM / 2;
   }
   return { lo: low, hi: high, auto: true };
+}
+
+// ---------------- several beams in the sampling circle ----------------
+// raytrace.js probeBeamsAt lists the beams crossing the probe's circle; when
+// there are two or more, the spectrum, wavelength, polarization and time
+// views describe all of them instead of the nearest one.
+
+// What each beam weighs when several are drawn together: its watts when
+// every beam's source has a power setting, or else its fraction of its own
+// source's power, which only compares beams of equally powerful sources.
+export function probeBeamWeights(beams, elements = []) {
+  const watts = beams.map(beam => {
+    const source = elements.find(el => el?.id === beam.originId);
+    const configured = Number(source?.params?.avgPowerW);
+    return Number.isFinite(configured) && configured >= 0 ? configured * beam.power : null;
+  });
+  if (watts.every(w => w !== null)) return { weights: watts, absolute: true };
+  return { weights: beams.map(beam => beam.power), absolute: false };
+}
+
+// The wavelength window that frames every beam: the union of the windows each
+// would pick alone, or the fixed range when one is set.
+export function probeSpectrumRangeAll(beams, params = {}) {
+  const ranges = beams.map(beam => probeSpectrumRange(beam, params));
+  if (!ranges.length) return probeSpectrumRange(null, params);
+  if (!ranges[0].auto) return ranges[0];
+  const lo = Math.min(...ranges.map(r => r.lo)), hi = Math.max(...ranges.map(r => r.hi));
+  // Margin on both sides, so a line at either end is not drawn on the axis.
+  const pad = (hi - lo) * 0.06;
+  return { lo: lo - pad, hi: hi + pad, auto: true };
+}
+
+// The summed spectral density of several beams on `count` points across
+// [lo, hi], each beam weighted by `weights` (see probeBeamWeights): power per
+// nanometre, so a narrow line stands taller than a broad band of the same
+// power. A line narrower than the plot can show -- a monochromatic laser, or
+// a lamp's lines -- is drawn with the plot's own resolution, 1/120 of the
+// window, as a spectrometer draws a line with its instrument width.
+export function combinedSpectrumSamples(beams, weights, lo, hi, count = 160) {
+  const span = Math.max(1e-6, hi - lo);
+  const sigma = span / 120;
+  const gauss = (x, s) => Math.exp(-0.5 * (x / s) ** 2) / (s * Math.sqrt(2 * Math.PI));
+  const densities = beams.map(beam => {
+    const spec = beam.spec;
+    if (spec?.kind === 'lines') {
+      const total = spec.lines.reduce((sum, l) => sum + Math.max(0, l.w), 0) || 1;
+      return wl => spec.lines.reduce((sum, l) => sum + Math.max(0, l.w) / total * gauss(wl - l.nm, sigma), 0);
+    }
+    const width = Number(beam.bw) || 0;
+    if (!spec || width < 2.355 * sigma) {
+      // Unresolved at this scale: a line of the plot's resolution, at the
+      // beam's centre, or a Gaussian of its own width when it has one.
+      const s = Math.max(sigma, width / 2.355);
+      return wl => gauss(wl - beam.wl, s);
+    }
+    // Normalised by the integral of the very function it is evaluated with,
+    // so each beam's density integrates to its own weight (Andrea, #192:
+    // spectrumSamples() is normalised differently, and a 0.1 W band came out
+    // as 40 W against a line).
+    const [from, to] = spectrumSupport(spec);
+    const steps = 2000, dx = (to - from) / steps;
+    let area = 0;
+    for (let i = 0; i <= steps; i++) {
+      area += (i === 0 || i === steps ? 0.5 : 1) * Math.max(0, spectrumWeightOf(spec, from + i * dx));
+    }
+    area *= dx;
+    return area > 0 ? wl => Math.max(0, spectrumWeightOf(spec, wl)) / area : () => 0;
+  });
+  const points = [];
+  for (let i = 0; i < count; i++) {
+    const wl = lo + span * i / (count - 1);
+    points.push({ wl, weight: densities.reduce((sum, d, k) => sum + (weights[k] || 0) * d(wl), 0) });
+  }
+  return points;
+}
+
+// Whether the pulsed beams in the circle arrive together. Trains at one
+// repetition rate have a fixed delay, taken within one period (the nearest
+// pulse of the other train) and measured at the centre of the circle; they
+// are "synced" when every pulse lands within half a pulse duration of the
+// first. Trains at different rates drift through each other: no fixed delay.
+// Continuous beams are always there and take no part. Null with fewer than
+// two pulsed beams.
+export function probeTimingSummary(beams) {
+  const pulsed = beams.filter(beam => beam.pulse?.repRateMHz > 0 && Number.isFinite(beam.arrivalNs));
+  if (pulsed.length < 2) return null;
+  const rate = pulsed[0].pulse.repRateMHz;
+  if (pulsed.some(beam => Math.abs(beam.pulse.repRateMHz - rate) > 1e-9 * rate)) {
+    return { state: 'rates', beams: pulsed.map(beam => ({ beam, delayNs: null })) };
+  }
+  const period = 1000 / rate;
+  const folded = pulsed.map(beam => {
+    const d = ((beam.arrivalNs - pulsed[0].arrivalNs) % period + period) % period;
+    return d > period / 2 ? d - period : d;
+  });
+  const first = Math.min(...folded);
+  const list = pulsed.map((beam, i) => ({ beam, delayNs: folded[i] - first })).sort((p, q) => p.delayNs - q.delayNs);
+  const widthNs = beam => Math.max(0, beam.pulse.durationFs ?? beam.pulse.pulseWidthFs ?? 0) * 1e-6;
+  const spread = list.at(-1).delayNs;
+  const synced = spread <= Math.max(...pulsed.map(widthNs)) / 2;
+  // Where the tracer cannot state a pulse's duration here, "synced" is judged
+  // against the width the source emits, and says so.
+  const estimated = pulsed.some(beam => !Number.isFinite(beam.pulse.durationFs));
+  return { state: synced ? 'synced' : 'delayed', periodNs: period, beams: list, estimated };
+}
+
+// The one-line verdict the time view prints above its traces.
+export function probeTimingLabel(summary) {
+  if (!summary) return '';
+  if (summary.state === 'rates') return 'different rep. rates: not synced';
+  if (summary.state === 'synced') return summary.estimated ? 'synced (by source widths)' : 'synced';
+  const name = entry => `${Math.round(entry.beam.wl)} nm`;
+  const [lead, ...rest] = summary.beams;
+  const sameColour = summary.beams.every(entry => Math.round(entry.beam.wl) === Math.round(lead.beam.wl));
+  if (rest.length === 1) {
+    return sameColour ? `delayed ${formatTimeAxisNs(rest[0].delayNs)}`
+      : `${name(rest[0])} ${formatTimeAxisNs(rest[0].delayNs)} after ${name(lead)}`;
+  }
+  return `delays ${rest.map(entry => `${sameColour ? '' : `${name(entry)} `}+${formatTimeAxisNs(entry.delayNs)}`).join(', ')}`;
 }

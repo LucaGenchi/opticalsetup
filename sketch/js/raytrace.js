@@ -1318,6 +1318,25 @@ export function probeAt(x, y, tol = 16) {
   } : null;
 }
 
+// Every ray entering a circle of radius R around (x, y), with the power it
+// carries on the segment where it enters (see probePowerAt).
+function probeEntries(x, y, R) {
+  const p = { x, y };
+  const inside = q => Math.hypot(q.x - x, q.y - y) <= R;
+  const entries = [];
+  for (const r of [...lastPowerPaths, ...weakProbeSegments]) {
+    for (let i = 0; i < r.pts.length - 1; i++) {
+      if (inside(r.pts[i]) || distToSegment(p, r.pts[i], r.pts[i + 1]) > R) continue;
+      // The power the ray carried on this segment, as recorded when it was
+      // traced: an element further on that absorbs everything (an ND at 0)
+      // must not erase what passed before it.
+      const power = r.segmentPowers?.[i];
+      if (power > 1e-12) entries.push({ ray: r, segment: i, power });
+    }
+  }
+  return entries;
+}
+
 // The light crossing a circular area around (x, y), counted the way a power
 // meter counts what reaches its face: every ray that enters the circle, with
 // its power where it enters, attributed to the source it originated from
@@ -1326,26 +1345,128 @@ export function probeAt(x, y, tol = 16) {
 // or converted within the area is not counted a second time; light emitted
 // inside the area is not counted at all. Returns null when nothing enters.
 export function probePowerAt(x, y, radius) {
-  const R = Math.max(1e-6, Number(radius) || 0);
-  const p = { x, y };
-  const inside = q => Math.hypot(q.x - x, q.y - y) <= R;
+  const entries = probeEntries(x, y, Math.max(1e-6, Number(radius) || 0));
+  if (!entries.length) return null;
   const byOrigin = new Map();
-  let entries = 0;
-  for (const r of [...lastPowerPaths, ...weakProbeSegments]) {
-    for (let i = 0; i < r.pts.length - 1; i++) {
-      if (inside(r.pts[i]) || distToSegment(p, r.pts[i], r.pts[i + 1]) > R) continue;
-      // The power the ray carried on this segment, as recorded when it was
-      // traced: an element further on that absorbs everything (an ND at 0)
-      // must not erase what passed before it.
-      const power = r.segmentPowers?.[i];
-      if (!(power > 1e-12)) continue;
-      const key = r.originId || null;
-      byOrigin.set(key, (byOrigin.get(key) || 0) + power);
-      entries++;
+  for (const { ray, power } of entries) {
+    const key = ray.originId || null;
+    byOrigin.set(key, (byOrigin.get(key) || 0) + power);
+  }
+  return { sourceFractions: [...byOrigin].map(([sourceId, fraction]) => ({ sourceId, fraction })), entries: entries.length };
+}
+
+// The distinct beams crossing the same circle, for the probe's spectrum,
+// wavelength, polarization and time views. Rays are one beam when they come
+// from the same source with the same spectrum, polarization and pulse train
+// -- the sampling rays of a wide beam, say. Two pulsed arms of one laser
+// (a pump-probe pair split from it) are two beams when they arrive more than
+// a pulse length apart, so their delay can be read. Each beam has the shape
+// of a probeAt reading plus `power` (its fraction of its source's emitted
+// power) and `arrivalNs`, when its pulses pass the centre of the circle.
+// Sorted by wavelength; empty when nothing crosses.
+export function probeBeamsAt(x, y, radius) {
+  const entries = probeEntries(x, y, Math.max(1e-6, Number(radius) || 0));
+  const round = (v, d) => (Number.isFinite(v) ? Number(v.toFixed(d)) : v ?? null);
+  // Everything that makes two contributions look or behave differently: the
+  // whole spectrum, the polarization state and its modulation, and the pulse
+  // train with every setting of every gate on it (Andrea, #192).
+  const specKey = spec => (spec ? JSON.stringify(spec, (k, v) => (typeof v === 'number' ? round(v, 6) : v)) : null);
+  const gateKey = g => [round(g.opl, 6), round(g.frequencyMHz, 9), round(g.duty, 6), round(g.phaseNs, 9), g.shape || '',
+    round(g.depth, 6), round(g.high, 6), round(g.low, 6), round(g.symmetry, 6), Boolean(g.invert)];
+  const groups = new Map();
+  for (const entry of entries) {
+    const r = entry.ray, i = entry.segment, a = r.pts[i], b = r.pts[i + 1];
+    const ax = b.x - a.x, ay = b.y - a.y, len2 = ax * ax + ay * ay;
+    const along = len2 > 0 ? Math.min(1, Math.max(0, ((x - a.x) * ax + (y - a.y) * ay) / len2)) : 0;
+    const o0 = r.opls?.[i], o1 = r.opls?.[i + 1];
+    entry.along = along;
+    entry.opl = Number.isFinite(o0) && Number.isFinite(o1) ? o0 + (o1 - o0) * along : (r.opl || 0);
+    const pulse = r.pulse;
+    const key = JSON.stringify([
+      r.originId || null, round(r.wl, 3), round(r.bw || 0, 3), specKey(r.spec),
+      typeof r.pol === 'number' ? round(r.pol, 1) : r.pol ?? null,
+      r.stokes ? [round(r.stokes.s1, 3), round(r.stokes.s2, 3), round(r.stokes.s3, 3)] : null,
+      r.polMod ? JSON.stringify(r.polMod, (k, v) => (typeof v === 'number' ? round(v, 6) : v)) : null,
+      pulse ? [round(pulse.repRateMHz, 9), round(pulse.phaseNs || 0, 9), round(pulse.pulseWidthFs, 3), pulse.pulseShape || '',
+        (pulse.gates || []).map(gateKey)] : null,
+    ]);
+    const group = groups.get(key) || new Map();
+    // Within one kind of light, contributions are told apart by the route
+    // they took (the tracer's branch string): the sampling rays of one beam
+    // share a route, however far apart a lens puts their path lengths, while
+    // two arms of a split beam do not.
+    const route = r.branch || '';
+    const list = group.get(route) || [];
+    list.push(entry);
+    group.set(route, list);
+    groups.set(key, group);
+  }
+  const beams = [];
+  for (const group of groups.values()) {
+    const routes = [...group.values()].map(list => {
+      const power = list.reduce((sum, e) => sum + e.power, 0);
+      const main = list.reduce((best, e) => (e.power > best.power ? e : best));
+      // A route's pulses pass the probe where its power does.
+      const opl = list.reduce((sum, e) => sum + e.power * e.opl, 0) / power;
+      return { power, main, opl };
+    });
+    // Routes whose pulses land at the same instant within one repetition
+    // period, to 1 % of a pulse duration, are one beam: arms of equal length,
+    // or the round trips of a synchronously pumped cavity a whole number of
+    // periods apart. Anything later is a separate beam, however small the
+    // delay -- 200 fs of arm difference must stay readable. Continuous light
+    // has no instant to compare: its routes are one beam.
+    const pulse = routes[0].main.ray.pulse;
+    // Folding by the period is exact only for a bare train. A gated train
+    // delayed by one period meets its modulation at another point, so its
+    // arms stay apart at any delay (Andrea, #192: two arms 12.5 ns apart
+    // behind a 10 MHz AOM had the gate open on one and closed on the other).
+    const periodMm = pulse?.repRateMHz > 0 && !(pulse.gates || []).length ? C_MM_PER_NS * 1000 / pulse.repRateMHz : null;
+    const toleranceMm = C_MM_PER_NS * Math.max(0, pulse?.pulseWidthFs || 0) * 1e-6 * 0.01;
+    const phaseOf = route => (periodMm ? ((route.opl % periodMm) + periodMm) % periodMm : pulse ? route.opl : 0);
+    const clusters = [];
+    for (const route of routes.sort((p, q) => phaseOf(p) - phaseOf(q))) {
+      const last = clusters.at(-1);
+      const apart = last ? phaseOf(route) - phaseOf(last.at(-1)) : Infinity;
+      if (!pulse || (last && apart <= toleranceMm)) last ? last.push(route) : clusters.push([route]);
+      else clusters.push([route]);
+    }
+    if (periodMm && clusters.length > 1
+        && phaseOf(clusters[0][0]) + periodMm - phaseOf(clusters.at(-1).at(-1)) <= toleranceMm) {
+      clusters[0].unshift(...clusters.pop());
+    }
+    for (const cluster of clusters) {
+      const power = cluster.reduce((sum, route) => sum + route.power, 0);
+      const strongest = cluster.reduce((best, route) => (route.power > best.power ? route : best));
+      const { main } = strongest;
+      const opl = strongest.opl;
+      const r = main.ray;
+      const duration = r.pulse && r.gddTrace !== undefined ? probePulseDuration(r, main.segment, main.along) : null;
+      const propagationNs = opl / C_MM_PER_NS;
+      beams.push({
+        wl: r.wl, bw: r.bw || 0, spec: r.spec || null, pol: r.pol, stokes: cloneStokes(r.stokes),
+        intensity: r.segmentIntensities?.[main.segment] ?? r.intensity,
+        sourceId: r.sourceId || null, originId: r.originId || null,
+        approximation: r.approximation || null, polMod: r.polMod || null,
+        power, oplMm: opl, routes: cluster.length,
+        // When the pulses pass: the flight time to here, plus when the source
+        // emitted them. The first alone is what a plot shifts a train by,
+        // since the train's own record already carries its emission phase.
+        propagationNs,
+        arrivalNs: propagationNs + (Number.isFinite(r.pulse?.phaseNs) ? r.pulse.phaseNs : 0),
+        pulse: r.pulse ? {
+          repRateMHz: r.pulse.repRateMHz,
+          pulseWidthFs: r.pulse.pulseWidthFs,
+          durationFs: duration?.durationFs ?? null,
+          durationIssue: duration?.issue ?? null,
+          phaseNs: r.pulse.phaseNs,
+          pulseShape: r.pulse.pulseShape || 'gauss',
+          gates: (r.pulse.gates || []).map(g => ({ ...g })),
+        } : null,
+      });
     }
   }
-  if (!entries) return null;
-  return { sourceFractions: [...byOrigin].map(([sourceId, fraction]) => ({ sourceId, fraction })), entries };
+  return beams.sort((p, q) => p.wl - q.wl || p.arrivalNs - q.arrivalNs);
 }
 
 export function signalHitsFromLastTrace(stageId) {
@@ -4824,9 +4945,14 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // beam probe's power reading (final pass only).
         if (!specimenProbe && !coherent?.dryRun && Number.isFinite(r.power) && r.power > 1e-12) {
           const end = hit ? hit.p : { x: r.x + r.dx * MAXLEN, y: r.y + r.dy * MAXLEN };
+          const length = Math.hypot(end.x - r.x, end.y - r.y);
           weakProbeSegments.push({
             pts: [{ x: r.x, y: r.y }, { x: end.x, y: end.y }],
-            segmentPowers: [r.power], intensity: r.intensity, power: r.power, originId: r.originId || null,
+            opls: [r.opl, r.opl + length * Math.min(3, Math.max(1, r.ior || 1))],
+            segmentPowers: [r.power], segmentIntensities: [r.intensity], intensity: r.intensity, power: r.power,
+            originId: r.originId || null, sourceId: r.sourceId || null, branch: r.branch || null,
+            wl: r.wl, bw: r.bw, spec: r.spec, pol: r.pol, stokes: r.stokes, polMod: r.polMod, pulse: r.pulse,
+            approximation: r.approximation || null,
           });
         }
         break;
