@@ -219,3 +219,32 @@ test('a source missing entirely from a mixed reading still flags it', () => {
   assert.deepEqual(area.sourceFractions.map(f => f.sourceId), [strong.id]);
   assert.equal(area.weakLightIncomplete, true, 'and so does a probe on the strong beam alone');
 });
+
+test('weak light into a fiber never displaces a strong beam sharing it, whichever source comes first', () => {
+  // Andrea's reproduction on 4668e01: the fiber re-emits one coupling per
+  // emission key, and two CW sources at one wavelength and path length used
+  // to share a key -- the weak continuation could replace the strong beam.
+  const cable = {
+    id: 'cable', kind: 'fiber', pts: [{ x: 400, y: 10 }, { x: 600, y: 10 }], width: 20,
+    propagate: true, lossDbPerM: 0, outMode: 'diverge', na: 0.01,
+  };
+  for (const trans of [0.01, 1]) {
+    for (const weakFirst of [true, false]) {
+      const weak = lineLaser(0, 0, 0.1), strong = lineLaser(0, 20, 0.1);
+      const filter = nd(200, trans);
+      filter.params.h = 10;
+      const lens = createElement('lens', 300, 0);
+      lens.params.aperture = 10;
+      const m = meter(800, 10);
+      m.params.aperture = 100;
+      const elements = [...(weakFirst ? [weak, strong] : [strong, weak]), filter, lens, m];
+      const { drawables } = traceScene(elements, [cable]);
+      const reading = read(m, elements);
+      const what = `ND ${trans}, ${weakFirst ? 'weak' : 'strong'} source first`;
+      close(reading.detectedPowerW, 0.1 + 0.1 * trans, what);
+      assert.deepEqual(new Set(reading.sourceFractions.map(f => f.sourceId)), new Set([weak.id, strong.id]), what);
+      // The strong beam's relaunch is drawn either way.
+      assert.ok(drawables.some(d => (d.pts || []).some(p => p.x > 601)), `${what}: strong relaunch drawn`);
+    }
+  }
+});

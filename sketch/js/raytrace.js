@@ -5922,19 +5922,19 @@ export function traceScene(elements, beams = [], options = {}) {
         && other.end === c.end && other.sourceId !== c.sourceId);
     }
     // Couplings merged into one emission below keep every history among them.
-    const emissionKey = c => c.beam.id + ':' + c.end + ':' + Math.round(c.wl || 0) + ':' + (c.pulse?.sourceId || 'cw') + ':' + Math.round(c.opl || 0);
+    // Only couplings of the same light share an emission: independent sources
+    // (two CW lasers carry no pulse id to tell them apart) are keyed by the
+    // source that emitted them, and weak light followed only for measurement
+    // is kept apart from drawn light, so it can never displace it.
+    const emissionKey = c => c.beam.id + ':' + c.end + ':' + Math.round(c.wl || 0) + ':' + (c.pulse?.sourceId || 'cw') + ':' + Math.round(c.opl || 0)
+      + ':' + (c.originId || '') + (c.measureOnly ? ':measure' : '');
     const histories = new Map();
-    // An emission is drawn when any light coupled into it is: it is undrawn
-    // only when every coupling is weak light followed for measurement.
-    const measuredOnly = new Map();
     for (const c of [...ordinary, ...argonGroups]) {
       histories.set(emissionKey(c), unionPath(histories.get(emissionKey(c)), c.parametricPath));
-      measuredOnly.set(emissionKey(c), (measuredOnly.get(emissionKey(c)) ?? true) && Boolean(c.measureOnly));
     }
     for (const c of [...ordinary, ...argonGroups]) {
       const key = emissionKey(c);
       c.parametricPath = histories.get(key);
-      c.measureOnly = measuredOnly.get(key);
       if (emitted.has(key)) continue;
       emitted.add(key);
       const rays0 = fiberEmissionRays(c);
