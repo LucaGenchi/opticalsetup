@@ -315,4 +315,3 @@ editing any of the three content files, or adding/removing an `Examples/`
 or `community-submissions/` entry, rebuild the relevant generator(s) and
 finish with `node tools/build-sitemap.mjs`, which assembles the combined
 `sitemap.xml` from all three sources.
-
