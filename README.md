@@ -1,352 +1,93 @@
 # OpticalSetup
 
-A 2D optical workbench: draw a setup, trace it live, read what the detectors receive, and export a paper-ready figure or a self-contained link.
+A 2D optical workbench in the browser: draw a setup, watch the light being
+traced through it live, read what the detectors receive, and export a
+paper-ready figure or a self-contained share link.
 
 **➡ Try it in your browser: https://opticalsetup.com/sketch/**
 (mirror: https://lucagenchi.github.io/opticalsetup/sketch/)
 
-Search or browse optical elements, select one, and place it on a virtual optical table
-(top view). Set its parameters
-(focal lengths, wavelengths, transmission bands, angles...), and the beam paths are
-ray-traced live: mirrors fold, lenses focus, dichroics split by wavelength, gratings
-and prisms disperse, samples fluoresce, fibers re-emit. Export publication-ready
-figures as SVG or PNG.
+No account, no installation and no server-side storage: the app is plain
+static files that run entirely in your browser.
 
-## Highlights
+## What you can do
 
-- **Progressive workbench detail**: continuous zoom reaches 64×. The 25 mm
-  optical-table holes remain visible at overview, then 5 mm and 1 mm sketch
-  subdivisions and matching snap precision appear as you zoom in. Optical
-  strokes stay fine on screen at close inspection while shapes retain their
-  underlying geometry.
-- **Direct manipulation**: selecting any component reveals size-backed blue
-  edge/corner handles, a rotation handle, and a component-specific purple tuning
-  knob. Freeform glass also exposes its blue boundary anchors and purple circular-arc
-  nodes. Text annotations render headings, lists, emphasis, code, and links from
-  Markdown; place one or double-click it to edit directly on the canvas. Right-click
-  offers duplicate, rotate, and delete without leaving the canvas.
-- **Instrument-grade inspector**: the panel leads with the selected element's own
-  settings, with bounded numeric ranges getting a slider synced to an exact-entry
-  field; position and label controls collapse into their own disclosure sections.
-- **Light or dark workbench**: follows your system appearance by default, with a
-  persistent toggle; the toolbar, palette, canvas, and inspector restyle together
-  while exported SVG/PNG keep their original colors regardless of theme.
-- **Element palette**: lasers (line or sized beam, monochromatic / broadband /
-  supercontinuum, continuous-wave or pulsed), a first-class pulsed supercontinuum
-  laser, directional LED, broadband point source, mirrors (flat with reflectivity,
-  convex/concave, true parabolic,
-  galvo), paraxial lenses, wavelength-aware flat metalenses, spherical thick
-  singlets, exact conic/even-polynomial aspheric singlets, editable surface-table lens
-  groups (including traced crown–flint achromats), telescopes, objectives,
-  dichroics, filters, beamsplitters,
-  polarization optics (polarizers, waveplates, PBS, isolator), gratings, prisms,
-  diffusers, wavefront shapers (SLM, DMD, deformable mirror) with composable
-  optical functions, modulators (AOM/AOD/AOTF/EOM/chopper), mechanical pulse-delay lines,
-  a signed-GDD pulse compressor,
-  nonlinear crystals (SHG, THG,
-  supercontinuum, OPO), a packaged OPO and a seeded OPA (pump and seed in;
-  amplified signal, idler and residual pump out), fibers with per-end output specs, physical length and a
-  signed β₂, detectors, a focusing
-  human eye, freeform glass/prisms with straight or circular-arc sides, and free
-  annotations (arrows, labels, beam probes, and a canvas-only figure frame).
-- **Honest capability states**: the component library and inspector distinguish
-  simulated elements, elements that need setup, and intentionally diagram-only
-  annotations. An unset EOM, nonlinear crystal, or SLM is labeled as needing setup;
-  arrows and text labels never affect rays.
-- **Pulsed timing**: pulsed lasers animate wavelength-colored packets along the
-  traced path. Physical mode uses optical-path delay and the configured repetition
-  rate; schematic mode keeps packets visible at workbench scale while detector
-  delays remain physical. Gaussian and sech² packet envelopes follow the GDD
-  accumulated at their current position, including an authored input-chirp sign;
-  flat-top supercontinua use the Sellmeier endpoint group-delay spread. Glass can
-  therefore stretch or compress a pulse, and an opposite-GDD pulse compressor can
-  return it toward its bandwidth-limited duration.
-  Mechanical delay lines add folded optical path, while AOMs
-  support square, sine, or sawtooth RF modulation — the square drive by its duty
-  cycle, the two continuous ones by a modulation depth. A ramp's rise fraction
-  sweeps it from a falling sawtooth through a triangle to a rising one. A square-gated AOM can
-  also draw both diffraction orders chunked in opposition, so the switching stays
-  visible on a beam drawn as a steady line; it is a drawing choice only, and
-  detector readings are identical either way. Detector time traces use an
-  absolute vertical axis — full height is one whole source beam — so modulation
-  efficiency reads as the contrast it sets: at 0.5 the diffracted order peaks
-  halfway while the undiffracted one only falls halfway, in opposition. Playback can be
-  paused, reset, and time-scaled. A chopper gates pulse trains in time and draws
-  CW light as a chunked on/off pattern matching its duty cycle (in Hz, matching a
-  real mechanical wheel), visible identically on the live canvas and in exports.
-- **2PP write preview**: a sample holder can be set to photocurable resin. Pulsed
-  arrivals leave bounded voxel markers at the traced sample hit while an optional
-  2D Y-stage scan translates the mounted sample. It is a visual writing preview,
-  not a dose, threshold, curing, or 3D fabrication model. An illuminated resin
-  sample can continue into the dedicated Two-Photon Lithography Lab with the
-  compatible pulsed-laser settings prefilled. When one objective is
-  unambiguously present on the traced path, its NA is transferred too.
-- **Detector readouts in relative units**: photodetectors, PMTs, cameras, and the eye
-  report relative ray signal, spectrum, polarization, and spot span at their active
-  surface; pulsed paths add optical-path delay and path spread. A data-only sensor
-  display can be linked to any of them and mirrors the live output directly on the
-  canvas. Its information density adapts to its drawn size, while power, sensor-input,
-  and view controls live on the instrument itself. PMTs include qualitative
-  gain/saturation; cameras conservatively integrate continuous traced ray tubes into
-  finite 1D sensor pixels, and can resolve supported same-source interference without
-  changing the power when the sensor bin count changes. Profile colors show the
-  qualitative wavelength mixture at each position. Scalar readouts use arbitrary relative
-  ray-weight units rather than implying a calibrated percentage.
-- **Physics that responds**: thin-lens/paraxial transfer, thick spherical singlets,
-  conic-plus-A₄/A₆/A₈ aspheric singlets, and multi-element surface tables with
-  aperture stops and emergent axial colour, with ray intersections and surface
-  normals computed on the true curved surface, and catalogue-glass dispersion,
-  spectral band arithmetic at filters, Malus's law, grating equation,
-  Sellmeier glass/prism dispersion and second-order pulse GDD, cavity round trips
-  with partial mirrors, image formation with magnification (arrow / letter F / tree
-  objects and their computed images).
-- **Examples menu**: pedagogical image-formation setups (telescope, microscope,
-  camera + depth of field, Scheimpflug, vignetting...) and laboratory sketches
-  (Michelson, Mach–Zehnder, laser cavity, OPO...).
-- **Community section**: propose your own setup for review directly from the
-  toolbar; accepted submissions get their own page with a locked, click-to-inspect
-  canvas embed, and a "From the community" menu loads them straight into the editor.
-- **Paper-ready and animated export**: sketches save/load as `.json` files; figures
-  export as SVG/PNG, while pulse and mechanical playback can be captured as a looping
-  GIF with a chosen acquisition time, frame rate, and size. An optional resizable
-  Figure frame sets the exact export crop and never appears in the exported artwork.
-- **Self-contained share links and QR codes**: the Share action compresses the
-  current sketch into the URL fragment and copies the link. When the complete URL fits
-  in one QR code it also generates a downloadable QR; larger setups keep the link and
-  offer a `.json` download instead. Opening a link restores the setup without an account
-  or server-side scene storage.
-- **Installable and offline-ready**: add OpticalSetup to a desktop or mobile home
-  screen as a standalone app. After the first online visit, the workbench and its
-  bundled examples continue to load without a network connection; sketches still
-  autosave locally in the browser.
+- **Build a setup.** Search or browse the element palette and place components
+  on a virtual optical table seen from above: sources (lasers, LEDs, lamps,
+  pulsed and supercontinuum lasers), mirrors, lenses and objectives, filters,
+  dichroics and beamsplitters, polarization optics, gratings and prisms,
+  modulators, nonlinear crystals and parametric sources, fibers, samples,
+  detectors, and free-form glass.
+- **See the light.** Beams are ray-traced live as you edit: mirrors fold,
+  lenses focus, dichroics split by wavelength, gratings and prisms disperse,
+  samples fluoresce, fibers re-emit. Beam colour follows wavelength.
+- **Tune components.** Select an element to drag, rotate, resize or adjust it
+  on the canvas, or set exact values (focal length, wavelength, transmission
+  band, angle…) in the inspector.
+- **Measure.** Photodiodes, PMTs, cameras, spectrometers, beam probes and the
+  eye report power, spectrum, polarization, beam profile and pulse timing at
+  their position; a linked display shows a reading directly on the canvas.
+- **Animate pulses.** Pulsed sources play wavelength-coloured packets along the
+  traced path, with timing from the optical path length and duration that
+  follows the dispersion accumulated along the way.
+- **Learn from examples.** The Examples menu opens ready-made setups — imaging
+  systems (telescopes, microscopes, cameras), interferometers, laser cavities,
+  OPOs and ultrashort-pulse systems — each with an explanatory page.
+- **Export and share.** Save and load setups as `.json`; export figures as SVG
+  or PNG, or animations as GIF; share a setup as a link (and QR code) that
+  carries the whole scene.
+- **Work offline.** Install it as an app on desktop or mobile; after the first
+  visit it keeps working without a network, and your sketch autosaves in the
+  browser.
 
-## Reflective imaging systems, element by element
+## How it works
 
-**Examples → Reflective Imaging Systems → IR Cassegrain objective — element by element**
-opens an editable reflective objective with separate conic primary and secondary,
-a real central opening, pupil stops, and a sensor at the computed focus. Its
-companion example page explains the illustrative prescription and four control
-experiments. The new **Conic mirror** palette element supports spherical,
-parabolic, elliptical and hyperbolic profiles with exact intersections/normals,
-a bounded opening, a selectable coated side, and absorptive reflectivity losses.
-It models a 2D surface, not diffraction, a coating spectrum or a commercial
-Schwarzschild prescription.
+1. **Scene.** A setup is a list of components, each with a position, rotation
+   and parameters. A component registry defines every element: its drawing,
+   its optical surfaces, its defaults and whether it is simulated, needs
+   setup, or is a diagram-only annotation (arrows and labels never touch the
+   light).
+2. **Tracing.** Each source emits rays that are propagated surface by surface
+   in 2D. At each hit the element decides what happens — reflection,
+   refraction on the true curved surface, wavelength-dependent splitting or
+   diffraction, polarization changes (Stokes), absorption or conversion — and
+   the ray carries on with its wavelength, power weight, polarization and
+   accumulated optical path and dispersion.
+3. **Readouts.** Detectors collect the light that reaches their surface and
+   turn it into readings using their own model; these are recomputed every
+   time the scene changes.
+4. **Rendering and export.** The canvas draws the components and traced beams;
+   the same geometry produces the SVG, PNG and GIF exports, so a figure matches
+   what you saw.
 
-Two telescopes share that category and one geometry, so the only thing
-separating them is the shape of two surfaces. The **Gregorian** pairs a
-parabolic primary with a concave elliptical secondary beyond the prime focus:
-each surface images the one pair of points its own shape images exactly, so the
-pair is exact too. The **Ritchey–Chrétien** makes both mirrors hyperbolic and
-gives up a perfect axis to cancel coma across the field — the trade behind
-nearly every large research telescope. Its example page measures both against a
-classical Cassegrain on and off axis.
+### Scope
 
-## Simulation scope
+OpticalSetup computes what it shows, within stated limits: rays come from the
+surfaces on the canvas, dispersion from catalogue glass data, and readings from
+the traced light. It is built for designing, understanding and communicating
+setups — not as a replacement for optical design software. It works in 2D and
+does not do tolerancing, lens optimization or full diffraction and wave
+propagation; power readings are relative unless the sources' powers are set.
+Each component's limits are listed on its [wiki page](https://opticalsetup.com/wiki/),
+and the full per-model notes are in [docs/model-details.md](docs/model-details.md).
 
-OpticalSetup computes what it shows: rays are traced from the surfaces on the
-canvas, dispersion comes from catalogue glass data, and detector readouts are
-computed from traced light and the detector model. Every model has stated limits, listed below and on
-each component's wiki page, and selected calculations are checked against
-independent references (see the Validation section). It is built for designing,
-understanding and communicating setups, not as a replacement for dedicated
-optical design software: it does not do tolerancing, full lens optimization or
-3D analysis. A power reading combines the configured source powers weighted by
-the modelled transmission, collection and conversion; it is relative, or marked
-partial, when a source has no power set, and it is not a calibrated
-measurement. It models ray paths,
-bounded relative power, spectral bands, Stokes polarization, thin-lens elements, refractive boundaries, timed pulse trains,
-second-order material and compensator GDD, and simple detector responses. Thick
-spherical singlets and lens groups use a 2D meridional section with spherical or flat faces;
-lens-group readouts follow the same aperture-aware realized prescription as the trace,
-including the tracer-safe 0.06 mm air gap used at nominally cemented interfaces. They
-do not apply aspheric terms. The dedicated aspheric singlet uses the standard conic sag
-plus even A₄, A₆, and A₈ coefficients on either face, with intersections solved
-numerically on that surface equation and analytic normals; its paraxial readouts still depend only on vertex curvature. It does not model
-  skew rays, diffraction, coatings, cement index, manufacturing tolerances, or
-  calibrated off-axis aberrations. Outside the bounded coherent cases below,
-  the app does not model carrier
-phase or interference; it also does not model diffraction-limited propagation,
-higher-order pulse dispersion, arbitrary spectral phase or pulse-shape distortion, or
-laboratory-specific calibration. Input chirp is a signed quadratic-phase estimate derived
-from duration and bandwidth when its sign is authored; broad flat-top supercontinua instead
-use endpoint group-delay spread. A pulse a filter has reshaped is timed from the spectrum
-that survives, transformed numerically with the source's quadratic phase plus the path's
-GDD, while one effective quadratic phase describes the band (a broad band behind thick
-glass, or an etalon's comb, reads unavailable); a filtered supercontinuum is an
-assumed-sweep estimate that takes its duration as a linear sweep across its band. Where the phase is unknown, or paths of different dispersion meet at one
-detector, the dispersed duration is reported as unavailable rather than derived. The pulse
-compressor is a signed lumped-GDD proxy, not a traced grating/prism/chirped-mirror layout.
+Selected quantitative models are checked against independent Python
+reference implementations; see [docs/validation.md](docs/validation.md) and
+[docs/adding-physics.md](docs/adding-physics.md).
 
-Fibers also offer an opt-in **Hollow core · argon** model: a bounded scalar
-Fourier-envelope calculation with capillary/gas β₂, Kerr self-phase modulation
-and loss. Pressure, core diameter and captured laser pulse energy change the
-calculated spectrum and temporal field; a downstream GDD compressor can then
-shorten the pulse. Open **Ultrashort Pulses → Hollow-core pulse compressor**
-for the 100 fs → approximately 47 fs example; its loss is computed from the core by default (ideal smooth silica capillary, Marcatili–Schmeltzer). Outside the solver's bounds the
-light continues with argon's linear dispersion only and every downstream
-readout is labelled a linear-only approximation; outside the argon data
-(468–2059 nm) it continues geometrically with its own caveat. See
-[the physics, limits and validation note](docs/physics/hollow-core.md).
+## Beyond the editor
 
-Its bounded coherent model applies only to sized monochromatic CW sources and
-explicitly supported ideal surfaces. It carries optical path plus the unitary phase of
-ideal non-polarizing beamsplitters and fully reflective flat mirrors, groups compatible
-fields at a shared recombination surface, and propagates the resulting port intensity
-downstream before drawing or measuring it. Camera pixels additionally integrate any
-remaining same-source cross terms over their finite aperture, with a limit of eight
-overlapping camera-local branches per source and wavelength. Independent sources add
-as intensities. An incomplete trace or a route through an optic whose carrier phase is
-not represented falls back to conservative deposited intensity rather than inventing a
-phase.
+- **Wiki** — one page per component: the real-world physics and how the app
+  simplifies it.
+- **Example setups** — background, model limits and references for each
+  built-in example.
+- **Calculators** — interactive pages for individual physical models, running
+  the same code as the app.
+- **Community** — propose your own setup from the toolbar; accepted
+  submissions get their own page and appear in the app's community menu.
 
-The metalens is a zero-thickness paraxial phase-gradient proxy rather than an
-electromagnetic metasurface solver. In chromatic mode its focal length follows the
-ordinary diffractive relation `f(λ) = f₀λ₀/λ`; broadband light is sampled into the
-same wavelength rays used by gratings and prisms, so the axial color appears in the
-traced geometry. Idealized achromatic mode holds one focus inside a configured band
-and returns continuously to diffractive behavior outside it. Focusing efficiency is a
-user-set power fraction. The model does not derive efficiency, nanopillar geometry,
-group-delay feasibility, polarization conversion, PSF, MTF, Strehl ratio, diffraction-
-limited spot size, field angle, aberrations, or fabrication tolerances.
-
-The AOM, AOD, and AOTF are separate user-facing tools built around a shared
-qualitative acousto-optic interaction. The AOD couples RF frequency to a calibrated
-angular scan range, scales that deflection with wavelength, and can animate triangle
-or sawtooth scans. Neither it nor the AOM applies the optical frequency shift: at
-7.6e-5 nm for 80 MHz at 532 nm it is far finer than the nearest-nanometre resolution
-every wavelength readout here uses, so the AOM has no drive-frequency control. Its centre
-angle and scan range are user-supplied device specifications; the model does not
-derive them from a crystal cut, acoustic velocity, transducer geometry, RF power,
-or Bragg-efficiency curve.
-
-Paraxial image markers do not account
-for downstream clipping. Animated pulse packets are qualitative playback aids. SVG
-and PNG exports remain static and deterministic; GIF exports capture that illustrative
-playback rather than claiming a calibrated high-speed recording.
-
-The 2PP resin preview records pulsed ray arrivals at the stage sample plane and
-shows their positions in the moving 2D sample. It does not calculate focal volume,
-two-photon absorption, threshold dose, cure kinetics, voxel overlap, or a hidden
-third axis.
-
-Standalone objectives are set by effective focal length (EFL) — the focal length of
-the whole assembly as one equivalent lens — plus a working distance no longer than EFL,
-a front aperture, and a rated NA. The normal inspector offers coordinated generic 4×,
-10×, 20×, 40×, 60× water, and 100× oil starting points; exact catalogue values live in
-a collapsed Advanced parameters section. These are plausible first-order specs, not
-manufacturer prescriptions, and EFL is no longer exposed as an unrestricted canvas-drag
-control. Magnification is reported from EFL against a 200 mm
-reference tube lens rather than typed in, because it belongs to the objective plus
-whichever tube lens is actually in the sketch. The equivalent refracting plane sits at
-`front tip + WD − EFL` and can lie outside the drawn barrel for long-working-distance
-designs. It is an equivalent plane, not a physical glass surface. Collimated light focuses exactly
-one working distance past the tip, an external tube lens produces the reported
-magnification, and the back focal plane one EFL behind the plane is a real traced
-conjugate that light focused on leaves collimated. Nothing is drawn at that plane; an
-objective is an opaque barrel. Rated NA is the back pupil (2·f·NA) and is the aperture
-stop, placed at the back focal plane where an infinity objective's entrance pupil
-belongs: a beam that fills it converges at the rated angle, a beam that overfills it
-loses the overflow to the barrel, and the inspector reports both the pupil fill and the
-smaller effective NA an underfilled pupil actually delivers. The designed front medium
-(dry/air capped at NA 0.85, water 1.27, oil 1.49, or a custom index) sets the index and
-the NA ceiling, and gives the object-side acceptance half-angle `asin(NA/n)`; it never
-rewrites working distance. The pupil is a paraxial stop in a thin-lens tracer, so a beam
-filling it converges at `atan(NA)` rather than the sine-condition `asin(NA/n)` the rated
-half-angle quotes — close at moderate NA, separating near the ceiling — and the single
-plane is a first-order stand-in for a compound prescription, not the real internal
-conjugates.
-
-A non-air objective derives an exported immersion bridge to the nearest compatible
-sample, stage-mounted sample, or facing fiber end; a moving stage carries that same
-target while it remains aligned and in range, then disconnects rather than jumping
-elsewhere. Cubic Bézier sides join the objective's front-aperture edges to the contacted
-face to suggest a meniscus. That boundary is deliberately schematic: it does not move
-components, solve wetting or surface tension, refract rays at the liquid boundary, or
-model cover glass, index mismatch, focal shift, or immersion aberrations.
-
-Freeform glass is a directly editable boundary of straight segments and exact
-three-point circular arcs with constant index or selectable catalogue-glass
-Sellmeier dispersion. Catalogue glass accumulates GDD from the actual traced distance;
-the curves do not add absorption, temperature, or coating behavior. The model also
-supports per-surface transmission (a percentage, like every other optic's transmission
-efficiency), source-inside handling, and total internal reflection. Two glass bodies
-must not be placed in contact: the tracer cannot resolve interfaces closer than
-0.05 mm and silently skips one of them, so leave at least 0.06 mm between them — the
-inspector warns when anything is closer.
-Clicking adds a straight anchor; pressing, dragging, and releasing adds a point on
-an arc plus its next anchor. Exact corner hits stop safely because their surface
-normal is ambiguous. Nested or overlapping glass bodies are not surface-merged,
-and the model does not include Fresnel reflection, coatings, stress birefringence,
-phase, or manufacturing tolerances.
-
-## Validation
-
-The quantitative models behind those readouts (catalogue glass dispersion,
-transform limits and quadratic-phase stretching, the argon capillary's
-dispersion and loss, the split-step envelope solver, thick-lens cardinal
-points, Stokes polarization optics and etalon finesse) are checked in the
-test suite against independent reference implementations written in plain
-Python. [docs/validation.md](docs/validation.md) lists each model, its
-reference, sources, tolerance and scope; [docs/adding-physics.md](docs/adding-physics.md)
-is the protocol a new model has to follow to earn a place there.
-
-## Feedback
-
-Use the app, then send your exported `.json` sketch and notes to Luca. The canvas
-autosaves in your own browser, so you can't break anything for anyone else.
-
-The sanitized Codex conversations behind the major development passes are available
-in the [work-trace index](docs/codex-sessions/README.md).
-
-Maintainers reviewing and publishing a community setup submission should follow
-[docs/community-setup-review.md](docs/community-setup-review.md).
-
-## Site structure
-
-The repo root is a static marketing/SEO landing page (`index.html`,
-`robots.txt`, `sitemap.xml`); the actual app lives under `sketch/`
-(`sketch/index.html`, `sketch/js/`, `sketch/css/`). Both are plain static
-files with no build step.
-
-Three more static sections live alongside the app, each generated from a
-content file rather than hand-written HTML:
-
-- `wiki/` — one page per component covering its real-world physics and
-  exactly how OpticalSetup simplifies it, generated by
-  `tools/build-wiki.mjs` from `tools/wiki-content.mjs`. Every visible registry
-  component has an article; new components must include one before rebuilding.
-  Keep each article's `summary` to a complete 10–28 word introduction (at most
-  190 characters). The index cards, page introductions, and social previews
-  share this copy; detailed behavior belongs in the article sections. Icons,
-  palette order, and categories continue to follow the component registry.
-- `example-setups/` — one page per curated Example with real-world
-  background, a plain statement of what the model does and does not compute, and
-  references, generated by `tools/build-examples-pages.mjs` from
-  `tools/examples-content.mjs`. (Named `example-setups/`, not `examples/` —
-  the source scene files live in `Examples/`, and the two names collide on
-  any case-insensitive filesystem, macOS included.)
-- `community/` — one page per approved community submission, generated by
-  `tools/build-community.mjs` from `community-submissions/*.json`; the only
-  one of the three with an automated publish pipeline (see
-  `docs/community-setup-review.md`), since it's the only one accepting
-  outside submissions.
-- `calculators/` — one interactive page per physical model (the first is the
-  optical parametric amplifier), generated by `tools/build-calculators.mjs`
-  from `tools/calculators-content.mjs`. Each page's inputs, results and
-  graphs come from a DOM-free module next to it (`calculators/<slug>/`) that
-  calls the app's own functions, so a number checked there is the number the
-  app computes; the text below states the model, the formulas, the precision
-  and the references. `calculators/assets/calculator-kit.js` holds the shared
-  form and chart code for the next calculators. After editing the content,
-  run `node tools/build-calculators.mjs`; the test suite (and CI) fails if a
-  committed page is out of date.
-
-Every page in all three links to a locked, click-to-inspect embed of the
-actual live canvas (`sketch/?demo=`, `?example=`, or `?community=`). After
-editing any of the three content files, or adding/removing an `Examples/`
-or `community-submissions/` entry, rebuild the relevant generator(s) and
-finish with `node tools/build-sitemap.mjs`, which assembles the combined
-`sitemap.xml` from all three sources.
+These pages are generated from content files; see the
+[site structure notes](docs/model-details.md#site-structure).
 
 ## Run locally
 
@@ -358,6 +99,16 @@ npm test               # runs the regression suite
 ```
 
 (Any static file server works; ES modules require http(s), not file://.)
+
+## Feedback and contributing
+
+Use the app, then send your exported `.json` sketch and notes to Luca. The
+canvas autosaves in your own browser, so you can't break anything for anyone
+else. Contributor guidance is in [AGENTS.md](AGENTS.md); maintainers publishing
+a community submission should follow
+[docs/community-setup-review.md](docs/community-setup-review.md). The
+sanitized Codex conversations behind the major development passes are in the
+[work-trace index](docs/codex-sessions/README.md).
 
 ## License
 
