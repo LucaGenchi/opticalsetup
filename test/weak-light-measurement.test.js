@@ -6,9 +6,11 @@ import assert from 'node:assert/strict';
 import { createElement, registry } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
 import {
-  WEAK_BRANCH_BUDGET, probePowerAt, traceScene, weakLightShortfallFromLastTrace,
+  WEAK_BRANCH_BUDGET, detectorReading, probePowerAt, traceScene, weakLightShortfallFromLastTrace,
 } from '../sketch/js/raytrace.js';
 import { enhancedReading } from '../sketch/js/detector-measurements.js';
+import { parseSketch } from '../sketch/js/state.js';
+import { readFileSync } from 'node:fs';
 import { probeAveragePowerW } from '../sketch/js/probe.js';
 
 // Light below 2 % of its source used to stop being followed one optic later
@@ -130,12 +132,15 @@ test('one branch short of the budget, the branch it cannot follow is reported, n
   assert.ok(arrived[0].approximations.some(note => /^Light untraced/.test(note)), 'the inspector caveat');
   const display = createElement('display', 700, 0);
   display.params.sensorId = (readings[0] ? transmitted : reflected).id;
-  assert.match(registry.display.svg(display, [...elements, display]), /LIGHT UNTRACED · MAY READ LOW/, 'the meter screen says so');
-  // The probe on the followed arm marks its figure as a floor.
+  assert.match(registry.display.svg(display, [...elements, display]), /LIGHT UNTRACED · READING INCOMPLETE/, 'the meter screen says so');
+  // The probe on the followed arm marks its figure as incomplete. Not as a
+  // floor: a missing destructive contribution could make it too high.
   const probe = createElement('probe', readings[0] ? 400 : 300, readings[0] ? 0 : -100);
   probe.params.prop = 'power';
   assert.equal(probePowerAt(probe.x, probe.y, 5).weakLightIncomplete, true);
-  assert.match(registry.probe.svg(probe, [...elements, probe]), /≥ 0\.500 mW|≥ 500 µW/);
+  const card = registry.probe.svg(probe, [...elements, probe]);
+  assert.match(card, /(0\.500 mW|500 µW) \(incomplete\)/);
+  assert.doesNotMatch(card, /≥/);
 });
 
 test('with no budget both weak branches are reported, and the next ordinary trace is complete again', () => {
@@ -210,7 +215,7 @@ test('a source missing entirely from a mixed reading still flags it', () => {
   const reading = read(m, elements);
   close(reading.detectedPowerW, 0.1, 'the strong source alone');
   assert.deepEqual(reading.sourceFractions.map(f => f.sourceId), [strong.id]);
-  assert.equal(reading.weakLightIncomplete, true, 'the meter says it may read low');
+  assert.equal(reading.weakLightIncomplete, true, 'the meter says its reading is incomplete');
   const area = probePowerAt(400, 20, 5);
   assert.deepEqual(area.sourceFractions.map(f => f.sourceId), [strong.id]);
   assert.equal(area.weakLightIncomplete, true, 'and so does a probe on the strong beam alone');
@@ -254,6 +259,61 @@ test('two sources into one fiber both arrive, whichever comes first', () => {
       const what = `ND ${trans}, ${weakFirst ? 'weak' : 'strong'} source first`;
       close(reading.detectedPowerW, 0.1 + 0.1 * trans, what);
       assert.deepEqual(new Set(reading.sourceFractions.map(f => f.sourceId)), new Set([weak.id, strong.id]), what);
+    }
+  }
+});
+
+// Andrea's reproductions on ad0eb6c, with coherent sources: a sized CW laser
+// is phase-locked, so the coherent planning passes run before the final one.
+test('the coherent planning passes do not count dropped light a second time', () => {
+  // All of a coherent beam trapped between two 100 % mirrors: the depth
+  // limit stops the whole of it, once -- not once per planning pass.
+  const left = createElement('mirror', 300, 0), right = createElement('mirror', 360, 0);
+  const laser = laserAt(250, 0, 0.1, { beamMode: 'beam' });
+  laser.params.beamWidth = 6;
+  traceScene([laser, left, right], []);
+  const trapped = weakLightShortfallFromLastTrace();
+  assert.equal(trapped.length, 1);
+  assert.ok(Math.abs(trapped[0].fraction - 1) < 1e-12, `the whole beam, once: ${trapped[0].fraction}`);
+  // A 1 % coherent beam split by a cube with no budget: both halves, once.
+  const beamLaser = laserAt(0, 0, 0.1, { beamMode: 'beam' });
+  beamLaser.params.beamWidth = 6;
+  traceScene([beamLaser, nd(200, 0.01), createElement('bs', 300, 0)], [], { weakBranchBudget: 0 });
+  const split = weakLightShortfallFromLastTrace();
+  assert.equal(split.length, 1);
+  assert.ok(Math.abs(split[0].fraction - 0.01) < 1e-12, `the 1 % beam, once: ${split[0].fraction}`);
+});
+
+test('coherent light demoted below its floor is not recombined by the plan any more', () => {
+  // Two Mach-Zehnders in cascade: the first, nearly dark at its horizontal
+  // port, sends about 3.5e-5 of the light into the second. That light has
+  // fallen below the coherent floor, so it is power-only: the second
+  // interferometer splits it the same way whatever its own delay.
+  const first = parseSketch(readFileSync('test/fixtures/mach-zehnder.json', 'utf8')).elements;
+  const second = parseSketch(readFileSync('test/fixtures/mach-zehnder.json', 'utf8')).elements;
+  const firstCameras = first.filter(el => el.type === 'camera');
+  const horizontal = firstCameras.reduce((a, b) => (a.x > b.x ? a : b));
+  const bench = first.filter(el => el !== horizontal && el.type !== 'display');
+  bench.find(el => el.type === 'delayline').params.delayMm = 0.000799;
+  const cascade = second.filter(el => !['cwlaser', 'textlabel', 'display'].includes(el.type)).map(el => {
+    el.id = `second-${el.id}`;
+    el.x += 600;
+    el.y += 200;
+    return el;
+  });
+  const secondDelay = cascade.find(el => el.type === 'delayline');
+  const cameras = cascade.filter(el => el.type === 'camera');
+  const readings = [0, 0.000133, 0.000266].map(delayMm => {
+    secondDelay.params.delayMm = delayMm;
+    traceScene([...bench, ...cascade], []);
+    return cameras.map(camera => detectorReading(camera.id)?.signal ?? 0);
+  });
+  const total = readings[0][0] + readings[0][1];
+  assert.ok(total > 1e-5 && total < 1e-4, `about 3.5e-5 reaches the second interferometer: ${total}`);
+  for (const [i, reading] of readings.entries()) {
+    for (const port of [0, 1]) {
+      assert.ok(Math.abs(reading[port] - readings[0][port]) < 1e-9 * total,
+        `delay step ${i}, port ${port}: ${reading[port]} vs ${readings[0][port]}`);
     }
   }
 });

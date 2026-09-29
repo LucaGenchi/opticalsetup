@@ -77,7 +77,7 @@ let weakProbeSegments = [];
 // the fraction of that source's emitted power, and every reading of the
 // trace then says it may be low.
 export const WEAK_BRANCH_BUDGET = 1024;
-export const WEAK_LIGHT_NOTE = 'Light untraced: somewhere in this sketch, light ran past the tracer’s weak-branch budget or its depth limit (60 interactions, such as round trips in a cavity); it may have reached this sensor, so the reading may be low';
+export const WEAK_LIGHT_NOTE = 'Light untraced: somewhere in this sketch, light ran past the tracer’s weak-branch budget or its depth limit (60 interactions, such as round trips in a cavity); it may have reached this sensor, so the reading is incomplete (usually low, but with interference it can be off either way)';
 let weakBranchBudget = WEAK_BRANCH_BUDGET;
 let weakLightShortfall = new Map();
 let lastSignalHits = [];
@@ -4919,9 +4919,10 @@ function fannedBandCovered(pulse, hits) {
 
 // Light the weak-branch budget or the depth limit stopped, charged to the
 // source that emitted it. Only the final pass reports: the probe passes that
-// plan specimens and OPAs run the same budget over the same light.
-function noteWeakLightShortfall(originId, power) {
-  if (specimenProbe || !(power > 0)) return;
+// plan specimens and OPAs, and the coherent planning passes (dryRun), run the
+// same budget over the same light.
+function noteWeakLightShortfall(originId, power, coherent) {
+  if (specimenProbe || coherent?.dryRun || !(power > 0)) return;
   const key = originId || null;
   weakLightShortfall.set(key, (weakLightShortfall.get(key) || 0) + power);
 }
@@ -4997,7 +4998,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         markIncompleteCoherence(r, 'coherent path exceeded the trace-depth budget');
         // Light the depth limit stops is not dropped silently: a cavity can
         // outlast it with power to spare.
-        noteWeakLightShortfall(r.originId, r.power);
+        noteWeakLightShortfall(r.originId, r.power, coherent);
         break;
       }
       const hit = nearestHit({ x: r.x, y: r.y }, { x: r.dx, y: r.dy }, surfaces, r.last);
@@ -5267,7 +5268,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       if (children.length === 0) break;
       recordCoherentArrival(r, hit, children, coherent?.arrivals);
       for (const child of children) {
-        const override = coherent?.plan?.get(coherentChildKey(r, hit.surface, child));
+        // A ray demoted to power-only (below MIN_COHERENT_INT) no longer takes
+        // part in any recombination, even if an earlier planning pass, where it
+        // was still coherent, left a plan entry under the same key.
+        const override = r.phaseValid ? coherent?.plan?.get(coherentChildKey(r, hit.surface, child)) : null;
         if (!override) continue;
         child.intensity = override.intensity;
         child.power = override.power;
@@ -5375,7 +5379,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // What the budget cannot follow is recorded rather than silently lost.
         if (childIntensity < MIN_INT && children.length > 1) {
           if (weakBranches >= weakBranchBudget) {
-            noteWeakLightShortfall(r.originId, childPower);
+            noteWeakLightShortfall(r.originId, childPower, coherent);
             continue;
           }
           weakBranches++;

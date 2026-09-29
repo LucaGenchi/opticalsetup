@@ -1073,10 +1073,12 @@ function probeCard(el, rd, elements = []) {
     // Without a source carrying a configured wattage there is no absolute
     // number to give, and the relative weight is not one -- say so, in place
     // of the number rather than under it.
-    // Weak light the tracer's measurement budget could not follow may be
-    // missing here, so the figure is a floor and is shown as one.
+    // Light the tracer's weak-branch budget or depth limit could not follow
+    // may be missing here. That is not always a floor -- a missing
+    // destructive contribution makes the figure too high -- so the card says
+    // "incomplete" rather than "≥" (Andrea, #193).
     return valueCard(watts === null ? 'no source power'
-      : `${area.weakLightIncomplete ? '≥ ' : ''}${formatPowerMw(watts)}`);
+      : `${formatPowerMw(watts)}${area.weakLightIncomplete ? ' (incomplete)' : ''}`);
   }
 
   if (prop === 'duration') {

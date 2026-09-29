@@ -1803,7 +1803,7 @@
   "detector:idler-detector": {
    "detector": {
     "approximations": [
-     "Light untraced: somewhere in this sketch, light ran past the tracer’s weak-branch budget or its depth limit (60 interactions, such as round trips in a cavity); it may have reached this sensor, so the reading may be low"
+     "Light untraced: somewhere in this sketch, light ran past the tracer’s weak-branch budget or its depth limit (60 interactions, such as round trips in a cavity); it may have reached this sensor, so the reading is incomplete (usually low, but with interference it can be off either way)"
     ],
     "bandMax": 1589.37209,
     "bandMin": 1586.74731,
@@ -2332,7 +2332,7 @@
   "detector:signal-detector": {
    "detector": {
     "approximations": [
-     "Light untraced: somewhere in this sketch, light ran past the tracer’s weak-branch budget or its depth limit (60 interactions, such as round trips in a cavity); it may have reached this sensor, so the reading may be low"
+     "Light untraced: somewhere in this sketch, light ran past the tracer’s weak-branch budget or its depth limit (60 interactions, such as round trips in a cavity); it may have reached this sensor, so the reading is incomplete (usually low, but with interference it can be off either way)"
     ],
     "bandMax": 800.235502,
     "bandMin": 799.764498,
