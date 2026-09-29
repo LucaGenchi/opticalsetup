@@ -24,8 +24,8 @@ static files that run entirely in your browser.
 - **Tune components.** Select an element to drag, rotate, resize or adjust it
   on the canvas, or set exact values (focal length, wavelength, transmission
   band, angle…) in the inspector.
-- **Measure.** Photodiodes, PMTs, cameras, spectrometers, beam probes and the
-  eye report power, spectrum, polarization, beam profile and pulse timing at
+- **Measure.** Photodiodes, PMTs, cameras, spectrometers and beam probes
+  report power, spectrum, polarization, beam profile and pulse timing at
   their position; a linked display shows a reading directly on the canvas.
 - **Animate pulses.** Pulsed sources play wavelength-coloured packets along the
   traced path, with timing from the optical path length and duration that
@@ -83,8 +83,8 @@ reference implementations; see [docs/validation.md](docs/validation.md) and
   built-in example.
 - **Calculators** — interactive pages for individual physical models, running
   the same code as the app.
-- **Community** — propose your own setup from the toolbar; accepted
-  submissions get their own page and appear in the app's community menu.
+- **Community** — setups shared by users; accepted submissions get their own
+  page and appear in the app's community menu.
 
 These pages are generated from content files; see the
 [site structure notes](docs/model-details.md#site-structure).
@@ -102,9 +102,10 @@ npm test               # runs the regression suite
 
 ## Feedback and contributing
 
-Use the app, then send your exported `.json` sketch and notes to Luca. The
-canvas autosaves in your own browser, so you can't break anything for anyone
-else. Contributor guidance is in [AGENTS.md](AGENTS.md); maintainers publishing
+To contribute a setup, press **Propose** in the toolbar: it submits the
+current sketch with your description for review, and accepted setups are
+published in the Community section. The canvas autosaves in your own browser,
+so you can't break anything for anyone else. Code contributor guidance is in [AGENTS.md](AGENTS.md); maintainers publishing
 a community submission should follow
 [docs/community-setup-review.md](docs/community-setup-review.md). The
 sanitized Codex conversations behind the major development passes are in the
