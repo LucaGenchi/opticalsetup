@@ -1802,7 +1802,9 @@
   },
   "detector:idler-detector": {
    "detector": {
-    "approximations": [],
+    "approximations": [
+     "Light untraced: somewhere in this sketch, light ran past the tracer’s weak-branch budget or its depth limit (60 interactions, such as round trips in a cavity); it may have reached this sensor, so the reading is incomplete (usually low, but with interference it can be off either way)"
+    ],
     "bandMax": 1589.37209,
     "bandMin": 1586.74731,
     "centroid": null,
@@ -2323,12 +2325,15 @@
      }
     ],
     "spotSpan": 0,
-    "wavelength": 1588.0597
+    "wavelength": 1588.0597,
+    "weakLightIncomplete": true
    }
   },
   "detector:signal-detector": {
    "detector": {
-    "approximations": [],
+    "approximations": [
+     "Light untraced: somewhere in this sketch, light ran past the tracer’s weak-branch budget or its depth limit (60 interactions, such as round trips in a cavity); it may have reached this sensor, so the reading is incomplete (usually low, but with interference it can be off either way)"
+    ],
     "bandMax": 800.235502,
     "bandMin": 799.764498,
     "centroid": null,
@@ -2422,7 +2427,7 @@
       "power": 0.000207180823,
       "sourceId": "pump",
       "wavelength": 799.4,
-      "widthNm": 0.0255265347
+      "widthNm": 0.0510530695
      },
      {
       "bandId": "pump#0",
@@ -2431,7 +2436,7 @@
       "power": 0.00154606275,
       "sourceId": "pump",
       "wavelength": 799.5,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2440,7 +2445,7 @@
       "power": 0.00487546842,
       "sourceId": "pump",
       "wavelength": 799.6,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2449,7 +2454,7 @@
       "power": 0.0119096399,
       "sourceId": "pump",
       "wavelength": 799.7,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2458,7 +2463,7 @@
       "power": 0.0225375001,
       "sourceId": "pump",
       "wavelength": 799.8,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2467,7 +2472,7 @@
       "power": 0.0330424733,
       "sourceId": "pump",
       "wavelength": 799.9,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2476,7 +2481,7 @@
       "power": 0.0375470174,
       "sourceId": "pump",
       "wavelength": 800,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2485,7 +2490,7 @@
       "power": 0.0330424733,
       "sourceId": "pump",
       "wavelength": 800.1,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2494,7 +2499,7 @@
       "power": 0.0225375001,
       "sourceId": "pump",
       "wavelength": 800.2,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2503,7 +2508,7 @@
       "power": 0.0119096399,
       "sourceId": "pump",
       "wavelength": 800.3,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2512,7 +2517,7 @@
       "power": 0.00487546842,
       "sourceId": "pump",
       "wavelength": 800.4,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2521,7 +2526,7 @@
       "power": 0.00154606275,
       "sourceId": "pump",
       "wavelength": 800.5,
-      "widthNm": 0.0255265347
+      "widthNm": 0.102106139
      },
      {
       "bandId": "pump#0",
@@ -2530,11 +2535,12 @@
       "power": 0.000207180823,
       "sourceId": "pump",
       "wavelength": 800.6,
-      "widthNm": 0.0255265347
+      "widthNm": 0.0510530695
      }
     ],
     "spotSpan": 3.52102991e-9,
-    "wavelength": 800
+    "wavelength": 800,
+    "weakLightIncomplete": true
    }
   }
  },

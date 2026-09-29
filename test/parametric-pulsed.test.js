@@ -295,6 +295,9 @@ test('light a crystal generated never converts in it again, even through a wide 
   const m2 = createElement('mirror', 300, 160);
   m1.params.refl = 95;
   m2.params.refl = 95;
+  // The detectors read the mirrors' leaks, so those are traced.
+  m1.params.showTransmitted = true;
+  m2.params.showTransmitted = true;
   // Generated light passes through whether or not the residual pump is kept.
   for (const transmitPump of [true, false]) {
     const { long, short } = opoScene({

@@ -192,6 +192,7 @@ test('light the box generated is never converted by it again', () => {
   const box = createElement('opo', 250, 100);
   Object.assign(box.params, { signalWl: 1100, aperture: 30 });
   const m1 = createElement('mirror', 400, 100); m1.rot = 45; m1.params.length = 80; m1.params.refl = 50;
+  m1.params.showTransmitted = true; // the tap is the mirror's transmitted half
   const m2 = createElement('mirror', 400, 0); m2.rot = 135; m2.params.length = 80;
   const m3 = createElement('mirror', 100, 0); m3.rot = 45; m3.params.length = 80;
   const tap = createElement('detector', 520, 100);

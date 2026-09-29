@@ -249,7 +249,7 @@ function caveatStrip(reading) {
   if (!notes.length) return '';
   const text = notes.some(n => /^Linear-only/.test(n)) ? 'LINEAR-ONLY APPROX · NONLINEAR N/A'
     : notes.some(n => /^Argon dispersion unavailable/.test(n)) ? 'ARGON DISPERSION N/A · GEOMETRIC ONLY'
-      : notes.length === 1 && /^Weak light untraced/.test(notes[0]) ? 'WEAK LIGHT UNTRACED · MAY READ LOW'
+      : notes.length === 1 && /^Light untraced/.test(notes[0]) ? 'LIGHT UNTRACED · READING INCOMPLETE'
         : 'APPROXIMATION · SEE INSPECTOR';
   return `<g data-caveat="${esc(notes.join(' | '))}"><rect x="-42.2" y="11.6" width="84.4" height="5.6" fill="#3b2a05"/>`
     + `<text x="0" y="15.6" text-anchor="middle" font-size="3.3" font-weight="760" fill="#fbbf24">${esc(text)}</text></g>`;
@@ -319,19 +319,28 @@ function spectrumRange(reading, sensor) {
   samples.forEach((sample, index) => {
     if (!Number.isFinite(sample.wavelength)) return;
     const key = sample.continuum ? `band:${sample.bandId || sample.sourceId || ''}` : `line:${index}`;
-    const feature = features.get(key) || { peak: 0, power: 0, members: [] };
+    const feature = features.get(key) || { peak: 0, power: 0, members: [], sourceId: sample.sourceId || '' };
     feature.members.push({ sample, height: heights[index] });
     feature.peak = Math.max(feature.peak, heights[index]);
     feature.power += Math.max(0, Number(sample.power) || 0);
     features.set(key, feature);
   });
   const totalPower = [...features.values()].reduce((sum, feature) => sum + feature.power, 0);
+  // The relative view scales each source to its own peak, so it judges what
+  // is worth showing against each source's own light too: a 1 uW seed beside
+  // a 1 W pump is a whole source there, not a millionth of the reading.
+  const relative = sensor?.params?.intensityScale === 'relative';
+  const sourcePower = new Map();
+  for (const feature of features.values()) {
+    sourcePower.set(feature.sourceId, (sourcePower.get(feature.sourceId) || 0) + feature.power);
+  }
 
   let lo = Infinity, hi = -Infinity;
   for (const feature of features.values()) {
     // A feature carrying essentially none of the detected light is numerical
     // dust; letting it into the window would stretch the axis over nothing.
-    if (totalPower > 0 && !(feature.power >= totalPower * DISPLAY_FLOOR)) continue;
+    const reference = relative ? sourcePower.get(feature.sourceId) : totalPower;
+    if (reference > 0 && !(feature.power >= reference * DISPLAY_FLOOR)) continue;
     for (const { sample, height } of feature.members) {
       if (feature.peak > 0 && !(height >= feature.peak * DISPLAY_FLOOR)) continue;
       const half = Math.max(0, Number(sample.widthNm) || 0) / 2;

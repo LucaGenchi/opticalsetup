@@ -78,10 +78,10 @@ test('two sources into one fiber are still delivered and attributed separately',
   close(fractions.get(weaker.id), 1, 'all of the weaker source');
 });
 
-test('weak beam-mode light through a fiber is followed undrawn at its full power', () => {
-  // A 1 % ND puts every sample below the drawing floor, and the lens after
-  // it is where drawn light would stop: the couplings are measure-only,
-  // merge among themselves, and are never drawn past the fiber.
+test('weak beam-mode light through a fiber is drawn and relaunched at its full power', () => {
+  // A 1 % ND puts every sample below 2 % of the source. Since #193 weak light
+  // is drawn and traced like any other, so all 25 samples couple, merge into
+  // one emission, and the relaunched beam is drawn past the fiber.
   const filter = createElement('filter', 200, 10);
   Object.assign(filter.params, { ftype: 'nd', trans: 0.01 });
   const lens = createElement('lens', 300, 10);
@@ -91,5 +91,5 @@ test('weak beam-mode light through a fiber is followed undrawn at its full power
   const reading = enhancedReading(m, elements);
   close(reading.detectedPowerW, 0.001, 'behind a 1 % ND');
   assert.equal(reading.weakLightIncomplete, undefined);
-  assert.equal(relaunched(drawables).length, 0, 'nothing drawn past the fiber');
+  assert.ok(relaunched(drawables).length > 0, 'the relaunched weak beam is drawn past the fiber');
 });
