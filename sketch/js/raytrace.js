@@ -80,6 +80,8 @@ export const WEAK_BRANCH_BUDGET = 1024;
 export const WEAK_LIGHT_NOTE = 'Light untraced: somewhere in this sketch, light ran past the tracer’s weak-branch budget or its depth limit (60 interactions, such as round trips in a cavity); it may have reached this sensor, so the reading is incomplete (usually low, but with interference it can be off either way)';
 let weakBranchBudget = WEAK_BRANCH_BUDGET;
 let weakLightShortfall = new Map();
+// Loops summed in closed form in the last trace (see closedLoop).
+let loopClosures = [];
 let lastSignalHits = [];
 let detectorHits = new Map();
 // Rays whose centres cross a camera plane just outside its finite face still
@@ -1527,6 +1529,13 @@ export function probeBeamsAt(x, y, radius) {
 // emitted power). Empty when every weak ray was followed to where it ends.
 export function weakLightShortfallFromLastTrace() {
   return [...weakLightShortfall].map(([sourceId, fraction]) => ({ sourceId, fraction }));
+}
+
+// Every closed loop the last trace summed instead of following: which source's
+// light, the loop's round-trip transmission g, and how many interactions one
+// round trip takes.
+export function loopClosuresFromLastTrace() {
+  return loopClosures.map(loop => ({ ...loop }));
 }
 
 export function signalHitsFromLastTrace(stageId) {
@@ -4927,6 +4936,123 @@ function noteWeakLightShortfall(originId, power, coherent) {
   weakLightShortfall.set(key, (weakLightShortfall.get(key) || 0) + power);
 }
 
+// Closed passive loops (a cavity's round trip) are summed in closed form.
+//
+// Every interaction leaves a checkpoint on the ray's trail: which surface,
+// where, in which direction, with what power and in what state. A ray that
+// reaches a checkpoint it has been at twice before -- same surface, point and
+// direction within LOOP_POSITION_MM / LOOP_DIRECTION, the same state, after
+// two passes through the same surfaces taking the same branches -- is going
+// round a closed loop, and has lost the same fraction of its power on each
+// pass: g, the loop's round-trip transmission. Linear, passive and time
+// invariant, the loop does to every later pass exactly what it did to this
+// one, scaled by g. So the rest of the series, g + g^2 + ..., is carried by a
+// single further pass whose power is divided by (1 - g): every branch that
+// leaves the loop on that pass (an output coupler's leak, a dichroic's
+// rejected band) carries its whole geometric sum, and the ray itself stops
+// when it closes the loop again, its remaining power already accounted for.
+// Only power is scaled: the drawn intensity keeps its per-pass value, so the
+// picture of the cavity does not change.
+//
+// Refused, falling back to the depth limit and its "reading incomplete"
+// caveat: a loop with any element that generates, converts, gates or
+// modulates light (a crystal that would convert the circulating light again,
+// an AOM, a chopper, a specimen); a lossless loop (g = 1), whose light never
+// leaves; a coherent ray, whose passes add as fields, not powers; and a
+// pulsed ray whose round trip is not a whole number of pulse periods. Each
+// pass leaves one round trip later: in a synchronously pumped cavity that is
+// on the next pulse of the train, so every echo keeps the train's timing and
+// the summed average power is exact, but otherwise the echoes fall between
+// the pulses, where their timing matters to anything downstream.
+const LOOP_POSITION_MM = 1e-6;
+const LOOP_DIRECTION = 1e-9;
+const LOOP_MAX_GAIN = 1 - 1e-9;
+const PASSIVE_LOOP_SURFACES = new Set([
+  'mirror', 'cmirror', 'conicmirror', 'dm', 'lens', 'metalens', 'refract', 'dichroic', 'filter',
+  'etalon', 'split', 'pbs', 'grating', 'polarizer', 'wp', 'retarder', 'isolator', 'attenuate',
+  'gdd', 'delay', 'phaseplate', 'transmit',
+]);
+
+// Whether an interaction is linear, passive and time invariant for the light
+// that met it: nothing generated (no new source or pulse, no power set
+// outright), and a nonlinear crystal only when it let this light straight
+// through untouched -- light it generated itself, or a pump outside its window.
+function passiveInteraction(surface, children) {
+  if (!PASSIVE_LOOP_SURFACES.has(surface.kind)) return false;
+  if (children.some(c => c.power !== undefined || 'sourceId' in c || 'pulse' in c || c.speckle || c.chopped)) {
+    return false;
+  }
+  const convert = surface.kind === 'transmit' ? surface.data.convert : null;
+  if (convert && convert !== 'none') {
+    return children.length === 1 && Object.keys(children[0]).every(key => key === 'd');
+  }
+  return true;
+}
+
+// The part of a ray's state that decides what the loop does to it next.
+function loopState(r) {
+  return [
+    r.wl, r.bw, r.spec, r.pol, r.stokes?.s1, r.stokes?.s2, r.stokes?.s3, r.polMod, r.pulse,
+    r.gdd, r.groupDelayDifferenceFs, r.medium, r.mediumMaterial, r.ior, r.sourceId, r.color,
+    r.dispersed, r.spectralContinuum, r.spectralWidthNm, r.spectralLo, r.spectralHi, r.fanLo, r.fanHi,
+    r.approximation, r.parametricPath, r.keepWeak, r.retainWeak, r.hidden, r.sample, r.phaseValid,
+  ];
+}
+
+// Equal within rounding: a dichroic that reflects a band whole still
+// renormalizes the sampled spectrum it hands on, a few parts in 1e14 each
+// pass. A spectrum a loop really reshapes differs far more, and is refused.
+function sameLoopValue(a, b) {
+  if (a === b) return true;
+  if (typeof a === 'number' && typeof b === 'number') {
+    return Math.abs(a - b) <= 1e-9 * Math.max(Math.abs(a), Math.abs(b)) + 1e-15;
+  }
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object' || Array.isArray(a) !== Array.isArray(b)) return false;
+  const keys = Object.keys(a);
+  if (keys.length !== Object.keys(b).length) return false;
+  return keys.every(key => Object.hasOwn(b, key) && sameLoopValue(a[key], b[key]));
+}
+
+const samePlace = (a, b) => a.key === b.key
+  && Math.abs(a.x - b.x) <= LOOP_POSITION_MM && Math.abs(a.y - b.y) <= LOOP_POSITION_MM
+  && Math.abs(a.dx - b.dx) <= LOOP_DIRECTION && Math.abs(a.dy - b.dy) <= LOOP_DIRECTION;
+
+// The last pass of a loop the ray has just closed twice, with its round-trip
+// transmission, or null. `node` is the checkpoint at the current hit.
+function closedLoop(node, r) {
+  if (r.phaseValid || r.evan || r.chopped || !(Number.isFinite(r.power) && r.power > 0)) return null;
+  const earlierVisit = from => {
+    for (let at = from, steps = 1; at; at = at.prev, steps++) if (samePlace(at, node)) return { at, steps };
+    return null;
+  };
+  const second = earlierVisit(node.prev);
+  if (!second) return null;
+  const first = earlierVisit(second.at.prev);
+  if (!first || first.steps !== second.steps) return null;
+  // Walk both passes side by side: the same surfaces, points and branches,
+  // every interaction passive, the same state at each end.
+  const pass = [];
+  for (let a = node, b = second.at; a !== second.at; a = a.prev, b = b.prev) {
+    if (!samePlace(a, b) || a.via !== b.via || !a.viaPassive || !b.viaPassive) return null;
+    pass.unshift(a);
+  }
+  const states = [first.at.state, second.at.state, node.state];
+  for (let i = 0; i < states[0].length; i++) {
+    if (!sameLoopValue(states[0][i], states[1][i]) || !sameLoopValue(states[1][i], states[2][i])) return null;
+  }
+  const g = node.power / second.at.power;
+  const previous = second.at.power / first.at.power;
+  if (!(g > 0 && g <= LOOP_MAX_GAIN) || Math.abs(g - previous) > 1e-9 * previous) return null;
+  if (r.pulse) {
+    const periodNs = 1000 / r.pulse.repRateMHz;
+    const roundTripNs = (node.opl - second.at.opl) / C_MM_PER_NS;
+    const periods = Math.round(roundTripNs / periodNs);
+    const toleranceNs = Math.max(1e-9, (r.pulse.pulseWidthFs || 0) * 1e-6);
+    if (!(periodNs > 0) || periods < 1 || Math.abs(roundTripNs - periods * periodNs) > toleranceNs) return null;
+  }
+  return { g, pass };
+}
+
 function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent = null) {
   const done = [];
   // Genuine branches weaker than the old 2 % drawing floor, spent against
@@ -4952,6 +5078,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         ? [{ opl, value: groupDelayDifferenceFs, linear: false }] : null,
       segmentIntensities: [], segmentPowers: [], segmentHistories: [], segmentEvents: [],
       sig: '', depth: 0, last: null,
+      loopTrail: null, loopVia: null, loopViaPassive: false, loopTail: null,
     };
   });
   const appendPoint = (r, p, geometricLength) => {
@@ -5099,6 +5226,30 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       r.segmentEvents[r.segmentEvents.length - 1] = interactionKey;
       if (hit.ambiguous && hit.surface.kind === 'refract') break;
       r.sig += `/${interactionKey}`;
+      const checkpoint = {
+        prev: r.loopTrail, key: interactionKey, x: hit.p.x, y: hit.p.y, dx: r.dx, dy: r.dy,
+        power: r.power, opl: r.opl, via: r.loopVia, viaPassive: r.loopViaPassive, state: loopState(r),
+      };
+      if (r.loopTail) {
+        // The summing pass: a ray still following the loop stops where it
+        // closes it again, its remaining power already counted. One that took
+        // another branch has left the loop, carrying its share of the sum.
+        const expected = r.loopTail.pass[r.loopTail.step];
+        if (samePlace(checkpoint, expected) && checkpoint.via === expected.via) {
+          r.loopTail = { ...r.loopTail, step: r.loopTail.step + 1 };
+          if (r.loopTail.step === r.loopTail.pass.length) break;
+        } else r.loopTail = null;
+      } else {
+        const loop = closedLoop(checkpoint, r);
+        if (loop) {
+          r.power /= 1 - loop.g;
+          r.loopTail = { pass: loop.pass, step: 0 };
+          if (!specimenProbe && !coherent?.dryRun) {
+            loopClosures.push({ sourceId: r.originId || null, g: loop.g, interactions: loop.pass.length });
+          }
+        }
+      }
+      r.loopTrail = checkpoint;
       const phaseIssue = r.phaseValid ? carrierPhaseIssue(hit.surface) : null;
       if (phaseIssue) {
         r.phaseValid = false;
@@ -5256,6 +5407,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       r.carriedEvan = null;
       interactionRay = r; interactionReshapesPulse = false;
       const children = interact(r, hit);
+      const passive = passiveInteraction(hit.surface, children);
       // What a wavelength-selective element passes is the band the user chose,
       // often a thin slice of a broad source -- 1 nm of a 500 nm continuum is
       // 0.2 % of it -- so, like an AOTF line, it is held to the weak-ray floor
@@ -5359,6 +5511,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           }
           r.groupDelayDifferenceFs = c0.groupDelayDifferenceFs;
         }
+        r.loopVia = '0'; r.loopViaPassive = passive;
         r.last = hit.surface; r.depth++;
         continue;
       }
@@ -5492,6 +5645,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           segmentEvents: [],
           sig: r.sig + '/' + (c.tag || 'w'),
           depth: r.depth + 1, last: hit.surface,
+          loopTrail: r.loopTrail, loopVia: String(c.tag ?? ci), loopViaPassive: passive,
+          loopTail: r.loopTail ? { ...r.loopTail } : null,
         });
       }
       break;
@@ -5810,6 +5965,7 @@ export function traceScene(elements, beams = [], options = {}) {
   lastPowerPaths = [];
   weakProbeSegments = [];
   weakLightShortfall = new Map();
+  loopClosures = [];
   weakBranchBudget = Number.isInteger(options.weakBranchBudget) && options.weakBranchBudget >= 0
     ? options.weakBranchBudget : WEAK_BRANCH_BUDGET;
   hollowReadings.clear();

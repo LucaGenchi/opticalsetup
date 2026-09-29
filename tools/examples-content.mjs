@@ -824,8 +824,10 @@ export const exampleEntries = [
       <p>The crystal is set to a 532 nm pump and an 800 nm signal, so the inspector shows
       the idler at 1588 nm. It converts a fixed 30 % of the pump: 19.95 % becomes signal
       and 10.05 % idler. The idler detector reads that 10.05 % in one pass. The signal
-      leaks through M2 on every round trip, and the tracer sums twelve of those leaks,
-      reading 18.6 % of the pump. Those are successive round trips of one launched signal,
+      leaks through M2 on every round trip, each time with 80 % of the power it had on the
+      one before. The tracer follows the first round trips and sums the rest of that series
+      in closed form, so the signal detector reads the whole 19.95 %. Those are successive
+      round trips of one launched signal,
       not amplified passes: the tracer does not add gain from later pump pulses. It also
       launches the signal only in the pump's direction and does not calculate the gain
       competition that selects that direction. The signal is authored with the same frequency
@@ -906,14 +908,18 @@ export const exampleEntries = [
       <p>The OPO crystal removes a fixed, illustrative 35 % of the green pump, its authored pump depletion. By photon
       energy that is 22.6 % of the green as signal and 12.4 % as idler — 11.3 % and 6.2 % of
       the 1032 nm laser, which is what the detectors read against. The idler detector reads
-      its 6.2 % in one pass. The tracer sums six output-coupler leaks of the signal before
-      its path-depth limit, about 5.3 % of the laser; infinitely many would recover the
-      generated 11.3 %. Neither is a steady-state prediction.</p>`,
+      its 6.2 % in one pass. The signal leaks through the output coupler on every round
+      trip, each time with 90 % of the power it had on the one before; the tracer follows
+      the first round trips and sums the rest of that series in closed form, so the signal
+      detector reads the whole generated 11.3 %. That is the average output of a pump
+      pulse train within this model, which has no gain, not a steady-state prediction of
+      a real OPO.</p>`,
     limitations: `<p>This is a phenomenological OPO, not a cavity simulation. Both crystals
       convert a fixed fraction on a single pass; there is no threshold, gain, build-up or
       saturation, and changing the cavity length does not detune anything — in a real
       synchronously pumped OPO it shifts the signal and can stop oscillation. The signal
-      output is a finite sum of traced leakage paths. The SHG crystal scales the pump
+      output is the sum of one launched signal's leaks through the output coupler,
+      without amplification by later pump pulses. The SHG crystal scales the pump
       spectrum with the wavelength and keeps the pump's duration, which doubles the
       frequency width. In the undepleted, ideal Gaussian limit the second harmonic would be
       √2 wider in frequency and √2 shorter; the green here is about 14.7 cm⁻¹ instead of
