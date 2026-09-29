@@ -593,7 +593,12 @@ function addSample(samples, wl, power, continuum = false, sourceId = null, width
     || { wavelength, power: 0, continuum: false, sourceId: sourceId || null, bandId: bandId || null, widthNm: null };
   sample.power += power;
   if (continuum) sample.continuum = true;
-  if (widthNm > 0) sample.widthNm = Math.max(sample.widthNm || 0, widthNm);
+  // A band sampled more finely than the 0.1 nm slot drops several grid
+  // points into one slot: the slot holds their power together and spans
+  // their widths together, or its density (power / width) comes out as many
+  // times too high as points it merged -- 16x for a 10 ps pulse's 0.09 nm
+  // band. Each band calls this once per grid point, so the widths add.
+  if (widthNm > 0) sample.widthNm = continuum ? (sample.widthNm || 0) + widthNm : Math.max(sample.widthNm || 0, widthNm);
   samples.set(key, sample);
 }
 
@@ -604,7 +609,30 @@ function addSample(samples, wl, power, continuum = false, sourceId = null, width
 // Without expanding it here, a spectrometer aimed straight at a broadband
 // laser would show a single spike at its centre wavelength instead of the
 // real curve.
-function detectorSpectrum(hits) {
+// Light from several sources on one detector is weighed by the watts each
+// delivers: a hit's power is its fraction of its own source's emission, so
+// on its own a 1 uW seed and a 1 W pump would draw equally tall. The weights
+// are rescaled to keep the spectrum's total where it was -- the detector's
+// signal, which other readouts compare it with -- so only the balance
+// between sources changes. When any source has no power setting there are no
+// watts to compare, and the fractions stand as before.
+function hitsWeighedByWatts(hits) {
+  const live = hits.filter(hit => Number.isFinite(hit.power) && hit.power > 0);
+  const originOf = hit => hit.originId || hit.sourceId || null;
+  const origins = new Set(live.map(originOf));
+  if (origins.size < 2) return hits;
+  const watts = new Map([...origins].map(id => [id, sourceWattsById.get(id)]));
+  if ([...watts.values()].some(w => !(Number.isFinite(w) && w >= 0))) return hits;
+  const fractions = live.reduce((sum, hit) => sum + hit.power, 0);
+  const weighed = live.reduce((sum, hit) => sum + hit.power * watts.get(originOf(hit)), 0);
+  if (!(weighed > 0)) return hits;
+  const scale = fractions / weighed;
+  return hits.map(hit => (Number.isFinite(hit.power) && hit.power > 0
+    ? { ...hit, power: hit.power * watts.get(originOf(hit)) * scale } : hit));
+}
+
+function detectorSpectrum(allHits) {
+  const hits = hitsWeighedByWatts(allHits);
   const samples = new Map();
   const bands = new Map();
   for (const hit of hits) {

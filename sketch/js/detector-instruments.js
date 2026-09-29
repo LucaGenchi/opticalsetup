@@ -319,19 +319,28 @@ function spectrumRange(reading, sensor) {
   samples.forEach((sample, index) => {
     if (!Number.isFinite(sample.wavelength)) return;
     const key = sample.continuum ? `band:${sample.bandId || sample.sourceId || ''}` : `line:${index}`;
-    const feature = features.get(key) || { peak: 0, power: 0, members: [] };
+    const feature = features.get(key) || { peak: 0, power: 0, members: [], sourceId: sample.sourceId || '' };
     feature.members.push({ sample, height: heights[index] });
     feature.peak = Math.max(feature.peak, heights[index]);
     feature.power += Math.max(0, Number(sample.power) || 0);
     features.set(key, feature);
   });
   const totalPower = [...features.values()].reduce((sum, feature) => sum + feature.power, 0);
+  // The relative view scales each source to its own peak, so it judges what
+  // is worth showing against each source's own light too: a 1 uW seed beside
+  // a 1 W pump is a whole source there, not a millionth of the reading.
+  const relative = sensor?.params?.intensityScale === 'relative';
+  const sourcePower = new Map();
+  for (const feature of features.values()) {
+    sourcePower.set(feature.sourceId, (sourcePower.get(feature.sourceId) || 0) + feature.power);
+  }
 
   let lo = Infinity, hi = -Infinity;
   for (const feature of features.values()) {
     // A feature carrying essentially none of the detected light is numerical
     // dust; letting it into the window would stretch the axis over nothing.
-    if (totalPower > 0 && !(feature.power >= totalPower * DISPLAY_FLOOR)) continue;
+    const reference = relative ? sourcePower.get(feature.sourceId) : totalPower;
+    if (reference > 0 && !(feature.power >= reference * DISPLAY_FLOOR)) continue;
     for (const { sample, height } of feature.members) {
       if (feature.peak > 0 && !(height >= feature.peak * DISPLAY_FLOOR)) continue;
       const half = Math.max(0, Number(sample.widthNm) || 0) / 2;
