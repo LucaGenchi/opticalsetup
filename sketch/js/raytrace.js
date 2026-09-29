@@ -4958,13 +4958,21 @@ function noteWeakLightShortfall(originId, power, coherent) {
 // caveat: a loop with any element that generates, converts, gates or
 // modulates light (a crystal that would convert the circulating light again,
 // an AOM, a chopper, a specimen); a lossless loop (g = 1), whose light never
-// leaves; a coherent ray, whose passes add as fields, not powers; and a
-// pulsed ray whose round trip is not a whole number of pulse periods. Each
-// pass leaves one round trip later: in a synchronously pumped cavity that is
-// on the next pulse of the train, so every echo keeps the train's timing and
-// the summed average power is exact, but otherwise the echoes fall between
-// the pulses, where their timing matters to anything downstream.
+// leaves; a coherent ray, whose passes add as fields, not powers; a loop the
+// remaining depth cannot take round once more; and pulsed light whose echoes
+// would not keep the train's timing. Each pass leaves one round trip later:
+// in a synchronously pumped cavity that is on the next pulse of the train, so
+// every echo keeps the train's timing and the summed average power is exact.
+// Otherwise the echoes fall between the pulses, where their timing matters to
+// anything downstream, so the round trip must be a whole number of periods
+// closely enough that the echoes, weighted by their power, drift by no more
+// than LOOP_SYNC_FRACTION of the pulse duration: a mismatch d per round trip
+// drifts the n-th echo by n d, which averages d / (1 - g) over the sum. A
+// train already gated or polarization-modulated upstream is refused outright:
+// its modulation need not repeat with the laser period, so delayed echoes
+// meet it differently.
 const LOOP_POSITION_MM = 1e-6;
+const LOOP_SYNC_FRACTION = 0.01;
 const LOOP_DIRECTION = 1e-9;
 const LOOP_MAX_GAIN = 1 - 1e-9;
 const PASSIVE_LOOP_SURFACES = new Set([
@@ -5019,8 +5027,10 @@ const samePlace = (a, b) => a.key === b.key
 
 // The last pass of a loop the ray has just closed twice, with its round-trip
 // transmission, or null. `node` is the checkpoint at the current hit.
-function closedLoop(node, r) {
-  if (r.phaseValid || r.evan || r.chopped || !(Number.isFinite(r.power) && r.power > 0)) return null;
+// Exported for the tests, which build checkpoint trails directly.
+export function closedLoop(node, r) {
+  if (r.phaseValid || r.evan || r.chopped || r.polMod || r.pulse?.gates?.length
+      || !(Number.isFinite(r.power) && r.power > 0)) return null;
   const earlierVisit = from => {
     for (let at = from, steps = 1; at; at = at.prev, steps++) if (samePlace(at, node)) return { at, steps };
     return null;
@@ -5036,6 +5046,9 @@ function closedLoop(node, r) {
     if (!samePlace(a, b) || a.via !== b.via || !a.viaPassive || !b.viaPassive) return null;
     pass.unshift(a);
   }
+  // The summing pass must fit in the depth left, or branches met after the
+  // cutoff would miss the sum the earlier ones received.
+  if ((r.depth || 0) + pass.length > MAX_DEPTH) return null;
   const states = [first.at.state, second.at.state, node.state];
   for (let i = 0; i < states[0].length; i++) {
     if (!sameLoopValue(states[0][i], states[1][i]) || !sameLoopValue(states[1][i], states[2][i])) return null;
@@ -5047,8 +5060,9 @@ function closedLoop(node, r) {
     const periodNs = 1000 / r.pulse.repRateMHz;
     const roundTripNs = (node.opl - second.at.opl) / C_MM_PER_NS;
     const periods = Math.round(roundTripNs / periodNs);
-    const toleranceNs = Math.max(1e-9, (r.pulse.pulseWidthFs || 0) * 1e-6);
-    if (!(periodNs > 0) || periods < 1 || Math.abs(roundTripNs - periods * periodNs) > toleranceNs) return null;
+    const driftNs = Math.abs(roundTripNs - periods * periodNs) / (1 - g);
+    if (!(periodNs > 0) || periods < 1
+        || !(driftNs <= LOOP_SYNC_FRACTION * (r.pulse.pulseWidthFs || 0) * 1e-6)) return null;
   }
   return { g, pass };
 }
@@ -5150,7 +5164,9 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // fiber or through a weak port is drawn and traced like any other, down
       // to a millionth of a millionth of its source. The cost is bounded by
       // the weak-branch budget below, not by hiding faint light.
-      if (r.intensity < MIN_RETAINED_POWER_INT && !r.retainZeroField && !measuredNext) {
+      // A summed loop's branches carry more power than their drawn intensity
+      // says; what they carry decides whether they are still followed.
+      if (r.intensity * (r.loopSum || 1) < MIN_RETAINED_POWER_INT && !r.retainZeroField && !measuredNext) {
         if (!coherent?.dryRun && !r.evan) recordCameraNearMisses(r, cameraSurfaces, hit?.t ?? MAXLEN);
         // What a meter would still have received on this stretch, for the
         // beam probe's power reading (final pass only).
@@ -5243,6 +5259,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         const loop = closedLoop(checkpoint, r);
         if (loop) {
           r.power /= 1 - loop.g;
+          r.loopSum = (r.loopSum || 1) / (1 - loop.g);
           r.loopTail = { pass: loop.pass, step: 0 };
           if (!specimenProbe && !coherent?.dryRun) {
             loopClosures.push({ sourceId: r.originId || null, g: loop.g, interactions: loop.pass.length });
@@ -5647,6 +5664,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           depth: r.depth + 1, last: hit.surface,
           loopTrail: r.loopTrail, loopVia: String(c.tag ?? ci), loopViaPassive: passive,
           loopTail: r.loopTail ? { ...r.loopTail } : null,
+          loopSum: r.loopSum || 1,
         });
       }
       break;

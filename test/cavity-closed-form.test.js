@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 
 import { createElement, registry } from '../sketch/js/elements.js';
 import {
-  detectorReading, loopClosuresFromLastTrace, opoReading, probePowerAt, traceScene, weakLightShortfallFromLastTrace,
+  closedLoop, detectorReading, loopClosuresFromLastTrace, opoReading, probePowerAt, traceScene, weakLightShortfallFromLastTrace,
 } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { C_MM_PER_NS } from '../sketch/js/pulses.js';
@@ -173,4 +173,71 @@ test('both bundled OPO cavities deliver the whole signal they generate', () => {
     near(loops[0].g, outputCouplerR, 1e-12, `${name}: round-trip transmission`);
     assert.equal(loops[0].interactions, interactions, `${name}: interactions per round trip`);
   }
+});
+
+test('a gated train, or one detuned from its period, is not summed', () => {
+  const roundTripNs = 200 / C_MM_PER_NS;
+  const synchronous = 1000 / roundTripNs;
+  // An AOM ahead of the cavity gates the train at half the laser rate: the
+  // echoes, one period apart, meet that gate alternately open and closed.
+  const aom = createElement('aom', 200, 0);
+  Object.assign(aom.params, {
+    deflect: 0, eff: 1, modulate: true, modFreqMHz: synchronous / 2, chopDuty: 0.5, drawChopped: false,
+  });
+  let { out, elements } = twoMirrorCavity(0.5, 0.8, { source: 'pulsedlaser', repRateMHz: synchronous, extra: [aom] });
+  traceScene(elements, []);
+  assert.deepEqual(loopClosuresFromLastTrace(), [], 'gated train');
+  assert.equal(detectorReading(out.id).weakLightIncomplete, true);
+  // A round trip 1e-4 of a period off: at g = 0.4 the echoes drift, on
+  // average, 1.1 ps, far more than 1 % of the 150 fs pulse.
+  ({ out, elements } = twoMirrorCavity(0.5, 0.8, { source: 'pulsedlaser', repRateMHz: synchronous * (1 - 1e-4) }));
+  traceScene(elements, []);
+  assert.deepEqual(loopClosuresFromLastTrace(), [], 'detuned train');
+  // 1e-10 off drifts them by attoseconds, well inside the bound.
+  ({ out, elements } = twoMirrorCavity(0.5, 0.8, { source: 'pulsedlaser', repRateMHz: synchronous * (1 - 1e-10) }));
+  traceScene(elements, []);
+  assert.equal(loopClosuresFromLastTrace().length, 1, 'synchronous to rounding');
+  near(detectorReading(out.id).signal, 0.5 * 0.2 / (1 - 0.4), 1e-12, 'synchronous to rounding');
+});
+
+test('summed light too faint to draw is still followed to the detector', () => {
+  // Each leak of this cavity is 2.5e-13 of the laser, under the drawing floor,
+  // but their sum is 2.5e-7. A lens between cavity and detector must not stop
+  // it: the summed power, not the drawn intensity, decides.
+  const R = 0.9999995, T = 1 - R;
+  const lens = createElement('lens', 450, 0);
+  const { out, elements } = twoMirrorCavity(R, R, { extra: [lens] });
+  traceScene(elements, []);
+  const expected = T * T / (1 - R * R);
+  near(detectorReading(out.id)?.signal ?? 0, expected, 1e-5 * expected, 'through the lens');
+});
+
+// Checkpoint trails built by hand, so each refusal is tested on its own on a
+// loop that is otherwise summed.
+function trail(visits, perPass, { g = 0.5, opl = 100 } = {}) {
+  const state = [800];
+  let node = null, power = 1, path = 0;
+  for (let v = 0; v < visits; v++) {
+    for (let i = 0; i < perPass; i++) {
+      node = {
+        prev: node, key: `s${i}`, x: i, y: 0, dx: 1, dy: 0, power, opl: path + i,
+        via: '0', viaPassive: true, state,
+      };
+      if (v === visits - 1) break;
+    }
+    power *= g;
+    path += opl;
+  }
+  return node;
+}
+
+test('a loop is refused for a coherent ray, or when the depth left cannot take it round again', () => {
+  const node = trail(3, 4);
+  const ray = { power: node.power, depth: 20 };
+  near(closedLoop(node, ray).g, 0.5, 1e-15, 'the plain loop is summed');
+  assert.equal(closedLoop(node, { ...ray, phaseValid: true }), null, 'coherent: fields, not powers');
+  assert.equal(closedLoop(node, { ...ray, depth: 57 }), null, 'the summing pass would run past the depth limit');
+  assert.equal(closedLoop(node, { ...ray, depth: 56 })?.pass.length, 4, 'it just fits');
+  assert.equal(closedLoop(trail(3, 4, { g: 1 }), ray), null, 'lossless');
+  assert.equal(closedLoop(trail(2, 4), ray), null, 'seen only once before');
 });
