@@ -61,15 +61,25 @@ import { asphereSag, asphereSlope } from './asphere.js';
 
 // polylines from the most recent traceAll, kept for beam probes
 let lastPaths = [];
-// Every traced ray, including those hidden from the drawing (a partial
-// mirror's leak with its display switched off): a power meter receives them,
-// so the beam probe's power reading must count them too (probePowerAt).
+// Every traced ray, including any hidden from the drawing: a power meter
+// receives them, so the beam probe's power reading must count them too
+// (probePowerAt).
 let lastPowerPaths = [];
-// The last stretch of each ray the tracer stopped following because it fell
-// below the drawing floor: a power meter placed on that stretch receives it
-// (the detector exception in traceRays), so a probe placed there must count
-// it too. Kept apart so it changes neither the drawing nor any other reading.
+// The last stretch of each ray the tracer stopped following -- light below
+// the retained-power floor, or past the weak-branch budget: a power meter
+// placed on that stretch receives it (the detector exception in traceRays),
+// so a probe placed there must count it too. Kept apart so it changes
+// neither the drawing nor any other reading.
 let weakProbeSegments = [];
+// Weak light is drawn and traced like any other (see traceRays). What bounds
+// its cost is a budget of weak branches per trace; light that budget or the
+// depth limit could not follow is recorded here per originating source, as
+// the fraction of that source's emitted power, and every reading of the
+// trace then says it may be low.
+export const WEAK_BRANCH_BUDGET = 1024;
+export const WEAK_LIGHT_NOTE = 'Light untraced: somewhere in this sketch, light ran past the tracer’s weak-branch budget or its depth limit (60 interactions, such as round trips in a cavity); it may have reached this sensor, so the reading is incomplete (usually low, but with interference it can be off either way)';
+let weakBranchBudget = WEAK_BRANCH_BUDGET;
+let weakLightShortfall = new Map();
 let lastSignalHits = [];
 let detectorHits = new Map();
 // Rays whose centres cross a camera plane just outside its finite face still
@@ -145,17 +155,21 @@ export function phasePlateIllumination(elementId) {
 // -2000 fs² against 38680 fs² is doing exactly 5% of the job.
 let compressorGdd = new Map();
 
-function recordCompressor(elementId, incoming, outgoing) {
+function recordCompressor(elementId, incoming, outgoing, faint = false) {
   if (!elementId || !Number.isFinite(incoming)) return;
   const seen = compressorGdd.get(elementId);
-  // several rays cross it; the widest-magnitude arrival is the representative
-  if (!seen || Math.abs(incoming) > Math.abs(seen.incoming)) {
-    compressorGdd.set(elementId, { incoming, outgoing });
-  }
+  // several rays cross it; the widest-magnitude arrival is the representative.
+  // A faint arrival (under 2 % of its source) stands in only when nothing
+  // stronger arrives: a spectral tail carrying a fraction of a percent must
+  // not become the beam's figure.
+  const outranks = !seen || (seen.faint && !faint)
+    || (seen.faint === faint && Math.abs(incoming) > Math.abs(seen.incoming));
+  if (outranks) compressorGdd.set(elementId, { incoming, outgoing, faint });
 }
 
 export function compressorGddReading(elementId) {
-  return compressorGdd.get(elementId) || null;
+  const seen = compressorGdd.get(elementId);
+  return seen ? { incoming: seen.incoming, outgoing: seen.outgoing } : null;
 }
 
 // metalens element id -> distinct wavelength/focal-length pairs observed on
@@ -1241,9 +1255,16 @@ export function detectorReading(elementId) {
   // only continue it linearly, say. Spectrum, power and every other readout
   // of this detector describe light the model did not fully compute.
   const approximations = [...new Set(activeHits.map(h => h.approximation).filter(Boolean))];
+  // Light ran past the weak-branch budget or depth limit somewhere in this
+  // trace. Where it would have gone is unknown -- possibly here, from a
+  // source that shows no trace in this reading at all -- so every reading
+  // says it may be low.
+  const weakLightIncomplete = weakLightShortfall.size > 0;
+  if (weakLightIncomplete) approximations.push(WEAK_LIGHT_NOTE);
   return {
     signal,
     approximations,
+    ...(weakLightIncomplete ? { weakLightIncomplete: true } : {}),
     samples: readoutKind === 'camera' ? cameraHits.filter(hit => !hit.sensorMiss).length : activeHits.length,
     wavelength,
     bandMin,
@@ -1380,7 +1401,11 @@ export function probePowerAt(x, y, radius) {
     const key = ray.originId || null;
     byOrigin.set(key, (byOrigin.get(key) || 0) + power);
   }
-  return { sourceFractions: [...byOrigin].map(([sourceId, fraction]) => ({ sourceId, fraction })), entries: entries.length };
+  return {
+    sourceFractions: [...byOrigin].map(([sourceId, fraction]) => ({ sourceId, fraction })), entries: entries.length,
+    // As for a detector: dropped light could have crossed this circle.
+    ...(weakLightShortfall.size ? { weakLightIncomplete: true } : {}),
+  };
 }
 
 // The distinct beams crossing the same circle, for the probe's spectrum,
@@ -1497,11 +1522,23 @@ export function probeBeamsAt(x, y, radius) {
   return beams.sort((p, q) => p.wl - q.wl || p.arrivalNs - q.arrivalNs);
 }
 
+// The light the last trace could not follow for want of weak-branch budget
+// or at the depth limit, per originating source (fraction of its
+// emitted power). Empty when every weak ray was followed to where it ends.
+export function weakLightShortfallFromLastTrace() {
+  return [...weakLightShortfall].map(([sourceId, fraction]) => ({ sourceId, fraction }));
+}
+
 export function signalHitsFromLastTrace(stageId) {
   return lastSignalHits.filter(hit => hit.stageId === stageId);
 }
 
 const MAXLEN = 6000, MAX_DEPTH = 60, MIN_INT = 0.02;
+// MIN_INT no longer stops a ray: it is where the drawing starts to dim, and
+// what counts as a weak branch against the budget. However faint, a drawn
+// beam keeps this fraction of a full-strength beam's opacity (Luca: fainter
+// is invisible to a human).
+const MIN_VISIBLE_FRACTION = 0.1;
 // Coherent branches are amplitudes, so the ordinary ray-visibility cutoff is
 // much too large: a 1%-power branch can change an 81%-power branch by 18%.
 // This lower budget remains finite; crossing it disables interference for
@@ -1512,7 +1549,6 @@ const MIN_COHERENT_INT = 1e-4;
 // pale mix rather than as whichever wavelength happens to sit in the middle.
 const MIXED_LIGHT_COLOR = '#cbd8ea';
 const MIN_RETAINED_POWER_INT = 1e-12;
-const MAX_RETAINED_WEAK_BRANCHES = 256;
 // How many rays one shaper hit may leave with, across all of its layers. It
 // bounds a stack that multiplies rays (orders x wavelengths x speckle grains),
 // and every layer sizes its own sampling to fit rather than overflowing and
@@ -1694,10 +1730,6 @@ function coherentPlansEqual(left, right) {
   }
   return true;
 }
-// A deliberately selected line can be a thin slice of a broad source and
-// still be the whole point of the setup, so branches flagged keepWeak are
-// held to a far lower floor than the generic negligible-ray cull.
-const MIN_WEAK_INT = 1e-5;
 const BAND_SELECTING_SURFACES = new Set(['filter', 'dichroic', 'etalon']);
 
 // Two beams count as "different colours" for wave mixing only if they are
@@ -3279,7 +3311,7 @@ function interact(ray, hit) {
       );
       const incomingDelayDifference = Number.isFinite(ray.groupDelayDifferenceFs)
         ? ray.groupDelayDifferenceFs : 0;
-      recordCompressor(s.el?.id, incoming, incoming + applied);
+      recordCompressor(s.el?.id, incoming, incoming + applied, ray.intensity < MIN_INT);
       return [{
         d,
         intensity: ray.intensity * efficiency,
@@ -3303,20 +3335,19 @@ function interact(ray, hit) {
     }
     case 'mirror': {
       // partial reflectivity (cavity mirrors / output couplers): reflect R,
-      // transmit 1-R. The transmitted ray is retained through the bounded
-      // weak-power path budget, so a detector or sample placed behind the
-      // mirror reads the correct leaked power
-      // for a transmission power budget — but only drawn on the canvas
-      // when showTransmitted is on (see the `hidden` flag consumed by
-      // traceScene(), which strips hidden rays before assembling drawables
-      // without touching detector-hit recording).
+      // transmit 1-R. The transmitted leak exists only when the element's
+      // "Trace transmitted beam" toggle is on -- an output coupler, where the
+      // leak is the point. Off (the default), the leak is simply lost: the
+      // user is budgeting the power that reaches the sample, and a 98 %
+      // mirror's 2 % would only be clutter. Either way nothing is hidden: the
+      // leak is drawn and traced, or it does not exist.
       const R = Math.min(1, Math.max(0, (data.refl ?? 100) / 100));
       if (R >= 1) return [{ d: reflect(d, n), phaseShift: Math.PI }];
       const out = [];
       if (R > 0) out.push({ d: reflect(d, n), intensity: ray.intensity * R, tag: 'R', retainWeak: true });
       // Solid polygon wheels absorb coating losses; leaking through the
       // wheel would otherwise produce spurious internal facet reflections.
-      if (R < 1 && !data.opaque) out.push({ d, intensity: ray.intensity * (1 - R), tag: 'T', hidden: !data.showTransmitted, retainWeak: true });
+      if (R < 1 && !data.opaque && data.showTransmitted) out.push({ d, intensity: ray.intensity * (1 - R), tag: 'T', retainWeak: true });
       return out;
     }
     case 'cmirror': {
@@ -3330,7 +3361,8 @@ function interact(ray, hit) {
       if (R >= 1) return [{ d: focused }];
       const out = [];
       if (R > 0) out.push({ d: focused, intensity: ray.intensity * R, tag: 'R', retainWeak: true });
-      if (R < 1) out.push({ d, intensity: ray.intensity * (1 - R), tag: 'T', hidden: !data.showTransmitted, retainWeak: true });
+      // As for a flat mirror: the leak is traced only when asked for.
+      if (R < 1 && data.showTransmitted) out.push({ d, intensity: ray.intensity * (1 - R), tag: 'T', retainWeak: true });
       return out;
     }
     case 'metalens': {
@@ -4857,8 +4889,9 @@ function applyTransmission(spec, centerWl, transmissionFn) {
 // Whether the wavelength cells of a fanned-out pulse that reach a detector
 // still carry the band it was emitted with. Measured as the share of the
 // emitted spectral weight inside the arriving cells, which must be 95 % or
-// more: the tracer drops the faint outermost samples of a Gaussian on its own
-// (about 2.4 % of the weight), while an aperture catching part of a prism fan
+// more: the faint outermost samples of a Gaussian (about 2.4 % of the weight)
+// can still be dropped on the tracer's own account, when its weak-branch
+// budget runs out, while an aperture catching part of a prism fan
 // removes a fifth or more. Light that was never fanned out carries no cells,
 // and a uniformly clipped broadband beam keeps its whole band, so both pass.
 // This is a bounded guard: it sees samples that miss entirely, not a sample
@@ -4884,9 +4917,21 @@ function fannedBandCovered(pulse, hits) {
   return !(total > 0) || covered / total >= FAN_COVERAGE;
 }
 
+// Light the weak-branch budget or the depth limit stopped, charged to the
+// source that emitted it. Only the final pass reports: the probe passes that
+// plan specimens and OPAs, and the coherent planning passes (dryRun), run the
+// same budget over the same light.
+function noteWeakLightShortfall(originId, power, coherent) {
+  if (specimenProbe || coherent?.dryRun || !(power > 0)) return;
+  const key = originId || null;
+  weakLightShortfall.set(key, (weakLightShortfall.get(key) || 0) + power);
+}
+
 function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent = null) {
   const done = [];
-  let retainedWeakBranches = 0;
+  // Genuine branches weaker than the old 2 % drawing floor, spent against
+  // weakBranchBudget: what bounds the cost of tracing faint light.
+  let weakBranches = 0;
   const cameraSurfaces = surfaces.filter(surface => surface.kind === 'detector'
     && registry[surface.el?.type]?.readoutKind === 'camera');
   const stack = rays0.map(r => {
@@ -4951,24 +4996,35 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
     for (; ;) {
       if (r.depth > MAX_DEPTH) {
         markIncompleteCoherence(r, 'coherent path exceeded the trace-depth budget');
+        // Light the depth limit stops is not dropped silently: a cavity can
+        // outlast it with power to spare.
+        noteWeakLightShortfall(r.originId, r.power, coherent);
         break;
       }
       const hit = nearestHit({ x: r.x, y: r.y }, { x: r.dx, y: r.dy }, surfaces, r.last);
-      if (!coherent?.dryRun && !r.evan) recordCameraNearMisses(r, cameraSurfaces, hit?.t ?? MAXLEN);
-      const intensityFloor = r.phaseValid ? MIN_COHERENT_INT
-        : r.retainWeak ? MIN_RETAINED_POWER_INT
-          : r.keepWeak ? MIN_WEAK_INT
-            : MIN_INT;
-      if (r.intensity < intensityFloor && !r.retainZeroField
-          && !LOW_POWER_MEASUREMENT_SURFACES.has(hit?.surface.kind)) {
-        // A weak branch that directly reaches a detector/sample is cheap and
-        // physically material, so record it even below the drawing budget.
-        // Absorbed or escaping light cannot affect a downstream camera; a
-        // weak branch stopped before another optical interaction makes the
-        // coherent source incomplete and therefore forces safe deposition.
-        if (!r.coherentlySuppressed && hit && hit.surface.kind !== 'absorb') {
+      // A weak branch that directly reaches a detector/sample is always
+      // recorded, however faint.
+      const measuredNext = LOW_POWER_MEASUREMENT_SURFACES.has(hit?.surface.kind);
+      const onward = hit && hit.surface.kind !== 'absorb';
+      // Coherent branches are amplitudes, so their floor is far higher than
+      // the power floor below. A coherent branch that drops under it before
+      // another optical interaction makes its source's field sum incomplete,
+      // which forces safe (incoherent) deposition at cameras. The light
+      // itself carries on as ordinary power, drawn and counted like any other
+      // weak beam.
+      if (r.phaseValid && r.intensity < MIN_COHERENT_INT && !r.retainZeroField && !measuredNext) {
+        if (!r.coherentlySuppressed && onward) {
           markIncompleteCoherence(r, 'coherent path fell below the bounded trace threshold');
         }
+        r.phaseValid = false;
+        r.phaseIssue = r.phaseIssue || 'coherent path fell below the bounded trace threshold';
+      }
+      // Weak light is part of the setup: a beam behind an ND filter, out of a
+      // fiber or through a weak port is drawn and traced like any other, down
+      // to a millionth of a millionth of its source. The cost is bounded by
+      // the weak-branch budget below, not by hiding faint light.
+      if (r.intensity < MIN_RETAINED_POWER_INT && !r.retainZeroField && !measuredNext) {
+        if (!coherent?.dryRun && !r.evan) recordCameraNearMisses(r, cameraSurfaces, hit?.t ?? MAXLEN);
         // What a meter would still have received on this stretch, for the
         // beam probe's power reading (final pass only).
         if (!specimenProbe && !coherent?.dryRun && Number.isFinite(r.power) && r.power > 1e-12) {
@@ -4985,6 +5041,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         }
         break;
       }
+      if (!coherent?.dryRun && !r.evan) recordCameraNearMisses(r, cameraSurfaces, hit?.t ?? MAXLEN);
       if (r.evan) {
         // evanescent (isotropic fluorescence, or a diagram point source):
         // the glow decays like 1/r² and dies within the ray's evanescent
@@ -5211,7 +5268,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       if (children.length === 0) break;
       recordCoherentArrival(r, hit, children, coherent?.arrivals);
       for (const child of children) {
-        const override = coherent?.plan?.get(coherentChildKey(r, hit.surface, child));
+        // A ray demoted to power-only (below MIN_COHERENT_INT) no longer takes
+        // part in any recombination, even if an earlier planning pass, where it
+        // was still coherent, left a plan entry under the same key.
+        const override = r.phaseValid ? coherent?.plan?.get(coherentChildKey(r, hit.surface, child)) : null;
         if (!override) continue;
         child.intensity = override.intensity;
         child.power = override.power;
@@ -5305,6 +5365,9 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       for (const [ci, c] of children.entries()) {
         const childIntensity = c.intensity !== undefined ? c.intensity : r.intensity;
         const childRetainsWeak = r.retainWeak || Boolean(c.retainWeak);
+        const childPower = c.power !== undefined ? c.power : Number.isFinite(r.power)
+          ? r.power * (c.intensity !== undefined && r.intensity > 0 ? c.intensity / r.intensity : 1)
+          : undefined;
         // Only a genuine branch is charged. A lone child continues the ray it
         // came from rather than widening the tree -- a polarizer takes this
         // path because its output carries a tag, not because it split -- so
@@ -5313,9 +5376,13 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // once per stage, the 256 slots ran out, and later samples were
         // dropped, reporting 92% of the expected signal after 16 elements and
         // 68% after 20. Depth and length still bound a continuation chain.
-        if (childRetainsWeak && childIntensity < MIN_INT && children.length > 1) {
-          if (retainedWeakBranches >= MAX_RETAINED_WEAK_BRANCHES) continue;
-          retainedWeakBranches++;
+        // What the budget cannot follow is recorded rather than silently lost.
+        if (childIntensity < MIN_INT && children.length > 1) {
+          if (weakBranches >= weakBranchBudget) {
+            noteWeakLightShortfall(r.originId, childPower, coherent);
+            continue;
+          }
+          weakBranches++;
         }
         const ox = c.origin ? c.origin.x : hit.p.x, oy = c.origin ? c.origin.y : hit.p.y;
         const childGdd = 'gdd' in c ? c.gdd : r.gdd;
@@ -5406,9 +5473,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           approximation: r.approximation || c.approximation || null,
           parametricPath: 'parametricPath' in c ? c.parametricPath : r.parametricPath,
           intensity: childIntensity,
-          power: c.power !== undefined ? c.power : Number.isFinite(r.power)
-            ? r.power * (c.intensity !== undefined && r.intensity > 0 ? c.intensity / r.intensity : 1)
-            : undefined,
+          power: childPower,
           // A child can start a sampled beam of its own (an OPO spreading a
           // single-ray pump over its output diameter).
           sample: 'sample' in c ? c.sample : r.sample,
@@ -5601,8 +5666,17 @@ function assembleDrawables(paths, opts, drawables) {
         // were live -- the contradiction between figure and readout that this
         // work exists to remove. Fade the floor away below the old threshold:
         // at and above MIN_INT every previously drawable beam is untouched.
-        const visibilityFloor = (0.4 / Math.sqrt(siblings))
+        // Weak light is drawn, though, not lost: however faint, a traced
+        // beam keeps at least a tenth of a full-strength beam's opacity, or
+        // an ND-attenuated beam that is part of the setup could not be seen.
+        // Only a port whose power is an interference sum keeps fading, so a
+        // nearly dark fringe never looks live: its faintness is the result,
+        // not an attenuation the user put in.
+        const fadingFloor = (0.4 / Math.sqrt(siblings))
           * Math.min(1, Math.max(0, ra.intensity) / MIN_INT);
+        const interferenceResult = ra.coherentlySuppressed || ra.fieldGroupCount > 1;
+        const visibilityFloor = interferenceResult ? fadingFloor
+          : Math.max(fadingFloor, MIN_VISIBLE_FRACTION / Math.sqrt(siblings));
         const op = 0.28 * Math.max(visibilityFloor, ra.intensity);
         const [A, B] = ra.renderEvent === rb.renderEvent
           ? [ra.pts, rb.pts]
@@ -5722,7 +5796,9 @@ function planOpaElements(surfaces) {
 }
 
 
-export function traceScene(elements, beams = []) {
+// `options.weakBranchBudget` overrides the per-trace budget for weak
+// branches; it exists for tests of the boundary.
+export function traceScene(elements, beams = [], options = {}) {
   const surfaces = buildSurfaces(elements, beams);
   const drawables = [];
   const pulseTracks = [];
@@ -5733,6 +5809,9 @@ export function traceScene(elements, beams = []) {
   lastPaths = [];
   lastPowerPaths = [];
   weakProbeSegments = [];
+  weakLightShortfall = new Map();
+  weakBranchBudget = Number.isInteger(options.weakBranchBudget) && options.weakBranchBudget >= 0
+    ? options.weakBranchBudget : WEAK_BRANCH_BUDGET;
   hollowReadings.clear();
   detectorHits = new Map();
   detectorMisses = new Map();
@@ -5965,7 +6044,11 @@ export function traceScene(elements, beams = []) {
         && other.end === c.end && other.sourceId !== c.sourceId);
     }
     // Couplings merged into one emission below keep every history among them.
-    const emissionKey = c => c.beam.id + ':' + c.end + ':' + Math.round(c.wl || 0) + ':' + (c.pulse?.sourceId || 'cw') + ':' + Math.round(c.opl || 0);
+    // Only couplings of the same light share an emission: independent sources
+    // (two CW lasers carry no pulse id to tell them apart) are keyed by the
+    // source that emitted them, so one can never displace the other.
+    const emissionKey = c => c.beam.id + ':' + c.end + ':' + Math.round(c.wl || 0) + ':' + (c.pulse?.sourceId || 'cw') + ':' + Math.round(c.opl || 0)
+      + ':' + (c.originId || '');
     const histories = new Map();
     for (const c of [...ordinary, ...argonGroups]) {
       histories.set(emissionKey(c), unionPath(histories.get(emissionKey(c)), c.parametricPath));
