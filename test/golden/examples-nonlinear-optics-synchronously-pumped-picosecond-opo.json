@@ -1036,9 +1036,7 @@
   },
   "detector:idler-detector": {
    "detector": {
-    "approximations": [
-     "Light untraced: somewhere in this sketch, light ran past the tracer’s weak-branch budget or its depth limit (60 interactions, such as round trips in a cavity); it may have reached this sensor, so the reading is incomplete (usually low, but with interference it can be off either way)"
-    ],
+    "approximations": [],
     "bandMax": 1455.40105,
     "bandMin": 1451.64121,
     "centroid": null,
@@ -1559,14 +1557,13 @@
      }
     ],
     "spotSpan": 0,
-    "wavelength": 1453.52113,
-    "weakLightIncomplete": true
+    "wavelength": 1453.52113
    }
   },
   "detector:signal-detector": {
    "detector": {
     "approximations": [
-     "Light untraced: somewhere in this sketch, light ran past the tracer’s weak-branch budget or its depth limit (60 interactions, such as round trips in a cavity); it may have reached this sensor, so the reading is incomplete (usually low, but with interference it can be off either way)"
+     "Light untraced: up to 480 mW (113 % of this reading) of light the tracer could not follow (past its weak-branch budget, or its depth limit of 60 interactions, such as round trips in a cavity) could reach this sensor, so the reading may be that much low"
     ],
     "bandMax": 800.320095,
     "bandMin": 799.679905,
@@ -1809,6 +1806,15 @@
      }
     ],
     "spotSpan": 1.73531944e-9,
+    "untracedLight": {
+     "bounded": true,
+     "flagged": true,
+     "powerW": 0.479873668,
+     "share": 1.13420295,
+     "signal": 0.0599842085,
+     "twoSided": false,
+     "unboundedBecause": null
+    },
     "wavelength": 800,
     "weakLightIncomplete": true
    }

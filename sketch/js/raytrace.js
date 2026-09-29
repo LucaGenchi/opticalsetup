@@ -58,6 +58,7 @@ import {
 import { cameraProfileFromHits } from './camera-profile.js';
 import { MAX_CONVERSION, MAX_OPO_DEPLETION, opoPulse, supercontinuumRange, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength, mixWidthNm } from './parametric.js';
 import { asphereSag, asphereSlope } from './asphere.js';
+import { formatPowerMw, untracedShare } from './probe.js';
 
 // polylines from the most recent traceAll, kept for beam probes
 let lastPaths = [];
@@ -74,12 +75,37 @@ let weakProbeSegments = [];
 // Weak light is drawn and traced like any other (see traceRays). What bounds
 // its cost is a budget of weak branches per trace; light that budget or the
 // depth limit could not follow is recorded here per originating source, as
-// the fraction of that source's emitted power, and every reading of the
-// trace then says it may be low.
+// the fraction of that source's emitted power.
 export const WEAK_BRANCH_BUDGET = 1024;
-export const WEAK_LIGHT_NOTE = 'Light untraced: somewhere in this sketch, light ran past the tracer’s weak-branch budget or its depth limit (60 interactions, such as round trips in a cavity); it may have reached this sensor, so the reading is incomplete (usually low, but with interference it can be off either way)';
 let weakBranchBudget = WEAK_BRANCH_BUDGET;
 let weakLightShortfall = new Map();
+// Each stop on its own (untracedLightSummary), with what is known about
+// where the light could still go: a stop inside a closed loop (`loop`) can
+// only go where that loop's light already went; any other stop could go
+// anywhere. Readings flag only untraced light that could reach them, sized
+// in their own terms (Luca, after #193: the scene-wide caveat on a meter
+// whose own beam was complete was counter-intuitive).
+let untracedStops = [];
+// Trails of the rays that entered a fiber, OPA, OPO, specimen or mixer.
+// Light beyond those is re-emitted or shaped by other beams, so descent can
+// no longer be followed and a loop whose light got there counts as open.
+let lineageExits = [];
+// Whether the sketch has an element whose output is not bounded by the light
+// entering it (an OPA amplifies a seed, a mixer draws on a second beam). Then
+// light stopped at an unknown place has no upper bound on what it would do.
+let untracedGainPossible = false;
+// The trail of the ray a detector sample or probe segment was recorded from.
+// Kept out of the objects themselves, which are copied and compared by value.
+let recordedTrails = new WeakMap();
+let loopEscapeCache = new Map();
+// Below this share of a reading, the most untraced light could change it by
+// cannot move the three significant figures a reading is shown with.
+export const UNTRACED_NEGLIGIBLE_SHARE = 5e-4;
+// A loop is recognised when a ray starts a stretch in exactly the state two
+// of its ancestors started one in, within the last LOOP_WINDOW interactions
+// before the depth limit, so loops of up to half that are recognised; longer
+// ones are treated as open.
+const LOOP_WINDOW = 40;
 let lastSignalHits = [];
 let detectorHits = new Map();
 // Rays whose centres cross a camera plane just outside its finite face still
@@ -813,6 +839,12 @@ function averageGateTransmission(pulse) {
 }
 
 function detectorSample(ray, surface, u, oplMm, pathKey, sensorMiss = false) {
+  const sample = detectorSampleFields(ray, surface, u, oplMm, pathKey, sensorMiss);
+  if (ray.trail) recordedTrails.set(sample, ray.trail);
+  return sample;
+}
+
+function detectorSampleFields(ray, surface, u, oplMm, pathKey, sensorMiss) {
   const gateDuty = averageGateTransmission(ray.pulse);
   return {
     power: (Number.isFinite(ray.power) ? ray.power : ray.intensity) * gateDuty,
@@ -1255,16 +1287,20 @@ export function detectorReading(elementId) {
   // only continue it linearly, say. Spectrum, power and every other readout
   // of this detector describe light the model did not fully compute.
   const approximations = [...new Set(activeHits.map(h => h.approximation).filter(Boolean))];
-  // Light ran past the weak-branch budget or depth limit somewhere in this
-  // trace. Where it would have gone is unknown -- possibly here, from a
-  // source that shows no trace in this reading at all -- so every reading
-  // says it may be low.
-  const weakLightIncomplete = weakLightShortfall.size > 0;
-  if (weakLightIncomplete) approximations.push(WEAK_LIGHT_NOTE);
+  // Light the tracer stopped (weak-branch budget, depth limit) that could
+  // reach this sensor -- possibly from a source with no trace in this reading
+  // at all -- and how far it could move the reading. Flagged only where it
+  // is not negligible against what the sensor reads.
+  const untracedLight = untracedLightSummary(
+    [...hits, ...nearMisses].map(h => ({ power: h.power, trail: recordedTrails.get(h) })),
+    arrivedByOrigin,
+  );
+  const weakLightIncomplete = Boolean(untracedLight?.flagged);
+  if (weakLightIncomplete) approximations.push(untracedLightNote(untracedLight));
   return {
     signal,
     approximations,
-    ...(weakLightIncomplete ? { weakLightIncomplete: true } : {}),
+    ...(weakLightIncomplete ? { weakLightIncomplete: true, untracedLight } : {}),
     samples: readoutKind === 'camera' ? cameraHits.filter(hit => !hit.sensorMiss).length : activeHits.length,
     wavelength,
     bandMin,
@@ -1401,10 +1437,15 @@ export function probePowerAt(x, y, radius) {
     const key = ray.originId || null;
     byOrigin.set(key, (byOrigin.get(key) || 0) + power);
   }
+  // As for a detector: stopped light that could have crossed this circle.
+  const untracedLight = untracedLightSummary(
+    entries.map(({ ray, segment, power }) => ({ power, trail: segmentTrail(ray, segment) })),
+    byOrigin,
+    false,
+  );
   return {
     sourceFractions: [...byOrigin].map(([sourceId, fraction]) => ({ sourceId, fraction })), entries: entries.length,
-    // As for a detector: dropped light could have crossed this circle.
-    ...(weakLightShortfall.size ? { weakLightIncomplete: true } : {}),
+    ...(untracedLight?.flagged ? { weakLightIncomplete: true, untracedLight } : {}),
   };
 }
 
@@ -4921,10 +4962,200 @@ function fannedBandCovered(pulse, hits) {
 // source that emitted it. Only the final pass reports: the probe passes that
 // plan specimens and OPAs, and the coherent planning passes (dryRun), run the
 // same budget over the same light.
-function noteWeakLightShortfall(originId, power, coherent) {
+function noteWeakLightShortfall(r, power, phaseValid, coherent, loop) {
   if (specimenProbe || coherent?.dryRun || !(power > 0)) return;
-  const key = originId || null;
+  const key = r.originId || null;
   weakLightShortfall.set(key, (weakLightShortfall.get(key) || 0) + power);
+  untracedStops.push({ originId: key, power, phaseValid, loop, trail: r.trail || null });
+}
+
+// Within roundoff: a cavity's crystal recomputes the wavelength on every
+// pass, and repeated reflections move the direction in the 13th digit.
+function sameStretchStart(a, r) {
+  const close = (p, q, tol) => Math.abs(p - q) <= tol;
+  const samePol = a.pol === r.pol || (!Number.isFinite(a.pol) && !Number.isFinite(r.pol));
+  const s = a.stokes, t = r.stokes || null;
+  const sameStokes = s === t || (s && t && ['s1', 's2', 's3'].every(k => close(s[k] || 0, t[k] || 0, 1e-9)));
+  return a.last === r.last && close(a.x, r.x, 1e-6) && close(a.y, r.y, 1e-6)
+    && close(a.dx, r.dx, 1e-9) && close(a.dy, r.dy, 1e-9)
+    && close(a.wl, r.wl, 1e-9) && close(a.bw, r.bw || 0, 1e-9) && close(a.ior, r.ior || 1, 1e-12)
+    && samePol && sameStokes;
+}
+
+// Is the ray the depth limit just stopped going round a closed loop? It is
+// when two of its ancestors started a stretch from the same surface, point
+// and direction, with the same wavelength and polarization, as it does now:
+// from each of those states the tracer repeats exactly the same path,
+// splitting off the same leaks. The two oldest such states, one period
+// apart, are `start` and `next`.
+function closedLoopAt(r) {
+  const matches = [];
+  for (let node = r.trail; node; node = node.prev) if (sameStretchStart(node, r)) matches.push(node);
+  if (matches.length < 2) return null;
+  return { start: matches.at(-1), next: matches.at(-2), originId: r.originId || null };
+}
+
+function trailDescendsFrom(trail, node) {
+  for (let t = trail; t; t = t.prev) if (t === node) return true;
+  return false;
+}
+
+// Surfaces past which light is re-emitted (a fiber) or made with the help of
+// other beams (OPA, OPO, specimen, mixer), so its descent is not followed.
+function breaksLineage(surface) {
+  return ['fiberin', 'opapump', 'opaseed', 'opoin', 'specimen'].includes(surface.kind)
+    || (surface.kind === 'transmit' && MIX_CONVERTS.has(surface.data?.convert))
+    || (surface.kind === 'attenuate' && Boolean(surface.data?.specimen));
+}
+
+function mayAddPower(surface) {
+  return surface.kind !== 'fiberin' && breaksLineage(surface);
+}
+
+// A loop is accounted for exactly when everything its first period split
+// off was followed to its end: no stop descends from `start` without also
+// descending from `next`, and none of its light reached an element that
+// breaks the lineage. Anything else about it is treated as open.
+function loopAccounted(loop) {
+  if (!loopEscapeCache.has(loop.start)) {
+    const firstPeriodCut = untracedStops.some(stop => trailDescendsFrom(stop.trail, loop.start)
+      && !trailDescendsFrom(stop.trail, loop.next));
+    const escapes = lineageExits.some(trail => trailDescendsFrom(trail, loop.start));
+    loopEscapeCache.set(loop.start, !firstPeriodCut && !escapes);
+  }
+  return loopEscapeCache.get(loop.start);
+}
+
+// How much the light the tracer stopped could change a reading, in that
+// reading's own terms. `arrivals` lists what arrived at the reading as
+// { power, trail }; `arrived` maps each origin to the fraction of its
+// emitted power that did. `absorbing` is true for a detector, which takes
+// in the light it counts, and false for a probe, which counts light every
+// time it crosses. Returns null when no stopped light could reach it.
+//
+// Light stopped at an unknown place (the budget, or a depth stop that is not
+// a closed loop) could go anywhere. At a detector it adds at most its own
+// power D -- unless an amplifier or mixer could add power of its own -- and
+// when it is coherent and its source already arrives here with R,
+// interference can move the reading by up to D + 2*sqrt(R*D), either way.
+// At a probe there is no such bound: it could cross the probe any number of
+// times (round a cavity the probe sits in).
+//
+// A closed loop reaches only readings its own light reached after `start`,
+// and there the amount is exact. From `start` on the tracer is linear in the
+// ray's power (fixed split ratios and conversion fractions; the elements
+// that are not linear break the lineage), and everything that descends from
+// `next`, followed or not, is the whole future of `start` scaled by
+// Pn/P0. That future is what the first period delivered, T1, plus the
+// future of `next`, so the future of `next` is T1*Pn/(P0 - Pn), of which the
+// reading already has Tn; the rest is untraced. Coherent rounds would add up
+// as fields, not powers, so for coherent light only a detector's D bound
+// applies.
+function untracedLightSummary(arrivals, arrived, absorbing = true) {
+  const bySource = new Map();
+  let unbounded = null;
+  const add = (originId, power, coherent) => {
+    const entry = bySource.get(originId) || { coherent: 0, incoherent: 0 };
+    entry[coherent ? 'coherent' : 'incoherent'] += power;
+    bySource.set(originId, entry);
+  };
+  const loops = new Map();
+  for (const stop of untracedStops) {
+    if (stop.loop && loopAccounted(stop.loop)) loops.set(stop.loop.start, stop.loop);
+  }
+  const loopOwning = stop => [...loops.values()].find(loop => trailDescendsFrom(stop.trail, loop.next));
+  const owned = new Map();
+  for (const stop of untracedStops) {
+    const loop = loopOwning(stop);
+    if (loop) {
+      owned.set(loop, [...(owned.get(loop) || []), stop]);
+      continue;
+    }
+    if (!absorbing) unbounded ||= 'recrossing';
+    else if (untracedGainPossible) unbounded ||= 'gain';
+    add(stop.originId, stop.power, stop.phaseValid);
+  }
+  for (const [loop, stops] of owned) {
+    const P0 = loop.start.power, Pn = loop.next.power;
+    let T1 = 0, Tn = 0, reached = false;
+    for (const a of arrivals) {
+      if (!trailDescendsFrom(a.trail, loop.start)) continue;
+      reached = true;
+      if (trailDescendsFrom(a.trail, loop.next)) Tn += Math.max(0, a.power || 0);
+      else T1 += Math.max(0, a.power || 0);
+    }
+    if (!reached) continue;
+    const stopped = stops.reduce((sum, stop) => sum + stop.power, 0);
+    const coherent = stops.some(stop => stop.phaseValid);
+    if (!(Pn < P0 * (1 - 1e-9))) {
+      // Light a lossless (or amplifying) loop still hands out is not bounded.
+      unbounded ||= 'gain';
+      add(loop.originId, stopped, coherent);
+    } else if (coherent) {
+      if (!absorbing) unbounded ||= 'recrossing';
+      add(loop.originId, stopped, true);
+    } else {
+      add(loop.originId, Math.max(0, T1 * Pn / (P0 - Pn) - Tn), false);
+    }
+  }
+  if (!bySource.size) return null;
+  let signal = 0, powerW = 0, twoSided = false;
+  for (const [sourceId, { coherent, incoherent }] of bySource) {
+    const here = arrived.get(sourceId) || 0;
+    const cross = coherent > 0 && here > 0 ? 2 * Math.sqrt(here * coherent) : 0;
+    if (cross > 0) twoSided = true;
+    const bound = coherent + incoherent + cross;
+    signal += bound;
+    const watts = sourceWattsById.get(sourceId);
+    powerW = Number.isFinite(watts) && powerW !== null ? powerW + bound * watts : null;
+  }
+  let readingSignal = 0, readingW = 0;
+  for (const [sourceId, fraction] of arrived) {
+    readingSignal += fraction;
+    const watts = sourceWattsById.get(sourceId);
+    readingW = Number.isFinite(watts) && readingW !== null ? readingW + fraction * watts : null;
+  }
+  const share = powerW !== null && readingW > 0 ? powerW / readingW
+    : readingSignal > 0 ? signal / readingSignal : Infinity;
+  return {
+    bounded: !unbounded, unboundedBecause: unbounded, twoSided, powerW, signal, share,
+    flagged: Boolean(unbounded) || !(share < UNTRACED_NEGLIGIBLE_SHARE),
+  };
+}
+
+// The inspector's caveat for a flagged reading. Starts "Light untraced", which
+// the meter screens match on.
+export function untracedLightNote(untraced) {
+  const what = 'light the tracer could not follow (past its weak-branch budget, or its depth limit of 60 interactions, such as round trips in a cavity)';
+  if (!untraced.bounded) {
+    const why = untraced.unboundedBecause === 'recrossing'
+      ? 'and it could cross this probe any number of times'
+      : 'and an amplifier, OPO, specimen, mixer or lossless loop on its way leaves no bound on how much';
+    return `Light untraced: ${what} could reach here, ${why}, so the reading is incomplete`;
+  }
+  const share = Number.isFinite(untraced.share) ? untracedShare(untraced.share) : null;
+  const amount = untraced.powerW !== null
+    ? `${formatPowerMw(untraced.powerW)}${share ? ` (${share} of this reading)` : ''}`
+    : share ? `${share} of this reading` : 'some';
+  return `Light untraced: up to ${amount} of ${what} could reach this sensor, so the reading may be that much `
+    + (untraced.twoSided ? 'off, either way: it can interfere with the light that does arrive' : 'low');
+}
+
+// The same, for a sensor nothing traced reaches (the inspector's no-signal
+// card): null when no stopped light could reach it either.
+// The trail a probe segment was traced under: rays that continue through
+// several stretches mark where each new trail node began (traceRays).
+function segmentTrail(ray, segment) {
+  const recorded = recordedTrails.get(ray);
+  if (recorded) return recorded;
+  let trail = null;
+  for (const [from, node] of ray.trailMarks || []) if (from <= segment) trail = node;
+  return trail;
+}
+
+export function untracedLightAt(elementId) {
+  const samples = [...(detectorHits.get(elementId) || []), ...(detectorMisses.get(elementId) || [])];
+  return untracedLightSummary(samples.map(h => ({ power: h.power, trail: recordedTrails.get(h) })), new Map());
 }
 
 function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent = null) {
@@ -4998,8 +5229,18 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         markIncompleteCoherence(r, 'coherent path exceeded the trace-depth budget');
         // Light the depth limit stops is not dropped silently: a cavity can
         // outlast it with power to spare.
-        noteWeakLightShortfall(r.originId, r.power, coherent);
+        noteWeakLightShortfall(r, r.power, r.phaseValid === true, coherent, closedLoopAt(r));
         break;
+      }
+      // The states this ray's line started its last stretches in, for
+      // closedLoopAt. Only near the depth limit: nothing earlier can be a
+      // loop the limit will cut.
+      if (r.depth >= MAX_DEPTH - LOOP_WINDOW && !r.evan) {
+        r.trail = {
+          last: r.last, x: r.x, y: r.y, dx: r.dx, dy: r.dy, wl: r.wl, bw: r.bw || 0,
+          pol: r.pol, stokes: r.stokes || null, ior: r.ior || 1, power: r.power, prev: r.trail || null,
+        };
+        (r.trailMarks ||= []).push([r.pts.length - 1, r.trail]);
       }
       const hit = nearestHit({ x: r.x, y: r.y }, { x: r.dx, y: r.dy }, surfaces, r.last);
       // A weak branch that directly reaches a detector/sample is always
@@ -5030,16 +5271,21 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         if (!specimenProbe && !coherent?.dryRun && Number.isFinite(r.power) && r.power > 1e-12) {
           const end = hit ? hit.p : { x: r.x + r.dx * MAXLEN, y: r.y + r.dy * MAXLEN };
           const length = Math.hypot(end.x - r.x, end.y - r.y);
-          weakProbeSegments.push({
+          const segment = {
             pts: [{ x: r.x, y: r.y }, { x: end.x, y: end.y }],
             opls: [r.opl, r.opl + length * Math.min(3, Math.max(1, r.ior || 1))],
             segmentPowers: [r.power], segmentIntensities: [r.intensity], intensity: r.intensity, power: r.power,
             originId: r.originId || null, sourceId: r.sourceId || null, branch: r.branch || null,
             wl: r.wl, bw: r.bw, spec: r.spec, pol: r.pol, stokes: r.stokes, polMod: r.polMod, pulse: r.pulse,
             approximation: r.approximation || null,
-          });
+          };
+          if (r.trail) recordedTrails.set(segment, r.trail);
+          weakProbeSegments.push(segment);
         }
         break;
+      }
+      if (hit && r.trail && !specimenProbe && !coherent?.dryRun && breaksLineage(hit.surface)) {
+        lineageExits.push(r.trail);
       }
       if (!coherent?.dryRun && !r.evan) recordCameraNearMisses(r, cameraSurfaces, hit?.t ?? MAXLEN);
       if (r.evan) {
@@ -5379,7 +5625,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // What the budget cannot follow is recorded rather than silently lost.
         if (childIntensity < MIN_INT && children.length > 1) {
           if (weakBranches >= weakBranchBudget) {
-            noteWeakLightShortfall(r.originId, childPower, coherent);
+            noteWeakLightShortfall(r, childPower, r.phaseValid === true && c.phaseValid !== false, coherent, null);
             continue;
           }
           weakBranches++;
@@ -5491,6 +5737,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           segmentHistories: [],
           segmentEvents: [],
           sig: r.sig + '/' + (c.tag || 'w'),
+          trail: r.trail || null,
           depth: r.depth + 1, last: hit.surface,
         });
       }
@@ -5810,6 +6057,11 @@ export function traceScene(elements, beams = [], options = {}) {
   lastPowerPaths = [];
   weakProbeSegments = [];
   weakLightShortfall = new Map();
+  untracedStops = [];
+  lineageExits = [];
+  recordedTrails = new WeakMap();
+  loopEscapeCache = new Map();
+  untracedGainPossible = surfaces.some(mayAddPower);
   weakBranchBudget = Number.isInteger(options.weakBranchBudget) && options.weakBranchBudget >= 0
     ? options.weakBranchBudget : WEAK_BRANCH_BUDGET;
   hollowReadings.clear();

@@ -37,6 +37,24 @@ export function probeAveragePowerW(reading, elements = []) {
   return configured * fraction;
 }
 
+// A share of a reading, as the untraced-light caveats quote it.
+export function untracedShare(share) {
+  const percent = share * 100;
+  return `${percent >= 10 ? Math.round(percent) : percent.toPrecision(2)} %`;
+}
+
+// What the probe card appends to a power figure when light the tracer could
+// not follow could cross the probe: how much, in watts where every source
+// involved has a power, or as a share of the figure; ± when it could
+// interfere with the light that is there.
+export function untracedPowerSuffix(untraced) {
+  if (!untraced) return '';
+  const amount = !untraced.bounded ? null : untraced.powerW !== null ? formatPowerMw(untraced.powerW)
+    : Number.isFinite(untraced.share) ? untracedShare(untraced.share) : null;
+  if (!amount) return ' (incomplete)';
+  return untraced.twoSided ? ` (±${amount} untraced)` : ` (up to +${amount} untraced)`;
+}
+
 export function formatPowerMw(watts) {
   if (!Number.isFinite(watts)) return '—';
   const mw = watts * 1000;

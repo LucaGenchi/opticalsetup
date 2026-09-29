@@ -11,7 +11,7 @@ import { enhancedReading, objectImageAtCamera, pmtVerdict } from './detector-mea
 import { fwhmToSigma } from './spectrum.js';
 import { scopeTrace } from './pulses.js';
 import { envelopeAutocorrelation } from './pulse-field.js';
-import { formatTimeAxisNs, probeTimeWindowNs, syncedTimeWindowNs, arrivalDelayNs } from './probe.js';
+import { formatPowerMw, formatTimeAxisNs, probeTimeWindowNs, syncedTimeWindowNs, arrivalDelayNs, untracedShare } from './probe.js';
 import {
   autocorrelationReading, crossCorrelationReading, correlationShapeValue, crossCorrelationPair,
   crossScopeHalfSpanFs, CROSS_SCOPE_SPANS_PS, DEFAULT_SCOPE_SPAN_PS, AUTO_SCOPE_SPAN, autoScopeHalfSpanFs,
@@ -249,10 +249,21 @@ function caveatStrip(reading) {
   if (!notes.length) return '';
   const text = notes.some(n => /^Linear-only/.test(n)) ? 'LINEAR-ONLY APPROX · NONLINEAR N/A'
     : notes.some(n => /^Argon dispersion unavailable/.test(n)) ? 'ARGON DISPERSION N/A · GEOMETRIC ONLY'
-      : notes.length === 1 && /^Light untraced/.test(notes[0]) ? 'LIGHT UNTRACED · READING INCOMPLETE'
+      : notes.length === 1 && /^Light untraced/.test(notes[0]) ? untracedStripText(reading.untracedLight)
         : 'APPROXIMATION · SEE INSPECTOR';
   return `<g data-caveat="${esc(notes.join(' | '))}"><rect x="-42.2" y="11.6" width="84.4" height="5.6" fill="#3b2a05"/>`
     + `<text x="0" y="15.6" text-anchor="middle" font-size="3.3" font-weight="760" fill="#fbbf24">${esc(text)}</text></g>`;
+}
+
+// How far light the tracer could not follow could move this reading, in the
+// sensor's own terms: watts when every source involved has a power, otherwise
+// a share of what the sensor reads. Interference makes it a ± figure.
+function untracedStripText(untraced) {
+  if (!untraced?.bounded) return 'LIGHT UNTRACED · READING INCOMPLETE';
+  const amount = untraced.powerW !== null ? formatPowerMw(untraced.powerW)
+    : Number.isFinite(untraced.share) ? untracedShare(untraced.share) : null;
+  if (!amount) return 'LIGHT UNTRACED · READING INCOMPLETE';
+  return untraced.twoSided ? `UNTRACED LIGHT · ±${amount}` : `UNTRACED LIGHT · UP TO ${amount} LOW`;
 }
 
 function metrics(entries, columns = 2) {

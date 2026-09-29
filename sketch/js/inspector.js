@@ -11,7 +11,7 @@ import {
   EMISSION_ORDER, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
   FLUOROPHORES, fluorophoreSpec, normalizeSupercontinuumParams,
 } from './elements.js';
-import { detectorReading, fiberReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace, weakLightShortfallFromLastTrace } from './raytrace.js';
+import { detectorReading, fiberReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace, untracedLightAt } from './raytrace.js';
 import { envelopeAutocorrelation } from './pulse-field.js';
 import { pulseTransmissionAt } from './pulses.js';
 import {
@@ -23,6 +23,7 @@ import {
   bestScopeSpanPs, DEFAULT_SCOPE_SPAN_PS, AUTO_SCOPE_SPAN, sampledAutocorrelationReading,
 } from './glass.js';
 import { pmtVerdict } from './detector-measurements.js';
+import { formatPowerMw } from './probe.js';
 import { transformLimitedBandwidthNm } from './spectrum.js';
 import { buildTwoPhotonHandoffUrl, twoPhotonHandoffCandidates } from './two-photon-handoff.js';
 import {
@@ -221,6 +222,14 @@ function inspectorHead(def, meta, element = null) {
   </div>`;
 }
 
+// Light the tracer stopped that could still reach a sensor nothing traced
+// reaches, and how much: the no-signal card must not claim "no light" flatly.
+function untracedFoot(untraced) {
+  if (!untraced) return '';
+  const amount = untraced.bounded && untraced.powerW !== null ? `up to ${formatPowerMw(untraced.powerW)} of ` : '';
+  return `<div class="measurement-foot">${esc(`Light untraced: ${amount}light the tracer could not follow (past its weak-branch budget or depth limit) could still reach this sensor.`)}</div>`;
+}
+
 function sensorName(el) {
   const name = el?.label || registry[el?.type]?.label || 'Sensor';
   return String(name).trim() || 'Sensor';
@@ -402,7 +411,7 @@ function measurementHTML(el) {
     return `<div class="measurement-card no-signal" data-measurements>
       <div class="measurement-status"><span class="signal-light"></span>${viaDisplay ? `${esc(sensorName(source))}: no signal` : 'No light on sensor'}</div>
       <div class="measurement-foot">Aim a traced beam at ${viaDisplay ? "the linked sensor's" : "the component's"} front face to see a qualitative reading.</div>
-      ${weakLightShortfallFromLastTrace().length ? '<div class="measurement-foot">Some light in this sketch ran past the tracer’s weak-branch budget or depth limit and was not followed, so a little may still reach this sensor.</div>' : ''}
+      ${untracedFoot(untracedLightAt(source.id))}
     </div>`;
   }
   const signal = `${formatSignal(rd.signal)} a.u.`;

@@ -132,9 +132,15 @@ test('one branch short of the budget, the branch it cannot follow is reported, n
   assert.ok(arrived[0].approximations.some(note => /^Light untraced/.test(note)), 'the inspector caveat');
   const display = createElement('display', 700, 0);
   display.params.sensorId = (readings[0] ? transmitted : reflected).id;
-  assert.match(registry.display.svg(display, [...elements, display]), /LIGHT UNTRACED · READING INCOMPLETE/, 'the meter screen says so');
-  // The probe on the followed arm marks its figure as incomplete. Not as a
-  // floor: a missing destructive contribution could make it too high.
+  // The meter screen says how much, in watts: the 0.5 mW that went the other
+  // way could have come here instead. Line lasers are power-only, so it can
+  // only make the reading low.
+  assert.match(registry.display.svg(display, [...elements, display]), /UNTRACED LIGHT · UP TO 500 µW LOW/, 'the meter screen says so');
+  close(arrived[0].untracedLight.powerW, 0.0005, 'the amount on the meter');
+  // The probe on the followed arm marks its figure as incomplete, without an
+  // amount: a probe counts light each time it crosses, so light that could go
+  // anywhere has no bound there. Not as a floor either: a missing destructive
+  // contribution could make it too high.
   const probe = createElement('probe', readings[0] ? 400 : 300, readings[0] ? 0 : -100);
   probe.params.prop = 'power';
   assert.equal(probePowerAt(probe.x, probe.y, 5).weakLightIncomplete, true);

@@ -18,7 +18,7 @@ import { compressorGddReading, detectorReading, metalensReading, mixReading, obj
 import { opaSettings, opaGainAt, MAX_OPA_STAGES } from './opa.js';
 import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
 import {
-  probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
+  probeAveragePowerW, formatPowerMw, untracedPowerSuffix, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
   probeBeamWeights, probeSpectrumRangeAll, combinedSpectrumSamples, probeTimingSummary, probeTimingLabel, syncedTimeWindowNs,
   formatTimeAxisNs,
 } from './probe.js';
@@ -1074,11 +1074,11 @@ function probeCard(el, rd, elements = []) {
     // number to give, and the relative weight is not one -- say so, in place
     // of the number rather than under it.
     // Light the tracer's weak-branch budget or depth limit could not follow
-    // may be missing here. That is not always a floor -- a missing
-    // destructive contribution makes the figure too high -- so the card says
-    // "incomplete" rather than "≥" (Andrea, #193).
+    // may be missing here, and the card says how much. That is not always a
+    // floor -- a missing destructive contribution makes the figure too high
+    // -- so interference is a ± figure, never "≥" (Andrea, #193).
     return valueCard(watts === null ? 'no source power'
-      : `${formatPowerMw(watts)}${area.weakLightIncomplete ? ' (incomplete)' : ''}`);
+      : `${formatPowerMw(watts)}${area.weakLightIncomplete ? untracedPowerSuffix(area.untracedLight) : ''}`);
   }
 
   if (prop === 'duration') {
