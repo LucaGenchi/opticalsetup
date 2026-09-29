@@ -2347,6 +2347,7 @@ function fiberEmissionRays(c) {
     power: Number.isFinite(c.power) ? c.power * transmission / K : undefined,
     pol: c.pol, stokes: cloneStokes(c.stokes), pulse, approximation, sourceId: c.sourceId || null,
     originId: c.originId || null,
+    loopSum: c.loopSum || 1,
     // The parametric elements this light went through before the fiber: an
     // OPA must still recognise it when the fiber brings it back.
     parametricPath: unionPath(c.parametricPath),
@@ -4963,16 +4964,17 @@ function noteWeakLightShortfall(originId, power, coherent) {
 // would not keep the train's timing. Each pass leaves one round trip later:
 // in a synchronously pumped cavity that is on the next pulse of the train, so
 // every echo keeps the train's timing and the summed average power is exact.
-// Otherwise the echoes fall between the pulses, where their timing matters to
-// anything downstream, so the round trip must be a whole number of periods
-// closely enough that the echoes, weighted by their power, drift by no more
-// than LOOP_SYNC_FRACTION of the pulse duration: a mismatch d per round trip
-// drifts the n-th echo by n d, which averages d / (1 - g) over the sum. A
+// Otherwise the echoes fall between the pulses, or drift along the train, and
+// their timing matters to anything downstream: a gate edge can fall between
+// two echoes however little they drift. So the round trip must be a whole
+// number of periods to numerical precision: a mismatch d per round trip
+// drifts the n-th echo by n d, which averages d / (1 - g) over the sum, and
+// that may not exceed LOOP_SYNC_NS, rounding in the geometry. A
 // train already gated or polarization-modulated upstream is refused outright:
 // its modulation need not repeat with the laser period, so delayed echoes
 // meet it differently.
 const LOOP_POSITION_MM = 1e-6;
-const LOOP_SYNC_FRACTION = 0.01;
+const LOOP_SYNC_NS = 1e-9;
 const LOOP_DIRECTION = 1e-9;
 const LOOP_MAX_GAIN = 1 - 1e-9;
 const PASSIVE_LOOP_SURFACES = new Set([
@@ -5062,7 +5064,7 @@ export function closedLoop(node, r) {
     const periods = Math.round(roundTripNs / periodNs);
     const driftNs = Math.abs(roundTripNs - periods * periodNs) / (1 - g);
     if (!(periodNs > 0) || periods < 1
-        || !(driftNs <= LOOP_SYNC_FRACTION * (r.pulse.pulseWidthFs || 0) * 1e-6)) return null;
+        || !(driftNs <= LOOP_SYNC_NS)) return null;
   }
   return { g, pass };
 }
@@ -5409,6 +5411,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             originId: r.originId || null,
             coherenceLengthMm: r.coherenceLengthMm || 0,
             parametricPath: unionPath(r.parametricPath),
+            // A summed loop's factor rides through the fiber with its power.
+            loopSum: r.loopSum || 1,
           });
         }
         break; // the connector absorbs the incoming beam either way
@@ -6210,6 +6214,7 @@ export function traceScene(elements, beams = [], options = {}) {
         || Math.abs((c.gdd || 0) - (prev.gdd || 0)) > 1e-6 || Math.abs((c.opl || 0) - (prev.opl || 0)) > 1e-4;
       prev.power = (Number.isFinite(prev.power) ? prev.power : 0) + (Number.isFinite(c.power) ? c.power : 0);
       prev.parametricPath = unionPath(prev.parametricPath, c.parametricPath);
+      prev.loopSum = Math.max(prev.loopSum || 1, c.loopSum || 1);
     }
     // Two sources into one capillary end form no single envelope.
     const argonGroups = [...argon.values()];

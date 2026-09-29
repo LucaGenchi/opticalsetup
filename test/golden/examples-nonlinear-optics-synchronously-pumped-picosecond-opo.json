@@ -13,16 +13,16 @@
   },
   "points": 83,
   "sum": [
-   47876.1334,
-   33124.6844
+   47876.133,
+   33124.6835
   ],
   "bbox": [
    132,
-   115.2844,
+   115.2843,
    1199.4818,
    587.5056
   ],
-  "digest": "a9b75e32"
+  "digest": "1c9b09a7"
  },
  "drawnElements": {
   "figureframe:frame": "7f0f3f62",
@@ -292,7 +292,7 @@
    "points": 2,
    "opl": [
     528,
-    888.000036
+    888
    ],
    "pulse": {
     "sourceId": "laser›crystal:signal",
@@ -302,15 +302,15 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "3de01d01"
+   "digest": "47595fd6"
   },
   {
    "intensity": 0.0112870871,
    "color": "#8b1a1a",
    "points": 2,
    "opl": [
-    888.000036,
-    988.999987
+    888,
+    989
    ],
    "pulse": {
     "sourceId": "laser›crystal:signal",
@@ -320,15 +320,15 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "8871219d"
+   "digest": "e9c5895d"
   },
   {
    "intensity": 0.101583784,
    "color": "#8b1a1a",
    "points": 2,
    "opl": [
-    888.000036,
-    1248.00007
+    888,
+    1248
    ],
    "pulse": {
     "sourceId": "laser›crystal:signal",
@@ -338,15 +338,15 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "9c711988"
+   "digest": "d14b66f6"
   },
   {
    "intensity": 0.101583784,
    "color": "#8b1a1a",
    "points": 3,
    "opl": [
-    1248.00007,
-    1348.00007
+    1248,
+    1348
    ],
    "pulse": {
     "sourceId": "laser›crystal:signal",
@@ -356,15 +356,15 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "6f9a8db0"
+   "digest": "85298201"
   },
   {
    "intensity": 0.101583784,
    "color": "#8b1a1a",
    "points": 5,
    "opl": [
-    1348.00007,
-    4175.40567
+    1348,
+    4175.40572
    ],
    "pulse": {
     "sourceId": "laser›crystal:signal",
@@ -374,15 +374,15 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "72c2c76b"
+   "digest": "6a963077"
   },
   {
    "intensity": 0.101583784,
    "color": "#8b1a1a",
    "points": 3,
    "opl": [
-    4175.40567,
-    4275.40567
+    4175.40572,
+    4275.40572
    ],
    "pulse": {
     "sourceId": "laser›crystal:signal",
@@ -392,15 +392,15 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "2632fb2a"
+   "digest": "1ef9025c"
   },
   {
    "intensity": 0.101583784,
    "color": "#8b1a1a",
    "points": 2,
    "opl": [
-    4275.40567,
-    4635.40571
+    4275.40572,
+    4635.40572
    ],
    "pulse": {
     "sourceId": "laser›crystal:signal",
@@ -410,15 +410,15 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "f5d7e466"
+   "digest": "c9617551"
   },
   {
    "intensity": 0.0101583784,
    "color": "#8b1a1a",
    "points": 2,
    "opl": [
-    4635.40571,
-    4736.40566
+    4635.40572,
+    4736.40572
    ],
    "pulse": {
     "sourceId": "laser›crystal:signal",
@@ -428,15 +428,15 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "d1ecb028"
+   "digest": "35e61fa7"
   },
   {
    "intensity": 0.0914254054,
    "color": "#8b1a1a",
    "points": 2,
    "opl": [
-    4635.40571,
-    4995.40575
+    4635.40572,
+    4995.40572
    ],
    "pulse": {
     "sourceId": "laser›crystal:signal",
@@ -446,15 +446,15 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "de11a2bb"
+   "digest": "1165f4b1"
   },
   {
    "intensity": 0.0914254054,
    "color": "#8b1a1a",
    "points": 3,
    "opl": [
-    4995.40575,
-    5095.40575
+    4995.40572,
+    5095.40572
    ],
    "pulse": {
     "sourceId": "laser›crystal:signal",
@@ -464,15 +464,15 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "a9576d72"
+   "digest": "832a045d"
   },
   {
    "intensity": 0.0914254054,
    "color": "#8b1a1a",
    "points": 5,
    "opl": [
-    5095.40575,
-    7922.81135
+    5095.40572,
+    7922.81145
    ],
    "pulse": {
     "sourceId": "laser›crystal:signal",
@@ -482,15 +482,15 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "5535f423"
+   "digest": "f2f87b58"
   },
   {
    "intensity": 0.0914254054,
    "color": "#8b1a1a",
    "points": 3,
    "opl": [
-    7922.81135,
-    8022.81135
+    7922.81145,
+    8022.81145
    ],
    "pulse": {
     "sourceId": "laser›crystal:signal",
@@ -500,15 +500,15 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "bad2a5da"
+   "digest": "cdf40977"
   },
   {
    "intensity": 0.0914254054,
    "color": "#8b1a1a",
    "points": 2,
    "opl": [
-    8022.81135,
-    8382.81139
+    8022.81145,
+    8382.81145
    ],
    "pulse": {
     "sourceId": "laser›crystal:signal",
@@ -518,15 +518,15 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "493a360d"
+   "digest": "844289df"
   },
   {
    "intensity": 0.00914254054,
    "color": "#8b1a1a",
    "points": 2,
    "opl": [
-    8382.81139,
-    8483.81134
+    8382.81145,
+    8483.81145
    ],
    "pulse": {
     "sourceId": "laser›crystal:signal",
@@ -536,15 +536,15 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "1c723fd8"
+   "digest": "237a6f5c"
   },
   {
    "intensity": 0.0822828648,
    "color": "#8b1a1a",
    "points": 2,
    "opl": [
-    8382.81139,
-    8742.81142
+    8382.81145,
+    8742.81145
    ],
    "pulse": {
     "sourceId": "laser›crystal:signal",
@@ -554,15 +554,15 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "006322c0"
+   "digest": "0dd61934"
   },
   {
    "intensity": 0.0822828648,
    "color": "#8b1a1a",
    "points": 3,
    "opl": [
-    8742.81142,
-    8842.81142
+    8742.81145,
+    8842.81145
    ],
    "pulse": {
     "sourceId": "laser›crystal:signal",
@@ -572,15 +572,15 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "d9a76452"
+   "digest": "ab5d75e1"
   },
   {
    "intensity": 0.0822828648,
    "color": "#8b1a1a",
    "points": 5,
    "opl": [
-    8842.81142,
-    11670.217
+    8842.81145,
+    11670.2172
    ],
    "pulse": {
     "sourceId": "laser›crystal:signal",
@@ -590,15 +590,15 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "9a699563"
+   "digest": "c7694d4a"
   },
   {
    "intensity": 0.0822828648,
    "color": "#8b1a1a",
    "points": 3,
    "opl": [
-    11670.217,
-    11770.217
+    11670.2172,
+    11770.2172
    ],
    "pulse": {
     "sourceId": "laser›crystal:signal",
@@ -608,15 +608,15 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "83295ef1"
+   "digest": "f45c0fc1"
   },
   {
    "intensity": 0.0822828648,
    "color": "#8b1a1a",
    "points": 2,
    "opl": [
-    11770.217,
-    12130.2171
+    11770.2172,
+    12130.2172
    ],
    "pulse": {
     "sourceId": "laser›crystal:signal",
@@ -626,15 +626,15 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "a5a03b56"
+   "digest": "0301a59b"
   },
   {
    "intensity": 0.00822828648,
    "color": "#8b1a1a",
    "points": 2,
    "opl": [
-    12130.2171,
-    12231.217
+    12130.2172,
+    12231.2172
    ],
    "pulse": {
     "sourceId": "laser›crystal:signal",
@@ -644,15 +644,15 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "a5ffeb82"
+   "digest": "a6f8954c"
   },
   {
    "intensity": 0.0740545784,
    "color": "#8b1a1a",
    "points": 2,
    "opl": [
-    12130.2171,
-    12490.2171
+    12130.2172,
+    12490.2172
    ],
    "pulse": {
     "sourceId": "laser›crystal:signal",
@@ -662,7 +662,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "7ccf0d9f"
+   "digest": "0d3ab95d"
   }
  ],
  "writeHits": {
@@ -1336,7 +1336,7 @@
     "profileMode": null,
     "profileScale": "absolute",
     "pulse": {
-     "arrivalSpreadPs": 37499.9995,
+     "arrivalSpreadPs": 37500,
      "branches": [
       {
        "gates": [],
@@ -1344,7 +1344,7 @@
       }
      ],
      "dispersionModel": "Gaussian GDD · positive chirp carried as GDD",
-     "earliestPathDelayNs": 3.29894886,
+     "earliestPathDelayNs": 3.2989489,
      "envelope": null,
      "fieldIssue": null,
      "gddFs2": 718921.435,
@@ -1372,7 +1372,7 @@
        "gddFs2": 718921.435,
        "groupDelayDifferenceFs": 0,
        "inputGddFs2": 0,
-       "pathDelayNs": 3.29894886,
+       "pathDelayNs": 3.2989489,
        "phaseNs": 0,
        "pulseShape": "gauss",
        "pulseWidthFs": 1471.01766,
@@ -1551,7 +1551,7 @@
       "widthNm": 0.0693913982
      }
     ],
-    "spotSpan": 6.30097086e-10,
+    "spotSpan": 6.30066777e-10,
     "wavelength": 800
    }
   }

@@ -188,16 +188,36 @@ test('a gated train, or one detuned from its period, is not summed', () => {
   traceScene(elements, []);
   assert.deepEqual(loopClosuresFromLastTrace(), [], 'gated train');
   assert.equal(detectorReading(out.id).weakLightIncomplete, true);
-  // A round trip 1e-4 of a period off: at g = 0.4 the echoes drift, on
-  // average, 1.1 ps, far more than 1 % of the 150 fs pulse.
-  ({ out, elements } = twoMirrorCavity(0.5, 0.8, { source: 'pulsedlaser', repRateMHz: synchronous * (1 - 1e-4) }));
-  traceScene(elements, []);
-  assert.deepEqual(loopClosuresFromLastTrace(), [], 'detuned train');
-  // 1e-10 off drifts them by attoseconds, well inside the bound.
+  // Echoes that drift along the train are refused however little they drift,
+  // since a gate edge downstream can fall between two of them: 1e-4 of a
+  // period off drifts them by 1.1 ps on average, 1e-8 off by 11 fs.
+  for (const detuning of [1e-4, 1e-8]) {
+    ({ out, elements } = twoMirrorCavity(0.5, 0.8, { source: 'pulsedlaser', repRateMHz: synchronous * (1 - detuning) }));
+    traceScene(elements, []);
+    assert.deepEqual(loopClosuresFromLastTrace(), [], `detuned by ${detuning}`);
+  }
+  // 1e-10 off is rounding: a tenth of an attosecond.
   ({ out, elements } = twoMirrorCavity(0.5, 0.8, { source: 'pulsedlaser', repRateMHz: synchronous * (1 - 1e-10) }));
   traceScene(elements, []);
   assert.equal(loopClosuresFromLastTrace().length, 1, 'synchronous to rounding');
   near(detectorReading(out.id).signal, 0.5 * 0.2 / (1 - 0.4), 1e-12, 'synchronous to rounding');
+});
+
+test('summed light too faint to draw is still followed through a fiber', () => {
+  const R = 0.9999995, T = 1 - R;
+  const fiber = {
+    id: 'cable', kind: 'fiber', pts: [{ x: 460, y: 0 }, { x: 660, y: 0 }], width: 20, propagate: true,
+    lossDbPerM: 0, out0: { mode: 'diverge', na: 0.01 }, out1: { mode: 'diverge', na: 0.01 },
+  };
+  const expected = T * T / (1 - R * R);
+  for (const withLens of [false, true]) {
+    const lens = createElement('lens', 750, 0);
+    const { out, elements } = twoMirrorCavity(R, R, { extra: withLens ? [lens] : [] });
+    out.x = 850;
+    out.params.aperture = 60;
+    traceScene(elements, [fiber]);
+    near(detectorReading(out.id)?.signal ?? 0, expected, 1e-5 * expected, withLens ? 'fiber, lens' : 'fiber');
+  }
 });
 
 test('summed light too faint to draw is still followed to the detector', () => {

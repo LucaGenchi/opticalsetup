@@ -57,7 +57,10 @@ export const FOLD_INCIDENCE_DEG = 12;
 const DEG = Math.PI / 180;
 const dir = deg => ({ x: Math.cos(deg * DEG), y: Math.sin(deg * DEG) });
 const along = (p, d, length) => ({ x: p.x + d.x * length, y: p.y + d.y * length });
-const round = v => Math.round(v * 1e4) / 1e4;
+// Fine enough that each cavity's round trip stays one pump period to well
+// under an attosecond: the tracer sums a pulsed cavity's echoes only when
+// they land exactly on later pulses of the train.
+const round = v => Math.round(v * 1e9) / 1e9;
 // A flat reflector at `rot` degrees turns direction `from` into `to` when its
 // normal lies along to − from.
 const foldRot = (from, to) => {

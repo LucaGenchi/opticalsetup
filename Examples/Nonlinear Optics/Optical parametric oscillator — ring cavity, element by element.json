@@ -48,7 +48,7 @@
       "id": "sync-note",
       "type": "textlabel",
       "x": 860,
-      "y": 91.7322,
+      "y": 91.732161956,
       "rot": 0,
       "label": "",
       "showLabel": false,
@@ -61,7 +61,7 @@
     {
       "id": "pump",
       "type": "pulsedlaser",
-      "x": 454.5242,
+      "x": 454.524210111,
       "y": 560,
       "rot": 0,
       "label": "532 nm · 2 ps · 80 MHz",
@@ -80,7 +80,7 @@
     {
       "id": "M1",
       "type": "dichroic",
-      "x": 674.5242,
+      "x": 674.524210111,
       "y": 560,
       "rot": 168,
       "label": "M1",
@@ -96,7 +96,7 @@
     {
       "id": "crystal",
       "type": "crystal",
-      "x": 824.5242,
+      "x": 824.524210111,
       "y": 560,
       "rot": 0,
       "label": "nonlinear crystal",
@@ -118,7 +118,7 @@
     {
       "id": "M2",
       "type": "dichroic",
-      "x": 974.5242,
+      "x": 974.524210111,
       "y": 560,
       "rot": 12,
       "label": "M2 · output coupler",
@@ -136,7 +136,7 @@
       "id": "M3",
       "type": "dichroic",
       "x": 80,
-      "y": 161.7322,
+      "y": 161.732161956,
       "rot": 12,
       "label": "M3",
       "showLabel": true,
@@ -151,8 +151,8 @@
     {
       "id": "M4",
       "type": "dichroic",
-      "x": 1569.0484,
-      "y": 161.7322,
+      "x": 1569.048420222,
+      "y": 161.732161956,
       "rot": 168,
       "label": "M4",
       "showLabel": true,
@@ -167,7 +167,7 @@
     {
       "id": "idler-separator",
       "type": "dichroic",
-      "x": 1124.5242,
+      "x": 1124.524210111,
       "y": 560,
       "rot": 135,
       "label": "longpass 1000 nm",
@@ -182,7 +182,7 @@
     {
       "id": "idler-detector",
       "type": "detector",
-      "x": 1294.5242,
+      "x": 1294.524210111,
       "y": 560,
       "rot": 0,
       "label": "idler · 1588 nm",
@@ -195,7 +195,7 @@
     {
       "id": "pump-wavelength",
       "type": "probe",
-      "x": 584.5242,
+      "x": 584.524210111,
       "y": 560,
       "rot": 0,
       "label": "",
@@ -208,7 +208,7 @@
       "id": "cavity-wavelength",
       "type": "probe",
       "x": 500,
-      "y": 161.7322,
+      "y": 161.732161956,
       "rot": 0,
       "label": "",
       "showLabel": false,
@@ -219,7 +219,7 @@
     {
       "id": "idler-wavelength",
       "type": "probe",
-      "x": 1239.5242,
+      "x": 1239.524210111,
       "y": 560,
       "rot": 0,
       "label": "",
@@ -231,7 +231,7 @@
     {
       "id": "signal-wavelength",
       "type": "probe",
-      "x": 1239.5242,
+      "x": 1239.524210111,
       "y": 660,
       "rot": 0,
       "label": "",
@@ -243,7 +243,7 @@
     {
       "id": "residual-pump-wavelength",
       "type": "probe",
-      "x": 1124.5242,
+      "x": 1124.524210111,
       "y": 760,
       "rot": 0,
       "label": "",
@@ -255,7 +255,7 @@
     {
       "id": "pump-separator",
       "type": "dichroic",
-      "x": 1124.5242,
+      "x": 1124.524210111,
       "y": 660,
       "rot": 135,
       "label": "shortpass 650 nm",
@@ -270,7 +270,7 @@
     {
       "id": "signal-detector",
       "type": "detector",
-      "x": 1294.5242,
+      "x": 1294.524210111,
       "y": 660,
       "rot": 0,
       "label": "signal · 800 nm",
@@ -283,7 +283,7 @@
     {
       "id": "pump-dump",
       "type": "beamdump",
-      "x": 1124.5242,
+      "x": 1124.524210111,
       "y": 810,
       "rot": 90,
       "label": "residual pump",
