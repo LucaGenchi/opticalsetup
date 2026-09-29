@@ -2,19 +2,21 @@
  "elements": 19,
  "beams": 0,
  "drawables": {
-  "count": 9,
+  "count": 13,
   "byType": {
-   "path": 9
+   "path": 13
   },
   "colors": {
+   "#58ff00": 2,
    "#5eff00": 2,
    "#65ff00": 5,
-   "#6bff00": 2
+   "#6bff00": 2,
+   "#72ff00": 2
   },
-  "points": 27,
+  "points": 41,
   "sum": [
-   9140,
-   13650
+   14288,
+   21110
   ],
   "bbox": [
    152,
@@ -22,7 +24,7 @@
    472,
    625
   ],
-  "digest": "6987c052"
+  "digest": "a7348386"
  },
  "drawnElements": {
   "textlabel:e1": "85323a07",
@@ -83,6 +85,24 @@
    "digest": "80fa3c74"
   },
   {
+   "intensity": 0.0030829816,
+   "color": "#72ff00",
+   "points": 3,
+   "opl": [
+    118,
+    369.407161
+   ],
+   "pulse": {
+    "sourceId": "e8",
+    "repRateMHz": 80,
+    "pulseWidthFs": 150,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "6970aec7"
+  },
+  {
    "intensity": 0.180195859,
    "color": "#6bff00",
    "points": 3,
@@ -137,6 +157,24 @@
    "digest": "05b2db9b"
   },
   {
+   "intensity": 0.0030829816,
+   "color": "#58ff00",
+   "points": 3,
+   "opl": [
+    118,
+    369.558292
+   ],
+   "pulse": {
+    "sourceId": "e8",
+    "repRateMHz": 80,
+    "pulseWidthFs": 150,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "043314ec"
+  },
+  {
    "intensity": 1,
    "color": "#65ff00",
    "points": 2,
@@ -153,6 +191,24 @@
     "gates": 0
    },
    "digest": "8dfe15fb"
+  },
+  {
+   "intensity": 0.0030829816,
+   "color": "#72ff00",
+   "points": 4,
+   "opl": [
+    98,
+    399.407161
+   ],
+   "pulse": {
+    "sourceId": "e13",
+    "repRateMHz": 80,
+    "pulseWidthFs": 150,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "c4bc273f"
   },
   {
    "intensity": 0.180195859,
@@ -207,6 +263,24 @@
     "gates": 0
    },
    "digest": "8acbfc13"
+  },
+  {
+   "intensity": 0.0030829816,
+   "color": "#58ff00",
+   "points": 4,
+   "opl": [
+    98,
+    399.558292
+   ],
+   "pulse": {
+    "sourceId": "e13",
+    "repRateMHz": 80,
+    "pulseWidthFs": 150,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "2a7e5a47"
   }
  ],
  "writeHits": {

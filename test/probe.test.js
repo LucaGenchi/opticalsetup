@@ -74,17 +74,23 @@ const lineLaser = (x, y, avgPowerW, extra = {}) => {
   return l;
 };
 
-test('the probe counts a beam hidden from the drawing, as the meter does', () => {
-  // A 90 % mirror at 45 degrees: the 10 % it transmits is not drawn
-  // (Display transmitted beam off) but reaches the meter all the same.
+test('the probe counts a mirror leak as the meter does, and neither sees it when it is off', () => {
+  // A 90 % mirror at 45 degrees with Trace transmitted beam on: the 10 % it
+  // transmits reaches the meter, and the probe reads the same.
   const mirror = Object.assign(createElement('mirror', 200, 0), { rot: 45 });
   mirror.params.refl = 90;
+  mirror.params.showTransmitted = true;
   const meter = meterAt(400, 0);
   const elements = [lineLaser(0, 0, 0.1), mirror, meter];
   traceScene(elements, []);
   const metered = enhancedReading(meter, elements).detectedPowerW;
   assert.ok(Math.abs(metered - 0.01) < 1e-12, `${metered}`);
   assert.ok(Math.abs(probeWatts(300, 0, elements) - metered) < 1e-15);
+  // Off, the leak does not exist: the meter and the probe both read nothing.
+  mirror.params.showTransmitted = false;
+  traceScene(elements, []);
+  assert.equal(enhancedReading(meter, elements), null);
+  assert.equal(probePowerAt(300, 0, 5), null);
 });
 
 test('the probe adds every beam crossing its circle, and only those', () => {

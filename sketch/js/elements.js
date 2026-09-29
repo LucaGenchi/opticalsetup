@@ -1990,15 +1990,17 @@ const P = {
 };
 
 // Shared by every mirror in the Mirrors category: a reflectivity percentage
-// and, once it's set below 100%, an opt-in toggle for actually drawing the
-// leaked transmitted beam (default off — the leak is still retained within
-// the tracer's bounded weak-power budget for correct detector/power-budget
-// readings either way, see raytrace.js's
-// `hidden` ray flag; this only controls whether it's rendered).
+// and, once it's set below 100%, an opt-in toggle for the leaked transmitted
+// beam. Off (the default) the leak is not traced at all -- the 1-R simply
+// leaves the setup, as when budgeting the power that reaches a sample. On, it
+// is drawn and traced like any other beam: an output coupler, a cavity
+// monitor. The key keeps its old name. Before PR #193 "off" only hid a leak
+// that was still traced; by Luca's decision the new meaning applies to saved
+// scenes too, so a detector behind a partial mirror left off reads nothing.
 function reflectivityParams() {
   return [
     { key: 'refl', label: 'Reflectivity (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
-    { key: 'showTransmitted', label: 'Display transmitted beam', type: 'checkbox', def: false, show: p => (p.refl ?? 100) < 100 },
+    { key: 'showTransmitted', label: 'Trace transmitted beam', type: 'checkbox', def: false, show: p => (p.refl ?? 100) < 100 },
   ];
 }
 

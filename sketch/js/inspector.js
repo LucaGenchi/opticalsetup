@@ -402,7 +402,7 @@ function measurementHTML(el) {
     return `<div class="measurement-card no-signal" data-measurements>
       <div class="measurement-status"><span class="signal-light"></span>${viaDisplay ? `${esc(sensorName(source))}: no signal` : 'No light on sensor'}</div>
       <div class="measurement-foot">Aim a traced beam at ${viaDisplay ? "the linked sensor's" : "the component's"} front face to see a qualitative reading.</div>
-      ${weakLightShortfallFromLastTrace().length ? '<div class="measurement-foot">Some light in this sketch too faint to draw ran past the tracer’s measurement budget or depth limit and was not followed, so a little may still reach this sensor.</div>' : ''}
+      ${weakLightShortfallFromLastTrace().length ? '<div class="measurement-foot">Some light in this sketch ran past the tracer’s weak-branch budget or depth limit and was not followed, so a little may still reach this sensor.</div>' : ''}
     </div>`;
   }
   const signal = `${formatSignal(rd.signal)} a.u.`;

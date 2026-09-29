@@ -1036,7 +1036,9 @@
   },
   "detector:idler-detector": {
    "detector": {
-    "approximations": [],
+    "approximations": [
+     "Light untraced: somewhere in this sketch, light ran past the tracer’s weak-branch budget or its depth limit (60 interactions, such as round trips in a cavity); it may have reached this sensor, so the reading may be low"
+    ],
     "bandMax": 1455.40105,
     "bandMin": 1451.64121,
     "centroid": null,
@@ -1557,12 +1559,15 @@
      }
     ],
     "spotSpan": 0,
-    "wavelength": 1453.52113
+    "wavelength": 1453.52113,
+    "weakLightIncomplete": true
    }
   },
   "detector:signal-detector": {
    "detector": {
-    "approximations": [],
+    "approximations": [
+     "Light untraced: somewhere in this sketch, light ran past the tracer’s weak-branch budget or its depth limit (60 interactions, such as round trips in a cavity); it may have reached this sensor, so the reading may be low"
+    ],
     "bandMax": 800.320095,
     "bandMin": 799.679905,
     "centroid": null,
@@ -1804,7 +1809,8 @@
      }
     ],
     "spotSpan": 1.73531944e-9,
-    "wavelength": 800
+    "wavelength": 800,
+    "weakLightIncomplete": true
    }
   }
  },

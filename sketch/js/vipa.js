@@ -131,7 +131,7 @@ export const vipaDefinition = {
     { key: 'frontReflectivity', label: 'Front HR coating (%)', type: 'number', min: 0, max: 100, step: 0.1, def: 99.9 },
     { key: 'windowSize', label: 'Entrance window (mm)', type: 'number', min: 0.5, max: 30, step: 0.5, def: 3 },
     { key: 'windowOffset', label: 'Window offset (mm)', type: 'number', min: -60, max: 60, step: 0.5, def: 0 },
-    { key: 'showLeakage', label: 'Show output leakage beams', type: 'checkbox', def: true },
+    { key: 'showLeakage', label: 'Trace output leakage beams', type: 'checkbox', def: true },
   ],
   svg: element => vipaSVG(element.params),
   surfaces: element => vipaSurfaces(element.params),

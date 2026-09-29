@@ -2,34 +2,35 @@
  "elements": 9,
  "beams": 1,
  "drawables": {
-  "count": 99,
+  "count": 105,
   "byType": {
    "path": 42,
-   "poly": 57
+   "poly": 63
   },
   "colors": {
    "#00b5ff": 6,
    "#75ff00": 6,
    "#7c3aed": 12,
    "#7f00d7": 6,
+   "#8b00d4": 6,
    "#cbd8ea": 33,
    "#dbe7f5": 12,
    "#f97316": 12,
    "#ff0000": 6,
    "#ffbe00": 6
   },
-  "points": 348,
+  "points": 372,
   "sum": [
-   157740.919,
-   -58050.5508
+   172503.995,
+   -59768.5557
   ],
   "bbox": [
    192.095,
    -450,
    706.1085,
-   18.1161
+   20.3473
   ],
-  "digest": "cfae1e12"
+  "digest": "e6fbe036"
  },
  "drawnElements": {
   "slit:egg4i78n": "0271cd66",
