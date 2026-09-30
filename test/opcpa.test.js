@@ -12,10 +12,12 @@ import { createElement } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
 import { traceScene, opaReading, probeBeamsAt } from '../sketch/js/raytrace.js';
 import { enhancedReading } from '../sketch/js/detector-measurements.js';
-import { arrivingPulse, planOpa, seedSlices, slicePulse, opaSettings, PHASE_KEPT_WINDOW_RATIO } from '../sketch/js/opa.js';
-import { gaussianPulseDurationAfterGDD } from '../sketch/js/glass.js';
-import { spectrumSupport, spectrumWeight, transformLimitedDurationFs } from '../sketch/js/spectrum.js';
-import { quadraticPhasePulse } from '../sketch/js/pulse-field.js';
+import {
+  arrivingPulse, chirpedSignalPulse, planOpa, seedSlices, slicePulse, opaSettings, MAX_GATE_BANDWIDTH_RATIO, PATHS_DIFFER,
+} from '../sketch/js/opa.js';
+import { gaussianPulseDurationAfterGDD, pulseDurationAfterDispersion } from '../sketch/js/glass.js';
+import { gaussianSpectrum, spectrumSupport, spectrumWeight, transformLimitedDurationFs } from '../sketch/js/spectrum.js';
+import { fft, quadraticPhasePulse } from '../sketch/js/pulse-field.js';
 
 // The transform of a power spectrum (per nm) with a quadratic phase: an
 // independent route to the durations the tracer reports.
@@ -110,7 +112,7 @@ test('a pump shorter than the stretched seed narrows the amplified band; the com
   assert.ok(l.signal.bw > 0.85 * 30, 'a long pump amplifies nearly the whole band');
   for (const [{ after, before }, seed] of [[short, s], [long, l]]) {
     assert.equal(after.length, 1);
-    const { limit, stretched } = transformOf(seed.signal.spec, STRETCH);
+    const { limit, stretched } = transformOf(seed.amplifiedProfile, STRETCH);
     near(after[0].pulse.durationFs, limit, 1e-6 * limit, 'recompressed to the amplified spectrum\'s transform limit');
     near(before[0].pulse.durationFs, stretched, 1e-6 * stretched, 'stretched before the compressor');
   }
@@ -123,7 +125,7 @@ test('a saturated stage flattens the amplified spectrum; its duration is that sp
   const seed = plan.seeds[0];
   assert.ok(seed.saturated && seed.phaseKept);
   assert.ok(seed.signal.bw > 30, `saturation widens the FWHM: ${seed.signal.bw} nm`);
-  const { limit } = transformOf(seed.signal.spec, 100000);
+  const { limit } = transformOf(seed.amplifiedProfile, 100000);
   near(after[0].pulse.durationFs, limit, 1e-6 * limit);
   // A flat top of that FWHM is well longer than a Gaussian of the same FWHM.
   assert.ok(limit > 1.3 * transformLimitedDurationFs(seed.signal.bw, seed.signal.wl, 'gauss'));
@@ -134,7 +136,7 @@ test('a gain window shorter than a few transform limits leaves the signal phase 
   const { plan, after } = bench({ seed: laser(18, 800, 1e-3, { transformLimited: true, pulseWidthFs: 300 }), pumpFs: 300, compressGdd: -2000 });
   const seed = plan.seeds[0];
   assert.equal(seed.state, 'amplifying');
-  assert.ok(seed.gainWindowFs < PHASE_KEPT_WINDOW_RATIO * seed.chirp.tau0Fs);
+  assert.ok(seed.gateBandRatio > MAX_GATE_BANDWIDTH_RATIO, `${seed.gateBandRatio}`);
   assert.equal(seed.phaseKept, false);
   assert.equal(after[0].pulse.durationFs, null);
   assert.match(after[0].pulse.durationIssue, /phase unknown/i);
@@ -192,4 +194,125 @@ test('a second stage is seeded by the first stage\'s chirped signal and slices i
   assert.equal(amplified.state, 'amplifying');
   near(amplified.chirp.gddFs2, STRETCH, 1e-6, 'the stretch carried through stage 1');
   assert.ok(amplified.signal.bw <= one.seeds[0].signal.bw * (1 + 1e-9), 'gain narrowing does not reverse');
+});
+
+// ---- The domain in which the signal keeps the seed's phase, checked against
+// the field amplified coherently: an undepleted, phase-matched seeded OPA
+// multiplies the seed's field by cosh(Gamma L sqrt(I_p(t)/I_peak)); the
+// amplified part is that minus the seed. Its compressed duration (the seed's
+// GDD removed) is compared with the model's.
+function coherentCompressedFs({ lam0, bwNm, gdd, taupFs, G0, delayFs = 0 }) {
+  const N = 1 << 15;
+  const tau0 = transformLimitedDurationFs(bwNm, lam0, 'gauss');
+  const stretched = gaussianPulseDurationAfterGDD(tau0, gdd);
+  const dt = 12 * Math.max(taupFs, stretched) / N;
+  const dOmega = 2 * Math.PI * 299.792458 * bwNm / (lam0 * lam0);
+  const dW = 2 * Math.PI / (N * dt), W = k => (k < N / 2 ? k : k - N) * dW;
+  const re = new Float64Array(N), im = new Float64Array(N);
+  const phase = sign => { for (let k = 0; k < N; k++) {
+    const p = sign * gdd * W(k) ** 2 / 2, c = Math.cos(p), s = Math.sin(p);
+    const r = re[k] * c - im[k] * s; im[k] = re[k] * s + im[k] * c; re[k] = r;
+  } };
+  for (let k = 0; k < N; k++) re[k] = Math.exp(-2 * Math.LN2 * W(k) ** 2 / dOmega ** 2);
+  phase(1);
+  fft(re, im, true);
+  const gammaL = Math.acosh(Math.sqrt(G0));
+  for (let j = 0; j < N; j++) {
+    const t = (j < N / 2 ? j : j - N) * dt;
+    const g = Math.cosh(gammaL * Math.exp(-2 * Math.LN2 * ((t - delayFs) / taupFs) ** 2)) - 1;
+    re[j] *= g; im[j] *= g;
+  }
+  fft(re, im, false);
+  phase(-1);
+  fft(re, im, true);
+  const I = Array.from({ length: N }, (_, j) => { const i = (j + N / 2) % N; return re[i] ** 2 + im[i] ** 2; });
+  const peak = Math.max(...I), half = peak / 2;
+  const first = I.findIndex(v => v >= half), last = N - 1 - [...I].reverse().findIndex(v => v >= half);
+  // Crossings interpolated between samples.
+  const at = (i, j) => i + (half - I[i]) / (I[j] - I[i]) * (j - i);
+  return (at(last + 1, last) - at(first - 1, first)) * dt;
+}
+function modelSeed({ lam0, bwNm, gdd, taupFs, G0, delayFs = 0, sech2 = false }) {
+  const tau0 = transformLimitedDurationFs(bwNm, lam0, 'gauss');
+  const pump = { key: 'p', wl: 532, powerW: 1, opl: 0, pulse: { repRateMHz: 0.001, pulseWidthFs: taupFs, phaseNs: delayFs * 1e-6, transformLimited: true } };
+  const seed = { key: 's', wl: lam0, bw: bwNm, spec: gaussianSpectrum(lam0, bwNm), powerW: 1e-15, opl: 0,
+    pulse: { repRateMHz: 0.001, pulseWidthFs: gaussianPulseDurationAfterGDD(tau0, gdd), phaseNs: 0, transformLimited: false,
+      bandwidthNm: bwNm, centerWavelengthNm: lam0, inputGddFs2: gdd, transformLimitFs: tau0, spectrumKind: 'gauss', pulseShape: sech2 ? 'sech2' : 'gauss' } };
+  const plan = planOpa({ signalWl: lam0, gainBandwidthNm: 5000, smallSignalGainDb: 10 * Math.log10(G0), maxDepletion: 1 }, { pump, seeds: [seed] });
+  const s = plan.seeds[0];
+  const out = s.phaseKept ? chirpedSignalPulse(seed.pulse, s.signal, gdd, s.amplifiedProfile) : null;
+  return { seed: s, record: seed, compressedFs: out ? pulseDurationAfterDispersion(out, -gdd, 0)?.durationFs : null };
+}
+const chirpFor = (tau0, stretch) => tau0 * tau0 / (4 * Math.LN2) * Math.sqrt(stretch * stretch - 1);
+
+test('inside its declared domain the model recompresses within 6 % of the coherently amplified field', () => {
+  const lam0 = 800, bwNm = 10, G0 = 1e4, tau0 = transformLimitedDurationFs(bwNm, lam0);
+  const window = R => R * tau0 * Math.sqrt(Math.acosh(Math.sqrt(G0)));
+  for (const [stretch, R] of [[1, 4], [3, 4], [10, 10], [50, 20], [10, 20]]) {
+    const args = { lam0, bwNm, gdd: stretch === 1 ? 0 : chirpFor(tau0, stretch), taupFs: window(R), G0 };
+    const m = modelSeed(args);
+    assert.ok(m.seed.phaseKept, `stretch ${stretch}, window ${R} tau0: inside the domain (ratio ${m.seed.gateBandRatio})`);
+    const ref = coherentCompressedFs(args);
+    assert.ok(rel(m.compressedFs, ref) < 0.06, `stretch ${stretch}, window ${R} tau0: ${m.compressedFs} vs coherent ${ref}`);
+  }
+  // Gated too fast for the slices -- where they are 18 % or more off -- the
+  // signal's phase is declared unknown instead.
+  for (const [stretch, R] of [[1, 2], [50, 3], [50, 10]]) {
+    const m = modelSeed({ lam0, bwNm, gdd: stretch === 1 ? 0 : chirpFor(tau0, stretch), taupFs: window(R), G0 });
+    assert.equal(m.seed.phaseKept, false, `stretch ${stretch}, window ${R} tau0`);
+    assert.ok(m.seed.gateBandRatio > MAX_GATE_BANDWIDTH_RATIO);
+  }
+});
+
+test('a pump that arrives late amplifies the wavelengths that arrive late, on either sign of chirp', () => {
+  const lam0 = 800, bwNm = 30, G0 = 1e4, tau0 = transformLimitedDurationFs(bwNm, lam0);
+  const gdd = chirpFor(tau0, 50);
+  for (const sign of [1, -1]) {
+    const centred = modelSeed({ lam0, bwNm, gdd: sign * gdd, taupFs: 3000, G0 });
+    const late = modelSeed({ lam0, bwNm, gdd: sign * gdd, taupFs: 3000, G0, delayFs: 500 });
+    near(centred.seed.signal.wl, lam0, 0.5, 'centred pump: centred band (the mapping is linear in frequency, not wavelength)');
+    // Positive chirp puts the blue end last; negative, the red end.
+    assert.ok(sign > 0 ? late.seed.signal.wl < lam0 - 1 : late.seed.signal.wl > lam0 + 1, `chirp ${sign}: ${late.seed.signal.wl} nm`);
+    // The amplified light sits at the centre of seed x gain window: between
+    // the seed's centre and the pump's, nearer the narrower of the two.
+    const W = late.seed.gainWindowFs, S = late.seed.arrivingPulse.pulseWidthFs;
+    const expected = 500 * (1 / W ** 2) / (1 / W ** 2 + 1 / S ** 2);
+    assert.ok(rel(late.seed.signalDelayFs, expected) < 0.1, `delay ${late.seed.signalDelayFs} fs vs ${expected} fs`);
+    assert.ok(Math.abs(centred.seed.signalDelayFs) < 0.02 * S, `centred: ${centred.seed.signalDelayFs} fs`);
+  }
+  // Traced: a negatively chirped seed recompresses with positive GDD.
+  const { after, plan } = bench({ seed: chirpedSeed(1e-12, -STRETCH), compressGdd: STRETCH });
+  assert.ok(plan.seeds[0].phaseKept);
+  const { limit } = transformOf(plan.seeds[0].amplifiedProfile, -STRETCH);
+  near(after[0].pulse.durationFs, limit, 1e-6 * limit);
+});
+
+test('the time mapping is refused where it does not hold, and so is a beam whose rays disagree', () => {
+  const tl = transformLimitedDurationFs(10, 800, 'sech2');
+  const sech2 = gdd => ({ key: 's', wl: 800, bw: 10, spec: gaussianSpectrum(800, 10), powerW: 1e-6, opl: 0,
+    pulse: { repRateMHz: 1, pulseWidthFs: gaussianPulseDurationAfterGDD(tl, gdd), phaseNs: 0, transformLimited: false, bandwidthNm: 10,
+      centerWavelengthNm: 800, inputGddFs2: gdd, transformLimitFs: tl, spectrumKind: 'gauss', pulseShape: 'sech2' } });
+  // A sech² pulse is mapped only once strongly chirped.
+  assert.equal(arrivingPulse(sech2(500)).chirp, null);
+  assert.ok(arrivingPulse(sech2(200000)).chirp);
+  // A flat band's sweep is an assumption, not a known phase.
+  const flat = { key: 'f', wl: 600, bw: 200, spec: { kind: 'flat', lo: 500, hi: 700 }, powerW: 1e-6, opl: 0,
+    pulse: { repRateMHz: 1, pulseWidthFs: 1000, phaseNs: 0, spectrumKind: 'flat', spectrumLoNm: 500, spectrumHiNm: 700, transformLimitFs: 5, bandwidthNm: 200, centerWavelengthNm: 600 } };
+  assert.equal(arrivingPulse({ ...flat, gddFs2: 1000 }).chirp, null);
+  // Rays of one beam through different amounts of glass are not one pulse.
+  const seed = sech2(0);
+  const split = arrivingPulse({ ...seed, gddFs2: 20000, gddRange: [0, 40000] });
+  assert.equal(split.issue, PATHS_DIFFER);
+  assert.equal(arrivingPulse({ ...seed, gddFs2: 20000.001, gddRange: [20000, 20000.002] }).issue, null);
+});
+
+test('an amplified band narrower than the slicing resolves leaves the phase unknown', () => {
+  // A 30 nm seed stretched to ~0.9 ns and a 20 ps pump: the gate is slow
+  // enough, but the amplified band is a fraction of one slice.
+  const tau0 = transformLimitedDurationFs(30, 800);
+  const m = modelSeed({ lam0: 800, bwNm: 30, gdd: 1e7, taupFs: 20000, G0: 1e4 });
+  assert.ok(m.seed.chirp && m.seed.state === 'amplifying');
+  assert.ok(m.seed.gateBandRatio <= MAX_GATE_BANDWIDTH_RATIO, `${m.seed.gateBandRatio}`);
+  assert.equal(m.seed.phaseKept, false);
+  assert.ok(tau0 > 0);
 });

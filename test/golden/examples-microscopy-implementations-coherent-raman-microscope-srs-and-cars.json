@@ -704,6 +704,10 @@
      "branch": "evgazbrh>eaceg0bp:hwp>eg3ksg58:pol>eapb46vw:T>e227dxsg:R",
      "bw": 0.895231636,
      "gates": [],
+     "gddRange": [
+      1859.19433,
+      1859.19433
+     ],
      "gddSum": 46479.0081,
      "intensity": 24.9995427,
      "key": "780.000000000/evgazbrh>eaceg0bp:hwp>eg3ksg58:pol>eapb46vw:T>e227dxsg:R/80/0/1000/",
@@ -829,6 +833,10 @@
        "phaseNs": 0,
        "shape": "square"
       }
+     ],
+     "gddRange": [
+      1002.90985,
+      1002.90985
      ],
      "gddSum": 12536.1438,
      "intensity": 12.4997714,

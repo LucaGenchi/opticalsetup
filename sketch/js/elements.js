@@ -15,7 +15,7 @@ import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, po
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
 import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
-import { opaSettings, opaGainAt, MAX_OPA_STAGES, PHASE_KEPT_WINDOW_RATIO } from './opa.js';
+import { opaSettings, opaGainAt, MAX_OPA_STAGES, MAX_GATE_BANDWIDTH_RATIO } from './opa.js';
 import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
 import {
   probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
@@ -2450,7 +2450,9 @@ function opaStateCore(plan, p) {
       if (seed.chirp && Math.abs(seed.chirp.gddFs2) >= 1 && seed.arrivingPulse) {
         lines.push(`  Chirped seed, ${formatFs(seed.arrivingPulse.pulseWidthFs)} here (${formatGdd(seed.chirp.gddFs2)} fs²): amplified band ${sig3(seed.signal.bw)} nm FWHM`
           + (seed.phaseKept ? ', keeping the seed\'s chirp for a compressor'
-            : ` · the pump's gain window (${formatFs(seed.gainWindowFs)}) is under ${PHASE_KEPT_WINDOW_RATIO}× the seed's transform limit: the signal's spectral phase is not modelled`));
+            : seed.gateBandRatio > MAX_GATE_BANDWIDTH_RATIO
+              ? ` · the pump's gain window (${formatFs(seed.gainWindowFs)}) gates it too fast for this spectral picture: the signal's spectral phase is not modelled`
+              : ' · the amplified band is narrower than the spectral slicing resolves: the signal\'s spectral phase is not modelled'));
       }
     } else {
       const why = {

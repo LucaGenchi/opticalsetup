@@ -1846,11 +1846,14 @@ function recordProbeBeam(surface, ray) {
   // an OPA can time the pulse as it arrives. Kept only when there is any.
   const gdd = Number.isFinite(ray.gdd) ? ray.gdd : 0;
   const spread = Number.isFinite(ray.groupDelayDifferenceFs) ? ray.groupDelayDifferenceFs : 0;
-  const dispersed = gdd || spread ? { gddSum: weight * gdd, spreadSum: weight * spread } : null;
+  const dispersed = gdd || spread ? { gddSum: weight * gdd, spreadSum: weight * spread, gddRange: [gdd, gdd] } : null;
   if (already) {
-    if (dispersed) {
-      already.gddSum = (already.gddSum || 0) + dispersed.gddSum;
-      already.spreadSum = (already.spreadSum || 0) + dispersed.spreadSum;
+    if (dispersed || already.gddRange) {
+      // Rays of the beam that came undispersed count in the range as zero.
+      const range = already.gddRange || [0, 0];
+      already.gddRange = [Math.min(range[0], gdd), Math.max(range[1], gdd)];
+      already.gddSum = (already.gddSum || 0) + weight * gdd;
+      already.spreadSum = (already.spreadSum || 0) + weight * spread;
     }
     already.intensity += weight;
     already.power += power;
@@ -4571,16 +4574,23 @@ function interact(ray, hit) {
         // of the pump ray and counts against the pump laser's power.
         const generated = (wave, powerW, kind) => {
           const power = share * powerW / pumpSourceW;
+          // A signal that keeps the seed's phase arrives where its light sits
+          // in the chirped seed: the seed's nearest pulse plus the group delay
+          // of the amplified wavelengths.
+          const kept = kind === 'opaSignal' && seed.phaseKept;
+          const seedArrivalNs = Number.isFinite(overlap.offsetNs)
+            ? pumpRecord.opl / C_MM_PER_NS + (Number(pumpPulse?.phaseNs) || 0) - overlap.offsetNs : overlap.centerNs;
+          const centerNs = kept && Number.isFinite(seedArrivalNs) ? seedArrivalNs + (seed.signalDelayFs || 0) * 1e-6 : overlap.centerNs;
           const mixed = mixPulse(pumpPulse, seedAtPort.pulse, {
             crystalId: el.id, kind, wl: wave.wl, bandwidthNm: wave.bw || 0,
-            centerNs: overlap.centerNs, oplMm: ray.opl, repRateMHz: overlap.repRateMHz,
+            centerNs, oplMm: ray.opl, repRateMHz: overlap.repRateMHz,
             partnerPulseOffset: overlap.partnerPulseOffset, periodNs: overlap.periodNs,
           });
           // A seeded signal carries the seed's spectral phase: a stretched seed
           // comes out stretched, ready for a compressor (opa.js). The idler's
           // phase is the conjugate one, which is not modelled.
-          const keepsPhase = kind === 'opaSignal' && seed.phaseKept && mixed
-            ? chirpedSignalPulse(mixed, wave, seed.chirp.gddFs2) : null;
+          const keepsPhase = kept && mixed
+            ? chirpedSignalPulse(mixed, wave, seed.chirp.gddFs2, seed.amplifiedProfile) : null;
           return {
             wl: wave.wl, bw: wave.bw || 0, spec: wave.spec || null, tag: kind,
             intensity: ray.intensity * power / ray.power, power,
@@ -6007,7 +6017,7 @@ function planOpaElements(surfaces) {
       return {
         key: beam.key, wl: beam.wl, bw: beam.bw || 0, spec: beam.spec || null, opl: beam.opl,
         pulse: beam.pulse, power: beam.power, originId: beam.originId,
-        gddFs2: mean(beam.gddSum), groupDelayDifferenceFs: mean(beam.spreadSum),
+        gddFs2: mean(beam.gddSum), groupDelayDifferenceFs: mean(beam.spreadSum), gddRange: beam.gddRange || null,
         parametricPath: beam.parametricPath || [],
         powerW: Number.isFinite(watts) ? watts * beam.power : null,
       };
