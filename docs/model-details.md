@@ -1,6 +1,7 @@
 # OpticalSetup — feature and model details
 
-The detailed reference that used to live in the README. For the overview, see [the README](../README.md).
+The detailed reference that used to live in the README, last checked against the
+app on 2026-09-29. For the overview, see [the README](../README.md).
 
 ## Highlights
 
@@ -21,24 +22,30 @@ The detailed reference that used to live in the README. For the overview, see [t
 - **Light or dark workbench**: follows your system appearance by default, with a
   persistent toggle; the toolbar, palette, canvas, and inspector restyle together
   while exported SVG/PNG keep their original colors regardless of theme.
-- **Element palette**: lasers (line or sized beam, monochromatic / broadband /
-  supercontinuum, continuous-wave or pulsed), a first-class pulsed supercontinuum
-  laser, directional LED, broadband point source, mirrors (flat with reflectivity,
-  convex/concave, true parabolic,
-  galvo), paraxial lenses, wavelength-aware flat metalenses, spherical thick
-  singlets, exact conic/even-polynomial aspheric singlets, editable surface-table lens
-  groups (including traced crown–flint achromats), telescopes, objectives,
-  dichroics, filters, beamsplitters,
-  polarization optics (polarizers, waveplates, PBS, isolator), gratings, prisms,
-  diffusers, wavefront shapers (SLM, DMD, deformable mirror) with composable
-  optical functions, modulators (AOM/AOD/AOTF/EOM/chopper), mechanical pulse-delay lines,
-  a signed-GDD pulse compressor,
-  nonlinear crystals (SHG, THG,
-  supercontinuum, OPO), a packaged OPO and a seeded OPA (pump and seed in;
-  amplified signal, idler and residual pump out), fibers with per-end output specs, physical length and a
-  signed β₂, detectors, a focusing
-  human eye, freeform glass/prisms with straight or circular-arc sides, and free
-  annotations (arrows, labels, beam probes, and a canvas-only figure frame).
+- **Element palette**: CW and pulsed lasers (line or sized beam, monochromatic /
+  broadband / supercontinuum), a dedicated pulsed supercontinuum laser, a point
+  source that is either a point emitter or a gas-discharge lamp with its spectral
+  lines, and imaging objects; mirrors (flat with reflectivity, convex/concave,
+  true parabolic, conic, galvo, polygon scanner, retroreflector); thin lenses,
+  conjugated lens pairs, wavelength-aware flat metalenses, thick spherical
+  singlets, exact conic/even-polynomial aspheric singlets, editable surface-table
+  lens groups (including traced crown–flint achromats), telescopes and
+  objectives; dichroics, filters, beamsplitters, Fabry–Pérot etalons and a VIPA;
+  polarization optics (polarizers, waveplates, PBS, isolator); gratings, prisms,
+  diffusers, glass rods, windows, gas cells and freeform glass/prisms with
+  straight or circular-arc sides; wavefront shapers (SLM, DMD, deformable mirror,
+  metasurface) with composable optical functions; modulators
+  (AOM/AOD/AOTF/EOM/phase modulator/chopper); mechanical pulse-delay lines and a
+  signed-GDD pulse compressor; nonlinear crystals (SHG/SFG, THG, supercontinuum,
+  OPO), a packaged OPO and a seeded OPA (pump and seed in; amplified signal,
+  idler and residual pump out, cascadable into several stages); fibers drawn as
+  patch cables, with per-end output specs, physical length and a signed β₂;
+  samples, a sample on a piezo stage and phase objects; beam dumps, slits and
+  invisible blockers; detectors (photodetector, PMT, camera, power meter,
+  spectrometer, polarimeter, wavefront detector, autocorrelator, general
+  detector, a focusing human eye, and a linked sensor display); and annotations
+  (arrows, text labels, highlights, beam probes, custom boxes, and a canvas-only
+  figure frame).
 - **Honest capability states**: the component library and inspector distinguish
   simulated elements, elements that need setup, and intentionally diagram-only
   annotations. An unset EOM, nonlinear crystal, or SLM is labeled as needing setup;
@@ -71,28 +78,43 @@ The detailed reference that used to live in the README. For the overview, see [t
   sample can continue into the dedicated Two-Photon Lithography Lab with the
   compatible pulsed-laser settings prefilled. When one objective is
   unambiguously present on the traced path, its NA is transferred too.
-- **Detector readouts in relative units**: photodetectors, PMTs, cameras, and the eye
-  report relative ray signal, spectrum, polarization, and spot span at their active
-  surface; pulsed paths add optical-path delay and path spread. A data-only sensor
-  display can be linked to any of them and mirrors the live output directly on the
-  canvas. Its information density adapts to its drawn size, while power, sensor-input,
-  and view controls live on the instrument itself. PMTs include qualitative
-  gain/saturation; cameras conservatively integrate continuous traced ray tubes into
-  finite 1D sensor pixels, and can resolve supported same-source interference without
-  changing the power when the sensor bin count changes. Profile colors show the
-  qualitative wavelength mixture at each position. Scalar readouts use arbitrary relative
-  ray-weight units rather than implying a calibrated percentage.
+- **Detector readouts**: photodetectors, PMTs, cameras, power meters,
+  spectrometers, polarimeters, autocorrelators and the eye report signal,
+  spectrum, polarization, spot span and pulse timing at their active surface;
+  pulsed paths add optical-path delay and path spread. Power is shown in watts
+  (W/mW/µW) when the sources that reach the detector carry a configured power,
+  and in relative units otherwise, marked partial when only some of them do. A
+  spectrometer weighs light from several sources by its watts and plots it per
+  nm, or with each source scaled to its own peak in its relative view. A
+  data-only sensor display can be linked to any detector and mirrors the live
+  output directly on the canvas; its information density adapts to its drawn
+  size, while power, sensor-input and view controls live on the instrument
+  itself. PMTs include qualitative gain/saturation; cameras conservatively
+  integrate continuous traced ray tubes into finite 1D sensor pixels, and can
+  resolve supported same-source interference without changing the power when
+  the sensor bin count changes. Profile colors show the qualitative wavelength
+  mixture at each position.
+- **Beam probes**: a probe placed on the canvas reads every beam inside its
+  sampling circle — spectrum, wavelength, polarization, power, pulse duration and
+  arrival time — without affecting the light.
+- **Weak light and leaks**: weak beams are traced and drawn (at a minimum
+  visible strength) instead of being dropped. A partial mirror's transmitted
+  leak is traced only when its "Trace transmitted beam" option is on; otherwise
+  that light is lost. When light runs past the tracer's weak-branch budget or
+  its 60-interaction depth limit, affected readings say they are incomplete.
 - **Physics that responds**: thin-lens/paraxial transfer, thick spherical singlets,
   conic-plus-A₄/A₆/A₈ aspheric singlets, and multi-element surface tables with
   aperture stops and emergent axial colour, with ray intersections and surface
   normals computed on the true curved surface, and catalogue-glass dispersion,
   spectral band arithmetic at filters, Malus's law, grating equation,
   Sellmeier glass/prism dispersion and second-order pulse GDD, cavity round trips
-  with partial mirrors, image formation with magnification (arrow / letter F / tree
+  with partial mirrors, optical parametric oscillation and seeded amplification
+  with photon accounting, fiber coupling that relaunches all the power coupled
+  into a fiber end, image formation with magnification (arrow / letter F / tree
   objects and their computed images).
 - **Examples menu**: pedagogical image-formation setups (telescope, microscope,
   camera + depth of field, Scheimpflug, vignetting...) and laboratory sketches
-  (Michelson, Mach–Zehnder, laser cavity, OPO...).
+  (Michelson, Mach–Zehnder, laser cavity, OPO, hollow-core pulse compression...).
 - **Community section**: propose your own setup for review directly from the
   toolbar; accepted submissions get their own page with a locked, click-to-inspect
   canvas embed, and a "From the community" menu loads them straight into the editor.
@@ -116,7 +138,7 @@ The detailed reference that used to live in the README. For the overview, see [t
 opens an editable reflective objective with separate conic primary and secondary,
 a real central opening, pupil stops, and a sensor at the computed focus. Its
 companion example page explains the illustrative prescription and four control
-experiments. The new **Conic mirror** palette element supports spherical,
+experiments. The **Conic mirror** palette element supports spherical,
 parabolic, elliptical and hyperbolic profiles with exact intersections/normals,
 a bounded opening, a selectable coated side, and absorptive reflectivity losses.
 It models a 2D surface, not diffraction, a coating spectrum or a commercial
@@ -137,14 +159,14 @@ OpticalSetup computes what it shows: rays are traced from the surfaces on the
 canvas, dispersion comes from catalogue glass data, and detector readouts are
 computed from traced light and the detector model. Every model has stated limits, listed below and on
 each component's wiki page, and selected calculations are checked against
-independent references (see the Validation section). It is built for designing,
+independent references (see [validation.md](validation.md)). It is built for designing,
 understanding and communicating setups, not as a replacement for dedicated
 optical design software: it does not do tolerancing, full lens optimization or
 3D analysis. A power reading combines the configured source powers weighted by
 the modelled transmission, collection and conversion; it is relative, or marked
 partial, when a source has no power set, and it is not a calibrated
 measurement. It models ray paths,
-bounded relative power, spectral bands, Stokes polarization, thin-lens elements, refractive boundaries, timed pulse trains,
+power (in watts where sources carry a power figure, relative otherwise), spectral bands, Stokes polarization, thin-lens elements, refractive boundaries, timed pulse trains,
 second-order material and compensator GDD, and simple detector responses. Thick
 spherical singlets and lens groups use a 2D meridional section with spherical or flat faces;
 lens-group readouts follow the same aperture-aware realized prescription as the trace,
@@ -221,11 +243,11 @@ third axis.
 
 Standalone objectives are set by effective focal length (EFL) — the focal length of
 the whole assembly as one equivalent lens — plus a working distance no longer than EFL,
-a front aperture, and a rated NA. The normal inspector offers coordinated generic 4×,
-10×, 20×, 40×, 60× water, and 100× oil starting points; exact catalogue values live in
-a collapsed Advanced parameters section. These are plausible first-order specs, not
-manufacturer prescriptions, and EFL is no longer exposed as an unrestricted canvas-drag
-control. Magnification is reported from EFL against a 200 mm
+a front aperture, and a rated NA. The inspector offers a list of starting points from
+5× to 100× in dry, water-immersion, oil-immersion and long-working-distance groups;
+exact values live in a collapsed Advanced parameters section. These are plausible
+catalogue-shaped specs, not manufacturer prescriptions, and EFL is not an unrestricted
+canvas-drag control. Magnification is reported from EFL against a 200 mm
 reference tube lens rather than typed in, because it belongs to the objective plus
 whichever tube lens is actually in the sketch. The equivalent refracting plane sits at
 `front tip + WD − EFL` and can lie outside the drawn barrel for long-working-distance
@@ -276,7 +298,7 @@ The repo root is a static marketing/SEO landing page (`index.html`,
 (`sketch/index.html`, `sketch/js/`, `sketch/css/`). Both are plain static
 files with no build step.
 
-Three more static sections live alongside the app, each generated from a
+Four more static sections live alongside the app, each generated from a
 content file rather than hand-written HTML:
 
 - `wiki/` — one page per component covering its real-world physics and
@@ -295,7 +317,7 @@ content file rather than hand-written HTML:
   any case-insensitive filesystem, macOS included.)
 - `community/` — one page per approved community submission, generated by
   `tools/build-community.mjs` from `community-submissions/*.json`; the only
-  one of the three with an automated publish pipeline (see
+  section with an automated publish pipeline (see
   `docs/community-setup-review.md`), since it's the only one accepting
   outside submissions.
 - `calculators/` — one interactive page per physical model (the first is the
@@ -309,9 +331,9 @@ content file rather than hand-written HTML:
   run `node tools/build-calculators.mjs`; the test suite (and CI) fails if a
   committed page is out of date.
 
-Every page in all three links to a locked, click-to-inspect embed of the
+Every wiki, example and community page links to a locked, click-to-inspect embed of the
 actual live canvas (`sketch/?demo=`, `?example=`, or `?community=`). After
-editing any of the three content files, or adding/removing an `Examples/`
+editing any of the content files, or adding/removing an `Examples/`
 or `community-submissions/` entry, rebuild the relevant generator(s) and
 finish with `node tools/build-sitemap.mjs`, which assembles the combined
-`sitemap.xml` from all three sources.
+`sitemap.xml` from the wiki, calculators, community and example sources.
