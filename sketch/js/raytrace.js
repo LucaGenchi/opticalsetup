@@ -13,7 +13,7 @@ import {
   fluorophoreSpec, fluorophoreAbsorption, metalensFocalLength, opoPortLocal, OPO_ACCEPTANCE_DEG,
   opaPortLocal, OPA_ACCEPTANCE_DEG,
 } from './elements.js';
-import { planOpa, MAX_OPA_STAGES } from './opa.js';
+import { planOpa, chirpedSignalPulse, MAX_OPA_STAGES } from './opa.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap, traceValueAt } from './pulses.js';
 import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband } from './aotf.js';
@@ -1842,7 +1842,16 @@ function recordProbeBeam(surface, ray) {
   // A beam sampled by several rays is one beam: its power is theirs together,
   // and it arrives when its power arrives.
   const power = Math.max(0, Number(ray.power) || 0);
+  // The dispersion the beam carries here, weighted like its arrival time, so
+  // an OPA can time the pulse as it arrives. Kept only when there is any.
+  const gdd = Number.isFinite(ray.gdd) ? ray.gdd : 0;
+  const spread = Number.isFinite(ray.groupDelayDifferenceFs) ? ray.groupDelayDifferenceFs : 0;
+  const dispersed = gdd || spread ? { gddSum: weight * gdd, spreadSum: weight * spread } : null;
   if (already) {
+    if (dispersed) {
+      already.gddSum = (already.gddSum || 0) + dispersed.gddSum;
+      already.spreadSum = (already.spreadSum || 0) + dispersed.spreadSum;
+    }
     already.intensity += weight;
     already.power += power;
     already.oplWeight += weight;
@@ -1869,6 +1878,7 @@ function recordProbeBeam(surface, ray) {
     gates: (ray.pulse?.gates || []).map(g => ({ ...g })),
     // Only light that went through a parametric element has a history.
     ...(ray.parametricPath?.length ? { parametricPath: unionPath(ray.parametricPath) } : {}),
+    ...(dispersed || {}),
   });
 }
 
@@ -4551,28 +4561,38 @@ function interact(ray, hit) {
       const pumpSourceW = sourceWattsById.get(ray.originId);
       const share = pumpRecord?.power > 0 && Number.isFinite(ray.power) ? ray.power / pumpRecord.power : 0;
       if (!(share > 0) || !(pumpSourceW > 0) || !(ray.power > 0)) return out;
+      // Both pulses as they arrive here, stretched or compressed on the way.
+      const pumpPulse = ray.pulse && plan.pumpPulse ? { ...ray.pulse, pulseWidthFs: plan.pumpPulse.pulseWidthFs } : ray.pulse;
       for (const seed of plan.seeds) {
         if (seed.state !== 'amplifying' || !seed.record) continue;
-        const overlap = mixOverlap({ opl: pumpRecord.opl, pulse: ray.pulse }, seed.record);
+        const seedAtPort = { ...seed.record, pulse: seed.arrivingPulse || seed.record.pulse };
+        const overlap = mixOverlap({ opl: pumpRecord.opl, pulse: pumpPulse }, seedAtPort);
         // Generated light: new watts taken from the pump, so it stays a child
         // of the pump ray and counts against the pump laser's power.
         const generated = (wave, powerW, kind) => {
           const power = share * powerW / pumpSourceW;
+          const mixed = mixPulse(pumpPulse, seedAtPort.pulse, {
+            crystalId: el.id, kind, wl: wave.wl, bandwidthNm: wave.bw || 0,
+            centerNs: overlap.centerNs, oplMm: ray.opl, repRateMHz: overlap.repRateMHz,
+            partnerPulseOffset: overlap.partnerPulseOffset, periodNs: overlap.periodNs,
+          });
+          // A seeded signal carries the seed's spectral phase: a stretched seed
+          // comes out stretched, ready for a compressor (opa.js). The idler's
+          // phase is the conjugate one, which is not modelled.
+          const keepsPhase = kind === 'opaSignal' && seed.phaseKept && mixed
+            ? chirpedSignalPulse(mixed, wave, seed.chirp.gddFs2) : null;
           return {
             wl: wave.wl, bw: wave.bw || 0, spec: wave.spec || null, tag: kind,
             intensity: ray.intensity * power / ray.power, power,
             // A small fraction of a strong pump is still a real beam: held to
             // the weak-ray floor, like a band an AOTF selects, not culled.
             keepWeak: true,
-            pulse: mixPulse(ray.pulse, seed.record.pulse, {
-              crystalId: el.id, kind, wl: wave.wl, bandwidthNm: wave.bw || 0,
-              centerNs: overlap.centerNs, oplMm: ray.opl, repRateMHz: overlap.repRateMHz,
-              partnerPulseOffset: overlap.partnerPulseOffset, periodNs: overlap.periodNs,
-            }),
+            pulse: keepsPhase || mixed,
             // Made from the pump and the seed together, it carries both
             // histories: it can go back into neither's earlier stages.
             parametricPath: unionPath(throughHere, seed.record.parametricPath),
             gdd: 0,
+            groupDelayDifferenceFs: 0,
             phaseValid: false,
             phaseIssue: 'OPA output: optical phase relative to the inputs is not modelled',
           };
@@ -5983,9 +6003,11 @@ function planOpaElements(surfaces) {
   for (const [id, { el, pumps, seeds }] of ports) {
     const record = beam => {
       const watts = sourceWattsById.get(beam.originId);
+      const mean = sum => (beam.oplWeight > 0 && Number.isFinite(sum) ? sum / beam.oplWeight : 0);
       return {
         key: beam.key, wl: beam.wl, bw: beam.bw || 0, spec: beam.spec || null, opl: beam.opl,
         pulse: beam.pulse, power: beam.power, originId: beam.originId,
+        gddFs2: mean(beam.gddSum), groupDelayDifferenceFs: mean(beam.spreadSum),
         parametricPath: beam.parametricPath || [],
         powerW: Number.isFinite(watts) ? watts * beam.power : null,
       };

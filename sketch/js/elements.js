@@ -15,7 +15,7 @@ import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, po
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
 import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
-import { opaSettings, opaGainAt, MAX_OPA_STAGES } from './opa.js';
+import { opaSettings, opaGainAt, MAX_OPA_STAGES, PHASE_KEPT_WINDOW_RATIO } from './opa.js';
 import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
 import {
   probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
@@ -2437,6 +2437,7 @@ function opaStateCore(plan, p) {
     case 'tunedBelowPump': return `${tuned}\nThe tuned signal wavelength must be longer than the ${nm4(plan.pumpWl)} nm pump`;
     case 'noSeed': return `${tuned}\n${pumpLine}${Number.isFinite(plan.tunedIdlerWl) ? ` · idler would be ${nm4(plan.tunedIdlerWl)} nm` : ''}\nNo seed: nothing to amplify (parametric noise is not modelled). The pump passes through`;
     case 'uncalibrated': return `${tuned}\nThe pump and seed sources need an average-power setting: the gain moves watts from one to the other`;
+    case 'pumpDurationUnavailable': return `${tuned}\n${pumpLine}: its pulse duration at this port cannot be stated (${plan.durationIssue}), so nothing is amplified`;
     default: break;
   }
   const lines = [tuned, `${pumpLine}${plan.pumpInW > 0 ? ` · ${fmtW(plan.pumpInW)} in, ${fmtW(plan.pumpOutW)} out (${sig3(plan.conversion * 100)} % converted)` : ''}`];
@@ -2445,6 +2446,12 @@ function opaStateCore(plan, p) {
     if (seed.state === 'amplifying') {
       lines.push(`${head} → signal ${nm4(seed.signal.wl)} nm · ${fmtW(seed.seedW + seed.gainW)} (gain ${fmtGain(seed.achievedGain)}, ${dB(seed.achievedGain)}, pulse-averaged)`
         + ` · idler ${nm4(seed.idler.wl)} nm · ${fmtW(seed.idlerW)}${seed.saturated ? ' · limited by the pump (depletion limit)' : ''}${seed.lowOverlap ? ' · pulses barely overlap' : ''}`);
+      // A stretched seed: each wavelength meets the pump at its own time.
+      if (seed.chirp && Math.abs(seed.chirp.gddFs2) >= 1 && seed.arrivingPulse) {
+        lines.push(`  Chirped seed, ${formatFs(seed.arrivingPulse.pulseWidthFs)} here (${formatGdd(seed.chirp.gddFs2)} fs²): amplified band ${sig3(seed.signal.bw)} nm FWHM`
+          + (seed.phaseKept ? ', keeping the seed\'s chirp for a compressor'
+            : ` · the pump's gain window (${formatFs(seed.gainWindowFs)}) is under ${PHASE_KEPT_WINDOW_RATIO}× the seed's transform limit: the signal's spectral phase is not modelled`));
+      }
     } else {
       const why = {
         outsideBand: `outside the gain band around ${nm4(settings.signalWl)} nm: passes through unamplified`,
@@ -2454,6 +2461,7 @@ function opaStateCore(plan, p) {
         degenerateUnsupported: 'at exactly twice the pump wavelength (degenerate, phase-sensitive): not modelled',
         doubleSeedUnsupported: 'another seed sits at its idler wavelength: not modelled',
         durationUnsupported: 'a pulse duration is unknown: not modelled',
+        durationUnavailable: `its pulse duration at this port cannot be stated (${seed.durationIssue}): passes through unamplified`,
         spectrumUnsupported: 'its spectrum was reshaped upstream (a filtered continuum): not modelled, passes through unamplified',
         gatesUnsupported: 'the beam is modulated (gated): not modelled',
         tooManySeeds: 'too many seed beams share this stage (a long cascade) for the spectral slicing: not modelled, passes through unamplified',
