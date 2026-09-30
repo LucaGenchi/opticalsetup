@@ -170,18 +170,24 @@ function cavity({ traceLeaks }) {
 }
 
 test('weak light split round a cavity stays bounded by the budget, and says so', () => {
-  // With the leaks traced, every round trip splits the weak ray again, far
-  // past a small budget: the trace must end and count what it dropped.
+  // With the leaks traced, every round trip splits the weak ray again. A
+  // budget spent before the tracer has seen the round trip repeat (and can
+  // sum the rest of them) must end the trace and count what it dropped.
   const { m, elements } = cavity({ traceLeaks: true });
-  for (const budget of [8, 64]) {
-    traceScene(elements, [], { weakBranchBudget: budget });
-    const shortfall = weakLightShortfallFromLastTrace();
-    assert.equal(shortfall.length, 1, `budget ${budget} ran out`);
-    assert.ok(shortfall[0].fraction > 0 && shortfall[0].fraction < 0.01, `${shortfall[0].fraction}`);
-    const reading = read(m, elements);
-    assert.ok(reading.detectedPowerW > 0 && reading.detectedPowerW < 0.001, `${reading.detectedPowerW}`);
-    assert.equal(reading.weakLightIncomplete, true);
-  }
+  traceScene(elements, [], { weakBranchBudget: 8 });
+  const shortfall = weakLightShortfallFromLastTrace();
+  assert.equal(shortfall.length, 1, 'the budget ran out');
+  assert.ok(shortfall[0].fraction > 0 && shortfall[0].fraction < 0.01, `${shortfall[0].fraction}`);
+  let reading = read(m, elements);
+  assert.ok(reading.detectedPowerW > 0 && reading.detectedPowerW < 0.001, `${reading.detectedPowerW}`);
+  assert.equal(reading.weakLightIncomplete, true);
+  // With room for three round trips, the rest are summed and nothing is lost:
+  // the meter reads the 1 mW getting in times T^2 / (1 - R^2).
+  traceScene(elements, [], { weakBranchBudget: 64 });
+  assert.deepEqual(weakLightShortfallFromLastTrace(), []);
+  reading = read(m, elements);
+  close(reading.detectedPowerW, 0.001 * 0.01 * 0.01 / (1 - 0.99 * 0.99), 'the whole series of leaks');
+  assert.equal(reading.weakLightIncomplete, undefined);
 });
 
 test('light the depth limit cuts off is reported too', () => {

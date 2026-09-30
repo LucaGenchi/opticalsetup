@@ -88,7 +88,8 @@ The detailed reference that used to live in the README. For the overview, see [t
   normals computed on the true curved surface, and catalogue-glass dispersion,
   spectral band arithmetic at filters, Malus's law, grating equation,
   Sellmeier glass/prism dispersion and second-order pulse GDD, cavity round trips
-  with partial mirrors, image formation with magnification (arrow / letter F / tree
+  with partial mirrors (a passive loop's remaining round trips summed in closed
+  form), image formation with magnification (arrow / letter F / tree
   objects and their computed images).
 - **Examples menu**: pedagogical image-formation setups (telescope, microscope,
   camera + depth of field, Scheimpflug, vignetting...) and laboratory sketches
