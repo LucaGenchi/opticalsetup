@@ -108,9 +108,10 @@ app on 2026-09-29. For the overview, see [the README](../README.md).
   normals computed on the true curved surface, and catalogue-glass dispersion,
   spectral band arithmetic at filters, Malus's law, grating equation,
   Sellmeier glass/prism dispersion and second-order pulse GDD, cavity round trips
-  with partial mirrors, optical parametric oscillation and seeded amplification
-  with photon accounting, fiber coupling that relaunches all the power coupled
-  into a fiber end, image formation with magnification (arrow / letter F / tree
+  with partial mirrors (a passive loop's remaining round trips summed in closed
+  form), optical parametric oscillation and seeded amplification with photon
+  accounting, fiber coupling that relaunches all the power coupled into a fiber
+  end, image formation with magnification (arrow / letter F / tree
   objects and their computed images).
 - **Examples menu**: pedagogical image-formation setups (telescope, microscope,
   camera + depth of field, Scheimpflug, vignetting...) and laboratory sketches
