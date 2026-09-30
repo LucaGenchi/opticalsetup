@@ -198,7 +198,7 @@ for the 100 fs → approximately 47 fs example; its loss is computed from the co
 light continues with argon's linear dispersion only and every downstream
 readout is labelled a linear-only approximation; outside the argon data
 (468–2059 nm) it continues geometrically with its own caveat. See
-[the physics, limits and validation note](docs/physics/hollow-core.md).
+[the physics, limits and validation note](physics/hollow-core.md).
 
 Its bounded coherent model applies only to sized monochromatic CW sources and
 explicitly supported ideal surfaces. It carries optical path plus the unitary phase of
@@ -242,7 +242,9 @@ two-photon absorption, threshold dose, cure kinetics, voxel overlap, or a hidden
 third axis.
 
 Standalone objectives are set by effective focal length (EFL) — the focal length of
-the whole assembly as one equivalent lens — plus a working distance no longer than EFL,
+the whole assembly as one equivalent lens — plus a working distance
+(up to 40 mm, or the EFL if that is longer — long-working-distance designs genuinely
+have a working distance longer than their EFL),
 a front aperture, and a rated NA. The inspector offers a list of starting points from
 5× to 100× in dry, water-immersion, oil-immersion and long-working-distance groups;
 exact values live in a collapsed Advanced parameters section. These are plausible
