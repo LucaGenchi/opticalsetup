@@ -1208,19 +1208,20 @@ function spectrumAreaSvg(el, samples, peak, { xAt, x0, y0, pw, ph }) {
 }
 
 // The views that read every beam crossing the sampling circle when there is
-// more than one (the power view always reads the circle; the duration view
-// reads the nearest beam).
-const PROBE_AREA_VIEWS = new Set(['spectrum', 'wl', 'pol', 'time']);
+// more than one (the power view always reads the circle).
+const PROBE_AREA_VIEWS = new Set(['spectrum', 'wl', 'pol', 'time', 'duration']);
 const PROBE_MAX_BEAMS_SHOWN = 4;
 const probeWlLabel = rd => (rd.bw >= 200 ? `SC ${Math.round(rd.wl - rd.bw / 2)}–${Math.round(rd.wl + rd.bw / 2)} nm`
   : rd.bw > 0 ? `${Math.round(rd.wl)} ± ${Math.round(rd.bw / 2)} nm` : `${Math.round(rd.wl)} nm`);
 
 // Several beams crossing the sampling circle, in the spectrum, wavelength,
-// polarization or time view.
+// polarization, duration or time view.
 // What a view lists from several beams: the wavelength and polarization
 // views show what differs -- beams of one colour (and, for polarization, one
 // state) that differ only in timing appear once -- the spectrum view names
-// each colour once, and the time view keeps every beam.
+// each colour once, the duration view each colour and duration once, and the
+// time view keeps every beam.
+const probeBeamDurationLabel = beam => probeDurationLabel({ pulse: beam.pulse });
 function probeListedBeams(prop, beams) {
   const distinct = keyOf => beams.filter((beam, i) => beams.findIndex(other => keyOf(other) === keyOf(beam)) === i);
   // The spectrum sums whole spectra, so it merges only beams whose spectra
@@ -1228,6 +1229,7 @@ function probeListedBeams(prop, beams) {
   // (Andrea, #192); the rounded centres are only its caption.
   return prop === 'wl' ? distinct(probeWlLabel)
     : prop === 'pol' ? distinct(beam => `${probeWlLabel(beam)}|${JSON.stringify([beam.pol, beam.stokes, beam.polMod])}`)
+      : prop === 'duration' ? distinct(beam => `${probeWlLabel(beam)}|${probeBeamDurationLabel(beam)}`)
       : prop === 'spectrum' ? distinct(beam => JSON.stringify([Number(beam.wl.toFixed(3)), Number((beam.bw || 0).toFixed(3)), beam.spec]))
         : beams;
 }
@@ -1250,6 +1252,27 @@ function probeMultiCard(el, prop, beams, elements) {
   const dot = (cx, cy, rd) => (rd.bw >= 200
     ? `<circle cx="${cx}" cy="${cy}" r="4" fill="#fff" stroke="#888"/><path d="M ${cx - 4},${cy} A 4 4 0 0 1 ${cx + 4},${cy}" fill="#e04040"/><path d="M ${cx - 4},${cy} A 4 4 0 0 0 ${cx + 4},${cy}" fill="#3050e0"/>`
     : `<circle cx="${cx}" cy="${cy}" r="4" fill="${wavelengthToColor(rd.wl)}"/>`);
+
+  if (prop === 'duration') {
+    // One row per beam: its colour, its duration here and its power, the
+    // strongest first -- an amplifier's output and the seed passing through
+    // it share one path.
+    const { weights, absolute } = probeBeamWeights(listed, elements);
+    const order = listed.map((beam, i) => ({ beam, w: weights[i] })).sort((a, b) => b.w - a.w);
+    const top = order.slice(0, PROBE_MAX_BEAMS_SHOWN);
+    const rows = top.map(({ beam, w }) => `${probeWlLabel(beam)} · ${probeBeamDurationLabel(beam)}${absolute ? ` · ${formatPowerMw(w)}` : ''}`);
+    if (more > 0) rows.push(`+${more} more`);
+    const w = Math.max(...rows.map(r => r.length * 5.8 + 26));
+    const h = 8 + rows.length * 13;
+    return {
+      w, h,
+      body: frame(w, h) + rows.map((label, i) => {
+        const y = 10.5 + i * 13;
+        return (top[i] ? dot(11, y, top[i].beam) : '') +
+          `<text x="20" y="${y}" font-size="9" dominant-baseline="central" fill="#333">${esc(label)}</text>`;
+      }).join('') + `<g data-probe-beams="${beams.length}"></g>`,
+    };
+  }
 
   if (prop === 'wl') {
     // One row per beam, as the single-beam label shows it.

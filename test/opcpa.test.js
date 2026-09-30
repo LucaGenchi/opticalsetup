@@ -316,3 +316,26 @@ test('an amplified band narrower than the slicing resolves leaves the phase unkn
   assert.equal(m.seed.phaseKept, false);
   assert.ok(tau0 > 0);
 });
+
+test('the OPCPA example: stretched, amplified and recompressed, as its probes read it', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { parseSketch } = await import('../sketch/js/state.js');
+  const { registry } = await import('../sketch/js/elements.js');
+  const elements = parseSketch(readFileSync(new URL('../Examples/Ultrashort Pulses/OPCPA — stretch, amplify, recompress.json', import.meta.url), 'utf8')).elements;
+  traceScene(elements, []);
+  const plan = opaReading(elements.find(e => e.type === 'opa').id);
+  const seed = plan.seeds[0];
+  assert.equal(seed.state, 'amplifying');
+  assert.ok(seed.phaseKept, 'the example sits inside the domain where the signal keeps the seed\'s chirp');
+  assert.ok(plan.conversion > 0.1 && plan.conversion < 0.5, `${plan.conversion}`);
+  const rows = el => [...registry.probe.svg(el, elements).matchAll(/>([^<>]*· [^<>]*)</g)].map(m => m[1]);
+  const probes = elements.filter(e => e.type === 'probe' && e.params.prop === 'duration').sort((a, b) => a.x - b.x);
+  // Before the OPA: one beam, stretched from 31 fs to ~9 ps.
+  assert.ok(probes[1].x < 500 && /ps/.test(registry.probe.svg(probes[1], elements)));
+  // After the compressor: the amplified signal first (it carries the watts),
+  // recompressed to its own transform limit; the seed passing through below.
+  const after = rows(probes.at(-1));
+  assert.equal(after.length, 2);
+  assert.match(after[0], /fs · 8\d\d mW/);
+  assert.match(after[1], /31\.4 fs · 1\.00 mW/);
+});

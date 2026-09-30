@@ -110,12 +110,14 @@ app on 2026-09-29. For the overview, see [the README](../README.md).
   Sellmeier glass/prism dispersion and second-order pulse GDD, cavity round trips
   with partial mirrors (a passive loop's remaining round trips summed in closed
   form), optical parametric oscillation and seeded amplification with photon
-  accounting, fiber coupling that relaunches all the power coupled into a fiber
+  accounting (a stretched seed amplified colour by colour where the pump meets
+  it, OPCPA), fiber coupling that relaunches all the power coupled into a fiber
   end, image formation with magnification (arrow / letter F / tree
   objects and their computed images).
 - **Examples menu**: pedagogical image-formation setups (telescope, microscope,
   camera + depth of field, Scheimpflug, vignetting...) and laboratory sketches
-  (Michelson, Mach–Zehnder, laser cavity, OPO, hollow-core pulse compression...).
+  (Michelson, Mach–Zehnder, laser cavity, OPO, hollow-core pulse compression,
+  OPCPA...).
 - **Community section**: propose your own setup for review directly from the
   toolbar; accepted submissions get their own page with a locked, click-to-inspect
   canvas embed, and a "From the community" menu loads them straight into the editor.

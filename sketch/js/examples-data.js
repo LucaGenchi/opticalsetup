@@ -106,6 +106,12 @@ export const examples = [
   },
   {
     "group": "Ultrashort Pulses",
+    "name": "OPCPA — stretch, amplify, recompress",
+    "path": "../Examples/Ultrashort%20Pulses/OPCPA%20%E2%80%94%20stretch%2C%20amplify%2C%20recompress.json",
+    "slug": "opcpa-stretch-amplify-recompress"
+  },
+  {
+    "group": "Ultrashort Pulses",
     "name": "Ultrashort pulse chirping",
     "path": "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json",
     "slug": "ultrashort-pulse-chirping"

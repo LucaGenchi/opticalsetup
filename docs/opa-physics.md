@@ -203,7 +203,10 @@ Gates and unknown pulse durations are rejected explicitly because this
 allocator does not solve gate epochs or unknown temporal envelopes.
 
 Limits of the timing model: the pulses are Gaussian and unchirped at the
-crystal; group-velocity mismatch (which stops the interaction after the
+crystal (the OPA element, `sketch/js/opa.js`, hands a chirped seed to this
+allocator as spectral slices, each a transform-limited Gaussian at its own
+group delay, so each meets the pump when it arrives; see the OPA wiki page for
+the domain in which the amplified signal keeps the seed's phase); group-velocity mismatch (which stops the interaction after the
 pulse-splitting length, Manzoni & Cerullo 2016, section 2.3.1), the spatial
 beam profile and gain guiding are not modelled; the per-slice clamp is not the
 depleted coupled-field solution and never back-converts. The caller must use

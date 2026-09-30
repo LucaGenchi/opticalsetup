@@ -1,0 +1,251 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "e1",
+      "type": "textlabel",
+      "x": 40,
+      "y": 40,
+      "params": {
+        "text": "OPCPA — stretch, amplify, recompress",
+        "fontSize": 18,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "e2",
+      "type": "textlabel",
+      "x": 40,
+      "y": 70,
+      "params": {
+        "text": "800 nm seed, 30 nm (31 fs limit), 1 µJ · stretched +100 000 fs² · 532 nm pump, 12 ps, 10 mJ · 1 kHz",
+        "fontSize": 13,
+        "fill": "#666666"
+      }
+    },
+    {
+      "id": "e3",
+      "type": "pulsedlaser",
+      "x": 100,
+      "y": 318,
+      "params": {
+        "wavelength": 800,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "temporalMode": "pulsed",
+        "transformLimited": true,
+        "pulseWidthFs": 31.4,
+        "pulseShape": "gauss",
+        "repRateMHz": 0.001,
+        "avgPowerW": 0.001,
+        "showPulse": true
+      }
+    },
+    {
+      "id": "e4",
+      "type": "probe",
+      "x": 215,
+      "y": 318,
+      "params": {
+        "prop": "duration",
+        "displayScale": 1.05
+      }
+    },
+    {
+      "id": "e5",
+      "type": "pulsecompressor",
+      "x": 290,
+      "y": 318,
+      "params": {
+        "gddFs2": 100000,
+        "aperture": 18,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "e6",
+      "type": "probe",
+      "x": 375,
+      "y": 318,
+      "params": {
+        "prop": "duration",
+        "displayScale": 1.05
+      }
+    },
+    {
+      "id": "e7",
+      "type": "pulsedlaser",
+      "x": 450,
+      "y": 470,
+      "rot": -90,
+      "params": {
+        "wavelength": 532,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "temporalMode": "pulsed",
+        "transformLimited": true,
+        "pulseWidthFs": 12000,
+        "pulseShape": "gauss",
+        "repRateMHz": 0.001,
+        "avgPowerW": 10,
+        "showPulse": true,
+        "pulsePhaseNs": 0.540374
+      }
+    },
+    {
+      "id": "e8",
+      "type": "mirror",
+      "x": 450,
+      "y": 282,
+      "rot": 45,
+      "params": {
+        "length": 25.4,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "e9",
+      "type": "opa",
+      "x": 600,
+      "y": 300,
+      "params": {
+        "signalWl": 800,
+        "gainBandwidthNm": 100,
+        "smallSignalGainDb": 60,
+        "maxDepletion": 0.5,
+        "aperture": 6,
+        "outputBeamMm": 3,
+        "outputIdler": true,
+        "outputPump": true
+      }
+    },
+    {
+      "id": "e10",
+      "type": "beamdump",
+      "x": 700,
+      "y": 282,
+      "params": {
+        "aperture": 10
+      }
+    },
+    {
+      "id": "e11",
+      "type": "beamdump",
+      "x": 740,
+      "y": 300,
+      "params": {
+        "aperture": 10
+      }
+    },
+    {
+      "id": "e12",
+      "type": "probe",
+      "x": 790,
+      "y": 318,
+      "params": {
+        "prop": "duration",
+        "displayScale": 1.05
+      }
+    },
+    {
+      "id": "e13",
+      "type": "pulsecompressor",
+      "x": 870,
+      "y": 318,
+      "params": {
+        "gddFs2": -100000,
+        "aperture": 18,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "e14",
+      "type": "probe",
+      "x": 950,
+      "y": 318,
+      "params": {
+        "prop": "duration",
+        "displayScale": 1.05
+      }
+    },
+    {
+      "id": "e15",
+      "type": "probe",
+      "x": 1050,
+      "y": 318,
+      "params": {
+        "prop": "spectrum",
+        "displayScale": 1.05
+      }
+    },
+    {
+      "id": "e16",
+      "type": "textlabel",
+      "x": 40,
+      "y": 150,
+      "params": {
+        "text": "1 — The seed leaves the laser at its 31 fs limit. The stretcher (+100 000 fs²) spreads its colours over ~9 ps, red first.",
+        "fontSize": 13,
+        "fill": "#276aa2"
+      }
+    },
+    {
+      "id": "e17",
+      "type": "textlabel",
+      "x": 40,
+      "y": 175,
+      "params": {
+        "text": "2 — The OPA amplifies each colour with the pump intensity it meets at that moment: the 12 ps pump and saturation shape the amplified band.",
+        "fontSize": 13,
+        "fill": "#8f2d2d"
+      }
+    },
+    {
+      "id": "e18",
+      "type": "textlabel",
+      "x": 40,
+      "y": 200,
+      "params": {
+        "text": "3 — The signal keeps the seed's chirp, so the compressor (−100 000 fs²) recompresses it; idler and residual pump are dumped.",
+        "fontSize": 13,
+        "fill": "#1f7a4d"
+      }
+    },
+    {
+      "id": "e19",
+      "type": "textlabel",
+      "x": 40,
+      "y": 540,
+      "params": {
+        "text": "Try: shorten the pump, delay it (pulse phase), or remove the stretcher — the probes and the OPA readout show the amplified band and duration follow.",
+        "fontSize": 12,
+        "fill": "#555555"
+      }
+    },
+    {
+      "id": "e20",
+      "type": "textlabel",
+      "x": 40,
+      "y": 565,
+      "params": {
+        "text": "Model boundary: gain from the data-sheet settings (no crystal, phase matching or walk-off); the signal keeps the seed's phase only where the pump gates slowly — the OPA readout says when not.",
+        "fontSize": 12,
+        "fill": "#555555"
+      }
+    },
+    {
+      "id": "e21",
+      "type": "textlabel",
+      "x": 40,
+      "y": 590,
+      "params": {
+        "text": "The idler's spectral phase (the conjugate chirp) is not modelled. Idler and residual pump go to beam dumps.",
+        "fontSize": 12,
+        "fill": "#555555"
+      }
+    }
+  ],
+  "beams": []
+}
