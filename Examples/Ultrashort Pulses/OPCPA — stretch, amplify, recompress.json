@@ -142,7 +142,7 @@
     {
       "id": "e12",
       "type": "probe",
-      "x": 790,
+      "x": 820,
       "y": 318,
       "params": {
         "prop": "duration",
@@ -152,7 +152,7 @@
     {
       "id": "e13",
       "type": "pulsecompressor",
-      "x": 870,
+      "x": 1000,
       "y": 318,
       "params": {
         "gddFs2": -100000,
@@ -163,7 +163,7 @@
     {
       "id": "e14",
       "type": "probe",
-      "x": 950,
+      "x": 1150,
       "y": 318,
       "params": {
         "prop": "duration",
@@ -173,7 +173,7 @@
     {
       "id": "e15",
       "type": "probe",
-      "x": 1050,
+      "x": 1330,
       "y": 318,
       "params": {
         "prop": "spectrum",

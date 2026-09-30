@@ -13,16 +13,16 @@
   },
   "points": 16,
   "sum": [
-   21978,
+   22498,
    5008
   ],
   "bbox": [
    152,
    282,
-   6870,
+   7000,
    418
   ],
-  "digest": "97769696"
+  "digest": "70d3acca"
  },
  "drawnElements": {
   "textlabel:e1": "a8122d6a",
@@ -72,7 +72,7 @@
    "points": 3,
    "opl": [
     392,
-    6600
+    6730
    ],
    "pulse": {
     "sourceId": "e3",
@@ -82,7 +82,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "dcc88132"
+   "digest": "d9cca7a2"
   },
   {
    "intensity": 1,
@@ -126,7 +126,7 @@
    "points": 3,
    "opl": [
     230,
-    6438
+    6568
    ],
    "pulse": {
     "sourceId": "e7›e9:opaSignal",
@@ -136,7 +136,7 @@
     "spectrumReshaped": true,
     "gates": 0
    },
-   "digest": "38c51878"
+   "digest": "acfd3056"
   },
   {
    "intensity": 0.872182203,
