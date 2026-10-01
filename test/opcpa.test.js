@@ -365,16 +365,62 @@ test('the OPCPA example: stretched, amplified and recompressed, as its probes re
   near(probeAveragePowerW(probePowerAt(last.x, last.y, 5), elements), seed.seedW + seed.gainW, 1e-12);
 });
 
-test('at low gain the one output beam says its pulse duration is only the gain\'s estimate', () => {
+test('at low gain the one output beam says its pulse duration is only the gain\'s estimate', async () => {
   // 10 dB peak: the seed is a large part of the output.
   const { plan } = bench({ seed: chirpedSeed(1e-3), opaParams: { smallSignalGainDb: 10 } });
   assert.equal(plan.seeds[0].state, 'amplifying');
   const beams = probeBeamsAt(470, 18, 5);
   assert.equal(beams.length, 1);
   assert.match(beams[0].approximation, /below 30 dB of gain/);
+  // The duration card says it is an estimate (Andrea, #200).
+  const { registry: reg } = await import('../sketch/js/elements.js');
+  const before = probe(380, 18);
+  const { elements } = bench({ seed: chirpedSeed(1e-3), opaParams: { smallSignalGainDb: 10 }, extra: [before] });
+  const card = reg.probe.svg(before, elements);
+  assert.match(card, />≈ [\d.]+ (fs|ps)</);
+  assert.match(card, /data-probe-caveat="1"[^>]*>estimate: seed \+ gain below 30 dB</);
   // At high gain no caveat.
   bench({ seed: chirpedSeed(1e-12) });
   assert.equal(probeBeamsAt(470, 18, 5)[0].approximation, null);
+  assert.doesNotMatch(reg.probe.svg(before, bench({ seed: chirpedSeed(1e-12), extra: [before] }).elements), /data-probe-caveat/);
+});
+
+test('the one output spectrum keeps each part\'s watts, and a gain it cannot resolve leaves as its own beam', async () => {
+  const { createElement: make } = await import('../sketch/js/elements.js');
+  const { enhancedReading } = await import('../sketch/js/detector-measurements.js');
+  const run = gainBandwidthNm => {
+    const sc = make('sclaser', 0, 18);
+    Object.assign(sc.params, { scMin: 400, scMax: 1000, avgPowerW: 1e-6, repRateMHz: 0.2, pulseWidthFs: 300, temporalMode: 'pulsed', beamMode: 'line' });
+    const pump = laser(-18, 515, 1, { repRateMHz: 0.2, pulseWidthFs: 300 });
+    const opa = make('opa', 300, 0);
+    Object.assign(opa.params, { signalWl: 780, gainBandwidthNm, smallSignalGainDb: 40, maxDepletion: 0.5, outputIdler: false, outputPump: false });
+    const m = make('powermeter', 450, 18); m.params.aperture = 10;
+    const elements = [pump, sc, opa, m];
+    traceScene(elements, []);
+    return { seed: opaReading(opa.id).seeds[0], watts: enhancedReading(m, elements).detectedPowerW };
+  };
+  // A 40 nm gain band on a 400-1000 nm continuum: one beam whose spectrum
+  // holds the untouched continuum and the amplified band, each with its watts.
+  const wide = run(40);
+  assert.equal(wide.seed.state, 'amplifying');
+  const out = wide.seed.output;
+  assert.ok(out?.spec?.opaOutput, 'one output spectrum');
+  const area = (a, b) => { let sum = 0; const n = 4000; for (let i = 0; i < n; i++) { const x = a + (b - a) * (i + 0.5) / n; sum += spectrumWeight(out.spec, x); } return sum * (b - a) / n; };
+  const total = wide.seed.seedW + wide.seed.gainW;
+  const share = area(400, 600) / area(400, 1000);
+  assert.ok(rel(share, wide.seed.seedW * (200 / 600) / total) < 0.01, `continuum share below 600 nm: ${share}`);
+  assert.equal(probeBeamsAt(400, 18, 5).length, 1);
+  near(wide.watts, total, 1e-12, 'every watt at the meter');
+  // Andrea's case: a 0.1 nm band on the same continuum. No grid of
+  // OUTPUT_MAX_POINTS holds both, so the continuum passes through and the
+  // amplified line leaves beside it -- never smeared over 600 nm.
+  const narrow = run(0.1);
+  assert.equal(narrow.seed.state, 'amplifying');
+  assert.equal(narrow.seed.output, null);
+  const beams = probeBeamsAt(400, 18, 5);
+  assert.equal(beams.length, 2, 'the continuum and the amplified line');
+  assert.ok(beams.some(b => Math.abs(b.wl - 780) < 0.5 && b.bw < 1), `${beams.map(b => [b.wl, b.bw])}`);
+  near(narrow.watts, narrow.seed.seedW + narrow.seed.gainW, 1e-12);
 });
 
 // An OPA whose amplified output leaves along y = 200 from x = 206 (the

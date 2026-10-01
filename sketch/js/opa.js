@@ -318,9 +318,22 @@ export function chirpedSignalPulse(base, signal, gddFs2, profile = signal.spec) 
 // the seed's with the gain's added, in watts per nanometre -- the part of a
 // broad seed outside the gain band is still there -- and it is marked as this
 // module's own output, so a later stage can slice it. Discrete inputs stay
-// lines. Returns { wl, bw, spec }, or null when the seed's spectrum has no
-// known shape (such a seed is never amplified).
-const OUTPUT_PROFILE_POINTS = 513;
+// lines. The grid is fine enough for the narrowest part (OUTPUT_STEPS_PER_FWHM
+// points across it), and each part is scaled so that its share of the sampled
+// spectrum is its share of the watts. Returns { wl, bw, spec }, or null when
+// the seed's spectrum has no known shape or a grid of OUTPUT_MAX_POINTS cannot
+// resolve both parts -- a gain a tenth of a nanometre wide on a 600 nm
+// continuum: the seed then passes through and the gain leaves as its own beam.
+export const OUTPUT_MAX_POINTS = 4097;
+const OUTPUT_STEPS_PER_FWHM = 8;
+// The narrowest feature of a profile, in nm: a Gaussian's FWHM, a flat band's
+// width, a sampled profile's FWHM or, if finer, a few of its own grid steps.
+function featureNm(spec) {
+  if (spec.kind === 'gauss') return spec.fwhm;
+  if (spec.kind === 'flat') return spec.hi - spec.lo;
+  const step = (spec.hi - spec.lo) / Math.max(1, spec.w.length - 1);
+  return Math.min(spectrumStats(spec)?.fwhm || Infinity, 4 * step);
+}
 export function signalOutput(seed, seedW, signal, gainW) {
   if (!signal) return null;
   const seedSpec = seed.spec || (seed.bw > 0 ? gaussianSpectrum(seed.wl, seed.bw) : null);
@@ -337,19 +350,27 @@ export function signalOutput(seed, seedW, signal, gainW) {
     if (merged.size === 1) return { wl: [...merged.keys()][0], bw: 0, spec: null };
     return spectrumOf([...merged].map(([wl, powerW]) => ({ wl, powerW })), 0, true);
   }
-  const parts = [[seedSpec, seedW], [signal.spec, gainW]].filter(([spec, w]) => spec && w > 0 && profileArea(spec) > 0);
-  if (parts.length !== [seedSpec, signal.spec].filter(Boolean).length) return null;
+  const parts = [[seedSpec, seedW], [signal.spec, gainW]].filter(([spec, w]) => spec && w > 0);
+  if (parts.length !== [seedSpec, signal.spec].filter(Boolean).length || parts.some(([spec]) => !(profileArea(spec) > 0))) return null;
   const supports = parts.map(([spec]) => spectrumSupport(spec));
   const lo = Math.min(...supports.map(r => r[0])), hi = Math.max(...supports.map(r => r[1]));
-  const w = Array.from({ length: OUTPUT_PROFILE_POINTS }, (_, i) => {
-    const x = lo + (hi - lo) * i / (OUTPUT_PROFILE_POINTS - 1);
-    return parts.reduce((sum, [spec, watts]) => sum + watts * Math.max(0, spectrumWeight(spec, x)) / profileArea(spec), 0);
-  });
+  const finest = Math.min(...parts.map(([spec]) => featureNm(spec)));
+  const n = Math.max(513, Math.ceil((hi - lo) / finest * OUTPUT_STEPS_PER_FWHM) + 1);
+  if (!(hi > lo) || !(finest > 0) || n > OUTPUT_MAX_POINTS) return null;
+  const xs = Array.from({ length: n }, (_, i) => lo + (hi - lo) * i / (n - 1));
+  // Each part on the grid, scaled so its trapezoid area is its watts.
+  const w = new Array(n).fill(0);
+  for (const [spec, watts] of parts) {
+    const v = xs.map(x => Math.max(0, spectrumWeight(spec, x)));
+    const area = v.reduce((sum, y, i) => sum + (i ? (y + v[i - 1]) / 2 * (xs[i] - xs[i - 1]) : 0), 0);
+    if (!(area > 0)) return null;
+    v.forEach((y, i) => { w[i] += watts * y / area; });
+  }
   const peak = Math.max(...w);
-  if (!(peak > 0) || !(hi > lo)) return null;
+  if (!(peak > 0)) return null;
   const spec = { kind: 'sampled', lo, hi, w: w.map(v => v / peak), opaOutput: true };
   const total = seedW + gainW;
-  const centroid = (seedW * (seed.wl) + gainW * signal.wl) / total;
+  const centroid = (seedW * seed.wl + gainW * signal.wl) / total;
   return { wl: centroid, bw: spectrumStats(spec)?.fwhm ?? 0, spec };
 }
 

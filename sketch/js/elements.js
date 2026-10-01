@@ -1083,7 +1083,19 @@ function probeCard(el, rd, elements = []) {
 
   if (prop === 'duration') {
     const source = elements.find(item => item?.id === rd.sourceId);
-    return valueCard(probeDurationLabel(rd, source?.type));
+    const label = probeDurationLabel(rd, source?.type);
+    const caveat = probeDurationCaveat(rd);
+    if (!caveat || !/\d/.test(label)) return valueCard(label);
+    // An estimate says so on the card, not only in the inspector.
+    const shown = `≈ ${label}`;
+    const w = Math.max(46, shown.length * 6.4 + 16, caveat.length * 4.3 + 12);
+    return {
+      w,
+      h: 32,
+      body: `<rect x="0" y="0" width="${w}" height="32" rx="4" fill="#fff" stroke="#c9ced6"/>` +
+        `<text x="${w / 2}" y="11" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" fill="#333">${esc(shown)}</text>` +
+        `<text data-probe-caveat="1" x="${w / 2}" y="25" text-anchor="middle" dominant-baseline="central" font-size="7" fill="#b45309">${esc(caveat)}</text>`,
+    };
   }
 
   if (prop === 'time') {
@@ -1221,7 +1233,18 @@ const probeWlLabel = rd => (rd.bw >= 200 ? `SC ${Math.round(rd.wl - rd.bw / 2)}�
 // state) that differ only in timing appear once -- the spectrum view names
 // each colour once, the duration view each colour and duration once, and the
 // time view keeps every beam.
-const probeBeamDurationLabel = beam => probeDurationLabel({ pulse: beam.pulse });
+// The short warning a duration reading carries when it is only an estimate:
+// an OPA's output below 30 dB of gain, where the seed is a sizeable part of
+// the beam and the duration is the gain's (the full text is the ray's caveat).
+function probeDurationCaveat(reading) {
+  const note = reading?.approximation;
+  if (!note) return null;
+  return /^OPA output below/.test(note) ? 'estimate: seed + gain below 30 dB' : null;
+}
+const probeBeamDurationLabel = beam => {
+  const label = probeDurationLabel({ pulse: beam.pulse });
+  return probeDurationCaveat(beam) && /\d/.test(label) ? `≈ ${label} (estimate)` : label;
+};
 function probeListedBeams(prop, beams) {
   const distinct = keyOf => beams.filter((beam, i) => beams.findIndex(other => keyOf(other) === keyOf(beam)) === i);
   // The spectrum sums whole spectra, so it merges only beams whose spectra

@@ -4604,7 +4604,7 @@ function interact(ray, hit) {
             ? chirpedSignalPulse(mixed, seed.signal, seed.chirp.gddFs2, seed.amplifiedProfile) : null;
           // Below a gain of 1000 the output is seed and gain together, and its
           // pulse is the gain's estimate: a caveat every reading downstream shows.
-          const together = kind === 'opaSignal' && seed.seedW > (seed.seedW + seed.gainW) / MIN_PHASE_KEPT_GAIN;
+          const together = kind === 'opaSignal' && seed.output && seed.seedW > (seed.seedW + seed.gainW) / MIN_PHASE_KEPT_GAIN;
           return {
             wl: wave.wl, bw: wave.bw || 0, spec: wave.spec || null, tag: kind,
             intensity: ray.intensity * power / ray.power, power,
@@ -4623,8 +4623,11 @@ function interact(ray, hit) {
           };
         };
         // The signal beam: the seed with the gain added, one beam (the seed's
-        // own rays stopped at the seed port above).
+        // own rays stopped at the seed port above). When no one spectrum can
+        // hold both (opa.js, signalOutput), the seed passed through and the
+        // gain leaves as a beam of its own.
         if (seed.gainW > 0 && seed.output) out.push(...launch('signal', generated(seed.output, seed.seedW + seed.gainW, 'opaSignal')));
+        else if (seed.gainW > 0 && seed.signal) out.push(...launch('signal', generated(seed.signal, seed.gainW, 'opaSignal')));
         if (data.outputIdler && seed.idlerW > 0 && seed.idler) out.push(...launch('idler', generated(seed.idler, seed.idlerW, 'opaIdler')));
       }
       return out;
