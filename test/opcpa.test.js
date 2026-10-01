@@ -390,3 +390,54 @@ test('the duration view ranks every beam by watts before it cuts the list, whate
     assert.match(rows[1], /· 500 fs · 10.0 mW$/, `order ${order}`);
   }
 });
+
+// An OPA whose amplified output leaves along y = 200 from x = 206 (the
+// Mach-Zehnder fixture's input) or y = 18 (the bench), high gain, the seed
+// stretched so the signal keeps its chirp.
+function opaFeeding(y) {
+  const pump = laser(y - 36, 532, 1, { transformLimited: true, pulseWidthFs: 3000, repRateMHz: 80 });
+  const seed = laser(y, 800, 1e-9, { transformLimited: false, bandwidth: 30, inputChirp: 'positive', chirpGddFs2: STRETCH, repRateMHz: 80 });
+  pump.x = seed.x = -300;
+  const opa = createElement('opa', 150, y - 18);
+  Object.assign(opa.params, { signalWl: 800, gainBandwidthNm: 80, smallSignalGainDb: 40, maxDepletion: 0.5, outputPump: false, outputIdler: false });
+  return [pump, seed, opa];
+}
+
+test('an OPA output split into two delayed arms reads as two beams, each one OPA output', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { parseSketch } = await import('../sketch/js/state.js');
+  const { registry } = await import('../sketch/js/elements.js');
+  const scene = parseSketch(readFileSync(new URL('./fixtures/mach-zehnder.json', import.meta.url), 'utf8'), registry);
+  const bench = scene.elements.filter(e => !['camera', 'display', 'textlabel', 'cwlaser'].includes(e.type));
+  bench.find(e => e.type === 'delayline').params.delayMm = 3; // 10 ps between the arms
+  const p = probe(700, 400);
+  const elements = [...opaFeeding(200), ...bench, p];
+  traceScene(elements, []);
+  assert.ok(opaReading(elements[2].id).seeds[0].phaseKept);
+  assert.equal(probeBeamsAt(700, 400, 5).length, 4, 'seed and gain on each of two arms');
+  // Duration: each arm's seed and gain are one beam; the two arms have one
+  // duration, so they share a row -- never "Unavailable" from counting the
+  // other arm's gain as this arm's weak part (Andrea, #200).
+  const rows = [...registry.probe.svg(p, elements).matchAll(/>([^<>]*· [^<>]*)</g)].map(m => m[1]);
+  assert.equal(rows.length, 1, `${rows}`);
+  assert.doesNotMatch(rows[0], /Unavailable/);
+  // Time: two trains, 10 ps apart.
+  p.params.prop = 'time';
+  const time = registry.probe.svg(p, elements);
+  assert.match(time, /data-probe-timing="delayed"/);
+  assert.equal(time.match(/data-probe-time-delay-ns/g)?.length, 2);
+});
+
+test('an OPA output stays one beam through a fiber', async () => {
+  const { registry } = await import('../sketch/js/elements.js');
+  const p = probe(700, 18);
+  const elements = [...opaFeeding(18), p];
+  const cable = { id: 'fb', kind: 'fiber', pts: [{ x: 420, y: 18 }, { x: 600, y: 18 }], width: 20,
+    propagate: true, lossDbPerM: 0, outMode: 'diverge', na: 0.01 };
+  traceScene(elements, [cable]);
+  const beams = probeBeamsAt(700, 18, 5);
+  assert.equal(beams.length, 2, 'the seed and the gain, relaunched');
+  assert.ok(beams.every(b => b.opaSignalOf) && beams[0].opaSignalOf === beams[1].opaSignalOf, 'one identity');
+  const rows = [...registry.probe.svg(p, elements).matchAll(/>([^<>]*· [^<>]*)</g)].map(m => m[1]);
+  assert.equal(rows.length, 1, `${rows}`);
+});

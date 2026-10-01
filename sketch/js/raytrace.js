@@ -1419,6 +1419,23 @@ export function probePowerAt(x, y, radius) {
 // of a probeAt reading plus `power` (its fraction of its source's emitted
 // power) and `arrivalNs`, when its pulses pass the centre of the circle.
 // Sorted by wavelength; empty when nothing crosses.
+// Which arm of an OPA's output a ray is on: its route after the OPA (the
+// branch string past the element's signal-port step), the same for the seed
+// passed on and the gain added on one arm, different on two arms a splitter
+// made. Light relaunched by a fiber has a new route; the arm it was on before
+// the fiber is kept in its identity (see the fiber couplings).
+function opaArmOf(ray) {
+  if (!ray?.opaSignalOf) return null;
+  const opaId = ray.opaSignalOf.split('|')[0];
+  const branch = ray.branch || '';
+  const at = Math.max(branch.lastIndexOf(`>${opaId}:opaSeed`), branch.lastIndexOf(`>${opaId}:opaSignal`));
+  if (at < 0) return branch;
+  const rest = branch.slice(at + 1);
+  return rest.slice(rest.indexOf('>') < 0 ? rest.length : rest.indexOf('>'));
+}
+// One OPA output on one arm.
+const opaOutputOf = ray => (ray?.opaSignalOf ? `${ray.opaSignalOf}#${opaArmOf(ray)}` : null);
+
 export function probeBeamsAt(x, y, radius) {
   const entries = probeEntries(x, y, Math.max(1e-6, Number(radius) || 0));
   const round = (v, d) => (Number.isFinite(v) ? Number(v.toFixed(d)) : v ?? null);
@@ -1503,9 +1520,9 @@ export function probeBeamsAt(x, y, radius) {
         intensity: r.segmentIntensities?.[main.segment] ?? r.intensity,
         sourceId: r.sourceId || null, originId: r.originId || null,
         approximation: r.approximation || null, polMod: r.polMod || null,
-        // The OPA output this beam is part of (the seed it passed on, or the
-        // gain it added), if any.
-        opaSignalOf: r.opaSignalOf || null,
+        // The OPA output, on one arm, this beam is part of (the seed it passed
+        // on, or the gain it added), if any.
+        opaSignalOf: opaOutputOf(r),
         power, oplMm: opl, routes: cluster.length,
         // When the pulses pass: the flight time to here, plus when the source
         // emitted them. The first alone is what a plot shifts a train by,
@@ -2344,6 +2361,7 @@ function couplingStateKey(c) {
   return JSON.stringify([
     polarizationKey(c), spec, r(c.bw || 0), Math.round((Number(c.gdd) || 0) * 1000),
     Math.round((Number(c.groupDelayDifferenceFs) || 0) * 1000), gates, c.approximation || null,
+    c.opaSignalOf || null,
   ]);
 }
 
@@ -2402,6 +2420,7 @@ function fiberEmissionRays(c) {
     // The parametric elements this light went through before the fiber: an
     // OPA must still recognise it when the fiber brings it back.
     parametricPath: unionPath(c.parametricPath),
+    opaSignalOf: c.opaSignalOf || undefined,
     oplStart: (c.opl || 0) + lengthMm * ng + 2,
     // Dispersion accumulated before coupling survives the relaunch, and the
     // fiber's own signed GDD adds to it.
@@ -5483,6 +5502,9 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             originId: r.originId || null,
             coherenceLengthMm: r.coherenceLengthMm || 0,
             parametricPath: unionPath(r.parametricPath),
+            // An OPA output stays one output through the fiber, on the arm it
+            // was on before it.
+            opaSignalOf: opaOutputOf(r),
             // A summed loop's factor rides through the fiber with its power.
             loopSum: r.loopSum || 1,
           });
