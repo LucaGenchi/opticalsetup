@@ -67,6 +67,15 @@ export const MAX_GATE_BANDWIDTH_RATIO = 0.35;
 // The amplified band must span at least this many seed slices for its shape,
 // and so its transform, to be resolved.
 export const MIN_BAND_SLICES = 4;
+// The seed passing through must be at most 1/1000 of the output: below that
+// gain the output field is seed plus gain, and "the gain beam's duration" has
+// no single answer (the field's excess and the whole field recompress
+// differently).
+export const MIN_PHASE_KEPT_GAIN = 1000;
+// The amplified light's centre must lie within this many seed FWHM of the
+// seed's centre. A pump timed onto the seed's wing amplifies its tail, where
+// the slices cut the spectrum off and the mapping is least accurate.
+export const MAX_CENTRE_OFFSET_FWHM = 0.5;
 // Beyond a Gaussian spectrum, a chirp maps wavelength to time only once it is
 // strong: the stationary-phase limit the duration model itself uses
 // (quadraticPhasePulse in pulse-field.js), twenty transform limits.
@@ -396,8 +405,14 @@ export function planOpa(params, { pump, pumps = [], seeds = [] }) {
     const gateBandRatio = amplifiedBandRad > 0 ? 4 * Math.LN2 / windowFs / amplifiedBandRad : Infinity;
     const gainCurve = amplifying.map(c => ({ wl: c.wl, excess: c.powerW > 0 ? c.out.signalGainW / c.powerW : 0 }));
     const sliceNm = gainCurve.length > 1 ? Math.abs(gainCurve[1].wl - gainCurve[0].wl) : Infinity;
+    // The passing seed must be a negligible part of the output, so that the
+    // gain beam is the output field; and the amplified light must sit in the
+    // core of the seed's spectrum, where the slices resolve its shape.
+    const seedFwhmNm = (seed.spec ? spectrumStats(seed.spec)?.fwhm : null) || seed.bw || 0;
+    const achieved = seed.powerW > 0 ? (seed.powerW + gainW) / seed.powerW : 1;
+    const centred = seedFwhmNm > 0 && signal && Math.abs(signal.wl - (arrival.chirp?.centreNm ?? seed.wl)) <= MAX_CENTRE_OFFSET_FWHM * seedFwhmNm;
     const phaseKept = Boolean(arrival.chirp && !lines && gateBandRatio <= MAX_GATE_BANDWIDTH_RATIO
-      && signal.bw >= MIN_BAND_SLICES * sliceNm);
+      && signal.bw >= MIN_BAND_SLICES * sliceNm && achieved >= MIN_PHASE_KEPT_GAIN && centred);
     // Where the amplified light sits in the chirped seed: the gain-weighted
     // group delay of its slices, fs after the seed's own arrival.
     const signalDelayFs = arrival.chirp && gainW > 0 ? amplifying.reduce((sum, c) =>
@@ -414,7 +429,7 @@ export function planOpa(params, { pump, pumps = [], seeds = [] }) {
       signal, idler, idlerWl: idler?.wl ?? idlerAt(seed.wl), state,
       durationIssue: arrival.issue, arrivingPulse: arrival.pulse, chirp: arrival.chirp,
       gainWindowFs: windowFs, gateBandRatio, phaseKept: phaseKept && Boolean(profile), amplifiedProfile: profile,
-      signalDelayFs,
+      signalDelayFs, centred: Boolean(centred),
     };
   });
   const pumpOutW = result ? result.pumpOutW : pump.powerW;

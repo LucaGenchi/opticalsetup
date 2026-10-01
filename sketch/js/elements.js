@@ -15,7 +15,7 @@ import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, po
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
 import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
-import { opaSettings, opaGainAt, MAX_OPA_STAGES, MAX_GATE_BANDWIDTH_RATIO } from './opa.js';
+import { opaSettings, opaGainAt, MAX_OPA_STAGES, MAX_GATE_BANDWIDTH_RATIO, MIN_PHASE_KEPT_GAIN } from './opa.js';
 import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
 import {
   probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
@@ -1254,14 +1254,22 @@ function probeMultiCard(el, prop, beams, elements) {
     : `<circle cx="${cx}" cy="${cy}" r="4" fill="${wavelengthToColor(rd.wl)}"/>`);
 
   if (prop === 'duration') {
-    // One row per beam: its colour, its duration here and its power, the
-    // strongest first -- an amplifier's output and the seed passing through
-    // it share one path.
-    const { weights, absolute } = probeBeamWeights(listed, elements);
-    const order = listed.map((beam, i) => ({ beam, w: weights[i] })).sort((a, b) => b.w - a.w);
+    // One row per colour and duration, with the power of every beam that
+    // reads the same, the strongest first -- an amplifier's output and the
+    // seed passing through it share one path. Beams are grouped and ranked
+    // before the list is cut, so none is dropped for coming first.
+    const { weights, absolute } = probeBeamWeights(beams, elements);
+    const groups = new Map();
+    beams.forEach((beam, i) => {
+      const key = `${probeWlLabel(beam)}|${probeBeamDurationLabel(beam)}`;
+      const group = groups.get(key) || { beam, w: 0 };
+      group.w += weights[i];
+      groups.set(key, group);
+    });
+    const order = [...groups.values()].sort((a, b) => b.w - a.w);
     const top = order.slice(0, PROBE_MAX_BEAMS_SHOWN);
     const rows = top.map(({ beam, w }) => `${probeWlLabel(beam)} · ${probeBeamDurationLabel(beam)}${absolute ? ` · ${formatPowerMw(w)}` : ''}`);
-    if (more > 0) rows.push(`+${more} more`);
+    if (order.length > top.length) rows.push(`+${order.length - top.length} more`);
     const w = Math.max(...rows.map(r => r.length * 5.8 + 26));
     const h = 8 + rows.length * 13;
     return {
@@ -2475,7 +2483,11 @@ function opaStateCore(plan, p) {
           + (seed.phaseKept ? ', keeping the seed\'s chirp for a compressor'
             : seed.gateBandRatio > MAX_GATE_BANDWIDTH_RATIO
               ? ` · the pump's gain window (${formatFs(seed.gainWindowFs)}) gates it too fast for this spectral picture: the signal's spectral phase is not modelled`
-              : ' · the amplified band is narrower than the spectral slicing resolves: the signal\'s spectral phase is not modelled'));
+              : seed.achievedGain < MIN_PHASE_KEPT_GAIN
+                ? ` · below ${fmtGain(MIN_PHASE_KEPT_GAIN)} gain the output is seed and gain together: the signal's spectral phase is not modelled`
+                : !seed.centred
+                  ? ' · the pump amplifies the seed\'s wing, off its spectral centre: the signal\'s spectral phase is not modelled'
+                  : ' · the amplified band is narrower than the spectral slicing resolves: the signal\'s spectral phase is not modelled'));
       }
     } else {
       const why = {

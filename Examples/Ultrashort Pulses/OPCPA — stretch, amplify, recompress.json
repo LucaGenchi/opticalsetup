@@ -19,7 +19,7 @@
       "x": 40,
       "y": 70,
       "params": {
-        "text": "800 nm seed, 30 nm (31 fs limit), 1 µJ · stretched +100 000 fs² · 532 nm pump, 12 ps, 10 mJ · 1 kHz",
+        "text": "800 nm seed, 30 nm (31 fs limit), 0.1 µJ · stretched +100 000 fs² · 532 nm pump, 12 ps, 10 mJ · 1 kHz",
         "fontSize": 13,
         "fill": "#666666"
       }
@@ -38,7 +38,7 @@
         "pulseWidthFs": 31.4,
         "pulseShape": "gauss",
         "repRateMHz": 0.001,
-        "avgPowerW": 0.001,
+        "avgPowerW": 0.0001,
         "showPulse": true
       }
     },

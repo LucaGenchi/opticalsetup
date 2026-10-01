@@ -178,11 +178,11 @@ test('a second stage is seeded by the first stage\'s chirped signal and slices i
   const pump1 = laser(-18, 532, 1, { transformLimited: true, pulseWidthFs: 3000 });
   const seed = chirpedSeed(1e-9);
   const stage1 = createElement('opa', 300, 0);
-  Object.assign(stage1.params, { signalWl: 800, gainBandwidthNm: 80, smallSignalGainDb: 30, maxDepletion: 0.5, outputPump: false, outputIdler: false });
+  Object.assign(stage1.params, { signalWl: 800, gainBandwidthNm: 80, smallSignalGainDb: 40, maxDepletion: 0.5, outputPump: false, outputIdler: false });
   const pump2 = createElement('pulsedlaser', 440, -18);
   Object.assign(pump2.params, { wavelength: 532, avgPowerW: 1, repRateMHz: 0.001, pulseWidthFs: 3000, beamMode: 'line', transformLimited: true });
   const stage2 = createElement('opa', 620, 0);
-  Object.assign(stage2.params, { signalWl: 800, gainBandwidthNm: 80, smallSignalGainDb: 30, maxDepletion: 0.5, outputPump: false, outputIdler: false });
+  Object.assign(stage2.params, { signalWl: 800, gainBandwidthNm: 80, smallSignalGainDb: 40, maxDepletion: 0.5, outputPump: false, outputIdler: false });
   traceScene([pump1, seed, stage1, pump2, stage2], []);
   pump2.params.pulsePhaseNs = opaReading(stage2.id).seeds[0].skewNs;
   traceScene([pump1, seed, stage1, pump2, stage2], []);
@@ -201,11 +201,11 @@ test('a second stage is seeded by the first stage\'s chirped signal and slices i
 // multiplies the seed's field by cosh(Gamma L sqrt(I_p(t)/I_peak)); the
 // amplified part is that minus the seed. Its compressed duration (the seed's
 // GDD removed) is compared with the model's.
-function coherentCompressedFs({ lam0, bwNm, gdd, taupFs, G0, delayFs = 0 }) {
+function coherentCompressedFs({ lam0, bwNm, gdd, taupFs, G0, delayFs = 0, whole = false }) {
   const N = 1 << 15;
   const tau0 = transformLimitedDurationFs(bwNm, lam0, 'gauss');
   const stretched = gaussianPulseDurationAfterGDD(tau0, gdd);
-  const dt = 12 * Math.max(taupFs, stretched) / N;
+  const dt = 12 * Math.max(taupFs, stretched, 2 * Math.abs(delayFs)) / N;
   const dOmega = 2 * Math.PI * 299.792458 * bwNm / (lam0 * lam0);
   const dW = 2 * Math.PI / (N * dt), W = k => (k < N / 2 ? k : k - N) * dW;
   const re = new Float64Array(N), im = new Float64Array(N);
@@ -219,7 +219,7 @@ function coherentCompressedFs({ lam0, bwNm, gdd, taupFs, G0, delayFs = 0 }) {
   const gammaL = Math.acosh(Math.sqrt(G0));
   for (let j = 0; j < N; j++) {
     const t = (j < N / 2 ? j : j - N) * dt;
-    const g = Math.cosh(gammaL * Math.exp(-2 * Math.LN2 * ((t - delayFs) / taupFs) ** 2)) - 1;
+    const g = Math.cosh(gammaL * Math.exp(-2 * Math.LN2 * ((t - delayFs) / taupFs) ** 2)) - (whole ? 0 : 1);
     re[j] *= g; im[j] *= g;
   }
   fft(re, im, false);
@@ -245,20 +245,42 @@ function modelSeed({ lam0, bwNm, gdd, taupFs, G0, delayFs = 0, sech2 = false }) 
 }
 const chirpFor = (tau0, stretch) => tau0 * tau0 / (4 * Math.LN2) * Math.sqrt(stretch * stretch - 1);
 
-test('inside its declared domain the model recompresses within 6 % of the coherently amplified field', () => {
-  const lam0 = 800, bwNm = 10, G0 = 1e4, tau0 = transformLimitedDurationFs(bwNm, lam0);
-  const window = R => R * tau0 * Math.sqrt(Math.acosh(Math.sqrt(G0)));
-  for (const [stretch, R] of [[1, 4], [3, 4], [10, 10], [50, 20], [10, 20]]) {
-    const args = { lam0, bwNm, gdd: stretch === 1 ? 0 : chirpFor(tau0, stretch), taupFs: window(R), G0 };
+// The coherent reference has two readings below high gain: the field's
+// excess over the seed, (cosh - 1) E, and the whole output field, cosh E. The
+// model's gain beam is compared with both; the domain requires a gain at
+// which they agree.
+test('inside its declared domain the model recompresses within 7 % of the coherently amplified field', () => {
+  const lam0 = 800, bwNm = 10, tau0 = transformLimitedDurationFs(bwNm, lam0);
+  const window = (R, G0) => R * tau0 * Math.sqrt(Math.acosh(Math.sqrt(G0)));
+  // A cross-section of the 266 in-domain cases scanned (stretch x1-x100,
+  // 20-60 dB, windows 3-60 tau0, pump delays 0-1.5 stretched FWHM; worst
+  // 6.1 % against the excess, 5.5 % against the whole field).
+  const cases = [[1, 1e4, 4, 0], [3, 1e4, 4, 0], [10, 1e4, 10, 0], [50, 1e4, 20, 0], [10, 1e4, 20, 0.5],
+    [100, 1e4, 20, 0.5], [1, 1e6, 3, 1], [50, 1e6, 60, 0.5], [20, 1e4, 40, 0.25]];
+  for (const [stretch, G0, R, delay] of cases) {
+    const gdd = stretch === 1 ? 0 : chirpFor(tau0, stretch);
+    const args = { lam0, bwNm, gdd, taupFs: window(R, G0), G0, delayFs: delay * gaussianPulseDurationAfterGDD(tau0, gdd) };
     const m = modelSeed(args);
-    assert.ok(m.seed.phaseKept, `stretch ${stretch}, window ${R} tau0: inside the domain (ratio ${m.seed.gateBandRatio})`);
-    const ref = coherentCompressedFs(args);
-    assert.ok(rel(m.compressedFs, ref) < 0.06, `stretch ${stretch}, window ${R} tau0: ${m.compressedFs} vs coherent ${ref}`);
+    const label = `stretch ${stretch}, ${10 * Math.log10(G0)} dB, window ${R} tau0, delay ${delay}`;
+    assert.ok(m.seed.phaseKept, `${label}: inside the domain`);
+    for (const whole of [false, true]) {
+      const ref = coherentCompressedFs({ ...args, whole });
+      assert.ok(rel(m.compressedFs, ref) < 0.07, `${label}${whole ? ' (whole field)' : ''}: ${m.compressedFs} vs coherent ${ref}`);
+    }
+  }
+  // Andrea's counterexamples (#200): a pump on the seed's wing, 16.5 % off,
+  // and a 20 dB stage, 12.6 % off. Both are now outside the domain.
+  const wing = modelSeed({ lam0, bwNm, gdd: 159806.116, taupFs: 4334.069, G0: 1e4, delayFs: 4707.257 });
+  const low = modelSeed({ lam0, bwNm, gdd: chirpFor(tau0, 50), taupFs: window(20, 100), G0: 100 });
+  for (const m of [wing, low]) {
+    assert.equal(m.seed.state, 'amplifying');
+    assert.equal(m.seed.phaseKept, false);
+    assert.ok(m.seed.gateBandRatio <= MAX_GATE_BANDWIDTH_RATIO, 'refused by gain or centring, not by the gate');
   }
   // Gated too fast for the slices -- where they are 18 % or more off -- the
   // signal's phase is declared unknown instead.
   for (const [stretch, R] of [[1, 2], [50, 3], [50, 10]]) {
-    const m = modelSeed({ lam0, bwNm, gdd: stretch === 1 ? 0 : chirpFor(tau0, stretch), taupFs: window(R), G0 });
+    const m = modelSeed({ lam0, bwNm, gdd: stretch === 1 ? 0 : chirpFor(tau0, stretch), taupFs: window(R, 1e4), G0: 1e4 });
     assert.equal(m.seed.phaseKept, false, `stretch ${stretch}, window ${R} tau0`);
     assert.ok(m.seed.gateBandRatio > MAX_GATE_BANDWIDTH_RATIO);
   }
@@ -327,7 +349,7 @@ test('the OPCPA example: stretched, amplified and recompressed, as its probes re
   const seed = plan.seeds[0];
   assert.equal(seed.state, 'amplifying');
   assert.ok(seed.phaseKept, 'the example sits inside the domain where the signal keeps the seed\'s chirp');
-  assert.ok(plan.conversion > 0.1 && plan.conversion < 0.5, `${plan.conversion}`);
+  assert.ok(plan.conversion > 0.05 && plan.conversion < 0.5, `${plan.conversion}`);
   const rows = el => [...registry.probe.svg(el, elements).matchAll(/>([^<>]*· [^<>]*)</g)].map(m => m[1]);
   const probes = elements.filter(e => e.type === 'probe' && e.params.prop === 'duration').sort((a, b) => a.x - b.x);
   // Before the OPA: one beam, stretched from 31 fs to ~9 ps.
@@ -336,6 +358,21 @@ test('the OPCPA example: stretched, amplified and recompressed, as its probes re
   // recompressed to its own transform limit; the seed passing through below.
   const after = rows(probes.at(-1));
   assert.equal(after.length, 2);
-  assert.match(after[0], /fs · 8\d\d mW/);
-  assert.match(after[1], /31\.4 fs · 1\.00 mW/);
+  assert.match(after[0], /fs · 6\d\d mW/);
+  assert.match(after[1], /31\.4 fs · 100 µW/);
+});
+
+test('the duration view ranks every beam by watts before it cuts the list, whatever the source order', async () => {
+  const { registry } = await import('../sketch/js/elements.js');
+  const make = (fs, watts) => laser(0, 800, watts, { transformLimited: true, pulseWidthFs: fs, repRateMHz: 80 });
+  for (const order of [[0, 1, 2], [1, 0, 2], [2, 1, 0]]) {
+    const lasers = [make(300, 1e-3), make(300, 1), make(500, 1e-2)];
+    const p = probe(200, 0);
+    const elements = [...order.map(i => lasers[i]), p];
+    traceScene(elements, []);
+    const rows = [...registry.probe.svg(p, elements).matchAll(/>([^<>]*· [^<>]*)</g)].map(m => m[1]);
+    assert.equal(rows.length, 2, `order ${order}`);
+    assert.match(rows[0], /· 300 fs · 1.00 W$/, `order ${order}`);
+    assert.match(rows[1], /· 500 fs · 10.0 mW$/, `order ${order}`);
+  }
 });

@@ -22,11 +22,11 @@
    7000,
    418
   ],
-  "digest": "70d3acca"
+  "digest": "469588d8"
  },
  "drawnElements": {
   "textlabel:e1": "a8122d6a",
-  "textlabel:e2": "038e485c",
+  "textlabel:e2": "7cc3aa56",
   "pulsedlaser:e3": "bc05eac0",
   "probe:e4": "a0085b41",
   "pulsecompressor:e5": "38a9b9dc",
@@ -36,10 +36,10 @@
   "opa:e9": "4681d8b9",
   "beamdump:e10": "6b3307f5",
   "beamdump:e11": "6b3307f5",
-  "probe:e12": "358c7577",
+  "probe:e12": "e976d5b3",
   "pulsecompressor:e13": "7ce88109",
-  "probe:e14": "702f0c4c",
-  "probe:e15": "ca2f2cc4",
+  "probe:e14": "638e32bc",
+  "probe:e15": "53997d58",
   "textlabel:e16": "ef14d316",
   "textlabel:e17": "535ab433",
   "textlabel:e18": "a6d7dfb0",
@@ -64,7 +64,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "cbcba478"
+   "digest": "1ba52da4"
   },
   {
    "intensity": 1,
@@ -82,7 +82,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "d9cca7a2"
+   "digest": "c7ce7182"
   },
   {
    "intensity": 1,
@@ -103,7 +103,7 @@
    "digest": "c54ae089"
   },
   {
-   "intensity": 0.0428487266,
+   "intensity": 0.0337978816,
    "color": "#6e3b3b",
    "points": 2,
    "opl": [
@@ -118,10 +118,10 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "eb577bbc"
+   "digest": "c95ec780"
   },
   {
-   "intensity": 0.0849690702,
+   "intensity": 0.0670344928,
    "color": "#8b1a1a",
    "points": 3,
    "opl": [
@@ -131,15 +131,15 @@
    "pulse": {
     "sourceId": "e7›e9:opaSignal",
     "repRateMHz": 0.001,
-    "pulseWidthFs": 9710.52855,
-    "phaseNs": 0.540346284,
+    "pulseWidthFs": 9065.38616,
+    "phaseNs": 0.540349978,
     "spectrumReshaped": true,
     "gates": 0
    },
-   "digest": "acfd3056"
+   "digest": "19c3a7dc"
   },
   {
-   "intensity": 0.872182203,
+   "intensity": 0.899167626,
    "color": "#65ff00",
    "points": 2,
    "opl": [
@@ -154,7 +154,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "04d69d99"
+   "digest": "956a2730"
   }
  ],
  "writeHits": {
