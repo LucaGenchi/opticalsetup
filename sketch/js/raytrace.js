@@ -53,7 +53,7 @@ import {
 import {
   gaussianSpectrum, flatSpectrum, lineSpectrum, scaleSpectrum, spectrumSamples, spectrumStats, spectrumSupport, spectrumWeight,
   applyTransmission as applySpectralTransmission, fringeVisibility, resolveSourceSpectrum, supercontinuumTransformLimitFs,
-  transformLimitedBandwidthNm,
+  transformLimitedBandwidthNm, withSpectralGap,
 } from './spectrum.js';
 import { cameraProfileFromHits } from './camera-profile.js';
 import { MAX_CONVERSION, MAX_OPO_DEPLETION, opoPulse, supercontinuumRange, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength, mixWidthNm } from './parametric.js';
@@ -3652,7 +3652,8 @@ function interact(ray, hit) {
         // a bandpass of the same band always share the light exactly.
         const blocked = notch ? applySpectralTransmission(ray.spec, ray.wl, wl => 1 - T(wl)) : null;
         const fraction = notch ? Math.max(0, 1 - (blocked?.fraction ?? 0)) : trans.fraction;
-        return [{ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * fraction }];
+        const spec = notch ? withSpectralGap(trans.spec, pb[0], pb[1]) : trans.spec;
+        return [{ d, wl: trans.wl, bw: trans.bw, spec, intensity: ray.intensity * fraction }];
       }
       // flat (supercontinuum) or unspecified box: transmitted spectrum is
       // the exact overlap of the beam band and the passband -- or, for a
@@ -3660,10 +3661,9 @@ function interact(ray, hit) {
       const rb = [ray.wl - ray.bw / 2, ray.wl + ray.bw / 2];
       if (notch) {
         if (!bandIntersect(rb, pb)) return [{ d }];
-        const out = [];
-        if (rb[0] < pb[0] - 0.5) out.push(bandChild(ray, d, rb[0], Math.min(rb[1], pb[0]), 'T0'));
-        if (rb[1] > pb[1] + 0.5) out.push(bandChild(ray, d, Math.max(rb[0], pb[1]), rb[1], 'T1'));
-        return out;
+        // However thin the part left beside the band, it is kept, as the
+        // fanned-sample path above keeps it; only an empty interval is dropped.
+        return splitCell(rb, pb).outside.map(([lo, hi], i) => bandChild(ray, d, lo, hi, `T${i}`));
       }
       const ix = bandIntersect(rb, pb);
       if (!ix || ix[1] - ix[0] < 0.5) return [];

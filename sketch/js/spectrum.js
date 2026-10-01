@@ -10,6 +10,9 @@
 //   { kind: 'flat',    lo, hi }         a supercontinuum / crystal-generated
 //                                       broadband slice
 //   { kind: 'sampled', lo, hi, w }      whatever survived a filter
+//     + optional gaps: [[lo, hi], ...]  bands a notch removed: the weight
+//                                       there is exactly zero, rather than
+//                                       interpolated across the hard edges
 // A ray with bw===0 carries spec===null (nothing to integrate — exact
 // single-wavelength physics applies).
 
@@ -70,7 +73,12 @@ export function scaleSpectrum(spec, factor) {
   if (spec.kind === 'lines') return lineSpectrum(spec.lines.map(l => ({ nm: l.nm * factor, w: l.w })));
   // A filtered profile keeps its shape: the grid stretches with the
   // wavelengths and every weight stays where it was.
-  if (spec.kind === 'sampled' && Array.isArray(spec.w)) return { kind: 'sampled', lo: spec.lo * factor, hi: spec.hi * factor, w: [...spec.w] };
+  if (spec.kind === 'sampled' && Array.isArray(spec.w)) {
+    return {
+      kind: 'sampled', lo: spec.lo * factor, hi: spec.hi * factor, w: [...spec.w],
+      ...(spec.gaps ? { gaps: spec.gaps.map(([lo, hi]) => [lo * factor, hi * factor]) } : {}),
+    };
+  }
   return null;
 }
 
@@ -86,6 +94,13 @@ export function spectrumSupport(spec) {
     return [Math.max(1, spec.center - half), spec.center + half];
   }
   return [spec.lo, spec.hi];
+}
+
+// A sampled profile with the band [lo, hi] removed exactly, as a notch
+// filter leaves it. Other kinds are returned unchanged.
+export function withSpectralGap(spec, lo, hi) {
+  if (!spec || spec.kind !== 'sampled' || !(hi > lo) || hi < spec.lo || lo > spec.hi) return spec;
+  return { ...spec, gaps: [...(spec.gaps || []), [lo, hi]] };
 }
 
 // Relative weight at one wavelength, normalised so the profile peaks at 1.
@@ -107,6 +122,7 @@ export function spectrumWeight(spec, wl) {
   }
   if (wl < spec.lo || wl > spec.hi) return 0;
   if (spec.kind === 'flat') return 1;
+  if (spec.gaps && spec.gaps.some(([lo, hi]) => wl >= lo && wl <= hi)) return 0;
   const n = spec.w.length;
   if (n < 2) return spec.w[0] || 0;
   const t = (wl - spec.lo) / (spec.hi - spec.lo) * (n - 1);
@@ -233,7 +249,10 @@ export function applyTransmission(spec, centerWl, transmissionFn) {
   const fraction = transmittedTotal / incidentTotal;
   const peak = Math.max(...shaped);
   if (!(fraction > BLOCK) || !(peak > 0)) return null;
-  const profile = { kind: 'sampled', lo: from, hi: to, w: shaped.map(v => v / peak) };
+  // A band an earlier notch removed stays removed: the new grid is zero
+  // there too, but would otherwise interpolate back across its edges.
+  const gaps = spec.gaps?.filter(([a, b]) => b >= from && a <= to);
+  const profile = { kind: 'sampled', lo: from, hi: to, w: shaped.map(v => v / peak), ...(gaps?.length ? { gaps } : {}) };
   const stats = spectrumStats(profile);
   if (!stats) return null;
   return {

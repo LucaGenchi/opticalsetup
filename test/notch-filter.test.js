@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { createElement, registry } from '../sketch/js/elements.js';
 import { detectorReading, traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
+import { applyTransmission, gaussianSpectrum, scaleSpectrum, spectrumWeight, withSpectralGap } from '../sketch/js/spectrum.js';
 import '../sketch/js/detector-instruments.js';
 
 // A notch filter blocks the band a bandpass of the same center and width
@@ -115,4 +116,58 @@ test('a saved notch filter keeps its type when the scene is opened again', () =>
   assert.equal(loaded.params.ftype, 'notch');
   assert.equal(loaded.params.center, 785);
   assert.equal(loaded.params.band, 30);
+});
+
+// Several filters in a row along one beam, each 100 mm after the last.
+function readChain(source, filters, detectorType = 'detector') {
+  const elements = [source];
+  filters.forEach((params, i) => {
+    const filter = createElement('filter', 200 + 100 * i, 0);
+    Object.assign(filter.params, params);
+    elements.push(filter);
+  });
+  const detector = createElement(detectorType, 300 + 100 * filters.length, 0);
+  detector.params.aperture = 40;
+  elements.push(detector);
+  traceScene(elements);
+  return detectorReading(detector.id);
+}
+
+test('a notched Gaussian carries no light in the removed band to later filters', () => {
+  const source = () => laser(532, { bwMode: 'band', bandwidth: 40 });
+  const notch = { ftype: 'notch', center: 532, band: 2 };
+  // The reviewer's reproduction: notch then a bandpass of the same band.
+  assert.equal(signal(readChain(source(), [notch, { ftype: 'bandpass', center: 532, band: 2 }])), 0);
+  // A wider bandpass in between re-grids the profile; the band stays empty.
+  assert.equal(signal(readChain(source(), [notch, { ftype: 'bandpass', center: 532, band: 30 }, { ftype: 'bandpass', center: 532, band: 1 }])), 0);
+  // A second identical notch has nothing left to remove.
+  const once = signal(readChain(source(), [notch]));
+  const twice = signal(readChain(source(), [notch, notch]));
+  assert.ok(once > 0.9);
+  close(twice, once, 1e-9, 'repeated notch');
+});
+
+test('a sliver of continuum left beside a wide notch is kept, on either side', () => {
+  const full = signal(read(continuum(), null));
+  // 899.8-900 nm survives a 500 nm notch centred on 649.8 nm ...
+  close(signal(read(continuum(), { ftype: 'notch', center: 649.8, band: 500 })) / full, 0.2 / 500, 1e-9, 'red sliver');
+  // ... and 400-400.2 nm one centred on 650.2 nm, as the fanned path keeps it.
+  close(signal(read(continuum(), { ftype: 'notch', center: 650.2, band: 500 })) / full, 0.2 / 500, 1e-9, 'blue sliver');
+  const fannedFull = signal(read(continuum(), null, { rod: true }));
+  close(signal(read(continuum(), { ftype: 'notch', center: 649.8, band: 500 }, { rod: true })) / fannedFull, 0.2 / 500, 1e-6, 'fanned red sliver');
+});
+
+test('a removed band reads exactly zero, survives re-gridding, and scales with a harmonic', () => {
+  const notched = withSpectralGap(applyTransmission(gaussianSpectrum(1064, 40), 1064, wl => (Math.abs(wl - 1064) <= 1 ? 0 : 1)).spec, 1063, 1065);
+  for (const wl of [1063, 1063.5, 1064, 1064.9, 1065]) assert.equal(spectrumWeight(notched, wl), 0, `${wl} nm`);
+  assert.ok(spectrumWeight(notched, 1060) > 0.9);
+  const regridded = applyTransmission(notched, 1064, () => 1).spec;
+  assert.equal(spectrumWeight(regridded, 1064.5), 0);
+  const doubled = scaleSpectrum(notched, 0.5);
+  assert.equal(spectrumWeight(doubled, 532), 0);
+  assert.ok(spectrumWeight(doubled, 530) > 0.9);
+  // Not a sampled profile, or a band outside it: nothing to record.
+  const gauss = gaussianSpectrum(532, 10);
+  assert.equal(withSpectralGap(gauss, 531, 533), gauss);
+  assert.equal(withSpectralGap(notched, 2000, 2010), notched);
 });
