@@ -100,11 +100,10 @@ test('a partially reflecting band is an output coupler: the band splits, the sid
   assert.equal(full.through, null);
 });
 
-test('a spectrum straddling a band edge splits within the shared integration error', () => {
-  // The partial and full band reflector both re-grid each port's surviving
-  // spectrum separately, which loses about 1.5 % for a Gaussian cut by a band
-  // edge. That approximation is inherited from the spectral machinery; this
-  // pins it rather than claiming exact conservation.
+test('a spectrum straddling a band edge splits without losing power', () => {
+  // Each port's spectrum is still re-gridded separately for its shape, but
+  // the port holding both sides of the band takes the power the band's port
+  // does not, so the two always add up to the incident power.
   const run = bandRefl => {
     const src = createElement('pulsedlaser', 60, 160);
     Object.assign(src.params, { beamMode: 'line', wavelength: 750, transformLimited: false, bandwidth: 60 });
@@ -118,7 +117,47 @@ test('a spectrum straddling a band edge splits within the shared integration err
     return { t: detectorReading(through.id)?.signal ?? 0, r: detectorReading(reflected.id)?.signal ?? 0 };
   };
   const partial = run(90), full = run(100);
-  assert.ok(Math.abs(partial.t + partial.r - 1) < 0.02, `partial total ${partial.t + partial.r}`);
-  assert.ok(Math.abs(full.t + full.r - 1) < 0.02, `full total ${full.t + full.r}`);
+  assert.ok(Math.abs(partial.t + partial.r - 1) < 1e-9, `partial total ${partial.t + partial.r}`);
+  assert.ok(Math.abs(full.t + full.r - 1) < 1e-9, `full total ${full.t + full.r}`);
   assert.ok(partial.r < full.r && partial.t > full.t, 'lowering the band reflectivity moves power to the transmitted port');
+});
+
+test('a Gaussian line centred on a band reflector conserves power across both ports', () => {
+  // gaussianSpectrum(532, 40) with a 20 nm band: the band holds 0.4441 of
+  // the power. Integrated separately, the two sides came to 0.5409 instead of
+  // 0.5559, and T + R fell to 0.981.
+  const run = (dtype, center, band) => {
+    const src = createElement('pulsedlaser', 60, 160);
+    Object.assign(src.params, { beamMode: 'line', wavelength: 532, transformLimited: false, bandwidth: 40 });
+    const mirror = createElement('dichroic', 300, 160);
+    mirror.rot = 135;
+    Object.assign(mirror.params, { dtype, center, band, bandRefl: 100 });
+    const through = createElement('detector', 460, 160);
+    const reflected = createElement('detector', 300, 320);
+    reflected.rot = 90;
+    traceScene([src, mirror, through, reflected]);
+    return { t: detectorReading(through.id)?.signal ?? 0, r: detectorReading(reflected.id)?.signal ?? 0 };
+  };
+  const notch = run('notch', 532, 20);
+  assert.ok(Math.abs(notch.t + notch.r - 1) < 1e-9, `notch total ${notch.t + notch.r}`);
+  assert.ok(Math.abs(notch.r - 0.4441) < 0.01, `in-band share ${notch.r}`);
+  assert.ok(Math.abs(notch.t - 0.5559) < 0.01, `out-of-band share ${notch.t}`);
+
+  // A bandpass is the same coating with its ports exchanged, and conserves too.
+  const bandpass = run('bandpass', 532, 20);
+  assert.ok(Math.abs(bandpass.t + bandpass.r - 1) < 1e-9, `bandpass total ${bandpass.t + bandpass.r}`);
+  assert.equal(bandpass.t, notch.r);
+  assert.equal(bandpass.r, notch.t);
+
+  // Boundary: with no band edge inside the line, nothing is redistributed.
+  // A band wholly outside reflects nothing, and the line passes as it does
+  // any other filter that transmits all of it (a bandpass enclosing it).
+  const away = run('notch', 1064, 20);
+  assert.equal(away.r, 0);
+  assert.equal(away.t, run('bandpass', 532, 1000).t);
+  assert.ok(Math.abs(away.t - 1) < 1e-4, `transmitted ${away.t}`);
+  // A band wholly enclosing the line reflects all of it.
+  const enclosed = run('notch', 532, 1000);
+  assert.equal(enclosed.t, 0);
+  assert.equal(enclosed.r, away.t);
 });

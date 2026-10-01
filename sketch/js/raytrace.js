@@ -3619,9 +3619,21 @@ function interact(ray, hit) {
         const out = [];
         const weak = partial ? { retainWeak: true } : {};
         const trans = applyTransmission(ray.spec, ray.wl, T);
-        if (trans) out.push({ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * trans.fraction, tag: 'T', ...weak });
         const refl = applyTransmission(ray.spec, ray.wl, wl => 1 - T(wl));
-        if (refl) out.push({ d: reflect(d, n), wl: refl.wl, bw: refl.bw, spec: refl.spec, intensity: ray.intensity * refl.fraction, tag: 'R', ...weak });
+        // When a band edge cuts the spectrum, whichever port takes both sides of
+        // it (a band reflector's transmission, a bandpass's reflection) holds
+        // two hard edges in one grid, which under-counts them; the band itself
+        // is one slice the integration resolves finely. So that port takes
+        // whatever the band's port does not, and the two conserve power.
+        // A spectrum wholly on one side of both edges keeps each port's own
+        // integral, as a bandpass enclosing it gives it.
+        const [specLo, specHi] = spectrumSupport(ray.spec);
+        const cut = passbandOf(data).some(edge => edge > specLo && edge < specHi);
+        let tFraction = trans?.fraction ?? 0, rFraction = refl?.fraction ?? 0;
+        if (cut && data.dtype === 'notch') tFraction = Math.max(0, 1 - rFraction);
+        else if (cut && data.dtype === 'bandpass') rFraction = Math.max(0, 1 - tFraction);
+        if (trans) out.push({ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * tFraction, tag: 'T', ...weak });
+        if (refl) out.push({ d: reflect(d, n), wl: refl.wl, bw: refl.bw, spec: refl.spec, intensity: ray.intensity * rFraction, tag: 'R', ...weak });
         return out;
       }
       // flat (supercontinuum) or unspecified box: exact analytic overlap
