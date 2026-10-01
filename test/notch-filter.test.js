@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { createElement, registry } from '../sketch/js/elements.js';
 import { detectorReading, traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
-import { applyTransmission, gaussianSpectrum, scaleSpectrum, spectrumWeight, withSpectralGap } from '../sketch/js/spectrum.js';
+import { gaussianSpectrum, spectrumSlice, spectrumStats, spectrumWeight } from '../sketch/js/spectrum.js';
 import '../sketch/js/detector-instruments.js';
 
 // A notch filter blocks the band a bandpass of the same center and width
@@ -95,7 +95,7 @@ test('a notch and a bandpass of the same band split a Gaussian line between them
   const passed = signal(read(source(), { ftype: 'bandpass', ...band }));
   const notched = signal(read(source(), { ftype: 'notch', ...band }));
   assert.ok(passed > 0 && notched > 0);
-  close((passed + notched) / full, 1, 1e-9, 'bandpass + notch');
+  close((passed + notched) / full, 1, 0.01, 'bandpass + notch');
   // A 20 nm band centred on a 40 nm FWHM Gaussian holds erf(√ln2 / 2) of it.
   close(notched / full, 1 - 0.44408, 0.01, 'notch on a Gaussian');
 });
@@ -157,17 +157,37 @@ test('a sliver of continuum left beside a wide notch is kept, on either side', (
   close(signal(read(continuum(), { ftype: 'notch', center: 649.8, band: 500 }, { rod: true })) / fannedFull, 0.2 / 500, 1e-6, 'fanned red sliver');
 });
 
-test('a removed band reads exactly zero, survives re-gridding, and scales with a harmonic', () => {
-  const notched = withSpectralGap(applyTransmission(gaussianSpectrum(1064, 40), 1064, wl => (Math.abs(wl - 1064) <= 1 ? 0 : 1)).spec, 1063, 1065);
-  for (const wl of [1063, 1063.5, 1064, 1064.9, 1065]) assert.equal(spectrumWeight(notched, wl), 0, `${wl} nm`);
-  assert.ok(spectrumWeight(notched, 1060) > 0.9);
-  const regridded = applyTransmission(notched, 1064, () => 1).spec;
-  assert.equal(spectrumWeight(regridded, 1064.5), 0);
-  const doubled = scaleSpectrum(notched, 0.5);
-  assert.equal(spectrumWeight(doubled, 532), 0);
-  assert.ok(spectrumWeight(doubled, 530) > 0.9);
-  // Not a sampled profile, or a band outside it: nothing to record.
-  const gauss = gaussianSpectrum(532, 10);
-  assert.equal(withSpectralGap(gauss, 531, 533), gauss);
-  assert.equal(withSpectralGap(notched, 2000, 2010), notched);
+test('the two sides a notch keeps are ordinary slices with exact edges', () => {
+  const line = gaussianSpectrum(532, 40);
+  const blue = spectrumSlice(line, 400, 531);
+  const red = spectrumSlice(line, 533, 700);
+  // Nothing is interpolated past an edge.
+  assert.equal(spectrumWeight(blue.spec, 531.001), 0);
+  assert.equal(spectrumWeight(red.spec, 532.999), 0);
+  // Each side's own centre and width describe the light it holds.
+  assert.ok(blue.wl < 531 && red.wl > 533, `${blue.wl} / ${red.wl}`);
+  const stats = spectrumStats(blue.spec);
+  assert.ok(stats.center >= blue.spec.lo && stats.center <= 531);
+  close(blue.fraction, red.fraction, 1e-3, 'symmetric sides');
+  // A slice outside the profile, or of zero width, holds nothing.
+  assert.equal(spectrumSlice(line, 900, 950), null);
+  assert.equal(spectrumSlice(line, 532, 532), null);
+});
+
+test('glass after a notch does not refill the removed band', () => {
+  // The reviewer's reproduction: Gaussian -> notch -> N-BK7 rod -> same-band
+  // bandpass. The rod fans each side into samples; none lies in the band.
+  for (const band of [2, 20]) {
+    const elements = [laser(532, { bwMode: 'band', bandwidth: 40 })];
+    const notch = createElement('filter', 150, 0);
+    Object.assign(notch.params, { ftype: 'notch', center: 532, band });
+    const rod = createElement('glassrod', 300, 0);
+    Object.assign(rod.params, { rodlen: 100, dia: 20, material: 'nbk7' });
+    const bandpass = createElement('filter', 500, 0);
+    Object.assign(bandpass.params, { ftype: 'bandpass', center: 532, band });
+    const detector = createElement('detector', 700, 0);
+    detector.params.aperture = 40;
+    traceScene([...elements, notch, rod, bandpass, detector]);
+    assert.equal(signal(detectorReading(detector.id)), 0, `${band} nm notch then bandpass through glass`);
+  }
 });

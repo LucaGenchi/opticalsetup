@@ -53,7 +53,7 @@ import {
 import {
   gaussianSpectrum, flatSpectrum, lineSpectrum, scaleSpectrum, spectrumSamples, spectrumStats, spectrumSupport, spectrumWeight,
   applyTransmission as applySpectralTransmission, fringeVisibility, resolveSourceSpectrum, supercontinuumTransformLimitFs,
-  transformLimitedBandwidthNm, withSpectralGap,
+  transformLimitedBandwidthNm, spectrumSlice,
 } from './spectrum.js';
 import { cameraProfileFromHits } from './camera-profile.js';
 import { MAX_CONVERSION, MAX_OPO_DEPLETION, opoPulse, supercontinuumRange, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength, mixWidthNm } from './parametric.js';
@@ -3671,16 +3671,22 @@ function interact(ray, hit) {
         return T(ray.wl) ? [{ d }] : [];
       }
       if (ray.spec && ray.spec.kind !== 'flat') {
+        // A notch leaves two separate pieces of the profile, one on each side
+        // of the band, and each travels as its own ray with an exact edge.
+        // One sampled profile spanning the gap would interpolate light back
+        // into it. Each piece stops just short of the band, whose edges the
+        // notch blocks, so a bandpass of the same band behind it finds nothing.
+        if (notch && ray.spec.kind !== 'lines') {
+          const [lo, hi] = spectrumSupport(ray.spec);
+          if (!bandIntersect([lo, hi], pb)) return [{ d }];
+          const edge = 1e-6 * (hi - lo);
+          return [[lo, pb[0] - edge], [pb[1] + edge, hi]]
+            .map(([a, b]) => (b > a ? spectrumSlice(ray.spec, a, b) : null))
+            .map((piece, i) => piece && { d, wl: piece.wl, bw: piece.bw, spec: piece.spec, intensity: ray.intensity * piece.fraction, tag: `T${i}` })
+            .filter(Boolean);
+        }
         const trans = applyTransmission(ray.spec, ray.wl, T);
-        if (!trans) return [];
-        // A notch keeps both sides of a profile, which the integration grid
-        // then has to span whole, hard edges and all; the blocked band alone
-        // is regridded finely. Its complement gives the power, so a notch and
-        // a bandpass of the same band always share the light exactly.
-        const blocked = notch ? applySpectralTransmission(ray.spec, ray.wl, wl => 1 - T(wl)) : null;
-        const fraction = notch ? Math.max(0, 1 - (blocked?.fraction ?? 0)) : trans.fraction;
-        const spec = notch ? withSpectralGap(trans.spec, pb[0], pb[1]) : trans.spec;
-        return [{ d, wl: trans.wl, bw: trans.bw, spec, intensity: ray.intensity * fraction }];
+        return trans ? [{ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * trans.fraction }] : [];
       }
       // flat (supercontinuum) or unspecified box: transmitted spectrum is
       // the exact overlap of the beam band and the passband -- or, for a

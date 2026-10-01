@@ -228,9 +228,11 @@
         also holds after dispersive glass or a prism has split the beam into wavelength
         samples: each sample carries its own slice of the spectrum, and the filter cuts
         inside that slice, so a 1&nbsp;nm bandpass passes 1&nbsp;nm of light rather than a
-        whole sample, and a 1&nbsp;nm notch removes just 1&nbsp;nm. For a laser line with a
-        Gaussian spectrum, a notch passes exactly the power a bandpass of the same band
-        rejects. A pulse's duration after the filter is worked out from what passes —
+        whole sample, and a 1&nbsp;nm notch removes just 1&nbsp;nm. A notch splits a broadband beam
+        into two beams, one carrying the light below the band and one the light above it,
+        each with a sharp edge at the band, so glass or another filter further on never
+        finds light inside the removed band. A detector puts the two sides back together,
+        so a pulse is timed from the whole spectrum that passed, gap included. A pulse's duration after the filter is worked out from what passes —
         the transform of the surviving spectrum with the chirp it carries (see the <a
         href="../pulsedlaser/">pulsed laser</a>) — and the passed band is kept however thin
         it is, so it still reaches the optics after the filter. A neutral-density filter

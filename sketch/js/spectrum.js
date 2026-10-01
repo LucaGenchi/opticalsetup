@@ -10,9 +10,6 @@
 //   { kind: 'flat',    lo, hi }         a supercontinuum / crystal-generated
 //                                       broadband slice
 //   { kind: 'sampled', lo, hi, w }      whatever survived a filter
-//     + optional gaps: [[lo, hi], ...]  bands a notch removed: the weight
-//                                       there is exactly zero, rather than
-//                                       interpolated across the hard edges
 // A ray with bw===0 carries spec===null (nothing to integrate — exact
 // single-wavelength physics applies).
 
@@ -73,12 +70,7 @@ export function scaleSpectrum(spec, factor) {
   if (spec.kind === 'lines') return lineSpectrum(spec.lines.map(l => ({ nm: l.nm * factor, w: l.w })));
   // A filtered profile keeps its shape: the grid stretches with the
   // wavelengths and every weight stays where it was.
-  if (spec.kind === 'sampled' && Array.isArray(spec.w)) {
-    return {
-      kind: 'sampled', lo: spec.lo * factor, hi: spec.hi * factor, w: [...spec.w],
-      ...(spec.gaps ? { gaps: spec.gaps.map(([lo, hi]) => [lo * factor, hi * factor]) } : {}),
-    };
-  }
+  if (spec.kind === 'sampled' && Array.isArray(spec.w)) return { kind: 'sampled', lo: spec.lo * factor, hi: spec.hi * factor, w: [...spec.w] };
   return null;
 }
 
@@ -94,13 +86,6 @@ export function spectrumSupport(spec) {
     return [Math.max(1, spec.center - half), spec.center + half];
   }
   return [spec.lo, spec.hi];
-}
-
-// A sampled profile with the band [lo, hi] removed exactly, as a notch
-// filter leaves it. Other kinds are returned unchanged.
-export function withSpectralGap(spec, lo, hi) {
-  if (!spec || spec.kind !== 'sampled' || !(hi > lo) || hi < spec.lo || lo > spec.hi) return spec;
-  return { ...spec, gaps: [...(spec.gaps || []), [lo, hi]] };
 }
 
 // Relative weight at one wavelength, normalised so the profile peaks at 1.
@@ -122,7 +107,6 @@ export function spectrumWeight(spec, wl) {
   }
   if (wl < spec.lo || wl > spec.hi) return 0;
   if (spec.kind === 'flat') return 1;
-  if (spec.gaps && spec.gaps.some(([lo, hi]) => wl >= lo && wl <= hi)) return 0;
   const n = spec.w.length;
   if (n < 2) return spec.w[0] || 0;
   const t = (wl - spec.lo) / (spec.hi - spec.lo) * (n - 1);
@@ -249,10 +233,7 @@ export function applyTransmission(spec, centerWl, transmissionFn) {
   const fraction = transmittedTotal / incidentTotal;
   const peak = Math.max(...shaped);
   if (!(fraction > BLOCK) || !(peak > 0)) return null;
-  // A band an earlier notch removed stays removed: the new grid is zero
-  // there too, but would otherwise interpolate back across its edges.
-  const gaps = spec.gaps?.filter(([a, b]) => b >= from && a <= to);
-  const profile = { kind: 'sampled', lo: from, hi: to, w: shaped.map(v => v / peak), ...(gaps?.length ? { gaps } : {}) };
+  const profile = { kind: 'sampled', lo: from, hi: to, w: shaped.map(v => v / peak) };
   const stats = spectrumStats(profile);
   if (!stats) return null;
   return {
@@ -261,6 +242,34 @@ export function applyTransmission(spec, centerWl, transmissionFn) {
     wl: stats.center,
     bw: stats.fwhm,
   };
+}
+
+// The part of a profile between lo and hi, with hard edges exactly there: the
+// profile is re-sampled across [lo, hi] itself, so nothing is interpolated
+// past either edge. Returns the share of incident power it holds and the
+// slice's own profile, as applyTransmission does, or null when nothing
+// measurable is left. Used for the two sides a notch filter keeps.
+export function spectrumSlice(spec, lo, hi) {
+  if (!spec || spec.kind === 'lines') return null;
+  const [supportLo, supportHi] = spectrumSupport(spec);
+  const from = Math.max(lo, supportLo), to = Math.min(hi, supportHi);
+  if (!(to > from)) return null;
+  const sample = (a, b, n) => {
+    const step = (b - a) / (n - 1);
+    return { step, w: Array.from({ length: n }, (_, i) => Math.max(0, spectrumWeight(spec, a + step * i))) };
+  };
+  const whole = sample(supportLo, supportHi, LOCATE_GRID);
+  const total = integrate(whole.w, whole.step);
+  const part = sample(from, to, GRID);
+  const kept = integrate(part.w, part.step);
+  const peak = Math.max(...part.w);
+  if (!(total > 0) || !(peak > 0)) return null;
+  const fraction = Math.min(1, kept / total);
+  if (!(fraction > BLOCK)) return null;
+  const profile = { kind: 'sampled', lo: from, hi: to, w: part.w.map(v => v / peak) };
+  const stats = spectrumStats(profile);
+  if (!stats) return null;
+  return { fraction, spec: stats.fwhm > 0 ? profile : null, wl: stats.center, bw: stats.fwhm };
 }
 
 // Time–bandwidth product for a transform-limited pulse: the minimum
