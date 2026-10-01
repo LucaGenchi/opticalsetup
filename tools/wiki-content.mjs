@@ -5146,15 +5146,41 @@ export const wikiEntries = [
     },
     inOpticalSetup: {
       html: `
-        <p>One element models five filter families, selected by type: <em>Bandpass</em>,
-        <em>Longpass</em>, and <em>Shortpass</em> each define an idealized passband —
-        exactly the same hard-edged step-function model used by the <a
-        href="../dichroic/">dichroic mirror</a>. <em>Notch</em> is the inverse of the
-        bandpass: set by the same band center and band width, it blocks that band and
-        transmits everything on both sides of it. <em>Neutral density</em> instead
-        attenuates every wavelength by the same configured transmission fraction. For a
-        broadband or supercontinuum beam, the transmitted spectrum is the exact overlap
-        between the beam's band and the passband, so a wide beam through a narrow
+        <p>One element models five filter types, chosen from the <em>Type</em> menu. The
+        first four are idealized hard-edged filters — the same step-function model the <a
+        href="../dichroic/">dichroic mirror</a> uses — that transmit some wavelengths
+        completely and remove the rest. The fifth is wavelength-flat.</p>
+        <h3>Modes</h3>
+        <ul>
+          <li><strong>Bandpass</strong> (the default) — transmits only the band from
+          <em>Band center</em> − <em>Band width</em>/2 to <em>Band center</em> +
+          <em>Band width</em>/2 and removes everything else. It is used to pick one laser
+          line out of several, to isolate a fluorescence emission band, or to cut a narrow
+          slice out of a supercontinuum.</li>
+          <li><strong>Longpass</strong> — transmits every wavelength at or above
+          <em>Cutoff</em> and removes everything shorter. It is used to block the excitation
+          light in front of a fluorescence detector, or to keep the long-wavelength output of
+          a frequency-conversion stage while discarding the pump.</li>
+          <li><strong>Shortpass</strong> — the mirror image of the longpass: transmits every
+          wavelength at or below <em>Cutoff</em> and removes everything longer. It is used to
+          strip a residual near-infrared fundamental from a frequency-doubled beam, or to
+          pass multiphoton signals that come out bluer than the laser exciting them.</li>
+          <li><strong>Notch</strong> — the inverse of the bandpass: set by the same
+          <em>Band center</em> and <em>Band width</em>, it removes that band and transmits
+          everything on both sides of it. It is used to take out a single laser line while
+          keeping the light around it, as in Raman spectroscopy or when stray excitation
+          light leaks into a detection path.</li>
+          <li><strong>Neutral density</strong> — attenuates every wavelength by the same
+          <em>Transmission</em> fraction (0–1) and leaves the spectrum's shape alone. It is
+          used to bring a beam's power down for a detector or camera without changing its
+          colour.</li>
+        </ul>
+        <p>On the canvas, the purple knob tunes the setting that matters for the current
+        type: the band center for bandpass and notch, the cutoff for longpass and shortpass,
+        and the transmission for neutral density.</p>
+        <h3>Broadband light</h3>
+        <p>For a broadband or supercontinuum beam, the transmitted spectrum is the exact
+        overlap between the beam's band and the passband, so a wide beam through a narrow
         bandpass filter correctly comes out both dimmer and spectrally narrowed, and a
         notch leaves a gap in the spectrum with both sides intact. This
         also holds after dispersive glass or a prism has split the beam into wavelength
@@ -5165,7 +5191,8 @@ export const wikiEntries = [
         rejects. A pulse's duration after the filter is worked out from what passes —
         the transform of the surviving spectrum with the chirp it carries (see the <a
         href="../pulsedlaser/">pulsed laser</a>) — and the passed band is kept however thin
-        it is, so it still reaches the optics after the filter.</p>`,
+        it is, so it still reaches the optics after the filter. A neutral-density filter
+        changes only the power, so it leaves the pulse duration alone.</p>`,
       formulas: [
         { tex: 'T(\\lambda) = \\begin{cases} 1 & \\lambda \\in \\text{passband} \\\\ 0 & \\text{otherwise} \\end{cases}, \\qquad I_{\\text{nd}} = \\text{trans} \\cdot I_0', caption: 'The idealized step-function passband used for bandpass/longpass/shortpass, and the flat scalar attenuation used for neutral density.' },
         { tex: 'T_{\\text{notch}}(\\lambda) = 1 - T_{\\text{bandpass}}(\\lambda) = \\begin{cases} 0 & |\\lambda - \\lambda_c| \\le \\Delta\\lambda/2 \\\\ 1 & \\text{otherwise} \\end{cases}', caption: 'The notch: the complement of a bandpass with center λc and width Δλ. The stop band is fully blocked (an infinite optical density), with no transition slope.' },
