@@ -3624,25 +3624,48 @@ function interact(ray, hit) {
     case 'filter': {
       const f = data;
       if (f.ftype === 'nd') return [{ d, intensity: ray.intensity * f.trans }];
-      notePulseSelection(wl => { const pb = passbandOf(f); return wl >= pb[0] && wl <= pb[1] ? 1 : 0; }, passbandOf(f));
+      // A notch blocks the band a bandpass of the same center and width would
+      // pass, and transmits everything on either side of it.
+      const notch = f.ftype === 'notch';
+      const pb = passbandOf(f);
+      const T = wl => ((wl >= pb[0] && wl <= pb[1]) !== notch ? 1 : 0);
+      notePulseSelection(T, pb);
       if (!ray.bw) {
-        const pb0 = passbandOf(f);
         const cell = sampleCell(ray);
         if (cell) {
-          const { inside, outside } = splitCell(cell, pb0);
+          const { inside, outside } = splitCell(cell, pb);
+          if (notch) {
+            if (!outside.length) return [];
+            return inside ? outside.map(([lo, hi], i) => cellChild(ray, d, cell, lo, hi, `T${i}`)) : [{ d }];
+          }
           if (!inside) return [];
           return outside.length ? [cellChild(ray, d, cell, inside[0], inside[1], 'T')] : [{ d }];
         }
-        return ray.wl >= pb0[0] && ray.wl <= pb0[1] ? [{ d }] : [];
+        return T(ray.wl) ? [{ d }] : [];
       }
       if (ray.spec && ray.spec.kind !== 'flat') {
-        const T = wl => { const pb = passbandOf(f); return wl >= pb[0] && wl <= pb[1] ? 1 : 0; };
         const trans = applyTransmission(ray.spec, ray.wl, T);
-        return trans ? [{ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * trans.fraction }] : [];
+        if (!trans) return [];
+        // A notch keeps both sides of a profile, which the integration grid
+        // then has to span whole, hard edges and all; the blocked band alone
+        // is regridded finely. Its complement gives the power, so a notch and
+        // a bandpass of the same band always share the light exactly.
+        const blocked = notch ? applySpectralTransmission(ray.spec, ray.wl, wl => 1 - T(wl)) : null;
+        const fraction = notch ? Math.max(0, 1 - (blocked?.fraction ?? 0)) : trans.fraction;
+        return [{ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * fraction }];
       }
       // flat (supercontinuum) or unspecified box: transmitted spectrum is
-      // the exact overlap of the beam band and the passband
-      const ix = bandIntersect([ray.wl - ray.bw / 2, ray.wl + ray.bw / 2], passbandOf(f));
+      // the exact overlap of the beam band and the passband -- or, for a
+      // notch, the parts of the beam band on either side of the blocked band
+      const rb = [ray.wl - ray.bw / 2, ray.wl + ray.bw / 2];
+      if (notch) {
+        if (!bandIntersect(rb, pb)) return [{ d }];
+        const out = [];
+        if (rb[0] < pb[0] - 0.5) out.push(bandChild(ray, d, rb[0], Math.min(rb[1], pb[0]), 'T0'));
+        if (rb[1] > pb[1] + 0.5) out.push(bandChild(ray, d, Math.max(rb[0], pb[1]), rb[1], 'T1'));
+        return out;
+      }
+      const ix = bandIntersect(rb, pb);
       if (!ix || ix[1] - ix[0] < 0.5) return [];
       const c = bandChild(ray, d, ix[0], ix[1], null);
       delete c.tag;
