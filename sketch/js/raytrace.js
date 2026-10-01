@@ -466,8 +466,8 @@ function detectorConvergence(hits) {
   if (pts.length < 2) return null;
   // A retained fluorescence tail or highly attenuated branch is still real
   // light, but it must not steer the fitted wavefront as much as the main
-  // beam.  Use the same arrived-power weights as the rest of the detector
-  // readout instead of giving every tracing sample one vote.
+  // beam. Each hit counts by the watts it delivers (the caller weighs the
+  // hits by their sources' power), not one vote per tracing sample.
   const totalWeight = pts.reduce((sum, point) => sum + point.weight, 0);
   if (!(totalWeight > 0)) return null;
   const mh = pts.reduce((sum, point) => sum + point.height * point.weight, 0) / totalWeight;
@@ -478,11 +478,24 @@ function detectorConvergence(hits) {
     num += fraction * (point.height - mh) * (point.theta - mt);
     den += fraction * (point.height - mh) ** 2;
   }
-  if (!(den > 1e-12)) return null; // every ray at the same height: nothing to fit
+  // Every ray at the same height (to rounding, relative to where on the
+  // face they land): nothing to fit.
+  const reach = Math.max(1, ...pts.map(point => Math.abs(point.height)));
+  if (!(den > 1e-18 * reach * reach)) return null;
   const fittedSlope = num / den; // radians of tilt per mm of height
-  const heights = pts.map(p => p.height);
+  // The beam's width is weighted too: the extreme heights would let a
+  // negligible ray far from the beam multiply the reading. N evenly spaced
+  // rays of equal power span sqrt(12 (N-1)/(N+1)) standard deviations, so
+  // with the effective number of rays (sum w)^2 / sum w^2 this is exactly
+  // their edge-to-edge span, and a faint ray barely moves it. It never
+  // exceeds the span itself: heavier edge rays must not widen the cone past
+  // the outermost rays.
+  const sumSquares = pts.reduce((sum, point) => sum + point.weight ** 2, 0);
+  const effectiveRays = totalWeight ** 2 / sumSquares;
+  const heights = pts.map(point => point.height);
   const span = Math.max(...heights) - Math.min(...heights);
-  const fullAngleDeg = Math.abs(fittedSlope) * span * 180 / Math.PI;
+  const width = Math.min(span, Math.sqrt(12 * den * (effectiveRays - 1) / (effectiveRays + 1)));
+  const fullAngleDeg = Math.abs(fittedSlope) * width * 180 / Math.PI;
   const slope = fullAngleDeg < 1e-12 ? 0 : fittedSlope;
   return {
     slopePerMm: slope,
@@ -1294,7 +1307,7 @@ export function detectorReading(elementId) {
     spotSpan,
     color,
     spectrum,
-    convergence: detectorConvergence(activeHits),
+    convergence: detectorConvergence(hitsWeighedByWatts(activeHits)),
     pulse,
     detectorType,
     readoutKind,
