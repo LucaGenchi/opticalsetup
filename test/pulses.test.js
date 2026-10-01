@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 
 import {
   C_MM_PER_NS, pointAtOpticalPath, pulseEnvelopeAtOpticalPath,
-  pulseGateTransmission, pulseMarkers, pulseTransmissionAt,
+  pulseArrivalsAtPath, pulseGateTransmission, pulseMarkers, pulseTransmissionAt,
 } from '../sketch/js/pulses.js';
 
 const track = {
@@ -132,4 +132,28 @@ test('finite pulse duration is clipped by a temporal gate', () => {
   const broad = { ...narrow, pulseWidthFs: 800e6 };
   assert.equal(pulseGateTransmission(narrow), 1);
   assert.ok(Math.abs(pulseGateTransmission(broad) - 0.5) < 0.03);
+});
+
+test('a train timed by its emission phase is drawn where a train timed by its path is, in both modes', () => {
+  // Two 1 kHz trains meeting on one line: A emitted at 0 after 392 mm of path,
+  // B emitted 162 mm / c later after only 230 mm -- they coincide (an OPA's
+  // seed and the light it amplified, timed by the pump's phase). Schematic
+  // mode used to shrink the phase by its time scale and draw them 22 mm apart.
+  const line = (opl0, phaseNs) => ({
+    pts: [{ x: 0, y: 0 }, { x: 1000, y: 0 }], opls: [opl0, opl0 + 1000],
+    pulse: { repRateMHz: 0.001, pulseWidthFs: 1000, phaseNs },
+  });
+  const a = line(392, 0), b = line(230, 162 / C_MM_PER_NS);
+  for (const mode of ['schematic', 'physical']) {
+    for (const t of [0.6, 123.4, 5e5]) {
+      const xa = pulseMarkers(a, t, { mode }).map(m => m.x), xb = pulseMarkers(b, t, { mode }).map(m => m.x);
+      assert.equal(xa.length, xb.length, `${mode} ${t}`);
+      xa.forEach((x, i) => assert.ok(Math.abs(x - xb[i]) < 1e-6, `${mode} at ${t} ns: ${x} vs ${xb[i]}`));
+    }
+    // The arrival events a detector preview deposits agree too.
+    const arrive = track => pulseArrivalsAtPath(track, 0, 3e6, track.opls[0] + 500, { mode }).map(e => e.timeNs);
+    const [ta, tb] = [arrive(a), arrive(b)];
+    assert.ok(ta.length > 0 && ta.length === tb.length);
+    ta.forEach((t, i) => assert.ok(Math.abs(t - tb[i]) < 1e-6, `${mode}: arrival ${t} vs ${tb[i]}`));
+  }
 });

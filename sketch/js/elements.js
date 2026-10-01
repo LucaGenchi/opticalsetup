@@ -15,7 +15,7 @@ import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, po
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
 import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
-import { opaSettings, opaGainAt, MAX_OPA_STAGES } from './opa.js';
+import { opaSettings, opaGainAt, MAX_OPA_STAGES, MAX_GATE_BANDWIDTH_RATIO, MIN_PHASE_KEPT_GAIN } from './opa.js';
 import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
 import {
   probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
@@ -1083,7 +1083,19 @@ function probeCard(el, rd, elements = []) {
 
   if (prop === 'duration') {
     const source = elements.find(item => item?.id === rd.sourceId);
-    return valueCard(probeDurationLabel(rd, source?.type));
+    const label = probeDurationLabel(rd, source?.type);
+    const caveat = probeDurationCaveat(rd);
+    if (!caveat || !/\d/.test(label)) return valueCard(label);
+    // An estimate says so on the card, not only in the inspector.
+    const shown = `≈ ${label}`;
+    const w = Math.max(46, shown.length * 6.4 + 16, caveat.length * 4.3 + 12);
+    return {
+      w,
+      h: 32,
+      body: `<rect x="0" y="0" width="${w}" height="32" rx="4" fill="#fff" stroke="#c9ced6"/>` +
+        `<text x="${w / 2}" y="11" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" fill="#333">${esc(shown)}</text>` +
+        `<text data-probe-caveat="1" x="${w / 2}" y="25" text-anchor="middle" dominant-baseline="central" font-size="7" fill="#b45309">${esc(caveat)}</text>`,
+    };
   }
 
   if (prop === 'time') {
@@ -1208,19 +1220,31 @@ function spectrumAreaSvg(el, samples, peak, { xAt, x0, y0, pw, ph }) {
 }
 
 // The views that read every beam crossing the sampling circle when there is
-// more than one (the power view always reads the circle; the duration view
-// reads the nearest beam).
-const PROBE_AREA_VIEWS = new Set(['spectrum', 'wl', 'pol', 'time']);
+// more than one (the power view always reads the circle).
+const PROBE_AREA_VIEWS = new Set(['spectrum', 'wl', 'pol', 'time', 'duration']);
 const PROBE_MAX_BEAMS_SHOWN = 4;
 const probeWlLabel = rd => (rd.bw >= 200 ? `SC ${Math.round(rd.wl - rd.bw / 2)}–${Math.round(rd.wl + rd.bw / 2)} nm`
   : rd.bw > 0 ? `${Math.round(rd.wl)} ± ${Math.round(rd.bw / 2)} nm` : `${Math.round(rd.wl)} nm`);
 
 // Several beams crossing the sampling circle, in the spectrum, wavelength,
-// polarization or time view.
+// polarization, duration or time view.
 // What a view lists from several beams: the wavelength and polarization
 // views show what differs -- beams of one colour (and, for polarization, one
 // state) that differ only in timing appear once -- the spectrum view names
-// each colour once, and the time view keeps every beam.
+// each colour once, the duration view each colour and duration once, and the
+// time view keeps every beam.
+// The short warning a duration reading carries when it is only an estimate:
+// an OPA's output below 30 dB of gain, where the seed is a sizeable part of
+// the beam and the duration is the gain's (the full text is the ray's caveat).
+function probeDurationCaveat(reading) {
+  const note = reading?.approximation;
+  if (!note) return null;
+  return /^OPA output below/.test(note) ? 'estimate: seed + gain below 30 dB' : null;
+}
+const probeBeamDurationLabel = beam => {
+  const label = probeDurationLabel({ pulse: beam.pulse });
+  return probeDurationCaveat(beam) && /\d/.test(label) ? `≈ ${label} (estimate)` : label;
+};
 function probeListedBeams(prop, beams) {
   const distinct = keyOf => beams.filter((beam, i) => beams.findIndex(other => keyOf(other) === keyOf(beam)) === i);
   // The spectrum sums whole spectra, so it merges only beams whose spectra
@@ -1228,6 +1252,7 @@ function probeListedBeams(prop, beams) {
   // (Andrea, #192); the rounded centres are only its caption.
   return prop === 'wl' ? distinct(probeWlLabel)
     : prop === 'pol' ? distinct(beam => `${probeWlLabel(beam)}|${JSON.stringify([beam.pol, beam.stokes, beam.polMod])}`)
+      : prop === 'duration' ? distinct(beam => `${probeWlLabel(beam)}|${probeBeamDurationLabel(beam)}`)
       : prop === 'spectrum' ? distinct(beam => JSON.stringify([Number(beam.wl.toFixed(3)), Number((beam.bw || 0).toFixed(3)), beam.spec]))
         : beams;
 }
@@ -1250,6 +1275,34 @@ function probeMultiCard(el, prop, beams, elements) {
   const dot = (cx, cy, rd) => (rd.bw >= 200
     ? `<circle cx="${cx}" cy="${cy}" r="4" fill="#fff" stroke="#888"/><path d="M ${cx - 4},${cy} A 4 4 0 0 1 ${cx + 4},${cy}" fill="#e04040"/><path d="M ${cx - 4},${cy} A 4 4 0 0 0 ${cx + 4},${cy}" fill="#3050e0"/>`
     : `<circle cx="${cx}" cy="${cy}" r="4" fill="${wavelengthToColor(rd.wl)}"/>`);
+
+  if (prop === 'duration') {
+    // One row per colour and duration, with the power of every beam that
+    // reads the same, the strongest first. Beams are grouped and ranked
+    // before the list is cut, so none is dropped for coming first.
+    const { weights, absolute } = probeBeamWeights(beams, elements);
+    const groups = new Map();
+    beams.forEach((beam, i) => {
+      const key = `${probeWlLabel(beam)}|${probeBeamDurationLabel(beam)}`;
+      const group = groups.get(key) || { beam, w: 0 };
+      group.w += weights[i];
+      groups.set(key, group);
+    });
+    const order = [...groups.values()].sort((a, b) => b.w - a.w);
+    const top = order.slice(0, PROBE_MAX_BEAMS_SHOWN);
+    const rows = top.map(({ beam, w }) => `${probeWlLabel(beam)} · ${probeBeamDurationLabel(beam)}${absolute ? ` · ${formatPowerMw(w)}` : ''}`);
+    if (order.length > top.length) rows.push(`+${order.length - top.length} more`);
+    const w = Math.max(...rows.map(r => r.length * 5.8 + 26));
+    const h = 8 + rows.length * 13;
+    return {
+      w, h,
+      body: frame(w, h) + rows.map((label, i) => {
+        const y = 10.5 + i * 13;
+        return (top[i] ? dot(11, y, top[i].beam) : '') +
+          `<text x="20" y="${y}" font-size="9" dominant-baseline="central" fill="#333">${esc(label)}</text>`;
+      }).join('') + `<g data-probe-beams="${beams.length}"></g>`,
+    };
+  }
 
   if (prop === 'wl') {
     // One row per beam, as the single-beam label shows it.
@@ -2437,6 +2490,7 @@ function opaStateCore(plan, p) {
     case 'tunedBelowPump': return `${tuned}\nThe tuned signal wavelength must be longer than the ${nm4(plan.pumpWl)} nm pump`;
     case 'noSeed': return `${tuned}\n${pumpLine}${Number.isFinite(plan.tunedIdlerWl) ? ` · idler would be ${nm4(plan.tunedIdlerWl)} nm` : ''}\nNo seed: nothing to amplify (parametric noise is not modelled). The pump passes through`;
     case 'uncalibrated': return `${tuned}\nThe pump and seed sources need an average-power setting: the gain moves watts from one to the other`;
+    case 'pumpDurationUnavailable': return `${tuned}\n${pumpLine}: its pulse duration at this port cannot be stated (${plan.durationIssue}), so nothing is amplified`;
     default: break;
   }
   const lines = [tuned, `${pumpLine}${plan.pumpInW > 0 ? ` · ${fmtW(plan.pumpInW)} in, ${fmtW(plan.pumpOutW)} out (${sig3(plan.conversion * 100)} % converted)` : ''}`];
@@ -2445,6 +2499,18 @@ function opaStateCore(plan, p) {
     if (seed.state === 'amplifying') {
       lines.push(`${head} → signal ${nm4(seed.signal.wl)} nm · ${fmtW(seed.seedW + seed.gainW)} (gain ${fmtGain(seed.achievedGain)}, ${dB(seed.achievedGain)}, pulse-averaged)`
         + ` · idler ${nm4(seed.idler.wl)} nm · ${fmtW(seed.idlerW)}${seed.saturated ? ' · limited by the pump (depletion limit)' : ''}${seed.lowOverlap ? ' · pulses barely overlap' : ''}`);
+      // A stretched seed: each wavelength meets the pump at its own time.
+      if (seed.chirp && Math.abs(seed.chirp.gddFs2) >= 1 && seed.arrivingPulse) {
+        lines.push(`  Chirped seed, ${formatFs(seed.arrivingPulse.pulseWidthFs)} here (${formatGdd(seed.chirp.gddFs2)} fs²): amplified band ${sig3(seed.signal.bw)} nm FWHM`
+          + (seed.phaseKept ? ', keeping the seed\'s chirp for a compressor'
+            : seed.gateBandRatio > MAX_GATE_BANDWIDTH_RATIO
+              ? ` · the pump's gain window (${formatFs(seed.gainWindowFs)}) gates it too fast for this spectral picture: the signal's spectral phase is not modelled`
+              : seed.achievedGain < MIN_PHASE_KEPT_GAIN
+                ? ` · below ${fmtGain(MIN_PHASE_KEPT_GAIN)} gain the output is seed and gain together: the signal's spectral phase is not modelled`
+                : !seed.centred
+                  ? ' · the pump amplifies the seed\'s wing, off its spectral centre: the signal\'s spectral phase is not modelled'
+                  : ' · the amplified band is narrower than the spectral slicing resolves: the signal\'s spectral phase is not modelled'));
+      }
     } else {
       const why = {
         outsideBand: `outside the gain band around ${nm4(settings.signalWl)} nm: passes through unamplified`,
@@ -2454,6 +2520,7 @@ function opaStateCore(plan, p) {
         degenerateUnsupported: 'at exactly twice the pump wavelength (degenerate, phase-sensitive): not modelled',
         doubleSeedUnsupported: 'another seed sits at its idler wavelength: not modelled',
         durationUnsupported: 'a pulse duration is unknown: not modelled',
+        durationUnavailable: `its pulse duration at this port cannot be stated (${seed.durationIssue}): passes through unamplified`,
         spectrumUnsupported: 'its spectrum was reshaped upstream (a filtered continuum): not modelled, passes through unamplified',
         gatesUnsupported: 'the beam is modulated (gated): not modelled',
         tooManySeeds: 'too many seed beams share this stage (a long cascade) for the spectral slicing: not modelled, passes through unamplified',
