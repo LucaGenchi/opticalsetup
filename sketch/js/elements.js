@@ -1024,7 +1024,7 @@ function probeCard(el, rd, elements = []) {
   // Two or more beams crossing the sampling circle: the spectrum, wavelength,
   // polarization and time views describe all of them. With one, every view
   // reads the nearest beam, as it always has.
-  const multi = probeMultiBeams(el);
+  const multi = probeMultiBeams(el, elements);
   if (multi) return probeMultiCard(el, prop, multi, elements);
   // Power is read over the sampling circle, like a meter's face, rather than
   // from the one nearest ray the other readings describe.
@@ -1234,13 +1234,55 @@ function probeListedBeams(prop, beams) {
         : beams;
 }
 
+// An OPA's signal output is one beam physically -- the seed it passes on and
+// the gain it adds -- but the tracer carries it as two, so that each laser's
+// watts stay its own at detectors. The views that list beams one by one show
+// it as one: the stronger part's light with both parts' watts. Its duration
+// is the stronger part's only while the weaker is at most 1/1000 of it (the
+// gain the OPA requires before it keeps the seed's chirp); below that the
+// output is seed and gain together and has no single modelled duration. The
+// spectrum view needs no merging: it already sums every beam into one curve.
+const OPA_PARTS_TOGETHER = 'Seed and gain of one OPA output together: duration unavailable';
+function mergeOpaOutputs(beams, elements) {
+  const groups = new Map();
+  for (const beam of beams) {
+    const key = beam.opaSignalOf || Symbol('own');
+    groups.set(key, [...(groups.get(key) || []), beam]);
+  }
+  let merged = false;
+  const out = [];
+  for (const group of groups.values()) {
+    const { weights, absolute } = probeBeamWeights(group, elements);
+    if (group.length < 2 || !absolute) { out.push(...group); continue; }
+    const total = weights.reduce((sum, w) => sum + w, 0);
+    const top = weights.indexOf(Math.max(...weights));
+    const lead = group[top];
+    if (!(weights[top] > 0) || !(lead.power > 0)) { out.push(...group); continue; }
+    const together = total - weights[top] > weights[top] / MIN_PHASE_KEPT_GAIN;
+    merged = true;
+    out.push({
+      ...lead,
+      // In the stronger part's source's units, so its watts are the sum.
+      power: lead.power * total / weights[top],
+      opaParts: group.length,
+      pulse: lead.pulse && together ? { ...lead.pulse, durationFs: null, durationIssue: OPA_PARTS_TOGETHER } : lead.pulse,
+    });
+  }
+  return { beams: out, merged };
+}
+
 // The beams a probe describes together, or null when its view reads the one
 // nearest beam as it always has: fewer than two beams in the circle, or
-// several that this view would show as one.
-function probeMultiBeams(el) {
+// several that this view would show as one. An OPA's output read as one beam
+// is still described from the circle, so the nearest ray -- possibly the
+// seed passing through -- cannot stand in for it.
+function probeMultiBeams(el, elements = []) {
   const prop = el.params.prop;
   if (!PROBE_AREA_VIEWS.has(prop)) return null;
-  const beams = probeBeamsAt(el.x, el.y, probeSampleDiameterMm(el.params) / 2);
+  const raw = probeBeamsAt(el.x, el.y, probeSampleDiameterMm(el.params) / 2);
+  if (raw.length < 2) return null;
+  const { beams, merged } = prop === 'spectrum' ? { beams: raw, merged: false } : mergeOpaOutputs(raw, elements);
+  if (merged && (prop === 'duration' || prop === 'time')) return beams;
   return beams.length >= 2 && probeListedBeams(prop, beams).length >= 2 ? beams : null;
 }
 
@@ -1319,7 +1361,9 @@ function probeMultiCard(el, prop, beams, elements) {
     // Every train on one axis, each drawn where its pulses arrive, with the
     // verdict -- synced, or which beam comes first and by how much -- above.
     const summary = probeTimingSummary(beams);
-    const verdict = probeTimingLabel(summary) || 'no pulsed beams to compare';
+    // One beam left after an OPA's output was read as one: nothing to compare.
+    const verdict = beams.length === 1 && beams[0].opaParts ? 'one beam: OPA output (seed + gain)'
+      : probeTimingLabel(summary) || 'no pulsed beams to compare';
     // Wide enough for the verdict, which is the point of this view.
     const W = Math.max(90, Math.ceil(verdict.length * 3.5 + 12)), H = 56, x0 = 9, y0 = H - 12, pw = W - 16, ph = H - 30;
     const window = syncedTimeWindowNs(beams.map(beam => ({ reading: beam, params: el.params })));
@@ -5222,7 +5266,7 @@ export const registry = {
         `<line x1="0" y1="-9" x2="0" y2="${-PROBE_LEADER}" stroke="#e07020" stroke-width="1"/>`;
       // The circle is drawn whenever it decides the reading: always for
       // power, and for the other views when they are showing several beams.
-      const sampling = el.params.prop === 'power' || probeMultiBeams(el)
+      const sampling = el.params.prop === 'power' || probeMultiBeams(el, elements)
         ? `<circle r="${(probeSampleDiameterMm(el.params) / 2).toFixed(2)}" fill="none" stroke="#e07020" stroke-width="0.8" stroke-dasharray="2 1.5" opacity="0.8"/>`
         : '';
       return crosshair + sampling +

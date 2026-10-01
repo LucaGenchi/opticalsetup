@@ -1503,6 +1503,9 @@ export function probeBeamsAt(x, y, radius) {
         intensity: r.segmentIntensities?.[main.segment] ?? r.intensity,
         sourceId: r.sourceId || null, originId: r.originId || null,
         approximation: r.approximation || null, polMod: r.polMod || null,
+        // The OPA output this beam is part of (the seed it passed on, or the
+        // gain it added), if any.
+        opaSignalOf: r.opaSignalOf || null,
         power, oplMm: opl, routes: cluster.length,
         // When the pulses pass: the flight time to here, plus when the source
         // emitted them. The first alone is what a plot shifts a train by,
@@ -4556,7 +4559,10 @@ function interact(ray, hit) {
       // Every output carries this element in its parametric path, so none of
       // it can come back and be amplified by the same element again.
       const throughHere = [...path, el.id];
-      if (k === 'opaseed') return launch('signal', { tag: 'opaSeed', parametricPath: throughHere });
+      // The seed passed on and the gain added to it leave as two beams, so
+      // each laser's watts stay its own at detectors; physically they are one
+      // output, and they carry one identity so a probe can show them as one.
+      if (k === 'opaseed') return launch('signal', { tag: 'opaSeed', parametricPath: throughHere, opaSignalOf: `${el.id}|${key}` });
       if (!planned) return data.outputPump ? launch('pump', { tag: 'opaPump', parametricPath: throughHere }) : [];
       const out = [];
       if (data.outputPump && plan.pumpScale > 0) out.push(...launch('pump', { tag: 'opaPump', intensity: ray.intensity * plan.pumpScale, parametricPath: throughHere }));
@@ -4601,6 +4607,7 @@ function interact(ray, hit) {
             // Made from the pump and the seed together, it carries both
             // histories: it can go back into neither's earlier stages.
             parametricPath: unionPath(throughHere, seed.record.parametricPath),
+            opaSignalOf: kind === 'opaSignal' ? `${el.id}|${seed.key}` : undefined,
             gdd: 0,
             groupDelayDifferenceFs: 0,
             phaseValid: false,
@@ -5246,7 +5253,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             segmentPowers: [r.power], segmentIntensities: [r.intensity], intensity: r.intensity, power: r.power,
             originId: r.originId || null, sourceId: r.sourceId || null, branch: r.branch || null,
             wl: r.wl, bw: r.bw, spec: r.spec, pol: r.pol, stokes: r.stokes, polMod: r.polMod, pulse: r.pulse,
-            approximation: r.approximation || null,
+            approximation: r.approximation || null, opaSignalOf: r.opaSignalOf || null,
           });
         }
         break;
@@ -5711,6 +5718,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           // what the linear-only continuation left out.
           approximation: r.approximation || c.approximation || null,
           parametricPath: 'parametricPath' in c ? c.parametricPath : r.parametricPath,
+          opaSignalOf: 'opaSignalOf' in c ? c.opaSignalOf : r.opaSignalOf,
           intensity: childIntensity,
           power: childPower,
           // A child can start a sampled beam of its own (an OPO spreading a

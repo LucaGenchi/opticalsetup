@@ -354,12 +354,26 @@ test('the OPCPA example: stretched, amplified and recompressed, as its probes re
   const probes = elements.filter(e => e.type === 'probe' && e.params.prop === 'duration').sort((a, b) => a.x - b.x);
   // Before the OPA: one beam, stretched from 31 fs to ~9 ps.
   assert.ok(probes[1].x < 500 && /ps/.test(registry.probe.svg(probes[1], elements)));
-  // After the compressor: the amplified signal first (it carries the watts),
-  // recompressed to its own transform limit; the seed passing through below.
+  // After the compressor: one beam -- the OPA's output, the seed it passed on
+  // and the gain it added -- recompressed, with both parts' watts.
   const after = rows(probes.at(-1));
-  assert.equal(after.length, 2);
-  assert.match(after[0], /fs · 6\d\d mW/);
-  assert.match(after[1], /31\.4 fs · 100 µW/);
+  assert.deepEqual(after.length, 1, `${after}`);
+  assert.match(after[0], /· 41\.\d fs · 670 mW$/);
+  // A time view reads it as one train as well.
+  probes.at(-1).params.prop = 'time';
+  const time = registry.probe.svg(probes.at(-1), elements);
+  assert.match(time, /one beam: OPA output \(seed \+ gain\)/);
+  assert.equal(time.match(/data-probe-time-delay-ns/g)?.length, 1, 'one pulse train drawn');
+});
+
+test('at low gain the OPA output reads as one beam whose duration is not stated', async () => {
+  const { registry } = await import('../sketch/js/elements.js');
+  // 10 dB peak: the seed passed on is a large part of the output.
+  const { elements } = bench({ seed: chirpedSeed(1e-3), opaParams: { smallSignalGainDb: 10 } });
+  const after = elements.find(e => e.type === 'probe' && e.x === 470);
+  const rows = [...registry.probe.svg(after, elements).matchAll(/>([^<>]*· [^<>]*)</g)].map(m => m[1]);
+  assert.equal(rows.length, 1, `${rows}`);
+  assert.match(rows[0], /· Unavailable · /);
 });
 
 test('the duration view ranks every beam by watts before it cuts the list, whatever the source order', async () => {
