@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 
 import { createElement } from '../sketch/js/elements.js';
 import { detectorReading, traceScene } from '../sketch/js/raytrace.js';
+import { gaussianSpectrum, spectrumSupport } from '../sketch/js/spectrum.js';
 
 // A band reflector is the coating on a cavity mirror: it reflects one band
 // and transmits both sides of it. At 45° it sends the band down and lets the
@@ -160,4 +161,58 @@ test('a Gaussian line centred on a band reflector conserves power across both po
   const enclosed = run('notch', 532, 1000);
   assert.equal(enclosed.t, 0);
   assert.equal(enclosed.r, away.t);
+});
+
+// The 532/40 nm Gaussian through a dichroic, optionally behind a filter that
+// has already reshaped it into a sampled profile.
+function gaussianThrough(mirrorParams, { prefilter = null, mirror = true } = {}) {
+  const src = createElement('pulsedlaser', 60, 160);
+  Object.assign(src.params, { beamMode: 'line', wavelength: 532, transformLimited: false, bandwidth: 40 });
+  const elements = [src];
+  if (prefilter) {
+    const filter = createElement('filter', 180, 160);
+    Object.assign(filter.params, prefilter);
+    elements.push(filter);
+  }
+  const through = createElement('detector', 460, 160);
+  const reflected = createElement('detector', 300, 320);
+  reflected.rot = 90;
+  if (mirror) {
+    const dichroic = createElement('dichroic', 300, 160);
+    dichroic.rot = 135;
+    Object.assign(dichroic.params, mirrorParams);
+    elements.push(dichroic);
+  }
+  traceScene([...elements, through, reflected]);
+  return { t: detectorReading(through.id)?.signal ?? 0, r: detectorReading(reflected.id)?.signal ?? 0 };
+}
+
+test('an already filtered spectrum is split by a band reflector without losing power', () => {
+  // A bandpass ahead of the mirror leaves a sampled profile; the band
+  // reflector then cuts inside it, and the two ports share what arrives.
+  const prefilter = { ftype: 'bandpass', center: 532, band: 30 };
+  const arriving = gaussianThrough(null, { prefilter, mirror: false }).t;
+  assert.ok(arriving > 0.4 && arriving < 0.9, `arriving ${arriving}`);
+  for (const bandRefl of [100, 60]) {
+    const { t, r } = gaussianThrough({ dtype: 'notch', center: 532, band: 10, bandRefl }, { prefilter });
+    assert.ok(t > 0 && r > 0, `both ports carry light at ${bandRefl} %`);
+    assert.ok(Math.abs(t + r - arriving) < 1e-9, `total ${t + r} vs arriving ${arriving} at ${bandRefl} %`);
+  }
+});
+
+test('a band edge exactly at the end of the spectrum counts as cutting it', () => {
+  // The band is closed, so an edge on the support's end puts that endpoint
+  // in the band: the transmitted port loses it, and the reflected sliver is
+  // too faint to be kept. The complement gives the transmitted port the rest,
+  // so nothing goes missing. A band clear of the spectrum keeps the integral.
+  const [, hi] = spectrumSupport(gaussianSpectrum(532, 40));
+  const band = 20;
+  const center = hi + band / 2;
+  assert.equal(center - band / 2, hi, 'the lower band edge must land exactly on the support end');
+  const onEdge = gaussianThrough({ dtype: 'notch', center, band });
+  assert.equal(onEdge.r, 0);
+  assert.ok(Math.abs(onEdge.t - 1) < 1e-9, `on the edge ${onEdge.t}`);
+  const outside = gaussianThrough({ dtype: 'notch', center: hi + 100, band });
+  assert.equal(outside.r, 0);
+  assert.equal(outside.t, gaussianThrough({ dtype: 'bandpass', center: 532, band: 1000 }).t);
 });

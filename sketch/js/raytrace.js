@@ -3626,9 +3626,11 @@ function interact(ray, hit) {
         // is one slice the integration resolves finely. So that port takes
         // whatever the band's port does not, and the two conserve power.
         // A spectrum wholly on one side of both edges keeps each port's own
-        // integral, as a bandpass enclosing it gives it.
+        // integral, as a bandpass enclosing it gives it. An edge on the
+        // support's end counts as cutting: the band is closed, so the endpoint
+        // already belongs to it.
         const [specLo, specHi] = spectrumSupport(ray.spec);
-        const cut = passbandOf(data).some(edge => edge > specLo && edge < specHi);
+        const cut = passbandOf(data).some(edge => edge >= specLo && edge <= specHi);
         let tFraction = trans?.fraction ?? 0, rFraction = refl?.fraction ?? 0;
         if (cut && data.dtype === 'notch') tFraction = Math.max(0, 1 - rFraction);
         else if (cut && data.dtype === 'bandpass') rFraction = Math.max(0, 1 - tFraction);
