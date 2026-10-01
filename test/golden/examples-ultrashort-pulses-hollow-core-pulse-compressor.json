@@ -137,7 +137,7 @@
     "color": "#ff3030",
     "convergence": {
      "diverging": true,
-     "fullAngleDeg": 1.14594472,
+     "fullAngleDeg": 1.14593469,
      "slopePerMm": 0.00211904093
     },
     "dark": false,
@@ -5096,7 +5096,7 @@
     "color": "#ff3030",
     "convergence": {
      "diverging": true,
-     "fullAngleDeg": 1.14594472,
+     "fullAngleDeg": 1.14593469,
      "slopePerMm": 0.00535032325
     },
     "dark": false,

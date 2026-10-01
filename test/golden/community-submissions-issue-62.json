@@ -83,8 +83,8 @@
     "color": "#ff3900",
     "convergence": {
      "diverging": true,
-     "fullAngleDeg": 0.0354820206,
-     "slopePerMm": 0.000059560094
+     "fullAngleDeg": 0.0353828472,
+     "slopePerMm": 0.0000593936215
     },
     "dark": false,
     "darkOutput": null,

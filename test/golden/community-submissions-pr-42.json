@@ -1429,7 +1429,7 @@
     "color": "#a700ff",
     "convergence": {
      "diverging": false,
-     "fullAngleDeg": 1.49673548,
+     "fullAngleDeg": 1.49589465,
      "slopePerMm": -0.00305359491
     },
     "dark": false,
