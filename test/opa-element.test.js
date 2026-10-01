@@ -148,7 +148,7 @@ test('sources without a power setting cannot be amplified: the element says so',
 test('outputs are finite and drawn: the probe reads signal and idler behind the ports', () => {
   const { elements, plan } = bench();
   // Each output at its input's height: signal opposite the seed port, idler on the axis.
-  assert.equal(probeAt(400, 18, 3)?.wl, 780);
+  near(probeAt(400, 18, 3)?.wl, 780, 1e-9);
   near(probeAt(400, 0, 3)?.wl, plan.seeds[0].idlerWl, 1e-6);
   assert.ok(elements.every(e => e.x !== undefined));
   const values = JSON.stringify(plan, (k, v) => (k === 'record' ? undefined : v));
@@ -294,9 +294,11 @@ test('an OPA whose signal is sent back into its own seed port is not amplified a
 });
 
 test('a four-stage pulsed cascade amplifies at every stage and every watt is accounted for', () => {
-  // Codex on f7c22cd: the branches a cascade builds up (each stage passes
-  // its seeds on and adds a gain beam) exceeded the allocator's 256 channels
-  // at 65 slices each, and the fourth stage went silently inactive.
+  // Codex on f7c22cd: the branches a cascade built up (each stage passed
+  // its seeds on and added a gain beam) exceeded the allocator's 256 channels
+  // at 65 slices each, and the fourth stage went silently inactive. Since
+  // #200 an amplified seed leaves inside the one signal beam, so a chain
+  // carries one seed beam from stage to stage.
   const stages = [0, 1, 2, 3].map(i => {
     const el = createElement('opa', 300 + 200 * i, 0);
     Object.assign(el.params, { signalWl: 780, gainBandwidthNm: 40, smallSignalGainDb: i ? 10 : 40, maxDepletion: 0.5 });
@@ -312,7 +314,7 @@ test('a four-stage pulsed cascade amplifies at every stage and every watt is acc
     assert.ok(plan.seeds.every(seed => seed.state === 'amplifying'), `stage ${i + 1}: ${plan.seeds.map(seed => seed.state)}`);
     assert.ok(!plan.cascadeUnresolved);
   }
-  assert.ok(plans[3].seeds.length * 65 > 256, 'the last stage needs fewer slices per seed');
+  assert.ok(plans.every(plan => plan.seeds.length === 1), `one seed beam per stage: ${plans.map(plan => plan.seeds.length)}`);
   for (let i = 1; i < 4; i++) near(plans[i].pumpInW, plans[i - 1].pumpOutW, 1e-12);
   // Outputs after the last stage, plus the idlers the earlier stages send into the next stage's rear face.
   const metered = meters.reduce((sum, m) => sum + (enhancedReading(m, elements)?.detectedPowerW ?? 0), 0);

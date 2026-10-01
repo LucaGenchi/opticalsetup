@@ -10,7 +10,8 @@ import assert from 'node:assert/strict';
 
 import { createElement } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
-import { traceScene, opaReading, probeBeamsAt } from '../sketch/js/raytrace.js';
+import { traceScene, opaReading, probeBeamsAt, probePowerAt } from '../sketch/js/raytrace.js';
+import { probeAveragePowerW } from '../sketch/js/probe.js';
 import { enhancedReading } from '../sketch/js/detector-measurements.js';
 import {
   arrivingPulse, chirpedSignalPulse, planOpa, seedSlices, slicePulse, opaSettings, MAX_GATE_BANDWIDTH_RATIO, PATHS_DIFFER,
@@ -354,41 +355,26 @@ test('the OPCPA example: stretched, amplified and recompressed, as its probes re
   const probes = elements.filter(e => e.type === 'probe' && e.params.prop === 'duration').sort((a, b) => a.x - b.x);
   // Before the OPA: one beam, stretched from 31 fs to ~9 ps.
   assert.ok(probes[1].x < 500 && /ps/.test(registry.probe.svg(probes[1], elements)));
-  // After the compressor: one beam -- the OPA's output, the seed it passed on
-  // and the gain it added -- recompressed, with both parts' watts.
-  const after = rows(probes.at(-1));
-  assert.deepEqual(after.length, 1, `${after}`);
-  assert.match(after[0], /· 41\.\d fs · 670 mW$/);
-  // A time view reads it as one train as well.
-  probes.at(-1).params.prop = 'time';
-  const time = registry.probe.svg(probes.at(-1), elements);
-  assert.match(time, /one beam: OPA output \(seed \+ gain\)/);
-  assert.equal(time.match(/data-probe-time-delay-ns/g)?.length, 1, 'one pulse train drawn');
+  // After the compressor: one beam -- the OPA's output, the seed with the
+  // gain added -- recompressed, carrying both parts' watts.
+  const last = probes.at(-1);
+  const beams = probeBeamsAt(last.x, last.y, 5);
+  assert.equal(beams.length, 1, 'the seed does not leave the OPA on its own');
+  assert.equal(rows(last).length, 0, 'a single beam: the plain duration card');
+  assert.match(registry.probe.svg(last, elements), />41\.\d fs</);
+  near(probeAveragePowerW(probePowerAt(last.x, last.y, 5), elements), seed.seedW + seed.gainW, 1e-12);
 });
 
-test('at low gain the OPA output reads as one beam whose duration is not stated', async () => {
-  const { registry } = await import('../sketch/js/elements.js');
-  // 10 dB peak: the seed passed on is a large part of the output.
-  const { elements } = bench({ seed: chirpedSeed(1e-3), opaParams: { smallSignalGainDb: 10 } });
-  const after = elements.find(e => e.type === 'probe' && e.x === 470);
-  const rows = [...registry.probe.svg(after, elements).matchAll(/>([^<>]*· [^<>]*)</g)].map(m => m[1]);
-  assert.equal(rows.length, 1, `${rows}`);
-  assert.match(rows[0], /· Unavailable · /);
-});
-
-test('the duration view ranks every beam by watts before it cuts the list, whatever the source order', async () => {
-  const { registry } = await import('../sketch/js/elements.js');
-  const make = (fs, watts) => laser(0, 800, watts, { transformLimited: true, pulseWidthFs: fs, repRateMHz: 80 });
-  for (const order of [[0, 1, 2], [1, 0, 2], [2, 1, 0]]) {
-    const lasers = [make(300, 1e-3), make(300, 1), make(500, 1e-2)];
-    const p = probe(200, 0);
-    const elements = [...order.map(i => lasers[i]), p];
-    traceScene(elements, []);
-    const rows = [...registry.probe.svg(p, elements).matchAll(/>([^<>]*· [^<>]*)</g)].map(m => m[1]);
-    assert.equal(rows.length, 2, `order ${order}`);
-    assert.match(rows[0], /· 300 fs · 1.00 W$/, `order ${order}`);
-    assert.match(rows[1], /· 500 fs · 10.0 mW$/, `order ${order}`);
-  }
+test('at low gain the one output beam says its pulse duration is only the gain\'s estimate', () => {
+  // 10 dB peak: the seed is a large part of the output.
+  const { plan } = bench({ seed: chirpedSeed(1e-3), opaParams: { smallSignalGainDb: 10 } });
+  assert.equal(plan.seeds[0].state, 'amplifying');
+  const beams = probeBeamsAt(470, 18, 5);
+  assert.equal(beams.length, 1);
+  assert.match(beams[0].approximation, /below 30 dB of gain/);
+  // At high gain no caveat.
+  bench({ seed: chirpedSeed(1e-12) });
+  assert.equal(probeBeamsAt(470, 18, 5)[0].approximation, null);
 });
 
 // An OPA whose amplified output leaves along y = 200 from x = 206 (the
@@ -403,7 +389,7 @@ function opaFeeding(y) {
   return [pump, seed, opa];
 }
 
-test('an OPA output split into two delayed arms reads as two beams, each one OPA output', async () => {
+test('an OPA output split into two delayed arms reads as two beams, one per arm', async () => {
   const { readFileSync } = await import('node:fs');
   const { parseSketch } = await import('../sketch/js/state.js');
   const { registry } = await import('../sketch/js/elements.js');
@@ -414,13 +400,11 @@ test('an OPA output split into two delayed arms reads as two beams, each one OPA
   const elements = [...opaFeeding(200), ...bench, p];
   traceScene(elements, []);
   assert.ok(opaReading(elements[2].id).seeds[0].phaseKept);
-  assert.equal(probeBeamsAt(700, 400, 5).length, 4, 'seed and gain on each of two arms');
-  // Duration: each arm's seed and gain are one beam; the two arms have one
-  // duration, so they share a row -- never "Unavailable" from counting the
-  // other arm's gain as this arm's weak part (Andrea, #200).
-  const rows = [...registry.probe.svg(p, elements).matchAll(/>([^<>]*· [^<>]*)</g)].map(m => m[1]);
-  assert.equal(rows.length, 1, `${rows}`);
-  assert.doesNotMatch(rows[0], /Unavailable/);
+  assert.equal(probeBeamsAt(700, 400, 5).length, 2, 'one OPA output beam on each of two arms');
+  // Duration: the two arms have one duration, so the plain card states it.
+  const card = registry.probe.svg(p, elements);
+  assert.match(card, / fs<| ps</);
+  assert.doesNotMatch(card, /Unavailable/);
   // Time: two trains, 10 ps apart.
   p.params.prop = 'time';
   const time = registry.probe.svg(p, elements);
@@ -435,9 +419,6 @@ test('an OPA output stays one beam through a fiber', async () => {
   const cable = { id: 'fb', kind: 'fiber', pts: [{ x: 420, y: 18 }, { x: 600, y: 18 }], width: 20,
     propagate: true, lossDbPerM: 0, outMode: 'diverge', na: 0.01 };
   traceScene(elements, [cable]);
-  const beams = probeBeamsAt(700, 18, 5);
-  assert.equal(beams.length, 2, 'the seed and the gain, relaunched');
-  assert.ok(beams.every(b => b.opaSignalOf) && beams[0].opaSignalOf === beams[1].opaSignalOf, 'one identity');
-  const rows = [...registry.probe.svg(p, elements).matchAll(/>([^<>]*· [^<>]*)</g)].map(m => m[1]);
-  assert.equal(rows.length, 1, `${rows}`);
+  assert.equal(probeBeamsAt(700, 18, 5).length, 1, 'one output beam, relaunched');
+  assert.match(registry.probe.svg(p, elements), / fs<| ps</);
 });

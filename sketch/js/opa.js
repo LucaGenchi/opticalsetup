@@ -313,6 +313,46 @@ export function chirpedSignalPulse(base, signal, gddFs2, profile = signal.spec) 
   return { ...pulse, pulseWidthFs: here.durationFs, transformLimitFs: here.transformLimitFs };
 }
 
+// The OPA's signal output: the seed and the gain added to it are one beam,
+// so the seed does not leave separately once it is amplified. Its spectrum is
+// the seed's with the gain's added, in watts per nanometre -- the part of a
+// broad seed outside the gain band is still there -- and it is marked as this
+// module's own output, so a later stage can slice it. Discrete inputs stay
+// lines. Returns { wl, bw, spec }, or null when the seed's spectrum has no
+// known shape (such a seed is never amplified).
+const OUTPUT_PROFILE_POINTS = 513;
+export function signalOutput(seed, seedW, signal, gainW) {
+  if (!signal) return null;
+  const seedSpec = seed.spec || (seed.bw > 0 ? gaussianSpectrum(seed.wl, seed.bw) : null);
+  const seedLines = !seedSpec ? [{ nm: seed.wl, w: 1 }] : seedSpec.kind === 'lines' ? seedSpec.lines : null;
+  const gainLines = !signal.spec ? [{ nm: signal.wl, w: 1 }] : signal.spec.kind === 'lines' ? signal.spec.lines : null;
+  if (seedLines && gainLines) {
+    const sum = (list, watts) => { const total = list.reduce((t, l) => t + l.w, 0); return list.map(l => ({ wl: l.nm, powerW: watts * l.w / total })); };
+    const merged = new Map();
+    for (const p of [...sum(seedLines, seedW), ...sum(gainLines, gainW)]) {
+      const key = [...merged.keys()].find(k => Math.abs(k - p.wl) <= 1e-9 * p.wl) ?? p.wl;
+      merged.set(key, (merged.get(key) || 0) + p.powerW);
+    }
+    // One line stays exactly where it was (a sum would round it).
+    if (merged.size === 1) return { wl: [...merged.keys()][0], bw: 0, spec: null };
+    return spectrumOf([...merged].map(([wl, powerW]) => ({ wl, powerW })), 0, true);
+  }
+  const parts = [[seedSpec, seedW], [signal.spec, gainW]].filter(([spec, w]) => spec && w > 0 && profileArea(spec) > 0);
+  if (parts.length !== [seedSpec, signal.spec].filter(Boolean).length) return null;
+  const supports = parts.map(([spec]) => spectrumSupport(spec));
+  const lo = Math.min(...supports.map(r => r[0])), hi = Math.max(...supports.map(r => r[1]));
+  const w = Array.from({ length: OUTPUT_PROFILE_POINTS }, (_, i) => {
+    const x = lo + (hi - lo) * i / (OUTPUT_PROFILE_POINTS - 1);
+    return parts.reduce((sum, [spec, watts]) => sum + watts * Math.max(0, spectrumWeight(spec, x)) / profileArea(spec), 0);
+  });
+  const peak = Math.max(...w);
+  if (!(peak > 0) || !(hi > lo)) return null;
+  const spec = { kind: 'sampled', lo, hi, w: w.map(v => v / peak), opaOutput: true };
+  const total = seedW + gainW;
+  const centroid = (seedW * (seed.wl) + gainW * signal.wl) / total;
+  return { wl: centroid, bw: spectrumStats(spec)?.fwhm ?? 0, spec };
+}
+
 // Plan one OPA event from the beams its two ports received in the probe
 // pass. `pump` and `seeds` are beam records { key, wl, bw, spec, opl, pulse,
 // powerW } with powerW on the one watt basis of the sources' settings (null
@@ -428,6 +468,8 @@ export function planOpa(params, { pump, pumps = [], seeds = [] }) {
       peakGain,
       signal, idler, idlerWl: idler?.wl ?? idlerAt(seed.wl), state,
       durationIssue: arrival.issue, arrivingPulse: arrival.pulse, chirp: arrival.chirp,
+      // The one signal beam the OPA emits: seed and gain together.
+      output: amplifying.length ? signalOutput(seed, seed.powerW, signal, gainW) : null,
       gainWindowFs: windowFs, gateBandRatio, phaseKept: phaseKept && Boolean(profile), amplifiedProfile: profile,
       signalDelayFs, centred: Boolean(centred),
     };
