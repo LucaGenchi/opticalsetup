@@ -26,7 +26,7 @@ import { mixOverlap, parametricPair, parametricSmallSignalGain } from './paramet
 // is passed unchanged with an explicit state. Gates, unknown durations,
 // same-mode degeneracy and jointly seeded conjugate modes need more physics;
 // they must never silently receive the nondegenerate singly-seeded gain.
-const MAX_CHANNELS = 256;
+export const MAX_CHANNELS = 256;
 // Below the visibility floor crystal mixing drops a pair. Here it is only a
 // label: the quadrature already takes the gain continuously to zero.
 const MIN_OVERLAP = 0.02;

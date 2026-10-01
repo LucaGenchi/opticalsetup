@@ -105,10 +105,12 @@ for (const [name, { idler: idlerWl, signalShare, pumpFraction, efficiency, oc }]
     assert.ok(signal, 'no signal left the output coupler');
     near(signal.wavelength, 800, 0.5, 'signal centre');
     assert.ok(signal.spectrum.every(s => s.wavelength > 700 && s.wavelength < 900), 'pump or idler reached the signal port');
-    // Each round trip leaks (1 − R) of the circulating signal; the trace sums a
-    // finite number of leaks, so the output is below the generated share.
+    // Each round trip leaks (1 − R) of the circulating signal; the tracer
+    // follows the first round trips and sums the rest, so the whole generated
+    // share leaves (to within what the dichroics upstream take of the pump).
     const generated = converted * signalShare;
-    assert.ok(signal.signal > (1 - oc) * generated && signal.signal < generated, `signal output ${signal.signal}`);
+    assert.ok(signal.signal > (1 - oc) * generated, `signal output ${signal.signal}`);
+    near(signal.signal, generated, 1e-4 * generated, 'signal output');
   });
 }
 

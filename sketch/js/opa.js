@@ -21,10 +21,23 @@
 // - A broadband seed is cut into spectral slices, each amplified with the
 //   gain at its own wavelength, so only the phase-matched part of, say, a
 //   supercontinuum grows.
+// - Pump and seed are timed as they arrive: their durations include what
+//   glass, fibers and compressors did to them on the way (arrivingPulse).
+// - A seed with a known linear chirp -- stretched, as in optical parametric
+//   chirped-pulse amplification (OPCPA) -- carries each wavelength at its own
+//   time, t = GDD (omega - omega0). Each slice then meets the pump at that
+//   time, so the pump's envelope shapes the amplified spectrum. When the gain
+//   window is long compared with the seed's transform limit, the amplified
+//   signal keeps the seed's spectral phase, and a compressor after the OPA
+//   can recompress it (chirpedSignalPulse).
 
-import { parametricPair, mixWidthNm } from './parametric.js';
-import { allocateParametricAmplifier } from './parametric-amplifier.js';
-import { gaussianSpectrum, lineSpectrum, spectrumStats, spectrumSupport, spectrumWeight } from './spectrum.js';
+import { parametricPair, mixOverlap, mixWidthNm } from './parametric.js';
+import { allocateParametricAmplifier, MAX_CHANNELS } from './parametric-amplifier.js';
+import {
+  gaussianSpectrum, lineSpectrum, spectrumStats, spectrumSupport, spectrumWeight,
+} from './spectrum.js';
+import { DISPERSION_UNAVAILABLE, PATHS_DISAGREE, pulseDurationAcrossPaths, pulseDurationAfterDispersion } from './glass.js';
+import { fieldMetrics } from './pulse-field.js';
 
 // The allocator works with Gamma (1/m) and a length; any length works as
 // long as Gamma L is right, so a fixed 1 mm reference is used.
@@ -35,7 +48,40 @@ export const OPA_REFERENCE_LENGTH_M = 1e-3;
 // is narrower, so a 0.1 nm band inside a 600 nm continuum and a narrow seed
 // inside a wide band are both integrated, not sampled on a coarse grid.
 export const SEED_SLICES = 65;
+// The fewest slices a continuous seed is cut into when several seeds share
+// the allocator's channels (a later stage of a cascade); below this, the
+// seeds are reported as too many rather than sampled too coarsely.
+export const MIN_SEED_SLICES = 9;
+// OPA stages the tracer plans in a cascade, one planning pass per stage
+// (sketch/js/raytrace.js, traceScene).
+export const MAX_OPA_STAGES = 6;
 const GAIN_REACH_FWHM = 2.5;
+// The amplified signal keeps a chirped seed's spectral phase only while the
+// pump's gain window gates each wavelength slowly compared with how the
+// chirp spreads the wavelengths in time. Gating the field with a window of
+// FWHM T adds a band of its own, 4 ln2 / T in angular frequency, which the
+// slices cannot represent; the signal's phase is kept only while that band
+// is at most this fraction of the amplified band. The value comes from a
+// comparison with the field amplified coherently (test/opcpa.test.js).
+export const MAX_GATE_BANDWIDTH_RATIO = 0.35;
+// The amplified band must span at least this many seed slices for its shape,
+// and so its transform, to be resolved.
+export const MIN_BAND_SLICES = 4;
+// The seed passing through must be at most 1/1000 of the output: below that
+// gain the output field is seed plus gain, and "the gain beam's duration" has
+// no single answer (the field's excess and the whole field recompress
+// differently).
+export const MIN_PHASE_KEPT_GAIN = 1000;
+// The amplified light's centre must lie within this many seed FWHM of the
+// seed's centre. A pump timed onto the seed's wing amplifies its tail, where
+// the slices cut the spectrum off and the mapping is least accurate.
+export const MAX_CENTRE_OFFSET_FWHM = 0.5;
+// Beyond a Gaussian spectrum, a chirp maps wavelength to time only once it is
+// strong: the stationary-phase limit the duration model itself uses
+// (quadraticPhasePulse in pulse-field.js), twenty transform limits.
+export const STATIONARY_PHASE_STRETCH = 20;
+export const PATHS_DIFFER = 'Rays of this beam arrive with different dispersion: duration unavailable';
+const C_NM_PER_FS = 299.792458;
 
 const clamp = (value, lo, hi, fallback) => {
   const n = Number(value);
@@ -61,23 +107,42 @@ export function opaGainAt(settings, wl) {
 // The Gamma L that gives power gain G at zero mismatch: G = cosh^2(Gamma L).
 export const gammaLForGain = gain => (gain > 1 ? Math.acosh(Math.sqrt(gain)) : 0);
 
+// The integral of a piecewise-linear sampled profile from a to b: exact,
+// segment by segment, so slices of it add up to its whole area.
+function sampledIntegral(spec, a, b) {
+  const n = spec.w.length, dx = (spec.hi - spec.lo) / (n - 1);
+  let sum = 0;
+  for (let i = 0; i < n - 1; i++) {
+    const u = Math.max(a, spec.lo + i * dx), v = Math.min(b, spec.lo + (i + 1) * dx);
+    if (v > u) sum += (v - u) * (spectrumWeight(spec, u) + spectrumWeight(spec, v)) / 2;
+  }
+  return sum;
+}
+const opaSampled = spec => spec.kind === 'sampled' && spec.opaOutput && Array.isArray(spec.w) && spec.w.length > 1;
+
 // The area under a profile's weight (peak 1): the normaliser that turns its
-// weight into a density. Exact for the two continuous profiles sources emit.
+// weight into a density. Exact for the two continuous profiles sources emit
+// and for an OPA's own sampled output.
 function profileArea(spec) {
   if (spec.kind === 'gauss') return spec.fwhm * Math.sqrt(Math.PI / (4 * Math.LN2));
   if (spec.kind === 'flat') return spec.hi - spec.lo;
+  if (opaSampled(spec)) return sampledIntegral(spec, spec.lo, spec.hi);
   return 0;
 }
 
 // A seed beam's spectral slices: { wl, fraction, line } of its power in the
 // part of its spectrum the gain band reaches. Supported seeds are the ones
-// sources emit: a monochromatic line, a Gaussian line, a flat continuum and a
-// lamp's discrete lines. A Gaussian or flat profile is smooth and single, so
-// 65 slices across its overlap with the band resolve both. A reshaped
-// (sampled) spectrum, for instance a filtered continuum, can hide structure
-// narrower than any fixed slicing: it returns null, and the seed is reported
-// as unsupported rather than silently mis-sampled.
-export function seedSlices(settings, { wl, bw, spec }) {
+// sources emit -- a monochromatic line, a Gaussian line, a flat continuum and
+// a lamp's discrete lines -- and the signal or idler of another OPA (the next
+// stage of a cascade), a piecewise-linear profile this module built itself
+// (spectrumOf). A Gaussian or flat profile is smooth and single, so `count`
+// slices (65 unless several seeds share the allocator) across its overlap
+// with the band resolve both; an OPA's own profile is integrated exactly over
+// each slice, so its slices add up to its power. Any other reshaped (sampled)
+// spectrum, for instance a filtered continuum, can hide structure narrower
+// than any fixed slicing: it returns null, and the seed is reported as
+// unsupported rather than silently mis-sampled.
+export function seedSlices(settings, { wl, bw, spec }, count = SEED_SLICES) {
   const profile = spec || (bw > 0 ? gaussianSpectrum(wl, bw) : null);
   const reach = GAIN_REACH_FWHM * settings.gainBandwidthNm;
   const inBand = x => Math.abs(x - settings.signalWl) <= reach;
@@ -86,16 +151,19 @@ export function seedSlices(settings, { wl, bw, spec }) {
     const total = profile.lines.reduce((sum, l) => sum + l.w, 0);
     return total > 0 ? profile.lines.filter(l => inBand(l.nm)).map(l => ({ wl: l.nm, fraction: l.w / total, line: true })) : [];
   }
-  if (profile.kind !== 'gauss' && profile.kind !== 'flat') return null;
+  const sampled = opaSampled(profile);
+  if (profile.kind !== 'gauss' && profile.kind !== 'flat' && !sampled) return null;
   const [supportLo, supportHi] = spectrumSupport(profile);
   const lo = Math.max(supportLo, settings.signalWl - reach), hi = Math.min(supportHi, settings.signalWl + reach);
   const area = profileArea(profile);
   if (!(hi > lo) || !(area > 0)) return [];
-  const width = (hi - lo) / SEED_SLICES;
+  const width = (hi - lo) / count;
   const slices = [];
-  for (let k = 0; k < SEED_SLICES; k++) {
+  for (let k = 0; k < count; k++) {
     const x = lo + (k + 0.5) * width;
-    const fraction = Math.max(0, spectrumWeight(profile, x)) * width / area;
+    const fraction = sampled
+      ? sampledIntegral(profile, lo + k * width, lo + (k + 1) * width) / area
+      : Math.max(0, spectrumWeight(profile, x)) * width / area;
     if (fraction > 0) slices.push({ wl: x, fraction, line: false });
   }
   return slices;
@@ -117,7 +185,7 @@ function spectrumOf(points, fallbackBw = 0, lines = false) {
   if (kept.length === 1) {
     return { wl: centroid, bw: fallbackBw, spec: fallbackBw > 0 ? gaussianSpectrum(centroid, fallbackBw) : null };
   }
-  const lo = kept[0].wl, hi = kept.at(-1).wl, n = 65, w = [];
+  const lo = kept[0].wl, hi = kept.at(-1).wl, n = SEED_SLICES, w = [];
   // Power per unit wavelength at each point: its power over the span it
   // stands for (half-way to each neighbour). The idler's slices are not
   // evenly spaced in wavelength even when the signal's are.
@@ -135,9 +203,175 @@ function spectrumOf(points, fallbackBw = 0, lines = false) {
     w.push(density[k] + (density[k + 1] - density[k]) * t);
   }
   const peak = Math.max(...w);
-  const spec = peak > 0 ? { kind: 'sampled', lo, hi, w: w.map(v => v / peak) } : null;
+  // Marked as this module's own smooth output: a later OPA stage may slice it
+  // (seedSlices). Any element that reshapes it builds a new, unmarked profile.
+  const spec = peak > 0 ? { kind: 'sampled', lo, hi, w: w.map(v => v / peak), opaOutput: true } : null;
   const stats = spec ? spectrumStats(spec) : null;
   return { wl: centroid, bw: stats?.fwhm ?? 0, spec };
+}
+
+// A beam's pulse as it reaches a port: the record's train with the duration
+// it has there, after the GDD and group-delay spread of its path, and -- when
+// the duration model knows its spectral phase -- its transform limit and
+// total GDD. `issue` says why a duration cannot be stated; the OPA then does
+// not amplify on a guess. The same rules as the beam probe's.
+export function arrivingPulse(beam) {
+  const pulse = beam?.pulse;
+  if (!pulse) return { pulse: null, chirp: null, issue: null };
+  const gdd = Number.isFinite(beam.gddFs2) ? beam.gddFs2 : 0;
+  const spread = Number.isFinite(beam.groupDelayDifferenceFs) ? beam.groupDelayDifferenceFs : 0;
+  const declined = issue => ({ pulse: null, chirp: null, issue });
+  if (pulse.fieldIssue) return declined(pulse.fieldIssue);
+  if (pulse.field) {
+    const fwhm = fieldMetrics(pulse.field, gdd)?.fwhmFs;
+    return Number.isFinite(fwhm) && fwhm > 0
+      ? { pulse: { ...pulse, pulseWidthFs: fwhm }, chirp: null, issue: null } : declined(DISPERSION_UNAVAILABLE.sampled);
+  }
+  // Rays of one beam that took paths of different dispersion are not one
+  // pulse: the same agreement test a detector applies.
+  const range = Array.isArray(beam.gddRange) ? beam.gddRange : null;
+  if (range && range[1] > range[0]) {
+    const across = pulseDurationAcrossPaths(pulse, range.map(gddFs2 => ({ gddFs2, groupDelayDifferenceFs: spread })));
+    if (across?.available === false) return declined(across.model === PATHS_DISAGREE ? PATHS_DIFFER : across.model);
+  }
+  const d = pulseDurationAfterDispersion(pulse, gdd, spread);
+  if (!d || d.available === false || !(d.durationFs > 0)) return declined(d?.model || 'Pulse duration unavailable');
+  const centreNm = Number(pulse.centerWavelengthNm) > 0 ? Number(pulse.centerWavelengthNm) : beam.wl;
+  // A known phase (not a flat band's assumed sweep), and a spectrum the
+  // mapping holds for: a Gaussian at any chirp, any shape once strongly
+  // chirped.
+  const gaussian = pulse.pulseShape !== 'sech2' && (beam.spec ? beam.spec.kind === 'gauss' : beam.bw > 0);
+  const strong = d.durationFs >= STATIONARY_PHASE_STRETCH * d.transformLimitFs;
+  const chirp = d.transformLimitFs > 0 && Number.isFinite(d.inputGddFs2) && Number.isFinite(d.totalGddFs2) && centreNm > 0
+    && (gaussian || strong)
+    ? { tau0Fs: d.transformLimitFs, gddFs2: d.totalGddFs2, centreNm } : null;
+  return { pulse: { ...pulse, pulseWidthFs: d.durationFs }, chirp, issue: null };
+}
+
+// The timing of one spectral slice of a chirped seed at wavelength wl: its
+// group delay GDD (omega - omega0) and the seed's transform-limited envelope.
+// For a Gaussian the slices' envelopes add up to the chirped pulse's exactly:
+// the delays' spread and the transform limit add in quadrature to
+// tau0 sqrt(1 + (4 ln2 GDD / tau0^2)^2). Without a known chirp every slice
+// keeps the whole arriving envelope.
+export function slicePulse({ pulse, chirp }, wl) {
+  if (!pulse) return undefined;
+  if (!chirp) return pulse;
+  const dOmega = 2 * Math.PI * C_NM_PER_FS * (1 / wl - 1 / chirp.centreNm); // rad/fs
+  const delayFs = chirp.gddFs2 * dOmega;
+  return { ...pulse, pulseWidthFs: chirp.tau0Fs, phaseNs: (Number(pulse.phaseNs) || 0) + delayFs * 1e-6 };
+}
+
+// The amplified signal's pulse when it keeps the seed's spectral phase. Gain
+// changes the amplitude of the spectrum, not its phase -- as a filter does --
+// so the signal is described the way a filtered pulse is: its amplified
+// spectrum as the one surviving piece, with the seed's total GDD as its phase
+// (filteredPulseDuration in glass.js). Its durations, stretched here and
+// recompressed after a compressor, are then the transform of that spectrum
+// with that phase, whatever its shape -- a saturated OPA flattens it.
+// The spectrum for that transform is the seed's own profile times the gain
+// each slice received (`gainCurve`, interpolated, held beyond the outer
+// slices): a Gaussian seed keeps its tails, which slices cut at its drawn
+// support would clip, lengthening every transform by about 10 %.
+// `base` supplies the train's timing.
+const AMPLIFIED_PROFILE_POINTS = 257;
+const GAUSS_TAIL_FWHM = 2.2; // intensity 1.5e-6 of the peak
+export function amplifiedProfile(seedSpec, gainCurve) {
+  if (!seedSpec || !gainCurve?.length) return null;
+  const [supportLo, supportHi] = spectrumSupport(seedSpec);
+  const [lo, hi] = seedSpec.kind === 'gauss'
+    ? [Math.max(1, seedSpec.center - GAUSS_TAIL_FWHM * seedSpec.fwhm), seedSpec.center + GAUSS_TAIL_FWHM * seedSpec.fwhm]
+    : [supportLo, supportHi];
+  const curve = [...gainCurve].sort((a, b) => a.wl - b.wl);
+  const gainAt = x => {
+    if (x <= curve[0].wl) return curve[0].excess;
+    if (x >= curve.at(-1).wl) return curve.at(-1).excess;
+    const k = curve.findIndex(p => p.wl >= x);
+    const a = curve[k - 1], b = curve[k];
+    return a.excess + (b.excess - a.excess) * (x - a.wl) / (b.wl - a.wl);
+  };
+  const w = Array.from({ length: AMPLIFIED_PROFILE_POINTS }, (_, i) => {
+    const x = lo + (hi - lo) * i / (AMPLIFIED_PROFILE_POINTS - 1);
+    return Math.max(0, spectrumWeight(seedSpec, x)) * gainAt(x);
+  });
+  const peak = Math.max(...w);
+  return peak > 0 && hi > lo ? { kind: 'sampled', lo, hi, w: w.map(v => v / peak) } : null;
+}
+export function chirpedSignalPulse(base, signal, gddFs2, profile = signal.spec) {
+  const spec = profile || signal.spec;
+  const [lo, hi] = spec ? spectrumSupport(spec) : [NaN, NaN];
+  if (!(hi > lo)) return null;
+  const pulse = {
+    ...base,
+    centerWavelengthNm: signal.wl, bandwidthNm: signal.bw, spectrumKind: 'sampled',
+    spectrumLoNm: lo, spectrumHiNm: hi,
+    pulseShape: 'gauss', transformLimited: false, inputGddFs2: gddFs2, spectralPhase: 'seed',
+    spectrumReshaped: true, filteredPieces: [{ spec, lo, hi, power: 1 }],
+  };
+  const here = pulseDurationAfterDispersion(pulse, 0, 0);
+  if (!here || here.available === false || !(here.durationFs > 0)) return null;
+  return { ...pulse, pulseWidthFs: here.durationFs, transformLimitFs: here.transformLimitFs };
+}
+
+// The OPA's signal output: the seed and the gain added to it are one beam,
+// so the seed does not leave separately once it is amplified. Its spectrum is
+// the seed's with the gain's added, in watts per nanometre -- the part of a
+// broad seed outside the gain band is still there -- and it is marked as this
+// module's own output, so a later stage can slice it. Discrete inputs stay
+// lines. The grid is fine enough for the narrowest part (OUTPUT_STEPS_PER_FWHM
+// points across it), and each part is scaled so that its share of the sampled
+// spectrum is its share of the watts. Returns { wl, bw, spec }, or null when
+// the seed's spectrum has no known shape or a grid of OUTPUT_MAX_POINTS cannot
+// resolve both parts -- a gain a tenth of a nanometre wide on a 600 nm
+// continuum: the seed then passes through and the gain leaves as its own beam.
+export const OUTPUT_MAX_POINTS = 4097;
+const OUTPUT_STEPS_PER_FWHM = 8;
+// The narrowest feature of a profile, in nm: a Gaussian's FWHM, a flat band's
+// width, a sampled profile's FWHM or, if finer, a few of its own grid steps.
+function featureNm(spec) {
+  if (spec.kind === 'gauss') return spec.fwhm;
+  if (spec.kind === 'flat') return spec.hi - spec.lo;
+  const step = (spec.hi - spec.lo) / Math.max(1, spec.w.length - 1);
+  return Math.min(spectrumStats(spec)?.fwhm || Infinity, 4 * step);
+}
+export function signalOutput(seed, seedW, signal, gainW) {
+  if (!signal) return null;
+  const seedSpec = seed.spec || (seed.bw > 0 ? gaussianSpectrum(seed.wl, seed.bw) : null);
+  const seedLines = !seedSpec ? [{ nm: seed.wl, w: 1 }] : seedSpec.kind === 'lines' ? seedSpec.lines : null;
+  const gainLines = !signal.spec ? [{ nm: signal.wl, w: 1 }] : signal.spec.kind === 'lines' ? signal.spec.lines : null;
+  if (seedLines && gainLines) {
+    const sum = (list, watts) => { const total = list.reduce((t, l) => t + l.w, 0); return list.map(l => ({ wl: l.nm, powerW: watts * l.w / total })); };
+    const merged = new Map();
+    for (const p of [...sum(seedLines, seedW), ...sum(gainLines, gainW)]) {
+      const key = [...merged.keys()].find(k => Math.abs(k - p.wl) <= 1e-9 * p.wl) ?? p.wl;
+      merged.set(key, (merged.get(key) || 0) + p.powerW);
+    }
+    // One line stays exactly where it was (a sum would round it).
+    if (merged.size === 1) return { wl: [...merged.keys()][0], bw: 0, spec: null };
+    return spectrumOf([...merged].map(([wl, powerW]) => ({ wl, powerW })), 0, true);
+  }
+  const parts = [[seedSpec, seedW], [signal.spec, gainW]].filter(([spec, w]) => spec && w > 0);
+  if (parts.length !== [seedSpec, signal.spec].filter(Boolean).length || parts.some(([spec]) => !(profileArea(spec) > 0))) return null;
+  const supports = parts.map(([spec]) => spectrumSupport(spec));
+  const lo = Math.min(...supports.map(r => r[0])), hi = Math.max(...supports.map(r => r[1]));
+  const finest = Math.min(...parts.map(([spec]) => featureNm(spec)));
+  const n = Math.max(513, Math.ceil((hi - lo) / finest * OUTPUT_STEPS_PER_FWHM) + 1);
+  if (!(hi > lo) || !(finest > 0) || n > OUTPUT_MAX_POINTS) return null;
+  const xs = Array.from({ length: n }, (_, i) => lo + (hi - lo) * i / (n - 1));
+  // Each part on the grid, scaled so its trapezoid area is its watts.
+  const w = new Array(n).fill(0);
+  for (const [spec, watts] of parts) {
+    const v = xs.map(x => Math.max(0, spectrumWeight(spec, x)));
+    const area = v.reduce((sum, y, i) => sum + (i ? (y + v[i - 1]) / 2 * (xs[i] - xs[i - 1]) : 0), 0);
+    if (!(area > 0)) return null;
+    v.forEach((y, i) => { w[i] += watts * y / area; });
+  }
+  const peak = Math.max(...w);
+  if (!(peak > 0)) return null;
+  const spec = { kind: 'sampled', lo, hi, w: w.map(v => v / peak), opaOutput: true };
+  const total = seedW + gainW;
+  const centroid = (seedW * seed.wl + gainW * signal.wl) / total;
+  return { wl: centroid, bw: spectrumStats(spec)?.fwhm ?? 0, spec };
 }
 
 // Plan one OPA event from the beams its two ports received in the probe
@@ -157,13 +391,32 @@ export function planOpa(params, { pump, pumps = [], seeds = [] }) {
   if (!seeds.length) return { ...withPump, state: 'noSeed' };
   const watts = w => Number.isFinite(w) && w >= 0; // null >= 0 is true in JavaScript
   if (!watts(pump.powerW) || seeds.some(s => !watts(s.powerW))) return { ...withPump, state: 'uncalibrated' };
+  const pumpArrival = arrivingPulse(pump);
+  if (pumpArrival.issue) return { ...withPump, state: 'pumpDurationUnavailable', durationIssue: pumpArrival.issue };
+  const arrivals = seeds.map(arrivingPulse);
 
-  // One allocator channel per seed slice.
+  // One allocator channel per seed slice. Several continuous seeds -- the
+  // branches a cascade builds up, stage after stage -- share the allocator's
+  // channels: each is cut into fewer slices, down to MIN_SEED_SLICES, and
+  // beyond that the seeds are reported as too many, never dropped silently.
   const channels = [];
   const unsupported = new Set();
   const lineSeeds = new Set();
-  for (const seed of seeds) {
-    const slices = seedSlices(settings, seed);
+  const sliced = seeds.map(seed => seedSlices(settings, seed));
+  const lineChannels = sliced.reduce((sum, s) => sum + (s?.some(slice => slice.line) ? s.length : 0), 0);
+  const continuous = sliced.filter(s => s?.length && !s.some(slice => slice.line)).length;
+  const count = continuous ? Math.min(SEED_SLICES, Math.floor((MAX_CHANNELS - lineChannels) / continuous)) : SEED_SLICES;
+  if (lineChannels > MAX_CHANNELS || (continuous && count < MIN_SEED_SLICES)) {
+    const tooMany = seeds.map(seed => ({ key: seed.key, wl: seed.wl, seedW: seed.powerW, gainW: 0, idlerW: 0, pumpW: 0,
+      achievedGain: 1, saturated: false, lowOverlap: false, overlap: null, skewNs: null, peakGain: 1,
+      signal: null, idler: null, idlerWl: idlerAt(seed.wl), state: 'tooManySeeds' }));
+    return { ...withPump, state: 'tooManySeeds', seeds: tooMany };
+  }
+  for (const [index, seed] of seeds.entries()) {
+    if (arrivals[index].issue) continue;
+    const first = sliced[index];
+    const slices = first && first.length && !first.some(slice => slice.line) && count < SEED_SLICES
+      ? seedSlices(settings, seed, count) : first;
     if (slices === null) { unsupported.add(seed.key); continue; }
     if (slices.some(slice => slice.line)) lineSeeds.add(seed.key);
     for (const [i, slice] of slices.entries()) {
@@ -172,17 +425,18 @@ export function planOpa(params, { pump, pumps = [], seeds = [] }) {
         seedKey: seed.key, key: `${seed.key}#${i}`, wl: slice.wl,
         powerW: seed.powerW * slice.fraction,
         gammaPerM: gammaLForGain(gain) / OPA_REFERENCE_LENGTH_M, deltaKPerM: 0,
-        pulse: seed.pulse || undefined, opl: seed.opl,
+        pulse: slicePulse(arrivals[index], slice.wl), opl: seed.opl,
       });
     }
   }
   const result = channels.length ? allocateParametricAmplifier({
-    pump: { wl: pump.wl, powerW: pump.powerW, pulse: pump.pulse || undefined, opl: pump.opl },
+    pump: { wl: pump.wl, powerW: pump.powerW, pulse: pumpArrival.pulse || undefined, opl: pump.opl },
     seeds: channels.map(({ seedKey, ...c }) => c),
     lengthM: OPA_REFERENCE_LENGTH_M, maxDepletion: settings.maxDepletion,
   }) : null;
   const byKey = new Map((result?.channels || []).map(c => [c.key, c]));
-  const seedResults = seeds.map(seed => {
+  const seedResults = seeds.map((seed, index) => {
+    const arrival = arrivals[index];
     const mine = channels.filter(c => c.seedKey === seed.key).map(c => ({ ...c, out: byKey.get(c.key) }));
     const amplifying = mine.filter(c => c.out?.state === 'amplifying');
     const states = [...new Set(mine.map(c => c.out?.state).filter(Boolean))];
@@ -196,24 +450,56 @@ export function planOpa(params, { pump, pumps = [], seeds = [] }) {
     const gainW = amplifying.reduce((sum, c) => sum + c.out.signalGainW, 0);
     const idlerW = amplifying.reduce((sum, c) => sum + c.out.idlerOutW, 0);
     const pumpW = amplifying.reduce((sum, c) => sum + c.out.depletedPumpW, 0);
-    let state = unsupported.has(seed.key) ? 'spectrumUnsupported' : amplifying.length ? 'amplifying' : !mine.length ? 'outsideBand'
+    let state = arrival.issue ? 'durationUnavailable' : unsupported.has(seed.key) ? 'spectrumUnsupported'
+      : amplifying.length ? 'amplifying' : !mine.length ? 'outsideBand'
       : states.length === 1 ? states[0] : states.find(s => s !== 'inactive') || 'inactive';
     if (state === 'invalidWavelength') state = 'seedBelowPump';
+    const peakGain = mine.length ? Math.max(...mine.map(c => opaGainAt(settings, c.wl))) : 1;
+    // Seed and pump as whole pulses, for the readout: slices of a chirped
+    // seed each meet the pump at their own time.
+    const whole = arrival.pulse || pumpArrival.pulse
+      ? mixOverlap({ opl: pump.opl, pulse: pumpArrival.pulse }, { opl: seed.opl, pulse: arrival.pulse }) : null;
+    // The pump's gain window, as the allocator resolves it: tau_p / sqrt(Gamma L),
+    // and the band gating by it adds, against the amplified band.
+    const windowFs = pumpArrival.pulse ? pumpArrival.pulse.pulseWidthFs / Math.sqrt(Math.max(1, gammaLForGain(peakGain))) : Infinity;
+    const amplifiedBandRad = signal?.bw > 0 ? 2 * Math.PI * C_NM_PER_FS * signal.bw / (signal.wl * signal.wl) : 0;
+    const gateBandRatio = amplifiedBandRad > 0 ? 4 * Math.LN2 / windowFs / amplifiedBandRad : Infinity;
+    const gainCurve = amplifying.map(c => ({ wl: c.wl, excess: c.powerW > 0 ? c.out.signalGainW / c.powerW : 0 }));
+    const sliceNm = gainCurve.length > 1 ? Math.abs(gainCurve[1].wl - gainCurve[0].wl) : Infinity;
+    // The passing seed must be a negligible part of the output, so that the
+    // gain beam is the output field; and the amplified light must sit in the
+    // core of the seed's spectrum, where the slices resolve its shape.
+    const seedFwhmNm = (seed.spec ? spectrumStats(seed.spec)?.fwhm : null) || seed.bw || 0;
+    const achieved = seed.powerW > 0 ? (seed.powerW + gainW) / seed.powerW : 1;
+    const centred = seedFwhmNm > 0 && signal && Math.abs(signal.wl - (arrival.chirp?.centreNm ?? seed.wl)) <= MAX_CENTRE_OFFSET_FWHM * seedFwhmNm;
+    const phaseKept = Boolean(arrival.chirp && !lines && gateBandRatio <= MAX_GATE_BANDWIDTH_RATIO
+      && signal.bw >= MIN_BAND_SLICES * sliceNm && achieved >= MIN_PHASE_KEPT_GAIN && centred);
+    // Where the amplified light sits in the chirped seed: the gain-weighted
+    // group delay of its slices, fs after the seed's own arrival.
+    const signalDelayFs = arrival.chirp && gainW > 0 ? amplifying.reduce((sum, c) =>
+      sum + c.out.signalGainW * ((c.pulse?.phaseNs ?? 0) - (arrival.pulse.phaseNs ?? 0)) * 1e6, 0) / gainW : 0;
+    const profile = phaseKept ? amplifiedProfile(seed.spec || (seed.bw > 0 ? gaussianSpectrum(seed.wl, seed.bw) : null), gainCurve) : null;
     return {
       key: seed.key, wl: seed.wl, seedW: seed.powerW, gainW, idlerW, pumpW,
       achievedGain: seed.powerW > 0 ? (seed.powerW + gainW) / seed.powerW : 1,
       saturated: amplifying.some(c => c.out.saturated),
       lowOverlap: mine.some(c => c.out?.lowOverlap),
-      overlap: mine.find(c => c.out)?.out?.overlap ?? null,
-      skewNs: mine.find(c => c.out)?.out?.skewNs ?? null,
-      peakGain: mine.length ? Math.max(...mine.map(c => opaGainAt(settings, c.wl))) : 1,
+      overlap: whole && !whole.unsupported ? whole.factor : mine.find(c => c.out)?.out?.overlap ?? null,
+      skewNs: whole && !whole.unsupported ? whole.skewNs : mine.find(c => c.out)?.out?.skewNs ?? null,
+      peakGain,
       signal, idler, idlerWl: idler?.wl ?? idlerAt(seed.wl), state,
+      durationIssue: arrival.issue, arrivingPulse: arrival.pulse, chirp: arrival.chirp,
+      // The one signal beam the OPA emits: seed and gain together.
+      output: amplifying.length ? signalOutput(seed, seed.powerW, signal, gainW) : null,
+      gainWindowFs: windowFs, gateBandRatio, phaseKept: phaseKept && Boolean(profile), amplifiedProfile: profile,
+      signalDelayFs, centred: Boolean(centred),
     };
   });
   const pumpOutW = result ? result.pumpOutW : pump.powerW;
   const any = seedResults.some(s => s.state === 'amplifying');
   return {
     ...withPump,
+    pumpPulse: pumpArrival.pulse,
     state: any ? 'amplifying' : seedResults[0]?.state || 'inactive',
     seeds: seedResults,
     pumpOutW,

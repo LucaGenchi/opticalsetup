@@ -1885,6 +1885,11 @@
      "branch": "evgazbrh>eaceg0bp:hwp>eg3ksg58:pol>e227dxsg:R",
      "bw": 8.30291537,
      "gates": [],
+     "gddRange": [
+      1361.1519,
+      1361.1519
+     ],
+     "gddSum": 34028.1752,
      "intensity": 24.9995427,
      "key": "920.000000000/evgazbrh>eaceg0bp:hwp>eg3ksg58:pol>e227dxsg:R/80/0/150/",
      "opl": 748.148314,
@@ -1993,6 +1998,7 @@
        ]
       }
      },
+     "spreadSum": -1602.19292,
      "wl": 920
     }
    ]

@@ -31,7 +31,7 @@ import { download, esc, manualBeamSVG } from './util.js';
 import { buildShareURL, clearSharedSceneURL, copyText, shareURLForScene, sharedSceneFromURL } from './share.js';
 import { qrSVG } from './qr.js';
 import { buildExampleProposalIssueURL } from './proposal.js';
-import { recommendedTimeScale, TIME_SCALES, elementDriveHz } from './timescale.js';
+import { recommendedTimeScale, nextAutoScale, TIME_SCALES, elementDriveHz } from './timescale.js';
 import { initTheme } from './theme.js';
 
 const $ = id => document.getElementById(id);
@@ -138,8 +138,8 @@ const demoScenes = {
   // a detector, so the gain, the idler and what the pump lost can be read.
   // Each output leaves at the height of its input: pump above, signal below,
   // the idler between them.
-  // At 0.2 MHz the automatic scale is 100 µs/s, too fast to follow the
-  // pulses meeting in the OPA; 1 µs/s shows them.
+  // 1 µs/s shows the 0.2 MHz pulses meeting in the OPA (also the automatic
+  // scale for this rate, stated so the demo does not depend on it).
   opa: () => ({
     timeScaleNs: 1e3,
     elements: [
@@ -1380,19 +1380,20 @@ function syncPulseControls(detail = getPulsePlayback()) {
 // Re-pick the canvas time scale when the scene's slowest animated element
 // changes tier, so a kHz source or a piezo stage is watchable without the
 // user hunting through the dropdown. Only ever fires when the scale would
-// actually change, and never overrides a scale the user set by hand for the
-// same scene shape.
+// actually change. A scale the user set by hand holds until the scene or the
+// display mode calls for a different one (nextAutoScale).
 let lastAutoScale = null; // a number (ns/s), the string 'mechanics', or null (never adjusted)
-let userChoseScale = false;
+let manualScaleFor = null; // the recommendation in force when a scale was picked by hand
+function currentScaleRecommendation() {
+  const recommended = recommendedTimeScale(state.elements, { mode: getPulsePlayback().mode });
+  return { recommended, key: recommended.mechanics ? 'mechanics' : recommended.scaleNsPerSecond };
+}
 function autoAdjustTimeScale() {
-  const recommended = recommendedTimeScale(state.elements);
-  if (!recommended) return;
-  const key = recommended.mechanics ? 'mechanics' : recommended.scaleNsPerSecond;
-  if (key === lastAutoScale) return;
-  if (userChoseScale) return;
-  const previous = lastAutoScale;
-  lastAutoScale = key;
-  if (previous === null && key === 10) return; // already the default
+  const { recommended, key } = currentScaleRecommendation();
+  const next = nextAutoScale(key, { lastAuto: lastAutoScale, manualFor: manualScaleFor });
+  lastAutoScale = next.lastAuto;
+  manualScaleFor = next.manualFor;
+  if (!next.apply) return;
   const label = recommended.mechanics ? 'Mechanics' : (TIME_SCALES.find(s => s.ns === key) || {}).label || '';
   if (recommended.mechanics) setMechanicsMode(true);
   else setPulseSpeed(recommended.scaleNsPerSecond);
@@ -1659,9 +1660,11 @@ function bindToolbar() {
   $('btnZoomFit').addEventListener('click', zoomFit);
   $('btnPulsePlay').addEventListener('click', () => setPulsePlaying(!getPulsePlayback().playing));
   $('btnPulseReset').addEventListener('click', resetPulseTime);
-  $('pulseDisplay').addEventListener('change', e => setPulseDisplayMode(e.target.value));
+  // Physical packets move at c x scale, schematic ones one spacing per
+  // period: the watchable scale depends on which is shown.
+  $('pulseDisplay').addEventListener('change', e => { setPulseDisplayMode(e.target.value); autoAdjustTimeScale(); });
   $('pulseSpeed').addEventListener('change', e => {
-    userChoseScale = true; // an explicit pick wins until the scene changes tier again
+    manualScaleFor = currentScaleRecommendation().key; // an explicit pick wins until the scene changes tier again
     if (e.target.value === 'mechanics') setMechanicsMode(true);
     else setPulseSpeed(parseFloat(e.target.value)); // also clears mechanics mode
   });
@@ -1876,7 +1879,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     // (from the repetition rate) runs too fast to follow; it counts as a
     // chosen scale, so the automatic adjustment leaves it alone.
     if (!Array.isArray(built) && Number.isFinite(built.timeScaleNs)) {
-      userChoseScale = true;
+      manualScaleFor = currentScaleRecommendation().key;
       setPulseSpeed(built.timeScaleNs);
     }
     if (sceneBeams.length) {

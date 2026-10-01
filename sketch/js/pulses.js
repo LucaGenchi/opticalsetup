@@ -383,7 +383,13 @@ export function pulseMarkers(track, timeNs, {
   const spacing = packetSpacing(periodNs, physical, schematicSpacingMm);
   const speed = physical ? C_MM_PER_NS : spacing / periodNs;
   const phaseNs = Number.isFinite(track.pulse.phaseNs) ? track.pulse.phaseNs : 0;
-  const phase = positiveMod((timeNs - phaseNs) * speed, spacing);
+  // A train emitted later (its pulse phase) is drawn as if it had that much
+  // more path, c times the delay, in either mode: in schematic mode too, a
+  // beam timed onto another by its emission phase and one timed by its path
+  // then look coincident where they meet (an OPA's seed, set by path, and the
+  // amplified light, timed by the pump's phase, were drawn 22 mm apart).
+  const leadMm = phaseNs * C_MM_PER_NS;
+  const phase = positiveMod(timeNs * speed - leadMm, spacing);
   const lo = track.opls[0], hi = track.opls.at(-1);
   const k0 = Math.ceil((lo - phase) / spacing);
   const k1 = Math.floor((hi - phase) / spacing);
@@ -394,7 +400,8 @@ export function pulseMarkers(track, timeNs, {
   const markers = [];
   for (let k = k0; k <= k1 && markers.length < maxMarkers; k += stride) {
     const opl = phase + k * spacing;
-    const emissionTimeNs = timeNs - opl / speed;
+    // When this packet left the source, on the source's own clock.
+    const emissionTimeNs = timeNs - (opl + leadMm) / speed + phaseNs;
     const activeGates = (track.pulse.gates || []).filter(gate => opl >= gate.opl);
     const transmission = pulseTransmissionAt({ ...track.pulse, gates: activeGates }, emissionTimeNs);
     if (transmission <= 0) continue;
@@ -435,7 +442,10 @@ export function pulseArrivalsAtPath(track, fromTimeNs, toTimeNs, targetOpl, {
   const spacing = packetSpacing(periodNs, physical, schematicSpacingMm);
   const speed = physical ? C_MM_PER_NS : spacing / periodNs;
   const phaseNs = Number.isFinite(track.pulse.phaseNs) ? track.pulse.phaseNs : 0;
-  const firstArrival = phaseNs + targetOpl / speed;
+  // As pulseMarkers draws them: the emission phase counts as c times its
+  // delay of extra path.
+  const leadMm = phaseNs * C_MM_PER_NS;
+  const firstArrival = (targetOpl + leadMm) / speed;
   const firstIndex = Math.floor((fromTimeNs - firstArrival) / periodNs) + 1;
   const lastIndex = Math.floor((toTimeNs - firstArrival + 1e-9) / periodNs);
   if (lastIndex < firstIndex) return [];
@@ -445,7 +455,7 @@ export function pulseArrivalsAtPath(track, fromTimeNs, toTimeNs, targetOpl, {
   const arrivals = [];
   for (let i = firstIndex; i <= lastIndex && arrivals.length < maxEvents; i += stride) {
     const timeNs = firstArrival + i * periodNs;
-    const emissionTimeNs = timeNs - targetOpl / speed;
+    const emissionTimeNs = timeNs - (targetOpl + leadMm) / speed + phaseNs;
     const transmission = pulseTransmissionAt({ ...track.pulse, gates: activeGates }, emissionTimeNs);
     if (transmission > 1e-9) arrivals.push({ timeNs, transmission });
   }
