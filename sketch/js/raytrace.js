@@ -3612,6 +3612,38 @@ function interact(ray, hit) {
         split.push({ d, intensity: ray.intensity * (1 - inBandR), tag: 'T', retainWeak: true });
         return split;
       }
+      // A band (reflector or bandpass) with an edge inside a sampled or
+      // Gaussian profile cuts it into pieces as the Filter's notch does: the
+      // band and each side travel as their own ray with an exact edge, since
+      // one sampled profile spanning the gap would interpolate light back into
+      // it. Each piece is integrated on its own grid, and the sides take
+      // exactly the power the band does not, so the ports conserve it. A
+      // profile clear of both edges takes the integration below unchanged.
+      const notch = data.dtype === 'notch';
+      if ((notch || data.dtype === 'bandpass') && ray.spec && ray.spec.kind !== 'flat' && ray.spec.kind !== 'lines') {
+        const [lo, hi] = spectrumSupport(ray.spec);
+        const pb = passbandOf(data);
+        // An edge on the support's end counts: the band is closed, so it
+        // already claims that endpoint.
+        if (pb.some(edge => edge >= lo && edge <= hi)) {
+          const rd = reflect(d, n);
+          const weak = partial ? { retainWeak: true } : {};
+          const bandPorts = (notch ? [[rd, 'R', inBandR], [d, 'Tb', 1 - inBandR]] : [[d, 'T', 1]]).filter(([, , share]) => share > 0);
+          const sideDir = notch ? d : rd, sideTag = notch ? 'T' : 'R';
+          const edge = 1e-6 * (hi - lo);
+          const band = spectrumSlice(ray.spec, Math.max(lo, pb[0]), Math.min(hi, pb[1]));
+          const sides = [[lo, pb[0] - edge], [pb[1] + edge, hi]].map(([a, b]) => (b > a ? spectrumSlice(ray.spec, a, b) : null));
+          const sideTotal = sides.reduce((sum, p) => sum + (p?.fraction ?? 0), 0);
+          // A piece too faint (or too thin) to keep hands its share to the
+          // other port.
+          const bandFraction = sideTotal > 0 ? (band?.fraction ?? 0) : 1;
+          const sideScale = sideTotal > 0 ? Math.max(0, 1 - bandFraction) / sideTotal : 0;
+          const piece = (dir, p, share, tag) => ({ d: dir, wl: p.wl, bw: p.bw, spec: p.spec, intensity: ray.intensity * share, tag, ...weak });
+          const out = band ? bandPorts.map(([dir, tag, share]) => piece(dir, band, bandFraction * share, tag)) : [];
+          sides.forEach((p, i) => { if (p) out.push(piece(sideDir, p, p.fraction * sideScale, `${sideTag}${i}`)); });
+          return out;
+        }
+      }
       // A Gaussian (or already-filtered) input has no closed-form box
       // overlap with the passband — integrate the real profile numerically.
       if (ray.spec && ray.spec.kind !== 'flat') {
