@@ -192,6 +192,17 @@ function integrate(values, step) {
   return sum * step;
 }
 
+// The incident power over [a, b] on the same GRID-point rule a slice is
+// integrated with. A fraction is a ratio of two integrals; taking the part
+// outside a slice on this rule too, rather than the whole profile on a
+// different grid, makes a slice covering the whole profile exactly 1 and a
+// transmission uniform over it exactly that value.
+function incidentOver(spec, a, b) {
+  if (!(b > a)) return 0;
+  const step = (b - a) / (GRID - 1);
+  return integrate(Array.from({ length: GRID }, (_, i) => Math.max(0, spectrumWeight(spec, a + step * i))), step);
+}
+
 // Multiply a ray's spectrum by a transmission function T(wavelength) -> [0,1]
 // (a hard passband edge, or an oscillatory Airy transmission — anything).
 // Returns the surviving fraction of incident power together with the
@@ -224,13 +235,19 @@ export function applyTransmission(spec, centerWl, transmissionFn) {
   const from = lo + locateStep * Math.max(0, first - 1);
   const to = lo + locateStep * Math.min(LOCATE_GRID - 1, last + 1);
   const step = (to - from) / (GRID - 1);
-  const shaped = [];
+  const shaped = [], sliceIncident = [];
   for (let i = 0; i < GRID; i++) {
     const wl = from + step * i;
-    shaped.push(Math.max(0, spectrumWeight(spec, wl)) * Math.max(0, Math.min(1, transmissionFn(wl))));
+    sliceIncident.push(Math.max(0, spectrumWeight(spec, wl)));
+    shaped.push(sliceIncident[i] * Math.max(0, Math.min(1, transmissionFn(wl))));
   }
   const transmittedTotal = integrate(shaped, step);
-  const fraction = transmittedTotal / incidentTotal;
+  // A line spectrum's lines are narrower than either grid's spacing, so
+  // resampling the parts outside the slice would miss lines there; it keeps
+  // the locate-grid total until lines are weighed one by one.
+  const total = spec.kind === 'lines' ? incidentTotal
+    : incidentOver(spec, lo, from) + integrate(sliceIncident, step) + incidentOver(spec, to, hi);
+  const fraction = total > 0 ? transmittedTotal / total : 0;
   const peak = Math.max(...shaped);
   if (!(fraction > BLOCK) || !(peak > 0)) return null;
   const profile = { kind: 'sampled', lo: from, hi: to, w: shaped.map(v => v / peak) };
@@ -258,10 +275,9 @@ export function spectrumSlice(spec, lo, hi) {
     const step = (b - a) / (n - 1);
     return { step, w: Array.from({ length: n }, (_, i) => Math.max(0, spectrumWeight(spec, a + step * i))) };
   };
-  const whole = sample(supportLo, supportHi, LOCATE_GRID);
-  const total = integrate(whole.w, whole.step);
   const part = sample(from, to, GRID);
   const kept = integrate(part.w, part.step);
+  const total = incidentOver(spec, supportLo, from) + kept + incidentOver(spec, to, supportHi);
   const peak = Math.max(...part.w);
   if (!(total > 0) || !(peak > 0)) return null;
   const fraction = Math.min(1, kept / total);

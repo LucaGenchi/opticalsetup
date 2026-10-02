@@ -4,8 +4,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  gaussianSpectrum, flatSpectrum, spectrumWeight, spectrumSamples, spectrumStats,
-  applyTransmission, transformLimitedBandwidthNm, transformLimitedDurationFs, resolveSourceSpectrum,
+  gaussianSpectrum, flatSpectrum, lineSpectrum, spectrumWeight, spectrumSamples, spectrumStats,
+  applyTransmission, spectrumSlice, spectrumSupport, transformLimitedBandwidthNm, transformLimitedDurationFs, resolveSourceSpectrum,
 } from '../sketch/js/spectrum.js';
 import { createElement, formatPower, getVisualBounds, peakPowerW, probeScale, registry } from '../sketch/js/elements.js';
 import { traceAll, detectorReading } from '../sketch/js/raytrace.js';
@@ -75,6 +75,34 @@ test('applyTransmission narrows a Gaussian correctly clipped by a bandpass', () 
   assert.ok(result.fraction > 0 && result.fraction < 1, 'only part of the Gaussian survives');
   nearly(result.wl, 532, 1); // centred bandpass keeps the centroid near 532
   assert.ok(result.bw < 40, 'the surviving slice is narrower than the original FWHM');
+});
+
+test('a transmission uniform over the whole profile passes exactly that share', () => {
+  // The transmitted and incident integrals share one grid rule, so passing
+  // the whole profile loses nothing to a mismatch between two grids.
+  const g = gaussianSpectrum(532, 40);
+  const filtered = applyTransmission(g, 532, wl => (wl >= 520 && wl <= 544 ? 1 : 0)).spec;
+  for (const [name, spec] of [['Gaussian', g], ['already filtered', filtered]]) {
+    nearly(applyTransmission(spec, 532, () => 1).fraction, 1, 1e-12);
+    nearly(applyTransmission(spec, 532, () => 0.37).fraction, 0.37, 1e-12);
+    // A box wider than the profile is uniform over it too.
+    nearly(applyTransmission(spec, 532, wl => (wl >= 100 && wl <= 2000 ? 1 : 0)).fraction, 1, 1e-12);
+    const [lo, hi] = spectrumSupport(spec);
+    nearly(spectrumSlice(spec, lo, hi).fraction, 1, 1e-12);
+    nearly(spectrumSlice(spec, lo - 50, hi + 50).fraction, 1, 1e-12);
+    // Boundary: nothing passed, or less than the blocking floor, is nothing.
+    assert.equal(applyTransmission(spec, 532, () => 0), null, name);
+    assert.equal(applyTransmission(spec, 532, () => 5e-5), null, name);
+  }
+});
+
+test('a line spectrum keeps the whole-profile total its fractions had', () => {
+  // Lines are narrower than either grid's spacing; resampling outside the
+  // slice would miss them and shrink a fraction further, so their total stays
+  // the one the locate grid measures. Weighing each line exactly is separate.
+  const lines = lineSpectrum([{ nm: 400, w: 1 }, { nm: 500, w: 1 }, { nm: 600, w: 1 }]);
+  nearly(applyTransmission(lines, 500, wl => (wl >= 490 && wl <= 510 ? 1 : 0)).fraction, 0.078125, 1e-12);
+  nearly(applyTransmission(lines, 500, () => 1).fraction, 1, 1e-12);
 });
 
 test('time-bandwidth product: Gaussian pulse bandwidth matches the textbook benchmark', () => {

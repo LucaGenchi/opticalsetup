@@ -22,7 +22,7 @@
    796,
    378
   ],
-  "digest": "8eaf14a1"
+  "digest": "ab52aaa3"
  },
  "drawnElements": {
   "figureframe:lp4-frame": "d687d824",
@@ -61,7 +61,7 @@
    "digest": "1b04a73f"
   },
   {
-   "intensity": 0.999981709,
+   "intensity": 1,
    "color": "#8b1a1a",
    "points": 5,
    "opl": [
@@ -76,7 +76,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "8addbaad"
+   "digest": "edae3223"
   }
  ],
  "writeHits": {
