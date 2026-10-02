@@ -242,7 +242,11 @@ export function applyTransmission(spec, centerWl, transmissionFn) {
     shaped.push(sliceIncident[i] * Math.max(0, Math.min(1, transmissionFn(wl))));
   }
   const transmittedTotal = integrate(shaped, step);
-  const total = incidentOver(spec, lo, from) + integrate(sliceIncident, step) + incidentOver(spec, to, hi);
+  // A line spectrum's lines are narrower than either grid's spacing, so
+  // resampling the parts outside the slice would miss lines there; it keeps
+  // the locate-grid total until lines are weighed one by one.
+  const total = spec.kind === 'lines' ? incidentTotal
+    : incidentOver(spec, lo, from) + integrate(sliceIncident, step) + incidentOver(spec, to, hi);
   const fraction = total > 0 ? transmittedTotal / total : 0;
   const peak = Math.max(...shaped);
   if (!(fraction > BLOCK) || !(peak > 0)) return null;

@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  gaussianSpectrum, flatSpectrum, spectrumWeight, spectrumSamples, spectrumStats,
+  gaussianSpectrum, flatSpectrum, lineSpectrum, spectrumWeight, spectrumSamples, spectrumStats,
   applyTransmission, spectrumSlice, spectrumSupport, transformLimitedBandwidthNm, transformLimitedDurationFs, resolveSourceSpectrum,
 } from '../sketch/js/spectrum.js';
 import { createElement, formatPower, getVisualBounds, peakPowerW, probeScale, registry } from '../sketch/js/elements.js';
@@ -94,6 +94,15 @@ test('a transmission uniform over the whole profile passes exactly that share', 
     assert.equal(applyTransmission(spec, 532, () => 0), null, name);
     assert.equal(applyTransmission(spec, 532, () => 5e-5), null, name);
   }
+});
+
+test('a line spectrum keeps the whole-profile total its fractions had', () => {
+  // Lines are narrower than either grid's spacing; resampling outside the
+  // slice would miss them and shrink a fraction further, so their total stays
+  // the one the locate grid measures. Weighing each line exactly is separate.
+  const lines = lineSpectrum([{ nm: 400, w: 1 }, { nm: 500, w: 1 }, { nm: 600, w: 1 }]);
+  nearly(applyTransmission(lines, 500, wl => (wl >= 490 && wl <= 510 ? 1 : 0)).fraction, 0.078125, 1e-12);
+  nearly(applyTransmission(lines, 500, () => 1).fraction, 1, 1e-12);
 });
 
 test('time-bandwidth product: Gaussian pulse bandwidth matches the textbook benchmark', () => {
