@@ -3612,6 +3612,38 @@ function interact(ray, hit) {
         split.push({ d, intensity: ray.intensity * (1 - inBandR), tag: 'T', retainWeak: true });
         return split;
       }
+      // A band (reflector or bandpass) with an edge inside a sampled or
+      // Gaussian profile cuts it into pieces as the Filter's notch does: the
+      // band and each side travel as their own ray with an exact edge, since
+      // one sampled profile spanning the gap would interpolate light back into
+      // it. Each piece is integrated on its own grid, and the sides take
+      // exactly the power the band does not, so the ports conserve it. A
+      // profile clear of both edges takes the integration below unchanged.
+      const notch = data.dtype === 'notch';
+      if ((notch || data.dtype === 'bandpass') && ray.spec && ray.spec.kind !== 'flat' && ray.spec.kind !== 'lines') {
+        const [lo, hi] = spectrumSupport(ray.spec);
+        const pb = passbandOf(data);
+        // An edge on the support's end counts: the band is closed, so it
+        // already claims that endpoint.
+        if (pb.some(edge => edge >= lo && edge <= hi)) {
+          const rd = reflect(d, n);
+          const weak = partial ? { retainWeak: true } : {};
+          const bandPorts = (notch ? [[rd, 'R', inBandR], [d, 'Tb', 1 - inBandR]] : [[d, 'T', 1]]).filter(([, , share]) => share > 0);
+          const sideDir = notch ? d : rd, sideTag = notch ? 'T' : 'R';
+          const edge = 1e-6 * (hi - lo);
+          const band = spectrumSlice(ray.spec, Math.max(lo, pb[0]), Math.min(hi, pb[1]));
+          const sides = [[lo, pb[0] - edge], [pb[1] + edge, hi]].map(([a, b]) => (b > a ? spectrumSlice(ray.spec, a, b) : null));
+          const sideTotal = sides.reduce((sum, p) => sum + (p?.fraction ?? 0), 0);
+          // A piece too faint (or too thin) to keep hands its share to the
+          // other port.
+          const bandFraction = sideTotal > 0 ? (band?.fraction ?? 0) : 1;
+          const sideScale = sideTotal > 0 ? Math.max(0, 1 - bandFraction) / sideTotal : 0;
+          const piece = (dir, p, share, tag) => ({ d: dir, wl: p.wl, bw: p.bw, spec: p.spec, intensity: ray.intensity * share, tag, ...weak });
+          const out = band ? bandPorts.map(([dir, tag, share]) => piece(dir, band, bandFraction * share, tag)) : [];
+          sides.forEach((p, i) => { if (p) out.push(piece(sideDir, p, p.fraction * sideScale, `${sideTag}${i}`)); });
+          return out;
+        }
+      }
       // A Gaussian (or already-filtered) input has no closed-form box
       // overlap with the passband — integrate the real profile numerically.
       if (ray.spec && ray.spec.kind !== 'flat') {
@@ -3619,23 +3651,9 @@ function interact(ray, hit) {
         const out = [];
         const weak = partial ? { retainWeak: true } : {};
         const trans = applyTransmission(ray.spec, ray.wl, T);
+        if (trans) out.push({ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * trans.fraction, tag: 'T', ...weak });
         const refl = applyTransmission(ray.spec, ray.wl, wl => 1 - T(wl));
-        // When a band edge cuts the spectrum, whichever port takes both sides of
-        // it (a band reflector's transmission, a bandpass's reflection) holds
-        // two hard edges in one grid, which under-counts them; the band itself
-        // is one slice the integration resolves finely. So that port takes
-        // whatever the band's port does not, and the two conserve power.
-        // A spectrum wholly on one side of both edges keeps each port's own
-        // integral, as a bandpass enclosing it gives it. An edge on the
-        // support's end counts as cutting: the band is closed, so the endpoint
-        // already belongs to it.
-        const [specLo, specHi] = spectrumSupport(ray.spec);
-        const cut = passbandOf(data).some(edge => edge >= specLo && edge <= specHi);
-        let tFraction = trans?.fraction ?? 0, rFraction = refl?.fraction ?? 0;
-        if (cut && data.dtype === 'notch') tFraction = Math.max(0, 1 - rFraction);
-        else if (cut && data.dtype === 'bandpass') rFraction = Math.max(0, 1 - tFraction);
-        if (trans) out.push({ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * tFraction, tag: 'T', ...weak });
-        if (refl) out.push({ d: reflect(d, n), wl: refl.wl, bw: refl.bw, spec: refl.spec, intensity: ray.intensity * rFraction, tag: 'R', ...weak });
+        if (refl) out.push({ d: reflect(d, n), wl: refl.wl, bw: refl.bw, spec: refl.spec, intensity: ray.intensity * refl.fraction, tag: 'R', ...weak });
         return out;
       }
       // flat (supercontinuum) or unspecified box: exact analytic overlap

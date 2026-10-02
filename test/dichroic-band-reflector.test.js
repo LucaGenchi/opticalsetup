@@ -216,3 +216,29 @@ test('a band edge exactly at the end of the spectrum counts as cutting it', () =
   assert.equal(outside.r, 0);
   assert.equal(outside.t, gaussianThrough({ dtype: 'bandpass', center: 532, band: 1000 }).t);
 });
+
+test('the light either side of a band carries none of the band with it', () => {
+  // The sides leave as separate pieces with exact edges, as the Filter's
+  // notch gives them, so a bandpass of the same band behind the port that
+  // carries them finds nothing. One profile spanning the gap would put
+  // interpolated light back into it.
+  const behind = (dtype, port, withBandpass = true) => {
+    const src = createElement('pulsedlaser', 60, 160);
+    Object.assign(src.params, { beamMode: 'line', wavelength: 532, transformLimited: false, bandwidth: 40 });
+    const mirror = createElement('dichroic', 200, 160);
+    mirror.rot = 135;
+    Object.assign(mirror.params, { dtype, center: 532, band: 20 });
+    const bandpass = createElement('filter', port === 'through' ? 330 : 200, port === 'through' ? 160 : 290);
+    if (port !== 'through') bandpass.rot = 90;
+    Object.assign(bandpass.params, { ftype: 'bandpass', center: 532, band: 20 });
+    const detector = createElement('detector', port === 'through' ? 460 : 200, port === 'through' ? 160 : 420);
+    if (port !== 'through') detector.rot = 90;
+    traceScene([src, mirror, ...(withBandpass ? [bandpass] : []), detector]);
+    return detectorReading(detector.id)?.signal ?? 0;
+  };
+  // Without the bandpass the sides do reach the detector (exact: 0.5559).
+  assert.ok(Math.abs(behind('notch', 'through', false) - 0.5559) < 0.01);
+  assert.ok(Math.abs(behind('bandpass', 'reflected', false) - 0.5559) < 0.01);
+  assert.equal(behind('notch', 'through'), 0, 'band reflector, transmitted sides');
+  assert.equal(behind('bandpass', 'reflected'), 0, 'bandpass dichroic, reflected sides');
+});
