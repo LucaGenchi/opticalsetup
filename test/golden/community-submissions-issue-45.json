@@ -24,7 +24,7 @@
    500.8058,
    274
   ],
-  "digest": "87158617"
+  "digest": "be729b5b"
  },
  "drawnElements": {
   "pulsedlaser:ejwmt7kk": "9417886c",
@@ -111,7 +111,7 @@
    "digest": "da37b315"
   },
   {
-   "intensity": 0.799985367,
+   "intensity": 0.8,
    "color": "#8b1a1a",
    "points": 3,
    "opl": [
@@ -126,10 +126,10 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "3fe2d012"
+   "digest": "8cfea8af"
   },
   {
-   "intensity": 0.786064825,
+   "intensity": 0.786079203,
    "color": "#8b1a1a",
    "points": 2,
    "opl": [
@@ -144,10 +144,10 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "2bca761b"
+   "digest": "cb48633f"
   },
   {
-   "intensity": 0.62885186,
+   "intensity": 0.628863362,
    "color": "#8b1a1a",
    "points": 3,
    "opl": [
@@ -162,10 +162,10 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "056da9b7"
+   "digest": "fae0f95d"
   },
   {
-   "intensity": 0.62885186,
+   "intensity": 0.628863362,
    "color": "#8b1a1a",
    "points": 3,
    "opl": [
@@ -180,7 +180,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "2eb006a9"
+   "digest": "9a5cce19"
   },
   {
    "intensity": 0.245649751,
@@ -201,7 +201,7 @@
    "digest": "f3c0d29a"
   },
   {
-   "intensity": 0.242833102,
+   "intensity": 0.242843918,
    "color": "#00ff40",
    "points": 2,
    "opl": [
@@ -216,10 +216,10 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "2b9fa3bf"
+   "digest": "62e77759"
   },
   {
-   "intensity": 0.00263292691,
+   "intensity": 0.00263304731,
    "color": "#b3ff00",
    "points": 7,
    "opl": [
@@ -234,10 +234,10 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "16822860"
+   "digest": "aa2a5253"
   },
   {
-   "intensity": 0.000526585382,
+   "intensity": 0.000526609463,
    "color": "#b3ff00",
    "points": 3,
    "opl": [
@@ -252,10 +252,10 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "a7ae1c4b"
+   "digest": "00927a8c"
   },
   {
-   "intensity": 0.00210634153,
+   "intensity": 0.00210643785,
    "color": "#b3ff00",
    "points": 3,
    "opl": [
@@ -270,7 +270,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "e02eee58"
+   "digest": "87ac9277"
   },
   {
    "intensity": 0.245649751,
@@ -291,7 +291,7 @@
    "digest": "be280708"
   },
   {
-   "intensity": 0.242833102,
+   "intensity": 0.242843918,
    "color": "#00ff40",
    "points": 2,
    "opl": [
@@ -306,10 +306,10 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "490d4ee2"
+   "digest": "9d3e937c"
   },
   {
-   "intensity": 0.00263292691,
+   "intensity": 0.00263304731,
    "color": "#b3ff00",
    "points": 7,
    "opl": [
@@ -324,10 +324,10 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "ac49b01c"
+   "digest": "28c23d77"
   },
   {
-   "intensity": 0.000526585382,
+   "intensity": 0.000526609463,
    "color": "#b3ff00",
    "points": 3,
    "opl": [
@@ -342,10 +342,10 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "a310a019"
+   "digest": "0f1a2108"
   },
   {
-   "intensity": 0.00210634153,
+   "intensity": 0.00210643785,
    "color": "#b3ff00",
    "points": 3,
    "opl": [
@@ -360,7 +360,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "61ed2790"
+   "digest": "7841dc15"
   }
  ],
  "writeHits": {
@@ -396,12 +396,12 @@
     "dark": false,
     "darkOutput": 0.0001,
     "depositedProfile": null,
-    "depositedSignal": 0.000327081665,
+    "depositedSignal": 0.000327102216,
     "detectorType": "PMT",
     "gain": 10,
     "interference": null,
     "normalizedStokes": null,
-    "outputSignal": 0.00327081665,
+    "outputSignal": 0.00327102216,
     "polarization": "Unpolarized",
     "profile": null,
     "profileColors": null,
@@ -412,7 +412,7 @@
      "branches": [
       {
        "gates": [],
-       "weight": 0.000327081665
+       "weight": 0.000327102216
       }
      ],
      "dispersionModel": "Gaussian GDD · transform-limited",
@@ -460,11 +460,11 @@
     "readoutKind": "pmt",
     "samples": 18,
     "saturated": false,
-    "signal": 0.000327081665,
-    "snr": 32.7081665,
+    "signal": 0.000327102216,
+    "snr": 32.7102216,
     "sourceFractions": [
      {
-      "fraction": 0.000327081665,
+      "fraction": 0.000327102216,
       "sourceId": "ejwmt7kk"
      }
     ],
@@ -473,7 +473,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#0045ff",
       "continuum": true,
-      "power": 8.25326485e-8,
+      "power": 8.2537834e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 449.7,
       "widthNm": 2.14412813
@@ -482,7 +482,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#0050ff",
       "continuum": true,
-      "power": 2.31014167e-7,
+      "power": 2.31028682e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 451.8,
       "widthNm": 2.14412813
@@ -491,7 +491,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#005cff",
       "continuum": true,
-      "power": 3.16969413e-7,
+      "power": 3.16989328e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 454,
       "widthNm": 2.14412813
@@ -500,7 +500,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#0067ff",
       "continuum": true,
-      "power": 4.288786e-7,
+      "power": 4.28905547e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 456.1,
       "widthNm": 2.14412813
@@ -509,7 +509,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#0072ff",
       "continuum": true,
-      "power": 5.76325486e-7,
+      "power": 5.76361697e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 458.2,
       "widthNm": 2.14412813
@@ -518,7 +518,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#007cff",
       "continuum": true,
-      "power": 7.6091712e-7,
+      "power": 7.60964929e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 460.4,
       "widthNm": 2.14412813
@@ -527,7 +527,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#0087ff",
       "continuum": true,
-      "power": 9.93780015e-7,
+      "power": 9.93842454e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 462.5,
       "widthNm": 2.14412813
@@ -536,7 +536,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#0091ff",
       "continuum": true,
-      "power": 0.00000128358862,
+      "power": 0.00000128366927,
       "sourceId": "em9z1cz9",
       "wavelength": 464.7,
       "widthNm": 2.14412813
@@ -545,7 +545,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#009bff",
       "continuum": true,
-      "power": 0.00000163172576,
+      "power": 0.00000163182829,
       "sourceId": "em9z1cz9",
       "wavelength": 466.8,
       "widthNm": 2.14412813
@@ -554,7 +554,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00a5ff",
       "continuum": true,
-      "power": 0.00000205459156,
+      "power": 0.00000205472065,
       "sourceId": "em9z1cz9",
       "wavelength": 469,
       "widthNm": 2.14412813
@@ -563,7 +563,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00aeff",
       "continuum": true,
-      "power": 0.00000255276721,
+      "power": 0.0000025529276,
       "sourceId": "em9z1cz9",
       "wavelength": 471.1,
       "widthNm": 2.14412813
@@ -572,7 +572,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00b8ff",
       "continuum": true,
-      "power": 0.00000312591063,
+      "power": 0.00000312610703,
       "sourceId": "em9z1cz9",
       "wavelength": 473.3,
       "widthNm": 2.14412813
@@ -581,7 +581,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00c1ff",
       "continuum": true,
-      "power": 0.00000379135144,
+      "power": 0.00000379158965,
       "sourceId": "em9z1cz9",
       "wavelength": 475.4,
       "widthNm": 2.14412813
@@ -590,7 +590,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00cbff",
       "continuum": true,
-      "power": 0.0000045341062,
+      "power": 0.00000453439108,
       "sourceId": "em9z1cz9",
       "wavelength": 477.5,
       "widthNm": 2.14412813
@@ -599,7 +599,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00d4ff",
       "continuum": true,
-      "power": 0.00000535215796,
+      "power": 0.00000535249423,
       "sourceId": "em9z1cz9",
       "wavelength": 479.7,
       "widthNm": 2.14412813
@@ -608,7 +608,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00ddff",
       "continuum": true,
-      "power": 0.00000624611838,
+      "power": 0.00000624651083,
       "sourceId": "em9z1cz9",
       "wavelength": 481.8,
       "widthNm": 2.14412813
@@ -617,7 +617,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00e6ff",
       "continuum": true,
-      "power": 0.0000071929585,
+      "power": 0.00000719341044,
       "sourceId": "em9z1cz9",
       "wavelength": 484,
       "widthNm": 2.14412813
@@ -626,7 +626,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00efff",
       "continuum": true,
-      "power": 0.00000818071767,
+      "power": 0.00000818123167,
       "sourceId": "em9z1cz9",
       "wavelength": 486.1,
       "widthNm": 2.14412813
@@ -635,7 +635,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00f8ff",
       "continuum": true,
-      "power": 0.00000918871108,
+      "power": 0.00000918928841,
       "sourceId": "em9z1cz9",
       "wavelength": 488.3,
       "widthNm": 2.14412813
@@ -644,7 +644,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00fffb",
       "continuum": true,
-      "power": 0.0000101923275,
+      "power": 0.0000101929679,
       "sourceId": "em9z1cz9",
       "wavelength": 490.4,
       "widthNm": 2.14412813
@@ -653,7 +653,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00ffe4",
       "continuum": true,
-      "power": 0.0000111624202,
+      "power": 0.0000111631216,
       "sourceId": "em9z1cz9",
       "wavelength": 492.6,
       "widthNm": 2.14412813
@@ -662,7 +662,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00ffce",
       "continuum": true,
-      "power": 0.0000120719652,
+      "power": 0.0000120727237,
       "sourceId": "em9z1cz9",
       "wavelength": 494.7,
       "widthNm": 2.14412813
@@ -671,7 +671,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00ffb7",
       "continuum": true,
-      "power": 0.0000128996707,
+      "power": 0.0000129004812,
       "sourceId": "em9z1cz9",
       "wavelength": 496.8,
       "widthNm": 2.14412813
@@ -680,7 +680,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00ff9e",
       "continuum": true,
-      "power": 0.0000135994438,
+      "power": 0.0000136002983,
       "sourceId": "em9z1cz9",
       "wavelength": 499,
       "widthNm": 2.14412813
@@ -689,7 +689,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00ff85",
       "continuum": true,
-      "power": 0.0000141645796,
+      "power": 0.0000141654696,
       "sourceId": "em9z1cz9",
       "wavelength": 501.1,
       "widthNm": 2.14412813
@@ -698,7 +698,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00ff6a",
       "continuum": true,
-      "power": 0.0000145769625,
+      "power": 0.0000145778784,
       "sourceId": "em9z1cz9",
       "wavelength": 503.3,
       "widthNm": 2.14412813
@@ -707,7 +707,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00ff4f",
       "continuum": true,
-      "power": 0.0000147958493,
+      "power": 0.000014796779,
       "sourceId": "em9z1cz9",
       "wavelength": 505.4,
       "widthNm": 2.14412813
@@ -716,7 +716,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00ff2f",
       "continuum": true,
-      "power": 0.0000148432397,
+      "power": 0.0000148441723,
       "sourceId": "em9z1cz9",
       "wavelength": 507.6,
       "widthNm": 2.14412813
@@ -725,7 +725,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00ff09",
       "continuum": true,
-      "power": 0.0000147050439,
+      "power": 0.0000147059678,
       "sourceId": "em9z1cz9",
       "wavelength": 509.7,
       "widthNm": 2.14412813
@@ -734,7 +734,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#0eff00",
       "continuum": true,
-      "power": 0.0000143762782,
+      "power": 0.0000143771815,
       "sourceId": "em9z1cz9",
       "wavelength": 511.9,
       "widthNm": 2.14412813
@@ -743,7 +743,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#1aff00",
       "continuum": true,
-      "power": 0.0000138906787,
+      "power": 0.0000138915515,
       "sourceId": "em9z1cz9",
       "wavelength": 514,
       "widthNm": 2.14412813
@@ -752,7 +752,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#24ff00",
       "continuum": true,
-      "power": 0.0000132475139,
+      "power": 0.0000132483462,
       "sourceId": "em9z1cz9",
       "wavelength": 516.1,
       "widthNm": 2.14412813
@@ -761,7 +761,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#2eff00",
       "continuum": true,
-      "power": 0.0000124751518,
+      "power": 0.0000124759357,
       "sourceId": "em9z1cz9",
       "wavelength": 518.3,
       "widthNm": 2.14412813
@@ -770,7 +770,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#37ff00",
       "continuum": true,
-      "power": 0.000011607283,
+      "power": 0.0000116080122,
       "sourceId": "em9z1cz9",
       "wavelength": 520.4,
       "widthNm": 2.14412813
@@ -779,7 +779,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#41ff00",
       "continuum": true,
-      "power": 0.0000106588499,
+      "power": 0.0000106595196,
       "sourceId": "em9z1cz9",
       "wavelength": 522.6,
       "widthNm": 2.14412813
@@ -788,7 +788,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#49ff00",
       "continuum": true,
-      "power": 0.00000966754914,
+      "power": 0.00000966815656,
       "sourceId": "em9z1cz9",
       "wavelength": 524.7,
       "widthNm": 2.14412813
@@ -797,7 +797,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#52ff00",
       "continuum": true,
-      "power": 0.00000865898024,
+      "power": 0.00000865952429,
       "sourceId": "em9z1cz9",
       "wavelength": 526.9,
       "widthNm": 2.14412813
@@ -806,7 +806,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#5aff00",
       "continuum": true,
-      "power": 0.00000765961487,
+      "power": 0.00000766009613,
       "sourceId": "em9z1cz9",
       "wavelength": 529,
       "widthNm": 2.14412813
@@ -815,7 +815,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#62ff00",
       "continuum": true,
-      "power": 0.00000668973428,
+      "power": 0.0000066901546,
       "sourceId": "em9z1cz9",
       "wavelength": 531.1,
       "widthNm": 2.14412813
@@ -824,7 +824,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#6aff00",
       "continuum": true,
-      "power": 0.00000576859381,
+      "power": 0.00000576895626,
       "sourceId": "em9z1cz9",
       "wavelength": 533.3,
       "widthNm": 2.14412813
@@ -833,7 +833,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#71ff00",
       "continuum": true,
-      "power": 0.00000491599025,
+      "power": 0.00000491629912,
       "sourceId": "em9z1cz9",
       "wavelength": 535.4,
       "widthNm": 2.14412813
@@ -842,7 +842,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#79ff00",
       "continuum": true,
-      "power": 0.00000413279738,
+      "power": 0.00000413305704,
       "sourceId": "em9z1cz9",
       "wavelength": 537.6,
       "widthNm": 2.14412813
@@ -851,7 +851,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#80ff00",
       "continuum": true,
-      "power": 0.00000343283618,
+      "power": 0.00000343305186,
       "sourceId": "em9z1cz9",
       "wavelength": 539.7,
       "widthNm": 2.14412813
@@ -860,7 +860,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#88ff00",
       "continuum": true,
-      "power": 0.00000281762388,
+      "power": 0.00000281780091,
       "sourceId": "em9z1cz9",
       "wavelength": 541.9,
       "widthNm": 2.14412813
@@ -869,7 +869,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#8fff00",
       "continuum": true,
-      "power": 0.00000227881556,
+      "power": 0.00000227895874,
       "sourceId": "em9z1cz9",
       "wavelength": 544,
       "widthNm": 2.14412813
@@ -878,7 +878,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#96ff00",
       "continuum": true,
-      "power": 0.00000182478272,
+      "power": 0.00000182489737,
       "sourceId": "em9z1cz9",
       "wavelength": 546.2,
       "widthNm": 2.14412813
@@ -887,7 +887,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#9dff00",
       "continuum": true,
-      "power": 0.00000144196639,
+      "power": 0.00000144205699,
       "sourceId": "em9z1cz9",
       "wavelength": 548.3,
       "widthNm": 2.14412813
@@ -930,12 +930,12 @@
     "dark": false,
     "darkOutput": 0.0001,
     "depositedProfile": null,
-    "depositedSignal": 0.000554790008,
+    "depositedSignal": 0.000554824865,
     "detectorType": "PMT",
     "gain": 10,
     "interference": null,
     "normalizedStokes": null,
-    "outputSignal": 0.00554790008,
+    "outputSignal": 0.00554824865,
     "polarization": "Unpolarized",
     "profile": null,
     "profileColors": null,
@@ -946,7 +946,7 @@
      "branches": [
       {
        "gates": [],
-       "weight": 0.000554790008
+       "weight": 0.000554824865
       }
      ],
      "dispersionModel": "Gaussian GDD · transform-limited",
@@ -994,11 +994,11 @@
     "readoutKind": "pmt",
     "samples": 5,
     "saturated": false,
-    "signal": 0.000554790008,
-    "snr": 55.4790008,
+    "signal": 0.000554824865,
+    "snr": 55.4824865,
     "sourceFractions": [
      {
-      "fraction": 0.000554790008,
+      "fraction": 0.000554824865,
       "sourceId": "ejwmt7kk"
      }
     ],
@@ -1007,7 +1007,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#0045ff",
       "continuum": true,
-      "power": 1.39990386e-7,
+      "power": 1.39999182e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 449.7,
       "widthNm": 2.14412813
@@ -1016,7 +1016,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#0050ff",
       "continuum": true,
-      "power": 3.91842054e-7,
+      "power": 3.91866673e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 451.8,
       "widthNm": 2.14412813
@@ -1025,7 +1025,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#005cff",
       "continuum": true,
-      "power": 5.37637787e-7,
+      "power": 5.37671567e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 454,
       "widthNm": 2.14412813
@@ -1034,7 +1034,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#0067ff",
       "continuum": true,
-      "power": 7.27456128e-7,
+      "power": 7.27501834e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 456.1,
       "widthNm": 2.14412813
@@ -1043,7 +1043,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#0072ff",
       "continuum": true,
-      "power": 9.7755287e-7,
+      "power": 9.7761429e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 458.2,
       "widthNm": 2.14412813
@@ -1052,7 +1052,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#007cff",
       "continuum": true,
-      "power": 0.00000129065386,
+      "power": 0.00000129073496,
       "sourceId": "em9z1cz9",
       "wavelength": 460.4,
       "widthNm": 2.14412813
@@ -1061,7 +1061,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#0087ff",
       "continuum": true,
-      "power": 0.00000168563169,
+      "power": 0.0000016857376,
       "sourceId": "em9z1cz9",
       "wavelength": 462.5,
       "widthNm": 2.14412813
@@ -1070,7 +1070,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#0091ff",
       "continuum": true,
-      "power": 0.00000217719981,
+      "power": 0.0000021773366,
       "sourceId": "em9z1cz9",
       "wavelength": 464.7,
       "widthNm": 2.14412813
@@ -1079,7 +1079,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#009bff",
       "continuum": true,
-      "power": 0.00000276770374,
+      "power": 0.00000276787764,
       "sourceId": "em9z1cz9",
       "wavelength": 466.8,
       "widthNm": 2.14412813
@@ -1088,7 +1088,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00a5ff",
       "continuum": true,
-      "power": 0.00000348496107,
+      "power": 0.00000348518003,
       "sourceId": "em9z1cz9",
       "wavelength": 469,
       "widthNm": 2.14412813
@@ -1097,7 +1097,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00aeff",
       "continuum": true,
-      "power": 0.00000432995759,
+      "power": 0.00000433022964,
       "sourceId": "em9z1cz9",
       "wavelength": 471.1,
       "widthNm": 2.14412813
@@ -1106,7 +1106,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00b8ff",
       "continuum": true,
-      "power": 0.00000530211309,
+      "power": 0.00000530244623,
       "sourceId": "em9z1cz9",
       "wavelength": 473.3,
       "widthNm": 2.14412813
@@ -1115,7 +1115,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00c1ff",
       "continuum": true,
-      "power": 0.00000643082177,
+      "power": 0.00000643122582,
       "sourceId": "em9z1cz9",
       "wavelength": 475.4,
       "widthNm": 2.14412813
@@ -1124,7 +1124,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00cbff",
       "continuum": true,
-      "power": 0.00000769066897,
+      "power": 0.00000769115218,
       "sourceId": "em9z1cz9",
       "wavelength": 477.5,
       "widthNm": 2.14412813
@@ -1133,7 +1133,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00d4ff",
       "continuum": true,
-      "power": 0.00000907823357,
+      "power": 0.00000907880396,
       "sourceId": "em9z1cz9",
       "wavelength": 479.7,
       "widthNm": 2.14412813
@@ -1142,7 +1142,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00ddff",
       "continuum": true,
-      "power": 0.0000105945531,
+      "power": 0.0000105952187,
       "sourceId": "em9z1cz9",
       "wavelength": 481.8,
       "widthNm": 2.14412813
@@ -1151,7 +1151,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00e6ff",
       "continuum": true,
-      "power": 0.0000122005662,
+      "power": 0.0000122013327,
       "sourceId": "em9z1cz9",
       "wavelength": 484,
       "widthNm": 2.14412813
@@ -1160,7 +1160,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00efff",
       "continuum": true,
-      "power": 0.0000138759854,
+      "power": 0.0000138768573,
       "sourceId": "em9z1cz9",
       "wavelength": 486.1,
       "widthNm": 2.14412813
@@ -1169,7 +1169,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00f8ff",
       "continuum": true,
-      "power": 0.0000155857256,
+      "power": 0.0000155867049,
       "sourceId": "em9z1cz9",
       "wavelength": 488.3,
       "widthNm": 2.14412813
@@ -1178,7 +1178,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00fffb",
       "continuum": true,
-      "power": 0.0000172880416,
+      "power": 0.0000172891278,
       "sourceId": "em9z1cz9",
       "wavelength": 490.4,
       "widthNm": 2.14412813
@@ -1187,7 +1187,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00ffe4",
       "continuum": true,
-      "power": 0.0000189334954,
+      "power": 0.000018934685,
       "sourceId": "em9z1cz9",
       "wavelength": 492.6,
       "widthNm": 2.14412813
@@ -1196,7 +1196,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00ffce",
       "continuum": true,
-      "power": 0.0000204762492,
+      "power": 0.0000204775357,
       "sourceId": "em9z1cz9",
       "wavelength": 494.7,
       "widthNm": 2.14412813
@@ -1205,7 +1205,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00ffb7",
       "continuum": true,
-      "power": 0.0000218801883,
+      "power": 0.000021881563,
       "sourceId": "em9z1cz9",
       "wavelength": 496.8,
       "widthNm": 2.14412813
@@ -1214,7 +1214,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00ff9e",
       "continuum": true,
-      "power": 0.0000230671308,
+      "power": 0.0000230685801,
       "sourceId": "em9z1cz9",
       "wavelength": 499,
       "widthNm": 2.14412813
@@ -1223,7 +1223,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00ff85",
       "continuum": true,
-      "power": 0.0000240257039,
+      "power": 0.0000240272134,
       "sourceId": "em9z1cz9",
       "wavelength": 501.1,
       "widthNm": 2.14412813
@@ -1232,7 +1232,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00ff6a",
       "continuum": true,
-      "power": 0.0000247251803,
+      "power": 0.0000247267338,
       "sourceId": "em9z1cz9",
       "wavelength": 503.3,
       "widthNm": 2.14412813
@@ -1241,7 +1241,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00ff4f",
       "continuum": true,
-      "power": 0.0000250964522,
+      "power": 0.000025098029,
       "sourceId": "em9z1cz9",
       "wavelength": 505.4,
       "widthNm": 2.14412813
@@ -1250,7 +1250,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00ff2f",
       "continuum": true,
-      "power": 0.0000251768349,
+      "power": 0.0000251784168,
       "sourceId": "em9z1cz9",
       "wavelength": 507.6,
       "widthNm": 2.14412813
@@ -1259,7 +1259,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#00ff09",
       "continuum": true,
-      "power": 0.0000249424296,
+      "power": 0.0000249439967,
       "sourceId": "em9z1cz9",
       "wavelength": 509.7,
       "widthNm": 2.14412813
@@ -1268,7 +1268,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#0eff00",
       "continuum": true,
-      "power": 0.0000243847832,
+      "power": 0.0000243863153,
       "sourceId": "em9z1cz9",
       "wavelength": 511.9,
       "widthNm": 2.14412813
@@ -1277,7 +1277,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#1aff00",
       "continuum": true,
-      "power": 0.0000235611181,
+      "power": 0.0000235625985,
       "sourceId": "em9z1cz9",
       "wavelength": 514,
       "widthNm": 2.14412813
@@ -1286,7 +1286,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#24ff00",
       "continuum": true,
-      "power": 0.0000224701936,
+      "power": 0.0000224716054,
       "sourceId": "em9z1cz9",
       "wavelength": 516.1,
       "widthNm": 2.14412813
@@ -1295,7 +1295,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#2eff00",
       "continuum": true,
-      "power": 0.000021160127,
+      "power": 0.0000211614565,
       "sourceId": "em9z1cz9",
       "wavelength": 518.3,
       "widthNm": 2.14412813
@@ -1304,7 +1304,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#37ff00",
       "continuum": true,
-      "power": 0.0000196880635,
+      "power": 0.0000196893005,
       "sourceId": "em9z1cz9",
       "wavelength": 520.4,
       "widthNm": 2.14412813
@@ -1313,7 +1313,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#41ff00",
       "continuum": true,
-      "power": 0.0000180793486,
+      "power": 0.0000180804845,
       "sourceId": "em9z1cz9",
       "wavelength": 522.6,
       "widthNm": 2.14412813
@@ -1322,7 +1322,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#49ff00",
       "continuum": true,
-      "power": 0.0000163979221,
+      "power": 0.0000163989524,
       "sourceId": "em9z1cz9",
       "wavelength": 524.7,
       "widthNm": 2.14412813
@@ -1331,7 +1331,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#52ff00",
       "continuum": true,
-      "power": 0.0000146872057,
+      "power": 0.0000146881285,
       "sourceId": "em9z1cz9",
       "wavelength": 526.9,
       "widthNm": 2.14412813
@@ -1340,7 +1340,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#5aff00",
       "continuum": true,
-      "power": 0.0000129921003,
+      "power": 0.0000129929166,
       "sourceId": "em9z1cz9",
       "wavelength": 529,
       "widthNm": 2.14412813
@@ -1349,7 +1349,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#62ff00",
       "continuum": true,
-      "power": 0.0000113470064,
+      "power": 0.0000113477193,
       "sourceId": "em9z1cz9",
       "wavelength": 531.1,
       "widthNm": 2.14412813
@@ -1358,7 +1358,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#6aff00",
       "continuum": true,
-      "power": 0.00000978458454,
+      "power": 0.00000978519931,
       "sourceId": "em9z1cz9",
       "wavelength": 533.3,
       "widthNm": 2.14412813
@@ -1367,7 +1367,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#71ff00",
       "continuum": true,
-      "power": 0.00000833841378,
+      "power": 0.00000833893769,
       "sourceId": "em9z1cz9",
       "wavelength": 535.4,
       "widthNm": 2.14412813
@@ -1376,7 +1376,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#79ff00",
       "continuum": true,
-      "power": 0.0000070099762,
+      "power": 0.00000701041664,
       "sourceId": "em9z1cz9",
       "wavelength": 537.6,
       "widthNm": 2.14412813
@@ -1385,7 +1385,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#80ff00",
       "continuum": true,
-      "power": 0.00000582271466,
+      "power": 0.00000582308051,
       "sourceId": "em9z1cz9",
       "wavelength": 539.7,
       "widthNm": 2.14412813
@@ -1394,7 +1394,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#88ff00",
       "continuum": true,
-      "power": 0.00000477920268,
+      "power": 0.00000477950296,
       "sourceId": "em9z1cz9",
       "wavelength": 541.9,
       "widthNm": 2.14412813
@@ -1403,7 +1403,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#8fff00",
       "continuum": true,
-      "power": 0.00000386528576,
+      "power": 0.00000386552862,
       "sourceId": "em9z1cz9",
       "wavelength": 544,
       "widthNm": 2.14412813
@@ -1412,7 +1412,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#96ff00",
       "continuum": true,
-      "power": 0.00000309516346,
+      "power": 0.00000309535793,
       "sourceId": "em9z1cz9",
       "wavelength": 546.2,
       "widthNm": 2.14412813
@@ -1421,7 +1421,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#9dff00",
       "continuum": true,
-      "power": 0.00000244583732,
+      "power": 0.000002445991,
       "sourceId": "em9z1cz9",
       "wavelength": 548.3,
       "widthNm": 2.14412813
@@ -1445,13 +1445,13 @@
     "approximations": [],
     "bandMax": 928.987494,
     "bandMin": 550.147529,
-    "centroid": 0.0000593052368,
+    "centroid": 0.0000593079488,
     "coherentPaths": 0,
     "color": "#ff3030",
     "convergence": {
      "diverging": false,
-     "fullAngleDeg": 0.572946309,
-     "slopePerMm": -0.000807079166
+     "fullAngleDeg": 0.572946308,
+     "slopePerMm": -0.000807079165
     },
     "dark": false,
     "darkOutput": null,
@@ -1462,18 +1462,18 @@
      0,
      0,
      0,
-     0.0324548691,
-     0.0563942122,
-     0.0563942122,
-     0.0563942122,
-     0.0563942122,
-     0.0563942122,
-     0.0563942122,
-     0.0563942122,
-     0.0563942122,
-     0.0563942122,
-     0.0563974608,
-     0.0324576358,
+     0.0324554627,
+     0.0563952437,
+     0.0563952437,
+     0.0563952437,
+     0.0563952437,
+     0.0563952437,
+     0.0563952437,
+     0.0563952437,
+     0.0563952437,
+     0.0563952437,
+     0.0563984926,
+     0.0324582296,
      0,
      0,
      0,
@@ -1481,7 +1481,7 @@
      0,
      0
     ],
-    "depositedSignal": 0.628857875,
+    "depositedSignal": 0.628869378,
     "detectorType": "Camera sensor",
     "gain": null,
     "interference": {
@@ -1495,7 +1495,7 @@
      "reason": "insufficient coherent overlap"
     },
     "normalizedStokes": null,
-    "outputSignal": 0.628857875,
+    "outputSignal": 0.628869378,
     "polarization": "Linear 0°",
     "profile": [
      0,
@@ -1504,18 +1504,18 @@
      0,
      0,
      0,
-     0.0324548691,
-     0.0563942122,
-     0.0563942122,
-     0.0563942122,
-     0.0563942122,
-     0.0563942122,
-     0.0563942122,
-     0.0563942122,
-     0.0563942122,
-     0.0563942122,
-     0.0563974608,
-     0.0324576358,
+     0.0324554627,
+     0.0563952437,
+     0.0563952437,
+     0.0563952437,
+     0.0563952437,
+     0.0563952437,
+     0.0563952437,
+     0.0563952437,
+     0.0563952437,
+     0.0563952437,
+     0.0563984926,
+     0.0324582296,
      0,
      0,
      0,
@@ -1556,7 +1556,7 @@
      "branches": [
       {
        "gates": [],
-       "weight": 0.628857875
+       "weight": 0.628869378
       }
      ],
      "dispersionModel": "Gaussian GDD · transform-limited",
@@ -1580,7 +1580,7 @@
      "totalGddFs2": 2721.67767,
      "trains": [
       {
-       "centerWavelengthNm": 919.99651,
+       "centerWavelengthNm": 919.996509,
        "dispersionModel": "Gaussian GDD · transform-limited",
        "envelope": null,
        "fieldIssue": null,
@@ -1604,11 +1604,11 @@
     "readoutKind": "camera",
     "samples": 14,
     "saturated": false,
-    "signal": 0.628857875,
+    "signal": 0.628869378,
     "snr": null,
     "sourceFractions": [
      {
-      "fraction": 0.628857875,
+      "fraction": 0.628869378,
       "sourceId": "ejwmt7kk"
      }
     ],
@@ -1626,7 +1626,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#a4ff00",
       "continuum": true,
-      "power": 2.76661428e-7,
+      "power": 2.76679141e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 550.3,
       "widthNm": 0.304942668
@@ -1635,7 +1635,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#a5ff00",
       "continuum": true,
-      "power": 2.66800376e-7,
+      "power": 2.66817457e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 550.6,
       "widthNm": 0.304942668
@@ -1644,7 +1644,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#a6ff00",
       "continuum": true,
-      "power": 2.57218197e-7,
+      "power": 2.57234665e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 550.9,
       "widthNm": 0.304942668
@@ -1653,7 +1653,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#a7ff00",
       "continuum": true,
-      "power": 2.47938393e-7,
+      "power": 2.47954267e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 551.2,
       "widthNm": 0.304942668
@@ -1662,7 +1662,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#a8ff00",
       "continuum": true,
-      "power": 2.3891397e-7,
+      "power": 2.38929266e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 551.5,
       "widthNm": 0.304942668
@@ -1671,7 +1671,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#a9ff00",
       "continuum": true,
-      "power": 2.30164681e-7,
+      "power": 2.30179417e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 551.8,
       "widthNm": 0.304942668
@@ -1680,7 +1680,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#aaff00",
       "continuum": true,
-      "power": 2.21687871e-7,
+      "power": 2.21702064e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 552.1,
       "widthNm": 0.304942668
@@ -1689,7 +1689,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#abff00",
       "continuum": true,
-      "power": 2.13451271e-7,
+      "power": 2.13464937e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 552.4,
       "widthNm": 0.304942668
@@ -1698,7 +1698,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#acff00",
       "continuum": true,
-      "power": 2.05484571e-7,
+      "power": 2.05497726e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 552.7,
       "widthNm": 0.304942668
@@ -1707,7 +1707,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#adff00",
       "continuum": true,
-      "power": 1.97761966e-7,
+      "power": 1.97774627e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 553,
       "widthNm": 0.304942668
@@ -1716,7 +1716,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#aeff00",
       "continuum": true,
-      "power": 1.90264475e-7,
+      "power": 1.90276656e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 553.4,
       "widthNm": 0.304942668
@@ -1725,7 +1725,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#afff00",
       "continuum": true,
-      "power": 1.83030313e-7,
+      "power": 1.83042031e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 553.7,
       "widthNm": 0.304942668
@@ -1734,7 +1734,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#b0ff00",
       "continuum": true,
-      "power": 1.76013503e-7,
+      "power": 1.76024772e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 554,
       "widthNm": 0.304942668
@@ -1743,7 +1743,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#b1ff00",
       "continuum": true,
-      "power": 1.69214506e-7,
+      "power": 1.6922534e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 554.3,
       "widthNm": 0.304942668
@@ -1752,7 +1752,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#b2ff00",
       "continuum": true,
-      "power": 1.62655896e-7,
+      "power": 1.6266631e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 554.6,
       "widthNm": 0.304942668
@@ -1761,7 +1761,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#b3ff00",
       "continuum": true,
-      "power": 1.56297223e-7,
+      "power": 1.5630723e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 554.9,
       "widthNm": 0.304942668
@@ -1770,7 +1770,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#b4ff00",
       "continuum": true,
-      "power": 1.50150658e-7,
+      "power": 1.50160271e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 555.2,
       "widthNm": 0.304942668
@@ -1779,7 +1779,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#b5ff00",
       "continuum": true,
-      "power": 1.44217937e-7,
+      "power": 1.4422717e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 555.5,
       "widthNm": 0.304942668
@@ -1788,7 +1788,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#b6ff00",
       "continuum": true,
-      "power": 1.38470818e-7,
+      "power": 1.38479683e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 555.8,
       "widthNm": 0.304942668
@@ -1797,7 +1797,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#b7ff00",
       "continuum": true,
-      "power": 1.32929135e-7,
+      "power": 1.32937645e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 556.1,
       "widthNm": 0.304942668
@@ -1806,7 +1806,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#b8ff00",
       "continuum": true,
-      "power": 1.27576626e-7,
+      "power": 1.27584794e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 556.4,
       "widthNm": 0.304942668
@@ -1815,7 +1815,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#b8ff00",
       "continuum": true,
-      "power": 1.2239583e-7,
+      "power": 1.22403666e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 556.7,
       "widthNm": 0.304942668
@@ -1824,7 +1824,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#b9ff00",
       "continuum": true,
-      "power": 1.1741298e-7,
+      "power": 1.17420497e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 557,
       "widthNm": 0.304942668
@@ -1833,7 +1833,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#baff00",
       "continuum": true,
-      "power": 1.12596524e-7,
+      "power": 1.12603733e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 557.3,
       "widthNm": 0.304942668
@@ -1842,7 +1842,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#bbff00",
       "continuum": true,
-      "power": 1.079422e-7,
+      "power": 1.07949111e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 557.6,
       "widthNm": 0.304942668
@@ -1851,7 +1851,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#bcff00",
       "continuum": true,
-      "power": 1.03470067e-7,
+      "power": 1.03476691e-7,
       "sourceId": "em9z1cz9",
       "wavelength": 557.9,
       "widthNm": 0.304942668
@@ -1860,7 +1860,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#bdff00",
       "continuum": true,
-      "power": 9.91472205e-8,
+      "power": 9.91535682e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 558.2,
       "widthNm": 0.304942668
@@ -1869,7 +1869,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#beff00",
       "continuum": true,
-      "power": 9.49803692e-8,
+      "power": 9.49864502e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 558.5,
       "widthNm": 0.304942668
@@ -1878,7 +1878,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#bfff00",
       "continuum": true,
-      "power": 9.0973669e-8,
+      "power": 9.09794934e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 558.8,
       "widthNm": 0.304942668
@@ -1887,7 +1887,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#c0ff00",
       "continuum": true,
-      "power": 8.71038666e-8,
+      "power": 8.71094433e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 559.1,
       "widthNm": 0.304942668
@@ -1896,7 +1896,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#c1ff00",
       "continuum": true,
-      "power": 8.33833728e-8,
+      "power": 8.33887113e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 559.5,
       "widthNm": 0.304942668
@@ -1905,7 +1905,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#c2ff00",
       "continuum": true,
-      "power": 7.98029079e-8,
+      "power": 7.98080172e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 559.8,
       "widthNm": 0.304942668
@@ -1914,7 +1914,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#c3ff00",
       "continuum": true,
-      "power": 7.63475804e-8,
+      "power": 7.63524685e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 560.1,
       "widthNm": 0.304942668
@@ -1923,7 +1923,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#c4ff00",
       "continuum": true,
-      "power": 7.30344503e-8,
+      "power": 7.30391262e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 560.4,
       "widthNm": 0.304942668
@@ -1932,7 +1932,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#c5ff00",
       "continuum": true,
-      "power": 6.98430821e-8,
+      "power": 6.98475537e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 560.7,
       "widthNm": 0.304942668
@@ -1941,7 +1941,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#c6ff00",
       "continuum": true,
-      "power": 6.67671046e-8,
+      "power": 6.67713792e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 561,
       "widthNm": 0.304942668
@@ -1950,7 +1950,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#c7ff00",
       "continuum": true,
-      "power": 6.38231806e-8,
+      "power": 6.38272668e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 561.3,
       "widthNm": 0.304942668
@@ -1959,7 +1959,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#c8ff00",
       "continuum": true,
-      "power": 6.0985892e-8,
+      "power": 6.09897965e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 561.6,
       "widthNm": 0.304942668
@@ -1968,7 +1968,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#c9ff00",
       "continuum": true,
-      "power": 5.82583749e-8,
+      "power": 5.82621048e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 561.9,
       "widthNm": 0.304942668
@@ -1977,7 +1977,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#caff00",
       "continuum": true,
-      "power": 5.5645641e-8,
+      "power": 5.56492036e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 562.2,
       "widthNm": 0.304942668
@@ -1986,7 +1986,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#cbff00",
       "continuum": true,
-      "power": 5.3129568e-8,
+      "power": 5.31329695e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 562.5,
       "widthNm": 0.304942668
@@ -1995,7 +1995,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#ccff00",
       "continuum": true,
-      "power": 5.07173927e-8,
+      "power": 5.07206398e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 562.8,
       "widthNm": 0.304942668
@@ -2004,7 +2004,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#ccff00",
       "continuum": true,
-      "power": 4.84044759e-8,
+      "power": 4.84075749e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 563.1,
       "widthNm": 0.304942668
@@ -2013,7 +2013,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#cdff00",
       "continuum": true,
-      "power": 4.61789134e-8,
+      "power": 4.61818699e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 563.4,
       "widthNm": 0.304942668
@@ -2022,7 +2022,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#ceff00",
       "continuum": true,
-      "power": 4.40512123e-8,
+      "power": 4.40540326e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 563.7,
       "widthNm": 0.304942668
@@ -2031,7 +2031,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#cfff00",
       "continuum": true,
-      "power": 4.20088881e-8,
+      "power": 4.20115777e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 564,
       "widthNm": 0.304942668
@@ -2040,7 +2040,7 @@
       "bandId": "em9z1cz9#0",
       "color": "#d0ff00",
       "continuum": true,
-      "power": 2.00226356e-8,
+      "power": 2.00239175e-8,
       "sourceId": "em9z1cz9",
       "wavelength": 564.3,
       "widthNm": 0.304942668
@@ -2049,7 +2049,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.000178383733,
+      "power": 0.000178386996,
       "sourceId": "ejwmt7kk",
       "wavelength": 911.2,
       "widthNm": 0.374987425
@@ -2058,7 +2058,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00052289452,
+      "power": 0.000522904084,
       "sourceId": "ejwmt7kk",
       "wavelength": 911.6,
       "widthNm": 0.374987425
@@ -2067,7 +2067,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00074697213,
+      "power": 0.000746985793,
       "sourceId": "ejwmt7kk",
       "wavelength": 911.9,
       "widthNm": 0.374987425
@@ -2076,7 +2076,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00104814179,
+      "power": 0.00104816096,
       "sourceId": "ejwmt7kk",
       "wavelength": 912.3,
       "widthNm": 0.374987425
@@ -2085,7 +2085,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0014572142,
+      "power": 0.00145724086,
       "sourceId": "ejwmt7kk",
       "wavelength": 912.7,
       "widthNm": 0.374987425
@@ -2094,7 +2094,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0019808791,
+      "power": 0.00198091534,
       "sourceId": "ejwmt7kk",
       "wavelength": 913.1,
       "widthNm": 0.374987425
@@ -2103,7 +2103,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00265484445,
+      "power": 0.00265489301,
       "sourceId": "ejwmt7kk",
       "wavelength": 913.4,
       "widthNm": 0.374987425
@@ -2112,7 +2112,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00350661204,
+      "power": 0.00350667618,
       "sourceId": "ejwmt7kk",
       "wavelength": 913.8,
       "widthNm": 0.374987425
@@ -2121,7 +2121,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00453966547,
+      "power": 0.0045397485,
       "sourceId": "ejwmt7kk",
       "wavelength": 914.2,
       "widthNm": 0.374987425
@@ -2130,7 +2130,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00580166011,
+      "power": 0.00580176623,
       "sourceId": "ejwmt7kk",
       "wavelength": 914.6,
       "widthNm": 0.374987425
@@ -2139,7 +2139,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00728859426,
+      "power": 0.00728872758,
       "sourceId": "ejwmt7kk",
       "wavelength": 914.9,
       "widthNm": 0.374987425
@@ -2148,7 +2148,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00899142657,
+      "power": 0.00899159104,
       "sourceId": "ejwmt7kk",
       "wavelength": 915.3,
       "widthNm": 0.374987425
@@ -2157,7 +2157,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0109442899,
+      "power": 0.0109444901,
       "sourceId": "ejwmt7kk",
       "wavelength": 915.7,
       "widthNm": 0.374987425
@@ -2166,7 +2166,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0130881627,
+      "power": 0.0130884021,
       "sourceId": "ejwmt7kk",
       "wavelength": 916.1,
       "widthNm": 0.374987425
@@ -2175,7 +2175,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0153949277,
+      "power": 0.0153952092,
       "sourceId": "ejwmt7kk",
       "wavelength": 916.4,
       "widthNm": 0.374987425
@@ -2184,7 +2184,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0178281947,
+      "power": 0.0178285208,
       "sourceId": "ejwmt7kk",
       "wavelength": 916.8,
       "widthNm": 0.374987425
@@ -2193,7 +2193,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0203065058,
+      "power": 0.0203068772,
       "sourceId": "ejwmt7kk",
       "wavelength": 917.2,
       "widthNm": 0.374987425
@@ -2202,7 +2202,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.022756673,
+      "power": 0.0227570893,
       "sourceId": "ejwmt7kk",
       "wavelength": 917.6,
       "widthNm": 0.374987425
@@ -2211,7 +2211,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0250852927,
+      "power": 0.0250857515,
       "sourceId": "ejwmt7kk",
       "wavelength": 917.9,
       "widthNm": 0.374987425
@@ -2220,7 +2220,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0272216313,
+      "power": 0.0272221292,
       "sourceId": "ejwmt7kk",
       "wavelength": 918.3,
       "widthNm": 0.374987425
@@ -2229,7 +2229,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0290454955,
+      "power": 0.0290460268,
       "sourceId": "ejwmt7kk",
       "wavelength": 918.7,
       "widthNm": 0.374987425
@@ -2238,7 +2238,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.030491754,
+      "power": 0.0304923117,
       "sourceId": "ejwmt7kk",
       "wavelength": 919.1,
       "widthNm": 0.374987425
@@ -2247,7 +2247,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0315264089,
+      "power": 0.0315269856,
       "sourceId": "ejwmt7kk",
       "wavelength": 919.4,
       "widthNm": 0.374987425
@@ -2256,7 +2256,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0320193054,
+      "power": 0.032019891,
       "sourceId": "ejwmt7kk",
       "wavelength": 919.8,
       "widthNm": 0.374987425
@@ -2265,7 +2265,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0320193054,
+      "power": 0.032019891,
       "sourceId": "ejwmt7kk",
       "wavelength": 920.2,
       "widthNm": 0.374987425
@@ -2274,7 +2274,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0315264089,
+      "power": 0.0315269856,
       "sourceId": "ejwmt7kk",
       "wavelength": 920.6,
       "widthNm": 0.374987425
@@ -2283,7 +2283,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.030491754,
+      "power": 0.0304923117,
       "sourceId": "ejwmt7kk",
       "wavelength": 920.9,
       "widthNm": 0.374987425
@@ -2292,7 +2292,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0290454955,
+      "power": 0.0290460268,
       "sourceId": "ejwmt7kk",
       "wavelength": 921.3,
       "widthNm": 0.374987425
@@ -2301,7 +2301,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0272216313,
+      "power": 0.0272221292,
       "sourceId": "ejwmt7kk",
       "wavelength": 921.7,
       "widthNm": 0.374987425
@@ -2310,7 +2310,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0250852927,
+      "power": 0.0250857515,
       "sourceId": "ejwmt7kk",
       "wavelength": 922.1,
       "widthNm": 0.374987425
@@ -2319,7 +2319,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.022756673,
+      "power": 0.0227570893,
       "sourceId": "ejwmt7kk",
       "wavelength": 922.4,
       "widthNm": 0.374987425
@@ -2328,7 +2328,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0203065058,
+      "power": 0.0203068772,
       "sourceId": "ejwmt7kk",
       "wavelength": 922.8,
       "widthNm": 0.374987425
@@ -2337,7 +2337,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0178281947,
+      "power": 0.0178285208,
       "sourceId": "ejwmt7kk",
       "wavelength": 923.2,
       "widthNm": 0.374987425
@@ -2346,7 +2346,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0153949277,
+      "power": 0.0153952092,
       "sourceId": "ejwmt7kk",
       "wavelength": 923.6,
       "widthNm": 0.374987425
@@ -2355,7 +2355,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0130881627,
+      "power": 0.0130884021,
       "sourceId": "ejwmt7kk",
       "wavelength": 923.9,
       "widthNm": 0.374987425
@@ -2364,7 +2364,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0109442899,
+      "power": 0.0109444901,
       "sourceId": "ejwmt7kk",
       "wavelength": 924.3,
       "widthNm": 0.374987425
@@ -2373,7 +2373,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00899142657,
+      "power": 0.00899159104,
       "sourceId": "ejwmt7kk",
       "wavelength": 924.7,
       "widthNm": 0.374987425
@@ -2382,7 +2382,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00728859426,
+      "power": 0.00728872758,
       "sourceId": "ejwmt7kk",
       "wavelength": 925.1,
       "widthNm": 0.374987425
@@ -2391,7 +2391,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00580166011,
+      "power": 0.00580176623,
       "sourceId": "ejwmt7kk",
       "wavelength": 925.4,
       "widthNm": 0.374987425
@@ -2400,7 +2400,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00453966547,
+      "power": 0.0045397485,
       "sourceId": "ejwmt7kk",
       "wavelength": 925.8,
       "widthNm": 0.374987425
@@ -2409,7 +2409,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00350661204,
+      "power": 0.00350667618,
       "sourceId": "ejwmt7kk",
       "wavelength": 926.2,
       "widthNm": 0.374987425
@@ -2418,7 +2418,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00265484445,
+      "power": 0.00265489301,
       "sourceId": "ejwmt7kk",
       "wavelength": 926.6,
       "widthNm": 0.374987425
@@ -2427,7 +2427,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0019808791,
+      "power": 0.00198091534,
       "sourceId": "ejwmt7kk",
       "wavelength": 926.9,
       "widthNm": 0.374987425
@@ -2436,7 +2436,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0014572142,
+      "power": 0.00145724086,
       "sourceId": "ejwmt7kk",
       "wavelength": 927.3,
       "widthNm": 0.374987425
@@ -2445,7 +2445,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00104814179,
+      "power": 0.00104816096,
       "sourceId": "ejwmt7kk",
       "wavelength": 927.7,
       "widthNm": 0.374987425
@@ -2454,7 +2454,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00074697213,
+      "power": 0.000746985793,
       "sourceId": "ejwmt7kk",
       "wavelength": 928.1,
       "widthNm": 0.374987425
@@ -2463,7 +2463,7 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00052289452,
+      "power": 0.000522904084,
       "sourceId": "ejwmt7kk",
       "wavelength": 928.4,
       "widthNm": 0.374987425
@@ -2472,14 +2472,14 @@
       "bandId": "ejwmt7kk#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.000178383733,
+      "power": 0.000178386996,
       "sourceId": "ejwmt7kk",
       "wavelength": 928.8,
       "widthNm": 0.374987425
      }
     ],
     "spotSpan": 13.93875,
-    "wavelength": 919.99651
+    "wavelength": 919.996509
    }
   }
  },
