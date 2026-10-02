@@ -21,7 +21,7 @@ const SIGMA_PER_FWHM = 1 / (2 * Math.sqrt(2 * Math.LN2));
 // FWHM.
 export const fwhmToSigma = fwhm => fwhm * SIGMA_PER_FWHM;
 
-// Gaussian tails are followed to ±3σ (98.9% of the energy): far enough that
+// Gaussian tails are followed to ±3σ (99.73% of the energy): far enough that
 // the sampled/re-gridded profiles below are accurate, near enough that a
 // wide source stays inside a sane wavelength range instead of reaching into
 // X-rays or radio.
