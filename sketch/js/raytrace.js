@@ -53,7 +53,7 @@ import {
 import {
   gaussianSpectrum, flatSpectrum, lineSpectrum, scaleSpectrum, spectrumSamples, spectrumStats, spectrumSupport, spectrumWeight,
   applyTransmission as applySpectralTransmission, fringeVisibility, resolveSourceSpectrum, supercontinuumTransformLimitFs,
-  transformLimitedBandwidthNm,
+  transformLimitedBandwidthNm, spectrumSlice,
 } from './spectrum.js';
 import { cameraProfileFromHits } from './camera-profile.js';
 import { MAX_CONVERSION, MAX_OPO_DEPLETION, opoPulse, supercontinuumRange, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength, mixWidthNm } from './parametric.js';
@@ -3651,25 +3651,54 @@ function interact(ray, hit) {
     case 'filter': {
       const f = data;
       if (f.ftype === 'nd') return [{ d, intensity: ray.intensity * f.trans }];
-      notePulseSelection(wl => { const pb = passbandOf(f); return wl >= pb[0] && wl <= pb[1] ? 1 : 0; }, passbandOf(f));
+      // A notch blocks the band a bandpass of the same center and width would
+      // pass, and transmits everything on either side of it.
+      const notch = f.ftype === 'notch';
+      const pb = passbandOf(f);
+      const T = wl => ((wl >= pb[0] && wl <= pb[1]) !== notch ? 1 : 0);
+      notePulseSelection(T, pb);
       if (!ray.bw) {
-        const pb0 = passbandOf(f);
         const cell = sampleCell(ray);
         if (cell) {
-          const { inside, outside } = splitCell(cell, pb0);
+          const { inside, outside } = splitCell(cell, pb);
+          if (notch) {
+            if (!outside.length) return [];
+            return inside ? outside.map(([lo, hi], i) => cellChild(ray, d, cell, lo, hi, `T${i}`)) : [{ d }];
+          }
           if (!inside) return [];
           return outside.length ? [cellChild(ray, d, cell, inside[0], inside[1], 'T')] : [{ d }];
         }
-        return ray.wl >= pb0[0] && ray.wl <= pb0[1] ? [{ d }] : [];
+        return T(ray.wl) ? [{ d }] : [];
       }
       if (ray.spec && ray.spec.kind !== 'flat') {
-        const T = wl => { const pb = passbandOf(f); return wl >= pb[0] && wl <= pb[1] ? 1 : 0; };
+        // A notch leaves two separate pieces of the profile, one on each side
+        // of the band, and each travels as its own ray with an exact edge.
+        // One sampled profile spanning the gap would interpolate light back
+        // into it. Each piece stops just short of the band, whose edges the
+        // notch blocks, so a bandpass of the same band behind it finds nothing.
+        if (notch && ray.spec.kind !== 'lines') {
+          const [lo, hi] = spectrumSupport(ray.spec);
+          if (!bandIntersect([lo, hi], pb)) return [{ d }];
+          const edge = 1e-6 * (hi - lo);
+          return [[lo, pb[0] - edge], [pb[1] + edge, hi]]
+            .map(([a, b]) => (b > a ? spectrumSlice(ray.spec, a, b) : null))
+            .map((piece, i) => piece && { d, wl: piece.wl, bw: piece.bw, spec: piece.spec, intensity: ray.intensity * piece.fraction, tag: `T${i}` })
+            .filter(Boolean);
+        }
         const trans = applyTransmission(ray.spec, ray.wl, T);
         return trans ? [{ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * trans.fraction }] : [];
       }
       // flat (supercontinuum) or unspecified box: transmitted spectrum is
-      // the exact overlap of the beam band and the passband
-      const ix = bandIntersect([ray.wl - ray.bw / 2, ray.wl + ray.bw / 2], passbandOf(f));
+      // the exact overlap of the beam band and the passband -- or, for a
+      // notch, the parts of the beam band on either side of the blocked band
+      const rb = [ray.wl - ray.bw / 2, ray.wl + ray.bw / 2];
+      if (notch) {
+        if (!bandIntersect(rb, pb)) return [{ d }];
+        // However thin the part left beside the band, it is kept, as the
+        // fanned-sample path above keeps it; only an empty interval is dropped.
+        return splitCell(rb, pb).outside.map(([lo, hi], i) => bandChild(ray, d, lo, hi, `T${i}`));
+      }
+      const ix = bandIntersect(rb, pb);
       if (!ix || ix[1] - ix[0] < 0.5) return [];
       const c = bandChild(ray, d, ix[0], ix[1], null);
       delete c.tag;

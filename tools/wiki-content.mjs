@@ -5110,7 +5110,7 @@ export const wikiEntries = [
 
   {
     type: 'filter',
-    summary: "Transmits a selected wavelength band or attenuates light as a neutral-density filter, for isolating spectral signals and controlling power along a beam path.",
+    summary: "Transmits a selected wavelength band, blocks one band as a notch, or attenuates light as a neutral-density filter, to isolate spectral signals and control beam power.",
     title: 'Filter',
     category: 'Filters & Splitters',
     realWorld: {
@@ -5126,6 +5126,14 @@ export const wikiEntries = [
         special case of an absorptive or partially-reflective metallic coating, meant to
         attenuate intensity uniformly across the visible band rather than reject a
         specific color.</p>
+        <p>A <strong>notch filter</strong> (band-stop filter) is the inverse of a bandpass:
+        it rejects one narrow band and transmits everything on either side. Its classic job
+        is removing a laser line while keeping the light around it — the Rayleigh-scattered
+        pump in Raman spectroscopy, many orders of magnitude stronger than the Raman
+        signal a few nanometres away, or excitation light leaking into a fluorescence or
+        multiphoton detection path. Holographic and multilayer-dielectric notch filters reach
+        optical densities of 6 or more in the stop band with edges only a few nanometres
+        wide.</p>
         <p>Absorptive and interference designs behave very differently under high power:
         an absorptive filter converts the rejected light to heat and can be damaged or
         even cracked if that exceeds its thermal budget, while an interference filter's
@@ -5138,30 +5146,67 @@ export const wikiEntries = [
     },
     inOpticalSetup: {
       html: `
-        <p>One element models four filter families, selected by type: <em>Bandpass</em>,
-        <em>Longpass</em>, and <em>Shortpass</em> each define an idealized passband —
-        exactly the same hard-edged step-function model used by the <a
-        href="../dichroic/">dichroic mirror</a> — while <em>Neutral density</em> instead
-        attenuates every wavelength by the same configured transmission fraction. For a
-        broadband or supercontinuum beam, the transmitted spectrum is the exact overlap
-        between the beam's band and the passband, so a wide beam through a narrow
-        bandpass filter correctly comes out both dimmer and spectrally narrowed. This
+        <p>One element models five filter types, chosen from the <em>Type</em> menu. The
+        first four are idealized hard-edged filters — the same step-function model the <a
+        href="../dichroic/">dichroic mirror</a> uses — that transmit some wavelengths
+        completely and remove the rest. The fifth is wavelength-flat.</p>
+        <h3>Modes</h3>
+        <ul>
+          <li><strong>Bandpass</strong> (the default) — transmits only the band from
+          <em>Band center</em> − <em>Band width</em>/2 to <em>Band center</em> +
+          <em>Band width</em>/2 and removes everything else. It is used to pick one laser
+          line out of several, to isolate a fluorescence emission band, or to cut a narrow
+          slice out of a supercontinuum.</li>
+          <li><strong>Longpass</strong> — transmits every wavelength at or above
+          <em>Cutoff</em> and removes everything shorter. It is used to block the excitation
+          light in front of a fluorescence detector, or to keep the long-wavelength output of
+          a frequency-conversion stage while discarding the pump.</li>
+          <li><strong>Shortpass</strong> — the mirror image of the longpass: transmits every
+          wavelength at or below <em>Cutoff</em> and removes everything longer. It is used to
+          strip a residual near-infrared fundamental from a frequency-doubled beam, or to
+          pass multiphoton signals that come out bluer than the laser exciting them.</li>
+          <li><strong>Notch</strong> — the inverse of the bandpass: set by the same
+          <em>Band center</em> and <em>Band width</em>, it removes that band and transmits
+          everything on both sides of it. It is used to take out a single laser line while
+          keeping the light around it, as in Raman spectroscopy or when stray excitation
+          light leaks into a detection path.</li>
+          <li><strong>Neutral density</strong> — attenuates every wavelength by the same
+          <em>Transmission</em> fraction (0–1) and leaves the spectrum's shape alone. It is
+          used to bring a beam's power down for a detector or camera without changing its
+          colour.</li>
+        </ul>
+        <p>On the canvas, the purple knob tunes the setting that matters for the current
+        type: the band center for bandpass and notch, the cutoff for longpass and shortpass,
+        and the transmission for neutral density.</p>
+        <h3>Broadband light</h3>
+        <p>For a broadband or supercontinuum beam, the transmitted spectrum is the exact
+        overlap between the beam's band and the passband, so a wide beam through a narrow
+        bandpass filter correctly comes out both dimmer and spectrally narrowed, and a
+        notch leaves a gap in the spectrum with both sides intact. This
         also holds after dispersive glass or a prism has split the beam into wavelength
         samples: each sample carries its own slice of the spectrum, and the filter cuts
         inside that slice, so a 1&nbsp;nm bandpass passes 1&nbsp;nm of light rather than a
-        whole sample. A pulse's duration after the filter is worked out from what passes —
+        whole sample, and a 1&nbsp;nm notch removes just 1&nbsp;nm. A notch splits a broadband beam
+        into two beams, one carrying the light below the band and one the light above it,
+        each with a sharp edge at the band, so glass or another filter further on never
+        finds light inside the removed band. A detector puts the two sides back together,
+        so a pulse is timed from the whole spectrum that passed, gap included. A pulse's duration after the filter is worked out from what passes —
         the transform of the surviving spectrum with the chirp it carries (see the <a
         href="../pulsedlaser/">pulsed laser</a>) — and the passed band is kept however thin
-        it is, so it still reaches the optics after the filter.</p>`,
+        it is, so it still reaches the optics after the filter. A neutral-density filter
+        changes only the power, so it leaves the pulse duration alone.</p>`,
       formulas: [
         { tex: 'T(\\lambda) = \\begin{cases} 1 & \\lambda \\in \\text{passband} \\\\ 0 & \\text{otherwise} \\end{cases}, \\qquad I_{\\text{nd}} = \\text{trans} \\cdot I_0', caption: 'The idealized step-function passband used for bandpass/longpass/shortpass, and the flat scalar attenuation used for neutral density.' },
+        { tex: 'T_{\\text{notch}}(\\lambda) = 1 - T_{\\text{bandpass}}(\\lambda) = \\begin{cases} 0 & |\\lambda - \\lambda_c| \\le \\Delta\\lambda/2 \\\\ 1 & \\text{otherwise} \\end{cases}', caption: 'The notch: the complement of a bandpass with center λc and width Δλ. The stop band is fully blocked (an infinite optical density), with no transition slope.' },
       ],
       limitations: `<p>Rejected light simply vanishes rather than reflecting — this
         matches the physical picture of an absorptive colored-glass filter, but not a
         reflective interference filter (for a component that reflects its rejected band
-        instead, use the Dichroic mirror). The passband edge is a hard step with no
+        instead, use the Dichroic mirror; its band reflector type is a notch that sends the
+        blocked band back out as a beam). The passband edge is a hard step with no
         transition slope, no per-wavelength optical density curve, and no angle
-        dependence. The neutral-density mode is perfectly grey at every wavelength — real
+        dependence; a notch blocks its band completely, where a real one leaks a stop-band
+        transmission of 10<sup>−OD</sup>. The neutral-density mode is perfectly grey at every wavelength — real
         ND filters have some spectral ripple — and there's no damage-threshold or thermal
         modeling for either absorptive heating or reflected back-power.</p>`,
     },

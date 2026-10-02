@@ -244,6 +244,34 @@ export function applyTransmission(spec, centerWl, transmissionFn) {
   };
 }
 
+// The part of a profile between lo and hi, with hard edges exactly there: the
+// profile is re-sampled across [lo, hi] itself, so nothing is interpolated
+// past either edge. Returns the share of incident power it holds and the
+// slice's own profile, as applyTransmission does, or null when nothing
+// measurable is left. Used for the two sides a notch filter keeps.
+export function spectrumSlice(spec, lo, hi) {
+  if (!spec || spec.kind === 'lines') return null;
+  const [supportLo, supportHi] = spectrumSupport(spec);
+  const from = Math.max(lo, supportLo), to = Math.min(hi, supportHi);
+  if (!(to > from)) return null;
+  const sample = (a, b, n) => {
+    const step = (b - a) / (n - 1);
+    return { step, w: Array.from({ length: n }, (_, i) => Math.max(0, spectrumWeight(spec, a + step * i))) };
+  };
+  const whole = sample(supportLo, supportHi, LOCATE_GRID);
+  const total = integrate(whole.w, whole.step);
+  const part = sample(from, to, GRID);
+  const kept = integrate(part.w, part.step);
+  const peak = Math.max(...part.w);
+  if (!(total > 0) || !(peak > 0)) return null;
+  const fraction = Math.min(1, kept / total);
+  if (!(fraction > BLOCK)) return null;
+  const profile = { kind: 'sampled', lo: from, hi: to, w: part.w.map(v => v / peak) };
+  const stats = spectrumStats(profile);
+  if (!stats) return null;
+  return { fraction, spec: stats.fwhm > 0 ? profile : null, wl: stats.center, bw: stats.fwhm };
+}
+
 // Time–bandwidth product for a transform-limited pulse: the minimum
 // wavelength FWHM a pulse of the given duration can have. K is the
 // dimensionless FWHM·FWHM product (frequency×time) for the pulse's
