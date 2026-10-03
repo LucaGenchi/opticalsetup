@@ -163,6 +163,7 @@ export function pulseGateTransmission(pulse, sampleCount = 4096) {
 // that arrives late must still be gated by where it was when it passed the
 // chopper. Only its position on the screen moves.
 export function scopeTrace(pulse, { samples = 200, spanNs: forcedSpanNs, startNs = 0, delayNs = 0 } = {}) {
+  if (pulse?.interferenceUnknown) return null;
   const repRateMHz = Number.isFinite(pulse?.repRateMHz) && pulse.repRateMHz > 0
     ? Math.min(1e6, Math.max(0.001, pulse.repRateMHz)) : null;
   if (!repRateMHz) return null;

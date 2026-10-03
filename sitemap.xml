@@ -8,7 +8,7 @@
   </url>
   <url>
     <loc>https://opticalsetup.com/sketch/</loc>
-    <lastmod>2026-09-18</lastmod>
+    <lastmod>2026-10-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
@@ -26,7 +26,7 @@
   </url>
   <url>
     <loc>https://opticalsetup.com/wiki/pulsedlaser/</loc>
-    <lastmod>2026-09-18</lastmod>
+    <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -38,13 +38,13 @@
   </url>
   <url>
     <loc>https://opticalsetup.com/wiki/sclaser/</loc>
-    <lastmod>2026-09-18</lastmod>
+    <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://opticalsetup.com/wiki/pointsource/</loc>
-    <lastmod>2026-09-18</lastmod>
+    <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -188,13 +188,13 @@
   </url>
   <url>
     <loc>https://opticalsetup.com/wiki/eom/</loc>
-    <lastmod>2026-09-18</lastmod>
+    <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://opticalsetup.com/wiki/phasemodulator/</loc>
-    <lastmod>2026-09-18</lastmod>
+    <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -278,7 +278,7 @@
   </url>
   <url>
     <loc>https://opticalsetup.com/wiki/camera/</loc>
-    <lastmod>2026-09-18</lastmod>
+    <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -494,9 +494,21 @@
   </url>
   <url>
     <loc>https://opticalsetup.com/example-setups/</loc>
-    <lastmod>2026-09-18</lastmod>
+    <lastmod>2026-10-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/example-setups/pulsed-mach-zehnder/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/example-setups/supercontinuum-mach-zehnder/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://opticalsetup.com/example-setups/gregorian-telescope-element-by-element/</loc>
@@ -548,7 +560,7 @@
   </url>
   <url>
     <loc>https://opticalsetup.com/example-setups/michelson-interferometer/</loc>
-    <lastmod>2026-09-18</lastmod>
+    <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>

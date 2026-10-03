@@ -5,10 +5,11 @@
 // Rays across a sized beam are quadrature samples, not bright/dark camera
 // pixels.  This module first turns each continuous traced route into finite
 // ray tubes and deposits their power conservatively.  Eligible routes from
-// one monochromatic CW source are then combined as fields, with every cross
+// one eligible laser source are then combined as fields, with every cross
 // term integrated over the finite pixel aperture.  At no point are the
 // discrete ray samples themselves added as coherent fields.
 
+import { spectralFieldResult, spectralTermsAt, SPECTRAL_UNAVAILABLE } from './spectral-coherence.js';
 import { wavelengthToColor } from './util.js';
 
 const EPS = 1e-10;
@@ -313,7 +314,7 @@ function oplLine(piece, x) {
     }
   }
   const slope = (right.oplMm - left.oplMm) / (right.x - left.x);
-  return { value: left.oplMm + slope * (x - left.x), slope };
+  return { value: left.oplMm + slope * (x - left.x), slope, left, right, t: (x - left.x) / (right.x - left.x) };
 }
 
 function supportsOverlap(a, b) {
@@ -333,7 +334,66 @@ function sinc(value) {
   return Math.sin(value) / value;
 }
 
+// Integrate the same spectral fields used at beamsplitters over each finite
+// pixel interval. OPL and relative internal paths interpolate continuously
+// between spatial quadrature nodes; the sinc factor integrates their linear
+// phase slope exactly rather than treating rays as camera pixels.
+function broadbandGroupProfile(modes, pixelCount, sensorMin, sensorMax) {
+  const source = modes[0].hits[0].spectralSource;
+  if (!source || modes.some(m => m.hits.some(h => h.spectralSource !== source))) return null;
+  const profile = Array(pixelCount).fill(0), supportIntervals = [], spectra = [];
+  const pixelWidth = (sensorMax - sensorMin) / pixelCount;
+  for (let pixel = 0; pixel < pixelCount; pixel++) {
+    const lo = sensorMin + pixel * pixelWidth, hi = lo + pixelWidth;
+    const points = [lo, hi];
+    for (const mode of modes) for (const piece of mode.pieces) {
+      for (const cell of piece.cells) for (const x of [cell.left, cell.right]) if (x > lo && x < hi) points.push(x);
+      for (const node of piece.nodes) if (node.x > lo && node.x < hi) points.push(node.x);
+    }
+    points.sort((a, b) => a - b);
+    const edges = points.filter((x, i) => !i || x - points[i - 1] > EPS);
+    for (let i = 1; i < edges.length; i++) {
+      const left = edges[i - 1], right = edges[i], widthMm = right - left, x = (left + right) / 2;
+      const terms = [];
+      for (const mode of modes) {
+        const cell = activeCell(mode, x);
+        if (!cell) continue;
+        const line = oplLine(cell.piece, x);
+        const a = spectralTermsAt(line.left.spectralField, 1, line.left.oplMm, line.left.phaseOffset || 0);
+        const b = spectralTermsAt(line.right.spectralField, 1, line.right.oplMm, line.right.phaseOffset || 0);
+        if (a.length !== b.length || !a.length) return null;
+        const dx = line.right.x - line.left.x;
+        // Internal spectral weights must be constant inside a ray tube. An
+        // arbitrary spatially varying spectral amplitude needs a finer model.
+        if (a.some((term, j) => Math.abs(term.amplitude - b[j].amplitude) > 1e-6)) return null;
+        for (let j = 0; j < a.length; j++) terms.push({
+          amplitude: Math.sqrt(cell.density) * a[j].amplitude,
+          opdMm: a[j].opdMm + line.t * (b[j].opdMm - a[j].opdMm),
+          phaseRad: a[j].phaseRad + line.t * (b[j].phaseRad - a[j].phaseRad),
+          slope: (b[j].opdMm - a[j].opdMm) / dx,
+          phaseSlope: (b[j].phaseRad - a[j].phaseRad) / dx,
+          pol: Number.isFinite(cell.hit.pol) ? cell.hit.pol : 0,
+        });
+      }
+      if (!terms.length) continue;
+      const result = spectralFieldResult(source, terms, { widthMm });
+      if (!result) return null;
+      const power = result.power * widthMm;
+      profile[pixel] += power;
+      if (power > POWER_EPS) {
+        supportIntervals.push([left, right]);
+        spectra.push({ spec: result.spec, power, sourceId: modes[0].sourceId,
+          originId: modes[0].hits[0].originId || modes[0].sourceId, wl: modes[0].wavelength });
+      }
+    }
+  }
+  return { profile, supportIntervals, spectra };
+}
+
 function coherentGroupProfile(modes, baseline, pixelCount, sensorMin, sensorMax) {
+  if (modes.some(mode => mode.hits.some(hit => hit.spectralSource))) {
+    return broadbandGroupProfile(modes, pixelCount, sensorMin, sensorMax);
+  }
   const profile = [...baseline];
   const supportIntervals = [];
   const referenceOpl = Math.min(...modes.flatMap(mode => mode.hits.map(hit => hit.oplMm)));
@@ -427,6 +487,8 @@ export function cameraProfileFromHits(hits, pixelCount, aperture, { interference
   let fallbackReason = null;
   const appliedRouteKeys = new Set();
   const coherentSupportIntervals = [];
+  const coherentSpectra = [];
+  const spectralSourceIds = new Set();
   const coherenceGroups = new Map();
   for (const route of routes.filter(route => route.coherenceId !== null)) {
     const key = `${route.coherenceId}|${route.wavelength.toFixed(9)}`;
@@ -455,13 +517,20 @@ export function cameraProfileFromHits(hits, pixelCount, aperture, { interference
     const baseline = Array(count).fill(0);
     for (const mode of modes) addProfile(baseline, mode.profile);
     const coherent = coherentGroupProfile(modes, baseline, count, sensorMin, sensorMax);
-    if (!coherent) { fallbackReason = fallbackReason || 'non-finite coherent reconstruction'; continue; }
+    if (!coherent) { fallbackReason = fallbackReason || (modes[0].hits[0].spectralSource ? SPECTRAL_UNAVAILABLE : 'non-finite coherent reconstruction'); continue; }
     addProfile(profile, baseline, -1);
     addProfile(profile, coherent.profile);
     addSpectralProfile(wavelengthProfiles, modes[0].wavelength, baseline, -1);
     addSpectralProfile(wavelengthProfiles, modes[0].wavelength, coherent.profile);
-    addSourceSpectralProfile(sourceSpectralProfiles, modes[0].sourceId, modes[0].wavelength, false, null, baseline, -1);
-    addSourceSpectralProfile(sourceSpectralProfiles, modes[0].sourceId, modes[0].wavelength, false, null, coherent.profile);
+    if (coherent.spectra) {
+      for (const mode of modes) addSourceSpectralProfile(sourceSpectralProfiles, mode.sourceId, mode.wavelength, mode.continuum, mode.pathKey, mode.profile, -1);
+      addSourceSpectralProfile(sourceSpectralProfiles, modes[0].sourceId, modes[0].wavelength, true, null, coherent.profile);
+      coherentSpectra.push(...coherent.spectra);
+      spectralSourceIds.add(modes[0].sourceId);
+    } else {
+      addSourceSpectralProfile(sourceSpectralProfiles, modes[0].sourceId, modes[0].wavelength, false, null, baseline, -1);
+      addSourceSpectralProfile(sourceSpectralProfiles, modes[0].sourceId, modes[0].wavelength, false, null, coherent.profile);
+    }
     modes.forEach(mode => appliedRouteKeys.add(mode.key));
     if (totalOf(coherent.profile) > POWER_EPS) {
       coherentSupportIntervals.push(...coherent.supportIntervals);
@@ -511,6 +580,8 @@ export function cameraProfileFromHits(hits, pixelCount, aperture, { interference
     : 0;
   return {
     profile: finalProfile,
+    coherentSpectra,
+    spectralSourceIds: [...spectralSourceIds],
     depositedProfile,
     depositedSignal: totalOf(depositedProfile),
     profileColors: Array.from({ length: count }, (_, pixel) => mixedColor(wavelengthProfiles, pixel)),

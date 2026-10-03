@@ -203,8 +203,19 @@ readout is labelled a linear-only approximation; outside the argon data
 (468–2059 nm) it continues geometrically with its own caveat. See
 [the physics, limits and validation note](physics/hollow-core.md).
 
-Its bounded coherent model applies only to sized monochromatic CW sources and
-explicitly supported ideal surfaces. It carries optical path plus the unitary phase of
+Its bounded coherent model applies to sized monochromatic CW sources and,
+when enabled on the source, sized pulsed and supercontinuum sources through
+explicitly supported ideal surfaces. Broadband fields are combined across their
+actual wavelength spectrum, preserving the changed spectrum and integrated
+power downstream. Camera pixels and scalar detector apertures integrate supported
+broadband overlap with the same spectral model. A combined temporal field is not
+reconstructed: pulse duration, autocorrelation and time traces after recombination
+are unavailable, and pulse animation stops there. Temporal modulation or nonlinear
+conversion downstream uses a labelled unconverted/ungated fallback. See
+[the model and bounds](physics/broadband-interference.md). Old saved sources
+without the new Interference setting load with it off, retaining their results.
+
+The coherent model carries optical path plus the unitary phase of
 ideal non-polarizing beamsplitters and fully reflective flat mirrors, groups compatible
 fields at a shared recombination surface, and propagates the resulting port intensity
 downstream before drawing or measuring it. Camera pixels additionally integrate any
