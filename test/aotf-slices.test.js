@@ -225,3 +225,22 @@ test('timing that was right is left alone', () => {
   assert.equal(duration(untouched), duration(rodOnly));
   assert.equal(untouched.pulse.dispersionModel, rodOnly.pulse.dispersionModel);
 });
+
+test('a filter that leaves the selected line alone leaves its duration alone', () => {
+  // A 20 nm bandpass does not touch a 2 nm line at its centre, so the line
+  // is as long with it as without it, whichever side of the glass the AOTF
+  // is on. The pulse's record still held the bandpass's spectrum when glass
+  // fanned the line out afterwards, and timed that: 234 fs for 258 fs.
+  const wide = at('filter', 100, { ftype: 'bandpass', center: 800, band: 20 });
+  const reference = duration(chain(pulsed()(), [at('aotf', 250, channel(800, 2)), rodAt(450)]));
+  const front = duration(chain(pulsed()(), [wide, at('aotf', 250, channel(800, 2)), rodAt(450)]));
+  const behind = duration(chain(pulsed()(), [wide, rodAt(250), at('aotf', 550, channel(800, 2))]));
+  assert.ok(Math.abs(front - reference) <= 0.01 * reference, `AOTF in front of the glass: ${front} vs ${reference} fs`);
+  assert.ok(Math.abs(behind - reference) <= 0.01 * reference, `AOTF behind the glass: ${behind} vs ${reference} fs`);
+  // Two box filters and glass, with no AOTF, were already right and still are.
+  const narrow = x => at('filter', x, { ftype: 'bandpass', center: 800, band: 4 });
+  const one = duration(chain(pulsed()(), [narrow(200), rodAt(450)]));
+  for (const elements of [[wide, narrow(200), rodAt(450)], [wide, rodAt(300), narrow(700)], [rodAt(250), narrow(700)]]) {
+    assert.ok(Math.abs(duration(chain(pulsed()(), elements)) - one) <= 1e-3 * one);
+  }
+});
