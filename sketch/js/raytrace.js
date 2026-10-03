@@ -865,6 +865,9 @@ function detectorSample(ray, surface, u, oplMm, pathKey, sensorMiss = false) {
     fanLo: Number.isFinite(ray.fanLo) ? ray.fanLo : null,
     fanHi: Number.isFinite(ray.fanHi) ? ray.fanHi : null,
     spectralHi: Number.isFinite(ray.spectralHi) ? ray.spectralHi : null,
+    // The profile a fanned-out sample's slice carries, so the duration model
+    // can time the light that actually arrives in the slice.
+    sliceSpec: ray.sliceSpec || null,
     sourceId: ray.sourceId || null,
     sample: Number.isInteger(ray.sample) ? ray.sample : null,
     sampleCount: Number.isInteger(ray.sampleCount) ? ray.sampleCount : null,
@@ -5293,7 +5296,10 @@ function pulseSpectrumPiece(ray, pulse, power = 1) {
   const cell = sampleCell(ray);
   if (!cell) return null;
   const parent = (pulse?.filteredPieces || []).find(p => p.lo <= cell[0] + 1e-9 && p.hi >= cell[1] - 1e-9);
-  const spec = parent?.spec || pulseBand(pulse) || flatSpectrum(cell[0], cell[1]);
+  // A slice that carries a profile of its own is timed by it: the band it was
+  // cut from, or what an AOTF channel made of the light inside the slice. The
+  // pulse's record keeps one spectrum per piece and cannot hold the second.
+  const spec = ray.sliceSpec || parent?.spec || pulseBand(pulse) || flatSpectrum(cell[0], cell[1]);
   const lo = Math.max(cell[0], parent?.lo ?? -Infinity), hi = Math.min(cell[1], parent?.hi ?? Infinity);
   return hi > lo ? { spec, lo, hi, power } : null;
 }
@@ -5932,6 +5938,19 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           // be worked out from it downstream.
           const piece = pulseSpectrumPiece({ ...r, ...child }, r.pulse);
           child.pulse = { ...r.pulse, spectrumReshaped: true, filteredPieces: piece ? [piece] : null };
+        }
+      }
+      // An AOTF channel reshapes the light inside a fanned-out sample's slice
+      // (and so the depleted beam it leaves). The pulse's record is brought up
+      // to date with the piece that leaves, on its own terms as the etalon's
+      // mark is: a pulse an earlier filter reshaped is not re-detected as
+      // reshaping above, and would keep the earlier filter's piece.
+      if (hit.surface.kind === 'aotf' && r.pulse && sampleCell(r)) {
+        for (const child of children) {
+          if (!('sliceSpec' in child)) continue;
+          if ('pulse' in child && child.pulse !== r.pulse && !child.pulse?.spectrumReshaped) continue;
+          const piece = pulseSpectrumPiece({ ...r, ...child }, r.pulse);
+          child.pulse = { ...(child.pulse || r.pulse), spectrumReshaped: true, filteredPieces: piece ? [piece] : null };
         }
       }
       // An etalon's output keeps its power but not its comb (and not the

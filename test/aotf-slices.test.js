@@ -13,6 +13,7 @@ import test from 'node:test';
 import '../sketch/js/detector-instruments.js';
 import { createElement } from '../sketch/js/elements.js';
 import { traceScene, detectorReading } from '../sketch/js/raytrace.js';
+import { DISPERSION_UNAVAILABLE } from '../sketch/js/glass.js';
 
 const sources = {
   gaussian: () => {
@@ -132,4 +133,82 @@ test('the depleted beam is missing what the channel took, colour by colour', () 
       assert.ok(Math.abs(withAotf - without) <= 0.01 * without, `${kind} ${center}/${band}: ${withAotf} vs ${without}`);
     }
   }
+});
+
+// --- Pulse duration -----------------------------------------------------
+// The line an AOTF selects from a fanned-out sample is timed from the
+// profile the sample's slice carries, which the detector's hit keeps. The
+// check is always the same: the selector in front of the glass, where the
+// light has a spectrum of its own, against the selector behind it.
+
+const pulsed = (params = {}) => () => {
+  const src = createElement('pulsedlaser', 0, 0);
+  Object.assign(src.params, { beamMode: 'line', wavelength: 800, transformLimited: false, bandwidth: 60, ...params });
+  return src;
+};
+const pulsedContinuum = () => {
+  const src = createElement('sclaser', 0, 0);
+  Object.assign(src.params, { temporalMode: 'pulsed', beamMode: 'line', scMin: 700, scMax: 900, pulseWidthFs: 500 });
+  return src;
+};
+const duration = reading => reading?.pulse?.stretchedPulseWidthFs ?? null;
+
+test('a line an AOTF selects is timed the same in front of the glass and behind it', () => {
+  const cases = [
+    ['a Gaussian pulse', pulsed(), [], 2, 0.01],
+    ['a transform-limited pulse', pulsed({ transformLimited: true, pulseWidthFs: 30 }), [], 4, 0.01],
+    // A pulse an earlier filter has already reshaped: the record then holds
+    // the earlier filter's spectrum, and must not be what gets timed.
+    ['behind a wider AOTF channel', pulsed(), [at('aotf', 100, channel(800, 10))], 2, 0.01],
+    ['behind a bandpass', pulsed(), [at('filter', 100, { ftype: 'bandpass', center: 800, band: 20 })], 2, 0.01],
+    // The continuum's duration is an assumed-sweep estimate; it agrees less closely.
+    ['a pulsed continuum', pulsedContinuum, [], 4, 0.05],
+  ];
+  for (const [name, source, before, passband, tolerance] of cases) {
+    const first = chain(source(), [...before, at('aotf', 250, channel(800, passband)), rodAt(450)]);
+    const after = chain(source(), [...before, rodAt(250), at('aotf', 550, channel(800, passband))]);
+    assert.ok(duration(first) > 100, `${name}: timed in front of the glass (${duration(first)} fs)`);
+    assert.ok(Math.abs(duration(after) - duration(first)) <= tolerance * duration(first),
+      `${name}: ${duration(after)} fs behind the glass, ${duration(first)} fs in front`);
+    assert.ok(Math.abs(after.signal - first.signal) <= 2e-3 * first.signal, `${name}: power`);
+    assert.equal(after.pulse.dispersionModel, first.pulse.dispersionModel, `${name}: same model`);
+  }
+});
+
+test('a filter behind the AOTF narrows the timed line either way round', () => {
+  const filter = x => at('filter', x, { ftype: 'bandpass', center: 800, band: 1 });
+  const first = chain(pulsed()(), [at('aotf', 250, channel(800, 2)), filter(350), rodAt(450)]);
+  const after = chain(pulsed()(), [rodAt(250), at('aotf', 550, channel(800, 2)), filter(700)]);
+  assert.ok(duration(first) > 1500, `a 1 nm band is picoseconds long (${duration(first)} fs)`);
+  assert.ok(Math.abs(duration(after) - duration(first)) <= 0.01 * duration(first), `${duration(after)} vs ${duration(first)} fs`);
+});
+
+test('a channel straddling two samples behind glass is declined, not guessed', () => {
+  // 815 nm lies on the boundary of two of the Gaussian's samples, which the
+  // glass has given different dispersion. There is no one quadratic phase
+  // for the line, and the model says so rather than time half of it.
+  const after = chain(pulsed()(), [rodAt(250), at('aotf', 550, channel(815, 6))]);
+  assert.equal(duration(after), null);
+  assert.equal(after.pulse.dispersionModel, DISPERSION_UNAVAILABLE.broadGdd);
+  const first = chain(pulsed()(), [at('aotf', 250, channel(815, 6)), rodAt(450)]);
+  assert.ok(duration(first) > 100, `timed in front of the glass (${duration(first)} fs)`);
+  assert.ok(Math.abs(after.signal - first.signal) <= 2e-3 * first.signal, 'power agrees all the same');
+});
+
+test('timing that was right is left alone', () => {
+  // A narrow band a filter made, with no dispersive element: a wide AOTF
+  // channel is near-uniform over it and the duration is the filter's.
+  const narrow = x => at('filter', x, { ftype: 'bandpass', center: 800, band: 1 });
+  const filterOnly = chain(pulsedContinuum(), [narrow(150)]);
+  for (const passband of [2000, 20]) {
+    const withAotf = chain(pulsedContinuum(), [narrow(150), at('aotf', 400, channel(800, passband))]);
+    assert.ok(Math.abs(duration(withAotf) - duration(filterOnly)) <= 1e-3 * duration(filterOnly),
+      `passband ${passband}: ${duration(withAotf)} vs ${duration(filterOnly)} fs`);
+    assert.equal(withAotf.pulse.dispersionModel, filterOnly.pulse.dispersionModel);
+  }
+  // A channel that takes nothing from the beam leaves the glass's own timing.
+  const rodOnly = chain(pulsed()(), [rodAt(250)]);
+  const untouched = chain(pulsed()(), [rodAt(250), at('aotf', 550, channel(1000, 2, { showDepleted: true, deflect: 0 }))]);
+  assert.equal(duration(untouched), duration(rodOnly));
+  assert.equal(untouched.pulse.dispersionModel, rodOnly.pulse.dispersionModel);
 });
