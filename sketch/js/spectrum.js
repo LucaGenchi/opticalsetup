@@ -262,9 +262,10 @@ export function applyTransmission(spec, centerWl, transmissionFn, edges = null) 
   const transmittedTotal = integrate(shaped, step);
   // A line spectrum's lines are narrower than either grid's spacing, so
   // resampling the parts outside the slice would miss lines there; it keeps
-  // the locate-grid total. Filters, dichroics and gratings weigh lines one
-  // by one before they get here; the smooth transmissions (etalon, AOTF)
-  // still integrate them on these grids.
+  // the locate-grid total. The tracer's elements (filters, dichroics,
+  // gratings, etalons, AOTFs) weigh lines one by one and never bring them
+  // here; this is the fallback for any other caller, and it can still step
+  // over a line.
   const total = spec.kind === 'lines' ? incidentTotal
     : incidentOver(spec, lo, from) + integrate(sliceIncident, step) + incidentOver(spec, to, hi);
   const fraction = total > 0 ? transmittedTotal / total : 0;
