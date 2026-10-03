@@ -7,8 +7,13 @@ import { createElement } from '../sketch/js/elements.js';
 import { traceAll, detectorReading } from '../sketch/js/raytrace.js';
 import '../sketch/js/detector-instruments.js';
 
+// These benches measure what a collecting mirror does with the source, so the
+// source keeps a 165 mm capture range: at the 1 m default a detector
+// downstream would also receive the source's forward rays directly.
 const mk = (type, x, y, rot = 0, params = {}) => {
-  const el = createElement(type, x, y); el.rot = rot; Object.assign(el.params, params); return el;
+  const el = createElement(type, x, y); el.rot = rot;
+  if (type === 'pointsource') el.params.captureRange = 165;
+  Object.assign(el.params, params); return el;
 };
 
 // A point source at the focus of a parabolic mirror, read by a detector some
@@ -53,15 +58,16 @@ test('an ordinary mirror also reflects point-source light now', () => {
   // rather than anything to do with parabolas.
   const source = mk('pointsource', 300, 200, 0, { spread: 360, nrays: 24, bwMode: 'mono' });
   const mirror = mk('mirror', 200, 200, 45, { length: 120 });
-  // this mirror folds the leftward light downward
-  const detector = mk('detector', 200, 310, 90, { aperture: 120 });
+  // this mirror folds the leftward light downward, to a detector that sits
+  // beyond the source's own capture range
+  const detector = mk('detector', 200, 400, 90, { aperture: 120 });
   traceAll([source, mirror, detector], []);
   const reading = detectorReading(detector.id);
   assert.ok(reading && reading.signal > 0, 'light folded 90 degrees reaches the detector');
 
   // and with the mirror gone that detector sees nothing, so the signal above
   // really came off the mirror rather than straight from the source
-  const bare = mk('detector', 200, 310, 90, { aperture: 120 });
+  const bare = mk('detector', 200, 400, 90, { aperture: 120 });
   traceAll([mk('pointsource', 300, 200, 0, { spread: 360, nrays: 24, bwMode: 'mono' }), bare], []);
   const without = detectorReading(bare.id);
   assert.ok(!without || without.signal === 0, 'no mirror, no signal');

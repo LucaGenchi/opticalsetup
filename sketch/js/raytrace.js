@@ -5702,7 +5702,14 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // would have fixed the flat and parabolic cases and left the two
         // components most likely to be used for collection still broken.
         const COLLECTORS = new Set(['lens', 'metalens', 'fiberin', 'mirror', 'cmirror']);
-        const captured = hit && hit.t <= CAPTURE && COLLECTORS.has(hit.surface.kind);
+        // A point source asks for more than that list: inside its capture
+        // range every traced surface receives its light as it would a laser
+        // ray -- a filter passes it on, a detector reads it, a blocker stops
+        // it. The nearest surface still wins, so nothing is reached through
+        // an absorber, and diagram-only elements have no surface to meet.
+        // Fluorescence keeps the collector list.
+        const captured = hit && hit.t <= CAPTURE
+          && (r.captureMode === 'surface' || COLLECTORS.has(hit.surface.kind));
         if (!captured) {
           const L = hit ? Math.min(hit.t, EVAN_LEN) : EVAN_LEN;
           appendPoint(r, { x: r.x + r.dx * L, y: r.y + r.dy * L }, L);
@@ -5718,10 +5725,13 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // The transmitted child starts AT the collector, having already used
         // up hit.t of its range. Handing it the full range again would let a
         // chain of partial mirrors walk near-field light across the bench.
-        r.carriedEvan = {
+        // Only a mirror passes light on uncollected; what any other surface
+        // transmits has been received by it and is ordinary light.
+        r.carriedEvan = ['mirror', 'cmirror'].includes(hit.surface.kind) ? {
           evanLen: Math.max(0, EVAN_LEN - hit.t),
           captureLen: Math.max(0, CAPTURE - hit.t),
-        };
+          captureMode: r.captureMode,
+        } : null;
         if (!coherent?.dryRun) recordCameraNearMisses(r, cameraSurfaces, hit?.t ?? MAXLEN);
       }
       if (!hit) {
@@ -6111,6 +6121,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           evan: c.evan || Boolean(c.tag === 'T' && carriedEvan),
           evanLen: c.evanLen ?? (c.tag === 'T' ? carriedEvan?.evanLen : undefined),
           captureLen: c.captureLen ?? (c.tag === 'T' ? carriedEvan?.captureLen : undefined),
+          captureMode: c.captureMode ?? (c.tag === 'T' ? carriedEvan?.captureMode : undefined),
           pol: 'pol' in c ? c.pol : r.pol,
           stokes: 'stokes' in c ? cloneStokes(c.stokes) : cloneStokes(r.stokes),
           polMod: 'polMod' in c ? c.polMod : r.polMod,
@@ -6605,6 +6616,7 @@ export function traceScene(elements, beams = [], options = {}) {
         pulse,
         objectives: [],
         evan: r.evan || false, evanLen: r.evanLen,
+        captureLen: r.captureLen, captureMode: r.captureMode,
         medium: initialBody?.id || null, mediumMaterial: initialMaterial, ior: initialIor,
         groupDelayDifferenceFs: 0,
         intensity: 1, power: 1 / Math.max(1, K), sample: r.sample !== undefined ? r.sample : null,

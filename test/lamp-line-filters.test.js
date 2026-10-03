@@ -24,8 +24,10 @@ const close = (actual, expected, label, tol = 1e-9) =>
 // element at (400, 200); a detector straight on and, for a dichroic at 45°,
 // one below it for the reflected port.
 function trace(kind, params, rot) {
+  // The shortest capture range: only the parabola receives the lamp directly, so the
+  // beam measured downstream is the collimated one alone.
   const lamp = createElement('pointsource', 175, 200);
-  Object.assign(lamp.params, { sourceKind: 'lamp', lampType: 'hg', spread: 360, nrays: 24 });
+  Object.assign(lamp.params, { sourceKind: 'lamp', lampType: 'hg', spread: 360, nrays: 24, captureRange: 110 });
   const oap = createElement('oap', 150, 200);
   oap.rot = 180;
   Object.assign(oap.params, { length: 110, f: 25 });

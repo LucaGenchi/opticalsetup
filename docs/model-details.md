@@ -214,6 +214,15 @@ as intensities. An incomplete trace or a route through an optic whose carrier ph
 not represented falls back to conservative deposited intensity rather than inventing a
 phase.
 
+A point source's rays are traced only as far as its capture range (1 m by
+default, 110 mm to 5 m; 165 mm for a sketch saved before the control existed).
+A ray that meets any traced surface within that range is ordinary light from
+there on, treated as a laser ray would be at that surface; a ray that meets
+nothing in range is drawn as a glow fading within 110 mm and reaches no
+detector. The range is a drawing convention that keeps a 360° emitter from
+covering the canvas, not attenuation or an inverse-square law: light inside it
+arrives at full ray weight.
+
 The metalens is a zero-thickness paraxial phase-gradient proxy rather than an
 electromagnetic metasurface solver. In chromatic mode its focal length follows the
 ordinary diffractive relation `f(λ) = f₀λ₀/λ`; broadband light is sampled into the

@@ -205,8 +205,10 @@ test('a lamp through one or two AODs keeps its lines, with nothing between them'
   // each line a slice reaching into the dark gaps on either side, so a filter
   // behind it found light where the lamp emits none and too little on a line.
   const read = (aods, filter) => {
+    // The shortest capture range: only the parabola receives the lamp directly, so the
+    // beam measured downstream is the collimated one alone.
     const source = createElement('pointsource', 175, 200);
-    Object.assign(source.params, { sourceKind: 'lamp', lampType: 'hg', spread: 360, nrays: 24 });
+    Object.assign(source.params, { sourceKind: 'lamp', lampType: 'hg', spread: 360, nrays: 24, captureRange: 110 });
     const mirror = createElement('oap', 150, 200);
     mirror.rot = 180;
     Object.assign(mirror.params, { length: 110, f: 25 });
