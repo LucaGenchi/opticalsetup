@@ -33,10 +33,11 @@ test('point source rays fade evanescently unless a nearby lens collects them', (
 });
 
 // ---- capture range --------------------------------------------------------
-// A ray that meets a traced surface within the source's capture range is
-// ordinary light from there on; one that meets nothing in range fades at
-// 110 mm. Coverage of the optical families, the beamsplitter branches, the
-// partial mirror and the fiber follows Andrea Bertoncini's tests in #191.
+// Lenses and mirrors (every element of those two categories) and fiber tips
+// collect a point source's light within its capture range. Other optics
+// neither collect it nor hide a collector behind them; opaque things do hide
+// it. A ray with no collector ahead fades at 110 mm. The partial-mirror and
+// fiber cases follow Andrea Bertoncini's tests in #191.
 
 function pointSource(params = {}) {
   const src = createElement('pointsource', 0, 0);
@@ -51,11 +52,19 @@ function rayPoints(elements, beams = []) {
 }
 
 const fadesAtGlow = points => points.every(p => Math.hypot(p.x, p.y) <= 110 + 1e-8);
+// Only what the point source at the origin drew, leaving out another source's
+// own beam.
+function sourcePoints(elements) {
+  const paths = traceAll(elements).filter(d => d.type === 'path' && Math.hypot(d.pts[0].x, d.pts[0].y) < 1e-6);
+  assert.ok(paths.length > 0);
+  return paths.flatMap(d => d.pts);
+}
 const at = (type, x, params = {}) => {
   const el = createElement(type, x, 0);
   Object.assign(el.params, params);
   return el;
 };
+const lens = () => at('lens', 400, { f: 100, dia: 50 });
 // What a detector 600 mm away reads behind `between`.
 function readBehind(between, source = pointSource()) {
   const detector = at('detector', 600, { aperture: 100 });
@@ -65,7 +74,7 @@ function readBehind(between, source = pointSource()) {
 
 test('a new point source has a 1 m capture range, and a sketch saved without one keeps 165 mm', () => {
   assert.equal(createElement('pointsource', 0, 0).params.captureRange, 1000);
-  assert.ok(registry.pointsource.source(pointSource()).every(r => r.captureLen === 1000 && r.captureMode === 'surface'));
+  assert.ok(registry.pointsource.source(pointSource()).every(r => r.captureLen === 1000 && r.captureMode === 'collectors'));
 
   const saved = pointSource();
   delete saved.params.captureRange;
@@ -102,24 +111,31 @@ test('the capture range includes its boundary and stops beyond it', () => {
   }
 });
 
-test('every optical family 500 mm away receives the source', () => {
-  for (const type of [
-    'lens', 'lensc', 'metalens', 'thicklens', 'lensgroup', 'telescope', 'objective',
-    'freeglass', 'prism', 'glassrod', 'mirror', 'cmirror', 'cmirrorx', 'oap',
-    'galvo', 'retroreflector', 'bs', 'pbs', 'dichroic', 'etalon', 'grating',
-    'diffuser', 'slm', 'metasurface', 'dmd', 'dm', 'aom', 'aotf', 'eye',
-    'asphericlens', 'conicmirror', 'polygonscanner', 'aod',
-  ]) {
-    const points = rayPoints([pointSource(), at(type, 500)]);
-    assert.ok(points.some(p => p.x > 400), `${type} must receive the ray aimed at it`);
+test('every lens and every mirror collects the source, and nothing else does', () => {
+  for (const [type, def] of Object.entries(registry)) {
+    if (def.hidden) continue;
+    const points = sourcePoints([pointSource(), at(type, 500)]);
+    if (def.category === 'Lenses' || def.category === 'Mirrors') {
+      assert.ok(points.some(p => Math.hypot(p.x, p.y) > 450), `${type} must collect the ray aimed at it`);
+    } else {
+      assert.ok(fadesAtGlow(points), `${type} must not collect: the rays fade at 110 mm`);
+    }
   }
 });
 
-test('an optic that only passes light on does not hide what is behind it', () => {
-  // The same lens-and-detector bench read with nothing in front, then with
-  // each pass-through optic 300 mm from the source. On this branch's first
-  // version the filter, polarizer and waveplates ended the ray.
-  const lens = () => at('lens', 400, { f: 100, dia: 50 });
+test('a laser next to a point source does not catch its rays', () => {
+  // The housing is opaque, so it ends the glow where it is nearer than
+  // 110 mm, but it never turns a ray into a traced line.
+  for (const type of ['cwlaser', 'pulsedlaser', 'sclaser', 'ledsource']) {
+    for (const x of [80, 300, 900]) {
+      const laser = at(type, x);
+      laser.rot = 180; // its housing faces the source
+      assert.ok(fadesAtGlow(sourcePoints([pointSource({ nrays: 64 }), laser])), `${type} at ${x} mm`);
+    }
+  }
+});
+
+test('an optic in front of a lens acts on the light without hiding the lens', () => {
   const open = readBehind([lens()]);
   assert.ok(open > 0, 'the bare bench reads the source');
   for (const [type, params, fraction] of [
@@ -133,64 +149,50 @@ test('an optic that only passes light on does not hide what is behind it', () =>
     assert.ok(Math.abs(signal - open * fraction) < 1e-9, `${type}: ${signal} vs ${open * fraction}`);
   }
   // A filter that blocks the source's wavelength still blocks it.
-  const blocked = readBehind([at('filter', 300, { ftype: 'bandpass', center: 800, band: 10 }), lens()]);
-  assert.equal(blocked, 0);
+  assert.equal(readBehind([at('filter', 300, { ftype: 'bandpass', center: 800, band: 10 }), lens()]), 0);
+  // ...and with no lens behind it, the filter collects nothing.
+  assert.ok(fadesAtGlow(rayPoints([pointSource(), at('filter', 300)])));
 });
 
-test('a point source reads on a detector the way a laser does through the same optics', () => {
-  // One ray along the axis from each source, through a neutral-density
-  // filter and a waveplate: the same fraction of each arrives.
-  const laserRead = between => {
-    const laser = createElement('cwlaser', -60, 0);
-    const detector = at('detector', 600, { aperture: 100 });
-    traceAll([laser, ...between, detector]);
-    return detectorReading(detector.id)?.signal ?? 0;
-  };
-  const stack = () => [at('filter', 200, { ftype: 'nd', trans: 0.3 }), at('qwp', 300)];
-  const pointFraction = readBehind(stack()) / readBehind([]);
-  const laserFraction = laserRead(stack()) / laserRead([]);
-  assert.ok(pointFraction > 0 && Math.abs(pointFraction - laserFraction) < 1e-9, `${pointFraction} vs ${laserFraction}`);
+test('a detector facing the source collects nothing; behind a lens it reads', () => {
+  assert.equal(readBehind([]), 0, 'no lens, no reading');
+  assert.ok(readBehind([lens()]) > 0);
+  assert.equal(readBehind([lens()], pointSource({ captureRange: 300 })), 0, 'lens beyond the range');
 });
 
-test('a detector facing the source reads it inside the range and not outside', () => {
-  assert.ok(readBehind([]) > 0, 'a detector 600 mm away, range 1 m');
-  assert.equal(readBehind([], pointSource({ captureRange: 500 })), 0, 'the same detector, range 500 mm');
-});
-
-test('a blocker still stops the light, and diagram-only elements change nothing', () => {
-  const lens = () => at('lens', 400, { f: 100, dia: 50 });
-  assert.equal(readBehind([at('blocker', 300), lens()]), 0, 'nothing is reached through a blocker');
-  assert.equal(readBehind([at('beamdump', 300), lens()]), 0, 'nor through a beam dump');
-
+test('opaque things hide a collector, and diagram-only elements change nothing', () => {
+  for (const type of ['blocker', 'beamdump', 'detector']) {
+    assert.equal(readBehind([at(type, 300), lens()]), 0, `nothing is collected through a ${type}`);
+    assert.ok(fadesAtGlow(sourcePoints([pointSource(), at(type, 300), lens()])),
+      `${type}: the ray fades instead of being drawn to it`);
+  }
   const open = readBehind([lens()]);
   for (const type of ['textlabel', 'arrowann', 'window', 'gascell']) {
     assert.equal(readBehind([at(type, 300), lens()]), open, `${type} is not a surface`);
   }
-  // ...and a diagram-only element is not something to be captured by either.
-  assert.ok(fadesAtGlow(rayPoints([pointSource(), at('textlabel', 300), at('window', 500)])));
 });
 
-test('a ray that misses everything keeps the 110 mm fade', () => {
-  const lens = createElement('lens', 500, 100); // off all four sampled axes
-  assert.ok(fadesAtGlow(rayPoints([pointSource(), lens])));
+test('a ray that misses every collector keeps the 110 mm fade', () => {
+  const off = createElement('lens', 500, 100); // off all four sampled axes
+  assert.ok(fadesAtGlow(rayPoints([pointSource(), off])));
 });
 
-test('a beamsplitter sends on both branches', () => {
-  const points = rayPoints([pointSource(), at('bs', 500)]);
-  assert.ok(points.some(p => p.x > 600 && Math.abs(p.y) < 1e-6), 'transmitted branch propagates');
+test('a beamsplitter in front of a lens splits the collected light', () => {
+  const points = rayPoints([pointSource(), at('bs', 300), at('lens', 500)]);
+  assert.ok(points.some(p => p.x > 600 && Math.abs(p.y) < 1e-6), 'transmitted branch reaches the lens and goes on');
   assert.ok(points.some(p => Math.abs(p.y) > 500), 'reflected branch propagates');
 });
 
 test('light leaking through a partial mirror keeps only the range it has left', () => {
   const mirror = at('mirror', 500, { refl: 30, showTransmitted: true });
-  const glass = at('glassrod', 700);
+  const beyond = at('lens', 700, { f: 100, dia: 50 });
   const detector = at('detector', 900);
-  rayPoints([pointSource(), mirror, glass, detector]);
-  assert.ok(detectorReading(detector.id)?.signal > 0, 'glass 700 mm from the source is inside 1 m');
-  glass.x = 1100;
+  rayPoints([pointSource(), mirror, beyond, detector]);
+  assert.ok(detectorReading(detector.id)?.signal > 0, 'a lens 700 mm from the source is inside 1 m');
+  beyond.x = 1100;
   detector.x = 1300;
-  rayPoints([pointSource(), mirror, glass, detector]);
-  assert.equal(detectorReading(detector.id), null, 'glass 1100 mm from the source is not');
+  rayPoints([pointSource(), mirror, beyond, detector]);
+  assert.equal(detectorReading(detector.id), null, 'a lens 1100 mm from the source is not');
 });
 
 test('a fiber input collects the source inside the range', () => {

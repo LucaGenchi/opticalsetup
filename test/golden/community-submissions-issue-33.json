@@ -2,10 +2,10 @@
  "elements": 97,
  "beams": 1,
  "drawables": {
-  "count": 1877,
+  "count": 1932,
   "byType": {
    "poly": 1472,
-   "path": 405
+   "path": 460
   },
   "colors": {
    "#0046ff": 182,
@@ -13,7 +13,7 @@
    "#00f7ff": 130,
    "#1fff00": 66,
    "#610000": 52,
-   "#65ff00": 482,
+   "#65ff00": 537,
    "#7c3aed": 1,
    "#81ff00": 130,
    "#8b1a1a": 104,
@@ -23,10 +23,10 @@
    "#ff0900": 182,
    "#ff3900": 78
   },
-  "points": 6733,
+  "points": 6843,
   "sum": [
-   4917308.69,
-   2266404.35
+   4993158.96,
+   2310035.89
   ],
   "bbox": [
    111.3195,
@@ -34,7 +34,7 @@
    1453,
    790
   ],
-  "digest": "bac940cb"
+  "digest": "b952253b"
  },
  "drawnElements": {
   "textlabel:eot1nq1w": "df9c77e5",
@@ -6813,32 +6813,36 @@
     "color": "#65ff00",
     "convergence": {
      "diverging": true,
-     "fullAngleDeg": 44.8756754,
-     "slopePerMm": 0.0565627989
+     "fullAngleDeg": 20.3014017,
+     "slopePerMm": 0.0472680979
     },
     "dark": false,
     "darkOutput": 0.00006,
     "depositedProfile": null,
-    "depositedSignal": 0.109375,
+    "depositedSignal": 0.078125,
     "detectorType": "PMT",
     "gain": 6,
     "interference": null,
-    "normalizedStokes": null,
-    "outputSignal": 0.65625,
-    "polarization": "Mixed",
+    "normalizedStokes": {
+     "s1": -1,
+     "s2": 1.2246468e-16,
+     "s3": 0
+    },
+    "outputSignal": 0.46875,
+    "polarization": "Linear 90°",
     "profile": null,
     "profileColors": null,
     "profileMode": null,
     "profileScale": "absolute",
     "pulse": null,
     "readoutKind": "pmt",
-    "samples": 6,
+    "samples": 5,
     "saturated": false,
-    "signal": 0.109375,
-    "snr": 10937.5,
+    "signal": 0.078125,
+    "snr": 7812.5,
     "sourceFractions": [
      {
-      "fraction": 0.109375,
+      "fraction": 0.078125,
       "sourceId": "e64te19v"
      }
     ],
@@ -6847,13 +6851,13 @@
       "bandId": null,
       "color": "#65ff00",
       "continuum": false,
-      "power": 0.109375,
+      "power": 0.078125,
       "sourceId": "e64te19v",
       "wavelength": 532,
       "widthNm": null
      }
     ],
-    "spotSpan": 13.8470568,
+    "spotSpan": 7.55492836,
     "wavelength": 532
    }
   },
@@ -8175,32 +8179,36 @@
     "color": "#65ff00",
     "convergence": {
      "diverging": true,
-     "fullAngleDeg": 44.8756754,
-     "slopePerMm": 0.0565627989
+     "fullAngleDeg": 20.3014017,
+     "slopePerMm": 0.0472680979
     },
     "dark": false,
     "darkOutput": 0.00006,
     "depositedProfile": null,
-    "depositedSignal": 0.109375,
+    "depositedSignal": 0.078125,
     "detectorType": "PMT",
     "gain": 6,
     "interference": null,
-    "normalizedStokes": null,
-    "outputSignal": 0.65625,
-    "polarization": "Mixed",
+    "normalizedStokes": {
+     "s1": -1,
+     "s2": 1.2246468e-16,
+     "s3": 0
+    },
+    "outputSignal": 0.46875,
+    "polarization": "Linear 90°",
     "profile": null,
     "profileColors": null,
     "profileMode": null,
     "profileScale": "absolute",
     "pulse": null,
     "readoutKind": "pmt",
-    "samples": 6,
+    "samples": 5,
     "saturated": false,
-    "signal": 0.109375,
-    "snr": 10937.5,
+    "signal": 0.078125,
+    "snr": 7812.5,
     "sourceFractions": [
      {
-      "fraction": 0.109375,
+      "fraction": 0.078125,
       "sourceId": "exvolx2j"
      }
     ],
@@ -8209,13 +8217,13 @@
       "bandId": null,
       "color": "#65ff00",
       "continuum": false,
-      "power": 0.109375,
+      "power": 0.078125,
       "sourceId": "exvolx2j",
       "wavelength": 532,
       "widthNm": null
      }
     ],
-    "spotSpan": 13.8470568,
+    "spotSpan": 7.55492836,
     "wavelength": 532
    }
   }

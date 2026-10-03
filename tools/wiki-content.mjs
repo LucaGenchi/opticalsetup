@@ -620,15 +620,17 @@ export const wikiEntries = [
         strong opinion, and it is there because the alternative is worse: an isotropic
         emitter whose rays all ran forever would bury the bench in lines.</p>
         <p>The <strong>capture range</strong> decides which rays carry on instead: a ray
-        that meets any surface the tracer handles within that distance — a lens, a
-        <a href="../mirror/">mirror</a>, a filter, a polarizer, a detector, a fiber tip —
-        is ordinary light from there on, exactly as a laser ray would be at that surface.
-        A beam block still stops it, and annotations are not surfaces at all. The range
-        is 1&nbsp;m for a newly placed source and can be set between 110&nbsp;mm and
-        5&nbsp;m; a sketch saved before the control existed opens at the 165&nbsp;mm it was
-        drawn with. It is a drawing convention that keeps the canvas readable, not
-        attenuation: light inside the range arrives at full ray weight, and light outside
-        it is not traced at all.</p>
+        with a lens, a <a href="../mirror/">mirror</a> or a fiber tip ahead of it within
+        that distance is collected, and is ordinary light all the way from the source.
+        Every element in the Lenses and Mirrors groups collects; nothing else does. A
+        filter or a polarizer in front of the collecting lens acts on the light passing
+        through it but collects nothing by itself, a detector facing the source directly
+        reads nothing, and a beam block, a housing or a detector in the way hides the
+        collector behind it. The range is 1&nbsp;m for a newly placed source and can be
+        set between 110&nbsp;mm and 5&nbsp;m; a sketch saved before the control existed
+        opens at the 165&nbsp;mm it was drawn with. It is a drawing convention that keeps the canvas readable, not
+        attenuation: collected light arrives at full ray weight, and uncollected light is
+        not traced at all.</p>
         <p>The embedded bench above shows the arrangement that makes collection
         clearest: a <a href="../oap/">parabolic mirror</a> with the source exactly at its
         focus, 25&nbsp;mm in front of the vertex, turning isotropic emission into a parallel

@@ -26,10 +26,8 @@ function readSpectrum(elements) {
 
 // A collimated lamp, optionally through a glass rod.
 function lamp(lampType, glass) {
-  // The shortest capture range: only the parabola receives the lamp directly, so the
-  // beam measured downstream is the collimated one alone.
   const source = createElement('pointsource', 175, 200);
-  Object.assign(source.params, { sourceKind: 'lamp', lampType, spread: 360, nrays: 24, captureRange: 110 });
+  Object.assign(source.params, { sourceKind: 'lamp', lampType, spread: 360, nrays: 24 });
   const mirror = createElement('oap', 150, 200);
   mirror.rot = 180;
   Object.assign(mirror.params, { length: 110, f: 25 });
