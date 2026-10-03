@@ -365,6 +365,53 @@ export function supercontinuumTransformLimitFs(scMin, scMax, shape = 'gauss') {
   return spanPerFs > 0 ? K / spanPerFs : Infinity;
 }
 
+// ---- LED presets ---------------------------------------------------------
+// Illustrative shapes, not any manufacturer's datasheet: typical centre and
+// full width at half maximum for the common single-colour dies. White is a
+// blue die exciting a phosphor, so it is two bands -- a narrow blue peak and a
+// broad phosphor band -- and never one hump: a filter or dichroic can remove
+// either and leave the other.
+export const LED_PRESETS = {
+  white: { label: 'White (phosphor)', bands: [{ center: 450, fwhm: 22, peak: 0.8 }, { center: 580, fwhm: 150, peak: 1 }] },
+  blue: { label: 'Blue (460 nm)', bands: [{ center: 460, fwhm: 22, peak: 1 }] },
+  green: { label: 'Green (530 nm)', bands: [{ center: 530, fwhm: 33, peak: 1 }] },
+  amber: { label: 'Amber (590 nm)', bands: [{ center: 590, fwhm: 15, peak: 1 }] },
+  red: { label: 'Red (630 nm)', bands: [{ center: 630, fwhm: 18, peak: 1 }] },
+  deepred: { label: 'Deep red (660 nm)', bands: [{ center: 660, fwhm: 20, peak: 1 }] },
+  nir: { label: 'Near infrared (850 nm)', bands: [{ center: 850, fwhm: 40, peak: 1 }] },
+};
+export const LED_MIN_BANDWIDTH_NM = 5;
+export const LED_MAX_BANDWIDTH_NM = 200;
+const LED_GRID = 257;
+
+// The bands an LED emits: its preset's, or the one typed centre and width.
+export function ledBands(params = {}) {
+  if (params.ledPreset !== 'custom') return (LED_PRESETS[params.ledPreset] || LED_PRESETS.white).bands;
+  const center = Number(params.wavelength), fwhm = Number(params.bandwidth);
+  return [{
+    center: Number.isFinite(center) && center > 0 ? center : 530,
+    fwhm: Math.min(LED_MAX_BANDWIDTH_NM, Math.max(LED_MIN_BANDWIDTH_NM, Number.isFinite(fwhm) ? fwhm : 30)),
+    peak: 1,
+  }];
+}
+
+// One band is the Gaussian itself. Several are summed onto one sampled
+// profile across their joint support, which every wavelength-selective
+// element and the spectrometer already integrate.
+export function ledSpectrum(params = {}) {
+  const bands = ledBands(params);
+  if (bands.length === 1) return gaussianSpectrum(bands[0].center, bands[0].fwhm);
+  const parts = bands.map(band => ({ spec: gaussianSpectrum(band.center, band.fwhm), peak: band.peak }));
+  const lo = Math.min(...parts.map(part => spectrumSupport(part.spec)[0]));
+  const hi = Math.max(...parts.map(part => spectrumSupport(part.spec)[1]));
+  const w = Array.from({ length: LED_GRID }, (_, i) => {
+    const wl = lo + (hi - lo) * i / (LED_GRID - 1);
+    return parts.reduce((sum, part) => sum + part.peak * spectrumWeight(part.spec, wl), 0);
+  });
+  const peak = Math.max(...w);
+  return { kind: 'sampled', lo, hi, w: w.map(value => value / peak) };
+}
+
 // Every emitting element resolves to the same three-value spectral contract
 // the tracer consumes: a centroid wavelength, an FWHM-style width, and the
 // true spectral shape (null = exactly monochromatic). Each source type
@@ -387,6 +434,11 @@ export function resolveSourceSpectrum(type, params = {}) {
     const brightest = (visible.length ? visible : spec.lines)
       .reduce((best, l) => (l.w > best.w ? l : best));
     return { wl: brightest.nm, bw: stats ? stats.fwhm : 0, spec };
+  }
+  if (type === 'ledsource') {
+    const spec = ledSpectrum(p);
+    const stats = spectrumStats(spec);
+    return { wl: stats.center, bw: stats.fwhm, spec };
   }
   if (type === 'sclaser') {
     const lo = Math.min(p.scMin ?? 300, p.scMax ?? 700);

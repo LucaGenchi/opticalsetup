@@ -23,6 +23,7 @@ import {
   formatTimeAxisNs,
 } from './probe.js';
 import {
+  LED_MAX_BANDWIDTH_NM, LED_MIN_BANDWIDTH_NM, LED_PRESETS, ledBands,
   linewidthForCoherenceLengthNm, spectrumSamples, supercontinuumTransformLimitFs, transformLimitedBandwidthNm,
 } from './spectrum.js';
 import {
@@ -5614,6 +5615,50 @@ registry.sclaser = {
   },
 };
 
+// A packaged LED: the die behind its own collimator, so what leaves the
+// housing is a collimated beam of ordinary rays, not the point source's
+// short-range isotropic emission. It is an incoherent source by design: it
+// has no coherence setting and never receives a coherence identity, so
+// detectors add the powers of its beams wherever they meet.
+const LED_BEAM_COLOR = '#cbd8ea';
+function ledColor(params) {
+  if (params.autoColor === false && params.color) return params.color;
+  const bands = ledBands(params);
+  return bands.length > 1 ? LED_BEAM_COLOR : wavelengthToColor(bands[0].center);
+}
+registry.ledsource = {
+  label: 'LED', category: 'Sources', paletteOrder: 2.5, size: { w: 104, h: 38 },
+  aliases: ['led', 'light emitting diode', 'collimated led', 'white led', 'incoherent source'],
+  snapPt: { x: 52, y: 0 }, // beam exit aperture
+  size_: el => ({ w: 104, h: laserH(el) + 4 }),
+  params: [
+    {
+      key: 'ledPreset', label: 'LED', type: 'select', def: 'white',
+      options: [...Object.entries(LED_PRESETS).map(([key, preset]) => [key, preset.label]), ['custom', 'Custom']],
+    },
+    { ...P.wavelength, def: 530, show: p => p.ledPreset === 'custom' },
+    { key: 'bandwidth', label: 'Spectrum width (nm)', type: 'number', min: LED_MIN_BANDWIDTH_NM, max: LED_MAX_BANDWIDTH_NM, step: 1, def: 30, show: p => p.ledPreset === 'custom' },
+    {
+      key: 'ledSpectrum', label: 'Spectrum', type: 'readout',
+      readout: p => `${ledBands(p).map(band => `${band.center} nm, ${band.fwhm} nm wide`).join(' + ')}` +
+        `${p.ledPreset === 'custom' ? '' : ' (illustrative)'}`,
+    },
+    { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 0.1 },
+    ...beamShapeParams(10),
+    P.autoColor, P.color,
+    pinnedParam('temporalMode', 'cw'),
+  ],
+  svg(el) {
+    const h = laserH(el), hh = h / 2, ap = laserAperture(el), c = ledColor(el.params);
+    // The collimating lens sits in the exit port, tinted by the emission.
+    return `<rect x="-46" y="${-hh}" width="88" height="${h}" rx="4" fill="#2f3a36" stroke="#1d2522" stroke-width="1.5"/>` +
+      `<text x="-2" y="0" ${isFlipped(el) ? 'transform="rotate(180 -2 0)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">LED</text>` +
+      `<path d="M 42,${-ap} Q 55,0 42,${ap} Z" fill="${c}" fill-opacity="0.75" stroke="#444" stroke-width="1"/>`;
+  },
+  surfaces: el => rectAbsorb(92, laserH(el)),
+  source: laserSource,
+};
+
 // Registry-owned direct-manipulation semantics. Canvas code only understands
 // generic resize/tune descriptors; the component definition decides which
 // real physical parameter a handle changes.
@@ -5621,6 +5666,7 @@ const DIRECT = {
   cwlaser: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'wavelength', short: 'λ' } },
   pulsedlaser: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'wavelength', short: 'λ' } },
   sclaser: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'scMax', short: 'λ max' } },
+  ledsource: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'wavelength', short: 'λ', when: p => p.ledPreset === 'custom' } },
   pointsource: { resize: { uniform: 'displayScale' }, tune: { key: 'spread', short: 'angle' } },
   objarrow: { resize: { y: 'height' }, tune: { key: 'spread', short: 'fan', when: p => p.raysMode === 'fan' } },
   mirror: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
@@ -5727,6 +5773,7 @@ const ELEMENT_HELP = {
   cwlaser: 'Emits a steady monochromatic collimated beam at one wavelength.',
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
+  ledsource: 'Emits a collimated beam of incoherent light from an LED behind its own collimator, with an illustrative single-colour or two-band white spectrum. It never interferes, and its residual divergence is not modelled.',
   pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp — that fades over a short evanescent range unless captured by a nearby lens, objective, mirror, or fiber tip. A parabolic mirror with the source at its focus collimates it.',
   objarrow: 'Traces a ray fan from the object’s anchor on the optical axis and separately draws an ideal paraxial image; the image marker does not model downstream clipping.',
   mirror: 'Reflects rays with configurable size and reflectivity.',

@@ -1,13 +1,15 @@
 # Proposal: LED source with an integrated collimator
 
-Status: **design, not implemented.** Opened for review before any code.
+Status: **implemented** as the `ledsource` element (label “LED”), in the same
+pull request as this note. Where the note and the code disagree, the code and
+its wiki page are right.
 
 ## What is being asked for
 
 An LED element with a realistic spectrum and a built-in collimator, distinct
 from the laser sources in that it is *not coherent*: it never interferes.
 
-## Recommendation: a new `led` element
+## Recommendation: a new LED element
 
 Unlike the lamp question, this one is clear-cut. An LED is not a line source
 and not a laser: it is a broad, smooth, single-peaked emitter with a spectral
@@ -41,16 +43,17 @@ A white LED is a blue chip exciting a phosphor: Ce³⁺:YAG converts blue around
 that shape is why white LEDs render colour the way they do. Modelling it as a
 single wide Gaussian would lose the one feature worth showing.
 
-Proposed presets: **Blue (460 nm)**, **Green (530 nm)**, **Amber (590 nm)**,
-**Red (630 nm)**, **Deep red (660 nm)**, **NIR (850 nm)**, **White (phosphor)**,
+Presets: **White (phosphor)**, **Blue (460 nm)**, **Green (530 nm)**,
+**Amber (590 nm)**, **Red (630 nm)**, **Deep red (660 nm)**, **NIR (850 nm)**,
 each with a preset centre and width, plus a custom mode. The presets are
 **illustrative** — typical shapes, not any manufacturer's datasheet — and the
 inspector and wiki say so.
 
-The white preset is two components, never one hump: a narrow blue peak
-(about 450 nm, 20 nm wide) and a broad phosphor band (about 560 nm, 120 nm
-wide), each traced with its own share of the power, so a filter or dichroic
-can remove one and leave the other.
+The white preset is two bands, never one hump: a narrow blue peak (450 nm,
+22 nm wide) and a broad phosphor band (580 nm, 150 nm wide), carried as one
+sampled spectrum with both parts in it. Filters, dichroics and the
+spectrometer integrate against that shape, so a long-pass filter at 500 nm
+removes the blue peak and leaves the phosphor band.
 
 ## The LED is an incoherent source
 
@@ -66,65 +69,49 @@ earlier draft of this note presented `coherenceLengthMm` as the mechanism;
 that was wrong — on an LED the parameter would have been inert — and it is
 removed rather than wired up.
 
-Stated as model scope, so the wiki can say it plainly: a real LED's
-coherence length is a few micrometres (about 4.5 µm for a 30 nm band at
-550 nm, taking the coherence length as the full width at half maximum of the
-visibility envelope, the convention `fringeVisibility` uses). Low-coherence
-interferometry works inside that window of path *difference*. The app does
-not model it for the LED: the element is for illumination, and it reads as
-incoherent everywhere.
-
 ## The collimator
 
-An LED die is an extended Lambertian emitter, so a real collimator never
-produces a truly parallel beam — residual divergence is set by the die size
-over the collimator focal length. Proposed: a **beam divergence** parameter,
-defined as the **full angle**, with a realistic floor rather than a
-perfect-collimation option, so the element cannot claim something no LED
-does. A 1 mm die behind a 20 mm lens gives 1/20 = 50 mrad, about 2.9°, full
-angle.
+The collimator is part of the element: the LED **comes out collimated**, as a
+beam of the width set in the inspector.
 
-The collimated output is made of **ordinary propagating rays**, like a
-laser's: they travel until something stops them. The LED does not use the
-point source's short-range rays. That range is a display and capture
-convention — it keeps 360° emission from flooding the canvas and decides
-which optics collect it — not near-field physics, and a beam that already
-leaves through a collimator has no need of it. PR #191 documents the same
-distinction for the point source.
+The output is made of **ordinary propagating rays**, like a laser's: they
+travel until something stops them. The LED does not use the point source's
+short-range rays. That range is a display and capture convention — it keeps
+360° emission from flooding the canvas and decides which optics collect it —
+not near-field physics, and a beam that already leaves through a collimator
+has no need of it. PR #191 documents the same distinction for the point
+source.
+
+Stated limit: a real die has a size, so a real collimator leaves a residual
+divergence of about die size over focal length (a 1 mm die behind a 20 mm
+lens: 1/20 = 50 mrad, about 2.9°, full angle). The element does not model
+it; its beam is perfectly parallel, and the wiki page says so.
 
 ## A separate element, not a mode of Point source
 
-The Point source already has two modes (point emitter, gas discharge lamp)
-and answers a search for "led". The lamp became a mode because it is
-geometrically the same thing: an isotropic emitter, collected the same way.
-A packaged LED is not: it is a directional beam of a set width and
-divergence. It is therefore proposed as its own `led` element in Sources,
-and the "led" search alias moves from Point source to it. A bare LED die
-without optics remains what it is today: a Point source in broadband mode.
+The Point source already has two modes (point emitter, gas discharge lamp).
+The lamp became a mode because it is geometrically the same thing: an
+isotropic emitter, collected the same way. A packaged LED is not: it is a
+directional beam of a set width. It is therefore its own element in Sources.
+A bare LED die without optics remains what it is today — a Point source in
+broadband mode — so a search for "led" finds both.
 
 Persisted parameters, each clamped at the schema boundary:
 
 | Key | Meaning |
 |---|---|
 | `ledPreset` | one of the presets above, or `custom` |
-| `wavelength`, `bandwidth` | centre and width in nm, used when `custom` |
-| `beamWidth` | beam diameter at the collimator, mm |
-| `divergenceDeg` | full divergence angle, degrees, with the floor |
-| `avgPowerW` | optional average power in watts, as on the other sources |
+| `wavelength`, `bandwidth` | centre and width in nm, used when `custom` (width 5–200 nm) |
+| `avgPowerW` | average power in watts, as on the other sources |
+| `beamMode`, `beamWidth` | simple line or sized beam, and its width in mm |
+| `autoColor`, `color` | beam colour from the spectrum, or a fixed one |
 
-Saved setups: `led` is a new element type, so no existing scene changes
-meaning, no conversion is needed, and no type named `led` was ever saved by
-an earlier version. A scene that uses it opens only in versions that have
-the element.
-
-## Open questions for review
-
-1. **Is the two-band white spectrum worth the complexity**, or is a single
-   broad band enough for this app's purposes? This note proposes two bands.
-2. **Should the collimator be integrated or a separate element?** This note
-   proposes integrated, as LEDs are sold; a bare die is the Point source.
-3. **Divergence floor**: enforce one, or allow perfect collimation and note
-   the limitation in the wiki? This note proposes a floor.
+Saved setups: `ledsource` is a new element type, so no existing scene
+changes meaning and no conversion is needed. The type is deliberately not
+named `led`: sketches from before launch used that name for a different
+element, and they keep failing to open as an unknown type rather than
+opening as this one. A scene that uses `ledsource` opens only in versions
+that have the element.
 
 ## Sources
 
