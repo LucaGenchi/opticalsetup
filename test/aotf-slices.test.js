@@ -14,6 +14,7 @@ import '../sketch/js/detector-instruments.js';
 import { createElement } from '../sketch/js/elements.js';
 import { traceScene, detectorReading } from '../sketch/js/raytrace.js';
 import { DISPERSION_UNAVAILABLE } from '../sketch/js/glass.js';
+import { pulseEnvelopeAtOpticalPath } from '../sketch/js/pulses.js';
 
 const sources = {
   gaussian: () => {
@@ -243,4 +244,52 @@ test('a filter that leaves the selected line alone leaves its duration alone', (
   for (const elements of [[wide, narrow(200), rodAt(450)], [wide, rodAt(300), narrow(700)], [rodAt(250), narrow(700)]]) {
     assert.ok(Math.abs(duration(chain(pulsed()(), elements)) - one) <= 1e-3 * one);
   }
+});
+
+test('the packets drawn behind an AOTF agree with the detector', () => {
+  // The packets follow the pulse's record. An AOTF acting on a beam an
+  // earlier filter had reshaped left that filter's spectrum in the record, so
+  // behind glass the detector read 258 fs while the packets showed 105 fs.
+  const packetsAndDetector = elements => {
+    const det = createElement('detector', 900, 0);
+    det.params.aperture = 40;
+    const { pulseTracks } = traceScene([pulsed()(), ...elements, det]);
+    const end = Math.max(...pulseTracks.map(track => track.opls.at(-1)));
+    const widths = pulseTracks.filter(track => track.opls.at(-1) > end - 1 && track.intensity > 1e-4)
+      .map(track => pulseEnvelopeAtOpticalPath(track, track.opls.at(-1) - 1e-6)?.pulseWidthFs);
+    return { widths, detector: duration(detectorReading(det.id)) };
+  };
+  const chains = [
+    ['a bandpass, then the AOTF, then glass', [at('filter', 100, { ftype: 'bandpass', center: 800, band: 20 }), at('aotf', 250, channel(800, 2)), rodAt(450)]],
+    ['a wider channel, then the AOTF, then glass', [at('aotf', 100, channel(800, 10)), at('aotf', 250, channel(800, 2)), rodAt(450)]],
+    ['a wider channel, then glass, then the AOTF', [at('aotf', 100, channel(800, 10)), rodAt(250), at('aotf', 550, channel(800, 2))]],
+    ['the AOTF, then glass', [at('aotf', 250, channel(800, 2)), rodAt(450)]],
+    ['glass, then the AOTF', [rodAt(250), at('aotf', 550, channel(800, 2))]],
+  ];
+  for (const [name, elements] of chains) {
+    const { widths, detector } = packetsAndDetector(elements);
+    assert.ok(widths.length > 0 && detector > 200, `${name}: timed (${detector} fs)`);
+    for (const width of widths) {
+      assert.ok(Math.abs(width - detector) <= 0.01 * detector, `${name}: packet ${width} fs, detector ${detector} fs`);
+    }
+  }
+});
+
+test('a harmonic behind glass is not timed with the pump\'s phase', () => {
+  // A crystal's output still carries the pump's pulse record. The profile a
+  // fanned-out sample of it carries is the harmonic's, but the record's
+  // phase is the pump's, so the profile must not make the light look timed:
+  // the third harmonic of a chirped, filtered pulse stays declined behind
+  // glass, as it was before slices carried profiles.
+  const chirped = pulsed({ bandwidth: 30, inputChirp: 'negative', chirpGddFs2: 20000 });
+  const through = (convert, center) => chain(chirped(), [
+    at('filter', 100, { ftype: 'bandpass', center: 800, band: 20 }),
+    at('crystal', 250, { convert, efficiency: 0.5, transmitPump: false }),
+    rodAt(450),
+    at('filter', 700, { ftype: 'bandpass', center, band: 10 }),
+  ]);
+  const third = through('thg', 266.67);
+  assert.ok(third.signal > 0.1, `the third harmonic reaches the detector (${third.signal})`);
+  assert.equal(duration(third), null);
+  assert.equal(third.pulse.dispersionModel, DISPERSION_UNAVAILABLE.reshaped);
 });

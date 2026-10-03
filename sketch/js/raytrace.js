@@ -5299,7 +5299,12 @@ function pulseSpectrumPiece(ray, pulse, power = 1) {
   // A slice that carries a profile of its own is timed by it: the band it was
   // cut from, or what an AOTF channel made of the light inside the slice. The
   // pulse's record keeps one spectrum per piece and cannot hold the second.
-  const spec = ray.sliceSpec || parent?.spec || pulseBand(pulse) || flatSpectrum(cell[0], cell[1]);
+  // Only for light inside the band the pulse was emitted with, though: a
+  // harmonic a crystal generated still carries the pump's record, whose phase
+  // is not this light's, and a profile to time must not make it look timed.
+  const region = ray.sliceSpec ? pulseBandRegion(pulse) : null;
+  const own = region && rayWithinPulseBand(ray, region) ? ray.sliceSpec : null;
+  const spec = own || parent?.spec || pulseBand(pulse) || flatSpectrum(cell[0], cell[1]);
   const lo = Math.max(cell[0], parent?.lo ?? -Infinity), hi = Math.min(cell[1], parent?.hi ?? Infinity);
   return hi > lo ? { spec, lo, hi, power } : null;
 }
@@ -5940,14 +5945,16 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           child.pulse = { ...r.pulse, spectrumReshaped: true, filteredPieces: piece ? [piece] : null };
         }
       }
-      // An AOTF channel reshapes the light inside a fanned-out sample's
-      // slice. The pulse's record is brought up to date with the selected
-      // piece that leaves, on its own terms as the etalon's
-      // mark is: a pulse an earlier filter reshaped is not re-detected as
-      // reshaping above, and would keep the earlier filter's piece.
-      if (hit.surface.kind === 'aotf' && r.pulse && sampleCell(r)) {
+      // An AOTF channel reshapes the light it selects: inside a fanned-out
+      // sample's slice, or as a spectrum of its own. The pulse's record is
+      // brought up to date with the piece that leaves, on its own terms as
+      // the etalon's mark is: a pulse an earlier filter reshaped is not
+      // re-detected as reshaping above, and would keep the earlier filter's
+      // piece for the packets drawn downstream.
+      if (hit.surface.kind === 'aotf' && r.pulse && (sampleCell(r) || r.pulse.spectrumReshaped)) {
         for (const child of children) {
-          if (!('sliceSpec' in child)) continue;
+          const selected = 'sliceSpec' in child || ('spec' in child && child.spec && child.spec !== r.spec);
+          if (!selected) continue;
           if ('pulse' in child && child.pulse !== r.pulse && !child.pulse?.spectrumReshaped) continue;
           const piece = pulseSpectrumPiece({ ...r, ...child }, r.pulse);
           child.pulse = { ...(child.pulse || r.pulse), spectrumReshaped: true, filteredPieces: piece ? [piece] : null };
