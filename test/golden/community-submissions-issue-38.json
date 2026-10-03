@@ -37,8 +37,8 @@
   "pointsource:e0strxb7": "3135ab60",
   "cmirror:e38vzqjs": "bdbbf6a7",
   "grating:e0q4ghnt": "b08ca790",
-  "camera:e7gjktsb": "13963381",
-  "display:e1pgoag2": "b5ea444a",
+  "camera:e7gjktsb": "2e1c18e6",
+  "display:e1pgoag2": "c97853af",
   "lens:emuc7kml": "bf3a0f52",
   "cmirror:e63tnrke": "ee592d51",
   "textlabel:eo14wz8t": "cfb3238b"
@@ -58,21 +58,21 @@
     "approximations": [],
     "bandMax": 663.7,
     "bandMin": 345.2,
-    "centroid": 19.7970818,
+    "centroid": 19.6702929,
     "coherentPaths": 0,
-    "color": "#ffce2f",
+    "color": "#ffcf2f",
     "convergence": {
      "diverging": true,
-     "fullAngleDeg": 17.4608992,
-     "slopePerMm": 0.00429200364
+     "fullAngleDeg": 17.4097313,
+     "slopePerMm": 0.00428823011
     },
     "dark": false,
     "darkOutput": null,
     "depositedProfile": {
      "length": 64,
-     "sum": 0.189286253,
+     "sum": 0.188495691,
      "min": 0,
-     "max": 0.0323023567,
+     "max": 0.0317301934,
      "every16th": [
       0,
       0.00000905081503,
@@ -132,9 +132,9 @@
       0,
       0,
       0,
-      0.0107274531,
-      0.0323023567,
-      0.00591124813,
+      0.010666366,
+      0.0317301934,
+      0.00575393661,
       0,
       0,
       0,
@@ -146,7 +146,7 @@
       0
      ]
     },
-    "depositedSignal": 0.189286253,
+    "depositedSignal": 0.188495691,
     "detectorType": "Camera sensor",
     "gain": null,
     "interference": {
@@ -160,13 +160,13 @@
      "reason": "insufficient coherent overlap"
     },
     "normalizedStokes": null,
-    "outputSignal": 0.189286253,
+    "outputSignal": 0.188495691,
     "polarization": "Unpolarized",
     "profile": {
      "length": 64,
-     "sum": 0.189286253,
+     "sum": 0.188495691,
      "min": 0,
-     "max": 0.0323023567,
+     "max": 0.0317301934,
      "every16th": [
       0,
       0.00000905081503,
@@ -226,9 +226,9 @@
       0,
       0,
       0,
-      0.0107274531,
-      0.0323023567,
-      0.00591124813,
+      0.010666366,
+      0.0317301934,
+      0.00575393661,
       0,
       0,
       0,
@@ -312,11 +312,11 @@
     "readoutKind": "camera",
     "samples": 36,
     "saturated": false,
-    "signal": 0.189286253,
+    "signal": 0.188495691,
     "snr": null,
     "sourceFractions": [
      {
-      "fraction": 0.189286253,
+      "fraction": 0.188495691,
       "sourceId": "e0strxb7"
      }
     ],
@@ -370,14 +370,14 @@
       "bandId": null,
       "color": "#ff0000",
       "continuum": false,
-      "power": 0.0489410579,
+      "power": 0.048150496,
       "sourceId": "e0strxb7",
       "wavelength": 663.7,
       "widthNm": null
      }
     ],
     "spotSpan": 97.9824268,
-    "wavelength": 580.140123
+    "wavelength": 579.789668
    }
   }
  },

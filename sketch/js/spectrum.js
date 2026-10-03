@@ -203,6 +203,16 @@ function incidentOver(spec, a, b) {
   return integrate(Array.from({ length: GRID }, (_, i) => Math.max(0, spectrumWeight(spec, a + step * i))), step);
 }
 
+// The power a continuous profile holds between a and b, in the profile's own
+// units: only ratios of it mean anything. For splitting a slice of spectrum
+// at a wavelength where something downstream changes, such as a grating
+// order passing off. A line spectrum has no density to integrate.
+export function spectrumPower(spec, a, b) {
+  if (!spec || spec.kind === 'lines') return null;
+  const [lo, hi] = spectrumSupport(spec);
+  return incidentOver(spec, Math.max(a, lo), Math.min(b, hi));
+}
+
 // Multiply a ray's spectrum by a transmission function T(wavelength) -> [0,1]
 // (a hard passband edge, or an oscillatory Airy transmission — anything).
 // Returns the surviving fraction of incident power together with the
