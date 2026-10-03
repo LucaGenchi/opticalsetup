@@ -210,3 +210,72 @@ test('light that was only selected is still re-recorded behind a copier', () => 
     agree(`two bandpasses with ${name} between`, arriving(pulsed(), [bandpass(200, 800, 30), ...middle, bandpass(600, 800, 8)]), 1e-3);
   }
 });
+
+// --- The safe way round ----------------------------------------------------
+// A ray counts as described by its pulse record only while that is known:
+// from a pulsed source, through elements that only select, fan or copy.
+// Anything else switches the whole-train record off for that light, which is
+// then drawn as it always was. These hold the cases where assuming the
+// opposite invented a record.
+
+// What the last stretch of beam before the detector carries.
+function lastStretch(elements, beams = []) {
+  const det = createElement('detector', 900, 0);
+  det.params.aperture = 60;
+  const { pulseTracks } = traceScene([...elements, det], beams);
+  const end = Math.max(...pulseTracks.map(track => track.opls.at(-1)));
+  const last = pulseTracks.filter(track => track.opls.at(-1) > end - 1 && track.intensity > 1e-7);
+  return {
+    signal: detectorReading(det.id)?.signal ?? 0,
+    records: last.map(track => (track.pulse.filteredPieces || []).map(p => [p.lo, p.hi])),
+    packets: last.map(track => pulseEnvelopeAtOpticalPath(track, track.opls.at(-1) - 1e-6)?.pulseWidthFs ?? null),
+  };
+}
+const fibre = (from, to) => ({
+  id: 'fb', kind: 'fiber', pts: [{ x: from, y: 0 }, { x: to, y: 0 }], width: 20,
+  propagate: true, lossDbPerM: 0, outMode: 'focus', f: 100, diameter: 1, na: 0.22,
+});
+const after = centre => [
+  at('glassrod', 590, { rodlen: 60, dia: 20, material: 'nbk7' }), bandpass(680, centre, 40), bandpass(780, centre, 20),
+];
+
+test('generated light through a fibre is not re-recorded from the pump', () => {
+  // A fibre relaunches the light as new rays. With the record assumed to
+  // describe whatever carries it, the harmonic came out of the fibre recorded
+  // as the pump's tail, 417.8-420 nm.
+  const harmonic = lastStretch([pulsed({ bandwidth: 300 }), generators['a crystal'](200), ...after(400)], [fibre(350, 550)]);
+  assert.ok(harmonic.signal > 0.01, `the harmonic arrives (${harmonic.signal})`);
+  for (const record of harmonic.records) {
+    assert.ok(record.length > 0 && record.every(([lo, hi]) => lo < 400 && hi > 400), `record ${JSON.stringify(record)}`);
+  }
+  // A specimen's emission has no recorded pieces, and gains none.
+  const emission = lastStretch([pulsed({ bandwidth: 500 }), generators['a specimen'](200), ...after(400)], [fibre(350, 550)]);
+  assert.ok(emission.signal > 0.01);
+  assert.ok(emission.records.every(record => record.length === 0), `records ${JSON.stringify(emission.records)}`);
+});
+
+test('a conversion onto the pump\'s own wavelength is still generated light', () => {
+  // `custom` replaces the pump's band with a line; set to 800 nm it changes
+  // neither the wavelength nor the source. The line passes both filters
+  // whole and must not be given the pump's spectrum between their edges
+  // (796-804 nm, 236 fs).
+  const line = lastStretch([
+    pulsed(), at('crystal', 250, { convert: 'custom', outWl: 800, efficiency: 0.5 }), bandpass(500, 800, 30), bandpass(700, 800, 8),
+  ]);
+  assert.ok(Math.abs(line.signal - 0.5) < 1e-9, `the line passes whole (${line.signal})`);
+  assert.ok(line.records.every(record => record.length === 0), `records ${JSON.stringify(line.records)}`);
+  assert.ok(line.packets.every(width => width < 100), `packets ${line.packets}`);
+});
+
+test('behind a fibre the pump itself is drawn as it was, not guessed at', () => {
+  // The cost of the safe default, stated: relaunched light is not known to
+  // be described by its record, so two filters behind a fibre keep the first
+  // one's record (785-815 nm), as on the commit before this change. The same
+  // two filters without the fibre are re-recorded.
+  const filters = [bandpass(650, 800, 30), bandpass(780, 800, 8)];
+  const behind = lastStretch([pulsed(), ...filters], [fibre(200, 500)]);
+  assert.ok(behind.signal > 0.05);
+  assert.deepEqual(behind.records, [[[785, 815]]]);
+  const direct = lastStretch([pulsed(), ...filters]);
+  assert.deepEqual(direct.records, [[[796, 804]]]);
+});
