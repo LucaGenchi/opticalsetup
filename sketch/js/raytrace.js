@@ -1134,7 +1134,7 @@ export function detectorReading(elementId) {
       // A filtered record is not invalid: its duration is worked out from the
       // spectrum that arrives. One that is unavailable for another reason
       // still decides for the train.
-      const invalidRecord = records.find(r => r.fieldIssue || r.durationUnknown || r.etalonComb);
+      const invalidRecord = records.find(r => r.fieldIssue || r.durationUnknown || r.etalonComb || r.aotfSlice);
       const filteredRecord = invalidRecord ? null : records.find(r => r.spectrumReshaped);
       const provenance = r => [r.transformLimited === true, r.spectralPhase || '', r.inputChirp || '',
         r.pulseWidthFs, r.bandwidthNm, r.pulseShape || 'gauss'].join('|');
@@ -5293,9 +5293,7 @@ function pulseSpectrumPiece(ray, pulse, power = 1) {
   const cell = sampleCell(ray);
   if (!cell) return null;
   const parent = (pulse?.filteredPieces || []).find(p => p.lo <= cell[0] + 1e-9 && p.hi >= cell[1] - 1e-9);
-  // A slice that carries a profile of its own -- the band it was cut from, or
-  // what an AOTF channel made of it -- is timed by that profile.
-  const spec = ray.sliceSpec || parent?.spec || pulseBand(pulse) || flatSpectrum(cell[0], cell[1]);
+  const spec = parent?.spec || pulseBand(pulse) || flatSpectrum(cell[0], cell[1]);
   const lo = Math.max(cell[0], parent?.lo ?? -Infinity), hi = Math.min(cell[1], parent?.hi ?? Infinity);
   return hi > lo ? { spec, lo, hi, power } : null;
 }
@@ -5944,6 +5942,19 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         for (const child of children) {
           if ('pulse' in child && child.pulse !== r.pulse && !child.pulse?.spectrumReshaped) continue;
           child.pulse = { ...(child.pulse || r.pulse), spectrumReshaped: true, etalonComb: true };
+        }
+      }
+      // An AOTF channel acting on a fanned-out sample reshapes the light
+      // inside the sample's slice, and so does what it leaves in the depleted
+      // beam. The pulse record keeps a spectrum per slice, not a profile
+      // within one, so such light is not timed -- marked on its own terms, as
+      // the etalon is, because a pulse an earlier filter reshaped is not
+      // re-detected as reshaping here. Its power is unaffected.
+      if (hit.surface.kind === 'aotf' && r.pulse && sampleCell(r)) {
+        for (const child of children) {
+          if (!('sliceSpec' in child)) continue;
+          if ('pulse' in child && child.pulse !== r.pulse && !child.pulse?.spectrumReshaped) continue;
+          child.pulse = { ...(child.pulse || r.pulse), spectrumReshaped: true, aotfSlice: true };
         }
       }
       // A sampled field describes one spectrum. Once an element changes the

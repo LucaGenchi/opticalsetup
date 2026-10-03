@@ -13,6 +13,7 @@ import test from 'node:test';
 import '../sketch/js/detector-instruments.js';
 import { createElement } from '../sketch/js/elements.js';
 import { traceScene, detectorReading } from '../sketch/js/raytrace.js';
+import { DISPERSION_UNAVAILABLE } from '../sketch/js/glass.js';
 
 const sources = {
   gaussian: () => {
@@ -184,14 +185,33 @@ test('the depleted beam is missing what the channel took, colour by colour', () 
   }
 });
 
-test('a pulse is timed the same whether the AOTF or the glass comes first', () => {
-  // The channel leaves a 2 nm sinc-squared line either way; the duration
-  // model has to time that line, not the wider window the slice is drawn as.
-  const pulsed = () => sources.gaussian();
-  const first = chain(pulsed(), [at('aotf', 250, channel(800, 2)), rodAt(450)]);
-  const after = chain(pulsed(), [rodAt(250), at('aotf', 550, channel(800, 2))]);
-  assert.ok(Math.abs(after.signal - first.signal) <= 1e-3 * first.signal, `power ${after.signal} vs ${first.signal}`);
-  const a = first.pulse.stretchedPulseWidthFs, b = after.pulse.stretchedPulseWidthFs;
-  assert.ok(a > 200, `the 2 nm line is hundreds of femtoseconds long (${a})`);
-  assert.ok(Math.abs(b - a) <= 0.01 * a, `duration ${b} fs vs ${a} fs`);
+test('a line an AOTF selects from a dispersed sample is not timed, and says so', () => {
+  // In front of the glass the AOTF leaves a spectrum of its own and the
+  // pulse is timed from it. Behind the glass it reshapes the light inside a
+  // sample's slice, which the pulse record does not carry: timing it from
+  // the slice's window read 142 fs where 258 fs arrives, and from an earlier
+  // filter's record something else again. The reading is declined instead,
+  // whatever came before; the power is unaffected.
+  const first = chain(sources.gaussian(), [at('aotf', 250, channel(800, 2)), rodAt(450)]);
+  assert.ok(first.pulse.stretchedPulseWidthFs > 200, `timed in front of the glass (${first.pulse.stretchedPulseWidthFs} fs)`);
+  const upstream = [
+    ['nothing', []],
+    ['a wider AOTF channel', [at('aotf', 100, channel(800, 10))]],
+    ['a bandpass', [at('filter', 100, { ftype: 'bandpass', center: 800, band: 20 })]],
+  ];
+  for (const [name, before] of upstream) {
+    const after = chain(sources.gaussian(), [...before, rodAt(250), at('aotf', 550, channel(800, 2))]);
+    assert.equal(after.pulse.dispersionModel, DISPERSION_UNAVAILABLE.aotfSlice, `after ${name}`);
+    assert.equal(after.pulse.stretchedPulseWidthFs ?? null, null, `after ${name}: no duration`);
+    const reference = chain(sources.gaussian(), [...before, at('aotf', 250, channel(800, 2)), rodAt(450)]);
+    assert.ok(Math.abs(after.signal - reference.signal) <= 1e-3 * reference.signal, `after ${name}: power ${after.signal} vs ${reference.signal}`);
+  }
+  // The depleted beam of a reshaped sample is declined too...
+  const depleted = chain(sources.gaussian(), [rodAt(250), at('aotf', 550, channel(800, 2, { showDepleted: true, deflect: 0 }))]);
+  assert.equal(depleted.pulse.dispersionModel, DISPERSION_UNAVAILABLE.aotfSlice);
+  // ...but a channel that takes nothing from the beam leaves its timing alone.
+  const untouched = chain(sources.gaussian(), [rodAt(250), at('aotf', 550, channel(1000, 2, { showDepleted: true, deflect: 0 }))]);
+  const rodOnly = chain(sources.gaussian(), [rodAt(250)]);
+  assert.equal(untouched.pulse.stretchedPulseWidthFs, rodOnly.pulse.stretchedPulseWidthFs);
+  assert.equal(untouched.pulse.dispersionModel, rodOnly.pulse.dispersionModel);
 });
