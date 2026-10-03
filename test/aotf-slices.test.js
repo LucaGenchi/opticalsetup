@@ -153,3 +153,45 @@ test('an AOTF behind glass takes a lamp line as it does without the glass', () =
   }
   assert.equal(lampThrough('glass', aotf(500, 2)), 0);
 });
+
+// source -> elements in a line -> detector at 900 mm.
+function chain(source, elements) {
+  const det = createElement('detector', 900, 0);
+  det.params.aperture = 40;
+  traceScene([source, ...elements, det]);
+  return detectorReading(det.id);
+}
+const at = (type, x, params) => {
+  const el = createElement(type, x, 0);
+  Object.assign(el.params, params);
+  return el;
+};
+const rodAt = x => at('glassrod', x, { rodlen: 100, dia: 20, material: 'nbk7' });
+
+test('the depleted beam is missing what the channel took, colour by colour', () => {
+  // Selected and depleted beams recombined (zero deflection) are the beam
+  // that came in, so a narrow bandpass inside the channel must read what it
+  // reads with no AOTF at all. With the depleted slice left at its incoming
+  // shape, it found the selected light twice: 86 % too much.
+  for (const kind of ['gaussian', 'flat']) {
+    for (const [center, band] of [[800, 1], [801.5, 1], [800, 6], [790, 4]]) {
+      const filter = at('filter', 650, { ftype: 'bandpass', center, band });
+      const without = signal(chain(sources[kind](), [rodAt(250), filter]));
+      const aotf = at('aotf', 450, channel(800, 2, { showDepleted: true, deflect: 0 }));
+      const withAotf = signal(chain(sources[kind](), [rodAt(250), aotf, filter]));
+      assert.ok(Math.abs(withAotf - without) <= 0.01 * without, `${kind} ${center}/${band}: ${withAotf} vs ${without}`);
+    }
+  }
+});
+
+test('a pulse is timed the same whether the AOTF or the glass comes first', () => {
+  // The channel leaves a 2 nm sinc-squared line either way; the duration
+  // model has to time that line, not the wider window the slice is drawn as.
+  const pulsed = () => sources.gaussian();
+  const first = chain(pulsed(), [at('aotf', 250, channel(800, 2)), rodAt(450)]);
+  const after = chain(pulsed(), [rodAt(250), at('aotf', 550, channel(800, 2))]);
+  assert.ok(Math.abs(after.signal - first.signal) <= 1e-3 * first.signal, `power ${after.signal} vs ${first.signal}`);
+  const a = first.pulse.stretchedPulseWidthFs, b = after.pulse.stretchedPulseWidthFs;
+  assert.ok(a > 200, `the 2 nm line is hundreds of femtoseconds long (${a})`);
+  assert.ok(Math.abs(b - a) <= 0.01 * a, `duration ${b} fs vs ${a} fs`);
+});

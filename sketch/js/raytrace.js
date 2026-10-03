@@ -3377,15 +3377,22 @@ function slicePart(spec, cell, lo, hi) {
   return (at(hi) - at(lo)) / total;
 }
 
+const DEPLETED_SLICE_GRID = 513;
 // A slice as a spectrum of its own: the profile it was cut from, between its
 // bounds, or a flat band when it carries none. For an element whose
 // transmission varies smoothly inside the slice, which has to be integrated
 // over it rather than read at the slice's one wavelength.
-function sliceProfile(ray, cell) {
-  if (ray.sliceSpec) {
-    const n = 65;
-    const w = Array.from({ length: n }, (_, i) =>
-      Math.max(0, spectrumWeight(ray.sliceSpec, cell[0] + (cell[1] - cell[0]) * i / (n - 1))));
+//
+// `shape` multiplies the profile wavelength by wavelength, on a grid of `n`
+// points: for a profile with fine structure inside the slice, such as what an
+// AOTF channel leaves behind, which a coarse grid would smear.
+function sliceProfile(ray, cell, shape = null, n = 65) {
+  if (ray.sliceSpec || shape) {
+    const w = Array.from({ length: n }, (_, i) => {
+      const wl = cell[0] + (cell[1] - cell[0]) * i / (n - 1);
+      const weight = ray.sliceSpec ? Math.max(0, spectrumWeight(ray.sliceSpec, wl)) : 1;
+      return weight * (shape ? Math.max(0, shape(wl)) : 1);
+    });
     const peak = Math.max(...w);
     if (peak > 0) return { kind: 'sampled', lo: cell[0], hi: cell[1], w: w.map(v => v / peak) };
   }
@@ -4056,6 +4063,9 @@ function interact(ray, hit) {
       // keep only what is left of each line rather than the lamp's whole
       // spectrum.
       const lineTaken = [];
+      // Likewise for a fanned-out sample's slice: the depleted beam's profile
+      // is the slice's with each channel's share taken out of it.
+      const cellTaken = [];
 
       channels.forEach((c, i) => {
         if (!(c.eff > 0)) return;
@@ -4086,6 +4096,7 @@ function interact(ray, hit) {
           const trans = applyTransmission(sliceProfile(ray, cell), ray.wl, transmission);
           if (!trans) return;
           takenFraction += trans.fraction * pass;
+          cellTaken.push(wl => pass * transmission(wl));
           out.push(withGate({
             d,
             wl: Math.min(window[1], Math.max(window[0], trans.wl)),
@@ -4137,6 +4148,18 @@ function interact(ray, hit) {
         if (lineTaken.length) {
           const rest = lineTransmission(ray.spec, wl => 1 - lineTaken.reduce((sum, taken) => sum + taken(wl), 0));
           if (rest) out.push({ d: deflected, intensity: ray.intensity * rest.fraction, tag: 'depleted', wl: rest.wl, bw: rest.bw, spec: rest.spec });
+        } else if (cellTaken.length && left > 0) {
+          // The slice keeps its bounds and its power is what the channels
+          // left; its profile is the slice's with their passbands taken out,
+          // so a filter behind both beams finds the selected light once.
+          // Sampled finely: a channel is a few nanometres wide inside a slice
+          // of tens, and the notch it leaves has to survive the sampling.
+          const cell = sampleCell(ray);
+          out.push({
+            d: deflected, intensity: ray.intensity * left, tag: 'depleted',
+            sliceSpec: sliceProfile(ray, cell,
+              wl => 1 - cellTaken.reduce((sum, taken) => sum + taken(wl), 0), DEPLETED_SLICE_GRID),
+          });
         } else if (left > 0) {
           out.push({
             d: deflected, intensity: ray.intensity * left, tag: 'depleted',
@@ -5270,7 +5293,9 @@ function pulseSpectrumPiece(ray, pulse, power = 1) {
   const cell = sampleCell(ray);
   if (!cell) return null;
   const parent = (pulse?.filteredPieces || []).find(p => p.lo <= cell[0] + 1e-9 && p.hi >= cell[1] - 1e-9);
-  const spec = parent?.spec || pulseBand(pulse) || flatSpectrum(cell[0], cell[1]);
+  // A slice that carries a profile of its own -- the band it was cut from, or
+  // what an AOTF channel made of it -- is timed by that profile.
+  const spec = ray.sliceSpec || parent?.spec || pulseBand(pulse) || flatSpectrum(cell[0], cell[1]);
   const lo = Math.max(cell[0], parent?.lo ?? -Infinity), hi = Math.min(cell[1], parent?.hi ?? Infinity);
   return hi > lo ? { spec, lo, hi, power } : null;
 }
