@@ -134,6 +134,20 @@ test('two AOTFs in a row each select from the slice the one before left', () => 
   }
 });
 
+// source -> elements in a line -> detector at 900 mm.
+function chain(source, elements) {
+  const det = createElement('detector', 900, 0);
+  det.params.aperture = 40;
+  traceScene([source, ...elements, det]);
+  return detectorReading(det.id);
+}
+const at = (type, x, params) => {
+  const el = createElement(type, x, 0);
+  Object.assign(el.params, params);
+  return el;
+};
+const rodAt = x => at('glassrod', x, { rodlen: 100, dia: 20, material: 'nbk7' });
+
 // --- Pulse duration -----------------------------------------------------
 // The line an AOTF selects from a fanned-out sample is timed from the
 // profile the sample's slice carries, which the detector's hit keeps. The

@@ -5940,9 +5940,9 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           child.pulse = { ...r.pulse, spectrumReshaped: true, filteredPieces: piece ? [piece] : null };
         }
       }
-      // An AOTF channel reshapes the light inside a fanned-out sample's slice
-      // (and so the depleted beam it leaves). The pulse's record is brought up
-      // to date with the piece that leaves, on its own terms as the etalon's
+      // An AOTF channel reshapes the light inside a fanned-out sample's
+      // slice. The pulse's record is brought up to date with the selected
+      // piece that leaves, on its own terms as the etalon's
       // mark is: a pulse an earlier filter reshaped is not re-detected as
       // reshaping above, and would keep the earlier filter's piece.
       if (hit.surface.kind === 'aotf' && r.pulse && sampleCell(r)) {
