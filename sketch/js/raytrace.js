@@ -16,7 +16,7 @@ import {
 import { planOpa, chirpedSignalPulse, MAX_OPA_STAGES, MIN_PHASE_KEPT_GAIN } from './opa.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap, traceValueAt } from './pulses.js';
-import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband } from './aotf.js';
+import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband, aotfWingHalfWidth } from './aotf.js';
 import { aodDeflectionDeg } from './acousto-optic.js';
 import { capillaryLossDbPerM, fiberPropagation, hollowCoreCoefficients } from './fiber.js';
 import { propagateEnvelope, fieldMetrics } from './pulse-field.js';
@@ -3377,6 +3377,28 @@ function slicePart(spec, cell, lo, hi) {
   return (at(hi) - at(lo)) / total;
 }
 
+const DEPLETED_SLICE_GRID = 513;
+// A slice as a spectrum of its own: the profile it was cut from, between its
+// bounds, or a flat band when it carries none. For an element whose
+// transmission varies smoothly inside the slice, which has to be integrated
+// over it rather than read at the slice's one wavelength.
+//
+// `shape` multiplies the profile wavelength by wavelength, on a grid of `n`
+// points: for a profile with fine structure inside the slice, such as what an
+// AOTF channel leaves behind, which a coarse grid would smear.
+function sliceProfile(ray, cell, shape = null, n = 65) {
+  if (ray.sliceSpec || shape) {
+    const w = Array.from({ length: n }, (_, i) => {
+      const wl = cell[0] + (cell[1] - cell[0]) * i / (n - 1);
+      const weight = ray.sliceSpec ? Math.max(0, spectrumWeight(ray.sliceSpec, wl)) : 1;
+      return weight * (shape ? Math.max(0, shape(wl)) : 1);
+    });
+    const peak = Math.max(...w);
+    if (peak > 0) return { kind: 'sampled', lo: cell[0], hi: cell[1], w: w.map(v => v / peak) };
+  }
+  return flatSpectrum(cell[0], cell[1]);
+}
+
 // A wavelength sample fanned out by dispersive refraction travels with bw 0 —
 // it has to, or the next glass surface would fan it out all over again — but
 // it still stands for a slice [spectralLo, spectralHi] of a continuum, and a
@@ -4041,6 +4063,9 @@ function interact(ray, hit) {
       // keep only what is left of each line rather than the lamp's whole
       // spectrum.
       const lineTaken = [];
+      // Likewise for a fanned-out sample's slice: the depleted beam's profile
+      // is the slice's with each channel's share taken out of it.
+      const cellTaken = [];
 
       channels.forEach((c, i) => {
         if (!(c.eff > 0)) return;
@@ -4057,6 +4082,31 @@ function interact(ray, hit) {
         const transmission = aotfChannelTransmission(c, passband);
         notePulseSelection(transmission);
 
+        // A sample fanned out upstream stands for a slice of spectrum, and a
+        // channel is usually narrower than the slice: read at the sample's
+        // one wavelength it took the whole slice or none of it. The passband
+        // is integrated over the slice instead, and what it selects leaves as
+        // a narrower slice -- the part of the old one inside the channel's
+        // window -- carrying the reshaped profile.
+        const cell = sampleCell(ray);
+        if (cell) {
+          const reach = aotfWingHalfWidth(passband);
+          const window = bandIntersect(cell, [c.wl - reach, c.wl + reach]);
+          if (!window || !(window[1] > window[0])) return;
+          const trans = applyTransmission(sliceProfile(ray, cell), ray.wl, transmission);
+          if (!trans) return;
+          takenFraction += trans.fraction * pass;
+          cellTaken.push(wl => pass * transmission(wl));
+          out.push(withGate({
+            d,
+            wl: Math.min(window[1], Math.max(window[0], trans.wl)),
+            spectralContinuum: true, spectralLo: window[0], spectralHi: window[1], spectralWidthNm: window[1] - window[0],
+            ...(Number.isFinite(ray.fanLo) ? { fanLo: window[0], fanHi: window[1] } : {}),
+            sliceSpec: trans.spec || null,
+            intensity: ray.intensity * trans.fraction * pass, tag: `c${i}`,
+          }));
+          return;
+        }
         if (!ray.bw) {
           // A single wavelength is simply attenuated by how far it sits from
           // line centre, instead of passing whole or not at all.
@@ -4098,6 +4148,18 @@ function interact(ray, hit) {
         if (lineTaken.length) {
           const rest = lineTransmission(ray.spec, wl => 1 - lineTaken.reduce((sum, taken) => sum + taken(wl), 0));
           if (rest) out.push({ d: deflected, intensity: ray.intensity * rest.fraction, tag: 'depleted', wl: rest.wl, bw: rest.bw, spec: rest.spec });
+        } else if (cellTaken.length && left > 0) {
+          // The slice keeps its bounds and its power is what the channels
+          // left; its profile is the slice's with their passbands taken out,
+          // so a filter behind both beams finds the selected light once.
+          // Sampled finely: a channel is a few nanometres wide inside a slice
+          // of tens, and the notch it leaves has to survive the sampling.
+          const cell = sampleCell(ray);
+          out.push({
+            d: deflected, intensity: ray.intensity * left, tag: 'depleted',
+            sliceSpec: sliceProfile(ray, cell,
+              wl => 1 - cellTaken.reduce((sum, taken) => sum + taken(wl), 0), DEPLETED_SLICE_GRID),
+          });
         } else if (left > 0) {
           out.push({
             d: deflected, intensity: ray.intensity * left, tag: 'depleted',
