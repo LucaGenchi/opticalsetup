@@ -879,6 +879,7 @@ function detectorSample(ray, surface, u, oplMm, pathKey, sensorMiss = false) {
     // The profile a fanned-out sample's slice carries, so the duration model
     // can time the light that actually arrives in the slice.
     sliceSpec: ray.sliceSpec || null,
+    pulseDescribed: ray.pulseDescribed === true,
     sourceId: ray.sourceId || null,
     sample: Number.isInteger(ray.sample) ? ray.sample : null,
     sampleCount: Number.isInteger(ray.sampleCount) ? ray.sampleCount : null,
@@ -3829,6 +3830,16 @@ function interact(ray, hit) {
       const inBandR = data.dtype === 'notch' ? Math.min(1, Math.max(0, (data.bandRefl ?? 100) / 100)) : 1;
       const partial = inBandR < 1;
       notePulseSelection(wl => (dichroicTransmits(wl, data) ? 1 : 1 - inBandR), passbandOf(data));
+      {
+        // The transmitted port keeps the incoming direction; anything else
+        // was reflected.
+        const through = wl => (dichroicTransmits(wl, data) ? 1 : 1 - inBandR);
+        interactionPorts = {
+          edges: passbandOf(data),
+          keyFor: child => (child.d === d ? 'T' : 'R'),
+          shapeFor: child => (child.d === d ? through : wl => 1 - through(wl)),
+        };
+      }
       const cell = sampleCell(ray);
       if (cell) {
         const { inside, outside } = splitCell(cell, passbandOf(data));
@@ -3953,6 +3964,7 @@ function interact(ray, hit) {
       const pb = passbandOf(f);
       const T = wl => ((wl >= pb[0] && wl <= pb[1]) !== notch ? 1 : 0);
       notePulseSelection(T, pb);
+      interactionPorts = { edges: pb, keyFor: () => 'T', shapeFor: () => T };
       if (!ray.bw) {
         const cell = sampleCell(ray);
         if (cell) {
@@ -4165,6 +4177,16 @@ function interact(ray, hit) {
       // What is left at one wavelength once every channel has taken its share.
       const leftAt = wl => Math.max(0, 1 - Math.min(1, askedAt(wl)));
       const reach = aotfWingHalfWidth(passband);
+      interactionPorts = {
+        edges: open.flatMap(o => [o.c.wl - reach, o.c.wl + reach]),
+        keyFor: child => (String(child.tag || '').startsWith('depleted') ? 'depleted' : String(child.tag || '')),
+        shapeFor: child => {
+          const tag = String(child.tag || '');
+          if (tag.startsWith('depleted')) return leftAt;
+          const channel = open.find(o => `c${o.i}` === tag);
+          return channel ? wl => channel.pass * shared(channel)(wl) : null;
+        },
+      };
 
       open.forEach(({ c, i, pass, transmission: own }) => {
         const withGate = child => {
@@ -5366,6 +5388,108 @@ function opoConversion(ray, data, elementId, efficiency) {
 // band evenly and leaves the pulse's duration alone.
 let interactionRay = null;
 let interactionReshapesPulse = false;
+// What each output port of the element being interacted with does to a
+// spectrum, declared by the elements that select by wavelength: `shapeFor`
+// gives a child's transmission(wavelength), `keyFor` names the port it leaves
+// by, and `edges` are the wavelengths the transmissions step at. It lets the
+// pulse's record be kept for the whole train a port carries rather than for
+// the one ray that happened to be traced.
+let interactionPorts = null;
+
+// ---- Whose light a pulse record describes ----
+// A pulse's record -- its emitted band, the pieces filters left of it, its
+// phase -- describes the light a source emitted and what was selected from
+// it. Light an element GENERATES (a crystal's harmonic, a specimen's
+// emission) often keeps the pump's record: it still times the train, but
+// says nothing about the new light's spectrum, and that cannot be read back
+// from wavelengths -- a pump broad enough holds its own second harmonic's
+// band, and a conversion can land on the pump's own wavelength.
+//
+// So the question is answered the safe way round. A ray is `pulseDescribed`
+// only while that is positively known:
+//
+//   it starts true on a ray a pulsed source emits;
+//   it stays true through an element on the list below, which only select
+//     from, fan out, or copy what arrives, and through any element that
+//     passes the light on without touching its wavelength or spectrum;
+//   it becomes true again on a child that brings a record of its own for
+//     its light (a continuum's, an OPO's, a mixing product's), told by the
+//     record's identity and not by its mere presence -- an AOM's or a
+//     chopper's copy is the same record;
+//   anything else leaves it false, and so does any ray rebuilt without it
+//     (a fibre's relaunch).
+//
+// Where it is false, the whole-train record below is not applied, and the
+// light is handled exactly as it was before that existed. Only the new
+// record depends on the flag; nothing that was already there is gated by
+// it, so a ray that loses the flag loses a refinement and nothing else. An
+// element or a path nobody thought of therefore costs a missing refinement,
+// never an invented number.
+const SPECTRUM_SELECTING_KINDS = new Set([
+  'refract', 'metalens', 'grating', 'shaper', 'aod', 'aom', 'filter', 'dichroic', 'aotf', 'etalon',
+]);
+const pulseIdentity = pulse => (pulse ? [pulse.sourceId, pulse.centerWavelengthNm, pulse.bandwidthNm,
+  pulse.spectrumKind, pulse.spectrumLoNm, pulse.spectrumHiNm].join('|') : '');
+function childPulseDescribed(r, c, kind) {
+  const pulse = 'pulse' in c ? c.pulse : r.pulse;
+  if (!pulse) return false;
+  if ('pulse' in c && pulseIdentity(c.pulse) !== pulseIdentity(r.pulse)) return true;
+  if (r.pulseDescribed !== true) return false;
+  if (SPECTRUM_SELECTING_KINDS.has(kind)) return true;
+  // Elsewhere, only light passed on as it came: no new wavelength, band,
+  // spectrum or source.
+  return !('wl' in c) && !('bw' in c) && !('spec' in c) && !('sourceId' in c);
+}
+
+// A pulse's recorded spectrum after a port's transmission has acted on all of
+// it: every piece is cut at the port's edges and reshaped, keeping the power
+// each part holds. Returns null when the transmission is uniform over the
+// record (nothing to re-record), and an empty list when nothing is left.
+function reshapedPulsePieces(pulse, shape, edges = []) {
+  const band = pulseBand(pulse);
+  const recorded = (pulse?.filteredPieces || []).filter(p => p?.spec && p.hi > p.lo && p.power > 0);
+  const base = recorded.length ? recorded
+    : band ? [{ spec: band, lo: spectrumSupport(band)[0], hi: spectrumSupport(band)[1], power: 1 }] : null;
+  if (!base) return null;
+  const at = wl => Math.max(0, Math.min(1, Number(shape(wl)) || 0));
+  const cuts = [...new Set(edges.filter(Number.isFinite))].sort((a, b) => a - b);
+  let low = Infinity, high = -Infinity;
+  const out = [];
+  for (const piece of base) {
+    const bounds = [piece.lo, ...cuts.filter(e => e > piece.lo && e < piece.hi), piece.hi];
+    const parts = [];
+    let whole = 0;
+    for (let j = 0; j + 1 < bounds.length; j++) {
+      const a = bounds[j], b = bounds[j + 1];
+      if (!(b > a)) continue;
+      const n = gridFor(b - a, profileStep(piece.spec), 65);
+      const eps = (b - a) * 1e-9;
+      const incoming = [], kept = [];
+      for (let i = 0; i < n; i++) {
+        const wl = a + (b - a) * i / (n - 1);
+        const w = Math.max(0, spectrumWeight(piece.spec, wl));
+        // Judged just inside the part, so a step on its edge is not sampled.
+        const t = at(Math.min(b - eps, Math.max(a + eps, wl)));
+        low = Math.min(low, t); high = Math.max(high, t);
+        incoming.push(w); kept.push(w * t);
+      }
+      const area = values => values.reduce((sum, v, i) => sum + v * (i === 0 || i === n - 1 ? 0.5 : 1), 0) * (b - a) / (n - 1);
+      whole += area(incoming);
+      parts.push({ a, b, kept, area: area(kept) });
+    }
+    if (!(whole > 0)) continue;
+    for (const part of parts) {
+      const peak = Math.max(...part.kept);
+      if (!(part.area > 0) || !(peak > 0)) continue;
+      out.push({
+        spec: { kind: 'sampled', lo: part.a, hi: part.b, w: part.kept.map(v => v / peak) },
+        lo: part.a, hi: part.b, power: piece.power * part.area / whole,
+      });
+    }
+  }
+  if (high - low <= 1e-9 && low > 0) return null;
+  return out;
+}
 function pulseBand(pulse) {
   if (!pulse) return null;
   if (pulse.spectrumKind === 'flat' && Number.isFinite(pulse.spectrumLoNm) && Number.isFinite(pulse.spectrumHiNm)
@@ -5576,6 +5700,7 @@ function loopState(r) {
     r.wl, r.bw, r.spec, r.pol, r.stokes?.s1, r.stokes?.s2, r.stokes?.s3, r.polMod, r.pulse,
     r.gdd, r.groupDelayDifferenceFs, r.medium, r.mediumMaterial, r.ior, r.sourceId, r.color,
     r.dispersed, r.spectralContinuum, r.spectralWidthNm, r.spectralLo, r.spectralHi, r.fanLo, r.fanHi, r.sliceSpec,
+    r.pulseDescribed,
     r.approximation, r.parametricPath, r.keepWeak, r.retainWeak, r.hidden, r.sample, r.phaseValid,
   ];
 }
@@ -5997,8 +6122,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // clearing it here covers that route too.
       const carriedEvan = r.carriedEvan;
       r.carriedEvan = null;
-      interactionRay = r; interactionReshapesPulse = false;
+      interactionRay = r; interactionReshapesPulse = false; interactionPorts = null;
       const children = interact(r, hit);
+      const ports = interactionPorts;
+      interactionPorts = null;
       const passive = passiveInteraction(hit.surface, children);
       // What a wavelength-selective element passes is the band the user chose,
       // often a thin slice of a broad source -- 1 nm of a 500 nm continuum is
@@ -6029,6 +6156,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // dispersion accumulated so far describing wavelengths it has removed.
       // Mark the pulse so the duration model declines downstream. Light an
       // element generated brings a pulse of its own and is left alone.
+      // Light an element generated brings a pulse of its own.
+      const ownPulse = new Set(children.filter(child => 'pulse' in child));
       if (reshaped && r.pulse) {
         for (const child of children) {
           if ('pulse' in child) continue;
@@ -6051,6 +6180,43 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           if ('pulse' in child && child.pulse !== r.pulse && !child.pulse?.spectrumReshaped) continue;
           const piece = pulseSpectrumPiece({ ...r, ...child }, r.pulse);
           child.pulse = { ...(child.pulse || r.pulse), spectrumReshaped: true, filteredPieces: piece ? [piece] : null };
+        }
+      }
+      // The record describes the pulse train, and a ray is only one part of
+      // it where the train travels as several: the wavelength samples of a
+      // fanned-out band, the two sides a notch leaves, the pieces of an
+      // AOTF's depleted beam. Recorded from the ray alone, each packet drawn
+      // on such a part showed its own piece of the spectrum, and a pulse an
+      // earlier filter had reshaped kept that filter's record. For those
+      // parts the record is what the port's transmission leaves of the whole
+      // recorded spectrum, the same for every part of the train -- and so it
+      // is for any pulse an earlier element has already reshaped, which is
+      // not re-detected as reshaping above. A ray that is the whole train,
+      // meeting the first element to reshape it, keeps the record taken from
+      // it above.
+      if (ports && r.pulse) {
+        const sharing = new Map();
+        for (const child of children) {
+          if (ownPulse.has(child)) continue;
+          const key = ports.keyFor(child);
+          sharing.set(key, (sharing.get(key) || 0) + 1);
+        }
+        // Only for light the record describes: a harmonic a crystal
+        // generated still carries the pump's record, and the pump's spectrum
+        // through this port says nothing about it. The ray has to be known
+        // to be described by its record; the band test is a second line.
+        const region = pulseBandRegion(r.pulse);
+        for (const child of children) {
+          if (ownPulse.has(child)) continue;
+          const merged = { ...r, ...child };
+          // A lone ray with its own spectrum, at the first element to reshape
+          // the pulse, is the whole train: the record taken from it stands.
+          if (!sampleCell(merged) && sharing.get(ports.keyFor(child)) < 2 && !r.pulse.spectrumReshaped) continue;
+          if (r.pulseDescribed !== true || !region || !rayWithinPulseBand(merged, region)) continue;
+          const shape = ports.shapeFor(child);
+          const pieces = shape ? reshapedPulsePieces(r.pulse, shape, ports.edges) : null;
+          if (!pieces || !pieces.length) continue;
+          child.pulse = { ...(child.pulse || r.pulse), spectrumReshaped: true, filteredPieces: pieces };
         }
       }
       // An etalon's output keeps its power but not its comb (and not the
@@ -6085,6 +6251,11 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         && !('polMod' in c0)
         && !('pulse' in c0); // state changes split so probes read each segment
       if (single) {
+        // The ray carries on as itself, so the provenance rule is applied to
+        // it here: a conversion that lands on the wavelength the ray already
+        // had (a line generated from a sample that was already a line) takes
+        // this path and is generated light all the same.
+        r.pulseDescribed = childPulseDescribed(r, c0, hit.surface.kind);
         if (c0.intensity !== undefined && r.intensity > 0 && Number.isFinite(r.power)) {
           r.power *= c0.intensity / r.intensity;
         }
@@ -6232,6 +6403,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           groupDelayDifferenceTrace: ('pulse' in c ? Boolean(c.pulse) : r.groupDelayDifferenceTrace)
             ? [{ opl: r.opl, value: childDelayDifference, linear: false }] : null,
           pulse: 'pulse' in c ? c.pulse : r.pulse,
+          pulseDescribed: childPulseDescribed(r, c, hit.surface.kind),
           // A caveat is never cleared downstream: no later element computes
           // what the linear-only continuation left out.
           approximation: r.approximation || c.approximation || null,
@@ -6685,6 +6857,8 @@ export function traceScene(elements, beams = [], options = {}) {
         pol: typeof p.pol === 'number' ? p.pol : undefined,
         stokes: typeof p.pol === 'number' ? linearStokes(p.pol) : null,
         pulse,
+        // A source's own light is what its pulse record describes.
+        pulseDescribed: Boolean(pulse),
         objectives: [],
         evan: r.evan || false, evanLen: r.evanLen,
         medium: initialBody?.id || null, mediumMaterial: initialMaterial, ior: initialIor,
