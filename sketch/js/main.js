@@ -28,7 +28,7 @@ import { buildSVG, exportSVG, exportPNG, exportGIF } from './export.js';
 import { examples } from './examples-data.js';
 import { community } from './community-data.js';
 import { download, esc, manualBeamSVG } from './util.js';
-import { buildShareURL, clearSharedSceneURL, copyText, shareURLForScene, sharedSceneFromURL } from './share.js';
+import { buildShareURL, clearSharedSceneURL, copyText, sceneParamsFromURL, shareURLForScene, sharedSceneFromURL } from './share.js';
 import { qrSVG } from './qr.js';
 import { buildExampleProposalIssueURL } from './proposal.js';
 import { recommendedTimeScale, nextAutoScale, TIME_SCALES, elementDriveHz } from './timescale.js';
@@ -1804,7 +1804,7 @@ function preserveWorkbenchInUndo() {
 
 // ---------- boot ----------
 window.addEventListener('DOMContentLoaded', async () => {
-  const params = new URLSearchParams(location.search);
+  const params = sceneParamsFromURL();
   const demoType = params.get('demo');
   const communitySlug = params.get('community');
   const exampleSlug = params.get('example');
