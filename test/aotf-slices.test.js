@@ -293,3 +293,95 @@ test('a harmonic behind glass is not timed with the pump\'s phase', () => {
   assert.equal(duration(third), null);
   assert.equal(third.pulse.dispersionModel, DISPERSION_UNAVAILABLE.reshaped);
 });
+
+// --- The depleted beam and overlapping channels -----------------------------
+
+// source -> (glass) -> elements -> detector, with selected and depleted beams
+// recombined on the axis when an AOTF is given `both`.
+const both = (channels, passband) => ({ channels, passband, showDepleted: true, deflect: 0 });
+const one = (wl, eff = 1) => [{ wl, eff }];
+function through(kind, fanned, elements) {
+  return signal(chain(sources[kind](), [...(fanned ? [rodAt(250)] : []), ...elements]));
+}
+
+test('the depleted beam is missing what the channels took, colour by colour', () => {
+  // Selected and depleted beams recombined are the beam that came in, so a
+  // narrow bandpass inside the channel must read what it reads with no AOTF.
+  // With the depleted beam left at the incoming spectrum, only dimmer, it
+  // found the selected light twice: up to 93 % too much.
+  for (const kind of ['gaussian', 'flat']) {
+    for (const fanned of [true, false]) {
+      for (const [wl, passband, band] of [[800, 2, 1], [803, 0.1, 1], [803, 0.5, 1], [790, 6, 3]]) {
+        const filter = at('filter', 700, { ftype: 'bandpass', center: wl, band });
+        const without = through(kind, fanned, [filter]);
+        const recombined = through(kind, fanned, [at('aotf', 450, both(one(wl), passband)), filter]);
+        assert.ok(Math.abs(recombined - without) <= 5e-3 * without,
+          `${kind}, ${fanned ? 'behind glass' : 'unfanned'}, ${wl}/${passband} → ${band} nm: ${recombined} vs ${without}`);
+      }
+    }
+  }
+});
+
+test('a second AOTF behind a recombined first one selects what it selects alone', () => {
+  // Each window's notch travels as its own piece, a few passbands wide, so
+  // it survives whatever the second channel's width is. As one profile
+  // spanning the beam it was lost: three 0.1 nm channels in front of a 2 nm
+  // one read 6.7 % low.
+  const three = [{ wl: 779.6, eff: 0.7 }, { wl: 780, eff: 0.7 }, { wl: 780.4, eff: 0.7 }];
+  const cascades = [
+    [one(780), 0.5, one(780), 0.5], [one(780), 1, one(780), 1], [three, 0.1, one(780), 2],
+    [one(800), 10, one(802), 3], [one(800), 2, one(800), 40],
+  ];
+  for (const kind of ['gaussian', 'flat']) {
+    for (const fanned of [true, false]) {
+      for (const [first, firstPassband, second, secondPassband] of cascades) {
+        const last = at('aotf', 650, { channels: second, passband: secondPassband });
+        const alone = through(kind, fanned, [last]);
+        const cascaded = through(kind, fanned, [at('aotf', 450, both(first, firstPassband)), last]);
+        assert.ok(alone > 0);
+        assert.ok(Math.abs(cascaded - alone) <= 5e-3 * alone,
+          `${kind}, ${fanned ? 'behind glass' : 'unfanned'}, ${firstPassband} nm then ${secondPassband} nm: ${cascaded} vs ${alone}`);
+      }
+    }
+  }
+});
+
+test('channels that overlap share the light instead of each taking all of it', () => {
+  // Two channels 4 nm apart with 40 nm passbands both ask for nearly all the
+  // light between them. Each taking its full share gave selected + depleted
+  // 1.12 times the beam; where they ask for more than there is, they now
+  // divide it in proportion.
+  const overlaps = [
+    [[{ wl: 798, eff: 1 }, { wl: 802, eff: 1 }], 40],
+    [[{ wl: 800, eff: 1 }, { wl: 800, eff: 1 }], 10],
+    [[{ wl: 798, eff: 0.5 }, { wl: 802, eff: 0.5 }], 40],
+    [Array.from({ length: 16 }, (_, i) => ({ wl: 779 + 0.1 * i, eff: 0.7 })), 0.1],
+  ];
+  for (const kind of ['gaussian', 'flat', 'line']) {
+    for (const fanned of [true, false]) {
+      const whole = through(kind, fanned, []);
+      for (const [channels, passband] of overlaps) {
+        const selected = through(kind, fanned, [at('aotf', 450, { channels, passband })]);
+        const all = through(kind, fanned, [at('aotf', 450, both(channels, passband))]);
+        assert.ok(selected <= whole * (1 + 1e-9), `${kind}: the channels select no more than there is (${selected} of ${whole})`);
+        assert.ok(Math.abs(all - whole) <= 1e-9 * whole, `${kind}, ${channels.length} channels / ${passband} nm: ${all} vs ${whole}`);
+      }
+    }
+  }
+  // Two equal channels on one wavelength cannot take more than all of a line.
+  const twice = through('line', false, [at('aotf', 450, { channels: [{ wl: 800, eff: 1 }, { wl: 800, eff: 1 }], passband: 10 })]);
+  assert.ok(Math.abs(twice - 1) < 1e-12, `two channels on the line take ${twice}`);
+});
+
+test('channels that do not overlap are untouched by the sharing', () => {
+  // Far apart, each channel selects exactly what it selects alone.
+  for (const kind of ['gaussian', 'flat']) {
+    const a = through(kind, false, [at('aotf', 450, { channels: one(780), passband: 4 })]);
+    const b = through(kind, false, [at('aotf', 450, { channels: one(820, 0.6), passband: 4 })]);
+    const together = through(kind, false, [at('aotf', 450, { channels: [{ wl: 780, eff: 1 }, { wl: 820, eff: 0.6 }], passband: 4 })]);
+    assert.equal(together, a + b, kind);
+  }
+  // A channel clear of the beam leaves the depleted beam as the whole beam.
+  const whole = through('gaussian', true, []);
+  assert.ok(Math.abs(through('gaussian', true, [at('aotf', 450, both(one(1000), 2))]) - whole) <= 1e-12 * whole);
+});

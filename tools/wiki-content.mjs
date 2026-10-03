@@ -3607,7 +3607,12 @@ export const wikiEntries = [
         summing to one. Efficiency multiplies on top, so three multiplexed lines at 0.9
         selected from three matching laser lines deliver 2.7× a single line's worth. Narrow
         selections work too: a 0.5&nbsp;nm line out of that supercontinuum is 0.18% of the
-        beam and still traces correctly rather than being discarded as negligible.</p>`,
+        beam and still traces correctly rather than being discarded as negligible.</p>
+        <p>Lines whose passbands overlap share the light between them: where together they
+        ask for more than is there, they divide it in proportion, so the selected and
+        depleted beams never add up to more than came in. The depleted beam is the incoming
+        spectrum with each line's passband taken out of it, colour by colour, so a filter
+        placed in it finds a gap where a line was selected.</p>`,
       limitations: `<p><strong>The geometry is the reverse of a physical device.</strong> In
         a real AOTF the selected light is the <em>diffracted</em> first order and leaves at
         an angle, while the remainder passes straight through as the zeroth order. This
