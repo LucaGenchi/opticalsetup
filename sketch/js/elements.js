@@ -625,8 +625,8 @@ export function cameraProfileSVG(rd, { x = -35, width = 70, baseline = 5, height
   const color = /^#[0-9a-f]{6}$/i.test(rd.color || '') ? rd.color : '#d8e7ee';
   const profileKind = rd.profileMode === 'coherent' ? 'coherent' : 'intensity';
   return `<g data-camera-profile="${profileKind}" data-camera-profile-pixels="${values.length}" data-camera-profile-scale="${mode}">` +
-    `<path data-camera-profile-fill d="${fillPath}" fill="${color}" opacity="0.22"/>` +
-    `<path data-camera-profile-curve d="${curvePath}" fill="none" stroke="${color}" stroke-width="1.35" stroke-linejoin="round"/>` +
+    `<path data-camera-profile-fill="1" d="${fillPath}" fill="${color}" opacity="0.22"/>` +
+    `<path data-camera-profile-curve="1" d="${curvePath}" fill="none" stroke="${color}" stroke-width="1.35" stroke-linejoin="round"/>` +
     `<line x1="${safeX.toFixed(2)}" y1="${safeBaseline.toFixed(2)}" x2="${(safeX + safeWidth).toFixed(2)}" y2="${safeBaseline.toFixed(2)}" stroke="#294453" stroke-width="0.8"/>` +
     `</g>`;
 }
@@ -639,7 +639,7 @@ function displaySpectrumPlot(rd, { baseline = 5, height = 15 } = {}) {
   // stem merely because SVG needs something visible to draw.
   const samples = rd.dark ? [] : candidates.filter(sample =>
     Number.isFinite(sample?.wavelength) && Number.isFinite(sample?.power) && sample.power > 1e-12);
-  const axis = `<line data-spectrum-baseline x1="-35" y1="${baseline}" x2="35" y2="${baseline}" stroke="#294453" stroke-width="0.8"/>`;
+  const axis = `<line data-spectrum-baseline="1" x1="-35" y1="${baseline}" x2="35" y2="${baseline}" stroke="#294453" stroke-width="0.8"/>`;
   if (!samples.length) return `<g data-spectrum-points="0">${axis}</g>`;
   const lo = Number.isFinite(rd.bandMin) ? rd.bandMin : Math.min(...samples.map(sample => sample.wavelength));
   const hi = Number.isFinite(rd.bandMax) ? rd.bandMax : Math.max(...samples.map(sample => sample.wavelength));
