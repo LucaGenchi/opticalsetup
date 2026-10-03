@@ -1,0 +1,446 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "CONTROL-07-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Integrating-sphere flux substitution measurement",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "CONTROL-07-lamp-box",
+      "type": "highlight",
+      "x": 80,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-07-lamp",
+      "type": "textlabel",
+      "x": 20,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. Test lamp",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-07-port-box",
+      "type": "highlight",
+      "x": 250,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-07-port",
+      "type": "textlabel",
+      "x": 190,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. Input port",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-07-wall-box",
+      "type": "highlight",
+      "x": 420,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-07-wall",
+      "type": "textlabel",
+      "x": 360,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Diffuse sphere\nwall",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-07-baf-box",
+      "type": "highlight",
+      "x": 590,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-07-baf",
+      "type": "textlabel",
+      "x": 530,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Detector baffle",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-07-d-box",
+      "type": "highlight",
+      "x": 770,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-07-d",
+      "type": "textlabel",
+      "x": 710,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Sphere detector",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-07-std-box",
+      "type": "highlight",
+      "x": 250,
+      "y": 70,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-07-std",
+      "type": "textlabel",
+      "x": 190,
+      "y": 70,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Calibrated\nstandard",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-07-cal-box",
+      "type": "highlight",
+      "x": 420,
+      "y": 350,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-07-cal",
+      "type": "textlabel",
+      "x": 360,
+      "y": 350,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "7. Flux comparison",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-07-wall2-box",
+      "type": "highlight",
+      "x": 770,
+      "y": 70,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-07-wall2",
+      "type": "textlabel",
+      "x": 710,
+      "y": 70,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "8. Second wall patch",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-07-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nSphere multiplier, port fractions, spectral responsivity and self-absorption are not computed.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "CONTROL-07-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 153,
+          "y": 210
+        },
+        {
+          "x": 201.6,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-07-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 250,
+          "y": 110
+        },
+        {
+          "x": 250,
+          "y": 170
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-07-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 323,
+          "y": 210
+        },
+        {
+          "x": 371.6,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-07-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 493,
+          "y": 180.8
+        },
+        {
+          "x": 697,
+          "y": 99.2
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-07-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 770,
+          "y": 102.4
+        },
+        {
+          "x": 770,
+          "y": 135
+        },
+        {
+          "x": 420,
+          "y": 135
+        },
+        {
+          "x": 420,
+          "y": 172.6
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-07-path-5",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 493,
+          "y": 210
+        },
+        {
+          "x": 541.6,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-07-path-6",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 663,
+          "y": 210
+        },
+        {
+          "x": 716.6,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-07-path-7",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 697,
+          "y": 239.2
+        },
+        {
+          "x": 493,
+          "y": 320.8
+        }
+      ],
+      "color": "#66748e",
+      "width": 2,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-07-path-8",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 274.2857142857143,
+          "y": 110
+        },
+        {
+          "x": 395.7142857142857,
+          "y": 310
+        }
+      ],
+      "color": "#99601c",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    }
+  ]
+}

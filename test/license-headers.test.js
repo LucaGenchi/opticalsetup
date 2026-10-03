@@ -9,7 +9,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = new URL('..', import.meta.url).pathname;
-const SOURCE_DIRS = ['sketch/js', 'sketch/css', 'css', 'tools', 'scripts', 'test', 'skills'];
+const SOURCE_DIRS = ['sketch/js', 'sketch/css', 'css', 'patterns/assets', 'tools', 'scripts', 'test', 'skills'];
 const SINGLE_FILES = ['index.html', 'sketch/index.html', 'serve.mjs'];
 const EXTENSIONS = ['.js', '.mjs', '.css', '.html'];
 
@@ -35,7 +35,7 @@ test('every source file carries the licence notice', () => {
 });
 
 test('generated pages carry it too, and the app can show the licence offline', () => {
-  for (const page of ['wiki/filter/index.html', 'example-setups/index.html', 'community/index.html']) {
+  for (const page of ['wiki/filter/index.html', 'example-setups/index.html', 'community/index.html', 'patterns/img-01/index.html']) {
     const head = readFileSync(join(ROOT, page), 'utf8').slice(0, 400);
     assert.match(head, /SPDX-License-Identifier: GPL-3\.0-or-later/, page);
     // The doctype still comes first.

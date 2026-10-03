@@ -1,0 +1,258 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "BEAM-07-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4f low-pass spatial filter",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "BEAM-07-target-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "BEAM-07-target",
+      "type": "textlabel",
+      "x": 30,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. Line-pair target",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "BEAM-07-l1-box",
+      "type": "highlight",
+      "x": 280,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "BEAM-07-l1",
+      "type": "textlabel",
+      "x": 220,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. 100 mm lens",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "BEAM-07-mask-box",
+      "type": "highlight",
+      "x": 470,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "BEAM-07-mask",
+      "type": "textlabel",
+      "x": 410,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Fourier-plane stop",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "BEAM-07-l2-box",
+      "type": "highlight",
+      "x": 660,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "BEAM-07-l2",
+      "type": "textlabel",
+      "x": 600,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. 100 mm lens",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "BEAM-07-image-box",
+      "type": "highlight",
+      "x": 860,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "BEAM-07-image",
+      "type": "textlabel",
+      "x": 800,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Filtered image",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "BEAM-07-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nThe topology does not compute a Fourier transform or a filtered image; a traced iris alone cannot demonstrate\nspatial-frequency filtering.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "BEAM-07-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 163,
+          "y": 190
+        },
+        {
+          "x": 221.6,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "BEAM-07-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 353,
+          "y": 190
+        },
+        {
+          "x": 411.6,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "BEAM-07-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 543,
+          "y": 190
+        },
+        {
+          "x": 601.6,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "BEAM-07-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 733,
+          "y": 190
+        },
+        {
+          "x": 796.6,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    }
+  ]
+}

@@ -1,0 +1,258 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "SCAN-04-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "100 mm f-theta processing head",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "SCAN-04-beam-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SCAN-04-beam",
+      "type": "textlabel",
+      "x": 30,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. Expanded process\nbeam",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SCAN-04-galvo-box",
+      "type": "highlight",
+      "x": 320,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SCAN-04-galvo",
+      "type": "textlabel",
+      "x": 260,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. ±5° optical scan",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SCAN-04-lens-box",
+      "type": "highlight",
+      "x": 560,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SCAN-04-lens",
+      "type": "textlabel",
+      "x": 500,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. 100 mm f-theta\nlens",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SCAN-04-field-box",
+      "type": "highlight",
+      "x": 800,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SCAN-04-field",
+      "type": "textlabel",
+      "x": 740,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. ±8.73 mm target",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SCAN-04-control-box",
+      "type": "highlight",
+      "x": 320,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SCAN-04-control",
+      "type": "textlabel",
+      "x": 260,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Angle command",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SCAN-04-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nThe thin-lens icon is not an f-theta prescription; no flat-field correction, process dose or calibrated scan is\nsimulated.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "SCAN-04-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 163,
+          "y": 190
+        },
+        {
+          "x": 247,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "SCAN-04-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 393,
+          "y": 190
+        },
+        {
+          "x": 487,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "SCAN-04-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 633,
+          "y": 190
+        },
+        {
+          "x": 727,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "SCAN-04-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 320,
+          "y": 290
+        },
+        {
+          "x": 320,
+          "y": 230
+        }
+      ],
+      "color": "#66748e",
+      "width": 2,
+      "dash": true,
+      "arrow": true
+    }
+  ]
+}

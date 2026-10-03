@@ -1,0 +1,276 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "FIELD-02-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Point-diffraction common-path reference",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "FIELD-02-object-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-02-object",
+      "type": "textlabel",
+      "x": 30,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. Phase specimen",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-02-focus-box",
+      "type": "highlight",
+      "x": 320,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-02-focus",
+      "type": "textlabel",
+      "x": 260,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. Fourier lens",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-02-mask-box",
+      "type": "highlight",
+      "x": 550,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-02-mask",
+      "type": "textlabel",
+      "x": 490,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Reference pinhole\nmask",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-02-camera-box",
+      "type": "highlight",
+      "x": 810,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-02-camera",
+      "type": "textlabel",
+      "x": 750,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Interference\ncamera",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-02-ref-box",
+      "type": "highlight",
+      "x": 550,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-02-ref",
+      "type": "textlabel",
+      "x": 490,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Filtered reference",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-02-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nNo pinhole diffraction or common-path phase reconstruction is computed; a single aperture ray model is\ninsufficient.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "FIELD-02-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 163,
+          "y": 190
+        },
+        {
+          "x": 247,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "FIELD-02-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 393,
+          "y": 190
+        },
+        {
+          "x": 477,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "FIELD-02-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 623,
+          "y": 190
+        },
+        {
+          "x": 737,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "FIELD-02-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 550,
+          "y": 230
+        },
+        {
+          "x": 550,
+          "y": 290
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "FIELD-02-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 623,
+          "y": 290.6923076923077
+        },
+        {
+          "x": 737,
+          "y": 229.30769230769232
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    }
+  ]
+}

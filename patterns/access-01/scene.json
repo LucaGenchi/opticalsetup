@@ -1,0 +1,306 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "ACCESS-01-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Three-stage unity relay in a rigid probe",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "ACCESS-01-sample-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ACCESS-01-sample",
+      "type": "textlabel",
+      "x": 30,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. Distal specimen",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ACCESS-01-distal-box",
+      "type": "highlight",
+      "x": 285,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ACCESS-01-distal",
+      "type": "textlabel",
+      "x": 225,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. Distal objective",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ACCESS-01-i1-box",
+      "type": "highlight",
+      "x": 480,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ACCESS-01-i1",
+      "type": "textlabel",
+      "x": 420,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Relay stage 1 /\nimage I₁",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ACCESS-01-i2-box",
+      "type": "highlight",
+      "x": 680,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ACCESS-01-i2",
+      "type": "textlabel",
+      "x": 620,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Relay stage 2 /\nimage I₂",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ACCESS-01-cam-box",
+      "type": "highlight",
+      "x": 875,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ACCESS-01-cam",
+      "type": "textlabel",
+      "x": 815,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Relay 3 / proximal\ncamera",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ACCESS-01-illum-box",
+      "type": "highlight",
+      "x": 285,
+      "y": 335,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ACCESS-01-illum",
+      "type": "textlabel",
+      "x": 225,
+      "y": 335,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Peripheral\nillumination",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ACCESS-01-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nNo rod-lens prescription, aberration accumulation, aperture throughput or full probe image is calculated.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "ACCESS-01-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 163,
+          "y": 210
+        },
+        {
+          "x": 224.1,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ACCESS-01-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 358,
+          "y": 210
+        },
+        {
+          "x": 419.1,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ACCESS-01-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 553,
+          "y": 210
+        },
+        {
+          "x": 616.6,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ACCESS-01-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 753,
+          "y": 210
+        },
+        {
+          "x": 814.1,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ACCESS-01-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 222.60000000000002,
+          "y": 295
+        },
+        {
+          "x": 152.4,
+          "y": 250
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    }
+  ]
+}

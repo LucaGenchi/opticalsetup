@@ -1,0 +1,416 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "CONTROL-03-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Pound–Drever–Hall cavity frequency lock",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "CONTROL-03-l-box",
+      "type": "highlight",
+      "x": 80,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-03-l",
+      "type": "textlabel",
+      "x": 20,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. 1064 nm laser",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-03-eom-box",
+      "type": "highlight",
+      "x": 250,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-03-eom",
+      "type": "textlabel",
+      "x": 190,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. 20 MHz sidebands",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-03-route-box",
+      "type": "highlight",
+      "x": 420,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-03-route",
+      "type": "textlabel",
+      "x": 360,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Reflection\nseparator",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-03-cav-box",
+      "type": "highlight",
+      "x": 590,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-03-cav",
+      "type": "textlabel",
+      "x": 530,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Reference cavity",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-03-pd-box",
+      "type": "highlight",
+      "x": 770,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-03-pd",
+      "type": "textlabel",
+      "x": 710,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Fast photodiode",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-03-rf-box",
+      "type": "highlight",
+      "x": 250,
+      "y": 70,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-03-rf",
+      "type": "textlabel",
+      "x": 190,
+      "y": 70,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. RF reference",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-03-servo-box",
+      "type": "highlight",
+      "x": 420,
+      "y": 350,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-03-servo",
+      "type": "textlabel",
+      "x": 360,
+      "y": 350,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "7. Mixer and servo",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-03-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nCavity transfer, RF demodulation, error slope and lock acquisition are not computed.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "CONTROL-03-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 153,
+          "y": 210
+        },
+        {
+          "x": 201.6,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-03-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 323,
+          "y": 210
+        },
+        {
+          "x": 371.6,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-03-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 493,
+          "y": 210
+        },
+        {
+          "x": 541.6,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-03-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 590,
+          "y": 250
+        },
+        {
+          "x": 590,
+          "y": 310
+        },
+        {
+          "x": 420,
+          "y": 310
+        },
+        {
+          "x": 420,
+          "y": 250
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-03-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 493,
+          "y": 210
+        },
+        {
+          "x": 697,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-03-path-5",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 250,
+          "y": 110
+        },
+        {
+          "x": 250,
+          "y": 170
+        }
+      ],
+      "color": "#66748e",
+      "width": 2,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-03-path-6",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 274.2857142857143,
+          "y": 110
+        },
+        {
+          "x": 395.7142857142857,
+          "y": 310
+        }
+      ],
+      "color": "#99601c",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-03-path-7",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 697,
+          "y": 239.2
+        },
+        {
+          "x": 493,
+          "y": 320.8
+        }
+      ],
+      "color": "#66748e",
+      "width": 2,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-03-path-8",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 347,
+          "y": 319.94117647058823
+        },
+        {
+          "x": 153,
+          "y": 240.05882352941177
+        }
+      ],
+      "color": "#66748e",
+      "width": 2,
+      "dash": true,
+      "arrow": true
+    }
+  ]
+}

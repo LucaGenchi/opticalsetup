@@ -1,0 +1,306 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "FIELD-05-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Differential balanced photodetection",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "FIELD-05-a-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-05-a",
+      "type": "textlabel",
+      "x": 30,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. Optical port A",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-05-b-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 290,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-05-b",
+      "type": "textlabel",
+      "x": 30,
+      "y": 290,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. Optical port B",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-05-da-box",
+      "type": "highlight",
+      "x": 350,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-05-da",
+      "type": "textlabel",
+      "x": 290,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Photodiode A",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-05-db-box",
+      "type": "highlight",
+      "x": 350,
+      "y": 290,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-05-db",
+      "type": "textlabel",
+      "x": 290,
+      "y": 290,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Photodiode B",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-05-diff-box",
+      "type": "highlight",
+      "x": 620,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-05-diff",
+      "type": "textlabel",
+      "x": 560,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Difference\namplifier",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-05-out-box",
+      "type": "highlight",
+      "x": 850,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-05-out",
+      "type": "textlabel",
+      "x": 790,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Differential\noutput",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-05-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nNo amplifier bandwidth, common-mode rejection, shot noise or photocurrent subtraction is executed by the\nschematic.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "FIELD-05-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 163,
+          "y": 90
+        },
+        {
+          "x": 277,
+          "y": 90
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "FIELD-05-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 163,
+          "y": 290
+        },
+        {
+          "x": 277,
+          "y": 290
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "FIELD-05-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 423,
+          "y": 117.03703703703704
+        },
+        {
+          "x": 547,
+          "y": 162.96296296296296
+        }
+      ],
+      "color": "#66748e",
+      "width": 2,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "FIELD-05-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 423,
+          "y": 262.962962962963
+        },
+        {
+          "x": 547,
+          "y": 217.03703703703704
+        }
+      ],
+      "color": "#66748e",
+      "width": 2,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "FIELD-05-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 693,
+          "y": 190
+        },
+        {
+          "x": 777,
+          "y": 190
+        }
+      ],
+      "color": "#66748e",
+      "width": 2,
+      "dash": true,
+      "arrow": true
+    }
+  ]
+}

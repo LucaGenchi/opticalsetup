@@ -1,0 +1,306 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "LINK-07-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Lensed-fiber edge coupling with a witness port",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "LINK-07-fiber-box",
+      "type": "highlight",
+      "x": 80,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "LINK-07-fiber",
+      "type": "textlabel",
+      "x": 20,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. Lensed fiber",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "LINK-07-facet-box",
+      "type": "highlight",
+      "x": 250,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "LINK-07-facet",
+      "type": "textlabel",
+      "x": 190,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. Chip facet",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "LINK-07-tap-box",
+      "type": "highlight",
+      "x": 420,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "LINK-07-tap",
+      "type": "textlabel",
+      "x": 360,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Inverse taper",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "LINK-07-split-box",
+      "type": "highlight",
+      "x": 590,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "LINK-07-split",
+      "type": "textlabel",
+      "x": 530,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. On-chip splitter",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "LINK-07-dev-box",
+      "type": "highlight",
+      "x": 770,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "LINK-07-dev",
+      "type": "textlabel",
+      "x": 710,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Device circuit",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "LINK-07-wit-box",
+      "type": "highlight",
+      "x": 250,
+      "y": 70,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "LINK-07-wit",
+      "type": "textlabel",
+      "x": 190,
+      "y": 70,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Witness detector",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "LINK-07-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nFiber waist, vector overlap, facet reflection and coupling efficiency are not calculated.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "LINK-07-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 153,
+          "y": 210
+        },
+        {
+          "x": 201.6,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "LINK-07-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 323,
+          "y": 210
+        },
+        {
+          "x": 371.6,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "LINK-07-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 493,
+          "y": 210
+        },
+        {
+          "x": 541.6,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "LINK-07-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 663,
+          "y": 210
+        },
+        {
+          "x": 716.6,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "LINK-07-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 517,
+          "y": 179.94117647058823
+        },
+        {
+          "x": 323,
+          "y": 100.05882352941177
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    }
+  ]
+}

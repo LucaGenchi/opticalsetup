@@ -1,0 +1,306 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "ILL-06-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Orthogonal light-sheet microscope",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "ILL-06-laser-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ILL-06-laser",
+      "type": "textlabel",
+      "x": 30,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. 488 nm beam",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ILL-06-cyl-box",
+      "type": "highlight",
+      "x": 310,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ILL-06-cyl",
+      "type": "textlabel",
+      "x": 250,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. Sheet-forming\ncylinder",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ILL-06-sample-box",
+      "type": "highlight",
+      "x": 550,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ILL-06-sample",
+      "type": "textlabel",
+      "x": 490,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Illuminated slice",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ILL-06-obj-box",
+      "type": "highlight",
+      "x": 550,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ILL-06-obj",
+      "type": "textlabel",
+      "x": 490,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Detection\nobjective",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ILL-06-camera-box",
+      "type": "highlight",
+      "x": 790,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ILL-06-camera",
+      "type": "textlabel",
+      "x": 730,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Slice camera",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ILL-06-scan-box",
+      "type": "highlight",
+      "x": 790,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ILL-06-scan",
+      "type": "textlabel",
+      "x": 730,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Specimen\ntranslation",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ILL-06-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nSheet waist, Rayleigh range and fluorescence volume are not computed; the transverse sheet extent is outside the\n2D editor.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "ILL-06-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 163,
+          "y": 190
+        },
+        {
+          "x": 237,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ILL-06-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 383,
+          "y": 190
+        },
+        {
+          "x": 477,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ILL-06-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 550,
+          "y": 230
+        },
+        {
+          "x": 550,
+          "y": 290
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ILL-06-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 623,
+          "y": 330
+        },
+        {
+          "x": 717,
+          "y": 330
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ILL-06-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 717,
+          "y": 120.41666666666666
+        },
+        {
+          "x": 623,
+          "y": 159.58333333333331
+        }
+      ],
+      "color": "#66748e",
+      "width": 2,
+      "dash": true,
+      "arrow": true
+    }
+  ]
+}

@@ -1,0 +1,354 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "WAVE-08-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Field stop and vanes with a stray-light dump",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "WAVE-08-field-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "WAVE-08-field",
+      "type": "textlabel",
+      "x": 30,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. Accepted scene\nfield",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "WAVE-08-front-box",
+      "type": "highlight",
+      "x": 285,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "WAVE-08-front",
+      "type": "textlabel",
+      "x": 225,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. Front lens group",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "WAVE-08-stop-box",
+      "type": "highlight",
+      "x": 480,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "WAVE-08-stop",
+      "type": "textlabel",
+      "x": 420,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Intermediate field\nstop",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "WAVE-08-relay-box",
+      "type": "highlight",
+      "x": 680,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "WAVE-08-relay",
+      "type": "textlabel",
+      "x": 620,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Baffled relay tube",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "WAVE-08-camera-box",
+      "type": "highlight",
+      "x": 875,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "WAVE-08-camera",
+      "type": "textlabel",
+      "x": 815,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Sensitive detector",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "WAVE-08-ghost-box",
+      "type": "highlight",
+      "x": 285,
+      "y": 310,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "WAVE-08-ghost",
+      "type": "textlabel",
+      "x": 225,
+      "y": 310,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Ghost / wall\nscatter",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "WAVE-08-dump-box",
+      "type": "highlight",
+      "x": 680,
+      "y": 310,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "WAVE-08-dump",
+      "type": "textlabel",
+      "x": 620,
+      "y": 310,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "7. Blackened\ninterception",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "WAVE-08-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nThe topology does not compute bidirectional scatter, coating ghosts, vane-edge diffraction or quantitative\nrejection.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "WAVE-08-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 163,
+          "y": 85
+        },
+        {
+          "x": 224.1,
+          "y": 85
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "WAVE-08-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 358,
+          "y": 85
+        },
+        {
+          "x": 419.1,
+          "y": 85
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "WAVE-08-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 553,
+          "y": 85
+        },
+        {
+          "x": 616.6,
+          "y": 85
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "WAVE-08-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 753,
+          "y": 85
+        },
+        {
+          "x": 814.1,
+          "y": 85
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "WAVE-08-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 285,
+          "y": 125
+        },
+        {
+          "x": 285,
+          "y": 270
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "WAVE-08-path-5",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 358,
+          "y": 310
+        },
+        {
+          "x": 607,
+          "y": 310
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    }
+  ]
+}

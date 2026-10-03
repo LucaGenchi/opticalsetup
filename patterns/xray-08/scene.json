@@ -1,0 +1,354 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "XRAY-08-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "13.5 nm multilayer reflective projection transport",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "XRAY-08-source-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "XRAY-08-source",
+      "type": "textlabel",
+      "x": 30,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. 13.5 nm EUV source",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "XRAY-08-collect-box",
+      "type": "highlight",
+      "x": 285,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "XRAY-08-collect",
+      "type": "textlabel",
+      "x": 225,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. Multilayer\ncollector",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "XRAY-08-illum-box",
+      "type": "highlight",
+      "x": 480,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "XRAY-08-illum",
+      "type": "textlabel",
+      "x": 420,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Reflective\nilluminator",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "XRAY-08-mask-box",
+      "type": "highlight",
+      "x": 680,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "XRAY-08-mask",
+      "type": "textlabel",
+      "x": 620,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Reflective\npatterned mask",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "XRAY-08-relay-box",
+      "type": "highlight",
+      "x": 480,
+      "y": 335,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "XRAY-08-relay",
+      "type": "textlabel",
+      "x": 420,
+      "y": 335,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Reduction mirror\nrelay",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "XRAY-08-wafer-box",
+      "type": "highlight",
+      "x": 285,
+      "y": 335,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "XRAY-08-wafer",
+      "type": "textlabel",
+      "x": 225,
+      "y": 335,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Wafer image plane",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "XRAY-08-dump-box",
+      "type": "highlight",
+      "x": 875,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "XRAY-08-dump",
+      "type": "textlabel",
+      "x": 815,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "7. Rejected\nout-of-band light",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "XRAY-08-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nNo multilayer interference, EUV reflectivity, 3D projection prescription, mask diffraction or lithographic\nresolution is simulated.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "XRAY-08-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 163,
+          "y": 85
+        },
+        {
+          "x": 224.1,
+          "y": 85
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "XRAY-08-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 358,
+          "y": 85
+        },
+        {
+          "x": 419.1,
+          "y": 85
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "XRAY-08-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 544,
+          "y": 125
+        },
+        {
+          "x": 616,
+          "y": 170
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "XRAY-08-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 616,
+          "y": 250
+        },
+        {
+          "x": 544,
+          "y": 295
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "XRAY-08-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 407,
+          "y": 335
+        },
+        {
+          "x": 345.9,
+          "y": 335
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "XRAY-08-path-5",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 358,
+          "y": 85
+        },
+        {
+          "x": 802,
+          "y": 85
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    }
+  ]
+}

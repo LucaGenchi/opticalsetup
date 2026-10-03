@@ -1,0 +1,354 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "CAV-04-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Seeded amplifier with isolated monitoring",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "CAV-04-seed-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CAV-04-seed",
+      "type": "textlabel",
+      "x": 30,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. 1064 nm master",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CAV-04-iso-box",
+      "type": "highlight",
+      "x": 285,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CAV-04-iso",
+      "type": "textlabel",
+      "x": 225,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. Input isolator",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CAV-04-amp-box",
+      "type": "highlight",
+      "x": 480,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CAV-04-amp",
+      "type": "textlabel",
+      "x": 420,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Power amplifier",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CAV-04-pump-box",
+      "type": "highlight",
+      "x": 480,
+      "y": 310,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CAV-04-pump",
+      "type": "textlabel",
+      "x": 420,
+      "y": 310,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Pump supply",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CAV-04-tap-box",
+      "type": "highlight",
+      "x": 680,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CAV-04-tap",
+      "type": "textlabel",
+      "x": 620,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. 1% output tap",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CAV-04-load-box",
+      "type": "highlight",
+      "x": 875,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CAV-04-load",
+      "type": "textlabel",
+      "x": 815,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Delivered beam",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CAV-04-monitor-box",
+      "type": "highlight",
+      "x": 680,
+      "y": 310,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CAV-04-monitor",
+      "type": "textlabel",
+      "x": 620,
+      "y": 310,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "7. Power monitor",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CAV-04-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nGain saturation, thermal lensing, ASE, isolation ratio and amplified noise are not simulated.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "CAV-04-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 163,
+          "y": 85
+        },
+        {
+          "x": 224.1,
+          "y": 85
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CAV-04-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 358,
+          "y": 85
+        },
+        {
+          "x": 419.1,
+          "y": 85
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CAV-04-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 480,
+          "y": 270
+        },
+        {
+          "x": 480,
+          "y": 125
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CAV-04-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 553,
+          "y": 85
+        },
+        {
+          "x": 616.6,
+          "y": 85
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CAV-04-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 753,
+          "y": 85
+        },
+        {
+          "x": 814.1,
+          "y": 85
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CAV-04-path-5",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 680,
+          "y": 125
+        },
+        {
+          "x": 680,
+          "y": 270
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    }
+  ]
+}

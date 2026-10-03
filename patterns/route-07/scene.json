@@ -1,0 +1,306 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "ROUTE-07-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Prepare circular light and analyze it",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "ROUTE-07-source-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ROUTE-07-source",
+      "type": "textlabel",
+      "x": 30,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. 532 nm source",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ROUTE-07-prep-box",
+      "type": "highlight",
+      "x": 280,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ROUTE-07-prep",
+      "type": "textlabel",
+      "x": 220,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. 0° preparation\npolarizer",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ROUTE-07-q1-box",
+      "type": "highlight",
+      "x": 470,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ROUTE-07-q1",
+      "type": "textlabel",
+      "x": 410,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. 45° preparation\nQWP",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ROUTE-07-q2-box",
+      "type": "highlight",
+      "x": 660,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ROUTE-07-q2",
+      "type": "textlabel",
+      "x": 600,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Analysis QWP",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ROUTE-07-analyzer-box",
+      "type": "highlight",
+      "x": 850,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ROUTE-07-analyzer",
+      "type": "textlabel",
+      "x": 790,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Rotating analyzer",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ROUTE-07-det-box",
+      "type": "highlight",
+      "x": 850,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ROUTE-07-det",
+      "type": "textlabel",
+      "x": 790,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Power readings",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ROUTE-07-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nThe schematic does not perform a calibrated Stokes fit or determine experimental plate conventions; wavelength\nerrors and uncertainty remain external.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "ROUTE-07-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 163,
+          "y": 190
+        },
+        {
+          "x": 221.6,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ROUTE-07-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 353,
+          "y": 190
+        },
+        {
+          "x": 411.6,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ROUTE-07-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 543,
+          "y": 190
+        },
+        {
+          "x": 601.6,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ROUTE-07-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 733,
+          "y": 190
+        },
+        {
+          "x": 791.6,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ROUTE-07-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 850,
+          "y": 230
+        },
+        {
+          "x": 850,
+          "y": 290
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    }
+  ]
+}

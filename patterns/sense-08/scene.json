@@ -1,0 +1,306 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "SENSE-08-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Prism-coupled surface-plasmon sensing",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "SENSE-08-l-box",
+      "type": "highlight",
+      "x": 80,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SENSE-08-l",
+      "type": "textlabel",
+      "x": 20,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. 633 nm probe",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SENSE-08-pol-box",
+      "type": "highlight",
+      "x": 250,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SENSE-08-pol",
+      "type": "textlabel",
+      "x": 190,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. p polarization",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SENSE-08-pr-box",
+      "type": "highlight",
+      "x": 420,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SENSE-08-pr",
+      "type": "textlabel",
+      "x": 360,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Gold-coated prism",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SENSE-08-fluid-box",
+      "type": "highlight",
+      "x": 590,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SENSE-08-fluid",
+      "type": "textlabel",
+      "x": 530,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Sample fluid",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SENSE-08-d-box",
+      "type": "highlight",
+      "x": 770,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SENSE-08-d",
+      "type": "textlabel",
+      "x": 710,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Reflection\ndetector",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SENSE-08-ref-box",
+      "type": "highlight",
+      "x": 250,
+      "y": 70,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SENSE-08-ref",
+      "type": "textlabel",
+      "x": 190,
+      "y": 70,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Reference fluid",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SENSE-08-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nMetal dielectric response, plasmon resonance and refractive-index sensitivity are not calculated.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "SENSE-08-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 153,
+          "y": 210
+        },
+        {
+          "x": 201.6,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "SENSE-08-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 323,
+          "y": 210
+        },
+        {
+          "x": 371.6,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "SENSE-08-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 493,
+          "y": 210
+        },
+        {
+          "x": 541.6,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "SENSE-08-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 493,
+          "y": 210
+        },
+        {
+          "x": 697,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "SENSE-08-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 323,
+          "y": 89.65384615384616
+        },
+        {
+          "x": 697,
+          "y": 190.34615384615384
+        }
+      ],
+      "color": "#99601c",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    }
+  ]
+}

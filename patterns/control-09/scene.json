@@ -1,0 +1,372 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "CONTROL-09-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Switchable line-lamp spectrometer calibration",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "CONTROL-09-sample-box",
+      "type": "highlight",
+      "x": 80,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-09-sample",
+      "type": "textlabel",
+      "x": 20,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. Sample emission",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-09-switch-box",
+      "type": "highlight",
+      "x": 250,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-09-switch",
+      "type": "textlabel",
+      "x": 190,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. Input selector",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-09-slit-box",
+      "type": "highlight",
+      "x": 420,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-09-slit",
+      "type": "textlabel",
+      "x": 360,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Shared slit",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-09-spec-box",
+      "type": "highlight",
+      "x": 590,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-09-spec",
+      "type": "textlabel",
+      "x": 530,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Dispersive\ninstrument",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-09-cam-box",
+      "type": "highlight",
+      "x": 770,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-09-cam",
+      "type": "textlabel",
+      "x": 710,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Spectrum camera",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-09-hg-box",
+      "type": "highlight",
+      "x": 250,
+      "y": 70,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-09-hg",
+      "type": "textlabel",
+      "x": 190,
+      "y": 70,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Mercury line lamp",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-09-fit-box",
+      "type": "highlight",
+      "x": 420,
+      "y": 350,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTROL-09-fit",
+      "type": "textlabel",
+      "x": 360,
+      "y": 350,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "7. Pixel/wavelength\nfit",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTROL-09-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nLine fitting, wavelength calibration and spectrometer drift are not computed; the example wavelengths are Hg\nlines rather than simulated outputs.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "CONTROL-09-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 153,
+          "y": 210
+        },
+        {
+          "x": 201.6,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-09-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 250,
+          "y": 110
+        },
+        {
+          "x": 250,
+          "y": 170
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-09-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 323,
+          "y": 210
+        },
+        {
+          "x": 371.6,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-09-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 493,
+          "y": 210
+        },
+        {
+          "x": 541.6,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-09-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 663,
+          "y": 210
+        },
+        {
+          "x": 716.6,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-09-path-5",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 697,
+          "y": 239.2
+        },
+        {
+          "x": 493,
+          "y": 320.8
+        }
+      ],
+      "color": "#66748e",
+      "width": 2,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "CONTROL-09-path-6",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 274.2857142857143,
+          "y": 110
+        },
+        {
+          "x": 395.7142857142857,
+          "y": 310
+        }
+      ],
+      "color": "#99601c",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    }
+  ]
+}

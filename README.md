@@ -79,6 +79,9 @@ reference implementations; see [docs/validation.md](docs/validation.md) and
 
 - **Wiki** — one page per component: the real-world physics and how the app
   simplifies it.
+- **[Design patterns](https://opticalsetup.com/patterns/)** — 162 reusable
+  arrangements with searchable functions, disciplines and applications, concrete
+  examples, editable diagrams, and explicitly scoped ray demonstrations.
 - **Example setups** — background, model limits and references for each
   built-in example.
 - **Calculators** — interactive pages for individual physical models, running

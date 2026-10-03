@@ -1,0 +1,342 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "ILL-03-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "488 nm epi-fluorescence microscope",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "ILL-03-laser-box",
+      "type": "highlight",
+      "x": 100,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ILL-03-laser",
+      "type": "textlabel",
+      "x": 40,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. 488 nm excitation",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ILL-03-dich-box",
+      "type": "highlight",
+      "x": 350,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ILL-03-dich",
+      "type": "textlabel",
+      "x": 290,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. 500 nm dichroic",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ILL-03-obj-box",
+      "type": "highlight",
+      "x": 570,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ILL-03-obj",
+      "type": "textlabel",
+      "x": 510,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Shared objective",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ILL-03-sample-box",
+      "type": "highlight",
+      "x": 800,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ILL-03-sample",
+      "type": "textlabel",
+      "x": 740,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Fluorescent\nspecimen",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ILL-03-filter-box",
+      "type": "highlight",
+      "x": 350,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ILL-03-filter",
+      "type": "textlabel",
+      "x": 290,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. 520 nm emission\nfilter",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ILL-03-camera-box",
+      "type": "highlight",
+      "x": 100,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ILL-03-camera",
+      "type": "textlabel",
+      "x": 40,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Emission camera",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ILL-03-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nFluorescence spectrum, collection solid angle and filter leakage are not calculated by this schematic.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "ILL-03-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 173,
+          "y": 119.2
+        },
+        {
+          "x": 277,
+          "y": 160.8
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ILL-03-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 423,
+          "y": 190
+        },
+        {
+          "x": 497,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ILL-03-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 643,
+          "y": 190
+        },
+        {
+          "x": 727,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ILL-03-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 727,
+          "y": 190
+        },
+        {
+          "x": 643,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ILL-03-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 497,
+          "y": 190
+        },
+        {
+          "x": 423,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ILL-03-path-5",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 350,
+          "y": 230
+        },
+        {
+          "x": 350,
+          "y": 290
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ILL-03-path-6",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 277,
+          "y": 330
+        },
+        {
+          "x": 173,
+          "y": 330
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    }
+  ]
+}

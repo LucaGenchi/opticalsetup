@@ -1,0 +1,342 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "XRAY-04-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Selectable compound-refractive-lens cartridges",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "XRAY-04-beam-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "XRAY-04-beam",
+      "type": "textlabel",
+      "x": 30,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. 8 keV collimated\nbeam",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "XRAY-04-c2-box",
+      "type": "highlight",
+      "x": 285,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "XRAY-04-c2",
+      "type": "textlabel",
+      "x": 225,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. 2-lens cartridge",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "XRAY-04-c4-box",
+      "type": "highlight",
+      "x": 480,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "XRAY-04-c4",
+      "type": "textlabel",
+      "x": 420,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. 4-lens cartridge",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "XRAY-04-c8-box",
+      "type": "highlight",
+      "x": 680,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "XRAY-04-c8",
+      "type": "textlabel",
+      "x": 620,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. 8-lens cartridge",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "XRAY-04-sample-box",
+      "type": "highlight",
+      "x": 875,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "XRAY-04-sample",
+      "type": "textlabel",
+      "x": 815,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Adjustable sample\nfocus",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "XRAY-04-control-box",
+      "type": "highlight",
+      "x": 480,
+      "y": 335,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "XRAY-04-control",
+      "type": "textlabel",
+      "x": 420,
+      "y": 335,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Cartridge\nselection",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "XRAY-04-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nX-ray refractive decrement, absorption, lens imperfections and energy-dependent focus are not calculated.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "XRAY-04-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 163,
+          "y": 210
+        },
+        {
+          "x": 224.1,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "XRAY-04-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 358,
+          "y": 210
+        },
+        {
+          "x": 419.1,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "XRAY-04-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 553,
+          "y": 210
+        },
+        {
+          "x": 616.6,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "XRAY-04-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 753,
+          "y": 210
+        },
+        {
+          "x": 814.1,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "XRAY-04-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 417.6,
+          "y": 295
+        },
+        {
+          "x": 347.4,
+          "y": 250
+        }
+      ],
+      "color": "#66748e",
+      "width": 2,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "XRAY-04-path-5",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 480,
+          "y": 295
+        },
+        {
+          "x": 480,
+          "y": 250
+        }
+      ],
+      "color": "#66748e",
+      "width": 2,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "XRAY-04-path-6",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 544,
+          "y": 295
+        },
+        {
+          "x": 616,
+          "y": 250
+        }
+      ],
+      "color": "#66748e",
+      "width": 2,
+      "dash": true,
+      "arrow": true
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "spect05-source",
+      "type": "cwlaser",
+      "x": 90,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "spect05-tap",
+      "type": "bs",
+      "x": 285,
+      "y": 210,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "ratio": 0.9,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "spect05-filter1",
+      "type": "filter",
+      "x": 480,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "ftype": "bandpass",
+        "cutoff": 500,
+        "center": 525,
+        "band": 50,
+        "trans": 0.5,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "spect05-filter2",
+      "type": "filter",
+      "x": 680,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "ftype": "bandpass",
+        "cutoff": 500,
+        "center": 530,
+        "band": 20,
+        "trans": 0.5,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "spect05-output",
+      "type": "detector",
+      "x": 875,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "aperture": 26,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    },
+    {
+      "id": "spect05-reference",
+      "type": "detector",
+      "x": 285,
+      "y": 335,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "aperture": 26,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    }
+  ],
+  "beams": []
+}

@@ -1,0 +1,398 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "PULSE-05-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Delayed pump with independently normalized probe",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "PULSE-05-seed-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "PULSE-05-seed",
+      "type": "textlabel",
+      "x": 30,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. 800 nm pulse\nsource",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "PULSE-05-split-box",
+      "type": "highlight",
+      "x": 285,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "PULSE-05-split",
+      "type": "textlabel",
+      "x": 225,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. Pump / probe split",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "PULSE-05-delay-box",
+      "type": "highlight",
+      "x": 480,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "PULSE-05-delay",
+      "type": "textlabel",
+      "x": 420,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Pump retro-delay",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "PULSE-05-tap-box",
+      "type": "highlight",
+      "x": 480,
+      "y": 335,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "PULSE-05-tap",
+      "type": "textlabel",
+      "x": 420,
+      "y": 335,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Probe reference\ntap",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "PULSE-05-ref-box",
+      "type": "highlight",
+      "x": 875,
+      "y": 335,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "PULSE-05-ref",
+      "type": "textlabel",
+      "x": 815,
+      "y": 335,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Probe reference\ndetector",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "PULSE-05-sample-box",
+      "type": "highlight",
+      "x": 680,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "PULSE-05-sample",
+      "type": "textlabel",
+      "x": 620,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Overlap at\nspecimen",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "PULSE-05-det-box",
+      "type": "highlight",
+      "x": 875,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "PULSE-05-det",
+      "type": "textlabel",
+      "x": 815,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "7. Probe transmission",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "PULSE-05-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nNo excited-state response, transient absorption, pulse overlap integral or detector demodulation is calculated.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "PULSE-05-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 163,
+          "y": 210
+        },
+        {
+          "x": 224.1,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "PULSE-05-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 347.4,
+          "y": 170
+        },
+        {
+          "x": 417.6,
+          "y": 125
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "PULSE-05-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 544,
+          "y": 125
+        },
+        {
+          "x": 616,
+          "y": 170
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "PULSE-05-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 347.4,
+          "y": 250
+        },
+        {
+          "x": 417.6,
+          "y": 295
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "PULSE-05-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 544,
+          "y": 295
+        },
+        {
+          "x": 616,
+          "y": 250
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "PULSE-05-path-5",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 553,
+          "y": 335
+        },
+        {
+          "x": 802,
+          "y": 335
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "PULSE-05-path-6",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 753,
+          "y": 210
+        },
+        {
+          "x": 814.1,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "PULSE-05-path-7",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 802,
+          "y": 344.24050632911394
+        },
+        {
+          "x": 480,
+          "y": 385
+        },
+        {
+          "x": 875,
+          "y": 385
+        },
+        {
+          "x": 875,
+          "y": 250
+        }
+      ],
+      "color": "#66748e",
+      "width": 2,
+      "dash": true,
+      "arrow": true
+    }
+  ]
+}

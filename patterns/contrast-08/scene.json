@@ -1,0 +1,354 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "CONTRAST-08-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Registered excitation and doughnut depletion",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "CONTRAST-08-exc-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTRAST-08-exc",
+      "type": "textlabel",
+      "x": 30,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. 640 nm excitation",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTRAST-08-sted-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 310,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTRAST-08-sted",
+      "type": "textlabel",
+      "x": 30,
+      "y": 310,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. 775 nm depletion",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTRAST-08-vortex-box",
+      "type": "highlight",
+      "x": 285,
+      "y": 310,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTRAST-08-vortex",
+      "type": "textlabel",
+      "x": 225,
+      "y": 310,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Vortex phase mask",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTRAST-08-combine-box",
+      "type": "highlight",
+      "x": 480,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTRAST-08-combine",
+      "type": "textlabel",
+      "x": 420,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Dichroic combiner",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTRAST-08-obj-box",
+      "type": "highlight",
+      "x": 680,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTRAST-08-obj",
+      "type": "textlabel",
+      "x": 620,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Shared objective",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTRAST-08-sample-box",
+      "type": "highlight",
+      "x": 875,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTRAST-08-sample",
+      "type": "textlabel",
+      "x": 815,
+      "y": 210,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Fluorescent target",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTRAST-08-det-box",
+      "type": "highlight",
+      "x": 680,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTRAST-08-det",
+      "type": "textlabel",
+      "x": 620,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "7. Confocal detector",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTRAST-08-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nThe app does not form a vectorial doughnut, simulate stimulated depletion, dye kinetics or super-resolution.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "CONTRAST-08-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 163,
+          "y": 108.3974358974359
+        },
+        {
+          "x": 407,
+          "y": 186.6025641025641
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTRAST-08-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 163,
+          "y": 310
+        },
+        {
+          "x": 224.1,
+          "y": 310
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTRAST-08-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 358,
+          "y": 272.56410256410254
+        },
+        {
+          "x": 419.08898174628126,
+          "y": 241.23641961729166
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTRAST-08-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 553,
+          "y": 210
+        },
+        {
+          "x": 616.6,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTRAST-08-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 753,
+          "y": 210
+        },
+        {
+          "x": 814.1,
+          "y": 210
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTRAST-08-path-5",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 810,
+          "y": 250
+        },
+        {
+          "x": 744.9148341683295,
+          "y": 290.0524097425664
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    }
+  ]
+}

@@ -1,0 +1,332 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "ILL-01-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Köhler transmitted-light microscope",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "ILL-01-pointsource-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ILL-01-pointsource",
+      "type": "textlabel",
+      "x": 30,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. Lamp filament",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ILL-01-collector-box",
+      "type": "highlight",
+      "x": 280,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ILL-01-collector",
+      "type": "textlabel",
+      "x": 220,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. Collector",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ILL-01-aperture-box",
+      "type": "highlight",
+      "x": 480,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ILL-01-aperture",
+      "type": "textlabel",
+      "x": 420,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Aperture diaphragm",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ILL-01-condenser-box",
+      "type": "highlight",
+      "x": 680,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ILL-01-condenser",
+      "type": "textlabel",
+      "x": 620,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Condenser",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ILL-01-sample-box",
+      "type": "highlight",
+      "x": 870,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ILL-01-sample",
+      "type": "textlabel",
+      "x": 810,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Specimen field",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ILL-01-field-box",
+      "type": "highlight",
+      "x": 280,
+      "y": 290,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "ILL-01-field",
+      "type": "textlabel",
+      "x": 220,
+      "y": 290,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Field diaphragm",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "ILL-01-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nThis diagram does not calculate extended-source uniformity or microscope resolution; aperture and field\nconjugacy are conceptual.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "ILL-01-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 163,
+          "y": 90
+        },
+        {
+          "x": 221.6,
+          "y": 90
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ILL-01-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 353,
+          "y": 90
+        },
+        {
+          "x": 416.6,
+          "y": 90
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ILL-01-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 553,
+          "y": 126.5
+        },
+        {
+          "x": 616.5894427191,
+          "y": 158.29472135955
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ILL-01-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 753,
+          "y": 190
+        },
+        {
+          "x": 811.6,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ILL-01-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 353,
+          "y": 271.75
+        },
+        {
+          "x": 607,
+          "y": 208.25
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "ILL-01-path-5",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 280,
+          "y": 319.9
+        },
+        {
+          "x": 280,
+          "y": 350
+        },
+        {
+          "x": 870,
+          "y": 350
+        },
+        {
+          "x": 870,
+          "y": 230
+        }
+      ],
+      "color": "#99601c",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    }
+  ]
+}

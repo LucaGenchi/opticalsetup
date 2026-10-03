@@ -1,0 +1,408 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "CONTRAST-01-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Descanned fluorescence with a one-Airy-unit pinhole",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "CONTRAST-01-laser-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTRAST-01-laser",
+      "type": "textlabel",
+      "x": 30,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. 488 nm excitation",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTRAST-01-split-box",
+      "type": "highlight",
+      "x": 285,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTRAST-01-split",
+      "type": "textlabel",
+      "x": 225,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. Dichroic",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTRAST-01-scan-box",
+      "type": "highlight",
+      "x": 480,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTRAST-01-scan",
+      "type": "textlabel",
+      "x": 420,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Scan / descan",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTRAST-01-obj-box",
+      "type": "highlight",
+      "x": 680,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTRAST-01-obj",
+      "type": "textlabel",
+      "x": 620,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. 40× objective",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTRAST-01-sample-box",
+      "type": "highlight",
+      "x": 875,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTRAST-01-sample",
+      "type": "textlabel",
+      "x": 815,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Focal specimen",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTRAST-01-pinhole-box",
+      "type": "highlight",
+      "x": 285,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTRAST-01-pinhole",
+      "type": "textlabel",
+      "x": 225,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Conjugate pinhole",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTRAST-01-pmt-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "CONTRAST-01-pmt",
+      "type": "textlabel",
+      "x": 30,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "7. Emission PMT",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "CONTRAST-01-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nTopology only: the 2D tracer does not compute an Airy pattern, axial point-spread function or pinhole optical\nsectioning.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "CONTRAST-01-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 163,
+          "y": 85
+        },
+        {
+          "x": 224.1,
+          "y": 85
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTRAST-01-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 358,
+          "y": 85
+        },
+        {
+          "x": 419.1,
+          "y": 85
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTRAST-01-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 553,
+          "y": 85
+        },
+        {
+          "x": 616.6,
+          "y": 85
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTRAST-01-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 753,
+          "y": 85
+        },
+        {
+          "x": 814.1,
+          "y": 85
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTRAST-01-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 802,
+          "y": 85
+        },
+        {
+          "x": 740.9,
+          "y": 85
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTRAST-01-path-5",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 607,
+          "y": 85
+        },
+        {
+          "x": 543.4,
+          "y": 85
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTRAST-01-path-6",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 407,
+          "y": 85
+        },
+        {
+          "x": 345.9,
+          "y": 85
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTRAST-01-path-7",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 285,
+          "y": 125
+        },
+        {
+          "x": 285,
+          "y": 230
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "CONTRAST-01-path-8",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 212,
+          "y": 270
+        },
+        {
+          "x": 150.9,
+          "y": 270
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    }
+  ]
+}

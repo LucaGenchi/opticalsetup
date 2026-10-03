@@ -1,0 +1,396 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "FIELD-03-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Triangular Sagnac loop",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "FIELD-03-laser-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-03-laser",
+      "type": "textlabel",
+      "x": 30,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. 633 nm input",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-03-bs-box",
+      "type": "highlight",
+      "x": 310,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-03-bs",
+      "type": "textlabel",
+      "x": 250,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. Loop splitter",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-03-m1-box",
+      "type": "highlight",
+      "x": 530,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-03-m1",
+      "type": "textlabel",
+      "x": 470,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Upper loop mirror",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-03-m2-box",
+      "type": "highlight",
+      "x": 770,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-03-m2",
+      "type": "textlabel",
+      "x": 710,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Far loop mirror",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-03-m3-box",
+      "type": "highlight",
+      "x": 530,
+      "y": 290,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-03-m3",
+      "type": "textlabel",
+      "x": 470,
+      "y": 290,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Lower loop mirror",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-03-det-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-03-det",
+      "type": "textlabel",
+      "x": 30,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Loop output",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-03-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nLoop area and rotation sensitivity are not computed; schematic arrows do not represent a gyro or\nphase-calibrated Sagnac interferometer.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "FIELD-03-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 163,
+          "y": 190
+        },
+        {
+          "x": 237,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "FIELD-03-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 383,
+          "y": 156.8181818181818
+        },
+        {
+          "x": 457,
+          "y": 123.18181818181819
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "FIELD-03-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 603,
+          "y": 120.41666666666666
+        },
+        {
+          "x": 697,
+          "y": 159.58333333333331
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "FIELD-03-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 697,
+          "y": 220.41666666666666
+        },
+        {
+          "x": 603,
+          "y": 259.5833333333333
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "FIELD-03-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 457,
+          "y": 256.8181818181818
+        },
+        {
+          "x": 383,
+          "y": 223.1818181818182
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "FIELD-03-path-5",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 383,
+          "y": 223.1818181818182
+        },
+        {
+          "x": 457,
+          "y": 256.8181818181818
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "FIELD-03-path-6",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 603,
+          "y": 259.5833333333333
+        },
+        {
+          "x": 697,
+          "y": 220.41666666666666
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "FIELD-03-path-7",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 697,
+          "y": 159.58333333333334
+        },
+        {
+          "x": 603,
+          "y": 120.41666666666667
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "FIELD-03-path-8",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 457,
+          "y": 123.18181818181819
+        },
+        {
+          "x": 383,
+          "y": 156.8181818181818
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "FIELD-03-path-9",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 247.14285714285717,
+          "y": 230
+        },
+        {
+          "x": 152.85714285714286,
+          "y": 290
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    }
+  ]
+}

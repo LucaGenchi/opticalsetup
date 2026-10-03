@@ -1,0 +1,342 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "SCAN-03-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Confocal scan and descan return",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "SCAN-03-laser-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SCAN-03-laser",
+      "type": "textlabel",
+      "x": 30,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. Excitation",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SCAN-03-split-box",
+      "type": "highlight",
+      "x": 320,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SCAN-03-split",
+      "type": "textlabel",
+      "x": 260,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. Return separator",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SCAN-03-galvo-box",
+      "type": "highlight",
+      "x": 550,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SCAN-03-galvo",
+      "type": "textlabel",
+      "x": 490,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Shared galvo",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SCAN-03-sample-box",
+      "type": "highlight",
+      "x": 800,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SCAN-03-sample",
+      "type": "textlabel",
+      "x": 740,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Scanned specimen",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SCAN-03-hole-box",
+      "type": "highlight",
+      "x": 320,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SCAN-03-hole",
+      "type": "textlabel",
+      "x": 260,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. 50 µm fixed\npinhole",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SCAN-03-det-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SCAN-03-det",
+      "type": "textlabel",
+      "x": 30,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Confocal detector",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SCAN-03-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nNo confocal point-spread function, return-image descan or pinhole sectioning is calculated by this diagram.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "SCAN-03-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 163,
+          "y": 121.73913043478261
+        },
+        {
+          "x": 247,
+          "y": 158.26086956521738
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "SCAN-03-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 393,
+          "y": 190
+        },
+        {
+          "x": 477,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "SCAN-03-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 623,
+          "y": 190
+        },
+        {
+          "x": 727,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "SCAN-03-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 727,
+          "y": 190
+        },
+        {
+          "x": 623,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "SCAN-03-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 477,
+          "y": 190
+        },
+        {
+          "x": 393,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "SCAN-03-path-5",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 320,
+          "y": 230
+        },
+        {
+          "x": 320,
+          "y": 290
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "SCAN-03-path-6",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 247,
+          "y": 330
+        },
+        {
+          "x": 163,
+          "y": 330
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    }
+  ]
+}

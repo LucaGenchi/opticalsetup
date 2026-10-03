@@ -1,0 +1,276 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "FIELD-04-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Lateral shear collimation test",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "FIELD-04-beam-box",
+      "type": "highlight",
+      "x": 100,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-04-beam",
+      "type": "textlabel",
+      "x": 40,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. 10 mm test beam",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-04-plate-box",
+      "type": "highlight",
+      "x": 350,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-04-plate",
+      "type": "textlabel",
+      "x": 290,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. Wedged shear plate",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-04-copy1-box",
+      "type": "highlight",
+      "x": 580,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-04-copy1",
+      "type": "textlabel",
+      "x": 520,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. First wavefront\ncopy",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-04-copy2-box",
+      "type": "highlight",
+      "x": 580,
+      "y": 290,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-04-copy2",
+      "type": "textlabel",
+      "x": 520,
+      "y": 290,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. 1 mm shifted copy",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-04-screen-box",
+      "type": "highlight",
+      "x": 820,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "FIELD-04-screen",
+      "type": "textlabel",
+      "x": 760,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Overlap screen",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "FIELD-04-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nThe plate icon does not implement two-surface coherent shear; neither fringe angle nor wavefront gradient is\ncalculated.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "FIELD-04-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 173,
+          "y": 190
+        },
+        {
+          "x": 277,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "FIELD-04-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 423,
+          "y": 158.26086956521738
+        },
+        {
+          "x": 507,
+          "y": 121.7391304347826
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "FIELD-04-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 423,
+          "y": 221.73913043478262
+        },
+        {
+          "x": 507,
+          "y": 258.2608695652174
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "FIELD-04-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 653,
+          "y": 120.41666666666666
+        },
+        {
+          "x": 747,
+          "y": 159.58333333333331
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "FIELD-04-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 653,
+          "y": 259.5833333333333
+        },
+        {
+          "x": 747,
+          "y": 220.41666666666666
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    }
+  ]
+}

@@ -1,0 +1,276 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "BEAM-05-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Gaussian-to-top-hat refractive mapper",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "BEAM-05-gauss-box",
+      "type": "highlight",
+      "x": 100,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "BEAM-05-gauss",
+      "type": "textlabel",
+      "x": 40,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. Gaussian input",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "BEAM-05-s1-box",
+      "type": "highlight",
+      "x": 340,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "BEAM-05-s1",
+      "type": "textlabel",
+      "x": 280,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. Remapping surface",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "BEAM-05-s2-box",
+      "type": "highlight",
+      "x": 580,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "BEAM-05-s2",
+      "type": "textlabel",
+      "x": 520,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Recollimating\nsurface",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "BEAM-05-flat-box",
+      "type": "highlight",
+      "x": 820,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "BEAM-05-flat",
+      "type": "textlabel",
+      "x": 760,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. 4 mm top-hat",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "BEAM-05-map-box",
+      "type": "highlight",
+      "x": 460,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "BEAM-05-map",
+      "type": "textlabel",
+      "x": 400,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Cumulative power\nmap",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "BEAM-05-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nGeneric asphere icons do not supply a solved remapping prescription; no top-hat irradiance is simulated.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "BEAM-05-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 173,
+          "y": 190
+        },
+        {
+          "x": 267,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "BEAM-05-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 413,
+          "y": 190
+        },
+        {
+          "x": 507,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "BEAM-05-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 653,
+          "y": 190
+        },
+        {
+          "x": 747,
+          "y": 190
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "BEAM-05-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 425.7142857142857,
+          "y": 290
+        },
+        {
+          "x": 374.2857142857143,
+          "y": 230
+        }
+      ],
+      "color": "#99601c",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "BEAM-05-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 494.2857142857143,
+          "y": 290
+        },
+        {
+          "x": 545.7142857142857,
+          "y": 230
+        }
+      ],
+      "color": "#99601c",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    }
+  ]
+}

@@ -1,0 +1,266 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "SCAN-06-title",
+      "type": "textlabel",
+      "x": 35,
+      "y": -25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Moving-retroreflector delay stage",
+        "fontSize": 20,
+        "fill": "#16334c"
+      }
+    },
+    {
+      "id": "SCAN-06-input-box",
+      "type": "highlight",
+      "x": 90,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SCAN-06-input",
+      "type": "textlabel",
+      "x": 30,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. Fixed input beam",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SCAN-06-fold-box",
+      "type": "highlight",
+      "x": 320,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SCAN-06-fold",
+      "type": "textlabel",
+      "x": 260,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. Input/output fold",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SCAN-06-retroreflector-box",
+      "type": "highlight",
+      "x": 650,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SCAN-06-retroreflector",
+      "type": "textlabel",
+      "x": 590,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Moving\nretroreflector",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SCAN-06-out-box",
+      "type": "highlight",
+      "x": 320,
+      "y": 290,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SCAN-06-out",
+      "type": "textlabel",
+      "x": 260,
+      "y": 290,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Fixed output",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SCAN-06-stage-box",
+      "type": "highlight",
+      "x": 650,
+      "y": 290,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "shape": "rect",
+        "w": 130,
+        "h": 66,
+        "fill": "#dbeafe",
+        "opacity": 70
+      }
+    },
+    {
+      "id": "SCAN-06-stage",
+      "type": "textlabel",
+      "x": 590,
+      "y": 290,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. 15 mm translation",
+        "fontSize": 14,
+        "fill": "#173d5d"
+      }
+    },
+    {
+      "id": "SCAN-06-scope",
+      "type": "textlabel",
+      "x": 35,
+      "y": 415,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SCHEMATIC · arrows are connections, not traced rays.\nTopology and free-space timing relation are shown; stage tolerances, air-index dispersion and beam walk are not\nsimulated.",
+        "fontSize": 12,
+        "fill": "#52657a"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "SCAN-06-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 163,
+          "y": 90
+        },
+        {
+          "x": 247,
+          "y": 90
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "SCAN-06-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 393,
+          "y": 90
+        },
+        {
+          "x": 577,
+          "y": 90
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "SCAN-06-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 710,
+          "y": 130
+        },
+        {
+          "x": 800,
+          "y": 190
+        },
+        {
+          "x": 650,
+          "y": 290
+        },
+        {
+          "x": 393,
+          "y": 290
+        }
+      ],
+      "color": "#15765d",
+      "width": 2,
+      "dash": false,
+      "arrow": true
+    },
+    {
+      "id": "SCAN-06-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 650,
+          "y": 250
+        },
+        {
+          "x": 650,
+          "y": 130
+        }
+      ],
+      "color": "#66748e",
+      "width": 2,
+      "dash": true,
+      "arrow": true
+    }
+  ]
+}

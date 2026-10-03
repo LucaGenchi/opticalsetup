@@ -28,7 +28,7 @@ import { buildSVG, exportSVG, exportPNG, exportGIF } from './export.js';
 import { examples } from './examples-data.js';
 import { community } from './community-data.js';
 import { download, esc, manualBeamSVG } from './util.js';
-import { buildShareURL, clearSharedSceneURL, copyText, shareURLForScene, sharedSceneFromURL } from './share.js';
+import { buildShareURL, clearSharedSceneURL, copyText, isEmbeddedShareURL, shareURLForScene, sharedSceneFromURL } from './share.js';
 import { qrSVG } from './qr.js';
 import { buildExampleProposalIssueURL } from './proposal.js';
 import { recommendedTimeScale, nextAutoScale, TIME_SCALES, elementDriveHz } from './timescale.js';
@@ -1817,7 +1817,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // becomes the visitor's own workbench with the full toolbar behind it;
   // with ?embed=1 it is a flat, non-interactive picture for a page to frame.
   const hasLinkedScene = isTypeDemo || isCommunityScene || isExampleScene;
-  const isEmbed = hasLinkedScene && params.get('embed') === '1';
+  const isEmbed = (hasLinkedScene && params.get('embed') === '1') || isEmbeddedShareURL(location.href);
 
   // The mode has to be set before initCanvas(), which synchronously registers
   // the pointer, wheel and key handlers: deciding afterwards would leave them
@@ -1935,7 +1935,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (sharedScene) {
       replaceScene(sharedScene, { resetHistory: true });
       zoomFit();
-    } else if (!loadAutosave(registry)) {
+    } else if (!isEmbed && !loadAutosave(registry)) {
       // Starter scene: the three sources, nothing else. A worked setup here
       // reads as "this is the thing to study" rather than "this is yours to
       // build", and it has to be cleared before anyone can start. Three lit

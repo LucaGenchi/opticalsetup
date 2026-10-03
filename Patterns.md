@@ -3,7 +3,8 @@
 
 # Optical design patterns: initial survey
 
-**Status:** initial research and editorial proposal, recorded 3 October 2026.
+**Status:** catalogue source, first surveyed 3 October 2026. Published entries and
+their concrete examples are generated at [`/patterns/`](https://opticalsetup.com/patterns/).
 
 This document preserves the first broad survey for a possible **Design patterns**
 section of the OpticalSetup wiki. It records 162 candidate entries across 19
@@ -11,10 +12,11 @@ functional groups, spanning laboratory optics, industrial systems, biomedical
 instruments, astronomical instruments, guided and integrated photonics, displays,
 and energy collection. The catalogue is open to additions and corrections.
 
-This is a discussion document. The names, group boundaries, fields, and filter
-behaviour below are proposals. This PR adds documentation only. Implementation,
-wiki publication, interactive scenes, and per-pattern simulation support remain
-separate decisions.
+The names, group boundaries and fields preserve the initial survey. The page
+generator reads the records below; example designs and model-scope assessments
+live in `tools/patterns/`. Examples distinguish editable schematics from tested
+ray demonstrations. The original editorial questions below remain useful review
+notes, rather than claims that every physical effect is simulated.
 
 ## What belongs in the catalogue
 
@@ -2702,10 +2704,7 @@ Reading leads: [NIST on cavity-stabilized lasers](https://www.nist.gov/programs-
 
 ## Possible placement and links
 
-A future wiki could expose **Components** and **Design patterns**, with the latter
-at `/wiki/patterns/`. Functional groups and discipline/application filters would
-provide multiple ways to find the same article. **Examples** would continue to
-hold concrete setups and link back to the patterns they use.
-
-This file is the saved survey and proposal. It introduces no routes, components,
-filters, generators, scene-format changes, or simulation behaviour.
+The implemented **Design patterns** section lives at `/patterns/`, alongside the
+component wiki and worked Examples. Functional groups and discipline/application
+filters provide multiple ways to find the same article. The pattern examples
+reuse the existing saved-scene format and do not introduce new physics.

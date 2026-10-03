@@ -12,6 +12,13 @@ const TOO_LARGE_TO_SHARE =
 // link someone sent them cannot act on advice about saving their own file.
 const TOO_LARGE_TO_OPEN = 'Shared sketch is too large to open safely';
 
+// Recognize the frame before decoding its payload, including damaged links:
+// an invalid embedded scene must not fall back to the visitor's own autosave.
+export function isEmbeddedShareURL(href) {
+  const url = new URL(href);
+  return url.searchParams.get('embed') === '1' && url.hash.startsWith(SHARE_PREFIX);
+}
+
 function bytesToBase64Url(bytes) {
   let binary = '';
   const chunkSize = 0x8000;
