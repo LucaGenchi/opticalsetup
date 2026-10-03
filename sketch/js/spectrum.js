@@ -21,7 +21,7 @@ const SIGMA_PER_FWHM = 1 / (2 * Math.sqrt(2 * Math.LN2));
 // FWHM.
 export const fwhmToSigma = fwhm => fwhm * SIGMA_PER_FWHM;
 
-// Gaussian tails are followed to ±3σ (98.9% of the energy): far enough that
+// Gaussian tails are followed to ±3σ (99.73% of the energy): far enough that
 // the sampled/re-gridded profiles below are accurate, near enough that a
 // wide source stays inside a sane wavelength range instead of reaching into
 // X-rays or radio.
@@ -210,11 +210,19 @@ function incidentOver(spec, a, b) {
 // measurable survives. With spec === null (a monochromatic ray) this is
 // just T(centerWl) — the same exact single-wavelength result every element
 // already computes for bw === 0.
-export function applyTransmission(spec, centerWl, transmissionFn) {
+//
+// A caller whose transmission only steps at known wavelengths -- a box filter
+// or dichroic edge -- passes them as `edges`. The profile is then integrated
+// piece by piece between them, each piece on its own grid, so an edge lands
+// exactly where it is instead of between two grid points. The transmission
+// must be constant between consecutive edges; it is read at each piece's
+// midpoint. Line spectra take the sampled path regardless.
+export function applyTransmission(spec, centerWl, transmissionFn, edges = null) {
   if (!spec) {
     const t = Math.max(0, Math.min(1, transmissionFn(centerWl)));
     return t > BLOCK ? { fraction: t, spec: null, wl: centerWl, bw: 0 } : null;
   }
+  if (Array.isArray(edges) && spec.kind !== 'lines') return applyStepTransmission(spec, transmissionFn, edges);
   const [lo, hi] = spectrumSupport(spec);
   const locateStep = (hi - lo) / (LOCATE_GRID - 1);
   const incident = [];
@@ -261,6 +269,40 @@ export function applyTransmission(spec, centerWl, transmissionFn) {
     wl: stats.center,
     bw: stats.fwhm,
   };
+}
+
+function applyStepTransmission(spec, transmissionFn, edges) {
+  const [lo, hi] = spectrumSupport(spec);
+  const cuts = [...new Set(edges.filter(e => Number.isFinite(e) && e > lo && e < hi))].sort((a, b) => a - b);
+  const bounds = [lo, ...cuts, hi];
+  const pieces = [];
+  for (let i = 0; i + 1 < bounds.length; i++) {
+    const a = bounds[i], b = bounds[i + 1];
+    if (!(b > a)) continue;
+    const t = Math.max(0, Math.min(1, Number(transmissionFn((a + b) / 2)) || 0));
+    pieces.push({ a, b, t, power: incidentOver(spec, a, b) });
+  }
+  const total = pieces.reduce((sum, p) => sum + p.power, 0);
+  if (!(total > 0)) return null;
+  const fraction = pieces.reduce((sum, p) => sum + p.t * p.power, 0) / total;
+  const kept = pieces.filter(p => p.t > 0);
+  if (!(fraction > BLOCK) || !kept.length) return null;
+  // The profile spans exactly the pieces that pass anything; each sample
+  // takes its own piece's transmission, and a sample on an edge the side
+  // that passes more, so the profile's edges sit on the filter's.
+  const from = kept[0].a, to = kept[kept.length - 1].b;
+  const step = (to - from) / (GRID - 1);
+  const shaped = Array.from({ length: GRID }, (_, i) => {
+    const wl = i === GRID - 1 ? to : from + step * i;
+    const t = pieces.reduce((best, p) => (wl >= p.a && wl <= p.b ? Math.max(best, p.t) : best), 0);
+    return Math.max(0, spectrumWeight(spec, wl)) * t;
+  });
+  const peak = Math.max(...shaped);
+  if (!(peak > 0)) return null;
+  const profile = { kind: 'sampled', lo: from, hi: to, w: shaped.map(v => v / peak) };
+  const stats = spectrumStats(profile);
+  if (!stats) return null;
+  return { fraction: Math.min(1, fraction), spec: stats.fwhm > 0 ? profile : null, wl: stats.center, bw: stats.fwhm };
 }
 
 // The part of a profile between lo and hi, with hard edges exactly there: the
