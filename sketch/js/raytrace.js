@@ -3194,11 +3194,8 @@ function zeroOrderPort(ray, orders, wls, counts, si, groove, refined = null) {
   // a continuum is re-gridded would smear them into a profile that is no
   // longer a line spectrum, inventing light between the lines.
   if (ray.spec?.kind === 'lines') {
-    const scaled = lineSpectrum(ray.spec.lines.map(l => ({ nm: l.nm, w: l.w * share(l.nm) })));
-    const stats = scaled && spectrumStats(scaled);
-    if (!scaled || !stats) return { fraction: 0 };
-    const brightest = scaled.lines.reduce((best, l) => (l.w > best.w ? l : best));
-    return { fraction, spec: scaled, wl: brightest.nm, bw: stats.fwhm };
+    const kept = lineTransmission(ray.spec, share);
+    return kept ? { fraction, spec: kept.spec, wl: kept.wl, bw: kept.bw } : { fraction: 0 };
   }
 
   // For a continuum this is exactly what a filter does to a spectrum, so it
@@ -3208,6 +3205,21 @@ function zeroOrderPort(ray, orders, wls, counts, si, groove, refined = null) {
   if (shaped) return { fraction, spec: shaped.spec, wl: shaped.wl, bw: shaped.bw };
   // No profile to reshape: the band-averaged fraction is all there is.
   return { fraction };
+}
+
+// A line spectrum through a transmission T(wavelength): each line keeps
+// T(its wavelength) of its weight, and the power that survives is that share
+// of the total weight. Lines are ~0.1 nm wide, so a sampled integration would
+// step over them; taken line by line, a passband holding one line passes
+// exactly that line's share and a band between lines passes nothing (null).
+function lineTransmission(spec, transmissionFn) {
+  const total = spec.lines.reduce((sum, l) => sum + l.w, 0);
+  const scaled = lineSpectrum(spec.lines.map(l => ({ nm: l.nm, w: l.w * Math.max(0, Math.min(1, Number(transmissionFn(l.nm)) || 0)) })));
+  const stats = scaled && spectrumStats(scaled);
+  if (!scaled || !stats || !(total > 0)) return null;
+  const brightest = scaled.lines.reduce((best, l) => (l.w > best.w ? l : best));
+  const fraction = Math.min(1, scaled.lines.reduce((sum, l) => sum + l.w, 0) / total);
+  return { fraction, spec: scaled, wl: brightest.nm, bw: stats.fwhm };
 }
 
 // thin-lens (paraxial) bend; also used for curved mirrors after reflection.
@@ -3686,6 +3698,23 @@ function interact(ray, hit) {
         split.push({ d, intensity: ray.intensity * (1 - inBandR), tag: 'T', retainWeak: true });
         return split;
       }
+      // A lamp's lines each go to the port their own wavelength picks. In a
+      // partially reflecting band the in-band lines split between R and Tb,
+      // as a monochromatic beam does, and the two ports' shares sum to 1.
+      if (ray.spec?.kind === 'lines') {
+        const rd = reflect(d, n);
+        const notch = data.dtype === 'notch';
+        const pb = passbandOf(data);
+        const inBand = wl => wl >= pb[0] && wl <= pb[1];
+        const weak = partial ? { retainWeak: true } : {};
+        const ports = notch
+          ? [[rd, 'R', wl => (inBand(wl) ? inBandR : 0)], [d, 'Tb', wl => (inBand(wl) ? 1 - inBandR : 0)], [d, 'T', wl => (inBand(wl) ? 0 : 1)]]
+          : [[d, 'T', wl => (dichroicTransmits(wl, data) ? 1 : 0)], [rd, 'R', wl => (dichroicTransmits(wl, data) ? 0 : 1)]];
+        return ports.map(([dir, tag, T]) => {
+          const kept = lineTransmission(ray.spec, T);
+          return kept && { d: dir, wl: kept.wl, bw: kept.bw, spec: kept.spec, intensity: ray.intensity * kept.fraction, tag, ...weak };
+        }).filter(Boolean);
+      }
       // A band (reflector or bandpass) with an edge inside a sampled or
       // Gaussian profile cuts it into pieces as the Filter's notch does: the
       // band and each side travel as their own ray with an exact edge, since
@@ -3776,13 +3805,18 @@ function interact(ray, hit) {
         }
         return T(ray.wl) ? [{ d }] : [];
       }
+      // A lamp's lines pass or stop one by one, each at its own wavelength.
+      if (ray.spec?.kind === 'lines') {
+        const kept = lineTransmission(ray.spec, T);
+        return kept ? [{ d, wl: kept.wl, bw: kept.bw, spec: kept.spec, intensity: ray.intensity * kept.fraction }] : [];
+      }
       if (ray.spec && ray.spec.kind !== 'flat') {
         // A notch leaves two separate pieces of the profile, one on each side
         // of the band, and each travels as its own ray with an exact edge.
         // One sampled profile spanning the gap would interpolate light back
         // into it. Each piece stops just short of the band, whose edges the
         // notch blocks, so a bandpass of the same band behind it finds nothing.
-        if (notch && ray.spec.kind !== 'lines') {
+        if (notch) {
           const [lo, hi] = spectrumSupport(ray.spec);
           if (!bandIntersect([lo, hi], pb)) return [{ d }];
           const edge = 1e-6 * (hi - lo);
