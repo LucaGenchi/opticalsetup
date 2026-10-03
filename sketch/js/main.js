@@ -83,6 +83,16 @@ function fiberDemo({ bare }) {
 }
 
 const demoScenes = {
+  // A white LED is two bands, and the demo shows it: a long-pass filter takes
+  // the blue peak out and the spectrometer reads the phosphor band that is left.
+  ledsource: () => {
+    const sensor = mkDemo('spectrometer', 400, 170);
+    return [mkDemo('ledsource', 60, 170),
+      mkDemo('filter', 230, 170, 0, { ftype: 'longpass', cutoff: 500 },
+        { label: 'long-pass 500 nm', showLabel: true, labelPos: 'b' }),
+      sensor,
+      mkDemo('display', 400, 275, 0, { sensorId: sensor.id, displayScale: 0.6, displayView: 'spectrum' })];
+  },
   eye: () => {
     const eye = mkDemo('eye', 280, 160, 0, { diameter: 30, pupil: 10, focus: 30 });
     return [mkDemo('cwlaser', 60, 160, 0, { beamMode: 'beam', beamWidth: 12 }), eye,
