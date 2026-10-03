@@ -3053,7 +3053,7 @@ function cellSpectrum(ray, lo, hi) {
   if (!ray.spec || !(ray.bw > 0) || !(hi > lo)) return null;
   const key = `${specKey(ray.spec)}|${lo}|${hi}`;
   if (cellSpectrumCache.has(key)) return cellSpectrumCache.get(key);
-  const shaped = applyTransmission(ray.spec, ray.wl, wl => (wl >= lo && wl <= hi ? 1 : 0));
+  const shaped = applyTransmission(ray.spec, ray.wl, wl => (wl >= lo && wl <= hi ? 1 : 0), [lo, hi]);
   const cell = shaped?.spec ? { spec: shaped.spec, bw: shaped.bw } : null;
   cellSpectrumCache.set(key, cell);
   return cell;
@@ -3650,9 +3650,9 @@ function interact(ray, hit) {
         const T = wl => (dichroicTransmits(wl, data) ? 1 : 1 - inBandR);
         const out = [];
         const weak = partial ? { retainWeak: true } : {};
-        const trans = applyTransmission(ray.spec, ray.wl, T);
+        const trans = applyTransmission(ray.spec, ray.wl, T, passbandOf(data));
         if (trans) out.push({ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * trans.fraction, tag: 'T', ...weak });
-        const refl = applyTransmission(ray.spec, ray.wl, wl => 1 - T(wl));
+        const refl = applyTransmission(ray.spec, ray.wl, wl => 1 - T(wl), passbandOf(data));
         if (refl) out.push({ d: reflect(d, n), wl: refl.wl, bw: refl.bw, spec: refl.spec, intensity: ray.intensity * refl.fraction, tag: 'R', ...weak });
         return out;
       }
@@ -3717,7 +3717,7 @@ function interact(ray, hit) {
             .map((piece, i) => piece && { d, wl: piece.wl, bw: piece.bw, spec: piece.spec, intensity: ray.intensity * piece.fraction, tag: `T${i}` })
             .filter(Boolean);
         }
-        const trans = applyTransmission(ray.spec, ray.wl, T);
+        const trans = applyTransmission(ray.spec, ray.wl, T, pb);
         return trans ? [{ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * trans.fraction }] : [];
       }
       // flat (supercontinuum) or unspecified box: transmitted spectrum is
@@ -5060,9 +5060,9 @@ function notePulseSelection(transmissionFn, edges = []) {
   }
   return uniform;
 }
-function applyTransmission(spec, centerWl, transmissionFn) {
+function applyTransmission(spec, centerWl, transmissionFn, edges = null) {
   const uniform = notePulseSelection(transmissionFn);
-  const result = applySpectralTransmission(spec, centerWl, transmissionFn);
+  const result = applySpectralTransmission(spec, centerWl, transmissionFn, edges);
   // The integration runs on a finer grid than the band sample: a passband it
   // finds, where the samples saw none, is a reshaping they missed.
   if (Number.isFinite(uniform) && Math.abs((result?.fraction ?? 0) - uniform) > 0.01) interactionReshapesPulse = true;

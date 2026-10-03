@@ -258,3 +258,12 @@ test('a band reflector beside a line passes all of it, as the Filter notch does'
   assert.ok(Math.abs(reflector.t - 1) < 1e-12, `band reflector transmitted ${reflector.t}`);
   assert.equal(reflector.r, 0);
 });
+
+test('a longpass dichroic on a Gaussian line splits it at its edge, conserving power', () => {
+  // Both ports are integrated piece by piece on either side of the cutoff,
+  // so the cutoff sits exactly where it is and the two ports share the line.
+  const { t, r } = gaussianThrough({ dtype: 'longpass', cutoff: 540 });
+  assert.ok(Math.abs(t + r - 1) < 1e-12, `total ${t + r}`);
+  // The model's 532/40 Gaussian (cut at ±3σ) holds 0.3183 above 540 nm.
+  assert.ok(Math.abs(t - 0.31834) < 2e-4, `transmitted ${t}`);
+});
