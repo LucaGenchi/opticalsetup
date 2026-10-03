@@ -24,9 +24,11 @@ import { sceneFiles, sceneFromFile } from '../tools/update-golden.mjs';
 // A small well-formedness check, enough for markup assembled from strings:
 // one root, matched tags, every attribute quoted and given once, references
 // limited to the five predefined entities and character references, only
-// characters XML allows, and declared namespace prefixes. It returns the
-// first problem, or null. It is not a validating parser, and it rejects a
-// DOCTYPE rather than read one; the export never writes one.
+// characters XML allows, a well-formed XML 1.0 declaration, and namespace
+// prefixes that are declared, legally bound and not used to repeat an
+// attribute. It returns the first problem, or null. It is not a validating
+// parser, and it rejects a DOCTYPE rather than read one; the export never
+// writes one.
 const NAME_START = ':A-Z_a-z\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF'
   + '\\u200C\\u200D\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD';
 const NAME = `[${NAME_START}][${NAME_START}\\-.0-9\\u00B7\\u0300-\\u036F\\u203F\\u2040]*`;
@@ -36,6 +38,12 @@ const ATTRIBUTE = new RegExp(`(${NAME})[ \\t\\r\\n]*=[ \\t\\r\\n]*(?:"([^"]*)"|'
 const ATTRIBUTE_NAME = new RegExp(NAME, 'y');
 const SPACE = /[ \t\r\n]*/y;
 const REFERENCE = /&(?:amp|lt|gt|quot|apos|#([0-9]+)|#x([0-9a-fA-F]+));/y;
+const PI_TARGET = new RegExp(`^<\\?(${NAME})(?:[ \\t\\r\\n]|\\?>$)`);
+const XML_DECLARATION = new RegExp('^<\\?xml[ \\t\\r\\n]+version[ \\t\\r\\n]*=[ \\t\\r\\n]*(?:"1\\.0"|\'1\\.0\')'
+  + '(?:[ \\t\\r\\n]+encoding[ \\t\\r\\n]*=[ \\t\\r\\n]*(?:"[A-Za-z][A-Za-z0-9._-]*"|\'[A-Za-z][A-Za-z0-9._-]*\'))?'
+  + '(?:[ \\t\\r\\n]+standalone[ \\t\\r\\n]*=[ \\t\\r\\n]*(?:"(?:yes|no)"|\'(?:yes|no)\'))?[ \\t\\r\\n]*\\?>$');
+const XML_NAMESPACE = 'http://www.w3.org/XML/1998/namespace';
+const XMLNS_NAMESPACE = 'http://www.w3.org/2000/xmlns/';
 const NOT_XML_CHAR = /[^\t\n\r -퟿-�\u{10000}-\u{10FFFF}]/u;
 
 function badReference(chunk) {
@@ -82,7 +90,14 @@ function xmlProblem(text) {
     } else if (text.startsWith('<?', at)) {
       const close = text.indexOf('?>', at + 2);
       if (close < 0) return `unterminated processing instruction (offset ${at})`;
-      if (at > 0 && /^<\?xml[ \t\r\n?]/i.test(text.slice(at, at + 6))) return `XML declaration not at the start (offset ${at})`;
+      const instruction = text.slice(at, close + 2);
+      const target = PI_TARGET.exec(instruction)?.[1];
+      if (!target || target.includes(':')) return `malformed processing instruction (offset ${at})`;
+      // The name "xml" in any case is reserved for the declaration, which may
+      // only open the document and has a fixed form.
+      if (target.toLowerCase() === 'xml' && (at > 0 || !XML_DECLARATION.test(instruction))) {
+        return `misplaced or malformed XML declaration (offset ${at})`;
+      }
       at = close + 2;
     } else if (text.startsWith('<!', at)) {
       return `unsupported declaration (offset ${at})`;
@@ -131,12 +146,27 @@ function xmlProblem(text) {
         attributes.set(key, value);
         at = ATTRIBUTE.lastIndex;
       }
-      const prefixes = new Set(open.at(-1)?.prefixes ?? ['xml', 'xmlns']);
-      for (const key of attributes.keys()) if (key.startsWith('xmlns:')) prefixes.add(key.slice(6));
+      // Namespaces: prefixes in scope with what they are bound to, the two
+      // reserved bindings, and no attribute given twice under two prefixes.
+      const prefixes = new Map(open.at(-1)?.prefixes ?? [['xml', XML_NAMESPACE]]);
+      for (const [key, value] of attributes) {
+        if (key !== 'xmlns' && !key.startsWith('xmlns:')) continue;
+        const prefix = key.slice(6);
+        const reserved = (prefix === 'xml') !== (value === XML_NAMESPACE)
+          || prefix === 'xmlns' || value === XMLNS_NAMESPACE || (key !== 'xmlns' && value === '');
+        if (reserved) return `namespace declaration ${key}="${value}" is not allowed (offset ${at})`;
+        if (key !== 'xmlns') prefixes.set(prefix, value);
+      }
+      const expanded = new Set();
       for (const qualified of [name, ...attributes.keys()]) {
         const parts = qualified.split(':');
         if (parts.length > 2 || parts.includes('')) return `malformed qualified name ${qualified}`;
-        if (parts.length === 2 && !prefixes.has(parts[0])) return `namespace prefix ${parts[0]} of ${qualified} is not declared`;
+        if (parts.length === 1 || parts[0] === 'xmlns') continue;
+        if (!prefixes.has(parts[0])) return `namespace prefix ${parts[0]} of ${qualified} is not declared`;
+        if (qualified === name) continue;
+        const key = `${prefixes.get(parts[0])} ${parts[1]}`;
+        if (expanded.has(key)) return `attribute ${qualified} repeated under another prefix on <${name}>`;
+        expanded.add(key);
       }
       if (!selfClosing) open.push({ name, prefixes });
     }
@@ -155,7 +185,7 @@ test('the XML check accepts well-formed markup and names what is wrong with malf
   const wellFormed = '<?xml version="1.0" encoding="UTF-8"?>\n<!-- figure -->\n'
     + '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 10 10">'
     + '<g data-camera-profile-fill="1" data-note=\'say "hi"\'><title>A &amp; B &lt;5 mW&gt; &#8722;1 &#x3bb; →</title></g>'
-    + '<use xlink:href="#a" /><text><![CDATA[a < b & c]]></text><g ></g ></svg>\n';
+    + '<use xlink:href="#a" xml:space="preserve" /><text><![CDATA[a < b & c]]></text><?note?><g ></g ></svg>\n';
   assert.equal(xmlProblem(wellFormed), null);
 
   const malformed = {
@@ -177,6 +207,15 @@ test('the XML check accepts well-formed markup and names what is wrong with malf
     'reference to a forbidden character': ['<svg><text>&#0;</text></svg>', /"&#0;" is not an XML reference/],
     'double hyphen in a comment': ['<svg><!-- a -- b --></svg>', /"--" inside the comment/],
     'nothing at all': ['', /no root element/],
+    'declaration without a version': ['<?xml?><svg/>', /malformed XML declaration/],
+    'declaration in capitals': ['<?XML version="1.0"?><svg/>', /malformed XML declaration/],
+    'declaration after the start': ['<svg/><?xml version="1.0"?>', /misplaced or malformed XML declaration/],
+    'instruction without a target': ['<??><svg/>', /malformed processing instruction/],
+    'reserved prefix rebound': ['<svg xmlns:xml="http://example.org/"/>', /namespace declaration xmlns:xml=/],
+    'xmlns declared as a prefix': ['<svg xmlns:xmlns="http://www.w3.org/2000/xmlns/"/>', /namespace declaration xmlns:xmlns=/],
+    'prefix unbound': ['<svg xmlns:a=""/>', /namespace declaration xmlns:a=""/],
+    'attribute repeated under two prefixes': ['<svg xmlns:a="urn:x" xmlns:b="urn:x"><g a:id="1" b:id="2"/></svg>',
+      /attribute b:id repeated under another prefix/],
   };
   for (const [what, [markup, expected]] of Object.entries(malformed)) {
     assert.match(xmlProblem(markup) ?? 'accepted', expected, what);
