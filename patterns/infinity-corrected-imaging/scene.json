@@ -1,0 +1,92 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "object",
+      "type": "objarrow",
+      "x": 80,
+      "y": 200,
+      "rot": 0,
+      "label": "object",
+      "showLabel": true,
+      "params": {
+        "height": 2,
+        "shape": "arrow",
+        "raysMode": "fan",
+        "spread": 6,
+        "nrays": 7,
+        "showImage": true,
+        "wavelength": 550,
+        "autoColor": true,
+        "color": "#e02020"
+      }
+    },
+    {
+      "id": "objective",
+      "type": "objective",
+      "x": 116,
+      "y": 200,
+      "rot": 180,
+      "label": "objective",
+      "showLabel": true,
+      "params": {
+        "efl": 20,
+        "workingDistance": 20,
+        "immersion": "air",
+        "immersionIndex": 1.333,
+        "na": 0.25,
+        "showAcceptance": false,
+        "transEff": 100,
+        "frontAperture": 11
+      }
+    },
+    {
+      "id": "filter",
+      "type": "filter",
+      "x": 210,
+      "y": 200,
+      "rot": 0,
+      "label": "filter",
+      "showLabel": true,
+      "params": {
+        "ftype": "bandpass",
+        "cutoff": 500,
+        "center": 550,
+        "band": 40,
+        "trans": 0.5,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "tube",
+      "type": "lens",
+      "x": 320,
+      "y": 200,
+      "rot": 0,
+      "label": "tube",
+      "showLabel": true,
+      "params": {
+        "f": 200,
+        "dia": 60,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "image",
+      "type": "camera",
+      "x": 542,
+      "y": 200,
+      "rot": 0,
+      "label": "image",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

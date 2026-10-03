@@ -1,0 +1,102 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "wave07-source",
+      "type": "cwlaser",
+      "x": 100,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "wavelength": 4000,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 12,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "wave07-entrance",
+      "type": "slit",
+      "x": 250,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "gap": 10,
+        "length": 40
+      }
+    },
+    {
+      "id": "wave07-relay1",
+      "type": "lens",
+      "x": 350,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "f": 100,
+        "dia": 40,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "wave07-relay2",
+      "type": "lens",
+      "x": 550,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "f": 100,
+        "dia": 40,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "wave07-stop",
+      "type": "slit",
+      "x": 650,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "gap": 10,
+        "length": 40
+      }
+    },
+    {
+      "id": "wave07-camera",
+      "type": "camera",
+      "x": 850,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "ch": 100,
+        "pixels": 32,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

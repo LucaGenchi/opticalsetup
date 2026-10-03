@@ -38,17 +38,20 @@ test('point source emission angle restricts the fan without duplicate full-circl
   assert.ok(cone.every(r => Math.abs(Math.atan2(r.dy, r.dx)) <= (30 + 1e-9) * Math.PI / 180));
 });
 
-test('led and lamp remain merged into Point source, the lamp now as a mode', () => {
-  // Both were folded into Point source in July on the grounds that neither did
-  // anything the point source could not. That still holds: a discharge lamp is
-  // geometrically a point source and differs only in its spectrum, so it is a
-  // mode of this element rather than an element of its own.
+test('the lamp is a mode of Point source; a bare emitter still answers to "led"', () => {
+  // The old `led` and `lamp` types were folded into Point source in July on
+  // the grounds that neither did anything the point source could not. That
+  // still holds for the lamp: a discharge lamp is geometrically a point source
+  // and differs only in its spectrum, so it is a mode of this element. A
+  // packaged, collimated LED is a different thing -- a directional beam -- and
+  // is its own `ledsource` element (test/led-source.test.js); the pre-launch
+  // `led` type name is not reused.
   assert.equal(Object.hasOwn(registry, 'led'), false);
   assert.equal(Object.hasOwn(registry, 'lamp'), false);
   assert.ok(registry.pointsource.params.some(p => p.key === 'sourceKind'),
     'and the lamp lives here, as a source mode');
   assert.ok(!registry.pointsource.hidden, 'pointsource is visible');
-  // still searchable under their old names
+  // still searchable under their old names: a bare LED die is a point source
   assert.ok(registry.pointsource.aliases.includes('led'));
   assert.ok(registry.pointsource.aliases.includes('lamp'));
 });

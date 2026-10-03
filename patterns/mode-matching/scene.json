@@ -1,0 +1,70 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "input",
+      "type": "cwlaser",
+      "x": 40,
+      "y": 200,
+      "rot": 0,
+      "label": "input",
+      "showLabel": true,
+      "params": {
+        "wavelength": 1064,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 6,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "waist-control",
+      "type": "lens",
+      "x": 180,
+      "y": 200,
+      "rot": 0,
+      "label": "L1",
+      "showLabel": true,
+      "params": {
+        "f": 100,
+        "dia": 40,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "injection",
+      "type": "lens",
+      "x": 250,
+      "y": 200,
+      "rot": 0,
+      "label": "L2",
+      "showLabel": true,
+      "params": {
+        "f": 50,
+        "dia": 30,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "waist-plane",
+      "type": "camera",
+      "x": 290.75,
+      "y": 200,
+      "rot": 0,
+      "label": "waist",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

@@ -1,0 +1,72 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "pattern-illumination",
+      "type": "cwlaser",
+      "x": 60,
+      "y": 207.54803511150882,
+      "rot": 0,
+      "label": "pattern-illumination",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 40,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "binary-DMD",
+      "type": "dmd",
+      "x": 300,
+      "y": 200,
+      "rot": 303,
+      "label": "binary-DMD",
+      "showLabel": true,
+      "params": {
+        "length": 80,
+        "tilt": 12,
+        "pitch": 10,
+        "duty": 0.5,
+        "routeOff": false
+      }
+    },
+    {
+      "id": "projection-lens",
+      "type": "lens",
+      "x": 295.09824868486476,
+      "y": 357.54803511150885,
+      "rot": 90,
+      "label": "projection-lens",
+      "showLabel": true,
+      "params": {
+        "f": 75,
+        "dia": 80,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "tilted-pattern-camera",
+      "type": "camera",
+      "x": 307.08030745519534,
+      "y": 525.9987876063082,
+      "rot": 57,
+      "label": "tilted-pattern-camera",
+      "showLabel": true,
+      "params": {
+        "ch": 100,
+        "pixels": 24,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

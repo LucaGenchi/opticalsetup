@@ -1,0 +1,70 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "object",
+      "type": "objarrow",
+      "x": 80,
+      "y": 200,
+      "rot": 0,
+      "label": "object",
+      "showLabel": true,
+      "params": {
+        "height": 10,
+        "shape": "F",
+        "raysMode": "fan",
+        "spread": 8,
+        "nrays": 7,
+        "showImage": true,
+        "wavelength": 532,
+        "autoColor": true,
+        "color": "#e02020"
+      }
+    },
+    {
+      "id": "first",
+      "type": "lens",
+      "x": 280,
+      "y": 200,
+      "rot": 0,
+      "label": "first",
+      "showLabel": true,
+      "params": {
+        "f": 200,
+        "dia": 50,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "second",
+      "type": "lens",
+      "x": 530,
+      "y": 200,
+      "rot": 0,
+      "label": "second",
+      "showLabel": true,
+      "params": {
+        "f": 50,
+        "dia": 50,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "image",
+      "type": "camera",
+      "x": 602,
+      "y": 200,
+      "rot": 0,
+      "label": "image",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

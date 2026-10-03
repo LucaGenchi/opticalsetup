@@ -1,0 +1,112 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "source",
+      "type": "cwlaser",
+      "x": 70,
+      "y": 100,
+      "rot": 0,
+      "label": "source",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.01,
+        "beamMode": "beam",
+        "beamWidth": 6,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "first-tap",
+      "type": "bs",
+      "x": 250,
+      "y": 100,
+      "rot": 90,
+      "label": "first-tap",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.8,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "second-tap",
+      "type": "bs",
+      "x": 440,
+      "y": 100,
+      "rot": 90,
+      "label": "second-tap",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.75,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "main-camera",
+      "type": "camera",
+      "x": 650,
+      "y": 100,
+      "rot": 0,
+      "label": "main-camera",
+      "showLabel": true,
+      "params": {
+        "ch": 30,
+        "pixels": 64,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "direct-camera",
+      "type": "camera",
+      "x": 250,
+      "y": 280,
+      "rot": 90,
+      "label": "direct-camera",
+      "showLabel": true,
+      "params": {
+        "ch": 30,
+        "pixels": 64,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "pupil-lens",
+      "type": "lens",
+      "x": 440,
+      "y": 190,
+      "rot": 90,
+      "label": "pupil-lens",
+      "showLabel": true,
+      "params": {
+        "f": 50,
+        "dia": 30,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "pupil-camera",
+      "type": "camera",
+      "x": 440,
+      "y": 262,
+      "rot": 90,
+      "label": "pupil-camera",
+      "showLabel": true,
+      "params": {
+        "ch": 30,
+        "pixels": 64,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

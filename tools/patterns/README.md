@@ -1,56 +1,39 @@
-# Pattern examples
+# Optical design patterns
 
-The catalogue metadata comes from `Patterns.md`. Authored example modules add
-one concrete arrangement for every survey ID; `tools/build-patterns.mjs`
-generates the public catalogue, article pages, previews, and saved scenes.
+`Patterns.md` owns the 162 pattern descriptions and relationships. The three
+example modules audit their support in the current OpticalSetup registry.
+`node tools/build-patterns.mjs` publishes static articles, function hubs and the
+catalogue; run `node tools/build-sitemap.mjs` after changing routes.
 
-## Shared design
+## Actual setups only
 
-Visual thesis: a light optical field guide, with spacious typography, fine ruled
-rows and large dark optical diagrams; wavelength colors belong to optical paths.
-Content: searchable index, function/discipline/application/type filters, a diagram
-for each example, chosen configuration, inspection steps, model scope, composition
-links, and references. Interaction: immediate filtering with URL state, restrained
-row and link transitions, and an on-demand embedded workbench with a full-canvas link.
+Every record has `id`, `title`, `summary`, `limit`, and primary-source `references`
+(`label`, `url`). Available examples use `mode: 'rays'`, a version 1 native
+`scene` with real registry elements, and at least two meaningful `steps`.
+Use deterministic IDs. Test that rays reach the intended elements/detectors and
+that a relevant adjustment has the expected effect. A ray layout does not claim
+wave, quantum, biological or other physics absent from the tracer.
 
-## Authoring contract
+If essential components cannot be represented, use `mode: 'unavailable'`, omit
+`scene`, and provide a concrete `unavailableReason` naming what is missing.
+The page publishes that explanation without a preview, download or canvas link.
+Do not replace missing optics with text boxes, custom symbols or drawn paths.
 
-Each module exports `examples`, an array with one record per assigned ID:
+`setupSVG` uses the application's own `buildSVG` exporter and ray tracer. The
+preview, downloadable JSON and share link always represent the same scene.
+No separate optical illustration is authored. Historical nodes/edges metadata
+is ignored and can be removed; it is never published as a substitute setup.
 
-```js
-{
-  id: 'IMG-01',
-  title: 'Equal-focal-length 4f relay',
-  summary: 'One concrete configuration, with chosen values when meaningful.',
-  steps: ['What to inspect or change.', 'What this arrangement demonstrates.'],
-  limit: 'The specific model boundary for this example.',
-  mode: 'schematic', // or 'rays' ONLY when a live scene is supplied and tested
-  nodes: [
-    { id: 'object', label: 'Object', x: 90, y: 180, note: 'Role in this example.' },
-    { id: 'lens', type: 'lens', label: 'Relay lens', x: 270, y: 180,
-      note: 'Role and chosen focal length.', params: { f: 100 }, rot: 0 },
-  ],
-  edges: [
-    { from: 'object', to: 'lens', label: 'image path', kind: 'light',
-      via: [] }, // optional via [[x,y],...]; kind light, signal, or reference
-  ],
-  references: [{ label: 'Specific primary source', url: 'https://...' }],
-  // Optional real OpticalSetup scene for mode=rays. Use createElement and
-  // deterministic IDs; supply {version:1,elements:[...],beams:[],...}.
-  scene: undefined,
-}
-```
+## Site and discovery
 
-Use a 960 x 440 diagram plane (x 70..890, y 65..350). Keep labels short and
-nodes separated (at least 135 horizontally and 100 vertically); wrap long labels
-in the renderer. Use 4–8 nodes usually; meaningful branches, loops, parallel
-channels, and focal planes take precedence over a linear block chain.
-Every node needs an explanatory note. `type` is optional and must exist in the
-live registry; labels describe roles, while component names come from the registry.
-Schematic arrows express topology, never computed ray trajectories. Their saved
-scenes use annotation-only elements so unsupported physics cannot appear traced.
-Do not label a sketch quantitative merely because some individual components have
-quantitative models. Save scene compatibility and conversion code stay unchanged.
+Reuse `wiki/assets/wiki.css` for the established font, colors, header and buttons,
+and the exact shared brand mark. Pattern CSS contains only page layouts.
+Articles have descriptive canonical URLs, static copy, component/wiki links,
+related pattern links, Article and Breadcrumb structured data, and social tags.
+Function hubs provide crawlable topic navigation. Old ID routes redirect to the
+canonical article. Interactive catalogue filters use a URL fragment so they do
+not create a crawlable combination of faceted URLs.
 
-Each author owns their module and targeted test. Do not edit shared generators,
-page assets, or another author's files. Do not commit or push from subagents.
+Run `npm test`, JavaScript syntax checks and `git diff --check`. Check the real
+canvas and the catalogue at desktop, 1024px and mobile widths. No scene format
+change, runtime dependency, custom physics or app build step is introduced.

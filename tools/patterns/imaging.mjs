@@ -1,181 +1,836 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
+import '../../sketch/js/detector-instruments.js';
 import { createElement } from '../../sketch/js/elements.js';
 
-const ref = (label, url) => ({ label, url });
-const conjugates = ref('Nikon: conjugate planes in optical microscopy', 'https://www.microscopyu.com/microscopy-basics/conjugate-planes-in-optical-microscopy');
-const expanders = ref('Edmund Optics: laser beam expanders', 'https://www.edmundoptics.com/knowledge-center/application-notes/lasers/beam-expanders');
-const telecentric = ref('Edmund Optics: distortion and telecentricity', 'https://www.edmundoptics.com/knowledge-center/application-notes/imaging/distortion-and-the-telecentricity-specification/');
-const plates = ref('Thorlabs: waveplate tutorial', 'https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=7234&tabname=Tutorial');
-const coherent = ref('Thorlabs: balanced coherent detection application note', 'https://www.thorlabs.com/images/tabimages/AppHighlight_BalancedPhotodetectors.pdf');
-const delay = ref('ESO: VLTI delay-line subsystem', 'https://www.eso.org/sci/facilities/paranal/telescopes/vlti/subsystems/delaylines.html');
-const fourier = ref('MIT: spatial filtering lecture', 'https://ocw.mit.edu/courses/2-71-optics-spring-2009/resources/mit2_71s09_lec18/');
-const scan = ref('Thorlabs: scanning lenses', 'https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=2910');
-const n = (id, label, x, y, note, type, params) => ({ id, label, x, y, note, ...(type ? { type } : {}), ...(params ? { params } : {}) });
-const e = (from, to, label = '', kind = 'light', via) => ({ from, to, label, kind, ...(via ? { via } : {}) });
-function record(id, title, summary, nodes, edges, steps, limit, references) {
-  return { id, title, summary, nodes, edges, steps, limit, references: Array.isArray(references) ? references : [references], mode: 'schematic' };
-}
-function el(id, type, x, y, params = {}, rot = 0) {
-  const element = createElement(type, x, y);
-  return { ...element, id, rot, label: id, showLabel: true, params: { ...element.params, ...params } };
-}
-function live(record, elements) {
-  return { ...record, mode: 'rays', scene: { version: 1, elements, beams: [] } };
+// Real registry components only: stable IDs and version-1 scenes are editable
+// in the workbench. Parameters omitted here use the registry defaults.
+function element(id, type, x, y, params, rot, label) {
+  const base = createElement(type, x, y);
+  return { ...base, id, rot, label, showLabel: true, params: { ...base.params, ...params } };
 }
 
 export const examples = [
-live(record('IMG-01', 'Unit-magnification 4f relay', 'Two 100 mm thin lenses relay an object plane to an inverted image over 400 mm; the shared focal plane remains accessible.', [
- n('object','Object plane',90,190,'Place a small target 100 mm before L1.'), n('l1','L1 · 100 mm',270,190,'First Fourier transform; object at its front focus.','lens',{f:100}), n('fourier','Fourier plane',450,190,'100 mm after L1 and before L2; a spatial-frequency plane.'), n('l2','L2 · 100 mm',630,190,'Reimages the first plane with magnification −1.','lens',{f:100}), n('image','Image plane',810,190,'100 mm after L2; object features are inverted.','camera'),
-], [e('object','l1'),e('l1','fourier'),e('fourier','l2'),e('l2','image'),e('object','image','conjugate planes','reference',[[90,330],[810,330]])], ['Open the live scene: the separately drawn ideal image of the 10 mm F is inverted at −1 magnification; the traced fan comes from the on-axis object anchor.','Move the camera 30 mm beyond its image conjugate: the narrow fan broadens and the camera no longer lies at the ideal image plane.'], 'The fan traces on-axis geometrical rays, while the F marker is a separate paraxial image construction that does not model downstream clipping. No target-image irradiance, diffraction-limited transfer function or real-lens aberration is computed.', [conjugates,fourier]), [el('object','objarrow',80,200,{height:10,shape:'F',spread:8,nrays:7,wavelength:532,showImage:true}),el('first','lens',180,200,{f:100,dia:40}),el('second','lens',380,200,{f:100,dia:40}),el('image','camera',502,200,{ch:40})]),
-live(record('IMG-02', 'Threefold Keplerian beam expander', 'A 50 mm lens and a 150 mm lens, separated by 200 mm, expand a collimated 3 mm beam to approximately 9 mm.', [
- n('laser','532 nm input',90,190,'A collimated beam with 3 mm diameter.','cwlaser'),n('l1','L1 · 50 mm',300,190,'Produces the intermediate real focus.','lens',{f:50}),n('focus','Real focus',480,190,'50 mm behind the first lens; keep high-power objects away.'),n('l2','L2 · 150 mm',660,190,'Recollimates after the shared focus.','lens',{f:150}),n('camera','Expanded beam',850,190,'Inspect increased beam width, not a magnified target.','camera'),
-], [e('laser','l1'),e('l1','focus'),e('focus','l2'),e('l2','camera')], ['Open the ray example and compare beam width before and after the telescope.','Move L2 away from the 200 mm lens separation to see residual convergence or divergence.'], 'This live example uses paraxial thin lenses; diffraction, real-lens aberrations and damage at the focus are absent.', expanders), [el('input','cwlaser',80,200,{wavelength:532,beamWidth:3}),el('first','lens',250,200,{f:50,dia:25.4}),el('second','lens',450,200,{f:150,dia:25.4}),el('output','camera',650,200,{ch:30})]),
-record('IMG-03','Twofold pupil relay','A 75/150 mm relay maps a 4 mm scanner pupil onto an 8 mm objective pupil without treating that plane as a sample image.',[
- n('scan','Scanner pupil',90,190,'A 4 mm steering aperture; this is the relayed plane.','galvo'),n('l1','75 mm relay',300,190,'Scanner sits one focal length before this lens.','lens',{f:75}),n('field','Intermediate field',490,190,'Shared focal plane; not the relayed pupil.'),n('l2','150 mm relay',680,190,'225 mm from L1 gives 2× pupil magnification.','lens',{f:150}),n('pupil','Objective pupil',870,190,'8 mm pupil, 150 mm after L2.','objective')
-],[e('scan','l1'),e('l1','field'),e('field','l2'),e('l2','pupil'),e('scan','pupil','pupil conjugates','reference',[[90,330],[870,330]])],['Compare the pupil conjugacy annotation with the intermediate field plane.','Double the first pupil diameter and check whether the objective pupil would clip it.'],'Pupil placement is schematic; no high-NA objective aberration or pupil irradiance is computed.',conjugates),
-record('IMG-04','Infinity microscope with filter space','A nominal 10× objective with 20 mm effective focal length and a 200 mm tube lens leaves a collimated region for a 550 nm filter.',[
- n('sample','Specimen',90,190,'Place specimen at objective front focal plane.','sample'),n('obj','10× objective',270,190,'Nominal f = 20 mm with a 200 mm tube lens.','objective'),n('filter','550 nm filter',450,190,'Inserted in infinity space, away from an image conjugate.','filter'),n('tube','200 mm tube lens',630,190,'Forms the intermediate image.','lens',{f:200}),n('image','Camera image',820,190,'Nominal magnification is −200/20 = −10.','camera')
-],[e('sample','obj'),e('obj','filter','infinity space'),e('filter','tube'),e('tube','image')],['Identify where a filter can be inserted without deliberately moving the image plane.','Change tube-lens focal length and calculate the resulting nominal magnification.'],'The nominal microscope geometry is diagrammed; manufacturer-specific objective corrections and high-NA image quality are not represented.',conjugates),
-record('IMG-05','Object-space telecentric inspection','A 100 mm imaging lens with the aperture stop at its rear focal plane inspects a nominally flat 20 mm part.',[
- n('part','20 mm part',90,190,'Part moves axially during inspection; chief rays should remain parallel in object space.'),n('lens','100 mm imaging lens',300,190,'Ideal positive lens; stop belongs behind it.','lens',{f:100}),n('stop','Rear-focal stop',510,190,'Located 100 mm behind lens to make object-space chief rays parallel.'),n('sensor','Image sensor',750,190,'Position chosen for the finite object conjugate.','camera'),n('motion','Axial part motion',90,330,'Compare apparent size over a small defocus range.')
-],[e('part','lens'),e('lens','stop'),e('stop','sensor'),e('motion','part','height variation','reference')],['Find the stop relative to the rear focal plane.','Separate the nominal constancy of magnification from loss of focus when the part moves.'],'Telecentricity does not guarantee sharpness over unlimited depth; the schematic calculates neither depth of field nor lens distortion.',telecentric),
-record('IMG-06','Folded two-mirror image relay','A pair of concave mirrors carries a UV image through a folded relay, leaving a real intermediate focus available for a field stop.',[
- n('object','UV object',90,90,'A 266 nm emitting plane.'),n('m1','Concave M1',310,90,'First curved reflector creates an intermediate image.','cmirror'),n('focus','Intermediate image',510,220,'Place a field stop here to limit field extent.'),n('m2','Concave M2',710,220,'Second reflector relays the image toward the detector.','cmirror'),n('image','UV image',870,90,'Coated detector observes final conjugate.','camera')
-],[e('object','m1'),e('m1','focus'),e('focus','m2'),e('m2','image')],['Trace the folded image path and locate the accessible field stop.','Compare the absence of bulk-glass dispersion with the remaining alignment and off-axis aberration issues.'],'Mirror radii and off-axis prescription require optical design; this topology does not claim an aberration-corrected UV instrument.',ref('NASA: reflective optics for ultraviolet imaging','https://science.nasa.gov/mission/hubble/observatory/design/optics/')),
-record('IMG-07','Tilted-plane inspection camera','A 30° tilted specimen is observed through a tilted lens and sensor arranged so their plane extensions meet along a common line.',[
- n('object','Tilted specimen',100,190,'Object plane tilted 30° relative to the nominal sensor plane.'),n('lens','Tiltable lens',350,190,'Lens plane extension must share the Scheimpflug intersection.','lens'),n('sensor','Tilted sensor',650,190,'Tilt independently from focusing translation.','camera'),n('intersection','Common intersection',350,330,'Plane extensions meet here; this is a geometrical constraint.')
-],[e('object','lens'),e('lens','sensor'),e('object','intersection','object extension','reference'),e('lens','intersection','lens extension','reference'),e('sensor','intersection','sensor extension','reference')],['Follow all three plane-extension lines to the common intersection.','Treat sensor tilt and longitudinal focus as separate adjustments.'],'The plane intersection is schematic and does not solve lens tilt, projective distortion, depth of field or off-axis aberrations.',telecentric),
-record('IMG-08','K-mirror field derotator','Three plane mirrors on one rotating mount derotate an astronomical field; a 15° mechanical rotation corresponds to a nominal 30° image rotation.',[
- n('field','Rotating sky field',90,90,'A field whose orientation changes while tracking.'),n('m1','First fold',300,90,'First reflector on the shared rotary mount.','mirror'),n('m2','Central mirror',480,240,'Second reflection defines the folded K path.','mirror'),n('m3','Third fold',670,90,'Third reflection returns toward the output direction.','mirror'),n('camera','Derotated camera',870,90,'Orientation is controlled by rotating the assembly.','camera'),n('mount','15° mount rotation',480,350,'All three mirrors rotate together.')
-],[e('field','m1'),e('m1','m2'),e('m2','m3'),e('m3','camera'),e('mount','m1','shared mount','signal'),e('mount','m3','shared mount','signal')],['Follow the three reflections rather than interpreting the folded path as an image rotation simulation.','Compare the nominal twice-angle image rotation with the mount angle.'],'Image parity and 3D field rotation require a coordinate convention; the 2D diagram cannot calculate a derotated image.',ref('ESO: SPHERE instrument description and derotator','https://www.eso.org/sci/facilities/paranal/instruments/sphere/inst.html')),
-record('IMG-09','Two-group compensated zoom','A movable variator changes nominal magnification from 1× to 2× while a separate compensator keeps the final image plane fixed.',[
- n('object','Fixed object',90,190,'Keep the object position fixed throughout zoom.'),n('fixed','Fixed front group',280,190,'Collects the object field.','lens'),n('var','Variator',470,190,'Moves to change the system focal length.','lens'),n('comp','Compensator',660,190,'Moves on a different trajectory to restore focus.','lens'),n('sensor','Fixed image plane',860,190,'Sensor position is not the compensating actuator.','camera'),n('cam','Coupled motion law',560,330,'Two trajectories must be solved together.')
-],[e('object','fixed'),e('fixed','var'),e('var','comp'),e('comp','sensor'),e('cam','var','zoom motion','signal'),e('cam','comp','focus correction','signal')],['Identify the two independent moving groups.','Compare a 1× and 2× endpoint only after checking that both share the fixed sensor plane.'],'No prescription or cam law is solved here; arbitrary group translations do not constitute a working compensated zoom.',ref('Canon: zoom variator and compensator white paper','https://downloads.canon.com/bctv/4K_Box_Lenses_White_Paper.pdf')),
-record('BEAM-01','Pinhole spatial filter','A 532 nm beam is focused by a 20 mm lens through a 10 µm pinhole and recollimated by a 100 mm lens.',[
- n('source','532 nm laser',90,190,'A nominal 2 mm collimated input.','cwlaser'),n('focus','20 mm focus lens',280,190,'Focuses near the pinhole.','lens',{f:20}),n('hole','10 µm pinhole',470,190,'Rejects off-axis spatial content at the focus.'),n('coll','100 mm collimator',660,190,'Output beam is nominally expanded fivefold.','lens',{f:100}),n('out','Clean output',860,190,'Inspect throughput and alignment trade-offs.')
-],[e('source','focus'),e('focus','hole'),e('hole','coll'),e('coll','out')],['Locate the pinhole at the shared focal plane.','Compare pinhole size to the diffraction spot before expecting transmission.'],'A pinhole can geometrically clip rays in the editor, but this schematic does not calculate spatial-frequency rejection or an Airy pattern.',ref('Newport: spatial filters','https://www.newport.com/n/spatial-filters')),
-record('BEAM-02','Fiber spatial-mode filter','A 780 nm beam is coupled into a single-mode fiber with nominal 5 µm mode-field diameter, then recollimated for downstream use.',[
- n('input','780 nm input',90,190,'Input may contain unwanted transverse modes.','cwlaser'),n('couple','Input asphere',300,190,'Match waist and wavefront to the fiber mode.','lens'),n('fiber','Single-mode fiber',510,190,'Nominal MFD 5 µm; actual cutoff must suit 780 nm.'),n('coll','Output collimator',720,190,'Sets output beam diameter.','lens'),n('loss','Rejected light',300,330,'Uncoupled power does not join the guided output.','beamdump')
-],[e('input','couple'),e('couple','fiber','matched mode'),e('fiber','coll'),e('couple','loss','coupling loss')],['Distinguish cleaning the output mode from preserving all input power.','Check the fiber operating wavelength and match the input waist to the stated mode field.'],'The schematic does not compute a field-overlap integral; the editor fiber model is not proof of single-mode purity.',ref('Thorlabs: single-mode fiber coupling','https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=1421')),
-record('BEAM-03','Two-lens cavity mode matching','A 50/100 mm adjustable lens pair targets a 100 µm waist at a cavity input mirror; matching size alone does not match curvature.',[
- n('laser','1064 nm input',90,190,'Nominal 1 mm beam radius.','cwlaser'),n('l1','50 mm lens',280,190,'First degree of freedom changes convergence.','lens',{f:50}),n('l2','100 mm lens',470,190,'Position provides a second waist-control degree of freedom.','lens',{f:100}),n('waist','100 µm target waist',660,190,'Desired waist belongs to the cavity eigenmode.'),n('cavity','Cavity input',850,190,'Mode overlap determines usable injection.','cmirror'),n('target','Target q parameter',660,330,'Both spot size and wavefront curvature must agree.')
-],[e('laser','l1'),e('l1','l2'),e('l2','waist'),e('waist','cavity'),e('target','waist','mode constraint','reference')],['Use the two movable lenses to control waist position and size independently.','Compare both waist radius and wavefront curvature against the target eigenmode.'],'No Gaussian q propagation or cavity overlap is computed; the dimensions describe a design target, not a solved lens spacing.',ref('Newport: cavity mode matching appendix','https://www.newport.com/medias/sys_master/images/images/h73/he8/8797035429918/9091-User-Manual-RevD.pdf')),
-record('BEAM-04','Cylindrical 4× anamorphic expander','A 25/100 mm cylindrical telescope expands one axis of a 2 × 8 mm diode beam to a nominal 8 × 8 mm beam.',[
- n('diode','2 × 8 mm beam',90,190,'Choose the narrow axis for expansion.','cwlaser'),n('c1','25 mm cylinder',300,190,'Power only in the narrow axis.'),n('c2','100 mm cylinder',530,190,'125 mm lens separation; parallel cylinder axes.'),n('profile','8 × 8 mm target',760,190,'Other transverse axis is nominally unchanged.'),n('axis','Unpowered axis',530,330,'No focal power along the cylinder axis.')
-],[e('diode','c1'),e('c1','c2'),e('c2','profile'),e('axis','c2','axis convention','reference')],['Check that both cylinders expand the same transverse axis.','Compare the 4× narrow-axis expansion with the unchanged long axis.'],'Two transverse axes cannot be represented simultaneously by this 2D topology; astigmatism and diode divergence require a real beam prescription.',expanders),
-record('BEAM-05','Gaussian-to-top-hat refractive mapper','Two aspheric surfaces redistribute a nominal 3 mm radius Gaussian input into a 4 mm radius flat-top output without deliberately clipping the center.',[
- n('gauss','Gaussian input',100,190,'Design input intensity and radius are part of the prescription.','cwlaser'),n('s1','Remapping surface',340,190,'Redirects annuli according to cumulative input power.','asphericlens'),n('s2','Recollimating surface',580,190,'Restores a planar output wavefront.','asphericlens'),n('flat','4 mm top-hat',820,190,'Target profile at the specified output plane.'),n('map','Cumulative power map',460,330,'Equal power within corresponding input/output radii.')
-],[e('gauss','s1'),e('s1','s2'),e('s2','flat'),e('map','s1','surface prescription','reference'),e('map','s2','wavefront constraint','reference')],['Compare redistribution with lossy aperture truncation.','Change the assumed input radius and identify why a fixed remapper will no longer produce its design profile.'],'Generic asphere icons do not supply a solved remapping prescription; no top-hat irradiance is simulated.',ref('Newport: refractive beam shaping','https://www.newport.com/medias/sys_master/images/images/h0f/hab/8797246685214/Refractive-Beam-Shaper-Application-Note.pdf')),
-record('BEAM-06','Fly-eye homogenizer','Two 300 µm-pitch microlens arrays and a 100 mm field lens overlap beamlets at a 5 mm target field.',[
- n('input','Uneven input',90,190,'Nominal 6 mm illumination beam.','cwlaser'),n('a1','First lenslet array',290,190,'Partitions the aperture into beamlets.'),n('a2','Second lenslet array',490,190,'Relays each beamlet toward a common field lens.'),n('field','100 mm field lens',690,190,'Superposes many lenslet images.','lens',{f:100}),n('target','5 mm target field',870,190,'Beamlet overlap reduces sensitivity to input structure.'),n('beamlet','Representative beamlet',490,330,'One channel among many; not an extra source.')
-],[e('input','a1'),e('a1','a2','many parallel beamlets'),e('a2','field'),e('field','target'),e('a1','beamlet'),e('beamlet','a2','one of the relayed beamlets')],['Trace both a representative beamlet and the combined target field.','Distinguish averaging irradiance from eliminating coherent speckle.'],'Microlens arrays, overlap uniformity and coherent speckle are not traced; the target size is a design choice.',ref('Edmund Optics: microlens arrays','https://www.edmundoptics.com/f/microlens-arrays/13812/')),
-record('BEAM-07','4f low-pass spatial filter','A circular stop at the common Fourier plane of a 100/100 mm relay suppresses high spatial frequencies of a test image.',[
- n('target','Line-pair target',90,190,'Object plane contains fine and coarse features.'),n('l1','100 mm lens',280,190,'Converts object structure to a Fourier-plane distribution.','lens',{f:100}),n('mask','Fourier-plane stop',470,190,'Central 1 mm radius aperture passes low spatial frequencies.'),n('l2','100 mm lens',660,190,'Transforms the filtered field back into an image.','lens',{f:100}),n('image','Filtered image',860,190,'Fine edges soften as the aperture contracts.','camera')
-],[e('target','l1'),e('l1','mask','spatial spectrum'),e('mask','l2'),e('l2','image')],['Locate the filter between the two lenses, rather than in an image plane.','Compare low-pass central aperture selection with a central-blocking high-pass mask.'],'The topology does not compute a Fourier transform or a filtered image; a traced iris alone cannot demonstrate spatial-frequency filtering.',fourier),
-record('BEAM-08','SLM hologram with order selection','A phase SLM at 532 nm encodes two equal target spots; a blazed carrier separates the selected order from undiffracted light.',[
- n('laser','532 nm expanded beam',90,190,'Polarization and aperture must suit the SLM.','cwlaser'),n('slm','Phase hologram',300,190,'Adds a carrier and a two-spot phase pattern.','slm'),n('fourier','Order-selection plane',510,190,'Stop selects the intended diffraction order.'),n('spot1','Target spot A',750,90,'One of two equal nominal target powers.'),n('spot2','Target spot B',750,290,'Second programmed target.'),n('zero','Zero-order dump',510,330,'Unmodulated light is rejected.','beamdump')
-],[e('laser','slm'),e('slm','fourier'),e('fourier','spot1'),e('fourier','spot2'),e('slm','zero','undiffracted order')],['Follow the unwanted zero order separately from the two selected spots.','Compare the specified equal spot powers with the need to measure real diffraction efficiency.'],'The editor SLM supports a directional proxy; this schematic does not synthesize holograms or predict target spot intensity.',ref('Hamamatsu: wavefront modulation research','https://www.hamamatsu.com/us/en/our-company/business-domain/central-research-laboratory/optical-information-processing-and-measurement/wave.html')),
-record('ILL-01','Köhler transmitted-light microscope','A lamp filament is conjugate to the condenser aperture while the field diaphragm is conjugate to the specimen.',[
- n('pointsource','Lamp filament',90,90,'Extended source, intentionally not focused on the specimen.','pointsource'),n('collector','Collector',280,90,'Images the filament into the aperture plane.','lens'),n('aperture','Aperture diaphragm',480,90,'Sets angular illumination extent.'),n('condenser','Condenser',680,190,'Forms the field-diaphragm image at the specimen.','lens'),n('sample','Specimen field',870,190,'Field and angular controls are independent.','sample'),n('field','Field diaphragm',280,290,'Limits illuminated area; focus its rim at the specimen.')
-],[e('pointsource','collector'),e('collector','aperture'),e('aperture','condenser'),e('condenser','sample'),e('field','condenser'),e('field','sample','field conjugates','reference',[[280,350],[870,350]])],['Follow source/aperture and field/specimen conjugate sets independently.','Close the field diaphragm to the observed field and adjust aperture for illumination angle.'],'This diagram does not calculate extended-source uniformity or microscope resolution; aperture and field conjugacy are conceptual.',conjugates),
-record('ILL-02','Critical LED illumination','A 1 mm LED die is directly imaged onto a 2 mm specimen field with a nominal 2× condenser relay.',[
- n('pointsource','1 mm LED die',100,190,'Die texture is part of the imaged source.','pointsource'),n('cond','Condenser relay',340,190,'Nominal 2× image magnification.','lens'),n('sample','2 mm specimen field',590,190,'Source nonuniformity can appear here.','sample'),n('camera','Inspection camera',830,190,'Inspect imprint of the die structure.','camera'),n('die','Die texture',100,330,'Contrast this source image with Köhler illumination.')
-],[e('pointsource','cond'),e('cond','sample','source image'),e('sample','camera'),e('die','sample','imprinted structure','reference')],['Locate the source image at the specimen.','Compare a structured LED die with a smooth emitting surface and identify the expected illumination texture.'],'No extended LED image or uniformity metric is computed; the condenser is an illustrative relay rather than a solved source imaging lens.',ref('Nikon: critical illumination','https://www.microscopyu.com/glossary/critical-illumination')),
-record('ILL-03','488 nm epi-fluorescence microscope','A 500 nm longpass dichroic reflects 488 nm excitation into a shared objective and transmits nominal 520 nm fluorescence toward the camera.',[
- n('laser','488 nm excitation',100,90,'Clean the excitation spectrum before injection.','cwlaser'),n('dich','500 nm dichroic',350,190,'Reflect short wavelengths, transmit long wavelengths.','dichroic',{cutoff:500}),n('obj','Shared objective',570,190,'Excitation and collection use the same objective.','objective'),n('sample','Fluorescent specimen',800,190,'Chosen emission near 520 nm.','sample'),n('filter','520 nm emission filter',350,330,'Reject residual excitation before detection.','filter'),n('camera','Emission camera',100,330,'Read the emission branch.','camera')
-],[e('laser','dich','488 nm'),e('dich','obj','excitation'),e('obj','sample'),e('sample','obj','520 nm return'),e('obj','dich','collection'),e('dich','filter','520 nm'),e('filter','camera')],['Follow excitation and emission through the shared objective in opposite directions.','Identify the additional emission filter rather than relying only on the dichroic cutoff.'],'Fluorescence spectrum, collection solid angle and filter leakage are not calculated by this schematic.',ref('Nikon: fluorescence filter combinations','https://www.microscopyu.com/techniques/fluorescence/fluorescence-filter-combinations')),
-record('ILL-04','Annular pupil illumination','An annulus occupying normalized pupil radii 0.6–0.8 illuminates a specimen with a selected cone of angles.',[
- n('source','Extended source',90,190,'Supply a broad illumination pupil.','pointsource'),n('annulus','0.6–0.8 pupil annulus',330,190,'Shape angular content at an aperture conjugate.'),n('relay','Pupil relay',570,190,'Relays the annulus to the condenser pupil.','lens'),n('sample','Specimen',820,190,'Receives oblique illumination directions.','sample'),n('pupil','Condenser pupil',570,330,'Annulus must be centered in this conjugate.')
-],[e('source','annulus'),e('annulus','relay'),e('relay','sample','angular cone'),e('annulus','pupil','pupil conjugates','reference'),e('pupil','sample','illumination angles','reference')],['Confirm that the annulus belongs to a pupil plane rather than a specimen image plane.','Compare centering errors with changing inner and outer annular radii.'],'Normalized pupil radii specify a target distribution; no vector illumination field or annular diffraction is calculated.',conjugates),
-record('ILL-05','Three-phase stripe projection','A DMD projects 10 µm-period stripes onto a sample with phases 0°, 120° and 240° for separate camera acquisitions.',[
- n('source','Green illumination',90,190,'Choose 532 nm for this concrete pattern projection.','cwlaser'),n('dmd','Three stripe patterns',310,190,'Sequential phases, not simultaneous frames.','dmd'),n('relay','Projection relay',530,190,'Sets a 10 µm period at the specimen.','lens'),n('sample','Patterned specimen',750,190,'Pattern moves across the same field.','sample'),n('camera','Three camera frames',750,330,'Collect one frame per phase.','camera'),n('sequence','0° / 120° / 240°',310,330,'Synchronize pattern changes and exposures.')
-],[e('source','dmd'),e('dmd','relay'),e('relay','sample'),e('sample','camera'),e('sequence','dmd','pattern control','signal'),e('sequence','camera','exposure trigger','signal')],['Follow the exposure synchronization as well as the optical path.','Compare projected period at the sample with the pattern period on the modulator.'],'No patterned image, reconstruction or super-resolution claim is simulated; three phases alone are not a complete SIM acquisition.',ref('Gustafsson: structured illumination beyond the classical resolution limit','https://doi.org/10.1046/j.1365-2818.2000.00710.x')),
-record('ILL-06','Orthogonal light-sheet microscope','A cylindrical lens forms a thin illumination sheet through the specimen; a separate objective collects fluorescence at 90°.',[
- n('laser','488 nm beam',90,190,'Nominal 2 mm beam before the cylindrical optics.','cwlaser'),n('cyl','Sheet-forming cylinder',310,190,'Focus one axis and leave the other extended.'),n('sample','Illuminated slice',550,190,'Sheet lies in the detection focal plane.','sample'),n('obj','Detection objective',550,330,'Collects orthogonal to illumination.','objective'),n('camera','Slice camera',790,330,'Image plane captures one optical section.','camera'),n('scan','Specimen translation',790,90,'Step through a volume with separate acquisitions.')
-],[e('laser','cyl'),e('cyl','sample','light sheet'),e('sample','obj','orthogonal collection'),e('obj','camera'),e('scan','sample','volume stepping','signal')],['Follow orthogonal illumination and detection axes.','Compare changing sheet thickness with stepping the specimen through the fixed detection plane.'],'Sheet waist, Rayleigh range and fluorescence volume are not computed; the transverse sheet extent is outside the 2D editor.',ref('Huisken et al.: selective plane illumination microscopy','https://doi.org/10.1126/science.1100035')),
-record('ILL-07','Fourfold reduction exposure','A 40 mm mask field is reduced to a 10 mm substrate field by a nominal −0.25× projection relay.',[
- n('illum','365 nm illuminator',90,190,'Illuminate the mask field uniformly.'),n('mask','40 mm mask field',280,190,'Object plane defines pattern geometry.'),n('projection','−0.25× projection',500,190,'A 200/50 mm relay is one paraxial realization.','lens'),n('wafer','10 mm substrate field',740,190,'Image plane receives the reduced pattern.','sample'),n('pupil','Illumination pupil',500,330,'Controls angular spectrum independently of mask features.')
-],[e('illum','mask'),e('mask','projection'),e('projection','wafer'),e('pupil','projection','pupil shaping','reference')],['Compare mask and substrate feature scales using the 4:1 reduction.','Keep the substrate at the image conjugate and separate illumination-pupil tuning from magnification.'],'No resist exposure, process window, high-NA projection prescription or lithographic resolution is predicted.',ref('ASML: TWINSCAN NXT:1965Ci reduction projection system','https://www.asml.com/en/products/duv-lithography-systems/twinscan-nxt-1965ci')),
-record('ILL-08','Four-spot microlens illuminator','A 2 × 2 lenslet array creates four simultaneous focal spots; total incident power must be shared across the four channels.',[
- n('input','532 nm input',90,190,'Illuminate all four lenslets with equal nominal irradiance.','cwlaser'),n('array','2 × 2 lenslets',320,190,'Four physical subapertures partition the beam.'),n('a','Spot A / B',580,90,'Upper row of two target spots.'),n('b','Spot C / D',580,290,'Lower row of two target spots.'),n('sample','Four-site specimen',820,190,'All four sites are illuminated simultaneously.','sample')
-],[e('input','array'),e('array','a','two upper channels'),e('array','b','two lower channels'),e('a','sample'),e('b','sample')],['Count four channels even though the diagram groups them in two rows.','Compare total laser power with per-spot power and the effect of unequal lenslet illumination.'],'Lenslet diffraction, spot spacing and equalization are not calculated; the topology is distinct from a programmable SLM hologram.',ref('Edmund Optics: microlens arrays','https://www.edmundoptics.com/f/microlens-arrays/13812/')),
-record('SCAN-01','Single-axis pupil-conjugate scanner','A galvo is relayed at 1× to an objective pupil so steering changes the focused spot position with minimal pupil walk.',[
- n('input','Collimated input',90,190,'Keep the beam smaller than the galvo clear aperture.','cwlaser'),n('galvo','Galvo pivot',280,190,'The reflecting pivot is the relayed pupil plane.','galvo'),n('relay','100/100 mm relay',490,190,'Two-lens 4f conjugation of the pivot.','lens'),n('pupil','Objective pupil',700,190,'Relayed galvo plane coincides with entrance pupil.','objective'),n('target','Scanned focal plane',870,190,'Objective converts steering angle to spot displacement.','sample')
-],[e('input','galvo'),e('galvo','relay'),e('relay','pupil'),e('pupil','target'),e('galvo','pupil','pupil conjugates','reference',[[280,330],[700,330]])],['Distinguish movement of the focused spot from lateral pupil walk.','Check the conjugation of the galvo pivot before increasing scan angle.'],'Scanner conjugacy is schematic; no high-NA scan field, clipping curve or telecentricity calibration is predicted.',[conjugates,scan]),
-record('SCAN-02','Relayed X and Y galvos','A 75/75 mm 4f relay images the X-galvo pivot onto the Y-galvo pivot before a second relay to the objective pupil.',[
- n('x','X galvo',90,190,'First scan axis, at the first conjugate pivot.','galvo'),n('relay','75/75 mm relay',310,190,'150 mm lens separation preserves the pivot plane.','lens'),n('y','Y galvo',530,190,'Second axis shares a conjugate pupil with the first.','galvo'),n('objrelay','Objective pupil relay',750,190,'Relays both angular controls to the final pupil.','lens'),n('target','Two-axis scan field',750,330,'Objective follows the relay; X and Y are independent coordinates.')
-],[e('x','relay'),e('relay','y'),e('y','objrelay'),e('objrelay','target'),e('x','y','pivot conjugates','reference',[[90,330],[530,330]])],['Compare relayed galvos with two nearby but nonconjugate mirrors.','Check that both pivots map to the objective pupil before discussing a 2D raster.'],'Orthogonal scan axes are shown topologically; the 2D ray editor cannot represent the full two-axis raster simultaneously.',conjugates),
-record('SCAN-03','Confocal scan and descan return','The same galvo scans excitation and descans the reciprocal return before a stationary 50 µm detection pinhole.',[
- n('laser','Excitation',90,90,'A fixed incident beam.','cwlaser'),n('split','Return separator',320,190,'Directs the returning signal to detection.','dichroic'),n('galvo','Shared galvo',550,190,'Outbound and return paths use the same pivot.','galvo'),n('sample','Scanned specimen',800,190,'Objective images the scanned focal point.','sample'),n('hole','50 µm fixed pinhole',320,330,'Return image remains stationary after descan.'),n('det','Confocal detector',90,330,'Collect only the pinhole-transmitted return.','detector')
-],[e('laser','split'),e('split','galvo'),e('galvo','sample','scan'),e('sample','galvo','return'),e('galvo','split','descan'),e('split','hole'),e('hole','det')],['Trace the common outbound/return galvo and the stationary detector branch.','Compare scanner misconjugation with a pinhole simply being off-center.'],'No confocal point-spread function, return-image descan or pinhole sectioning is calculated by this diagram.',ref('Nikon: confocal scanning optical systems','https://www.microscopyu.com/techniques/confocal/confocal-microscope-scanning-systems')),
-record('SCAN-04','100 mm f-theta processing head','A nominal 100 mm f-theta lens maps ±5° optical scan angles to approximately ±8.73 mm of target displacement.',[
- n('beam','Expanded process beam',90,190,'Fill the specified scanning-lens pupil.','cwlaser'),n('galvo','±5° optical scan',320,190,'Optical deflection is twice the mirror angle.','galvo'),n('lens','100 mm f-theta lens',560,190,'Design target is x = fθ, with θ in radians.','lens'),n('field','±8.73 mm target',800,190,'Flat processing field, nominally linear in angle.','sample'),n('control','Angle command',320,330,'Calibrate angle-to-position against the real lens.')
-],[e('beam','galvo'),e('galvo','lens'),e('lens','field'),e('control','galvo','scan command','signal')],['Calculate 100 × 5π/180 mm and distinguish optical angle from mechanical galvo angle.','Compare ideal fθ placement with measured field distortion and focus variation.'],'The thin-lens icon is not an f-theta prescription; no flat-field correction, process dose or calibrated scan is simulated.',scan),
-record('SCAN-05','Remote mirror focus translation','A pupil-matched objective pair images an axially translating remote mirror into the specimen space while the specimen objective stays fixed.',[
- n('input','Imaging beam',90,190,'Beam enters the remote-focusing train.'),n('remote','Remote objective',300,190,'Forms a focus near the translating mirror.','objective'),n('mirror','Axial remote mirror',520,190,'Translate ±20 µm around the conjugate focus.','mirror'),n('relay','Pupil-matched relay',520,330,'Return travels to the specimen objective through matched pupils.','lens'),n('sampleobj','Specimen objective',740,330,'Remains stationary.','objective'),n('sample','Shifted specimen focus',870,190,'Remote axial displacement maps into specimen space.','sample')
-],[e('input','remote'),e('remote','mirror'),e('mirror','remote','return'),e('remote','relay','refocused beam'),e('relay','sampleobj'),e('sampleobj','sample')],['Follow the round trip through the remote objective.','Separate moving the remote mirror from physically moving the specimen objective.'],'Axial magnification and aberration cancellation depend on pupil and refractive-index matching; the ±20 µm motion is illustrative.',ref('Botcherby et al.: aberration-free optical refocusing','https://doi.org/10.1016/j.optcom.2007.10.007')),
-record('SCAN-06','Moving-retroreflector delay stage','A retroreflector translates 15 mm on a carriage, changing the free-space round-trip path by 30 mm, approximately 100 ps, with a fixed output axis.',[
- n('input','Fixed input beam',90,90,'Input stays aligned during carriage travel.','pulsedlaser'),n('fold','Input/output fold',320,90,'Separates parallel in/out paths.','mirror'),n('retroreflector','Moving retroreflector',650,90,'Carriage stroke is 15 mm.','retroreflector'),n('out','Fixed output',320,290,'Returned beam remains on the output axis.'),n('stage','15 mm translation',650,290,'Round trip gives twice the carriage displacement.','stage')
-],[e('input','fold'),e('fold','retroreflector'),e('retroreflector','out','30 mm extra path', 'light',[[800,190],[650,290]]),e('stage','retroreflector','carriage motion','signal')],['Use Δt = 2Δx/c to convert 15 mm carriage travel to roughly 100 ps.','Check fixed output pointing independently of path-length change.'],'Topology and free-space timing relation are shown; stage tolerances, air-index dispersion and beam walk are not simulated.',delay),
-record('SCAN-07','80 MHz double-pass AOM','A cat-eye return traverses an 80 MHz AOM twice; polarization separation extracts a nominal +160 MHz output while suppressing pointing sensitivity.',[
- n('input','Input laser',90,90,'Input linear polarization passes the PBS.','cwlaser'),n('pbs','Polarization separator',300,90,'Send and return occupy different polarization ports.','pbs'),n('aom','80 MHz AOM',530,90,'Selected diffraction order is traversed twice.','aom'),n('cat','Cat-eye lens',750,90,'Focus the selected order onto the end reflector.','lens'),n('mirror','Quarter-wave / mirror',750,290,'Double-pass polarization rotates the return by 90°.','mirror'),n('out','+160 MHz return',300,290,'Extracted PBS return port.')
-],[e('input','pbs'),e('pbs','aom'),e('aom','cat','first +80 MHz'),e('cat','mirror'),e('mirror','cat','return'),e('cat','aom','second +80 MHz'),e('aom','pbs'),e('pbs','out')],['Count two frequency shifts in the selected order.','Follow the cat-eye return and identify why the extracted output uses the other PBS port.'],'The diagram does not calculate RF frequency shifts, cat-eye alignment or frequency-dependent output pointing; the quarter-wave element is described at the end mirror.',ref('Donley et al., NIST: compact double-pass AOM','https://www.nist.gov/publications/compact-double-pass-acousto-optic-modulator-system')),
-record('SCAN-08','Herriott-cell multipass absorption','Two concave mirrors repeatedly pass a beam through a 200 mm gas cell before the selected exit aperture reaches a detector.',[
- n('input','Probe input',90,190,'Choose a near-infrared absorption wavelength.','cwlaser'),n('m1','Input/exit mirror',310,190,'Entrance and exit holes select a finite spot sequence.','cmirror'),n('gas','200 mm gas region',540,190,'Repeated traversals increase absorption path.','gascell'),n('m2','Opposite mirror',770,190,'Concave mirror supports a stable multipass orbit.','cmirror'),n('det','Selected exit detector',310,330,'Only the selected exiting spot reaches detection.','detector')
-],[e('input','m1'),e('m1','gas'),e('gas','m2'),e('m2','gas','next pass','light',[[770,90],[540,90]]),e('gas','m1','return pass','light',[[540,290]]),e('m1','det','exit aperture')],['Count physical traversals rather than multiplying by the number of mirror spots without checking the sequence.','Distinguish a finite multipass orbit with an exit hole from a resonant cavity.'],'Mirror separation and curvature alone do not specify the 3D Herriott orbit; no gas-line absorption spectrum or spot sequence is calculated.',ref('Herriott et al.: off-axis paths in spherical-mirror interferometers','https://doi.org/10.1364/AO.3.000523')),
-live(record('ROUTE-01','Two-color dichroic splitter','Coaxial 488 and 640 nm beams encounter a 550 nm longpass dichroic: red transmits and blue reflects into a second detector.',[
- n('input','488 + 640 nm input',90,190,'Two wavelengths share one incident axis.','cwlaser'),n('dich','550 nm longpass',350,190,'At 45°, short wavelengths are reflected.','dichroic',{cutoff:550}),n('red','640 nm detector',650,190,'Transmitted long-wavelength channel.','detector'),n('blue','488 nm detector',350,330,'Reflected short-wavelength channel.','detector')
-],[e('input','dich'),e('dich','red','640 nm'),e('dich','blue','488 nm')],['Open the traced scene and read the wavelength at each detector.','Move the cutoff below 488 nm or above 640 nm to send both colors to the same port.'],'The dichroic model uses ideal wavelength bands; angle-dependent coating spectra, transition width and leakage are absent.',ref('Edmund Optics: optical beamsplitter selection','https://www.edmundoptics.com/c/beamsplitters/622/')),[el('blue-input','cwlaser',70,200,{wavelength:488,beamMode:'line'}),el('red-input','cwlaser',70,200,{wavelength:640,beamMode:'line'}),el('dichroic','dichroic',350,200,{cutoff:550,length:40},-45),el('red-output','detector',600,200),el('blue-output','detector',350,400,{},90)]),
-live(record('ROUTE-02','Equal-power polarization splitter','A 532 nm beam with linear polarization at 45° enters a PBS and divides into orthogonal polarization channels.',[
- n('input','45° linear input',90,190,'Equal components in the PBS basis.','cwlaser'),n('pbs','Polarizing splitter',350,190,'Projects the input onto two orthogonal linear states.','pbs'),n('p','Transmitted channel',650,190,'One linear basis state.','detector'),n('s','Reflected channel',350,330,'Orthogonal linear basis state.','detector')
-],[e('input','pbs'),e('pbs','p'),e('pbs','s')],['Compare detector powers and polarization states in the traced example.','Set input polarization to 0° or 90° and verify extinction of the complementary port.'],'Ideal Stokes projection is traced; finite PBS extinction, coating phase and depolarization are absent.',ref('Edmund Optics: polarizing beamsplitters','https://www.edmundoptics.com/c/polarizing-beamsplitters/701/')),[el('input','cwlaser',80,200,{wavelength:532,pol:45,beamMode:'line'}),el('splitter','pbs',350,200,{},90),el('transmitted','detector',600,200),el('reflected','detector',350,400,{},90)]),
-live(record('ROUTE-03','Half-wave power attenuator','A half-wave plate at 22.5° rotates a horizontal 532 nm input to 45°; a horizontal analyzer passes half the input power.',[
- n('input','Horizontal input',90,190,'Linear polarization at 0°.','cwlaser'),n('hwp','HWP · 22.5°',300,190,'Output polarization rotates by twice the fast-axis angle.','hwp',{a:22.5}),n('analyzer','0° analyzer',530,190,'Malus-law transmission is cos²(45°) = 0.5.','polarizer',{pangle:0}),n('det','Half-power output',770,190,'Read power after the analyzer.','detector'),n('loss','Rejected polarization',530,330,'Absorbed by the analyzer; not an extra transmitted beam.')
-],[e('input','hwp'),e('hwp','analyzer'),e('analyzer','det'),e('analyzer','loss','rejected power','reference')],['Read half-power transmission at 22.5° in the live scene.','Rotate the HWP to 0° and 45° to compare full transmission and extinction.'],'Ideal retardance and Malus-law attenuation are traced; absorption heating and wavelength-dependent plate errors are absent.',plates),[el('input','cwlaser',80,200,{wavelength:532,pol:0,beamMode:'line'}),el('plate','hwp',250,200,{a:22.5}),el('analyzer','polarizer',400,200,{pangle:0}),el('output','detector',600,200)]),
-record('ROUTE-04','Quarter-wave shared-aperture return','A PBS transmits horizontal input through a quarter-wave plate at 45°; reflection and the second pass produce a vertical return at the other port.',[
- n('input','Horizontal laser',90,90,'Linear polarization passes the send port.','cwlaser'),n('pbs','Send/return PBS',330,90,'Separate return by orthogonal polarization.','pbs'),n('qwp','QWP · 45°',570,90,'First pass converts linear to circular; second pass rotates linear state.','qwp',{a:45}),n('target','Reflecting target',810,90,'Return must preserve the required polarization transformation.','mirror'),n('receive','Return detector',330,290,'Collects the orthogonal PBS port.','detector')
-],[e('input','pbs'),e('pbs','qwp'),e('qwp','target'),e('target','qwp','reflected return','light',[[810,230],[570,230]]),e('qwp','pbs','orthogonal linear return'),e('pbs','receive')],['Count two passes through the quarter-wave plate.','Compare a specular reflector with a depolarizing sample that leaks into both ports.'],'This schematic does not assert that a rough target maintains polarization; return efficiency and real extinction require measurement.',plates),
-record('ROUTE-05','Faraday isolator for laser protection','A 45° Faraday rotator between 0° and 45° polarizers transmits forward light while the nonreciprocal return reaches the first polarizer at 90°.',[
- n('laser','Laser output',90,190,'Protect against light returning from downstream optics.','cwlaser'),n('p0','0° input polarizer',280,190,'Defines the forward input state.','polarizer'),n('faraday','45° Faraday rotation',470,190,'Rotation adds on the reverse pass rather than undoing itself.','isolator'),n('p45','45° output polarizer',660,190,'Aligned to the forward state.','polarizer'),n('load','Reflective load',850,190,'May send a reverse beam.'),n('reject','Return rejection',280,330,'Reverse state is crossed at the input polarizer.','beamdump')
-],[e('laser','p0'),e('p0','faraday'),e('faraday','p45'),e('p45','load'),e('load','p45','reverse light','light',[[850,90],[660,90]]),e('p45','faraday','reverse polarization'),e('faraday','p0','90° return state'),e('p0','reject','crossed-state rejection')],['Compare same-sense Faraday rotation in both propagation directions.','Identify where reverse power is absorbed or dumped.'],'The editor isolator is a directional gate; this internal topology does not compute magneto-optic dispersion or certified isolation.',ref('Thorlabs: optical isolator tutorial','https://www.thorlabs.com/catalogPages/682.pdf')),
-record('ROUTE-06','Dual-polarization coherent receiver','A PBS splits an unknown 1550 nm signal into H and V components; each receives its own coherent hybrid and balanced readout.',[
- n('signal','1550 nm signal',90,190,'Unknown polarization may vary in time.'),n('pbs','Polarization demux',310,190,'Keep both orthogonal components.','pbs'),n('h','H coherent hybrid',530,90,'Mix H signal with a matched local-oscillator component.'),n('v','V coherent hybrid',530,290,'Mix V signal with its own LO component.'),n('dh','H I/Q readout',800,90,'Calibrated quadratures for H channel.','detector'),n('dv','V I/Q readout',800,290,'Calibrated quadratures for V channel.','detector'),n('lo','Shared local oscillator',310,330,'Distribute coherent LO light to both hybrids.','cwlaser')
-],[e('signal','pbs'),e('pbs','h','H'),e('pbs','v','V'),e('lo','h','LO H'),e('lo','v','LO V'),e('h','dh'),e('v','dv')],['Follow both polarization channels instead of discarding one PBS port.','Separate optical polarization diversity from downstream digital polarization tracking.'],'No hybrids, data modulation or polarization recovery are computed; schematic detection channels do not imply a functioning telecom receiver.',coherent),
-record('ROUTE-07','Prepare circular light and analyze it','A 0° polarizer followed by a 45° quarter-wave plate prepares circular input; a second quarter-wave plate and rotating analyzer measure its state.',[
- n('source','532 nm source',90,190,'Input may have an imperfect polarization state.','cwlaser'),n('prep','0° preparation polarizer',280,190,'Defines horizontal linear polarization.','polarizer'),n('q1','45° preparation QWP',470,190,'Prepares nominal circular polarization.','qwp'),n('q2','Analysis QWP',660,190,'Convert elliptical components before linear analysis.','qwp'),n('analyzer','Rotating analyzer',850,190,'Acquire several orientations.','polarizer'),n('det','Power readings',850,330,'Intensity sequence supports calibrated Stokes estimation.','detector')
-],[e('source','prep'),e('prep','q1'),e('q1','q2'),e('q2','analyzer'),e('analyzer','det')],['Distinguish preparation optics from the separate analysis optics.','Compare readings with and without the analysis quarter-wave plate; linear analysis alone cannot determine circular handedness.'],'The schematic does not perform a calibrated Stokes fit or determine experimental plate conventions; wavelength errors and uncertainty remain external.',plates),
-live(record('ROUTE-08','90/10 sample and monitor split','A 532 nm beam sends 90% through a sample with 50% excitation transmission and 10% to an independent reference photodiode.',[
- n('input','532 nm input',90,190,'Common source-power fluctuations affect both branches.','cwlaser'),n('split','90/10 splitter',330,190,'90% transmission and 10% reflection.','bs',{ratio:0.9}),n('sample','50% sample',570,190,'Sample branch loses half its incident power.','sample'),n('signal','Sample detector',820,190,'Expected 45% of source power in this ideal model.','detector'),n('monitor','Reference diode',330,330,'Expected 10% of source power.','detector')
-],[e('input','split'),e('split','sample','90%'),e('sample','signal'),e('split','monitor','10%')],['Compare sample/reference power ratio, nominally 4.5 for the chosen transmissions.','Change source power and verify that both readings scale while their ratio stays fixed.'],'The traced model shows relative branch power and linear transmission; shot noise, electronics and calibrated normalization are not included.',ref('Edmund Optics: beamsplitter operation','https://www.edmundoptics.eu/knowledge-center/application-notes/optics/what-are-beamsplitters')),[el('input','cwlaser',80,200,{wavelength:532,beamMode:'line'}),el('splitter','bs',300,200,{ratio:0.9},90),el('sample','sample',450,200,{transmitExc:true,transmission:0.5,channels:[]},90),el('signal','detector',650,200),el('reference','detector',300,400,{},90)]),
-record('FIELD-01','Mach–Zehnder phase measurement','Two 50/50 beamsplitters form separate sample and reference arms at 532 nm, then recombine into two complementary camera ports.',[
- n('laser','532 nm laser',90,190,'Shared coherent source.','cwlaser'),n('bs1','50/50 input splitter',290,190,'Creates two arms.','bs'),n('sample','Sample arm',490,90,'A phase object changes optical path.','phaseplate'),n('ref','Reference arm',490,290,'Adjustable optical delay.','delayline'),n('bs2','Recombiner',690,190,'Spatial mode and polarization must overlap.','bs'),n('a','Camera port A',870,90,'One complementary output.','camera'),n('b','Camera port B',870,290,'Complementary output checks total power.','camera')
-],[e('laser','bs1'),e('bs1','sample'),e('bs1','ref'),e('sample','bs2'),e('ref','bs2'),e('bs2','a'),e('bs2','b')],['Compare separate sample and reference paths and both recombination outputs.','A 266 nm optical-path change at 532 nm adds π phase; distinguish optical path from physical mirror travel.'],'The schematic does not calculate fringes; finite coherence, visibility and phase-sensitive camera behavior require a traced interferometer geometry.',ref('MIT: interferometers lecture','https://ocw.mit.edu/courses/2-71-optics-spring-2009/resources/mit2_71s09_lec15/')),
-record('FIELD-02','Point-diffraction common-path reference','A focused field crosses a pinhole reference mask: a small spatially filtered component supplies the reference and the remaining field carries specimen phase.',[
- n('object','Phase specimen',90,190,'Specimen modifies the incident wavefront.','phaseplate'),n('focus','Fourier lens',320,190,'Forms a focus at the reference mask.','lens'),n('mask','Reference pinhole mask',550,190,'Small hole generates a smooth reference wave.'),n('camera','Interference camera',810,190,'Reference and object fields propagate together.','camera'),n('ref','Filtered reference',550,330,'Co-propagating reference is derived from the same field.')
-],[e('object','focus'),e('focus','mask'),e('mask','camera','object field'),e('mask','ref','pinhole reference'),e('ref','camera','shared downstream path')],['Identify where the reference is generated from the measured field.','Compare common downstream disturbances with disturbances before the pinhole reference formation.'],'No pinhole diffraction or common-path phase reconstruction is computed; a single aperture ray model is insufficient.',ref('Smartt and Steel: theory and application of point-diffraction interferometers','https://doi.org/10.7567/JJAPS.14S1.351')),
-record('FIELD-03','Triangular Sagnac loop','A 50/50 splitter launches clockwise and counterclockwise beams around the same three-mirror loop before recombination.',[
- n('laser','633 nm input',90,190,'One coherent input.','cwlaser'),n('bs','Loop splitter',310,190,'Launches two counterpropagating copies.','bs'),n('m1','Upper loop mirror',530,90,'Shared loop segment.','mirror'),n('m2','Far loop mirror',770,190,'Closes the triangular area.','mirror'),n('m3','Lower loop mirror',530,290,'Both directions encounter this mirror.','mirror'),n('det','Loop output',90,330,'Recombined counterpropagating fields.','camera')
-],[e('laser','bs'),e('bs','m1','clockwise'),e('m1','m2'),e('m2','m3'),e('m3','bs'),e('bs','m3','counterclockwise'),e('m3','m2'),e('m2','m1'),e('m1','bs'),e('bs','det')],['Trace both directions around the same loop.','Distinguish reciprocal shared-path changes from nonreciprocal effects or rotation.'],'Loop area and rotation sensitivity are not computed; schematic arrows do not represent a gyro or phase-calibrated Sagnac interferometer.',ref('Migdall et al., NIST: fiber Sagnac experimental topology','https://physics.nist.gov/Divisions/Div844/publications/migdall/TomographyfiberentanglementOptExpress.pdf')),
-record('FIELD-04','Lateral shear collimation test','A weakly wedged plate produces two reflected copies of a 10 mm beam with a nominal 1 mm lateral shear, compared on an observation screen.',[
- n('beam','10 mm test beam',100,190,'Beam whose collimation is unknown.','cwlaser'),n('plate','Wedged shear plate',350,190,'Front and rear reflections overlap with lateral offset.','window'),n('copy1','First wavefront copy',580,90,'Front-surface reflection.'),n('copy2','1 mm shifted copy',580,290,'Rear-surface reflection.'),n('screen','Overlap screen',820,190,'Fringe direction changes with wavefront curvature.','camera')
-],[e('beam','plate'),e('plate','copy1'),e('plate','copy2'),e('copy1','screen'),e('copy2','screen')],['Compare the two overlapping copies with a separate external reference wave.','Keep overlap while adjusting a collimator; identify the shear direction before interpreting fringes.'],'The plate icon does not implement two-surface coherent shear; neither fringe angle nor wavefront gradient is calculated.',ref('Thorlabs: shearing interferometer catalogue and operation','https://www.thorlabs.com/images/Catalog/V21/V21_7_LightAnalysis.pdf')),
-record('FIELD-05','Differential balanced photodetection','Two complementary optical outputs with nominal 0.5 mW each enter matched 0.8 A/W photodiodes; a difference amplifier suppresses their common term.',[
- n('a','Optical port A',90,90,'Nominal 0.5 mW complementary port.'),n('b','Optical port B',90,290,'Nominal 0.5 mW complementary port.'),n('da','Photodiode A',350,90,'Chosen responsivity 0.8 A/W.','detector'),n('db','Photodiode B',350,290,'Match responsivity, gain and delay to A.','detector'),n('diff','Difference amplifier',620,190,'Subtract photocurrents: iA − iB.'),n('out','Differential output',850,190,'Equal nominal inputs give zero DC difference.')
-],[e('a','da'),e('b','db'),e('da','diff','iA','signal'),e('db','diff','−iB','signal'),e('diff','out','difference','signal')],['Calculate each nominal photocurrent as 0.4 mA.','Introduce a 1% responsivity mismatch and identify the residual common-mode term.'],'No amplifier bandwidth, common-mode rejection, shot noise or photocurrent subtraction is executed by the schematic.',coherent),
-record('FIELD-06','10 MHz heterodyne receiver','A 1550 nm signal and a local oscillator offset by 10 MHz mix at a 50/50 coupler; balanced electronics isolate a 10 MHz beat.',[
- n('sig','1550 nm signal',90,90,'Weak measured optical field.'),n('lo','10 MHz-offset LO',90,290,'Coherent local oscillator with chosen frequency offset.','cwlaser'),n('mix','50/50 optical mixer',350,190,'Match spatial mode and polarization.','bs'),n('a','Complementary port A',580,90,'One optical mixer output.','detector'),n('b','Complementary port B',580,290,'Opposite beat phase.','detector'),n('rf','10 MHz balanced beat',830,190,'Electrical subtraction recovers the beat amplitude and phase.')
-],[e('sig','mix'),e('lo','mix'),e('mix','a'),e('mix','b'),e('a','rf','photocurrent','signal'),e('b','rf','−photocurrent','signal')],['Follow the strong LO separately from the weak signal.','Compare zero-frequency homodyne reception with the selected 10 MHz heterodyne offset.'],'Frequency-offset beating and RF electronics are not represented by static rays; the two optical wavelengths are nominally indistinguishable on this scale.',coherent),
-record('FIELD-07','90° optical hybrid I/Q readout','A coherent hybrid combines a signal and LO with phases 0°, 90°, 180° and 270°; two balanced pairs measure I and Q.',[
- n('sig','Complex signal',90,90,'Unknown signal phase relative to LO.'),n('lo','Local oscillator',90,290,'Defines the quadrature reference.','cwlaser'),n('hybrid','90° optical hybrid',330,190,'Four phase-related output ports.'),n('ip','0° / 180° pair',560,90,'Complementary real-quadrature outputs.','detector'),n('qp','90° / 270° pair',560,290,'Complementary imaginary-quadrature outputs.','detector'),n('i','I difference',810,90,'Subtract 180° port from 0° port.'),n('q','Q difference',810,290,'Subtract 270° port from 90° port.')
-],[e('sig','hybrid'),e('lo','hybrid'),e('hybrid','ip'),e('hybrid','qp'),e('ip','i','balanced difference','signal'),e('qp','q','balanced difference','signal')],['Identify two detector pairs, representing four actual photodiodes.','Compare I/Q gain imbalance and quadrature phase error before inferring a complex field.'],'No 90° hybrid or complex-field reconstruction is computed; phase labels specify an ideal design that requires calibration.',coherent),
-record('FIELD-08','Spectral-domain OCT layer probe','A nominal 840 nm, 50 nm-bandwidth source feeds sample and reference arms; a spectrometer records their interferogram for depth reconstruction.',[
- n('source','840 nm / 50 nm source',90,190,'Broad bandwidth limits coherence length.'),n('split','Fiber coupler',290,190,'Splits into sample and reference arms.','bs'),n('sample','Layered specimen',490,90,'Reflections carry different optical path lengths.','sample'),n('reference','Reference mirror',490,290,'Adjust delay and match dispersion.','mirror'),n('spect','Interferogram spectrum',710,190,'Sample uniformly in wavenumber for reconstruction.','grating'),n('depth','Depth profile',880,190,'Fourier reconstruction needs refractive-index interpretation.')
-],[e('source','split'),e('split','sample'),e('split','reference'),e('sample','split','backscatter'),e('reference','split','reference return'),e('split','spect'),e('spect','depth','k-linearized transform','signal')],['Separate optical depth from physical layer thickness.','Compare bandwidth-limited axial resolution with spectrometer sampling limits and dispersion mismatch.'],'This schematic does not compute a broadband interferogram or OCT reconstruction; an 840/50 nm Gaussian spectrum gives only a nominal approximately 6.2 µm air axial-resolution estimate.',ref('Thorlabs: OCT tutorial','https://www.thorlabs.com/images/pdf/octmanualrev7.pdf')),
-record('FIELD-09','Two-aperture destructive nuller','Two equal-amplitude aperture feeds at 3.8 µm are combined with a π relative phase to reject an on-axis coherent source at the science port.',[
- n('a','Aperture A',90,90,'One collector of the on-axis source.'),n('b','Aperture B',90,290,'Second equal-amplitude collector.'),n('delay','Path equalizer',330,90,'Match optical path before phase bias.','delayline'),n('pi','π phase bias',330,290,'At 3.8 µm, π corresponds to 1.9 µm optical path.','phaseplate'),n('combine','Nulling combiner',580,190,'Matched amplitude, polarization and spatial modes.','bs'),n('dark','Dark science port',830,90,'On-axis coherent field is nominally suppressed.','detector'),n('bright','Bright monitor port',830,290,'Complementary port tracks total throughput.','detector')
-],[e('a','delay'),e('b','pi'),e('delay','combine'),e('pi','combine'),e('combine','dark'),e('combine','bright')],['Compare the π phase bias with equal optical path before the bias.','Introduce amplitude or phase imbalance conceptually and identify why the dark port leaks.'],'Null depth, bandwidth, angular transmission and stellar leakage are not calculated; nominal phase cancellation is not high-contrast instrument proof.',ref('Asgard/NOTT authors: nulling interferometer optical design','https://arxiv.org/abs/2402.09013')),
-record('FIELD-10','Two-telescope coherent aperture combination','Two separated telescope feeds are delay-matched and combined in K band; a fringe tracker controls delay while a science spectrometer records fringes.',[
- n('a','Telescope A',90,90,'First aperture on a chosen 50 m baseline.'),n('b','Telescope B',90,290,'Second aperture observes the same source.'),n('da','Feed A delay',330,90,'Compensates changing geometric path difference.','delayline'),n('db','Feed B relay',330,290,'Preserves the second aperture field.','lens'),n('comb','K-band combiner',580,190,'Chosen central wavelength 2.2 µm.','bs'),n('track','Fringe tracker',830,90,'Measures residual phase and commands delay correction.'),n('science','Science spectrometer',830,290,'Records spectrally dispersed coherent signal.','grating')
-],[e('a','da'),e('b','db'),e('da','comb'),e('db','comb'),e('comb','track'),e('comb','science'),e('track','da','delay feedback','signal',[[830,65],[330,65]])],['Follow the delay feedback separately from the science output.','Compare a single baseline fringe measurement with complete aperture-synthesis image recovery.'],'No atmosphere, fringe tracking or aperture-synthesis reconstruction is simulated; baseline and wavelength describe an illustrative two-feed design.',ref('ESO: GRAVITY instrument subsystems','https://www.eso.org/sci/facilities/paranal/instruments/gravity/inst.html')),
+  {
+    id: "IMG-01",
+    title: "Unit-magnification 4f relay",
+    summary: "Two 100 mm thin lenses relay an object plane to an inverted image over 400 mm; the shared focal plane remains accessible.",
+    steps: ["Open the live scene: the separately drawn ideal image of the 10 mm F is inverted at −1 magnification; the traced fan comes from the on-axis object anchor.","Move the camera 30 mm beyond its image conjugate: the narrow fan broadens and the camera no longer lies at the ideal image plane."],
+    limit: "The fan traces on-axis geometrical rays, while the F marker is a separate paraxial image construction that does not model downstream clipping. No target-image irradiance, diffraction-limited transfer function or real-lens aberration is computed.",
+    references: [{"label":"Nikon: conjugate planes in optical microscopy","url":"https://www.microscopyu.com/microscopy-basics/conjugate-planes-in-optical-microscopy"},{"label":"MIT: spatial filtering lecture","url":"https://ocw.mit.edu/courses/2-71-optics-spring-2009/resources/mit2_71s09_lec18/"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("object", "objarrow", 80, 200, {"height":10,"shape":"F","spread":8,"nrays":7,"wavelength":532}, 0, "object"),
+      element("first", "lens", 180, 200, {"dia":40}, 0, "first"),
+      element("second", "lens", 380, 200, {"dia":40}, 0, "second"),
+      element("image", "camera", 502, 200, {"ch":40}, 0, "image"),
+    ], beams: [] },
+  },
+  {
+    id: "IMG-02",
+    title: "Threefold Keplerian beam expander",
+    summary: "A 50 mm lens and a 150 mm lens, separated by 200 mm, expand a collimated 3 mm beam to approximately 9 mm.",
+    steps: ["Open the ray example and compare beam width before and after the telescope.","Move L2 away from the 200 mm lens separation to see residual convergence or divergence."],
+    limit: "This live example uses paraxial thin lenses; diffraction, real-lens aberrations and damage at the focus are absent.",
+    references: [{"label":"Edmund Optics: laser beam expanders","url":"https://www.edmundoptics.com/knowledge-center/application-notes/lasers/beam-expanders"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 80, 200, {}, 0, "input"),
+      element("first", "lens", 250, 200, {"f":50}, 0, "first"),
+      element("second", "lens", 450, 200, {"f":150}, 0, "second"),
+      element("output", "camera", 650, 200, {}, 0, "output"),
+    ], beams: [] },
+  },
+  {
+    id: "IMG-03",
+    title: "Twofold pupil relay",
+    summary: "A real galvo and 75/150 mm relay image its pivot onto a pupil-monitor camera. A 3 mm collimated beam expands to 6 mm in the relayed pupil.",
+    steps: ["Read the pupil camera width with the galvo at zero mechanical angle.","Change galvo angle slightly and compare pivot conjugation with changing the relay lens spacing."],
+    limit: "Native 2D geometrical rays are computed. Diffraction, target-image irradiance and real-lens aberrations are not calculated; ideal object-image markers are separate paraxial constructions. The objective pupil is represented by the receiving camera plane; this is the pupil-relay subsystem, not a full microscope.",
+    references: [{"label":"Nikon: conjugate planes in optical microscopy","url":"https://www.microscopyu.com/microscopy-basics/conjugate-planes-in-optical-microscopy"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 60, 80, {}, 0, "input"),
+      element("scanner", "galvo", 200, 80, {"length":30}, -45, "scanner"),
+      element("first", "lens", 200, 155, {"f":75,"dia":40}, 90, "first"),
+      element("second", "lens", 200, 380, {"f":150,"dia":40}, 90, "second"),
+      element("pupil", "camera", 200, 552, {"ch":60,"interference":false}, 90, "pupil"),
+    ], beams: [] },
+  },
+  {
+    id: "IMG-04",
+    title: "Infinity microscope with filter space",
+    summary: "A generic 10× infinity objective faces a 2 mm object at its working-distance focus. A 200 mm tube lens and 550 nm filter deliver the ray bundle to a real camera.",
+    steps: ["Follow the collimated region between objective and tube lens.","Change the tube lens focal length and move the camera to its new back-focal plane."],
+    limit: "Native 2D geometrical rays are computed. Diffraction, target-image irradiance and real-lens aberrations are not calculated; ideal object-image markers are separate paraxial constructions. Objective correction is a generic equivalent-lens model, not a manufacturer prescription.",
+    references: [{"label":"Nikon: conjugate planes in optical microscopy","url":"https://www.microscopyu.com/microscopy-basics/conjugate-planes-in-optical-microscopy"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("object", "objarrow", 80, 200, {"height":2,"spread":6,"nrays":7,"wavelength":550}, 0, "object"),
+      element("objective", "objective", 116, 200, {"efl":20,"workingDistance":20,"na":0.25}, 180, "objective"),
+      element("filter", "filter", 210, 200, {"center":550}, 0, "filter"),
+      element("tube", "lens", 320, 200, {"f":200,"dia":60}, 0, "tube"),
+      element("image", "camera", 542, 200, {"ch":60,"interference":false}, 0, "image"),
+    ], beams: [] },
+  },
+  {
+    id: "IMG-05",
+    title: "Object-space telecentric inspection",
+    summary: "A 100 mm lens and a 2 mm stop at its rear focal plane form an object-space telecentric meridional relay. The off-axis emitting point is 200 mm before the lens.",
+    steps: ["Inspect which object rays pass the rear-focal stop.","Move the stop away from x = 300 mm and compare the admitted chief-ray directions."],
+    limit: "Native 2D geometrical rays are computed. Diffraction, target-image irradiance and real-lens aberrations are not calculated; ideal object-image markers are separate paraxial constructions. A 1D slit is the meridional aperture section; no circular-pupil or unlimited-depth sharpness claim is made.",
+    references: [{"label":"Edmund Optics: distortion and telecentricity","url":"https://www.edmundoptics.com/knowledge-center/application-notes/imaging/distortion-and-the-telecentricity-specification/"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("object", "objarrow", 0, 190, {"height":4,"spread":12,"nrays":9,"showImage":false,"wavelength":532}, 0, "object"),
+      element("imaging", "lens", 200, 200, {"dia":60}, 0, "imaging"),
+      element("rear-focal-stop", "slit", 300, 200, {"gap":2,"length":60}, 0, "rear-focal-stop"),
+      element("image", "camera", 422, 200, {"ch":60,"interference":false}, 0, "image"),
+    ], beams: [] },
+  },
+  {
+    id: "IMG-06",
+    title: "Folded two-mirror image relay",
+    summary: "An actual two-conic Gregorian reflective relay carries a collimated 266 nm input through two reflections to a camera behind the perforated primary. Adapted from the native Gregorian example.",
+    steps: ["Follow the first focus and returning secondary reflection.","Change the secondary radius or position and inspect focus broadening at the camera."],
+    limit: "Exact conic intersections and reflected 2D rays are computed. No UV coating spectrum, diffraction or calibrated ultraviolet throughput is calculated.",
+    references: [{"label":"NASA: reflective optics for ultraviolet imaging","url":"https://science.nasa.gov/mission/hubble/observatory/design/optics/"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("uv-input", "cwlaser", 150, 190, {"wavelength":266,"beamWidth":54}, 0, "uv-input"),
+      element("primary", "conicmirror", 500, 190, {"dia":55,"hole":15,"radius":-80,"conic":-1,"refl":96}, 0, "primary"),
+      element("secondary", "conicmirror", 440, 190, {"dia":30,"radius":31.351351,"conic":-0.322133,"facing":"right","refl":96}, 0, "secondary"),
+      element("uv-image", "camera", 534.5, 190, {"ch":20,"interference":false}, 0, "uv-image"),
+    ], beams: [] },
+  },
+  {
+    id: "IMG-07",
+    title: "Tilted-plane inspection camera",
+    summary: "Three emitting points lie on a plane tilted 26.565° in the meridional section. A 100 mm lens images them onto a camera plane tilted by the opposite geometric slope.",
+    steps: ["Follow the three narrow ray bundles to distinct positions on the tilted sensor.","Set the camera rotation to zero and compare the off-axis bundle widths at the now incorrect plane."],
+    limit: "Native 2D geometrical rays are computed. Diffraction, target-image irradiance and real-lens aberrations are not calculated; ideal object-image markers are separate paraxial constructions. This is a three-point plane-conjugacy example; it does not render a continuous tilted target or predict depth of field.",
+    references: [{"label":"Edmund Optics: distortion and telecentricity","url":"https://www.edmundoptics.com/knowledge-center/application-notes/imaging/distortion-and-the-telecentricity-specification/"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("upper-point", "objarrow", -10, 180, {"height":2,"spread":8,"nrays":7,"showImage":false}, 0, "upper-point"),
+      element("center-point", "objarrow", 0, 200, {"height":2,"spread":8,"nrays":7,"showImage":false}, 0, "center-point"),
+      element("lower-point", "objarrow", 10, 220, {"height":2,"spread":8,"nrays":7,"showImage":false}, 0, "lower-point"),
+      element("imaging", "lens", 200, 200, {"dia":80}, 0, "imaging"),
+      element("tilted-sensor", "camera", 419.67739820199813, 209.83869910099907, {"ch":80,"interference":false}, 26.56505117707799, "tilted-sensor"),
+    ], beams: [] },
+  },
+  {
+    id: "IMG-08",
+    title: "K-mirror field derotator",
+    summary: "Three plane mirrors on one rotating mount derotate an astronomical field; a 15° mechanical rotation corresponds to a nominal 30° image rotation.",
+    steps: ["Follow the three reflections rather than interpreting the folded path as an image rotation simulation.","Compare the nominal twice-angle image rotation with the mount angle."],
+    limit: "Image parity and 3D field rotation require a coordinate convention; the 2D diagram cannot calculate a derotated image.",
+    references: [{"label":"ESO: SPHERE instrument description and derotator","url":"https://www.eso.org/sci/facilities/paranal/instruments/sphere/inst.html"}],
+    mode: "unavailable",
+    unavailableReason: "The registry has no 3D K-mirror image rotator or transverse image-field rotation. Three coplanar mirrors can fold a ray but cannot demonstrate this indispensable out-of-plane image rotation in a 2D scene.",
+  },
+  {
+    id: "IMG-09",
+    title: "Two-group compensated zoom",
+    summary: "Two native lens-group endpoints share a fixed 400 mm object-to-image distance: 1× with lens positions 100/300 mm, and 2× with positions 29.289/158.579 mm relative to the object.",
+    steps: ["Compare the two camera faces, both 400 mm from their object plane.","Inspect the separate lens translations needed for the 2× endpoint; moving only one group loses the shared image plane."],
+    limit: "Native 2D geometrical rays are computed. Diffraction, target-image irradiance and real-lens aberrations are not calculated; ideal object-image markers are separate paraxial constructions. Only two solved endpoints are supplied; continuous motion control, aberration correction and a production zoom prescription are not supplied.",
+    references: [{"label":"Canon: zoom variator and compensator white paper","url":"https://downloads.canon.com/bctv/4K_Box_Lenses_White_Paper.pdf"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("object-1x", "objarrow", 80, 120, {"height":4,"shape":"F","spread":8,"nrays":7,"wavelength":532}, 0, "object · 1×"),
+      element("first-1x", "lens", 180, 120, {"dia":50}, 0, "first · 1×"),
+      element("second-1x", "lens", 380, 120, {"dia":50}, 0, "second · 1×"),
+      element("image-1x", "camera", 502, 120, {"ch":60,"interference":false}, 0, "image · 1×"),
+      element("object-2x", "objarrow", 80, 350, {"height":4,"shape":"F","spread":4,"nrays":7,"wavelength":532}, 0, "object-2x"),
+      element("variator-2x", "lens", 109.28932188134524, 350, {"dia":50}, 0, "variator-2x"),
+      element("compensator-2x", "lens", 238.5786437626905, 350, {"dia":50}, 0, "compensator-2x"),
+      element("image-2x", "camera", 502, 350, {"ch":60,"interference":false}, 0, "image-2x"),
+    ], beams: [] },
+  },
+  {
+    id: "BEAM-01",
+    title: "Pinhole spatial filter",
+    summary: "A native 20 mm focusing lens, 0.5 mm meridional focal aperture and 100 mm recollimator form a physical spatial-filter bench at 532 nm.",
+    steps: ["Inspect the tight geometric focus through the slit aperture.","Shift the aperture away from the axis and compare transmitted power."],
+    limit: "The slit represents a pinhole cross-section in 2D. Geometric clipping and recollimation are traced; Airy diffraction, coherent spatial-frequency cleaning and damage are not predicted.",
+    references: [{"label":"Newport: spatial filters","url":"https://www.newport.com/n/spatial-filters"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 80, 200, {"beamWidth":2}, 0, "input"),
+      element("focus", "lens", 200, 200, {"f":20,"dia":20}, 0, "focus"),
+      element("focal-aperture", "slit", 220, 200, {"gap":0.5,"length":30}, 0, "slit"),
+      element("recollimator", "lens", 320, 200, {"dia":30}, 0, "recollimator"),
+      element("output", "camera", 500, 200, {"ch":60,"interference":false}, 0, "output"),
+    ], beams: [] },
+  },
+  {
+    id: "BEAM-02",
+    title: "Fiber spatial-mode filter",
+    summary: "A 780 nm input is focused into a propagating native fiber link and recollimated at its output. The fiber follows an actual routed path with NA acceptance and attenuation.",
+    steps: ["Follow coupling into the fiber at x = 180 mm and the emitted output at x = 420 mm.","Tilt the entry segment outside the acceptance cone and compare output collection."],
+    limit: "The native fiber computes geometrical acceptance, transport and specified output NA. It does not compute a Gaussian mode-overlap integral, cutoff wavelength or single-mode purity; single-mode filtering is the physical design intent.",
+    references: [{"label":"Thorlabs: single-mode fiber coupling","url":"https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=1421"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 40, 190, {"wavelength":780,"beamWidth":6}, 0, "input"),
+      element("coupler", "lens", 150, 190, {"f":30,"dia":20}, 0, "coupler"),
+      element("output-collimator", "lens", 440, 260, {"f":20,"dia":30}, 0, "collimator"),
+      element("output", "camera", 570, 260, {"ch":60,"interference":false}, 0, "output"),
+    ], beams: [{"id":"mode-filter-fiber","kind":"fiber","bare":false,"propagate":true,"color":"#e8a800","width":4,"pts":[{"x":180,"y":190},{"x":250,"y":190},{"x":350,"y":260},{"x":420,"y":260}],"inputNA":0.22,"groupIndex":1.468,"lossDbPerM":0.2,"out0":{"mode":"diverge","na":0.12,"focal":20,"dia":6},"out1":{"mode":"diverge","na":0.12,"focal":20,"dia":6}}] },
+  },
+  {
+    id: "BEAM-03",
+    title: "Two-lens cavity mode matching",
+    summary: "A real two-lens 1064 nm injection train changes a collimated 6 mm beam into a converging bundle. The receiving camera inspects the chosen waist plane before a prospective cavity input.",
+    steps: ["Read the profile near the receiving waist plane.","Translate the second lens and compare both waist position and size at the fixed camera."],
+    limit: "Native 2D geometrical rays are computed. Diffraction, target-image irradiance and real-lens aberrations are not calculated; ideal object-image markers are separate paraxial constructions. This is the adjustable injection-optics subsystem; no cavity eigenmode or Gaussian overlap efficiency is inferred from a ray waist.",
+    references: [{"label":"Newport: cavity mode matching appendix","url":"https://www.newport.com/medias/sys_master/images/images/h73/he8/8797035429918/9091-User-Manual-RevD.pdf"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 40, 200, {"wavelength":1064,"beamWidth":6}, 0, "input"),
+      element("waist-control", "lens", 180, 200, {"dia":40}, 0, "L1"),
+      element("injection", "lens", 250, 200, {"f":50,"dia":30}, 0, "L2"),
+      element("waist-plane", "camera", 290.75, 200, {"ch":60,"interference":false}, 0, "waist"),
+    ], beams: [] },
+  },
+  {
+    id: "BEAM-04",
+    title: "Cylindrical 4× anamorphic expander",
+    summary: "The powered meridian of a 25/100 mm cylindrical telescope is represented by native ideal lenses separated by 125 mm. Rays expand from 2 to 8 mm along the modeled axis.",
+    steps: ["Compare input and output width in the powered meridional section.","Change lens separation to see residual convergence; the orthogonal unpowered axis is outside this 2D scene."],
+    limit: "The native ideal lenses represent the powered cross-section of cylindrical optics. The unpowered transverse axis, astigmatism and a complete 2D beam cross-section are not simulated.",
+    references: [{"label":"Edmund Optics: laser beam expanders","url":"https://www.edmundoptics.com/knowledge-center/application-notes/lasers/beam-expanders"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 80, 200, {"beamWidth":2}, 0, "input"),
+      element("powered-meridian-C1", "lens", 220, 200, {"f":25,"dia":30}, 0, "powered-meridian-C1"),
+      element("powered-meridian-C2", "lens", 345, 200, {"dia":40}, 0, "powered-meridian-C2"),
+      element("expanded-meridian", "camera", 520, 200, {"ch":60,"interference":false}, 0, "expanded-meridian"),
+    ], beams: [] },
+  },
+  {
+    id: "BEAM-05",
+    title: "Gaussian-to-top-hat refractive mapper",
+    summary: "Two aspheric surfaces redistribute a nominal 3 mm radius Gaussian input into a 4 mm radius flat-top output without deliberately clipping the center.",
+    steps: ["Compare redistribution with lossy aperture truncation.","Change the assumed input radius and identify why a fixed remapper will no longer produce its design profile."],
+    limit: "Generic asphere icons do not supply a solved remapping prescription; no top-hat irradiance is simulated.",
+    references: [{"label":"Newport: refractive beam shaping","url":"https://www.newport.com/medias/sys_master/images/images/h0f/hab/8797246685214/Refractive-Beam-Shaper-Application-Note.pdf"}],
+    mode: "unavailable",
+    unavailableReason: "The source lacks a spatial Gaussian irradiance distribution and the registry has no solved two-surface Gaussian-to-top-hat energy-remapping prescription. Ordinary lenses or unsolved aspheres cannot demonstrate the required irradiance mapping.",
+  },
+  {
+    id: "BEAM-06",
+    title: "Fly-eye homogenizer",
+    summary: "Two real three-lens arrays form three meridional beamlet channels, followed by a 100 mm field lens. The camera receives their overlapping geometrical contributions.",
+    steps: ["Follow each lenslet channel through both arrays and the field lens.","Move one second-array lenslet transversely and inspect loss of common overlap."],
+    limit: "The arrays are actual separate native lenses in one meridional section. Beamlet paths and overlap are computed; coherent speckle, 2D fly-eye uniformity and microlens diffraction are not.",
+    references: [{"label":"Edmund Optics: microlens arrays","url":"https://www.edmundoptics.com/f/microlens-arrays/13812/"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 80, 200, {"beamWidth":30}, 0, "input"),
+      element("array-A-1", "lens", 200, 190, {"f":50,"dia":10}, 0, "array-A-1"),
+      element("array-A-2", "lens", 200, 200, {"f":50,"dia":10}, 0, "array-A-2"),
+      element("array-A-3", "lens", 200, 210, {"f":50,"dia":10}, 0, "array-A-3"),
+      element("array-B-1", "lens", 250, 190, {"f":50,"dia":10}, 0, "array-B-1"),
+      element("array-B-2", "lens", 250, 200, {"f":50,"dia":10}, 0, "array-B-2"),
+      element("array-B-3", "lens", 250, 210, {"f":50,"dia":10}, 0, "array-B-3"),
+      element("field-lens", "lens", 350, 200, {"dia":80}, 0, "field-lens"),
+      element("overlap-field", "camera", 472, 200, {"ch":100,"interference":false}, 0, "overlap-field"),
+    ], beams: [] },
+  },
+  {
+    id: "BEAM-07",
+    title: "4f low-pass spatial filter",
+    summary: "A real 100/100 mm 4f relay exposes its common focal plane at x = 280 mm. A native 8 mm slit at that plane selects angular content before the image camera.",
+    steps: ["Locate the aperture at the shared focal plane, separate from the object and camera planes.","Reduce slit gap and compare transmitted ray angles and camera power."],
+    limit: "Native 2D geometrical rays are computed. Diffraction, target-image irradiance and real-lens aberrations are not calculated; ideal object-image markers are separate paraxial constructions. The optical layout is real; the tracer does not Fourier-transform a target image or calculate low-pass image contrast.",
+    references: [{"label":"MIT: spatial filtering lecture","url":"https://ocw.mit.edu/courses/2-71-optics-spring-2009/resources/mit2_71s09_lec18/"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("object", "objarrow", 80, 200, {"height":4,"shape":"F","spread":8,"nrays":7,"wavelength":532}, 0, "object"),
+      element("first", "lens", 180, 200, {"dia":50}, 0, "first"),
+      element("second", "lens", 380, 200, {"dia":50}, 0, "second"),
+      element("image", "camera", 502, 200, {"ch":60,"interference":false}, 0, "image"),
+      element("fourier-stop", "slit", 280, 200, {"length":60}, 0, "fourier-stop"),
+    ], beams: [] },
+  },
+  {
+    id: "BEAM-08",
+    title: "SLM hologram with order selection",
+    summary: "A native transmissive SLM with a programmed two-lenslet layer directs a 24 mm beam into two geometrical focal spots 80 mm downstream.",
+    steps: ["Inspect the two focal channels and their camera profile.","Change the lens-array layer to three lenslets or adjust focal length; the traced paths update directly."],
+    limit: "Native SLM phase-gradient functions steer and focus rays. The scene does not synthesize a phase hologram, compute coherent order efficiency or validate equal spot irradiance.",
+    references: [{"label":"Hamamatsu: wavefront modulation research","url":"https://www.hamamatsu.com/us/en/our-company/business-domain/central-research-laboratory/optical-information-processing-and-measurement/wave.html"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 80, 200, {"beamWidth":24}, 0, "input"),
+      element("programmable-SLM", "slm", 250, 200, {"transmissive":true,"length":24,"layers":[{"type":"lensarray","n":2,"f":80}]}, 0, "SLM"),
+      element("target", "camera", 343, 200, {"ch":40,"interference":false}, 0, "target"),
+    ], beams: [] },
+  },
+  {
+    id: "ILL-01",
+    title: "Köhler transmitted-light microscope",
+    summary: "Three native point emitters sample an extended lamp. A 25.455 mm collector conjugates the lamp to the condenser front focal plane; the field stop is conjugate to the specimen camera.",
+    steps: ["Compare the field stop at x = 140 mm with the angular aperture at x = 190 mm.","Change either stop gap independently and inspect the admitted ray bundles."],
+    limit: "Native 2D geometrical rays are computed. Diffraction, target-image irradiance and real-lens aberrations are not calculated; ideal object-image markers are separate paraxial constructions. The three-point lamp is a discrete extended-source sample, not a uniform illumination calculation.",
+    references: [{"label":"Nikon: conjugate planes in optical microscopy","url":"https://www.microscopyu.com/microscopy-basics/conjugate-planes-in-optical-microscopy"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("filament-1", "pointsource", 80, 197, {"wavelength":550,"spread":16,"nrays":7}, 0, "filament-1"),
+      element("filament-2", "pointsource", 80, 200, {"wavelength":550,"spread":16,"nrays":7}, 0, "filament-2"),
+      element("filament-3", "pointsource", 80, 203, {"wavelength":550,"spread":16,"nrays":7}, 0, "filament-3"),
+      element("collector", "lens", 120, 200, {"f":25.454545454545453,"dia":40}, 0, "collector"),
+      element("field-stop", "slit", 140, 200, {"gap":20,"length":60}, 0, "field-stop"),
+      element("aperture-stop", "slit", 190, 200, {"gap":6,"length":60}, 0, "aperture-stop"),
+      element("condenser", "lens", 240, 200, {"f":50,"dia":40}, 0, "condenser"),
+      element("specimen-plane", "camera", 362, 200, {"ch":60,"interference":false}, 0, "specimen-plane"),
+    ], beams: [] },
+  },
+  {
+    id: "ILL-02",
+    title: "Critical LED illumination",
+    summary: "Three lamp points are directly imaged at unit magnification by a 20 mm condenser onto a specimen-plane camera 40 mm behind it.",
+    steps: ["Inspect the three distinct lamp-point images.","Compare moving the lamp with moving the camera away from the 2f conjugate."],
+    limit: "Native 2D geometrical rays are computed. Diffraction, target-image irradiance and real-lens aberrations are not calculated; ideal object-image markers are separate paraxial constructions. Lamp structure is sampled by three emitters; surface irradiance and uniformity are not calibrated.",
+    references: [{"label":"Nikon: critical illumination","url":"https://www.microscopyu.com/glossary/critical-illumination"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("filament-1", "pointsource", 80, 197, {"wavelength":550,"spread":16,"nrays":7}, 0, "filament-1"),
+      element("filament-2", "pointsource", 80, 200, {"wavelength":550,"spread":16,"nrays":7}, 0, "filament-2"),
+      element("filament-3", "pointsource", 80, 203, {"wavelength":550,"spread":16,"nrays":7}, 0, "filament-3"),
+      element("critical-condenser", "lens", 120, 200, {"f":20,"dia":40}, 0, "critical-condenser"),
+      element("source-image", "camera", 182, 200, {"ch":60,"interference":false}, 0, "source-image"),
+    ], beams: [] },
+  },
+  {
+    id: "ILL-03",
+    title: "488 nm epi-fluorescence microscope",
+    summary: "A native 488 nm excitation beam reflects downward through a shared objective. A fluorescent sample generates 520 nm return light that passes the dichroic and emission filter into the camera.",
+    steps: ["Identify the wavelengths before and after the specimen.","Change the emission filter center to reject the fluorescent return."],
+    limit: "The sample emits qualitative isotropic fluorescence. Objective acceptance and spectral routing are traced; fluorescence microscopy resolution, collection calibration and quantum yield are not predicted.",
+    references: [{"label":"Nikon: fluorescence filter combinations","url":"https://www.microscopyu.com/techniques/fluorescence/fluorescence-filter-combinations"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("excitation", "cwlaser", 80, 100, {"wavelength":488,"beamWidth":2}, 0, "excitation"),
+      element("dichroic", "dichroic", 300, 100, {"cutoff":500,"length":40}, -45, "dichroic"),
+      element("objective", "objective", 300, 220, {"efl":20,"workingDistance":20,"na":0.25}, 90, "objective"),
+      element("specimen", "sample", 300, 256, {"specimenType":"linear","channels":[{"kind":"fluor","wl":520,"eff":0.5,"fluorophore":"custom","band":10}],"transmitExc":false}, 0, "specimen"),
+      element("emission-filter", "filter", 300, 30, {"center":520}, 90, "emission-filter"),
+      element("emission-camera", "camera", 300, -60, {"ch":60,"interference":false}, -90, "emission-camera"),
+    ], beams: [] },
+  },
+  {
+    id: "ILL-04",
+    title: "Annular pupil illumination",
+    summary: "Real opaque masks admit the two meridional sections of an annular pupil, between 9 and 12 mm from the axis. A condenser brings the oblique ray bundles to the specimen camera.",
+    steps: ["Follow the blocked central beam and the two surviving pupil bands.","Increase the central obscuration and compare transmitted power."],
+    limit: "This is an actual 2D cross-section of annular illumination. A complete azimuthal cone, scattering contrast and dark-field specimen response require 3D scattering and are not calculated.",
+    references: [{"label":"Nikon: conjugate planes in optical microscopy","url":"https://www.microscopyu.com/microscopy-basics/conjugate-planes-in-optical-microscopy"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 80, 200, {"beamWidth":30}, 0, "input"),
+      element("central-obscuration", "beamdump", 200, 200, {"aperture":18}, 0, "central-obscuration"),
+      element("upper-mask", "beamdump", 200, 173, {"aperture":26}, 0, "upper-mask"),
+      element("lower-mask", "beamdump", 200, 227, {"aperture":26}, 0, "lower-mask"),
+      element("condenser", "lens", 250, 200, {"dia":60}, 0, "condenser"),
+      element("specimen-plane", "camera", 372, 200, {"ch":60,"interference":false}, 0, "specimen-plane"),
+    ], beams: [] },
+  },
+  {
+    id: "ILL-05",
+    title: "Three-phase stripe projection",
+    summary: "A real binary DMD selects a 10 mm pitch ON pattern and directs it downward through a 75 mm projection lens. The tilted receiving camera follows the tilted modulator-plane conjugacy.",
+    steps: ["Inspect the surviving ON pattern and absorbed OFF regions.","Translate the DMD by one third pitch along its active surface to compare the next phase position; keep the camera conjugate aligned."],
+    limit: "Native binary micromirror routing and geometric projection are traced. No sinusoidal fringe synthesis, three-frame phase reconstruction, diffraction orders or structured-illumination resolution gain is calculated.",
+    references: [{"label":"Gustafsson: structured illumination beyond the classical resolution limit","url":"https://doi.org/10.1046/j.1365-2818.2000.00710.x"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("pattern-illumination", "cwlaser", 60, 207.54803511150882, {"beamWidth":40}, 0, "pattern-illumination"),
+      element("binary-DMD", "dmd", 300, 200, {"length":80,"pitch":10}, -57, "binary-DMD"),
+      element("projection-lens", "lens", 295.09824868486476, 357.54803511150885, {"f":75,"dia":80}, 90, "projection-lens"),
+      element("tilted-pattern-camera", "camera", 307.08030745519534, 525.9987876063082, {"ch":100,"interference":false}, 57, "tilted-pattern-camera"),
+    ], beams: [] },
+  },
+  {
+    id: "ILL-06",
+    title: "Orthogonal light-sheet microscope",
+    summary: "A real focusing meridian illuminates a fluorescent sample from the side while an orthogonal objective and tube lens collect its emitted signal above. The illumination lens represents a cylindrical powered section.",
+    steps: ["Follow the independent illumination and collection axes.","Move the fluorescence sample away from the illumination focus and inspect geometric overlap."],
+    limit: "Native rays demonstrate an orthogonal illumination/detection section. The second transverse axis, actual sheet extent and thickness, diffraction-limited sectioning and volumetric reconstruction are not available in this 2D scene.",
+    references: [{"label":"Huisken et al.: selective plane illumination microscopy","url":"https://doi.org/10.1126/science.1100035"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("sheet-meridian", "cwlaser", 60, 200, {"beamWidth":10}, 0, "sheet-meridian"),
+      element("cylindrical-powered-meridian", "lens", 200, 200, {"dia":30}, 0, "cylindrical-powered-meridian"),
+      element("illuminated-section", "sample", 300, 200, {"specimenType":"linear","channels":[{"kind":"fluor","wl":520,"eff":0.5,"fluorophore":"custom","band":10}],"transmitExc":false}, 90, "illuminated-section"),
+      element("detection-objective", "objective", 300, 164, {"efl":20,"workingDistance":20,"na":0.6,"frontAperture":30}, 90, "detection-objective"),
+      element("detection-tube", "lens", 300, 60, {"dia":50}, 90, "detection-tube"),
+      element("orthogonal-detector", "camera", 300, -62, {"ch":60,"interference":false}, -90, "orthogonal-detector"),
+    ], beams: [] },
+  },
+  {
+    id: "ILL-07",
+    title: "Fourfold reduction exposure",
+    summary: "A real 200/50 mm relay projects a native object with quarter-scale ideal magnification onto the camera. The long first focal length and shorter second focal length create the reduction.",
+    steps: ["Compare the paraxial object marker size with the original 10 mm object.","Change the camera position and inspect the loss of conjugacy."],
+    limit: "Native 2D geometrical rays are computed. Diffraction, target-image irradiance and real-lens aberrations are not calculated; ideal object-image markers are separate paraxial constructions. This is the projection subsystem; no digital spatial modulator or calibrated image brightness is simulated.",
+    references: [{"label":"ASML: TWINSCAN NXT:1965Ci reduction projection system","url":"https://www.asml.com/en/products/duv-lithography-systems/twinscan-nxt-1965ci"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("object", "objarrow", 80, 200, {"height":10,"shape":"F","spread":8,"nrays":7,"wavelength":532}, 0, "object"),
+      element("first", "lens", 280, 200, {"f":200,"dia":50}, 0, "first"),
+      element("second", "lens", 530, 200, {"f":50,"dia":50}, 0, "second"),
+      element("image", "camera", 602, 200, {"ch":60,"interference":false}, 0, "image"),
+    ], beams: [] },
+  },
+  {
+    id: "ILL-08",
+    title: "Four-spot microlens illuminator",
+    summary: "Four actual 50 mm lenslets form four focal spots in a line on a camera. This is a meridional four-spot illuminator rather than a simulated second transverse row.",
+    steps: ["Count the four lenslets and follow each independent focus.","Change one focal length to move that channel away from the shared focal plane."],
+    limit: "Four geometric channels and focal positions are traced. A 2×2 spot grid, microlens diffraction and equal-irradiance calibration require a second transverse axis and wave modeling.",
+    references: [{"label":"Edmund Optics: microlens arrays","url":"https://www.edmundoptics.com/f/microlens-arrays/13812/"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 80, 200, {"beamWidth":40}, 0, "input"),
+      element("lenslet-1", "lens", 200, 185, {"f":50,"dia":10}, 0, "lenslet-1"),
+      element("lenslet-2", "lens", 200, 195, {"f":50,"dia":10}, 0, "lenslet-2"),
+      element("lenslet-3", "lens", 200, 205, {"f":50,"dia":10}, 0, "lenslet-3"),
+      element("lenslet-4", "lens", 200, 215, {"f":50,"dia":10}, 0, "lenslet-4"),
+      element("four-spot-plane", "camera", 272, 200, {"ch":60,"interference":false}, 0, "four-spot-plane"),
+    ], beams: [] },
+  },
+  {
+    id: "SCAN-01",
+    title: "Single-axis pupil-conjugate scanner",
+    summary: "A real galvo feeds a 75/75 mm pupil relay and a fixed generic objective. The camera monitors the focused meridional scan.",
+    steps: ["Change the galvo command by a small mechanical angle and inspect focal displacement.","Move a relay lens and compare the pupil walk and collection."],
+    limit: "Native 2D geometrical rays are computed. Diffraction, target-image irradiance and real-lens aberrations are not calculated; ideal object-image markers are separate paraxial constructions. Objective pupils and high-NA field distortion are generic; the setup does not calibrate a commercial scanner.",
+    references: [{"label":"Nikon: conjugate planes in optical microscopy","url":"https://www.microscopyu.com/microscopy-basics/conjugate-planes-in-optical-microscopy"},{"label":"Thorlabs: scanning lenses","url":"https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=2910"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 60, 80, {}, 0, "input"),
+      element("scanner", "galvo", 200, 80, {"length":30}, -45, "scanner"),
+      element("relay-first", "lens", 200, 155, {"f":75,"dia":40}, 90, "relay-first"),
+      element("relay-second", "lens", 200, 305, {"f":75,"dia":40}, 90, "relay-second"),
+      element("scan-objective", "objective", 200, 380, {"efl":20,"workingDistance":20,"na":0.25}, 90, "scan-objective"),
+      element("scan-plane", "camera", 200, 438, {"ch":40,"interference":false}, 90, "scan-plane"),
+    ], beams: [] },
+  },
+  {
+    id: "SCAN-02",
+    title: "Relayed X and Y galvos",
+    summary: "A 75/75 mm 4f relay images the X-galvo pivot onto the Y-galvo pivot before a second relay to the objective pupil.",
+    steps: ["Compare relayed galvos with two nearby but nonconjugate mirrors.","Check that both pivots map to the objective pupil before discussing a 2D raster."],
+    limit: "Orthogonal scan axes are shown topologically; the 2D ray editor cannot represent the full two-axis raster simultaneously.",
+    references: [{"label":"Nikon: conjugate planes in optical microscopy","url":"https://www.microscopyu.com/microscopy-basics/conjugate-planes-in-optical-microscopy"}],
+    mode: "unavailable",
+    unavailableReason: "Independent orthogonal galvo axes and their conjugate pupil mapping require a second transverse coordinate and out-of-plane mirror orientation. Two native coplanar galvos cannot demonstrate a true X/Y raster.",
+  },
+  {
+    id: "SCAN-03",
+    title: "Confocal scan and descan return",
+    summary: "Native excitation and fluorescent return use the same galvo and objective. The dichroic separates emitted light toward a stationary 0.5 mm slit and detector.",
+    steps: ["Follow the wavelength-changing return through the same scanner.","Move the detection slit laterally and compare accepted fluorescence."],
+    limit: "A physical shared-path scan/descan bench is traced with qualitative fluorescence. A 1D slit is the pinhole section; confocal PSF, continuous specimen scanning and calibrated optical sectioning are not computed.",
+    references: [{"label":"Nikon: confocal scanning optical systems","url":"https://www.microscopyu.com/techniques/confocal/confocal-microscope-scanning-systems"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("excitation", "cwlaser", 80, 100, {"wavelength":488,"beamWidth":2}, 0, "excitation"),
+      element("dichroic", "dichroic", 300, 100, {"cutoff":500,"length":40}, -45, "dichroic"),
+      element("shared-scanner", "galvo", 300, 200, {"length":40}, 45, "shared-scanner"),
+      element("objective", "objective", 180, 200, {"efl":20,"workingDistance":20,"na":0.25}, 180, "objective"),
+      element("specimen", "sample", 144, 200, {"specimenType":"linear","channels":[{"kind":"fluor","wl":520,"eff":0.5,"fluorophore":"custom","band":10}],"transmitExc":false}, 90, "specimen"),
+      element("emission-filter", "filter", 300, 60, {"center":520}, 90, "emission-filter"),
+      element("return-focus", "lens", 300, 30, {"f":50,"dia":50}, 90, "return-focus"),
+      element("detection-pinhole", "slit", 300, -20, {"gap":0.5,"length":50}, 90, "detection-pinhole"),
+      element("return-detector", "detector", 300, -100, {}, -90, "return-detector"),
+    ], beams: [] },
+  },
+  {
+    id: "SCAN-04",
+    title: "100 mm f-theta processing head",
+    summary: "A nominal 100 mm f-theta lens maps ±5° optical scan angles to approximately ±8.73 mm of target displacement.",
+    steps: ["Calculate 100 × 5π/180 mm and distinguish optical angle from mechanical galvo angle.","Compare ideal fθ placement with measured field distortion and focus variation."],
+    limit: "The thin-lens icon is not an f-theta prescription; no flat-field correction, process dose or calibrated scan is simulated.",
+    references: [{"label":"Thorlabs: scanning lenses","url":"https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=2910"}],
+    mode: "unavailable",
+    unavailableReason: "The registry has no f-theta scan-lens prescription or distortion law x = fθ. Its native ideal thin lens instead maps the meridional angle approximately as f tanθ and cannot demonstrate the specified flat-field f-theta correction.",
+  },
+  {
+    id: "SCAN-05",
+    title: "Remote mirror focus translation",
+    summary: "A real objective focuses onto a remote end mirror; its return is split downward into a stationary second objective and camera. The end mirror can be translated independently.",
+    steps: ["Trace both passes through the remote objective.","Translate the remote mirror and inspect the changed return focus at the fixed camera."],
+    limit: "The native generic objectives demonstrate geometric remote focus. Refractive-index pupil matching, high-NA aberration cancellation and calibrated axial magnification are not modeled.",
+    references: [{"label":"Botcherby et al.: aberration-free optical refocusing","url":"https://doi.org/10.1016/j.optcom.2007.10.007"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 80, 200, {}, 0, "input"),
+      element("return-separator", "bs", 300, 200, {}, 0, "return-separator"),
+      element("remote-objective", "objective", 450, 200, {"efl":20,"workingDistance":20,"na":0.25}, 0, "remote-objective"),
+      element("remote-mirror", "mirror", 486, 200, {"length":30}, 0, "remote-mirror"),
+      element("specimen-objective", "objective", 300, 350, {"efl":20,"workingDistance":20,"na":0.25}, 90, "specimen-objective"),
+      element("specimen-plane", "camera", 300, 408, {"ch":40,"interference":false}, 90, "specimen-plane"),
+    ], beams: [] },
+  },
+  {
+    id: "SCAN-06",
+    title: "Moving-retroreflector delay stage",
+    summary: "A native pulsed beam enters a real retroreflector 20 mm above its center and returns on a separate fixed axis 20 mm below. Translating the retroreflector changes the round-trip length.",
+    steps: ["Inspect the distinct input and return axes.","Translate the retroreflector 15 mm right: free-space propagation gains 30 mm, about 100 ps."],
+    limit: "Native retroreflection and pulsed propagation are traced. Carriage mechanics, air-index dispersion and stage accuracy are not simulated.",
+    references: [{"label":"ESO: VLTI delay-line subsystem","url":"https://www.eso.org/sci/facilities/paranal/telescopes/vlti/subsystems/delaylines.html"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "pulsedlaser", 80, 180, {"wavelength":800,"beamMode":"line"}, 0, "input"),
+      element("moving-retroreflector", "retroreflector", 400, 200, {"length":100}, 0, "moving-retroreflector"),
+      element("fixed-return", "detector", 200, 220, {}, 180, "fixed-return"),
+    ], beams: [] },
+  },
+  {
+    id: "SCAN-07",
+    title: "80 MHz double-pass AOM",
+    summary: "A cat-eye return traverses an 80 MHz AOM twice; polarization separation extracts a nominal +160 MHz output while suppressing pointing sensitivity.",
+    steps: ["Count two frequency shifts in the selected order.","Follow the cat-eye return and identify why the extracted output uses the other PBS port."],
+    limit: "The diagram does not calculate RF frequency shifts, cat-eye alignment or frequency-dependent output pointing; the quarter-wave element is described at the end mirror.",
+    references: [{"label":"Donley et al., NIST: compact double-pass AOM","url":"https://www.nist.gov/publications/compact-double-pass-acousto-optic-modulator-system"}],
+    mode: "unavailable",
+    unavailableReason: "The native AOM does not compute optical-frequency shifts or the bidirectional diffraction-order relation required for a +160 MHz double-pass cat-eye output. A pair of bent ray paths would not demonstrate frequency doubling or pointing compensation.",
+  },
+  {
+    id: "SCAN-08",
+    title: "Herriott-cell multipass absorption",
+    summary: "Two concave mirrors repeatedly pass a beam through a 200 mm gas cell before the selected exit aperture reaches a detector.",
+    steps: ["Count physical traversals rather than multiplying by the number of mirror spots without checking the sequence.","Distinguish a finite multipass orbit with an exit hole from a resonant cavity."],
+    limit: "Mirror separation and curvature alone do not specify the 3D Herriott orbit; no gas-line absorption spectrum or spot sequence is calculated.",
+    references: [{"label":"Herriott et al.: off-axis paths in spherical-mirror interferometers","url":"https://doi.org/10.1364/AO.3.000523"}],
+    mode: "unavailable",
+    unavailableReason: "A true Herriott cell needs the two-transverse-axis off-axis spot orbit and independently placed entrance/exit mirror holes. The 2D mirror model only supplies a central hole and cannot represent the indispensable selected 3D exit spot.",
+  },
+  {
+    id: "ROUTE-01",
+    title: "Two-color dichroic splitter",
+    summary: "Spatially separate 488 and 640 nm native lasers are combined by a first 550 nm dichroic. A second dichroic separates their common beam into two wavelength-selective detector ports.",
+    steps: ["Follow the two physically separate source inputs into the shared axis.","Move the second dichroic cutoff below 488 nm to send both colors to the transmitted detector."],
+    limit: "The native dichroic model uses ideal wavelength bands; angle-dependent coating spectra, transition width and leakage are absent.",
+    references: [{"label":"Edmund Optics: optical beamsplitter selection","url":"https://www.edmundoptics.com/c/beamsplitters/622/"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("red-input", "cwlaser", 70, 200, {"wavelength":640,"beamMode":"line","beamWidth":6}, 0, "red-input"),
+      element("blue-input", "cwlaser", 200, 80, {"wavelength":488,"beamMode":"line","beamWidth":6}, 90, "blue-input"),
+      element("input-combiner", "dichroic", 200, 200, {"length":40}, -45, "input-combiner"),
+      element("dichroic", "dichroic", 350, 200, {"length":40}, -45, "dichroic"),
+      element("red-output", "detector", 600, 200, {}, 0, "red-output"),
+      element("blue-output", "detector", 350, 400, {}, 90, "blue-output"),
+    ], beams: [] },
+  },
+  {
+    id: "ROUTE-02",
+    title: "Equal-power polarization splitter",
+    summary: "A 532 nm beam with linear polarization at 45° enters a PBS and divides into orthogonal polarization channels.",
+    steps: ["Compare detector powers and polarization states in the traced example.","Set input polarization to 0° or 90° and verify extinction of the complementary port."],
+    limit: "Ideal Stokes projection is traced; finite PBS extinction, coating phase and depolarization are absent.",
+    references: [{"label":"Edmund Optics: polarizing beamsplitters","url":"https://www.edmundoptics.com/c/polarizing-beamsplitters/701/"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 80, 200, {"beamMode":"line","pol":45}, 0, "input"),
+      element("splitter", "pbs", 350, 200, {}, 90, "splitter"),
+      element("transmitted", "detector", 600, 200, {}, 0, "transmitted"),
+      element("reflected", "detector", 350, 400, {}, 90, "reflected"),
+    ], beams: [] },
+  },
+  {
+    id: "ROUTE-03",
+    title: "Half-wave power attenuator",
+    summary: "A half-wave plate at 22.5° rotates a horizontal 532 nm input to 45°; a horizontal analyzer passes half the input power.",
+    steps: ["Read half-power transmission at 22.5° in the live scene.","Rotate the HWP to 0° and 45° to compare full transmission and extinction."],
+    limit: "Ideal retardance and Malus-law attenuation are traced; absorption heating and wavelength-dependent plate errors are absent.",
+    references: [{"label":"Thorlabs: waveplate tutorial","url":"https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=7234&tabname=Tutorial"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 80, 200, {"beamMode":"line"}, 0, "input"),
+      element("plate", "hwp", 250, 200, {}, 0, "plate"),
+      element("analyzer", "polarizer", 400, 200, {}, 0, "analyzer"),
+      element("output", "detector", 600, 200, {}, 0, "output"),
+    ], beams: [] },
+  },
+  {
+    id: "ROUTE-04",
+    title: "Quarter-wave shared-aperture return",
+    summary: "A native PBS passes horizontal light through a 45° quarter-wave plate to a mirror. The double pass changes the return polarization and directs it to the receive detector.",
+    steps: ["Count two actual traversals of the quarter-wave plate.","Rotate its fast axis to 0° and compare extinction of the receive port."],
+    limit: "Native Stokes retardance and specular return routing are computed. A rough or depolarizing target, coating phase and certified extinction are not modeled.",
+    references: [{"label":"Thorlabs: waveplate tutorial","url":"https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=7234&tabname=Tutorial"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 80, 200, {"beamMode":"line","beamWidth":6}, 0, "input"),
+      element("send-return-PBS", "pbs", 200, 200, {}, 0, "send-return-PBS"),
+      element("double-pass-QWP", "qwp", 300, 200, {}, 0, "double-pass-QWP"),
+      element("reflecting-target", "mirror", 400, 200, {"length":40}, 0, "reflecting-target"),
+      element("receive", "detector", 200, 350, {}, 90, "receive"),
+    ], beams: [] },
+  },
+  {
+    id: "ROUTE-05",
+    title: "Faraday isolator for laser protection",
+    summary: "Two native test rows demonstrate the isolator directional gate: the forward source reaches its camera, while an independent backward source is stopped.",
+    steps: ["Compare the forward camera with the blocked reverse test row.","Reverse the isolator orientation and inspect which test direction is admitted."],
+    limit: "The registry isolator is an ideal directional gate, not a resolved Faraday-rotator/polarizer assembly. Magneto-optic dispersion, isolation ratios and damage thresholds are not computed.",
+    references: [{"label":"Thorlabs: optical isolator tutorial","url":"https://www.thorlabs.com/catalogPages/682.pdf"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("forward-input", "cwlaser", 80, 140, {"beamMode":"line","beamWidth":6}, 0, "forward-input"),
+      element("forward-isolator", "isolator", 250, 140, {}, 0, "forward-isolator"),
+      element("forward-output", "camera", 422, 140, {"ch":60,"interference":false}, 0, "forward-output"),
+      element("reverse-input", "cwlaser", 600, 350, {"beamMode":"line","beamWidth":6}, 180, "reverse-input"),
+      element("reverse-isolator", "isolator", 350, 350, {}, 0, "reverse-isolator"),
+      element("reverse-output", "camera", 150, 350, {"ch":60,"interference":false}, 180, "reverse-output"),
+    ], beams: [] },
+  },
+  {
+    id: "ROUTE-06",
+    title: "Dual-polarization coherent receiver",
+    summary: "A real PBS separates a 45° 1550 nm signal into H and V channels. Each is mixed with a separately represented local-oscillator feed in its own native 50/50 splitter and collected at two ports.",
+    steps: ["Follow both polarization channels to their respective optical mixers.","Set the signal to H polarization and compare extinction of the V signal contribution."],
+    limit: "This native scene is the polarization-diverse optical mixing front end. It does not implement a four-phase telecom hybrid, balanced RF electronics, data recovery or shared-LO phase locking.",
+    references: [{"label":"Thorlabs: balanced coherent detection application note","url":"https://www.thorlabs.com/images/tabimages/AppHighlight_BalancedPhotodetectors.pdf"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("signal", "cwlaser", 80, 200, {"wavelength":1550,"beamMode":"line","beamWidth":6,"pol":45}, 0, "signal"),
+      element("polarization-demux", "pbs", 250, 200, {}, 90, "polarization-demux"),
+      element("H-mixer", "bs", 400, 200, {}, 90, "H-mixer"),
+      element("H-LO", "cwlaser", 400, 80, {"wavelength":1550,"beamMode":"line","beamWidth":6}, 90, "H-LO"),
+      element("H-port-A", "camera", 622, 200, {"ch":60,"interference":false}, 0, "H-port-A"),
+      element("H-port-B", "camera", 400, 300, {"ch":60,"interference":false}, 90, "H-port-B"),
+      element("V-fold", "mirror", 250, 500, {"length":40}, -45, "V-fold"),
+      element("V-mixer", "bs", 400, 500, {}, 90, "V-mixer"),
+      element("V-LO", "cwlaser", 400, 380, {"wavelength":1550,"beamMode":"line","beamWidth":6,"pol":90}, 90, "V-LO"),
+      element("V-port-A", "camera", 622, 500, {"ch":60,"interference":false}, 0, "V-port-A"),
+      element("V-port-B", "camera", 400, 672, {"ch":60,"interference":false}, 90, "V-port-B"),
+    ], beams: [] },
+  },
+  {
+    id: "ROUTE-07",
+    title: "Prepare circular light and analyze it",
+    summary: "A preparation polarizer and quarter-wave plate make circular light. A separate analysis quarter-wave plate converts it back to linear light for a native analyzer and detector.",
+    steps: ["Inspect polarization after preparation and analysis separately.","Remove the analysis plate and rotate the analyzer: circular light gives half-power readings."],
+    limit: "Native Stokes transformations and Malus-law readings are computed. A calibrated Stokes fit, real plate dispersion and experimental handedness conventions remain external.",
+    references: [{"label":"Thorlabs: waveplate tutorial","url":"https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=7234&tabname=Tutorial"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 80, 200, {"beamMode":"line","beamWidth":6}, 0, "input"),
+      element("preparation-polarizer", "polarizer", 180, 200, {}, 0, "preparation-polarizer"),
+      element("preparation-QWP", "qwp", 280, 200, {}, 0, "preparation-QWP"),
+      element("analysis-QWP", "qwp", 380, 200, {}, 0, "analysis-QWP"),
+      element("analyzer", "polarizer", 480, 200, {"pangle":90}, 0, "analyzer"),
+      element("power-readout", "detector", 600, 200, {}, 0, "power-readout"),
+    ], beams: [] },
+  },
+  {
+    id: "ROUTE-08",
+    title: "90/10 sample and monitor split",
+    summary: "A 532 nm beam sends 90% through a sample with 50% excitation transmission and 10% to an independent reference photodiode.",
+    steps: ["Compare sample/reference power ratio, nominally 4.5 for the chosen transmissions.","Change source power and verify that both readings scale while their ratio stays fixed."],
+    limit: "The traced model shows relative branch power and linear transmission; shot noise, electronics and calibrated normalization are not included.",
+    references: [{"label":"Edmund Optics: beamsplitter operation","url":"https://www.edmundoptics.eu/knowledge-center/application-notes/optics/what-are-beamsplitters"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 80, 200, {"beamMode":"line"}, 0, "input"),
+      element("splitter", "bs", 300, 200, {"ratio":0.9}, 90, "splitter"),
+      element("sample", "sample", 450, 200, {"transmission":0.5}, 90, "sample"),
+      element("signal", "detector", 650, 200, {}, 0, "signal"),
+      element("reference", "detector", 300, 400, {}, 90, "reference"),
+    ], beams: [] },
+  },
+  {
+    id: "FIELD-01",
+    title: "Mach–Zehnder phase measurement",
+    summary: "A real two-splitter Mach–Zehnder uses two folded 200 mm arms and a native phase plate. Two camera ports inspect the coherent recombination.",
+    steps: ["Compare the complementary port profiles.","Set the phase-plate optical path to 0.266 µm at 532 nm and inspect the changed interference."],
+    limit: "Native ray paths and camera coherent-field readout are computed within the existing scalar/coherence model. No RF electronics, noise, real coating phase, wavefront aberrations or calibrated interferometer sensitivity are inferred.",
+    references: [{"label":"MIT: interferometers lecture","url":"https://ocw.mit.edu/courses/2-71-optics-spring-2009/resources/mit2_71s09_lec15/"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 80, 200, {"beamWidth":6}, 0, "input"),
+      element("MZ-split", "bs", 250, 200, {}, 90, "MZ-split"),
+      element("MZ-upper-fold", "mirror", 450, 200, {"length":50}, 135, "MZ-upper-fold"),
+      element("MZ-lower-fold", "mirror", 250, 400, {"length":50}, 315, "MZ-lower-fold"),
+      element("MZ-phase-bias", "phaseplate", 350, 200, {"opdUm":0,"aperture":60}, 0, "MZ-phase-bias"),
+      element("MZ-combine", "bs", 450, 400, {}, 90, "MZ-combine"),
+      element("MZ-port-A", "camera", 572, 400, {"ch":60}, 0, "MZ-port-A"),
+      element("MZ-port-B", "camera", 450, 522, {"ch":60}, 90, "MZ-port-B"),
+    ], beams: [] },
+  },
+  {
+    id: "FIELD-02",
+    title: "Point-diffraction common-path reference",
+    summary: "A focused field crosses a pinhole reference mask: a small spatially filtered component supplies the reference and the remaining field carries specimen phase.",
+    steps: ["Identify where the reference is generated from the measured field.","Compare common downstream disturbances with disturbances before the pinhole reference formation."],
+    limit: "No pinhole diffraction or common-path phase reconstruction is computed; a single aperture ray model is insufficient.",
+    references: [{"label":"Smartt and Steel: theory and application of point-diffraction interferometers","url":"https://doi.org/10.7567/JJAPS.14S1.351"}],
+    mode: "unavailable",
+    unavailableReason: "The registry slit clips geometrical rays but does not diffract light into a new coherent spherical reference wave. That pinhole-generated reference is indispensable to this point-diffraction common-path interferometer.",
+  },
+  {
+    id: "FIELD-03",
+    title: "Triangular Sagnac loop",
+    summary: "A real beamsplitter and two mirrors form a triangular counterpropagating loop. The two directions visit the same mirrors in opposite order and recombine at a camera. A separate native pickoff collects the bright return port away from the laser input.",
+    steps: ["Follow clockwise and counterclockwise paths through both mirrors.","Move one loop mirror to inspect loss of spatial recombination."],
+    limit: "Native ray paths and camera coherent-field readout are computed within the existing scalar/coherence model. No RF electronics, noise, real coating phase, wavefront aberrations or calibrated interferometer sensitivity are inferred. The scene is stationary; Earth rotation and Sagnac gyro phase are not computed.",
+    references: [{"label":"Migdall et al., NIST: fiber Sagnac experimental topology","url":"https://physics.nist.gov/Divisions/Div844/publications/migdall/TomographyfiberentanglementOptExpress.pdf"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 80, 200, {}, 0, "input"),
+      element("return-pickoff", "bs", 150, 200, {}, 90, "return-pickoff"),
+      element("loop-splitter", "bs", 250, 200, {}, 25.6700959, "loop-splitter"),
+      element("right-loop-mirror", "mirror", 550, 200, {"length":50}, -160.6700959, "right-loop-mirror"),
+      element("upper-loop-mirror", "mirror", 400, 80, {"length":50}, 90, "upper-loop-mirror"),
+      element("return-port", "camera", 150, 280, {"ch":60}, 141.3401918, "return-port"),
+      element("bright-return", "camera", 150, 80, {"ch":60}, -90, "bright-return"),
+      element("unused-pickoff-port", "beamdump", 150, 250, {"aperture":30}, 90, "unused-pickoff-port"),
+    ], beams: [] },
+  },
+  {
+    id: "FIELD-04",
+    title: "Lateral shear collimation test",
+    summary: "A native Mach–Zehnder bench produces two laterally displaced copies of a test beam by shifting one folding mirror 1 mm. Its two cameras inspect overlap and interference.",
+    steps: ["Compare the displaced branch with the aligned branch at recombination.","Restore the folding mirror to x = 450 mm and compare the overlapped profile."],
+    limit: "Native ray paths and camera coherent-field readout are computed within the existing scalar/coherence model. No RF electronics, noise, real coating phase, wavefront aberrations or calibrated interferometer sensitivity are inferred. This is a real mirror-generated lateral-shear bench; the registry does not implement the two coherent surface reflections of a commercial wedged shear plate.",
+    references: [{"label":"Thorlabs: shearing interferometer catalogue and operation","url":"https://www.thorlabs.com/images/Catalog/V21/V21_7_LightAnalysis.pdf"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 80, 200, {"beamWidth":10}, 0, "input"),
+      element("shear-split", "bs", 250, 200, {}, 90, "shear-split"),
+      element("shear-upper-fold", "mirror", 451, 200, {"length":50}, 135, "shear-upper-fold"),
+      element("shear-lower-fold", "mirror", 250, 400, {"length":50}, 315, "shear-lower-fold"),
+      element("shear-phase-bias", "phaseplate", 350, 200, {"opdUm":0,"aperture":60}, 0, "shear-phase-bias"),
+      element("shear-combine", "bs", 450, 400, {}, 90, "shear-combine"),
+      element("shear-port-A", "camera", 572, 400, {"ch":60}, 0, "shear-port-A"),
+      element("shear-port-B", "camera", 450, 522, {"ch":60}, 90, "shear-port-B"),
+    ], beams: [] },
+  },
+  {
+    id: "FIELD-05",
+    title: "Differential balanced photodetection",
+    summary: "An actual Mach–Zehnder supplies two complementary native camera readouts. Their collected optical signals can be compared as the input to an external balanced detector.",
+    steps: ["Compare the two collected powers before subtracting them externally.","Change the phase bias and inspect the complementary signal change."],
+    limit: "Native ray paths and camera coherent-field readout are computed within the existing scalar/coherence model. No RF electronics, noise, real coating phase, wavefront aberrations or calibrated interferometer sensitivity are inferred. Cameras supply optical readouts; no 0.8 A/W photodiode conversion or difference amplifier is implemented.",
+    references: [{"label":"Thorlabs: balanced coherent detection application note","url":"https://www.thorlabs.com/images/tabimages/AppHighlight_BalancedPhotodetectors.pdf"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 80, 200, {"beamWidth":6}, 0, "input"),
+      element("balanced-split", "bs", 250, 200, {}, 90, "balanced-split"),
+      element("balanced-upper-fold", "mirror", 450, 200, {"length":50}, 135, "balanced-upper-fold"),
+      element("balanced-lower-fold", "mirror", 250, 400, {"length":50}, 315, "balanced-lower-fold"),
+      element("balanced-phase-bias", "phaseplate", 350, 200, {"opdUm":0,"aperture":60}, 0, "balanced-phase-bias"),
+      element("balanced-combine", "bs", 450, 400, {}, 90, "balanced-combine"),
+      element("balanced-port-A", "camera", 572, 400, {"ch":60}, 0, "balanced-port-A"),
+      element("balanced-port-B", "camera", 450, 522, {"ch":60}, 90, "balanced-port-B"),
+    ], beams: [] },
+  },
+  {
+    id: "FIELD-06",
+    title: "10 MHz heterodyne receiver",
+    summary: "Two real native laser sources enter orthogonal ports of a 50/50 optical coupler. A nominal 10 MHz optical-frequency offset is encoded by a roughly 0.00008014 nm wavelength separation near 1550 nm.",
+    steps: ["Inspect both source contributions at the output ports.","Block either source and compare collected optical power."],
+    limit: "The optical heterodyne mixing layout and branch powers are traced. Static camera readout does not simulate a 10 MHz temporal beat, balanced RF receiver or coherent phase locking of independent lasers.",
+    references: [{"label":"Thorlabs: balanced coherent detection application note","url":"https://www.thorlabs.com/images/tabimages/AppHighlight_BalancedPhotodetectors.pdf"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("signal", "cwlaser", 80, 200, {"wavelength":1550,"avgPowerW":0.001,"beamMode":"line","beamWidth":6}, 0, "signal"),
+      element("LO", "cwlaser", 350, 80, {"wavelength":1550.00008014,"avgPowerW":0.01,"beamMode":"line","beamWidth":6}, 90, "LO"),
+      element("mixing-coupler", "bs", 350, 200, {}, 90, "mixing-coupler"),
+      element("port-A", "camera", 572, 200, {"ch":60,"interference":false}, 0, "port-A"),
+      element("port-B", "camera", 350, 422, {"ch":60,"interference":false}, 90, "port-B"),
+    ], beams: [] },
+  },
+  {
+    id: "FIELD-07",
+    title: "90° optical hybrid I/Q readout",
+    summary: "A common coherent input feeds two real Mach–Zehnder analyzers. A 0.133 µm optical-path bias in the second analyzer introduces a nominal quarter-cycle phase at 532 nm and supplies four camera ports.",
+    steps: ["Compare the two analyzer pairs and their distinct phase biases.","Change a common test phase by editing both arm plates equally, retaining the quarter-wave offset."],
+    limit: "Native ray paths and camera coherent-field readout are computed within the existing scalar/coherence model. No RF electronics, noise, real coating phase, wavefront aberrations or calibrated interferometer sensitivity are inferred. This is a bench quadrature analyzer; complex-field fitting, matched balanced electronics and commercial integrated hybrids are not implemented.",
+    references: [{"label":"Thorlabs: balanced coherent detection application note","url":"https://www.thorlabs.com/images/tabimages/AppHighlight_BalancedPhotodetectors.pdf"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 80, 200, {"beamWidth":6}, 0, "input"),
+      element("quadrature-feed", "bs", 200, 200, {}, 90, "quadrature-feed"),
+      element("I-split", "bs", 400, 200, {}, 90, "I-split"),
+      element("I-upper-fold", "mirror", 600, 200, {"length":50}, 135, "I-upper-fold"),
+      element("I-lower-fold", "mirror", 400, 400, {"length":50}, 315, "I-lower-fold"),
+      element("I-phase-bias", "phaseplate", 500, 200, {"opdUm":0,"aperture":60}, 0, "I-phase-bias"),
+      element("I-combine", "bs", 600, 400, {}, 90, "I-combine"),
+      element("I-port-A", "camera", 722, 400, {"ch":60}, 0, "I-port-A"),
+      element("I-port-B", "camera", 600, 522, {"ch":60}, 90, "I-port-B"),
+      element("Q-split", "bs", 200, 450, {}, 180, "Q-split"),
+      element("Q-upper-fold", "mirror", 200, 650, {"length":50}, 225, "Q-upper-fold"),
+      element("Q-lower-fold", "mirror", 0, 450, {"length":50}, 405, "Q-lower-fold"),
+      element("Q-phase-bias", "phaseplate", 200, 550, {"opdUm":0.133,"aperture":60}, 90, "Q-phase-bias"),
+      element("Q-combine", "bs", 0, 650, {}, 180, "Q-combine"),
+      element("Q-port-A", "camera", 2.842170943040401e-14, 772, {"ch":60}, 90, "Q-port-A"),
+      element("Q-port-B", "camera", -122, 650, {"ch":60}, 180, "Q-port-B"),
+    ], beams: [] },
+  },
+  {
+    id: "FIELD-08",
+    title: "Spectral-domain OCT layer probe",
+    summary: "A native broadband source feeds a Michelson-like sample/reference front end. Two sample interfaces and a reference mirror return light to a native spectral receiver.",
+    steps: ["Follow front-interface, back-interface and reference returns separately.","Move the reference mirror and inspect the geometric optical-path change."],
+    limit: "This is the actual ray and spectrum collection front end of an OCT arrangement. The native receiver does not calculate a broadband spectral interferogram, k-linearization, depth reconstruction or axial resolution.",
+    references: [{"label":"Thorlabs: OCT tutorial","url":"https://www.thorlabs.com/images/pdf/octmanualrev7.pdf"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("broadband-input", "sclaser", 80, 200, {"scMin":815,"scMax":865}, 0, "broadband-input"),
+      element("sample-reference-split", "bs", 250, 200, {}, 0, "sample-reference-split"),
+      element("reference-mirror", "mirror", 450, 200, {"length":40}, 0, "reference-mirror"),
+      element("sample-front-interface", "bs", 250, 80, {"ratio":0.8}, 45, "sample-front-interface"),
+      element("sample-back-interface", "mirror", 250, 20, {"length":40}, 90, "sample-back-interface"),
+      element("spectral-receiver", "spectrometer", 250, 450, {"aperture":60}, 90, "spectral-receiver"),
+    ], beams: [] },
+  },
+  {
+    id: "FIELD-09",
+    title: "Two-aperture destructive nuller",
+    summary: "A native 3.8 µm bench splits a common coherent beam into two aperture feeds and recombines them with a 1.9 µm optical-path bias. Complementary cameras monitor the nominal null and bright ports.",
+    steps: ["Compare biased and unbiased output profiles.","Change the phase bias slightly to inspect residual light at the nominally dark port."],
+    limit: "Native ray paths and camera coherent-field readout are computed within the existing scalar/coherence model. No RF electronics, noise, real coating phase, wavefront aberrations or calibrated interferometer sensitivity are inferred. This common-source bench does not simulate a stellar angular field, atmospheric piston, broadband null depth or astronomical contrast.",
+    references: [{"label":"Asgard/NOTT authors: nulling interferometer optical design","url":"https://arxiv.org/abs/2402.09013"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("input", "cwlaser", 80, 200, {"wavelength":3800,"beamWidth":6}, 0, "input"),
+      element("nuller-split", "bs", 250, 200, {}, 90, "nuller-split"),
+      element("nuller-upper-fold", "mirror", 450, 200, {"length":50}, 135, "nuller-upper-fold"),
+      element("nuller-lower-fold", "mirror", 250, 400, {"length":50}, 315, "nuller-lower-fold"),
+      element("nuller-phase-bias", "phaseplate", 350, 200, {"opdUm":1.9,"aperture":60}, 0, "nuller-phase-bias"),
+      element("nuller-combine", "bs", 450, 400, {}, 90, "nuller-combine"),
+      element("nuller-port-A", "camera", 572, 400, {"ch":60}, 0, "nuller-port-A"),
+      element("nuller-port-B", "camera", 450, 522, {"ch":60}, 90, "nuller-port-B"),
+    ], beams: [] },
+  },
+  {
+    id: "FIELD-10",
+    title: "Two-telescope coherent aperture combination",
+    summary: "Two real afocal aperture-feed relays in a K-band interferometer route a common coherent source to a shared beamsplitter and two camera ports. The native phase plate supplies editable optical path in one feed.",
+    steps: ["Follow both native aperture-feed relays into the shared combiner.","Translate one feed lens to inspect loss of collimation and overlap at the two fixed camera planes."],
+    limit: "Real native 2D feed and recombination geometry is traced. The current camera coherent-field reconstruction does not recover these lens-transformed feeds, so output powers are geometric ray sums and no fringes or phase-dependent power are computed. There is no sky baseline, atmosphere, fringe tracker or aperture synthesis.",
+    references: [{"label":"ESO: GRAVITY instrument subsystems","url":"https://www.eso.org/sci/facilities/paranal/instruments/gravity/inst.html"}],
+    mode: "rays",
+    scene: { version: 1, elements: [
+      element("common-star-proxy", "cwlaser", 80, 200, {"wavelength":2200,"beamWidth":4}, 0, "common-star-proxy"),
+      element("apertures-split", "bs", 250, 200, {}, 90, "apertures-split"),
+      element("apertures-upper-fold", "mirror", 450, 200, {"length":50}, 135, "apertures-upper-fold"),
+      element("apertures-lower-fold", "mirror", 250, 400, {"length":50}, 315, "apertures-lower-fold"),
+      element("apertures-phase-bias", "phaseplate", 375, 200, {"opdUm":0,"aperture":60}, 0, "apertures-phase-bias"),
+      element("apertures-combine", "bs", 450, 400, {}, 90, "apertures-combine"),
+      element("apertures-port-A", "camera", 572, 400, {"ch":60}, 0, "apertures-port-A"),
+      element("apertures-port-B", "camera", 450, 522, {"ch":60}, 90, "apertures-port-B"),
+      element("feed-A-1", "lens", 310, 200, {"f":20,"dia":20}, 0, "feed-A-1"),
+      element("feed-A-2", "lens", 350, 200, {"f":20,"dia":20}, 0, "feed-A-2"),
+      element("feed-B-1", "lens", 250, 260, {"f":20,"dia":20}, 90, "feed-B-1"),
+      element("feed-B-2", "lens", 250, 300, {"f":20,"dia":20}, 90, "feed-B-2"),
+    ], beams: [] },
+  },
 ];

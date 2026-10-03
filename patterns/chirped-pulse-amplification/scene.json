@@ -1,0 +1,260 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "pulse01-element-0",
+      "type": "pulsedlaser",
+      "x": 100,
+      "y": 318,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "wavelength": 800,
+        "avgPowerW": 0.0001,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "repRateMHz": 0.001,
+        "pulsePhaseNs": 0,
+        "transformLimited": true,
+        "pulseWidthFs": 31.4,
+        "pulseShape": "gauss",
+        "bandwidth": 5,
+        "inputChirp": "positive",
+        "chirpGddFs2": 0,
+        "pol": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      }
+    },
+    {
+      "id": "pulse01-element-1",
+      "type": "probe",
+      "x": 215,
+      "y": 318,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "displayScale": 1.05,
+        "prop": "duration",
+        "rangeMode": "auto",
+        "specMin": 400,
+        "specMax": 700,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sampleDiameterMm": 10
+      }
+    },
+    {
+      "id": "pulse01-element-2",
+      "type": "pulsecompressor",
+      "x": 290,
+      "y": 318,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "gddFs2": 100000,
+        "aperture": 18,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "pulse01-element-3",
+      "type": "probe",
+      "x": 375,
+      "y": 318,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "displayScale": 1.05,
+        "prop": "duration",
+        "rangeMode": "auto",
+        "specMin": 400,
+        "specMax": 700,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sampleDiameterMm": 10
+      }
+    },
+    {
+      "id": "pulse01-element-4",
+      "type": "pulsedlaser",
+      "x": 450,
+      "y": 470,
+      "rot": 270,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 10,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "repRateMHz": 0.001,
+        "pulsePhaseNs": 0.540374,
+        "transformLimited": true,
+        "pulseWidthFs": 12000,
+        "pulseShape": "gauss",
+        "bandwidth": 5,
+        "inputChirp": "positive",
+        "chirpGddFs2": 0,
+        "pol": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      }
+    },
+    {
+      "id": "pulse01-element-5",
+      "type": "mirror",
+      "x": 450,
+      "y": 282,
+      "rot": 45,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "length": 25.4,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "pulse01-element-6",
+      "type": "opa",
+      "x": 600,
+      "y": 300,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "signalWl": 800,
+        "gainBandwidthNm": 100,
+        "smallSignalGainDb": 60,
+        "maxDepletion": 0.5,
+        "aperture": 6,
+        "outputBeamMm": 3,
+        "outputIdler": true,
+        "outputPump": true
+      }
+    },
+    {
+      "id": "pulse01-element-7",
+      "type": "beamdump",
+      "x": 700,
+      "y": 282,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "aperture": 10
+      }
+    },
+    {
+      "id": "pulse01-element-8",
+      "type": "beamdump",
+      "x": 740,
+      "y": 300,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "aperture": 10
+      }
+    },
+    {
+      "id": "pulse01-element-9",
+      "type": "probe",
+      "x": 820,
+      "y": 318,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "displayScale": 1.05,
+        "prop": "duration",
+        "rangeMode": "auto",
+        "specMin": 400,
+        "specMax": 700,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sampleDiameterMm": 10
+      }
+    },
+    {
+      "id": "pulse01-element-10",
+      "type": "pulsecompressor",
+      "x": 1000,
+      "y": 318,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "gddFs2": -100000,
+        "aperture": 18,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "pulse01-element-11",
+      "type": "probe",
+      "x": 1150,
+      "y": 318,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "displayScale": 1.05,
+        "prop": "duration",
+        "rangeMode": "auto",
+        "specMin": 400,
+        "specMax": 700,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sampleDiameterMm": 10
+      }
+    },
+    {
+      "id": "pulse01-element-12",
+      "type": "probe",
+      "x": 1330,
+      "y": 318,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "displayScale": 1.05,
+        "prop": "spectrum",
+        "rangeMode": "auto",
+        "specMin": 400,
+        "specMax": 700,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sampleDiameterMm": 10
+      }
+    },
+    {
+      "id": "pulse-01-output",
+      "type": "detector",
+      "x": 1510,
+      "y": 318,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "aperture": 30,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    }
+  ],
+  "beams": []
+}

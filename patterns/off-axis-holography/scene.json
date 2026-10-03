@@ -1,0 +1,125 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "source",
+      "type": "cwlaser",
+      "x": 80,
+      "y": 100,
+      "rot": 0,
+      "label": "source",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.01,
+        "beamMode": "beam",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "input-split",
+      "type": "bs",
+      "x": 220,
+      "y": 100,
+      "rot": 90,
+      "label": "input-split",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "upper-fold",
+      "type": "mirror",
+      "x": 420,
+      "y": 100,
+      "rot": 135,
+      "label": "upper-fold",
+      "showLabel": true,
+      "params": {
+        "length": 25.4,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "lower-fold",
+      "type": "mirror",
+      "x": 220,
+      "y": 240,
+      "rot": 315.04999999999995,
+      "label": "lower-fold",
+      "showLabel": true,
+      "params": {
+        "length": 25.4,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "recombine",
+      "type": "bs",
+      "x": 420,
+      "y": 240,
+      "rot": 90,
+      "label": "recombine",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "port-a",
+      "type": "camera",
+      "x": 520,
+      "y": 240,
+      "rot": 0,
+      "label": "port-a",
+      "showLabel": true,
+      "params": {
+        "ch": 30,
+        "pixels": 64,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "port-b",
+      "type": "camera",
+      "x": 420,
+      "y": 340,
+      "rot": 90,
+      "label": "port-b",
+      "showLabel": true,
+      "params": {
+        "ch": 30,
+        "pixels": 64,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "object-phase",
+      "type": "phaseplate",
+      "x": 310,
+      "y": 100,
+      "rot": 0,
+      "label": "object-phase",
+      "showLabel": true,
+      "params": {
+        "profile": "ramp",
+        "opdUm": 0.15,
+        "aperture": 12
+      }
+    }
+  ],
+  "beams": []
+}

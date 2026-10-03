@@ -1,0 +1,98 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "input",
+      "type": "cwlaser",
+      "x": 80,
+      "y": 200,
+      "rot": 0,
+      "label": "input",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 40,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "lenslet-1",
+      "type": "lens",
+      "x": 200,
+      "y": 185,
+      "rot": 0,
+      "label": "lenslet-1",
+      "showLabel": true,
+      "params": {
+        "f": 50,
+        "dia": 10,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "lenslet-2",
+      "type": "lens",
+      "x": 200,
+      "y": 195,
+      "rot": 0,
+      "label": "lenslet-2",
+      "showLabel": true,
+      "params": {
+        "f": 50,
+        "dia": 10,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "lenslet-3",
+      "type": "lens",
+      "x": 200,
+      "y": 205,
+      "rot": 0,
+      "label": "lenslet-3",
+      "showLabel": true,
+      "params": {
+        "f": 50,
+        "dia": 10,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "lenslet-4",
+      "type": "lens",
+      "x": 200,
+      "y": 215,
+      "rot": 0,
+      "label": "lenslet-4",
+      "showLabel": true,
+      "params": {
+        "f": 50,
+        "dia": 10,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "four-spot-plane",
+      "type": "camera",
+      "x": 272,
+      "y": 200,
+      "rot": 0,
+      "label": "four-spot-plane",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

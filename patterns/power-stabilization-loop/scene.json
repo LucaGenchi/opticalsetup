@@ -1,0 +1,81 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "source",
+      "type": "cwlaser",
+      "x": 70,
+      "y": 100,
+      "rot": 0,
+      "label": "source",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.01,
+        "beamMode": "beam",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "actuator",
+      "type": "filter",
+      "x": 230,
+      "y": 100,
+      "rot": 0,
+      "label": "actuator",
+      "showLabel": true,
+      "params": {
+        "ftype": "nd",
+        "cutoff": 500,
+        "center": 525,
+        "band": 40,
+        "trans": 0.8,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "monitor-tap",
+      "type": "bs",
+      "x": 350,
+      "y": 100,
+      "rot": 90,
+      "label": "monitor-tap",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.95,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "delivery",
+      "type": "powermeter",
+      "x": 530,
+      "y": 100,
+      "rot": 0,
+      "label": "delivery",
+      "showLabel": true,
+      "params": {
+        "aperture": 30
+      }
+    },
+    {
+      "id": "monitor",
+      "type": "powermeter",
+      "x": 350,
+      "y": 260,
+      "rot": 90,
+      "label": "monitor",
+      "showLabel": true,
+      "params": {
+        "aperture": 30
+      }
+    }
+  ],
+  "beams": []
+}

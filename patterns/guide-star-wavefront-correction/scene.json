@@ -1,0 +1,147 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "wave04-science",
+      "type": "cwlaser",
+      "x": 100,
+      "y": 300,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "wavelength": 800,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "wave04-guide",
+      "type": "cwlaser",
+      "x": 100,
+      "y": 150,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "wavelength": 589,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "wave04-fold",
+      "type": "mirror",
+      "x": 300,
+      "y": 150,
+      "rot": 135,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "length": 40,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "wave04-combine",
+      "type": "dichroic",
+      "x": 300,
+      "y": 300,
+      "rot": 135,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "dtype": "longpass",
+        "cutoff": 700,
+        "center": 550,
+        "band": 50,
+        "bandRefl": 100,
+        "length": 40
+      }
+    },
+    {
+      "id": "wave04-dm",
+      "type": "dm",
+      "x": 500,
+      "y": 300,
+      "rot": 315,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "length": 60,
+        "f": 1000,
+        "steer": 0
+      }
+    },
+    {
+      "id": "wave04-separate",
+      "type": "dichroic",
+      "x": 500,
+      "y": 500,
+      "rot": 135,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "dtype": "shortpass",
+        "cutoff": 700,
+        "center": 550,
+        "band": 50,
+        "bandRefl": 100,
+        "length": 40
+      }
+    },
+    {
+      "id": "wave04-guide-camera",
+      "type": "camera",
+      "x": 500,
+      "y": 700,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "ch": 100,
+        "pixels": 32,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "wave04-science-camera",
+      "type": "camera",
+      "x": 750,
+      "y": 500,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "ch": 100,
+        "pixels": 32,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

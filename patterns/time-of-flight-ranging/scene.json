@@ -1,0 +1,86 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "pulse",
+      "type": "pulsedlaser",
+      "x": 70,
+      "y": 160,
+      "rot": 0,
+      "label": "pulse",
+      "showLabel": true,
+      "params": {
+        "wavelength": 905,
+        "avgPowerW": 0.01,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "repRateMHz": 80,
+        "pulsePhaseNs": 0,
+        "transformLimited": true,
+        "pulseWidthFs": 2000000,
+        "pulseShape": "gauss",
+        "bandwidth": 5,
+        "inputChirp": "positive",
+        "chirpGddFs2": 0,
+        "pol": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      }
+    },
+    {
+      "id": "send-return",
+      "type": "bs",
+      "x": 250,
+      "y": 160,
+      "rot": 90,
+      "label": "send-return",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "reference",
+      "type": "generaldetector",
+      "x": 460,
+      "y": 160,
+      "rot": 0,
+      "label": "reference",
+      "showLabel": true,
+      "params": {
+        "aperture": 30
+      }
+    },
+    {
+      "id": "target",
+      "type": "mirror",
+      "x": 250,
+      "y": 460,
+      "rot": 90,
+      "label": "target",
+      "showLabel": true,
+      "params": {
+        "length": 50,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "return",
+      "type": "generaldetector",
+      "x": 250,
+      "y": 40,
+      "rot": 270,
+      "label": "return",
+      "showLabel": true,
+      "params": {
+        "aperture": 30
+      }
+    }
+  ],
+  "beams": []
+}

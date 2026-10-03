@@ -1,0 +1,204 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "carrier-1530",
+      "type": "cwlaser",
+      "x": 70,
+      "y": 200,
+      "rot": 0,
+      "label": "carrier-1530",
+      "showLabel": true,
+      "params": {
+        "wavelength": 1530,
+        "avgPowerW": 0.01,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "carrier-1550",
+      "type": "cwlaser",
+      "x": 270,
+      "y": -50,
+      "rot": 90,
+      "label": "carrier-1550",
+      "showLabel": true,
+      "params": {
+        "wavelength": 1550,
+        "avgPowerW": 0.01,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "carrier-1570",
+      "type": "cwlaser",
+      "x": 470,
+      "y": -50,
+      "rot": 90,
+      "label": "carrier-1570",
+      "showLabel": true,
+      "params": {
+        "wavelength": 1570,
+        "avgPowerW": 0.01,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "combine-1550",
+      "type": "dichroic",
+      "x": 270,
+      "y": 200,
+      "rot": 315,
+      "label": "combine-1550",
+      "showLabel": true,
+      "params": {
+        "dtype": "notch",
+        "cutoff": 550,
+        "center": 1550,
+        "band": 10,
+        "bandRefl": 100,
+        "length": 40
+      }
+    },
+    {
+      "id": "combine-1570",
+      "type": "dichroic",
+      "x": 470,
+      "y": 200,
+      "rot": 315,
+      "label": "combine-1570",
+      "showLabel": true,
+      "params": {
+        "dtype": "notch",
+        "cutoff": 550,
+        "center": 1570,
+        "band": 10,
+        "bandRefl": 100,
+        "length": 40
+      }
+    },
+    {
+      "id": "drop-filter",
+      "type": "dichroic",
+      "x": 680,
+      "y": 200,
+      "rot": 315,
+      "label": "drop-filter",
+      "showLabel": true,
+      "params": {
+        "dtype": "notch",
+        "cutoff": 550,
+        "center": 1550,
+        "band": 10,
+        "bandRefl": 100,
+        "length": 40
+      }
+    },
+    {
+      "id": "drop-detector",
+      "type": "detector",
+      "x": 680,
+      "y": 400,
+      "rot": 90,
+      "label": "drop-detector",
+      "showLabel": true,
+      "params": {
+        "aperture": 26,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    },
+    {
+      "id": "add-filter",
+      "type": "dichroic",
+      "x": 900,
+      "y": 200,
+      "rot": 315,
+      "label": "add-filter",
+      "showLabel": true,
+      "params": {
+        "dtype": "notch",
+        "cutoff": 550,
+        "center": 1550,
+        "band": 10,
+        "bandRefl": 100,
+        "length": 40
+      }
+    },
+    {
+      "id": "replacement",
+      "type": "cwlaser",
+      "x": 900,
+      "y": -50,
+      "rot": 90,
+      "label": "replacement",
+      "showLabel": true,
+      "params": {
+        "wavelength": 1550,
+        "avgPowerW": 0.01,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "bus-output",
+      "type": "spectrometer",
+      "x": 1100,
+      "y": 200,
+      "rot": 0,
+      "label": "bus-output",
+      "showLabel": true,
+      "params": {
+        "aperture": 30,
+        "rangeMode": "auto",
+        "rangeMin": 480,
+        "rangeMax": 580,
+        "intensityScale": "density",
+        "labelPeaks": true
+      }
+    },
+    {
+      "id": "add-reject",
+      "type": "detector",
+      "x": 900,
+      "y": 400,
+      "rot": 90,
+      "label": "add-reject",
+      "showLabel": true,
+      "params": {
+        "aperture": 26,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    }
+  ],
+  "beams": []
+}

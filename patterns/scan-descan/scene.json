@@ -1,0 +1,183 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "excitation",
+      "type": "cwlaser",
+      "x": 80,
+      "y": 100,
+      "rot": 0,
+      "label": "excitation",
+      "showLabel": true,
+      "params": {
+        "wavelength": 488,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 2,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "dichroic",
+      "type": "dichroic",
+      "x": 300,
+      "y": 100,
+      "rot": 315,
+      "label": "dichroic",
+      "showLabel": true,
+      "params": {
+        "dtype": "longpass",
+        "cutoff": 500,
+        "center": 550,
+        "band": 50,
+        "bandRefl": 100,
+        "length": 40
+      }
+    },
+    {
+      "id": "shared-scanner",
+      "type": "galvo",
+      "x": 300,
+      "y": 200,
+      "rot": 45,
+      "label": "shared-scanner",
+      "showLabel": true,
+      "params": {
+        "length": 40,
+        "commandAngle": 0,
+        "scanMode": "static",
+        "scanAmplitude": 1,
+        "scanFrequencyHz": 100,
+        "scanPhaseDeg": 0,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "objective",
+      "type": "objective",
+      "x": 180,
+      "y": 200,
+      "rot": 180,
+      "label": "objective",
+      "showLabel": true,
+      "params": {
+        "efl": 20,
+        "workingDistance": 20,
+        "immersion": "air",
+        "immersionIndex": 1.333,
+        "na": 0.25,
+        "showAcceptance": false,
+        "transEff": 100,
+        "frontAperture": 11
+      }
+    },
+    {
+      "id": "specimen",
+      "type": "sample",
+      "x": 144,
+      "y": 200,
+      "rot": 90,
+      "label": "specimen",
+      "showLabel": true,
+      "params": {
+        "aperture": 50,
+        "specimenType": "linear",
+        "channels": [
+          {
+            "kind": "fluor",
+            "wl": 520,
+            "eff": 0.5,
+            "epi": false,
+            "epiRatio": 0.15,
+            "autoWl": true,
+            "autoColor": true,
+            "color": "#22c55e",
+            "material": "lipid",
+            "fluorophore": "custom",
+            "retardance": 90,
+            "axis": 45,
+            "transferEff": 0.1,
+            "requireOverlap": true
+          }
+        ],
+        "showSignalSpot": true,
+        "thickness": 6,
+        "voxelPreview": false,
+        "voxelSize": 0.6,
+        "transmitExc": false,
+        "transmission": 0.8,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1
+      }
+    },
+    {
+      "id": "emission-filter",
+      "type": "filter",
+      "x": 300,
+      "y": 60,
+      "rot": 90,
+      "label": "emission-filter",
+      "showLabel": true,
+      "params": {
+        "ftype": "bandpass",
+        "cutoff": 500,
+        "center": 520,
+        "band": 40,
+        "trans": 0.5,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "return-focus",
+      "type": "lens",
+      "x": 300,
+      "y": 30,
+      "rot": 90,
+      "label": "return-focus",
+      "showLabel": true,
+      "params": {
+        "f": 50,
+        "dia": 50,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "detection-pinhole",
+      "type": "slit",
+      "x": 300,
+      "y": -20,
+      "rot": 90,
+      "label": "detection-pinhole",
+      "showLabel": true,
+      "params": {
+        "gap": 0.5,
+        "length": 50
+      }
+    },
+    {
+      "id": "return-detector",
+      "type": "detector",
+      "x": 300,
+      "y": -100,
+      "rot": 270,
+      "label": "return-detector",
+      "showLabel": true,
+      "params": {
+        "aperture": 26,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    }
+  ],
+  "beams": []
+}

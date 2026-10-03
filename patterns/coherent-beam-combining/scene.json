@@ -1,0 +1,242 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "cav09-master",
+      "type": "pulsedlaser",
+      "x": 100,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "wavelength": 800,
+        "avgPowerW": 0.1,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "repRateMHz": 0.01,
+        "pulsePhaseNs": 0,
+        "transformLimited": true,
+        "pulseWidthFs": 150,
+        "pulseShape": "gauss",
+        "bandwidth": 5,
+        "inputChirp": "positive",
+        "chirpGddFs2": 0,
+        "pol": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      }
+    },
+    {
+      "id": "cav09-split",
+      "type": "bs",
+      "x": 300,
+      "y": 200,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "cav09-pumpA",
+      "type": "pulsedlaser",
+      "x": 370,
+      "y": 164,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 10,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "repRateMHz": 0.01,
+        "pulsePhaseNs": 0,
+        "transformLimited": true,
+        "pulseWidthFs": 10000000,
+        "pulseShape": "gauss",
+        "bandwidth": 5,
+        "inputChirp": "positive",
+        "chirpGddFs2": 0,
+        "pol": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      }
+    },
+    {
+      "id": "cav09-pumpB",
+      "type": "pulsedlaser",
+      "x": 370,
+      "y": 564,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 10,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "repRateMHz": 0.01,
+        "pulsePhaseNs": 0,
+        "transformLimited": true,
+        "pulseWidthFs": 10000000,
+        "pulseShape": "gauss",
+        "bandwidth": 5,
+        "inputChirp": "positive",
+        "chirpGddFs2": 0,
+        "pol": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      }
+    },
+    {
+      "id": "cav09-ampA",
+      "type": "opa",
+      "x": 600,
+      "y": 182,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "signalWl": 800,
+        "gainBandwidthNm": 100,
+        "smallSignalGainDb": 30,
+        "maxDepletion": 0.5,
+        "aperture": 6,
+        "outputBeamMm": 3,
+        "outputIdler": false,
+        "outputPump": false
+      }
+    },
+    {
+      "id": "cav09-fold1",
+      "type": "mirror",
+      "x": 900,
+      "y": 200,
+      "rot": 135,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "length": 40,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "cav09-fold2",
+      "type": "mirror",
+      "x": 300,
+      "y": 600,
+      "rot": 135,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "length": 40,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "cav09-ampB",
+      "type": "opa",
+      "x": 600,
+      "y": 582,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "signalWl": 800,
+        "gainBandwidthNm": 100,
+        "smallSignalGainDb": 30,
+        "maxDepletion": 0.5,
+        "aperture": 6,
+        "outputBeamMm": 3,
+        "outputIdler": false,
+        "outputPump": false
+      }
+    },
+    {
+      "id": "cav09-phase",
+      "type": "phasemodulator",
+      "x": 760,
+      "y": 600,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "aperture": 12,
+        "designWavelength": 800,
+        "depthDeg": 90,
+        "driveMode": "static",
+        "freqMHz": 1,
+        "phaseDeg": 0
+      }
+    },
+    {
+      "id": "cav09-combiner",
+      "type": "bs",
+      "x": 900,
+      "y": 600,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "cav09-output1",
+      "type": "camera",
+      "x": 1080,
+      "y": 600,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "ch": 50,
+        "pixels": 32,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "cav09-output2",
+      "type": "camera",
+      "x": 900,
+      "y": 780,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "ch": 50,
+        "pixels": 32,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

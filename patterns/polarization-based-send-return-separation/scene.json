@@ -1,0 +1,82 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "input",
+      "type": "cwlaser",
+      "x": 80,
+      "y": 200,
+      "rot": 0,
+      "label": "input",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.1,
+        "beamMode": "line",
+        "beamWidth": 6,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "send-return-PBS",
+      "type": "pbs",
+      "x": 200,
+      "y": 200,
+      "rot": 0,
+      "label": "send-return-PBS",
+      "showLabel": true,
+      "params": {
+        "size": 25.4
+      }
+    },
+    {
+      "id": "double-pass-QWP",
+      "type": "qwp",
+      "x": 300,
+      "y": 200,
+      "rot": 0,
+      "label": "double-pass-QWP",
+      "showLabel": true,
+      "params": {
+        "a": 45,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "reflecting-target",
+      "type": "mirror",
+      "x": 400,
+      "y": 200,
+      "rot": 0,
+      "label": "reflecting-target",
+      "showLabel": true,
+      "params": {
+        "length": 40,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "receive",
+      "type": "detector",
+      "x": 200,
+      "y": 350,
+      "rot": 90,
+      "label": "receive",
+      "showLabel": true,
+      "params": {
+        "aperture": 26,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    }
+  ],
+  "beams": []
+}

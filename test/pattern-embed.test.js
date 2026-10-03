@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { isEmbeddedShareURL, buildShareURL, sharedSceneFromURL } from '../sketch/js/share.js';
 import { state, parseSketch, replaceScene, changed } from '../sketch/js/state.js';
+import { readCatalogue } from '../tools/patterns/catalogue.mjs';
 import { registry } from '../sketch/js/elements.js';
 
 test('a shared pattern frame cannot replace an existing workbench autosave', async t => {
@@ -18,7 +19,7 @@ test('a shared pattern frame cannot replace an existing workbench autosave', asy
     if (previous) Object.defineProperty(globalThis, 'localStorage', previous);
     else delete globalThis.localStorage;
   });
-  const scene = await readFile(new URL('../patterns/img-01/scene.json', import.meta.url), 'utf8');
+  const scene = await readFile(new URL(`../patterns/${(await readCatalogue()).find(e => e.id === 'IMG-01').slug}/scene.json`, import.meta.url), 'utf8');
   const url = await buildShareURL(scene, 'https://opticalsetup.com/sketch/?embed=1');
   state.embedMode = isEmbeddedShareURL(url);
   assert.equal(state.embedMode, true);

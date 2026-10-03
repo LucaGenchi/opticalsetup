@@ -1,0 +1,124 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "test-source",
+      "type": "cwlaser",
+      "x": 70,
+      "y": 100,
+      "rot": 0,
+      "label": "test-source",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.01,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "test-shutter",
+      "type": "filter",
+      "x": 190,
+      "y": 100,
+      "rot": 0,
+      "label": "test-shutter",
+      "showLabel": true,
+      "params": {
+        "ftype": "nd",
+        "cutoff": 500,
+        "center": 525,
+        "band": 40,
+        "trans": 1,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "input-combiner",
+      "type": "bs",
+      "x": 350,
+      "y": 100,
+      "rot": 90,
+      "label": "input-combiner",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "calibration-source",
+      "type": "cwlaser",
+      "x": 350,
+      "y": -80,
+      "rot": 90,
+      "label": "calibration-source",
+      "showLabel": true,
+      "params": {
+        "wavelength": 546,
+        "avgPowerW": 0.01,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "calibration-shutter",
+      "type": "filter",
+      "x": 350,
+      "y": 30,
+      "rot": 90,
+      "label": "calibration-shutter",
+      "showLabel": true,
+      "params": {
+        "ftype": "nd",
+        "cutoff": 500,
+        "center": 525,
+        "band": 40,
+        "trans": 0,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "entrance-slit",
+      "type": "slit",
+      "x": 490,
+      "y": 100,
+      "rot": 0,
+      "label": "entrance-slit",
+      "showLabel": true,
+      "params": {
+        "gap": 4,
+        "length": 40
+      }
+    },
+    {
+      "id": "spectrometer",
+      "type": "spectrometer",
+      "x": 610,
+      "y": 100,
+      "rot": 0,
+      "label": "spectrometer",
+      "showLabel": true,
+      "params": {
+        "aperture": 30,
+        "rangeMode": "auto",
+        "rangeMin": 480,
+        "rangeMax": 580,
+        "intensityScale": "density",
+        "labelPeaks": true
+      }
+    }
+  ],
+  "beams": []
+}

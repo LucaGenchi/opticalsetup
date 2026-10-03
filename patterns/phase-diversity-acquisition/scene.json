@@ -1,0 +1,98 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "test-beam",
+      "type": "cwlaser",
+      "x": 70,
+      "y": 100,
+      "rot": 0,
+      "label": "test-beam",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.01,
+        "beamMode": "beam",
+        "beamWidth": 6,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "diversity-split",
+      "type": "bs",
+      "x": 250,
+      "y": 100,
+      "rot": 90,
+      "label": "diversity-split",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "focus-lens",
+      "type": "lens",
+      "x": 340,
+      "y": 100,
+      "rot": 0,
+      "label": "focus-lens",
+      "showLabel": true,
+      "params": {
+        "f": 50,
+        "dia": 25,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "focus-camera",
+      "type": "camera",
+      "x": 412,
+      "y": 100,
+      "rot": 0,
+      "label": "focus-camera",
+      "showLabel": true,
+      "params": {
+        "ch": 30,
+        "pixels": 64,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "defocus-lens",
+      "type": "lens",
+      "x": 250,
+      "y": 190,
+      "rot": 90,
+      "label": "defocus-lens",
+      "showLabel": true,
+      "params": {
+        "f": 50,
+        "dia": 25,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "defocus-camera",
+      "type": "camera",
+      "x": 250,
+      "y": 272,
+      "rot": 90,
+      "label": "defocus-camera",
+      "showLabel": true,
+      "params": {
+        "ch": 30,
+        "pixels": 64,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

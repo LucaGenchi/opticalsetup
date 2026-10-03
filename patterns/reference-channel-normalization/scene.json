@@ -1,0 +1,88 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "source",
+      "type": "cwlaser",
+      "x": 70,
+      "y": 100,
+      "rot": 0,
+      "label": "source",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.01,
+        "beamMode": "beam",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "sample-reference",
+      "type": "bs",
+      "x": 260,
+      "y": 100,
+      "rot": 90,
+      "label": "sample-reference",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "sample",
+      "type": "sample",
+      "x": 400,
+      "y": 100,
+      "rot": 90,
+      "label": "sample",
+      "showLabel": true,
+      "params": {
+        "aperture": 30,
+        "specimenType": "absorbing",
+        "channels": [],
+        "showSignalSpot": true,
+        "thickness": 6,
+        "voxelPreview": false,
+        "voxelSize": 0.6,
+        "transmitExc": true,
+        "transmission": 0.6,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1
+      }
+    },
+    {
+      "id": "sample-meter",
+      "type": "powermeter",
+      "x": 570,
+      "y": 100,
+      "rot": 0,
+      "label": "sample-meter",
+      "showLabel": true,
+      "params": {
+        "aperture": 30
+      }
+    },
+    {
+      "id": "reference-meter",
+      "type": "powermeter",
+      "x": 260,
+      "y": 280,
+      "rot": 90,
+      "label": "reference-meter",
+      "showLabel": true,
+      "params": {
+        "aperture": 30
+      }
+    }
+  ],
+  "beams": []
+}

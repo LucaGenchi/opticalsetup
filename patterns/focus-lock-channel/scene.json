@@ -1,0 +1,95 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "focus-probe",
+      "type": "cwlaser",
+      "x": 70,
+      "y": 150,
+      "rot": 0,
+      "label": "focus-probe",
+      "showLabel": true,
+      "params": {
+        "wavelength": 850,
+        "avgPowerW": 0.01,
+        "beamMode": "beam",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "separator",
+      "type": "pbs",
+      "x": 250,
+      "y": 160,
+      "rot": 90,
+      "label": "separator",
+      "showLabel": true,
+      "params": {
+        "size": 50
+      }
+    },
+    {
+      "id": "quarter-wave",
+      "type": "qwp",
+      "x": 325,
+      "y": 160,
+      "rot": 0,
+      "label": "QWP",
+      "showLabel": true,
+      "params": {
+        "a": 45,
+        "length": 50
+      }
+    },
+    {
+      "id": "focus-lens",
+      "type": "lens",
+      "x": 380,
+      "y": 160,
+      "rot": 0,
+      "label": "Lens",
+      "showLabel": true,
+      "params": {
+        "f": 100,
+        "dia": 50,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "reference-plane",
+      "type": "mirror",
+      "x": 470,
+      "y": 160,
+      "rot": 0,
+      "label": "reference-plane",
+      "showLabel": true,
+      "params": {
+        "length": 50,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "focus-camera",
+      "type": "camera",
+      "x": 250,
+      "y": 40,
+      "rot": 270,
+      "label": "focus-camera",
+      "showLabel": true,
+      "params": {
+        "ch": 80,
+        "pixels": 64,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

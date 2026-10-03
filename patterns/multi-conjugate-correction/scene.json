@@ -1,0 +1,119 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "wave02-source",
+      "type": "cwlaser",
+      "x": 100,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 12,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "wave02-dm1",
+      "type": "dm",
+      "x": 350,
+      "y": 200,
+      "rot": 315,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "length": 60,
+        "f": 1000,
+        "steer": 0
+      }
+    },
+    {
+      "id": "wave02-relay1",
+      "type": "lens",
+      "x": 350,
+      "y": 300,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "f": 100,
+        "dia": 60,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "wave02-relay2",
+      "type": "lens",
+      "x": 350,
+      "y": 500,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "f": 100,
+        "dia": 60,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "wave02-dm2",
+      "type": "dm",
+      "x": 350,
+      "y": 550,
+      "rot": 135,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "length": 60,
+        "f": 1000,
+        "steer": 0
+      }
+    },
+    {
+      "id": "wave02-image",
+      "type": "lens",
+      "x": 600,
+      "y": 550,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "f": 100,
+        "dia": 60,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "wave02-camera",
+      "type": "camera",
+      "x": 700,
+      "y": 550,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "ch": 100,
+        "pixels": 32,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

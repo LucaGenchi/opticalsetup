@@ -1,0 +1,114 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "wave08-source",
+      "type": "cwlaser",
+      "x": 100,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 12,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "wave08-split",
+      "type": "bs",
+      "x": 250,
+      "y": 200,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "ratio": 0.95,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "wave08-dump",
+      "type": "beamdump",
+      "x": 250,
+      "y": 350,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "aperture": 40
+      }
+    },
+    {
+      "id": "wave08-stop1",
+      "type": "slit",
+      "x": 350,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "gap": 10,
+        "length": 60
+      }
+    },
+    {
+      "id": "wave08-relay",
+      "type": "lens",
+      "x": 500,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "f": 150,
+        "dia": 40,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "wave08-stop2",
+      "type": "slit",
+      "x": 650,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "gap": 10,
+        "length": 60
+      }
+    },
+    {
+      "id": "wave08-camera",
+      "type": "camera",
+      "x": 800,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "ch": 80,
+        "pixels": 32,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

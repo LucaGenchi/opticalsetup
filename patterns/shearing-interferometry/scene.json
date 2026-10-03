@@ -1,0 +1,125 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "input",
+      "type": "cwlaser",
+      "x": 80,
+      "y": 200,
+      "rot": 0,
+      "label": "input",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 10,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "shear-split",
+      "type": "bs",
+      "x": 250,
+      "y": 200,
+      "rot": 90,
+      "label": "shear-split",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "shear-upper-fold",
+      "type": "mirror",
+      "x": 451,
+      "y": 200,
+      "rot": 135,
+      "label": "shear-upper-fold",
+      "showLabel": true,
+      "params": {
+        "length": 50,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "shear-lower-fold",
+      "type": "mirror",
+      "x": 250,
+      "y": 400,
+      "rot": 315,
+      "label": "shear-lower-fold",
+      "showLabel": true,
+      "params": {
+        "length": 50,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "shear-phase-bias",
+      "type": "phaseplate",
+      "x": 350,
+      "y": 200,
+      "rot": 0,
+      "label": "shear-phase-bias",
+      "showLabel": true,
+      "params": {
+        "profile": "bar",
+        "opdUm": 0,
+        "aperture": 60
+      }
+    },
+    {
+      "id": "shear-combine",
+      "type": "bs",
+      "x": 450,
+      "y": 400,
+      "rot": 90,
+      "label": "shear-combine",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "shear-port-A",
+      "type": "camera",
+      "x": 572,
+      "y": 400,
+      "rot": 0,
+      "label": "shear-port-A",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "shear-port-B",
+      "type": "camera",
+      "x": 450,
+      "y": 522,
+      "rot": 90,
+      "label": "shear-port-B",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

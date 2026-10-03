@@ -1,0 +1,103 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "spect06-element-0",
+      "type": "cwlaser",
+      "x": 100,
+      "y": 300,
+      "rot": 0,
+      "label": "laser",
+      "showLabel": true,
+      "params": {
+        "wavelength": 633,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 6,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "spect06-element-1",
+      "type": "bs",
+      "x": 350,
+      "y": 300,
+      "rot": 0,
+      "label": "50/50 beamsplitter",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "spect06-element-2",
+      "type": "mirror",
+      "x": 600,
+      "y": 300,
+      "rot": 0,
+      "label": "M1 (movable ⟷)",
+      "showLabel": true,
+      "params": {
+        "length": 25.4,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "spect06-element-3",
+      "type": "mirror",
+      "x": 350,
+      "y": 120,
+      "rot": 90,
+      "label": "M2",
+      "showLabel": true,
+      "labelPos": "t",
+      "params": {
+        "length": 25.4,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "spect06-element-4",
+      "type": "camera",
+      "x": 350,
+      "y": 500,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "ch": 40,
+        "pixels": 32,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "spect06-delay",
+      "type": "delayline",
+      "x": 480,
+      "y": 300,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "moveMode": "static",
+        "delayMm": 0,
+        "delayMinMm": 0,
+        "delayMaxMm": 0.001,
+        "freqHz": 1,
+        "aperture": 24
+      }
+    }
+  ],
+  "beams": []
+}

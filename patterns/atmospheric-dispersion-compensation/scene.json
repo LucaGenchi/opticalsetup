@@ -1,0 +1,80 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "wave06-source",
+      "type": "sclaser",
+      "x": 100,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "wavelength": 500,
+        "scMin": 450,
+        "scMax": 750,
+        "avgPowerW": 1,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "repRateMHz": 80,
+        "pulsePhaseNs": 0,
+        "pulseWidthFs": 100,
+        "pulseShape": "gauss",
+        "pol": 0,
+        "autoColor": false,
+        "color": "#cbd8ea",
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      }
+    },
+    {
+      "id": "wave06-prism1",
+      "type": "prism",
+      "x": 300,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "apex": 30,
+        "psize": 50,
+        "material": "nbk7"
+      }
+    },
+    {
+      "id": "wave06-prism2",
+      "type": "prism",
+      "x": 440,
+      "y": 225,
+      "rot": 180,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "apex": 30,
+        "psize": 50,
+        "material": "nbk7"
+      }
+    },
+    {
+      "id": "wave06-camera",
+      "type": "camera",
+      "x": 700,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "ch": 120,
+        "pixels": 32,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

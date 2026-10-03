@@ -1,0 +1,188 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "access05-source",
+      "type": "cwlaser",
+      "x": 80,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "wavelength": 488,
+        "avgPowerW": 0.1,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "access05-sample",
+      "type": "sample",
+      "x": 450,
+      "y": 200,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "aperture": 25,
+        "specimenType": "linear",
+        "channels": [
+          {
+            "kind": "fluor",
+            "wl": 520,
+            "eff": 0.1,
+            "epi": false,
+            "epiRatio": 0.15,
+            "autoWl": true,
+            "autoColor": true,
+            "color": "#22c55e",
+            "material": "lipid",
+            "fluorophore": "custom",
+            "retardance": 90,
+            "axis": 45,
+            "transferEff": 0.1,
+            "requireOverlap": true
+          }
+        ],
+        "showSignalSpot": true,
+        "thickness": 6,
+        "voxelPreview": false,
+        "voxelSize": 0.6,
+        "transmitExc": true,
+        "transmission": 0.8,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1
+      }
+    },
+    {
+      "id": "access05-filter",
+      "type": "filter",
+      "x": 820,
+      "y": 400,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "ftype": "longpass",
+        "cutoff": 500,
+        "center": 525,
+        "band": 40,
+        "trans": 0.5,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "access05-return",
+      "type": "detector",
+      "x": 950,
+      "y": 400,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "aperture": 40,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "access05-delivery",
+      "kind": "fiber",
+      "pts": [
+        {
+          "x": 200,
+          "y": 200
+        },
+        {
+          "x": 280,
+          "y": 200
+        },
+        {
+          "x": 400,
+          "y": 200
+        }
+      ],
+      "color": "#e8a800",
+      "width": 4,
+      "bare": false,
+      "propagate": true,
+      "inputNA": 0.22,
+      "groupIndex": 1.468,
+      "lossDbPerM": 0.2,
+      "lengthM": 0,
+      "beta2Ps2PerKm": 0,
+      "out0": {
+        "mode": "diverge",
+        "na": 0.1,
+        "focal": 20,
+        "dia": 3
+      },
+      "out1": {
+        "mode": "diverge",
+        "na": 0.1,
+        "focal": 20,
+        "dia": 3
+      }
+    },
+    {
+      "id": "access05-collection",
+      "kind": "fiber",
+      "pts": [
+        {
+          "x": 450,
+          "y": 205
+        },
+        {
+          "x": 450,
+          "y": 300
+        },
+        {
+          "x": 620,
+          "y": 400
+        },
+        {
+          "x": 740,
+          "y": 400
+        }
+      ],
+      "color": "#e8a800",
+      "width": 4,
+      "bare": false,
+      "propagate": true,
+      "inputNA": 0.5,
+      "groupIndex": 1.468,
+      "lossDbPerM": 0.2,
+      "lengthM": 0,
+      "beta2Ps2PerKm": 0,
+      "out0": {
+        "mode": "diverge",
+        "na": 0.1,
+        "focal": 20,
+        "dia": 3
+      },
+      "out1": {
+        "mode": "diverge",
+        "na": 0.1,
+        "focal": 20,
+        "dia": 3
+      }
+    }
+  ]
+}

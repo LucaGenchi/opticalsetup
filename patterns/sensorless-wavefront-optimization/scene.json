@@ -1,0 +1,59 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "wave03-source",
+      "type": "cwlaser",
+      "x": 100,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 12,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "wave03-dm",
+      "type": "dm",
+      "x": 400,
+      "y": 200,
+      "rot": 315,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "length": 60,
+        "f": 1000,
+        "steer": 0
+      }
+    },
+    {
+      "id": "wave03-science",
+      "type": "camera",
+      "x": 400,
+      "y": 520,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "ch": 100,
+        "pixels": 32,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

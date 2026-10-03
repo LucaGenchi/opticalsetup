@@ -1,0 +1,104 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "access01-object",
+      "type": "objarrow",
+      "x": 100,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "height": 10,
+        "shape": "arrow",
+        "raysMode": "fan",
+        "spread": 10,
+        "nrays": 3,
+        "showImage": true,
+        "wavelength": 620,
+        "autoColor": true,
+        "color": "#e02020"
+      }
+    },
+    {
+      "id": "access01-l1",
+      "type": "lens",
+      "x": 150,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "f": 50,
+        "dia": 30,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "access01-l2",
+      "type": "lens",
+      "x": 250,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "f": 50,
+        "dia": 30,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "access01-l3",
+      "type": "lens",
+      "x": 350,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "f": 50,
+        "dia": 30,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "access01-l4",
+      "type": "lens",
+      "x": 450,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "f": 50,
+        "dia": 30,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "access01-camera",
+      "type": "camera",
+      "x": 500,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "ch": 80,
+        "pixels": 32,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

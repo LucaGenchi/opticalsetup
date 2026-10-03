@@ -1,425 +1,948 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
+import { readFileSync } from 'node:fs';
+import '../../sketch/js/detector-instruments.js';
 import { createElement } from '../../sketch/js/elements.js';
 
-// Coordinates describe topology only. Values are chosen teaching configurations,
-// not measured performance or a reproduction of a cited instrument.
-const n = (id, label, x, y, note, type) => ({ id, label, x, y, note, ...(type ? { type } : {}) });
-const e = (from, to, label, kind = 'light', via) => ({ from, to, label, kind, ...(via ? { via } : {}) });
-const ref = (label, url) => ({ label, url });
-const example = (id, title, summary, nodes, edges, steps, limit, references) => ({ id, title, summary, nodes, edges, steps, limit, references, mode: 'schematic' });
-const nikon = (slug, label) => ref(`Nikon MicroscopyU: ${label}`, `https://www.microscopyu.com/${slug}`);
-const esoAO = ref('ESO: adaptive-optics modes and conjugation architectures', 'https://www.eso.org/sci/facilities/develop/ao/ao_modes.html');
-const ligo = ref('LIGO: the interferometer and its optical cavities', 'https://www.ligo.caltech.edu/MIT/page/ligos-ifo');
-const schott = ref('SCHOTT: flexible coherent imaging bundles', 'https://www.schott.com/en-ca/products/flexible-imaging-bundles-p1000343');
-const weiner = ref('Weiner: femtosecond pulse shaping with spatial light modulators', 'https://doi.org/10.1063/1.1150614');
-const newportPrism = ref('Newport: prism compressor for ultrashort laser pulses', 'https://www.newport.com/f/prism-compressor-for-ultrashort-laser-pulses');
-const spectrometer = ref('HORIBA: Czerny–Turner spectrometer layout', 'https://www.horiba.com/fileadmin/uploads/Scientific/Documents/OSD/17021704.pdf');
-
+// Every published setup below contains native optics, sources and readouts.
+// References describe the physical patterns; configuration values are teaching inputs.
 export const examples = [
-example('CONTRAST-01', 'Descanned fluorescence with a one-Airy-unit pinhole',
-  'A 488 nm raster beam excites a specimen through a 40× objective; the return is descanned before a conjugate pinhole and PMT. Choose a nominal one-Airy-unit aperture at 520 nm.', [
-  n('laser','488 nm excitation',90,85,'Continuous-wave excitation starts the scanned channel.','cwlaser'),
-  n('split','Dichroic',285,85,'Reflect excitation and transmit the longer-wavelength return.','dichroic'),
-  n('scan','Scan / descan',480,85,'The same scanner removes scan motion from returning fluorescence.','galvo'),
-  n('obj','40× objective',680,85,'Excitation and collection share a diffraction-limited focal region.','objective'),
-  n('sample','Focal specimen',875,85,'Only fluorescence conjugate to the aperture is efficiently collected.','sample'),
-  n('pinhole','Conjugate pinhole',285,270,'Nominal one Airy unit at 520 nm; opening it trades sectioning for signal.','slit'),
-  n('pmt','Emission PMT',90,270,'Measures the descanned, aperture-selected fluorescence.','pmt')],
-  [e('laser','split','488 nm'),e('split','scan','excitation'),e('scan','obj','scanned beam'),e('obj','sample','focus'),e('sample','obj','fluorescence'),e('obj','scan','return'),e('scan','split','stationary return'),e('split','pinhole','520 nm'),e('pinhole','pmt','selected signal')],
-  ['Trace the shared outgoing and returning path and identify where the scan is removed.','Compare a one-Airy-unit aperture with two Airy units; describe the signal/sectioning tradeoff.'],
-  'Topology only: the 2D tracer does not compute an Airy pattern, axial point-spread function or pinhole optical sectioning.',
-  [nikon('techniques/confocal','confocal microscopy')]),
-example('CONTRAST-02','Dual-disk parallel confocal camera',
-  'A microlens disk directs 488 nm light into a matched pinhole disk. A 60× objective maps its moving focal array onto a cell; fluorescence returns through the pinholes to a camera.',[
-  n('laser','488 nm source',90,85,'Illuminates many lenslets simultaneously.','cwlaser'),n('micro','Microlens disk',285,85,'Lenslets concentrate excitation into the matched holes.'),n('holes','Pinhole disk',480,85,'Nominal 50 µm holes form parallel confocal channels.'),n('obj','60× objective',680,85,'Maps pinholes to specimen focal spots.','objective'),n('cell','Live cell',875,85,'Moving focal spots sample the field.','sample'),n('split','Emission pickoff',480,285,'Return fluorescence exits before the microlens disk.','dichroic'),n('camera','Camera exposure',680,285,'An exposure integrates many disk positions.','camera')],
-  [e('laser','micro','excitation'),e('micro','holes','lenslet spots'),e('holes','obj','parallel channels'),e('obj','cell','focus array'),e('cell','obj','emission'),e('obj','holes','confocal return'),e('holes','split','emission'),e('split','camera','integrated image')],
-  ['Identify the hole/lenslet registration and the specimen conjugate.','Increase spot density conceptually and identify which adjacent return channels can admit scattered fluorescence.'],
-  'Disk motion, channel crosstalk, diffraction and camera integration are not calculated.',
-  [ref('Botcherby et al.: spinning-disk remote-focusing microscopy','https://arxiv.org/abs/2002.06576')]),
-example('CONTRAST-03','Oblique dark-field particle inspection',
-  'Illuminate a coverslip at a deliberately oblique 532 nm angle; place the direct/specular channel outside the collection objective and record only light scattered toward it.',[
-  n('laser','Oblique 532 nm beam',90,85,'Incidence is chosen outside the objective collection cone.','cwlaser'),n('sample','Particle on glass',285,230,'The particle redistributes light into collection angles.','sample'),n('dump','Specular dump',480,85,'Intercepts the bright reflected beam.','beamdump'),n('obj','Collection objective',480,230,'Collects a cone that excludes direct illumination.','objective'),n('camera','Scattering image',680,230,'Images redistributed light.','camera')],
-  [e('laser','sample','oblique illumination'),e('sample','dump','specular branch'),e('sample','obj','scattered branch'),e('obj','camera','image')],
-  ['Check that the specular branch cannot enter the collection cone.','Move the illumination toward the collection axis and identify the bright-background failure path.'],
-  'The diagram does not predict particle scattering, collection solid angle or dark-field contrast.',
-  [nikon('techniques/stereomicroscopy/darkfield-illumination','dark-field illumination')]),
-example('CONTRAST-04','Zernike annulus and quarter-wave phase ring',
-  'A 550 nm illumination annulus is conjugate to a phase ring in a 40× objective pupil. Direct light receives a nominal quarter-wave phase shift while specimen-scattered light mostly bypasses the ring.',[
-  n('annulus','Condenser annulus',90,210,'Forms a hollow cone matched to the objective phase ring.'),n('cell','Transparent cell',285,210,'Optical-path variations scatter part of the illumination.','sample'),n('direct','Direct pupil ring',480,85,'Reference field receives nominal π/2 phase bias.','phaseplate'),n('scatter','Scattered pupil field',480,310,'Spatially displaced field largely misses the ring.'),n('lens','Tube lens',680,210,'Recombines reference and scattered fields into an image.','lens'),n('camera','Phase-contrast image',875,210,'Intensity carries phase-dependent contrast.','camera')],
-  [e('annulus','cell','550 nm cone'),e('cell','direct','undeviated field'),e('cell','scatter','diffracted field'),e('direct','lens','biased reference'),e('scatter','lens','scattered field'),e('lens','camera','interference image')],
-  ['Follow the two pupil-plane contributions and locate their recombination.','Misregister the annulus and ring conceptually; identify the resulting unwanted reference leakage.'],
-  'No coherent field propagation is run; phase contrast, halos and the π/2 spectral response are conceptual.',
-  [nikon('techniques/phase-contrast','phase-contrast microscopy')]),
-example('CONTRAST-05','Biased DIC shear across a transparent cell',
-  'A 550 nm polarized field is split into neighboring orthogonal-polarization paths with an illustrative 0.3 µm specimen shear, then recombined with adjustable bias before an analyzer.',[
-  n('pol','Input polarizer',90,210,'Prepares polarization at 45° to the prism axes.','polarizer'),n('shear','First Nomarski prism',285,210,'Creates the two orthogonally polarized probes.'),n('a','Cell point A',480,85,'First neighboring optical path through the cell.','sample'),n('b','Cell point B',480,310,'Second path, displaced along the chosen shear direction.','sample'),n('merge','Second prism + bias',680,210,'Recombines paths with a chosen quarter-wave bias.'),n('analyzer','Analyzer / camera',875,210,'Converts relative phase into detected intensity.','polarizer')],
-  [e('pol','shear','linear polarization'),e('shear','a','probe A'),e('shear','b','probe B'),e('a','merge','phase A'),e('b','merge','phase B'),e('merge','analyzer','recombined field')],
-  ['Rotate the conceptual shear direction relative to a cell edge and compare which gradient is sampled.','Change the phase bias around quadrature and distinguish contrast polarity from physical height.'],
-  'Nomarski shearing and coherent recombination are not computed; apparent relief is not a calibrated height map.',
-  [ref('Nikon: Differential Interference Contrast Microscopy','https://www.microscopyu.com/pdfs/DICMicroscopy.pdf')]),
-example('CONTRAST-06','Prism-based TIRF at a glass/water interface',
-  'A 488 nm beam enters a glass prism and meets water at a chosen 70° internal angle (n≈1.52 and 1.33). Fluorescence near the interface is collected from below, separate from the reflected beam.',[
-  n('laser','488 nm excitation',90,85,'Collimated illumination enters the prism.','cwlaser'),n('prism','Glass prism',285,85,'Sets an internal angle above the glass/water critical angle.','prism'),n('surface','Glass / water interface',480,210,'A decaying evanescent field excites nearby fluorophores.','sample'),n('dump','Reflected beam dump',680,85,'Receives the totally internally reflected pump.','beamdump'),n('obj','Below-surface objective',480,330,'Collects fluorescence independently of excitation.','objective'),n('camera','Filtered fluorescence',680,330,'An emission filter rejects residual 488 nm light.','camera')],
-  [e('laser','prism','pump'),e('prism','surface','70° internal incidence'),e('surface','dump','reflected pump'),e('surface','obj','fluorescence'),e('obj','camera','emission image')],
-  ['Compare the chosen angle with arcsin(1.33/1.52), about 61°.','Decrease incidence toward the critical angle and discuss penetration depth and unwanted propagating excitation.'],
-  'Evanescent decay, near-interface dipole emission and fluorescence excitation are not calculated.',
-  [nikon('techniques/fluorescence/total-internal-reflection-fluorescence-tirf-microscopy','TIRF microscopy')]),
-example('CONTRAST-07','Non-descanned two-photon fluorescence',
-  'An illustrative 920 nm, 100 fs, 80 MHz source is precompensated, scanned and focused through a 20× water objective. A near-objective pickoff collects emission without a confocal pinhole.',[
-  n('pulse','920 nm pulses',90,85,'Pulse parameters are design inputs, not predicted sample intensity.','pulsedlaser'),n('comp','Precompensation',285,85,'Opposes dispersion before the objective.','pulsecompressor'),n('scan','Raster scanner',480,85,'Steers the focal spot across the specimen.','galvo'),n('obj','Water objective',680,85,'High numerical aperture localizes nonlinear excitation.','objective'),n('sample','Focal specimen',875,85,'Two-photon probability depends on local intensity squared.','sample'),n('pick','Emission pickoff',680,285,'Collects close to the objective before descanning.','dichroic'),n('pmt','Non-descanned PMT',480,285,'No pinhole is used in this detection branch.','pmt')],
-  [e('pulse','comp','ultrashort input'),e('comp','scan','precompensated beam'),e('scan','obj','raster'),e('obj','sample','focal excitation'),e('sample','obj','emission'),e('obj','pick','collected return'),e('pick','pmt','visible fluorescence')],
-  ['Identify why emission need not traverse the scan or a pinhole.','Hold average power fixed and discuss how pulse broadening reduces peak intensity and nonlinear signal.'],
-  'No nonlinear point-spread function, phototoxicity, scattering or specimen-specific two-photon yield is predicted.',
-  [ref('Denk, Strickler and Webb: two-photon laser scanning fluorescence microscopy','https://doi.org/10.1126/science.2321027')]),
-example('CONTRAST-08','Registered excitation and doughnut depletion',
-  'An illustrative 640 nm excitation spot and 775 nm vortex-shaped depletion beam share an objective. Depletion timing and the central intensity minimum are adjusted before fluorescence reaches a confocal detector.',[
-  n('exc','640 nm excitation',90,85,'Excites the fluorophore before depletion.','pulsedlaser'),n('sted','775 nm depletion',90,310,'Provides the later stimulated-emission pulse.','pulsedlaser'),n('vortex','Vortex phase mask',285,310,'Creates the desired depletion minimum; polarization also matters.','phaseplate'),n('combine','Dichroic combiner',480,210,'Registers both colors on a shared optical axis.','dichroic'),n('obj','Shared objective',680,210,'Overlaps the excitation maximum and depletion minimum.','objective'),n('sample','Fluorescent target',875,210,'Only the undepleted region contributes desired fluorescence.','sample'),n('det','Confocal detector',680,330,'Filters emission and selects the conjugate focal region.','pmt')],
-  [e('exc','combine','excitation'),e('sted','vortex','depletion'),e('vortex','combine','doughnut field'),e('combine','obj','registered colors'),e('obj','sample','excite then deplete'),e('sample','det','filtered emission')],
-  ['Identify both spatial registration and pulse-order requirements.','Shift the depletion minimum off the excitation maximum conceptually and explain loss of useful fluorescence.'],
-  'The app does not form a vectorial doughnut, simulate stimulated depletion, dye kinetics or super-resolution.',
-  [ref('Hell and Wichmann: breaking the diffraction resolution limit by stimulated emission','https://doi.org/10.1364/OL.19.000780')]),
-example('SPECT-01','Folded Czerny–Turner visible spectrometer',
- 'An illustrative 25 µm slit, 150 mm collimator, 600 lines/mm grating and 150 mm camera optic map a narrow visible band onto a detector. The two mirror legs keep entrance and output separate.',[
- n('slit','25 µm entrance slit',90,85,'Defines the spatial input and resolution/throughput tradeoff.','slit'),n('coll','150 mm collimator',285,85,'Collimates the slit output before dispersion.','cmirror'),n('grating','600 lines/mm grating',480,210,'Disperses wavelengths in the selected first order.','grating'),n('camoptic','150 mm camera optic',680,310,'Focuses angular dispersion onto the detector.','cmirror'),n('camera','Spectral focal plane',875,310,'Pixel coordinate becomes wavelength after calibration.','camera')],
- [e('slit','coll','divergent slit light'),e('coll','grating','collimated input'),e('grating','camoptic','first-order fan'),e('camoptic','camera','slit images')],
- ['Locate the slit and detector conjugates through both reflective legs.','Double slit width conceptually and compare throughput with overlapping wavelength images.'],
- 'This folded diagram does not compute spot aberrations, spectral line shape, resolving power or wavelength calibration.',[spectrometer]),
-example('SPECT-02','Echelle orders separated by a prism',
- 'An illustrative 31.6 lines/mm echelle at high incidence disperses several orders; a prism supplies orthogonal dispersion before a 2D camera.',[
- n('slit','Entrance slit',90,210,'A narrow spatial input prevents order overlap.','slit'),n('coll','Collimator',285,210,'Presents the same incidence angle across the pupil.','lens'),n('echelle','31.6 lines/mm echelle',480,85,'High diffraction orders provide fine dispersion.','grating'),n('prism','Cross-dispersing prism',680,210,'Separates orders in the second detector axis.','prism'),n('camera','2D order map',875,210,'Each stripe contains a different wavelength interval.','camera'),n('order','Overlapping orders',480,310,'Without the cross disperser different orders would coincide.')],
- [e('slit','coll','input'),e('coll','echelle','collimated field'),e('echelle','prism','multiple orders'),e('prism','camera','separated stripes'),e('echelle','order','unseparated alternative','reference')],
- ['Follow high dispersion along one detector axis and order separation along the other.','Compare adjacent-order spacing with slit image height before claiming usable coverage.'],
- 'Orthogonal dispersion requires a 3D field model; the diagram does not calculate blaze, order efficiency or an echellogram.',
- [ref('ESO: UVES high-resolution cross-dispersed echelle spectrograph','https://www.eso.org/sci/facilities/paranal/instruments/uves.html')]),
-example('SPECT-03','Three-slice integral-field spectrograph feed',
- 'Divide a small square sky field into three strips, relay them into a pseudo-slit and disperse them together; retain a lookup from slit position back to each strip.',[
- n('field','2D sky field',90,210,'Three equal strips define this teaching field.'),n('s1','Slice 1',285,85,'First field strip is redirected to one pseudo-slit segment.'),n('s2','Slice 2',285,210,'Central strip retains its distinct spatial coordinate.'),n('s3','Slice 3',285,335,'Third strip is redirected to the last segment.'),n('slit','Reformatted pseudo-slit',480,210,'Segments are end-to-end, not optically summed.','slit'),n('spect','Dispersing relay',680,210,'Forms a spectrum for every slit position.','grating'),n('camera','Spatial × spectral camera',875,210,'A reconstruction table returns a data cube.','camera')],
- [e('field','s1','upper strip'),e('field','s2','middle strip'),e('field','s3','lower strip'),e('s1','slit','segment 1'),e('s2','slit','segment 2'),e('s3','slit','segment 3'),e('slit','spect','pseudo-slit'),e('spect','camera','dispersed slices')],
- ['Track one location through its slice, pseudo-slit segment and detector spectrum.','Check that the slice lookup is retained; a summed spectrum cannot reconstruct the original field.'],
- 'Slice reformatting and cube reconstruction are schematic; no 3D image-slicer surfaces or spatial crosstalk are simulated.',
- [ref('ESO: MUSE optical layout and integral-field spectrograph','https://www.eso.org/sci/facilities/paranal/instruments/muse/inst.html')]),
-example('SPECT-04','Two-crystal fixed-exit monochromator',
- 'Choose an 8 keV Si(111) teaching beamline: linked crystal angles select energy while translation of the second crystal maintains a fixed-height exit.',[
- n('source','Broad X-ray beam',90,85,'Incident beam direction is fixed during an energy scan.'),n('c1','First Si(111) crystal',285,85,'Bragg reflection selects the chosen energy.'),n('c2','Translated second crystal',480,210,'Linked angle and translation restore the exit axis.'),n('exit','Fixed-height exit',680,210,'Downstream optics see a stationary nominal beam line.'),n('focus','Downstream focus',875,210,'Receives the monochromatic output.'),n('motion','Angle / translation law',480,335,'Motion must follow energy and fixed-exit geometry.')],
- [e('source','c1','polychromatic'),e('c1','c2','Bragg-selected branch'),e('c2','exit','parallel exit'),e('exit','focus','selected energy'),e('motion','c1','linked angle','signal'),e('motion','c2','angle + translation','signal')],
- ['Identify the angle and translation degrees of freedom separately.','Scan energy conceptually while holding the exit node fixed; explain why rotation alone is insufficient.'],
- 'Bragg diffraction, Darwin width, crystal heat load and the translation law are not computed; 8 keV is illustrative.',
- [ref('Diamond Light Source: I18 monochromator and beamline optics','https://www.diamond.ac.uk/Instruments/Imaging-and-Microscopy/I18.html')]),
-example('SPECT-05','Two overlapping bandpasses with a diagnostic tap',
- 'A 532 nm beam passes a 500–550 nm and a 520–540 nm filter. Their nominal overlap is 520–540 nm; an upstream tap distinguishes source loss from rejection.',[
- n('source','532 nm input',90,210,'A single wavelength probes the overlapping passbands.','cwlaser'),n('tap','10% diagnostic tap',285,210,'Routes a small share to the reference detector.','bs'),n('f1','500–550 nm filter',480,210,'First stage rejects wavelengths outside its band.','filter'),n('f2','520–540 nm filter',680,210,'Second stage narrows the surviving interval.','filter'),n('det','Output detector',875,210,'Collects the overlap-band output.','detector'),n('monitor','Source monitor',285,335,'Upstream reference exposes source variations.','detector')],
- [e('source','tap','input'),e('tap','f1','90% path'),e('tap','monitor','10% reference'),e('f1','f2','first passband'),e('f2','det','intersection')],
- ['Compare 532 nm input with 510 nm: only the first should survive both idealized stages.','Set the second band to 560–580 nm and check the no-overlap boundary case.'],
- 'The supplied ray scene uses idealized bandpass and split models. It does not predict angular shifts, coating ripple, fluorescence or optical-density leakage.',
- [ref('Thorlabs: bandpass-filter transmission and application data','https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=1001')]),
-example('SPECT-06','Scanning Michelson Fourier-transform spectrometer',
- 'A broadband input divides into a fixed arm and a moving retroreflector arm. Record intensity versus optical-path difference; transform the interferogram only after sampling and reference calibration.',[
- n('source','Broadband input',90,210,'Finite coherence determines the useful scan envelope.','sclaser'),n('split','50:50 splitter',285,210,'Launches and recombines both arms.','bs'),n('fixed','Fixed retroreflector',480,85,'Defines the reference optical-path length.','retroreflector'),n('move','Scanning retroreflector',480,335,'A displacement Δx changes round-trip path by 2Δx.','retroreflector'),n('det','Interferogram detector',680,210,'Records interference as delay is scanned.','detector'),n('fft','Sample / Fourier transform',875,210,'Turns calibrated path samples into a spectrum.')],
- [e('source','split','broadband field'),e('split','fixed','fixed arm'),e('fixed','split','fixed return'),e('split','move','variable arm'),e('move','split','delayed return'),e('split','det','recombined fields'),e('det','fft','I versus OPD','signal')],
- ['Distinguish mirror displacement from round-trip optical-path difference.','Compare long scan range with fine OPD sampling; they set different spectral constraints.'],
- 'The diagram does not integrate broadband coherent interference or perform Fourier reconstruction.',
- [ref('NIST: Fourier-transform infrared spectroscopy instrument and measurement work','https://www.nist.gov/laboratories/tools-instruments/fourier-transform-infrared-spectrophotometry-ftis-facility')]),
-example('SPECT-07','Raman pump cleanup and edge rejection',
- 'Clean a 532 nm pump before the specimen, then place a long-pass edge filter in the return branch so Stokes-shifted Raman light can enter a slit spectrometer.',[
- n('laser','532 nm pump',90,85,'Laser sidebands must be removed before interaction.','cwlaser'),n('clean','Pump bandpass',285,85,'Passes the laser line while rejecting source background.','filter'),n('sample','Raman specimen',480,210,'Weak shifted light coexists with strong elastic scatter.','sample'),n('edge','Return edge filter',680,210,'Rejects the laser line while passing Stokes wavelengths.','filter'),n('slit','Spectrometer slit',875,210,'Receives the filtered Raman collection.','slit'),n('dump','Elastic-light rejection',680,335,'The bright pump channel must not reach the spectrometer.','beamdump')],
- [e('laser','clean','pump spectrum'),e('clean','sample','clean excitation'),e('sample','edge','elastic + Raman'),e('edge','slit','Stokes channel'),e('edge','dump','rejected pump')],
- ['Identify which filter operates before the sample and which after it.','Move a hypothetical Raman line near the edge and check the tradeoff between pump rejection and low-shift access.'],
- 'No spontaneous Raman spectrum or edge-filter optical density is simulated; rejected arrows describe routing intent.',
- [ref('HORIBA: Raman spectroscopy instrumentation and filtering','https://www.horiba.com/int/scientific/technologies/raman-imaging-and-spectroscopy/raman-spectroscopy/')]),
-example('SPECT-08','Asymmetric dual-comb absorption measurement',
- 'Choose two illustrative 100 MHz combs differing by 100 Hz. One crosses a gas cell and meets the local-oscillator comb on a photodiode; radio-frequency beats are digitized with a common timing reference.',[
- n('probe','100 MHz probe comb',90,85,'Its spectral teeth interrogate the sample.'),n('lo','100 MHz + 100 Hz LO',90,335,'The slight repetition-rate offset maps optical teeth to RF.'),n('gas','Gas cell',285,85,'Changes probe amplitude and phase.','gascell'),n('mix','Comb overlap',480,210,'Spatial and polarization matching allow heterodyne beating.','bs'),n('det','Fast photodiode',680,210,'Converts paired optical teeth into RF beats.','detector'),n('adc','RF digitizer',875,210,'Acquires a time record for coherent spectral recovery.'),n('clock','Common reference',285,335,'Controls coherence and frequency assignment.')],
- [e('probe','gas','sample comb'),e('gas','mix','transmitted comb'),e('lo','mix','local oscillator'),e('mix','det','heterodyne overlap'),e('det','adc','RF comb','signal'),e('clock','probe','phase reference','signal'),e('clock','lo','phase reference','signal')],
- ['Follow the sample-only arm and identify why both optical combs reach the same diode.','Relate the 100 Hz difference to a 10 ms nominal interferogram period; do not infer resolution from that alone.'],
- 'Comb coherence, RF aliasing, molecular line strengths and heterodyne spectra are not calculated.',
- [ref('NIST: frequency-comb-based dual-comb spectroscopy','https://www.nist.gov/programs-projects/frequency-comb-based-spectroscopy-dual-comb-spectroscopy')]),
-example('CAV-01','Symmetric two-mirror stable resonator',
- 'Choose L = 300 mm and two R = 500 mm concave mirrors. The paraxial stability product is g₁g₂ = (1 − L/R)² = 0.16; a weak transmission port samples the cavity.',[
- n('in','Mode-matched input',90,210,'A seed is coupled through the first mirror.','cwlaser'),n('m1','R = 500 mm input mirror',285,210,'Partial transmission couples the input; curvature defines g₁.','cmirror'),n('waist','Central waist plane',480,210,'Symmetry places the nominal fundamental-mode waist here.'),n('m2','R = 500 mm end mirror',680,210,'Returns light for a 300 mm geometrical round trip leg.','cmirror'),n('port','Transmission monitor',875,210,'A small transmitted field diagnoses resonance.','detector')],
- [e('in','m1','seed'),e('m1','waist','forward leg'),e('waist','m2','forward leg'),e('m2','m1','return leg','light',[[680,335],[285,335]]),e('m2','port','transmission')],
- ['Compute g₁g₂ and compare it with the stable interval 0 < g₁g₂ < 1.','Increase L to 1000 mm and identify the marginal boundary; geometrical stability alone does not prove useful coupling.'],
- 'The stability arithmetic is stated analytically; cavity eigenmodes, interference, linewidth and circulating power are not traced.',
- [ref('Kogelnik and Li: laser beams and resonators','https://doi.org/10.1364/AO.5.001550')]),
-example('CAV-02','Four-mirror bow-tie enhancement cavity',
- 'A 1064 nm seed enters a bow-tie cavity with two curved mirrors focusing through a nonlinear crystal. Reflection provides a locking channel; transmission monitors buildup.',[
- n('seed','1064 nm seed',90,85,'Input phase and mode must match the resonant cavity.','cwlaser'),n('input','Input coupler',285,85,'Its transmission is chosen against round-trip loss.','mirror'),n('curve1','Curved mirror 1',480,85,'Forms one side of the crystal focus.','cmirror'),n('crystal','Intracavity focus',680,210,'A chosen nonlinear interaction uses circulating power.','crystal'),n('curve2','Curved mirror 2',480,335,'Closes the focusing leg.','cmirror'),n('fold','Return fold',285,335,'Returns the beam to the input coupler.','mirror'),n('lock','Reflection lock sensor',90,335,'Error signal must maintain resonance.','detector'),n('out','Converted output',875,210,'Extracted wavelength is separated from the fundamental.')],
- [e('seed','input','seed'),e('input','curve1','circulation'),e('curve1','crystal','focus'),e('crystal','curve2','circulation'),e('curve2','fold','return'),e('fold','input','round trip'),e('input','lock','reflected seed'),e('crystal','out','conversion')],
- ['Follow the closed round trip and distinguish it from a nonresonant multipass path.','Identify input-coupler loss matching and phase locking as separate requirements for buildup.'],
- 'No resonant buildup, mode matching, lock acquisition or cavity-enhanced conversion efficiency is calculated.',[ref('On the design of bow-tie enhancement cavities for second-harmonic generation','https://www.sciencedirect.com/science/article/pii/S003040180101584X')]),
-example('CAV-03','Power- and signal-recycled Michelson',
- 'A Michelson operated near a dark readout port places a power-recycling mirror at the bright input and a signal-recycling mirror at the output. Both mirrors create additional resonant paths.',[
- n('laser','Laser input',90,210,'Feeds the bright port.','cwlaser'),n('prm','Power-recycling mirror',285,210,'Returns light leaving the bright port to the splitter.','mirror'),n('bs','Michelson splitter',480,210,'Defines bright and dark port combinations.','bs'),n('a','Arm A cavity',680,85,'Round-trip phase contributes to differential readout.'),n('b','Arm B cavity',680,335,'Second arm must share the chosen operating point.'),n('srm','Signal-recycling mirror',480,335,'Tunes the output-port resonant response.','mirror'),n('det','Output readout',285,335,'Receives the extracted signal sidebands.','detector')],
- [e('laser','prm','input'),e('prm','bs','recycled power'),e('bs','a','arm A'),e('a','bs','return A'),e('bs','b','arm B'),e('b','bs','return B'),e('bs','prm','bright return'),e('bs','srm','dark-port signal'),e('srm','bs','signal recycling'),e('srm','det','readout')],
- ['Trace the input recycling loop separately from the output recycling loop.','Discuss how changing signal-recycling detuning can alter bandwidth without simply increasing all signals.'],
- 'No coherent port cancellation, resonant sideband response, gravitational-wave sensitivity or recycling gain is modeled.',[ligo]),
-example('CAV-04','Seeded amplifier with isolated monitoring',
- 'A narrowband 1064 nm master oscillator seeds an isolated amplifier. A pump branch supplies gain energy; a post-amplifier 1% tap monitors output before delivery.',[
- n('seed','1064 nm master',90,85,'Defines seed frequency and temporal structure.','cwlaser'),n('iso','Input isolator',285,85,'Suppresses amplifier feedback into the oscillator.','isolator'),n('amp','Power amplifier',480,85,'Gain stage is seeded rather than a free-running oscillator.'),n('pump','Pump supply',480,310,'Adds energy to the gain medium, separate from the seed path.'),n('tap','1% output tap',680,85,'Samples amplified light before delivery.','bs'),n('load','Delivered beam',875,85,'Output goes to the experiment.'),n('monitor','Power monitor',680,310,'Separately monitors extraction stability.','detector')],
- [e('seed','iso','seed'),e('iso','amp','isolated seed'),e('pump','amp','pump energy'),e('amp','tap','amplified field'),e('tap','load','99% output'),e('tap','monitor','1% monitor')],
- ['Separate seed coherence from the energy supplied by the pump.','Identify the reverse path the isolator must suppress and the limits of post-amplifier monitoring.'],
- 'Gain saturation, thermal lensing, ASE, isolation ratio and amplified noise are not simulated.',
- [ref('High-peak-power pulsed fiber master-oscillator power-amplifier experiment','https://www.sciencedirect.com/science/article/pii/S1631070506000399')]),
-example('CAV-05','Switched regenerative pulse amplifier',
- 'An illustrative stretched 1030 nm seed enters through a polarizing coupler, circulates for a programmed 20 round trips and is switched out by a Pockels cell for later compression.',[
- n('seed','Stretched seed pulse',90,85,'Low peak intensity helps protect the gain medium.','pulsedlaser'),n('pbs','Injection / extraction PBS',285,85,'Polarization selects storage versus output.','pbs'),n('pc','Timed Pockels cell',480,85,'Changes polarization to trap and release the pulse.','eom'),n('gain','Pumped gain crystal',680,85,'Adds pulse energy each round trip.','crystal'),n('end','End mirror',875,85,'Returns the stored pulse.','mirror'),n('fold','Return mirror',480,310,'Completes the round-trip storage path.','mirror'),n('out','Extracted pulse',90,310,'Leaves after the chosen number of passes.')],
- [e('seed','pbs','injection'),e('pbs','pc','capture'),e('pc','gain','stored pulse'),e('gain','end','amplification'),e('end','fold','return'),e('fold','pbs','round trip'),e('pbs','out','switched extraction')],
- ['Follow one round trip and locate the polarization gate rather than a permanent open output.','Compare early extraction with more passes; gain saturation and nonlinear phase constrain useful storage.'],
- 'Pulse capture, per-pass gain, saturation and switching timing are architectural annotations, not ray-tracer predictions.',
- [ref('Coherent: regenerative amplifiers and ultrafast laser architecture','https://www.coherent.com/lasers/laser/legend-elite')]),
-example('CAV-06','Loss-controlled Q-switched resonator',
- 'An illustrative 1064 nm resonator stores inversion with an acousto-optic loss gate active, then rapidly lowers loss to produce a pulse through a fixed output coupler.',[
- n('pump','Pump source',90,85,'Builds population inversion while oscillation is suppressed.'),n('gain','Nd:YAG gain',285,210,'Energy is stored in excited populations.','crystal'),n('hr','High reflector',90,335,'Closes one cavity end.','mirror'),n('q','Acousto-optic loss gate',480,210,'High-loss then low-loss switching changes cavity Q.','aom'),n('oc','Fixed output coupler',680,210,'Transmits a constant fraction during the pulse.','mirror'),n('out','Nanosecond pulse port',875,210,'Pulse duration depends on dynamics, not just gate width.')],
- [e('pump','gain','pump energy'),e('hr','gain','circulation'),e('gain','q','cavity field'),e('q','oc','selected low-loss path'),e('oc','hr','round trip','light',[[680,335]]),e('oc','out','output')],
- ['Distinguish stored inversion from stored circulating optical energy.','Keep the output coupler fixed while changing the loss gate; identify why this differs from cavity dumping.'],
- 'Laser rate equations, inversion recovery, giant-pulse duration and AOM diffraction losses are not calculated.',
- [ref('AA Opto-Electronic: acousto-optic Q-switch theory and loss control','https://acoustooptic.com/wp-content/uploads/2025/04/AAOPTO-Theory2013-4-1.pdf')]),
-example('CAV-07','Electro-optically dumped circulating pulse',
- 'A circulating pulse builds in a cavity with weak normal outcoupling. A timed polarization switch routes one stored pulse into a high-transmission output port.',[
- n('seed','Seed / gain section',90,85,'Establishes circulating optical energy.'),n('fold1','Storage mirror A',285,85,'One corner of the storage loop.','mirror'),n('switch','Dump Pockels cell',480,85,'A short voltage gate changes pulse polarization.','eom'),n('pbs','Dump polarizer',680,85,'Routes the switched pulse out of the loop.','pbs'),n('fold2','Storage mirror B',680,310,'Returns unswitched pulses to the storage section.','mirror'),n('fold3','Storage mirror C',285,310,'Completes the circulating path.','mirror'),n('out','Dumped pulse',875,85,'Extracts stored light in a chosen circulation.')],
- [e('seed','fold1','circulation'),e('fold1','switch','stored pulse'),e('switch','pbs','switchable polarization'),e('pbs','fold2','storage state'),e('fold2','fold3','storage return'),e('fold3','seed','round trip'),e('pbs','out','dump state')],
- ['Follow the storage loop and the mutually selected dump route.','Compare extraction of existing light with Q-switch release of stored inversion.'],
- 'The diagram does not compute stored pulse energy, dump efficiency or electro-optic switching bandwidth.',
- [ref('Coherent: cavity-dumped ultrafast oscillator configuration','https://www.coherent.com/lasers/laser/mira')]),
-example('CAV-08','Dispersion-managed mode-locked ring oscillator',
- 'An illustrative 80 MHz ring includes a pumped gain segment, fast saturable loss, negative-dispersion mirrors and a small output coupler. Total group delay, not diagram length, fixes the repetition rate.',[
- n('gain','Pumped gain segment',90,85,'Balances round-trip loss.','crystal'),n('sam','Saturable loss',285,85,'Favors short high-intensity pulses over weak background.'),n('disp','Dispersion mirrors',480,85,'Balance accumulated group-delay dispersion.','pulsecompressor'),n('oc','Output coupler',680,85,'Extracts a small fraction of each circulation.','mirror'),n('out','80 MHz pulse train',875,85,'Nominal separation is 12.5 ns.','pulsedlaser'),n('fold','Ring return optics',480,310,'Close the resonator without resetting the pulse state.','mirror'),n('pump','Pump input',90,310,'Supplies gain energy independently of output pulses.')],
- [e('pump','gain','pump energy'),e('gain','sam','circulation'),e('sam','disp','pulse selection'),e('disp','oc','compensated field'),e('oc','fold','retained field'),e('fold','gain','round trip'),e('oc','out','output train')],
- ['Identify the distinct roles of gain, saturable loss and dispersion.','Compare 12.5 ns pulse spacing with a femtosecond pulse duration; these are different time scales.'],
- 'Mode locking, startup, nonlinear cavity dynamics and pulse formation are not simulated.',
- [ref('Keller et al.: semiconductor saturable absorber mirrors for passive mode locking','https://doi.org/10.1109/2944.571743')]),
-example('CAV-09','Two-amplifier coherent combination with phase feedback',
- 'Split one 1064 nm master into two seeded amplifiers. A phase actuator in one arm stabilizes the selected combiner port using a low-power sample of the combined output.',[
- n('seed','Common master',90,210,'Shared seed supplies mutual coherence.','cwlaser'),n('split','Seed splitter',285,210,'Feeds two amplifier channels.','bs'),n('a','Amplifier A',480,85,'Reference channel must match polarization and spatial mode.'),n('b','Amplifier B + phase',480,335,'A phase actuator corrects this channel.','phasemodulator'),n('combine','Coherent combiner',680,210,'Relative phase decides the useful output port.','bs'),n('out','Combined output',875,85,'Target port receives constructive interference.'),n('sensor','Phase-error pickoff',875,335,'Feedback senses a small output fraction.','detector')],
- [e('seed','split','master field'),e('split','a','seed A'),e('split','b','seed B'),e('a','combine','amplified A'),e('b','combine','amplified B'),e('combine','out','target port'),e('combine','sensor','diagnostic sample'),e('sensor','b','phase feedback','signal',[[875,385],[480,385]])],
- ['Trace the common seed and the return of the phase-error signal.','Introduce a half-wave relative phase conceptually and identify the alternate combiner port.'],
- 'No coherent field sum, phase-lock performance, amplifier noise or combining efficiency is predicted.',
- [ref('Goodno et al.: coherent combination of high-power fiber amplifiers','https://doi.org/10.1364/OL.31.001247')]),
-example('PULSE-01','Stretch–amplify–compress 1030 nm chain',
- 'An illustrative 200 fs seed is stretched toward 200 ps before amplification, then compressed; a diagnostic tap checks the final pulse rather than assuming the compressor restores the input.',[
- n('seed','200 fs seed',90,210,'Low-energy ultrashort input.','pulsedlaser'),n('stretch','Positive-dispersion stretcher',285,210,'Target duration is 200 ps before the gain stage.','grating'),n('amp','Seeded amplifier',480,210,'Adds energy while peak intensity is reduced.'),n('compress','Negative-dispersion compressor',680,210,'Compensates the accumulated spectral phase.','pulsecompressor'),n('out','Experiment pulse',875,85,'Delivered duration requires a measurement.'),n('diag','Pulse diagnostic',875,335,'Checks spectral phase and temporal pedestal independently.')],
- [e('seed','stretch','seed'),e('stretch','amp','stretched pulse'),e('amp','compress','amplified chirp'),e('compress','out','delivery'),e('compress','diag','diagnostic tap')],
- ['Separate pulse energy gain from pulse duration management.','Check whether compressor phase cancels stretcher plus amplifier phase; equal nominal GDD alone may not cancel higher orders.'],
- 'No gain, nonlinear phase, damage threshold or reconstructed compressed pulse is predicted.',
- [ref('Strickland and Mourou: compression of amplified chirped optical pulses','https://doi.org/10.1016/0030-4018(85)90151-8')]),
-example('PULSE-02','Prism-pair compensation before a microscope',
- 'An 800 nm, 100 fs pulse passes a double-pass prism pair before glass-heavy microscope optics. Prism separation and insertion tune dispersion; a sample-plane diagnostic verifies compensation.',[
- n('seed','800 nm pulse',90,85,'Bandwidth and chirp define the compensation need.','pulsedlaser'),n('p1','First prism',285,85,'Angularly disperses the spectrum.','prism'),n('p2','Second prism',480,85,'Separation and insertion control spectral optical paths.','prism'),n('retro','Return mirror',680,85,'Double pass recombines the dispersed wavelengths.','retroreflector'),n('glass','Objective / glass path',285,310,'Adds material dispersion after compensation.','objective'),n('sample','Sample-plane diagnostic',480,310,'Compensation should be checked where the experiment occurs.')],
- [e('seed','p1','pulse'),e('p1','p2','dispersed spectrum'),e('p2','retro','forward pass'),e('retro','p2','return'),e('p2','p1','recombination'),e('p1','glass','compensated output'),e('glass','sample','delivered pulse')],
- ['Identify which distances and glass insertions tune the spectral path.','Add glass after the compressor conceptually and explain why an upstream measurement can miss residual chirp.'],
- 'The prism topology is schematic; no spectral ray recombination or full sample-plane spectral phase is computed.',[newportPrism]),
-example('PULSE-03','4f spectral phase shaping',
- 'A pair of illustrative 1200 lines/mm gratings and 200 mm lenses spread an 800 nm spectrum across a programmable mask in a Fourier plane, then recombine it on a common output axis.',[
- n('g1','Dispersing grating',90,210,'Separates frequencies into distinct angles.','grating'),n('l1','200 mm Fourier lens',285,210,'Maps frequency-dependent angle to position.','lens'),n('mask','Spectral-plane SLM',480,210,'Apply an illustrative quadratic phase; each pixel addresses a spectral band.','slm'),n('l2','200 mm return lens',680,210,'Maps spectral position back to angle.','lens'),n('g2','Recombining grating',875,210,'Returns frequencies to a common nominal beam direction.','grating'),n('diag','Pulse characterization',680,335,'Independently checks the programmed waveform.')],
- [e('g1','l1','angular spectrum'),e('l1','mask','frequency to position'),e('mask','l2','programmed phase'),e('l2','g2','recombined spectrum'),e('g2','diag','diagnostic tap')],
- ['Locate the mask at the shared focal plane, not at an image of the beam waist.','Replace quadratic phase with a π step conceptually and discuss temporal satellites rather than a simple beam deflection.'],
- 'The app does not Fourier-synthesize temporal waveforms, calculate mask pixel resolution or coherent spectral recombination.',[weiner]),
-example('PULSE-04','Gas-cell broadening followed by chirped mirrors',
- 'An illustrative 1030 nm, 300 fs pulse makes multiple passes through a gas cell, then encounters negative-dispersion mirrors. Compare the broadened spectrum and independently measured compressed pulse.',[
- n('input','300 fs input',90,85,'Energy and beam size must keep the cell below damage and ionization limits.','pulsedlaser'),n('m1','Multipass mirror A',285,85,'Returns the beam through the nonlinear region.','cmirror'),n('gas','Gas broadening region',480,210,'Intensity-dependent phase generates additional bandwidth.','gascell'),n('m2','Multipass mirror B',680,85,'Several displaced passes distribute the interaction.','cmirror'),n('comp','Chirped-mirror compressor',680,335,'Adds dispersion opposite to the broadened pulse phase.','pulsecompressor'),n('out','Compressed output',875,335,'Broad bandwidth permits but does not guarantee a short pulse.'),n('diag','Spectrum + pulse check',480,335,'Separate bandwidth evidence from duration evidence.')],
- [e('input','m1','input'),e('m1','gas','pass 1'),e('gas','m2','pass 1'),e('m2','gas','return pass'),e('gas','m1','return'),e('m2','comp','extracted broadened beam'),e('comp','out','compensated output'),e('out','diag','diagnostic sample')],
- ['Follow the multipass interaction separately from the later compressor.','Compare a wider spectrum with an actual pulse-phase measurement before claiming compression.'],
- 'Self-phase modulation, spatial nonlinearities, ionization and attainable compressed duration are not simulated.',
- [ref('Newport: spectral broadening and temporal compression application experiment','https://www.newport.com/medias/sys_master/images/images/h38/h64/8797270507550/Spectral-Broadening-and-Temporal-Compression-of-Ultrashort-Pulses-App-Note-35.pdf')]),
-example('PULSE-05','Delayed pump with independently normalized probe',
- 'Split illustrative 800 nm, 100 fs pulses into pump and probe arms. A 150 µm stage move changes the retroreflected pump delay by about 1 ps; a probe reference normalizes the transmission signal.',[
- n('seed','800 nm pulse source',90,210,'Common origin provides a repeatable time relation.','pulsedlaser'),n('split','Pump / probe split',285,210,'Arms have different roles, not necessarily equal power.','bs'),n('delay','Pump retro-delay',480,85,'Round-trip delay changes by 2Δx/c.','delayline'),n('tap','Probe reference tap',480,335,'Samples the probe arm before the specimen.','bs'),n('ref','Probe reference detector',875,335,'Measures probe fluctuations before interaction.','detector'),n('sample','Overlap at specimen',680,210,'Pump perturbs the sample and probe interrogates it.','sample'),n('det','Probe transmission',875,210,'Selects the probe channel and rejects pump leakage.','detector')],
- [e('seed','split','pulses'),e('split','delay','pump'),e('delay','sample','delayed pump'),e('split','tap','probe arm'),e('tap','sample','probe'),e('tap','ref','probe reference'),e('sample','det','transmitted probe'),e('ref','det','normalization','signal',[[480,385],[875,385]])],
- ['Calculate 2 × 150 µm/c ≈ 1 ps and separate stage position from sample time zero.','Check the probe reference and pump rejection before interpreting a differential transmission signal.'],
- 'No excited-state response, transient absorption, pulse overlap integral or detector demodulation is calculated.',
- [ref('Zewail: femtochemistry and ultrafast pump–probe experiments','https://www.nobelprize.org/prizes/chemistry/1999/zewail/lecture/')]),
-example('PULSE-06','Electro-optic selection from an 80 MHz train',
- 'An 80 MHz oscillator crosses a synchronized Pockels cell between polarizers. Passing one of every 80 pulses gives a nominal 1 MHz output; another programmed gate can select a short burst.',[
- n('osc','80 MHz oscillator',90,210,'Input pulse spacing is 12.5 ns.','pulsedlaser'),n('pol','Input polarization',285,210,'Prepares the state accepted by the switching system.','polarizer'),n('pc','Pockels-cell gate',480,210,'Synchronized voltage selects pulses by polarization rotation.','eom'),n('pbs','Output polarization split',680,210,'Passes selected pulses and rejects others.','pbs'),n('out','Selected 1 MHz train',875,85,'One-in-80 selection is the nominal teaching schedule.'),n('dump','Rejected 79 pulses',875,335,'Unused pulse energy goes to a safe dump.','beamdump'),n('clock','Divider / burst timing',480,335,'Phase and gate width must match the oscillator clock.')],
- [e('osc','pol','pulse train'),e('pol','pc','prepared state'),e('pc','pbs','gated state'),e('pbs','out','selected pulses'),e('pbs','dump','rejected pulses'),e('clock','pc','synchronous gate','signal')],
- ['Check the one-in-80 arithmetic and distinguish selection rate from pulse duration.','Select four consecutive pulses conceptually and note their unchanged 12.5 ns internal spacing.'],
- 'Extinction, electronic jitter, pulse selection and burst envelopes are not calculated.',
- [ref('Conoptics: electro-optic pulse-picker systems and synchronization','https://www.conoptics.com/pulse-picker/')]),
-example('PULSE-07','Background-free noncollinear autocorrelator',
- 'Split an illustrative 800 nm pulse into two equally polarized arms, delay one and cross them in a thin SHG crystal. Detect only the sum-frequency overlap direction while dumping the individual arms.',[
- n('split','Pulse splitter',90,210,'Both replicas come from the same pulse.','bs'),n('fixed','Fixed replica arm',285,85,'Defines reference arrival time.','mirror'),n('delay','Variable replica delay',285,335,'Scans the relative arrival time.','delayline'),n('crystal','Noncollinear SHG overlap',480,210,'Overlap generates a correlation-dependent 400 nm signal.','crystal'),n('filter','400 nm spatial / spectral selection',680,210,'Separates cross-generated SHG from fundamental and single-arm backgrounds.','filter'),n('det','Integrated SHG detector',875,210,'Records correlation signal versus delay.','detector'),n('dump','800 nm dumps',680,335,'Individual transmitted replicas are excluded from the readout.','beamdump')],
- [e('split','fixed','replica A'),e('split','delay','replica B'),e('fixed','crystal','fixed pulse'),e('delay','crystal','delayed pulse'),e('crystal','filter','overlap SHG'),e('filter','det','correlation signal'),e('crystal','dump','fundamental arms')],
- ['Trace the overlap-generated channel and both rejected individual channels.','Distinguish measured correlation width from pulse width; deconvolution depends on an assumed pulse shape.'],
- 'No nonlinear temporal overlap or deconvolution is computed; an autocorrelation alone does not determine full spectral phase.',
- [ref('Trebino et al.: measuring ultrashort pulses and correlation limitations','https://doi.org/10.1063/1.1147498')]),
-example('PULSE-08','SHG-FROG delay–wavelength measurement',
- 'A delayed replica gates an illustrative 800 nm pulse in a thin SHG crystal. A spectrometer records the 400 nm signal at every delay; reconstruction must reproduce the complete measured trace.',[
- n('split','Replica splitter',90,210,'Creates pulse and gate from the same source.','bs'),n('a','Pulse arm',285,85,'Carries the waveform to be characterized.','mirror'),n('b','Gate delay arm',285,335,'Scans temporal overlap.','delayline'),n('shg','Thin SHG crystal',480,210,'Nonlinear overlap supplies the gate.','crystal'),n('spect','SHG spectrometer',680,210,'Measures wavelength-resolved gated light.','grating'),n('camera','Delay × wavelength trace',875,210,'A sequence of spectra forms the 2D trace.','camera'),n('solve','Phase-retrieval check',680,335,'Reconstruct a pulse and compare its forward trace with the data.')],
- [e('split','a','pulse'),e('split','b','gate'),e('a','shg','input waveform'),e('b','shg','delayed gate'),e('shg','spect','gated signal'),e('spect','camera','spectrum'),e('camera','solve','sampled trace','signal')],
- ['Compare the 2D delay–wavelength trace with the integrated autocorrelation.','Require a reconstruction residual and understand SHG-FROG direction-of-time ambiguity before interpreting the result.'],
- 'No FROG trace, phase-matching transfer function or phase-retrieval algorithm runs in this sketch.',
- [ref('Trebino and Kane: frequency-resolved optical gating','https://doi.org/10.1364/JOSAA.10.001101')]),
-example('PULSE-09','Single-pass second-harmonic stage with pump rejection',
- 'Focus illustrative 1064 nm pulses into a phase-matched crystal, collimate the 532 nm output and use a dichroic plus bandpass to reject the residual fundamental.',[
- n('pump','1064 nm pulses',90,210,'Energy and bandwidth are chosen within the real crystal acceptance.','pulsedlaser'),n('focus','Focusing lens',285,210,'Waist position sets interaction intensity and walk-off tradeoffs.','lens'),n('xtal','Phase-matched crystal',480,210,'The chosen SHG interaction generates 532 nm.','crystal'),n('coll','Post-crystal collimator',680,85,'Collects and collimates the harmonic before spectral separation.','lens'),n('split','532 / 1064 nm dichroic',680,210,'Separates converted light from the residual pump.','dichroic'),n('out','532 nm bandpass output',875,85,'Cleanup filtering supplies the useful harmonic.','filter'),n('dump','1064 nm pump dump',875,335,'Residual fundamental is excluded.','beamdump')],
- [e('pump','focus','fundamental'),e('focus','xtal','focused pulse'),e('xtal','coll','fundamental + harmonic'),e('coll','split','collimated output'),e('split','out','532 nm'),e('split','dump','1064 nm')],
- ['Use energy conservation to distinguish the half-wavelength harmonic from a fluorescence band.','Check phase matching and pump rejection independently; geometric overlap does not establish efficient conversion.'],
- 'No focused pulsed SHG efficiency, depletion, walk-off or acceptance bandwidth is predicted by this schematic.',
- [ref('Boyd and Kleinman: parametric interaction of focused Gaussian light beams','https://doi.org/10.1063/1.1656831')]),
-example('PULSE-10','Delayed optical gate for electro-optic THz sampling',
- 'A synchronized near-infrared gate traverses a thin electro-optic crystal with a THz field. A quarter-wave bias and polarization splitter feed balanced photodiodes while gate delay samples the field.',[
- n('thz','THz field',90,85,'The unknown electric field induces birefringence.'),n('gate','Delayed optical gate',90,335,'A short gate samples successive THz arrival times.','pulsedlaser'),n('eo','Electro-optic crystal',285,210,'Velocity matching and thickness govern temporal bandwidth.','crystal'),n('qwp','Quarter-wave bias',480,210,'Sets a sensitive polarization working point.','qwp'),n('pbs','Polarization analyzer',680,210,'Converts small retardance into opposite intensity changes.','pbs'),n('d1','Photodiode +',875,85,'One analyzer output.','detector'),n('d2','Photodiode −',875,335,'The complementary output enables differential readout.','detector')],
- [e('thz','eo','THz field'),e('gate','eo','sampling gate'),e('eo','qwp','field-dependent retardance'),e('qwp','pbs','biased polarization'),e('pbs','d1','positive channel'),e('pbs','d2','negative channel'),e('d2','d1','balanced difference','signal',[[920,335],[920,85]])],
- ['Trace the THz interaction separately from the optical gate detection.','Compare crystal thickness with temporal response; a stronger signal can sacrifice measurement bandwidth.'],
- 'THz propagation, electro-optic transfer function, velocity mismatch and balanced time-domain sampling are not computed.',
- [ref('Electro-optic THz sampling experiment and detection geometry','https://www.nature.com/articles/srep03116')]),
-example('ACCESS-01','Three-stage unity relay in a rigid probe',
- 'Three illustrative 1:1 relay stages transport an image through a rigid probe. Intermediate image planes separate the stages; peripheral illumination is supplied independently.',[
- n('sample','Distal specimen',90,210,'Defines the object plane outside the probe.','sample'),n('distal','Distal objective',285,210,'Forms the first internal image.','objective'),n('i1','Relay stage 1 / image I₁',480,210,'First nominal unity relay preserves the field orientation rule.','lensgroup'),n('i2','Relay stage 2 / image I₂',680,210,'Second intermediate image is conjugate to I₁.','lensgroup'),n('cam','Relay 3 / proximal camera',875,210,'Last relay presents the transmitted image to the camera.','camera'),n('illum','Peripheral illumination',285,335,'A separate light channel illuminates the specimen without using the image relay.')],
- [e('sample','distal','object field'),e('distal','i1','first image'),e('i1','i2','unity relay'),e('i2','cam','final unity relay'),e('illum','sample','illumination')],
- ['Identify each intermediate image instead of treating the tube as one lens.','Track inversion through successive relay stages and check clear apertures against field size.'],
- 'No rod-lens prescription, aberration accumulation, aperture throughput or full probe image is calculated.',
- [ref('SCHOTT: rigid and flexible endoscopy optics','https://www.schott.com/en-in/expertise/applications/endoscopy')]),
-example('ACCESS-02','Coherent bundle camera transport',
- 'A distal objective maps a tissue field onto a coherent fiber bundle. At the proximal end a magnifying relay images the core pattern onto a camera; a separate illumination fiber lights the tissue.',[
- n('tissue','Tissue field',90,210,'Continuous spatial detail is sampled by discrete fiber cores.','sample'),n('obj','Distal objective',285,210,'Matches the specimen field to the bundle face.','objective'),n('bundle','Coherent image bundle',480,210,'Maintains core-to-core spatial ordering from distal to proximal face.'),n('relay','Proximal magnifying relay',680,210,'Resolves the bundle output core pattern on the sensor.','lensgroup'),n('camera','Proximal camera',875,210,'Records a sampled image, including bundle texture.','camera'),n('illum','Separate illumination fiber',285,335,'Provides light without mixing the image-core mapping.')],
- [e('tissue','obj','image field'),e('obj','bundle','distal core sampling'),e('bundle','relay','ordered cores'),e('relay','camera','magnified core image'),e('illum','tissue','illumination')],
- ['Follow one distal core to its corresponding proximal location.','Compare a feature smaller than a core spacing with a resolved feature; coherent ordering does not eliminate sampling limits.'],
- 'Bundle sampling, intercore coupling, bend loss and image reconstruction are not simulated.',[schott]),
-example('ACCESS-03','Proximally scanned confocal image bundle',
- 'A 488 nm spot scans across the proximal bundle face. The addressed distal core illuminates one tissue location; the same core carries the fluorescence back to a conjugate pinhole detector.',[
- n('laser','488 nm excitation',90,85,'Feeds a proximally located scan system.','cwlaser'),n('scan','Proximal scanner',480,85,'Selects bundle cores without moving distal hardware.','galvo'),n('split','Return pickoff',285,85,'Separates return fluorescence from excitation.','dichroic'),n('bundle','Coherent bundle',680,210,'Maintains correspondence between addressed cores and distal positions.'),n('tissue','Distal tissue',875,210,'One selected core illuminates its mapped region.','sample'),n('pin','Conjugate pinhole',480,335,'Selects the descanned proximal return.','slit'),n('pmt','Confocal detector',285,335,'Raster timing assigns signal to each addressed location.','pmt')],
- [e('laser','split','excitation'),e('split','scan','shared excitation'),e('scan','bundle','selected core'),e('bundle','tissue','distal spot'),e('tissue','bundle','fluorescence return'),e('bundle','scan','proximal return'),e('scan','split','descanned return'),e('split','pin','descanned signal'),e('pin','pmt','confocal signal')],
- ['Identify where scanning occurs and which core defines the illumination/collection correspondence.','Compare scan step size with core pitch; oversampling cannot create information between cores.'],
- 'No individual-core propagation, scan addressing, confocal sectioning or tissue scattering is calculated.',
- [ref('Hughes and Yang: fiber-bundle confocal endomicroscopy with descanned detection','https://pmc.ncbi.nlm.nih.gov/articles/PMC4399663/'),schott]),
-example('ACCESS-04','Distal scanning-fiber probe',
- 'A single-mode delivery fiber is driven near its tip to sweep a focused spot over tissue. Surrounding return fibers feed a proximal detector; synchronized tip motion supplies the image coordinate.',[
- n('laser','Proximal laser',90,85,'Supplies the excitation through a delivery fiber.','cwlaser'),n('fiber','Delivery fiber',285,85,'Carries light to the distal moving tip.'),n('tip','Piezo-driven distal tip',480,85,'The scan occurs at the probe end, not at the proximal face.'),n('obj','Distal micro-objective',680,85,'Maps tip deflection to a specimen spot.','objective'),n('tissue','Scanned tissue',875,210,'A time sequence samples the surface.','sample'),n('collect','Surrounding return fibers',680,335,'Separate nonimaging collection channels gather reflected light.'),n('det','Proximal detector',480,335,'Signal is assigned to synchronized distal scan coordinates.','detector')],
- [e('laser','fiber','delivery'),e('fiber','tip','excitation'),e('tip','obj','swept tip field'),e('obj','tissue','scanned spot'),e('tissue','collect','return light'),e('collect','det','collected signal'),e('tip','det','scan position clock','signal',[[350,85],[350,335]])],
- ['Locate the moving actuator at the distal tip and compare it with proximal bundle addressing.','Explain why the detector requires calibrated scan timing even though collection fibers need no image ordering.'],
- 'No resonant fiber mechanics, spiral trajectory, scan distortion or reconstructed image is calculated.',
- [ref('University of Washington: scanning-fiber endoscope development','https://www.washington.edu/news/2008/01/24/camera-in-a-pill-offers-cheaper-easier-window-on-your-insides-2/')]),
-example('ACCESS-05','Central illumination with peripheral collection',
- 'A central 405 nm delivery channel excites a fluorescent specimen; six surrounding collection fibers gather longer-wavelength return light and send it through a proximal rejection filter.',[
- n('source','405 nm excitation',90,85,'Input is restricted to the central delivery channel.','cwlaser'),n('delivery','Central delivery fiber',285,85,'Provides excitation at the distal end.'),n('tissue','Fluorescent tissue',480,210,'Signal is collected through a different physical channel.','sample'),n('return','Six peripheral fibers',680,210,'Summed collection sacrifices resolved per-fiber image information.'),n('filter','Excitation rejection',680,335,'Blocks residual 405 nm light before detection.','filter'),n('det','Proximal emission sensor',875,335,'Reads the collected emission band.','detector')],
- [e('source','delivery','excitation'),e('delivery','tissue','distal illumination'),e('tissue','return','emission collection'),e('return','filter','proximal return'),e('filter','det','filtered signal')],
- ['Compare the distinct delivery and collection channels at the probe tip.','Increase separation conceptually and discuss sampled-volume overlap rather than simply collection area.'],
- 'Collection solid angle, fluorescence transport, tissue depth sensitivity and fiber coupling are not predicted.',
- [ref('SCHOTT: illumination and imaging optics for endoscopy','https://www.schott.com/en-in/expertise/applications/endoscopy')]),
-example('ACCESS-06','Rotating side-view OCT probe',
- 'A rotary joint feeds a fiber/GRIN assembly and a side-reflecting distal prism. Rotation sweeps a circumferential tissue cross-section; an external reference arm supplies OCT depth discrimination.',[
- n('oct','OCT sample-arm input',90,85,'Broadband interferometric illumination arrives from the console.'),n('joint','Rotary fiber joint',285,85,'Couples light into a rotating fiber path.'),n('grin','Distal GRIN lens',480,85,'Focuses the fiber output toward the side reflector.'),n('prism','Side-view prism',680,85,'Turns the beam radially through a transparent sheath.','prism'),n('wall','Circumferential wall',875,210,'Angular scans sample the surrounding tissue.','sample'),n('receiver','OCT interferometric receiver',285,335,'Round-trip sample light meets an external reference.'),n('angle','Rotation encoder',680,335,'Associates each depth scan with an azimuthal angle.')],
- [e('oct','joint','sample-arm input'),e('joint','grin','fiber delivery'),e('grin','prism','focused beam'),e('prism','wall','side illumination'),e('wall','joint','round-trip return','light',[[875,285],[285,285]]),e('joint','receiver','sample return'),e('angle','receiver','azimuth timing','signal')],
- ['Separate radial depth acquisition from circumferential rotation and axial pullback.','Identify sheath refraction and nonuniform rotation as distortions requiring calibration.'],
- 'The 2D topology does not simulate cylindrical scanning, OCT interferograms, depth reconstruction or rotary-joint loss.',
- [ref('Tearney et al.: in vivo endoscopic optical biopsy with OCT','https://doi.org/10.1126/science.276.5321.2037')]),
-example('ACCESS-07','Transmission-matrix calibrated multimode probe',
- 'A phase-only SLM controls an illustrative 532 nm field entering a multimode fiber. A distal camera first measures calibration fields; the resulting matrix selects input phases for a later distal focus.',[
- n('laser','532 nm coherent source',90,85,'Stable illumination is required for reusable phase calibration.','cwlaser'),n('slm','Input phase SLM',285,85,'Addresses the input spatial basis.','slm'),n('fiber','Multimode fiber',480,210,'Mode mixing transports a complex field, not an ordered image.'),n('focus','Distal target focus',680,85,'A calibrated phase pattern produces the desired target field.'),n('camera','Calibration camera',680,335,'Records complex-field information using a reference method.','camera'),n('matrix','Transmission matrix',285,335,'Stores the measured input/output mapping for this fiber state.'),n('sample','Probe specimen',875,85,'Replaces the calibration target for the experiment.','sample')],
- [e('laser','slm','coherent field'),e('slm','fiber','controlled modes'),e('fiber','focus','shaped distal field'),e('focus','sample','target illumination'),e('fiber','camera','calibration acquisition'),e('camera','matrix','measured responses','signal'),e('matrix','slm','computed phases','signal')],
- ['Follow the calibration loop and distinguish the matrix from a coherent image-bundle mapping.','Bend the fiber conceptually after calibration and identify why a previous phase pattern may fail.'],
- 'The app does not model mode mixing, complex-field calibration, matrix inversion or focus quality.',
- [ref('Čižmár and Dholakia: exploiting multimode waveguides for pure fibre-based imaging','https://www.nature.com/articles/ncomms2024')]),
-example('WAVE-01','Pupil-conjugate adaptive-optics feedback',
- 'An illustrative 37-actuator deformable mirror corrects a pupil conjugate. A 10% sensing branch feeds a Shack–Hartmann sensor; a controller updates the mirror while the science camera uses the main branch.',[
- n('field','Aberrated incoming field',90,85,'Atmospheric or specimen aberrations are upstream of the corrector.'),n('dm','Pupil-conjugate DM',285,85,'Actuator commands change the shared pupil wavefront.','dm'),n('tap','90:10 sensing split',480,85,'Both branches share correction before splitting.','bs'),n('science','Science camera',680,85,'Records the corrected target field.','camera'),n('wfs','Shack–Hartmann sensor',480,310,'Lenslet spot displacements estimate local wavefront slopes.'),n('ctrl','Slope reconstructor',285,310,'Converts sensed slopes into bounded actuator commands.')],
- [e('field','dm','aberrated input'),e('dm','tap','corrected field'),e('tap','science','90% science'),e('tap','wfs','10% sensing'),e('wfs','ctrl','measured slopes','signal'),e('ctrl','dm','actuator feedback','signal')],
- ['Follow the sensing feedback loop and locate the common-path split.','Add an aberration only in the science branch conceptually and identify the sensor-blind error.'],
- 'No wavefront slopes, deformable-mirror influence functions, reconstruction or feedback bandwidth are simulated.',[esoAO]),
-example('WAVE-02','Two-altitude multi-conjugate correction',
- 'Choose teaching conjugates at ground level and 9 km. Three guide-star measurements constrain a tomographic estimate that drives two separately conjugated mirrors across an extended science field.',[
- n('field','Extended science field',90,85,'Different directions encounter different layered aberrations.'),n('dm0','Ground-conjugate DM',285,85,'Corrects the inferred low-altitude layer.','dm'),n('dm9','9 km conjugate DM',480,85,'A relay conjugates this corrector to a high layer.','dm'),n('cam','Wide-field camera',680,85,'Science quality must be checked across the field.','camera'),n('guides','Three guide directions',90,310,'Angular diversity samples different atmospheric paths.'),n('wfs','Guide wavefront sensors',285,310,'Independent slope measurements constrain the layer estimate.'),n('tom','Layer tomography',480,310,'Separates estimates before commanding each DM.')],
- [e('field','dm0','science input'),e('dm0','dm9','conjugate relay'),e('dm9','cam','corrected field'),e('guides','wfs','guide fields'),e('wfs','tom','angular slope data','signal'),e('tom','dm0','ground commands','signal'),e('tom','dm9','high-layer commands','signal')],
- ['Identify the two optical conjugates and the multiple sensing directions.','Compare a well-covered central region with an extrapolated field edge; two DMs alone do not guarantee uniform correction.'],
- 'Atmospheric tomography, altitude-dependent propagation and corrected field extent are not calculated.',[esoAO]),
-example('WAVE-03','Image-metric optimization without a wavefront sensor',
- 'A microscope applies five trial amplitudes for each of seven selected aberration modes on a pupil SLM. A fluorescence image-sharpness metric determines the next trial; final validation uses held-out specimen detail.',[
- n('slm','Pupil phase corrector',90,85,'Applies trial aberration coefficients.','slm'),n('obj','Microscope objective',285,85,'Transfers the corrected illumination and collection field.','objective'),n('sample','Stable fluorescent target',480,85,'Target changes must be slower than the optimization.','sample'),n('cam','Fluorescence camera',680,85,'Provides image data rather than wavefront slopes.','camera'),n('metric','Image-sharpness metric',680,310,'Scores normalized image detail for each trial.'),n('search','Mode-amplitude search',285,310,'Selects the next phase update from the metric history.')],
- [e('slm','obj','trial wavefront'),e('obj','sample','illumination'),e('sample','cam','image signal'),e('cam','metric','image pixels','signal'),e('metric','search','trial scores','signal'),e('search','slm','next phase trial','signal')],
- ['Count the nominal 35 measurements and identify bleaching or specimen motion that can bias the search.','Change the metric from brightness to sharpness conceptually and discuss different optima.'],
- 'No image metric, aberration basis search, convergence or improved resolution is calculated.',
- [ref('Booth et al.: adaptive aberration correction in a confocal microscope','https://doi.org/10.1073/pnas.082544799')]),
-example('WAVE-04','Laser-guide-star sensing with a separate science branch',
- 'An illustrative 589 nm sodium guide beacon is sensed separately from a near-infrared science target. A shared pupil corrector handles inferred high-order aberrations; a natural-star channel supplies tip/tilt information.',[
- n('guide','589 nm guide beacon',90,85,'Finite-altitude guide light samples a different volume from starlight.'),n('science','NIR science star',90,310,'Science source is effectively at infinity.'),n('dm','Common pupil DM',285,210,'Applies commands inferred from guide sensing.','dm'),n('dich','Guide / science split',480,210,'Separates guide wavelength from science.','dichroic'),n('wfs','Guide wavefront sensor',680,85,'Measures high-order guide-star information.'),n('cam','Science camera',680,335,'Records the astronomical target.','camera'),n('tilt','Natural-star tip/tilt',875,210,'Absolute tip/tilt is constrained by an additional reference.')],
- [e('guide','dm','guide return'),e('science','dm','science field'),e('dm','dich','corrected shared path'),e('dich','wfs','589 nm channel'),e('dich','cam','NIR channel'),e('wfs','dm','high-order commands','signal',[[480,65],[285,65]]),e('tilt','dm','tip/tilt reference','signal',[[875,385],[285,385]])],
- ['Compare finite-height guide rays with the science-star geometry.','Identify why a sodium beacon cannot supply every atmospheric correction degree of freedom by itself.'],
- 'Beacon formation, cone effect, sodium-layer elongation and guide/science anisoplanatism are not simulated.',[esoAO]),
-example('WAVE-05','Lyot coronagraph with focal and pupil masks',
- 'A bright on-axis star and faint off-axis companion enter a relay. An illustrative opaque focal mask covers the stellar core; a reimaged pupil stop rejects diffracted edge light before the final science focus.',[
- n('star','Star + off-axis companion',90,210,'Angular separation is mapped to different focal positions.'),n('focus','First stellar focus',285,210,'Place the occulting mask in a field plane.','lens'),n('mask','Focal occulting mask',480,85,'Blocks the bright stellar core while passing off-axis light.','blocker'),n('lyot','Reimaged-pupil Lyot stop',680,210,'Rejects diffracted pupil-edge light; illustrative diameter is 90% of pupil.','slit'),n('science','Science focal plane',875,210,'Companion throughput and stellar leakage must both be measured.','camera'),n('reject','Occulted stellar light',480,335,'Bright rejected light can feed diagnostics or a dump.','beamdump')],
- [e('star','focus','sky field'),e('focus','mask','stellar focal core'),e('mask','lyot','transmitted field'),e('lyot','science','filtered pupil'),e('mask','reject','rejected starlight')],
- ['Distinguish the first focal mask from the pupil-plane stop.','Offset the star from mask center conceptually and identify leakage without assuming the companion also brightens.'],
- 'No coherent diffraction, inner working angle, contrast floor or companion throughput is calculated.',
- [ref('NASA Webb: coronagraph focal masks and Lyot stops','https://science.nasa.gov/blogs/webb/2023/03/24/how-webbs-coronagraphs-reveal-exoplanets-in-the-infrared/')]),
-example('WAVE-06','Counter-rotating prism atmospheric compensator',
- 'A teaching 400–800 nm stellar field at 60° zenith distance crosses two counter-rotating prism assemblies. Their combined angular dispersion opposes the atmosphere before a slit or fiber focus.',[
- n('sky','Dispersed stellar field',90,210,'Atmospheric refraction separates wavelength-dependent directions.'),n('p1','Prism assembly A',285,210,'Dispersion vector rotates with the first assembly.','prism'),n('p2','Prism assembly B',480,210,'Counter-rotation changes net dispersion while managing beam pointing.','prism'),n('focus','Science focusing optic',680,210,'Maps residual color spread onto the entrance aperture.','lens'),n('slit','Spectrometer entrance',875,210,'Broadband coupling requires low residual color separation.','slit'),n('control','Zenith-angle setting',480,335,'Chosen observing geometry sets the required prism rotation.')],
- [e('sky','p1','atmospheric color spread'),e('p1','p2','first correction'),e('p2','focus','net compensation'),e('focus','slit','corrected focus'),e('control','p1','rotation angle','signal'),e('control','p2','counter-rotation','signal')],
- ['Compare the zero-dispersion setting near zenith with the chosen off-zenith setting.','Check residual blue/red separation at the slit; canceling mean deviation is insufficient.'],
- 'Atmospheric refractivity, 3D prism-vector rotation and residual broadband aberrations are not computed.',
- [ref('ESO: MUSE atmospheric dispersion compensator and optical layout','https://www.eso.org/sci/facilities/paranal/instruments/muse/inst.html')]),
-example('WAVE-07','Cooled pupil stop for an infrared camera',
- 'A teaching 3–5 µm camera reimages its entrance pupil onto an 80 K cold stop. The stop matches the illuminated pupil so the detector sees the intended scene while warm structure outside the pupil is excluded.',[
- n('scene','3–5 µm scene',90,85,'Desired infrared radiance enters the designed aperture.'),n('pupil','Entrance pupil',285,85,'Defines the intended detector view.'),n('relay','Pupil reimaging optics',480,85,'Conjugates entrance pupil onto the cold-stop plane.','lensgroup'),n('cold','80 K matched stop',680,210,'A pupil mask excludes warm surrounding surfaces.','slit'),n('det','Cooled infrared sensor',875,210,'Integrates accepted scene plus remaining thermal background.','camera'),n('warm','Warm housing path',480,335,'Undesired thermal radiance is geometrically excluded.'),n('reject','Cold-stop rejection',680,335,'A stop mismatch can admit background or clip scene light.')],
- [e('scene','pupil','desired field'),e('pupil','relay','pupil-limited field'),e('relay','cold','pupil image'),e('cold','det','accepted cone'),e('warm','reject','excluded housing field','reference'),e('reject','cold','stop boundary','reference')],
- ['Match pupil diameter and position at the cold stop before judging background suppression.','Enlarge the stop conceptually and identify the added warm view; shrink it and identify desired light loss.'],
- 'No thermal radiation, cryogenic transmission, detector noise or pupil-image aberration is calculated.',
- [ref('NASA: MIRI instrument optics and cryogenic infrared detection','https://science.nasa.gov/mission/webb/mid-infrared-instrument-miri/')]),
-example('WAVE-08','Field stop and vanes with a stray-light dump',
- 'A camera uses a field stop at an intermediate image and blackened vanes around the accepted beam. A deliberate ghost reflection is routed to a dump rather than toward the detector.',[
- n('field','Accepted scene field',90,85,'The required field and pupil determine allowed ray bundles.'),n('front','Front lens group',285,85,'Forms an intermediate image and can produce unwanted ghosts.','lensgroup'),n('stop','Intermediate field stop',480,85,'Rejects out-of-field images without clipping the desired field.','slit'),n('relay','Baffled relay tube',680,85,'Vanes intercept off-path scatter; vane positions must respect the pupil.','lensgroup'),n('camera','Sensitive detector',875,85,'Only accepted optical paths should reach this surface.','camera'),n('ghost','Ghost / wall scatter',285,310,'Unwanted path starts at a surface or illuminated tube wall.'),n('dump','Blackened interception',680,310,'A controlled absorber stops the unwanted path.','beamdump')],
- [e('field','front','desired field'),e('front','stop','image formation'),e('stop','relay','field-limited beam'),e('relay','camera','accepted image'),e('front','ghost','unwanted reflection'),e('ghost','dump','stray path')],
- ['Follow the accepted beam through the field stop and contrast it with the intercepted ghost.','Move a vane inward conceptually and check marginal field bundles before claiming better rejection.'],
- 'The topology does not compute bidirectional scatter, coating ghosts, vane-edge diffraction or quantitative rejection.',
- [ref('Xinglong telescope: stray-light paths and additional baffle vanes','https://arxiv.org/abs/1909.12451')]),
-example('XRAY-01','Sequential orthogonal KB line foci',
- 'An illustrative 8 keV beam reflects from a vertically focusing grazing-incidence mirror and then a horizontally focusing mirror. Their separate line-focus powers combine at one sample point.',[
- n('beam','8 keV input',90,85,'Energy selection precedes the focusing pair.'),n('v','Vertical KB mirror',285,85,'A grazing-incidence figure focuses one transverse dimension.'),n('h','Horizontal KB mirror',480,210,'The orthogonal mirror focuses the other dimension.'),n('focus','Shared sample focus',680,210,'Both line foci must coincide longitudinally.','sample'),n('det','Downstream monitor',875,210,'Measures transmitted or diffracted light after the specimen.','detector'),n('line','Separate line-focus check',480,335,'Alignment checks each focusing dimension independently.')],
- [e('beam','v','selected beam'),e('v','h','one-axis convergence'),e('h','focus','two-axis convergence'),e('focus','det','sample output'),e('v','line','single-mirror diagnostic','reference')],
- ['Identify which mirror controls each transverse dimension.','Move one longitudinal focus conceptually and distinguish an astigmatic pair from a coincident point focus.'],
- 'Orthogonal focusing is inherently 3D; X-ray reflectivity, mirror figure, roughness and nanofocus size are not modeled.',
- [ref('Kirkpatrick and Baez: formation of optical images by X-rays','https://pubmed.ncbi.nlm.nih.gov/18883922/'),ref('ESRF: KB mirrors and compound refractive lenses','https://www.esrf.fr/UsersAndScience/Publications/Highlights/2002/Methods/MET1')]),
-example('XRAY-02','Nested Wolter-I telescope shells',
- 'Two illustrative nested shell pairs each use a paraboloid-like first graze and hyperboloid-like second graze to send distant X-rays to a common detector focus.',[
- n('sky','Distant X-ray field',90,210,'Nearly parallel incoming rays occupy several shell annuli.'),n('p1','Outer first reflection',285,85,'Outer shell starts the two-reflection imaging path.'),n('p2','Inner first reflection',285,335,'Inner shell increases collecting area without using the same annulus.'),n('h1','Outer second reflection',480,85,'Second graze redirects the outer-shell beam to the common focus.'),n('h2','Inner second reflection',480,335,'Second graze matches the inner shell to the same image plane.'),n('focus','Common telescope focus',680,210,'Nested shells are registered to this image plane.'),n('det','X-ray focal detector',875,210,'Collects the image from all accepted shells.','detector')],
- [e('sky','p1','outer annulus'),e('sky','p2','inner annulus'),e('p1','h1','first graze'),e('p2','h2','first graze'),e('h1','focus','second graze'),e('h2','focus','second graze'),e('focus','det','combined image')],
- ['Follow two reflections for each shell and distinguish nesting from multiple sequential full-aperture mirrors.','Compare shell alignment errors with coating reflectivity; either can reduce useful imaging.'],
- 'The diagram does not calculate axisymmetric Wolter surfaces, off-axis PSFs, effective area or X-ray coating reflectivity.',
- [ref('Chandra: high-resolution mirror assembly specifications','https://chandra.harvard.edu/about/specs.html')]),
-example('XRAY-03','Micropore lobster-eye core and cross arms',
- 'A spherical array of square micropores receives an illustrative 1 keV wide field. Two orthogonal reflections form the central focus; singly reflected rays form cross arms and unreﬂected rays supply diffuse background.',[
- n('sky','Wide soft-X-ray field',90,210,'Many angular directions illuminate the curved pore array.'),n('pores','Square micropore array',285,210,'Pore axes approximate a spherical geometry.'),n('double','Two-reflection paths',480,85,'Orthogonal wall reflections supply the central spot.'),n('single','One-reflection paths',480,210,'One wall reflection supplies extended cross arms.'),n('zero','Zero-reflection paths',480,335,'Direct transmission contributes diffuse background.'),n('det','Curved focal detector',680,210,'Receives the spot, cross arms and background together.','detector'),n('fit','PSF-aware source fit',875,210,'Source estimation must retain the full response topology.')],
- [e('sky','pores','wide field'),e('pores','double','two wall grazes'),e('pores','single','one wall graze'),e('pores','zero','direct path'),e('double','det','central core'),e('single','det','cross arms'),e('zero','det','background'),e('det','fit','detector image','signal')],
- ['Separate the double-, single- and zero-reflection contributions.','Explain why a central spot alone is an incomplete sensitivity or confusion model.'],
- 'No micropore wall reflections, energy-dependent response, wide-field PSF or source reconstruction is simulated.',
- [ref('LEIA: first wide-field lobster-eye X-ray images in orbit','https://arxiv.org/abs/2211.10007')]),
-example('XRAY-04','Selectable compound-refractive-lens cartridges',
- 'At an illustrative 8 keV, select cartridges of 2, 4 and 8 beryllium lenses to change total refractive power. The selected stack focuses downstream while a transmission monitor tracks absorption.',[
- n('beam','8 keV collimated beam',90,210,'Energy must be fixed for a chosen stack power.'),n('c2','2-lens cartridge',285,210,'First selectable power increment.'),n('c4','4-lens cartridge',480,210,'Second selectable increment adds rather than replaces power.'),n('c8','8-lens cartridge',680,210,'Third increment extends the selectable focal range.'),n('sample','Adjustable sample focus',875,210,'Focus position changes with energy and lens count.','sample'),n('control','Cartridge selection',480,335,'Insertion decisions define the active stack.')],
- [e('beam','c2','incident beam'),e('c2','c4','distributed refraction'),e('c4','c8','accumulated power'),e('c8','sample','converging beam'),e('control','c2','insert / retract','signal'),e('control','c4','insert / retract','signal'),e('control','c8','insert / retract','signal')],
- ['Compute the active lens count for a chosen insertion state; all inserted lenses contribute.','Change energy conceptually and identify why the same cartridge state no longer gives the same focal distance.'],
- 'X-ray refractive decrement, absorption, lens imperfections and energy-dependent focus are not calculated.',
- [ref('Vaughan et al.: X-ray transfocators based on compound refractive lenses','https://pmc.ncbi.nlm.nih.gov/articles/PMC3267637/')]),
-example('XRAY-05','Zone-plate focus with central stop and order aperture',
- 'A monochromatic teaching soft-X-ray beam illuminates a zone plate with a central stop. An order-sorting aperture before the first-order focus rejects direct light and unwanted diffraction orders.',[
- n('beam','Monochromatic input',90,210,'Bandwidth must suit the strongly chromatic diffractive optic.'),n('zp','Zone plate + central stop',285,210,'The stop removes direct central transmission; zones create multiple orders.'),n('first','Desired first order',480,85,'Converges toward the useful focus.'),n('other','Zero / higher orders',480,335,'Undesired paths must be spatially excluded.'),n('osa','Order-sorting aperture',680,210,'Passes the chosen cone close to the target.','slit'),n('sample','First-order sample focus',875,210,'Receives the selected diffractive order.','sample')],
- [e('beam','zp','selected energy'),e('zp','first','m = +1'),e('zp','other','unwanted orders'),e('first','osa','converging cone'),e('osa','sample','selected focus'),e('other','osa','rejected at aperture','reference')],
- ['Locate the central stop and order aperture as two different rejection operations.','Increase bandwidth conceptually and discuss longitudinal chromatic smearing at the fixed sample plane.'],
- 'No Fresnel-zone diffraction, efficiency, chromatic PSF or order-aperture throughput is computed.',
- [ref('Baez: self-supporting metal Fresnel zone plate for EUV and soft X-rays','https://www.nature.com/articles/186958a0')]),
-example('XRAY-06','Near and propagated X-ray phase-contrast images',
- 'An illustrative coherent 20 keV beam crosses a weakly absorbing specimen. Compare a near-contact detector position with a 0.5 m propagation position, keeping the same sample and illumination.',[
- n('beam','Coherent 20 keV input',90,210,'Spatial coherence supports observable Fresnel contrast.'),n('sample','Weakly absorbing sample',285,210,'Both phase and absorption alter the transmitted field.','sample'),n('near','Near-contact image',480,85,'Short propagation emphasizes absorption contrast.','detector'),n('free','0.5 m free-space path',480,335,'Propagation converts some phase structure to intensity modulation.'),n('far','Propagated image',680,335,'Edge fringes depend on distance, coherence and detector resolution.','detector'),n('retrieve','Model-based phase retrieval',875,210,'Retrieval requires explicit assumptions and calibrated geometry.')],
- [e('beam','sample','coherent illumination'),e('sample','near','short-distance acquisition'),e('sample','free','second acquisition'),e('free','far','Fresnel propagation'),e('near','retrieve','near image','signal'),e('far','retrieve','propagated image','signal')],
- ['Treat the two detector positions as alternative acquisitions, not simultaneous beam splitting.','Compare an edge fringe with a quantitative phase map; retrieval assumptions must be supplied.'],
- 'No Fresnel propagation, partial coherence, detector blur or phase retrieval runs in this schematic.',
- [ref('Snigirev et al.: phase-contrast imaging with high-energy synchrotron radiation','https://doi.org/10.1063/1.1146073')]),
-example('XRAY-07','Talbot–Lau grating phase stepping',
- 'An illustrative source grating G₀, phase grating G₁ and analyzer grating G₂ measure an X-ray specimen. Translate G₂ through five phase steps to estimate absorption, differential phase and dark-field channels.',[
- n('source','Extended X-ray source',90,210,'Source coherence is conditioned by G₀.'),n('g0','G₀ source grating',285,210,'Creates an array of mutually incoherent sourcelets.'),n('sample','Specimen',480,85,'Changes transmission, fringe shift and visibility.','sample'),n('g1','G₁ phase grating',480,335,'Creates the near-field interference structure.'),n('g2','G₂ stepped analyzer',680,210,'Five translations sample the local fringe phase.'),n('det','Integrating detector',875,210,'Resolves the stepping curve per pixel.','detector'),n('solve','Three-channel fit',680,335,'Separates mean, phase and visibility relative to flat-field steps.')],
- [e('source','g0','extended emission'),e('g0','sample','conditioned illumination'),e('sample','g1','specimen field'),e('g1','g2','Talbot fringe'),e('g2','det','analyzed intensity'),e('det','solve','phase-step stack','signal')],
- ['Identify the source, phase and analyzer grating roles instead of treating all three as dispersers.','Compare sample and reference stepping curves; visibility loss is distinct from mean attenuation.'],
- 'No Talbot interference, phase stepping, dark-field scattering or channel separation is calculated.',
- [ref('ESRF: X-ray grating interferometry and phase contrast','https://www.esrf.fr/UsersAndScience/Publications/Highlights/2011/imaging/ima10')]),
-example('XRAY-08','13.5 nm multilayer reflective projection transport',
- 'An illustrative 13.5 nm EUV field uses multilayer-coated reflective optics through illumination, a reflective mask and a reduction relay. Each reflection contributes spectral/angle-dependent loss; no transmissive lens is implied.',[
- n('source','13.5 nm EUV source',90,85,'Illumination is selected within the multilayer passband.'),n('collect','Multilayer collector',285,85,'Collects source light using a reflective coating.'),n('illum','Reflective illuminator',480,85,'Shapes illumination at the reflective mask.'),n('mask','Reflective patterned mask',680,210,'Encodes the exposure pattern by reflection.'),n('relay','Reduction mirror relay',480,335,'A multiple-mirror prescription images the mask at reduced size.'),n('wafer','Wafer image plane',285,335,'Receives the projected pattern; exposure dose requires all losses.','sample'),n('dump','Rejected out-of-band light',875,85,'Spectral purity filtering excludes unwanted source bands.')],
- [e('source','collect','EUV emission'),e('collect','illum','selected EUV'),e('illum','mask','controlled illumination'),e('mask','relay','reflected pattern'),e('relay','wafer','reduced image'),e('collect','dump','out-of-band rejection')],
- ['Follow the entirely reflective transport and count interfaces contributing throughput loss.','Discuss angular and spectral coating acceptance separately from geometrical image reduction.'],
- 'No multilayer interference, EUV reflectivity, 3D projection prescription, mask diffraction or lithographic resolution is simulated.',
- [ref('ASML: EUV multilayer mirrors and lithography optics','https://www.asml.com/en/technology/lithography-principles/lenses-and-mirrors')]),
+  {
+    "id": "CONTRAST-01",
+    "title": "Fluorescence return through a conjugate detection slit",
+    "summary": "A native 488 nm source is focused onto a fluorescent specimen. Returning longer-wavelength light is reflected into a collection lens, a conjugate slit and a photodetector.",
+    "steps": [
+      "Follow the computed fluorescence return to the slit and detector.",
+      "Narrow or displace the detection slit and compare collected signal while keeping source power fixed."
+    ],
+    "limit": "The 2D slit is the available detection-aperture implementation. Traced collection and clipping are shown; an Airy-unit pinhole, axial point-spread function and 3D optical sectioning are not calculated.",
+    "references": [
+      {
+        "label": "Nikon MicroscopyU: confocal microscopy",
+        "url": "https://www.microscopyu.com/techniques/confocal"
+      }
+    ]
+  },
+  {
+    "id": "CONTRAST-02",
+    "title": "Dual-disk parallel confocal camera",
+    "summary": "A microlens disk directs 488 nm light into a matched pinhole disk. A 60× objective maps its moving focal array onto a cell; fluorescence returns through the pinholes to a camera.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "The registry has no matched rotating microlens/pinhole disks or independently resolved parallel confocal channels.",
+    "references": [
+      {
+        "label": "Botcherby et al.: spinning-disk remote-focusing microscopy",
+        "url": "https://arxiv.org/abs/2002.06576"
+      }
+    ]
+  },
+  {
+    "id": "CONTRAST-03",
+    "title": "Off-axis collection behind a direct-beam stop",
+    "summary": "A real diffuser scatters a narrow 532 nm beam; a central beam dump excludes the direct direction while an offset photodetector collects a portion of the angular fan.",
+    "steps": [
+      "Inspect the traced rays reaching the offset detector and the centrally intercepted rays.",
+      "Reduce diffuser divergence toward its minimum and compare off-axis signal; move the detector onto the direct axis to expose the rejected channel."
+    ],
+    "limit": "The diffuser supplies a qualitative angular fan rather than particle-specific scattering. The setup demonstrates angular exclusion and collection, not a calibrated dark-field particle PSF.",
+    "references": [
+      {
+        "label": "Nikon MicroscopyU: dark-field illumination",
+        "url": "https://www.microscopyu.com/techniques/stereomicroscopy/darkfield-illumination"
+      }
+    ]
+  },
+  {
+    "id": "CONTRAST-04",
+    "title": "Phase-object contrast through a native reference arm",
+    "summary": "A Mach–Zehnder path places a native phase plate in one arm. Two interference-enabled cameras resolve how recombination converts its spatial retardance into intensity.",
+    "steps": [
+      "Compare both camera profiles, not only their integrated powers.",
+      "Set phase-plate optical-path difference to zero and compare the spatial profiles with the retarded case."
+    ],
+    "limit": "This is a reference-arm implementation of phase-to-intensity conversion, not a Zernike annulus microscope. The tracer models sampled coherent paths, not full diffraction propagation or halo formation.",
+    "references": [
+      {
+        "label": "Nikon MicroscopyU: phase-contrast microscopy",
+        "url": "https://www.microscopyu.com/techniques/phase-contrast"
+      }
+    ]
+  },
+  {
+    "id": "CONTRAST-05",
+    "title": "Biased DIC shear across a transparent cell",
+    "summary": "A 550 nm polarized field is split into neighboring orthogonal-polarization paths with an illustrative 0.3 µm specimen shear, then recombined with adjustable bias before an analyzer.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "Nomarski/Wollaston shearing prisms and polarization-dependent lateral shear are absent; ordinary prisms cannot replace them.",
+    "references": [
+      {
+        "label": "Nikon: Differential Interference Contrast Microscopy",
+        "url": "https://www.microscopyu.com/pdfs/DICMicroscopy.pdf"
+      }
+    ]
+  },
+  {
+    "id": "CONTRAST-06",
+    "title": "Prism-based TIRF at a glass/water interface",
+    "summary": "A 488 nm beam enters a glass prism and meets water at a chosen 70° internal angle (n≈1.52 and 1.33). Fluorescence near the interface is collected from below, separate from the reflected beam.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "A prism can show total internal reflection, but the tracer has no evanescent excitation field or near-interface fluorescence coupling. A TIR-only ray would not implement this excitation pattern.",
+    "references": [
+      {
+        "label": "Nikon MicroscopyU: TIRF microscopy",
+        "url": "https://www.microscopyu.com/techniques/fluorescence/total-internal-reflection-fluorescence-tirf-microscopy"
+      }
+    ]
+  },
+  {
+    "id": "CONTRAST-07",
+    "title": "Multiphoton microscope with SHG and two-photon fluorescence",
+    "summary": "Open the existing native microscope: pulsed excitation, two scan mirrors, relay lenses, shared objective, nonlinear specimen and separate SHG/fluorescence detection channels.",
+    "steps": [
+      "Inspect the specimen channels and the forward versus epi collection geometry.",
+      "Disable the nonlinear specimen channels and compare the detector signals; change pulse duration separately from average power."
+    ],
+    "limit": "The specimen uses intensity-dependent channel models and traced collection. Diffraction-limited resolution, specimen-specific cross sections, phototoxicity and 3D tissue scattering are not predicted.",
+    "references": [
+      {
+        "label": "Denk, Strickler and Webb: two-photon laser scanning fluorescence microscopy",
+        "url": "https://doi.org/10.1126/science.2321027"
+      }
+    ]
+  },
+  {
+    "id": "CONTRAST-08",
+    "title": "Registered excitation and doughnut depletion",
+    "summary": "An illustrative 640 nm excitation spot and 775 nm vortex-shaped depletion beam share an objective. Depletion timing and the central intensity minimum are adjusted before fluorescence reaches a confocal detector.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "There is no stimulated-depletion specimen response or vortex depletion field with a central vectorial intensity minimum.",
+    "references": [
+      {
+        "label": "Hell and Wichmann: breaking the diffraction resolution limit by stimulated emission",
+        "url": "https://doi.org/10.1364/OL.19.000780"
+      }
+    ]
+  },
+  {
+    "id": "SPECT-01",
+    "title": "Slit, collimator, grating and camera optics",
+    "summary": "A native monochromatic source illuminates a 2 mm entrance slit, a 100 mm collimator, a diffraction grating and a camera lens. Change source wavelength to see the traced diffraction angle change.",
+    "steps": [
+      "Inspect the grating order and groove density, then compare diffraction angles at 532 nm and 633 nm.",
+      "Change slit gap and watch clipping; detector position must follow the selected diffracted order."
+    ],
+    "limit": "Native slit clipping and grating diffraction are traced in 2D. This compact transmission layout does not compute a calibrated spectral resolving power, blaze response or optical aberration budget.",
+    "references": [
+      {
+        "label": "HORIBA: Czerny–Turner spectrometer layout",
+        "url": "https://www.horiba.com/fileadmin/uploads/Scientific/Documents/OSD/17021704.pdf"
+      }
+    ]
+  },
+  {
+    "id": "SPECT-02",
+    "title": "Echelle orders separated by a prism",
+    "summary": "An illustrative 31.6 lines/mm echelle at high incidence disperses several orders; a prism supplies orthogonal dispersion before a 2D camera.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "The workbench has one transverse dimension; orthogonal cross-dispersion and a two-dimensional echelle order map cannot be represented.",
+    "references": [
+      {
+        "label": "ESO: UVES high-resolution cross-dispersed echelle spectrograph",
+        "url": "https://www.eso.org/sci/facilities/paranal/instruments/uves.html"
+      }
+    ]
+  },
+  {
+    "id": "SPECT-03",
+    "title": "Three-slice integral-field spectrograph feed",
+    "summary": "Divide a small square sky field into three strips, relay them into a pseudo-slit and disperse them together; retain a lookup from slit position back to each strip.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "There is no image-slicer mirror assembly or spatially ordered pseudo-slit reformatting component.",
+    "references": [
+      {
+        "label": "ESO: MUSE optical layout and integral-field spectrograph",
+        "url": "https://www.eso.org/sci/facilities/paranal/instruments/muse/inst.html"
+      }
+    ]
+  },
+  {
+    "id": "SPECT-04",
+    "title": "Two-crystal fixed-exit monochromator",
+    "summary": "Choose an 8 keV Si(111) teaching beamline: linked crystal angles select energy while translation of the second crystal maintains a fixed-height exit.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "There are no Bragg-diffracting crystals, linked second-crystal translation, or X-ray source wavelengths. A nonlinear crystal is not a Bragg monochromator.",
+    "references": [
+      {
+        "label": "Diamond Light Source: I18 monochromator and beamline optics",
+        "url": "https://www.diamond.ac.uk/Instruments/Imaging-and-Microscopy/I18.html"
+      }
+    ]
+  },
+  {
+    "id": "SPECT-05",
+    "title": "Two overlapping bandpasses with a diagnostic tap",
+    "summary": "A 532 nm beam passes a 500–550 nm and a 520–540 nm filter. Their nominal overlap is 520–540 nm; an upstream tap distinguishes source loss from rejection.",
+    "steps": [
+      "Compare 532 nm input with 510 nm: only the first should survive both idealized stages.",
+      "Set the second band to 560–580 nm and check the no-overlap boundary case."
+    ],
+    "limit": "The supplied ray scene uses idealized bandpass and split models. It does not predict angular shifts, coating ripple, fluorescence or optical-density leakage.",
+    "references": [
+      {
+        "label": "Thorlabs: bandpass-filter transmission and application data",
+        "url": "https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=1001"
+      }
+    ]
+  },
+  {
+    "id": "SPECT-06",
+    "title": "Michelson optical-path scan for interferogram acquisition",
+    "summary": "The native 633 nm Michelson combines fixed and variable optical paths at a photodetector. A delay-line element provides an editable optical-path offset in one arm.",
+    "steps": [
+      "Change delay through fractions of a wavelength and compare the detector signal.",
+      "Change source temporal coherence and separate fringe visibility from beam overlap."
+    ],
+    "limit": "This real bench demonstrates the interferogram acquisition geometry at one wavelength. It has no automated broadband interferogram sampling or Fourier-transform spectral reconstruction.",
+    "references": [
+      {
+        "label": "NIST: Fourier-transform infrared spectroscopy instrument and measurement work",
+        "url": "https://www.nist.gov/laboratories/tools-instruments/fourier-transform-infrared-spectrophotometry-ftis-facility"
+      }
+    ]
+  },
+  {
+    "id": "SPECT-07",
+    "title": "Raman excitation cleanup and return rejection",
+    "summary": "A native 488 nm bandpass cleans the pump before a Raman specimen. The return collection branch includes a long-pass filter that rejects excitation before the photodetector.",
+    "steps": [
+      "Inspect the specimen Raman shift and verify that its return wavelength clears the long-pass cutoff.",
+      "Raise the long-pass cutoff beyond the Raman line and compare detected signal."
+    ],
+    "limit": "Raman channel yield and angular emission are simplified specimen inputs. Real filter optical density, molecular Raman tensors, linewidths and calibrated signal strength are not inferred.",
+    "references": [
+      {
+        "label": "HORIBA: Raman spectroscopy instrumentation and filtering",
+        "url": "https://www.horiba.com/int/scientific/technologies/raman-imaging-and-spectroscopy/raman-spectroscopy/"
+      }
+    ]
+  },
+  {
+    "id": "SPECT-08",
+    "title": "Asymmetric dual-comb absorption measurement",
+    "summary": "Choose two illustrative 100 MHz combs differing by 100 Hz. One crosses a gas cell and meets the local-oscillator comb on a photodiode; radio-frequency beats are digitized with a common timing reference.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "Sources do not provide mutually coherent frequency-comb teeth with independently controlled repetition offsets, and detectors have no RF heterodyne-comb readout.",
+    "references": [
+      {
+        "label": "NIST: frequency-comb-based dual-comb spectroscopy",
+        "url": "https://www.nist.gov/programs-projects/frequency-comb-based-spectroscopy-dual-comb-spectroscopy"
+      }
+    ]
+  },
+  {
+    "id": "CAV-01",
+    "title": "Two-curved-mirror passive resonator",
+    "summary": "An external native 1064 nm source weakly couples through the first of two partially transmitting curved mirrors separated by 300 mm. A leaked-light detector is outside the right mirror.",
+    "steps": [
+      "Inspect mirror curvature and repeated reflections; compute the paraxial g-product separately.",
+      "Move the end mirror or offset the seed and compare the traced escape geometry."
+    ],
+    "limit": "This is a passive, externally injected cavity geometry. The renderer shows finite traced passes, not resonant buildup, a Gaussian eigenmode, longitudinal resonance or laser gain.",
+    "references": [
+      {
+        "label": "Kogelnik and Li: laser beams and resonators",
+        "url": "https://doi.org/10.1364/AO.5.001550"
+      }
+    ]
+  },
+  {
+    "id": "CAV-02",
+    "title": "Injected four-mirror enhancement-cavity geometry",
+    "summary": "A native splitter injects 1064 nm light into a closed four-corner optical path containing an SHG crystal. The return port and conversion are traced through real surfaces.",
+    "steps": [
+      "Follow the closed optical round trip and distinguish crystal conversion from resonance enhancement.",
+      "Change a cavity mirror angle or crystal conversion share and inspect escaping versus converted rays."
+    ],
+    "limit": "The setup constructs the cavity path and local conversion, but does not calculate resonant enhancement, impedance matching, locking, cavity stability or circulating steady-state power.",
+    "references": [
+      {
+        "label": "On the design of bow-tie enhancement cavities for second-harmonic generation",
+        "url": "https://www.sciencedirect.com/science/article/pii/S003040180101584X"
+      }
+    ]
+  },
+  {
+    "id": "CAV-03",
+    "title": "Michelson with physical power and signal recycling mirrors",
+    "summary": "The native Michelson receives a partially transmitting mirror at its input port and another at its readout port. Both form additional return paths around the central splitter.",
+    "steps": [
+      "Inspect the extra optical round trips and the fraction escaping to the readout detector.",
+      "Reduce one recycler reflectivity to zero and compare the corresponding returned path."
+    ],
+    "limit": "The mirrors implement real transmission/reflection paths. Resonant recycling gain, detuning, sideband response and precision-interferometer sensitivity are not computed.",
+    "references": [
+      {
+        "label": "LIGO: the interferometer and its optical cavities",
+        "url": "https://www.ligo.caltech.edu/MIT/page/ligos-ifo"
+      }
+    ]
+  },
+  {
+    "id": "CAV-04",
+    "title": "Master pulse source seeding a parametric power amplifier",
+    "summary": "A native 800 nm master pulse source seeds the OPA lower port; a separate 532 nm pump supplies amplification energy. The signal, residual pump and idler leave distinct physical output ports.",
+    "steps": [
+      "Inspect the seed and pump port heights and the separately dumped residual pump and idler.",
+      "Set pump average power to zero and compare amplified seed output with the unpumped seed."
+    ],
+    "limit": "This is a parametric MOPA implementation rather than an inversion amplifier. It models pump-limited seeded gain, not gain-medium storage, ASE, phase matching or amplifier isolation.",
+    "references": [
+      {
+        "label": "High-peak-power pulsed fiber master-oscillator power-amplifier experiment",
+        "url": "https://www.sciencedirect.com/science/article/pii/S1631070506000399"
+      }
+    ]
+  },
+  {
+    "id": "CAV-05",
+    "title": "Switched regenerative pulse amplifier",
+    "summary": "An illustrative stretched 1030 nm seed enters through a polarizing coupler, circulates for a programmed 20 round trips and is switched out by a Pockels cell for later compression.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "There is no laser gain medium with round-trip regenerative amplification or pulse trapping/extraction across successive gated round trips. The seeded single-pass OPA does not provide cavity gain.",
+    "references": [
+      {
+        "label": "Coherent: regenerative amplifiers and ultrafast laser architecture",
+        "url": "https://www.coherent.com/lasers/laser/legend-elite"
+      }
+    ]
+  },
+  {
+    "id": "CAV-06",
+    "title": "Loss-controlled Q-switched resonator",
+    "summary": "An illustrative 1064 nm resonator stores inversion with an acousto-optic loss gate active, then rapidly lowers loss to produce a pulse through a fixed output coupler.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "The AOM can switch an optical path, but no gain medium stores inversion or releases a Q-switched laser pulse; a passive AOM cavity cannot implement Q-switching.",
+    "references": [
+      {
+        "label": "AA Opto-Electronic: acousto-optic Q-switch theory and loss control",
+        "url": "https://acoustooptic.com/wp-content/uploads/2025/04/AAOPTO-Theory2013-4-1.pdf"
+      }
+    ]
+  },
+  {
+    "id": "CAV-07",
+    "title": "Polarization-switched passive cavity dump path",
+    "summary": "Native pulse light enters a folded storage loop through a PBS. An electro-optic retarder changes polarization before return to the splitter; the upward output port samples the selected extraction path.",
+    "steps": [
+      "Inspect the EOM drive parameters and the PBS return-port polarization.",
+      "Compare two retardance settings and follow which return branch leaves the storage path."
+    ],
+    "limit": "The native setup demonstrates a switchable passive extraction geometry. It does not accumulate stored energy over repeated temporal round trips or calculate dump efficiency and timing jitter.",
+    "references": [
+      {
+        "label": "Coherent: cavity-dumped ultrafast oscillator configuration",
+        "url": "https://www.coherent.com/lasers/laser/mira"
+      }
+    ]
+  },
+  {
+    "id": "CAV-08",
+    "title": "Dispersion-managed mode-locked ring oscillator",
+    "summary": "An illustrative 80 MHz ring includes a pumped gain segment, fast saturable loss, negative-dispersion mirrors and a small output coupler. Total group delay, not diagram length, fixes the repetition rate.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "The registry lacks a fast saturable absorber/Kerr-lens mode-locking response and oscillator pulse-formation dynamics; a pulsed source cannot stand in for the oscillator.",
+    "references": [
+      {
+        "label": "Keller et al.: semiconductor saturable absorber mirrors for passive mode locking",
+        "url": "https://doi.org/10.1109/2944.571743"
+      }
+    ]
+  },
+  {
+    "id": "CAV-09",
+    "title": "Two seeded parametric amplifier arms with coherent recombination",
+    "summary": "A common 800 nm master is split into two native OPA channels pumped separately at 532 nm. Equal geometrical arms meet at a combiner, with a native phase actuator and two camera readout ports.",
+    "steps": [
+      "Inspect the physical common-seed split, both pumped amplifier ports and the two recombination cameras.",
+      "Disable one pump and compare routed output power; inspect the manual phase actuator separately from any automatic servo."
+    ],
+    "limit": "The amplifier channels use native parametric gain. Their amplified fields are not tracked as phase-coherent interferometer fields, so camera power is not a computed coherent-combining efficiency. Feedback, amplifier noise and an automatic phase servo are absent.",
+    "references": [
+      {
+        "label": "Goodno et al.: coherent combination of high-power fiber amplifiers",
+        "url": "https://doi.org/10.1364/OL.31.001247"
+      }
+    ]
+  },
+  {
+    "id": "PULSE-01",
+    "title": "Native OPCPA: stretch, amplify and recompress",
+    "summary": "The existing 800 nm, 31.4 fs seed receives +100000 fs² GDD, amplification from a timed 532 nm pump in the native OPA, then −100000 fs² compensation. Duration and spectrum probes show each stage.",
+    "steps": [
+      "Compare seed duration before and after the positive-GDD stage, then inspect OPA pump/seed arrival timing.",
+      "Set final compressor GDD to zero and compare delivered duration with the compensated output."
+    ],
+    "limit": "The OPA models pump-limited seeded gain and spectral overlap; phase matching, noise, spatial nonlinearities and amplifier feedback are absent. Compression uses quadratic spectral phase.",
+    "references": [
+      {
+        "label": "Strickland and Mourou: compression of amplified chirped optical pulses",
+        "url": "https://doi.org/10.1016/0030-4018(85)90151-8"
+      }
+    ]
+  },
+  {
+    "id": "PULSE-02",
+    "title": "Glass dispersion and quadratic compensation",
+    "summary": "Three native paths compare a 150 fs, 532 nm reference, propagation through 100 mm of N-SF11, and the same glass followed by −38680 fs² compensation. Autocorrelators read all three outputs.",
+    "steps": [
+      "Compare the three autocorrelation durations using the same assumed Gaussian shape.",
+      "Set the compensation to zero or reverse its sign and compare the third path with the glass-only path."
+    ],
+    "limit": "Catalogue glass GDD and quadratic Gaussian pulse propagation are modeled. The compressor is a native phase-compensation element; prism separation, higher-order phase and measured instrument response are not inferred.",
+    "references": [
+      {
+        "label": "Newport: prism compressor for ultrashort laser pulses",
+        "url": "https://www.newport.com/f/prism-compressor-for-ultrashort-laser-pulses"
+      }
+    ]
+  },
+  {
+    "id": "PULSE-03",
+    "title": "4f spectral phase shaping",
+    "summary": "A pair of illustrative 1200 lines/mm gratings and 200 mm lenses spread an 800 nm spectrum across a programmable mask in a Fourier plane, then recombine it on a common output axis.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "The SLM supports spatial steering and lens-array overlays, but not independent spectral amplitude/phase pixels or temporal Fourier synthesis at a dispersed spectral plane.",
+    "references": [
+      {
+        "label": "Weiner: femtosecond pulse shaping with spatial light modulators",
+        "url": "https://doi.org/10.1063/1.1150614"
+      }
+    ]
+  },
+  {
+    "id": "PULSE-04",
+    "title": "Native argon hollow-core broadening and compression",
+    "summary": "Open the existing argon hollow-core fiber setup with physical coupling, a diagnostic split, negative-GDD compensation and autocorrelation readouts before and after compression.",
+    "steps": [
+      "Inspect the native fiber gas, bore, coupling and computed loss before comparing its output spectrum.",
+      "Set compressor GDD to zero and compare autocorrelation width; bandwidth alone does not establish compression."
+    ],
+    "limit": "The hollow-core model is an approximate nonlinear broadening and chirp model. It does not establish ionization, damage margins, spatial beam quality or a physically measured compressed pulse.",
+    "references": [
+      {
+        "label": "Newport: spectral broadening and temporal compression application experiment",
+        "url": "https://www.newport.com/medias/sys_master/images/images/h38/h64/8797270507550/Spectral-Broadening-and-Temporal-Compression-of-Ultrashort-Pulses-App-Note-35.pdf"
+      }
+    ]
+  },
+  {
+    "id": "PULSE-05",
+    "title": "Pump–probe time zero through sum-frequency mixing",
+    "summary": "Native 1032 nm and 790 nm pulses follow two physical arms, one with a 200 mm optical delay. They meet in the crystal; the spectrometer resolves individual harmonics and the overlap-dependent sum-frequency signal.",
+    "steps": [
+      "Adjust the mechanical delay around 200 mm and inspect the mixed spectral line.",
+      "Move well away from overlap and distinguish the remaining single-beam harmonics from the two-beam sum frequency."
+    ],
+    "limit": "This is a nonlinear timing implementation of pump–probe overlap. The crystal models harmonic/mixed fractions and pulse overlap, not a specimen transient absorption response or full phase matching.",
+    "references": [
+      {
+        "label": "Zewail: femtochemistry and ultrafast pump–probe experiments",
+        "url": "https://www.nobelprize.org/prizes/chemistry/1999/zewail/lecture/"
+      }
+    ]
+  },
+  {
+    "id": "PULSE-06",
+    "title": "Electro-optic gate and polarization pulse selection",
+    "summary": "An 800 nm native pulse source passes an input polarizer, electro-optic retarder and PBS. The selected port reaches a detector while the orthogonal port is dumped.",
+    "steps": [
+      "Inspect the EOM drive mode and compare the polarization at the two PBS branches.",
+      "Change the applied retardance to switch the selected output between transmission and rejection."
+    ],
+    "limit": "Native polarization routing and EOM modulation are represented. This scene does not claim a synchronized one-in-80 picker or programmable burst schedule; those require external timing hardware.",
+    "references": [
+      {
+        "label": "Conoptics: electro-optic pulse-picker systems and synchronization",
+        "url": "https://www.conoptics.com/pulse-picker/"
+      }
+    ]
+  },
+  {
+    "id": "PULSE-07",
+    "title": "Native intensity-autocorrelation instrument",
+    "summary": "A native 800 nm, 150 fs Gaussian pulse enters the autocorrelator and its linked display. The instrument calculates the correlation width and infers pulse duration using the selected shape factor.",
+    "steps": [
+      "Read correlation width separately from inferred pulse duration.",
+      "Change the assumed shape to sech² and compare the inferred duration without changing the source."
+    ],
+    "limit": "This is the native packaged autocorrelator, not a fake drawn internal beam split. The inferred duration depends on shape assumptions; full spectral phase is not recovered.",
+    "references": [
+      {
+        "label": "Trebino et al.: measuring ultrashort pulses and correlation limitations",
+        "url": "https://doi.org/10.1063/1.1147498"
+      }
+    ]
+  },
+  {
+    "id": "PULSE-08",
+    "title": "Spectrally resolved nonlinear cross-gating",
+    "summary": "A native two-color gated measurement combines 1032 nm and 790 nm pulses in a nonlinear crystal and resolves the gated sum-frequency channel on a spectrometer while optical delay is varied.",
+    "steps": [
+      "Scan delay and observe which spectral channel follows the two-pulse overlap.",
+      "Compare the spectrum at time zero with one taken outside overlap before attempting any pulse retrieval."
+    ],
+    "limit": "The saved setup supplies a real nonlinear gate and spectral readout. It does not acquire a FROG delay–wavelength matrix automatically or perform spectral-phase reconstruction; this is a cross-gating implementation, not a completed FROG measurement.",
+    "references": [
+      {
+        "label": "Trebino and Kane: frequency-resolved optical gating",
+        "url": "https://doi.org/10.1364/JOSAA.10.001101"
+      }
+    ]
+  },
+  {
+    "id": "PULSE-09",
+    "title": "Native 1064-to-532 nm harmonic generation",
+    "summary": "A 1064 nm pulse is focused into a native SHG crystal, recollimated and spectrally separated. The 532 nm channel reaches a bandpass and spectrometer; residual pump goes to a dump.",
+    "steps": [
+      "Inspect the generated spectrum and the separate residual pump path.",
+      "Set crystal conversion efficiency to zero and confirm that the harmonic channel disappears."
+    ],
+    "limit": "The crystal uses a user-set conversion share rather than a focused phase-matching calculation. It does not predict walk-off, depletion dynamics, damage thresholds or a measured conversion efficiency.",
+    "references": [
+      {
+        "label": "Boyd and Kleinman: parametric interaction of focused Gaussian light beams",
+        "url": "https://doi.org/10.1063/1.1656831"
+      }
+    ]
+  },
+  {
+    "id": "PULSE-10",
+    "title": "Delayed optical gate for electro-optic THz sampling",
+    "summary": "A synchronized near-infrared gate traverses a thin electro-optic crystal with a THz field. A quarter-wave bias and polarization splitter feed balanced photodiodes while gate delay samples the field.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "No THz source field or electro-optic crystal coupling from the sampled THz field to optical retardance is available.",
+    "references": [
+      {
+        "label": "Electro-optic THz sampling experiment and detection geometry",
+        "url": "https://www.nature.com/articles/srep03116"
+      }
+    ]
+  },
+  {
+    "id": "ACCESS-01",
+    "title": "Two serial native 1:1 image relays",
+    "summary": "A native luminous object feeds two 4f relays built from four 50 mm thin lenses. The intermediate image lies at 400 mm and the final camera at 700 mm.",
+    "steps": [
+      "Inspect the real rays and identify object, intermediate and final image planes.",
+      "Move the final camera away from the conjugate plane or change one focal length and compare image spread."
+    ],
+    "limit": "Paraxial 2D object rays and relay imaging are shown. This is a lens-built serial relay, not a commercial rod-lens prescription or a calibrated rigid-endoscope aberration model.",
+    "references": [
+      {
+        "label": "SCHOTT: rigid and flexible endoscopy optics",
+        "url": "https://www.schott.com/en-in/expertise/applications/endoscopy"
+      }
+    ]
+  },
+  {
+    "id": "ACCESS-02",
+    "title": "Coherent bundle camera transport",
+    "summary": "A distal objective maps a tissue field onto a coherent fiber bundle. At the proximal end a magnifying relay images the core pattern onto a camera; a separate illumination fiber lights the tissue.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "Native fibers carry scalar ray channels; no coherent ordered multicore image bundle preserves a distal-to-proximal image map.",
+    "references": [
+      {
+        "label": "SCHOTT: flexible coherent imaging bundles",
+        "url": "https://www.schott.com/en-ca/products/flexible-imaging-bundles-p1000343"
+      }
+    ]
+  },
+  {
+    "id": "ACCESS-03",
+    "title": "Proximally scanned confocal image bundle",
+    "summary": "A 488 nm spot scans across the proximal bundle face. The addressed distal core illuminates one tissue location; the same core carries the fluorescence back to a conjugate pinhole detector.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "The required coherent image bundle and core-addressed confocal return mapping are absent; scanning a single fiber does not implement proximal image-guide scanning.",
+    "references": [
+      {
+        "label": "Hughes and Yang: fiber-bundle confocal endomicroscopy with descanned detection",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4399663/"
+      },
+      {
+        "label": "SCHOTT: flexible coherent imaging bundles",
+        "url": "https://www.schott.com/en-ca/products/flexible-imaging-bundles-p1000343"
+      }
+    ]
+  },
+  {
+    "id": "ACCESS-04",
+    "title": "Fiber-delivered excitation with a distal scan mirror",
+    "summary": "A propagating native delivery fiber re-emits a 488 nm beam toward a distal galvo. The mirror steers illumination onto a fluorescent specimen, with separate local collection at a photodetector.",
+    "steps": [
+      "Follow fiber coupling and re-emission before the distal scan mirror.",
+      "Change galvo angle to move the excitation spot away from the specimen and compare the collected fluorescence."
+    ],
+    "limit": "This is a distal mirror-scanning implementation, not a resonant scanning-fiber-tip device. Fiber coupling and mirror steering are modeled; miniature packaging, scan mechanics and image reconstruction are not.",
+    "references": [
+      {
+        "label": "University of Washington: scanning-fiber endoscope development",
+        "url": "https://www.washington.edu/news/2008/01/24/camera-in-a-pill-offers-cheaper-easier-window-on-your-insides-2/"
+      }
+    ]
+  },
+  {
+    "id": "ACCESS-05",
+    "title": "Separate native illumination and return fibers",
+    "summary": "One propagating fiber delivers 488 nm excitation to a fluorescent specimen. A physically separate fiber entry collects nearby emission and routes it through a long-pass filter to a detector.",
+    "steps": [
+      "Inspect the two native fiber inputs, acceptance cones and output optics separately.",
+      "Reduce collection input NA or move its entry away from the specimen and compare return signal."
+    ],
+    "limit": "The setup uses scalar fiber coupling and qualitative isotropic specimen emission. It does not model a coherent image bundle, 3D collection solid angle or tissue-depth sensitivity.",
+    "references": [
+      {
+        "label": "SCHOTT: illumination and imaging optics for endoscopy",
+        "url": "https://www.schott.com/en-in/expertise/applications/endoscopy"
+      }
+    ]
+  },
+  {
+    "id": "ACCESS-06",
+    "title": "Rotating side-view OCT probe",
+    "summary": "A rotary joint feeds a fiber/GRIN assembly and a side-reflecting distal prism. Rotation sweeps a circumferential tissue cross-section; an external reference arm supplies OCT depth discrimination.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "There is no rotary fiber joint, cylindrical sheath or three-dimensional circumferential side-view geometry.",
+    "references": [
+      {
+        "label": "Tearney et al.: in vivo endoscopic optical biopsy with OCT",
+        "url": "https://doi.org/10.1126/science.276.5321.2037"
+      }
+    ]
+  },
+  {
+    "id": "ACCESS-07",
+    "title": "Transmission-matrix calibrated multimode probe",
+    "summary": "A phase-only SLM controls an illustrative 532 nm field entering a multimode fiber. A distal camera first measures calibration fields; the resulting matrix selects input phases for a later distal focus.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "No multimode complex-field propagation, transmission-matrix acquisition or calibrated input-mode mapping exists; ordinary fiber paths cannot reproduce this transport.",
+    "references": [
+      {
+        "label": "Čižmár and Dholakia: exploiting multimode waveguides for pure fibre-based imaging",
+        "url": "https://www.nature.com/articles/ncomms2024"
+      }
+    ]
+  },
+  {
+    "id": "WAVE-01",
+    "title": "Native deformable mirror with science and sensing branches",
+    "summary": "A native deformable mirror applies reflective tip/tilt and defocus. A physical splitter sends corrected light to a science camera and an independent lens/camera sensing branch.",
+    "steps": [
+      "Adjust DM tip/tilt and compare the image centroids in both physical branches.",
+      "Use the sensing camera manually to restore alignment; then add a science-branch lens offset to expose a non-common-path error."
+    ],
+    "limit": "The bench constructs common correction and a sensing branch. The sensor is a native focal camera, not a Shack–Hartmann reconstructor; feedback is manual and only tip/tilt and paraxial defocus are modeled.",
+    "references": [
+      {
+        "label": "ESO: adaptive-optics modes and conjugation architectures",
+        "url": "https://www.eso.org/sci/facilities/develop/ao/ao_modes.html"
+      }
+    ]
+  },
+  {
+    "id": "WAVE-02",
+    "title": "Two deformable mirrors separated by a conjugate relay",
+    "summary": "Two native reflective DMs are separated by a two-lens relay. Each independently applies defocus and steering before the final camera, allowing a real two-corrector optical bench to be edited.",
+    "steps": [
+      "Inspect the two 100 mm relay lenses and identify the reimaged plane.",
+      "Adjust one DM at a time and compare the final beam centroid and convergence; preserve relay spacing when changing the second plane."
+    ],
+    "limit": "This is a physical two-corrector relay, not a claimed atmospheric tomography solution. No 9 km conjugation, multilayer wavefront reconstruction, automatic controller or corrected wide-field performance is calculated.",
+    "references": [
+      {
+        "label": "ESO: adaptive-optics modes and conjugation architectures",
+        "url": "https://www.eso.org/sci/facilities/develop/ao/ao_modes.html"
+      }
+    ]
+  },
+  {
+    "id": "WAVE-03",
+    "title": "Manual sensorless defocus optimization on a native camera",
+    "summary": "A native deformable mirror sends a finite-width beam to a camera. Its focal-length control changes paraxial convergence; the camera spot provides the metric without a separate wavefront sensor.",
+    "steps": [
+      "Sweep DM defocus focal length and compare the measured spot profile at the fixed camera.",
+      "Move the camera plane and repeat the adjustment; an optimum for one plane is not automatically an optimum elsewhere."
+    ],
+    "limit": "The scene supports manual image-metric adjustment of native tip/tilt and defocus. It has no automated coefficient search, higher-order wavefront correction or sample-dependent optimization guarantee.",
+    "references": [
+      {
+        "label": "Booth et al.: adaptive aberration correction in a confocal microscope",
+        "url": "https://doi.org/10.1073/pnas.082544799"
+      }
+    ]
+  },
+  {
+    "id": "WAVE-04",
+    "title": "Two-color guide and science paths through a common corrector",
+    "summary": "A real 589 nm guide source and 800 nm science source are combined onto a native DM, then separated by wavelength to two cameras. The common correction can be adjusted against the guide image.",
+    "steps": [
+      "Follow both wavelengths through the same corrector and identify their separate sensing/readout cameras.",
+      "Adjust DM steering and compare movement of both camera profiles."
+    ],
+    "limit": "The native bench constructs shared correction and spectral guide/science separation. It does not simulate a sodium beacon, finite-altitude cone effect, absolute tip/tilt recovery or atmospheric wavefront sensing.",
+    "references": [
+      {
+        "label": "ESO: adaptive-optics modes and conjugation architectures",
+        "url": "https://www.eso.org/sci/facilities/develop/ao/ao_modes.html"
+      }
+    ]
+  },
+  {
+    "id": "WAVE-05",
+    "title": "Focal occultation followed by a pupil stop",
+    "summary": "Two native source directions pass a focusing lens. A small real beam dump intercepts the on-axis focal beam; relay optics and a slit pupil stop feed the final camera.",
+    "steps": [
+      "Follow the blocked on-axis path separately from the off-axis source direction.",
+      "Move the occulting dump off center and inspect direct stellar leakage; enlarge the pupil stop to compare geometrical throughput."
+    ],
+    "limit": "This is the geometrical focal-mask and pupil-stop arrangement. Ray optics cannot predict Lyot diffraction rejection, contrast floor, inner working angle or coherent companion throughput.",
+    "references": [
+      {
+        "label": "NASA Webb: coronagraph focal masks and Lyot stops",
+        "url": "https://science.nasa.gov/blogs/webb/2023/03/24/how-webbs-coronagraphs-reveal-exoplanets-in-the-infrared/"
+      }
+    ]
+  },
+  {
+    "id": "WAVE-06",
+    "title": "Native opposite-orientation dispersion prisms",
+    "summary": "A visible native continuum passes two N-BK7 prisms in opposite orientations. Their refracted wavelength-dependent paths can be inspected at a downstream camera while prism position and angle are edited.",
+    "steps": [
+      "Inspect the spectral fan after each prism and compare the camera spectrum.",
+      "Rotate or displace the second prism and identify which colors miss it rather than assuming compensation from symmetry alone."
+    ],
+    "limit": "This is a physical 2D dispersive-prism pair. It does not model atmospheric refraction, counter-rotation about a 3D optical axis or automatically compensate a chosen zenith distance.",
+    "references": [
+      {
+        "label": "ESO: MUSE atmospheric dispersion compensator and optical layout",
+        "url": "https://www.eso.org/sci/facilities/paranal/instruments/muse/inst.html"
+      }
+    ]
+  },
+  {
+    "id": "WAVE-07",
+    "title": "Infrared pupil-aperture matching with a native relay",
+    "summary": "A native 4 µm source illuminates an entrance aperture that is reimaged through two lenses onto a second matched slit. A downstream camera shows admitted and clipped rays.",
+    "steps": [
+      "Compare the entrance and reimaged aperture sizes and positions.",
+      "Displace or narrow the second slit and inspect the loss of accepted rays."
+    ],
+    "limit": "The setup provides native pupil geometry and clipping. Stop temperature, thermal emission, cryogenic optics and background noise are not modeled; the lens proxy is geometric rather than an infrared material prescription.",
+    "references": [
+      {
+        "label": "NASA: MIRI instrument optics and cryogenic infrared detection",
+        "url": "https://science.nasa.gov/mission/webb/mid-infrared-instrument-miri/"
+      }
+    ]
+  },
+  {
+    "id": "WAVE-08",
+    "title": "Native aperture baffling and a rejected-path dump",
+    "summary": "A real weak splitter branch terminates in a beam dump while two native slit plates bound the useful camera path. The accepted bundle remains traced through a relay lens.",
+    "steps": [
+      "Identify the explicitly dumped optical branch and both aperture edges.",
+      "Move a slit into the accepted bundle and compare detector throughput before calling the change better baffling."
+    ],
+    "limit": "Native ray interception and clipping are computed. Coating ghosts, wall scatter, vane-edge diffraction and quantitative stray-light rejection are not predicted.",
+    "references": [
+      {
+        "label": "Xinglong telescope: stray-light paths and additional baffle vanes",
+        "url": "https://arxiv.org/abs/1909.12451"
+      }
+    ]
+  },
+  {
+    "id": "XRAY-01",
+    "title": "Sequential orthogonal KB line foci",
+    "summary": "An illustrative 8 keV beam reflects from a vertically focusing grazing-incidence mirror and then a horizontally focusing mirror. Their separate line-focus powers combine at one sample point.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "Source wavelengths start at 150 nm, and the registry has no energy-dependent X-ray grazing-incidence mirrors or two orthogonal transverse focusing planes.",
+    "references": [
+      {
+        "label": "Kirkpatrick and Baez: formation of optical images by X-rays",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/18883922/"
+      },
+      {
+        "label": "ESRF: KB mirrors and compound refractive lenses",
+        "url": "https://www.esrf.fr/UsersAndScience/Publications/Highlights/2002/Methods/MET1"
+      }
+    ]
+  },
+  {
+    "id": "XRAY-02",
+    "title": "Nested Wolter-I telescope shells",
+    "summary": "Two illustrative nested shell pairs each use a paraboloid-like first graze and hyperboloid-like second graze to send distant X-rays to a common detector focus.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "There are no X-ray wavelengths or nested axisymmetric Wolter shell pairs; a visible 2D conic mirror does not implement this collecting geometry.",
+    "references": [
+      {
+        "label": "Chandra: high-resolution mirror assembly specifications",
+        "url": "https://chandra.harvard.edu/about/specs.html"
+      }
+    ]
+  },
+  {
+    "id": "XRAY-03",
+    "title": "Micropore lobster-eye core and cross arms",
+    "summary": "A spherical array of square micropores receives an illustrative 1 keV wide field. Two orthogonal reflections form the central focus; singly reflected rays form cross arms and unreﬂected rays supply diffuse background.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "Square micropore arrays, orthogonal wall-graze paths and wide-field lobster-eye geometry are absent, as are X-ray source wavelengths.",
+    "references": [
+      {
+        "label": "LEIA: first wide-field lobster-eye X-ray images in orbit",
+        "url": "https://arxiv.org/abs/2211.10007"
+      }
+    ]
+  },
+  {
+    "id": "XRAY-04",
+    "title": "Selectable compound-refractive-lens cartridges",
+    "summary": "At an illustrative 8 keV, select cartridges of 2, 4 and 8 beryllium lenses to change total refractive power. The selected stack focuses downstream while a transmission monitor tracks absorption.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "There are no X-ray wavelengths, refractive-decrement materials or selectable compound X-ray lens cartridges; visible glass lenses cannot substitute.",
+    "references": [
+      {
+        "label": "Vaughan et al.: X-ray transfocators based on compound refractive lenses",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3267637/"
+      }
+    ]
+  },
+  {
+    "id": "XRAY-05",
+    "title": "Zone-plate focus with central stop and order aperture",
+    "summary": "A monochromatic teaching soft-X-ray beam illuminates a zone plate with a central stop. An order-sorting aperture before the first-order focus rejects direct light and unwanted diffraction orders.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "There is no X-ray zone plate with diffraction orders and a central stop; the scalar metalens proxy does not implement zone-plate order sorting.",
+    "references": [
+      {
+        "label": "Baez: self-supporting metal Fresnel zone plate for EUV and soft X-rays",
+        "url": "https://www.nature.com/articles/186958a0"
+      }
+    ]
+  },
+  {
+    "id": "XRAY-06",
+    "title": "Near and propagated X-ray phase-contrast images",
+    "summary": "An illustrative coherent 20 keV beam crosses a weakly absorbing specimen. Compare a near-contact detector position with a 0.5 m propagation position, keeping the same sample and illumination.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "X-ray wavelengths and free-space Fresnel field propagation are absent; ray propagation cannot create the required phase-to-intensity fringes.",
+    "references": [
+      {
+        "label": "Snigirev et al.: phase-contrast imaging with high-energy synchrotron radiation",
+        "url": "https://doi.org/10.1063/1.1146073"
+      }
+    ]
+  },
+  {
+    "id": "XRAY-07",
+    "title": "Talbot–Lau grating phase stepping",
+    "summary": "An illustrative source grating G₀, phase grating G₁ and analyzer grating G₂ measure an X-ray specimen. Translate G₂ through five phase steps to estimate absorption, differential phase and dark-field channels.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "Source, phase and analyzer X-ray grating functions with Talbot interference and phase-stepped visibility readout are absent.",
+    "references": [
+      {
+        "label": "ESRF: X-ray grating interferometry and phase contrast",
+        "url": "https://www.esrf.fr/UsersAndScience/Publications/Highlights/2011/imaging/ima10"
+      }
+    ]
+  },
+  {
+    "id": "XRAY-08",
+    "title": "13.5 nm multilayer reflective projection transport",
+    "summary": "An illustrative 13.5 nm EUV field uses multilayer-coated reflective optics through illumination, a reflective mask and a reduction relay. Each reflection contributes spectral/angle-dependent loss; no transmissive lens is implied.",
+    "steps": [
+      "Read the unavailable reason to identify the essential missing capability.",
+      "Use the cited primary sources for the physical arrangement; no substitute scene is offered."
+    ],
+    "limit": "The 13.5 nm wavelength is outside source bounds and no multilayer EUV coating or reflective-mask projection prescription exists.",
+    "references": [
+      {
+        "label": "ASML: EUV multilayer mirrors and lithography optics",
+        "url": "https://www.asml.com/en/technology/lithography-principles/lenses-and-mirrors"
+      }
+    ]
+  }
 ];
 
 function opticalElement(type, id, x, y, params, rot = 0) {
@@ -440,3 +963,304 @@ filterExample.scene = {
   opticalElement('detector','spect05-reference',285,335,{},90),
  ],
 };
+
+// Native workbench revision: no arrangement map is exposed as a saved setup.
+// Every available record below contains actual optical components and traced
+// paths. A missing essential device stays explicitly unavailable.
+const missing = {
+ 'CONTRAST-02':'The registry has no matched rotating microlens/pinhole disks or independently resolved parallel confocal channels.',
+ 'CONTRAST-05':'Nomarski/Wollaston shearing prisms and polarization-dependent lateral shear are absent; ordinary prisms cannot replace them.',
+ 'CONTRAST-06':'A prism can show total internal reflection, but the tracer has no evanescent excitation field or near-interface fluorescence coupling. A TIR-only ray would not implement this excitation pattern.',
+ 'CONTRAST-08':'There is no stimulated-depletion specimen response or vortex depletion field with a central vectorial intensity minimum.',
+ 'SPECT-02':'The workbench has one transverse dimension; orthogonal cross-dispersion and a two-dimensional echelle order map cannot be represented.',
+ 'SPECT-03':'There is no image-slicer mirror assembly or spatially ordered pseudo-slit reformatting component.',
+ 'SPECT-04':'There are no Bragg-diffracting crystals, linked second-crystal translation, or X-ray source wavelengths. A nonlinear crystal is not a Bragg monochromator.',
+ 'SPECT-08':'Sources do not provide mutually coherent frequency-comb teeth with independently controlled repetition offsets, and detectors have no RF heterodyne-comb readout.',
+ 'CAV-05':'There is no laser gain medium with round-trip regenerative amplification or pulse trapping/extraction across successive gated round trips. The seeded single-pass OPA does not provide cavity gain.',
+ 'CAV-06':'The AOM can switch an optical path, but no gain medium stores inversion or releases a Q-switched laser pulse; a passive AOM cavity cannot implement Q-switching.',
+ 'CAV-08':'The registry lacks a fast saturable absorber/Kerr-lens mode-locking response and oscillator pulse-formation dynamics; a pulsed source cannot stand in for the oscillator.',
+ 'PULSE-03':'The SLM supports spatial steering and lens-array overlays, but not independent spectral amplitude/phase pixels or temporal Fourier synthesis at a dispersed spectral plane.',
+ 'PULSE-10':'No THz source field or electro-optic crystal coupling from the sampled THz field to optical retardance is available.',
+ 'ACCESS-02':'Native fibers carry scalar ray channels; no coherent ordered multicore image bundle preserves a distal-to-proximal image map.',
+ 'ACCESS-03':'The required coherent image bundle and core-addressed confocal return mapping are absent; scanning a single fiber does not implement proximal image-guide scanning.',
+ 'ACCESS-06':'There is no rotary fiber joint, cylindrical sheath or three-dimensional circumferential side-view geometry.',
+ 'ACCESS-07':'No multimode complex-field propagation, transmission-matrix acquisition or calibrated input-mode mapping exists; ordinary fiber paths cannot reproduce this transport.',
+ 'XRAY-01':'Source wavelengths start at 150 nm, and the registry has no energy-dependent X-ray grazing-incidence mirrors or two orthogonal transverse focusing planes.',
+ 'XRAY-02':'There are no X-ray wavelengths or nested axisymmetric Wolter shell pairs; a visible 2D conic mirror does not implement this collecting geometry.',
+ 'XRAY-03':'Square micropore arrays, orthogonal wall-graze paths and wide-field lobster-eye geometry are absent, as are X-ray source wavelengths.',
+ 'XRAY-04':'There are no X-ray wavelengths, refractive-decrement materials or selectable compound X-ray lens cartridges; visible glass lenses cannot substitute.',
+ 'XRAY-05':'There is no X-ray zone plate with diffraction orders and a central stop; the scalar metalens proxy does not implement zone-plate order sorting.',
+ 'XRAY-06':'X-ray wavelengths and free-space Fresnel field propagation are absent; ray propagation cannot create the required phase-to-intensity fringes.',
+ 'XRAY-07':'Source, phase and analyzer X-ray grating functions with Talbot interference and phase-stepped visibility readout are absent.',
+ 'XRAY-08':'The 13.5 nm wavelength is outside source bounds and no multilayer EUV coating or reflective-mask projection prescription exists.',
+};
+for (const record of examples) {
+ delete record.nodes; delete record.edges;
+ if (record.id !== 'SPECT-05') { record.mode='unavailable'; delete record.scene; record.unavailableReason=missing[record.id] || 'Native scene authoring in progress.'; }
+}
+const physical = (id,type,x,y,rot=0,params={},label='') => {
+ const el=opticalElement(type,id,x,y,params,rot);
+ return {...el,label,showLabel:!!label,labelPos:'b'};
+};
+const native = elements => ({version:1,elements,beams:[]});
+function available(id,scene,title,summary,steps,limit) {
+ const record=examples.find(item=>item.id===id);
+ Object.assign(record,{mode:'rays',scene,title,summary,steps,limit});
+ delete record.unavailableReason;
+}
+function savedExample(path,prefix) {
+ const raw=JSON.parse(readFileSync(new URL(`../../Examples/${path}`,import.meta.url),'utf8'));
+ const omit=new Set(['textlabel','figureframe','highlight','arrowann','box']);
+ const elements=raw.elements.filter(el=>!omit.has(el.type));
+ const mapping=new Map(elements.map((el,i)=>[el.id,`${prefix}-element-${i}`]));
+ for(const el of elements) {el.id=mapping.get(el.id);if(el.params.sensorId)el.params.sensorId=mapping.get(el.params.sensorId)||el.params.sensorId;}
+ const beams=(raw.beams||[]).filter(beam=>beam.kind!=='beam').map((beam,i)=>({...beam,id:`${prefix}-path-${i}`}));
+ return {version:1,elements,beams};
+}
+const microscopy=savedExample('Microscopy Implementations/Multiphoton microscope — SHG and two photon fluorescence.json','contrast07');
+available('CONTRAST-07',microscopy,'Multiphoton microscope with SHG and two-photon fluorescence',
+ 'Open the existing native microscope: pulsed excitation, two scan mirrors, relay lenses, shared objective, nonlinear specimen and separate SHG/fluorescence detection channels.',
+ ['Inspect the specimen channels and the forward versus epi collection geometry.','Disable the nonlinear specimen channels and compare the detector signals; change pulse duration separately from average power.'],
+ 'The specimen uses intensity-dependent channel models and traced collection. Diffraction-limited resolution, specimen-specific cross sections, phototoxicity and 3D tissue scattering are not predicted.');
+const opcpa=savedExample('Ultrashort Pulses/OPCPA — stretch, amplify, recompress.json','pulse01');
+available('PULSE-01',opcpa,'Native OPCPA: stretch, amplify and recompress',
+ 'The existing 800 nm, 31.4 fs seed receives +100000 fs² GDD, amplification from a timed 532 nm pump in the native OPA, then −100000 fs² compensation. Duration and spectrum probes show each stage.',
+ ['Compare seed duration before and after the positive-GDD stage, then inspect OPA pump/seed arrival timing.','Set final compressor GDD to zero and compare delivered duration with the compensated output.'],
+ 'The OPA models pump-limited seeded gain and spectral overlap; phase matching, noise, spatial nonlinearities and amplifier feedback are absent. Compression uses quadratic spectral phase.');
+const mopa=structuredClone(opcpa);mopa.elements=mopa.elements.filter(el=>el.type!=='pulsecompressor');
+for(const el of mopa.elements) if(el.id.startsWith('pulse01')) el.id=el.id.replace('pulse01','cav04');
+available('CAV-04',mopa,'Master pulse source seeding a parametric power amplifier',
+ 'A native 800 nm master pulse source seeds the OPA lower port; a separate 532 nm pump supplies amplification energy. The signal, residual pump and idler leave distinct physical output ports.',
+ ['Inspect the seed and pump port heights and the separately dumped residual pump and idler.','Set pump average power to zero and compare amplified seed output with the unpumped seed.'],
+ 'This is a parametric MOPA implementation rather than an inversion amplifier. It models pump-limited seeded gain, not gain-medium storage, ASE, phase matching or amplifier isolation.');
+available('PULSE-02',savedExample('Ultrashort Pulses/Ultrashort pulse chirping.json','pulse02'),'Glass dispersion and quadratic compensation',
+ 'Three native paths compare a 150 fs, 532 nm reference, propagation through 100 mm of N-SF11, and the same glass followed by −38680 fs² compensation. Autocorrelators read all three outputs.',
+ ['Compare the three autocorrelation durations using the same assumed Gaussian shape.','Set the compensation to zero or reverse its sign and compare the third path with the glass-only path.'],
+ 'Catalogue glass GDD and quadratic Gaussian pulse propagation are modeled. The compressor is a native phase-compensation element; prism separation, higher-order phase and measured instrument response are not inferred.');
+available('PULSE-04',savedExample('Ultrashort Pulses/Hollow-core pulse compressor.json','pulse04'),'Native argon hollow-core broadening and compression',
+ 'Open the existing argon hollow-core fiber setup with physical coupling, a diagnostic split, negative-GDD compensation and autocorrelation readouts before and after compression.',
+ ['Inspect the native fiber gas, bore, coupling and computed loss before comparing its output spectrum.','Set compressor GDD to zero and compare autocorrelation width; bandwidth alone does not establish compression.'],
+ 'The hollow-core model is an approximate nonlinear broadening and chirp model. It does not establish ionization, damage margins, spatial beam quality or a physically measured compressed pulse.');
+const zero=savedExample('Ultrashort Pulses/Finding time zero — sum frequency of two beams.json','pulse05');
+available('PULSE-05',zero,'Pump–probe time zero through sum-frequency mixing',
+ 'Native 1032 nm and 790 nm pulses follow two physical arms, one with a 200 mm optical delay. They meet in the crystal; the spectrometer resolves individual harmonics and the overlap-dependent sum-frequency signal.',
+ ['Adjust the mechanical delay around 200 mm and inspect the mixed spectral line.','Move well away from overlap and distinguish the remaining single-beam harmonics from the two-beam sum frequency.'],
+ 'This is a nonlinear timing implementation of pump–probe overlap. The crystal models harmonic/mixed fractions and pulse overlap, not a specimen transient absorption response or full phase matching.');
+const frog=structuredClone(zero);for(const el of frog.elements)el.id=el.id.replace('pulse05','pulse08');
+available('PULSE-08',frog,'Spectrally resolved nonlinear cross-gating',
+ 'A native two-color gated measurement combines 1032 nm and 790 nm pulses in a nonlinear crystal and resolves the gated sum-frequency channel on a spectrometer while optical delay is varied.',
+ ['Scan delay and observe which spectral channel follows the two-pulse overlap.','Compare the spectrum at time zero with one taken outside overlap before attempting any pulse retrieval.'],
+ 'The saved setup supplies a real nonlinear gate and spectral readout. It does not acquire a FROG delay–wavelength matrix automatically or perform spectral-phase reconstruction; this is a cross-gating implementation, not a completed FROG measurement.');
+const el=physical;
+const laser=(id,x,y,p={},rot=0)=>el(id,'cwlaser',x,y,rot,{beamMode:'beam',beamWidth:3,wavelength:532,...p});
+const pulse=(id,x,y,p={},rot=0)=>el(id,'pulsedlaser',x,y,rot,{beamMode:'beam',beamWidth:3,wavelength:800,pulseWidthFs:150,transformLimited:true,repRateMHz:80,...p});
+const pd=(id,x,y,rot=0,p={})=>el(id,'detector',x,y,rot,{aperture:40,...p});
+const camera=(id,x,y,rot=0,p={})=>el(id,'camera',x,y,rot,{ch:50,pixels:32,interference:true,...p});
+const mirror=(id,x,y,rot=0,p={})=>el(id,'mirror',x,y,rot,{length:40,refl:100,...p});
+const lens=(id,x,y,f=100,rot=0,p={})=>el(id,'lens',x,y,rot,{f,dia:30,...p});
+function linearSpecimen(id,kind='fluor') { return el(id,'sample',450,200,90,{specimenType:'linear',channels:[{kind,efficiency:0.1,emissionWl:560,wavelength:560,fluorWl:560}],transmitExc:true,transmission:0.8,aperture:25}); }
+// A real return path, imaging aperture and detector. The equivalent thin-lens
+// objective is used so the conjugate planes are explicit and editable.
+const confocal=native([laser('confocal-source',80,200,{wavelength:488,beamMode:'line'}),el('confocal-split','dichroic',250,200,90,{dtype:'shortpass',cutoff:500,length:30}),lens('confocal-focus',350,200,100),linearSpecimen('confocal-sample'),lens('confocal-return',250,350,150,90,{dia:50}),el('confocal-pinhole','slit',250,500,90,{gap:1,length:40}),pd('confocal-detector',250,550,90)]);
+// A shortpass dichroic transmits the excitation and reflects the longer return.
+available('CONTRAST-01',confocal,'Fluorescence return through a conjugate detection slit',
+ 'A native 488 nm source is focused onto a fluorescent specimen. Returning longer-wavelength light is reflected into a collection lens, a conjugate slit and a photodetector.',
+ ['Follow the computed fluorescence return to the slit and detector.','Narrow or displace the detection slit and compare collected signal while keeping source power fixed.'],
+ 'The 2D slit is the available detection-aperture implementation. Traced collection and clipping are shown; an Airy-unit pinhole, axial point-spread function and 3D optical sectioning are not calculated.');
+const dark=native([laser('dark-source',80,200,{beamMode:'line'}),el('dark-scatter','diffuser',300,200,0,{div:30}),el('dark-stop','beamdump',500,200,0,{aperture:10}),pd('dark-detector',650,270,0,{aperture:24})]);
+available('CONTRAST-03',dark,'Off-axis collection behind a direct-beam stop',
+ 'A real diffuser scatters a narrow 532 nm beam; a central beam dump excludes the direct direction while an offset photodetector collects a portion of the angular fan.',
+ ['Inspect the traced rays reaching the offset detector and the centrally intercepted rays.','Reduce diffuser divergence toward its minimum and compare off-axis signal; move the detector onto the direct axis to expose the rejected channel.'],
+ 'The diffuser supplies a qualitative angular fan rather than particle-specific scattering. The setup demonstrates angular exclusion and collection, not a calibrated dark-field particle PSF.');
+const phase=native([laser('phase-source',100,200,{beamWidth:6}),el('phase-split','bs',300,200,90,{ratio:0.5}),el('phase-object','phaseplate',460,200,0,{profile:'bar',opdUm:0.27,aperture:6}),mirror('phase-m1',600,200,135),mirror('phase-m2',300,400,135),el('phase-combine','bs',600,400,90,{ratio:0.5}),camera('phase-port1',780,400),camera('phase-port2',600,560,90)]);
+available('CONTRAST-04',phase,'Phase-object contrast through a native reference arm',
+ 'A Mach–Zehnder path places a native phase plate in one arm. Two interference-enabled cameras resolve how recombination converts its spatial retardance into intensity.',
+ ['Compare both camera profiles, not only their integrated powers.','Set phase-plate optical-path difference to zero and compare the spatial profiles with the retarded case.'],
+ 'This is a reference-arm implementation of phase-to-intensity conversion, not a Zernike annulus microscope. The tracer models sampled coherent paths, not full diffraction propagation or halo formation.');
+const spect=native([laser('spect-source',80,200,{beamMode:'beam',beamWidth:5}),el('spect-slit','slit',200,200,0,{gap:2,length:30}),lens('spect-collimator',300,200,100),el('spect-grating','grating',450,200,0,{lines:600,order:1}),lens('spect-camera-lens',600,200,100,0,{dia:100}),camera('spect-camera',700,200,0,{ch:120})]);
+available('SPECT-01',spect,'Slit, collimator, grating and camera optics',
+ 'A native monochromatic source illuminates a 2 mm entrance slit, a 100 mm collimator, a diffraction grating and a camera lens. Change source wavelength to see the traced diffraction angle change.',
+ ['Inspect the grating order and groove density, then compare diffraction angles at 532 nm and 633 nm.','Change slit gap and watch clipping; detector position must follow the selected diffracted order.'],
+ 'Native slit clipping and grating diffraction are traced in 2D. This compact transmission layout does not compute a calibrated spectral resolving power, blaze response or optical aberration budget.');
+const michelson=savedExample('Interferometers/Michelson interferometer.json','spect06');michelson.elements.push(el('spect06-delay','delayline',480,300,0,{delayMm:0,aperture:24}));
+available('SPECT-06',michelson,'Michelson optical-path scan for interferogram acquisition',
+ 'The native 633 nm Michelson combines fixed and variable optical paths at a photodetector. A delay-line element provides an editable optical-path offset in one arm.',
+ ['Change delay through fractions of a wavelength and compare the detector signal.','Change source temporal coherence and separate fringe visibility from beam overlap.'],
+ 'This real bench demonstrates the interferogram acquisition geometry at one wavelength. It has no automated broadband interferogram sampling or Fourier-transform spectral reconstruction.');
+const raman=structuredClone(confocal);for(const elem of raman.elements)elem.id=elem.id.replace('confocal','raman');
+raman.elements.find(elem=>elem.type==='sample').params.channels=[{kind:'raman',shiftCm:1000,efficiency:0.1}];
+raman.elements.splice(1,0,el('raman-clean','filter',170,200,0,{ftype:'bandpass',center:488,band:10}));
+raman.elements.splice(raman.elements.length-1,0,el('raman-reject','filter',250,525,90,{ftype:'longpass',cutoff:500}));
+available('SPECT-07',raman,'Raman excitation cleanup and return rejection',
+ 'A native 488 nm bandpass cleans the pump before a Raman specimen. The return collection branch includes a long-pass filter that rejects excitation before the photodetector.',
+ ['Inspect the specimen Raman shift and verify that its return wavelength clears the long-pass cutoff.','Raise the long-pass cutoff beyond the Raman line and compare detected signal.'],
+ 'Raman channel yield and angular emission are simplified specimen inputs. Real filter optical density, molecular Raman tensors, linewidths and calibrated signal strength are not inferred.');
+const cavity=native([laser('cav01-source',200,200,{beamMode:'line',wavelength:1064}),el('cav01-m1','cmirror',100,200,0,{f:250,length:40,refl:95,showTransmitted:true}),el('cav01-m2','cmirror',400,200,180,{f:250,length:40,refl:95,showTransmitted:true}),pd('cav01-monitor',550,200)]);
+available('CAV-01',cavity,'Two-curved-mirror passive resonator',
+ 'A native 1064 nm intracavity seed follows the repeated path between two curved mirrors separated by 300 mm, with a leaked-light detector behind the right mirror.',
+ ['Inspect mirror curvature and repeated reflections; compute the paraxial g-product separately.','Move the end mirror or offset the seed and compare the traced escape geometry.'],
+ 'This is passive cavity geometry with an injected intracavity seed. The renderer shows finite traced passes, not resonant buildup, a Gaussian eigenmode, longitudinal resonance or laser gain.');
+const ring=native([laser('cav02-source',100,200,{wavelength:1064,beamMode:'line'}),el('cav02-input','bs',300,200,90,{ratio:0.9}),mirror('cav02-m1',650,200,135),mirror('cav02-m2',650,400,45),mirror('cav02-m3',300,400,135),el('cav02-crystal','crystal',450,200,0,{convert:'shg',efficiency:0.1,transmitPump:true}),pd('cav02-monitor',300,100,-90)]);
+available('CAV-02',ring,'Injected four-mirror enhancement-cavity geometry',
+ 'A native splitter injects 1064 nm light into a closed four-corner optical path containing an SHG crystal. The return port and conversion are traced through real surfaces.',
+ ['Follow the closed optical round trip and distinguish crystal conversion from resonance enhancement.','Change a cavity mirror angle or crystal conversion share and inspect escaping versus converted rays.'],
+ 'The setup constructs the cavity path and local conversion, but does not calculate resonant enhancement, impedance matching, locking, cavity stability or circulating steady-state power.');
+const recycled=structuredClone(michelson);recycled.elements=recycled.elements.filter(elem=>elem.type!=='delayline');
+recycled.elements.push(mirror('cav03-power-recycler',240,300,0,{refl:90,showTransmitted:true}),mirror('cav03-signal-recycler',350,410,90,{refl:90,showTransmitted:true}));
+available('CAV-03',recycled,'Michelson with physical power and signal recycling mirrors',
+ 'The native Michelson receives a partially transmitting mirror at its input port and another at its readout port. Both form additional return paths around the central splitter.',
+ ['Inspect the extra optical round trips and the fraction escaping to the readout detector.','Reduce one recycler reflectivity to zero and compare the corresponding returned path.'],
+ 'The mirrors implement real transmission/reflection paths. Resonant recycling gain, detuning, sideband response and precision-interferometer sensitivity are not computed.');
+const dumping=native([pulse('cav07-source',100,200),el('cav07-pbs','pbs',300,200,90),el('cav07-switch','eom',440,200,0,{v:0}),mirror('cav07-m1',650,200,135),mirror('cav07-m2',650,400,45),mirror('cav07-m3',300,400,135),pd('cav07-out',300,100,-90)]);
+available('CAV-07',dumping,'Polarization-switched passive cavity dump path',
+ 'Native pulse light enters a folded storage loop through a PBS. An electro-optic retarder changes polarization before return to the splitter; the upward output port samples the selected extraction path.',
+ ['Inspect the EOM drive parameters and the PBS return-port polarization.','Compare two retardance settings and follow which return branch leaves the storage path.'],
+ 'The native setup demonstrates a switchable passive extraction geometry. It does not accumulate stored energy over repeated temporal round trips or calculate dump efficiency and timing jitter.');
+const combine=native([pulse('cav09-master',100,200,{wavelength:800,beamMode:'line'}),el('cav09-split','bs',300,200,90,{ratio:0.5}),pulse('cav09-pumpA',370,164,{wavelength:532,pulseWidthFs:1e7,repRateMHz:0.01,avgPowerW:10,beamMode:'line'}),pulse('cav09-pumpB',370,564,{wavelength:532,pulseWidthFs:1e7,repRateMHz:0.01,avgPowerW:10,beamMode:'line'}),el('cav09-ampA','opa',600,182,0,{signalWl:800,gainBandwidthNm:100,smallSignalGainDb:30,aperture:6,outputIdler:false,outputPump:false}),mirror('cav09-fold1',900,200,135),mirror('cav09-fold2',300,600,135),el('cav09-ampB','opa',600,582,0,{signalWl:800,gainBandwidthNm:100,smallSignalGainDb:30,aperture:6,outputIdler:false,outputPump:false}),el('cav09-phase','phasemodulator',760,600,0,{designWavelength:800,depthDeg:90,driveMode:'static'}),el('cav09-combiner','bs',900,600,90,{ratio:0.5}),camera('cav09-output1',1080,600),camera('cav09-output2',900,780,90)]);
+available('CAV-09',combine,'Two seeded parametric amplifier arms with coherent recombination',
+ 'A common 800 nm master is split into two native OPA channels pumped separately at 532 nm. Equal geometrical arms meet at a combiner, with a native phase actuator and two camera readout ports.',
+ ['Check OPA pump and seed port heights and the two output camera profiles.','Change phase-actuator retardance and compare complementary output ports; disable one pump to isolate seed-only propagation.'],
+ 'The amplifier channels use the native parametric gain model. The setup has manual phase adjustment, not an automatic phase servo; it does not model amplifier noise or establish combining efficiency.');
+const picker=native([pulse('pulse06-source',100,200,{wavelength:800}),el('pulse06-polarizer','polarizer',260,200,0,{pangle:0}),el('pulse06-eom','eom',400,200,0,{}),el('pulse06-pbs','pbs',550,200,90,{}),pd('pulse06-selected',740,200),el('pulse06-dump','beamdump',550,380,90,{aperture:40})]);
+available('PULSE-06',picker,'Electro-optic gate and polarization pulse selection',
+ 'An 800 nm native pulse source passes an input polarizer, electro-optic retarder and PBS. The selected port reaches a detector while the orthogonal port is dumped.',
+ ['Inspect the EOM drive mode and compare the polarization at the two PBS branches.','Change the applied retardance to switch the selected output between transmission and rejection.'],
+ 'Native polarization routing and EOM modulation are represented. This scene does not claim a synchronized one-in-80 picker or programmable burst schedule; those require external timing hardware.');
+const ac=native([pulse('pulse07-source',100,200,{wavelength:800,pulseWidthFs:150,pulseShape:'gauss'}),el('pulse07-ac','autocorrelator',470,200,0,{aperture:30,assumedShape:'gauss'}),el('pulse07-screen','display',470,350,0,{sensorId:'pulse07-ac',displayScale:1.1})]);
+available('PULSE-07',ac,'Native intensity-autocorrelation instrument',
+ 'A native 800 nm, 150 fs Gaussian pulse enters the autocorrelator and its linked display. The instrument calculates the correlation width and infers pulse duration using the selected shape factor.',
+ ['Read correlation width separately from inferred pulse duration.','Change the assumed shape to sech² and compare the inferred duration without changing the source.'],
+ 'This is the native packaged autocorrelator, not a fake drawn internal beam split. The inferred duration depends on shape assumptions; full spectral phase is not recovered.');
+const shg=native([pulse('pulse09-source',100,200,{wavelength:1064,beamMode:'line'}),lens('pulse09-focus',300,200,100),el('pulse09-crystal','crystal',400,200,0,{convert:'shg',efficiency:0.3,transmitPump:true}),lens('pulse09-collimator',500,200,100),el('pulse09-separator','dichroic',650,200,90,{dtype:'shortpass',cutoff:700}),el('pulse09-band','filter',760,200,0,{ftype:'bandpass',center:532,band:30}),el('pulse09-spectrum','spectrometer',900,200,0,{aperture:40}),el('pulse09-dump','beamdump',650,380,90,{aperture:40})]);
+available('PULSE-09',shg,'Native 1064-to-532 nm harmonic generation',
+ 'A 1064 nm pulse is focused into a native SHG crystal, recollimated and spectrally separated. The 532 nm channel reaches a bandpass and spectrometer; residual pump goes to a dump.',
+ ['Inspect the generated spectrum and the separate residual pump path.','Set crystal conversion efficiency to zero and confirm that the harmonic channel disappears.'],
+ 'The crystal uses a user-set conversion share rather than a focused phase-matching calculation. It does not predict walk-off, depletion dynamics, damage thresholds or a measured conversion efficiency.');
+const relay=native([el('access01-object','objarrow',100,200,0,{height:10}),lens('access01-l1',200,200,50),lens('access01-l2',300,200,50),lens('access01-l3',500,200,50),lens('access01-l4',600,200,50),camera('access01-camera',700,200,0,{ch:80})]);
+available('ACCESS-01',relay,'Two serial native 1:1 image relays',
+ 'A native luminous object feeds two 4f relays built from four 50 mm thin lenses. The intermediate image lies at 400 mm and the final camera at 700 mm.',
+ ['Inspect the real rays and identify object, intermediate and final image planes.','Move the final camera away from the conjugate plane or change one focal length and compare image spread.'],
+ 'Paraxial 2D object rays and relay imaging are shown. This is a lens-built serial relay, not a commercial rod-lens prescription or a calibrated rigid-endoscope aberration model.');
+const delivery={id:'access04-delivery',kind:'fiber',propagate:true,bare:false,pts:[{x:200,y:200},{x:280,y:200},{x:400,y:200}],inputNA:0.22,groupIndex:1.468,lossDbPerM:0.2,out0:{mode:'collimate',dia:3,na:0.1},out1:{mode:'collimate',dia:3,na:0.1},width:4,color:'#e8a800'};
+const distal={version:1,elements:[laser('access04-source',80,200,{beamMode:'line',wavelength:488}),el('access04-galvo','galvo',500,200,135,{length:40}),linearSpecimen('access04-sample'),pd('access04-return',680,400,0,{aperture:100})],beams:[delivery]};
+Object.assign(distal.elements.find(elem=>elem.type==='sample'),{x:500,y:400,rot:0});
+available('ACCESS-04',distal,'Fiber-delivered excitation with a distal scan mirror',
+ 'A propagating native delivery fiber re-emits a 488 nm beam toward a distal galvo. The mirror steers illumination onto a fluorescent specimen, with separate local collection at a photodetector.',
+ ['Follow fiber coupling and re-emission before the distal scan mirror.','Change galvo angle to move the excitation spot away from the specimen and compare the collected fluorescence.'],
+ 'This is a distal mirror-scanning implementation, not a resonant scanning-fiber-tip device. Fiber coupling and mirror steering are modeled; miniature packaging, scan mechanics and image reconstruction are not.');
+const collection={...structuredClone(delivery),id:'access05-collection',pts:[{x:500,y:400},{x:620,y:400},{x:740,y:400}],inputNA:0.5,out1:{mode:'collimate',dia:3,na:0.1}};
+const separate={version:1,elements:[laser('access05-source',80,200,{beamMode:'line',wavelength:488}),linearSpecimen('access05-sample'),el('access05-filter','filter',820,400,0,{ftype:'longpass',cutoff:500}),pd('access05-return',950,400)],beams:[{...structuredClone(delivery),id:'access05-delivery',pts:[{x:200,y:200},{x:280,y:200},{x:400,y:200}]},collection]};
+Object.assign(separate.elements.find(elem=>elem.type==='sample'),{x:450,y:200,rot:90});
+// Bring collection entry close to the isotropic specimen emission and then
+// route it away from the independent delivery channel.
+collection.pts=[{x:450,y:205},{x:450,y:300},{x:620,y:400},{x:740,y:400}];
+available('ACCESS-05',separate,'Separate native illumination and return fibers',
+ 'One propagating fiber delivers 488 nm excitation to a fluorescent specimen. A physically separate fiber entry collects nearby emission and routes it through a long-pass filter to a detector.',
+ ['Inspect the two native fiber inputs, acceptance cones and output optics separately.','Reduce collection input NA or move its entry away from the specimen and compare return signal.'],
+ 'The setup uses scalar fiber coupling and qualitative isotropic specimen emission. It does not model a coherent image bundle, 3D collection solid angle or tissue-depth sensitivity.');
+const ao=native([laser('wave01-source',100,200,{beamWidth:12}),el('wave01-dm','dm',400,200,135,{f:1000,length:60,steer:0}),el('wave01-split','bs',400,350,90,{ratio:0.9}),camera('wave01-science',400,520,90,{ch:100}),lens('wave01-sensor-lens',550,350,100,0,{dia:60}),camera('wave01-sensor',650,350,0,{ch:100})]);
+available('WAVE-01',ao,'Native deformable mirror with science and sensing branches',
+ 'A native deformable mirror applies reflective tip/tilt and defocus. A physical splitter sends corrected light to a science camera and an independent lens/camera sensing branch.',
+ ['Adjust DM tip/tilt and compare the image centroids in both physical branches.','Use the sensing camera manually to restore alignment; then add a science-branch lens offset to expose a non-common-path error.'],
+ 'The bench constructs common correction and a sensing branch. The sensor is a native focal camera, not a Shack–Hartmann reconstructor; feedback is manual and only tip/tilt and paraxial defocus are modeled.');
+const mca=native([laser('wave02-source',100,200,{beamWidth:12}),el('wave02-dm1','dm',350,200,135,{f:1000,length:60}),lens('wave02-relay1',350,350,100,90,{dia:60}),lens('wave02-relay2',350,550,100,90,{dia:60}),el('wave02-dm2','dm',350,700,45,{f:1000,length:60}),lens('wave02-image',600,700,100,0,{dia:60}),camera('wave02-camera',700,700,0,{ch:100})]);
+available('WAVE-02',mca,'Two deformable mirrors separated by a conjugate relay',
+ 'Two native reflective DMs are separated by a two-lens relay. Each independently applies defocus and steering before the final camera, allowing a real two-corrector optical bench to be edited.',
+ ['Inspect the two 100 mm relay lenses and identify the reimaged plane.','Adjust one DM at a time and compare the final beam centroid and convergence; preserve relay spacing when changing the second plane.'],
+ 'This is a physical two-corrector relay, not a claimed atmospheric tomography solution. No 9 km conjugation, multilayer wavefront reconstruction, automatic controller or corrected wide-field performance is calculated.');
+const sensorless=structuredClone(ao);sensorless.elements=sensorless.elements.filter(elem=>!['wave01-split','wave01-sensor-lens','wave01-sensor'].includes(elem.id));
+for(const elem of sensorless.elements)elem.id=elem.id.replace('wave01','wave03');
+available('WAVE-03',sensorless,'Manual sensorless defocus optimization on a native camera',
+ 'A native deformable mirror sends a finite-width beam to a camera. Its focal-length control changes paraxial convergence; the camera spot provides the metric without a separate wavefront sensor.',
+ ['Sweep DM defocus focal length and compare the measured spot profile at the fixed camera.','Move the camera plane and repeat the adjustment; an optimum for one plane is not automatically an optimum elsewhere.'],
+ 'The scene supports manual image-metric adjustment of native tip/tilt and defocus. It has no automated coefficient search, higher-order wavefront correction or sample-dependent optimization guarantee.');
+const guide=native([laser('wave04-science',100,300,{wavelength:800}),laser('wave04-guide',100,150,{wavelength:589}),mirror('wave04-fold',300,150,135),el('wave04-combine','dichroic',300,300,135,{dtype:'longpass',cutoff:700,length:40}),el('wave04-dm','dm',500,300,135,{length:60,f:1000}),el('wave04-separate','dichroic',500,500,90,{dtype:'shortpass',cutoff:700,length:40}),camera('wave04-guide-camera',500,700,90,{ch:100}),camera('wave04-science-camera',750,500,0,{ch:100})]);
+available('WAVE-04',guide,'Two-color guide and science paths through a common corrector',
+ 'A real 589 nm guide source and 800 nm science source are combined onto a native DM, then separated by wavelength to two cameras. The common correction can be adjusted against the guide image.',
+ ['Follow both wavelengths through the same corrector and identify their separate sensing/readout cameras.','Adjust DM steering and compare movement of both camera profiles.'],
+ 'The native bench constructs shared correction and spectral guide/science separation. It does not simulate a sodium beacon, finite-altitude cone effect, absolute tip/tilt recovery or atmospheric wavefront sensing.');
+const coro=native([laser('wave05-star',100,200,{beamMode:'line'}),laser('wave05-companion',100,230,{beamMode:'line',avgPowerW:0.001},5),lens('wave05-focus',300,200,100,0,{dia:100}),el('wave05-occult','beamdump',400,200,0,{aperture:6}),lens('wave05-relay',500,200,100,0,{dia:100}),el('wave05-lyot','slit',600,200,0,{gap:30,length:60}),lens('wave05-image',700,200,100,0,{dia:60}),camera('wave05-camera',800,200,0,{ch:100})]);
+available('WAVE-05',coro,'Focal occultation followed by a pupil stop',
+ 'Two native source directions pass a focusing lens. A small real beam dump intercepts the on-axis focal beam; relay optics and a slit pupil stop feed the final camera.',
+ ['Follow the blocked on-axis path separately from the off-axis source direction.','Move the occulting dump off center and inspect direct stellar leakage; enlarge the pupil stop to compare geometrical throughput.'],
+ 'This is the geometrical focal-mask and pupil-stop arrangement. Ray optics cannot predict Lyot diffraction rejection, contrast floor, inner working angle or coherent companion throughput.');
+const adc=native([el('wave06-source','sclaser',100,200,0,{scMin:450,scMax:750,beamMode:'line'}),el('wave06-prism1','prism',300,200,0,{apex:30,psize:50,material:'nbk7'}),el('wave06-prism2','prism',440,225,180,{apex:30,psize:50,material:'nbk7'}),camera('wave06-camera',700,200,0,{ch:120})]);
+available('WAVE-06',adc,'Native opposite-orientation dispersion prisms',
+ 'A visible native continuum passes two N-BK7 prisms in opposite orientations. Their refracted wavelength-dependent paths can be inspected at a downstream camera while prism position and angle are edited.',
+ ['Inspect the spectral fan after each prism and compare the camera spectrum.','Rotate or displace the second prism and identify which colors miss it rather than assuming compensation from symmetry alone.'],
+ 'This is a physical 2D dispersive-prism pair. It does not model atmospheric refraction, counter-rotation about a 3D optical axis or automatically compensate a chosen zenith distance.');
+const cold=native([laser('wave07-source',100,200,{wavelength:4000,beamWidth:12}),el('wave07-entrance','slit',230,200,0,{gap:10,length:40}),lens('wave07-relay1',350,200,100,0,{dia:40}),lens('wave07-relay2',550,200,100,0,{dia:40}),el('wave07-stop','slit',670,200,0,{gap:10,length:40}),camera('wave07-camera',850,200,0,{ch:100})]);
+available('WAVE-07',cold,'Infrared pupil-aperture matching with a native relay',
+ 'A native 4 µm source illuminates an entrance aperture that is reimaged through two lenses onto a second matched slit. A downstream camera shows admitted and clipped rays.',
+ ['Compare the entrance and reimaged aperture sizes and positions.','Displace or narrow the second slit and inspect the loss of accepted rays.'],
+ 'The setup provides native pupil geometry and clipping. Stop temperature, thermal emission, cryogenic optics and background noise are not modeled; the lens proxy is geometric rather than an infrared material prescription.');
+const baffled=native([laser('wave08-source',100,200,{beamWidth:12}),el('wave08-split','bs',250,200,90,{ratio:0.95}),el('wave08-dump','beamdump',250,350,90,{aperture:40}),el('wave08-stop1','slit',350,200,0,{gap:10,length:60}),lens('wave08-relay',500,200,150,0,{dia:40}),el('wave08-stop2','slit',650,200,0,{gap:10,length:60}),camera('wave08-camera',800,200,0,{ch:80})]);
+available('WAVE-08',baffled,'Native aperture baffling and a rejected-path dump',
+ 'A real weak splitter branch terminates in a beam dump while two native slit plates bound the useful camera path. The accepted bundle remains traced through a relay lens.',
+ ['Identify the explicitly dumped optical branch and both aperture edges.','Move a slit into the accepted bundle and compare detector throughput before calling the change better baffling.'],
+ 'Native ray interception and clipping are computed. Coating ghosts, wall scatter, vane-edge diffraction and quantitative stray-light rejection are not predicted.');
+
+// Normalize unsupported records to explanatory articles with no substitute file.
+for(const record of examples) if(record.mode==='unavailable') {
+ record.summary=`${record.summary} This pattern currently has no native OpticalSetup setup.`;
+ record.steps=['Read the unavailable reason to identify the essential missing capability.','Use the cited primary sources for the physical arrangement; no substitute scene is offered.'];
+ record.limit=record.unavailableReason;
+}
+// Final optical alignment: these are component positions, never drawn paths.
+for(const id of ['CONTRAST-01','SPECT-07']) {
+ const s=examples.find(record=>record.id===id).scene.elements;
+ s.find(elem=>elem.type==='dichroic').rot=45;
+ const focus=s.find(elem=>elem.id.includes('focus'));focus.x=420;focus.params.f=30;focus.params.dia=60;
+ const returning=s.find(elem=>elem.id.includes('return'));returning.params.f=100;
+ const aperture=s.find(elem=>elem.type==='slit');aperture.y=450;aperture.params.gap=1;
+ s.find(elem=>elem.type==='detector').params.aperture=120;
+}
+examples.find(record=>record.id==='CONTRAST-03').scene.elements.find(elem=>elem.type==='detector').params.aperture=120;
+examples.find(record=>record.id==='SPECT-01').scene.elements.find(elem=>elem.type==='grating').params.transmissive=true;
+for(const id of ['WAVE-01','WAVE-02','WAVE-03','WAVE-04']) for(const elem of examples.find(record=>record.id===id).scene.elements.filter(elem=>elem.type==='dm')) elem.rot=elem.id.includes('dm2')?135:-45;
+examples.find(record=>record.id==='WAVE-04').scene.elements.find(elem=>elem.id==='wave04-separate').rot=135;
+const occulting=examples.find(record=>record.id==='WAVE-05').scene.elements;
+occulting.find(elem=>elem.id==='wave05-relay').params.dia=120;occulting.find(elem=>elem.id==='wave05-image').params.dia=120;occulting.find(elem=>elem.type==='slit').params.gap=60;
+const distalElements=examples.find(record=>record.id==='ACCESS-04').scene.elements;
+distalElements.push(lens('access04-output-collimator',450,200,50));distalElements.find(elem=>elem.type==='detector').x=550;distalElements.find(elem=>elem.type==='detector').params.aperture=120;
+for(const id of ['ACCESS-04','ACCESS-05']) for(const fiber of examples.find(record=>record.id===id).scene.beams){fiber.out0.mode='diverge';fiber.out1.mode='diverge';}
+const stable=examples.find(record=>record.id==='CAV-01');stable.scene.elements.find(elem=>elem.id==='cav01-source').x=80;stable.scene.elements.find(elem=>elem.id==='cav01-m1').x=200;stable.scene.elements.find(elem=>elem.id==='cav01-m2').x=500;stable.scene.elements.find(elem=>elem.id==='cav01-monitor').x=650;
+stable.summary='An external native 1064 nm source weakly couples through the first of two partially transmitting curved mirrors separated by 300 mm. A leaked-light detector is outside the right mirror.';
+stable.limit='This is a passive, externally injected cavity geometry. The renderer shows finite traced passes, not resonant buildup, a Gaussian eigenmode, longitudinal resonance or laser gain.';
+examples.find(record=>record.id==='CAV-02').scene.elements.find(elem=>elem.type==='bs').rot=0;
+const dumpElements=examples.find(record=>record.id==='CAV-07').scene.elements;dumpElements.find(elem=>elem.type==='pbs').rot=0;Object.assign(dumpElements.find(elem=>elem.type==='eom').params,{modulate:true,a:45,retardance:90});
+Object.assign(examples.find(record=>record.id==='PULSE-06').scene.elements.find(elem=>elem.type==='eom').params,{modulate:true,a:45,retardance:90});
+for(const id of ['PULSE-01','CAV-04']) examples.find(record=>record.id===id).scene.elements.push(pd(`${id.toLowerCase()}-output`,1510,318,0,{aperture:30}));
+for(const elem of examples.find(record=>record.id==='CAV-09').scene.elements.filter(elem=>elem.type==='pulsedlaser')) elem.params.repRateMHz=0.01;
+const distalReadout=examples.find(record=>record.id==='ACCESS-04').scene.elements;
+distalReadout.push(lens('access04-collection-lens',520,400,20,0,{dia:60}));distalReadout.find(elem=>elem.type==='detector').x=650;
+for(const id of ['SPECT-06','CAV-03']) {
+ const elements=examples.find(record=>record.id===id).scene.elements;
+ const index=elements.findIndex(elem=>elem.type==='detector');
+ const old=elements[index];elements[index]=camera(old.id,old.x,old.y,old.rot,{ch:40});
+}
+const coherent=examples.find(record=>record.id==='CAV-09');
+coherent.steps=['Inspect the physical common-seed split, both pumped amplifier ports and the two recombination cameras.','Disable one pump and compare routed output power; inspect the manual phase actuator separately from any automatic servo.'];
+coherent.limit='The amplifier channels use native parametric gain. Their amplified fields are not tracked as phase-coherent interferometer fields, so camera power is not a computed coherent-combining efficiency. Feedback, amplifier noise and an automatic phase servo are absent.';
+for(const id of ['SPECT-06','CAV-03']) examples.find(record=>record.id===id).scene.elements.find(elem=>elem.type==='cwlaser').params.beamMode='beam';
+const conjugates=examples.find(record=>record.id==='WAVE-02').scene.elements;
+conjugates.find(elem=>elem.id==='wave02-relay1').y=300;conjugates.find(elem=>elem.id==='wave02-relay2').y=500;
+for(const elem of conjugates.filter(elem=>['wave02-dm2','wave02-image','wave02-camera'].includes(elem.id)))elem.y=600;
+const coldConjugates=examples.find(record=>record.id==='WAVE-07').scene.elements;
+coldConjugates.find(elem=>elem.id==='wave07-entrance').x=250;coldConjugates.find(elem=>elem.id==='wave07-stop').x=650;
+examples.find(record=>record.id==='SPECT-07').steps[0]='Inspect the specimen Raman material fingerprint and verify that its return wavelengths clear the long-pass cutoff.';
+for(const elem of examples.find(record=>record.id==='PULSE-08').scene.elements) if(elem.params.sensorId) elem.params.sensorId=elem.params.sensorId.replace('pulse05','pulse08');
+const coronagraph=examples.find(record=>record.id==='WAVE-05').scene.elements;
+coronagraph.find(elem=>elem.id==='wave05-companion').y=150;
+const pupilMask=coronagraph.find(elem=>elem.id==='wave05-lyot');pupilMask.x=700;pupilMask.params.gap=80;pupilMask.params.length=120;
+coronagraph.find(elem=>elem.id==='wave05-image').x=900;coronagraph.find(elem=>elem.id==='wave05-camera').x=1000;
+coronagraph.find(elem=>elem.id==='wave05-companion').y=160;pupilMask.params.gap=60;
+// Separate corrective conjugates: the second DM intentionally sits 50 mm
+// before the full pupil image, so it corresponds to a different upstream plane.
+for(const elem of conjugates.filter(elem=>['wave02-dm2','wave02-image','wave02-camera'].includes(elem.id)))elem.y=550;
+const multi=examples.find(record=>record.id==='WAVE-02');
+multi.summary='Two native reflective DMs use a two-lens relay with 100 mm focal lengths. The second DM sits 50 mm before the first-DM image plane, giving distinct corrective conjugates before a final camera.';
+multi.steps=['Identify the first DM plane and the second DM offset from the full 4f conjugate.','Adjust the two native defocus controls independently and inspect final convergence; this does not supply a tomographic controller.'];
+const serial=examples.find(record=>record.id==='ACCESS-01');
+for(const [id,x] of [['access01-l1',150],['access01-l2',250],['access01-l3',350],['access01-l4',450],['access01-camera',500]])serial.scene.elements.find(elem=>elem.id===id).x=x;
+serial.summary='A native luminous object at 100 mm feeds two 4f relays built from four 50 mm thin lenses. The intermediate image lies at 300 mm and the final camera at 500 mm.';

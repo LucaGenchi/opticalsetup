@@ -1,0 +1,139 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "filament-1",
+      "type": "pointsource",
+      "x": 80,
+      "y": 197,
+      "rot": 0,
+      "label": "filament-1",
+      "showLabel": true,
+      "params": {
+        "displayScale": 1,
+        "sourceKind": "point",
+        "wavelength": 550,
+        "bwMode": "mono",
+        "bandwidth": 400,
+        "lampType": "hg",
+        "spread": 16,
+        "nrays": 7,
+        "autoColor": true,
+        "color": "#e02020"
+      }
+    },
+    {
+      "id": "filament-2",
+      "type": "pointsource",
+      "x": 80,
+      "y": 200,
+      "rot": 0,
+      "label": "filament-2",
+      "showLabel": true,
+      "params": {
+        "displayScale": 1,
+        "sourceKind": "point",
+        "wavelength": 550,
+        "bwMode": "mono",
+        "bandwidth": 400,
+        "lampType": "hg",
+        "spread": 16,
+        "nrays": 7,
+        "autoColor": true,
+        "color": "#e02020"
+      }
+    },
+    {
+      "id": "filament-3",
+      "type": "pointsource",
+      "x": 80,
+      "y": 203,
+      "rot": 0,
+      "label": "filament-3",
+      "showLabel": true,
+      "params": {
+        "displayScale": 1,
+        "sourceKind": "point",
+        "wavelength": 550,
+        "bwMode": "mono",
+        "bandwidth": 400,
+        "lampType": "hg",
+        "spread": 16,
+        "nrays": 7,
+        "autoColor": true,
+        "color": "#e02020"
+      }
+    },
+    {
+      "id": "collector",
+      "type": "lens",
+      "x": 120,
+      "y": 200,
+      "rot": 0,
+      "label": "collector",
+      "showLabel": true,
+      "params": {
+        "f": 25.454545454545453,
+        "dia": 40,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "field-stop",
+      "type": "slit",
+      "x": 140,
+      "y": 200,
+      "rot": 0,
+      "label": "field-stop",
+      "showLabel": true,
+      "params": {
+        "gap": 20,
+        "length": 60
+      }
+    },
+    {
+      "id": "aperture-stop",
+      "type": "slit",
+      "x": 190,
+      "y": 200,
+      "rot": 0,
+      "label": "aperture-stop",
+      "showLabel": true,
+      "params": {
+        "gap": 6,
+        "length": 60
+      }
+    },
+    {
+      "id": "condenser",
+      "type": "lens",
+      "x": 240,
+      "y": 200,
+      "rot": 0,
+      "label": "condenser",
+      "showLabel": true,
+      "params": {
+        "f": 50,
+        "dia": 40,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "specimen-plane",
+      "type": "camera",
+      "x": 362,
+      "y": 200,
+      "rot": 0,
+      "label": "specimen-plane",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

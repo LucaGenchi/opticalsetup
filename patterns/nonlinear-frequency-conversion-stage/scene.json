@@ -1,0 +1,165 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "pulse09-source",
+      "type": "pulsedlaser",
+      "x": 100,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "wavelength": 1064,
+        "avgPowerW": 0.1,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "repRateMHz": 80,
+        "pulsePhaseNs": 0,
+        "transformLimited": true,
+        "pulseWidthFs": 150,
+        "pulseShape": "gauss",
+        "bandwidth": 5,
+        "inputChirp": "positive",
+        "chirpGddFs2": 0,
+        "pol": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      }
+    },
+    {
+      "id": "pulse09-focus",
+      "type": "lens",
+      "x": 300,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "f": 100,
+        "dia": 30,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "pulse09-crystal",
+      "type": "crystal",
+      "x": 400,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "aperture": 22,
+        "convert": "shg",
+        "outWl": 532,
+        "pumpWl": 532,
+        "signalWl": 800,
+        "pumpAcceptanceNm": 1,
+        "linewidthMode": "pump",
+        "signalLinewidthCm": 5,
+        "idlerLinewidthCm": 5,
+        "outputPhase": "transformLimited",
+        "durationFactor": 1,
+        "mixEfficiency": 0.3,
+        "mixDfg": false,
+        "scMedium": "yag",
+        "scRange": "estimate",
+        "scMinNm": 430,
+        "scMaxNm": 870,
+        "efficiency": 0.3,
+        "opoDepletion": 0.95,
+        "transmitPump": true
+      }
+    },
+    {
+      "id": "pulse09-collimator",
+      "type": "lens",
+      "x": 500,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "f": 100,
+        "dia": 30,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "pulse09-separator",
+      "type": "dichroic",
+      "x": 650,
+      "y": 200,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "dtype": "shortpass",
+        "cutoff": 700,
+        "center": 550,
+        "band": 50,
+        "bandRefl": 100,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "pulse09-band",
+      "type": "filter",
+      "x": 760,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "ftype": "bandpass",
+        "cutoff": 500,
+        "center": 532,
+        "band": 30,
+        "trans": 0.5,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "pulse09-spectrum",
+      "type": "spectrometer",
+      "x": 900,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "aperture": 40,
+        "rangeMode": "auto",
+        "rangeMin": 480,
+        "rangeMax": 580,
+        "intensityScale": "density",
+        "labelPeaks": true
+      }
+    },
+    {
+      "id": "pulse09-dump",
+      "type": "beamdump",
+      "x": 650,
+      "y": 380,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "aperture": 40
+      }
+    }
+  ],
+  "beams": []
+}

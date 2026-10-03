@@ -1,0 +1,134 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "cav07-source",
+      "type": "pulsedlaser",
+      "x": 100,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "wavelength": 800,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 3,
+        "repRateMHz": 80,
+        "pulsePhaseNs": 0,
+        "transformLimited": true,
+        "pulseWidthFs": 150,
+        "pulseShape": "gauss",
+        "bandwidth": 5,
+        "inputChirp": "positive",
+        "chirpGddFs2": 0,
+        "pol": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      }
+    },
+    {
+      "id": "cav07-pbs",
+      "type": "pbs",
+      "x": 300,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "size": 25.4
+      }
+    },
+    {
+      "id": "cav07-switch",
+      "type": "eom",
+      "x": 440,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "aperture": 24,
+        "modulate": true,
+        "a": 45,
+        "driveMode": "static",
+        "switchMode": "flip",
+        "retardance": 90,
+        "retardanceLow": 0,
+        "retardanceHigh": 180,
+        "switchFreqMHz": 1,
+        "switchDuty": 0.5,
+        "switchPhaseNs": 0
+      }
+    },
+    {
+      "id": "cav07-m1",
+      "type": "mirror",
+      "x": 650,
+      "y": 200,
+      "rot": 135,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "length": 40,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "cav07-m2",
+      "type": "mirror",
+      "x": 650,
+      "y": 400,
+      "rot": 45,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "length": 40,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "cav07-m3",
+      "type": "mirror",
+      "x": 300,
+      "y": 400,
+      "rot": 135,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "length": 40,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "cav07-out",
+      "type": "detector",
+      "x": 300,
+      "y": 100,
+      "rot": 270,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "aperture": 40,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    }
+  ],
+  "beams": []
+}

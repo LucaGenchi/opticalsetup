@@ -1,0 +1,92 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "input",
+      "type": "cwlaser",
+      "x": 80,
+      "y": 200,
+      "rot": 0,
+      "label": "input",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 30,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "central-obscuration",
+      "type": "beamdump",
+      "x": 200,
+      "y": 200,
+      "rot": 0,
+      "label": "central-obscuration",
+      "showLabel": true,
+      "params": {
+        "aperture": 18
+      }
+    },
+    {
+      "id": "upper-mask",
+      "type": "beamdump",
+      "x": 200,
+      "y": 173,
+      "rot": 0,
+      "label": "upper-mask",
+      "showLabel": true,
+      "params": {
+        "aperture": 26
+      }
+    },
+    {
+      "id": "lower-mask",
+      "type": "beamdump",
+      "x": 200,
+      "y": 227,
+      "rot": 0,
+      "label": "lower-mask",
+      "showLabel": true,
+      "params": {
+        "aperture": 26
+      }
+    },
+    {
+      "id": "condenser",
+      "type": "lens",
+      "x": 250,
+      "y": 200,
+      "rot": 0,
+      "label": "condenser",
+      "showLabel": true,
+      "params": {
+        "f": 100,
+        "dia": 60,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "specimen-plane",
+      "type": "camera",
+      "x": 372,
+      "y": 200,
+      "rot": 0,
+      "label": "specimen-plane",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

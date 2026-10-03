@@ -1,0 +1,130 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "sheet-meridian",
+      "type": "cwlaser",
+      "x": 60,
+      "y": 200,
+      "rot": 0,
+      "label": "sheet-meridian",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 10,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "cylindrical-powered-meridian",
+      "type": "lens",
+      "x": 200,
+      "y": 200,
+      "rot": 0,
+      "label": "cylindrical-powered-meridian",
+      "showLabel": true,
+      "params": {
+        "f": 100,
+        "dia": 30,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "illuminated-section",
+      "type": "sample",
+      "x": 300,
+      "y": 200,
+      "rot": 90,
+      "label": "illuminated-section",
+      "showLabel": true,
+      "params": {
+        "aperture": 50,
+        "specimenType": "linear",
+        "channels": [
+          {
+            "kind": "fluor",
+            "wl": 520,
+            "eff": 0.5,
+            "epi": false,
+            "epiRatio": 0.15,
+            "autoWl": true,
+            "autoColor": true,
+            "color": "#22c55e",
+            "material": "lipid",
+            "fluorophore": "custom",
+            "retardance": 90,
+            "axis": 45,
+            "transferEff": 0.1,
+            "requireOverlap": true
+          }
+        ],
+        "showSignalSpot": true,
+        "thickness": 6,
+        "voxelPreview": false,
+        "voxelSize": 0.6,
+        "transmitExc": false,
+        "transmission": 0.8,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1
+      }
+    },
+    {
+      "id": "detection-objective",
+      "type": "objective",
+      "x": 300,
+      "y": 164,
+      "rot": 90,
+      "label": "detection-objective",
+      "showLabel": true,
+      "params": {
+        "efl": 20,
+        "workingDistance": 20,
+        "immersion": "air",
+        "immersionIndex": 1.333,
+        "na": 0.6,
+        "showAcceptance": false,
+        "transEff": 100,
+        "frontAperture": 30
+      }
+    },
+    {
+      "id": "detection-tube",
+      "type": "lens",
+      "x": 300,
+      "y": 60,
+      "rot": 90,
+      "label": "detection-tube",
+      "showLabel": true,
+      "params": {
+        "f": 100,
+        "dia": 50,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "orthogonal-detector",
+      "type": "camera",
+      "x": 300,
+      "y": -62,
+      "rot": 270,
+      "label": "orthogonal-detector",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

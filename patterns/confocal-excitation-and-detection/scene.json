@@ -1,0 +1,149 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "confocal-source",
+      "type": "cwlaser",
+      "x": 80,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "wavelength": 488,
+        "avgPowerW": 0.1,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "confocal-split",
+      "type": "dichroic",
+      "x": 250,
+      "y": 200,
+      "rot": 45,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "dtype": "shortpass",
+        "cutoff": 500,
+        "center": 550,
+        "band": 50,
+        "bandRefl": 100,
+        "length": 30
+      }
+    },
+    {
+      "id": "confocal-focus",
+      "type": "lens",
+      "x": 420,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "f": 30,
+        "dia": 60,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "confocal-sample",
+      "type": "sample",
+      "x": 450,
+      "y": 200,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "aperture": 25,
+        "specimenType": "linear",
+        "channels": [
+          {
+            "kind": "fluor",
+            "wl": 520,
+            "eff": 0.1,
+            "epi": false,
+            "epiRatio": 0.15,
+            "autoWl": true,
+            "autoColor": true,
+            "color": "#22c55e",
+            "material": "lipid",
+            "fluorophore": "custom",
+            "retardance": 90,
+            "axis": 45,
+            "transferEff": 0.1,
+            "requireOverlap": true
+          }
+        ],
+        "showSignalSpot": true,
+        "thickness": 6,
+        "voxelPreview": false,
+        "voxelSize": 0.6,
+        "transmitExc": true,
+        "transmission": 0.8,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1
+      }
+    },
+    {
+      "id": "confocal-return",
+      "type": "lens",
+      "x": 250,
+      "y": 350,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "f": 100,
+        "dia": 50,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "confocal-pinhole",
+      "type": "slit",
+      "x": 250,
+      "y": 450,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "gap": 1,
+        "length": 40
+      }
+    },
+    {
+      "id": "confocal-detector",
+      "type": "detector",
+      "x": 250,
+      "y": 550,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "aperture": 120,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    }
+  ],
+  "beams": []
+}

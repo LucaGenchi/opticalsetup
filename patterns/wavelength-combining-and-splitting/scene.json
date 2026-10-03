@@ -1,0 +1,113 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "red-input",
+      "type": "cwlaser",
+      "x": 70,
+      "y": 200,
+      "rot": 0,
+      "label": "red-input",
+      "showLabel": true,
+      "params": {
+        "wavelength": 640,
+        "avgPowerW": 0.1,
+        "beamMode": "line",
+        "beamWidth": 6,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "blue-input",
+      "type": "cwlaser",
+      "x": 200,
+      "y": 80,
+      "rot": 90,
+      "label": "blue-input",
+      "showLabel": true,
+      "params": {
+        "wavelength": 488,
+        "avgPowerW": 0.1,
+        "beamMode": "line",
+        "beamWidth": 6,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "input-combiner",
+      "type": "dichroic",
+      "x": 200,
+      "y": 200,
+      "rot": 315,
+      "label": "input-combiner",
+      "showLabel": true,
+      "params": {
+        "dtype": "longpass",
+        "cutoff": 550,
+        "center": 550,
+        "band": 50,
+        "bandRefl": 100,
+        "length": 40
+      }
+    },
+    {
+      "id": "dichroic",
+      "type": "dichroic",
+      "x": 350,
+      "y": 200,
+      "rot": 315,
+      "label": "dichroic",
+      "showLabel": true,
+      "params": {
+        "dtype": "longpass",
+        "cutoff": 550,
+        "center": 550,
+        "band": 50,
+        "bandRefl": 100,
+        "length": 40
+      }
+    },
+    {
+      "id": "red-output",
+      "type": "detector",
+      "x": 600,
+      "y": 200,
+      "rot": 0,
+      "label": "red-output",
+      "showLabel": true,
+      "params": {
+        "aperture": 26,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    },
+    {
+      "id": "blue-output",
+      "type": "detector",
+      "x": 350,
+      "y": 400,
+      "rot": 90,
+      "label": "blue-output",
+      "showLabel": true,
+      "params": {
+        "aperture": 26,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    }
+  ],
+  "beams": []
+}

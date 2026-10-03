@@ -1,0 +1,99 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "excitation",
+      "type": "cwlaser",
+      "x": 70,
+      "y": 100,
+      "rot": 0,
+      "label": "excitation",
+      "showLabel": true,
+      "params": {
+        "wavelength": 488,
+        "avgPowerW": 0.01,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "spot",
+      "type": "sample",
+      "x": 300,
+      "y": 100,
+      "rot": 90,
+      "label": "Sample",
+      "showLabel": true,
+      "labelPos": "l",
+      "params": {
+        "aperture": 20,
+        "specimenType": "linear",
+        "channels": [
+          {
+            "kind": "fluor",
+            "wl": 530,
+            "eff": 0.3,
+            "epi": false,
+            "epiRatio": 0.15,
+            "autoWl": false,
+            "autoColor": true,
+            "color": "#22c55e",
+            "material": "lipid",
+            "fluorophore": "custom",
+            "retardance": 90,
+            "axis": 45,
+            "transferEff": 0.1,
+            "requireOverlap": true
+          }
+        ],
+        "showSignalSpot": true,
+        "thickness": 6,
+        "voxelPreview": false,
+        "voxelSize": 0.6,
+        "transmitExc": false,
+        "transmission": 0.8,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1
+      }
+    },
+    {
+      "id": "view-lens",
+      "type": "lens",
+      "x": 300,
+      "y": 130,
+      "rot": 90,
+      "label": "Collector",
+      "showLabel": true,
+      "labelPos": "r",
+      "params": {
+        "f": 15,
+        "dia": 30,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "spot-camera",
+      "type": "camera",
+      "x": 300,
+      "y": 182,
+      "rot": 90,
+      "label": "spot-camera",
+      "showLabel": true,
+      "params": {
+        "ch": 40,
+        "pixels": 64,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

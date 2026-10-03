@@ -1,0 +1,236 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "input",
+      "type": "cwlaser",
+      "x": 80,
+      "y": 200,
+      "rot": 0,
+      "label": "input",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 6,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "quadrature-feed",
+      "type": "bs",
+      "x": 200,
+      "y": 200,
+      "rot": 90,
+      "label": "quadrature-feed",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "I-split",
+      "type": "bs",
+      "x": 400,
+      "y": 200,
+      "rot": 90,
+      "label": "I-split",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "I-upper-fold",
+      "type": "mirror",
+      "x": 600,
+      "y": 200,
+      "rot": 135,
+      "label": "I-upper-fold",
+      "showLabel": true,
+      "params": {
+        "length": 50,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "I-lower-fold",
+      "type": "mirror",
+      "x": 400,
+      "y": 400,
+      "rot": 315,
+      "label": "I-lower-fold",
+      "showLabel": true,
+      "params": {
+        "length": 50,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "I-phase-bias",
+      "type": "phaseplate",
+      "x": 500,
+      "y": 200,
+      "rot": 0,
+      "label": "I-phase-bias",
+      "showLabel": true,
+      "params": {
+        "profile": "bar",
+        "opdUm": 0,
+        "aperture": 60
+      }
+    },
+    {
+      "id": "I-combine",
+      "type": "bs",
+      "x": 600,
+      "y": 400,
+      "rot": 90,
+      "label": "I-combine",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "I-port-A",
+      "type": "camera",
+      "x": 722,
+      "y": 400,
+      "rot": 0,
+      "label": "I-port-A",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "I-port-B",
+      "type": "camera",
+      "x": 600,
+      "y": 522,
+      "rot": 90,
+      "label": "I-port-B",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "Q-split",
+      "type": "bs",
+      "x": 200,
+      "y": 450,
+      "rot": 180,
+      "label": "Q-split",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "Q-upper-fold",
+      "type": "mirror",
+      "x": 200,
+      "y": 650,
+      "rot": 225,
+      "label": "Q-upper-fold",
+      "showLabel": true,
+      "params": {
+        "length": 50,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "Q-lower-fold",
+      "type": "mirror",
+      "x": 0,
+      "y": 450,
+      "rot": 45,
+      "label": "Q-lower-fold",
+      "showLabel": true,
+      "params": {
+        "length": 50,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "Q-phase-bias",
+      "type": "phaseplate",
+      "x": 200,
+      "y": 550,
+      "rot": 90,
+      "label": "Q-phase-bias",
+      "showLabel": true,
+      "params": {
+        "profile": "bar",
+        "opdUm": 0.133,
+        "aperture": 60
+      }
+    },
+    {
+      "id": "Q-combine",
+      "type": "bs",
+      "x": 0,
+      "y": 650,
+      "rot": 180,
+      "label": "Q-combine",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "Q-port-A",
+      "type": "camera",
+      "x": 2.842170943040401e-14,
+      "y": 772,
+      "rot": 90,
+      "label": "Q-port-A",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "Q-port-B",
+      "type": "camera",
+      "x": -122,
+      "y": 650,
+      "rot": 180,
+      "label": "Q-port-B",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

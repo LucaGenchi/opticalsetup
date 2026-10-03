@@ -1,0 +1,133 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "object-1x",
+      "type": "objarrow",
+      "x": 80,
+      "y": 120,
+      "rot": 0,
+      "label": "object · 1×",
+      "showLabel": true,
+      "params": {
+        "height": 4,
+        "shape": "F",
+        "raysMode": "fan",
+        "spread": 8,
+        "nrays": 7,
+        "showImage": true,
+        "wavelength": 532,
+        "autoColor": true,
+        "color": "#e02020"
+      }
+    },
+    {
+      "id": "first-1x",
+      "type": "lens",
+      "x": 180,
+      "y": 120,
+      "rot": 0,
+      "label": "first · 1×",
+      "showLabel": true,
+      "params": {
+        "f": 100,
+        "dia": 50,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "second-1x",
+      "type": "lens",
+      "x": 380,
+      "y": 120,
+      "rot": 0,
+      "label": "second · 1×",
+      "showLabel": true,
+      "params": {
+        "f": 100,
+        "dia": 50,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "image-1x",
+      "type": "camera",
+      "x": 502,
+      "y": 120,
+      "rot": 0,
+      "label": "image · 1×",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "object-2x",
+      "type": "objarrow",
+      "x": 80,
+      "y": 350,
+      "rot": 0,
+      "label": "object-2x",
+      "showLabel": true,
+      "params": {
+        "height": 4,
+        "shape": "F",
+        "raysMode": "fan",
+        "spread": 4,
+        "nrays": 7,
+        "showImage": true,
+        "wavelength": 532,
+        "autoColor": true,
+        "color": "#e02020"
+      }
+    },
+    {
+      "id": "variator-2x",
+      "type": "lens",
+      "x": 109.28932188134524,
+      "y": 350,
+      "rot": 0,
+      "label": "variator-2x",
+      "showLabel": true,
+      "params": {
+        "f": 100,
+        "dia": 50,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "compensator-2x",
+      "type": "lens",
+      "x": 238.5786437626905,
+      "y": 350,
+      "rot": 0,
+      "label": "compensator-2x",
+      "showLabel": true,
+      "params": {
+        "f": 100,
+        "dia": 50,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "image-2x",
+      "type": "camera",
+      "x": 502,
+      "y": 350,
+      "rot": 0,
+      "label": "image-2x",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

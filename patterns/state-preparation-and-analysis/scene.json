@@ -1,0 +1,95 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "input",
+      "type": "cwlaser",
+      "x": 80,
+      "y": 200,
+      "rot": 0,
+      "label": "input",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.1,
+        "beamMode": "line",
+        "beamWidth": 6,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "preparation-polarizer",
+      "type": "polarizer",
+      "x": 180,
+      "y": 200,
+      "rot": 0,
+      "label": "preparation-polarizer",
+      "showLabel": true,
+      "params": {
+        "pangle": 0,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "preparation-QWP",
+      "type": "qwp",
+      "x": 280,
+      "y": 200,
+      "rot": 0,
+      "label": "preparation-QWP",
+      "showLabel": true,
+      "params": {
+        "a": 45,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "analysis-QWP",
+      "type": "qwp",
+      "x": 380,
+      "y": 200,
+      "rot": 0,
+      "label": "analysis-QWP",
+      "showLabel": true,
+      "params": {
+        "a": 45,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "analyzer",
+      "type": "polarizer",
+      "x": 480,
+      "y": 200,
+      "rot": 0,
+      "label": "analyzer",
+      "showLabel": true,
+      "params": {
+        "pangle": 90,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "power-readout",
+      "type": "detector",
+      "x": 600,
+      "y": 200,
+      "rot": 0,
+      "label": "power-readout",
+      "showLabel": true,
+      "params": {
+        "aperture": 26,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    }
+  ],
+  "beams": []
+}

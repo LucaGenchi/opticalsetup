@@ -1,0 +1,96 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "transmit",
+      "type": "cwlaser",
+      "x": 70,
+      "y": 160,
+      "rot": 0,
+      "label": "transmit",
+      "showLabel": true,
+      "params": {
+        "wavelength": 905,
+        "avgPowerW": 0.01,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "separator",
+      "type": "pbs",
+      "x": 250,
+      "y": 160,
+      "rot": 90,
+      "label": "separator",
+      "showLabel": true,
+      "params": {
+        "size": 25.4
+      }
+    },
+    {
+      "id": "quarter-wave",
+      "type": "qwp",
+      "x": 325,
+      "y": 160,
+      "rot": 0,
+      "label": "QWP",
+      "showLabel": true,
+      "params": {
+        "a": 45,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "common-lens",
+      "type": "lens",
+      "x": 380,
+      "y": 160,
+      "rot": 0,
+      "label": "Lens",
+      "showLabel": true,
+      "params": {
+        "f": 100,
+        "dia": 30,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "target",
+      "type": "mirror",
+      "x": 470,
+      "y": 160,
+      "rot": 0,
+      "label": "target",
+      "showLabel": true,
+      "params": {
+        "length": 25.4,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "receive",
+      "type": "detector",
+      "x": 250,
+      "y": 40,
+      "rot": 270,
+      "label": "receive",
+      "showLabel": true,
+      "params": {
+        "aperture": 26,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    }
+  ],
+  "beams": []
+}

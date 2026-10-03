@@ -1,0 +1,394 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "contrast07-element-0",
+      "type": "pulsedlaser",
+      "x": 298,
+      "y": 175,
+      "rot": 0,
+      "label": "920 nm, 150 fs, 80 MHz",
+      "showLabel": true,
+      "params": {
+        "wavelength": 920,
+        "avgPowerW": 1,
+        "beamMode": "beam",
+        "beamWidth": 3,
+        "repRateMHz": 80,
+        "pulsePhaseNs": 0,
+        "transformLimited": true,
+        "pulseWidthFs": 150,
+        "pulseShape": "gauss",
+        "bandwidth": 0.895,
+        "inputChirp": "positive",
+        "chirpGddFs2": 0,
+        "pol": 0,
+        "autoColor": false,
+        "color": "#ff6400",
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      }
+    },
+    {
+      "id": "contrast07-element-1",
+      "type": "mirror",
+      "x": 425,
+      "y": 175,
+      "rot": 135,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "length": 25.4,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "contrast07-element-2",
+      "type": "mirror",
+      "x": 425,
+      "y": 200,
+      "rot": 315,
+      "label": "Mirrors for alignment",
+      "showLabel": false,
+      "params": {
+        "length": 25.4,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "contrast07-element-3",
+      "type": "polarizer",
+      "x": 650,
+      "y": 200,
+      "rot": 0,
+      "label": "Linear polarizer",
+      "showLabel": true,
+      "params": {
+        "pangle": 0,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "contrast07-element-4",
+      "type": "hwp",
+      "x": 550,
+      "y": 200,
+      "rot": 0,
+      "label": "Half wave plate",
+      "showLabel": true,
+      "params": {
+        "a": 0,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "contrast07-element-5",
+      "type": "galvo",
+      "x": 725,
+      "y": 200,
+      "rot": 225,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "length": 20,
+        "commandAngle": 0,
+        "scanMode": "static",
+        "scanAmplitude": 1,
+        "scanFrequencyHz": 100,
+        "scanPhaseDeg": 0,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "contrast07-element-6",
+      "type": "galvo",
+      "x": 725,
+      "y": 175,
+      "rot": 225,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "length": 20,
+        "commandAngle": 0,
+        "scanMode": "static",
+        "scanAmplitude": 0.5,
+        "scanFrequencyHz": 100,
+        "scanPhaseDeg": 0,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "contrast07-element-7",
+      "type": "lens",
+      "x": 775,
+      "y": 175,
+      "rot": 0,
+      "label": "Scan lens",
+      "showLabel": true,
+      "params": {
+        "f": 50,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "contrast07-element-8",
+      "type": "lens",
+      "x": 925,
+      "y": 175,
+      "rot": 0,
+      "label": "Tube lens",
+      "showLabel": true,
+      "params": {
+        "f": 100,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "contrast07-element-9",
+      "type": "dichroic",
+      "x": 975,
+      "y": 175,
+      "rot": 45,
+      "label": "SP700",
+      "showLabel": true,
+      "labelPos": "r",
+      "params": {
+        "dtype": "shortpass",
+        "cutoff": 700,
+        "center": 550,
+        "band": 50,
+        "bandRefl": 100,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "contrast07-element-10",
+      "type": "objective",
+      "x": 975,
+      "y": 131,
+      "rot": 270,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "efl": 13,
+        "workingDistance": 13,
+        "immersion": "air",
+        "immersionIndex": 1.333,
+        "na": 0.7692307692307693,
+        "showAcceptance": false,
+        "transEff": 100,
+        "frontAperture": 20
+      }
+    },
+    {
+      "id": "contrast07-element-11",
+      "type": "objective",
+      "x": 975,
+      "y": 73,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "efl": 13,
+        "workingDistance": 13,
+        "immersion": "air",
+        "immersionIndex": 1.333,
+        "na": 0.7692307692307693,
+        "showAcceptance": false,
+        "transEff": 100,
+        "frontAperture": 20
+      }
+    },
+    {
+      "id": "contrast07-element-12",
+      "type": "dichroic",
+      "x": 975,
+      "y": 25,
+      "rot": 315,
+      "label": "SP700",
+      "showLabel": true,
+      "labelPos": "r",
+      "params": {
+        "dtype": "shortpass",
+        "cutoff": 700,
+        "center": 550,
+        "band": 50,
+        "bandRefl": 100,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "contrast07-element-13",
+      "type": "mirror",
+      "x": 975,
+      "y": 250,
+      "rot": 225,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "length": 25.4,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "contrast07-element-14",
+      "type": "pmt",
+      "x": 925,
+      "y": 250,
+      "rot": 180,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "aperture": 32,
+        "gain": 10,
+        "darkInput": 0.00001,
+        "saturation": 100,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 2
+      }
+    },
+    {
+      "id": "contrast07-element-15",
+      "type": "lens",
+      "x": 925,
+      "y": 25,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "f": 100,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "contrast07-element-16",
+      "type": "camera",
+      "x": 803,
+      "y": 25.000000000000004,
+      "rot": 180,
+      "label": "Transmission image",
+      "showLabel": true,
+      "labelPos": "l",
+      "params": {
+        "ch": 40,
+        "pixels": 24,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "contrast07-element-17",
+      "type": "pmt",
+      "x": 975,
+      "y": -75,
+      "rot": 270,
+      "label": "SHG channel",
+      "showLabel": true,
+      "labelPos": "l",
+      "params": {
+        "aperture": 32,
+        "gain": 10,
+        "darkInput": 0.00001,
+        "saturation": 100,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 2
+      }
+    },
+    {
+      "id": "contrast07-element-18",
+      "type": "stage",
+      "x": 975,
+      "y": 102,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "pzMode": "static",
+        "pzTravelXY": 12,
+        "pzFreqXY": 0.15,
+        "pzTravelZ": 8,
+        "pzFreqZ": 0.1,
+        "pzZSteps": 5,
+        "aperture": 50,
+        "sampleKind": "generic",
+        "specimenType": "nonlinear",
+        "channels": [
+          {
+            "kind": "shg",
+            "wl": 520,
+            "eff": 0.1,
+            "epi": false,
+            "epiRatio": 0.15,
+            "autoWl": true,
+            "autoColor": true,
+            "color": "#22c55e",
+            "material": "lipid",
+            "fluorophore": "custom",
+            "retardance": 90,
+            "axis": 45,
+            "transferEff": 0.1,
+            "requireOverlap": true
+          },
+          {
+            "kind": "tpef",
+            "wl": 520,
+            "eff": 0.1,
+            "epi": false,
+            "epiRatio": 0.15,
+            "autoWl": true,
+            "autoColor": true,
+            "color": "#22c55e",
+            "material": "lipid",
+            "fluorophore": "gfp",
+            "retardance": 90,
+            "axis": 45,
+            "transferEff": 0.1,
+            "requireOverlap": true
+          }
+        ],
+        "showSignalSpot": true,
+        "thickness": 6,
+        "voxelPreview": false,
+        "voxelSize": 0.6,
+        "transmitExc": true,
+        "transmission": 0.8,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1
+      }
+    },
+    {
+      "id": "contrast07-element-19",
+      "type": "filter",
+      "x": 975,
+      "y": -25,
+      "rot": 270,
+      "label": "Bandpass 460/20 nm",
+      "showLabel": true,
+      "labelPos": "l",
+      "params": {
+        "ftype": "bandpass",
+        "cutoff": 500,
+        "center": 460,
+        "band": 20,
+        "trans": 0.5,
+        "length": 25.4
+      }
+    }
+  ],
+  "beams": []
+}

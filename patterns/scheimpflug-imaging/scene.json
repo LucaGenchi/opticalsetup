@@ -1,0 +1,96 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "upper-point",
+      "type": "objarrow",
+      "x": -10,
+      "y": 180,
+      "rot": 0,
+      "label": "upper-point",
+      "showLabel": true,
+      "params": {
+        "height": 2,
+        "shape": "arrow",
+        "raysMode": "fan",
+        "spread": 8,
+        "nrays": 7,
+        "showImage": false,
+        "wavelength": 620,
+        "autoColor": true,
+        "color": "#e02020"
+      }
+    },
+    {
+      "id": "center-point",
+      "type": "objarrow",
+      "x": 0,
+      "y": 200,
+      "rot": 0,
+      "label": "center-point",
+      "showLabel": true,
+      "params": {
+        "height": 2,
+        "shape": "arrow",
+        "raysMode": "fan",
+        "spread": 8,
+        "nrays": 7,
+        "showImage": false,
+        "wavelength": 620,
+        "autoColor": true,
+        "color": "#e02020"
+      }
+    },
+    {
+      "id": "lower-point",
+      "type": "objarrow",
+      "x": 10,
+      "y": 220,
+      "rot": 0,
+      "label": "lower-point",
+      "showLabel": true,
+      "params": {
+        "height": 2,
+        "shape": "arrow",
+        "raysMode": "fan",
+        "spread": 8,
+        "nrays": 7,
+        "showImage": false,
+        "wavelength": 620,
+        "autoColor": true,
+        "color": "#e02020"
+      }
+    },
+    {
+      "id": "imaging",
+      "type": "lens",
+      "x": 200,
+      "y": 200,
+      "rot": 0,
+      "label": "imaging",
+      "showLabel": true,
+      "params": {
+        "f": 100,
+        "dia": 80,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "tilted-sensor",
+      "type": "camera",
+      "x": 419.67739820199813,
+      "y": 209.83869910099907,
+      "rot": 26.565051177077976,
+      "label": "tilted-sensor",
+      "showLabel": true,
+      "params": {
+        "ch": 80,
+        "pixels": 24,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

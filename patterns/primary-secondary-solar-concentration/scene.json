@@ -1,0 +1,96 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "solar-test",
+      "type": "cwlaser",
+      "x": 70,
+      "y": 100,
+      "rot": 0,
+      "label": "solar-test",
+      "showLabel": true,
+      "params": {
+        "wavelength": 550,
+        "avgPowerW": 0.01,
+        "beamMode": "beam",
+        "beamWidth": 40,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "return-stop",
+      "type": "isolator",
+      "x": 200,
+      "y": 100,
+      "rot": 0,
+      "label": "return-stop",
+      "showLabel": true,
+      "params": {
+        "aperture": 60
+      }
+    },
+    {
+      "id": "stray-dump",
+      "type": "beamdump",
+      "x": 300,
+      "y": 20,
+      "rot": 270,
+      "label": "stray-dump",
+      "showLabel": true,
+      "params": {
+        "aperture": 22
+      }
+    },
+    {
+      "id": "primary",
+      "type": "oap",
+      "x": 350,
+      "y": 100,
+      "rot": 0,
+      "label": "primary",
+      "showLabel": true,
+      "params": {
+        "length": 50,
+        "f": 70,
+        "refl": 98,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "secondary",
+      "type": "mirror",
+      "x": 300,
+      "y": 100,
+      "rot": 45,
+      "label": "secondary",
+      "showLabel": true,
+      "params": {
+        "length": 16,
+        "refl": 98,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "receiver",
+      "type": "detector",
+      "x": 300,
+      "y": 140,
+      "rot": 90,
+      "label": "receiver",
+      "showLabel": true,
+      "params": {
+        "aperture": 10,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    }
+  ],
+  "beams": []
+}

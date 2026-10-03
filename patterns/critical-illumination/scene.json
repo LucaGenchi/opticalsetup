@@ -1,0 +1,99 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "filament-1",
+      "type": "pointsource",
+      "x": 80,
+      "y": 197,
+      "rot": 0,
+      "label": "filament-1",
+      "showLabel": true,
+      "params": {
+        "displayScale": 1,
+        "sourceKind": "point",
+        "wavelength": 550,
+        "bwMode": "mono",
+        "bandwidth": 400,
+        "lampType": "hg",
+        "spread": 16,
+        "nrays": 7,
+        "autoColor": true,
+        "color": "#e02020"
+      }
+    },
+    {
+      "id": "filament-2",
+      "type": "pointsource",
+      "x": 80,
+      "y": 200,
+      "rot": 0,
+      "label": "filament-2",
+      "showLabel": true,
+      "params": {
+        "displayScale": 1,
+        "sourceKind": "point",
+        "wavelength": 550,
+        "bwMode": "mono",
+        "bandwidth": 400,
+        "lampType": "hg",
+        "spread": 16,
+        "nrays": 7,
+        "autoColor": true,
+        "color": "#e02020"
+      }
+    },
+    {
+      "id": "filament-3",
+      "type": "pointsource",
+      "x": 80,
+      "y": 203,
+      "rot": 0,
+      "label": "filament-3",
+      "showLabel": true,
+      "params": {
+        "displayScale": 1,
+        "sourceKind": "point",
+        "wavelength": 550,
+        "bwMode": "mono",
+        "bandwidth": 400,
+        "lampType": "hg",
+        "spread": 16,
+        "nrays": 7,
+        "autoColor": true,
+        "color": "#e02020"
+      }
+    },
+    {
+      "id": "critical-condenser",
+      "type": "lens",
+      "x": 120,
+      "y": 200,
+      "rot": 0,
+      "label": "critical-condenser",
+      "showLabel": true,
+      "params": {
+        "f": 20,
+        "dia": 40,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "source-image",
+      "type": "camera",
+      "x": 182,
+      "y": 200,
+      "rot": 0,
+      "label": "source-image",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

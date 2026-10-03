@@ -1,0 +1,72 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "input",
+      "type": "cwlaser",
+      "x": 70,
+      "y": 100,
+      "rot": 0,
+      "label": "input",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.01,
+        "beamMode": "beam",
+        "beamWidth": 40,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "upper-wall",
+      "type": "mirror",
+      "x": 300,
+      "y": 87.5,
+      "rot": 274.28915400000005,
+      "label": "upper-wall",
+      "showLabel": true,
+      "labelPos": "t",
+      "params": {
+        "length": 201,
+        "refl": 98,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "lower-wall",
+      "type": "mirror",
+      "x": 300,
+      "y": 112.5,
+      "rot": 85.710846,
+      "label": "lower-wall",
+      "showLabel": true,
+      "params": {
+        "length": 201,
+        "refl": 98,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "receiver",
+      "type": "detector",
+      "x": 440,
+      "y": 100,
+      "rot": 0,
+      "label": "receiver",
+      "showLabel": true,
+      "params": {
+        "aperture": 14,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    }
+  ],
+  "beams": []
+}

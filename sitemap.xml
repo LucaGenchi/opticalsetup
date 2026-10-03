@@ -25,973 +25,1087 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/img-01/</loc>
+    <loc>https://opticalsetup.com/patterns/functions/transferring-images-beams-and-pupils/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/img-02/</loc>
+    <loc>https://opticalsetup.com/patterns/functions/preparing-and-transforming-beams/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/img-03/</loc>
+    <loc>https://opticalsetup.com/patterns/functions/illuminating-and-projecting/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/img-04/</loc>
+    <loc>https://opticalsetup.com/patterns/functions/scanning-and-changing-optical-paths/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/img-05/</loc>
+    <loc>https://opticalsetup.com/patterns/functions/separating-combining-and-routing-channels/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/img-06/</loc>
+    <loc>https://opticalsetup.com/patterns/functions/comparing-optical-fields/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/img-07/</loc>
+    <loc>https://opticalsetup.com/patterns/functions/selecting-spatial-signals-and-creating-contrast/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/img-08/</loc>
+    <loc>https://opticalsetup.com/patterns/functions/separating-and-measuring-spectra/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/img-09/</loc>
+    <loc>https://opticalsetup.com/patterns/functions/recirculating-and-amplifying-light/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/beam-01/</loc>
+    <loc>https://opticalsetup.com/patterns/functions/handling-pulses-and-nonlinear-interactions/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/beam-02/</loc>
+    <loc>https://opticalsetup.com/patterns/functions/transporting-optics-into-constrained-spaces/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/beam-03/</loc>
+    <loc>https://opticalsetup.com/patterns/functions/correcting-wavefronts-and-rejecting-background/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/beam-04/</loc>
+    <loc>https://opticalsetup.com/patterns/functions/operating-in-x-ray-and-euv-regimes/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/beam-05/</loc>
+    <loc>https://opticalsetup.com/patterns/functions/transporting-and-processing-guided-optical-information/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/beam-06/</loc>
+    <loc>https://opticalsetup.com/patterns/functions/preparing-quantum-states-and-manipulating-particles/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/beam-07/</loc>
+    <loc>https://opticalsetup.com/patterns/functions/measuring-distance-shape-motion-and-samples/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/beam-08/</loc>
+    <loc>https://opticalsetup.com/patterns/functions/encoding-measurements-for-reconstruction/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/ill-01/</loc>
+    <loc>https://opticalsetup.com/patterns/functions/presenting-images-and-distributing-energy/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/ill-02/</loc>
+    <loc>https://opticalsetup.com/patterns/functions/stabilizing-calibrating-and-diagnosing/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/ill-03/</loc>
+    <loc>https://opticalsetup.com/patterns/image-relay-4f-relay/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/ill-04/</loc>
+    <loc>https://opticalsetup.com/patterns/afocal-telescope-beam-expander/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/ill-05/</loc>
+    <loc>https://opticalsetup.com/patterns/pupil-relay/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/ill-06/</loc>
+    <loc>https://opticalsetup.com/patterns/infinity-corrected-imaging/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/ill-07/</loc>
+    <loc>https://opticalsetup.com/patterns/telecentric-imaging/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/ill-08/</loc>
+    <loc>https://opticalsetup.com/patterns/reflective-imaging-relay/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/scan-01/</loc>
+    <loc>https://opticalsetup.com/patterns/scheimpflug-imaging/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/scan-02/</loc>
+    <loc>https://opticalsetup.com/patterns/image-rotation-and-derotation/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/scan-03/</loc>
+    <loc>https://opticalsetup.com/patterns/compensated-zoom/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/scan-04/</loc>
+    <loc>https://opticalsetup.com/patterns/spatial-filtering-and-recollimation/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/scan-05/</loc>
+    <loc>https://opticalsetup.com/patterns/single-mode-filtering/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/scan-06/</loc>
+    <loc>https://opticalsetup.com/patterns/mode-matching/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/scan-07/</loc>
+    <loc>https://opticalsetup.com/patterns/anamorphic-beam-shaping/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/scan-08/</loc>
+    <loc>https://opticalsetup.com/patterns/irradiance-remapping/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/route-01/</loc>
+    <loc>https://opticalsetup.com/patterns/beam-homogenization/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/route-02/</loc>
+    <loc>https://opticalsetup.com/patterns/fourier-plane-filtering/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/route-03/</loc>
+    <loc>https://opticalsetup.com/patterns/programmable-wavefront-shaping/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/route-04/</loc>
+    <loc>https://opticalsetup.com/patterns/kohler-illumination/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/route-05/</loc>
+    <loc>https://opticalsetup.com/patterns/critical-illumination/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/route-06/</loc>
+    <loc>https://opticalsetup.com/patterns/epi-illumination/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/route-07/</loc>
+    <loc>https://opticalsetup.com/patterns/pupil-shaped-illumination/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/route-08/</loc>
+    <loc>https://opticalsetup.com/patterns/structured-illumination-pattern-projection/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/field-01/</loc>
+    <loc>https://opticalsetup.com/patterns/light-sheet-illumination/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/field-02/</loc>
+    <loc>https://opticalsetup.com/patterns/reduction-projection/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/field-03/</loc>
+    <loc>https://opticalsetup.com/patterns/multispot-illumination/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/field-04/</loc>
+    <loc>https://opticalsetup.com/patterns/pupil-conjugate-scanning/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/field-05/</loc>
+    <loc>https://opticalsetup.com/patterns/relay-between-scan-axes/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/field-06/</loc>
+    <loc>https://opticalsetup.com/patterns/scan-descan/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/field-07/</loc>
+    <loc>https://opticalsetup.com/patterns/f-theta-scanning/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/field-08/</loc>
+    <loc>https://opticalsetup.com/patterns/remote-focusing/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/field-09/</loc>
+    <loc>https://opticalsetup.com/patterns/fixed-output-variable-delay/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/field-10/</loc>
+    <loc>https://opticalsetup.com/patterns/double-pass-aom/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/contrast-01/</loc>
+    <loc>https://opticalsetup.com/patterns/multipass-propagation/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/contrast-02/</loc>
+    <loc>https://opticalsetup.com/patterns/wavelength-combining-and-splitting/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/contrast-03/</loc>
+    <loc>https://opticalsetup.com/patterns/polarization-combining-and-splitting/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/contrast-04/</loc>
+    <loc>https://opticalsetup.com/patterns/waveplate-polarizer-attenuation/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/contrast-05/</loc>
+    <loc>https://opticalsetup.com/patterns/polarization-based-send-return-separation/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/contrast-06/</loc>
+    <loc>https://opticalsetup.com/patterns/nonreciprocal-routing/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/contrast-07/</loc>
+    <loc>https://opticalsetup.com/patterns/polarization-diversity/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/contrast-08/</loc>
+    <loc>https://opticalsetup.com/patterns/state-preparation-and-analysis/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/spect-01/</loc>
+    <loc>https://opticalsetup.com/patterns/sample-reference-splitting/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/spect-02/</loc>
+    <loc>https://opticalsetup.com/patterns/two-arm-interferometry/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/spect-03/</loc>
+    <loc>https://opticalsetup.com/patterns/common-path-interferometry/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/spect-04/</loc>
+    <loc>https://opticalsetup.com/patterns/counterpropagating-loop-interferometry/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/spect-05/</loc>
+    <loc>https://opticalsetup.com/patterns/shearing-interferometry/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/spect-06/</loc>
+    <loc>https://opticalsetup.com/patterns/balanced-detection/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/spect-07/</loc>
+    <loc>https://opticalsetup.com/patterns/homodyne-heterodyne-reception/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/spect-08/</loc>
+    <loc>https://opticalsetup.com/patterns/optical-i-q-detection/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/cav-01/</loc>
+    <loc>https://opticalsetup.com/patterns/low-coherence-interferometry/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/cav-02/</loc>
+    <loc>https://opticalsetup.com/patterns/nulling-interferometry/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/cav-03/</loc>
+    <loc>https://opticalsetup.com/patterns/coherent-aperture-combination/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/cav-04/</loc>
+    <loc>https://opticalsetup.com/patterns/confocal-excitation-and-detection/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/cav-05/</loc>
+    <loc>https://opticalsetup.com/patterns/parallel-confocal-detection/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/cav-06/</loc>
+    <loc>https://opticalsetup.com/patterns/dark-field-collection/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/cav-07/</loc>
+    <loc>https://opticalsetup.com/patterns/phase-to-intensity-conversion/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/cav-08/</loc>
+    <loc>https://opticalsetup.com/patterns/differential-interference-contrast/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/cav-09/</loc>
+    <loc>https://opticalsetup.com/patterns/evanescent-field-excitation/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/pulse-01/</loc>
+    <loc>https://opticalsetup.com/patterns/nonlinear-focal-excitation/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/pulse-02/</loc>
+    <loc>https://opticalsetup.com/patterns/excitation-plus-depletion/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/pulse-03/</loc>
+    <loc>https://opticalsetup.com/patterns/slit-collimator-disperser-camera/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/pulse-04/</loc>
+    <loc>https://opticalsetup.com/patterns/cross-dispersed-spectroscopy/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/pulse-05/</loc>
+    <loc>https://opticalsetup.com/patterns/image-slicing-integral-field-feed/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/pulse-06/</loc>
+    <loc>https://opticalsetup.com/patterns/fixed-exit-monochromation/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/pulse-07/</loc>
+    <loc>https://opticalsetup.com/patterns/cascaded-spectral-filtering/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/pulse-08/</loc>
+    <loc>https://opticalsetup.com/patterns/fourier-transform-spectroscopy/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/pulse-09/</loc>
+    <loc>https://opticalsetup.com/patterns/excitation-cleanup-and-rejection/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/pulse-10/</loc>
+    <loc>https://opticalsetup.com/patterns/dual-comb-spectroscopy/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/access-01/</loc>
+    <loc>https://opticalsetup.com/patterns/stable-optical-resonator/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/access-02/</loc>
+    <loc>https://opticalsetup.com/patterns/resonant-enhancement/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/access-03/</loc>
+    <loc>https://opticalsetup.com/patterns/power-and-signal-recycling/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/access-04/</loc>
+    <loc>https://opticalsetup.com/patterns/master-oscillator-power-amplifier/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/access-05/</loc>
+    <loc>https://opticalsetup.com/patterns/regenerative-amplification/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/access-06/</loc>
+    <loc>https://opticalsetup.com/patterns/q-switching/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/access-07/</loc>
+    <loc>https://opticalsetup.com/patterns/cavity-dumping/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/wave-01/</loc>
+    <loc>https://opticalsetup.com/patterns/mode-locked-oscillator/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/wave-02/</loc>
+    <loc>https://opticalsetup.com/patterns/coherent-beam-combining/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/wave-03/</loc>
+    <loc>https://opticalsetup.com/patterns/chirped-pulse-amplification/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/wave-04/</loc>
+    <loc>https://opticalsetup.com/patterns/dispersion-compensation/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/wave-05/</loc>
+    <loc>https://opticalsetup.com/patterns/fourier-pulse-shaping/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/wave-06/</loc>
+    <loc>https://opticalsetup.com/patterns/nonlinear-broadening-plus-compression/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/wave-07/</loc>
+    <loc>https://opticalsetup.com/patterns/pump-probe/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/wave-08/</loc>
+    <loc>https://opticalsetup.com/patterns/pulse-picking-and-burst-formation/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/xray-01/</loc>
+    <loc>https://opticalsetup.com/patterns/autocorrelation-and-cross-correlation/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/xray-02/</loc>
+    <loc>https://opticalsetup.com/patterns/spectrally-resolved-pulse-characterization/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/xray-03/</loc>
+    <loc>https://opticalsetup.com/patterns/nonlinear-frequency-conversion-stage/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/xray-04/</loc>
+    <loc>https://opticalsetup.com/patterns/electro-optic-sampling/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/xray-05/</loc>
+    <loc>https://opticalsetup.com/patterns/serial-image-relay/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/xray-06/</loc>
+    <loc>https://opticalsetup.com/patterns/coherent-image-bundle-transport/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/xray-07/</loc>
+    <loc>https://opticalsetup.com/patterns/proximal-scanning-through-an-image-guide/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/xray-08/</loc>
+    <loc>https://opticalsetup.com/patterns/distal-scanning/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/link-01/</loc>
+    <loc>https://opticalsetup.com/patterns/separate-illumination-and-collection-channels/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/link-02/</loc>
+    <loc>https://opticalsetup.com/patterns/side-viewing-rotational-probe/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/link-03/</loc>
+    <loc>https://opticalsetup.com/patterns/calibrated-multimode-transport/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/link-04/</loc>
+    <loc>https://opticalsetup.com/patterns/adaptive-optics-loop/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/link-05/</loc>
+    <loc>https://opticalsetup.com/patterns/multi-conjugate-correction/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/link-06/</loc>
+    <loc>https://opticalsetup.com/patterns/sensorless-wavefront-optimization/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/link-07/</loc>
+    <loc>https://opticalsetup.com/patterns/guide-star-wavefront-correction/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/link-08/</loc>
+    <loc>https://opticalsetup.com/patterns/coronagraphic-rejection/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/link-09/</loc>
+    <loc>https://opticalsetup.com/patterns/atmospheric-dispersion-compensation/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/quant-01/</loc>
+    <loc>https://opticalsetup.com/patterns/cold-stop-matching/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/quant-02/</loc>
+    <loc>https://opticalsetup.com/patterns/stray-light-baffling/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/quant-03/</loc>
+    <loc>https://opticalsetup.com/patterns/orthogonal-grazing-incidence-focusing/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/quant-04/</loc>
+    <loc>https://opticalsetup.com/patterns/nested-grazing-incidence-imaging/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/quant-05/</loc>
+    <loc>https://opticalsetup.com/patterns/wide-field-micropore-imaging/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/quant-06/</loc>
+    <loc>https://opticalsetup.com/patterns/distributed-refractive-power/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/quant-07/</loc>
+    <loc>https://opticalsetup.com/patterns/diffractive-focusing-with-order-selection/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/quant-08/</loc>
+    <loc>https://opticalsetup.com/patterns/propagation-based-phase-contrast/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/quant-09/</loc>
+    <loc>https://opticalsetup.com/patterns/grating-based-phase-analysis/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/sense-01/</loc>
+    <loc>https://opticalsetup.com/patterns/multilayer-reflective-transport/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/sense-02/</loc>
+    <loc>https://opticalsetup.com/patterns/wavelength-multiplexing-and-add-drop/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/sense-03/</loc>
+    <loc>https://opticalsetup.com/patterns/interferometric-modulation/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/sense-04/</loc>
+    <loc>https://opticalsetup.com/patterns/i-q-optical-modulation/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/sense-05/</loc>
+    <loc>https://opticalsetup.com/patterns/programmable-interferometer-mesh/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/sense-06/</loc>
+    <loc>https://opticalsetup.com/patterns/mode-multiplexing-and-demultiplexing/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/sense-07/</loc>
+    <loc>https://opticalsetup.com/patterns/adiabatic-mode-conversion/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/sense-08/</loc>
+    <loc>https://opticalsetup.com/patterns/fiber-to-chip-free-space-to-chip-coupling/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/sense-09/</loc>
+    <loc>https://opticalsetup.com/patterns/optical-phased-array-steering/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/sense-10/</loc>
+    <loc>https://opticalsetup.com/patterns/distributed-optical-interrogation/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/compute-01/</loc>
+    <loc>https://opticalsetup.com/patterns/heralded-photon-generation/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/compute-02/</loc>
+    <loc>https://opticalsetup.com/patterns/indistinguishable-path-entanglement-generation/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/compute-03/</loc>
+    <loc>https://opticalsetup.com/patterns/two-photon-interference/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/compute-04/</loc>
+    <loc>https://opticalsetup.com/patterns/time-bin-preparation-and-analysis/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/compute-05/</loc>
+    <loc>https://opticalsetup.com/patterns/squeezed-field-injection-and-readout/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/compute-06/</loc>
+    <loc>https://opticalsetup.com/patterns/optical-tweezer-with-position-readout/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/compute-07/</loc>
+    <loc>https://opticalsetup.com/patterns/holographic-trap-arrays/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/compute-08/</loc>
+    <loc>https://opticalsetup.com/patterns/counterpropagating-optical-lattice/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/display-01/</loc>
+    <loc>https://opticalsetup.com/patterns/multi-axis-cooling-and-addressing/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/display-02/</loc>
+    <loc>https://opticalsetup.com/patterns/coaxial-transmit-receive/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/display-03/</loc>
+    <loc>https://opticalsetup.com/patterns/time-of-flight-ranging/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/display-04/</loc>
+    <loc>https://opticalsetup.com/patterns/fmcw-ranging/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/display-05/</loc>
+    <loc>https://opticalsetup.com/patterns/optical-triangulation/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/display-06/</loc>
+    <loc>https://opticalsetup.com/patterns/fringe-projection-profilometry/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/display-07/</loc>
+    <loc>https://opticalsetup.com/patterns/crossed-beam-doppler-measurement/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/display-08/</loc>
+    <loc>https://opticalsetup.com/patterns/angular-and-spectral-collection-channels/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/control-01/</loc>
+    <loc>https://opticalsetup.com/patterns/evanescent-sensing-interface/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/control-02/</loc>
+    <loc>https://opticalsetup.com/patterns/optical-pump-plus-acoustic-readout/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/control-03/</loc>
+    <loc>https://opticalsetup.com/patterns/rotational-or-multi-view-tomography/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/control-04/</loc>
+    <loc>https://opticalsetup.com/patterns/off-axis-holography/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/control-05/</loc>
+    <loc>https://opticalsetup.com/patterns/phase-shifting-interferometry/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/control-06/</loc>
+    <loc>https://opticalsetup.com/patterns/ptychographic-acquisition/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/control-07/</loc>
+    <loc>https://opticalsetup.com/patterns/coded-aperture-imaging/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/control-08/</loc>
+    <loc>https://opticalsetup.com/patterns/single-pixel-imaging/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/patterns/control-09/</loc>
+    <loc>https://opticalsetup.com/patterns/light-field-capture/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/patterns/phase-diversity-acquisition/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/patterns/optical-fourier-processing/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/patterns/virtual-image-combiner/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/patterns/exit-pupil-expansion/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/patterns/polarization-folded-imaging/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/patterns/multifocal-varifocal-presentation/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/patterns/retinal-scanning-projection/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/patterns/nonimaging-concentration/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/patterns/primary-secondary-solar-concentration/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/patterns/light-guide-distribution-and-extraction/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/patterns/power-stabilization-loop/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/patterns/two-plane-beam-pointing-control/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/patterns/frequency-locking-to-a-reference/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/patterns/round-trip-phase-stabilization/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/patterns/focus-lock-channel/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/patterns/reference-channel-normalization/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/patterns/integrating-sphere-measurement/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/patterns/pupil-and-image-diagnostic-branches/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/patterns/calibration-source-injection/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -1016,6 +1130,12 @@
   </url>
   <url>
     <loc>https://opticalsetup.com/wiki/sclaser/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/wiki/ledsource/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

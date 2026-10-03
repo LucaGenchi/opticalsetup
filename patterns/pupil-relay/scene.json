@@ -1,0 +1,89 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "input",
+      "type": "cwlaser",
+      "x": 60,
+      "y": 80,
+      "rot": 0,
+      "label": "input",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "scanner",
+      "type": "galvo",
+      "x": 200,
+      "y": 80,
+      "rot": 315,
+      "label": "scanner",
+      "showLabel": true,
+      "params": {
+        "length": 30,
+        "commandAngle": 0,
+        "scanMode": "static",
+        "scanAmplitude": 1,
+        "scanFrequencyHz": 100,
+        "scanPhaseDeg": 0,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "first",
+      "type": "lens",
+      "x": 200,
+      "y": 155,
+      "rot": 90,
+      "label": "first",
+      "showLabel": true,
+      "params": {
+        "f": 75,
+        "dia": 40,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "second",
+      "type": "lens",
+      "x": 200,
+      "y": 380,
+      "rot": 90,
+      "label": "second",
+      "showLabel": true,
+      "params": {
+        "f": 150,
+        "dia": 40,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "pupil",
+      "type": "camera",
+      "x": 200,
+      "y": 552,
+      "rot": 90,
+      "label": "pupil",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

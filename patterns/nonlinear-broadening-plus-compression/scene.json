@@ -1,0 +1,184 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "pulse04-element-0",
+      "type": "pulsedlaser",
+      "x": 100,
+      "y": 160,
+      "rot": 0,
+      "label": "100 fs · 30 µJ · 1 kHz",
+      "showLabel": true,
+      "params": {
+        "wavelength": 800,
+        "avgPowerW": 0.03,
+        "beamMode": "beam",
+        "beamWidth": 2,
+        "repRateMHz": 0.001,
+        "pulsePhaseNs": 0,
+        "transformLimited": true,
+        "pulseWidthFs": 100,
+        "pulseShape": "gauss",
+        "bandwidth": 5,
+        "inputChirp": "positive",
+        "chirpGddFs2": 0,
+        "pol": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      }
+    },
+    {
+      "id": "pulse04-element-1",
+      "type": "bs",
+      "x": 560,
+      "y": 300,
+      "rot": 0,
+      "label": "10% diagnostic tap",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.9,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "pulse04-element-2",
+      "type": "pulsecompressor",
+      "x": 390,
+      "y": 300,
+      "rot": 180,
+      "label": "Tune GDD · −650 fs²",
+      "showLabel": true,
+      "params": {
+        "gddFs2": -650,
+        "aperture": 24,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "pulse04-element-3",
+      "type": "autocorrelator",
+      "x": 170,
+      "y": 300,
+      "rot": 180,
+      "label": "After compressor",
+      "showLabel": true,
+      "params": {
+        "aperture": 30,
+        "assumedShape": "gauss",
+        "measurementMode": "auto",
+        "timeSpanPs": "auto"
+      }
+    },
+    {
+      "id": "pulse04-element-4",
+      "type": "autocorrelator",
+      "x": 560,
+      "y": 405,
+      "rot": 90,
+      "label": "Before compressor",
+      "showLabel": false,
+      "params": {
+        "aperture": 30,
+        "assumedShape": "gauss",
+        "measurementMode": "auto",
+        "timeSpanPs": "auto"
+      }
+    },
+    {
+      "id": "pulse04-element-5",
+      "type": "display",
+      "x": 700,
+      "y": 500,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "sensorId": "pulse04-element-4",
+        "displayScale": 1.05,
+        "screenOn": true,
+        "displayView": "main"
+      }
+    },
+    {
+      "id": "pulse04-element-6",
+      "type": "display",
+      "x": 405,
+      "y": 500,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "sensorId": "pulse04-element-3",
+        "displayScale": 1.05,
+        "screenOn": true,
+        "displayView": "main"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "pulse04-path-0",
+      "kind": "fiber",
+      "pts": [
+        {
+          "x": 220,
+          "y": 160
+        },
+        {
+          "x": 295,
+          "y": 160
+        },
+        {
+          "x": 765,
+          "y": 160
+        },
+        {
+          "x": 820,
+          "y": 195
+        },
+        {
+          "x": 820,
+          "y": 260
+        },
+        {
+          "x": 765,
+          "y": 300
+        },
+        {
+          "x": 670,
+          "y": 300
+        }
+      ],
+      "color": "#c69516",
+      "width": 4,
+      "bare": true,
+      "propagate": true,
+      "inputNA": 0.22,
+      "groupIndex": 1.468,
+      "lossDbPerM": 0.2,
+      "lengthM": 1,
+      "beta2Ps2PerKm": 0,
+      "fiberModel": "argon",
+      "kerrEnabled": true,
+      "lossModel": "marcatili",
+      "extraLossDbPerM": 0,
+      "coreDiameterUm": 250,
+      "gasPressureBar": 2,
+      "out0": {
+        "mode": "diverge",
+        "na": 0.01,
+        "focal": 20,
+        "dia": 6
+      },
+      "out1": {
+        "mode": "diverge",
+        "na": 0.01,
+        "focal": 20,
+        "dia": 6
+      }
+    }
+  ]
+}

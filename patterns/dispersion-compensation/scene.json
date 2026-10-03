@@ -1,0 +1,229 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "pulse02-element-0",
+      "type": "pulsedlaser",
+      "x": 100,
+      "y": 195,
+      "rot": 0,
+      "label": "150 fs · 532 nm",
+      "showLabel": true,
+      "labelPos": "t",
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.1,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "repRateMHz": 80,
+        "pulsePhaseNs": 0,
+        "transformLimited": true,
+        "pulseWidthFs": 150,
+        "pulseShape": "gauss",
+        "bandwidth": 1e-9,
+        "inputChirp": "positive",
+        "chirpGddFs2": 0,
+        "pol": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      }
+    },
+    {
+      "id": "pulse02-element-1",
+      "type": "autocorrelator",
+      "x": 470,
+      "y": 195,
+      "rot": 0,
+      "label": "autocorrelator",
+      "showLabel": true,
+      "labelPos": "b",
+      "params": {
+        "aperture": 34,
+        "assumedShape": "gauss",
+        "measurementMode": "auto",
+        "timeSpanPs": 1
+      }
+    },
+    {
+      "id": "pulse02-element-2",
+      "type": "display",
+      "x": 790,
+      "y": 195,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "sensorId": "pulse02-element-1",
+        "displayScale": 1.5,
+        "screenOn": true,
+        "displayView": "main"
+      }
+    },
+    {
+      "id": "pulse02-element-3",
+      "type": "pulsedlaser",
+      "x": 100,
+      "y": 410,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.1,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "repRateMHz": 80,
+        "pulsePhaseNs": 0,
+        "transformLimited": true,
+        "pulseWidthFs": 150,
+        "pulseShape": "gauss",
+        "bandwidth": 1e-9,
+        "inputChirp": "positive",
+        "chirpGddFs2": 0,
+        "pol": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      }
+    },
+    {
+      "id": "pulse02-element-4",
+      "type": "glassrod",
+      "x": 320,
+      "y": 410,
+      "rot": 0,
+      "label": "N-SF11 · 100 mm",
+      "showLabel": true,
+      "labelPos": "b",
+      "params": {
+        "rodlen": 100,
+        "dia": 20,
+        "material": "nsf11",
+        "ior": 1.52
+      }
+    },
+    {
+      "id": "pulse02-element-5",
+      "type": "autocorrelator",
+      "x": 470,
+      "y": 410,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "aperture": 34,
+        "assumedShape": "gauss",
+        "measurementMode": "auto",
+        "timeSpanPs": 1
+      }
+    },
+    {
+      "id": "pulse02-element-6",
+      "type": "display",
+      "x": 790,
+      "y": 410,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "sensorId": "pulse02-element-5",
+        "displayScale": 1.5,
+        "screenOn": true,
+        "displayView": "main"
+      }
+    },
+    {
+      "id": "pulse02-element-7",
+      "type": "pulsedlaser",
+      "x": 100,
+      "y": 625,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.1,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "repRateMHz": 80,
+        "pulsePhaseNs": 0,
+        "transformLimited": true,
+        "pulseWidthFs": 150,
+        "pulseShape": "gauss",
+        "bandwidth": 1e-9,
+        "inputChirp": "positive",
+        "chirpGddFs2": 0,
+        "pol": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      }
+    },
+    {
+      "id": "pulse02-element-8",
+      "type": "glassrod",
+      "x": 300,
+      "y": 625,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "rodlen": 100,
+        "dia": 20,
+        "material": "nsf11",
+        "ior": 1.52
+      }
+    },
+    {
+      "id": "pulse02-element-9",
+      "type": "pulsecompressor",
+      "x": 420,
+      "y": 625,
+      "rot": 0,
+      "label": "−38 680 fs²",
+      "showLabel": true,
+      "labelPos": "b",
+      "params": {
+        "gddFs2": -38680,
+        "aperture": 24,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "pulse02-element-10",
+      "type": "autocorrelator",
+      "x": 500,
+      "y": 625,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "aperture": 34,
+        "assumedShape": "gauss",
+        "measurementMode": "auto",
+        "timeSpanPs": 1
+      }
+    },
+    {
+      "id": "pulse02-element-11",
+      "type": "display",
+      "x": 790,
+      "y": 625,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "sensorId": "pulse02-element-10",
+        "displayScale": 1.5,
+        "screenOn": true,
+        "displayView": "main"
+      }
+    }
+  ],
+  "beams": []
+}

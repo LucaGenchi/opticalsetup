@@ -1,0 +1,140 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "input",
+      "type": "cwlaser",
+      "x": 80,
+      "y": 200,
+      "rot": 0,
+      "label": "input",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 30,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "array-A-1",
+      "type": "lens",
+      "x": 200,
+      "y": 190,
+      "rot": 0,
+      "label": "array-A-1",
+      "showLabel": true,
+      "params": {
+        "f": 50,
+        "dia": 10,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "array-A-2",
+      "type": "lens",
+      "x": 200,
+      "y": 200,
+      "rot": 0,
+      "label": "array-A-2",
+      "showLabel": true,
+      "params": {
+        "f": 50,
+        "dia": 10,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "array-A-3",
+      "type": "lens",
+      "x": 200,
+      "y": 210,
+      "rot": 0,
+      "label": "array-A-3",
+      "showLabel": true,
+      "params": {
+        "f": 50,
+        "dia": 10,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "array-B-1",
+      "type": "lens",
+      "x": 250,
+      "y": 190,
+      "rot": 0,
+      "label": "array-B-1",
+      "showLabel": true,
+      "params": {
+        "f": 50,
+        "dia": 10,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "array-B-2",
+      "type": "lens",
+      "x": 250,
+      "y": 200,
+      "rot": 0,
+      "label": "array-B-2",
+      "showLabel": true,
+      "params": {
+        "f": 50,
+        "dia": 10,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "array-B-3",
+      "type": "lens",
+      "x": 250,
+      "y": 210,
+      "rot": 0,
+      "label": "array-B-3",
+      "showLabel": true,
+      "params": {
+        "f": 50,
+        "dia": 10,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "field-lens",
+      "type": "lens",
+      "x": 350,
+      "y": 200,
+      "rot": 0,
+      "label": "field-lens",
+      "showLabel": true,
+      "params": {
+        "f": 100,
+        "dia": 80,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "overlap-field",
+      "type": "camera",
+      "x": 472,
+      "y": 200,
+      "rot": 0,
+      "label": "overlap-field",
+      "showLabel": true,
+      "params": {
+        "ch": 100,
+        "pixels": 24,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

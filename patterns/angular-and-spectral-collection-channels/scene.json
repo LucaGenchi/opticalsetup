@@ -1,0 +1,182 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "excitation",
+      "type": "cwlaser",
+      "x": 70,
+      "y": 100,
+      "rot": 0,
+      "label": "excitation",
+      "showLabel": true,
+      "params": {
+        "wavelength": 488,
+        "avgPowerW": 0.01,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "sample",
+      "type": "sample",
+      "x": 300,
+      "y": 100,
+      "rot": 90,
+      "label": "Sample",
+      "showLabel": true,
+      "labelPos": "l",
+      "params": {
+        "aperture": 20,
+        "specimenType": "linear",
+        "channels": [
+          {
+            "kind": "fluor",
+            "wl": 530,
+            "eff": 0.3,
+            "epi": false,
+            "epiRatio": 0.15,
+            "autoWl": false,
+            "autoColor": true,
+            "color": "#22c55e",
+            "material": "lipid",
+            "fluorophore": "custom",
+            "retardance": 90,
+            "axis": 45,
+            "transferEff": 0.1,
+            "requireOverlap": true
+          },
+          {
+            "kind": "fluor",
+            "wl": 610,
+            "eff": 0.2,
+            "epi": false,
+            "epiRatio": 0.15,
+            "autoWl": false,
+            "autoColor": true,
+            "color": "#22c55e",
+            "material": "lipid",
+            "fluorophore": "custom",
+            "retardance": 90,
+            "axis": 45,
+            "transferEff": 0.1,
+            "requireOverlap": true
+          }
+        ],
+        "showSignalSpot": true,
+        "thickness": 6,
+        "voxelPreview": false,
+        "voxelSize": 0.6,
+        "transmitExc": true,
+        "transmission": 0.8,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1
+      }
+    },
+    {
+      "id": "forward-pump",
+      "type": "detector",
+      "x": 490,
+      "y": 100,
+      "rot": 0,
+      "label": "forward-pump",
+      "showLabel": true,
+      "params": {
+        "aperture": 26,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    },
+    {
+      "id": "collection",
+      "type": "lens",
+      "x": 300,
+      "y": 115,
+      "rot": 90,
+      "label": "Collector",
+      "showLabel": true,
+      "labelPos": "r",
+      "params": {
+        "f": 15,
+        "dia": 80,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "pump-rejection",
+      "type": "filter",
+      "x": 300,
+      "y": 175,
+      "rot": 90,
+      "label": "pump-rejection",
+      "showLabel": true,
+      "params": {
+        "ftype": "longpass",
+        "cutoff": 510,
+        "center": 525,
+        "band": 40,
+        "trans": 0.5,
+        "length": 50
+      }
+    },
+    {
+      "id": "color-split",
+      "type": "dichroic",
+      "x": 300,
+      "y": 240,
+      "rot": 315,
+      "label": "color-split",
+      "showLabel": true,
+      "params": {
+        "dtype": "longpass",
+        "cutoff": 560,
+        "center": 550,
+        "band": 50,
+        "bandRefl": 100,
+        "length": 50
+      }
+    },
+    {
+      "id": "green",
+      "type": "detector",
+      "x": 460,
+      "y": 240,
+      "rot": 0,
+      "label": "green",
+      "showLabel": true,
+      "params": {
+        "aperture": 26,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    },
+    {
+      "id": "red",
+      "type": "detector",
+      "x": 300,
+      "y": 350,
+      "rot": 90,
+      "label": "red",
+      "showLabel": true,
+      "params": {
+        "aperture": 26,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    }
+  ],
+  "beams": []
+}

@@ -1,0 +1,76 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "uv-input",
+      "type": "cwlaser",
+      "x": 150,
+      "y": 190,
+      "rot": 0,
+      "label": "uv-input",
+      "showLabel": true,
+      "params": {
+        "wavelength": 266,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 54,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "primary",
+      "type": "conicmirror",
+      "x": 500,
+      "y": 190,
+      "rot": 0,
+      "label": "primary",
+      "showLabel": true,
+      "params": {
+        "dia": 55,
+        "hole": 15,
+        "radius": -80,
+        "conic": -1,
+        "facing": "left",
+        "refl": 96
+      }
+    },
+    {
+      "id": "secondary",
+      "type": "conicmirror",
+      "x": 440,
+      "y": 190,
+      "rot": 0,
+      "label": "secondary",
+      "showLabel": true,
+      "params": {
+        "dia": 30,
+        "hole": 0,
+        "radius": 31.351351,
+        "conic": -0.322133,
+        "facing": "right",
+        "refl": 96
+      }
+    },
+    {
+      "id": "uv-image",
+      "type": "camera",
+      "x": 534.5,
+      "y": 190,
+      "rot": 0,
+      "label": "uv-image",
+      "showLabel": true,
+      "params": {
+        "ch": 20,
+        "pixels": 24,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

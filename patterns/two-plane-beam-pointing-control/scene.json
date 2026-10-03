@@ -1,0 +1,112 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "source",
+      "type": "cwlaser",
+      "x": 70,
+      "y": 100,
+      "rot": 0,
+      "label": "source",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.01,
+        "beamMode": "beam",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "steerer-1",
+      "type": "mirror",
+      "x": 240,
+      "y": 100,
+      "rot": 135,
+      "label": "steerer-1",
+      "showLabel": true,
+      "params": {
+        "length": 50,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "steerer-2",
+      "type": "mirror",
+      "x": 240,
+      "y": 260,
+      "rot": 315,
+      "label": "steerer-2",
+      "showLabel": true,
+      "params": {
+        "length": 50,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "diagnostic-tap",
+      "type": "bs",
+      "x": 420,
+      "y": 260,
+      "rot": 90,
+      "label": "diagnostic-tap",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "near-camera",
+      "type": "camera",
+      "x": 650,
+      "y": 260,
+      "rot": 0,
+      "label": "near-camera",
+      "showLabel": true,
+      "params": {
+        "ch": 30,
+        "pixels": 64,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "far-lens",
+      "type": "lens",
+      "x": 420,
+      "y": 350,
+      "rot": 90,
+      "label": "far-lens",
+      "showLabel": true,
+      "params": {
+        "f": 50,
+        "dia": 40,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "far-camera",
+      "type": "camera",
+      "x": 420,
+      "y": 422,
+      "rot": 90,
+      "label": "far-camera",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 64,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

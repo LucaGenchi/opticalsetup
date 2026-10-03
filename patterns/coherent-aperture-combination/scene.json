@@ -1,0 +1,181 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "common-star-proxy",
+      "type": "cwlaser",
+      "x": 80,
+      "y": 200,
+      "rot": 0,
+      "label": "common-star-proxy",
+      "showLabel": true,
+      "params": {
+        "wavelength": 2200,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 4,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "apertures-split",
+      "type": "bs",
+      "x": 250,
+      "y": 200,
+      "rot": 90,
+      "label": "apertures-split",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "apertures-upper-fold",
+      "type": "mirror",
+      "x": 450,
+      "y": 200,
+      "rot": 135,
+      "label": "apertures-upper-fold",
+      "showLabel": true,
+      "params": {
+        "length": 50,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "apertures-lower-fold",
+      "type": "mirror",
+      "x": 250,
+      "y": 400,
+      "rot": 315,
+      "label": "apertures-lower-fold",
+      "showLabel": true,
+      "params": {
+        "length": 50,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "apertures-phase-bias",
+      "type": "phaseplate",
+      "x": 375,
+      "y": 200,
+      "rot": 0,
+      "label": "apertures-phase-bias",
+      "showLabel": true,
+      "params": {
+        "profile": "bar",
+        "opdUm": 0,
+        "aperture": 60
+      }
+    },
+    {
+      "id": "apertures-combine",
+      "type": "bs",
+      "x": 450,
+      "y": 400,
+      "rot": 90,
+      "label": "apertures-combine",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "apertures-port-A",
+      "type": "camera",
+      "x": 572,
+      "y": 400,
+      "rot": 0,
+      "label": "apertures-port-A",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "apertures-port-B",
+      "type": "camera",
+      "x": 450,
+      "y": 522,
+      "rot": 90,
+      "label": "apertures-port-B",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "feed-A-1",
+      "type": "lens",
+      "x": 310,
+      "y": 200,
+      "rot": 0,
+      "label": "feed-A-1",
+      "showLabel": true,
+      "params": {
+        "f": 20,
+        "dia": 20,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "feed-A-2",
+      "type": "lens",
+      "x": 350,
+      "y": 200,
+      "rot": 0,
+      "label": "feed-A-2",
+      "showLabel": true,
+      "params": {
+        "f": 20,
+        "dia": 20,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "feed-B-1",
+      "type": "lens",
+      "x": 250,
+      "y": 260,
+      "rot": 90,
+      "label": "feed-B-1",
+      "showLabel": true,
+      "params": {
+        "f": 20,
+        "dia": 20,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "feed-B-2",
+      "type": "lens",
+      "x": 250,
+      "y": 300,
+      "rot": 90,
+      "label": "feed-B-2",
+      "showLabel": true,
+      "params": {
+        "f": 20,
+        "dia": 20,
+        "transEff": 100
+      }
+    }
+  ],
+  "beams": []
+}

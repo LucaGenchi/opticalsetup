@@ -9,13 +9,15 @@ const fields = {
   'Usually combined with': 'combined', 'Usually followed by': 'followed',
 };
 
+export const slugify = text => text.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
 export function parseSurvey(source) {
   const records = [];
   let current;
   for (const line of source.split('\n')) {
     const heading = /^### ([A-Z]+-\d{2}) — (.+)$/.exec(line);
     if (heading) {
-      current = { id: heading[1], slug: heading[1].toLowerCase(), title: heading[2] };
+      current = { id: heading[1], slug: slugify(heading[2]), title: heading[2] };
       records.push(current);
     } else if (/^## /.test(line)) current = null;
     const field = /^- \*\*([^*]+):\*\* (.+)$/.exec(line);

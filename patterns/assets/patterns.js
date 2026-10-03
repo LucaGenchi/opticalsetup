@@ -2,6 +2,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { filterFields, readFilters, filterParams, matchesPattern, fold } from './filter.js';
 
+// Keep a catalogue's shareable filter fragment when moving keyboard focus.
+const skip = document.querySelector('.skip-link');
+skip?.addEventListener('click', event => {
+  const main = document.querySelector('#main');
+  if (!main) return;
+  event.preventDefault();
+  main.tabIndex = -1;
+  main.focus();
+  main.scrollIntoView();
+});
+
 const form = document.querySelector('#pattern-filters');
 if (form) {
   const catalogue = JSON.parse(document.querySelector('#pattern-data').textContent);
@@ -27,12 +38,15 @@ if (form) {
     }
     if (writeURL) {
       const url = new URL(location.href);
-      url.search = filterParams(filters).toString();
+      url.search = '';
+      url.hash = filterParams(filters).toString();
       history.replaceState(null, '', url);
     }
   }
-  function restore() {
-    const filters = readFilters(new URLSearchParams(location.search));
+  function restore(event) {
+    // In-page anchors such as the skip link do not change catalogue filters.
+    if (event?.type === 'hashchange' && location.hash && !location.hash.includes('=')) return;
+    const filters = readFilters(new URLSearchParams(location.hash.slice(1) || location.search));
     query.value = filters.q;
     for (const box of checkboxes) box.checked = filters[box.name].includes(box.value);
     update(false);
@@ -53,23 +67,10 @@ if (form) {
   });
   document.querySelector('#clear-empty')?.addEventListener('click', () => form.reset());
   addEventListener('popstate', restore);
+  addEventListener('hashchange', restore);
   restore();
 }
 
-const nodes = [...document.querySelectorAll('.diagram-node')];
-function inspect(node) {
-  for (const item of nodes) item.setAttribute('aria-pressed', String(item === node));
-  const detail = document.getElementById(`node-${node.dataset.node}`);
-  const output = document.querySelector('#node-inspector');
-  if (detail && output) output.textContent = detail.textContent;
-}
-for (const node of nodes) {
-  node.setAttribute('aria-pressed', 'false');
-  node.addEventListener('click', () => inspect(node));
-  node.addEventListener('keydown', event => {
-    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); inspect(node); }
-  });
-}
 const launch = document.querySelector('[data-embed-src]');
 launch?.addEventListener('click', () => {
   const target = document.querySelector('#workbench');

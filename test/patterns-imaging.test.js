@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { examples } from '../tools/patterns/imaging.mjs';
 import { registry } from '../sketch/js/elements.js';
-import { validateExample, diagramSVG, wrap } from '../tools/patterns/diagram.mjs';
+import { validateExample, setupSVG } from '../tools/patterns/diagram.mjs';
 import '../sketch/js/detector-instruments.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { traceScene, detectorReading } from '../sketch/js/raytrace.js';
@@ -26,41 +26,22 @@ function trace(id, edit = () => {}) {
 }
 const near = (actual, expected, tolerance = 1e-9) => assert.ok(Math.abs(actual - expected) < tolerance, `${actual} != ${expected}`);
 
-test('all 51 imaging, beam, illumination, scan, routing and field IDs have complete authored graphs', () => {
+test('all 51 patterns supply honest native scenes or explicit unavailable reasons', () => {
   const expected = Object.entries({IMG:9,BEAM:8,ILL:8,SCAN:8,ROUTE:8,FIELD:10}).flatMap(([prefix,count]) => Array.from({length:count},(_,i)=>`${prefix}-${String(i+1).padStart(2,'0')}`));
   assert.deepEqual(examples.map(x=>x.id).sort(), expected.sort());
-  assert.equal(new Set(examples.map(x=>x.title)).size, examples.length);
-  for (const example of examples) {
-    validateExample(example);
-    assert.ok(!/NaN|undefined/.test(diagramSVG(example)), example.id);
-    assert.ok(example.title && example.summary && example.limit);
-    assert.ok(example.steps.length >= 2);
+  for(const example of examples) {
+    validateExample(example); finiteNumbers(example);
+    assert.ok(example.summary && example.limit && example.steps.length >= 2);
     assert.ok(example.references.length);
-    for (const source of example.references) {
-      assert.ok(source.label.length > 8);
-      assert.equal(new URL(source.url).protocol, 'https:');
-    }
-    const ids = new Set(example.nodes.map(x=>x.id));
-    assert.equal(ids.size, example.nodes.length, example.id);
-    assert.ok(example.nodes.length >= 4 && example.nodes.length <= 8, example.id);
-    for(const node of example.nodes) {
-      assert.ok(node.note && node.label, example.id);
-      assert.ok(node.y + 48 + (wrap(node.label).length - 1) * 17 < 410, `${example.id}: label enters legend`);
-      assert.ok(node.x >= 70 && node.x <= 890 && node.y >= 65 && node.y <= 350, `${example.id}: ${node.id}`);
-      if(node.type) assert.ok(registry[node.type], `${example.id}: ${node.type}`);
-    }
-    for(const edge of example.edges) {
-      assert.ok(ids.has(edge.from) && ids.has(edge.to), example.id);
-      assert.ok(['light','signal','reference'].includes(edge.kind));
-    }
-    // The graph must not strand a labeled optical/control role.
-    for(const node of example.nodes) assert.ok(example.edges.some(e=>e.from===node.id || e.to===node.id), `${example.id}: stranded ${node.id}`);
-    finiteNumbers(example);
-    if(example.mode==='rays') {
-      assert.ok(example.scene);
-      assert.equal(new Set(example.scene.elements.map(x=>x.id)).size, example.scene.elements.length);
-      trace(example.id);
-    } else { assert.equal(example.mode, 'schematic'); assert.equal(example.scene, undefined); }
+    for(const r of example.references) assert.equal(new URL(r.url).protocol,'https:');
+    if(example.mode === 'unavailable') { assert.ok(example.unavailableReason.length > 100); assert.equal(example.scene,undefined); continue; }
+    assert.equal(example.mode,'rays'); assert.equal(example.scene.version,1);
+    const scene=parseSketch(JSON.stringify(example.scene),registry);
+    assert.equal(new Set(scene.elements.map(e=>e.id)).size,scene.elements.length);
+    const result=traceScene(scene.elements,scene.beams); finiteNumbers(result);
+    assert.ok(!/NaN|undefined/.test(setupSVG(example)),example.id);
+    const receivers=scene.elements.filter(e=>['camera','detector','spectrometer'].includes(e.type));
+    assert.ok(receivers.some(e=>detectorReading(e.id)?.signal > 0),`${example.id}: a real receiver must collect light`);
   }
 });
 
@@ -134,12 +115,43 @@ test('IMG-01 gives a separately constructed inverted unit image and a narrow on-
   assert.ok(shifted.spotSpan > 4, 'the same axis fan broadens after its conjugate');
 });
 
-test('schematic remapping branches retain the required downstream optics', () => {
-  const beamlet = byId('BEAM-06').edges;
-  assert.ok(beamlet.some(e => e.from === 'beamlet' && e.to === 'a2'));
-  assert.ok(!beamlet.some(e => e.from === 'beamlet' && e.to === 'target'));
-  const isolator = byId('ROUTE-05').edges;
-  for (const [from, to] of [['load','p45'],['p45','faraday'],['faraday','p0'],['p0','reject']]) {
-    assert.ok(isolator.some(e => e.from === from && e.to === to), `reverse isolator path ${from}→${to}`);
-  }
+const cases=[['IMG-03','second','f',30],['IMG-04','tube','f',30],['IMG-05','rear-focal-stop','y',2],['IMG-06','secondary','x',2],['IMG-07','tilted-sensor','rot',-26.565],['IMG-09','compensator-2x','x',10],['BEAM-01','focal-aperture','y',5],['BEAM-03','injection','x',10],['BEAM-04','powered-meridian-C2','x',20],['BEAM-06','array-B-1','y',3],['BEAM-07','fourier-stop','gap',-6],['BEAM-08','programmable-SLM','length',10],['ILL-01','field-stop','gap',-18],['ILL-02','critical-condenser','f',10],['ILL-03','emission-filter','center',100],['ILL-04','central-obscuration','aperture',8],['ILL-05','binary-DMD','duty',-.45],['ILL-06','detection-objective','x',40],['ILL-07','second','f',20],['ILL-08','lenslet-1','f',20],['SCAN-01','scanner','commandAngle',1],['SCAN-03','detection-pinhole','x',10],['SCAN-05','remote-mirror','x',2],['ROUTE-04','double-pass-QWP','a',-45],['ROUTE-05','forward-isolator','rot',180],['ROUTE-06','signal','pol',-45],['ROUTE-07','analysis-QWP','a',-45],['FIELD-01','MZ-phase-bias','opdUm',.266],['FIELD-03','right-loop-mirror','x',10],['FIELD-04','shear-upper-fold','x',-1],['FIELD-05','balanced-phase-bias','opdUm',.266],['FIELD-06','LO','x',40],['FIELD-07','Q-phase-bias','opdUm',.133],['FIELD-08','reference-mirror','y',50],['FIELD-09','nuller-phase-bias','opdUm',-.95],['FIELD-10','feed-A-2','x',10]];
+function readouts(scene) {
+ const result=traceScene(scene.elements,scene.beams); finiteNumbers(result);
+ return scene.elements.filter(e=>['camera','detector','spectrometer'].includes(e.type)).map(e=>{ const r=detectorReading(e.id); return r ? [r.signal,r.spotSpan,r.centroid,r.profile] : [0]; });
+}
+for(const [id,elementId,key,delta] of cases) test(`${id}: changing ${elementId} ${key} changes its native receiver result`,()=>{
+ const scene=parseSketch(JSON.stringify(byId(id).scene),registry);
+ const baseline=readouts(scene);
+ const element=scene.elements.find(e=>e.id===elementId);
+ if(key in element) element[key]+=delta; else element.params[key]+=delta;
+ const changed=readouts(scene);
+ const flatten = value => Array.isArray(value) ? value.flatMap(flatten) : [Number(value) || 0];
+ const a=flatten(baseline), b=flatten(changed);
+ assert.ok(Math.max(...Array.from({length:Math.max(a.length,b.length)},(_,i)=>Math.abs((a[i]||0)-(b[i]||0)))) > 1e-6,'the optical component must materially affect collection, position or the resolved profile');
+});
+test('BEAM-02 real fiber input direction outside its NA rejects transported light',()=>{
+ const scene=parseSketch(JSON.stringify(byId('BEAM-02').scene),registry);
+ const baseline=readouts(scene);
+ scene.beams[0].pts[1].y+=200;
+ const changed=readouts(scene);
+ assert.notDeepEqual(changed,baseline);
+});
+test('SCAN-06 translated retroreflector preserves output pointing and increases actual traced free-space path',()=>{
+ const scene=parseSketch(JSON.stringify(byId('SCAN-06').scene),registry);
+ const before=traceScene(scene.elements,scene.beams);
+ const nominal=detectorReading('fixed-return');
+ scene.elements.find(e=>e.id==='moving-retroreflector').x+=15;
+ const after=traceScene(scene.elements,scene.beams);
+ const translated=detectorReading('fixed-return');
+ near(translated.signal,nominal.signal); near(translated.spotSpan,0);
+ near(after.pulseTracks[0].opls.at(-1)-before.pulseTracks[0].opls.at(-1),30);
+ near(translated.pulse.earliestPathDelayNs-nominal.pulse.earliestPathDelayNs,30/299.792458);
+ assert.notDeepEqual(after,before,'physical round-trip segment geometry changes');
+});
+test('native zoom and reduction endpoints retain their authored image conjugates',()=>{
+ for(const [id,cameraId,magnification] of [['IMG-04','image',-10],['IMG-09','image-1x',-1],['IMG-09','image-2x',-2],['ILL-07','image',-.25]]) {
+  const s=parseSketch(JSON.stringify(byId(id).scene),registry);
+  near(objectImageAtCamera(s.elements.find(e=>e.id===cameraId),s.elements).magnification,magnification);
+ }
 });

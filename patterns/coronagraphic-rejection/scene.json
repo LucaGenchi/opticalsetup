@@ -1,0 +1,137 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "wave05-star",
+      "type": "cwlaser",
+      "x": 100,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.1,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "wave05-companion",
+      "type": "cwlaser",
+      "x": 100,
+      "y": 160,
+      "rot": 5,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.001,
+        "beamMode": "line",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "wave05-focus",
+      "type": "lens",
+      "x": 300,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "f": 100,
+        "dia": 100,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "wave05-occult",
+      "type": "beamdump",
+      "x": 400,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "aperture": 6
+      }
+    },
+    {
+      "id": "wave05-relay",
+      "type": "lens",
+      "x": 500,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "f": 100,
+        "dia": 120,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "wave05-lyot",
+      "type": "slit",
+      "x": 700,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "gap": 60,
+        "length": 120
+      }
+    },
+    {
+      "id": "wave05-image",
+      "type": "lens",
+      "x": 900,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "f": 100,
+        "dia": 120,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "wave05-camera",
+      "type": "camera",
+      "x": 1000,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "ch": 100,
+        "pixels": 32,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

@@ -1,0 +1,101 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "forward-input",
+      "type": "cwlaser",
+      "x": 80,
+      "y": 140,
+      "rot": 0,
+      "label": "forward-input",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.1,
+        "beamMode": "line",
+        "beamWidth": 6,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "forward-isolator",
+      "type": "isolator",
+      "x": 250,
+      "y": 140,
+      "rot": 0,
+      "label": "forward-isolator",
+      "showLabel": true,
+      "params": {
+        "aperture": 22
+      }
+    },
+    {
+      "id": "forward-output",
+      "type": "camera",
+      "x": 422,
+      "y": 140,
+      "rot": 0,
+      "label": "forward-output",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "reverse-input",
+      "type": "cwlaser",
+      "x": 600,
+      "y": 350,
+      "rot": 180,
+      "label": "reverse-input",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 0.1,
+        "beamMode": "line",
+        "beamWidth": 6,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "reverse-isolator",
+      "type": "isolator",
+      "x": 350,
+      "y": 350,
+      "rot": 0,
+      "label": "reverse-isolator",
+      "showLabel": true,
+      "params": {
+        "aperture": 22
+      }
+    },
+    {
+      "id": "reverse-output",
+      "type": "camera",
+      "x": 150,
+      "y": 350,
+      "rot": 180,
+      "label": "reverse-output",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}

@@ -18,7 +18,7 @@ import { exampleEntries } from './examples-content.mjs';
 import { calculators } from './calculators-content.mjs';
 import { examples } from '../sketch/js/examples-data.js';
 import { community } from '../sketch/js/community-data.js';
-import { readCatalogue } from './patterns/catalogue.mjs';
+import { readCatalogue, slugify } from './patterns/catalogue.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SITE_URL = 'https://opticalsetup.com';
@@ -37,6 +37,7 @@ async function main() {
     { loc: `${SITE_URL}/sketch/`, priority: '0.9', freq: 'weekly' },
     { loc: `${SITE_URL}/wiki/`, priority: '0.8', freq: 'weekly' },
     { loc: `${SITE_URL}/patterns/`, priority: '0.8', freq: 'weekly' },
+    ...[...new Set(patterns.map(p => p.function))].map(name => ({ loc: `${SITE_URL}/patterns/functions/${slugify(name)}/`, priority: '0.7', freq: 'monthly' })),
     ...patterns.map(p => ({ loc: `${SITE_URL}/patterns/${p.slug}/`, priority: '0.7', freq: 'monthly' })),
     ...wikiEntries.map(e => ({ loc: `${SITE_URL}/wiki/${e.type}/`, priority: '0.7', freq: 'monthly' })),
     { loc: `${SITE_URL}/calculators/`, priority: '0.8', freq: 'weekly' },

@@ -2,5 +2,6 @@
 # Generated output is reproducible and checked by test/patterns.test.js.
 patterns/index.html linguist-generated=true
 patterns/*/index.html linguist-generated=true
-patterns/*/diagram.svg linguist-generated=true
+patterns/*/preview.svg linguist-generated=true
 patterns/*/scene.json linguist-generated=true
+patterns/functions/*/index.html linguist-generated=true

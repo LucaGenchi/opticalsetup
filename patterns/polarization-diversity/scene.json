@@ -1,0 +1,179 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "signal",
+      "type": "cwlaser",
+      "x": 80,
+      "y": 200,
+      "rot": 0,
+      "label": "signal",
+      "showLabel": true,
+      "params": {
+        "wavelength": 1550,
+        "avgPowerW": 0.1,
+        "beamMode": "line",
+        "beamWidth": 6,
+        "pol": 45,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "polarization-demux",
+      "type": "pbs",
+      "x": 250,
+      "y": 200,
+      "rot": 90,
+      "label": "polarization-demux",
+      "showLabel": true,
+      "params": {
+        "size": 25.4
+      }
+    },
+    {
+      "id": "H-mixer",
+      "type": "bs",
+      "x": 400,
+      "y": 200,
+      "rot": 90,
+      "label": "H-mixer",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "H-LO",
+      "type": "cwlaser",
+      "x": 400,
+      "y": 80,
+      "rot": 90,
+      "label": "H-LO",
+      "showLabel": true,
+      "params": {
+        "wavelength": 1550,
+        "avgPowerW": 0.1,
+        "beamMode": "line",
+        "beamWidth": 6,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "H-port-A",
+      "type": "camera",
+      "x": 622,
+      "y": 200,
+      "rot": 0,
+      "label": "H-port-A",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "H-port-B",
+      "type": "camera",
+      "x": 400,
+      "y": 300,
+      "rot": 90,
+      "label": "H-port-B",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "V-fold",
+      "type": "mirror",
+      "x": 250,
+      "y": 500,
+      "rot": 315,
+      "label": "V-fold",
+      "showLabel": true,
+      "params": {
+        "length": 40,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "V-mixer",
+      "type": "bs",
+      "x": 400,
+      "y": 500,
+      "rot": 90,
+      "label": "V-mixer",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "V-LO",
+      "type": "cwlaser",
+      "x": 400,
+      "y": 380,
+      "rot": 90,
+      "label": "V-LO",
+      "showLabel": true,
+      "params": {
+        "wavelength": 1550,
+        "avgPowerW": 0.1,
+        "beamMode": "line",
+        "beamWidth": 6,
+        "pol": 90,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "V-port-A",
+      "type": "camera",
+      "x": 622,
+      "y": 500,
+      "rot": 0,
+      "label": "V-port-A",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "V-port-B",
+      "type": "camera",
+      "x": 400,
+      "y": 672,
+      "rot": 90,
+      "label": "V-port-B",
+      "showLabel": true,
+      "params": {
+        "ch": 60,
+        "pixels": 24,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    }
+  ],
+  "beams": []
+}
