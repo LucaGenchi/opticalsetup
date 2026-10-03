@@ -199,3 +199,39 @@ test('a slice keeps its bounds and its profile through an AOD', () => {
   assert.equal(line(onAxis('filter', 550, { ftype: 'bandpass', center: 800, band: 10 })), line(null));
   assert.equal(line(onAxis('filter', 550, { ftype: 'bandpass', center: 780, band: 10 })), 0);
 });
+
+test('a lamp through one or two AODs keeps its lines, with nothing between them', () => {
+  // A lamp's bandwidth is only the span of its lines. An AOD used to hand
+  // each line a slice reaching into the dark gaps on either side, so a filter
+  // behind it found light where the lamp emits none and too little on a line.
+  const read = (aods, filter) => {
+    const source = createElement('pointsource', 175, 200);
+    Object.assign(source.params, { sourceKind: 'lamp', lampType: 'hg', spread: 360, nrays: 24 });
+    const mirror = createElement('oap', 150, 200);
+    mirror.rot = 180;
+    Object.assign(mirror.params, { length: 110, f: 25 });
+    const elements = [source, mirror];
+    for (let i = 0; i < aods; i++) {
+      const aod = createElement('aod', 300 + 60 * i, 200);
+      Object.assign(aod.params, { centerDeflect: 0, scanRange: 0, aperture: 100 });
+      elements.push(aod);
+    }
+    if (filter) {
+      const el = createElement('filter', 450, 200);
+      Object.assign(el.params, { length: 200, ftype: 'bandpass', ...filter });
+      elements.push(el);
+    }
+    const det = createElement('detector', 600, 200);
+    det.params.aperture = 200;
+    traceScene([...elements, det]);
+    return detectorReading(det.id)?.signal ?? 0;
+  };
+  const onLine = read(0, { center: 546, band: 4 });
+  assert.ok(onLine > 0.1, `the 546 nm line reaches the detector (${onLine})`);
+  for (const aods of [1, 2]) {
+    assert.ok(Math.abs(read(aods, null) - read(0, null)) < 1e-12, `${aods} AOD(s): the whole lamp`);
+    // No mercury line lies within 500 ± 1 nm.
+    assert.equal(read(aods, { center: 500, band: 2 }), 0, `${aods} AOD(s): nothing between the lines`);
+    assert.ok(Math.abs(read(aods, { center: 546, band: 4 }) - onLine) < 1e-12, `${aods} AOD(s): the 546 nm line`);
+  }
+});

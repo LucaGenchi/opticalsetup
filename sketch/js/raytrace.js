@@ -4190,7 +4190,16 @@ function interact(ray, hit) {
               // its slice and the profile it was cut from: declaring it a
               // plain line here let a filter behind the AOD pass or block
               // the whole slice on the strength of its one wavelength.
-              ...(ray.bw > 0 ? {
+              //
+              // A lamp's lines are not slices of anything. Its bandwidth is
+              // only the span of its lines, and wlSamples() still hands each
+              // line midpoint bounds; carrying those would paint light across
+              // the dark gaps between lines, as the shaper's grating layer
+              // already declines to.
+              ...(ray.bw > 0 && ray.spec?.kind === 'lines' ? {
+                spectralContinuum: false,
+                sliceSpec: null,
+              } : ray.bw > 0 ? {
                 spectralContinuum: true,
                 sliceSpec: sliceSpecOf(ray),
                 spectralLo: sample.spectralLo,
