@@ -601,6 +601,30 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://opticalsetup.com/example-setups/wavelength-combining-and-separation-dichroic-mirrors/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/example-setups/polarization-send-return-separation-pbs-and-quarter-wave-plate/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/example-setups/iq-optical-modulator-nested-mach-zehnder/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/example-setups/epi-fluorescence-microscope/</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://opticalsetup.com/community/</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>weekly</changefreq>
