@@ -279,3 +279,37 @@ test('behind a fibre the pump itself is drawn as it was, not guessed at', () => 
   const direct = lastStretch([pulsed(), ...filters]);
   assert.deepEqual(direct.records, [[[796, 804]]]);
 });
+
+test('a conversion onto the wavelength a sample already had is generated light too', () => {
+  // Behind glass the centre sample is already a single line at 800 nm, so a
+  // `custom` conversion to 800 nm changes nothing the tracer splits a ray
+  // for: the ray carries on as itself. The rule has to be applied on that
+  // path as well, or the line is given the pump's spectrum between the
+  // filters' edges (796-804 nm, a 236 fs packet).
+  const line = lastStretch([
+    pulsed(), at('glassrod', 100, { rodlen: 60, dia: 20, material: 'nbk7' }),
+    at('crystal', 250, { convert: 'custom', outWl: 800, efficiency: 0.5 }), bandpass(500, 800, 30), bandpass(700, 800, 8),
+  ]);
+  assert.ok(line.signal > 0.1, `light arrives (${line.signal})`);
+  assert.ok(line.records.every(record => record.every(([lo, hi]) => !(Math.abs(lo - 796) < 1e-6 && Math.abs(hi - 804) < 1e-6))),
+    `no record rebuilt from the pump: ${JSON.stringify(line.records)}`);
+  assert.ok(line.packets.every(width => width < 200), `packets ${line.packets}`);
+});
+
+test('light that loses the flag loses only the new record', () => {
+  // Behind a fibre the light is not known to be described by its record, so
+  // the whole-train record is off. Everything that was there before is not:
+  // a detector behind glass and an AOTF still times the selected line from
+  // the slice's own profile, with or without the fibre. Gating that on the
+  // flag as well made it read 142 fs for 258 fs.
+  const chainOf = beams => {
+    const det = createElement('detector', 900, 0);
+    det.params.aperture = 60;
+    traceScene([pulsed(), at('glassrod', 500, { rodlen: 100, dia: 20, material: 'nbk7' }),
+      at('aotf', 650, { channels: [{ wl: 800, eff: 1 }], passband: 2 }), det], beams);
+    return detectorReading(det.id)?.pulse?.stretchedPulseWidthFs ?? null;
+  };
+  const direct = chainOf([]), throughFibre = chainOf([fibre(200, 400)]);
+  assert.ok(direct > 250 && direct < 265, `without the fibre ${direct} fs`);
+  assert.ok(Math.abs(throughFibre - direct) <= 1e-3 * direct, `through the fibre ${throughFibre} fs, without ${direct} fs`);
+});

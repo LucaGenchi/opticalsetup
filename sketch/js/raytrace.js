@@ -5419,9 +5419,12 @@ let interactionPorts = null;
 //   anything else leaves it false, and so does any ray rebuilt without it
 //     (a fibre's relaunch).
 //
-// Where it is false, the record is used as it always was and nothing is
-// derived from it for that light. An element or a path nobody thought of
-// therefore costs a missing refinement, never an invented number.
+// Where it is false, the whole-train record below is not applied, and the
+// light is handled exactly as it was before that existed. Only the new
+// record depends on the flag; nothing that was already there is gated by
+// it, so a ray that loses the flag loses a refinement and nothing else. An
+// element or a path nobody thought of therefore costs a missing refinement,
+// never an invented number.
 const SPECTRUM_SELECTING_KINDS = new Set([
   'refract', 'metalens', 'grating', 'shaper', 'aod', 'aom', 'filter', 'dichroic', 'aotf', 'etalon',
 ]);
@@ -5516,7 +5519,7 @@ function pulseSpectrumPiece(ray, pulse, power = 1) {
   // Only for light inside the band the pulse was emitted with, though: a
   // harmonic a crystal generated still carries the pump's record, whose phase
   // is not this light's, and a profile to time must not make it look timed.
-  const region = ray.sliceSpec && ray.pulseDescribed === true ? pulseBandRegion(pulse) : null;
+  const region = ray.sliceSpec ? pulseBandRegion(pulse) : null;
   const own = region && rayWithinPulseBand(ray, region) ? ray.sliceSpec : null;
   const spec = own || parent?.spec || pulseBand(pulse) || flatSpectrum(cell[0], cell[1]);
   const lo = Math.max(cell[0], parent?.lo ?? -Infinity), hi = Math.min(cell[1], parent?.hi ?? Infinity);
@@ -6170,7 +6173,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // the etalon's mark is: a pulse an earlier filter reshaped is not
       // re-detected as reshaping above, and would keep the earlier filter's
       // piece for the packets drawn downstream.
-      if (hit.surface.kind === 'aotf' && r.pulse && r.pulseDescribed === true && (sampleCell(r) || r.pulse.spectrumReshaped)) {
+      if (hit.surface.kind === 'aotf' && r.pulse && (sampleCell(r) || r.pulse.spectrumReshaped)) {
         for (const child of children) {
           const selected = 'sliceSpec' in child || ('spec' in child && child.spec && child.spec !== r.spec);
           if (!selected) continue;
@@ -6248,6 +6251,11 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         && !('polMod' in c0)
         && !('pulse' in c0); // state changes split so probes read each segment
       if (single) {
+        // The ray carries on as itself, so the provenance rule is applied to
+        // it here: a conversion that lands on the wavelength the ray already
+        // had (a line generated from a sample that was already a line) takes
+        // this path and is generated light all the same.
+        r.pulseDescribed = childPulseDescribed(r, c0, hit.surface.kind);
         if (c0.intensity !== undefined && r.intensity > 0 && Number.isFinite(r.power)) {
           r.power *= c0.intensity / r.intensity;
         }
