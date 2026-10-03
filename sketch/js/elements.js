@@ -5650,11 +5650,19 @@ registry.ledsource = {
   ],
   svg(el) {
     const h = laserH(el), hh = h / 2, ap = laserAperture(el), c = ledColor(el.params);
-    // The collimating lens sits in the exit port, tinted by the emission:
-    // flat against the housing and convex towards the beam. Its rim reaches
-    // the plane the rays start from, so the beam meets it with no gap.
-    return `<rect x="-46" y="${-hh}" width="92" height="${h}" rx="4" fill="#2f3a36" stroke="#1d2522" stroke-width="1.5"/>` +
-      `<text x="0" y="0" ${isFlipped(el) ? 'transform="rotate(180)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">LED</text>` +
+    // Drawn as the packaged part rather than as a laser box: a finned heat
+    // sink, the die on its mount, the collimator tube its light fills, and the
+    // lens in the exit port -- flat towards the die, convex towards the beam.
+    // The lens rim reaches the plane the rays start from, so the beam meets
+    // it with no gap.
+    const fins = [-46, -41, -36].map(x =>
+      `<rect x="${x}" y="${-hh}" width="3" height="${h}" rx="1" fill="#59636b" stroke="#2a3136" stroke-width="0.8"/>`).join('');
+    return `<rect x="-45" y="${-hh + 5}" width="16" height="${h - 10}" fill="#3a4349"/>` + fins +
+      `<rect x="-31" y="${-hh}" width="25" height="${h}" rx="2" fill="#2f3a36" stroke="#1d2522" stroke-width="1.5"/>` +
+      `<text x="-18.5" y="0" ${isFlipped(el) ? 'transform="rotate(180 -18.5 0)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="700" letter-spacing="0.6" fill="#fff">LED</text>` +
+      `<rect x="-6" y="${-hh + 2}" width="52" height="${h - 4}" fill="#6b757d" fill-opacity="0.55" stroke="#2a3136" stroke-width="1.2"/>` +
+      `<polygon points="-2,-2 46,${-ap} 46,${ap} -2,2" fill="${c}" opacity="0.3"/>` +
+      `<rect x="-6" y="-3.5" width="4" height="7" rx="1" fill="${c}" stroke="#1d2522" stroke-width="0.8"/>` +
       `<path d="M 46,${-ap} L 52,${-ap} Q 58,0 52,${ap} L 46,${ap} Z" fill="${c}" fill-opacity="0.75" stroke="#444" stroke-width="1"/>`;
   },
   surfaces: el => rectAbsorb(92, laserH(el)),
