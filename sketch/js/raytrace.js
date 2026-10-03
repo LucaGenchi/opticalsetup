@@ -677,6 +677,17 @@ function detectorSpectrum(allHits) {
       const hi = Number.isFinite(hit.spectralHi) ? hit.spectralHi : hit.wl + width / 2;
       spec = flatSpectrum(lo, hi);
     }
+    // A lamp's lines are the light itself, not a curve to resample: each
+    // arrives at its own wavelength with its own share of the hit. Put on the
+    // band grid below, a line counts only where a grid point lands within its
+    // nominal half-width, which for mercury is the two ends of the span and
+    // nothing in between.
+    if (spec?.kind === 'lines') {
+      for (const line of spectrumSamples(spec) || []) {
+        addSample(samples, line.wl, hit.power * line.weight, false, hit.sourceId, null);
+      }
+      continue;
+    }
     if (spec) {
       const source = hit.sourceId || null;
       const list = bands.get(source) || [];
