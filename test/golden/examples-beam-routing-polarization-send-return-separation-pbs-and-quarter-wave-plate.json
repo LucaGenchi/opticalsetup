@@ -1,0 +1,108 @@
+{
+ "elements": 10,
+ "beams": 0,
+ "drawables": {
+  "count": 234,
+  "byType": {
+   "poly": 216,
+   "path": 18
+  },
+  "colors": {
+   "#65ff00": 234
+  },
+  "points": 900,
+  "sum": [
+   280100,
+   230300
+  ],
+  "bbox": [
+   27,
+   248.5,
+   525,
+   356
+  ],
+  "digest": "5b0b6b1d"
+ },
+ "drawnElements": {
+  "textlabel:title": "a884d16f",
+  "textlabel:note-1": "f5da9026",
+  "cwlaser:laser": "741f7087",
+  "hwp:hwp": "1dcc48f5",
+  "pbs:pbs": "cb43c238",
+  "qwp:qwp": "2a7eef7d",
+  "lens:focus-lens": "21f36c16",
+  "mirror:target": "5b1838e9",
+  "detector:receive": "13e55ea7",
+  "beamdump:reject": "8eaab845"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "readouts": {
+  "detector:receive": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 532,
+    "bandMin": 532,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#65ff00",
+    "convergence": {
+     "diverging": false,
+     "fullAngleDeg": 0,
+     "slopePerMm": 0
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 1,
+    "detectorType": "Photodetector",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": -1,
+     "s2": 1.2246468e-16,
+     "s3": 0
+    },
+    "outputSignal": 1,
+    "polarization": "Linear 90°",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "detector",
+    "samples": 25,
+    "saturated": false,
+    "signal": 1,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 1,
+      "sourceId": "laser"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#65ff00",
+      "continuum": false,
+      "power": 1,
+      "sourceId": "laser",
+      "wavelength": 532,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 3,
+    "wavelength": 532
+   }
+  }
+ },
+ "fibers": {}
+}

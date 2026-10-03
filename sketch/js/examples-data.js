@@ -9,6 +9,24 @@
 // tools/build-examples-pages.mjs's generated pages.
 export const examples = [
   {
+    "group": "Beam Routing",
+    "name": "Polarization send–return separation — PBS and quarter wave plate",
+    "path": "../Examples/Beam%20Routing/Polarization%20send%E2%80%93return%20separation%20%E2%80%94%20PBS%20and%20quarter-wave%20plate.json",
+    "slug": "polarization-send-return-separation-pbs-and-quarter-wave-plate"
+  },
+  {
+    "group": "Beam Routing",
+    "name": "Wavelength combining and separation — dichroic mirrors",
+    "path": "../Examples/Beam%20Routing/Wavelength%20combining%20and%20separation%20%E2%80%94%20dichroic%20mirrors.json",
+    "slug": "wavelength-combining-and-separation-dichroic-mirrors"
+  },
+  {
+    "group": "Interferometers",
+    "name": "IQ optical modulator — nested Mach–Zehnder",
+    "path": "../Examples/Interferometers/IQ%20optical%20modulator%20%E2%80%94%20nested%20Mach%E2%80%93Zehnder.json",
+    "slug": "iq-optical-modulator-nested-mach-zehnder"
+  },
+  {
     "group": "Interferometers",
     "name": "Mach–Zehnder interferometer",
     "path": "../Examples/Interferometers/Mach%E2%80%93Zehnder%20interferometer.json",
@@ -43,6 +61,12 @@ export const examples = [
     "name": "Coherent Raman microscope — SRS and CARS",
     "path": "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
     "slug": "coherent-raman-microscope-srs-and-cars"
+  },
+  {
+    "group": "Microscopy Implementations",
+    "name": "Epi fluorescence microscope",
+    "path": "../Examples/Microscopy%20Implementations/Epi-fluorescence%20microscope.json",
+    "slug": "epi-fluorescence-microscope"
   },
   {
     "group": "Microscopy Implementations",
