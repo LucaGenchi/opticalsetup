@@ -354,7 +354,6 @@ export const DISPERSION_UNAVAILABLE = {
   unresolved: 'Filtered spectrum not resolvable — its transform at this dispersion exceeds the numerical window',
   broadGdd: 'Band too broad for one quadratic phase — the GDD along the path varies across it; duration unavailable',
   etalon: 'Etalon comb not carried for timing — its fringes and phase are not modelled; duration unavailable',
-  aotfSlice: 'AOTF line selected from a dispersed beam — its shape inside the sample is not carried for timing; duration unavailable',
 };
 
 function declinedDuration(model, extra = {}) {
@@ -400,7 +399,6 @@ export function pulseDurationAfterDispersion(pulse, pathGddFs2 = 0, groupDelayDi
   // A filtered pulse is answered from the spectrum that survived the filter,
   // when the record carries it.
   if (pulse?.etalonComb) return declinedDuration(DISPERSION_UNAVAILABLE.etalon, { totalGddFs2: gdd });
-  if (pulse?.aotfSlice) return declinedDuration(DISPERSION_UNAVAILABLE.aotfSlice, { totalGddFs2: gdd });
   if (pulse?.spectrumReshaped) {
     return Array.isArray(pulse.filteredPieces) && pulse.filteredPieces.length
       ? filteredPulseDuration(pulse, pulse.filteredPieces, gdd)
