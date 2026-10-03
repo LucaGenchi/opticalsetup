@@ -70,7 +70,7 @@ export function scaleSpectrum(spec, factor) {
   if (spec.kind === 'lines') return lineSpectrum(spec.lines.map(l => ({ nm: l.nm * factor, w: l.w })));
   // A filtered profile keeps its shape: the grid stretches with the
   // wavelengths and every weight stays where it was.
-  if (spec.kind === 'sampled' && Array.isArray(spec.w)) return { kind: 'sampled', lo: spec.lo * factor, hi: spec.hi * factor, w: [...spec.w] };
+  if (spec.kind === 'sampled' && Array.isArray(spec.w)) return { kind: 'sampled', lo: spec.lo * factor, hi: spec.hi * factor, w: [...spec.w], ...(spec.interference ? { interference: true } : {}) };
   return null;
 }
 
@@ -197,10 +197,13 @@ function integrate(values, step) {
 // outside a slice on this rule too, rather than the whole profile on a
 // different grid, makes a slice covering the whole profile exactly 1 and a
 // transmission uniform over it exactly that value.
+const profileGrid = spec => spec?.interference ? Math.max(GRID, Math.min(4097, spec.w?.length || GRID)) : GRID;
+
 function incidentOver(spec, a, b) {
   if (!(b > a)) return 0;
-  const step = (b - a) / (GRID - 1);
-  return integrate(Array.from({ length: GRID }, (_, i) => Math.max(0, spectrumWeight(spec, a + step * i))), step);
+  const count = profileGrid(spec);
+  const step = (b - a) / (count - 1);
+  return integrate(Array.from({ length: count }, (_, i) => Math.max(0, spectrumWeight(spec, a + step * i))), step);
 }
 
 // Multiply a ray's spectrum by a transmission function T(wavelength) -> [0,1]
@@ -216,10 +219,11 @@ export function applyTransmission(spec, centerWl, transmissionFn) {
     return t > BLOCK ? { fraction: t, spec: null, wl: centerWl, bw: 0 } : null;
   }
   const [lo, hi] = spectrumSupport(spec);
-  const locateStep = (hi - lo) / (LOCATE_GRID - 1);
+  const grid = profileGrid(spec), locateGrid = Math.max(LOCATE_GRID, grid);
+  const locateStep = (hi - lo) / (locateGrid - 1);
   const incident = [];
   let first = -1, last = -1;
-  for (let i = 0; i < LOCATE_GRID; i++) {
+  for (let i = 0; i < locateGrid; i++) {
     const wl = lo + locateStep * i;
     incident.push(Math.max(0, spectrumWeight(spec, wl)));
     if (incident[i] * Math.max(0, transmissionFn(wl)) > 0) {
@@ -233,10 +237,10 @@ export function applyTransmission(spec, centerWl, transmissionFn) {
   // a 20 nm filter out of a 400 nm source deserves the whole grid, not the
   // handful of coarse points it happens to straddle.
   const from = lo + locateStep * Math.max(0, first - 1);
-  const to = lo + locateStep * Math.min(LOCATE_GRID - 1, last + 1);
-  const step = (to - from) / (GRID - 1);
+  const to = lo + locateStep * Math.min(locateGrid - 1, last + 1);
+  const step = (to - from) / (grid - 1);
   const shaped = [], sliceIncident = [];
-  for (let i = 0; i < GRID; i++) {
+  for (let i = 0; i < grid; i++) {
     const wl = from + step * i;
     sliceIncident.push(Math.max(0, spectrumWeight(spec, wl)));
     shaped.push(sliceIncident[i] * Math.max(0, Math.min(1, transmissionFn(wl))));
@@ -250,7 +254,7 @@ export function applyTransmission(spec, centerWl, transmissionFn) {
   const fraction = total > 0 ? transmittedTotal / total : 0;
   const peak = Math.max(...shaped);
   if (!(fraction > BLOCK) || !(peak > 0)) return null;
-  const profile = { kind: 'sampled', lo: from, hi: to, w: shaped.map(v => v / peak) };
+  const profile = { kind: 'sampled', lo: from, hi: to, w: shaped.map(v => v / peak), ...(spec.interference ? { interference: true } : {}) };
   const stats = spectrumStats(profile);
   if (!stats) return null;
   return {
@@ -275,14 +279,14 @@ export function spectrumSlice(spec, lo, hi) {
     const step = (b - a) / (n - 1);
     return { step, w: Array.from({ length: n }, (_, i) => Math.max(0, spectrumWeight(spec, a + step * i))) };
   };
-  const part = sample(from, to, GRID);
+  const part = sample(from, to, profileGrid(spec));
   const kept = integrate(part.w, part.step);
   const total = incidentOver(spec, supportLo, from) + kept + incidentOver(spec, to, supportHi);
   const peak = Math.max(...part.w);
   if (!(total > 0) || !(peak > 0)) return null;
   const fraction = Math.min(1, kept / total);
   if (!(fraction > BLOCK)) return null;
-  const profile = { kind: 'sampled', lo: from, hi: to, w: part.w.map(v => v / peak) };
+  const profile = { kind: 'sampled', lo: from, hi: to, w: part.w.map(v => v / peak), ...(spec.interference ? { interference: true } : {}) };
   const stats = spectrumStats(profile);
   if (!stats) return null;
   return { fraction, spec: stats.fwhm > 0 ? profile : null, wl: stats.center, bw: stats.fwhm };

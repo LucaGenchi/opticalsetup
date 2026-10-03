@@ -21,6 +21,18 @@ export const examples = [
     "slug": "michelson-interferometer"
   },
   {
+    "group": "Interferometers",
+    "name": "Pulsed Mach–Zehnder",
+    "path": "../Examples/Interferometers/Pulsed%20Mach%E2%80%93Zehnder.json",
+    "slug": "pulsed-mach-zehnder"
+  },
+  {
+    "group": "Interferometers",
+    "name": "Supercontinuum Mach–Zehnder",
+    "path": "../Examples/Interferometers/Supercontinuum%20Mach%E2%80%93Zehnder.json",
+    "slug": "supercontinuum-mach-zehnder"
+  },
+  {
     "group": "Lens Physics",
     "name": "Singlet vs achromat — axial colour",
     "path": "../Examples/Lens%20Physics/Singlet%20vs%20achromat%20%E2%80%94%20axial%20colour.json",

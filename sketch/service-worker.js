@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
-const CACHE_NAME = 'opticalsetup-pwa-v133';
+const CACHE_NAME = 'opticalsetup-pwa-v134';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -55,6 +55,7 @@ const PRECACHE_PATHS = [
   "./js/raytrace.js",
   "./js/share.js",
   "./js/spectrum.js",
+  "./js/spectral-coherence.js",
   "./js/state.js",
   "./js/theme.js",
   "./js/timescale.js",
@@ -68,6 +69,8 @@ const PRECACHE_PATHS = [
   "../Examples/Lens%20Physics/Spherical%20aberration%20%E2%80%94%20sphere%20vs%20asphere%20vs%20ideal%20lens.json",
   "../Examples/Interferometers/Mach%E2%80%93Zehnder%20interferometer.json",
   "../Examples/Interferometers/Michelson%20interferometer.json",
+  "../Examples/Interferometers/Pulsed%20Mach%E2%80%93Zehnder.json",
+  "../Examples/Interferometers/Supercontinuum%20Mach%E2%80%93Zehnder.json",
   "../Examples/Scanning/Polygon%20scanner%20%E2%80%94%20line%20scanning.json",
   "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
   "../Examples/Microscopy%20Implementations/Multiphoton%20microscope%20%E2%80%94%20SHG%20and%20two%20photon%20fluorescence.json",
