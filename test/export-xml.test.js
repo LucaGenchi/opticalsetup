@@ -26,8 +26,8 @@ import { sceneFiles, sceneFromFile } from '../tools/update-golden.mjs';
 // limited to the five predefined entities and character references, only
 // characters XML allows, and a well-formed XML 1.0 declaration. It covers the
 // subset the export writes, and rejects what lies outside it rather than
-// interpret it: a DOCTYPE, any namespace prefix but the built-in `xml:` on
-// attributes, and any default namespace other than SVG's. It returns the
+// interpret it: a DOCTYPE, any prefixed name but the `xml:space` attribute,
+// and any default namespace other than SVG's. It returns the
 // first problem, or null. It is not a validating parser.
 const NAME_START = ':A-Z_a-z\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF'
   + '\\u200C\\u200D\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD';
@@ -146,13 +146,13 @@ function xmlProblem(text) {
         at = ATTRIBUTE.lastIndex;
       }
       // Namespaces are outside the subset: the export declares the SVG
-      // namespace as the default and uses no prefix but the built-in `xml:`
-      // on attributes (xml:space), which needs no declaration and cannot be
+      // namespace as the default and uses one prefixed name, the built-in
+      // `xml:space` attribute, which needs no declaration and cannot be
       // rebound here. Any other prefixed name or declaration is rejected
       // rather than interpreted.
       for (const qualified of [name, ...attributes.keys()]) {
         if (!qualified.includes(':')) continue;
-        if (qualified !== name && /^xml:[^:]+$/.test(qualified)) continue;
+        if (qualified !== name && qualified === 'xml:space') continue;
         return `prefixed name ${qualified} is outside the supported subset (offset ${at})`;
       }
       if (attributes.has('xmlns') && attributes.get('xmlns') !== SVG_NAMESPACE) {
@@ -196,6 +196,8 @@ test('the XML check accepts well-formed markup and names what is wrong with malf
       /prefixed name xmlns:xlink is outside the supported subset/],
     'prefixed attribute': ['<svg><use xlink:href="#a"/></svg>', /prefixed name xlink:href is outside the supported subset/],
     'the built-in prefix redeclared': ['<svg xmlns:xml="http://example.org/"/>', /prefixed name xmlns:xml is outside the supported subset/],
+    'malformed name after the built-in prefix': ['<svg xml:1="x"/>', /malformed <svg> tag|outside the supported subset/],
+    'another attribute on the built-in prefix': ['<svg xml:lang="en"/>', /prefixed name xml:lang is outside the supported subset/],
     'another default namespace': ['<svg><g xmlns="http://www.w3.org/2000/xmlns&#47;"/></svg>',
       /namespace declaration xmlns=.* is outside the supported subset/],
     'control character': ['<svg><text>\u0008</text></svg>', /U\+0008 is not allowed/],
