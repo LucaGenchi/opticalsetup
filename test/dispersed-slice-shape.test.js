@@ -148,3 +148,54 @@ test('an etalon passes the same share of a Gaussian whether or not glass fanned 
     assert.ok(Math.abs(fanned - unfanned) <= 1e-3 * unfanned, `${JSON.stringify(params)}: ${fanned} vs ${unfanned}`);
   }
 });
+
+// A straight line of elements on the axis, read by a detector at 700 mm.
+function inLine(source, elements) {
+  const det = createElement('detector', 700, 0);
+  det.params.aperture = 40;
+  traceScene([source, ...elements, det]);
+  return detectorReading(det.id)?.signal ?? 0;
+}
+const onAxis = (type, x, params = {}) => {
+  const el = createElement(type, x, 0);
+  Object.assign(el.params, params);
+  return el;
+};
+
+test('a slice keeps its profile through a pulse shaper', () => {
+  // A +1 grating layer and a -1 layer of the same pitch fan the band out and
+  // bring it back onto the axis, still as slices. A filter behind the shaper
+  // has to cut them as it cuts any other.
+  const shaper = () => onAxis('slm', 250, {
+    transmissive: true,
+    layers: [{ type: 'grating', orders: '1', lines: 300 }, { type: 'grating', orders: '-1', lines: 300 }],
+  });
+  const whole = inLine(gaussian(), [shaper()]);
+  assert.ok(Math.abs(whole - 1) < 1e-9, `the shaper passes ${whole}`);
+  for (const [center, band] of [[800, 10], [780, 10], [830, 30]]) {
+    const expected = share(center - band / 2, center + band / 2);
+    const traced = inLine(gaussian(), [shaper(), onAxis('filter', 450, { ftype: 'bandpass', center, band })]);
+    assert.ok(Math.abs(traced - expected) <= 1e-3 * expected + 1e-5,
+      `${center} ± ${band / 2} nm: ${traced} vs ${expected}`);
+  }
+});
+
+test('a slice keeps its bounds and its profile through an AOD', () => {
+  // Glass fans the band; an AOD then steers each sample without fanning it
+  // again. Declaring the sample a plain line there let a bandpass behind it
+  // pass the centre sample's whole slice: 0.548 of the beam, not 0.156.
+  const rod = () => onAxis('glassrod', 250, { rodlen: 100, dia: 20, material: 'nbk7' });
+  const aod = () => onAxis('aod', 420, { centerDeflect: 0, scanRange: 0, designWavelength: 800, aperture: 30 });
+  const whole = inLine(gaussian(), [rod(), aod()]);
+  assert.ok(whole > 0.5, `light reaches the detector through the AOD (${whole})`);
+  for (const [center, band] of [[800, 10], [780, 10], [830, 30]]) {
+    const expected = share(center - band / 2, center + band / 2);
+    const traced = inLine(gaussian(), [rod(), aod(), onAxis('filter', 550, { ftype: 'bandpass', center, band })]) / whole;
+    assert.ok(Math.abs(traced - expected) <= 1e-3 * expected + 1e-5,
+      `${center} ± ${band / 2} nm: ${traced} vs ${expected}`);
+  }
+  // A single line through the same AOD is still a line: passed or blocked whole.
+  const line = filter => inLine(lamp(), [aod(), ...(filter ? [filter] : [])]);
+  assert.equal(line(onAxis('filter', 550, { ftype: 'bandpass', center: 800, band: 10 })), line(null));
+  assert.equal(line(onAxis('filter', 550, { ftype: 'bandpass', center: 780, band: 10 })), 0);
+});

@@ -4185,13 +4185,20 @@ function interact(ray, hit) {
               bw: 0,
               spec: null,
               spectralCount: samples.length,
-              spectralContinuum: ray.bw > 0,
-              sliceSpec: sliceSpecOf(ray),
-              spectralLo: sample.spectralLo,
-              spectralHi: sample.spectralHi,
-              spectralWidthNm: Number.isFinite(sample.spectralHi) && Number.isFinite(sample.spectralLo)
-                ? sample.spectralHi - sample.spectralLo
-                : null,
+              // Only a band this AOD fans out itself gets new slices. A
+              // sample fanned out upstream arrives as one already, and keeps
+              // its slice and the profile it was cut from: declaring it a
+              // plain line here let a filter behind the AOD pass or block
+              // the whole slice on the strength of its one wavelength.
+              ...(ray.bw > 0 ? {
+                spectralContinuum: true,
+                sliceSpec: sliceSpecOf(ray),
+                spectralLo: sample.spectralLo,
+                spectralHi: sample.spectralHi,
+                spectralWidthNm: Number.isFinite(sample.spectralHi) && Number.isFinite(sample.spectralLo)
+                  ? sample.spectralHi - sample.spectralLo
+                  : null,
+              } : {}),
             } : {}),
             intensity: ray.intensity * efficiency * sample.weight * (ray.pulse ? 1 : averageTransmission),
             ...(chopped ? { chopped } : {}),
@@ -4570,6 +4577,8 @@ function interact(ray, hit) {
         d: data.transmissive ? d : reflect(d, n), intensity: ray.intensity * (1 - zf), tag: '',
         wl: ray.wl, bw: ray.bw, spec: ray.spec, spectralContinuum: ray.spectralContinuum,
         spectralLo: ray.spectralLo, spectralHi: ray.spectralHi,
+        // A sample fanned out upstream arrives as a slice and stays one.
+        sliceSpec: ray.sliceSpec || null,
       }];
       const L = data.length;
       const mid = mul(add(s.a, s.b), 0.5);
@@ -4799,6 +4808,9 @@ function interact(ray, hit) {
         d: r.d, intensity: r.intensity, tag: r.tag || undefined,
         wl: r.wl, bw: r.bw, spec: r.spec, spectralContinuum: r.spectralContinuum,
         spectralLo: r.spectralLo, spectralHi: r.spectralHi,
+        // The profile a slice was cut from leaves with the slice; a ray that
+        // carries a spectrum of its own has no use for one.
+        sliceSpec: r.bw > 0 ? null : (r.sliceSpec || null),
         speckle: r.speckle || undefined,
       }));
       if (zf > 0) {
