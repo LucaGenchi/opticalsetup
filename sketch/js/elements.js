@@ -2532,6 +2532,11 @@ function opaStateCore(plan, p) {
   return lines.join('\n');
 }
 
+// How far an uncollected point-source ray is drawn, and the capture range a
+// point source had before the range became a parameter (1.5x the glow).
+const POINT_SOURCE_GLOW_MM = 110;
+const POINT_SOURCE_LEGACY_CAPTURE_MM = 165;
+
 export const registry = {
 
   // ---------------- Sources ----------------
@@ -2657,9 +2662,10 @@ export const registry = {
   },
 
   // Unified replacement for the old LED + Light source: one isotropic point
-  // emitter. Rays are evanescent — they fade within ~110 mm (5x a fluorescent
-  // specimen's range) unless a nearby lens / objective / fiber tip collects
-  // them, which keeps 360° emission from flooding the canvas.
+  // emitter. A ray with a lens, a mirror or a fiber tip ahead of it within
+  // the source's capture range is ordinary light; any other ray is drawn as a
+  // glow fading within ~110 mm, which keeps 360° emission from flooding the
+  // canvas. The range is a drawing convention the user sets, not attenuation.
   pointsource: {
     label: 'Point source', category: 'Sources', paletteOrder: 3, size: { w: 30, h: 30 },
     aliases: ['led', 'lamp', 'light source', 'bulb', 'isotropic source', 'point emitter'],
@@ -2685,7 +2691,15 @@ export const registry = {
       },
       { key: 'linesReadout', label: 'Lines', type: 'readout', readout: p => lampLineSummary(p.lampType), show: p => p.sourceKind === 'lamp' },
       { key: 'spread', label: 'Emission angle (°)', type: 'number', min: 10, max: 360, step: 10, def: 360 },
-      { key: 'nrays', label: 'Rays', type: 'number', min: 4, max: 32, step: 2, def: 12 },
+      { key: 'nrays', label: 'Rays', type: 'number', min: 4, max: 128, step: 2, def: 12 },
+      // How far from the source a lens, mirror or fiber tip may sit and still
+      // collect its light. Sketches saved before this control existed traced with a fixed
+      // 165 mm, so they load at that instead of the new default.
+      {
+        key: 'captureRange', label: 'Capture range (mm)', type: 'number',
+        min: POINT_SOURCE_GLOW_MM, max: 5000, step: 5, def: 1000,
+        migrate: () => POINT_SOURCE_LEGACY_CAPTURE_MM,
+      },
       P.autoColor, P.color,
     ],
     svg(el) {
@@ -2716,13 +2730,20 @@ export const registry = {
     source(el) {
       const { spread, nrays } = el.params, out = [];
       const n = Math.max(1, Math.round(nrays));
+      const range = Number(el.params.captureRange);
+      const captureLen = Number.isFinite(range)
+        ? Math.min(5000, Math.max(POINT_SOURCE_GLOW_MM, range))
+        : POINT_SOURCE_LEGACY_CAPTURE_MM;
       for (let i = 0; i < n; i++) {
         // A full-circle source must not duplicate the -180°/+180° sample.
         const aDeg = spread >= 359.999
           ? 360 * i / n
           : (n === 1 ? 0 : -spread / 2 + spread * i / (n - 1));
         const a = aDeg * Math.PI / 180;
-        out.push({ x: 0, y: 0, dx: Math.cos(a), dy: Math.sin(a), evan: true, evanLen: 110 });
+        out.push({
+          x: 0, y: 0, dx: Math.cos(a), dy: Math.sin(a),
+          evan: true, evanLen: POINT_SOURCE_GLOW_MM, captureLen, captureMode: 'collectors',
+        });
       }
       return out;
     },
@@ -5784,7 +5805,7 @@ const ELEMENT_HELP = {
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
   ledsource: 'Emits a collimated beam of incoherent light from an LED behind its own collimator, with an illustrative single-colour or two-band white spectrum. It never interferes, and its residual divergence is not modelled.',
-  pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp — that fades over a short evanescent range unless captured by a nearby lens, objective, mirror, or fiber tip. A parabolic mirror with the source at its focus collimates it.',
+  pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp. A lens, a mirror or a fiber tip within the capture range collects its rays, which carry on as ordinary light; other optics on the way act on that light but collect nothing themselves, and a ray with no collector ahead is drawn as a short fading glow. The range is a drawing convention that keeps the canvas readable, not attenuation. A parabolic mirror with the source at its focus collimates it.',
   objarrow: 'Traces a ray fan from the object’s anchor on the optical axis and separately draws an ideal paraxial image; the image marker does not model downstream clipping.',
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',
