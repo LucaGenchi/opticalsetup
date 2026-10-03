@@ -879,6 +879,7 @@ function detectorSample(ray, surface, u, oplMm, pathKey, sensorMiss = false) {
     // The profile a fanned-out sample's slice carries, so the duration model
     // can time the light that actually arrives in the slice.
     sliceSpec: ray.sliceSpec || null,
+    pulseForeign: ray.pulseForeign === true,
     sourceId: ray.sourceId || null,
     sample: Number.isInteger(ray.sample) ? ray.sample : null,
     sampleCount: Number.isInteger(ray.sampleCount) ? ray.sampleCount : null,
@@ -5395,6 +5396,36 @@ let interactionReshapesPulse = false;
 // the one ray that happened to be traced.
 let interactionPorts = null;
 
+// ---- Whose light a pulse record describes ----
+// A pulse's record -- its emitted band, the pieces filters left of it, its
+// phase -- describes the light a source emitted and what was selected from
+// it. An element that GENERATES light (a crystal's harmonic, a specimen's
+// emission) often leaves the pump's record on it: the record still times the
+// train, but says nothing about the new light's spectrum, however much the
+// two happen to overlap in wavelength. That cannot be read back from
+// wavelengths -- a pump broad enough holds its own second harmonic's band --
+// so it is carried as a mark on the ray, with three rules:
+//
+//   set        by an element of a generating kind, on any child it gives a
+//              new wavelength or a new source id under the incoming record;
+//   preserved  by everything else: selection, fanning, and the elements that
+//              copy a record (an AOM, a chopper, a gate add to it; they do
+//              not replace what it describes);
+//   cleared    only by a child that brings a record describing other light
+//              -- a continuum's, an OPO's, a mixing product's -- which is
+//              told by the record's own identity, not by its presence.
+const GENERATING_KINDS = new Set(['transmit', 'specimen', 'fluor', 'opoin', 'opapump', 'opaseed']);
+const pulseIdentity = pulse => (pulse ? [pulse.sourceId, pulse.centerWavelengthNm, pulse.bandwidthNm,
+  pulse.spectrumKind, pulse.spectrumLoNm, pulse.spectrumHiNm].join('|') : '');
+function childPulseForeign(r, c, kind) {
+  const pulse = 'pulse' in c ? c.pulse : r.pulse;
+  if (!pulse) return false;
+  if ('pulse' in c && pulseIdentity(c.pulse) !== pulseIdentity(r.pulse)) return false;
+  const generated = GENERATING_KINDS.has(kind)
+    && ((c.wl !== undefined && c.wl !== r.wl) || ('sourceId' in c && c.sourceId !== r.sourceId));
+  return Boolean(c.pulseForeign || r.pulseForeign || generated);
+}
+
 // A pulse's recorded spectrum after a port's transmission has acted on all of
 // it: every piece is cut at the port's edges and reshaped, keeping the power
 // each part holds. Returns null when the transmission is uniform over the
@@ -5473,7 +5504,7 @@ function pulseSpectrumPiece(ray, pulse, power = 1) {
   // Only for light inside the band the pulse was emitted with, though: a
   // harmonic a crystal generated still carries the pump's record, whose phase
   // is not this light's, and a profile to time must not make it look timed.
-  const region = ray.sliceSpec ? pulseBandRegion(pulse) : null;
+  const region = ray.sliceSpec && !ray.pulseForeign ? pulseBandRegion(pulse) : null;
   const own = region && rayWithinPulseBand(ray, region) ? ray.sliceSpec : null;
   const spec = own || parent?.spec || pulseBand(pulse) || flatSpectrum(cell[0], cell[1]);
   const lo = Math.max(cell[0], parent?.lo ?? -Infinity), hi = Math.min(cell[1], parent?.hi ?? Infinity);
@@ -5654,6 +5685,7 @@ function loopState(r) {
     r.wl, r.bw, r.spec, r.pol, r.stokes?.s1, r.stokes?.s2, r.stokes?.s3, r.polMod, r.pulse,
     r.gdd, r.groupDelayDifferenceFs, r.medium, r.mediumMaterial, r.ior, r.sourceId, r.color,
     r.dispersed, r.spectralContinuum, r.spectralWidthNm, r.spectralLo, r.spectralHi, r.fanLo, r.fanHi, r.sliceSpec,
+    r.pulseForeign,
     r.approximation, r.parametricPath, r.keepWeak, r.retainWeak, r.hidden, r.sample, r.phaseValid,
   ];
 }
@@ -6126,7 +6158,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // the etalon's mark is: a pulse an earlier filter reshaped is not
       // re-detected as reshaping above, and would keep the earlier filter's
       // piece for the packets drawn downstream.
-      if (hit.surface.kind === 'aotf' && r.pulse && (sampleCell(r) || r.pulse.spectrumReshaped)) {
+      if (hit.surface.kind === 'aotf' && r.pulse && !r.pulseForeign && (sampleCell(r) || r.pulse.spectrumReshaped)) {
         for (const child of children) {
           const selected = 'sliceSpec' in child || ('spec' in child && child.spec && child.spec !== r.spec);
           if (!selected) continue;
@@ -6156,7 +6188,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         }
         // Only for light the record describes: a harmonic a crystal
         // generated still carries the pump's record, and the pump's spectrum
-        // through this port says nothing about it.
+        // through this port says nothing about it. Such light is marked
+        // where it is generated; the band test is a second line.
         const region = pulseBandRegion(r.pulse);
         for (const child of children) {
           if (ownPulse.has(child)) continue;
@@ -6164,7 +6197,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           // A lone ray with its own spectrum, at the first element to reshape
           // the pulse, is the whole train: the record taken from it stands.
           if (!sampleCell(merged) && sharing.get(ports.keyFor(child)) < 2 && !r.pulse.spectrumReshaped) continue;
-          if (!region || !rayWithinPulseBand(merged, region)) continue;
+          if (r.pulseForeign || !region || !rayWithinPulseBand(merged, region)) continue;
           const shape = ports.shapeFor(child);
           const pieces = shape ? reshapedPulsePieces(r.pulse, shape, ports.edges) : null;
           if (!pieces || !pieces.length) continue;
@@ -6350,6 +6383,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           groupDelayDifferenceTrace: ('pulse' in c ? Boolean(c.pulse) : r.groupDelayDifferenceTrace)
             ? [{ opl: r.opl, value: childDelayDifference, linear: false }] : null,
           pulse: 'pulse' in c ? c.pulse : r.pulse,
+          pulseForeign: childPulseForeign(r, c, hit.surface.kind),
           // A caveat is never cleared downstream: no later element computes
           // what the linear-only continuation left out.
           approximation: r.approximation || c.approximation || null,
