@@ -77,7 +77,9 @@ let weakProbeSegments = [];
 // the fraction of that source's emitted power, and every reading of the
 // trace then says it may be low.
 export const WEAK_BRANCH_BUDGET = 1024;
-export const WEAK_LIGHT_NOTE = 'Light untraced: somewhere in this sketch, light ran past the tracer’s weak-branch budget or its depth limit (60 interactions, such as round trips in a cavity); it may have reached this sensor, so the reading is incomplete (usually low, but with interference it can be off either way)';
+export const FIBER_EMISSION_BUDGET = 512;
+const MAX_FIBER_HOPS = 60;
+export const WEAK_LIGHT_NOTE = 'Light untraced: somewhere in this sketch, light ran past the tracer’s weak-branch budget, fiber propagation budget (512 emissions or 60 hops), or depth limit (60 interactions, such as round trips in a cavity); it may have reached this sensor, so the reading is incomplete (usually low, but with interference it can be off either way)';
 let weakBranchBudget = WEAK_BRANCH_BUDGET;
 let weakLightShortfall = new Map();
 // Loops summed in closed form in the last trace (see closedLoop).
@@ -6524,9 +6526,12 @@ export function traceScene(elements, beams = [], options = {}) {
   }
   emitSources(true);
 
-  // fibers that received light re-emit at their far end (up to 3 chained hops)
+  // Follow chained fibers within a bounded emission budget. A feedback loop
+  // must terminate, but a computational stop must never look like absorption.
+  let fiberBudget = Number.isInteger(options.fiberEmissionBudget) && options.fiberEmissionBudget >= 0
+    ? Math.min(options.fiberEmissionBudget, FIBER_EMISSION_BUDGET) : FIBER_EMISSION_BUDGET;
   const emitted = new Set();
-  for (let pass = 0; pass < 3 && couplings.length; pass++) {
+  for (let pass = 0; pass < MAX_FIBER_HOPS && couplings.length; pass++) {
     const batch = couplings.splice(0, couplings.length);
     // An argon capillary sees one pulse, not K ray samples: gather what
     // arrives at the same end from the same source before deriving its pulse
@@ -6568,6 +6573,11 @@ export function traceScene(elements, beams = [], options = {}) {
     for (const [key, c] of emissions) {
       if (emitted.has(key)) continue;
       emitted.add(key);
+      if (fiberBudget === 0) {
+        noteWeakLightShortfall(c.originId, c.power);
+        continue;
+      }
+      fiberBudget--;
       const rays0 = fiberEmissionRays(c);
       if (!rays0) continue;
       const traced = traceRays(rays0, surfaces, couplings, writeHits, signalHits);
@@ -6578,6 +6588,7 @@ export function traceScene(elements, beams = [], options = {}) {
       collectPulseTracks(paths, rays0.length, null, pulseTracks);
     }
   }
+  for (const c of couplings) noteWeakLightShortfall(c.originId, c.power);
   // image formation for Object elements: locate the image of the object's
   // base and tip by tracing each through every lens on its axis using real
   // per-surface thin-lens physics (two rays per point, then intersect the
