@@ -2937,7 +2937,11 @@ function wlSamples(ray, maxK = Infinity) {
   // cell. Weighting it by the density at the node gave its two outer cells
   // nothing -- their nodes sit on the passband edges, where the sampled
   // profile falls to zero -- and the band came out narrower than the light.
-  // An emitted Gaussian or flat band keeps the node rule.
+  // A Gaussian is weighted the same way, for the same reason in milder form:
+  // by density at five nodes its centre sample took 60 % of the power where
+  // its cell holds 55 %, and each outermost one 0.3 % where its cell holds
+  // 1.1 %. A flat band keeps the node rule, which is its cell integral
+  // exactly.
   const cellWeight = index => {
     const a = cellLo(index), b = cellHi(index);
     if (!(b > a)) return 0;
@@ -2947,7 +2951,7 @@ function wlSamples(ray, maxK = Infinity) {
   };
   const weighted = discrete ? samples : samples.map((sample, index) => ({
     ...sample,
-    weight: ray.spec?.kind === 'sampled' ? cellWeight(index)
+    weight: ray.spec?.kind === 'sampled' || ray.spec?.kind === 'gauss' ? cellWeight(index)
       : sample.weight * (index === 0 || index === samples.length - 1 ? 0.5 : 1),
   }));
   const total = weighted.reduce((sum, sample) => sum + sample.weight, 0);
@@ -3337,13 +3341,51 @@ function bandChild(ray, d, lo, hi, tag) {
   };
 }
 
+// The spectrum a fanned-out sample's slice was cut from. A Gaussian or a
+// filtered profile is not flat across a slice, so the slice keeps a reference
+// to it and anything that cuts the slice later takes the power that part
+// really holds. A flat band needs none -- width is its power -- and a lamp's
+// lines have no slices.
+const sliceSpecOf = ray => (ray.bw > 0 && (ray.spec?.kind === 'gauss' || ray.spec?.kind === 'sampled') ? ray.spec : null);
+
+// The share of a slice's power lying in [lo, hi]. Read off one cumulative
+// table per slice, so the parts a slice is cut into always add up to it
+// exactly, however many cuts are made.
+const SLICE_GRID = 257;
+const sliceTables = new WeakMap();
+function slicePart(spec, cell, lo, hi) {
+  const width = cell[1] - cell[0];
+  if (!spec || !(width > 0)) return width > 0 ? (hi - lo) / width : 0;
+  let tables = sliceTables.get(spec);
+  if (!tables) { tables = new Map(); sliceTables.set(spec, tables); }
+  const key = `${cell[0]}|${cell[1]}`;
+  let cumulative = tables.get(key);
+  if (!cumulative) {
+    const step = width / (SLICE_GRID - 1);
+    const weight = i => Math.max(0, spectrumWeight(spec, cell[0] + step * i));
+    cumulative = [0];
+    for (let i = 1; i < SLICE_GRID; i++) cumulative.push(cumulative[i - 1] + (weight(i - 1) + weight(i)) / 2);
+    tables.set(key, cumulative);
+  }
+  const total = cumulative[SLICE_GRID - 1];
+  if (!(total > 0)) return (hi - lo) / width;
+  const at = wl => {
+    const x = Math.min(SLICE_GRID - 1, Math.max(0, (wl - cell[0]) / width * (SLICE_GRID - 1)));
+    const i = Math.min(SLICE_GRID - 2, Math.floor(x));
+    return cumulative[i] + (cumulative[i + 1] - cumulative[i]) * (x - i);
+  };
+  return (at(hi) - at(lo)) / total;
+}
+
 // A wavelength sample fanned out by dispersive refraction travels with bw 0 —
 // it has to, or the next glass surface would fan it out all over again — but
 // it still stands for a slice [spectralLo, spectralHi] of a continuum, and a
 // detector already integrates across that slice. A filter or dichroic has to
 // as well: judging the slice by its node alone passed a whole 60 nm sample of
-// a 400-900 nm supercontinuum through a 1 nm bandpass. The slice is taken as
-// flat inside, which is what the detector assumes when it paints it.
+// a 400-900 nm supercontinuum through a 1 nm bandpass. A slice of a flat band
+// is flat inside; a slice of a Gaussian or filtered profile carries that
+// profile as sliceSpec and is cut by the power each part holds. (A detector
+// still paints either kind flat across the slice.)
 function sampleCell(ray) {
   if (ray.bw) return null;
   if (ray.spectralContinuum && Number.isFinite(ray.spectralLo) && Number.isFinite(ray.spectralHi) && ray.spectralHi > ray.spectralLo) {
@@ -3379,7 +3421,9 @@ function cellChild(ray, d, cell, lo, hi, tag, share = 1) {
     spectralContinuum: true, spectralLo: lo, spectralHi: hi, spectralWidthNm: hi - lo,
     // A grating sample's own record of its slice narrows with it.
     ...(Number.isFinite(ray.fanLo) ? { fanLo: lo, fanHi: hi } : {}),
-    intensity: ray.intensity * share * (hi - lo) / (cell[1] - cell[0]),
+    // The piece is still part of the same profile.
+    ...(ray.sliceSpec ? { sliceSpec: ray.sliceSpec } : {}),
+    intensity: ray.intensity * share * (ray.sliceSpec ? slicePart(ray.sliceSpec, cell, lo, hi) : (hi - lo) / (cell[1] - cell[0])),
   };
 }
 
@@ -3656,6 +3700,7 @@ function interact(ray, hit) {
           spectralLo: s.spectralLo,
           spectralHi: s.spectralHi,
           spectralWidthNm: s.spectralHi - s.spectralLo,
+          sliceSpec: sliceSpecOf(ray),
         }));
       }
       return [transmitAt(ray.wl)];
@@ -3860,7 +3905,9 @@ function interact(ray, hit) {
         // the slice's bounds: this is the slice's power, not its comb -- a
         // second etalon or narrow filter downstream sees the slice as flat.
         const cell = sampleCell(ray);
-        const t = cell ? etalonMeanTransmission(cell[0], cell[1], cosTheta, data) : T(ray.wl);
+        const t = cell
+          ? etalonMeanTransmission(cell[0], cell[1], cosTheta, data, ray.sliceSpec ? nm => spectrumWeight(ray.sliceSpec, nm) : null)
+          : T(ray.wl);
         const out = [];
         if (t > ETALON_FLOOR) out.push({ d, intensity: ray.intensity * t, tag: 'T' });
         if (1 - t > ETALON_FLOOR) out.push({ d: rd, intensity: ray.intensity * (1 - t), tag: 'R' });
@@ -3937,7 +3984,7 @@ function interact(ray, hit) {
             // output as they always have. Only the duration model's fan
             // coverage check reads it.
             ...(ray.bw > 0 && Number.isFinite(sample.lo)
-              ? { fanLo: sample.lo, fanHi: sample.hi } : {}),
+              ? { fanLo: sample.lo, fanHi: sample.hi, sliceSpec: sliceSpecOf(ray) } : {}),
             // A cell an order passes off inside carries the share of the part
             // it propagates in; any other is the node's weight among the
             // orders alive there.
@@ -4110,6 +4157,7 @@ function interact(ray, hit) {
               spec: null,
               spectralCount: samples.length,
               spectralContinuum: ray.bw > 0,
+              sliceSpec: sliceSpecOf(ray),
               spectralLo: sample.spectralLo,
               spectralHi: sample.spectralHi,
               spectralWidthNm: Number.isFinite(sample.spectralHi) && Number.isFinite(sample.spectralLo)
@@ -4640,6 +4688,9 @@ function interact(ray, hit) {
                   // already the whole of what it carries.
                   wl: sample.wl,
                   ...(cell ? { bw: cell.bw, spec: cell.spec } : { bw: 0, spec: null }),
+                  // A cell that travels as a real spectrum needs no reference
+                  // to its parent; a bare slice does.
+                  sliceSpec: cell || lineSpectrum || !(r.bw > 0) ? r.sliceSpec ?? null : sliceSpecOf(r),
                   // A continuum sample keeps its bounds so a detector can
                   // integrate across them. A lamp line stands for itself:
                   // wlSamples() still hands it midpoint bounds, and carrying
@@ -5301,7 +5352,7 @@ function loopState(r) {
   return [
     r.wl, r.bw, r.spec, r.pol, r.stokes?.s1, r.stokes?.s2, r.stokes?.s3, r.polMod, r.pulse,
     r.gdd, r.groupDelayDifferenceFs, r.medium, r.mediumMaterial, r.ior, r.sourceId, r.color,
-    r.dispersed, r.spectralContinuum, r.spectralWidthNm, r.spectralLo, r.spectralHi, r.fanLo, r.fanHi,
+    r.dispersed, r.spectralContinuum, r.spectralWidthNm, r.spectralLo, r.spectralHi, r.fanLo, r.fanHi, r.sliceSpec,
     r.approximation, r.parametricPath, r.keepWeak, r.retainWeak, r.hidden, r.sample, r.phaseValid,
   ];
 }
@@ -5882,6 +5933,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             : (c.wl === undefined || c.wl === r.wl) ? r.spectralLo : null,
           fanLo: Number.isFinite(c.fanLo) ? c.fanLo : (c.wl === undefined || c.wl === r.wl) ? r.fanLo : null,
           fanHi: Number.isFinite(c.fanHi) ? c.fanHi : (c.wl === undefined || c.wl === r.wl) ? r.fanHi : null,
+          // The profile a slice was cut from stays with the slice, and goes
+          // when the light gets a spectrum of its own or a new wavelength.
+          sliceSpec: 'sliceSpec' in c ? (c.sliceSpec || null)
+            : (c.wl === undefined || c.wl === r.wl) && !('spec' in c && c.spec) ? (r.sliceSpec || null) : null,
           spectralHi: Number.isFinite(c.spectralHi) ? c.spectralHi
             : (c.wl === undefined || c.wl === r.wl) ? r.spectralHi : null,
           speckle: c.speckle || r.speckle || false,
