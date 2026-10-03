@@ -1,0 +1,270 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "title",
+   "type": "textlabel",
+   "x": -75,
+   "y": 25,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Wavelength combining and separation**",
+    "fontSize": 24,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "note-combine",
+   "type": "textlabel",
+   "x": -75,
+   "y": 75,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Combine.** Each long-pass dichroic transmits the colours already on the axis\nand reflects one shorter colour onto it.",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "note-split",
+   "type": "textlabel",
+   "x": 525,
+   "y": 75,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Separate.** The same two coatings, met in the opposite order,\npeel the colours off again one at a time.",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "laser-640",
+   "type": "cwlaser",
+   "x": -50,
+   "y": 300,
+   "rot": 0,
+   "label": "640 nm",
+   "showLabel": true,
+   "params": {
+    "wavelength": 640,
+    "avgPowerW": 0.05,
+    "beamMode": "beam",
+    "beamWidth": 2,
+    "pol": 0,
+    "coherenceLengthMm": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw"
+   }
+  },
+  {
+   "id": "laser-561",
+   "type": "cwlaser",
+   "x": 100,
+   "y": 175,
+   "rot": 90,
+   "label": "561 nm",
+   "showLabel": true,
+   "params": {
+    "wavelength": 561,
+    "avgPowerW": 0.05,
+    "beamMode": "beam",
+    "beamWidth": 2,
+    "pol": 0,
+    "coherenceLengthMm": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw"
+   }
+  },
+  {
+   "id": "laser-488",
+   "type": "cwlaser",
+   "x": 250,
+   "y": 175,
+   "rot": 90,
+   "label": "488 nm",
+   "showLabel": true,
+   "params": {
+    "wavelength": 488,
+    "avgPowerW": 0.05,
+    "beamMode": "beam",
+    "beamWidth": 2,
+    "pol": 0,
+    "coherenceLengthMm": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw"
+   }
+  },
+  {
+   "id": "combine-561",
+   "type": "dichroic",
+   "x": 100,
+   "y": 300,
+   "rot": 315,
+   "label": "LP 600",
+   "showLabel": true,
+   "params": {
+    "dtype": "longpass",
+    "cutoff": 600,
+    "center": 550,
+    "band": 50,
+    "bandRefl": 100,
+    "length": 40
+   }
+  },
+  {
+   "id": "combine-488",
+   "type": "dichroic",
+   "x": 250,
+   "y": 300,
+   "rot": 315,
+   "label": "LP 525",
+   "showLabel": true,
+   "params": {
+    "dtype": "longpass",
+    "cutoff": 525,
+    "center": 550,
+    "band": 50,
+    "bandRefl": 100,
+    "length": 40
+   }
+  },
+  {
+   "id": "pickoff",
+   "type": "bs",
+   "x": 400,
+   "y": 300,
+   "rot": 90,
+   "label": "Pick-off",
+   "showLabel": true,
+   "params": {
+    "ratio": 0.9,
+    "size": 25.4
+   }
+  },
+  {
+   "id": "monitor",
+   "type": "spectrometer",
+   "x": 400,
+   "y": 400,
+   "rot": 90,
+   "label": "Monitor",
+   "showLabel": true,
+   "params": {
+    "aperture": 30,
+    "rangeMode": "auto",
+    "rangeMin": 480,
+    "rangeMax": 580,
+    "intensityScale": "density",
+    "labelPeaks": true
+   }
+  },
+  {
+   "id": "monitor-screen",
+   "type": "display",
+   "x": 400,
+   "y": 525,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "monitor",
+    "displayScale": 1,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "split-488",
+   "type": "dichroic",
+   "x": 600,
+   "y": 300,
+   "rot": 315,
+   "label": "LP 525",
+   "showLabel": true,
+   "params": {
+    "dtype": "longpass",
+    "cutoff": 525,
+    "center": 550,
+    "band": 50,
+    "bandRefl": 100,
+    "length": 40
+   }
+  },
+  {
+   "id": "split-561",
+   "type": "dichroic",
+   "x": 750,
+   "y": 300,
+   "rot": 315,
+   "label": "LP 600",
+   "showLabel": true,
+   "params": {
+    "dtype": "longpass",
+    "cutoff": 600,
+    "center": 550,
+    "band": 50,
+    "bandRefl": 100,
+    "length": 40
+   }
+  },
+  {
+   "id": "out-488",
+   "type": "detector",
+   "x": 600,
+   "y": 425,
+   "rot": 90,
+   "label": "488 nm port",
+   "showLabel": true,
+   "params": {
+    "aperture": 26,
+    "timeSpanNs": 0,
+    "timeOffsetNs": 0,
+    "sync": false,
+    "riseTimeNs": 1
+   }
+  },
+  {
+   "id": "out-561",
+   "type": "detector",
+   "x": 750,
+   "y": 425,
+   "rot": 90,
+   "label": "561 nm port",
+   "showLabel": true,
+   "params": {
+    "aperture": 26,
+    "timeSpanNs": 0,
+    "timeOffsetNs": 0,
+    "sync": false,
+    "riseTimeNs": 1
+   }
+  },
+  {
+   "id": "out-640",
+   "type": "detector",
+   "x": 900,
+   "y": 300,
+   "rot": 0,
+   "label": "640 nm port",
+   "showLabel": true,
+   "params": {
+    "aperture": 26,
+    "timeSpanNs": 0,
+    "timeOffsetNs": 0,
+    "sync": false,
+    "riseTimeNs": 1
+   }
+  }
+ ],
+ "beams": []
+}

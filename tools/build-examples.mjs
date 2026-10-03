@@ -22,6 +22,11 @@
 // embed — so the slug is part of this manifest's public contract, not an
 // incidental field.
 
+//
+// Categories are listed in CATEGORY_ORDER, a teaching order from single
+// components to whole instruments; a category not named there follows, in
+// alphabetical order, so a new folder still appears without an edit here.
+
 import { readdir, readFile, writeFile, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -62,6 +67,15 @@ function uniqueSlug(base, taken) {
   return `${base}-${n}`;
 }
 
+const CATEGORY_ORDER = [
+  'Lens Physics',
+  'Reflective Imaging Systems',
+  'Beam Routing',
+  'Interferometers',
+  'Nonlinear Optics',
+  'Microscopy Implementations',
+];
+
 async function main() {
   let listing;
   try {
@@ -69,7 +83,9 @@ async function main() {
   } catch (err) {
     if (err.code === 'ENOENT') { listing = []; } else { throw err; }
   }
-  const categories = listing.filter(d => d.isDirectory()).map(d => d.name).sort((a, b) => a.localeCompare(b));
+  const rank = name => { const i = CATEGORY_ORDER.indexOf(name); return i < 0 ? CATEGORY_ORDER.length : i; };
+  const categories = listing.filter(d => d.isDirectory()).map(d => d.name)
+    .sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
 
   const entries = [];
   const takenSlugs = new Set();

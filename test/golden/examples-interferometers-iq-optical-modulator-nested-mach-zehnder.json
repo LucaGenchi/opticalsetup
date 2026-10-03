@@ -1,0 +1,349 @@
+{
+ "elements": 25,
+ "beams": 0,
+ "drawables": {
+  "count": 650,
+  "byType": {
+   "poly": 600,
+   "path": 50
+  },
+  "colors": {
+   "#6e3b3b": 650
+  },
+  "points": 2500,
+  "sum": [
+   404000,
+   493900
+  ],
+  "bbox": [
+   -98,
+   -1.5,
+   378,
+   428
+  ],
+  "digest": "928a0cab"
+ },
+ "drawnElements": {
+  "textlabel:title": "c73ed59f",
+  "textlabel:note-i": "fe94ef71",
+  "textlabel:note-q": "9f1a76ba",
+  "textlabel:note-out": "06c0bc7d",
+  "cwlaser:laser": "741f7087",
+  "bs:split": "948cfc36",
+  "bs:i-in": "948cfc36",
+  "mirror:i-m1": "81e74feb",
+  "mirror:i-m2": "81e74feb",
+  "bs:i-out": "948cfc36",
+  "phasemodulator:i-plus": "6e8f9cb0",
+  "phasemodulator:i-minus": "6e8f9cb0",
+  "bs:q-in": "948cfc36",
+  "mirror:q-m1": "81e74feb",
+  "mirror:q-m2": "81e74feb",
+  "bs:q-out": "948cfc36",
+  "phasemodulator:q-plus": "6e8f9cb0",
+  "phasemodulator:q-minus": "6e8f9cb0",
+  "phasemodulator:quadrature": "6e8f9cb0",
+  "bs:combine": "948cfc36",
+  "detector:i-monitor": "76f7039b",
+  "detector:q-monitor": "76f7039b",
+  "camera:output": "a584d3f7",
+  "camera:unused": "a584d3f7",
+  "display:output-screen": "3eaf361c"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "readouts": {
+  "camera:output": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 1550,
+    "bandMin": 1550,
+    "centroid": -4.58620224e-11,
+    "coherentPaths": 4,
+    "color": "#ff8989",
+    "convergence": {
+     "diverging": false,
+     "fullAngleDeg": 0,
+     "slopePerMm": 0
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0.0416666668,
+     0.208333334,
+     0.208333334,
+     0.0416666668,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "depositedSignal": 0.500000001,
+    "detectorType": "Camera sensor",
+    "gain": null,
+    "interference": {
+     "applied": true,
+     "coherentSources": 1,
+     "excludedHits": 0,
+     "fallbackReason": null,
+     "partial": false,
+     "pathCount": 4,
+     "phaseIssues": [],
+     "reason": "fields were grouped at an upstream recombination surface"
+    },
+    "normalizedStokes": {
+     "s1": 1,
+     "s2": 0,
+     "s3": 0
+    },
+    "outputSignal": 0.500000001,
+    "polarization": "Linear 0°",
+    "profile": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0.0416666668,
+     0.208333334,
+     0.208333334,
+     0.0416666668,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "profileColors": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     "#ff8989",
+     "#ff8989",
+     "#ff8989",
+     "#ff8989",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "profileMode": "coherent",
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "camera",
+    "samples": 25,
+    "saturated": false,
+    "signal": 0.500000001,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.500000001,
+      "sourceId": "laser"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#6e3b3b",
+      "continuum": false,
+      "power": 0.500000001,
+      "sourceId": "laser",
+      "wavelength": 1550,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 3,
+    "wavelength": 1550
+   }
+  },
+  "camera:unused": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 1550,
+    "bandMin": 1550,
+    "centroid": -4.57031774e-11,
+    "coherentPaths": 4,
+    "color": "#ff8989",
+    "convergence": {
+     "diverging": false,
+     "fullAngleDeg": 0,
+     "slopePerMm": 0
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0.0416666666,
+     0.208333333,
+     0.208333333,
+     0.0416666666,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "depositedSignal": 0.499999999,
+    "detectorType": "Camera sensor",
+    "gain": null,
+    "interference": {
+     "applied": true,
+     "coherentSources": 1,
+     "excludedHits": 0,
+     "fallbackReason": null,
+     "partial": false,
+     "pathCount": 4,
+     "phaseIssues": [],
+     "reason": "fields were grouped at an upstream recombination surface"
+    },
+    "normalizedStokes": {
+     "s1": 1,
+     "s2": 0,
+     "s3": 0
+    },
+    "outputSignal": 0.499999999,
+    "polarization": "Linear 0°",
+    "profile": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0.0416666666,
+     0.208333333,
+     0.208333333,
+     0.0416666666,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "profileColors": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     "#ff8989",
+     "#ff8989",
+     "#ff8989",
+     "#ff8989",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "profileMode": "coherent",
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "camera",
+    "samples": 25,
+    "saturated": false,
+    "signal": 0.499999999,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.499999999,
+      "sourceId": "laser"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#6e3b3b",
+      "continuum": false,
+      "power": 0.499999999,
+      "sourceId": "laser",
+      "wavelength": 1550,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 3,
+    "wavelength": 1550
+   }
+  }
+ },
+ "fibers": {}
+}

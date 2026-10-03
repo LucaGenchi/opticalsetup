@@ -343,7 +343,7 @@ export const exampleEntries = [
   },
   {
     match: 'Spherical aberration — sphere vs asphere vs ideal lens',
-    title: 'Sphere, asphere, and the lens that does not exist',
+    title: 'Spherical aberration: spherical lens, aspheric lens and ideal thin lens',
     tagline: 'Three 1-inch lenses of the same 25 mm focal length under one 20 mm monochromatic bundle: a perfect point, a 7.5 mm smear, and a point again.',
     html: `
       <p>The thin-lens construction every optics course starts with sends every ray
@@ -1149,5 +1149,313 @@ export const exampleEntries = [
     ],
     resources: [],
     related: ['fiber', 'pulsecompressor', 'autocorrelator', 'pulsedlaser', 'display'],
+  },
+  {
+    match: 'Wavelength combining and separation — dichroic mirrors',
+    title: 'Wavelength combining and separation',
+    tagline: 'Three lasers put on one axis by two dichroic mirrors, then taken apart again by the same two coatings: colour used as a routing label.',
+    html: `
+      <p>Two mutually incoherent beams of the same colour and polarization cannot
+      be merged onto one axis without losing power: a 50:50 beamsplitter that
+      overlaps them sends half of each the wrong way. (Two beams locked in phase
+      can be — that is coherent beam combining, and it needs the phase held.)
+      Two beams of <em>different</em> colour can, with no phase to hold, because
+      a mirror can be made to tell them apart. A dichroic mirror is a multilayer
+      interference coating that reflects one wavelength band and transmits
+      another, with almost nothing absorbed${cite(1)}. Put it at 45° where a
+      second laser crosses the first, and both leave along the same line.</p>
+      <p>The trick chains. Each further dichroic transmits everything already
+      on the axis and reflects one more colour onto it, which is how the laser
+      combiners that feed confocal microscopes and flow cytometers are built,
+      and — with gratings or many more, much narrower filters — how
+      wavelength-division multiplexing puts tens of channels into one optical
+      fibre${cite(2)}. The same idea scales power as well as channel count:
+      combining many lasers of slightly different wavelength onto one axis
+      raises the brightness beyond what any single emitter gives, which is
+      spectral beam combining${cite(3)}.</p>
+      <p>Run backwards, the same coatings separate. A beam carrying several
+      colours meets the dichroics in turn and each one peels off its own band —
+      the detection side of a multicolour fluorescence microscope, or the
+      demultiplexer at the far end of the fibre.</p>
+      <p>What limits a real system is the edge. A coating's transition from
+      reflecting to transmitting has a finite width, it moves to shorter
+      wavelengths as the angle of incidence grows, and at 45° it sits at
+      different wavelengths for s- and p-polarized light${cite(1)}. Colours
+      therefore have to be spaced further apart than the edge is wide, and
+      every extra dichroic adds a little loss and a little leakage to every
+      channel that passes it.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>Three CW lasers — 640, 561 and 488&nbsp;nm — are combined by two
+      long-pass <a href="../../wiki/dichroic/">dichroic mirrors</a>. The 640&nbsp;nm
+      beam starts on the axis. The first dichroic, with its edge at 600&nbsp;nm,
+      transmits it and reflects the 561&nbsp;nm beam arriving from the side; the
+      second, with its edge at 525&nbsp;nm, transmits both and reflects the
+      488&nbsp;nm beam. From there on the three colours are one beam.</p>
+      <p>A 10% pick-off sends a sample of that shared beam to a spectrometer,
+      whose screen shows the three lines together. The rest meets the same two
+      edges in the opposite order: 525&nbsp;nm takes the blue off first, 600&nbsp;nm
+      takes the yellow, and the red continues straight on. Each detector reads
+      0.9 of one laser, at one wavelength.</p>
+      <p>Things to try. Select the first separating dichroic and drag its edge
+      below 488&nbsp;nm: the blue is no longer reflected there, travels on, and
+      arrives at the 561&nbsp;nm port together with the yellow. Do the same to the
+      dichroic that brings the 488&nbsp;nm laser in and that laser never joins
+      the axis at all — it goes straight through its own combiner. Change a
+      laser's wavelength across an edge and it changes port.</p>`,
+    limitations: `<p>The dichroic here is an ideal step: everything on one side
+      of the edge is reflected, everything on the other is transmitted, and nothing
+      is lost. The edge does not shift with the angle of incidence or the polarization,
+      and it has no width, so there is no leakage between ports and no minimum channel
+      spacing. A real combiner has all three, and they are usually what sets how many
+      colours it can carry.</p>
+      <p>Coating absorption, ghost reflections from the uncoated face, and the small
+      sideways displacement a beam picks up crossing a tilted plate are not modelled
+      either. The combined colours are drawn as one beam but stay incoherent with each
+      other: this is power routing, not interference.</p>`,
+    citations: [
+      { label: 'RP Photonics Encyclopedia — Dichroic Mirrors', url: 'https://www.rp-photonics.com/dichroic_mirrors.html' },
+      { label: 'Wikipedia — Wavelength-division multiplexing', url: 'https://en.wikipedia.org/wiki/Wavelength-division_multiplexing' },
+      { label: 'T. Y. Fan, “Laser beam combining for high-power, high-radiance sources,” IEEE Journal of Selected Topics in Quantum Electronics 11, 567–577 (2005)', url: 'https://doi.org/10.1109/JSTQE.2005.850241' },
+    ],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Spectral Beam Combining', url: 'https://www.rp-photonics.com/spectral_beam_combining.html' },
+      { label: 'RP Photonics Encyclopedia — Coherent Beam Combining', url: 'https://www.rp-photonics.com/coherent_beam_combining.html' },
+    ],
+    related: ['dichroic', 'cwlaser', 'bs', 'spectrometer', 'detector', 'display'],
+  },
+  {
+    match: 'Polarization send–return separation — PBS and quarter wave plate',
+    title: 'Polarization send–return separation',
+    tagline: 'A polarizing beamsplitter and a quarter-wave plate send light out and take the reflection off at a different port, without the 75% loss of a plain beamsplitter.',
+    html: `
+      <p>Many instruments send a beam out and want the light that comes back
+      along the same line: a disc reader, a reflectance microscope, a
+      displacement interferometer, a double-passed modulator. A plain 50:50
+      beamsplitter does it, but wastefully — half the light is lost on the way
+      out and half of the return on the way back, so at best a quarter of the
+      power reaches the detector, and another quarter goes straight back into
+      the laser.</p>
+      <p>Polarization does it without the loss. A polarizing beamsplitter (PBS)
+      transmits one linear polarization and reflects the orthogonal one. Send
+      the transmitted polarization through a quarter-wave plate with its axis at
+      45° and it becomes circular. On reflection the handedness reverses, and
+      the second pass through the same plate turns it back into linear light —
+      but rotated by 90°. Two passes through a quarter-wave plate are one pass
+      through a half-wave plate${cite(1)}. The return is now the polarization
+      the PBS reflects, so it leaves by the side port instead of retracing its
+      way to the source.</p>
+      <p>The arrangement is the standard way to double-pass an acousto-optic
+      modulator, where the return has to be separated from an input it exactly
+      overlaps${cite(2)}, and it is the reason a quarter-wave plate sits in front
+      of the objective in an optical pickup.</p>
+      <p>It is not an optical isolator, although it is often used as one. It
+      works only if the target hands the polarization back as it received it. A
+      surface that depolarizes, or anything birefringent in the double-passed
+      path, returns some light in the original polarization, and that part goes
+      back to the laser. A Faraday isolator rotates the polarization
+      non-reciprocally and blocks the return whatever happened to it on the
+      way${cite(3)}.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>A horizontally polarized 532&nbsp;nm laser passes a
+      <a href="../../wiki/hwp/">half-wave plate</a>, a
+      <a href="../../wiki/pbs/">polarizing beamsplitter</a> and a
+      <a href="../../wiki/qwp/">quarter-wave plate</a> at 45°, and a lens focuses
+      it on a mirror standing in for the target. The return is recollimated by
+      the same lens, crosses the quarter-wave plate a second time, and the PBS
+      reflects all of it to the return port, which reads 1.</p>
+      <p>Things to try. Rotate the quarter-wave plate to 0°: its axis is now
+      along the polarization, it does nothing, and the whole return retraces to
+      the laser — the return port goes dark. At 22.5° the split is half and half.
+      That curve is what an alignment walks up: maximise the side port and the
+      plate is at 45°.</p>
+      <p>The half-wave plate in front is the other common use of the same cube.
+      Rotating it turns the input polarization, the PBS sends the unwanted part
+      to the beam dump on the opposite side, and what is left goes out: a
+      continuously variable attenuator. At 22.5° half the power is sent, and the
+      return port reads 0.5; at 45° nothing is sent at all. Note that the
+      rejected input and the return leave by <em>opposite</em> faces of the cube,
+      because they arrive from opposite directions.</p>`,
+    limitations: `<p>The polarization is carried as a Stokes vector through ideal
+      components: the PBS has perfect extinction, the wave plates have exactly their
+      nominal retardance at this wavelength, and the mirror reflects without changing
+      the polarization state other than by reversing the direction of travel. A real
+      cube leaks about a part in a thousand, a real plate is a quarter wave at one
+      wavelength and one angle only, and a real target may depolarize — each of these
+      sends some of the return back to the source, and none is modelled.</p>
+      <p>There is no interference between the outgoing and returning beams, no
+      standing wave, and no feedback into the laser: light that retraces to the source
+      simply ends there.</p>`,
+    citations: [
+      { label: 'RP Photonics Encyclopedia — Waveplates', url: 'https://www.rp-photonics.com/waveplates.html' },
+      { label: 'E. A. Donley, T. P. Heavner, F. Levi, M. O. Tataw, S. R. Jefferts, “Double-pass acousto-optic modulator system,” Review of Scientific Instruments 76, 063112 (2005)', url: 'https://doi.org/10.1063/1.1930095' },
+      { label: 'RP Photonics Encyclopedia — Faraday Isolators', url: 'https://www.rp-photonics.com/faraday_isolators.html' },
+    ],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Polarizers', url: 'https://www.rp-photonics.com/polarizers.html' },
+    ],
+    related: ['pbs', 'qwp', 'hwp', 'mirror', 'lens', 'detector', 'beamdump'],
+  },
+  {
+    match: 'IQ optical modulator — nested Mach–Zehnder',
+    title: 'I/Q optical modulator',
+    tagline: 'Two push-pull Mach–Zehnder modulators nested inside a third, 90° apart: one sets the real part of the optical field, the other the imaginary part.',
+    html: `
+      <p>An optical field has an amplitude and a phase, or equivalently two
+      independent components a quarter of a cycle apart: the in-phase part
+      <em>I</em> and the quadrature part <em>Q</em>. A modulator that changes only
+      the intensity uses one of them. Coherent optical links use both, and both
+      polarizations, which is most of how fibre capacity grew from 10 to 100
+      gigabits per second and beyond on the same glass${cite(1)}.</p>
+      <p>The device that writes <em>I</em> and <em>Q</em> is three
+      interferometers. The light is split in two. Each half passes through its own
+      Mach–Zehnder modulator, driven <em>push-pull</em>: a phase +φ/2 in one arm
+      and −φ/2 in the other. The two arms then recombine to a field proportional to
+      sin(φ/2) or cos(φ/2), depending on the port — a real number that goes
+      smoothly from +1 through zero to −1, with no phase rotation along the way.
+      That is what push-pull buys: driving one arm alone gives the same intensity
+      but drags the phase with it, which is chirp${cite(2)}. One of the two
+      branches is then delayed by a quarter of a wavelength, and the branches are
+      recombined. The output field is <em>I</em>&nbsp;+&nbsp;i<em>Q</em>, with
+      <em>I</em> and <em>Q</em> set independently by two voltages.</p>
+      <p>Setting each of them to ±1 gives the four points of QPSK; more drive
+      levels give 16-QAM and denser constellations${cite(2)}. In practice the
+      three interferometers are waveguides on one lithium niobate or indium
+      phosphide chip a few centimetres long, and the path lengths that have to be
+      held to a small fraction of a wavelength are held by the chip
+      itself, with three slow bias voltages trimming what is left${cite(3)}.</p>
+      <p>One feature is intrinsic rather than a flaw: combining two fields in
+      quadrature on a 50:50 combiner puts half of their power in the port that is
+      not used. An I/Q modulator at full drive passes at most half its input.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>The same device in free space, at 1550&nbsp;nm: a splitter, two
+      Mach–Zehnder interferometers built from
+      <a href="../../wiki/bs/">beamsplitters</a> and mirrors, a
+      <a href="../../wiki/phasemodulator/">phase modulator</a> in each of their four
+      arms, a fifth holding the 90° shift, and a combiner. Every path is traced
+      and the fields are added with their phases, so the readings come from the
+      geometry and not from a formula for the device.</p>
+      <p>Each child interferometer has two outputs. One goes on to the combiner;
+      the other lands on a monitor detector, which is where a real modulator has
+      its monitor photodiode. As shipped, both children are driven by a full 180°
+      (+90° and −90° in their arms): the monitors are dark, <em>I</em>&nbsp;=&nbsp;<em>Q</em>&nbsp;=&nbsp;1,
+      and the output and the unused port each carry 0.5.</p>
+      <p>Things to try, in this order.</p>
+      <p><strong>Change a sign.</strong> Swap the two drives of the Q modulator to
+      −90° and +90°. <em>Q</em> is now −1: a different QPSK symbol. Nothing on
+      the screen moves, because the power is <em>I</em>²&nbsp;+&nbsp;<em>Q</em>²
+      and a detector does not see the phase of the light. That is the meaning of
+      quadrature — the two components do not interfere.</p>
+      <p><strong>Remove the quadrature.</strong> Set the 90° shifter to 0° and
+      repeat. Now the two branches do interfere: with both at +1 the unused port
+      takes everything and the output is dark, and flipping the sign of <em>Q</em>
+      moves all of it to the output. The sign that was invisible is now the whole
+      signal, which is also why a real device needs that bias held.</p>
+      <p><strong>Turn one down.</strong> Reduce the I drives towards 0° and its
+      light moves from the output to the I monitor, as sin²(φ/2). With both
+      children undriven nothing leaves the modulator at all: it is biased at its
+      null, as a real one is.</p>`,
+    limitations: `<p>The drives here are static phases. Nothing is modulated in
+      time, so there is no symbol stream, no bandwidth, no drive voltage or
+      V<sub>π</sub>, and no chirp from an imperfect push-pull. The phase modulators
+      are ideal: exactly the phase asked for, at this wavelength, with no loss.</p>
+      <p>The detectors measure power. There is no coherent receiver — no local
+      oscillator, no 90° hybrid — so the constellation itself is never displayed;
+      what the setup shows is the power relations that follow from it. The
+      interferometers are exactly balanced because they are drawn on a grid: there
+      is no drift, no bias control, no finite extinction from unequal splitting,
+      and none of the waveguide loss of a real chip.</p>
+      <p>The interference is that of an ideal monochromatic CW source through
+      unitary non-polarizing beamsplitters and fully reflective flat mirrors, the
+      same model as the Mach–Zehnder example.</p>`,
+    citations: [
+      { label: 'K. Kikuchi, “Fundamentals of coherent optical fiber communications,” Journal of Lightwave Technology 34, 157–179 (2016)', url: 'https://doi.org/10.1109/JLT.2015.2463719' },
+      { label: 'P. J. Winzer, R.-J. Essiambre, “Advanced optical modulation formats,” Proceedings of the IEEE 94, 952–985 (2006)', url: 'https://doi.org/10.1109/JPROC.2006.873438' },
+      { label: 'C. Wang et al., “Integrated lithium niobate electro-optic modulators operating at CMOS-compatible voltages,” Nature 562, 101–104 (2018)', url: 'https://doi.org/10.1038/s41586-018-0551-y' },
+    ],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Electro-optic Modulators', url: 'https://www.rp-photonics.com/electro_optic_modulators.html' },
+      { label: 'Wikipedia — In-phase and quadrature components', url: 'https://en.wikipedia.org/wiki/In-phase_and_quadrature_components' },
+    ],
+    related: ['phasemodulator', 'bs', 'mirror', 'camera', 'detector', 'cwlaser'],
+  },
+  {
+    match: 'Epi fluorescence microscope',
+    title: 'Epi-fluorescence microscope',
+    tagline: 'One objective both illuminates the sample and collects its fluorescence; a dichroic mirror and two filters keep the excitation out of the camera.',
+    html: `
+      <p>A fluorescent molecule absorbs light of one colour and, a few nanoseconds
+      later, emits light of a longer wavelength. The emission is weak — typically
+      many orders of magnitude weaker than the light that excites it — and it
+      leaves in all directions. A fluorescence microscope is therefore mostly an
+      exercise in separating a faint colour from a bright one${cite(1)}.</p>
+      <p>The epi arrangement does the first part of that with geometry. The
+      excitation is sent to the sample <em>through the objective</em>, so most of
+      it carries on through the sample and away from the detector; the objective
+      then collects only the fluorescence emitted back towards it, plus whatever
+      excitation the sample scatters or reflects. The rest is done with three
+      coatings, usually mounted together in one cube${cite(1,2)}:</p>
+      <p>an <strong>excitation filter</strong> that passes only the band the dye
+      absorbs; a <strong>dichroic mirror</strong> that reflects that band towards
+      the objective and transmits the longer-wavelength emission coming back; and
+      an <strong>emission filter</strong> in front of the detector that passes
+      the dye's emission band and blocks, by five or six orders of magnitude,
+      the excitation that still got through the dichroic.</p>
+      <p>The objective is used in the infinity configuration: the light from a
+      point in its focal plane leaves it collimated, crosses the dichroic and the
+      emission filter as a parallel beam — which is why flat plates can be put
+      there without disturbing the image — and a tube lens focuses it on the
+      camera.</p>
+      <p>The filter set is chosen for the dye. Enhanced GFP, used here, absorbs
+      most strongly near 488&nbsp;nm and emits with a peak near 507&nbsp;nm${cite(3)},
+      so its excitation and emission bands are only about 20&nbsp;nm apart and the
+      dichroic edge has to fall between them.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>A 488&nbsp;nm laser passes a 488/10 excitation filter and is reflected
+      downwards by a long-pass <a href="../../wiki/dichroic/">dichroic</a> with its
+      edge at 495&nbsp;nm. The <a href="../../wiki/objective/">objective</a> focuses
+      it into a GFP sample on a <a href="../../wiki/stage/">piezo stage</a>, which
+      scans the sample sideways under the fixed focus.</p>
+      <p>The sample emits GFP's band in all directions. The part that falls
+      inside the objective's acceptance cone is collected and collimated, passes
+      the dichroic, is trimmed by a 525/50 emission filter, and is focused by a
+      100&nbsp;mm tube lens onto the camera. The camera's reading is about a
+      thousandth of the laser power, and its spectrum lies entirely between 500
+      and 550&nbsp;nm.</p>
+      <p>Things to try. Select the camera and look at the wavelength it reports:
+      no 488&nbsp;nm. Then move the emission filter's centre to 620&nbsp;nm — clear
+      of GFP's band — and the camera goes dark, because there was never any
+      excitation leaking through for it to pass instead. Move the dichroic edge
+      below 488&nbsp;nm and the laser goes straight through it and never reaches
+      the sample. Lower the objective's NA and the collected signal falls with the
+      width of the cone.</p>`,
+    limitations: `<p>The fluorescence is qualitative. The sample converts a set
+      fraction of the excitation that reaches it into the dye's emission band and
+      radiates it isotropically in the plane of the drawing; there is no quantum yield,
+      extinction coefficient, concentration, saturation or bleaching, and the
+      thousandth that reaches the camera is a 2D collection fraction, not the solid
+      angle of a real objective.</p>
+      <p>The filters and the dichroic are ideal: full transmission inside the band,
+      none outside, edges that do not move with angle. So the excitation rejection
+      here is perfect, where a real filter set is specified by how many orders of
+      magnitude it achieves, and the sample neither reflects nor scatters the laser
+      back. Autofluorescence and background are absent.</p>
+      <p>There is no image. The 6&nbsp;mm laser beam underfills the objective's 10&nbsp;mm pupil and
+      is brought to a focus; nothing models diffraction, the point-spread function, resolution, or
+      the camera as a 2D sensor. The stage motion is a display animation of the
+      sample under the focus, and a uniform sample gives the same reading
+      everywhere.</p>`,
+    citations: [
+      { label: 'J. W. Lichtman, J.-A. Conchello, “Fluorescence microscopy,” Nature Methods 2, 910–919 (2005)', url: 'https://doi.org/10.1038/nmeth817' },
+      { label: 'Nikon MicroscopyU — Introduction to Fluorescence Microscopy', url: 'https://www.microscopyu.com/techniques/fluorescence/introduction-to-fluorescence-microscopy' },
+      { label: 'R. Y. Tsien, “The green fluorescent protein,” Annual Review of Biochemistry 67, 509–544 (1998)', url: 'https://doi.org/10.1146/annurev.biochem.67.1.509' },
+    ],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Fluorescence Microscopy', url: 'https://www.rp-photonics.com/fluorescence_microscopy.html' },
+    ],
+    related: ['objective', 'dichroic', 'filter', 'stage', 'camera', 'lens', 'cwlaser'],
   },
 ];
