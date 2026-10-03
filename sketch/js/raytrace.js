@@ -16,7 +16,7 @@ import {
 import { planOpa, chirpedSignalPulse, MAX_OPA_STAGES, MIN_PHASE_KEPT_GAIN } from './opa.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap, traceValueAt } from './pulses.js';
-import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband } from './aotf.js';
+import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband, aotfWingHalfWidth } from './aotf.js';
 import { aodDeflectionDeg } from './acousto-optic.js';
 import { capillaryLossDbPerM, fiberPropagation, hollowCoreCoefficients } from './fiber.js';
 import { propagateEnvelope, fieldMetrics } from './pulse-field.js';
@@ -3377,6 +3377,21 @@ function slicePart(spec, cell, lo, hi) {
   return (at(hi) - at(lo)) / total;
 }
 
+// A slice as a spectrum of its own: the profile it was cut from, between its
+// bounds, or a flat band when it carries none. For an element whose
+// transmission varies smoothly inside the slice, which has to be integrated
+// over it rather than read at the slice's one wavelength.
+function sliceProfile(ray, cell) {
+  if (ray.sliceSpec) {
+    const n = 65;
+    const w = Array.from({ length: n }, (_, i) =>
+      Math.max(0, spectrumWeight(ray.sliceSpec, cell[0] + (cell[1] - cell[0]) * i / (n - 1))));
+    const peak = Math.max(...w);
+    if (peak > 0) return { kind: 'sampled', lo: cell[0], hi: cell[1], w: w.map(v => v / peak) };
+  }
+  return flatSpectrum(cell[0], cell[1]);
+}
+
 // A wavelength sample fanned out by dispersive refraction travels with bw 0 —
 // it has to, or the next glass surface would fan it out all over again — but
 // it still stands for a slice [spectralLo, spectralHi] of a continuum, and a
@@ -3696,11 +3711,17 @@ function interact(ray, hit) {
         return samples.map((s, i) => ({
           ...transmitAt(s.wl, ray.intensity * s.weight, `w${i}`, 0),
           spectralCount: samples.length,
-          spectralContinuum: true,
-          spectralLo: s.spectralLo,
-          spectralHi: s.spectralHi,
-          spectralWidthNm: s.spectralHi - s.spectralLo,
-          sliceSpec: sliceSpecOf(ray),
+          // A lamp's lines are not slices of a continuum: each leaves as the
+          // line it is. wlSamples() still hands a line midpoint bounds, and
+          // carrying those let a filter behind the glass cut "slices" that
+          // reach into the dark gaps between lines.
+          ...(ray.spec?.kind === 'lines' ? { spectralContinuum: false } : {
+            spectralContinuum: true,
+            spectralLo: s.spectralLo,
+            spectralHi: s.spectralHi,
+            spectralWidthNm: s.spectralHi - s.spectralLo,
+            sliceSpec: sliceSpecOf(ray),
+          }),
         }));
       }
       return [transmitAt(ray.wl)];
@@ -3992,7 +4013,8 @@ function interact(ray, hit) {
             // from spectralLo/Hi so spectrometers go on reading a grating's
             // output as they always have. Only the duration model's fan
             // coverage check reads it.
-            ...(ray.bw > 0 && Number.isFinite(sample.lo)
+            // A lamp's line has no slice: it is already all it carries.
+            ...(ray.bw > 0 && Number.isFinite(sample.lo) && ray.spec?.kind !== 'lines'
               ? { fanLo: sample.lo, fanHi: sample.hi, sliceSpec: sliceSpecOf(ray) } : {}),
             // A cell an order passes off inside carries the share of the part
             // it propagates in; any other is the node's weight among the
@@ -4050,6 +4072,30 @@ function interact(ray, hit) {
         const transmission = aotfChannelTransmission(c, passband);
         notePulseSelection(transmission);
 
+        // A sample fanned out upstream stands for a slice of spectrum, and a
+        // channel is usually narrower than the slice: read at the sample's
+        // one wavelength it took the whole slice or none of it. The passband
+        // is integrated over the slice instead, and what it selects leaves as
+        // a narrower slice -- the part of the old one inside the channel's
+        // window -- carrying the reshaped profile.
+        const cell = sampleCell(ray);
+        if (cell) {
+          const reach = aotfWingHalfWidth(passband);
+          const window = bandIntersect(cell, [c.wl - reach, c.wl + reach]);
+          if (!window || !(window[1] > window[0])) return;
+          const trans = applyTransmission(sliceProfile(ray, cell), ray.wl, transmission);
+          if (!trans) return;
+          takenFraction += trans.fraction * pass;
+          out.push(withGate({
+            d,
+            wl: Math.min(window[1], Math.max(window[0], trans.wl)),
+            spectralContinuum: true, spectralLo: window[0], spectralHi: window[1], spectralWidthNm: window[1] - window[0],
+            ...(Number.isFinite(ray.fanLo) ? { fanLo: window[0], fanHi: window[1] } : {}),
+            sliceSpec: trans.spec || null,
+            intensity: ray.intensity * trans.fraction * pass, tag: `c${i}`,
+          }));
+          return;
+        }
         if (!ray.bw) {
           // A single wavelength is simply attenuated by how far it sits from
           // line centre, instead of passing whole or not at all.
