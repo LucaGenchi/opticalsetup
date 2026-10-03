@@ -53,7 +53,7 @@ import {
 import {
   gaussianSpectrum, flatSpectrum, lineSpectrum, scaleSpectrum, spectrumSamples, spectrumStats, spectrumSupport, spectrumWeight,
   applyTransmission as applySpectralTransmission, fringeVisibility, resolveSourceSpectrum, supercontinuumTransformLimitFs,
-  transformLimitedBandwidthNm, spectrumSlice,
+  transformLimitedBandwidthNm, spectrumSlice, spectrumPower,
 } from './spectrum.js';
 import { cameraProfileFromHits } from './camera-profile.js';
 import { MAX_CONVERSION, MAX_OPO_DEPLETION, opoPulse, supercontinuumRange, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength, mixWidthNm } from './parametric.js';
@@ -2983,14 +2983,82 @@ function propagatingOrderCounts(orders, wls, si, groove) {
     (count, m) => count + (m === 0 || Math.abs(si + m * w.wl / groove) <= 1 ? 1 : 0), 0));
 }
 
-// Wavelengths used to settle propagation across a band that travels whole, in
-// one ray per order. It only has to place a pass-off edge, not resolve a
-// spectrum, and it is walked in the coarsest regime only.
-const COARSE_GRID = 129;
-
 // Whether order m leaves the grating at all at this wavelength.
 const orderPropagates = (m, wl, si, groove) =>
   m === 0 || Math.abs(si + m * wl / groove) <= 1;
+
+// The wavelength above which order m passes off: |si + m wl / groove| reaches
+// 1 on the side m steers toward. Every share a grating hands out steps only
+// at these wavelengths, so they are the edges its spectra are cut at.
+function orderCutoffs(orders, si, groove) {
+  return [...new Set(orders.filter(m => m !== 0)
+    .map(m => groove * (1 - Math.sign(m) * si) / Math.abs(m))
+    .filter(c => Number.isFinite(c) && c > 0))].sort((a, b) => a - b);
+}
+
+// The power a ray's spectrum holds between a and b, for ratios inside one
+// band. A band with no profile is flat.
+function bandPower(ray, a, b) {
+  const power = ray.spec ? spectrumPower(ray.spec, a, b) : null;
+  return power == null ? Math.max(0, b - a) : power;
+}
+
+// A wavelength sample stands for a cell of the spectrum, and the orders alive
+// at its node are not the orders alive across the cell when one passes off
+// inside it: judged at the node, that order takes the whole cell or none of
+// it. Such a cell is split at the cutoffs, and each order takes its share of
+// every part it propagates in, travelling at the node's wavelength where the
+// node lies in that part and at the part's middle otherwise. Cells no cutoff
+// falls in are left exactly as the nodes decide them. Returns null when no
+// cell is cut, or for a line spectrum, whose samples have no cells.
+function refinedOrderSamples(ray, orders, wls, counts, si, groove) {
+  if (!(ray.bw > 0) || ray.spec?.kind === 'lines') return null;
+  const cutoffs = orderCutoffs(orders, si, groove);
+  const cutsIn = w => (Number.isFinite(w.spectralLo) && Number.isFinite(w.spectralHi)
+    ? cutoffs.filter(c => c > w.spectralLo && c < w.spectralHi) : []);
+  if (!wls.some(w => cutsIn(w).length)) return null;
+  const diffracted = [...new Set(orders.filter(m => m !== 0))];
+  const byOrder = new Map(diffracted.map(m => [m, []]));
+  const hasZero = orders.includes(0);
+  let zeroFraction = 0;
+  wls.forEach((w, index) => {
+    const lo = w.spectralLo, hi = w.spectralHi;
+    const inside = cutsIn(w);
+    if (!inside.length) {
+      if (!counts[index]) return;
+      if (hasZero) zeroFraction += w.weight / counts[index];
+      for (const m of diffracted) {
+        if (orderPropagates(m, w.wl, si, groove)) byOrder.get(m).push({ index, wl: w.wl, lo, hi, share: null });
+      }
+      return;
+    }
+    const bounds = [lo, ...inside, hi];
+    const pieces = bounds.slice(0, -1).map((a, j) => ({ a, b: bounds[j + 1], power: bandPower(ray, a, bounds[j + 1]) }));
+    const total = pieces.reduce((sum, piece) => sum + piece.power, 0);
+    const taken = new Map();
+    for (const piece of pieces) {
+      const mid = (piece.a + piece.b) / 2;
+      const live = orders.filter(m => orderPropagates(m, mid, si, groove));
+      if (!live.length) continue;
+      const part = total > 0 ? piece.power / total : (piece.b - piece.a) / (hi - lo);
+      const share = w.weight * part / live.length;
+      if (hasZero) zeroFraction += share;
+      for (const m of new Set(live)) {
+        if (m === 0) continue;
+        const t = taken.get(m) || { share: 0, lo: piece.a, hi: piece.b };
+        taken.set(m, { share: t.share + share, lo: Math.min(t.lo, piece.a), hi: Math.max(t.hi, piece.b) });
+      }
+    }
+    for (const [m, t] of taken) {
+      if (!(t.share > 0)) continue;
+      // A node on the cutoff itself would leave at grazing, or a rounding
+      // error past it; the part's middle stands for the part instead.
+      const atNode = w.wl >= t.lo && w.wl <= t.hi && Math.abs(si + m * w.wl / groove) < 1;
+      byOrder.get(m).push({ index, wl: atNode ? w.wl : (t.lo + t.hi) / 2, lo: t.lo, hi: t.hi, share: t.share });
+    }
+  });
+  return { zeroFraction, cutoffs, byOrder };
+}
 
 // When the ray budget leaves a single spectral node, the whole band travels in
 // one ray per order and propagation cannot be settled at the centroid: an
@@ -2998,24 +3066,27 @@ const orderPropagates = (m, wl, si, groove) =>
 // cutoff, and the orders alive there share what it gives up. Deciding that at
 // one wavelength gives an order either all of the band or none of it.
 //
-// Every order's share comes off the same grid, so they still sum to exactly
-// the incident power — at each wavelength the live orders divide one between
-// them. The reshaped profile each order carries is taken separately, through
-// the machinery a filter uses, and is deliberately not allowed to set the
-// share: a second grid would conserve power slightly less than exactly.
+// Every order's share comes off the same pieces of the band, cut at the
+// cutoffs, so they still sum to exactly the incident power — in each piece
+// the live orders divide it between them. The reshaped profile each order
+// carries is taken separately, through the machinery a filter uses with the
+// same cutoffs as its edges, and is not what sets the share.
 function coarseOrderShares(ray, orders, si, groove) {
   const [lo, hi] = ray.spec
     ? spectrumSupport(ray.spec)
     : [ray.wl - ray.bw / 2, ray.wl + ray.bw / 2];
+  // The live orders change only at the cutoffs, so the band is taken piece by
+  // piece between them, each piece split evenly among the orders alive in it.
+  const bounds = [lo, ...orderCutoffs(orders, si, groove).filter(c => c > lo && c < hi), hi];
   const shares = new Map(orders.map(m => [m, 0]));
   let total = 0;
-  for (let i = 0; i < COARSE_GRID; i++) {
-    const wl = lo + (hi - lo) * i / (COARSE_GRID - 1);
-    const weight = ray.spec ? Math.max(0, spectrumWeight(ray.spec, wl)) : 1;
-    if (!(weight > 0)) continue;
-    total += weight;
-    const live = orders.filter(m => orderPropagates(m, wl, si, groove));
-    for (const m of live) shares.set(m, shares.get(m) + weight / live.length);
+  for (let j = 0; j + 1 < bounds.length; j++) {
+    const power = bandPower(ray, bounds[j], bounds[j + 1]);
+    if (!(power > 0)) continue;
+    total += power;
+    const mid = (bounds[j] + bounds[j + 1]) / 2;
+    const live = orders.filter(m => orderPropagates(m, mid, si, groove));
+    for (const m of live) shares.set(m, shares.get(m) + power / live.length);
   }
   if (!(total > 0)) return null;
   for (const m of orders) shares.set(m, shares.get(m) / total);
@@ -3072,7 +3143,7 @@ function coarseOrderPorts(ray, orders, si, groove) {
     const fraction = shares.get(m);
     if (!(fraction > 0)) continue;
     const shaped = applyTransmission(ray.spec, ray.wl, wl => (orderPropagates(m, wl, si, groove)
-      ? 1 / orders.filter(k => orderPropagates(k, wl, si, groove)).length : 0));
+      ? 1 / orders.filter(k => orderPropagates(k, wl, si, groove)).length : 0), orderCutoffs(orders, si, groove));
     // A share this order really holds must never be dropped because the
     // re-grid declined to build a profile for it — that would lose the light
     // rather than merely describe it coarsely. Fall back to the incident
@@ -3095,13 +3166,13 @@ function coarseOrderPorts(ray, orders, si, groove) {
 //
 // Returns the fraction to scale intensity by, plus the reshaped profile to
 // carry when the spectrum really is reshaped.
-function zeroOrderPort(ray, orders, wls, counts, si, groove) {
+function zeroOrderPort(ray, orders, wls, counts, si, groove, refined = null) {
   // No order passing off inside the band is the common case, and there the
   // share is exactly 1/N with the spectrum untouched. Taking that division
   // directly keeps the result bit-identical to the plain 1/N this replaced,
   // instead of accumulating rounding across a quadrature sum.
   const first = counts[0];
-  if (counts.every(count => count === first)) return { fraction: first ? 1 / first : 0 };
+  if (!refined && counts.every(count => count === first)) return { fraction: first ? 1 / first : 0 };
 
   // The fraction stays on the same quadrature nodes the diffracted orders are
   // weighted by, so the shares still telescope to exactly the incident power:
@@ -3109,7 +3180,10 @@ function zeroOrderPort(ray, orders, wls, counts, si, groove) {
   // propagating order, N of them in total. The reshaped profile below is only
   // the colour balance, and is deliberately not allowed to set the fraction —
   // a finer grid there would conserve power slightly less than exactly.
-  const fraction = wls.reduce((sum, w, i) => sum + (counts[i] ? w.weight / counts[i] : 0), 0);
+  // Where a cutoff falls inside a sample's cell, the cell has been split and
+  // the fraction comes from the parts, on the same split the orders use.
+  const fraction = refined ? refined.zeroFraction
+    : wls.reduce((sum, w, i) => sum + (counts[i] ? w.weight / counts[i] : 0), 0);
   const share = wl => {
     const live = orders.reduce((count, m) =>
       count + (m === 0 || Math.abs(si + m * wl / groove) <= 1 ? 1 : 0), 0);
@@ -3127,7 +3201,7 @@ function zeroOrderPort(ray, orders, wls, counts, si, groove) {
   // For a continuum this is exactly what a filter does to a spectrum, so it
   // goes through the same machinery, on a grid fine enough to place the
   // pass-off edge properly rather than on the handful of quadrature nodes.
-  const shaped = ray.spec && applyTransmission(ray.spec, ray.wl, share);
+  const shaped = ray.spec && applyTransmission(ray.spec, ray.wl, share, orderCutoffs(orders, si, groove));
   if (shaped) return { fraction, spec: shaped.spec, wl: shaped.wl, bw: shaped.bw };
   // No profile to reshape: the band-averaged fraction is all there is.
   return { fraction };
@@ -3825,12 +3899,13 @@ function interact(ray, hit) {
       const out = [];
       const wls = wlSamples(ray);
       const counts = propagatingOrderCounts(data.orders, wls, si, data.d);
+      const refined = refinedOrderSamples(ray, data.orders, wls, counts, si, data.d);
       for (const m of data.orders) {
         // The undiffracted order keeps the incident spectrum intact. It
         // redirects the whole band specularly (or passes it straight through),
         // rather than turning the first spectral sample into a laser line.
         if (m === 0) {
-          const port = zeroOrderPort(ray, data.orders, wls, counts, si, data.d);
+          const port = zeroOrderPort(ray, data.orders, wls, counts, si, data.d, refined);
           out.push({
             d: data.transmissive ? d : reflect(d, n),
             intensity: ray.intensity * port.fraction,
@@ -3841,8 +3916,11 @@ function interact(ray, hit) {
           });
           continue;
         }
-        for (let i = 0; i < wls.length; i++) {
-          const sd = si + m * wls[i].wl / data.d;
+        const samples = refined ? refined.byOrder.get(m)
+          : wls.map((w, index) => ({ index, wl: w.wl, lo: w.spectralLo, hi: w.spectralHi, share: null }));
+        for (const sample of samples) {
+          const i = sample.index;
+          const sd = si + m * sample.wl / data.d;
           if (Math.abs(sd) > 1) continue;
           const c = Math.sqrt(1 - sd * sd);
           const sOut = data.transmissive ? sIn : -sIn;
@@ -3853,14 +3931,18 @@ function interact(ray, hit) {
             // applies by comparing bandwidths.
             dispersed: m !== 0 && ray.bw > 0,
             d: norm(add(mul(n, sOut * c), mul(t, sd))),
-            wl: wls[i].wl, bw: 0, spec: null,
+            wl: sample.wl, bw: 0, spec: null,
             // The slice of the band this order sample stands for, kept apart
             // from spectralLo/Hi so spectrometers go on reading a grating's
             // output as they always have. Only the duration model's fan
             // coverage check reads it.
-            ...(ray.bw > 0 && Number.isFinite(wls[i].spectralLo)
-              ? { fanLo: wls[i].spectralLo, fanHi: wls[i].spectralHi } : {}),
-            intensity: ray.intensity * wls[i].weight / counts[i],
+            ...(ray.bw > 0 && Number.isFinite(sample.lo)
+              ? { fanLo: sample.lo, fanHi: sample.hi } : {}),
+            // A cell an order passes off inside carries the share of the part
+            // it propagates in; any other is the node's weight among the
+            // orders alive there.
+            intensity: sample.share != null ? ray.intensity * sample.share
+              : ray.intensity * wls[i].weight / counts[i],
             tag: 'm' + m + (wls.length > 1 ? 'w' + i : ''),
           });
         }
@@ -4471,6 +4553,7 @@ function interact(ray, hit) {
             const wls = wlSamples(r, Math.floor(
               SHAPER_RAY_CAP / (rays.length * orders.length * afterLayer[li])));
             const counts = propagatingOrderCounts(orders, wls, si, gd);
+            const refined = wls.length > 1 ? refinedOrderSamples(r, orders, wls, counts, si, gd) : null;
             const lineSpectrum = r.spec?.kind === 'lines';
             // One slice per node, shared by every order — but only where the
             // budget has actually forced the sampling below what the model
@@ -4531,17 +4614,23 @@ function interact(ray, hit) {
             }
             for (const m of orders) {
               if (m === 0) {
-                const port = zeroOrderPort(r, orders, wls, counts, si, gd);
+                const port = zeroOrderPort(r, orders, wls, counts, si, gd, refined);
                 next.push({
                   ...r, intensity: r.intensity * port.fraction, tag: r.tag + 'm0',
                   ...(port.spec !== undefined ? { spec: port.spec, wl: port.wl, bw: port.bw } : {}),
                 });
                 continue;
               }
-              for (let wi = 0; wi < wls.length; wi++) {
-                const sd = si + m * wls[wi].wl / gd;
+              const samples = refined ? refined.byOrder.get(m)
+                : wls.map((w, index) => ({ index, wl: w.wl, lo: w.spectralLo, hi: w.spectralHi, share: null }));
+              for (const sample of samples) {
+                const wi = sample.index;
+                const sd = si + m * sample.wl / gd;
                 if (Math.abs(sd) > 1) continue;
                 const c = Math.sqrt(1 - sd * sd);
+                // A cell cut at a cutoff carries only the part this order
+                // propagates in.
+                const cell = sample.share != null && cells[wi] ? cellSpectrum(r, sample.lo, sample.hi) : cells[wi];
                 next.push({
                   ...r, d: norm(add(mul(n, sOut * c), mul(t, sd))),
                   // The node sets the direction and the colour it is drawn
@@ -4549,17 +4638,18 @@ function interact(ray, hit) {
                   // downstream can cut inside the cell instead of taking or
                   // rejecting all of it. A lamp line has no cell — it is
                   // already the whole of what it carries.
-                  wl: wls[wi].wl,
-                  ...(cells[wi] ? { bw: cells[wi].bw, spec: cells[wi].spec } : { bw: 0, spec: null }),
+                  wl: sample.wl,
+                  ...(cell ? { bw: cell.bw, spec: cell.spec } : { bw: 0, spec: null }),
                   // A continuum sample keeps its bounds so a detector can
                   // integrate across them. A lamp line stands for itself:
                   // wlSamples() still hands it midpoint bounds, and carrying
                   // those would let the detector paint invented power across
                   // the dark gaps between lines.
                   spectralContinuum: lineSpectrum ? false : r.spectralContinuum,
-                  spectralLo: lineSpectrum ? null : (wls[wi].spectralLo ?? r.spectralLo),
-                  spectralHi: lineSpectrum ? null : (wls[wi].spectralHi ?? r.spectralHi),
-                  intensity: r.intensity * wls[wi].weight / counts[wi],
+                  spectralLo: lineSpectrum ? null : (sample.lo ?? r.spectralLo),
+                  spectralHi: lineSpectrum ? null : (sample.hi ?? r.spectralHi),
+                  intensity: sample.share != null ? r.intensity * sample.share
+                    : r.intensity * wls[wi].weight / counts[wi],
                   tag: r.tag + 'm' + m + (wls.length > 1 ? 'w' + wi : ''),
                   // As above: its own colours where it really is a band taken
                   // apart, and the incident beam's otherwise.
