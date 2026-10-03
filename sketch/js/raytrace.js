@@ -3696,11 +3696,17 @@ function interact(ray, hit) {
         return samples.map((s, i) => ({
           ...transmitAt(s.wl, ray.intensity * s.weight, `w${i}`, 0),
           spectralCount: samples.length,
-          spectralContinuum: true,
-          spectralLo: s.spectralLo,
-          spectralHi: s.spectralHi,
-          spectralWidthNm: s.spectralHi - s.spectralLo,
-          sliceSpec: sliceSpecOf(ray),
+          // A lamp's lines are not slices of a continuum: each leaves as the
+          // line it is. wlSamples() still hands a line midpoint bounds, and
+          // carrying those let a filter behind the glass cut "slices" that
+          // reach into the dark gaps between lines.
+          ...(ray.spec?.kind === 'lines' ? { spectralContinuum: false } : {
+            spectralContinuum: true,
+            spectralLo: s.spectralLo,
+            spectralHi: s.spectralHi,
+            spectralWidthNm: s.spectralHi - s.spectralLo,
+            sliceSpec: sliceSpecOf(ray),
+          }),
         }));
       }
       return [transmitAt(ray.wl)];
@@ -3992,7 +3998,8 @@ function interact(ray, hit) {
             // from spectralLo/Hi so spectrometers go on reading a grating's
             // output as they always have. Only the duration model's fan
             // coverage check reads it.
-            ...(ray.bw > 0 && Number.isFinite(sample.lo)
+            // A lamp's line has no slice: it is already all it carries.
+            ...(ray.bw > 0 && Number.isFinite(sample.lo) && ray.spec?.kind !== 'lines'
               ? { fanLo: sample.lo, fanHi: sample.hi, sliceSpec: sliceSpecOf(ray) } : {}),
             // A cell an order passes off inside carries the share of the part
             // it propagates in; any other is the node's weight among the
