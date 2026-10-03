@@ -3348,9 +3348,24 @@ function bandChild(ray, d, lo, hi, tag) {
 // lines have no slices.
 const sliceSpecOf = ray => (ray.bw > 0 && (ray.spec?.kind === 'gauss' || ray.spec?.kind === 'sampled') ? ray.spec : null);
 
+// The spacing a sampled profile was built on: it holds nothing finer. A
+// Gaussian or flat profile is smooth and has none.
+const profileStep = spec => (spec?.kind === 'sampled' && spec.w?.length > 1
+  ? (spec.hi - spec.lo) / (spec.w.length - 1) : Infinity);
+// Grid points across `width` that keep a feature of size `step`, `per` points
+// to each. Fixed grids met profiles finer than themselves: an AOTF channel a
+// fraction of a nanometre wide leaves a notch that 257 points across a 60 nm
+// slice step straight over.
+const SLICE_GRID_MAX = 16385;
+// How finely an AOTF's depleted slice is sampled across one passband.
+const DEPLETED_POINTS_PER_PASSBAND = 16;
+const gridFor = (width, step, least, per = 1) => (Number.isFinite(step) && step > 0
+  ? Math.max(least, Math.min(SLICE_GRID_MAX, per * Math.ceil(width / step) + 1)) : least);
+
 // The share of a slice's power lying in [lo, hi]. Read off one cumulative
 // table per slice, so the parts a slice is cut into always add up to it
-// exactly, however many cuts are made.
+// exactly, however many cuts are made. The table is twice as fine as the
+// profile it integrates.
 const SLICE_GRID = 257;
 const sliceTables = new WeakMap();
 function slicePart(spec, cell, lo, hi) {
@@ -3361,42 +3376,45 @@ function slicePart(spec, cell, lo, hi) {
   const key = `${cell[0]}|${cell[1]}`;
   let cumulative = tables.get(key);
   if (!cumulative) {
-    const step = width / (SLICE_GRID - 1);
+    const points = gridFor(width, profileStep(spec), SLICE_GRID, 2);
+    const step = width / (points - 1);
     const weight = i => Math.max(0, spectrumWeight(spec, cell[0] + step * i));
     cumulative = [0];
-    for (let i = 1; i < SLICE_GRID; i++) cumulative.push(cumulative[i - 1] + (weight(i - 1) + weight(i)) / 2);
+    for (let i = 1; i < points; i++) cumulative.push(cumulative[i - 1] + (weight(i - 1) + weight(i)) / 2);
     tables.set(key, cumulative);
   }
-  const total = cumulative[SLICE_GRID - 1];
+  const last = cumulative.length - 1;
+  const total = cumulative[last];
   if (!(total > 0)) return (hi - lo) / width;
   const at = wl => {
-    const x = Math.min(SLICE_GRID - 1, Math.max(0, (wl - cell[0]) / width * (SLICE_GRID - 1)));
-    const i = Math.min(SLICE_GRID - 2, Math.floor(x));
+    const x = Math.min(last, Math.max(0, (wl - cell[0]) / width * last));
+    const i = Math.min(last - 1, Math.floor(x));
     return cumulative[i] + (cumulative[i + 1] - cumulative[i]) * (x - i);
   };
   return (at(hi) - at(lo)) / total;
 }
 
-const DEPLETED_SLICE_GRID = 513;
-// A slice as a spectrum of its own: the profile it was cut from, between its
-// bounds, or a flat band when it carries none. For an element whose
-// transmission varies smoothly inside the slice, which has to be integrated
-// over it rather than read at the slice's one wavelength.
+// A slice (or a part of one) as a spectrum of its own: the profile it was cut
+// from, between the given bounds, or a flat band when it carries none. For an
+// element whose transmission varies smoothly inside the slice, which has to
+// be integrated over it rather than read at the slice's one wavelength.
 //
-// `shape` multiplies the profile wavelength by wavelength, on a grid of `n`
-// points: for a profile with fine structure inside the slice, such as what an
-// AOTF channel leaves behind, which a coarse grid would smear.
-function sliceProfile(ray, cell, shape = null, n = 65) {
-  if (ray.sliceSpec || shape) {
+// `shape` multiplies the profile wavelength by wavelength. The grid is never
+// coarser than the profile it copies, nor than `step` when one is given, so
+// fine structure a previous element left survives being handed on.
+function sliceProfile(ray, bounds, shape = null, step = Infinity) {
+  const width = bounds[1] - bounds[0];
+  if ((ray.sliceSpec || shape) && width > 0) {
+    const n = gridFor(width, Math.min(step, profileStep(ray.sliceSpec)), 65);
     const w = Array.from({ length: n }, (_, i) => {
-      const wl = cell[0] + (cell[1] - cell[0]) * i / (n - 1);
+      const wl = bounds[0] + width * i / (n - 1);
       const weight = ray.sliceSpec ? Math.max(0, spectrumWeight(ray.sliceSpec, wl)) : 1;
       return weight * (shape ? Math.max(0, shape(wl)) : 1);
     });
     const peak = Math.max(...w);
-    if (peak > 0) return { kind: 'sampled', lo: cell[0], hi: cell[1], w: w.map(v => v / peak) };
+    if (peak > 0) return { kind: 'sampled', lo: bounds[0], hi: bounds[1], w: w.map(v => v / peak) };
   }
-  return flatSpectrum(cell[0], cell[1]);
+  return flatSpectrum(bounds[0], bounds[1]);
 }
 
 // A wavelength sample fanned out by dispersive refraction travels with bw 0 —
@@ -4093,8 +4111,14 @@ function interact(ray, hit) {
           const reach = aotfWingHalfWidth(passband);
           const window = bandIntersect(cell, [c.wl - reach, c.wl + reach]);
           if (!window || !(window[1] > window[0])) return;
-          const trans = applyTransmission(sliceProfile(ray, cell), ray.wl, transmission);
-          if (!trans) return;
+          // Only the part of the slice inside the channel's window is
+          // integrated, on a grid of its own: a channel far narrower than the
+          // slice would otherwise fall between the points of a grid spanning
+          // the whole of it.
+          const inWindow = slicePart(ray.sliceSpec, cell, window[0], window[1]);
+          const shaped = applyTransmission(sliceProfile(ray, window), ray.wl, transmission);
+          if (!shaped || !(inWindow > 0)) return;
+          const trans = { ...shaped, fraction: shaped.fraction * inWindow };
           takenFraction += trans.fraction * pass;
           cellTaken.push(wl => pass * transmission(wl));
           out.push(withGate({
@@ -4152,13 +4176,14 @@ function interact(ray, hit) {
           // The slice keeps its bounds and its power is what the channels
           // left; its profile is the slice's with their passbands taken out,
           // so a filter behind both beams finds the selected light once.
-          // Sampled finely: a channel is a few nanometres wide inside a slice
-          // of tens, and the notch it leaves has to survive the sampling.
+          // Sampled by the passband: a channel may be a tenth of a nanometre
+          // wide inside a slice of tens, and the notch it leaves has to
+          // survive the sampling.
           const cell = sampleCell(ray);
           out.push({
             d: deflected, intensity: ray.intensity * left, tag: 'depleted',
             sliceSpec: sliceProfile(ray, cell,
-              wl => 1 - cellTaken.reduce((sum, taken) => sum + taken(wl), 0), DEPLETED_SLICE_GRID),
+              wl => 1 - cellTaken.reduce((sum, taken) => sum + taken(wl), 0), passband / DEPLETED_POINTS_PER_PASSBAND),
           });
         } else if (left > 0) {
           out.push({

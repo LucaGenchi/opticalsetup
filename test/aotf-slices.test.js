@@ -133,3 +133,41 @@ test('the depleted beam is missing what the channel took, colour by colour', () 
     }
   }
 });
+
+test('fine structure survives a second AOTF and the narrowest passband', () => {
+  // Fixed grids met features finer than themselves. A second AOTF resampled
+  // the first one's depleted slice on 65 points and lost its notch: with
+  // 0.5 nm channels it read 35 % too much. And a 0.1 nm channel, the
+  // narrowest allowed, left a notch a filter's 257-point table stepped over.
+  // The grids now follow the passband and the profile they copy.
+  const el = (type, x, params) => {
+    const made = createElement(type, x, 0);
+    Object.assign(made.params, params);
+    return made;
+  };
+  const rod = () => el('glassrod', 250, { rodlen: 100, dia: 20, material: 'nbk7' });
+  const read = (kind, elements) => {
+    const det = createElement('detector', 950, 0);
+    det.params.aperture = 40;
+    traceScene([sources[kind](), ...elements, det]);
+    return detectorReading(det.id)?.signal ?? 0;
+  };
+  for (const kind of ['gaussian', 'flat']) {
+    // Selected and depleted beams recombined are the incoming beam, so a
+    // second identical AOTF must select what it selects without the first.
+    for (const [wl, passband] of [[780, 0.5], [780, 1], [800, 0.1], [803, 2]]) {
+      const second = el('aotf', 650, channel(wl, passband));
+      const alone = read(kind, [rod(), second]);
+      const cascaded = read(kind, [rod(), el('aotf', 450, channel(wl, passband, { showDepleted: true, deflect: 0 })), second]);
+      assert.ok(alone > 0, `${kind} ${wl}/${passband}: the channel selects something`);
+      assert.ok(Math.abs(cascaded - alone) <= 5e-3 * alone, `${kind} ${wl}/${passband}: ${cascaded} vs ${alone}`);
+    }
+    // And a bandpass wider than the notch reads what it reads with no AOTF.
+    for (const passband of [0.1, 0.5]) {
+      const filter = el('filter', 700, { ftype: 'bandpass', center: 803, band: 1 });
+      const without = read(kind, [rod(), filter]);
+      const recombined = read(kind, [rod(), el('aotf', 450, channel(803, passband, { showDepleted: true, deflect: 0 })), filter]);
+      assert.ok(Math.abs(recombined - without) <= 1e-3 * without, `${kind} 803/${passband}: ${recombined} vs ${without}`);
+    }
+  }
+});
