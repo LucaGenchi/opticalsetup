@@ -4,8 +4,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  gaussianSpectrum, flatSpectrum, spectrumWeight, spectrumSamples, spectrumStats,
-  applyTransmission, transformLimitedBandwidthNm, transformLimitedDurationFs, resolveSourceSpectrum,
+  gaussianSpectrum, flatSpectrum, lineSpectrum, spectrumWeight, spectrumSamples, spectrumStats,
+  applyTransmission, spectrumSlice, spectrumSupport, transformLimitedBandwidthNm, transformLimitedDurationFs, resolveSourceSpectrum,
 } from '../sketch/js/spectrum.js';
 import { createElement, formatPower, getVisualBounds, peakPowerW, probeScale, registry } from '../sketch/js/elements.js';
 import { traceAll, detectorReading } from '../sketch/js/raytrace.js';
@@ -75,6 +75,102 @@ test('applyTransmission narrows a Gaussian correctly clipped by a bandpass', () 
   assert.ok(result.fraction > 0 && result.fraction < 1, 'only part of the Gaussian survives');
   nearly(result.wl, 532, 1); // centred bandpass keeps the centroid near 532
   assert.ok(result.bw < 40, 'the surviving slice is narrower than the original FWHM');
+});
+
+test('a transmission uniform over the whole profile passes exactly that share', () => {
+  // The transmitted and incident integrals share one grid rule, so passing
+  // the whole profile loses nothing to a mismatch between two grids.
+  const g = gaussianSpectrum(532, 40);
+  const filtered = applyTransmission(g, 532, wl => (wl >= 520 && wl <= 544 ? 1 : 0)).spec;
+  for (const [name, spec] of [['Gaussian', g], ['already filtered', filtered]]) {
+    nearly(applyTransmission(spec, 532, () => 1).fraction, 1, 1e-12);
+    nearly(applyTransmission(spec, 532, () => 0.37).fraction, 0.37, 1e-12);
+    // A box wider than the profile is uniform over it too.
+    nearly(applyTransmission(spec, 532, wl => (wl >= 100 && wl <= 2000 ? 1 : 0)).fraction, 1, 1e-12);
+    const [lo, hi] = spectrumSupport(spec);
+    nearly(spectrumSlice(spec, lo, hi).fraction, 1, 1e-12);
+    nearly(spectrumSlice(spec, lo - 50, hi + 50).fraction, 1, 1e-12);
+    // Boundary: nothing passed, or less than the blocking floor, is nothing.
+    assert.equal(applyTransmission(spec, 532, () => 0), null, name);
+    assert.equal(applyTransmission(spec, 532, () => 5e-5), null, name);
+  }
+});
+
+test('a line spectrum keeps the whole-profile total its fractions had', () => {
+  // Lines are narrower than either grid's spacing; resampling outside the
+  // slice would miss them and shrink a fraction further, so their total stays
+  // the one the locate grid measures. Weighing each line exactly is separate.
+  const lines = lineSpectrum([{ nm: 400, w: 1 }, { nm: 500, w: 1 }, { nm: 600, w: 1 }]);
+  nearly(applyTransmission(lines, 500, wl => (wl >= 490 && wl <= 510 ? 1 : 0)).fraction, 0.078125, 1e-12);
+  nearly(applyTransmission(lines, 500, () => 1).fraction, 1, 1e-12);
+});
+
+// The share of a profile's power in [a, b] from a dense integral of the
+// model's own profile: the reference the box filters are checked against.
+function denseShare(spec, a, b, n = 200000) {
+  const [lo, hi] = spectrumSupport(spec);
+  const step = (hi - lo) / n;
+  let inside = 0, total = 0;
+  for (let i = 0; i <= n; i++) {
+    const wl = lo + step * i;
+    const w = spectrumWeight(spec, wl) * (i === 0 || i === n ? 0.5 : 1);
+    total += w;
+    if (wl >= a && wl <= b) inside += w;
+  }
+  return inside / total;
+}
+
+test('a box transmission given its edges integrates to them exactly', () => {
+  // Without edges the grid puts a hard edge between two of its points and a
+  // 20 nm band on a 40 nm Gaussian reads 0.4398; with them each piece is
+  // integrated on its own grid and the edge sits where it is.
+  const g = gaussianSpectrum(532, 40);
+  const filtered = applyTransmission(g, 532, wl => (wl >= 515 && wl <= 560 ? 1 : 0), [515, 560]).spec;
+  for (const [name, spec] of [['Gaussian', g], ['already filtered', filtered]]) {
+    for (const [a, b] of [[522, 542], [527, 537], [531, 533], [540, 1e5], [0, 520]]) {
+      const box = wl => (wl >= a && wl <= b ? 1 : 0);
+      const result = applyTransmission(spec, 532, box, [a, b]);
+      const expected = denseShare(spec, a, b);
+      assert.ok(Math.abs(result.fraction - expected) <= 2e-4 * expected,
+        `${name} ${a}-${b}: ${result.fraction} vs ${expected}`);
+      // The surviving profile ends on the filter's edges, not past them.
+      const [lo, hi] = spectrumSupport(spec);
+      assert.equal(result.spec.lo, Math.max(a, lo), `${name} ${a}-${b} profile start`);
+      assert.equal(result.spec.hi, Math.min(b, hi), `${name} ${a}-${b} profile end`);
+    }
+  }
+  // A step and its complement, given the same edges, share the profile exactly.
+  const longpass = wl => (wl >= 540 ? 1 : 0);
+  const pass = applyTransmission(g, 532, longpass, [540]).fraction;
+  const stop = applyTransmission(g, 532, wl => 1 - longpass(wl), [540]).fraction;
+  nearly(pass + stop, 1, 1e-12);
+  // Partial transmission between edges, as a band reflector's leak.
+  nearly(applyTransmission(g, 532, wl => (wl >= 522 && wl <= 542 ? 0.2 : 1), [522, 542]).fraction,
+    1 - 0.8 * applyTransmission(g, 532, wl => (wl >= 522 && wl <= 542 ? 1 : 0), [522, 542]).fraction, 1e-12);
+});
+
+test('edges outside the profile, a closed box and a line spectrum fall back cleanly', () => {
+  const g = gaussianSpectrum(532, 40);
+  nearly(applyTransmission(g, 532, wl => (wl >= 100 && wl <= 2000 ? 1 : 0), [100, 2000]).fraction, 1, 1e-12);
+  assert.equal(applyTransmission(g, 532, wl => (wl >= 900 && wl <= 950 ? 1 : 0), [900, 950]), null);
+  assert.equal(applyTransmission(g, 532, () => 5e-5, [520, 540]), null);
+  // Lines are narrower than any grid here, so edges change nothing for them.
+  const lines = lineSpectrum([{ nm: 400, w: 1 }, { nm: 500, w: 1 }, { nm: 600, w: 1 }]);
+  const box = wl => (wl >= 490 && wl <= 510 ? 1 : 0);
+  assert.equal(applyTransmission(lines, 500, box, [490, 510]).fraction, applyTransmission(lines, 500, box).fraction);
+});
+
+test('a Filter bandpass on a Gaussian line passes the share inside its edges', () => {
+  const src = createElement('pulsedlaser', 60, 160);
+  Object.assign(src.params, { beamMode: 'line', wavelength: 532, transformLimited: false, bandwidth: 40 });
+  const filter = createElement('filter', 300, 160);
+  Object.assign(filter.params, { ftype: 'bandpass', center: 532, band: 20 });
+  const detector = createElement('detector', 460, 160);
+  traceAll([src, filter, detector], []);
+  const reading = detectorReading(detector.id);
+  const expected = denseShare(gaussianSpectrum(532, 40), 522, 542);
+  assert.ok(Math.abs(reading.signal - expected) <= 2e-4 * expected, `${reading.signal} vs ${expected}`);
+  assert.ok(reading.bandMin >= 522 - 1e-9 && reading.bandMax <= 542 + 1e-9, `band ${reading.bandMin}-${reading.bandMax}`);
 });
 
 test('time-bandwidth product: Gaussian pulse bandwidth matches the textbook benchmark', () => {

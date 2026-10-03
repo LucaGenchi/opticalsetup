@@ -151,12 +151,12 @@ test('a Gaussian line centred on a band reflector conserves power across both po
   assert.equal(bandpass.r, notch.t);
 
   // Boundary: with no band edge inside the line, nothing is redistributed.
-  // A band wholly outside reflects nothing, and the line passes as it does
-  // any other filter that transmits all of it (a bandpass enclosing it).
+  // A band wholly outside reflects nothing and passes the whole line, as a
+  // bandpass enclosing it does.
   const away = run('notch', 1064, 20);
   assert.equal(away.r, 0);
   assert.equal(away.t, run('bandpass', 532, 1000).t);
-  assert.ok(Math.abs(away.t - 1) < 1e-4, `transmitted ${away.t}`);
+  assert.ok(Math.abs(away.t - 1) < 1e-12, `transmitted ${away.t}`);
   // A band wholly enclosing the line reflects all of it.
   const enclosed = run('notch', 532, 1000);
   assert.equal(enclosed.t, 0);
@@ -241,4 +241,29 @@ test('the light either side of a band carries none of the band with it', () => {
   assert.ok(Math.abs(behind('bandpass', 'reflected', false) - 0.5559) < 0.01);
   assert.equal(behind('notch', 'through'), 0, 'band reflector, transmitted sides');
   assert.equal(behind('bandpass', 'reflected'), 0, 'bandpass dichroic, reflected sides');
+});
+
+test('a band reflector beside a line passes all of it, as the Filter notch does', () => {
+  // The Filter notch passes a beam clear of its band untouched; the band
+  // reflector integrates it, and the integral of a profile passed whole is
+  // exactly the profile's power.
+  const reflector = gaussianThrough({ dtype: 'notch', center: 1064, band: 20 });
+  const src = createElement('pulsedlaser', 60, 160);
+  Object.assign(src.params, { beamMode: 'line', wavelength: 532, transformLimited: false, bandwidth: 40 });
+  const filter = createElement('filter', 300, 160);
+  Object.assign(filter.params, { ftype: 'notch', center: 1064, band: 20 });
+  const detector = createElement('detector', 460, 160);
+  traceScene([src, filter, detector]);
+  assert.equal(detectorReading(detector.id).signal, 1);
+  assert.ok(Math.abs(reflector.t - 1) < 1e-12, `band reflector transmitted ${reflector.t}`);
+  assert.equal(reflector.r, 0);
+});
+
+test('a longpass dichroic on a Gaussian line splits it at its edge, conserving power', () => {
+  // Both ports are integrated piece by piece on either side of the cutoff,
+  // so the cutoff sits exactly where it is and the two ports share the line.
+  const { t, r } = gaussianThrough({ dtype: 'longpass', cutoff: 540 });
+  assert.ok(Math.abs(t + r - 1) < 1e-12, `total ${t + r}`);
+  // The model's 532/40 Gaussian (cut at ±3σ) holds 0.3183 above 540 nm.
+  assert.ok(Math.abs(t - 0.31834) < 2e-4, `transmitted ${t}`);
 });

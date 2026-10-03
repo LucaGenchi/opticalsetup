@@ -21,7 +21,7 @@ const SIGMA_PER_FWHM = 1 / (2 * Math.sqrt(2 * Math.LN2));
 // FWHM.
 export const fwhmToSigma = fwhm => fwhm * SIGMA_PER_FWHM;
 
-// Gaussian tails are followed to ±3σ (98.9% of the energy): far enough that
+// Gaussian tails are followed to ±3σ (99.73% of the energy): far enough that
 // the sampled/re-gridded profiles below are accurate, near enough that a
 // wide source stays inside a sane wavelength range instead of reaching into
 // X-rays or radio.
@@ -192,6 +192,27 @@ function integrate(values, step) {
   return sum * step;
 }
 
+// The incident power over [a, b] on the same GRID-point rule a slice is
+// integrated with. A fraction is a ratio of two integrals; taking the part
+// outside a slice on this rule too, rather than the whole profile on a
+// different grid, makes a slice covering the whole profile exactly 1 and a
+// transmission uniform over it exactly that value.
+function incidentOver(spec, a, b) {
+  if (!(b > a)) return 0;
+  const step = (b - a) / (GRID - 1);
+  return integrate(Array.from({ length: GRID }, (_, i) => Math.max(0, spectrumWeight(spec, a + step * i))), step);
+}
+
+// The power a continuous profile holds between a and b, in the profile's own
+// units: only ratios of it mean anything. For splitting a slice of spectrum
+// at a wavelength where something downstream changes, such as a grating
+// order passing off. A line spectrum has no density to integrate.
+export function spectrumPower(spec, a, b) {
+  if (!spec || spec.kind === 'lines') return null;
+  const [lo, hi] = spectrumSupport(spec);
+  return incidentOver(spec, Math.max(a, lo), Math.min(b, hi));
+}
+
 // Multiply a ray's spectrum by a transmission function T(wavelength) -> [0,1]
 // (a hard passband edge, or an oscillatory Airy transmission — anything).
 // Returns the surviving fraction of incident power together with the
@@ -199,11 +220,19 @@ function integrate(values, step) {
 // measurable survives. With spec === null (a monochromatic ray) this is
 // just T(centerWl) — the same exact single-wavelength result every element
 // already computes for bw === 0.
-export function applyTransmission(spec, centerWl, transmissionFn) {
+//
+// A caller whose transmission only steps at known wavelengths -- a box filter
+// or dichroic edge -- passes them as `edges`. The profile is then integrated
+// piece by piece between them, each piece on its own grid, so an edge lands
+// exactly where it is instead of between two grid points. The transmission
+// must be constant between consecutive edges; it is read at each piece's
+// midpoint. Line spectra take the sampled path regardless.
+export function applyTransmission(spec, centerWl, transmissionFn, edges = null) {
   if (!spec) {
     const t = Math.max(0, Math.min(1, transmissionFn(centerWl)));
     return t > BLOCK ? { fraction: t, spec: null, wl: centerWl, bw: 0 } : null;
   }
+  if (Array.isArray(edges) && spec.kind !== 'lines') return applyStepTransmission(spec, transmissionFn, edges);
   const [lo, hi] = spectrumSupport(spec);
   const locateStep = (hi - lo) / (LOCATE_GRID - 1);
   const incident = [];
@@ -224,13 +253,21 @@ export function applyTransmission(spec, centerWl, transmissionFn) {
   const from = lo + locateStep * Math.max(0, first - 1);
   const to = lo + locateStep * Math.min(LOCATE_GRID - 1, last + 1);
   const step = (to - from) / (GRID - 1);
-  const shaped = [];
+  const shaped = [], sliceIncident = [];
   for (let i = 0; i < GRID; i++) {
     const wl = from + step * i;
-    shaped.push(Math.max(0, spectrumWeight(spec, wl)) * Math.max(0, Math.min(1, transmissionFn(wl))));
+    sliceIncident.push(Math.max(0, spectrumWeight(spec, wl)));
+    shaped.push(sliceIncident[i] * Math.max(0, Math.min(1, transmissionFn(wl))));
   }
   const transmittedTotal = integrate(shaped, step);
-  const fraction = transmittedTotal / incidentTotal;
+  // A line spectrum's lines are narrower than either grid's spacing, so
+  // resampling the parts outside the slice would miss lines there; it keeps
+  // the locate-grid total. Filters, dichroics and gratings weigh lines one
+  // by one before they get here; the smooth transmissions (etalon, AOTF)
+  // still integrate them on these grids.
+  const total = spec.kind === 'lines' ? incidentTotal
+    : incidentOver(spec, lo, from) + integrate(sliceIncident, step) + incidentOver(spec, to, hi);
+  const fraction = total > 0 ? transmittedTotal / total : 0;
   const peak = Math.max(...shaped);
   if (!(fraction > BLOCK) || !(peak > 0)) return null;
   const profile = { kind: 'sampled', lo: from, hi: to, w: shaped.map(v => v / peak) };
@@ -242,6 +279,40 @@ export function applyTransmission(spec, centerWl, transmissionFn) {
     wl: stats.center,
     bw: stats.fwhm,
   };
+}
+
+function applyStepTransmission(spec, transmissionFn, edges) {
+  const [lo, hi] = spectrumSupport(spec);
+  const cuts = [...new Set(edges.filter(e => Number.isFinite(e) && e > lo && e < hi))].sort((a, b) => a - b);
+  const bounds = [lo, ...cuts, hi];
+  const pieces = [];
+  for (let i = 0; i + 1 < bounds.length; i++) {
+    const a = bounds[i], b = bounds[i + 1];
+    if (!(b > a)) continue;
+    const t = Math.max(0, Math.min(1, Number(transmissionFn((a + b) / 2)) || 0));
+    pieces.push({ a, b, t, power: incidentOver(spec, a, b) });
+  }
+  const total = pieces.reduce((sum, p) => sum + p.power, 0);
+  if (!(total > 0)) return null;
+  const fraction = pieces.reduce((sum, p) => sum + p.t * p.power, 0) / total;
+  const kept = pieces.filter(p => p.t > 0);
+  if (!(fraction > BLOCK) || !kept.length) return null;
+  // The profile spans exactly the pieces that pass anything; each sample
+  // takes its own piece's transmission, and a sample on an edge the side
+  // that passes more, so the profile's edges sit on the filter's.
+  const from = kept[0].a, to = kept[kept.length - 1].b;
+  const step = (to - from) / (GRID - 1);
+  const shaped = Array.from({ length: GRID }, (_, i) => {
+    const wl = i === GRID - 1 ? to : from + step * i;
+    const t = pieces.reduce((best, p) => (wl >= p.a && wl <= p.b ? Math.max(best, p.t) : best), 0);
+    return Math.max(0, spectrumWeight(spec, wl)) * t;
+  });
+  const peak = Math.max(...shaped);
+  if (!(peak > 0)) return null;
+  const profile = { kind: 'sampled', lo: from, hi: to, w: shaped.map(v => v / peak) };
+  const stats = spectrumStats(profile);
+  if (!stats) return null;
+  return { fraction: Math.min(1, fraction), spec: stats.fwhm > 0 ? profile : null, wl: stats.center, bw: stats.fwhm };
 }
 
 // The part of a profile between lo and hi, with hard edges exactly there: the
@@ -258,10 +329,9 @@ export function spectrumSlice(spec, lo, hi) {
     const step = (b - a) / (n - 1);
     return { step, w: Array.from({ length: n }, (_, i) => Math.max(0, spectrumWeight(spec, a + step * i))) };
   };
-  const whole = sample(supportLo, supportHi, LOCATE_GRID);
-  const total = integrate(whole.w, whole.step);
   const part = sample(from, to, GRID);
   const kept = integrate(part.w, part.step);
+  const total = incidentOver(spec, supportLo, from) + kept + incidentOver(spec, to, supportHi);
   const peak = Math.max(...part.w);
   if (!(total > 0) || !(peak > 0)) return null;
   const fraction = Math.min(1, kept / total);
@@ -307,6 +377,53 @@ export function supercontinuumTransformLimitFs(scMin, scMax, shape = 'gauss') {
   return spanPerFs > 0 ? K / spanPerFs : Infinity;
 }
 
+// ---- LED presets ---------------------------------------------------------
+// Illustrative shapes, not any manufacturer's datasheet: typical centre and
+// full width at half maximum for the common single-colour dies. White is a
+// blue die exciting a phosphor, so it is two bands -- a narrow blue peak and a
+// broad phosphor band -- and never one hump: a filter or dichroic can remove
+// either and leave the other.
+export const LED_PRESETS = {
+  white: { label: 'White (phosphor)', bands: [{ center: 450, fwhm: 22, peak: 0.8 }, { center: 580, fwhm: 150, peak: 1 }] },
+  blue: { label: 'Blue (460 nm)', bands: [{ center: 460, fwhm: 22, peak: 1 }] },
+  green: { label: 'Green (530 nm)', bands: [{ center: 530, fwhm: 33, peak: 1 }] },
+  amber: { label: 'Amber (590 nm)', bands: [{ center: 590, fwhm: 15, peak: 1 }] },
+  red: { label: 'Red (630 nm)', bands: [{ center: 630, fwhm: 18, peak: 1 }] },
+  deepred: { label: 'Deep red (660 nm)', bands: [{ center: 660, fwhm: 20, peak: 1 }] },
+  nir: { label: 'Near infrared (850 nm)', bands: [{ center: 850, fwhm: 40, peak: 1 }] },
+};
+export const LED_MIN_BANDWIDTH_NM = 5;
+export const LED_MAX_BANDWIDTH_NM = 200;
+const LED_GRID = 257;
+
+// The bands an LED emits: its preset's, or the one typed centre and width.
+export function ledBands(params = {}) {
+  if (params.ledPreset !== 'custom') return (LED_PRESETS[params.ledPreset] || LED_PRESETS.white).bands;
+  const center = Number(params.wavelength), fwhm = Number(params.bandwidth);
+  return [{
+    center: Number.isFinite(center) && center > 0 ? center : 530,
+    fwhm: Math.min(LED_MAX_BANDWIDTH_NM, Math.max(LED_MIN_BANDWIDTH_NM, Number.isFinite(fwhm) ? fwhm : 30)),
+    peak: 1,
+  }];
+}
+
+// One band is the Gaussian itself. Several are summed onto one sampled
+// profile across their joint support, which every wavelength-selective
+// element and the spectrometer already integrate.
+export function ledSpectrum(params = {}) {
+  const bands = ledBands(params);
+  if (bands.length === 1) return gaussianSpectrum(bands[0].center, bands[0].fwhm);
+  const parts = bands.map(band => ({ spec: gaussianSpectrum(band.center, band.fwhm), peak: band.peak }));
+  const lo = Math.min(...parts.map(part => spectrumSupport(part.spec)[0]));
+  const hi = Math.max(...parts.map(part => spectrumSupport(part.spec)[1]));
+  const w = Array.from({ length: LED_GRID }, (_, i) => {
+    const wl = lo + (hi - lo) * i / (LED_GRID - 1);
+    return parts.reduce((sum, part) => sum + part.peak * spectrumWeight(part.spec, wl), 0);
+  });
+  const peak = Math.max(...w);
+  return { kind: 'sampled', lo, hi, w: w.map(value => value / peak) };
+}
+
 // Every emitting element resolves to the same three-value spectral contract
 // the tracer consumes: a centroid wavelength, an FWHM-style width, and the
 // true spectral shape (null = exactly monochromatic). Each source type
@@ -329,6 +446,11 @@ export function resolveSourceSpectrum(type, params = {}) {
     const brightest = (visible.length ? visible : spec.lines)
       .reduce((best, l) => (l.w > best.w ? l : best));
     return { wl: brightest.nm, bw: stats ? stats.fwhm : 0, spec };
+  }
+  if (type === 'ledsource') {
+    const spec = ledSpectrum(p);
+    const stats = spectrumStats(spec);
+    return { wl: stats.center, bw: stats.fwhm, spec };
   }
   if (type === 'sclaser') {
     const lo = Math.min(p.scMin ?? 300, p.scMax ?? 700);
