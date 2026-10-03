@@ -879,7 +879,6 @@ function detectorSample(ray, surface, u, oplMm, pathKey, sensorMiss = false) {
     // The profile a fanned-out sample's slice carries, so the duration model
     // can time the light that actually arrives in the slice.
     sliceSpec: ray.sliceSpec || null,
-    pulseForeign: ray.pulseForeign === true,
     sourceId: ray.sourceId || null,
     sample: Number.isInteger(ray.sample) ? ray.sample : null,
     sampleCount: Number.isInteger(ray.sampleCount) ? ray.sampleCount : null,
@@ -3488,21 +3487,6 @@ function aotfDepletedPieces(ray, d, windows, leftAt) {
   return pieces.length ? pieces : null;
 }
 
-// Whether a child's wavelength lies outside everything its parent ray
-// carried: the parent's slice, its spectrum, or its one wavelength. A filter
-// or a fan only ever picks from what arrived; light at a wavelength that did
-// not arrive was generated here -- a harmonic, a Raman line, fluorescence.
-// When such light keeps the parent's pulse record, the record describes the
-// pump and not this light, however much their spectra happen to overlap.
-function leavesParentBand(r, c) {
-  if (c.wl === undefined || c.wl === r.wl || !Number.isFinite(c.wl)) return false;
-  const cell = sampleCell(r);
-  const [lo, hi] = cell || (r.spec ? spectrumSupport(r.spec)
-    : r.bw > 0 ? [r.wl - r.bw / 2, r.wl + r.bw / 2] : [r.wl, r.wl]);
-  const pad = 1e-6 * Math.max(1, hi - lo);
-  return c.wl < lo - pad || c.wl > hi + pad;
-}
-
 // A wavelength sample fanned out by dispersive refraction travels with bw 0 —
 // it has to, or the next glass surface would fan it out all over again — but
 // it still stands for a slice [spectralLo, spectralHi] of a continuum, and a
@@ -4790,7 +4774,6 @@ function interact(ray, hit) {
         spectralLo: ray.spectralLo, spectralHi: ray.spectralHi,
         // A sample fanned out upstream arrives as a slice and stays one.
         sliceSpec: ray.sliceSpec || null,
-        pulseForeign: ray.pulseForeign === true,
       }];
       const L = data.length;
       const mid = mul(add(s.a, s.b), 0.5);
@@ -5285,10 +5268,6 @@ function interact(ray, hit) {
       const conv = { d, wl, intensity: ray.intensity * efficiency };
       if (bw !== undefined) conv.bw = bw;
       if (spec !== undefined) conv.spec = spec;
-      // Light at a new wavelength under the pump's pulse record: said here
-      // outright, since a pump broad enough holds its own harmonic's centre
-      // and the new wavelength alone would not show it.
-      if (wl !== ray.wl) conv.pulseForeign = true;
       // A continuum generated here is a pulse of its own: a new, flat band and
       // a spectral phase nobody knows. It carries a record that says so --
       // timed to the pump, as the OPO's outputs are -- instead of the pump's,
@@ -5491,11 +5470,10 @@ function pulseSpectrumPiece(ray, pulse, power = 1) {
   // A slice that carries a profile of its own is timed by it: the band it was
   // cut from, or what an AOTF channel made of the light inside the slice. The
   // pulse's record keeps one spectrum per piece and cannot hold the second.
-  // Only for light the record describes, though: a harmonic a crystal
-  // generated still carries the pump's record, whose phase is not this
-  // light's, and a profile to time must not make it look timed. Such light
-  // is marked where it is generated; the band test is a second line.
-  const region = ray.sliceSpec && !ray.pulseForeign ? pulseBandRegion(pulse) : null;
+  // Only for light inside the band the pulse was emitted with, though: a
+  // harmonic a crystal generated still carries the pump's record, whose phase
+  // is not this light's, and a profile to time must not make it look timed.
+  const region = ray.sliceSpec ? pulseBandRegion(pulse) : null;
   const own = region && rayWithinPulseBand(ray, region) ? ray.sliceSpec : null;
   const spec = own || parent?.spec || pulseBand(pulse) || flatSpectrum(cell[0], cell[1]);
   const lo = Math.max(cell[0], parent?.lo ?? -Infinity), hi = Math.min(cell[1], parent?.hi ?? Infinity);
@@ -5676,7 +5654,6 @@ function loopState(r) {
     r.wl, r.bw, r.spec, r.pol, r.stokes?.s1, r.stokes?.s2, r.stokes?.s3, r.polMod, r.pulse,
     r.gdd, r.groupDelayDifferenceFs, r.medium, r.mediumMaterial, r.ior, r.sourceId, r.color,
     r.dispersed, r.spectralContinuum, r.spectralWidthNm, r.spectralLo, r.spectralHi, r.fanLo, r.fanHi, r.sliceSpec,
-    r.pulseForeign,
     r.approximation, r.parametricPath, r.keepWeak, r.retainWeak, r.hidden, r.sample, r.phaseValid,
   ];
 }
@@ -6149,7 +6126,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // the etalon's mark is: a pulse an earlier filter reshaped is not
       // re-detected as reshaping above, and would keep the earlier filter's
       // piece for the packets drawn downstream.
-      if (hit.surface.kind === 'aotf' && r.pulse && !r.pulseForeign && (sampleCell(r) || r.pulse.spectrumReshaped)) {
+      if (hit.surface.kind === 'aotf' && r.pulse && (sampleCell(r) || r.pulse.spectrumReshaped)) {
         for (const child of children) {
           const selected = 'sliceSpec' in child || ('spec' in child && child.spec && child.spec !== r.spec);
           if (!selected) continue;
@@ -6179,8 +6156,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         }
         // Only for light the record describes: a harmonic a crystal
         // generated still carries the pump's record, and the pump's spectrum
-        // through this port says nothing about it. It is marked where it was
-        // generated, since a broad pump's band can reach its own harmonic's.
+        // through this port says nothing about it.
         const region = pulseBandRegion(r.pulse);
         for (const child of children) {
           if (ownPulse.has(child)) continue;
@@ -6188,7 +6164,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           // A lone ray with its own spectrum, at the first element to reshape
           // the pulse, is the whole train: the record taken from it stands.
           if (!sampleCell(merged) && sharing.get(ports.keyFor(child)) < 2 && !r.pulse.spectrumReshaped) continue;
-          if (r.pulseForeign || !region || !rayWithinPulseBand(merged, region)) continue;
+          if (!region || !rayWithinPulseBand(merged, region)) continue;
           const shape = ports.shapeFor(child);
           const pieces = shape ? reshapedPulsePieces(r.pulse, shape, ports.edges) : null;
           if (!pieces || !pieces.length) continue;
@@ -6374,12 +6350,6 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           groupDelayDifferenceTrace: ('pulse' in c ? Boolean(c.pulse) : r.groupDelayDifferenceTrace)
             ? [{ opl: r.opl, value: childDelayDifference, linear: false }] : null,
           pulse: 'pulse' in c ? c.pulse : r.pulse,
-          // Light generated at a new wavelength under the pump's record: the
-          // record is kept (it still times the train), but nothing may treat
-          // it as a description of this light's spectrum. A child that
-          // brought a pulse of its own is described by that.
-          pulseForeign: ownPulse.has(c) ? false
-            : Boolean(c.pulseForeign || r.pulseForeign || leavesParentBand(r, c)),
           // A caveat is never cleared downstream: no later element computes
           // what the linear-only continuation left out.
           approximation: r.approximation || c.approximation || null,
