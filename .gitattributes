@@ -1,0 +1,6 @@
+# The source catalogue, authored examples, renderer and assets remain visible.
+# Generated output is reproducible and checked by test/patterns.test.js.
+patterns/index.html linguist-generated=true
+patterns/*/index.html linguist-generated=true
+patterns/*/diagram.svg linguist-generated=true
+patterns/*/scene.json linguist-generated=true
