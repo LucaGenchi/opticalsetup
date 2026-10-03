@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>I/Q optical modulator — Examples | OpticalSetup</title>
+<meta name="description" content="Two push-pull Mach–Zehnder modulators nested inside a third, 90° apart: one sets the real part of the optical field, the other the imaginary part.">
+<link rel="canonical" href="https://opticalsetup.com/example-setups/iq-optical-modulator-nested-mach-zehnder/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="I/Q optical modulator — OpticalSetup Examples">
+<meta property="og:description" content="Two push-pull Mach–Zehnder modulators nested inside a third, 90° apart: one sets the real part of the optical field, the other the imaginary part.">
+<meta property="og:url" content="https://opticalsetup.com/example-setups/iq-optical-modulator-nested-mach-zehnder/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+<link rel="stylesheet" href="../../example-setups/assets/examples.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../calculators/">Calculators</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell" style="grid-template-columns: 1fr;">
+    <main class="wiki-article" style="max-width: 760px;">
+      <div class="crumb"><a href="../../example-setups/">Examples</a> / Interferometers / I/Q optical modulator</div>
+      <h1>I/Q optical modulator</h1>
+      <p class="tagline" style="margin-top: 10px;">Two push-pull Mach–Zehnder modulators nested inside a third, 90° apart: one sets the real part of the optical field, the other the imaginary part.</p>
+
+      <a class="place-cta" href="../../sketch/?example=iq-optical-modulator-nested-mach-zehnder">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?example=iq-optical-modulator-nested-mach-zehnder&amp;embed=1"
+          title="I/Q optical modulator — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace of the setup above, shown as a picture. Open it in the canvas to take it apart, retune it, and save or export it as your own.</p>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Background</h2>
+
+      <p>An optical field has an amplitude and a phase, or equivalently two
+      independent components a quarter of a cycle apart: the in-phase part
+      <em>I</em> and the quadrature part <em>Q</em>. A modulator that changes only
+      the intensity uses one of them. Coherent optical links use both, and both
+      polarizations, which is most of how fibre capacity grew from 10 to 100
+      gigabits per second and beyond on the same glass<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+      <p>The device that writes <em>I</em> and <em>Q</em> is three
+      interferometers. The light is split in two. Each half passes through its own
+      Mach–Zehnder modulator, driven <em>push-pull</em>: a phase +φ/2 in one arm
+      and −φ/2 in the other. The two arms then recombine to a field proportional to
+      sin(φ/2) or cos(φ/2), depending on the port — a real number that goes
+      smoothly from +1 through zero to −1, with no phase rotation along the way.
+      That is what push-pull buys: driving one arm alone gives the same intensity
+      but drags the phase with it, which is chirp<sup class="cite">[<a href="#ref-2">2</a>]</sup>. One of the two
+      branches is then delayed by a quarter of a wavelength, and the branches are
+      recombined. The output field is <em>I</em>&nbsp;+&nbsp;i<em>Q</em>, with
+      <em>I</em> and <em>Q</em> set independently by two voltages.</p>
+      <p>Setting each of them to ±1 gives the four points of QPSK; more drive
+      levels give 16-QAM and denser constellations<sup class="cite">[<a href="#ref-2">2</a>]</sup>. In practice the
+      three interferometers are waveguides on one lithium niobate or indium
+      phosphide chip a few centimetres long, and the path lengths that have to be
+      held to a small fraction of a wavelength are held by the chip
+      itself, with three slow bias voltages trimming what is left<sup class="cite">[<a href="#ref-3">3</a>]</sup>.</p>
+      <p>One feature is intrinsic rather than a flaw: combining two fields in
+      quadrature on a 50:50 combiner puts half of their power in the port that is
+      not used. An I/Q modulator at full drive passes at most half its input.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>What this setup demonstrates</h2>
+      <div class="sim-block">
+
+      <p>The same device in free space, at 1550&nbsp;nm: a splitter, two
+      Mach–Zehnder interferometers built from
+      <a href="../../wiki/bs/">beamsplitters</a> and mirrors, a
+      <a href="../../wiki/phasemodulator/">phase modulator</a> in each of their four
+      arms, a fifth holding the 90° shift, and a combiner. Every path is traced
+      and the fields are added with their phases, so the readings come from the
+      geometry and not from a formula for the device.</p>
+      <p>Each child interferometer has two outputs. One goes on to the combiner;
+      the other lands on a monitor detector, which is where a real modulator has
+      its monitor photodiode. As shipped, both children are driven by a full 180°
+      (+90° and −90° in their arms): the monitors are dark, <em>I</em>&nbsp;=&nbsp;<em>Q</em>&nbsp;=&nbsp;1,
+      and the output and the unused port each carry 0.5.</p>
+      <p>Things to try, in this order.</p>
+      <p><strong>Change a sign.</strong> Swap the two drives of the Q modulator to
+      −90° and +90°. <em>Q</em> is now −1: a different QPSK symbol. Nothing on
+      the screen moves, because the power is <em>I</em>²&nbsp;+&nbsp;<em>Q</em>²
+      and a detector does not see the phase of the light. That is the meaning of
+      quadrature — the two components do not interfere.</p>
+      <p><strong>Remove the quadrature.</strong> Set the 90° shifter to 0° and
+      repeat. Now the two branches do interfere: with both at +1 the unused port
+      takes everything and the output is dark, and flipping the sign of <em>Q</em>
+      moves all of it to the output. The sign that was invisible is now the whole
+      signal, which is also why a real device needs that bias held.</p>
+      <p><strong>Turn one down.</strong> Reduce the I drives towards 0° and its
+      light moves from the output to the I monitor, as sin²(φ/2). With both
+      children undriven nothing leaves the modulator at all: it is biased at its
+      null, as a real one is.</p>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>The drives here are static phases. Nothing is modulated in
+      time, so there is no symbol stream, no bandwidth, no drive voltage or
+      V<sub>π</sub>, and no chirp from an imperfect push-pull. The phase modulators
+      are ideal: exactly the phase asked for, at this wavelength, with no loss.</p>
+      <p>The detectors measure power. There is no coherent receiver — no local
+      oscillator, no 90° hybrid — so the constellation itself is never displayed;
+      what the setup shows is the power relations that follow from it. The
+      interferometers are exactly balanced because they are drawn on a grid: there
+      is no drift, no bias control, no finite extinction from unequal splitting,
+      and none of the waveguide loss of a real chip.</p>
+      <p>The interference is that of an ideal monochromatic CW source through
+      unitary non-polarizing beamsplitters and fully reflective flat mirrors, the
+      same model as the Mach–Zehnder example.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/phasemodulator/"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-17" y="-6" width="34" height="12" rx="3" fill="#c9b3d8" stroke="#6b4f85" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#33224a">φ~</text><path d="M -20,-10 h 4 v -3 h 4 v 3 h 4" fill="none" stroke="#6b4f85" stroke-width="1.1" stroke-linecap="round"/></svg>Phase modulator</a><a href="../../wiki/bs/"><svg viewBox="-20.7 -20.7 41.4 41.4" aria-hidden="true"><rect x="-12.7" y="-12.7" width="25.4" height="25.4" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/><line x1="-12.7" y1="12.7" x2="12.7" y2="-12.7" stroke="#4a90c4" stroke-width="1.5"/></svg>Beamsplitter</a><a href="../../wiki/mirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><line x1="0" y1="-12.7" x2="0" y2="12.7" stroke="#444" stroke-width="3.5"/><line x1="-1.5" y1="-12.7" x2="-7.5" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="-6.233333333333333" x2="-7.5" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="0.2333333333333325" x2="-7.5" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="6.699999999999999" x2="-7.5" y2="12.7" stroke="#888" stroke-width="1"/></svg>Mirror</a><a href="../../wiki/camera/"><svg viewBox="-28 -28 56 56" aria-hidden="true"><rect x="-20" y="-15" width="40" height="30" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">CAM</text><rect x="-24" y="-7" width="5" height="14" fill="#333" stroke="#2b333d"/><circle cx="13" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Camera</a><a href="../../wiki/detector/"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-18" y="-13" width="36" height="26" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">PD</text><rect x="-19.5" y="-9" width="3" height="18" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/><circle cx="11" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Photodetector</a><a href="../../wiki/cwlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">CW LASER</text><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>CW Laser</a>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://doi.org/10.1109/JLT.2015.2463719" target="_blank" rel="noopener">K. Kikuchi, “Fundamentals of coherent optical fiber communications,” Journal of Lightwave Technology 34, 157–179 (2016)</a></li><li id="ref-2"><a href="https://doi.org/10.1109/JPROC.2006.873438" target="_blank" rel="noopener">P. J. Winzer, R.-J. Essiambre, “Advanced optical modulation formats,” Proceedings of the IEEE 94, 952–985 (2006)</a></li><li id="ref-3"><a href="https://doi.org/10.1038/s41586-018-0551-y" target="_blank" rel="noopener">C. Wang et al., “Integrated lithium niobate electro-optic modulators operating at CMOS-compatible voltages,” Nature 562, 101–104 (2018)</a></li>
+      </ol>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/electro_optic_modulators.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Electro-optic Modulators</a></li><li><a href="https://en.wikipedia.org/wiki/In-phase_and_quadrature_components" target="_blank" rel="noopener">Wikipedia — In-phase and quadrature components</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">Examples are written and maintained with the project. For setups shared by users, see the <a href="../../community/">community section</a>; for how each component works, see the <a href="../../wiki/">wiki</a>.</footer>
+</body>
+</html>

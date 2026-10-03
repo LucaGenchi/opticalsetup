@@ -1,0 +1,149 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "title",
+   "type": "textlabel",
+   "x": -50,
+   "y": 50,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Polarization send–return separation**",
+    "fontSize": 24,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "note-1",
+   "type": "textlabel",
+   "x": -50,
+   "y": 100,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Out:** horizontal light crosses the PBS and the quarter-wave plate makes it circular.\n**Back:** the mirror reverses its handedness; the second pass makes it vertical, and the PBS reflects it to the detector.",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "laser",
+   "type": "cwlaser",
+   "x": -25,
+   "y": 250,
+   "rot": 0,
+   "label": "532 nm, horizontal",
+   "showLabel": true,
+   "params": {
+    "wavelength": 532,
+    "avgPowerW": 0.05,
+    "beamMode": "beam",
+    "beamWidth": 3,
+    "pol": 0,
+    "coherenceLengthMm": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw"
+   }
+  },
+  {
+   "id": "hwp",
+   "type": "hwp",
+   "x": 100,
+   "y": 250,
+   "rot": 0,
+   "label": "λ/2 — power split",
+   "showLabel": true,
+   "params": {
+    "a": 0,
+    "length": 25.4
+   }
+  },
+  {
+   "id": "pbs",
+   "type": "pbs",
+   "x": 225,
+   "y": 250,
+   "rot": 0,
+   "label": "PBS",
+   "showLabel": true,
+   "params": {
+    "size": 25.4
+   }
+  },
+  {
+   "id": "qwp",
+   "type": "qwp",
+   "x": 350,
+   "y": 250,
+   "rot": 0,
+   "label": "λ/4 at 45°",
+   "showLabel": true,
+   "params": {
+    "a": 45,
+    "length": 25.4
+   }
+  },
+  {
+   "id": "focus-lens",
+   "type": "lens",
+   "x": 450,
+   "y": 250,
+   "rot": 0,
+   "label": "Focusing lens",
+   "showLabel": true,
+   "params": {
+    "f": 75,
+    "dia": 25.4,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "target",
+   "type": "mirror",
+   "x": 525,
+   "y": 250,
+   "rot": 0,
+   "label": "Target",
+   "showLabel": true,
+   "params": {
+    "length": 40,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "receive",
+   "type": "detector",
+   "x": 225,
+   "y": 375,
+   "rot": 90,
+   "label": "Return port",
+   "showLabel": true,
+   "params": {
+    "aperture": 26,
+    "timeSpanNs": 0,
+    "timeOffsetNs": 0,
+    "sync": false,
+    "riseTimeNs": 1
+   }
+  },
+  {
+   "id": "reject",
+   "type": "beamdump",
+   "x": 225,
+   "y": 150,
+   "rot": 270,
+   "label": "Rejected input",
+   "showLabel": true,
+   "params": {
+    "aperture": 22
+   }
+  }
+ ],
+ "beams": []
+}
