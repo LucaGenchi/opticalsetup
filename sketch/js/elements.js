@@ -5650,10 +5650,12 @@ registry.ledsource = {
   ],
   svg(el) {
     const h = laserH(el), hh = h / 2, ap = laserAperture(el), c = ledColor(el.params);
-    // The collimating lens sits in the exit port, tinted by the emission.
-    return `<rect x="-46" y="${-hh}" width="88" height="${h}" rx="4" fill="#2f3a36" stroke="#1d2522" stroke-width="1.5"/>` +
-      `<text x="-2" y="0" ${isFlipped(el) ? 'transform="rotate(180 -2 0)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">LED</text>` +
-      `<path d="M 42,${-ap} Q 55,0 42,${ap} Z" fill="${c}" fill-opacity="0.75" stroke="#444" stroke-width="1"/>`;
+    // The collimating lens sits in the exit port, tinted by the emission. Its
+    // flat face is the plane the rays start from, so the beam meets the
+    // housing with no gap.
+    return `<rect x="-46" y="${-hh}" width="92" height="${h}" rx="4" fill="#2f3a36" stroke="#1d2522" stroke-width="1.5"/>` +
+      `<text x="0" y="0" ${isFlipped(el) ? 'transform="rotate(180)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">LED</text>` +
+      `<path d="M 52,${-ap} L 52,${ap} Q 40,0 52,${-ap} Z" fill="${c}" fill-opacity="0.75" stroke="#444" stroke-width="1"/>`;
   },
   surfaces: el => rectAbsorb(92, laserH(el)),
   source: laserSource,
