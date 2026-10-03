@@ -139,6 +139,12 @@ function unionBounds(bounds) {
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 
+// The figure is a standalone XML document, not HTML: the .svg download is
+// opened by XML parsers, and the PNG and GIF exports load it as an
+// image/svg+xml image, which renders nothing past the first error. Every
+// attribute needs a quoted value -- a bare HTML-style `data-flag` is fatal --
+// and text goes through esc(). test/export-xml.test.js checks every bundled
+// scene and every component.
 export function buildSVG({ whiteBg = false, animation = null, bounds = null } = {}) {
   const playback = animation?.playback || {};
   const elements = animation ? animatedElementsAt(animation.seconds, playback) : state.elements;
