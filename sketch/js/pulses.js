@@ -1,7 +1,10 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Pure helpers for pulse timing and canvas-only packet visualization.
 // Optical path lengths are expressed in millimetres and time in nanoseconds.
 
-import { gaussianPulseDurationAfterGDD } from './glass.js';
+import { pulseDurationAfterDispersion } from './glass.js';
+import { fieldMetrics } from './pulse-field.js';
 
 export const C_MM_PER_NS = 299.792458;
 
@@ -41,7 +44,22 @@ export function gateTransmissionAt(gate, emissionTimeNs) {
   const arrivalNs = emissionTimeNs + gate.opl / C_MM_PER_NS;
   const phase = positiveMod(arrivalNs - (gate.phaseNs || 0), periodNs) / periodNs;
   let transmission;
-  if (gate.shape === 'sine') {
+  if (gate.shape === 'sawtooth') {
+    // A ramp across the period, with `symmetry` giving the fraction of it
+    // spent rising -- the symmetry knob a function generator puts on its ramp
+    // output. 1 is the rising sawtooth, 0 the falling one, and 0.5 a
+    // triangle; everything between is an asymmetric triangle. The mean is
+    // (low + high) / 2 whatever the symmetry, so the average transmission
+    // does not move as the shape is swept.
+    const depth = Math.min(1, Math.max(0, gate.depth ?? 1));
+    const high = Number.isFinite(gate.high) ? gate.high : 1;
+    const low = Number.isFinite(gate.low) ? gate.low : 1 - depth;
+    const rise = Math.min(1, Math.max(0, gate.symmetry ?? 1));
+    const wave = rise <= 0 ? 1 - phase
+      : rise >= 1 ? phase
+        : (phase < rise ? phase / rise : (1 - phase) / (1 - rise));
+    transmission = low + (high - low) * wave;
+  } else if (gate.shape === 'sine') {
     const depth = Math.min(1, Math.max(0, gate.depth ?? 1));
     // A sine gate swings between two levels the same way a square one does;
     // when both are given explicitly it can also express gain (high > 1),
@@ -77,7 +95,10 @@ export function pulseTransmissionAt(pulse, emissionTimeNs) {
     const frequencyMHz = Math.min(1e6, Math.max(0.000001, gate.frequencyMHz || 1));
     const periodNs = 1000 / frequencyMHz;
     const duty = Math.min(1, Math.max(0, gate.duty ?? 0.5));
-    return gate.shape === 'sine'
+    // A continuously varying gate has no narrow feature to resolve, so a
+    // quarter period is the scale that matters; a square one is only as fine
+    // as its shorter phase.
+    return gate.shape === 'sine' || gate.shape === 'sawtooth'
       ? periodNs / 4
       : periodNs * Math.max(1e-6, Math.min(duty, 1 - duty));
   });
@@ -146,16 +167,34 @@ export function scopeTrace(pulse, { samples = 200, spanNs: forcedSpanNs, startNs
     ? Math.min(1e6, Math.max(0.001, pulse.repRateMHz)) : null;
   if (!repRateMHz) return null;
   const pulsePeriodNs = 1000 / repRateMHz;
-  const gates = (Array.isArray(pulse?.trains) ? pulse.trains : [pulse])
-    .flatMap(train => (Array.isArray(train?.gates) ? train.gates : []))
-    .filter(g => Number.isFinite(g?.opl));
+  // What the detector sums. Each branch is one distinctly gated share of the
+  // arriving light, weighted on the scale where a whole source beam is 1, so
+  // an element that only passes half the light draws a trace that only
+  // reaches half height -- and a beam whose gates never fully close (an AOM's
+  // zeroth order below perfect efficiency) sits on the floor its residual
+  // leaves rather than dropping to zero.
+  //
+  // Falling back to one unit-weight branch keeps every reading built before
+  // branches existed, and every caller that hands in a bare pulse, working.
+  const branches = (Array.isArray(pulse?.branches) && pulse.branches.length
+    ? pulse.branches
+    : [{ weight: 1, gates: (Array.isArray(pulse?.trains) ? pulse.trains : [pulse])
+      .flatMap(train => (Array.isArray(train?.gates) ? train.gates : [])) }])
+    .map(b => ({
+      weight: Number.isFinite(b.weight) ? Math.max(0, b.weight) : 1,
+      gates: (Array.isArray(b.gates) ? b.gates : []).filter(g => Number.isFinite(g?.opl)),
+    }))
+    .filter(b => b.weight > 0);
+  const gates = branches.flatMap(b => b.gates);
   const gatePeriodsNs = gates.map(g => 1000 / Math.min(1e6, Math.max(0.000001, g.frequencyMHz || 1)));
   const slowestGateNs = gatePeriodsNs.length ? Math.max(...gatePeriodsNs) : 0;
   const spanNs = Number.isFinite(forcedSpanNs) && forcedSpanNs > 0
     ? forcedSpanNs
     : 2 * Math.max(pulsePeriodNs, slowestGateNs);
   const phaseNs = Number.isFinite(pulse.phaseNs) ? pulse.phaseNs : 0;
-  const gated = { ...pulse, gates };
+  // Level of the summed beam at one emission time, gates and weights applied.
+  const levelAt = emittedNs => branches.reduce((sum, b) => sum
+    + b.weight * (b.gates.length ? pulseTransmissionAt({ ...pulse, gates: b.gates }, emittedNs) : 1), 0);
 
   // Pulse arrivals inside the window, each scaled by what survived the gates.
   // Very dense trains are bounded so one window can't emit thousands of spikes.
@@ -170,7 +209,7 @@ export function scopeTrace(pulse, { samples = 200, spanNs: forcedSpanNs, startNs
     const tNs = emittedNs + lag;
     if (tNs > to + 1e-9) break;
     if (tNs < from - 1e-9) continue;
-    pulses.push({ tNs, amplitude: gates.length ? pulseTransmissionAt(gated, emittedNs) : 1 });
+    pulses.push({ tNs, amplitude: levelAt(emittedNs) });
   }
 
   const count = Math.max(2, Math.min(600, Math.round(samples)));
@@ -179,7 +218,8 @@ export function scopeTrace(pulse, { samples = 200, spanNs: forcedSpanNs, startNs
     const tNs = from + spanNs * i / (count - 1);
     envelope.push({
       tNs,
-      value: gates.reduce((acc, gate) => acc * gateTransmissionAt(gate, tNs - lag), 1),
+      value: branches.reduce((sum, b) => sum
+        + b.weight * b.gates.reduce((acc, gate) => acc * gateTransmissionAt(gate, tNs - lag), 1), 0),
     });
   }
 
@@ -232,38 +272,63 @@ export function pointAtOpticalPath(track, target) {
   return sample ? { x: sample.x, y: sample.y, angle: sample.angle } : null;
 }
 
-// The local temporal envelope represented at one position on a traced path.
-// Only a transform-limited Gaussian has enough authored information for the
-// second-order GDD formula to determine a duration. Other pulse shapes keep
-// their configured width rather than receiving an invented chirp model.
-function pulseEnvelopeAtSample(track, sample, target) {
-  if (!sample || !track.pulse) return null;
-  const inputPulseWidthFs = Math.min(1e9, Math.max(1, track.pulse.pulseWidthFs || 100));
-  let gddFs2 = 0;
-  let previous = null;
-  for (const event of (Array.isArray(track.gddTrace) ? track.gddTrace : [])) {
-    if (!Number.isFinite(event?.opl) || !Number.isFinite(event?.gdd)) continue;
+export function traceValueAt(events, target, key) {
+  let value = 0, previous = null;
+  for (const event of (Array.isArray(events) ? events : [])) {
+    if (!Number.isFinite(event?.opl) || !Number.isFinite(event?.[key])) continue;
     if (target < event.opl - 1e-9) {
       if (previous && event.linear === true && event.opl > previous.opl) {
         const t = Math.min(1, Math.max(0, (target - previous.opl) / (event.opl - previous.opl)));
-        gddFs2 = previous.gdd + (event.gdd - previous.gdd) * t;
-      } else if (previous) {
-        gddFs2 = previous.gdd;
-      }
-      previous = null;
+        value = previous[key] + (event[key] - previous[key]) * t;
+      } else if (previous) value = previous[key];
       break;
     }
     previous = event;
-    gddFs2 = event.gdd;
+    value = event[key];
   }
-  const canDerive = track.pulse.transformLimited === true
-    && (track.pulse.pulseShape || 'gauss') === 'gauss';
-  const derived = canDerive
-    ? gaussianPulseDurationAfterGDD(inputPulseWidthFs, gddFs2) : null;
-  const pulseWidthFs = Number.isFinite(derived) ? derived : inputPulseWidthFs;
+  return value;
+}
+
+// A filtered pulse is timed by a numerical transform, and inside glass the
+// GDD changes every frame; the packet takes it to a step whose quadratic phase
+// at the edge of the filtered band stays under 0.05 rad -- δ·Δω²/16 -- so the
+// answers can be reused without the step mattering. The bound is on the
+// phase, not on the GDD's own digits: a path that nearly cancels a large
+// source chirp keeps its small residual.
+function packetGdd(pulse, gddFs2) {
+  const pieces = pulse?.spectrumReshaped ? pulse.filteredPieces : null;
+  if (!gddFs2 || !Array.isArray(pieces) || !pieces.length) return gddFs2;
+  const lo = Math.min(...pieces.map(p => p.lo)), hi = Math.max(...pieces.map(p => p.hi));
+  const bandwidth = 2 * Math.PI * 299.792458 * (1 / lo - 1 / hi);
+  if (!(bandwidth > 0)) return gddFs2;
+  const step = 0.8 / (bandwidth * bandwidth);
+  return Math.round(gddFs2 / step) * step;
+}
+
+// The local temporal envelope represented at one position on a traced path.
+// The same source metadata and accumulated dispersion feed detector readouts,
+// probes, scopes and these travelling packets, so their durations cannot drift.
+function pulseEnvelopeAtSample(track, sample, target) {
+  if (!sample || !track.pulse) return null;
+  const inputPulseWidthFs = Math.min(1e9, Math.max(1, track.pulse.pulseWidthFs || 100));
+  const gddFs2 = traceValueAt(track.gddTrace, target, 'gdd');
+  const groupDelayDifferenceFs = traceValueAt(
+    track.groupDelayDifferenceTrace, target, 'value',
+  );
+  // A sampled field answers for itself; one that failed leaves the glyph at
+  // its configured length rather than handing the pulse to the analytic
+  // model, which declines sampled pulses anyway.
+  const sampled = track.pulse.field ? fieldMetrics(track.pulse.field, gddFs2)?.fwhmFs : null;
+  const derived = track.pulse.field
+    ? { durationFs: Number.isFinite(sampled) ? sampled : null, model: 'Sampled envelope · argon capillary' }
+    : pulseDurationAfterDispersion(track.pulse, packetGdd(track.pulse, gddFs2), groupDelayDifferenceFs);
+  const pulseWidthFs = Number.isFinite(derived?.durationFs)
+    ? derived.durationFs : inputPulseWidthFs;
   const stretchFactor = pulseWidthFs / inputPulseWidthFs;
   return {
     gddFs2,
+    groupDelayDifferenceFs,
+    dispersionModel: derived?.model ?? null,
     inputPulseWidthFs,
     pulseWidthFs,
     stretchFactor,
@@ -276,7 +341,7 @@ function pulseEnvelopeAtSample(track, sample, target) {
     // stays clearly visible while the extremes stop swamping the bench.
     // The real duration and factor remain un-clamped on the marker for
     // readback and detector reporting.
-    visualStretch: Math.min(3, Math.sqrt(Math.max(1, stretchFactor))),
+    visualStretch: Math.min(3, Math.max(track.pulse.field ? 0.12 : 0.4, Math.sqrt(stretchFactor))),
   };
 }
 
@@ -318,7 +383,13 @@ export function pulseMarkers(track, timeNs, {
   const spacing = packetSpacing(periodNs, physical, schematicSpacingMm);
   const speed = physical ? C_MM_PER_NS : spacing / periodNs;
   const phaseNs = Number.isFinite(track.pulse.phaseNs) ? track.pulse.phaseNs : 0;
-  const phase = positiveMod((timeNs - phaseNs) * speed, spacing);
+  // A train emitted later (its pulse phase) is drawn as if it had that much
+  // more path, c times the delay, in either mode: in schematic mode too, a
+  // beam timed onto another by its emission phase and one timed by its path
+  // then look coincident where they meet (an OPA's seed, set by path, and the
+  // amplified light, timed by the pump's phase, were drawn 22 mm apart).
+  const leadMm = phaseNs * C_MM_PER_NS;
+  const phase = positiveMod(timeNs * speed - leadMm, spacing);
   const lo = track.opls[0], hi = track.opls.at(-1);
   const k0 = Math.ceil((lo - phase) / spacing);
   const k1 = Math.floor((hi - phase) / spacing);
@@ -329,7 +400,8 @@ export function pulseMarkers(track, timeNs, {
   const markers = [];
   for (let k = k0; k <= k1 && markers.length < maxMarkers; k += stride) {
     const opl = phase + k * spacing;
-    const emissionTimeNs = timeNs - opl / speed;
+    // When this packet left the source, on the source's own clock.
+    const emissionTimeNs = timeNs - (opl + leadMm) / speed + phaseNs;
     const activeGates = (track.pulse.gates || []).filter(gate => opl >= gate.opl);
     const transmission = pulseTransmissionAt({ ...track.pulse, gates: activeGates }, emissionTimeNs);
     if (transmission <= 0) continue;
@@ -370,7 +442,10 @@ export function pulseArrivalsAtPath(track, fromTimeNs, toTimeNs, targetOpl, {
   const spacing = packetSpacing(periodNs, physical, schematicSpacingMm);
   const speed = physical ? C_MM_PER_NS : spacing / periodNs;
   const phaseNs = Number.isFinite(track.pulse.phaseNs) ? track.pulse.phaseNs : 0;
-  const firstArrival = phaseNs + targetOpl / speed;
+  // As pulseMarkers draws them: the emission phase counts as c times its
+  // delay of extra path.
+  const leadMm = phaseNs * C_MM_PER_NS;
+  const firstArrival = (targetOpl + leadMm) / speed;
   const firstIndex = Math.floor((fromTimeNs - firstArrival) / periodNs) + 1;
   const lastIndex = Math.floor((toTimeNs - firstArrival + 1e-9) / periodNs);
   if (lastIndex < firstIndex) return [];
@@ -380,7 +455,7 @@ export function pulseArrivalsAtPath(track, fromTimeNs, toTimeNs, targetOpl, {
   const arrivals = [];
   for (let i = firstIndex; i <= lastIndex && arrivals.length < maxEvents; i += stride) {
     const timeNs = firstArrival + i * periodNs;
-    const emissionTimeNs = timeNs - targetOpl / speed;
+    const emissionTimeNs = timeNs - (targetOpl + leadMm) / speed + phaseNs;
     const transmission = pulseTransmissionAt({ ...track.pulse, gates: activeGates }, emissionTimeNs);
     if (transmission > 1e-9) arrivals.push({ timeNs, transmission });
   }

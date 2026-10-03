@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -194,7 +196,7 @@ function stageInspectorHTML(laser, stage, between = []) {
   state.elements = [laser, ...between, stage];
   state.beams = [];
   state.selection = { kind: 'element', id: stage.id };
-  state.demoMode = false;
+  state.embedMode = false;
   traceScene(state.elements, state.beams);
   initInspector(panel);
   renderInspector();

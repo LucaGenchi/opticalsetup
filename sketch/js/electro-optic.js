@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Electro-optic phase modulation.
 //
 // A Pockels cell changes the refractive index in proportion to the applied

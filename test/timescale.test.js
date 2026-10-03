@@ -1,12 +1,14 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
   TIME_SCALES, MIN_TIME_SCALE, MAX_TIME_SCALE, CW_FALLBACK_RATIO,
-  snapTimeScale, pulsePeriodNs, pulsesReadAsCW, elementDriveHz, recommendedTimeScale,
+  snapTimeScale, pulsePeriodNs, pulsesReadAsCW, elementDriveHz, recommendedTimeScale, nextAutoScale,
 } from '../sketch/js/timescale.js';
 import { createElement, galvoAngleAt, registry } from '../sketch/js/elements.js';
-import { gateTransmissionAt } from '../sketch/js/pulses.js';
+import { gateTransmissionAt, pulseMarkers } from '../sketch/js/pulses.js';
 
 const scaleOf = elements => recommendedTimeScale(elements).scaleNsPerSecond;
 
@@ -25,20 +27,53 @@ test('the canvas offers exactly the seven requested time scales, 1 ns/s through 
   assert.equal(MAX_TIME_SCALE, 1e6);
 });
 
-test('pulsed-source defaults follow the requested repetition-rate tiers', () => {
-  assert.equal(scaleOf([pulsedLaser(80)]), 10, '80 MHz (>50 MHz) -> 10 ns/s');
-  assert.equal(scaleOf([pulsedLaser(200)]), 10, '200 MHz -> 10 ns/s');
-  assert.equal(scaleOf([pulsedLaser(10)]), 1e3, '10 MHz (500 kHz–50 MHz) -> 1 µs/s');
+test('schematic pulsed-source defaults pace the train at about two real seconds per period', () => {
+  assert.equal(scaleOf([pulsedLaser(200)]), 1, '200 MHz (5 ns) -> 1 ns/s');
+  assert.equal(scaleOf([pulsedLaser(80)]), 10, '80 MHz (12.5 ns) -> 10 ns/s');
+  assert.equal(scaleOf([pulsedLaser(40)]), 10, '40 MHz (25 ns) -> 10 ns/s, not 1 µs/s (Luca, #190)');
+  assert.equal(scaleOf([pulsedLaser(10)]), 100, '10 MHz (100 ns) -> 100 ns/s');
   assert.equal(scaleOf([pulsedLaser(1)]), 1e3, '1 MHz -> 1 µs/s');
-  assert.equal(scaleOf([pulsedLaser(0.1)]), 1e5, '100 kHz (<500 kHz) -> 100 µs/s');
-  assert.equal(scaleOf([pulsedLaser(0.01)]), 1e5, '10 kHz -> 100 µs/s');
+  assert.equal(scaleOf([pulsedLaser(0.2)]), 1e3, '200 kHz -> 1 µs/s (was 100 µs/s)');
+  assert.equal(scaleOf([pulsedLaser(0.1)]), 1e4, '100 kHz -> 10 µs/s');
+  assert.equal(scaleOf([pulsedLaser(0.001)]), 1e6, '1 kHz -> 1 ms/s');
 });
 
-test('the repetition-rate tier boundaries land on the documented side', () => {
-  assert.equal(scaleOf([pulsedLaser(50)]), 1e3, 'exactly 50 MHz is not >50 MHz, so it takes the middle tier');
-  assert.equal(scaleOf([pulsedLaser(50.0001)]), 10, 'just above 50 MHz takes the fast tier');
-  assert.equal(scaleOf([pulsedLaser(0.5)]), 1e3, 'exactly 500 kHz is included in the middle tier');
-  assert.equal(scaleOf([pulsedLaser(0.4999)]), 1e5, 'just below 500 kHz takes the slow tier');
+test('physical spacing moves packets at c x scale: its default is the slowest scale', () => {
+  for (const repRateMHz of [200, 80, 1, 0.2]) {
+    assert.equal(recommendedTimeScale([pulsedLaser(repRateMHz)], { mode: 'physical' }).scaleNsPerSecond, MIN_TIME_SCALE, `${repRateMHz} MHz`);
+  }
+  // A mechanical element still asks for its own, slower-moving scale.
+  const chopper = createElement('chopper', 0, 0);
+  chopper.params.modulate = true;
+  chopper.params.frequencyHz = 1000;
+  assert.equal(recommendedTimeScale([pulsedLaser(80), chopper], { mode: 'physical' }).scaleNsPerSecond, 1e6);
+});
+
+// How fast the packets of a train actually move on the drawing, in mm per
+// real second, at a given scale: two nearby frames of pulseMarkers on a
+// straight 600 mm path.
+function packetSpeedMmPerS(repRateMHz, scaleNsPerSecond, mode) {
+  const track = { pts: [{ x: 0, y: 0 }, { x: 600, y: 0 }], opls: [0, 600], pulse: { repRateMHz, pulseWidthFs: 100, phaseNs: 0 } };
+  const dtNs = scaleNsPerSecond / 1000; // one millisecond of real time
+  for (let t0 = 0; t0 < 1e9; t0 += 0.37 * 1000 / repRateMHz) {
+    const a = pulseMarkers(track, t0, { mode }), b = pulseMarkers(track, t0 + dtNs, { mode });
+    if (a.length && b.length && b[0].opl > a[0].opl) return (b[0].opl - a[0].opl) / 1e-3;
+  }
+  return null;
+}
+
+test('at the default scale, packets move at a watchable speed in either display mode', () => {
+  // Schematic: 0.6-6 real seconds per period, one ~140 mm spacing each.
+  for (const repRateMHz of [1000, 200, 80, 50, 40, 10, 1, 0.5, 0.2, 0.1, 0.02, 0.001]) {
+    const scale = scaleOf([pulsedLaser(repRateMHz)]);
+    const speed = packetSpeedMmPerS(repRateMHz, scale, 'schematic');
+    assert.ok(speed >= 15 && speed <= 250, `${repRateMHz} MHz at ${scale} ns/s: ${speed} mm/s`);
+  }
+  // Physical: the speed of light on the drawing at 1 ns/s.
+  const physical = packetSpeedMmPerS(80, recommendedTimeScale([pulsedLaser(80)], { mode: 'physical' }).scaleNsPerSecond, 'physical');
+  assert.ok(Math.abs(physical - 299.792458) < 1e-6, `${physical} mm/s`);
+  // The case Luca reported: 40 MHz at the old 1 µs/s default moved 5.6 m/s.
+  assert.ok(packetSpeedMmPerS(40, 1e3, 'schematic') > 5000);
 });
 
 test('the fastest source in the scene sets the pulsed tier', () => {
@@ -179,6 +214,7 @@ test('packets stay packets whenever the scale is a reasonable match', () => {
   assert.equal(pulsesReadAsCW(12.5, 10), false, '80 MHz at its own 10 ns/s default');
   assert.equal(pulsesReadAsCW(1000, 1e3), false, '1 MHz at its own 1 µs/s default');
   assert.equal(pulsesReadAsCW(1e5, 1e5), false, '10 kHz at its own 100 µs/s default');
+  assert.equal(pulsesReadAsCW(25, 10), false, '40 MHz at its own 10 ns/s default');
   assert.equal(pulsesReadAsCW(CW_FALLBACK_RATIO, 1), false, 'exactly at the ratio limit is still drawn');
 });
 
@@ -259,4 +295,40 @@ test('scaling simulated time rescales galvo motion proportionally', () => {
   // cycle; at 1 ns/s it is a million times less, i.e. essentially frozen.
   assert.ok(Math.abs(angleAfterOneRealSecondAt(1e6)) > Math.abs(angleAfterOneRealSecondAt(1)),
     'a coarser time scale advances the galvo further per real second');
+});
+
+// The automatic scale over a session: follow the scene, hold a hand-picked
+// scale while the scene still calls for the same default, and release it as
+// soon as it calls for a different one.
+function session(keys, manualAt = {}) {
+  let status = { lastAuto: null, manualFor: null };
+  const applied = [];
+  keys.forEach((key, i) => {
+    if (i in manualAt) status = { ...status, manualFor: manualAt[i] };
+    const next = nextAutoScale(key, status);
+    status = { lastAuto: next.lastAuto, manualFor: next.manualFor };
+    applied.push(next.apply ? key : null);
+  });
+  return { applied, status };
+}
+
+test('the automatic scale follows the scene and stays quiet when nothing changes', () => {
+  // 10 ns/s is the startup default: no change, no announcement.
+  assert.deepEqual(session([10, 10, 1e3, 1e3, 10]).applied, [null, null, 1e3, null, 10]);
+  assert.deepEqual(session(['mechanics', 'mechanics']).applied, ['mechanics', null]);
+});
+
+test('a hand-picked scale holds only until the scene calls for a different default', () => {
+  // A 40 MHz source (10 ns/s); the user picks another scale by hand while the
+  // recommendation is 10 ns/s; edits that keep it at 10 ns/s leave the pick
+  // alone; adding a 1 kHz chopper (1 ms/s) releases it.
+  const { applied, status } = session([10, 10, 10, 1e6, 1e6, 10], { 1: 10 });
+  assert.deepEqual(applied, [null, null, null, 1e6, null, 10]);
+  assert.equal(status.manualFor, null, 'released, not held for the rest of the session');
+  // Switching to physical spacing (1 ns/s) also releases it.
+  assert.deepEqual(session([10, 1], { 1: 10 }).applied, [null, 1]);
+  // Released even when the new recommendation is the one applied before the pick.
+  assert.deepEqual(nextAutoScale(1e3, { lastAuto: 1e3, manualFor: 10 }), { apply: true, lastAuto: 1e3, manualFor: null });
+  // A demo that fixes its scale holds it the same way (no scale applied yet).
+  assert.deepEqual(nextAutoScale(1e3, { lastAuto: null, manualFor: 1e3 }), { apply: false, lastAuto: null, manualFor: 1e3 });
 });

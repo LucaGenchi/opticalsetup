@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Copy and paste for the sketch. The pure half lives here so the rules that
 // are easy to get quietly wrong -- singletons, and the sensor links that hold
 // a detector screen to its detector -- can be tested without a DOM.

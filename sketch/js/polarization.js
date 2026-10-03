@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Normalized Stokes-vector helpers. s1/s2 describe linear polarization and
 // s3 circular handedness; unpolarized light is represented by null.
 

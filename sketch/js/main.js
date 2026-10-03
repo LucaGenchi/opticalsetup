@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // App bootstrap: palette, toolbar, keyboard shortcuts.
 
 import { copyableSelection, pasteObjects } from './clipboard.js';
@@ -26,10 +28,10 @@ import { buildSVG, exportSVG, exportPNG, exportGIF } from './export.js';
 import { examples } from './examples-data.js';
 import { community } from './community-data.js';
 import { download, esc, manualBeamSVG } from './util.js';
-import { buildShareURL, copyText, sharedSceneFromURL } from './share.js';
+import { buildShareURL, clearSharedSceneURL, copyText, shareURLForScene, sharedSceneFromURL } from './share.js';
 import { qrSVG } from './qr.js';
 import { buildExampleProposalIssueURL } from './proposal.js';
-import { recommendedTimeScale, TIME_SCALES, elementDriveHz } from './timescale.js';
+import { recommendedTimeScale, nextAutoScale, TIME_SCALES, elementDriveHz } from './timescale.js';
 import { initTheme } from './theme.js';
 
 const $ = id => document.getElementById(id);
@@ -39,7 +41,7 @@ const $ = id => document.getElementById(id);
 // so the showcased component's actual optical function is visible, not
 // just its icon sitting in empty space. The showcased component keeps its
 // registry type unique within its own scene, so it can be found again by
-// type after the scene is built (see isDemo boot below).
+// type after the scene is built (see the boot block below).
 function mkDemo(type, x, y, rot = 0, params = {}, extra = {}) {
   const e = createElement(type, x, y);
   e.rot = rot;
@@ -56,7 +58,7 @@ const FIBER_DEMOS = new Set(['fiber', 'barefiber']);
 // cross-correlation mode only means anything with two sources and two arms, so
 // it needs a scene of its own rather than the one-source embed the component
 // page carries.
-const SCENE_DEMOS = new Set(['crosscorrelator']);
+const SCENE_DEMOS = new Set(['crosscorrelator', 'crystal-supercontinuum', 'crystal-thg']);
 
 // Fibers are drawn paths (state.beams), not registry elements, so their demo
 // scenes return {elements, beams} instead of a bare element array.
@@ -81,6 +83,163 @@ function fiberDemo({ bare }) {
 }
 
 const demoScenes = {
+  eye: () => {
+    const eye = mkDemo('eye', 280, 160, 0, { diameter: 30, pupil: 10, focus: 30 });
+    return [mkDemo('cwlaser', 60, 160, 0, { beamMode: 'beam', beamWidth: 12 }), eye,
+      mkDemo('display', 280, 260, 0, { sensorId: eye.id, displayScale: 0.55 })];
+  },
+  generaldetector: () => {
+    const sensor = mkDemo('generaldetector', 350, 160);
+    return [mkDemo('pulsedlaser', 60, 160, 0, { beamMode: 'beam', beamWidth: 12 }), sensor,
+      mkDemo('display', 350, 265, 0, { sensorId: sensor.id, displayScale: 0.6 })];
+  },
+  display: () => {
+    const sensor = mkDemo('powermeter', 350, 160);
+    return [mkDemo('cwlaser', 60, 160, 0, { avgPowerW: 0.2, beamMode: 'beam', beamWidth: 12 }),
+      mkDemo('filter', 210, 160, 0, { ftype: 'nd', trans: 0.25 }), sensor,
+      mkDemo('display', 350, 265, 0, { sensorId: sensor.id, displayScale: 0.65 })];
+  },
+  delayline: () => [
+    mkDemo('pulsedlaser', 60, 180),
+    mkDemo('probe', 150, 180, 0, { prop: 'time', timeSpanNs: 1 }),
+    mkDemo('delayline', 265, 180, 0, { delayMm: 100 }),
+    mkDemo('probe', 380, 180, 0, { prop: 'time', timeSpanNs: 1 }),
+    mkDemo('detector', 470, 180),
+  ],
+  chopper: () => {
+    const sensor = mkDemo('detector', 400, 160);
+    return [mkDemo('cwlaser', 60, 160),
+      mkDemo('chopper', 230, 160, 0, { frequencyHz: 1000, chopDuty: 0.5 }), sensor,
+      mkDemo('display', 400, 265, 0, { sensorId: sensor.id, displayScale: 0.55 })];
+  },
+  crystal: () => [
+    mkDemo('pulsedlaser', 60, 160, 0, { wavelength: 1064 }),
+    mkDemo('crystal', 220, 160, 0, { convert: 'shg', efficiency: 0.4, transmitPump: true }),
+    mkDemo('dichroic', 350, 160, 135, { cutoff: 700 }),
+    mkDemo('probe', 430, 160, 0, { prop: 'wl' }),
+    mkDemo('probe', 350, 260, 0, { prop: 'wl' }),
+    mkDemo('detector', 520, 160),
+    mkDemo('detector', 350, 350, 90),
+  ],
+  // The integrated OPO in its simplest use: a green picosecond pump in, the
+  // signal out of the front and the idler out of the port below it, each read
+  // by its own probe.
+  opo: () => [
+    mkDemo('pulsedlaser', 60, 200, 0, { wavelength: 516, pulseWidthFs: 2000, repRateMHz: 80, beamMode: 'line' },
+      { label: '516 nm pump · 2 ps', showLabel: true, labelPos: 't' }),
+    mkDemo('opo', 300, 200, 0, { signalWl: 800, tuneMode: 'fixed' },
+      { label: 'OPO', showLabel: true, labelPos: 't' }),
+    mkDemo('probe', 430, 200, 0, { prop: 'wl' }),
+    mkDemo('probe', 520, 214, 0, { prop: 'wl' }),
+    mkDemo('detector', 600, 200),
+    mkDemo('detector', 600, 214),
+  ],
+  // A pump and a seed into the two rear ports; the three outputs each end on
+  // a detector, so the gain, the idler and what the pump lost can be read.
+  // Each output leaves at the height of its input: pump above, signal below,
+  // the idler between them.
+  // 1 µs/s shows the 0.2 MHz pulses meeting in the OPA (also the automatic
+  // scale for this rate, stated so the demo does not depend on it).
+  opa: () => ({
+    timeScaleNs: 1e3,
+    elements: [
+      mkDemo('pulsedlaser', 60, 182, 0, { wavelength: 515, avgPowerW: 1, pulseWidthFs: 300, repRateMHz: 0.2, beamMode: 'line' },
+        { label: 'Pump 515 nm · 1 W', showLabel: true, labelPos: 't' }),
+      mkDemo('pulsedlaser', 60, 218, 0, { wavelength: 780, avgPowerW: 0.000001, pulseWidthFs: 300, repRateMHz: 0.2, beamMode: 'line' },
+        { label: 'Seed 780 nm · 1 µW', showLabel: true, labelPos: 'b' }),
+      mkDemo('opa', 300, 200, 0, { signalWl: 780, gainBandwidthNm: 40, smallSignalGainDb: 40, maxDepletion: 0.5 },
+        { label: 'OPA', showLabel: true, labelPos: 't' }),
+      mkDemo('probe', 375, 218, 0, { prop: 'wl' }),
+      mkDemo('probe', 495, 200, 0, { prop: 'wl' }),
+      mkDemo('detector', 560, 182, 0, { aperture: 12 }),
+      mkDemo('detector', 560, 200, 0, { aperture: 12 }),
+      mkDemo('detector', 560, 218, 0, { aperture: 12 }),
+    ],
+  }),
+  // The crystal's other single-beam modes, as extra embeds on its page. The
+  // continuum reads its band from the arriving pump: 1035 nm femtosecond
+  // pulses in YAG, the near-infrared case a multiplex CARS bench uses.
+  'crystal-supercontinuum': () => {
+    const spectrometer = mkDemo('spectrometer', 470, 200, 0, { aperture: 30, labelPeaks: false },
+      { label: 'spectrometer', showLabel: true, labelPos: 'b' });
+    return [
+      mkDemo('pulsedlaser', 60, 200, 0, { wavelength: 1035, pulseWidthFs: 270, repRateMHz: 2, beamMode: 'line' },
+        { label: '1035 nm · 270 fs', showLabel: true, labelPos: 't' }),
+      // The residual pump is dumped so its narrow line does not dwarf the band.
+      mkDemo('crystal', 250, 200, 0, { convert: 'sc', scMedium: 'yag', scRange: 'estimate', efficiency: 0.5, transmitPump: false },
+        { label: 'YAG · supercontinuum', showLabel: true, labelPos: 't' }),
+      spectrometer,
+      mkDemo('display', 470, 60, 0, { sensorId: spectrometer.id, displayScale: 1.2, screenOn: true, displayView: 'main' }),
+    ];
+  },
+  // THG is the app's authored conversion proxy: one crystal emitting λ/3 at a
+  // set fraction, not a cascaded SHG-plus-SFG design.
+  'crystal-thg': () => [
+    mkDemo('pulsedlaser', 60, 160, 0, { wavelength: 1030, beamMode: 'line' }, { label: '1030 nm', showLabel: true, labelPos: 't' }),
+    mkDemo('crystal', 220, 160, 0, { convert: 'thg', efficiency: 0.3, transmitPump: true },
+      { label: 'THG · authored proxy', showLabel: true, labelPos: 't' }),
+    mkDemo('dichroic', 350, 160, 135, { cutoff: 700 }),
+    mkDemo('probe', 430, 160, 0, { prop: 'wl' }),
+    mkDemo('probe', 350, 260, 0, { prop: 'wl' }),
+    mkDemo('detector', 520, 160),
+    mkDemo('detector', 350, 350, 90),
+  ],
+  sample: () => [
+    mkDemo('cwlaser', 40, 150, 0, { wavelength: 488, beamMode: 'beam', beamWidth: 12 }),
+    mkDemo('lens', 150, 150, 0, { f: 60, dia: 25 }),
+    mkDemo('sample', 210, 150, 90, {
+      specimenType: 'linear', transmitExc: true, transmission: 0.9, aperture: 44,
+      channels: [{ kind: 'fluor', wl: 520, eff: 0.35, epi: false, epiRatio: 0.15,
+        autoWl: false, autoColor: true, color: '#22c55e', material: 'lipid',
+        fluorophore: 'custom', retardance: 90, axis: 45, transferEff: 0.1, requireOverlap: true }],
+    }),
+    mkDemo('lens', 285, 150, 0, { f: 55, dia: 50 }),
+    mkDemo('filter', 345, 150, 0, { ftype: 'longpass', cutoff: 500, length: 50 }),
+    mkDemo('pmt', 440, 150, 0, { aperture: 40, gain: 1e5, saturation: 1e6, darkInput: 1e-6 }),
+  ],
+  stage: () => [
+    mkDemo('cwlaser', 60, 160, 0, { beamMode: 'beam', beamWidth: 8 }),
+    mkDemo('stage', 240, 160, 90, { pzMode: 'xy', pzTravelXY: 16, pzFreqXY: 0.3,
+      specimenType: 'linear', transmitExc: true, transmission: 0.8 }),
+    mkDemo('detector', 400, 160),
+  ],
+  objarrow: () => [
+    mkDemo('objarrow', 60, 160, 0, { height: 22, spread: 10, showImage: true }),
+    mkDemo('lens', 260, 160, 0, { f: 100, dia: 50.8 }),
+    mkDemo('textlabel', 395, 220, 0, { text: 'Image: 1:1, inverted', fontSize: 12 }),
+  ],
+  probe: () => [
+    mkDemo('sclaser', 60, 180),
+    mkDemo('probe', 240, 180, 0, { prop: 'spectrum' }),
+    mkDemo('detector', 430, 180),
+  ],
+  figureframe: () => [
+    mkDemo('cwlaser', 60, 160, 0, { beamMode: 'beam', beamWidth: 12 }),
+    mkDemo('lens', 200, 160, 0, { f: 80 }),
+    mkDemo('detector', 340, 160, 0, { aperture: 40 }),
+    mkDemo('figureframe', 205, 160, 0, { w: 370, h: 180 }),
+  ],
+  highlight: () => [
+    mkDemo('cwlaser', 60, 160, 0, { beamMode: 'beam', beamWidth: 12 }),
+    mkDemo('lens', 220, 160, 0, { f: 80 }),
+    mkDemo('detector', 380, 160, 0, { aperture: 40 }),
+    mkDemo('highlight', 220, 160, 0, { w: 110, h: 100 }),
+  ],
+  box: () => [
+    mkDemo('cwlaser', 60, 160),
+    mkDemo('box', 230, 160, 0, { text: 'Enclosure', behavior: 'block' }),
+    mkDemo('detector', 400, 160),
+  ],
+  gascell: () => [
+    mkDemo('cwlaser', 60, 160),
+    mkDemo('gascell', 235, 160, 0, { windowLeft: true, windowRight: true }),
+    mkDemo('detector', 400, 160),
+  ],
+  window: () => [
+    mkDemo('cwlaser', 60, 160, 0, { beamMode: 'beam', beamWidth: 10 }),
+    mkDemo('window', 230, 160),
+    mkDemo('detector', 400, 160),
+  ],
   fiber: () => fiberDemo({ bare: false }),
   barefiber: () => fiberDemo({ bare: true }),
   mirror: () => [
@@ -225,7 +384,7 @@ const demoScenes = {
   // something on the far side that stops receiving it.
   beamdump: () => [
     mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 10 }),
-    mkDemo('bs', 200, 200, 0, { ratio: 0.5 }),
+    mkDemo('bs', 200, 200, 90, { ratio: 0.5 }),
     mkDemo('detector', 380, 200, 0, {}, { label: 'kept port', showLabel: true }),
     mkDemo('beamdump', 200, 330, 90, { aperture: 22 }, { label: 'unused port ends here', showLabel: true, labelPos: 'b' }),
   ],
@@ -236,7 +395,7 @@ const demoScenes = {
   ],
   blocker: () => [
     mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 10 }),
-    mkDemo('bs', 220, 200, 0, { ratio: 0.5 }),
+    mkDemo('bs', 220, 200, 90, { ratio: 0.5 }),
     mkDemo('detector', 400, 200, 0, {}, { label: 'the branch you want', showLabel: true }),
     mkDemo('blocker', 220, 320, 0, { w: 40, h: 16 }, { label: 'absorbs, but never drawn in an export', showLabel: true, labelPos: 'b' }),
   ],
@@ -523,6 +682,21 @@ const demoScenes = {
     ];
   },
 
+  // The point source's defining behaviour is that its light fades in the near
+  // field unless something collects it -- so the embed shows it being
+  // collected. A parabolic mirror with the source exactly at its focus
+  // (f = 25 mm, so 25 mm in front of the vertex) turns isotropic emission
+  // into a parallel beam, which is how a lamp or an arc is collimated on a
+  // real bench and the one arrangement that makes the near-field model
+  // visible rather than puzzling. Switch Source to Gas discharge lamp and the
+  // same geometry collimates a line spectrum instead.
+  pointsource: () => [
+    mkDemo('oap', 150, 200, 180, { length: 110, f: 25 },
+      { label: 'parabola, f = 25 mm', showLabel: true, labelPos: 'l' }),
+    mkDemo('pointsource', 175, 200, 0, { spread: 360, nrays: 16, displayScale: 1.1 },
+      { label: 'source at the focus', showLabel: true, labelPos: 'b' }),
+  ],
+
   metasurface: () => [
     mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 20 }),
     mkDemo('metasurface', 300, 200, 0, {
@@ -539,7 +713,7 @@ const demoScenes = {
       repRateMHz: 80, pulseWidthFs: 100,
     }),
     mkDemo('aom', 220, 200, 0, {
-      deflect: 15, rfMHz: 80, zero: true, eff: 1,
+      deflect: 15, zero: true, eff: 1,
       modulate: true, modShape: 'square', modFreqMHz: 40,
     }),
     mkDemo('box', 370, 200, 0, { text: '', w: 10, h: 90, behavior: 'block', fill: '#f2f3f5' }, { label: '1st order (deflected) + 0th order', showLabel: true, labelPos: 'r' }),
@@ -583,6 +757,53 @@ const demoScenes = {
     mkDemo('cwlaser', 60, 200, 0),
     mkDemo('galvo', 220, 200, 45, { scanMode: 'sine', scanAmplitude: 8, scanFrequencyHz: 0.4 }),
     mkDemo('box', 220, 60, 0, { text: '', w: 200, h: 2, behavior: 'block', fill: '#f2f3f5' }, { label: 'screen — the reflected beam sweeps back and forth', showLabel: true, labelPos: 't' }),
+  ],
+  // The beam enters at the facet midpoint (one apothem from the hub along the
+  // 315 degree normal), and the window is the widest one this 25.9 mm facet can
+  // scan before the 6 mm beam starts to straddle two facets at a transition.
+  polygonscanner: () => [
+    mkDemo('cwlaser', 50, 194.150635, 0, { wavelength: 532, beamMode: 'beam', beamWidth: 6 }),
+    mkDemo('polygonscanner', 240, 160, 315, { diameter: 100, dutyCycle: 56 }),
+    mkDemo('lens', 205.849365, 260, 90, { f: 100, dia: 100 }),
+    mkDemo('box', 205.849365, 360, 0, { text: '', w: 110, h: 10, behavior: 'block', fill: '#f2f3f5' },
+      { label: 'successive line sweeps; blanked between facets', showLabel: true, labelPos: 'b' }),
+    mkDemo('textlabel', 330, 120, 0, {
+      text: '### Inspect the scan\n'
+        + '12 facets x 1,000 RPM / 60 = **200 lines/s**\n'
+        + '\n'
+        + '**Green hub:** the scan window is open\n'
+        + '**Amber hub:** ideal synchronized blanking\n'
+        + '\n'
+        + 'Motion is slowed for inspection; the facet\n'
+        + 'rate readout always gives the physical rate.', fontSize: 11,
+    }),
+    mkDemo('textlabel', 330, 290, 0, {
+      text: 'The window is **56%**, not the 71% a datasheet might quote: that belongs to a head\n'
+        + 'with its own wheel geometry. Here a 6 mm beam on a 25.9 mm facet stays on one facet\n'
+        + 'for 56% of each period. Widen it past that and the beam straddles two facets at a\n'
+        + 'transition, leaving in two directions at once -- real behaviour, and what the\n'
+        + 'blanking exists to hide.', fontSize: 10,
+    }),
+  ],
+  // On-axis: a tilt of even five degrees costs this parabola a 5.9 mm caustic,
+  // so the demo keeps the beam on the axis, where an exact conic earns its
+  // keep -- k = -1 puts every ray through one point, k = 0 does not.
+  conicmirror: () => [
+    mkDemo('cwlaser', 60, 200, 0, { wavelength: 532, beamMode: 'beam', beamWidth: 50 }),
+    mkDemo('conicmirror', 320, 200, 0,
+      { dia: 70, hole: 0, radius: -200, conic: -1, facing: 'left', refl: 98 },
+      { label: 'parabola, k = -1', showLabel: true, labelPos: 'r' }),
+    // Marked with an annotation, not an object: anything solid on the axis
+    // here would be in the beam, and a drawn optic that light passes through
+    // reads as a bug rather than as a label.
+    mkDemo('arrowann', 220, 262, 90, { len: 44, width: 1.5, fill: '#8a8f98' },
+      { label: 'focus (f = R/2 = 100 mm)', showLabel: true, labelPos: 'b' }),
+    mkDemo('textlabel', 60, 332, 0, {
+      text: 'The collimated beam comes back to a **single point**: a parabola images infinity\n'
+        + 'onto its focus exactly. Set the conic constant to **k = 0** and the same mirror\n'
+        + 'becomes a sphere, whose outer rays cross about 2 mm early -- spherical aberration,\n'
+        + 'computed from the surface rather than assumed.', fontSize: 11,
+    }),
   ],
   aod: () => [
     mkDemo('cwlaser', 40, 200, 0, { wavelength: 532, beamMode: 'line' }),
@@ -819,7 +1040,7 @@ function renderSelection(detail = {}) {
 
 // ---------- selection / deletion ----------
 function deleteSelected() {
-  if (state.demoMode) return;
+  if (state.embedMode) return;
   const s = state.selection;
   if (s?.kind === 'multi') {
     pushUndo();
@@ -843,52 +1064,17 @@ function deleteSelected() {
 const newId = pre => pre + Math.random().toString(36).slice(2, 9);
 
 function duplicateSelected() {
-  if (state.demoMode) return;
-  const s = state.selection;
-  if (s?.kind === 'multi') {
-    const hasDuplicable = s.beams.length || s.els.some(id => {
-      const el = state.elements.find(item => item.id === id);
-      return el && !registry[el.type]?.singleton;
-    });
-    if (!hasDuplicable) return;
-    pushUndo();
-    const els = [], bms = [];
-    for (const id of s.els) {
-      const src = state.elements.find(e => e.id === id);
-      if (!src || registry[src.type]?.singleton) continue;
-      const copy = JSON.parse(JSON.stringify(src));
-      copy.id = newId('e'); copy.x += 30; copy.y += 30;
-      state.elements.push(copy); els.push(copy.id);
-    }
-    for (const id of s.beams) {
-      const src = state.beams.find(b => b.id === id);
-      if (!src) continue;
-      const copy = JSON.parse(JSON.stringify(src));
-      copy.id = newId('b');
-      for (const p of copy.pts) { p.x += 30; p.y += 30; }
-      state.beams.push(copy); bms.push(copy.id);
-    }
-    state.selection = { kind: 'multi', els, beams: bms };
-    changed();
-    renderInspector();
-    return;
-  }
-  const sel = findSelected();
-  if (!sel) return;
-  if (state.selection.kind === 'element' && registry[sel.type]?.singleton) return;
+  if (state.embedMode) return;
+  const copied = copyableSelection(selectionContents(), isSingleton);
+  const duplicated = pasteObjects(copied, { offset: 30, newId });
+  if (!duplicated) return;
   pushUndo();
-  const copy = JSON.parse(JSON.stringify(sel));
-  if (state.selection.kind === 'element') {
-    copy.id = newId('e');
-    copy.x += 30; copy.y += 30;
-    state.elements.push(copy);
-    state.selection = { kind: 'element', id: copy.id };
-  } else {
-    copy.id = newId('b');
-    for (const p of copy.pts) { p.x += 30; p.y += 30; }
-    state.beams.push(copy);
-    state.selection = { kind: 'beam', id: copy.id };
-  }
+  state.elements.push(...duplicated.els);
+  state.beams.push(...duplicated.beams);
+  const els = duplicated.els.map(el => el.id), beams = duplicated.beams.map(beam => beam.id);
+  state.selection = state.selection?.kind === 'multi'
+    ? { kind: 'multi', els, beams }
+    : els.length ? { kind: 'element', id: els[0] } : { kind: 'beam', id: beams[0] };
   changed();
   renderInspector();
 }
@@ -920,7 +1106,7 @@ function selectionContents() {
 const isSingleton = type => Boolean(registry[type]?.singleton);
 
 function copySelection() {
-  if (state.demoMode) return false;
+  if (state.embedMode) return false;
   const copied = copyableSelection(selectionContents(), isSingleton);
   if (!copied) return false;
   clipboard = copied;
@@ -929,7 +1115,7 @@ function copySelection() {
 }
 
 function pasteClipboard() {
-  if (state.demoMode) return;
+  if (state.embedMode) return;
   pasteStep += 1;
   const pasted = pasteObjects(clipboard, {
     offset: 30 * pasteStep,
@@ -951,7 +1137,7 @@ function pasteClipboard() {
 }
 
 function rotateSelected(deg) {
-  if (state.demoMode) return;
+  if (state.embedMode) return;
   if (isPlacing()) { rotatePlacing(deg); return; }
   const sel = findSelected();
   if (!sel || state.selection.kind !== 'element') return;
@@ -963,7 +1149,7 @@ function rotateSelected(deg) {
 }
 
 function nudgeSelected(dx, dy) {
-  if (state.demoMode) return;
+  if (state.embedMode) return;
   const s = state.selection;
   if (s?.kind === 'multi') {
     pushUndo();
@@ -1194,19 +1380,20 @@ function syncPulseControls(detail = getPulsePlayback()) {
 // Re-pick the canvas time scale when the scene's slowest animated element
 // changes tier, so a kHz source or a piezo stage is watchable without the
 // user hunting through the dropdown. Only ever fires when the scale would
-// actually change, and never overrides a scale the user set by hand for the
-// same scene shape.
+// actually change. A scale the user set by hand holds until the scene or the
+// display mode calls for a different one (nextAutoScale).
 let lastAutoScale = null; // a number (ns/s), the string 'mechanics', or null (never adjusted)
-let userChoseScale = false;
+let manualScaleFor = null; // the recommendation in force when a scale was picked by hand
+function currentScaleRecommendation() {
+  const recommended = recommendedTimeScale(state.elements, { mode: getPulsePlayback().mode });
+  return { recommended, key: recommended.mechanics ? 'mechanics' : recommended.scaleNsPerSecond };
+}
 function autoAdjustTimeScale() {
-  const recommended = recommendedTimeScale(state.elements);
-  if (!recommended) return;
-  const key = recommended.mechanics ? 'mechanics' : recommended.scaleNsPerSecond;
-  if (key === lastAutoScale) return;
-  if (userChoseScale) return;
-  const previous = lastAutoScale;
-  lastAutoScale = key;
-  if (previous === null && key === 10) return; // already the default
+  const { recommended, key } = currentScaleRecommendation();
+  const next = nextAutoScale(key, { lastAuto: lastAutoScale, manualFor: manualScaleFor });
+  lastAutoScale = next.lastAuto;
+  manualScaleFor = next.manualFor;
+  if (!next.apply) return;
   const label = recommended.mechanics ? 'Mechanics' : (TIME_SCALES.find(s => s.ns === key) || {}).label || '';
   if (recommended.mechanics) setMechanicsMode(true);
   else setPulseSpeed(recommended.scaleNsPerSecond);
@@ -1271,6 +1458,12 @@ function showToast(message) {
 
 function bindToolbar() {
   let shareUrl = '', shareQrSvg = '', shareSceneText = '';
+  const about = $('aboutDialog');
+  const openAbout = () => { $('mobileMenu').close(); about.showModal(); };
+  $('btnAbout').addEventListener('click', openAbout);
+  $('btnMobileAbout').addEventListener('click', openAbout);
+  $('aboutClose').addEventListener('click', () => about.close());
+  about.addEventListener('click', event => { if (event.target === about) about.close(); });
   const closeShare = () => $('shareDialog').close();
   $('shareClose').addEventListener('click', closeShare);
   $('shareDialog').addEventListener('click', event => { if (event.target === $('shareDialog')) closeShare(); });
@@ -1360,14 +1553,36 @@ function bindToolbar() {
     const button = $('btnShare');
     button.disabled = true;
     try {
-      const sketch = serialize();
-      const url = await buildShareURL(sketch);
+      // The scene can change while the payload is being compressed, so build
+      // against a settled scene and only put the snapshot in the address bar
+      // if it still matches what is on the canvas. Parking a stale one there
+      // would survive to the next reload and undo the edit that raced it.
+      const { scene: sketch, url, settled } = await shareURLForScene(
+        serialize, text => buildShareURL(text));
+      if (!settled) {
+        // Still moving after a rebuild: the visitor is mid-edit. Publishing
+        // now would hand them a link to a scene they are not looking at --
+        // through the dialog and QR as much as the address bar -- so stop
+        // rather than share something stale.
+        showToast('The canvas changed while the link was building — press Share again.');
+        return;
+      }
       history.replaceState(null, '', url);
       // The auto-copy is best-effort: restrictive clipboard permissions must
       // not block the dialog, which offers its own Copy button and a
       // selectable URL field as the fallback.
       let copied = true;
       try { await copyText(url); } catch (_) { copied = false; }
+      // The clipboard is the longest await in this handler -- it can sit on a
+      // permission prompt for seconds -- and the canvas stays live underneath
+      // it. An edit landing there has already retired the fragment through the
+      // change listener, so the address bar is consistent; what is left is the
+      // dialog and its QR, which would still describe the pre-edit scene.
+      // Nothing is published unless the scene still matches what was built.
+      if (serialize() !== sketch) {
+        showToast('The canvas changed while the link was building — press Share again.');
+        return;
+      }
       shareUrl = url;
       shareSceneText = sketch;
       $('shareURL').value = url;
@@ -1445,9 +1660,11 @@ function bindToolbar() {
   $('btnZoomFit').addEventListener('click', zoomFit);
   $('btnPulsePlay').addEventListener('click', () => setPulsePlaying(!getPulsePlayback().playing));
   $('btnPulseReset').addEventListener('click', resetPulseTime);
-  $('pulseDisplay').addEventListener('change', e => setPulseDisplayMode(e.target.value));
+  // Physical packets move at c x scale, schematic ones one spacing per
+  // period: the watchable scale depends on which is shown.
+  $('pulseDisplay').addEventListener('change', e => { setPulseDisplayMode(e.target.value); autoAdjustTimeScale(); });
   $('pulseSpeed').addEventListener('change', e => {
-    userChoseScale = true; // an explicit pick wins until the scene changes tier again
+    manualScaleFor = currentScaleRecommendation().key; // an explicit pick wins until the scene changes tier again
     if (e.target.value === 'mechanics') setMechanicsMode(true);
     else setPulseSpeed(parseFloat(e.target.value)); // also clears mechanics mode
   });
@@ -1489,7 +1706,7 @@ function bindContextMenu() {
   const hide = () => { menu.hidden = true; };
   document.addEventListener('optics:contextmenu', event => {
     const detail = event.detail;
-    if (!detail || state.demoMode) { hide(); return; }
+    if (!detail || state.embedMode) { hide(); return; }
     const rect = wrap.getBoundingClientRect();
     const rotate = menu.querySelector('[data-action="rotate"]');
     const duplicate = menu.querySelector('[data-action="duplicate"]');
@@ -1529,7 +1746,7 @@ function bindContextMenu() {
 // first clear spot on the side its cable leaves from, so connecting a readout
 // is one click instead of place-then-find-the-sensor-in-a-dropdown.
 function connectDetectorScreen(sensorId) {
-  if (state.demoMode) return;
+  if (state.embedMode) return;
   const sensor = state.elements.find(el => el.id === sensorId);
   if (!sensor || !registry[sensor.type]?.readoutKind) return;
   pushUndo();
@@ -1556,6 +1773,35 @@ document.addEventListener('optics:pulserepresentation', e => showAnchoredPopup(e
 document.addEventListener('optics:viewchange', e => syncViewControls(e.detail));
 document.addEventListener('optics:toast', e => { if (e.detail?.message) showToast(e.detail.message); });
 
+// Opening a linked scene as a workbench replaces whatever the visitor already
+// had on the bench, and that bench may hold unsaved work. There are now ~73
+// pages whose "Open in the canvas" does this, so it cannot be silent: ask
+// first, and push the displaced scene onto the undo stack so a visitor who
+// says yes and regrets it can step straight back.
+//
+// The undo stack alone was not enough, which is why the confirm is here: the
+// first edit to the linked scene overwrites the autosave and pushes another
+// entry above the snapshot, so after any editing the old bench is neither one
+// undo away nor on disk. Consent is what makes that acceptable.
+//
+// Returns false if the visitor declined, in which case the caller leaves the
+// bench alone -- already reloaded into state here -- and does not load the
+// linked scene.
+function preserveWorkbenchInUndo() {
+  if (!loadAutosave(registry)) return true;
+  if (!state.elements.length && !state.beams.length) return true;
+  const count = state.elements.length;
+  const ok = confirm(
+    `Opening this setup will replace the ${count} item${count === 1 ? '' : 's'} on your canvas.\n\n`
+    + 'Undo brings your current setup back if you change your mind.\n\nOpen it?');
+  if (!ok) return false;
+  pushUndo();
+  state.elements.length = 0;
+  state.beams.length = 0;
+  state.selection = null;
+  return true;
+}
+
 // ---------- boot ----------
 window.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(location.search);
@@ -1564,54 +1810,91 @@ window.addEventListener('DOMContentLoaded', async () => {
   const exampleSlug = params.get('example');
   const isTypeDemo = Boolean(demoType && (FIBER_DEMOS.has(demoType) || SCENE_DEMOS.has(demoType)
     || (registry[demoType] && !registry[demoType].hidden)));
-  const isCommunityDemo = Boolean(!isTypeDemo && communitySlug);
-  const isExampleDemo = Boolean(!isTypeDemo && !isCommunityDemo && exampleSlug);
-  const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo;
+  const isCommunityScene = Boolean(!isTypeDemo && communitySlug);
+  const isExampleScene = Boolean(!isTypeDemo && !isCommunityScene && exampleSlug);
+  // Which scene to load, and how to present it, are two separate questions.
+  // Any of the three scene params can be opened either way: bare, the scene
+  // becomes the visitor's own workbench with the full toolbar behind it;
+  // with ?embed=1 it is a flat, non-interactive picture for a page to frame.
+  const hasLinkedScene = isTypeDemo || isCommunityScene || isExampleScene;
+  const isEmbed = hasLinkedScene && params.get('embed') === '1';
 
+  // The mode has to be set before initCanvas(), which synchronously registers
+  // the pointer, wheel and key handlers: deciding afterwards would leave them
+  // bound and the embed guards dead. SVG descendants that set their own
+  // pointer-events: all -- markdown links, display controls -- would then
+  // still deliver events through them, whatever the canvas CSS says.
+  if (isEmbed) {
+    state.embedMode = true;
+    document.body.classList.add('embed-mode');
+    // The brand is a link to the homepage with no target, so inside an iframe
+    // it navigates the frame rather than the tab: the whole site loads into
+    // the preview, and a wiki page opened from there embeds another preview
+    // inside that one, nesting as far as the visitor keeps clicking. An embed
+    // has no navigation of its own, so drop the href and keep the mark --
+    // an <a> without href is not a link and is not focusable.
+    const brand = document.querySelector('.brand');
+    if (brand) brand.removeAttribute('href');
+  }
   initTheme($('btnTheme'));
   initCanvas($('canvas'), $('status'));
   initInspector($('inspectorContent'));
-  if (isDemo) {
-    state.demoMode = true;
-    document.body.classList.add('demo-mode');
-  } else {
-    buildPalette();
-  }
+  if (!isEmbed) buildPalette();
   syncToolMode();
     bindToolbar();
     bindContextMenu();
-  if (!isDemo) { bindExamples(); bindCommunity(); }
+  if (!isEmbed) { bindExamples(); bindCommunity(); }
   bindKeys();
   setSelectionCallback(renderSelection);
   setMeasurementsCallback(refreshMeasurements);
-  onChange(() => { renderAll(); syncToolbar(); refreshMeasurements(); autoAdjustTimeScale(); announceIllustrativeMotion(); });
+  // [scene-change-listener] test/shared-scene-reload.test.js pulls this block
+  // out and runs it, so it exercises the real listener rather than a copy that
+  // could drift from it. Keep the marker; the test finds the call by it rather
+  // than by matching the source formatting.
+  onChange(() => {
+    // Retire the snapshot only once the scene is safely in the autosave.
+    // changed() swallows a failed write, and loading a shared link calls
+    // replaceScene() and so changed() before any edit -- so without the
+    // autosaved check, a visitor with storage disabled or full would lose
+    // the fragment too and reload into an empty canvas.
+    if (!state.embedMode && state.autosaved) clearSharedSceneURL();
+    renderAll(); syncToolbar(); refreshMeasurements(); autoAdjustTimeScale(); announceIllustrativeMotion();
+  });
 
-  if (isTypeDemo) {
-    // Wiki embed: a small fixed scene — a light source plus the showcased
-    // component, so its actual optical function is visible — with no way
-    // to add/move/delete anything. See state.demoMode call sites in this
-    // file and canvas.js for what's disabled.
+  // A visitor who declines the replacement keeps the bench that
+  // preserveWorkbenchInUndo() has already loaded back into state, and the
+  // linked scene is simply not loaded.
+  const loadLinked = !hasLinkedScene || isEmbed || preserveWorkbenchInUndo();
+
+  if (isTypeDemo && loadLinked) {
+    // The showcased component plus a source, so its optical function is
+    // visible. Framed with ?embed=1 this is the flat preview a wiki page
+    // shows; without it, the same scene opens as the visitor's workbench.
     const build = demoScenes[demoType];
     const built = build ? build() : [createElement(demoType, 0, 0)];
     const sceneElements = Array.isArray(built) ? built : (built.elements || []);
     const sceneBeams = Array.isArray(built) ? [] : (built.beams || []);
     state.elements.push(...sceneElements);
+    // A demo can fix its animation's time scale when the automatic pick
+    // (from the repetition rate) runs too fast to follow; it counts as a
+    // chosen scale, so the automatic adjustment leaves it alone.
+    if (!Array.isArray(built) && Number.isFinite(built.timeScaleNs)) {
+      manualScaleFor = currentScaleRecommendation().key;
+      setPulseSpeed(built.timeScaleNs);
+    }
     if (sceneBeams.length) {
       const parsed = parseSketch(JSON.stringify({ elements: [], beams: sceneBeams }), registry);
       state.beams.push(...parsed.beams);
     }
     // A fiber demo's subject is the drawn path, not one of the elements that
     // feed it, so select the beam instead.
-    if (state.beams.length && FIBER_DEMOS.has(demoType)) {
-      state.selection = { kind: 'beam', id: state.beams[0].id };
-    } else {
-      const hero = sceneElements.find(e => e.type === demoType) || sceneElements[0];
-      state.selection = { kind: 'element', id: hero.id };
-    }
-  } else if (isCommunityDemo) {
-    // Community embed: the actual submitted scene, locked the same way as a
-    // wiki demo (state.demoMode), but with no single "hero" element — the
-    // whole setup is there to click through, not one component to focus on.
+    // Nothing is selected either way. An embed has no inspector to explain a
+    // selection any more, so selecting the subject would do nothing but draw a
+    // dashed box and rotate/resize/tune handles over a picture that cannot be
+    // edited. Opened as a workbench, the scene is the visitor's and starts
+    // clean like any other file they load.
+  } else if (isCommunityScene && loadLinked) {
+    // The actual submitted scene, with no single "hero" element.
     try {
       const entry = community.find(e => e.slug === communitySlug);
       if (!entry) throw new Error('Unknown community setup');
@@ -1624,7 +1907,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       console.error('Could not load community setup:', err);
     }
-  } else if (isExampleDemo) {
+  } else if (isExampleScene && loadLinked) {
     // Example embed: same locked treatment as the community embed above —
     // the whole curated setup is there to click through. Examples/*.json is
     // the plain native save format (no {scene: ...} wrapper), same as
@@ -1640,7 +1923,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       console.error('Could not load example:', err);
     }
-  } else {
+  } else if (!hasLinkedScene) {
     let sharedScene = null;
     try {
       const sharedText = await sharedSceneFromURL();
@@ -1692,9 +1975,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   syncPulseControls();
   syncMobileSheets();
 
-  if (isDemo) {
+  if (hasLinkedScene && loadLinked) {
     zoomFit();
-  } else {
+  }
+  if (!isEmbed) {
     // Deep link from the wiki ("Open in the canvas" on a component page):
     // ?place=<type> arms the placement tool for that component on load.
     const placeType = params.get('place');

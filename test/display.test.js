@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -18,7 +20,7 @@ function inspectorHTMLFor(sensor, elements) {
   state.elements = elements;
   state.beams = [];
   state.selection = { kind: 'element', id: sensor.id };
-  state.demoMode = false;
+  state.embedMode = false;
   initInspector(panel);
   renderInspector();
   return panel.innerHTML;

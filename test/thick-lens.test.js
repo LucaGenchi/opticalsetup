@@ -1,8 +1,10 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  createElement, getElementMeta, MIN_CEMENT_GAP, registry, surfaceTransmission,
+  createElement, getElementMeta, MIN_CEMENT_GAP, paletteOrderedTypes, registry, surfaceTransmission,
   thickLensAdjustment, thickLensCardinals, thickLensGeometry, thickLensShapeName,
   touchingGlassBody,
 } from '../sketch/js/elements.js';
@@ -36,9 +38,16 @@ const tracedBFD = (params, h, wl) => {
 // ---------------- glass catalogue ----------------
 
 test('catalogue glasses reproduce their published nd and Abbe number', () => {
-  for (const [id, expected] of [['nbk7', [1.5168, 64.17]], ['nsf11', [1.7847, 25.68]], ['silica', [1.4585, 67.82]]]) {
+  // The Abbe number divides nd - 1 by nF - nC, a difference of about 0.008,
+  // so it is sensitive to the line wavelengths: evaluating the rounded
+  // 587.6/486.1/656.3 nm instead of the true 587.5618/486.1327/656.2725 nm
+  // reported 64.14 for N-BK7, which every catalogue lists as 64.17. Each
+  // glass is held to 0.01 of its catalogue value.
+  for (const [id, expected] of [['nbk7', [1.5168, 64.17]], ['nsf11', [1.7847, 25.68]],
+    ['silica', [1.4585, 67.82]], ['nsf5', [1.67271, 32.25]]]) {
     assert.ok(Math.abs(glassIndex(id, 587.6) - expected[0]) < 5e-5, `${id} nd`);
-    assert.ok(Math.abs(glassAbbe(id) - expected[1]) < 0.05, `${id} Abbe number`);
+    assert.ok(Math.abs(glassAbbe(id) - expected[1]) < 0.01,
+      `${id} Abbe number: ${glassAbbe(id)} versus the catalogue's ${expected[1]}`);
   }
   // a flint really is far more dispersive than a crown
   assert.ok(glassAbbe('nsf11') < glassAbbe('nbk7') / 2);
@@ -82,12 +91,25 @@ test('shape names follow the Cartesian sign convention the lensmaker equation ne
   assert.ok(thickLensCardinals({ r1: -60, r2: 60, thickness: 5, dia: 25.4, glass: 'nbk7' }).f < 0);
 });
 
-test('the singlet and the group it generalises sit before the lens assemblies', () => {
+test('lenses are grouped ideal, then real, then metasurface', () => {
   const lensPalette = Object.entries(registry)
     .filter(([, definition]) => definition.category === 'Lenses')
-    .sort(([, a], [, b]) => a.paletteOrder - b.paletteOrder)
-    .map(([type]) => type);
-  assert.deepEqual(lensPalette, ['lens', 'lensc', 'metalens', 'thicklens', 'lensgroup', 'telescope', 'objective']);
+    .sort(([, a], [, b]) => a.paletteOrder - b.paletteOrder);
+  assert.deepEqual(lensPalette.map(([type]) => type), [
+    'lens', 'lensc', 'telescope', 'objective',
+    'thicklens', 'lensgroup', 'asphericlens',
+    'metalens',
+  ]);
+  // Every lens carries a subgroup, and each subgroup is contiguous in the
+  // sequence: paletteOrderedTypes emits groups in first-seen order, so an
+  // out-of-place paletteOrder would silently split one heading into two.
+  assert.deepEqual(lensPalette.map(([, definition]) => definition.paletteGroup), [
+    'Ideal lenses', 'Ideal lenses', 'Ideal lenses', 'Ideal lenses',
+    'Real lenses', 'Real lenses', 'Real lenses',
+    'Metalenses',
+  ]);
+  assert.deepEqual(paletteOrderedTypes('Lenses'), lensPalette.map(([type]) => type),
+    'the component library and the wiki index share this sequence');
 });
 
 test('the cement gap is just wide enough for the tracer to see both interfaces', () => {
@@ -296,7 +318,7 @@ test('a flat face is traced as a plane, not a huge-radius arc', () => {
 // ---------------- per-surface transmission is a percentage ----------------
 
 test('glass bodies express per-surface transmission the same way every other optic does', () => {
-  for (const type of ['thicklens', 'freeglass']) {
+  for (const type of ['thicklens', 'asphericlens', 'freeglass']) {
     const spec = registry[type].params.find(p => p.key === 'transEff');
     assert.ok(spec, `${type} must carry transEff, not a bespoke 0-1 transmission`);
     assert.deepEqual([spec.min, spec.max, spec.def], [0, 100, 98], `${type} bounds`);
@@ -313,7 +335,7 @@ test('glass bodies express per-surface transmission the same way every other opt
 
 test('a sketch saved with the old 0-1 transmission loads at the same physical value', () => {
   const file = els => JSON.stringify({ app: 'optics2d', version: 1, elements: els, beams: [] });
-  for (const type of ['thicklens', 'freeglass']) {
+  for (const type of ['thicklens', 'asphericlens', 'freeglass']) {
     for (const stored of [0, 0.5, 0.98, 1]) {
       const fresh = createElement(type, 0, 0);
       const params = { ...fresh.params, transmission: stored };

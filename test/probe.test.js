@@ -1,9 +1,13 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createElement, registry } from '../sketch/js/elements.js';
 import { detectorResponseNs } from '../sketch/js/detector-instruments.js';
-import { traceAll } from '../sketch/js/raytrace.js';
+import { traceAll, traceScene, probePowerAt } from '../sketch/js/raytrace.js';
+import { enhancedReading } from '../sketch/js/detector-measurements.js';
+import { parseSketch } from '../sketch/js/state.js';
 import '../sketch/js/detector-instruments.js';
 import {
   probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
@@ -52,12 +56,103 @@ test('power is null when nothing upstream declares any', () => {
   assert.equal(probeAveragePowerW(null, []), null);
 });
 
+test('an area reading adds each source\'s watts, like a power meter, skipping sources without a power setting', () => {
+  const sources = [{ id: 'pump', params: { avgPowerW: 1 } }, { id: 'seed', params: { avgPowerW: 1e-3 } }, { id: 'dark', params: {} }];
+  const sourceFractions = [{ sourceId: 'seed', fraction: 1 }, { sourceId: 'pump', fraction: 0.004 }];
+  assert.ok(Math.abs(probeAveragePowerW({ sourceFractions }, sources) - 0.005) < 1e-15);
+  // The meter reports the attributable watts when some light has no power figure; so does the probe.
+  assert.ok(Math.abs(probeAveragePowerW({ sourceFractions: [...sourceFractions, { sourceId: 'dark', fraction: 1 }] }, sources) - 0.005) < 1e-15);
+  assert.equal(probeAveragePowerW({ sourceFractions: [{ sourceId: 'dark', fraction: 1 }] }, sources), null);
+});
+
+// A probe and a power meter on the same light read the same watts.
+const meterAt = (x, y, rot = 0, aperture = 30) => Object.assign(createElement('powermeter', x, y), { rot }, { params: { ...createElement('powermeter', x, y).params, aperture } });
+const probeWatts = (x, y, elements, diameter = 10) => probeAveragePowerW(probePowerAt(x, y, diameter / 2), elements);
+const lineLaser = (x, y, avgPowerW, extra = {}) => {
+  const l = createElement('cwlaser', x, y);
+  Object.assign(l.params, { avgPowerW, beamMode: 'line', ...extra });
+  return l;
+};
+
+test('the probe counts a mirror leak as the meter does, and neither sees it when it is off', () => {
+  // A 90 % mirror at 45 degrees with Trace transmitted beam on: the 10 % it
+  // transmits reaches the meter, and the probe reads the same.
+  const mirror = Object.assign(createElement('mirror', 200, 0), { rot: 45 });
+  mirror.params.refl = 90;
+  mirror.params.showTransmitted = true;
+  const meter = meterAt(400, 0);
+  const elements = [lineLaser(0, 0, 0.1), mirror, meter];
+  traceScene(elements, []);
+  const metered = enhancedReading(meter, elements).detectedPowerW;
+  assert.ok(Math.abs(metered - 0.01) < 1e-12, `${metered}`);
+  assert.ok(Math.abs(probeWatts(300, 0, elements) - metered) < 1e-15);
+  // Off, the leak does not exist: the meter and the probe both read nothing.
+  mirror.params.showTransmitted = false;
+  traceScene(elements, []);
+  assert.equal(enhancedReading(meter, elements), null);
+  assert.equal(probePowerAt(300, 0, 5), null);
+});
+
+test('the probe adds every beam crossing its circle, and only those', () => {
+  const elements = [lineLaser(0, 0, 0.1), lineLaser(0, 6, 0.05, { wavelength: 633 })];
+  traceScene(elements, []);
+  assert.ok(Math.abs(probeWatts(150, 3, elements, 10) - 0.15) < 1e-15, 'both beams, 6 mm apart, inside a 10 mm circle');
+  assert.ok(Math.abs(probeWatts(150, 0, elements, 4) - 0.1) < 1e-15, 'a 4 mm circle on one beam takes that beam alone');
+  assert.equal(probePowerAt(150, 30, 5), null, 'nothing crosses a circle away from the beams');
+});
+
+test('light split inside the probe circle is counted once, where it entered', () => {
+  const cube = createElement('bs', 150, 0);
+  const elements = [lineLaser(0, 0, 0.1), cube];
+  traceScene(elements, []);
+  assert.ok(Math.abs(probeWatts(150, 0, elements, 20) - 0.1) < 1e-15, 'the cube sits inside the circle: 100 mW in, not 150');
+  assert.ok(Math.abs(probeWatts(250, 0, elements) - 0.05) < 1e-15, 'past the cube: the transmitted half');
+});
+
+// Andrea's reproductions on 1dfeab6.
+const nd = (x, trans) => Object.assign(createElement('filter', x, 0), {}, { params: { ...createElement('filter', x, 0).params, ftype: 'nd', trans } });
+
+test('an element that absorbs everything further on does not erase the reading before it', () => {
+  for (const withMeter of [false, true]) {
+    const elements = [lineLaser(0, 0, 0.1), nd(200, 0), ...(withMeter ? [meterAt(400, 0)] : [])];
+    traceScene(elements, []);
+    assert.ok(Math.abs(probeWatts(100, 0, elements) - 0.1) < 1e-15, `before an ND at 0${withMeter ? ', meter downstream' : ''}`);
+    assert.equal(probePowerAt(300, 0, 5), null, 'nothing after it');
+  }
+});
+
+test('a beam too weak to be drawn is still read, with or without a meter further on', () => {
+  // A 1 % ND leaves 1 mW, below the tracer's drawing floor: it stops being
+  // followed unless a detector is next, and the probe used to read nothing.
+  let withMeter = null;
+  for (const meter of [null, meterAt(400, 0)]) {
+    const elements = [lineLaser(0, 0, 0.1), nd(200, 0.01), ...(meter ? [meter] : [])];
+    traceScene(elements, []);
+    const read = probeWatts(300, 0, elements);
+    assert.ok(Math.abs(read - 0.001) < 1e-15, `${read} W${meter ? ' with a meter' : ''}`);
+    if (meter) withMeter = enhancedReading(meter, elements).detectedPowerW;
+  }
+  assert.ok(Math.abs(withMeter - 0.001) < 1e-15, 'and the meter agrees');
+});
+
+test('a probe saved before the sampling circle existed opens with the 10 mm default', () => {
+  const probe = createElement('probe', 0, 0);
+  delete probe.params.sampleDiameterMm;
+  const parsed = parseSketch(JSON.stringify({ app: 'optics2d', version: 1, elements: [probe], beams: [] }), registry);
+  assert.equal(parsed.elements[0].params.sampleDiameterMm, 10);
+});
+
 test('power formatting steps through the units it is likely to meet', () => {
   assert.equal(formatPowerMw(0.2), '200 mW');
   assert.equal(formatPowerMw(2), '2.00 W');
   assert.equal(formatPowerMw(1e-6), '1.00 µW');
   assert.equal(formatPowerMw(0), '0 mW');
   assert.equal(formatPowerMw(null), '—');
+  // Values that round up to the next unit move to it.
+  assert.equal(formatPowerMw(0.999538), '1.00 W', 'an OPA residual pump of 999.538 mW');
+  assert.equal(formatPowerMw(0.9994), '999 mW');
+  assert.equal(formatPowerMw(0.99971e-3), '1.00 mW');
+  assert.equal(formatPowerMw(0.9996e-6), '1.00 µW');
 });
 
 // ---------------- pulse duration ----------------
@@ -66,14 +161,11 @@ test('pulse duration names what each kind of source actually has', () => {
   assert.equal(probeDurationLabel({ pulse: null }, 'cwlaser'), 'CW source');
   assert.equal(probeDurationLabel({ pulse: { pulseWidthFs: 150 } }, 'pulsedlaser'), '150 fs');
   assert.equal(probeDurationLabel({ pulse: { pulseWidthFs: 2500 } }, 'pulsedlaser'), '2.50 ps');
-  // A supercontinuum's train carries a nominal width, but the app does not
-  // model the temporal structure nonlinear broadening produces -- quoting
-  // that number would be inventing a measurement.
-  assert.equal(probeDurationLabel({ pulse: { pulseWidthFs: 100 } }, 'sclaser'), 'Undefined');
+  assert.equal(probeDurationLabel({ pulse: { pulseWidthFs: 100 } }, 'sclaser'), '100 fs');
 });
 
 test('the duration card reads from the real source on the bench', () => {
-  for (const [type, expected] of [['cwlaser', /CW source/], ['pulsedlaser', /150 fs/], ['sclaser', /Undefined/]]) {
+  for (const [type, expected] of [['cwlaser', /CW source/], ['pulsedlaser', /150 fs/], ['sclaser', /100 fs/]]) {
     const { svg } = bench(type, {}, { prop: 'duration' });
     assert.match(svg(), expected, `${type} should report ${expected}`);
     assert.doesNotMatch(svg(), /pulse duration/, 'no caption under the value');

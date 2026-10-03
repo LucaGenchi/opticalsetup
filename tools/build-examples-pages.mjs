@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Static Examples page generator: `node tools/build-examples-pages.mjs`.
 //
 // Reads content from examples-content.mjs, matches each entry against the
@@ -96,6 +98,7 @@ function header(base) {
     <div class="header-actions">
       <a class="plain" href="${base}/wiki/">Wiki</a>
       <a class="plain" href="${base}/example-setups/">Examples</a>
+      <a class="plain" href="${base}/calculators/">Calculators</a>
       <a class="plain" href="${base}/community/">Community</a>
       <a class="btn" href="${base}/sketch/">Open the canvas</a>
     </div>
@@ -158,6 +161,8 @@ function pageHTML(entry, manifestEntry, scene) {
   const related = (entry.related || []).filter(t => registry[t] && !registry[t].hidden && WIKI_TYPES.has(t));
 
   return `<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -185,11 +190,11 @@ ${header(base)}
       <a class="place-cta" href="${base}/sketch/?example=${encodeURIComponent(manifestEntry.slug)}">Open in the canvas →</a>
 
       <div class="embed-wrap"${embedStyleFor(scene)}>
-        <iframe class="embed-frame" src="${base}/sketch/?example=${encodeURIComponent(manifestEntry.slug)}"
-          title="${esc(entry.title)} — click any component to see its live specs"
-          loading="lazy"></iframe>
+        <iframe class="embed-frame" src="${base}/sketch/?example=${encodeURIComponent(manifestEntry.slug)}&amp;embed=1"
+          title="${esc(entry.title)} — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
       </div>
-      <p class="embed-caption">Click any component to see its live specs — this embedded canvas can't be moved, deleted, or added to.</p>
+      <p class="embed-caption">A live trace of the setup above, shown as a picture. Open it in the canvas to take it apart, retune it, and save or export it as your own.</p>
 
       ${entry.html ? `
       <h2 class="section-head real"><span class="sw"></span>Background</h2>
@@ -216,7 +221,7 @@ ${header(base)}
       </ul>` : ''}
     </main>
   </div>
-  <footer class="wiki-footer">Examples are curated and reviewed for pedagogical accuracy — see the <a href="${base}/community/">community section</a> for setups submitted directly by users, and the <a href="${base}/wiki/">wiki</a> for how each component actually works.</footer>
+  <footer class="wiki-footer">Examples are written and maintained with the project. For setups shared by users, see the <a href="${base}/community/">community section</a>; for how each component works, see the <a href="${base}/wiki/">wiki</a>.</footer>
 </body>
 </html>
 `;
@@ -240,6 +245,8 @@ function hubHTML(entries) {
         </a>`;
 
   return `<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -262,7 +269,7 @@ ${header(base)}
     <div>
       <div class="hub-hero">
         <h1>Curated optical setups</h1>
-        <p>Real interferometer layouts and lab techniques, each with the background physics, an honest note on what OpticalSetup's qualitative tracer won't show you, and a locked live canvas to click through. Reviewed for pedagogical accuracy, unlike the <a href="${base}/community/">community section</a>.</p>
+        <p>Worked optical setups, from interferometers and telescopes to microscopes, pulse compressors and nonlinear sources. Each comes with the background physics, a plain statement of what the model does and does not compute, and a live canvas to click through and open in the editor. The list of examples expands over time.</p>
       </div>
       ${entries.length ? groupNames.map(name => `
       <div class="hub-groups">
@@ -274,7 +281,7 @@ ${header(base)}
       <p class="community-empty">No example pages are published yet.</p>`}
     </div>
   </div>
-  <footer class="wiki-footer">More Examples get a page here over time — the full curated set is always available from the in-app Examples menu, whether or not it has a dedicated page yet.</footer>
+  <footer class="wiki-footer">OpticalSetup computes what it shows: ray paths from the surfaces you draw and dispersion from catalogue glass data. Detector readouts are computed from traced light and the detector model, within the limits stated on each component page. It is built for designing, understanding and communicating setups; for tolerancing, full lens optimization or 3D analysis, use dedicated optical design software.<br><a href="https://github.com/LucaGenchi/opticalsetup">Source on GitHub</a>, free software under the <a href="${base}/license.html">GNU GPL v3 or later</a>.</footer>
 </body>
 </html>
 `;
@@ -283,7 +290,16 @@ ${header(base)}
 async function main() {
   const manifestByName = new Map(examples.map(e => [e.name, e]));
 
+  // Keys pageHTML() actually renders. Anything else would be dropped in
+  // silence -- an entry once set formulas and html2, and half its prose never
+  // reached the page -- so fail the build instead.
+  const RENDERED = new Set(['match', 'title', 'tagline', 'html', 'inOpticalSetupTitle', 'inOpticalSetupHtml',
+    'limitations', 'citations', 'resources', 'related']);
   for (const entry of exampleEntries) {
+    const stray = Object.keys(entry).filter(key => !RENDERED.has(key));
+    if (stray.length) {
+      throw new Error(`examples-content.mjs "${entry.match}": unrecognized key(s) ${stray.join(', ')} would not be rendered`);
+    }
     if (!manifestByName.has(entry.match)) {
       throw new Error(`examples-content.mjs references unknown example "${entry.match}" — check sketch/js/examples-data.js (run tools/build-examples.mjs first if you just added or renamed an Examples/ file)`);
     }

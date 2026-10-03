@@ -1,0 +1,746 @@
+{
+ "app": "sketch/js/glass.js: glassIndex, glassGroupIndex, glassGVD, glassAbbe, glassGroupDelayDifferenceFs",
+ "cases": [
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.48921
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 2325.4
+   },
+   "name": "nbk7 at 2325.4 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.49495
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 1970.1
+   },
+   "name": "nbk7 at 1970.1 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.50091
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 1529.6
+   },
+   "name": "nbk7 at 1529.6 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.50669
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 1060.0
+   },
+   "name": "nbk7 at 1060.0 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.50731
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 1014.0
+   },
+   "name": "nbk7 at 1014.0 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.5098
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 852.1
+   },
+   "name": "nbk7 at 852.1 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.51289
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 706.5
+   },
+   "name": "nbk7 at 706.5 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.51432
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 656.3
+   },
+   "name": "nbk7 at 656.3 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.51509
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 632.8
+   },
+   "name": "nbk7 at 632.8 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.51673
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 589.3
+   },
+   "name": "nbk7 at 589.3 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.5168
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 587.6
+   },
+   "name": "nbk7 at 587.6 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.51872
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 546.1
+   },
+   "name": "nbk7 at 546.1 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.52238
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 486.1
+   },
+   "name": "nbk7 at 486.1 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.52668
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 435.8
+   },
+   "name": "nbk7 at 435.8 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.53024
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 404.7
+   },
+   "name": "nbk7 at 404.7 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.53627
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 365.0
+   },
+   "name": "nbk7 at 365.0 nm versus the data sheet",
+   "note": "published N-BK7 data sheet value (Schott 517642.251)",
+   "tolerance": {
+    "index": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "abbe": 64.17
+   },
+   "inputs": {
+    "glass": "nbk7"
+   },
+   "name": "nbk7 Abbe number versus the data sheet",
+   "note": "published 64.17, held to its own rounding",
+   "tolerance": {
+    "abbe": 0.005
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "nFMinusNC": 0.008054
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "hiNm": 656.3,
+    "loNm": 486.1
+   },
+   "name": "nbk7 principal dispersion versus the data sheet",
+   "note": "published nF - nC = 0.008054",
+   "tolerance": {
+    "nFMinusNC": 1e-05
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.584113757,
+    "gvdFs2PerMm": 122.0363197,
+    "index": 1.530848538
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 400
+   },
+   "name": "nbk7 at 400 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.54135539,
+    "gvdFs2PerMm": 70.37218506,
+    "index": 1.516798438
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 587.6
+   },
+   "name": "nbk7 at 587.6 nm",
+   "note": "app buckets GVD to the nearest nm; 587.6 nm is evaluated at 588 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.526649647,
+    "gvdFs2PerMm": 44.6518432,
+    "index": 1.510776231
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 800
+   },
+   "name": "nbk7 at 800 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.521061488,
+    "gvdFs2PerMm": 25.122328,
+    "index": 1.507089025
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 1030
+   },
+   "name": "nbk7 at 1030 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.520071677,
+    "gvdFs2PerMm": -24.63182683,
+    "index": 1.500652043
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "wavelengthNm": 1550
+   },
+   "name": "nbk7 at 1550 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "abbe": 64.16733624
+   },
+   "inputs": {
+    "glass": "nbk7"
+   },
+   "name": "nbk7 Abbe number",
+   "tolerance": {
+    "abbe": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "groupDelayDifferenceFs": -5.264911742
+   },
+   "inputs": {
+    "glass": "nbk7",
+    "hiNm": 820,
+    "lengthMm": 1,
+    "loNm": 780
+   },
+   "name": "nbk7 group delay 780-820 nm per mm",
+   "tolerance": {
+    "groupDelayDifferenceFs": 1e-05
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.51376907,
+    "gvdFs2PerMm": 97.56556991,
+    "index": 1.470116119
+   },
+   "inputs": {
+    "glass": "silica",
+    "wavelengthNm": 400
+   },
+   "name": "silica at 400 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.479150894,
+    "gvdFs2PerMm": 57.5406104,
+    "index": 1.458462342
+   },
+   "inputs": {
+    "glass": "silica",
+    "wavelengthNm": 587.6
+   },
+   "name": "silica at 587.6 nm",
+   "note": "app buckets GVD to the nearest nm; 587.6 nm is evaluated at 588 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.467144755,
+    "gvdFs2PerMm": 36.16201741,
+    "index": 1.453317255
+   },
+   "inputs": {
+    "glass": "silica",
+    "wavelengthNm": 800
+   },
+   "name": "silica at 800 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.462708746,
+    "gvdFs2PerMm": 18.97256666,
+    "index": 1.450043806
+   },
+   "inputs": {
+    "glass": "silica",
+    "wavelengthNm": 1030
+   },
+   "name": "silica at 1030 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.462596484,
+    "gvdFs2PerMm": -27.94728244,
+    "index": 1.444023622
+   },
+   "inputs": {
+    "glass": "silica",
+    "wavelengthNm": 1550
+   },
+   "name": "silica at 1550 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "abbe": 67.82143198
+   },
+   "inputs": {
+    "glass": "silica"
+   },
+   "name": "silica Abbe number",
+   "tolerance": {
+    "abbe": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "groupDelayDifferenceFs": -4.263942003
+   },
+   "inputs": {
+    "glass": "silica",
+    "hiNm": 820,
+    "lengthMm": 1,
+    "loNm": 780
+   },
+   "name": "silica group delay 780-820 nm per mm",
+   "tolerance": {
+    "groupDelayDifferenceFs": 1e-05
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.887213558,
+    "gvdFs2PerMm": 536.3834845,
+    "index": 1.713038776
+   },
+   "inputs": {
+    "glass": "nsf5",
+    "wavelengthNm": 400
+   },
+   "name": "nsf5 at 400 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.734482611,
+    "gvdFs2PerMm": 209.1024162,
+    "index": 1.672703018
+   },
+   "inputs": {
+    "glass": "nsf5",
+    "wavelengthNm": 587.6
+   },
+   "name": "nsf5 at 587.6 nm",
+   "note": "app buckets GVD to the nearest nm; 587.6 nm is evaluated at 588 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.692279495,
+    "gvdFs2PerMm": 126.4461988,
+    "index": 1.658629959
+   },
+   "inputs": {
+    "glass": "nsf5",
+    "wavelengthNm": 800
+   },
+   "name": "nsf5 at 800 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.675767411,
+    "gvdFs2PerMm": 82.8858785,
+    "index": 1.651492998
+   },
+   "inputs": {
+    "glass": "nsf5",
+    "wavelengthNm": 1030
+   },
+   "name": "nsf5 at 1030 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.666285555,
+    "gvdFs2PerMm": 10.81629977,
+    "index": 1.642171422
+   },
+   "inputs": {
+    "glass": "nsf5",
+    "wavelengthNm": 1550
+   },
+   "name": "nsf5 at 1550 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "abbe": 32.25120346
+   },
+   "inputs": {
+    "glass": "nsf5"
+   },
+   "name": "nsf5 Abbe number",
+   "tolerance": {
+    "abbe": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "groupDelayDifferenceFs": -14.91120553
+   },
+   "inputs": {
+    "glass": "nsf5",
+    "hiNm": 820,
+    "lengthMm": 1,
+    "loNm": 780
+   },
+   "name": "nsf5 group delay 780-820 nm per mm",
+   "tolerance": {
+    "groupDelayDifferenceFs": 1e-05
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 2.116256174,
+    "gvdFs2PerMm": 888.7272211,
+    "index": 1.845422227
+   },
+   "inputs": {
+    "glass": "nsf11",
+    "wavelengthNm": 400
+   },
+   "name": "nsf11 at 400 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.874525291,
+    "gvdFs2PerMm": 315.6722021,
+    "index": 1.784714103
+   },
+   "inputs": {
+    "glass": "nsf11",
+    "wavelengthNm": 587.6
+   },
+   "name": "nsf11 at 587.6 nm",
+   "note": "app buckets GVD to the nearest nm; 587.6 nm is evaluated at 588 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.811492262,
+    "gvdFs2PerMm": 187.4987516,
+    "index": 1.764619918
+   },
+   "inputs": {
+    "glass": "nsf11",
+    "wavelengthNm": 800
+   },
+   "name": "nsf11 at 800 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.786883602,
+    "gvdFs2PerMm": 125.3493184,
+    "index": 1.754915312
+   },
+   "inputs": {
+    "glass": "nsf11",
+    "wavelengthNm": 1030
+   },
+   "name": "nsf11 at 1030 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.771239953,
+    "gvdFs2PerMm": 35.87672361,
+    "index": 1.743399203
+   },
+   "inputs": {
+    "glass": "nsf11",
+    "wavelengthNm": 1550
+   },
+   "name": "nsf11 at 1550 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "abbe": 25.67999784
+   },
+   "inputs": {
+    "glass": "nsf11"
+   },
+   "name": "nsf11 Abbe number",
+   "tolerance": {
+    "abbe": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "groupDelayDifferenceFs": -22.11182608
+   },
+   "inputs": {
+    "glass": "nsf11",
+    "hiNm": 820,
+    "lengthMm": 1,
+    "loNm": 780
+   },
+   "name": "nsf11 group delay 780-820 nm per mm",
+   "tolerance": {
+    "groupDelayDifferenceFs": 1e-05
+   }
+  }
+ ],
+ "citations": [
+  "SCHOTT AG, data sheet N-BK7 517642.251 (2007-09-19): Sellmeier constants and the tabulated indices used as anchors here \u2014 https://www.schott.com/shop/medias/schott-datasheet-n-bk7-eng.pdf",
+  "SCHOTT AG, optical glass collection data sheets (N-SF5, N-SF11) \u2014 https://www.schott.com/en-gb/products/optical-glass",
+  "I. H. Malitson, 'Interspecimen comparison of the refractive index of fused silica', J. Opt. Soc. Am. 55, 1205-1208 (1965), doi:10.1364/JOSA.55.001205 (absolute residual 1.05e-5 over 0.21-3.71 um)"
+ ],
+ "convergence": "Derivatives by five-point finite differences at h = 1e-4 um. Halving the step changes the GVD by the amounts below -- evidence that the tolerance sits well above the step's influence at these wavelengths, not a bound on the total error.",
+ "convergence_keys": [
+  "GVD of"
+ ],
+ "domain": "365-2325 nm for N-BK7 (the data sheet's own line list); 400-1550 nm evaluated for every catalogue glass.",
+ "fidelity": "computed",
+ "id": "sellmeier",
+ "outside_scope": "Clamps: `glassIndex` and `glassGVD` evaluate the fit at the nearest edge of the glass's range and return that value (N-SF11 at 300 nm returns its 370 nm index). `isWavelengthInGlassRange` reports whether a wavelength is inside; the tracer uses it to colour out-of-range light, but the getters themselves do not refuse.",
+ "provenance": "Coefficients transcribed from the manufacturer data sheets and Malitson's paper; the anchors are the same data sheet's tabulated catalogue values, not established as independent of the data behind the fit.",
+ "reference": "Published Sellmeier coefficients evaluated directly; derivatives by five-point finite differences",
+ "reference_file": "validation/reference/sellmeier.py",
+ "scope": "Room-temperature catalogue curves inside each glass's stated range; no absorption, temperature or stress dependence.",
+ "title": "Catalogue glass dispersion (Sellmeier)",
+ "tolerance_rationale": "Index 1e-7 and group index 1e-6 are algebraic agreement between two evaluations of the same closed form. GVD 2e-4 covers the finite-difference truncation; 2e-3 at 587.6 nm covers the app's 1 nm GVD bucket, which evaluates 588 nm. The published anchors use 1e-5 absolute, the data sheet's own rounding."
+}

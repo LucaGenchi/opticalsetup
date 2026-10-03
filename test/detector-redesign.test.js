@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -150,6 +152,90 @@ test('wavefront detector reports collimation and intensity', () => {
   assert.match(svg, /WAVEFRONT \+ INTENSITY/);
   assert.match(svg, /COLLIMATED/);
   assert.match(svg, /DIVERGENCE 0\.00°/);
+});
+
+test('a negligible tilted branch cannot steer the wavefront fit', () => {
+  const laser = createElement('cwlaser', 0, 0);
+  laser.params.beamMode = 'beam';
+  laser.params.beamWidth = 10;
+
+  const weak = createElement('cwlaser', 0, 20);
+  weak.params.beamMode = 'line';
+  weak.rot = -3;
+
+  const attenuator = createElement('filter', 150, 12.14);
+  attenuator.params.length = 3;
+  attenuator.params.ftype = 'nd';
+  attenuator.params.trans = 1e-6;
+
+  const detector = createElement('wavefrontdetector', 300, 0);
+  detector.params.aperture = 60;
+  const elements = [laser, weak, attenuator, detector];
+  traceAll(elements);
+
+  const reading = enhancedReading(detector, elements);
+  assert.ok(reading);
+  assert.ok(reading.signal > 1 && reading.signal < 1.00001,
+    `expected a one-millionth-power outlier, got ${reading.signal}`);
+  assert.equal(reading.wavefront.state, 'COLLIMATED');
+  assert.equal(reading.wavefront.divergenceDeg, 0);
+});
+
+test('a negligible ray far from a converging beam does not widen the fit', () => {
+  const laser = createElement('cwlaser', 0, 0);
+  laser.params.beamMode = 'beam';
+  laser.params.beamWidth = 4;
+  const lens = createElement('lens', 100, 0);
+  lens.params.f = 2000;
+  const detector = createElement('wavefrontdetector', 300, 0);
+  detector.params.aperture = 60;
+  traceAll([laser, lens, detector]);
+  const alone = enhancedReading(detector, [laser, lens, detector]).wavefront;
+  assert.equal(alone.state, 'CONVERGING');
+  // A full edge-to-edge 4 mm beam over a 2 m focus: 2 atan(2 / 2000).
+  assert.ok(Math.abs(alone.divergenceDeg - 2 * Math.atan(2 / 2000) * 180 / Math.PI) < 1e-3,
+    `expected the beam's own cone, got ${alone.divergenceDeg}`);
+
+  // A parallel ray 25 mm off axis, attenuated to one millionth.
+  const stray = createElement('cwlaser', 120, 25);
+  stray.params.beamMode = 'line';
+  const attenuator = createElement('filter', 220, 25);
+  attenuator.params.ftype = 'nd';
+  attenuator.params.trans = 1e-6;
+  attenuator.params.length = 10;
+  const elements = [laser, lens, stray, attenuator, detector];
+  traceAll(elements);
+  const reading = enhancedReading(detector, elements);
+  assert.ok(reading.signal > 1 && reading.signal < 1.00001,
+    `expected a one-millionth-power stray, got ${reading.signal}`);
+  assert.equal(reading.wavefront.state, 'CONVERGING');
+  assert.ok(Math.abs(reading.wavefront.divergenceDeg - alone.divergenceDeg) < 1e-3 * alone.divergenceDeg,
+    `the stray moved ${alone.divergenceDeg} to ${reading.wavefront.divergenceDeg}`);
+});
+
+test('the wavefront fit weighs each source by its watts', () => {
+  const strong = createElement('cwlaser', 0, 0);
+  strong.params.beamMode = 'beam';
+  strong.params.beamWidth = 10;
+  strong.params.avgPowerW = 1;
+  const tilted = createElement('cwlaser', 0, 20);
+  tilted.params.beamMode = 'line';
+  tilted.rot = -3;
+  const detector = createElement('wavefrontdetector', 300, 0);
+  detector.params.aperture = 60;
+  const elements = [strong, tilted, detector];
+
+  // One tilted ray of 1 mW beside a 1 W collimated beam: the beam decides.
+  tilted.params.avgPowerW = 0.001;
+  traceAll(elements);
+  assert.equal(enhancedReading(detector, elements).wavefront.state, 'COLLIMATED');
+
+  // At 1 W it carries half the light and tilts the fit.
+  tilted.params.avgPowerW = 1;
+  traceAll(elements);
+  const even = enhancedReading(detector, elements).wavefront;
+  assert.equal(even.state, 'CONVERGING');
+  assert.ok(even.divergenceDeg > 1, `expected a strong tilt, got ${even.divergenceDeg}`);
 });
 
 test('polarimeter reports state, Stokes parameters, and a visual glyph', () => {

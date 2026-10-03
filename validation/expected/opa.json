@@ -1,0 +1,455 @@
+{
+ "app": "sketch/js/parametric.js: parametricGainCoefficient, parametricSmallSignalGain, parametricPair; sketch/js/parametric-amplifier.js: allocateParametricAmplifier; calculators/opa/coupled-wave.js: coupledWaveConversion",
+ "cases": [
+  {
+   "expected": {
+    "gammaPerM": 6028.702277
+   },
+   "inputs": {
+    "dEffPmV": 2.0,
+    "kind": "gamma",
+    "nIdler": 1.65,
+    "nPump": 1.66,
+    "nSignal": 1.66,
+    "pumpIntensityWm2": 1000000000000000.0,
+    "pumpWl": 400,
+    "signalWl": 600
+   },
+   "name": "gain coefficient: BBO-like, 400 nm pump, 600 nm signal, 100 GW/cm2",
+   "tolerance": {
+    "gammaPerM": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "gammaPerM": 3326.594056
+   },
+   "inputs": {
+    "dEffPmV": 2.0,
+    "kind": "gamma",
+    "nIdler": 1.65,
+    "nPump": 1.66,
+    "nSignal": 1.66,
+    "pumpIntensityWm2": 500000000000000.0,
+    "pumpWl": 515,
+    "signalWl": 780
+   },
+   "name": "gain coefficient: 515 nm pump, 780 nm signal, 50 GW/cm2",
+   "tolerance": {
+    "gammaPerM": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "gammaPerM": 340.0117393
+   },
+   "inputs": {
+    "dEffPmV": 14.0,
+    "kind": "gamma",
+    "nIdler": 2.08,
+    "nPump": 2.156,
+    "nSignal": 2.138,
+    "pumpIntensityWm2": 1000000000000.0,
+    "pumpWl": 1064,
+    "signalWl": 1550
+   },
+   "name": "gain coefficient: PPLN, 1064 nm pump, 1550 nm signal, 0.1 GW/cm2",
+   "tolerance": {
+    "gammaPerM": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "gain": 1.271540317
+   },
+   "inputs": {
+    "deltaKPerM": 0.0,
+    "gammaPerM": 1000.0,
+    "kind": "gain",
+    "lengthM": 0.0005
+   },
+   "name": "undepleted gain, matched, Gamma L = 0.5 (analytic cosh^2)",
+   "tolerance": {
+    "gain": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "gain": 101.3578181
+   },
+   "inputs": {
+    "deltaKPerM": 0.0,
+    "gammaPerM": 1000.0,
+    "kind": "gain",
+    "lengthM": 0.003
+   },
+   "name": "undepleted gain, matched, Gamma L = 3.0 (analytic cosh^2)",
+   "tolerance": {
+    "gain": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "gain": 121291299.4
+   },
+   "inputs": {
+    "deltaKPerM": 0.0,
+    "gammaPerM": 1000.0,
+    "kind": "gain",
+    "lengthM": 0.01
+   },
+   "name": "undepleted gain, matched, Gamma L = 10.0 (analytic cosh^2)",
+   "tolerance": {
+    "gain": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "gain": 2.27638496
+   },
+   "inputs": {
+    "deltaKPerM": 1000.0,
+    "gammaPerM": 1000.0,
+    "kind": "gain",
+    "lengthM": 0.001
+   },
+   "name": "undepleted gain, Gamma L = 1.0, dk/(2 Gamma) = 0.5 (RK4)",
+   "tolerance": {
+    "gain": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "gain": 340.5531409
+   },
+   "inputs": {
+    "deltaKPerM": 1000.0,
+    "gammaPerM": 1000.0,
+    "kind": "gain",
+    "lengthM": 0.004
+   },
+   "name": "undepleted gain, Gamma L = 4.0, dk/(2 Gamma) = 0.5 (RK4)",
+   "tolerance": {
+    "gain": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "gain": 5.0
+   },
+   "inputs": {
+    "deltaKPerM": 2000.0,
+    "gammaPerM": 1000.0,
+    "kind": "gain",
+    "lengthM": 0.002
+   },
+   "name": "undepleted gain, Gamma L = 2.0, dk/(2 Gamma) = 1.0 (RK4)",
+   "tolerance": {
+    "gain": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "gain": 1.324740533
+   },
+   "inputs": {
+    "deltaKPerM": 4000.0,
+    "gammaPerM": 1000.0,
+    "kind": "gain",
+    "lengthM": 0.001
+   },
+   "name": "undepleted gain, Gamma L = 1.0, dk/(2 Gamma) = 2.0 (RK4)",
+   "tolerance": {
+    "gain": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "gain": 1.029918619
+   },
+   "inputs": {
+    "deltaKPerM": 10000.0,
+    "gammaPerM": 1000.0,
+    "kind": "gain",
+    "lengthM": 0.003
+   },
+   "name": "undepleted gain, Gamma L = 3.0, dk/(2 Gamma) = 5.0 (RK4)",
+   "tolerance": {
+    "gain": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "gain": 2312.678812
+   },
+   "inputs": {
+    "delayFs": 0,
+    "gammaPeakL": 5.0,
+    "kind": "pulsed",
+    "pumpFwhmFs": 100,
+    "repRateMHz": 80,
+    "seedFwhmFs": 100
+   },
+   "name": "pulse-averaged gain: 100 fs pump, 100 fs seed, zero delay",
+   "tolerance": {
+    "gain": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "gain": 247.918631
+   },
+   "inputs": {
+    "delayFs": 100,
+    "gammaPeakL": 5.0,
+    "kind": "pulsed",
+    "pumpFwhmFs": 100,
+    "repRateMHz": 80,
+    "seedFwhmFs": 100
+   },
+   "name": "pulse-averaged gain: 100 fs pump, 100 fs seed, 100 fs delay",
+   "tolerance": {
+    "gain": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "gain": 5374.862788
+   },
+   "inputs": {
+    "delayFs": 0,
+    "gammaPeakL": 5.0,
+    "kind": "pulsed",
+    "pumpFwhmFs": 1000,
+    "repRateMHz": 80,
+    "seedFwhmFs": 100
+   },
+   "name": "pulse-averaged gain: 1 ps pump, 100 fs seed",
+   "tolerance": {
+    "gain": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "gain": 257.7920657
+   },
+   "inputs": {
+    "delayFs": 0,
+    "gammaPeakL": 5.0,
+    "kind": "pulsed",
+    "pumpFwhmFs": 100,
+    "repRateMHz": 80,
+    "seedFwhmFs": 1000
+   },
+   "name": "pulse-averaged gain: 100 fs pump, 1 ps seed",
+   "tolerance": {
+    "gain": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "gain": 1.021894363
+   },
+   "inputs": {
+    "delayFs": 0,
+    "gammaPeakL": 5.0,
+    "kind": "pulsed",
+    "pumpFwhmFs": 100,
+    "repRateMHz": 80,
+    "seedFwhmFs": null
+   },
+   "name": "pulse-averaged gain: 100 fs pump at 80 MHz, CW seed",
+   "tolerance": {
+    "gain": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "idlerPerSignalW": 0.5037593985,
+    "idlerWl": 1588.059701,
+    "pumpPerSignalW": 1.503759398
+   },
+   "inputs": {
+    "kind": "photons",
+    "pumpWl": 532.0,
+    "signalWl": 800.0
+   },
+   "name": "Manley-Rowe accounting, 532 nm pump, 800 nm seed, small signal",
+   "tolerance": {
+    "idlerPerSignalW": 1e-09,
+    "idlerWl": 1e-09,
+    "pumpPerSignalW": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "conversion": 0.01307500711
+   },
+   "inputs": {
+    "deltaKPerM": 0.0,
+    "gammaPerM": 1000.0,
+    "kind": "depleted",
+    "lengthM": 0.002,
+    "seedPhotonRatio": 0.001
+   },
+   "name": "depleted conversion, dk = 0, Gamma L = 2.0, seed/pump photons 0.001 (elliptic)",
+   "tolerance": {
+    "conversion": 2e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "conversion": 0.5298509081
+   },
+   "inputs": {
+    "deltaKPerM": 0.0,
+    "gammaPerM": 1000.0,
+    "kind": "depleted",
+    "lengthM": 0.004,
+    "seedPhotonRatio": 0.001
+   },
+   "name": "depleted conversion, dk = 0, Gamma L = 4.0, seed/pump photons 0.001 (elliptic)",
+   "tolerance": {
+    "conversion": 2e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "conversion": 0.3249800639
+   },
+   "inputs": {
+    "deltaKPerM": 0.0,
+    "gammaPerM": 1000.0,
+    "kind": "depleted",
+    "lengthM": 0.006,
+    "seedPhotonRatio": 0.001
+   },
+   "name": "depleted conversion, dk = 0, Gamma L = 6.0, seed/pump photons 0.001 (elliptic)",
+   "tolerance": {
+    "conversion": 2e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "conversion": 0.9182861806
+   },
+   "inputs": {
+    "deltaKPerM": 0.0,
+    "gammaPerM": 1000.0,
+    "kind": "depleted",
+    "lengthM": 0.008,
+    "seedPhotonRatio": 1e-06
+   },
+   "name": "depleted conversion, dk = 0, Gamma L = 8.0, seed/pump photons 1e-06 (elliptic)",
+   "tolerance": {
+    "conversion": 2e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "conversion": 0.6301748135
+   },
+   "inputs": {
+    "deltaKPerM": 0.0,
+    "gammaPerM": 1000.0,
+    "kind": "depleted",
+    "lengthM": 0.009,
+    "seedPhotonRatio": 1e-06
+   },
+   "name": "depleted conversion, dk = 0, Gamma L = 9.0, seed/pump photons 1e-06 (elliptic)",
+   "tolerance": {
+    "conversion": 2e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "conversion": 0.002412657991
+   },
+   "inputs": {
+    "deltaKPerM": 0.0,
+    "gammaPerM": 1000.0,
+    "kind": "depleted",
+    "lengthM": 0.012,
+    "seedPhotonRatio": 1e-06
+   },
+   "name": "depleted conversion, dk = 0, Gamma L = 12.0, seed/pump photons 1e-06 (elliptic)",
+   "tolerance": {
+    "conversion": 2e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "conversion": 0.883199154
+   },
+   "inputs": {
+    "deltaKPerM": 600.0,
+    "gammaPerM": 1000.0,
+    "kind": "depleted",
+    "lengthM": 0.006,
+    "seedPhotonRatio": 0.0001
+   },
+   "name": "depleted conversion, Gamma L = 6.0, dk/(2 Gamma) = 0.3, seed/pump photons 0.0001 (RK4)",
+   "tolerance": {
+    "conversion": 2e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "conversion": 0.3501508596
+   },
+   "inputs": {
+    "deltaKPerM": 1600.0,
+    "gammaPerM": 1000.0,
+    "kind": "depleted",
+    "lengthM": 0.008,
+    "seedPhotonRatio": 0.0001
+   },
+   "name": "depleted conversion, Gamma L = 8.0, dk/(2 Gamma) = 0.8, seed/pump photons 0.0001 (RK4)",
+   "tolerance": {
+    "conversion": 2e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "conversion": 0.007570648772
+   },
+   "inputs": {
+    "deltaKPerM": 3000.0,
+    "gammaPerM": 1000.0,
+    "kind": "depleted",
+    "lengthM": 0.004,
+    "seedPhotonRatio": 0.01
+   },
+   "name": "depleted conversion, Gamma L = 4.0, dk/(2 Gamma) = 1.5, seed/pump photons 0.01 (RK4)",
+   "tolerance": {
+    "conversion": 2e-06
+   }
+  }
+ ],
+ "citations": [
+  "R. A. Baumgartner and R. L. Byer, 'Optical parametric amplification', IEEE J. Quantum Electron. 15, 432-444 (1979), doi:10.1109/JQE.1979.1070043, eqs. 39-47",
+  "C. Manzoni and G. Cerullo, 'Design criteria for ultrafast optical parametric amplifiers', J. Opt. 18, 103501 (2016), doi:10.1088/2040-8978/18/10/103501, eqs. 2.8-2.14",
+  "J. A. Armstrong, N. Bloembergen, J. Ducuing and P. S. Pershan, 'Interactions between light waves in a nonlinear dielectric', Phys. Rev. 127, 1918-1939 (1962), doi:10.1103/PhysRev.127.1918",
+  "M. Abramowitz and I. A. Stegun, Handbook of Mathematical Functions (1964), 16.4 (AGM evaluation of Jacobi functions) and 16.10 (imaginary-modulus transformation)"
+ ],
+ "convergence": "Closed forms for the matched gain and the elliptic conversion; the AGM runs to 1e-17. RK4 at 40000-60000 steps and Simpson at 20000 intervals change by less than 1e-9 relative on halving.",
+ "domain": "Gamma L 0.5-12; dk/(2 Gamma) 0-5; Gaussian pulses 100 fs-1 ps, delays up to one FWHM, 80 MHz; seed/pump photon ratios 1e-6-1e-2.",
+ "fidelity": "computed",
+ "id": "opa",
+ "outside_scope": "The gain functions return null for invalid wavelengths or non-finite inputs; the allocator reports explicit states (degenerate, double-seeded, repetition mismatch, unknown duration) instead of a gain. Nothing here models beam profiles, walk-off, group-velocity mismatch, dispersion inside the crystal or parametric noise.",
+ "provenance": "Equations transcribed from the papers; the elliptic solution derived here from the Manley-Rowe invariants; no published numerical anchor is reproduced.",
+ "reference": "Gain coefficient in the angular-frequency form; undepleted gain by RK4 of the linear coupled equations and the analytic cosh^2; pulse-averaged gain by Simpson integration on a 20000-interval grid; depleted conversion from the closed-form Jacobi-elliptic solution (dk = 0) and a 60000-step RK4 ([code](../validation/reference/opa.py))",
+ "reference_file": "validation/reference/opa.py",
+ "scope": "Plane waves, collinear, monochromatic within each instant (quasi-static in time), unseeded idler, nondegenerate; Gaussian intensity envelopes; depleted conversion for a single seed.",
+ "title": "Optical parametric amplification: plane-wave gain, pulse-averaged seeded gain, depleted conversion",
+ "tolerance_rationale": "1e-9 for algebra; 1e-7 for the undepleted RK4 (converged well below); 1e-6 for the pulse-averaged gain (the app's midpoint cells, 64 per shortest width); 2e-6 absolute for the calculator's gain-scaled RK4 step (h Gamma = 0.05; measured worst 3.4e-7)."
+}

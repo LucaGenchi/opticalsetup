@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Derived objective-to-target immersion couplings.
 //
 // A coupling is deliberately scene-derived: the objective owns the medium,

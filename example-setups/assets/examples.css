@@ -1,3 +1,5 @@
+/* SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+   SPDX-License-Identifier: GPL-3.0-or-later */
 /* Builds on wiki.css tokens/layout — link that stylesheet directly before
    this one (see pageHTML/hubHTML in tools/build-examples-pages.mjs), same
    convention as community/assets/community.css. */

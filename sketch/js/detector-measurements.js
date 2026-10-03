@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Qualitative measurements derived from the ray tracer for detector screens.
 
 import { metalensFocalLength, registry } from './elements.js';

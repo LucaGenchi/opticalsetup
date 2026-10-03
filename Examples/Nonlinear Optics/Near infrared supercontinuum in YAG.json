@@ -1,0 +1,210 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "frame",
+      "type": "figureframe",
+      "x": 700,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "w": 1380,
+        "h": 660,
+        "background": "white"
+      }
+    },
+    {
+      "id": "title",
+      "type": "textlabel",
+      "x": 30,
+      "y": 30,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "# Near infrared supercontinuum in YAG\nA 1035 nm femtosecond pump broadens in a bulk crystal; a longpass keeps the red side and a bandpass selects 1050–1300 nm",
+        "fontSize": 12,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "laser",
+      "type": "pulsedlaser",
+      "x": 110,
+      "y": 320,
+      "rot": 0,
+      "label": "1035 nm · 270 fs · 2 MHz",
+      "showLabel": true,
+      "params": {
+        "wavelength": 1035,
+        "pulseWidthFs": 270,
+        "repRateMHz": 2,
+        "avgPowerW": 2,
+        "transformLimited": true,
+        "pulseShape": "gauss",
+        "beamMode": "line"
+      },
+      "labelPos": "t"
+    },
+    {
+      "id": "focus",
+      "type": "lens",
+      "x": 380,
+      "y": 320,
+      "rot": 0,
+      "label": "f = 100 mm",
+      "showLabel": true,
+      "params": {
+        "f": 100,
+        "dia": 25.4
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "crystal",
+      "type": "crystal",
+      "x": 480,
+      "y": 320,
+      "rot": 0,
+      "label": "YAG plate · 10 mm (drawn for context)",
+      "showLabel": true,
+      "params": {
+        "convert": "sc",
+        "scMedium": "yag",
+        "scRange": "estimate",
+        "aperture": 12,
+        "efficiency": 0.5,
+        "transmitPump": true
+      },
+      "labelPos": "t"
+    },
+    {
+      "id": "collimator",
+      "type": "lens",
+      "x": 580,
+      "y": 320,
+      "rot": 0,
+      "label": "f = 100 mm",
+      "showLabel": true,
+      "params": {
+        "f": 100,
+        "dia": 25.4
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "separator",
+      "type": "dichroic",
+      "x": 780,
+      "y": 320,
+      "rot": -45,
+      "label": "longpass 1050 nm",
+      "showLabel": true,
+      "params": {
+        "dtype": "longpass",
+        "cutoff": 1050,
+        "length": 25.4
+      },
+      "labelPos": "t"
+    },
+    {
+      "id": "visible-spectrometer",
+      "type": "spectrometer",
+      "x": 780,
+      "y": 510,
+      "rot": 90,
+      "label": "pump + visible side",
+      "showLabel": true,
+      "params": {
+        "aperture": 30,
+        "rangeMode": "manual",
+        "rangeMin": 400,
+        "rangeMax": 1100,
+        "intensityScale": "density",
+        "labelPeaks": false
+      },
+      "labelPos": "r"
+    },
+    {
+      "id": "window",
+      "type": "filter",
+      "x": 930,
+      "y": 320,
+      "rot": 0,
+      "label": "bandpass 1050–1300 nm (authored)",
+      "showLabel": true,
+      "params": {
+        "ftype": "bandpass",
+        "center": 1175,
+        "band": 250,
+        "length": 25.4
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "nir-spectrometer",
+      "type": "spectrometer",
+      "x": 1110,
+      "y": 320,
+      "rot": 0,
+      "label": "selected near-infrared band",
+      "showLabel": true,
+      "params": {
+        "aperture": 30,
+        "rangeMode": "manual",
+        "rangeMin": 950,
+        "rangeMax": 1400,
+        "intensityScale": "density",
+        "labelPeaks": false
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "screen",
+      "type": "display",
+      "x": 1110,
+      "y": 140,
+      "rot": 0,
+      "label": "what the spectrometer shows",
+      "showLabel": true,
+      "params": {
+        "sensorId": "nir-spectrometer",
+        "displayScale": 1.6,
+        "screenOn": true,
+        "displayView": "main"
+      },
+      "labelPos": "t"
+    },
+    {
+      "id": "band-note",
+      "type": "textlabel",
+      "x": 40,
+      "y": 430,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Select the crystal: its Continuum readout gives the estimated band, about 506–1776 nm for a 1035 nm pump in YAG,\ninterpolated between reference spectra — an illustration, not a prediction. Change the pump wavelength or the medium and it follows.",
+        "fontSize": 10,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "limits",
+      "type": "textlabel",
+      "x": 40,
+      "y": 610,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "The band is drawn flat. Plate length, focusing, pulse energy and duration do not enter the estimate; on a bench they move both edges.\nThe 1300 nm upper edge is an authored selection: a longpass alone would pass the whole red side.\nPump etalon, prism compressor, sample and CARS detection of the multiplex CARS bench this band was made for are not drawn.",
+        "fontSize": 10,
+        "fill": "#34454d"
+      }
+    }
+  ]
+}

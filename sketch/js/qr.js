@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Dependency-free QR Code Model 2 encoder. Uses byte mode and low error
 // correction so long self-contained sketch URLs remain scannable.
 

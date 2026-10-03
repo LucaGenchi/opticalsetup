@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Fabry–Pérot etalon: two closely spaced, matched partially reflective
 // coatings. Real transmission is governed by multi-beam interference (the
 // Airy function) — at a resonance the reflected components from every

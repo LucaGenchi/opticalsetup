@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Static wiki generator: `node tools/build-wiki.mjs`.
 //
 // Reads content from wiki-content.mjs, pulls live icons/labels/descriptions
@@ -13,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import katex from 'katex';
 import {
-  registry, categories, createElement, getSize, getElementMeta, paletteOrderedTypes,
+  registry, categories, createElement, getSize, paletteOrderedTypes,
 } from '../sketch/js/elements.js';
 // Some registry entries (etalon, vipa, and the detector-instruments variants)
 // register themselves as a side effect of import rather than living in
@@ -23,6 +25,7 @@ import '../sketch/js/etalon.js';
 import '../sketch/js/vipa.js';
 import '../sketch/js/detector-instruments.js';
 import { wikiEntries, wikiToolSubjects } from './wiki-content.mjs';
+import { calculators } from './calculators-content.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SITE_URL = 'https://opticalsetup.com';
@@ -46,14 +49,15 @@ function iconSVG(type) {
   return `<svg viewBox="${-vb / 2} ${-vb / 2} ${vb} ${vb}" aria-hidden="true">${def.svg(el)}</svg>`;
 }
 
+// Wiki summaries are editorial introductions, deliberately shorter than the
+// inspector's detailed capability help. Keep the same complete sentence on
+// cards, article headers, and social metadata; never clip it with an ellipsis.
 function taglineOf(entry) {
-  const tool = toolEntries.get(entry.type);
-  if (tool) return tool.tagline;
-  return getElementMeta(entry.type, createElement(entry.type).params).description;
+  return entry.summary;
 }
 
 function esc(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 const brandMark = () => `
@@ -94,6 +98,7 @@ function header(base) {
     <div class="header-actions">
       <a class="plain" href="${base}/wiki/">Wiki</a>
       <a class="plain" href="${base}/example-setups/">Examples</a>
+      <a class="plain" href="${base}/calculators/">Calculators</a>
       <a class="plain" href="${base}/community/">Community</a>
       <a class="btn" href="${base}/sketch/">Open the canvas</a>
     </div>
@@ -110,6 +115,32 @@ function inPaletteOrder(entries, category) {
     (rank.has(a.type) ? rank.get(a.type) : Infinity) - (rank.has(b.type) ? rank.get(b.type) : Infinity));
 }
 
+// A category whose palette entries carry paletteGroup is listed here under the
+// same subheadings, so the wiki index and the component library read alike.
+// Subjects the palette does not carry stay unlabelled and lead the category.
+// Split a category into consecutive runs sharing a paletteGroup. Entries the
+// palette does not carry -- the fiber drawing tools -- have no group and lead
+// the category in one unlabelled run. Both the sidebar and the hub render from
+// this, so the two views cannot disagree about the shape of a category.
+function subgroupedRuns(entries) {
+  const groupOf = e => registry[e.type]?.paletteGroup || '';
+  const runs = [];
+  for (const e of entries) {
+    const group = groupOf(e);
+    const last = runs[runs.length - 1];
+    if (last && last.group === group) last.entries.push(e);
+    else runs.push({ group, entries: [e] });
+  }
+  return runs;
+}
+
+function subgroupedList(entries, currentType, base) {
+  const link = e => `<li><a href="${base}/wiki/${e.type}/" class="${e.type === currentType ? 'current' : ''}">${esc(e.title)}</a></li>`;
+  return subgroupedRuns(entries).map(run =>
+    (run.group ? `<div class="cat-sub">${esc(run.group)}</div>` : '')
+    + `<ul>${run.entries.map(link).join('')}</ul>`).join('');
+}
+
 function sidebar(entries, currentType, base) {
   const byCategory = new Map();
   for (const e of entries) {
@@ -123,9 +154,7 @@ function sidebar(entries, currentType, base) {
       ${cats.map(cat => `
         <div class="cat">
           <div class="cat-name">${esc(cat)}</div>
-          <ul>
-            ${inPaletteOrder(byCategory.get(cat), cat).map(e => `<li><a href="${base}/wiki/${e.type}/" class="${e.type === currentType ? 'current' : ''}">${esc(e.title)}</a></li>`).join('')}
-          </ul>
+          ${subgroupedList(inPaletteOrder(byCategory.get(cat), cat), currentType, base)}
         </div>`).join('')}
     </nav>`;
 }
@@ -187,9 +216,11 @@ function pageHTML(entry, entries) {
   const base = '../..';
   const tagline = taglineOf(entry);
   const related = (entry.related || [])
-    .filter(t => toolEntries.has(t) || (registry[t] && !registry[t].hidden));
+    .filter(t => entries.some(e => e.type === t));
 
   return `<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -219,20 +250,21 @@ ${header(base)}
         </div>
       </div>
       <p class="tagline">${esc(tagline)}</p>
-      <a class="place-cta" href="${base}/sketch/?place=${entry.type}">Open in the canvas →</a>
+      <a class="place-cta" href="${base}/sketch/?demo=${entry.type}">Open in the canvas →</a>${entry.calculator ? `
+      <a class="place-cta calc-cta" href="${base}/calculators/${entry.calculator}/">Open the ${esc(entry.title)} calculator →</a>` : ''}
 
       <div class="embed-wrap">
-        <iframe class="embed-frame" src="${base}/sketch/?demo=${entry.type}"
-          title="Interactive ${esc(entry.title)} — click it to see its live specs and try its parameters"
-          loading="lazy"></iframe>
+        <iframe class="embed-frame" src="${base}/sketch/?demo=${entry.type}&amp;embed=1"
+          title="${esc(entry.title)} — a live trace of the scene described below"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
       </div>
-      <p class="embed-caption">Click the ${esc(entry.title).toLowerCase()} to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+      <p class="embed-caption">A live trace, not a picture of one — but this preview is not interactive. Open it in the canvas to move things, change parameters, and save or export your own version.</p>
 ${(entry.extraDemos || []).map(extra => `
       <h3 class="extra-demo-head">${esc(extra.heading)}</h3>
       <div class="embed-wrap">
-        <iframe class="embed-frame" src="${base}/sketch/?demo=${esc(extra.demo)}"
+        <iframe class="embed-frame" src="${base}/sketch/?demo=${esc(extra.demo)}&amp;embed=1"
           title="${esc(extra.heading)}"
-          loading="lazy"></iframe>
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
       </div>
       <p class="embed-caption">${extra.caption}</p>`).join('')}
 
@@ -260,7 +292,7 @@ ${(entry.extraDemos || []).map(extra => `
       </ul>` : ''}
     </main>
   </div>
-  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+  <footer class="wiki-footer">Every "In OpticalSetup" section above says exactly what the model computes and where it stops. Selected quantitative models are checked against independent reference implementations; see <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/docs/validation.md" target="_blank" rel="noopener">the validation table</a>.</footer>
 </body>
 </html>
 `;
@@ -276,6 +308,8 @@ function hubHTML(entries) {
   const cats = categories.filter(c => byCategory.has(c));
 
   return `<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -303,19 +337,19 @@ ${header(base)}
         ${cats.map(cat => `
         <div class="hub-group" id="${cat.toLowerCase().replace(/[^a-z0-9]+/g, '-')}">
           <h2>${esc(cat)}</h2>
-          <div class="hub-grid">
-            ${inPaletteOrder(byCategory.get(cat), cat).map(e => {
-    return `<a class="hub-card" href="${base}/wiki/${e.type}/">
+          ${subgroupedRuns(inPaletteOrder(byCategory.get(cat), cat)).map(run => `
+            ${run.group ? `<h3 class="hub-sub">${esc(run.group)}</h3>` : ''}
+            <div class="hub-grid">
+              ${run.entries.map(e => `<a class="hub-card" href="${base}/wiki/${e.type}/">
                 <span class="ic">${iconSVG(e.type)}</span>
                 <span class="info"><span class="name">${esc(e.title)}</span><span class="desc">${esc(taglineOf(e))}</span></span>
-              </a>`;
-  }).join('')}
-          </div>
+              </a>`).join('')}
+            </div>`).join('')}
         </div>`).join('')}
       </div>
     </div>
   </div>
-  <footer class="wiki-footer">More components are added to the encyclopedia over time — <a href="${base}/sketch/">open the full component library in the canvas</a> to see everything available today.</footer>
+  <footer class="wiki-footer">Explore every component in the encyclopedia, or <a href="${base}/sketch/">open the full component library in the canvas</a> to see everything available today.</footer>
 </body>
 </html>
 `;
@@ -324,7 +358,9 @@ ${header(base)}
 async function writeWikiTypesManifest() {
   const types = wikiEntries.map(e => e.type).sort();
   const path = join(ROOT, 'sketch', 'js', 'wiki-types.js');
-  const js = `// Auto-generated by tools/build-wiki.mjs from wiki-content.mjs — do not edit by hand.\n` +
+  const js = `// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors\n` +
+    `// SPDX-License-Identifier: GPL-3.0-or-later\n` +
+    `// Auto-generated by tools/build-wiki.mjs from wiki-content.mjs — do not edit by hand.\n` +
     `// Lists every component type that has a built page under wiki/, so the inspector\n` +
     `// can avoid linking to a page that doesn't exist yet.\n` +
     `export const WIKI_TYPES = new Set(${JSON.stringify(types)});\n`;
@@ -332,6 +368,26 @@ async function writeWikiTypesManifest() {
 }
 
 async function main() {
+  const types = new Set(wikiEntries.map(e => e.type));
+  if (types.size !== wikiEntries.length) throw new Error('Duplicate wiki component type');
+  const missing = [...Object.keys(registry).filter(t => !registry[t].hidden), ...toolEntries.keys()]
+    .filter(t => !types.has(t));
+  if (missing.length) throw new Error(`Missing wiki entries: ${missing.join(', ')}`);
+  for (const entry of wikiEntries) {
+    const words = entry.summary?.trim().split(/\s+/).length || 0;
+    if (words < 10 || words > 28 || entry.summary.length > 190) {
+      throw new Error(`${entry.type}: write a complete 10–28 word summary, at most 190 characters`);
+    }
+    if (registry[entry.type] && entry.category !== registry[entry.type].category) {
+      throw new Error(`${entry.type}: wiki category differs from the component registry`);
+    }
+    if (entry.calculator && !calculators.some(c => c.slug === entry.calculator)) {
+      throw new Error(`${entry.type}: calculator "${entry.calculator}" does not exist in calculators-content.mjs`);
+    }
+    for (const related of entry.related || []) {
+      if (!types.has(related)) throw new Error(`${entry.type}: related wiki page ${related} is missing`);
+    }
+  }
   for (const entry of wikiEntries) {
     if (!registry[entry.type] && !toolEntries.has(entry.type)) {
       throw new Error(`wiki-content references unknown type "${entry.type}"`);
@@ -341,9 +397,9 @@ async function main() {
   for (const entry of wikiEntries) {
     const pageDir = join(dir, entry.type);
     await mkdir(pageDir, { recursive: true });
-    await writeFile(join(pageDir, 'index.html'), pageHTML(entry, wikiEntries), 'utf-8');
+    await writeFile(join(pageDir, 'index.html'), pageHTML(entry, wikiEntries).replace(/[ \t]+\n/g, '\n'), 'utf-8');
   }
-  await writeFile(join(dir, 'index.html'), hubHTML(wikiEntries), 'utf-8');
+  await writeFile(join(dir, 'index.html'), hubHTML(wikiEntries).replace(/[ \t]+\n/g, '\n'), 'utf-8');
   await writeWikiTypesManifest();
   console.log(`Built ${wikiEntries.length} wiki pages + index + wiki-types.js. Run tools/build-sitemap.mjs next to update sitemap.xml.`);
 }

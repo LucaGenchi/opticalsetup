@@ -1,15 +1,19 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // App state, undo/redo, autosave.
 
 import { distinctPoints, rotPt } from './util.js';
 import { boundaryBounds, normalizeBoundaryPoints, normalizePolygonPoints } from './polygon.js';
 import { migrateLegacyObjectiveParams, normalizeObjectiveParams } from './objective.js';
-import { LEGACY_GLASS_ID, LEGACY_GLASS_REPLACEMENT } from './glass.js';
+import { LEGACY_GLASS_ID, LEGACY_GLASS_REPLACEMENT, chirpGddForDuration } from './glass.js';
+import { transformLimitedDurationFs } from './spectrum.js';
 import { normalizeSurfaceTable } from './lensgroup.js';
 import { normalizeAotfChannels } from './aotf.js';
+import { normalizeFiberDispersion, normalizeHollowCore } from './fiber.js';
 
 // Elements whose boundary refracts and therefore carries per-surface
 // transmission of its own.
-const GLASS_BODY_TYPES = new Set(['thicklens', 'freeglass']);
+const GLASS_BODY_TYPES = new Set(['thicklens', 'asphericlens', 'freeglass']);
 
 export const state = {
   elements: [],   // optical elements
@@ -20,7 +24,10 @@ export const state = {
   snap: true,
   showFocal: true,
   tool: 'select', // 'select' | 'beam' | 'place:<type>'
-  demoMode: false, // wiki embed: single fixed element, no adding/moving/deleting
+  embedMode: false, // wiki embed: single fixed element, no adding/moving/deleting
+  // Did the last changed() reach localStorage? False means the scene exists
+  // only in memory, so nothing else holding a copy of it may drop theirs.
+  autosaved: false,
 };
 
 const undoStack = [], redoStack = [];
@@ -69,10 +76,31 @@ function normalizeLayers(value) {
 function normalizeChannels(value) {
   if (!Array.isArray(value)) return [];
   const kinds = new Set(['fluor', 'raman', 'phase', 'tpef', 'thpef', 'shg', 'thg', 'sfg', 'cars', 'srs']);
+  // Sum frequency is no longer a channel of its own: one chi(2) gives both the
+  // second harmonic of each beam and the sum frequency of a pair, so a saved
+  // `sfg` channel becomes the second-order channel. Channels that were already
+  // second harmonic are kept exactly as authored, however many there are.
+  //
+  // Where a scene carried both, the authored decision (Luca, 2026-09-16) is to
+  // keep the second-harmonic channel and drop the sum-frequency entry, which
+  // the surviving channel now covers. Everything that entry carried of its own
+  // goes with it -- efficiency, epi direction and ratio, a manual wavelength,
+  // colour, and its own overlap requirement -- rather than the scene gaining a
+  // second chi(2) channel and emitting each signal twice.
+  const kept = value.slice(0, 5).filter(record);
+  const hasSecondOrder = kept.some(raw => raw.kind === 'shg');
+  return kept.map(raw => {
+    const named = kinds.has(raw.kind) ? raw.kind : 'fluor';
+    if (named === 'sfg') return hasSecondOrder ? null : { ...channelFields(raw), kind: 'shg' };
+    return { ...channelFields(raw), kind: named };
+  }).filter(Boolean);
+}
+
+function channelFields(raw) {
   const materials = new Set(['lipid', 'protein', 'dmso', 'pmma', 'polystyrene', 'water']);
   const dyes = new Set(['custom', 'dapi', 'hoechst', 'gfp', 'rhodamine']);
-  return value.slice(0, 5).filter(record).map(raw => ({
-    kind: kinds.has(raw.kind) ? raw.kind : 'fluor',
+  return ({
+    kind: 'fluor',
     wl: clamp(finite(raw.wl) ? raw.wl : 520, 100, 4000),
     eff: clamp(finite(raw.eff) ? raw.eff : 0.1, 0, 1),
     epi: raw.epi === true,
@@ -86,7 +114,7 @@ function normalizeChannels(value) {
     axis: clamp(finite(raw.axis) ? raw.axis : 45, 0, 180),
     transferEff: clamp(finite(raw.transferEff) ? raw.transferEff : 0.1, 0.01, 0.5),
     requireOverlap: raw.requireOverlap !== false,
-  }));
+  });
 }
 
 function resolveBound(bound, params, fallback) {
@@ -166,6 +194,31 @@ function migrateLegacyLaserParams(rawParams, migratedType) {
   return p;
 }
 
+// A pulsed laser saved before chirp was authored as a GDD stored a duration
+// and a bandwidth instead. It opens with the same bandwidth and a GDD chosen
+// to reproduce that duration, so its emitted pulse is unchanged -- provided
+// that GDD fits the 1e7 fs² range; beyond it normalisation clamps the GDD
+// and the duration changes. The sign is
+// the one it was saved with, or positive when it had none -- an assumption,
+// taken deliberately during the rollout rather than keeping a separate
+// "phase unspecified" state. A pair shorter than its transform limit had no
+// chirp to find, and opens at the limit. A 0 nm train cannot be chirped: it
+// opens transform-limited at the saved duration.
+function migrateChirpedLaserParams(rawParams, def) {
+  if (rawParams.transformLimited !== false || rawParams.chirpGddFs2 !== undefined) return rawParams;
+  const defaultOf = key => def?.params?.find(spec => spec.key === key)?.def;
+  const p = { ...rawParams };
+  const bandwidth = Number(p.bandwidth);
+  if (!(bandwidth > 0)) return { ...p, transformLimited: true };
+  const shape = p.pulseShape === 'sech2' ? 'sech2' : 'gauss';
+  const wavelength = finite(Number(p.wavelength)) ? Number(p.wavelength) : Number(defaultOf('wavelength'));
+  const duration = finite(Number(p.pulseWidthFs)) ? Number(p.pulseWidthFs) : Number(defaultOf('pulseWidthFs'));
+  const tau0 = transformLimitedDurationFs(bandwidth, wavelength, shape);
+  p.chirpGddFs2 = chirpGddForDuration(tau0, duration, shape);
+  p.inputChirp = p.inputChirp === 'negative' ? 'negative' : 'positive';
+  return p;
+}
+
 function normalizeElement(raw, definitions, used) {
   if (!record(raw) || typeof raw.type !== 'string') throw new Error('Sketch contains an invalid element');
   const wasLegacyLaser = raw.type === 'laser';
@@ -198,6 +251,13 @@ function normalizeElement(raw, definitions, used) {
   }
   if (wasLegacyLaser) {
     rawParams = migrateLegacyLaserParams(rawParams, raw.type);
+  }
+  if (raw.type === 'pulsedlaser') rawParams = migrateChirpedLaserParams(rawParams, def);
+  // Older continuum sketches could store reversed endpoints while the tracer
+  // sorted them. Preserve that emitted band before applying dependent bounds.
+  if (raw.type === 'sclaser' && finite(rawParams.scMin) && finite(rawParams.scMax)
+      && rawParams.scMin > rawParams.scMax) {
+    rawParams = { ...rawParams, scMin: rawParams.scMax, scMax: rawParams.scMin };
   }
   if (def) {
     for (const spec of def.params || []) {
@@ -284,6 +344,10 @@ function normalizeBeam(raw, used) {
       inputNA: clamp(finite(raw.inputNA) ? raw.inputNA : 0.22, 0.01, 0.95),
       groupIndex: clamp(finite(raw.groupIndex) ? raw.groupIndex : 1.468, 1, 2.2),
       lossDbPerM: clamp(finite(raw.lossDbPerM) ? raw.lossDbPerM : 0.2, 0, 100),
+      ...normalizeFiberDispersion(raw),
+      // Capillary settings exist only on a capillary: an ordinary fiber does
+      // not carry, or save, gas parameters it never uses.
+      ...(raw.fiberModel === 'argon' ? normalizeHollowCore(raw) : {}),
       out0: normalizeFiberOutput(raw.out0),
       out1: normalizeFiberOutput(raw.out1),
     };
@@ -311,8 +375,17 @@ export function changed() {
   // Wiki/example/community embeds are deliberately interactive enough to let
   // readers try parameters, but they must never replace the user's real
   // workbench autosave when both pages share the same origin.
-  if (!state.demoMode) {
-    try { localStorage.setItem(AUTOSAVE_KEY, serialize()); } catch (_) { /* ignore */ }
+  if (!state.embedMode) {
+    // Whether this succeeded is not private bookkeeping: storage can be
+    // disabled, full, or partitioned in private browsing, and a caller about
+    // to discard the only other copy of the scene -- the share fragment --
+    // has to be able to tell that nothing was kept.
+    try {
+      localStorage.setItem(AUTOSAVE_KEY, serialize());
+      state.autosaved = true;
+    } catch (_) {
+      state.autosaved = false;
+    }
   }
   for (const fn of listeners) fn();
 }

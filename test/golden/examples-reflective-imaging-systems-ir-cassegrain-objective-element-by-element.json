@@ -1,0 +1,229 @@
+{
+ "elements": 25,
+ "beams": 0,
+ "drawables": {
+  "count": 46,
+  "byType": {
+   "poly": 44,
+   "path": 2
+  },
+  "colors": {
+   "#6e3b3b": 46
+  },
+  "points": 180,
+  "sum": [
+   47086.5244,
+   41400
+  ],
+  "bbox": [
+   132,
+   172.4389,
+   530,
+   287.5611
+  ],
+  "digest": "5ecf6ef3"
+ },
+ "drawnElements": {
+  "figureframe:frame": "74558ed9",
+  "textlabel:title": "878f01ac",
+  "textlabel:subtitle": "9cd115a4",
+  "textlabel:prescription": "136ed8e9",
+  "cwlaser:source": "9d043d3c",
+  "beamdump:central-stop": "5ccc812d",
+  "slit:entrance-stop": "23c90878",
+  "conicmirror:primary": "589bc260",
+  "conicmirror:secondary": "dfc05b79",
+  "camera:focus-sensor": "0ac04b42",
+  "textlabel:primary-label": "c400c7a6",
+  "textlabel:primary-detail": "551e7742",
+  "textlabel:secondary-label": "bcd618fe",
+  "textlabel:secondary-detail": "9281587d",
+  "textlabel:source-label": "4d49fc70",
+  "textlabel:stop-label": "7c7e9283",
+  "textlabel:hole-label": "ed7e8fe8",
+  "textlabel:focus-label": "da8c48b3",
+  "textlabel:wd-label": "15d7d3b6",
+  "arrowann:incoming-key": "8714c5dc",
+  "arrowann:return-key": "8714c5dc",
+  "arrowann:focus-key": "8714c5dc",
+  "textlabel:route": "a2c6d8ae",
+  "textlabel:controls": "930c22e8",
+  "textlabel:limits": "01452f3c"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "readouts": {
+  "camera:focus-sensor": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 3000,
+    "bandMin": 3000,
+    "centroid": 5.64363371e-15,
+    "coherentPaths": 0,
+    "color": "#ff8989",
+    "convergence": null,
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0.2401,
+     0.2401,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "depositedSignal": 0.4802,
+    "detectorType": "Camera sensor",
+    "gain": null,
+    "interference": {
+     "applied": false,
+     "coherentSources": 0,
+     "excludedHits": 12,
+     "fallbackReason": null,
+     "partial": false,
+     "pathCount": 0,
+     "phaseIssues": [
+      "carrier phase is not modeled through conicmirror"
+     ],
+     "reason": "disabled"
+    },
+    "normalizedStokes": {
+     "s1": 1,
+     "s2": 0,
+     "s3": 0
+    },
+    "outputSignal": 0.4802,
+    "polarization": "Linear 0°",
+    "profile": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0.2401,
+     0.2401,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "profileColors": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     "#ff8989",
+     "#ff8989",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "profileMode": "deposited",
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "camera",
+    "samples": 12,
+    "saturated": false,
+    "signal": 0.4802,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.460992,
+      "sourceId": "source"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#6e3b3b",
+      "continuum": false,
+      "power": 0.4802,
+      "sourceId": "source",
+      "wavelength": 3000,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 5.99520433e-13,
+    "wavelength": 3000
+   }
+  }
+ },
+ "fibers": {}
+}

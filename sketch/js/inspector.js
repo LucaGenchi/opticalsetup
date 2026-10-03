@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Right-hand inspector: edit properties of the selected element or manual beam.
 
 import { state, changed, pushUndo, findSelected } from './state.js';
@@ -7,13 +9,18 @@ import {
   newSampleChannel, MAX_SAMPLE_CHANNELS, MIXING_KINDS, EPI_CAPABLE_KINDS, sampleChannels,
   signalKindsFor, specimenTypeOf, channelWarning, defaultEmissionWl, drivingExcitationWl,
   EMISSION_ORDER, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
-  FLUOROPHORES, fluorophoreSpec,
+  FLUOROPHORES, fluorophoreSpec, normalizeSupercontinuumParams,
 } from './elements.js';
-import { detectorReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace } from './raytrace.js';
+import { detectorReading, fiberReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace, weakLightShortfallFromLastTrace } from './raytrace.js';
+import { envelopeAutocorrelation } from './pulse-field.js';
 import { pulseTransmissionAt } from './pulses.js';
 import {
+  FIBER_PROPAGATION_FIELDS, normalizeFiberDispersion, HOLLOW_CORE_FIELDS, normalizeHollowCore,
+  CAPILLARY_LOSS_MODELS, EXTRA_LOSS_FIELD,
+} from './fiber.js';
+import {
   autocorrelationReading, crossCorrelationReading, crossCorrelationPair, crossScopeHalfSpanFs,
-  bestScopeSpanPs, DEFAULT_SCOPE_SPAN_PS,
+  bestScopeSpanPs, DEFAULT_SCOPE_SPAN_PS, AUTO_SCOPE_SPAN, sampledAutocorrelationReading,
 } from './glass.js';
 import { pmtVerdict } from './detector-measurements.js';
 import { transformLimitedBandwidthNm } from './spectrum.js';
@@ -45,8 +52,28 @@ function roundSig(value, sig = 4) {
 
 export function initInspector(el) { panel = el; }
 
-function field(labelText, inputHTML) {
-  return `<label class="field"><span>${esc(labelText)}</span>${inputHTML}</label>`;
+// Committing one of these keys changes which controls belong on the panel, so
+// the inspector is rebuilt rather than left describing the previous mode. Most
+// of them gate a param's show() predicate; a few (sensorId, specimenType,
+// preset, mode, sync, temporalMode) swap the param list itself.
+//
+// An element whose params include a readout or derived value already rebuilds
+// on every commit (see the end of applyInput), so it can never go stale. This
+// list is what covers the rest — and test/inspector-conditional-params.test.js
+// audits the registry against it, so a new conditional param on an element
+// without a readout fails the suite instead of silently hiding its controls
+// until the user reselects the element.
+export const REBUILD_ON_COMMIT_KEYS = [
+  'dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode',
+  'raysMode', 'zeroOrder', 'modulate', 'modShape', 'mode', 'scanMode', 'moveMode',
+  'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot',
+  'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode',
+  'extension', 'immersion', 'preset', 'material', 'showDepleted', 'modMode',
+  'measurementMode', 'prop', 'sync', 'sourceKind',
+];
+
+function field(labelText, inputHTML, className = '') {
+  return `<label class="field${className ? ` ${className}` : ''}"><span>${esc(labelText)}</span>${inputHTML}</label>`;
 }
 
 function splitFieldLabel(labelText) {
@@ -219,7 +246,7 @@ function cameraAxisHalfSpan(source) {
 // as they approach, hiding the motion the scope exists to show.
 function applyScopeSpanForMode(sel) {
   if ((sel.params.measurementMode || 'auto') !== 'cross') {
-    sel.params.timeSpanPs = DEFAULT_SCOPE_SPAN_PS;
+    sel.params.timeSpanPs = AUTO_SCOPE_SPAN;
     return;
   }
   const rd = detectorReading(sel.id);
@@ -270,10 +297,32 @@ function autocorrelatorRows(rd, source) {
       <dt>Autocorrelation</dt><dd>Continuous wave — no pulse to measure</dd>`;
   if (rd.pulse.mixed) return `
       <dt>Autocorrelation</dt><dd>Mixed pulse trains — one trace cannot separate them</dd>`;
+  if (rd.pulse.pulseShape === 'sampled' && !rd.pulse.fieldIssue) {
+    // The computed envelope's own intensity autocorrelation, read the way the
+    // instrument reads any trace: FWHM over the assumed shape's factor. The
+    // envelope's true FWHM is known here, so the assumption's error is shown.
+    const envelope = rd.pulse.envelope;
+    const trace = envelope ? envelopeAutocorrelation(envelope) : null;
+    const assumedShape = source?.params?.assumedShape || 'gauss';
+    const sampled = trace ? sampledAutocorrelationReading(trace, envelope.fwhmFs, assumedShape) : null;
+    if (!sampled) return `
+      <dt>Autocorrelation</dt><dd>Unavailable for this computed envelope</dd>`;
+    const f = v => `${v < 100 ? v.toFixed(1) : Math.round(v).toLocaleString()} fs`;
+    const off = (sampled.errorRatio - 1) * 100;
+    return `
+      <dt>Autocorrelation FWHM</dt><dd>${f(sampled.traceFwhmFs)} (numerical, from the computed field)</dd>
+      <dt>Inferred duration</dt><dd>${f(sampled.inferredPulseWidthFs)} · assuming ${assumedShape === 'sech2' ? 'sech²' : 'Gaussian'} (÷${sampled.assumedFactor.toFixed(3)})</dd>
+      <dt>Simulated intensity FWHM</dt><dd>${f(sampled.truePulseWidthFs)} (model knowledge, not measured) — the assumption reads ${Math.abs(off).toFixed(0)}% ${off >= 0 ? 'long' : 'short'}; this pulse's own ratio is ${sampled.trueFactor.toFixed(3)}</dd>`;
+  }
   const assumed = source?.params?.assumedShape || 'gauss';
   const actual = rd.pulse.pulseShape || 'gauss';
   const derived = Number.isFinite(rd.pulse.stretchedPulseWidthFs)
     ? rd.pulse.stretchedPulseWidthFs : null;
+  // When the duration model declines, a trace built on the configured width
+  // would present the source's setting as what arrives. Say so instead.
+  if (derived === null && rd.pulse.dispersionModel) return `
+      <dt>Autocorrelation</dt><dd>Unavailable — ${esc(rd.pulse.dispersionModel)}</dd>
+      <dt>Configured at source</dt><dd>${Number(rd.pulse.pulseWidthFs).toLocaleString()} fs (the setting, not a prediction here)</dd>`;
   const reading = autocorrelationReading(derived ?? rd.pulse.pulseWidthFs, assumed, actual);
   if (!reading) return `
       <dt>Autocorrelation</dt><dd>—</dd>`;
@@ -283,8 +332,57 @@ function autocorrelatorRows(rd, source) {
   return `
       <dt>Autocorrelation FWHM</dt><dd>${fs(reading.traceFwhmFs)}</dd>
       <dt>Inferred duration</dt><dd>${fs(reading.inferredPulseWidthFs)} · assuming ${shapeName(assumed)} (÷${reading.assumedFactor.toFixed(3)})</dd>
-      ${reading.shapeMismatch ? `<dt>Shape mismatch</dt><dd>Source is ${shapeName(actual)}, so this reads ${Math.abs((error - 1) * 100).toFixed(0)}% ${error > 1 ? 'long' : 'short'} — ${fs(reading.truePulseWidthFs)} actual</dd>` : ''}
-      ${derived === null ? `<dt>Note</dt><dd>Shows the configured duration: a chirped or non-Gaussian input has no derivable stretch</dd>` : ''}`;
+      ${/^Filtered /.test(rd.pulse.dispersionModel || '') ? `<dt>Filtered pulse</dt><dd>The width is computed from the filtered spectrum; its shape is not carried, so this trace is the assumed ${shapeName(assumed)} at that width</dd>` : ''}
+      ${reading.shapeMismatch ? `<dt>Shape mismatch</dt><dd>Source is ${shapeName(actual)}, so this reads ${Math.abs((error - 1) * 100).toFixed(0)}% ${error > 1 ? 'long' : 'short'} — ${fs(reading.truePulseWidthFs)} actual</dd>` : ''}`;
+}
+
+export function pulseEnvelopeHTML(envelope) {
+  if (!envelope) return '';
+  const { timeFs, intensity } = envelope;
+  const active = intensity.map((v, i) => v > 0.002 ? i : -1).filter(i => i >= 0);
+  if (!active.length) return '';
+  const lo = Math.max(0, active[0] - 5), hi = Math.min(intensity.length - 1, active.at(-1) + 5);
+  const points = [];
+  for (let i = lo; i <= hi; i++) points.push(`${(12 + 236 * (i - lo) / (hi - lo)).toFixed(2)},${(88 - 72 * intensity[i]).toFixed(2)}`);
+  return `<svg viewBox="0 0 260 114" role="img" aria-label="Computed pulse intensity versus time" style="width:100%;color:inherit">
+    <path d="M12 16V88H248" fill="none" stroke="currentColor" opacity="0.3"/>
+    <polyline points="${points.join(' ')}" fill="none" stroke="currentColor" stroke-width="1.5"/>
+    <text x="12" y="108" fill="currentColor" font-size="12">${timeFs[lo].toFixed(0)} fs</text>
+    <text x="248" y="108" fill="currentColor" font-size="12" text-anchor="end">${timeFs[hi].toFixed(0)} fs</text></svg>`;
+}
+
+// What the capillary did on the last trace. Each state is named so a user can
+// tell a computed field from linear propagation within the β₂ model (Kerr off), from a
+// labelled linear-only continuation (the solver refused), from no argon data
+// at this wavelength at all.
+export function fiberMeasurementHTML(beam) {
+  const rd = fiberReading(beam.id);
+  const card = (title, body) => `<div class="measurement-card" data-measurements><strong>${title}</strong>${body}</div>`;
+  if (!rd) return card('Argon capillary', '<p>Couple a pulsed laser into this fiber to calculate its output.</p>');
+  const beta = (rd.coefficients ? `<dt>β₂</dt><dd>${rd.coefficients.beta2Fs2PerM.toFixed(2)} fs²/m</dd>` : '')
+    + (rd.loss ? `<dt>Loss</dt><dd>${rd.loss.model === 'manual' ? `${Number(rd.loss.totalDbPerM).toFixed(3)} dB/m (manual)`
+      : `${Number(rd.loss.totalDbPerM).toFixed(3)} dB/m (ideal capillary ${Number(rd.loss.idealDbPerM).toFixed(3)})`}</dd>` : '');
+  const energy = Number.isFinite(rd.energyJ) ? `<dt>Coupled energy</dt><dd>${(rd.energyJ * 1e6).toFixed(2)} µJ</dd>` : '';
+  switch (rd.state) {
+    case 'field':
+    case 'kerrOff':
+      return card(rd.state === 'kerrOff' ? 'Argon capillary · Kerr off: linear propagation within the β₂ model' : 'Argon capillary · computed envelope',
+        `<dl class="measurement-grid">${energy}${beta}
+        <dt>Nonlinear phase</dt><dd>${rd.bIntegral.toFixed(2)} rad</dd>
+        <dt>Output FWHM</dt><dd>${rd.metrics.fwhmFs.toFixed(1)} fs</dd>
+        <dt>Spectrum RMS</dt><dd>${rd.spectralRmsTHz.toFixed(2)} THz</dd></dl>${pulseEnvelopeHTML(rd.metrics)}`);
+    case 'linearOnly':
+      return card('Argon capillary · linear-only approximation',
+        `<p>${esc(rd.reason)}</p><p>The light continues with argon's linear dispersion only. Its spectrum, power and timing downstream are labelled “Linear-only approximation; nonlinear output unavailable”, and no duration is predicted.</p><dl class="measurement-grid">${energy}${beta}</dl>`);
+    case 'outOfRange':
+      return card('Argon capillary · no argon data at this wavelength', `<p>${esc(rd.reason)}</p>`);
+    case 'noEnergy':
+      return card('Argon capillary · dark', '<p>No coupled pulse energy, so no light leaves the fiber.</p>');
+    case 'cw':
+      return card('Argon capillary · continuous light', `<p>${esc(rd.reason)}</p><dl class="measurement-grid">${beta}</dl>`);
+    default:
+      return card('Argon capillary', `<p>${esc(rd.reason || '')}</p>`);
+  }
 }
 
 function measurementHTML(el) {
@@ -304,6 +402,7 @@ function measurementHTML(el) {
     return `<div class="measurement-card no-signal" data-measurements>
       <div class="measurement-status"><span class="signal-light"></span>${viaDisplay ? `${esc(sensorName(source))}: no signal` : 'No light on sensor'}</div>
       <div class="measurement-foot">Aim a traced beam at ${viaDisplay ? "the linked sensor's" : "the component's"} front face to see a qualitative reading.</div>
+      ${weakLightShortfallFromLastTrace().length ? '<div class="measurement-foot">Some light in this sketch ran past the tracer’s weak-branch budget or depth limit and was not followed, so a little may still reach this sensor.</div>' : ''}
     </div>`;
   }
   const signal = `${formatSignal(rd.signal)} a.u.`;
@@ -328,23 +427,26 @@ function measurementHTML(el) {
     : '';
   let stretchText = '';
   if (rd.pulse && !rd.pulse.mixed) {
-    if (Number.isFinite(rd.pulse.stretchedPulseWidthFs)) {
+    if (!Number.isFinite(rd.pulse.stretchedPulseWidthFs) && rd.pulse.dispersionModel) {
+      stretchText = 'Unavailable';
+    } else if (Number.isFinite(rd.pulse.stretchedPulseWidthFs)) {
       const factor = rd.pulse.stretchedPulseWidthFs / rd.pulse.pulseWidthFs;
-      stretchText = factor <= 1.01
+      stretchText = factor < 0.99
+        ? `${rd.pulse.stretchedPulseWidthFs.toFixed(rd.pulse.stretchedPulseWidthFs < 100 ? 1 : 0)} fs (${factor.toFixed(2)}× · compressed)`
+        : !rd.pulse.envelope && factor <= 1.01
         ? 'Negligible at this pulse duration'
         : `${rd.pulse.stretchedPulseWidthFs.toFixed(rd.pulse.stretchedPulseWidthFs < 100 ? 1 : 0)} fs (${factor.toFixed(2)}×)`;
-    } else {
-      stretchText = 'Needs a transform-limited Gaussian input';
     }
   }
   const pulseRows = rd.pulse ? `
       <dt>Pulse train</dt><dd>${pulseTrain}</dd>
       ${rd.pulse.mixed ? '' : `<dt>Emission offset</dt><dd>${rd.pulse.phaseNs.toLocaleString()} ns</dd>`}
       <dt>Accumulated GDD</dt><dd>${gddText}</dd>
-      ${stretchText ? `<dt>Stretched duration</dt><dd>${stretchText}</dd>` : ''}
+      ${stretchText ? `<dt>${rd.pulse.envelope ? 'Computed FWHM' : 'Dispersed duration'}</dt><dd>${stretchText}</dd>` : ''}
+      ${!rd.pulse.mixed && rd.pulse.dispersionModel ? `<dt>Duration model</dt><dd>${esc(rd.pulse.dispersionModel)}</dd>` : ''}
       <dt>Earliest path delay</dt><dd>${rd.pulse.earliestPathDelayNs.toFixed(3)} ns</dd>
       <dt>Path spread</dt><dd>${rd.pulse.arrivalSpreadPs < 0.001 ? '&lt;0.001' : rd.pulse.arrivalSpreadPs.toFixed(3)} ps</dd>` : '';
-  const pulseTimeline = pulseTimelineHTML(rd.pulse, rd.color);
+  const pulseTimeline = pulseTimelineHTML(rd.pulse, rd.color) + pulseEnvelopeHTML(rd.pulse?.envelope);
   const isCamera = readoutKind === 'camera';
   const cameraState = isCamera ? cameraReadingState(rd) : null;
   const cancelled = cameraState?.kind === 'cancellation';
@@ -386,7 +488,9 @@ function measurementHTML(el) {
       <dt>Spot span</dt><dd>${spot}</dd>`;
   const measurementFoot = cancelled
     ? 'Exact coherent cancellation leaves an empty sensor profile.'
-    : isCamera ? 'Profile height is normalized to the brightest sensor pixel.'
+    : isCamera ? (rd.profileScale === 'fit'
+      ? 'Profile height is normalized to the brightest sensor pixel.'
+      : 'Profile height follows the relative sensor intensity; attenuation lowers the profile.')
     : 'Relative ray weight from the qualitative tracer—not calibrated optical power.';
   const statusText = cancelled ? 'Coherent cancellation'
     : cameraState?.kind === 'phase-unavailable' ? 'Deposited intensity'
@@ -396,6 +500,7 @@ function measurementHTML(el) {
   return `<div class="measurement-card" data-measurements>
     <div class="measurement-status"><span class="signal-light" style="background:${statusColor}"></span>${statusText}</div>
     <dl class="measurement-grid">
+      ${rd.approximations?.length ? `<dt>Caveat</dt><dd style="color:#f59e0b">${rd.approximations.map(esc).join('<br>')}</dd>` : ''}
       <dt>${isCamera ? 'Relative intensity' : 'Relative ray weight'}</dt><dd>${signal}</dd>
       ${isCamera ? cameraOpticalRows : `
       <dt>Spectrum</dt><dd>${spectral}</dd>
@@ -417,7 +522,7 @@ function measurementHTML(el) {
 // has no screen yet: the common case is wanting one, and a second screen on
 // the same sensor is still available from the screen's own sensor dropdown.
 function screenLinkHTML(el) {
-  if (!registry[el.type]?.readoutKind || state.demoMode) return '';
+  if (!registry[el.type]?.readoutKind || state.embedMode) return '';
   const linked = state.elements.filter(candidate => candidate.type === 'display'
     && candidate.params.sensorId === el.id);
   if (linked.length) {
@@ -429,8 +534,23 @@ function screenLinkHTML(el) {
 }
 
 export function refreshMeasurements() {
-  if (!panel || state.selection?.kind !== 'element') return;
+  if (!panel) return;
+  if (state.selection?.kind !== 'element') {
+    const beam = findSelected();
+    if (beam?.kind === 'fiber' && beam.fiberModel === 'argon') {
+      const current = panel.querySelector('[data-measurements]');
+      if (current) {
+        const holder = document.createElement('div');
+        holder.innerHTML = fiberMeasurementHTML(beam);
+        current.replaceWith(holder.firstElementChild);
+      }
+    }
+    return;
+  }
   const sel = findSelected();
+  // An element whose inspector readouts follow the animation clock -- a
+  // tuning OPO -- refreshes those fields in place, without a rebuild.
+  if (sel && registry[sel.type]?.liveReadouts) { refreshReadouts(sel); return; }
   if (!sel || (!registry[sel.type]?.readoutKind && sel.type !== 'display')) return;
   const current = panel.querySelector('[data-measurements]');
   if (!current) return;
@@ -686,7 +806,12 @@ function paramField(p, sel) {
   // it reads as part of the source's settings, but computed from the other
   // params on every render and never stored or saved.
   if (p.type === 'readout') {
-    return field(p.label, `<output class="readout" data-p="${p.key}">${esc(p.readout(sel.params, sel))}</output>`);
+    // `wide` gives the value the whole row instead of the 112px value column.
+    // A readout that holds a sentence rather than a number wraps into a tall,
+    // unreadable ribbon otherwise.
+    return field(p.label,
+      `<output class="readout" data-p="${p.key}">${esc(p.readout(sel.params, sel))}</output>`,
+      p.wide ? 'field-wide' : '');
   }
   // Editable, but backed by another param instead of its own storage:
   // displayed value comes from `get`, and a commit writes through `set`
@@ -831,7 +956,7 @@ export function renderInspector() {
             const gdd = `${Math.abs(gddFs2) < 10 ? gddFs2.toFixed(1) : Math.round(gddFs2).toLocaleString()} fs² GDD`;
             const duration = Number.isFinite(stretchedPulseWidthFs)
               ? `${stretchedPulseWidthFs.toFixed(stretchedPulseWidthFs < 100 ? 1 : 0)} fs at the sample`
-              : 'broadening needs a transform-limited Gaussian input';
+              : 'dispersed duration unavailable for this pulse (the detector’s Duration model says why)';
             return `<a class="two-photon-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open Two-Photon Lab with ${esc(name)} <span aria-hidden="true">↗</span></a>` +
               `<div class="hint">Traced centre-wavelength path: ${esc(gdd)} · ${esc(duration)}. The handoff keeps the configured source duration; confirm and apply this qualitative broadening in the lab.</div>`;
           }).join('');
@@ -875,7 +1000,7 @@ export function renderInspector() {
       flushSection();
     }
 
-    if (!state.demoMode) {
+    if (!state.embedMode) {
       let positionFields = '';
       positionFields += field('X (mm)', `<input type="number" step="1" data-k="x" value="${Math.round(sel.x * 10) / 10}">`);
       positionFields += field('Y (mm)', `<input type="number" step="1" data-k="y" value="${Math.round(sel.y * 10) / 10}">`);
@@ -902,10 +1027,15 @@ export function renderInspector() {
         h += inspectorSection('appearance', 'Label & appearance', appearanceFields, { open: false });
       }
     }
-    if (!state.demoMode) {
+    if (!state.embedMode) {
       h += `<div class="btnrow">${def.singleton ? '' : '<button type="button" id="inspDup">Duplicate</button>'}<button type="button" id="inspDel" class="danger">Delete</button></div>`;
       if (WIKI_TYPES.has(sel.type)) {
         h += `<a class="wiki-link" href="../wiki/${sel.type}/">Explore this element on the Wiki →</a>`;
+      }
+      // An element whose physics has a calculator page links to it too: the
+      // same functions, with every formula, graph and reference.
+      if (def.calculator) {
+        h += `<a class="wiki-link" href="../calculators/${esc(def.calculator)}/" target="_blank" rel="noopener">Open the ${esc(def.label)} calculator →</a>`;
       }
     }
     panel.innerHTML = h;
@@ -928,11 +1058,34 @@ export function renderInspector() {
       h += inspectorSection('path-appearance', 'Appearance', appearanceFields);
     } else {
       h += inspectorSection('path-appearance', 'Appearance', appearanceFields);
+      const argon = b.fiberModel === 'argon';
+      if (argon && b.propagate) h += fiberMeasurementHTML(b);
       let propagationFields = field('Beam propagates', `<input type="checkbox" data-k="propagate" ${b.propagate ? 'checked' : ''}>`);
       if (b.propagate) {
+        propagationFields += field('Fiber model', `<select data-k="fiberModel"><option value="linear" ${!argon ? 'selected' : ''}>Linear dispersion</option><option value="argon" ${argon ? 'selected' : ''}>Hollow core · argon</option></select>`);
         propagationFields += numberField('Input NA', 'data-k="inputNA"', b.inputNA ?? 0.22, { min: 0.01, max: 0.95, step: 0.01 });
-        propagationFields += field('Group index', `<input type="number" data-k="groupIndex" min="1" max="2.2" step="0.001" value="${b.groupIndex ?? 1.468}">`);
-        propagationFields += field('Loss (dB/m)', `<input type="number" data-k="lossDbPerM" min="0" max="100" step="0.1" value="${b.lossDbPerM ?? 0.2}">`);
+        if (!argon) propagationFields += field('Group index', `<input type="number" data-k="groupIndex" min="1" max="2.2" step="0.001" value="${b.groupIndex ?? 1.468}">`);
+        const hollowSettings = argon ? normalizeHollowCore(b) : null;
+        if (argon) {
+          propagationFields += field('Loss model', `<select data-k="lossModel">${CAPILLARY_LOSS_MODELS.map(([v, l]) => `<option value="${v}" ${hollowSettings.lossModel === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`);
+        }
+        if (!argon || hollowSettings.lossModel === 'manual') {
+          propagationFields += field(argon ? 'Total loss (dB/m)' : 'Loss (dB/m)', `<input type="number" data-k="lossDbPerM" min="0" max="100" step="0.1" value="${b.lossDbPerM ?? 0.2}">`);
+        } else {
+          propagationFields += field(EXTRA_LOSS_FIELD.label, `<input type="number" data-k="${EXTRA_LOSS_FIELD.key}" min="${EXTRA_LOSS_FIELD.min}" max="${EXTRA_LOSS_FIELD.max}" step="${EXTRA_LOSS_FIELD.step}" value="${hollowSettings[EXTRA_LOSS_FIELD.key]}">`);
+        }
+        const dispersion = normalizeFiberDispersion(b);
+        for (const spec of FIBER_PROPAGATION_FIELDS) {
+          // A capillary's β₂ comes from its gas and core, not from a typed value.
+          if (argon && spec.key === 'beta2Ps2PerKm') continue;
+          propagationFields += field(spec.label, `<input type="number" data-k="${spec.key}" min="${spec.min}" max="${spec.max}" step="${spec.step}" value="${dispersion[spec.key]}">`);
+        }
+        if (argon) {
+          const hollow = normalizeHollowCore(b);
+          for (const spec of HOLLOW_CORE_FIELDS) propagationFields += field(spec.label, `<input type="number" data-k="${spec.key}" min="${spec.min}" max="${spec.max}" step="${spec.step}" value="${hollow[spec.key]}">`);
+          propagationFields += field('Kerr nonlinearity', `<input type="checkbox" data-k="kerrEnabled" ${hollow.kerrEnabled ? 'checked' : ''}>`);
+          propagationFields += `<div class="hint">Single-mode argon capillary at 20 °C. Pressure and core size set dispersion and nonlinearity; pulse energy comes from the laser's average power and repetition rate. β₂ + Kerr + loss only; no ionization, higher modes, resonances or self-steepening. Outside the solver's bounds the light continues with linear dispersion only and every readout downstream says so.</div>`;
+        } else propagationFields += `<div class="hint">Physical length sets delay, loss and dispersion without changing the drawing. GDD = 1000 × β₂ × length in metres (fs²). Enter β₂ at your reference wavelength; it is applied as a constant across the band, and 0 adds no dispersion. Downstream durations follow the total GDD where the pulse's phase is known. No higher-order, modal or nonlinear propagation.</div>`;
         // one output spec per fiber end; migrate legacy single-spec fibers
         for (const end of [0, 1]) {
           if (!b['out' + end]) b['out' + end] = { mode: b.outMode || 'diverge', na: b.na ?? 0.12, focal: b.focal ?? 20, dia: b.outDia ?? 6 };
@@ -1334,31 +1487,50 @@ export function applyInput(inp, rebuild = false) {
     if (sel.type === 'autocorrelator' && pkey === 'measurementMode') applyScopeSpanForMode(sel);
     if (sel.type === 'objective') Object.assign(sel.params, normalizeObjectiveParams(sel.params));
   }
+  // Only on commit: mid-keystroke, typing "700" into the band maximum passes
+  // through "7", and lifting the duration to that momentary band's floor
+  // would outlive the edit.
+  if (rebuild && sel.type === 'sclaser') Object.assign(sel.params, normalizeSupercontinuumParams(sel.params));
   changed();
   if (pkey) {
     refreshReadouts(sel);
     refreshDerivedSelects(sel);
+  }
+  // Each continuum endpoint sets the other field's valid range. Refresh on
+  // commit so the next edit uses the current endpoint, without stealing typing.
+  if (rebuild && sel.type === 'sclaser' && ['scMin', 'scMax'].includes(pkey)) {
+    renderInspector();
+    return;
   }
   // While a pulsed laser is transform-limited its bandwidth is derived from
   // the pulse duration, so the field is hidden and nothing needs syncing.
   // Switching TL off reveals it — seed it from the width the pulse actually
   // had a moment ago, so the spectrum stays continuous across the toggle
   // instead of jumping to an unrelated stored default.
+  // Switching to chirped initializes the bandwidth from the current
+  // transform-limited pulse and resets the GDD to zero, so the emitted pulse
+  // is unchanged; previous chirped settings are replaced. Every authorable
+  // duration's bandwidth fits the bandwidth field. Switching to
+  // transform-limited restores the last transform-limited duration and can
+  // change the spectrum: deriving a duration from the chirped bandwidth could
+  // imply one outside the 1 fs – 1 ms the transform-limited field accepts.
   if (rebuild && sel.type === 'pulsedlaser' && pkey === 'transformLimited' && val === false) {
+    // Every authorable duration's bandwidth lies inside the field's fixed
+    // bounds, so the value a save writes is the value a reload keeps.
     sel.params.bandwidth = roundSig(transformLimitedBandwidthNm(
       sel.params.pulseWidthFs, sel.params.wavelength, sel.params.pulseShape || 'gauss'));
+    sel.params.chirpGddFs2 = 0;
     changed();
     renderInspector();
     return;
   }
-  if (rebuild && (key === 'propagate' || key === 'outMode' || key === 'showLabel')) { renderInspector(); return; }
+  if (rebuild && (key === 'fiberModel' || key === 'lossModel' || key === 'propagate' || key === 'outMode' || key === 'showLabel')) { renderInspector(); return; }
   // The objective's coupling status is derived from its placed pose. Keep the
   // hint in step with committed coordinate/rotation edits just as the canvas
   // layer already is; otherwise the panel can describe the previous target.
   if (rebuild && sel.type === 'objective' && ['x', 'y', 'rot'].includes(key)) { renderInspector(); return; }
   // conditional params (show/hide) need a panel rebuild — only on 'change' to not steal focus
-  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode', 'extension', 'immersion', 'preset', 'material', 'showDepleted', 'modMode', 'measurementMode',
-    'prop', 'sync'].includes(pkey)) { renderInspector(); return; }
+  if (rebuild && REBUILD_ON_COMMIT_KEYS.includes(pkey)) { renderInspector(); return; }
   // A readout is derived from the other params, so any committed edit can
   // change it. Rebuilding on commit (never mid-keystroke) is what keeps a
   // peak power or a transform-limited bandwidth from going stale on screen.

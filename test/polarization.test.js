@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -358,7 +360,11 @@ test('an unmodulated pulsed beam still traces as a plain train, with no modulati
   const trace = scopeTrace(detectorReading(detector.id).pulse);
   assert.equal(trace.spanNs, 200); // 2 x 100 ns
   assert.equal(trace.modulationMHz, null);
-  assert.ok(trace.pulses.every(p => p.amplitude === 1), 'nothing gates an unmodulated train');
+  // The amplitude is now the summed weight of every arriving branch rather
+  // than a literal 1, so it carries float residue; the claim is still that
+  // nothing gates it.
+  assert.ok(trace.pulses.every(p => Math.abs(p.amplitude - 1) < 1e-9),
+    'nothing gates an unmodulated train');
 });
 
 test('continuous-wave light through the same chain keeps the averaged behavior it always had', () => {

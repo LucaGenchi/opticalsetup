@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+import { conicMirrorGeometry, conicMirrorSize, conicMirrorSVG, conicMirrorSurfaces } from './conic-mirror.js';
 // Registry of optical elements.
 // Local coordinates: element centered at (0,0); default optical propagation is along +x.
 // def = { label, category, size:{w,h}|fn(el), params:[...], svg(el)->string,
@@ -8,21 +11,28 @@
 
 import { distToSegment, esc, formatSignal, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
 import { uid } from './util.js';
+import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
-import { compressorGddReading, detectorReading, metalensReading, objectivePupilFill, phasePlateIllumination, probeAt } from './raytrace.js';
+import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
+import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
+import { opaSettings, opaGainAt, MAX_OPA_STAGES, MAX_GATE_BANDWIDTH_RATIO, MIN_PHASE_KEPT_GAIN } from './opa.js';
+import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
 import {
   probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
+  probeBeamWeights, probeSpectrumRangeAll, combinedSpectrumSamples, probeTimingSummary, probeTimingLabel, syncedTimeWindowNs,
   formatTimeAxisNs,
 } from './probe.js';
 import {
-  linewidthForCoherenceLengthNm, spectrumSamples, transformLimitedBandwidthNm,
+  linewidthForCoherenceLengthNm, spectrumSamples, supercontinuumTransformLimitFs, transformLimitedBandwidthNm,
 } from './spectrum.js';
 import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
   pointInBoundary, sampleBoundary,
 } from './polygon.js';
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
-import { glassIndex, isDispersiveGlass, GLASS_OPTIONS } from './glass.js';
+import {
+  authoredPulseTiming, glassIndex, isDispersiveGlass, GLASS_OPTIONS, MAX_BANDWIDTH_NM, MAX_SOURCE_GDD_FS2, MIN_BANDWIDTH_NM,
+} from './glass.js';
 import {
   MIN_CEMENT_GAP, MAX_SURFACE_ROWS, PRESET_OPTIONS, normalizeSurfaceTable, surfaceRowsOf, surfaceTableAxialColour,
   surfaceTableCardinals, surfaceTableSummary, surfaceTableToBodies,
@@ -48,6 +58,15 @@ import {
 } from './aotf.js';
 import { aodScanPosition, aodAccessTimeUs, aodMaxScanRateKHz } from './acousto-optic.js';
 import { phaseModulatorOpdMm, phaseModulatorPeakOpdMm } from './electro-optic.js';
+import {
+  ASPHERE_LIMITS, asphereSag, asphereSlope, asphericLensAdjustment, asphericLensCardinals,
+  asphericLensGeometry, asphericSurfaceSummary,
+} from './asphere.js';
+
+export {
+  ASPHERE_LIMITS, asphereSag, asphereSlope, asphericLensAdjustment, asphericLensCardinals,
+  asphericLensGeometry, asphericSurfaceSummary,
+};
 
 // true when the element's rotation would render baked-in text upside down
 function isFlipped(el) {
@@ -153,6 +172,19 @@ const formatRealizedGeometry = params => {
   return `R₁ ${formatGeometryValue(g.R1)} · R₂ ${formatGeometryValue(g.R2)} · t ${formatGeometryValue(g.d)} mm`;
 };
 
+const formatAsphericGeometry = params => {
+  const geometry = asphericLensGeometry(params);
+  const adjustment = asphericLensAdjustment(params);
+  const values = [
+    `R₁ ${formatGeometryValue(geometry.front.R)}`,
+    `R₂ ${formatGeometryValue(geometry.rear.R)}`,
+    `t ${formatGeometryValue(geometry.d)} mm`,
+  ];
+  if (adjustment?.frontScale < 1) values.push(`front A terms ×${Number(adjustment.frontScale.toPrecision(3))}`);
+  if (adjustment?.rearScale < 1) values.push(`rear A terms ×${Number(adjustment.rearScale.toPrecision(3))}`);
+  return values.join(' · ');
+};
+
 // Names the shape the two radii actually describe. Worth showing, because the
 // standard Cartesian convention the lensmaker's equation needs is famously
 // counter-intuitive on the REAR surface: R is positive when the centre of
@@ -182,10 +214,11 @@ export function thickLensShapeName(params = {}) {
 // A hand-built cemented doublet therefore comes out silently wrong rather than
 // visibly broken, which is the worst way for a model to fail — so say so.
 // The gap itself is defined in lensgroup.js, the module that has to insert it.
-export const GLASS_BODY_TYPES = new Set(['thicklens', 'freeglass']);
+export const GLASS_BODY_TYPES = new Set(['thicklens', 'asphericlens', 'freeglass']);
 
 function glassBodyWorldPoints(el) {
   const local = el?.type === 'thicklens' ? thickLensGeometry(el.params).points
+    : el?.type === 'asphericlens' ? asphericLensGeometry(el.params).points
     : el?.type === 'freeglass' ? freeglassPoints(el)
       : null;
   if (!local) return null;
@@ -815,6 +848,73 @@ function boxSVG(w, h, fill, stroke, text, textFill, flip) {
     (text ? `<text x="0" y="0" ${flip ? 'transform="rotate(180)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="${Math.min(11, w / (text.length * 0.62))}" font-weight="600" fill="${textFill || '#fff'}">${esc(text)}</text>` : '');
 }
 
+// A real spherical mirror surface. Radius R = 2f, vertex at the element
+// origin, centre of curvature in front for a concave mirror and behind for a
+// convex one. Handed to the tracer as a true circular arc -- endpoints plus a
+// point it passes through -- so both the intersection and the normal are
+// analytic. Spherical aberration then comes out of the geometry rather than
+// having to be modelled: a sphere simply does not bring marginal rays to the
+// paraxial focus, which is the entire reason parabolic mirrors exist.
+function sphericalMirrorGeometry(el, concave) {
+  const f = Math.max(5, Math.abs(Number(el.params.f) || 100));
+  const R = 2 * f;
+  // A mirror cannot be wider than its own sphere.
+  const L = Math.min(el.params.length / 2, R * 0.98);
+  const sgn = concave ? -1 : 1;
+  return { R, L, sgn, x: y => sgn * (R - Math.sqrt(Math.max(0, R * R - y * y))) };
+}
+
+function sphericalMirrorSurfaces(el, concave) {
+  const g = sphericalMirrorGeometry(el, concave);
+  return [{
+    x1: g.x(-g.L), y1: -g.L, x2: g.x(g.L), y2: g.L, kind: 'cmirror',
+    data: {
+      f: concave ? Math.abs(el.params.f) : -Math.abs(el.params.f),
+      refl: el.params.refl,
+      showTransmitted: el.params.showTransmitted,
+      // the vertex: the third point that fixes the circle
+      arcPoint: { x: 0, y: 0 },
+    },
+  }];
+}
+
+// Bounds that cover the real curve. A short focal length with a wide aperture
+// gives a sag of tens or hundreds of millimetres, and a box 18 mm wide would
+// leave most of the drawn mirror outside hit testing, selection handles and
+// the export crop.
+function sphericalMirrorSize(el, concave) {
+  const g = sphericalMirrorGeometry(el, concave);
+  const sag = Math.abs(g.x(g.L));
+  return { w: Math.max(18, sag + 12), h: 2 * g.L + 6 };
+}
+
+// A mirror cannot be wider than its own sphere, so a wide aperture on a short
+// focal length is silently reduced. Saying so beats letting the panel claim a
+// size the optic does not have.
+const SPHERICAL_APERTURE_READOUT = {
+  key: 'realizedAperture', label: 'Actual aperture', type: 'readout',
+  readout: p => {
+    const f = Math.max(5, Math.abs(Number(p.f) || 100));
+    const R = 2 * f;
+    const full = Number(p.length) || 0;
+    const used = Math.min(full / 2, R * 0.98) * 2;
+    return used < full - 1e-9
+      ? `${used.toFixed(1)} mm — limited by the ${R.toFixed(0)} mm radius`
+      : `${full.toFixed(1)} mm · radius ${R.toFixed(0)} mm`;
+  },
+};
+
+// The drawn profile, matching the surface the tracer actually uses.
+function sphericalMirrorPath(el, concave) {
+  const g = sphericalMirrorGeometry(el, concave);
+  let d = '';
+  for (let i = 0; i <= 24; i++) {
+    const y = -g.L + (2 * g.L * i) / 24;
+    d += (i ? ' L ' : 'M ') + g.x(y).toFixed(2) + ',' + y.toFixed(2);
+  }
+  return d;
+}
+
 function hatch(x, y1, y2, side, n) {
   // decorative hatching behind mirror-like surfaces
   if (!Number.isFinite(n) || n < 1 || y2 <= y1) return '';
@@ -867,8 +967,69 @@ export const OBJ_SHAPES = {
 // top-left corner at the local origin and reports its own {w, h}, so the
 // caller can place the card relative to the sampled point and keep it upright
 // no matter how the probe itself is rotated — see probeCardPlacement().
+// The diameter of the circle the power reading adds up over, in mm.
+export const probeSampleDiameterMm = p => Math.min(150, Math.max(0.1, Number(p?.sampleDiameterMm) || 10));
+
+// One beam's polarization: the state drawn on a disc, named underneath.
+function probePolCard(rd) {
+  let icon, lab, labSize = 8;
+  if (rd.polMod) {
+    // A modulated segment alternates between two states, so its average is
+    // a meaningless (often zero-length) Stokes vector. Name both states and
+    // the rate instead — that is what is physically there.
+    const name = s => polarizationDescription(s).replace(/^Linear /, '').replace('°', '°');
+    const mhz = rd.polMod.frequencyMHz;
+    const rate = mhz >= 1000 ? `${(mhz / 1000).toFixed(2)} GHz`
+      : mhz >= 1 ? `${mhz.toFixed(mhz < 10 ? 2 : 1)} MHz`
+        : `${(mhz * 1000).toFixed(0)} kHz`;
+    icon = `<g stroke="#7c3aed" stroke-width="1.6"><line x1="-8.5" y1="0" x2="8.5" y2="0"/>` +
+      `<line x1="0" y1="-8.5" x2="0" y2="8.5"/></g>` +
+      `<path d="M -6,-11 L 6,-11 M 3,-13.5 L 6,-11 L 3,-8.5" fill="none" stroke="#7c3aed" stroke-width="1.2"/>`;
+    lab = `${name(rd.polMod.stokesLow)} ↔ ${name(rd.polMod.stokesHigh)} · ${rate}`;
+    labSize = 7;
+  } else if (rd.pol === 'c') {
+    icon = `<path d="M 8,2 A 8.2 8.2 0 1 1 3,-7.7" fill="none" stroke="#333" stroke-width="1.6"/>` +
+      `<path d="M 3,-7.7 L 7.5,-8.5 L 4.5,-3.6 Z" fill="#333"/>`;
+    lab = 'circular';
+  } else if (typeof rd.pol === 'number') {
+    icon = `<g transform="rotate(${-rd.pol})"><line x1="-8.5" y1="0" x2="8.5" y2="0" stroke="#333" stroke-width="1.6"/>` +
+      `<path d="M 10,0 L 4.5,-3 L 4.5,3 Z M -10,0 L -4.5,-3 L -4.5,3 Z" fill="#333"/></g>`;
+    lab = `linear ${Math.round(rd.pol)}°`;
+  } else if (rd.pol === 'e') {
+    // Elliptical: partial retardance (e.g. a waveplate not at 0/45/90° to
+    // the input) leaves a nonzero circular component (s3) without being
+    // purely circular — distinct from, and must not collapse into, the
+    // true "no polarization at all" case below.
+    const angle = rd.stokes ? stokesAngleDeg(rd.stokes) : 0;
+    icon = `<g transform="rotate(${-angle})"><ellipse cx="0" cy="0" rx="8.5" ry="4" fill="none" stroke="#333" stroke-width="1.6"/>` +
+      `<path d="M 8.5,0 L 4,-2.6 L 4,2.6 Z" fill="#333"/></g>`;
+    lab = `elliptical ${Math.round(angle)}°`;
+  } else {
+    icon = `<g stroke="#666" stroke-width="1.3"><line x1="-8" y1="0" x2="8" y2="0"/><line x1="0" y1="-8" x2="0" y2="8"/><line x1="-5.7" y1="-5.7" x2="5.7" y2="5.7"/><line x1="-5.7" y1="5.7" x2="5.7" y2="-5.7"/></g>`;
+    lab = 'unpolarized';
+  }
+  // Sized to the label so a long modulation caption never spills outside
+  // the box the caller uses for placement and export bounds.
+  const w = Math.max(56, lab.length * labSize * 0.56 + 12);
+  return {
+    w,
+    h: 44,
+    body: `<g transform="translate(${w / 2},14)"><circle r="14" fill="#fff" stroke="#c9ced6"/>${icon}</g>` +
+      `<text x="${w / 2}" y="38" text-anchor="middle" font-size="${labSize}" fill="#333">${lab}</text>`,
+  };
+}
+
 function probeCard(el, rd, elements = []) {
-  if (!rd) {
+  const prop = el.params.prop;
+  // Two or more beams crossing the sampling circle: the spectrum, wavelength,
+  // polarization and time views describe all of them. With one, every view
+  // reads the nearest beam, as it always has.
+  const multi = probeMultiBeams(el);
+  if (multi) return probeMultiCard(el, prop, multi, elements);
+  // Power is read over the sampling circle, like a meter's face, rather than
+  // from the one nearest ray the other readings describe.
+  const area = prop === 'power' ? probePowerAt(el.x, el.y, probeSampleDiameterMm(el.params) / 2) : null;
+  if (prop === 'power' ? !area : !rd) {
     return {
       w: 56,
       h: 24,
@@ -876,9 +1037,8 @@ function probeCard(el, rd, elements = []) {
         `<text x="28" y="12" text-anchor="middle" dominant-baseline="central" font-size="8" fill="#9aa2ad">no beam</text>`,
     };
   }
-  const prop = el.params.prop;
-  const isSC = rd.bw >= 200;
-  const c = wavelengthToColor(rd.wl);
+  const isSC = rd?.bw >= 200;
+  const c = rd ? wavelengthToColor(rd.wl) : null;
 
   if (prop === 'wl') {
     const label = isSC ? `SC ${Math.round(rd.wl - rd.bw / 2)}–${Math.round(rd.wl + rd.bw / 2)} nm`
@@ -894,53 +1054,7 @@ function probeCard(el, rd, elements = []) {
     };
   }
 
-  if (prop === 'pol') {
-    let icon, lab, labSize = 8;
-    if (rd.polMod) {
-      // A modulated segment alternates between two states, so its average is
-      // a meaningless (often zero-length) Stokes vector. Name both states and
-      // the rate instead — that is what is physically there.
-      const name = s => polarizationDescription(s).replace(/^Linear /, '').replace('°', '°');
-      const mhz = rd.polMod.frequencyMHz;
-      const rate = mhz >= 1000 ? `${(mhz / 1000).toFixed(2)} GHz`
-        : mhz >= 1 ? `${mhz.toFixed(mhz < 10 ? 2 : 1)} MHz`
-          : `${(mhz * 1000).toFixed(0)} kHz`;
-      icon = `<g stroke="#7c3aed" stroke-width="1.6"><line x1="-8.5" y1="0" x2="8.5" y2="0"/>` +
-        `<line x1="0" y1="-8.5" x2="0" y2="8.5"/></g>` +
-        `<path d="M -6,-11 L 6,-11 M 3,-13.5 L 6,-11 L 3,-8.5" fill="none" stroke="#7c3aed" stroke-width="1.2"/>`;
-      lab = `${name(rd.polMod.stokesLow)} ↔ ${name(rd.polMod.stokesHigh)} · ${rate}`;
-      labSize = 7;
-    } else if (rd.pol === 'c') {
-      icon = `<path d="M 8,2 A 8.2 8.2 0 1 1 3,-7.7" fill="none" stroke="#333" stroke-width="1.6"/>` +
-        `<path d="M 3,-7.7 L 7.5,-8.5 L 4.5,-3.6 Z" fill="#333"/>`;
-      lab = 'circular';
-    } else if (typeof rd.pol === 'number') {
-      icon = `<g transform="rotate(${-rd.pol})"><line x1="-8.5" y1="0" x2="8.5" y2="0" stroke="#333" stroke-width="1.6"/>` +
-        `<path d="M 10,0 L 4.5,-3 L 4.5,3 Z M -10,0 L -4.5,-3 L -4.5,3 Z" fill="#333"/></g>`;
-      lab = `linear ${Math.round(rd.pol)}°`;
-    } else if (rd.pol === 'e') {
-      // Elliptical: partial retardance (e.g. a waveplate not at 0/45/90° to
-      // the input) leaves a nonzero circular component (s3) without being
-      // purely circular — distinct from, and must not collapse into, the
-      // true "no polarization at all" case below.
-      const angle = rd.stokes ? stokesAngleDeg(rd.stokes) : 0;
-      icon = `<g transform="rotate(${-angle})"><ellipse cx="0" cy="0" rx="8.5" ry="4" fill="none" stroke="#333" stroke-width="1.6"/>` +
-        `<path d="M 8.5,0 L 4,-2.6 L 4,2.6 Z" fill="#333"/></g>`;
-      lab = `elliptical ${Math.round(angle)}°`;
-    } else {
-      icon = `<g stroke="#666" stroke-width="1.3"><line x1="-8" y1="0" x2="8" y2="0"/><line x1="0" y1="-8" x2="0" y2="8"/><line x1="-5.7" y1="-5.7" x2="5.7" y2="5.7"/><line x1="-5.7" y1="5.7" x2="5.7" y2="-5.7"/></g>`;
-      lab = 'unpolarized';
-    }
-    // Sized to the label so a long modulation caption never spills outside
-    // the box the caller uses for placement and export bounds.
-    const w = Math.max(56, lab.length * labSize * 0.56 + 12);
-    return {
-      w,
-      h: 44,
-      body: `<g transform="translate(${w / 2},14)"><circle r="14" fill="#fff" stroke="#c9ced6"/>${icon}</g>` +
-        `<text x="${w / 2}" y="38" text-anchor="middle" font-size="${labSize}" fill="#333">${lab}</text>`,
-    };
-  }
+  if (prop === 'pol') return probePolCard(rd);
 
   // A plain value in a box: the reading is the whole content, with nothing
   // captioning what the probe is already set to show.
@@ -955,16 +1069,33 @@ function probeCard(el, rd, elements = []) {
   };
 
   if (prop === 'power') {
-    const watts = probeAveragePowerW(rd, elements);
+    const watts = probeAveragePowerW(area, elements);
     // Without a source carrying a configured wattage there is no absolute
     // number to give, and the relative weight is not one -- say so, in place
     // of the number rather than under it.
-    return valueCard(watts === null ? 'no source power' : formatPowerMw(watts));
+    // Light the tracer's weak-branch budget or depth limit could not follow
+    // may be missing here. That is not always a floor -- a missing
+    // destructive contribution makes the figure too high -- so the card says
+    // "incomplete" rather than "≥" (Andrea, #193).
+    return valueCard(watts === null ? 'no source power'
+      : `${formatPowerMw(watts)}${area.weakLightIncomplete ? ' (incomplete)' : ''}`);
   }
 
   if (prop === 'duration') {
     const source = elements.find(item => item?.id === rd.sourceId);
-    return valueCard(probeDurationLabel(rd, source?.type));
+    const label = probeDurationLabel(rd, source?.type);
+    const caveat = probeDurationCaveat(rd);
+    if (!caveat || !/\d/.test(label)) return valueCard(label);
+    // An estimate says so on the card, not only in the inspector.
+    const shown = `≈ ${label}`;
+    const w = Math.max(46, shown.length * 6.4 + 16, caveat.length * 4.3 + 12);
+    return {
+      w,
+      h: 32,
+      body: `<rect x="0" y="0" width="${w}" height="32" rx="4" fill="#fff" stroke="#c9ced6"/>` +
+        `<text x="${w / 2}" y="11" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" fill="#333">${esc(shown)}</text>` +
+        `<text data-probe-caveat="1" x="${w / 2}" y="25" text-anchor="middle" dominant-baseline="central" font-size="7" fill="#b45309">${esc(caveat)}</text>`,
+    };
   }
 
   if (prop === 'time') {
@@ -1044,19 +1175,7 @@ function probeCard(el, rd, elements = []) {
         curve = `<line x1="${x}" y1="${y0}" x2="${x}" y2="${(y0 - height).toFixed(2)}" stroke="${wavelengthToColor(sample.wl)}" stroke-width="2" stroke-linecap="round"/>`;
       }
     } else {
-      const points = samples.map(s => ({ x: xAt(s.wl), y: y0 - Math.max(0, (s.weight / peak) * ph) }));
-      const fillPoints = [{ x: points[0].x, y: y0 }, ...points, { x: points[points.length - 1].x, y: y0 }];
-      const clipId = `probeSpecClip${esc(el.id)}`, gradientId = `probeSpecGrad${esc(el.id)}`;
-      const stops = samples.map((s, i) => {
-        const offset = samples.length > 1 ? (i / (samples.length - 1) * 100).toFixed(1) : 0;
-        return `<stop offset="${offset}%" stop-color="${wavelengthToColor(s.wl)}"/>`;
-      }).join('');
-      curve = `<defs><clipPath id="${clipId}"><rect x="${x0}" y="${(y0 - ph - 2).toFixed(2)}" width="${pw}" height="${(ph + 3).toFixed(2)}"/></clipPath>` +
-        `<linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="0%">${stops}</linearGradient></defs>` +
-        `<g clip-path="url(#${clipId})">` +
-        `<path data-spectrum-points="${samples.length}" d="${smoothPath(fillPoints)} Z" fill="url(#${gradientId})" opacity="0.3" stroke="none"/>` +
-        `<path d="${smoothPath(points)}" fill="none" stroke="url(#${gradientId})" stroke-width="1.6" stroke-linecap="round"/>` +
-        `</g>`;
+      curve = spectrumAreaSvg(el, samples, peak, { xAt, x0, y0, pw, ph });
     }
   } else {
     const x = xAt(rd.wl).toFixed(2);
@@ -1079,6 +1198,224 @@ function probeCard(el, rd, elements = []) {
       tick(lo, 'start') + tick((lo + hi) / 2, 'middle') + tick(hi, 'end') +
       `<text x="${x0 - 4}" y="${y0 - ph}" text-anchor="middle" font-size="5.5" fill="#888" transform="rotate(-90 ${x0 - 4} ${y0 - ph})">I (a.u.)</text>` +
       `<text x="${x0 + pw}" y="${y0 - ph - 1}" text-anchor="end" font-size="6.5" fill="#333">${vlabel}</text>`,
+  };
+}
+
+// A sampled spectrum as a filled, wavelength-coloured curve, clipped to the
+// plot: shared by the one-beam and the several-beam spectrum views.
+function spectrumAreaSvg(el, samples, peak, { xAt, x0, y0, pw, ph }) {
+  const points = samples.map(s => ({ x: xAt(s.wl), y: y0 - Math.max(0, (s.weight / peak) * ph) }));
+  const fillPoints = [{ x: points[0].x, y: y0 }, ...points, { x: points[points.length - 1].x, y: y0 }];
+  const clipId = `probeSpecClip${esc(el.id)}`, gradientId = `probeSpecGrad${esc(el.id)}`;
+  const stops = samples.map((s, i) => {
+    const offset = samples.length > 1 ? (i / (samples.length - 1) * 100).toFixed(1) : 0;
+    return `<stop offset="${offset}%" stop-color="${wavelengthToColor(s.wl)}"/>`;
+  }).join('');
+  return `<defs><clipPath id="${clipId}"><rect x="${x0}" y="${(y0 - ph - 2).toFixed(2)}" width="${pw}" height="${(ph + 3).toFixed(2)}"/></clipPath>` +
+    `<linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="0%">${stops}</linearGradient></defs>` +
+    `<g clip-path="url(#${clipId})">` +
+    `<path data-spectrum-points="${samples.length}" d="${smoothPath(fillPoints)} Z" fill="url(#${gradientId})" opacity="0.3" stroke="none"/>` +
+    `<path d="${smoothPath(points)}" fill="none" stroke="url(#${gradientId})" stroke-width="1.6" stroke-linecap="round"/>` +
+    `</g>`;
+}
+
+// The views that read every beam crossing the sampling circle when there is
+// more than one (the power view always reads the circle).
+const PROBE_AREA_VIEWS = new Set(['spectrum', 'wl', 'pol', 'time', 'duration']);
+const PROBE_MAX_BEAMS_SHOWN = 4;
+const probeWlLabel = rd => (rd.bw >= 200 ? `SC ${Math.round(rd.wl - rd.bw / 2)}–${Math.round(rd.wl + rd.bw / 2)} nm`
+  : rd.bw > 0 ? `${Math.round(rd.wl)} ± ${Math.round(rd.bw / 2)} nm` : `${Math.round(rd.wl)} nm`);
+
+// Several beams crossing the sampling circle, in the spectrum, wavelength,
+// polarization, duration or time view.
+// What a view lists from several beams: the wavelength and polarization
+// views show what differs -- beams of one colour (and, for polarization, one
+// state) that differ only in timing appear once -- the spectrum view names
+// each colour once, the duration view each colour and duration once, and the
+// time view keeps every beam.
+// The short warning a duration reading carries when it is only an estimate:
+// an OPA's output below 30 dB of gain, where the seed is a sizeable part of
+// the beam and the duration is the gain's (the full text is the ray's caveat).
+function probeDurationCaveat(reading) {
+  const note = reading?.approximation;
+  if (!note) return null;
+  return /^OPA output below/.test(note) ? 'estimate: seed + gain below 30 dB' : null;
+}
+const probeBeamDurationLabel = beam => {
+  const label = probeDurationLabel({ pulse: beam.pulse });
+  return probeDurationCaveat(beam) && /\d/.test(label) ? `≈ ${label} (estimate)` : label;
+};
+function probeListedBeams(prop, beams) {
+  const distinct = keyOf => beams.filter((beam, i) => beams.findIndex(other => keyOf(other) === keyOf(beam)) === i);
+  // The spectrum sums whole spectra, so it merges only beams whose spectra
+  // are the same shape -- two 800 nm lasers of 1 and 100 nm width are two
+  // (Andrea, #192); the rounded centres are only its caption.
+  return prop === 'wl' ? distinct(probeWlLabel)
+    : prop === 'pol' ? distinct(beam => `${probeWlLabel(beam)}|${JSON.stringify([beam.pol, beam.stokes, beam.polMod])}`)
+      : prop === 'duration' ? distinct(beam => `${probeWlLabel(beam)}|${probeBeamDurationLabel(beam)}`)
+      : prop === 'spectrum' ? distinct(beam => JSON.stringify([Number(beam.wl.toFixed(3)), Number((beam.bw || 0).toFixed(3)), beam.spec]))
+        : beams;
+}
+
+// The beams a probe describes together, or null when its view reads the one
+// nearest beam as it always has: fewer than two beams in the circle, or
+// several that this view would show as one.
+function probeMultiBeams(el) {
+  const prop = el.params.prop;
+  if (!PROBE_AREA_VIEWS.has(prop)) return null;
+  const beams = probeBeamsAt(el.x, el.y, probeSampleDiameterMm(el.params) / 2);
+  return beams.length >= 2 && probeListedBeams(prop, beams).length >= 2 ? beams : null;
+}
+
+function probeMultiCard(el, prop, beams, elements) {
+  const listed = probeListedBeams(prop, beams);
+  const shown = listed.slice(0, PROBE_MAX_BEAMS_SHOWN);
+  const more = listed.length - shown.length;
+  const frame = (w, h) => `<rect x="0" y="0" width="${w}" height="${h}" rx="4" fill="#fff" stroke="#c9ced6"/>`;
+  const dot = (cx, cy, rd) => (rd.bw >= 200
+    ? `<circle cx="${cx}" cy="${cy}" r="4" fill="#fff" stroke="#888"/><path d="M ${cx - 4},${cy} A 4 4 0 0 1 ${cx + 4},${cy}" fill="#e04040"/><path d="M ${cx - 4},${cy} A 4 4 0 0 0 ${cx + 4},${cy}" fill="#3050e0"/>`
+    : `<circle cx="${cx}" cy="${cy}" r="4" fill="${wavelengthToColor(rd.wl)}"/>`);
+
+  if (prop === 'duration') {
+    // One row per colour and duration, with the power of every beam that
+    // reads the same, the strongest first. Beams are grouped and ranked
+    // before the list is cut, so none is dropped for coming first.
+    const { weights, absolute } = probeBeamWeights(beams, elements);
+    const groups = new Map();
+    beams.forEach((beam, i) => {
+      const key = `${probeWlLabel(beam)}|${probeBeamDurationLabel(beam)}`;
+      const group = groups.get(key) || { beam, w: 0 };
+      group.w += weights[i];
+      groups.set(key, group);
+    });
+    const order = [...groups.values()].sort((a, b) => b.w - a.w);
+    const top = order.slice(0, PROBE_MAX_BEAMS_SHOWN);
+    const rows = top.map(({ beam, w }) => `${probeWlLabel(beam)} · ${probeBeamDurationLabel(beam)}${absolute ? ` · ${formatPowerMw(w)}` : ''}`);
+    if (order.length > top.length) rows.push(`+${order.length - top.length} more`);
+    const w = Math.max(...rows.map(r => r.length * 5.8 + 26));
+    const h = 8 + rows.length * 13;
+    return {
+      w, h,
+      body: frame(w, h) + rows.map((label, i) => {
+        const y = 10.5 + i * 13;
+        return (top[i] ? dot(11, y, top[i].beam) : '') +
+          `<text x="20" y="${y}" font-size="9" dominant-baseline="central" fill="#333">${esc(label)}</text>`;
+      }).join('') + `<g data-probe-beams="${beams.length}"></g>`,
+    };
+  }
+
+  if (prop === 'wl') {
+    // One row per beam, as the single-beam label shows it.
+    const rows = shown.map(probeWlLabel);
+    if (more > 0) rows.push(`+${more} more`);
+    const w = Math.max(...rows.map(r => r.length * 5.8 + 26));
+    const h = 8 + rows.length * 13;
+    return {
+      w, h,
+      body: frame(w, h) + rows.map((label, i) => {
+        const y = 10.5 + i * 13;
+        return (shown[i] ? dot(11, y, shown[i]) : '') +
+          `<text x="20" y="${y}" font-size="9" dominant-baseline="central" fill="#333">${esc(label)}</text>`;
+      }).join('') + `<g data-probe-beams="${beams.length}"></g>`,
+    };
+  }
+
+  if (prop === 'pol') {
+    // One polarization card per beam, side by side, each named by its colour.
+    const cards = shown.map(beam => ({ beam, card: probePolCard(beam) }));
+    const gap = 4;
+    let x = 0, body = '';
+    for (const { beam, card } of cards) {
+      body += `<g transform="translate(${x},0)">${card.body}` +
+        `${dot(card.w / 2 - 14, card.h + 5, beam)}` +
+        `<text x="${card.w / 2 - 8}" y="${card.h + 5}" font-size="7" dominant-baseline="central" fill="#333">${esc(`${Math.round(beam.wl)} nm`)}</text></g>`;
+      x += card.w + gap;
+    }
+    if (more > 0) body += `<text x="${x}" y="14" font-size="7" fill="#666">+${more}</text>`;
+    const w = x - gap + (more > 0 ? 14 : 0);
+    const h = Math.max(...cards.map(c => c.card.h)) + 11;
+    return { w, h, body: body + `<g data-probe-beams="${beams.length}"></g>` };
+  }
+
+  if (prop === 'time') {
+    // Every train on one axis, each drawn where its pulses arrive, with the
+    // verdict -- synced, or which beam comes first and by how much -- above.
+    const summary = probeTimingSummary(beams);
+    const verdict = probeTimingLabel(summary) || 'no pulsed beams to compare';
+    // Wide enough for the verdict, which is the point of this view.
+    const W = Math.max(90, Math.ceil(verdict.length * 3.5 + 12)), H = 56, x0 = 9, y0 = H - 12, pw = W - 16, ph = H - 30;
+    const window = syncedTimeWindowNs(beams.map(beam => ({ reading: beam, params: el.params })));
+    const { startNs, spanNs } = window;
+    const xAt = ns => x0 + pw * (spanNs > 0 ? (ns - startNs) / spanNs : 0);
+    const delayOf = beam => summary?.beams.find(entry => entry.beam === beam)?.delayNs ?? 0;
+    // Each train is drawn where it arrives, relative to the first: its
+    // record already carries its emission phase, so the plot shifts it by
+    // its flight time alone (Andrea, #192: adding the arrival counted the
+    // phase twice).
+    const lead = summary?.beams[0]?.beam || null;
+    const shiftOf = beam => (lead && Number.isFinite(beam.propagationNs) ? beam.propagationNs - lead.arrivalNs : 0);
+    let traces = '';
+    for (const beam of shown) {
+      const colour = wavelengthToColor(beam.wl);
+      const trace = scopeTrace(beam.pulse, { spanNs, startNs, samples: 160, delayNs: shiftOf(beam) });
+      if (!trace) {
+        traces += `<line data-probe-time="cw" x1="${x0}" y1="${(y0 - ph).toFixed(2)}" x2="${x0 + pw}" y2="${(y0 - ph).toFixed(2)}" stroke="${colour}" stroke-width="1.2" opacity="0.8"/>`;
+        continue;
+      }
+      const peak = Math.max(1e-9, ...trace.pulses.map(p => p.amplitude || 0), ...trace.envelope.map(e => e.value || 0));
+      const yAt = v => (y0 - Math.max(0, Math.min(1, v / peak)) * ph).toFixed(2);
+      // Too many pulses to separate at this timebase: the train is filled in
+      // under its own envelope, as the single-beam view draws it (Andrea,
+      // #192: a kHz chopper's 2 ms window showed only its first 1.5 us).
+      const dense = trace.pulses.length > pw / 2 || trace.truncated;
+      const body = dense
+        ? `<path d="M ${xAt(trace.startNs).toFixed(2)},${y0} L ${trace.envelope.map(pt => `${xAt(pt.tNs).toFixed(2)},${yAt(pt.value)}`).join(' L ')} L ${xAt(trace.startNs + spanNs).toFixed(2)},${y0} Z" fill="${colour}" opacity="0.35" stroke="none"/>`
+        : trace.pulses.filter(p => p.amplitude > 1e-6).map(p => {
+          const x = xAt(p.tNs).toFixed(2);
+          return `<line x1="${x}" y1="${y0}" x2="${x}" y2="${yAt(p.amplitude)}" stroke="${colour}" stroke-width="1.2" stroke-linecap="round" opacity="0.8"/>`;
+        }).join('');
+      traces += `<g data-probe-time="${dense ? 'dense' : trace.pulses.length}" data-probe-time-delay-ns="${delayOf(beam).toFixed(9)}" data-probe-first-pulse-ns="${(trace.pulses[0]?.tNs ?? NaN).toFixed(6)}">${body}</g>`;
+    }
+    const axis = ns => esc(formatTimeAxisNs(ns));
+    return {
+      w: W, h: H,
+      body: frame(W, H) +
+        `<line x1="${x0}" y1="${y0}" x2="${x0 + pw}" y2="${y0}" stroke="#888" stroke-width="1"/>` +
+        `<line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y0 - ph - 2}" stroke="#888" stroke-width="1"/>` +
+        traces +
+        `<text x="${x0}" y="${y0 + 6}" font-size="4.6" fill="#666">${axis(startNs)}</text>` +
+        `<text x="${x0 + pw}" y="${y0 + 6}" text-anchor="end" font-size="4.6" fill="#666">${axis(startNs + spanNs)}</text>` +
+        `<text data-probe-timing="${summary?.state || 'none'}" x="${W / 2}" y="8" text-anchor="middle" font-size="5.8" font-weight="700" fill="#333">${esc(verdict)}</text>` +
+        `<text x="${W / 2}" y="15" text-anchor="middle" font-size="4.8" fill="#666">${esc(shown.map(b => `${Math.round(b.wl)} nm`).join(' · ') + (more > 0 ? ` +${more}` : ''))}</text>`,
+    };
+  }
+
+  // Spectrum: the beams' summed spectral density, weighted by their watts.
+  const W = 74, H = 50, x0 = 10, y0 = H - 13, pw = W - 18, ph = H - 24;
+  const { lo, hi } = probeSpectrumRangeAll(beams, el.params);
+  const span = Math.max(1e-6, hi - lo);
+  const xAt = wl => x0 + pw * (wl - lo) / span;
+  const { weights, absolute } = probeBeamWeights(beams, elements);
+  const samples = combinedSpectrumSamples(beams, weights, lo, hi, 160);
+  const peak = Math.max(...samples.map(p => p.weight), 1e-30);
+  const curve = spectrumAreaSvg(el, samples, peak, { xAt, x0, y0, pw, ph });
+  const tick = (wl, anchor) => {
+    const x = xAt(wl).toFixed(2);
+    return `<line x1="${x}" y1="${y0}" x2="${x}" y2="${(y0 + 1.6).toFixed(2)}" stroke="#888" stroke-width="0.7"/>` +
+      `<text x="${x}" y="${(y0 + 6).toFixed(2)}" text-anchor="${anchor}" font-size="4.6" fill="#666">${Math.round(wl)}</text>`;
+  };
+  const colours = shown.map(b => Math.round(b.wl)).filter((wl, i, all) => all.indexOf(wl) === i);
+  // Without every source's watts the beams can only be compared by their
+  // share of their own source: said on the card, not only in its markup.
+  const names = colours.join(' · ') + (more > 0 ? ` +${more}` : '') + ' nm' + (absolute ? '' : ' · relative');
+  return {
+    w: W, h: H,
+    body: frame(W, H) +
+      `<line x1="${x0}" y1="${y0}" x2="${x0 + pw}" y2="${y0}" stroke="#888" stroke-width="1"/>` +
+      `<line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y0 - ph - 2}" stroke="#888" stroke-width="1"/>` +
+      curve + tick(lo, 'start') + tick((lo + hi) / 2, 'middle') + tick(hi, 'end') +
+      `<text x="${x0 - 4}" y="${y0 - ph}" text-anchor="middle" font-size="5.5" fill="#888" transform="rotate(-90 ${x0 - 4} ${y0 - ph})">I (a.u.)</text>` +
+      `<text data-probe-beams="${beams.length}" data-probe-weights="${absolute ? 'watts' : 'relative'}" x="${x0 + pw}" y="${y0 - ph - 1}" text-anchor="end" font-size="6" fill="#333">${esc(names)}</text>`,
   };
 }
 
@@ -1126,9 +1463,8 @@ export const LINEAR_SIGNAL_KINDS = [
 export const NONLINEAR_SIGNAL_KINDS = [
   ['tpef', 'Two-photon fluorescence (2PEF)'],
   ['thpef', 'Three-photon fluorescence (3PEF)'],
-  ['shg', 'Second harmonic (SHG)'],
+  ['shg', 'χ⁽²⁾ — second harmonic, and sum frequency of two beams'],
   ['thg', 'Third harmonic (THG)'],
-  ['sfg', 'Sum frequency (SFG)'],
   ['cars', 'CARS — anti-Stokes'],
   ['srs', 'Stimulated Raman (SRS)'],
 ];
@@ -1150,6 +1486,8 @@ export const SIGNAL_KINDS = ALL_SIGNAL_KINDS;
 // at the same spot; the others are driven by a single beam. SRS likewise
 // needs two beams — one to carry the modulation and one to receive it.
 export const MIXING_KINDS = new Set(['sfg', 'cars']);
+// Signals that cannot happen with one beam alone. Second harmonic is not one
+// of them: it doubles a single beam, and mixes a pair when there is one.
 export const TWO_BEAM_KINDS = new Set(['sfg', 'cars', 'srs']);
 // Incoherent emission radiates in every direction, so it has no forward/epi
 // distinction to offer. The parametric signals are generated along the
@@ -1304,6 +1642,9 @@ function overlapWarning(channel, records) {
 // SHG, THG and phase contrast derive everything from the ray in front of
 // them, so a specimen made only of those never pays for the probe pass.
 export function channelNeedsExcitationProbe(c) {
+  // Second harmonic now carries the pair's sum frequency too, so it has to
+  // know what else is on the spot.
+  if (c.kind === 'shg') return true;
   if (TWO_BEAM_KINDS.has(c.kind)) return !(c.kind === 'cars' && c.autoWl === false);
   if (c.kind === 'raman') return true;
   // Emission channels need it even when the wavelength is pinned: the
@@ -1387,6 +1728,22 @@ function sampleModeParams() {
       const type = specimenTypeOf(p);
       return type === 'linear' || type === 'nonlinear';
     } },
+    // Arrival timing is a number, not a picture: a picosecond is a third of a
+    // millimetre of path, which no drawing at bench scale can show. A specimen
+    // whose signals depend on it says where the two beams are.
+    {
+      key: 'pulseTiming', label: 'Two-beam timing', type: 'readout', wide: true,
+      show: p => {
+        const type = specimenTypeOf(p);
+        if (type !== 'nonlinear') return false;
+        return sampleChannels(p).some(c => TWO_BEAM_KINDS.has(c.kind) || c.kind === 'shg');
+      },
+      readout: (p, el) => {
+        const timing = specimenTimingReadout(el ? specimenTimingReading(el.id) : null);
+        const srs = el ? specimenSrsNote(el.id) : null;
+        return srs ? `${timing}. Stimulated Raman transfer not drawn: ${srs}.` : timing;
+      },
+    },
     { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: true, appearance: true },
     { key: 'thickness', label: 'Sample thickness (mm)', type: 'number', min: 0.15, htmlMin: 0, max: 20, step: 0.5, def: 6, appearance: true },
     { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => specimenTypeOf(p) === 'resin' },
@@ -1688,15 +2045,17 @@ const P = {
 };
 
 // Shared by every mirror in the Mirrors category: a reflectivity percentage
-// and, once it's set below 100%, an opt-in toggle for actually drawing the
-// leaked transmitted beam (default off — the leak is still retained within
-// the tracer's bounded weak-power budget for correct detector/power-budget
-// readings either way, see raytrace.js's
-// `hidden` ray flag; this only controls whether it's rendered).
+// and, once it's set below 100%, an opt-in toggle for the leaked transmitted
+// beam. Off (the default) the leak is not traced at all -- the 1-R simply
+// leaves the setup, as when budgeting the power that reaches a sample. On, it
+// is drawn and traced like any other beam: an output coupler, a cavity
+// monitor. The key keeps its old name. Before PR #193 "off" only hid a leak
+// that was still traced; by Luca's decision the new meaning applies to saved
+// scenes too, so a detector behind a partial mirror left off reads nothing.
 function reflectivityParams() {
   return [
     { key: 'refl', label: 'Reflectivity (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
-    { key: 'showTransmitted', label: 'Display transmitted beam', type: 'checkbox', def: false, show: p => (p.refl ?? 100) < 100 },
+    { key: 'showTransmitted', label: 'Trace transmitted beam', type: 'checkbox', def: false, show: p => (p.refl ?? 100) < 100 },
   ];
 }
 
@@ -1789,10 +2148,31 @@ function laserSource(el) {
 // by the shape factor relating an envelope's FWHM duration to its true peak.
 const PEAK_SHAPE_FACTOR = { gauss: 0.9394, sech2: 0.8815 };
 
+// Energy in each pulse: average power over repetition rate.
+export function pulseEnergyJ(params = {}) {
+  const avg = Number(params.avgPowerW), repHz = Number(params.repRateMHz) * 1e6;
+  return avg > 0 && repHz > 0 ? avg / repHz : null;
+}
+function formatFs(fs) {
+  if (!(fs > 0) || !Number.isFinite(fs)) return '—';
+  if (fs >= 1e6) return `${Number((fs / 1e6).toPrecision(4))} ns`;
+  if (fs >= 1000) return `${Number((fs / 1000).toPrecision(4))} ps`;
+  return `${Number(fs.toPrecision(4))} fs`;
+}
+const ENERGY_UNITS = [[1, 'J'], [1e-3, 'mJ'], [1e-6, 'µJ'], [1e-9, 'nJ'], [1e-12, 'pJ'], [1e-15, 'fJ']];
+export function formatEnergy(joules) {
+  if (!(joules > 0)) return '—';
+  const [scale, unit] = ENERGY_UNITS.find(([f]) => joules >= f) || ENERGY_UNITS.at(-1);
+  return `${Number((joules / scale).toPrecision(3))} ${unit}`;
+}
+
+// Peak power from the emitted duration. A chirped Gaussian stays Gaussian, so
+// its shape factor holds exactly; a dispersed sech² pulse does not keep an
+// exact sech² profile, so there the figure is an estimate.
 export function peakPowerW(params = {}) {
   const avg = Number(params.avgPowerW);
   const repHz = Number(params.repRateMHz) * 1e6;
-  const tau = Number(params.pulseWidthFs) * 1e-15;
+  const tau = Number(authoredPulseTiming(params).durationFs) * 1e-15;
   if (!(avg > 0) || !(repHz > 0) || !(tau > 0)) return null;
   const shape = PEAK_SHAPE_FACTOR[params.pulseShape] ?? PEAK_SHAPE_FACTOR.gauss;
   return shape * (avg / repHz) / tau;
@@ -1806,6 +2186,349 @@ export function formatPower(watts) {
     if (watts >= scale) return `${Number((watts / scale).toPrecision(3))} ${unit}`;
   }
   return `${Number((watts * 1e9).toPrecision(3))} nW`;
+}
+
+// One GDD number for the compressor's readout rows. The unit lives in the row
+// label, so the value is bare. Sub-10 fs² residuals keep a decimal — the
+// difference between "cancelled to 0.2" and "cancelled to 6" is worth seeing —
+// and `|| 0` normalizes JavaScript's negative zero, which would print "-0".
+export function formatGdd(fs2) {
+  if (!Number.isFinite(fs2)) return '—';
+  if (Math.abs(fs2) < 10) return (fs2 || 0).toFixed(1);
+  return (Math.round(fs2) || 0).toLocaleString();
+}
+
+// Which side of zero the pulse leaves on, and how it got there. Sign is the
+// part that carries intent: driving the output negative is a destination, not
+// a failed cancellation. Pre-chirping a pulse so it arrives transform-limited
+// *after* the dispersion of whatever follows — an objective, a long glass
+// path — is an ordinary reason to reach for a compressor, and describing that
+// only as a percentage change in |GDD| hides what the user was aiming for.
+export function compressorFinalState({ incoming, outgoing }) {
+  if (!Number.isFinite(incoming) || !Number.isFinite(outgoing)) return '—';
+  // Anything that rounds away is "no chirp left", not a vanishingly small
+  // chirp with a sign, so it is reported before any sign is claimed.
+  if (Math.round(outgoing) === 0) {
+    return incoming !== 0 ? 'Cancelled — no net chirp left' : 'No chirp';
+  }
+  const side = outgoing < 0 ? 'Negative dispersion' : 'Positive dispersion';
+  if (incoming === 0) {
+    return outgoing < 0
+      ? `${side} — nothing upstream to cancel, so this is pure pre-compensation`
+      : `${side} — applied by this element alone`;
+  }
+  const applied = outgoing - incoming;
+  if (Math.round(applied) === 0) return `${side} — passed through unchanged`;
+  if (Math.sign(outgoing) === Math.sign(incoming)) {
+    return Math.abs(outgoing) < Math.abs(incoming)
+      ? `${side} — the upstream GDD is partly cancelled`
+      : `${side} — this element adds to the upstream GDD`;
+  }
+  // Past the null: the upstream chirp is gone and the opposite one is applied.
+  const upstream = incoming > 0 ? 'positive' : 'negative';
+  const chirp = outgoing < 0 ? 'negative' : 'positive';
+  return `${side} — the upstream ${upstream} GDD is completely cancelled `
+    + `and a ${chirp} chirp is applied`;
+}
+
+// Inspector text for a crystal's OPO state on the last trace.
+const sig3 = x => Number(x.toPrecision(3));
+// Wavelengths need the fourth digit: 1032 nm and 1030 nm are different lasers.
+const nm4 = x => Number(x.toPrecision(4));
+function opoStateText(reading) {
+  if (!reading) return 'No pump within the acceptance window yet';
+  if (reading.state === 'invalid') return 'No output: the signal must be longer than the pump';
+  return `Removing ${sig3(reading.efficiency * 100)}% of the pump (authored depletion; no threshold or resonator gain model)`;
+}
+
+// Inspector text for a supercontinuum crystal on the last trace.
+function supercontinuumStateText(reading) {
+  if (!reading) return 'No pump has reached the crystal yet';
+  if (reading.state === 'cw') {
+    return 'No continuum: continuous-wave input is outside this pulsed bulk estimate. Set the range manually to draw one';
+  }
+  const medium = SC_MEDIA[reading.medium]?.label || reading.medium;
+  if (reading.state === 'unsupported') {
+    return `No continuum: this estimate includes reference data for ${medium} pumps from ${reading.fromNm} to ${reading.toNm} nm, `
+      + `not ${nm4(reading.pumpNm)} nm. Set the range manually to draw one`;
+  }
+  const band = `${Math.round(reading.minNm)}–${Math.round(reading.maxNm)} nm`;
+  if (reading.state === 'manual') return `Drawing ${band}, as set`;
+  const source = reading.measured
+    ? 'as reported for one experiment at this pump wavelength'
+    : reading.summary
+      ? 'from a typical span or a range the review summarises for pumps here, not a single measurement'
+      : 'interpolated between reference spectra at nearby pump wavelengths, an illustration rather than a prediction';
+  const red = reading.redAtLeast ? ' The red edge rests on a detector-limited measurement, so the spectrum can reach further.' : '';
+  return `About ${band} from a ${nm4(reading.pumpNm)} nm pump in ${medium}, ${source}.${red}\n`
+    + 'Focusing, pulse energy and duration, chirp and crystal length shift both edges and are not modelled; nor is whether the pump reaches threshold';
+}
+
+// How a mixing crystal reports what it found. The delay figure is the point
+// of the two-beam modes: scanning a stage until it reads zero is how time
+// zero is found on a real bench.
+export function mixStateText(reading) {
+  if (!reading) return 'No light at the crystal yet';
+  if (reading.state === 'oneBeam') return 'One colour only: the crystal doubles it, and mixing needs a second wavelength here';
+  const sum = `${nm4(reading.driverWl)} + ${nm4(reading.partnerWl)} nm → ${nm4(reading.wl)} nm`;
+  const pair = reading.dfgWl > 0 ? `${sum}, difference ${nm4(reading.dfgWl)} nm` : sum;
+  if (reading.state === 'unsupported') {
+    return `Timing not modelled: the two beams run at ${sig3(reading.repRateMHz)} and ${sig3(reading.partnerRepRateMHz)} MHz. Only trains at the same repetition rate are mixed here, so ${sum} is not drawn.`;
+  }
+  if (reading.state === 'unsynchronized') {
+    return `Only the second harmonics: the pulses arrive ${formatMixDelay(reading.skewNs)} apart, so nothing mixes. Match the path lengths, or scan a delay stage until the sum-frequency line appears at ${nm4(reading.wl)} nm.`;
+  }
+  const timing = reading.skewNs == null
+    ? 'no pulse timing to match'
+    : `${formatMixDelay(reading.skewNs)} apart, ${sig3(reading.overlap * 100)}% temporal overlap`;
+  const others = reading.alsoPairs > 0
+    ? `; ${reading.alsoPairs} more pair${reading.alsoPairs > 1 ? 's' : ''} at this crystal` : '';
+  return `${pair}, ${timing}${others}`;
+}
+
+// What a specimen's two-beam signals found about arrival timing, in the same
+// terms the crystal uses. A signal that is silent because of timing should say
+// so on the canvas rather than leaving an empty detector to interpret.
+// The same thing as a permanent readout rather than a one-off message: a
+// picosecond of arrival difference is about 0.3 mm of path, far below anything
+// the drawing can show, so the number has to be somewhere you can watch while
+// you move a delay stage.
+export function specimenTimingReadout(reading) {
+  // No reading means nothing was timed -- which is not the same as no signal:
+  // a channel with the overlap requirement switched off still draws its
+  // schematic two-beam signal, it just is not checked.
+  if (!reading) return 'No two-beam timing measured yet';
+  if (reading.state === 'ignored') {
+    return `${nm4(reading.driverWl)} + ${nm4(reading.partnerWl)} nm: pulse-overlap requirement off, so arrival timing is not checked`;
+  }
+  if (reading.state === 'oneBeam') return 'One colour only: a second wavelength is needed for CARS, Raman transfer or sum frequency';
+  const pair = `${nm4(reading.driverWl)} + ${nm4(reading.partnerWl)} nm`;
+  if (reading.state === 'unsupported') {
+    return `${pair} at ${sig3(reading.repRateMHz)} and ${sig3(reading.partnerRepRateMHz)} MHz — timing not modelled between different repetition rates`;
+  }
+  const pathMm = (reading.skewNs || 0) * 299.792458;
+  // Below a femtosecond is matched, not a number worth printing: paths that
+  // cancel algebraically still leave floating-point dust behind.
+  const apart = reading.skewNs > 1e-6
+    ? `${formatMixDelay(reading.skewNs)} apart (${sig3(pathMm)} mm of path)`
+    : 'arriving together';
+  return `${pair}: ${apart}, ${sig3(reading.overlap * 100)}% temporal overlap`;
+}
+
+export function specimenTimingText(reading) {
+  if (!reading) return null;
+  const what = reading.kind === 'srs' ? 'Stimulated Raman'
+    : reading.kind === 'cars' ? 'CARS'
+      : 'Sum frequency';
+  if (reading.state === 'unsupported') {
+    return `${what} timing not modelled: the two beams run at ${sig3(reading.repRateMHz)} and ${sig3(reading.partnerRepRateMHz)} MHz. Only trains at the same repetition rate are mixed here.`;
+  }
+  if (reading.state === 'unsynchronized') {
+    const pathMm = reading.skewNs * 299.792458;
+    return `${what} needs both pulses at the specimen: they arrive ${formatMixDelay(reading.skewNs)} apart (${sig3(pathMm)} mm of path). Match the arms, or add a delay line.`;
+  }
+  return null;
+}
+
+function formatMixDelay(skewNs) {
+  if (!(skewNs > 0)) return '0 fs';
+  const fs = skewNs * 1e6;
+  if (fs >= 1e6) return `${sig3(fs / 1e6)} ns`;
+  if (fs >= 1e3) return `${sig3(fs / 1e3)} ps`;
+  return `${sig3(fs)} fs`;
+}
+
+function formatOpoDuration(fs) {
+  if (!(fs > 0)) return '—';
+  if (fs >= 1e6) return `${sig3(fs / 1e6)} ns`;
+  if (fs >= 1e3) return `${sig3(fs / 1e3)} ps`;
+  return `${sig3(fs)} fs`;
+}
+
+function opoWaveText(name, wave, pulse) {
+  const width = wave.bw > 0
+    ? `${name} bandwidth ${sig3(wave.bw)} nm (${sig3(wave.widthCm)} cm⁻¹)`
+    : `${name} bandwidth 0 nm (single frequency)`;
+  if (!pulse) return width;
+  const note = pulse.spectralPhase === 'positiveChirp' ? 'chirped'
+    : pulse.durationRaisedToLimit ? 'raised to the transform limit; the set duration is shorter'
+      : pulse.transformLimited ? 'transform limited'
+        : pulse.transformLimitUnavailable || !(wave.bw > 0) ? 'spectral phase unknown: a zero bandwidth has no transform limit'
+          : 'spectral phase unknown';
+  return `${width}\n${name} duration ${formatOpoDuration(pulse.outputDurationFs ?? pulse.pulseWidthFs)} (${note})`;
+}
+
+function opoWidthsText(reading) {
+  const waves = reading?.waves;
+  if (!waves) return '—';
+  const pulses = reading.pulses || {};
+  if (waves.merged) return opoWaveText('Degenerate output', waves.merged, pulses.merged);
+  return `${opoWaveText('Signal', waves.signal, pulses.signal)}\n${opoWaveText('Idler', waves.idler, pulses.idler)}`;
+}
+
+// ---- Integrated OPO element ----
+// A laser-style box: the pump enters a rear aperture, the signal leaves the
+// front on the body axis and the idler leaves a second front port a fixed
+// distance below it. The geometry is a packaging convention for this
+// workbench, not the layout of any particular instrument.
+const OPO_BODY_W = 92;
+// Pump light within this angle of the body axis is accepted. A fixed
+// geometric rule, not a calculation of mode matching or coupling efficiency.
+export const OPO_ACCEPTANCE_DEG = 20;
+const opoApertureMm = p => Math.min(30, Math.max(1, Number(p?.aperture) || 6));
+// Output beam diameters; 0 draws that output as a single line.
+export const opoBeamMm = (p, role) => Math.min(30, Math.max(0, Number(role === 'idler' ? p?.idlerBeamMm : p?.signalBeamMm) || 0));
+// The idler port sits far enough below the signal port that the two output
+// beams never overlap, and the body is tall enough to hold the input aperture
+// and both ports whole.
+const opoIdlerOffset = p => Math.max(14, opoBeamMm(p, 'signal') / 2 + opoBeamMm(p, 'idler') / 2 + 6);
+// The input aperture always sets a minimum height, so the resize handle that
+// drags it visibly resizes the box.
+const opoBodyH = p => 2 * Math.max(
+  opoIdlerOffset(p) + opoBeamMm(p, 'idler') / 2 + 6,
+  opoApertureMm(p) / 2 + 17,
+);
+
+// Where the element sends each output, in its own coordinates.
+export function opoPortLocal(role, params) {
+  return { x: OPO_BODY_W / 2 + 6, y: role === 'idler' ? opoIdlerOffset(params) : 0 };
+}
+
+function opoTuningText(p) {
+  const mode = p.tuneMode || 'fixed';
+  if (mode === 'sweep') {
+    return `Sweeping the signal ${nm4(Number(p.sweepMinNm))}–${nm4(Number(p.sweepMaxNm))} nm and back every ${sig3(Number(p.sweepPeriodS))} s`;
+  }
+  if (mode === 'steps') {
+    const { values, ignored } = parseWavelengthList(p.stepList);
+    if (!values.length) return 'No valid tuning program: list at least one signal wavelength in nm';
+    const skipped = ignored ? ` · ${ignored} entr${ignored === 1 ? 'y' : 'ies'} not a wavelength, ignored` : '';
+    return `Stepping through ${values.map(nm4).join(', ')} nm, ${sig3(Number(p.stepDwellS))} s each${skipped}`;
+  }
+  return `Fixed at ${nm4(Number(p.signalWl))} nm`;
+}
+
+function opoElementStateText(reading, p) {
+  if (!reading) return 'No pump has reached the input aperture yet';
+  const step = Number.isInteger(reading.tuning?.index)
+    ? `step ${reading.tuning.index + 1} of ${reading.tuning.count}, ` : '';
+  // A setpoint only: this line is used where nothing was generated.
+  const now = Number.isFinite(reading.signalWl) ? ` (${step}signal set to ${nm4(reading.signalWl)} nm)` : '';
+  switch (reading.state) {
+    case 'rejected':
+      return `No output: the pump arrives ${sig3(reading.angleDeg)}° off the input axis, outside the ±${OPO_ACCEPTANCE_DEG}° the input accepts`;
+    case 'noProgram':
+      return 'No output: the tuning program has no valid signal wavelength';
+    case 'badParams':
+      return 'No output: the pump and signal wavelengths must be positive numbers';
+    case 'invalid':
+      return `No output: the signal must be longer than the ${Number.isFinite(reading.pumpNm) ? `${nm4(reading.pumpNm)} nm ` : ''}pump${now}`;
+    case 'converting': {
+      if (!(reading.efficiency > 0)) return `Pump accepted, but pump depletion is 0, so nothing is generated${now}`;
+      const waves = reading.waves;
+      const out = waves?.merged || waves?.degenerate
+        ? `Pump ${nm4(reading.pumpNm)} nm → degenerate: signal and idler at ${nm4(waves.signal.wl)} nm, both from the signal port`
+        : `Pump ${nm4(reading.pumpNm)} nm → signal ${nm4(waves.signal.wl)} nm · idler ${nm4(waves.idler.wl)} nm${p.outputIdler === false ? ' (idler port off)' : ''}`;
+      return `${step ? `${step[0].toUpperCase()}${step.slice(1, -2)}: ` : ''}${out}\n`
+        + `Removing ${sig3(reading.efficiency * 100)}% of the pump (authored depletion; no threshold or resonator gain model). `
+        + 'The unconverted pump is discarded inside the box';
+    }
+    default:
+      return '—';
+  }
+}
+
+// ---- Integrated OPA element ----
+// A packaged, seeded optical parametric amplifier: the pump and the seed
+// enter two rear ports, and what is left of the pump, the idler and the
+// amplified signal leave three front ports parallel to the body axis. Each
+// input continues at its own height -- the residual pump opposite the pump
+// port, the signal opposite the seed port -- with the idler between them, so
+// a setup can be aligned straight through the box. The settings are
+// the ones a data sheet quotes (tuned wavelength, gain bandwidth, small-signal
+// gain, conversion limit); sketch/js/opa.js maps them onto the reviewed
+// parametric core. The port layout is a convention of this workbench.
+const OPA_BODY_W = 112;
+export const OPA_ACCEPTANCE_DEG = 20;
+const opaApertureMm = p => Math.min(20, Math.max(1, Number(p?.aperture) || 6));
+export const opaBeamMm = p => Math.min(20, Math.max(0, Number(p?.outputBeamMm) || 0));
+// Rear ports (pump above, seed below) and front ports (pump above, idler on
+// the axis, signal below) sit far enough apart that no two beams overlap.
+const opaPortOffset = p => Math.max(18, opaApertureMm(p) / 2 + 6, opaBeamMm(p) + 6);
+const opaBodyH = p => 2 * (opaPortOffset(p) + Math.max(opaApertureMm(p), opaBeamMm(p)) / 2 + 7);
+export function opaPortLocal(role, params) {
+  const off = opaPortOffset(params);
+  const x = OPA_BODY_W / 2;
+  if (role === 'pumpIn') return { x: -x, y: -off };
+  if (role === 'seedIn') return { x: -x, y: off };
+  if (role === 'pump') return { x: x + 6, y: -off };
+  if (role === 'idler') return { x: x + 6, y: 0 };
+  return { x: x + 6, y: off };
+}
+
+const fmtW = w => (w >= 1 ? `${sig3(w)} W` : w >= 1e-3 ? `${sig3(w * 1e3)} mW` : w >= 1e-6 ? `${sig3(w * 1e6)} µW` : `${w.toExponential(2)} W`);
+const fmtGain = g => (g >= 1e4 ? `${g.toExponential(2).replace('e+', ' × 10^')}` : `${sig3(g)}`);
+const dB = g => `${sig3(10 * Math.log10(g))} dB`;
+
+function opaStateText(plan, p) {
+  const notes = [opaStateCore(plan, p)];
+  if (plan?.loopInput) notes.push('Light this OPA already amplified comes back to one of its ports: it is stopped there, not amplified again (a feedback loop is not modelled)');
+  if (plan?.unplannedInput) notes.push('Light not traced to this port while the bench was planned (for instance re-emitted by a fiber) reaches it: it passes through unamplified');
+  if (plan?.cascadeUnresolved) notes.push(`The cascade was still changing after ${MAX_OPA_STAGES} planned stages: this stage and the ones after it may be incomplete`);
+  return notes.join('\n');
+}
+
+function opaStateCore(plan, p) {
+  const settings = opaSettings(p);
+  const tuned = `Tuned to ${nm4(settings.signalWl)} nm · gain band ${sig3(settings.gainBandwidthNm)} nm FWHM · peak small-signal gain ${sig3(settings.smallSignalGainDb)} dB`;
+  if (!plan) return `${tuned}\nNo light has reached the input ports yet`;
+  const pumpLine = Number.isFinite(plan.pumpWl) ? `Pump ${nm4(plan.pumpWl)} nm` : '';
+  switch (plan.state) {
+    case 'idle': return `${tuned}\nNo light at the input ports`;
+    case 'noPump': return `${tuned}\nNo pump: a seed arrives but nothing reaches the pump port, so there is no gain`;
+    case 'multiplePumps': return `${tuned}\nMore than one beam reaches the pump port: this element amplifies with one pump only, so nothing is converted`;
+    case 'tunedBelowPump': return `${tuned}\nThe tuned signal wavelength must be longer than the ${nm4(plan.pumpWl)} nm pump`;
+    case 'noSeed': return `${tuned}\n${pumpLine}${Number.isFinite(plan.tunedIdlerWl) ? ` · idler would be ${nm4(plan.tunedIdlerWl)} nm` : ''}\nNo seed: nothing to amplify (parametric noise is not modelled). The pump passes through`;
+    case 'uncalibrated': return `${tuned}\nThe pump and seed sources need an average-power setting: the gain moves watts from one to the other`;
+    case 'pumpDurationUnavailable': return `${tuned}\n${pumpLine}: its pulse duration at this port cannot be stated (${plan.durationIssue}), so nothing is amplified`;
+    default: break;
+  }
+  const lines = [tuned, `${pumpLine}${plan.pumpInW > 0 ? ` · ${fmtW(plan.pumpInW)} in, ${fmtW(plan.pumpOutW)} out (${sig3(plan.conversion * 100)} % converted)` : ''}`];
+  for (const seed of plan.seeds) {
+    const head = `Seed ${nm4(seed.wl)} nm · ${fmtW(seed.seedW)}`;
+    if (seed.state === 'amplifying') {
+      lines.push(`${head} → signal ${nm4(seed.signal.wl)} nm · ${fmtW(seed.seedW + seed.gainW)} (gain ${fmtGain(seed.achievedGain)}, ${dB(seed.achievedGain)}, pulse-averaged)`
+        + ` · idler ${nm4(seed.idler.wl)} nm · ${fmtW(seed.idlerW)}${seed.saturated ? ' · limited by the pump (depletion limit)' : ''}${seed.lowOverlap ? ' · pulses barely overlap' : ''}`);
+      // A stretched seed: each wavelength meets the pump at its own time.
+      if (seed.chirp && Math.abs(seed.chirp.gddFs2) >= 1 && seed.arrivingPulse) {
+        lines.push(`  Chirped seed, ${formatFs(seed.arrivingPulse.pulseWidthFs)} here (${formatGdd(seed.chirp.gddFs2)} fs²): amplified band ${sig3(seed.signal.bw)} nm FWHM`
+          + (seed.phaseKept ? ', keeping the seed\'s chirp for a compressor'
+            : seed.gateBandRatio > MAX_GATE_BANDWIDTH_RATIO
+              ? ` · the pump's gain window (${formatFs(seed.gainWindowFs)}) gates it too fast for this spectral picture: the signal's spectral phase is not modelled`
+              : seed.achievedGain < MIN_PHASE_KEPT_GAIN
+                ? ` · below ${fmtGain(MIN_PHASE_KEPT_GAIN)} gain the output is seed and gain together: the signal's spectral phase is not modelled`
+                : !seed.centred
+                  ? ' · the pump amplifies the seed\'s wing, off its spectral centre: the signal\'s spectral phase is not modelled'
+                  : ' · the amplified band is narrower than the spectral slicing resolves: the signal\'s spectral phase is not modelled'));
+      }
+    } else {
+      const why = {
+        outsideBand: `outside the gain band around ${nm4(settings.signalWl)} nm: passes through unamplified`,
+        seedBelowPump: 'shorter than the pump: no idler is possible, passes through',
+        unsynchronized: 'never meets the pump pulse: adjust the delay',
+        repetitionUnsupported: 'pump and seed must share one repetition rate',
+        degenerateUnsupported: 'at exactly twice the pump wavelength (degenerate, phase-sensitive): not modelled',
+        doubleSeedUnsupported: 'another seed sits at its idler wavelength: not modelled',
+        durationUnsupported: 'a pulse duration is unknown: not modelled',
+        durationUnavailable: `its pulse duration at this port cannot be stated (${seed.durationIssue}): passes through unamplified`,
+        spectrumUnsupported: 'its spectrum was reshaped upstream (a filtered continuum): not modelled, passes through unamplified',
+        gatesUnsupported: 'the beam is modulated (gated): not modelled',
+        tooManySeeds: 'too many seed beams share this stage (a long cascade) for the spectral slicing: not modelled, passes through unamplified',
+      }[seed.state] || 'no gain at these settings';
+      lines.push(`${head}: ${why}`);
+    }
+  }
+  return lines.join('\n');
 }
 
 export const registry = {
@@ -1862,33 +2585,62 @@ export const registry = {
       { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 0.1 },
       ...beamShapeParams(3),
       ...pulseTrainParams(),
-      { key: 'pulseWidthFs', label: 'Pulse duration (fs)', type: 'number', min: 1, max: 1000000000, step: 10, def: 150 },
-      { key: 'transformLimited', label: 'Transform-limited (time–bandwidth product)', type: 'checkbox', def: true },
+      // Two ways to author a pulse. Transform-limited: the duration and shape,
+      // with the bandwidth they imply shown beneath. Chirped: the bandwidth,
+      // a quadratic chirp's sign and its GDD, with the transform-limited and
+      // emitted durations shown beneath -- so the duration is always derived
+      // and can never fall below the limit the bandwidth sets. The laser
+      // offers no "phase unknown": that is a simplification of authoring,
+      // not a claim that every real laser has a known quadratic phase.
+      { key: 'transformLimited', label: 'Transform-limited pulses', type: 'checkbox', def: true },
+      { key: 'pulseWidthFs', label: 'Pulse duration (fs)', type: 'number', min: 1, max: 1000000000, step: 10, def: 150,
+        show: p => p.transformLimited !== false },
       {
         // The envelope shape matters either way: it sets the time–bandwidth
-        // constant while transform-limited, and the peak-power shape factor
-        // always.
+        // constant, and the peak-power shape factor.
         key: 'pulseShape', label: 'Pulse shape', type: 'select', def: 'gauss',
         options: [['gauss', 'Gaussian'], ['sech2', 'Sech²']],
       },
-      // Bandwidth is one row that changes hands. While transform-limited it is
-      // an output — the minimum width this duration and shape allow — so it is
-      // shown read-only next to Peak power. Switching that off hands the field
-      // to the user, which is how a chirped pulse is described: a spectrum
-      // wider than its duration requires. 0 nm stays a deliberate, valid
-      // setting — an idealized monochromatic pulse train.
       {
         key: 'bandwidthTL', label: 'Bandwidth (nm)', type: 'readout',
         readout: p => String(Number(transformLimitedBandwidthNm(p.pulseWidthFs, p.wavelength, p.pulseShape).toPrecision(4))),
-        show: p => p.transformLimited,
+        show: p => p.transformLimited !== false,
       },
       {
-        key: 'bandwidth', label: 'Bandwidth (nm)', type: 'number', min: 0, max: 400, step: 0.5, def: 5,
-        show: p => !p.transformLimited,
+        key: 'bandwidth', label: 'Bandwidth (nm)', type: 'number',
+        min: MIN_BANDWIDTH_NM, max: MAX_BANDWIDTH_NM, step: 0.5, def: 5,
+        show: p => p.transformLimited === false,
+      },
+      {
+        key: 'durationTL', label: 'Transform-limited duration', type: 'readout',
+        readout: p => formatFs(authoredPulseTiming(p).transformLimitFs),
+        show: p => p.transformLimited === false,
+      },
+      {
+        key: 'inputChirp', label: 'Chirp', type: 'select', def: 'positive',
+        options: [['positive', 'Positively chirped (quadratic)'], ['negative', 'Negatively chirped (quadratic)']],
+        show: p => p.transformLimited === false,
+      },
+      {
+        key: 'chirpGddFs2', label: 'Chirp GDD (fs²)', type: 'number', min: 0, max: MAX_SOURCE_GDD_FS2, step: 100, def: 0,
+        show: p => p.transformLimited === false,
+      },
+      {
+        key: 'durationChirped', label: 'Pulse duration', type: 'readout',
+        readout: p => formatFs(authoredPulseTiming(p).durationFs),
+        show: p => p.transformLimited === false,
       },
       POL_PARAM,
       P.autoColor, P.color,
-      { key: 'peakPower', label: 'Peak power', type: 'readout', readout: p => formatPower(peakPowerW(p)) },
+      { key: 'pulseEnergy', label: 'Pulse energy', type: 'readout', readout: p => formatEnergy(pulseEnergyJ(p)) },
+      {
+        key: 'peakPower', label: 'Peak power', type: 'readout',
+        readout: p => {
+          const text = formatPower(peakPowerW(p));
+          const estimate = p.transformLimited === false && p.pulseShape === 'sech2' && Number(p.chirpGddFs2) > 0;
+          return estimate ? `≈ ${text} (estimate)` : text;
+        },
+      },
       SHOW_PULSE_PARAM,
       pinnedParam('temporalMode', 'pulsed'),
     ],
@@ -1913,21 +2665,52 @@ export const registry = {
     size_: el => ({ w: 30 * (el.params.displayScale || 1), h: 30 * (el.params.displayScale || 1) }),
     params: [
       { key: 'displayScale', label: 'Display scale', type: 'number', min: 0.5, max: 2.5, step: 0.1, def: 1 },
-      P.wavelength,
-      { key: 'bwMode', label: 'Spectrum', type: 'select', def: 'mono', options: [['mono', 'Monochromatic'], ['band', 'Broadband']] },
-      { key: 'bandwidth', label: 'Spectrum width (nm)', type: 'number', min: 10, max: 600, step: 10, def: 400, show: p => p.bwMode === 'band' },
+      // The same emitter, wearing one of two hats. A discharge lamp is
+      // geometrically a point source -- isotropic, incoherent, collected the
+      // same way -- and differs only in emitting a fixed set of lines instead
+      // of a wavelength you type, so it is a mode here rather than an element
+      // of its own.
+      {
+        key: 'sourceKind', label: 'Source', type: 'select', def: 'point',
+        options: [['point', 'Point emitter'], ['lamp', 'Gas discharge lamp']],
+      },
+      { ...P.wavelength, show: p => (p.sourceKind || 'point') !== 'lamp' },
+      { key: 'bwMode', label: 'Spectrum', type: 'select', def: 'mono', options: [['mono', 'Monochromatic'], ['band', 'Broadband']], show: p => (p.sourceKind || 'point') !== 'lamp' },
+      { key: 'bandwidth', label: 'Spectrum width (nm)', type: 'number', min: 10, max: 600, step: 10, def: 400, show: p => (p.sourceKind || 'point') !== 'lamp' && p.bwMode === 'band' },
+      {
+        key: 'lampType', label: 'Lamp', type: 'select', def: 'hg',
+        options: Object.entries(LAMP_PRESETS).map(([key, preset]) => [key, preset.label]),
+        show: p => p.sourceKind === 'lamp',
+      },
+      { key: 'linesReadout', label: 'Lines', type: 'readout', readout: p => lampLineSummary(p.lampType), show: p => p.sourceKind === 'lamp' },
       { key: 'spread', label: 'Emission angle (°)', type: 'number', min: 10, max: 360, step: 10, def: 360 },
       { key: 'nrays', label: 'Rays', type: 'number', min: 4, max: 32, step: 2, def: 12 },
       P.autoColor, P.color,
     ],
     svg(el) {
-      const c = el.params.autoColor === false && el.params.color ? el.params.color : wavelengthToColor(el.params.wavelength);
+      const lamp = el.params.sourceKind === 'lamp';
+      const c = el.params.autoColor === false && el.params.color
+        ? el.params.color
+        : (lamp ? lampColor(el.params.lampType) : wavelengthToColor(el.params.wavelength));
+      const scale = el.params.displayScale || 1;
+      if (lamp) {
+        // A pen-ray envelope: the narrow tube these lamps almost always are.
+        return `<g transform="scale(${scale})">` +
+          `<rect x="-5" y="-13" width="10" height="26" rx="5" fill="${c}" stroke="#333" stroke-width="1.2"/>` +
+          `<rect x="-5" y="-13" width="10" height="26" rx="5" fill="none" stroke="#fff" stroke-width="0.6" opacity="0.5"/>` +
+          `<line x1="0" y1="-8" x2="0" y2="8" stroke="#fff" stroke-width="1.4" opacity="0.75"/>` +
+          `<rect x="-3.5" y="12" width="7" height="4" rx="1" fill="#4d565f"/>` +
+          `<g stroke="${c}" stroke-width="1.4" stroke-linecap="round" opacity="0.9">` +
+          `<line x1="-9" y1="-6" x2="-13" y2="-8"/><line x1="9" y1="-6" x2="13" y2="-8"/>` +
+          `<line x1="-9" y1="2" x2="-13" y2="2"/><line x1="9" y1="2" x2="13" y2="2"/>` +
+          `</g></g>`;
+      }
       let spokes = '';
       for (let i = 0; i < 8; i++) {
         const a = (i * 45) * Math.PI / 180;
         spokes += `<line x1="${(6 * Math.cos(a)).toFixed(1)}" y1="${(6 * Math.sin(a)).toFixed(1)}" x2="${(11 * Math.cos(a)).toFixed(1)}" y2="${(11 * Math.sin(a)).toFixed(1)}" stroke="${c}" stroke-width="1.6" stroke-linecap="round"/>`;
       }
-      return `<g transform="scale(${el.params.displayScale || 1})"><circle r="4.5" fill="${c}" stroke="#333" stroke-width="1"/>` + spokes + `</g>`;
+      return `<g transform="scale(${scale})"><circle r="4.5" fill="${c}" stroke="#333" stroke-width="1"/>` + spokes + `</g>`;
     },
     source(el) {
       const { spread, nrays } = el.params, out = [];
@@ -1998,6 +2781,39 @@ export const registry = {
     },
   },
 
+  polygonscanner: {
+    label: 'Polygon scanner', category: 'Mirrors', paletteOrder: 4.5,
+    aliases: ['polygon mirror', 'rotating polygon', 'line scanner', 'raster scanner', 'NST', 'SCANLAB'],
+    directHint: 'aim the beam at a perimeter facet; the hub is the rotation axis',
+    size: { w: 68, h: 68 },
+    size_: el => {
+      const { diameter } = polygonScannerState(el.params);
+      return { w: diameter + 8, h: diameter + 8 };
+    },
+    params: [
+      { key: 'diameter', label: 'Wheel diameter (mm)', type: 'number', min: 10, max: 200, step: 1, def: 60 },
+      { key: 'facets', label: 'Mirror facets', type: 'number', min: 3, max: 72, step: 1, def: 12 },
+      { key: 'scanMode', label: 'Rotation', type: 'select', def: 'rotate', options: [['rotate', 'Continuous'], ['static', 'Static phase']] },
+      { key: 'rpm', label: 'Rotation speed (RPM)', type: 'number', min: 0, max: 60000, step: 100, def: 1000 },
+      { key: 'lineRate', label: 'Facet rate (lines/s)', type: 'readout', readout: p => p.scanMode === 'static' ? '0 (static)' : polygonScannerState(p).lineRateHz.toFixed(2) },
+      // The number a beam width has to be judged against: the window is not
+      // derived from the beam, so this is what says whether it can be opened.
+      { key: 'facetWidth', label: 'Facet width (mm)', type: 'readout', readout: p => polygonScannerFacetWidth(p).toFixed(1) },
+      { key: 'scanPhase', label: 'Phase within one facet (%)', type: 'number', min: 0, max: 100, step: 1, def: 50 },
+      { key: 'dutyCycle', label: 'Usable scan window (%)', type: 'number', min: 0, max: 100, step: 1, def: 71 },
+      { key: 'refl', label: 'Facet reflectivity (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
+    ],
+    svg(el) {
+      const time = el._animationTimeS || 0;
+      const { active, diameter } = polygonScannerState(el.params, time);
+      const points = polygonScannerVertices(el.params, time).map(p => `${p.x},${p.y}`).join(' ');
+      return `<polygon points="${points}" fill="#cbd5e1" stroke="#475569" stroke-width="2"/>` +
+        `<circle r="${diameter * 0.18}" fill="#64748b" stroke="#334155" stroke-width="1"/>` +
+        `<circle r="2.5" fill="${active ? '#16a34a' : '#d97706'}"/>`;
+    },
+    surfaces: el => polygonScannerSurfaces(el.params, el._animationTimeS || 0),
+  },
+
   retroreflector: {
     label: 'Retroreflector', category: 'Mirrors', paletteOrder: 5, size: { w: 24, h: 56 },
     size_: el => ({ w: el.params.length / 2 + 10, h: el.params.length + 10 }),
@@ -2031,23 +2847,42 @@ export const registry = {
     },
   },
 
+
+  conicmirror: {
+    label: 'Conic mirror', category: 'Mirrors', paletteOrder: 3.5, size: { w: 20, h: 56 },
+    aliases: ['annular mirror', 'Cassegrain', 'Schwarzschild', 'elliptical mirror', 'hyperbolic mirror', 'reflective objective'],
+    params: [
+      { key: 'dia', label: 'Outer diameter (mm)', type: 'number', min: 1, max: 500, step: 1, def: 50 },
+      { key: 'hole', label: 'Central opening (mm)', type: 'number', min: 0, max: 500, step: 0.5, def: 0 },
+      { key: 'radius', label: 'Signed vertex radius (mm)', type: 'number', min: -5000, max: 5000, step: 0.1, def: -100, slider: false },
+      { key: 'conic', label: 'Conic constant k', type: 'number', min: -20, max: 20, step: 0.01, def: 0, slider: false },
+      { key: 'facing', label: 'Coated side (local axis)', type: 'select', def: 'left', options: [['left', '−x side'], ['right', '+x side']] },
+      { key: 'refl', label: 'Reflectivity (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
+      { key: 'realized', label: 'Geometry used', type: 'readout', readout: params => {
+        const g = conicMirrorGeometry(params);
+        return `R = ${g.R.toFixed(3)} mm; opening = ${(2 * g.inner).toFixed(2)} mm`;
+      } },
+    ],
+    size_: conicMirrorSize,
+    svg: conicMirrorSVG,
+    surfaces: conicMirrorSurfaces,
+  },
+
   cmirrorx: {
     label: 'Convex mirror', category: 'Mirrors', paletteOrder: 1, size: { w: 18, h: 56 },
     params: [
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
       { key: 'f', label: 'Focal length (mm)', type: 'number', min: 5, max: 2000, step: 5, def: -100, negative: true },
+      SPHERICAL_APERTURE_READOUT,
       ...reflectivityParams(),
     ],
-    size_: el => ({ w: 18, h: el.params.length + 6 }),
+    size_: el => sphericalMirrorSize(el, false),
     svg(el) {
-      const L = el.params.length / 2;
+      const g = sphericalMirrorGeometry(el, false);
       // bulges toward the incoming beam (from -x)
-      return `<path d="M 0,${-L} Q -7,0 0,${L}" fill="none" stroke="#444" stroke-width="3.5"/>` + hatch(1, -L, L - 6, 1, Math.round(el.params.length / 8));
+      return `<path d="${sphericalMirrorPath(el, false)}" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/>` + hatch(1, -g.L, g.L - 6, 1, Math.max(2, Math.round(g.L / 4)));
     },
-    surfaces(el) {
-      const L = el.params.length / 2;
-      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'cmirror', data: { f: -Math.abs(el.params.f), refl: el.params.refl, showTransmitted: el.params.showTransmitted } }];
-    },
+    surfaces(el) { return sphericalMirrorSurfaces(el, false); },
   },
 
   cmirror: {
@@ -2055,18 +2890,16 @@ export const registry = {
     params: [
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
       { key: 'f', label: 'Focal length (mm)', type: 'number', min: 5, max: 2000, step: 5, def: 100 },
+      SPHERICAL_APERTURE_READOUT,
       ...reflectivityParams(),
     ],
-    size_: el => ({ w: 18, h: el.params.length + 6 }),
+    size_: el => sphericalMirrorSize(el, true),
     svg(el) {
-      const L = el.params.length / 2;
+      const g = sphericalMirrorGeometry(el, true);
       // hollow toward the incoming beam (from -x): focuses it
-      return `<path d="M 0,${-L} Q 7,0 0,${L}" fill="none" stroke="#444" stroke-width="3.5"/>` + hatch(1, -L, L - 6, 1, Math.round(el.params.length / 8));
+      return `<path d="${sphericalMirrorPath(el, true)}" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/>` + hatch(1, -g.L, g.L - 6, 1, Math.max(2, Math.round(g.L / 4)));
     },
-    surfaces(el) {
-      const L = el.params.length / 2;
-      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'cmirror', data: { f: Math.abs(el.params.f), refl: el.params.refl, showTransmitted: el.params.showTransmitted } }];
-    },
+    surfaces(el) { return sphericalMirrorSurfaces(el, true); },
   },
 
   oap: {
@@ -2106,7 +2939,20 @@ export const registry = {
       // more segments for deeper curves so marginal rays still hit the focus
       const N = Math.min(64, Math.max(16, Math.round(L / 2 + (L * L) / (6 * f))));
       const segs = [];
-      const data = { refl: el.params.refl, showTransmitted: el.params.showTransmitted };
+      // The facets exist to find WHERE a ray lands. Reflecting off the chord
+      // itself would then send it off by the angle between chord and curve,
+      // which is what stopped a source at the focus from collimating: a
+      // parabola's whole defining property is that it does. `parab` carries
+      // the true surface into the tracer, which uses it for the normal at the
+      // hit point exactly as `arc` already does for circles -- so the facet
+      // count now sets only positional accuracy, not angular.
+      const rot = ((el.rot || 0) * Math.PI) / 180;
+      const cos = Math.cos(rot), sin = Math.sin(rot);
+      const data = {
+        refl: el.params.refl,
+        showTransmitted: el.params.showTransmitted,
+        parab: { cx: el.x, cy: el.y, ux: { x: cos, y: sin }, uy: { x: -sin, y: cos }, f },
+      };
       let py = -L, px = -(py * py) / (4 * f);
       for (let i = 1; i <= N; i++) {
         const y = -L + (2 * L * i) / N;
@@ -2120,7 +2966,9 @@ export const registry = {
 
   // ---------------- Lenses ----------------
   lens: {
-    label: 'Convex lens', category: 'Lenses', paletteOrder: 0, size: { w: 18, h: 56 },
+    label: 'Thin convex lens', category: 'Lenses',
+    paletteGroup: 'Ideal lenses', paletteOrder: 0, size: { w: 18, h: 56 },
+    aliases: ['convex lens', 'thin lens', 'positive lens', 'converging lens', 'ideal lens'],
     params: [
       { key: 'f', label: 'Focal length (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 100 },
       { key: 'dia', label: 'Diameter', type: 'optsize', def: 25.4 },
@@ -2141,7 +2989,8 @@ export const registry = {
   },
 
   metalens: {
-    label: 'Metalens', category: 'Lenses', paletteOrder: 2, size: { w: 12, h: 20 },
+    label: 'Metalens', category: 'Lenses',
+    paletteGroup: 'Metalenses', paletteOrder: 7, size: { w: 12, h: 20 },
     aliases: ['flat lens', 'metasurface lens', 'meta optic', 'meta-optic', 'diffractive lens'],
     params: [
       {
@@ -2207,7 +3056,8 @@ export const registry = {
   // of it for free rather than being painted on. See thickLensCardinals() for
   // the paraxial summary shown in the inspector.
   thicklens: {
-    label: 'Thick lens (spherical)', category: 'Lenses', paletteOrder: 3,
+    label: 'Thick spherical lens', category: 'Lenses',
+    paletteGroup: 'Real lenses', paletteOrder: 4,
     aliases: ['real lens', 'spherical lens', 'singlet', 'biconvex', 'plano-convex', 'meniscus', 'aberration'],
     params: [
       { key: 'r1', label: 'Front radius R₁ (mm)', type: 'number', min: -2000, max: 2000, step: 1, def: 60, slider: false },
@@ -2253,6 +3103,103 @@ export const registry = {
     refractiveIndex(el, wavelength = 550) { return glassIndex(el.params.glass, wavelength) ?? 1.5; },
   },
 
+  // A finite singlet whose two faces follow the standard even-asphere sag
+  // equation. The tracer intersects those analytic profiles and uses their
+  // exact local derivatives for Snell refraction; the sampled outline is only
+  // for drawing and pointer hit testing.
+  asphericlens: {
+    label: 'Aspheric lens', category: 'Lenses',
+    paletteGroup: 'Real lenses', paletteOrder: 6,
+    aliases: ['asphere', 'aspheric singlet', 'conic lens', 'hyperbolic lens', 'even asphere', 'A4 A6 A8'],
+    params: [
+      { key: 'r1', label: 'Front radius R₁ (mm)', type: 'number', min: -2000, max: 2000, step: 1, def: 30, slider: false },
+      { key: 'k1', label: 'Front conic constant k₁', type: 'number', min: -ASPHERE_LIMITS.conic, max: ASPHERE_LIMITS.conic, step: 0.01, def: -0.58, slider: false },
+      { key: 'r2', label: 'Rear radius R₂ (mm)', type: 'number', min: -2000, max: 2000, step: 1, def: 0, slider: false },
+      { key: 'k2', label: 'Rear conic constant k₂', type: 'number', min: -ASPHERE_LIMITS.conic, max: ASPHERE_LIMITS.conic, step: 0.01, def: 0, slider: false },
+      { key: 'thickness', label: 'Centre thickness (mm)', type: 'number', min: 0.5, max: 60, step: 0.1, def: 6 },
+      { key: 'dia', label: 'Diameter', type: 'optsize', def: 25.4 },
+      { key: 'glass', label: 'Glass', type: 'select', def: 'nbk7', options: GLASS_OPTIONS },
+      { key: 'transEff', label: 'Per-surface transmission (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
+      { key: 'shape', label: 'Surface types', type: 'readout', readout: p => asphericSurfaceSummary(p) },
+      {
+        key: 'realizedGeometry', label: 'Geometry used', type: 'readout',
+        show: p => Boolean(asphericLensAdjustment(p)), readout: p => formatAsphericGeometry(p),
+      },
+      { key: 'efl', label: 'Paraxial focal length at 587.6 nm (mm)', type: 'readout', readout: p => formatFocal(asphericLensCardinals(p).f) },
+      { key: 'bfd', label: 'Paraxial back focal distance at 587.6 nm (mm)', type: 'readout', readout: p => formatFocal(asphericLensCardinals(p).bfd) },
+      { key: 'asphere-polynomial', label: 'Higher-order asphere coefficients', type: 'section', open: false },
+      { key: 'a4_1', label: 'Front A₄ (mm⁻³)', type: 'number', min: -ASPHERE_LIMITS.a4, max: ASPHERE_LIMITS.a4, step: 0.000001, def: 0, slider: false },
+      { key: 'a6_1', label: 'Front A₆ (mm⁻⁵)', type: 'number', min: -ASPHERE_LIMITS.a6, max: ASPHERE_LIMITS.a6, step: 0.00000001, def: 0, slider: false },
+      { key: 'a8_1', label: 'Front A₈ (mm⁻⁷)', type: 'number', min: -ASPHERE_LIMITS.a8, max: ASPHERE_LIMITS.a8, step: 0.0000000001, def: 0, slider: false },
+      { key: 'a4_2', label: 'Rear A₄ (mm⁻³)', type: 'number', min: -ASPHERE_LIMITS.a4, max: ASPHERE_LIMITS.a4, step: 0.000001, def: 0, slider: false },
+      { key: 'a6_2', label: 'Rear A₆ (mm⁻⁵)', type: 'number', min: -ASPHERE_LIMITS.a6, max: ASPHERE_LIMITS.a6, step: 0.00000001, def: 0, slider: false },
+      { key: 'a8_2', label: 'Rear A₈ (mm⁻⁷)', type: 'number', min: -ASPHERE_LIMITS.a8, max: ASPHERE_LIMITS.a8, step: 0.0000000001, def: 0, slider: false },
+    ],
+    size_: el => {
+      const geometry = asphericLensGeometry(el.params);
+      return { w: geometry.span + 6, h: 2 * geometry.h + 6 };
+    },
+    svg(el) {
+      const geometry = asphericLensGeometry(el.params);
+      return `<path d="${boundaryPathData(geometry.points)}" fill="${GLASS}" fill-opacity="0.72" stroke="${GLASS_S}" stroke-width="1.5" stroke-linejoin="round"/>`;
+    },
+    surfaces(el) {
+      const geometry = asphericLensGeometry(el.params);
+      const frontTop = geometry.frontPoints[0];
+      const frontBottom = geometry.frontPoints.at(-1);
+      const rearBottom = geometry.rearPoints[0];
+      const rearTop = geometry.rearPoints.at(-1);
+      const transmission = surfaceTransmission(el.params);
+      const common = { material: el.params.glass, transmission };
+      const worldProfile = (vertexX, profile) => {
+        const vertex = toWorld(el, vertexX, 0);
+        return {
+          ...profile,
+          cx: vertex.x, cy: vertex.y,
+          ux: rotPt(1, 0, el.rot || 0),
+          uy: rotPt(0, 1, el.rot || 0),
+          h: geometry.h,
+        };
+      };
+      return [
+        {
+          x1: frontTop.x, y1: frontTop.y, x2: frontBottom.x, y2: frontBottom.y, kind: 'refract',
+          data: { ...common, topologyKey: 'front', asphere: worldProfile(geometry.xv1, geometry.front) },
+        },
+        {
+          x1: frontBottom.x, y1: frontBottom.y, x2: rearBottom.x, y2: rearBottom.y, kind: 'refract',
+          data: { ...common, topologyKey: 'rim-bottom' },
+        },
+        {
+          // Keep +h -> -h ordering on both analytic faces so hit.u has one
+          // consistent endpoint convention for exact-corner detection.
+          x1: rearTop.x, y1: rearTop.y, x2: rearBottom.x, y2: rearBottom.y, kind: 'refract',
+          data: { ...common, topologyKey: 'rear', asphere: worldProfile(geometry.xv2, geometry.rear) },
+        },
+        {
+          x1: rearTop.x, y1: rearTop.y, x2: frontTop.x, y2: frontTop.y, kind: 'refract',
+          data: { ...common, topologyKey: 'rim-top' },
+        },
+      ];
+    },
+    hitTest(el, localPoint, tolerance = 4) {
+      const points = asphericLensGeometry(el.params).points;
+      return pointInBoundary(localPoint, points)
+        || points.some((point, index) => distToSegment(localPoint, point, points[(index + 1) % points.length]) <= tolerance);
+    },
+    containsLocal(el, localPoint) {
+      if (!Number.isFinite(localPoint?.x) || !Number.isFinite(localPoint?.y)) return false;
+      const geometry = asphericLensGeometry(el.params);
+      const tolerance = 1e-7;
+      if (localPoint.y < -geometry.h - tolerance || localPoint.y > geometry.h + tolerance) return false;
+      const y = Math.min(geometry.h, Math.max(-geometry.h, localPoint.y));
+      const frontX = geometry.xv1 + asphereSag(y, geometry.front);
+      const rearX = geometry.xv2 + asphereSag(y, geometry.rear);
+      return localPoint.x >= frontX - tolerance && localPoint.x <= rearX + tolerance;
+    },
+    refractiveIndex(el, wavelength = 550) { return glassIndex(el.params.glass, wavelength) ?? 1.5; },
+  },
+
   // The singlet generalised: a surface table describing any number of glass
   // bodies in a row, which is how real prescriptions are written. Cemented
   // and air-spaced groups are the same data — glass continuing across an
@@ -2260,7 +3207,8 @@ export const registry = {
   // achromatic doublet and anything else the table can express. Nothing about
   // the focal length is configured; see lensgroup.js.
   lensgroup: {
-    label: 'Lens group (surface table)', category: 'Lenses', paletteOrder: 4,
+    label: 'Lens group', category: 'Lenses',
+    paletteGroup: 'Real lenses', paletteOrder: 5,
     aliases: ['achromat', 'achromatic doublet', 'cemented doublet', 'compound lens', 'prescription', 'surface table'],
     params: [
       { key: 'preset', label: 'Prescription', type: 'select', def: 'doublet', options: PRESET_OPTIONS },
@@ -2383,7 +3331,9 @@ export const registry = {
   },
 
   telescope: {
-    label: 'Telescope (lens pair)', category: 'Lenses', paletteOrder: 5, size: { w: 174, h: 62 },
+    label: 'Conjugated thin lens pair', category: 'Lenses',
+    paletteGroup: 'Ideal lenses', paletteOrder: 2, size: { w: 174, h: 62 },
+    aliases: ['telescope', 'beam expander', 'lens pair', 'relay', '4f', 'afocal', 'keplerian'],
     size_: el => ({ w: Math.max(30, el.params.f1 + el.params.f2) + 26, h: (el.params.dia || 25.4) + 10 }),
     params: [
       { key: 'f1', label: 'Lens 1 focal (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 100 },
@@ -2427,10 +3377,11 @@ export const registry = {
     // collimated light) is the wide barrel and carries the back pupil; front
     // (sample side) is the narrow tip at local x=+16, the physical boundary
     // the working distance is measured from. The equivalent refracting plane
-    // of focal length EFL sits at x = 16 + WD - EFL, always inside the barrel
-    // because WD is capped at EFL. It is never drawn — an objective is an
+    // of focal length EFL sits at x = 16 + WD - EFL. This equivalent plane
+    // can lie outside the barrel for long-WD designs. It is never drawn — an
     // opaque barrel, not a visible singlet. See objective.js.
-    label: 'Objective', category: 'Lenses', paletteOrder: 6, size: { w: 36, h: 40 },
+    label: 'Objective', category: 'Lenses',
+    paletteGroup: 'Ideal lenses', paletteOrder: 3, size: { w: 36, h: 40 },
     snapPt: { x: OBJECTIVE_FRONT_X, y: 0 }, // physical sample-facing front tip
     // The objective owns the medium; immersion.js derives the disposable
     // relationship from this front tip to a compatible scene contact.
@@ -2468,8 +3419,10 @@ export const registry = {
           if (ratio <= 1.001) {
             return `${fill.beamDiameter.toFixed(1)} / ${pupil.toFixed(1)} mm — ${(ratio * 100).toFixed(0)}% filled, all through`;
           }
+          // The fraction is a round-pupil area ratio; the 2D tracer clips a
+          // line through the pupil instead, so its traced power can differ.
           return `${fill.beamDiameter.toFixed(1)} / ${pupil.toFixed(1)} mm — overfilled, ` +
-            `${(fill.transmitted * 100).toFixed(0)}% through (${((1 - fill.transmitted) * 100).toFixed(0)}% lost)`;
+            `about ${(fill.transmitted * 100).toFixed(0)}% through a round pupil (area estimate; the 2D trace can differ)`;
         },
       },
       // Underfilling the pupil does not just waste the rating — it hands you a
@@ -2620,10 +3573,13 @@ export const registry = {
   dichroic: {
     label: 'Dichroic mirror', category: 'Filters & Splitters', paletteOrder: 3, size: { w: 14, h: 56 },
     params: [
-      { key: 'dtype', label: 'Type', type: 'select', def: 'longpass', options: [['longpass', 'Longpass (transmit long λ)'], ['shortpass', 'Shortpass (transmit short λ)'], ['bandpass', 'Bandpass']] },
-      { key: 'cutoff', label: 'Cutoff (nm)', type: 'number', min: 150, max: 8000, step: 5, def: 550, show: p => p.dtype !== 'bandpass' },
-      { key: 'center', label: 'Band center (nm)', type: 'number', min: 150, max: 8000, step: 5, def: 550, show: p => p.dtype === 'bandpass' },
-      { key: 'band', label: 'Band width (nm)', type: 'number', min: 1, max: 2000, step: 5, def: 50, show: p => p.dtype === 'bandpass' },
+      { key: 'dtype', label: 'Type', type: 'select', def: 'longpass', options: [['longpass', 'Longpass (transmit long λ)'], ['shortpass', 'Shortpass (transmit short λ)'], ['bandpass', 'Bandpass'], ['notch', 'Band reflector (reflect one band)']] },
+      { key: 'cutoff', label: 'Cutoff (nm)', type: 'number', min: 150, max: 8000, step: 5, def: 550, show: p => p.dtype !== 'bandpass' && p.dtype !== 'notch' },
+      { key: 'center', label: 'Band center (nm)', type: 'number', min: 150, max: 8000, step: 5, def: 550, show: p => p.dtype === 'bandpass' || p.dtype === 'notch' },
+      { key: 'band', label: 'Band width (nm)', type: 'number', min: 1, max: 2000, step: 5, def: 50, show: p => p.dtype === 'bandpass' || p.dtype === 'notch' },
+      // An output coupler's coating reflects most of the resonant band and
+      // transmits the rest; 100 % is a high reflector.
+      { key: 'bandRefl', label: 'Reflectivity in band (%)', type: 'number', min: 0, max: 100, step: 1, def: 100, show: p => p.dtype === 'notch' },
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
     ],
     size_: el => ({ w: 14, h: el.params.length + 6 }),
@@ -2634,17 +3590,17 @@ export const registry = {
     },
     surfaces(el) {
       const L = el.params.length / 2, p = el.params;
-      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'dichroic', data: { dtype: p.dtype, cutoff: p.cutoff, center: p.center, band: p.band } }];
+      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'dichroic', data: { dtype: p.dtype, cutoff: p.cutoff, center: p.center, band: p.band, bandRefl: p.bandRefl } }];
     },
   },
 
   filter: {
     label: 'Filter', category: 'Filters & Splitters', paletteOrder: 2, size: { w: 12, h: 42 },
     params: [
-      { key: 'ftype', label: 'Type', type: 'select', def: 'bandpass', options: [['bandpass', 'Bandpass'], ['longpass', 'Longpass'], ['shortpass', 'Shortpass'], ['nd', 'Neutral density']] },
+      { key: 'ftype', label: 'Type', type: 'select', def: 'bandpass', options: [['bandpass', 'Bandpass'], ['longpass', 'Longpass'], ['shortpass', 'Shortpass'], ['notch', 'Notch (block one band)'], ['nd', 'Neutral density']] },
       { key: 'cutoff', label: 'Cutoff (nm)', type: 'number', min: 150, max: 8000, step: 5, def: 500, show: p => p.ftype === 'longpass' || p.ftype === 'shortpass' },
-      { key: 'center', label: 'Band center (nm)', type: 'number', min: 150, max: 8000, step: 5, def: 525, show: p => p.ftype === 'bandpass' },
-      { key: 'band', label: 'Band width (nm)', type: 'number', min: 1, max: 2000, step: 5, def: 40, show: p => p.ftype === 'bandpass' },
+      { key: 'center', label: 'Band center (nm)', type: 'number', min: 150, max: 8000, step: 5, def: 525, show: p => p.ftype === 'bandpass' || p.ftype === 'notch' },
+      { key: 'band', label: 'Band width (nm)', type: 'number', min: 1, max: 2000, step: 5, def: 40, show: p => p.ftype === 'bandpass' || p.ftype === 'notch' },
       { key: 'trans', label: 'Transmission (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 0.5, show: p => p.ftype === 'nd' },
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
     ],
@@ -3060,9 +4016,9 @@ export const registry = {
     size_: el => ({ w: 40, h: (el.params.aperture || 26) + 4 }),
     params: [{ key: 'aperture', label: 'Sensor height (mm)', type: 'number', min: 6, max: 120, step: 2, def: 26 }],
     svg(el) {
-      const h = el.params.aperture || 26;
+      const h = el.params.aperture || 26, bar = Math.max(2, h - 8); // aperture min 6 would give a negative bar
       return boxSVG(36, h, '#4b5563', '#2b333d', 'PD', null, isFlipped(el)) +
-        `<rect x="-19.5" y="${-(h - 8) / 2}" width="3" height="${h - 8}" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/>` +
+        `<rect x="-19.5" y="${-bar / 2}" width="3" height="${bar}" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/>` +
         signalLamp(el, 11, -h / 2 + 5);
     },
     surfaces: el => detectorSurfaces(38, el.params.aperture || 26, 'Photodetector'),
@@ -3095,9 +4051,9 @@ export const registry = {
       { key: 'saturation', label: 'Max output (a.u.)', type: 'number', min: 1, max: 1e7, step: 10, def: 1e4 },
     ],
     svg(el) {
-      const h = el.params.aperture || 26;
+      const h = el.params.aperture || 26, bar = Math.max(2, h - 8); // aperture min 6 would give a negative bar
       return `<rect x="-25" y="${-h / 2}" width="50" height="${h}" rx="${Math.min(13, h / 2)}" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/>` +
-        `<rect x="-27" y="${-(h - 8) / 2}" width="4" height="${h - 8}" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/>` +
+        `<rect x="-27" y="${-bar / 2}" width="4" height="${bar}" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/>` +
         `<text x="2" y="0" ${isFlipped(el) ? 'transform="rotate(180 2 0)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="600" fill="#fff">PMT</text>` +
         signalLamp(el, 16, -h / 2 + 6);
     },
@@ -3128,7 +4084,7 @@ export const registry = {
     svg(el) {
       const h = el.params.ch || 30;
       return boxSVG(40, h, '#4b5563', '#2b333d', 'CAM', null, isFlipped(el)) +
-        `<rect x="-24" y="${-(h - 16) / 2}" width="5" height="${h - 16}" fill="#333" stroke="#2b333d"/>` +
+        `<rect x="-24" y="${-Math.max(2, h - 16) / 2}" width="5" height="${Math.max(2, h - 16)}" fill="#333" stroke="#2b333d"/>` +
         signalLamp(el, 13, -h / 2 + 7);
     },
     surfaces: el => detectorSurfaces(44, el.params.ch || 30, 'Camera sensor', {
@@ -3216,15 +4172,45 @@ export const registry = {
     params: [
       { key: 'aperture', label: 'Active aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 26 },
       { key: 'deflect', label: 'Deflection (°)', type: 'number', min: -45, max: 45, step: 0.5, def: 4 },
-      { key: 'rfMHz', label: 'RF frequency (MHz)', type: 'number', min: -10000, max: 10000, step: 1, def: 80 },
       { key: 'zero', label: 'Keep 0th order', type: 'checkbox', def: false },
-      { key: 'eff', label: 'Efficiency (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 0.85 },
+      // The crystal's diffraction efficiency, named for what it does to the
+      // beam you watch: it is the fraction that can be switched, so it sets
+      // how completely each order turns on and off. At 1 both orders swing
+      // the full way; at 0.5 the diffracted order only reaches half height
+      // and the undiffracted one only falls to half.
+      { key: 'eff', label: 'Modulation efficiency (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 0.85 },
       { key: 'modulate', label: 'Modulate RF drive', type: 'checkbox', def: false },
-      { key: 'modShape', label: 'Modulation waveform', type: 'select', def: 'square', options: [['square', 'RF on/off'], ['sine', 'Sinusoidal intensity']], show: p => p.modulate },
+      // Named for the waveform driving the RF, the way a function generator
+      // labels them. A square drive switches the diffracted order fully on and
+      // off, so it alone has an on fraction; the two continuous shapes sweep
+      // the drive amplitude instead and are described by a depth.
+      {
+        key: 'modShape', label: 'Modulation waveform', type: 'select', def: 'square',
+        options: [['square', 'Square'], ['sine', 'Sine'], ['sawtooth', 'Sawtooth / triangle']],
+        show: p => p.modulate,
+      },
       { key: 'modFreqMHz', label: 'Modulation frequency (MHz)', type: 'number', min: 0.000001, max: 1000, step: 0.001, def: 1, show: p => p.modulate },
-      { key: 'chopDuty', label: 'On fraction (0–1)', type: 'number', min: 0.05, max: 0.95, step: 0.05, def: 0.5, show: p => p.modulate && p.modShape !== 'sine' },
-      { key: 'modDepth', label: 'Modulation depth (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 1, show: p => p.modulate && p.modShape === 'sine' },
+      // Duty cycle is a square-wave property: the fraction of the period the
+      // drive is on. A sine has no such thing, and a ramp's shape is set by
+      // how much of the period it spends rising instead.
+      { key: 'chopDuty', label: 'Duty cycle (0–1)', type: 'number', min: 0.05, max: 0.95, step: 0.05, def: 0.5, show: p => p.modulate && p.modShape === 'square' },
+      // The symmetry knob a function generator puts on its ramp output:
+      // 1 is the rising sawtooth, 0 the falling one, 0.5 a triangle.
+      { key: 'modSymmetry', label: 'Rise fraction (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 1, show: p => p.modulate && p.modShape === 'sawtooth' },
+      { key: 'modDepth', label: 'Modulation depth (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 1, show: p => p.modulate && p.modShape !== 'square' },
       { key: 'phaseNs', label: 'Modulation offset (ns)', type: 'number', min: -1000000, max: 1000000, step: 0.1, def: 0, show: p => p.modulate },
+      // A beam drawn as a steady line says nothing about an RF drive being
+      // switched on and off -- the gating is real, but at megahertz it lives
+      // entirely in the temporal model. Drawing the diffracted order in
+      // chunks is the same schematic footprint the chopper already uses for
+      // gated CW light, and it only affects the drawing: the traced power and
+      // every detector reading are untouched either way. Square gating only;
+      // the continuous shapes sweep the drive smoothly and have no on/off
+      // edges to chunk.
+      {
+        key: 'drawChopped', label: 'Draw gated beam chopped', type: 'checkbox', def: true,
+        show: p => p.modulate && p.modShape === 'square',
+      },
     ],
     svg(el) { return boxSVG(40, el.params.aperture || 26, '#c9b458', '#8a7a2e', 'AOM', '#3d3616', isFlipped(el)); },
     surfaces(el) {
@@ -3232,10 +4218,11 @@ export const registry = {
       return [{
         x1: 0, y1: -(p.aperture || 26) / 2, x2: 0, y2: (p.aperture || 26) / 2, kind: 'aom',
         data: {
-          deflect: p.deflect, rfMHz: p.rfMHz, zero: p.zero, eff: p.eff,
+          deflect: p.deflect, zero: p.zero, eff: p.eff,
           gate: p.modulate ? {
             frequencyMHz: p.modFreqMHz, duty: p.chopDuty, phaseNs: p.phaseNs,
-            shape: p.modShape, depth: p.modDepth,
+            shape: p.modShape, depth: p.modDepth, symmetry: p.modSymmetry,
+            drawChopped: p.drawChopped !== false,
           } : null,
         },
       }];
@@ -3576,28 +4563,35 @@ export const registry = {
       },
       { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 24 },
       { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
-      // A compressor set far below what the scene already accumulated looks
-      // like it is doing nothing. Showing what arrives — and what is left —
-      // is what turns "it seems inert" into "it is cancelling 5% of it".
+      // Three plain rows rather than one composite string: what arrives, what
+      // leaves, and which side of zero the pulse ends up on. The sign is the
+      // part that carries intent. A negative output is not a failed
+      // cancellation -- it is the ordinary way a pulse is pre-chirped so that
+      // it arrives transform-limited *after* the dispersion of whatever
+      // follows, an objective or a long glass path. Reporting only how the
+      // magnitude moved hides exactly what the user was aiming for.
+      //
+      // There is deliberately no "setting that would null it" row: with the
+      // input shown as its own number, that advice is just its negation.
       {
-        key: 'gddBalance', label: 'GDD in → out', type: 'readout',
+        key: 'gddIn', label: 'GDD at input (fs²)', type: 'readout',
         readout: (p, el) => {
           const reading = el ? compressorGddReading(el.id) : null;
-          if (!reading) return 'No pulse through it yet';
-          const fmt = v => `${Math.abs(v) < 10 ? v.toFixed(1) : Math.round(v).toLocaleString()} fs²`;
-          const share = reading.incoming !== 0
-            ? Math.abs((reading.incoming - reading.outgoing) / reading.incoming) * 100 : 0;
-          return `${fmt(reading.incoming)} → ${fmt(reading.outgoing)}` +
-            (reading.incoming !== 0 ? ` · cancels ${share.toFixed(0)}%` : '');
+          return reading ? formatGdd(reading.incoming) : 'No pulse through it yet';
         },
       },
       {
-        key: 'gddToNull', label: 'Setting that would null it', type: 'readout',
+        key: 'gddOut', label: 'GDD at output (fs²)', type: 'readout',
         readout: (p, el) => {
           const reading = el ? compressorGddReading(el.id) : null;
-          if (!reading) return '—';
-          const need = -(reading.incoming - (Number(p.gddFs2) || 0));
-          return `${Math.round(need).toLocaleString()} fs²`;
+          return reading ? formatGdd(reading.outgoing) : '\u2014';
+        },
+      },
+      {
+        key: 'gddState', label: 'Final state', type: 'readout', wide: true,
+        readout: (p, el) => {
+          const reading = el ? compressorGddReading(el.id) : null;
+          return reading ? compressorFinalState(reading) : '\u2014';
         },
       },
     ],
@@ -3732,12 +4726,122 @@ export const registry = {
     size_: el => ({ w: 36, h: (el.params.aperture || 22) + 4 }),
     params: [
       { key: 'aperture', label: 'Crystal aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 22 },
-      { key: 'convert', label: 'Convert λ', type: 'select', def: 'none', options: [['none', 'None'], ['shg', 'SHG (λ/2)'], ['thg', 'THG (λ/3)'], ['sc', 'Supercontinuum (white)'], ['opo', 'OPO (signal + idler)'], ['custom', 'Custom output λ']] },
+      { key: 'convert', label: 'Convert λ', type: 'select', def: 'none', options: [['none', 'None'], ['shg', 'χ⁽²⁾ — SHG, and SFG of two beams'], ['thg', 'THG (λ/3)'], ['sc', 'Supercontinuum (bulk)'], ['opo', 'OPO (signal + idler)'], ['custom', 'Custom output λ']] },
       { key: 'outWl', label: 'Output λ (nm)', type: 'number', min: 100, max: 12000, step: 1, def: 532, show: p => p.convert === 'custom' },
       { key: 'pumpWl', label: 'Pump λ (nm)', type: 'number', min: 100, max: 3000, step: 1, def: 532, show: p => p.convert === 'opo' },
       { key: 'signalWl', label: 'Signal λ (nm)', type: 'number', min: 100, max: 11000, step: 1, def: 800, show: p => p.convert === 'opo' },
-      { key: 'efficiency', label: 'Conversion efficiency', type: 'number', min: 0, max: 1, step: 0.05, def: 0.5, show: p => p.convert !== 'none' },
+      {
+        key: 'idlerWl', label: 'Idler λ', type: 'readout', show: p => p.convert === 'opo',
+        readout: p => {
+          const idler = idlerWavelength(p.pumpWl, p.signalWl);
+          return idler === null ? 'None — the signal must be longer than the pump' : `${Number(idler.toPrecision(5))} nm`;
+        },
+      },
+      {
+        key: 'pumpAcceptanceNm', label: 'Pump acceptance (± nm)', type: 'number', min: 0, max: 100, step: 0.5, def: 1,
+        show: p => p.convert === 'opo',
+      },
+      // Linewidths are FWHM in wavenumber. Matching the pump is a heuristic
+      // for a synchronously pumped fs/ps OPO; a ns or CW OPO's signal width is
+      // set by its cavity, and a datasheet may give both outputs.
+      {
+        key: 'linewidthMode', label: 'Output linewidths', type: 'select', def: 'pump', show: p => p.convert === 'opo',
+        options: [
+          ['pump', 'Signal as wide as the pump'],
+          ['signal', 'Signal width set, idler derived'],
+          ['both', 'Signal and idler widths set'],
+        ],
+      },
+      {
+        key: 'signalLinewidthCm', label: 'Signal linewidth (cm⁻¹)', type: 'number', min: 0, max: 2000, step: 0.5, def: 5,
+        show: p => p.convert === 'opo' && (p.linewidthMode === 'signal' || p.linewidthMode === 'both'),
+      },
+      {
+        key: 'idlerLinewidthCm', label: 'Idler linewidth (cm⁻¹)', type: 'number', min: 0, max: 2000, step: 0.5, def: 5,
+        show: p => p.convert === 'opo' && p.linewidthMode === 'both',
+      },
+      {
+        key: 'outputPhase', label: 'Output pulses', type: 'select', def: 'transformLimited', show: p => p.convert === 'opo',
+        options: [
+          ['transformLimited', 'Transform-limited'],
+          ['unknown', 'Duration set, spectral phase unknown'],
+          ['positiveChirp', 'Duration set, positively chirped (assumed Gaussian)'],
+        ],
+        // Saved OPOs that predate the setting drew a set duration.
+        migrate: p => p.convert === 'opo' ? 'unknown' : 'transformLimited',
+      },
+      {
+        // How many times the pump's duration each output lasts: 1 matches the
+        // pump, 2 is twice as long.
+        key: 'durationFactor', label: 'Output duration (× pump duration)', type: 'number', min: 0.05, max: 20, step: 0.05, def: 1,
+        show: p => p.convert === 'opo' && p.outputPhase !== 'transformLimited',
+      },
+      // A chi(2) crystal doubles each beam and mixes any pair at the same
+      // time, so the two processes have their own fractions: sharing one knob
+      // would make a second harmonic fade as the pulses came into overlap,
+      // when a bench sees all the lines at once.
+      {
+        key: 'mixEfficiency', label: 'Two-beam mixing share', type: 'number', min: 0, max: MAX_CONVERSION, step: 0.05, def: 0.3,
+        show: p => p.convert === 'shg',
+      },
+      {
+        key: 'mixDfg', label: 'Also generate difference frequency', type: 'checkbox', def: false,
+        show: p => p.convert === 'shg',
+      },
+      // A bulk supercontinuum spans a band set by the medium and the pump. The
+      // estimate reads the pump that arrives; scenes saved before it existed
+      // drew a fixed 430-870 nm band and keep it as a manual range.
+      {
+        key: 'scMedium', label: 'Medium', type: 'select', def: 'yag', show: p => p.convert === 'sc',
+        options: Object.entries(SC_MEDIA).map(([key, medium]) => [key, medium.label]),
+      },
+      {
+        key: 'scRange', label: 'Spectral range', type: 'select', def: 'estimate', show: p => p.convert === 'sc',
+        options: [['estimate', 'Estimate from the pump'], ['manual', 'Set manually']],
+        migrate: p => p.convert === 'sc' ? 'manual' : 'estimate',
+      },
+      {
+        key: 'scMinNm', label: 'Shortest λ (nm)', type: 'number', min: 100,
+        max: p => Math.max(101, (p.scMaxNm ?? 870) - 1), step: 5, def: 430,
+        show: p => p.convert === 'sc' && p.scRange === 'manual',
+      },
+      {
+        key: 'scMaxNm', label: 'Longest λ (nm)', type: 'number', min: p => Math.min(11999, (p.scMinNm ?? 430) + 1),
+        max: 12000, step: 5, def: 870,
+        show: p => p.convert === 'sc' && p.scRange === 'manual',
+      },
+      {
+        key: 'scState', label: 'Continuum', type: 'readout', wide: true, show: p => p.convert === 'sc',
+        readout: (p, el) => supercontinuumStateText(el ? supercontinuumReading(el.id) : null),
+      },
+      // A cap this application imposes rather than a physical limit: published
+      // single-pass conversion goes higher. It keeps authored fractions
+      // conservative for now. The OPO has its own control below.
+      { key: 'efficiency', label: 'Conversion efficiency', type: 'number', min: 0, max: MAX_CONVERSION, step: 0.05, def: 0.5, show: p => p.convert !== 'none' && p.convert !== 'opo' },
+      // An OPO's figure is how much of the pump it removes, a result of the
+      // signal building up over many round trips rather than a single-pass
+      // efficiency, so it is its own quantity with its own ceiling. Scenes
+      // saved before the split stored it as the shared efficiency.
+      {
+        key: 'opoDepletion', label: 'Pump depletion', type: 'number', min: 0, max: MAX_OPO_DEPLETION, step: 0.05, def: MAX_OPO_DEPLETION,
+        show: p => p.convert === 'opo',
+        migrate: (p, raw) => p.convert === 'opo' && Number.isFinite(raw.efficiency)
+          ? Math.min(MAX_OPO_DEPLETION, Math.max(0, raw.efficiency))
+          : MAX_OPO_DEPLETION,
+      },
       { key: 'transmitPump', label: 'Transmit residual pump', type: 'checkbox', def: true, show: p => p.convert !== 'none' },
+      {
+        key: 'mixState', label: 'Two-beam mixing', type: 'readout', wide: true, show: p => p.convert === 'shg',
+        readout: (p, el) => mixStateText(el ? mixReading(el.id) : null),
+      },
+      {
+        key: 'opoState', label: 'Oscillation', type: 'readout', wide: true, show: p => p.convert === 'opo',
+        readout: (p, el) => opoStateText(el ? opoReading(el.id) : null),
+      },
+      {
+        key: 'opoWidths', label: 'Outputs', type: 'readout', wide: true, show: p => p.convert === 'opo',
+        readout: (p, el) => opoWidthsText(el ? opoReading(el.id) : null),
+      },
     ],
     svg(el) {
       const isOpo = el.params.convert === 'opo';
@@ -3748,7 +4852,179 @@ export const registry = {
       const p = el.params;
       if (p.convert === 'none') return [];
       const h = (p.aperture || 22) / 2;
-      return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'transmit', data: { convert: p.convert, outWl: p.outWl, pumpWl: p.pumpWl, signalWl: p.signalWl, efficiency: p.efficiency, transmitPump: p.transmitPump } }];
+      return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'transmit', data: {
+        convert: p.convert, outWl: p.outWl, pumpWl: p.pumpWl, signalWl: p.signalWl, pumpAcceptanceNm: p.pumpAcceptanceNm,
+        mixEfficiency: p.mixEfficiency, mixDfg: p.mixDfg,
+        linewidthMode: p.linewidthMode, signalLinewidthCm: p.signalLinewidthCm, idlerLinewidthCm: p.idlerLinewidthCm,
+        outputPhase: p.outputPhase, durationFactor: p.durationFactor,
+        scMedium: p.scMedium, scRange: p.scRange, scMinNm: p.scMinNm, scMaxNm: p.scMaxNm,
+        efficiency: p.efficiency, opoDepletion: p.opoDepletion, transmitPump: p.transmitPump,
+      } }];
+    },
+  },
+
+  // An integrated optical parametric oscillator: the crystal's OPO mode in a
+  // closed box. Nothing comes out without a pump inside its acceptance; the
+  // unconverted pump is discarded inside. See opoConversion() in raytrace.js,
+  // which both packagings share.
+  opo: {
+    label: 'OPO', category: 'Nonlinear Optics', size: { w: 104, h: 44 },
+    liveReadouts: true,
+    aliases: ['optical parametric oscillator', 'integrated opo', 'tunable source', 'signal idler'],
+    size_: el => ({ w: 104, h: opoBodyH(el.params) + 4 }),
+    params: [
+      // Any pump that reaches the aperture is converted; the only condition
+      // on its wavelength is that the signal must be longer.
+      { key: 'aperture', label: 'Input aperture (mm)', type: 'number', min: 1, max: 30, step: 0.5, def: 6 },
+      {
+        key: 'tuneMode', label: 'Signal tuning', type: 'select', def: 'fixed',
+        options: [['fixed', 'Fixed'], ['sweep', 'Sweep between two wavelengths'], ['steps', 'Step through a list']],
+      },
+      { key: 'signalWl', label: 'Signal λ (nm)', type: 'number', min: 100, max: 11000, step: 1, def: 800, show: p => (p.tuneMode || 'fixed') === 'fixed' },
+      { key: 'sweepMinNm', label: 'Sweep from (nm)', type: 'number', min: 100, max: 11000, step: 1, def: 750, show: p => p.tuneMode === 'sweep' },
+      { key: 'sweepMaxNm', label: 'Sweep to (nm)', type: 'number', min: 100, max: 11000, step: 1, def: 950, show: p => p.tuneMode === 'sweep' },
+      { key: 'sweepPeriodS', label: 'Sweep period (s, there and back)', type: 'number', min: 0.5, max: 600, step: 0.5, def: 8, show: p => p.tuneMode === 'sweep' },
+      { key: 'stepList', label: 'Signal wavelengths (nm, comma-separated; 100–11000)', type: 'text', def: '780, 800, 820', show: p => p.tuneMode === 'steps' },
+      { key: 'stepDwellS', label: 'Time at each wavelength (s)', type: 'number', min: 0.1, max: 600, step: 0.1, def: 2, show: p => p.tuneMode === 'steps' },
+      { key: 'tuning', label: 'Tuning', type: 'readout', wide: true, readout: p => opoTuningText(p) },
+      {
+        key: 'linewidthMode', label: 'Output linewidths', type: 'select', def: 'pump',
+        options: [
+          ['pump', 'Signal as wide as the pump'],
+          ['signal', 'Signal width set, idler derived'],
+          ['both', 'Signal and idler widths set'],
+        ],
+      },
+      { key: 'signalLinewidthCm', label: 'Signal linewidth (cm⁻¹)', type: 'number', min: 0, max: 2000, step: 0.5, def: 5, show: p => p.linewidthMode === 'signal' || p.linewidthMode === 'both' },
+      { key: 'idlerLinewidthCm', label: 'Idler linewidth (cm⁻¹)', type: 'number', min: 0, max: 2000, step: 0.5, def: 5, show: p => p.linewidthMode === 'both' },
+      {
+        key: 'outputPhase', label: 'Output pulses', type: 'select', def: 'transformLimited',
+        options: [
+          ['transformLimited', 'Transform-limited'],
+          ['unknown', 'Duration set, spectral phase unknown'],
+          ['positiveChirp', 'Duration set, positively chirped (assumed Gaussian)'],
+        ],
+      },
+      { key: 'durationFactor', label: 'Output duration (× pump duration)', type: 'number', min: 0.05, max: 20, step: 0.05, def: 1, show: p => p.outputPhase !== 'transformLimited' },
+      { key: 'opoDepletion', label: 'Pump depletion', type: 'number', min: 0, max: MAX_OPO_DEPLETION, step: 0.05, def: MAX_OPO_DEPLETION },
+      // Switching the idler port off removes that power from the bench; it is
+      // not handed to the signal.
+      { key: 'outputIdler', label: 'Output idler', type: 'checkbox', def: true },
+      { key: 'signalBeamMm', label: 'Signal beam diameter (mm)', type: 'number', min: 0, max: 30, step: 0.5, def: 2 },
+      { key: 'idlerBeamMm', label: 'Idler beam diameter (mm)', type: 'number', min: 0, max: 30, step: 0.5, def: 2, show: p => p.outputIdler !== false },
+      {
+        key: 'opoState', label: 'Oscillation', type: 'readout', wide: true,
+        readout: (p, el) => opoElementStateText(el ? opoReading(el.id) : null, p),
+      },
+      {
+        key: 'opoWidths', label: 'Outputs', type: 'readout', wide: true,
+        readout: (p, el) => opoWidthsText(el ? opoReading(el.id) : null),
+      },
+    ],
+    svg(el) {
+      const p = el.params, hh = opoBodyH(p) / 2, ap = opoApertureMm(p) / 2, idlerY = opoIdlerOffset(p);
+      const flip = isFlipped(el) ? 'transform="rotate(180)"' : '';
+      const x = OPO_BODY_W / 2;
+      // Each output port is drawn as wide as the beam it emits.
+      const sHalf = Math.max(1.5, opoBeamMm(p, 'signal') / 2), iHalf = Math.max(1.5, opoBeamMm(p, 'idler') / 2);
+      const idler = p.outputIdler !== false
+        ? `<rect x="${x}" y="${idlerY - iHalf}" width="5" height="${2 * iHalf}" fill="#666" stroke="#444" stroke-width="1"/>`
+          + `<text x="${x - 5}" y="${idlerY}" text-anchor="end" dominant-baseline="central" font-size="6" fill="#c9d3dc">I</text>`
+        : '';
+      return `<rect x="${-x}" y="${-hh}" width="${OPO_BODY_W}" height="${2 * hh}" rx="4" fill="#2f3f4c" stroke="#1d272f" stroke-width="1.5"/>`
+        + `<text x="0" y="-5" ${flip} text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">OPO</text>`
+        + `<g stroke="#ffb86b" stroke-width="1.2" opacity="0.95"><path d="M -14,8 L -4,8"/><path d="M 0,5 L 14,5"/><path d="M 0,11 L 14,11"/></g>`
+        + `<rect x="${-x - 5}" y="${-ap}" width="5" height="${2 * ap}" fill="#666" stroke="#444" stroke-width="1"/>`
+        + `<rect x="${x}" y="${-sHalf}" width="5" height="${2 * sHalf}" fill="#666" stroke="#444" stroke-width="1"/>`
+        + `<text x="${x - 5}" y="0" text-anchor="end" dominant-baseline="central" font-size="6" fill="#c9d3dc">S</text>`
+        + idler;
+    },
+    surfaces(el) {
+      const p = el.params, hh = opoBodyH(p) / 2, x = OPO_BODY_W / 2;
+      const ap = opoApertureMm(p) / 2;
+      return [
+        { x1: -x, y1: -hh, x2: x, y2: -hh, kind: 'absorb' },
+        { x1: x, y1: -hh, x2: x, y2: hh, kind: 'absorb' },
+        { x1: x, y1: hh, x2: -x, y2: hh, kind: 'absorb' },
+        { x1: -x, y1: hh, x2: -x, y2: ap, kind: 'absorb' },
+        { x1: -x, y1: -ap, x2: -x, y2: -hh, kind: 'absorb' },
+        {
+          x1: -x, y1: ap, x2: -x, y2: -ap, kind: 'opoin', data: {
+            linewidthMode: p.linewidthMode, signalLinewidthCm: p.signalLinewidthCm, idlerLinewidthCm: p.idlerLinewidthCm,
+            outputPhase: p.outputPhase, durationFactor: p.durationFactor, opoDepletion: p.opoDepletion,
+            outputIdler: p.outputIdler !== false, aperture: p.aperture,
+            signalBeamMm: opoBeamMm(p, 'signal'), idlerBeamMm: opoBeamMm(p, 'idler'),
+            tuning: opoSignalAt(p, el._animationTimeS || 0),
+          },
+        },
+      ];
+    },
+  },
+
+  opa: {
+    label: 'OPA', category: 'Nonlinear Optics', size: { w: 120, h: 60 },
+    liveReadouts: true,
+    calculator: 'opa',
+    aliases: ['optical parametric amplifier', 'parametric amplifier', 'seeded opa', 'nopa', 'opcpa', 'signal idler', 'difference frequency', 'seed idler'],
+    size_: el => ({ w: OPA_BODY_W + 12, h: opaBodyH(el.params) + 4 }),
+    params: [
+      { key: 'signalWl', label: 'Tuned signal λ (nm)', type: 'number', min: 200, max: 20000, step: 5, def: 800 },
+      {
+        key: 'tunedIdler', label: 'Idler λ', type: 'readout',
+        readout: (p, el) => {
+          const plan = el ? opaReading(el.id) : null;
+          return Number.isFinite(plan?.tunedIdlerWl) ? `${nm4(plan.tunedIdlerWl)} nm (from the arriving ${nm4(plan.pumpWl)} nm pump)` : 'Set by the pump that arrives';
+        },
+      },
+      { key: 'gainBandwidthNm', label: 'Gain bandwidth, FWHM (nm)', type: 'number', min: 0.1, max: 5000, step: 5, def: 40 },
+      { key: 'smallSignalGainDb', label: 'Peak small-signal gain (dB)', type: 'number', min: 0, max: 100, step: 1, def: 40 },
+      {
+        key: 'gainFactor', label: 'Peak gain', type: 'readout',
+        readout: p => { const s = opaSettings(p); return `× ${fmtGain(opaGainAt(s, s.signalWl))} at the pump's peak intensity`; },
+      },
+      { key: 'maxDepletion', label: 'Pump depletion limit', type: 'number', min: 0, max: 1, step: 0.05, def: 0.5 },
+      { key: 'aperture', label: 'Input apertures (mm)', type: 'number', min: 1, max: 20, step: 0.5, def: 6 },
+      { key: 'outputBeamMm', label: 'Output beam diameter (mm)', type: 'number', min: 0, max: 20, step: 0.5, def: 3 },
+      // Switching a port off removes that light from the bench; it is not
+      // handed to another output.
+      { key: 'outputIdler', label: 'Output idler', type: 'checkbox', def: true },
+      { key: 'outputPump', label: 'Output residual pump', type: 'checkbox', def: true },
+      {
+        key: 'opaState', label: 'Amplifier', type: 'readout', wide: true,
+        readout: (p, el) => opaStateText(el ? opaReading(el.id) : null, p),
+      },
+    ],
+    svg(el) {
+      const p = el.params, hh = opaBodyH(p) / 2, x = OPA_BODY_W / 2, off = opaPortOffset(p);
+      const ap = opaApertureMm(p) / 2, out = Math.max(1.5, opaBeamMm(p) / 2);
+      const flip = isFlipped(el) ? 'transform="rotate(180)"' : '';
+      const port = (px, py, half, label, anchor) => `<rect x="${px}" y="${py - half}" width="5" height="${2 * half}" fill="#666" stroke="#444" stroke-width="1"/>`
+        + `<text x="${anchor === 'start' ? px + 8 : px - 3}" y="${py}" text-anchor="${anchor}" dominant-baseline="central" font-size="6" fill="#c9d3dc">${label}</text>`;
+      return `<rect x="${-x}" y="${-hh}" width="${OPA_BODY_W}" height="${2 * hh}" rx="4" fill="#2f4c3f" stroke="#1d2f27" stroke-width="1.5"/>`
+        + `<text x="0" y="0" ${flip} text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.5" fill="#fff">OPA</text>`
+        + port(-x - 5, -off, ap, 'P', 'start') + port(-x - 5, off, ap, 'S', 'start')
+        + port(x, off, out, 'S', 'end')
+        + (p.outputPump !== false ? port(x, -off, out, 'P', 'end') : '')
+        + (p.outputIdler !== false ? port(x, 0, out, 'I', 'end') : '');
+    },
+    surfaces(el) {
+      const p = el.params, hh = opaBodyH(p) / 2, x = OPA_BODY_W / 2, off = opaPortOffset(p);
+      const ap = opaApertureMm(p) / 2;
+      const data = {
+        ...opaSettings(p), aperture: opaApertureMm(p), outputBeamMm: opaBeamMm(p),
+        outputIdler: p.outputIdler !== false, outputPump: p.outputPump !== false,
+      };
+      return [
+        { x1: -x, y1: -hh, x2: x, y2: -hh, kind: 'absorb' },
+        { x1: x, y1: -hh, x2: x, y2: hh, kind: 'absorb' },
+        { x1: x, y1: hh, x2: -x, y2: hh, kind: 'absorb' },
+        // Rear face: absorbing everywhere except the two input ports.
+        { x1: -x, y1: hh, x2: -x, y2: off + ap, kind: 'absorb' },
+        { x1: -x, y1: off + ap, x2: -x, y2: off - ap, kind: 'opaseed', data },
+        { x1: -x, y1: off - ap, x2: -x, y2: -off + ap, kind: 'absorb' },
+        { x1: -x, y1: -off + ap, x2: -x, y2: -off - ap, kind: 'opapump', data },
+        { x1: -x, y1: -off - ap, x2: -x, y2: -hh, kind: 'absorb' },
+      ];
     },
   },
 
@@ -3875,7 +5151,7 @@ export const registry = {
     params: [
       { key: 'height', label: 'Height (mm)', type: 'number', min: 2, max: 150, step: 1, def: 22 },
       { key: 'shape', label: 'Shape', type: 'select', def: 'arrow', options: [['arrow', 'Arrow'], ['F', 'Letter F'], ['tree', 'Tree']] },
-      { key: 'raysMode', label: 'Rays from tip', type: 'select', def: 'fan', options: [['fan', 'Show ray fan'], ['none', 'No rays']] },
+      { key: 'raysMode', label: 'Rays from axis', type: 'select', def: 'fan', options: [['fan', 'Show ray fan'], ['none', 'No rays']] },
       { key: 'spread', label: 'Fan angle (°)', type: 'number', min: 1, max: 40, step: 1, def: 10, show: p => p.raysMode === 'fan' },
       { key: 'nrays', label: 'Rays', type: 'number', min: 2, max: 9, step: 1, def: 3, show: p => p.raysMode === 'fan' },
       { key: 'showImage', label: 'Draw image formed', type: 'checkbox', def: true },
@@ -3946,6 +5222,12 @@ export const registry = {
         show: p => p.prop === 'time' },
       { key: 'timeOffsetNs', label: 'Time offset (ns)', type: 'number', min: -1e6, max: 1e6, step: 0.1, def: 0,
         show: p => p.prop === 'time' },
+      // Power is everything crossing this circle, drawn dashed around the
+      // crosshair; the spectrum, wavelength, polarization and time views
+      // describe every beam crossing it when there is more than one. Set it
+      // to take in one beam, or several.
+      { key: 'sampleDiameterMm', label: 'Sampling diameter (mm)', type: 'number', min: 0.1, max: 150, step: 1, def: 10,
+        show: p => p.prop === 'power' || PROBE_AREA_VIEWS.has(p.prop) },
     ],
     svg(el, elements = []) {
       const scale = probeScale(el);
@@ -3960,8 +5242,13 @@ export const registry = {
         `<line x1="0" y1="-8" x2="0" y2="8" stroke="#e07020" stroke-width="1"/>` +
         `<line x1="-8" y1="0" x2="8" y2="0" stroke="#e07020" stroke-width="1"/>` +
         `<line x1="0" y1="-9" x2="0" y2="${-PROBE_LEADER}" stroke="#e07020" stroke-width="1"/>`;
-      return crosshair +
-        `<g transform="rotate(${-place.rot}) translate(${place.x.toFixed(2)},${place.y.toFixed(2)}) scale(${scale})">` +
+      // The circle is drawn whenever it decides the reading: always for
+      // power, and for the other views when they are showing several beams.
+      const sampling = el.params.prop === 'power' || probeMultiBeams(el)
+        ? `<circle r="${(probeSampleDiameterMm(el.params) / 2).toFixed(2)}" fill="none" stroke="#e07020" stroke-width="0.8" stroke-dasharray="2 1.5" opacity="0.8"/>`
+        : '';
+      return crosshair + sampling +
+        `<g class="probe-card" transform="rotate(${-place.rot}) translate(${place.x.toFixed(2)},${place.y.toFixed(2)}) scale(${scale})">` +
         card.body + `</g>`;
     },
     surfaces: () => [],
@@ -4241,8 +5528,10 @@ export function boxAnchor(el) {
 // concave lens: identical optics to 'lens', concave default focal length
 registry.lensc = {
   ...registry.lens,
-  label: 'Concave lens',
+  label: 'Thin concave lens',
+  paletteGroup: 'Ideal lenses',
   paletteOrder: 1,
+  aliases: ['concave lens', 'thin lens', 'negative lens', 'diverging lens', 'ideal lens'],
   params: registry.lens.params.map(p => (p.key === 'f' ? { ...p, def: -100 } : p)),
 };
 
@@ -4250,6 +5539,39 @@ registry.lensc = {
 // rather than a line, so it replaces wavelength with a range and defaults to
 // a fixed broadband white instead of a colour derived from a centroid λ that
 // no longer means much once the band is hundreds of nm wide.
+//
+// Its pulse duration is set by hand, but never below what its band allows: a
+// pulse shorter than the transform limit of its spectrum cannot exist. The
+// floor is rounded up to three significant figures so the field shows a clean
+// number and the rounded value still honours the limit. A band so narrow its
+// limit passes the longest duration the field holds -- a zero-width band has
+// no finite limit at all -- floors at that maximum instead: the tracer and a
+// reloaded sketch clamp there too, so any higher floor could never be kept.
+const SC_PULSE_WIDTH_MIN_FS = 1;
+const SC_PULSE_WIDTH_MAX_FS = 1000000000;
+export function supercontinuumPulseWidthFloorFs(p = {}) {
+  const tl = supercontinuumTransformLimitFs(p.scMin ?? 300, p.scMax ?? 700, p.pulseShape);
+  if (!(tl > SC_PULSE_WIDTH_MIN_FS)) return SC_PULSE_WIDTH_MIN_FS;
+  if (!(tl < SC_PULSE_WIDTH_MAX_FS)) return SC_PULSE_WIDTH_MAX_FS;
+  const unit = 10 ** (Math.floor(Math.log10(tl)) - 2);
+  return Math.min(SC_PULSE_WIDTH_MAX_FS, Number((Math.ceil(tl / unit - 1e-9) * unit).toPrecision(3)));
+}
+// Narrowing the band or switching the envelope raises the floor under a
+// duration that was valid a moment ago; every path that edits those params
+// runs this so the stored duration is lifted rather than left impossible.
+// It is also what enforces the floor on a typed duration: the field's HTML
+// min stays at 1 fs so the browser's 10 fs step ladder is not rebased onto
+// an arbitrary floor like 71.5 fs, which would mark 250 fs as off-step.
+export function normalizeSupercontinuumParams(params) {
+  const floor = supercontinuumPulseWidthFloorFs(params);
+  return Number(params.pulseWidthFs) >= floor ? {} : { pulseWidthFs: floor };
+}
+// The two endpoints stay at least one field step apart. A zero-width band is
+// not a continuum at all, and it has no finite transform limit: clamping a
+// crossed entry to equal endpoints lifted the pulse duration to the field's
+// 1e9 fs ceiling, where it stayed after the band was put right. At 10 nm the
+// narrowest band still admits a 71 fs pulse at 700 nm.
+const SC_MIN_SEPARATION_NM = 10;
 registry.sclaser = {
   ...registry.pulsedlaser,
   label: 'Supercontinuum laser',
@@ -4257,11 +5579,23 @@ registry.sclaser = {
   aliases: ['super continuum', 'white laser', 'broadband pulsed source', 'sc laser'],
   params: [
     { ...P.wavelength, def: 500, show: () => false },
-    { key: 'scMin', label: 'Spectrum minimum (nm)', type: 'number', min: 200, max: 11999, step: 10, def: 300 },
-    { key: 'scMax', label: 'Spectrum maximum (nm)', type: 'number', min: 201, max: 12000, step: 10, def: 700 },
+    { key: 'scMin', label: 'Spectrum minimum (nm)', type: 'number', min: 200,
+      max: p => Math.max(200, Math.min(12000 - SC_MIN_SEPARATION_NM, (p.scMax ?? 700) - SC_MIN_SEPARATION_NM)), step: 10, def: 300 },
+    { key: 'scMax', label: 'Spectrum maximum (nm)', type: 'number',
+      min: p => Math.min(12000, Math.max(200 + SC_MIN_SEPARATION_NM, (p.scMin ?? 300) + SC_MIN_SEPARATION_NM)), max: 12000, step: 10, def: 700 },
     { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 1 },
     ...beamShapeParams(3),
     ...pulseTrainParams(),
+    // Duration and envelope are configured independently of the broad spectrum;
+    // this is not a reconstruction of nonlinear continuum generation.
+    ...registry.pulsedlaser.params.filter(p => ['pulseWidthFs', 'pulseShape'].includes(p.key))
+      .map(p => p.key === 'pulseWidthFs'
+        ? { ...p, def: 100, min: supercontinuumPulseWidthFloorFs, htmlMin: SC_PULSE_WIDTH_MIN_FS, max: SC_PULSE_WIDTH_MAX_FS }
+        : { ...p }),
+    {
+      key: 'scTransformLimit', label: 'Transform limit (fs)', type: 'readout',
+      readout: p => String(supercontinuumPulseWidthFloorFs(p)),
+    },
     POL_PARAM,
     // Broadband white by default: a supercontinuum has no single colour to
     // derive, and this is the shade the tracer already paints wide-band light.
@@ -4291,7 +5625,9 @@ const DIRECT = {
   objarrow: { resize: { y: 'height' }, tune: { key: 'spread', short: 'fan', when: p => p.raysMode === 'fan' } },
   mirror: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
   galvo: { resize: { y: 'length' }, tune: { key: 'commandAngle', short: 'center' } },
+  polygonscanner: { resize: { uniform: 'diameter' }, tune: { key: 'scanPhase', short: 'phase' } },
   retroreflector: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
+  conicmirror: { resize: { y: 'dia' }, tune: { key: 'conic', short: 'k' } },
   cmirrorx: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
   cmirror: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
   oap: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
@@ -4301,6 +5637,7 @@ const DIRECT = {
   // Radii are the physics, so the tune knob drives R1 (and the shape
   // follows); resize sets the clear aperture, which is genuinely a size.
   thicklens: { resize: { y: 'dia' }, tune: { key: 'r1', short: 'R₁' } },
+  asphericlens: { resize: { y: 'dia' }, tune: { key: 'k1', short: 'k₁' } },
   lensgroup: { resize: { y: 'dia' }, tune: { key: 'lastRadius', short: 'R last' } },
   telescope: { resize: { y: 'dia' }, tune: { key: 'f2', short: 'f₂' } },
   // The blue handle changes the physical front opening.
@@ -4309,8 +5646,8 @@ const DIRECT = {
   // and internal planes jump by hundreds of millimetres. Presets now handle
   // ordinary changes and Advanced parameters retain exact EFL entry.
   objective: { resize: { y: 'frontAperture' } },
-  dichroic: { resize: { y: 'length' }, tune: { key: p => p.dtype === 'bandpass' ? 'center' : 'cutoff', short: 'λ' } },
-  filter: { resize: { y: 'length' }, tune: { key: p => p.ftype === 'nd' ? 'trans' : p.ftype === 'bandpass' ? 'center' : 'cutoff', short: 'filter' } },
+  dichroic: { resize: { y: 'length' }, tune: { key: p => (p.dtype === 'bandpass' || p.dtype === 'notch' ? 'center' : 'cutoff'), short: 'λ' } },
+  filter: { resize: { y: 'length' }, tune: { key: p => p.ftype === 'nd' ? 'trans' : p.ftype === 'bandpass' || p.ftype === 'notch' ? 'center' : 'cutoff', short: 'filter' } },
   bs: { resize: { uniform: 'size' }, tune: { key: 'ratio', short: 'T' } },
   polarizer: { resize: { y: 'length' }, tune: { key: 'pangle', short: 'axis' } },
   hwp: { resize: { y: 'length' }, tune: { key: 'a', short: 'axis' } },
@@ -4343,7 +5680,9 @@ const DIRECT = {
   pulsecompressor: { resize: { y: 'aperture' }, tune: { key: 'gddFs2', short: 'GDD' } },
   eom: { resize: { y: 'aperture' }, tune: { key: 'retardance', short: 'Δφ', when: p => p.modulate && p.driveMode !== 'switching' } },
   chopper: { resize: { uniform: 'diameter' }, tune: { key: 'chopDuty', short: 'duty', when: p => p.modulate } },
-  crystal: { resize: { y: 'aperture' }, tune: { key: 'efficiency', short: 'η', when: p => p.convert !== 'none' } },
+  crystal: { resize: { y: 'aperture' }, tune: { key: p => p.convert === 'opo' ? 'opoDepletion' : 'efficiency', short: 'η', when: p => p.convert !== 'none' } },
+  opo: { resize: { y: 'aperture' }, tune: { key: 'signalWl', short: 'λs', when: p => (p.tuneMode || 'fixed') === 'fixed' } },
+  opa: { resize: { y: 'aperture' }, tune: { key: 'signalWl', short: 'λs' } },
   glassrod: { resize: { x: 'rodlen', y: 'dia' }, tune: { key: 'ior', short: 'n', when: p => p.material === 'constant' } },
   sample: { resize: { x: 'aperture' }, tune: { key: 'transmission', short: 'T', when: p => p.transmitExc } },
   stage: { resize: { x: 'aperture' } },
@@ -4383,26 +5722,31 @@ export function getDirectManipulation(el) {
 // simulated elements affect traced rays, configurable elements need an active
 // mode, and diagram-only elements are honest visual annotations/placeholders.
 const ELEMENT_HELP = {
+  opa: 'A seeded optical parametric amplifier in a box. The pump enters the upper rear port and the seed the lower one; each continues at its own height, so the residual pump leaves opposite the pump port and the amplified signal opposite the seed port, with the idler between them. Set it like a data sheet: the tuned signal wavelength, the gain bandwidth (a Gaussian gain spectrum) and the peak small-signal gain at the pump\'s peak intensity. The amplification itself is computed: instant by instant through the pulses, one pump photon for one signal and one idler photon, with the pump energy as the limit, and only the part of a broadband seed that falls in the gain band grows. The sources need an average-power setting. OPAs can be cascaded: line a second one up behind the first, and it is pumped by the residual pump and seeded by the amplified signal, as in a preamplifier followed by a power amplifier. Phase matching, beam profiles, walk-off, back-conversion, parametric noise, modulated (gated) beams, seeds whose spectrum was filtered upstream and feedback loops are not simulated; the OPA calculator explains the model and its limitations.',
+  opo: 'An optical parametric oscillator in a box: pump light entering the rear aperture within its angular and wavelength acceptance becomes a signal on the front axis and an optional idler on a parallel port, by the same phenomenological model as the crystal\'s OPO mode. The signal can be fixed, swept or stepped through a list. The unconverted pump is discarded inside; threshold, gain, cavity length and synchronisation are not simulated.',
   cwlaser: 'Emits a steady monochromatic collimated beam at one wavelength.',
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
-  sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam.',
-  pointsource: 'Emits isotropic light (360° by default, optionally broadband) that fades over a short evanescent range unless captured by a nearby lens, objective, or fiber tip.',
-  objarrow: 'Traces object-tip rays and draws an ideal paraxial image; the image marker does not model downstream clipping.',
+  sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
+  pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp — that fades over a short evanescent range unless captured by a nearby lens, objective, mirror, or fiber tip. A parabolic mirror with the source at its focus collimates it.',
+  objarrow: 'Traces a ray fan from the object’s anchor on the optical axis and separately draws an ideal paraxial image; the image marker does not model downstream clipping.',
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',
   galvo: 'Reflects rays from a static or animated ideal quasistatic mechanical scan angle; high scan rates use a slowed preview.',
-  cmirrorx: 'Diverges reflected rays with a paraxial focal-length model.',
-  cmirror: 'Focuses reflected rays with a paraxial focal-length model.',
-  oap: 'Reflects from segmented parabolic geometry toward the configured focus.',
+  conicmirror: 'Exact conic intersections and surface normals, with a real central opening. k = 0: sphere; −1: parabola; below −1: hyperbola. Radius 0: plane. The coated side reflects; the back and coating losses absorb. The opening is capped at the diameter; an impossible spherical/elliptical radius is enlarged to keep the aperture real (see Geometry used). 2D ray geometry only: no diffraction, spider vanes, coating spectrum, or calibrated IR throughput.',
+  polygonscanner: 'Traces reflection from every facet of a rotating regular polygon, so the angle doubling and the pupil walk fall out of the geometry rather than being modelled. Facet rate = facets × RPM / 60. The usable window is ideal synchronized blanking centred on the facet — green hub open, amber blanked — and is not derived from your beam: compare the beam against the facet width readout and close the window before the beam straddles two facets. No telecentric scan optics, facet-to-facet angular error, or material removal model.',
+  cmirrorx: 'Diverges reflected rays off a real spherical surface of radius 2f, so it carries the spherical aberration a real one does.',
+  cmirror: 'Focuses reflected rays off a real spherical surface of radius 2f — marginal rays cross ahead of the paraxial focus, which is the aberration a parabolic mirror exists to avoid.',
+  oap: 'Reflects off the true parabola, so a source at its focus leaves exactly collimated at any aperture — no spherical aberration, unlike a spherical mirror.',
   lens: 'Bends rays with a thin-lens, paraxial focal-length model. Pulse GDD silently assumes N-BK7 and a diameter-aware sag thickness.',
   lensc: 'Diverges rays with a negative thin-lens focal length. Pulse GDD silently assumes N-BK7 and a diameter-aware sag thickness.',
   metalens: 'A flat paraxial phase-gradient proxy with design-wavelength focal length, diffractive chromatic shift or an idealized achromatic band, and user-set focusing efficiency.',
   lensgroup: 'Traces a whole prescription — one row per surface, with radius, spacing and the glass that follows — as real glass bodies. Cemented and air-spaced groups are the same table, so an achromatic doublet corrects its own colour instead of being told to. Pulse GDD follows the real traced path through each glass.',
   thicklens: 'Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance, spherical and chromatic aberration, and pulse GDD all follow the traced geometry.',
+  asphericlens: 'Refracts through exact conic-plus-even-polynomial faces, so changing k or A₄/A₆/A₈ changes the physical ray intersections and aberration rather than only the drawing.',
   telescope: 'Applies two thin lenses separated by their focal lengths. Each lens uses the same silent N-BK7 sag estimate for pulse GDD.',
-  objective: 'Choose a plausible generic objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance is independent of it, and long-working-distance designs really do focus beyond their own EFL. Magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.',
-  dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
-  filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
+  objective: 'Choose a plausible generic objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance is independent of it, and long-working-distance designs really do focus beyond their own EFL. Magnification is reported for a 200 mm tube lens. The equivalent plane is placed so light focuses one working distance past the front tip. It can lie outside the drawn barrel for long-working-distance designs; it represents the whole objective, not a physical glass surface. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.',
+  dichroic: 'Transmits or reflects wavelength bands around its configured cutoff, or reflects one band and transmits both sides of it (band reflector), optionally reflecting only part of that band as an output coupler.',
+  filter: 'Passes a spectral band, blocks one as a notch, or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',
   grating: 'Creates selected diffraction orders using the grating equation.',
   prism: 'Refracts through all three drawn boundaries with selectable catalogue-glass dispersion and traced path-length GDD.',
@@ -4427,7 +5771,7 @@ const ELEMENT_HELP = {
   camera: 'Measures a pixel-integrated one-dimensional intensity profile and resolves supported interference from sized monochromatic CW lasers.',
   eye: 'Focuses through a configurable pupil and reports the qualitative retinal signal and spot.',
   display: 'Shows the live qualitative output of a linked photodetector, PMT, camera, or retina.',
-  aom: 'Deflects and frequency-shifts first-order light with efficiency, zero-order, and square or sinusoidal RF modulation.',
+  aom: 'Deflects first-order light with a configurable modulation efficiency and zero order, under square, sine or sawtooth RF modulation (the ramp sweeping from falling through triangular to rising). A square gate can also draw both orders chopped in opposition, so the switching stays visible on a beam drawn as a steady line.',
   phasemodulator: 'Writes a voltage-driven optical path across the whole beam without touching its polarization \u2014 invisible alone, and an amplitude modulator in one arm of an interferometer.',
   aod: 'Steers first-order light to a set deflection angle, held static or swept, with wavelength-dependent scanning and an optional zero order.',
   aotf: 'Selects one or more spectral lines and passes them straight through — multiplexed, with every line open at once, or sequential, stepping through them one at a time. The beam depleted of those lines is deflected to a configurable angle and can be shown or hidden.',
@@ -4435,10 +5779,10 @@ const ELEMENT_HELP = {
   pulsecompressor: 'Adds a bounded second-order spectral-phase correction as positive or negative GDD. It can compress a pulse only by cancelling opposite accumulated GDD; higher-order phase and a physical grating, prism, or chirped-mirror layout are not modeled.',
   eom: 'Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.',
   chopper: 'Gates finite-duration pulse trains in time and draws CW light as a chunked on/off pattern matching its duty cycle; detector readings use the duty-averaged CW power.',
-  crystal: 'Converts a configurable fraction of pump power into SHG, THG, supercontinuum, OPO, or custom output.',
+  crystal: 'Converts a configurable fraction of pump power — single-pass fractions are capped at 60 %, a conservative application limit rather than a physical one — into second-order (SHG and two-beam SFG), THG, supercontinuum, OPO, or custom output. The supercontinuum band is estimated from the pump wavelength and the chosen medium, or set by hand. The χ⁽²⁾ mode doubles every beam and, when a second wavelength is present, also mixes the pair, drawing on what doubling leaves of both beams so the mixed line sits alongside the two harmonics — but only while their pulses reach the crystal together, which is how time zero is found. OPO mode removes an authored pump depletion, up to 95 % since it builds over many round trips, splits it by Manley–Rowe and gives signal and idler their own linewidths and pulse durations. Phase matching, threshold and cavity dynamics are not simulated.',
   sample: 'Attenuates excitation and can emit up to five stacked signals at once — fluorescence, SHG, THG, SFG, and CARS. Parametric signals are forward-generated with an optional weaker epi (backward) lobe; SFG and CARS additionally require two different excitation wavelengths at the same spot.',
   stage: 'Mechanically clips rays outside its clear aperture and optionally contains a sample. The piezo stage can scan the sample along its long axis (XY), along the beam axis (Z, depth), or raster both together; a resin sample can also show pulsed 2PP voxel marks.',
-  probe: 'Reads spectrum, wavelength, or polarization from the nearest traced beam.',
+  probe: 'Reads the light crossing its sampling circle: average power adds up every beam there, as a power meter would; with several beams, the spectrum sums them, the wavelength view lists them, polarization shows each, and the time view says whether their pulses arrive together or how far apart. With one beam it reads that beam; pulse duration reads the nearest beam.',
   arrowann: 'Diagram annotation; does not interact with rays.',
   figureframe: 'Canvas-only export crop. Its border and handles never appear in the exported figure.',
   textlabel: 'Markdown annotation with headings, lists, emphasis, and code; web and DOI addresses become clickable links. It does not interact with rays.',
@@ -4506,18 +5850,24 @@ export function getElementMeta(type, params = {}, context = {}) {
       : 'Currently a plain reflector. Add an optical structure to shape the wavefront.';
   } else if (DIAGRAM_ONLY.has(type)) {
     note = 'This element is intentionally visual and never changes traced rays.';
-  } else if (type === 'thicklens' || type === 'freeglass') {
+  } else if (GLASS_BODY_TYPES.has(type)) {
     const cemented = context.element && Array.isArray(context.elements)
       ? touchingGlassBody(context.element, context.elements)
       : null;
-    const adjusted = type === 'thicklens' ? thickLensAdjustment(params) : null;
+    const adjusted = type === 'thicklens' ? thickLensAdjustment(params)
+      : type === 'asphericlens' ? asphericLensAdjustment(params)
+        : null;
     if (cemented) {
       tier = 'configurable';
       note = `This body is touching another glass body. The tracer cannot resolve two interfaces that close together, so one of them is skipped and the rays are wrong — not obviously wrong, just wrong. Leave at least ${MIN_CEMENT_GAP} mm between them; a real cemented group is a 10-20 µm layer of not-quite-glass anyway.`;
     } else if (adjusted) {
-      note = `Requested radii or thickness cannot close at this aperture. The trace uses ${formatRealizedGeometry(params)}; see Geometry used below.`;
+      note = type === 'asphericlens'
+        ? `Requested asphere geometry is outside the finite-aperture safety bounds or would cross the other face. The trace uses ${formatAsphericGeometry(params)}; see Geometry used below.`
+        : `Requested radii or thickness cannot close at this aperture. The trace uses ${formatRealizedGeometry(params)}; see Geometry used below.`;
     } else if (type === 'thicklens') {
-      note = 'A 2D meridional singlet with spherical or flat faces and visible-band catalogue approximations. Aspheres, skew rays, coatings, and calibrated off-axis aberrations are not modeled.';
+      note = 'A 2D meridional singlet with spherical or flat faces and visible-band catalogue approximations. Use Aspheric lens for conic/even-polynomial faces; skew rays, coatings, and calibrated off-axis aberrations are not modeled.';
+    } else if (type === 'asphericlens') {
+      note = 'The trace uses the standard even-asphere sag with exact intersections and surface normals in a 2D meridional section. Paraxial focal readouts use vertex curvature; diffraction, skew rays, coatings, and manufacturing tolerances are not modeled.';
     } else {
       note = 'Straight and circular-arc boundaries use qualitative geometric refraction. Nested or overlapping glass bodies are not surface-merged.';
     }

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { clampZoom, gridDetailForZoom, MICRO_GRID_PITCH, pinchView, snapToGrid, zoomViewAt } from '../sketch/js/viewport.js';

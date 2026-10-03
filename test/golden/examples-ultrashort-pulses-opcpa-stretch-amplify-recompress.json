@@ -1,0 +1,165 @@
+{
+ "elements": 21,
+ "beams": 0,
+ "drawables": {
+  "count": 5,
+  "byType": {
+   "path": 5
+  },
+  "colors": {
+   "#65ff00": 2,
+   "#6e3b3b": 1,
+   "#8b1a1a": 2
+  },
+  "points": 13,
+  "sum": [
+   13836,
+   4054
+  ],
+  "bbox": [
+   152,
+   282,
+   7000,
+   418
+  ],
+  "digest": "10b24e52"
+ },
+ "drawnElements": {
+  "textlabel:e1": "a8122d6a",
+  "textlabel:e2": "7cc3aa56",
+  "pulsedlaser:e3": "bc05eac0",
+  "probe:e4": "a0085b41",
+  "pulsecompressor:e5": "38a9b9dc",
+  "probe:e6": "ac4939b0",
+  "pulsedlaser:e7": "bc05eac0",
+  "mirror:e8": "81e74feb",
+  "opa:e9": "4681d8b9",
+  "beamdump:e10": "6b3307f5",
+  "beamdump:e11": "6b3307f5",
+  "probe:e12": "85d3eff3",
+  "pulsecompressor:e13": "7ce88109",
+  "probe:e14": "fc29e4b3",
+  "probe:e15": "3174d960",
+  "textlabel:e16": "ef14d316",
+  "textlabel:e17": "535ab433",
+  "textlabel:e18": "a6d7dfb0",
+  "textlabel:e19": "77165cf7",
+  "textlabel:e20": "c0d3cca8",
+  "textlabel:e21": "0059f047"
+ },
+ "pulseTracks": [
+  {
+   "intensity": 1,
+   "color": "#8b1a1a",
+   "points": 3,
+   "opl": [
+    0,
+    392
+   ],
+   "pulse": {
+    "sourceId": "e3",
+    "repRateMHz": 0.001,
+    "pulseWidthFs": 31.4,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "1ba52da4"
+  },
+  {
+   "intensity": 1,
+   "color": "#65ff00",
+   "points": 3,
+   "opl": [
+    0,
+    230
+   ],
+   "pulse": {
+    "sourceId": "e7",
+    "repRateMHz": 0.001,
+    "pulseWidthFs": 12000,
+    "phaseNs": 0.540374,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "c54ae089"
+  },
+  {
+   "intensity": 0.0337978816,
+   "color": "#6e3b3b",
+   "points": 2,
+   "opl": [
+    230,
+    298
+   ],
+   "pulse": {
+    "sourceId": "e7›e9:opaIdler",
+    "repRateMHz": 0.001,
+    "pulseWidthFs": 7112.04487,
+    "phaseNs": 0.540373892,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "c95ec780"
+  },
+  {
+   "intensity": 0.0670444928,
+   "color": "#8b1a1a",
+   "points": 3,
+   "opl": [
+    230,
+    6568
+   ],
+   "pulse": {
+    "sourceId": "e7›e9:opaSignal",
+    "repRateMHz": 0.001,
+    "pulseWidthFs": 9065.38616,
+    "phaseNs": 0.540349978,
+    "spectrumReshaped": true,
+    "gates": 0
+   },
+   "digest": "9be9c9dd"
+  },
+  {
+   "intensity": 0.899167626,
+   "color": "#65ff00",
+   "points": 2,
+   "opl": [
+    230,
+    258
+   ],
+   "pulse": {
+    "sourceId": "e7",
+    "repRateMHz": 0.001,
+    "pulseWidthFs": 12000,
+    "phaseNs": 0.540374,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "956a2730"
+  }
+ ],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "readouts": {
+  "pulsecompressor:e5": {
+   "compressor": {
+    "incoming": 0,
+    "outgoing": 100000
+   }
+  },
+  "pulsecompressor:e13": {
+   "compressor": {
+    "incoming": 0,
+    "outgoing": -100000
+   }
+  }
+ },
+ "fibers": {}
+}

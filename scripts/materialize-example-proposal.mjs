@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { createHash } from 'node:crypto';
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -17,10 +19,13 @@ import '../sketch/js/vipa.js';
 import { traceAll } from '../sketch/js/raytrace.js';
 import { parseSketch, state } from '../sketch/js/state.js';
 
-const REPOSITORY = 'LucaGenchi/optics-sketch';
+const REPOSITORY = 'LucaGenchi/opticalsetup';
+// The current site and its GitHub Pages mirror, plus the mirror's old name:
+// links people shared before the repository was renamed still work.
 const ALLOWED_SHARE_LOCATIONS = new Set([
   'opticalsetup.com/sketch/',
   'www.opticalsetup.com/sketch/',
+  'lucagenchi.github.io/opticalsetup/sketch/',
   'lucagenchi.github.io/optics-sketch/sketch/',
 ]);
 const MAX_SCENE_BYTES = 250_000;
@@ -41,6 +46,18 @@ function issueField(body, heading, nextHeading = null, { last = false } = {}) {
   const value = body.slice(valueStart, valueEnd < valueStart ? body.length : valueEnd).trim();
   if (!value || value === '_No response_') throw new Error(`Issue is missing “${heading}”`);
   return value;
+}
+
+// The same slice, with its line structure intact. issueField() trims, which
+// would turn an indented code example at the start of a section into a line
+// flush left -- exactly the disguise the checkbox scan must see through.
+function rawIssueField(body, heading, nextHeading = null) {
+  const marker = `### ${heading}`;
+  const startAt = body.indexOf(marker);
+  if (startAt < 0) return '';
+  const valueStart = startAt + marker.length;
+  const valueEnd = nextHeading ? body.lastIndexOf(`### ${nextHeading}`) : body.indexOf('\n### ', valueStart);
+  return body.slice(valueStart, valueEnd < valueStart ? body.length : valueEnd).replace(/^\r?\n/, '');
 }
 
 function optionalIssueField(body, heading, nextHeading = null, { last = false } = {}) {
@@ -79,7 +96,72 @@ export function extractProposalIssue(body) {
   const reference = cleanReference(optionalIssueField(body, 'Reference (optional)', 'Contribution acknowledgement'));
   const acknowledgement = issueField(body, 'Contribution acknowledgement');
   if (!/- \[[xX]\]/.test(acknowledgement)) throw new Error('Contribution acknowledgement is required');
-  return { name, description, reference, shareURL };
+  const license = grantFrom(rawIssueField(body, 'Contribution acknowledgement'));
+  return { name, description, reference, shareURL, license };
+}
+
+// The affirmative grant, exactly as each supported version of the form words
+// it. Recognising the licence *name* is not enough: an issue body is editable,
+// and "I do NOT license this setup under CC BY 4.0" mentions it too. A line
+// only grants the licence when it matches one of these word for word, so a
+// reworded or unfamiliar line leaves the submission unlicensed rather than
+// being guessed at.
+const GRANT_TEXTS = [
+  {
+    version: 'example-proposal/2026-09',
+    content: 'CC-BY-4.0',
+    text: 'I have the right to license this setup and its description, and I publish them under CC BY 4.0 '
+      + '(credit to me, reuse and adaptation allowed). The app itself stays GPL-3.0-or-later.',
+  },
+];
+
+const normalizeGrant = line => line.replace(/\s+/g, ' ').trim().toLowerCase();
+
+// Lines a reader would see as ticked boxes. An issue body is Markdown that
+// anyone can edit, so a line that merely looks like a checkbox is not one:
+// it may be inside a code block, quoted, or indented as an example. The
+// fence rules follow CommonMark -- a block opened with N backticks closes
+// only on at least N backticks, never on tildes or a shorter run -- because
+// toggling on any fence let `````` ``` G ``` `````` and "``` ~~~ G ```" both
+// leave G outside, and trimming indentation let four leading spaces pass an
+// indented code example off as a real checkbox.
+function checkedLines(section) {
+  const out = [];
+  let fence = null;
+  for (const raw of section.split('\n')) {
+    const line = raw.replace(/\t/g, '    ');
+    const indent = line.match(/^ */)[0].length;
+    const rest = line.slice(indent);
+    // A fence may be indented up to three spaces; four or more is code.
+    const fenceMatch = indent <= 3 ? rest.match(/^(`{3,}|~{3,})(.*)$/) : null;
+    if (fence) {
+      const closes = fenceMatch
+        && fenceMatch[1][0] === fence.char
+        && fenceMatch[1].length >= fence.length
+        && fenceMatch[2].trim() === '';   // a closing fence carries no info string
+      if (closes) fence = null;
+      continue;                            // everything until then is code
+    }
+    if (fenceMatch) { fence = { char: fenceMatch[1][0], length: fenceMatch[1].length }; continue; }
+    if (indent >= 4) continue;             // an indented code block
+    if (rest.startsWith('>')) continue;    // quoted from somewhere else
+    if (indent > 0) continue;              // the form writes its boxes flush left
+    const match = rest.match(/^- \[[xX]\]\s*(.*)$/);
+    if (match) out.push(match[1].trim());
+  }
+  return out;
+}
+
+// The licence grant is recorded only when its own box is ticked, with the
+// text that was ticked and which form version it came from. The older form
+// had one box, about permission to share, so reprocessing an old issue
+// cannot manufacture a grant nobody gave.
+export function grantFrom(acknowledgement) {
+  for (const text of checkedLines(acknowledgement)) {
+    const known = GRANT_TEXTS.find(grant => normalizeGrant(grant.text) === normalizeGrant(text));
+    if (known) return { content: known.content, text, formVersion: known.version };
+  }
+  return null;
 }
 
 function decodeBase64URL(value) {
@@ -177,6 +259,22 @@ export function materializeProposal({ issueNumber, issueBody, userLogin, created
     reference: fields.reference,
     author: { github: userLogin, profile: `https://github.com/${userLogin}` },
     source: { issue: issueURL, submittedAt: submittedAt.toISOString() },
+    // The grant the submitter ticked, with the text they ticked and where it
+    // can be read. Absent when the form did not carry the licence checkbox or
+    // it was left unticked: those submissions stay unlicensed, and their pages
+    // claim no reuse rights. `recordedAt` is when this record was written --
+    // an issue can be edited, so it is not evidence of when consent was given;
+    // the issue URL is where the acknowledgement itself can be read.
+    ...(fields.license ? {
+      license: {
+        content: fields.license.content,
+        text: fields.license.text,
+        evidence: issueURL,
+        form: 'example-proposal#contribution-acknowledgement',
+        formVersion: fields.license.formVersion,
+        recordedAt: new Date().toISOString(),
+      },
+    } : {}),
     sceneSha256: createHash('sha256').update(sceneJSON).digest('hex'),
     scene: canonicalScene,
   };

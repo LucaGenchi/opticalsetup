@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Static community-page generator: `node tools/build-community.mjs`.
 //
 // Scans community-submissions/issue-<N>.json (written by the "materialize
@@ -15,7 +17,7 @@
 
 import { readdir, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { parseSketch } from '../sketch/js/state.js';
 import { registry } from '../sketch/js/elements.js';
 // Registers the redesigned detector catalogue and the Etalon/VIPA element
@@ -52,6 +54,53 @@ function uniqueSlug(base, issueNumber, taken) {
   let n = 2;
   while (taken.has(`${withNumber}-${n}`)) n++;
   return `${withNumber}-${n}`;
+}
+
+// What a page may say about reuse comes from the grant recorded with the
+// submission, never from a blanket string: a setup accepted before the form
+// asked for a licence carries none, and its page claims no reuse rights.
+export function licenseOf(raw, file) {
+  const license = raw.license;
+  if (!license) return null;
+  if (license.content !== 'CC-BY-4.0') {
+    throw new Error(`community-submissions/${file}: unknown license "${license.content}"`);
+  }
+  if (!license.evidence) throw new Error(`community-submissions/${file}: a license needs its evidence URL`);
+  return { content: license.content, evidence: license.evidence, text: license.text || null };
+}
+
+function licenseNote(entry) {
+  if (!entry.license) {
+    return `<p class="community-license">Shared by its author for publication here. No further reuse terms were recorded, so ask the author before reusing it elsewhere.</p>`;
+  }
+  // Ready to paste into a figure caption: CC BY asks for credit, a link to
+  // the licence and an indication of changes. "From" for a copy, "Adapted
+  // from" when it was changed -- both are offered because only the person
+  // reusing it knows which applies.
+  const where = `${SITE_URL}/community/${entry.slug}/`;
+  const credit = `From "${entry.name}" by @${entry.author.github}, ${where}, licensed under CC BY 4.0 `
+    + `(https://creativecommons.org/licenses/by/4.0/). Use "Adapted from" and say what you changed if you modified it.`;
+  return `<p class="community-license">This setup and its description are published by their author under
+    <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>
+    (<a href="${esc(entry.license.evidence)}" target="_blank" rel="noopener">grant</a>):
+    reuse or adapt them, with credit, a link to the licence, and a note of what you changed.
+    Credit line to copy: <code>${esc(credit)}</code></p>`;
+}
+
+// The boundary between this generator's output (GPL) and the contributor's
+// own text inside it, in the file as well as on the page. REUSE 3.3 snippet
+// comments: https://reuse.software/spec-3.3/#in-line-snippet-comments
+function contributed(entry, html) {
+  if (!entry.license) {
+    return `<!-- The text below was supplied by @${esc(entry.author.github)} for publication here\n`
+      + `     (${esc(entry.source.issue)}). No reuse grant was recorded; it is not covered by\n`
+      + `     this file's GPL notice, and carries no CC or GPL grant. -->\n${html}\n`
+      + `<!-- end of contributed text -->`;
+  }
+  return `<!-- SPDX-SnippetBegin\n`
+    + `     SPDX-SnippetCopyrightText: @${esc(entry.author.github)} (${esc(entry.source.issue)})\n`
+    + `     SPDX-License-Identifier: CC-BY-4.0 -->\n${html}\n`
+    + `<!-- SPDX-SnippetEnd -->`;
 }
 
 function referenceHTML(reference) {
@@ -102,13 +151,14 @@ function header(base) {
     <div class="header-actions">
       <a class="plain" href="${base}/wiki/">Wiki</a>
       <a class="plain" href="${base}/example-setups/">Examples</a>
+      <a class="plain" href="${base}/calculators/">Calculators</a>
       <a class="plain" href="${base}/community/">Community</a>
       <a class="btn" href="${base}/sketch/">Open the canvas</a>
     </div>
   </header>`;
 }
 
-function pageHTML(entry) {
+export function pageHTML(entry) {
   const base = '../..';
   const submitted = new Date(entry.source.submittedAt);
   const dateText = Number.isFinite(submitted.getTime())
@@ -116,6 +166,8 @@ function pageHTML(entry) {
     : '';
 
   return `<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -139,35 +191,38 @@ ${header(base)}
       <div class="crumb"><a href="${base}/community/">Community</a> / ${esc(entry.name)}</div>
       <h1>${esc(entry.name)}</h1>
       <p class="community-byline">By <a href="${esc(entry.author.profile)}" target="_blank" rel="noopener">@${esc(entry.author.github)}</a>${dateText ? ` · ${dateText}` : ''} · <a href="${esc(entry.source.issue)}" target="_blank" rel="noopener">source discussion</a></p>
+      ${licenseNote(entry)}
 
-      <p class="tagline" style="margin-top: 18px; white-space: pre-wrap;">${esc(entry.description)}</p>
+      ${contributed(entry, `<p class="tagline" style="margin-top: 18px; white-space: pre-wrap;">${esc(entry.description)}</p>`)}
       ${referenceHTML(entry.reference)}
 
       <div class="embed-wrap">
-        <iframe class="embed-frame" src="${base}/sketch/?community=${encodeURIComponent(entry.slug)}"
-          title="${esc(entry.name)} — click any component to see its live specs"
-          loading="lazy"></iframe>
+        <iframe class="embed-frame" src="${base}/sketch/?community=${encodeURIComponent(entry.slug)}&amp;embed=1"
+          title="${esc(entry.name)} — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
       </div>
-      <p class="embed-caption">Click any component to see its live specs — this embedded canvas can't be moved, deleted, or added to.</p>
+      <p class="embed-caption">A live trace of the submitted setup, shown as a picture. Open it in the canvas to explore it, change it, and save or export your own copy.</p>
       <a class="place-cta" href="${base}/sketch/?community=${encodeURIComponent(entry.slug)}">Open in the full canvas →</a>
     </main>
   </div>
-  <footer class="wiki-footer">Community setups are submitted and reviewed via <a href="https://github.com/LucaGenchi/optics-sketch/issues" target="_blank" rel="noopener">GitHub issues</a> — they show how people actually use OpticalSetup, and haven't been vetted for pedagogical accuracy the way <a href="${base}/sketch/">Examples</a> have.</footer>
+  <footer class="wiki-footer">Community setups are submitted and reviewed via <a href="https://github.com/LucaGenchi/opticalsetup/issues" target="_blank" rel="noopener">GitHub issues</a> — they show how people use OpticalSetup in their own work. Each setup states its own terms on its page.</footer>
 </body>
 </html>
 `;
 }
 
-function hubHTML(entries) {
+export function hubHTML(entries) {
   const base = '..';
   const cards = entries.map(e => `
         <a class="community-card" href="${base}/community/${e.slug}/">
           <span class="name">${esc(e.name)}</span>
           <span class="by">by @${esc(e.author.github)}</span>
-          <span class="snippet">${esc(e.description.length > 140 ? `${e.description.slice(0, 140)}…` : e.description)}</span>
+          ${contributed(e, `<span class="snippet">${esc(e.description.length > 140 ? `${e.description.slice(0, 140)}…` : e.description)}</span>`)}
         </a>`).join('');
 
   return `<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -207,7 +262,7 @@ ${header(base)}
       <p class="community-empty">No community setups are published yet — be the first to propose one from the canvas.</p>`}
     </div>
   </div>
-  <footer class="wiki-footer">Community setups are submitted and reviewed via <a href="https://github.com/LucaGenchi/optics-sketch/issues" target="_blank" rel="noopener">GitHub issues</a> — see the <a href="${base}/wiki/">wiki</a> for how each component actually works.</footer>
+  <footer class="wiki-footer">Community setups are submitted and reviewed via <a href="https://github.com/LucaGenchi/opticalsetup/issues" target="_blank" rel="noopener">GitHub issues</a> — see the <a href="${base}/wiki/">wiki</a> for how each component actually works. Setups submitted since the form asked for it are published under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, credited to their authors; earlier ones state their own terms.</footer>
 </body>
 </html>
 `;
@@ -255,6 +310,10 @@ async function loadEntries() {
       reference: raw.reference || null,
       author: raw.author,
       source: raw.source,
+      // Only a recorded CC BY grant is carried, with where it can be read.
+      // Anything else -- absent, or a licence this generator does not know --
+      // leaves the entry unlicensed rather than being rendered as terms.
+      license: licenseOf(raw, file),
       sourceFile: file,
     });
   }
@@ -279,7 +338,13 @@ async function main() {
     name: e.name,
     path: `../community-submissions/${encodeURIComponent(e.sourceFile)}`,
   }));
-  const body = `// Generated by tools/build-community.mjs — do not edit by hand.
+  const body = `// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+// The notice above covers this manifest and the generator that writes it.
+// The records below are metadata about setups their authors made: each names
+// the submission it came from, and community-submissions/<file>.json records
+// that submission's own terms. No description or scene data is embedded here.
+// Generated by tools/build-community.mjs — do not edit by hand.
 // Lists every merged community-submissions/*.json entry so the "From the community"
 // dropdown can fetch them at runtime without a directory listing (this is a
 // static site). The publishing workflow regenerates this file after approval.
@@ -290,4 +355,7 @@ export const community = ${JSON.stringify(manifest, null, 2)};
   console.log(`Built ${entries.length} community page(s) + hub + community-data.js`);
 }
 
-main().catch(err => { console.error(err); process.exitCode = 1; });
+// Only when run as a tool: the page builders are imported by tests.
+if (process.argv[1] && basename(process.argv[1]) === 'build-community.mjs') {
+  main().catch(err => { console.error(err); process.exitCode = 1; });
+}

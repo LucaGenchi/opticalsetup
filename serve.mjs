@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Minimal static file server for local development: node serve.mjs
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';

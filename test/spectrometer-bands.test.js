@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -310,4 +312,84 @@ test('the sinc squared passband has the sidelobes a real AOTF has', () => {
     `the first sidelobe should carry about 4.7%, got ${(firstLobe * 100).toFixed(2)}%`);
   // Truncated at the third zero, so beyond that nothing.
   assert.equal(at(532 + 3.5 * zero), 0, 'the passband ends at the third zero');
+});
+
+// Several sources on one spectrometer are weighed by the watts each delivers
+// (Luca, 2026-09-28): a hit's power is its fraction of its own source, so a
+// 1 uW line used to stand as tall as a 1 W one.
+function twoLines(pumpW, seedW) {
+  const cw = (y, wavelength, avgPowerW) => {
+    const l = createElement('cwlaser', 0, y);
+    Object.assign(l.params, { wavelength, beamMode: 'line' });
+    if (avgPowerW !== undefined) l.params.avgPowerW = avgPowerW;
+    else delete l.params.avgPowerW;
+    return l;
+  };
+  const spectrometer = createElement('spectrometer', 300, 0);
+  traceAll([cw(-3, 515, pumpW), cw(3, 780, seedW), spectrometer]);
+  const reading = detectorReading(spectrometer.id);
+  const at = wl => reading.spectrum.filter(s => Math.abs(s.wavelength - wl) < 2).reduce((sum, s) => sum + s.power, 0);
+  return { reading, ratio: at(515) / at(780), total: reading.spectrum.reduce((sum, s) => sum + s.power, 0) };
+}
+
+test('two sources on one spectrometer stand in proportion to their watts', () => {
+  const unequal = twoLines(1, 1e-6);
+  assert.ok(Math.abs(unequal.ratio / 1e6 - 1) < 1e-9, `1 W against 1 uW: ${unequal.ratio}`);
+  // The balance changes, the total does not: it is still the detector's signal.
+  assert.ok(Math.abs(unequal.total - unequal.reading.signal) < 1e-9);
+  const equal = twoLines(0.5, 0.5);
+  assert.ok(Math.abs(equal.ratio - 1) < 1e-9, 'equal watts: equal lines, as before');
+});
+
+test('without every source\'s watts, the spectrometer keeps each source\'s own fraction', () => {
+  const { ratio } = twoLines(1, undefined);
+  assert.ok(Math.abs(ratio - 1) < 1e-9, `no watts to compare: ${ratio}`);
+});
+
+test('the relative view still frames a weak source beside a strong one', async () => {
+  // Andrea on eada16a: weighing by watts put a 1 uW line below the range's
+  // 0.1 % floor, so the relative view -- each source to its own peak -- lost
+  // it before it could be scaled up.
+  const { wavelengthToColor } = await import('../sketch/js/util.js');
+  const render = intensityScale => {
+    const cw = (y, wavelength, avgPowerW) => Object.assign(createElement('cwlaser', 0, y), {}, {
+      params: { ...createElement('cwlaser', 0, y).params, wavelength, avgPowerW, beamMode: 'line' },
+    });
+    const spectrometer = createElement('spectrometer', 300, 0);
+    spectrometer.params.intensityScale = intensityScale;
+    const display = createElement('display', 430, 80);
+    display.params.sensorId = spectrometer.id;
+    const scene = [cw(-3, 515, 1), cw(3, 780, 1e-6), spectrometer, display];
+    traceAll(scene);
+    return registry.display.svg(display, scene);
+  };
+  const relative = render('relative');
+  assert.ok(relative.includes(wavelengthToColor(515)) && relative.includes(wavelengthToColor(780)), 'both lines drawn');
+  // On the density axis the seed is a millionth of the pump: out of the frame, as before.
+  assert.ok(!render('density').includes(wavelengthToColor(780)));
+});
+
+test('a narrow band\'s plotted density is its true power spectral density, at the 0.1 nm resolution', () => {
+  // A band sampled more finely than the 0.1 nm slot used to keep one grid
+  // point's width for several points' power: 2x too tall at 1 ps, 16x at 10 ps.
+  const peakRatio = pulseWidthFs => {
+    const laser = createElement('pulsedlaser', 0, 0);
+    Object.assign(laser.params, { wavelength: 800, avgPowerW: 1, pulseWidthFs, beamMode: 'line' });
+    const spectrometer = createElement('spectrometer', 300, 0);
+    traceAll([laser, spectrometer]);
+    const spectrum = detectorReading(spectrometer.id).spectrum;
+    const density = s => s.power / (s.continuum && s.widthNm > 0 ? s.widthNm : 0.1);
+    const fwhmNm = 0.441 * 800 * 800 / (299792.458 * pulseWidthFs) * 1000; // transform-limited Gaussian
+    const total = spectrum.reduce((sum, s) => sum + s.power, 0);
+    assert.ok(Math.abs(total - 1) < 1e-9, `${pulseWidthFs} fs: all the power is still there (${total})`);
+    return Math.max(...spectrum.map(density)) * 1.0645 * fwhmNm; // plotted peak / true peak
+  };
+  for (const fs of [100, 300, 1000, 3000]) {
+    const ratio = peakRatio(fs);
+    assert.ok(Math.abs(ratio - 1) < 0.03, `${fs} fs: plotted peak ${ratio.toFixed(3)} x the true one`);
+  }
+  // Narrower than the slot, the peak is averaged over 0.1 nm, as an
+  // instrument of that resolution would show it -- never inflated.
+  const tenPs = peakRatio(10000);
+  assert.ok(tenPs > 0.7 && tenPs <= 1, `10 ps: ${tenPs.toFixed(3)}`);
 });

@@ -6,6 +6,59 @@ request that carries the full reasoning and the exact diff.
 This file starts in September 2026. For anything before that, the pull
 request history is the record.
 
+## 2026-09-03 — Gas discharge lamps, and mirrors that behave like mirrors
+
+[#94](https://github.com/LucaGenchi/opticalsetup/pull/94) ·
+[#95](https://github.com/LucaGenchi/opticalsetup/pull/95)
+
+Two rounds of work on sources and the mirrors that collect them, both starting
+from setups that did not do what the physics says they should.
+
+- **A point source's light passed straight through any mirror.** Its rays are
+  flagged evanescent so uncollected isotropic emission fades in the near field,
+  but only lenses, metalenses and fiber tips were allowed to collect them. A
+  parabola with an emitter at its focus is how you collimate a lamp without
+  chromatic aberration, so mirrors — curved ones included — now collect too.
+
+- **The parabolic mirror did not collimate.** It was built from flat facets and
+  those facets both located a ray *and* reflected it, so every ray left by the
+  angle between chord and curve. Facets now locate the hit and the curve
+  supplies the normal, with the ray–parabola intersection solved analytically.
+  A source at the focus leaves exactly parallel at any allowed aperture.
+
+- **The spherical mirrors could not aberrate.** Concave and convex were a flat
+  chord with an ideal paraxial bend, so a point source at the focus came out
+  perfectly collimated — which removed the entire reason parabolic mirrors
+  exist. Both are now real spheres of radius 2f, traced as analytic arcs and
+  reflected off their own normals. Same source, same focus, 100 mm aperture:
+
+      parabola    98 mm at 400 mm ->  98 mm at 1200 mm    collimated
+      sphere     468 mm           -> 792 mm               11.4 deg
+
+  and it scales as it should: f/3.9 gives 0.07 deg, f/0.5 gives 5.7.
+
+- **Gas discharge lamps**, as a mode of the point source rather than a new
+  element — a lamp is a point source geometrically and differs only in
+  emitting a fixed set of lines. Eight presets (Hg, Na, Cd, He, H, Ne, Cs, Ar)
+  with the standard lines each is bought for, drawn as a pen-ray tube tinted
+  by its own lines. The lines are carried as lines, so a grating fans exactly
+  the wavelengths present and the spectrometer draws them as separate peaks.
+
+  Line *strengths* are deliberately nominal. Both cited sources say why: the
+  ratios depend on excitation and drift with drive current and lamp age, and
+  the standard tabulations warn that their intensities need not match the lamp
+  in front of you. Wavelengths are data; intensities are an illustration.
+
+- **The point source gained a wiki page**, which it had never had, and the
+  three mirror pages were rewritten — they had said the surface was a flat
+  line, the curvature cosmetic, and spherical aberration impossible.
+
+Thirteen review findings from @bertona88's Codex across the two branches, each
+verified against the tracer before being acted on. Several were mistakes of
+mine caught before merge, including a partial mirror that leaked most of its
+power as ordinary light and a collection marker that outlived the interaction
+that set it.
+
 ## 2026-09-03 — Sketch toolbar, collapsed library, copy and paste
 
 [#92](https://github.com/LucaGenchi/opticalsetup/pull/92)

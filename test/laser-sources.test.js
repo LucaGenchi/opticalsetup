@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -96,7 +98,7 @@ test('a committed edit refreshes every readout the element carries', () => {
   state.elements = [laser];
   state.beams = [];
   state.selection = { kind: 'element', id: laser.id };
-  state.demoMode = false;
+  state.embedMode = false;
   initInspector(panel);
   renderInspector();
   assert.match(panel.innerHTML, /7\.83 kW/);
