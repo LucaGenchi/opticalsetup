@@ -1802,6 +1802,19 @@ function preserveWorkbenchInUndo() {
   return true;
 }
 
+function openSharedScene(scene) {
+  if (!preserveWorkbenchInUndo()) {
+    // The visitor chose the already-saved workbench. Retire the declined
+    // snapshot so a reload does not ask to replace that work again.
+    clearSharedSceneURL();
+    return;
+  }
+  // preserveWorkbenchInUndo() saved the old bench before clearing it.
+  // Keep that history when the incoming scene writes its first autosave.
+  replaceScene(scene);
+  zoomFit();
+}
+
 // ---------- boot ----------
 window.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(location.search);
@@ -1933,8 +1946,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (sharedScene) {
-      replaceScene(sharedScene, { resetHistory: true });
-      zoomFit();
+      openSharedScene(sharedScene);
     } else if (!loadAutosave(registry)) {
       // Starter scene: the three sources, nothing else. A worked setup here
       // reads as "this is the thing to study" rather than "this is yours to
