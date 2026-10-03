@@ -1155,10 +1155,12 @@ export const exampleEntries = [
     title: 'Wavelength combining and separation',
     tagline: 'Three lasers put on one axis by two dichroic mirrors, then taken apart again by the same two coatings: colour used as a routing label.',
     html: `
-      <p>Two beams of the same colour and polarization cannot be merged onto one
-      axis without losing power: a beamsplitter that overlaps them sends half of
-      each the wrong way. Two beams of <em>different</em> colour can, because a
-      mirror can be made to tell them apart. A dichroic mirror is a multilayer
+      <p>Two mutually incoherent beams of the same colour and polarization cannot
+      be merged onto one axis without losing power: a 50:50 beamsplitter that
+      overlaps them sends half of each the wrong way. (Two beams locked in phase
+      can be — that is coherent beam combining, and it needs the phase held.)
+      Two beams of <em>different</em> colour can, with no phase to hold, because
+      a mirror can be made to tell them apart. A dichroic mirror is a multilayer
       interference coating that reflects one wavelength band and transmits
       another, with almost nothing absorbed${cite(1)}. Put it at 45° where a
       second laser crosses the first, and both leave along the same line.</p>
@@ -1218,6 +1220,7 @@ export const exampleEntries = [
     ],
     resources: [
       { label: 'RP Photonics Encyclopedia — Spectral Beam Combining', url: 'https://www.rp-photonics.com/spectral_beam_combining.html' },
+      { label: 'RP Photonics Encyclopedia — Coherent Beam Combining', url: 'https://www.rp-photonics.com/coherent_beam_combining.html' },
     ],
     related: ['dichroic', 'cwlaser', 'bs', 'spectrometer', 'detector', 'display'],
   },
@@ -1440,8 +1443,8 @@ export const exampleEntries = [
       here is perfect, where a real filter set is specified by how many orders of
       magnitude it achieves, and the sample neither reflects nor scatters the laser
       back. Autofluorescence and background are absent.</p>
-      <p>There is no image. The laser fills the pupil and the objective brings it to a
-      focus; nothing models diffraction, the point-spread function, resolution, or
+      <p>There is no image. The 6&nbsp;mm laser beam underfills the objective's 10&nbsp;mm pupil and
+      is brought to a focus; nothing models diffraction, the point-spread function, resolution, or
       the camera as a 2D sensor. The stage motion is a display animation of the
       sample under the focus, and a uniform sample gives the same reading
       everywhere.</p>`,
