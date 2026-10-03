@@ -343,7 +343,7 @@ export const exampleEntries = [
   },
   {
     match: 'Spherical aberration — sphere vs asphere vs ideal lens',
-    title: 'Sphere, asphere, and the lens that does not exist',
+    title: 'Spherical aberration: spherical lens, aspheric lens and ideal thin lens',
     tagline: 'Three 1-inch lenses of the same 25 mm focal length under one 20 mm monochromatic bundle: a perfect point, a 7.5 mm smear, and a point again.',
     html: `
       <p>The thin-lens construction every optics course starts with sends every ray
