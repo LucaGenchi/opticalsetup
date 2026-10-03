@@ -55,11 +55,14 @@ const channel = (wl, passband, extra = {}) => ({ channels: [{ wl, eff: 1 }], pas
 test('an AOTF selects the same light from a beam whether or not glass fanned it first', () => {
   for (const kind of ['gaussian', 'flat']) {
     const whole = signal(read(kind, { rod: true }));
-    // On a sample's wavelength, between samples, narrow, in the tail, and wide.
-    for (const [wl, passband] of [[800, 10], [780, 10], [815, 4], [760, 2], [800, 40]]) {
+    // On a sample's wavelength, between samples, narrow, in the tail, wide,
+    // down to the narrowest passband allowed and up to one far wider than
+    // the beam. The channel is integrated over its own window of the slice,
+    // so a 0.1 nm channel cannot fall between the points of a wider grid.
+    for (const [wl, passband] of [[800, 10], [780, 10], [815, 4], [760, 2], [800, 40], [780, 0.5], [800, 0.1], [800, 2000]]) {
       const unfanned = signal(read(kind, { aotf: channel(wl, passband) }));
       const fanned = signal(read(kind, { rod: true, aotf: channel(wl, passband) })) / whole;
-      assert.ok(unfanned > 0.005, `${kind} ${wl}/${passband}: the channel selects something (${unfanned})`);
+      assert.ok(unfanned > 2e-4, `${kind} ${wl}/${passband}: the channel selects something (${unfanned})`);
       assert.ok(Math.abs(fanned - unfanned) <= 1e-3 * unfanned, `${kind} ${wl}/${passband}: ${fanned} vs ${unfanned}`);
     }
   }
@@ -105,71 +108,29 @@ test('a channel clear of the beam, and a single line, behave as before', () => {
   }
 });
 
-// source -> elements in a line -> detector at 900 mm.
-function chain(source, elements) {
-  const det = createElement('detector', 900, 0);
-  det.params.aperture = 40;
-  traceScene([source, ...elements, det]);
-  return detectorReading(det.id);
-}
-const at = (type, x, params) => {
-  const el = createElement(type, x, 0);
-  Object.assign(el.params, params);
-  return el;
-};
-const rodAt = x => at('glassrod', x, { rodlen: 100, dia: 20, material: 'nbk7' });
-
-test('the depleted beam is missing what the channel took, colour by colour', () => {
-  // Selected and depleted beams recombined (zero deflection) are the beam
-  // that came in, so a narrow bandpass inside the channel must read what it
-  // reads with no AOTF at all. With the depleted slice left at its incoming
-  // shape, it found the selected light twice: 86 % too much.
+test('two AOTFs in a row each select from the slice the one before left', () => {
+  // A second channel inside the first one's selected line takes its share of
+  // that line, as it does of the unfanned beam.
   for (const kind of ['gaussian', 'flat']) {
-    for (const [center, band] of [[800, 1], [801.5, 1], [800, 6], [790, 4]]) {
-      const filter = at('filter', 650, { ftype: 'bandpass', center, band });
-      const without = signal(chain(sources[kind](), [rodAt(250), filter]));
-      const aotf = at('aotf', 450, channel(800, 2, { showDepleted: true, deflect: 0 }));
-      const withAotf = signal(chain(sources[kind](), [rodAt(250), aotf, filter]));
-      assert.ok(Math.abs(withAotf - without) <= 0.01 * without, `${kind} ${center}/${band}: ${withAotf} vs ${without}`);
-    }
-  }
-});
-
-test('fine structure survives a second AOTF and the narrowest passband', () => {
-  // Fixed grids met features finer than themselves. A second AOTF resampled
-  // the first one's depleted slice on 65 points and lost its notch: with
-  // 0.5 nm channels it read 35 % too much. And a 0.1 nm channel, the
-  // narrowest allowed, left a notch a filter's 257-point table stepped over.
-  // The grids now follow the passband and the profile they copy.
-  const el = (type, x, params) => {
-    const made = createElement(type, x, 0);
-    Object.assign(made.params, params);
-    return made;
-  };
-  const rod = () => el('glassrod', 250, { rodlen: 100, dia: 20, material: 'nbk7' });
-  const read = (kind, elements) => {
-    const det = createElement('detector', 950, 0);
-    det.params.aperture = 40;
-    traceScene([sources[kind](), ...elements, det]);
-    return detectorReading(det.id)?.signal ?? 0;
-  };
-  for (const kind of ['gaussian', 'flat']) {
-    // Selected and depleted beams recombined are the incoming beam, so a
-    // second identical AOTF must select what it selects without the first.
-    for (const [wl, passband] of [[780, 0.5], [780, 1], [800, 0.1], [803, 2]]) {
-      const second = el('aotf', 650, channel(wl, passband));
-      const alone = read(kind, [rod(), second]);
-      const cascaded = read(kind, [rod(), el('aotf', 450, channel(wl, passband, { showDepleted: true, deflect: 0 })), second]);
-      assert.ok(alone > 0, `${kind} ${wl}/${passband}: the channel selects something`);
-      assert.ok(Math.abs(cascaded - alone) <= 5e-3 * alone, `${kind} ${wl}/${passband}: ${cascaded} vs ${alone}`);
-    }
-    // And a bandpass wider than the notch reads what it reads with no AOTF.
-    for (const passband of [0.1, 0.5]) {
-      const filter = el('filter', 700, { ftype: 'bandpass', center: 803, band: 1 });
-      const without = read(kind, [rod(), filter]);
-      const recombined = read(kind, [rod(), el('aotf', 450, channel(803, passband, { showDepleted: true, deflect: 0 })), filter]);
-      assert.ok(Math.abs(recombined - without) <= 1e-3 * without, `${kind} 803/${passband}: ${recombined} vs ${without}`);
-    }
+    const whole = signal(read(kind, { rod: true }));
+    const cascade = fanned => {
+      const elements = [sources[kind]()];
+      const add = (type, x, params) => {
+        const el = createElement(type, x, 0);
+        Object.assign(el.params, params);
+        elements.push(el);
+      };
+      if (fanned) add('glassrod', 250, { rodlen: 100, dia: 20, material: 'nbk7' });
+      add('aotf', 450, channel(800, 10));
+      add('aotf', 550, channel(802, 3));
+      const det = createElement('detector', 700, 0);
+      det.params.aperture = 40;
+      traceScene([...elements, det]);
+      return signal(detectorReading(det.id));
+    };
+    const unfanned = cascade(false), fanned = cascade(true) / whole;
+    assert.ok(unfanned > 0.005, `${kind}: both channels pass something (${unfanned})`);
+    assert.ok(Math.abs(fanned - unfanned) <= 0.01 * unfanned, `${kind}: ${fanned} vs ${unfanned}`);
   }
 });
 

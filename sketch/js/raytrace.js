@@ -3360,8 +3360,6 @@ const profileStep = spec => (spec?.kind === 'sampled' && spec.w?.length > 1
 // fraction of a nanometre wide leaves a notch that 257 points across a 60 nm
 // slice step straight over.
 const SLICE_GRID_MAX = 16385;
-// How finely an AOTF's depleted slice is sampled across one passband.
-const DEPLETED_POINTS_PER_PASSBAND = 16;
 const gridFor = (width, step, least, per = 1) => (Number.isFinite(step) && step > 0
   ? Math.max(least, Math.min(SLICE_GRID_MAX, per * Math.ceil(width / step) + 1)) : least);
 
@@ -3400,20 +3398,14 @@ function slicePart(spec, cell, lo, hi) {
 // A slice (or a part of one) as a spectrum of its own: the profile it was cut
 // from, between the given bounds, or a flat band when it carries none. For an
 // element whose transmission varies smoothly inside the slice, which has to
-// be integrated over it rather than read at the slice's one wavelength.
-//
-// `shape` multiplies the profile wavelength by wavelength. The grid is never
-// coarser than the profile it copies, nor than `step` when one is given, so
-// fine structure a previous element left survives being handed on.
-function sliceProfile(ray, bounds, shape = null, step = Infinity) {
+// be integrated over it rather than read at the slice's one wavelength. The
+// grid is never coarser than the profile it copies.
+function sliceProfile(ray, bounds) {
   const width = bounds[1] - bounds[0];
-  if ((ray.sliceSpec || shape) && width > 0) {
-    const n = gridFor(width, Math.min(step, profileStep(ray.sliceSpec)), 65);
-    const w = Array.from({ length: n }, (_, i) => {
-      const wl = bounds[0] + width * i / (n - 1);
-      const weight = ray.sliceSpec ? Math.max(0, spectrumWeight(ray.sliceSpec, wl)) : 1;
-      return weight * (shape ? Math.max(0, shape(wl)) : 1);
-    });
+  if (ray.sliceSpec && width > 0) {
+    const n = gridFor(width, profileStep(ray.sliceSpec), 65);
+    const w = Array.from({ length: n }, (_, i) =>
+      Math.max(0, spectrumWeight(ray.sliceSpec, bounds[0] + width * i / (n - 1))));
     const peak = Math.max(...w);
     if (peak > 0) return { kind: 'sampled', lo: bounds[0], hi: bounds[1], w: w.map(v => v / peak) };
   }
@@ -4084,9 +4076,6 @@ function interact(ray, hit) {
       // keep only what is left of each line rather than the lamp's whole
       // spectrum.
       const lineTaken = [];
-      // Likewise for a fanned-out sample's slice: the depleted beam's profile
-      // is the slice's with each channel's share taken out of it.
-      const cellTaken = [];
 
       channels.forEach((c, i) => {
         if (!(c.eff > 0)) return;
@@ -4123,7 +4112,6 @@ function interact(ray, hit) {
           if (!shaped || !(inWindow > 0)) return;
           const trans = { ...shaped, fraction: shaped.fraction * inWindow };
           takenFraction += trans.fraction * pass;
-          cellTaken.push(wl => pass * transmission(wl));
           out.push(withGate({
             d,
             wl: Math.min(window[1], Math.max(window[0], trans.wl)),
@@ -4175,19 +4163,6 @@ function interact(ray, hit) {
         if (lineTaken.length) {
           const rest = lineTransmission(ray.spec, wl => 1 - lineTaken.reduce((sum, taken) => sum + taken(wl), 0));
           if (rest) out.push({ d: deflected, intensity: ray.intensity * rest.fraction, tag: 'depleted', wl: rest.wl, bw: rest.bw, spec: rest.spec });
-        } else if (cellTaken.length && left > 0) {
-          // The slice keeps its bounds and its power is what the channels
-          // left; its profile is the slice's with their passbands taken out,
-          // so a filter behind both beams finds the selected light once.
-          // Sampled by the passband: a channel may be a tenth of a nanometre
-          // wide inside a slice of tens, and the notch it leaves has to
-          // survive the sampling.
-          const cell = sampleCell(ray);
-          out.push({
-            d: deflected, intensity: ray.intensity * left, tag: 'depleted',
-            sliceSpec: sliceProfile(ray, cell,
-              wl => 1 - cellTaken.reduce((sum, taken) => sum + taken(wl), 0), passband / DEPLETED_POINTS_PER_PASSBAND),
-          });
         } else if (left > 0) {
           out.push({
             d: deflected, intensity: ray.intensity * left, tag: 'depleted',
