@@ -118,3 +118,30 @@ test('a harmonic behind glass and a filter keeps the record it had', () => {
   assert.ok(filtered.packets.length > 0 && unfiltered.packets.length > 0);
   assert.ok(Math.min(...filtered.packets) > 200, `packets ${filtered.packets}`);
 });
+
+test('a harmonic is not re-recorded from the pump, however broad the pump', () => {
+  // A pump broad enough has a band that reaches its own second harmonic's,
+  // and at 500 nm wide it holds the harmonic's centre. Whether the record
+  // describes the light cannot be judged from wavelengths overlapping: the
+  // crystal marks what it generates. Rebuilt from the pump's spectrum, the
+  // record came out as the pump's tail, 417.8-420 nm, outside the 390-410 nm
+  // the last filter passes, and the packet read 239 fs.
+  for (const bandwidth of [300, 500]) {
+    const det = createElement('detector', 950, 0);
+    det.params.aperture = 40;
+    const { pulseTracks } = traceScene([
+      pulsed({ bandwidth }), at('crystal', 250, { convert: 'shg', efficiency: 0.5, transmitPump: false }), rod(450),
+      bandpass(650, 400, 40), bandpass(750, 400, 20), det,
+    ]);
+    const end = Math.max(...pulseTracks.map(track => track.opls.at(-1)));
+    const last = pulseTracks.filter(track => track.opls.at(-1) > end - 1 && track.intensity > 1e-6);
+    assert.ok(last.length > 0, `${bandwidth} nm: the harmonic reaches the detector`);
+    for (const track of last) {
+      const pieces = track.pulse.filteredPieces || [];
+      assert.ok(pieces.length > 0, `${bandwidth} nm: a recorded piece`);
+      assert.ok(pieces.every(piece => piece.lo < 400 && piece.hi > 400),
+        `${bandwidth} nm: the record holds the harmonic, not the pump's tail (${pieces.map(p => `${p.lo}-${p.hi}`)})`);
+      assert.ok(pulseEnvelopeAtOpticalPath(track, track.opls.at(-1) - 1e-6).pulseWidthFs > 1000, `${bandwidth} nm: packet`);
+    }
+  }
+});
