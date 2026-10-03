@@ -3792,6 +3792,15 @@ function interact(ray, hit) {
         if (1 - t > ETALON_FLOOR) out.push({ d: rd, intensity: ray.intensity * (1 - t), tag: 'R' });
         return out;
       }
+      // A lamp's lines each take the Airy transmission at their own
+      // wavelength, and the reflected port takes the rest of each line.
+      if (ray.spec?.kind === 'lines') {
+        return [[d, 'T', T], [rd, 'R', wl => 1 - T(wl)]].map(([dir, tag, share]) => {
+          const kept = lineTransmission(ray.spec, share);
+          return kept && kept.fraction > ETALON_FLOOR
+            && { d: dir, wl: kept.wl, bw: kept.bw, spec: kept.spec, intensity: ray.intensity * kept.fraction, tag };
+        }).filter(Boolean);
+      }
       const out = [];
       // The sampled comb gives each port's spectrum its shape; how much light
       // each port takes is the fringe-resolved mean, which the fixed grid of
@@ -3892,6 +3901,10 @@ function interact(ray, hit) {
       const deflected = { x: d.x * Math.cos(a) - d.y * Math.sin(a), y: d.x * Math.sin(a) + d.y * Math.cos(a) };
       const out = [];
       let takenFraction = 0;
+      // What each open channel takes of a lamp line, so the depleted beam can
+      // keep only what is left of each line rather than the lamp's whole
+      // spectrum.
+      const lineTaken = [];
 
       channels.forEach((c, i) => {
         if (!(c.eff > 0)) return;
@@ -3917,7 +3930,20 @@ function interact(ray, hit) {
           out.push(withGate({ d, intensity: ray.intensity * pass * t, tag: `c${i}` }));
           return;
         }
-        // Everything with a spectrum goes the same way, flat sources
+        // A lamp's lines are each attenuated as a single wavelength is, by
+        // how far the line sits from the channel's centre.
+        if (ray.spec?.kind === 'lines') {
+          const kept = lineTransmission(ray.spec, transmission);
+          if (!kept) return;
+          takenFraction += kept.fraction * pass;
+          lineTaken.push(wl => pass * transmission(wl));
+          out.push(withGate({
+            d, wl: kept.wl, bw: kept.bw, spec: kept.spec,
+            intensity: ray.intensity * kept.fraction * pass, tag: `c${i}`,
+          }));
+          return;
+        }
+        // Everything else with a spectrum goes the same way, flat sources
         // included: a Lorentzian passband reshapes a profile rather than
         // cutting a slice out of it, so a flat band leaves peaked, not flat.
         const incident = ray.spec
@@ -3933,7 +3959,10 @@ function interact(ray, hit) {
 
       if (data.showDepleted) {
         const left = Math.max(0, 1 - Math.min(1, takenFraction));
-        if (left > 0) {
+        if (lineTaken.length) {
+          const rest = lineTransmission(ray.spec, wl => 1 - lineTaken.reduce((sum, taken) => sum + taken(wl), 0));
+          if (rest) out.push({ d: deflected, intensity: ray.intensity * rest.fraction, tag: 'depleted', wl: rest.wl, bw: rest.bw, spec: rest.spec });
+        } else if (left > 0) {
           out.push({
             d: deflected, intensity: ray.intensity * left, tag: 'depleted',
             wl: ray.wl, bw: ray.bw, spec: ray.spec,
