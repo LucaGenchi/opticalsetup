@@ -3412,6 +3412,70 @@ function sliceProfile(ray, bounds) {
   return flatSpectrum(bounds[0], bounds[1]);
 }
 
+// What an AOTF leaves of a beam, as the pieces its channels cut it into. Each
+// channel takes light only inside its own window, so the beam is cut at the
+// windows' edges: a piece clear of every window leaves as the incoming light
+// it is, and a piece inside one carries the incoming profile with the
+// channels' shares taken out. Kept as separate pieces, each window's notch
+// sits on a grid of its own a few passbands wide, which every later stage
+// resolves; one profile spanning the whole beam did not survive them.
+// Returns child rays with intensities relative to one another (the caller
+// scales them to the power left), or null when the beam has no extent to cut.
+function aotfDepletedPieces(ray, d, windows, leftAt) {
+  const cell = sampleCell(ray);
+  const support = cell || (ray.spec ? spectrumSupport(ray.spec)
+    : ray.bw > 0 ? [ray.wl - ray.bw / 2, ray.wl + ray.bw / 2] : null);
+  if (!support || !(support[1] > support[0])) return null;
+  const [lo, hi] = support;
+  const edges = [...new Set(windows.flat().filter(e => e > lo && e < hi))].sort((a, b) => a - b);
+  const bounds = [lo, ...edges, hi];
+  const profile = cell ? (ray.sliceSpec || null) : (ray.spec || null);
+  const weightAt = wl => (profile ? Math.max(0, spectrumWeight(profile, wl)) : 1);
+  // The share of the incoming ray's power between a and b.
+  const whole = cell ? null : (profile ? spectrumPower(profile, lo, hi) : hi - lo);
+  const shareOf = (a, b) => (cell ? slicePart(ray.sliceSpec, cell, a, b)
+    : whole > 0 ? (profile ? spectrumPower(profile, a, b) : b - a) / whole : 0);
+  const pieces = [];
+  bounds.slice(0, -1).forEach((a, index) => {
+    const b = bounds[index + 1];
+    if (!(b > a)) return;
+    const share = shareOf(a, b);
+    if (!(share > 0)) return;
+    const mid = (a + b) / 2;
+    const touched = windows.some(([from, to]) => mid > from && mid < to);
+    // The piece's own profile, on a grid across the piece alone.
+    const n = gridFor(b - a, profileStep(profile), 65);
+    const incoming = Array.from({ length: n }, (_, i) => weightAt(a + (b - a) * i / (n - 1)));
+    const kept = touched ? incoming.map((w, i) => w * leftAt(a + (b - a) * i / (n - 1))) : incoming;
+    const integral = values => values.reduce((sum, v, i) => sum + v * (i === 0 || i === n - 1 ? 0.5 : 1), 0);
+    const before = integral(incoming);
+    const fraction = before > 0 ? integral(kept) / before : 0;
+    const peak = Math.max(...kept);
+    if (!(fraction > 0) || !(peak > 0)) return;
+    const shape = { kind: 'sampled', lo: a, hi: b, w: kept.map(v => v / peak) };
+    const tag = `depleted${index}`;
+    if (cell) {
+      pieces.push({
+        d, tag,
+        wl: ray.wl >= a && ray.wl <= b ? ray.wl : mid,
+        spectralContinuum: true, spectralLo: a, spectralHi: b, spectralWidthNm: b - a,
+        ...(Number.isFinite(ray.fanLo) ? { fanLo: a, fanHi: b } : {}),
+        // A flat slice no channel touched stays flat and needs no profile.
+        sliceSpec: profile || touched ? shape : null,
+        intensity: share * fraction,
+      });
+      return;
+    }
+    const stats = spectrumStats(shape);
+    if (!stats) return;
+    pieces.push({
+      d, tag, wl: stats.center, bw: stats.fwhm, spec: stats.fwhm > 0 ? shape : null,
+      intensity: share * fraction,
+    });
+  });
+  return pieces.length ? pieces : null;
+}
+
 // A wavelength sample fanned out by dispersive refraction travels with bw 0 —
 // it has to, or the next glass surface would fan it out all over again — but
 // it still stands for a slice [spectralLo, spectralHi] of a continuum, and a
@@ -4076,12 +4140,22 @@ function interact(ray, hit) {
       // keep only what is left of each line rather than the lamp's whole
       // spectrum.
       const lineTaken = [];
+      // Channels whose passbands overlap cannot each take their full share of
+      // the same light: where together they ask for more than is there, they
+      // divide what there is in proportion. Where they do not overlap this is
+      // each channel's own passband, untouched.
+      const open = channels.map((c, i) => ({ c, i, pass: c.eff, transmission: aotfChannelTransmission(c, passband) }))
+        .filter(o => o.pass > 0);
+      const askedAt = wl => open.reduce((sum, o) => sum + o.pass * o.transmission(wl), 0);
+      const shared = o => wl => {
+        const t = o.transmission(wl);
+        return t > 0 ? t / Math.max(1, askedAt(wl)) : 0;
+      };
+      // What is left at one wavelength once every channel has taken its share.
+      const leftAt = wl => Math.max(0, 1 - Math.min(1, askedAt(wl)));
+      const reach = aotfWingHalfWidth(passband);
 
-      channels.forEach((c, i) => {
-        if (!(c.eff > 0)) return;
-        // An open line is fully open: the sequence decides which line, not how
-        // much of it gets through.
-        const pass = c.eff;
+      open.forEach(({ c, i, pass, transmission: own }) => {
         const withGate = child => {
           // The selected line is the useful output and is often a thin slice
           // of a broad source, so it must survive the weak-ray cull that would
@@ -4089,8 +4163,8 @@ function interact(ray, hit) {
           child.keepWeak = true;
           return child;
         };
-        const transmission = aotfChannelTransmission(c, passband);
-        notePulseSelection(transmission);
+        const transmission = shared({ transmission: own });
+        notePulseSelection(own);
 
         // A sample fanned out upstream stands for a slice of spectrum, and a
         // channel is usually narrower than the slice: read at the sample's
@@ -4100,7 +4174,6 @@ function interact(ray, hit) {
         // window -- carrying the reshaped profile.
         const cell = sampleCell(ray);
         if (cell) {
-          const reach = aotfWingHalfWidth(passband);
           const window = bandIntersect(cell, [c.wl - reach, c.wl + reach]);
           if (!window || !(window[1] > window[0])) return;
           // Only the part of the slice inside the channel's window is
@@ -4164,10 +4237,19 @@ function interact(ray, hit) {
           const rest = lineTransmission(ray.spec, wl => 1 - lineTaken.reduce((sum, taken) => sum + taken(wl), 0));
           if (rest) out.push({ d: deflected, intensity: ray.intensity * rest.fraction, tag: 'depleted', wl: rest.wl, bw: rest.bw, spec: rest.spec });
         } else if (left > 0) {
-          out.push({
-            d: deflected, intensity: ray.intensity * left, tag: 'depleted',
-            wl: ray.wl, bw: ray.bw, spec: ray.spec,
-          });
+          const pieces = takenFraction > 0 && ray.spec?.kind !== 'lines'
+            ? aotfDepletedPieces(ray, deflected, open.map(o => [o.c.wl - reach, o.c.wl + reach]), leftAt) : null;
+          const total = pieces ? pieces.reduce((sum, piece) => sum + piece.intensity, 0) : 0;
+          if (total > 0) {
+            // The pieces carry exactly what the channels left.
+            const scale = ray.intensity * left / total;
+            pieces.forEach(piece => out.push({ ...piece, intensity: piece.intensity * scale }));
+          } else {
+            out.push({
+              d: deflected, intensity: ray.intensity * left, tag: 'depleted',
+              wl: ray.wl, bw: ray.bw, spec: ray.spec,
+            });
+          }
         }
       }
       return out;
