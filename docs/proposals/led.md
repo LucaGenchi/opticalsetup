@@ -5,7 +5,7 @@ Status: **design, not implemented.** Opened for review before any code.
 ## What is being asked for
 
 An LED element with a realistic spectrum and a built-in collimator, distinct
-from the laser sources in that it is *not coherent*.
+from the laser sources in that it is *not coherent*: it never interferes.
 
 ## Recommendation: a new `led` element
 
@@ -43,39 +43,88 @@ single wide Gaussian would lose the one feature worth showing.
 
 Proposed presets: **Blue (460 nm)**, **Green (530 nm)**, **Amber (590 nm)**,
 **Red (630 nm)**, **Deep red (660 nm)**, **NIR (850 nm)**, **White (phosphor)**,
-each with a preset centre and width, plus a custom mode.
+each with a preset centre and width, plus a custom mode. The presets are
+**illustrative** — typical shapes, not any manufacturer's datasheet — and the
+inspector and wiki say so.
 
-## Incoherence is the point
+The white preset is two components, never one hump: a narrow blue peak
+(about 450 nm, 20 nm wide) and a broad phosphor band (about 560 nm, 120 nm
+wide), each traced with its own share of the power, so a filter or dichroic
+can remove one and leave the other.
 
-The app already distinguishes coherent and incoherent light through
-`coherenceLengthMm`. An LED's coherence length is of order a few micrometres —
-the transform limit of a 30 nm band at 550 nm is around 10 µm. Setting that
-honestly means an LED simply cannot produce interference fringes on any path
-difference a bench can build, which is the correct and instructive behaviour,
-and it comes free from machinery that already exists.
+## The LED is an incoherent source
+
+Decision (Luca): **the LED is incoherent, and the app does not give it
+coherence.** It has no coherence-length parameter, it never receives a
+coherence identity, and wherever two of its beams meet, a detector adds their
+powers. No interferometer in the app shows fringes with an LED, by design.
+
+This needs no new machinery and no setting. The tracer already gives a
+coherence identity only to a sized, monochromatic CW laser; every other
+source is power-only. The LED is simply one more source outside that rule. An
+earlier draft of this note presented `coherenceLengthMm` as the mechanism;
+that was wrong — on an LED the parameter would have been inert — and it is
+removed rather than wired up.
+
+Stated as model scope, so the wiki can say it plainly: a real LED's
+coherence length is a few micrometres (about 4.5 µm for a 30 nm band at
+550 nm, taking the coherence length as the full width at half maximum of the
+visibility envelope, the convention `fringeVisibility` uses). Low-coherence
+interferometry works inside that window of path *difference*. The app does
+not model it for the LED: the element is for illumination, and it reads as
+incoherent everywhere.
 
 ## The collimator
 
 An LED die is an extended Lambertian emitter, so a real collimator never
 produces a truly parallel beam — residual divergence is set by the die size
-over the collimator focal length. Proposed: a **beam divergence** parameter
-with a realistic floor rather than a perfect-collimation option, so the element
-cannot claim something no LED does. A 1 mm die behind a 20 mm lens gives about
-50 mrad, roughly 3°.
+over the collimator focal length. Proposed: a **beam divergence** parameter,
+defined as the **full angle**, with a realistic floor rather than a
+perfect-collimation option, so the element cannot claim something no LED
+does. A 1 mm die behind a 20 mm lens gives 1/20 = 50 mrad, about 2.9°, full
+angle.
+
+The collimated output is made of **ordinary propagating rays**, like a
+laser's: they travel until something stops them. The LED does not use the
+point source's short-range rays. That range is a display and capture
+convention — it keeps 360° emission from flooding the canvas and decides
+which optics collect it — not near-field physics, and a beam that already
+leaves through a collimator has no need of it. PR #191 documents the same
+distinction for the point source.
+
+## A separate element, not a mode of Point source
+
+The Point source already has two modes (point emitter, gas discharge lamp)
+and answers a search for "led". The lamp became a mode because it is
+geometrically the same thing: an isotropic emitter, collected the same way.
+A packaged LED is not: it is a directional beam of a set width and
+divergence. It is therefore proposed as its own `led` element in Sources,
+and the "led" search alias moves from Point source to it. A bare LED die
+without optics remains what it is today: a Point source in broadband mode.
+
+Persisted parameters, each clamped at the schema boundary:
+
+| Key | Meaning |
+|---|---|
+| `ledPreset` | one of the presets above, or `custom` |
+| `wavelength`, `bandwidth` | centre and width in nm, used when `custom` |
+| `beamWidth` | beam diameter at the collimator, mm |
+| `divergenceDeg` | full divergence angle, degrees, with the floor |
+| `avgPowerW` | optional average power in watts, as on the other sources |
+
+Saved setups: `led` is a new element type, so no existing scene changes
+meaning, no conversion is needed, and no type named `led` was ever saved by
+an earlier version. A scene that uses it opens only in versions that have
+the element.
 
 ## Open questions for review
 
 1. **Is the two-band white spectrum worth the complexity**, or is a single
-   broad band enough for this app's purposes?
-2. **Should the collimator be integrated or a separate element?** Integrated
-   matches how LEDs are sold and keeps the palette smaller; separate is more
-   composable and reuses the existing lens.
-3. **Does the LED need the evanescent near-field model** the point source has,
-   or is it a normal far-field source? It is bright and directional, so
-   probably the latter — but then the two sources behave differently for
-   reasons a user has to learn.
-4. **Divergence floor**: enforce one, or allow perfect collimation and note
-   the limitation in the wiki?
+   broad band enough for this app's purposes? This note proposes two bands.
+2. **Should the collimator be integrated or a separate element?** This note
+   proposes integrated, as LEDs are sold; a bare die is the Point source.
+3. **Divergence floor**: enforce one, or allow perfect collimation and note
+   the limitation in the wiki? This note proposes a floor.
 
 ## Sources
 
