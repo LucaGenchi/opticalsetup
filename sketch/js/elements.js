@@ -1038,11 +1038,12 @@ function probeCard(el, rd, elements = []) {
         `<text x="28" y="12" text-anchor="middle" dominant-baseline="central" font-size="8" fill="#9aa2ad">no beam</text>`,
     };
   }
-  const isSC = rd?.bw >= 200;
+  const lineRange = probeLinesRange(rd);
+  const isSC = rd?.bw >= 200 && !lineRange;
   const c = rd ? wavelengthToColor(rd.wl) : null;
 
   if (prop === 'wl') {
-    const label = isSC ? `SC ${Math.round(rd.wl - rd.bw / 2)}–${Math.round(rd.wl + rd.bw / 2)} nm`
+    const label = lineRange ? probeWlLabel(rd) : isSC ? `SC ${Math.round(rd.wl - rd.bw / 2)}–${Math.round(rd.wl + rd.bw / 2)} nm`
       : rd.bw > 0 ? `${Math.round(rd.wl)} ± ${Math.round(rd.bw / 2)} nm` : `${Math.round(rd.wl)} nm`;
     const w = label.length * 5.4 + 24;
     return {
@@ -1190,7 +1191,8 @@ function probeCard(el, rd, elements = []) {
     return `<line x1="${x}" y1="${y0}" x2="${x}" y2="${(y0 + 1.6).toFixed(2)}" stroke="#888" stroke-width="0.7"/>` +
       `<text x="${x}" y="${(y0 + 6).toFixed(2)}" text-anchor="${anchor}" font-size="4.6" fill="#666">${Math.round(wl)}</text>`;
   };
-  const vlabel = isSC ? `${Math.round(rd.wl - rd.bw / 2)}–${Math.round(rd.wl + rd.bw / 2)} nm`
+  // A lamp is named by the span its lines cover; the stems show how many.
+  const vlabel = lineRange ? `${lineRange} nm` : isSC ? `${Math.round(rd.wl - rd.bw / 2)}–${Math.round(rd.wl + rd.bw / 2)} nm`
     : rd.bw > 0 ? `${Math.round(rd.wl)} ± ${Math.round(rd.bw / 2)} nm` : `${Math.round(rd.wl)} nm`;
   return {
     w: W,
@@ -1238,7 +1240,20 @@ function spectrumAreaSvg(el, samples, peak, { xAt, x0, y0, pw, ph }) {
 // more than one (the power view always reads the circle).
 const PROBE_AREA_VIEWS = new Set(['spectrum', 'wl', 'pol', 'time', 'duration']);
 const PROBE_MAX_BEAMS_SHOWN = 4;
-const probeWlLabel = rd => (rd.bw >= 200 ? `SC ${Math.round(rd.wl - rd.bw / 2)}–${Math.round(rd.wl + rd.bw / 2)} nm`
+// A line spectrum's span, first line to last: "365–1014", or the one
+// wavelength when a single line is left (or all round to the same nanometre).
+// A lamp's `wl` is its brightest visible line and its `bw` the span of its
+// lines, so "wl ± bw/2" would name a range centred where the lamp is not.
+// Null for anything that is not a line spectrum.
+function probeLinesRange(rd) {
+  const lines = rd?.spec?.kind === 'lines' ? rd.spec.lines : null;
+  if (!lines?.length) return null;
+  const first = Math.round(Math.min(...lines.map(l => l.nm))), last = Math.round(Math.max(...lines.map(l => l.nm)));
+  return first === last ? `${first}` : `${first}–${last}`;
+}
+const probeWlLabel = rd => (probeLinesRange(rd)
+  ? `${rd.spec.lines.length > 1 ? `${rd.spec.lines.length} lines · ` : ''}${probeLinesRange(rd)} nm`
+  : rd.bw >= 200 ? `SC ${Math.round(rd.wl - rd.bw / 2)}–${Math.round(rd.wl + rd.bw / 2)} nm`
   : rd.bw > 0 ? `${Math.round(rd.wl)} ± ${Math.round(rd.bw / 2)} nm` : `${Math.round(rd.wl)} nm`);
 
 // Several beams crossing the sampling circle, in the spectrum, wavelength,
@@ -1287,7 +1302,7 @@ function probeMultiCard(el, prop, beams, elements) {
   const shown = listed.slice(0, PROBE_MAX_BEAMS_SHOWN);
   const more = listed.length - shown.length;
   const frame = (w, h) => `<rect x="0" y="0" width="${w}" height="${h}" rx="4" fill="#fff" stroke="#c9ced6"/>`;
-  const dot = (cx, cy, rd) => (rd.bw >= 200
+  const dot = (cx, cy, rd) => (rd.bw >= 200 && !probeLinesRange(rd)
     ? `<circle cx="${cx}" cy="${cy}" r="4" fill="#fff" stroke="#888"/><path d="M ${cx - 4},${cy} A 4 4 0 0 1 ${cx + 4},${cy}" fill="#e04040"/><path d="M ${cx - 4},${cy} A 4 4 0 0 0 ${cx + 4},${cy}" fill="#3050e0"/>`
     : `<circle cx="${cx}" cy="${cy}" r="4" fill="${wavelengthToColor(rd.wl)}"/>`);
 
@@ -1341,10 +1356,19 @@ function probeMultiCard(el, prop, beams, elements) {
     const gap = 4;
     let x = 0, body = '';
     for (const { beam, card } of cards) {
-      body += `<g transform="translate(${x},0)">${card.body}` +
-        `${dot(card.w / 2 - 14, card.h + 5, beam)}` +
-        `<text x="${card.w / 2 - 8}" y="${card.h + 5}" font-size="7" dominant-baseline="central" fill="#333">${esc(`${Math.round(beam.wl)} nm`)}</text></g>`;
-      x += card.w + gap;
+      // A lamp is named by the span of its lines, as the spectrum card names
+      // it; that caption is longer than a wavelength, so it is centred and
+      // its card given the room it needs.
+      const span = probeLinesRange(beam);
+      const name = `${span ?? Math.round(beam.wl)} nm`;
+      const half = span ? (10 + name.length * 3.7) / 2 : 14;
+      const slot = Math.max(card.w, half * 2);
+      const inset = (slot - card.w) / 2;
+      body += `<g transform="translate(${x},0)">` +
+        (inset > 0 ? `<g transform="translate(${inset.toFixed(2)},0)">${card.body}</g>` : card.body) +
+        `${dot(slot / 2 - half, card.h + 5, beam)}` +
+        `<text data-probe-pol-name="1" x="${slot / 2 - half + 6}" y="${card.h + 5}" font-size="7" dominant-baseline="central" fill="#333">${esc(name)}</text></g>`;
+      x += slot + gap;
     }
     if (more > 0) body += `<text x="${x}" y="14" font-size="7" fill="#666">+${more}</text>`;
     const w = x - gap + (more > 0 ? 14 : 0);
@@ -1357,8 +1381,11 @@ function probeMultiCard(el, prop, beams, elements) {
     // verdict -- synced, or which beam comes first and by how much -- above.
     const summary = probeTimingSummary(beams);
     const verdict = probeTimingLabel(summary) || 'no pulsed beams to compare';
-    // Wide enough for the verdict, which is the point of this view.
-    const W = Math.max(90, Math.ceil(verdict.length * 3.5 + 12)), H = 56, x0 = 9, y0 = H - 12, pw = W - 16, ph = H - 30;
+    // The beams compared, each by its colour; a lamp by the span of its lines.
+    const names = shown.map(b => `${probeLinesRange(b) ?? Math.round(b.wl)} nm`).join(' · ') + (more > 0 ? ` +${more}` : '');
+    // Wide enough for the verdict, which is the point of this view, and for
+    // the list of beams under it.
+    const W = Math.max(90, Math.ceil(verdict.length * 3.5 + 12), Math.ceil(names.length * 2.8 + 12)), H = 56, x0 = 9, y0 = H - 12, pw = W - 16, ph = H - 30;
     const window = syncedTimeWindowNs(beams.map(beam => ({ reading: beam, params: el.params })));
     const { startNs, spanNs } = window;
     const xAt = ns => x0 + pw * (spanNs > 0 ? (ns - startNs) / spanNs : 0);
@@ -1402,7 +1429,7 @@ function probeMultiCard(el, prop, beams, elements) {
         `<text x="${x0}" y="${y0 + 6}" font-size="4.6" fill="#666">${axis(startNs)}</text>` +
         `<text x="${x0 + pw}" y="${y0 + 6}" text-anchor="end" font-size="4.6" fill="#666">${axis(startNs + spanNs)}</text>` +
         `<text data-probe-timing="${summary?.state || 'none'}" x="${W / 2}" y="8" text-anchor="middle" font-size="5.8" font-weight="700" fill="#333">${esc(verdict)}</text>` +
-        `<text x="${W / 2}" y="15" text-anchor="middle" font-size="4.8" fill="#666">${esc(shown.map(b => `${Math.round(b.wl)} nm`).join(' · ') + (more > 0 ? ` +${more}` : ''))}</text>`,
+        `<text x="${W / 2}" y="15" text-anchor="middle" font-size="4.8" fill="#666" data-probe-time-names="${shown.length}">${esc(names)}</text>`,
     };
   }
 
