@@ -16,7 +16,7 @@ import { access, copyFile, mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  KEPT_RELEASE_ENTRIES, PUBLIC_SITE_ENTRIES, git, keptReleases, readReleases,
+  KEPT_RELEASE_ENTRIES, PUBLIC_SITE_ENTRIES, brokenInternalLinks, git, keptReleases, readReleases,
   rendererDigest, siteDigest, tagExists,
 } from './release-lib.mjs';
 
@@ -69,6 +69,11 @@ export async function stageSite(output, root = ROOT) {
   }
 
   await copyFile(resolve(root, 'releases.json'), resolve(out, 'releases.json'));
+
+  const broken = await brokenInternalLinks(out);
+  if (broken.length) {
+    throw new Error(`The staged site has ${broken.length} link(s) to files it does not contain:\n  ${broken.slice(0, 20).join('\n  ')}`);
+  }
   return { version: latest.version, kept: kept.map(entry => entry.path) };
 }
 

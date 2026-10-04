@@ -22,6 +22,8 @@ export const PUBLIC_SITE_ENTRIES = Object.freeze([
   'community',
   'community-submissions',
   'css',
+  // Wiki and example pages link to these derivations.
+  'docs/physics',
   'example-setups',
   'index.html',
   'license.html',
@@ -194,6 +196,35 @@ export function keptReleases(releases) {
     if (!seen.has(path)) seen.set(path, { path, version: entry.version, rendererSha256: entry.rendererSha256 });
   }
   return [...seen.values()];
+}
+
+// Every link from a staged page to another file on the site must land on a
+// staged file. This is what catches a public page that depends on something
+// PUBLIC_SITE_ENTRIES does not list: on the repository-wide site that used
+// to be served, such a link worked by accident.
+export async function brokenInternalLinks(root) {
+  const base = resolve(root);
+  const exists = async path => {
+    try {
+      const details = await stat(path);
+      return details.isFile() || (await stat(join(path, 'index.html'))).isFile();
+    } catch (_) { return false; }
+  };
+  const broken = [];
+  for (const file of await filesBelow(base)) {
+    if (!file.endsWith('.html')) continue;
+    const html = await readFile(file, 'utf8');
+    for (const [, raw] of html.matchAll(/\s(?:href|src)="([^"]+)"/g)) {
+      // Other sites, in-page anchors, and template text inside inline scripts.
+      if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(raw) || raw.includes('${')) continue;
+      let path;
+      try { path = decodeURIComponent(raw.split('#')[0].split('?')[0]); } catch (_) { path = raw; }
+      if (!path) continue;
+      const target = path.startsWith('/') ? join(base, path) : resolve(file, '..', path);
+      if (!await exists(target)) broken.push(`${relative(base, file).split(sep).join('/')} -> ${raw}`);
+    }
+  }
+  return broken;
 }
 
 export function git(root, args, options = {}) {

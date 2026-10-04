@@ -27,7 +27,13 @@ export async function releaseStatus(root = ROOT) {
   return { current: last?.version ?? '', appRelease: await readAppRelease(root), renderer, site, last, next, reason };
 }
 
-export async function prepareRelease(root = ROOT, level = 'auto', date = new Date().toISOString().slice(0, 10)) {
+// The date on the maintainer's own calendar, not UTC's.
+function today() {
+  const now = new Date();
+  return [now.getFullYear(), now.getMonth() + 1, now.getDate()].map(n => String(n).padStart(2, '0')).join('-');
+}
+
+export async function prepareRelease(root = ROOT, level = 'auto', date = today()) {
   const releases = await readReleases(root);
   const [renderer, site] = await Promise.all([rendererDigest(root), siteDigest(root)]);
   const plan = planRelease({ releases, renderer, site, level });

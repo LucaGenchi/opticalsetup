@@ -210,6 +210,18 @@ test('the staged site is the latest release plus each earlier app, read from tag
   await assert.rejects(stageSite(out, f.root), /already exists/);
 });
 
+test('a public page that links to a file the site does not contain stops the deploy', async t => {
+  const f = await fixture(t);
+  await f.write('wiki/index.html', '<!doctype html><a href="../sketch/">app</a> <a href="/Examples/a.json?x=1#top">scene</a> '
+    + '<a href="https://example.org/">out</a> <a href="#here">here</a> <a href="../docs/internal.md">derivation</a>\n');
+  await f.write('docs/internal.md', 'in the repository, not on the site\n');
+  f.commit('a page that leans on an unpublished file');
+  await f.release();
+  const out = resolve(f.root, '..', `staged-${process.pid}-${Date.now()}-links`);
+  t.after(() => rm(out, { recursive: true, force: true }));
+  await assert.rejects(stageSite(out, f.root), /1 link\(s\) to files it does not contain:\n  wiki\/index\.html -> \.\.\/docs\/internal\.md/);
+});
+
 test('a moved tag or a missing tag stops the deploy', async t => {
   const f = await fixture(t);
   await f.release();                                   // v1.0.0
