@@ -1432,11 +1432,19 @@ function probeMultiCard(el, prop, beams, elements) {
   }
 
   // Spectrum: the beams' summed spectral density, weighted by their watts.
-  const W = 74, H = 50, x0 = 10, y0 = H - 13, pw = W - 18, ph = H - 24;
+  // Each colour is named once; a lamp by the span of its lines, since its
+  // nominal wavelength is only the brightest of them.
+  const { weights, absolute } = probeBeamWeights(beams, elements);
+  const colours = shown.map(b => probeLinesRange(b) ?? `${Math.round(b.wl)}`).filter((name, i, all) => all.indexOf(name) === i);
+  // Without every source's watts the beams can only be compared by their
+  // share of their own source: said on the card, not only in its markup.
+  const names = colours.join(' · ') + (more > 0 ? ` +${more}` : '') + ' nm' + (absolute ? '' : ' · relative');
+  // The caption sits above the plot and ends at its right edge, so the plot
+  // -- and the card with it -- is at least as wide as the caption.
+  const W = Math.max(74, Math.ceil(names.length * 3.5) + 18), H = 50, x0 = 10, y0 = H - 13, pw = W - 18, ph = H - 24;
   const { lo, hi } = probeSpectrumRangeAll(beams, el.params);
   const span = Math.max(1e-6, hi - lo);
   const xAt = wl => x0 + pw * (wl - lo) / span;
-  const { weights, absolute } = probeBeamWeights(beams, elements);
   const samples = combinedSpectrumSamples(beams, weights, lo, hi, 160);
   const peak = Math.max(...samples.map(p => p.weight), 1e-30);
   const curve = spectrumAreaSvg(el, samples, peak, { xAt, x0, y0, pw, ph });
@@ -1445,10 +1453,6 @@ function probeMultiCard(el, prop, beams, elements) {
     return `<line x1="${x}" y1="${y0}" x2="${x}" y2="${(y0 + 1.6).toFixed(2)}" stroke="#888" stroke-width="0.7"/>` +
       `<text x="${x}" y="${(y0 + 6).toFixed(2)}" text-anchor="${anchor}" font-size="4.6" fill="#666">${Math.round(wl)}</text>`;
   };
-  const colours = shown.map(b => Math.round(b.wl)).filter((wl, i, all) => all.indexOf(wl) === i);
-  // Without every source's watts the beams can only be compared by their
-  // share of their own source: said on the card, not only in its markup.
-  const names = colours.join(' · ') + (more > 0 ? ` +${more}` : '') + ' nm' + (absolute ? '' : ' · relative');
   return {
     w: W, h: H,
     body: frame(W, H) +
