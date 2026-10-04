@@ -80,46 +80,78 @@ export function spectralFieldResult(spec, terms, { widthMm = 0 } = {}) {
   return null;
 }
 
-// The arm mismatch at which two equal copies of this spectrum stop
+// The arm mismatch at which two equal copies of a source spectrum stop
 // interfering well: the optical path difference where fringe visibility
 // |∫ S(λ) exp(2πi d/λ) dλ| / ∫ S(λ) dλ first falls to one half. Taken from
 // the same spectrum the tracer integrates, so it is the scale of what an
-// interferometer here shows -- for a transform-limited Gaussian pulse it is
-// the length of the pulse, c × its duration. Null without a finite band.
-export function coherencePathMm(spec, samples = 512) {
-  const support = spec && ['gauss', 'flat', 'sampled'].includes(spec.kind) ? spectrumSupport(spec) : null;
+// interferometer here shows; for a narrow-band transform-limited Gaussian
+// pulse it approaches the length of the pulse, c × its duration.
+//
+// Returns the length in mm; null when the spectrum has no finite band (a
+// single line has no such limit); NaN when the band is finite but the answer
+// was not resolved. Only the single-band source shapes are supported --
+// 'gauss' and 'flat'. A sampled profile can dip below one half between any
+// two search points, so it is declined rather than searched.
+const coherenceCache = new Map();
+export function coherencePathMm(spec) {
+  if (!spec) return null;
+  if (!['gauss', 'flat'].includes(spec.kind)) return spec.kind === 'sampled' ? NaN : null;
+  const support = spectrumSupport(spec);
   if (!support || !support.every(Number.isFinite) || !(support[0] > 0) || !(support[1] > support[0])) return null;
-  const [lo, hi] = support;
-  const grid = Array.from({ length: samples + 1 }, (_, i) => {
-    const wl = lo + (hi - lo) * i / samples;
-    const weight = (i === 0 || i === samples ? 1 : i % 2 ? 4 : 2) * Math.max(0, spectrumWeight(spec, wl));
-    return { k: TAU_NM / wl, weight };
-  });
-  const norm = grid.reduce((sum, g) => sum + g.weight, 0);
-  if (!(norm > 0)) return null;
-  const visibility = d => {
-    let re = 0, im = 0;
-    for (const g of grid) { re += g.weight * Math.cos(g.k * d); im += g.weight * Math.sin(g.k * d); }
-    return Math.hypot(re, im) / norm;
+  const key = JSON.stringify(spec);
+  if (!coherenceCache.has(key)) {
+    if (coherenceCache.size > 64) coherenceCache.clear();
+    coherenceCache.set(key, halfVisibilityPathMm(spec, support));
+  }
+  return coherenceCache.get(key);
+}
+
+function halfVisibilityPathMm(spec, [lo, hi]) {
+  // Integrate in wavenumber k = 1/λ, where the phase 2π d k is linear, one
+  // octave of wavelength at a time: an octave's sample count follows the
+  // fringes it holds at this d, so a band reaching to very short wavelengths
+  // is resolved without oversampling the rest. S(λ) dλ = S(1/k) dk / k².
+  const octaves = [];
+  for (let a = lo; a < hi; a = Math.min(hi, a * 2)) octaves.push([1 / Math.min(hi, a * 2), 1 / a]);
+  const moments = dNm => {
+    let re = 0, im = 0, norm = 0, first = 0, second = 0;
+    for (const [ka, kb] of octaves) {
+      const n = 2 * Math.min(32768, Math.ceil(Math.max(16, 16 * dNm * (kb - ka))));
+      const h = (kb - ka) / n;
+      for (let i = 0; i <= n; i++) {
+        const k = ka + h * i;
+        const weight = (i === 0 || i === n ? 1 : i % 2 ? 4 : 2) * h * Math.max(0, spectrumWeight(spec, 1 / k)) / (k * k);
+        const phase = 2 * Math.PI * dNm * k;
+        re += weight * Math.cos(phase); im += weight * Math.sin(phase);
+        norm += weight; first += weight * k; second += weight * k * k;
+      }
+    }
+    return { visibility: norm > 0 ? Math.hypot(re, im) / norm : NaN, norm, mean: first / norm, meanSquare: second / norm };
   };
-  // λ²/Δλ over the whole support bounds the answer from above for any shape
-  // this model has; step well inside it, then bisect the crossing.
-  const scale = 1e-6 * lo * hi / (hi - lo);
-  const step = scale / 64;
+  const at0 = moments(0);
+  if (!(at0.norm > 0)) return null;
+  const sigmaK = Math.sqrt(Math.max(0, at0.meanSquare - at0.mean ** 2));
+  if (!(sigmaK > 0)) return null;
+  // A Gaussian reaches one half at 1.18 of this scale and a flat band at
+  // 1.09; step well inside it and stop far beyond it.
+  const scaleNm = 1 / (2 * Math.PI * sigmaK);
+  const step = scaleNm / 16;
   let below = 0;
-  for (let i = 1; i <= 64 * 16; i++) {
+  for (let i = 1; i <= 16 * 40; i++) {
     const d = i * step;
-    if (visibility(d) <= 0.5) {
+    const v = moments(d).visibility;
+    if (!Number.isFinite(v)) return NaN;
+    if (v <= 0.5) {
       let a = below, b = d;
       for (let n = 0; n < 40; n++) {
         const mid = (a + b) / 2;
-        if (visibility(mid) > 0.5) a = mid; else b = mid;
+        if (moments(mid).visibility > 0.5) a = mid; else b = mid;
       }
-      return (a + b) / 2;
+      return (a + b) / 2 * 1e-6;
     }
     below = d;
   }
-  return null;
+  return NaN;
 }
 
 // Translate a previously combined field to its current ray reference. A

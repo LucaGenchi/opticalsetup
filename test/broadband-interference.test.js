@@ -444,9 +444,19 @@ test('the coherence length is where an arm mismatch halves the fringe contrast',
   const flat = coherencePathMm(resolveSourceSpectrum('sclaser', sc.params).spec);
   assert.ok(flat > 0.2e-3 && flat < 1e-3, `${flat} mm`);
   assert.ok(Math.abs(coherenceVisibilityAt(resolveSourceSpectrum('sclaser', sc.params).spec, flat) - 0.5) < 1e-6);
-  // No band, no limit to report; and every readout is finite text.
+  // A band so wide it reaches the 1 nm floor of the support is still
+  // resolved, not reported as unlimited: 800 nm, 1 fs.
+  Object.assign(pulsed.params, { pulseWidthFs: 1 });
+  const widest = resolveSourceSpectrum('pulsedlaser', pulsed.params).spec;
+  near(coherencePathMm(widest), 0.3632e-3, 0.5e-6);
+  assert.match(registry.pulsedlaser.params.find(p => p.key === 'coherenceLength').readout(pulsed.params), /^≈ 0\.363 µm/);
+  // No band, no limit to report. A sampled profile is finite but not one of
+  // the supported source shapes: declined, and never called unlimited.
   assert.equal(coherencePathMm(null), null);
   assert.equal(coherencePathMm({ kind: 'lines', lines: [] }), null);
+  const twoLines = Array(4097).fill(0);
+  twoLines[1024] = 3; twoLines[3072] = 1;
+  assert.ok(Number.isNaN(coherencePathMm({ kind: 'sampled', lo: 600, hi: 1000, w: twoLines })));
   for (const type of ['pulsedlaser', 'sclaser']) {
     const params = registry[type].params;
     const readout = params.find(p => p.key === 'coherenceLength').readout;

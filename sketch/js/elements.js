@@ -2157,8 +2157,8 @@ const pulsedInterferenceParams = type => [
     key: 'coherenceLength', label: 'Coherence length', type: 'readout',
     readout: p => {
       const length = coherencePathMm(resolveSourceSpectrum(type, p).spec);
-      return length === null ? 'Not limited by this spectrum'
-        : `≈ ${formatPathLength(length)} (half contrast)`;
+      if (length === null) return 'Not limited by this spectrum';
+      return Number.isFinite(length) ? `≈ ${formatPathLength(length)} (half contrast)` : 'Not resolved for this spectrum';
     },
   },
 ];

@@ -91,12 +91,24 @@ Each pulsed and supercontinuum source reports a coherence length in its
 Interference panel: the optical path difference between two equal copies at which
 fringe visibility, `|∫ S(λ) exp(2πi ΔL/λ) dλ| / ∫ S(λ) dλ`, first falls to one
 half. It is computed from the same source spectrum the tracer integrates, so it is
-the scale of what an interferometer in the app shows. For a transform-limited
-Gaussian pulse it equals the pulse's own length, c × duration (45 µm for 150 fs);
-for the flat 400–700 nm continuum it is a fraction of a micrometre. A chirped
-pulse of the same bandwidth has the same value. It is an estimate of the source,
-not of a particular layout: unequal splitting or polarization lowers the contrast
-further.
+the scale of what an interferometer in the app shows. For a narrow-band
+transform-limited Gaussian pulse it approaches the pulse's own length, c × duration
+(45.2 µm against 45.0 µm for 150 fs at 800 nm); the two part as the band widens,
+because the source spectrum is Gaussian in wavelength and truncated. The default
+flat continuum gives a fraction of a micrometre. A chirped pulse of the same
+bandwidth has the same value. It is an estimate of the source, not of a particular
+layout: unequal splitting or polarization lowers the contrast further.
+
+The integral is taken in wavenumber, one octave of wavelength at a time, and the
+search is scaled by the spectrum's own r.m.s. width. Only the single-band source
+shapes (Gaussian and flat) are supported. The readout says "Not limited by this
+spectrum" only when the source has no band at all, and "Not resolved for this
+spectrum" if a finite band yields no crossing.
+
+This is not the CW laser's coherence-length parameter under another name. That
+parameter is the full width at half maximum of the laser's visibility envelope
+against arm mismatch, so its fringes are at half contrast at a mismatch of half
+the stated length; the value here is the mismatch itself.
 
 ## Saved scenes
 
