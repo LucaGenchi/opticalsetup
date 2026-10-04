@@ -11,7 +11,7 @@
   "issue": "https://github.com/LucaGenchi/optics-sketch/issues/45",
   "submittedAt": "2026-08-18T15:04:52.000Z"
  },
- "sceneSha256": "dbbdceed8ae629003dbeb680ad1a6f609a812ba2fbaf3e1d5fdb585438bbee20",
+ "sceneSha256": "240cf0ab071fdf2fb49e9be4e162e0758d127726d8bdfbf2c4cd368c8d583ef2",
  "scene": {
   "app": "optics2d",
   "version": 1,
@@ -32,15 +32,18 @@
      "beamWidth": 10,
      "repRateMHz": 80,
      "pulsePhaseNs": 0,
+     "transformLimited": true,
      "pulseWidthFs": 180,
-     "transformLimited": false,
      "pulseShape": "gauss",
-     "bandwidth": 0,
+     "bandwidth": 1e-9,
+     "inputChirp": "positive",
+     "chirpGddFs2": 0,
      "pol": 0,
      "autoColor": true,
      "color": "#e02020",
      "showPulse": true,
-     "temporalMode": "pulsed"
+     "temporalMode": "pulsed",
+     "interference": false
     }
    },
    {
@@ -110,7 +113,7 @@
     "id": "em9z1cz9",
     "type": "sample",
     "x": 72,
-    "y": 249,
+    "y": 250,
     "rot": 270,
     "label": "Fluorescent sample",
     "showLabel": true,
@@ -247,9 +250,10 @@
     "labelPos": "t",
     "params": {
      "dtype": "longpass",
-     "cutoff": 550,
+     "cutoff": 900,
      "center": 550,
      "band": 50,
+     "bandRefl": 100,
      "length": 25.4
     }
    },
@@ -264,7 +268,12 @@
     "params": {
      "aperture": 26,
      "gain": 10,
-     "saturation": 100
+     "darkInput": 0.00001,
+     "saturation": 100,
+     "timeSpanNs": 0,
+     "timeOffsetNs": 0,
+     "sync": false,
+     "riseTimeNs": 2
     }
    },
    {
@@ -325,9 +334,10 @@
     "labelPos": "t",
     "params": {
      "dtype": "longpass",
-     "cutoff": 550,
+     "cutoff": 900,
      "center": 550,
      "band": 50,
+     "bandRefl": 100,
      "length": 25.4
     }
    },
@@ -343,7 +353,12 @@
     "params": {
      "aperture": 26,
      "gain": 10,
-     "saturation": 100
+     "darkInput": 0.00001,
+     "saturation": 100,
+     "timeSpanNs": 0,
+     "timeOffsetNs": 0,
+     "sync": false,
+     "riseTimeNs": 2
     }
    },
    {
@@ -371,7 +386,8 @@
     "params": {
      "ch": 30,
      "pixels": 24,
-     "rows": 12
+     "interference": true,
+     "profileScale": "absolute"
     }
    },
    {
@@ -479,27 +495,27 @@
     "kind": "fiber",
     "pts": [
      {
-      "x": 80,
+      "x": 83.95834392021496,
       "y": 126
      },
      {
-      "x": -25,
+      "x": -46.041656079785035,
       "y": 125
      },
      {
-      "x": -75,
+      "x": -96.04165607978504,
       "y": 200
      },
      {
-      "x": -25,
+      "x": -71.04165607978504,
       "y": 275
      },
      {
-      "x": 25,
+      "x": -21,
       "y": 250
      },
      {
-      "x": 65,
+      "x": 62.25,
       "y": 250
      }
     ],
@@ -510,6 +526,8 @@
     "inputNA": 0.22,
     "groupIndex": 1.468,
     "lossDbPerM": 0.2,
+    "lengthM": 0,
+    "beta2Ps2PerKm": 0,
     "out0": {
      "mode": "diverge",
      "na": 0.12,

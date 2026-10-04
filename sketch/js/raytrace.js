@@ -2483,6 +2483,7 @@ function couplingStateKey(c) {
   return JSON.stringify([
     polarizationKey(c), spec, r(c.bw || 0), Math.round((Number(c.gdd) || 0) * 1000),
     Math.round((Number(c.groupDelayDifferenceFs) || 0) * 1000), gates, c.approximation || null,
+    c.incoherent === true,
   ]);
 }
 
@@ -2535,7 +2536,8 @@ function fiberEmissionRays(c) {
   const common = {
     wl: c.wl, bw, spec, speckle: false, intensity: Math.min(1, c.intensity * transmission),
     power: Number.isFinite(c.power) ? c.power * transmission / K : undefined,
-    pol: c.pol, stokes: cloneStokes(c.stokes), pulse, approximation, sourceId: c.sourceId || null,
+    pol: c.pol, stokes: cloneStokes(c.stokes), pulse, incoherent: c.incoherent === true,
+    approximation, sourceId: c.sourceId || null,
     originId: c.originId || null,
     loopSum: c.loopSum || 1,
     // The parametric elements this light went through before the fiber: an
@@ -4770,7 +4772,7 @@ function interact(ray, hit) {
               out.push({
                 d: { x: Math.cos(a), y: Math.sin(a) }, wl: line, bw: 0, spec: null, pol: undefined, stokes: null,
                 color: tint, evan: true, evanLen: EMISSION_GLOW_MM, captureLen: EMISSION_CAPTURE_MM,
-                sourceId: emittedFrom,
+                sourceId: emittedFrom, incoherent: true,
                 intensity: 0.25,
                 power: Number.isFinite(ray.power) ? ray.power * eff / (N * shifts.length) : undefined,
                 tag: `r${ci}_${Math.round(shift)}_${i}`,
@@ -4792,7 +4794,7 @@ function interact(ray, hit) {
               d: { x: Math.cos(a), y: Math.sin(a) },
               wl: emission.wl, bw: emission.bw, spec: emission.spec,
               pol: undefined, stokes: null,
-              color: tint, sourceId: emittedFrom,
+              color: tint, sourceId: emittedFrom, incoherent: true,
               evan: true, evanLen: EMISSION_GLOW_MM, captureLen: EMISSION_CAPTURE_MM,
               intensity: 0.25,
               power: Number.isFinite(ray.power) ? ray.power * strength / N : undefined,
@@ -4852,6 +4854,7 @@ function interact(ray, hit) {
           const a = i * 2 * Math.PI / N;
           out.push({
             d: { x: Math.cos(a), y: Math.sin(a) }, wl: data.wl, bw: 0, spec: null, pol: undefined, stokes: null,
+            incoherent: true,
             evan: true, evanLen: EMISSION_GLOW_MM, captureLen: EMISSION_CAPTURE_MM,
             intensity: emitted > 0 ? 0.25 : 0, power: Number.isFinite(ray.power) ? ray.power * (1 - transmission) * Math.min(1, Math.max(0, data.efficiency ?? 0.1)) / N : undefined,
             tag: 'f' + i,
@@ -6277,7 +6280,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           couplings.push({
             beam: fb, end: hit.surface.data.end, wl: r.wl, bw: r.bw, spec: r.spec,
             intensity: r.intensity, power: r.power, pol: r.pol, stokes: cloneStokes(r.stokes),
-            pulse: r.pulse, opl: r.opl, gdd: r.gdd,
+            pulse: r.pulse, incoherent: r.incoherent === true, opl: r.opl, gdd: r.gdd,
             groupDelayDifferenceFs: r.groupDelayDifferenceFs,
             approximation: r.approximation || null,
             sourceId: r.sourceId || null,
@@ -6454,6 +6457,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // this path and is generated light all the same.
         r.pulseDescribed = childPulseDescribed(r, c0, hit.surface.kind);
         if (!r.pulseDescribed) r.trainPieces = null;
+        if (c0.incoherent === true) r.incoherent = true;
         if (c0.intensity !== undefined && r.intensity > 0 && Number.isFinite(r.power)) {
           r.power *= c0.intensity / r.intensity;
         }
@@ -6608,6 +6612,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           groupDelayDifferenceTrace: ('pulse' in c ? Boolean(c.pulse) : r.groupDelayDifferenceTrace)
             ? [{ opl: r.opl, value: childDelayDifference, linear: false }] : null,
           pulse: 'pulse' in c ? c.pulse : r.pulse,
+          // Spontaneous emission (fluorescence, Raman) is incoherent light. It
+          // keeps the pump's record, which still times it for detectors, but
+          // it is not drawn as a train of laser pulses, here or downstream.
+          incoherent: r.incoherent === true || c.incoherent === true,
           pulseDescribed: childPulseDescribed(r, c, hit.surface.kind),
           // The whole-train spectrum for drawing travels with light the
           // record describes, and with nothing else. It belongs to the record
@@ -6862,6 +6870,9 @@ function collectPulseTracks(paths, K, fixedColor, pulseTracks) {
   const centreSample = Math.floor((Math.max(1, K) - 1) / 2);
   for (const r of paths) {
     if (!r.pulse || r.pulse.interferenceUnknown || r.pts.length < 2 || r.opls?.length !== r.pts.length) continue;
+    // Only laser light travels as drawn pulses: a specimen's fluorescence or
+    // Raman scatter is drawn as a steady beam wherever it goes.
+    if (r.incoherent) continue;
     if (r.sample !== null && r.sample !== undefined && r.sample !== centreSample) continue;
     // The beam fill skips any SEGMENT carrying no light, and the packets have
     // to agree or a train draws along a path with no beam under it. Judging
