@@ -15,6 +15,7 @@ import { analyzerTransmission, linearStokes, retarder } from '../sketch/js/polar
 import { finesseForReflectivity, reflectivityForFinesse } from '../sketch/js/etalon.js';
 import { parametricGainCoefficient, parametricPair, parametricSmallSignalGain } from '../sketch/js/parametric.js';
 import { allocateParametricAmplifier } from '../sketch/js/parametric-amplifier.js';
+import { spectralFieldResult } from '../sketch/js/spectral-coherence.js';
 import { coupledWaveConversion } from '../calculators/opa/coupled-wave.js';
 
 // The quantitative models listed in docs/validation.md are checked against
@@ -37,6 +38,7 @@ const C_NM_PER_FS = 299.792458;
 // How each reference case is answered by the app. Returns an object with the
 // same keys as the case's `expected`.
 const APP = {
+  'broadband-interference': ({ spec, terms }) => ({ power: spectralFieldResult(spec, terms)?.power }),
   sellmeier: ({ glass, wavelengthNm, loNm, hiNm, lengthMm }) => {
     if (loNm !== undefined) {
       // The data sheet's principal dispersion: the F and C line indices, not a delay.
@@ -135,7 +137,7 @@ const APP = {
   },
 };
 
-for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa']) {
+for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference']) {
   const model = expected(name);
   for (const c of model.cases) {
     test(`${model.id}: ${c.name}`, () => {

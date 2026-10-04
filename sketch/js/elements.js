@@ -24,8 +24,9 @@ import {
 } from './probe.js';
 import {
   LED_MAX_BANDWIDTH_NM, LED_MIN_BANDWIDTH_NM, LED_PRESETS, ledBands,
-  linewidthForCoherenceLengthNm, spectrumSamples, supercontinuumTransformLimitFs, transformLimitedBandwidthNm,
+  linewidthForCoherenceLengthNm, resolveSourceSpectrum, spectrumSamples, supercontinuumTransformLimitFs, transformLimitedBandwidthNm,
 } from './spectrum.js';
+import { coherencePathMm } from './spectral-coherence.js';
 import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
   pointInBoundary, sampleBoundary,
@@ -1101,6 +1102,7 @@ function probeCard(el, rd, elements = []) {
   }
 
   if (prop === 'time') {
+    if (rd.pulse?.interferenceUnknown) return valueCard('Temporal field unavailable');
     const W = 78, H = 46, x0 = 9, y0 = H - 12, pw = W - 16, ph = H - 22;
     const { startNs, spanNs } = probeTimeWindowNs(rd, el.params);
     const xAt = ns => x0 + pw * (spanNs > 0 ? (ns - startNs) / spanNs : 0);
@@ -1397,6 +1399,7 @@ function probeMultiCard(el, prop, beams, elements) {
     const shiftOf = beam => (lead && Number.isFinite(beam.propagationNs) ? beam.propagationNs - lead.arrivalNs : 0);
     let traces = '';
     for (const beam of shown) {
+      if (beam.pulse?.interferenceUnknown) continue;
       const colour = wavelengthToColor(beam.wl);
       const trace = scopeTrace(beam.pulse, { spanNs, startNs, samples: 160, delayNs: shiftOf(beam) });
       if (!trace) {
@@ -2138,6 +2141,32 @@ const beamShapeParams = beamWidthDef => [
   { key: 'beamWidth', label: 'Beam width (mm)', type: 'number', min: 1, max: 60, step: 0.5, def: beamWidthDef, show: p => p.beamMode === 'beam' },
 ];
 
+// New sources opt in; old saved sources keep their power-only behavior.
+// The panel closes the source's controls, after the pulse and bandwidth
+// settings that decide how far apart two arms can be and still interfere.
+const formatPathLength = mm => (mm < 1
+  ? `${Number((mm * 1000).toPrecision(3))} µm`
+  : `${Number(mm.toPrecision(3))} mm`);
+const pulsedInterferenceParams = type => [
+  { key: 'interferenceHeading', label: 'Interference', type: 'section' },
+  {
+    key: 'interference', label: 'Interference', type: 'checkbox', def: true,
+    migrate: () => false,
+  }, {
+    key: 'interferenceModel', label: 'Interference model', type: 'readout',
+    readout: p => p.beamMode !== 'beam' ? 'Requires Beam with size'
+      : p.interference ? 'Same source · ideal interferometer optics' : 'Off · powers add',
+  }, {
+    // Where an arm mismatch halves the fringe contrast, for this spectrum.
+    key: 'coherenceLength', label: 'Coherence length', type: 'readout',
+    readout: p => {
+      const length = coherencePathMm(resolveSourceSpectrum(type, p).spec);
+      if (length === null) return 'Not limited by this spectrum';
+      return Number.isFinite(length) ? `≈ ${formatPathLength(length)} (half contrast)` : 'Not resolved for this spectrum';
+    },
+  },
+];
+
 const POL_PARAM = { key: 'pol', label: 'Polarization (°)', type: 'number', min: 0, max: 180, step: 5, def: 0 };
 
 // Repetition rate and emission offset are the pulse-train timing both pulsed
@@ -2576,6 +2605,11 @@ function opaStateCore(plan, p) {
   return lines.join('\n');
 }
 
+// How far an uncollected point-source ray is drawn, and the capture range a
+// point source had before the range became a parameter (1.5x the glow).
+const POINT_SOURCE_GLOW_MM = 110;
+const POINT_SOURCE_LEGACY_CAPTURE_MM = 165;
+
 export const registry = {
 
   // ---------------- Sources ----------------
@@ -2688,6 +2722,7 @@ export const registry = {
       },
       SHOW_PULSE_PARAM,
       pinnedParam('temporalMode', 'pulsed'),
+      ...pulsedInterferenceParams('pulsedlaser'),
     ],
     svg(el) {
       const h = laserH(el), hh = h / 2, ap = laserAperture(el);
@@ -2701,9 +2736,10 @@ export const registry = {
   },
 
   // Unified replacement for the old LED + Light source: one isotropic point
-  // emitter. Rays are evanescent — they fade within ~110 mm (5x a fluorescent
-  // specimen's range) unless a nearby lens / objective / fiber tip collects
-  // them, which keeps 360° emission from flooding the canvas.
+  // emitter. A ray with a lens, a mirror or a fiber tip ahead of it within
+  // the source's capture range is ordinary light; any other ray is drawn as a
+  // glow fading within ~110 mm, which keeps 360° emission from flooding the
+  // canvas. The range is a drawing convention the user sets, not attenuation.
   pointsource: {
     label: 'Point source', category: 'Sources', paletteOrder: 3, size: { w: 30, h: 30 },
     aliases: ['led', 'lamp', 'light source', 'bulb', 'isotropic source', 'point emitter'],
@@ -2729,7 +2765,15 @@ export const registry = {
       },
       { key: 'linesReadout', label: 'Lines', type: 'readout', readout: p => lampLineSummary(p.lampType), show: p => p.sourceKind === 'lamp' },
       { key: 'spread', label: 'Emission angle (°)', type: 'number', min: 10, max: 360, step: 10, def: 360 },
-      { key: 'nrays', label: 'Rays', type: 'number', min: 4, max: 32, step: 2, def: 12 },
+      { key: 'nrays', label: 'Rays', type: 'number', min: 4, max: 128, step: 2, def: 12 },
+      // How far from the source a lens, mirror or fiber tip may sit and still
+      // collect its light. Sketches saved before this control existed traced with a fixed
+      // 165 mm, so they load at that instead of the new default.
+      {
+        key: 'captureRange', label: 'Capture range (mm)', type: 'number',
+        min: POINT_SOURCE_GLOW_MM, max: 5000, step: 5, def: 1000,
+        migrate: () => POINT_SOURCE_LEGACY_CAPTURE_MM,
+      },
       P.autoColor, P.color,
     ],
     svg(el) {
@@ -2760,13 +2804,20 @@ export const registry = {
     source(el) {
       const { spread, nrays } = el.params, out = [];
       const n = Math.max(1, Math.round(nrays));
+      const range = Number(el.params.captureRange);
+      const captureLen = Number.isFinite(range)
+        ? Math.min(5000, Math.max(POINT_SOURCE_GLOW_MM, range))
+        : POINT_SOURCE_LEGACY_CAPTURE_MM;
       for (let i = 0; i < n; i++) {
         // A full-circle source must not duplicate the -180°/+180° sample.
         const aDeg = spread >= 359.999
           ? 360 * i / n
           : (n === 1 ? 0 : -spread / 2 + spread * i / (n - 1));
         const a = aDeg * Math.PI / 180;
-        out.push({ x: 0, y: 0, dx: Math.cos(a), dy: Math.sin(a), evan: true, evanLen: 110 });
+        out.push({
+          x: 0, y: 0, dx: Math.cos(a), dy: Math.sin(a),
+          evan: true, evanLen: POINT_SOURCE_GLOW_MM, captureLen, captureMode: 'collectors',
+        });
       }
       return out;
     },
@@ -5648,6 +5699,7 @@ registry.sclaser = {
     { ...P.color, def: '#cbd8ea' },
     SHOW_PULSE_PARAM,
     pinnedParam('temporalMode', 'pulsed'),
+    ...pulsedInterferenceParams('sclaser'),
   ],
   svg(el) {
     const h = laserH(el), hh = h / 2, ap = laserAperture(el);
@@ -5828,7 +5880,7 @@ const ELEMENT_HELP = {
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
   ledsource: 'Emits a collimated beam of incoherent light from an LED behind its own collimator, with an illustrative single-colour or two-band white spectrum. It never interferes, and its residual divergence is not modelled.',
-  pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp — that fades over a short evanescent range unless captured by a nearby lens, objective, mirror, or fiber tip. A parabolic mirror with the source at its focus collimates it.',
+  pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp. A lens, a mirror or a fiber tip within the capture range collects its rays, which carry on as ordinary light; other optics on the way act on that light but collect nothing themselves, and a ray with no collector ahead is drawn as a short fading glow. The range is a drawing convention that keeps the canvas readable, not attenuation. A parabolic mirror with the source at its focus collimates it.',
   objarrow: 'Traces a ray fan from the object’s anchor on the optical axis and separately draws an ideal paraxial image; the image marker does not model downstream clipping.',
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',
@@ -5869,7 +5921,7 @@ const ELEMENT_HELP = {
   dm: 'Applies continuous reflective tip, tilt, and paraxial defocus.',
   detector: 'Measures qualitative ray signal, spectrum, polarization, and spot span.',
   pmt: 'Multiplies a faint signal into a readable one, and reports whether it actually clears the tube\u2019s own dark floor.',
-  camera: 'Measures a pixel-integrated one-dimensional intensity profile and resolves supported interference from sized monochromatic CW lasers.',
+  camera: 'Measures a pixel-integrated one-dimensional intensity profile and resolves supported same-source interference from sized CW, pulsed and supercontinuum beams.',
   eye: 'Focuses through a configurable pupil and reports the qualitative retinal signal and spot.',
   display: 'Shows the live qualitative output of a linked photodetector, PMT, camera, or retina.',
   aom: 'Deflects first-order light with a configurable modulation efficiency and zero order, under square, sine or sawtooth RF modulation (the ramp sweeping from falling through triangular to rising). A square gate can also draw both orders chopped in opposition, so the switching stays visible on a beam drawn as a steady line.',
