@@ -84,3 +84,60 @@ test('a Gaussian beam keeps its filled curve, point for point', () => {
   assert.ok(fill[1].includes('C 36.29,11.66 36.78,11.21 37.27,11.00 C 37.76,10.79 38.24,10.79 38.73,11.00'));
   assert.ok(fill[1].endsWith('C 58.05,36.80 57.80,36.95 57.80,37.00 Z'));
 });
+
+// ---------------- caption ----------------
+// A lamp's nominal wavelength is its brightest visible line and its bandwidth
+// the span of its lines, so "wl ± bw/2" named a range centred where the lamp
+// is not: mercury (365-1014 nm) was captioned "111–760 nm".
+
+test('the spectrum card names a lamp by the span of its lines', () => {
+  const svg = lampProbe('hg');
+  assert.match(svg, />365–1014 nm<\/text>/);
+  assert.doesNotMatch(svg, /111–760/);
+  // every stem lies inside the range the caption states
+  assert.ok(stemsOf(svg).every(s => s.nm >= 365 && s.nm <= 1014.5));
+});
+
+test('the wavelength view counts a lamp\'s lines and does not call it a supercontinuum', () => {
+  const svg = lampProbe('hg', { prop: 'wl' });
+  assert.match(svg, />7 lines · 365–1014 nm<\/text>/);
+  assert.doesNotMatch(svg, /SC /);
+  // the swatch is the colour the beam is drawn in, not the two-tone SC mark
+  assert.doesNotMatch(svg, /<path/);
+  const helium = lampProbe('he', { prop: 'wl' });
+  assert.match(helium, />7 lines · 389–707 nm<\/text>/);
+});
+
+test('a lamp cut down to one line is captioned as that line', () => {
+  // A 546 nm bandpass leaves mercury's green line alone.
+  const lamp = createElement('pointsource', 175, 200);
+  Object.assign(lamp.params, { sourceKind: 'lamp', lampType: 'hg', spread: 360, nrays: 24 });
+  const oap = createElement('oap', 150, 200);
+  oap.rot = 180;
+  Object.assign(oap.params, { length: 110, f: 25 });
+  const filter = createElement('filter', 220, 200);
+  Object.assign(filter.params, { ftype: 'bandpass', center: 546, band: 10, length: 120 });
+  for (const [prop, caption] of [['spectrum', />546 nm<\/text>/], ['wl', />546 nm<\/text>/]]) {
+    const probe = createElement('probe', 260, 200);
+    probe.params.prop = prop;
+    const scene = [lamp, oap, filter, probe];
+    traceAll(scene, []);
+    const svg = registry.probe.svg(probe, scene);
+    assert.match(svg, caption, `${prop} view`);
+    assert.doesNotMatch(svg, /lines ·|±|–/, `${prop} view quotes no range and no width`);
+  }
+});
+
+test('a supercontinuum and a Gaussian beam keep their captions', () => {
+  const card = (type, params, prop) => {
+    const source = createElement(type, 0, 0);
+    Object.assign(source.params, { beamMode: 'line' }, params);
+    const probe = createElement('probe', 150, 0);
+    probe.params.prop = prop;
+    traceAll([source, probe], []);
+    return registry.probe.svg(probe, [source, probe]);
+  };
+  assert.match(card('pulsedlaser', { wavelength: 532, pulseWidthFs: 150, transformLimited: true }, 'spectrum'), />532 ± 1 nm<\/text>/);
+  assert.match(card('sclaser', {}, 'wl'), />SC \d+–\d+ nm<\/text>/);
+  assert.match(card('sclaser', {}, 'spectrum'), />\d+–\d+ nm<\/text>/);
+});
