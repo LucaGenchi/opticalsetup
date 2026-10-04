@@ -59,12 +59,16 @@ jobs:
           VERSION: ${{ steps.release.outputs.version }}
         run: |
           set -e
-          if git rev-parse -q --verify "refs/tags/$VERSION^{commit}" >/dev/null; then
-            echo "$VERSION is already tagged; redeploying it."
-          else
+          # new: this commit added the release. tagged: a redeploy. A release
+          # that was published earlier and has lost its tag fails here; a tag
+          # is never recreated on whatever commit happens to be checked out.
+          state="$(node tools/release.mjs tag-state)"
+          if [ "$state" = "new" ]; then
             node tools/release.mjs verify --tree
             git tag "$VERSION"
             git push origin "refs/tags/$VERSION"
+          else
+            echo "$VERSION is already tagged; redeploying it."
           fi
 
       - name: Stage the released site and every kept release

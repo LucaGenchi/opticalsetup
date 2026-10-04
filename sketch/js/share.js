@@ -144,6 +144,15 @@ export function pinShareURL(href, release = APP_RELEASE) {
   return url.toString();
 }
 
+// The official address a proposed setup is sent with, naming the app that
+// produced it: the kept copy the author is working in, or the copy the
+// current release is kept as. A reviewer then opens the proposal in the app
+// its author saw.
+export function officialShareBase(pathname, release = APP_RELEASE) {
+  const kept = archivedRelease(pathname) || releasePath(release);
+  return `https://opticalsetup.com/${kept ? `${kept}/` : ''}sketch/`;
+}
+
 export async function sharedSceneFromURL(href = window.location.href) {
   const hash = new URL(href).hash;
   if (!hash.startsWith(SHARE_PREFIX)) return null;

@@ -113,11 +113,11 @@ the toolbar, palette, canvas, and inspector do not overflow.
   format change uses.
 - **A released app does not change.** Each `MAJOR.MINOR` app stays at
   `/vX.Y/sketch/` and shared links name it. Never move or delete a release
-  tag, edit an existing `releases.json` entry, or change what counts as the
-  renderer (`NON_RENDERER_FILES` in `tools/release-lib.mjs`) to make an app
-  change fit a patch release. A new top-level directory that public pages
-  link to must be added to `PUBLIC_SITE_ENTRIES` there, or the deploy fails
-  on the missing link.
+  tag, or remove or edit an existing `releases.json` entry. The hashing
+  schemes in `tools/release-lib.mjs` are permanent once a release uses them:
+  a new public directory, or a change to what the renderer hash leaves out,
+  is a new scheme, never an edit to an existing one. A public page that links
+  to a file outside the scheme's site list fails the deploy.
 - Keep visual hierarchy workbench-like: the canvas is primary, wavelength color
   communicates optical energy, and controls should explain their current mode.
 - Do not add advanced physics merely to make a component look functional. A

@@ -7,30 +7,27 @@
 //
 //   node tools/stage-site.mjs <new-output-directory>
 //
-// Everything is read from the release tags, never from the working tree, so
-// work merged after the last release cannot reach the site by accident. See
-// docs/release-policy.md.
+// Every file is read from a release tag, never from the working tree, so
+// work merged after the last release cannot reach the site by accident. The
+// working tree supplies only the list of releases, and that list is checked
+// against the tags before anything is staged. See docs/release-policy.md.
 
 import { spawnSync } from 'node:child_process';
-import { access, copyFile, mkdir } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { access, cp, mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  KEPT_RELEASE_ENTRIES, PUBLIC_SITE_ENTRIES, brokenInternalLinks, git, keptReleases, readReleases,
-  rendererDigest, siteDigest, tagExists,
+  brokenInternalLinks, git, keptReleases, readReleases, rendererDigest, schemeOf, siteDigest, verifyHistory,
 } from './release-lib.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-// The entries that exist at `tag`, extracted under `destination`.
-async function extract(root, tag, entries, destination) {
-  const present = entries.filter(entry => {
-    try { return git(root, ['ls-tree', '--name-only', tag, '--', entry], { stdio: 'pipe' }).length > 0; }
-    catch (_) { return false; }
-  });
+// The paths that exist at `tag`, extracted under `destination`.
+async function extract(root, tag, paths, destination) {
+  const present = paths.filter(path => git(root, ['ls-tree', '--name-only', tag, '--', path]).length > 0);
   await mkdir(destination, { recursive: true });
-  const archive = git(root, ['archive', '--format=tar', tag, '--', ...present], { stdio: 'pipe' });
-  const untar = spawnSync('tar', ['-x', '-C', destination], { input: archive });
+  const untar = spawnSync('tar', ['-x', '-C', destination], { input: git(root, ['archive', '--format=tar', tag, '--', ...present]) });
   if (untar.status !== 0) throw new Error(`Could not unpack ${tag}: ${untar.stderr}`);
 }
 
@@ -47,34 +44,44 @@ export async function stageSite(output, root = ROOT) {
   const releases = await readReleases(root);
   const latest = releases.at(-1);
   if (!latest) throw new Error('No release has been cut yet, so there is nothing to deploy');
-  for (const { version } of [latest, ...keptReleases(releases)]) {
-    if (!tagExists(root, version)) throw new Error(`Tag ${version} is missing; fetch tags, or tag the release commit`);
-  }
+  // Every release is tagged, and the list still begins with what each tag
+  // was released with: nothing published was removed or edited.
+  verifyHistory(root, releases);
 
-  await extract(root, latest.version, PUBLIC_SITE_ENTRIES, out);
-  if (await siteDigest(out) !== latest.siteSha256 || await rendererDigest(out) !== latest.rendererSha256) {
-    throw new Error(`Tag ${latest.version} does not hold the release that releases.json recorded`);
-  }
-
-  // A kept copy is the app as first released under that MAJOR.MINOR. The
-  // recorded hash is what makes it immutable: a moved or rewritten tag fails
-  // here instead of quietly changing what an old link opens.
-  const kept = keptReleases(releases);
-  for (const { path, version, rendererSha256 } of kept) {
-    const destination = resolve(out, path);
-    await extract(root, version, KEPT_RELEASE_ENTRIES, destination);
-    if (await rendererDigest(destination) !== rendererSha256) {
-      throw new Error(`Tag ${version} no longer holds the app that was released as ${path}`);
+  // Every release, not only the ones that are served, must still be the
+  // files it recorded -- the whole public site, which includes everything a
+  // kept copy serves. A tag that was moved or rewritten fails here instead of
+  // quietly changing what an old link opens.
+  const kept = new Map(keptReleases(releases).map(entry => [entry.version, entry.path]));
+  const scratch = await mkdtemp(join(tmpdir(), 'opticalsetup-stage-'));
+  try {
+    for (const entry of releases) {
+      const scheme = schemeOf(entry.scheme);
+      const tree = join(scratch, entry.version);
+      await extract(root, entry.version, [...scheme.site, 'releases.json'], tree);
+      if (await siteDigest(tree, entry.scheme) !== entry.siteSha256
+        || await rendererDigest(tree, entry.scheme) !== entry.rendererSha256) {
+        throw new Error(`Tag ${entry.version} no longer holds the files that were released as ${entry.version}`);
+      }
+      if (entry === latest) await cp(tree, out, { recursive: true });
+      if (kept.has(entry.version)) {
+        for (const path of scheme.kept) {
+          // A section the site did not have yet at that release is simply absent.
+          try { await access(join(tree, path)); } catch (_) { continue; }
+          await cp(join(tree, path), join(out, kept.get(entry.version), path), { recursive: true });
+        }
+      }
+      await rm(tree, { recursive: true, force: true });
     }
+  } finally {
+    await rm(scratch, { recursive: true, force: true });
   }
-
-  await copyFile(resolve(root, 'releases.json'), resolve(out, 'releases.json'));
 
   const broken = await brokenInternalLinks(out);
   if (broken.length) {
     throw new Error(`The staged site has ${broken.length} link(s) to files it does not contain:\n  ${broken.slice(0, 20).join('\n  ')}`);
   }
-  return { version: latest.version, kept: kept.map(entry => entry.path) };
+  return { version: latest.version, kept: [...kept.values()] };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

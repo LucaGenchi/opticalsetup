@@ -28,7 +28,7 @@ import { buildSVG, exportSVG, exportPNG, exportGIF } from './export.js';
 import { examples } from './examples-data.js';
 import { community } from './community-data.js';
 import { download, esc, manualBeamSVG } from './util.js';
-import { buildShareURL, clearSharedSceneURL, copyText, pinShareURL, sceneParamsFromURL, shareURLForScene, sharedSceneFromURL } from './share.js';
+import { buildShareURL, clearSharedSceneURL, copyText, officialShareBase, pinShareURL, sceneParamsFromURL, shareURLForScene, sharedSceneFromURL } from './share.js';
 import { APP_RELEASE, archivedRelease, releasePath } from './release.js';
 import { qrSVG } from './qr.js';
 import { buildExampleProposalIssueURL } from './proposal.js';
@@ -1548,7 +1548,7 @@ function bindToolbar() {
       parseSketch(sketch, registry);
       const svg = buildSVG();
       if (/\b(?:NaN|Infinity)\b/.test(svg)) throw new Error('The setup contains invalid geometry');
-      const setupURL = await buildShareURL(sketch, 'https://opticalsetup.com/sketch/');
+      const setupURL = await buildShareURL(sketch, officialShareBase(location.pathname));
       const issueURL = buildExampleProposalIssueURL({
         name: $('proposalName').value,
         description: $('proposalDescription').value,

@@ -13,11 +13,12 @@ import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { APP_RELEASE, archivedRelease, releasePath } from '../sketch/js/release.js';
-import { buildShareURL, pinShareURL, sharedSceneFromURL } from '../sketch/js/share.js';
+import { buildShareURL, officialShareBase, pinShareURL, sharedSceneFromURL } from '../sketch/js/share.js';
 import { autosaveKeyFor } from '../sketch/js/state.js';
 import { sceneFromShareURL } from '../scripts/materialize-example-proposal.mjs';
 import {
-  bumpVersion, keptReleases, planRelease, readReleases, rendererDigest, siteDigest, validateReleases,
+  bumpVersion, keptReleases, planRelease, readReleases, releaseTagState, rendererDigest, siteDigest,
+  validateReleases, verifyHistory,
 } from '../tools/release-lib.mjs';
 import { prepareRelease, verifyRelease } from '../tools/release.mjs';
 import { stageSite } from '../tools/stage-site.mjs';
@@ -94,6 +95,10 @@ test('version numbers: content is a patch, an app change is at least a minor', (
   assert.equal(planRelease({ releases, renderer: SHA('d'), site: SHA('c'), level: 'major' }).version, 'v2.0.0');
   // Calling an app change a patch would change what v1.0 links open.
   assert.throws(() => planRelease({ releases, renderer: SHA('d'), site: SHA('c'), level: 'patch' }), /cannot be a patch/);
+  // A proposal names the app its author used, from the current app or a kept copy.
+  assert.equal(officialShareBase('/sketch/', 'v1.2.3'), 'https://opticalsetup.com/v1.2/sketch/');
+  assert.equal(officialShareBase('/v1.0/sketch/', 'v1.2.3'), 'https://opticalsetup.com/v1.0/sketch/');
+  assert.equal(officialShareBase('/sketch/', ''), 'https://opticalsetup.com/sketch/');
   // A larger step is always allowed, and nothing changed means no release.
   assert.equal(planRelease({ releases, renderer: SHA('a'), site: SHA('c'), level: 'minor' }).version, 'v1.1.0');
   assert.throws(() => planRelease({ releases, renderer: SHA('a'), site: SHA('b') }), /nothing to release/);
@@ -101,13 +106,14 @@ test('version numbers: content is a patch, an app change is at least a minor', (
 });
 
 test('the release list is append-only in order and cannot relabel an app change', () => {
-  const entry = (version, renderer) => ({ version, date: '2026-10-05', rendererSha256: SHA(renderer), siteSha256: SHA('f') });
+  const entry = (version, renderer) => ({ version, date: '2026-10-05', scheme: 1, rendererSha256: SHA(renderer), siteSha256: SHA('f') });
   assert.equal(validateReleases({ releases: [entry('v1.0.0', 'a'), entry('v1.0.1', 'a'), entry('v1.1.0', 'b')] }).length, 3);
   assert.throws(() => validateReleases({ releases: [entry('v1.0.1', 'a'), entry('v1.0.0', 'a')] }), /does not come after/);
   assert.throws(() => validateReleases({ releases: [entry('v1.0.0', 'a'), entry('v1.0.0', 'a')] }), /does not come after/);
   assert.throws(() => validateReleases({ releases: [entry('v1.0.0', 'a'), entry('v1.0.1', 'b')] }), /changes the app/);
   assert.throws(() => validateReleases({ releases: [{ ...entry('v1.0.0', 'a'), rendererSha256: 'abc' }] }), /SHA-256/);
   assert.throws(() => validateReleases({ releases: [{ ...entry('v1.0.0', 'a'), date: 'today' }] }), /date/);
+  assert.throws(() => validateReleases({ releases: [{ ...entry('v1.0.0', 'a'), scheme: 7 }] }), /Unknown release scheme/);
   assert.throws(() => validateReleases({}), /"releases" array/);
   assert.deepEqual(keptReleases([entry('v1.0.0', 'a'), entry('v1.0.1', 'a'), entry('v1.1.0', 'b'), entry('v1.1.1', 'b')])
     .map(k => [k.path, k.version]), [['v1.0', 'v1.0.0'], ['v1.1', 'v1.1.0']]);
@@ -124,7 +130,8 @@ async function fixture(t) {
   };
   const run = (...args) => execFileSync('git', ['-c', 'user.name=test', '-c', 'user.email=test@example.org',
     '-c', 'commit.gpgsign=false', '-c', 'tag.gpgsign=false', ...args], { cwd: root, stdio: 'pipe' });
-  await write('sketch/js/release.js', "export const APP_RELEASE = '';\n");
+  await write('sketch/js/release.js', "export const APP_RELEASE = '';\nexport const releasePath = () => 'code';\n");
+  await write('sketch/service-worker.js', "const CACHE_NAME = `${CACHE_FAMILY}v1`;\nconst PRECACHE_PATHS = [\n  \"./\",\n];\nconst fetchRule = 1;\n");
   await write('sketch/js/raytrace.js', 'export const trace = 1;\n');
   await write('sketch/js/community-data.js', 'export const community = [];\n');
   await write('sketch/index.html', '<!doctype html>app\n');
@@ -143,7 +150,8 @@ async function fixture(t) {
     run('tag', plan.version);
     return plan.version;
   };
-  return { root, write, run, commit, release, read: path => readFile(resolve(root, path), 'utf8') };
+  const releases = () => readReleases(root);
+  return { root, write, run, commit, release, releases, read: path => readFile(resolve(root, path), 'utf8') };
 }
 
 test('content-only changes cut patch releases; an app change cuts a minor', async t => {
@@ -228,14 +236,142 @@ test('a moved tag or a missing tag stops the deploy', async t => {
   await f.write('sketch/js/raytrace.js', 'export const trace = 2;\n');
   f.commit('tracer');
   await f.release();                                   // v1.1.0
-  const out = n => resolve(f.root, '..', `staged-${process.pid}-${Date.now()}-${n}`);
+  const stamp = `${process.pid}-${Date.now()}`;
+  const out = n => resolve(f.root, '..', `staged-${stamp}-${n}`);
   t.after(async () => { for (const n of [1, 2]) await rm(out(n), { recursive: true, force: true }); });
 
   // Rewriting history under an old link: v1.0.0 now points at the new app.
   f.run('tag', '-f', 'v1.0.0', 'v1.1.0');
-  await assert.rejects(stageSite(out(1), f.root), /no longer holds the app that was released as v1\.0/);
+  await assert.rejects(stageSite(out(1), f.root), /no longer begins with the list that v1\.0\.0 was released with/);
   f.run('tag', '-d', 'v1.0.0');
   await assert.rejects(stageSite(out(2), f.root), /Tag v1\.0\.0 is missing/);
+});
+
+test('a kept copy is checked whole: moving its tag to changed examples stops the deploy', async t => {
+  const f = await fixture(t);
+  await f.release();                                   // v1.0.0
+  await f.write('Examples/a.json', '{"changed": true}\n');
+  f.commit('an example changes; the app does not');
+  await f.release();                                   // v1.0.1
+  const stamp = `${process.pid}-${Date.now()}`;
+  const out = n => resolve(f.root, '..', `staged-${stamp}-kept-${n}`);
+  t.after(async () => { for (const n of [1, 2, 3]) await rm(out(n), { recursive: true, force: true }); });
+  await stageSite(out(1), f.root);
+  assert.equal(await readFile(resolve(out(1), 'v1.0/Examples/a.json'), 'utf8'), '{}\n', 'the kept copy is the first release of v1.0');
+
+  // The tag moves one commit on: same renderer, same release list, but a
+  // different example under /v1.0/. The renderer hash alone would not notice.
+  const original = f.run('rev-parse', 'v1.0.0').toString().trim();
+  f.run('tag', '-f', 'v1.0.0', 'v1.0.1~1');
+  assert.equal(await rendererDigest(f.root), (await f.releases())[0].rendererSha256);
+  await assert.rejects(stageSite(out(2), f.root), /Tag v1\.0\.0 no longer holds the files that were released as v1\.0\.0/);
+  f.run('tag', '-f', 'v1.0.0', original);
+
+  // A patch tag in the middle of the history matters too, though nothing is served from it.
+  await f.write('sketch/js/raytrace.js', 'export const trace = 2;\n');
+  f.commit('tracer');
+  await f.release();                                   // v1.1.0
+  f.run('tag', '-d', 'v1.0.1');
+  await assert.rejects(stageSite(out(3), f.root), /Tag v1\.0\.1 is missing/);
+});
+
+test('a published release cannot be removed from the list, or edited', async t => {
+  const f = await fixture(t);
+  await f.release();                                   // v1.0.0
+  await f.write('wiki/index.html', '<!doctype html>wiki 2\n');
+  f.commit('wiki');
+  await f.release();                                   // v1.0.1
+  await f.write('sketch/js/raytrace.js', 'export const trace = 2;\n');
+  f.commit('tracer');
+  await f.release();                                   // v1.1.0
+  const published = await f.releases();
+  const rewrite = async releases => {
+    await f.write('releases.json', `${JSON.stringify({ releases }, null, 2)}\n`);
+    await f.write('sketch/js/release.js', (await f.read('sketch/js/release.js')).replace(/'v[^']*'/, `'${releases.at(-1).version}'`));
+  };
+  const out = resolve(f.root, '..', `staged-${process.pid}-${Date.now()}-history`);
+  t.after(() => rm(out, { recursive: true, force: true }));
+
+  // Dropping the v1.0 entries would drop /v1.0/ from the next deploy.
+  await rewrite(published.slice(2));
+  await assert.rejects(verifyRelease(f.root), /v1\.0\.\d is tagged but missing from releases\.json/);
+  await assert.rejects(stageSite(out, f.root), /tagged but missing/);
+  await assert.rejects(prepareRelease(f.root), /tagged but missing|nothing to release/);
+
+  // A rewritten date, with everything else intact.
+  await rewrite(published.map((entry, i) => (i === 0 ? { ...entry, date: '2020-01-01' } : entry)));
+  await assert.rejects(verifyRelease(f.root), /no longer begins with the list that v1\.0\.0 was released with/);
+  await assert.rejects(stageSite(out, f.root), /published entries cannot be edited/);
+
+  // Dropping only the newest entry.
+  await rewrite(published.slice(0, 2));
+  await assert.rejects(verifyRelease(f.root), /v1\.1\.0 is tagged but missing/);
+
+  await rewrite(published);
+  assert.equal(await verifyRelease(f.root), 'v1.1.0');
+});
+
+test('only the commit that adds a release may be tagged; a lost tag is not recreated', async t => {
+  const f = await fixture(t);
+  assert.equal(releaseTagState(f.root, await f.releases()), 'none');
+  await prepareRelease(f.root, 'auto', '2026-10-05');
+  f.commit('Release v1.0.0');
+  assert.equal(releaseTagState(f.root, await f.releases()), 'new');
+  f.run('tag', 'v1.0.0');
+  assert.equal(releaseTagState(f.root, await f.releases()), 'tagged');
+
+  // Later work lands, then the tag disappears: the tree at hand is not the release.
+  await f.write('test/private.test.js', '// later\n');
+  f.commit('later work');
+  assert.equal(releaseTagState(f.root, await f.releases()), 'tagged');
+  f.run('tag', '-d', 'v1.0.0');
+  const listed = JSON.parse(execFileSync("git", ["show", "HEAD:releases.json"], { cwd: f.root }).toString()).releases;
+  assert.throws(() => releaseTagState(f.root, listed),
+    /not recreated automatically/);
+  assert.throws(() => verifyHistory(f.root, listed),
+    /Tag v1\.0\.0 is missing/);
+});
+
+test('code beside a label or a list is hashed; the label and the list are not', async t => {
+  const f = await fixture(t);
+  await f.release();                                   // v1.0.0
+  const [renderer, site] = [await rendererDigest(f.root), await siteDigest(f.root)];
+  const same = async () => assert.deepEqual([await rendererDigest(f.root), await siteDigest(f.root)], [renderer, site]);
+  const release = await f.read('sketch/js/release.js');
+  const worker = await f.read('sketch/service-worker.js');
+
+  // The label alone, and the cache generation number: neither hash moves.
+  await f.write('sketch/js/release.js', release.replace("'v1.0.0'", "'v9.9.9'"));
+  await f.write('sketch/service-worker.js', worker.replace('v1`', 'v2`'));
+  await same();
+  // The offline list of examples is content: the site moves, the renderer does not.
+  await f.write('sketch/service-worker.js', worker.replace('"./",', '"./",\n  "../Examples/new.json",'));
+  assert.equal(await rendererDigest(f.root), renderer);
+  await f.write('sketch/service-worker.js', worker);
+  await f.write('sketch/js/release.js', release);
+  await same();
+
+  // Logic in the same files is the app.
+  await f.write('sketch/js/release.js', release.replace("'code'", "'changed'"));
+  assert.notEqual(await rendererDigest(f.root), renderer);
+  assert.notEqual(await siteDigest(f.root), site);
+  await assert.rejects(verifyRelease(f.root, { tree: true }), /not v1\.0\.0/);
+  await assert.rejects(prepareRelease(f.root, 'patch'), /cannot be a patch/);
+  await f.write('sketch/js/release.js', release);
+  await f.write('sketch/service-worker.js', worker.replace('fetchRule = 1', 'fetchRule = 2'));
+  assert.notEqual(await rendererDigest(f.root), renderer);
+  await assert.rejects(prepareRelease(f.root, 'patch'), /cannot be a patch/);
+});
+
+test('the real label and offline-list lines are the ones the hash blanks', async () => {
+  // If these files are reshaped, the blanking stops matching and every
+  // release looks like an app change; this says so before a release does.
+  assert.match(await readFile(resolve(ROOT, 'sketch/js/release.js'), 'utf8'), /^export const APP_RELEASE = '[^']*';$/m);
+  const worker = await readFile(resolve(ROOT, 'sketch/service-worker.js'), 'utf8');
+  assert.match(worker, /^const PRECACHE_PATHS = \[[\s\S]*?^\];$/m);
+  assert.match(worker, /^const CACHE_NAME = .*?v\d+`;$/m);
+  const main = await readFile(resolve(ROOT, 'sketch/js/main.js'), 'utf8');
+  assert.match(main, /buildShareURL\(sketch, officialShareBase\(location\.pathname\)\)/, 'Propose sends a pinned link');
 });
 
 // The worker is exercised as written, with the Cache API simulated.
@@ -311,6 +447,7 @@ test('the site is deployed by a release, not by a merge or a schedule', async ()
   const deploy = await readFile(resolve(ROOT, '.github/workflows/deploy-release.yml'), 'utf8');
   assert.match(deploy, /paths:\s*\n\s*- releases\.json/);
   assert.doesNotMatch(deploy, /schedule:/);
+  assert.match(deploy, /node tools\/release\.mjs tag-state/);
   assert.match(deploy, /node tools\/release\.mjs verify --tree/);
   assert.match(deploy, /node tools\/stage-site\.mjs/);
 });

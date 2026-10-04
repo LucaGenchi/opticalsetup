@@ -33,12 +33,13 @@ A release is `vMAJOR.MINOR.PATCH`.
 | **Minor** `v1.0.1 → v1.1.0` | The app changed: a fix, a new element, a change to tracing, drawing or export. | A new one, `/v1.1/sketch/`. |
 | **Major** `v1.1.0 → v2.0.0` | The maintainer's call: a milestone, or a change to the saved scene format. | A new one, `/v2.0/sketch/`. |
 
-"The app changed" is decided by a hash of `sketch/`, not by judgement. Four
-files under `sketch/` are left out of it because they change with content and
-not with how a scene is drawn: the release label, the generated lists of
-examples and community setups, and the offline cache list. The tool will not
-cut a patch release when that hash differs from the last release: doing so
-would change what an already shared `/v1.0/` link opens.
+"The app changed" is decided by a hash of `sketch/`, not by judgement. What
+is left out of it changes with content and not with how a scene is drawn: the
+two generated lists of examples and community setups, and, inside the files
+that hold them, the release label, the offline list of example files and the
+cache generation number. The code around those lines is hashed. The tool will
+not cut a patch release when that hash differs from the last release: doing
+so would change what an already shared `/v1.0/` link opens.
 
 This number is separate from the `version` inside a saved scene, which
 describes the scene format (see "A saved setup must keep opening" in
@@ -68,19 +69,30 @@ date and the two hashes of exactly what is being released.
 1. checks that the merged commit is byte for byte what the entry recorded, so
    a release prepared before later changes landed cannot go out — prepare it
    again on the current `main`;
-2. tags the commit `vX.Y.Z`;
-3. builds the site from the release tags, never from the tip of `main`: the
+2. tags the commit `vX.Y.Z`. Only the commit that added the entry is tagged;
+3. checks the history: every release has its tag, every tag has its entry,
+   and `releases.json` still begins with the list each tag was released with;
+4. checks every release, not only the ones served: the files at its tag must
+   hash to what its entry recorded, over the whole public site;
+5. builds the site from the release tags, never from the tip of `main`: the
    latest release at the root, and each kept app from the first tag of its
-   `MAJOR.MINOR`, checked against its recorded hash;
-4. checks that no staged page links to a file the site does not contain;
-5. deploys it.
+   `MAJOR.MINOR`;
+6. checks that no staged page links to a file the site does not contain;
+7. deploys it.
 
 Running the workflow by hand redeploys the latest release. It never publishes
 unreleased work.
 
 Release tags and `releases.json` entries are permanent. To correct a release,
-cut the next one. A tag that is moved or deleted stops the deploy with a
-message naming it.
+cut the next one. An entry that is removed or edited fails the suite on the
+pull request that does it, and stops the deploy. A tag that is moved or
+deleted stops the deploy with a message naming it, and is not recreated
+automatically: restore it by hand on the release commit.
+
+Each entry names the hashing scheme it was made with (`tools/release-lib.mjs`).
+To make a new directory public, or to change what a hash leaves out, add a
+new scheme; editing an existing one would make every release recorded under
+it fail its own check.
 
 ## Words
 
