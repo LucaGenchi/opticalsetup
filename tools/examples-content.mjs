@@ -23,6 +23,60 @@ function cite(...nums) {
 
 export const exampleEntries = [
   {
+    match: 'Pulsed Mach–Zehnder',
+    title: 'Pulsed Mach–Zehnder',
+    tagline: 'Two arms, complementary spectra, and a path-dependent average power.',
+    html: `<p>This interferometer splits a 150 fs, 800 nm pulsed laser and recombines the two copies
+      at an ideal beamsplitter. Each output has a spectrometer. Different wavelengths
+      acquire different relative phases, so changing the delay changes the output
+      spectrum as well as the total power.</p>`,
+    inOpticalSetupTitle: 'Try the delay control',
+    inOpticalSetupHtml: `<p>The source has <strong>Interference</strong> enabled.
+      The initial added optical path is 0.02 mm. Select the delay line and set
+      <strong>0 mm</strong> for matched arms: one port receives all the light and
+      the other is dark. Increase the delay to see spectral fringes. The two
+      output powers always sum to the input in this lossless example.</p>
+      <p>Turn Interference off on the source to compare with power addition:
+      each port receives half the input and the spectra retain the source shape.</p>`,
+    limitations: `<p>This is same-source, time-integrated interference through
+      ideal phase-known optics. It does not reconstruct the combined temporal
+      field: pulse duration, autocorrelation and oscilloscope traces after
+      recombination are unavailable. Pulse animation stops at recombination.
+      Unknown coating/material phase or an exceeded spectral/path budget is
+      reported rather than assigned a phase. Older saved sources keep their
+      previous power-only behavior until Interference is enabled.</p>`,
+    citations: [],
+    resources: [{ label: 'Model, numerical bounds and reference checks', url: '/docs/physics/broadband-interference.md' }],
+    related: ['pulsedlaser', 'sclaser', 'bs', 'spectrometer', 'delayline'],
+  },
+  {
+    match: 'Supercontinuum Mach–Zehnder',
+    title: 'Supercontinuum Mach–Zehnder',
+    tagline: 'Two arms, complementary spectra, and a path-dependent average power.',
+    html: `<p>This interferometer splits a flat 400–700 nm supercontinuum and recombines the two copies
+      at an ideal beamsplitter. Each output has a spectrometer. Different wavelengths
+      acquire different relative phases, so changing the delay changes the output
+      spectrum as well as the total power.</p>`,
+    inOpticalSetupTitle: 'Try the delay control',
+    inOpticalSetupHtml: `<p>The source has <strong>Interference</strong> enabled.
+      The initial added optical path is 0.002 mm. Select the delay line and set
+      <strong>0 mm</strong> for matched arms: one port receives all the light and
+      the other is dark. Increase the delay to see spectral fringes. The two
+      output powers always sum to the input in this lossless example.</p>
+      <p>Turn Interference off on the source to compare with power addition:
+      each port receives half the input and the spectra retain the source shape.</p>`,
+    limitations: `<p>This is same-source, time-integrated interference through
+      ideal phase-known optics. It does not reconstruct the combined temporal
+      field: pulse duration, autocorrelation and oscilloscope traces after
+      recombination are unavailable. Pulse animation stops at recombination.
+      Unknown coating/material phase or an exceeded spectral/path budget is
+      reported rather than assigned a phase. Older saved sources keep their
+      previous power-only behavior until Interference is enabled.</p>`,
+    citations: [],
+    resources: [{ label: 'Model, numerical bounds and reference checks', url: '/docs/physics/broadband-interference.md' }],
+    related: ['pulsedlaser', 'sclaser', 'bs', 'spectrometer', 'delayline'],
+  },
+  {
     match: 'Gregorian telescope — element by element',
     title: 'Gregorian telescope',
     tagline: 'A parabola and an ellipse, each placed at the one pair of points it images perfectly, and a traced spot seven ten-millionths of a millimetre across.',
@@ -628,10 +682,10 @@ export const exampleEntries = [
     limitations: `<p>This particular scene keeps a line source and a scalar
       photodetector, so it remains a geometry lesson rather than an
       interferometric readout. OpticalSetup's bounded coherent model is
-      limited to sized monochromatic CW beams. Switching the source to beam
+      available for sized monochromatic CW beams and enabled sized pulsed or supercontinuum sources. Switching the source to beam
       mode can expose supported flat-mirror/beamsplitter path interference,
       but the app still does not
-      model diffraction, surface figure, vibration, coherence length, or a
+      model diffraction, surface figure, vibration, or a
       laboratory detector response.</p>`,
     citations: [
       { label: 'Michelson & Morley, "On the Relative Motion of the Earth and the Luminiferous Ether," American Journal of Science (1887)', url: 'https://en.wikipedia.org/wiki/Michelson%E2%80%93Morley_experiment' },

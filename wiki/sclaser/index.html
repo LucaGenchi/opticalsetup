@@ -185,6 +185,20 @@
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
 
+        <h3>Interference</h3>
+        <p>With <strong>Beam with size</strong> and <strong>Interference</strong> enabled,
+        split copies of this source interfere through ideal beamsplitters, fully reflective
+        flat mirrors, delay lines and phase objects. The calculation integrates the actual
+        spectrum: fringe contrast changes with arm mismatch, and the spectrometer sees
+        the changed spectrum. Independent sources add as powers. New sources enable this;
+        older saved sources keep it off until you enable it. The <strong>Coherence
+        length</strong> readout gives the arm difference at which the fringes fall to half
+        contrast for the spectrum as set.</p>
+        <p>The combined temporal field is not reconstructed. After recombination,
+        duration, autocorrelation and oscilloscope traces are unavailable; pulse animation
+        stops at the recombination surface. Material and coating phase outside the supported
+        ideal optics is not inferred. A spectral or path-budget limit is reported explicitly.
+        See the <a href="../../docs/physics/broadband-interference.md">model and bounds</a>.</p>
         <p>The Supercontinuum laser replaces a single wavelength with a spectrum minimum
         and maximum, and emits a flat-top band between them. Downstream wavelength-selective
         elements — filters, dichroics, etalons, the spectrometer — integrate against that

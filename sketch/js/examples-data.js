@@ -64,6 +64,12 @@ export const examples = [
   },
   {
     "group": "Interferometers",
+    "name": "Mach–Zehnder interferometer with a pulsed laser",
+    "path": "../Examples/Interferometers/Mach%E2%80%93Zehnder%20interferometer%20with%20a%20pulsed%20laser.json",
+    "slug": "mach-zehnder-interferometer-with-a-pulsed-laser"
+  },
+  {
+    "group": "Interferometers",
     "name": "Mach–Zehnder interferometer",
     "path": "../Examples/Interferometers/Mach%E2%80%93Zehnder%20interferometer.json",
     "slug": "mach-zehnder-interferometer"
@@ -73,6 +79,18 @@ export const examples = [
     "name": "Michelson interferometer",
     "path": "../Examples/Interferometers/Michelson%20interferometer.json",
     "slug": "michelson-interferometer"
+  },
+  {
+    "group": "Interferometers",
+    "name": "Pulsed Mach–Zehnder",
+    "path": "../Examples/Interferometers/Pulsed%20Mach%E2%80%93Zehnder.json",
+    "slug": "pulsed-mach-zehnder"
+  },
+  {
+    "group": "Interferometers",
+    "name": "Supercontinuum Mach–Zehnder",
+    "path": "../Examples/Interferometers/Supercontinuum%20Mach%E2%80%93Zehnder.json",
+    "slug": "supercontinuum-mach-zehnder"
   },
   {
     "group": "Nonlinear Optics",
