@@ -6037,7 +6037,11 @@ export function getSize(el) {
 
 // Axis-aligned world bounds for fitting/export. This includes common labels
 // and the probe's readout card, which extend beyond the element hit box.
-export function getVisualBounds(el, { includeLabel = true } = {}) {
+// `elements` is the scene the element is drawn in: a probe's card is sized by
+// what it prints, and some of that -- a power in watts, whether a spectrum is
+// "relative" -- is read from the sources, so the bounds need the same scene
+// the drawing was given.
+export function getVisualBounds(el, { includeLabel = true, elements = [] } = {}) {
   const d = registry[el.type];
   if (!d) return null;
   const sz = getSize(el);
@@ -6054,7 +6058,7 @@ export function getVisualBounds(el, { includeLabel = true } = {}) {
     // axis-aligned and offset from the element — not a rotation of some
     // element-local rectangle.
     const scale = probeScale(el);
-    const place = probeCardPlacement(el, probeCard(el, probeAt(el.x, el.y)), scale);
+    const place = probeCardPlacement(el, probeCard(el, probeAt(el.x, el.y), elements), scale);
     const left = el.x + place.x, top = el.y + place.y;
     x0 = Math.min(x0, left); x1 = Math.max(x1, left + place.w);
     y0 = Math.min(y0, top); y1 = Math.max(y1, top + place.h);
@@ -6105,11 +6109,11 @@ export function findFreePlacement(el, elements, near, prefer = { x: 1, y: 0 }) {
   const margin = 14;
   const occupied = elements
     .filter(other => other && other.id !== el.id)
-    .map(other => getVisualBounds(other))
+    .map(other => getVisualBounds(other, { elements }))
     .filter(Boolean);
 
   const fits = (x, y) => {
-    const bounds = getVisualBounds({ ...el, x, y });
+    const bounds = getVisualBounds({ ...el, x, y }, { elements });
     if (!bounds) return false;
     return !occupied.some(other => bounds.x0 - margin < other.x1 && bounds.x1 + margin > other.x0
       && bounds.y0 - margin < other.y1 && bounds.y1 + margin > other.y0);

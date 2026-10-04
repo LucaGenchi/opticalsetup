@@ -2072,7 +2072,7 @@ export function zoomFit() {
   if (rect.width < 50 || rect.height < 50) { requestAnimationFrame(zoomFit); return; }
   const pts = [];
   for (const el of state.elements) {
-    const b = getVisualBounds(el);
+    const b = getVisualBounds(el, { elements: state.elements });
     if (b) pts.push({ x: b.x0, y: b.y0 }, { x: b.x1, y: b.y1 });
   }
   for (const b of state.beams) pts.push(...b.pts);
