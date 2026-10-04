@@ -374,3 +374,47 @@ test('a pulse-rate gate after recombination reads its average, whichever arm set
     }
   }
 });
+
+// Both caveats describe the light a reading is made of. That is the routes
+// the aperture integrates -- which may be only a tube bounded by rays that
+// miss the sensor -- and never a beam that merely crosses the detector's
+// plane somewhere else.
+test('caveats follow the routes that feed the reading, not rays elsewhere on the detector plane', () => {
+  // A gated, strongly diverged beam reaches an off-axis camera through its
+  // tube alone: no ray lands, the gate still halves the reading, and says so.
+  const offAxis = modulate => {
+    const s = scene({ delayMm: 0 });
+    const aom = createElement('aom', 700, 400);
+    Object.assign(aom.params, { deflect: 0, eff: 1, zero: false, modulate, modShape: 'square', modFreqMHz: 80, chopDuty: 0.5 });
+    const lens = createElement('lens', 720, 400);
+    lens.params.f = -2;
+    const camera = s.elements.filter(e => e.type === 'camera').sort((a, b) => b.x - a.x)[0];
+    Object.assign(camera, { x: 1000, y: 416.25 });
+    camera.params.ch = 20;
+    s.elements.push(aom, lens);
+    traceAll(s.elements);
+    return detectorReading(camera.id);
+  };
+  const open = offAxis(false), gated = offAxis(true);
+  assert.ok(open && open.signal > 0);
+  assert.equal(gated.samples, 0, 'the reading comes from the tube, not from a ray on the sensor');
+  near(gated.signal, 0.5 * open.signal, 1e-9);
+  assert.ok(gated.approximations.some(note => /applies its average transmission/.test(note)));
+  assert.ok(!open.approximations.some(note => /applies its average transmission/.test(note)));
+
+  // The other port, folded and sent through a lens, passes far from this
+  // camera: its unmodeled lens phase is not this reading's caveat.
+  const s = scene({ delayMm: 0.02 });
+  const [kept, removed] = s.elements.filter(e => e.type === 'camera').sort((a, b) => b.x - a.x);
+  s.elements = s.elements.filter(e => e !== removed);
+  const fold = createElement('mirror', 600, 500);
+  fold.rot = 135;
+  const lens = createElement('lens', 700, 500);
+  lens.params.f = 1000;
+  const before = (traceAll(s.elements), detectorReading(kept.id).signal);
+  s.elements.push(fold, lens);
+  traceAll(s.elements);
+  const r = detectorReading(kept.id);
+  near(r.signal, before, 1e-9);
+  assert.deepEqual(r.approximations.filter(note => /lens/.test(note)), []);
+});

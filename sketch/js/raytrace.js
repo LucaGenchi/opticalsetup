@@ -1329,18 +1329,24 @@ export function detectorReading(elementId) {
   // only continue it linearly, say. Spectrum, power and every other readout
   // of this detector describe light the model did not fully compute.
   const approximations = [...new Set(activeHits.map(h => h.approximation).filter(Boolean))];
-  if (activeHits.some(h => h.pulse?.interferenceUnknown && h.pulse.gates?.length)) {
+  // Both caveats below are about the light this reading is made of: the
+  // routes the aperture integrates (rays that land, or a tube bounded by
+  // rays that just miss), and not a beam that only crosses the detector's
+  // plane somewhere outside it.
+  const readingRoutes = cameraResult
+    ? cameraResult.contributingRoutes
+    : [{ sourceId: null, pathKey: null, hits: activeHits }];
+  if (readingRoutes.some(route => route.hits.some(h => h.pulse?.interferenceUnknown && h.pulse.gates?.length))) {
     approximations.push(GATE_AFTER_INTERFERENCE);
   }
-  // Only where two routes from one broadband source meet here: a single
-  // beam has nothing to interfere with, so its unmodeled carrier phase is no
-  // caveat on its power. Routes are counted over everything the aperture
-  // integrates, including a tube bounded by rays that just miss the sensor.
+  // Interference is only missing where two routes from one broadband source
+  // meet here: a single beam has nothing to interfere with, so its unmodeled
+  // carrier phase is no caveat on its power.
   const broadbandRoutes = new Map();
-  for (const hit of cameraHits) {
-    if (!hit.spectralSource) continue;
-    if (!broadbandRoutes.has(hit.sourceId)) broadbandRoutes.set(hit.sourceId, new Set());
-    broadbandRoutes.get(hit.sourceId).add(hit.pathKey);
+  for (const route of cameraResult?.contributingRoutes || []) {
+    if (!route.hits.some(h => h.spectralSource)) continue;
+    if (!broadbandRoutes.has(route.sourceId)) broadbandRoutes.set(route.sourceId, new Set());
+    broadbandRoutes.get(route.sourceId).add(route.pathKey);
   }
   if (cameraResult?.interference?.fallbackReason && [...broadbandRoutes.values()].some(routes => routes.size > 1)) {
     approximations.push(cameraResult.interference.fallbackReason);

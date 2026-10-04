@@ -587,6 +587,11 @@ export function cameraProfileFromHits(hits, pixelCount, aperture, { interference
     profileColors: Array.from({ length: count }, (_, pixel) => mixedColor(wavelengthProfiles, pixel)),
     spectralPowers: spectralTotals(sourceSpectralProfiles),
     depositedSpectralPowers: spectralTotals(depositedSourceSpectralProfiles),
+    // The routes that put light inside the aperture, whether through rays
+    // that land on it or a tube bounded by rays that just miss. A route whose
+    // tube lies wholly outside deposits nothing and is not one of them.
+    contributingRoutes: routes.filter(route => route.profile.some(value => value > 0))
+      .map(route => ({ sourceId: route.sourceId, pathKey: route.pathKey, hits: route.hits })),
     centroid,
     supportSpan,
     profileMode: applied ? 'coherent' : 'deposited',
