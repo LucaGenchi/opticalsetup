@@ -302,7 +302,8 @@ test('a chopper after the recombining beamsplitter still gates the beam', () => 
   assert.ok(bright, 'no camera sits behind the bright port');
   const chopped = reading(true, bright, true);
   near(chopped.signal, 0.5, 1e-6);
-  assert.ok(!chopped.approximations.some(note => /unavailable/.test(note)), 'no caveat on an average-power gate');
+  assert.ok(chopped.approximations.some(note => /applies its average transmission/.test(note)), 'the gate is labelled as averaged');
+  assert.ok(!chopped.approximations.some(note => /unavailable/.test(note)));
   assert.equal(chopped.pulse.interferenceUnknown, true, 'the temporal field stays unavailable');
   // Without interference the same port carries half, and the chopper halves that.
   near(reading(false, bright, true).signal, 0.25, 1e-6);
@@ -325,4 +326,51 @@ test('one beam from a new pulsed source carries no interference caveat', () => {
   traceAll(s.elements);
   const readings = s.elements.filter(e => e.type === 'camera').map(e => detectorReading(e.id));
   assert.ok(readings.every(r => r.approximations.some(note => /interference unavailable/.test(note))));
+});
+
+// A specimen's linear channels scale with average power; only its nonlinear
+// ones need the temporal field the recombined beam no longer has.
+test('linear specimen channels still respond after recombination; nonlinear ones decline', () => {
+  const caveats = kind => {
+    const s = scene({ delayMm: 0 });
+    const sample = createElement('sample', 700, 400);
+    sample.rot = 90;
+    Object.assign(sample.params, { specimenType: kind === 'tpef' ? 'nonlinear' : 'linear',
+      channels: [{ kind, wl: 600, eff: 0.5, retardance: 90, axis: 45 }], transmitExc: true, transmission: 1 });
+    s.elements.push(sample);
+    traceAll(s.elements);
+    return s.elements.filter(e => e.type === 'camera').map(e => detectorReading(e.id)).filter(Boolean)
+      .flatMap(r => r.approximations);
+  };
+  for (const kind of ['fluor', 'raman', 'phase']) {
+    assert.ok(!caveats(kind).some(note => /Nonlinear response after interference unavailable/.test(note)), kind);
+  }
+  assert.ok(caveats('tpef').some(note => /Nonlinear response after interference unavailable/.test(note)));
+});
+
+// The recombined beam carries one arm's pulse timing. A gate at the pulse
+// rate, with an edge between the two arms' arrival times, used to pass
+// everything or nothing depending on which arm that was.
+test('a pulse-rate gate after recombination reads its average, whichever arm sets the timing', () => {
+  const gated = (phaseNs, modulate = true) => {
+    const s = scene({ delayMm: 0.02 });
+    const aom = createElement('aom', 700, 400);
+    Object.assign(aom.params, { deflect: 0, eff: 1, zero: false, modulate, modShape: 'square',
+      modFreqMHz: 80, chopDuty: 0.5, phaseNs });
+    s.elements.push(aom);
+    traceAll(s.elements);
+    return s.elements.filter(e => e.type === 'camera').map(e => detectorReading(e.id)).filter(Boolean);
+  };
+  const open = gated(0, false).map(r => r.signal);
+  // Andrea's edge case, then the gate moved by half and by a quarter period.
+  for (const phaseNs of [2.495092788491697, 2.495092788491697 + 6.25, 2.495092788491697 + 3.125, 0]) {
+    const readings = gated(phaseNs);
+    assert.equal(readings.length, open.length);
+    const behindGate = readings.map((r, index) => ({ r, index }))
+      .filter(({ r }) => r.approximations.some(note => /applies its average transmission/.test(note)));
+    assert.equal(behindGate.length, 1, 'exactly one camera sits behind the gate');
+    for (const { r, index } of readings.map((r, index) => ({ r, index }))) {
+      near(r.signal, index === behindGate[0].index ? 0.5 * open[index] : open[index], 1e-6);
+    }
+  }
 });

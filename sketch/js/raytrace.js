@@ -7,7 +7,7 @@
 
 import {
   registry, OBJ_SHAPES, EPI_CAPABLE_KINDS as EPI_KINDS, MIXING_KINDS, phasePlateOpdFraction,
-  ISOTROPIC_KINDS, MODIFIER_KINDS, EMISSION_ORDER, EMISSION_OFFSET_NM,
+  ISOTROPIC_KINDS, MODIFIER_KINDS, EMISSION_ORDER, EMISSION_OFFSET_NM, NONLINEAR_SIGNAL_KINDS,
   sumFrequencyWl, carsAntiStokesWl, ramanShifts, ramanStokesWl,
   drivingExcitationWl, channelNeedsExcitationProbe, specimenTypeOf,
   fluorophoreSpec, fluorophoreAbsorption, metalensFocalLength, opoPortLocal, OPO_ACCEPTANCE_DEG,
@@ -15,7 +15,7 @@ import {
 } from './elements.js';
 import { planOpa, chirpedSignalPulse, MAX_OPA_STAGES, MIN_PHASE_KEPT_GAIN } from './opa.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
-import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap, traceValueAt } from './pulses.js';
+import { C_MM_PER_NS, meanGateTransmission, pulseGateTransmission, pulseOverlap, traceValueAt } from './pulses.js';
 import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband, aotfWingHalfWidth } from './aotf.js';
 import { aodDeflectionDeg } from './acousto-optic.js';
 import { capillaryLossDbPerM, fiberPropagation, hollowCoreCoefficients } from './fiber.js';
@@ -843,8 +843,15 @@ function coherentCameraPolarization(camera, hits) {
   return polarizationDescription({ s1: s1 / total, s2: s2 / total, s3: s3 / total });
 }
 
+// Shown on a reading whose gates could not be timed against the pulse train.
+const GATE_AFTER_INTERFERENCE = 'Gate after interference applies its average transmission; gating synchronised to the pulse train is not resolved';
+
 function averageGateTransmission(pulse) {
   if (!pulse?.gates?.length) return 1;
+  // After broadband recombination the pulse timing on this ray is one arm's,
+  // not the output's. Timing a gate against it made the reading depend on
+  // which arm was kept; the gate's own average does not.
+  if (pulse.interferenceUnknown) return meanGateTransmission(pulse);
   // Every field that changes the waveform must be in the key. The two output
   // ports of a polarization-modulated PBS differ *only* by their high/low
   // levels, so omitting those made one port silently reuse the other's
@@ -1322,11 +1329,15 @@ export function detectorReading(elementId) {
   // only continue it linearly, say. Spectrum, power and every other readout
   // of this detector describe light the model did not fully compute.
   const approximations = [...new Set(activeHits.map(h => h.approximation).filter(Boolean))];
-  // Only where two routes from one broadband source actually meet here: a
-  // single beam has nothing to interfere with, so its unmodeled carrier
-  // phase is no caveat on its power.
+  if (activeHits.some(h => h.pulse?.interferenceUnknown && h.pulse.gates?.length)) {
+    approximations.push(GATE_AFTER_INTERFERENCE);
+  }
+  // Only where two routes from one broadband source meet here: a single
+  // beam has nothing to interfere with, so its unmodeled carrier phase is no
+  // caveat on its power. Routes are counted over everything the aperture
+  // integrates, including a tube bounded by rays that just miss the sensor.
   const broadbandRoutes = new Map();
-  for (const hit of hits) {
+  for (const hit of cameraHits) {
     if (!hit.spectralSource) continue;
     if (!broadbandRoutes.has(hit.sourceId)) broadbandRoutes.set(hit.sourceId, new Set());
     broadbandRoutes.get(hit.sourceId).add(hit.pathKey);
@@ -3637,6 +3648,11 @@ const retardPolMod = (polMod, axisDeg, retardanceDeg) => ({
   stokesLow: applyRetarder(polMod.stokesLow, axisDeg, retardanceDeg),
 });
 
+// Specimen channels whose yield depends on peak power: the registry's
+// nonlinear kinds. Its linear kinds scale with the average power alone.
+// Read at call time: elements.js and this module import each other.
+const needsPeakPower = kind => NONLINEAR_SIGNAL_KINDS.some(([nonlinear]) => nonlinear === kind);
+
 // interaction -> array of child rays [{d, wl?, intensity?, tag?}] ; [] = absorbed
 function interact(ray, hit) {
   const s = hit.surface, d = { x: ray.dx, y: ray.dy }, k = s.kind, data = s.data;
@@ -3646,12 +3662,13 @@ function interact(ray, hit) {
   // the representative arm's obsolete pulse: their yield depends on peak
   // power. Continue the unconverted input, and carry the limitation into
   // every downstream readout. What acts on average power -- a chopper, an
-  // acousto- or electro-optic modulator, linear fluorescence -- needs no
-  // temporal field and behaves as it does on any other beam.
+  // acousto- or electro-optic modulator, a linear specimen channel
+  // (fluorescence, spontaneous Raman, retardance) -- needs no temporal
+  // field and behaves as it does on any other beam.
   if (ray.pulse?.interferenceUnknown && (
     (k === 'transmit' && data.convert && data.convert !== 'none')
     || k === 'opoin'
-    || (k === 'specimen' && (data.channels || []).some(c => c.kind !== 'fluor')))) {
+    || (k === 'specimen' && (data.channels || []).some(c => needsPeakPower(c.kind))))) {
     const note = 'Nonlinear response after interference unavailable; unconverted input shown';
     return [{ d, approximation: note, intensity: ray.intensity * (k === 'specimen'
       ? (data.transmitExc ? Math.min(1, Math.max(0, data.transmission ?? 1)) : 0) : 1) }];

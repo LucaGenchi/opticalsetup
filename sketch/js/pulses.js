@@ -115,6 +115,24 @@ export function pulseTransmissionAt(pulse, emissionTimeNs) {
   return passed / samples;
 }
 
+// Average passage of light whose pulse timing is not known -- the output of a
+// broadband interferometer, whose combined temporal field is not modelled --
+// through the gates on its path: each gate's own waveform averaged over one
+// period, and the gates multiplied. This is exact for a gate unrelated to the
+// pulse train (a chopper), and an approximation for one synchronised to it
+// or to another gate; the caller labels the reading accordingly.
+export function meanGateTransmission(pulse, samples = 1024) {
+  const gates = Array.isArray(pulse?.gates) ? pulse.gates.filter(g => Number.isFinite(g?.opl)) : [];
+  let product = 1;
+  for (const gate of gates) {
+    const periodNs = 1000 / Math.min(1e6, Math.max(0.000001, gate.frequencyMHz || 1));
+    let passed = 0;
+    for (let i = 0; i < samples; i++) passed += gateTransmissionAt(gate, (i + 0.5) / samples * periodNs);
+    product *= passed / samples;
+  }
+  return product;
+}
+
 // Average passage of a discrete pulse train through every temporal gate on its
 // path. Sampling emitted pulses (rather than multiplying gate duties) preserves
 // phase relationships: aligned gates pass together and opposed gates extinguish.

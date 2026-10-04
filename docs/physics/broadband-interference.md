@@ -71,12 +71,18 @@ computed spectrum remain usable. Pulse animation must not portray that output
 as a known original pulse train. Nonlinear converters, OPOs and specimens with
 a nonlinear channel pass an explicitly labelled unconverted input onward, and
 writing a two-photon voxel from an unavailable field is disabled: their yield
-depends on peak power. A chopper, an acousto- or electro-optic modulator and
-linear fluorescence depend on average power only, so they act on the recombined
-beam exactly as on any other.
+depends on peak power. A chopper, an acousto- or electro-optic modulator and a
+specimen's linear channels (fluorescence, spontaneous Raman, retardance) depend
+on average power only, so they act on the recombined beam exactly as on any other.
+
+A time gate on the recombined beam -- a chopper, or a modulated AOM, AOD, AOTF or
+EOM -- cannot be timed against the pulse train, because the ray carries one arm's
+timing, not the output's. It applies each gate's own average transmission and the
+reading says so. That is exact for a gate unrelated to the pulse rate; a gate
+synchronised to the pulses, which would pass all or none of them, is not resolved.
 
 A detector reports an interference-unavailable caveat only where two routes from
-the same source actually reach it. A single beam through a lens or a wave plate
+the same source fall within what its aperture integrates. A single beam through a lens or a wave plate
 has nothing to interfere with, and its power carries no such caveat.
 
 ## Saved scenes
