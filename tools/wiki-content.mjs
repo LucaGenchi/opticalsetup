@@ -643,14 +643,23 @@ export const wikiEntries = [
     inOpticalSetup: {
       html: `
         <p>The point source emits rays evenly over its <strong>emission angle</strong> —
-        the full 360&deg; by default — and those rays are drawn as a glow that
-        <strong>fades within a short range unless something collects them</strong>. That
-        fading is the model's one strong opinion, and it is there because the alternative
-        is worse: an isotropic emitter whose rays ran forever would light up every detector
-        on the bench at full strength, which is the opposite of how such a source behaves.</p>
-        <p>A lens, a microscope objective, a fiber tip or a <a href="../mirror/">mirror</a>
-        within range collects the light, and from that point on it is ordinary light that
-        propagates normally. The embedded bench above shows the arrangement that makes this
+        the full 360&deg; by default — and a ray that meets nothing is drawn as a glow that
+        <strong>fades within about 110&nbsp;mm</strong>. That fading is the model's one
+        strong opinion, and it is there because the alternative is worse: an isotropic
+        emitter whose rays all ran forever would bury the bench in lines.</p>
+        <p>The <strong>capture range</strong> decides which rays carry on instead: a ray
+        with a lens, a <a href="../mirror/">mirror</a> or a fiber tip ahead of it within
+        that distance is collected, and is ordinary light all the way from the source.
+        Every element in the Lenses and Mirrors groups collects; nothing else does. A
+        filter or a polarizer in front of the collecting lens acts on the light passing
+        through it but collects nothing by itself, a detector facing the source directly
+        reads nothing, and a beam block, a housing or a detector in the way hides the
+        collector behind it. The range is 1&nbsp;m for a newly placed source and can be
+        set between 110&nbsp;mm and 5&nbsp;m; a sketch saved before the control existed
+        opens at the 165&nbsp;mm it was drawn with. It is a drawing convention that keeps the canvas readable, not
+        attenuation: collected light arrives at full ray weight, and uncollected light is
+        not traced at all.</p>
+        <p>The embedded bench above shows the arrangement that makes collection
         clearest: a <a href="../oap/">parabolic mirror</a> with the source exactly at its
         focus, 25&nbsp;mm in front of the vertex, turning isotropic emission into a parallel
         beam. That is how a lamp or an arc is collimated in a real instrument, and a
