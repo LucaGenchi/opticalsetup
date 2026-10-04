@@ -159,7 +159,7 @@ function shortTime(ns) {
 // with configured duration and multipath spread, with a visible minimum only
 // when the physical width would be sub-pixel.
 export function pulseTimelineHTML(pulse, color = '#2469e8') {
-  if (!pulse) return '';
+  if (!pulse || pulse.interferenceUnknown) return '';
   const fallback = Number.isFinite(pulse.repRateMHz) ? [{
     repRateMHz: pulse.repRateMHz,
     pulseWidthFs: pulse.pulseWidthFs,
@@ -412,7 +412,7 @@ function measurementHTML(el) {
       : `${Math.round(rd.wavelength)} nm`)
     : '—';
   const spot = rd.samples > 1 ? `${rd.spotSpan.toFixed(1)} mm` : 'Point hit';
-  const pulseTrain = rd.pulse?.mixed
+  const pulseTrain = rd.pulse?.interferenceUnknown ? 'Temporal field unavailable' : rd.pulse?.mixed
     ? `${rd.pulse.sources} source trains · mixed settings`
     : rd.pulse ? `${rd.pulse.sources > 1 ? `${rd.pulse.sources} sources · ` : ''}${rd.pulse.repRateMHz.toLocaleString()} MHz · ${rd.pulse.pulseWidthFs.toLocaleString()} fs` : '';
   const formatGdd = value => {
@@ -438,9 +438,10 @@ function measurementHTML(el) {
         : `${rd.pulse.stretchedPulseWidthFs.toFixed(rd.pulse.stretchedPulseWidthFs < 100 ? 1 : 0)} fs (${factor.toFixed(2)}×)`;
     }
   }
-  const pulseRows = rd.pulse ? `
+  const pulseRows = rd.pulse?.interferenceUnknown
+    ? '<dt>Pulse train</dt><dd>Temporal field unavailable</dd>' : rd.pulse ? `
       <dt>Pulse train</dt><dd>${pulseTrain}</dd>
-      ${rd.pulse.mixed ? '' : `<dt>Emission offset</dt><dd>${rd.pulse.phaseNs.toLocaleString()} ns</dd>`}
+      ${rd.pulse.mixed || rd.pulse.interferenceUnknown ? '' : `<dt>Emission offset</dt><dd>${rd.pulse.phaseNs.toLocaleString()} ns</dd>`}
       <dt>Accumulated GDD</dt><dd>${gddText}</dd>
       ${stretchText ? `<dt>${rd.pulse.envelope ? 'Computed FWHM' : 'Dispersed duration'}</dt><dd>${stretchText}</dd>` : ''}
       ${!rd.pulse.mixed && rd.pulse.dispersionModel ? `<dt>Duration model</dt><dd>${esc(rd.pulse.dispersionModel)}</dd>` : ''}
