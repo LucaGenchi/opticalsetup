@@ -1380,8 +1380,11 @@ function probeMultiCard(el, prop, beams, elements) {
     // verdict -- synced, or which beam comes first and by how much -- above.
     const summary = probeTimingSummary(beams);
     const verdict = probeTimingLabel(summary) || 'no pulsed beams to compare';
-    // Wide enough for the verdict, which is the point of this view.
-    const W = Math.max(90, Math.ceil(verdict.length * 3.5 + 12)), H = 56, x0 = 9, y0 = H - 12, pw = W - 16, ph = H - 30;
+    // The beams compared, each by its colour; a lamp by the span of its lines.
+    const names = shown.map(b => `${probeLinesRange(b) ?? Math.round(b.wl)} nm`).join(' · ') + (more > 0 ? ` +${more}` : '');
+    // Wide enough for the verdict, which is the point of this view, and for
+    // the list of beams under it.
+    const W = Math.max(90, Math.ceil(verdict.length * 3.5 + 12), Math.ceil(names.length * 2.8 + 12)), H = 56, x0 = 9, y0 = H - 12, pw = W - 16, ph = H - 30;
     const window = syncedTimeWindowNs(beams.map(beam => ({ reading: beam, params: el.params })));
     const { startNs, spanNs } = window;
     const xAt = ns => x0 + pw * (spanNs > 0 ? (ns - startNs) / spanNs : 0);
@@ -1424,7 +1427,7 @@ function probeMultiCard(el, prop, beams, elements) {
         `<text x="${x0}" y="${y0 + 6}" font-size="4.6" fill="#666">${axis(startNs)}</text>` +
         `<text x="${x0 + pw}" y="${y0 + 6}" text-anchor="end" font-size="4.6" fill="#666">${axis(startNs + spanNs)}</text>` +
         `<text data-probe-timing="${summary?.state || 'none'}" x="${W / 2}" y="8" text-anchor="middle" font-size="5.8" font-weight="700" fill="#333">${esc(verdict)}</text>` +
-        `<text x="${W / 2}" y="15" text-anchor="middle" font-size="4.8" fill="#666">${esc(shown.map(b => `${probeLinesRange(b) ?? Math.round(b.wl)} nm`).join(' · ') + (more > 0 ? ` +${more}` : ''))}</text>`,
+        `<text x="${W / 2}" y="15" text-anchor="middle" font-size="4.8" fill="#666" data-probe-time-names="${shown.length}">${esc(names)}</text>`,
     };
   }
 

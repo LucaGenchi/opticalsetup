@@ -192,3 +192,61 @@ test('the polarization card makes room for a lamp\'s longer name and leaves a la
   assert.equal(names[1].x, 56 / 2 - 8);
   assert.doesNotMatch(svg, /NaN|Infinity/);
 });
+
+// Reviewer, #233 (second round): the time card was sized by its verdict
+// alone, so four lamps -- a 53-character list -- overran a 103-unit card.
+
+// `count` sources collimated or aimed onto one probe at (400,300), 20 degrees apart.
+function converging(count, build) {
+  const P = [400, 300], scene = [];
+  for (let k = 0; k < count; k++) {
+    const deg = 20 * k, a = deg * Math.PI / 180;
+    const at = back => [P[0] - back * Math.cos(a), P[1] - back * Math.sin(a)];
+    scene.push(...build(deg, at));
+  }
+  const probe = createElement('probe', P[0], P[1]);
+  Object.assign(probe.params, { prop: 'time', sampleDiameterMm: 20 });
+  scene.push(probe);
+  traceScene(scene, []);
+  const svg = registry.probe.svg(probe, scene);
+  return {
+    svg,
+    width: Number(/<rect x="0" y="0" width="([\d.]+)" height="56"/.exec(svg)[1]),
+    names: /data-probe-time-names="(\d+)">([^<]*)</.exec(svg),
+  };
+}
+const lampUnit = (deg, at) => {
+  const lamp = createElement('pointsource', ...at(195));
+  lamp.rot = deg;
+  Object.assign(lamp.params, { sourceKind: 'lamp', lampType: 'hg', spread: 360, nrays: 24 });
+  const oap = createElement('oap', ...at(220));
+  oap.rot = 180 + deg;
+  Object.assign(oap.params, { length: 60, f: 25 });
+  return [lamp, oap];
+};
+const laserUnit = wavelengths => (deg, at) => {
+  const laser = createElement('pulsedlaser', ...at(200));
+  laser.rot = deg;
+  Object.assign(laser.params, { beamMode: 'line', wavelength: wavelengths[deg / 20] });
+  return [laser];
+};
+
+test('the time card is as wide as its list of beams needs, at the four-beam limit', () => {
+  const { svg, width, names } = converging(4, lampUnit);
+  assert.equal(names[1], '4', 'four beams are listed');
+  assert.equal(names[2], Array(4).fill('365–1014 nm').join(' · '));
+  // centred text at font-size 4.8: 2.8 units a character is a generous bound
+  assert.ok(names[2].length * 2.8 + 12 <= width, `a ${names[2].length}-character list fits a ${width}-unit card`);
+  // the plot's axis grows with the card
+  assert.match(svg, new RegExp(`<line x1="9" y1="44" x2="${width - 7}" y2="44"`));
+  assert.doesNotMatch(svg, /NaN|Infinity/);
+});
+
+test('a time card whose list is short keeps the width it had', () => {
+  const two = converging(2, laserUnit([800, 1040]));
+  assert.equal(two.names[2], '800 nm · 1040 nm');
+  assert.ok(two.width >= 90 && two.names[2].length * 2.8 + 12 < 90, 'the list does not set the width');
+  // one lamp beside a laser: the longer name still fits the minimum card
+  const lampAndOne = /data-probe-time-names="2">([^<]*)</.exec(lampAndLaser('time'))[1];
+  assert.ok(lampAndOne.length * 2.8 + 12 <= 90);
+});
