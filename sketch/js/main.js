@@ -1812,7 +1812,18 @@ function preserveWorkbenchInUndo() {
   return true;
 }
 
+const sceneKey = scene => JSON.stringify({ elements: scene.elements, beams: scene.beams });
+
 function openSharedScene(scene) {
+  // Share parks its link in the address bar, so a reload before the next
+  // edit arrives here carrying the visitor's own saved scene. There is
+  // nothing to replace then: open it with no question, and no undo entry
+  // that would only restore the same scene.
+  if (loadAutosave(registry) && sceneKey(state) === sceneKey(scene)) {
+    replaceScene(scene, { resetHistory: true });
+    zoomFit();
+    return;
+  }
   if (!preserveWorkbenchInUndo()) {
     // The visitor chose the already-saved workbench. Retire the declined
     // snapshot so a reload does not ask to replace that work again.
