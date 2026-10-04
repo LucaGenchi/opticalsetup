@@ -23,7 +23,7 @@ REFERENCE = os.path.join(ROOT, "validation", "reference")
 EXPECTED = os.path.join(ROOT, "validation", "expected")
 REPORT = os.path.join(ROOT, "docs", "validation.md")
 CONVERGENCE = os.path.join(ROOT, "validation", "expected", "convergence.json")
-MODULES = ["sellmeier", "pulse", "argon_capillary", "nlse", "paraxial", "opa"]
+MODULES = ["sellmeier", "pulse", "argon_capillary", "nlse", "paraxial", "opa", "broadband_interference"]
 
 sys.path.insert(0, REFERENCE)
 

@@ -203,8 +203,21 @@ readout is labelled a linear-only approximation; outside the argon data
 (468–2059 nm) it continues geometrically with its own caveat. See
 [the physics, limits and validation note](physics/hollow-core.md).
 
-Its bounded coherent model applies only to sized monochromatic CW sources and
-explicitly supported ideal surfaces. It carries optical path plus the unitary phase of
+Its bounded coherent model applies to sized monochromatic CW sources and,
+when enabled on the source, sized pulsed and supercontinuum sources through
+explicitly supported ideal surfaces. Broadband fields are combined across their
+actual wavelength spectrum, preserving the changed spectrum and integrated
+power downstream. Camera pixels and scalar detector apertures integrate supported
+broadband overlap with the same spectral model. A combined temporal field is not
+reconstructed: pulse duration, autocorrelation and time traces after recombination
+are unavailable, and pulse animation stops there. Nonlinear conversion downstream
+uses a labelled unconverted fallback; static modulators and a specimen's linear
+channels act on the recombined power as on any other beam, and a time gate applies
+its labelled average transmission. See
+[the model and bounds](physics/broadband-interference.md). Old saved sources
+without the new Interference setting load with it off, retaining their results.
+
+The coherent model carries optical path plus the unitary phase of
 ideal non-polarizing beamsplitters and fully reflective flat mirrors, groups compatible
 fields at a shared recombination surface, and propagates the resulting port intensity
 downstream before drawing or measuring it. Camera pixels additionally integrate any
@@ -213,6 +226,16 @@ overlapping camera-local branches per source and wavelength. Independent sources
 as intensities. An incomplete trace or a route through an optic whose carrier phase is
 not represented falls back to conservative deposited intensity rather than inventing a
 phase.
+
+A point source's rays are collected by lenses, mirrors (every element of those
+two palette groups) and fiber tips within its capture range (1 m by default,
+110 mm to 5 m; 165 mm for a sketch saved before the control existed). A
+collected ray is ordinary light from the source on, so an optic in front of the
+collector acts on it; no other element collects, and an opaque one hides the
+collector behind it. A ray with no collector ahead is drawn as a glow fading
+within 110 mm and reaches no detector. The range is a drawing convention that
+keeps a 360° emitter from covering the canvas, not attenuation or an
+inverse-square law: collected light arrives at full ray weight.
 
 The metalens is a zero-thickness paraxial phase-gradient proxy rather than an
 electromagnetic metasurface solver. In chromatic mode its focal length follows the
