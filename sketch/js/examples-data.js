@@ -75,6 +75,18 @@ export const examples = [
     "slug": "michelson-interferometer"
   },
   {
+    "group": "Interferometers",
+    "name": "Pulsed Mach–Zehnder",
+    "path": "../Examples/Interferometers/Pulsed%20Mach%E2%80%93Zehnder.json",
+    "slug": "pulsed-mach-zehnder"
+  },
+  {
+    "group": "Interferometers",
+    "name": "Supercontinuum Mach–Zehnder",
+    "path": "../Examples/Interferometers/Supercontinuum%20Mach%E2%80%93Zehnder.json",
+    "slug": "supercontinuum-mach-zehnder"
+  },
+  {
     "group": "Nonlinear Optics",
     "name": "Near infrared supercontinuum in YAG",
     "path": "../Examples/Nonlinear%20Optics/Near%20infrared%20supercontinuum%20in%20YAG.json",

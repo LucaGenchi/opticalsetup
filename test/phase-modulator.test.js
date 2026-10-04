@@ -120,8 +120,8 @@ test('it sits with the electro-optic family in the palette', () => {
 
 
 test('the interferometric behaviour needs a source the tracer can phase, and says so', () => {
-  // Coherent recombination is only reconstructed for a sized monochromatic CW
-  // laser. With any other source the two arms are added as intensities, so
+  // This checks legacy power-only sources alongside the sized CW case.
+  // With interference disabled the two arms are added as intensities, so
   // both ports sit at half the light and the modulator does nothing at all --
   // which the wiki has to state, or the element looks broken on a bench that
   // happens to use a pulsed source.
@@ -142,7 +142,7 @@ test('the interferometric behaviour needs a source the tracer can phase, and say
     };
   };
 
-  // The one source that works: full swing.
+  // The monochromatic CW case still gives a full swing.
   const sized = withSource(() => {});
   assert.equal(sized.applied, true);
   assert.ok(Math.abs(sized.signals[0] - 1) < 1e-4);
@@ -158,12 +158,12 @@ test('the interferometric behaviour needs a source the tracer can phase, and say
       laser.params.bwMode = 'band';
       laser.params.bandwidth = 5;
     },
-    'a pulsed laser': scene => {
+    'a pulsed laser with interference disabled': scene => {
       const index = scene.elements.findIndex(el => el.type === 'cwlaser');
       const laser = scene.elements[index];
       const pulsed = createElement('pulsedlaser', laser.x, laser.y);
       Object.assign(pulsed.params, {
-        beamMode: 'beam', beamWidth: laser.params.beamWidth, wavelength: 532, pulseWidthFs: 200,
+        beamMode: 'beam', beamWidth: laser.params.beamWidth, wavelength: 532, pulseWidthFs: 200, interference: false,
       });
       scene.elements[index] = pulsed;
     },
