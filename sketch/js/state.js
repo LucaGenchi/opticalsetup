@@ -469,11 +469,15 @@ export function loadAutosave(definitions = null) {
     state.autosaveRecovery = null;
   } catch (err) {
     state.autosaved = false;
-    state.autosaveRecovery = {
+    // Recovery protects bytes that were read and then could not be opened.
+    // A store that cannot be read at all (blocked cookies, some private
+    // modes) handed over nothing to protect, so it stays the plain
+    // no-autosave case rather than claiming a saved setup exists.
+    state.autosaveRecovery = typeof text === 'string' ? {
       text,
       message: err.message?.startsWith('Unsupported sketch version:')
         ? `${err.message}.` : 'The saved setup could not be opened.',
-    };
+    } : null;
   }
   return false;
 }
