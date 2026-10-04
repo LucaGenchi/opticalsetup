@@ -1322,7 +1322,16 @@ export function detectorReading(elementId) {
   // only continue it linearly, say. Spectrum, power and every other readout
   // of this detector describe light the model did not fully compute.
   const approximations = [...new Set(activeHits.map(h => h.approximation).filter(Boolean))];
-  if (cameraResult?.interference?.fallbackReason && hits.some(h => h.spectralSource)) {
+  // Only where two routes from one broadband source actually meet here: a
+  // single beam has nothing to interfere with, so its unmodeled carrier
+  // phase is no caveat on its power.
+  const broadbandRoutes = new Map();
+  for (const hit of hits) {
+    if (!hit.spectralSource) continue;
+    if (!broadbandRoutes.has(hit.sourceId)) broadbandRoutes.set(hit.sourceId, new Set());
+    broadbandRoutes.get(hit.sourceId).add(hit.pathKey);
+  }
+  if (cameraResult?.interference?.fallbackReason && [...broadbandRoutes.values()].some(routes => routes.size > 1)) {
     approximations.push(cameraResult.interference.fallbackReason);
   }
   // Light ran past the weak-branch budget or depth limit somewhere in this
@@ -3633,15 +3642,17 @@ function interact(ray, hit) {
   const s = hit.surface, d = { x: ray.dx, y: ray.dy }, k = s.kind, data = s.data;
   const t = norm(sub(s.b, s.a));
   // The spectral model supplies average energy, not a combined temporal
-  // field. Do not seed a gate, nonlinear converter or specimen with the
-  // representative arm's obsolete pulse. Continue its unconverted input,
-  // and carry the limitation into every downstream readout.
+  // field. Do not seed a nonlinear converter or a nonlinear specimen with
+  // the representative arm's obsolete pulse: their yield depends on peak
+  // power. Continue the unconverted input, and carry the limitation into
+  // every downstream readout. What acts on average power -- a chopper, an
+  // acousto- or electro-optic modulator, linear fluorescence -- needs no
+  // temporal field and behaves as it does on any other beam.
   if (ray.pulse?.interferenceUnknown && (
     (k === 'transmit' && data.convert && data.convert !== 'none')
-    || k === 'specimen' || k === 'opoin'
-    || ['chop', 'aom', 'aod', 'aotf'].includes(k)
-    || (k === 'retarder' && s.el?.type === 'eom'))) {
-    const note = 'Temporal or nonlinear response after interference unavailable; unconverted, ungated input shown';
+    || k === 'opoin'
+    || (k === 'specimen' && (data.channels || []).some(c => c.kind !== 'fluor')))) {
+    const note = 'Nonlinear response after interference unavailable; unconverted input shown';
     return [{ d, approximation: note, intensity: ray.intensity * (k === 'specimen'
       ? (data.transmitExc ? Math.min(1, Math.max(0, data.transmission ?? 1)) : 0) : 1) }];
   }

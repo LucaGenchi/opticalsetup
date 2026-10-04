@@ -210,8 +210,9 @@ actual wavelength spectrum, preserving the changed spectrum and integrated
 power downstream. Camera pixels and scalar detector apertures integrate supported
 broadband overlap with the same spectral model. A combined temporal field is not
 reconstructed: pulse duration, autocorrelation and time traces after recombination
-are unavailable, and pulse animation stops there. Temporal modulation or nonlinear
-conversion downstream uses a labelled unconverted/ungated fallback. See
+are unavailable, and pulse animation stops there. Nonlinear conversion downstream
+uses a labelled unconverted fallback; choppers, modulators and linear fluorescence
+act on the recombined power as on any other beam. See
 [the model and bounds](physics/broadband-interference.md). Old saved sources
 without the new Interference setting load with it off, retaining their results.
 

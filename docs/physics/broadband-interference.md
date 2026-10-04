@@ -68,9 +68,16 @@ peak power, autocorrelation, time traces and downstream nonlinear calculations
 must not inherit an arbitrary surviving arm's pulse. Where the combined temporal
 field is not available, those quantities are unavailable; average power and the
 computed spectrum remain usable. Pulse animation must not portray that output
-as a known original pulse train. Temporal gates and nonlinear converters
-pass an explicitly labelled unconverted/ungated input onward; writing a
-two-photon voxel from an unavailable field is disabled.
+as a known original pulse train. Nonlinear converters, OPOs and specimens with
+a nonlinear channel pass an explicitly labelled unconverted input onward, and
+writing a two-photon voxel from an unavailable field is disabled: their yield
+depends on peak power. A chopper, an acousto- or electro-optic modulator and
+linear fluorescence depend on average power only, so they act on the recombined
+beam exactly as on any other.
+
+A detector reports an interference-unavailable caveat only where two routes from
+the same source actually reach it. A single beam through a lens or a wave plate
+has nothing to interfere with, and its power carries no such caveat.
 
 ## Saved scenes
 

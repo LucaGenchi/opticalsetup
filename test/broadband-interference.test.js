@@ -263,17 +263,66 @@ test('scalar apertures agree with camera integration when they clip a broadband 
   }
 });
 
-test('downstream gates and nonlinear conversion decline an unavailable temporal field', () => {
-  for (const type of ['chopper', 'crystal']) {
-    const s = scene({ delayMm: .002 });
-    const optic = createElement(type, 700, 400);
-    Object.assign(optic.params, { modulate: true, convert: 'shg' });
-    s.elements.push(optic);
+test('nonlinear conversion declines an unavailable temporal field', () => {
+  const s = scene({ delayMm: .002 });
+  const optic = createElement('crystal', 700, 400);
+  Object.assign(optic.params, { convert: 'shg' });
+  s.elements.push(optic);
+  traceAll(s.elements);
+  const r = detectorReading(s.elements.find(e => e.type === 'camera').id);
+  assert.ok(r && r.signal > 0);
+  assert.ok(r.wavelength > 500, 'no fabricated second harmonic');
+  assert.ok(r.approximations.some(note => /Nonlinear response after interference unavailable; unconverted input shown/.test(note)));
+  assert.equal(r.pulse.stretchedPulseWidthFs, null);
+});
+
+// A chopper acts on average power, which the spectral model does supply: it
+// must do to the recombined beam what it does to any other, not pass it
+// through untouched. The same holds for the acousto- and electro-optic
+// modulators that shared its block.
+test('a chopper after the recombining beamsplitter still gates the beam', () => {
+  const base = scene();
+  const combiner = base.elements.filter(e => e.type === 'bs').at(-1);
+  // Trace with a chopper halfway between the combiner and one camera, and
+  // read that camera.
+  const reading = (interference, camera, chop) => {
+    const s = scene({ delayMm: 0, params: { interference } });
+    if (chop) {
+      const chopper = createElement('chopper', (combiner.x + camera.x) / 2, (combiner.y + camera.y) / 2);
+      chopper.rot = camera.rot;
+      Object.assign(chopper.params, { modulate: true, chopDuty: 0.5 });
+      s.elements.push(chopper);
+    }
     traceAll(s.elements);
-    const r = detectorReading(s.elements.find(e => e.type === 'camera').id);
-    assert.ok(r && r.signal > 0);
-    assert.ok(r.wavelength > 500, 'no fabricated second harmonic');
-    assert.ok(r.approximations.some(note => /unconverted, ungated input shown/.test(note)));
-    assert.equal(r.pulse.stretchedPulseWidthFs, null);
+    return detectorReading(camera.id);
+  };
+  // Equal arms: one port takes everything.
+  const bright = base.elements.filter(e => e.type === 'camera')
+    .find(camera => Math.abs((reading(true, camera, false)?.signal || 0) - 1) < 1e-6);
+  assert.ok(bright, 'no camera sits behind the bright port');
+  const chopped = reading(true, bright, true);
+  near(chopped.signal, 0.5, 1e-6);
+  assert.ok(!chopped.approximations.some(note => /unavailable/.test(note)), 'no caveat on an average-power gate');
+  assert.equal(chopped.pulse.interferenceUnknown, true, 'the temporal field stays unavailable');
+  // Without interference the same port carries half, and the chopper halves that.
+  near(reading(false, bright, true).signal, 0.25, 1e-6);
+});
+
+test('one beam from a new pulsed source carries no interference caveat', () => {
+  for (const type of ['pulsedlaser', 'sclaser']) {
+    const source = createElement(type, 0, 0);
+    assert.equal(source.params.interference, true);
+    source.params.beamMode = 'beam';
+    const lens = createElement('lens', 150, 0);
+    const camera = createElement('camera', 300, 0);
+    traceAll([source, lens, camera]);
+    const r = detectorReading(camera.id);
+    near(r.signal, 1, 1e-6);
+    assert.deepEqual(r.approximations, []);
   }
+  // Two routes that do meet beyond the sampling budget keep their caveat.
+  const s = scene({ delayMm: 50 });
+  traceAll(s.elements);
+  const readings = s.elements.filter(e => e.type === 'camera').map(e => detectorReading(e.id));
+  assert.ok(readings.every(r => r.approximations.some(note => /interference unavailable/.test(note))));
 });
