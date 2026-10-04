@@ -99,10 +99,11 @@ export function coherencePathMm(spec) {
   if (!['gauss', 'flat'].includes(spec.kind)) return spec.kind === 'sampled' ? NaN : null;
   const support = spectrumSupport(spec);
   if (!support || !support.every(Number.isFinite) || !(support[0] > 0) || !(support[1] > support[0])) return null;
-  // A band reaching below a quarter of its own centre is a sub-cycle pulse:
-  // the Gaussian-in-wavelength source shape is clipped at the support's floor
-  // there and stops describing a pulse. It is finite, so not "unlimited", but
-  // it is not searched either -- that costs seconds and means little.
+  // A conservative limit of this readout: a band reaching below a quarter of
+  // its own centre is about a cycle long or less, where a Gaussian in
+  // wavelength is a poor picture of a pulse (and, wider still, is clipped at
+  // the support's 1 nm floor). It is finite, so not "unlimited", but it is
+  // not searched either -- the widest ones cost seconds and mean little.
   if (spec.kind === 'gauss' && support[0] < spec.center / 4) return NaN;
   const key = JSON.stringify(spec);
   if (!coherenceCache.has(key)) {

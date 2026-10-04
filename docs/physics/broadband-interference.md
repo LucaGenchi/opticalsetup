@@ -104,9 +104,11 @@ the band's width and the phases both referred to its mean, so a nanosecond pulse
 (a band twelve orders narrower than its carrier) is resolved. Only the
 single-band source shapes (Gaussian and flat) are supported. The readout says
 "Not limited by this spectrum" only when the source has no band at all. It says
-"Not resolved for this spectrum" for a sub-cycle pulse, whose band reaches below
-a quarter of its centre wavelength: the Gaussian-in-wavelength source shape is
-clipped at the 1 nm floor there and no longer describes a pulse.
+"Not resolved for this spectrum" for a band reaching below a quarter of its
+centre wavelength, a pulse about one optical cycle long or shorter. That threshold
+is a conservative limit of the readout, not a property of the spectrum: 800 nm at
+1.8 fs spans 134–1466 nm and is already declined. Only wider bands still are
+clipped at the 1 nm floor of the Gaussian-in-wavelength source shape.
 
 This is not the CW laser's coherence-length parameter under another name. That
 parameter is the full width at half maximum of the laser's visibility envelope
