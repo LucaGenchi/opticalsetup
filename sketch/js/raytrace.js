@@ -2023,7 +2023,7 @@ function recordProbeBeam(surface, ray) {
     // that element's record, and what a later filter left of it travels
     // beside the record (`trainPieces`). Read only by the OPA's ports.
     pulse: ray.pulse ? { ...ray.pulse } : null,
-    arrivingPulse: ray.pulse ? { ...drawnPulse(ray) } : null,
+    ...(ray.pulse && ray.trainPieces?.length ? { arrivingPulse: { ...drawnPulse(ray) } } : {}),
     gates: (ray.pulse?.gates || []).map(g => ({ ...g })),
     // Only light that went through a parametric element has a history.
     ...(ray.parametricPath?.length ? { parametricPath: unionPath(ray.parametricPath) } : {}),
