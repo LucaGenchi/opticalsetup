@@ -1352,8 +1352,15 @@ export function detectorReading(elementId) {
 // path's own dispersion trace, as the travelling pulse packets read them.
 // When the tracer cannot state a duration it says so instead of quoting the
 // source's configured width.
+// The pulse record as it is DRAWN: the on-beam label and the packets use the
+// whole-train spectrum where a ray carries one. Everything that computes --
+// detectors, the OPA, mixing, generated light -- reads the ray's own record,
+// which this never changes.
+const drawnPulse = ray => (ray?.pulse && Array.isArray(ray.trainPieces) && ray.trainPieces.length
+  ? { ...ray.pulse, spectrumReshaped: true, filteredPieces: ray.trainPieces } : ray?.pulse);
+
 function probePulseDuration(path, segment, along) {
-  const pulse = path.pulse;
+  const pulse = drawnPulse(path);
   if (pulse.fieldIssue) return { durationFs: null, issue: pulse.fieldIssue };
   const a = path.opls?.[segment], b = path.opls?.[segment + 1];
   const opl = Number.isFinite(a) && Number.isFinite(b) ? a + (b - a) * along : path.opl;
@@ -5700,7 +5707,7 @@ function loopState(r) {
     r.wl, r.bw, r.spec, r.pol, r.stokes?.s1, r.stokes?.s2, r.stokes?.s3, r.polMod, r.pulse,
     r.gdd, r.groupDelayDifferenceFs, r.medium, r.mediumMaterial, r.ior, r.sourceId, r.color,
     r.dispersed, r.spectralContinuum, r.spectralWidthNm, r.spectralLo, r.spectralHi, r.fanLo, r.fanHi, r.sliceSpec,
-    r.pulseDescribed,
+    r.pulseDescribed, r.trainPieces,
     r.approximation, r.parametricPath, r.keepWeak, r.retainWeak, r.hidden, r.sample, r.phaseValid,
   ];
 }
@@ -6188,8 +6195,9 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // AOTF's depleted beam. Recorded from the ray alone, each packet drawn
       // on such a part showed its own piece of the spectrum, and a pulse an
       // earlier filter had reshaped kept that filter's record. For those
-      // parts the record is what the port's transmission leaves of the whole
-      // recorded spectrum, the same for every part of the train -- and so it
+      // parts the DRAWN spectrum (`trainPieces`, read by the on-beam label
+      // and the packets only) is what the port's transmission leaves of the
+      // whole recorded spectrum, the same for every part of the train -- and so it
       // is for any pulse an earlier element has already reshaped, which is
       // not re-detected as reshaping above. A ray that is the whole train,
       // meeting the first element to reshape it, keeps the record taken from
@@ -6214,9 +6222,14 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           if (!sampleCell(merged) && sharing.get(ports.keyFor(child)) < 2 && !r.pulse.spectrumReshaped) continue;
           if (r.pulseDescribed !== true || !region || !rayWithinPulseBand(merged, region)) continue;
           const shape = ports.shapeFor(child);
-          const pieces = shape ? reshapedPulsePieces(r.pulse, shape, ports.edges) : null;
+          // From the whole-train spectrum the ray already carries, if any:
+          // the record itself may hold only an earlier filter's piece.
+          const pieces = shape ? reshapedPulsePieces(drawnPulse(r), shape, ports.edges) : null;
           if (!pieces || !pieces.length) continue;
-          child.pulse = { ...(child.pulse || r.pulse), spectrumReshaped: true, filteredPieces: pieces };
+          // Kept beside the record, for drawing alone. The record stays as it
+          // is: the OPA times its pump from it and generated light inherits
+          // it, and changing it there changes what they compute.
+          child.trainPieces = pieces;
         }
       }
       // An etalon's output keeps its power but not its comb (and not the
@@ -6249,13 +6262,15 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         && !('pol' in c0 && c0.pol !== r.pol)
         && !('stokes' in c0)
         && !('polMod' in c0)
-        && !('pulse' in c0); // state changes split so probes read each segment
+        && !('pulse' in c0) // state changes split so probes read each segment
+        && !('trainPieces' in c0); // and so does a change to what is drawn
       if (single) {
         // The ray carries on as itself, so the provenance rule is applied to
         // it here: a conversion that lands on the wavelength the ray already
         // had (a line generated from a sample that was already a line) takes
         // this path and is generated light all the same.
         r.pulseDescribed = childPulseDescribed(r, c0, hit.surface.kind);
+        if (!r.pulseDescribed) r.trainPieces = null;
         if (c0.intensity !== undefined && r.intensity > 0 && Number.isFinite(r.power)) {
           r.power *= c0.intensity / r.intensity;
         }
@@ -6404,6 +6419,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             ? [{ opl: r.opl, value: childDelayDifference, linear: false }] : null,
           pulse: 'pulse' in c ? c.pulse : r.pulse,
           pulseDescribed: childPulseDescribed(r, c, hit.surface.kind),
+          // The whole-train spectrum for drawing travels with light the
+          // record describes, and with nothing else.
+          trainPieces: !childPulseDescribed(r, c, hit.surface.kind) ? null
+            : 'trainPieces' in c ? c.trainPieces : (r.trainPieces || null),
           // A caveat is never cleared downstream: no later element computes
           // what the linear-only continuation left out.
           approximation: r.approximation || c.approximation || null,
@@ -6667,7 +6686,7 @@ function collectPulseTracks(paths, K, fixedColor, pulseTracks) {
       ...(r.groupDelayDifferenceTrace ? {
         groupDelayDifferenceTrace: r.groupDelayDifferenceTrace.map(event => ({ ...event })),
       } : {}),
-      pulse: { ...r.pulse },
+      pulse: { ...drawnPulse(r) },
       bw: r.bw || 0,
       color: rayColor(r, fixedColor),
       // The intensity of the stretch kept, not the path's final one.

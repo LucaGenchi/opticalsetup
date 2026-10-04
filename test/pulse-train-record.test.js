@@ -313,3 +313,56 @@ test('light that loses the flag loses only the new record', () => {
   assert.ok(direct > 250 && direct < 265, `without the fibre ${direct} fs`);
   assert.ok(Math.abs(throughFibre - direct) <= 1e-3 * direct, `through the fibre ${throughFibre} fs, without ${direct} fs`);
 });
+
+// --- Drawing only ------------------------------------------------------------
+// The whole-train spectrum is kept beside the pulse's record and read by the
+// on-beam label and the packets alone. The record itself is what the model
+// computes from -- an OPA times its pump from it, generated light inherits
+// it -- so it must be left exactly as it was.
+
+test('correcting what is drawn does not change what an OPA computes', () => {
+  // A pump through two filters, then an OPA. The pump's drawn duration after
+  // the second filter is corrected (98 fs for the 26 fs the first filter
+  // left), but the OPA still times the pump from the record, so its gain and
+  // the signal it delivers are what they were. (That record is the stale one;
+  // feeding the OPA the corrected duration multiplies the signal by 3.7 and
+  // is a change of its own, to be validated on its own.)
+  const place = (type, x, y, params) => {
+    const el = createElement(type, x, y);
+    Object.assign(el.params, params);
+    return el;
+  };
+  const scene = filters => {
+    const det = place('detector', 450, 18, { aperture: 10 });
+    const { pulseTracks } = traceScene([
+      place('pulsedlaser', 0, -18, { beamMode: 'line', wavelength: 515, transformLimited: false, bandwidth: 60, avgPowerW: 1, repRateMHz: 0.2 }),
+      place('pulsedlaser', 0, 18, { beamMode: 'line', wavelength: 780, transformLimited: true, pulseWidthFs: 300, avgPowerW: 1e-6, repRateMHz: 0.2 }),
+      ...filters.map(([x, band]) => place('filter', x, -18, { ftype: 'bandpass', center: 515, band })),
+      place('opa', 300, 0, { signalWl: 780, gainBandwidthNm: 40, smallSignalGainDb: 40, maxDepletion: 0.5 }), det,
+    ]);
+    const reading = detectorReading(det.id);
+    return { signal: reading?.signal ?? 0, duration: reading?.pulse?.stretchedPulseWidthFs ?? null, pulseTracks };
+  };
+  const two = scene([[100, 30], [150, 8]]);
+  assert.ok(Math.abs(two.signal - 0.000395765422) <= 1e-9 * two.signal, `signal ${two.signal}`);
+  assert.ok(Math.abs(two.duration - 26.24) < 0.01, `signal duration ${two.duration} fs`);
+  // The drawn pump after the second filter is nevertheless the longer pulse.
+  const drawn = two.pulseTracks.map(track => pulseEnvelopeAtOpticalPath(track, track.opls.at(-1) - 1e-6)?.pulseWidthFs).filter(Number.isFinite);
+  assert.ok(drawn.some(width => width > 90 && width < 105), `drawn durations ${drawn.map(w => w.toFixed(1))}`);
+});
+
+test('light generated behind two filters is drawn from the record it inherits', () => {
+  // The pump after the second filter is drawn at 236 fs. The harmonic made
+  // from it inherits the pump's record, untouched, and is drawn as it was.
+  const det = createElement('detector', 900, 0);
+  det.params.aperture = 60;
+  const { pulseTracks } = traceScene([
+    pulsed(), bandpass(100, 800, 30), bandpass(250, 800, 8),
+    at('crystal', 450, { convert: 'shg', efficiency: 0.5, transmitPump: false }), det,
+  ]);
+  const widths = pulseTracks.map(track => pulseEnvelopeAtOpticalPath(track, track.opls.at(-1) - 1e-6)?.pulseWidthFs);
+  const [, afterFirst, afterSecond, harmonic] = widths;
+  assert.ok(Math.abs(afterSecond - 235.87) < 0.5, `pump after the second filter ${afterSecond} fs`);
+  assert.equal(harmonic, afterFirst, `the harmonic is drawn from the inherited record (${harmonic} fs)`);
+  assert.ok(Math.abs(detectorReading(det.id).pulse.stretchedPulseWidthFs - 117.93) < 0.01);
+});
