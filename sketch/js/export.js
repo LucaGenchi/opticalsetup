@@ -28,7 +28,7 @@ function sceneBounds(elements = state.elements, drawables = null) {
   for (const el of elements) {
     const def = registry[el.type];
     if (!def) continue;
-    const clamp = getVisualBounds(el, { includeLabel: !def.hideInExport });
+    const clamp = getVisualBounds(el, { includeLabel: !def.hideInExport, elements });
     if (!clamp) continue;
     const bounds = [{ x: clamp.x0, y: clamp.y0 }, { x: clamp.x1, y: clamp.y1 }];
     clampPts.push(...bounds);

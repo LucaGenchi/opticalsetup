@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createElement, registry } from '../sketch/js/elements.js';
+import { createElement, registry, getVisualBounds, probeScale } from '../sketch/js/elements.js';
 import { traceAll, traceScene } from '../sketch/js/raytrace.js';
 import { LAMP_PRESETS } from '../sketch/js/lamps.js';
 
@@ -197,7 +197,7 @@ test('the polarization card makes room for a lamp\'s longer name and leaves a la
 // alone, so four lamps -- a 53-character list -- overran a 103-unit card.
 
 // `count` sources collimated or aimed onto one probe at (400,300), 20 degrees apart.
-function converging(count, build) {
+function converging(count, build, prop = 'time') {
   const P = [400, 300], scene = [];
   for (let k = 0; k < count; k++) {
     const deg = 20 * k, a = deg * Math.PI / 180;
@@ -205,10 +205,11 @@ function converging(count, build) {
     scene.push(...build(deg, at));
   }
   const probe = createElement('probe', P[0], P[1]);
-  Object.assign(probe.params, { prop: 'time', sampleDiameterMm: 20 });
+  Object.assign(probe.params, { prop, sampleDiameterMm: 20 });
   scene.push(probe);
   traceScene(scene, []);
   const svg = registry.probe.svg(probe, scene);
+  if (prop !== 'time') return { svg, scene, probe };
   return {
     svg,
     width: Number(/<rect x="0" y="0" width="([\d.]+)" height="56"/.exec(svg)[1]),
@@ -249,4 +250,88 @@ test('a time card whose list is short keeps the width it had', () => {
   // one lamp beside a laser: the longer name still fits the minimum card
   const lampAndOne = /data-probe-time-names="2">([^<]*)</.exec(lampAndLaser('time'))[1];
   assert.ok(lampAndOne.length * 2.8 + 12 <= 90);
+});
+
+// ---------------- the several-beam spectrum card ----------------
+// It named each colour by its rounded nominal wavelength, so a mercury lamp
+// beside a 532 nm laser read "436 · 532 nm"; and its caption, which ends at
+// the plot's right edge, was not counted in the card's width.
+
+const spectrumCard = svg => ({
+  width: Number(/<rect x="0" y="0" width="([\d.]+)" height="50"/.exec(svg)[1]),
+  caption: /<text data-probe-beams="\d+" data-probe-weights="(\w+)" x="([\d.]+)"[^>]*>([^<]*)</.exec(svg),
+});
+
+test('beside a laser, the spectrum card names the lamp by its lines', () => {
+  const svg = lampAndLaser('spectrum');
+  const { width, caption } = spectrumCard(svg);
+  // a lamp has no power setting, so the two are compared by share
+  assert.equal(caption[1], 'relative');
+  assert.equal(caption[3], '365–1014 · 532 nm · relative');
+  assert.doesNotMatch(svg, />[^<]*436[^<]*nm/, 'the lamp is not named by its brightest line');
+  // the caption ends at the plot's right edge and starts right of the axis label
+  assert.equal(Number(caption[2]), width - 8);
+  assert.ok(caption[3].length * 3.5 <= width - 18, `a ${caption[3].length}-character caption fits a ${width}-unit card`);
+  // the plot and its last tick grow with the card
+  assert.match(svg, new RegExp(`<line x1="10" y1="37" x2="${width - 8}" y2="37"`));
+  assert.match(svg, new RegExp(`<line x1="${(width - 8).toFixed(2)}" y1="37" x2="${(width - 8).toFixed(2)}" y2="38.60"`));
+  assert.doesNotMatch(svg, /NaN|Infinity/);
+});
+
+test('two lamps of different kinds are each named by their own span', () => {
+  const pair = (first, second) => {
+    const { svg } = converging(2, (deg, at) => {
+      const [lamp, oap] = lampUnit(deg, at);
+      lamp.params.lampType = deg ? second : first;
+      return [lamp, oap];
+    }, 'spectrum');
+    return spectrumCard(svg).caption[3];
+  };
+  assert.equal(pair('hg', 'he'), '365–1014 · 389–707 nm · relative');
+});
+
+test('a spectrum card whose caption is short keeps the width it had', () => {
+  const { svg } = converging(2, (deg, at) => {
+    const [laser] = laserUnit([800, 1040])(deg, at);
+    laser.params.avgPowerW = 0.1;
+    return [laser];
+  }, 'spectrum');
+  const { width, caption } = spectrumCard(svg);
+  assert.equal(caption[3], '800 · 1040 nm');
+  assert.equal(caption[1], 'watts');
+  assert.equal(width, 74);
+  assert.equal(Number(caption[2]), 66);
+});
+
+// Reviewer, #234: fit and export rebuilt the card without the scene's
+// sources, so they sized it as "relative" whatever was drawn. Two lasers with
+// power settings were drawn 74 units wide and bounded as 102.
+
+test('fit and export bound the spectrum card at the width it is drawn', () => {
+  const { svg, scene, probe } = converging(2, (deg, at) => {
+    const [laser] = laserUnit([800, 1040])(deg, at);
+    laser.params.avgPowerW = 0.1;
+    return [laser];
+  }, 'spectrum');
+  const drawn = spectrumCard(svg).width;
+  assert.equal(drawn, 74);
+  const b = getVisualBounds(probe, { elements: scene });
+  assert.ok(Math.abs((b.x1 - b.x0) - drawn * probeScale(probe)) < 1e-9,
+    `bounds ${b.x1 - b.x0} wide for a card drawn ${drawn * probeScale(probe)} wide`);
+  // and the same card without its sources is the wider, "relative" one
+  const blind = getVisualBounds(probe);
+  assert.ok(blind.x1 - blind.x0 > b.x1 - b.x0, 'the sources are what make it narrower');
+});
+
+test('the bounds follow a card widened by a lamp\'s name', () => {
+  const { svg, scene, probe } = converging(2, (deg, at) => {
+    const [lamp, oap] = lampUnit(deg, at);
+    lamp.params.lampType = deg ? 'he' : 'hg';
+    return [lamp, oap];
+  }, 'spectrum');
+  const drawn = spectrumCard(svg).width;
+  assert.ok(drawn > 74);
+  const b = getVisualBounds(probe, { elements: scene });
+  assert.ok(Math.abs((b.x1 - b.x0) - drawn * probeScale(probe)) < 1e-9);
+  assert.ok([b.x0, b.x1, b.y0, b.y1].every(Number.isFinite));
 });
