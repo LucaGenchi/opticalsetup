@@ -6610,9 +6610,14 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           pulse: 'pulse' in c ? c.pulse : r.pulse,
           pulseDescribed: childPulseDescribed(r, c, hit.surface.kind),
           // The whole-train spectrum for drawing travels with light the
-          // record describes, and with nothing else.
+          // record describes, and with nothing else. It belongs to the record
+          // it was derived from: a child that brings a record of another
+          // identity (an OPO's signal, a continuum) starts without one, while
+          // a copy of the same record (an AOM's, a chopper's) keeps it.
           trainPieces: !childPulseDescribed(r, c, hit.surface.kind) ? null
-            : 'trainPieces' in c ? c.trainPieces : (r.trainPieces || null),
+            : 'trainPieces' in c ? c.trainPieces
+            : 'pulse' in c && pulseIdentity(c.pulse) !== pulseIdentity(r.pulse) ? null
+            : (r.trainPieces || null),
           // A caveat is never cleared downstream: no later element computes
           // what the linear-only continuation left out.
           approximation: r.approximation || c.approximation || null,

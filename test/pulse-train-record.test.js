@@ -366,3 +366,36 @@ test('light generated behind two filters is drawn from the record it inherits', 
   assert.equal(harmonic, afterFirst, `the harmonic is drawn from the inherited record (${harmonic} fs)`);
   assert.ok(Math.abs(detectorReading(det.id).pulse.stretchedPulseWidthFs - 117.93) < 0.01);
 });
+
+test('light that gets a record of its own does not keep the pump\'s drawn spectrum', () => {
+  // An OPO's signal and idler, and a continuum, bring records describing
+  // them. The whole-train spectrum belongs to the record it was derived
+  // from, so they start without one: inheriting the pump's drew both OPO
+  // outputs at the pump's 236 fs with its 796-804 nm pieces. A copy of the
+  // same record (an AOM's) keeps it.
+  const behindTwoFilters = last => {
+    const det = createElement('detector', 900, 0);
+    det.params.aperture = 60;
+    const { pulseTracks } = traceScene([pulsed(), bandpass(100, 800, 30), bandpass(250, 800, 8), last, det]);
+    const end = Math.max(...pulseTracks.map(track => track.opls.at(-1)));
+    return pulseTracks.filter(track => track.opls.at(-1) > end - 1).map(track => ({
+      width: pulseEnvelopeAtOpticalPath(track, track.opls.at(-1) - 1e-6)?.pulseWidthFs,
+      pieces: (track.pulse.filteredPieces || []).map(p => [p.lo, p.hi]),
+    }));
+  };
+  const fromPump = pieces => pieces.some(([lo, hi]) => Math.abs(lo - 796) < 1e-6 && Math.abs(hi - 804) < 1e-6);
+  const opo = behindTwoFilters(at('crystal', 450, {
+    convert: 'opo', pumpWl: 800, signalWl: 1200, opoDepletion: 0.5, transmitPump: false, outputPhase: 'transformLimited',
+  }));
+  assert.equal(opo.length, 2, 'signal and idler');
+  for (const wave of opo) {
+    assert.ok(!fromPump(wave.pieces), `pieces ${JSON.stringify(wave.pieces)}`);
+    assert.ok(wave.width > 50 && wave.width < 150, `drawn at ${wave.width} fs`);
+  }
+  const continuum = behindTwoFilters(at('crystal', 450, {
+    convert: 'sc', scRange: 'manual', scMinNm: 500, scMaxNm: 1100, efficiency: 0.5, transmitPump: false,
+  }));
+  assert.ok(continuum.length > 0 && continuum.every(wave => !fromPump(wave.pieces)), JSON.stringify(continuum));
+  const copied = behindTwoFilters(at('aom', 450, { eff: 1, zero: false, deflect: 0, modulate: false }));
+  assert.ok(copied.length > 0 && copied.every(wave => fromPump(wave.pieces) && Math.abs(wave.width - 235.87) < 0.5), JSON.stringify(copied));
+});
