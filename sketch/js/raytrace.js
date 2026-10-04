@@ -5837,15 +5837,32 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // The transmitted child starts AT the collector, having already used
         // up hit.t of its range. Handing it the full range again would let a
         // chain of partial mirrors walk near-field light across the bench.
-        // Only a mirror passes light on uncollected; a lens has gathered
-        // what it transmits, and an optic in front of the collector was
-        // crossed by light already on its way to one.
-        r.carriedEvan = ['mirror', 'cmirror'].includes(hit.surface.kind) ? {
-          evanLen: Math.max(0, EVAN_LEN - hit.t),
-          captureLen: Math.max(0, CAPTURE - hit.t),
-          captureMode: r.captureMode,
-        } : null;
+        if (r.captureMode === 'collectors') {
+          // The collector may still be several optics away. Until the ray
+          // gets there it carries what is left of its range, so a partial
+          // mirror reached through a filter limits its leak exactly as one
+          // reached directly does.
+          r.sourceRange = { evanLen: EVAN_LEN, captureLen: CAPTURE, captureMode: r.captureMode };
+        } else {
+          r.carriedEvan = {
+            evanLen: Math.max(0, EVAN_LEN - hit.t),
+            captureLen: Math.max(0, CAPTURE - hit.t),
+          };
+        }
         if (!coherent?.dryRun) recordCameraNearMisses(r, cameraSurfaces, hit?.t ?? MAXLEN);
+      }
+      if (r.sourceRange && hit) {
+        // Collected point-source light arriving at a surface. Only a mirror
+        // passes light on uncollected: its transmitted branch keeps fading
+        // with the range that is left. A lens has gathered what it transmits,
+        // and any other optic hands the remaining range on to what leaves it.
+        const left = {
+          evanLen: Math.max(0, r.sourceRange.evanLen - hit.t),
+          captureLen: Math.max(0, r.sourceRange.captureLen - hit.t),
+          captureMode: r.sourceRange.captureMode,
+        };
+        r.carriedEvan = ['mirror', 'cmirror'].includes(hit.surface.kind) ? left : null;
+        r.sourceRange = collectsPointSource(hit.surface) ? null : left;
       }
       if (!hit) {
         appendPoint(r, { x: r.x + r.dx * MAXLEN, y: r.y + r.dy * MAXLEN }, MAXLEN);
@@ -6235,6 +6252,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           evanLen: c.evanLen ?? (c.tag === 'T' ? carriedEvan?.evanLen : undefined),
           captureLen: c.captureLen ?? (c.tag === 'T' ? carriedEvan?.captureLen : undefined),
           captureMode: c.captureMode ?? (c.tag === 'T' ? carriedEvan?.captureMode : undefined),
+          sourceRange: r.sourceRange ? { ...r.sourceRange } : undefined,
           pol: 'pol' in c ? c.pol : r.pol,
           stokes: 'stokes' in c ? cloneStokes(c.stokes) : cloneStokes(r.stokes),
           polMod: 'polMod' in c ? c.polMod : r.polMod,

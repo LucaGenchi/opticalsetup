@@ -195,6 +195,41 @@ test('light leaking through a partial mirror keeps only the range it has left', 
   assert.equal(detectorReading(detector.id), null, 'a lens 1100 mm from the source is not');
 });
 
+test('an optic in front of a partial mirror does not turn its leak into ordinary light', () => {
+  // Found in review of #230: with a filter or a waveplate between the source
+  // and the mirror, the transmitted branch lost its range limit and reached a
+  // detector 1.5 m away that it does not reach without the optic.
+  const leak = between => {
+    const mirror = at('mirror', 500, { refl: 30, showTransmitted: true });
+    mirror.rot = 45;
+    const detector = at('detector', 1500, { aperture: 100 });
+    rayPoints([pointSource(), ...between, mirror, detector]);
+    return detectorReading(detector.id)?.signal ?? 0;
+  };
+  assert.equal(leak([]), 0, 'no optic in front: the leak fades');
+  for (const [type, params] of [['filter', { ftype: 'nd', trans: 1 }], ['hwp', {}], ['qwp', {}], ['polarizer', {}]]) {
+    assert.equal(leak([at(type, 300, params)]), 0, `${type} in front: the leak still fades`);
+  }
+  // The leak is still collected by a lens inside what is left of the range,
+  // with or without the optic in front.
+  const collected = between => {
+    const mirror = at('mirror', 500, { refl: 30, showTransmitted: true });
+    const beyond = at('lens', 700, { f: 100, dia: 50 });
+    const detector = at('detector', 900, { aperture: 100 });
+    rayPoints([pointSource(), ...between, mirror, beyond, detector]);
+    return detectorReading(detector.id)?.signal ?? 0;
+  };
+  assert.ok(collected([]) > 0);
+  assert.ok(Math.abs(collected([at('filter', 300, { ftype: 'nd', trans: 1 })]) - collected([])) < 1e-12);
+  const beyondRange = (() => {
+    const mirror = at('mirror', 500, { refl: 30, showTransmitted: true });
+    const detector = at('detector', 1300, { aperture: 100 });
+    rayPoints([pointSource(), at('filter', 300, { ftype: 'nd', trans: 1 }), mirror, at('lens', 1100, { f: 100, dia: 50 }), detector]);
+    return detectorReading(detector.id)?.signal ?? 0;
+  })();
+  assert.equal(beyondRange, 0, 'a lens past the range does not collect the leak');
+});
+
 test('a fiber input collects the source inside the range', () => {
   const fiber = {
     id: 'collection-fiber', kind: 'fiber', width: 4, propagate: true,
