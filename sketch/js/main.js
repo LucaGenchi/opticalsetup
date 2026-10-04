@@ -3,7 +3,7 @@
 // App bootstrap: palette, toolbar, keyboard shortcuts.
 
 import { copyableSelection, pasteObjects } from './clipboard.js';
-import { state, changed, onChange, pushUndo, undo, redo, canUndo, canRedo, findSelected, serialize, parseSketch, replaceScene, loadAutosave } from './state.js';
+import { state, changed, onChange, pushUndo, undo, redo, canUndo, canRedo, findSelected, serialize, parseSketch, replaceScene, loadAutosave, replaceRecoveredAutosave } from './state.js';
 import {
   registry, categories, createElement, getElementMeta, dataPortDirection, findFreePlacement,
 } from './elements.js';
@@ -1466,6 +1466,14 @@ function showToast(message) {
   }, 4200);
 }
 
+function renderAutosaveRecovery() {
+  const recovery = state.autosaveRecovery;
+  $('autosaveRecovery').hidden = state.embedMode || !recovery;
+  if (!recovery) return;
+  $('autosaveRecoveryMessage').textContent = `${recovery.message} Autosave is paused to protect the saved data. You can keep editing and use Save to download your current canvas.`;
+  $('btnDownloadRecovery').disabled = typeof recovery.text !== 'string';
+}
+
 function bindToolbar() {
   let shareUrl = '', shareQrSvg = '', shareSceneText = '';
   const about = $('aboutDialog');
@@ -1559,6 +1567,15 @@ function bindToolbar() {
     }
   });
   $('btnSave').addEventListener('click', () => download('optical-setup.json', serialize(), 'application/json'));
+  $('btnDownloadRecovery').addEventListener('click', () => {
+    const text = state.autosaveRecovery?.text;
+    if (typeof text === 'string') download('optical-setup-recovery.json', text, 'application/json');
+  });
+  $('btnReplaceRecovery').addEventListener('click', () => {
+    if (!confirm('Replace the unreadable saved setup with the current canvas? Download the saved data first if you need to keep a copy.')) return;
+    if (!replaceRecoveredAutosave()) alert('The current canvas could not be saved. The previous saved data is still protected.');
+    renderAutosaveRecovery();
+  });
   $('btnShare').addEventListener('click', async () => {
     const button = $('btnShare');
     button.disabled = true;
@@ -2007,6 +2024,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   autoAdjustTimeScale();
   syncPulseControls();
   syncMobileSheets();
+
+  renderAutosaveRecovery();
 
   if (hasLinkedScene && loadLinked) {
     zoomFit();
