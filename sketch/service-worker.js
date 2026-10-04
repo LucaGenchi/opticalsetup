@@ -87,7 +87,8 @@ const PRECACHE_PATHS = [
   "../Examples/Microscopy%20Implementations/Epi-fluorescence%20microscope.json",
   "./js/spectral-coherence.js",
   "../Examples/Interferometers/Pulsed%20Mach%E2%80%93Zehnder.json",
-  "../Examples/Interferometers/Supercontinuum%20Mach%E2%80%93Zehnder.json"
+  "../Examples/Interferometers/Supercontinuum%20Mach%E2%80%93Zehnder.json",
+  "../Examples/Interferometers/Mach%E2%80%93Zehnder%20interferometer%20with%20a%20pulsed%20laser.json"
 ];
 
 const APP_ENTRY = new URL('./', self.location.href).href;
