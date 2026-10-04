@@ -1975,35 +1975,6 @@ function unionPath(...paths) {
   return merged;
 }
 
-// The piece of a filtered pulse's spectrum a ray brings to a port, the way a
-// detector hit carries it. Only for light its record is known to describe: a
-// harmonic still carries the pump's record, and is left to that record.
-function arrivingPulsePiece(ray, power) {
-  const pulse = ray.pulse;
-  if (!pulse?.spectrumReshaped || ray.pulseDescribed !== true) return null;
-  const region = pulseBandRegion(pulse);
-  if (!region || !rayWithinPulseBand(ray, region)) return null;
-  return pulseSpectrumPiece(ray, pulse, power);
-}
-
-// A filtered pulse's record as the beam arrives: with the spectrum that
-// reaches the port, which is what a detector there would time. The record
-// alone holds what the first filter to reshape the pulse left, and a later
-// filter narrowing it further went unnoticed. Kept as recorded when any ray
-// of the beam cannot say what it carries.
-function arrivingPulseRecord(beam) {
-  const pieces = beam.arrivingPieces;
-  if (!beam.pulse || !pieces?.length || pieces.some(piece => !piece || !(piece.power > 0))) return beam.pulse;
-  if (beam.pulse.etalonComb || beam.pulse.durationUnknown || beam.pulse.fieldIssue || beam.pulse.field) return beam.pulse;
-  // Rays sampling one beam bring the same spectrum, each with its power.
-  const merged = [];
-  for (const piece of pieces) {
-    const same = merged.find(m => m.spec === piece.spec && m.lo === piece.lo && m.hi === piece.hi);
-    if (same) same.power += piece.power; else merged.push({ ...piece });
-  }
-  return { ...beam.pulse, filteredPieces: merged };
-}
-
 function recordProbeBeam(surface, ray) {
   let seen = specimenProbe.get(surface.id);
   if (!seen) specimenProbe.set(surface.id, seen = []);
@@ -2018,9 +1989,7 @@ function recordProbeBeam(surface, ray) {
   const gdd = Number.isFinite(ray.gdd) ? ray.gdd : 0;
   const spread = Number.isFinite(ray.groupDelayDifferenceFs) ? ray.groupDelayDifferenceFs : 0;
   const dispersed = gdd || spread ? { gddSum: weight * gdd, spreadSum: weight * spread, gddRange: [gdd, gdd] } : null;
-  const arriving = arrivingPulsePiece(ray, power);
   if (already) {
-    if (already.arrivingPieces) already.arrivingPieces.push(arriving);
     if (dispersed || already.gddRange) {
       // Rays of the beam that came undispersed count in the range as zero.
       const range = already.gddRange || [0, 0];
@@ -2050,8 +2019,11 @@ function recordProbeBeam(surface, ray) {
     // source that is: with the source's watt setting, the beam's watts.
     power,
     originId: ray.originId || null,
+    // As the whole train arrives: a pulse an earlier element reshaped keeps
+    // that element's record, and what a later filter left of it travels
+    // beside the record (`trainPieces`). Read only by the OPA's ports.
     pulse: ray.pulse ? { ...ray.pulse } : null,
-    ...(ray.pulse?.spectrumReshaped ? { arrivingPieces: [arriving] } : {}),
+    arrivingPulse: ray.pulse ? { ...drawnPulse(ray) } : null,
     gates: (ray.pulse?.gates || []).map(g => ({ ...g })),
     // Only light that went through a parametric element has a history.
     ...(ray.parametricPath?.length ? { parametricPath: unionPath(ray.parametricPath) } : {}),
@@ -6970,7 +6942,7 @@ function planOpaElements(surfaces) {
       const mean = sum => (beam.oplWeight > 0 && Number.isFinite(sum) ? sum / beam.oplWeight : 0);
       return {
         key: beam.key, wl: beam.wl, bw: beam.bw || 0, spec: beam.spec || null, opl: beam.opl,
-        pulse: arrivingPulseRecord(beam), power: beam.power, originId: beam.originId,
+        pulse: beam.arrivingPulse || beam.pulse, power: beam.power, originId: beam.originId,
         gddFs2: mean(beam.gddSum), groupDelayDifferenceFs: mean(beam.spreadSum), gddRange: beam.gddRange || null,
         parametricPath: beam.parametricPath || [],
         powerW: Number.isFinite(watts) ? watts * beam.power : null,

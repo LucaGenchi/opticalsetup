@@ -5,7 +5,9 @@
 // second filter narrowing it further went unnoticed, so behind a 30 nm and
 // then an 8 nm bandpass the OPA timed its pump at 26 fs where a detector at
 // the port reads 98 fs, and delivered about a quarter of the signal. The
-// beam's record is now brought up to date with the spectrum that arrives.
+// OPA now reads the record as the whole train arrives: with what the later
+// filters left of the recorded spectrum (the spectrum the packets are drawn
+// from). Where no later filter acted, the record is the one it always was.
 // Two references that do not depend on the fix: a detector placed where the
 // port is, and the one filter two box filters are together equivalent to.
 
@@ -14,6 +16,8 @@ import test from 'node:test';
 import '../sketch/js/detector-instruments.js';
 import { createElement } from '../sketch/js/elements.js';
 import { traceScene, detectorReading, opaReading } from '../sketch/js/raytrace.js';
+import { spectrumWeight } from '../sketch/js/spectrum.js';
+import { quadraticPhasePulse } from '../sketch/js/pulse-field.js';
 
 const place = (type, x, y, params) => {
   const el = createElement(type, x, y);
@@ -122,4 +126,54 @@ test('a harmonic that still carries its fundamental\'s record is left to it', ()
   const filteredAfter = scene({ pumpParams, pumpArm: [doubler(120), bandpass(200, 4)] });
   close(filteredAfter.pumpFs, 26.010044, 1e-7, 'pump filtered after the crystal');
   close(filteredAfter.signal, 0.00039077760, 1e-7, 'its signal');
+});
+
+// --- A cascade: the first stage's signal seeds the second --------------------
+// A phase-kept signal's record holds the amplified profile with its tails,
+// wider than the spectrum its rays carry. Nothing between the stages selects
+// any of it, so the second stage must be handed that profile untouched.
+
+function cascade(between = []) {
+  const laser = (x, y, wavelength, avgPowerW, extra) => place('pulsedlaser', x, y,
+    { wavelength, avgPowerW, repRateMHz: 0.001, pulseWidthFs: 300, beamMode: 'line', ...extra });
+  const stage = { signalWl: 800, gainBandwidthNm: 80, smallSignalGainDb: 40, maxDepletion: 0.5, outputPump: false, outputIdler: false };
+  const pump1 = laser(0, -18, 532, 1, { transformLimited: true, pulseWidthFs: 20000 });
+  const seed = laser(0, 18, 800, 1e-9, { transformLimited: false, bandwidth: 30, inputChirp: 'positive', chirpGddFs2: 20000 });
+  const stage1 = place('opa', 300, 0, stage), stage2 = place('opa', 620, 0, stage);
+  const pump2 = laser(320, -18, 532, 1, { transformLimited: true, pulseWidthFs: 20000 });
+  const elements = [pump1, seed, stage1, pump2, ...between.map(([type, params]) => place(type, 420, 18, params)), stage2];
+  traceScene(elements, []);
+  pump2.params.pulsePhaseNs = opaReading(stage2.id).seeds[0]?.skewNs || 0;
+  traceScene(elements, []);
+  const two = opaReading(stage2.id);
+  return { profile: opaReading(stage1.id).seeds[0].amplifiedProfile, state: two.state, seed: two.seeds.find(s => s.seedW > 1e-8) || two.seeds[0] };
+}
+// The duration of a profile restricted to [lo, hi] under a quadratic phase:
+// a route that does not go through the tracer's records.
+const transformed = (profile, lo, hi, gddFs2) => quadraticPhasePulse(nm => Math.max(0, spectrumWeight(profile, nm)), lo, hi, gddFs2);
+
+test('a second stage is handed the first stage\'s amplified profile untouched', () => {
+  const plain = cascade();
+  assert.equal(plain.state, 'amplifying');
+  const [piece] = plain.seed.record.pulse.filteredPieces;
+  close(piece.lo, 734, 1e-9, 'the profile\'s lower end'); close(piece.hi, 866, 1e-9, 'its upper end');
+  const reference = transformed(plain.profile, 734, 866, 20000);
+  close(plain.seed.chirp.tau0Fs, 33.776, 1e-4, 'transform limit of the seed at stage 2');
+  close(plain.seed.chirp.tau0Fs, reference.transformLimitFs, 1e-3, 'against the profile\'s own transform');
+  close(plain.seed.arrivingPulse.pulseWidthFs, reference.durationFs, 1e-3, 'stretched duration');
+  close(plain.seed.gainW, 0.0373429, 1e-5, 'power added at stage 2');
+  // Recompressed between the stages: the profile's transform limit.
+  const compressed = cascade([['pulsecompressor', { gddFs2: -20000, transEff: 100 }]]);
+  close(compressed.seed.arrivingPulse.pulseWidthFs, reference.transformLimitFs, 1e-3, 'recompressed seed');
+  close(compressed.seed.gainW, 0.00155269, 1e-5, 'power added at stage 2, recompressed');
+  // A filter wider than the whole profile selects nothing.
+  const wide = cascade([['filter', { ftype: 'bandpass', center: 800, band: 200 }]]);
+  close(wide.seed.arrivingPulse.pulseWidthFs, plain.seed.arrivingPulse.pulseWidthFs, 1e-9, 'behind a filter that cuts nothing');
+});
+
+test('a filter between the stages cuts the amplified profile, and the seed is timed from what is left', () => {
+  const cut = cascade([['filter', { ftype: 'bandpass', center: 800, band: 20 }]]);
+  const reference = transformed(cut.profile, 790, 810, 20000);
+  // 1624 fs before: the uncut profile's duration.
+  close(cut.seed.arrivingPulse.pulseWidthFs, reference.durationFs, 5e-3, 'seed duration behind the filter');
 });
