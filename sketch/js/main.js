@@ -1829,6 +1829,30 @@ function preserveWorkbenchInUndo() {
   return true;
 }
 
+const sceneKey = scene => JSON.stringify({ elements: scene.elements, beams: scene.beams });
+
+function openSharedScene(scene) {
+  // Share parks its link in the address bar, so a reload before the next
+  // edit arrives here carrying the visitor's own saved scene. There is
+  // nothing to replace then: open it with no question, and no undo entry
+  // that would only restore the same scene.
+  if (loadAutosave(registry) && sceneKey(state) === sceneKey(scene)) {
+    replaceScene(scene, { resetHistory: true });
+    zoomFit();
+    return;
+  }
+  if (!preserveWorkbenchInUndo()) {
+    // The visitor chose the already-saved workbench. Retire the declined
+    // snapshot so a reload does not ask to replace that work again.
+    clearSharedSceneURL();
+    return;
+  }
+  // preserveWorkbenchInUndo() saved the old bench before clearing it.
+  // Keep that history when the incoming scene writes its first autosave.
+  replaceScene(scene);
+  zoomFit();
+}
+
 // ---------- boot ----------
 window.addEventListener('DOMContentLoaded', async () => {
   const params = sceneParamsFromURL();
@@ -1960,8 +1984,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (sharedScene) {
-      replaceScene(sharedScene, { resetHistory: true });
-      zoomFit();
+      openSharedScene(sharedScene);
     } else if (!loadAutosave(registry)) {
       // Starter scene: the three sources, nothing else. A worked setup here
       // reads as "this is the thing to study" rather than "this is yours to
