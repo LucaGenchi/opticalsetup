@@ -469,7 +469,7 @@ const demoScenes = {
         + '\n'
         + '> Double-click any label to edit its Markdown on the canvas.\n'
         + '\n'
-        + 'Plain addresses stay clickable: https://doi.org/10.1364/AO.1.000001',
+        + 'Plain addresses stay clickable: https://doi.org/10.1007/BF01019693',
       fontSize: 13,
     }),
   ],
