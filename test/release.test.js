@@ -311,6 +311,38 @@ test('a published release cannot be removed from the list, or edited', async t =
   assert.equal(await verifyRelease(f.root), 'v1.1.0');
 });
 
+test('a refused release leaves the label and the list untouched', async t => {
+  const f = await fixture(t);
+  await f.release();                                   // v1.0.0
+  await f.write('wiki/index.html', '<!doctype html>wiki 2\n');
+  f.commit('wiki');
+  const before = [await f.read('sketch/js/release.js'), await f.read('releases.json')];
+  const untouched = async () => assert.deepEqual([await f.read('sketch/js/release.js'), await f.read('releases.json')], before);
+
+  f.run('tag', '-d', 'v1.0.0');
+  await assert.rejects(prepareRelease(f.root), /Tag v1\.0\.0 is missing/);
+  await untouched();
+  f.run('tag', 'v1.0.0', 'HEAD~1');
+  await assert.rejects(prepareRelease(f.root, 'weekly'), /Unknown release level/);
+  await untouched();
+  await f.write('sketch/js/raytrace.js', 'export const trace = 2;\n');
+  await assert.rejects(prepareRelease(f.root, 'patch'), /cannot be a patch/);
+  await untouched();
+});
+
+test('a tag whose app carries the wrong label stops the deploy', async t => {
+  const f = await fixture(t);
+  await f.release();                                   // v1.0.0
+  // The same files with the label emptied, committed and tagged in its place:
+  // Share and Propose in that app would stop naming a kept copy.
+  await f.write('sketch/js/release.js', (await f.read('sketch/js/release.js')).replace("'v1.0.0'", "''"));
+  f.commit('label emptied');
+  f.run('tag', '-f', 'v1.0.0');
+  const out = resolve(f.root, '..', `staged-${process.pid}-${Date.now()}-label`);
+  t.after(() => rm(out, { recursive: true, force: true }));
+  await assert.rejects(stageSite(out, f.root), /Tag v1\.0\.0 no longer holds the files|labelled ''/);
+});
+
 test('only the commit that adds a release may be tagged; a lost tag is not recreated', async t => {
   const f = await fixture(t);
   assert.equal(releaseTagState(f.root, await f.releases()), 'none');
@@ -340,16 +372,24 @@ test('code beside a label or a list is hashed; the label and the list are not', 
   const release = await f.read('sketch/js/release.js');
   const worker = await f.read('sketch/service-worker.js');
 
-  // The label alone, and the cache generation number: neither hash moves.
-  await f.write('sketch/js/release.js', release.replace("'v1.0.0'", "'v9.9.9'"));
-  await f.write('sketch/service-worker.js', worker.replace('v1`', 'v2`'));
-  await same();
-  // The offline list of examples is content: the site moves, the renderer does not.
-  await f.write('sketch/service-worker.js', worker.replace('"./",', '"./",\n  "../Examples/new.json",'));
-  assert.equal(await rendererDigest(f.root), renderer);
-  await f.write('sketch/service-worker.js', worker);
-  await f.write('sketch/js/release.js', release);
-  await same();
+  // The label, the cache generation number and the offline list of examples
+  // are not the app: the renderer hash stays. They are part of the site,
+  // which is hashed byte for byte, so a tree with any of them changed is not
+  // the release.
+  for (const [path, original, changed] of [
+    ['sketch/js/release.js', release, release.replace("'v1.0.0'", "''")],
+    ['sketch/service-worker.js', worker, worker.replace('v1`', 'v2`')],
+    ['sketch/service-worker.js', worker, worker.replace('"./",', '"./",\n  "../Examples/new.json",')],
+    ['sketch/service-worker.js', worker, worker.replace('  "./",\n', '')],
+  ]) {
+    assert.notEqual(changed, original);
+    await f.write(path, changed);
+    assert.equal(await rendererDigest(f.root), renderer, path);
+    assert.notEqual(await siteDigest(f.root), site, path);
+    if (path.endsWith('service-worker.js')) await assert.rejects(verifyRelease(f.root, { tree: true }), /not v1\.0\.0/);
+    await f.write(path, original);
+    await same();
+  }
 
   // Logic in the same files is the app.
   await f.write('sketch/js/release.js', release.replace("'code'", "'changed'"));

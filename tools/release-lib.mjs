@@ -50,11 +50,11 @@ const SCHEMES = Object.freeze({
     // change with content, not with how a scene is drawn, so they are left
     // out of the renderer hash (and stay in the site hash).
     lists: Object.freeze(['sketch/js/examples-data.js', 'sketch/js/community-data.js']),
-    // Two files mix a label or a list into code. Only the label and the list
-    // are blanked; the code around them is hashed like any other. If a
-    // pattern stops matching, the whole file is hashed, which errs toward
-    // calling a change an app change.
-    normalize: Object.freeze({
+    // Two files mix a label or a list into code. For the renderer hash, and
+    // only for it, the label and the list are blanked; the code around them
+    // is hashed like any other. If a pattern stops matching, the whole file
+    // is hashed, which errs toward calling a change an app change.
+    rendererNormalize: Object.freeze({
       // The release label, which cutting a release rewrites.
       'sketch/js/release.js': text => text.replace(/^export const APP_RELEASE = '[^']*';$/m, "export const APP_RELEASE = '';"),
       // The offline list of example files and the cache generation number.
@@ -147,14 +147,15 @@ export async function digestTree(root, entries, { exclude = [], normalize = {} }
 // The app as far as drawing a scene goes. Two releases with the same value
 // run the same code, so they share one kept copy.
 export function rendererDigest(root, scheme = CURRENT_SCHEME) {
-  const { lists, normalize } = schemeOf(scheme);
-  return digestTree(root, ['sketch'], { exclude: lists, normalize });
+  const { lists, rendererNormalize } = schemeOf(scheme);
+  return digestTree(root, ['sketch'], { exclude: lists, normalize: rendererNormalize });
 }
 
-// The whole public site. Only the release label and offline list are blanked.
+// The whole public site, byte for byte, with nothing left out or blanked:
+// the release label, the offline list and the cache generation included.
+// This is the hash that says a tree is a given release.
 export function siteDigest(root, scheme = CURRENT_SCHEME) {
-  const { site, normalize } = schemeOf(scheme);
-  return digestTree(root, site, { normalize });
+  return digestTree(root, schemeOf(scheme).site);
 }
 
 export async function readAppRelease(root) {

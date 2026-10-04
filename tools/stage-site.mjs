@@ -18,7 +18,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  brokenInternalLinks, git, keptReleases, readReleases, rendererDigest, schemeOf, siteDigest, verifyHistory,
+  brokenInternalLinks, git, keptReleases, readAppRelease, readReleases, rendererDigest, schemeOf, siteDigest,
+  verifyHistory,
 } from './release-lib.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -62,6 +63,11 @@ export async function stageSite(output, root = ROOT) {
       if (await siteDigest(tree, entry.scheme) !== entry.siteSha256
         || await rendererDigest(tree, entry.scheme) !== entry.rendererSha256) {
         throw new Error(`Tag ${entry.version} no longer holds the files that were released as ${entry.version}`);
+      }
+      // The site hash already covers the label; said outright because an app
+      // carrying the wrong label would share unpinned or mispinned links.
+      if (await readAppRelease(tree) !== entry.version) {
+        throw new Error(`Tag ${entry.version} holds an app labelled '${await readAppRelease(tree)}'`);
       }
       if (entry === latest) await cp(tree, out, { recursive: true });
       if (kept.has(entry.version)) {

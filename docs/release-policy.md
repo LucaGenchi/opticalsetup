@@ -61,7 +61,9 @@ git commit -m "Release vX.Y.Z"
 
 Open a pull request with that one commit. `prepare` writes the version into
 `sketch/js/release.js` and appends an entry to `releases.json` recording the
-date and the two hashes of exactly what is being released.
+date and two hashes: one of the whole public site, byte for byte, which is
+what identifies the release; and one of the app alone, which decides whether
+a release is a patch.
 
 **Merging the release pull request is the release.** It starts the
 `Deploy release` workflow, which:

@@ -36,13 +36,25 @@ function today() {
 }
 
 export async function prepareRelease(root = ROOT, level = 'auto', date = today()) {
+  // Everything that can refuse the release comes before the first write, so
+  // a refused release leaves both files as they were.
   const releases = await readReleases(root);
-  const [renderer, site] = await Promise.all([rendererDigest(root), siteDigest(root)]);
-  const plan = planRelease({ releases, renderer, site, level });
-  const releasePath = resolve(root, 'sketch/js/release.js');
-  await writeFile(releasePath, withAppRelease(await readFile(releasePath, 'utf8'), plan.version));
   verifyHistory(root, releases);
-  releases.push({ version: plan.version, date, scheme: CURRENT_SCHEME, rendererSha256: renderer, siteSha256: site });
+  const last = releases.at(-1);
+  const renderer = await rendererDigest(root);
+  // The site hash covers the release label, so "has anything changed" is
+  // asked of the tree as it stands, still carrying the last release's label.
+  const plan = planRelease({ releases, renderer, site: await siteDigest(root), level });
+  const labelPath = resolve(root, 'sketch/js/release.js');
+  const label = await readFile(labelPath, 'utf8');
+  const relabelled = withAppRelease(label, plan.version);
+  if (last && await readAppRelease(root) !== last.version) {
+    throw new Error(`sketch/js/release.js does not carry ${last.version}, the last release; restore it before preparing the next`);
+  }
+
+  await writeFile(labelPath, relabelled);
+  // Recorded with the new label in place: the tree that will be committed.
+  releases.push({ version: plan.version, date, scheme: CURRENT_SCHEME, rendererSha256: renderer, siteSha256: await siteDigest(root) });
   await writeFile(resolve(root, 'releases.json'), `${JSON.stringify({ releases }, null, 2)}\n`);
   return plan;
 }
