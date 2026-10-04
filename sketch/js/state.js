@@ -3,6 +3,7 @@
 // App state, undo/redo, autosave.
 
 import { distinctPoints, rotPt } from './util.js';
+import { archivedRelease } from './release.js';
 import { boundaryBounds, normalizeBoundaryPoints, normalizePolygonPoints } from './polygon.js';
 import { migrateLegacyObjectiveParams, normalizeObjectiveParams } from './objective.js';
 import { LEGACY_GLASS_ID, LEGACY_GLASS_REPLACEMENT, chirpGddForDuration } from './glass.js';
@@ -35,7 +36,15 @@ export const state = {
 
 const undoStack = [], redoStack = [];
 const listeners = [];
-const AUTOSAVE_KEY = 'optics2d-autosave-v1';
+// The current app at /sketch/ keeps one key across releases, so a new release
+// never hides saved work. A kept copy at /v1.2/sketch/ gets a key of its own:
+// it shares the origin, and an older renderer must not overwrite, or fail to
+// read, the bench saved by the current one.
+export function autosaveKeyFor(pathname) {
+  const kept = archivedRelease(pathname);
+  return kept ? `optics2d-autosave-v1@${kept}` : 'optics2d-autosave-v1';
+}
+const AUTOSAVE_KEY = autosaveKeyFor(typeof location === 'undefined' ? '' : location.pathname);
 const COLOR = /^#[0-9a-f]{6}$/i;
 
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));

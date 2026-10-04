@@ -3,6 +3,8 @@
 // Self-contained share links. Scene data lives in the URL fragment, so it is
 // never sent to the static host and no server-side storage is required.
 
+import { APP_RELEASE, archivedRelease, releasePath } from './release.js';
+
 const SHARE_PREFIX = '#sketch=';
 const MAX_SHARE_HASH_CHARS = 200_000;
 const MAX_SCENE_BYTES = 1_000_000;
@@ -126,6 +128,19 @@ export async function buildShareURL(text, href = window.location.href, options) 
   if (url.hash.length > MAX_SHARE_HASH_CHARS) {
     throw new Error(TOO_LARGE_TO_SHARE);
   }
+  return url.toString();
+}
+
+// The link handed to someone else names the kept copy of the app that made
+// it (/v1.2/sketch/), so a later release does not redraw it. A link made
+// inside a kept copy already names one, and with no release there is no kept
+// copy to name. The address bar keeps the unpinned form: the page that is
+// running must not start claiming another copy's path.
+export function pinShareURL(href, release = APP_RELEASE) {
+  const url = new URL(href);
+  const path = releasePath(release);
+  if (!path || archivedRelease(url.pathname)) return url.toString();
+  url.pathname = url.pathname.replace(/\/sketch(?:\/(?:index\.html)?)?$/, `/${path}/sketch/`);
   return url.toString();
 }
 

@@ -119,11 +119,16 @@
       <button type="button" id="btnReplaceRecovery">Use current canvas</button>
     </div>
   </section>
+  <section id="releaseNotice" class="autosave-recovery" aria-label="Release notice" hidden>
+    <p id="releaseNoticeMessage" role="status"></p>
+    <div><a class="toolbar-link" id="releaseNoticeLink">Open the current version</a></div>
+  </section>
   <dialog id="aboutDialog" class="share-dialog" aria-labelledby="aboutTitle">
     <div class="share-dialog-head">
       <div><span class="eyebrow">Free software</span><h2 id="aboutTitle">About OpticalSetup</h2></div>
       <button type="button" id="aboutClose" class="icon-button" aria-label="Close about dialog">×</button>
     </div>
+    <p class="about-text" id="aboutVersion"></p>
     <p class="about-text">Copyright © 2026 Luca Genchi and contributors.</p>
     <p class="about-text">OpticalSetup is free software: you can redistribute it and/or modify it
       under the terms of the GNU General Public License as published by the Free Software
