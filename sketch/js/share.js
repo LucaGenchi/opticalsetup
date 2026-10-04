@@ -104,9 +104,24 @@ export async function decodeSharePayload(payload) {
   return text;
 }
 
+// These select a template or arm a placement tool, rather than describing
+// the saved scene. Keep unrelated parameters, including language settings.
+function clearSceneRoute(url) {
+  for (const key of ['demo', 'example', 'community', 'embed', 'place']) url.searchParams.delete(key);
+}
+
+export function sceneParamsFromURL(href = window.location.href) {
+  const url = new URL(href);
+  // Older share links retained their template query. Their explicit scene
+  // still takes precedence, including when its payload reports an error.
+  if (url.hash.startsWith(SHARE_PREFIX)) clearSceneRoute(url);
+  return url.searchParams;
+}
+
 export async function buildShareURL(text, href = window.location.href, options) {
   const payload = await encodeSharePayload(text, options);
   const url = new URL(href);
+  clearSceneRoute(url);
   url.hash = `sketch=${payload}`;
   if (url.hash.length > MAX_SHARE_HASH_CHARS) {
     throw new Error(TOO_LARGE_TO_SHARE);
@@ -126,6 +141,7 @@ export async function sharedSceneFromURL(href = window.location.href) {
 export function clearSharedSceneURL(href = window.location.href, navigation = window.history) {
   const url = new URL(href);
   if (!url.hash.startsWith(SHARE_PREFIX)) return;
+  clearSceneRoute(url);
   url.hash = '';
   navigation.replaceState(navigation.state, '', url.toString());
 }
