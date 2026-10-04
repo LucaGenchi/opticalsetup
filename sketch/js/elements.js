@@ -24,8 +24,9 @@ import {
 } from './probe.js';
 import {
   LED_MAX_BANDWIDTH_NM, LED_MIN_BANDWIDTH_NM, LED_PRESETS, ledBands,
-  linewidthForCoherenceLengthNm, spectrumSamples, supercontinuumTransformLimitFs, transformLimitedBandwidthNm,
+  linewidthForCoherenceLengthNm, resolveSourceSpectrum, spectrumSamples, supercontinuumTransformLimitFs, transformLimitedBandwidthNm,
 } from './spectrum.js';
+import { coherencePathMm } from './spectral-coherence.js';
 import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
   pointInBoundary, sampleBoundary,
@@ -2137,14 +2138,30 @@ const beamShapeParams = beamWidthDef => [
 ];
 
 // New sources opt in; old saved sources keep their power-only behavior.
-const PULSED_INTERFERENCE_PARAMS = [{
-  key: 'interference', label: 'Interference', type: 'checkbox', def: true,
-  migrate: () => false,
-}, {
-  key: 'interferenceModel', label: 'Interference model', type: 'readout',
-  readout: p => p.beamMode !== 'beam' ? 'Requires Beam with size'
-    : p.interference ? 'Same source · ideal interferometer optics' : 'Off · powers add',
-}];
+// The panel closes the source's controls, after the pulse and bandwidth
+// settings that decide how far apart two arms can be and still interfere.
+const formatPathLength = mm => (mm < 1
+  ? `${Number((mm * 1000).toPrecision(3))} µm`
+  : `${Number(mm.toPrecision(3))} mm`);
+const pulsedInterferenceParams = type => [
+  { key: 'interferenceHeading', label: 'Interference', type: 'section' },
+  {
+    key: 'interference', label: 'Interference', type: 'checkbox', def: true,
+    migrate: () => false,
+  }, {
+    key: 'interferenceModel', label: 'Interference model', type: 'readout',
+    readout: p => p.beamMode !== 'beam' ? 'Requires Beam with size'
+      : p.interference ? 'Same source · ideal interferometer optics' : 'Off · powers add',
+  }, {
+    // Where an arm mismatch halves the fringe contrast, for this spectrum.
+    key: 'coherenceLength', label: 'Coherence length', type: 'readout',
+    readout: p => {
+      const length = coherencePathMm(resolveSourceSpectrum(type, p).spec);
+      return length === null ? 'Not limited by this spectrum'
+        : `≈ ${formatPathLength(length)} (half contrast)`;
+    },
+  },
+];
 
 const POL_PARAM = { key: 'pol', label: 'Polarization (°)', type: 'number', min: 0, max: 180, step: 5, def: 0 };
 
@@ -2638,7 +2655,6 @@ export const registry = {
       { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 0.1 },
       ...beamShapeParams(3),
       ...pulseTrainParams(),
-    ...PULSED_INTERFERENCE_PARAMS,
       // Two ways to author a pulse. Transform-limited: the duration and shape,
       // with the bandwidth they imply shown beneath. Chirped: the bandwidth,
       // a quadratic chirp's sign and its GDD, with the transform-limited and
@@ -2697,6 +2713,7 @@ export const registry = {
       },
       SHOW_PULSE_PARAM,
       pinnedParam('temporalMode', 'pulsed'),
+      ...pulsedInterferenceParams('pulsedlaser'),
     ],
     svg(el) {
       const h = laserH(el), hh = h / 2, ap = laserAperture(el);
@@ -5640,7 +5657,6 @@ registry.sclaser = {
     { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 1 },
     ...beamShapeParams(3),
     ...pulseTrainParams(),
-    ...PULSED_INTERFERENCE_PARAMS,
     // Duration and envelope are configured independently of the broad spectrum;
     // this is not a reconstruction of nonlinear continuum generation.
     ...registry.pulsedlaser.params.filter(p => ['pulseWidthFs', 'pulseShape'].includes(p.key))
@@ -5658,6 +5674,7 @@ registry.sclaser = {
     { ...P.color, def: '#cbd8ea' },
     SHOW_PULSE_PARAM,
     pinnedParam('temporalMode', 'pulsed'),
+    ...pulsedInterferenceParams('sclaser'),
   ],
   svg(el) {
     const h = laserH(el), hh = h / 2, ap = laserAperture(el);

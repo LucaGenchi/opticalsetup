@@ -230,7 +230,9 @@ export const wikiEntries = [
         flat mirrors, delay lines and phase objects. The calculation integrates the actual
         spectrum: fringe contrast changes with arm mismatch, and the spectrometer sees
         the changed spectrum. Independent sources add as powers. New sources enable this;
-        older saved sources keep it off until you enable it.</p>
+        older saved sources keep it off until you enable it. The <strong>Coherence
+        length</strong> readout gives the arm difference at which the fringes fall to half
+        contrast for the spectrum as set.</p>
         <p>The combined temporal field is not reconstructed. After recombination,
         duration, autocorrelation and oscilloscope traces are unavailable; pulse animation
         stops at the recombination surface. Material and coating phase outside the supported
@@ -450,7 +452,9 @@ export const wikiEntries = [
         flat mirrors, delay lines and phase objects. The calculation integrates the actual
         spectrum: fringe contrast changes with arm mismatch, and the spectrometer sees
         the changed spectrum. Independent sources add as powers. New sources enable this;
-        older saved sources keep it off until you enable it.</p>
+        older saved sources keep it off until you enable it. The <strong>Coherence
+        length</strong> readout gives the arm difference at which the fringes fall to half
+        contrast for the spectrum as set.</p>
         <p>The combined temporal field is not reconstructed. After recombination,
         duration, autocorrelation and oscilloscope traces are unavailable; pulse animation
         stops at the recombination surface. Material and coating phase outside the supported

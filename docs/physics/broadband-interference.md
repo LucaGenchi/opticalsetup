@@ -85,6 +85,19 @@ A detector reports an interference-unavailable caveat only where two routes from
 the same source fall within what its aperture integrates. A single beam through a lens or a wave plate
 has nothing to interfere with, and its power carries no such caveat.
 
+## Coherence length
+
+Each pulsed and supercontinuum source reports a coherence length in its
+Interference panel: the optical path difference between two equal copies at which
+fringe visibility, `|∫ S(λ) exp(2πi ΔL/λ) dλ| / ∫ S(λ) dλ`, first falls to one
+half. It is computed from the same source spectrum the tracer integrates, so it is
+the scale of what an interferometer in the app shows. For a transform-limited
+Gaussian pulse it equals the pulse's own length, c × duration (45 µm for 150 fs);
+for the flat 400–700 nm continuum it is a fraction of a micrometre. A chirped
+pulse of the same bandwidth has the same value. It is an estimate of the source,
+not of a particular layout: unequal splitting or polarization lowers the contrast
+further.
+
 ## Saved scenes
 
 New pulsed and supercontinuum sources enable same-source interference. An old

@@ -80,6 +80,48 @@ export function spectralFieldResult(spec, terms, { widthMm = 0 } = {}) {
   return null;
 }
 
+// The arm mismatch at which two equal copies of this spectrum stop
+// interfering well: the optical path difference where fringe visibility
+// |∫ S(λ) exp(2πi d/λ) dλ| / ∫ S(λ) dλ first falls to one half. Taken from
+// the same spectrum the tracer integrates, so it is the scale of what an
+// interferometer here shows -- for a transform-limited Gaussian pulse it is
+// the length of the pulse, c × its duration. Null without a finite band.
+export function coherencePathMm(spec, samples = 512) {
+  const support = spec && ['gauss', 'flat', 'sampled'].includes(spec.kind) ? spectrumSupport(spec) : null;
+  if (!support || !support.every(Number.isFinite) || !(support[0] > 0) || !(support[1] > support[0])) return null;
+  const [lo, hi] = support;
+  const grid = Array.from({ length: samples + 1 }, (_, i) => {
+    const wl = lo + (hi - lo) * i / samples;
+    const weight = (i === 0 || i === samples ? 1 : i % 2 ? 4 : 2) * Math.max(0, spectrumWeight(spec, wl));
+    return { k: TAU_NM / wl, weight };
+  });
+  const norm = grid.reduce((sum, g) => sum + g.weight, 0);
+  if (!(norm > 0)) return null;
+  const visibility = d => {
+    let re = 0, im = 0;
+    for (const g of grid) { re += g.weight * Math.cos(g.k * d); im += g.weight * Math.sin(g.k * d); }
+    return Math.hypot(re, im) / norm;
+  };
+  // λ²/Δλ over the whole support bounds the answer from above for any shape
+  // this model has; step well inside it, then bisect the crossing.
+  const scale = 1e-6 * lo * hi / (hi - lo);
+  const step = scale / 64;
+  let below = 0;
+  for (let i = 1; i <= 64 * 16; i++) {
+    const d = i * step;
+    if (visibility(d) <= 0.5) {
+      let a = below, b = d;
+      for (let n = 0; n < 40; n++) {
+        const mid = (a + b) / 2;
+        if (visibility(mid) > 0.5) a = mid; else b = mid;
+      }
+      return (a + b) / 2;
+    }
+    below = d;
+  }
+  return null;
+}
+
 // Translate a previously combined field to its current ray reference. A
 // scalar attenuation multiplies every term equally. Its spectral phase is
 // retained across successive recombinations; a single centroid phase cannot

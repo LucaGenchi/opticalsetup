@@ -7,12 +7,12 @@ import { createElement, registry } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { traceAll, traceScene, detectorReading, probeAt, probePowerAt, probeBeamsAt } from '../sketch/js/raytrace.js';
-import { spectralFieldResult, spectralTermsAt } from '../sketch/js/spectral-coherence.js';
+import { spectralFieldResult, spectralTermsAt, coherencePathMm } from '../sketch/js/spectral-coherence.js';
 import { cameraProfileFromHits } from '../sketch/js/camera-profile.js';
 import { probeTimingSummary, probeTimingLabel } from '../sketch/js/probe.js';
 import { encodeSharePayload, decodeSharePayload } from '../sketch/js/share.js';
 import { scopeTrace } from '../sketch/js/pulses.js';
-import { resolveSourceSpectrum, applyTransmission, spectrumSlice, spectrumWeight } from '../sketch/js/spectrum.js';
+import { resolveSourceSpectrum, applyTransmission, spectrumSlice, spectrumSupport, spectrumWeight } from '../sketch/js/spectrum.js';
 
 const MZ = readFileSync(new URL('./fixtures/mach-zehnder.json', import.meta.url), 'utf8');
 const near = (a, b, tolerance = 1e-7) => assert.ok(Math.abs(a - b) <= tolerance, `${a} != ${b}`);
@@ -418,3 +418,58 @@ test('caveats follow the routes that feed the reading, not rays elsewhere on the
   near(r.signal, before, 1e-9);
   assert.deepEqual(r.approximations.filter(note => /lens/.test(note)), []);
 });
+
+// The inspector's coherence length is the arm mismatch that halves the
+// fringes, from the same spectrum the tracer integrates.
+test('the coherence length is where an arm mismatch halves the fringe contrast', () => {
+  // A transform-limited Gaussian pulse: its own length, c x duration.
+  const pulsed = createElement('pulsedlaser', 0, 0);
+  Object.assign(pulsed.params, { wavelength: 800, pulseWidthFs: 150 });
+  const gauss = resolveSourceSpectrum('pulsedlaser', pulsed.params).spec;
+  const length = coherencePathMm(gauss);
+  assert.ok(Math.abs(length - 0.299792458e-3 * 150) < 0.5e-3, `${length} mm`);
+  // The tracer's own kernel agrees: two half-power copies give 1 ± V, so a
+  // bright fringe and the dark one beside it differ by twice the visibility.
+  const cycles = Math.round(length * 1e6 / 800);
+  const port = (opdMm, phaseRad) => spectralFieldResult(gauss, [
+    { amplitude: Math.SQRT1_2, opdMm: 0, phaseRad: 0 }, { amplitude: Math.SQRT1_2, opdMm, phaseRad }]).power;
+  const at = cycles * 800e-6;
+  near(port(at, 0) - port(at, Math.PI), 2 * coherenceVisibilityAt(gauss, at), 1e-4);
+  assert.ok(Math.abs(coherenceVisibilityAt(gauss, length) - 0.5) < 1e-6);
+  // Half the duration, half the length; a wider band, a shorter one.
+  Object.assign(pulsed.params, { pulseWidthFs: 75 });
+  near(coherencePathMm(resolveSourceSpectrum('pulsedlaser', pulsed.params).spec), length / 2, 1e-3 * length);
+  const sc = createElement('sclaser', 0, 0);
+  Object.assign(sc.params, { scMin: 400, scMax: 700 });
+  const flat = coherencePathMm(resolveSourceSpectrum('sclaser', sc.params).spec);
+  assert.ok(flat > 0.2e-3 && flat < 1e-3, `${flat} mm`);
+  assert.ok(Math.abs(coherenceVisibilityAt(resolveSourceSpectrum('sclaser', sc.params).spec, flat) - 0.5) < 1e-6);
+  // No band, no limit to report; and every readout is finite text.
+  assert.equal(coherencePathMm(null), null);
+  assert.equal(coherencePathMm({ kind: 'lines', lines: [] }), null);
+  for (const type of ['pulsedlaser', 'sclaser']) {
+    const params = registry[type].params;
+    const readout = params.find(p => p.key === 'coherenceLength').readout;
+    assert.match(readout(createElement(type, 0, 0).params), /^≈ [0-9.]+ (µm|mm) \(half contrast\)$/);
+    // The panel closes the list, after the pulse and bandwidth controls.
+    const keys = params.map(p => p.key);
+    assert.deepEqual(keys.slice(-4), ['interferenceHeading', 'interference', 'interferenceModel', 'coherenceLength']);
+    assert.ok(keys.indexOf('pulseWidthFs') < keys.indexOf('interferenceHeading'));
+  }
+  const mono = createElement('pulsedlaser', 0, 0);
+  Object.assign(mono.params, { transformLimited: false, bandwidth: 0 });
+  assert.equal(registry.pulsedlaser.params.find(p => p.key === 'coherenceLength').readout(mono.params), 'Not limited by this spectrum');
+});
+
+// Fringe visibility of two equal copies, straight from the definition.
+function coherenceVisibilityAt(spec, opdMm, samples = 4096) {
+  const [lo, hi] = spectrumSupport(spec);
+  let re = 0, im = 0, norm = 0;
+  for (let i = 0; i <= samples; i++) {
+    const wl = lo + (hi - lo) * i / samples;
+    const weight = (i === 0 || i === samples ? 0.5 : 1) * spectrumWeight(spec, wl);
+    const phase = 2 * Math.PI * 1e6 * opdMm / wl;
+    re += weight * Math.cos(phase); im += weight * Math.sin(phase); norm += weight;
+  }
+  return Math.hypot(re, im) / norm;
+}
