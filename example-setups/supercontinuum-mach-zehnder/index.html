@@ -82,11 +82,19 @@
 
       <h2 class="section-head sim"><span class="sw"></span>Try the delay control</h2>
       <div class="sim-block">
-        <p>The source has <strong>Interference</strong> enabled.
-      The initial added optical path is 0.002 mm. Select the delay line and set
-      <strong>0 mm</strong> for matched arms: one port receives all the light and
-      the other is dark. Increase the delay to see spectral fringes. The two
-      output powers always sum to the input in this lossless example.</p>
+        <p>The source has <strong>Interference</strong> enabled,
+      and the delay line sweeps one arm from 0 to 0.002 mm and back at 0.1 Hz. As
+      it moves, the fringes run across the two spectrometer screens (400 to
+      700 nm) and the spectra of the two ports stay complementary. The two output
+      powers always sum to the input in this lossless example.</p>
+      <p>To hold one point, select the delay line and set <strong>Motion</strong>
+      to <em>Static</em>. At <strong>0 mm</strong> the arms are matched: one port
+      receives all the light and the other is dark. At 0.0005 mm the ports read
+      0.769 and 0.231; at 0.002 mm, 0.553 and 0.447.</p>
+      <p>Select the laser and open its Interference panel: the coherence length of
+      this band is about 0.58 µm, so the 2 µm sweep runs from full contrast to
+      well past it, where the total power at each port settles towards one half
+      while the spectrum is still deeply modulated.</p>
       <p>Turn Interference off on the source to compare with power addition:
       each port receives half the input and the spectra retain the source shape.</p>
         <div class="limitations"><span class="lbl">What you won't see</span><p>This is same-source, time-integrated interference through

@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
-const CACHE_NAME = 'opticalsetup-pwa-v136';
+const CACHE_NAME = 'opticalsetup-pwa-v137';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -87,8 +87,7 @@ const PRECACHE_PATHS = [
   "../Examples/Microscopy%20Implementations/Epi-fluorescence%20microscope.json",
   "./js/spectral-coherence.js",
   "../Examples/Interferometers/Pulsed%20Mach%E2%80%93Zehnder.json",
-  "../Examples/Interferometers/Supercontinuum%20Mach%E2%80%93Zehnder.json",
-  "../Examples/Interferometers/Mach%E2%80%93Zehnder%20interferometer%20with%20a%20pulsed%20laser.json"
+  "../Examples/Interferometers/Supercontinuum%20Mach%E2%80%93Zehnder.json"
 ];
 
 const APP_ENTRY = new URL('./', self.location.href).href;

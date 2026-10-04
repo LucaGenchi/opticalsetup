@@ -5,13 +5,13 @@
   {
    "id": "eyumbb09",
    "type": "textlabel",
-   "x": 450,
-   "y": 80,
+   "x": 0,
+   "y": 125,
    "rot": 0,
    "label": "",
    "showLabel": false,
    "params": {
-    "text": "Pulsed Mach–Zehnder — complementary output spectra",
+    "text": "**Mach–Zehnder interferometer with a pulsed laser**\nThe variable path length of one of the two arms changes the\nspectral fringes seen by the spectrometers on the two arms.",
     "fontSize": 14,
     "fill": "#333333"
    }
@@ -19,11 +19,11 @@
   {
    "id": "e9incbv0",
    "type": "pulsedlaser",
-   "x": 100,
+   "x": 50,
    "y": 200,
    "rot": 0,
-   "label": "",
-   "showLabel": false,
+   "label": "800 nm, 150 fs ",
+   "showLabel": true,
    "params": {
     "wavelength": 800,
     "avgPowerW": 0.1,
@@ -31,7 +31,6 @@
     "beamWidth": 6,
     "repRateMHz": 80,
     "pulsePhaseNs": 0,
-    "interference": true,
     "transformLimited": true,
     "pulseWidthFs": 150,
     "pulseShape": "gauss",
@@ -43,14 +42,13 @@
     "color": "#e02020",
     "showPulse": true,
     "temporalMode": "pulsed",
-    "scMin": 400,
-    "scMax": 700
+    "interference": true
    }
   },
   {
    "id": "eejtp1yq",
    "type": "bs",
-   "x": 300,
+   "x": 150,
    "y": 200,
    "rot": 90,
    "label": "BS1",
@@ -64,24 +62,24 @@
   {
    "id": "eo7a4heh",
    "type": "delayline",
-   "x": 460,
+   "x": 275,
    "y": 200,
    "rot": 0,
-   "label": "ΔL arm",
+   "label": "Variable ΔL arm spanning 20 microns",
    "showLabel": true,
    "params": {
-    "moveMode": "static",
+    "moveMode": "linear",
     "delayMm": 0.02,
     "delayMinMm": 0,
-    "delayMaxMm": 0.001,
-    "freqHz": 1,
+    "delayMaxMm": 0.02,
+    "freqHz": 0.05,
     "aperture": 24
    }
   },
   {
    "id": "efjtdmms",
    "type": "mirror",
-   "x": 600,
+   "x": 400,
    "y": 200,
    "rot": 135,
    "label": "M1",
@@ -96,9 +94,9 @@
   {
    "id": "e0p2fspb",
    "type": "mirror",
-   "x": 300,
-   "y": 400,
-   "rot": 135,
+   "x": 150,
+   "y": 325,
+   "rot": 315,
    "label": "M2",
    "showLabel": true,
    "params": {
@@ -110,8 +108,8 @@
   {
    "id": "enxt7on8",
    "type": "bs",
-   "x": 600,
-   "y": 400,
+   "x": 400,
+   "y": 325,
    "rot": 90,
    "label": "BS2",
    "showLabel": true,
@@ -123,16 +121,16 @@
   {
    "id": "etn24g3r",
    "type": "spectrometer",
-   "x": 780,
-   "y": 400,
+   "x": 477,
+   "y": 325,
    "rot": 0,
    "label": "",
    "showLabel": false,
    "params": {
-    "aperture": 12,
-    "rangeMode": "auto",
-    "rangeMin": 480,
-    "rangeMax": 580,
+    "aperture": 26,
+    "rangeMode": "manual",
+    "rangeMin": 790,
+    "rangeMax": 810,
     "intensityScale": "density",
     "labelPeaks": true
    }
@@ -140,16 +138,16 @@
   {
    "id": "eq4a46pm",
    "type": "spectrometer",
-   "x": 600,
-   "y": 560,
+   "x": 400,
+   "y": 402,
    "rot": 90,
    "label": "",
    "showLabel": false,
    "params": {
-    "aperture": 12,
-    "rangeMode": "auto",
-    "rangeMin": 480,
-    "rangeMax": 580,
+    "aperture": 26,
+    "rangeMode": "manual",
+    "rangeMin": 790,
+    "rangeMax": 810,
     "intensityScale": "density",
     "labelPeaks": true
    }
@@ -157,14 +155,14 @@
   {
    "id": "ecohdisp1",
    "type": "display",
-   "x": 850,
-   "y": 310,
+   "x": 700,
+   "y": 225,
    "rot": 0,
    "label": "",
    "showLabel": false,
    "params": {
     "sensorId": "etn24g3r",
-    "displayScale": 0.45,
+    "displayScale": 1.5,
     "screenOn": true,
     "displayView": "main"
    }
@@ -172,14 +170,14 @@
   {
    "id": "ecohdisp2",
    "type": "display",
-   "x": 720,
-   "y": 560,
+   "x": 700,
+   "y": 450,
    "rot": 0,
    "label": "",
    "showLabel": false,
    "params": {
     "sensorId": "eq4a46pm",
-    "displayScale": 0.45,
+    "displayScale": 1.4500000000000002,
     "screenOn": true,
     "displayView": "main"
    }
