@@ -224,6 +224,20 @@ export const wikiEntries = [
     },
     inOpticalSetup: {
       html: `
+        <h3>Interference</h3>
+        <p>With <strong>Beam with size</strong> and <strong>Interference</strong> enabled,
+        split copies of this source interfere through ideal beamsplitters, fully reflective
+        flat mirrors, delay lines and phase objects. The calculation integrates the actual
+        spectrum: fringe contrast changes with arm mismatch, and the spectrometer sees
+        the changed spectrum. Independent sources add as powers. New sources enable this;
+        older saved sources keep it off until you enable it. The <strong>Coherence
+        length</strong> readout gives the arm difference at which the fringes fall to half
+        contrast for the spectrum as set.</p>
+        <p>The combined temporal field is not reconstructed. After recombination,
+        duration, autocorrelation and oscilloscope traces are unavailable; pulse animation
+        stops at the recombination surface. Material and coating phase outside the supported
+        ideal optics is not inferred. A spectral or path-budget limit is reported explicitly.
+        See the <a href="../../docs/physics/broadband-interference.md">model and bounds</a>.</p>
         <p>The Pulsed Laser emits the same collimated ray or 25-ray sampled beam as the CW
         Laser, plus a pulse train: a repetition rate, a pulse duration, and an emission
         offset that shifts this source's pulses in time relative to any other. That timing
@@ -432,6 +446,20 @@ export const wikiEntries = [
     },
     inOpticalSetup: {
       html: `
+        <h3>Interference</h3>
+        <p>With <strong>Beam with size</strong> and <strong>Interference</strong> enabled,
+        split copies of this source interfere through ideal beamsplitters, fully reflective
+        flat mirrors, delay lines and phase objects. The calculation integrates the actual
+        spectrum: fringe contrast changes with arm mismatch, and the spectrometer sees
+        the changed spectrum. Independent sources add as powers. New sources enable this;
+        older saved sources keep it off until you enable it. The <strong>Coherence
+        length</strong> readout gives the arm difference at which the fringes fall to half
+        contrast for the spectrum as set.</p>
+        <p>The combined temporal field is not reconstructed. After recombination,
+        duration, autocorrelation and oscilloscope traces are unavailable; pulse animation
+        stops at the recombination surface. Material and coating phase outside the supported
+        ideal optics is not inferred. A spectral or path-budget limit is reported explicitly.
+        See the <a href="../../docs/physics/broadband-interference.md">model and bounds</a>.</p>
         <p>The Supercontinuum laser replaces a single wavelength with a spectrum minimum
         and maximum, and emits a flat-top band between them. Downstream wavelength-selective
         elements — filters, dichroics, etalons, the spectrometer — integrate against that
@@ -615,14 +643,23 @@ export const wikiEntries = [
     inOpticalSetup: {
       html: `
         <p>The point source emits rays evenly over its <strong>emission angle</strong> —
-        the full 360&deg; by default — and those rays are drawn as a glow that
-        <strong>fades within a short range unless something collects them</strong>. That
-        fading is the model's one strong opinion, and it is there because the alternative
-        is worse: an isotropic emitter whose rays ran forever would light up every detector
-        on the bench at full strength, which is the opposite of how such a source behaves.</p>
-        <p>A lens, a microscope objective, a fiber tip or a <a href="../mirror/">mirror</a>
-        within range collects the light, and from that point on it is ordinary light that
-        propagates normally. The embedded bench above shows the arrangement that makes this
+        the full 360&deg; by default — and a ray that meets nothing is drawn as a glow that
+        <strong>fades within about 110&nbsp;mm</strong>. That fading is the model's one
+        strong opinion, and it is there because the alternative is worse: an isotropic
+        emitter whose rays all ran forever would bury the bench in lines.</p>
+        <p>The <strong>capture range</strong> decides which rays carry on instead: a ray
+        with a lens, a <a href="../mirror/">mirror</a> or a fiber tip ahead of it within
+        that distance is collected, and is ordinary light all the way from the source.
+        Every element in the Lenses and Mirrors groups collects; nothing else does. A
+        filter or a polarizer in front of the collecting lens acts on the light passing
+        through it but collects nothing by itself, a detector facing the source directly
+        reads nothing, and a beam block, a housing or a detector in the way hides the
+        collector behind it. The range is 1&nbsp;m for a newly placed source and can be
+        set between 110&nbsp;mm and 5&nbsp;m; a sketch saved before the control existed
+        opens at the 165&nbsp;mm it was drawn with. It is a drawing convention that keeps the canvas readable, not
+        attenuation: collected light arrives at full ray weight, and uncollected light is
+        not traced at all.</p>
+        <p>The embedded bench above shows the arrangement that makes collection
         clearest: a <a href="../oap/">parabolic mirror</a> with the source exactly at its
         focus, 25&nbsp;mm in front of the vertex, turning isotropic emission into a parallel
         beam. That is how a lamp or an arc is collimated in a real instrument, and a
@@ -645,7 +682,7 @@ export const wikiEntries = [
         a real lamp's ratios are not a fixed property of the element at all.</p>
         <p><strong>Neither mode can interfere</strong>, and that is correct rather than a
         limitation. Coherent field reconstruction in this tracer is reserved for a sized,
-        monochromatic continuous-wave laser; every other source carries power only. A lamp
+        monochromatic continuous-wave laser or an enabled sized pulsed/supercontinuum source; point sources carry power only. A lamp
         in an interferometer therefore produces no fringes, which is what an incoherent
         source does.</p>`,
       formulas: [],
@@ -2567,7 +2604,7 @@ export const wikiEntries = [
         <a href="../phasemodulator/">Phase modulator</a> — and the amplitude modulator is
         built rather than provided: a polariser after this one, which works with any source,
         or a phase modulator in one arm of an interferometer, which needs a sized
-        monochromatic CW laser for the arms to interfere at all.</p>
+        CW laser or a sized pulsed/supercontinuum source with Interference enabled for the arms to interfere.</p>
         <p>Nothing here is a voltage. Retardance is set in degrees directly, so there is no
         half-wave voltage, no drive amplitude, and no relation between the two — which also
         means the linearity of the Pockels effect, the whole basis of the device, is
@@ -2668,19 +2705,16 @@ export const wikiEntries = [
         following cos²(Δφ/2) exactly: half a wave takes the output from full to nothing,
         and the light that leaves one port arrives at the other, so the two always sum to
         the input.</p>
-        <p>That holds only where the tracer can reconstruct a coherent field, which means
-        a <strong>CW laser in <em>Beam with size</em> mode with no bandwidth</strong> — the
-        one source whose samples carry a recoverable phase. Drive the same interferometer
-        with a pulsed or supercontinuum source, or with a CW laser in <em>Simple line</em>
-        mode, and the two arms are added as intensities instead: both ports sit at half the
-        light and the modulator changes nothing, whatever it is set to. The reading says so
-        rather than leaving it to be inferred — it reports insufficient coherent overlap.</p>`,
+        <p>A sized monochromatic CW laser interferes through the supported optics.
+        Sized pulsed and supercontinuum sources also interfere when their
+        <strong>Interference</strong> setting is enabled. Their phase varies with wavelength,
+        so the two ports carry complementary spectra as well as complementary integrated
+        powers. Simple-line sources and sources with interference disabled add powers.</p>`,
       formulas: [],
-      limitations: `<p>The interferometric behaviour above needs a sized monochromatic CW
-        laser. That is not a property of this element but of what the tracer can reconstruct
-        a phase through, and it applies to every interference effect in the app; it is
-        repeated here because it decides whether this component appears to do anything at
-        all.</p>
+      limitations: `<p>Broadband interference is time-integrated, using the modulator's
+        instantaneous path setting. It does not reconstruct a modulated temporal field or
+        the combined pulse shape. Pulse-duration and time-trace readings after recombination
+        are unavailable.</p>
         <p>Sidebands are not modelled, and could not usefully be: a 1 GHz
         drive at 532 nm puts them 9×10⁻⁴ nm from the carrier, and at 1 MHz it is 9×10⁻⁷ nm,
         against a spectrometer that resolves 0.1 nm. Everything the sidebands are used for
@@ -3598,7 +3632,12 @@ export const wikiEntries = [
         summing to one. Efficiency multiplies on top, so three multiplexed lines at 0.9
         selected from three matching laser lines deliver 2.7× a single line's worth. Narrow
         selections work too: a 0.5&nbsp;nm line out of that supercontinuum is 0.18% of the
-        beam and still traces correctly rather than being discarded as negligible.</p>`,
+        beam and still traces correctly rather than being discarded as negligible.</p>
+        <p>Lines whose passbands overlap share the light between them: where together they
+        ask for more than is there, they divide it in proportion, so the selected and
+        depleted beams never add up to more than came in. The depleted beam is the incoming
+        spectrum with each line's passband taken out of it, colour by colour, so a filter
+        placed in it finds a gap where a line was selected.</p>`,
       limitations: `<p><strong>The geometry is the reverse of a physical device.</strong> In
         a real AOTF the selected light is the <em>diffracted</em> first order and leaves at
         an angle, while the remainder passes straight through as the zeroth order. This
@@ -4301,7 +4340,7 @@ export const wikiEntries = [
       formulas: [],
       html2: `
         <p>When the interference option is on, the camera resolves fringes formed by a sized
-        monochromatic CW laser whose routes recombine with a modelled carrier phase — the
+        monochromatic CW laser, or an enabled sized pulsed/supercontinuum source, whose routes recombine with a modelled carrier phase — the
         two ports of an interferometer come out complementary, and a phase object in one arm
         writes a real pattern across the pixels. Where a route's phase cannot be
         reconstructed, the camera falls back to depositing intensity conservatively rather

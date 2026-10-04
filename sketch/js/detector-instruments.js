@@ -426,6 +426,7 @@ function scopeMode(base, window) {
 }
 
 function scopePlot(reading, window = null) {
+  if (reading.pulse?.interferenceUnknown) return `<text x="0" y="0" text-anchor="middle" font-size="6.5" fill="#c9d3df">TEMPORAL FIELD UNAVAILABLE</text>`;
   const trace = scopeTrace(reading.pulse, window
     ? { spanNs: window.spanNs, startNs: window.startNs, delayNs: window.lagNs || 0 }
     : {});
