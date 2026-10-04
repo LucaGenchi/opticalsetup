@@ -5,6 +5,8 @@ import assert from 'node:assert/strict';
 import { createElement, registry } from '../sketch/js/elements.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { traceScene, detectorReading } from '../sketch/js/raytrace.js';
+import { pasteObjects } from '../sketch/js/clipboard.js';
+import { readFileSync } from 'node:fs';
 
 function setup(type, beamMode) {
   const source = createElement('cwlaser', 0, 0);
@@ -58,4 +60,30 @@ test('authored scattering seeds are finite bounded integers', () => {
     scatterer.scatterSeed = value;
     assert.equal(parseSketch({ elements }, registry).elements[2].scatterSeed, expected);
   }
+});
+
+test('a pasted scatterer is a different scatterer; everything else about it is copied', () => {
+  for (const type of ['diffuser', 'slm', 'metasurface']) {
+    const original = createElement(type, 0, 0);
+    original.scatterSeed = 7;
+    const mirror = createElement('mirror', 0, 50);
+    let n = 0;
+    const { els } = pasteObjects({ els: [original, mirror], beams: [] }, { newId: prefix => `${prefix}${++n}` });
+    assert.notEqual(els[0].scatterSeed, 7);
+    assert.ok(Number.isInteger(els[0].scatterSeed) && els[0].scatterSeed >= 0 && els[0].scatterSeed <= 0xffffffff);
+    assert.deepEqual(els[0].params, original.params);
+    assert.equal(original.scatterSeed, 7, 'the original keeps its pattern');
+    assert.equal('scatterSeed' in els[1], false, 'a mirror gains no seed');
+  }
+});
+
+test('wiki demos give their scatterers a fixed pattern', () => {
+  const main = readFileSync(new URL('../sketch/js/main.js', import.meta.url), 'utf8');
+  const mkDemo = main.slice(main.indexOf('function mkDemo('), main.indexOf('\n}\n', main.indexOf('function mkDemo(')) + 3);
+  const build = new Function('createElement', `${mkDemo}; return mkDemo;`)(createElement);
+  for (const type of ['diffuser', 'slm', 'metasurface']) {
+    assert.equal(build(type, 0, 0).scatterSeed, 1);
+    assert.equal(build(type, 0, 0, 0, {}, { scatterSeed: 9 }).scatterSeed, 9, 'a demo may still choose its own');
+  }
+  assert.equal('scatterSeed' in build('mirror', 0, 0), false);
 });

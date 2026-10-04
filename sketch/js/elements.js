@@ -9,7 +9,7 @@ import { conicMirrorGeometry, conicMirrorSize, conicMirrorSVG, conicMirrorSurfac
 // Surface kinds handled by the tracer include mirror, lens, metalens, cmirror,
 // refract, dichroic, filter, split, grating, AOM/AOD, absorb, and transmit.
 
-import { distToSegment, esc, formatSignal, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
+import { distToSegment, esc, formatSignal, rotPt, smoothPath, toWorld, wavelengthToColor, newScatterSeed } from './util.js';
 import { uid } from './util.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
@@ -6225,6 +6225,6 @@ export function createElement(type, x = 0, y = 0) {
     params[p.key] = Array.isArray(p.def) ? JSON.parse(JSON.stringify(p.def)) : p.def;
   }
   return { id: uid(), type, x, y, rot: 0, label: '', showLabel: false, params,
-    ...(d.scattering ? { scatterSeed: Math.floor(Math.random() * 0x100000000) } : {}),
+    ...(d.scattering ? { scatterSeed: newScatterSeed() } : {}),
   };
 }

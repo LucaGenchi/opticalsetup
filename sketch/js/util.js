@@ -212,3 +212,8 @@ export function formatSignal(value) {
   if (magnitude >= 10) return value.toFixed(1);
   return value.toFixed(2);
 }
+
+// The pattern of one physical scatterer (a diffuser, a speckle layer). Each
+// one made gets its own, so that it keeps its pattern whatever else in the
+// scene is added, removed or reordered.
+export const newScatterSeed = () => Math.floor(Math.random() * 0x100000000);
