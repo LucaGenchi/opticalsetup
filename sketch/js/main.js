@@ -46,6 +46,9 @@ function mkDemo(type, x, y, rot = 0, params = {}, extra = {}) {
   const e = createElement(type, x, y);
   e.rot = rot;
   Object.assign(e.params, params);
+  // A demo is a picture in the wiki: every visitor, and every reload, should
+  // see the same one, so its scatterers do not draw a pattern at random.
+  if (e.scatterSeed !== undefined) e.scatterSeed = 1;
   Object.assign(e, extra);
   return e;
 }
