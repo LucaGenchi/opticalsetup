@@ -5822,8 +5822,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           ? Boolean(ahead && ahead.t <= CAPTURE && collectsPointSource(ahead.surface))
           : hit && hit.t <= CAPTURE && COLLECTORS.has(hit.surface.kind);
         if (!captured) {
-          const end = r.captureMode === 'collectors' ? ahead : hit;
-          const L = end ? Math.min(end.t, EVAN_LEN) : EVAN_LEN;
+          // The glow of an uncollected ray stops at the first surface it
+          // meets, whatever that is: drawn on through a filter it would show
+          // unfiltered light behind it.
+          const L = hit ? Math.min(hit.t, EVAN_LEN) : EVAN_LEN;
           appendPoint(r, { x: r.x + r.dx * L, y: r.y + r.dy * L }, L);
           r.evanFade = true;
           break;
