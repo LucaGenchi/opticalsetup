@@ -24,8 +24,9 @@ import {
 } from './probe.js';
 import {
   LED_MAX_BANDWIDTH_NM, LED_MIN_BANDWIDTH_NM, LED_PRESETS, ledBands,
-  linewidthForCoherenceLengthNm, spectrumSamples, supercontinuumTransformLimitFs, transformLimitedBandwidthNm,
+  linewidthForCoherenceLengthNm, resolveSourceSpectrum, spectrumSamples, supercontinuumTransformLimitFs, transformLimitedBandwidthNm,
 } from './spectrum.js';
+import { coherencePathMm } from './spectral-coherence.js';
 import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
   pointInBoundary, sampleBoundary,
@@ -1101,6 +1102,7 @@ function probeCard(el, rd, elements = []) {
   }
 
   if (prop === 'time') {
+    if (rd.pulse?.interferenceUnknown) return valueCard('Temporal field unavailable');
     const W = 78, H = 46, x0 = 9, y0 = H - 12, pw = W - 16, ph = H - 22;
     const { startNs, spanNs } = probeTimeWindowNs(rd, el.params);
     const xAt = ns => x0 + pw * (spanNs > 0 ? (ns - startNs) / spanNs : 0);
@@ -1397,6 +1399,7 @@ function probeMultiCard(el, prop, beams, elements) {
     const shiftOf = beam => (lead && Number.isFinite(beam.propagationNs) ? beam.propagationNs - lead.arrivalNs : 0);
     let traces = '';
     for (const beam of shown) {
+      if (beam.pulse?.interferenceUnknown) continue;
       const colour = wavelengthToColor(beam.wl);
       const trace = scopeTrace(beam.pulse, { spanNs, startNs, samples: 160, delayNs: shiftOf(beam) });
       if (!trace) {
@@ -2134,6 +2137,32 @@ const beamShapeParams = beamWidthDef => [
   { key: 'beamWidth', label: 'Beam width (mm)', type: 'number', min: 1, max: 60, step: 0.5, def: beamWidthDef, show: p => p.beamMode === 'beam' },
 ];
 
+// New sources opt in; old saved sources keep their power-only behavior.
+// The panel closes the source's controls, after the pulse and bandwidth
+// settings that decide how far apart two arms can be and still interfere.
+const formatPathLength = mm => (mm < 1
+  ? `${Number((mm * 1000).toPrecision(3))} µm`
+  : `${Number(mm.toPrecision(3))} mm`);
+const pulsedInterferenceParams = type => [
+  { key: 'interferenceHeading', label: 'Interference', type: 'section' },
+  {
+    key: 'interference', label: 'Interference', type: 'checkbox', def: true,
+    migrate: () => false,
+  }, {
+    key: 'interferenceModel', label: 'Interference model', type: 'readout',
+    readout: p => p.beamMode !== 'beam' ? 'Requires Beam with size'
+      : p.interference ? 'Same source · ideal interferometer optics' : 'Off · powers add',
+  }, {
+    // Where an arm mismatch halves the fringe contrast, for this spectrum.
+    key: 'coherenceLength', label: 'Coherence length', type: 'readout',
+    readout: p => {
+      const length = coherencePathMm(resolveSourceSpectrum(type, p).spec);
+      if (length === null) return 'Not limited by this spectrum';
+      return Number.isFinite(length) ? `≈ ${formatPathLength(length)} (half contrast)` : 'Not resolved for this spectrum';
+    },
+  },
+];
+
 const POL_PARAM = { key: 'pol', label: 'Polarization (°)', type: 'number', min: 0, max: 180, step: 5, def: 0 };
 
 // Repetition rate and emission offset are the pulse-train timing both pulsed
@@ -2689,6 +2718,7 @@ export const registry = {
       },
       SHOW_PULSE_PARAM,
       pinnedParam('temporalMode', 'pulsed'),
+      ...pulsedInterferenceParams('pulsedlaser'),
     ],
     svg(el) {
       const h = laserH(el), hh = h / 2, ap = laserAperture(el);
@@ -5665,6 +5695,7 @@ registry.sclaser = {
     { ...P.color, def: '#cbd8ea' },
     SHOW_PULSE_PARAM,
     pinnedParam('temporalMode', 'pulsed'),
+    ...pulsedInterferenceParams('sclaser'),
   ],
   svg(el) {
     const h = laserH(el), hh = h / 2, ap = laserAperture(el);
@@ -5886,7 +5917,7 @@ const ELEMENT_HELP = {
   dm: 'Applies continuous reflective tip, tilt, and paraxial defocus.',
   detector: 'Measures qualitative ray signal, spectrum, polarization, and spot span.',
   pmt: 'Multiplies a faint signal into a readable one, and reports whether it actually clears the tube\u2019s own dark floor.',
-  camera: 'Measures a pixel-integrated one-dimensional intensity profile and resolves supported interference from sized monochromatic CW lasers.',
+  camera: 'Measures a pixel-integrated one-dimensional intensity profile and resolves supported same-source interference from sized CW, pulsed and supercontinuum beams.',
   eye: 'Focuses through a configurable pupil and reports the qualitative retinal signal and spot.',
   display: 'Shows the live qualitative output of a linked photodetector, PMT, camera, or retina.',
   aom: 'Deflects first-order light with a configurable modulation efficiency and zero order, under square, sine or sawtooth RF modulation (the ramp sweeping from falling through triangular to rising). A square gate can also draw both orders chopped in opposition, so the switching stays visible on a beam drawn as a steady line.',

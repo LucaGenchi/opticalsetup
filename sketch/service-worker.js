@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
-const CACHE_NAME = 'opticalsetup-pwa-v136';
+const CACHE_NAME = 'opticalsetup-pwa-v138';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -84,7 +84,10 @@ const PRECACHE_PATHS = [
   "../Examples/Beam%20Routing/Polarization%20send%E2%80%93return%20separation%20%E2%80%94%20PBS%20and%20quarter-wave%20plate.json",
   "../Examples/Beam%20Routing/Wavelength%20combining%20and%20separation%20%E2%80%94%20dichroic%20mirrors.json",
   "../Examples/Interferometers/IQ%20optical%20modulator%20%E2%80%94%20nested%20Mach%E2%80%93Zehnder.json",
-  "../Examples/Microscopy%20Implementations/Epi-fluorescence%20microscope.json"
+  "../Examples/Microscopy%20Implementations/Epi-fluorescence%20microscope.json",
+  "./js/spectral-coherence.js",
+  "../Examples/Interferometers/Pulsed%20Mach%E2%80%93Zehnder.json",
+  "../Examples/Interferometers/Supercontinuum%20Mach%E2%80%93Zehnder.json"
 ];
 
 const APP_ENTRY = new URL('./', self.location.href).href;

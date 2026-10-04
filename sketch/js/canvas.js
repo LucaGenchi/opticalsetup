@@ -931,7 +931,8 @@ function renderOverlay() {
 
 function directValueLabel(el, tune) {
   const value = tune.param.type === 'derived' ? tune.param.get(el.params) : el.params[tune.key];
-  const rounded = Math.abs(value) >= 100 ? Math.round(value) : Math.round(value * 100) / 100;
+  const rounded = value !== 0 && Math.abs(value) < 0.01 ? Number(value.toPrecision(3))
+    : Math.abs(value) >= 100 ? Math.round(value) : Math.round(value * 100) / 100;
   const unitMatch = tune.param.label.match(/\((nm|mm|°|MHz|Hz|fs|dB\/m)\)/);
   return `${tune.short || tune.param.label} ${rounded}${unitMatch ? ` ${unitMatch[1]}` : ''}`;
 }
