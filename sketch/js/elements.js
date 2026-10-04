@@ -1170,7 +1170,9 @@ function probeCard(el, rd, elements = []) {
   if (rd.spec) {
     const samples = (spectrumSamples(rd.spec, 28) || []).filter(s => s.wl >= lo && s.wl <= hi);
     const peak = Math.max(...samples.map(s => s.weight), 1e-9);
-    if (samples.length < 2) {
+    if (rd.spec.kind === 'lines') {
+      curve = spectrumLinesSvg(samples, peak, { xAt, y0, ph });
+    } else if (samples.length < 2) {
       const sample = samples[0];
       if (sample) {
         const x = xAt(sample.wl).toFixed(2), height = Math.max(1, (sample.weight / peak) * ph);
@@ -1201,6 +1203,17 @@ function probeCard(el, rd, elements = []) {
       `<text x="${x0 - 4}" y="${y0 - ph}" text-anchor="middle" font-size="5.5" fill="#888" transform="rotate(-90 ${x0 - 4} ${y0 - ph})">I (a.u.)</text>` +
       `<text x="${x0 + pw}" y="${y0 - ph - 1}" text-anchor="end" font-size="6.5" fill="#333">${vlabel}</text>`,
   };
+}
+
+// A line spectrum -- a discharge lamp -- as one stem per line, as tall as the
+// line's weight and in its own colour. Nothing joins the stems: a curve
+// through them would show light at wavelengths the lamp does not emit.
+function spectrumLinesSvg(lines, peak, { xAt, y0, ph }) {
+  const stems = lines.map(s => {
+    const x = xAt(s.wl).toFixed(2), height = Math.max(1, (s.weight / peak) * ph);
+    return `<line data-spectrum-line="${Number(s.wl.toFixed(2))}" x1="${x}" y1="${y0}" x2="${x}" y2="${(y0 - height).toFixed(2)}" stroke="${wavelengthToColor(s.wl)}" stroke-width="1.4"/>`;
+  }).join('');
+  return `<g data-spectrum-lines="${lines.length}">${stems}</g>`;
 }
 
 // A sampled spectrum as a filled, wavelength-coloured curve, clipped to the
