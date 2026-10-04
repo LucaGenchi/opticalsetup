@@ -40,6 +40,9 @@ function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// Text escaping alone does not protect a double-quoted HTML attribute.
+const attr = s => esc(s).replace(/"/g, '&quot;');
+
 function slugify(name) {
   return name
     .normalize('NFKD').replace(/[̀-ͯ]/g, '')
@@ -82,7 +85,7 @@ function licenseNote(entry) {
     + `(https://creativecommons.org/licenses/by/4.0/). Use "Adapted from" and say what you changed if you modified it.`;
   return `<p class="community-license">This setup and its description are published by their author under
     <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>
-    (<a href="${esc(entry.license.evidence)}" target="_blank" rel="noopener">grant</a>):
+    (<a href="${attr(entry.license.evidence)}" target="_blank" rel="noopener">grant</a>):
     reuse or adapt them, with credit, a link to the licence, and a note of what you changed.
     Credit line to copy: <code>${esc(credit)}</code></p>`;
 }
@@ -107,7 +110,7 @@ function referenceHTML(reference) {
   if (!reference) return '';
   let isURL = false;
   try { isURL = new URL(reference).protocol === 'https:' || new URL(reference).protocol === 'http:'; } catch (_) { isURL = false; }
-  const body = isURL ? `<a href="${esc(reference)}" target="_blank" rel="noopener">${esc(reference)}</a>` : esc(reference);
+  const body = isURL ? `<a href="${attr(reference)}" target="_blank" rel="noopener">${esc(reference)}</a>` : esc(reference);
   return `<div class="community-reference"><span class="lbl">Reference</span>${body}</div>`;
 }
 
@@ -173,11 +176,11 @@ export function pageHTML(entry) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${esc(entry.name)} — Community | OpticalSetup</title>
-<meta name="description" content="${esc(entry.description)}">
+<meta name="description" content="${attr(entry.description)}">
 <link rel="canonical" href="${SITE_URL}/community/${entry.slug}/">
 <meta property="og:type" content="article">
-<meta property="og:title" content="${esc(entry.name)} — OpticalSetup Community">
-<meta property="og:description" content="${esc(entry.description)}">
+<meta property="og:title" content="${attr(entry.name)} — OpticalSetup Community">
+<meta property="og:description" content="${attr(entry.description)}">
 <meta property="og:url" content="${SITE_URL}/community/${entry.slug}/">
 <meta property="og:image" content="${SITE_URL}/assets/og-image.jpg">
 <link rel="icon" href="${FAVICON}">
@@ -190,7 +193,7 @@ ${header(base)}
     <main class="wiki-article" style="max-width: 760px;">
       <div class="crumb"><a href="${base}/community/">Community</a> / ${esc(entry.name)}</div>
       <h1>${esc(entry.name)}</h1>
-      <p class="community-byline">By <a href="${esc(entry.author.profile)}" target="_blank" rel="noopener">@${esc(entry.author.github)}</a>${dateText ? ` · ${dateText}` : ''} · <a href="${esc(entry.source.issue)}" target="_blank" rel="noopener">source discussion</a></p>
+      <p class="community-byline">By <a href="${attr(entry.author.profile)}" target="_blank" rel="noopener">@${esc(entry.author.github)}</a>${dateText ? ` · ${dateText}` : ''} · <a href="${attr(entry.source.issue)}" target="_blank" rel="noopener">source discussion</a></p>
       ${licenseNote(entry)}
 
       ${contributed(entry, `<p class="tagline" style="margin-top: 18px; white-space: pre-wrap;">${esc(entry.description)}</p>`)}
@@ -198,7 +201,7 @@ ${header(base)}
 
       <div class="embed-wrap">
         <iframe class="embed-frame" src="${base}/sketch/?community=${encodeURIComponent(entry.slug)}&amp;embed=1"
-          title="${esc(entry.name)} — a live trace of this setup"
+          title="${attr(entry.name)} — a live trace of this setup"
           loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
       </div>
       <p class="embed-caption">A live trace of the submitted setup, shown as a picture. Open it in the canvas to explore it, change it, and save or export your own copy.</p>
