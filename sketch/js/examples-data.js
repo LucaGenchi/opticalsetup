@@ -9,6 +9,60 @@
 // tools/build-examples-pages.mjs's generated pages.
 export const examples = [
   {
+    "group": "Lens Physics",
+    "name": "Singlet vs achromat — axial colour",
+    "path": "../Examples/Lens%20Physics/Singlet%20vs%20achromat%20%E2%80%94%20axial%20colour.json",
+    "slug": "singlet-vs-achromat-axial-colour"
+  },
+  {
+    "group": "Lens Physics",
+    "name": "Spherical aberration — ideal lens vs spherical singlet",
+    "path": "../Examples/Lens%20Physics/Spherical%20aberration%20%E2%80%94%20ideal%20lens%20vs%20spherical%20singlet.json",
+    "slug": "spherical-aberration-ideal-lens-vs-spherical-singlet"
+  },
+  {
+    "group": "Lens Physics",
+    "name": "Spherical aberration — sphere vs asphere vs ideal lens",
+    "path": "../Examples/Lens%20Physics/Spherical%20aberration%20%E2%80%94%20sphere%20vs%20asphere%20vs%20ideal%20lens.json",
+    "slug": "spherical-aberration-sphere-vs-asphere-vs-ideal-lens"
+  },
+  {
+    "group": "Reflective Imaging Systems",
+    "name": "Gregorian telescope — element by element",
+    "path": "../Examples/Reflective%20Imaging%20Systems/Gregorian%20telescope%20%E2%80%94%20element%20by%20element.json",
+    "slug": "gregorian-telescope-element-by-element"
+  },
+  {
+    "group": "Reflective Imaging Systems",
+    "name": "IR Cassegrain objective — element by element",
+    "path": "../Examples/Reflective%20Imaging%20Systems/IR%20Cassegrain%20objective%20%E2%80%94%20element%20by%20element.json",
+    "slug": "ir-cassegrain-objective-element-by-element"
+  },
+  {
+    "group": "Reflective Imaging Systems",
+    "name": "Ritchey–Chrétien telescope — element by element",
+    "path": "../Examples/Reflective%20Imaging%20Systems/Ritchey%E2%80%93Chr%C3%A9tien%20telescope%20%E2%80%94%20element%20by%20element.json",
+    "slug": "ritchey-chretien-telescope-element-by-element"
+  },
+  {
+    "group": "Beam Routing",
+    "name": "Polarization send–return separation — PBS and quarter wave plate",
+    "path": "../Examples/Beam%20Routing/Polarization%20send%E2%80%93return%20separation%20%E2%80%94%20PBS%20and%20quarter-wave%20plate.json",
+    "slug": "polarization-send-return-separation-pbs-and-quarter-wave-plate"
+  },
+  {
+    "group": "Beam Routing",
+    "name": "Wavelength combining and separation — dichroic mirrors",
+    "path": "../Examples/Beam%20Routing/Wavelength%20combining%20and%20separation%20%E2%80%94%20dichroic%20mirrors.json",
+    "slug": "wavelength-combining-and-separation-dichroic-mirrors"
+  },
+  {
+    "group": "Interferometers",
+    "name": "IQ optical modulator — nested Mach–Zehnder",
+    "path": "../Examples/Interferometers/IQ%20optical%20modulator%20%E2%80%94%20nested%20Mach%E2%80%93Zehnder.json",
+    "slug": "iq-optical-modulator-nested-mach-zehnder"
+  },
+  {
     "group": "Interferometers",
     "name": "Mach–Zehnder interferometer",
     "path": "../Examples/Interferometers/Mach%E2%80%93Zehnder%20interferometer.json",
@@ -33,36 +87,6 @@ export const examples = [
     "slug": "supercontinuum-mach-zehnder"
   },
   {
-    "group": "Lens Physics",
-    "name": "Singlet vs achromat — axial colour",
-    "path": "../Examples/Lens%20Physics/Singlet%20vs%20achromat%20%E2%80%94%20axial%20colour.json",
-    "slug": "singlet-vs-achromat-axial-colour"
-  },
-  {
-    "group": "Lens Physics",
-    "name": "Spherical aberration — ideal lens vs spherical singlet",
-    "path": "../Examples/Lens%20Physics/Spherical%20aberration%20%E2%80%94%20ideal%20lens%20vs%20spherical%20singlet.json",
-    "slug": "spherical-aberration-ideal-lens-vs-spherical-singlet"
-  },
-  {
-    "group": "Lens Physics",
-    "name": "Spherical aberration — sphere vs asphere vs ideal lens",
-    "path": "../Examples/Lens%20Physics/Spherical%20aberration%20%E2%80%94%20sphere%20vs%20asphere%20vs%20ideal%20lens.json",
-    "slug": "spherical-aberration-sphere-vs-asphere-vs-ideal-lens"
-  },
-  {
-    "group": "Microscopy Implementations",
-    "name": "Coherent Raman microscope — SRS and CARS",
-    "path": "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
-    "slug": "coherent-raman-microscope-srs-and-cars"
-  },
-  {
-    "group": "Microscopy Implementations",
-    "name": "Multiphoton microscope — SHG and two photon fluorescence",
-    "path": "../Examples/Microscopy%20Implementations/Multiphoton%20microscope%20%E2%80%94%20SHG%20and%20two%20photon%20fluorescence.json",
-    "slug": "multiphoton-microscope-shg-and-two-photon-fluorescence"
-  },
-  {
     "group": "Nonlinear Optics",
     "name": "Near infrared supercontinuum in YAG",
     "path": "../Examples/Nonlinear%20Optics/Near%20infrared%20supercontinuum%20in%20YAG.json",
@@ -81,22 +105,22 @@ export const examples = [
     "slug": "synchronously-pumped-picosecond-opo"
   },
   {
-    "group": "Reflective Imaging Systems",
-    "name": "Gregorian telescope — element by element",
-    "path": "../Examples/Reflective%20Imaging%20Systems/Gregorian%20telescope%20%E2%80%94%20element%20by%20element.json",
-    "slug": "gregorian-telescope-element-by-element"
+    "group": "Microscopy Implementations",
+    "name": "Coherent Raman microscope — SRS and CARS",
+    "path": "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
+    "slug": "coherent-raman-microscope-srs-and-cars"
   },
   {
-    "group": "Reflective Imaging Systems",
-    "name": "IR Cassegrain objective — element by element",
-    "path": "../Examples/Reflective%20Imaging%20Systems/IR%20Cassegrain%20objective%20%E2%80%94%20element%20by%20element.json",
-    "slug": "ir-cassegrain-objective-element-by-element"
+    "group": "Microscopy Implementations",
+    "name": "Epi fluorescence microscope",
+    "path": "../Examples/Microscopy%20Implementations/Epi-fluorescence%20microscope.json",
+    "slug": "epi-fluorescence-microscope"
   },
   {
-    "group": "Reflective Imaging Systems",
-    "name": "Ritchey–Chrétien telescope — element by element",
-    "path": "../Examples/Reflective%20Imaging%20Systems/Ritchey%E2%80%93Chr%C3%A9tien%20telescope%20%E2%80%94%20element%20by%20element.json",
-    "slug": "ritchey-chretien-telescope-element-by-element"
+    "group": "Microscopy Implementations",
+    "name": "Multiphoton microscope — SHG and two photon fluorescence",
+    "path": "../Examples/Microscopy%20Implementations/Multiphoton%20microscope%20%E2%80%94%20SHG%20and%20two%20photon%20fluorescence.json",
+    "slug": "multiphoton-microscope-shg-and-two-photon-fluorescence"
   },
   {
     "group": "Scanning",

@@ -23,6 +23,7 @@ import {
   formatTimeAxisNs,
 } from './probe.js';
 import {
+  LED_MAX_BANDWIDTH_NM, LED_MIN_BANDWIDTH_NM, LED_PRESETS, ledBands,
   linewidthForCoherenceLengthNm, spectrumSamples, supercontinuumTransformLimitFs, transformLimitedBandwidthNm,
 } from './spectrum.js';
 import {
@@ -624,8 +625,8 @@ export function cameraProfileSVG(rd, { x = -35, width = 70, baseline = 5, height
   const color = /^#[0-9a-f]{6}$/i.test(rd.color || '') ? rd.color : '#d8e7ee';
   const profileKind = rd.profileMode === 'coherent' ? 'coherent' : 'intensity';
   return `<g data-camera-profile="${profileKind}" data-camera-profile-pixels="${values.length}" data-camera-profile-scale="${mode}">` +
-    `<path data-camera-profile-fill d="${fillPath}" fill="${color}" opacity="0.22"/>` +
-    `<path data-camera-profile-curve d="${curvePath}" fill="none" stroke="${color}" stroke-width="1.35" stroke-linejoin="round"/>` +
+    `<path data-camera-profile-fill="1" d="${fillPath}" fill="${color}" opacity="0.22"/>` +
+    `<path data-camera-profile-curve="1" d="${curvePath}" fill="none" stroke="${color}" stroke-width="1.35" stroke-linejoin="round"/>` +
     `<line x1="${safeX.toFixed(2)}" y1="${safeBaseline.toFixed(2)}" x2="${(safeX + safeWidth).toFixed(2)}" y2="${safeBaseline.toFixed(2)}" stroke="#294453" stroke-width="0.8"/>` +
     `</g>`;
 }
@@ -638,7 +639,7 @@ function displaySpectrumPlot(rd, { baseline = 5, height = 15 } = {}) {
   // stem merely because SVG needs something visible to draw.
   const samples = rd.dark ? [] : candidates.filter(sample =>
     Number.isFinite(sample?.wavelength) && Number.isFinite(sample?.power) && sample.power > 1e-12);
-  const axis = `<line data-spectrum-baseline x1="-35" y1="${baseline}" x2="35" y2="${baseline}" stroke="#294453" stroke-width="0.8"/>`;
+  const axis = `<line data-spectrum-baseline="1" x1="-35" y1="${baseline}" x2="35" y2="${baseline}" stroke="#294453" stroke-width="0.8"/>`;
   if (!samples.length) return `<g data-spectrum-points="0">${axis}</g>`;
   const lo = Number.isFinite(rd.bandMin) ? rd.bandMin : Math.min(...samples.map(sample => sample.wavelength));
   const hi = Number.isFinite(rd.bandMax) ? rd.bandMax : Math.max(...samples.map(sample => sample.wavelength));
@@ -5628,6 +5629,60 @@ registry.sclaser = {
   },
 };
 
+// A packaged LED: the die behind its own collimator, so what leaves the
+// housing is a collimated beam of ordinary rays, not the point source's
+// short-range isotropic emission. It is an incoherent source by design: it
+// has no coherence setting and never receives a coherence identity, so
+// detectors add the powers of its beams wherever they meet.
+const LED_BEAM_COLOR = '#cbd8ea';
+function ledColor(params) {
+  if (params.autoColor === false && params.color) return params.color;
+  const bands = ledBands(params);
+  return bands.length > 1 ? LED_BEAM_COLOR : wavelengthToColor(bands[0].center);
+}
+registry.ledsource = {
+  label: 'LED', category: 'Sources', paletteOrder: 2.5, size: { w: 104, h: 38 },
+  aliases: ['led', 'light emitting diode', 'collimated led', 'white led', 'incoherent source'],
+  snapPt: { x: 52, y: 0 }, // beam exit aperture
+  size_: el => ({ w: 104, h: laserH(el) + 4 }),
+  params: [
+    {
+      key: 'ledPreset', label: 'LED', type: 'select', def: 'white',
+      options: [...Object.entries(LED_PRESETS).map(([key, preset]) => [key, preset.label]), ['custom', 'Custom']],
+    },
+    { ...P.wavelength, def: 530, show: p => p.ledPreset === 'custom' },
+    { key: 'bandwidth', label: 'Spectrum width (nm)', type: 'number', min: LED_MIN_BANDWIDTH_NM, max: LED_MAX_BANDWIDTH_NM, step: 1, def: 30, show: p => p.ledPreset === 'custom' },
+    {
+      key: 'ledSpectrum', label: 'Spectrum', type: 'readout',
+      readout: p => `${ledBands(p).map(band => `${band.center} nm, ${band.fwhm} nm wide`).join(' + ')}` +
+        `${p.ledPreset === 'custom' ? '' : ' (illustrative)'}`,
+    },
+    { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 0.1 },
+    ...beamShapeParams(10),
+    P.autoColor, P.color,
+    pinnedParam('temporalMode', 'cw'),
+  ],
+  svg(el) {
+    const h = laserH(el), hh = h / 2, ap = laserAperture(el), c = ledColor(el.params);
+    // Drawn as the packaged part rather than as a laser box: a finned heat
+    // sink, the die on its mount, the collimator tube its light fills, and the
+    // lens in the exit port -- flat towards the die, convex towards the beam.
+    // The lens rim reaches the plane the rays start from, so the beam meets
+    // it with no gap.
+    const fins = [-46, -41, -36].map(x =>
+      `<rect x="${x}" y="${-hh}" width="3" height="${h}" rx="1" fill="#59636b" stroke="#2a3136" stroke-width="0.8"/>`).join('');
+    return `<rect x="-45" y="${-hh + 5}" width="16" height="${h - 10}" fill="#3a4349"/>` + fins +
+      `<rect x="-31" y="${-hh}" width="25" height="${h}" rx="2" fill="#2f3a36" stroke="#1d2522" stroke-width="1.5"/>` +
+      `<text x="-18.5" y="0" ${isFlipped(el) ? 'transform="rotate(180 -18.5 0)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="700" letter-spacing="0.6" fill="#fff">LED</text>` +
+      `<rect x="-6" y="${-hh + 2}" width="52" height="${h - 4}" fill="#6b757d" fill-opacity="0.55" stroke="#2a3136" stroke-width="1.2"/>` +
+      `<polygon points="-2,-2 46,${-ap} 46,${ap} -2,2" fill="${c}" opacity="0.3"/>` +
+      `<rect x="-6" y="-3.5" width="4" height="7" rx="1" fill="${c}" stroke="#1d2522" stroke-width="0.8"/>` +
+      `<path d="M 46,${-ap} L 52,${-ap} Q 58,0 52,${ap} L 46,${ap} Z" fill="${c}" fill-opacity="0.75" stroke="#444" stroke-width="1"/>`;
+  },
+  surfaces: el => rectAbsorb(92, laserH(el)),
+  source: laserSource,
+};
+
 // Registry-owned direct-manipulation semantics. Canvas code only understands
 // generic resize/tune descriptors; the component definition decides which
 // real physical parameter a handle changes.
@@ -5635,6 +5690,7 @@ const DIRECT = {
   cwlaser: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'wavelength', short: 'λ' } },
   pulsedlaser: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'wavelength', short: 'λ' } },
   sclaser: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'scMax', short: 'λ max' } },
+  ledsource: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'wavelength', short: 'λ', when: p => p.ledPreset === 'custom' } },
   pointsource: { resize: { uniform: 'displayScale' }, tune: { key: 'spread', short: 'angle' } },
   objarrow: { resize: { y: 'height' }, tune: { key: 'spread', short: 'fan', when: p => p.raysMode === 'fan' } },
   mirror: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
@@ -5741,6 +5797,7 @@ const ELEMENT_HELP = {
   cwlaser: 'Emits a steady monochromatic collimated beam at one wavelength.',
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
+  ledsource: 'Emits a collimated beam of incoherent light from an LED behind its own collimator, with an illustrative single-colour or two-band white spectrum. It never interferes, and its residual divergence is not modelled.',
   pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp — that fades over a short evanescent range unless captured by a nearby lens, objective, mirror, or fiber tip. A parabolic mirror with the source at its focus collimates it.',
   objarrow: 'Traces a ray fan from the object’s anchor on the optical axis and separately draws an ideal paraxial image; the image marker does not model downstream clipping.',
   mirror: 'Reflects rays with configurable size and reflectivity.',

@@ -525,6 +525,67 @@ export const wikiEntries = [
   },
 
   {
+    type: 'ledsource',
+    summary: "Emits a collimated beam of incoherent light with a single-colour or two-band white LED spectrum, for illumination, filtering, and colour separation.",
+    title: 'LED',
+    category: 'Sources',
+    realWorld: {
+      html: `
+        <p>A light-emitting diode is a semiconductor junction that emits when electrons
+        and holes recombine across its band gap. The photon energy follows the gap, so the
+        material sets the colour: InGaN for blue and green, AlInGaP for amber and red,
+        AlGaAs and GaAs towards the near infrared. The emission is spontaneous, not
+        stimulated, which gives an LED its two defining properties. Its spectrum is a smooth
+        band tens of nanometres wide, against the fraction of a nanometre of a laser diode,
+        and its light is incoherent: each recombination is independent of the next.</p>
+        <p>A white LED is not a white emitter. It is a blue die coated with a phosphor,
+        usually cerium-doped YAG, that absorbs part of the blue and re-emits a broad
+        yellow band. The spectrum therefore has two parts — a narrow blue peak left over
+        from the die and a broad phosphor band — and the balance between them is what
+        makes one white LED look cool and another warm.</p>
+        <p>The die is an extended emitter radiating into a full hemisphere, so an LED meant
+        for a bench is sold behind its own optics: a moulded dome, a reflector, or an
+        aspheric condenser. That collimator turns the hemisphere into a beam, but never a
+        perfectly parallel one, because the die has a size. The residual divergence is
+        roughly the die size divided by the collimator's focal length.</p>`,
+      formulas: [
+        { tex: '\\lambda \\approx \\frac{hc}{E_g}', caption: 'The emission wavelength follows the band gap of the semiconductor.' },
+        { tex: '\\theta \\approx \\frac{d}{f}', caption: 'Residual full divergence of a collimated LED: die size d over collimator focal length f. A 1 mm die behind a 20 mm lens leaves about 50 mrad, close to 3°.' },
+      ],
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The LED is a packaged source: the die and its collimator are one element, and
+        what leaves the housing is a collimated beam of the width you set, made of ordinary
+        rays that travel until something stops them. This is what separates it from the
+        Point source, which is the bare emitter — isotropic, and only useful once a lens or
+        a mirror collects it.</p>
+        <p>Choose a preset or a custom centre wavelength and width. Each single-colour
+        preset is one Gaussian band. The white preset is two: a blue peak near
+        450&nbsp;nm and a phosphor band near 580&nbsp;nm, carried as one spectrum with both
+        parts in it. Filters, dichroics, etalons and the spectrometer integrate against
+        that shape, so a long-pass filter at 500&nbsp;nm removes the blue peak and leaves
+        the phosphor band, and a prism or grating fans the whole spectrum out by colour.
+        The undispersed white beam is drawn in the pale mixed-light colour used for any
+        broadband beam.</p>
+        <p>The LED is an incoherent source. It has no coherence setting, and its beams
+        never interfere: where two of them meet on a detector, their powers add. An
+        interferometer built with an LED shows no fringes.</p>`,
+      limitations: `<p>The presets are illustrative shapes, not any manufacturer's
+        datasheet, and the spectrum does not shift with drive current or temperature. The
+        beam leaves perfectly collimated: the residual divergence a real die size imposes
+        is not modelled, and neither is the non-uniform, die-shaped intensity across a real
+        LED beam. The emission is steady; pulsed or modulated drive is not represented. The
+        light is unpolarized.</p>`,
+    },
+    related: ['pointsource', 'cwlaser', 'sclaser', 'filter', 'dichroic', 'spectrometer'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Light-emitting Diodes', url: 'https://www.rp-photonics.com/light_emitting_diodes.html' },
+      { label: 'RP Photonics Encyclopedia — White Light Sources', url: 'https://www.rp-photonics.com/white_light_sources.html' },
+    ],
+  },
+
+  {
     type: 'pointsource',
     summary: "Emits light in all directions with a monochromatic, broadband, or gas-discharge spectrum, for exploring collection and collimation by nearby optics.",
     title: 'Point source',
@@ -3558,7 +3619,12 @@ export const wikiEntries = [
         summing to one. Efficiency multiplies on top, so three multiplexed lines at 0.9
         selected from three matching laser lines deliver 2.7× a single line's worth. Narrow
         selections work too: a 0.5&nbsp;nm line out of that supercontinuum is 0.18% of the
-        beam and still traces correctly rather than being discarded as negligible.</p>`,
+        beam and still traces correctly rather than being discarded as negligible.</p>
+        <p>Lines whose passbands overlap share the light between them: where together they
+        ask for more than is there, they divide it in proportion, so the selected and
+        depleted beams never add up to more than came in. The depleted beam is the incoming
+        spectrum with each line's passband taken out of it, colour by colour, so a filter
+        placed in it finds a gap where a line was selected.</p>`,
       limitations: `<p><strong>The geometry is the reverse of a physical device.</strong> In
         a real AOTF the selected light is the <em>diffracted</em> first order and leaves at
         an angle, while the remainder passes straight through as the zeroth order. This
