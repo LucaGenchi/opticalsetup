@@ -112,6 +112,13 @@
     </div>
     <input type="file" id="fileInput" accept=".json,application/json" hidden>
   </header>
+  <section id="autosaveRecovery" class="autosave-recovery" aria-label="Saved setup recovery" hidden>
+    <p id="autosaveRecoveryMessage" role="status"></p>
+    <div>
+      <button type="button" id="btnDownloadRecovery">Download saved data</button>
+      <button type="button" id="btnReplaceRecovery">Use current canvas</button>
+    </div>
+  </section>
   <dialog id="aboutDialog" class="share-dialog" aria-labelledby="aboutTitle">
     <div class="share-dialog-head">
       <div><span class="eyebrow">Free software</span><h2 id="aboutTitle">About OpticalSetup</h2></div>

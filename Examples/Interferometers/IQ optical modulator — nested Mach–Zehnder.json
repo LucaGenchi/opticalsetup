@@ -1,0 +1,379 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "title",
+   "type": "textlabel",
+   "x": -175,
+   "y": -125,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**I/Q optical modulator — nested Mach–Zehnder**",
+    "fontSize": 24,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "note-i",
+   "type": "textlabel",
+   "x": 150,
+   "y": -75,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**I modulator.** Push-pull: +φ/2 in one arm, −φ/2 in the other.\nIts output field is sin(φ/2): real, from −1 to +1.",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "note-q",
+   "type": "textlabel",
+   "x": -175,
+   "y": 475,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Q modulator.** The same again, then a fixed 90° shift:\nits field adds in quadrature, as i·Q.",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "note-out",
+   "type": "textlabel",
+   "x": 425,
+   "y": 425,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Output field ∝ I + iQ.** At 90° the power is I² + Q²:\nflipping a sign changes the phase of the light, not this reading.\nSet the 90° shifter to 0° and the two ports start trading power instead.",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "laser",
+   "type": "cwlaser",
+   "x": -150,
+   "y": 0,
+   "rot": 0,
+   "label": "1550 nm",
+   "showLabel": true,
+   "params": {
+    "wavelength": 1550,
+    "avgPowerW": 0.01,
+    "beamMode": "beam",
+    "beamWidth": 3,
+    "pol": 0,
+    "coherenceLengthMm": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw"
+   }
+  },
+  {
+   "id": "split",
+   "type": "bs",
+   "x": 0,
+   "y": 0,
+   "rot": 90,
+   "label": "Split",
+   "showLabel": true,
+   "params": {
+    "ratio": 0.5,
+    "size": 25.4
+   }
+  },
+  {
+   "id": "i-in",
+   "type": "bs",
+   "x": 150,
+   "y": 0,
+   "rot": 90,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "ratio": 0.5,
+    "size": 25.4
+   }
+  },
+  {
+   "id": "i-m1",
+   "type": "mirror",
+   "x": 300,
+   "y": 0,
+   "rot": 135,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "length": 25.4,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "i-m2",
+   "type": "mirror",
+   "x": 150,
+   "y": 100,
+   "rot": 315,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "length": 25.4,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "i-out",
+   "type": "bs",
+   "x": 300,
+   "y": 100,
+   "rot": 90,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "ratio": 0.5,
+    "size": 25.4
+   }
+  },
+  {
+   "id": "i-plus",
+   "type": "phasemodulator",
+   "x": 225,
+   "y": 0,
+   "rot": 0,
+   "label": "I  +φ/2",
+   "showLabel": true,
+   "params": {
+    "aperture": 12,
+    "designWavelength": 1550,
+    "depthDeg": 90,
+    "driveMode": "static",
+    "freqMHz": 1,
+    "phaseDeg": 0
+   }
+  },
+  {
+   "id": "i-minus",
+   "type": "phasemodulator",
+   "x": 225,
+   "y": 100,
+   "rot": 0,
+   "label": "I  −φ/2",
+   "showLabel": true,
+   "params": {
+    "aperture": 12,
+    "designWavelength": 1550,
+    "depthDeg": -90,
+    "driveMode": "static",
+    "freqMHz": 1,
+    "phaseDeg": 0
+   }
+  },
+  {
+   "id": "q-in",
+   "type": "bs",
+   "x": 0,
+   "y": 250,
+   "rot": 90,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "ratio": 0.5,
+    "size": 25.4
+   }
+  },
+  {
+   "id": "q-m1",
+   "type": "mirror",
+   "x": 150,
+   "y": 250,
+   "rot": 135,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "length": 25.4,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "q-m2",
+   "type": "mirror",
+   "x": 0,
+   "y": 350,
+   "rot": 315,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "length": 25.4,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "q-out",
+   "type": "bs",
+   "x": 150,
+   "y": 350,
+   "rot": 90,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "ratio": 0.5,
+    "size": 25.4
+   }
+  },
+  {
+   "id": "q-plus",
+   "type": "phasemodulator",
+   "x": 75,
+   "y": 250,
+   "rot": 0,
+   "label": "Q  +φ/2",
+   "showLabel": true,
+   "params": {
+    "aperture": 12,
+    "designWavelength": 1550,
+    "depthDeg": 90,
+    "driveMode": "static",
+    "freqMHz": 1,
+    "phaseDeg": 0
+   }
+  },
+  {
+   "id": "q-minus",
+   "type": "phasemodulator",
+   "x": 75,
+   "y": 350,
+   "rot": 0,
+   "label": "Q  −φ/2",
+   "showLabel": true,
+   "params": {
+    "aperture": 12,
+    "designWavelength": 1550,
+    "depthDeg": -90,
+    "driveMode": "static",
+    "freqMHz": 1,
+    "phaseDeg": 0
+   }
+  },
+  {
+   "id": "quadrature",
+   "type": "phasemodulator",
+   "x": 225,
+   "y": 350,
+   "rot": 0,
+   "label": "90° shift",
+   "showLabel": true,
+   "params": {
+    "aperture": 12,
+    "designWavelength": 1550,
+    "depthDeg": 90,
+    "driveMode": "static",
+    "freqMHz": 1,
+    "phaseDeg": 0
+   }
+  },
+  {
+   "id": "combine",
+   "type": "bs",
+   "x": 300,
+   "y": 350,
+   "rot": 90,
+   "label": "Combine",
+   "showLabel": true,
+   "params": {
+    "ratio": 0.5,
+    "size": 25.4
+   }
+  },
+  {
+   "id": "i-monitor",
+   "type": "detector",
+   "x": 400,
+   "y": 100,
+   "rot": 0,
+   "label": "I monitor",
+   "showLabel": true,
+   "params": {
+    "aperture": 26,
+    "timeSpanNs": 0,
+    "timeOffsetNs": 0,
+    "sync": false,
+    "riseTimeNs": 1
+   }
+  },
+  {
+   "id": "q-monitor",
+   "type": "detector",
+   "x": 150,
+   "y": 450,
+   "rot": 90,
+   "label": "Q monitor",
+   "showLabel": true,
+   "params": {
+    "aperture": 26,
+    "timeSpanNs": 0,
+    "timeOffsetNs": 0,
+    "sync": false,
+    "riseTimeNs": 1
+   }
+  },
+  {
+   "id": "output",
+   "type": "camera",
+   "x": 400,
+   "y": 350,
+   "rot": 0,
+   "label": "Output",
+   "showLabel": true,
+   "params": {
+    "ch": 30,
+    "pixels": 24,
+    "interference": true,
+    "profileScale": "absolute"
+   }
+  },
+  {
+   "id": "unused",
+   "type": "camera",
+   "x": 300,
+   "y": 450,
+   "rot": 90,
+   "label": "Unused port",
+   "showLabel": true,
+   "params": {
+    "ch": 30,
+    "pixels": 24,
+    "interference": true,
+    "profileScale": "absolute"
+   }
+  },
+  {
+   "id": "output-screen",
+   "type": "display",
+   "x": 550,
+   "y": 300,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "output",
+    "displayScale": 1,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  }
+ ],
+ "beams": []
+}

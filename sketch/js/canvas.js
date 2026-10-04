@@ -931,7 +931,8 @@ function renderOverlay() {
 
 function directValueLabel(el, tune) {
   const value = tune.param.type === 'derived' ? tune.param.get(el.params) : el.params[tune.key];
-  const rounded = Math.abs(value) >= 100 ? Math.round(value) : Math.round(value * 100) / 100;
+  const rounded = value !== 0 && Math.abs(value) < 0.01 ? Number(value.toPrecision(3))
+    : Math.abs(value) >= 100 ? Math.round(value) : Math.round(value * 100) / 100;
   const unitMatch = tune.param.label.match(/\((nm|mm|°|MHz|Hz|fs|dB\/m)\)/);
   return `${tune.short || tune.param.label} ${rounded}${unitMatch ? ` ${unitMatch[1]}` : ''}`;
 }
@@ -2072,7 +2073,7 @@ export function zoomFit() {
   if (rect.width < 50 || rect.height < 50) { requestAnimationFrame(zoomFit); return; }
   const pts = [];
   for (const el of state.elements) {
-    const b = getVisualBounds(el);
+    const b = getVisualBounds(el, { elements: state.elements });
     if (b) pts.push({ x: b.x0, y: b.y0 }, { x: b.x1, y: b.y1 });
   }
   for (const b of state.beams) pts.push(...b.pts);

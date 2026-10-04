@@ -24,8 +24,9 @@ import {
 } from './probe.js';
 import {
   LED_MAX_BANDWIDTH_NM, LED_MIN_BANDWIDTH_NM, LED_PRESETS, ledBands,
-  linewidthForCoherenceLengthNm, spectrumSamples, supercontinuumTransformLimitFs, transformLimitedBandwidthNm,
+  linewidthForCoherenceLengthNm, resolveSourceSpectrum, spectrumSamples, supercontinuumTransformLimitFs, transformLimitedBandwidthNm,
 } from './spectrum.js';
+import { coherencePathMm } from './spectral-coherence.js';
 import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
   pointInBoundary, sampleBoundary,
@@ -625,8 +626,8 @@ export function cameraProfileSVG(rd, { x = -35, width = 70, baseline = 5, height
   const color = /^#[0-9a-f]{6}$/i.test(rd.color || '') ? rd.color : '#d8e7ee';
   const profileKind = rd.profileMode === 'coherent' ? 'coherent' : 'intensity';
   return `<g data-camera-profile="${profileKind}" data-camera-profile-pixels="${values.length}" data-camera-profile-scale="${mode}">` +
-    `<path data-camera-profile-fill d="${fillPath}" fill="${color}" opacity="0.22"/>` +
-    `<path data-camera-profile-curve d="${curvePath}" fill="none" stroke="${color}" stroke-width="1.35" stroke-linejoin="round"/>` +
+    `<path data-camera-profile-fill="1" d="${fillPath}" fill="${color}" opacity="0.22"/>` +
+    `<path data-camera-profile-curve="1" d="${curvePath}" fill="none" stroke="${color}" stroke-width="1.35" stroke-linejoin="round"/>` +
     `<line x1="${safeX.toFixed(2)}" y1="${safeBaseline.toFixed(2)}" x2="${(safeX + safeWidth).toFixed(2)}" y2="${safeBaseline.toFixed(2)}" stroke="#294453" stroke-width="0.8"/>` +
     `</g>`;
 }
@@ -639,7 +640,7 @@ function displaySpectrumPlot(rd, { baseline = 5, height = 15 } = {}) {
   // stem merely because SVG needs something visible to draw.
   const samples = rd.dark ? [] : candidates.filter(sample =>
     Number.isFinite(sample?.wavelength) && Number.isFinite(sample?.power) && sample.power > 1e-12);
-  const axis = `<line data-spectrum-baseline x1="-35" y1="${baseline}" x2="35" y2="${baseline}" stroke="#294453" stroke-width="0.8"/>`;
+  const axis = `<line data-spectrum-baseline="1" x1="-35" y1="${baseline}" x2="35" y2="${baseline}" stroke="#294453" stroke-width="0.8"/>`;
   if (!samples.length) return `<g data-spectrum-points="0">${axis}</g>`;
   const lo = Number.isFinite(rd.bandMin) ? rd.bandMin : Math.min(...samples.map(sample => sample.wavelength));
   const hi = Number.isFinite(rd.bandMax) ? rd.bandMax : Math.max(...samples.map(sample => sample.wavelength));
@@ -1038,11 +1039,12 @@ function probeCard(el, rd, elements = []) {
         `<text x="28" y="12" text-anchor="middle" dominant-baseline="central" font-size="8" fill="#9aa2ad">no beam</text>`,
     };
   }
-  const isSC = rd?.bw >= 200;
+  const lineRange = probeLinesRange(rd);
+  const isSC = rd?.bw >= 200 && !lineRange;
   const c = rd ? wavelengthToColor(rd.wl) : null;
 
   if (prop === 'wl') {
-    const label = isSC ? `SC ${Math.round(rd.wl - rd.bw / 2)}–${Math.round(rd.wl + rd.bw / 2)} nm`
+    const label = lineRange ? probeWlLabel(rd) : isSC ? `SC ${Math.round(rd.wl - rd.bw / 2)}–${Math.round(rd.wl + rd.bw / 2)} nm`
       : rd.bw > 0 ? `${Math.round(rd.wl)} ± ${Math.round(rd.bw / 2)} nm` : `${Math.round(rd.wl)} nm`;
     const w = label.length * 5.4 + 24;
     return {
@@ -1100,6 +1102,7 @@ function probeCard(el, rd, elements = []) {
   }
 
   if (prop === 'time') {
+    if (rd.pulse?.interferenceUnknown) return valueCard('Temporal field unavailable');
     const W = 78, H = 46, x0 = 9, y0 = H - 12, pw = W - 16, ph = H - 22;
     const { startNs, spanNs } = probeTimeWindowNs(rd, el.params);
     const xAt = ns => x0 + pw * (spanNs > 0 ? (ns - startNs) / spanNs : 0);
@@ -1169,7 +1172,9 @@ function probeCard(el, rd, elements = []) {
   if (rd.spec) {
     const samples = (spectrumSamples(rd.spec, 28) || []).filter(s => s.wl >= lo && s.wl <= hi);
     const peak = Math.max(...samples.map(s => s.weight), 1e-9);
-    if (samples.length < 2) {
+    if (rd.spec.kind === 'lines') {
+      curve = spectrumLinesSvg(samples, peak, { xAt, y0, ph });
+    } else if (samples.length < 2) {
       const sample = samples[0];
       if (sample) {
         const x = xAt(sample.wl).toFixed(2), height = Math.max(1, (sample.weight / peak) * ph);
@@ -1187,7 +1192,8 @@ function probeCard(el, rd, elements = []) {
     return `<line x1="${x}" y1="${y0}" x2="${x}" y2="${(y0 + 1.6).toFixed(2)}" stroke="#888" stroke-width="0.7"/>` +
       `<text x="${x}" y="${(y0 + 6).toFixed(2)}" text-anchor="${anchor}" font-size="4.6" fill="#666">${Math.round(wl)}</text>`;
   };
-  const vlabel = isSC ? `${Math.round(rd.wl - rd.bw / 2)}–${Math.round(rd.wl + rd.bw / 2)} nm`
+  // A lamp is named by the span its lines cover; the stems show how many.
+  const vlabel = lineRange ? `${lineRange} nm` : isSC ? `${Math.round(rd.wl - rd.bw / 2)}–${Math.round(rd.wl + rd.bw / 2)} nm`
     : rd.bw > 0 ? `${Math.round(rd.wl)} ± ${Math.round(rd.bw / 2)} nm` : `${Math.round(rd.wl)} nm`;
   return {
     w: W,
@@ -1200,6 +1206,17 @@ function probeCard(el, rd, elements = []) {
       `<text x="${x0 - 4}" y="${y0 - ph}" text-anchor="middle" font-size="5.5" fill="#888" transform="rotate(-90 ${x0 - 4} ${y0 - ph})">I (a.u.)</text>` +
       `<text x="${x0 + pw}" y="${y0 - ph - 1}" text-anchor="end" font-size="6.5" fill="#333">${vlabel}</text>`,
   };
+}
+
+// A line spectrum -- a discharge lamp -- as one stem per line, as tall as the
+// line's weight and in its own colour. Nothing joins the stems: a curve
+// through them would show light at wavelengths the lamp does not emit.
+function spectrumLinesSvg(lines, peak, { xAt, y0, ph }) {
+  const stems = lines.map(s => {
+    const x = xAt(s.wl).toFixed(2), height = Math.max(1, (s.weight / peak) * ph);
+    return `<line data-spectrum-line="${Number(s.wl.toFixed(2))}" x1="${x}" y1="${y0}" x2="${x}" y2="${(y0 - height).toFixed(2)}" stroke="${wavelengthToColor(s.wl)}" stroke-width="1.4"/>`;
+  }).join('');
+  return `<g data-spectrum-lines="${lines.length}">${stems}</g>`;
 }
 
 // A sampled spectrum as a filled, wavelength-coloured curve, clipped to the
@@ -1224,7 +1241,20 @@ function spectrumAreaSvg(el, samples, peak, { xAt, x0, y0, pw, ph }) {
 // more than one (the power view always reads the circle).
 const PROBE_AREA_VIEWS = new Set(['spectrum', 'wl', 'pol', 'time', 'duration']);
 const PROBE_MAX_BEAMS_SHOWN = 4;
-const probeWlLabel = rd => (rd.bw >= 200 ? `SC ${Math.round(rd.wl - rd.bw / 2)}–${Math.round(rd.wl + rd.bw / 2)} nm`
+// A line spectrum's span, first line to last: "365–1014", or the one
+// wavelength when a single line is left (or all round to the same nanometre).
+// A lamp's `wl` is its brightest visible line and its `bw` the span of its
+// lines, so "wl ± bw/2" would name a range centred where the lamp is not.
+// Null for anything that is not a line spectrum.
+function probeLinesRange(rd) {
+  const lines = rd?.spec?.kind === 'lines' ? rd.spec.lines : null;
+  if (!lines?.length) return null;
+  const first = Math.round(Math.min(...lines.map(l => l.nm))), last = Math.round(Math.max(...lines.map(l => l.nm)));
+  return first === last ? `${first}` : `${first}–${last}`;
+}
+const probeWlLabel = rd => (probeLinesRange(rd)
+  ? `${rd.spec.lines.length > 1 ? `${rd.spec.lines.length} lines · ` : ''}${probeLinesRange(rd)} nm`
+  : rd.bw >= 200 ? `SC ${Math.round(rd.wl - rd.bw / 2)}–${Math.round(rd.wl + rd.bw / 2)} nm`
   : rd.bw > 0 ? `${Math.round(rd.wl)} ± ${Math.round(rd.bw / 2)} nm` : `${Math.round(rd.wl)} nm`);
 
 // Several beams crossing the sampling circle, in the spectrum, wavelength,
@@ -1273,7 +1303,7 @@ function probeMultiCard(el, prop, beams, elements) {
   const shown = listed.slice(0, PROBE_MAX_BEAMS_SHOWN);
   const more = listed.length - shown.length;
   const frame = (w, h) => `<rect x="0" y="0" width="${w}" height="${h}" rx="4" fill="#fff" stroke="#c9ced6"/>`;
-  const dot = (cx, cy, rd) => (rd.bw >= 200
+  const dot = (cx, cy, rd) => (rd.bw >= 200 && !probeLinesRange(rd)
     ? `<circle cx="${cx}" cy="${cy}" r="4" fill="#fff" stroke="#888"/><path d="M ${cx - 4},${cy} A 4 4 0 0 1 ${cx + 4},${cy}" fill="#e04040"/><path d="M ${cx - 4},${cy} A 4 4 0 0 0 ${cx + 4},${cy}" fill="#3050e0"/>`
     : `<circle cx="${cx}" cy="${cy}" r="4" fill="${wavelengthToColor(rd.wl)}"/>`);
 
@@ -1327,10 +1357,19 @@ function probeMultiCard(el, prop, beams, elements) {
     const gap = 4;
     let x = 0, body = '';
     for (const { beam, card } of cards) {
-      body += `<g transform="translate(${x},0)">${card.body}` +
-        `${dot(card.w / 2 - 14, card.h + 5, beam)}` +
-        `<text x="${card.w / 2 - 8}" y="${card.h + 5}" font-size="7" dominant-baseline="central" fill="#333">${esc(`${Math.round(beam.wl)} nm`)}</text></g>`;
-      x += card.w + gap;
+      // A lamp is named by the span of its lines, as the spectrum card names
+      // it; that caption is longer than a wavelength, so it is centred and
+      // its card given the room it needs.
+      const span = probeLinesRange(beam);
+      const name = `${span ?? Math.round(beam.wl)} nm`;
+      const half = span ? (10 + name.length * 3.7) / 2 : 14;
+      const slot = Math.max(card.w, half * 2);
+      const inset = (slot - card.w) / 2;
+      body += `<g transform="translate(${x},0)">` +
+        (inset > 0 ? `<g transform="translate(${inset.toFixed(2)},0)">${card.body}</g>` : card.body) +
+        `${dot(slot / 2 - half, card.h + 5, beam)}` +
+        `<text data-probe-pol-name="1" x="${slot / 2 - half + 6}" y="${card.h + 5}" font-size="7" dominant-baseline="central" fill="#333">${esc(name)}</text></g>`;
+      x += slot + gap;
     }
     if (more > 0) body += `<text x="${x}" y="14" font-size="7" fill="#666">+${more}</text>`;
     const w = x - gap + (more > 0 ? 14 : 0);
@@ -1343,8 +1382,11 @@ function probeMultiCard(el, prop, beams, elements) {
     // verdict -- synced, or which beam comes first and by how much -- above.
     const summary = probeTimingSummary(beams);
     const verdict = probeTimingLabel(summary) || 'no pulsed beams to compare';
-    // Wide enough for the verdict, which is the point of this view.
-    const W = Math.max(90, Math.ceil(verdict.length * 3.5 + 12)), H = 56, x0 = 9, y0 = H - 12, pw = W - 16, ph = H - 30;
+    // The beams compared, each by its colour; a lamp by the span of its lines.
+    const names = shown.map(b => `${probeLinesRange(b) ?? Math.round(b.wl)} nm`).join(' · ') + (more > 0 ? ` +${more}` : '');
+    // Wide enough for the verdict, which is the point of this view, and for
+    // the list of beams under it.
+    const W = Math.max(90, Math.ceil(verdict.length * 3.5 + 12), Math.ceil(names.length * 2.8 + 12)), H = 56, x0 = 9, y0 = H - 12, pw = W - 16, ph = H - 30;
     const window = syncedTimeWindowNs(beams.map(beam => ({ reading: beam, params: el.params })));
     const { startNs, spanNs } = window;
     const xAt = ns => x0 + pw * (spanNs > 0 ? (ns - startNs) / spanNs : 0);
@@ -1357,6 +1399,7 @@ function probeMultiCard(el, prop, beams, elements) {
     const shiftOf = beam => (lead && Number.isFinite(beam.propagationNs) ? beam.propagationNs - lead.arrivalNs : 0);
     let traces = '';
     for (const beam of shown) {
+      if (beam.pulse?.interferenceUnknown) continue;
       const colour = wavelengthToColor(beam.wl);
       const trace = scopeTrace(beam.pulse, { spanNs, startNs, samples: 160, delayNs: shiftOf(beam) });
       if (!trace) {
@@ -1387,16 +1430,24 @@ function probeMultiCard(el, prop, beams, elements) {
         `<text x="${x0}" y="${y0 + 6}" font-size="4.6" fill="#666">${axis(startNs)}</text>` +
         `<text x="${x0 + pw}" y="${y0 + 6}" text-anchor="end" font-size="4.6" fill="#666">${axis(startNs + spanNs)}</text>` +
         `<text data-probe-timing="${summary?.state || 'none'}" x="${W / 2}" y="8" text-anchor="middle" font-size="5.8" font-weight="700" fill="#333">${esc(verdict)}</text>` +
-        `<text x="${W / 2}" y="15" text-anchor="middle" font-size="4.8" fill="#666">${esc(shown.map(b => `${Math.round(b.wl)} nm`).join(' · ') + (more > 0 ? ` +${more}` : ''))}</text>`,
+        `<text x="${W / 2}" y="15" text-anchor="middle" font-size="4.8" fill="#666" data-probe-time-names="${shown.length}">${esc(names)}</text>`,
     };
   }
 
   // Spectrum: the beams' summed spectral density, weighted by their watts.
-  const W = 74, H = 50, x0 = 10, y0 = H - 13, pw = W - 18, ph = H - 24;
+  // Each colour is named once; a lamp by the span of its lines, since its
+  // nominal wavelength is only the brightest of them.
+  const { weights, absolute } = probeBeamWeights(beams, elements);
+  const colours = shown.map(b => probeLinesRange(b) ?? `${Math.round(b.wl)}`).filter((name, i, all) => all.indexOf(name) === i);
+  // Without every source's watts the beams can only be compared by their
+  // share of their own source: said on the card, not only in its markup.
+  const names = colours.join(' · ') + (more > 0 ? ` +${more}` : '') + ' nm' + (absolute ? '' : ' · relative');
+  // The caption sits above the plot and ends at its right edge, so the plot
+  // -- and the card with it -- is at least as wide as the caption.
+  const W = Math.max(74, Math.ceil(names.length * 3.5) + 18), H = 50, x0 = 10, y0 = H - 13, pw = W - 18, ph = H - 24;
   const { lo, hi } = probeSpectrumRangeAll(beams, el.params);
   const span = Math.max(1e-6, hi - lo);
   const xAt = wl => x0 + pw * (wl - lo) / span;
-  const { weights, absolute } = probeBeamWeights(beams, elements);
   const samples = combinedSpectrumSamples(beams, weights, lo, hi, 160);
   const peak = Math.max(...samples.map(p => p.weight), 1e-30);
   const curve = spectrumAreaSvg(el, samples, peak, { xAt, x0, y0, pw, ph });
@@ -1405,10 +1456,6 @@ function probeMultiCard(el, prop, beams, elements) {
     return `<line x1="${x}" y1="${y0}" x2="${x}" y2="${(y0 + 1.6).toFixed(2)}" stroke="#888" stroke-width="0.7"/>` +
       `<text x="${x}" y="${(y0 + 6).toFixed(2)}" text-anchor="${anchor}" font-size="4.6" fill="#666">${Math.round(wl)}</text>`;
   };
-  const colours = shown.map(b => Math.round(b.wl)).filter((wl, i, all) => all.indexOf(wl) === i);
-  // Without every source's watts the beams can only be compared by their
-  // share of their own source: said on the card, not only in its markup.
-  const names = colours.join(' · ') + (more > 0 ? ` +${more}` : '') + ' nm' + (absolute ? '' : ' · relative');
   return {
     w: W, h: H,
     body: frame(W, H) +
@@ -2094,6 +2141,32 @@ const beamShapeParams = beamWidthDef => [
   { key: 'beamWidth', label: 'Beam width (mm)', type: 'number', min: 1, max: 60, step: 0.5, def: beamWidthDef, show: p => p.beamMode === 'beam' },
 ];
 
+// New sources opt in; old saved sources keep their power-only behavior.
+// The panel closes the source's controls, after the pulse and bandwidth
+// settings that decide how far apart two arms can be and still interfere.
+const formatPathLength = mm => (mm < 1
+  ? `${Number((mm * 1000).toPrecision(3))} µm`
+  : `${Number(mm.toPrecision(3))} mm`);
+const pulsedInterferenceParams = type => [
+  { key: 'interferenceHeading', label: 'Interference', type: 'section' },
+  {
+    key: 'interference', label: 'Interference', type: 'checkbox', def: true,
+    migrate: () => false,
+  }, {
+    key: 'interferenceModel', label: 'Interference model', type: 'readout',
+    readout: p => p.beamMode !== 'beam' ? 'Requires Beam with size'
+      : p.interference ? 'Same source · ideal interferometer optics' : 'Off · powers add',
+  }, {
+    // Where an arm mismatch halves the fringe contrast, for this spectrum.
+    key: 'coherenceLength', label: 'Coherence length', type: 'readout',
+    readout: p => {
+      const length = coherencePathMm(resolveSourceSpectrum(type, p).spec);
+      if (length === null) return 'Not limited by this spectrum';
+      return Number.isFinite(length) ? `≈ ${formatPathLength(length)} (half contrast)` : 'Not resolved for this spectrum';
+    },
+  },
+];
+
 const POL_PARAM = { key: 'pol', label: 'Polarization (°)', type: 'number', min: 0, max: 180, step: 5, def: 0 };
 
 // Repetition rate and emission offset are the pulse-train timing both pulsed
@@ -2532,6 +2605,11 @@ function opaStateCore(plan, p) {
   return lines.join('\n');
 }
 
+// How far an uncollected point-source ray is drawn, and the capture range a
+// point source had before the range became a parameter (1.5x the glow).
+const POINT_SOURCE_GLOW_MM = 110;
+const POINT_SOURCE_LEGACY_CAPTURE_MM = 165;
+
 export const registry = {
 
   // ---------------- Sources ----------------
@@ -2644,6 +2722,7 @@ export const registry = {
       },
       SHOW_PULSE_PARAM,
       pinnedParam('temporalMode', 'pulsed'),
+      ...pulsedInterferenceParams('pulsedlaser'),
     ],
     svg(el) {
       const h = laserH(el), hh = h / 2, ap = laserAperture(el);
@@ -2657,9 +2736,10 @@ export const registry = {
   },
 
   // Unified replacement for the old LED + Light source: one isotropic point
-  // emitter. Rays are evanescent — they fade within ~110 mm (5x a fluorescent
-  // specimen's range) unless a nearby lens / objective / fiber tip collects
-  // them, which keeps 360° emission from flooding the canvas.
+  // emitter. A ray with a lens, a mirror or a fiber tip ahead of it within
+  // the source's capture range is ordinary light; any other ray is drawn as a
+  // glow fading within ~110 mm, which keeps 360° emission from flooding the
+  // canvas. The range is a drawing convention the user sets, not attenuation.
   pointsource: {
     label: 'Point source', category: 'Sources', paletteOrder: 3, size: { w: 30, h: 30 },
     aliases: ['led', 'lamp', 'light source', 'bulb', 'isotropic source', 'point emitter'],
@@ -2685,7 +2765,15 @@ export const registry = {
       },
       { key: 'linesReadout', label: 'Lines', type: 'readout', readout: p => lampLineSummary(p.lampType), show: p => p.sourceKind === 'lamp' },
       { key: 'spread', label: 'Emission angle (°)', type: 'number', min: 10, max: 360, step: 10, def: 360 },
-      { key: 'nrays', label: 'Rays', type: 'number', min: 4, max: 32, step: 2, def: 12 },
+      { key: 'nrays', label: 'Rays', type: 'number', min: 4, max: 128, step: 2, def: 12 },
+      // How far from the source a lens, mirror or fiber tip may sit and still
+      // collect its light. Sketches saved before this control existed traced with a fixed
+      // 165 mm, so they load at that instead of the new default.
+      {
+        key: 'captureRange', label: 'Capture range (mm)', type: 'number',
+        min: POINT_SOURCE_GLOW_MM, max: 5000, step: 5, def: 1000,
+        migrate: () => POINT_SOURCE_LEGACY_CAPTURE_MM,
+      },
       P.autoColor, P.color,
     ],
     svg(el) {
@@ -2716,13 +2804,20 @@ export const registry = {
     source(el) {
       const { spread, nrays } = el.params, out = [];
       const n = Math.max(1, Math.round(nrays));
+      const range = Number(el.params.captureRange);
+      const captureLen = Number.isFinite(range)
+        ? Math.min(5000, Math.max(POINT_SOURCE_GLOW_MM, range))
+        : POINT_SOURCE_LEGACY_CAPTURE_MM;
       for (let i = 0; i < n; i++) {
         // A full-circle source must not duplicate the -180°/+180° sample.
         const aDeg = spread >= 359.999
           ? 360 * i / n
           : (n === 1 ? 0 : -spread / 2 + spread * i / (n - 1));
         const a = aDeg * Math.PI / 180;
-        out.push({ x: 0, y: 0, dx: Math.cos(a), dy: Math.sin(a), evan: true, evanLen: 110 });
+        out.push({
+          x: 0, y: 0, dx: Math.cos(a), dy: Math.sin(a),
+          evan: true, evanLen: POINT_SOURCE_GLOW_MM, captureLen, captureMode: 'collectors',
+        });
       }
       return out;
     },
@@ -5607,6 +5702,7 @@ registry.sclaser = {
     { ...P.color, def: '#cbd8ea' },
     SHOW_PULSE_PARAM,
     pinnedParam('temporalMode', 'pulsed'),
+    ...pulsedInterferenceParams('sclaser'),
   ],
   svg(el) {
     const h = laserH(el), hh = h / 2, ap = laserAperture(el);
@@ -5787,7 +5883,7 @@ const ELEMENT_HELP = {
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
   ledsource: 'Emits a collimated beam of incoherent light from an LED behind its own collimator, with an illustrative single-colour or two-band white spectrum. It never interferes, and its residual divergence is not modelled.',
-  pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp — that fades over a short evanescent range unless captured by a nearby lens, objective, mirror, or fiber tip. A parabolic mirror with the source at its focus collimates it.',
+  pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp. A lens, a mirror or a fiber tip within the capture range collects its rays, which carry on as ordinary light; other optics on the way act on that light but collect nothing themselves, and a ray with no collector ahead is drawn as a short fading glow. The range is a drawing convention that keeps the canvas readable, not attenuation. A parabolic mirror with the source at its focus collimates it.',
   objarrow: 'Traces a ray fan from the object’s anchor on the optical axis and separately draws an ideal paraxial image; the image marker does not model downstream clipping.',
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',
@@ -5828,7 +5924,7 @@ const ELEMENT_HELP = {
   dm: 'Applies continuous reflective tip, tilt, and paraxial defocus.',
   detector: 'Measures qualitative ray signal, spectrum, polarization, and spot span.',
   pmt: 'Multiplies a faint signal into a readable one, and reports whether it actually clears the tube\u2019s own dark floor.',
-  camera: 'Measures a pixel-integrated one-dimensional intensity profile and resolves supported interference from sized monochromatic CW lasers.',
+  camera: 'Measures a pixel-integrated one-dimensional intensity profile and resolves supported same-source interference from sized CW, pulsed and supercontinuum beams.',
   eye: 'Focuses through a configurable pupil and reports the qualitative retinal signal and spot.',
   display: 'Shows the live qualitative output of a linked photodetector, PMT, camera, or retina.',
   aom: 'Deflects first-order light with a configurable modulation efficiency and zero order, under square, sine or sawtooth RF modulation (the ramp sweeping from falling through triangular to rising). A square gate can also draw both orders chopped in opposition, so the switching stays visible on a beam drawn as a steady line.',
@@ -5996,7 +6092,11 @@ export function getSize(el) {
 
 // Axis-aligned world bounds for fitting/export. This includes common labels
 // and the probe's readout card, which extend beyond the element hit box.
-export function getVisualBounds(el, { includeLabel = true } = {}) {
+// `elements` is the scene the element is drawn in: a probe's card is sized by
+// what it prints, and some of that -- a power in watts, whether a spectrum is
+// "relative" -- is read from the sources, so the bounds need the same scene
+// the drawing was given.
+export function getVisualBounds(el, { includeLabel = true, elements = [] } = {}) {
   const d = registry[el.type];
   if (!d) return null;
   const sz = getSize(el);
@@ -6013,7 +6113,7 @@ export function getVisualBounds(el, { includeLabel = true } = {}) {
     // axis-aligned and offset from the element — not a rotation of some
     // element-local rectangle.
     const scale = probeScale(el);
-    const place = probeCardPlacement(el, probeCard(el, probeAt(el.x, el.y)), scale);
+    const place = probeCardPlacement(el, probeCard(el, probeAt(el.x, el.y), elements), scale);
     const left = el.x + place.x, top = el.y + place.y;
     x0 = Math.min(x0, left); x1 = Math.max(x1, left + place.w);
     y0 = Math.min(y0, top); y1 = Math.max(y1, top + place.h);
@@ -6064,11 +6164,11 @@ export function findFreePlacement(el, elements, near, prefer = { x: 1, y: 0 }) {
   const margin = 14;
   const occupied = elements
     .filter(other => other && other.id !== el.id)
-    .map(other => getVisualBounds(other))
+    .map(other => getVisualBounds(other, { elements }))
     .filter(Boolean);
 
   const fits = (x, y) => {
-    const bounds = getVisualBounds({ ...el, x, y });
+    const bounds = getVisualBounds({ ...el, x, y }, { elements });
     if (!bounds) return false;
     return !occupied.some(other => bounds.x0 - margin < other.x1 && bounds.x1 + margin > other.x0
       && bounds.y0 - margin < other.y1 && bounds.y1 + margin > other.y0);

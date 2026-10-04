@@ -227,6 +227,10 @@ ${header(base)}
 `;
 }
 
+// Empty optional sections leave indented blank lines in the templates; drop
+// the trailing spaces so a new page passes `git diff --check`.
+const tidy = html => html.replace(/[ \t]+$/gm, '');
+
 function hubHTML(entries) {
   const base = '..';
   const groups = new Map();
@@ -235,8 +239,11 @@ function hubHTML(entries) {
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push({ entry, manifestEntry });
   }
-  // "Featured" (standalone, no group) first, then groups in first-seen order.
-  const groupNames = [...groups.keys()].sort((a, b) => (a === 'Featured' ? -1 : b === 'Featured' ? 1 : 0));
+  // "Featured" (standalone, no group) first, then groups in the order the
+  // app's Examples menu lists them (the manifest's order).
+  const menuOrder = [...new Set(examples.map(example => example.group || 'Featured'))];
+  const groupNames = [...groups.keys()].sort((a, b) => (a === 'Featured' ? -1 : b === 'Featured' ? 1
+    : menuOrder.indexOf(a) - menuOrder.indexOf(b)));
 
   const cards = ({ entry, manifestEntry }) => `
         <a class="example-card" href="${base}/example-setups/${manifestEntry.slug}/">
@@ -323,9 +330,9 @@ async function main() {
       // another shape.
       throw new Error(`Could not read the scene for "${manifestEntry.slug}": ${err.message}`);
     }
-    await writeFile(join(pageDir, 'index.html'), pageHTML(entry, manifestEntry, scene), 'utf-8');
+    await writeFile(join(pageDir, 'index.html'), tidy(pageHTML(entry, manifestEntry, scene)), 'utf-8');
   }
-  await writeFile(join(OUT_DIR, 'index.html'), hubHTML(pairs), 'utf-8');
+  await writeFile(join(OUT_DIR, 'index.html'), tidy(hubHTML(pairs)), 'utf-8');
 
   console.log(`Built ${pairs.length} example page(s) + index (of ${examples.length} examples in the manifest). Run tools/build-sitemap.mjs next to update sitemap.xml.`);
 }

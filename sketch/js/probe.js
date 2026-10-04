@@ -256,6 +256,9 @@ export function combinedSpectrumSamples(beams, weights, lo, hi, count = 160) {
 // two pulsed beams.
 export function probeTimingSummary(beams) {
   const pulsed = beams.filter(beam => beam.pulse?.repRateMHz > 0 && Number.isFinite(beam.arrivalNs));
+  if (pulsed.some(beam => beam.pulse.interferenceUnknown)) {
+    return { state: 'unavailable', beams: pulsed.map(beam => ({ beam, delayNs: null })) };
+  }
   if (pulsed.length < 2) return null;
   const rate = pulsed[0].pulse.repRateMHz;
   if (pulsed.some(beam => Math.abs(beam.pulse.repRateMHz - rate) > 1e-9 * rate)) {
@@ -280,6 +283,7 @@ export function probeTimingSummary(beams) {
 // The one-line verdict the time view prints above its traces.
 export function probeTimingLabel(summary) {
   if (!summary) return '';
+  if (summary.state === 'unavailable') return 'Temporal field unavailable';
   if (summary.state === 'rates') return 'different rep. rates: not synced';
   if (summary.state === 'synced') return summary.estimated ? 'synced (by source widths)' : 'synced';
   const name = entry => `${Math.round(entry.beam.wl)} nm`;
