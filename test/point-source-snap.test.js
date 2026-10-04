@@ -230,6 +230,38 @@ test('an optic in front of a partial mirror does not turn its leak into ordinary
   assert.equal(beyondRange, 0, 'a lens past the range does not collect the leak');
 });
 
+test('fluorescence pumped by a point source keeps its own range, not the pump\'s', () => {
+  // Found in review of #230: the pump's remaining range was copied onto the
+  // light a specimen emits, so its leak through a partial mirror was collected
+  // by a lens 350 mm on, far past the fluorescence's own range.
+  const emitted = source => {
+    const sample = at('sample', 300, {
+      specimenType: 'linear', transmission: 1,
+      channels: [{ kind: 'fluor', wl: 600, eff: 0.1, epi: false, epiRatio: 0.15, autoWl: false }],
+    });
+    sample.rot = 90;
+    const mirror = at('mirror', 350, { refl: 30, showTransmitted: true });
+    mirror.rot = 45;
+    const detector = at('detector', 1000, { aperture: 120 });
+    const scene = parseSketch(JSON.stringify({
+      app: 'optics2d', version: 1, beams: [],
+      elements: [source, sample, mirror, at('lens', 700, { f: 100, dia: 200 }), detector],
+    }), registry);
+    traceAll(scene.elements, scene.beams);
+    const reading = detectorReading(scene.elements[4].id);
+    return {
+      pump: reading?.signal ?? 0,
+      fluorescence: (reading?.spectrum || []).filter(c => Math.abs(c.wavelength - 600) < 1).reduce((sum, c) => sum + c.power, 0),
+    };
+  };
+  const fromPoint = emitted(pointSource({ wavelength: 532 }));
+  assert.ok(fromPoint.pump > 0, 'the pump itself is collected: the bench is live');
+  assert.equal(fromPoint.fluorescence, 0);
+  const laser = createElement('cwlaser', -60, 0);
+  laser.params.wavelength = 532;
+  assert.equal(emitted(laser).fluorescence, 0, 'the same bench pumped by a laser');
+});
+
 test('a fiber input collects the source inside the range', () => {
   const fiber = {
     id: 'collection-fiber', kind: 'fiber', width: 4, propagate: true,

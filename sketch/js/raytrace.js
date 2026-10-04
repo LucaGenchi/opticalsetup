@@ -6252,7 +6252,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           evanLen: c.evanLen ?? (c.tag === 'T' ? carriedEvan?.evanLen : undefined),
           captureLen: c.captureLen ?? (c.tag === 'T' ? carriedEvan?.captureLen : undefined),
           captureMode: c.captureMode ?? (c.tag === 'T' ? carriedEvan?.captureMode : undefined),
-          sourceRange: r.sourceRange ? { ...r.sourceRange } : undefined,
+          // The range belongs to the collected light and what continues it.
+          // Light generated here -- fluorescence, with a range of its own --
+          // is a new emitter and must not inherit the pump's.
+          sourceRange: r.sourceRange && !c.evan ? { ...r.sourceRange } : undefined,
           pol: 'pol' in c ? c.pol : r.pol,
           stokes: 'stokes' in c ? cloneStokes(c.stokes) : cloneStokes(r.stokes),
           polMod: 'polMod' in c ? c.polMod : r.polMod,
