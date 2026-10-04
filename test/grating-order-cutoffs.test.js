@@ -97,12 +97,13 @@ test('a Gaussian line across the cutoff is shared by the light on each side of i
   // One sample per order: the band is integrated piece by piece.
   const coarse = reading({ ...paths[2][1], type: 'pulsedlaser', source, aperture: 4 });
   assert.ok(Math.abs(coarse - expected) < 2e-4, `one sample per order: ${coarse} vs ${expected}`);
-  // Five samples: the cell holding the cutoff is split exactly, but the
-  // samples' own weights are a five-point rule over the Gaussian, which sets
-  // the accuracy. Judged at the sample wavelengths alone this read 0.466.
+  // Five samples: the cell holding the cutoff is split exactly and every
+  // sample carries the power in its own cell, so this agrees too. Judged at
+  // the sample wavelengths alone it read 0.466, and with the cell split but
+  // the samples weighted by the spectrum's height, 0.504.
   for (const [name, path] of paths.slice(0, 2)) {
     const sampled = reading({ ...path, type: 'pulsedlaser', source, aperture: 4 });
-    assert.ok(Math.abs(sampled - expected) < 0.02, `${name}: ${sampled} vs ${expected}`);
+    assert.ok(Math.abs(sampled - expected) < 2e-4, `${name}: ${sampled} vs ${expected}`);
     const all = reading({ ...path, type: 'pulsedlaser', source, aperture: 2400 });
     assert.ok(Math.abs(all - 1) < 1e-9, `${name}: all orders carry ${all}`);
   }
