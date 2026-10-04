@@ -7,7 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createElement, registry } from '../sketch/js/elements.js';
-import { traceAll } from '../sketch/js/raytrace.js';
+import { traceAll, traceScene } from '../sketch/js/raytrace.js';
 import { LAMP_PRESETS } from '../sketch/js/lamps.js';
 
 // The reviewer's scene: a lamp at the focus of an off-axis parabola, and a
@@ -140,4 +140,55 @@ test('a supercontinuum and a Gaussian beam keep their captions', () => {
   assert.match(card('pulsedlaser', { wavelength: 532, pulseWidthFs: 150, transformLimited: true }, 'spectrum'), />532 ± 1 nm<\/text>/);
   assert.match(card('sclaser', {}, 'wl'), />SC \d+–\d+ nm<\/text>/);
   assert.match(card('sclaser', {}, 'spectrum'), />\d+–\d+ nm<\/text>/);
+});
+
+// ---------------- a lamp beside another beam ----------------
+// Reviewer, #233: with a mercury lamp and a 532 nm laser in one sampling
+// circle, the polarization view still named the lamp "436 nm".
+
+function lampAndLaser(prop) {
+  const lamp = createElement('pointsource', 175, 200);
+  Object.assign(lamp.params, { sourceKind: 'lamp', lampType: 'hg', spread: 360, nrays: 24 });
+  const oap = createElement('oap', 150, 200);
+  oap.rot = 180;
+  Object.assign(oap.params, { length: 110, f: 25 });
+  // a laser coming the other way, 3 mm off the lamp's axis
+  const laser = createElement('cwlaser', 400, 203);
+  laser.rot = 180;
+  Object.assign(laser.params, { wavelength: 532, beamMode: 'line' });
+  const probe = createElement('probe', 260, 200);
+  Object.assign(probe.params, { prop, sampleDiameterMm: 30 });
+  const scene = [lamp, oap, laser, probe];
+  traceScene(scene, []);
+  return registry.probe.svg(probe, scene);
+}
+const captions = svg => [...svg.matchAll(/>([^<>]*nm[^<>]*)<\/text>/g)].map(m => m[1]);
+
+test('beside a laser, every list names the lamp by its lines and never by 436 nm', () => {
+  const pol = lampAndLaser('pol');
+  assert.match(pol, /data-probe-beams="2"/);
+  assert.deepEqual(captions(pol), ['365–1014 nm', '532 nm']);
+  assert.deepEqual(captions(lampAndLaser('wl')), ['7 lines · 365–1014 nm', '532 nm']);
+  assert.deepEqual(captions(lampAndLaser('duration')).map(c => c.split(' · CW')[0]).sort(),
+    ['532 nm', '7 lines · 365–1014 nm']);
+  assert.deepEqual(captions(lampAndLaser('time')), ['365–1014 nm · 532 nm']);
+  for (const prop of ['pol', 'wl', 'duration', 'time']) {
+    assert.doesNotMatch(lampAndLaser(prop), /436/, `${prop} view`);
+  }
+});
+
+test('the polarization card makes room for a lamp\'s longer name and leaves a laser\'s where it was', () => {
+  const svg = lampAndLaser('pol');
+  const slots = [...svg.matchAll(/<g transform="translate\(([\d.]+),0\)">(?:<g transform="translate\(([\d.]+),0\)">)?/g)]
+    .map(m => ({ x: Number(m[1]), inset: Number(m[2] || 0) }));
+  const names = [...svg.matchAll(/<text data-probe-pol-name="1" x="([\d.]+)"[^>]*>([^<]+)</g)]
+    .map(m => ({ x: Number(m[1]), text: m[2] }));
+  assert.equal(names.length, 2);
+  // the lamp's caption starts inside its own slot and ends before the next
+  const lampEnd = slots[0].x + names[0].x + names[0].text.length * 3.7;
+  assert.ok(names[0].x >= 0 && lampEnd <= slots[1].x, `the lamp's name (to ${lampEnd}) stays left of the laser's card at ${slots[1].x}`);
+  // the laser's caption sits where it always has: 8 left of its card's centre
+  assert.equal(slots[1].inset, 0);
+  assert.equal(names[1].x, 56 / 2 - 8);
+  assert.doesNotMatch(svg, /NaN|Infinity/);
 });

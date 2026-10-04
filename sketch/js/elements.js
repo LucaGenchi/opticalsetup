@@ -1355,10 +1355,19 @@ function probeMultiCard(el, prop, beams, elements) {
     const gap = 4;
     let x = 0, body = '';
     for (const { beam, card } of cards) {
-      body += `<g transform="translate(${x},0)">${card.body}` +
-        `${dot(card.w / 2 - 14, card.h + 5, beam)}` +
-        `<text x="${card.w / 2 - 8}" y="${card.h + 5}" font-size="7" dominant-baseline="central" fill="#333">${esc(`${Math.round(beam.wl)} nm`)}</text></g>`;
-      x += card.w + gap;
+      // A lamp is named by the span of its lines, as the spectrum card names
+      // it; that caption is longer than a wavelength, so it is centred and
+      // its card given the room it needs.
+      const span = probeLinesRange(beam);
+      const name = `${span ?? Math.round(beam.wl)} nm`;
+      const half = span ? (10 + name.length * 3.7) / 2 : 14;
+      const slot = Math.max(card.w, half * 2);
+      const inset = (slot - card.w) / 2;
+      body += `<g transform="translate(${x},0)">` +
+        (inset > 0 ? `<g transform="translate(${inset.toFixed(2)},0)">${card.body}</g>` : card.body) +
+        `${dot(slot / 2 - half, card.h + 5, beam)}` +
+        `<text data-probe-pol-name="1" x="${slot / 2 - half + 6}" y="${card.h + 5}" font-size="7" dominant-baseline="central" fill="#333">${esc(name)}</text></g>`;
+      x += slot + gap;
     }
     if (more > 0) body += `<text x="${x}" y="14" font-size="7" fill="#666">+${more}</text>`;
     const w = x - gap + (more > 0 ? 14 : 0);
@@ -1415,7 +1424,7 @@ function probeMultiCard(el, prop, beams, elements) {
         `<text x="${x0}" y="${y0 + 6}" font-size="4.6" fill="#666">${axis(startNs)}</text>` +
         `<text x="${x0 + pw}" y="${y0 + 6}" text-anchor="end" font-size="4.6" fill="#666">${axis(startNs + spanNs)}</text>` +
         `<text data-probe-timing="${summary?.state || 'none'}" x="${W / 2}" y="8" text-anchor="middle" font-size="5.8" font-weight="700" fill="#333">${esc(verdict)}</text>` +
-        `<text x="${W / 2}" y="15" text-anchor="middle" font-size="4.8" fill="#666">${esc(shown.map(b => `${Math.round(b.wl)} nm`).join(' · ') + (more > 0 ? ` +${more}` : ''))}</text>`,
+        `<text x="${W / 2}" y="15" text-anchor="middle" font-size="4.8" fill="#666">${esc(shown.map(b => `${probeLinesRange(b) ?? Math.round(b.wl)} nm`).join(' · ') + (more > 0 ? ` +${more}` : ''))}</text>`,
     };
   }
 
