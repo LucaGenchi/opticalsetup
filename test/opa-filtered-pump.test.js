@@ -177,3 +177,37 @@ test('a filter between the stages cuts the amplified profile, and the seed is ti
   // 1624 fs before: the uncut profile's duration.
   close(cut.seed.arrivingPulse.pulseWidthFs, reference.durationFs, 5e-3, 'seed duration behind the filter');
 });
+
+// --- Part of a fanned-out train ---------------------------------------------
+// Behind a grating the pulse travels as wavelength samples, and the whole
+// train's spectrum goes with each of them. A port that catches one sample has
+// not received the train: it is timed from what arrives, as before.
+
+test('a port that catches one sample of a fanned-out pump is not timed from the whole train', () => {
+  // The pump meets a 600 /mm transmission grating at the angle that sends
+  // 800 nm on along the pump port's axis, then a 50 nm bandpass. With the
+  // 6 mm port 300 mm away only the central sample enters.
+  const incidence = -Math.asin(0.48);
+  const pump = place('pulsedlaser', -100 * Math.cos(incidence), -18 - 100 * Math.sin(incidence),
+    { beamMode: 'line', wavelength: 800, transformLimited: true, pulseWidthFs: 20, avgPowerW: 1, repRateMHz: 0.2 });
+  pump.rot = incidence * 180 / Math.PI;
+  const seed = place('pulsedlaser', 120, 18, { beamMode: 'line', wavelength: 1100, transformLimited: true, pulseWidthFs: 300, avgPowerW: 1e-6, repRateMHz: 0.2 });
+  const grating = place('grating', 0, -18, { lines: 600, orders: '1', transmissive: true, length: 50 });
+  const filter = place('filter', 150, -18, { ftype: 'bandpass', center: 800, band: 50 });
+  const reading = aperture => {
+    const opa = place('opa', 300, 0, { signalWl: 1100, gainBandwidthNm: 40, smallSignalGainDb: 40, maxDepletion: 0.5, aperture });
+    traceScene([pump, seed, grating, filter, opa], []);
+    const plan = opaReading(opa.id);
+    const detector = place('detector', 280, -18, { aperture });
+    traceScene([pump, grating, filter, detector], []);
+    return { plan, detectorFs: detectorReading(detector.id).pulse?.stretchedPulseWidthFs };
+  };
+  for (const aperture of [2, 6]) {
+    const { plan, detectorFs } = reading(aperture);
+    close(detectorFs, 64.122, 1e-4, `detector, ${aperture} mm`);
+    // 39.86 fs when timed from the whole train's 775-825 nm.
+    close(plan.pumpPulse.pulseWidthFs, detectorFs, 1e-9, `pump duration, ${aperture} mm port`);
+  }
+  // Wide enough for three samples: several pumps, declined as before.
+  assert.equal(reading(20).plan.state, 'multiplePumps');
+});
