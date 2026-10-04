@@ -126,8 +126,10 @@ The existing pulsed-source and fiber conversions are retained.
 
 ## Example controls
 
-Both bundled Mach–Zehnder examples use ideal 50:50 splitters. Powers below
-are fractions of the source power, summed over each detector aperture.
+Both bundled Mach–Zehnder examples use ideal 50:50 splitters and ship with the
+delay line sweeping (0–0.02 mm and 0–0.002 mm). The rows below hold it still:
+set its Motion to Static and enter ΔL. Powers are fractions of the source power,
+summed over each detector aperture.
 
 | Control | Expected result |
 | --- | --- |

@@ -23,60 +23,6 @@ function cite(...nums) {
 
 export const exampleEntries = [
   {
-    match: 'Pulsed Mach–Zehnder',
-    title: 'Pulsed Mach–Zehnder',
-    tagline: 'Two arms, complementary spectra, and a path-dependent average power.',
-    html: `<p>This interferometer splits a 150 fs, 800 nm pulsed laser and recombines the two copies
-      at an ideal beamsplitter. Each output has a spectrometer. Different wavelengths
-      acquire different relative phases, so changing the delay changes the output
-      spectrum as well as the total power.</p>`,
-    inOpticalSetupTitle: 'Try the delay control',
-    inOpticalSetupHtml: `<p>The source has <strong>Interference</strong> enabled.
-      The initial added optical path is 0.02 mm. Select the delay line and set
-      <strong>0 mm</strong> for matched arms: one port receives all the light and
-      the other is dark. Increase the delay to see spectral fringes. The two
-      output powers always sum to the input in this lossless example.</p>
-      <p>Turn Interference off on the source to compare with power addition:
-      each port receives half the input and the spectra retain the source shape.</p>`,
-    limitations: `<p>This is same-source, time-integrated interference through
-      ideal phase-known optics. It does not reconstruct the combined temporal
-      field: pulse duration, autocorrelation and oscilloscope traces after
-      recombination are unavailable. Pulse animation stops at recombination.
-      Unknown coating/material phase or an exceeded spectral/path budget is
-      reported rather than assigned a phase. Older saved sources keep their
-      previous power-only behavior until Interference is enabled.</p>`,
-    citations: [],
-    resources: [{ label: 'Model, numerical bounds and reference checks', url: '/docs/physics/broadband-interference.md' }],
-    related: ['pulsedlaser', 'sclaser', 'bs', 'spectrometer', 'delayline'],
-  },
-  {
-    match: 'Supercontinuum Mach–Zehnder',
-    title: 'Supercontinuum Mach–Zehnder',
-    tagline: 'Two arms, complementary spectra, and a path-dependent average power.',
-    html: `<p>This interferometer splits a flat 400–700 nm supercontinuum and recombines the two copies
-      at an ideal beamsplitter. Each output has a spectrometer. Different wavelengths
-      acquire different relative phases, so changing the delay changes the output
-      spectrum as well as the total power.</p>`,
-    inOpticalSetupTitle: 'Try the delay control',
-    inOpticalSetupHtml: `<p>The source has <strong>Interference</strong> enabled.
-      The initial added optical path is 0.002 mm. Select the delay line and set
-      <strong>0 mm</strong> for matched arms: one port receives all the light and
-      the other is dark. Increase the delay to see spectral fringes. The two
-      output powers always sum to the input in this lossless example.</p>
-      <p>Turn Interference off on the source to compare with power addition:
-      each port receives half the input and the spectra retain the source shape.</p>`,
-    limitations: `<p>This is same-source, time-integrated interference through
-      ideal phase-known optics. It does not reconstruct the combined temporal
-      field: pulse duration, autocorrelation and oscilloscope traces after
-      recombination are unavailable. Pulse animation stops at recombination.
-      Unknown coating/material phase or an exceeded spectral/path budget is
-      reported rather than assigned a phase. Older saved sources keep their
-      previous power-only behavior until Interference is enabled.</p>`,
-    citations: [],
-    resources: [{ label: 'Model, numerical bounds and reference checks', url: '/docs/physics/broadband-interference.md' }],
-    related: ['pulsedlaser', 'sclaser', 'bs', 'spectrometer', 'delayline'],
-  },
-  {
     match: 'Gregorian telescope — element by element',
     title: 'Gregorian telescope',
     tagline: 'A parabola and an ellipse, each placed at the one pair of points it images perfectly, and a traced spot seven ten-millionths of a millimetre across.',
@@ -1511,5 +1457,74 @@ export const exampleEntries = [
       { label: 'RP Photonics Encyclopedia — Fluorescence Microscopy', url: 'https://www.rp-photonics.com/fluorescence_microscopy.html' },
     ],
     related: ['objective', 'dichroic', 'filter', 'stage', 'camera', 'lens', 'cwlaser'],
+  },
+  {
+    match: 'Pulsed Mach–Zehnder',
+    title: 'Pulsed Mach–Zehnder',
+    tagline: 'Two arms, complementary spectra, and a path-dependent average power.',
+    html: `<p>This interferometer splits a 150 fs, 800 nm pulsed laser and recombines the two copies
+      at an ideal beamsplitter. Each output has a spectrometer. Different wavelengths
+      acquire different relative phases, so changing the delay changes the output
+      spectrum as well as the total power.</p>`,
+    inOpticalSetupTitle: 'Try the delay control',
+    inOpticalSetupHtml: `<p>The source has <strong>Interference</strong> enabled,
+      and the delay line sweeps one arm from 0 to 0.02 mm and back at 0.05 Hz. As
+      it moves, the fringes run across the two spectrometer screens (shown from 790
+      to 810 nm) and the light trades between the ports. The two output powers
+      always sum to the input in this lossless example.</p>
+      <p>To hold one point, select the delay line and set <strong>Motion</strong>
+      to <em>Static</em>. At <strong>0 mm</strong> the arms are matched: one port
+      receives all the light and the other is dark. At 0.01 mm the ports read 0.016
+      and 0.984; at 0.02 mm, 0.937 and 0.063.</p>
+      <p>Select the laser and open its Interference panel: the coherence length,
+      about 45 µm for this 150 fs pulse, is the arm difference at which the fringes
+      fall to half contrast. The 20 µm sweep stays well inside it.</p>
+      <p>Turn Interference off on the source to compare with power addition:
+      each port receives half the input and the spectra retain the source shape.</p>`,
+    limitations: `<p>This is same-source, time-integrated interference through
+      ideal phase-known optics. It does not reconstruct the combined temporal
+      field: pulse duration, autocorrelation and oscilloscope traces after
+      recombination are unavailable. Pulse animation stops at recombination.
+      Unknown coating/material phase or an exceeded spectral/path budget is
+      reported rather than assigned a phase. Older saved sources keep their
+      previous power-only behavior until Interference is enabled.</p>`,
+    citations: [],
+    resources: [{ label: 'Model, numerical bounds and reference checks', url: '/docs/physics/broadband-interference.md' }],
+    related: ['pulsedlaser', 'sclaser', 'bs', 'spectrometer', 'delayline'],
+  },
+  {
+    match: 'Supercontinuum Mach–Zehnder',
+    title: 'Supercontinuum Mach–Zehnder',
+    tagline: 'Two arms, complementary spectra, and a path-dependent average power.',
+    html: `<p>This interferometer splits a flat 400–700 nm supercontinuum and recombines the two copies
+      at an ideal beamsplitter. Each output has a spectrometer. Different wavelengths
+      acquire different relative phases, so changing the delay changes the output
+      spectrum as well as the total power.</p>`,
+    inOpticalSetupTitle: 'Try the delay control',
+    inOpticalSetupHtml: `<p>The source has <strong>Interference</strong> enabled,
+      and the delay line sweeps one arm from 0 to 0.002 mm and back at 0.1 Hz. As
+      it moves, the fringes run across the two spectrometer screens (400 to
+      700 nm) and the spectra of the two ports stay complementary. The two output
+      powers always sum to the input in this lossless example.</p>
+      <p>To hold one point, select the delay line and set <strong>Motion</strong>
+      to <em>Static</em>. At <strong>0 mm</strong> the arms are matched: one port
+      receives all the light and the other is dark. At 0.0005 mm the ports read
+      0.769 and 0.231; at 0.002 mm, 0.553 and 0.447.</p>
+      <p>Select the laser and open its Interference panel: the coherence length of
+      this band is about 0.58 µm, so the 2 µm sweep runs from full contrast to
+      well past it, where the total power at each port settles towards one half
+      while the spectrum is still deeply modulated.</p>
+      <p>Turn Interference off on the source to compare with power addition:
+      each port receives half the input and the spectra retain the source shape.</p>`,
+    limitations: `<p>This is same-source, time-integrated interference through
+      ideal phase-known optics. It does not reconstruct the combined temporal
+      field: pulse duration, autocorrelation and oscilloscope traces after
+      recombination are unavailable. Pulse animation stops at recombination.
+      Unknown coating/material phase or an exceeded spectral/path budget is
+      reported rather than assigned a phase. Older saved sources keep their
+      previous power-only behavior until Interference is enabled.</p>`,
+    citations: [],
+    resources: [{ label: 'Model, numerical bounds and reference checks', url: '/docs/physics/broadband-interference.md' }],
+    related: ['pulsedlaser', 'sclaser', 'bs', 'spectrometer', 'delayline'],
   },
 ];

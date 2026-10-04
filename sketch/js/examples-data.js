@@ -64,12 +64,6 @@ export const examples = [
   },
   {
     "group": "Interferometers",
-    "name": "Mach–Zehnder interferometer with a pulsed laser",
-    "path": "../Examples/Interferometers/Mach%E2%80%93Zehnder%20interferometer%20with%20a%20pulsed%20laser.json",
-    "slug": "mach-zehnder-interferometer-with-a-pulsed-laser"
-  },
-  {
-    "group": "Interferometers",
     "name": "Mach–Zehnder interferometer",
     "path": "../Examples/Interferometers/Mach%E2%80%93Zehnder%20interferometer.json",
     "slug": "mach-zehnder-interferometer"
