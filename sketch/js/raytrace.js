@@ -4273,7 +4273,7 @@ function interact(ray, hit) {
     }
     case 'diffuser': {
       const div = (data.div || 8) * D2R;
-      const sid = hit.surface.id;
+      const sid = s.el?.scatterSeed ?? hit.surface.id;
       if (ray.sample == null) {
         // a single line ray scatters into a small speckled fan
         return [0, 1, 2, 3, 4].map(k => ({
@@ -5082,7 +5082,7 @@ function interact(ray, hit) {
             }
           } else if (ly.type === 'speckle') {
             const div = (ly.div || 8) * D2R;
-            const sid = hit.surface.id;
+            const sid = s.el?.scatterSeed ?? hit.surface.id;
             if (ray.sample == null) {
               // speckleFan was sized against the whole stack, so the grains
               // coarsen rather than the fan being truncated and its power

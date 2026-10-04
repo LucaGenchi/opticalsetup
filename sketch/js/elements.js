@@ -9,7 +9,7 @@ import { conicMirrorGeometry, conicMirrorSize, conicMirrorSVG, conicMirrorSurfac
 // Surface kinds handled by the tracer include mirror, lens, metalens, cmirror,
 // refract, dichroic, filter, split, grating, AOM/AOD, absorb, and transmit.
 
-import { distToSegment, esc, formatSignal, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
+import { distToSegment, esc, formatSignal, rotPt, smoothPath, toWorld, wavelengthToColor, newScatterSeed } from './util.js';
 import { uid } from './util.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
@@ -3943,6 +3943,7 @@ export const registry = {
 
   diffuser: {
     label: 'Diffuser', category: 'Dispersive elements', size: { w: 14, h: 56 },
+    scattering: true,
     size_: el => ({ w: 14, h: el.params.length + 6 }),
     params: [
       { key: 'div', label: 'Divergence (°)', type: 'number', min: 0.5, max: 40, step: 0.5, def: 8 },
@@ -3965,6 +3966,7 @@ export const registry = {
   // ---------------- Wavefront shaping ----------------
   slm: {
     label: 'SLM', category: 'Wavefront Shaping', size: { w: 30, h: 50 },
+    scattering: true,
     snapPt: { x: -9, y: 0 }, // active face
     params: [
       { key: 'transmissive', label: 'Transmissive', type: 'checkbox', def: false },
@@ -4001,6 +4003,7 @@ export const registry = {
   // does to a ray.
   metasurface: {
     label: 'Metasurface', category: 'Wavefront Shaping', size: { w: 10, h: 50 },
+    scattering: true,
     aliases: ['meta-optic', 'metasurface phase plate', 'flat optic', 'nanostructured surface'],
     snapPt: { x: 0, y: 0 },
     params: [
@@ -6221,5 +6224,7 @@ export function createElement(type, x = 0, y = 0) {
     if (p.type === 'readout' || p.type === 'derived' || p.type === 'derived-select' || p.type === 'section') continue;
     params[p.key] = Array.isArray(p.def) ? JSON.parse(JSON.stringify(p.def)) : p.def;
   }
-  return { id: uid(), type, x, y, rot: 0, label: '', showLabel: false, params };
+  return { id: uid(), type, x, y, rot: 0, label: '', showLabel: false, params,
+    ...(d.scattering ? { scatterSeed: newScatterSeed() } : {}),
+  };
 }

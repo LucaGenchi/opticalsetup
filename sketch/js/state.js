@@ -323,6 +323,7 @@ function normalizeElement(raw, definitions, used) {
     label: typeof raw.label === 'string' ? raw.label : '',
     showLabel: raw.showLabel === true,
     ...(raw.labelPos && ['b', 't', 'l', 'r'].includes(raw.labelPos) ? { labelPos: raw.labelPos } : {}),
+    ...(finite(raw.scatterSeed) ? { scatterSeed: Math.floor(clamp(raw.scatterSeed, 0, 0xffffffff)) } : {}),
     params,
   };
 }
@@ -375,8 +376,18 @@ export function parseSketch(text, definitions = null) {
   if (d.app !== undefined && d.app !== 'optics2d') throw new Error('Not an OpticalSetup file');
   if (d.version !== undefined && d.version !== 1) throw new Error(`Unsupported sketch version: ${d.version}`);
   const used = new Set();
+  const elements = d.elements.map(el => normalizeElement(el, definitions, used));
+  // Existing scenes used the active face's sequential surface index as their
+  // scattering seed. Capture that exact seed once on load, before any edit
+  // can reorder/remove surfaces, and retain it in subsequent saves.
+  let surfaceIndex = 0;
+  if (definitions) for (const el of elements) {
+    const def = definitions[el.type];
+    if (def.scattering && el.scatterSeed === undefined) el.scatterSeed = surfaceIndex;
+    surfaceIndex += def.surfaces?.(el).length || 0;
+  }
   return {
-    elements: d.elements.map(el => normalizeElement(el, definitions, used)),
+    elements,
     beams: (d.beams || []).map(beam => normalizeBeam(beam, used)),
   };
 }
