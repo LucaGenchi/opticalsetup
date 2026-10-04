@@ -1975,6 +1975,19 @@ function unionPath(...paths) {
   return merged;
 }
 
+// Whether a ray is its whole pulse train as it arrives: it carries a spectrum
+// of its own that spans everything the train's spectrum (`trainPieces`) holds.
+// A wavelength sample of a fanned-out band, or one side of a notch, is only
+// part of the train -- the rest may miss the port -- and is not timed from it.
+function carriesWholeTrain(ray) {
+  const pieces = ray.pulse && Array.isArray(ray.trainPieces) ? ray.trainPieces : [];
+  if (!pieces.length || sampleCell(ray) || !(ray.bw > 0) || !ray.spec || ray.spec.kind === 'lines') return false;
+  const [lo, hi] = spectrumSupport(ray.spec);
+  const tolerance = 1e-6 * Math.max(1, hi - lo);
+  return Math.min(...pieces.map(p => p.lo)) >= lo - tolerance && Math.max(...pieces.map(p => p.hi)) <= hi + tolerance
+    && Math.min(...pieces.map(p => p.lo)) <= lo + tolerance && Math.max(...pieces.map(p => p.hi)) >= hi - tolerance;
+}
+
 function recordProbeBeam(surface, ray) {
   let seen = specimenProbe.get(surface.id);
   if (!seen) specimenProbe.set(surface.id, seen = []);
@@ -2019,7 +2032,11 @@ function recordProbeBeam(surface, ray) {
     // source that is: with the source's watt setting, the beam's watts.
     power,
     originId: ray.originId || null,
+    // As the whole train arrives: a pulse an earlier element reshaped keeps
+    // that element's record, and what a later filter left of it travels
+    // beside the record (`trainPieces`). Read only by the OPA's ports.
     pulse: ray.pulse ? { ...ray.pulse } : null,
+    ...(carriesWholeTrain(ray) ? { arrivingPulse: { ...drawnPulse(ray) } } : {}),
     gates: (ray.pulse?.gates || []).map(g => ({ ...g })),
     // Only light that went through a parametric element has a history.
     ...(ray.parametricPath?.length ? { parametricPath: unionPath(ray.parametricPath) } : {}),
@@ -6949,7 +6966,7 @@ function planOpaElements(surfaces) {
       const mean = sum => (beam.oplWeight > 0 && Number.isFinite(sum) ? sum / beam.oplWeight : 0);
       return {
         key: beam.key, wl: beam.wl, bw: beam.bw || 0, spec: beam.spec || null, opl: beam.opl,
-        pulse: beam.pulse, power: beam.power, originId: beam.originId,
+        pulse: beam.arrivingPulse || beam.pulse, power: beam.power, originId: beam.originId,
         gddFs2: mean(beam.gddSum), groupDelayDifferenceFs: mean(beam.spreadSum), gddRange: beam.gddRange || null,
         parametricPath: beam.parametricPath || [],
         powerW: Number.isFinite(watts) ? watts * beam.power : null,

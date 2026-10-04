@@ -320,34 +320,24 @@ test('light that loses the flag loses only the new record', () => {
 // computes from -- an OPA times its pump from it, generated light inherits
 // it -- so it must be left exactly as it was.
 
-test('correcting what is drawn does not change what an OPA computes', () => {
-  // A pump through two filters, then an OPA. The pump's drawn duration after
-  // the second filter is corrected (98 fs for the 26 fs the first filter
-  // left), but the OPA still times the pump from the record, so its gain and
-  // the signal it delivers are what they were. (That record is the stale one;
-  // feeding the OPA the corrected duration multiplies the signal by 3.7 and
-  // is a change of its own, to be validated on its own.)
+test('correcting what is drawn leaves the pulse record an OPA is handed as it was', () => {
+  // A pump through two filters, then an OPA. The drawn duration after the
+  // second filter comes from `trainPieces`, beside the record; the record
+  // itself still holds the first filter's piece. (The OPA no longer times its
+  // pump from that record alone: see test/opa-filtered-pump.test.js.)
   const place = (type, x, y, params) => {
     const el = createElement(type, x, y);
     Object.assign(el.params, params);
     return el;
   };
-  const scene = filters => {
-    const det = place('detector', 450, 18, { aperture: 10 });
-    const { pulseTracks } = traceScene([
-      place('pulsedlaser', 0, -18, { beamMode: 'line', wavelength: 515, transformLimited: false, bandwidth: 60, avgPowerW: 1, repRateMHz: 0.2 }),
-      place('pulsedlaser', 0, 18, { beamMode: 'line', wavelength: 780, transformLimited: true, pulseWidthFs: 300, avgPowerW: 1e-6, repRateMHz: 0.2 }),
-      ...filters.map(([x, band]) => place('filter', x, -18, { ftype: 'bandpass', center: 515, band })),
-      place('opa', 300, 0, { signalWl: 780, gainBandwidthNm: 40, smallSignalGainDb: 40, maxDepletion: 0.5 }), det,
-    ]);
-    const reading = detectorReading(det.id);
-    return { signal: reading?.signal ?? 0, duration: reading?.pulse?.stretchedPulseWidthFs ?? null, pulseTracks };
-  };
-  const two = scene([[100, 30], [150, 8]]);
-  assert.ok(Math.abs(two.signal - 0.000395765422) <= 1e-9 * two.signal, `signal ${two.signal}`);
-  assert.ok(Math.abs(two.duration - 26.24) < 0.01, `signal duration ${two.duration} fs`);
-  // The drawn pump after the second filter is nevertheless the longer pulse.
-  const drawn = two.pulseTracks.map(track => pulseEnvelopeAtOpticalPath(track, track.opls.at(-1) - 1e-6)?.pulseWidthFs).filter(Number.isFinite);
+  const { pulseTracks } = traceScene([
+    place('pulsedlaser', 0, -18, { beamMode: 'line', wavelength: 515, transformLimited: false, bandwidth: 60, avgPowerW: 1, repRateMHz: 0.2 }),
+    place('pulsedlaser', 0, 18, { beamMode: 'line', wavelength: 780, transformLimited: true, pulseWidthFs: 300, avgPowerW: 1e-6, repRateMHz: 0.2 }),
+    place('filter', 100, -18, { ftype: 'bandpass', center: 515, band: 30 }),
+    place('filter', 150, -18, { ftype: 'bandpass', center: 515, band: 8 }),
+    place('opa', 300, 0, { signalWl: 780, gainBandwidthNm: 40, smallSignalGainDb: 40, maxDepletion: 0.5 }),
+  ]);
+  const drawn = pulseTracks.map(track => pulseEnvelopeAtOpticalPath(track, track.opls.at(-1) - 1e-6)?.pulseWidthFs).filter(Number.isFinite);
   assert.ok(drawn.some(width => width > 90 && width < 105), `drawn durations ${drawn.map(w => w.toFixed(1))}`);
 });
 
