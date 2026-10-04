@@ -89,7 +89,8 @@ export function spectralFieldResult(spec, terms, { widthMm = 0 } = {}) {
 //
 // Returns the length in mm; null when the spectrum has no finite band (a
 // single line has no such limit); NaN when the band is finite but the answer
-// was not resolved. Only the single-band source shapes are supported --
+// was not resolved, which includes sub-cycle bands (see below). Only the
+// single-band source shapes are supported --
 // 'gauss' and 'flat'. A sampled profile can dip below one half between any
 // two search points, so it is declined rather than searched.
 const coherenceCache = new Map();
@@ -98,6 +99,11 @@ export function coherencePathMm(spec) {
   if (!['gauss', 'flat'].includes(spec.kind)) return spec.kind === 'sampled' ? NaN : null;
   const support = spectrumSupport(spec);
   if (!support || !support.every(Number.isFinite) || !(support[0] > 0) || !(support[1] > support[0])) return null;
+  // A band reaching below a quarter of its own centre is a sub-cycle pulse:
+  // the Gaussian-in-wavelength source shape is clipped at the support's floor
+  // there and stops describing a pulse. It is finite, so not "unlimited", but
+  // it is not searched either -- that costs seconds and means little.
+  if (spec.kind === 'gauss' && support[0] < spec.center / 4) return NaN;
   const key = JSON.stringify(spec);
   if (!coherenceCache.has(key)) {
     if (coherenceCache.size > 64) coherenceCache.clear();
@@ -113,25 +119,38 @@ function halfVisibilityPathMm(spec, [lo, hi]) {
   // is resolved without oversampling the rest. S(λ) dλ = S(1/k) dk / k².
   const octaves = [];
   for (let a = lo; a < hi; a = Math.min(hi, a * 2)) octaves.push([1 / Math.min(hi, a * 2), 1 / a]);
-  const moments = dNm => {
-    let re = 0, im = 0, norm = 0, first = 0, second = 0;
+  // Sum f(k, weight) over the band at the sampling a path difference dNm needs.
+  const integrate = (dNm, f) => {
     for (const [ka, kb] of octaves) {
       const n = 2 * Math.min(32768, Math.ceil(Math.max(16, 16 * dNm * (kb - ka))));
       const h = (kb - ka) / n;
       for (let i = 0; i <= n; i++) {
         const k = ka + h * i;
-        const weight = (i === 0 || i === n ? 1 : i % 2 ? 4 : 2) * h * Math.max(0, spectrumWeight(spec, 1 / k)) / (k * k);
-        const phase = 2 * Math.PI * dNm * k;
-        re += weight * Math.cos(phase); im += weight * Math.sin(phase);
-        norm += weight; first += weight * k; second += weight * k * k;
+        f(k, (i === 0 || i === n ? 1 : i % 2 ? 4 : 2) * h * Math.max(0, spectrumWeight(spec, 1 / k)) / (k * k));
       }
     }
-    return { visibility: norm > 0 ? Math.hypot(re, im) / norm : NaN, norm, mean: first / norm, meanSquare: second / norm };
   };
-  const at0 = moments(0);
-  if (!(at0.norm > 0)) return null;
-  const sigmaK = Math.sqrt(Math.max(0, at0.meanSquare - at0.mean ** 2));
-  if (!(sigmaK > 0)) return null;
+  // The band's width in k, from moments centred on its own mean: for a
+  // nanosecond pulse the width is twelve orders below k itself, and
+  // <k²> - <k>² would be all rounding error.
+  let norm = 0, first = 0;
+  integrate(0, (k, weight) => { norm += weight; first += weight * k; });
+  if (!(norm > 0)) return NaN;
+  const mean = first / norm;
+  let spread = 0;
+  integrate(0, (k, weight) => { spread += weight * (k - mean) ** 2; });
+  const sigmaK = Math.sqrt(spread / norm);
+  if (!(sigmaK > 0)) return NaN;
+  // Phases are taken about the mean too, so a long path difference does not
+  // spend its precision on the carrier.
+  const visibility = dNm => {
+    let re = 0, im = 0;
+    integrate(dNm, (k, weight) => {
+      const phase = 2 * Math.PI * dNm * (k - mean);
+      re += weight * Math.cos(phase); im += weight * Math.sin(phase);
+    });
+    return Math.hypot(re, im) / norm;
+  };
   // A Gaussian reaches one half at 1.18 of this scale and a flat band at
   // 1.09; step well inside it and stop far beyond it.
   const scaleNm = 1 / (2 * Math.PI * sigmaK);
@@ -139,13 +158,13 @@ function halfVisibilityPathMm(spec, [lo, hi]) {
   let below = 0;
   for (let i = 1; i <= 16 * 40; i++) {
     const d = i * step;
-    const v = moments(d).visibility;
+    const v = visibility(d);
     if (!Number.isFinite(v)) return NaN;
     if (v <= 0.5) {
       let a = below, b = d;
       for (let n = 0; n < 40; n++) {
         const mid = (a + b) / 2;
-        if (moments(mid).visibility > 0.5) a = mid; else b = mid;
+        if (visibility(mid) > 0.5) a = mid; else b = mid;
       }
       return (a + b) / 2 * 1e-6;
     }

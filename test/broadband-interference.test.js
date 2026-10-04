@@ -435,7 +435,8 @@ test('the coherence length is where an arm mismatch halves the fringe contrast',
     { amplitude: Math.SQRT1_2, opdMm: 0, phaseRad: 0 }, { amplitude: Math.SQRT1_2, opdMm, phaseRad }]).power;
   const at = cycles * 800e-6;
   near(port(at, 0) - port(at, Math.PI), 2 * coherenceVisibilityAt(gauss, at), 1e-4);
-  assert.ok(Math.abs(coherenceVisibilityAt(gauss, length) - 0.5) < 1e-6);
+  // An independent trapezoid in wavelength agrees to its own accuracy.
+  assert.ok(Math.abs(coherenceVisibilityAt(gauss, length) - 0.5) < 1e-4);
   // Half the duration, half the length; a wider band, a shorter one.
   Object.assign(pulsed.params, { pulseWidthFs: 75 });
   near(coherencePathMm(resolveSourceSpectrum('pulsedlaser', pulsed.params).spec), length / 2, 1e-3 * length);
@@ -443,13 +444,32 @@ test('the coherence length is where an arm mismatch halves the fringe contrast',
   Object.assign(sc.params, { scMin: 400, scMax: 700 });
   const flat = coherencePathMm(resolveSourceSpectrum('sclaser', sc.params).spec);
   assert.ok(flat > 0.2e-3 && flat < 1e-3, `${flat} mm`);
-  assert.ok(Math.abs(coherenceVisibilityAt(resolveSourceSpectrum('sclaser', sc.params).spec, flat) - 0.5) < 1e-6);
-  // A band so wide it reaches the 1 nm floor of the support is still
-  // resolved, not reported as unlimited: 800 nm, 1 fs.
+  assert.ok(Math.abs(coherenceVisibilityAt(resolveSourceSpectrum('sclaser', sc.params).spec, flat) - 0.5) < 1e-4);
+  // Every band is finite, so none may be called unlimited. A sub-cycle band
+  // (800 nm, 1 fs) is declined at once; a nanosecond pulse, whose band is
+  // twelve orders narrower than its carrier, is resolved.
   Object.assign(pulsed.params, { pulseWidthFs: 1 });
-  const widest = resolveSourceSpectrum('pulsedlaser', pulsed.params).spec;
-  near(coherencePathMm(widest), 0.3632e-3, 0.5e-6);
-  assert.match(registry.pulsedlaser.params.find(p => p.key === 'coherenceLength').readout(pulsed.params), /^≈ 0\.363 µm/);
+  const readout = registry.pulsedlaser.params.find(p => p.key === 'coherenceLength').readout;
+  assert.ok(Number.isNaN(coherencePathMm(resolveSourceSpectrum('pulsedlaser', pulsed.params).spec)));
+  assert.equal(readout(pulsed.params), 'Not resolved for this spectrum');
+  Object.assign(pulsed.params, { pulseWidthFs: 1e8 });
+  near(coherencePathMm(resolveSourceSpectrum('pulsedlaser', pulsed.params).spec), 30138.995, 0.01);
+  assert.match(readout(pulsed.params), /^≈ 30100 mm/);
+  // Across the source's whole range the answer is a positive length or a
+  // declined sub-cycle band, promptly, and near c x duration once narrow.
+  for (const wavelength of [200, 532, 800, 1550, 12000]) {
+    for (const pulseWidthFs of [1, 3, 10, 30, 150, 1e4, 1e6, 1e9]) {
+      Object.assign(pulsed.params, { wavelength, pulseWidthFs });
+      const spec = resolveSourceSpectrum('pulsedlaser', pulsed.params).spec;
+      const started = performance.now();
+      const value = coherencePathMm(spec);
+      assert.ok(performance.now() - started < 250, `${wavelength} nm, ${pulseWidthFs} fs is slow`);
+      assert.ok(Number.isNaN(value) || value > 0, `${wavelength} nm, ${pulseWidthFs} fs: ${value}`);
+      const cycles = pulseWidthFs * 299.792458 / wavelength;
+      if (cycles > 20) assert.ok(Math.abs(value / (0.299792458e-3 * pulseWidthFs) - 1) < 0.01, `${wavelength} nm, ${pulseWidthFs} fs: ${value}`);
+      if (cycles < 0.5) assert.ok(Number.isNaN(value));
+    }
+  }
   // No band, no limit to report. A sampled profile is finite but not one of
   // the supported source shapes: declined, and never called unlimited.
   assert.equal(coherencePathMm(null), null);

@@ -99,11 +99,14 @@ flat continuum gives a fraction of a micrometre. A chirped pulse of the same
 bandwidth has the same value. It is an estimate of the source, not of a particular
 layout: unequal splitting or polarization lowers the contrast further.
 
-The integral is taken in wavenumber, one octave of wavelength at a time, and the
-search is scaled by the spectrum's own r.m.s. width. Only the single-band source
-shapes (Gaussian and flat) are supported. The readout says "Not limited by this
-spectrum" only when the source has no band at all, and "Not resolved for this
-spectrum" if a finite band yields no crossing.
+The integral is taken in wavenumber, one octave of wavelength at a time, with
+the band's width and the phases both referred to its mean, so a nanosecond pulse
+(a band twelve orders narrower than its carrier) is resolved. Only the
+single-band source shapes (Gaussian and flat) are supported. The readout says
+"Not limited by this spectrum" only when the source has no band at all. It says
+"Not resolved for this spectrum" for a sub-cycle pulse, whose band reaches below
+a quarter of its centre wavelength: the Gaussian-in-wavelength source shape is
+clipped at the 1 nm floor there and no longer describes a pulse.
 
 This is not the CW laser's coherence-length parameter under another name. That
 parameter is the full width at half maximum of the laser's visibility envelope
