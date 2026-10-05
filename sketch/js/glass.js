@@ -106,6 +106,23 @@ function sellmeierTerms(glass, wavelengthNm) {
   return { wavelengthUm, squaredIndex, first, second };
 }
 
+// Continuous calculator evaluation of the same analytic terms, without the
+// tracer's cache buckets or out-of-range clamping. Existing getters retain
+// their behavior, so saved scenes and tracing results are unaffected.
+export function glassDispersion(id, wavelengthNm) {
+  const glass = GLASSES.get(id);
+  if (!glass || typeof wavelengthNm !== 'number' || !Number.isFinite(wavelengthNm)
+      || !isWavelengthInGlassRange(id, wavelengthNm)) return null;
+  const { wavelengthUm, squaredIndex, first, second } = sellmeierTerms(glass, wavelengthNm);
+  const index = Math.sqrt(squaredIndex);
+  const dn = first / (2 * index);
+  const d2n = second / (2 * index) - first ** 2 / (4 * index ** 3);
+  const groupIndex = index - wavelengthUm * dn;
+  const gvdFs2PerMm = wavelengthUm ** 3 * d2n * 1e21 / (2 * Math.PI * C_METRES_PER_SECOND ** 2);
+  return [index, groupIndex, gvdFs2PerMm].every(Number.isFinite)
+    ? { index, groupIndex, gvdFs2PerMm } : null;
+}
+
 // Refractive index of a catalogue glass at a wavelength, in nm.
 export function glassIndex(id, wavelength = LAMBDA_D) {
   const glass = GLASSES.get(id);

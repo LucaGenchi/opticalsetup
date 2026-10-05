@@ -95,7 +95,7 @@ ${withKatex ? `<link rel="stylesheet" href="${base}/wiki/assets/katex.min.css">\
 }
 
 const footer = base => `
-  <footer class="wiki-footer">Calculators run the functions OpticalSetup itself uses and state how each was checked. They are not a substitute for design software: read each page’s precision section before relying on a number. See <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/docs/validation.md" target="_blank" rel="noopener">the validation table</a>, or <a href="${base}/sketch/">open the canvas</a>.</footer>`;
+  <footer class="wiki-footer">Calculators evaluate optical models, reuse workbench functions where available, and state how each was checked. They are not a substitute for design software: read each page’s precision section before relying on a number. See <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/docs/validation.md" target="_blank" rel="noopener">the validation table</a>, or <a href="${base}/sketch/">open the canvas</a>.</footer>`;
 
 // The same html/formulas/html2/formulas2/... sequence as the wiki, so a
 // formula sits in the paragraph that explains it. A key outside the
@@ -128,6 +128,11 @@ ${section.rows.map(([symbol, name, unit, meaning]) => `<tr><td class="sym">${sym
 function calculatorPage(calc) {
   const base = '../..';
   const refCount = calc.references.length;
+  for (const ref of calc.references) {
+    if (!ref.label || !ref.url || !/^https?:\/\//.test(ref.url)) {
+      throw new Error(`${calc.slug}: each reference needs a label and an HTTP(S) URL`);
+    }
+  }
   // Every [n] in the content must point at a reference that exists.
   const allHtml = JSON.stringify(calc);
   for (const m of allHtml.matchAll(/#ref-(\d+)/g)) {
@@ -159,13 +164,13 @@ ${header(base)}
       </div>
     </section>
 
-    <section class="calc-graphs" aria-label="Graphs">
+    ${calc.graphs.length ? `<section class="calc-graphs" aria-label="Graphs">
       ${calc.graphs.map((g, i) => `<figure class="calc-chart" id="chart-${g.id}">
         <figcaption><span class="chart-num">${i + 1}</span><span><b>${esc(g.title)}</b><br><span class="chart-note">${esc(g.note)}</span></span></figcaption>
         <div class="chart-host" data-chart="${g.id}"></div>
         <details class="chart-data"><summary>Data table</summary><div class="chart-table" data-table="${g.id}"></div></details>
       </figure>`).join('\n      ')}
-    </section>
+    </section>` : ''}
 
     <nav class="calc-toc" aria-label="On this page">
       ${calc.sections.map(s => `<a href="#${s.id}">${esc(s.title)}</a>`).join('\n      ')}
@@ -204,7 +209,7 @@ ${header(base)}
   <main class="calc-page">
     <div class="hub-hero">
       <h1>Calculators</h1>
-      <p>Each calculator is one physical model on one page: set the parameters, read the results and graphs, then the physics behind them, with every formula, its assumptions, how precisely it is evaluated and the literature it comes from. They run the same functions as the canvas, so a number you check here is the number the app computes. More calculators will be added over time.</p>
+      <p>Each calculator is one physical model on one page: set the parameters, read the results and graphs, then the physics behind them, with every formula, its assumptions, how precisely it is evaluated and the literature it comes from. Material models reuse the canvas’s catalogue and equations; wavelength converters evaluate frequency relations directly. Each page states its scope and reference checks.</p>
     </div>
     <div class="calc-cards">
       ${calculators.map(c => `<a class="calc-card" href="${base}/calculators/${c.slug}/"><b>${esc(c.title)}</b><span>${esc(c.card)}</span></a>`).join('\n      ')}

@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-import { glassAbbe, glassGVD, glassGroupDelayDifferenceFs, glassGroupIndex, glassIndex, gaussianPulseDurationAfterGDD, sech2PulseDurationAfterGDD, AUTOCORRELATION_FACTORS } from '../sketch/js/glass.js';
+import { glassDispersion, glassAbbe, glassGVD, glassGroupDelayDifferenceFs, glassGroupIndex, glassIndex, gaussianPulseDurationAfterGDD, sech2PulseDurationAfterGDD, AUTOCORRELATION_FACTORS } from '../sketch/js/glass.js';
 import { transformLimitedBandwidthNm } from '../sketch/js/spectrum.js';
 import { hollowCoreCoefficients, marcatiliLossDbPerM } from '../sketch/js/fiber.js';
 import { propagateEnvelope, fieldMetrics } from '../sketch/js/pulse-field.js';
@@ -16,6 +16,8 @@ import { finesseForReflectivity, reflectivityForFinesse } from '../sketch/js/eta
 import { parametricGainCoefficient, parametricPair, parametricSmallSignalGain } from '../sketch/js/parametric.js';
 import { allocateParametricAmplifier } from '../sketch/js/parametric-amplifier.js';
 import { spectralFieldResult } from '../sketch/js/spectral-coherence.js';
+import { SHG_DEFAULTS, computeShg } from '../calculators/shg/shg-calculator.js';
+import { CARS_DEFAULTS, computeCars } from '../calculators/cars/cars-calculator.js';
 import { coupledWaveConversion } from '../calculators/opa/coupled-wave.js';
 
 // The quantitative models listed in docs/validation.md are checked against
@@ -38,8 +40,11 @@ const C_NM_PER_FS = 299.792458;
 // How each reference case is answered by the app. Returns an object with the
 // same keys as the case's `expected`.
 const APP = {
+  'wavelength-conversion': ({ kind, ...inputs }) => kind === 'shg'
+    ? computeShg({ ...SHG_DEFAULTS, ...inputs }) : computeCars({ ...CARS_DEFAULTS, ...inputs }),
   'broadband-interference': ({ spec, terms }) => ({ power: spectralFieldResult(spec, terms)?.power }),
-  sellmeier: ({ glass, wavelengthNm, loNm, hiNm, lengthMm }) => {
+  sellmeier: ({ glass, wavelengthNm, loNm, hiNm, lengthMm, continuous }) => {
+    if (continuous) return glassDispersion(glass, wavelengthNm);
     if (loNm !== undefined) {
       // The data sheet's principal dispersion: the F and C line indices, not a delay.
       if (lengthMm === undefined) return { nFMinusNC: glassIndex(glass, loNm) - glassIndex(glass, hiNm) };
@@ -137,7 +142,7 @@ const APP = {
   },
 };
 
-for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference']) {
+for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'wavelength-conversion']) {
   const model = expected(name);
   for (const c of model.cases) {
     test(`${model.id}: ${c.name}`, () => {

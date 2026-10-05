@@ -9,11 +9,14 @@
 // are TeX, pre-rendered by KaTeX at build time; `cite(n)` refers to the
 // page's numbered reference list.
 
+import { wavelengthCalculators } from './calculators-wavelength-content.mjs';
+
 export const cite = (...n) => n.map(k => `<a class="cite" href="#ref-${k}">[${k}]</a>`).join('');
 
 const GITHUB = 'https://github.com/LucaGenchi/opticalsetup/blob/main';
 
 export const calculators = [
+  ...wavelengthCalculators,
   {
     slug: 'opa',
     title: 'Optical parametric amplifier (OPA)',

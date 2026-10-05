@@ -169,13 +169,34 @@ def cases():
             "expected": {"groupDelayDifferenceFs": sig(delay)},
             "tolerance": {"groupDelayDifferenceFs": 1e-5},
         })
+    # Calculator path: continuous analytic terms, without tracer buckets.
+    domains = {"nbk7": (300, 2500), "silica": (210, 3710),
+               "nsf5": (380, 2500), "nsf11": (370, 2500)}
+    for glass, (lo, hi) in domains.items():
+        for nm in (lo, hi, 587.5618, 800.25, 1300):
+            um = nm / 1000
+            out.append({
+                "name": f"continuous {glass} at {nm} nm",
+                "inputs": {"glass": glass, "wavelengthNm": nm, "continuous": True},
+                "expected": {"index": sig(index(glass, um)),
+                             "groupIndex": sig(group_index(glass, um)),
+                             "gvdFs2PerMm": sig(gvd_fs2_per_mm(glass, um))},
+                "tolerance": {"index": 1e-7, "groupIndex": 1e-6, "gvdFs2PerMm": 2e-4},
+            })
+    out.append({
+        "name": "continuous silica near zero GVD",
+        "inputs": {"glass": "silica", "wavelengthNm": 1272.6, "continuous": True},
+        "expected": {"gvdFs2PerMm": sig(gvd_fs2_per_mm("silica", 1.2726))},
+        "tolerance": {"gvdFs2PerMm": 2e-4}, "absolute": True,
+        "note": "Near zero GVD use 2e-4 fs^2/mm absolute for derivative cancellation.",
+    })
     return out
 
 
 MODEL = {
     "id": "sellmeier",
     "title": "Catalogue glass dispersion (Sellmeier)",
-    "app": "sketch/js/glass.js: glassIndex, glassGroupIndex, glassGVD, glassAbbe, glassGroupDelayDifferenceFs",
+    "app": "sketch/js/glass.js: glassIndex, glassGroupIndex, glassGVD, glassAbbe, glassGroupDelayDifferenceFs, glassDispersion",
     "reference": "Published Sellmeier coefficients evaluated directly; derivatives by five-point finite differences",
     "citations": [
         "SCHOTT AG, data sheet N-BK7 517642.251 (2007-09-19): Sellmeier constants and the tabulated indices used as anchors here — https://www.schott.com/shop/medias/schott-datasheet-n-bk7-eng.pdf",
@@ -183,11 +204,11 @@ MODEL = {
         "I. H. Malitson, 'Interspecimen comparison of the refractive index of fused silica', J. Opt. Soc. Am. 55, 1205-1208 (1965), doi:10.1364/JOSA.55.001205 (absolute residual 1.05e-5 over 0.21-3.71 um)",
     ],
     "provenance": "Coefficients transcribed from the manufacturer data sheets and Malitson's paper; the anchors are the same data sheet's tabulated catalogue values, not established as independent of the data behind the fit.",
-    "domain": "365-2325 nm for N-BK7 (the data sheet's own line list); 400-1550 nm evaluated for every catalogue glass.",
+    "domain": "365-2325 nm for N-BK7 (the data sheet's own line list); 400-1550 nm evaluated for every catalogue glass; continuous calculator path also checked at all fit endpoints and fractional wavelengths.",
     "convergence": "Derivatives by five-point finite differences at h = 1e-4 um. Halving the step changes the GVD by the amounts below -- evidence that the tolerance sits well above the step's influence at these wavelengths, not a bound on the total error.",
     "convergence_keys": ["GVD of"],
-    "tolerance_rationale": "Index 1e-7 and group index 1e-6 are algebraic agreement between two evaluations of the same closed form. GVD 2e-4 covers the finite-difference truncation; 2e-3 at 587.6 nm covers the app's 1 nm GVD bucket, which evaluates 588 nm. The published anchors use 1e-5 absolute, the data sheet's own rounding.",
-    "outside_scope": "Clamps: `glassIndex` and `glassGVD` evaluate the fit at the nearest edge of the glass's range and return that value (N-SF11 at 300 nm returns its 370 nm index). `isWavelengthInGlassRange` reports whether a wavelength is inside; the tracer uses it to colour out-of-range light, but the getters themselves do not refuse.",
+    "tolerance_rationale": "Index 1e-7 and group index 1e-6 are algebraic agreement between two evaluations of the same closed form. GVD 2e-4 covers the finite-difference truncation; 2e-3 at 587.6 nm covers the app's 1 nm GVD bucket, which evaluates 588 nm. Continuous calculator GVD has no bucket offset and uses 2e-4 relative, or 2e-4 fs^2/mm absolute near zero. The published anchors use 1e-5 absolute, the data sheet's own rounding.",
+    "outside_scope": "Clamps: `glassIndex` and `glassGVD` evaluate the fit at the nearest edge of the glass's range and return that value (N-SF11 at 300 nm returns its 370 nm index). `isWavelengthInGlassRange` reports whether a wavelength is inside; the tracer uses it to colour out-of-range light, but the getters themselves do not refuse. The continuous glassDispersion calculator path instead returns null outside the fit domain.",
     "fidelity": "computed",
     "scope": "Room-temperature catalogue curves inside each glass's stated range; no absorption, temperature or stress dependence.",
 }
