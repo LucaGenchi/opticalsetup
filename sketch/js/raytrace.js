@@ -7146,7 +7146,7 @@ export function traceScene(elements, beams = [], options = {}) {
     });
     const allPaths = collect
       ? traceWithCoherentGrouping(rays0, surfaces, couplings, writeHits, signalHits)
-      : traceWithCoherentGrouping(rays0, surfaces, null, [], []);
+      : traceWithCoherentGrouping(rays0, surfaces, couplings, [], []);
     if (!collect) continue;
     // Rays tagged hidden (a partial mirror's transmitted leak with its
     // "Display transmitted beam" toggle off) are retained by the bounded
@@ -7191,6 +7191,7 @@ export function traceScene(elements, beams = [], options = {}) {
     let converged = false;
     try {
       emitSources(false);
+      emitFibers(false);
       for (const s of surfaces) {
         if (s.kind !== 'specimen' && !(s.kind === 'transmit' && MIX_CONVERTS.has(s.data.convert))
             && !(s.kind === 'attenuate' && s.data.specimen)) continue;
@@ -7207,6 +7208,8 @@ export function traceScene(elements, beams = [], options = {}) {
       previousPlans = fingerprint;
     } finally {
       specimenProbe = null;
+      couplings.length = 0;
+      hollowReadings.clear();
       detectorHits = new Map();
       detectorMisses = new Map();
       incompleteCoherenceIds = new Map();
@@ -7220,69 +7223,75 @@ export function traceScene(elements, beams = [], options = {}) {
   }
   emitSources(true);
 
-  // Follow chained fibers within a bounded emission budget. A feedback loop
-  // must terminate, but a computational stop must never look like absorption.
-  let fiberBudget = Number.isInteger(options.fiberEmissionBudget) && options.fiberEmissionBudget >= 0
-    ? Math.min(options.fiberEmissionBudget, FIBER_EMISSION_BUDGET) : FIBER_EMISSION_BUDGET;
-  const emitted = new Set();
-  for (let pass = 0; pass < MAX_FIBER_HOPS && couplings.length; pass++) {
-    const batch = couplings.splice(0, couplings.length);
-    // An argon capillary sees one pulse, not K ray samples: gather what
-    // arrives at the same end from the same source before deriving its pulse
-    // energy, so the ray count changes neither the nonlinear strength nor the
-    // transmitted power. Ordinary fibers keep their per-coupling path.
-    const argon = new Map(), ordinary = [];
-    for (const c of batch) {
-      if (c.beam.fiberModel !== 'argon') { ordinary.push(c); continue; }
-      const key = c.beam.id + ':' + c.end + ':' + (c.sourceId || 'cw');
-      const prev = argon.get(key);
-      if (!prev) { argon.set(key, { ...c }); continue; }
-      mergeCoupling(prev, c);
-    }
-    // Two sources into one capillary end form no single envelope.
-    const argonGroups = [...argon.values()];
-    for (const c of argonGroups) {
-      c.incompatibleEnvelope ||= argonGroups.some(other => other !== c && other.beam.id === c.beam.id
-        && other.end === c.end && other.sourceId !== c.sourceId);
-    }
-    // Couplings merged into one emission below keep every history among them.
-    // Only couplings of the same light share an emission: independent sources
-    // (two CW lasers carry no pulse id to tell them apart) are keyed by the
-    // source that emitted them, so one can never displace the other, and
-    // light in a different state is kept apart (couplingStateKey).
-    const emissionKey = c => c.beam.id + ':' + c.end + ':' + Math.round(c.wl || 0) + ':' + (c.pulse?.sourceId || 'cw') + ':' + Math.round(c.opl || 0)
-      + ':' + (c.originId || '') + ':' + couplingStateKey(c);
-    // One emission carries all the light merged into it: a beam-mode source
-    // couples its 25 samples one by one, and relaunching only the first
-    // delivered 1/25 of its power. Merged couplings agree on their state (the
-    // key says so), so the first coupling's spectrum, polarization and
-    // dispersion describe all of them.
-    const emissions = new Map();
-    for (const c of [...ordinary, ...argonGroups]) {
-      const key = emissionKey(c);
-      const prev = emissions.get(key);
-      if (!prev) emissions.set(key, { ...c });
-      else mergeCoupling(prev, c);
-    }
-    for (const [key, c] of emissions) {
-      if (emitted.has(key)) continue;
-      emitted.add(key);
-      if (fiberBudget === 0) {
-        noteWeakLightShortfall(c.originId, c.power);
-        continue;
+  // Planning and final tracing use the same fiber transport, including
+  // coupling, loss, dispersion, spectrum changes, and parametric history.
+  function emitFibers(collect) {
+    // Follow chained fibers within a bounded emission budget. A feedback loop
+    // must terminate, but a computational stop must never look like absorption.
+    let fiberBudget = Number.isInteger(options.fiberEmissionBudget) && options.fiberEmissionBudget >= 0
+      ? Math.min(options.fiberEmissionBudget, FIBER_EMISSION_BUDGET) : FIBER_EMISSION_BUDGET;
+    const emitted = new Set();
+    for (let pass = 0; pass < MAX_FIBER_HOPS && couplings.length; pass++) {
+      const batch = couplings.splice(0, couplings.length);
+      // An argon capillary sees one pulse, not K ray samples: gather what
+      // arrives at the same end from the same source before deriving its pulse
+      // energy, so the ray count changes neither the nonlinear strength nor the
+      // transmitted power. Ordinary fibers keep their per-coupling path.
+      const argon = new Map(), ordinary = [];
+      for (const c of batch) {
+        if (c.beam.fiberModel !== 'argon') { ordinary.push(c); continue; }
+        const key = c.beam.id + ':' + c.end + ':' + (c.sourceId || 'cw');
+        const prev = argon.get(key);
+        if (!prev) { argon.set(key, { ...c }); continue; }
+        mergeCoupling(prev, c);
       }
-      fiberBudget--;
-      const rays0 = fiberEmissionRays(c);
-      if (!rays0) continue;
-      const traced = traceRays(rays0, surfaces, couplings, writeHits, signalHits);
-      lastPowerPaths.push(...traced);
-      const paths = traced.filter(r => !r.hidden);
-      lastPaths.push(...paths);
-      assembleDrawables(paths, { K: rays0.length, isBeam: true, fixedColor: null }, drawables);
-      collectPulseTracks(paths, rays0.length, null, pulseTracks);
+      // Two sources into one capillary end form no single envelope.
+      const argonGroups = [...argon.values()];
+      for (const c of argonGroups) {
+        c.incompatibleEnvelope ||= argonGroups.some(other => other !== c && other.beam.id === c.beam.id
+          && other.end === c.end && other.sourceId !== c.sourceId);
+      }
+      // Couplings merged into one emission below keep every history among them.
+      // Only couplings of the same light share an emission: independent sources
+      // (two CW lasers carry no pulse id to tell them apart) are keyed by the
+      // source that emitted them, so one can never displace the other, and
+      // light in a different state is kept apart (couplingStateKey).
+      const emissionKey = c => c.beam.id + ':' + c.end + ':' + Math.round(c.wl || 0) + ':' + (c.pulse?.sourceId || 'cw') + ':' + Math.round(c.opl || 0)
+        + ':' + (c.originId || '') + ':' + couplingStateKey(c);
+      // One emission carries all the light merged into it: a beam-mode source
+      // couples its 25 samples one by one, and relaunching only the first
+      // delivered 1/25 of its power. Merged couplings agree on their state (the
+      // key says so), so the first coupling's spectrum, polarization and
+      // dispersion describe all of them.
+      const emissions = new Map();
+      for (const c of [...ordinary, ...argonGroups]) {
+        const key = emissionKey(c);
+        const prev = emissions.get(key);
+        if (!prev) emissions.set(key, { ...c });
+        else mergeCoupling(prev, c);
+      }
+      for (const [key, c] of emissions) {
+        if (emitted.has(key)) continue;
+        emitted.add(key);
+        if (fiberBudget === 0) {
+          noteWeakLightShortfall(c.originId, c.power);
+          continue;
+        }
+        fiberBudget--;
+        const rays0 = fiberEmissionRays(c);
+        if (!rays0) continue;
+        const traced = traceRays(rays0, surfaces, couplings, collect ? writeHits : [], collect ? signalHits : []);
+        if (!collect) continue;
+        lastPowerPaths.push(...traced);
+        const paths = traced.filter(r => !r.hidden);
+        lastPaths.push(...paths);
+        assembleDrawables(paths, { K: rays0.length, isBeam: true, fixedColor: null }, drawables);
+        collectPulseTracks(paths, rays0.length, null, pulseTracks);
+      }
     }
+    for (const c of couplings) noteWeakLightShortfall(c.originId, c.power);
   }
-  for (const c of couplings) noteWeakLightShortfall(c.originId, c.power);
+  emitFibers(true);
   // image formation for Object elements: locate the image of the object's
   // base and tip by tracing each through every lens on its axis using real
   // per-surface thin-lens physics (two rays per point, then intersect the
