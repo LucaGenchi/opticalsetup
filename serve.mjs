@@ -23,6 +23,10 @@ createServer(async (req, res) => {
       res.writeHead(405, { Allow: 'GET, HEAD' }); res.end(); return;
     }
     let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+    // A published site keeps each release's app at /v1.2/sketch/. Locally
+    // there is one working tree, so those paths show it instead: enough to
+    // follow a pinned share link, not a copy of that release.
+    p = p.replace(/^\/v\d+\.\d+(?=\/)/, '');
     if (p.endsWith('/')) p += 'index.html';
     const file = normalize(join(ROOT, p.replace(/^\/+/, '')));
     if (!file.startsWith(ROOT)) { res.writeHead(403); res.end(); return; }

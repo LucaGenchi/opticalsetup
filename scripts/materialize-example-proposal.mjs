@@ -172,7 +172,8 @@ function decodeBase64URL(value) {
 export function sceneFromShareURL(value) {
   let url;
   try { url = new URL(value); } catch (_) { throw new Error('Share link is not a valid URL'); }
-  const location = `${url.hostname.toLowerCase()}${url.pathname}`;
+  // A link pinned to a kept release (/v1.2/sketch/) is the same address.
+  const location = `${url.hostname.toLowerCase()}${url.pathname.replace(/\/v\d+\.\d+\/sketch\/$/, '/sketch/')}`;
   if (url.protocol !== 'https:' || !ALLOWED_SHARE_LOCATIONS.has(location)) {
     throw new Error('Share link must use an official OpticalSetup address');
   }

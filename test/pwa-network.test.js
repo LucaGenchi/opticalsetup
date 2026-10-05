@@ -55,12 +55,22 @@ test('successful online responses still update the offline cache', async () => {
   assert.deepEqual(cachedResponse, { cachedCopy: true });
 });
 
-test('a failed network request still uses the cached response', async () => {
-  const cached = { offline: true };
+test('a failed network request still uses the cached response, from this app\'s own cache', async () => {
+  const cached = { offline: true }; let opened;
   const fetchRequest = worker({
     fetch: async () => { throw Error('Offline'); },
-    open: async () => { throw Error('Must not open cache for writing'); },
-    match: async () => cached,
+    open: async name => { opened = name; return { put: async () => { throw Error('Must not write while offline'); }, match: async () => cached }; },
+    // Another app copy on the same origin may hold this URL too.
+    match: async () => { throw Error('Must not search every cache on the origin'); },
   });
   assert.equal(await fetchRequest(request), cached);
+  assert.match(opened, /^opticalsetup-pwa-v\d+$/);
+});
+
+test('offline with cache storage unavailable is a network error, not a crash', async () => {
+  const fetchRequest = worker({
+    fetch: async () => { throw Error('Offline'); },
+    open: async () => { throw Error('Cache storage unavailable'); },
+  });
+  assert.equal((await fetchRequest(request)).type, 'error');
 });

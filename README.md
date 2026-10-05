@@ -104,6 +104,10 @@ npm test               # runs the regression suite
 
 (Any static file server works; ES modules require http(s), not file://.)
 
+The public site is published by release, not by merge, and each released app
+stays available at `/vMAJOR.MINOR/sketch/` so that shared links keep opening
+the app that made them; see [docs/release-policy.md](docs/release-policy.md).
+
 ## Feedback and contributing
 
 To contribute a setup, press **Propose** in the toolbar: it submits the

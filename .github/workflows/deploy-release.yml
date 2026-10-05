@@ -1,0 +1,89 @@
+name: Deploy release
+
+# The public site changes only here, and only when a release is cut: merging
+# a release pull request appends to releases.json, which starts this run.
+# Ordinary merges to main do not touch that file and are not deployed. A
+# manual run redeploys the latest release, never the tip of main. See
+# docs/release-policy.md.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - releases.json
+  workflow_dispatch:
+
+permissions:
+  contents: write   # to tag the release commit
+  pages: write
+  id-token: write
+
+concurrency:
+  group: deploy-release
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Kept releases are read from their tags.
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Find the release to deploy
+        id: release
+        run: |
+          set -e
+          version="$(node tools/release.mjs current)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ -z "$version" ]; then
+            echo "No release has been cut yet; nothing to deploy."
+          fi
+
+      # A release that has no tag yet is the one this push just merged. It is
+      # tagged only if the commit is byte for byte what the release recorded,
+      # so a release prepared before later changes landed cannot go out.
+      - name: Tag a newly merged release
+        if: steps.release.outputs.version != ''
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -e
+          # new: this commit added the release. tagged: a redeploy. A release
+          # that was published earlier and has lost its tag fails here; a tag
+          # is never recreated on whatever commit happens to be checked out.
+          state="$(node tools/release.mjs tag-state)"
+          if [ "$state" = "new" ]; then
+            node tools/release.mjs verify --tree
+            git tag "$VERSION"
+            git push origin "refs/tags/$VERSION"
+          else
+            echo "$VERSION is already tagged; redeploying it."
+          fi
+
+      - name: Stage the released site and every kept release
+        if: steps.release.outputs.version != ''
+        run: node tools/stage-site.mjs "$RUNNER_TEMP/site"
+
+      - uses: actions/configure-pages@v5
+        if: steps.release.outputs.version != ''
+
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.release.outputs.version != ''
+        with:
+          path: ${{ runner.temp }}/site
+
+      - name: Deploy
+        if: steps.release.outputs.version != ''
+        id: deployment
+        uses: actions/deploy-pages@v4

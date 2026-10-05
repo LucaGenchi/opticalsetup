@@ -1031,12 +1031,12 @@ export function renderInspector() {
     if (!state.embedMode) {
       h += `<div class="btnrow">${def.singleton ? '' : '<button type="button" id="inspDup">Duplicate</button>'}<button type="button" id="inspDel" class="danger">Delete</button></div>`;
       if (WIKI_TYPES.has(sel.type)) {
-        h += `<a class="wiki-link" href="../wiki/${sel.type}/">Explore this element on the Wiki →</a>`;
+        h += `<a class="wiki-link" href="/wiki/${sel.type}/">Explore this element on the Wiki →</a>`;
       }
       // An element whose physics has a calculator page links to it too: the
       // same functions, with every formula, graph and reference.
       if (def.calculator) {
-        h += `<a class="wiki-link" href="../calculators/${esc(def.calculator)}/" target="_blank" rel="noopener">Open the ${esc(def.label)} calculator →</a>`;
+        h += `<a class="wiki-link" href="/calculators/${esc(def.calculator)}/" target="_blank" rel="noopener">Open the ${esc(def.label)} calculator →</a>`;
       }
     }
     panel.innerHTML = h;
