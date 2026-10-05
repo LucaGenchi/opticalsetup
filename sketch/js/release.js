@@ -5,7 +5,7 @@
 // writes this line together with the matching entry in releases.json; do not
 // edit it by hand. It is separate from the scene JSON `version` in state.js,
 // which describes the saved-data format.
-export const APP_RELEASE = '';
+export const APP_RELEASE = 'v1.0.0';
 
 // 'v1.2.3' -> 'v1.2'. A patch release publishes content only (a community
 // setup, a wiki page, an example), so the app that draws a scene is named by

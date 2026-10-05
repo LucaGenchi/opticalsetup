@@ -1,3 +1,11 @@
 {
-  "releases": []
+  "releases": [
+    {
+      "version": "v1.0.0",
+      "date": "2026-10-05",
+      "scheme": 1,
+      "rendererSha256": "f850881482fa310e4dd5d850b41d3571aef9714ddc74986aea39301f1fabc0d8",
+      "siteSha256": "923a05895254f2106b25585d97e0b10081147765c7c517cc7dbf05d3e2f9c7f8"
+    }
+  ]
 }
