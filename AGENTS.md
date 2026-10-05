@@ -17,6 +17,16 @@ diagram-only components.
 4. Work on a focused branch named `codex/<short-topic>`; do not commit directly
    to `main`.
 
+## Choose the change workflow
+
+Read [docs/contributor-workflow.md](docs/contributor-workflow.md) before adding
+or changing a community setup, calculator, example, wiki article, or app
+element. It maps each task to its source files, generators, checks, and
+completion criteria, and explains the separate release step. This file remains
+the contributor policy; the linked specialist guides govern their own details.
+For scene construction without changing the app, see
+[skills/opticalsetup/SKILL.md](skills/opticalsetup/SKILL.md).
+
 ## Project map
 
 - `index.html` — static marketing/SEO landing page at the site root (no app
