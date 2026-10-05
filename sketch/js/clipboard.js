@@ -4,6 +4,8 @@
 // are easy to get quietly wrong -- singletons, and the sensor links that hold
 // a detector screen to its detector -- can be tested without a DOM.
 
+import { newScatterSeed } from './util.js';
+
 const clone = value => JSON.parse(JSON.stringify(value));
 
 // What of a selection can actually be copied. A singleton is excluded: there
@@ -34,6 +36,10 @@ export function pasteObjects(clipboard, {
     copy.id = newId('e');
     remap.set(src.id, copy.id);
     copy.x += offset; copy.y += offset;
+    // A copy of a diffuser is another diffuser, not the same piece of glass:
+    // with the original's pattern, two in a row would deflect every ray the
+    // same way twice instead of scattering it twice.
+    if (copy.scatterSeed !== undefined) copy.scatterSeed = newScatterSeed();
     return copy;
   });
   const newBeams = beams.map(src => {

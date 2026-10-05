@@ -8,7 +8,7 @@ Audience: repo maintainers with merge rights on `main` (currently Luca Genchi an
 2. The **"Materialize example proposal"** workflow parses, validates, traces, and exports that scene, then opens a pull request titled **"Propose community setup: `<name>`"** that adds one file: `community-submissions/issue-N.json`.
 3. **Merging that PR is the approval.** There is no separate status field or flag to flip — if you merge it, it's approved; if you close it instead, it's rejected. Nothing else happens on close.
 4. Merging triggers the **"Publish approved community setups"** workflow, which runs `node tools/build-community.mjs` (deterministic — same input always produces the same output) and opens a *second* pull request titled **"Publish approved community setups"**, containing only the two generated files it produced: `community/<slug>/index.html` and `sketch/js/community-data.js`.
-5. **Merging that second PR is what actually makes the setup go live** — it's what appears on the public Community page and in the app's "From the community" dropdown.
+5. **Merging that second PR publishes the setup with the next release** — it then appears on the public Community page and in the app's "From the community" dropdown. A community setup alone is a patch release (`v1.0.0 → v1.0.1`); see [release-policy.md](release-policy.md). Until releases are activated (the last section of that document), merging it makes the setup live at once, as before.
 
 **Licensing.** The submission form *offers* the author
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) for the scene and its
@@ -43,7 +43,7 @@ Two merges, both on github.com, both just the ordinary green **Merge pull reques
 1. Give it a minute or two after merging Step 1 for the "Publish approved community setups" workflow to run. You can watch it on the [Actions tab](https://github.com/LucaGenchi/opticalsetup/actions) if you want.
 2. A new PR titled **"Publish approved community setups"** appears automatically.
 3. Open it and check the **Files changed** tab — it should touch exactly `community/<slug>/index.html` and `sketch/js/community-data.js`, nothing else. There's nothing to hand-edit; it's pure generated output.
-4. Click **Merge pull request**. The setup is now live.
+4. Click **Merge pull request**. The setup goes live with the next release (a patch release is enough; see [release-policy.md](release-policy.md)).
 
 ### If the "Publish" PR never shows up
 

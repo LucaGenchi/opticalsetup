@@ -3,6 +3,8 @@
 // Self-contained share links. Scene data lives in the URL fragment, so it is
 // never sent to the static host and no server-side storage is required.
 
+import { APP_RELEASE, archivedRelease, releasePath } from './release.js';
+
 const SHARE_PREFIX = '#sketch=';
 const MAX_SHARE_HASH_CHARS = 200_000;
 const MAX_SCENE_BYTES = 1_000_000;
@@ -104,14 +106,51 @@ export async function decodeSharePayload(payload) {
   return text;
 }
 
+// These select a template or arm a placement tool, rather than describing
+// the saved scene. Keep unrelated parameters, including language settings.
+function clearSceneRoute(url) {
+  for (const key of ['demo', 'example', 'community', 'embed', 'place']) url.searchParams.delete(key);
+}
+
+export function sceneParamsFromURL(href = window.location.href) {
+  const url = new URL(href);
+  // Older share links retained their template query. Their explicit scene
+  // still takes precedence, including when its payload reports an error.
+  if (url.hash.startsWith(SHARE_PREFIX)) clearSceneRoute(url);
+  return url.searchParams;
+}
+
 export async function buildShareURL(text, href = window.location.href, options) {
   const payload = await encodeSharePayload(text, options);
   const url = new URL(href);
+  clearSceneRoute(url);
   url.hash = `sketch=${payload}`;
   if (url.hash.length > MAX_SHARE_HASH_CHARS) {
     throw new Error(TOO_LARGE_TO_SHARE);
   }
   return url.toString();
+}
+
+// The link handed to someone else names the kept copy of the app that made
+// it (/v1.2/sketch/), so a later release does not redraw it. A link made
+// inside a kept copy already names one, and with no release there is no kept
+// copy to name. The address bar keeps the unpinned form: the page that is
+// running must not start claiming another copy's path.
+export function pinShareURL(href, release = APP_RELEASE) {
+  const url = new URL(href);
+  const path = releasePath(release);
+  if (!path || archivedRelease(url.pathname)) return url.toString();
+  url.pathname = url.pathname.replace(/\/sketch(?:\/(?:index\.html)?)?$/, `/${path}/sketch/`);
+  return url.toString();
+}
+
+// The official address a proposed setup is sent with, naming the app that
+// produced it: the kept copy the author is working in, or the copy the
+// current release is kept as. A reviewer then opens the proposal in the app
+// its author saw.
+export function officialShareBase(pathname, release = APP_RELEASE) {
+  const kept = archivedRelease(pathname) || releasePath(release);
+  return `https://opticalsetup.com/${kept ? `${kept}/` : ''}sketch/`;
 }
 
 export async function sharedSceneFromURL(href = window.location.href) {
@@ -126,6 +165,7 @@ export async function sharedSceneFromURL(href = window.location.href) {
 export function clearSharedSceneURL(href = window.location.href, navigation = window.history) {
   const url = new URL(href);
   if (!url.hash.startsWith(SHARE_PREFIX)) return;
+  clearSceneRoute(url);
   url.hash = '';
   navigation.replaceState(navigation.state, '', url.toString());
 }

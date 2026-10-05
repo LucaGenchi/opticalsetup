@@ -242,6 +242,10 @@ button.danger:hover { background: var(--danger-bg); }
 .proposal-footnote { margin-top: 12px; color: var(--muted); font-size: 9.5px; line-height: 1.45; }
 
 /* ---------- layout ---------- */
+.autosave-recovery { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 14px; background: var(--accent-panel); border-bottom: 1px solid var(--accent-panel-border); }
+.autosave-recovery[hidden] { display: none; }
+.autosave-recovery p { flex: 1 1 320px; margin: 0; font-size: 12px; line-height: 1.5; }
+.autosave-recovery > div { display: flex; flex-wrap: wrap; gap: 8px; }
 main { flex: 1; display: flex; min-height: 0; position: relative; }
 
 #palette {

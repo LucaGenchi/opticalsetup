@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polarization send–return separation — Examples | OpticalSetup</title>
+<meta name="description" content="A polarizing beamsplitter and a quarter-wave plate send light out and take the reflection off at a different port, without the 75% loss of a plain beamsplitter.">
+<link rel="canonical" href="https://opticalsetup.com/example-setups/polarization-send-return-separation-pbs-and-quarter-wave-plate/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Polarization send–return separation — OpticalSetup Examples">
+<meta property="og:description" content="A polarizing beamsplitter and a quarter-wave plate send light out and take the reflection off at a different port, without the 75% loss of a plain beamsplitter.">
+<meta property="og:url" content="https://opticalsetup.com/example-setups/polarization-send-return-separation-pbs-and-quarter-wave-plate/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+<link rel="stylesheet" href="../../example-setups/assets/examples.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../calculators/">Calculators</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell" style="grid-template-columns: 1fr;">
+    <main class="wiki-article" style="max-width: 760px;">
+      <div class="crumb"><a href="../../example-setups/">Examples</a> / Beam Routing / Polarization send–return separation</div>
+      <h1>Polarization send–return separation</h1>
+      <p class="tagline" style="margin-top: 10px;">A polarizing beamsplitter and a quarter-wave plate send light out and take the reflection off at a different port, without the 75% loss of a plain beamsplitter.</p>
+
+      <a class="place-cta" href="../../sketch/?example=polarization-send-return-separation-pbs-and-quarter-wave-plate">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?example=polarization-send-return-separation-pbs-and-quarter-wave-plate&amp;embed=1"
+          title="Polarization send–return separation — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace of the setup above, shown as a picture. Open it in the canvas to take it apart, retune it, and save or export it as your own.</p>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Background</h2>
+
+      <p>Many instruments send a beam out and want the light that comes back
+      along the same line: a disc reader, a reflectance microscope, a
+      displacement interferometer, a double-passed modulator. A plain 50:50
+      beamsplitter does it, but wastefully — half the light is lost on the way
+      out and half of the return on the way back, so at best a quarter of the
+      power reaches the detector, and another quarter goes straight back into
+      the laser.</p>
+      <p>Polarization does it without the loss. A polarizing beamsplitter (PBS)
+      transmits one linear polarization and reflects the orthogonal one. Send
+      the transmitted polarization through a quarter-wave plate with its axis at
+      45° and it becomes circular. On reflection the handedness reverses, and
+      the second pass through the same plate turns it back into linear light —
+      but rotated by 90°. Two passes through a quarter-wave plate are one pass
+      through a half-wave plate<sup class="cite">[<a href="#ref-1">1</a>]</sup>. The return is now the polarization
+      the PBS reflects, so it leaves by the side port instead of retracing its
+      way to the source.</p>
+      <p>The arrangement is the standard way to double-pass an acousto-optic
+      modulator, where the return has to be separated from an input it exactly
+      overlaps<sup class="cite">[<a href="#ref-2">2</a>]</sup>, and it is the reason a quarter-wave plate sits in front
+      of the objective in an optical pickup.</p>
+      <p>It is not an optical isolator, although it is often used as one. It
+      works only if the target hands the polarization back as it received it. A
+      surface that depolarizes, or anything birefringent in the double-passed
+      path, returns some light in the original polarization, and that part goes
+      back to the laser. A Faraday isolator rotates the polarization
+      non-reciprocally and blocks the return whatever happened to it on the
+      way<sup class="cite">[<a href="#ref-3">3</a>]</sup>.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>What this setup demonstrates</h2>
+      <div class="sim-block">
+
+      <p>A horizontally polarized 532&nbsp;nm laser passes a
+      <a href="../../wiki/hwp/">half-wave plate</a>, a
+      <a href="../../wiki/pbs/">polarizing beamsplitter</a> and a
+      <a href="../../wiki/qwp/">quarter-wave plate</a> at 45°, and a lens focuses
+      it on a mirror standing in for the target. The return is recollimated by
+      the same lens, crosses the quarter-wave plate a second time, and the PBS
+      reflects all of it to the return port, which reads 1.</p>
+      <p>Things to try. Rotate the quarter-wave plate to 0°: its axis is now
+      along the polarization, it does nothing, and the whole return retraces to
+      the laser — the return port goes dark. At 22.5° the split is half and half.
+      That curve is what an alignment walks up: maximise the side port and the
+      plate is at 45°.</p>
+      <p>The half-wave plate in front is the other common use of the same cube.
+      Rotating it turns the input polarization, the PBS sends the unwanted part
+      to the beam dump on the opposite side, and what is left goes out: a
+      continuously variable attenuator. At 22.5° half the power is sent, and the
+      return port reads 0.5; at 45° nothing is sent at all. Note that the
+      rejected input and the return leave by <em>opposite</em> faces of the cube,
+      because they arrive from opposite directions.</p>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>The polarization is carried as a Stokes vector through ideal
+      components: the PBS has perfect extinction, the wave plates have exactly their
+      nominal retardance at this wavelength, and the mirror reflects without changing
+      the polarization state other than by reversing the direction of travel. A real
+      cube leaks about a part in a thousand, a real plate is a quarter wave at one
+      wavelength and one angle only, and a real target may depolarize — each of these
+      sends some of the return back to the source, and none is modelled.</p>
+      <p>There is no interference between the outgoing and returning beams, no
+      standing wave, and no feedback into the laser: light that retraces to the source
+      simply ends there.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/pbs/"><svg viewBox="-20.7 -20.7 41.4 41.4" aria-hidden="true"><rect x="-12.7" y="-12.7" width="25.4" height="25.4" fill="#d5e3f0" stroke="#3f6a92" stroke-width="1.6"/><line x1="-12.7" y1="12.7" x2="12.7" y2="-12.7" stroke="#3f6a92" stroke-width="1.6"/><text x="-12.7" y="20.7" text-anchor="start" dominant-baseline="central" font-size="8.5" fill="#3f6a92" font-weight="600" >PBS</text></svg>Polarizing BS</a><a href="../../wiki/qwp/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#e8d5ef" stroke="#8a5fa8" stroke-width="1.4"/><text x="0" y="-18.7" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#6a4a80" >λ/4</text></svg>λ/4 waveplate</a><a href="../../wiki/hwp/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#f3e3c3" stroke="#a08340" stroke-width="1.4"/><text x="0" y="-18.7" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#7a6430" >λ/2</text></svg>λ/2 waveplate</a><a href="../../wiki/mirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><line x1="0" y1="-12.7" x2="0" y2="12.7" stroke="#444" stroke-width="3.5"/><line x1="-1.5" y1="-12.7" x2="-7.5" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="-6.233333333333333" x2="-7.5" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="0.2333333333333325" x2="-7.5" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="6.699999999999999" x2="-7.5" y2="12.7" stroke="#888" stroke-width="1"/></svg>Mirror</a><a href="../../wiki/lens/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0,-12.7 Q 9,0 0,12.7 Q -9,0 0,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Thin convex lens</a><a href="../../wiki/detector/"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-18" y="-13" width="36" height="26" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">PD</text><rect x="-19.5" y="-9" width="3" height="18" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/><circle cx="11" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Photodetector</a><a href="../../wiki/beamdump/"><svg viewBox="-19 -19 38 38" aria-hidden="true"><path d="M -10,-11 L 10,-11 L 10,11 L -10,11 Z M -10,-11 L 4,0 L -10,11" fill="#26292e" stroke="#111" stroke-width="1.5"/></svg>Beam dump</a>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://www.rp-photonics.com/waveplates.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Waveplates</a></li><li id="ref-2"><a href="https://doi.org/10.1063/1.1930095" target="_blank" rel="noopener">E. A. Donley, T. P. Heavner, F. Levi, M. O. Tataw, S. R. Jefferts, “Double-pass acousto-optic modulator system,” Review of Scientific Instruments 76, 063112 (2005)</a></li><li id="ref-3"><a href="https://www.rp-photonics.com/faraday_isolators.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Faraday Isolators</a></li>
+      </ol>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/polarizers.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Polarizers</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">Examples are written and maintained with the project. For setups shared by users, see the <a href="../../community/">community section</a>; for how each component works, see the <a href="../../wiki/">wiki</a>.</footer>
+</body>
+</html>

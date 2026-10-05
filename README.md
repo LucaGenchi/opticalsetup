@@ -27,6 +27,10 @@ static files that run entirely in your browser.
 - **Measure.** Photodiodes, PMTs, cameras, spectrometers and beam probes
   report power, spectrum, polarization, beam profile and pulse timing at
   their position; a linked display shows a reading directly on the canvas.
+- **Explore interference.** Sized CW, pulsed and supercontinuum sources can
+  interfere through supported ideal interferometer optics. Broadband output
+  power and spectra follow the path difference; recombined temporal waveforms
+  are outside this model.
 - **Animate pulses.** Pulsed sources play wavelength-coloured packets along the
   traced path, with timing from the optical path length and duration that
   follows the dispersion accumulated along the way.
@@ -99,6 +103,10 @@ npm test               # runs the regression suite
 ```
 
 (Any static file server works; ES modules require http(s), not file://.)
+
+The public site is published by release, not by merge, and each released app
+stays available at `/vMAJOR.MINOR/sketch/` so that shared links keep opening
+the app that made them; see [docs/release-policy.md](docs/release-policy.md).
 
 ## Feedback and contributing
 

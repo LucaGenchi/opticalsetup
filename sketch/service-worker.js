@@ -1,6 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
-const CACHE_NAME = 'opticalsetup-pwa-v134';
+// The current app at /sketch/ and each kept release at /v1.2/sketch/ are
+// separate workers on one origin, and they share CacheStorage. Each owns a
+// family of cache names and only ever deletes, or reads, its own.
+const KEPT_RELEASE = (/\/(v\d+\.\d+)\/sketch\/$/.exec(new URL('./', self.location.href).pathname) || [])[1] || '';
+const CACHE_FAMILY = KEPT_RELEASE ? `opticalsetup-kept-${KEPT_RELEASE}-` : 'opticalsetup-pwa-';
+const CACHE_NAME = `${CACHE_FAMILY}v139`;
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -53,6 +58,7 @@ const PRECACHE_PATHS = [
   "./js/pwa.js",
   "./js/qr.js",
   "./js/raytrace.js",
+  "./js/release.js",
   "./js/share.js",
   "./js/spectrum.js",
   "./js/state.js",
@@ -80,7 +86,14 @@ const PRECACHE_PATHS = [
   "../Examples/Ultrashort%20Pulses/Hollow-core%20pulse%20compressor.json",
   "../Examples/Ultrashort%20Pulses/OPCPA%20%E2%80%94%20stretch%2C%20amplify%2C%20recompress.json",
   "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json",
-  "../Examples/Ultrashort%20Pulses/Finding%20time%20zero%20%E2%80%94%20sum%20frequency%20of%20two%20beams.json"
+  "../Examples/Ultrashort%20Pulses/Finding%20time%20zero%20%E2%80%94%20sum%20frequency%20of%20two%20beams.json",
+  "../Examples/Beam%20Routing/Polarization%20send%E2%80%93return%20separation%20%E2%80%94%20PBS%20and%20quarter-wave%20plate.json",
+  "../Examples/Beam%20Routing/Wavelength%20combining%20and%20separation%20%E2%80%94%20dichroic%20mirrors.json",
+  "../Examples/Interferometers/IQ%20optical%20modulator%20%E2%80%94%20nested%20Mach%E2%80%93Zehnder.json",
+  "../Examples/Microscopy%20Implementations/Epi-fluorescence%20microscope.json",
+  "./js/spectral-coherence.js",
+  "../Examples/Interferometers/Pulsed%20Mach%E2%80%93Zehnder.json",
+  "../Examples/Interferometers/Supercontinuum%20Mach%E2%80%93Zehnder.json"
 ];
 
 const APP_ENTRY = new URL('./', self.location.href).href;
@@ -99,7 +112,7 @@ self.addEventListener('activate', event => {
     caches.keys()
       .then(keys => Promise.all(
         keys
-          .filter(key => key.startsWith('opticalsetup-pwa-') && key !== CACHE_NAME)
+          .filter(key => key.startsWith(CACHE_FAMILY) && key !== CACHE_NAME)
           .map(key => caches.delete(key)),
       ))
       .then(() => self.clients.claim()),
@@ -120,10 +133,15 @@ async function networkFirst(request) {
     }
     return response;
   } catch {
-    const cached = await caches.match(request, { ignoreSearch: true });
+    // Only this worker's cache: caches.match() searches every cache on the
+    // origin in creation order, so it could answer with another release's
+    // module, or with a copy a previous version of this app left behind.
+    let cache;
+    try { cache = await caches.open(CACHE_NAME); } catch (_) { return Response.error(); }
+    const cached = await cache.match(request, { ignoreSearch: true });
     if (cached) return cached;
     if (request.mode === 'navigate') {
-      return (await caches.match(APP_ENTRY)) || Response.error();
+      return (await cache.match(APP_ENTRY)) || Response.error();
     }
     return Response.error();
   }

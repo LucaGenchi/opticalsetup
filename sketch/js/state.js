@@ -3,6 +3,7 @@
 // App state, undo/redo, autosave.
 
 import { distinctPoints, rotPt } from './util.js';
+import { archivedRelease } from './release.js';
 import { boundaryBounds, normalizeBoundaryPoints, normalizePolygonPoints } from './polygon.js';
 import { migrateLegacyObjectiveParams, normalizeObjectiveParams } from './objective.js';
 import { LEGACY_GLASS_ID, LEGACY_GLASS_REPLACEMENT, chirpGddForDuration } from './glass.js';
@@ -28,11 +29,22 @@ export const state = {
   // Did the last changed() reach localStorage? False means the scene exists
   // only in memory, so nothing else holding a copy of it may drop theirs.
   autosaved: false,
+  // A failed load keeps the original bytes until the visitor explicitly
+  // replaces them. Editing the starter canvas must not erase that copy.
+  autosaveRecovery: null,
 };
 
 const undoStack = [], redoStack = [];
 const listeners = [];
-const AUTOSAVE_KEY = 'optics2d-autosave-v1';
+// The current app at /sketch/ keeps one key across releases, so a new release
+// never hides saved work. A kept copy at /v1.2/sketch/ gets a key of its own:
+// it shares the origin, and an older renderer must not overwrite, or fail to
+// read, the bench saved by the current one.
+export function autosaveKeyFor(pathname) {
+  const kept = archivedRelease(pathname);
+  return kept ? `optics2d-autosave-v1@${kept}` : 'optics2d-autosave-v1';
+}
+const AUTOSAVE_KEY = autosaveKeyFor(typeof location === 'undefined' ? '' : location.pathname);
 const COLOR = /^#[0-9a-f]{6}$/i;
 
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
@@ -311,6 +323,7 @@ function normalizeElement(raw, definitions, used) {
     label: typeof raw.label === 'string' ? raw.label : '',
     showLabel: raw.showLabel === true,
     ...(raw.labelPos && ['b', 't', 'l', 'r'].includes(raw.labelPos) ? { labelPos: raw.labelPos } : {}),
+    ...(finite(raw.scatterSeed) ? { scatterSeed: Math.floor(clamp(raw.scatterSeed, 0, 0xffffffff)) } : {}),
     params,
   };
 }
@@ -363,8 +376,18 @@ export function parseSketch(text, definitions = null) {
   if (d.app !== undefined && d.app !== 'optics2d') throw new Error('Not an OpticalSetup file');
   if (d.version !== undefined && d.version !== 1) throw new Error(`Unsupported sketch version: ${d.version}`);
   const used = new Set();
+  const elements = d.elements.map(el => normalizeElement(el, definitions, used));
+  // Existing scenes used the active face's sequential surface index as their
+  // scattering seed. Capture that exact seed once on load, before any edit
+  // can reorder/remove surfaces, and retain it in subsequent saves.
+  let surfaceIndex = 0;
+  if (definitions) for (const el of elements) {
+    const def = definitions[el.type];
+    if (def.scattering && el.scatterSeed === undefined) el.scatterSeed = surfaceIndex;
+    surfaceIndex += def.surfaces?.(el).length || 0;
+  }
   return {
-    elements: d.elements.map(el => normalizeElement(el, definitions, used)),
+    elements,
     beams: (d.beams || []).map(beam => normalizeBeam(beam, used)),
   };
 }
@@ -375,7 +398,9 @@ export function changed() {
   // Wiki/example/community embeds are deliberately interactive enough to let
   // readers try parameters, but they must never replace the user's real
   // workbench autosave when both pages share the same origin.
-  if (!state.embedMode) {
+  if (state.autosaveRecovery) {
+    state.autosaved = false;
+  } else if (!state.embedMode) {
     // Whether this succeeded is not private bookkeeping: storage can be
     // disabled, full, or partitioned in private browsing, and a caller about
     // to discard the only other copy of the scene -- the share fragment --
@@ -451,16 +476,39 @@ export function deserialize(text, { resetHistory = true, definitions = null } = 
 }
 
 export function loadAutosave(definitions = null) {
+  let text = null;
   try {
-    const t = localStorage.getItem(AUTOSAVE_KEY);
-    if (t) {
-      const scene = parseSketch(t, definitions);
+    text = localStorage.getItem(AUTOSAVE_KEY);
+    if (text) {
+      const scene = parseSketch(text, definitions);
       state.elements = scene.elements; state.beams = scene.beams;
       undoStack.length = 0; redoStack.length = 0;
+      state.autosaveRecovery = null;
       return true;
     }
-  } catch (_) {
-    try { localStorage.removeItem(AUTOSAVE_KEY); } catch (_) { /* ignore */ }
+    state.autosaveRecovery = null;
+  } catch (err) {
+    state.autosaved = false;
+    // Recovery protects bytes that were read and then could not be opened.
+    // A store that cannot be read at all (blocked cookies, some private
+    // modes) handed over nothing to protect, so it stays the plain
+    // no-autosave case rather than claiming a saved setup exists.
+    state.autosaveRecovery = typeof text === 'string' ? {
+      text,
+      message: err.message?.startsWith('Unsupported sketch version:')
+        ? `${err.message}.` : 'The saved setup could not be opened.',
+    } : null;
   }
   return false;
+}
+
+// The UI asks for explicit replacement; a failed write leaves recovery
+// available and never removes the previous stored value first.
+export function replaceRecoveredAutosave() {
+  try { localStorage.setItem(AUTOSAVE_KEY, serialize()); }
+  catch (_) { return false; }
+  state.autosaveRecovery = null;
+  state.autosaved = true;
+  for (const fn of listeners) fn();
+  return true;
 }
