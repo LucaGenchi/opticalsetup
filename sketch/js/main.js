@@ -3,7 +3,7 @@
 // App bootstrap: palette, toolbar, keyboard shortcuts.
 
 import { copyableSelection, pasteObjects } from './clipboard.js';
-import { state, changed, onChange, pushUndo, undo, redo, canUndo, canRedo, findSelected, serialize, parseSketch, replaceScene, loadAutosave } from './state.js';
+import { state, changed, onChange, pushUndo, undo, redo, canUndo, canRedo, findSelected, serialize, parseSketch, replaceScene, loadAutosave, replaceRecoveredAutosave } from './state.js';
 import {
   registry, categories, createElement, getElementMeta, dataPortDirection, findFreePlacement,
 } from './elements.js';
@@ -28,7 +28,7 @@ import { buildSVG, exportSVG, exportPNG, exportGIF } from './export.js';
 import { examples } from './examples-data.js';
 import { community } from './community-data.js';
 import { download, esc, manualBeamSVG } from './util.js';
-import { buildShareURL, clearSharedSceneURL, copyText, shareURLForScene, sharedSceneFromURL } from './share.js';
+import { buildShareURL, clearSharedSceneURL, copyText, sceneParamsFromURL, shareURLForScene, sharedSceneFromURL } from './share.js';
 import { qrSVG } from './qr.js';
 import { buildExampleProposalIssueURL } from './proposal.js';
 import { recommendedTimeScale, nextAutoScale, TIME_SCALES, elementDriveHz } from './timescale.js';
@@ -46,6 +46,9 @@ function mkDemo(type, x, y, rot = 0, params = {}, extra = {}) {
   const e = createElement(type, x, y);
   e.rot = rot;
   Object.assign(e.params, params);
+  // A demo is a picture in the wiki: every visitor, and every reload, should
+  // see the same one, so its scatterers do not draw a pattern at random.
+  if (e.scatterSeed !== undefined) e.scatterSeed = 1;
   Object.assign(e, extra);
   return e;
 }
@@ -469,7 +472,7 @@ const demoScenes = {
         + '\n'
         + '> Double-click any label to edit its Markdown on the canvas.\n'
         + '\n'
-        + 'Plain addresses stay clickable: https://doi.org/10.1364/AO.1.000001',
+        + 'Plain addresses stay clickable: https://doi.org/10.1007/BF01019693',
       fontSize: 13,
     }),
   ],
@@ -1466,6 +1469,14 @@ function showToast(message) {
   }, 4200);
 }
 
+function renderAutosaveRecovery() {
+  const recovery = state.autosaveRecovery;
+  $('autosaveRecovery').hidden = state.embedMode || !recovery;
+  if (!recovery) return;
+  $('autosaveRecoveryMessage').textContent = `${recovery.message} Autosave is paused to protect the saved data. You can keep editing and use Save to download your current canvas.`;
+  $('btnDownloadRecovery').disabled = typeof recovery.text !== 'string';
+}
+
 function bindToolbar() {
   let shareUrl = '', shareQrSvg = '', shareSceneText = '';
   const about = $('aboutDialog');
@@ -1559,6 +1570,15 @@ function bindToolbar() {
     }
   });
   $('btnSave').addEventListener('click', () => download('optical-setup.json', serialize(), 'application/json'));
+  $('btnDownloadRecovery').addEventListener('click', () => {
+    const text = state.autosaveRecovery?.text;
+    if (typeof text === 'string') download('optical-setup-recovery.json', text, 'application/json');
+  });
+  $('btnReplaceRecovery').addEventListener('click', () => {
+    if (!confirm('Replace the unreadable saved setup with the current canvas? Download the saved data first if you need to keep a copy.')) return;
+    if (!replaceRecoveredAutosave()) alert('The current canvas could not be saved. The previous saved data is still protected.');
+    renderAutosaveRecovery();
+  });
   $('btnShare').addEventListener('click', async () => {
     const button = $('btnShare');
     button.disabled = true;
@@ -1812,9 +1832,33 @@ function preserveWorkbenchInUndo() {
   return true;
 }
 
+const sceneKey = scene => JSON.stringify({ elements: scene.elements, beams: scene.beams });
+
+function openSharedScene(scene) {
+  // Share parks its link in the address bar, so a reload before the next
+  // edit arrives here carrying the visitor's own saved scene. There is
+  // nothing to replace then: open it with no question, and no undo entry
+  // that would only restore the same scene.
+  if (loadAutosave(registry) && sceneKey(state) === sceneKey(scene)) {
+    replaceScene(scene, { resetHistory: true });
+    zoomFit();
+    return;
+  }
+  if (!preserveWorkbenchInUndo()) {
+    // The visitor chose the already-saved workbench. Retire the declined
+    // snapshot so a reload does not ask to replace that work again.
+    clearSharedSceneURL();
+    return;
+  }
+  // preserveWorkbenchInUndo() saved the old bench before clearing it.
+  // Keep that history when the incoming scene writes its first autosave.
+  replaceScene(scene);
+  zoomFit();
+}
+
 // ---------- boot ----------
 window.addEventListener('DOMContentLoaded', async () => {
-  const params = new URLSearchParams(location.search);
+  const params = sceneParamsFromURL();
   const demoType = params.get('demo');
   const communitySlug = params.get('community');
   const exampleSlug = params.get('example');
@@ -1943,8 +1987,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (sharedScene) {
-      replaceScene(sharedScene, { resetHistory: true });
-      zoomFit();
+      openSharedScene(sharedScene);
     } else if (!loadAutosave(registry)) {
       // Starter scene: the three sources, nothing else. A worked setup here
       // reads as "this is the thing to study" rather than "this is yours to
@@ -1984,6 +2027,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   autoAdjustTimeScale();
   syncPulseControls();
   syncMobileSheets();
+
+  renderAutosaveRecovery();
 
   if (hasLinkedScene && loadLinked) {
     zoomFit();

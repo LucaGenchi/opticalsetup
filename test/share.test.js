@@ -8,6 +8,8 @@ import {
   decodeSharePayload,
   encodeSharePayload,
   sharedSceneFromURL,
+  sceneParamsFromURL,
+  clearSharedSceneURL,
 } from '../sketch/js/share.js';
 
 const scene = JSON.stringify({
@@ -27,6 +29,24 @@ test('share URLs round-trip a scene without changing the host path', async () =>
   const url = await buildShareURL(scene, 'https://example.org/optics/?lang=en#old');
   assert.match(url, /^https:\/\/example\.org\/optics\/\?lang=en#sketch=/);
   assert.deepEqual(JSON.parse(await sharedSceneFromURL(url)), JSON.parse(scene));
+});
+
+test('sharing an edited template removes scene routing and preserves its payload', async () => {
+  for (const route of ['demo=cwlaser', 'example=microscope', 'community=submitted-setup']) {
+    const edited = JSON.stringify({ ...JSON.parse(scene), elements: [{ ...JSON.parse(scene).elements[0], params: { wavelength: 633 } }] });
+    const url = await buildShareURL(edited, `https://example.org/sketch/?${route}&embed=1&place=lens&lang=en`);
+    assert.equal(new URL(url).search, '?lang=en');
+    assert.equal(JSON.parse(await sharedSceneFromURL(url)).elements[0].params.wavelength, 633);
+  }
+});
+
+test('old template share links select the explicit scene and retire the template on import', () => {
+  const href = 'https://example.org/sketch/?demo=cwlaser&example=x&community=y&embed=1&place=lens&lang=en#sketch=j.payload';
+  assert.equal(sceneParamsFromURL(href).toString(), 'lang=en');
+  let cleared;
+  clearSharedSceneURL(href, { state: null, replaceState(_state, _title, url) { cleared = url; } });
+  assert.equal(cleared, 'https://example.org/sketch/?lang=en');
+  assert.equal(sceneParamsFromURL('https://example.org/sketch/?demo=cwlaser&embed=1#help').toString(), 'demo=cwlaser&embed=1');
 });
 
 test('compressed share payloads round-trip when stream compression is available', async (t) => {
