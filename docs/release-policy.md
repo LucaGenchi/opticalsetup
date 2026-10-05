@@ -87,9 +87,12 @@ unreleased work.
 
 Release tags and `releases.json` entries are permanent. To correct a release,
 cut the next one. An entry that is removed or edited fails the suite on the
-pull request that does it, and stops the deploy. A tag that is moved or
-deleted stops the deploy with a message naming it, and is not recreated
-automatically: restore it by hand on the release commit.
+pull request that does it, and stops the deploy. A deleted tag, or a tag
+moved to a commit whose public files, label or release list differ from what
+was released, stops the deploy with a message naming it, and is not recreated
+automatically: restore it by hand on the release commit. (The check is on
+what the release publishes, not on the commit id: a tag moved between commits
+that differ only in tests or tools publishes the same site and passes.)
 
 Each entry names the hashing scheme it was made with (`tools/release-lib.mjs`).
 To make a new directory public, or to change what a hash leaves out, add a
