@@ -28,7 +28,8 @@ import { buildSVG, exportSVG, exportPNG, exportGIF } from './export.js';
 import { examples } from './examples-data.js';
 import { community } from './community-data.js';
 import { download, esc, manualBeamSVG } from './util.js';
-import { buildShareURL, clearSharedSceneURL, copyText, sceneParamsFromURL, shareURLForScene, sharedSceneFromURL } from './share.js';
+import { buildShareURL, clearSharedSceneURL, copyText, officialShareBase, pinShareURL, sceneParamsFromURL, shareURLForScene, sharedSceneFromURL } from './share.js';
+import { APP_RELEASE, archivedRelease, releasePath } from './release.js';
 import { qrSVG } from './qr.js';
 import { buildExampleProposalIssueURL } from './proposal.js';
 import { recommendedTimeScale, nextAutoScale, TIME_SCALES, elementDriveHz } from './timescale.js';
@@ -1469,6 +1470,27 @@ function showToast(message) {
   }, 4200);
 }
 
+// Which release this copy is, and -- for a kept copy at /v1.2/sketch/ that a
+// newer release has since replaced -- a way to the current app. The kept copy
+// cannot know what came after it, so it asks the site's release list; with no
+// network it simply says nothing.
+async function renderRelease() {
+  $('aboutVersion').textContent = APP_RELEASE ? `Version ${APP_RELEASE}.` : 'Development build, not a published release.';
+  const kept = archivedRelease(location.pathname);
+  if (!kept || state.embedMode) return;
+  try {
+    const res = await fetch('../../releases.json', { cache: 'no-store' });
+    if (!res.ok) return;
+    const latest = releasePath((await res.json()).releases?.at(-1)?.version);
+    if (!latest || latest === kept) return;
+    $('releaseNoticeMessage').textContent = `This is OpticalSetup ${kept}, kept so that setups shared from it keep opening as they were made. The current version is ${latest}.`;
+    // Set here, not in the page: an embed must hold no link that could
+    // navigate its frame, and an embed never reaches this line.
+    $('releaseNoticeLink').href = '../../sketch/';
+    $('releaseNotice').hidden = false;
+  } catch (_) { /* offline: nothing to report */ }
+}
+
 function renderAutosaveRecovery() {
   const recovery = state.autosaveRecovery;
   $('autosaveRecovery').hidden = state.embedMode || !recovery;
@@ -1529,7 +1551,7 @@ function bindToolbar() {
       parseSketch(sketch, registry);
       const svg = buildSVG();
       if (/\b(?:NaN|Infinity)\b/.test(svg)) throw new Error('The setup contains invalid geometry');
-      const setupURL = await buildShareURL(sketch, 'https://opticalsetup.com/sketch/');
+      const setupURL = await buildShareURL(sketch, officialShareBase(location.pathname));
       const issueURL = buildExampleProposalIssueURL({
         name: $('proposalName').value,
         description: $('proposalDescription').value,
@@ -1602,7 +1624,9 @@ function bindToolbar() {
       // not block the dialog, which offers its own Copy button and a
       // selectable URL field as the fallback.
       let copied = true;
-      try { await copyText(url); } catch (_) { copied = false; }
+      // What leaves the page is the pinned link; see pinShareURL().
+      const link = pinShareURL(url);
+      try { await copyText(link); } catch (_) { copied = false; }
       // The clipboard is the longest await in this handler -- it can sit on a
       // permission prompt for seconds -- and the canvas stays live underneath
       // it. An edit landing there has already retired the fragment through the
@@ -1613,11 +1637,11 @@ function bindToolbar() {
         showToast('The canvas changed while the link was building — press Share again.');
         return;
       }
-      shareUrl = url;
+      shareUrl = link;
       shareSceneText = sketch;
-      $('shareURL').value = url;
+      $('shareURL').value = link;
       try {
-        shareQrSvg = qrSVG(url);
+        shareQrSvg = qrSVG(link);
         $('shareQR').innerHTML = shareQrSvg;
         $('shareQRNote').textContent = 'Scan to open this exact optical setup.';
         $('shareDownloadQR').disabled = false;
@@ -2029,6 +2053,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   syncMobileSheets();
 
   renderAutosaveRecovery();
+  renderRelease();
 
   if (hasLinkedScene && loadLinked) {
     zoomFit();

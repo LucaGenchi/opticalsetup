@@ -1,6 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
-const CACHE_NAME = 'opticalsetup-pwa-v138';
+// The current app at /sketch/ and each kept release at /v1.2/sketch/ are
+// separate workers on one origin, and they share CacheStorage. Each owns a
+// family of cache names and only ever deletes, or reads, its own.
+const KEPT_RELEASE = (/\/(v\d+\.\d+)\/sketch\/$/.exec(new URL('./', self.location.href).pathname) || [])[1] || '';
+const CACHE_FAMILY = KEPT_RELEASE ? `opticalsetup-kept-${KEPT_RELEASE}-` : 'opticalsetup-pwa-';
+const CACHE_NAME = `${CACHE_FAMILY}v139`;
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -53,6 +58,7 @@ const PRECACHE_PATHS = [
   "./js/pwa.js",
   "./js/qr.js",
   "./js/raytrace.js",
+  "./js/release.js",
   "./js/share.js",
   "./js/spectrum.js",
   "./js/state.js",
@@ -106,7 +112,7 @@ self.addEventListener('activate', event => {
     caches.keys()
       .then(keys => Promise.all(
         keys
-          .filter(key => key.startsWith('opticalsetup-pwa-') && key !== CACHE_NAME)
+          .filter(key => key.startsWith(CACHE_FAMILY) && key !== CACHE_NAME)
           .map(key => caches.delete(key)),
       ))
       .then(() => self.clients.claim()),
@@ -127,10 +133,15 @@ async function networkFirst(request) {
     }
     return response;
   } catch {
-    const cached = await caches.match(request, { ignoreSearch: true });
+    // Only this worker's cache: caches.match() searches every cache on the
+    // origin in creation order, so it could answer with another release's
+    // module, or with a copy a previous version of this app left behind.
+    let cache;
+    try { cache = await caches.open(CACHE_NAME); } catch (_) { return Response.error(); }
+    const cached = await cache.match(request, { ignoreSearch: true });
     if (cached) return cached;
     if (request.mode === 'navigate') {
-      return (await caches.match(APP_ENTRY)) || Response.error();
+      return (await cache.match(APP_ENTRY)) || Response.error();
     }
     return Response.error();
   }
