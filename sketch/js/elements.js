@@ -11,6 +11,7 @@ import { conicMirrorGeometry, conicMirrorSize, conicMirrorSVG, conicMirrorSurfac
 
 import { distToSegment, esc, formatSignal, rotPt, smoothPath, toWorld, wavelengthToColor, newScatterSeed } from './util.js';
 import { uid } from './util.js';
+import { emissionRayCount, ISOTROPIC_KINDS } from './emission.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
@@ -1492,10 +1493,8 @@ function probeCardPlacement(el, card, scale) {
 // optically inert specimen that only attenuates the excitation.
 export const MAX_SAMPLE_CHANNELS = 5;
 
-// A specimen is one of four kinds. Absorbing and resin have no signal
-// channels at all; the two "specimen" types each offer their own menu of
-// stackable signals, because a linear process and a nonlinear one are never
-// alternatives for the same physical sample.
+// Each specimen type offers its own signal menu. Resin can optionally
+// fluoresce during writing; that signal does not model or prove curing.
 export const SPECIMEN_TYPES = [
   ['absorbing', 'Absorbing specimen'],
   ['resin', 'Photocurable resin'],
@@ -1520,10 +1519,12 @@ export const NONLINEAR_SIGNAL_KINDS = [
 export function signalKindsFor(specimenType) {
   if (specimenType === 'linear') return LINEAR_SIGNAL_KINDS;
   if (specimenType === 'nonlinear') return NONLINEAR_SIGNAL_KINDS;
+  if (specimenType === 'resin') return NONLINEAR_SIGNAL_KINDS.filter(([kind]) => kind === 'tpef');
   return [];
 }
 
 const LINEAR_KIND_SET = new Set(LINEAR_SIGNAL_KINDS.map(([k]) => k));
+const RESIN_KIND_SET = new Set(['tpef']);
 const NONLINEAR_KIND_SET = new Set(NONLINEAR_SIGNAL_KINDS.map(([k]) => k));
 export const ALL_SIGNAL_KINDS = [...LINEAR_SIGNAL_KINDS, ...NONLINEAR_SIGNAL_KINDS];
 
@@ -1541,7 +1542,7 @@ export const TWO_BEAM_KINDS = new Set(['sfg', 'cars', 'srs']);
 // distinction to offer. The parametric signals are generated along the
 // excitation direction and are forward-dominant, with a weaker backward
 // (epi) lobe that real epi-detected CARS/SHG setups rely on.
-export const ISOTROPIC_KINDS = new Set(['fluor', 'raman', 'tpef', 'thpef']);
+export { ISOTROPIC_KINDS };
 export const EPI_CAPABLE_KINDS = new Set(['shg', 'thg', 'sfg', 'cars']);
 // These modify the excitation beam in place rather than emitting a new one.
 export const MODIFIER_KINDS = new Set(['phase', 'srs']);
@@ -1609,7 +1610,8 @@ export function fluorophoreAbsorption(id, excitationWl, order = 1) {
 
 export function newSampleChannel(kind = 'fluor') {
   return {
-    kind, wl: 520, eff: 0.1, epi: false, epiRatio: 0.15, autoWl: true,
+    kind, ...(ISOTROPIC_KINDS.has(kind) ? { nrays: emissionRayCount({ kind }) } : {}),
+    wl: 520, eff: 0.1, epi: false, epiRatio: 0.15, autoWl: true,
     autoColor: true, color: '#22c55e',
     material: 'lipid',        // spontaneous Raman fingerprint
     fluorophore: 'custom',    // emission band for the fluorescence kinds
@@ -1659,11 +1661,11 @@ export function specimenTypeOf(p) {
 
 export function sampleChannels(p) {
   const type = specimenTypeOf(p);
-  // Absorbing and resin specimens emit nothing. Channels the user configured
-  // under another type are kept in params (so switching back restores them)
-  // but take no part in the trace, and a channel is only ever honored under
-  // the type whose menu offers it.
-  const allowed = type === 'linear' ? LINEAR_KIND_SET : type === 'nonlinear' ? NONLINEAR_KIND_SET : null;
+  // Resin emission is explicitly enabled, so saved resins with dormant
+  // channels keep opening without gaining a signal. Other types still only
+  // honor the channels their own menus offer.
+  const allowed = type === 'linear' ? LINEAR_KIND_SET : type === 'nonlinear' ? NONLINEAR_KIND_SET
+    : type === 'resin' && p.resinFluorescence === true ? RESIN_KIND_SET : null;
   if (!allowed) return [];
   const raw = Array.isArray(p?.channels) && p.channels.length ? p.channels : legacySampleChannels(p);
   return raw.filter(c => allowed.has(c.kind)).slice(0, MAX_SAMPLE_CHANNELS);
@@ -1770,11 +1772,12 @@ function sampleModeParams() {
       // carry — stacked channels, a legacy single `mode`, or the old
       // per-material `sampleKind`.
       migrate: p => specimenTypeOf({ ...p, specimenType: null }) },
-    // Only the two signal-bearing types show a channel list; the resin's own
-    // preview controls live on the stage, next to its piezo scan.
+    { key: 'resinFluorescence', label: 'Two-photon fluorescence', type: 'checkbox', def: false,
+      show: p => specimenTypeOf(p) === 'resin' },
+    // Writing preview and optional fluorescence have separate controls.
     { key: 'channels', label: 'Signals generated', type: 'signals', def: [], show: p => {
       const type = specimenTypeOf(p);
-      return type === 'linear' || type === 'nonlinear';
+      return type === 'linear' || type === 'nonlinear' || (type === 'resin' && p.resinFluorescence === true);
     } },
     // Arrival timing is a number, not a picture: a picosecond is a third of a
     // millimetre of path, which no drawing at bench scale can show. A specimen

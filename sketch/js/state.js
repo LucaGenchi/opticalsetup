@@ -3,6 +3,7 @@
 // App state, undo/redo, autosave.
 
 import { distinctPoints, rotPt } from './util.js';
+import { emissionRayCount, ISOTROPIC_KINDS } from './emission.js';
 import { archivedRelease } from './release.js';
 import { boundaryBounds, normalizeBoundaryPoints, normalizePolygonPoints } from './polygon.js';
 import { migrateLegacyObjectiveParams, normalizeObjectiveParams } from './objective.js';
@@ -113,6 +114,7 @@ function channelFields(raw) {
   const dyes = new Set(['custom', 'dapi', 'hoechst', 'gfp', 'rhodamine']);
   return ({
     kind: 'fluor',
+    ...(ISOTROPIC_KINDS.has(raw.kind || 'fluor') ? { nrays: emissionRayCount(raw) } : {}),
     wl: clamp(finite(raw.wl) ? raw.wl : 520, 100, 4000),
     eff: clamp(finite(raw.eff) ? raw.eff : 0.1, 0, 1),
     epi: raw.epi === true,

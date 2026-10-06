@@ -265,7 +265,21 @@ playback rather than claiming a calibrated high-speed recording.
 The 2PP resin preview records pulsed ray arrivals at the stage sample plane and
 shows their positions in the moving 2D sample. It does not calculate focal volume,
 two-photon absorption, threshold dose, cure kinetics, voxel overlap, or a hidden
-third axis.
+third axis. Photocurable resin can optionally generate a two-photon fluorescence
+channel without disabling the write preview. It is off for existing saved resins,
+and fluorescence does not create extra voxel marks or measure polymerization.
+
+Incoherent specimen signals (fluorescence and spontaneous Raman) emit one fan
+per arriving excitation branch, placed on a surviving sampling ray nearest the
+beam centre and weighted by the combined excitation that reached the specimen.
+Clipping a pump edge does not extinguish a still-illuminated specimen. Each
+channel offers 4–128 emission rays over 360° (per line for Raman), sharing a fixed
+emitted weight across the fan. The legacy defaults are 20 for fluorescence and
+14 per Raman line. Angular sampling is denser near the excitation axis, so
+collection readings can change with resolution; this is not calibrated isotropic
+radiometry. The two-photon label imposes the photon-energy/wavelength rule,
+not an intensity-squared focal response, cross-section, lifetime, bleaching, or
+curing model.
 
 Standalone objectives are set by effective focal length (EFL) — the focal length of
 the whole assembly as one equivalent lens — plus a working distance

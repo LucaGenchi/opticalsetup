@@ -3,12 +3,13 @@
 // Right-hand inspector: edit properties of the selected element or manual beam.
 
 import { state, changed, pushUndo, findSelected } from './state.js';
+import { emissionRayCount, EMISSION_RAY_LIMITS } from './emission.js';
 import { MAX_AOTF_CHANNELS, newAotfChannel, normalizeAotfChannels } from './aotf.js';
 import {
   registry, cameraProfileSVG, cameraReadingState, newShaperLayer, MAX_SHAPER_LAYERS, getElementMeta, getDirectManipulation, resolveDisplaySensor,
   newSampleChannel, MAX_SAMPLE_CHANNELS, MIXING_KINDS, EPI_CAPABLE_KINDS, sampleChannels,
   signalKindsFor, specimenTypeOf, channelWarning, defaultEmissionWl, drivingExcitationWl,
-  EMISSION_ORDER, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
+  EMISSION_ORDER, ISOTROPIC_KINDS, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
   FLUOROPHORES, fluorophoreSpec, normalizeSupercontinuumParams,
 } from './elements.js';
 import { detectorReading, fiberReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace, weakLightShortfallFromLastTrace } from './raytrace.js';
@@ -66,7 +67,7 @@ export function initInspector(el) { panel = el; }
 export const REBUILD_ON_COMMIT_KEYS = [
   'dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode',
   'raysMode', 'zeroOrder', 'modulate', 'modShape', 'mode', 'scanMode', 'moveMode',
-  'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot',
+  'transmitExc', 'specimenType', 'resinFluorescence', 'voxelPreview', 'pzMode', 'showSignalSpot',
   'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode',
   'extension', 'immersion', 'preset', 'material', 'showDepleted', 'modMode',
   'measurementMode', 'prop', 'sync', 'sourceKind',
@@ -671,6 +672,11 @@ function signalsHTML(sel) {
       kinds.map(([v, l]) => `<option value="${v}" ${v === c.kind ? 'selected' : ''}>${l}</option>`).join('') +
       `</select><button type="button" class="layerdel" data-cdel="${i}" title="Remove this signal" aria-label="Remove signal ${i + 1}">✕</button></div>`;
 
+    if (ISOTROPIC_KINDS.has(c.kind)) {
+      h += numberField(c.kind === 'raman' ? 'Emission rays / line' : 'Emission rays',
+        `data-ci="${i}" data-ck="nrays"`, emissionRayCount(c), EMISSION_RAY_LIMITS);
+      h += '<div class="hint">Angular sampling over 360°. More rays resolve collection angles; total emitted power stays the same.</div>';
+    }
     const order = EMISSION_ORDER[c.kind];
     if (order) {
       h += field('Fluorophore', `<select data-ci="${i}" data-ck="fluorophore">` +
@@ -1306,6 +1312,7 @@ function applySpecimenTypePreset(sel) {
     Object.assign(p, { transmitExc: true, transmission: 0.8, voxelPreview: false });
   } else if (type === 'resin') {
     Object.assign(p, { transmitExc: true, transmission: 0.85, voxelPreview: true });
+    if (p.resinFluorescence) p.channels = [seededChannel('tpef', sel)];
   } else if (type === 'linear') {
     Object.assign(p, { transmitExc: true, transmission: 0.8, voxelPreview: false });
     p.channels = [seededChannel('fluor', sel)];
@@ -1432,13 +1439,13 @@ export function applyInput(inp, rebuild = false) {
     } else if (ckey === 'transferEff') {
       c.transferEff = Math.min(0.5, Math.max(0.01, val / 100)); // shown as a percentage
     } else {
-      c[ckey] = val;
+      c[ckey] = ckey === 'nrays' ? emissionRayCount({ kind: c.kind, nrays: val }) : val;
     }
     changed();
     warnAboutChannel(c, sel);
     // Switching kind changes which fields apply at all, so rebuild the rows.
     // 'wl' redraws so the inline warning tracks the value just committed.
-    if (rebuild && ['kind', 'autoWl', 'epi', 'autoColor', 'material', 'wl', 'requireOverlap', 'fluorophore'].includes(ckey)) renderInspector();
+    if (rebuild && ['kind', 'autoWl', 'epi', 'autoColor', 'material', 'wl', 'nrays', 'requireOverlap', 'fluorophore'].includes(ckey)) renderInspector();
     return;
   }
 
@@ -1485,6 +1492,9 @@ export function applyInput(inp, rebuild = false) {
   else if (pkey) {
     sel.params[pkey] = val;
     if (pkey === 'specimenType') applySpecimenTypePreset(sel);
+    if (pkey === 'resinFluorescence' && val && !sampleChannels(sel.params).length) {
+      sel.params.channels = [seededChannel('tpef', sel)];
+    }
     if (sel.type === 'autocorrelator' && pkey === 'measurementMode') applyScopeSpanForMode(sel);
     if (sel.type === 'objective') Object.assign(sel.params, normalizeObjectiveParams(sel.params));
   }

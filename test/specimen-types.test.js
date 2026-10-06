@@ -53,10 +53,10 @@ function collectedWls(...args) {
 
 // ---------------- the four specimen types ----------------
 
-test('a specimen is one of four types, and only two of them carry signals', () => {
+test('a specimen is one of four types, and resin offers optional two-photon fluorescence', () => {
   assert.deepEqual(SPECIMEN_TYPES.map(([id]) => id), ['absorbing', 'resin', 'linear', 'nonlinear']);
   assert.deepEqual(signalKindsFor('absorbing'), []);
-  assert.deepEqual(signalKindsFor('resin'), []);
+  assert.deepEqual(signalKindsFor('resin').map(([kind]) => kind), ['tpef']);
   assert.deepEqual(signalKindsFor('linear').map(([id]) => id), ['fluor', 'raman', 'phase']);
   // Sum frequency is not its own kind any more: one chi(2) channel gives both
   // the second harmonic of a beam and the sum frequency of a pair.

@@ -39,7 +39,7 @@ let signalHits = [];
 const sampleHitPositions = new Map();
 let pulseFrame = null;
 let motionFrame = null;
-let motionStartMs = null;
+let motionLastFrameMs = null;
 let motionTimeSeconds = 0;
 let motionLastRenderMs = 0;
 const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -95,10 +95,11 @@ export function initCanvas(svgElement, statusElement) {
   overlayLayer = svg.querySelector('#overlayLayer');
   bindPointer();
   bindWheel();
+  // Respect the accessibility preference on load; explicit Play controls both clocks.
   if (reduceMotion) pulsePlayback.playing = false;
   document.addEventListener('visibilitychange', () => {
     pulsePlayback.lastFrameMs = null;
-    motionStartMs = null;
+    motionLastFrameMs = null;
   });
 }
 
@@ -278,7 +279,7 @@ function animatedVisualElements() {
     if (el.type === 'delayline' && el.params.moveMode === 'linear') {
       return { ...el, _animationTimeS: motionTimeSeconds };
     }
-    if (!reduceMotion && el.type === 'chopper' && el.params.modulate) return animatedChopper(el);
+    if (el.type === 'chopper' && el.params.modulate) return animatedChopper(el);
     if (el.type === 'stage') return stageWithSignalSpot(el);
     if (el.type === 'sample') return withSignalSpot(el);
     if (el.type === 'retroreflector') return animatedRetroElement(el);
@@ -361,9 +362,11 @@ function hasChopperMotion() {
 
 function animateMotion(nowMs) {
   motionFrame = null;
-  if (reduceMotion || !hasMotion()) return;
-  if (motionStartMs === null) motionStartMs = nowMs;
-  motionTimeSeconds = Math.max(0, (nowMs - motionStartMs) / 1000);
+  if (!pulsePlayback.playing || !hasMotion()) return;
+  if (motionLastFrameMs !== null) {
+    motionTimeSeconds += Math.min(0.05, Math.max(0, (nowMs - motionLastFrameMs) / 1000));
+  }
+  motionLastFrameMs = nowMs;
   if (nowMs - motionLastRenderMs >= 1000 / 30) {
     motionLastRenderMs = nowMs;
     const opticalMotion = hasGalvoMotion() || hasAodScan() || hasPhaseModulation() || hasDelaySweep() || hasStageMotion() || hasRetroMotion() || hasAotfSequence() || hasOpoTuning();
@@ -379,13 +382,12 @@ function animateMotion(nowMs) {
 }
 
 function syncMotionAnimation() {
-  if (!reduceMotion && hasMotion()) {
+  if (pulsePlayback.playing && hasMotion()) {
     if (motionFrame === null) motionFrame = requestAnimationFrame(animateMotion);
   } else if (motionFrame !== null) {
     cancelAnimationFrame(motionFrame);
     motionFrame = null;
-    motionStartMs = null;
-    motionTimeSeconds = 0;
+    motionLastFrameMs = null;
   }
 }
 
@@ -657,13 +659,16 @@ function syncPulseAnimation() {
 }
 
 export function getPulsePlayback() {
-  return { ...pulsePlayback, hasPulses: pulseTracks.length > 0, cwFallback: cwFallbackActive };
+  return { ...pulsePlayback, hasPulses: pulseTracks.length > 0, hasMotion: hasMotion(), cwFallback: cwFallbackActive };
 }
 
 export function setPulsePlaying(playing) {
   pulsePlayback.playing = !!playing;
   pulsePlayback.lastFrameMs = null;
+  motionLastFrameMs = null;
   syncPulseAnimation();
+  syncMotionAnimation();
+  renderAll();
   notifyPulseState();
 }
 
@@ -695,8 +700,10 @@ export function setPulseDisplayMode(mode) {
 export function resetPulseTime() {
   pulsePlayback.timeNs = 0;
   pulsePlayback.lastFrameMs = null;
+  motionTimeSeconds = 0;
+  motionLastFrameMs = null;
   clearVoxelPreview();
-  renderPulseLayer();
+  renderAll();
   notifyPulseState();
 }
 
