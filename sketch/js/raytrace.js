@@ -1669,7 +1669,7 @@ const MIN_RETAINED_POWER_INT = 1e-12;
 // and every layer sizes its own sampling to fit rather than overflowing and
 // being truncated — see the shaper case in interact().
 const SHAPER_RAY_CAP = 24;
-const LOW_POWER_MEASUREMENT_SURFACES = new Set(['detector', 'specimen', 'attenuate', 'fluor', 'fiberin']);
+const LOW_POWER_MEASUREMENT_SURFACES = new Set(['detector', 'retina', 'specimen', 'attenuate', 'fluor', 'fiberin']);
 
 // Carrier phase is exact only through explicitly supported component
 // topologies. Several unrelated elements deliberately share the generic
@@ -1678,7 +1678,7 @@ const LOW_POWER_MEASUREMENT_SURFACES = new Set(['detector', 'specimen', 'attenua
 // into a wave-optics model.
 function carrierPhaseIssue(surface) {
   const type = surface.el?.type;
-  if (surface.kind === 'detector') return null;
+  if (surface.kind === 'detector' || surface.kind === 'retina') return null;
   if (surface.kind === 'split' && type === 'bs') return null;
   if (surface.kind === 'delay' && type === 'delayline') return null;
   // A phase object only lengthens the optical path, without bending the
@@ -3767,6 +3767,12 @@ function interact(ray, hit) {
   switch (k) {
     case 'absorb': return [];
     case 'detector': return [];
+    case 'retina': {
+      const R = Math.min(1, Math.max(0, Number(data.refl ?? 0) / 100));
+      return R > 0
+        ? [{ d: reflect(d, n), intensity: ray.intensity * R, tag: 'retina-R', retainWeak: true }]
+        : [];
+    }
     case 'gdd': {
       // A zero-thickness proxy for the net second-order spectral phase of a
       // grating/prism/chirped-mirror compressor. It does not bend the ray or
@@ -5921,7 +5927,7 @@ const sightlines = new WeakMap();
 function pointSourceSightline(surfaces) {
   let list = sightlines.get(surfaces);
   if (!list) {
-    list = surfaces.filter(s => s.kind === 'absorb' || s.kind === 'detector' || collectsPointSource(s));
+    list = surfaces.filter(s => s.kind === 'absorb' || s.kind === 'detector' || s.kind === 'retina' || collectsPointSource(s));
     sightlines.set(surfaces, list);
   }
   return list;
@@ -5932,7 +5938,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
   // Genuine branches weaker than the old 2 % drawing floor, spent against
   // weakBranchBudget: what bounds the cost of tracing faint light.
   let weakBranches = 0;
-  const integrationSurfaces = surfaces.filter(surface => surface.kind === 'detector');
+  const integrationSurfaces = surfaces.filter(surface => surface.kind === 'detector' || surface.kind === 'retina');
   const stack = rays0.map(r => {
     const opl = Number.isFinite(r.oplStart) ? r.oplStart : 0;
     const gdd = Number.isFinite(r.gddStart) ? r.gddStart
@@ -6243,7 +6249,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           });
         }
       }
-      if (!coherent?.dryRun && hit.surface.kind === 'detector') recordDetectorHit(r, hit);
+      if (!coherent?.dryRun && (hit.surface.kind === 'detector' || hit.surface.kind === 'retina')) recordDetectorHit(r, hit);
       if (hit.surface.kind === 'phaseplate') {
         // Same bookkeeping as the delay line, except the added path depends on
         // where this particular ray crossed the aperture -- which is what turns
