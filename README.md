@@ -129,3 +129,7 @@ WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 A PARTICULAR PURPOSE. See [LICENSE](LICENSE) for the full text.
 
 Copyright (C) 2026 Luca Genchi and the OpticalSetup contributors.
+
+## Citation
+
+How to cite: [![DOI](https://zenodo.org/badge/1303335963.svg)](https://doi.org/10.5281/zenodo.23191537)
