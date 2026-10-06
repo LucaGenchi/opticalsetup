@@ -199,6 +199,28 @@ test('eye detects focused light at its retina and clips outside the pupil', () =
   assert.equal(detectorReading(eye.id), null);
 });
 
+test('eye retinal reflectivity launches an attenuated return beam', () => {
+  const laser = createElement('cwlaser', 0, 0);
+  laser.params.beamMode = 'line';
+  const eye = createElement('eye', 200, 0);
+
+  eye.params.retinalReflectivity = 0;
+  let scene = traceScene([laser, eye]);
+  let paths = scene.drawables.filter(d => d.type === 'path');
+  assert.ok(paths.every(path => path.pts.at(-1).x >= 185 - 1e-6),
+    'zero reflectivity keeps the retina absorbing');
+
+  eye.params.retinalReflectivity = 25;
+  scene = traceScene([laser, eye]);
+  paths = scene.drawables.filter(d => d.type === 'path');
+  const returned = paths.find(path => path.pts.some((p, i) => i > 0 && p.x < 185 - 1e-6));
+  assert.ok(returned, 'partial retinal reflectivity sends light back through the eye');
+  assert.ok(returned.segmentPowers.some(power => Math.abs(power - 0.25) < 1e-9),
+    'the return branch carries the configured reflected fraction');
+  assert.equal(detectorReading(eye.id).detectorType, 'Retina',
+    'the retinal plane remains a detector while it reflects');
+});
+
 test('chopper averages static CW power, draws it as a chunked pattern, and gates pulses', () => {
   const laser = createElement('cwlaser', 0, 0);
   const pulsedLaser = createElement('pulsedlaser', 0, 0);
