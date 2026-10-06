@@ -5,6 +5,7 @@
 // and returns drawables: stroked polylines (line-mode / beam edges) and filled
 // polygons (beam-mode envelope between the two edge rays).
 
+import { emissionRayCount } from './emission.js';
 import {
   registry, OBJ_SHAPES, EPI_CAPABLE_KINDS as EPI_KINDS, MIXING_KINDS, phasePlateOpdFraction,
   ISOTROPIC_KINDS, MODIFIER_KINDS, EMISSION_ORDER, EMISSION_OFFSET_NM, NONLINEAR_SIGNAL_KINDS,
@@ -108,6 +109,7 @@ let gateTransmissionCache = new Map();
 // Non-null only during the mixing probe pass in traceScene(): surface id ->
 // Set of wavelengths observed arriving at that specimen.
 let specimenProbe = null;
+let specimenEmissionSamples = new WeakMap();
 // element id -> wavelengths observed arriving at its specimen surface on the
 // last trace. Read by the inspector to derive emission defaults and warn
 // about channels the bench cannot drive; empty when nothing illuminates it.
@@ -1897,8 +1899,6 @@ const MIXING_MIN_SEPARATION_NM = 1;
 // denser along the axis, each still carrying an equal share of the power, so
 // the total is unchanged and the directions that can actually be captured
 // are the ones sampled finely. The glow is still drawn all the way round.
-const EMISSION_RAYS = 20;
-const RAMAN_RAYS_PER_LINE = 14;
 const AXIS_BIAS = 5;
 // How far the drawn glow reaches, and how far away an optic can still
 // collect it. Real collection optics sit well outside the few centimetres
@@ -1999,12 +1999,20 @@ function recordProbeBeam(surface, ray) {
   // A beam sampled by several rays is one beam: its power is theirs together,
   // and it arrives when its power arrives.
   const power = Math.max(0, Number(ray.power) || 0);
+  const sample = Number.isInteger(ray.sample) ? ray.sample : null;
+  const distance = sample === null ? 0 : Math.abs(sample - ((ray.sampleCount || 1) - 1) / 2);
   // The dispersion the beam carries here, weighted like its arrival time, so
   // an OPA can time the pulse as it arrives. Kept only when there is any.
   const gdd = Number.isFinite(ray.gdd) ? ray.gdd : 0;
   const spread = Number.isFinite(ray.groupDelayDifferenceFs) ? ray.groupDelayDifferenceFs : 0;
   const dispersed = gdd || spread ? { gddSum: weight * gdd, spreadSum: weight * spread, gddRange: [gdd, gdd] } : null;
   if (already) {
+    // Pick an actually surviving ray nearest the beam centre. A fixed edge
+    // sample may have missed an upstream mirror or the objective pupil.
+    const representative = specimenEmissionSamples.get(already);
+    if (distance < representative.distance || (distance === representative.distance && sample < representative.sample)) {
+      specimenEmissionSamples.set(already, { sample, distance });
+    }
     if (dispersed || already.gddRange) {
       // Rays of the beam that came undispersed count in the range as zero.
       const range = already.gddRange || [0, 0];
@@ -2021,7 +2029,7 @@ function recordProbeBeam(surface, ray) {
     if (history.length) already.parametricPath = history;
     return;
   }
-  seen.push({
+  const beam = {
     key,
     branch: ray.branch || null,
     wl: ray.wl, opl: ray.opl,
@@ -2043,7 +2051,9 @@ function recordProbeBeam(surface, ray) {
     // Only light that went through a parametric element has a history.
     ...(ray.parametricPath?.length ? { parametricPath: unionPath(ray.parametricPath) } : {}),
     ...(dispersed || {}),
-  });
+  };
+  specimenEmissionSamples.set(beam, { sample, distance });
+  seen.push(beam);
 }
 
 // One arrival per beam, weighted by where its power actually is, so that every
@@ -2058,6 +2068,19 @@ function settleProbeBeam(beam) {
 function beamRecordFor(ray, beams) {
   const key = probeBeamKey(ray);
   return (beams || []).find(beam => beam.key === key) || null;
+}
+
+// One incoherent fan per arriving excitation branch, powered by all the
+// sampling rays that reached this specimen. Angular ray count then changes
+// sampling, never the total emitted weight. This remains a qualitative gain,
+// not a two-photon cross-section, focal intensity or curing calculation.
+function incoherentExcitation(ray, data) {
+  const record = beamRecordFor(ray, data.incidentBeams);
+  const representative = record && specimenEmissionSamples.get(record);
+  return {
+    emitting: representative ? (ray.sample ?? null) === representative.sample : ray.sample == null || ray.sample === 0,
+    power: record ? record.power : ray.power,
+  };
 }
 
 // A ray as its beam arrives: the same pulse train, timed where the beam's
@@ -4735,6 +4758,7 @@ function interact(ray, hit) {
       // per-ray ones: a beam split into K sampling rays must not emit K
       // copies of the same signal.
       const emitting = ray.sample == null || ray.sample === 0;
+      const spontaneous = incoherentExcitation(ray, data);
       // With several beams on the spot, the shortest wavelength carries the
       // most energy per photon and is the one that drives incoherent
       // emission and Raman. Gating on it also stops each beam from emitting
@@ -4778,10 +4802,10 @@ function interact(ray, hit) {
         if (c.kind === 'raman') {
           // Spontaneous Raman scatters a handful of Stokes-shifted lines,
           // isotropically and weakly, from the material's own fingerprint.
-          if (!emitting || !isDriver) continue;
+          if (!spontaneous.emitting || !isDriver) continue;
           const pump = driver ?? ray.wl;
           const shifts = ramanShifts(c.material).slice(0, 4);
-          const N = RAMAN_RAYS_PER_LINE;
+          const N = emissionRayCount(c);
           const axis = Math.atan2(d.y, d.x);
           for (const shift of shifts) {
             const line = ramanStokesWl(pump, shift);
@@ -4793,7 +4817,8 @@ function interact(ray, hit) {
                 color: tint, evan: true, evanLen: EMISSION_GLOW_MM, captureLen: EMISSION_CAPTURE_MM,
                 sourceId: emittedFrom, incoherent: true,
                 intensity: 0.25,
-                power: Number.isFinite(ray.power) ? ray.power * eff / (N * shifts.length) : undefined,
+                power: Number.isFinite(spontaneous.power) ? spontaneous.power * eff / (N * shifts.length) : undefined,
+                sample: null, sampleCount: 1, sampleGrid: null,
                 tag: `r${ci}_${Math.round(shift)}_${i}`,
               });
             });
@@ -4802,10 +4827,10 @@ function interact(ray, hit) {
         }
 
         if (ISOTROPIC_KINDS.has(c.kind)) {
-          if (!emitting || !isDriver) continue;
+          if (!spontaneous.emitting || !isDriver) continue;
           const emission = specimenEmission(c, ray.wl, data.incidentWls);
           if (!emission || emission.gain <= 1e-4) continue;
-          const N = EMISSION_RAYS;
+          const N = emissionRayCount(c);
           const tint = channelColor(c, emission.wl);
           const strength = eff * emission.gain;
           emissionAngles(N, Math.atan2(d.y, d.x)).forEach((a, i) => {
@@ -4816,7 +4841,8 @@ function interact(ray, hit) {
               color: tint, sourceId: emittedFrom, incoherent: true,
               evan: true, evanLen: EMISSION_GLOW_MM, captureLen: EMISSION_CAPTURE_MM,
               intensity: 0.25,
-              power: Number.isFinite(ray.power) ? ray.power * strength / N : undefined,
+              power: Number.isFinite(spontaneous.power) ? spontaneous.power * strength / N : undefined,
+              sample: null, sampleCount: 1, sampleGrid: null,
               tag: `f${ci}_${i}`,
             });
           });
@@ -6194,7 +6220,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // 2PP voxel marks, which its own writeVoxel flag already gates.
       const holder = hit.surface.el?.type;
       if ((holder === 'stage' || holder === 'sample') && r.writeReference) {
-        if (writeHits && hit.surface.data.writeVoxel && r.pulse && !r.pulse.interferenceUnknown) {
+        if (writeHits && hit.surface.data.writeVoxel && r.pulse && !r.incoherent && !r.pulse.interferenceUnknown) {
           writeHits.push({
             stageId: hit.surface.el.id,
             x: hit.p.x,
@@ -6787,6 +6813,10 @@ function assembleDrawables(paths, opts, drawables) {
   // outline runs along the whole polyline; each segment therefore carries the
   // pattern forward by the distance before it, or the fill would restart at
   // every bend the outline passes straight through.
+  // A specimen's angular fan is independent of the pump's transverse grid.
+  for (const r of paths) {
+    if (r.sample == null) pushRay(r, 2, opOf(r), false);
+  }
   const bySample = new Map();
   for (const r of paths) {
     if (r.sample === null || r.sample === undefined || r.pts.length < 2) continue;
@@ -7021,6 +7051,7 @@ export function traceScene(elements, beams = [], options = {}) {
   coarsePortCache = new Map();
   cellSpectrumCache = new Map();
   specimenIncident = new Map();
+  specimenEmissionSamples = new WeakMap();
   opoStates = new Map();
   opaStates = new Map();
   sourceWattsById = new Map(elements
@@ -7178,7 +7209,7 @@ export function traceScene(elements, beams = [], options = {}) {
     || (s.kind === 'transmit' && MIX_CONVERTS.has(s.data.convert))
     || s.kind === 'opapump' || s.kind === 'opaseed'
     || (s.kind === 'attenuate' && s.data.specimen && s.el
-        && ['linear', 'nonlinear'].includes(specimenTypeOf(s.el.params))));
+        && ['linear', 'nonlinear', 'resin'].includes(specimenTypeOf(s.el.params))));
   // An OPA cascade is planned stage by stage: in each pass, OPAs planned in
   // the pass before emit their outputs, so the next stage sees its seed (or
   // its pump) and is planned in turn. Passes stop when the plans no longer

@@ -109,7 +109,8 @@ function dimSignalScene(overrides = {}) {
   stage.params.specimenType = 'linear';
   stage.params.transmitExc = false;
   stage.params.channels = [{
-    kind: 'fluor', wl: 520, eff: 0.1, epi: false, epiRatio: 0.15, autoWl: false,
+    // A faint specimen under the whole surviving pump beam.
+    kind: 'fluor', wl: 520, eff: 0.004, epi: false, epiRatio: 0.15, autoWl: false,
     autoColor: true, color: '#22c55e', material: 'lipid', fluorophore: 'custom',
     retardance: 90, axis: 45, transferEff: 0.1, requireOverlap: true,
   }];
