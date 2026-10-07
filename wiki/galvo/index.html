@@ -177,9 +177,11 @@
         command: <em>Static</em> holds a fixed mechanical angle; <em>Sine</em> and
         <em>Triangle</em> continuously sweep it around that center at a set frequency and
         peak amplitude. In sweep mode the mirror actually rotates and the reflected beam
-        visibly sweeps back and forth on its own — this is the one component in the
-        library that animates continuously in real time, driven by its own clock rather
-        than the pulse-timing playback controls used elsewhere.</p>
+        visibly sweeps back and forth. The shared <em>Play/Pause</em> control starts
+        and stops both scanning and pulse playback. With the browser's Reduced Motion
+        preference enabled, animation starts paused; pressing <em>Play</em> enables it.
+        The time scale controls the scan when its cycle is watchable, with a slowed
+        illustrative preview otherwise. <em>Mechanics</em> always uses that preview.</p>
         <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The peak mechanical sweep is capped at 10°, and defaults to a
         modest 1° — enough to demonstrate scanning clearly without the swing dominating a
         sketch. There's no modeled inertia, bandwidth, or settling time: the mirror
