@@ -6,6 +6,8 @@
 // real axes, a legend, a crosshair tooltip (pointer and keyboard) and a data
 // table. No dependencies. Text from data is inserted with textContent.
 
+import { isInputActive } from './calculator-inputs.js';
+
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const SUPERSCRIPT = { '-': '⁻', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹' };
 const sup = n => String(n).split('').map(c => SUPERSCRIPT[c] ?? c).join('');
@@ -55,11 +57,22 @@ export function renderForm(form, inputs, groups, values) {
       const helpId = `${id}-help`;
       const label = document.createElement('label');
       label.htmlFor = id;
-      const control = document.createElement('input');
+      const control = document.createElement(input.type === 'select' ? 'select' : 'input');
       control.id = id;
       control.name = input.id;
       control.setAttribute('aria-describedby', helpId);
-      if (input.type === 'checkbox') {
+      if (input.type === 'select') {
+        row.classList.add('choice');
+        label.textContent = input.label;
+        for (const [value, text] of input.options) {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = text;
+          control.append(option);
+        }
+        control.value = values[input.id];
+        row.append(label, control);
+      } else if (input.type === 'checkbox') {
         control.type = 'checkbox';
         control.checked = Boolean(values[input.id]);
         label.append(control, document.createTextNode(input.label));
@@ -116,7 +129,7 @@ export function readForm(form, inputs) {
 export function syncForm(form, inputs, raw, invalidIds = new Set()) {
   for (const input of inputs) {
     const el = form.elements[input.id];
-    const off = Boolean(input.when) && !raw[input.when];
+    const off = !isInputActive(input, raw);
     el.disabled = off;
     el.closest('.calc-field').classList.toggle('is-off', off);
     if (input.type !== 'checkbox') el.setAttribute('aria-invalid', String(invalidIds.has(input.id)));

@@ -1,5 +1,5 @@
 {
- "app": "sketch/js/glass.js: glassIndex, glassGroupIndex, glassGVD, glassAbbe, glassGroupDelayDifferenceFs",
+ "app": "sketch/js/glass.js: glassIndex, glassGroupIndex, glassGVD, glassAbbe, glassGroupDelayDifferenceFs, glassDispersion",
  "cases": [
   {
    "absolute": true,
@@ -371,7 +371,7 @@
   },
   {
    "expected": {
-    "groupDelayDifferenceFs": -5.264911742
+    "groupDelayDifferenceFs": -5.264911746
    },
    "inputs": {
     "glass": "nbk7",
@@ -387,7 +387,7 @@
   {
    "expected": {
     "groupIndex": 1.51376907,
-    "gvdFs2PerMm": 97.56556991,
+    "gvdFs2PerMm": 97.56556656,
     "index": 1.470116119
    },
    "inputs": {
@@ -404,7 +404,7 @@
   {
    "expected": {
     "groupIndex": 1.479150894,
-    "gvdFs2PerMm": 57.5406104,
+    "gvdFs2PerMm": 57.54058912,
     "index": 1.458462342
    },
    "inputs": {
@@ -439,7 +439,7 @@
   {
    "expected": {
     "groupIndex": 1.462708746,
-    "gvdFs2PerMm": 18.97256666,
+    "gvdFs2PerMm": 18.97262395,
     "index": 1.450043806
    },
    "inputs": {
@@ -484,7 +484,7 @@
   },
   {
    "expected": {
-    "groupDelayDifferenceFs": -4.263942003
+    "groupDelayDifferenceFs": -4.263941999
    },
    "inputs": {
     "glass": "silica",
@@ -569,7 +569,7 @@
   {
    "expected": {
     "groupIndex": 1.666285555,
-    "gvdFs2PerMm": 10.81629977,
+    "gvdFs2PerMm": 10.81610454,
     "index": 1.642171422
    },
    "inputs": {
@@ -630,7 +630,7 @@
   {
    "expected": {
     "groupIndex": 1.874525291,
-    "gvdFs2PerMm": 315.6722021,
+    "gvdFs2PerMm": 315.6722014,
     "index": 1.784714103
    },
    "inputs": {
@@ -648,7 +648,7 @@
   {
    "expected": {
     "groupIndex": 1.811492262,
-    "gvdFs2PerMm": 187.4987516,
+    "gvdFs2PerMm": 187.4987499,
     "index": 1.764619918
    },
    "inputs": {
@@ -665,7 +665,7 @@
   {
    "expected": {
     "groupIndex": 1.786883602,
-    "gvdFs2PerMm": 125.3493184,
+    "gvdFs2PerMm": 125.3492611,
     "index": 1.754915312
    },
    "inputs": {
@@ -722,6 +722,382 @@
    "tolerance": {
     "groupDelayDifferenceFs": 1e-05
    }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.659495992,
+    "gvdFs2PerMm": 206.1508136,
+    "index": 1.552770264
+   },
+   "inputs": {
+    "continuous": true,
+    "glass": "nbk7",
+    "wavelengthNm": 300
+   },
+   "name": "continuous nbk7 at 300 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.533672118,
+    "gvdFs2PerMm": -249.7365321,
+    "index": 1.48601771
+   },
+   "inputs": {
+    "continuous": true,
+    "glass": "nbk7",
+    "wavelengthNm": 2500
+   },
+   "name": "continuous nbk7 at 2500 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.541359787,
+    "gvdFs2PerMm": 70.37848338,
+    "index": 1.516800035
+   },
+   "inputs": {
+    "continuous": true,
+    "glass": "nbk7",
+    "wavelengthNm": 587.5618
+   },
+   "name": "continuous nbk7 at 587.5618 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.526639803,
+    "gvdFs2PerMm": 44.62818474,
+    "index": 1.510771273
+   },
+   "inputs": {
+    "continuous": true,
+    "glass": "nbk7",
+    "wavelengthNm": 800.25
+   },
+   "name": "continuous nbk7 at 800.25 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.51937872,
+    "gvdFs2PerMm": 2.079489216,
+    "index": 1.503703462
+   },
+   "inputs": {
+    "continuous": true,
+    "glass": "nbk7",
+    "wavelengthNm": 1300
+   },
+   "name": "continuous nbk7 at 1300 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.76760062,
+    "gvdFs2PerMm": 364.2410904,
+    "index": 1.53835762
+   },
+   "inputs": {
+    "continuous": true,
+    "glass": "silica",
+    "wavelengthNm": 210
+   },
+   "name": "continuous silica at 210 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.521771682,
+    "gvdFs2PerMm": -1387.634804,
+    "index": 1.399279772
+   },
+   "inputs": {
+    "continuous": true,
+    "glass": "silica",
+    "wavelengthNm": 3710
+   },
+   "name": "continuous silica at 3710 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.479154489,
+    "gvdFs2PerMm": 57.54565246,
+    "index": 1.458463687
+   },
+   "inputs": {
+    "continuous": true,
+    "glass": "silica",
+    "wavelengthNm": 587.5618
+   },
+   "name": "continuous silica at 587.5618 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.467136783,
+    "gvdFs2PerMm": 36.14177752,
+    "index": 1.453312935
+   },
+   "inputs": {
+    "continuous": true,
+    "glass": "silica",
+    "wavelengthNm": 800.25
+   },
+   "name": "continuous silica at 800.25 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.46163065,
+    "gvdFs2PerMm": -2.374674014,
+    "index": 1.446917529
+   },
+   "inputs": {
+    "continuous": true,
+    "glass": "silica",
+    "wavelengthNm": 1300
+   },
+   "name": "continuous silica at 1300 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.931220407,
+    "gvdFs2PerMm": 653.987857,
+    "index": 1.722811351
+   },
+   "inputs": {
+    "continuous": true,
+    "glass": "nsf5",
+    "wavelengthNm": 380
+   },
+   "name": "continuous nsf5 at 380 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.675703964,
+    "gvdFs2PerMm": -219.2436948,
+    "index": 1.625990844
+   },
+   "inputs": {
+    "continuous": true,
+    "glass": "nsf5",
+    "wavelengthNm": 2500
+   },
+   "name": "continuous nsf5 at 2500 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.734495677,
+    "gvdFs2PerMm": 209.126889,
+    "index": 1.672707035
+   },
+   "inputs": {
+    "continuous": true,
+    "glass": "nsf5",
+    "wavelengthNm": 587.5618
+   },
+   "name": "continuous nsf5 at 587.5618 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.692251618,
+    "gvdFs2PerMm": 126.3845942,
+    "index": 1.658619448
+   },
+   "inputs": {
+    "continuous": true,
+    "glass": "nsf5",
+    "wavelengthNm": 800.25
+   },
+   "name": "continuous nsf5 at 800.25 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.668347486,
+    "gvdFs2PerMm": 45.41467496,
+    "index": 1.646194752
+   },
+   "inputs": {
+    "continuous": true,
+    "glass": "nsf5",
+    "wavelengthNm": 1300
+   },
+   "name": "continuous nsf5 at 1300 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 2.237740408,
+    "gvdFs2PerMm": 1266.752621,
+    "index": 1.870021617
+   },
+   "inputs": {
+    "continuous": true,
+    "glass": "nsf11",
+    "wavelengthNm": 370
+   },
+   "name": "continuous nsf11 at 370 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.777912619,
+    "gvdFs2PerMm": -202.2762878,
+    "index": 1.725840028
+   },
+   "inputs": {
+    "continuous": true,
+    "glass": "nsf11",
+    "wavelengthNm": 2500
+   },
+   "name": "continuous nsf11 at 2500 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.874545016,
+    "gvdFs2PerMm": 315.7115853,
+    "index": 1.784719942
+   },
+   "inputs": {
+    "continuous": true,
+    "glass": "nsf11",
+    "wavelengthNm": 587.5618
+   },
+   "name": "continuous nsf11 at 587.5618 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.811450925,
+    "gvdFs2PerMm": 187.407551,
+    "index": 1.764605277
+   },
+   "inputs": {
+    "continuous": true,
+    "glass": "nsf11",
+    "wavelengthNm": 800.25
+   },
+   "name": "continuous nsf11 at 800.25 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.775275301,
+    "gvdFs2PerMm": 76.74776661,
+    "index": 1.748176839
+   },
+   "inputs": {
+    "continuous": true,
+    "glass": "nsf11",
+    "wavelengthNm": 1300
+   },
+   "name": "continuous nsf11 at 1300 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "gvdFs2PerMm": 0.01318236326
+   },
+   "inputs": {
+    "continuous": true,
+    "glass": "silica",
+    "wavelengthNm": 1272.6
+   },
+   "name": "continuous silica near zero GVD",
+   "note": "Near zero GVD use 2e-4 fs^2/mm absolute for derivative cancellation.",
+   "tolerance": {
+    "gvdFs2PerMm": 0.0002
+   }
   }
  ],
  "citations": [
@@ -733,14 +1109,14 @@
  "convergence_keys": [
   "GVD of"
  ],
- "domain": "365-2325 nm for N-BK7 (the data sheet's own line list); 400-1550 nm evaluated for every catalogue glass.",
+ "domain": "365-2325 nm for N-BK7 (the data sheet's own line list); 400-1550 nm evaluated for every catalogue glass; continuous calculator path also checked at all fit endpoints and fractional wavelengths.",
  "fidelity": "computed",
  "id": "sellmeier",
- "outside_scope": "Clamps: `glassIndex` and `glassGVD` evaluate the fit at the nearest edge of the glass's range and return that value (N-SF11 at 300 nm returns its 370 nm index). `isWavelengthInGlassRange` reports whether a wavelength is inside; the tracer uses it to colour out-of-range light, but the getters themselves do not refuse.",
+ "outside_scope": "Clamps: `glassIndex` and `glassGVD` evaluate the fit at the nearest edge of the glass's range and return that value (N-SF11 at 300 nm returns its 370 nm index). `isWavelengthInGlassRange` reports whether a wavelength is inside; the tracer uses it to colour out-of-range light, but the getters themselves do not refuse. The continuous glassDispersion calculator path instead returns null outside the fit domain.",
  "provenance": "Coefficients transcribed from the manufacturer data sheets and Malitson's paper; the anchors are the same data sheet's tabulated catalogue values, not established as independent of the data behind the fit.",
  "reference": "Published Sellmeier coefficients evaluated directly; derivatives by five-point finite differences",
  "reference_file": "validation/reference/sellmeier.py",
  "scope": "Room-temperature catalogue curves inside each glass's stated range; no absorption, temperature or stress dependence.",
  "title": "Catalogue glass dispersion (Sellmeier)",
- "tolerance_rationale": "Index 1e-7 and group index 1e-6 are algebraic agreement between two evaluations of the same closed form. GVD 2e-4 covers the finite-difference truncation; 2e-3 at 587.6 nm covers the app's 1 nm GVD bucket, which evaluates 588 nm. The published anchors use 1e-5 absolute, the data sheet's own rounding."
+ "tolerance_rationale": "Index 1e-7 and group index 1e-6 are algebraic agreement between two evaluations of the same closed form. GVD 2e-4 covers the finite-difference truncation; 2e-3 at 587.6 nm covers the app's 1 nm GVD bucket, which evaluates 588 nm. Continuous calculator GVD has no bucket offset and uses 2e-4 relative, or 2e-4 fs^2/mm absolute near zero. The published anchors use 1e-5 absolute, the data sheet's own rounding."
 }

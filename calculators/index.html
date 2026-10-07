@@ -62,13 +62,16 @@
   <main class="calc-page">
     <div class="hub-hero">
       <h1>Calculators</h1>
-      <p>Each calculator is one physical model on one page: set the parameters, read the results and graphs, then the physics behind them, with every formula, its assumptions, how precisely it is evaluated and the literature it comes from. They run the same functions as the canvas, so a number you check here is the number the app computes. More calculators will be added over time.</p>
+      <p>Each calculator is one physical model on one page: set the parameters, read the results and graphs, then the physics behind them, with every formula, its assumptions, how precisely it is evaluated and the literature it comes from. Material models reuse the canvas’s catalogue and equations; wavelength converters evaluate frequency relations directly. Each page states its scope and reference checks.</p>
     </div>
     <div class="calc-cards">
+      <a class="calc-card" href="../calculators/dispersion/"><b>Sellmeier dispersion curves</b><span>Plot phase and group indices, GVD and the zero-dispersion crossing for catalogue glasses; calculate GDD through a thickness.</span></a>
+      <a class="calc-card" href="../calculators/shg/"><b>Second-harmonic wavelength (SHG)</b><span>Convert a fundamental wavelength to its second harmonic, or find the fundamental required for a target harmonic.</span></a>
+      <a class="calc-card" href="../calculators/cars/"><b>CARS wavelengths and Raman shift</b><span>Find Raman shift and anti-Stokes wavelength from pump and Stokes, or solve for Stokes from a target Raman shift; optional distinct probe.</span></a>
       <a class="calc-card" href="../calculators/opa/"><b>Optical parametric amplifier (OPA)</b><span>Seeded single-pass parametric gain from pump intensity, crystal and pulse timing, with the idler and the pump depletion.</span></a>
     </div>
   </main>
 
-  <footer class="wiki-footer">Calculators run the functions OpticalSetup itself uses and state how each was checked. They are not a substitute for design software: read each page’s precision section before relying on a number. See <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/docs/validation.md" target="_blank" rel="noopener">the validation table</a>, or <a href="../sketch/">open the canvas</a>.</footer>
+  <footer class="wiki-footer">Calculators evaluate optical models, reuse workbench functions where available, and state how each was checked. They are not a substitute for design software: read each page’s precision section before relying on a number. See <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/docs/validation.md" target="_blank" rel="noopener">the validation table</a>, or <a href="../sketch/">open the canvas</a>.</footer>
 </body>
 </html>

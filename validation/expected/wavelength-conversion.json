@@ -1,0 +1,326 @@
+{
+ "app": "calculators/shg/shg-calculator.js: computeShg; calculators/cars/cars-calculator.js: computeCars",
+ "cases": [
+  {
+   "expected": {
+    "fundamentalNm": 1064.0,
+    "fundamentalTHz": 281.7598289,
+    "harmonicNm": 532.0,
+    "harmonicTHz": 563.5196579
+   },
+   "inputs": {
+    "kind": "shg",
+    "mode": "fundamental",
+    "wavelengthNm": 1064
+   },
+   "name": "SHG fundamental 1064 nm",
+   "tolerance": {
+    "fundamentalNm": 1e-09,
+    "fundamentalTHz": 1e-09,
+    "harmonicNm": 1e-09,
+    "harmonicTHz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "fundamentalNm": 1064.0,
+    "fundamentalTHz": 281.7598289,
+    "harmonicNm": 532.0,
+    "harmonicTHz": 563.5196579
+   },
+   "inputs": {
+    "kind": "shg",
+    "mode": "harmonic",
+    "wavelengthNm": 532
+   },
+   "name": "SHG harmonic 532 nm",
+   "tolerance": {
+    "fundamentalNm": 1e-09,
+    "fundamentalTHz": 1e-09,
+    "harmonicNm": 1e-09,
+    "harmonicTHz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "fundamentalNm": 1030.25,
+    "fundamentalTHz": 290.9900102,
+    "harmonicNm": 515.125,
+    "harmonicTHz": 581.9800204
+   },
+   "inputs": {
+    "kind": "shg",
+    "mode": "fundamental",
+    "wavelengthNm": 1030.25
+   },
+   "name": "SHG fundamental 1030.25 nm",
+   "tolerance": {
+    "fundamentalNm": 1e-09,
+    "fundamentalTHz": 1e-09,
+    "harmonicNm": 1e-09,
+    "harmonicTHz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "fundamentalNm": 200.0,
+    "fundamentalTHz": 1498.96229,
+    "harmonicNm": 100.0,
+    "harmonicTHz": 2997.92458
+   },
+   "inputs": {
+    "kind": "shg",
+    "mode": "harmonic",
+    "wavelengthNm": 100
+   },
+   "name": "SHG harmonic 100 nm",
+   "tolerance": {
+    "fundamentalNm": 1e-09,
+    "fundamentalTHz": 1e-09,
+    "harmonicNm": 1e-09,
+    "harmonicTHz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "fundamentalNm": 20000.0,
+    "fundamentalTHz": 14.9896229,
+    "harmonicNm": 10000.0,
+    "harmonicTHz": 29.9792458
+   },
+   "inputs": {
+    "kind": "shg",
+    "mode": "fundamental",
+    "wavelengthNm": 20000
+   },
+   "name": "SHG fundamental 20000 nm",
+   "tolerance": {
+    "fundamentalNm": 1e-09,
+    "fundamentalTHz": 1e-09,
+    "harmonicNm": 1e-09,
+    "harmonicTHz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "antiStokesNm": 666.6666667,
+    "probeNm": 800,
+    "pumpNm": 800,
+    "ramanShiftCm": 2500.0,
+    "ramanTHz": 74.9481145,
+    "stokesNm": 1000.0
+   },
+   "inputs": {
+    "kind": "cars",
+    "mode": "wavelengths",
+    "probeNm": 800,
+    "pumpNm": 800,
+    "separateProbe": false,
+    "stokesNm": 1000
+   },
+   "name": "CARS wavelengths pump 800 probe 800",
+   "tolerance": {
+    "antiStokesNm": 1e-09,
+    "probeNm": 1e-09,
+    "pumpNm": 1e-09,
+    "ramanShiftCm": 1e-09,
+    "ramanTHz": 1e-09,
+    "stokesNm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "antiStokesNm": 595.7446809,
+    "probeNm": 700,
+    "pumpNm": 800,
+    "ramanShiftCm": 2500.0,
+    "ramanTHz": 74.9481145,
+    "stokesNm": 1000.0
+   },
+   "inputs": {
+    "kind": "cars",
+    "mode": "wavelengths",
+    "probeNm": 700,
+    "pumpNm": 800,
+    "separateProbe": true,
+    "stokesNm": 1000
+   },
+   "name": "CARS wavelengths pump 800 probe 700",
+   "tolerance": {
+    "antiStokesNm": 1e-09,
+    "probeNm": 1e-09,
+    "pumpNm": 1e-09,
+    "ramanShiftCm": 1e-09,
+    "ramanTHz": 1e-09,
+    "stokesNm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "antiStokesNm": 666.6666667,
+    "probeNm": 800,
+    "pumpNm": 800,
+    "ramanShiftCm": 2500.0,
+    "ramanTHz": 74.9481145,
+    "stokesNm": 1000.0
+   },
+   "inputs": {
+    "kind": "cars",
+    "mode": "shift",
+    "probeNm": 800,
+    "pumpNm": 800,
+    "ramanShiftCm": 2500,
+    "separateProbe": false
+   },
+   "name": "CARS shift pump 800 probe 800",
+   "tolerance": {
+    "antiStokesNm": 1e-09,
+    "probeNm": 1e-09,
+    "pumpNm": 1e-09,
+    "ramanShiftCm": 1e-09,
+    "ramanTHz": 1e-09,
+    "stokesNm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "antiStokesNm": 595.7446809,
+    "probeNm": 700,
+    "pumpNm": 800,
+    "ramanShiftCm": 2500.0,
+    "ramanTHz": 74.9481145,
+    "stokesNm": 1000.0
+   },
+   "inputs": {
+    "kind": "cars",
+    "mode": "shift",
+    "probeNm": 700,
+    "pumpNm": 800,
+    "ramanShiftCm": 2500,
+    "separateProbe": true
+   },
+   "name": "CARS shift pump 800 probe 700",
+   "tolerance": {
+    "antiStokesNm": 1e-09,
+    "probeNm": 1e-09,
+    "pumpNm": 1e-09,
+    "ramanShiftCm": 1e-09,
+    "ramanTHz": 1e-09,
+    "stokesNm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "antiStokesNm": 1000.0,
+    "probeNm": 20000,
+    "pumpNm": 1000,
+    "ramanShiftCm": 9500.0,
+    "ramanTHz": 284.8028351,
+    "stokesNm": 20000.0
+   },
+   "inputs": {
+    "kind": "cars",
+    "mode": "wavelengths",
+    "probeNm": 20000,
+    "pumpNm": 1000,
+    "separateProbe": true,
+    "stokesNm": 20000
+   },
+   "name": "CARS wavelengths pump 1000 probe 20000",
+   "tolerance": {
+    "antiStokesNm": 1e-09,
+    "probeNm": 1e-09,
+    "pumpNm": 1e-09,
+    "ramanShiftCm": 1e-09,
+    "ramanTHz": 1e-09,
+    "stokesNm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "antiStokesNm": 801.0769427,
+    "probeNm": 900.5,
+    "pumpNm": 1030.25,
+    "ramanShiftCm": 1378.253693,
+    "ramanTHz": 41.31900624,
+    "stokesNm": 1200.75
+   },
+   "inputs": {
+    "kind": "cars",
+    "mode": "wavelengths",
+    "probeNm": 900.5,
+    "pumpNm": 1030.25,
+    "separateProbe": true,
+    "stokesNm": 1200.75
+   },
+   "name": "CARS wavelengths pump 1030.25 probe 900.5",
+   "tolerance": {
+    "antiStokesNm": 1e-09,
+    "probeNm": 1e-09,
+    "pumpNm": 1e-09,
+    "ramanShiftCm": 1e-09,
+    "ramanTHz": 1e-09,
+    "stokesNm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "antiStokesNm": 19896.04069,
+    "probeNm": 19900,
+    "pumpNm": 19900,
+    "ramanShiftCm": 0.1,
+    "ramanTHz": 0.00299792458,
+    "stokesNm": 19903.96089
+   },
+   "inputs": {
+    "kind": "cars",
+    "mode": "shift",
+    "probeNm": 19900,
+    "pumpNm": 19900,
+    "ramanShiftCm": 0.1,
+    "separateProbe": false
+   },
+   "name": "CARS shift pump 19900 probe 19900",
+   "tolerance": {
+    "antiStokesNm": 1e-09,
+    "probeNm": 1e-09,
+    "pumpNm": 1e-09,
+    "ramanShiftCm": 1e-09,
+    "ramanTHz": 1e-09,
+    "stokesNm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "antiStokesNm": 666.6666666666666,
+    "ramanShiftCm": 2500
+   },
+   "inputs": {
+    "kind": "cars",
+    "mode": "wavelengths",
+    "pumpNm": 800,
+    "stokesNm": 1000
+   },
+   "name": "CARS exact rational wavelength and shift anchor",
+   "tolerance": {
+    "antiStokesNm": 1e-09,
+    "ramanShiftCm": 1e-09
+   }
+  }
+ ],
+ "citations": [
+  "NIST, Frequency Conversion Interfaces for Photonic Quantum Systems, 1064 to 532 nm example \u2014 https://www.nist.gov/programs-projects/frequency-conversion-interfaces-photonic-quantum-systems",
+  "NIST, Broadband Coherent Anti-Stokes Raman Scattering Microscopy, omega_as = omega_p - omega_s + omega_probe \u2014 https://www.nist.gov/programs-projects/broadband-coherent-anti-stokes-raman-scattering-bcars-microscopy"
+ ],
+ "convergence": "Closed-form arithmetic; no discretisation or iteration.",
+ "domain": "Both SHG directions; CARS wavelength and shift modes, same and distinct probe, fractional wavelengths and input endpoints.",
+ "fidelity": "computed",
+ "id": "wavelength-conversion",
+ "outside_scope": "Declines non-finite or out-of-range inputs, non-positive Raman shifts and impossible inferred Stokes frequencies; outputs may lie outside the input interval.",
+ "provenance": "Frequency conservation derived from NIST's SHG and CARS explanations; exact c = 299792458 m/s.",
+ "reference": "SI frequency arithmetic plus exact rational wavelength anchors",
+ "reference_file": "validation/reference/wavelength_conversion.py",
+ "scope": "Vacuum wavelengths, frequency identities only; no phase matching, yield or resonance spectrum.",
+ "title": "SHG and CARS vacuum-wavelength conversions",
+ "tolerance_rationale": "1e-9 relative for floating-point frequency identities, not experimental accuracy."
+}

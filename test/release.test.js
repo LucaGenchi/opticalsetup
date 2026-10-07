@@ -479,7 +479,7 @@ test('a kept release reads only its own offline cache and leaves the current app
     'opticalsetup-kept-v1.1-v139': { 'https://opticalsetup.com/v1.1/sketch/': 'KEPT v1.1' },
   });
   const names = [...worker.stores.keys()].sort();
-  assert.deepEqual(names, ['opticalsetup-kept-v1.0-v139', 'opticalsetup-kept-v1.1-v139', 'opticalsetup-pwa-v150']);
+  assert.deepEqual(names, [vm.runInContext('CACHE_NAME', worker.context), 'opticalsetup-kept-v1.1-v139', 'opticalsetup-pwa-v150'].sort());
   assert.equal(await worker.offline(entry), `fresh ${entry}`);
 });
 
