@@ -1,0 +1,449 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "frame",
+      "type": "figureframe",
+      "x": 475,
+      "y": 310,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "w": 1020,
+        "h": 560,
+        "background": "white"
+      }
+    },
+    {
+      "id": "title",
+      "type": "textlabel",
+      "x": -20,
+      "y": 45,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**WDM chip-to-chip photonic interconnect**",
+        "fontSize": 24,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "subtitle",
+      "type": "textlabel",
+      "x": -20,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Illustrative 4-channel telecom link — wavelength routing and fiber loss are traced; this is not a BER or calibrated transceiver model.",
+        "fontSize": 12,
+        "fill": "#66717d"
+      }
+    },
+    {
+      "id": "laser1560",
+      "type": "cwlaser",
+      "x": 0,
+      "y": 330,
+      "rot": 0,
+      "label": "CH4 · 1560 nm",
+      "showLabel": true,
+      "params": {
+        "enabled": true,
+        "wavelength": 1560,
+        "avgPowerW": 0.01,
+        "beamMode": "beam",
+        "beamWidth": 2,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "laser1555",
+      "type": "cwlaser",
+      "x": 130,
+      "y": 145,
+      "rot": 90,
+      "label": "CH3 · 1555 nm",
+      "showLabel": true,
+      "params": {
+        "enabled": true,
+        "wavelength": 1555,
+        "avgPowerW": 0.01,
+        "beamMode": "beam",
+        "beamWidth": 2,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "laser1550",
+      "type": "cwlaser",
+      "x": 260,
+      "y": 145,
+      "rot": 90,
+      "label": "CH2 · 1550 nm",
+      "showLabel": true,
+      "params": {
+        "enabled": true,
+        "wavelength": 1550,
+        "avgPowerW": 0.01,
+        "beamMode": "beam",
+        "beamWidth": 2,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "laser1545",
+      "type": "cwlaser",
+      "x": 390,
+      "y": 145,
+      "rot": 90,
+      "label": "CH1 · 1545 nm",
+      "showLabel": true,
+      "params": {
+        "enabled": true,
+        "wavelength": 1545,
+        "avgPowerW": 0.01,
+        "beamMode": "beam",
+        "beamWidth": 2,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "aom3",
+      "type": "aom",
+      "x": 130,
+      "y": 235,
+      "rot": 90,
+      "label": "DATA 3",
+      "showLabel": true,
+      "params": {
+        "aperture": 18,
+        "deflect": 0,
+        "rfMHz": 80,
+        "zero": false,
+        "eff": 0.9,
+        "modulate": true,
+        "modShape": "square",
+        "modFreqMHz": 10,
+        "chopDuty": 0.5,
+        "modDepth": 1,
+        "phaseNs": 0
+      }
+    },
+    {
+      "id": "aom2",
+      "type": "aom",
+      "x": 260,
+      "y": 235,
+      "rot": 90,
+      "label": "DATA 2",
+      "showLabel": true,
+      "params": {
+        "aperture": 18,
+        "deflect": 0,
+        "rfMHz": 80,
+        "zero": false,
+        "eff": 0.9,
+        "modulate": true,
+        "modShape": "square",
+        "modFreqMHz": 12,
+        "chopDuty": 0.5,
+        "modDepth": 1,
+        "phaseNs": 0
+      }
+    },
+    {
+      "id": "aom1",
+      "type": "aom",
+      "x": 390,
+      "y": 235,
+      "rot": 90,
+      "label": "DATA 1",
+      "showLabel": true,
+      "params": {
+        "aperture": 18,
+        "deflect": 0,
+        "rfMHz": 80,
+        "zero": false,
+        "eff": 0.9,
+        "modulate": true,
+        "modShape": "square",
+        "modFreqMHz": 14,
+        "chopDuty": 0.5,
+        "modDepth": 1,
+        "phaseNs": 0
+      }
+    },
+    {
+      "id": "mux3",
+      "type": "dichroic",
+      "x": 130,
+      "y": 330,
+      "rot": 315,
+      "label": "LP 1557",
+      "showLabel": true,
+      "params": {
+        "dtype": "longpass",
+        "cutoff": 1557,
+        "center": 1550,
+        "band": 5,
+        "bandRefl": 100,
+        "length": 34
+      }
+    },
+    {
+      "id": "mux2",
+      "type": "dichroic",
+      "x": 260,
+      "y": 330,
+      "rot": 315,
+      "label": "LP 1552",
+      "showLabel": true,
+      "params": {
+        "dtype": "longpass",
+        "cutoff": 1552,
+        "center": 1550,
+        "band": 5,
+        "bandRefl": 100,
+        "length": 34
+      }
+    },
+    {
+      "id": "mux1",
+      "type": "dichroic",
+      "x": 390,
+      "y": 330,
+      "rot": 315,
+      "label": "LP 1547",
+      "showLabel": true,
+      "params": {
+        "dtype": "longpass",
+        "cutoff": 1547,
+        "center": 1550,
+        "band": 5,
+        "bandRefl": 100,
+        "length": 34
+      }
+    },
+    {
+      "id": "txnote",
+      "type": "textlabel",
+      "x": 40,
+      "y": 390,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**TX** · three long-pass dichroics combine the four wavelengths onto one axis.",
+        "fontSize": 11,
+        "fill": "#44505c"
+      }
+    },
+    {
+      "id": "rxnote",
+      "type": "textlabel",
+      "x": 690,
+      "y": 390,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**RX** · the same cutoffs in reverse order peel channels off one at a time.",
+        "fontSize": 11,
+        "fill": "#44505c"
+      }
+    },
+    {
+      "id": "demux1",
+      "type": "dichroic",
+      "x": 710,
+      "y": 330,
+      "rot": 315,
+      "label": "LP 1547",
+      "showLabel": true,
+      "params": {
+        "dtype": "longpass",
+        "cutoff": 1547,
+        "center": 1550,
+        "band": 5,
+        "bandRefl": 100,
+        "length": 34
+      }
+    },
+    {
+      "id": "demux2",
+      "type": "dichroic",
+      "x": 800,
+      "y": 330,
+      "rot": 315,
+      "label": "LP 1552",
+      "showLabel": true,
+      "params": {
+        "dtype": "longpass",
+        "cutoff": 1552,
+        "center": 1550,
+        "band": 5,
+        "bandRefl": 100,
+        "length": 34
+      }
+    },
+    {
+      "id": "demux3",
+      "type": "dichroic",
+      "x": 890,
+      "y": 330,
+      "rot": 315,
+      "label": "LP 1557",
+      "showLabel": true,
+      "params": {
+        "dtype": "longpass",
+        "cutoff": 1557,
+        "center": 1550,
+        "band": 5,
+        "bandRefl": 100,
+        "length": 34
+      }
+    },
+    {
+      "id": "pd1",
+      "type": "detector",
+      "x": 710,
+      "y": 450,
+      "rot": 90,
+      "label": "RX1 · 1545",
+      "showLabel": true,
+      "params": {
+        "aperture": 26,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    },
+    {
+      "id": "pd2",
+      "type": "detector",
+      "x": 800,
+      "y": 450,
+      "rot": 90,
+      "label": "RX2 · 1550",
+      "showLabel": true,
+      "params": {
+        "aperture": 26,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    },
+    {
+      "id": "pd3",
+      "type": "detector",
+      "x": 890,
+      "y": 450,
+      "rot": 90,
+      "label": "RX3 · 1555",
+      "showLabel": true,
+      "params": {
+        "aperture": 26,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    },
+    {
+      "id": "pd4",
+      "type": "detector",
+      "x": 1000,
+      "y": 330,
+      "rot": 0,
+      "label": "RX4 · 1560",
+      "showLabel": true,
+      "params": {
+        "aperture": 26,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
+    },
+    {
+      "id": "try",
+      "type": "textlabel",
+      "x": -20,
+      "y": 505,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**Try:** disable one laser · detune a channel across a dichroic cutoff · increase fiber loss.  Expected: one RX port vanishes · routing changes · all RX powers fall.",
+        "fontSize": 11,
+        "fill": "#44505c"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "link",
+      "kind": "fiber",
+      "pts": [
+        {
+          "x": 485,
+          "y": 330
+        },
+        {
+          "x": 525,
+          "y": 355
+        },
+        {
+          "x": 565,
+          "y": 305
+        },
+        {
+          "x": 610,
+          "y": 330
+        }
+      ],
+      "color": "#e8a800",
+      "width": 5,
+      "bare": false,
+      "propagate": true,
+      "inputNA": 0.22,
+      "groupIndex": 1.468,
+      "lossDbPerM": 0.2,
+      "out0": {
+        "mode": "diverge",
+        "na": 0.04,
+        "focal": 20,
+        "dia": 4
+      },
+      "out1": {
+        "mode": "diverge",
+        "na": 0.04,
+        "focal": 20,
+        "dia": 4
+      }
+    }
+  ]
+}

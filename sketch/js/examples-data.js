@@ -27,6 +27,12 @@ export const examples = [
     "slug": "spherical-aberration-sphere-vs-asphere-vs-ideal-lens"
   },
   {
+    "group": "Photonic Systems",
+    "name": "WDM chip-to-chip photonic interconnect",
+    "path": "../Examples/Photonic%20Systems/WDM%20chip-to-chip%20photonic%20interconnect.json",
+    "slug": "wdm-chip-to-chip-photonic-interconnect"
+  },
+  {
     "group": "Reflective Imaging Systems",
     "name": "Gregorian telescope — element by element",
     "path": "../Examples/Reflective%20Imaging%20Systems/Gregorian%20telescope%20%E2%80%94%20element%20by%20element.json",
