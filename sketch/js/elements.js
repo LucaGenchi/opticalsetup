@@ -4202,6 +4202,7 @@ export const registry = {
       { key: 'diameter', label: 'Eye diameter (mm)', type: 'number', min: 18, max: 60, step: 1, def: 30 },
       { key: 'pupil', label: 'Pupil diameter (mm)', type: 'number', min: 2, max: 12, step: 0.5, def: 12 },
       { key: 'focus', label: 'Lens focal length (mm)', type: 'number', min: 20, max: 35, step: 0.5, def: 30 },
+      { key: 'retinalReflectivity', label: 'Retinal reflectivity (%)', type: 'number', min: 0, max: 100, step: 1, def: 0 },
     ],
     svg(el) {
       const scale = (el.params.diameter || 30) / 30;
@@ -4228,7 +4229,7 @@ export const registry = {
         { x1: -radius, y1: h, x2: -radius, y2: radius, kind: 'absorb' },
         { x1: -radius, y1: -radius, x2: radius, y2: -radius, kind: 'absorb' },
         { x1: -radius, y1: radius, x2: radius, y2: radius, kind: 'absorb' },
-        { x1: radius, y1: -retina, x2: radius, y2: retina, kind: 'detector', data: { aperture: 2 * retina, detectorType: 'Retina' } },
+        { x1: radius, y1: -retina, x2: radius, y2: retina, kind: 'retina', data: { aperture: 2 * retina, detectorType: 'Retina', refl: el.params.retinalReflectivity ?? 0 } },
       ];
     },
   },
