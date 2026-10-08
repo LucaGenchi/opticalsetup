@@ -17,6 +17,17 @@ import { download, manualBeamSVG, rotPt } from './util.js';
 // Millimetres. Past this a figure is not a bench, it is bad data.
 const FIGURE_LIMIT = 1e6;
 
+// Dense point-source figures can contain more coordinates than a function's
+// argument limit. Accumulate bounds instead of spreading them into Math.min.
+function coordinateBounds(points) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const p of points) {
+    x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y);
+    x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y);
+  }
+  return { x0, y0, x1, y1 };
+}
+
 function sceneBounds(elements = state.elements, drawables = null) {
   const frame = [...elements].reverse().find(el => registry[el.type]?.exportFrame);
   if (frame) {
@@ -48,8 +59,9 @@ function sceneBounds(elements = state.elements, drawables = null) {
   const elPts = clampPts;
   let bx0, bx1, by0, by1;
   if (elPts.length) {
-    bx0 = Math.min(...elPts.map(p => p.x)) - 150; bx1 = Math.max(...elPts.map(p => p.x)) + 150;
-    by0 = Math.min(...elPts.map(p => p.y)) - 150; by1 = Math.max(...elPts.map(p => p.y)) + 150;
+    const box = coordinateBounds(elPts);
+    bx0 = box.x0 - 150; bx1 = box.x1 + 150;
+    by0 = box.y0 - 150; by1 = box.y1 + 150;
   } else { bx0 = -1e9; bx1 = 1e9; by0 = -1e9; by1 = 1e9; }
   // Authored geometry must always fit. Only simulated rays may be clipped
   // to keep an unterminated beam from making the export enormous.
@@ -64,14 +76,18 @@ function sceneBounds(elements = state.elements, drawables = null) {
   // produce Infinity - Infinity -- is dropped rather than clamped, because
   // clamping NaN yields NaN and one such point poisons the whole figure.
   const inWindow = value => Math.min(FIGURE_LIMIT, Math.max(-FIGURE_LIMIT, value));
-  const xs = [...pts.map(p => p.x), ...rayPts.map(p => Math.min(bx1, Math.max(bx0, p.x)))]
-    .map(inWindow).filter(Number.isFinite);
-  const ys = [...pts.map(p => p.y), ...rayPts.map(p => Math.min(by1, Math.max(by0, p.y)))]
-    .map(inWindow).filter(Number.isFinite);
-  if (!xs.length || !ys.length) return { x: 0, y: 0, w: 400, h: 300 };
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const list of [pts, rayPts]) {
+    for (const p of list) {
+      const x = inWindow(list === rayPts ? Math.min(bx1, Math.max(bx0, p.x)) : p.x);
+      const y = inWindow(list === rayPts ? Math.min(by1, Math.max(by0, p.y)) : p.y);
+      if (Number.isFinite(x)) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); }
+      if (Number.isFinite(y)) { y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    }
+  }
+  if (!Number.isFinite(x0) || !Number.isFinite(y0)) return { x: 0, y: 0, w: 400, h: 300 };
   const m = 30;
-  const x0 = Math.min(...xs) - m, y0 = Math.min(...ys) - m;
-  return { x: x0, y: y0, w: Math.max(...xs) + m - x0, h: Math.max(...ys) + m - y0 };
+  return { x: x0 - m, y: y0 - m, w: x1 - x0 + 2 * m, h: y1 - y0 + 2 * m };
 }
 
 function ptsAttr(pts) { return pts.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' '); }

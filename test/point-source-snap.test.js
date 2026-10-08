@@ -270,15 +270,16 @@ test('a fiber input collects the source inside the range', () => {
   assert.ok(rayPoints([pointSource()], [fiber]).some(p => p.x > 800));
 });
 
-test('point source supports 128 distinct rays and clamps larger saved counts', () => {
+test('point source supports 4096 distinct rays and clamps larger saved counts', () => {
   const source = pointSource();
-  for (const count of [128, 1000]) {
+  for (const count of [128, 1000, 4096, 10000]) {
+    const expected = Math.min(count, 4096);
     source.params.nrays = count;
     const scene = parseSketch(JSON.stringify({ app: 'optics2d', version: 1, elements: [source], beams: [] }), registry);
-    assert.equal(scene.elements[0].params.nrays, 128);
+    assert.equal(scene.elements[0].params.nrays, expected);
     const rays = registry.pointsource.source(scene.elements[0]);
-    assert.equal(rays.length, 128);
-    assert.equal(new Set(rays.map(r => Math.atan2(r.dy, r.dx).toFixed(8))).size, 128);
+    assert.equal(rays.length, expected);
+    assert.equal(new Set(rays.map(r => Math.atan2(r.dy, r.dx).toFixed(8))).size, expected);
     rayPoints(scene.elements);
   }
 });
