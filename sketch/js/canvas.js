@@ -15,7 +15,8 @@ import {
 } from './objective.js';
 import { immersionLayerSVG } from './immersion.js';
 import { polygonScannerState } from './polygon-scanner.js';
-import { mixReading, specimenTimingReading, traceScene } from './raytrace.js';
+import { mixReading, specimenTimingReading, traceScene, getTraceRevision } from './raytrace.js';
+import { SceneTraceCache, drawPointSourceCanvas, POINT_SOURCE_CANVAS_THRESHOLD } from './point-source-rendering.js';
 import { pulseArrivalsAtPath, pulseMarkers } from './pulses.js';
 import { toLocal, toWorld, rotPt, distToSegment, distinctPoints, manualBeamSVG, esc } from './util.js';
 import {
@@ -32,6 +33,20 @@ import {
 
 let svg, viewport, gridLayer, highlightLayer, immersionLayer, beamLayer, pulseLayer, manualLayer, elementLayer, voxelLayer, overlayLayer;
 let statusEl;
+const pointSourceTraceCache = new SceneTraceCache(traceScene, getTraceRevision);
+let displayedBeamScene = null, displayedBeamView = null;
+let pointSourceLayers = [];
+let interactionFrame = null;
+function renderInteraction() {
+  if (!state.elements.some(el => el.type === 'pointsource' && el.params.nrays >= POINT_SOURCE_CANVAS_THRESHOLD)) {
+    renderAll();
+    return;
+  }
+  if (interactionFrame === null) interactionFrame = requestAnimationFrame(() => {
+    interactionFrame = null;
+    renderAll();
+  });
+}
 let textEditor = null;
 let pulseTracks = [];
 let writeHits = [];
@@ -63,6 +78,8 @@ export function setMeasurementsCallback(fn) { onMeasurementsChange = fn; }
 
 export function initCanvas(svgElement, statusElement) {
   svg = svgElement;
+  displayedBeamScene = displayedBeamView = null;
+  pointSourceLayers = [];
   statusEl = statusElement;
   svg.innerHTML = `
     <defs>
@@ -139,6 +156,7 @@ function constrainPoint(origin, point, incrementDeg = 45) {
 
 // ---------- rendering ----------
 export function renderAll() {
+  if (interactionFrame !== null) { cancelAnimationFrame(interactionFrame); interactionFrame = null; }
   const v = state.view;
   viewport.setAttribute('transform', `translate(${v.x} ${v.y}) scale(${v.z})`);
   renderGrid();
@@ -454,24 +472,56 @@ function announceMixingState(elements) {
 }
 
 function renderBeams() {
-  const scene = traceScene(animatedOpticalElements(), state.beams);
+  const opticalElements = animatedOpticalElements();
+  const hasPointSource = opticalElements.some(el => el.type === 'pointsource');
+  const scene = hasPointSource ? pointSourceTraceCache.get(opticalElements, state.beams)
+    : traceScene(opticalElements, state.beams);
   const drawables = scene.drawables;
   pulseTracks = scene.pulseTracks;
   writeHits = scene.writeHits || [];
   signalHits = scene.signalHits || [];
   sampleHitPositions.clear();
   for (const hit of signalHits) sampleHitPositions.set(hit.stageId, hit);
-  let s = '';
-  for (const d of drawables) {
-    if (d.type === 'poly') {
-      s += `<polygon points="${ptsAttr(d.pts)}" fill="${d.color}" opacity="${d.opacity}" stroke="none"/>`;
-    } else if (d.type === 'dots') {
-      s += `<g fill="${d.color}">` + d.dots.map(o => `<circle cx="${o.x.toFixed(1)}" cy="${o.y.toFixed(1)}" r="${o.r.toFixed(2)}" opacity="${o.o.toFixed(2)}"/>`).join('') + `</g>`;
-    } else {
-      s += `<polyline points="${ptsAttr(d.pts)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}${d.dash && d.dashOffset ? ` stroke-dashoffset="${d.dashOffset}"` : ''}/>`;
+  const width = svg.clientWidth, height = svg.clientHeight;
+  const viewKey = JSON.stringify([state.view, width, height, window.devicePixelRatio]);
+  if (scene !== displayedBeamScene) {
+    let s = '';
+    pointSourceLayers = [];
+    let rasterRun = null;
+    for (const d of drawables) {
+      if (d.pointSourceCanvas) {
+        if (!rasterRun) {
+          rasterRun = [];
+          const index = pointSourceLayers.push(rasterRun) - 1;
+          s += `<foreignObject data-point-source-layer="${index}" pointer-events="none"><canvas xmlns="http://www.w3.org/1999/xhtml" style="display:block"></canvas></foreignObject>`;
+        }
+        rasterRun.push(d);
+        continue;
+      }
+      rasterRun = null;
+      if (d.type === 'poly') {
+        s += `<polygon points="${ptsAttr(d.pts)}" fill="${d.color}" opacity="${d.opacity}" stroke="none"/>`;
+      } else if (d.type === 'dots') {
+        s += `<g fill="${d.color}">` + d.dots.map(o => `<circle cx="${o.x.toFixed(1)}" cy="${o.y.toFixed(1)}" r="${o.r.toFixed(2)}" opacity="${o.o.toFixed(2)}"/>`).join('') + `</g>`;
+      } else {
+        s += `<polyline points="${ptsAttr(d.pts)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}${d.dash && d.dashOffset ? ` stroke-dashoffset="${d.dashOffset}"` : ''}/>`;
+      }
+    }
+    beamLayer.innerHTML = s;
+  }
+  if (scene !== displayedBeamScene || viewKey !== displayedBeamView) {
+    for (const layer of beamLayer.querySelectorAll('[data-point-source-layer]')) {
+      // Cancel the enclosing world transform; the canvas is sized in screen
+      // pixels and sits in the same stacking position as these traced rays.
+      const v = state.view;
+      layer.setAttribute('width', width);
+      layer.setAttribute('height', height);
+      layer.setAttribute('transform', `scale(${1 / v.z}) translate(${-v.x} ${-v.y})`);
+      drawPointSourceCanvas(layer.querySelector('canvas'), pointSourceLayers[Number(layer.dataset.pointSourceLayer)], v, width, height, window.devicePixelRatio);
     }
   }
-  beamLayer.innerHTML = s;
+  displayedBeamScene = scene;
+  displayedBeamView = viewKey;
   announceMixingState(state.elements);
   renderPulseLayer();
   syncPulseAnimation();
@@ -1805,14 +1855,14 @@ function onMove(e) {
   if (drag.mode === 'pan') {
     state.view.x = drag.vx + (e.clientX - drag.sx);
     state.view.y = drag.vy + (e.clientY - drag.sy);
-    renderAll();
+    renderInteraction();
   } else if (drag.mode === 'move') {
     const { x, y } = snapElPos(drag.el, w.x + drag.ox, w.y + drag.oy, e.altKey);
     if (x === drag.el.x && y === drag.el.y) return;
     if (!drag.moved) { pushUndo(); drag.moved = true; }
     drag.el.x = x;
     drag.el.y = y;
-    renderAll();
+    renderInteraction();
   } else if (drag.mode === 'rotate') {
     let a = Math.atan2(w.y - drag.el.y, w.x - drag.el.x) * 180 / Math.PI + 90;
     if (!e.shiftKey) a = Math.round(a / 5) * 5;
@@ -1820,7 +1870,7 @@ function onMove(e) {
     if (a === drag.el.rot) return;
     if (!drag.moved) { pushUndo(); drag.moved = true; }
     drag.el.rot = a;
-    renderAll();
+    renderInteraction();
   } else if (drag.mode === 'resizeAnchor') {
     const rel = rotPt(w.x - drag.anchor.x, w.y - drag.anchor.y, -drag.angle);
     const rawW = Math.max(1, drag.corner.sx * rel.x);
@@ -1838,7 +1888,7 @@ function onMove(e) {
     drag.el.x = centerWorld.x;
     drag.el.y = centerWorld.y;
     setStatus(`${wKey} ${nextW} · ${hKey} ${nextH}`);
-    renderAll();
+    renderInteraction();
   } else if (drag.mode === 'resize') {
     const local = toLocal(drag.el, w.x, w.y);
     const sx = Math.max(0.08, Math.abs(local.x) / Math.max(1, drag.hw));
@@ -1855,7 +1905,7 @@ function onMove(e) {
     for (const [key, next] of changes) writeParam(drag.el, key, next);
     const labels = assignments.map(([key]) => `${key} ${readParam(drag.el, key)}`).join(' · ');
     setStatus(labels);
-    renderAll();
+    renderInteraction();
   } else if (drag.mode === 'tune') {
     const spec = drag.tune.param;
     const step = Number.isFinite(spec.step) && spec.step > 0 ? spec.step : 1;
@@ -1872,7 +1922,7 @@ function onMove(e) {
     if (drag.pulseWidthFs !== undefined) drag.el.params.pulseWidthFs = drag.pulseWidthFs;
     writeParam(drag.el, drag.tune.key, next);
     setStatus(directValueLabel(drag.el, drag.tune));
-    renderAll();
+    renderInteraction();
   } else if (drag.mode === 'editpoint') {
     const snapped = { x: snapPos(w.x, e.altKey), y: snapPos(w.y, e.altKey) };
     let local = toLocal(drag.base, snapped.x, snapped.y);
@@ -1886,10 +1936,10 @@ function onMove(e) {
     drag.el.x = next.x; drag.el.y = next.y;
     drag.el.params.vertices = next.vertices;
     setStatus(`vertex ${drag.i + 1} · ${local.x.toFixed(1)}, ${local.y.toFixed(1)} mm`);
-    renderAll();
+    renderInteraction();
   } else if (drag.mode === 'marquee') {
     drag.x1 = w.x; drag.y1 = w.y;
-    renderAll();
+    renderInteraction();
   } else if (drag.mode === 'movemulti') {
     const dx = snapPos(w.x - drag.sx), dy = snapPos(w.y - drag.sy);
     if (dx === drag.dx && dy === drag.dy) return;
@@ -1900,7 +1950,7 @@ function onMove(e) {
     for (const it of drag.bitems) {
       it.b.pts.forEach((p, i) => { p.x = it.pts0[i].x + dx; p.y = it.pts0[i].y + dy; });
     }
-    renderAll();
+    renderInteraction();
   } else if (drag.mode === 'vertex') {
     const p = { x: snapPos(w.x), y: snapPos(w.y) };
     const old = drag.beam.pts[drag.i];
@@ -1910,19 +1960,20 @@ function onMove(e) {
       || (after && Math.hypot(p.x - after.x, p.y - after.y) <= 1e-6)) return;
     if (!drag.moved) { pushUndo(); drag.moved = true; }
     drag.beam.pts[drag.i] = p;
-    renderAll();
+    renderInteraction();
   } else if (drag.mode === 'movebeam') {
     const dx = w.x - drag.lx, dy = w.y - drag.ly;
     if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) {
       if (!drag.moved) { pushUndo(); drag.moved = true; }
       for (const p of drag.beam.pts) { p.x += dx; p.y += dy; }
       drag.lx = w.x; drag.ly = w.y;
-      renderAll();
+      renderInteraction();
     }
   }
 }
 
 function onUp(e) {
+  if (interactionFrame !== null) renderAll();
   if (pendingTextLink?.pointerId === e.pointerId) {
     const { href, x, y } = pendingTextLink;
     pendingTextLink = null;

@@ -5,6 +5,8 @@
 // and returns drawables: stroked polylines (line-mode / beam edges) and filled
 // polygons (beam-mode envelope between the two edge rays).
 
+import { POINT_SOURCE_CANVAS_THRESHOLD } from './point-source-rendering.js';
+
 import {
   registry, OBJ_SHAPES, EPI_CAPABLE_KINDS as EPI_KINDS, MIXING_KINDS, phasePlateOpdFraction,
   ISOTROPIC_KINDS, MODIFIER_KINDS, EMISSION_ORDER, EMISSION_OFFSET_NM, NONLINEAR_SIGNAL_KINDS,
@@ -6994,7 +6996,11 @@ function planOpaElements(surfaces) {
 
 // `options.weakBranchBudget` overrides the per-trace budget for weak
 // branches; it exists for tests of the boundary.
+let traceRevision = 0;
+export function getTraceRevision() { return traceRevision; }
+
 export function traceScene(elements, beams = [], options = {}) {
+  traceRevision++;
   const surfaces = buildSurfaces(elements, beams);
   const drawables = [];
   const pulseTracks = [];
@@ -7156,10 +7162,14 @@ export function traceScene(elements, beams = [], options = {}) {
     const paths = allPaths.filter(r => !r.hidden);
     lastPaths.push(...paths);
     lastPowerPaths.push(...allPaths);
+    const drawableStart = drawables.length;
     assembleDrawables(paths, {
       K, isBeam: p.beamMode === 'beam',
       fixedColor: p.autoColor === false && p.color ? baseColor : null,
     }, drawables);
+    if (options.pointSourceCanvas && el.type === 'pointsource' && K >= POINT_SOURCE_CANVAS_THRESHOLD) {
+      for (let i = drawableStart; i < drawables.length; i++) drawables[i].pointSourceCanvas = true;
+    }
     // "Show pulse dynamics" is a rendering choice only: the pulse train above
     // is still traced and still gates temporal overlap downstream — skipping
     // the tracks just leaves the steady CW beam graphic in place of packets.

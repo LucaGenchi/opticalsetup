@@ -2608,6 +2608,7 @@ function opaStateCore(plan, p) {
 // How far an uncollected point-source ray is drawn, and the capture range a
 // point source had before the range became a parameter (1.5x the glow).
 const POINT_SOURCE_GLOW_MM = 110;
+const POINT_SOURCE_MAX_RAYS = 4096;
 const POINT_SOURCE_LEGACY_CAPTURE_MM = 165;
 
 export const registry = {
@@ -2765,7 +2766,7 @@ export const registry = {
       },
       { key: 'linesReadout', label: 'Lines', type: 'readout', readout: p => lampLineSummary(p.lampType), show: p => p.sourceKind === 'lamp' },
       { key: 'spread', label: 'Emission angle (°)', type: 'number', min: 10, max: 360, step: 10, def: 360 },
-      { key: 'nrays', label: 'Rays', type: 'number', min: 4, max: 128, step: 2, def: 12 },
+      { key: 'nrays', label: 'Rays', type: 'number', min: 4, max: POINT_SOURCE_MAX_RAYS, step: 2, def: 12, slider: true },
       // How far from the source a lens, mirror or fiber tip may sit and still
       // collect its light. Sketches saved before this control existed traced with a fixed
       // 165 mm, so they load at that instead of the new default.
@@ -2803,7 +2804,8 @@ export const registry = {
     },
     source(el) {
       const { spread, nrays } = el.params, out = [];
-      const n = Math.max(1, Math.round(nrays));
+      const count = Number(nrays);
+      const n = Number.isFinite(count) ? Math.min(POINT_SOURCE_MAX_RAYS, Math.max(4, Math.round(count))) : 12;
       const range = Number(el.params.captureRange);
       const captureLen = Number.isFinite(range)
         ? Math.min(5000, Math.max(POINT_SOURCE_GLOW_MM, range))
