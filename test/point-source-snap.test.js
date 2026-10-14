@@ -15,8 +15,9 @@ import '../sketch/js/etalon.js';
 import { parseSketch, state } from '../sketch/js/state.js';
 import { buildSVG } from '../sketch/js/export.js';
 
-test('point source rays fade evanescently unless a nearby lens collects them', () => {
+test('legacy point source rays fade unless a nearby lens collects them', () => {
   const src = createElement('pointsource', 0, 0);
+  src.params.propagation = 'legacy';
   src.params.nrays = 4;
   src.params.spread = 360;
 
@@ -41,7 +42,7 @@ test('point source rays fade evanescently unless a nearby lens collects them', (
 
 function pointSource(params = {}) {
   const src = createElement('pointsource', 0, 0);
-  Object.assign(src.params, { nrays: 4 }, params);
+  Object.assign(src.params, { nrays: 4, propagation: 'legacy' }, params);
   return src;
 }
 
@@ -72,7 +73,7 @@ function readBehind(between, source = pointSource()) {
   return detectorReading(detector.id)?.signal ?? 0;
 }
 
-test('a new point source has a 1 m capture range, and a sketch saved without one keeps 165 mm', () => {
+test('legacy capture range defaults to 1 m, and a sketch saved without one keeps 165 mm', () => {
   assert.equal(createElement('pointsource', 0, 0).params.captureRange, 1000);
   assert.ok(registry.pointsource.source(pointSource()).every(r => r.captureLen === 1000 && r.captureMode === 'collectors'));
 

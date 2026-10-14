@@ -2735,11 +2735,9 @@ export const registry = {
     source: laserSource,
   },
 
-  // Unified replacement for the old LED + Light source: one isotropic point
-  // emitter. A ray with a lens, a mirror or a fiber tip ahead of it within
-  // the source's capture range is ordinary light; any other ray is drawn as a
-  // glow fading within ~110 mm, which keeps 360° emission from flooding the
-  // canvas. The range is a drawing convention the user sets, not attenuation.
+  // Unified replacement for the old LED + Light source: one isotropic emitter.
+  // New point sources use ordinary ray propagation. Saved sources retain the
+  // old collection gate through an explicit, editable compatibility mode.
   pointsource: {
     label: 'Point source', category: 'Sources', paletteOrder: 3, size: { w: 30, h: 30 },
     aliases: ['led', 'lamp', 'light source', 'bulb', 'isotropic source', 'point emitter'],
@@ -2747,7 +2745,7 @@ export const registry = {
     params: [
       { key: 'displayScale', label: 'Display scale', type: 'number', min: 0.5, max: 2.5, step: 0.1, def: 1 },
       // The same emitter, wearing one of two hats. A discharge lamp is
-      // geometrically a point source -- isotropic, incoherent, collected the
+      // geometrically a point source -- isotropic, incoherent, traced the
       // same way -- and differs only in emitting a fixed set of lines instead
       // of a wavelength you type, so it is a mode here rather than an element
       // of its own.
@@ -2766,6 +2764,18 @@ export const registry = {
       { key: 'linesReadout', label: 'Lines', type: 'readout', readout: p => lampLineSummary(p.lampType), show: p => p.sourceKind === 'lamp' },
       { key: 'spread', label: 'Emission angle (°)', type: 'number', min: 10, max: 360, step: 10, def: 360 },
       { key: 'nrays', label: 'Rays', type: 'number', min: 4, max: 128, step: 2, def: 12 },
+      {
+        key: 'propagation', label: 'Ray propagation', type: 'select', def: 'normal',
+        options: [['normal', 'All optical surfaces'], ['legacy', 'Legacy collection']],
+        migrate: () => 'legacy',
+        note: 'All optical surfaces trace normally, including glass, filters and detectors. Legacy collection preserves older saved setups.',
+      },
+      {
+        key: 'escapeLength', label: 'Escaping rays shown (mm)', type: 'number',
+        min: 10, max: 6000, step: 10, def: 110, appearance: true,
+        show: p => p.propagation === 'normal',
+        note: 'Drawing only: shorten rays that meet no further surface. Interactions, detector readings and probes still use the full trace.',
+      },
       // How far from the source a lens, mirror or fiber tip may sit and still
       // collect its light. Sketches saved before this control existed traced with a fixed
       // 165 mm, so they load at that instead of the new default.
@@ -2773,6 +2783,7 @@ export const registry = {
         key: 'captureRange', label: 'Capture range (mm)', type: 'number',
         min: POINT_SOURCE_GLOW_MM, max: 5000, step: 5, def: 1000,
         migrate: () => POINT_SOURCE_LEGACY_CAPTURE_MM,
+        show: p => p.propagation === 'legacy',
       },
       P.autoColor, P.color,
     ],
@@ -2803,6 +2814,7 @@ export const registry = {
     },
     source(el) {
       const { spread, nrays } = el.params, out = [];
+      const legacy = el.params.propagation !== 'normal';
       const n = Math.max(1, Math.round(nrays));
       const range = Number(el.params.captureRange);
       const captureLen = Number.isFinite(range)
@@ -2816,7 +2828,7 @@ export const registry = {
         const a = aDeg * Math.PI / 180;
         out.push({
           x: 0, y: 0, dx: Math.cos(a), dy: Math.sin(a),
-          evan: true, evanLen: POINT_SOURCE_GLOW_MM, captureLen, captureMode: 'collectors',
+          ...(legacy ? { evan: true, evanLen: POINT_SOURCE_GLOW_MM, captureLen, captureMode: 'collectors' } : {}),
         });
       }
       return out;
@@ -5883,7 +5895,7 @@ const ELEMENT_HELP = {
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
   ledsource: 'Emits a collimated beam of incoherent light from an LED behind its own collimator, with an illustrative single-colour or two-band white spectrum. It never interferes, and its residual divergence is not modelled.',
-  pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp. A lens, a mirror or a fiber tip within the capture range collects its rays, which carry on as ordinary light; other optics on the way act on that light but collect nothing themselves, and a ray with no collector ahead is drawn as a short fading glow. The range is a drawing convention that keeps the canvas readable, not attenuation. A parabolic mirror with the source at its focus collimates it.',
+  pointsource: 'Emits monochromatic, broadband or gas-discharge light over an adjustable angle. Rays interact with every optical surface they reach, including freeform glass and bare detectors. Escaping-ray display length controls the drawing only, not propagation or readings. Older saved setups open in Legacy collection mode; select All optical surfaces to upgrade their behavior. A parabolic mirror with the source at its focus collimates it.',
   objarrow: 'Traces a ray fan from the object’s anchor on the optical axis and separately draws an ideal paraxial image; the image marker does not model downstream clipping.',
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',

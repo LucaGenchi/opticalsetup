@@ -29,7 +29,11 @@ function trace(kind, params, rot) {
   const oap = createElement('oap', 150, 200);
   oap.rot = 180;
   Object.assign(oap.params, { length: 110, f: 25 });
-  const elements = [lamp, oap];
+  // Shield the side detector from direct lamp light. Ordinary point-source
+  // rays now reach it without going through the element under test.
+  const shield = createElement('blocker', 250, 275);
+  shield.params.length = 20;
+  const elements = [lamp, oap, shield];
   if (kind) {
     const el = createElement(kind, 400, 200);
     if (rot != null) el.rot = rot;

@@ -85,13 +85,12 @@ test('the element resolves its preset into a spectrum the tracer can use', () =>
   assert.equal(resolveSourceSpectrum('pointsource', { sourceKind: 'lamp', lampType: 'nope' }).spec.kind, 'lines');
 });
 
-test('a lamp emits like a point source and is collected the same way', () => {
+test('a lamp emits ordinary point-source rays and can be collimated', () => {
   const lamp = createElement('pointsource', 175, 200);
   Object.assign(lamp.params, { sourceKind: 'lamp', lampType: 'hg', spread: 360, nrays: 24 });
   const rays = registry.pointsource.source(lamp);
   assert.equal(rays.length, 24);
-  assert.ok(rays.every(r => r.evan && r.evanLen === 110),
-    'the same near-field behaviour, so the same collectors apply');
+  assert.ok(rays.every(r => !r.evan), 'lamp rays need no collector to propagate');
 
   // and a parabola at its focus collimates it, exactly as for a point source
   const mirror = createElement('oap', 150, 200); mirror.rot = 180;

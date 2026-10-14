@@ -5905,7 +5905,8 @@ export function closedLoop(node, r) {
   return { g, pass };
 }
 
-// What collects a point source's light: the working surfaces of every element
+// Compatibility for saved point sources in Legacy collection mode only.
+// What collects their light: the working surfaces of every element
 // in the Lenses and Mirrors categories, and a fiber tip. An absorbing rim on
 // one of those elements is not a collector.
 const POINT_SOURCE_COLLECTOR_CATEGORIES = new Set(['Lenses', 'Mirrors']);
@@ -6132,6 +6133,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       }
       if (!hit) {
         appendPoint(r, { x: r.x + r.dx * MAXLEN, y: r.y + r.dy * MAXLEN }, MAXLEN);
+        r.escaped = true; // presentation may shorten this last, unimpeded leg
         break;
       }
       appendPoint(r, { x: hit.p.x, y: hit.p.y }, hit.t);
@@ -6710,6 +6712,21 @@ function rayColor(r, fixedColor) {
 // grains / rainbow ribbons / chopped chunks)
 function assembleDrawables(paths, opts, drawables) {
   const { K, isBeam, fixedColor } = opts;
+  // Clip only an escaping final leg, after all physical tracing and readouts.
+  // Never mutate the paths retained by probes, nor shorten a leg to a surface.
+  // Newly generated specimen light keeps its own display/collection rules.
+  if (Number.isFinite(opts.escapeLength)) {
+    paths = paths.map(r => {
+      if (!r.escaped || r.sourceId !== opts.sourceId || r.pts.length < 2) return r;
+      const a = r.pts.at(-2), b = r.pts.at(-1);
+      const length = Math.hypot(b.x - a.x, b.y - a.y);
+      if (length <= opts.escapeLength) return r;
+      const scale = opts.escapeLength / length;
+      return { ...r, pts: [...r.pts.slice(0, -1), {
+        x: a.x + (b.x - a.x) * scale, y: a.y + (b.y - a.y) * scale,
+      }] };
+    });
+  }
   const colorOf = r => rayColor(r, fixedColor);
   const opOf = r => Math.max(0.25, Math.min(0.95, 0.35 + 0.6 * r.intensity));
   // Whether a ray is chunked is decided where the chunking is asked for -- by
@@ -7159,6 +7176,10 @@ export function traceScene(elements, beams = [], options = {}) {
     assembleDrawables(paths, {
       K, isBeam: p.beamMode === 'beam',
       fixedColor: p.autoColor === false && p.color ? baseColor : null,
+      sourceId: el.id,
+      escapeLength: el.type === 'pointsource' && p.propagation === 'normal'
+        ? Math.min(MAXLEN, Math.max(10, Number.isFinite(p.escapeLength) ? p.escapeLength : 110))
+        : undefined,
     }, drawables);
     // "Show pulse dynamics" is a rendering choice only: the pulse train above
     // is still traced and still gates temporal overlap downstream — skipping

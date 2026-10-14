@@ -11,7 +11,7 @@ import '../sketch/js/detector-instruments.js';
 // before the range became a parameter, so the source keeps it here.
 const mk = (type, x, y, rot = 0, params = {}) => {
   const el = createElement(type, x, y); el.rot = rot;
-  if (type === 'pointsource') el.params.captureRange = 165;
+  if (type === 'pointsource') Object.assign(el.params, { captureRange: 165, propagation: 'legacy' });
   Object.assign(el.params, params); return el;
 };
 

@@ -562,8 +562,8 @@ export const wikiEntries = [
         <p>The LED is a packaged source: the die and its collimator are one element, and
         what leaves the housing is a collimated beam of the width you set, made of ordinary
         rays that travel until something stops them. This is what separates it from the
-        Point source, which is the bare emitter — isotropic, and only useful once a lens or
-        a mirror collects it.</p>
+        Point source, which is the bare emitter radiating over an adjustable angle. Both
+        sources interact with the optical surfaces they reach; the LED starts collimated.</p>
         <p>Choose a preset or a custom centre wavelength and width. Each single-colour
         preset is one Gaussian band. The white preset is two: a blue peak near
         450&nbsp;nm and a phosphor band near 580&nbsp;nm, carried as one spectrum with both
@@ -602,7 +602,7 @@ export const wikiEntries = [
         between one direction and the next. A fluorescing molecule, the tip of a fiber, an
         arc between two electrodes and a pinhole in a screen all behave this way.</p>
         <p>Two consequences follow, and between them they explain most of what such a
-        source is like to work with. The first is that the power falls as
+        source is like to work with. The first is that irradiance falls as
         <span class="w">1/r&sup2;</span> — spread over a sphere whose area grows with the
         square of the distance — so an isotropic emitter is dim at any useful range unless
         something gathers its light. The second is that you cannot get the brightness back.
@@ -637,28 +637,30 @@ export const wikiEntries = [
         set are recognisable on sight, and that recognisability is the whole reason a
         spectroscopy course starts here.</p>`,
       formulas: [
-        { tex: 'E = \\frac{P}{4\\pi r^{2}}', caption: 'Irradiance from an isotropic emitter: the inverse-square law is the reason uncollected point-source light is gone within a short distance.' },
+        { tex: 'E = \\frac{P}{4\\pi r^{2}}', caption: 'Irradiance E at distance r from a 3D isotropic emitter of total power P. Light spreads over a growing area; it does not stop at a fixed distance.' },
       ],
     },
     inOpticalSetup: {
       html: `
-        <p>The point source emits rays evenly over its <strong>emission angle</strong> —
-        the full 360&deg; by default — and a ray that meets nothing is drawn as a glow that
-        <strong>fades within about 110&nbsp;mm</strong>. That fading is the model's one
-        strong opinion, and it is there because the alternative is worse: an isotropic
-        emitter whose rays all ran forever would bury the bench in lines.</p>
-        <p>The <strong>capture range</strong> decides which rays carry on instead: a ray
-        with a lens, a <a href="../mirror/">mirror</a> or a fiber tip ahead of it within
-        that distance is collected, and is ordinary light all the way from the source.
-        Every element in the Lenses and Mirrors groups collects; nothing else does. A
-        filter or a polarizer in front of the collecting lens acts on the light passing
-        through it but collects nothing by itself, a detector facing the source directly
-        reads nothing, and a beam block, a housing or a detector in the way hides the
-        collector behind it. The range is 1&nbsp;m for a newly placed source and can be
-        set between 110&nbsp;mm and 5&nbsp;m; a sketch saved before the control existed
-        opens at the 165&nbsp;mm it was drawn with. It is a drawing convention that keeps the canvas readable, not
-        attenuation: collected light arrives at full ray weight, and uncollected light is
-        not traced at all.</p>
+        <p>The point source emits rays evenly over its <strong>emission angle</strong>,
+        the full 360&deg; by default. Each ray interacts with every optical surface it
+        reaches: glass refracts it, mirrors reflect it, filters transmit or absorb it,
+        and a bare detector receives it without a collecting lens. Opaque surfaces block
+        it; diagram annotations have no optical effect. Gas-discharge lamps use the same
+        propagation with their line spectra.</p>
+        <p><strong>Escaping rays shown (mm)</strong> controls visual clutter separately.
+        When a ray meets no further surface, only the first 110&nbsp;mm of that final leg
+        is drawn by default. Set this between 10 and 6000&nbsp;mm to show shorter or longer
+        tails. All legs that reach optical surfaces remain visible in full. This setting
+        changes the canvas and exported figure, never refraction, transmitted power,
+        detector readings or beam-probe readings. A probe can therefore measure light
+        beyond a shortened visible tail.</p>
+        <p>Older saved setups open with <strong>Ray propagation: Legacy collection</strong>
+        to preserve their original results. In that mode only lenses, mirrors and fiber
+        tips within the capture range activate propagation; other rays fade within
+        110&nbsp;mm. The saved capture range is retained, including the historical
+        165&nbsp;mm default when absent. Select <strong>All optical surfaces</strong> to
+        upgrade an existing source; newly placed sources already use that mode.</p>
         <p>The embedded bench above shows the arrangement that makes collection
         clearest: a <a href="../oap/">parabolic mirror</a> with the source exactly at its
         focus, 25&nbsp;mm in front of the vertex, turning isotropic emission into a parallel
@@ -686,11 +688,12 @@ export const wikiEntries = [
         in an interferometer therefore produces no fringes, which is what an incoherent
         source does.</p>`,
       formulas: [],
-      limitations: `<p>The near-field fade is a modelling device, not physics. Real
-        isotropic light does not stop at a boundary — it keeps going, growing weaker as
-        1/r&sup2; — and the range here is a fixed distance rather than anything derived from
-        the source's power or the detector's sensitivity. A collector just outside it gathers
-        nothing when a real one would gather a little.</p>
+      limitations: `<p>This is a 2D geometric ray fan carrying relative power, not a
+        calibrated model of 3D inverse-square irradiance. The ray count controls angular
+        sampling: a small optic between sampled directions can be missed. Increase the
+        ray count when checking small targets. The usual trace-depth and weak-branch
+        budgets still apply; the escaping-ray display length imposes no physical cutoff.
+        Legacy collection is a compatibility mode, not a physical requirement.</p>
         <p>The source is a true point, so it has no étendue: the one property that most
         constrains real incoherent sources is absent, and a lens can focus this light to a
         spot no real lamp could reach. There is no arc length, no electrode geometry, and no

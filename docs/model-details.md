@@ -227,15 +227,25 @@ as intensities. An incomplete trace or a route through an optic whose carrier ph
 not represented falls back to conservative deposited intensity rather than inventing a
 phase.
 
-A point source's rays are collected by lenses, mirrors (every element of those
-two palette groups) and fiber tips within its capture range (1 m by default,
-110 mm to 5 m; 165 mm for a sketch saved before the control existed). A
-collected ray is ordinary light from the source on, so an optic in front of the
-collector acts on it; no other element collects, and an opaque one hides the
-collector behind it. A ray with no collector ahead is drawn as a glow fading
-within 110 mm and reaches no detector. The range is a drawing convention that
-keeps a 360° emitter from covering the canvas, not attenuation or an
-inverse-square law: collected light arrives at full ray weight.
+New point sources and gas-discharge lamps trace every optical surface they
+reach, using the same interactions as other rays. Freeform glass refracts,
+filters attenuate, opaque surfaces block, and bare detectors receive light
+without a collecting lens. The angular samples carry relative power; this
+2D model does not compute calibrated 3D inverse-square irradiance.
+
+"Escaping rays shown (mm)" shortens only the drawing of each ray's final leg
+when it meets no further surface (110 mm by default, adjustable from 10 to
+6000 mm). It never shortens a leg to an optical surface, changes the traced
+power, or affects detector and probe readings. Canvas and exported figures
+use the same display length. The tracer's existing depth and weak-branch
+budgets still apply.
+
+Saved point sources without a propagation setting open in explicit "Legacy
+collection" mode to preserve their behavior. In that mode only lenses,
+mirrors and fiber tips within the saved capture range activate propagation;
+other rays fade within 110 mm. Missing historical capture ranges still convert
+to 165 mm. Select "All optical surfaces" in the inspector to upgrade a saved
+source. Fluorescence retains its separate collection model.
 
 The metalens is a zero-thickness paraxial phase-gradient proxy rather than an
 electromagnetic metasurface solver. In chromatic mode its focal length follows the

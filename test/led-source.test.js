@@ -47,10 +47,10 @@ test('the built-in collimator emits a parallel beam of ordinary rays across the 
   const rays = registry.ledsource.source(led);
   assert.ok(rays.length > 1);
   assert.ok(rays.every(ray => ray.dx === 1 && ray.dy === 0), 'every ray leaves along the axis');
-  assert.ok(rays.every(ray => !ray.evan), 'none is a short-range point-source ray');
+  assert.ok(rays.every(ray => !ray.evan), 'all rays propagate normally');
   assert.equal(Math.max(...rays.map(ray => ray.y)) - Math.min(...rays.map(ray => ray.y)), 12);
 
-  // It reaches a distant detector whole, where a bare point source fades.
+  // Its collimated beam reaches a distant detector whole.
   const far = createElement('detector', 2000, 0);
   far.params.length = 40;
   traceAll([led, far]);
