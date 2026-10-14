@@ -11,7 +11,7 @@ import { buildShareURL, sharedSceneFromURL } from '../sketch/js/share.js';
 const main = readFileSync(new URL('../sketch/js/main.js', import.meta.url), 'utf8');
 const loading = main.slice(main.indexOf('function preserveWorkbenchInUndo()'), main.indexOf('// ---------- boot ----------'));
 
-for (const accept of [true, false]) test(`incoming shared setup ${accept ? 'can be undone' : 'can be declined without losing work'}`, t => {
+test('incoming shared setup opens without asking and can be undone', t => {
   const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
   t.after(() => {
     if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage);
@@ -22,27 +22,21 @@ for (const accept of [true, false]) test(`incoming shared setup ${accept ? 'can 
   const oldSource = createElement('cwlaser', 0, 0); oldSource.params.wavelength = 700;
   const incoming = createElement('cwlaser', 100, 0); incoming.params.wavelength = 633;
   replaceScene({ elements: [oldSource], beams: [] }, { resetHistory: true });
-  const before = storage.get('optics2d-autosave-v1');
   // A fresh page starts empty, but has the previous workbench on disk.
   state.elements = []; state.beams = [];
-  let confirmations = 0, retired = 0;
+  let confirmations = 0;
   const context = vm.createContext({ state, registry, loadAutosave, pushUndo, replaceScene,
-    confirm() { confirmations++; return accept; }, clearSharedSceneURL() { retired++; }, zoomFit() {},
+    confirm() { confirmations++; return false; }, clearSharedSceneURL() {}, zoomFit() {},
   });
   vm.runInContext(loading, context);
   context.openSharedScene({ elements: [incoming], beams: [] });
-  assert.equal(confirmations, 1);
-  assert.equal(state.elements[0].params.wavelength, accept ? 633 : 700);
-  if (accept) {
-    assert.equal(canUndo(), true);
-    undo();
-    assert.equal(state.elements[0].params.wavelength, 700);
-    assert.equal(loadAutosave(registry), true);
-    assert.equal(state.elements[0].params.wavelength, 700);
-  } else {
-    assert.equal(storage.get('optics2d-autosave-v1'), before);
-    assert.equal(retired, 1);
-  }
+  assert.equal(confirmations, 0);
+  assert.equal(state.elements[0].params.wavelength, 633);
+  assert.equal(canUndo(), true);
+  undo();
+  assert.equal(state.elements[0].params.wavelength, 700);
+  assert.equal(loadAutosave(registry), true);
+  assert.equal(state.elements[0].params.wavelength, 700);
 });
 
 test('reloading after Share reopens the visitor\'s own scene without asking', async t => {
@@ -72,12 +66,16 @@ test('reloading after Share reopens the visitor\'s own scene without asking', as
   assert.equal(storage.get('optics2d-autosave-v1'), saved);
   assert.equal(state.autosaved, true, 'the change listener can retire the fragment');
 
-  // The same link over an edited bench is a different scene, and still asks.
+  // The same link over an edited bench opens directly and preserves Undo.
   state.elements[0].params.wavelength = 633;
   replaceScene({ elements: state.elements, beams: [] }, { resetHistory: true });
   state.elements = []; state.beams = [];
   context.openSharedScene(parseSketch(await sharedSceneFromURL(href), registry));
-  assert.equal(confirmations, 1);
+  assert.equal(confirmations, 0);
+  assert.equal(state.elements[0].params.wavelength, 700);
+  assert.equal(canUndo(), true);
+  undo();
+  assert.equal(state.elements[0].params.wavelength, 633);
 });
 
 test('the bootstrap applies shared-scene preservation after decoding', () => {

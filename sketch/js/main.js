@@ -1827,33 +1827,15 @@ document.addEventListener('optics:pulserepresentation', e => showAnchoredPopup(e
 document.addEventListener('optics:viewchange', e => syncViewControls(e.detail));
 document.addEventListener('optics:toast', e => { if (e.detail?.message) showToast(e.detail.message); });
 
-// Opening a linked scene as a workbench replaces whatever the visitor already
-// had on the bench, and that bench may hold unsaved work. There are now ~73
-// pages whose "Open in the canvas" does this, so it cannot be silent: ask
-// first, and push the displaced scene onto the undo stack so a visitor who
-// says yes and regrets it can step straight back.
-//
-// The undo stack alone was not enough, which is why the confirm is here: the
-// first edit to the linked scene overwrites the autosave and pushes another
-// entry above the snapshot, so after any editing the old bench is neither one
-// undo away nor on disk. Consent is what makes that acceptable.
-//
-// Returns false if the visitor declined, in which case the caller leaves the
-// bench alone -- already reloaded into state here -- and does not load the
-// linked scene.
+// Open linked setups directly, keeping the displaced workbench in this
+// session's undo history so the visitor can return to it.
 function preserveWorkbenchInUndo() {
-  if (!loadAutosave(registry)) return true;
-  if (!state.elements.length && !state.beams.length) return true;
-  const count = state.elements.length;
-  const ok = confirm(
-    `Opening this setup will replace the ${count} item${count === 1 ? '' : 's'} on your canvas.\n\n`
-    + 'Undo brings your current setup back if you change your mind.\n\nOpen it?');
-  if (!ok) return false;
+  if (!loadAutosave(registry)) return;
+  if (!state.elements.length && !state.beams.length) return;
   pushUndo();
   state.elements.length = 0;
   state.beams.length = 0;
   state.selection = null;
-  return true;
 }
 
 const sceneKey = scene => JSON.stringify({ elements: scene.elements, beams: scene.beams });
@@ -1868,12 +1850,7 @@ function openSharedScene(scene) {
     zoomFit();
     return;
   }
-  if (!preserveWorkbenchInUndo()) {
-    // The visitor chose the already-saved workbench. Retire the declined
-    // snapshot so a reload does not ask to replace that work again.
-    clearSharedSceneURL();
-    return;
-  }
+  preserveWorkbenchInUndo();
   // preserveWorkbenchInUndo() saved the old bench before clearing it.
   // Keep that history when the incoming scene writes its first autosave.
   replaceScene(scene);
@@ -1939,12 +1916,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     renderAll(); syncToolbar(); refreshMeasurements(); autoAdjustTimeScale(); announceIllustrativeMotion();
   });
 
-  // A visitor who declines the replacement keeps the bench that
-  // preserveWorkbenchInUndo() has already loaded back into state, and the
-  // linked scene is simply not loaded.
-  const loadLinked = !hasLinkedScene || isEmbed || preserveWorkbenchInUndo();
+  if (hasLinkedScene && !isEmbed) preserveWorkbenchInUndo();
 
-  if (isTypeDemo && loadLinked) {
+  if (isTypeDemo) {
     // The showcased component plus a source, so its optical function is
     // visible. Framed with ?embed=1 this is the flat preview a wiki page
     // shows; without it, the same scene opens as the visitor's workbench.
@@ -1971,7 +1945,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     // dashed box and rotate/resize/tune handles over a picture that cannot be
     // edited. Opened as a workbench, the scene is the visitor's and starts
     // clean like any other file they load.
-  } else if (isCommunityScene && loadLinked) {
+  } else if (isCommunityScene) {
     // The actual submitted scene, with no single "hero" element.
     try {
       const entry = community.find(e => e.slug === communitySlug);
@@ -1985,7 +1959,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       console.error('Could not load community setup:', err);
     }
-  } else if (isExampleScene && loadLinked) {
+  } else if (isExampleScene) {
     // Example embed: same locked treatment as the community embed above —
     // the whole curated setup is there to click through. Examples/*.json is
     // the plain native save format (no {scene: ...} wrapper), same as
@@ -2055,7 +2029,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   renderAutosaveRecovery();
   renderRelease();
 
-  if (hasLinkedScene && loadLinked) {
+  if (hasLinkedScene) {
     zoomFit();
   }
   if (!isEmbed) {
