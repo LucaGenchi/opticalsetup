@@ -42,7 +42,8 @@ let motionFrame = null;
 let motionStartMs = null;
 let motionTimeSeconds = 0;
 let motionLastRenderMs = 0;
-const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+// Motion on the optical table is simulation output. Follow the scene and
+// playback controls even when the OS requests reduced decorative motion.
 const pulsePlayback = {
   playing: true, timeNs: 0, speedNsPerSecond: 10, mode: 'schematic', lastFrameMs: null,
   // "Mechanics" mode: pulses stop trying to sync to a numeric time scale
@@ -95,7 +96,6 @@ export function initCanvas(svgElement, statusElement) {
   overlayLayer = svg.querySelector('#overlayLayer');
   bindPointer();
   bindWheel();
-  if (reduceMotion) pulsePlayback.playing = false;
   document.addEventListener('visibilitychange', () => {
     pulsePlayback.lastFrameMs = null;
     motionStartMs = null;
@@ -278,7 +278,7 @@ function animatedVisualElements() {
     if (el.type === 'delayline' && el.params.moveMode === 'linear') {
       return { ...el, _animationTimeS: motionTimeSeconds };
     }
-    if (!reduceMotion && el.type === 'chopper' && el.params.modulate) return animatedChopper(el);
+    if (el.type === 'chopper' && el.params.modulate) return animatedChopper(el);
     if (el.type === 'stage') return stageWithSignalSpot(el);
     if (el.type === 'sample') return withSignalSpot(el);
     if (el.type === 'retroreflector') return animatedRetroElement(el);
@@ -361,7 +361,7 @@ function hasChopperMotion() {
 
 function animateMotion(nowMs) {
   motionFrame = null;
-  if (reduceMotion || !hasMotion()) return;
+  if (!hasMotion()) return;
   if (motionStartMs === null) motionStartMs = nowMs;
   motionTimeSeconds = Math.max(0, (nowMs - motionStartMs) / 1000);
   if (nowMs - motionLastRenderMs >= 1000 / 30) {
@@ -379,7 +379,7 @@ function animateMotion(nowMs) {
 }
 
 function syncMotionAnimation() {
-  if (!reduceMotion && hasMotion()) {
+  if (hasMotion()) {
     if (motionFrame === null) motionFrame = requestAnimationFrame(animateMotion);
   } else if (motionFrame !== null) {
     cancelAnimationFrame(motionFrame);

@@ -34,6 +34,9 @@ static files that run entirely in your browser.
 - **Animate pulses.** Pulsed sources play wavelength-coloured packets along the
   traced path, with timing from the optical path length and duration that
   follows the dispersion accumulated along the way.
+  Simulation motion follows the component and playback controls even when
+  the system's Reduce motion preference is enabled; decorative theme
+  transitions still respect that preference.
 - **Learn from examples.** The Examples menu opens ready-made setups — imaging
   systems (telescopes, microscopes, cameras), interferometers, laser cavities,
   OPOs and ultrashort-pulse systems — each with an explanatory page.

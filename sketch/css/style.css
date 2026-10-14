@@ -1002,8 +1002,7 @@ body.embed-mode .mobile-toolbar-actions {
    The pulse controls go too. They were the last interactive thing left, and
    keeping them was incoherent: the iframe is tabindex="-1" and aria-hidden,
    so they would have been reachable by mouse only. An animated preview plays
-   on its own; under prefers-reduced-motion it holds a still frame, which is
-   what that preference asks for. */
+   on its own using the same simulation motion as the full workbench. */
 body.embed-mode #canvas {
   pointer-events: none !important;
   touch-action: none !important;
