@@ -141,7 +141,7 @@ Only when Luca asks. The policy is [release-policy.md](release-policy.md).
 | `node tools/release.mjs verify --tree`, then `npm test` | Confirms this tree is exactly the prepared release |
 | Commit only those two files, open the PR, merge | The merge starts `Deploy release`, which tags `vX.Y.Z` and deploys the site |
 | Read back | About shows the version at `/sketch/` and at `/vMAJOR.MINOR/sketch/`; a Share link opens the pinned copy |
-| Luca publishes a GitHub Release for the tag `vX.Y.Z` | Zenodo archives it with its own version DOI, from `CITATION.cff`. The deploy creates only the tag, so without this step the release has no Zenodo version |
+| Luca publishes a GitHub Release for the tag `vX.Y.Z` | Zenodo archives it using metadata from `CITATION.cff` and assigns a version DOI. The deploy creates only the tag, so without this step the release has no Zenodo version |
 
 - **Levels.** A patch is content only. A minor means the app changed, which
   is decided by a hash of `sketch/`, not by judgement. A major is Luca's
