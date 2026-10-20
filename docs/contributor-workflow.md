@@ -56,6 +56,7 @@ the real level for everything merged since the last release.
 | Bundled example | `Examples/<Category>/<Name>.json`; `tools/examples-content.mjs` for its explanatory page | `tools/build-examples.mjs`, `tools/build-examples-pages.mjs`, `tools/build-sitemap.mjs` | Patch | Add its URL-encoded `../Examples/…` path to `PRECACHE_PATHS` in `sketch/service-worker.js` and bump the `v` number in `CACHE_NAME`; same on rename or removal |
 | App element or behaviour | `sketch/js/`, tests, `tools/wiki-content.mjs` | `tools/build-wiki.mjs`, `tools/build-sitemap.mjs`; `tools/update-golden.mjs` if bundled readings move | Minor | A new `sketch/js/` file also goes in `PRECACHE_PATHS`; every visible element needs a wiki article |
 | Quantitative model | Model statement, `validation/reference/<model>.py`, the app function, `test/validation.test.js` | `python3 validation/run.py`, then the generators of the affected element or calculator | Minor if app output changes | Register the reference in `MODULES` of `validation/run.py`; write it from the sources, never from the JavaScript |
+| Citation (title, authors, DOI) | `CITATION.cff`, the *Cite this project* section of `index.html` (text and BibTeX), the DOI badge in `README.md` | None | Patch if `index.html` changes; otherwise none | All three must agree on author order, title and the concept DOI; Zenodo reads `CITATION.cff` when it archives a release |
 | Landing page, `llms.txt`, scene-builder skill | `index.html`, `llms.txt`, `skill.md`, `skills/opticalsetup/` | None | Patch | Public, although they read like docs |
 | Internal docs | `AGENTS.md`, `README.md`, `docs/` except `docs/physics/` | None | None | `docs/physics/` is published (the wiki links to it) |
 
@@ -106,8 +107,9 @@ the real level for everything merged since the last release.
 4. **Build.** Run the calculator build, then the sitemap. The suite fails if
    a committed page is stale.
 5. **Links (optional).** `calculator: '<slug>'` on the element's registry
-   entry adds an inspector link (app code, so a minor). The same field on a
-   wiki entry links from the wiki (a patch).
+   entry adds an inspector link (app code, so a minor). The same field on the
+   element's entry in `tools/wiki-content.mjs` links its wiki article to the
+   calculator: rebuild the wiki, then the sitemap (a patch).
 6. **Check.** Open the page locally: normal inputs, the domain boundaries,
    and the stated limits.
 
@@ -139,6 +141,7 @@ Only when Luca asks. The policy is [release-policy.md](release-policy.md).
 | `node tools/release.mjs verify --tree`, then `npm test` | Confirms this tree is exactly the prepared release |
 | Commit only those two files, open the PR, merge | The merge starts `Deploy release`, which tags `vX.Y.Z` and deploys the site |
 | Read back | About shows the version at `/sketch/` and at `/vMAJOR.MINOR/sketch/`; a Share link opens the pinned copy |
+| Luca publishes a GitHub Release for the tag `vX.Y.Z` | Zenodo archives it with its own version DOI, from `CITATION.cff`. The deploy creates only the tag, so without this step the release has no Zenodo version |
 
 - **Levels.** A patch is content only. A minor means the app changed, which
   is decided by a hash of `sketch/`, not by judgement. A major is Luca's
@@ -153,9 +156,11 @@ Only when Luca asks. The policy is [release-policy.md](release-policy.md).
   public needs a new scheme.
 
 **What a visitor sees.** `/sketch/` and the whole site (landing page, wiki,
-examples, calculators, community) are the latest release. Each release's app
-also stays at `/vMAJOR.MINOR/sketch/`, with its `Examples/` and community
-scenes. A Share link names that kept copy, so a later release never redraws
-it; the kept copy says when a newer release exists. A kept copy never gains
-later elements: a scene that uses an element added in v1.1 opens correctly
-only from `/v1.1/sketch/` onward.
+examples, calculators, community) are the latest release. The first release
+of each `MAJOR.MINOR` also stays at `/vMAJOR.MINOR/sketch/`, with its
+`Examples/` and community scenes: after v1.0.1, the site is v1.0.1 but
+`/v1.0/sketch/` is still v1.0.0 (a patch never changes the app). A Share link
+names that kept copy, so a later release never redraws it; the kept copy says
+when a newer release exists. A kept copy never gains later elements: a scene
+that uses an element added in v1.1 opens correctly only from `/v1.1/sketch/`
+onward.
