@@ -233,7 +233,7 @@ function pageHTML(entry, entries) {
 <meta property="og:description" content="${esc(tagline)}">
 <meta property="og:url" content="${SITE_URL}/wiki/${entry.type}/">
 <meta property="og:image" content="${SITE_URL}/assets/og-image.jpg">
-<link rel="icon" href="/sketch/icons/icon.svg">
+<link rel="icon" href="${base}/sketch/icons/icon.svg">
 <link rel="stylesheet" href="${base}/wiki/assets/katex.min.css">
 <link rel="stylesheet" href="${base}/wiki/assets/wiki.css">
 </head>
@@ -322,7 +322,7 @@ function hubHTML(entries) {
 <meta property="og:description" content="Real-world physics, formulas, and exactly how each optical component is modeled in OpticalSetup's live ray-tracing canvas.">
 <meta property="og:url" content="${SITE_URL}/wiki/">
 <meta property="og:image" content="${SITE_URL}/assets/og-image.jpg">
-<link rel="icon" href="/sketch/icons/icon.svg">
+<link rel="icon" href="${base}/sketch/icons/icon.svg">
 <link rel="stylesheet" href="${base}/wiki/assets/wiki.css">
 </head>
 <body>

@@ -88,7 +88,7 @@ function head({ title, description, path, base, katex: withKatex }) {
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:url" content="${SITE_URL}${path}">
 <meta property="og:image" content="${SITE_URL}/assets/og-image.jpg">
-<link rel="icon" href="${ICON}">
+<link rel="icon" href="${base}${ICON}">
 ${withKatex ? `<link rel="stylesheet" href="${base}/wiki/assets/katex.min.css">\n` : ''}<link rel="stylesheet" href="${base}/wiki/assets/wiki.css">
 <link rel="stylesheet" href="${base}/calculators/assets/calculator.css">
 </head>`;

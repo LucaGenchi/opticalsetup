@@ -183,7 +183,7 @@ export function pageHTML(entry) {
 <meta property="og:description" content="${attr(entry.description)}">
 <meta property="og:url" content="${SITE_URL}/community/${entry.slug}/">
 <meta property="og:image" content="${SITE_URL}/assets/og-image.jpg">
-<link rel="icon" href="${FAVICON}">
+<link rel="icon" href="${base}${FAVICON}">
 <link rel="stylesheet" href="${base}/wiki/assets/wiki.css">
 <link rel="stylesheet" href="${base}/community/assets/community.css">
 </head>
@@ -238,7 +238,7 @@ export function hubHTML(entries) {
 <meta property="og:description" content="Optical setups shared by the OpticalSetup community — real implementations, with the story behind each one.">
 <meta property="og:url" content="${SITE_URL}/community/">
 <meta property="og:image" content="${SITE_URL}/assets/og-image.jpg">
-<link rel="icon" href="${FAVICON}">
+<link rel="icon" href="${base}${FAVICON}">
 <link rel="stylesheet" href="${base}/wiki/assets/wiki.css">
 <link rel="stylesheet" href="${base}/community/assets/community.css">
 </head>

@@ -175,7 +175,7 @@ function pageHTML(entry, manifestEntry, scene) {
 <meta property="og:description" content="${esc(entry.tagline)}">
 <meta property="og:url" content="${SITE_URL}/example-setups/${manifestEntry.slug}/">
 <meta property="og:image" content="${SITE_URL}/assets/og-image.jpg">
-<link rel="icon" href="${FAVICON}">
+<link rel="icon" href="${base}${FAVICON}">
 <link rel="stylesheet" href="${base}/wiki/assets/wiki.css">
 <link rel="stylesheet" href="${base}/example-setups/assets/examples.css">
 </head>
@@ -266,7 +266,7 @@ function hubHTML(entries) {
 <meta property="og:description" content="Curated optical setups with the real-world background and honest simulation limits behind each one, ready to open in the live canvas.">
 <meta property="og:url" content="${SITE_URL}/example-setups/">
 <meta property="og:image" content="${SITE_URL}/assets/og-image.jpg">
-<link rel="icon" href="${FAVICON}">
+<link rel="icon" href="${base}${FAVICON}">
 <link rel="stylesheet" href="${base}/wiki/assets/wiki.css">
 <link rel="stylesheet" href="${base}/example-setups/assets/examples.css">
 </head>
