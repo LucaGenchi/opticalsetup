@@ -19,13 +19,10 @@ diagram-only components.
 
 ## Choose the change workflow
 
-Read [docs/contributor-workflow.md](docs/contributor-workflow.md) before adding
-or changing a community setup, calculator, example, wiki article, or app
-element. It maps each task to its source files, generators, checks, and
-completion criteria, and explains the separate release step. This file remains
-the contributor policy; the linked specialist guides govern their own details.
-For scene construction without changing the app, see
-[skills/opticalsetup/SKILL.md](skills/opticalsetup/SKILL.md).
+Before changing anything public, read
+[docs/contributor-workflow.md](docs/contributor-workflow.md): it routes each
+kind of change to its files, generators, checks and release level, and
+describes the release. This file stays the policy.
 
 ## Project map
 
@@ -162,8 +159,7 @@ ships keep their own notices; see `THIRD-PARTY-NOTICES.md`.
   (`docs/release-policy.md`): a hand-cut `vMAJOR.MINOR.PATCH` whose pull
   request, once merged, is tagged and deployed. Say "merged" for work on
   `main`, and "live" only after a release has been deployed and read back.
-  Cut a release only when Luca asks for one. Until the activation steps in
-  that document are done, Pages still serves `main` directly.
+  Cut a release only when Luca asks for one.
   Only Luca can change these settings (**Settings → Branches → main**); do not
   ask for them to be relaxed to get a change merged.
 - Keep commits focused and describe behavior, not implementation trivia.
