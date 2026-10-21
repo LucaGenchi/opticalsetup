@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Content of the dispersion, nonlinear-conversion and coherent-Raman pages.
 import { MATERIALS } from '../calculators/dispersion/materials.js';
+import { SPECTRA, SPECTRUM_SOURCES, SPECTRUM_CATEGORIES, SPECTRUM_TECHNIQUES } from '../calculators/coherent-raman/spectra-index.js';
 
 const cite = (...n) => n.map(k => `<a class="cite" href="#ref-${k}">[${k}]</a>`).join('');
 const evidence = 'Equations checked against independent Python references, with published or exact algebraic anchors. These checks do not establish experimental accuracy.';
@@ -17,6 +18,14 @@ const coefficientCell = m => [
   ...m.terms.map(([B, C], i) => `B${i + 1} = ${B}, C${i + 1} = ${+C.toPrecision(10)}`),
 ].join('<br>');
 const materialRows = [...MATERIALS.values()].map(m => `<tr><th scope="row">${m.label}</th><td>${formulaText(m)}</td><td>${coefficientCell(m)}</td><td>${m.range.join('–')}</td><td>${m.conditions}</td><td>${cite(...[DISPERSION_REFS[m.ref]].flat())}</td></tr>`).join('\n');
+
+// Coherent Raman page: the reference-spectrum list, by category, with each
+// spectrum's source cited; references 5–10 are the spectra sources.
+const SPECTRUM_REFS = { flanagan2025: [5, 6], berzins2020: [7, 8], rod: [9, 10] };
+const spectrumRows = SPECTRUM_CATEGORIES.map(category => {
+  const rows = SPECTRA.filter(sp => sp.category === category);
+  return `<tr><th colspan="4" scope="colgroup">${category} (${rows.length})</th></tr>\n${rows.map(sp => `<tr><td>${sp.name}</td><td>${SPECTRUM_TECHNIQUES[sp.technique]}</td><td>${sp.startCm}–${sp.endCm}</td><td>${cite(...SPECTRUM_REFS[sp.source])}${sp.rodId ? ` <a href="${sp.rodUrl}">ROD ${sp.rodId}</a>` : ''}, ${SPECTRUM_SOURCES[sp.source].licenseName}</td></tr>`).join('\n')}`;
+}).join('\n');
 
 export const wavelengthCalculators = [
   {
@@ -109,15 +118,19 @@ export const wavelengthCalculators = [
     ],
   },
   {
-    slug: 'coherent-raman', title: 'Coherent Raman scattering', script: 'page.js', graphs: [],
-    card: 'Raman shift, pump or Stokes from the other two; CARS and CSRS wavelengths; spectral resolution from pulse durations.',
-    summary: 'Solve the pump, Stokes or Raman shift from the other two, then read the CARS and CSRS wavelengths of two-color coherent Raman scattering. A second panel estimates the spectral resolution set by the pump and Stokes pulse durations.',
+    slug: 'coherent-raman', title: 'Coherent Raman scattering', script: 'page.js',
+    card: 'Raman shift, pump or Stokes from the other two; CARS and CSRS wavelengths; spectral resolution; the probed window on measured reference spectra.',
+    summary: 'Solve the pump, Stokes or Raman shift from the other two, then read the CARS and CSRS wavelengths of two-color coherent Raman scattering. Further panels estimate the spectral resolution set by the pulse durations and show which part of a measured reference spectrum that excitation probes.',
     panels: [{ id: 'resolution', title: 'Spectral resolution from pulse durations',
-      intro: `For Gaussian pulses that are transform-limited, or equally chirped as in spectral focusing, the excitation bandwidth depends only on the pump and Stokes durations ${cite(3)}.` }],
+      intro: `For Gaussian pulses that are transform-limited, or equally chirped as in spectral focusing, the excitation bandwidth depends only on the pump and Stokes durations ${cite(3)}.` },
+    { id: 'spectra', title: 'Reference Raman spectra and the probed window',
+      intro: `The Raman shift and resolution above, drawn on measured spectra of ${SPECTRA.length} reference materials from openly licensed sources ${cite(5, 7, 9)}. The shaded band is the window the excitation addresses.` }],
+    graphs: [{ id: 'spectrum', title: 'Reference spectrum and probed window', note: 'Normalized intensity against Raman shift. The band is the Raman shift ± half the spectral resolution; the marker is the spectrum at the shift.' }],
     facts: [
       { label: 'Model', html: 'Pump–Stokes difference frequency; CARS at 2ν<sub>p</sub> − ν<sub>S</sub> and CSRS at 2ν<sub>S</sub> − ν<sub>p</sub>; Gaussian-pulse resolution formula.' },
       { label: 'Evidence', html: evidence },
-      { label: 'Example', html: '800 nm pump + 1040 nm Stokes → 2884.6 cm⁻¹; CARS at 650 nm, CSRS at 1485.7 nm. Two 2 ps pulses give 14.7 cm⁻¹ resolution.' },
+      { label: 'Example', html: '800 nm pump + 1040 nm Stokes → 2884.6 cm⁻¹; CARS at 650 nm, CSRS at 1485.7 nm. Two 2 ps pulses give 14.7 cm⁻¹ resolution, which on ethanol covers its 2878 cm⁻¹ band.' },
+      { label: 'Data', html: `Reference spectra from Flanagan and Glavin ${cite(6)} and Bērziņš et al. ${cite(8)} (CC BY 4.0) and the Raman Open Database ${cite(10)} (CC0), credited per spectrum.` },
     ],
     sections: [
       { id: 'physics', title: 'Pump, Stokes and the coherent signals',
@@ -136,6 +149,10 @@ export const wavelengthCalculators = [
         formulas: [{ tex: String.raw`\Delta\tilde\nu=\frac{2\sqrt2\,\ln2}{\pi c}\sqrt{\tau_p^{-2}+\tau_S^{-2}}\approx 20.8\ \mathrm{ps\,cm^{-1}}\sqrt{\tau_p^{-2}+\tau_S^{-2}}` }],
         html2: `<p>With equal linear chirps the instantaneous pump–Stokes difference frequency is constant in time, so the chirps cancel in the beat and only the chirped envelopes matter. For spectral focusing, enter those chirped durations. A chirp mismatch adds a broadening term that this panel does not include (Eq. (8) of ${cite(3)}). For Gaussian fields the value equals the FWHM of the amplitude spectrum of the driving term E<sub>p</sub>E<sub>S</sub>*. The FWHM of its power spectrum is smaller by √2. The independent reference recomputes the amplitude-spectrum width numerically, for transform-limited and equally chirped pulses.</p>`,
       },
+      { id: 'spectra', title: 'Reference spectra',
+        html: `<p>The spectra are measurements published by others under licences that allow redistribution with credit, chosen so that nothing conflicts with this project’s GPL. They are not modelled. Three sources qualify:</p><ul><li><b>Solvents and reagents</b>: Flanagan and Glavin, spontaneous Raman of 31 neat liquids at 785 nm, about 1 cm⁻¹ resolution, CC BY 4.0 ${cite(5, 6)}. Their methyl isobutyl ketone and 4-methyl-2-pentanone are the same compound and appear once.</li><li><b>Pharmaceutical excipients</b>: Bērziņš et al., FT-Raman spectra of solids, CC BY 4.0 ${cite(7, 8)}; one spectrum per substance, without repeated grades and suppliers.</li><li><b>Minerals</b>: the Raman Open Database, public domain (CC0) ${cite(9, 10)}. Only spectra contributed to ROD directly are used, because many ROD entries republish RRUFF spectra whose own terms are not CC0. Entries flagged by the ROD maintainers, or whose main band lies more than about 3 cm⁻¹ from its accepted position, are left out.</li></ul><p>Other collections were checked and not used: SDBS (all rights reserved), the Open Specy library (merged from contributors without a per-spectrum licence) and RamanBioLib (ODbL share-alike, and spectra digitized from published figures). Lipid spectra are not included yet; measured lipid spectra, including stimulated Raman (SRS) spectra, can be added later and will be labelled as such. SRS is proportional to the spontaneous Raman cross-section but is a different measurement.</p>`,
+        html2: `<p>Every spectrum is processed the same way. Replicates are averaged. The spectrum is cropped to the source’s usable range (150–3150 cm⁻¹ for the solvents, as their authors recommend) and averaged into 2 cm⁻¹ bins. A straight baseline through the first and last 10 cm⁻¹ is subtracted, then the spectrum is scaled to its strongest band. The major bands of eight solvents (ethanol, methanol, acetone, acetonitrile, chloroform, cyclohexane, DMSO and toluene), checked against the band table their source publishes, agree to within one bin. Band heights depend on the instrument response, the excitation wavelength and the sample state, so compare positions rather than heights across sources.</p><details><summary>All ${SPECTRA.length} reference spectra</summary><div class="table-scroll"><table class="param-table"><thead><tr><th>Material</th><th>Measurement</th><th>Range (cm⁻¹)</th><th>Source and licence</th></tr></thead><tbody>\n${spectrumRows}\n</tbody></table></div></details>`,
+      },
       { id: 'precision', title: 'Precision and limits',
         html: '<p>Wavelength inputs and inferred pump or Stokes wavelengths are limited to 100–20000 nm, and shifts to positive values up to 10000 cm⁻¹. Equal or reversed pump and Stokes, impossible shifts and out-of-scope inferred wavelengths give no result. CARS and CSRS may lie outside the input interval. CSRS is unavailable when the Raman frequency is not below the Stokes frequency. An independent reference checks all three modes and the resolution formula to 10⁻⁹ relative; the paper’s 20.8 ps·cm⁻¹ prefactor anchors the units.</p><p>Frequency relations and a Gaussian bandwidth estimate only. Raman cross-sections, linewidths, the nonresonant background, phase matching, polarization, pulse overlap, signal levels and non-Gaussian pulse shapes are outside this model.</p>',
       },
@@ -145,6 +162,12 @@ export const wavelengthCalculators = [
       { label: 'S. Heuke and H. Rigneault, “Coherent Stokes Raman scattering microscopy (CSRS),” Nat. Commun. 14, 3337 (2023).', url: 'https://doi.org/10.1038/s41467-023-38941-4' },
       { label: 'M. Mohseni, C. Polzer and T. Hellerer, “Resolution of spectral focusing in coherent Raman imaging,” Opt. Express 26, 10230–10241 (2018).', url: 'https://doi.org/10.1364/OE.26.010230' },
       { label: 'NIST, Broadband Coherent Anti-Stokes Raman Scattering Microscopy, excitation and readout frequency relations.', url: 'https://www.nist.gov/programs-projects/broadband-coherent-anti-stokes-raman-scattering-bcars-microscopy' },
+      { label: 'A. R. Flanagan and F. G. Glavin, “Open-source Raman spectra of chemical compounds for active pharmaceutical ingredient development,” Sci. Data 12, 498 (2025).', url: 'https://doi.org/10.1038/s41597-025-04848-6' },
+      { label: 'A. R. Flanagan and F. G. Glavin, Raman spectra dataset, figshare (2025), CC BY 4.0.', url: 'https://doi.org/10.6084/m9.figshare.27931131' },
+      { label: 'K. Bērziņš, R. E. Sales, J. E. Barnsley, G. Walker, S. J. Fraser-Miller and K. C. Gordon, “Low-wavenumber Raman spectral database of pharmaceutical excipients,” Vib. Spectrosc. 107, 103021 (2020).', url: 'https://doi.org/10.1016/j.vibspec.2020.103021' },
+      { label: 'K. Bērziņš et al., Reference data to the low-wavenumber Raman spectral database of pharmaceutical excipients, Zenodo (2020), CC BY 4.0.', url: 'https://doi.org/10.5281/zenodo.3614035' },
+      { label: 'Y. El Mendili et al., “Raman Open Database: first interconnected Raman–X-ray diffraction open-access resource for material identification,” J. Appl. Cryst. 52, 618–625 (2019).', url: 'https://doi.org/10.1107/S1600576719004229' },
+      { label: 'Raman Open Database (ROD), Crystallography Open Database project; data in the public domain (CC0).', url: 'https://solsa.crystallography.net/rod/' },
     ],
   },
 ];

@@ -7,11 +7,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Coherent Raman scattering calculator — OpticalSetup</title>
-<meta name="description" content="Solve the pump, Stokes or Raman shift from the other two, then read the CARS and CSRS wavelengths of two-color coherent Raman scattering. A second panel estimates the spectral resolution set by the pump and Stokes pulse durations.">
+<meta name="description" content="Solve the pump, Stokes or Raman shift from the other two, then read the CARS and CSRS wavelengths of two-color coherent Raman scattering. Further panels estimate the spectral resolution set by the pulse durations and show which part of a measured reference spectrum that excitation probes.">
 <link rel="canonical" href="https://opticalsetup.com/calculators/coherent-raman/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Coherent Raman scattering calculator — OpticalSetup">
-<meta property="og:description" content="Solve the pump, Stokes or Raman shift from the other two, then read the CARS and CSRS wavelengths of two-color coherent Raman scattering. A second panel estimates the spectral resolution set by the pump and Stokes pulse durations.">
+<meta property="og:description" content="Solve the pump, Stokes or Raman shift from the other two, then read the CARS and CSRS wavelengths of two-color coherent Raman scattering. Further panels estimate the spectral resolution set by the pulse durations and show which part of a measured reference spectrum that excitation probes.">
 <meta property="og:url" content="https://opticalsetup.com/calculators/coherent-raman/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="../../sketch/icons/icon.svg">
@@ -63,7 +63,7 @@
   <main class="calc-page">
     <div class="crumb"><a href="../../calculators/">Calculators</a> / Coherent Raman scattering</div>
     <h1>Coherent Raman scattering</h1>
-    <p class="tagline">Solve the pump, Stokes or Raman shift from the other two, then read the CARS and CSRS wavelengths of two-color coherent Raman scattering. A second panel estimates the spectral resolution set by the pump and Stokes pulse durations.</p>
+    <p class="tagline">Solve the pump, Stokes or Raman shift from the other two, then read the CARS and CSRS wavelengths of two-color coherent Raman scattering. Further panels estimate the spectral resolution set by the pulse durations and show which part of a measured reference spectrum that excitation probes.</p>
 
     <section class="calc-app" id="calculator" aria-label="Calculator">
       <noscript><p class="calc-status is-error">This calculator needs JavaScript. The physics and formulas below read without it.</p></noscript>
@@ -86,19 +86,39 @@
         <ul class="calc-notes" id="resolution-notes"></ul>
       </div>
     </section>
+    <section class="calc-app calc-panel" id="spectra-panel" aria-labelledby="spectra-title">
+      <div class="calc-panel-head">
+        <h2 id="spectra-title">Reference Raman spectra and the probed window</h2>
+        <p>The Raman shift and resolution above, drawn on measured spectra of 84 reference materials from openly licensed sources <a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-9">[9]</a>. The shaded band is the window the excitation addresses.</p>
+      </div>
+      <form class="calc-inputs" id="spectra-form" autocomplete="off" novalidate></form>
+      <div class="calc-output">
+        <div class="calc-status" id="spectra-status" role="status" aria-live="polite"></div>
+        <table class="calc-results" id="spectra-results" aria-label="Reference Raman spectra and the probed window results"></table>
+        <ul class="calc-notes" id="spectra-notes"></ul>
+      </div>
+    </section>
 
-
+    <section class="calc-graphs" aria-label="Graphs">
+      <figure class="calc-chart" id="chart-spectrum">
+        <figcaption><span class="chart-num">1</span><span><b>Reference spectrum and probed window</b><br><span class="chart-note">Normalized intensity against Raman shift. The band is the Raman shift ± half the spectral resolution; the marker is the spectrum at the shift.</span></span></figcaption>
+        <div class="chart-host" data-chart="spectrum"></div>
+        <details class="chart-data"><summary>Data table</summary><div class="chart-table" data-table="spectrum"></div></details>
+      </figure>
+    </section>
 
 
     <dl class="calc-facts" aria-label="About this calculator">
       <div><dt>Model</dt><dd>Pump–Stokes difference frequency; CARS at 2ν<sub>p</sub> − ν<sub>S</sub> and CSRS at 2ν<sub>S</sub> − ν<sub>p</sub>; Gaussian-pulse resolution formula.</dd></div>
       <div><dt>Evidence</dt><dd>Equations checked against independent Python references, with published or exact algebraic anchors. These checks do not establish experimental accuracy.</dd></div>
-      <div><dt>Example</dt><dd>800 nm pump + 1040 nm Stokes → 2884.6 cm⁻¹; CARS at 650 nm, CSRS at 1485.7 nm. Two 2 ps pulses give 14.7 cm⁻¹ resolution.</dd></div>
+      <div><dt>Example</dt><dd>800 nm pump + 1040 nm Stokes → 2884.6 cm⁻¹; CARS at 650 nm, CSRS at 1485.7 nm. Two 2 ps pulses give 14.7 cm⁻¹ resolution, which on ethanol covers its 2878 cm⁻¹ band.</dd></div>
+      <div><dt>Data</dt><dd>Reference spectra from Flanagan and Glavin <a class="cite" href="#ref-6">[6]</a> and Bērziņš et al. <a class="cite" href="#ref-8">[8]</a> (CC BY 4.0) and the Raman Open Database <a class="cite" href="#ref-10">[10]</a> (CC0), credited per spectrum.</dd></div>
     </dl>
 
     <nav class="calc-toc" aria-label="On this page">
       <a href="#physics">Pump, Stokes and the coherent signals</a>
       <a href="#resolution">Spectral resolution</a>
+      <a href="#spectra">Reference spectra</a>
       <a href="#precision">Precision and limits</a>
       <a href="#references">References</a>
     </nav>
@@ -147,6 +167,108 @@ c53.7,-170.3,84.5,-266.8,92.5,-289.5z
 M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.5706em;"><span></span></span></span></span></span></span></span></span></span></div></div>
 <p>With equal linear chirps the instantaneous pump–Stokes difference frequency is constant in time, so the chirps cancel in the beat and only the chirped envelopes matter. For spectral focusing, enter those chirped durations. A chirp mismatch adds a broadening term that this panel does not include (Eq. (8) of <a class="cite" href="#ref-3">[3]</a>). For Gaussian fields the value equals the FWHM of the amplitude spectrum of the driving term E<sub>p</sub>E<sub>S</sub>*. The FWHM of its power spectrum is smaller by √2. The independent reference recomputes the amplitude-spectrum width numerically, for transform-limited and equally chirped pulses.</p>
       </section>
+      <section id="spectra">
+        <h2 class="section-head sim"><span class="sw"></span>Reference spectra</h2>
+        <p>The spectra are measurements published by others under licences that allow redistribution with credit, chosen so that nothing conflicts with this project’s GPL. They are not modelled. Three sources qualify:</p><ul><li><b>Solvents and reagents</b>: Flanagan and Glavin, spontaneous Raman of 31 neat liquids at 785 nm, about 1 cm⁻¹ resolution, CC BY 4.0 <a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>. Their methyl isobutyl ketone and 4-methyl-2-pentanone are the same compound and appear once.</li><li><b>Pharmaceutical excipients</b>: Bērziņš et al., FT-Raman spectra of solids, CC BY 4.0 <a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>; one spectrum per substance, without repeated grades and suppliers.</li><li><b>Minerals</b>: the Raman Open Database, public domain (CC0) <a class="cite" href="#ref-9">[9]</a><a class="cite" href="#ref-10">[10]</a>. Only spectra contributed to ROD directly are used, because many ROD entries republish RRUFF spectra whose own terms are not CC0. Entries flagged by the ROD maintainers, or whose main band lies more than about 3 cm⁻¹ from its accepted position, are left out.</li></ul><p>Other collections were checked and not used: SDBS (all rights reserved), the Open Specy library (merged from contributors without a per-spectrum licence) and RamanBioLib (ODbL share-alike, and spectra digitized from published figures). Lipid spectra are not included yet; measured lipid spectra, including stimulated Raman (SRS) spectra, can be added later and will be labelled as such. SRS is proportional to the spontaneous Raman cross-section but is a different measurement.</p>
+<p>Every spectrum is processed the same way. Replicates are averaged. The spectrum is cropped to the source’s usable range (150–3150 cm⁻¹ for the solvents, as their authors recommend) and averaged into 2 cm⁻¹ bins. A straight baseline through the first and last 10 cm⁻¹ is subtracted, then the spectrum is scaled to its strongest band. The major bands of eight solvents (ethanol, methanol, acetone, acetonitrile, chloroform, cyclohexane, DMSO and toluene), checked against the band table their source publishes, agree to within one bin. Band heights depend on the instrument response, the excitation wavelength and the sample state, so compare positions rather than heights across sources.</p><details><summary>All 84 reference spectra</summary><div class="table-scroll"><table class="param-table"><thead><tr><th>Material</th><th>Measurement</th><th>Range (cm⁻¹)</th><th>Source and licence</th></tr></thead><tbody>
+<tr><th colspan="4" scope="colgroup">Alcohols and glycols (7)</th></tr>
+<tr><td>2-Propanol (isopropanol)</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>Diethylene glycol</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>Ethanol</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>Ethylene glycol</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>Methanol</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>Propylene glycol</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>tert-Butanol</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><th colspan="4" scope="colgroup">Ketones, esters and ethers (11)</th></tr>
+<tr><td>2,2-Dimethoxypropane</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>4-Methyl-2-pentanone (MIBK)</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>Acetone</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>Butyl acetate</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>Dibutyl sebacate</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Diethyl malonate</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>Ethyl acetate</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>Propyl acetate</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>tert-Butyl methyl ether (MTBE)</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>Tetrahydrofuran (THF)</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>Triacetin</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><th colspan="4" scope="colgroup">Hydrocarbons (3)</th></tr>
+<tr><td>Cyclohexane</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>n-Heptane</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>n-Hexane</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><th colspan="4" scope="colgroup">Aromatic compounds (3)</th></tr>
+<tr><td>Benzaldehyde</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>Benzyl bromide</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>Toluene</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><th colspan="4" scope="colgroup">Halogenated solvents (2)</th></tr>
+<tr><td>Chloroform</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>Dichloromethane</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><th colspan="4" scope="colgroup">Polar aprotic solvents (4)</th></tr>
+<tr><td>1,3-Dimethyl-2-imidazolidinone</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>Acetonitrile</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>Dimethyl sulfoxide (DMSO)</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>N,N-Dimethylformamide (DMF)</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><th colspan="4" scope="colgroup">Acids, amines and salts (9)</th></tr>
+<tr><td>Acetic acid (glacial)</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>Citric acid</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Diethylamine</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>Formic acid</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>Isobutylamine</td><td>Spontaneous Raman</td><td>150–3150</td><td><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-6">[6]</a>, CC BY 4.0</td></tr>
+<tr><td>Magnesium stearate</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Sodium acetate</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Sodium benzoate</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Sodium dodecyl sulfate (SDS)</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><th colspan="4" scope="colgroup">Amino acids and proteins (8)</th></tr>
+<tr><td>Casein (sodium salt, bovine milk)</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Gelatin (type A, porcine skin)</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Glycine (α form)</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>L-Cysteine</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>L-Glutamic acid</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>L-Glutamine</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>L-Tryptophan</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Zein</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><th colspan="4" scope="colgroup">Sugars and polyols (7)</th></tr>
+<tr><td>D-Sorbitol</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Glucose monohydrate</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Lactose monohydrate</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Mannitol</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Sucrose</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Trehalose dihydrate</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Xylitol</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><th colspan="4" scope="colgroup">Polysaccharides (10)</th></tr>
+<tr><td>Alginic acid</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Carboxymethyl cellulose, sodium salt</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Carrageenan</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Cellulose acetate phthalate</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Chitosan</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Dextran</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Hydroxypropyl methylcellulose</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Methylcellulose</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Starch</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Tragacanth</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><th colspan="4" scope="colgroup">Synthetic polymers (9)</th></tr>
+<tr><td>Methacrylic acid copolymer (EUDRAGIT L 100)</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Nylon 6</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Poly(ethylene-co-vinyl acetate)</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Poly(vinyl alcohol), 99 % hydrolyzed</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Polycaprolactone</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Polyethylene glycol 6000</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Polyvinyl caprolactam–polyvinyl acetate–PEG graft copolymer (Soluplus)</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Polyvinylpyrrolidone (PVP)</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Vinylpyrrolidone–vinyl acetate copolymer (Kollidon VA 64)</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><th colspan="4" scope="colgroup">Minerals and inorganic solids (11)</th></tr>
+<tr><td>Anatase (TiO₂)</td><td>Spontaneous Raman</td><td>100–2500</td><td><a class="cite" href="#ref-9">[9]</a><a class="cite" href="#ref-10">[10]</a> <a href="https://solsa.crystallography.net/rod/3500153.html">ROD 3500153</a>, CC0 1.0 (public domain)</td></tr>
+<tr><td>Aragonite (CaCO₃)</td><td>Spontaneous Raman</td><td>100–4000</td><td><a class="cite" href="#ref-9">[9]</a><a class="cite" href="#ref-10">[10]</a> <a href="https://solsa.crystallography.net/rod/3500279.html">ROD 3500279</a>, CC0 1.0 (public domain)</td></tr>
+<tr><td>Barite (BaSO₄)</td><td>Spontaneous Raman</td><td>100–2998</td><td><a class="cite" href="#ref-9">[9]</a><a class="cite" href="#ref-10">[10]</a> <a href="https://solsa.crystallography.net/rod/3500038.html">ROD 3500038</a>, CC0 1.0 (public domain)</td></tr>
+<tr><td>Calcite (CaCO₃)</td><td>Spontaneous Raman</td><td>100–1800</td><td><a class="cite" href="#ref-9">[9]</a><a class="cite" href="#ref-10">[10]</a> <a href="https://solsa.crystallography.net/rod/3500023.html">ROD 3500023</a>, CC0 1.0 (public domain)</td></tr>
+<tr><td>Gypsum (CaSO₄·2H₂O)</td><td>Spontaneous Raman</td><td>100–4000</td><td><a class="cite" href="#ref-9">[9]</a><a class="cite" href="#ref-10">[10]</a> <a href="https://solsa.crystallography.net/rod/3500273.html">ROD 3500273</a>, CC0 1.0 (public domain)</td></tr>
+<tr><td>Magnesium carbonate (heavy)</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Quartz (α-SiO₂)</td><td>Spontaneous Raman</td><td>100–4000</td><td><a class="cite" href="#ref-9">[9]</a><a class="cite" href="#ref-10">[10]</a> <a href="https://solsa.crystallography.net/rod/3500272.html">ROD 3500272</a>, CC0 1.0 (public domain)</td></tr>
+<tr><td>Rutile (TiO₂)</td><td>Spontaneous Raman</td><td>100–2500</td><td><a class="cite" href="#ref-9">[9]</a><a class="cite" href="#ref-10">[10]</a> <a href="https://solsa.crystallography.net/rod/3500024.html">ROD 3500024</a>, CC0 1.0 (public domain)</td></tr>
+<tr><td>Sodium bicarbonate</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Talc</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+<tr><td>Tricalcium phosphate</td><td>FT-Raman (spontaneous, Fourier-transform)</td><td>210–3500</td><td><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a>, CC BY 4.0</td></tr>
+</tbody></table></div></details>
+      </section>
       <section id="precision">
         <h2 class="section-head sim"><span class="sw"></span>Precision and limits</h2>
         <p>Wavelength inputs and inferred pump or Stokes wavelengths are limited to 100–20000 nm, and shifts to positive values up to 10000 cm⁻¹. Equal or reversed pump and Stokes, impossible shifts and out-of-scope inferred wavelengths give no result. CARS and CSRS may lie outside the input interval. CSRS is unavailable when the Raman frequency is not below the Stokes frequency. An independent reference checks all three modes and the resolution formula to 10⁻⁹ relative; the paper’s 20.8 ps·cm⁻¹ prefactor anchors the units.</p><p>Frequency relations and a Gaussian bandwidth estimate only. Raman cross-sections, linewidths, the nonresonant background, phase matching, polarization, pulse overlap, signal levels and non-Gaussian pulse shapes are outside this model.</p>
@@ -158,6 +280,12 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
           <li id="ref-2"><a href="https://doi.org/10.1038/s41467-023-38941-4" target="_blank" rel="noopener">S. Heuke and H. Rigneault, “Coherent Stokes Raman scattering microscopy (CSRS),” Nat. Commun. 14, 3337 (2023).</a></li>
           <li id="ref-3"><a href="https://doi.org/10.1364/OE.26.010230" target="_blank" rel="noopener">M. Mohseni, C. Polzer and T. Hellerer, “Resolution of spectral focusing in coherent Raman imaging,” Opt. Express 26, 10230–10241 (2018).</a></li>
           <li id="ref-4"><a href="https://www.nist.gov/programs-projects/broadband-coherent-anti-stokes-raman-scattering-bcars-microscopy" target="_blank" rel="noopener">NIST, Broadband Coherent Anti-Stokes Raman Scattering Microscopy, excitation and readout frequency relations.</a></li>
+          <li id="ref-5"><a href="https://doi.org/10.1038/s41597-025-04848-6" target="_blank" rel="noopener">A. R. Flanagan and F. G. Glavin, “Open-source Raman spectra of chemical compounds for active pharmaceutical ingredient development,” Sci. Data 12, 498 (2025).</a></li>
+          <li id="ref-6"><a href="https://doi.org/10.6084/m9.figshare.27931131" target="_blank" rel="noopener">A. R. Flanagan and F. G. Glavin, Raman spectra dataset, figshare (2025), CC BY 4.0.</a></li>
+          <li id="ref-7"><a href="https://doi.org/10.1016/j.vibspec.2020.103021" target="_blank" rel="noopener">K. Bērziņš, R. E. Sales, J. E. Barnsley, G. Walker, S. J. Fraser-Miller and K. C. Gordon, “Low-wavenumber Raman spectral database of pharmaceutical excipients,” Vib. Spectrosc. 107, 103021 (2020).</a></li>
+          <li id="ref-8"><a href="https://doi.org/10.5281/zenodo.3614035" target="_blank" rel="noopener">K. Bērziņš et al., Reference data to the low-wavenumber Raman spectral database of pharmaceutical excipients, Zenodo (2020), CC BY 4.0.</a></li>
+          <li id="ref-9"><a href="https://doi.org/10.1107/S1600576719004229" target="_blank" rel="noopener">Y. El Mendili et al., “Raman Open Database: first interconnected Raman–X-ray diffraction open-access resource for material identification,” J. Appl. Cryst. 52, 618–625 (2019).</a></li>
+          <li id="ref-10"><a href="https://solsa.crystallography.net/rod/" target="_blank" rel="noopener">Raman Open Database (ROD), Crystallography Open Database project; data in the public domain (CC0).</a></li>
         </ol>
       </section>
     </article>

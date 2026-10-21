@@ -42,6 +42,30 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## Raman reference spectra
+
+The coherent Raman calculator ships measured Raman spectra under
+`calculators/coherent-raman/spectra/`, one JSON file per material, built by
+`tools/build-raman-spectra.mjs`. They are other people's measurements, not
+offered under the GPL. Each file names its source, licence and the changes
+made: replicate spectra averaged, cropped, averaged into 2 cm⁻¹ bins, a
+straight two-point baseline subtracted, and min–max scaled to 0–1000.
+
+- **Solvents and reagents:** A. R. Flanagan and F. G. Glavin, "Open-source
+  Raman spectra of chemical compounds for active pharmaceutical ingredient
+  development", *Scientific Data* 12, 498 (2025),
+  doi:10.1038/s41597-025-04848-6; data doi:10.6084/m9.figshare.27931131.
+  Licensed under CC BY 4.0, https://creativecommons.org/licenses/by/4.0/.
+- **Pharmaceutical excipients:** K. Bērziņš, R. E. Sales, J. E. Barnsley,
+  G. Walker, S. J. Fraser-Miller and K. C. Gordon, "Low-wavenumber Raman
+  spectral database of pharmaceutical excipients", *Vibrational
+  Spectroscopy* 107, 103021 (2020); reference data doi:10.5281/zenodo.3614035.
+  Licensed under CC BY 4.0, https://creativecommons.org/licenses/by/4.0/.
+- **Minerals:** the Raman Open Database, https://solsa.crystallography.net/rod/,
+  whose data are dedicated to the public domain under CC0 1.0. The files
+  name each ROD entry and its contributors. Only spectra contributed to ROD
+  directly are used, not the RRUFF spectra it also republishes.
+
 ## Community setups
 
 Scenes and descriptions under `community-submissions/` are their authors'

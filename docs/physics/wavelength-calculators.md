@@ -75,6 +75,24 @@ equally chirped. For Gaussian fields it is the FWHM of the amplitude
 spectrum of `E_p E_S*`; the power-spectrum FWHM is smaller by √2. Chirp
 mismatch (the paper's Eq. (8)) is not included.
 
+### Reference spectra
+
+A third panel draws the probed window, the Raman shift ± half the
+resolution, on a measured reference spectrum (`crs-spectra.js`). The 84
+spectra under `calculators/coherent-raman/spectra/` are built by
+`tools/build-raman-spectra.mjs` from three openly licensed sources:
+- Flanagan and Glavin 2025: 31 solvents, spontaneous Raman at 785 nm, CC BY 4.0;
+- Bērziņš et al. 2020: 46 excipients, FT-Raman, CC BY 4.0;
+- the Raman Open Database: 7 minerals, CC0, only spectra contributed to ROD directly, not republished RRUFF spectra.
+
+They are classified into 12 chemical categories. Each file records its source, licence, measurement technique and processing:
+- replicates averaged;
+- 2 cm⁻¹ bins;
+- two-point baseline;
+- min–max scaling.
+
+The tool records the SHA-256 of every input. SDBS, the Open Specy library and RamanBioLib were not used because of their licences. Lipid spectra, including SRS measurements, are a planned addition and will be labelled by technique (`technique: 'srs'`).
+
 ## Validation
 
 `validation/reference/material_dispersion.py` evaluates every formula in its
@@ -86,4 +104,5 @@ process in SI frequencies with exact rational anchors, and recomputes the
 resolution as the FWHM of a quadrature Fourier transform of the driving term
 for transform-limited and equally chirped pulses, anchored by the paper's
 20.8 ps·cm⁻¹. `test/calculator-wavelengths.test.js` covers boundaries and
-declines. See `docs/validation.md` for the generated table.
+declines; `test/raman-spectra.test.js` checks every spectrum's licence, credit
+and format, and eight solvents' band positions against their source's table. See `docs/validation.md` for the generated table.

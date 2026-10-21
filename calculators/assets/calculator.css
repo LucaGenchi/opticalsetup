@@ -96,6 +96,7 @@
 .calc-results th { font-weight: 500; color: var(--muted); }
 .calc-results th a { color: inherit; }
 .calc-results td { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
+.calc-results td.text { white-space: normal; text-align: right; }
 .calc-results td small { display: block; color: var(--muted); font-size: 11.8px; }
 .calc-results tr.group th { color: var(--ink); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; background: var(--bg); }
 .calc-notes { list-style: none; display: flex; flex-direction: column; gap: 6px; }

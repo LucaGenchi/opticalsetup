@@ -8,8 +8,11 @@ import { renderForm, readForm, syncForm, lineChart, formatNumber } from './calcu
 // elsewhere on the page; the plot range below the graphs uses `plot-form`.
 // `rows` returns [label, value, unit, digits] arrays, or { group } headings;
 // a page with several result tables returns { <id>: rows } for the tables
-// `<id>-results` (the main one is the panel's own id).
-export function mountCalculator({ panel = 'calc', inputs, defaults, groups, compute, rows, notes = () => [], graphs = null }) {
+// `<id>-results` (the main one is the panel's own id). A value may be text.
+// `compute` may return { pending: true, message } while data loads, and
+// `onResult` sees every result, so one panel can feed another; the returned
+// `update` recomputes the panel.
+export function mountCalculator({ panel = 'calc', inputs, defaults, groups, compute, rows, notes = () => [], graphs = null, onResult = () => {} }) {
   const mainId = `${panel}-form`;
   const formIds = [...new Set([mainId, ...Object.values(groups).map(g => g.form ?? mainId)])];
   const forms = formIds.map(id => document.getElementById(id));
@@ -40,6 +43,7 @@ export function mountCalculator({ panel = 'calc', inputs, defaults, groups, comp
       const [label, value, unit = '', digits = 6] = row;
       th.scope = 'row'; th.textContent = label;
       const td = document.createElement('td');
+      if (typeof value === 'string') { td.className = 'text'; td.textContent = value; tr.append(th, td); continue; }
       const shown = formatNumber(value, digits);
       td.textContent = shown === '—' || !unit ? shown : `${shown} ${unit}`;
       tr.append(th, td);
@@ -47,9 +51,10 @@ export function mountCalculator({ panel = 'calc', inputs, defaults, groups, comp
   }
   function draw(result) {
     const charts = result.ok ? graphs(result) : {};
+    const message = result.pending ? result.message : 'No graph until the inputs are valid.';
     for (const host of hosts) {
       const id = host.dataset.chart;
-      lineChart(host, document.querySelector(`[data-table="${id}"]`), charts[id] ?? { message: 'No graph until the inputs are valid.' });
+      lineChart(host, document.querySelector(`[data-table="${id}"]`), charts[id] ?? { message });
     }
   }
   function update() {
@@ -58,9 +63,11 @@ export function mountCalculator({ panel = 'calc', inputs, defaults, groups, comp
     syncForm(forms, inputs, raw, new Set((result.errors ?? []).map(e => e.id)));
     for (const table of tables) table.textContent = '';
     noteList.textContent = '';
-    status.className = `calc-status${result.ok ? '' : ' is-error'}`;
-    status.textContent = result.ok ? 'Calculated within the stated model.' : 'Unavailable: correct these inputs.';
-    if (!result.ok) {
+    status.className = `calc-status${result.ok || result.pending ? '' : ' is-error'}`;
+    status.textContent = result.ok ? 'Calculated within the stated model.' : result.pending ? result.message : 'Unavailable: correct these inputs.';
+    if (result.pending) {
+      // Nothing to list while data loads.
+    } else if (!result.ok) {
       const ul = document.createElement('ul');
       for (const message of new Set(result.errors.map(e => e.message))) {
         const li = document.createElement('li'); li.textContent = message; ul.append(li);
@@ -76,6 +83,7 @@ export function mountCalculator({ panel = 'calc', inputs, defaults, groups, comp
       }
     }
     if (graphs) draw(result);
+    onResult(result);
   }
   for (const form of forms) {
     form.addEventListener('submit', e => e.preventDefault());
@@ -88,4 +96,5 @@ export function mountCalculator({ panel = 'calc', inputs, defaults, groups, comp
     window.addEventListener('resize', () => { clearTimeout(resize); resize = setTimeout(update, 100); });
   }
   init();
+  return { update };
 }
