@@ -493,6 +493,24 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://opticalsetup.com/calculators/dispersion/</loc>
+    <lastmod>2026-10-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/calculators/nonlinear-conversion/</loc>
+    <lastmod>2026-10-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/calculators/coherent-raman/</loc>
+    <lastmod>2026-10-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://opticalsetup.com/calculators/opa/</loc>
     <lastmod>2026-10-21</lastmod>
     <changefreq>monthly</changefreq>

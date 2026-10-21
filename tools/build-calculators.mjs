@@ -95,7 +95,7 @@ ${withKatex ? `<link rel="stylesheet" href="${base}/wiki/assets/katex.min.css">\
 }
 
 const footer = base => `
-  <footer class="wiki-footer">Calculators run the functions OpticalSetup itself uses and state how each was checked. They are not a substitute for design software: read each page’s precision section before relying on a number. See <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/docs/validation.md" target="_blank" rel="noopener">the validation table</a>, or <a href="${base}/sketch/">open the canvas</a>.</footer>`;
+  <footer class="wiki-footer">Calculators evaluate optical models, reuse workbench functions where available, and state how each was checked. They are not a substitute for design software: read each page’s precision section before relying on a number. See <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/docs/validation.md" target="_blank" rel="noopener">the validation table</a>, or <a href="${base}/sketch/">open the canvas</a>.</footer>`;
 
 // The same html/formulas/html2/formulas2/... sequence as the wiki, so a
 // formula sits in the paragraph that explains it. A key outside the
@@ -125,9 +125,79 @@ ${section.rows.map(([symbol, name, unit, meaning]) => `<tr><td class="sym">${sym
   return parts.join('\n');
 }
 
+// One inputs | results panel. The main panel keeps the calc-* ids; a page's
+// extra `panels` (an independent second calculator, such as a resolution
+// estimate under the main one) use their own id as the prefix. A panel with
+// `formResults` also gets a results table under its form, `<that>-results`.
+function panelSection(id, panel = null) {
+  const head = panel ? `
+      <div class="calc-panel-head">
+        <h2 id="${id}-title">${esc(panel.title)}</h2>
+        ${panel.intro ? `<p>${panel.intro}</p>` : ''}
+      </div>` : `
+      <noscript><p class="calc-status is-error">This calculator needs JavaScript. The physics and formulas below read without it.</p></noscript>`;
+  return `<section class="calc-app${panel ? ' calc-panel' : ''}" id="${panel ? `${id}-panel` : 'calculator'}" ${panel ? `aria-labelledby="${id}-title"` : 'aria-label="Calculator"'}>${head}
+      ${panel?.formResults ? `<div class="calc-column">
+        <form class="calc-inputs" id="${id}-form" autocomplete="off" novalidate></form>
+        <table class="calc-results" id="${panel.formResults}-results" aria-label="${esc(panel.formResultsLabel ?? 'Details')}"></table>
+      </div>` : `<form class="calc-inputs" id="${id}-form" autocomplete="off" novalidate></form>`}
+      <div class="calc-output">
+        <div class="calc-status" id="${id}-status" role="status" aria-live="polite"></div>
+        <table class="calc-results" id="${id}-results" aria-label="${panel ? `${esc(panel.title)} results` : 'Results'}"></table>
+        <ul class="calc-notes" id="${id}-notes"></ul>
+      </div>
+    </section>`;
+}
+
+// The main calculator laid out as columns, each an input form with an
+// optional results table under it, plus one output column for the status,
+// the main results and the notes. The first form must be `calc`, the main
+// panel's form; mountCalculator routes rows to `<results>-results` tables.
+function columnsSection(slug, columns) {
+  if (columns[0]?.form !== 'calc' || columns.filter(c => c.output).length !== 1) {
+    throw new Error(`${slug}: columns need the calc form first and exactly one output column`);
+  }
+  const cells = columns.map(col => col.output ? `
+      <div class="calc-column calc-output">
+        <div class="calc-status" id="calc-status" role="status" aria-live="polite"></div>
+        <table class="calc-results" id="calc-results" aria-label="${esc(col.label ?? 'Results')}"></table>
+        <ul class="calc-notes" id="calc-notes"></ul>
+      </div>` : `
+      <div class="calc-column">
+        <form class="calc-inputs" id="${col.form}-form" autocomplete="off" novalidate></form>
+        ${col.results ? `<table class="calc-results" id="${col.results}-results" aria-label="${esc(col.label)}"></table>` : ''}
+      </div>`).join('');
+  return `<noscript><p class="calc-status is-error">This calculator needs JavaScript. The physics and formulas below read without it.</p></noscript>
+    <section class="calc-app calc-columns" id="calculator" aria-label="Calculator">${cells}
+      <div class="calc-actions" id="calc-actions"></div>
+    </section>`;
+}
+
+// Links into the repository must name a file that exists here, so a page
+// cannot ship a link that 404s once its branch is merged.
+const REPO_BLOB = 'https://github.com/LucaGenchi/opticalsetup/blob/main/';
+async function checkRepoLinks(label, text) {
+  for (const m of text.matchAll(/https:\/\/github\.com\/LucaGenchi\/opticalsetup\/blob\/main\/([^"'#?\s)\\<]+)/g)) {
+    const path = decodeURIComponent(m[1]);
+    const ok = await readFile(join(ROOT, path)).then(() => true, () => false);
+    if (!ok) throw new Error(`${label}: link to ${REPO_BLOB}${path} names a file that does not exist`);
+  }
+}
+
 function calculatorPage(calc) {
   const base = '../..';
+  for (const panel of calc.panels ?? []) {
+    if (!/^[a-z][a-z0-9-]*$/.test(panel.id) || panel.id === 'calc' || panel.id === 'plot') {
+      throw new Error(`${calc.slug}: panel id ${panel.id} must be a lowercase slug other than calc or plot`);
+    }
+  }
+  if (calc.plotControls && !calc.graphs.length) throw new Error(`${calc.slug}: plot controls need graphs`);
   const refCount = calc.references.length;
+  for (const ref of calc.references) {
+    if (!ref.label || !ref.url || !/^https?:\/\//.test(ref.url)) {
+      throw new Error(`${calc.slug}: each reference needs a label and an HTTP(S) URL`);
+    }
+  }
   // Every [n] in the content must point at a reference that exists.
   const allHtml = JSON.stringify(calc);
   for (const m of allHtml.matchAll(/#ref-(\d+)/g)) {
@@ -145,27 +215,22 @@ ${header(base)}
     <div class="crumb"><a href="${base}/calculators/">Calculators</a> / ${esc(calc.title)}</div>
     <h1>${esc(calc.title)}</h1>
     <p class="tagline">${esc(calc.summary)}</p>
-    <dl class="calc-facts">
-      ${calc.facts.map(f => `<div><dt>${esc(f.label)}</dt><dd>${f.html}</dd></div>`).join('\n      ')}
-    </dl>
 
-    <section class="calc-app" id="calculator" aria-label="Calculator">
-      <noscript><p class="calc-status is-error">This calculator needs JavaScript. The physics and formulas below read without it.</p></noscript>
-      <form class="calc-inputs" id="calc-form" autocomplete="off" novalidate></form>
-      <div class="calc-output">
-        <div class="calc-status" id="calc-status" role="status" aria-live="polite"></div>
-        <table class="calc-results" id="calc-results" aria-label="Results"></table>
-        <ul class="calc-notes" id="calc-notes"></ul>
-      </div>
-    </section>
+    ${calc.columns ? columnsSection(calc.slug, calc.columns) : panelSection('calc')}
+    ${(calc.panels ?? []).map(p => panelSection(p.id, p)).join('\n    ')}
 
-    <section class="calc-graphs" aria-label="Graphs">
+    ${calc.graphs.length ? `<section class="calc-graphs" aria-label="Graphs">
       ${calc.graphs.map((g, i) => `<figure class="calc-chart" id="chart-${g.id}">
         <figcaption><span class="chart-num">${i + 1}</span><span><b>${esc(g.title)}</b><br><span class="chart-note">${esc(g.note)}</span></span></figcaption>
         <div class="chart-host" data-chart="${g.id}"></div>
         <details class="chart-data"><summary>Data table</summary><div class="chart-table" data-table="${g.id}"></div></details>
       </figure>`).join('\n      ')}
-    </section>
+    </section>` : ''}
+    ${calc.plotControls ? `<form class="calc-inputs calc-plot-form" id="plot-form" autocomplete="off" novalidate aria-label="${esc(calc.plotControls.title)}"></form>` : ''}
+
+    <dl class="calc-facts" aria-label="About this calculator">
+      ${calc.facts.map(f => `<div><dt>${esc(f.label)}</dt><dd>${f.html}</dd></div>`).join('\n      ')}
+    </dl>
 
     <nav class="calc-toc" aria-label="On this page">
       ${calc.sections.map(s => `<a href="#${s.id}">${esc(s.title)}</a>`).join('\n      ')}
@@ -204,7 +269,7 @@ ${header(base)}
   <main class="calc-page">
     <div class="hub-hero">
       <h1>Calculators</h1>
-      <p>Each calculator is one physical model on one page: set the parameters, read the results and graphs, then the physics behind them, with every formula, its assumptions, how precisely it is evaluated and the literature it comes from. They run the same functions as the canvas, so a number you check here is the number the app computes. More calculators will be added over time.</p>
+      <p>Each calculator is one physical model on one page: set the parameters, read the results and graphs, then the physics behind them, with every formula, its assumptions, how precisely it is evaluated and the literature it comes from. Material models reuse the canvas’s catalogue and equations; wavelength converters evaluate frequency relations directly. Each page states its scope and reference checks.</p>
     </div>
     <div class="calc-cards">
       ${calculators.map(c => `<a class="calc-card" href="${base}/calculators/${c.slug}/"><b>${esc(c.title)}</b><span>${esc(c.card)}</span></a>`).join('\n      ')}
@@ -218,6 +283,7 @@ ${footer(base)}
 
 async function main() {
   const dir = join(ROOT, 'calculators');
+  for (const calc of calculators) await checkRepoLinks(calc.slug, JSON.stringify(calc));
   const pages = [
     ...calculators.map(calc => [join(dir, calc.slug, 'index.html'), calculatorPage(calc)]),
     [join(dir, 'index.html'), hubPage()],
