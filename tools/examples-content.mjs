@@ -595,6 +595,58 @@ export const exampleEntries = [
     related: ['pulsedlaser', 'eom', 'retroreflector', 'objective', 'sample', 'pmt'],
   },
   {
+    match: 'Retinal imaging — Linnik interferometer with a model eye',
+    title: 'Retinal imaging with a Linnik interferometer',
+    tagline: 'In an ophthalmic interferometer the eye is the sample-arm objective: its own optics focus the light, the retina sends some of it back, and a lens with a mirror reproduces the same arrangement in the reference arm.',
+    html: `
+      <p>Optical coherence tomography (OCT) images the layers of the retina by
+      interfering light returned from the eye with light from a reference
+      mirror. In full-field OCT the whole field is illuminated at once and
+      imaged onto a fast camera instead of scanning a single spot. A
+      <strong>Linnik interferometer</strong> is a Michelson interferometer
+      with an objective lens in each arm; for retinal imaging, the sample-arm
+      objective is the eye itself, so the reference arm carries a lens of
+      similar focal length and a mirror at its focus to match it${cite(1)}.</p>
+      <p>The same lens-and-mirror pair is also how such instruments are
+      tested without a volunteer: Auksorius, Borycki and Wojtkowski chose a
+      2.5 cm lens in front of a resolution target as a close optical
+      approximation of a human eye, and an eye focal length of 2.5 cm in
+      their system estimates${cite(1)}. Their system then destroyed the
+      spatial coherence of the swept laser with a fast deformable membrane, so
+      that multiply scattered light from the retina no longer interferes and
+      corrupts the image with crosstalk.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>The layout is a simplified version of the paper's Fig. 1, with the
+      deformable membrane switched off (a flat mirror, left out here) and the
+      relay lenses omitted. An 840 nm source splits at a 50/50 beamsplitter.
+      The sample arm is a <em>Human eye</em> with a 25 mm focal length, a
+      6 mm dilated pupil and 5 % retinal reflectivity: the collimated beam
+      focuses on the retina, and the reflected part leaves the pupil
+      collimated again. The reference arm is the same thing built from
+      parts — a 25 mm lens with a mirror at its focus — behind a neutral
+      density filter that leaves about 6 % after the double pass, as in the
+      paper. Both returns recombine at the beamsplitter and a tube lens
+      focuses them onto the camera.</p>
+      <p>Change the eye's <em>Retinal reflectivity</em> to see the sample
+      return and the camera reading change, or its <em>Lens focal
+      length</em> to mimic a refractive error: the return then leaves the
+      eye converging or diverging instead of collimated.</p>`,
+    limitations: `<p>The retina is a flat specular mirror, not a layered,
+      diffusely scattering fundus, so the scene has no depth structure to
+      image and no crosstalk to remove. The source is a single fixed
+      wavelength rather than a sweep, and the carrier phase through the eye is
+      not modeled, so the camera adds the two returns' powers instead of
+      forming OCT fringes. The deformable membrane, its spatial-coherence
+      gating, and the paper's three-lens defocus compensation are not
+      modeled.</p>`,
+    citations: [
+      { label: 'E. Auksorius, D. Borycki and M. Wojtkowski, "Crosstalk-free volumetric in vivo imaging of a human retina with Fourier-domain full-field optical coherence tomography," Biomedical Optics Express 10, 6390 (2019)', url: 'https://doi.org/10.1364/BOE.10.006390' },
+    ],
+    resources: [],
+    related: ['eye', 'bs', 'lens', 'mirror', 'filter', 'camera'],
+  },
+  {
     match: 'Michelson interferometer',
     title: 'Michelson interferometer',
     tagline: 'One beamsplitter, two mirror arms, one recombined output — the interferometer behind the Michelson–Morley experiment and, scaled up four kilometers, LIGO.',
