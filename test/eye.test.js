@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createElement, eyePowerD, eyeRefractionD, registry, EYE_MAX_FOCUS_MM, EYE_MIN_FOCUS_MM } from '../sketch/js/elements.js';
+import { createElement, eyePowerD, eyeRefractionD, registry, EYE_MAX_FOCUS_MM, EYE_MAX_PUPIL_MM, EYE_MIN_FOCUS_MM, EYE_MIN_LENGTH_MM } from '../sketch/js/elements.js';
 import { detectorReading, traceAll } from '../sketch/js/raytrace.js';
 import { enhancedReading } from '../sketch/js/detector-measurements.js';
 import { parseSketch } from '../sketch/js/state.js';
@@ -81,14 +81,14 @@ test('a refractive error defocuses the retinal spot', () => {
 });
 
 // The return is read at the free port of a 50/50 splitter in front of the eye.
-function returned({ reflectivity, diffuse, pupil = 4, beamMode = 'line', offset = 0 }) {
+function returned({ reflectivity, diffuse, pupil = 4, length = 16.7, beamMode = 'line', offset = 0 }) {
   const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = beamMode;
   laser.params.avgPowerW = 0.002;
   const splitter = createElement('bs', 100, 0);
   splitter.params.ratio = 0.5;
   const eye = createElement('eye', 250, offset);
-  Object.assign(eye.params, { retinalReflectivity: reflectivity, retinalDiffuse: diffuse, pupil });
+  Object.assign(eye.params, { retinalReflectivity: reflectivity, retinalDiffuse: diffuse, pupil, diameter: length, focus: length });
   const port = createElement('detector', 100, 120);
   port.rot = 90;
   port.params.aperture = 80;
@@ -97,9 +97,9 @@ function returned({ reflectivity, diffuse, pupil = 4, beamMode = 'line', offset 
 }
 
 test('diffuse retinal reflection returns the Lambertian share that leaves through the pupil', () => {
-  for (const pupil of [2, 4, 8]) {
-    const sinAlpha = (pupil / 2) / Math.hypot(pupil / 2, 16.7);
-    const { port, retina } = returned({ reflectivity: 10, diffuse: 100, pupil });
+  for (const [pupil, length] of [[1, 16.7], [2, 16.7], [4, 16.7], [8, 16.7], [EYE_MAX_PUPIL_MM, EYE_MIN_LENGTH_MM]]) {
+    const sinAlpha = (pupil / 2) / Math.hypot(pupil / 2, length);
+    const { port, retina } = returned({ reflectivity: 10, diffuse: 100, pupil, length });
     close(port.signal, 0.5 * 0.1 * sinAlpha ** 2 * 0.5, 1e-12);
     close(retina.signal, 0.5, 1e-12);
   }
@@ -124,4 +124,24 @@ test('the eye reports the power reaching its retina in watts', () => {
   const reading = enhancedReading(eye, elements);
   close(reading.detectedPowerW, 0.002 * 0.5, 1e-12);
   assert.equal(reading.powerCoversAllArrivals, true);
+});
+
+test('the traced pupil is the one the control sets, down to 1 mm and up to 12 mm in the shortest eye', () => {
+  const passes = (pupil, length, height) => {
+    const laser = createElement('cwlaser', 0, height);
+    laser.params.beamMode = 'line';
+    const eye = createElement('eye', 150, 0);
+    Object.assign(eye.params, { pupil, diameter: length, focus: length });
+    traceAll([laser, eye]);
+    return detectorReading(eye.id) !== null;
+  };
+  assert.equal(passes(1, 16.7, 0.4), true);
+  assert.equal(passes(1, 16.7, 0.75), false, 'a 1 mm pupil blocks a ray 0.75 mm off axis');
+  assert.equal(passes(1.5, 16.7, 0.7), true);
+  assert.equal(passes(1.5, 16.7, 0.8), false);
+  assert.equal(passes(EYE_MAX_PUPIL_MM, EYE_MIN_LENGTH_MM, 5.9), true, 'the largest pupil fits the shortest eye');
+  assert.equal(passes(EYE_MAX_PUPIL_MM, EYE_MIN_LENGTH_MM, 6.1), false);
+  assert.ok(0.8 * EYE_MIN_LENGTH_MM >= EYE_MAX_PUPIL_MM, 'no eye length can clip a pupil the control allows');
+  assert.equal(spec('diameter').min, EYE_MIN_LENGTH_MM);
+  assert.equal(spec('pupil').max, EYE_MAX_PUPIL_MM);
 });

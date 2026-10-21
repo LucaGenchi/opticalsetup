@@ -2614,6 +2614,9 @@ const POINT_SOURCE_LEGACY_CAPTURE_MM = 165;
 export const EYE_MIN_FOCUS_MM = 12;
 export const EYE_MAX_FOCUS_MM = 40;
 export const EYE_DEFAULT_LENGTH_MM = 16.7;
+// 0.8 x 15 mm = 12 mm: the largest pupil fits inside the shortest eye's front wall.
+export const EYE_MIN_LENGTH_MM = 15;
+export const EYE_MAX_PUPIL_MM = 12;
 
 export function eyePowerD(params) {
   const f = Number(params?.focus);
@@ -4232,8 +4235,8 @@ export const registry = {
       // air-equivalent length is 1000/60 = 16.7 mm. Sketches saved before
       // these defaults (30 mm eye, 12 mm pupil, 30 mm focal length) load at
       // the values they were drawn with.
-      { key: 'diameter', label: 'Eye length (mm)', type: 'number', min: 12, max: 60, step: 0.1, slider: true, def: EYE_DEFAULT_LENGTH_MM, migrate: () => 30 },
-      { key: 'pupil', label: 'Pupil diameter (mm)', type: 'number', min: 1, max: 12, step: 0.5, def: 4, migrate: () => 12 },
+      { key: 'diameter', label: 'Eye length (mm)', type: 'number', min: EYE_MIN_LENGTH_MM, max: 60, step: 0.1, slider: true, def: EYE_DEFAULT_LENGTH_MM, migrate: () => 30 },
+      { key: 'pupil', label: 'Pupil diameter (mm)', type: 'number', min: 1, max: EYE_MAX_PUPIL_MM, step: 0.5, def: 4, migrate: () => 12 },
       {
         key: 'powerUnit', label: 'Optical power as', type: 'select', def: 'mm',
         options: [['mm', 'Focal length (mm)'], ['D', 'Dioptres (D)']],
@@ -4282,7 +4285,10 @@ export const registry = {
       // eye stops there instead of reaching (and reflecting off) the retina.
       const scale = (el.params.diameter || 30) / 30;
       const radius = 15 * scale, retina = 13 * scale, back = radius + 0.5 * scale;
-      const h = Math.min(radius * 0.8, Math.max(1, el.params.pupil / 2));
+      // The traced pupil is the one the control sets: the shortest eye
+      // (EYE_MIN_LENGTH_MM) still leaves room for the largest pupil inside the
+      // front wall, so the cap below only guards malformed input.
+      const h = Math.min(radius * 0.8, Math.max(0.05, Number(el.params.pupil) / 2 || 0.05));
       return [
         { x1: -radius, y1: -h, x2: -radius, y2: h, kind: 'lens', data: { f: el.params.focus } },
         { x1: -radius, y1: -radius, x2: -radius, y2: -h, kind: 'absorb' },
