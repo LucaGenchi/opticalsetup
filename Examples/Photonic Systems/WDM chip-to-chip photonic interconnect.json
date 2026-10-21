@@ -53,7 +53,6 @@
       "label": "CH4 · 1560 nm",
       "showLabel": true,
       "params": {
-        "enabled": true,
         "wavelength": 1560,
         "avgPowerW": 0.01,
         "beamMode": "beam",
@@ -74,7 +73,6 @@
       "label": "CH3 · 1555 nm",
       "showLabel": true,
       "params": {
-        "enabled": true,
         "wavelength": 1555,
         "avgPowerW": 0.01,
         "beamMode": "beam",
@@ -95,7 +93,6 @@
       "label": "CH2 · 1550 nm",
       "showLabel": true,
       "params": {
-        "enabled": true,
         "wavelength": 1550,
         "avgPowerW": 0.01,
         "beamMode": "beam",
@@ -116,7 +113,6 @@
       "label": "CH1 · 1545 nm",
       "showLabel": true,
       "params": {
-        "enabled": true,
         "wavelength": 1545,
         "avgPowerW": 0.01,
         "beamMode": "beam",
@@ -139,7 +135,6 @@
       "params": {
         "aperture": 18,
         "deflect": 0,
-        "rfMHz": 80,
         "zero": false,
         "eff": 0.9,
         "modulate": true,
@@ -161,7 +156,6 @@
       "params": {
         "aperture": 18,
         "deflect": 0,
-        "rfMHz": 80,
         "zero": false,
         "eff": 0.9,
         "modulate": true,
@@ -183,7 +177,6 @@
       "params": {
         "aperture": 18,
         "deflect": 0,
-        "rfMHz": 80,
         "zero": false,
         "eff": 0.9,
         "modulate": true,
@@ -333,11 +326,7 @@
       "label": "RX1 · 1545",
       "showLabel": true,
       "params": {
-        "aperture": 26,
-        "timeSpanNs": 0,
-        "timeOffsetNs": 0,
-        "sync": false,
-        "riseTimeNs": 1
+        "aperture": 26
       }
     },
     {
@@ -349,11 +338,7 @@
       "label": "RX2 · 1550",
       "showLabel": true,
       "params": {
-        "aperture": 26,
-        "timeSpanNs": 0,
-        "timeOffsetNs": 0,
-        "sync": false,
-        "riseTimeNs": 1
+        "aperture": 26
       }
     },
     {
@@ -365,27 +350,19 @@
       "label": "RX3 · 1555",
       "showLabel": true,
       "params": {
-        "aperture": 26,
-        "timeSpanNs": 0,
-        "timeOffsetNs": 0,
-        "sync": false,
-        "riseTimeNs": 1
+        "aperture": 26
       }
     },
     {
       "id": "pd4",
       "type": "detector",
-      "x": 1000,
+      "x": 965,
       "y": 330,
       "rot": 0,
       "label": "RX4 · 1560",
       "showLabel": true,
       "params": {
-        "aperture": 26,
-        "timeSpanNs": 0,
-        "timeOffsetNs": 0,
-        "sync": false,
-        "riseTimeNs": 1
+        "aperture": 26
       }
     },
     {
@@ -397,7 +374,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "**Try:** disable one laser · detune a channel across a dichroic cutoff · increase fiber loss.  Expected: one RX port vanishes · routing changes · all RX powers fall.",
+        "text": "**Try:** delete one laser · detune a channel across a dichroic cutoff · increase fiber loss.  Expected: that RX port goes dark · the channel is no longer routed to its port · all RX powers fall.",
         "fontSize": 11,
         "fill": "#44505c"
       }
@@ -413,12 +390,20 @@
           "y": 330
         },
         {
-          "x": 525,
-          "y": 355
+          "x": 505,
+          "y": 330
         },
         {
-          "x": 565,
-          "y": 305
+          "x": 535,
+          "y": 352
+        },
+        {
+          "x": 560,
+          "y": 308
+        },
+        {
+          "x": 590,
+          "y": 330
         },
         {
           "x": 610,
@@ -443,7 +428,8 @@
         "na": 0.04,
         "focal": 20,
         "dia": 4
-      }
+      },
+      "lengthM": 1
     }
   ]
 }

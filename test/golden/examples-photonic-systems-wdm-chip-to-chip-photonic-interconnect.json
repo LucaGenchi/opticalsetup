@@ -1,0 +1,295 @@
+{
+ "elements": 23,
+ "beams": 1,
+ "drawables": {
+  "count": 2082,
+  "byType": {
+   "poly": 2024,
+   "path": 58
+  },
+  "colors": {
+   "#6e3b3b": 2082
+  },
+  "points": 8212,
+  "sum": [
+   2829952.76,
+   2592679.53
+  ],
+  "bbox": [
+   52,
+   79.2263,
+   6896.8703,
+   6336.8703
+  ],
+  "digest": "5bb7c4a3"
+ },
+ "drawnElements": {
+  "figureframe:frame": "bba7ebee",
+  "textlabel:title": "f88c149b",
+  "textlabel:subtitle": "4cb3a040",
+  "cwlaser:laser1560": "2bbe6fcb",
+  "cwlaser:laser1555": "2bbe6fcb",
+  "cwlaser:laser1550": "2bbe6fcb",
+  "cwlaser:laser1545": "2bbe6fcb",
+  "aom:aom3": "1f9b65b9",
+  "aom:aom2": "1f9b65b9",
+  "aom:aom1": "1f9b65b9",
+  "dichroic:mux3": "7a0ec554",
+  "dichroic:mux2": "7a0ec554",
+  "dichroic:mux1": "7a0ec554",
+  "textlabel:txnote": "6911a1ea",
+  "textlabel:rxnote": "63f24df1",
+  "dichroic:demux1": "7a0ec554",
+  "dichroic:demux2": "7a0ec554",
+  "dichroic:demux3": "7a0ec554",
+  "detector:pd1": "31341774",
+  "detector:pd2": "31341774",
+  "detector:pd3": "31341774",
+  "detector:pd4": "31341774",
+  "textlabel:try": "73aa063c"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "readouts": {
+  "detector:pd1": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 1545,
+    "bandMin": 1545,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#ff8989",
+    "convergence": {
+     "diverging": true,
+     "fullAngleDeg": 4.58488549,
+     "slopePerMm": 0.00497564145
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 0.429746664,
+    "detectorType": "Photodetector",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": 1,
+     "s2": 0,
+     "s3": 0
+    },
+    "outputSignal": 0.429746664,
+    "polarization": "Linear 0°",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "detector",
+    "samples": 9,
+    "saturated": false,
+    "signal": 0.429746664,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.429746664,
+      "sourceId": "laser1545"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#6e3b3b",
+      "continuum": false,
+      "power": 0.429746664,
+      "sourceId": "laser1545",
+      "wavelength": 1545,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 16.084873,
+    "wavelength": 1545
+   }
+  },
+  "detector:pd2": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 1550,
+    "bandMin": 1550,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#ff8989",
+    "convergence": {
+     "diverging": true,
+     "fullAngleDeg": 4.58488549,
+     "slopePerMm": 0.00343625427
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 0.429746664,
+    "detectorType": "Photodetector",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": 1,
+     "s2": 0,
+     "s3": 0
+    },
+    "outputSignal": 0.429746664,
+    "polarization": "Linear 0°",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "detector",
+    "samples": 9,
+    "saturated": false,
+    "signal": 0.429746664,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.429746664,
+      "sourceId": "laser1550"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#6e3b3b",
+      "continuum": false,
+      "power": 0.429746664,
+      "sourceId": "laser1550",
+      "wavelength": 1550,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 23.29064,
+    "wavelength": 1550
+   }
+  },
+  "detector:pd3": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 1555,
+    "bandMin": 1555,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#ff8989",
+    "convergence": {
+     "diverging": true,
+     "fullAngleDeg": 3.43866415,
+     "slopePerMm": 0.002624748
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 0.334247405,
+    "detectorType": "Photodetector",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": 1,
+     "s2": 0,
+     "s3": 0
+    },
+    "outputSignal": 0.334247405,
+    "polarization": "Linear 0°",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "detector",
+    "samples": 7,
+    "saturated": false,
+    "signal": 0.334247405,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.334247405,
+      "sourceId": "laser1555"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#6e3b3b",
+      "continuum": false,
+      "power": 0.334247405,
+      "sourceId": "laser1555",
+      "wavelength": 1555,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 22.866963,
+    "wavelength": 1555
+   }
+  },
+  "detector:pd4": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 1560,
+    "bandMin": 1560,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#ff8989",
+    "convergence": {
+     "diverging": true,
+     "fullAngleDeg": 3.43866415,
+     "slopePerMm": 0.0029763814
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 0.742772011,
+    "detectorType": "Photodetector",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": 1,
+     "s2": 0,
+     "s3": 0
+    },
+    "outputSignal": 0.742772011,
+    "polarization": "Linear 0°",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "detector",
+    "samples": 7,
+    "saturated": false,
+    "signal": 0.742772011,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.742772011,
+      "sourceId": "laser1560"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#6e3b3b",
+      "continuum": false,
+      "power": 0.742772011,
+      "sourceId": "laser1560",
+      "wavelength": 1560,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 20.1654315,
+    "wavelength": 1560
+   }
+  }
+ },
+ "fibers": {}
+}
