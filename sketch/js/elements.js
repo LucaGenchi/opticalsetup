@@ -2610,6 +2610,34 @@ function opaStateCore(plan, p) {
 const POINT_SOURCE_GLOW_MM = 110;
 const POINT_SOURCE_LEGACY_CAPTURE_MM = 165;
 
+// Human eye (reduced, in air): focal-length range and the 60 D default.
+export const EYE_MIN_FOCUS_MM = 12;
+export const EYE_MAX_FOCUS_MM = 40;
+export const EYE_DEFAULT_LENGTH_MM = 16.7;
+
+export function eyePowerD(params) {
+  const f = Number(params?.focus);
+  return Number.isFinite(f) && f > 0 ? 1000 / f : NaN;
+}
+
+// The spectacle correction, at the eye's lens, that would focus distant
+// light on this retina: negative for a too-strong (myopic) eye, positive for
+// a too-weak (hyperopic) one.
+export function eyeRefractionD(params) {
+  const length = Number(params?.diameter);
+  const power = eyePowerD(params);
+  if (!(length > 0) || !Number.isFinite(power)) return NaN;
+  return 1000 / length - power;
+}
+
+function eyeRefractionLabel(params) {
+  const error = eyeRefractionD(params);
+  if (!Number.isFinite(error)) return '—';
+  if (Math.abs(error) < 0.125) return '0.00 D (emmetropic)';
+  const sign = error > 0 ? '+' : '−';
+  return `${sign}${Math.abs(error).toFixed(2)} D (${error > 0 ? 'hyperopic' : 'myopic'})`;
+}
+
 export const registry = {
 
   // ---------------- Sources ----------------
@@ -4199,10 +4227,39 @@ export const registry = {
     dataPort: el => ({ x: (el.params.diameter || 30) / 2 + 3, y: 0 }),
     size_: el => ({ w: (el.params.diameter || 30) + 6, h: (el.params.diameter || 30) + 6 }),
     params: [
-      { key: 'diameter', label: 'Eye diameter (mm)', type: 'number', min: 18, max: 60, step: 1, def: 30 },
-      { key: 'pupil', label: 'Pupil diameter (mm)', type: 'number', min: 2, max: 12, step: 0.5, def: 12 },
-      { key: 'focus', label: 'Lens focal length (mm)', type: 'number', min: 20, max: 35, step: 0.5, def: 30 },
-      { key: 'retinalReflectivity', label: 'Retinal reflectivity (%)', type: 'number', min: 0, max: 100, step: 1, def: 0 },
+      // A reduced eye in air: one thin lens at the pupil, the retina one eye
+      // length behind it. The defaults are the textbook 60 D eye, whose
+      // air-equivalent length is 1000/60 = 16.7 mm. Sketches saved before
+      // these defaults (30 mm eye, 12 mm pupil, 30 mm focal length) load at
+      // the values they were drawn with.
+      { key: 'diameter', label: 'Eye length (mm)', type: 'number', min: 12, max: 60, step: 0.1, slider: true, def: EYE_DEFAULT_LENGTH_MM, migrate: () => 30 },
+      { key: 'pupil', label: 'Pupil diameter (mm)', type: 'number', min: 1, max: 12, step: 0.5, def: 4, migrate: () => 12 },
+      {
+        key: 'powerUnit', label: 'Optical power as', type: 'select', def: 'mm',
+        options: [['mm', 'Focal length (mm)'], ['D', 'Dioptres (D)']],
+      },
+      {
+        key: 'focus', label: 'Lens focal length (mm)', type: 'number', min: EYE_MIN_FOCUS_MM, max: EYE_MAX_FOCUS_MM, step: 0.1, slider: true,
+        def: EYE_DEFAULT_LENGTH_MM, migrate: () => 30, show: p => p.powerUnit !== 'D',
+      },
+      // The dioptre field is a view of the same focal length, so a sketch
+      // stores one number whichever unit it was edited in.
+      {
+        key: 'powerD', label: 'Eye power (D)', type: 'derived',
+        min: Math.round(1000 / EYE_MAX_FOCUS_MM * 4) / 4, max: Math.round(1000 / EYE_MIN_FOCUS_MM * 4) / 4, step: 0.25, slider: true,
+        get: p => Math.round(eyePowerD(p) * 100) / 100,
+        set: (p, value) => {
+          const D = Number(value);
+          if (Number.isFinite(D) && D > 0) p.focus = Math.min(EYE_MAX_FOCUS_MM, Math.max(EYE_MIN_FOCUS_MM, 1000 / D));
+        },
+        show: p => p.powerUnit === 'D',
+      },
+      { key: 'refraction', label: 'Refractive error', type: 'readout', wide: true, readout: p => eyeRefractionLabel(p) },
+      { key: 'retinalReflectivity', label: 'Retinal reflectivity (%)', type: 'number', min: 0, max: 100, step: 0.1, slider: true, def: 0 },
+      {
+        key: 'retinalDiffuse', label: 'Diffuse share of reflection (%)', type: 'number', min: 0, max: 100, step: 1, def: 0,
+        show: p => Number(p.retinalReflectivity) > 0,
+      },
     ],
     svg(el) {
       const scale = (el.params.diameter || 30) / 30;
@@ -4232,7 +4289,16 @@ export const registry = {
         { x1: -radius, y1: h, x2: -radius, y2: radius, kind: 'absorb' },
         { x1: -radius, y1: -radius, x2: back, y2: -radius, kind: 'absorb' },
         { x1: -radius, y1: radius, x2: back, y2: radius, kind: 'absorb' },
-        { x1: radius, y1: -retina, x2: radius, y2: retina, kind: 'retina', data: { aperture: 2 * retina, detectorType: 'Retina', refl: el.params.retinalReflectivity ?? 0 } },
+        {
+          x1: radius, y1: -retina, x2: radius, y2: retina, kind: 'retina',
+          data: {
+            aperture: 2 * retina, detectorType: 'Retina',
+            refl: el.params.retinalReflectivity ?? 0, diffuse: el.params.retinalDiffuse ?? 0,
+            // where the pupil is, seen from the retina: diffusely scattered
+            // light is only sent towards the part of the eye it can leave by
+            pupilDistance: 2 * radius, pupilHalf: h,
+          },
+        },
         { x1: back, y1: -radius, x2: back, y2: radius, kind: 'absorb' },
       ];
     },
@@ -5930,7 +5996,7 @@ const ELEMENT_HELP = {
   detector: 'Measures qualitative ray signal, spectrum, polarization, and spot span.',
   pmt: 'Multiplies a faint signal into a readable one, and reports whether it actually clears the tube\u2019s own dark floor.',
   camera: 'Measures a pixel-integrated one-dimensional intensity profile and resolves supported same-source interference from sized CW, pulsed and supercontinuum beams.',
-  eye: 'Focuses through a configurable pupil, reports the qualitative retinal signal and spot, and can reflect part of it back out.',
+  eye: 'A reduced eye: focuses through a configurable pupil, set by focal length or dioptres; reports the retinal signal, spot and power; and can reflect part of the light back, mirror-like or diffusely.',
   display: 'Shows the live qualitative output of a linked photodetector, PMT, camera, or retina.',
   aom: 'Deflects first-order light with a configurable modulation efficiency and zero order, under square, sine or sawtooth RF modulation (the ramp sweeping from falling through triangular to rising). A square gate can also draw both orders chopped in opposition, so the switching stays visible on a beam drawn as a steady line.',
   phasemodulator: 'Writes a voltage-driven optical path across the whole beam without touching its polarization \u2014 invisible alone, and an amplitude modulator in one arm of an interferometer.',
