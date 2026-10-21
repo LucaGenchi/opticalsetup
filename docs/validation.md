@@ -28,14 +28,15 @@ See `docs/adding-physics.md` for how a new model earns a row in this table.
 
 | Model | App functions | Reference | Cases | Tightest / loosest tolerance | Scope | Outside that scope |
 | --- | --- | --- | --- | --- | --- | --- |
-| **Catalogue glass dispersion (Sellmeier)** | `sketch/js/glass.js: glassIndex, glassGroupIndex, glassGVD, glassAbbe, glassGroupDelayDifferenceFs, glassDispersion` | Published Sellmeier coefficients evaluated directly; derivatives by five-point finite differences ([code](../validation/reference/sellmeier.py)) | 67 | 1e-07 / 0.005 | Room-temperature catalogue curves inside each glass's stated range; no absorption, temperature or stress dependence. | Clamps: `glassIndex` and `glassGVD` evaluate the fit at the nearest edge of the glass's range and return that value (N-SF11 at 300 nm returns its 370 nm index). `isWavelengthInGlassRange` reports whether a wavelength is inside; the tracer uses it to colour out-of-range light, but the getters themselves do not refuse. The continuous glassDispersion calculator path instead returns null outside the fit domain. |
+| **Catalogue glass dispersion (Sellmeier)** | `sketch/js/glass.js: glassIndex, glassGroupIndex, glassGVD, glassAbbe, glassGroupDelayDifferenceFs` | Published Sellmeier coefficients evaluated directly; derivatives by five-point finite differences ([code](../validation/reference/sellmeier.py)) | 46 | 1e-07 / 0.005 | Room-temperature catalogue curves inside each glass's stated range; no absorption, temperature or stress dependence. | Clamps: `glassIndex` and `glassGVD` evaluate the fit at the nearest edge of the glass's range and return that value (N-SF11 at 300 nm returns its 370 nm index). `isWavelengthInGlassRange` reports whether a wavelength is inside; the tracer uses it to colour out-of-range light, but the getters themselves do not refuse. |
 | **Transform limit, quadratic-phase stretching, autocorrelation factors** | `sketch/js/spectrum.js: transformLimitedBandwidthNm; sketch/js/glass.js: gaussianPulseDurationAfterGDD, sech2PulseDurationAfterGDD, AUTOCORRELATION_FACTORS` | Direct Fourier propagation of the analytic envelopes on a 16384-point grid ([code](../validation/reference/pulse.py)) | 16 | 0.001 / 0.002 | Transform-limited input, second-order spectral phase only; no third-order dispersion or amplitude reshaping. | No range gate: `transformLimitedBandwidthNm` returns a bandwidth for any positive duration, including unphysical ones (0.1 fs at 800 nm gives 9415 nm). The pulsed laser's own controls bound what a user can author; the functions do not. |
 | **Argon hollow capillary: dispersion, Kerr coefficient, ideal loss** | `sketch/js/fiber.js: hollowCoreCoefficients, marcatiliLossDbPerM` | Peck-Fisher refractivity with finite-difference derivatives; Marcatili-Schmeltzer HE11 formulas evaluated directly, including the paper's worked value ([code](../validation/reference/argon_capillary.py)) | 11 | 1e-09 / 0.003 | 468-2059 nm (the refractivity fit), smooth straight silica capillary, Gaussian effective-area convention pi (0.64 a)^2, n2 scaled with pressure only. | Declines: `hollowCoreCoefficients` returns null outside 468-2059 nm, and the fiber reports ARGON_OUT_OF_RANGE with the light continuing on argon's linear dispersion. `marcatiliLossDbPerM` has no gate of its own and evaluates silica's clamped index outside its range. |
 | **Scalar envelope propagation: GDD, Kerr SPM and loss (hollow-core solver)** | `sketch/js/pulse-field.js: propagateEnvelope, fieldMetrics` | Independent symmetric split-step Fourier solver in Agrawal's convention on a 2048-point grid with 4-8x more steps, plus one analytic zero-dispersion limit ([code](../validation/reference/nlse.py)) | 6 | 1e-06 / 0.01 | Single mode, scalar, instantaneous Kerr response, second-order dispersion only; no Raman, self-steepening, ionisation or mode coupling. | Declines: `propagateEnvelope` refuses a pulse it cannot represent (unknown energy, reshaped spectrum, a field that leaves its time window) and the light continues with linear dispersion only, carrying a caveat to every downstream readout. |
 | **Thick singlet cardinal points, Stokes retarder and analyzer, etalon finesse** | `sketch/js/elements.js: thickLensCardinals; sketch/js/polarization.js: retarder, analyzerTransmission; sketch/js/etalon.js: reflectivityForFinesse, finesseForReflectivity` | ABCD system matrix; Goldstein Mueller matrices with Jones-derived circular cases; reflectivity finesse inverted by bisection, with the exact Airy finesse recorded alongside ([code](../validation/reference/paraxial.py)) | 26 | 1e-09 / 1e-08 | Paraxial (Gaussian) optics for the lens; fully polarized Stokes vectors; lossless etalon mirrors of equal reflectivity. | No range gate. The finesse inversion accepts settings well below the high-finesse limit: at the minimum linewidth the etalon allows (finesse about 1.67, R about 0.19) the approximation is more than 10 % from the Airy value, and below R = 0.172 the Airy linewidth does not exist at all while the app still reports a finesse. |
 | **Optical parametric amplification: plane-wave gain, pulse-averaged seeded gain, depleted conversion** | `sketch/js/parametric.js: parametricGainCoefficient, parametricSmallSignalGain, parametricPair; sketch/js/parametric-amplifier.js: allocateParametricAmplifier; calculators/opa/coupled-wave.js: coupledWaveConversion` | Gain coefficient in the angular-frequency form; undepleted gain by RK4 of the linear coupled equations and the analytic cosh^2; pulse-averaged gain by Simpson integration on a 20000-interval grid; depleted conversion from the closed-form Jacobi-elliptic solution (dk = 0) and a 60000-step RK4 ([code](../validation/reference/opa.py)) ([code](../validation/reference/opa.py)) | 26 | 1e-09 / 2e-06 | Plane waves, collinear, monochromatic within each instant (quasi-static in time), unseeded idler, nondegenerate; Gaussian intensity envelopes; depleted conversion for a single seed. | The gain functions return null for invalid wavelengths or non-finite inputs; the allocator reports explicit states (degenerate, double-seeded, repetition mismatch, unknown duration) instead of a gain. Nothing here models beam profiles, walk-off, group-velocity mismatch, dispersion inside the crystal or parametric noise. |
 | **Time-integrated broadband self-interference** | `spectral-coherence.js: spectralFieldResult` | Complex fields with Simpson quadrature in reciprocal wavelength ([code](../validation/reference/broadband_interference.py)) | 16 | 1e-05 / 1e-05 | Split copies of one wavelength-Gaussian or wavelength-flat source through ideal phase-known optics; time-integrated power | Unresolved wavelength or path budget returns null; caller labels power-only fallback |
-| **SHG and CARS vacuum-wavelength conversions** | `calculators/shg/shg-calculator.js: computeShg; calculators/cars/cars-calculator.js: computeCars` | SI frequency arithmetic plus exact rational wavelength anchors ([code](../validation/reference/wavelength_conversion.py)) | 13 | 1e-09 / 1e-09 | Vacuum wavelengths, frequency identities only; no phase matching, yield or resonance spectrum. | Declines non-finite or out-of-range inputs, non-positive Raman shifts and impossible inferred Stokes frequencies; outputs may lie outside the input interval. |
+| **Nonlinear frequency conversion and coherent Raman scattering** | `calculators/nonlinear-conversion/conversion-calculator.js: computeConversion (through sketch/js/parametric.js: mixWavelength, parametricPair); calculators/coherent-raman/crs-calculator.js: computeCrs, computeResolution` | SI frequency arithmetic with exact rational anchors; resolution from a quadrature Fourier transform of the pump-Stokes driving term ([code](../validation/reference/wavelength_conversion.py)) | 43 | 1e-12 / 0.0025 | Vacuum wavelengths and energy conservation only; Gaussian, transform-limited or equally chirped pulses for the resolution; no phase matching, yield, resonance spectrum or chirp mismatch. | Declines non-finite or out-of-range inputs, equal DFG inputs, an OPO output not longer than the pump, reversed or equal pump and Stokes, non-positive shifts and inferred pump or Stokes wavelengths outside 100-20000 nm; CSRS alone is omitted when the Raman frequency is not below the probing frequency. |
+| **Material dispersion calculator: n, n_g, GVD, TOD and pulse stretching** | `calculators/dispersion/materials.js: materialDispersion, materialAbbe; calculators/dispersion/dispersion-calculator.js: computeDispersion` | Published dispersion formulas in their printed form, 50-digit decimal arithmetic, k(omega) differentiated numerically in angular frequency; SCHOTT catalogue nd and Vd ([code](../validation/reference/material_dispersion.py)) | 96 | 1e-09 / 0.005 | Room-temperature published fits inside each stated domain; principal indices of birefringent crystals; transform-limited Gaussian input stretched by GDD only; no absorption, temperature, stress or air-to-vacuum correction. | Declines: `materialDispersion` and `computeDispersion` return null or an error outside each material's fit domain, for a bandwidth not smaller than the central wavelength, and for plot ranges outside the domain. A bandwidth edge outside the domain removes only the delay spread. |
 
 ## Not yet checked
 
@@ -43,9 +44,9 @@ Quantitative models the app ships with no reference check. Each needs a
 reference, a tolerance and an error budget before it can move into the
 table above.
 
-- **OPO signal and idler wavelengths, Manley-Rowe power split and depletion** — `sketch/js/parametric.js`
+- **OPO linewidths, pulse durations and depletion (its wavelengths and Manley-Rowe split are checked through the conversion calculator)** — `sketch/js/parametric.js`
 - **Supercontinuum spectral range from pump and medium** — `sketch/js/parametric.js`
-- **Sum- and difference-frequency mixing wavelengths and durations** — `sketch/js/parametric.js`
+- **Sum- and difference-frequency mixing durations, widths and overlap (the wavelengths are checked through the conversion calculator)** — `sketch/js/parametric.js`
 - **Objective focal length, NA, acceptance angle and pupil relations** — `sketch/js/objective.js`
 - **Acousto-optic deflection angle and efficiency** — `sketch/js/acousto-optic.js, sketch/js/aotf.js`
 - **Grating and prism dispersion as the tracer applies them, including order efficiency** — `sketch/js/raytrace.js`
@@ -61,9 +62,9 @@ table above.
 ### Catalogue glass dispersion (Sellmeier)
 
 - **Provenance.** Coefficients transcribed from the manufacturer data sheets and Malitson's paper; the anchors are the same data sheet's tabulated catalogue values, not established as independent of the data behind the fit.
-- **Cases run.** 365-2325 nm for N-BK7 (the data sheet's own line list); 400-1550 nm evaluated for every catalogue glass; continuous calculator path also checked at all fit endpoints and fractional wavelengths.
+- **Cases run.** 365-2325 nm for N-BK7 (the data sheet's own line list); 400-1550 nm evaluated for every catalogue glass.
 - **Method.** Derivatives by five-point finite differences at h = 1e-4 um. Halving the step changes the GVD by the amounts below -- evidence that the tolerance sits well above the step's influence at these wavelengths, not a bound on the total error.
-- **Tolerances.** Index 1e-7 and group index 1e-6 are algebraic agreement between two evaluations of the same closed form. GVD 2e-4 covers the finite-difference truncation; 2e-3 at 587.6 nm covers the app's 1 nm GVD bucket, which evaluates 588 nm. Continuous calculator GVD has no bucket offset and uses 2e-4 relative, or 2e-4 fs^2/mm absolute near zero. The published anchors use 1e-5 absolute, the data sheet's own rounding.
+- **Tolerances.** Index 1e-7 and group index 1e-6 are algebraic agreement between two evaluations of the same closed form. GVD 2e-4 covers the finite-difference truncation; 2e-3 at 587.6 nm covers the app's 1 nm GVD bucket, which evaluates 588 nm. The published anchors use 1e-5 absolute, the data sheet's own rounding.
 - **Observed change on refinement** (`validation/convergence.py`; sensitivity at the listed settings, not a bound on the total error):
   - GVD of nbk7 at 800 nm: h = 1e-4 um → h = 5e-5 um changes it by 6.84e-06 relative (44.6518432 → 44.65214853).
   - GVD of nbk7 at 1550 nm: h = 1e-4 um → h = 5e-5 um changes it by 7.08e-05 relative (-24.63182683 → -24.63008194).
@@ -165,14 +166,38 @@ Sources:
 
 - Kop and Sprik, Phase-sensitive interferometry with ultrashort optical pulses, Rev. Sci. Instrum. 66, 5459-5463 (1995), equations (1)-(3).
 
-### SHG and CARS vacuum-wavelength conversions
+### Nonlinear frequency conversion and coherent Raman scattering
 
-- **Provenance.** Frequency conservation derived from NIST's SHG and CARS explanations; exact c = 299792458 m/s.
-- **Cases run.** Both SHG directions; CARS wavelength and shift modes, same and distinct probe, fractional wavelengths and input endpoints.
-- **Method.** Closed-form arithmetic; no discretisation or iteration.
-- **Tolerances.** 1e-9 relative for floating-point frequency identities, not experimental accuracy.
+- **Provenance.** Energy conservation written from Boyd; CARS and CSRS frequencies from Cheng and Xie and Heuke and Rigneault; the resolution check recomputes the excitation-amplitude width that Eq. (5) of Mohseni et al. expresses in closed form, and the paper's 20.8 ps cm^-1 prefactor anchors it.
+- **Cases run.** SHG and THG both directions; SFG; DFG in both input orders and near degeneracy; OPO from signal, idler and the degenerate point; coherent Raman in all three input modes, with and without a distinct probe, with and without a CSRS solution; resolution for equal, unequal, short and equally chirped pulses.
+- **Method.** Closed-form arithmetic; the resolution quadrature uses 4001 points over +/-14 effective widths and an 80-step bisection.
+- **Tolerances.** 1e-9 relative for floating-point identities and for the spectrally accurate quadrature; exact rational anchors at 1e-12; the published three-figure prefactor at half a unit in its last place (0.25 %).
 
 Sources:
 
-- NIST, Frequency Conversion Interfaces for Photonic Quantum Systems, 1064 to 532 nm example — https://www.nist.gov/programs-projects/frequency-conversion-interfaces-photonic-quantum-systems
-- NIST, Broadband Coherent Anti-Stokes Raman Scattering Microscopy, omega_as = omega_p - omega_s + omega_probe — https://www.nist.gov/programs-projects/broadband-coherent-anti-stokes-raman-scattering-bcars-microscopy
+- R. W. Boyd, Nonlinear Optics, 4th ed., Academic Press (2020), chapters 1-2 (energy conservation, Manley-Rowe)
+- J.-X. Cheng and X. S. Xie, J. Phys. Chem. B 108, 827-840 (2004), doi:10.1021/jp035693v (CARS)
+- S. Heuke and H. Rigneault, Nat. Commun. 14, 3337 (2023), doi:10.1038/s41467-023-38941-4 (CSRS at 2 omega_S - omega_p)
+- M. Mohseni, C. Polzer and T. Hellerer, Opt. Express 26, 10230-10241 (2018), doi:10.1364/OE.26.010230, Eq. (5) (resolution)
+
+### Material dispersion calculator: n, n_g, GVD, TOD and pulse stretching
+
+- **Provenance.** Coefficients as printed in the refractiveindex.info database (CC0) for each primary source, entered in the database's own formula conventions; SCHOTT nd and Vd from the same catalogue release as the coefficients, so they check transcription and the Abbe evaluation, not the fit itself.
+- **Cases run.** Every material at both fit endpoints, a fractional interior wavelength and 800 or 1550 nm; fused silica at its zero-GVD crossing; three thickness and bandwidth cases for GDD, TOD, delays and Gaussian stretching.
+- **Method.** Central differences in angular frequency at h = 1e-7 omega in 50-digit arithmetic: truncation ~1e-14 relative, round-off ~1e-40.
+- **Tolerances.** 1e-9 relative is double-precision agreement with a numerically exact reference (1e-9 fs^2/mm absolute at the zero-GVD crossing; 1e-8 for the delay spread, a difference of two group indices). Catalogue anchors use half a unit of the last quoted digit.
+
+Sources:
+
+- SCHOTT AG, optical glass Zemax catalogue 2017-01-20 and data sheets (N-BK7, N-FK51A, N-SF5, N-SF10, N-SF11, N-SF14, N-SF57, N-LASF9)
+- I. H. Malitson, J. Opt. Soc. Am. 55, 1205 (1965), doi:10.1364/JOSA.55.001205 (fused silica)
+- I. H. Malitson, Appl. Opt. 2, 1103 (1963), doi:10.1364/AO.2.001103 (CaF2)
+- I. H. Malitson and M. J. Dodge, J. Opt. Soc. Am. 62, 1405 (1972); M. J. Dodge, Handbook of Laser Science and Technology IV (1986) (sapphire)
+- G. Ghosh, Opt. Commun. 163, 95 (1999), doi:10.1016/S0030-4018(99)00091-7 (crystalline quartz)
+- G. Tamosauskas et al., Opt. Mater. Express 8, 1410 (2018), doi:10.1364/OME.8.001410 (BBO)
+- D. E. Zelmon, D. L. Small and R. Page, Appl. Opt. 37, 4933 (1998), doi:10.1364/AO.37.004933 (YAG)
+- J. Connolly et al., Proc. SPIE 181, 141 (1979); B. Tatian, Appl. Opt. 23, 4477 (1984) (ZnSe and Si fits)
+- C. D. Salzberg and J. J. Villa, J. Opt. Soc. Am. 47, 244 (1957), doi:10.1364/JOSA.47.000244 (Si)
+- M. Daimon and A. Masumura, Appl. Opt. 46, 3811 (2007), doi:10.1364/AO.46.003811 (water, 20 C)
+- P. E. Ciddor, Appl. Opt. 35, 1566 (1996), doi:10.1364/AO.35.001566 (standard dry air)
+- M. N. Polyanskiy, Sci. Data 11, 94 (2024), doi:10.1038/s41597-023-02898-2 (refractiveindex.info database, CC0: transcription source)

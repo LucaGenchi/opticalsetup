@@ -1,9 +1,14 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 // DOM-free schema parsing shared by the small model calculators.
+
+// An input with `when` is active while that checkbox is ticked, or, with
+// `whenValue`, while that select holds the value (or one of an array of them).
 export function isInputActive(input, raw) {
-  return !input.when || (input.whenValue === undefined
-    ? Boolean(raw[input.when]) : raw[input.when] === input.whenValue);
+  if (!input.when) return true;
+  if (input.whenValue === undefined) return Boolean(raw[input.when]);
+  const wanted = Array.isArray(input.whenValue) ? input.whenValue : [input.whenValue];
+  return wanted.includes(raw[input.when]);
 }
 
 export function parseInputs(inputs, raw) {

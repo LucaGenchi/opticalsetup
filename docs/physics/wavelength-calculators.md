@@ -1,86 +1,85 @@
-# Dispersion, SHG and CARS calculators
+# Material dispersion, nonlinear conversion and coherent Raman calculators
 
-All wavelengths below are vacuum wavelengths in nm. These pages evaluate
-catalogue fits or frequency identities; they do not predict whether a setup
-will generate light, its efficiency, or a measured spectrum.
+All wavelengths are vacuum wavelengths in nm. These pages evaluate published
+fits and frequency identities. They do not predict whether a setup generates
+light, how efficiently, or what a measured spectrum looks like.
 
-## Sellmeier dispersion
+## Material dispersion (`calculators/dispersion/`)
 
-For wavelength λ in µm, the room-temperature three-term fit is
-`n² = 1 + Σ B_i λ²/(λ² − C_i)`. B is dimensionless and C is in µm².
-The calculator takes the coefficients and supported domains from the app's
-glass catalogue: N-BK7 300–2500 nm, fused silica 210–3710 nm, N-SF5
-380–2500 nm, and N-SF11 370–2500 nm. These are fit domains, not claims
-about transmission throughout the interval. No temperature, absorption,
-stress, coatings or batch tolerances are modelled.
+`materials.js` holds the catalogue and the physics, DOM-free. Each material
+keeps its source's formula form, with λ in µm:
 
-With derivatives taken with respect to wavelength, `n_g = n − λ dn/dλ`
-and `β₂ = λ³/(2πc²) d²n/dλ²`. With λ in µm and the second derivative
-in µm⁻², multiply the latter by 10²¹ to get fs²/mm, using
-`c = 299792458 m/s`. For a thickness L in mm, `GDD = L β₂` in fs².
-Positive β₂ is normal dispersion; negative β₂ is anomalous dispersion.
-GDD is a local second-order coefficient, not a broadband pulse simulation.
+- `sellmeier`: `n² − 1 = A + Σ B λ²/(λ² − C)`, C in µm²;
+- `gas`: `n − 1 = Σ B/(C − λ⁻²)` (Ciddor's standard air), C in µm⁻².
 
-The calculator evaluates the app's analytic Sellmeier terms without the
-tracer's 0.1 nm index or 1 nm GVD cache buckets. It refuses unknown glass,
-non-finite input and wavelengths or plot intervals outside the supported
-domain; it never plots a clamped edge as a dispersion curve. The existing
-tracer getters retain their cache and clamping behavior. Saved scenes and
-their computed ray behavior are unchanged.
+Every term is rewritten as a pole `K/(λ² − s)` plus a constant, whose first
+three derivatives are closed-form, and `n′`, `n″`, `n‴` follow from `S = n²`.
+Then `n_g = n − λ n′`, `β₂ = λ³ n″/(2πc²)` and
+`β₃ = −λ⁴ (3n″ + λ n‴)/(4π²c³)`, scaled by 10²¹ to fs²/mm and 10³⁰ to fs³/mm.
 
-The independent Python reference evaluates the published coefficients with
-five-point finite differences for the derivatives, extended to endpoints,
-fractional wavelengths and near fused silica's zero-GVD crossing. Index and
-group-index tolerances are 1e-7 and 1e-6 relative; GVD is 2e-4 relative,
-or 2e-4 fs²/mm absolute near zero. These cover finite-difference round-off
-and truncation, not uncertainty in a real glass sample. Published N-BK7
-indices remain separate anchors with 1e-5 absolute tolerance.
+The four canvas glasses (N-BK7, fused silica, N-SF5, N-SF11) import their
+coefficients and fit domains from `sketch/js/glass.js`, so the page and the
+tracer share one curve; a test pins them to the tracer's getters at whole-nm
+wavelengths, where the tracer's cache buckets land exactly. The app module
+itself is unchanged. The other 17 entries are calculator-only. Their
+coefficients were transcribed from the refractiveindex.info database (CC0,
+Polyanskiy, Sci. Data 11, 94 (2024)), which cites each primary source:
+SCHOTT (N-FK51A, N-SF10, N-SF14, N-SF57, N-LASF9), Malitson 1963 (CaF₂),
+Malitson and Dodge 1972 (sapphire o/e), Ghosh 1999 (crystalline quartz o/e),
+Tamošauskas et al. 2018 (BBO o/e), Zelmon et al. 1998 (YAG), Connolly et al.
+1979 / Tatian 1984 (ZnSe), Salzberg and Villa 1957 / Tatian 1984 (Si), Daimon
+and Masumura 2007 (water, 20 °C) and Ciddor 1996 (air). Light Conversion's
+online toolbox, which lists similar materials, states no data licence and
+was used only for numerical comparison.
 
-Sources:
+`dispersion-calculator.js` adds the laser source. GDD and TOD are `L β₂` and
+`L β₃`. The delay spread is `L [n_g(λ₀ − Δλ/2) − n_g(λ₀ + Δλ/2)]/c`, exact for
+the material curve, and is omitted when a band edge leaves the fit domain.
+The transform limit and stretched duration reuse the workbench's
+`transformLimitedDurationFs` and `gaussianPulseDurationAfterGDD` /
+`sech2PulseDurationAfterGDD`; they include GDD only. Outside a material's
+domain, and for a bandwidth not smaller than λ₀, the page declines.
 
-- [SCHOTT optical glass catalogue](https://www.schott.com/shop/medias/schott-optical-glass-collection-datasheets-english-march2018.pdf?context=bWFzdGVyfHJvb3R8NTQwMzA2MXxhcHBsaWNhdGlvbi9wZGZ8aDllL2hlZS84ODE3NDA4ODY4MzgyLnBkZnw2Y2VlYjY0Njk3YzBkYzU4NDliOGMxMzVmNjgwZmRiYzdlYWMxYmJmZDU1NjdmYjIxYzU5MTQ4NmE1YjhmMGQ2), dispersion constants for N-BK7, N-SF5 and N-SF11.
-- I. H. Malitson, *Interspecimen comparison of the refractive index of fused
-  silica*, JOSA 55, 1205 (1965), [doi:10.1364/JOSA.55.001205](https://doi.org/10.1364/JOSA.55.001205).
+Not modelled: absorption, temperature, stress, batch tolerances, air-to-vacuum
+index conversion (catalogue indices are relative to air), angle-dependent
+indices of birefringent crystals, spectral phase already on the pulse, and
+TOD-induced reshaping.
 
-The wavelength pages also reuse the workbench’s `sumFrequencyWl`,
-`ramanStokesWl` and `carsAntiStokesWl` helpers where applicable. The distinct
-CARS probe relation extends the existing two-color calculation on the page.
+## Nonlinear frequency conversion (`calculators/nonlinear-conversion/`)
 
-## Second-harmonic generation
+SHG and THG (`λ/n`, both directions), SFG and DFG (`1/λ₃ = 1/λ₁ ± 1/λ₂`, via
+the workbench's `mixWavelength`) and OPO signal and idler from the pump and
+either output (via `parametricPair`), with the Manley–Rowe shares
+`λ_p/λ_s` and `λ_p/λ_i` and the degeneracy wavelength `2λ_p`. Each wave is
+also shown as a frequency and a photon energy (`hc/e` from the exact SI
+constants). Energy conservation only: no phase matching or efficiency.
 
-`ν_SH = 2ν_f` gives `λ_SH = λ_f/2`; the reverse calculation is
-`λ_f = 2λ_SH`. Frequencies in THz are `299792.458/λ_nm`. Both directions
-accept finite wavelengths from 100 to 20000 nm; the calculated output may
-fall outside the input interval. This numerical interval is a UI scope,
-not a material transparency or phase-matching range. Refractive index is
-irrelevant to this vacuum-wavelength energy relation. Phase matching,
-crystal selection, bandwidth, power and conversion efficiency are absent.
+## Coherent Raman scattering (`calculators/coherent-raman/`)
 
-Source: [NIST, Frequency Conversion Interfaces for Photonic Quantum
-Systems](https://www.nist.gov/programs-projects/frequency-conversion-interfaces-photonic-quantum-systems), including the published 1064 → 532 nm example.
+Any two of pump, Stokes and Raman shift give the third:
+`Δν̃ = 10⁷(1/λ_p − 1/λ_S)`. CARS is at `ν_probe + Ω` and CSRS at
+`ν_probe − Ω`; in two-color CRS the pump probes CARS (`2ν_p − ν_S`) and the
+Stokes beam probes CSRS (`2ν_S − ν_p`, Heuke and Rigneault, Nat. Commun. 14,
+3337 (2023)). CSRS alone is omitted when `Ω` is not below the probing
+frequency. Inferred pump or Stokes wavelengths must stay in 100–20000 nm.
 
-## Coherent anti-Stokes Raman scattering
+The resolution panel evaluates Eq. (5) of Mohseni, Polzer and Hellerer,
+Opt. Express 26, 10230 (2018):
+`Δν̃ = 2√2 ln2/(πc) · √(τ_p⁻² + τ_S⁻²)`, about 20.8 ps·cm⁻¹ · √(…), with
+intensity-FWHM durations of Gaussian pulses that are transform-limited or
+equally chirped. For Gaussian fields it is the FWHM of the amplitude
+spectrum of `E_p E_S*`; the power-spectrum FWHM is smaller by √2. Chirp
+mismatch (the paper's Eq. (8)) is not included.
 
-The positive Raman shift is `Ω = ν_p − ν_s`; its spectroscopic wavenumber
-in cm⁻¹ is `Δσ = 10⁷(1/λ_p − 1/λ_s)`. The emitted frequency is
-`ν_as = ν_probe + Ω`, so
-`1/λ_as = 1/λ_probe + 1/λ_p − 1/λ_s`. If probe and pump are the same
-wave this reduces to `1/λ_as = 2/λ_p − 1/λ_s`.
+## Validation
 
-Two input modes are supported: pump/Stokes wavelengths, or pump wavelength
-and positive Raman shift. In the latter, `λ_s = 10⁷/(10⁷/λ_p − Δσ)`.
-The denominator must be positive. Pump, Stokes and an optional distinct
-probe must be in 100–20000 nm; the shift must be in 0–10000 cm⁻¹ and
-strictly positive. Equal pump/Stokes and reversed ordering are declined.
-Inferred Stokes values beyond the wavelength input scope are declined too.
-The anti-Stokes output can be outside that input interval. These are
-numerical UI limits, not a claim about available lasers or vibrational modes.
-
-No resonance strengths, linewidths, nonresonant background, χ³, phase
-matching, polarization, pulse overlap or conversion efficiencies are
-computed. The Python reference computes frequency differences in Hz and
-converts back, with 1e-9 relative tolerance. Analytic examples (800/1000 nm
-gives 2500 cm⁻¹ and 2000/3 nm anti-Stokes) separately anchor the units.
-
-Source: [NIST, Broadband Coherent Anti-Stokes Raman Scattering
-Microscopy](https://www.nist.gov/programs-projects/broadband-coherent-anti-stokes-raman-scattering-bcars-microscopy), pump–Stokes excitation and distinct probe frequency relation.
+`validation/reference/material_dispersion.py` evaluates every formula in its
+printed database form in 50-digit decimal arithmetic and differentiates
+`k(ω) = nω/c` numerically in angular frequency; agreement is 10⁻⁹ relative
+(absolute at the zero-GVD crossing), and SCHOTT's quoted nd and Vd anchor each
+SCHOTT glass. `validation/reference/wavelength_conversion.py` computes every
+process in SI frequencies with exact rational anchors, and recomputes the
+resolution as the FWHM of a quadrature Fourier transform of the driving term
+for transform-limited and equally chirped pulses, anchored by the paper's
+20.8 ps·cm⁻¹. `test/calculator-wavelengths.test.js` covers boundaries and
+declines. See `docs/validation.md` for the generated table.

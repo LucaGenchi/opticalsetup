@@ -1,127 +1,707 @@
 {
- "app": "calculators/shg/shg-calculator.js: computeShg; calculators/cars/cars-calculator.js: computeCars",
+ "app": "calculators/nonlinear-conversion/conversion-calculator.js: computeConversion (through sketch/js/parametric.js: mixWavelength, parametricPair); calculators/coherent-raman/crs-calculator.js: computeCrs, computeResolution",
  "cases": [
   {
    "expected": {
-    "fundamentalNm": 1064.0,
-    "fundamentalTHz": 281.7598289,
-    "harmonicNm": 532.0,
-    "harmonicTHz": 563.5196579
+    "wave0Ev": 1.165265023,
+    "wave0Nm": 1064.0,
+    "wave0THz": 281.7598289,
+    "wave1Ev": 2.330530046,
+    "wave1Nm": 532.0,
+    "wave1THz": 563.5196579
    },
    "inputs": {
-    "kind": "shg",
-    "mode": "fundamental",
-    "wavelengthNm": 1064
+    "harmonicInputNm": 1064,
+    "kind": "conversion",
+    "known": "fundamental",
+    "process": "shg"
    },
    "name": "SHG fundamental 1064 nm",
    "tolerance": {
-    "fundamentalNm": 1e-09,
-    "fundamentalTHz": 1e-09,
-    "harmonicNm": 1e-09,
-    "harmonicTHz": 1e-09
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09
    }
   },
   {
    "expected": {
-    "fundamentalNm": 1064.0,
-    "fundamentalTHz": 281.7598289,
-    "harmonicNm": 532.0,
-    "harmonicTHz": 563.5196579
+    "wave0Ev": 1.165265023,
+    "wave0Nm": 1064.0,
+    "wave0THz": 281.7598289,
+    "wave1Ev": 2.330530046,
+    "wave1Nm": 532.0,
+    "wave1THz": 563.5196579
    },
    "inputs": {
-    "kind": "shg",
-    "mode": "harmonic",
-    "wavelengthNm": 532
+    "harmonicInputNm": 532,
+    "kind": "conversion",
+    "known": "harmonic",
+    "process": "shg"
    },
    "name": "SHG harmonic 532 nm",
    "tolerance": {
-    "fundamentalNm": 1e-09,
-    "fundamentalTHz": 1e-09,
-    "harmonicNm": 1e-09,
-    "harmonicTHz": 1e-09
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09
    }
   },
   {
    "expected": {
-    "fundamentalNm": 1030.25,
-    "fundamentalTHz": 290.9900102,
-    "harmonicNm": 515.125,
-    "harmonicTHz": 581.9800204
+    "wave0Ev": 1.203437985,
+    "wave0Nm": 1030.25,
+    "wave0THz": 290.9900102,
+    "wave1Ev": 2.406875971,
+    "wave1Nm": 515.125,
+    "wave1THz": 581.9800204
    },
    "inputs": {
-    "kind": "shg",
-    "mode": "fundamental",
-    "wavelengthNm": 1030.25
+    "harmonicInputNm": 1030.25,
+    "kind": "conversion",
+    "known": "fundamental",
+    "process": "shg"
    },
    "name": "SHG fundamental 1030.25 nm",
    "tolerance": {
-    "fundamentalNm": 1e-09,
-    "fundamentalTHz": 1e-09,
-    "harmonicNm": 1e-09,
-    "harmonicTHz": 1e-09
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09
    }
   },
   {
    "expected": {
-    "fundamentalNm": 200.0,
-    "fundamentalTHz": 1498.96229,
-    "harmonicNm": 100.0,
-    "harmonicTHz": 2997.92458
+    "wave0Ev": 6.199209922,
+    "wave0Nm": 200.0,
+    "wave0THz": 1498.96229,
+    "wave1Ev": 12.39841984,
+    "wave1Nm": 100.0,
+    "wave1THz": 2997.92458
    },
    "inputs": {
-    "kind": "shg",
-    "mode": "harmonic",
-    "wavelengthNm": 100
+    "harmonicInputNm": 100,
+    "kind": "conversion",
+    "known": "harmonic",
+    "process": "shg"
    },
    "name": "SHG harmonic 100 nm",
    "tolerance": {
-    "fundamentalNm": 1e-09,
-    "fundamentalTHz": 1e-09,
-    "harmonicNm": 1e-09,
-    "harmonicTHz": 1e-09
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09
    }
   },
   {
    "expected": {
-    "fundamentalNm": 20000.0,
-    "fundamentalTHz": 14.9896229,
-    "harmonicNm": 10000.0,
-    "harmonicTHz": 29.9792458
+    "wave0Ev": 0.06199209922,
+    "wave0Nm": 20000.0,
+    "wave0THz": 14.9896229,
+    "wave1Ev": 0.1239841984,
+    "wave1Nm": 10000.0,
+    "wave1THz": 29.9792458
    },
    "inputs": {
-    "kind": "shg",
-    "mode": "fundamental",
-    "wavelengthNm": 20000
+    "harmonicInputNm": 20000,
+    "kind": "conversion",
+    "known": "fundamental",
+    "process": "shg"
    },
    "name": "SHG fundamental 20000 nm",
    "tolerance": {
-    "fundamentalNm": 1e-09,
-    "fundamentalTHz": 1e-09,
-    "harmonicNm": 1e-09,
-    "harmonicTHz": 1e-09
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09
    }
   },
   {
    "expected": {
-    "antiStokesNm": 666.6666667,
-    "probeNm": 800,
-    "pumpNm": 800,
-    "ramanShiftCm": 2500.0,
-    "ramanTHz": 74.9481145,
-    "stokesNm": 1000.0
+    "wave0Ev": 1.165265023,
+    "wave0Nm": 1064.0,
+    "wave0THz": 281.7598289,
+    "wave1Ev": 3.495795069,
+    "wave1Nm": 354.6666667,
+    "wave1THz": 845.2794868
    },
    "inputs": {
-    "kind": "cars",
-    "mode": "wavelengths",
-    "probeNm": 800,
-    "pumpNm": 800,
-    "separateProbe": false,
-    "stokesNm": 1000
+    "harmonicInputNm": 1064,
+    "kind": "conversion",
+    "known": "fundamental",
+    "process": "thg"
    },
-   "name": "CARS wavelengths pump 800 probe 800",
+   "name": "THG fundamental 1064 nm",
+   "tolerance": {
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "wave0Ev": 0.7768433486,
+    "wave0Nm": 1596.0,
+    "wave0THz": 187.839886,
+    "wave1Ev": 2.330530046,
+    "wave1Nm": 532.0,
+    "wave1THz": 563.5196579
+   },
+   "inputs": {
+    "harmonicInputNm": 532,
+    "kind": "conversion",
+    "known": "harmonic",
+    "process": "thg"
+   },
+   "name": "THG harmonic 532 nm",
+   "tolerance": {
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "wave0Ev": 1.203437985,
+    "wave0Nm": 1030.25,
+    "wave0THz": 290.9900102,
+    "wave1Ev": 3.610313956,
+    "wave1Nm": 343.4166667,
+    "wave1THz": 872.9700306
+   },
+   "inputs": {
+    "harmonicInputNm": 1030.25,
+    "kind": "conversion",
+    "known": "fundamental",
+    "process": "thg"
+   },
+   "name": "THG fundamental 1030.25 nm",
+   "tolerance": {
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "wave0Ev": 4.132806614,
+    "wave0Nm": 300.0,
+    "wave0THz": 999.3081933,
+    "wave1Ev": 12.39841984,
+    "wave1Nm": 100.0,
+    "wave1THz": 2997.92458
+   },
+   "inputs": {
+    "harmonicInputNm": 100,
+    "kind": "conversion",
+    "known": "harmonic",
+    "process": "thg"
+   },
+   "name": "THG harmonic 100 nm",
+   "tolerance": {
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "wave0Ev": 0.06199209922,
+    "wave0Nm": 20000.0,
+    "wave0THz": 14.9896229,
+    "wave1Ev": 0.1859762976,
+    "wave1Nm": 6666.666667,
+    "wave1THz": 44.9688687
+   },
+   "inputs": {
+    "harmonicInputNm": 20000,
+    "kind": "conversion",
+    "known": "fundamental",
+    "process": "thg"
+   },
+   "name": "THG fundamental 20000 nm",
+   "tolerance": {
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "wave0Ev": 1.54980248,
+    "wave0Nm": 800.0,
+    "wave0THz": 374.7405725,
+    "wave1Ev": 1.192155754,
+    "wave1Nm": 1040.0,
+    "wave1THz": 288.2619788,
+    "wave2Ev": 2.741958235,
+    "wave2Nm": 452.173913,
+    "wave2THz": 663.0025513
+   },
+   "inputs": {
+    "kind": "conversion",
+    "process": "sfg",
+    "wave1Nm": 800,
+    "wave2Nm": 1040
+   },
+   "name": "SFG 800 and 1040 nm",
+   "tolerance": {
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09,
+    "wave2Ev": 1e-09,
+    "wave2Nm": 1e-09,
+    "wave2THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "wave0Ev": 1.203730082,
+    "wave0Nm": 1030.0,
+    "wave0THz": 291.0606388,
+    "wave1Ev": 1.203730082,
+    "wave1Nm": 1030.0,
+    "wave1THz": 291.0606388,
+    "wave2Ev": 2.407460164,
+    "wave2Nm": 515.0,
+    "wave2THz": 582.1212777
+   },
+   "inputs": {
+    "kind": "conversion",
+    "process": "sfg",
+    "wave1Nm": 1030,
+    "wave2Nm": 1030
+   },
+   "name": "SFG 1030 and 1030 nm",
+   "tolerance": {
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09,
+    "wave2Ev": 1e-09,
+    "wave2Nm": 1e-09,
+    "wave2THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "wave0Ev": 0.799640106,
+    "wave0Nm": 1550.5,
+    "wave0THz": 193.3521174,
+    "wave1Ev": 0.3999167759,
+    "wave1Nm": 3100.25,
+    "wave1THz": 96.69944617,
+    "wave2Ev": 1.199556882,
+    "wave2Nm": 1033.58332,
+    "wave2THz": 290.0515636
+   },
+   "inputs": {
+    "kind": "conversion",
+    "process": "sfg",
+    "wave1Nm": 1550.5,
+    "wave2Nm": 3100.25
+   },
+   "name": "SFG 1550.5 and 3100.25 nm",
+   "tolerance": {
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09,
+    "wave2Ev": 1e-09,
+    "wave2Nm": 1e-09,
+    "wave2THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "wave0Ev": 1.54980248,
+    "wave0Nm": 800.0,
+    "wave0THz": 374.7405725,
+    "wave1Ev": 1.192155754,
+    "wave1Nm": 1040.0,
+    "wave1THz": 288.2619788,
+    "wave2Ev": 0.3576467262,
+    "wave2Nm": 3466.666667,
+    "wave2THz": 86.47859365
+   },
+   "inputs": {
+    "kind": "conversion",
+    "process": "dfg",
+    "wave1Nm": 800,
+    "wave2Nm": 1040
+   },
+   "name": "DFG 800 and 1040 nm",
+   "tolerance": {
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09,
+    "wave2Ev": 1e-09,
+    "wave2Nm": 1e-09,
+    "wave2THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "wave0Ev": 1.192155754,
+    "wave0Nm": 1040.0,
+    "wave0THz": 288.2619788,
+    "wave1Ev": 1.54980248,
+    "wave1Nm": 800.0,
+    "wave1THz": 374.7405725,
+    "wave2Ev": 0.3576467262,
+    "wave2Nm": 3466.666667,
+    "wave2THz": 86.47859365
+   },
+   "inputs": {
+    "kind": "conversion",
+    "process": "dfg",
+    "wave1Nm": 1040,
+    "wave2Nm": 800
+   },
+   "name": "DFG 1040 and 800 nm",
+   "tolerance": {
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09,
+    "wave2Ev": 1e-09,
+    "wave2Nm": 1e-09,
+    "wave2THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "wave0Ev": 1.165265023,
+    "wave0Nm": 1064.0,
+    "wave0THz": 281.7598289,
+    "wave1Ev": 1.164717693,
+    "wave1Nm": 1064.5,
+    "wave1THz": 281.6274852,
+    "wave2Ev": 0.000547329743,
+    "wave2Nm": 2265256.0,
+    "wave2THz": 0.132343743
+   },
+   "inputs": {
+    "kind": "conversion",
+    "process": "dfg",
+    "wave1Nm": 1064,
+    "wave2Nm": 1064.5
+   },
+   "name": "DFG 1064 and 1064.5 nm",
+   "tolerance": {
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09,
+    "wave2Ev": 1e-09,
+    "wave2Nm": 1e-09,
+    "wave2THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "wave0Ev": 12.39841984,
+    "wave0Nm": 100.0,
+    "wave0THz": 2997.92458,
+    "wave1Ev": 0.06199209922,
+    "wave1Nm": 20000.0,
+    "wave1THz": 14.9896229,
+    "wave2Ev": 12.33642774,
+    "wave2Nm": 100.5025126,
+    "wave2THz": 2982.934957
+   },
+   "inputs": {
+    "kind": "conversion",
+    "process": "dfg",
+    "wave1Nm": 100,
+    "wave2Nm": 20000
+   },
+   "name": "DFG 100 and 20000 nm",
+   "tolerance": {
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09,
+    "wave2Ev": 1e-09,
+    "wave2Nm": 1e-09,
+    "wave2THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "degeneracyNm": 2060.0,
+    "idlerShare": 0.335483871,
+    "signalShare": 0.664516129,
+    "wave0Ev": 1.203730082,
+    "wave0Nm": 1030.0,
+    "wave0THz": 291.0606388,
+    "wave1Ev": 0.7998980544,
+    "wave1Nm": 1550.0,
+    "wave1THz": 193.414489,
+    "wave2Ev": 0.4038320275,
+    "wave2Nm": 3070.192308,
+    "wave2THz": 97.6461498
+   },
+   "inputs": {
+    "kind": "conversion",
+    "outputNm": 1550,
+    "process": "opo",
+    "pumpNm": 1030
+   },
+   "name": "OPO pump 1030 nm, known output 1550 nm",
+   "tolerance": {
+    "degeneracyNm": 1e-09,
+    "idlerShare": 1e-09,
+    "signalShare": 1e-09,
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09,
+    "wave2Ev": 1e-09,
+    "wave2Nm": 1e-09,
+    "wave2THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "degeneracyNm": 2060.0,
+    "idlerShare": 0.2575,
+    "signalShare": 0.7425,
+    "wave0Ev": 1.203730082,
+    "wave0Nm": 1030.0,
+    "wave0THz": 291.0606388,
+    "wave1Ev": 0.8937695858,
+    "wave1Nm": 1387.205387,
+    "wave1THz": 216.1125243,
+    "wave2Ev": 0.3099604961,
+    "wave2Nm": 4000.0,
+    "wave2THz": 74.9481145
+   },
+   "inputs": {
+    "kind": "conversion",
+    "outputNm": 4000,
+    "process": "opo",
+    "pumpNm": 1030
+   },
+   "name": "OPO pump 1030 nm, known output 4000 nm",
+   "tolerance": {
+    "degeneracyNm": 1e-09,
+    "idlerShare": 1e-09,
+    "signalShare": 1e-09,
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09,
+    "wave2Ev": 1e-09,
+    "wave2Nm": 1e-09,
+    "wave2THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "degeneracyNm": 1064.0,
+    "idlerShare": 0.335,
+    "signalShare": 0.665,
+    "wave0Ev": 2.330530046,
+    "wave0Nm": 532.0,
+    "wave0THz": 563.5196579,
+    "wave1Ev": 1.54980248,
+    "wave1Nm": 800.0,
+    "wave1THz": 374.7405725,
+    "wave2Ev": 0.7807275653,
+    "wave2Nm": 1588.059701,
+    "wave2THz": 188.7790854
+   },
+   "inputs": {
+    "kind": "conversion",
+    "outputNm": 800,
+    "process": "opo",
+    "pumpNm": 532
+   },
+   "name": "OPO pump 532 nm, known output 800 nm",
+   "tolerance": {
+    "degeneracyNm": 1e-09,
+    "idlerShare": 1e-09,
+    "signalShare": 1e-09,
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09,
+    "wave2Ev": 1e-09,
+    "wave2Nm": 1e-09,
+    "wave2THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "degeneracyNm": 2060.0,
+    "idlerShare": 0.5,
+    "signalShare": 0.5,
+    "wave0Ev": 1.203730082,
+    "wave0Nm": 1030.0,
+    "wave0THz": 291.0606388,
+    "wave1Ev": 0.6018650409,
+    "wave1Nm": 2060.0,
+    "wave1THz": 145.5303194,
+    "wave2Ev": 0.6018650409,
+    "wave2Nm": 2060.0,
+    "wave2THz": 145.5303194
+   },
+   "inputs": {
+    "kind": "conversion",
+    "outputNm": 2060,
+    "process": "opo",
+    "pumpNm": 1030
+   },
+   "name": "OPO pump 1030 nm, known output 2060 nm",
+   "tolerance": {
+    "degeneracyNm": 1e-09,
+    "idlerShare": 1e-09,
+    "signalShare": 1e-09,
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09,
+    "wave2Ev": 1e-09,
+    "wave2Nm": 1e-09,
+    "wave2THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "degeneracyNm": 1600.0,
+    "idlerShare": 0.04000100003,
+    "signalShare": 0.959999,
+    "wave0Ev": 1.54980248,
+    "wave0Nm": 800.0,
+    "wave0THz": 374.7405725,
+    "wave1Ev": 1.487808831,
+    "wave1Nm": 833.3342014,
+    "wave1THz": 359.7505749,
+    "wave2Ev": 0.06199364906,
+    "wave2Nm": 19999.5,
+    "wave2THz": 14.98999765
+   },
+   "inputs": {
+    "kind": "conversion",
+    "outputNm": 19999.5,
+    "process": "opo",
+    "pumpNm": 800
+   },
+   "name": "OPO pump 800 nm, known output 19999.5 nm",
+   "tolerance": {
+    "degeneracyNm": 1e-09,
+    "idlerShare": 1e-09,
+    "signalShare": 1e-09,
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09,
+    "wave2Ev": 1e-09,
+    "wave2Nm": 1e-09,
+    "wave2THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "wave1Nm": 354.6666666666667
+   },
+   "inputs": {
+    "harmonicInputNm": 1064,
+    "kind": "conversion",
+    "known": "fundamental",
+    "process": "thg"
+   },
+   "name": "THG exact anchor: 1064 nm gives 1064/3 nm",
+   "tolerance": {
+    "wave1Nm": 1e-12
+   }
+  },
+  {
+   "expected": {
+    "wave2Nm": 3070.1923076923076
+   },
+   "inputs": {
+    "kind": "conversion",
+    "outputNm": 1550,
+    "process": "opo",
+    "pumpNm": 1030
+   },
+   "name": "OPO exact anchor: 1030 pump, 1550 signal",
+   "tolerance": {
+    "wave2Nm": 1e-12
+   }
+  },
+  {
+   "expected": {
+    "antiStokesNm": 650.0,
+    "csrsNm": 1485.714286,
+    "pumpNm": 800.0,
+    "ramanShiftCm": 2884.615385,
+    "ramanTHz": 86.47859365,
+    "stokesNm": 1040.0
+   },
+   "inputs": {
+    "kind": "crs",
+    "mode": "pump-stokes",
+    "pumpNm": 800,
+    "stokesNm": 1040
+   },
+   "name": "CRS pump/Stokes 800/1040 nm, two-color",
    "tolerance": {
     "antiStokesNm": 1e-09,
-    "probeNm": 1e-09,
+    "csrsNm": 1e-09,
     "pumpNm": 1e-09,
     "ramanShiftCm": 1e-09,
     "ramanTHz": 1e-09,
@@ -130,25 +710,25 @@
   },
   {
    "expected": {
-    "antiStokesNm": 595.7446809,
-    "probeNm": 700,
-    "pumpNm": 800,
-    "ramanShiftCm": 2500.0,
-    "ramanTHz": 74.9481145,
-    "stokesNm": 1000.0
+    "antiStokesNm": 461.2204068,
+    "csrsNm": 628.4416174,
+    "pumpNm": 800.0,
+    "ramanShiftCm": 2884.615385,
+    "ramanTHz": 86.47859365,
+    "stokesNm": 1040.0
    },
    "inputs": {
-    "kind": "cars",
-    "mode": "wavelengths",
-    "probeNm": 700,
+    "kind": "crs",
+    "mode": "pump-stokes",
+    "probeNm": 532,
     "pumpNm": 800,
     "separateProbe": true,
-    "stokesNm": 1000
+    "stokesNm": 1040
    },
-   "name": "CARS wavelengths pump 800 probe 700",
+   "name": "CRS pump/Stokes 800/1040 nm, 532 nm probe",
    "tolerance": {
     "antiStokesNm": 1e-09,
-    "probeNm": 1e-09,
+    "csrsNm": 1e-09,
     "pumpNm": 1e-09,
     "ramanShiftCm": 1e-09,
     "ramanTHz": 1e-09,
@@ -157,25 +737,23 @@
   },
   {
    "expected": {
-    "antiStokesNm": 666.6666667,
-    "probeNm": 800,
-    "pumpNm": 800,
-    "ramanShiftCm": 2500.0,
-    "ramanTHz": 74.9481145,
-    "stokesNm": 1000.0
+    "antiStokesNm": 651.465798,
+    "csrsNm": 1470.588235,
+    "pumpNm": 800.0,
+    "ramanShiftCm": 2850.0,
+    "ramanTHz": 85.44085053,
+    "stokesNm": 1036.26943
    },
    "inputs": {
-    "kind": "cars",
-    "mode": "shift",
-    "probeNm": 800,
+    "kind": "crs",
+    "mode": "pump-shift",
     "pumpNm": 800,
-    "ramanShiftCm": 2500,
-    "separateProbe": false
+    "ramanShiftCm": 2850
    },
-   "name": "CARS shift pump 800 probe 800",
+   "name": "CRS pump 800 nm and shift 2850 cm-1",
    "tolerance": {
     "antiStokesNm": 1e-09,
-    "probeNm": 1e-09,
+    "csrsNm": 1e-09,
     "pumpNm": 1e-09,
     "ramanShiftCm": 1e-09,
     "ramanTHz": 1e-09,
@@ -184,25 +762,23 @@
   },
   {
    "expected": {
-    "antiStokesNm": 595.7446809,
-    "probeNm": 700,
-    "pumpNm": 800,
-    "ramanShiftCm": 2500.0,
-    "ramanTHz": 74.9481145,
-    "stokesNm": 1000.0
+    "antiStokesNm": 961.4001456,
+    "csrsNm": 1352.723042,
+    "pumpNm": 1064.0,
+    "ramanShiftCm": 1003.0,
+    "ramanTHz": 30.06918354,
+    "stokesNm": 1191.114821
    },
    "inputs": {
-    "kind": "cars",
-    "mode": "shift",
-    "probeNm": 700,
-    "pumpNm": 800,
-    "ramanShiftCm": 2500,
-    "separateProbe": true
+    "kind": "crs",
+    "mode": "pump-shift",
+    "pumpNm": 1064,
+    "ramanShiftCm": 1003
    },
-   "name": "CARS shift pump 800 probe 700",
+   "name": "CRS pump 1064 nm and shift 1003 cm-1",
    "tolerance": {
     "antiStokesNm": 1e-09,
-    "probeNm": 1e-09,
+    "csrsNm": 1e-09,
     "pumpNm": 1e-09,
     "ramanShiftCm": 1e-09,
     "ramanTHz": 1e-09,
@@ -211,52 +787,23 @@
   },
   {
    "expected": {
-    "antiStokesNm": 1000.0,
-    "probeNm": 20000,
-    "pumpNm": 1000,
-    "ramanShiftCm": 9500.0,
-    "ramanTHz": 284.8028351,
-    "stokesNm": 20000.0
-   },
-   "inputs": {
-    "kind": "cars",
-    "mode": "wavelengths",
-    "probeNm": 20000,
-    "pumpNm": 1000,
-    "separateProbe": true,
-    "stokesNm": 20000
-   },
-   "name": "CARS wavelengths pump 1000 probe 20000",
-   "tolerance": {
-    "antiStokesNm": 1e-09,
-    "probeNm": 1e-09,
-    "pumpNm": 1e-09,
-    "ramanShiftCm": 1e-09,
-    "ramanTHz": 1e-09,
-    "stokesNm": 1e-09
-   }
-  },
-  {
-   "expected": {
-    "antiStokesNm": 801.0769427,
-    "probeNm": 900.5,
+    "antiStokesNm": 884.4171229,
+    "csrsNm": 1537.188759,
     "pumpNm": 1030.25,
-    "ramanShiftCm": 1378.253693,
-    "ramanTHz": 41.31900624,
-    "stokesNm": 1200.75
+    "ramanShiftCm": 1600.5,
+    "ramanTHz": 47.9817829,
+    "stokesNm": 1233.67205
    },
    "inputs": {
-    "kind": "cars",
-    "mode": "wavelengths",
-    "probeNm": 900.5,
+    "kind": "crs",
+    "mode": "pump-shift",
     "pumpNm": 1030.25,
-    "separateProbe": true,
-    "stokesNm": 1200.75
+    "ramanShiftCm": 1600.5
    },
-   "name": "CARS wavelengths pump 1030.25 probe 900.5",
+   "name": "CRS pump 1030.25 nm and shift 1600.5 cm-1",
    "tolerance": {
     "antiStokesNm": 1e-09,
-    "probeNm": 1e-09,
+    "csrsNm": 1e-09,
     "pumpNm": 1e-09,
     "ramanShiftCm": 1e-09,
     "ramanTHz": 1e-09,
@@ -266,24 +813,170 @@
   {
    "expected": {
     "antiStokesNm": 19896.04069,
-    "probeNm": 19900,
-    "pumpNm": 19900,
+    "csrsNm": 19907.92335,
+    "pumpNm": 19900.0,
     "ramanShiftCm": 0.1,
     "ramanTHz": 0.00299792458,
     "stokesNm": 19903.96089
    },
    "inputs": {
-    "kind": "cars",
-    "mode": "shift",
-    "probeNm": 19900,
+    "kind": "crs",
+    "mode": "pump-shift",
     "pumpNm": 19900,
-    "ramanShiftCm": 0.1,
-    "separateProbe": false
+    "ramanShiftCm": 0.1
    },
-   "name": "CARS shift pump 19900 probe 19900",
+   "name": "CRS pump 19900 nm and shift 0.1 cm-1",
    "tolerance": {
     "antiStokesNm": 1e-09,
-    "probeNm": 1e-09,
+    "csrsNm": 1e-09,
+    "pumpNm": 1e-09,
+    "ramanShiftCm": 1e-09,
+    "ramanTHz": 1e-09,
+    "stokesNm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "antiStokesNm": 652.938222,
+    "csrsNm": 1478.112564,
+    "pumpNm": 802.2215366,
+    "ramanShiftCm": 2850.0,
+    "ramanTHz": 85.44085053,
+    "stokesNm": 1040.0
+   },
+   "inputs": {
+    "kind": "crs",
+    "mode": "stokes-shift",
+    "ramanShiftCm": 2850,
+    "stokesNm": 1040
+   },
+   "name": "CRS Stokes 1040 nm and shift 2850 cm-1",
+   "tolerance": {
+    "antiStokesNm": 1e-09,
+    "csrsNm": 1e-09,
+    "pumpNm": 1e-09,
+    "ramanShiftCm": 1e-09,
+    "ramanTHz": 1e-09,
+    "stokesNm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "antiStokesNm": 662.756569,
+    "csrsNm": 1525.903065,
+    "pumpNm": 816.7601642,
+    "ramanShiftCm": 2845.0,
+    "ramanTHz": 85.2909543,
+    "stokesNm": 1064.0
+   },
+   "inputs": {
+    "kind": "crs",
+    "mode": "stokes-shift",
+    "ramanShiftCm": 2845,
+    "stokesNm": 1064
+   },
+   "name": "CRS Stokes 1064 nm and shift 2845 cm-1",
+   "tolerance": {
+    "antiStokesNm": 1e-09,
+    "csrsNm": 1e-09,
+    "pumpNm": 1e-09,
+    "ramanShiftCm": 1e-09,
+    "ramanTHz": 1e-09,
+    "stokesNm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "antiStokesNm": 968.3234056,
+    "csrsNm": 1364.511837,
+    "pumpNm": 1072.083892,
+    "ramanShiftCm": 999.5,
+    "ramanTHz": 29.96425618,
+    "stokesNm": 1200.75
+   },
+   "inputs": {
+    "kind": "crs",
+    "mode": "stokes-shift",
+    "ramanShiftCm": 999.5,
+    "stokesNm": 1200.75
+   },
+   "name": "CRS Stokes 1200.75 nm and shift 999.5 cm-1",
+   "tolerance": {
+    "antiStokesNm": 1e-09,
+    "csrsNm": 1e-09,
+    "pumpNm": 1e-09,
+    "ramanShiftCm": 1e-09,
+    "ramanTHz": 1e-09,
+    "stokesNm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "antiStokesNm": 487.8286746,
+    "pumpNm": 952.426306,
+    "ramanShiftCm": 9999.5,
+    "ramanTHz": 299.7774684,
+    "stokesNm": 20000.0
+   },
+   "inputs": {
+    "kind": "crs",
+    "mode": "stokes-shift",
+    "ramanShiftCm": 9999.5,
+    "stokesNm": 20000
+   },
+   "name": "CRS Stokes 20000 nm and shift 9999.5 cm-1",
+   "tolerance": {
+    "antiStokesNm": 1e-09,
+    "pumpNm": 1e-09,
+    "ramanShiftCm": 1e-09,
+    "ramanTHz": 1e-09,
+    "stokesNm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "antiStokesNm": 583.5764902,
+    "csrsNm": 874.4534666,
+    "pumpNm": 802.2215366,
+    "ramanShiftCm": 2850.0,
+    "ramanTHz": 85.44085053,
+    "stokesNm": 1040.0
+   },
+   "inputs": {
+    "kind": "crs",
+    "mode": "stokes-shift",
+    "probeNm": 700,
+    "ramanShiftCm": 2850,
+    "separateProbe": true,
+    "stokesNm": 1040
+   },
+   "name": "CRS Stokes/shift with a 700 nm probe",
+   "tolerance": {
+    "antiStokesNm": 1e-09,
+    "csrsNm": 1e-09,
+    "pumpNm": 1e-09,
+    "ramanShiftCm": 1e-09,
+    "ramanTHz": 1e-09,
+    "stokesNm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "antiStokesNm": 390.0,
+    "pumpNm": 600.0,
+    "ramanShiftCm": 8974.358974,
+    "ramanTHz": 269.0445136,
+    "stokesNm": 1300.0
+   },
+   "inputs": {
+    "kind": "crs",
+    "mode": "pump-stokes",
+    "pumpNm": 600,
+    "stokesNm": 1300
+   },
+   "name": "CRS without CSRS: shift above the Stokes frequency",
+   "tolerance": {
+    "antiStokesNm": 1e-09,
     "pumpNm": 1e-09,
     "ramanShiftCm": 1e-09,
     "ramanTHz": 1e-09,
@@ -293,34 +986,123 @@
   {
    "expected": {
     "antiStokesNm": 666.6666666666666,
+    "csrsNm": 1333.3333333333333,
     "ramanShiftCm": 2500
    },
    "inputs": {
-    "kind": "cars",
-    "mode": "wavelengths",
+    "kind": "crs",
+    "mode": "pump-stokes",
     "pumpNm": 800,
     "stokesNm": 1000
    },
-   "name": "CARS exact rational wavelength and shift anchor",
+   "name": "CARS and CSRS exact anchors: 800/1000 nm",
    "tolerance": {
-    "antiStokesNm": 1e-09,
-    "ramanShiftCm": 1e-09
+    "antiStokesNm": 1e-12,
+    "csrsNm": 1e-12,
+    "ramanShiftCm": 1e-12
+   }
+  },
+  {
+   "expected": {
+    "resolutionCm": 14.71922287
+   },
+   "inputs": {
+    "kind": "resolution",
+    "pumpPs": 2,
+    "stokesPs": 2
+   },
+   "name": "resolution, 2 ps pump and 2 ps Stokes",
+   "tolerance": {
+    "resolutionCm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "resolutionCm": 21.94212194
+   },
+   "inputs": {
+    "kind": "resolution",
+    "pumpPs": 1,
+    "stokesPs": 3
+   },
+   "name": "resolution, 1 ps pump and 3 ps Stokes",
+   "tolerance": {
+    "resolutionCm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "resolutionCm": 294.3844573
+   },
+   "inputs": {
+    "kind": "resolution",
+    "pumpPs": 0.1,
+    "stokesPs": 0.1
+   },
+   "name": "resolution, 0.1 ps pump and 0.1 ps Stokes",
+   "tolerance": {
+    "resolutionCm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "resolutionCm": 17.83936346
+   },
+   "inputs": {
+    "kind": "resolution",
+    "pumpPs": 5,
+    "stokesPs": 1.2
+   },
+   "name": "resolution, 5 ps pump and 1.2 ps Stokes, equal chirp 0.8 rad/ps^2",
+   "tolerance": {
+    "resolutionCm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "resolutionCm": 14.71922287
+   },
+   "inputs": {
+    "kind": "resolution",
+    "pumpPs": 2,
+    "stokesPs": 2
+   },
+   "name": "resolution, 2 ps pump and 2 ps Stokes, equal chirp 3.0 rad/ps^2",
+   "tolerance": {
+    "resolutionCm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "resolutionCm": 20.8
+   },
+   "inputs": {
+    "kind": "resolution",
+    "pumpPs": 1,
+    "stokesPs": 10000
+   },
+   "name": "resolution prefactor anchor: 20.8 ps cm^-1 (paper, 3 figures)",
+   "note": "The published prefactor is quoted to three figures; half a unit in the last place is 0.24 %.",
+   "tolerance": {
+    "resolutionCm": 0.0025
    }
   }
  ],
  "citations": [
-  "NIST, Frequency Conversion Interfaces for Photonic Quantum Systems, 1064 to 532 nm example \u2014 https://www.nist.gov/programs-projects/frequency-conversion-interfaces-photonic-quantum-systems",
-  "NIST, Broadband Coherent Anti-Stokes Raman Scattering Microscopy, omega_as = omega_p - omega_s + omega_probe \u2014 https://www.nist.gov/programs-projects/broadband-coherent-anti-stokes-raman-scattering-bcars-microscopy"
+  "R. W. Boyd, Nonlinear Optics, 4th ed., Academic Press (2020), chapters 1-2 (energy conservation, Manley-Rowe)",
+  "J.-X. Cheng and X. S. Xie, J. Phys. Chem. B 108, 827-840 (2004), doi:10.1021/jp035693v (CARS)",
+  "S. Heuke and H. Rigneault, Nat. Commun. 14, 3337 (2023), doi:10.1038/s41467-023-38941-4 (CSRS at 2 omega_S - omega_p)",
+  "M. Mohseni, C. Polzer and T. Hellerer, Opt. Express 26, 10230-10241 (2018), doi:10.1364/OE.26.010230, Eq. (5) (resolution)"
  ],
- "convergence": "Closed-form arithmetic; no discretisation or iteration.",
- "domain": "Both SHG directions; CARS wavelength and shift modes, same and distinct probe, fractional wavelengths and input endpoints.",
+ "convergence": "Closed-form arithmetic; the resolution quadrature uses 4001 points over +/-14 effective widths and an 80-step bisection.",
+ "domain": "SHG and THG both directions; SFG; DFG in both input orders and near degeneracy; OPO from signal, idler and the degenerate point; coherent Raman in all three input modes, with and without a distinct probe, with and without a CSRS solution; resolution for equal, unequal, short and equally chirped pulses.",
  "fidelity": "computed",
  "id": "wavelength-conversion",
- "outside_scope": "Declines non-finite or out-of-range inputs, non-positive Raman shifts and impossible inferred Stokes frequencies; outputs may lie outside the input interval.",
- "provenance": "Frequency conservation derived from NIST's SHG and CARS explanations; exact c = 299792458 m/s.",
- "reference": "SI frequency arithmetic plus exact rational wavelength anchors",
+ "outside_scope": "Declines non-finite or out-of-range inputs, equal DFG inputs, an OPO output not longer than the pump, reversed or equal pump and Stokes, non-positive shifts and inferred pump or Stokes wavelengths outside 100-20000 nm; CSRS alone is omitted when the Raman frequency is not below the probing frequency.",
+ "provenance": "Energy conservation written from Boyd; CARS and CSRS frequencies from Cheng and Xie and Heuke and Rigneault; the resolution check recomputes the excitation-amplitude width that Eq. (5) of Mohseni et al. expresses in closed form, and the paper's 20.8 ps cm^-1 prefactor anchors it.",
+ "reference": "SI frequency arithmetic with exact rational anchors; resolution from a quadrature Fourier transform of the pump-Stokes driving term",
  "reference_file": "validation/reference/wavelength_conversion.py",
- "scope": "Vacuum wavelengths, frequency identities only; no phase matching, yield or resonance spectrum.",
- "title": "SHG and CARS vacuum-wavelength conversions",
- "tolerance_rationale": "1e-9 relative for floating-point frequency identities, not experimental accuracy."
+ "scope": "Vacuum wavelengths and energy conservation only; Gaussian, transform-limited or equally chirped pulses for the resolution; no phase matching, yield, resonance spectrum or chirp mismatch.",
+ "title": "Nonlinear frequency conversion and coherent Raman scattering",
+ "tolerance_rationale": "1e-9 relative for floating-point identities and for the spectrally accurate quadrature; exact rational anchors at 1e-12; the published three-figure prefactor at half a unit in its last place (0.25 %)."
 }

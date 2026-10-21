@@ -2,17 +2,29 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { renderForm, readForm, syncForm, lineChart, formatNumber } from './calculator-kit.js';
 
-export function mountCalculator({ inputs, defaults, groups, compute, rows, notes = () => [], graphs = () => ({}) }) {
-  const form = document.getElementById('calc-form');
-  const status = document.getElementById('calc-status');
-  const results = document.getElementById('calc-results');
-  const noteList = document.getElementById('calc-notes');
-  const hosts = [...document.querySelectorAll('[data-chart]')];
+// Mounts one calculator panel. `panel` is the id prefix the page generator
+// gave it (`calc` for the main panel: calc-form, calc-status, ...). A group
+// with `form: '<id>'` renders into that form instead, for controls placed
+// elsewhere on the page; the plot range below the graphs uses `plot-form`.
+// `rows` returns [label, value, unit, digits] arrays, or { group } headings.
+export function mountCalculator({ panel = 'calc', inputs, defaults, groups, compute, rows, notes = () => [], graphs = null }) {
+  const mainId = `${panel}-form`;
+  const formIds = [...new Set([mainId, ...Object.values(groups).map(g => g.form ?? mainId)])];
+  const forms = formIds.map(id => document.getElementById(id));
+  const status = document.getElementById(`${panel}-status`);
+  const results = document.getElementById(`${panel}-results`);
+  const noteList = document.getElementById(`${panel}-notes`);
+  const hosts = graphs ? [...document.querySelectorAll('[data-chart]')] : [];
   const reset = document.createElement('button');
   reset.type = 'button';
   reset.className = 'calc-reset';
   reset.textContent = 'Reset to the example values';
-  function init() { renderForm(form, inputs, groups, defaults); form.append(reset); update(); }
+  function init() {
+    formIds.forEach((id, k) => renderForm(forms[k], inputs,
+      Object.fromEntries(Object.entries(groups).filter(([, g]) => (g.form ?? mainId) === id)), defaults));
+    forms[0].append(reset);
+    update();
+  }
   function draw(result) {
     const charts = result.ok ? graphs(result) : {};
     for (const host of hosts) {
@@ -21,9 +33,9 @@ export function mountCalculator({ inputs, defaults, groups, compute, rows, notes
     }
   }
   function update() {
-    const raw = readForm(form, inputs);
+    const raw = readForm(forms, inputs);
     const result = compute(raw);
-    syncForm(form, inputs, raw, new Set((result.errors ?? []).map(e => e.id)));
+    syncForm(forms, inputs, raw, new Set((result.errors ?? []).map(e => e.id)));
     results.textContent = '';
     noteList.textContent = '';
     status.className = `calc-status${result.ok ? '' : ' is-error'}`;
@@ -35,24 +47,37 @@ export function mountCalculator({ inputs, defaults, groups, compute, rows, notes
       }
       status.append(ul);
     } else {
-      for (const [label, value, unit = '', digits = 6] of rows(result)) {
+      for (const row of rows(result)) {
         const tr = results.insertRow();
-        const th = document.createElement('th'); th.scope = 'row'; th.textContent = label;
+        const th = document.createElement('th');
+        if (row.group) {
+          tr.className = 'group';
+          th.colSpan = 2; th.scope = 'colgroup'; th.textContent = row.group;
+          tr.append(th);
+          continue;
+        }
+        const [label, value, unit = '', digits = 6] = row;
+        th.scope = 'row'; th.textContent = label;
         const td = document.createElement('td');
-        td.textContent = `${formatNumber(value, digits)}${unit ? ` ${unit}` : ''}`;
+        const shown = formatNumber(value, digits);
+        td.textContent = shown === '—' || !unit ? shown : `${shown} ${unit}`;
         tr.append(th, td);
       }
       for (const text of notes(result)) {
         const li = document.createElement('li'); li.textContent = text; noteList.append(li);
       }
     }
-    draw(result);
+    if (graphs) draw(result);
   }
-  form.addEventListener('submit', e => e.preventDefault());
-  form.addEventListener('input', update);
-  form.addEventListener('change', update);
+  for (const form of forms) {
+    form.addEventListener('submit', e => e.preventDefault());
+    form.addEventListener('input', update);
+    form.addEventListener('change', update);
+  }
   reset.addEventListener('click', init);
-  let resize;
-  window.addEventListener('resize', () => { clearTimeout(resize); resize = setTimeout(update, 100); });
+  if (graphs) {
+    let resize;
+    window.addEventListener('resize', () => { clearTimeout(resize); resize = setTimeout(update, 100); });
+  }
   init();
 }

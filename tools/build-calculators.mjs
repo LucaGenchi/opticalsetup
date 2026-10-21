@@ -125,8 +125,34 @@ ${section.rows.map(([symbol, name, unit, meaning]) => `<tr><td class="sym">${sym
   return parts.join('\n');
 }
 
+// One inputs | results panel. The main panel keeps the calc-* ids; a page's
+// extra `panels` (an independent second calculator, such as a resolution
+// estimate under the main one) use their own id as the prefix.
+function panelSection(id, panel = null) {
+  const head = panel ? `
+      <div class="calc-panel-head">
+        <h2 id="${id}-title">${esc(panel.title)}</h2>
+        ${panel.intro ? `<p>${panel.intro}</p>` : ''}
+      </div>` : `
+      <noscript><p class="calc-status is-error">This calculator needs JavaScript. The physics and formulas below read without it.</p></noscript>`;
+  return `<section class="calc-app${panel ? ' calc-panel' : ''}" id="${panel ? `${id}-panel` : 'calculator'}" ${panel ? `aria-labelledby="${id}-title"` : 'aria-label="Calculator"'}>${head}
+      <form class="calc-inputs" id="${id}-form" autocomplete="off" novalidate></form>
+      <div class="calc-output">
+        <div class="calc-status" id="${id}-status" role="status" aria-live="polite"></div>
+        <table class="calc-results" id="${id}-results" aria-label="${panel ? `${esc(panel.title)} results` : 'Results'}"></table>
+        <ul class="calc-notes" id="${id}-notes"></ul>
+      </div>
+    </section>`;
+}
+
 function calculatorPage(calc) {
   const base = '../..';
+  for (const panel of calc.panels ?? []) {
+    if (!/^[a-z][a-z0-9-]*$/.test(panel.id) || panel.id === 'calc' || panel.id === 'plot') {
+      throw new Error(`${calc.slug}: panel id ${panel.id} must be a lowercase slug other than calc or plot`);
+    }
+  }
+  if (calc.plotControls && !calc.graphs.length) throw new Error(`${calc.slug}: plot controls need graphs`);
   const refCount = calc.references.length;
   for (const ref of calc.references) {
     if (!ref.label || !ref.url || !/^https?:\/\//.test(ref.url)) {
@@ -154,15 +180,8 @@ ${header(base)}
       ${calc.facts.map(f => `<div><dt>${esc(f.label)}</dt><dd>${f.html}</dd></div>`).join('\n      ')}
     </dl>
 
-    <section class="calc-app" id="calculator" aria-label="Calculator">
-      <noscript><p class="calc-status is-error">This calculator needs JavaScript. The physics and formulas below read without it.</p></noscript>
-      <form class="calc-inputs" id="calc-form" autocomplete="off" novalidate></form>
-      <div class="calc-output">
-        <div class="calc-status" id="calc-status" role="status" aria-live="polite"></div>
-        <table class="calc-results" id="calc-results" aria-label="Results"></table>
-        <ul class="calc-notes" id="calc-notes"></ul>
-      </div>
-    </section>
+    ${panelSection('calc')}
+    ${(calc.panels ?? []).map(p => panelSection(p.id, p)).join('\n    ')}
 
     ${calc.graphs.length ? `<section class="calc-graphs" aria-label="Graphs">
       ${calc.graphs.map((g, i) => `<figure class="calc-chart" id="chart-${g.id}">
@@ -171,6 +190,7 @@ ${header(base)}
         <details class="chart-data"><summary>Data table</summary><div class="chart-table" data-table="${g.id}"></div></details>
       </figure>`).join('\n      ')}
     </section>` : ''}
+    ${calc.plotControls ? `<form class="calc-inputs calc-plot-form" id="plot-form" autocomplete="off" novalidate aria-label="${esc(calc.plotControls.title)}"></form>` : ''}
 
     <nav class="calc-toc" aria-label="On this page">
       ${calc.sections.map(s => `<a href="#${s.id}">${esc(s.title)}</a>`).join('\n      ')}

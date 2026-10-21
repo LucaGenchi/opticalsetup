@@ -64,11 +64,20 @@ export function renderForm(form, inputs, groups, values) {
       if (input.type === 'select') {
         row.classList.add('choice');
         label.textContent = input.label;
-        for (const [value, text] of input.options) {
+        // An option's optional third entry names its <optgroup>.
+        const optgroups = new Map();
+        for (const [value, text, groupLabel] of input.options) {
           const option = document.createElement('option');
           option.value = value;
           option.textContent = text;
-          control.append(option);
+          if (!groupLabel) { control.append(option); continue; }
+          if (!optgroups.has(groupLabel)) {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = groupLabel;
+            optgroups.set(groupLabel, optgroup);
+            control.append(optgroup);
+          }
+          optgroups.get(groupLabel).append(option);
         }
         control.value = values[input.id];
         row.append(label, control);
@@ -116,19 +125,23 @@ export function renderForm(form, inputs, groups, values) {
   }
 }
 
-export function readForm(form, inputs) {
+// A page may spread one calculator's inputs over several forms (the plot
+// range below the graphs, for instance); these accept one form or a list.
+const formControl = (forms, id) => [forms].flat().map(f => f.elements[id]).find(Boolean);
+
+export function readForm(forms, inputs) {
   const raw = {};
   for (const input of inputs) {
-    const el = form.elements[input.id];
+    const el = formControl(forms, input.id);
     raw[input.id] = input.type === 'checkbox' ? el.checked : el.value;
   }
   return raw;
 }
 
-// Dim and disable inputs whose `when` checkbox is off; mark invalid ones.
-export function syncForm(form, inputs, raw, invalidIds = new Set()) {
+// Dim and disable inputs whose `when` condition is off; mark invalid ones.
+export function syncForm(forms, inputs, raw, invalidIds = new Set()) {
   for (const input of inputs) {
-    const el = form.elements[input.id];
+    const el = formControl(forms, input.id);
     const off = !isInputActive(input, raw);
     el.disabled = off;
     el.closest('.calc-field').classList.toggle('is-off', off);
@@ -170,7 +183,7 @@ const el = (name, attrs = {}, parent) => {
 
 // series: [{ key, name, color (CSS var), values: number|null per x }]
 // options: { x: [...], xLabel, yLabel, yLog, yMin, yMax, marker: {x, y} | null,
-//            formatX, formatY, message }
+//            band: {lo, hi, label} | null, formatX, formatY, message }
 export function lineChart(host, table, options) {
   host.textContent = '';
   if (table) table.textContent = '';
@@ -222,6 +235,15 @@ export function lineChart(host, table, options) {
   const svg = el('svg', { viewBox: `0 0 ${width} ${height}`, width, height, role: 'img', tabindex: '0',
     'aria-label': `${options.yLabel} against ${options.xLabel}. Use the left and right arrow keys to read values; the data table below lists them all.` });
   host.append(svg);
+
+  // shaded x interval (a source bandwidth), clipped to the plot
+  if (options.band) {
+    const a = Math.max(xs.lo, options.band.lo), b = Math.min(xs.hi, options.band.hi);
+    if (b > a) {
+      const rect = el('rect', { class: 'chart-band', x: sx(a), y: pad.top, width: Math.max(1, sx(b) - sx(a)), height: plotH }, svg);
+      if (options.band.label) el('title', {}, rect).textContent = options.band.label;
+    }
+  }
 
   // grid and ticks
   for (const t of ys.ticks) {

@@ -86,8 +86,10 @@ reference implementations; see [docs/validation.md](docs/validation.md) and
 - **Example setups** — background, model limits and references for each
   built-in example.
 - **Calculators** — interactive pages for individual physical models, running
-  workbench models and frequency relations: Sellmeier dispersion curves,
-  SHG and CARS wavelength conversions, and parametric amplification.
+  workbench models and frequency relations: material dispersion (GVD, TOD and
+  pulse stretching), nonlinear frequency conversion (SHG, THG, SFG, DFG, OPO),
+  coherent Raman scattering (CARS, CSRS, resolution) and parametric
+  amplification.
 - **Community** — setups shared by users; accepted submissions get their own
   page and appear in the app's community menu.
 

@@ -2,80 +2,178 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { GLASSES, glassDispersion, glassIndex, glassGVD } from '../sketch/js/glass.js';
+import { GLASSES, glassIndex, glassGVD, glassGroupIndex, glassAbbe } from '../sketch/js/glass.js';
+import { MATERIALS, MATERIAL_OPTIONS, materialDispersion, materialAbbe, isInMaterialRange } from '../calculators/dispersion/materials.js';
 import { DISPERSION_DEFAULTS, computeDispersion, dispersionScan } from '../calculators/dispersion/dispersion-calculator.js';
-import { SHG_DEFAULTS, computeShg } from '../calculators/shg/shg-calculator.js';
-import { CARS_DEFAULTS, computeCars } from '../calculators/cars/cars-calculator.js';
-const close = (got, want, tol = 1e-9) => assert.ok(Math.abs(got - want) < tol, `${got} != ${want}`);
-const dispersion = values => computeDispersion({ ...DISPERSION_DEFAULTS, ...values });
-const shg = values => computeShg({ ...SHG_DEFAULTS, ...values });
-const cars = values => computeCars({ ...CARS_DEFAULTS, ...values });
+import { CONVERSION_DEFAULTS, computeConversion } from '../calculators/nonlinear-conversion/conversion-calculator.js';
+import { CRS_DEFAULTS, computeCrs, RESOLUTION_DEFAULTS, computeResolution, RESOLUTION_PREFACTOR_PS_CM } from '../calculators/coherent-raman/crs-calculator.js';
+import { isInputActive } from '../calculators/assets/calculator-inputs.js';
 
-test('continuous glass dispersion refuses invalid domains while tracer getters keep clamping', () => {
-  for (const [id, glass] of GLASSES) {
-    const [lo, hi] = glass.range;
-    for (const nm of [lo, hi]) assert.ok(glassDispersion(id, nm));
-    for (const bad of [lo - 0.1, hi + 0.1, NaN, Infinity, '', null, '800']) assert.equal(glassDispersion(id, bad), null);
-    assert.equal(glassIndex(id, lo - 10), glassIndex(id, lo));
-    assert.equal(glassGVD(id, hi + 10), glassGVD(id, hi));
+const close = (got, want, tol = 1e-9) => assert.ok(Math.abs(got - want) <= tol * Math.max(1, Math.abs(want)), `${got} != ${want}`);
+const dispersion = values => computeDispersion({ ...DISPERSION_DEFAULTS, ...values });
+const conversion = values => computeConversion({ ...CONVERSION_DEFAULTS, ...values });
+const crs = values => computeCrs({ ...CRS_DEFAULTS, ...values });
+const resolution = values => computeResolution({ ...RESOLUTION_DEFAULTS, ...values });
+
+test('the four workbench glasses evaluate the canvas catalogue curves', () => {
+  for (const id of GLASSES.keys()) {
+    assert.ok(MATERIALS.has(id), id);
+    const [lo, hi] = GLASSES.get(id).range;
+    // Whole nm, where the tracer's 0.1 nm and 1 nm buckets land exactly.
+    for (const nm of [lo, 587, 800, 1064, hi]) {
+      const d = materialDispersion(id, nm);
+      close(d.index, glassIndex(id, nm), 1e-14);
+      close(d.groupIndex, glassGroupIndex(id, nm), 1e-14);
+      close(d.gvdFs2PerMm, glassGVD(id, nm), 1e-12);
+    }
+    close(materialAbbe(id), glassAbbe(id), 1e-12);
   }
-  assert.equal(glassDispersion('unknown', 800), null);
-  assert.notEqual(glassDispersion('silica', 800.25).index, glassIndex('silica', 800.25));
-  assert.notEqual(glassDispersion('silica', 800.25).gvdFs2PerMm, glassGVD('silica', 800.25));
 });
 
-test('dispersion scans every glass including endpoints, normal and anomalous silica GVD', () => {
-  for (const [glass, { range: [loNm, hiNm] }] of GLASSES) {
-    const r = dispersion({ glass, loNm, hiNm });
-    assert.equal(r.ok, true);
+test('materials refuse wavelengths outside their fit domain instead of clamping', () => {
+  for (const [id, m] of MATERIALS) {
+    const [lo, hi] = m.range;
+    assert.ok(materialDispersion(id, lo) && materialDispersion(id, hi), id);
+    for (const bad of [lo - 0.01, hi + 0.01, NaN, Infinity, '800', null]) assert.equal(materialDispersion(id, bad), null, `${id} ${bad}`);
+    assert.equal(isInMaterialRange(id, lo - 0.01), false);
+  }
+  assert.equal(materialDispersion('unknown', 800), null);
+  // Abbe needs the F, d and C lines inside the domain.
+  assert.equal(materialAbbe('si'), null);
+  assert.equal(materialAbbe('znse'), null);
+  assert.ok(MATERIAL_OPTIONS.every(([id, label, group]) => MATERIALS.has(id) && label && group));
+});
+
+test('dispersion: GDD, TOD, delays and pulse stretching follow from the material values', () => {
+  const r = dispersion({});
+  assert.equal(r.ok, true);
+  close(r.gddFs2, 10 * r.gvdFs2PerMm);
+  close(r.todFs3, 10 * r.todFs3PerMm);
+  assert.ok(r.delaySpreadFs > 0, 'normal dispersion delays the blue edge');
+  // The edge-to-edge delay agrees with GDD × Δω to first order for a narrow band.
+  const narrow = dispersion({ bandwidthNm: 1 });
+  const dOmega = 2 * Math.PI * 299.792458 * 1 / 800 ** 2;
+  close(narrow.delaySpreadFs, narrow.gddFs2 * dOmega, 1e-4);
+  assert.ok(r.outputFs > r.transformLimitFs);
+  assert.ok(dispersion({ shape: 'sech2' }).transformLimitFs < r.transformLimitFs);
+  const zero = dispersion({ thicknessMm: 0 });
+  assert.equal(zero.gddFs2, 0);
+  close(zero.outputFs, zero.transformLimitFs);
+  const mono = dispersion({ bandwidthNm: 0 });
+  assert.equal(mono.ok, true);
+  assert.equal(mono.transformLimitFs, null);
+  assert.equal(mono.delaySpreadFs, null);
+  assert.ok(dispersion({ wavelengthNm: 1550 }).gvdFs2PerMm < 0);
+  // A band edge outside the domain removes only the delay spread.
+  const edge = dispersion({ material: 'water', wavelengthNm: 1120, bandwidthNm: 40 });
+  assert.equal(edge.ok, true);
+  assert.equal(edge.delaySpreadFs, null);
+  assert.ok(Number.isFinite(edge.gddFs2));
+});
+
+test('dispersion declines invalid inputs and out-of-domain wavelengths', () => {
+  for (const bad of [{ material: 'fake' }, { wavelengthNm: 3800 }, { material: 'si', wavelengthNm: 800 },
+    { material: 'water', wavelengthNm: 1200 }, { bandwidthNm: 800 }, { bandwidthNm: -1 }, { thicknessMm: -1 },
+    { shape: 'square' }, { wavelengthNm: Infinity }, { plotRange: 'custom', loNm: 200 },
+    { plotRange: 'custom', loNm: 1000, hiNm: 1000.5 }, { plotRange: 'nowhere' }]) {
+    assert.equal(dispersion(bad).ok, false, JSON.stringify(bad));
+  }
+  // Out-of-domain plot fields are ignored unless the range is custom.
+  assert.equal(dispersion({ loNm: 100, hiNm: 99 }).ok, true);
+});
+
+test('dispersion plot ranges: automatic, whole domain and custom, all inside the fit', () => {
+  const auto = dispersion({ material: 'water', wavelengthNm: 800 });
+  assert.deepEqual(auto.plot, [400, 1129]);
+  assert.deepEqual(dispersion({ plotRange: 'domain' }).plot, [210, 3710]);
+  assert.deepEqual(dispersion({ plotRange: 'custom', loNm: 500, hiNm: 900 }).plot, [500, 900]);
+  for (const id of MATERIALS.keys()) {
+    const [lo, hi] = MATERIALS.get(id).range;
+    const r = dispersion({ material: id, wavelengthNm: Math.sqrt(lo * hi), plotRange: 'domain' });
     const scan = dispersionScan(r);
     assert.equal(scan.length, 241);
-    assert.equal(scan[0].wavelengthNm, loNm);
-    assert.equal(scan.at(-1).wavelengthNm, hiNm);
-    assert.ok(scan.every(p => Object.values(p).every(Number.isFinite)));
-  }
-  assert.ok(dispersion({ wavelengthNm: 800 }).gvdFs2PerMm > 0);
-  assert.ok(dispersion({ wavelengthNm: 1550 }).gvdFs2PerMm < 0);
-  assert.equal(dispersion({ lengthMm: 0 }).gddFs2, 0);
-  close(dispersion({ lengthMm: 10 }).gddFs2, 10 * dispersion({}).gvdFs2PerMm);
-  for (const bad of [{ glass: 'fake' }, { hiNm: 400 }, { hiNm: 400.5 }, { loNm: 200 },
-    { glass: 'nsf11', loNm: 369.99 }, { glass: 'nbk7', hiNm: 2501 }, { lengthMm: -1 }, { wavelengthNm: Infinity }]) {
-    assert.equal(dispersion(bad).ok, false);
+    assert.equal(scan[0].wavelengthNm, lo);
+    assert.equal(scan.at(-1).wavelengthNm, hi);
+    assert.ok(scan.every(p => [p.index, p.groupIndex, p.gvdFs2PerMm, p.todFs3PerMm].every(Number.isFinite)), id);
   }
 });
 
-test('SHG forward and reverse agree at fractional wavelengths and input endpoints', () => {
-  const forward = shg({ wavelengthNm: 1030.25 });
-  const reverse = shg({ mode: 'harmonic', wavelengthNm: forward.harmonicNm });
-  close(reverse.fundamentalNm, 1030.25);
-  close(forward.harmonicTHz, 2 * forward.fundamentalTHz);
-  assert.equal(shg({ wavelengthNm: 100 }).harmonicNm, 50);
-  assert.equal(shg({ mode: 'harmonic', wavelengthNm: 20000 }).fundamentalNm, 40000);
-  for (const wavelengthNm of ['', NaN, Infinity, -5, 0, 99, 20001]) assert.equal(shg({ wavelengthNm }).ok, false);
-  assert.equal(shg({ mode: 'invalid' }).ok, false);
+test('nonlinear conversion: harmonics both ways, SFG, DFG and OPO', () => {
+  const nm = r => r.waves.map(w => w.wavelengthNm);
+  assert.deepEqual(nm(conversion({})), [1064, 532]);
+  close(nm(conversion({ process: 'thg' }))[1], 1064 / 3);
+  assert.deepEqual(nm(conversion({ process: 'thg', known: 'harmonic', harmonicInputNm: 355 })), [1065, 355]);
+  close(nm(conversion({ process: 'sfg' }))[2], 1 / (1 / 800 + 1 / 1040));
+  close(nm(conversion({ process: 'dfg', wave1Nm: 1040, wave2Nm: 800 }))[2], 1 / (1 / 800 - 1 / 1040));
+  close(nm(conversion({ process: 'sfg', wave1Nm: 1030, wave2Nm: 1030 }))[2], 515);
+  const opo = conversion({ process: 'opo' });
+  close(nm(opo)[2], 1030 * 1550 / 520);
+  close(opo.signalShare + opo.idlerShare, 1);
+  // Entering the idler gives the same pair as entering the signal.
+  const fromIdler = conversion({ process: 'opo', outputNm: nm(opo)[2] });
+  close(nm(fromIdler)[1], 1550);
+  const degenerate = conversion({ process: 'opo', outputNm: 2060 });
+  assert.equal(degenerate.degenerate, true);
+  for (const w of degenerate.waves) close(w.photonEv, 1239.8419843320026 / w.wavelengthNm);
 });
 
-test('CARS both modes round-trip and distinct probe controls the emitted frequency', () => {
-  const forward = cars({});
-  close(forward.ramanShiftCm, 2500);
-  close(forward.antiStokesNm, 2000 / 3);
-  const inverse = cars({ mode: 'shift', ramanShiftCm: forward.ramanShiftCm, stokesNm: '' });
-  close(inverse.stokesNm, 1000);
-  close(inverse.antiStokesNm, forward.antiStokesNm);
-  close(cars({ separateProbe: true, probeNm: 700 }).antiStokesNm, 28000 / 47);
-  assert.equal(cars({ probeNm: '', ramanShiftCm: '' }).ok, true); // disabled fields ignored
-  close(cars({ stokesNm: 800.000001 }).ramanShiftCm, 1e7 * 0.000001 / 800 / 800.000001, 1e-10);
+test('nonlinear conversion declines impossible inputs', () => {
+  for (const bad of [{ process: 'dfg', wave1Nm: 900, wave2Nm: 900 }, { process: 'opo', outputNm: 1030 },
+    { process: 'opo', outputNm: 900 }, { process: 'shg', harmonicInputNm: 99 }, { process: 'xpm' },
+    { process: 'shg', known: 'sideways' }, { process: 'sfg', wave1Nm: '' }]) {
+    assert.equal(conversion(bad).ok, false, JSON.stringify(bad));
+  }
+  // Inactive fields are ignored.
+  assert.equal(conversion({ process: 'shg', wave1Nm: '', pumpNm: 'x' }).ok, true);
 });
 
-test('CARS declines reversed/equal wavelengths, impossible shifts and out-of-scope inferred Stokes', () => {
+test('coherent Raman: three input modes agree, CARS and CSRS on either side', () => {
+  const a = crs({});
+  close(a.ramanShiftCm, 1e7 * (1 / 800 - 1 / 1040));
+  close(a.antiStokesNm, 650);
+  close(a.csrsNm, 1 / (2 / 1040 - 1 / 800));
+  const b = crs({ mode: 'pump-shift', ramanShiftCm: a.ramanShiftCm, stokesNm: '' });
+  close(b.stokesNm, 1040);
+  const c = crs({ mode: 'stokes-shift', ramanShiftCm: a.ramanShiftCm, pumpNm: '' });
+  close(c.pumpNm, 800);
+  close(c.csrsNm, a.csrsNm);
+  const probe = crs({ separateProbe: true, probeNm: 532 });
+  close(1e7 / probe.antiStokesNm - 1e7 / 532, a.ramanShiftCm, 1e-9);
+  close(1e7 / 532 - 1e7 / probe.csrsNm, a.ramanShiftCm, 1e-9);
+  // No CSRS when the shift exceeds the probing (Stokes) frequency; CARS remains.
+  const noCsrs = crs({ pumpNm: 600, stokesNm: 1300 });
+  assert.equal(noCsrs.ok, true);
+  assert.equal(noCsrs.csrsNm, null);
+  assert.ok(noCsrs.antiStokesNm > 0);
+  close(crs({ stokesNm: 800.000001 }).ramanShiftCm, 1e7 * 0.000001 / 800 / 800.000001, 1e-10);
+});
+
+test('coherent Raman declines reversed beams, impossible shifts and inferred waves out of scope', () => {
   for (const bad of [
-    { stokesNm: 800 }, { stokesNm: 700 }, { pumpNm: '' }, { stokesNm: NaN }, { separateProbe: true, probeNm: Infinity },
-    { mode: 'shift', ramanShiftCm: 0 }, { mode: 'shift', ramanShiftCm: -1 },
-    { mode: 'shift', pumpNm: 2000, ramanShiftCm: 5000 },
-    { mode: 'shift', pumpNm: 2000, ramanShiftCm: 4999.99999 },
-    { mode: 'shift', pumpNm: 2000, ramanShiftCm: 6000 },
-    { mode: 'shift', pumpNm: 20000, ramanShiftCm: 0.1 },
-    { pumpNm: 100, stokesNm: 20000 }, { mode: 'shift', ramanShiftCm: 10001 }, { mode: 'fake' },
-  ]) assert.equal(cars(bad).ok, false, JSON.stringify(bad));
-  assert.equal(cars({ mode: 'shift', pumpNm: 100, ramanShiftCm: 10000 }).ok, true);
+    { stokesNm: 800 }, { stokesNm: 700 }, { pumpNm: '' }, { separateProbe: true, probeNm: Infinity },
+    { mode: 'pump-shift', ramanShiftCm: 0 }, { mode: 'stokes-shift', ramanShiftCm: -1 },
+    { mode: 'pump-shift', pumpNm: 2000, ramanShiftCm: 5000 }, { mode: 'pump-shift', pumpNm: 20000, ramanShiftCm: 0.1 },
+    { mode: 'stokes-shift', stokesNm: 105, ramanShiftCm: 10000 }, { pumpNm: 100, stokesNm: 20000 },
+    { mode: 'pump-shift', ramanShiftCm: 10001 }, { mode: 'fake' },
+  ]) assert.equal(crs(bad).ok, false, JSON.stringify(bad));
+  assert.equal(crs({ mode: 'pump-shift', pumpNm: 100, ramanShiftCm: 10000 }).ok, true);
+});
+
+test('coherent Raman resolution: Eq. (5) of Mohseni et al., symmetric and bounded by the shorter pulse', () => {
+  close(RESOLUTION_PREFACTOR_PS_CM, 20.8, 0.0025);
+  const r = resolution({});
+  close(r.resolutionCm, RESOLUTION_PREFACTOR_PS_CM * Math.SQRT1_2);
+  close(resolution({ pumpPs: 1, stokesPs: 3 }).resolutionCm, resolution({ pumpPs: 3, stokesPs: 1 }).resolutionCm);
+  assert.ok(resolution({ pumpPs: 1, stokesPs: 10000 }).resolutionCm < resolution({ pumpPs: 1, stokesPs: 1 }).resolutionCm);
+  close(r.resolutionGHz, r.resolutionCm * 29.9792458);
+  for (const bad of [{ pumpPs: 0 }, { stokesPs: -1 }, { pumpPs: '' }, { stokesPs: 1e5 }]) assert.equal(resolution(bad).ok, false);
+});
+
+test('inputs: `when` conditions accept a checkbox, one value or a list of values', () => {
+  assert.equal(isInputActive({ when: 'probe' }, { probe: true }), true);
+  assert.equal(isInputActive({ when: 'probe' }, { probe: false }), false);
+  assert.equal(isInputActive({ when: 'mode', whenValue: 'a' }, { mode: 'a' }), true);
+  assert.equal(isInputActive({ when: 'mode', whenValue: ['a', 'b'] }, { mode: 'b' }), true);
+  assert.equal(isInputActive({ when: 'mode', whenValue: ['a', 'b'] }, { mode: 'c' }), false);
+  assert.equal(isInputActive({ when: 'range', whenValue: false }, { range: false }), true);
 });

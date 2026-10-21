@@ -3,34 +3,60 @@
 import { DISPERSION_INPUTS, DISPERSION_DEFAULTS, computeDispersion, dispersionScan } from './dispersion-calculator.js';
 import { mountCalculator } from '../assets/simple-calculator-page.js';
 import { formatNumber } from '../assets/calculator-kit.js';
+
+const shapeName = { gauss: 'Gaussian', sech2: 'sech²' };
+
 mountCalculator({ inputs: DISPERSION_INPUTS, defaults: DISPERSION_DEFAULTS, groups: {
-  material: { title: 'Material and thickness' }, plot: { title: 'Wavelength interval' },
+  material: { title: 'Material properties' }, source: { title: 'Laser source' },
+  plot: { title: 'Plot range', form: 'plot-form' },
 }, compute: computeDispersion,
-  rows: r => [['Refractive index n', r.index, '', 8], ['Group index ng', r.groupIndex, '', 8],
-    ['GVD β₂', r.gvdFs2PerMm, 'fs²/mm'], ['GDD through the glass', r.gddFs2, 'fs²'], ['Abbe number Vd', r.abbe]],
-  notes: r => [`Supported fit domain: ${r.range[0]}–${r.range[1]} nm; this is not a transmission guarantee.`,
-    r.gvdFs2PerMm >= 0 ? 'Normal dispersion (positive GVD).' : 'Anomalous dispersion (negative GVD).',
-    ...(r.values.wavelengthNm < r.values.loNm || r.values.wavelengthNm > r.values.hiNm
-      ? ['The evaluated wavelength lies outside the plot interval. Extend the interval to show its marker.'] : []),
-    'Continuous analytic Sellmeier evaluation. Catalogue fit uncertainty, temperature and absorption are not included.'],
+  rows: r => [
+    { group: 'Material at the central wavelength' },
+    ['Phase index n', r.index, '', 7], ['Group index', r.groupIndex, '', 7],
+    ['GVD β₂', r.gvdFs2PerMm, 'fs²/mm'], ['TOD β₃', r.todFs3PerMm, 'fs³/mm'], ['Abbe number', r.abbe, '', 4],
+    { group: `Through ${formatNumber(r.values.thicknessMm, 6)} mm` },
+    ['Group delay vs. vacuum', r.delayVsVacuumFs / 1000, 'ps'],
+    ['GDD', r.gddFs2, 'fs²'], ['TOD', r.todFs3, 'fs³'],
+    ['Delay spread across the bandwidth (blue − red)', r.delaySpreadFs, 'fs'],
+    { group: `${shapeName[r.values.shape]} pulse, transform-limited at the input` },
+    ['Input duration (FWHM)', r.transformLimitFs, 'fs'], ['Output duration, GDD only (FWHM)', r.outputFs, 'fs'],
+  ],
+  notes: r => {
+    const v = r.values, out = [];
+    out.push(`${r.material.label}: ${r.material.conditions}. Fit domain ${r.range[0]}–${r.range[1]} nm; this is not a transmission guarantee.`);
+    out.push(r.gvdFs2PerMm >= 0 ? 'Normal dispersion (positive GVD) at the central wavelength.' : 'Anomalous dispersion (negative GVD) at the central wavelength.');
+    if (r.material.birefringent) out.push('Principal-axis index of a birefringent crystal: valid for light polarized along that axis. Other propagation directions need the angle-dependent index, which is not modelled.');
+    if (!r.band) out.push('Bandwidth 0: a monochromatic beam has no pulse duration or delay spread.');
+    else {
+      if (r.delaySpreadFs === null) out.push('A bandwidth edge lies outside the fit domain, so the delay spread is not given.');
+      if (v.bandwidthNm > 0.1 * v.wavelengthNm) out.push('The transform limit uses Δν = cΔλ/λ₀², a small-bandwidth approximation that is off by a few percent beyond about 10 % of λ₀.');
+      out.push('The output duration includes GDD only. TOD, listed above, also distorts the pulse and is not included in that number.');
+    }
+    out.push(`Graphs plot ${formatNumber(r.plot[0], 6)}–${formatNumber(r.plot[1], 6)} nm.`);
+    if (v.wavelengthNm < r.plot[0] || v.wavelengthNm > r.plot[1]) out.push('The central wavelength lies outside the plot range, so the graphs show no marker.');
+    return out;
+  },
   graphs: r => {
     const scan = dispersionScan(r), x = scan.map(p => p.wavelengthNm);
-    const chart = (key, yLabel, series) => {
+    const band = r.band ? { lo: r.band[0], hi: r.band[1], label: 'Laser bandwidth (FWHM)' } : null;
+    const inPlot = r.values.wavelengthNm >= r.plot[0] && r.values.wavelengthNm <= r.plot[1];
+    const chart = (key, yLabel, series, throughZero) => {
       const all = series.flatMap(s => s.values), lo = Math.min(...all), hi = Math.max(...all);
-      const pad = Math.max((hi - lo) * 0.08, 1e-5);
-      return { x, xLabel: 'Vacuum wavelength (nm)', xUnit: 'nm', yLabel, series,
-        yMin: key === 'gvdFs2PerMm' ? Math.min(0, lo - pad) : lo - pad,
-        yMax: key === 'gvdFs2PerMm' ? Math.max(0, hi + pad) : hi + pad,
+      const pad = Math.max((hi - lo) * 0.08, Math.abs(hi) * 1e-6, 1e-6);
+      return { x, xLabel: 'Vacuum wavelength (nm)', xUnit: 'nm', yLabel, series, band,
+        yMin: throughZero ? Math.min(0, lo - pad) : lo - pad,
+        yMax: throughZero ? Math.max(0, hi + pad) : hi + pad,
         formatY: n => formatNumber(n, key === 'index' ? 6 : 4),
-        marker: r.values.wavelengthNm >= r.values.loNm && r.values.wavelengthNm <= r.values.hiNm
-          ? { x: r.values.wavelengthNm, y: r[key] } : null };
+        marker: inPlot ? { x: r.values.wavelengthNm, y: r[key] } : null };
     };
     return {
       index: chart('index', 'Refractive index', [
         { name: 'Phase index n', color: '--series-1', values: scan.map(p => p.index) },
-        { name: 'Group index ng', color: '--series-2', values: scan.map(p => p.groupIndex) }]),
+        { name: 'Group index', color: '--series-2', values: scan.map(p => p.groupIndex) }]),
       gvd: chart('gvdFs2PerMm', 'GVD β₂ (fs²/mm)', [
-        { name: 'GVD β₂', color: '--series-1', values: scan.map(p => p.gvdFs2PerMm) }]),
+        { name: 'GVD β₂', color: '--series-1', values: scan.map(p => p.gvdFs2PerMm) }], true),
+      tod: chart('todFs3PerMm', 'TOD β₃ (fs³/mm)', [
+        { name: 'TOD β₃', color: '--series-1', values: scan.map(p => p.todFs3PerMm) }], true),
     };
   },
 });
