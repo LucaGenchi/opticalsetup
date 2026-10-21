@@ -16,7 +16,7 @@ const conversion = values => computeConversion({ ...CONVERSION_DEFAULTS, ...valu
 const crs = values => computeCrs({ ...CRS_DEFAULTS, ...values });
 const resolution = values => computeResolution({ ...RESOLUTION_DEFAULTS, ...values });
 
-test('the four workbench glasses evaluate the canvas catalogue curves', () => {
+test('every workbench glass evaluates the canvas catalogue curve', () => {
   for (const id of GLASSES.keys()) {
     assert.ok(MATERIALS.has(id), id);
     const [lo, hi] = GLASSES.get(id).range;
@@ -29,6 +29,11 @@ test('the four workbench glasses evaluate the canvas catalogue curves', () => {
     }
     close(materialAbbe(id), glassAbbe(id), 1e-12);
   }
+  // Every SCHOTT glass the calculator offers is one the canvas can place, so
+  // the two lists cannot drift apart again.
+  const schott = MATERIAL_OPTIONS.filter(([, , group]) => group === 'Optical glass (SCHOTT)').map(([id]) => id);
+  assert.deepEqual(schott, ['nbk7', 'nfk51a', 'nsf5', 'nsf10', 'nsf11', 'nsf14', 'nsf57', 'nlasf9']);
+  for (const id of schott) assert.ok(GLASSES.has(id), `${id} is in the canvas catalogue`);
 });
 
 test('materials refuse wavelengths outside their fit domain instead of clamping', () => {

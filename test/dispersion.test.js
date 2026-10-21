@@ -7,7 +7,7 @@ import {
   createElement, estimatedThinLensThicknessMm, registry,
 } from '../sketch/js/elements.js';
 import {
-  gaussianPulseDurationAfterGDD, glassAbbe, glassGVD, glassIndex,
+  gaussianPulseDurationAfterGDD, glassAbbe, glassGVD, glassIndex, GLASSES,
   glassWavelengthRange, isWavelengthInGlassRange, autocorrelationReading,
   crossCorrelationReading, crossCorrelationPair, correlationShapeValue,
   bestScopeSpanPs, crossScopeHalfSpanFs, CROSS_SCOPE_SPANS_PS, DEFAULT_SCOPE_SPAN_PS,
@@ -17,6 +17,7 @@ import '../sketch/js/detector-instruments.js';
 import { registry as reg } from '../sketch/js/elements.js';
 import { pulseEnvelopeAtOpticalPath } from '../sketch/js/pulses.js';
 import { parseSketch } from '../sketch/js/state.js';
+import { DISPERSION_DEFAULTS, computeDispersion } from '../calculators/dispersion/dispersion-calculator.js';
 
 const sketchFile = elements => JSON.stringify({ app: 'optics2d', version: 1, elements, beams: [] });
 
@@ -35,6 +36,11 @@ test('Sellmeier curves reproduce catalogue index, Abbe number, GVD, and silica z
     ['silica', 1.45846234, 67.82, 36.1],
     ['nsf5', 1.67270302, 32.25, 130],
     ['nsf11', 1.78471410, 25.68, 187],
+    ['nfk51a', 1.48656, 84.47, 33.8],
+    ['nsf10', 1.72828, 28.53, 157],
+    ['nsf14', 1.76182, 26.53, 177],
+    ['nsf57', 1.84666, 23.78, 219],
+    ['nlasf9', 1.85025, 32.17, 165],
   ];
   for (const [id, nd, abbe, gvd800] of catalogue) {
     assert.ok(Math.abs(glassIndex(id, 587.6) - nd) < 1e-5, `${id} d-line index`);
@@ -183,11 +189,12 @@ test('pulse-compressor GDD is clamped at the saved-scene boundary', () => {
 // ---------------- Sellmeier resonance poles ----------------
 
 test('every catalogue glass stays finite and physical across the whole traced band', () => {
-  // Each Sellmeier fit has resonance poles, and two of them sit inside the
-  // app's own wavelength span: N-SF5 at 242.7 nm and N-SF11 at 249.6 nm.
+  // Each Sellmeier fit has resonance poles, and the flints' sit inside the
+  // app's own wavelength span: N-SF5 at 242.7 nm, N-SF11 at 249.6 nm and
+  // N-SF57 at 253.1 nm.
   // Evaluating across one gave an index of 21 and a GVD of 1.4e9 fs²/mm —
   // a 100 fs pulse through a glass rod reported as 2.3 milliseconds.
-  for (const id of ['nbk7', 'silica', 'nsf5', 'nsf11']) {
+  for (const id of GLASSES.keys()) {
     const indices = [], gvds = [];
     for (let wl = 150; wl <= 2500; wl += 1) {
       const n = glassIndex(id, wl), g = glassGVD(id, wl);
@@ -293,6 +300,33 @@ test('an autocorrelator measures the STRETCHED duration a scene actually deliver
     'a matched assumption recovers the delivered duration, not the source setting');
   assert.ok(trace.inferredPulseWidthFs > 4 * laser.params.pulseWidthFs,
     'and that is far longer than what the laser was set to');
+});
+
+test('a traced rod of every catalogue glass matches the dispersion calculator', () => {
+  // The canvas and calculators/dispersion share one Sellmeier source; this
+  // checks the whole chain — trace, path GDD, stretched width — rather than
+  // only the material functions. 25 mm, 800 nm, 50 fs transform-limited
+  // Gaussian, whose bandwidth the calculator is given as 0.441 λ²/(cτ).
+  const bandwidthNm = 0.441 * 800 ** 2 / (299.792458 * 50);
+  for (const id of GLASSES.keys()) {
+    const laser = createElement('pulsedlaser', 60, 0);
+    Object.assign(laser.params, {
+      wavelength: 800, beamMode: 'line', pulseWidthFs: 50,
+      transformLimited: true, pulseShape: 'gauss',
+    });
+    const rod = createElement('glassrod', 300, 0);
+    Object.assign(rod.params, { material: id, rodlen: 25, dia: 20 });
+    const meter = createElement('autocorrelator', 520, 0);
+    meter.params.aperture = 40;
+    traceAll([laser, rod, meter], []);
+    const pulse = detectorReading(meter.id).pulse;
+    const calc = computeDispersion({
+      ...DISPERSION_DEFAULTS, material: id, thicknessMm: 25, wavelengthNm: 800, bandwidthNm, shape: 'gauss',
+    });
+    assert.ok(Math.abs(pulse.gddFs2 / calc.gddFs2 - 1) < 1e-12, `${id} GDD ${pulse.gddFs2} vs ${calc.gddFs2}`);
+    assert.ok(Math.abs(pulse.stretchedPulseWidthFs / calc.outputFs - 1) < 1e-9,
+      `${id} stretched width ${pulse.stretchedPulseWidthFs} vs ${calc.outputFs}`);
+  }
 });
 
 test('an autocorrelator on a detector screen draws its trace and the duration', () => {

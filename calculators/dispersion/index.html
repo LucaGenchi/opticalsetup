@@ -106,7 +106,7 @@
     <dl class="calc-facts" aria-label="About this calculator">
       <div><dt>Model</dt><dd>Published room-temperature dispersion fits with analytic derivatives to third order. No absorption, temperature or stress correction.</dd></div>
       <div><dt>Evidence</dt><dd>Equations checked against independent Python references, with published or exact algebraic anchors. These checks do not establish experimental accuracy.</dd></div>
-      <div><dt>Code</dt><dd>The <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/calculators/dispersion/materials.js">calculator’s material module</a>; the four workbench glasses reuse the <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/sketch/js/glass.js">canvas catalogue</a>’s coefficients.</dd></div>
+      <div><dt>Code</dt><dd>The <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/calculators/dispersion/materials.js">calculator’s material module</a>; the workbench glasses (every SCHOTT glass here, and fused silica) reuse the <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/sketch/js/glass.js">canvas catalogue</a>’s coefficients.</dd></div>
     </dl>
 
     <nav class="calc-toc" aria-label="On this page">
@@ -165,7 +165,7 @@ s76,-153,76,-153s77,-151,77,-151c0.7,0.7,35.7,202,105,604c67.3,400.7,102,602.7,1
 <tr><th scope="row">Silicon, Si</th><td>n² − 1 = Σ Bλ²/(λ² − C)</td><td>B1 = 10.6684293, C1 = 0.09091219073<br>B2 = 0.0030434748, C2 = 1.287660172<br>B3 = 1.54133408, C3 = 1218816</td><td>1357–11040</td><td>26 °C; purity not stated by the source</td><td>not stated</td><td><a class="cite" href="#ref-10">[10]</a><a class="cite" href="#ref-9">[9]</a></td></tr>
 <tr><th scope="row">Water, H₂O (distilled)</th><td>n² − 1 = Σ Bλ²/(λ² − C)</td><td>B1 = 0.5684027565, C1 = 0.005101829712<br>B2 = 0.1726177391, C2 = 0.01821153936<br>B3 = 0.02086189578, C3 = 0.02620722293<br>B4 = 0.1130748688, C4 = 10.69792721</td><td>182–1129</td><td>20.0 °C; absolute index</td><td>vacuum (absolute)</td><td><a class="cite" href="#ref-11">[11]</a></td></tr>
 <tr><th scope="row">Air (standard, dry)</th><td>n − 1 = Σ B/(C − λ⁻²)</td><td>B1 = 0.05792105, C1 = 238.0185<br>B2 = 0.00167917, C2 = 57.362</td><td>230–1690</td><td>15 °C, 101.325 kPa, dry, 450 ppm CO₂; absolute index</td><td>vacuum (absolute)</td><td><a class="cite" href="#ref-12">[12]</a></td></tr>
-</tbody></table></div><p>Fused silica, N-BK7, N-SF5 and N-SF11 are the canvas catalogue’s own entries, so this page and the tracer evaluate the same curves. The ordinary and extraordinary entries of sapphire, quartz and BBO are principal indices: they hold for light polarized perpendicular or parallel to the optic axis. A beam at another angle in a uniaxial crystal sees an angle-dependent extraordinary index, which is not modelled.</p>
+</tbody></table></div><p>Fused silica and all eight SCHOTT glasses are the canvas catalogue’s own entries, so this page and the tracer evaluate the same curves. The ordinary and extraordinary entries of sapphire, quartz and BBO are principal indices: they hold for light polarized perpendicular or parallel to the optic axis. A beam at another angle in a uniaxial crystal sees an angle-dependent extraordinary index, which is not modelled.</p>
       </section>
       <section id="precision">
         <h2 class="section-head sim"><span class="sw"></span>Precision and limits</h2>

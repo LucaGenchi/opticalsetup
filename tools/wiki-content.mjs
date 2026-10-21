@@ -959,7 +959,8 @@ export const wikiEntries = [
         <span class="w">R₁ &gt; 0</span> and <span class="w">R₂ &lt; 0</span>;
         <span class="w">R = 0</span> makes that face plane. The Shape readout names the
         resulting profile so the sign convention can be checked directly.</p>
-        <p>The selectable N-BK7, fused-silica, N-SF5, and N-SF11 models use each glass's
+        <p>The selectable catalogue glasses (fused silica and the SCHOTT N-BK7, N-FK51A,
+        N-SF5, N-SF10, N-SF11, N-SF14, N-SF57 and N-LASF9) use each glass's
         published d-line index and Abbe number${cite(4)}. If a requested radius is too
         small for the clear aperture, or the centre thickness would make the faces cross,
         the inspector shows the exact constructible geometry the tracer uses instead of
@@ -1827,8 +1828,9 @@ export const wikiEntries = [
         reflection instead of exiting, exactly as a real prism does. For dispersion,
         broadband and supercontinuum beams are sampled at several discrete wavelengths
         across their band, and each sample refracts with its own wavelength-dependent
-        index, so the beam visibly fans into a spectrum. N-BK7, fused silica, N-SF5, and
-        N-SF11 are selectable; existing sketches still default to N-BK7. Pulsed rays add
+        index, so the beam visibly fans into a spectrum. Fused silica and the SCHOTT
+        glasses N-BK7, N-FK51A, N-SF5, N-SF10, N-SF11, N-SF14, N-SF57 and N-LASF9 are
+        selectable; existing sketches still default to N-BK7. Pulsed rays add
         GDD from their actual traced distance inside the selected glass.</p>`,
       formulas: [
         { tex: 'n^2(\\lambda)=1+\\sum_i\\frac{B_i\\lambda^2}{\\lambda^2-C_i}', caption: 'The selected glass\'s published three-term Sellmeier curve.' },
@@ -1918,8 +1920,9 @@ export const wikiEntries = [
         custom cross-section (a light pipe's tapered profile, a freeform prism, a
         corrective wedge) refracts and totally-internally-reflects exactly like the
         fixed-geometry <a href="../prism/">Prism</a>, just without being locked to a
-        triangle. Choose a constant refractive index or one of four catalogue models:
-        N-BK7, fused silica, N-SF5, and N-SF11. A broadband beam through a catalogue-glass
+        triangle. Choose a constant refractive index or one of nine catalogue models:
+        fused silica and the SCHOTT glasses N-BK7, N-FK51A, N-SF5, N-SF10, N-SF11,
+        N-SF14, N-SF57 and N-LASF9. A broadband beam through a catalogue-glass
         boundary is sampled by wavelength and visibly disperses into a spectrum.</p>`,
       formulas: [],
       limitations: `<p>The catalogue options use published Sellmeier curves, so GDD
