@@ -3,7 +3,9 @@
 // Scans Examples/<Category>/*.json (native "Save" format sketch files) and
 // emits sketch/js/examples-data.js, the manifest the app's Examples dropdown
 // loads at runtime via fetch(). Run this after adding, renaming, or removing
-// a file under Examples/ — `node tools/build-examples.mjs`.
+// a file under Examples/ — `node tools/build-examples.mjs`. It also brings
+// the examples in the service worker's offline list up to date (see
+// tools/example-precache.mjs).
 //
 // A .json placed directly under Examples/, not inside a category
 // subdirectory, is standalone: it is listed before every category, outside
@@ -40,11 +42,13 @@ import { registry } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
 import '../sketch/js/etalon.js';
 import '../sketch/js/vipa.js';
+import { syncExamplePrecache } from './example-precache.mjs';
 
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const EXAMPLES_DIR = join(ROOT, 'Examples');
 const OUT_FILE = join(ROOT, 'sketch/js/examples-data.js');
+const WORKER_FILE = join(ROOT, 'sketch/service-worker.js');
 
 function humanize(baseName) {
   return baseName.replace(/[_-]+/g, ' ').trim();
@@ -150,6 +154,14 @@ export const examples = ${JSON.stringify(entries, null, 2)};
 `;
   await writeFile(OUT_FILE, body, 'utf-8');
   console.log(`Wrote ${entries.length} example(s) (${standaloneFiles.length} standalone) across ${categories.length} categor${categories.length === 1 ? 'y' : 'ies'} to sketch/js/examples-data.js`);
+
+  const worker = syncExamplePrecache(await readFile(WORKER_FILE, 'utf-8'), entries.map(entry => entry.path));
+  if (worker.changed) {
+    await writeFile(WORKER_FILE, worker.source, 'utf-8');
+    console.log('Updated the examples in sketch/service-worker.js PRECACHE_PATHS and bumped its cache generation');
+  } else {
+    console.log('sketch/service-worker.js already lists every example offline');
+  }
 }
 
 main().catch(err => { console.error(err); process.exitCode = 1; });

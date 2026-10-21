@@ -17,11 +17,13 @@ example (the filename, minus `.json`, *is* the example name).
    ```
    This validates every file against the real component registry — a typo'd
    element type or malformed file fails loudly here instead of breaking the
-   dropdown at runtime.
-5. Commit both the new `.json` file and the regenerated
-   `sketch/js/examples-data.js`.
+   dropdown at runtime. It also lists the example in the offline cache
+   (`PRECACHE_PATHS` in `sketch/service-worker.js`) and bumps the cache
+   generation, so installed copies of the app download it.
+5. Commit the new `.json` file, the regenerated
+   `sketch/js/examples-data.js` and `sketch/service-worker.js`.
 
 ## Removing or renaming an example
 
 Delete or rename the `.json` file, then re-run `node tools/build-examples.mjs`
-and commit the updated manifest.
+and commit the updated manifest and `sketch/service-worker.js`.

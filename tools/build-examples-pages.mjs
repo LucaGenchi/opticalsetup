@@ -89,7 +89,7 @@ const brandMark = () => `
     </g>
   </svg>`;
 
-const FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E";
+const FAVICON = "/sketch/icons/icon.svg";
 
 function header(base) {
   return `
@@ -175,7 +175,7 @@ function pageHTML(entry, manifestEntry, scene) {
 <meta property="og:description" content="${esc(entry.tagline)}">
 <meta property="og:url" content="${SITE_URL}/example-setups/${manifestEntry.slug}/">
 <meta property="og:image" content="${SITE_URL}/assets/og-image.jpg">
-<link rel="icon" href="${FAVICON}">
+<link rel="icon" href="${base}${FAVICON}">
 <link rel="stylesheet" href="${base}/wiki/assets/wiki.css">
 <link rel="stylesheet" href="${base}/example-setups/assets/examples.css">
 </head>
@@ -266,7 +266,7 @@ function hubHTML(entries) {
 <meta property="og:description" content="Curated optical setups with the real-world background and honest simulation limits behind each one, ready to open in the live canvas.">
 <meta property="og:url" content="${SITE_URL}/example-setups/">
 <meta property="og:image" content="${SITE_URL}/assets/og-image.jpg">
-<link rel="icon" href="${FAVICON}">
+<link rel="icon" href="${base}${FAVICON}">
 <link rel="stylesheet" href="${base}/wiki/assets/wiki.css">
 <link rel="stylesheet" href="${base}/example-setups/assets/examples.css">
 </head>

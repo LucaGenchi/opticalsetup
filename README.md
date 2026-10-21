@@ -86,7 +86,11 @@ reference implementations; see [docs/validation.md](docs/validation.md) and
 - **Example setups** — background, model limits and references for each
   built-in example.
 - **Calculators** — interactive pages for individual physical models, running
-  the same code as the app.
+  workbench models and frequency relations: material dispersion (GVD, TOD and
+  pulse stretching), nonlinear frequency conversion (SHG, THG, SFG, DFG, OPO),
+  coherent Raman scattering (CARS, CSRS, resolution, and the probed window on
+  measured reference spectra) and parametric
+  amplification.
 - **Community** — setups shared by users; accepted submissions get their own
   page and appear in the app's community menu.
 
@@ -129,3 +133,7 @@ WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 A PARTICULAR PURPOSE. See [LICENSE](LICENSE) for the full text.
 
 Copyright (C) 2026 Luca Genchi and the OpticalSetup contributors.
+
+## Citation
+
+How to cite: [![DOI](https://zenodo.org/badge/1303335963.svg)](https://doi.org/10.5281/zenodo.23191537)
