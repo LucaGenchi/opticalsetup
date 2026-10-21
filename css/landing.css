@@ -178,6 +178,24 @@ main {
 }
 .how-steps strong { color: var(--text); }
 
+.citation-text {
+  max-width: 760px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.citation-bibtex { margin-top: 18px; font-size: 14px; }
+.citation-bibtex summary { cursor: pointer; color: var(--accent); }
+.citation-bibtex pre {
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
 .site-footer {
   border-top: 1px solid var(--border);
   padding: 24px max(20px, calc((100vw - 1100px) / 2)) 32px;
