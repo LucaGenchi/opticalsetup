@@ -64,7 +64,9 @@ export function mountCalculator({ panel = 'calc', inputs, defaults, groups, comp
     for (const table of tables) table.textContent = '';
     noteList.textContent = '';
     status.className = `calc-status${result.ok || result.pending ? '' : ' is-error'}`;
-    status.textContent = result.ok ? 'Calculated within the stated model.' : result.pending ? result.message : 'Unavailable: correct these inputs.';
+    // A valid result needs no banner; the status line appears only for an
+    // error or while data loads.
+    status.textContent = result.ok ? '' : result.pending ? result.message : 'Unavailable: correct these inputs.';
     if (result.pending) {
       // Nothing to list while data loads.
     } else if (!result.ok) {

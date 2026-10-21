@@ -1837,7 +1837,6 @@
    "expected": {
     "bandwidthTHz": 14.05277147,
     "delaySpreadFs": 31.95771809,
-    "delayVsVacuumFs": 15582.27176,
     "gddFs2": 361.619983,
     "outputFs": 44.78358097,
     "todFs3": 274.9726172,
@@ -1856,7 +1855,6 @@
    "tolerance": {
     "bandwidthTHz": 1e-09,
     "delaySpreadFs": 1e-08,
-    "delayVsVacuumFs": 1e-09,
     "gddFs2": 1e-09,
     "outputFs": 1e-09,
     "todFs3": 1e-09,
@@ -1867,7 +1865,6 @@
    "expected": {
     "bandwidthTHz": 3.390997734,
     "delaySpreadFs": 66.77405476,
-    "delayVsVacuumFs": 65619.02921,
     "gddFs2": 3133.731808,
     "outputFs": 146.2071377,
     "todFs3": 2938.664838,
@@ -1886,7 +1883,6 @@
    "tolerance": {
     "bandwidthTHz": 1e-09,
     "delaySpreadFs": 1e-08,
-    "delayVsVacuumFs": 1e-09,
     "gddFs2": 1e-09,
     "outputFs": 1e-09,
     "todFs3": 1e-09,
@@ -1897,7 +1893,6 @@
    "expected": {
     "bandwidthTHz": 11.99169832,
     "delaySpreadFs": 0.4616142928,
-    "delayVsVacuumFs": 2270.175673,
     "gddFs2": 6.093815298,
     "outputFs": 36.77831115,
     "todFs3": 137.3214922,
@@ -1916,7 +1911,6 @@
    "tolerance": {
     "bandwidthTHz": 1e-09,
     "delaySpreadFs": 1e-08,
-    "delayVsVacuumFs": 1e-09,
     "gddFs2": 1e-09,
     "outputFs": 1e-09,
     "todFs3": 1e-09,
@@ -1939,7 +1933,7 @@
   "M. N. Polyanskiy, Sci. Data 11, 94 (2024), doi:10.1038/s41597-023-02898-2 (refractiveindex.info database, CC0: transcription source)"
  ],
  "convergence": "Central differences in angular frequency at h = 1e-7 omega in 50-digit arithmetic: truncation about 1e-14 relative; cancellation in the differences leaves round-off of about 3e-28 relative in beta_3 (fused silica, 800 nm), larger near a zero of beta_3 but far below the tolerance.",
- "domain": "Every material at both fit endpoints, a fractional interior wavelength and 800 or 1550 nm; fused silica at its zero-GVD crossing; three thickness and bandwidth cases for GDD, TOD, delays and Gaussian stretching.",
+ "domain": "Every material at both fit endpoints, a fractional interior wavelength and 800 or 1550 nm; fused silica at its zero-GVD crossing; three thickness and bandwidth cases for GDD, TOD, the delay spread and Gaussian stretching.",
  "fidelity": "computed",
  "id": "material-dispersion",
  "outside_scope": "Declines: `materialDispersion` and `computeDispersion` return null or an error outside each material's fit domain, for a bandwidth not smaller than the central wavelength, and for plot ranges outside the domain. A bandwidth edge outside the domain removes only the delay spread.",

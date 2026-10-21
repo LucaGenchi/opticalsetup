@@ -127,7 +127,8 @@ ${section.rows.map(([symbol, name, unit, meaning]) => `<tr><td class="sym">${sym
 
 // One inputs | results panel. The main panel keeps the calc-* ids; a page's
 // extra `panels` (an independent second calculator, such as a resolution
-// estimate under the main one) use their own id as the prefix.
+// estimate under the main one) use their own id as the prefix. A panel with
+// `formResults` also gets a results table under its form, `<that>-results`.
 function panelSection(id, panel = null) {
   const head = panel ? `
       <div class="calc-panel-head">
@@ -136,7 +137,10 @@ function panelSection(id, panel = null) {
       </div>` : `
       <noscript><p class="calc-status is-error">This calculator needs JavaScript. The physics and formulas below read without it.</p></noscript>`;
   return `<section class="calc-app${panel ? ' calc-panel' : ''}" id="${panel ? `${id}-panel` : 'calculator'}" ${panel ? `aria-labelledby="${id}-title"` : 'aria-label="Calculator"'}>${head}
-      <form class="calc-inputs" id="${id}-form" autocomplete="off" novalidate></form>
+      ${panel?.formResults ? `<div class="calc-column">
+        <form class="calc-inputs" id="${id}-form" autocomplete="off" novalidate></form>
+        <table class="calc-results" id="${panel.formResults}-results" aria-label="${esc(panel.formResultsLabel ?? 'Details')}"></table>
+      </div>` : `<form class="calc-inputs" id="${id}-form" autocomplete="off" novalidate></form>`}
       <div class="calc-output">
         <div class="calc-status" id="${id}-status" role="status" aria-live="polite"></div>
         <table class="calc-results" id="${id}-results" aria-label="${panel ? `${esc(panel.title)} results` : 'Results'}"></table>

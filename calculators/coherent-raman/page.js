@@ -52,26 +52,38 @@ mountCalculator({ panel: 'resolution', inputs: RESOLUTION_INPUTS, defaults: RESO
 });
 
 const cm = n => formatNumber(n, 5);
+// "Flanagan & Glavin, Sci. Data 12, 498 (2025)"; a ROD entry adds its number
+// and first contributor. The full citations are in the page's references.
+function compactSource(r) {
+  if (!r.meta.rodId) return r.source.short;
+  const [first, ...rest] = r.meta.contributors;
+  return `${r.source.short}, entry ${r.meta.rodId} (${first.replace(/,.*$/, '')}${rest.length ? ' et al.' : ''})`;
+}
 spectra = mountCalculator({ panel: 'spectra', inputs: SPECTRUM_INPUTS, defaults: SPECTRUM_DEFAULTS, groups: {
   spectrum: { title: 'Reference spectrum' },
 }, compute: raw => computeSpectrumView(raw, { ...probe, data: spectrumFile(raw.spectrum) }),
-  rows: r => [
-    { group: 'Probed window' },
-    ['Raman shift', r.ramanShiftCm, 'cm⁻¹'], ['Resolution (FWHM)', r.resolutionCm, 'cm⁻¹', 4],
-    ['Window', `${cm(r.window[0])}–${cm(r.window[1])} cm⁻¹`],
-    ['Spectrum at the shift (normalized)', r.atShift, '', 3],
-    ['Strongest point in the window', r.peak ? `${cm(r.peak.x)} cm⁻¹ (${formatNumber(r.peak.y, 3)}${r.peak.interpolated ? ', interpolated at the window edge' : ''})` : '—'],
-    { group: r.meta.name },
-    ['Category', r.meta.category], ['Measurement', r.technique],
-    ['Measured range', `${cm(r.measuredRange[0])}–${cm(r.measuredRange[1])} cm⁻¹`],
-    ['Licence', r.source.licenseName],
-  ],
+  // The material's details sit under its selector; the probed window, on
+  // the right, is what changes with the excitation.
+  rows: r => ({
+    spectra: [
+      { group: 'Probed window' },
+      ['Raman shift', r.ramanShiftCm, 'cm⁻¹'], ['Resolution (FWHM)', r.resolutionCm, 'cm⁻¹', 4],
+      ['Window', `${cm(r.window[0])}–${cm(r.window[1])} cm⁻¹`],
+      ['Spectrum at the shift (normalized)', r.atShift, '', 3],
+      ['Strongest point in the window', r.peak ? `${cm(r.peak.x)} cm⁻¹ (${formatNumber(r.peak.y, 3)}${r.peak.interpolated ? ', interpolated at the window edge' : ''})` : '—'],
+    ],
+    'spectrum-info': [
+      { group: r.meta.name },
+      ['Category', r.meta.category], ['Measurement', r.technique],
+      ['Measured range', `${cm(r.measuredRange[0])}–${cm(r.measuredRange[1])} cm⁻¹`],
+      ['Source', compactSource(r)], ['Licence', r.source.licenseName],
+    ],
+  }),
   notes: r => [
     ...(r.inRange ? [] : [`The probed window lies outside this spectrum’s measured range (${cm(r.measuredRange[0])}–${cm(r.measuredRange[1])} cm⁻¹).`]),
     `${r.meta.measurement}.`,
-    `Source: ${r.source.citation}${r.meta.rodId ? `; ROD entry ${r.meta.rodId}, contributed by ${r.meta.contributors.join(', ')}` : ''}. ${r.source.licenseName}.`,
     'Normalized to its strongest band after a two-point baseline. Relative band heights depend on the instrument and the excitation, so compare positions, not heights, across sources.',
-    'The shaded band is the probed window, the Raman shift ± half the resolution. It shows which bands the excitation addresses; it does not model the coherent Raman signal, which also depends on linewidths and the nonresonant background.',
+    'The highlighted band is the probed window, the Raman shift ± half the resolution. It shows which bands the excitation addresses; it does not model the coherent Raman signal, which also depends on linewidths and the nonresonant background.',
   ],
   graphs: r => ({
     spectrum: {

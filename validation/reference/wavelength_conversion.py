@@ -113,6 +113,14 @@ def cases():
                                    [("pump", hz(pump)), ("signal", signal), ("idler", idler)],
                                    {"signalShare": sig(signal / hz(pump)), "idlerShare": sig(idler / hz(pump)),
                                     "degeneracyNm": sig(2 * pump)}))
+    # Two-color CARS and CSRS on the conversion page: the pump scatters to
+    # 2 nu_p - nu_S, the Stokes beam to 2 nu_S - nu_p while that is positive.
+    for pump, stokes in ((1030, 1458), (800, 1040), (1064.5, 1180.25), (600, 1300)):
+        p, s = hz(pump), hz(stokes)
+        waves = [("pump", p), ("stokes", s), ("cars", 2 * p - s)] + ([("csrs", 2 * s - p)] if 2 * s > p else [])
+        out.append(conversion_case(f"CRS pump {pump} nm, Stokes {stokes} nm",
+                                   {"process": "crs", "pumpNm": pump, "stokesNm": stokes}, waves,
+                                   {"ramanShiftCm": sig((p - s) / C_CM_PER_S)}))
     out.append({"name": "THG exact anchor: 1064 nm gives 1064/3 nm",
                 "inputs": {"kind": "conversion", "process": "thg", "known": "fundamental", "harmonicInputNm": 1064},
                 "expected": {"wave1Nm": 1064 / 3}, "tolerance": {"wave1Nm": 1e-12}})
@@ -161,7 +169,7 @@ MODEL = {
         "M. Mohseni, C. Polzer and T. Hellerer, Opt. Express 26, 10230-10241 (2018), doi:10.1364/OE.26.010230, Eq. (5) (resolution)",
     ],
     "provenance": "Energy conservation written from Boyd; CARS and CSRS frequencies from Cheng and Xie and Heuke and Rigneault; the resolution check recomputes the excitation-amplitude width that Eq. (5) of Mohseni et al. expresses in closed form, and the paper's 20.8 ps cm^-1 prefactor anchors it.",
-    "domain": "SHG and THG both directions; SFG; DFG in both input orders and near degeneracy; OPO from signal, idler and the degenerate point; coherent Raman (two-color) in all three input modes, with and without a CSRS solution; resolution for equal, unequal, short and equally chirped pulses.",
+    "domain": "SHG and THG both directions; SFG; DFG in both input orders and near degeneracy; OPO from signal, idler and the degenerate point; two-color CARS and CSRS on the conversion page, with and without a CSRS solution; coherent Raman (two-color) in all three input modes, with and without a CSRS solution; resolution for equal, unequal, short and equally chirped pulses.",
     "convergence": "Closed-form arithmetic; the resolution quadrature uses 4001 points over +/-14 effective widths and an 80-step bisection.",
     "tolerance_rationale": "1e-9 relative for floating-point identities and for the spectrally accurate quadrature; exact rational anchors at 1e-12; the published three-figure prefactor at half a unit in its last place (0.25 %).",
     "outside_scope": "Declines non-finite or out-of-range inputs, equal DFG inputs, an OPO output not longer than the pump, reversed or equal pump and Stokes, non-positive shifts and inferred pump or Stokes wavelengths outside 100-20000 nm; CSRS alone is omitted when the Raman frequency is not below the probing frequency.",

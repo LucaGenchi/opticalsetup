@@ -53,7 +53,10 @@ SHG and THG (`λ/n`, both directions), SFG and DFG (`1/λ₃ = 1/λ₁ ± 1/λ�
 the workbench's `mixWavelength`) and OPO signal and idler from the pump and
 either output. DFG and OPO use `λ₁λ₂/(λ₂ − λ₁)`, which subtracts wavelengths
 rather than reciprocals and skips the 1e-9 nm⁻¹ cutoff of the tracer's
-`parametricPair`; a non-finite result is declined. The page shows the
+`parametricPair`; a non-finite result is declined. A coherent Raman option
+gives the two-color CARS and CSRS wavelengths of a pump and Stokes pair by
+calling the Coherent Raman calculator's `computeCrs`, so both pages decline
+the same inputs. The page shows the
 Manley–Rowe shares `λ_p/λ_s` and `λ_p/λ_i` and the degeneracy wavelength
 `2λ_p`. Each wave is
 also shown as a frequency and a photon energy (`hc/e` from the exact SI

@@ -136,6 +136,23 @@ test('nonlinear conversion: harmonics both ways, SFG, DFG and OPO', () => {
   for (const w of degenerate.waves) close(w.photonEv, 1239.8419843320026 / w.wavelengthNm);
 });
 
+test('nonlinear conversion: CARS and CSRS agree with the Coherent Raman calculator', () => {
+  for (const [pumpNm, stokesNm] of [[1030, 1458], [800, 1040], [600, 1300]]) {
+    const r = conversion({ process: 'crs', pumpNm, stokesNm });
+    const ref = crs({ mode: 'pump-stokes', pumpNm, stokesNm });
+    assert.equal(r.ok, true);
+    close(r.ramanShiftCm, ref.ramanShiftCm);
+    close(r.waves[2].wavelengthNm, ref.antiStokesNm);
+    if (ref.csrsNm === null) assert.equal(r.waves.length, 3, 'no CSRS wave when it would be impossible');
+    else close(r.waves[3].wavelengthNm, ref.csrsNm);
+  }
+  for (const bad of [{ stokesNm: 1000 }, { stokesNm: 1030 }, { pumpNm: 100, stokesNm: 20000 }, { stokesNm: '' }]) {
+    const r = conversion({ process: 'crs', ...bad });
+    assert.equal(r.ok, false, JSON.stringify(bad));
+    assert.ok(r.errors.every(e => ['pumpNm', 'stokesNm'].includes(e.id)), 'errors name the conversion page fields');
+  }
+});
+
 test('nonlinear conversion declines impossible inputs', () => {
   for (const bad of [{ process: 'dfg', wave1Nm: 900, wave2Nm: 900 }, { process: 'opo', outputNm: 1030 },
     { process: 'opo', outputNm: 900 }, { process: 'shg', harmonicInputNm: 99 }, { process: 'xpm' },

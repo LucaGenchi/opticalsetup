@@ -5,6 +5,7 @@
 // SPECTRUM_SOURCES and THIRD-PARTY-NOTICES.md), one file each in spectra/.
 export const SPECTRUM_SOURCES = {
   "flanagan2025": {
+    "short": "Flanagan & Glavin, Sci. Data 12, 498 (2025)",
     "citation": "A. R. Flanagan and F. G. Glavin, “Open-source Raman spectra of chemical compounds for active pharmaceutical ingredient development,” Sci. Data 12, 498 (2025)",
     "paper": "https://doi.org/10.1038/s41597-025-04848-6",
     "data": "https://doi.org/10.6084/m9.figshare.27931131",
@@ -13,6 +14,7 @@ export const SPECTRUM_SOURCES = {
     "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"
   },
   "berzins2020": {
+    "short": "Bērziņš et al., Vib. Spectrosc. 107, 103021 (2020)",
     "citation": "K. Bērziņš, R. E. Sales, J. E. Barnsley, G. Walker, S. J. Fraser-Miller and K. C. Gordon, “Low-wavenumber Raman spectral database of pharmaceutical excipients,” Vib. Spectrosc. 107, 103021 (2020); reference data on Zenodo",
     "paper": "https://doi.org/10.1016/j.vibspec.2020.103021",
     "data": "https://doi.org/10.5281/zenodo.3614035",
@@ -21,6 +23,7 @@ export const SPECTRUM_SOURCES = {
     "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"
   },
   "rod": {
+    "short": "Raman Open Database",
     "citation": "Raman Open Database: Y. El Mendili et al., “Raman Open Database: first interconnected Raman–X-ray diffraction open-access resource for material identification,” J. Appl. Cryst. 52, 618–625 (2019)",
     "paper": "https://doi.org/10.1107/S1600576719004229",
     "data": "https://solsa.crystallography.net/rod/",

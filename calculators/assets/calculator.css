@@ -10,6 +10,9 @@
   --series-3: #1baf7a;
   --chart-grid: #e6eaf1;
   --chart-axis: #b8c1cf;
+  /* Highlighted x interval (probed window, laser bandwidth): yellow, which
+     stands apart from the blue and orange series in both themes. */
+  --chart-band: #f2b705;
   --error: #b3261e;
   --error-soft: #fdecea;
   --good: #1e7a3c;
@@ -21,6 +24,7 @@
     --series-3: #199e70;
     --chart-grid: #1f2a3f;
     --chart-axis: #3a4a66;
+    --chart-band: #ffd23f;
     --error: #ff8a80;
     --error-soft: #3a1d1d;
     --good: #6fd08c;
@@ -193,7 +197,7 @@
 .calc-plot-form { margin-top: 12px; grid-template-columns: minmax(0, 1fr); max-width: 760px; }
 .calc-plot-form .calc-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 18px; }
 .calc-plot-form .calc-group legend { grid-column: 1 / -1; }
-.chart-band { fill: var(--accent); opacity: .1; }
+.chart-band { fill: var(--chart-band); fill-opacity: .32; stroke: var(--chart-band); stroke-width: 1.5; }
 
 /* ---------- column layout: source | material | output ----------
    Each column keeps its own height: a form, then its results right below. */

@@ -723,6 +723,156 @@
   },
   {
    "expected": {
+    "ramanShiftCm": 2850.027302,
+    "wave0Ev": 1.203730082,
+    "wave0Nm": 1030.0,
+    "wave0THz": 291.0606388,
+    "wave1Ev": 0.8503717314,
+    "wave1Nm": 1458.0,
+    "wave1THz": 205.6189698,
+    "wave2Ev": 1.557088432,
+    "wave2Nm": 796.2566278,
+    "wave2THz": 376.5023078,
+    "wave3Ev": 0.4970133809,
+    "wave3Nm": 2494.584718,
+    "wave3THz": 120.1773008
+   },
+   "inputs": {
+    "kind": "conversion",
+    "process": "crs",
+    "pumpNm": 1030,
+    "stokesNm": 1458
+   },
+   "name": "CRS pump 1030 nm, Stokes 1458 nm",
+   "tolerance": {
+    "ramanShiftCm": 1e-09,
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09,
+    "wave2Ev": 1e-09,
+    "wave2Nm": 1e-09,
+    "wave2THz": 1e-09,
+    "wave3Ev": 1e-09,
+    "wave3Nm": 1e-09,
+    "wave3THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "ramanShiftCm": 2884.615385,
+    "wave0Ev": 1.54980248,
+    "wave0Nm": 800.0,
+    "wave0THz": 374.7405725,
+    "wave1Ev": 1.192155754,
+    "wave1Nm": 1040.0,
+    "wave1THz": 288.2619788,
+    "wave2Ev": 1.907449207,
+    "wave2Nm": 650.0,
+    "wave2THz": 461.2191662,
+    "wave3Ev": 0.8345090279,
+    "wave3Nm": 1485.714286,
+    "wave3THz": 201.7833852
+   },
+   "inputs": {
+    "kind": "conversion",
+    "process": "crs",
+    "pumpNm": 800,
+    "stokesNm": 1040
+   },
+   "name": "CRS pump 800 nm, Stokes 1040 nm",
+   "tolerance": {
+    "ramanShiftCm": 1e-09,
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09,
+    "wave2Ev": 1e-09,
+    "wave2Nm": 1e-09,
+    "wave2THz": 1e-09,
+    "wave3Ev": 1e-09,
+    "wave3Nm": 1e-09,
+    "wave3THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "ramanShiftCm": 921.3005381,
+    "wave0Ev": 1.164717693,
+    "wave0Nm": 1064.5,
+    "wave0THz": 281.6274852,
+    "wave1Ev": 1.050490984,
+    "wave1Nm": 1180.25,
+    "wave1THz": 254.0075899,
+    "wave2Ev": 1.278944402,
+    "wave2Nm": 969.4260224,
+    "wave2THz": 309.2473805,
+    "wave3Ev": 0.9362642757,
+    "wave3Nm": 1324.24361,
+    "wave3THz": 226.3876946
+   },
+   "inputs": {
+    "kind": "conversion",
+    "process": "crs",
+    "pumpNm": 1064.5,
+    "stokesNm": 1180.25
+   },
+   "name": "CRS pump 1064.5 nm, Stokes 1180.25 nm",
+   "tolerance": {
+    "ramanShiftCm": 1e-09,
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09,
+    "wave2Ev": 1e-09,
+    "wave2Nm": 1e-09,
+    "wave2THz": 1e-09,
+    "wave3Ev": 1e-09,
+    "wave3Nm": 1e-09,
+    "wave3THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "ramanShiftCm": 8974.358974,
+    "wave0Ev": 2.066403307,
+    "wave0Nm": 600.0,
+    "wave0THz": 499.6540967,
+    "wave1Ev": 0.9537246033,
+    "wave1Nm": 1300.0,
+    "wave1THz": 230.6095831,
+    "wave2Ev": 3.179082011,
+    "wave2Nm": 390.0,
+    "wave2THz": 768.6986103
+   },
+   "inputs": {
+    "kind": "conversion",
+    "process": "crs",
+    "pumpNm": 600,
+    "stokesNm": 1300
+   },
+   "name": "CRS pump 600 nm, Stokes 1300 nm",
+   "tolerance": {
+    "ramanShiftCm": 1e-09,
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09,
+    "wave2Ev": 1e-09,
+    "wave2Nm": 1e-09,
+    "wave2THz": 1e-09
+   }
+  },
+  {
+   "expected": {
     "wave1Nm": 354.6666666666667
    },
    "inputs": {
@@ -1109,7 +1259,7 @@
   "M. Mohseni, C. Polzer and T. Hellerer, Opt. Express 26, 10230-10241 (2018), doi:10.1364/OE.26.010230, Eq. (5) (resolution)"
  ],
  "convergence": "Closed-form arithmetic; the resolution quadrature uses 4001 points over +/-14 effective widths and an 80-step bisection.",
- "domain": "SHG and THG both directions; SFG; DFG in both input orders and near degeneracy; OPO from signal, idler and the degenerate point; coherent Raman (two-color) in all three input modes, with and without a CSRS solution; resolution for equal, unequal, short and equally chirped pulses.",
+ "domain": "SHG and THG both directions; SFG; DFG in both input orders and near degeneracy; OPO from signal, idler and the degenerate point; two-color CARS and CSRS on the conversion page, with and without a CSRS solution; coherent Raman (two-color) in all three input modes, with and without a CSRS solution; resolution for equal, unequal, short and equally chirped pulses.",
  "fidelity": "computed",
  "id": "wavelength-conversion",
  "outside_scope": "Declines non-finite or out-of-range inputs, equal DFG inputs, an OPO output not longer than the pump, reversed or equal pump and Stokes, non-positive shifts and inferred pump or Stokes wavelengths outside 100-20000 nm; CSRS alone is omitted when the Raman frequency is not below the probing frequency.",

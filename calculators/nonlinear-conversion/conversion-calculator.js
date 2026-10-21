@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Vacuum-wavelength energy conservation for the common nonlinear processes.
 import { mixWavelength } from '../../sketch/js/parametric.js';
+import { CRS_DEFAULTS, computeCrs } from '../coherent-raman/crs-calculator.js';
 import { defaultsFor, parseInputs, unavailable } from '../assets/calculator-inputs.js';
 
 const C_NM_THZ = 299792.458;          // ν [THz] = C_NM_THZ / λ [nm]
@@ -12,6 +13,7 @@ export const PROCESSES = [
   ['shg', 'Second-harmonic generation (SHG)'], ['thg', 'Third-harmonic generation (THG)'],
   ['sfg', 'Sum-frequency generation (SFG)'], ['dfg', 'Difference-frequency generation (DFG)'],
   ['opo', 'Optical parametric oscillation (OPO)'],
+  ['crs', 'Coherent Raman scattering (CARS and CSRS)'],
 ];
 const HARMONIC_ORDER = { shg: 2, thg: 3 };
 
@@ -28,9 +30,11 @@ export const CONVERSION_INPUTS = [
   { id: 'wave2Nm', group: 'waves', label: 'Input wavelength λ₂', unit: 'nm', value: 1040, ...SCOPE,
     when: 'process', whenValue: ['sfg', 'dfg'], help: 'For DFG it must differ from λ₁.' },
   { id: 'pumpNm', group: 'waves', label: 'Pump wavelength', unit: 'nm', value: 1030, ...SCOPE,
-    when: 'process', whenValue: 'opo', help: 'Vacuum wavelength of the OPO pump.' },
+    when: 'process', whenValue: ['opo', 'crs'], help: 'Vacuum wavelength of the pump.' },
   { id: 'outputNm', group: 'waves', label: 'Signal or idler wavelength', unit: 'nm', value: 1550, ...SCOPE,
     when: 'process', whenValue: 'opo', help: 'Either output; it must be longer than the pump. The other is solved.' },
+  { id: 'stokesNm', group: 'waves', label: 'Stokes wavelength', unit: 'nm', value: 1458, ...SCOPE,
+    when: 'process', whenValue: 'crs', help: 'Longer than the pump. The Coherent Raman calculator also solves from a Raman shift.' },
 ];
 export const CONVERSION_DEFAULTS = defaultsFor(CONVERSION_INPUTS);
 
@@ -61,6 +65,15 @@ export function computeConversion(raw) {
     if (outNm === null) return unavailable('The output wavelength is not a finite number for these inputs.', 'wave1Nm', 'wave2Nm');
     return { ok: true, process: p, waves: [wave('Input λ₁', v.wave1Nm), wave('Input λ₂', v.wave2Nm),
       wave(p === 'sfg' ? 'Sum frequency' : 'Difference frequency', outNm)] };
+  }
+  if (p === 'crs') {
+    // Two-color CARS and CSRS from the Coherent Raman calculator itself, so
+    // both pages decline the same inputs; its field names map onto ours.
+    const r = computeCrs({ ...CRS_DEFAULTS, mode: 'pump-stokes', pumpNm: v.pumpNm, stokesNm: v.stokesNm });
+    if (!r.ok) return { ok: false, errors: r.errors.map(e => ({ ...e, id: e.id === 'stokesNm' ? 'stokesNm' : 'pumpNm' })) };
+    return { ok: true, process: p, ramanShiftCm: r.ramanShiftCm,
+      waves: [wave('Pump', r.pumpNm), wave('Stokes', r.stokesNm), wave('CARS (anti-Stokes)', r.antiStokesNm),
+        ...(r.csrsNm === null ? [] : [wave('CSRS (coherent Stokes)', r.csrsNm)])] };
   }
   if (!(v.outputNm > v.pumpNm)) return unavailable('The signal or idler must be longer than the pump.', 'outputNm', 'pumpNm');
   // The partner is the pump–output difference frequency, as in DFG, without

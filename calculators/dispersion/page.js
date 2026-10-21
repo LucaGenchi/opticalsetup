@@ -19,7 +19,6 @@ mountCalculator({ inputs: DISPERSION_INPUTS, defaults: DISPERSION_DEFAULTS, grou
       ['Phase index n', r.index, '', 7], ['Group index', r.groupIndex, '', 7],
       ['GVD β₂', r.gvdFs2PerMm, 'fs²/mm'], ['TOD β₃', r.todFs3PerMm, 'fs³/mm'], ['Abbe number', r.abbe, '', 4]],
     calc: [{ group: `Through ${formatNumber(r.values.thicknessMm, 6)} mm (output)` },
-      ['Group delay vs. vacuum', r.delayVsVacuumFs / 1000, 'ps'],
       ['GDD', r.gddFs2, 'fs²'], ['TOD', r.todFs3, 'fs³'],
       ['Delay spread across the bandwidth (blue − red)', r.delaySpreadFs, 'fs'],
       ['Output duration, GDD only (FWHM)', r.outputFs, 'fs']],

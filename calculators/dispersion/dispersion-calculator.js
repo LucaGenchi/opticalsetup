@@ -71,7 +71,6 @@ export function computeDispersion(raw) {
   return {
     ok: true, ...point, values: v, range, band, material,
     plot: plotInterval(v, range),
-    delayVsVacuumFs: L * (point.groupIndex - 1) * FS_PER_MM,
     gddFs2, todFs3: L * point.todFs3PerMm, delaySpreadFs,
     // Frequency FWHM in the same small-bandwidth form, cΔλ/λ₀²: τ₀ × Δν = K.
     bandwidthTHz: band ? C_NM_PER_FS * 1000 * v.bandwidthNm / v.wavelengthNm ** 2 : null,

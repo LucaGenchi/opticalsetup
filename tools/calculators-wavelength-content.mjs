@@ -38,7 +38,7 @@ export const wavelengthCalculators = [
       { label: 'Code', html: 'The <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/calculators/dispersion/materials.js">calculator’s material module</a>; the four workbench glasses reuse the <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/sketch/js/glass.js">canvas catalogue</a>’s coefficients.' },
     ],
     graphs: [
-      { id: 'index', title: 'Phase and group index', note: 'The marker shows the phase index at the central wavelength; the shaded band is the laser bandwidth.' },
+      { id: 'index', title: 'Phase and group index', note: 'The marker shows the phase index at the central wavelength; the highlighted band is the laser bandwidth.' },
       { id: 'gvd', title: 'Group-velocity dispersion', note: 'Positive: normal dispersion. Negative: anomalous. A crossing of zero is the zero-GVD wavelength.' },
       { id: 'tod', title: 'Third-order dispersion', note: 'The wavelength dependence of GVD, which compressors must also cancel for short pulses.' },
     ],
@@ -90,8 +90,8 @@ export const wavelengthCalculators = [
   },
   {
     slug: 'nonlinear-conversion', title: 'Nonlinear frequency conversion', script: 'page.js', graphs: [],
-    card: 'SHG, THG, SFG, DFG and OPO wavelengths from energy conservation, with frequencies and photon energies.',
-    summary: 'Find the generated wavelength of second- and third-harmonic generation, sum- and difference-frequency generation, or the signal and idler of an optical parametric oscillator. Every wave is shown as a vacuum wavelength, frequency and photon energy.',
+    card: 'SHG, THG, SFG, DFG, OPO, CARS and CSRS wavelengths from energy conservation, with frequencies and photon energies.',
+    summary: 'Find the generated wavelength of second- and third-harmonic generation, sum- and difference-frequency generation, the signal and idler of an optical parametric oscillator, or the CARS and CSRS lines of a pump and Stokes pair. Every wave is shown as a vacuum wavelength, frequency and photon energy.',
     facts: [
       { label: 'Model', html: 'Photon-energy conservation for χ⁽²⁾ and χ⁽³⁾ processes. No crystal, phase-matching or efficiency model.' },
       { label: 'Evidence', html: evidence },
@@ -104,8 +104,9 @@ export const wavelengthCalculators = [
           { tex: String.raw`\text{SHG: }\nu_{2\omega}=2\nu,\qquad \text{THG: }\nu_{3\omega}=3\nu,\qquad \lambda_{n\omega}=\lambda/n` },
           { tex: String.raw`\text{SFG: }\frac{1}{\lambda_3}=\frac{1}{\lambda_1}+\frac{1}{\lambda_2},\qquad \text{DFG: }\frac{1}{\lambda_3}=\frac{1}{\lambda_1}-\frac{1}{\lambda_2}\;(\lambda_1<\lambda_2)` },
           { tex: String.raw`\text{OPO: }\frac{1}{\lambda_p}=\frac{1}{\lambda_s}+\frac{1}{\lambda_i},\qquad \lambda_s\le 2\lambda_p\le\lambda_i` },
+          { tex: String.raw`\text{CARS: }\nu_{\mathrm{as}}=2\nu_p-\nu_S,\qquad \text{CSRS: }\nu_{\mathrm{cs}}=2\nu_S-\nu_p\;(\text{while}\ \nu_p-\nu_S<\nu_S)` },
         ],
-        html2: `<p>SHG is the degenerate case of SFG, and DFG is the process behind parametric amplification: the lower-frequency input grows as the difference frequency is generated. In an OPO the signal is, by convention, the higher-frequency output; signal and idler meet at the degeneracy wavelength 2λ<sub>p</sub>. One pump photon yields one signal and one idler photon (Manley–Rowe), so at most a fraction λ<sub>p</sub>/λ of the converted pump power can go into each output ${cite(1)}. THG is generated either directly through χ⁽³⁾ or by cascading SHG with SFG ${cite(1)}.</p>`,
+        html2: `<p>SHG is the degenerate case of SFG, and DFG is the process behind parametric amplification: the lower-frequency input grows as the difference frequency is generated. In an OPO the signal is, by convention, the higher-frequency output; signal and idler meet at the degeneracy wavelength 2λ<sub>p</sub>. One pump photon yields one signal and one idler photon (Manley–Rowe), so at most a fraction λ<sub>p</sub>/λ of the converted pump power can go into each output ${cite(1)}. THG is generated either directly through χ⁽³⁾ or by cascading SHG with SFG ${cite(1)}. CARS and CSRS are four-wave mixing in χ⁽³⁾: a pump and a Stokes beam drive a vibration at their difference frequency, and the pump and Stokes photons scatter off it on either side. This page gives their wavelengths only; the <a href="../coherent-raman/">Coherent Raman scattering</a> calculator also solves from a Raman shift, estimates the spectral resolution and shows the probed window on reference spectra.</p>`,
         formulas2: [{ tex: String.raw`\nu\,[\mathrm{THz}]=\frac{299792.458}{\lambda\,[\mathrm{nm}]},\qquad E\,[\mathrm{eV}]=\frac{1239.841984}{\lambda\,[\mathrm{nm}]}` }],
       },
       { id: 'precision', title: 'Precision and limits',
@@ -123,8 +124,8 @@ export const wavelengthCalculators = [
     summary: 'Solve the pump, Stokes or Raman shift from the other two, then read the CARS and CSRS wavelengths of two-color coherent Raman scattering. Further panels estimate the spectral resolution set by the pulse durations and show which part of a measured reference spectrum that excitation probes.',
     panels: [{ id: 'resolution', title: 'Spectral resolution from pulse durations',
       intro: `For Gaussian pulses that are transform-limited, or equally chirped as in spectral focusing, the excitation bandwidth depends only on the pump and Stokes durations ${cite(3)}.` },
-    { id: 'spectra', title: 'Reference Raman spectra and the probed window',
-      intro: `The Raman shift and resolution above, drawn on measured spectra of ${SPECTRA.length} reference materials from openly licensed sources ${cite(5, 7, 9)}. The shaded band is the window the excitation addresses.` }],
+    { id: 'spectra', title: 'Reference Raman spectra and the probed window', formResults: 'spectrum-info', formResultsLabel: 'Reference spectrum details',
+      intro: `The Raman shift and resolution above, drawn on measured spectra of ${SPECTRA.length} reference materials from openly licensed sources ${cite(5, 7, 9)}. The highlighted band is the window the excitation addresses.` }],
     graphs: [{ id: 'spectrum', title: 'Reference spectrum and probed window', note: 'Normalized intensity against Raman shift. The band is the Raman shift ± half the spectral resolution; the marker is the spectrum at the shift.' }],
     facts: [
       { label: 'Model', html: 'Pump–Stokes difference frequency; CARS at 2ν<sub>p</sub> − ν<sub>S</sub> and CSRS at 2ν<sub>S</sub> − ν<sub>p</sub>; Gaussian-pulse resolution formula.' },

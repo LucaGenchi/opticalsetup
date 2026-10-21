@@ -89,9 +89,12 @@
     <section class="calc-app calc-panel" id="spectra-panel" aria-labelledby="spectra-title">
       <div class="calc-panel-head">
         <h2 id="spectra-title">Reference Raman spectra and the probed window</h2>
-        <p>The Raman shift and resolution above, drawn on measured spectra of 84 reference materials from openly licensed sources <a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-9">[9]</a>. The shaded band is the window the excitation addresses.</p>
+        <p>The Raman shift and resolution above, drawn on measured spectra of 84 reference materials from openly licensed sources <a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-9">[9]</a>. The highlighted band is the window the excitation addresses.</p>
       </div>
-      <form class="calc-inputs" id="spectra-form" autocomplete="off" novalidate></form>
+      <div class="calc-column">
+        <form class="calc-inputs" id="spectra-form" autocomplete="off" novalidate></form>
+        <table class="calc-results" id="spectrum-info-results" aria-label="Reference spectrum details"></table>
+      </div>
       <div class="calc-output">
         <div class="calc-status" id="spectra-status" role="status" aria-live="polite"></div>
         <table class="calc-results" id="spectra-results" aria-label="Reference Raman spectra and the probed window results"></table>
