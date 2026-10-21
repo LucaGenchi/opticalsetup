@@ -6,13 +6,15 @@ import { renderForm, readForm, syncForm, lineChart, formatNumber } from './calcu
 // gave it (`calc` for the main panel: calc-form, calc-status, ...). A group
 // with `form: '<id>'` renders into that form instead, for controls placed
 // elsewhere on the page; the plot range below the graphs uses `plot-form`.
-// `rows` returns [label, value, unit, digits] arrays, or { group } headings.
+// `rows` returns [label, value, unit, digits] arrays, or { group } headings;
+// a page with several result tables returns { <id>: rows } for the tables
+// `<id>-results` (the main one is the panel's own id).
 export function mountCalculator({ panel = 'calc', inputs, defaults, groups, compute, rows, notes = () => [], graphs = null }) {
   const mainId = `${panel}-form`;
   const formIds = [...new Set([mainId, ...Object.values(groups).map(g => g.form ?? mainId)])];
   const forms = formIds.map(id => document.getElementById(id));
   const status = document.getElementById(`${panel}-status`);
-  const results = document.getElementById(`${panel}-results`);
+  const tables = [...forms[0].closest('section').querySelectorAll('table.calc-results')];
   const noteList = document.getElementById(`${panel}-notes`);
   const hosts = graphs ? [...document.querySelectorAll('[data-chart]')] : [];
   const reset = document.createElement('button');
@@ -22,8 +24,26 @@ export function mountCalculator({ panel = 'calc', inputs, defaults, groups, comp
   function init() {
     formIds.forEach((id, k) => renderForm(forms[k], inputs,
       Object.fromEntries(Object.entries(groups).filter(([, g]) => (g.form ?? mainId) === id)), defaults));
-    forms[0].append(reset);
+    (document.getElementById(`${panel}-actions`) ?? forms[0]).append(reset);
     update();
+  }
+  function fill(table, list) {
+    for (const row of list) {
+      const tr = table.insertRow();
+      const th = document.createElement('th');
+      if (row.group) {
+        tr.className = 'group';
+        th.colSpan = 2; th.scope = 'colgroup'; th.textContent = row.group;
+        tr.append(th);
+        continue;
+      }
+      const [label, value, unit = '', digits = 6] = row;
+      th.scope = 'row'; th.textContent = label;
+      const td = document.createElement('td');
+      const shown = formatNumber(value, digits);
+      td.textContent = shown === '—' || !unit ? shown : `${shown} ${unit}`;
+      tr.append(th, td);
+    }
   }
   function draw(result) {
     const charts = result.ok ? graphs(result) : {};
@@ -36,7 +56,7 @@ export function mountCalculator({ panel = 'calc', inputs, defaults, groups, comp
     const raw = readForm(forms, inputs);
     const result = compute(raw);
     syncForm(forms, inputs, raw, new Set((result.errors ?? []).map(e => e.id)));
-    results.textContent = '';
+    for (const table of tables) table.textContent = '';
     noteList.textContent = '';
     status.className = `calc-status${result.ok ? '' : ' is-error'}`;
     status.textContent = result.ok ? 'Calculated within the stated model.' : 'Unavailable: correct these inputs.';
@@ -47,21 +67,9 @@ export function mountCalculator({ panel = 'calc', inputs, defaults, groups, comp
       }
       status.append(ul);
     } else {
-      for (const row of rows(result)) {
-        const tr = results.insertRow();
-        const th = document.createElement('th');
-        if (row.group) {
-          tr.className = 'group';
-          th.colSpan = 2; th.scope = 'colgroup'; th.textContent = row.group;
-          tr.append(th);
-          continue;
-        }
-        const [label, value, unit = '', digits = 6] = row;
-        th.scope = 'row'; th.textContent = label;
-        const td = document.createElement('td');
-        const shown = formatNumber(value, digits);
-        td.textContent = shown === '—' || !unit ? shown : `${shown} ${unit}`;
-        tr.append(th, td);
+      const out = rows(result);
+      for (const [id, list] of Object.entries(Array.isArray(out) ? { [panel]: out } : out)) {
+        fill(document.getElementById(`${id}-results`), list);
       }
       for (const text of notes(result)) {
         const li = document.createElement('li'); li.textContent = text; noteList.append(li);

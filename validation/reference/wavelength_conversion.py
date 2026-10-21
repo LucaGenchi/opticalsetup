@@ -45,11 +45,12 @@ def conversion_case(name, inputs, waves, extra=None):
             "tolerance": {k: 1e-9 for k in expected}}
 
 
-def crs_case(name, inputs, pump, stokes, probe=None):
-    """pump/stokes/probe in Hz; probe None means two-color."""
+def crs_case(name, inputs, pump, stokes):
+    """Two-color CRS, pump and Stokes in Hz: the pump scatters into CARS,
+    the Stokes beam into CSRS."""
     vib = pump - stokes
-    cars = (probe if probe else pump) + vib
-    csrs = (probe if probe else stokes) - vib
+    cars = pump + vib
+    csrs = stokes - vib
     expected = {"pumpNm": sig(C_M_PER_S / pump * 1e9), "stokesNm": sig(C_M_PER_S / stokes * 1e9),
                 "ramanShiftCm": sig(vib / C_CM_PER_S), "ramanTHz": sig(vib / 1e12),
                 "antiStokesNm": sig(C_M_PER_S / cars * 1e9)}
@@ -120,9 +121,7 @@ def cases():
                 "expected": {"wave2Nm": 1030 * 1550 / 520}, "tolerance": {"wave2Nm": 1e-12}})
 
     pump, stokes = hz(800), hz(1040)
-    out.append(crs_case("CRS pump/Stokes 800/1040 nm, two-color", {"mode": "pump-stokes", "pumpNm": 800, "stokesNm": 1040}, pump, stokes))
-    out.append(crs_case("CRS pump/Stokes 800/1040 nm, 532 nm probe",
-                        {"mode": "pump-stokes", "pumpNm": 800, "stokesNm": 1040, "separateProbe": True, "probeNm": 532}, pump, stokes, hz(532)))
+    out.append(crs_case("CRS pump/Stokes 800/1040 nm", {"mode": "pump-stokes", "pumpNm": 800, "stokesNm": 1040}, pump, stokes))
     for pump_nm, shift in ((800, 2850), (1064, 1003), (1030.25, 1600.5), (19900, 0.1)):
         p = hz(pump_nm)
         out.append(crs_case(f"CRS pump {pump_nm} nm and shift {shift} cm-1",
@@ -131,9 +130,6 @@ def cases():
         s = hz(stokes_nm)
         out.append(crs_case(f"CRS Stokes {stokes_nm} nm and shift {shift} cm-1",
                             {"mode": "stokes-shift", "stokesNm": stokes_nm, "ramanShiftCm": shift}, s + shift * C_CM_PER_S, s))
-    out.append(crs_case("CRS Stokes/shift with a 700 nm probe",
-                        {"mode": "stokes-shift", "stokesNm": 1040, "ramanShiftCm": 2850, "separateProbe": True, "probeNm": 700},
-                        hz(1040) + 2850 * C_CM_PER_S, hz(1040), hz(700)))
     out.append(crs_case("CRS without CSRS: shift above the Stokes frequency",
                         {"mode": "pump-stokes", "pumpNm": 600, "stokesNm": 1300}, hz(600), hz(1300)))
     out.append({"name": "CARS and CSRS exact anchors: 800/1000 nm",
@@ -165,7 +161,7 @@ MODEL = {
         "M. Mohseni, C. Polzer and T. Hellerer, Opt. Express 26, 10230-10241 (2018), doi:10.1364/OE.26.010230, Eq. (5) (resolution)",
     ],
     "provenance": "Energy conservation written from Boyd; CARS and CSRS frequencies from Cheng and Xie and Heuke and Rigneault; the resolution check recomputes the excitation-amplitude width that Eq. (5) of Mohseni et al. expresses in closed form, and the paper's 20.8 ps cm^-1 prefactor anchors it.",
-    "domain": "SHG and THG both directions; SFG; DFG in both input orders and near degeneracy; OPO from signal, idler and the degenerate point; coherent Raman in all three input modes, with and without a distinct probe, with and without a CSRS solution; resolution for equal, unequal, short and equally chirped pulses.",
+    "domain": "SHG and THG both directions; SFG; DFG in both input orders and near degeneracy; OPO from signal, idler and the degenerate point; coherent Raman (two-color) in all three input modes, with and without a CSRS solution; resolution for equal, unequal, short and equally chirped pulses.",
     "convergence": "Closed-form arithmetic; the resolution quadrature uses 4001 points over +/-14 effective widths and an 80-step bisection.",
     "tolerance_rationale": "1e-9 relative for floating-point identities and for the spectrally accurate quadrature; exact rational anchors at 1e-12; the published three-figure prefactor at half a unit in its last place (0.25 %).",
     "outside_scope": "Declines non-finite or out-of-range inputs, equal DFG inputs, an OPO output not longer than the pump, reversed or equal pump and Stokes, non-positive shifts and inferred pump or Stokes wavelengths outside 100-20000 nm; CSRS alone is omitted when the Raman frequency is not below the probing frequency.",

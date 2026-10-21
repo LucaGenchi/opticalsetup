@@ -145,6 +145,41 @@ function panelSection(id, panel = null) {
     </section>`;
 }
 
+// The main calculator laid out as columns, each an input form with an
+// optional results table under it, plus one output column for the status,
+// the main results and the notes. The first form must be `calc`, the main
+// panel's form; mountCalculator routes rows to `<results>-results` tables.
+function columnsSection(slug, columns) {
+  if (columns[0]?.form !== 'calc' || columns.filter(c => c.output).length !== 1) {
+    throw new Error(`${slug}: columns need the calc form first and exactly one output column`);
+  }
+  const cells = columns.map(col => col.output ? `
+      <div class="calc-column calc-output">
+        <div class="calc-status" id="calc-status" role="status" aria-live="polite"></div>
+        <table class="calc-results" id="calc-results" aria-label="${esc(col.label ?? 'Results')}"></table>
+        <ul class="calc-notes" id="calc-notes"></ul>
+      </div>` : `
+      <div class="calc-column">
+        <form class="calc-inputs" id="${col.form}-form" autocomplete="off" novalidate></form>
+        ${col.results ? `<table class="calc-results" id="${col.results}-results" aria-label="${esc(col.label)}"></table>` : ''}
+      </div>`).join('');
+  return `<noscript><p class="calc-status is-error">This calculator needs JavaScript. The physics and formulas below read without it.</p></noscript>
+    <section class="calc-app calc-columns" id="calculator" aria-label="Calculator">${cells}
+      <div class="calc-actions" id="calc-actions"></div>
+    </section>`;
+}
+
+// Links into the repository must name a file that exists here, so a page
+// cannot ship a link that 404s once its branch is merged.
+const REPO_BLOB = 'https://github.com/LucaGenchi/opticalsetup/blob/main/';
+async function checkRepoLinks(label, text) {
+  for (const m of text.matchAll(/https:\/\/github\.com\/LucaGenchi\/opticalsetup\/blob\/main\/([^"'#?\s)\\<]+)/g)) {
+    const path = decodeURIComponent(m[1]);
+    const ok = await readFile(join(ROOT, path)).then(() => true, () => false);
+    if (!ok) throw new Error(`${label}: link to ${REPO_BLOB}${path} names a file that does not exist`);
+  }
+}
+
 function calculatorPage(calc) {
   const base = '../..';
   for (const panel of calc.panels ?? []) {
@@ -176,11 +211,8 @@ ${header(base)}
     <div class="crumb"><a href="${base}/calculators/">Calculators</a> / ${esc(calc.title)}</div>
     <h1>${esc(calc.title)}</h1>
     <p class="tagline">${esc(calc.summary)}</p>
-    <dl class="calc-facts">
-      ${calc.facts.map(f => `<div><dt>${esc(f.label)}</dt><dd>${f.html}</dd></div>`).join('\n      ')}
-    </dl>
 
-    ${panelSection('calc')}
+    ${calc.columns ? columnsSection(calc.slug, calc.columns) : panelSection('calc')}
     ${(calc.panels ?? []).map(p => panelSection(p.id, p)).join('\n    ')}
 
     ${calc.graphs.length ? `<section class="calc-graphs" aria-label="Graphs">
@@ -191,6 +223,10 @@ ${header(base)}
       </figure>`).join('\n      ')}
     </section>` : ''}
     ${calc.plotControls ? `<form class="calc-inputs calc-plot-form" id="plot-form" autocomplete="off" novalidate aria-label="${esc(calc.plotControls.title)}"></form>` : ''}
+
+    <dl class="calc-facts" aria-label="About this calculator">
+      ${calc.facts.map(f => `<div><dt>${esc(f.label)}</dt><dd>${f.html}</dd></div>`).join('\n      ')}
+    </dl>
 
     <nav class="calc-toc" aria-label="On this page">
       ${calc.sections.map(s => `<a href="#${s.id}">${esc(s.title)}</a>`).join('\n      ')}
@@ -243,6 +279,7 @@ ${footer(base)}
 
 async function main() {
   const dir = join(ROOT, 'calculators');
+  for (const calc of calculators) await checkRepoLinks(calc.slug, JSON.stringify(calc));
   const pages = [
     ...calculators.map(calc => [join(dir, calc.slug, 'index.html'), calculatorPage(calc)]),
     [join(dir, 'index.html'), hubPage()],

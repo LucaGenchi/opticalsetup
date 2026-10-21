@@ -151,9 +151,10 @@ def cases():
             "expected": {"gddFs2": sig(gdd), "todFs3": sig(length * point["todFs3PerMm"]),
                          "delayVsVacuumFs": sig(length * (point["groupIndex"] - 1) * 1e12 / 299792458),
                          "delaySpreadFs": sig(length * (edges[0]["groupIndex"] - edges[1]["groupIndex"]) * 1e12 / 299792458),
-                         "transformLimitFs": sig(tau0), "outputFs": sig(tau)},
+                         "transformLimitFs": sig(tau0), "outputFs": sig(tau),
+                         "bandwidthTHz": sig(299792.458 * bw / lam ** 2)},
             "tolerance": {"gddFs2": 1e-9, "todFs3": 1e-9, "delayVsVacuumFs": 1e-9, "delaySpreadFs": 1e-8,
-                          "transformLimitFs": 1e-9, "outputFs": 1e-9},
+                          "transformLimitFs": 1e-9, "outputFs": 1e-9, "bandwidthTHz": 1e-9},
             "note": "Delay spread is a difference of two group indices: 1e-8 for the cancellation.",
         })
     return out

@@ -766,34 +766,7 @@
     "pumpNm": 800,
     "stokesNm": 1040
    },
-   "name": "CRS pump/Stokes 800/1040 nm, two-color",
-   "tolerance": {
-    "antiStokesNm": 1e-09,
-    "csrsNm": 1e-09,
-    "pumpNm": 1e-09,
-    "ramanShiftCm": 1e-09,
-    "ramanTHz": 1e-09,
-    "stokesNm": 1e-09
-   }
-  },
-  {
-   "expected": {
-    "antiStokesNm": 461.2204068,
-    "csrsNm": 628.4416174,
-    "pumpNm": 800.0,
-    "ramanShiftCm": 2884.615385,
-    "ramanTHz": 86.47859365,
-    "stokesNm": 1040.0
-   },
-   "inputs": {
-    "kind": "crs",
-    "mode": "pump-stokes",
-    "probeNm": 532,
-    "pumpNm": 800,
-    "separateProbe": true,
-    "stokesNm": 1040
-   },
-   "name": "CRS pump/Stokes 800/1040 nm, 532 nm probe",
+   "name": "CRS pump/Stokes 800/1040 nm",
    "tolerance": {
     "antiStokesNm": 1e-09,
     "csrsNm": 1e-09,
@@ -1003,33 +976,6 @@
   },
   {
    "expected": {
-    "antiStokesNm": 583.5764902,
-    "csrsNm": 874.4534666,
-    "pumpNm": 802.2215366,
-    "ramanShiftCm": 2850.0,
-    "ramanTHz": 85.44085053,
-    "stokesNm": 1040.0
-   },
-   "inputs": {
-    "kind": "crs",
-    "mode": "stokes-shift",
-    "probeNm": 700,
-    "ramanShiftCm": 2850,
-    "separateProbe": true,
-    "stokesNm": 1040
-   },
-   "name": "CRS Stokes/shift with a 700 nm probe",
-   "tolerance": {
-    "antiStokesNm": 1e-09,
-    "csrsNm": 1e-09,
-    "pumpNm": 1e-09,
-    "ramanShiftCm": 1e-09,
-    "ramanTHz": 1e-09,
-    "stokesNm": 1e-09
-   }
-  },
-  {
-   "expected": {
     "antiStokesNm": 390.0,
     "pumpNm": 600.0,
     "ramanShiftCm": 8974.358974,
@@ -1163,7 +1109,7 @@
   "M. Mohseni, C. Polzer and T. Hellerer, Opt. Express 26, 10230-10241 (2018), doi:10.1364/OE.26.010230, Eq. (5) (resolution)"
  ],
  "convergence": "Closed-form arithmetic; the resolution quadrature uses 4001 points over +/-14 effective widths and an 80-step bisection.",
- "domain": "SHG and THG both directions; SFG; DFG in both input orders and near degeneracy; OPO from signal, idler and the degenerate point; coherent Raman in all three input modes, with and without a distinct probe, with and without a CSRS solution; resolution for equal, unequal, short and equally chirped pulses.",
+ "domain": "SHG and THG both directions; SFG; DFG in both input orders and near degeneracy; OPO from signal, idler and the degenerate point; coherent Raman (two-color) in all three input modes, with and without a CSRS solution; resolution for equal, unequal, short and equally chirped pulses.",
  "fidelity": "computed",
  "id": "wavelength-conversion",
  "outside_scope": "Declines non-finite or out-of-range inputs, equal DFG inputs, an OPO output not longer than the pump, reversed or equal pump and Stokes, non-positive shifts and inferred pump or Stokes wavelengths outside 100-20000 nm; CSRS alone is omitted when the Raman frequency is not below the probing frequency.",

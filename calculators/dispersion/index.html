@@ -7,11 +7,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Material dispersion calculator — OpticalSetup</title>
-<meta name="description" content="Choose a material and thickness, then the laser’s central wavelength and bandwidth. Read the phase and group index, group-velocity and third-order dispersion, the GDD and TOD the material introduces, and how much a transform-limited pulse stretches.">
+<meta name="description" content="Set the laser’s central wavelength and bandwidth, then a material and thickness. Read the input pulse, the material’s phase and group index, group-velocity and third-order dispersion, and what the thickness does to the pulse: GDD, TOD, delay and stretched duration.">
 <link rel="canonical" href="https://opticalsetup.com/calculators/dispersion/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Material dispersion calculator — OpticalSetup">
-<meta property="og:description" content="Choose a material and thickness, then the laser’s central wavelength and bandwidth. Read the phase and group index, group-velocity and third-order dispersion, the GDD and TOD the material introduces, and how much a transform-limited pulse stretches.">
+<meta property="og:description" content="Set the laser’s central wavelength and bandwidth, then a material and thickness. Read the input pulse, the material’s phase and group index, group-velocity and third-order dispersion, and what the thickness does to the pulse: GDD, TOD, delay and stretched duration.">
 <meta property="og:url" content="https://opticalsetup.com/calculators/dispersion/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="../../sketch/icons/icon.svg">
@@ -63,21 +63,24 @@
   <main class="calc-page">
     <div class="crumb"><a href="../../calculators/">Calculators</a> / Material dispersion</div>
     <h1>Material dispersion</h1>
-    <p class="tagline">Choose a material and thickness, then the laser’s central wavelength and bandwidth. Read the phase and group index, group-velocity and third-order dispersion, the GDD and TOD the material introduces, and how much a transform-limited pulse stretches.</p>
-    <dl class="calc-facts">
-      <div><dt>Model</dt><dd>Published room-temperature dispersion fits with analytic derivatives to third order. No absorption, temperature or stress correction.</dd></div>
-      <div><dt>Evidence</dt><dd>Equations checked against independent Python references, with published or exact algebraic anchors. These checks do not establish experimental accuracy.</dd></div>
-      <div><dt>Code</dt><dd>The <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/calculators/dispersion/materials.js">calculator’s material module</a>; the four workbench glasses reuse the <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/sketch/js/glass.js">canvas catalogue</a>’s coefficients.</dd></div>
-    </dl>
+    <p class="tagline">Set the laser’s central wavelength and bandwidth, then a material and thickness. Read the input pulse, the material’s phase and group index, group-velocity and third-order dispersion, and what the thickness does to the pulse: GDD, TOD, delay and stretched duration.</p>
 
-    <section class="calc-app" id="calculator" aria-label="Calculator">
-      <noscript><p class="calc-status is-error">This calculator needs JavaScript. The physics and formulas below read without it.</p></noscript>
-      <form class="calc-inputs" id="calc-form" autocomplete="off" novalidate></form>
-      <div class="calc-output">
+    <noscript><p class="calc-status is-error">This calculator needs JavaScript. The physics and formulas below read without it.</p></noscript>
+    <section class="calc-app calc-columns" id="calculator" aria-label="Calculator">
+      <div class="calc-column">
+        <form class="calc-inputs" id="calc-form" autocomplete="off" novalidate></form>
+        <table class="calc-results" id="pulse-results" aria-label="Input pulse"></table>
+      </div>
+      <div class="calc-column">
+        <form class="calc-inputs" id="material-form" autocomplete="off" novalidate></form>
+        <table class="calc-results" id="material-results" aria-label="Material at the central wavelength"></table>
+      </div>
+      <div class="calc-column calc-output">
         <div class="calc-status" id="calc-status" role="status" aria-live="polite"></div>
-        <table class="calc-results" id="calc-results" aria-label="Results"></table>
+        <table class="calc-results" id="calc-results" aria-label="Output through the thickness"></table>
         <ul class="calc-notes" id="calc-notes"></ul>
       </div>
+      <div class="calc-actions" id="calc-actions"></div>
     </section>
 
 
@@ -99,6 +102,12 @@
       </figure>
     </section>
     <form class="calc-inputs calc-plot-form" id="plot-form" autocomplete="off" novalidate aria-label="Plot range"></form>
+
+    <dl class="calc-facts" aria-label="About this calculator">
+      <div><dt>Model</dt><dd>Published room-temperature dispersion fits with analytic derivatives to third order. No absorption, temperature or stress correction.</dd></div>
+      <div><dt>Evidence</dt><dd>Equations checked against independent Python references, with published or exact algebraic anchors. These checks do not establish experimental accuracy.</dd></div>
+      <div><dt>Code</dt><dd>The <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/calculators/dispersion/materials.js">calculator’s material module</a>; the four workbench glasses reuse the <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/sketch/js/glass.js">canvas catalogue</a>’s coefficients.</dd></div>
+    </dl>
 
     <nav class="calc-toc" aria-label="On this page">
       <a href="#physics">The dispersion model</a>

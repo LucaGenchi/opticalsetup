@@ -64,11 +64,6 @@
     <div class="crumb"><a href="../../calculators/">Calculators</a> / Optical parametric amplifier (OPA)</div>
     <h1>Optical parametric amplifier (OPA)</h1>
     <p class="tagline">Set the pump, the crystal and the seed; read the gain, the idler, the pump depletion and the energy balance. The numbers come from the functions OpticalSetup’s parametric amplifier is built on, and are checked against independent solutions of the same equations.</p>
-    <dl class="calc-facts">
-      <div><dt>Model</dt><dd>Plane waves, collinear; gain evaluated instant by instant through the pulses (quasi-static); pump depletion as an energy limit, without back-conversion.</dd></div>
-      <div><dt>Evidence</dt><dd>Reference-checked against independent solutions of the same equations, including an exact solution with pump depletion: <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/docs/validation.md" target="_blank" rel="noopener">validation table</a>. Not compared with a measurement.</dd></div>
-      <div><dt>Code</dt><dd><a href="https://github.com/LucaGenchi/opticalsetup/blob/main/sketch/js/parametric.js" target="_blank" rel="noopener">parametric.js</a> and <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/sketch/js/parametric-amplifier.js" target="_blank" rel="noopener">parametric-amplifier.js</a>, the functions the canvas’s <a href="../../wiki/opa/">OPA element</a> uses. The element takes a simpler set of inputs (tuned wavelength, gain bandwidth, gain in dB) and maps them onto the same core.</dd></div>
-    </dl>
 
     <section class="calc-app" id="calculator" aria-label="Calculator">
       <noscript><p class="calc-status is-error">This calculator needs JavaScript. The physics and formulas below read without it.</p></noscript>
@@ -99,6 +94,12 @@
       </figure>
     </section>
 
+
+    <dl class="calc-facts" aria-label="About this calculator">
+      <div><dt>Model</dt><dd>Plane waves, collinear; gain evaluated instant by instant through the pulses (quasi-static); pump depletion as an energy limit, without back-conversion.</dd></div>
+      <div><dt>Evidence</dt><dd>Reference-checked against independent solutions of the same equations, including an exact solution with pump depletion: <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/docs/validation.md" target="_blank" rel="noopener">validation table</a>. Not compared with a measurement.</dd></div>
+      <div><dt>Code</dt><dd><a href="https://github.com/LucaGenchi/opticalsetup/blob/main/sketch/js/parametric.js" target="_blank" rel="noopener">parametric.js</a> and <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/sketch/js/parametric-amplifier.js" target="_blank" rel="noopener">parametric-amplifier.js</a>, the functions the canvas’s <a href="../../wiki/opa/">OPA element</a> uses. The element takes a simpler set of inputs (tuned wavelength, gain bandwidth, gain in dB) and maps them onto the same core.</dd></div>
+    </dl>
 
     <nav class="calc-toc" aria-label="On this page">
       <a href="#physics">The physics</a>

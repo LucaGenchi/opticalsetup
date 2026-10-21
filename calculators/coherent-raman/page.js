@@ -4,19 +4,18 @@ import { CRS_INPUTS, CRS_DEFAULTS, computeCrs, RESOLUTION_INPUTS, RESOLUTION_DEF
 import { mountCalculator } from '../assets/simple-calculator-page.js';
 
 mountCalculator({ inputs: CRS_INPUTS, defaults: CRS_DEFAULTS, groups: {
-  excitation: { title: 'Raman excitation' }, probe: { title: 'Probe' },
+  excitation: { title: 'Raman excitation' },
 }, compute: computeCrs,
   rows: r => [
     { group: 'Excitation' },
     ['Pump wavelength', r.pumpNm, 'nm'], ['Stokes wavelength', r.stokesNm, 'nm'],
     ['Raman shift', r.ramanShiftCm, 'cm⁻¹'], ['Raman frequency', r.ramanTHz, 'THz'],
-    { group: r.separateProbe ? `Signals with a ${+r.carsProbeNm.toPrecision(6)} nm probe` : 'Two-color signals' },
+    { group: 'Coherent Raman signals' },
     ['CARS (anti-Stokes) wavelength', r.antiStokesNm, 'nm'], ['CSRS (coherent Stokes) wavelength', r.csrsNm, 'nm'],
   ],
   notes: r => [
-    r.separateProbe ? 'CARS at the probe frequency plus the Raman frequency; CSRS at the probe frequency minus it.'
-      : 'CARS at twice the pump frequency minus the Stokes frequency (the pump probes); CSRS at twice the Stokes frequency minus the pump frequency (the Stokes beam probes).',
-    ...(r.csrsNm === null ? ['No CSRS wavelength: the Raman frequency is not below the probing frequency.'] : []),
+    'CARS appears at twice the pump frequency minus the Stokes frequency; CSRS at twice the Stokes frequency minus the pump frequency.',
+    ...(r.csrsNm === null ? ['No CSRS wavelength: the Raman frequency is not below the Stokes frequency.'] : []),
     'Stimulated Raman scattering (SRS) is detected at the pump and Stokes wavelengths themselves, as a loss or gain.',
     'Frequency relations only. No Raman resonance strength, nonresonant background, phase matching or signal level is predicted.',
   ],

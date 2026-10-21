@@ -7,20 +7,23 @@ import { formatNumber } from '../assets/calculator-kit.js';
 const shapeName = { gauss: 'Gaussian', sech2: 'sech²' };
 
 mountCalculator({ inputs: DISPERSION_INPUTS, defaults: DISPERSION_DEFAULTS, groups: {
-  material: { title: 'Material properties' }, source: { title: 'Laser source' },
+  source: { title: 'Laser source' }, material: { title: 'Material properties', form: 'material-form' },
   plot: { title: 'Plot range', form: 'plot-form' },
 }, compute: computeDispersion,
-  rows: r => [
-    { group: 'Material at the central wavelength' },
-    ['Phase index n', r.index, '', 7], ['Group index', r.groupIndex, '', 7],
-    ['GVD β₂', r.gvdFs2PerMm, 'fs²/mm'], ['TOD β₃', r.todFs3PerMm, 'fs³/mm'], ['Abbe number', r.abbe, '', 4],
-    { group: `Through ${formatNumber(r.values.thicknessMm, 6)} mm` },
-    ['Group delay vs. vacuum', r.delayVsVacuumFs / 1000, 'ps'],
-    ['GDD', r.gddFs2, 'fs²'], ['TOD', r.todFs3, 'fs³'],
-    ['Delay spread across the bandwidth (blue − red)', r.delaySpreadFs, 'fs'],
-    { group: `${shapeName[r.values.shape]} pulse, transform-limited at the input` },
-    ['Input duration (FWHM)', r.transformLimitFs, 'fs'], ['Output duration, GDD only (FWHM)', r.outputFs, 'fs'],
-  ],
+  // Three columns: the source and its input pulse, the material and its
+  // values at λ₀, then what the thickness does to the pulse.
+  rows: r => ({
+    pulse: [{ group: `${shapeName[r.values.shape]} pulse, transform-limited at the input` },
+      ['Duration (FWHM)', r.transformLimitFs, 'fs'], ['Bandwidth in frequency (FWHM)', r.bandwidthTHz, 'THz']],
+    material: [{ group: 'Material at the central wavelength' },
+      ['Phase index n', r.index, '', 7], ['Group index', r.groupIndex, '', 7],
+      ['GVD β₂', r.gvdFs2PerMm, 'fs²/mm'], ['TOD β₃', r.todFs3PerMm, 'fs³/mm'], ['Abbe number', r.abbe, '', 4]],
+    calc: [{ group: `Through ${formatNumber(r.values.thicknessMm, 6)} mm (output)` },
+      ['Group delay vs. vacuum', r.delayVsVacuumFs / 1000, 'ps'],
+      ['GDD', r.gddFs2, 'fs²'], ['TOD', r.todFs3, 'fs³'],
+      ['Delay spread across the bandwidth (blue − red)', r.delaySpreadFs, 'fs'],
+      ['Output duration, GDD only (FWHM)', r.outputFs, 'fs']],
+  }),
   notes: r => {
     const v = r.values, out = [];
     out.push(`${r.material.label}: ${r.material.conditions}. Fit domain ${r.range[0]}–${r.range[1]} nm; this is not a transmission guarantee.`);

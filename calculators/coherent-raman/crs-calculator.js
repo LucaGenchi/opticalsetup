@@ -16,10 +16,6 @@ export const CRS_INPUTS = [
     when: 'mode', whenValue: ['pump-stokes', 'stokes-shift'], help: 'Vacuum wavelength of the Stokes beam; longer than the pump.' },
   { id: 'ramanShiftCm', group: 'excitation', label: 'Raman shift', unit: 'cm⁻¹', value: 2850, min: 0, max: MAX_SHIFT_CM,
     when: 'mode', whenValue: ['pump-shift', 'stokes-shift'], help: 'Vibrational wavenumber to address; must be positive.' },
-  { id: 'separateProbe', group: 'probe', label: 'Use a distinct probe', type: 'checkbox', value: false,
-    help: 'Unticked: two-color CRS, where the pump probes the CARS signal and the Stokes beam probes the CSRS signal.' },
-  { id: 'probeNm', group: 'probe', label: 'Probe wavelength', unit: 'nm', value: 700, min: SCOPE_NM[0], max: SCOPE_NM[1],
-    when: 'separateProbe', help: 'A third beam. CARS = probe frequency + Raman frequency; CSRS = probe frequency − Raman frequency.' },
 ];
 export const CRS_DEFAULTS = defaultsFor(CRS_INPUTS);
 
@@ -45,14 +41,13 @@ export function computeCrs(raw) {
       if (outOfScope(pumpNm)) return unavailable(`The inferred pump wavelength is outside the ${SCOPE_NM[0]}–${SCOPE_NM[1]} nm scope.`, 'ramanShiftCm', 'stokesNm');
     }
   }
-  // CARS at probe + Ω, CSRS at probe − Ω. Without a distinct probe the pump
-  // probes CARS (2ν_p − ν_s) and the Stokes beam probes CSRS (2ν_s − ν_p).
-  const carsProbeNm = v.separateProbe ? v.probeNm : pumpNm;
-  const csrsProbeNm = v.separateProbe ? v.probeNm : stokesNm;
-  const antiStokesNm = v.separateProbe ? 1e7 / (1e7 / carsProbeNm + ramanShiftCm) : carsAntiStokesWl(pumpNm, stokesNm);
-  const csrsInverse = v.separateProbe ? 1e7 / csrsProbeNm - ramanShiftCm : 2e7 / stokesNm - 1e7 / pumpNm;
+  // Two-color CRS: the pump scatters off the coherence into CARS at
+  // 2ν_p − ν_S, the Stokes beam into CSRS at 2ν_S − ν_p, which exists only
+  // while the Raman frequency is below the Stokes frequency.
+  const antiStokesNm = carsAntiStokesWl(pumpNm, stokesNm);
+  const csrsInverse = 2e7 / stokesNm - 1e7 / pumpNm;
   const csrsNm = csrsInverse > 0 ? 1e7 / csrsInverse : null;
-  return { ok: true, mode: v.mode, separateProbe: v.separateProbe, pumpNm, stokesNm, carsProbeNm, csrsProbeNm,
+  return { ok: true, mode: v.mode, pumpNm, stokesNm,
     ramanShiftCm, ramanTHz: ramanShiftCm * C_CM_PER_S * 1e-12, antiStokesNm, csrsNm };
 }
 

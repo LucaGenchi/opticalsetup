@@ -62,10 +62,9 @@ constants). Energy conservation only: no phase matching or efficiency.
 ## Coherent Raman scattering (`calculators/coherent-raman/`)
 
 Any two of pump, Stokes and Raman shift give the third:
-`Δν̃ = 10⁷(1/λ_p − 1/λ_S)`. CARS is at `ν_probe + Ω` and CSRS at
-`ν_probe − Ω`; in two-color CRS the pump probes CARS (`2ν_p − ν_S`) and the
-Stokes beam probes CSRS (`2ν_S − ν_p`, Heuke and Rigneault, Nat. Commun. 14,
-3337 (2023)). CSRS alone is omitted when `Ω` is not below the probing
+`Δν̃ = 10⁷(1/λ_p − 1/λ_S)`. Two-color CRS only: CARS at `2ν_p − ν_S` and CSRS
+at `2ν_S − ν_p` (Heuke and Rigneault, Nat. Commun. 14, 3337 (2023)); a
+distinct third probe beam is not offered. CSRS alone is omitted when `Ω` is not below the Stokes
 frequency. Inferred pump or Stokes wavelengths must stay in 100–20000 nm.
 
 The resolution panel evaluates Eq. (5) of Mohseni, Polzer and Hellerer,

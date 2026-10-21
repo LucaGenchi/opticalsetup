@@ -22,7 +22,7 @@ export const wavelengthCalculators = [
   {
     slug: 'dispersion', title: 'Material dispersion', script: 'page.js',
     card: 'Refractive and group index, GVD and TOD for optical glasses, crystals, water and air; GDD, TOD and pulse stretching for a laser bandwidth.',
-    summary: 'Choose a material and thickness, then the laser’s central wavelength and bandwidth. Read the phase and group index, group-velocity and third-order dispersion, the GDD and TOD the material introduces, and how much a transform-limited pulse stretches.',
+    summary: 'Set the laser’s central wavelength and bandwidth, then a material and thickness. Read the input pulse, the material’s phase and group index, group-velocity and third-order dispersion, and what the thickness does to the pulse: GDD, TOD, delay and stretched duration.',
     facts: [
       { label: 'Model', html: 'Published room-temperature dispersion fits with analytic derivatives to third order. No absorption, temperature or stress correction.' },
       { label: 'Evidence', html: evidence },
@@ -34,6 +34,11 @@ export const wavelengthCalculators = [
       { id: 'tod', title: 'Third-order dispersion', note: 'The wavelength dependence of GVD, which compressors must also cancel for short pulses.' },
     ],
     plotControls: { title: 'Plot range' },
+    columns: [
+      { form: 'calc', results: 'pulse', label: 'Input pulse' },
+      { form: 'material', results: 'material', label: 'Material at the central wavelength' },
+      { output: true, label: 'Output through the thickness' },
+    ],
     sections: [
       { id: 'physics', title: 'The dispersion model',
         html: `<p>Each material is described by its source’s dispersion formula, with λ in micrometres. Solids and water use the Sellmeier form, C in µm² and an optional constant A; air uses Ciddor’s form for n − 1 ${cite(12)}. The input fields take vacuum wavelengths in nm.</p>`,
@@ -106,25 +111,24 @@ export const wavelengthCalculators = [
   {
     slug: 'coherent-raman', title: 'Coherent Raman scattering', script: 'page.js', graphs: [],
     card: 'Raman shift, pump or Stokes from the other two; CARS and CSRS wavelengths; spectral resolution from pulse durations.',
-    summary: 'Solve the pump, Stokes or Raman shift from the other two, then read the CARS and CSRS wavelengths for two-color excitation or a distinct probe. A second panel estimates the spectral resolution set by the pump and Stokes pulse durations.',
+    summary: 'Solve the pump, Stokes or Raman shift from the other two, then read the CARS and CSRS wavelengths of two-color coherent Raman scattering. A second panel estimates the spectral resolution set by the pump and Stokes pulse durations.',
     panels: [{ id: 'resolution', title: 'Spectral resolution from pulse durations',
       intro: `For Gaussian pulses that are transform-limited, or equally chirped as in spectral focusing, the excitation bandwidth depends only on the pump and Stokes durations ${cite(3)}.` }],
     facts: [
-      { label: 'Model', html: 'Pump–Stokes difference frequency; CARS and CSRS at the probe frequency plus or minus the Raman frequency; Gaussian-pulse resolution formula.' },
+      { label: 'Model', html: 'Pump–Stokes difference frequency; CARS at 2ν<sub>p</sub> − ν<sub>S</sub> and CSRS at 2ν<sub>S</sub> − ν<sub>p</sub>; Gaussian-pulse resolution formula.' },
       { label: 'Evidence', html: evidence },
       { label: 'Example', html: '800 nm pump + 1040 nm Stokes → 2884.6 cm⁻¹; CARS at 650 nm, CSRS at 1485.7 nm. Two 2 ps pulses give 14.7 cm⁻¹ resolution.' },
     ],
     sections: [
-      { id: 'physics', title: 'Pump, Stokes and probe',
+      { id: 'physics', title: 'Pump, Stokes and the coherent signals',
         html: `<p>A pump (ν<sub>p</sub>) and a lower-frequency Stokes beam (ν<sub>S</sub>) drive a vibrational coherence at their difference frequency ${cite(1, 4)}. With vacuum wavelengths in nm, the Raman shift is in cm⁻¹, and any two of pump, Stokes and shift fix the third:</p>`,
         formulas: [
           { tex: String.raw`\Delta\tilde\nu=10^7\left(\frac{1}{\lambda_p}-\frac{1}{\lambda_S}\right),\qquad \lambda_S=\frac{10^7}{10^7/\lambda_p-\Delta\tilde\nu},\qquad \lambda_p=\frac{10^7}{10^7/\lambda_S+\Delta\tilde\nu}` },
           { tex: String.raw`\nu_{\mathrm{Raman}}\,[\mathrm{THz}]=0.0299792458\;\Delta\tilde\nu\,[\mathrm{cm}^{-1}]` },
         ],
-        html2: `<p>A probe scatters off the coherence on either side of its own frequency. Coherent anti-Stokes Raman scattering (CARS) appears at the probe frequency plus the Raman frequency, and coherent Stokes Raman scattering (CSRS) at the probe frequency minus it ${cite(1, 2)}. In two-color experiments the pump probes CARS and the Stokes beam probes CSRS; tick “Use a distinct probe” for a third beam. Stimulated Raman scattering (SRS) is read out at the pump and Stokes wavelengths themselves.</p>`,
+        html2: `<p>The same two beams also read the coherence out. A pump photon scattering off it gains the Raman energy, which gives coherent anti-Stokes Raman scattering (CARS) on the blue side of the pump. A Stokes photon losing it gives coherent Stokes Raman scattering (CSRS) on the red side of the Stokes beam ${cite(1, 2)}. Stimulated Raman scattering (SRS) is read out at the pump and Stokes wavelengths themselves, as a loss or a gain.</p>`,
         formulas2: [
-          { tex: String.raw`\nu_{\mathrm{CARS}}=\nu_{\mathrm{pr}}+(\nu_p-\nu_S)\;\xrightarrow{\;\nu_{\mathrm{pr}}=\nu_p\;}\;2\nu_p-\nu_S` },
-          { tex: String.raw`\nu_{\mathrm{CSRS}}=\nu_{\mathrm{pr}}-(\nu_p-\nu_S)\;\xrightarrow{\;\nu_{\mathrm{pr}}=\nu_S\;}\;2\nu_S-\nu_p` },
+          { tex: String.raw`\nu_{\mathrm{CARS}}=\nu_p+(\nu_p-\nu_S)=2\nu_p-\nu_S,\qquad \nu_{\mathrm{CSRS}}=\nu_S-(\nu_p-\nu_S)=2\nu_S-\nu_p` },
         ],
       },
       { id: 'resolution', title: 'Spectral resolution',
@@ -133,14 +137,14 @@ export const wavelengthCalculators = [
         html2: `<p>With equal linear chirps the instantaneous pump–Stokes difference frequency is constant in time, so the chirps cancel in the beat and only the chirped envelopes matter. For spectral focusing, enter those chirped durations. A chirp mismatch adds a broadening term that this panel does not include (Eq. (8) of ${cite(3)}). For Gaussian fields the value equals the FWHM of the amplitude spectrum of the driving term E<sub>p</sub>E<sub>S</sub>*. The FWHM of its power spectrum is smaller by √2. The independent reference recomputes the amplitude-spectrum width numerically, for transform-limited and equally chirped pulses.</p>`,
       },
       { id: 'precision', title: 'Precision and limits',
-        html: '<p>Wavelength inputs and inferred pump or Stokes wavelengths are limited to 100–20000 nm, and shifts to positive values up to 10000 cm⁻¹. Equal or reversed pump and Stokes, impossible shifts and out-of-scope inferred wavelengths give no result. CARS and CSRS may lie outside the input interval. CSRS is unavailable when the Raman frequency is not below the probing frequency. An independent reference checks all three modes, both probe options and the resolution formula to 10⁻⁹ relative; the paper’s 20.8 ps·cm⁻¹ prefactor anchors the units.</p><p>Frequency relations and a Gaussian bandwidth estimate only. Raman cross-sections, linewidths, the nonresonant background, phase matching, polarization, pulse overlap, signal levels and non-Gaussian pulse shapes are outside this model.</p>',
+        html: '<p>Wavelength inputs and inferred pump or Stokes wavelengths are limited to 100–20000 nm, and shifts to positive values up to 10000 cm⁻¹. Equal or reversed pump and Stokes, impossible shifts and out-of-scope inferred wavelengths give no result. CARS and CSRS may lie outside the input interval. CSRS is unavailable when the Raman frequency is not below the Stokes frequency. An independent reference checks all three modes and the resolution formula to 10⁻⁹ relative; the paper’s 20.8 ps·cm⁻¹ prefactor anchors the units.</p><p>Frequency relations and a Gaussian bandwidth estimate only. Raman cross-sections, linewidths, the nonresonant background, phase matching, polarization, pulse overlap, signal levels and non-Gaussian pulse shapes are outside this model.</p>',
       },
     ],
     references: [
       { label: 'J.-X. Cheng and X. S. Xie, “Coherent anti-Stokes Raman scattering microscopy: instrumentation, theory, and applications,” J. Phys. Chem. B 108, 827–840 (2004).', url: 'https://doi.org/10.1021/jp035693v' },
       { label: 'S. Heuke and H. Rigneault, “Coherent Stokes Raman scattering microscopy (CSRS),” Nat. Commun. 14, 3337 (2023).', url: 'https://doi.org/10.1038/s41467-023-38941-4' },
       { label: 'M. Mohseni, C. Polzer and T. Hellerer, “Resolution of spectral focusing in coherent Raman imaging,” Opt. Express 26, 10230–10241 (2018).', url: 'https://doi.org/10.1364/OE.26.010230' },
-      { label: 'NIST, Broadband Coherent Anti-Stokes Raman Scattering Microscopy, excitation and probe frequency relations.', url: 'https://www.nist.gov/programs-projects/broadband-coherent-anti-stokes-raman-scattering-bcars-microscopy' },
+      { label: 'NIST, Broadband Coherent Anti-Stokes Raman Scattering Microscopy, excitation and readout frequency relations.', url: 'https://www.nist.gov/programs-projects/broadband-coherent-anti-stokes-raman-scattering-bcars-microscopy' },
     ],
   },
 ];

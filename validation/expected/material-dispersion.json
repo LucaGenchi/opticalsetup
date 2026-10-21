@@ -1835,6 +1835,7 @@
   },
   {
    "expected": {
+    "bandwidthTHz": 14.05277147,
     "delaySpreadFs": 31.95771809,
     "delayVsVacuumFs": 15582.27176,
     "gddFs2": 361.619983,
@@ -1853,6 +1854,7 @@
    "name": "10 mm silica, 30 nm FWHM at 800 nm",
    "note": "Delay spread is a difference of two group indices: 1e-8 for the cancellation.",
    "tolerance": {
+    "bandwidthTHz": 1e-09,
     "delaySpreadFs": 1e-08,
     "delayVsVacuumFs": 1e-09,
     "gddFs2": 1e-09,
@@ -1863,6 +1865,7 @@
   },
   {
    "expected": {
+    "bandwidthTHz": 3.390997734,
     "delaySpreadFs": 66.77405476,
     "delayVsVacuumFs": 65619.02921,
     "gddFs2": 3133.731808,
@@ -1881,6 +1884,7 @@
    "name": "25 mm nsf11, 12 nm FWHM at 1030 nm",
    "note": "Delay spread is a difference of two group indices: 1e-8 for the cancellation.",
    "tolerance": {
+    "bandwidthTHz": 1e-09,
     "delaySpreadFs": 1e-08,
     "delayVsVacuumFs": 1e-09,
     "gddFs2": 1e-09,
@@ -1891,6 +1895,7 @@
   },
   {
    "expected": {
+    "bandwidthTHz": 11.99169832,
     "delaySpreadFs": 0.4616142928,
     "delayVsVacuumFs": 2270.175673,
     "gddFs2": 6.093815298,
@@ -1909,6 +1914,7 @@
    "name": "2 mm water, 40 nm FWHM at 1000 nm",
    "note": "Delay spread is a difference of two group indices: 1e-8 for the cancellation.",
    "tolerance": {
+    "bandwidthTHz": 1e-09,
     "delaySpreadFs": 1e-08,
     "delayVsVacuumFs": 1e-09,
     "gddFs2": 1e-09,

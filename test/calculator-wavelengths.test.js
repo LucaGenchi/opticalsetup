@@ -69,6 +69,9 @@ test('dispersion: GDD, TOD, delays and pulse stretching follow from the material
   // bandwidth floor: a narrower band keeps the stated formula (review of #244).
   for (const shape of ['gauss', 'sech2']) close(dispersion({ shape }).transformLimitFs, transformLimitedDurationFs(30, 800, shape), 1e-12);
   close(dispersion({ thicknessMm: 0, bandwidthNm: 1e-10 }).transformLimitFs, 0.441 * 800 ** 2 / (299.792458 * 1e-10), 1e-12);
+  // The input-pulse table's frequency width is the same small-band Δν: τ₀ Δν = K.
+  close(r.transformLimitFs * r.bandwidthTHz * 1e-3, 0.441, 1e-12);
+  assert.equal(mono.bandwidthTHz, null);
   // A band edge outside the domain removes only the delay spread.
   const edge = dispersion({ material: 'water', wavelengthNm: 1120, bandwidthNm: 40 });
   assert.equal(edge.ok, true);
@@ -153,9 +156,9 @@ test('coherent Raman: three input modes agree, CARS and CSRS on either side', ()
   const c = crs({ mode: 'stokes-shift', ramanShiftCm: a.ramanShiftCm, pumpNm: '' });
   close(c.pumpNm, 800);
   close(c.csrsNm, a.csrsNm);
-  const probe = crs({ separateProbe: true, probeNm: 532 });
-  close(1e7 / probe.antiStokesNm - 1e7 / 532, a.ramanShiftCm, 1e-9);
-  close(1e7 / 532 - 1e7 / probe.csrsNm, a.ramanShiftCm, 1e-9);
+  // CARS sits one Raman shift above the pump, CSRS one below the Stokes beam.
+  close(1e7 / a.antiStokesNm - 1e7 / 800, a.ramanShiftCm, 1e-9);
+  close(1e7 / 1040 - 1e7 / a.csrsNm, a.ramanShiftCm, 1e-9);
   // No CSRS when the shift exceeds the probing (Stokes) frequency; CARS remains.
   const noCsrs = crs({ pumpNm: 600, stokesNm: 1300 });
   assert.equal(noCsrs.ok, true);
@@ -166,7 +169,7 @@ test('coherent Raman: three input modes agree, CARS and CSRS on either side', ()
 
 test('coherent Raman declines reversed beams, impossible shifts and inferred waves out of scope', () => {
   for (const bad of [
-    { stokesNm: 800 }, { stokesNm: 700 }, { pumpNm: '' }, { separateProbe: true, probeNm: Infinity },
+    { stokesNm: 800 }, { stokesNm: 700 }, { pumpNm: '' }, { stokesNm: Infinity },
     { mode: 'pump-shift', ramanShiftCm: 0 }, { mode: 'stokes-shift', ramanShiftCm: -1 },
     { mode: 'pump-shift', pumpNm: 2000, ramanShiftCm: 5000 }, { mode: 'pump-shift', pumpNm: 20000, ramanShiftCm: 0.1 },
     { mode: 'stokes-shift', stokesNm: 105, ramanShiftCm: 10000 }, { pumpNm: 100, stokesNm: 20000 },
