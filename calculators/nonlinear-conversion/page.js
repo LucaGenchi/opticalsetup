@@ -12,8 +12,8 @@ const NOTES = {
   crs: 'CARS at twice the pump frequency minus the Stokes frequency, CSRS at twice the Stokes frequency minus the pump frequency. The Coherent Raman calculator adds the other input modes, the spectral resolution and reference spectra.',
 };
 
-mountCalculator({ inputs: CONVERSION_INPUTS, defaults: CONVERSION_DEFAULTS, groups: {
-  process: { title: 'Process' }, waves: { title: 'Known wavelengths' },
+mountCalculator({ inputs: CONVERSION_INPUTS, defaults: CONVERSION_DEFAULTS, hideInactive: true, groups: {
+  process: { title: 'Process' }, waves: { title: 'Wavelengths' },
 }, compute: computeConversion,
   rows: r => [
     { group: 'Vacuum wavelengths' }, ...r.waves.map(w => [w.role, w.wavelengthNm, 'nm', 7]),

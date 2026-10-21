@@ -72,6 +72,12 @@ export function computeDispersion(raw) {
     ok: true, ...point, values: v, range, band, material,
     plot: plotInterval(v, range),
     gddFs2, todFs3: L * point.todFs3PerMm, delaySpreadFs,
+    // What inserting the material adds over the same path in air: the
+    // envelope's group delay L(n_g − 1)/c and the optical path L(n − 1).
+    // Catalogue indices are relative to air, so these are excesses over air;
+    // for the air entry itself, whose fit is absolute, they are over vacuum.
+    addedDelayFs: L * (point.groupIndex - 1) * FS_PER_MM,
+    addedOpticalPathMm: L * (point.index - 1),
     // Frequency FWHM in the same small-bandwidth form, cΔλ/λ₀²: τ₀ × Δν = K.
     bandwidthTHz: band ? C_NM_PER_FS * 1000 * v.bandwidthNm / v.wavelengthNm ** 2 : null,
     transformLimitFs, outputFs, abbe: materialAbbe(v.material),

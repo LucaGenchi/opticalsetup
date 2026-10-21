@@ -57,8 +57,13 @@ test('dispersion: GDD, TOD, delays and pulse stretching follow from the material
   close(narrow.delaySpreadFs, narrow.gddFs2 * dOmega, 1e-4);
   assert.ok(r.outputFs > r.transformLimitFs);
   assert.ok(dispersion({ shape: 'sech2' }).transformLimitFs < r.transformLimitFs);
+  // What the material adds over the same path in air: group delay and optical path.
+  close(r.addedDelayFs, 10 * (r.groupIndex - 1) * 1e12 / 299792458);
+  close(r.addedOpticalPathMm, 10 * (r.index - 1));
+  assert.ok(r.addedDelayFs > 0 && r.addedOpticalPathMm > 0 && r.addedDelayFs * 299792458e-12 > r.addedOpticalPathMm, 'n_g > n in normal dispersion');
   const zero = dispersion({ thicknessMm: 0 });
   assert.equal(zero.gddFs2, 0);
+  assert.equal(zero.addedDelayFs, 0);
   close(zero.outputFs, zero.transformLimitFs);
   const mono = dispersion({ bandwidthNm: 0 });
   assert.equal(mono.ok, true);

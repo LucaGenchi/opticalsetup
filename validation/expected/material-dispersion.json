@@ -1835,6 +1835,8 @@
   },
   {
    "expected": {
+    "addedDelayFs": 15582.27176,
+    "addedOpticalPathMm": 4.533172549,
     "bandwidthTHz": 14.05277147,
     "delaySpreadFs": 31.95771809,
     "gddFs2": 361.619983,
@@ -1853,6 +1855,8 @@
    "name": "10 mm silica, 30 nm FWHM at 800 nm",
    "note": "Delay spread is a difference of two group indices: 1e-8 for the cancellation.",
    "tolerance": {
+    "addedDelayFs": 1e-09,
+    "addedOpticalPathMm": 1e-09,
     "bandwidthTHz": 1e-09,
     "delaySpreadFs": 1e-08,
     "gddFs2": 1e-09,
@@ -1863,6 +1867,8 @@
   },
   {
    "expected": {
+    "addedDelayFs": 65619.02921,
+    "addedOpticalPathMm": 18.87288279,
     "bandwidthTHz": 3.390997734,
     "delaySpreadFs": 66.77405476,
     "gddFs2": 3133.731808,
@@ -1881,6 +1887,8 @@
    "name": "25 mm nsf11, 12 nm FWHM at 1030 nm",
    "note": "Delay spread is a difference of two group indices: 1e-8 for the cancellation.",
    "tolerance": {
+    "addedDelayFs": 1e-09,
+    "addedOpticalPathMm": 1e-09,
     "bandwidthTHz": 1e-09,
     "delaySpreadFs": 1e-08,
     "gddFs2": 1e-09,
@@ -1891,6 +1899,8 @@
   },
   {
    "expected": {
+    "addedDelayFs": 2270.175673,
+    "addedOpticalPathMm": 0.6509627346,
     "bandwidthTHz": 11.99169832,
     "delaySpreadFs": 0.4616142928,
     "gddFs2": 6.093815298,
@@ -1909,6 +1919,8 @@
    "name": "2 mm water, 40 nm FWHM at 1000 nm",
    "note": "Delay spread is a difference of two group indices: 1e-8 for the cancellation.",
    "tolerance": {
+    "addedDelayFs": 1e-09,
+    "addedOpticalPathMm": 1e-09,
     "bandwidthTHz": 1e-09,
     "delaySpreadFs": 1e-08,
     "gddFs2": 1e-09,
@@ -1933,7 +1945,7 @@
   "M. N. Polyanskiy, Sci. Data 11, 94 (2024), doi:10.1038/s41597-023-02898-2 (refractiveindex.info database, CC0: transcription source)"
  ],
  "convergence": "Central differences in angular frequency at h = 1e-7 omega in 50-digit arithmetic: truncation about 1e-14 relative; cancellation in the differences leaves round-off of about 3e-28 relative in beta_3 (fused silica, 800 nm), larger near a zero of beta_3 but far below the tolerance.",
- "domain": "Every material at both fit endpoints, a fractional interior wavelength and 800 or 1550 nm; fused silica at its zero-GVD crossing; three thickness and bandwidth cases for GDD, TOD, the delay spread and Gaussian stretching.",
+ "domain": "Every material at both fit endpoints, a fractional interior wavelength and 800 or 1550 nm; fused silica at its zero-GVD crossing; three thickness and bandwidth cases for GDD, TOD, the delay spread, Gaussian stretching and the added group delay and optical path.",
  "fidelity": "computed",
  "id": "material-dispersion",
  "outside_scope": "Declines: `materialDispersion` and `computeDispersion` return null or an error outside each material's fit domain, for a bandwidth not smaller than the central wavelength, and for plot ranges outside the domain. A bandwidth edge outside the domain removes only the delay spread.",

@@ -183,7 +183,7 @@ Sources:
 ### Material dispersion calculator: n, n_g, GVD, TOD and pulse stretching
 
 - **Provenance.** Coefficients as printed in the refractiveindex.info database (CC0) for each primary source, entered in the database's own formula conventions; SCHOTT nd and Vd from the same catalogue release as the coefficients, so they check transcription and the Abbe evaluation, not the fit itself.
-- **Cases run.** Every material at both fit endpoints, a fractional interior wavelength and 800 or 1550 nm; fused silica at its zero-GVD crossing; three thickness and bandwidth cases for GDD, TOD, the delay spread and Gaussian stretching.
+- **Cases run.** Every material at both fit endpoints, a fractional interior wavelength and 800 or 1550 nm; fused silica at its zero-GVD crossing; three thickness and bandwidth cases for GDD, TOD, the delay spread, Gaussian stretching and the added group delay and optical path.
 - **Method.** Central differences in angular frequency at h = 1e-7 omega in 50-digit arithmetic: truncation about 1e-14 relative; cancellation in the differences leaves round-off of about 3e-28 relative in beta_3 (fused silica, 800 nm), larger near a zero of beta_3 but far below the tolerance.
 - **Tolerances.** 1e-9 relative is double-precision agreement with a numerically exact reference (1e-9 fs^2/mm absolute at the zero-GVD crossing; 1e-8 for the delay spread, a difference of two group indices). Catalogue anchors use half a unit of the last quoted digit.
 

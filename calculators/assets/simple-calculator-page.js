@@ -11,11 +11,14 @@ import { renderForm, readForm, syncForm, lineChart, formatNumber } from './calcu
 // `<id>-results` (the main one is the panel's own id). A value may be text.
 // `compute` may return { pending: true, message } while data loads, and
 // `onResult` sees every result, so one panel can feed another; the returned
-// `update` recomputes the panel.
-export function mountCalculator({ panel = 'calc', inputs, defaults, groups, compute, rows, notes = () => [], graphs = null, onResult = () => {} }) {
+// `update` recomputes the panel. With `hideInactive`, fields whose `when`
+// condition is off disappear instead of being greyed out, for pages where
+// a mode selector decides which fields apply.
+export function mountCalculator({ panel = 'calc', inputs, defaults, groups, compute, rows, notes = () => [], graphs = null, onResult = () => {}, hideInactive = false }) {
   const mainId = `${panel}-form`;
   const formIds = [...new Set([mainId, ...Object.values(groups).map(g => g.form ?? mainId)])];
   const forms = formIds.map(id => document.getElementById(id));
+  if (hideInactive) forms.forEach(form => form.classList.add('hide-inactive'));
   const status = document.getElementById(`${panel}-status`);
   const tables = [...forms[0].closest('section').querySelectorAll('table.calc-results')];
   const noteList = document.getElementById(`${panel}-notes`);

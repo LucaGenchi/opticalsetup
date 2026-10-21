@@ -79,6 +79,7 @@
 .calc-field.check { grid-template-columns: auto 1fr; justify-content: start; }
 .calc-field.check label { display: flex; gap: 8px; align-items: center; font-weight: 600; }
 .calc-field.is-off { opacity: .45; }
+.hide-inactive .calc-field.is-off { display: none; }
 
 .calc-output { position: sticky; top: 14px; display: flex; flex-direction: column; gap: 10px; }
 @media (max-width: 960px) { .calc-output { position: static; } }

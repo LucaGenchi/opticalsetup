@@ -21,12 +21,17 @@ mountCalculator({ inputs: DISPERSION_INPUTS, defaults: DISPERSION_DEFAULTS, grou
     calc: [{ group: `Through ${formatNumber(r.values.thicknessMm, 6)} mm (output)` },
       ['GDD', r.gddFs2, 'fs²'], ['TOD', r.todFs3, 'fs³'],
       ['Delay spread across the bandwidth (blue − red)', r.delaySpreadFs, 'fs'],
-      ['Output duration, GDD only (FWHM)', r.outputFs, 'fs']],
+      ['Output duration, GDD only (FWHM)', r.outputFs, 'fs'],
+      [r.material.form === 'gas' ? 'Added group delay (vs. vacuum)' : 'Added group delay (vs. the same path in air)', r.addedDelayFs / 1000, 'ps'],
+      [r.material.form === 'gas' ? 'Added optical path length (vs. vacuum)' : 'Added optical path length (vs. air)', r.addedOpticalPathMm, 'mm']],
   }),
   notes: r => {
     const v = r.values, out = [];
     out.push(`${r.material.label}: ${r.material.conditions}. Fit domain ${r.range[0]}–${r.range[1]} nm; this is not a transmission guarantee.`);
     out.push(r.gvdFs2PerMm >= 0 ? 'Normal dispersion (positive GVD) at the central wavelength.' : 'Anomalous dispersion (negative GVD) at the central wavelength.');
+    out.push(r.material.form === 'gas'
+      ? 'Added delay and optical path compare the beam path with vacuum: the air fit gives absolute indices.'
+      : 'Added delay is how much later the pulse arrives than through the same length of air, L(n_g − 1)/c; the added optical path, L(n − 1), is the phase path. Retime a pump–probe delay line by the added delay.');
     if (r.material.birefringent) out.push('Principal-axis index of a birefringent crystal: valid for light polarized along that axis. Other propagation directions need the angle-dependent index, which is not modelled.');
     if (!r.band) out.push('Bandwidth 0: a monochromatic beam has no pulse duration or delay spread.');
     else {
