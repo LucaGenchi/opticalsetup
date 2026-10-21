@@ -41,7 +41,9 @@ The transform limit and stretched duration reuse the workbench's
 domain, and for a bandwidth not smaller than λ₀, the page declines.
 
 Not modelled: absorption, temperature, stress, batch tolerances, air-to-vacuum
-index conversion (catalogue indices are relative to air), angle-dependent
+index conversion (catalogue indices are relative to air; converting them adds
+0.01–0.09 fs²/mm to GVD, about 1 % for N-BK7 at 1300 nm and unbounded in
+relative terms near a zero-GVD wavelength), angle-dependent
 indices of birefringent crystals, spectral phase already on the pulse, and
 TOD-induced reshaping.
 
@@ -49,7 +51,8 @@ TOD-induced reshaping.
 
 SHG and THG (`λ/n`, both directions), SFG and DFG (`1/λ₃ = 1/λ₁ ± 1/λ₂`, via
 the workbench's `mixWavelength`) and OPO signal and idler from the pump and
-either output (via `parametricPair`), with the Manley–Rowe shares
+either output (the same difference-frequency identity, without the 1e-9 nm⁻¹
+cutoff that the tracer's `parametricPair` applies), with the Manley–Rowe shares
 `λ_p/λ_s` and `λ_p/λ_i` and the degeneracy wavelength `2λ_p`. Each wave is
 also shown as a frequency and a photon energy (`hc/e` from the exact SI
 constants). Energy conservation only: no phase matching or efficiency.

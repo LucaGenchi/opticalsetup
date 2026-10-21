@@ -1,5 +1,5 @@
 {
- "app": "calculators/nonlinear-conversion/conversion-calculator.js: computeConversion (through sketch/js/parametric.js: mixWavelength, parametricPair); calculators/coherent-raman/crs-calculator.js: computeCrs, computeResolution",
+ "app": "calculators/nonlinear-conversion/conversion-calculator.js: computeConversion (through sketch/js/parametric.js: mixWavelength); calculators/coherent-raman/crs-calculator.js: computeCrs, computeResolution",
  "cases": [
   {
    "expected": {
@@ -638,6 +638,43 @@
     "pumpNm": 800
    },
    "name": "OPO pump 800 nm, known output 19999.5 nm",
+   "tolerance": {
+    "degeneracyNm": 1e-09,
+    "idlerShare": 1e-09,
+    "signalShare": 1e-09,
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09,
+    "wave2Ev": 1e-09,
+    "wave2Nm": 1e-09,
+    "wave2THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "degeneracyNm": 2060.0,
+    "idlerShare": 9.708728438e-07,
+    "signalShare": 0.9999990291,
+    "wave0Ev": 1.203730082,
+    "wave0Nm": 1030.0,
+    "wave0THz": 291.0606388,
+    "wave1Ev": 1.203728913,
+    "wave1Nm": 1030.001,
+    "wave1THz": 291.0603563,
+    "wave2Ev": 1.168668848e-06,
+    "wave2Nm": 1060901030.0,
+    "wave2THz": 0.0002825828701
+   },
+   "inputs": {
+    "kind": "conversion",
+    "outputNm": 1030.001,
+    "process": "opo",
+    "pumpNm": 1030
+   },
+   "name": "OPO pump 1030 nm, known output 1030.001 nm",
    "tolerance": {
     "degeneracyNm": 1e-09,
     "idlerShare": 1e-09,

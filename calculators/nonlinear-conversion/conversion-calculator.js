@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Vacuum-wavelength energy conservation for the common nonlinear processes.
-import { mixWavelength, parametricPair } from '../../sketch/js/parametric.js';
+import { mixWavelength } from '../../sketch/js/parametric.js';
 import { defaultsFor, parseInputs, unavailable } from '../assets/calculator-inputs.js';
 
 const C_NM_THZ = 299792.458;          // ν [THz] = C_NM_THZ / λ [nm]
@@ -55,11 +55,14 @@ export function computeConversion(raw) {
       wave(p === 'sfg' ? 'Sum frequency' : 'Difference frequency', outNm)] };
   }
   if (!(v.outputNm > v.pumpNm)) return unavailable('The signal or idler must be longer than the pump.', 'outputNm', 'pumpNm');
-  const pair = parametricPair(v.pumpNm, v.outputNm);
-  if (!pair) return unavailable('This output leaves no positive partner frequency.', 'outputNm', 'pumpNm');
+  // The partner is the pump–output difference frequency: the same identity
+  // as DFG, without the tracer's 1e-9 nm⁻¹ cutoff in parametricPair, so an
+  // output just longer than the pump gives a very long partner, not a refusal.
+  const partnerNm = mixWavelength('dfg', v.pumpNm, v.outputNm);
   // The signal is the higher-frequency output by convention.
-  const [signalNm, idlerNm] = [pair.signalWl, pair.idlerWl].sort((a, b) => a - b);
-  return { ok: true, process: p, degenerate: pair.degenerate, degeneracyNm: 2 * v.pumpNm,
+  const [signalNm, idlerNm] = [v.outputNm, partnerNm].sort((a, b) => a - b);
+  const degenerate = Math.abs(idlerNm - signalNm) <= 1e-9 * idlerNm;
+  return { ok: true, process: p, degenerate, degeneracyNm: 2 * v.pumpNm,
     // Manley–Rowe: of the converted pump power, a fraction λ_p/λ goes to each output.
     signalShare: v.pumpNm / signalNm, idlerShare: v.pumpNm / idlerNm,
     waves: [wave('Pump', v.pumpNm), wave('Signal', signalNm), wave('Idler', idlerNm)] };

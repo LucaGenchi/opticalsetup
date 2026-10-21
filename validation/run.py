@@ -41,7 +41,7 @@ def build():
 # that nobody has checked it against an independent source. Keeping this list
 # accurate is part of adding a model (docs/adding-physics.md).
 UNCOVERED = [
-    ("OPO linewidths, pulse durations and depletion (its wavelengths and Manley-Rowe split are checked through the conversion calculator)", "sketch/js/parametric.js"),
+    ("OPO signal and idler wavelengths, Manley-Rowe power split and depletion as the tracer applies them (the conversion calculator checks the same identities with its own arithmetic)", "sketch/js/parametric.js"),
     ("Supercontinuum spectral range from pump and medium", "sketch/js/parametric.js"),
     ("Sum- and difference-frequency mixing durations, widths and overlap (the wavelengths are checked through the conversion calculator)", "sketch/js/parametric.js"),
     ("Objective focal length, NA, acceptance angle and pupil relations", "sketch/js/objective.js"),

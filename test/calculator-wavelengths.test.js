@@ -8,6 +8,7 @@ import { DISPERSION_DEFAULTS, computeDispersion, dispersionScan } from '../calcu
 import { CONVERSION_DEFAULTS, computeConversion } from '../calculators/nonlinear-conversion/conversion-calculator.js';
 import { CRS_DEFAULTS, computeCrs, RESOLUTION_DEFAULTS, computeResolution, RESOLUTION_PREFACTOR_PS_CM } from '../calculators/coherent-raman/crs-calculator.js';
 import { isInputActive } from '../calculators/assets/calculator-inputs.js';
+import { transformLimitedDurationFs } from '../sketch/js/spectrum.js';
 
 const close = (got, want, tol = 1e-9) => assert.ok(Math.abs(got - want) <= tol * Math.max(1, Math.abs(want)), `${got} != ${want}`);
 const dispersion = values => computeDispersion({ ...DISPERSION_DEFAULTS, ...values });
@@ -64,6 +65,10 @@ test('dispersion: GDD, TOD, delays and pulse stretching follow from the material
   assert.equal(mono.transformLimitFs, null);
   assert.equal(mono.delaySpreadFs, null);
   assert.ok(dispersion({ wavelengthNm: 1550 }).gvdFs2PerMm < 0);
+  // Same time–bandwidth products as the workbench, without its 1e-9 nm
+  // bandwidth floor: a narrower band keeps the stated formula (review of #244).
+  for (const shape of ['gauss', 'sech2']) close(dispersion({ shape }).transformLimitFs, transformLimitedDurationFs(30, 800, shape), 1e-12);
+  close(dispersion({ thicknessMm: 0, bandwidthNm: 1e-10 }).transformLimitFs, 0.441 * 800 ** 2 / (299.792458 * 1e-10), 1e-12);
   // A band edge outside the domain removes only the delay spread.
   const edge = dispersion({ material: 'water', wavelengthNm: 1120, bandwidthNm: 40 });
   assert.equal(edge.ok, true);
@@ -112,6 +117,11 @@ test('nonlinear conversion: harmonics both ways, SFG, DFG and OPO', () => {
   // Entering the idler gives the same pair as entering the signal.
   const fromIdler = conversion({ process: 'opo', outputNm: nm(opo)[2] });
   close(nm(fromIdler)[1], 1550);
+  // An output just longer than the pump has a very long partner, not a
+  // refusal: no tracer cutoff (review of #244).
+  const nearPump = conversion({ process: 'opo', outputNm: 1030.001 });
+  assert.equal(nearPump.ok, true);
+  close(nm(nearPump)[2], 1030 * 1030.001 / 0.001, 1e-6);
   const degenerate = conversion({ process: 'opo', outputNm: 2060 });
   assert.equal(degenerate.degenerate, true);
   for (const w of degenerate.waves) close(w.photonEv, 1239.8419843320026 / w.wavelengthNm);

@@ -1932,7 +1932,7 @@
   "P. E. Ciddor, Appl. Opt. 35, 1566 (1996), doi:10.1364/AO.35.001566 (standard dry air)",
   "M. N. Polyanskiy, Sci. Data 11, 94 (2024), doi:10.1038/s41597-023-02898-2 (refractiveindex.info database, CC0: transcription source)"
  ],
- "convergence": "Central differences in angular frequency at h = 1e-7 omega in 50-digit arithmetic: truncation ~1e-14 relative, round-off ~1e-40.",
+ "convergence": "Central differences in angular frequency at h = 1e-7 omega in 50-digit arithmetic: truncation about 1e-14 relative; cancellation in the differences leaves round-off of about 3e-28 relative in beta_3 (fused silica, 800 nm), larger near a zero of beta_3 but far below the tolerance.",
  "domain": "Every material at both fit endpoints, a fractional interior wavelength and 800 or 1550 nm; fused silica at its zero-GVD crossing; three thickness and bandwidth cases for GDD, TOD, delays and Gaussian stretching.",
  "fidelity": "computed",
  "id": "material-dispersion",

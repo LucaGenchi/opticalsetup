@@ -18,8 +18,11 @@ Method: 50-digit decimal arithmetic. The propagation constant
 k(omega) = n omega / c is differentiated numerically in angular frequency:
 n_g = c dk/domega, beta_2 = d2k/domega2, beta_3 = d3k/domega3, with central
 differences at h = 1e-7 omega. That route shares nothing with the app's
-analytic wavelength derivatives. Truncation is O(h^2) ~ 1e-14 relative and
-round-off is ~1e-40, so a 1e-9 tolerance is floating-point agreement only.
+analytic wavelength derivatives. Truncation is O(h^2), about 1e-14 relative.
+Round-off is not 50 digits: the differences cancel the leading digits of k,
+the third difference most of all (eps k / (h^3 beta_3) is about 3e-28 for
+fused silica at 800 nm, and grows near a zero of beta_3). Both stay far below
+the 1e-9 tolerance, which is therefore floating-point agreement only.
 
 Published anchors: SCHOTT's catalogue nd and Vd for every SCHOTT glass,
 checked to half a unit of their last quoted digit.
@@ -177,7 +180,7 @@ MODEL = {
     ],
     "provenance": "Coefficients as printed in the refractiveindex.info database (CC0) for each primary source, entered in the database's own formula conventions; SCHOTT nd and Vd from the same catalogue release as the coefficients, so they check transcription and the Abbe evaluation, not the fit itself.",
     "domain": "Every material at both fit endpoints, a fractional interior wavelength and 800 or 1550 nm; fused silica at its zero-GVD crossing; three thickness and bandwidth cases for GDD, TOD, delays and Gaussian stretching.",
-    "convergence": "Central differences in angular frequency at h = 1e-7 omega in 50-digit arithmetic: truncation ~1e-14 relative, round-off ~1e-40.",
+    "convergence": "Central differences in angular frequency at h = 1e-7 omega in 50-digit arithmetic: truncation about 1e-14 relative; cancellation in the differences leaves round-off of about 3e-28 relative in beta_3 (fused silica, 800 nm), larger near a zero of beta_3 but far below the tolerance.",
     "tolerance_rationale": "1e-9 relative is double-precision agreement with a numerically exact reference (1e-9 fs^2/mm absolute at the zero-GVD crossing; 1e-8 for the delay spread, a difference of two group indices). Catalogue anchors use half a unit of the last quoted digit.",
     "outside_scope": "Declines: `materialDispersion` and `computeDispersion` return null or an error outside each material's fit domain, for a bandwidth not smaller than the central wavelength, and for plot ranges outside the domain. A bandwidth edge outside the domain removes only the delay spread.",
     "fidelity": "computed",

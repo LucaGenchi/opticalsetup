@@ -1,12 +1,17 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { MATERIALS, MATERIAL_OPTIONS, materialRange, materialDispersion, materialAbbe } from './materials.js';
-import { transformLimitedDurationFs } from '../../sketch/js/spectrum.js';
 import { gaussianPulseDurationAfterGDD, sech2PulseDurationAfterGDD } from '../../sketch/js/glass.js';
 import { defaultsFor, parseInputs, unavailable } from '../assets/calculator-inputs.js';
 
 // Vacuum group delay per mm of path, in fs.
 const FS_PER_MM = 1e12 / 299792458;
+const C_NM_PER_FS = 299.792458;
+// Time–bandwidth products (intensity FWHM × frequency FWHM), the values
+// sketch/js/spectrum.js uses. The transform limit is evaluated here rather
+// than through transformLimitedDurationFs, whose 1e-9 nm bandwidth floor
+// would shorten the limit of a narrower band without saying so.
+const TIME_BANDWIDTH = { gauss: 0.441, sech2: 0.315 };
 const WAVELENGTH_SCOPE = [180, 20000];
 
 export const DISPERSION_INPUTS = [
@@ -60,7 +65,7 @@ export function computeDispersion(raw) {
   const edges = band && band.every(inDomain) ? band.map(nm => materialDispersion(v.material, nm)) : null;
   const delaySpreadFs = edges?.every(Boolean) ? L * (edges[0].groupIndex - edges[1].groupIndex) * FS_PER_MM : null;
   const gddFs2 = L * point.gvdFs2PerMm;
-  const transformLimitFs = band ? transformLimitedDurationFs(v.bandwidthNm, v.wavelengthNm, v.shape) : null;
+  const transformLimitFs = band ? TIME_BANDWIDTH[v.shape] * v.wavelengthNm ** 2 / (C_NM_PER_FS * v.bandwidthNm) : null;
   const outputFs = transformLimitFs === null ? null : v.shape === 'sech2'
     ? sech2PulseDurationAfterGDD(transformLimitFs, gddFs2) : gaussianPulseDurationAfterGDD(transformLimitFs, gddFs2);
   return {

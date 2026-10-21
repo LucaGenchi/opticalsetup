@@ -17,6 +17,7 @@ rapidly decaying integrands, so 1e-9 relative is round-off only.
 """
 import cmath
 import math
+from fractions import Fraction
 
 from common import C_M_PER_S, sig
 
@@ -100,8 +101,10 @@ def cases():
         out.append(conversion_case(f"{process.upper()} {a} and {b} nm",
                                    {"process": process, "wave1Nm": a, "wave2Nm": b},
                                    [("1", hz(a)), ("2", hz(b)), ("out", total)]))
-    for pump, known in ((1030, 1550), (1030, 4000), (532, 800), (1030, 2060), (800, 19999.5)):
-        partner = hz(pump) - hz(known)
+    for pump, known in ((1030, 1550), (1030, 4000), (532, 800), (1030, 2060), (800, 19999.5), (1030, 1030.001)):
+        # Exact rational difference: near the pump the float subtraction
+        # would cancel most digits of the partner frequency.
+        partner = float(Fraction(C_M_PER_S) * 10 ** 9 * (1 / Fraction(pump) - 1 / Fraction(known)))
         signal, idler = max(hz(known), partner), min(hz(known), partner)
         out.append(conversion_case(f"OPO pump {pump} nm, known output {known} nm",
                                    {"process": "opo", "pumpNm": pump, "outputNm": known},
@@ -152,7 +155,7 @@ def cases():
 MODEL = {
     "id": "wavelength-conversion",
     "title": "Nonlinear frequency conversion and coherent Raman scattering",
-    "app": "calculators/nonlinear-conversion/conversion-calculator.js: computeConversion (through sketch/js/parametric.js: mixWavelength, parametricPair); calculators/coherent-raman/crs-calculator.js: computeCrs, computeResolution",
+    "app": "calculators/nonlinear-conversion/conversion-calculator.js: computeConversion (through sketch/js/parametric.js: mixWavelength); calculators/coherent-raman/crs-calculator.js: computeCrs, computeResolution",
     "reference": "SI frequency arithmetic with exact rational anchors; resolution from a quadrature Fourier transform of the pump-Stokes driving term",
     "citations": [
         "R. W. Boyd, Nonlinear Optics, 4th ed., Academic Press (2020), chapters 1-2 (energy conservation, Manley-Rowe)",
