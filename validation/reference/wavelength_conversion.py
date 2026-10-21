@@ -96,8 +96,9 @@ def cases():
                                        {"process": process, "known": known, "harmonicInputNm": nm},
                                        [("fundamental", fundamental), ("harmonic", order * fundamental)]))
     for process, a, b in (("sfg", 800, 1040), ("sfg", 1030, 1030), ("sfg", 1550.5, 3100.25),
-                          ("dfg", 800, 1040), ("dfg", 1040, 800), ("dfg", 1064, 1064.5), ("dfg", 100, 20000)):
-        total = hz(a) + hz(b) if process == "sfg" else abs(hz(a) - hz(b))
+                          ("dfg", 800, 1040), ("dfg", 1040, 800), ("dfg", 1064, 1064.5), ("dfg", 100, 20000), ("dfg", 1030, 1030.001)):
+        # Exact rational difference, as for the OPO partner below.
+        total = hz(a) + hz(b) if process == "sfg" else float(abs(Fraction(C_M_PER_S) * 10 ** 9 * (1 / Fraction(a) - 1 / Fraction(b))))
         out.append(conversion_case(f"{process.upper()} {a} and {b} nm",
                                    {"process": process, "wave1Nm": a, "wave2Nm": b},
                                    [("1", hz(a)), ("2", hz(b)), ("out", total)]))
@@ -155,7 +156,7 @@ def cases():
 MODEL = {
     "id": "wavelength-conversion",
     "title": "Nonlinear frequency conversion and coherent Raman scattering",
-    "app": "calculators/nonlinear-conversion/conversion-calculator.js: computeConversion (through sketch/js/parametric.js: mixWavelength); calculators/coherent-raman/crs-calculator.js: computeCrs, computeResolution",
+    "app": "calculators/nonlinear-conversion/conversion-calculator.js: computeConversion (SFG through sketch/js/parametric.js: mixWavelength); calculators/coherent-raman/crs-calculator.js: computeCrs, computeResolution",
     "reference": "SI frequency arithmetic with exact rational anchors; resolution from a quadrature Fourier transform of the pump-Stokes driving term",
     "citations": [
         "R. W. Boyd, Nonlinear Optics, 4th ed., Academic Press (2020), chapters 1-2 (energy conservation, Manley-Rowe)",

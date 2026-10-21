@@ -1,5 +1,5 @@
 {
- "app": "calculators/nonlinear-conversion/conversion-calculator.js: computeConversion (through sketch/js/parametric.js: mixWavelength); calculators/coherent-raman/crs-calculator.js: computeCrs, computeResolution",
+ "app": "calculators/nonlinear-conversion/conversion-calculator.js: computeConversion (SFG through sketch/js/parametric.js: mixWavelength); calculators/coherent-raman/crs-calculator.js: computeCrs, computeResolution",
  "cases": [
   {
    "expected": {
@@ -456,6 +456,37 @@
     "wave2Nm": 20000
    },
    "name": "DFG 100 and 20000 nm",
+   "tolerance": {
+    "wave0Ev": 1e-09,
+    "wave0Nm": 1e-09,
+    "wave0THz": 1e-09,
+    "wave1Ev": 1e-09,
+    "wave1Nm": 1e-09,
+    "wave1THz": 1e-09,
+    "wave2Ev": 1e-09,
+    "wave2Nm": 1e-09,
+    "wave2THz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "wave0Ev": 1.203730082,
+    "wave0Nm": 1030.0,
+    "wave0THz": 291.0606388,
+    "wave1Ev": 1.203728913,
+    "wave1Nm": 1030.001,
+    "wave1THz": 291.0603563,
+    "wave2Ev": 1.168668848e-06,
+    "wave2Nm": 1060901030.0,
+    "wave2THz": 0.0002825828701
+   },
+   "inputs": {
+    "kind": "conversion",
+    "process": "dfg",
+    "wave1Nm": 1030,
+    "wave2Nm": 1030.001
+   },
+   "name": "DFG 1030 and 1030.001 nm",
    "tolerance": {
     "wave0Ev": 1e-09,
     "wave0Nm": 1e-09,

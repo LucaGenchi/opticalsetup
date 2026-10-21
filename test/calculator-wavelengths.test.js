@@ -122,6 +122,12 @@ test('nonlinear conversion: harmonics both ways, SFG, DFG and OPO', () => {
   const nearPump = conversion({ process: 'opo', outputNm: 1030.001 });
   assert.equal(nearPump.ok, true);
   close(nm(nearPump)[2], 1030 * 1030.001 / 0.001, 1e-6);
+  // Inputs one ulp apart: the reciprocals would round equal (review of #244).
+  for (const r of [conversion({ process: 'opo', pumpNm: 1900, outputNm: 1900.0000000000002 }),
+    conversion({ process: 'dfg', wave1Nm: 1900, wave2Nm: 1900.0000000000002 })]) {
+    assert.equal(r.ok, true);
+    assert.ok(r.waves.every(w => [w.wavelengthNm, w.frequencyTHz, w.photonEv].every(Number.isFinite) && w.wavelengthNm > 0));
+  }
   const degenerate = conversion({ process: 'opo', outputNm: 2060 });
   assert.equal(degenerate.degenerate, true);
   for (const w of degenerate.waves) close(w.photonEv, 1239.8419843320026 / w.wavelengthNm);

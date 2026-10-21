@@ -36,6 +36,14 @@ export const CONVERSION_DEFAULTS = defaultsFor(CONVERSION_INPUTS);
 
 const wave = (role, wavelengthNm) => ({ role, wavelengthNm, frequencyTHz: C_NM_THZ / wavelengthNm, photonEv: HC_EV_NM / wavelengthNm });
 
+// Difference-frequency wavelength λ₁λ₂/(λ₂ − λ₁) for λ₁ < λ₂. Subtracting the
+// wavelengths rather than their reciprocals keeps two inputs a few ulps apart
+// from cancelling to zero; the result is null unless positive and finite.
+function differenceNm(shortNm, longNm) {
+  const out = shortNm * longNm / (longNm - shortNm);
+  return out > 0 && Number.isFinite(out) ? out : null;
+}
+
 export function computeConversion(raw) {
   const { values: v, errors } = parseInputs(CONVERSION_INPUTS, raw);
   if (errors.length) return { ok: false, errors };
@@ -49,16 +57,17 @@ export function computeConversion(raw) {
   if (p === 'sfg' || p === 'dfg') {
     const [shortNm, longNm] = [v.wave1Nm, v.wave2Nm].sort((a, b) => a - b);
     if (p === 'dfg' && !(longNm > shortNm)) return unavailable('DFG needs two different input wavelengths.', 'wave1Nm', 'wave2Nm');
-    const outNm = mixWavelength(p, v.wave1Nm, v.wave2Nm);
-    if (outNm === null) return unavailable('No positive output frequency for these inputs.', 'wave1Nm', 'wave2Nm');
+    const outNm = p === 'sfg' ? mixWavelength('sfg', v.wave1Nm, v.wave2Nm) : differenceNm(shortNm, longNm);
+    if (outNm === null) return unavailable('The output wavelength is not a finite number for these inputs.', 'wave1Nm', 'wave2Nm');
     return { ok: true, process: p, waves: [wave('Input λ₁', v.wave1Nm), wave('Input λ₂', v.wave2Nm),
       wave(p === 'sfg' ? 'Sum frequency' : 'Difference frequency', outNm)] };
   }
   if (!(v.outputNm > v.pumpNm)) return unavailable('The signal or idler must be longer than the pump.', 'outputNm', 'pumpNm');
-  // The partner is the pump–output difference frequency: the same identity
-  // as DFG, without the tracer's 1e-9 nm⁻¹ cutoff in parametricPair, so an
-  // output just longer than the pump gives a very long partner, not a refusal.
-  const partnerNm = mixWavelength('dfg', v.pumpNm, v.outputNm);
+  // The partner is the pump–output difference frequency, as in DFG, without
+  // the tracer's 1e-9 nm⁻¹ cutoff in parametricPair: an output just longer
+  // than the pump gives a very long partner, not a refusal.
+  const partnerNm = differenceNm(v.pumpNm, v.outputNm);
+  if (partnerNm === null) return unavailable('The partner wavelength is not a finite number for these inputs.', 'outputNm', 'pumpNm');
   // The signal is the higher-frequency output by convention.
   const [signalNm, idlerNm] = [v.outputNm, partnerNm].sort((a, b) => a - b);
   const degenerate = Math.abs(idlerNm - signalNm) <= 1e-9 * idlerNm;
