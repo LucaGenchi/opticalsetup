@@ -380,7 +380,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "ITU-T 200 GHz grid · 40 GHz RZ pulse trains (8.3 ps, the clock of a 40 Gb/s RZ signal) · 10 km of standard single-mode fiber, then dispersion-compensating fiber.",
+        "text": "ITU-T G.694.1 grid, 200 GHz spacing · 40 GHz trains of 8.3 ps Gaussian pulses (the clock of a 40 Gb/s RZ-33% signal) · 10 km of standard single-mode fiber, then dispersion-compensating fiber.",
         "fontSize": 12,
         "fill": "#66717d"
       }
@@ -436,7 +436,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "**SMF** · 10 km · β₂ = −21.7 ps²/km (D ≈ 17 ps/nm/km) · 0.2 dB/km",
+        "text": "**SMF** · 10 km · D = 17 ps/(nm·km), β₂ = −21.7 ps²/km · 0.275 dB/km (G.652 typical)",
         "fontSize": 11,
         "fill": "#44505c"
       }
@@ -450,7 +450,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "**DCF** · 1.7 km · β₂ = +127.6 ps²/km (D ≈ −100 ps/nm/km) · 0.5 dB/km",
+        "text": "**DCF** · 1.7 km · D = −100 ps/(nm·km), β₂ = +127.6 ps²/km · 0.5 dB/km (assumed)",
         "fontSize": 11,
         "fill": "#44505c"
       }
@@ -478,7 +478,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "Per channel: 0 dBm − 2.0 dB (SMF) − 0.85 dB (DCF) = −2.85 dBm ≈ 0.52 mW.",
+        "text": "Per channel: 0 dBm − 2.75 dB (SMF) − 0.85 dB (DCF) = −3.6 dBm ≈ 0.44 mW.",
         "fontSize": 11,
         "fill": "#44505c"
       }
@@ -551,7 +551,7 @@
         "dia": 2
       },
       "lengthM": 10000,
-      "lossDbPerM": 0.0002,
+      "lossDbPerM": 0.000275,
       "beta2Ps2PerKm": -21.7
     },
     {

@@ -1591,52 +1591,57 @@ export const exampleEntries = [
       <p>Dense wavelength-division multiplexing (DWDM) is how one optical fibre
       carries many independent signals: each channel gets its own optical
       frequency, all of them travel together, and the receiving end separates
-      them again. The frequencies are not chosen freely. ITU-T G.694.1 fixes a
-      grid anchored at 193.1&nbsp;THz with spacings of 100&nbsp;GHz (about
-      0.8&nbsp;nm near 1550&nbsp;nm) and narrower, so that lasers, filters and
-      amplifiers from different makers line up${cite(1)}.</p>
-      <p>Combining and separating channels that close together needs filters
-      with a passband about a nanometre wide. One classic way is a cascade of
-      thin-film band-pass filters: multilayer interference coatings that pass
-      one channel and reflect everything else${cite(2)}. At the receiver the
-      reflected light goes on to the next filter, so each stage drops one
-      channel; run backwards, the same cascade adds channels onto a common
-      fibre.</p>
-      <p>The fibre itself limits how fast each channel can go. Standard
-      single-mode fibre (ITU-T G.652) loses about 0.2&nbsp;dB/km near 1550&nbsp;nm,
-      but there its chromatic dispersion is about 17&nbsp;ps/(nm·km), a
-      group-velocity dispersion β₂ ≈ −21.7&nbsp;ps²/km${cite(3, 4)}. A short pulse
-      contains a band of wavelengths that arrive at different times, so it
-      spreads. For a transform-limited Gaussian pulse of width τ₀ the width
-      after a length L is τ₀·√(1 + (4&nbsp;ln2·β₂L/τ₀²)²)${cite(4)}: the shorter
-      the pulse, the faster it spreads.</p>
-      <p>At 40&nbsp;Gb/s the bit slot is 25&nbsp;ps. Return-to-zero formats with a
-      33% duty cycle put a pulse of about 8&nbsp;ps in each slot${cite(5)}. After
-      10&nbsp;km of standard fibre that pulse is about 73&nbsp;ps wide and smears
-      across three bit slots. Dispersion that only depends on wavelength can be
-      undone, however: a fibre with dispersion of the opposite sign adds back
-      what the link took away${cite(6)}. Dispersion-compensating fibre (DCF) is
-      designed for this, with strongly normal dispersion, so a spool a fraction
-      of the span's length cancels it, at the price of a higher loss per
-      kilometre${cite(7)}.</p>`,
+      them again. The frequencies are not chosen freely: ITU-T G.694.1 defines
+      the grid they sit on, anchored to 193.1&nbsp;THz, with fixed channel
+      spacings from 12.5&nbsp;GHz to 100&nbsp;GHz and integer multiples of
+      100&nbsp;GHz${cite(1)}.</p>
+      <p>One classic way to combine and separate the channels is the thin-film
+      filter: a stack of dielectric layers on a substrate that, by interference,
+      transmits one channel and reflects all the others. A multichannel
+      demultiplexer cascades such filters, each taking the light the previous
+      one reflected${cite(2)}; run backwards, the same cascade adds channels
+      onto a common fibre.</p>
+      <p>The fibre itself limits how fast each channel can go. For links of
+      standard single-mode fibre (ITU-T G.652), the typical values given for
+      the 1530–1565&nbsp;nm band are an attenuation coefficient of
+      0.275&nbsp;dB/km and a chromatic dispersion coefficient D of
+      17&nbsp;ps/(nm·km)${cite(3)}. D is related to the group-velocity dispersion
+      by D = −2πcβ₂/λ²${cite(4)}, which gives β₂ ≈ −21.7&nbsp;ps²/km at
+      1550&nbsp;nm. A short pulse contains a band of wavelengths that travel at
+      different speeds, so it spreads. A transform-limited Gaussian pulse of
+      full width at half maximum Δt that picks up a group-delay dispersion
+      φ₂ = β₂L leaves with a width Δt·√(1 + (4&nbsp;ln2·φ₂/Δt²)²)${cite(5)}: the
+      shorter the pulse, the faster it spreads.</p>
+      <p>At 40&nbsp;Gb/s the bit slot is 25&nbsp;ps. A return-to-zero pulse carver
+      can make pulses with a 33% duty cycle, a full width at half maximum of a
+      third of the bit slot${cite(4)}, here about 8.3&nbsp;ps. After 10&nbsp;km of
+      standard fibre a Gaussian pulse of that width is about 73&nbsp;ps wide and
+      smears across three bit slots. The resulting intersymbol interference
+      lowers the ones and fills in the zeros${cite(4)}. Most 40&nbsp;Gb/s-class formats
+      tolerate an accumulated dispersion of only about 50&nbsp;ps/nm${cite(4)},
+      and 10&nbsp;km of this fibre accumulates 170&nbsp;ps/nm. The distortion can be
+      undone: fibre with negative dispersion (DCF) compensates the dispersion
+      accumulated in the positive-dispersion transmission fibre. Its dispersion
+      is made strongly negative, around −100&nbsp;ps/(nm·km), so that a short
+      length is enough and adds little loss${cite(4)}.</p>`,
     inOpticalSetupTitle: 'What this setup demonstrates',
     inOpticalSetupHtml: `
-      <p>Four <a href="../../wiki/pulsedlaser/">pulsed lasers</a> sit on every second
-      channel of the 100&nbsp;GHz grid (193.4, 193.2, 193.0 and 192.8&nbsp;THz:
-      1550.12, 1551.72, 1553.33 and 1554.94&nbsp;nm). Each emits 1&nbsp;mW of 8.3&nbsp;ps
-      transform-limited Gaussian pulses at 40&nbsp;GHz. A train with a pulse in
-      every slot is the clock of a 40&nbsp;Gb/s return-to-zero signal, every bit
-      a one, with no data pattern on it. Four
+      <p>Four <a href="../../wiki/pulsedlaser/">pulsed lasers</a> sit on the grid
+      at a 200&nbsp;GHz spacing: 193.4, 193.2, 193.0 and 192.8&nbsp;THz, which
+      are 1550.12, 1551.72, 1553.33 and 1554.94&nbsp;nm. Each emits 1&nbsp;mW of
+      8.3&nbsp;ps transform-limited Gaussian pulses at 40&nbsp;GHz. A train with a
+      pulse in every slot is the clock of a 40&nbsp;Gb/s return-to-zero signal,
+      every bit a one, with no data pattern on it. Four
       <a href="../../wiki/dichroic/">band-pass filters</a>, 1.2&nbsp;nm wide, put the
       channels on one path. The <a href="../../wiki/probe/">probe</a> just after the
-      multiplexer shows the four lines 1.6&nbsp;nm apart.</p>
-      <p>The link is 10&nbsp;km of standard fibre (β₂ = −21.7&nbsp;ps²/km,
-      0.2&nbsp;dB/km), then 1.7&nbsp;km of DCF (β₂ = +127.6&nbsp;ps²/km, about
-      −100&nbsp;ps/(nm·km), 0.5&nbsp;dB/km; representative values, not a specific
-      product). Together the two fibres add a group-delay dispersion of
+      multiplexer shows the four lines.</p>
+      <p>The link is 10&nbsp;km of standard fibre: D = 17&nbsp;ps/(nm·km), so
+      β₂ = −21.7&nbsp;ps²/km, and 0.275&nbsp;dB/km. Then come 1.7&nbsp;km of DCF:
+      D = −100&nbsp;ps/(nm·km), so β₂ = +127.6&nbsp;ps²/km, with an assumed
+      0.5&nbsp;dB/km. Together the two fibres add a group-delay dispersion of
       −217&nbsp;ps² and +216.9&nbsp;ps², which leaves −0.08&nbsp;ps². The demultiplexer
       drops one channel at each filter. Every receiver reads 8.3&nbsp;ps and
-      0.52&nbsp;mW: 0&nbsp;dBm launched, less 2.0&nbsp;dB in the standard fibre and
+      0.44&nbsp;mW: 0&nbsp;dBm launched, less 2.75&nbsp;dB in the standard fibre and
       0.85&nbsp;dB in the DCF. The time probe on RX1 shows four clean pulses in
       100&nbsp;ps.</p>
       <p>Things to try. Select the blue DCF and set its β₂ to 0. Every pulse now
@@ -1644,32 +1649,34 @@ export const exampleEntries = [
       bits overlap. Set the DCF back and shorten it to 1.2&nbsp;km: 64&nbsp;ps² of
       dispersion remain and the pulses read 22.9&nbsp;ps, nearly the whole bit
       slot. Tune TX2 up by 0.8&nbsp;nm, halfway between channels. Its filter now
-      passes only the edge of its spectrum: RX2 receives about 0.07&nbsp;mW
-      instead of 0.52&nbsp;mW, in a pulse stretched to 23.6&nbsp;ps, and the rest is
-      reflected on to the express port. Delete a laser and only its receiver goes dark.</p>`,
-    limitations: `<p>Each laser emits a regular pulse train, not data, so there
-      are no bit patterns, no eye diagram and no bit-error rate. Noise from
-      sources, amplifiers and receivers is not modelled. Neither are fibre
-      nonlinearity (self- and cross-phase modulation, four-wave mixing),
-      polarization-mode dispersion, or the variation of dispersion with
-      wavelength (dispersion slope). Every channel sees the same β₂ here,
-      while in real standard fibre the dispersion at the outer channels
-      differs by a few per cent.</p>
+      passes only the edge of its spectrum: RX2 receives about 0.06&nbsp;mW
+      instead of 0.44&nbsp;mW, in a pulse stretched to 23.6&nbsp;ps, and the rest is
+      reflected on to the express port. Delete a laser and only its receiver
+      goes dark.</p>`,
+    limitations: `<p>Each laser emits a regular train of Gaussian pulses, not
+      data, and not the exact pulse shape of a modulator-carved RZ signal. So
+      there are no bit patterns, no eye diagram and no bit-error rate. Noise
+      from sources, amplifiers and receivers is not modelled. Neither are fibre
+      nonlinearity, polarization-mode dispersion, or the variation of
+      dispersion with wavelength. Every channel sees the same β₂ here, while
+      the typical slope of standard fibre, 0.056&nbsp;ps/(nm²·km)${cite(3)}, makes
+      D at the outer channels differ by about 0.27&nbsp;ps/(nm·km). The DCF
+      loss is an assumed value, not taken from a product.</p>
       <p>The filters are ideal flat tops: complete transmission inside a
       1.2&nbsp;nm band, complete reflection outside it, and no roll-off, ripple or
-      dispersion of their own. Adjacent-channel leakage therefore stays at
-      zero until a channel is tuned into a neighbouring passband. The fibres
-      are characterised by a fixed loss per metre and a constant β₂.
-      Coupling at their ends is geometric and does not compute mode-field
-      overlap.</p>`,
+      dispersion of their own. A real filter's passband is typically specified
+      at 40–50% of the channel spacing${cite(2)}. The one here is wider (75%),
+      so the ideal edges do not clip the pulse spectrum. Adjacent-channel
+      leakage stays at zero until a channel is tuned into a neighbouring
+      passband. The fibres are characterised by a fixed loss per metre and a
+      constant β₂. Coupling at their ends is geometric and does not compute
+      mode-field overlap.</p>`,
     citations: [
-      { label: 'ITU-T Recommendation G.694.1, “Spectral grids for WDM applications: DWDM frequency grid” (10/2020)', url: 'https://www.itu.int/rec/T-REC-G.694.1' },
-      { label: 'H. A. Macleod, Thin-Film Optical Filters, 4th ed. (CRC Press, 2010)', url: 'https://doi.org/10.1201/9781420073034' },
-      { label: 'ITU-T Recommendation G.652, “Characteristics of a single-mode optical fibre and cable” (08/2024)', url: 'https://www.itu.int/rec/T-REC-G.652' },
-      { label: 'G. P. Agrawal, Fiber-Optic Communication Systems, 4th ed. (Wiley, 2010)', url: 'https://doi.org/10.1002/9780470918524' },
-      { label: 'P. J. Winzer and R.-J. Essiambre, “Advanced optical modulation formats,” Proceedings of the IEEE 94, 952–985 (2006)', url: 'https://doi.org/10.1109/JPROC.2006.873438' },
-      { label: 'C. Lin, L. G. Cohen and H. Kogelnik, “Optical-pulse equalization of low-dispersion transmission in single-mode fibers in the 1.3–1.7-μm spectral region,” Optics Letters 5, 476 (1980)', url: 'https://doi.org/10.1364/OL.5.000476' },
-      { label: 'L. Grüner-Nielsen et al., “Dispersion-compensating fibers,” Journal of Lightwave Technology 23, 3566–3579 (2005)', url: 'https://doi.org/10.1109/JLT.2005.855873' },
+      { label: 'ITU-T Recommendation G.694.1, “Spectral grids for WDM applications: DWDM frequency grid” (10/2020), clauses 6–7', url: 'https://www.itu.int/rec/T-REC-G.694.1' },
+      { label: 'C. He, D. Ma and W.-Z. Li, “Thin-film filters are the building blocks of multiplexing devices,” Lightwave (1 May 2001)', url: 'https://www.lightwaveonline.com/network-design/dwdm-roadm/article/16668366/thin-film-filters-are-the-building-blocks-of-multiplexing-devices' },
+      { label: 'ITU-T Recommendation G.652, “Characteristics of a single-mode optical fibre and cable” (08/2024), Table I.1', url: 'https://www.itu.int/rec/T-REC-G.652' },
+      { label: 'P. J. Winzer and R.-J. Essiambre, “Advanced optical modulation formats,” Proceedings of the IEEE 94, 952–985 (2006): Sections III–IV, Table 5', url: 'https://doi.org/10.1109/JPROC.2006.873438' },
+      { label: 'MKS Newport, “The Effect of Dispersion on Ultrashort Pulses,” application note, Eq. 8', url: 'https://www.newport.com/n/the-effect-of-dispersion-on-ultrashort-pulses' },
     ],
     resources: [
       { label: 'Wikipedia — Wavelength-division multiplexing', url: 'https://en.wikipedia.org/wiki/Wavelength-division_multiplexing' },

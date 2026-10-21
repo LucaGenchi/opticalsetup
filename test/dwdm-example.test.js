@@ -15,8 +15,8 @@ const close = (actual, expected, tolerance) =>
 
 const PATH = '../Examples/Optical Communications/DWDM link — dispersion compensation.json';
 const CHANNELS = [['rx1', 1550.12], ['rx2', 1551.72], ['rx3', 1553.33], ['rx4', 1554.94]];
-// 0 dBm launched, 10 km at 0.2 dB/km and 1.7 km at 0.5 dB/km.
-const DELIVERED = 10 ** (-(2 + 0.85) / 10);
+// 0 dBm launched, 10 km at 0.275 dB/km and 1.7 km at 0.5 dB/km.
+const DELIVERED = 10 ** (-(2.75 + 0.85) / 10);
 
 // Trace the example after optional edits to its elements and fibers, and
 // return the receivers' readings (snapshotted: the next trace replaces them).
