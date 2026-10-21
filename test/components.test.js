@@ -234,16 +234,18 @@ test('eye retinal reflectivity sends a return beam back out through the pupil', 
 });
 
 test('light arriving at the back of the eye is blocked, not reflected or detected', () => {
-  for (const reflectivity of [0, 50, 100]) {
+  for (const diameter of [16.7, 30]) for (const reflectivity of [0, 50, 100]) {
     const laser = createElement('cwlaser', 400, 0);
     laser.rot = 180;
     laser.params.beamMode = 'line';
     const eye = createElement('eye', 200, 0);
+    eye.params.diameter = diameter;
     eye.params.retinalReflectivity = reflectivity;
+    eye.params.retinalDiffuse = 50;
     const scene = traceScene([laser, eye]);
     const paths = scene.drawables.filter(d => d.type === 'path');
     assert.equal(paths.length, 1, `R=${reflectivity}: nothing comes back off the back of the eye`);
-    assert.ok(paths[0].pts.every(p => p.x >= 215), `R=${reflectivity}: the beam stops at the back wall`);
+    assert.ok(paths[0].pts.every(p => p.x >= 200 + diameter / 2), `R=${reflectivity}: the beam stops at the back wall`);
     assert.equal(detectorReading(eye.id), null, `R=${reflectivity}: the retina does not see light from behind`);
   }
 });

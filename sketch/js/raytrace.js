@@ -3694,6 +3694,48 @@ const retardPolMod = (polMod, axisDeg, retardanceDeg) => ({
 const needsPeakPower = kind => NONLINEAR_SIGNAL_KINDS.some(([nonlinear]) => nonlinear === kind);
 
 // interaction -> array of child rays [{d, wl?, intensity?, tag?}] ; [] = absorbed
+const clampFraction = value => (Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0);
+
+// Diffuse (Lambertian) part of the retinal reflection. Only the light headed
+// for the pupil can leave the eye; the rest would land on the absorbing eye
+// wall, so it is not traced. The escaping share is the 3-D Lambertian fraction
+// for the pupil seen from the hit point -- sin^2 of the half-angle on axis --
+// estimated from the in-plane extent, and it is carried by a small fan aimed
+// across the pupil, spaced evenly in sin(angle) so each ray carries an equal
+// share, as Lambertian light does.
+const RETINA_SCATTER_RAYS_LINE = 9;
+const RETINA_SCATTER_RAYS_SAMPLE = 3;
+function retinalScatter(ray, hit, s, d, n, fraction) {
+  const data = s.data;
+  const distance = Number(data.pupilDistance), half = Number(data.pupilHalf);
+  if (!(distance > 0) || !(half > 0) || !(fraction > 0)) return [];
+  // Towards the pupil: the normal facing back along the incoming ray.
+  const inward = dot(d, n) < 0 ? n : mul(n, -1);
+  const along = norm(sub(s.b, s.a));
+  const mid = mul(add(s.a, s.b), 0.5);
+  const offset = dot(sub(hit.p, mid), along);
+  // Sines of the angles, from the inward normal, to the two pupil edges.
+  const sineTo = edge => {
+    const lateral = edge - offset;
+    return lateral / Math.hypot(lateral, distance);
+  };
+  const lo = sineTo(-half), hi = sineTo(half);
+  const share = ((hi - lo) / 2) ** 2;
+  if (!(share > 0)) return [];
+  const count = ray.sample == null ? RETINA_SCATTER_RAYS_LINE : RETINA_SCATTER_RAYS_SAMPLE;
+  const out = [];
+  for (let k = 0; k < count; k++) {
+    const sine = lo + (hi - lo) * (k + 0.5) / count;
+    const cosine = Math.sqrt(Math.max(0, 1 - sine * sine));
+    out.push({
+      d: norm(add(mul(inward, cosine), mul(along, sine))),
+      intensity: ray.intensity * fraction * share / count,
+      tag: 'retina-S' + k, retainWeak: true,
+    });
+  }
+  return out;
+}
+
 function interact(ray, hit) {
   const s = hit.surface, d = { x: ray.dx, y: ray.dy }, k = s.kind, data = s.data;
   const t = norm(sub(s.b, s.a));
@@ -3773,10 +3815,13 @@ function interact(ray, hit) {
     case 'absorb': return [];
     case 'detector': return [];
     case 'retina': {
-      const R = Math.min(1, Math.max(0, Number(data.refl ?? 0) / 100));
-      return R > 0
-        ? [{ d: reflect(d, n), intensity: ray.intensity * R, tag: 'retina-R', retainWeak: true }]
-        : [];
+      const R = clampFraction(Number(data.refl ?? 0) / 100);
+      if (!(R > 0)) return [];
+      const diffuse = clampFraction(Number(data.diffuse ?? 0) / 100);
+      const out = [];
+      if (diffuse < 1) out.push({ d: reflect(d, n), intensity: ray.intensity * R * (1 - diffuse), tag: 'retina-R', retainWeak: true });
+      if (diffuse > 0) out.push(...retinalScatter(ray, hit, s, d, n, R * diffuse));
+      return out;
     }
     case 'gdd': {
       // A zero-thickness proxy for the net second-order spectral phase of a
