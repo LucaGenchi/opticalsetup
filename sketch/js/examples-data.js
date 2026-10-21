@@ -27,12 +27,6 @@ export const examples = [
     "slug": "spherical-aberration-sphere-vs-asphere-vs-ideal-lens"
   },
   {
-    "group": "Photonic Systems",
-    "name": "WDM chip-to-chip photonic interconnect",
-    "path": "../Examples/Photonic%20Systems/WDM%20chip-to-chip%20photonic%20interconnect.json",
-    "slug": "wdm-chip-to-chip-photonic-interconnect"
-  },
-  {
     "group": "Reflective Imaging Systems",
     "name": "Gregorian telescope — element by element",
     "path": "../Examples/Reflective%20Imaging%20Systems/Gregorian%20telescope%20%E2%80%94%20element%20by%20element.json",
@@ -127,6 +121,12 @@ export const examples = [
     "name": "Multiphoton microscope — SHG and two photon fluorescence",
     "path": "../Examples/Microscopy%20Implementations/Multiphoton%20microscope%20%E2%80%94%20SHG%20and%20two%20photon%20fluorescence.json",
     "slug": "multiphoton-microscope-shg-and-two-photon-fluorescence"
+  },
+  {
+    "group": "Photonic Systems",
+    "name": "WDM chip to chip photonic interconnect",
+    "path": "../Examples/Photonic%20Systems/WDM%20chip-to-chip%20photonic%20interconnect.json",
+    "slug": "wdm-chip-to-chip-photonic-interconnect"
   },
   {
     "group": "Scanning",

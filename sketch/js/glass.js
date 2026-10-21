@@ -31,9 +31,21 @@ const CATALOGUE = [
     range: [210, 3710],
   },
   {
+    id: 'nfk51a', label: 'N-FK51A fluorite crown (nd 1.487 / V 84.5)',
+    B: [0.971247817, 0.216901417, 0.904651666],
+    C: [0.00472301995, 0.0153575612, 168.68133],
+    range: [290, 2500],
+  },
+  {
     id: 'nsf5', label: 'N-SF5 flint (nd 1.673 / V 32.3)',
     B: [1.52481889, 0.187085527, 1.42729015],
     C: [0.011254756, 0.0588995392, 129.141675],
+    range: [380, 2500],
+  },
+  {
+    id: 'nsf10', label: 'N-SF10 dense flint (nd 1.728 / V 28.5)',
+    B: [1.62153902, 0.256287842, 1.64447552],
+    C: [0.0122241457, 0.0595736775, 147.468793],
     range: [380, 2500],
   },
   {
@@ -41,6 +53,24 @@ const CATALOGUE = [
     B: [1.73759695, 0.313747346, 1.89878101],
     C: [0.013188707, 0.0623068142, 155.23629],
     range: [370, 2500],
+  },
+  {
+    id: 'nsf14', label: 'N-SF14 dense flint (nd 1.762 / V 26.5)',
+    B: [1.69022361, 0.288870052, 1.7045187],
+    C: [0.0130512113, 0.061369188, 149.517689],
+    range: [365, 2500],
+  },
+  {
+    id: 'nsf57', label: 'N-SF57 dense flint (nd 1.847 / V 23.8)',
+    B: [1.87543831, 0.37375749, 2.30001797],
+    C: [0.0141749518, 0.0640509927, 177.389795],
+    range: [370, 2500],
+  },
+  {
+    id: 'nlasf9', label: 'N-LASF9 lanthanum dense flint (nd 1.850 / V 32.2)',
+    B: [2.00029547, 0.298926886, 1.80691843],
+    C: [0.0121426017, 0.0538736236, 156.530829],
+    range: [365, 2500],
   },
 ];
 
@@ -64,8 +94,8 @@ export const isDispersiveGlass = id => GLASSES.has(id);
 const INDEX_CACHE = Object.fromEntries(CATALOGUE.map(glass => [glass.id, []]));
 
 // Every Sellmeier fit has resonance poles just outside its published range —
-// N-SF11's sits at 249.6 nm, N-SF5's at 242.7 nm, both inside the app's own
-// 100-20000 nm wavelength span. Evaluating across one produces an index of 21
+// N-SF11's sits at 249.6 nm, N-SF5's at 242.7 nm and N-SF57's at 253.1 nm, all
+// inside the app's own 100-20000 nm wavelength span. Evaluating across one produces an index of 21
 // and a GVD of 1e9 fs²/mm: numbers that are not merely inaccurate but absurd,
 // reported with the same confidence as a real one (a 100 fs pulse through a
 // glass rod came out as 2.3 milliseconds). Clamping each glass to the range
