@@ -55,7 +55,10 @@ const SOURCES = {
     data: 'https://doi.org/10.5281/zenodo.3614035',
     license: 'CC-BY-4.0',
     technique: 'ft-raman',
-    measurement: 'FT-Raman spectrum of the solid as supplied; instrument and excitation are described in the source article',
+    // Neutral on purpose: the excipients include liquids (propylene glycol,
+    // triacetin, dibutyl sebacate), and the article's methods, which give the
+    // instrument, excitation and sample handling, are not open access.
+    measurement: 'FT-Raman spectrum of the excipient as supplied; instrument, excitation and sample handling are described in the source article',
     rangeCm: [210, 3500],
   },
   rod: {

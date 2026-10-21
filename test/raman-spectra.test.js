@@ -24,6 +24,8 @@ test('every spectrum file is indexed, licensed, credited and well formed', () =>
     assert.ok(s.attribution && /^https:\/\//.test(s.sourceUrl) && /^https:\/\/creativecommons\.org\//.test(s.licenseUrl), `${s.id}: credit`);
     assert.ok(s.changes, `${s.id}: CC BY asks that changes be indicated`);
     assert.ok(SPECTRUM_CATEGORIES.includes(s.category) && SPECTRUM_TECHNIQUES[s.technique] && s.measurement, `${s.id}: classification`);
+    // The excipients include liquids; their label must not call them solids.
+    if (s.source === 'berzins2020') assert.doesNotMatch(s.measurement, /solid/, `${s.id}: neutral sample-state label`);
     assert.equal(s.stepCm, 2);
     assert.equal(meta.endCm, s.startCm + (s.intensity.length - 1) * 2, `${s.id}: index range`);
     assert.ok(s.intensity.every(v => Number.isInteger(v) && v >= 0 && v <= 1000), `${s.id}: scaled 0–1000`);
@@ -64,8 +66,20 @@ test('the probed window: shift ± half the resolution, in or out of the measured
   const zoom = view({ view: 'window' }, { ramanShiftCm: 1000, resolutionCm: 10 });
   assert.equal(zoom.plot.x[0], 850);
   assert.equal(zoom.plot.x.at(-1), 1150);
-  // A window narrower than one bin still reports the nearest sample.
-  assert.ok(view({}, { ramanShiftCm: 1001, resolutionCm: 0.5 }).peak);
+  // A window narrower than one bin (review of #244: 1001 ± 0.25 cm⁻¹ once
+  // reported the 1002 cm⁻¹ sample): its maximum lies inside, interpolated.
+  for (const [shift, res] of [[1001, 0.5], [1001.3, 1.2], [883.5, 0.2]]) {
+    const sub = view({}, { ramanShiftCm: shift, resolutionCm: res });
+    assert.ok(sub.peak.x >= sub.window[0] && sub.peak.x <= sub.window[1], `${shift} ± ${res / 2}: ${sub.peak.x}`);
+    assert.equal(sub.peak.interpolated, true);
+  }
+  // The maximum of the interpolated curve: never below any sample or edge in the window.
+  const wide = view({}, { ramanShiftCm: 1460, resolutionCm: 31 });
+  wide.plot.x.forEach((cm, k) => { if (cm >= wide.window[0] && cm <= wide.window[1]) assert.ok(wide.peak.y >= wide.plot.y[k]); });
+  assert.equal(wide.peak.interpolated, false);
+  // A window overlapping the end of the measured range is clipped to it.
+  const edge = view({}, { ramanShiftCm: 3150, resolutionCm: 20 });
+  assert.ok(edge.inRange && edge.peak.x <= 3150 && edge.peak.x >= 3140);
   const outside = view({}, { ramanShiftCm: 3300, resolutionCm: 10 });
   assert.equal(outside.ok, true);
   assert.equal(outside.inRange, false);

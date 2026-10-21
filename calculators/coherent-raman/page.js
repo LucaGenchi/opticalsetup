@@ -60,7 +60,7 @@ spectra = mountCalculator({ panel: 'spectra', inputs: SPECTRUM_INPUTS, defaults:
     ['Raman shift', r.ramanShiftCm, 'cm⁻¹'], ['Resolution (FWHM)', r.resolutionCm, 'cm⁻¹', 4],
     ['Window', `${cm(r.window[0])}–${cm(r.window[1])} cm⁻¹`],
     ['Spectrum at the shift (normalized)', r.atShift, '', 3],
-    ['Strongest point in the window', r.peak ? `${cm(r.peak.x)} cm⁻¹ (${formatNumber(r.peak.y, 3)})` : '—'],
+    ['Strongest point in the window', r.peak ? `${cm(r.peak.x)} cm⁻¹ (${formatNumber(r.peak.y, 3)}${r.peak.interpolated ? ', interpolated at the window edge' : ''})` : '—'],
     { group: r.meta.name },
     ['Category', r.meta.category], ['Measurement', r.technique],
     ['Measured range', `${cm(r.measuredRange[0])}–${cm(r.measuredRange[1])} cm⁻¹`],

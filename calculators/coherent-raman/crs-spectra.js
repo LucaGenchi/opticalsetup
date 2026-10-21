@@ -43,13 +43,19 @@ export function computeSpectrumView(raw, { ramanShiftCm = null, resolutionCm = n
     const k = Math.min(x.length - 2, Math.floor((cm - lo) / data.stepCm));
     return y[k] + (y[k + 1] - y[k]) * (cm - x[k]) / data.stepCm;
   };
-  // The strongest sample inside the window; a window narrower than one bin
-  // falls back to the sample nearest the shift.
+  // The maximum of the linearly interpolated spectrum over the window, where
+  // it overlaps the measured range. A piecewise-linear curve peaks at a
+  // sample or at an end of the interval, so these candidates are exact; an
+  // end point is marked interpolated, and a window narrower than one bin has
+  // only its two ends.
   let peak = null;
-  x.forEach((cm, k) => { if (cm >= window[0] && cm <= window[1] && (!peak || y[k] > peak.y)) peak = { x: cm, y: y[k] }; });
-  if (!peak && inRange) {
-    const k = Math.max(0, Math.min(x.length - 1, Math.round((ramanShiftCm - lo) / data.stepCm)));
-    peak = { x: x[k], y: y[k] };
+  if (inRange) {
+    const [a, b] = [Math.max(lo, window[0]), Math.min(hi, window[1])];
+    const candidates = [{ x: a, y: at(a), interpolated: true }, { x: b, y: at(b), interpolated: true }];
+    x.forEach((cm, k) => { if (cm > a && cm < b) candidates.push({ x: cm, y: y[k], interpolated: false }); });
+    // On a tie, prefer a measured sample to an interpolated end.
+    peak = candidates.reduce((best, c) => (c.y > best.y || (c.y === best.y && !c.interpolated) ? c : best));
+    if (Number.isInteger((peak.x - lo) / data.stepCm)) peak.interpolated = false;
   }
   const half = Math.max(150, 3 * resolutionCm);
   const view = v.view === 'window' && inRange
