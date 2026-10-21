@@ -17,12 +17,14 @@ three derivatives are closed-form, and `n′`, `n″`, `n‴` follow from `S = n
 Then `n_g = n − λ n′`, `β₂ = λ³ n″/(2πc²)` and
 `β₃ = −λ⁴ (3n″ + λ n‴)/(4π²c³)`, scaled by 10²¹ to fs²/mm and 10³⁰ to fs³/mm.
 
-The four canvas glasses (N-BK7, fused silica, N-SF5, N-SF11) import their
+The nine canvas glasses (fused silica and the eight SCHOTT glasses N-BK7,
+N-FK51A, N-SF5, N-SF10, N-SF11, N-SF14, N-SF57 and N-LASF9) import their
 coefficients and fit domains from `sketch/js/glass.js`, so the page and the
-tracer share one curve; a test pins them to the tracer's getters at whole-nm
-wavelengths, where the tracer's cache buckets land exactly. The app module
-itself is unchanged. The other 17 entries are calculator-only. Their
-coefficients were transcribed from the refractiveindex.info database (CC0,
+tracer share one curve; one test pins them to the tracer's getters at whole-nm
+wavelengths, where the tracer's cache buckets land exactly, and another traces
+a 25 mm rod of each glass and checks its GDD and stretched width against this
+page. The other 12 entries (crystals, water and air) are calculator-only.
+Coefficients were transcribed from the refractiveindex.info database (CC0,
 Polyanskiy, Sci. Data 11, 94 (2024)), which cites each primary source:
 SCHOTT (N-FK51A, N-SF10, N-SF14, N-SF57, N-LASF9), Malitson 1963 (CaF₂),
 Malitson and Dodge 1972 (sapphire o/e), Ghosh 1999 (crystalline quartz o/e),

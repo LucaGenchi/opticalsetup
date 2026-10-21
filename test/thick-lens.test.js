@@ -44,7 +44,9 @@ test('catalogue glasses reproduce their published nd and Abbe number', () => {
   // reported 64.14 for N-BK7, which every catalogue lists as 64.17. Each
   // glass is held to 0.01 of its catalogue value.
   for (const [id, expected] of [['nbk7', [1.5168, 64.17]], ['nsf11', [1.7847, 25.68]],
-    ['silica', [1.4585, 67.82]], ['nsf5', [1.67271, 32.25]]]) {
+    ['silica', [1.4585, 67.82]], ['nsf5', [1.67271, 32.25]], ['nfk51a', [1.48656, 84.47]],
+    ['nsf10', [1.72828, 28.53]], ['nsf14', [1.76182, 26.53]], ['nsf57', [1.84666, 23.78]],
+    ['nlasf9', [1.85025, 32.17]]]) {
     assert.ok(Math.abs(glassIndex(id, 587.6) - expected[0]) < 5e-5, `${id} nd`);
     assert.ok(Math.abs(glassAbbe(id) - expected[1]) < 0.01,
       `${id} Abbe number: ${glassAbbe(id)} versus the catalogue's ${expected[1]}`);

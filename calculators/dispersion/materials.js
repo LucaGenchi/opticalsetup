@@ -5,9 +5,10 @@
 // index, GVD and TOD from published dispersion formulas, with analytic
 // wavelength derivatives up to third order. DOM-free.
 //
-// The workbench's four catalogue glasses take their coefficients from
-// sketch/js/glass.js, so the calculator and the tracer share one source; the
-// other materials are calculator-only. Each entry keeps its source's own
+// The workbench's catalogue glasses (the SCHOTT glasses and fused silica)
+// take their coefficients from sketch/js/glass.js, so the calculator and the
+// tracer share one source; the crystals, liquids and gases are
+// calculator-only. Each entry keeps its source's own
 // formula form, so a transcription can be compared with the source directly:
 //
 //   'sellmeier'  n² − 1 = A + Σ B λ² / (λ² − C)      λ in µm, C in µm²
@@ -38,23 +39,13 @@ const catalogueGlass = (id, group, extra = {}) => {
 
 const MATERIAL_LIST = [
   catalogueGlass('nbk7', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
-  { id: 'nfk51a', label: 'N-FK51A fluorite crown (nd 1.487 / V 84.5)', group: GLASS, form: 'sellmeier', A: 0,
-    terms: [[0.971247817, 0.00472301995], [0.216901417, 0.0153575612], [0.904651666, 168.68133]],
-    range: [290, 2500], ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' },
+  catalogueGlass('nfk51a', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
   catalogueGlass('nsf5', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
-  { id: 'nsf10', label: 'N-SF10 dense flint (nd 1.728 / V 28.5)', group: GLASS, form: 'sellmeier', A: 0,
-    terms: [[1.62153902, 0.0122241457], [0.256287842, 0.0595736775], [1.64447552, 147.468793]],
-    range: [380, 2500], ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' },
+  catalogueGlass('nsf10', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
   catalogueGlass('nsf11', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
-  { id: 'nsf14', label: 'N-SF14 dense flint (nd 1.762 / V 26.5)', group: GLASS, form: 'sellmeier', A: 0,
-    terms: [[1.69022361, 0.0130512113], [0.288870052, 0.061369188], [1.7045187, 149.517689]],
-    range: [365, 2500], ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' },
-  { id: 'nsf57', label: 'N-SF57 dense flint (nd 1.847 / V 23.8)', group: GLASS, form: 'sellmeier', A: 0,
-    terms: [[1.87543831, 0.0141749518], [0.37375749, 0.0640509927], [2.30001797, 177.389795]],
-    range: [370, 2500], ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' },
-  { id: 'nlasf9', label: 'N-LASF9 lanthanum dense flint (nd 1.850 / V 32.2)', group: GLASS, form: 'sellmeier', A: 0,
-    terms: [[2.00029547, 0.0121426017], [0.298926886, 0.0538736236], [1.80691843, 156.530829]],
-    range: [365, 2500], ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' },
+  catalogueGlass('nsf14', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
+  catalogueGlass('nsf57', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
+  catalogueGlass('nlasf9', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
 
   catalogueGlass('silica', CRYSTAL, { ref: 'malitson1965', conditions: '20 °C', indexReference: 'unstated' }),
   { id: 'caf2', label: 'Calcium fluoride, CaF₂', group: CRYSTAL, form: 'sellmeier', A: 0,

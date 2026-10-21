@@ -3,9 +3,9 @@
 """Catalogue glass dispersion: index, Abbe number, group index and GVD.
 
 Reference: the published three-term Sellmeier coefficients (Schott optical
-glass data sheets for N-BK7, N-SF5 and N-SF11; Malitson, J. Opt. Soc. Am.
-55, 1205 (1965), doi:10.1364/JOSA.55.001205, for fused silica), evaluated
-here directly, with the wavelength derivatives taken numerically. The app
+glass data sheets for N-BK7, N-FK51A, N-SF5, N-SF10, N-SF11, N-SF14, N-SF57
+and N-LASF9; Malitson, J. Opt. Soc. Am. 55, 1205 (1965),
+doi:10.1364/JOSA.55.001205, for fused silica), evaluated here directly, with the wavelength derivatives taken numerically. The app
 evaluates the same coefficients but derives GVD from the analytic derivative
 of the Sellmeier sum (sketch/js/glass.js), so agreement checks that
 derivation and its unit bookkeeping, not the coefficients.
@@ -43,6 +43,26 @@ GLASSES = {
     "nsf11": {
         "B": [1.73759695, 0.313747346, 1.89878101],
         "C": [0.013188707, 0.0623068142, 155.23629],
+    },
+    "nfk51a": {
+        "B": [0.971247817, 0.216901417, 0.904651666],
+        "C": [0.00472301995, 0.0153575612, 168.68133],
+    },
+    "nsf10": {
+        "B": [1.62153902, 0.256287842, 1.64447552],
+        "C": [0.0122241457, 0.0595736775, 147.468793],
+    },
+    "nsf14": {
+        "B": [1.69022361, 0.288870052, 1.7045187],
+        "C": [0.0130512113, 0.061369188, 149.517689],
+    },
+    "nsf57": {
+        "B": [1.87543831, 0.37375749, 2.30001797],
+        "C": [0.0141749518, 0.0640509927, 177.389795],
+    },
+    "nlasf9": {
+        "B": [2.00029547, 0.298926886, 1.80691843],
+        "C": [0.0121426017, 0.0538736236, 156.530829],
     },
 }
 
@@ -179,7 +199,7 @@ MODEL = {
     "reference": "Published Sellmeier coefficients evaluated directly; derivatives by five-point finite differences",
     "citations": [
         "SCHOTT AG, data sheet N-BK7 517642.251 (2007-09-19): Sellmeier constants and the tabulated indices used as anchors here — https://www.schott.com/shop/medias/schott-datasheet-n-bk7-eng.pdf",
-        "SCHOTT AG, optical glass collection data sheets (N-SF5, N-SF11) — https://www.schott.com/en-gb/products/optical-glass",
+        "SCHOTT AG, optical glass collection data sheets (N-FK51A, N-SF5, N-SF10, N-SF11, N-SF14, N-SF57, N-LASF9) — https://www.schott.com/en-gb/products/optical-glass",
         "I. H. Malitson, 'Interspecimen comparison of the refractive index of fused silica', J. Opt. Soc. Am. 55, 1205-1208 (1965), doi:10.1364/JOSA.55.001205 (absolute residual 1.05e-5 over 0.21-3.71 um)",
     ],
     "provenance": "Coefficients transcribed from the manufacturer data sheets and Malitson's paper; the anchors are the same data sheet's tabulated catalogue values, not established as independent of the data behind the fit.",
