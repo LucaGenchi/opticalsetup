@@ -36,6 +36,12 @@ export const DISPERSION_INPUTS = [
 ];
 export const DISPERSION_DEFAULTS = defaultsFor(DISPERSION_INPUTS);
 
+// What the added delay and optical path are measured against: the medium the
+// fit's indices are relative to (materials.js, indexReference).
+export const ADDED_REFERENCE = {
+  air: 'vs. the same path in air', vacuum: 'vs. vacuum', unstated: 'vs. the fit’s reference medium',
+};
+
 function plotInterval(v, [lo, hi]) {
   if (v.plotRange === 'domain') return [lo, hi];
   if (v.plotRange === 'auto') return [Math.max(lo, v.wavelengthNm / 2), Math.min(hi, 2 * v.wavelengthNm)];
@@ -72,12 +78,13 @@ export function computeDispersion(raw) {
     ok: true, ...point, values: v, range, band, material,
     plot: plotInterval(v, range),
     gddFs2, todFs3: L * point.todFs3PerMm, delaySpreadFs,
-    // What inserting the material adds over the same path in air: the
-    // envelope's group delay L(n_g − 1)/c and the optical path L(n − 1).
-    // Catalogue indices are relative to air, so these are excesses over air;
-    // for the air entry itself, whose fit is absolute, they are over vacuum.
+    // What inserting the material adds: the envelope's group delay
+    // L(n_g − 1)/c and the optical path L(n − 1), over the same path in the
+    // medium the fit's indices are relative to (air for SCHOTT glasses,
+    // vacuum for the absolute water and air fits).
     addedDelayFs: L * (point.groupIndex - 1) * FS_PER_MM,
     addedOpticalPathMm: L * (point.index - 1),
+    addedReference: material.indexReference,
     // Frequency FWHM in the same small-bandwidth form, cΔλ/λ₀²: τ₀ × Δν = K.
     bandwidthTHz: band ? C_NM_PER_FS * 1000 * v.bandwidthNm / v.wavelengthNm ** 2 : null,
     transformLimitFs, outputFs, abbe: materialAbbe(v.material),

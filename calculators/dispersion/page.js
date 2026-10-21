@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { DISPERSION_INPUTS, DISPERSION_DEFAULTS, computeDispersion, dispersionScan } from './dispersion-calculator.js';
+import { DISPERSION_INPUTS, DISPERSION_DEFAULTS, ADDED_REFERENCE, computeDispersion, dispersionScan } from './dispersion-calculator.js';
 import { mountCalculator } from '../assets/simple-calculator-page.js';
 import { formatNumber } from '../assets/calculator-kit.js';
 
@@ -22,16 +22,18 @@ mountCalculator({ inputs: DISPERSION_INPUTS, defaults: DISPERSION_DEFAULTS, grou
       ['GDD', r.gddFs2, 'fs²'], ['TOD', r.todFs3, 'fs³'],
       ['Delay spread across the bandwidth (blue − red)', r.delaySpreadFs, 'fs'],
       ['Output duration, GDD only (FWHM)', r.outputFs, 'fs'],
-      [r.material.form === 'gas' ? 'Added group delay (vs. vacuum)' : 'Added group delay (vs. the same path in air)', r.addedDelayFs / 1000, 'ps'],
-      [r.material.form === 'gas' ? 'Added optical path length (vs. vacuum)' : 'Added optical path length (vs. air)', r.addedOpticalPathMm, 'mm']],
+      [`Added group delay (${ADDED_REFERENCE[r.addedReference]})`, r.addedDelayFs / 1000, 'ps'],
+      [`Added optical path length (${ADDED_REFERENCE[r.addedReference]})`, r.addedOpticalPathMm, 'mm']],
   }),
   notes: r => {
     const v = r.values, out = [];
     out.push(`${r.material.label}: ${r.material.conditions}. Fit domain ${r.range[0]}–${r.range[1]} nm; this is not a transmission guarantee.`);
     out.push(r.gvdFs2PerMm >= 0 ? 'Normal dispersion (positive GVD) at the central wavelength.' : 'Anomalous dispersion (negative GVD) at the central wavelength.');
-    out.push(r.material.form === 'gas'
-      ? 'Added delay and optical path compare the beam path with vacuum: the air fit gives absolute indices.'
-      : 'Added delay is how much later the pulse arrives than through the same length of air, L(n_g − 1)/c; the added optical path, L(n − 1), is the phase path. Retime a pump–probe delay line by the added delay.');
+    out.push({
+      air: 'Added delay: how much later the pulse arrives than through the same length of air, L(n_g − 1)/c; the added optical path L(n − 1) is the phase path. Retime a pump–probe delay line by the added delay.',
+      vacuum: 'This fit gives absolute indices, so the added delay L(n_g − 1)/c and optical path L(n − 1) compare with vacuum; against air they are smaller by L(n_g,air − 1)/c and L(n_air − 1), about 0.03 % of the path length.',
+      unstated: 'The source as consulted does not say whether these indices are relative to air or to vacuum, so the added delay L(n_g − 1)/c and optical path L(n − 1) compare with one of the two; the readings differ by under 0.1 % for these solids.',
+    }[r.addedReference]);
     if (r.material.birefringent) out.push('Principal-axis index of a birefringent crystal: valid for light polarized along that axis. Other propagation directions need the angle-dependent index, which is not modelled.');
     if (!r.band) out.push('Bandwidth 0: a monochromatic beam has no pulse duration or delay spread.');
     else {

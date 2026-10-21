@@ -57,7 +57,13 @@ test('dispersion: GDD, TOD, delays and pulse stretching follow from the material
   close(narrow.delaySpreadFs, narrow.gddFs2 * dOmega, 1e-4);
   assert.ok(r.outputFs > r.transformLimitFs);
   assert.ok(dispersion({ shape: 'sech2' }).transformLimitFs < r.transformLimitFs);
-  // What the material adds over the same path in air: group delay and optical path.
+  // What the material adds over the same path in the fit's reference medium.
+  // Review of #244: water's fit is absolute, so it compares with vacuum, not air.
+  assert.equal(r.addedReference, 'unstated', 'fused silica: Malitson does not say, as consulted');
+  assert.equal(dispersion({ material: 'nbk7' }).addedReference, 'air', 'SCHOTT indices are relative to air');
+  assert.equal(dispersion({ material: 'water', wavelengthNm: 1000, bandwidthNm: 10 }).addedReference, 'vacuum', 'Daimon and Masumura give absolute indices');
+  assert.equal(dispersion({ material: 'air' }).addedReference, 'vacuum');
+  assert.ok([...MATERIALS.values()].every(m => ['air', 'vacuum', 'unstated'].includes(m.indexReference)), 'every fit records its reference');
   close(r.addedDelayFs, 10 * (r.groupIndex - 1) * 1e12 / 299792458);
   close(r.addedOpticalPathMm, 10 * (r.index - 1));
   assert.ok(r.addedDelayFs > 0 && r.addedOpticalPathMm > 0 && r.addedDelayFs * 299792458e-12 > r.addedOpticalPathMm, 'n_g > n in normal dispersion');
