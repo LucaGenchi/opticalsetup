@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DWDM link with dispersion compensation — Examples | OpticalSetup</title>
+<meta name="description" content="Four 40 GHz pulse trains on the ITU grid share 10 km of fibre: the fibre spreads every pulse past its bit slot, and a short spool of dispersion-compensating fibre gathers them back.">
+<link rel="canonical" href="https://opticalsetup.com/example-setups/dwdm-link-dispersion-compensation/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DWDM link with dispersion compensation — OpticalSetup Examples">
+<meta property="og:description" content="Four 40 GHz pulse trains on the ITU grid share 10 km of fibre: the fibre spreads every pulse past its bit slot, and a short spool of dispersion-compensating fibre gathers them back.">
+<meta property="og:url" content="https://opticalsetup.com/example-setups/dwdm-link-dispersion-compensation/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="../../sketch/icons/icon.svg">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+<link rel="stylesheet" href="../../example-setups/assets/examples.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../calculators/">Calculators</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell" style="grid-template-columns: 1fr;">
+    <main class="wiki-article" style="max-width: 760px;">
+      <div class="crumb"><a href="../../example-setups/">Examples</a> / Optical Communications / DWDM link with dispersion compensation</div>
+      <h1>DWDM link with dispersion compensation</h1>
+      <p class="tagline" style="margin-top: 10px;">Four 40 GHz pulse trains on the ITU grid share 10 km of fibre: the fibre spreads every pulse past its bit slot, and a short spool of dispersion-compensating fibre gathers them back.</p>
+
+      <a class="place-cta" href="../../sketch/?example=dwdm-link-dispersion-compensation">Open in the canvas →</a>
+
+      <div class="embed-wrap" style="height: auto; aspect-ratio: 1400 / 1205; max-height: 900px; min-height: 440px;">
+        <iframe class="embed-frame" src="../../sketch/?example=dwdm-link-dispersion-compensation&amp;embed=1"
+          title="DWDM link with dispersion compensation — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace of the setup above, shown as a picture. Open it in the canvas to take it apart, retune it, and save or export it as your own.</p>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Background</h2>
+
+      <p>Dense wavelength-division multiplexing (DWDM) is how one optical fibre
+      carries many independent signals: each channel gets its own optical
+      frequency, all of them travel together, and the receiving end separates
+      them again. The frequencies are not chosen freely. ITU-T G.694.1 fixes a
+      grid anchored at 193.1&nbsp;THz with spacings of 100&nbsp;GHz (about
+      0.8&nbsp;nm near 1550&nbsp;nm) and narrower, so that lasers, filters and
+      amplifiers from different makers line up<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+      <p>Combining and separating channels that close together needs filters
+      with a passband about a nanometre wide. One classic way is a cascade of
+      thin-film band-pass filters: multilayer interference coatings that pass
+      one channel and reflect everything else<sup class="cite">[<a href="#ref-2">2</a>]</sup>. At the receiver the
+      reflected light goes on to the next filter, so each stage drops one
+      channel; run backwards, the same cascade adds channels onto a common
+      fibre.</p>
+      <p>The fibre itself limits how fast each channel can go. Standard
+      single-mode fibre (ITU-T G.652) loses about 0.2&nbsp;dB/km near 1550&nbsp;nm,
+      but there its chromatic dispersion is about 17&nbsp;ps/(nm·km), a
+      group-velocity dispersion β₂ ≈ −21.7&nbsp;ps²/km<sup class="cite">[<a href="#ref-3">3</a>,<a href="#ref-4">4</a>]</sup>. A short pulse
+      contains a band of wavelengths that arrive at different times, so it
+      spreads. For a transform-limited Gaussian pulse of width τ₀ the width
+      after a length L is τ₀·√(1 + (4&nbsp;ln2·β₂L/τ₀²)²)<sup class="cite">[<a href="#ref-4">4</a>]</sup>: the shorter
+      the pulse, the faster it spreads.</p>
+      <p>At 40&nbsp;Gb/s the bit slot is 25&nbsp;ps. Return-to-zero formats with a
+      33% duty cycle put a pulse of about 8&nbsp;ps in each slot<sup class="cite">[<a href="#ref-5">5</a>]</sup>. After
+      10&nbsp;km of standard fibre that pulse is about 73&nbsp;ps wide and smears
+      across three bit slots. Dispersion that only depends on wavelength can be
+      undone, however: a fibre with dispersion of the opposite sign adds back
+      what the link took away<sup class="cite">[<a href="#ref-6">6</a>]</sup>. Dispersion-compensating fibre (DCF) is
+      designed for this, with strongly normal dispersion, so a spool a fraction
+      of the span's length cancels it, at the price of a higher loss per
+      kilometre<sup class="cite">[<a href="#ref-7">7</a>]</sup>.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>What this setup demonstrates</h2>
+      <div class="sim-block">
+
+      <p>Four <a href="../../wiki/pulsedlaser/">pulsed lasers</a> sit on every second
+      channel of the 100&nbsp;GHz grid (193.4, 193.2, 193.0 and 192.8&nbsp;THz:
+      1550.12, 1551.72, 1553.33 and 1554.94&nbsp;nm). Each emits 1&nbsp;mW of 8.3&nbsp;ps
+      transform-limited Gaussian pulses at 40&nbsp;GHz. A train with a pulse in
+      every slot is the clock of a 40&nbsp;Gb/s return-to-zero signal, every bit
+      a one, with no data pattern on it. Four
+      <a href="../../wiki/dichroic/">band-pass filters</a>, 1.2&nbsp;nm wide, put the
+      channels on one path. The <a href="../../wiki/probe/">probe</a> just after the
+      multiplexer shows the four lines 1.6&nbsp;nm apart.</p>
+      <p>The link is 10&nbsp;km of standard fibre (β₂ = −21.7&nbsp;ps²/km,
+      0.2&nbsp;dB/km), then 1.7&nbsp;km of DCF (β₂ = +127.6&nbsp;ps²/km, about
+      −100&nbsp;ps/(nm·km), 0.5&nbsp;dB/km; representative values, not a specific
+      product). Together the two fibres add a group-delay dispersion of
+      −217&nbsp;ps² and +216.9&nbsp;ps², which leaves −0.08&nbsp;ps². The demultiplexer
+      drops one channel at each filter. Every receiver reads 8.3&nbsp;ps and
+      0.52&nbsp;mW: 0&nbsp;dBm launched, less 2.0&nbsp;dB in the standard fibre and
+      0.85&nbsp;dB in the DCF. The time probe on RX1 shows four clean pulses in
+      100&nbsp;ps.</p>
+      <p>Things to try. Select the blue DCF and set its β₂ to 0. Every pulse now
+      arrives 73&nbsp;ps wide and the time trace on RX1 fills in: neighbouring
+      bits overlap. Set the DCF back and shorten it to 1.2&nbsp;km: 64&nbsp;ps² of
+      dispersion remain and the pulses read 22.9&nbsp;ps, nearly the whole bit
+      slot. Tune TX2 up by 0.8&nbsp;nm, halfway between channels. Its filter now
+      passes only the edge of its spectrum: RX2 receives about 0.07&nbsp;mW
+      instead of 0.52&nbsp;mW, in a pulse stretched to 23.6&nbsp;ps, and the rest is
+      reflected on to the express port. Delete a laser and only its receiver goes dark.</p>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>Each laser emits a regular pulse train, not data, so there
+      are no bit patterns, no eye diagram and no bit-error rate. Noise from
+      sources, amplifiers and receivers is not modelled. Neither are fibre
+      nonlinearity (self- and cross-phase modulation, four-wave mixing),
+      polarization-mode dispersion, or the variation of dispersion with
+      wavelength (dispersion slope). Every channel sees the same β₂ here,
+      while in real standard fibre the dispersion at the outer channels
+      differs by a few per cent.</p>
+      <p>The filters are ideal flat tops: complete transmission inside a
+      1.2&nbsp;nm band, complete reflection outside it, and no roll-off, ripple or
+      dispersion of their own. Adjacent-channel leakage therefore stays at
+      zero until a channel is tuned into a neighbouring passband. The fibres
+      are characterised by a fixed loss per metre and a constant β₂.
+      Coupling at their ends is geometric and does not compute mode-field
+      overlap.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/pulsedlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="-3"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">LASER</text><g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>Pulsed Laser</a><a href="../../wiki/dichroic/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-3" y="-12.7" width="6" height="25.4" fill="#dfeef7" stroke="#5d7f96" stroke-width="1.5"/><line x1="-3" y1="-12.7" x2="-3" y2="12.7" stroke="#b04ad0" stroke-width="2"/></svg>Dichroic mirror</a><a href="../../wiki/probe/"><svg viewBox="-24 -24 48 48" aria-hidden="true"><circle r="4.5" fill="none" stroke="#e07020" stroke-width="1.6"/><line x1="0" y1="-8" x2="0" y2="8" stroke="#e07020" stroke-width="1"/><line x1="-8" y1="0" x2="8" y2="0" stroke="#e07020" stroke-width="1"/><line x1="0" y1="-9" x2="0" y2="-22" stroke="#e07020" stroke-width="1"/><g class="probe-card" transform="rotate(0) translate(-42.00,-58.00) scale(1.5)"><rect x="0" y="0" width="56" height="24" rx="4" fill="#fff" stroke="#c9ced6"/><text x="28" y="12" text-anchor="middle" dominant-baseline="central" font-size="8" fill="#9aa2ad">no beam</text></g></svg>Beam probe (?)</a><a href="../../wiki/detector/"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-18" y="-13" width="36" height="26" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">PD</text><rect x="-19.5" y="-9" width="3" height="18" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/><circle cx="11" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Photodetector</a><a href="../../wiki/beamdump/"><svg viewBox="-19 -19 38 38" aria-hidden="true"><path d="M -10,-11 L 10,-11 L 10,11 L -10,11 Z M -10,-11 L 4,0 L -10,11" fill="#26292e" stroke="#111" stroke-width="1.5"/></svg>Beam dump</a>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://www.itu.int/rec/T-REC-G.694.1" target="_blank" rel="noopener">ITU-T Recommendation G.694.1, “Spectral grids for WDM applications: DWDM frequency grid” (10/2020)</a></li><li id="ref-2"><a href="https://doi.org/10.1201/9781420073034" target="_blank" rel="noopener">H. A. Macleod, Thin-Film Optical Filters, 4th ed. (CRC Press, 2010)</a></li><li id="ref-3"><a href="https://www.itu.int/rec/T-REC-G.652" target="_blank" rel="noopener">ITU-T Recommendation G.652, “Characteristics of a single-mode optical fibre and cable” (08/2024)</a></li><li id="ref-4"><a href="https://doi.org/10.1002/9780470918524" target="_blank" rel="noopener">G. P. Agrawal, Fiber-Optic Communication Systems, 4th ed. (Wiley, 2010)</a></li><li id="ref-5"><a href="https://doi.org/10.1109/JPROC.2006.873438" target="_blank" rel="noopener">P. J. Winzer and R.-J. Essiambre, “Advanced optical modulation formats,” Proceedings of the IEEE 94, 952–985 (2006)</a></li><li id="ref-6"><a href="https://doi.org/10.1364/OL.5.000476" target="_blank" rel="noopener">C. Lin, L. G. Cohen and H. Kogelnik, “Optical-pulse equalization of low-dispersion transmission in single-mode fibers in the 1.3–1.7-μm spectral region,” Optics Letters 5, 476 (1980)</a></li><li id="ref-7"><a href="https://doi.org/10.1109/JLT.2005.855873" target="_blank" rel="noopener">L. Grüner-Nielsen et al., “Dispersion-compensating fibers,” Journal of Lightwave Technology 23, 3566–3579 (2005)</a></li>
+      </ol>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://en.wikipedia.org/wiki/Wavelength-division_multiplexing" target="_blank" rel="noopener">Wikipedia — Wavelength-division multiplexing</a></li><li><a href="../wavelength-combining-and-separation-dichroic-mirrors/" target="_blank" rel="noopener">Same mechanism in the visible: Wavelength combining and separation</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">Examples are written and maintained with the project. For setups shared by users, see the <a href="../../community/">community section</a>; for how each component works, see the <a href="../../wiki/">wiki</a>.</footer>
+</body>
+</html>

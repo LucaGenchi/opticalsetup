@@ -89,7 +89,7 @@ const PRECACHE_PATHS = [
   "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
   "../Examples/Microscopy%20Implementations/Epi-fluorescence%20microscope.json",
   "../Examples/Microscopy%20Implementations/Multiphoton%20microscope%20%E2%80%94%20SHG%20and%20two%20photon%20fluorescence.json",
-  "../Examples/Photonic%20Systems/WDM%20chip-to-chip%20photonic%20interconnect.json",
+  "../Examples/Optical%20Communications/DWDM%20link%20%E2%80%94%20dispersion%20compensation.json",
   "../Examples/Scanning/Polygon%20scanner%20%E2%80%94%20line%20scanning.json",
   "../Examples/Ultrashort%20Pulses/Finding%20time%20zero%20%E2%80%94%20sum%20frequency%20of%20two%20beams.json",
   "../Examples/Ultrashort%20Pulses/Hollow-core%20pulse%20compressor.json",

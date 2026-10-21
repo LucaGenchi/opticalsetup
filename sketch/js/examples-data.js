@@ -123,10 +123,10 @@ export const examples = [
     "slug": "multiphoton-microscope-shg-and-two-photon-fluorescence"
   },
   {
-    "group": "Photonic Systems",
-    "name": "WDM chip to chip photonic interconnect",
-    "path": "../Examples/Photonic%20Systems/WDM%20chip-to-chip%20photonic%20interconnect.json",
-    "slug": "wdm-chip-to-chip-photonic-interconnect"
+    "group": "Optical Communications",
+    "name": "DWDM link — dispersion compensation",
+    "path": "../Examples/Optical%20Communications/DWDM%20link%20%E2%80%94%20dispersion%20compensation.json",
+    "slug": "dwdm-link-dispersion-compensation"
   },
   {
     "group": "Scanning",
