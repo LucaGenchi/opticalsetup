@@ -12,21 +12,21 @@
   },
   "points": 8212,
   "sum": [
-   2829952.76,
-   2592679.53
+   2818044.38,
+   2580861.18
   ],
   "bbox": [
    52,
-   79.2263,
-   6896.8703,
-   6336.8703
+   197,
+   946,
+   431
   ],
-  "digest": "5bb7c4a3"
+  "digest": "5851e2bf"
  },
  "drawnElements": {
-  "figureframe:frame": "bba7ebee",
+  "figureframe:frame": "4ac79a13",
   "textlabel:title": "f88c149b",
-  "textlabel:subtitle": "4cb3a040",
+  "textlabel:subtitle": "bb220363",
   "cwlaser:laser1560": "2bbe6fcb",
   "cwlaser:laser1555": "2bbe6fcb",
   "cwlaser:laser1550": "2bbe6fcb",
@@ -37,7 +37,7 @@
   "dichroic:mux3": "7a0ec554",
   "dichroic:mux2": "7a0ec554",
   "dichroic:mux1": "7a0ec554",
-  "textlabel:txnote": "6911a1ea",
+  "textlabel:txnote": "1ff868ba",
   "textlabel:rxnote": "63f24df1",
   "dichroic:demux1": "7a0ec554",
   "dichroic:demux2": "7a0ec554",
@@ -68,8 +68,8 @@
     "color": "#ff8989",
     "convergence": {
      "diverging": true,
-     "fullAngleDeg": 4.58488549,
-     "slopePerMm": 0.00497564145
+     "fullAngleDeg": 2.29198399,
+     "slopePerMm": 0.00497711124
     },
     "dark": false,
     "darkOutput": null,
@@ -112,7 +112,7 @@
       "widthNm": null
      }
     ],
-    "spotSpan": 16.084873,
+    "spotSpan": 8.03760768,
     "wavelength": 1545
    }
   },
@@ -126,8 +126,8 @@
     "color": "#ff8989",
     "convergence": {
      "diverging": true,
-     "fullAngleDeg": 4.58488549,
-     "slopePerMm": 0.00343625427
+     "fullAngleDeg": 2.29198399,
+     "slopePerMm": 0.00343726933
     },
     "dark": false,
     "darkOutput": null,
@@ -170,7 +170,7 @@
       "widthNm": null
      }
     ],
-    "spotSpan": 23.29064,
+    "spotSpan": 11.6383279,
     "wavelength": 1550
    }
   },
@@ -184,13 +184,13 @@
     "color": "#ff8989",
     "convergence": {
      "diverging": true,
-     "fullAngleDeg": 3.43866415,
-     "slopePerMm": 0.002624748
+     "fullAngleDeg": 2.29198399,
+     "slopePerMm": 0.00262510278
     },
     "dark": false,
     "darkOutput": null,
     "depositedProfile": null,
-    "depositedSignal": 0.334247405,
+    "depositedSignal": 0.429746664,
     "detectorType": "Photodetector",
     "gain": null,
     "interference": null,
@@ -199,7 +199,7 @@
      "s2": 0,
      "s3": 0
     },
-    "outputSignal": 0.334247405,
+    "outputSignal": 0.429746664,
     "polarization": "Linear 0°",
     "profile": null,
     "profileColors": null,
@@ -207,13 +207,13 @@
     "profileScale": "absolute",
     "pulse": null,
     "readoutKind": "detector",
-    "samples": 7,
+    "samples": 9,
     "saturated": false,
-    "signal": 0.334247405,
+    "signal": 0.429746664,
     "snr": null,
     "sourceFractions": [
      {
-      "fraction": 0.334247405,
+      "fraction": 0.429746664,
       "sourceId": "laser1555"
      }
     ],
@@ -222,13 +222,13 @@
       "bandId": null,
       "color": "#6e3b3b",
       "continuum": false,
-      "power": 0.334247405,
+      "power": 0.429746664,
       "sourceId": "laser1555",
       "wavelength": 1555,
       "widthNm": null
      }
     ],
-    "spotSpan": 22.866963,
+    "spotSpan": 15.2390481,
     "wavelength": 1555
    }
   },
@@ -242,13 +242,13 @@
     "color": "#ff8989",
     "convergence": {
      "diverging": true,
-     "fullAngleDeg": 3.43866415,
-     "slopePerMm": 0.0029763814
+     "fullAngleDeg": 2.29198399,
+     "slopePerMm": 0.00297678371
     },
     "dark": false,
     "darkOutput": null,
     "depositedProfile": null,
-    "depositedSignal": 0.742772011,
+    "depositedSignal": 0.954992586,
     "detectorType": "Photodetector",
     "gain": null,
     "interference": null,
@@ -257,7 +257,7 @@
      "s2": 0,
      "s3": 0
     },
-    "outputSignal": 0.742772011,
+    "outputSignal": 0.954992586,
     "polarization": "Linear 0°",
     "profile": null,
     "profileColors": null,
@@ -265,13 +265,13 @@
     "profileScale": "absolute",
     "pulse": null,
     "readoutKind": "detector",
-    "samples": 7,
+    "samples": 9,
     "saturated": false,
-    "signal": 0.742772011,
+    "signal": 0.954992586,
     "snr": null,
     "sourceFractions": [
      {
-      "fraction": 0.742772011,
+      "fraction": 0.954992586,
       "sourceId": "laser1560"
      }
     ],
@@ -280,13 +280,13 @@
       "bandId": null,
       "color": "#6e3b3b",
       "continuum": false,
-      "power": 0.742772011,
+      "power": 0.954992586,
       "sourceId": "laser1560",
       "wavelength": 1560,
       "widthNm": null
      }
     ],
-    "spotSpan": 20.1654315,
+    "spotSpan": 13.438688,
     "wavelength": 1560
    }
   }

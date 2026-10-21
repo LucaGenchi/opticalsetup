@@ -5,14 +5,14 @@
     {
       "id": "frame",
       "type": "figureframe",
-      "x": 475,
-      "y": 310,
+      "x": 470,
+      "y": 300,
       "rot": 0,
       "label": "",
       "showLabel": false,
       "params": {
-        "w": 1020,
-        "h": 560,
+        "w": 1120,
+        "h": 580,
         "background": "white"
       }
     },
@@ -39,7 +39,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "Illustrative 4-channel telecom link — wavelength routing and fiber loss are traced; this is not a BER or calibrated transceiver model.",
+        "text": "Illustrative bulk-optics analogue of a 4-channel chip-to-chip WDM link — wavelength routing and fiber loss are traced; this is not a BER or calibrated transceiver model.",
         "fontSize": 12,
         "fill": "#66717d"
       }
@@ -50,7 +50,7 @@
       "x": 0,
       "y": 330,
       "rot": 0,
-      "label": "CH4 · 1560 nm",
+      "label": "CH4 · 1560 nm · CW ref",
       "showLabel": true,
       "params": {
         "wavelength": 1560,
@@ -130,7 +130,7 @@
       "x": 130,
       "y": 235,
       "rot": 90,
-      "label": "DATA 3",
+      "label": "RF gate 3",
       "showLabel": true,
       "params": {
         "aperture": 18,
@@ -151,7 +151,7 @@
       "x": 260,
       "y": 235,
       "rot": 90,
-      "label": "DATA 2",
+      "label": "RF gate 2",
       "showLabel": true,
       "params": {
         "aperture": 18,
@@ -172,7 +172,7 @@
       "x": 390,
       "y": 235,
       "rot": 90,
-      "label": "DATA 1",
+      "label": "RF gate 1",
       "showLabel": true,
       "params": {
         "aperture": 18,
@@ -247,7 +247,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "**TX** · three long-pass dichroics combine the four wavelengths onto one axis.",
+        "text": "**TX** · long-pass dichroics combine four wavelengths · CH4 is an ungated CW reference.",
         "fontSize": 11,
         "fill": "#44505c"
       }
@@ -255,7 +255,7 @@
     {
       "id": "rxnote",
       "type": "textlabel",
-      "x": 690,
+      "x": 640,
       "y": 390,
       "rot": 0,
       "label": "",
@@ -359,7 +359,7 @@
       "x": 965,
       "y": 330,
       "rot": 0,
-      "label": "RX4 · 1560",
+      "label": "RX4 · 1560 ref",
       "showLabel": true,
       "params": {
         "aperture": 26
@@ -419,13 +419,13 @@
       "lossDbPerM": 0.2,
       "out0": {
         "mode": "diverge",
-        "na": 0.04,
+        "na": 0.02,
         "focal": 20,
         "dia": 4
       },
       "out1": {
         "mode": "diverge",
-        "na": 0.04,
+        "na": 0.02,
         "focal": 20,
         "dia": 4
       },
