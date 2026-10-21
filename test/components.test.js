@@ -199,26 +199,53 @@ test('eye detects focused light at its retina and clips outside the pupil', () =
   assert.equal(detectorReading(eye.id), null);
 });
 
-test('eye retinal reflectivity launches an attenuated return beam', () => {
-  const laser = createElement('cwlaser', 0, 0);
-  laser.params.beamMode = 'line';
-  const eye = createElement('eye', 200, 0);
+test('eye retinal reflectivity sends a return beam back out through the pupil', () => {
+  const run = (reflectivity, beamMode = 'line') => {
+    const laser = createElement('cwlaser', 0, 0);
+    laser.params.beamMode = beamMode;
+    const splitter = createElement('bs', 100, 0);
+    splitter.params.ratio = 0.5;
+    const eye = createElement('eye', 250, 0);
+    eye.params.retinalReflectivity = reflectivity;
+    // The splitter sends the outgoing beam up and the returning one down.
+    const returnPort = createElement('detector', 100, 120);
+    returnPort.rot = 90;
+    traceAll([laser, splitter, eye, returnPort]);
+    return { retina: detectorReading(eye.id), returned: detectorReading(returnPort.id) };
+  };
 
-  eye.params.retinalReflectivity = 0;
-  let scene = traceScene([laser, eye]);
-  let paths = scene.drawables.filter(d => d.type === 'path');
-  assert.ok(paths.every(path => path.pts.at(-1).x >= 185 - 1e-6),
-    'zero reflectivity keeps the retina absorbing');
+  const absorbing = run(0);
+  assert.equal(absorbing.returned, null, 'zero reflectivity keeps the retina absorbing');
+  assert.equal(absorbing.retina.detectorType, 'Retina');
+  assert.ok(Math.abs(absorbing.retina.signal - 0.5) < 1e-9);
 
-  eye.params.retinalReflectivity = 25;
-  scene = traceScene([laser, eye]);
-  paths = scene.drawables.filter(d => d.type === 'path');
-  const returned = paths.find(path => path.pts.some((p, i) => i > 0 && p.x < 185 - 1e-6));
-  assert.ok(returned, 'partial retinal reflectivity sends light back through the eye');
-  assert.ok(returned.segmentPowers.some(power => Math.abs(power - 0.25) < 1e-9),
-    'the return branch carries the configured reflected fraction');
-  assert.equal(detectorReading(eye.id).detectorType, 'Retina',
-    'the retinal plane remains a detector while it reflects');
+  for (const beamMode of ['line', 'beam']) {
+    const partial = run(25, beamMode);
+    assert.ok(Math.abs(partial.returned.signal - 0.5 * 0.25 * 0.5) < 1e-9,
+      `${beamMode}: the return beam carries the configured fraction back through the eye`);
+    assert.ok(Math.abs(partial.retina.signal - 0.5) < 1e-9,
+      `${beamMode}: the retina still reads all the light that reaches it`);
+  }
+
+  // Out-of-range or malformed values never leave [0, 100] %.
+  assert.ok(Math.abs(run(150).returned.signal - 0.5 * 0.5) < 1e-9);
+  assert.equal(run('not a number').returned, null);
+  assert.equal(run(-20).returned, null);
+});
+
+test('light arriving at the back of the eye is blocked, not reflected or detected', () => {
+  for (const reflectivity of [0, 50, 100]) {
+    const laser = createElement('cwlaser', 400, 0);
+    laser.rot = 180;
+    laser.params.beamMode = 'line';
+    const eye = createElement('eye', 200, 0);
+    eye.params.retinalReflectivity = reflectivity;
+    const scene = traceScene([laser, eye]);
+    const paths = scene.drawables.filter(d => d.type === 'path');
+    assert.equal(paths.length, 1, `R=${reflectivity}: nothing comes back off the back of the eye`);
+    assert.ok(paths[0].pts.every(p => p.x >= 215), `R=${reflectivity}: the beam stops at the back wall`);
+    assert.equal(detectorReading(eye.id), null, `R=${reflectivity}: the retina does not see light from behind`);
+  }
 });
 
 test('chopper averages static CW power, draws it as a chunked pattern, and gates pulses', () => {

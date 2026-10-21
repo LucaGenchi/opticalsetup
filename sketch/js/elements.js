@@ -4219,17 +4219,21 @@ export const registry = {
     },
     surfaces(el) {
       // the pupil acts as an ideal lens that focuses collimated light onto
-      // the retina; the rest of the eyeball absorbs
+      // the retina; the rest of the eyeball absorbs. The retina may send part
+      // of the light back towards the pupil, so the outside of the back wall
+      // is a separate absorber just behind it: light arriving from behind the
+      // eye stops there instead of reaching (and reflecting off) the retina.
       const scale = (el.params.diameter || 30) / 30;
-      const radius = 15 * scale, retina = 13 * scale;
+      const radius = 15 * scale, retina = 13 * scale, back = radius + 0.5 * scale;
       const h = Math.min(radius * 0.8, Math.max(1, el.params.pupil / 2));
       return [
         { x1: -radius, y1: -h, x2: -radius, y2: h, kind: 'lens', data: { f: el.params.focus } },
         { x1: -radius, y1: -radius, x2: -radius, y2: -h, kind: 'absorb' },
         { x1: -radius, y1: h, x2: -radius, y2: radius, kind: 'absorb' },
-        { x1: -radius, y1: -radius, x2: radius, y2: -radius, kind: 'absorb' },
-        { x1: -radius, y1: radius, x2: radius, y2: radius, kind: 'absorb' },
+        { x1: -radius, y1: -radius, x2: back, y2: -radius, kind: 'absorb' },
+        { x1: -radius, y1: radius, x2: back, y2: radius, kind: 'absorb' },
         { x1: radius, y1: -retina, x2: radius, y2: retina, kind: 'retina', data: { aperture: 2 * retina, detectorType: 'Retina', refl: el.params.retinalReflectivity ?? 0 } },
+        { x1: back, y1: -radius, x2: back, y2: radius, kind: 'absorb' },
       ];
     },
   },
@@ -5926,7 +5930,7 @@ const ELEMENT_HELP = {
   detector: 'Measures qualitative ray signal, spectrum, polarization, and spot span.',
   pmt: 'Multiplies a faint signal into a readable one, and reports whether it actually clears the tube\u2019s own dark floor.',
   camera: 'Measures a pixel-integrated one-dimensional intensity profile and resolves supported same-source interference from sized CW, pulsed and supercontinuum beams.',
-  eye: 'Focuses through a configurable pupil and reports the qualitative retinal signal and spot.',
+  eye: 'Focuses through a configurable pupil, reports the qualitative retinal signal and spot, and can reflect part of it back out.',
   display: 'Shows the live qualitative output of a linked photodetector, PMT, camera, or retina.',
   aom: 'Deflects first-order light with a configurable modulation efficiency and zero order, under square, sine or sawtooth RF modulation (the ramp sweeping from falling through triangular to rising). A square gate can also draw both orders chopped in opposition, so the switching stays visible on a beam drawn as a steady line.',
   phasemodulator: 'Writes a voltage-driven optical path across the whole beam without touching its polarization \u2014 invisible alone, and an amplitude modulator in one arm of an interferometer.',

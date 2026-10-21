@@ -1678,7 +1678,12 @@ const LOW_POWER_MEASUREMENT_SURFACES = new Set(['detector', 'retina', 'specimen'
 // into a wave-optics model.
 function carrierPhaseIssue(surface) {
   const type = surface.el?.type;
-  if (surface.kind === 'detector' || surface.kind === 'retina') return null;
+  if (surface.kind === 'detector') return null;
+  // A retina that only absorbs ends the path like any detector; one that
+  // reflects is not a coherent mirror model.
+  if (surface.kind === 'retina') {
+    return Number(surface.data?.refl) > 0 ? 'carrier phase is not modeled for retinal reflection' : null;
+  }
   if (surface.kind === 'split' && type === 'bs') return null;
   if (surface.kind === 'delay' && type === 'delayline') return null;
   // A phase object only lengthens the optical path, without bending the

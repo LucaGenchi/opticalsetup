@@ -6,11 +6,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Human eye — Optics Encyclopedia | OpticalSetup</title>
-<meta name="description" content="Focuses light through an adjustable pupil onto a modeled retina, for exploring how focal length and pupil size change the detected spot. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<meta name="description" content="Focuses light through an adjustable pupil onto a modeled retina that detects it and can reflect part of it back out through the pupil. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
 <link rel="canonical" href="https://opticalsetup.com/wiki/eye/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Human eye — OpticalSetup Encyclopedia">
-<meta property="og:description" content="Focuses light through an adjustable pupil onto a modeled retina, for exploring how focal length and pupil size change the detected spot.">
+<meta property="og:description" content="Focuses light through an adjustable pupil onto a modeled retina that detects it and can reflect part of it back out through the pupil.">
 <meta property="og:url" content="https://opticalsetup.com/wiki/eye/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="../../sketch/icons/icon.svg">
@@ -140,7 +140,7 @@
           <h1>Human eye</h1>
         </div>
       </div>
-      <p class="tagline">Focuses light through an adjustable pupil onto a modeled retina, for exploring how focal length and pupil size change the detected spot.</p>
+      <p class="tagline">Focuses light through an adjustable pupil onto a modeled retina that detects it and can reflect part of it back out through the pupil.</p>
       <a class="place-cta" href="../../sketch/?demo=eye">Open in the canvas →</a>
 
       <div class="embed-wrap">
@@ -156,8 +156,8 @@
 
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
-        <p>The pupil clips incoming rays, an equivalent thin lens bends the accepted light, and a retinal detector records the resulting signal. Adjust <em>Eye diameter</em>, <em>Pupil diameter</em>, and <em>Lens focal length</em> to compare the illuminated spot. A linked detector screen makes the retinal reading visible beside the eye.</p><p>In the example, a parallel beam enters the pupil. Change the focal length to move the best focus relative to the retinal plane, or narrow the pupil to admit less of the beam.</p>
-        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>This is a geometric teaching model, not an anatomical eye prescription. It does not predict visual acuity, diffraction, accommodation dynamics, retinal physiology, or laser exposure limits.</p></div>
+        <p>The pupil clips incoming rays, an equivalent thin lens bends the accepted light, and a retinal detector records the resulting signal. Adjust <em>Eye diameter</em>, <em>Pupil diameter</em>, and <em>Lens focal length</em> to compare the illuminated spot. A linked detector screen makes the retinal reading visible beside the eye.</p><p>In the example, a parallel beam enters the pupil. Change the focal length to move the best focus relative to the retinal plane, or narrow the pupil to admit less of the beam.</p><p><em>Retinal reflectivity</em> (0–100 %, default 0) turns the retina into a partial mirror: that fraction of the light leaves the retina, crosses the eye's lens again and exits through the pupil. With the retina at the lens focus, a collimated beam comes back collimated, like a cat's eye, so the eye can stand in for the lens-and-mirror pair that ophthalmic instruments use to model it, and a beamsplitter can route the return to a camera or detector. The retinal reading always counts all the light that reaches the retina, whatever fraction is reflected. Light arriving at the back of the eyeball is blocked by the eye wall: it neither reaches the retina nor reflects.</p>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>This is a geometric teaching model, not an anatomical eye prescription. It does not predict visual acuity, diffraction, accommodation dynamics, retinal physiology, or laser exposure limits.</p><p>The retinal reflection is a flat specular mirror at the retinal plane. A real fundus reflects only a small fraction of the light and scatters most of it diffusely from several layers; the model has no diffuse scattering, no depth structure, and no wavelength dependence. The carrier phase through the eye is not modeled, so the eye's return adds power to an interferometer's output but does not form fringes.</p></div>
       </div>
 
 

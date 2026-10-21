@@ -1,0 +1,227 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "eoph0t01",
+   "type": "textlabel",
+   "x": 300,
+   "y": 125,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Linnik interferometer for retinal imaging — the eye is the sample-arm objective",
+    "fontSize": 14,
+    "fill": "#333"
+   }
+  },
+  {
+   "id": "eoph0src",
+   "type": "cwlaser",
+   "x": 60,
+   "y": 300,
+   "rot": 0,
+   "label": "swept source, parked at 840 nm",
+   "showLabel": true,
+   "params": {
+    "wavelength": 840,
+    "avgPowerW": 0.0096,
+    "beamMode": "beam",
+    "beamWidth": 3,
+    "pol": 0,
+    "autoColor": true,
+    "color": "#e02020"
+   }
+  },
+  {
+   "id": "eoph0bs1",
+   "type": "bs",
+   "x": 220,
+   "y": 300,
+   "rot": 0,
+   "label": "50/50 beamsplitter",
+   "showLabel": true,
+   "params": {
+    "ratio": 0.5,
+    "size": 25.4
+   },
+   "labelPos": "l"
+  },
+  {
+   "id": "eoph0eye",
+   "type": "eye",
+   "x": 330,
+   "y": 300,
+   "rot": 0,
+   "label": "eye (f = 25 mm, 6 mm pupil)",
+   "showLabel": true,
+   "params": {
+    "diameter": 25,
+    "pupil": 6,
+    "focus": 25,
+    "retinalReflectivity": 5
+   }
+  },
+  {
+   "id": "eoph0nd1",
+   "type": "filter",
+   "x": 220,
+   "y": 240,
+   "rot": 90,
+   "label": "ND (≈6 % double pass)",
+   "showLabel": true,
+   "params": {
+    "ftype": "nd",
+    "trans": 0.245,
+    "length": 25.4
+   },
+   "labelPos": "l"
+  },
+  {
+   "id": "eoph0L4l",
+   "type": "lens",
+   "x": 220,
+   "y": 202.5,
+   "rot": 90,
+   "label": "L4, f = 25 mm",
+   "showLabel": true,
+   "params": {
+    "f": 25,
+    "dia": 25.4,
+    "transEff": 100
+   },
+   "labelPos": "l"
+  },
+  {
+   "id": "eoph0M1m",
+   "type": "mirror",
+   "x": 220,
+   "y": 177.5,
+   "rot": 90,
+   "label": "reference mirror M1",
+   "showLabel": true,
+   "params": {
+    "length": 25.4,
+    "refl": 100
+   },
+   "labelPos": "t"
+  },
+  {
+   "id": "eoph0L7l",
+   "type": "lens",
+   "x": 220,
+   "y": 420,
+   "rot": 90,
+   "label": "tube lens, f = 150 mm",
+   "showLabel": true,
+   "params": {
+    "f": 150,
+    "dia": 25.4,
+    "transEff": 100
+   },
+   "labelPos": "l"
+  },
+  {
+   "id": "eoph0cam",
+   "type": "camera",
+   "x": 220,
+   "y": 592,
+   "rot": 90,
+   "label": "camera",
+   "showLabel": true,
+   "params": {
+    "ch": 30,
+    "pixels": 24,
+    "interference": true,
+    "profileScale": "absolute"
+   },
+   "labelPos": "b"
+  },
+  {
+   "id": "eoph0t02",
+   "type": "textlabel",
+   "x": 470,
+   "y": 170,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "reference arm: a lens with a mirror at its focus —",
+    "fontSize": 10,
+    "fill": "#555555"
+   }
+  },
+  {
+   "id": "eoph0t03",
+   "type": "textlabel",
+   "x": 470,
+   "y": 184,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "the pair that the eye's own optics and retina replace",
+    "fontSize": 10,
+    "fill": "#555555"
+   }
+  },
+  {
+   "id": "eoph0t04",
+   "type": "textlabel",
+   "x": 470,
+   "y": 330,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Retinal reflectivity sends part of the light back out",
+    "fontSize": 10,
+    "fill": "#555555"
+   }
+  },
+  {
+   "id": "eoph0t05",
+   "type": "textlabel",
+   "x": 470,
+   "y": 344,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "through the pupil, collimated like a cat's eye",
+    "fontSize": 10,
+    "fill": "#555555"
+   }
+  },
+  {
+   "id": "eoph0t06",
+   "type": "textlabel",
+   "x": 470,
+   "y": 500,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "both returns recombine here and focus on the camera",
+    "fontSize": 10,
+    "fill": "#555555"
+   }
+  },
+  {
+   "id": "eoph0t07",
+   "type": "textlabel",
+   "x": 300,
+   "y": 640,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Simplified from Auksorius, Borycki & Wojtkowski, Biomed. Opt. Express 10, 6390 (2019), Fig. 1: deformable membrane off, relay lenses omitted",
+    "fontSize": 9,
+    "fill": "#777777"
+   }
+  }
+ ],
+ "beams": []
+}
