@@ -629,12 +629,16 @@ export const exampleEntries = [
       paper. Both returns recombine at the beamsplitter and a tube lens
       focuses them onto the camera.</p>
       <p>Change the eye's <em>Retinal reflectivity</em> to see the sample
-      return and the camera reading change, or its <em>Lens focal
-      length</em> to mimic a refractive error: the return then leaves the
-      eye converging or diverging instead of collimated.</p>`,
-    limitations: `<p>The retina is a flat specular mirror, not a layered,
-      diffusely scattering fundus, so the scene has no depth structure to
-      image and no crosstalk to remove. The source is a single fixed
+      return and the camera reading change, or its power (in millimetres or
+      dioptres) to give it a refractive error: the return then leaves the
+      eye converging or diverging instead of collimated. Raise its
+      <em>Diffuse share</em> to make the retina scatter like a real fundus:
+      only the light aimed at the 6 mm pupil leaves the eye, about 1.4 % of
+      what is scattered, so the sample return drops far below the reference
+      — the reason the paper turns its reference arm down.</p>`,
+    limitations: `<p>The retina is a single plane, mirror-like here and
+      optionally diffuse, not a layered fundus, so the scene has no depth
+      structure to image and no crosstalk to remove. The source is a single fixed
       wavelength rather than a sweep, and the carrier phase through the eye is
       not modeled, so the camera adds the two returns' powers instead of
       forming OCT fringes. The deformable membrane, its spatial-coherence

@@ -22,7 +22,8 @@ import {
   autocorrelationReading, crossCorrelationReading, crossCorrelationPair, crossScopeHalfSpanFs,
   bestScopeSpanPs, DEFAULT_SCOPE_SPAN_PS, AUTO_SCOPE_SPAN, sampledAutocorrelationReading,
 } from './glass.js';
-import { pmtVerdict } from './detector-measurements.js';
+import { enhancedReading, pmtVerdict } from './detector-measurements.js';
+import { formatPowerMw } from './probe.js';
 import { transformLimitedBandwidthNm } from './spectrum.js';
 import { buildTwoPhotonHandoffUrl, twoPhotonHandoffCandidates } from './two-photon-handoff.js';
 import {
@@ -461,7 +462,8 @@ function measurementHTML(el) {
     : readoutKind === 'camera' ? `
       ${cancelled ? '' : `<dt>Centroid</dt><dd>${rd.centroid === null ? '—' : `${rd.centroid.toFixed(2)} mm`}</dd>`}
       <dt>Sensor pixels</dt><dd>${rd.profile?.length || 0}</dd>`
-    : readoutKind === 'autocorrelator' ? autocorrelatorRows(rd, source) : '';
+    : readoutKind === 'autocorrelator' ? autocorrelatorRows(rd, source)
+    : readoutKind === 'retina' ? retinaPowerRow(source) : '';
   let cameraProfile = '';
   if (isCamera && rd.profile) {
     const halfSpan = cameraAxisHalfSpan(source);
@@ -849,6 +851,16 @@ function refreshDerivedSelects(sel) {
     const spec = specs.get(select.dataset.p);
     if (spec?.get) select.value = spec.get(sel.params);
   });
+}
+
+// The power reaching the retina, carried from each source's configured
+// watts like a power meter's reading. It is the light that arrives, before
+// any retinal reflection; no exposure limit is implied.
+function retinaPowerRow(sensor) {
+  const reading = enhancedReading(sensor, state.elements);
+  if (!Number.isFinite(reading?.detectedPowerW)) return '';
+  const floor = reading.powerCoversAllArrivals === false ? ' (+ unrated source)' : '';
+  return `<dt>Power at retina</dt><dd>${formatPowerMw(reading.detectedPowerW)}${floor}</dd>`;
 }
 
 function objectiveCouplingHint(sel) {
