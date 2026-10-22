@@ -110,7 +110,7 @@ test('many dense sources export as finite vector geometry without argument overf
 });
 
 test('the Rays slider is logarithmic: equal travel is an equal ratio, ends exact', async () => {
-  const { shouldUseSlider, logSliderPosition, logSliderValue, LOG_SLIDER_STEPS } = await import('../sketch/js/inspector.js');
+  const { shouldUseSlider, logSliderPosition, logSliderValue, logSliderStep, LOG_SLIDER_STEPS } = await import('../sketch/js/inspector.js');
   const spec = registry.pointsource.params.find(p => p.key === 'nrays');
   assert.equal(spec.slider, 'log');
   assert.ok(shouldUseSlider(spec));
@@ -135,4 +135,23 @@ test('the Rays slider is logarithmic: equal travel is an equal ratio, ends exact
     const position = logSliderPosition(bad, min, max);
     assert.ok(position >= 0 && position <= LOG_SLIDER_STEPS);
   }
+  // Found in review: one arrow-key position at the low end maps back to the
+  // same count, and the rebuilt panel returns the thumb there, so single key
+  // presses never advanced. Replay that cycle: each press moves one position
+  // from where the rebuilt panel puts the thumb, and must reach a new count.
+  for (const direction of [1, -1]) {
+    let count = direction > 0 ? 12 : 4096;
+    for (let press = 0; press < 40; press++) {
+      const moved = logSliderPosition(count, min, max) + direction;
+      const next = logSliderStep(moved, count, min, max, step);
+      assert.ok(direction > 0 ? next > count || count === max : next < count || count === min, `press ${press} from ${count}`);
+      // The input event moves the thumb onto the new value; the change event
+      // that follows reads it there and must keep it.
+      const thumb = next === logSliderValue(moved, min, max, step) ? moved : logSliderPosition(next, min, max);
+      assert.equal(logSliderStep(thumb, next, min, max, step), next, `change after press ${press}`);
+      count = next;
+    }
+  }
+  assert.equal(logSliderStep(logSliderPosition(4, min, max) - 1, 4, min, max, step), 4, 'stops at the floor');
+  assert.equal(logSliderStep(LOG_SLIDER_STEPS + 1, 4096, min, max, step), 4096, 'stops at the ceiling');
 });
