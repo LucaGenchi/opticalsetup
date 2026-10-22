@@ -15,7 +15,8 @@ import { emissionRayCount, ISOTROPIC_KINDS } from './emission.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
-import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
+import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
+import { NONLINEAR_ORDER, focusYield } from './sectioning.js';
 import { opaSettings, opaGainAt, MAX_OPA_STAGES, MAX_GATE_BANDWIDTH_RATIO, MIN_PHASE_KEPT_GAIN } from './opa.js';
 import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
 import {
@@ -1809,6 +1810,15 @@ function sampleModeParams() {
         return srs ? `${timing}. Stimulated Raman transfer not drawn: ${srs}.` : timing;
       },
     },
+    // Optional thin-layer optical sectioning (sectioning.js). Off unless the
+    // user switches it on, so saved specimens keep their yields.
+    { key: 'focusSectioning', label: 'Focus-dependent yield', type: 'checkbox', def: false,
+      show: p => sampleChannels(p).some(c => NONLINEAR_ORDER[c.kind]) },
+    {
+      key: 'focusReading', label: 'Focus', type: 'readout', wide: true,
+      show: p => p.focusSectioning === true && sampleChannels(p).some(c => NONLINEAR_ORDER[c.kind]),
+      readout: (p, el) => specimenFocusReadout(el ? specimenFocusReading(el.id) : null, sampleChannels(p)),
+    },
     { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: true, appearance: true },
     { key: 'thickness', label: 'Sample thickness (mm)', type: 'number', min: 0.15, htmlMin: 0, max: 20, step: 0.5, def: 6, appearance: true },
     { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => specimenTypeOf(p) === 'resin' },
@@ -1976,7 +1986,10 @@ function sampleSurfaces(el, h) {
   if (channels.length) {
     return [{
       x1: -h, y1: 0, x2: h, y2: 0, kind: 'specimen',
-      data: { channels, transmitExc: p.transmitExc, transmission: p.transmission, writeVoxel, reportHit },
+      data: {
+        channels, transmitExc: p.transmitExc, transmission: p.transmission, writeVoxel, reportHit,
+        sectioning: p.focusSectioning === true && channels.some(c => NONLINEAR_ORDER[c.kind]),
+      },
     }];
   }
   return p.transmitExc
@@ -2404,6 +2417,23 @@ export function specimenTimingReadout(reading) {
     ? `${formatMixDelay(reading.skewNs)} apart (${sig3(pathMm)} mm of path)`
     : 'arriving together';
   return `${pair}: ${apart}, ${sig3(reading.overlap * 100)}% temporal overlap`;
+}
+
+// Where the strongest beam's focus lies relative to the specimen layer, and
+// what that does to each order of nonlinear signal the specimen carries.
+const lengthText = mm => (Math.abs(mm) < 1 ? `${sig3(mm * 1000)} µm` : `${sig3(mm)} mm`);
+export function specimenFocusReadout(reading, channels = []) {
+  if (!reading) return 'No beam reaches the specimen yet';
+  if (!reading.ok) {
+    return reading.reason === 'collimated'
+      ? 'Collimated beam: no focus, signals not scaled'
+      : 'Beam drawn as one ray: focus unknown, signals not scaled';
+  }
+  const orders = [...new Set(channels.map(c => NONLINEAR_ORDER[c.kind]).filter(Boolean))].sort();
+  const where = Math.abs(reading.zMm) < 1e-6 ? 'Focus on the layer'
+    : `Focus ${lengthText(Math.abs(reading.zMm))} ${reading.zMm > 0 ? 'beyond' : 'before'} the layer`;
+  const yields = orders.map(n => `×${sig3(focusYield(n, reading))} ${n === 2 ? '2nd' : '3rd'}-order`).join(', ');
+  return `${where} · zR ${lengthText(reading.zRMm)} · ${yields}`;
 }
 
 export function specimenTimingText(reading) {

@@ -123,6 +123,12 @@ export const examples = [
     "slug": "multiphoton-microscope-shg-and-two-photon-fluorescence"
   },
   {
+    "group": "Microscopy Implementations",
+    "name": "Optical sectioning — linear versus nonlinear",
+    "path": "../Examples/Microscopy%20Implementations/Optical%20sectioning%20%E2%80%94%20linear%20versus%20nonlinear.json",
+    "slug": "optical-sectioning-linear-versus-nonlinear"
+  },
+  {
     "group": "Ophthalmology",
     "name": "Retinal imaging — Linnik interferometer with a model eye",
     "path": "../Examples/Ophthalmology/Retinal%20imaging%20%E2%80%94%20Linnik%20interferometer%20with%20a%20model%20eye.json",

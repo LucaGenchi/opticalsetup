@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optical sectioning: linear versus nonlinear signals — Examples | OpticalSetup</title>
+<meta name="description" content="Two thin fluorescent layers on one focused beam: under one-photon excitation both glow, under two-photon excitation only the one at the focus does.">
+<link rel="canonical" href="https://opticalsetup.com/example-setups/optical-sectioning-linear-versus-nonlinear/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Optical sectioning: linear versus nonlinear signals — OpticalSetup Examples">
+<meta property="og:description" content="Two thin fluorescent layers on one focused beam: under one-photon excitation both glow, under two-photon excitation only the one at the focus does.">
+<meta property="og:url" content="https://opticalsetup.com/example-setups/optical-sectioning-linear-versus-nonlinear/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="../../sketch/icons/icon.svg">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+<link rel="stylesheet" href="../../example-setups/assets/examples.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../calculators/">Calculators</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell" style="grid-template-columns: 1fr;">
+    <main class="wiki-article" style="max-width: 760px;">
+      <div class="crumb"><a href="../../example-setups/">Examples</a> / Microscopy Implementations / Optical sectioning: linear versus nonlinear signals</div>
+      <h1>Optical sectioning: linear versus nonlinear signals</h1>
+      <p class="tagline" style="margin-top: 10px;">Two thin fluorescent layers on one focused beam: under one-photon excitation both glow, under two-photon excitation only the one at the focus does.</p>
+
+      <a class="place-cta" href="../../sketch/?example=optical-sectioning-linear-versus-nonlinear">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?example=optical-sectioning-linear-versus-nonlinear&amp;embed=1"
+          title="Optical sectioning: linear versus nonlinear signals — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace of the setup above, shown as a picture. Open it in the canvas to take it apart, retune it, and save or export it as your own.</p>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Background</h2>
+
+      <p>A focused beam carries the same power through every plane along its path; only
+      the area it is spread over changes. A signal that grows in proportion to the
+      intensity — one-photon fluorescence, spontaneous Raman — therefore comes from a thin
+      layer equally well wherever that layer sits in the cone: out-of-focus planes add
+      their light to the image, and a confocal microscope needs a pinhole to reject it.</p>
+      <p>A signal that grows as the n-th power of the intensity behaves differently.
+      Through a layer the power is fixed, but the intensity falls as the beam widens, so
+      the signal falls as the beam area to the power n − 1. For a Gaussian focus that is
+      (1 + (z/z<sub>R</sub>)²)<sup>−(n−1)</sup> at a distance z from the focus, with
+      z<sub>R</sub> the Rayleigh range. Two-photon fluorescence (n = 2) from a layer a few
+      Rayleigh ranges away is already a small fraction of its value at the focus; three-photon
+      fluorescence and third-harmonic generation (n = 3) fall faster still. That is the
+      optical sectioning of multiphoton microscopy: the signal itself only comes from the
+      focal region, so no pinhole is needed.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>What this setup demonstrates</h2>
+      <div class="sim-block">
+
+      <p>Each arm focuses a 10&nbsp;mm beam with an f&nbsp;=&nbsp;100&nbsp;mm lens through
+      two thin GFP layers: one 40&nbsp;mm before the focus, one at it. In the upper arm a
+      488&nbsp;nm laser drives one-photon fluorescence and both layers glow. In the lower arm
+      a 920&nbsp;nm femtosecond laser drives two-photon fluorescence; its layers have
+      <em>Focus-dependent yield</em> switched on, and only the layer at the focus glows.</p>
+      <p>Select a lower layer to read where the focus is: the layer at the focus reads a
+      factor of 1, the other one about 10<sup>−5</sup>, with a Rayleigh range of about
+      120&nbsp;µm for this beam. Move the focal layer by some tens of micrometres to watch
+      its yield fall, or switch <em>Focus-dependent yield</em> off to see what the
+      workbench draws without it: both layers glowing alike.</p>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>The layers are thin sheets, so the sectioning shown is the
+      thin-layer response, not the signal a thick specimen would build up along the whole
+      beam. The focus is an ideal diffraction-limited Gaussian in air, estimated from the
+      convergence of the traced rays: no aberrations, refractive index, scattering or
+      high-NA vector effects. The yield is relative to the same layer at the focus; the
+      absolute brightness of each arm is set by its source power and the layer's signal
+      efficiency, not by a two-photon cross-section or peak intensity.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/sample/"><svg viewBox="-34 -34 68 68" aria-hidden="true"><rect x="-25" y="-3.00" width="50" height="6" fill="#c9e4f5" stroke="none"/></svg>Sample</a><a href="../../wiki/pulsedlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="-3"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">LASER</text><g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>Pulsed Laser</a><a href="../../wiki/cwlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">CW LASER</text><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>CW Laser</a><a href="../../wiki/lens/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0,-12.7 Q 9,0 0,12.7 Q -9,0 0,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Thin convex lens</a>
+      </div>
+
+
+
+
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/multiphoton_microscopy.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Multiphoton Microscopy</a></li><li><a href="https://www.rp-photonics.com/gaussian_beams.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Gaussian Beams</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">Examples are written and maintained with the project. For setups shared by users, see the <a href="../../community/">community section</a>; for how each component works, see the <a href="../../wiki/">wiki</a>.</footer>
+</body>
+</html>

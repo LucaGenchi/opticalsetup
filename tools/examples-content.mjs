@@ -504,6 +504,51 @@ export const exampleEntries = [
     related: ['pulsedlaser', 'objective', 'sample', 'galvo', 'pmt', 'dichroic'],
   },
   {
+    match: 'Optical sectioning — linear versus nonlinear',
+    title: 'Optical sectioning: linear versus nonlinear signals',
+    tagline: 'Two thin fluorescent layers on one focused beam: under one-photon excitation both glow, under two-photon excitation only the one at the focus does.',
+    html: `
+      <p>A focused beam carries the same power through every plane along its path; only
+      the area it is spread over changes. A signal that grows in proportion to the
+      intensity — one-photon fluorescence, spontaneous Raman — therefore comes from a thin
+      layer equally well wherever that layer sits in the cone: out-of-focus planes add
+      their light to the image, and a confocal microscope needs a pinhole to reject it.</p>
+      <p>A signal that grows as the n-th power of the intensity behaves differently.
+      Through a layer the power is fixed, but the intensity falls as the beam widens, so
+      the signal falls as the beam area to the power n − 1. For a Gaussian focus that is
+      (1 + (z/z<sub>R</sub>)²)<sup>−(n−1)</sup> at a distance z from the focus, with
+      z<sub>R</sub> the Rayleigh range. Two-photon fluorescence (n = 2) from a layer a few
+      Rayleigh ranges away is already a small fraction of its value at the focus; three-photon
+      fluorescence and third-harmonic generation (n = 3) fall faster still. That is the
+      optical sectioning of multiphoton microscopy: the signal itself only comes from the
+      focal region, so no pinhole is needed.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>Each arm focuses a 10&nbsp;mm beam with an f&nbsp;=&nbsp;100&nbsp;mm lens through
+      two thin GFP layers: one 40&nbsp;mm before the focus, one at it. In the upper arm a
+      488&nbsp;nm laser drives one-photon fluorescence and both layers glow. In the lower arm
+      a 920&nbsp;nm femtosecond laser drives two-photon fluorescence; its layers have
+      <em>Focus-dependent yield</em> switched on, and only the layer at the focus glows.</p>
+      <p>Select a lower layer to read where the focus is: the layer at the focus reads a
+      factor of 1, the other one about 10<sup>−5</sup>, with a Rayleigh range of about
+      120&nbsp;µm for this beam. Move the focal layer by some tens of micrometres to watch
+      its yield fall, or switch <em>Focus-dependent yield</em> off to see what the
+      workbench draws without it: both layers glowing alike.</p>`,
+    limitations: `<p>The layers are thin sheets, so the sectioning shown is the
+      thin-layer response, not the signal a thick specimen would build up along the whole
+      beam. The focus is an ideal diffraction-limited Gaussian in air, estimated from the
+      convergence of the traced rays: no aberrations, refractive index, scattering or
+      high-NA vector effects. The yield is relative to the same layer at the focus; the
+      absolute brightness of each arm is set by its source power and the layer's signal
+      efficiency, not by a two-photon cross-section or peak intensity.</p>`,
+    citations: [],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Multiphoton Microscopy', url: 'https://www.rp-photonics.com/multiphoton_microscopy.html' },
+      { label: 'RP Photonics Encyclopedia — Gaussian Beams', url: 'https://www.rp-photonics.com/gaussian_beams.html' },
+    ],
+    related: ['sample', 'pulsedlaser', 'cwlaser', 'lens'],
+  },
+  {
     match: 'Coherent Raman microscope — SRS and CARS',
     title: 'Coherent Raman microscope',
     tagline: 'Two synchronised picosecond beams beating at a molecular vibration, read out three ways: stimulated Raman loss, forward CARS, and epi-CARS.',

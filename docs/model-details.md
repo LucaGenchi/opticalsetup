@@ -278,17 +278,32 @@ emitted weight across the fan. The legacy defaults are 20 for fluorescence and
 14 per Raman line. Angular sampling is denser near the excitation axis, so
 collection readings can change with resolution; this is not calibrated isotropic
 radiometry. The two-photon label imposes the photon-energy/wavelength rule,
-not an intensity-squared focal response, cross-section, lifetime, bleaching, or
-curing model.
+not a cross-section, lifetime, bleaching, or curing model; its focal response is
+the optional thin-layer estimate below.
 
 Every specimen signal is emitted where the beam crosses the specimen line. In a
 tightly focused microscope, linear signals (fluorescence, spontaneous Raman) come
 from the whole illuminated cone, while nonlinear ones (multiphoton fluorescence,
 harmonics, CARS, SRS) are concentrated near the focal region, because they scale
 with a power of the intensity. Nonlinear generation does not itself need a focus;
-an intense unfocused beam also drives it. The tracer computes no intensity
-profile, so it does not reproduce this difference: an unfocused beam generates a
-nonlinear signal as readily as a focused one.
+an intense unfocused beam also drives it. By default the tracer computes no
+intensity profile, so it does not reproduce this difference: an unfocused beam
+generates a nonlinear signal as readily as a focused one.
+
+A specimen's *Focus-dependent yield* switch (off by default, and off in scenes
+saved before it existed) treats it as a thin layer. The probe pass records where
+each sampling ray of a beam crosses the layer; `bundleFocus` in
+`sketch/js/sectioning.js` finds the plane of least spread along the beam axis,
+the convergence NA from the rays' angular spread, and an ideal Gaussian focus in
+air from them: w0 = λ/(π NA), zR = π w0²/λ. A signal of order n is scaled by
+(1 + (z/zR)²)^−(n−1), the power through the layer being fixed while its area
+grows as w². Orders: 2PEF, χ⁽²⁾ (SHG and SFG) and SRS 2; 3PEF, THG and CARS 3.
+SRS scales its transfer depth; the others their emitted power. Linear channels
+are unchanged. A collimated bundle or a one-ray beam has no focus to find and is
+not scaled, and the inspector's *Focus* readout says so. The factor is relative
+to the layer at the beam's own focus, not an absolute peak intensity, and
+ignores aberrations, the medium's index, scattering, high-NA vector effects, the
+Gouy phase of coherent signals and any signal summed through a thick specimen.
 
 Standalone objectives are set by effective focal length (EFL) — the focal length of
 the whole assembly as one equivalent lens — plus a working distance

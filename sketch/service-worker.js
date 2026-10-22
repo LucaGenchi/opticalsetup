@@ -5,7 +5,7 @@
 // family of cache names and only ever deletes, or reads, its own.
 const KEPT_RELEASE = (/\/(v\d+\.\d+)\/sketch\/$/.exec(new URL('./', self.location.href).pathname) || [])[1] || '';
 const CACHE_FAMILY = KEPT_RELEASE ? `opticalsetup-kept-${KEPT_RELEASE}-` : 'opticalsetup-pwa-';
-const CACHE_NAME = `${CACHE_FAMILY}v145`;
+const CACHE_NAME = `${CACHE_FAMILY}v146`;
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -60,6 +60,7 @@ const PRECACHE_PATHS = [
   "./js/qr.js",
   "./js/raytrace.js",
   "./js/release.js",
+  "./js/sectioning.js",
   "./js/share.js",
   "./js/spectrum.js",
   "./js/state.js",
@@ -90,6 +91,7 @@ const PRECACHE_PATHS = [
   "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
   "../Examples/Microscopy%20Implementations/Epi-fluorescence%20microscope.json",
   "../Examples/Microscopy%20Implementations/Multiphoton%20microscope%20%E2%80%94%20SHG%20and%20two%20photon%20fluorescence.json",
+  "../Examples/Microscopy%20Implementations/Optical%20sectioning%20%E2%80%94%20linear%20versus%20nonlinear.json",
   "../Examples/Ophthalmology/Retinal%20imaging%20%E2%80%94%20Linnik%20interferometer%20with%20a%20model%20eye.json",
   "../Examples/Optical%20Communications/DWDM%20link%20%E2%80%94%20dispersion%20compensation.json",
   "../Examples/Scanning/Polygon%20scanner%20%E2%80%94%20line%20scanning.json",

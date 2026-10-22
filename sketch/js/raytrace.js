@@ -6,6 +6,7 @@
 // polygons (beam-mode envelope between the two edge rays).
 
 import { emissionRayCount } from './emission.js';
+import { NONLINEAR_ORDER, bundleFocus, focusYield } from './sectioning.js';
 import {
   registry, OBJ_SHAPES, EPI_CAPABLE_KINDS as EPI_KINDS, MIXING_KINDS, phasePlateOpdFraction,
   ISOTROPIC_KINDS, MODIFIER_KINDS, EMISSION_ORDER, EMISSION_OFFSET_NM, NONLINEAR_SIGNAL_KINDS,
@@ -264,6 +265,14 @@ function recordSrsNote(elementId, note) {
 
 export function specimenSrsNote(elementId) {
   return specimenSrsNotes.get(elementId) || null;
+}
+
+// specimen element id -> where the focus of its strongest beam lies, for a
+// specimen with focus-dependent yield switched on (see sectioning.js).
+let specimenFocusReadings = new Map();
+
+export function specimenFocusReading(elementId) {
+  return specimenFocusReadings.get(elementId) || null;
 }
 
 function recordSpecimenTiming(elementId, reading) {
@@ -1995,7 +2004,7 @@ function carriesWholeTrain(ray) {
     && Math.min(...pieces.map(p => p.lo)) <= lo + tolerance && Math.max(...pieces.map(p => p.hi)) >= hi - tolerance;
 }
 
-function recordProbeBeam(surface, ray) {
+function recordProbeBeam(surface, ray, hit = null) {
   let seen = specimenProbe.get(surface.id);
   if (!seen) specimenProbe.set(surface.id, seen = []);
   const key = probeBeamKey(ray);
@@ -2032,6 +2041,7 @@ function recordProbeBeam(surface, ray) {
     already.oplMin = Math.min(already.oplMin, ray.opl || 0);
     const history = unionPath(already.parametricPath, ray.parametricPath);
     if (history.length) already.parametricPath = history;
+    if (already.focusRays && hit) already.focusRays.push(focusRay(ray, hit, weight));
     return;
   }
   const beam = {
@@ -2056,10 +2066,15 @@ function recordProbeBeam(surface, ray) {
     // Only light that went through a parametric element has a history.
     ...(ray.parametricPath?.length ? { parametricPath: unionPath(ray.parametricPath) } : {}),
     ...(dispersed || {}),
+    // Where each sampling ray crosses a specimen that sections by focus, so
+    // the beam's focus can be found from all of them together.
+    ...(surface.data?.sectioning && hit ? { focusRays: [focusRay(ray, hit, weight)] } : {}),
   };
   specimenEmissionSamples.set(beam, { sample, distance });
   seen.push(beam);
 }
+
+const focusRay = (ray, hit, weight) => ({ p: { x: hit.p.x, y: hit.p.y }, d: { x: ray.dx, y: ray.dy }, w: weight });
 
 // One arrival per beam, weighted by where its power actually is, so that every
 // sampling ray of a beam is timed the same way.
@@ -2106,7 +2121,7 @@ function gateEffectiveLevels(gate) {
   return gate.invert ? { high: 1 - high, low: 1 - low } : { high, low };
 }
 
-export function srsTransferGate(channel, ray, incidentBeams, elementId) {
+export function srsTransferGate(channel, ray, incidentBeams, elementId, focal = 1) {
   const beams = incidentBeams || [];
   const modulatedPartners = beams.filter(b =>
     Math.abs(b.wl - ray.wl) >= MIXING_MIN_SEPARATION_NM && b.gates?.length);
@@ -2138,7 +2153,7 @@ export function srsTransferGate(channel, ray, incidentBeams, elementId) {
   const overlap = channelOverlap(channel, ray, donor, beams, elementId).factor;
   if (overlap < MIN_OVERLAP) return null;
   const source = donor.gates[0];
-  const depth = Math.min(0.5, Math.max(0.01, channel.transferEff ?? 0.1)) * overlap;
+  const depth = Math.min(0.5, Math.max(0.01, channel.transferEff ?? 0.1)) * overlap * focal;
   // The two beams are not symmetric. Energy flows from the blue photon to
   // the red one, so when the PUMP (the shorter wavelength) carries the
   // modulation the Stokes beam is amplified while the pump is on — that is
@@ -2215,7 +2230,7 @@ function channelOverlap(channel, ray, partner, beams, elementId) {
 // Signals here are bounded qualitative proxies that do not deplete the
 // excitation, so each pair carries the channel's own authored efficiency
 // rather than drawing on a shared budget.
-function specimenMixedOutputs(channel, ray, d, data, elementId) {
+function specimenMixedOutputs(channel, ray, d, data, elementId, focal = 1) {
   const out = [];
   const eff = Math.min(1, Math.max(0, channel.eff ?? 1));
   if (!(eff > 0)) return out;
@@ -2227,7 +2242,7 @@ function specimenMixedOutputs(channel, ray, d, data, elementId) {
     const gate = channelOverlap(channel, ray, partner, data.incidentBeams, elementId).factor;
     if (gate < MIN_OVERLAP) continue;
     const tint = channelColor(channel, wl);
-    const forward = ray.intensity * eff * gate;
+    const forward = ray.intensity * eff * gate * focal;
     // This light exists only while both pulses are there, so it is the pair's
     // train -- not the driving beam's, whose duration and transform-limited
     // claim are not this signal's.
@@ -2248,7 +2263,7 @@ function specimenMixedOutputs(channel, ray, d, data, elementId) {
           ...child,
           d: { x: -d.x, y: -d.y },
           intensity: forward * ratio,
-          power: Number.isFinite(ray.power) ? ray.power * eff * gate * ratio : undefined,
+          power: Number.isFinite(ray.power) ? ray.power * eff * gate * ratio * focal : undefined,
           tag: `esfg${Math.round(wl)}`,
         });
       }
@@ -4800,8 +4815,10 @@ function interact(ray, hit) {
       // with. Generating no signal here is what keeps the probe cheap and
       // stops signals from seeding further signals.
       if (specimenProbe) {
-        recordProbeBeam(s, ray);
-        return transmission > 0.001 ? [{ d, intensity: ray.intensity * transmission }] : [];
+        recordProbeBeam(s, ray, hit);
+        // Tagged as the real pass tags it, so the branch key a specimen
+        // further along records is the one its rays carry for real.
+        return transmission > 0.001 ? [{ d, intensity: ray.intensity * transmission, tag: 'x' }] : [];
       }
       const out = [];
       const channels = data.channels || [];
@@ -4821,6 +4838,11 @@ function interact(ray, hit) {
       // its own duplicate copy of the same signal.
       const driver = drivingExcitationWl(data.incidentWls);
       const isDriver = driver == null || Math.abs(ray.wl - driver) < 1e-6;
+      // With focus-dependent yield on, each nonlinear signal is scaled by how
+      // far this beam's focus lies from the layer (sectioning.js); linear
+      // signals and a beam whose focus is unknown are left as they are.
+      const focus = data.sectioning ? beamRecordFor(ray, data.incidentBeams)?.focus : null;
+      const yieldOf = kind => focusYield(NONLINEAR_ORDER[kind], focus);
 
       // The excitation is attenuated by the specimen's own transmission and
       // nothing else. Real conversion efficiencies are ~1e-6, so signal
@@ -4838,7 +4860,7 @@ function interact(ray, hit) {
             stokes = applyRetarder(stokes, c.axis ?? 45, c.retardance ?? 90);
             retarded = true;
           } else if (c.kind === 'srs' && ray.pulse) {
-            const transferred = srsTransferGate(c, ray, data.incidentBeams, s.el?.id || null);
+            const transferred = srsTransferGate(c, ray, data.incidentBeams, s.el?.id || null, yieldOf('srs'));
             if (transferred) { pulse = withGate(pulse, transferred); gated = true; }
           }
         }
@@ -4888,7 +4910,8 @@ function interact(ray, hit) {
           if (!emission || emission.gain <= 1e-4) continue;
           const N = emissionRayCount(c);
           const tint = channelColor(c, emission.wl);
-          const strength = eff * emission.gain;
+          const focal = yieldOf(c.kind);
+          const strength = eff * emission.gain * focal;
           emissionAngles(N, Math.atan2(d.y, d.x)).forEach((a, i) => {
             out.push({
               d: { x: Math.cos(a), y: Math.sin(a) },
@@ -4896,7 +4919,7 @@ function interact(ray, hit) {
               pol: undefined, stokes: null,
               color: tint, sourceId: emittedFrom, incoherent: true,
               evan: true, evanLen: EMISSION_GLOW_MM, captureLen: EMISSION_CAPTURE_MM,
-              intensity: 0.25,
+              intensity: 0.25 * focal,
               power: Number.isFinite(spontaneous.power) ? spontaneous.power * strength / N : undefined,
               sample: null, sampleCount: 1, sampleGrid: null,
               tag: `f${ci}_${i}`,
@@ -4909,7 +4932,7 @@ function interact(ray, hit) {
         // of them. The second harmonic is emitted whatever the timing; the
         // pair's sum frequency only while both pulses are at the spot.
         if (c.kind === 'shg' && emitting) {
-          for (const mixed of specimenMixedOutputs(c, ray, d, data, s.el?.id || null)) out.push(mixed);
+          for (const mixed of specimenMixedOutputs(c, ray, d, data, s.el?.id || null, yieldOf('shg'))) out.push(mixed);
         }
         const wl = specimenSignalWl(c, ray.wl, data.incidentWls);
         if (!(wl > 0)) continue;
@@ -4920,7 +4943,8 @@ function interact(ray, hit) {
           overlap = channelOverlap(c, ray, mixingPartner(ray, data.incidentBeams), data.incidentBeams, s.el?.id || null).factor;
           if (overlap < MIN_OVERLAP) continue;
         }
-        const forward = ray.intensity * eff * overlap;
+        const focal = yieldOf(c.kind);
+        const forward = ray.intensity * eff * overlap * focal;
         const tint = channelColor(c, wl);
         out.push({ d, wl, bw: 0, spec: null, pol: undefined, stokes: null, color: tint, sourceId: emittedFrom, intensity: forward, tag: `c${ci}` });
         if (c.epi && EPI_KINDS.has(c.kind)) {
@@ -4930,7 +4954,7 @@ function interact(ray, hit) {
               d: { x: -d.x, y: -d.y }, wl, bw: 0, spec: null, pol: undefined, stokes: null,
               color: tint, sourceId: emittedFrom,
               intensity: forward * ratio,
-              power: Number.isFinite(ray.power) ? ray.power * eff * ratio : undefined,
+              power: Number.isFinite(ray.power) ? ray.power * eff * ratio * focal : undefined,
               tag: `e${ci}`,
             });
           }
@@ -7032,6 +7056,17 @@ function traceWithCoherentGrouping(rays0, surfaces, couplings, writeHits, signal
   return traceRays(rays0, surfaces, couplings, writeHits, signalHits, { plan });
 }
 
+// Each beam's focus at a specimen that sections by focus, found from where all
+// of its sampling rays crossed the layer. The inspector reads the strongest.
+function settleFocus(surface, beams) {
+  for (const beam of beams) {
+    beam.focus = bundleFocus(beam.focusRays, beam.wl);
+    delete beam.focusRays;
+  }
+  const strongest = beams.reduce((best, b) => (!best || b.intensity > best.intensity ? b : best), null);
+  if (surface.el && strongest) specimenFocusReadings.set(surface.el.id, { ...strongest.focus, wl: strongest.wl });
+}
+
 // Trace everything. The static drawables remain export-safe while pulseTracks
 // carry absolute optical path lengths for the canvas-only animation layer.
 // Each OPA's plan, from the beams its two ports recorded in one planning
@@ -7117,6 +7152,7 @@ export function traceScene(elements, beams = [], options = {}) {
   mixStates = new Map();
   specimenTimingStates = new Map();
   specimenSrsNotes = new Map();
+  specimenFocusReadings = new Map();
 
   // Sources are emitted twice when a specimen needs two-colour mixing: once
   // as a cheap probe that only records which wavelengths reach each specimen
@@ -7261,7 +7297,7 @@ export function traceScene(elements, beams = [], options = {}) {
   // channels yet reports what illuminates it so the inspector can offer live
   // emission defaults. SHG/THG-only benches still skip it.
   const needsProbe = surfaces.some(s =>
-    (s.kind === 'specimen' && (s.data.channels || []).some(channelNeedsExcitationProbe))
+    (s.kind === 'specimen' && (s.data.sectioning || (s.data.channels || []).some(channelNeedsExcitationProbe)))
     || (s.kind === 'transmit' && MIX_CONVERTS.has(s.data.convert))
     || s.kind === 'opapump' || s.kind === 'opaseed'
     || (s.kind === 'attenuate' && s.data.specimen && s.el
@@ -7283,6 +7319,7 @@ export function traceScene(elements, beams = [], options = {}) {
         if (s.kind !== 'specimen' && !(s.kind === 'transmit' && MIX_CONVERTS.has(s.data.convert))
             && !(s.kind === 'attenuate' && s.data.specimen)) continue;
         const beams = (specimenProbe.get(s.id) || []).map(settleProbeBeam);
+        if (s.kind === 'specimen' && s.data.sectioning) settleFocus(s, beams);
         s.data.incidentBeams = beams;
         s.data.incidentWls = [...new Set(beams.map(b => b.wl))];
         if (s.el) specimenIncident.set(s.el.id, beams);
