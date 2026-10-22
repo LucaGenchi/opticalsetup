@@ -152,12 +152,12 @@
 
 
       <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
-      <p>A sample stage translates the specimen relative to the illumination and collection optics. Lateral motion samples different positions across a specimen; axial motion changes its position along the optical axis. A physical stage has finite travel, response time, and positioning accuracy.</p>
+      <p>A sample stage translates the specimen relative to the illumination and collection optics. Lateral motion samples different positions across a specimen; axial motion changes its position along the optical axis. A physical stage has finite travel, response time, and positioning accuracy.</p><p>Visible fluorescence has been observed during two-photon photopolymerization of SU-8, allowing optical monitoring of that material; fluorescence response is material-dependent<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
 
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
-        <p>The stage combines a mounting aperture with the sample's optical modes, including the χ⁽²⁾ channel that gives each beam's second harmonic and the sum frequency of a pair, and the two-beam signals — sum frequency, CARS and stimulated Raman — that only appear while both pulses reach the specimen together. Select a static position, long-axis scan, beam-axis depth scan, or synchronized raster, then set the travel and frequency. At 90° rotation, a horizontal beam crosses the sample and a long-axis scan moves it vertically on the canvas.</p><p>Scanning moves the specimen, not the arms, so it does not change the arrival difference between two beams: that is set by their optical paths, and a delay line or a matched arm is what fixes it.</p><p>The example moves an illuminated sample laterally. For a writing demonstration, choose photocurable resin, enable voxel preview, and use a pulsed source. Marks record traced pulse arrivals in the moving sample.</p>
-        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The workbench shows a two-dimensional projection. Resin marks are a visual arrival history, not a prediction of dose, polymerization threshold, cure kinetics, voxel size, or three-dimensional fabrication. Piezo hysteresis and mechanical settling are not simulated.</p></div>
+        <p>The stage combines a mounting aperture with the sample's optical modes, including the χ⁽²⁾ channel that gives each beam's second harmonic and the sum frequency of a pair, and the two-beam signals — sum frequency, CARS and stimulated Raman — that only appear while both pulses reach the specimen together. Select a static position, long-axis scan, beam-axis depth scan, or synchronized raster, then set the travel and frequency. At 90° rotation, a horizontal beam crosses the sample and a long-axis scan moves it vertically on the canvas.</p><p>Scanning moves the specimen, not the arms, so it does not change the arrival difference between two beams: that is set by their optical paths, and a delay line or a matched arm is what fixes it.</p><p>The example moves an illuminated sample laterally. For a writing demonstration, choose photocurable resin, enable voxel preview, and use a pulsed source. Enable <em>Two-photon fluorescence</em> separately to add a collectible optical signal while writing; its channel exposes wavelength, efficiency, and emission-ray count. Marks record traced pulse arrivals in the moving sample.</p>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The workbench shows a two-dimensional projection. Resin marks are a visual arrival history, not a prediction of dose, polymerization threshold, cure kinetics, voxel size, or three-dimensional fabrication. Fluorescence is an optional qualitative signal, not a measure of curing or conversion. Its two-photon wavelength rule does not calculate intensity-squared absorption. Piezo hysteresis and mechanical settling are not simulated.</p></div>
       </div>
 
 
@@ -167,6 +167,10 @@
       </div>
 
 
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://pubs.rsc.org/en/content/articlelanding/2009/lc/b816993d" target="_blank" rel="noopener">Stoneman et al. — Real-time monitoring of two-photon photopolymerization for use in fabrication of microfluidic devices (2009)</a></li>
+      </ol>
 
 
     </main>

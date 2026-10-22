@@ -2,27 +2,27 @@
  "elements": 13,
  "beams": 0,
  "drawables": {
-  "count": 227,
+  "count": 222,
   "byType": {
-   "poly": 96,
-   "path": 131
+   "path": 126,
+   "poly": 96
   },
   "colors": {
    "#00f7ff": 104,
-   "#00ff38": 123
+   "#00ff38": 118
   },
-  "points": 646,
+  "points": 640,
   "sum": [
-   148581.258,
-   174462.753
+   147492,
+   175322.735
   ],
   "bbox": [
    21,
    -53,
-   299.048,
-   360.9593
+   297.7683,
+   360.8946
   ],
-  "digest": "7ec4b197"
+  "digest": "e43f74d1"
  },
  "drawnElements": {
   "textlabel:title": "a4968fa7",
@@ -35,8 +35,8 @@
   "stage:stage": "730cb6dc",
   "filter:emission-filter": "22c67037",
   "lens:tube-lens": "21f36c16",
-  "camera:camera": "83bb99c2",
-  "display:camera-screen": "ce532916",
+  "camera:camera": "8753c379",
+  "display:camera-screen": "e24d5361",
   "textlabel:note-stage": "142b1895"
  },
  "pulseTracks": [],
@@ -51,8 +51,8 @@
  "readouts": {
   "objective:objective": {
    "objectivePupil": {
-    "beamDiameter": 9.81981651,
-    "fill": 0.981981651,
+    "beamDiameter": 6,
+    "fill": 0.6,
     "pupilDiameter": 10,
     "transmitted": 1
    }
@@ -88,13 +88,13 @@
     "approximations": [],
     "bandMax": 550.531915,
     "bandMin": 499.468085,
-    "centroid": -0.248990709,
+    "centroid": -3.74715014e-14,
     "coherentPaths": 0,
     "color": "#2bff1a",
     "convergence": {
      "diverging": false,
-     "fullAngleDeg": 4.33274926,
-     "slopePerMm": -0.0454271517
+     "fullAngleDeg": 2.11062388,
+     "slopePerMm": -0.0454494052
     },
     "dark": false,
     "darkOutput": null,
@@ -109,9 +109,9 @@
      0,
      0,
      0,
-     0.000119936567,
-     0.00045099743,
-     0.000417163698,
+     0,
+     0.0158095631,
+     0.0158095631,
      0,
      0,
      0,
@@ -124,13 +124,13 @@
      0,
      0
     ],
-    "depositedSignal": 0.000988097696,
+    "depositedSignal": 0.0316191263,
     "detectorType": "Camera sensor",
     "gain": null,
     "interference": {
      "applied": false,
      "coherentSources": 0,
-     "excludedHits": 3,
+     "excludedHits": 2,
      "fallbackReason": null,
      "partial": false,
      "pathCount": 0,
@@ -140,7 +140,7 @@
      "reason": "disabled"
     },
     "normalizedStokes": null,
-    "outputSignal": 0.000988097696,
+    "outputSignal": 0.0316191263,
     "polarization": "Unpolarized",
     "profile": [
      0,
@@ -153,9 +153,9 @@
      0,
      0,
      0,
-     0.000119936567,
-     0.00045099743,
-     0.000417163698,
+     0,
+     0.0158095631,
+     0.0158095631,
      0,
      0,
      0,
@@ -179,7 +179,7 @@
      null,
      null,
      null,
-     "#29ff00",
+     null,
      "#29ff00",
      "#29ff00",
      null,
@@ -198,13 +198,13 @@
     "profileScale": "fit",
     "pulse": null,
     "readoutKind": "camera",
-    "samples": 3,
+    "samples": 2,
     "saturated": false,
-    "signal": 0.000988097696,
+    "signal": 0.0316191263,
     "snr": null,
     "sourceFractions": [
      {
-      "fraction": 0.00189714758,
+      "fraction": 0.0316191263,
       "sourceId": "excitation"
      }
     ],
@@ -213,7 +213,7 @@
       "bandId": "stage#0",
       "color": "#00ff92",
       "continuum": true,
-      "power": 0.0000162662624,
+      "power": 0.000520520396,
       "sourceId": "stage",
       "wavelength": 500,
       "widthNm": 1.06382979
@@ -222,7 +222,7 @@
       "bandId": "stage#0",
       "color": "#00ff85",
       "continuum": true,
-      "power": 0.000033148591,
+      "power": 0.00106075491,
       "sourceId": "stage",
       "wavelength": 501.1,
       "widthNm": 1.06382979
@@ -231,7 +231,7 @@
       "bandId": "stage#0",
       "color": "#00ff79",
       "continuum": true,
-      "power": 0.000033676105,
+      "power": 0.00107763536,
       "sourceId": "stage",
       "wavelength": 502.1,
       "widthNm": 1.06382979
@@ -240,7 +240,7 @@
       "bandId": "stage#0",
       "color": "#00ff6c",
       "continuum": true,
-      "power": 0.0000341021236,
+      "power": 0.00109126796,
       "sourceId": "stage",
       "wavelength": 503.2,
       "widthNm": 1.06382979
@@ -249,7 +249,7 @@
       "bandId": "stage#0",
       "color": "#00ff5d",
       "continuum": true,
-      "power": 0.0000344308542,
+      "power": 0.00110178734,
       "sourceId": "stage",
       "wavelength": 504.3,
       "widthNm": 1.06382979
@@ -258,7 +258,7 @@
       "bandId": "stage#0",
       "color": "#00ff50",
       "continuum": true,
-      "power": 0.000034652065,
+      "power": 0.00110886608,
       "sourceId": "stage",
       "wavelength": 505.3,
       "widthNm": 1.06382979
@@ -267,7 +267,7 @@
       "bandId": "stage#0",
       "color": "#00ff41",
       "continuum": true,
-      "power": 0.0000347672878,
+      "power": 0.00111255321,
       "sourceId": "stage",
       "wavelength": 506.4,
       "widthNm": 1.06382979
@@ -276,7 +276,7 @@
       "bandId": "stage#0",
       "color": "#00ff32",
       "continuum": true,
-      "power": 0.0000347779283,
+      "power": 0.0011128937,
       "sourceId": "stage",
       "wavelength": 507.4,
       "widthNm": 1.06382979
@@ -285,7 +285,7 @@
       "bandId": "stage#0",
       "color": "#00ff20",
       "continuum": true,
-      "power": 0.0000346769913,
+      "power": 0.00110966372,
       "sourceId": "stage",
       "wavelength": 508.5,
       "widthNm": 1.06382979
@@ -294,7 +294,7 @@
       "bandId": "stage#0",
       "color": "#00ff0b",
       "continuum": true,
-      "power": 0.0000344735378,
+      "power": 0.00110315321,
       "sourceId": "stage",
       "wavelength": 509.6,
       "widthNm": 1.06382979
@@ -303,7 +303,7 @@
       "bandId": "stage#0",
       "color": "#06ff00",
       "continuum": true,
-      "power": 0.0000341629805,
+      "power": 0.00109321538,
       "sourceId": "stage",
       "wavelength": 510.6,
       "widthNm": 1.06382979
@@ -312,7 +312,7 @@
       "bandId": "stage#0",
       "color": "#0dff00",
       "continuum": true,
-      "power": 0.0000337506549,
+      "power": 0.00108002096,
       "sourceId": "stage",
       "wavelength": 511.7,
       "widthNm": 1.06382979
@@ -321,7 +321,7 @@
       "bandId": "stage#0",
       "color": "#13ff00",
       "continuum": true,
-      "power": 0.0000332411361,
+      "power": 0.00106371635,
       "sourceId": "stage",
       "wavelength": 512.8,
       "widthNm": 1.06382979
@@ -330,7 +330,7 @@
       "bandId": "stage#0",
       "color": "#19ff00",
       "continuum": true,
-      "power": 0.000032634027,
+      "power": 0.00104428886,
       "sourceId": "stage",
       "wavelength": 513.8,
       "widthNm": 1.06382979
@@ -339,7 +339,7 @@
       "bandId": "stage#0",
       "color": "#1eff00",
       "continuum": true,
-      "power": 0.0000319455313,
+      "power": 0.001022257,
       "sourceId": "stage",
       "wavelength": 514.9,
       "widthNm": 1.06382979
@@ -348,7 +348,7 @@
       "bandId": "stage#0",
       "color": "#24ff00",
       "continuum": true,
-      "power": 0.0000311719658,
+      "power": 0.000997502907,
       "sourceId": "stage",
       "wavelength": 516,
       "widthNm": 1.06382979
@@ -357,7 +357,7 @@
       "bandId": "stage#0",
       "color": "#28ff00",
       "continuum": true,
-      "power": 0.0000303191591,
+      "power": 0.000970213091,
       "sourceId": "stage",
       "wavelength": 517,
       "widthNm": 1.06382979
@@ -366,7 +366,7 @@
       "bandId": "stage#0",
       "color": "#2dff00",
       "continuum": true,
-      "power": 0.0000294057104,
+      "power": 0.000940982734,
       "sourceId": "stage",
       "wavelength": 518.1,
       "widthNm": 1.06382979
@@ -375,7 +375,7 @@
       "bandId": "stage#0",
       "color": "#32ff00",
       "continuum": true,
-      "power": 0.0000284259736,
+      "power": 0.000909631154,
       "sourceId": "stage",
       "wavelength": 519.1,
       "widthNm": 1.06382979
@@ -384,7 +384,7 @@
       "bandId": "stage#0",
       "color": "#37ff00",
       "continuum": true,
-      "power": 0.0000273957497,
+      "power": 0.000876663992,
       "sourceId": "stage",
       "wavelength": 520.2,
       "widthNm": 1.06382979
@@ -393,7 +393,7 @@
       "bandId": "stage#0",
       "color": "#3bff00",
       "continuum": true,
-      "power": 0.0000263234296,
+      "power": 0.000842349746,
       "sourceId": "stage",
       "wavelength": 521.3,
       "widthNm": 1.06382979
@@ -402,7 +402,7 @@
       "bandId": "stage#0",
       "color": "#3fff00",
       "continuum": true,
-      "power": 0.0000252104199,
+      "power": 0.000806733437,
       "sourceId": "stage",
       "wavelength": 522.3,
       "widthNm": 1.06382979
@@ -411,7 +411,7 @@
       "bandId": "stage#0",
       "color": "#44ff00",
       "continuum": true,
-      "power": 0.0000240738525,
+      "power": 0.000770363281,
       "sourceId": "stage",
       "wavelength": 523.4,
       "widthNm": 1.06382979
@@ -420,7 +420,7 @@
       "bandId": "stage#0",
       "color": "#48ff00",
       "continuum": true,
-      "power": 0.0000229157884,
+      "power": 0.000733305228,
       "sourceId": "stage",
       "wavelength": 524.5,
       "widthNm": 1.06382979
@@ -429,7 +429,7 @@
       "bandId": "stage#0",
       "color": "#4cff00",
       "continuum": true,
-      "power": 0.0000217454269,
+      "power": 0.00069585366,
       "sourceId": "stage",
       "wavelength": 525.5,
       "widthNm": 1.06382979
@@ -438,7 +438,7 @@
       "bandId": "stage#0",
       "color": "#51ff00",
       "continuum": true,
-      "power": 0.0000205717535,
+      "power": 0.000658296112,
       "sourceId": "stage",
       "wavelength": 526.6,
       "widthNm": 1.06382979
@@ -447,7 +447,7 @@
       "bandId": "stage#0",
       "color": "#55ff00",
       "continuum": true,
-      "power": 0.0000194014527,
+      "power": 0.000620846487,
       "sourceId": "stage",
       "wavelength": 527.7,
       "widthNm": 1.06382979
@@ -456,7 +456,7 @@
       "bandId": "stage#0",
       "color": "#59ff00",
       "continuum": true,
-      "power": 0.0000182411342,
+      "power": 0.000583716295,
       "sourceId": "stage",
       "wavelength": 528.7,
       "widthNm": 1.06382979
@@ -465,7 +465,7 @@
       "bandId": "stage#0",
       "color": "#5dff00",
       "continuum": true,
-      "power": 0.0000170947675,
+      "power": 0.00054703256,
       "sourceId": "stage",
       "wavelength": 529.8,
       "widthNm": 1.06382979
@@ -474,7 +474,7 @@
       "bandId": "stage#0",
       "color": "#61ff00",
       "continuum": true,
-      "power": 0.0000159758796,
+      "power": 0.000511228147,
       "sourceId": "stage",
       "wavelength": 530.9,
       "widthNm": 1.06382979
@@ -483,7 +483,7 @@
       "bandId": "stage#0",
       "color": "#65ff00",
       "continuum": true,
-      "power": 0.000014879692,
+      "power": 0.000476150143,
       "sourceId": "stage",
       "wavelength": 531.9,
       "widthNm": 1.06382979
@@ -492,7 +492,7 @@
       "bandId": "stage#0",
       "color": "#69ff00",
       "continuum": true,
-      "power": 0.0000138167959,
+      "power": 0.00044213747,
       "sourceId": "stage",
       "wavelength": 533,
       "widthNm": 1.06382979
@@ -501,7 +501,7 @@
       "bandId": "stage#0",
       "color": "#6cff00",
       "continuum": true,
-      "power": 0.0000127936765,
+      "power": 0.00040939765,
       "sourceId": "stage",
       "wavelength": 534,
       "widthNm": 1.06382979
@@ -510,7 +510,7 @@
       "bandId": "stage#0",
       "color": "#70ff00",
       "continuum": true,
-      "power": 0.0000118017414,
+      "power": 0.000377655725,
       "sourceId": "stage",
       "wavelength": 535.1,
       "widthNm": 1.06382979
@@ -519,7 +519,7 @@
       "bandId": "stage#0",
       "color": "#74ff00",
       "continuum": true,
-      "power": 0.0000108618838,
+      "power": 0.000347580282,
       "sourceId": "stage",
       "wavelength": 536.2,
       "widthNm": 1.06382979
@@ -528,7 +528,7 @@
       "bandId": "stage#0",
       "color": "#78ff00",
       "continuum": true,
-      "power": 0.00000996287073,
+      "power": 0.000318811863,
       "sourceId": "stage",
       "wavelength": 537.2,
       "widthNm": 1.06382979
@@ -537,7 +537,7 @@
       "bandId": "stage#0",
       "color": "#7cff00",
       "continuum": true,
-      "power": 0.00000910319155,
+      "power": 0.00029130213,
       "sourceId": "stage",
       "wavelength": 538.3,
       "widthNm": 1.06382979
@@ -546,7 +546,7 @@
       "bandId": "stage#0",
       "color": "#7fff00",
       "continuum": true,
-      "power": 0.00000830445276,
+      "power": 0.000265742488,
       "sourceId": "stage",
       "wavelength": 539.4,
       "widthNm": 1.06382979
@@ -555,7 +555,7 @@
       "bandId": "stage#0",
       "color": "#83ff00",
       "continuum": true,
-      "power": 0.00000754363598,
+      "power": 0.000241396351,
       "sourceId": "stage",
       "wavelength": 540.4,
       "widthNm": 1.06382979
@@ -564,7 +564,7 @@
       "bandId": "stage#0",
       "color": "#87ff00",
       "continuum": true,
-      "power": 0.00000683261978,
+      "power": 0.000218643833,
       "sourceId": "stage",
       "wavelength": 541.5,
       "widthNm": 1.06382979
@@ -573,7 +573,7 @@
       "bandId": "stage#0",
       "color": "#8aff00",
       "continuum": true,
-      "power": 0.00000617418541,
+      "power": 0.000197573933,
       "sourceId": "stage",
       "wavelength": 542.6,
       "widthNm": 1.06382979
@@ -582,7 +582,7 @@
       "bandId": "stage#0",
       "color": "#8eff00",
       "continuum": true,
-      "power": 0.00000555294456,
+      "power": 0.000177694226,
       "sourceId": "stage",
       "wavelength": 543.6,
       "widthNm": 1.06382979
@@ -591,7 +591,7 @@
       "bandId": "stage#0",
       "color": "#91ff00",
       "continuum": true,
-      "power": 0.00000498770046,
+      "power": 0.000159606415,
       "sourceId": "stage",
       "wavelength": 544.7,
       "widthNm": 1.06382979
@@ -600,7 +600,7 @@
       "bandId": "stage#0",
       "color": "#95ff00",
       "continuum": true,
-      "power": 0.00000446330257,
+      "power": 0.000142825682,
       "sourceId": "stage",
       "wavelength": 545.7,
       "widthNm": 1.06382979
@@ -609,7 +609,7 @@
       "bandId": "stage#0",
       "color": "#98ff00",
       "continuum": true,
-      "power": 0.0000039775777,
+      "power": 0.000127282486,
       "sourceId": "stage",
       "wavelength": 546.8,
       "widthNm": 1.06382979
@@ -618,7 +618,7 @@
       "bandId": "stage#0",
       "color": "#9cff00",
       "continuum": true,
-      "power": 0.0000035406566,
+      "power": 0.000113301011,
       "sourceId": "stage",
       "wavelength": 547.9,
       "widthNm": 1.06382979
@@ -627,7 +627,7 @@
       "bandId": "stage#0",
       "color": "#9fff00",
       "continuum": true,
-      "power": 0.00000313673264,
+      "power": 0.000100375445,
       "sourceId": "stage",
       "wavelength": 548.9,
       "widthNm": 1.06382979
@@ -636,13 +636,13 @@
       "bandId": "stage#0",
       "color": "#a3ff00",
       "continuum": true,
-      "power": 0.00000138549609,
+      "power": 0.000044335875,
       "sourceId": "stage",
       "wavelength": 550,
       "widthNm": 1.06382979
      }
     ],
-    "spotSpan": 1.66465952,
+    "spotSpan": 0.810513047,
     "wavelength": 517.343266
    }
   }
