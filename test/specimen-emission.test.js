@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createElement, registry, newSampleChannel, sampleChannels } from '../sketch/js/elements.js';
+import { createElement, registry, newSampleChannel, sampleChannels, sampleChannelIndices } from '../sketch/js/elements.js';
 import { emissionRayCount, emissionRayCountAfterKindChange } from '../sketch/js/emission.js';
 import { traceScene, detectorReading, specimenIncidentBeams, probeBeamsAt } from '../sketch/js/raytrace.js';
 import { parseSketch, state } from '../sketch/js/state.js';
@@ -138,4 +138,32 @@ test('switching signal kind keeps a chosen ray count and follows an untouched de
   assert.equal(sample.params.channels[0].kind, 'raman');
   assert.equal(sample.params.channels[0].nrays, 14);
   assert.match(panel.innerHTML, /Emission rays \/ line/);
+});
+
+test('inspector rows edit the shown channel, not a dormant one stored before it', () => {
+  // A resin saved with a second-harmonic channel ahead of its 2PEF: only the
+  // 2PEF row is shown once fluorescence is on, and it must write to 2PEF.
+  const stage = createElement('stage', 0, 0);
+  Object.assign(stage.params, { specimenType: 'resin', resinFluorescence: true,
+    channels: [newSampleChannel('shg'), newSampleChannel('tpef')] });
+  assert.deepEqual(sampleChannels(stage.params).map(c => c.kind), ['tpef']);
+  assert.deepEqual(sampleChannelIndices(stage.params), [1]);
+  Object.assign(state, { elements: [stage], beams: [], selection: { kind: 'element', id: stage.id }, embedMode: false });
+  const panel = { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] };
+  initInspector(panel); traceScene([stage]); renderInspector();
+  assert.match(panel.innerHTML, /data-ci="1" data-ck="nrays"/);
+  assert.doesNotMatch(panel.innerHTML, /data-ci="0"/);
+  assert.match(panel.innerHTML, /aria-label="Signal 1 type"/, 'labels count shown rows');
+  applyInput({ dataset: { ci: '1', ck: 'nrays' }, type: 'number', value: '64' }, true);
+  applyInput({ dataset: { ci: '1', ck: 'eff' }, type: 'number', value: '0.3' }, true);
+  const [shg, tpef] = stage.params.channels;
+  assert.equal(tpef.nrays, 64);
+  assert.equal(tpef.eff, 0.3);
+  assert.equal(shg.eff, newSampleChannel('shg').eff, 'the dormant channel is untouched');
+  assert.equal(shg.nrays, undefined);
+  // A legacy single-mode specimen has no stored list: rows count from zero,
+  // and the first edit writes exactly those rows.
+  const legacy = { specimenType: 'linear', mode: 'fluor', fluorWl: 530 };
+  assert.deepEqual(sampleChannelIndices(legacy), [0]);
+  assert.deepEqual(sampleChannelIndices({ specimenType: 'absorbing', channels: [newSampleChannel('fluor')] }), []);
 });

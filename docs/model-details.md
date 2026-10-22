@@ -281,11 +281,14 @@ radiometry. The two-photon label imposes the photon-energy/wavelength rule,
 not an intensity-squared focal response, cross-section, lifetime, bleaching, or
 curing model.
 
-Every specimen signal is emitted where the beam crosses the specimen line. Real
-linear signals (fluorescence, spontaneous Raman) come from the whole illuminated
-cone, while nonlinear ones (multiphoton fluorescence, harmonics, CARS, SRS) come
-essentially only from the focus; the tracer does not compute that difference, so
-an unfocused beam generates a nonlinear signal as readily as a focused one.
+Every specimen signal is emitted where the beam crosses the specimen line. In a
+tightly focused microscope, linear signals (fluorescence, spontaneous Raman) come
+from the whole illuminated cone, while nonlinear ones (multiphoton fluorescence,
+harmonics, CARS, SRS) are concentrated near the focal region, because they scale
+with a power of the intensity. Nonlinear generation does not itself need a focus;
+an intense unfocused beam also drives it. The tracer computes no intensity
+profile, so it does not reproduce this difference: an unfocused beam generates a
+nonlinear signal as readily as a focused one.
 
 Standalone objectives are set by effective focal length (EFL) — the focal length of
 the whole assembly as one equivalent lens — plus a working distance

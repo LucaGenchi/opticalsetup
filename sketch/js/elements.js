@@ -1660,6 +1660,18 @@ export function specimenTypeOf(p) {
 }
 
 export function sampleChannels(p) {
+  return honoredChannels(p).map(({ channel }) => channel);
+}
+
+// Where each honored channel sits in params.channels, so an editor row writes
+// to the channel it shows and never to a dormant one stored before it. A
+// legacy single-mode specimen has no stored list yet; the first edit writes
+// exactly the honored rows (see the inspector), so their own order is theirs.
+export function sampleChannelIndices(p) {
+  return honoredChannels(p).map(({ index }, row) => index ?? row);
+}
+
+function honoredChannels(p) {
   const type = specimenTypeOf(p);
   // Resin emission is explicitly enabled, so saved resins with dormant
   // channels keep opening without gaining a signal. Other types still only
@@ -1667,8 +1679,10 @@ export function sampleChannels(p) {
   const allowed = type === 'linear' ? LINEAR_KIND_SET : type === 'nonlinear' ? NONLINEAR_KIND_SET
     : type === 'resin' && p.resinFluorescence === true ? RESIN_KIND_SET : null;
   if (!allowed) return [];
-  const raw = Array.isArray(p?.channels) && p.channels.length ? p.channels : legacySampleChannels(p);
-  return raw.filter(c => allowed.has(c.kind)).slice(0, MAX_SAMPLE_CHANNELS);
+  const stored = Array.isArray(p?.channels) && p.channels.length;
+  const raw = stored ? p.channels : legacySampleChannels(p);
+  return raw.map((channel, i) => ({ channel, index: stored ? i : null }))
+    .filter(({ channel }) => allowed.has(channel.kind)).slice(0, MAX_SAMPLE_CHANNELS);
 }
 
 // Two-beam signals only happen while both pulses are at the spot together.

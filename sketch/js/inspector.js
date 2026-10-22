@@ -7,7 +7,7 @@ import { emissionRayCount, emissionRayCountAfterKindChange, EMISSION_RAY_LIMITS 
 import { MAX_AOTF_CHANNELS, newAotfChannel, normalizeAotfChannels } from './aotf.js';
 import {
   registry, cameraProfileSVG, cameraReadingState, newShaperLayer, MAX_SHAPER_LAYERS, getElementMeta, getDirectManipulation, resolveDisplaySensor,
-  newSampleChannel, MAX_SAMPLE_CHANNELS, MIXING_KINDS, EPI_CAPABLE_KINDS, sampleChannels,
+  newSampleChannel, MAX_SAMPLE_CHANNELS, MIXING_KINDS, EPI_CAPABLE_KINDS, sampleChannels, sampleChannelIndices,
   signalKindsFor, specimenTypeOf, channelWarning, defaultEmissionWl, drivingExcitationWl,
   EMISSION_ORDER, ISOTROPIC_KINDS, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
   FLUOROPHORES, fluorophoreSpec, normalizeSupercontinuumParams,
@@ -664,15 +664,19 @@ function incidentBeamsAt(sel) {
 // the same physical sample).
 function signalsHTML(sel) {
   const channels = sampleChannels(sel.params);
+  // Rows address channels by their stored position: a saved specimen can
+  // keep dormant channels its type does not honor ahead of the shown ones.
+  const stored = sampleChannelIndices(sel.params);
   const kinds = signalKindsFor(specimenTypeOf(sel.params));
   const incident = incidentWlsAt(sel);
   const excitation = drivingExcitationWl(incident);
   let h = `<div class="lsechead">Signals generated — stack up to ${MAX_SAMPLE_CHANNELS}</div>`;
-  channels.forEach((c, i) => {
+  channels.forEach((c, row) => {
+    const i = stored[row];
     h += `<div class="layer"><div class="layerrow">
-      <select data-ci="${i}" data-ck="kind" aria-label="Signal ${i + 1} type">` +
+      <select data-ci="${i}" data-ck="kind" aria-label="Signal ${row + 1} type">` +
       kinds.map(([v, l]) => `<option value="${v}" ${v === c.kind ? 'selected' : ''}>${l}</option>`).join('') +
-      `</select><button type="button" class="layerdel" data-cdel="${i}" title="Remove this signal" aria-label="Remove signal ${i + 1}">✕</button></div>`;
+      `</select><button type="button" class="layerdel" data-cdel="${i}" title="Remove this signal" aria-label="Remove signal ${row + 1}">✕</button></div>`;
 
     if (ISOTROPIC_KINDS.has(c.kind)) {
       h += numberField(c.kind === 'raman' ? 'Emission rays / line' : 'Emission rays',
