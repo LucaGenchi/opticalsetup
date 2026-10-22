@@ -5923,7 +5923,10 @@ const samePlace = (a, b) => a.key === b.key
 // transmission, or null. `node` is the checkpoint at the current hit.
 // Exported for the tests, which build checkpoint trails directly.
 export function closedLoop(node, r) {
-  if (r.phaseValid || r.evan || r.chopped || r.polMod || r.pulse?.gates?.length
+  // Point-source light still bound by its capture range (`rangeLeft`) runs out
+  // after a finite number of round trips, so it is traced pass by pass rather
+  // than summed as an endless series.
+  if (r.phaseValid || r.evan || r.rangeLeft || r.chopped || r.polMod || r.pulse?.gates?.length
       || !(Number.isFinite(r.power) && r.power > 0)) return null;
   const earlierVisit = from => {
     for (let at = from, steps = 1; at; at = at.prev, steps++) if (samePlace(at, node)) return { at, steps };

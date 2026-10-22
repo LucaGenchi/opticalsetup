@@ -2607,8 +2607,7 @@ function opaStateCore(plan, p) {
 
 // How far an uncaught point-source ray is drawn, the capture range a point
 // source had before the range became a parameter (1.5x the glow), and the
-// longest range a user may set: past the tracer's 6 m leg, it only matters to
-// light handed on from optic to optic.
+// longest range a user may set.
 const POINT_SOURCE_GLOW_MM = 110;
 const POINT_SOURCE_LEGACY_CAPTURE_MM = 165;
 const POINT_SOURCE_MAX_CAPTURE_MM = 100000;

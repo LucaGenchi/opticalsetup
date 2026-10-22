@@ -73,7 +73,7 @@ test('the range reaches 100 m, is clamped there, and a bare detector reads only 
   close(signal([source()], at('detector', 500)), 0.25, 'inside 1 m');
   assert.equal(signal([source()], at('detector', 1500)), 0, 'outside 1 m');
   close(signal([source({ captureRange: 2000 })], at('detector', 1500)), 0.25, 'range raised to 2 m');
-  close(signal([source({ captureRange: 100000 })], at('detector', 5500)), 0.25, '100 m');
+  close(signal([source({ captureRange: 100000 })], faceAt(99000)), 0.25, 'a detector 99 m away, directly');
   // The boundary is included.
   close(signal([source({ captureRange: 400 })], faceAt(400)), 0.25, 'at the boundary');
   assert.equal(signal([source({ captureRange: 400 })], faceAt(400.1)), 0, 'just past it');
@@ -141,6 +141,20 @@ test('after an optic that does not collect, only the range that is left counts',
   assert.equal(signal([source(), cube()], faceUp(300, 800)), 0, 'reflected port, 1100 mm of path');
   assert.ok(signal([source(), cube()], faceAt(900)) > 0, 'transmitted port, 900 mm');
   assert.equal(signal([source(), cube()], faceAt(1100)), 0, 'transmitted port, 1100 mm');
+});
+
+test('a cavity of optics that do not collect is traced only as far as the range reaches', () => {
+  // Found in review of #260: the cavity sum treated the light between two
+  // notch reflectors as an endless series of round trips, though the range
+  // runs out after a few. Each pass gives 10% to the detector behind them.
+  const notch = x => at('dichroic', x, 0, { dtype: 'notch', center: 550, band: 50, bandRefl: 90 });
+  const read = captureRange => signal([source({ wavelength: 550, captureRange }), notch(-50), notch(50)], faceAt(100));
+  close(read(1000), 0.25 * (1 - 0.9 ** 10), 'ten passes inside 1 m');
+  close(read(500), 0.25 * (1 - 0.9 ** 5), 'five inside 500 mm');
+  // Two partial mirrors collect what they reflect, so that cavity is ordinary
+  // light and is summed whole.
+  const mirror = x => at('mirror', x, 0, { refl: 90, showTransmitted: true });
+  close(signal([source({ wavelength: 550 }), mirror(-50), mirror(50)], faceAt(100)), 0.25, 'collected cavity');
 });
 
 test('a lens or a mirror collects: what leaves it is ordinary light at any distance', () => {
