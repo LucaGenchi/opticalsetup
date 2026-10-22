@@ -562,8 +562,8 @@ export const wikiEntries = [
         <p>The LED is a packaged source: the die and its collimator are one element, and
         what leaves the housing is a collimated beam of the width you set, made of ordinary
         rays that travel until something stops them. This is what separates it from the
-        Point source, which is the bare emitter — isotropic, and only useful once a lens or
-        a mirror collects it.</p>
+        Point source, which is the bare emitter: isotropic, and visible only as far as its
+        capture range unless a lens or a mirror collects it.</p>
         <p>Choose a preset or a custom centre wavelength and width. Each single-colour
         preset is one Gaussian band. The white preset is two: a blue peak near
         450&nbsp;nm and a phosphor band near 580&nbsp;nm, carried as one spectrum with both
@@ -637,28 +637,39 @@ export const wikiEntries = [
         set are recognisable on sight, and that recognisability is the whole reason a
         spectroscopy course starts here.</p>`,
       formulas: [
-        { tex: 'E = \\frac{P}{4\\pi r^{2}}', caption: 'Irradiance from an isotropic emitter: the inverse-square law is the reason uncollected point-source light is gone within a short distance.' },
+        { tex: 'E = \\frac{P}{4\\pi r^{2}}', caption: 'Irradiance E at distance r from an isotropic emitter of total power P: the inverse-square law is why light nothing collects becomes too faint to matter beyond some distance.' },
       ],
     },
     inOpticalSetup: {
       html: `
         <p>The point source emits rays evenly over its <strong>emission angle</strong> —
-        the full 360&deg; by default — and a ray that meets nothing is drawn as a glow that
-        <strong>fades within about 110&nbsp;mm</strong>. That fading is the model's one
-        strong opinion, and it is there because the alternative is worse: an isotropic
-        emitter whose rays all ran forever would bury the bench in lines.</p>
-        <p>The <strong>capture range</strong> decides which rays carry on instead: a ray
-        with a lens, a <a href="../mirror/">mirror</a> or a fiber tip ahead of it within
-        that distance is collected, and is ordinary light all the way from the source.
-        Every element in the Lenses and Mirrors groups collects; nothing else does. A
-        filter or a polarizer in front of the collecting lens acts on the light passing
-        through it but collects nothing by itself, a detector facing the source directly
-        reads nothing, and a beam block, a housing or a detector in the way hides the
-        collector behind it. The range is 1&nbsp;m for a newly placed source and can be
-        set between 110&nbsp;mm and 5&nbsp;m; a sketch saved before the control existed
-        opens at the 165&nbsp;mm it was drawn with. It is a drawing convention that keeps the canvas readable, not
-        attenuation: collected light arrives at full ray weight, and uncollected light is
-        not traced at all.</p>
+        the full 360&deg; by default — and a ray that nothing catches is drawn as a glow
+        that <strong>fades within about 110&nbsp;mm</strong>. That fading stands in for
+        the inverse-square law above: an isotropic emitter grows too faint to matter at a
+        distance, and one whose rays all ran forever would bury the bench in lines.</p>
+        <p>The <strong>capture range</strong> sets that distance: how far from the source
+        its light can still be caught. Within it, every optical element acts on the light
+        as it would on any other: glass refracts it, a <a href="../filter/">filter</a>
+        filters it, a <a href="../detector/">detector</a> facing the source reads it, and a
+        beam block stops it. A lens, a <a href="../mirror/">mirror</a>, a detector or a fiber
+        tip collects the light — every element in the Lenses, Mirrors and Detectors groups
+        does — and what leaves a lens or a mirror is ordinary light that travels on at any
+        distance. Any other optic
+        hands on light that is still spreading from the source, so it keeps only the range
+        that is left: a filter 300&nbsp;mm away passes light that can still be caught for
+        another 700&nbsp;mm, and fades after that. The housing of a laser or another source
+        does not catch the light. The range is 1&nbsp;m for a newly placed source and can be
+        set from 110&nbsp;mm to 100&nbsp;m. It is a drawing convention, not attenuation:
+        caught light arrives at full ray weight, and light nothing catches is not traced
+        further.</p>
+        <p><strong>Caught by</strong> chooses the rule. <em>Any optic</em> is the default.
+        Under <em>Collectors</em> only lenses, mirrors, detectors and fiber tips catch the
+        light: a filter or a polarizer in front of one acts on the light without collecting
+        it, and something opaque in the way hides it. A sketch saved before the choice
+        existed opens with the rule it was drawn with, shown as <em>Lenses &amp; mirrors</em>:
+        the same, except that a detector facing the source reads nothing. Such a sketch also
+        keeps the 165&nbsp;mm range it was drawn with. Choose <em>Collectors</em> or
+        <em>Any optic</em> to update it.</p>
         <p>The embedded bench above shows the arrangement that makes collection
         clearest: a <a href="../oap/">parabolic mirror</a> with the source exactly at its
         focus, 25&nbsp;mm in front of the vertex, turning isotropic emission into a parallel
@@ -686,11 +697,14 @@ export const wikiEntries = [
         in an interferometer therefore produces no fringes, which is what an incoherent
         source does.</p>`,
       formulas: [],
-      limitations: `<p>The near-field fade is a modelling device, not physics. Real
-        isotropic light does not stop at a boundary — it keeps going, growing weaker as
-        1/r&sup2; — and the range here is a fixed distance rather than anything derived from
-        the source's power or the detector's sensitivity. A collector just outside it gathers
-        nothing when a real one would gather a little.</p>
+      limitations: `<p>The capture range and the fade are a modelling device, not physics.
+        Real isotropic light does not stop at a boundary — it keeps going, growing weaker as
+        1/r&sup2; — and the range here is a distance you set rather than anything derived
+        from the source's power or the detector's sensitivity. An optic just outside it
+        catches nothing when a real one would catch a little, and light caught inside it
+        arrives at full ray weight however far it travelled. The rays sample the emission
+        angle evenly, so a small optic between two sampled directions can be missed: raise
+        the ray count to check one.</p>
         <p>The source is a true point, so it has no étendue: the one property that most
         constrains real incoherent sources is absent, and a lens can focus this light to a
         spot no real lamp could reach. There is no arc length, no electrode geometry, and no

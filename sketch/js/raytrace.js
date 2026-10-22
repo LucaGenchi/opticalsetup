@@ -5973,7 +5973,10 @@ const samePlace = (a, b) => a.key === b.key
 // transmission, or null. `node` is the checkpoint at the current hit.
 // Exported for the tests, which build checkpoint trails directly.
 export function closedLoop(node, r) {
-  if (r.phaseValid || r.evan || r.chopped || r.polMod || r.pulse?.gates?.length
+  // Point-source light still bound by its capture range (`rangeLeft`) runs out
+  // after a finite number of round trips, so it is traced pass by pass rather
+  // than summed as an endless series.
+  if (r.phaseValid || r.evan || r.rangeLeft || r.chopped || r.polMod || r.pulse?.gates?.length
       || !(Number.isFinite(r.power) && r.power > 0)) return null;
   const earlierVisit = from => {
     for (let at = from, steps = 1; at; at = at.prev, steps++) if (samePlace(at, node)) return { at, steps };
@@ -6012,23 +6015,36 @@ export function closedLoop(node, r) {
 }
 
 // What collects a point source's light: the working surfaces of every element
-// in the Lenses and Mirrors categories, and a fiber tip. An absorbing rim on
-// one of those elements is not a collector.
+// in the Lenses, Mirrors and Detectors categories, and a fiber tip. An
+// absorbing rim or housing on one of those elements is not a collector. A
+// sketch saved before detectors collected (`lensmirror`) keeps them out.
 const POINT_SOURCE_COLLECTOR_CATEGORIES = new Set(['Lenses', 'Mirrors']);
-function collectsPointSource(surface) {
+function collectsPointSource(surface, mode) {
   if (surface.kind === 'fiberin') return true;
   if (surface.kind === 'absorb') return false;
-  return POINT_SOURCE_COLLECTOR_CATEGORIES.has(registry[surface.el?.type]?.category);
+  const category = registry[surface.el?.type]?.category;
+  if (category === 'Detectors') return mode !== 'lensmirror';
+  return POINT_SOURCE_COLLECTOR_CATEGORIES.has(category);
+}
+const collectorRule = mode => mode === 'collectors' || mode === 'lensmirror';
+// What catches a point source set to be caught by every optical element: any
+// traced surface except the housing of another light source, which is not an
+// optic -- a laser next to a lamp must not soak up its rays.
+function catchesPointSource(surface) {
+  return registry[surface.el?.type]?.category !== 'Sources';
 }
 // The surfaces a point-source ray looks along for a collector: the collectors
-// themselves and whatever is opaque. Cached per surface list, which is built
-// once per trace.
+// of its rule and whatever is opaque. Cached per surface list, which is built
+// once per trace, and per rule: under the saved-sketch rule the eye's pupil
+// lens is not a collector, so it must not stand in front of one.
 const sightlines = new WeakMap();
-function pointSourceSightline(surfaces) {
-  let list = sightlines.get(surfaces);
+function pointSourceSightline(surfaces, mode) {
+  let byMode = sightlines.get(surfaces);
+  if (!byMode) sightlines.set(surfaces, byMode = new Map());
+  let list = byMode.get(mode);
   if (!list) {
-    list = surfaces.filter(s => s.kind === 'absorb' || s.kind === 'detector' || s.kind === 'retina' || collectsPointSource(s));
-    sightlines.set(surfaces, list);
+    list = surfaces.filter(s => s.kind === 'absorb' || s.kind === 'detector' || s.kind === 'retina' || collectsPointSource(s, mode));
+    byMode.set(mode, list);
   }
   return list;
 }
@@ -6185,12 +6201,16 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // blocker, a housing, a detector -- ends the search, and a ray with
         // no collector ahead of it fades without being traced further.
         // Fluorescence keeps the collector list above and the nearest hit.
-        const ahead = r.captureMode === 'collectors'
-          ? nearestHit({ x: r.x, y: r.y }, { x: r.dx, y: r.dy }, pointSourceSightline(surfaces), r.last)
+        // A point source caught by every optical element is caught by the
+        // first one it meets within its range, whatever that is.
+        const ahead = collectorRule(r.captureMode)
+          ? nearestHit({ x: r.x, y: r.y }, { x: r.dx, y: r.dy }, pointSourceSightline(surfaces, r.captureMode), r.last)
           : null;
-        const captured = r.captureMode === 'collectors'
-          ? Boolean(ahead && ahead.t <= CAPTURE && collectsPointSource(ahead.surface))
-          : hit && hit.t <= CAPTURE && COLLECTORS.has(hit.surface.kind);
+        const captured = collectorRule(r.captureMode)
+          ? Boolean(ahead && ahead.t <= CAPTURE && collectsPointSource(ahead.surface, r.captureMode))
+          : r.captureMode === 'all'
+            ? Boolean(hit && hit.t <= CAPTURE && catchesPointSource(hit.surface))
+            : hit && hit.t <= CAPTURE && COLLECTORS.has(hit.surface.kind);
         if (!captured) {
           // The glow of an uncollected ray stops at the first surface it
           // meets, whatever that is: drawn on through a filter it would show
@@ -6209,12 +6229,25 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // The transmitted child starts AT the collector, having already used
         // up hit.t of its range. Handing it the full range again would let a
         // chain of partial mirrors walk near-field light across the bench.
-        if (r.captureMode === 'collectors') {
+        if (collectorRule(r.captureMode)) {
           // The collector may still be several optics away. Until the ray
           // gets there it carries what is left of its range, so a partial
           // mirror reached through a filter limits its leak exactly as one
           // reached directly does.
           r.sourceRange = { evanLen: EVAN_LEN, captureLen: CAPTURE, captureMode: r.captureMode };
+        } else if (r.captureMode === 'all') {
+          // Caught here, at hit.t. A lens, a mirror or a fiber tip collects
+          // the light; anything else -- a filter, a splitter, a prism, glass
+          // -- acts on it and hands on light that is still the source's
+          // diverging emission, so every branch leaving it keeps only the
+          // range that is left and fades again unless caught within it. A
+          // partial mirror's leak keeps that range too, as in the other mode.
+          // The fresh fade is never longer than the range left, so whatever
+          // the drawn glow touches can still catch it.
+          const captureLeft = Math.max(0, CAPTURE - hit.t);
+          const left = { evanLen: Math.min(EVAN_LEN, captureLeft), captureLen: captureLeft, captureMode: 'all' };
+          if (!collectsPointSource(hit.surface)) r.rangeLeft = left;
+          else if (['mirror', 'cmirror'].includes(hit.surface.kind)) r.carriedEvan = left;
         } else {
           r.carriedEvan = {
             evanLen: Math.max(0, EVAN_LEN - hit.t),
@@ -6234,7 +6267,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           captureMode: r.sourceRange.captureMode,
         };
         r.carriedEvan = ['mirror', 'cmirror'].includes(hit.surface.kind) ? left : null;
-        r.sourceRange = collectsPointSource(hit.surface) ? null : left;
+        r.sourceRange = collectsPointSource(hit.surface, left.captureMode) ? null : left;
       }
       if (!hit) {
         appendPoint(r, { x: r.x + r.dx * MAXLEN, y: r.y + r.dy * MAXLEN }, MAXLEN);
@@ -6427,6 +6460,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // clearing it here covers that route too.
       const carriedEvan = r.carriedEvan;
       r.carriedEvan = null;
+      // Likewise the range a point-source ray keeps after an optic that caught
+      // it without collecting it: it applies to what leaves this interaction.
+      const rangeLeft = r.rangeLeft;
+      r.rangeLeft = null;
       interactionRay = r; interactionReshapesPulse = false; interactionPorts = null;
       const children = interact(r, hit);
       const ports = interactionPorts;
@@ -6574,7 +6611,11 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         && !('spectralField' in c0)
         && !('approximation' in c0)
         && !('pulse' in c0) // state changes split so probes read each segment
-        && !('trainPieces' in c0); // and so does a change to what is drawn
+        && !('trainPieces' in c0) // and so does a change to what is drawn
+        // Light that fades again from here starts a new ray: a fading glow is
+        // drawn from its ray's last point, and must not take the caught leg
+        // behind it along.
+        && !rangeLeft;
       if (single) {
         // The ray carries on as itself, so the provenance rule is applied to
         // it here: a conversion that lands on the wavelength the ray already
@@ -6646,6 +6687,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         const childGdd = 'gdd' in c ? c.gdd : r.gdd;
         const childDelayDifference = 'groupDelayDifferenceFs' in c
           ? c.groupDelayDifferenceFs : r.groupDelayDifferenceFs;
+        const inheritedRange = rangeLeft && !c.evan && !('sourceId' in c) ? rangeLeft
+          : c.tag === 'T' ? carriedEvan : null;
         stack.push({
           x: ox, y: oy, dx: c.d.x, dy: c.d.y,
           // Anything that reaches here starts a new branch string: a real
@@ -6687,11 +6730,14 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           // upstream continues from where the parent's pattern had reached.
           chopped: c.chopped || continuedChop(r.chopped, polylineLength(r.pts)),
           // A branch that merely passed THROUGH a collector was never
-          // collected, so it stays evanescent with the range it had.
-          evan: c.evan || Boolean(c.tag === 'T' && carriedEvan),
-          evanLen: c.evanLen ?? (c.tag === 'T' ? carriedEvan?.evanLen : undefined),
-          captureLen: c.captureLen ?? (c.tag === 'T' ? carriedEvan?.captureLen : undefined),
-          captureMode: c.captureMode ?? (c.tag === 'T' ? carriedEvan?.captureMode : undefined),
+          // collected, so it stays evanescent with the range it had; so does
+          // every branch of an optic that caught point-source light without
+          // collecting it. Light generated here is a new emitter with rules
+          // of its own.
+          evan: c.evan || Boolean(inheritedRange),
+          evanLen: c.evanLen ?? inheritedRange?.evanLen,
+          captureLen: c.captureLen ?? inheritedRange?.captureLen,
+          captureMode: c.captureMode ?? inheritedRange?.captureMode,
           // The range belongs to the collected light and what continues it.
           // Light generated here -- fluorescence, with a range of its own --
           // is a new emitter and must not inherit the pump's.
