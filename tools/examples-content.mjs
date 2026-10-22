@@ -1634,9 +1634,10 @@ export const exampleEntries = [
       are 1550.12, 1551.72, 1553.33 and 1554.94&nbsp;nm. Each emits 1&nbsp;mW of
       8.3&nbsp;ps transform-limited Gaussian pulses at 40&nbsp;GHz. A train with a
       pulse in every slot is the clock of a 40&nbsp;Gb/s return-to-zero signal,
-      every bit a one, with no data pattern on it. Four
+      every bit a one, with no data pattern on it. Three
       <a href="../../wiki/dichroic/">band-pass filters</a>, 1.2&nbsp;nm wide, put the
-      channels on one path. The <a href="../../wiki/probe/">probe</a> just after the
+      channels on one path. CH4 needs no filter of its own: the CH3 filter
+      reflects it onto the path. The <a href="../../wiki/probe/">probe</a> just after the
       multiplexer shows the four lines.</p>
       <p>The link is 10&nbsp;km of standard fibre: D = 17&nbsp;ps/(nm·km), so
       β₂ = −21.7&nbsp;ps²/km, and 0.275&nbsp;dB/km. Then come 1.7&nbsp;km of DCF:
@@ -1645,8 +1646,8 @@ export const exampleEntries = [
       −217&nbsp;ps² and +216.9&nbsp;ps², which leaves −0.08&nbsp;ps². The demultiplexer
       drops one channel at each filter. Every receiver reads 8.3&nbsp;ps and
       0.44&nbsp;mW: 0&nbsp;dBm launched, less 2.75&nbsp;dB in the standard fibre and
-      0.85&nbsp;dB in the DCF. The duration probe on the RX3 path shows the
-      pulse width. The time probe on RX1 marks when pulses arrive, one per
+      0.85&nbsp;dB in the DCF. The duration and power probes on the RX3 path
+      show the pulse width and the power. The time probe on RX1 marks when pulses arrive, one per
       25&nbsp;ps slot; it shows timing, not pulse shape.</p>
       <p>Things to try. Select the blue DCF and set its β₂ to 0. The duration
       probe, and the pulse width in any receiver's inspector, now read

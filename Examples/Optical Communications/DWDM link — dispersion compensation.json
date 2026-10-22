@@ -5,8 +5,8 @@
     {
       "id": "mux1",
       "type": "dichroic",
-      "x": 400,
-      "y": 330,
+      "x": 330,
+      "y": 300,
       "rot": 315,
       "label": "TFF ch1",
       "showLabel": true,
@@ -23,8 +23,8 @@
     {
       "id": "mux2",
       "type": "dichroic",
-      "x": 400,
-      "y": 200,
+      "x": 330,
+      "y": 150,
       "rot": 315,
       "label": "TFF ch2",
       "showLabel": true,
@@ -41,8 +41,8 @@
     {
       "id": "mux3",
       "type": "dichroic",
-      "x": 270,
-      "y": 200,
+      "x": 180,
+      "y": 150,
       "rot": 315,
       "label": "TFF ch3",
       "showLabel": true,
@@ -57,28 +57,10 @@
       "labelPos": "b"
     },
     {
-      "id": "mux4",
-      "type": "dichroic",
-      "x": 270,
-      "y": 70,
-      "rot": 315,
-      "label": "TFF ch4",
-      "showLabel": true,
-      "params": {
-        "dtype": "bandpass",
-        "cutoff": 1550,
-        "center": 1554.94,
-        "band": 1.2,
-        "bandRefl": 100,
-        "length": 25.4
-      },
-      "labelPos": "r"
-    },
-    {
       "id": "tx1",
       "type": "pulsedlaser",
-      "x": 308,
-      "y": 330,
+      "x": 88,
+      "y": 300,
       "rot": 0,
       "label": "TX1 · 1550.12 nm",
       "showLabel": true,
@@ -99,35 +81,10 @@
       }
     },
     {
-      "id": "tx2",
-      "type": "pulsedlaser",
-      "x": 400,
-      "y": 108,
-      "rot": 90,
-      "label": "TX2 · 1551.72 nm",
-      "showLabel": true,
-      "params": {
-        "wavelength": 1551.72,
-        "avgPowerW": 0.001,
-        "beamMode": "beam",
-        "beamWidth": 2,
-        "repRateMHz": 40000,
-        "pulsePhaseNs": 0,
-        "transformLimited": true,
-        "pulseWidthFs": 8300,
-        "pulseShape": "gauss",
-        "pol": 0,
-        "autoColor": true,
-        "showPulse": true,
-        "interference": true
-      },
-      "labelPos": "l"
-    },
-    {
       "id": "tx3",
       "type": "pulsedlaser",
-      "x": 178,
-      "y": 200,
+      "x": 88,
+      "y": 150,
       "rot": 0,
       "label": "TX3 · 1553.33 nm",
       "showLabel": true,
@@ -150,8 +107,8 @@
     {
       "id": "tx4",
       "type": "pulsedlaser",
-      "x": 270,
-      "y": -22,
+      "x": 180,
+      "y": 58,
       "rot": 90,
       "label": "TX4 · 1554.94 nm",
       "showLabel": true,
@@ -170,13 +127,38 @@
         "showPulse": true,
         "interference": true
       },
-      "labelPos": "l"
+      "labelPos": "r"
+    },
+    {
+      "id": "tx2",
+      "type": "pulsedlaser",
+      "x": 330,
+      "y": 58,
+      "rot": 90,
+      "label": "TX2 · 1551.72 nm",
+      "showLabel": true,
+      "params": {
+        "wavelength": 1551.72,
+        "avgPowerW": 0.001,
+        "beamMode": "beam",
+        "beamWidth": 2,
+        "repRateMHz": 40000,
+        "pulsePhaseNs": 0,
+        "transformLimited": true,
+        "pulseWidthFs": 8300,
+        "pulseShape": "gauss",
+        "pol": 0,
+        "autoColor": true,
+        "showPulse": true,
+        "interference": true
+      },
+      "labelPos": "r"
     },
     {
       "id": "osa",
       "type": "probe",
-      "x": 470,
-      "y": 330,
+      "x": 435,
+      "y": 300,
       "rot": 0,
       "label": "",
       "showLabel": false,
@@ -190,8 +172,8 @@
     {
       "id": "demux1",
       "type": "dichroic",
-      "x": 980,
-      "y": 330,
+      "x": 940,
+      "y": 300,
       "rot": 315,
       "label": "TFF ch1",
       "showLabel": true,
@@ -208,8 +190,8 @@
     {
       "id": "demux2",
       "type": "dichroic",
-      "x": 980,
-      "y": 460,
+      "x": 940,
+      "y": 450,
       "rot": 315,
       "label": "TFF ch2",
       "showLabel": true,
@@ -226,8 +208,8 @@
     {
       "id": "demux3",
       "type": "dichroic",
-      "x": 1110,
-      "y": 460,
+      "x": 1090,
+      "y": 450,
       "rot": 315,
       "label": "TFF ch3",
       "showLabel": true,
@@ -244,8 +226,8 @@
     {
       "id": "demux4",
       "type": "dichroic",
-      "x": 1110,
-      "y": 590,
+      "x": 1090,
+      "y": 600,
       "rot": 315,
       "label": "TFF ch4",
       "showLabel": true,
@@ -262,8 +244,8 @@
     {
       "id": "rx1",
       "type": "detector",
-      "x": 1130,
-      "y": 330,
+      "x": 1305,
+      "y": 300,
       "rot": 0,
       "label": "RX1 · 1550.12 nm",
       "showLabel": true,
@@ -272,22 +254,10 @@
       }
     },
     {
-      "id": "rx2",
-      "type": "detector",
-      "x": 980,
-      "y": 700,
-      "rot": 90,
-      "label": "RX2 · 1551.72 nm",
-      "showLabel": true,
-      "params": {
-        "aperture": 26
-      }
-    },
-    {
       "id": "rx3",
       "type": "detector",
-      "x": 1260,
-      "y": 460,
+      "x": 1305,
+      "y": 450,
       "rot": 0,
       "label": "RX3 · 1553.33 nm",
       "showLabel": true,
@@ -296,22 +266,10 @@
       }
     },
     {
-      "id": "rx4",
-      "type": "detector",
-      "x": 1110,
-      "y": 700,
-      "rot": 90,
-      "label": "RX4 · 1554.94 nm",
-      "showLabel": true,
-      "params": {
-        "aperture": 26
-      }
-    },
-    {
       "id": "express",
       "type": "beamdump",
-      "x": 1260,
-      "y": 590,
+      "x": 1305,
+      "y": 600,
       "rot": 0,
       "label": "Express port",
       "showLabel": true,
@@ -320,10 +278,34 @@
       }
     },
     {
+      "id": "rx2",
+      "type": "detector",
+      "x": 940,
+      "y": 680,
+      "rot": 90,
+      "label": "RX2 · 1551.72 nm",
+      "showLabel": true,
+      "params": {
+        "aperture": 26
+      }
+    },
+    {
+      "id": "rx4",
+      "type": "detector",
+      "x": 1090,
+      "y": 680,
+      "rot": 90,
+      "label": "RX4 · 1554.94 nm",
+      "showLabel": true,
+      "params": {
+        "aperture": 26
+      }
+    },
+    {
       "id": "trace1",
       "type": "probe",
-      "x": 1080,
-      "y": 330,
+      "x": 1040,
+      "y": 300,
       "rot": 0,
       "label": "",
       "showLabel": false,
@@ -336,8 +318,8 @@
     {
       "id": "width3",
       "type": "probe",
-      "x": 1180,
-      "y": 460,
+      "x": 1160,
+      "y": 450,
       "rot": 0,
       "label": "",
       "showLabel": false,
@@ -346,22 +328,23 @@
       }
     },
     {
-      "id": "power2",
+      "id": "power3",
       "type": "probe",
-      "x": 980,
-      "y": 540,
+      "x": 1250,
+      "y": 450,
       "rot": 0,
       "label": "",
       "showLabel": false,
       "params": {
-        "prop": "power"
+        "prop": "power",
+        "sampleDiameterMm": 26
       }
     },
     {
       "id": "title",
       "type": "textlabel",
-      "x": 60,
-      "y": -215,
+      "x": 40,
+      "y": -78,
       "rot": 0,
       "label": "",
       "showLabel": false,
@@ -374,8 +357,8 @@
     {
       "id": "subtitle",
       "type": "textlabel",
-      "x": 60,
-      "y": -180,
+      "x": 40,
+      "y": -40,
       "rot": 0,
       "label": "",
       "showLabel": false,
@@ -388,8 +371,8 @@
     {
       "id": "caveat",
       "type": "textlabel",
-      "x": 60,
-      "y": -155,
+      "x": 40,
+      "y": -14,
       "rot": 0,
       "label": "",
       "showLabel": false,
@@ -402,27 +385,13 @@
     {
       "id": "txnote",
       "type": "textlabel",
-      "x": 60,
-      "y": 420,
+      "x": 40,
+      "y": 755,
       "rot": 0,
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "**MUX** · thin-film band-pass filters: each passes",
-        "fontSize": 11,
-        "fill": "#44505c"
-      }
-    },
-    {
-      "id": "txnote2",
-      "type": "textlabel",
-      "x": 60,
-      "y": 437,
-      "rot": 0,
-      "label": "",
-      "showLabel": false,
-      "params": {
-        "text": "one channel and reflects the rest onto the common path.",
+        "text": "**MUX** · thin-film band-pass filters: each passes one channel and reflects the rest onto the common path. CH4 needs no filter: the CH3 filter reflects it.",
         "fontSize": 11,
         "fill": "#44505c"
       }
@@ -430,8 +399,8 @@
     {
       "id": "smfnote",
       "type": "textlabel",
-      "x": 500,
-      "y": 410,
+      "x": 40,
+      "y": 779,
       "rot": 0,
       "label": "",
       "showLabel": false,
@@ -444,8 +413,8 @@
     {
       "id": "dcfnote",
       "type": "textlabel",
-      "x": 500,
-      "y": 432,
+      "x": 40,
+      "y": 803,
       "rot": 0,
       "label": "",
       "showLabel": false,
@@ -458,13 +427,13 @@
     {
       "id": "rxnote",
       "type": "textlabel",
-      "x": 500,
-      "y": 520,
+      "x": 40,
+      "y": 827,
       "rot": 0,
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "**DEMUX** · the same filters in reverse drop one channel per port.",
+        "text": "**DEMUX** · the same filters drop one channel per port; whatever passes the last one leaves at the express port.",
         "fontSize": 11,
         "fill": "#44505c"
       }
@@ -472,13 +441,13 @@
     {
       "id": "budget",
       "type": "textlabel",
-      "x": 500,
-      "y": 545,
+      "x": 40,
+      "y": 851,
       "rot": 0,
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "Per channel: 0 dBm − 2.75 dB (SMF) − 0.85 dB (DCF) = −3.6 dBm ≈ 0.44 mW.",
+        "text": "**Budget** per channel: 0 dBm − 2.75 dB (SMF) − 0.85 dB (DCF) = −3.6 dBm ≈ 0.44 mW.",
         "fontSize": 11,
         "fill": "#44505c"
       }
@@ -486,8 +455,8 @@
     {
       "id": "try",
       "type": "textlabel",
-      "x": 60,
-      "y": 790,
+      "x": 40,
+      "y": 885,
       "rot": 0,
       "label": "",
       "showLabel": false,
@@ -500,13 +469,13 @@
     {
       "id": "try2",
       "type": "textlabel",
-      "x": 60,
-      "y": 808,
+      "x": 40,
+      "y": 909,
       "rot": 0,
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "The time probe on RX1 marks pulse arrivals, one per 25 ps slot; it does not draw pulse shape, so read widths from the duration probe or a receiver.",
+        "text": "The time probe on RX1 marks pulse arrivals, one per 25 ps slot; it does not draw pulse shape, so read widths from the duration probe on RX3 or a receiver.",
         "fontSize": 11,
         "fill": "#44505c"
       }
@@ -518,32 +487,32 @@
       "kind": "fiber",
       "pts": [
         {
-          "x": 510,
-          "y": 330
+          "x": 540,
+          "y": 300
         },
         {
-          "x": 530,
-          "y": 330
+          "x": 560,
+          "y": 300
         },
         {
-          "x": 555,
-          "y": 358
+          "x": 585,
+          "y": 328
         },
         {
-          "x": 605,
-          "y": 370
+          "x": 625,
+          "y": 340
         },
         {
-          "x": 655,
-          "y": 358
+          "x": 665,
+          "y": 328
         },
         {
-          "x": 680,
-          "y": 330
+          "x": 690,
+          "y": 300
         },
         {
-          "x": 700,
-          "y": 330
+          "x": 710,
+          "y": 300
         }
       ],
       "color": "#e8a800",
@@ -574,31 +543,31 @@
       "pts": [
         {
           "x": 750,
-          "y": 330
+          "y": 300
         },
         {
           "x": 770,
-          "y": 330
+          "y": 300
         },
         {
           "x": 795,
-          "y": 358
+          "y": 328
         },
         {
-          "x": 820,
-          "y": 370
+          "x": 810,
+          "y": 340
         },
         {
-          "x": 845,
-          "y": 358
+          "x": 825,
+          "y": 328
+        },
+        {
+          "x": 850,
+          "y": 300
         },
         {
           "x": 870,
-          "y": 330
-        },
-        {
-          "x": 890,
-          "y": 330
+          "y": 300
         }
       ],
       "color": "#3a8fd6",
