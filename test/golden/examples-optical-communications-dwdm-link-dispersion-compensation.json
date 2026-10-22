@@ -1,5 +1,5 @@
 {
- "elements": 31,
+ "elements": 32,
  "beams": 2,
  "drawables": {
   "count": 544,
@@ -54,7 +54,8 @@
   "textlabel:dcfnote": "9168f3c2",
   "textlabel:rxnote": "30d75e5d",
   "textlabel:budget": "39cb13e3",
-  "textlabel:try": "4aa86005"
+  "textlabel:try": "96455dc7",
+  "textlabel:try2": "b8d93c46"
  },
  "pulseTracks": [
   {

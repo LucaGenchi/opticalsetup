@@ -1617,9 +1617,12 @@ export const exampleEntries = [
       third of the bit slot${cite(4)}, here about 8.3&nbsp;ps. After 10&nbsp;km of
       standard fibre a Gaussian pulse of that width is about 73&nbsp;ps wide and
       smears across three bit slots. The resulting intersymbol interference
-      lowers the ones and fills in the zeros${cite(4)}. Most 40&nbsp;Gb/s-class formats
-      tolerate an accumulated dispersion of only about 50&nbsp;ps/nm${cite(4)},
-      and 10&nbsp;km of this fibre accumulates 170&nbsp;ps/nm. The distortion can be
+      distorts the amplitude of the one-bits and raises the level within the
+      zero-bits${cite(4)}. In Winzer and Essiambre's comparison of formats at
+      42.7&nbsp;Gb/s, most tolerate an accumulated dispersion of only about
+      50&nbsp;ps/nm, for a 2&nbsp;dB OSNR penalty with no add/drop multiplexers and
+      85&nbsp;GHz mux/demux bandwidths${cite(4)}; 10&nbsp;km of this fibre
+      accumulates 170&nbsp;ps/nm. The distortion can be
       undone: fibre with negative dispersion (DCF) compensates the dispersion
       accumulated in the positive-dispersion transmission fibre. Its dispersion
       is made strongly negative, around −100&nbsp;ps/(nm·km), so that a short
@@ -1642,17 +1645,15 @@ export const exampleEntries = [
       −217&nbsp;ps² and +216.9&nbsp;ps², which leaves −0.08&nbsp;ps². The demultiplexer
       drops one channel at each filter. Every receiver reads 8.3&nbsp;ps and
       0.44&nbsp;mW: 0&nbsp;dBm launched, less 2.75&nbsp;dB in the standard fibre and
-      0.85&nbsp;dB in the DCF. The time probe on RX1 shows four clean pulses in
-      100&nbsp;ps.</p>
-      <p>Things to try. Select the blue DCF and set its β₂ to 0. Every pulse now
-      arrives 73&nbsp;ps wide and the time trace on RX1 fills in: neighbouring
-      bits overlap. Set the DCF back and shorten it to 1.2&nbsp;km: 64&nbsp;ps² of
-      dispersion remain and the pulses read 22.9&nbsp;ps, nearly the whole bit
-      slot. Tune TX2 up by 0.8&nbsp;nm, halfway between channels. Its filter now
-      passes only the edge of its spectrum: RX2 receives about 0.06&nbsp;mW
-      instead of 0.44&nbsp;mW, in a pulse stretched to 23.6&nbsp;ps, and the rest is
-      reflected on to the express port. Delete a laser and only its receiver
-      goes dark.</p>`,
+      0.85&nbsp;dB in the DCF. The duration probe on the RX3 path shows the
+      pulse width. The time probe on RX1 marks when pulses arrive, one per
+      25&nbsp;ps slot; it shows timing, not pulse shape.</p>
+      <p>Things to try. Select the blue DCF and set its β₂ to 0. The duration
+      probe, and the pulse width in any receiver's inspector, now read
+      73&nbsp;ps: each pulse is wider than three 25&nbsp;ps bit slots, so
+      neighbouring bits overlap. Set the DCF back and shorten it to 1.2&nbsp;km:
+      64&nbsp;ps² of dispersion remain and the pulses read 22.9&nbsp;ps, nearly the
+      whole bit slot. Delete a laser and only its receiver goes dark.</p>`,
     limitations: `<p>Each laser emits a regular train of Gaussian pulses, not
       data, and not the exact pulse shape of a modulator-carved RZ signal. So
       there are no bit patterns, no eye diagram and no bit-error rate. Noise
@@ -1664,18 +1665,21 @@ export const exampleEntries = [
       loss is an assumed value, not taken from a product.</p>
       <p>The filters are ideal flat tops: complete transmission inside a
       1.2&nbsp;nm band, complete reflection outside it, and no roll-off, ripple or
-      dispersion of their own. A real filter's passband is typically specified
-      at 40–50% of the channel spacing${cite(2)}. The one here is wider (75%),
-      so the ideal edges do not clip the pulse spectrum. Adjacent-channel
-      leakage stays at zero until a channel is tuned into a neighbouring
-      passband. The fibres are characterised by a fixed loss per metre and a
-      constant β₂. Coupling at their ends is geometric and does not compute
-      mode-field overlap.</p>`,
+      dispersion of their own. A real filter's passband, defined at 0.5&nbsp;dB
+      below the transmission at the centre wavelength, is typically 40–50% of
+      the channel spacing${cite(2)}. The one here is wider (75%), so the ideal
+      edges do not clip the pulse spectrum. The fibres are characterised by a
+      fixed loss per metre and a constant β₂. Coupling at their ends is
+      geometric and does not compute mode-field overlap.</p>
+      <p>Pulse widths are computed for each Gaussian pulse on its own. The time
+      probe marks arrival times and does not draw the broadened pulses, so it
+      does not show neighbouring bits running into each other; the duration
+      readouts do.</p>`,
     citations: [
       { label: 'ITU-T Recommendation G.694.1, “Spectral grids for WDM applications: DWDM frequency grid” (10/2020), clauses 6–7', url: 'https://www.itu.int/rec/T-REC-G.694.1' },
       { label: 'C. He, D. Ma and W.-Z. Li, “Thin-film filters are the building blocks of multiplexing devices,” Lightwave (1 May 2001)', url: 'https://www.lightwaveonline.com/network-design/dwdm-roadm/article/16668366/thin-film-filters-are-the-building-blocks-of-multiplexing-devices' },
       { label: 'ITU-T Recommendation G.652, “Characteristics of a single-mode optical fibre and cable” (08/2024), Table I.1', url: 'https://www.itu.int/rec/T-REC-G.652' },
-      { label: 'P. J. Winzer and R.-J. Essiambre, “Advanced optical modulation formats,” Proceedings of the IEEE 94, 952–985 (2006): Sections III–IV, Table 5', url: 'https://doi.org/10.1109/JPROC.2006.873438' },
+      { label: 'P. J. Winzer and R.-J. Essiambre, “Advanced optical modulation formats,” Proceedings of the IEEE 94, 952–985 (2006): §IV-B, §V-A, §VI-E and Table 5', url: 'https://doi.org/10.1109/JPROC.2006.873438' },
       { label: 'MKS Newport, “The Effect of Dispersion on Ultrashort Pulses,” application note, Eq. 8', url: 'https://www.newport.com/n/the-effect-of-dispersion-on-ultrashort-pulses' },
     ],
     resources: [

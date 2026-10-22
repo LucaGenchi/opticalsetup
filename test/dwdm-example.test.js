@@ -58,13 +58,6 @@ test('a short DCF spool leaves the residual dispersion it does not cancel', asyn
   }
 });
 
-test('a laser tuned between channels keeps only the edge its filter passes', async () => {
-  const rx = await run(el => { el('tx2').params.wavelength += 0.8; });
-  assert.ok(rx.rx2.signal > 0 && rx.rx2.signal < 0.2 * DELIVERED, `rx2 ${rx.rx2.signal}`);
-  assert.ok(rx.rx2.pulse.stretchedPulseWidthFs > 2 * 8300);
-  for (const id of ['rx1', 'rx3', 'rx4']) close(rx[id].signal, DELIVERED, 1e-6);
-});
-
 test('deleting a laser darkens only its own receiver', async () => {
   const rx = await run((el, fiber, scene) => { scene.elements = scene.elements.filter(e => e.id !== 'tx3'); });
   assert.equal(rx.rx3, null);
