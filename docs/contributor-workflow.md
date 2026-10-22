@@ -3,8 +3,10 @@
 > **Merging to `main` publishes nothing.** opticalsetup.com changes only when
 > a release is cut and deployed.
 
-This page routes each kind of change to its files, generators, checks and
-release level. [AGENTS.md](../AGENTS.md) is the contributor policy, and the
+New contributors should start with [CONTRIBUTING.md](../CONTRIBUTING.md),
+which sets out the project's purpose and accuracy bar. This page routes each
+kind of change to its files, generators, checks and release level.
+[AGENTS.md](../AGENTS.md) is the contributor policy, and the
 guides linked below hold the details; where they say more, they win. To build
 a scene without changing the app, use the
 [scene-builder skill](../skills/opticalsetup/SKILL.md).
@@ -87,11 +89,13 @@ the real level for everything merged since the last release.
 7. **Browser.** Check the interaction at desktop width and near 1024 px: no
    console errors, and no overflow in the toolbar, palette, canvas or
    inspector.
-8. **Compatibility.** A scene saved today must keep opening. Keep every
-   existing conversion. If a change cannot stay compatible, raise the scene
-   `version` and convert on load, or show a clear "unsupported" message, and
-   say which in the PR. The release is at least a minor, and older `/vX.Y/`
-   links keep opening the older app, without the new element.
+8. **Compatibility.** A scene saved today must keep opening; its results
+   may change when the change fixes a bug or corrects the physics, and the
+   PR says which. Keep every existing conversion. If a change cannot stay
+   compatible, raise the scene `version` and convert on load, or show a
+   clear "unsupported" message, and say which in the PR. The release is at
+   least a minor, and older `/vX.Y/` links keep opening the older app,
+   without the new element.
 
 ### Calculator
 

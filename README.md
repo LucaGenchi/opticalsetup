@@ -117,7 +117,9 @@ the app that made them; see [docs/release-policy.md](docs/release-policy.md).
 To contribute a setup, press **Propose** in the toolbar: it submits the
 current sketch with your description for review, and accepted setups are
 published in the Community section. The canvas autosaves in your own browser,
-so you can't break anything for anyone else. Code contributor guidance is in [AGENTS.md](AGENTS.md); maintainers publishing
+so you can't break anything for anyone else. For everything else — bug
+reports, wiki corrections, examples and code — see
+[CONTRIBUTING.md](CONTRIBUTING.md); maintainers publishing
 a community submission should follow
 [docs/community-setup-review.md](docs/community-setup-review.md). The
 sanitized Codex conversations behind the major development passes are in the
