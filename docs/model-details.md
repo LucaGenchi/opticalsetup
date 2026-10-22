@@ -227,15 +227,25 @@ as intensities. An incomplete trace or a route through an optic whose carrier ph
 not represented falls back to conservative deposited intensity rather than inventing a
 phase.
 
-A point source's rays are collected by lenses, mirrors (every element of those
-two palette groups) and fiber tips within its capture range (1 m by default,
-110 mm to 5 m; 165 mm for a sketch saved before the control existed). A
-collected ray is ordinary light from the source on, so an optic in front of the
-collector acts on it; no other element collects, and an opaque one hides the
-collector behind it. A ray with no collector ahead is drawn as a glow fading
-within 110 mm and reaches no detector. The range is a drawing convention that
-keeps a 360° emitter from covering the canvas, not attenuation or an
-inverse-square law: collected light arrives at full ray weight.
+A point source's rays are caught within its capture range (1 m by default, 110
+mm to 100 m; 165 mm for a sketch saved before the control existed). What catches
+them is set on the source ("Caught by"). By default ("Any optic") it is every
+optical element: the first traced surface a ray meets within the range acts on
+it as on any light, so glass refracts it, a filter filters it and a bare
+detector reads it. A lens, a mirror, a detector (every element of those three
+palette groups) or a fiber tip collects the light, and what leaves a lens or
+mirror is ordinary light at any distance. Any other optic hands on light that is
+still the source's diverging emission: every branch leaving it keeps only the
+range that is left, as the light leaking through a partial mirror does. The
+housing of another light source does not catch the rays. Light that nothing
+catches is drawn as a glow fading within 110 mm (never further than the range
+left) and reaches no detector. "Collectors" lets only those collectors catch: an
+optic in front of one acts on the light, and an opaque one hides it. Sketches
+saved before this choice existed open with the rule they were drawn with, shown
+as "Lenses & mirrors": the same, except that a detector does not collect. Either
+way the range is a drawing convention for how far an isotropic emitter stays
+visible, not attenuation or an inverse-square law: caught light arrives at full
+ray weight.
 
 The metalens is a zero-thickness paraxial phase-gradient proxy rather than an
 electromagnetic metasurface solver. In chromatic mode its focal length follows the
@@ -265,7 +275,30 @@ playback rather than claiming a calibrated high-speed recording.
 The 2PP resin preview records pulsed ray arrivals at the stage sample plane and
 shows their positions in the moving 2D sample. It does not calculate focal volume,
 two-photon absorption, threshold dose, cure kinetics, voxel overlap, or a hidden
-third axis.
+third axis. Photocurable resin can optionally generate a two-photon fluorescence
+channel without disabling the write preview. It is off for existing saved resins,
+and fluorescence does not create extra voxel marks or measure polymerization.
+
+Incoherent specimen signals (fluorescence and spontaneous Raman) emit one fan
+per arriving excitation branch, placed on a surviving sampling ray nearest the
+beam centre and weighted by the combined excitation that reached the specimen.
+Clipping a pump edge does not extinguish a still-illuminated specimen. Each
+channel offers 4–128 emission rays over 360° (per line for Raman), sharing a fixed
+emitted weight across the fan. The legacy defaults are 20 for fluorescence and
+14 per Raman line. Angular sampling is denser near the excitation axis, so
+collection readings can change with resolution; this is not calibrated isotropic
+radiometry. The two-photon label imposes the photon-energy/wavelength rule,
+not an intensity-squared focal response, cross-section, lifetime, bleaching, or
+curing model.
+
+Every specimen signal is emitted where the beam crosses the specimen line. In a
+tightly focused microscope, linear signals (fluorescence, spontaneous Raman) come
+from the whole illuminated cone, while nonlinear ones (multiphoton fluorescence,
+harmonics, CARS, SRS) are concentrated near the focal region, because they scale
+with a power of the intensity. Nonlinear generation does not itself need a focus;
+an intense unfocused beam also drives it. The tracer computes no intensity
+profile, so it does not reproduce this difference: an unfocused beam generates a
+nonlinear signal as readily as a focused one.
 
 Standalone objectives are set by effective focal length (EFL) — the focal length of
 the whole assembly as one equivalent lens — plus a working distance

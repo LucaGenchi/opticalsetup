@@ -23,7 +23,7 @@ REFERENCE = os.path.join(ROOT, "validation", "reference")
 EXPECTED = os.path.join(ROOT, "validation", "expected")
 REPORT = os.path.join(ROOT, "docs", "validation.md")
 CONVERGENCE = os.path.join(ROOT, "validation", "expected", "convergence.json")
-MODULES = ["sellmeier", "pulse", "argon_capillary", "nlse", "paraxial", "opa", "broadband_interference"]
+MODULES = ["sellmeier", "pulse", "argon_capillary", "nlse", "paraxial", "opa", "broadband_interference", "wavelength_conversion", "material_dispersion"]
 
 sys.path.insert(0, REFERENCE)
 
@@ -41,9 +41,9 @@ def build():
 # that nobody has checked it against an independent source. Keeping this list
 # accurate is part of adding a model (docs/adding-physics.md).
 UNCOVERED = [
-    ("OPO signal and idler wavelengths, Manley-Rowe power split and depletion", "sketch/js/parametric.js"),
+    ("OPO signal and idler wavelengths, Manley-Rowe power split and depletion as the tracer applies them (the conversion calculator checks the same identities with its own arithmetic)", "sketch/js/parametric.js"),
     ("Supercontinuum spectral range from pump and medium", "sketch/js/parametric.js"),
-    ("Sum- and difference-frequency mixing wavelengths and durations", "sketch/js/parametric.js"),
+    ("Sum- and difference-frequency mixing durations, widths and overlap (the wavelengths are checked through the conversion calculator)", "sketch/js/parametric.js"),
     ("Objective focal length, NA, acceptance angle and pupil relations", "sketch/js/objective.js"),
     ("Acousto-optic deflection angle and efficiency", "sketch/js/acousto-optic.js, sketch/js/aotf.js"),
     ("Grating and prism dispersion as the tracer applies them, including order efficiency", "sketch/js/raytrace.js"),

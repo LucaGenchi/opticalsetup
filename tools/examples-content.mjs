@@ -595,6 +595,62 @@ export const exampleEntries = [
     related: ['pulsedlaser', 'eom', 'retroreflector', 'objective', 'sample', 'pmt'],
   },
   {
+    match: 'Retinal imaging — Linnik interferometer with a model eye',
+    title: 'Retinal imaging with a Linnik interferometer',
+    tagline: 'In an ophthalmic interferometer the eye is the sample-arm objective: its own optics focus the light, the retina sends some of it back, and a lens with a mirror reproduces the same arrangement in the reference arm.',
+    html: `
+      <p>Optical coherence tomography (OCT) images the layers of the retina by
+      interfering light returned from the eye with light from a reference
+      mirror. In full-field OCT the whole field is illuminated at once and
+      imaged onto a fast camera instead of scanning a single spot. A
+      <strong>Linnik interferometer</strong> is a Michelson interferometer
+      with an objective lens in each arm; for retinal imaging, the sample-arm
+      objective is the eye itself, so the reference arm carries a lens of
+      similar focal length and a mirror at its focus to match it${cite(1)}.</p>
+      <p>The same lens-and-mirror pair is also how such instruments are
+      tested without a volunteer: Auksorius, Borycki and Wojtkowski chose a
+      2.5 cm lens in front of a resolution target as a close optical
+      approximation of a human eye, and an eye focal length of 2.5 cm in
+      their system estimates${cite(1)}. Their system then destroyed the
+      spatial coherence of the swept laser with a fast deformable membrane, so
+      that multiply scattered light from the retina no longer interferes and
+      corrupts the image with crosstalk.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>The layout is a simplified version of the paper's Fig. 1, with the
+      deformable membrane switched off (a flat mirror, left out here) and the
+      relay lenses omitted. An 840 nm source splits at a 50/50 beamsplitter.
+      The sample arm is a <em>Human eye</em> with a 25 mm focal length, a
+      6 mm dilated pupil and 5 % retinal reflectivity: the collimated beam
+      focuses on the retina, and the reflected part leaves the pupil
+      collimated again. The reference arm is the same thing built from
+      parts — a 25 mm lens with a mirror at its focus — behind a neutral
+      density filter that leaves about 6 % after the double pass, as in the
+      paper. Both returns recombine at the beamsplitter and a tube lens
+      focuses them onto the camera.</p>
+      <p>Change the eye's <em>Retinal reflectivity</em> to see the sample
+      return and the camera reading change, or its power (in millimetres or
+      dioptres) to give it a refractive error: the return then leaves the
+      eye converging or diverging instead of collimated. Raise its
+      <em>Diffuse share</em> to make the retina scatter like a real fundus:
+      only the light aimed at the 6 mm pupil leaves the eye, about 1.4 % of
+      what is scattered, so the sample return drops far below the reference
+      — the reason the paper turns its reference arm down.</p>`,
+    limitations: `<p>The retina is a single plane, mirror-like here and
+      optionally diffuse, not a layered fundus, so the scene has no depth
+      structure to image and no crosstalk to remove. The source is a single fixed
+      wavelength rather than a sweep, and the carrier phase through the eye is
+      not modeled, so the camera adds the two returns' powers instead of
+      forming OCT fringes. The deformable membrane, its spatial-coherence
+      gating, and the paper's three-lens defocus compensation are not
+      modeled.</p>`,
+    citations: [
+      { label: 'E. Auksorius, D. Borycki and M. Wojtkowski, "Crosstalk-free volumetric in vivo imaging of a human retina with Fourier-domain full-field optical coherence tomography," Biomedical Optics Express 10, 6390 (2019)', url: 'https://doi.org/10.1364/BOE.10.006390' },
+    ],
+    resources: [],
+    related: ['eye', 'bs', 'lens', 'mirror', 'filter', 'camera'],
+  },
+  {
     match: 'Michelson interferometer',
     title: 'Michelson interferometer',
     tagline: 'One beamsplitter, two mirror arms, one recombined output — the interferometer behind the Michelson–Morley experiment and, scaled up four kilometers, LIGO.',
@@ -1526,5 +1582,111 @@ export const exampleEntries = [
     citations: [],
     resources: [{ label: 'Model, numerical bounds and reference checks', url: '/docs/physics/broadband-interference.md' }],
     related: ['pulsedlaser', 'sclaser', 'bs', 'spectrometer', 'delayline'],
+  },
+  {
+    match: 'DWDM link — dispersion compensation',
+    title: 'DWDM link with dispersion compensation',
+    tagline: 'Four 40 GHz pulse trains on the ITU grid share 10 km of fibre: the fibre spreads every pulse past its bit slot, and a short spool of dispersion-compensating fibre gathers them back.',
+    html: `
+      <p>Dense wavelength-division multiplexing (DWDM) is how one optical fibre
+      carries many independent signals: each channel gets its own optical
+      frequency, all of them travel together, and the receiving end separates
+      them again. The frequencies are not chosen freely: ITU-T G.694.1 defines
+      the grid they sit on, anchored to 193.1&nbsp;THz, with fixed channel
+      spacings from 12.5&nbsp;GHz to 100&nbsp;GHz and integer multiples of
+      100&nbsp;GHz${cite(1)}.</p>
+      <p>One classic way to combine and separate the channels is the thin-film
+      filter: a stack of dielectric layers on a substrate that, by interference,
+      transmits one channel and reflects all the others. A multichannel
+      demultiplexer cascades such filters, each taking the light the previous
+      one reflected${cite(2)}; run backwards, the same cascade adds channels
+      onto a common fibre.</p>
+      <p>The fibre itself limits how fast each channel can go. For links of
+      standard single-mode fibre (ITU-T G.652), the typical values given for
+      the 1530–1565&nbsp;nm band are an attenuation coefficient of
+      0.275&nbsp;dB/km and a chromatic dispersion coefficient D of
+      17&nbsp;ps/(nm·km)${cite(3)}. D is related to the group-velocity dispersion
+      by D = −2πcβ₂/λ²${cite(4)}, which gives β₂ ≈ −21.7&nbsp;ps²/km at
+      1550&nbsp;nm. A short pulse contains a band of wavelengths that travel at
+      different speeds, so it spreads. A transform-limited Gaussian pulse of
+      full width at half maximum Δt that picks up a group-delay dispersion
+      φ₂ = β₂L leaves with a width Δt·√(1 + (4&nbsp;ln2·φ₂/Δt²)²)${cite(5)}: the
+      shorter the pulse, the faster it spreads.</p>
+      <p>At 40&nbsp;Gb/s the bit slot is 25&nbsp;ps. A return-to-zero pulse carver
+      can make pulses with a 33% duty cycle, a full width at half maximum of a
+      third of the bit slot${cite(4)}, here about 8.3&nbsp;ps. After 10&nbsp;km of
+      standard fibre a Gaussian pulse of that width is about 73&nbsp;ps wide and
+      smears across about three bit slots. The resulting intersymbol interference
+      distorts the amplitude of the one-bits and raises the level within the
+      zero-bits${cite(4)}. In Winzer and Essiambre's comparison of formats at
+      42.7&nbsp;Gb/s, most tolerate an accumulated dispersion of only about
+      50&nbsp;ps/nm, for a 2&nbsp;dB OSNR penalty with no add/drop multiplexers and
+      85&nbsp;GHz mux/demux bandwidths${cite(4)}; 10&nbsp;km of this fibre
+      accumulates 170&nbsp;ps/nm. The distortion can be
+      undone: fibre with negative dispersion (DCF) compensates the dispersion
+      accumulated in the positive-dispersion transmission fibre. Its dispersion
+      is made strongly negative, around −100&nbsp;ps/(nm·km), so that a short
+      length is enough and adds little loss${cite(4)}.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>Four <a href="../../wiki/pulsedlaser/">pulsed lasers</a> sit on the grid
+      at a 200&nbsp;GHz spacing: 193.4, 193.2, 193.0 and 192.8&nbsp;THz, which
+      are 1550.12, 1551.72, 1553.33 and 1554.94&nbsp;nm. Each emits 1&nbsp;mW of
+      8.3&nbsp;ps transform-limited Gaussian pulses at 40&nbsp;GHz. A train with a
+      pulse in every slot is the clock of a 40&nbsp;Gb/s return-to-zero signal,
+      every bit a one, with no data pattern on it. Three
+      <a href="../../wiki/dichroic/">band-pass filters</a>, 1.2&nbsp;nm wide, put the
+      channels on one path. CH4 needs no filter of its own: the CH3 filter
+      reflects it onto the path. The <a href="../../wiki/probe/">probe</a> just after the
+      multiplexer shows the four lines.</p>
+      <p>The link is 10&nbsp;km of standard fibre: D = 17&nbsp;ps/(nm·km), so
+      β₂ = −21.7&nbsp;ps²/km, and 0.275&nbsp;dB/km. Then come 1.7&nbsp;km of DCF:
+      D = −100&nbsp;ps/(nm·km), so β₂ = +127.6&nbsp;ps²/km, with an assumed
+      0.5&nbsp;dB/km. Together the two fibres add a group-delay dispersion of
+      −217&nbsp;ps² and +216.9&nbsp;ps², which leaves −0.08&nbsp;ps². The demultiplexer
+      drops one channel at each filter. Every receiver reads 8.3&nbsp;ps and
+      0.44&nbsp;mW: 0&nbsp;dBm launched, less 2.75&nbsp;dB in the standard fibre and
+      0.85&nbsp;dB in the DCF. The duration and power probes on the RX3 path
+      show the pulse width and the power. The time probe on RX1 marks when pulses arrive, one per
+      25&nbsp;ps slot; it shows timing, not pulse shape.</p>
+      <p>Things to try. Select the blue DCF and set its β₂ to 0. The duration
+      probe, and the pulse width in any receiver's inspector, now read
+      73&nbsp;ps: each pulse spans about three 25&nbsp;ps bit slots, so
+      neighbouring bits overlap. Set the DCF back and shorten it to 1.2&nbsp;km:
+      64&nbsp;ps² of dispersion remain and the pulses read 22.9&nbsp;ps, nearly the
+      whole bit slot. Delete a laser and only its receiver goes dark.</p>`,
+    limitations: `<p>Each laser emits a regular train of Gaussian pulses, not
+      data, and not the exact pulse shape of a modulator-carved RZ signal. So
+      there are no bit patterns, no eye diagram and no bit-error rate. Noise
+      from sources, amplifiers and receivers is not modelled. Neither are fibre
+      nonlinearity, polarization-mode dispersion, or the variation of
+      dispersion with wavelength. Every channel sees the same β₂ here, while
+      the typical slope of standard fibre, 0.056&nbsp;ps/(nm²·km)${cite(3)}, makes
+      D at the outer channels differ by about 0.27&nbsp;ps/(nm·km). The DCF
+      loss is an assumed value, not taken from a product.</p>
+      <p>The filters are ideal flat tops: complete transmission inside a
+      1.2&nbsp;nm band, complete reflection outside it, and no roll-off, ripple or
+      dispersion of their own. A real filter's passband, defined at 0.5&nbsp;dB
+      below the transmission at the centre wavelength, is typically 40–50% of
+      the channel spacing${cite(2)}. The one here is wider (75%), so the ideal
+      edges do not clip the pulse spectrum. The fibres are characterised by a
+      fixed loss per metre and a constant β₂. Coupling at their ends is
+      geometric and does not compute mode-field overlap.</p>
+      <p>Pulse widths are computed for each Gaussian pulse on its own. The time
+      probe marks arrival times and does not draw the broadened pulses, so it
+      does not show neighbouring bits running into each other; the duration
+      readouts do.</p>`,
+    citations: [
+      { label: 'ITU-T Recommendation G.694.1, “Spectral grids for WDM applications: DWDM frequency grid” (10/2020), clauses 6–7', url: 'https://www.itu.int/rec/T-REC-G.694.1' },
+      { label: 'C. He, D. Ma and W.-Z. Li, “Thin-film filters are the building blocks of multiplexing devices,” Lightwave (1 May 2001)', url: 'https://www.lightwaveonline.com/network-design/dwdm-roadm/article/16668366/thin-film-filters-are-the-building-blocks-of-multiplexing-devices' },
+      { label: 'ITU-T Recommendation G.652, “Characteristics of a single-mode optical fibre and cable” (08/2024), Table I.1', url: 'https://www.itu.int/rec/T-REC-G.652' },
+      { label: 'P. J. Winzer and R.-J. Essiambre, “Advanced optical modulation formats,” Proceedings of the IEEE 94, 952–985 (2006): §IV-B, §V-A, §VI-E and Table 5', url: 'https://doi.org/10.1109/JPROC.2006.873438' },
+      { label: 'MKS Newport, “The Effect of Dispersion on Ultrashort Pulses,” application note, Eq. 8', url: 'https://www.newport.com/n/the-effect-of-dispersion-on-ultrashort-pulses' },
+    ],
+    resources: [
+      { label: 'Wikipedia — Wavelength-division multiplexing', url: 'https://en.wikipedia.org/wiki/Wavelength-division_multiplexing' },
+      { label: 'Same mechanism in the visible: Wavelength combining and separation', url: '../wavelength-combining-and-separation-dichroic-mirrors/' },
+    ],
+    related: ['pulsedlaser', 'dichroic', 'fiber', 'probe', 'detector', 'beamdump'],
   },
 ];

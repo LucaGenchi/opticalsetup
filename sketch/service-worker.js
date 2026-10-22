@@ -5,7 +5,7 @@
 // family of cache names and only ever deletes, or reads, its own.
 const KEPT_RELEASE = (/\/(v\d+\.\d+)\/sketch\/$/.exec(new URL('./', self.location.href).pathname) || [])[1] || '';
 const CACHE_FAMILY = KEPT_RELEASE ? `opticalsetup-kept-${KEPT_RELEASE}-` : 'opticalsetup-pwa-';
-const CACHE_NAME = `${CACHE_FAMILY}v140`;
+const CACHE_NAME = `${CACHE_FAMILY}v147`;
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -36,6 +36,7 @@ const PRECACHE_PATHS = [
   "./js/detector-instruments.js",
   "./js/detector-measurements.js",
   "./js/elements.js",
+  "./js/emission.js",
   "./js/etalon.js",
   "./js/examples-data.js",
   "./js/export.js",
@@ -70,31 +71,33 @@ const PRECACHE_PATHS = [
   "./js/vipa.js",
   "./js/viewport.js",
   "./js/wiki-types.js",
+  "./js/spectral-coherence.js",
   "../Examples/Lens%20Physics/Singlet%20vs%20achromat%20%E2%80%94%20axial%20colour.json",
   "../Examples/Lens%20Physics/Spherical%20aberration%20%E2%80%94%20ideal%20lens%20vs%20spherical%20singlet.json",
   "../Examples/Lens%20Physics/Spherical%20aberration%20%E2%80%94%20sphere%20vs%20asphere%20vs%20ideal%20lens.json",
-  "../Examples/Interferometers/Mach%E2%80%93Zehnder%20interferometer.json",
-  "../Examples/Interferometers/Michelson%20interferometer.json",
-  "../Examples/Scanning/Polygon%20scanner%20%E2%80%94%20line%20scanning.json",
-  "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
-  "../Examples/Microscopy%20Implementations/Multiphoton%20microscope%20%E2%80%94%20SHG%20and%20two%20photon%20fluorescence.json",
-  "../Examples/Nonlinear%20Optics/Optical%20parametric%20oscillator%20%E2%80%94%20ring%20cavity%2C%20element%20by%20element.json",
-  "../Examples/Nonlinear%20Optics/Synchronously%20pumped%20picosecond%20OPO.json",
-  "../Examples/Nonlinear%20Optics/Near%20infrared%20supercontinuum%20in%20YAG.json",
   "../Examples/Reflective%20Imaging%20Systems/Gregorian%20telescope%20%E2%80%94%20element%20by%20element.json",
-  "../Examples/Reflective%20Imaging%20Systems/Ritchey%E2%80%93Chr%C3%A9tien%20telescope%20%E2%80%94%20element%20by%20element.json",
   "../Examples/Reflective%20Imaging%20Systems/IR%20Cassegrain%20objective%20%E2%80%94%20element%20by%20element.json",
-  "../Examples/Ultrashort%20Pulses/Hollow-core%20pulse%20compressor.json",
-  "../Examples/Ultrashort%20Pulses/OPCPA%20%E2%80%94%20stretch%2C%20amplify%2C%20recompress.json",
-  "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json",
-  "../Examples/Ultrashort%20Pulses/Finding%20time%20zero%20%E2%80%94%20sum%20frequency%20of%20two%20beams.json",
+  "../Examples/Reflective%20Imaging%20Systems/Ritchey%E2%80%93Chr%C3%A9tien%20telescope%20%E2%80%94%20element%20by%20element.json",
   "../Examples/Beam%20Routing/Polarization%20send%E2%80%93return%20separation%20%E2%80%94%20PBS%20and%20quarter-wave%20plate.json",
   "../Examples/Beam%20Routing/Wavelength%20combining%20and%20separation%20%E2%80%94%20dichroic%20mirrors.json",
   "../Examples/Interferometers/IQ%20optical%20modulator%20%E2%80%94%20nested%20Mach%E2%80%93Zehnder.json",
-  "../Examples/Microscopy%20Implementations/Epi-fluorescence%20microscope.json",
-  "./js/spectral-coherence.js",
+  "../Examples/Interferometers/Mach%E2%80%93Zehnder%20interferometer.json",
+  "../Examples/Interferometers/Michelson%20interferometer.json",
   "../Examples/Interferometers/Pulsed%20Mach%E2%80%93Zehnder.json",
-  "../Examples/Interferometers/Supercontinuum%20Mach%E2%80%93Zehnder.json"
+  "../Examples/Interferometers/Supercontinuum%20Mach%E2%80%93Zehnder.json",
+  "../Examples/Nonlinear%20Optics/Near%20infrared%20supercontinuum%20in%20YAG.json",
+  "../Examples/Nonlinear%20Optics/Optical%20parametric%20oscillator%20%E2%80%94%20ring%20cavity%2C%20element%20by%20element.json",
+  "../Examples/Nonlinear%20Optics/Synchronously%20pumped%20picosecond%20OPO.json",
+  "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
+  "../Examples/Microscopy%20Implementations/Epi-fluorescence%20microscope.json",
+  "../Examples/Microscopy%20Implementations/Multiphoton%20microscope%20%E2%80%94%20SHG%20and%20two%20photon%20fluorescence.json",
+  "../Examples/Ophthalmology/Retinal%20imaging%20%E2%80%94%20Linnik%20interferometer%20with%20a%20model%20eye.json",
+  "../Examples/Optical%20Communications/DWDM%20link%20%E2%80%94%20dispersion%20compensation.json",
+  "../Examples/Scanning/Polygon%20scanner%20%E2%80%94%20line%20scanning.json",
+  "../Examples/Ultrashort%20Pulses/Finding%20time%20zero%20%E2%80%94%20sum%20frequency%20of%20two%20beams.json",
+  "../Examples/Ultrashort%20Pulses/Hollow-core%20pulse%20compressor.json",
+  "../Examples/Ultrashort%20Pulses/OPCPA%20%E2%80%94%20stretch%2C%20amplify%2C%20recompress.json",
+  "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json"
 ];
 
 const APP_ENTRY = new URL('./', self.location.href).href;

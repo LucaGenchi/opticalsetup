@@ -3,12 +3,13 @@
 // Right-hand inspector: edit properties of the selected element or manual beam.
 
 import { state, changed, pushUndo, findSelected } from './state.js';
+import { emissionRayCount, emissionRayCountAfterKindChange, EMISSION_RAY_LIMITS } from './emission.js';
 import { MAX_AOTF_CHANNELS, newAotfChannel, normalizeAotfChannels } from './aotf.js';
 import {
   registry, cameraProfileSVG, cameraReadingState, newShaperLayer, MAX_SHAPER_LAYERS, getElementMeta, getDirectManipulation, resolveDisplaySensor,
-  newSampleChannel, MAX_SAMPLE_CHANNELS, MIXING_KINDS, EPI_CAPABLE_KINDS, sampleChannels,
+  newSampleChannel, MAX_SAMPLE_CHANNELS, MIXING_KINDS, EPI_CAPABLE_KINDS, sampleChannels, sampleChannelIndices,
   signalKindsFor, specimenTypeOf, channelWarning, defaultEmissionWl, drivingExcitationWl,
-  EMISSION_ORDER, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
+  EMISSION_ORDER, ISOTROPIC_KINDS, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
   FLUOROPHORES, fluorophoreSpec, normalizeSupercontinuumParams,
 } from './elements.js';
 import { detectorReading, fiberReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace, weakLightShortfallFromLastTrace } from './raytrace.js';
@@ -22,7 +23,8 @@ import {
   autocorrelationReading, crossCorrelationReading, crossCorrelationPair, crossScopeHalfSpanFs,
   bestScopeSpanPs, DEFAULT_SCOPE_SPAN_PS, AUTO_SCOPE_SPAN, sampledAutocorrelationReading,
 } from './glass.js';
-import { pmtVerdict } from './detector-measurements.js';
+import { enhancedReading, pmtVerdict } from './detector-measurements.js';
+import { formatPowerMw } from './probe.js';
 import { transformLimitedBandwidthNm } from './spectrum.js';
 import { buildTwoPhotonHandoffUrl, twoPhotonHandoffCandidates } from './two-photon-handoff.js';
 import {
@@ -66,7 +68,7 @@ export function initInspector(el) { panel = el; }
 export const REBUILD_ON_COMMIT_KEYS = [
   'dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode',
   'raysMode', 'zeroOrder', 'modulate', 'modShape', 'mode', 'scanMode', 'moveMode',
-  'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot',
+  'transmitExc', 'specimenType', 'resinFluorescence', 'voxelPreview', 'pzMode', 'showSignalSpot',
   'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode',
   'extension', 'immersion', 'preset', 'material', 'showDepleted', 'modMode',
   'measurementMode', 'prop', 'sync', 'sourceKind',
@@ -461,7 +463,8 @@ function measurementHTML(el) {
     : readoutKind === 'camera' ? `
       ${cancelled ? '' : `<dt>Centroid</dt><dd>${rd.centroid === null ? '—' : `${rd.centroid.toFixed(2)} mm`}</dd>`}
       <dt>Sensor pixels</dt><dd>${rd.profile?.length || 0}</dd>`
-    : readoutKind === 'autocorrelator' ? autocorrelatorRows(rd, source) : '';
+    : readoutKind === 'autocorrelator' ? autocorrelatorRows(rd, source)
+    : readoutKind === 'retina' ? retinaPowerRow(source) : '';
   let cameraProfile = '';
   if (isCamera && rd.profile) {
     const halfSpan = cameraAxisHalfSpan(source);
@@ -661,16 +664,25 @@ function incidentBeamsAt(sel) {
 // the same physical sample).
 function signalsHTML(sel) {
   const channels = sampleChannels(sel.params);
+  // Rows address channels by their stored position: a saved specimen can
+  // keep dormant channels its type does not honor ahead of the shown ones.
+  const stored = sampleChannelIndices(sel.params);
   const kinds = signalKindsFor(specimenTypeOf(sel.params));
   const incident = incidentWlsAt(sel);
   const excitation = drivingExcitationWl(incident);
   let h = `<div class="lsechead">Signals generated — stack up to ${MAX_SAMPLE_CHANNELS}</div>`;
-  channels.forEach((c, i) => {
+  channels.forEach((c, row) => {
+    const i = stored[row];
     h += `<div class="layer"><div class="layerrow">
-      <select data-ci="${i}" data-ck="kind" aria-label="Signal ${i + 1} type">` +
+      <select data-ci="${i}" data-ck="kind" aria-label="Signal ${row + 1} type">` +
       kinds.map(([v, l]) => `<option value="${v}" ${v === c.kind ? 'selected' : ''}>${l}</option>`).join('') +
-      `</select><button type="button" class="layerdel" data-cdel="${i}" title="Remove this signal" aria-label="Remove signal ${i + 1}">✕</button></div>`;
+      `</select><button type="button" class="layerdel" data-cdel="${i}" title="Remove this signal" aria-label="Remove signal ${row + 1}">✕</button></div>`;
 
+    if (ISOTROPIC_KINDS.has(c.kind)) {
+      h += numberField(c.kind === 'raman' ? 'Emission rays / line' : 'Emission rays',
+        `data-ci="${i}" data-ck="nrays"`, emissionRayCount(c), EMISSION_RAY_LIMITS);
+      h += '<div class="hint">Angular sampling over 360°. More rays resolve collection angles; total emitted power stays the same.</div>';
+    }
     const order = EMISSION_ORDER[c.kind];
     if (order) {
       h += field('Fluorophore', `<select data-ci="${i}" data-ck="fluorophore">` +
@@ -747,7 +759,10 @@ function signalsHTML(sel) {
 // numeric and drew "Show excitation spot" as a number box.
 function paramField(p, sel) {
   const v = sel.params[p.key];
-  if (p.type === 'number') return numberField(p.label, `data-p="${p.key}"`, v, resolvedParam(p, sel.params));
+  // A param may explain its current setting underneath its control.
+  const noteText = typeof p.note === 'function' ? p.note(sel.params) : p.note;
+  const note = noteText ? `<div class="hint param-note">${esc(noteText)}</div>` : '';
+  if (p.type === 'number') return numberField(p.label, `data-p="${p.key}"`, v, resolvedParam(p, sel.params)) + note;
   if (p.type === 'optsize') return optsizeField(p, v);
   if (p.type === 'text') return field(p.label, `<input type="text" data-p="${p.key}" ${p.key === 'orders' ? 'maxlength="200"' : ''} value="${esc(v)}">`);
   if (p.type === 'checkbox') return field(p.label, `<input type="checkbox" data-p="${p.key}" ${v ? 'checked' : ''}>`);
@@ -759,7 +774,7 @@ function paramField(p, sel) {
     ];
     return field(p.label, `<select data-p="${p.key}">`
       + options.map(([ov, ol, disabled]) => `<option value="${ov}" ${ov === v ? 'selected' : ''} ${disabled ? 'disabled' : ''}>${esc(ol)}</option>`).join('')
-      + `</select>`);
+      + `</select>`) + note;
   }
   if (p.type === 'derived-select') {
     const selected = p.get(sel.params);
@@ -849,6 +864,16 @@ function refreshDerivedSelects(sel) {
     const spec = specs.get(select.dataset.p);
     if (spec?.get) select.value = spec.get(sel.params);
   });
+}
+
+// The power reaching the retina, carried from each source's configured
+// watts like a power meter's reading. It is the light that arrives, before
+// any retinal reflection; no exposure limit is implied.
+function retinaPowerRow(sensor) {
+  const reading = enhancedReading(sensor, state.elements);
+  if (!Number.isFinite(reading?.detectedPowerW)) return '';
+  const floor = reading.powerCoversAllArrivals === false ? ' (+ unrated source)' : '';
+  return `<dt>Power at retina</dt><dd>${formatPowerMw(reading.detectedPowerW)}${floor}</dd>`;
 }
 
 function objectiveCouplingHint(sel) {
@@ -1306,6 +1331,7 @@ function applySpecimenTypePreset(sel) {
     Object.assign(p, { transmitExc: true, transmission: 0.8, voxelPreview: false });
   } else if (type === 'resin') {
     Object.assign(p, { transmitExc: true, transmission: 0.85, voxelPreview: true });
+    if (p.resinFluorescence) p.channels = [seededChannel('tpef', sel)];
   } else if (type === 'linear') {
     Object.assign(p, { transmitExc: true, transmission: 0.8, voxelPreview: false });
     p.channels = [seededChannel('fluor', sel)];
@@ -1429,16 +1455,19 @@ export function applyInput(inp, rebuild = false) {
         const seeded = defaultEmissionWl(c.kind, drivingExcitationWl(incidentWlsAt(sel)));
         if (seeded) c.wl = seeded;
       }
+    } else if (ckey === 'kind') {
+      if (ISOTROPIC_KINDS.has(val)) c.nrays = emissionRayCountAfterKindChange(c, val);
+      c.kind = val;
     } else if (ckey === 'transferEff') {
       c.transferEff = Math.min(0.5, Math.max(0.01, val / 100)); // shown as a percentage
     } else {
-      c[ckey] = val;
+      c[ckey] = ckey === 'nrays' ? emissionRayCount({ kind: c.kind, nrays: val }) : val;
     }
     changed();
     warnAboutChannel(c, sel);
     // Switching kind changes which fields apply at all, so rebuild the rows.
     // 'wl' redraws so the inline warning tracks the value just committed.
-    if (rebuild && ['kind', 'autoWl', 'epi', 'autoColor', 'material', 'wl', 'requireOverlap', 'fluorophore'].includes(ckey)) renderInspector();
+    if (rebuild && ['kind', 'autoWl', 'epi', 'autoColor', 'material', 'wl', 'nrays', 'requireOverlap', 'fluorophore'].includes(ckey)) renderInspector();
     return;
   }
 
@@ -1485,6 +1514,9 @@ export function applyInput(inp, rebuild = false) {
   else if (pkey) {
     sel.params[pkey] = val;
     if (pkey === 'specimenType') applySpecimenTypePreset(sel);
+    if (pkey === 'resinFluorescence' && val && !sampleChannels(sel.params).length) {
+      sel.params.channels = [seededChannel('tpef', sel)];
+    }
     if (sel.type === 'autocorrelator' && pkey === 'measurementMode') applyScopeSpanForMode(sel);
     if (sel.type === 'objective') Object.assign(sel.params, normalizeObjectiveParams(sel.params));
   }

@@ -562,8 +562,8 @@ export const wikiEntries = [
         <p>The LED is a packaged source: the die and its collimator are one element, and
         what leaves the housing is a collimated beam of the width you set, made of ordinary
         rays that travel until something stops them. This is what separates it from the
-        Point source, which is the bare emitter — isotropic, and only useful once a lens or
-        a mirror collects it.</p>
+        Point source, which is the bare emitter: isotropic, and visible only as far as its
+        capture range unless a lens or a mirror collects it.</p>
         <p>Choose a preset or a custom centre wavelength and width. Each single-colour
         preset is one Gaussian band. The white preset is two: a blue peak near
         450&nbsp;nm and a phosphor band near 580&nbsp;nm, carried as one spectrum with both
@@ -637,28 +637,39 @@ export const wikiEntries = [
         set are recognisable on sight, and that recognisability is the whole reason a
         spectroscopy course starts here.</p>`,
       formulas: [
-        { tex: 'E = \\frac{P}{4\\pi r^{2}}', caption: 'Irradiance from an isotropic emitter: the inverse-square law is the reason uncollected point-source light is gone within a short distance.' },
+        { tex: 'E = \\frac{P}{4\\pi r^{2}}', caption: 'Irradiance E at distance r from an isotropic emitter of total power P: the inverse-square law is why light nothing collects becomes too faint to matter beyond some distance.' },
       ],
     },
     inOpticalSetup: {
       html: `
         <p>The point source emits rays evenly over its <strong>emission angle</strong> —
-        the full 360&deg; by default — and a ray that meets nothing is drawn as a glow that
-        <strong>fades within about 110&nbsp;mm</strong>. That fading is the model's one
-        strong opinion, and it is there because the alternative is worse: an isotropic
-        emitter whose rays all ran forever would bury the bench in lines.</p>
-        <p>The <strong>capture range</strong> decides which rays carry on instead: a ray
-        with a lens, a <a href="../mirror/">mirror</a> or a fiber tip ahead of it within
-        that distance is collected, and is ordinary light all the way from the source.
-        Every element in the Lenses and Mirrors groups collects; nothing else does. A
-        filter or a polarizer in front of the collecting lens acts on the light passing
-        through it but collects nothing by itself, a detector facing the source directly
-        reads nothing, and a beam block, a housing or a detector in the way hides the
-        collector behind it. The range is 1&nbsp;m for a newly placed source and can be
-        set between 110&nbsp;mm and 5&nbsp;m; a sketch saved before the control existed
-        opens at the 165&nbsp;mm it was drawn with. It is a drawing convention that keeps the canvas readable, not
-        attenuation: collected light arrives at full ray weight, and uncollected light is
-        not traced at all.</p>
+        the full 360&deg; by default — and a ray that nothing catches is drawn as a glow
+        that <strong>fades within about 110&nbsp;mm</strong>. That fading stands in for
+        the inverse-square law above: an isotropic emitter grows too faint to matter at a
+        distance, and one whose rays all ran forever would bury the bench in lines.</p>
+        <p>The <strong>capture range</strong> sets that distance: how far from the source
+        its light can still be caught. Within it, every optical element acts on the light
+        as it would on any other: glass refracts it, a <a href="../filter/">filter</a>
+        filters it, a <a href="../detector/">detector</a> facing the source reads it, and a
+        beam block stops it. A lens, a <a href="../mirror/">mirror</a>, a detector or a fiber
+        tip collects the light — every element in the Lenses, Mirrors and Detectors groups
+        does — and what leaves a lens or a mirror is ordinary light that travels on at any
+        distance. Any other optic
+        hands on light that is still spreading from the source, so it keeps only the range
+        that is left: a filter 300&nbsp;mm away passes light that can still be caught for
+        another 700&nbsp;mm, and fades after that. The housing of a laser or another source
+        does not catch the light. The range is 1&nbsp;m for a newly placed source and can be
+        set from 110&nbsp;mm to 100&nbsp;m. It is a drawing convention, not attenuation:
+        caught light arrives at full ray weight, and light nothing catches is not traced
+        further.</p>
+        <p><strong>Caught by</strong> chooses the rule. <em>Any optic</em> is the default.
+        Under <em>Collectors</em> only lenses, mirrors, detectors and fiber tips catch the
+        light: a filter or a polarizer in front of one acts on the light without collecting
+        it, and something opaque in the way hides it. A sketch saved before the choice
+        existed opens with the rule it was drawn with, shown as <em>Lenses &amp; mirrors</em>:
+        the same, except that a detector facing the source reads nothing. Such a sketch also
+        keeps the 165&nbsp;mm range it was drawn with. Choose <em>Collectors</em> or
+        <em>Any optic</em> to update it.</p>
         <p>The <strong>Rays</strong> slider and exact number field allow 4 to 4096 angular samples. More
         rays resolve small collecting apertures more reliably, at increased tracing cost.
         Dense point sources use a canvas layer on screen; measurements use every
@@ -691,11 +702,14 @@ export const wikiEntries = [
         in an interferometer therefore produces no fringes, which is what an incoherent
         source does.</p>`,
       formulas: [],
-      limitations: `<p>The near-field fade is a modelling device, not physics. Real
-        isotropic light does not stop at a boundary — it keeps going, growing weaker as
-        1/r&sup2; — and the range here is a fixed distance rather than anything derived from
-        the source's power or the detector's sensitivity. A collector just outside it gathers
-        nothing when a real one would gather a little.</p>
+      limitations: `<p>The capture range and the fade are a modelling device, not physics.
+        Real isotropic light does not stop at a boundary — it keeps going, growing weaker as
+        1/r&sup2; — and the range here is a distance you set rather than anything derived
+        from the source's power or the detector's sensitivity. An optic just outside it
+        catches nothing when a real one would catch a little, and light caught inside it
+        arrives at full ray weight however far it travelled. The rays sample the emission
+        angle evenly, so a small optic between two sampled directions can be missed: raise
+        the ray count to check one.</p>
         <p>The source is a true point, so it has no étendue: the one property that most
         constrains real incoherent sources is absent, and a lens can focus this light to a
         spot no real lamp could reach. There is no arc length, no electrode geometry, and no
@@ -964,7 +978,8 @@ export const wikiEntries = [
         <span class="w">R₁ &gt; 0</span> and <span class="w">R₂ &lt; 0</span>;
         <span class="w">R = 0</span> makes that face plane. The Shape readout names the
         resulting profile so the sign convention can be checked directly.</p>
-        <p>The selectable N-BK7, fused-silica, N-SF5, and N-SF11 models use each glass's
+        <p>The selectable catalogue glasses (fused silica and the SCHOTT N-BK7, N-FK51A,
+        N-SF5, N-SF10, N-SF11, N-SF14, N-SF57 and N-LASF9) use each glass's
         published d-line index and Abbe number${cite(4)}. If a requested radius is too
         small for the clear aperture, or the centre thickness would make the faces cross,
         the inspector shows the exact constructible geometry the tracer uses instead of
@@ -1832,8 +1847,9 @@ export const wikiEntries = [
         reflection instead of exiting, exactly as a real prism does. For dispersion,
         broadband and supercontinuum beams are sampled at several discrete wavelengths
         across their band, and each sample refracts with its own wavelength-dependent
-        index, so the beam visibly fans into a spectrum. N-BK7, fused silica, N-SF5, and
-        N-SF11 are selectable; existing sketches still default to N-BK7. Pulsed rays add
+        index, so the beam visibly fans into a spectrum. Fused silica and the SCHOTT
+        glasses N-BK7, N-FK51A, N-SF5, N-SF10, N-SF11, N-SF14, N-SF57 and N-LASF9 are
+        selectable; existing sketches still default to N-BK7. Pulsed rays add
         GDD from their actual traced distance inside the selected glass.</p>`,
       formulas: [
         { tex: 'n^2(\\lambda)=1+\\sum_i\\frac{B_i\\lambda^2}{\\lambda^2-C_i}', caption: 'The selected glass\'s published three-term Sellmeier curve.' },
@@ -1923,8 +1939,9 @@ export const wikiEntries = [
         custom cross-section (a light pipe's tapered profile, a freeform prism, a
         corrective wedge) refracts and totally-internally-reflects exactly like the
         fixed-geometry <a href="../prism/">Prism</a>, just without being locked to a
-        triangle. Choose a constant refractive index or one of four catalogue models:
-        N-BK7, fused silica, N-SF5, and N-SF11. A broadband beam through a catalogue-glass
+        triangle. Choose a constant refractive index or one of nine catalogue models:
+        fused silica and the SCHOTT glasses N-BK7, N-FK51A, N-SF5, N-SF10, N-SF11,
+        N-SF14, N-SF57 and N-LASF9. A broadband beam through a catalogue-glass
         boundary is sampled by wavelength and visibly disperses into a spectrum.</p>`,
       formulas: [],
       limitations: `<p>The catalogue options use published Sellmeier curves, so GDD
@@ -5618,9 +5635,11 @@ export const wikiEntries = [
         command: <em>Static</em> holds a fixed mechanical angle; <em>Sine</em> and
         <em>Triangle</em> continuously sweep it around that center at a set frequency and
         peak amplitude. In sweep mode the mirror actually rotates and the reflected beam
-        visibly sweeps back and forth on its own — this is the one component in the
-        library that animates continuously in real time, driven by its own clock rather
-        than the pulse-timing playback controls used elsewhere.</p>`,
+        visibly sweeps back and forth. The shared <em>Play/Pause</em> control starts
+        and stops both scanning and pulse playback. With the browser's Reduced Motion
+        preference enabled, animation starts paused; pressing <em>Play</em> enables it.
+        The time scale controls the scan when its cycle is watchable, with a slowed
+        illustrative preview otherwise. <em>Mechanics</em> always uses that preview.</p>`,
       formulas: [],
       limitations: `<p>The peak mechanical sweep is capped at 10°, and defaults to a
         modest 1° — enough to demonstrate scanning clearly without the swing dominating a
@@ -5878,12 +5897,62 @@ export const wikiEntries = [
   },
   {
     type: 'eye', title: 'Human eye', category: 'Detectors',
-    summary: "Focuses light through an adjustable pupil onto a modeled retina, for exploring how focal length and pupil size change the detected spot.",
-    realWorld: { html: `<p>The eye forms an image on the retina using the refractive power of the cornea and crystalline lens. The iris controls the pupil opening, while accommodation changes the lens shape to bring different object distances into focus.</p>` },
+    summary: "A reduced eye: a pupil and one lens focus light onto a retina that detects it and can reflect part of it back, mirror-like or diffusely.",
+    realWorld: {
+      html: `<p>The eye forms an image on the retina using the refractive power of the cornea and crystalline lens, about 60 dioptres in total, in an eyeball about 24 mm long${cite(2)}. Schematic eyes describe it at very different levels of detail, from a single refracting surface to four aspheric surfaces with a gradient-index lens${cite(1)}. The iris sets the pupil, between roughly 2 mm in bright light and 8 mm in the dark${cite(3)}. An eye whose power does not match its length is myopic (too strong) or hyperopic (too weak), and the spectacle power that corrects it is its refractive error. The fundus sends a small fraction of the light back from several layers${cite(6)}: Delori and Pflibsen measured an equivalent reflectance of about 1–2 % at 560 nm and 10–12.5 % at 805 nm, depending on the retinal site${cite(4)}. Most of it is diffuse; a smaller directional part, guided by the cone photoreceptors, returns towards a preferred region of the pupil, usually near its centre${cite(5, 10)}. This returned light is what ophthalmoscopes, fundus cameras, scanning laser ophthalmoscopes and OCT systems detect.</p>`,
+      formulas: [
+        { tex: String.raw`P = \frac{1000}{f}`, caption: 'Optical power P in dioptres from the focal length f in millimetres.' },
+        { tex: String.raw`E = \frac{1000}{L} - P`, caption: 'Refractive error E for an eye of length L (mm): negative is myopic, positive hyperopic, both at the eye\'s lens.' },
+        { tex: String.raw`\eta = R\,d\,\sin^2\alpha`, caption: 'Share η of the light reaching the retina that leaves the pupil diffusely, for reflectivity R, diffuse share d and pupil half-angle α seen from the retina.' },
+      ],
+      html2: `<h3>More detailed eye models</h3>
+        <p>A schematic eye is built for a purpose, and the simplest one that answers the question is usually the best${cite(1)}. A reduced eye, with one refracting surface or one thin lens, gets the power, the focus and the refractive error right, which is enough to explain how an ophthalmoscope, a fundus camera or a model eye on the bench works. Finer questions need finer models:</p>
+        <ul>
+          <li><strong>Finite schematic eyes</strong> trace real rays through four aspheric surfaces, two of the cornea and two of the lens, to a curved retina, with the pupil in front of the lens. They predict spherical aberration, off-axis aberrations over a wide field, and how the eye changes as it accommodates${cite(7, 8)}.</li>
+          <li><strong>Gradient-index lenses</strong> replace the uniform crystalline lens with one whose index rises towards its centre, as in the real lens. Such models reproduce measured spherical aberration and predict chromatic aberration${cite(2)}, change with the refractive error of myopic eyes${cite(12)}, or, with a tilted and decentred lens, match aberrations measured across 80° of the horizontal visual field${cite(13)}.</li>
+          <li><strong>Individual aberrations</strong> vary widely from eye to eye; population studies describe them statistically with Zernike polynomials${cite(11)}.</li>
+          <li><strong>Chromatic dispersion</strong>: the cornea, humours and lens are dispersive, so the eye focuses blue light in front of red light; their indices follow Cauchy's equation${cite(14)}.</li>
+          <li><strong>The fundus reflection</strong> depends strongly on wavelength and comes from several layers, from the photoreceptors to the pigment epithelium and the blood-filled choroid${cite(15, 4, 6)}. Monte Carlo models of light transport through these layers agree well with measured spectra${cite(16)}. Part of the reflection is directional: guided back by the cones, it peaks in a preferred region of the pupil, usually near the centre and different from one person to another, and its strength depends on where the light entered${cite(10, 5)}.</li>
+          <li><strong>Exposure limits</strong> for light entering the eye depend on wavelength, exposure duration and the size of the retinal image, and ophthalmic instruments are assessed against them${cite(9)}.</li>
+        </ul>`,
+    },
     inOpticalSetup: {
-      html: `<p>The pupil clips incoming rays, an equivalent thin lens bends the accepted light, and a retinal detector records the resulting signal. Adjust <em>Eye diameter</em>, <em>Pupil diameter</em>, and <em>Lens focal length</em> to compare the illuminated spot. A linked detector screen makes the retinal reading visible beside the eye.</p><p>In the example, a parallel beam enters the pupil. Change the focal length to move the best focus relative to the retinal plane, or narrow the pupil to admit less of the beam.</p>`,
-      limitations: `<p>This is a geometric teaching model, not an anatomical eye prescription. It does not predict visual acuity, diffraction, accommodation dynamics, retinal physiology, or laser exposure limits.</p>`,
-    }, related: ['lens', 'camera', 'display'],
+      html: `<p>OpticalSetup models a <em>reduced eye in air</em>: the pupil clips incoming rays, one thin lens at the pupil bends them, and the retina sits one <em>eye length</em> behind it, where a retinal detector records the signal. A new eye is the textbook 60 D eye: 16.7 mm focal length, the same length, and a 4 mm pupil. Its length is the air-equivalent one, shorter than the 24 mm of a real eyeball${cite(2)}, so that ray angles inside and outside the eye stay right.</p><p>Set the power as a <em>focal length</em> or in <em>dioptres</em>: both edit the same lens, and a sketch stores the focal length whichever you choose. The <em>Refractive error</em> line compares the power with the length; change either to model a myopic or hyperopic eye and watch the retinal spot spread.</p><p><em>Retinal reflectivity</em> (0–100 %, default 0) sends that fraction of the light back from the retina. <em>Diffuse share</em> splits it: the mirror-like part goes back through the lens, so a collimated beam focused on the retina returns collimated, like a cat's eye, and the eye can stand in for the lens-and-mirror pair that ophthalmic instruments use to model it. The diffuse part scatters in all directions as a Lambertian surface would. Only the part headed for the pupil can leave, so it is traced as a small fan across the pupil carrying exactly that share; what would hit the eye wall is absorbed. A beamsplitter in front of the eye routes either return to a camera or detector.</p><p>The retinal reading counts all the light that reaches the retina, whatever fraction is reflected, and the inspector shows it in watts, carried from the sources' configured power like a power meter's reading. Light arriving at the back of the eyeball is blocked by the eye wall: it neither reaches the retina nor reflects. Sketches saved before the 60 D defaults open with the 30 mm eye, 12 mm pupil and 30 mm focal length they were drawn with.</p>`,
+      html2: `<h3>Making the eye more realistic</h3>
+        <p>Every eye setting is yours to choose: start from the 60 D default and change only what your setup needs.</p>
+        <ul>
+          <li><strong>A refractive error</strong> E (negative for myopia): change the power to 1000/L − E and keep the length, or change the length to 1000/(P + E) and keep the power. A −3 D myopic eye is the default eye at about 62.9 D, or the default eye lengthened to about 17.6 mm.</li>
+          <li><strong>Looking at something near</strong>: an object d metres away needs 1/d extra dioptres of accommodation, 2.5 D for a page at 40 cm. Add them to the power.</li>
+          <li><strong>The pupil</strong>: about 2–3 mm in bright light and 6–8 mm when dark-adapted or dilated${cite(3)}.</li>
+          <li><strong>A bench model eye</strong>, a lens with a target at its focus as used to test ophthalmic instruments: set the focal length to the lens's, the eye length equal to it, and the retinal reflectivity to the target's reflectance (close to 100 % for a mirror). Then choose a 0 % diffuse share for a mirror target or 100 % for a white card; the diffuse-share control appears once the reflectivity is above zero.</li>
+          <li><strong>The fundus reflection at your wavelength</strong>, as an illustrative starting point rather than a calibrated value. Delori and Pflibsen report an <em>equivalent reflectance</em>, calibrated for a diffusely reflecting fundus behind clear media in an eye of 22 mm focal length. At the nasal fundus and at the fovea it is about 1.4 and 0.3 % at 480 nm, 2.3 and 1.2 % at 560 nm, 6.4 and 3.3 % at 610 nm, 10.2 and 6.7 % at 675 nm, and 12.5 and 10.4 % at 805 nm, and individual eyes differ from these averages by tens of percent${cite(4)}. Set the retinal reflectivity first, then the diffuse share to 100 %. This eye collects diffuse light over its own length L, so the same reflectivity returns about (22 mm / L)² as much light, 1.7 times as much in the default 16.7 mm eye; to match the measured return with the same pupil, multiply the tabulated value by (L / 22 mm)², about 0.58 for the default eye.</li>
+          <li><strong>A directional return</strong>: a diffuse share a little below 100 % adds a mirror-like part, the closest this eye comes to the cone-guided light of a real retina.</li>
+        </ul>
+        <p>What the eye cannot do is listed under <em>Simplified vs. reality</em> below; the detailed models above are the ones to reach for when those limits matter.</p>`,
+      limitations: `<p>This is a geometric teaching model, not an anatomical eye prescription. One thin lens replaces the cornea and crystalline lens, so the pupil and the lens coincide: an instrument that images a source exactly into the pupil (Maxwellian view) is approximated, not reproduced. It is not a finite schematic eye with aspheric surfaces and a curved retina${cite(7, 8, 2)}, so it does not predict visual acuity, diffraction, aberrations, accommodation dynamics or retinal physiology.</p><p>The retina is a single plane. Its diffuse share uses the 3-D Lambertian fraction for a round pupil, exact on axis and estimated from the in-plane extent off axis; there are no retinal layers, no depth structure and no wavelength dependence, although the real fundus reflects five to eight times more at 805 nm than at 560 nm${cite(4)}. The mirror-like part reflects specularly, whereas the directional light of a real retina returns towards a preferred region of the pupil, usually near its centre, with a strength that depends on where the light entered${cite(10)}. The power at the retina is not compared with any exposure limit${cite(9)} and must not be used for laser-safety decisions. The carrier phase through the eye is not modeled, so the eye's return adds power to an interferometer's output but does not form fringes.</p>`,
+    },
+    citations: [
+      { label: 'D. A. Atchison and L. N. Thibos, "Optical models of the human eye," Clinical and Experimental Optometry 99(2), 99–106 (2016)', url: 'https://doi.org/10.1111/cxo.12352' },
+      { label: 'H.-L. Liou and N. A. Brennan, "Anatomically accurate, finite model eye for optical modeling," J. Opt. Soc. Am. A 14(8), 1684–1695 (1997)', url: 'https://doi.org/10.1364/JOSAA.14.001684' },
+      { label: 'A. B. Watson and J. I. Yellott, "A unified formula for light-adapted pupil size," Journal of Vision 12(10):12 (2012)', url: 'https://doi.org/10.1167/12.10.12' },
+      { label: 'F. C. Delori and K. P. Pflibsen, "Spectral reflectance of the human ocular fundus," Applied Optics 28(6), 1061–1077 (1989)', url: 'https://doi.org/10.1364/AO.28.001061' },
+      { label: 'J. van de Kraats and D. van Norren, "Directional and nondirectional spectral reflection from the human fovea," J. Biomed. Opt. 13(2), 024010 (2008)', url: 'https://doi.org/10.1117/1.2899151' },
+      { label: 'T. T. J. M. Berendschot, P. J. DeLint and D. van Norren, "Fundus reflectance — historical and present ideas," Progress in Retinal and Eye Research 22(2), 171–200 (2003)', url: 'https://doi.org/10.1016/S1350-9462(02)00060-5' },
+      { label: 'R. Navarro, J. Santamaría and J. Bescós, "Accommodation-dependent model of the human eye with aspherics," J. Opt. Soc. Am. A 2(8), 1273–1280 (1985)', url: 'https://doi.org/10.1364/JOSAA.2.001273' },
+      { label: 'I. Escudero-Sanz and R. Navarro, "Off-axis aberrations of a wide-angle schematic eye model," J. Opt. Soc. Am. A 16(8), 1881–1891 (1999)', url: 'https://doi.org/10.1364/JOSAA.16.001881' },
+      { label: 'F. C. Delori, R. H. Webb and D. H. Sliney, "Maximum permissible exposures for ocular safety (ANSI 2000), with emphasis on ophthalmic devices," J. Opt. Soc. Am. A 24(5), 1250–1265 (2007)', url: 'https://doi.org/10.1364/JOSAA.24.001250' },
+      { label: 'S. A. Burns, S. Wu, F. Delori and A. E. Elsner, "Direct measurement of human-cone-photoreceptor alignment," J. Opt. Soc. Am. A 12(10), 2329–2338 (1995)', url: 'https://doi.org/10.1364/JOSAA.12.002329' },
+      { label: 'L. N. Thibos, X. Hong, A. Bradley and X. Cheng, "Statistical variation of aberration structure and image quality in a normal population of healthy eyes," J. Opt. Soc. Am. A 19(12), 2329–2348 (2002)', url: 'https://doi.org/10.1364/JOSAA.19.002329' },
+      { label: 'D. A. Atchison, "Optical models for human myopic eyes," Vision Research 46(14), 2236–2250 (2006)', url: 'https://doi.org/10.1016/j.visres.2006.01.004' },
+      { label: 'J. Polans, B. Jaeken, R. P. McNabb, P. Artal and J. A. Izatt, "Wide-field optical model of the human eye with asymmetrically tilted and decentered lens that reproduces measured ocular aberrations," Optica 2(2), 124–134 (2015)', url: 'https://doi.org/10.1364/OPTICA.2.000124' },
+      { label: 'D. A. Atchison and G. Smith, "Chromatic dispersions of the ocular media of human eyes," J. Opt. Soc. Am. A 22(1), 29–37 (2005)', url: 'https://doi.org/10.1364/JOSAA.22.000029' },
+      { label: 'D. van Norren and L. F. Tiemeijer, "Spectral reflectance of the human eye," Vision Research 26(2), 313–320 (1986)', url: 'https://doi.org/10.1016/0042-6989(86)90028-3' },
+      { label: 'S. J. Preece and E. Claridge, "Monte Carlo modelling of the spectral reflectance of the human eye," Physics in Medicine and Biology 47(16), 2863–2877 (2002)', url: 'https://doi.org/10.1088/0031-9155/47/16/303' },
+    ],
+    resources: [
+      { label: 'D. A. Atchison, Optics of the Human Eye, 2nd ed. (CRC Press, 2023)', url: 'https://www.routledge.com/Optics-of-the-Human-Eye/Atchison/p/book/9781003128601' },
+    ],
+    related: ['lens', 'bs', 'camera', 'display'],
   },
   {
     type: 'generaldetector', title: 'General detector', category: 'Detectors',
@@ -6130,18 +6199,18 @@ export const wikiEntries = [
     summary: "Represents an illuminated specimen with configurable transmission and stacked signal channels, including two-beam signals that appear only while both pulses reach the spot together.",
     realWorld: { html: `<p>A specimen can transmit or absorb excitation light and generate an optical signal. Fluorescence and coherent nonlinear signals arise through different processes; nonlinear microscopy includes two-photon fluorescence, second-harmonic generation, and coherent anti-Stokes Raman scattering${cite(1)}.</p>` },
     inOpticalSetup: {
-      html: `<p>Orient the sample across the beam: at zero rotation its long axis is horizontal, so a horizontal incoming beam needs a 90° sample rotation. Choose the specimen mode, excitation transmission, and desired channels. The model supports stacked fluorescence, Raman, phase contrast, two- and three-photon fluorescence, second-order (χ⁽²⁾), THG, CARS and stimulated Raman signals.</p><p>The <strong>χ⁽²⁾ channel</strong> covers both second-order processes at once, as one susceptibility does: each beam's second harmonic, and the sum frequency of any two different colours on the spot. There is no separate sum-frequency channel; a scene saved with one is read as this channel, and a scene that carried both keeps its second-harmonic channel — the surviving one covers both processes, so the retired entry's own settings go with it rather than the specimen emitting each signal twice.</p><p><strong>Two-beam signals need the pulses together.</strong> Sum frequency, CARS and stimulated Raman only happen while both pulses are at the spot, so the model gates them on the Gaussian overlap of the two arrivals and drops them below 2 % of the peak — the second harmonic of each beam, which needs one beam only, is unaffected. Arrival is each beam's own optical path plus its emission offset, judged beam to beam, so a millimetre of unmatched arm is 3.3 ps and enough to switch a picosecond CARS signal off; the workbench says so rather than leaving an empty detector to interpret. Only trains at the same repetition rate are mixed, and <em>Needs pulse overlap</em> switches the requirement off per channel for a schematic that is about the signal rather than the timing.</p><p>That gate is one qualitative envelope for every two-beam channel, not a process-specific delay response. A real CARS signal in the instantaneous non-resonant limit weights the pump twice, going as I<sub>p</sub>²I<sub>s</sub> rather than as the product of two intensities, and a resonant vibration adds dynamics of its own; none of that is modelled here. Each beam's own path is grouped across the sampling rays that draw it, so the spread of arrival times across a focused cone is not treated as a timing spread — two beams on different paths, however, stay separate, and a colour arriving on two arms pairs with whichever arm meets the pulse.</p><p>The example produces a fluorescent signal under 488 nm illumination. Adjust its emission and transmission, then use a filter and detector to distinguish emitted light from the excitation. Parametric channels use a forward lobe with an optional weaker backward contribution.</p>`,
-      limitations: `<p>Signals are bounded qualitative proxies, not measured cross-sections or calibrated conversion efficiencies. Each channel is bounded by its own authored efficiency, not by a shared energy budget: signals never deplete the excitation, so stacking channels — or adding a second colour, which adds a mixed pair — adds drawn signal power rather than dividing it. The sum frequency of a pair scales with the shorter beam's intensity alone, not with the product of the two. Stimulated Raman transfer is a normalised display of the modulation, not a Raman gain or loss law: whatever contrast the modulated beam has is stretched to the channel's full authored excursion — a loss on the shorter-wavelength pump, a gain on the longer-wavelength Stokes — timed to the photons of that beam that actually reach the spot, and a steady beam transfers nothing. It covers one unmodulated beam receiving the modulation of one other beam through one modulator; with both beams modulated, more than one modulated partner, or a modulated beam behind several modulators, no transfer is drawn and the specimen's timing readout says why. Sum frequency is gated on arrival time alone — no phase matching, polarization condition or focusing overlap is checked — and the pulses' own path spread across a focused cone is not treated as a timing spread. The model does not reconstruct a three-dimensional specimen or predict photochemistry, bleaching, or a diffraction-limited point-spread function.</p>`,
+      html: `<p>Orient the sample across the beam: at zero rotation its long axis is horizontal, so a horizontal incoming beam needs a 90° sample rotation. Choose the specimen mode, excitation transmission, and desired channels. The model supports stacked fluorescence, Raman, phase contrast, two- and three-photon fluorescence, second-order (χ⁽²⁾), THG, CARS and stimulated Raman signals.</p><p><strong>Fluorescence sampling.</strong> A fluorescence or spontaneous Raman channel emits one angular fan per arriving excitation branch, driven by the combined power of the sampling rays that actually reach the specimen. The surviving ray nearest the beam centre places that fan; clipping an edge ray no longer switches off the entire signal. <em>Emission rays</em> sets 4–128 angular samples over 360° (per spectral line for Raman). Each fan divides its power among those rays, so increasing the count refines collection angles without multiplying emitted power. Sampling remains denser along the excitation axis, and finite collection readings may change as the angular grid is refined.</p><p><strong>Linear versus nonlinear signals.</strong> In a microscope that focuses the excitation tightly, linear fluorescence and spontaneous Raman come from the whole illuminated cone, so out-of-focus planes contribute too; a confocal pinhole is what rejects them. Two-photon and three-photon fluorescence, harmonics, CARS and stimulated Raman scale with a power of the intensity, so in that geometry their generation is concentrated near the focal region — the optical sectioning of nonlinear microscopy. Nonlinear generation does not itself require a focus: an intense unfocused beam also drives it. The workbench computes no intensity profile and emits both kinds where the beam crosses the specimen line, so it does not reproduce this difference: an unfocused beam generates a nonlinear signal as readily as a focused one.</p><p><strong>Photocurable resin</strong> also offers an opt-in <em>Two-photon fluorescence</em> channel. Existing resins stay non-emitting until enabled; signal settings and the 2PP voxel preview remain independent.</p><p>The <strong>χ⁽²⁾ channel</strong> covers both second-order processes at once, as one susceptibility does: each beam's second harmonic, and the sum frequency of any two different colours on the spot. There is no separate sum-frequency channel; a scene saved with one is read as this channel, and a scene that carried both keeps its second-harmonic channel — the surviving one covers both processes, so the retired entry's own settings go with it rather than the specimen emitting each signal twice.</p><p><strong>Two-beam signals need the pulses together.</strong> Sum frequency, CARS and stimulated Raman only happen while both pulses are at the spot, so the model gates them on the Gaussian overlap of the two arrivals and drops them below 2 % of the peak — the second harmonic of each beam, which needs one beam only, is unaffected. Arrival is each beam's own optical path plus its emission offset, judged beam to beam, so a millimetre of unmatched arm is 3.3 ps and enough to switch a picosecond CARS signal off; the workbench says so rather than leaving an empty detector to interpret. Only trains at the same repetition rate are mixed, and <em>Needs pulse overlap</em> switches the requirement off per channel for a schematic that is about the signal rather than the timing.</p><p>That gate is one qualitative envelope for every two-beam channel, not a process-specific delay response. A real CARS signal in the instantaneous non-resonant limit weights the pump twice, going as I<sub>p</sub>²I<sub>s</sub> rather than as the product of two intensities, and a resonant vibration adds dynamics of its own; none of that is modelled here. Each beam's own path is grouped across the sampling rays that draw it, so the spread of arrival times across a focused cone is not treated as a timing spread — two beams on different paths, however, stay separate, and a colour arriving on two arms pairs with whichever arm meets the pulse.</p><p>The example produces a fluorescent signal under 488 nm illumination. Adjust its emission and transmission, then use a filter and detector to distinguish emitted light from the excitation. Parametric channels use a forward lobe with an optional weaker backward contribution.</p>`,
+      limitations: `<p>Signals are bounded qualitative proxies, not measured cross-sections or calibrated conversion efficiencies. The two-photon label sets the photon-energy/wavelength rule; the model does not calculate a focal intensity-squared response or the optical sectioning that follows from it, fluorescence lifetime, bleaching, or polymerization kinetics. Each channel is bounded by its own authored efficiency, not by a shared energy budget: signals never deplete the excitation, so stacking channels — or adding a second colour, which adds a mixed pair — adds drawn signal power rather than dividing it. The sum frequency of a pair scales with the shorter beam's intensity alone, not with the product of the two. Stimulated Raman transfer is a normalised display of the modulation, not a Raman gain or loss law: whatever contrast the modulated beam has is stretched to the channel's full authored excursion — a loss on the shorter-wavelength pump, a gain on the longer-wavelength Stokes — timed to the photons of that beam that actually reach the spot, and a steady beam transfers nothing. It covers one unmodulated beam receiving the modulation of one other beam through one modulator; with both beams modulated, more than one modulated partner, or a modulated beam behind several modulators, no transfer is drawn and the specimen's timing readout says why. Sum frequency is gated on arrival time alone — no phase matching, polarization condition or focusing overlap is checked — and the pulses' own path spread across a focused cone is not treated as a timing spread. The model does not reconstruct a three-dimensional specimen or predict photochemistry, bleaching, or a diffraction-limited point-spread function.</p>`,
     }, citations: [{ label: 'Boston University Biomicroscopy Lab — Nonlinear microscopy', url: 'https://sites.bu.edu/biomicroscopy/research/nonlinear/' }], related: ['stage', 'crystal', 'objective', 'filter', 'pmt'],
   },
   {
     type: 'stage', title: 'Sample on piezo stage', category: 'Specimens',
     summary: "Moves a mounted sample through static, lateral, depth or raster scans, and can record writing in resin.",
-    realWorld: { html: `<p>A sample stage translates the specimen relative to the illumination and collection optics. Lateral motion samples different positions across a specimen; axial motion changes its position along the optical axis. A physical stage has finite travel, response time, and positioning accuracy.</p>` },
+    realWorld: { html: `<p>A sample stage translates the specimen relative to the illumination and collection optics. Lateral motion samples different positions across a specimen; axial motion changes its position along the optical axis. A physical stage has finite travel, response time, and positioning accuracy.</p><p>Visible fluorescence has been observed during two-photon photopolymerization of SU-8, allowing optical monitoring of that material; fluorescence response is material-dependent${cite(1)}.</p>` },
     inOpticalSetup: {
-      html: `<p>The stage combines a mounting aperture with the sample's optical modes, including the χ⁽²⁾ channel that gives each beam's second harmonic and the sum frequency of a pair, and the two-beam signals — sum frequency, CARS and stimulated Raman — that only appear while both pulses reach the specimen together. Select a static position, long-axis scan, beam-axis depth scan, or synchronized raster, then set the travel and frequency. At 90° rotation, a horizontal beam crosses the sample and a long-axis scan moves it vertically on the canvas.</p><p>Scanning moves the specimen, not the arms, so it does not change the arrival difference between two beams: that is set by their optical paths, and a delay line or a matched arm is what fixes it.</p><p>The example moves an illuminated sample laterally. For a writing demonstration, choose photocurable resin, enable voxel preview, and use a pulsed source. Marks record traced pulse arrivals in the moving sample.</p>`,
-      limitations: `<p>The workbench shows a two-dimensional projection. Resin marks are a visual arrival history, not a prediction of dose, polymerization threshold, cure kinetics, voxel size, or three-dimensional fabrication. Piezo hysteresis and mechanical settling are not simulated.</p>`,
-    }, related: ['sample', 'objective', 'pulsedlaser', 'galvo'],
+      html: `<p>The stage combines a mounting aperture with the sample's optical modes, including the χ⁽²⁾ channel that gives each beam's second harmonic and the sum frequency of a pair, and the two-beam signals — sum frequency, CARS and stimulated Raman — that only appear while both pulses reach the specimen together. Select a static position, long-axis scan, beam-axis depth scan, or synchronized raster, then set the travel and frequency. At 90° rotation, a horizontal beam crosses the sample and a long-axis scan moves it vertically on the canvas.</p><p>Scanning moves the specimen, not the arms, so it does not change the arrival difference between two beams: that is set by their optical paths, and a delay line or a matched arm is what fixes it.</p><p>The example moves an illuminated sample laterally. For a writing demonstration, choose photocurable resin, enable voxel preview, and use a pulsed source. Enable <em>Two-photon fluorescence</em> separately to add a collectible optical signal while writing; its channel exposes wavelength, efficiency, and emission-ray count. Marks record traced pulse arrivals in the moving sample.</p>`,
+      limitations: `<p>The workbench shows a two-dimensional projection. Resin marks are a visual arrival history, not a prediction of dose, polymerization threshold, cure kinetics, voxel size, or three-dimensional fabrication. Fluorescence is an optional qualitative signal, not a measure of curing or conversion. Its two-photon wavelength rule does not calculate intensity-squared absorption. Piezo hysteresis and mechanical settling are not simulated.</p>`,
+    }, citations: [{ label: 'Stoneman et al. — Real-time monitoring of two-photon photopolymerization for use in fabrication of microfluidic devices (2009)', url: 'https://pubs.rsc.org/en/content/articlelanding/2009/lc/b816993d' }], related: ['sample', 'objective', 'pulsedlaser', 'galvo'],
   },
   {
     type: 'objarrow', title: 'Object', category: 'Sources',

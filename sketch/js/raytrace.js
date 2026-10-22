@@ -5,6 +5,7 @@
 // and returns drawables: stroked polylines (line-mode / beam edges) and filled
 // polygons (beam-mode envelope between the two edge rays).
 
+import { emissionRayCount } from './emission.js';
 import { POINT_SOURCE_CANVAS_THRESHOLD } from './point-source-rendering.js';
 
 import {
@@ -110,6 +111,7 @@ let gateTransmissionCache = new Map();
 // Non-null only during the mixing probe pass in traceScene(): surface id ->
 // Set of wavelengths observed arriving at that specimen.
 let specimenProbe = null;
+let specimenEmissionSamples = new WeakMap();
 // element id -> wavelengths observed arriving at its specimen surface on the
 // last trace. Read by the inspector to derive emission defaults and warn
 // about channels the bench cannot drive; empty when nothing illuminates it.
@@ -1671,7 +1673,7 @@ const MIN_RETAINED_POWER_INT = 1e-12;
 // and every layer sizes its own sampling to fit rather than overflowing and
 // being truncated — see the shaper case in interact().
 const SHAPER_RAY_CAP = 24;
-const LOW_POWER_MEASUREMENT_SURFACES = new Set(['detector', 'specimen', 'attenuate', 'fluor', 'fiberin']);
+const LOW_POWER_MEASUREMENT_SURFACES = new Set(['detector', 'retina', 'specimen', 'attenuate', 'fluor', 'fiberin']);
 
 // Carrier phase is exact only through explicitly supported component
 // topologies. Several unrelated elements deliberately share the generic
@@ -1681,6 +1683,11 @@ const LOW_POWER_MEASUREMENT_SURFACES = new Set(['detector', 'specimen', 'attenua
 function carrierPhaseIssue(surface) {
   const type = surface.el?.type;
   if (surface.kind === 'detector') return null;
+  // A retina that only absorbs ends the path like any detector; one that
+  // reflects is not a coherent mirror model.
+  if (surface.kind === 'retina') {
+    return Number(surface.data?.refl) > 0 ? 'carrier phase is not modeled for retinal reflection' : null;
+  }
   if (surface.kind === 'split' && type === 'bs') return null;
   if (surface.kind === 'delay' && type === 'delayline') return null;
   // A phase object only lengthens the optical path, without bending the
@@ -1899,8 +1906,6 @@ const MIXING_MIN_SEPARATION_NM = 1;
 // denser along the axis, each still carrying an equal share of the power, so
 // the total is unchanged and the directions that can actually be captured
 // are the ones sampled finely. The glow is still drawn all the way round.
-const EMISSION_RAYS = 20;
-const RAMAN_RAYS_PER_LINE = 14;
 const AXIS_BIAS = 5;
 // How far the drawn glow reaches, and how far away an optic can still
 // collect it. Real collection optics sit well outside the few centimetres
@@ -2001,12 +2006,20 @@ function recordProbeBeam(surface, ray) {
   // A beam sampled by several rays is one beam: its power is theirs together,
   // and it arrives when its power arrives.
   const power = Math.max(0, Number(ray.power) || 0);
+  const sample = Number.isInteger(ray.sample) ? ray.sample : null;
+  const distance = sample === null ? 0 : Math.abs(sample - ((ray.sampleCount || 1) - 1) / 2);
   // The dispersion the beam carries here, weighted like its arrival time, so
   // an OPA can time the pulse as it arrives. Kept only when there is any.
   const gdd = Number.isFinite(ray.gdd) ? ray.gdd : 0;
   const spread = Number.isFinite(ray.groupDelayDifferenceFs) ? ray.groupDelayDifferenceFs : 0;
   const dispersed = gdd || spread ? { gddSum: weight * gdd, spreadSum: weight * spread, gddRange: [gdd, gdd] } : null;
   if (already) {
+    // Pick an actually surviving ray nearest the beam centre. A fixed edge
+    // sample may have missed an upstream mirror or the objective pupil.
+    const representative = specimenEmissionSamples.get(already);
+    if (distance < representative.distance || (distance === representative.distance && sample < representative.sample)) {
+      specimenEmissionSamples.set(already, { sample, distance });
+    }
     if (dispersed || already.gddRange) {
       // Rays of the beam that came undispersed count in the range as zero.
       const range = already.gddRange || [0, 0];
@@ -2023,7 +2036,7 @@ function recordProbeBeam(surface, ray) {
     if (history.length) already.parametricPath = history;
     return;
   }
-  seen.push({
+  const beam = {
     key,
     branch: ray.branch || null,
     wl: ray.wl, opl: ray.opl,
@@ -2045,7 +2058,9 @@ function recordProbeBeam(surface, ray) {
     // Only light that went through a parametric element has a history.
     ...(ray.parametricPath?.length ? { parametricPath: unionPath(ray.parametricPath) } : {}),
     ...(dispersed || {}),
-  });
+  };
+  specimenEmissionSamples.set(beam, { sample, distance });
+  seen.push(beam);
 }
 
 // One arrival per beam, weighted by where its power actually is, so that every
@@ -2060,6 +2075,19 @@ function settleProbeBeam(beam) {
 function beamRecordFor(ray, beams) {
   const key = probeBeamKey(ray);
   return (beams || []).find(beam => beam.key === key) || null;
+}
+
+// One incoherent fan per arriving excitation branch, powered by all the
+// sampling rays that reached this specimen. Angular ray count then changes
+// sampling, never the total emitted weight. This remains a qualitative gain,
+// not a two-photon cross-section, focal intensity or curing calculation.
+function incoherentExcitation(ray, data) {
+  const record = beamRecordFor(ray, data.incidentBeams);
+  const representative = record && specimenEmissionSamples.get(record);
+  return {
+    emitting: representative ? (ray.sample ?? null) === representative.sample : ray.sample == null || ray.sample === 0,
+    power: record ? record.power : ray.power,
+  };
 }
 
 // A ray as its beam arrives: the same pulse train, timed where the beam's
@@ -3691,6 +3719,48 @@ const retardPolMod = (polMod, axisDeg, retardanceDeg) => ({
 const needsPeakPower = kind => NONLINEAR_SIGNAL_KINDS.some(([nonlinear]) => nonlinear === kind);
 
 // interaction -> array of child rays [{d, wl?, intensity?, tag?}] ; [] = absorbed
+const clampFraction = value => (Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0);
+
+// Diffuse (Lambertian) part of the retinal reflection. Only the light headed
+// for the pupil can leave the eye; the rest would land on the absorbing eye
+// wall, so it is not traced. The escaping share is the 3-D Lambertian fraction
+// for the pupil seen from the hit point -- sin^2 of the half-angle on axis --
+// estimated from the in-plane extent, and it is carried by a small fan aimed
+// across the pupil, spaced evenly in sin(angle) so each ray carries an equal
+// share, as Lambertian light does.
+const RETINA_SCATTER_RAYS_LINE = 9;
+const RETINA_SCATTER_RAYS_SAMPLE = 3;
+function retinalScatter(ray, hit, s, d, n, fraction) {
+  const data = s.data;
+  const distance = Number(data.pupilDistance), half = Number(data.pupilHalf);
+  if (!(distance > 0) || !(half > 0) || !(fraction > 0)) return [];
+  // Towards the pupil: the normal facing back along the incoming ray.
+  const inward = dot(d, n) < 0 ? n : mul(n, -1);
+  const along = norm(sub(s.b, s.a));
+  const mid = mul(add(s.a, s.b), 0.5);
+  const offset = dot(sub(hit.p, mid), along);
+  // Sines of the angles, from the inward normal, to the two pupil edges.
+  const sineTo = edge => {
+    const lateral = edge - offset;
+    return lateral / Math.hypot(lateral, distance);
+  };
+  const lo = sineTo(-half), hi = sineTo(half);
+  const share = ((hi - lo) / 2) ** 2;
+  if (!(share > 0)) return [];
+  const count = ray.sample == null ? RETINA_SCATTER_RAYS_LINE : RETINA_SCATTER_RAYS_SAMPLE;
+  const out = [];
+  for (let k = 0; k < count; k++) {
+    const sine = lo + (hi - lo) * (k + 0.5) / count;
+    const cosine = Math.sqrt(Math.max(0, 1 - sine * sine));
+    out.push({
+      d: norm(add(mul(inward, cosine), mul(along, sine))),
+      intensity: ray.intensity * fraction * share / count,
+      tag: 'retina-S' + k, retainWeak: true,
+    });
+  }
+  return out;
+}
+
 function interact(ray, hit) {
   const s = hit.surface, d = { x: ray.dx, y: ray.dy }, k = s.kind, data = s.data;
   const t = norm(sub(s.b, s.a));
@@ -3769,6 +3839,15 @@ function interact(ray, hit) {
   switch (k) {
     case 'absorb': return [];
     case 'detector': return [];
+    case 'retina': {
+      const R = clampFraction(Number(data.refl ?? 0) / 100);
+      if (!(R > 0)) return [];
+      const diffuse = clampFraction(Number(data.diffuse ?? 0) / 100);
+      const out = [];
+      if (diffuse < 1) out.push({ d: reflect(d, n), intensity: ray.intensity * R * (1 - diffuse), tag: 'retina-R', retainWeak: true });
+      if (diffuse > 0) out.push(...retinalScatter(ray, hit, s, d, n, R * diffuse));
+      return out;
+    }
     case 'gdd': {
       // A zero-thickness proxy for the net second-order spectral phase of a
       // grating/prism/chirped-mirror compressor. It does not bend the ray or
@@ -4737,6 +4816,7 @@ function interact(ray, hit) {
       // per-ray ones: a beam split into K sampling rays must not emit K
       // copies of the same signal.
       const emitting = ray.sample == null || ray.sample === 0;
+      const spontaneous = incoherentExcitation(ray, data);
       // With several beams on the spot, the shortest wavelength carries the
       // most energy per photon and is the one that drives incoherent
       // emission and Raman. Gating on it also stops each beam from emitting
@@ -4780,10 +4860,10 @@ function interact(ray, hit) {
         if (c.kind === 'raman') {
           // Spontaneous Raman scatters a handful of Stokes-shifted lines,
           // isotropically and weakly, from the material's own fingerprint.
-          if (!emitting || !isDriver) continue;
+          if (!spontaneous.emitting || !isDriver) continue;
           const pump = driver ?? ray.wl;
           const shifts = ramanShifts(c.material).slice(0, 4);
-          const N = RAMAN_RAYS_PER_LINE;
+          const N = emissionRayCount(c);
           const axis = Math.atan2(d.y, d.x);
           for (const shift of shifts) {
             const line = ramanStokesWl(pump, shift);
@@ -4795,7 +4875,8 @@ function interact(ray, hit) {
                 color: tint, evan: true, evanLen: EMISSION_GLOW_MM, captureLen: EMISSION_CAPTURE_MM,
                 sourceId: emittedFrom, incoherent: true,
                 intensity: 0.25,
-                power: Number.isFinite(ray.power) ? ray.power * eff / (N * shifts.length) : undefined,
+                power: Number.isFinite(spontaneous.power) ? spontaneous.power * eff / (N * shifts.length) : undefined,
+                sample: null, sampleCount: 1, sampleGrid: null,
                 tag: `r${ci}_${Math.round(shift)}_${i}`,
               });
             });
@@ -4804,10 +4885,10 @@ function interact(ray, hit) {
         }
 
         if (ISOTROPIC_KINDS.has(c.kind)) {
-          if (!emitting || !isDriver) continue;
+          if (!spontaneous.emitting || !isDriver) continue;
           const emission = specimenEmission(c, ray.wl, data.incidentWls);
           if (!emission || emission.gain <= 1e-4) continue;
-          const N = EMISSION_RAYS;
+          const N = emissionRayCount(c);
           const tint = channelColor(c, emission.wl);
           const strength = eff * emission.gain;
           emissionAngles(N, Math.atan2(d.y, d.x)).forEach((a, i) => {
@@ -4818,7 +4899,8 @@ function interact(ray, hit) {
               color: tint, sourceId: emittedFrom, incoherent: true,
               evan: true, evanLen: EMISSION_GLOW_MM, captureLen: EMISSION_CAPTURE_MM,
               intensity: 0.25,
-              power: Number.isFinite(ray.power) ? ray.power * strength / N : undefined,
+              power: Number.isFinite(spontaneous.power) ? spontaneous.power * strength / N : undefined,
+              sample: null, sampleCount: 1, sampleGrid: null,
               tag: `f${ci}_${i}`,
             });
           });
@@ -5869,7 +5951,10 @@ const samePlace = (a, b) => a.key === b.key
 // transmission, or null. `node` is the checkpoint at the current hit.
 // Exported for the tests, which build checkpoint trails directly.
 export function closedLoop(node, r) {
-  if (r.phaseValid || r.evan || r.chopped || r.polMod || r.pulse?.gates?.length
+  // Point-source light still bound by its capture range (`rangeLeft`) runs out
+  // after a finite number of round trips, so it is traced pass by pass rather
+  // than summed as an endless series.
+  if (r.phaseValid || r.evan || r.rangeLeft || r.chopped || r.polMod || r.pulse?.gates?.length
       || !(Number.isFinite(r.power) && r.power > 0)) return null;
   const earlierVisit = from => {
     for (let at = from, steps = 1; at; at = at.prev, steps++) if (samePlace(at, node)) return { at, steps };
@@ -5908,23 +5993,36 @@ export function closedLoop(node, r) {
 }
 
 // What collects a point source's light: the working surfaces of every element
-// in the Lenses and Mirrors categories, and a fiber tip. An absorbing rim on
-// one of those elements is not a collector.
+// in the Lenses, Mirrors and Detectors categories, and a fiber tip. An
+// absorbing rim or housing on one of those elements is not a collector. A
+// sketch saved before detectors collected (`lensmirror`) keeps them out.
 const POINT_SOURCE_COLLECTOR_CATEGORIES = new Set(['Lenses', 'Mirrors']);
-function collectsPointSource(surface) {
+function collectsPointSource(surface, mode) {
   if (surface.kind === 'fiberin') return true;
   if (surface.kind === 'absorb') return false;
-  return POINT_SOURCE_COLLECTOR_CATEGORIES.has(registry[surface.el?.type]?.category);
+  const category = registry[surface.el?.type]?.category;
+  if (category === 'Detectors') return mode !== 'lensmirror';
+  return POINT_SOURCE_COLLECTOR_CATEGORIES.has(category);
+}
+const collectorRule = mode => mode === 'collectors' || mode === 'lensmirror';
+// What catches a point source set to be caught by every optical element: any
+// traced surface except the housing of another light source, which is not an
+// optic -- a laser next to a lamp must not soak up its rays.
+function catchesPointSource(surface) {
+  return registry[surface.el?.type]?.category !== 'Sources';
 }
 // The surfaces a point-source ray looks along for a collector: the collectors
-// themselves and whatever is opaque. Cached per surface list, which is built
-// once per trace.
+// of its rule and whatever is opaque. Cached per surface list, which is built
+// once per trace, and per rule: under the saved-sketch rule the eye's pupil
+// lens is not a collector, so it must not stand in front of one.
 const sightlines = new WeakMap();
-function pointSourceSightline(surfaces) {
-  let list = sightlines.get(surfaces);
+function pointSourceSightline(surfaces, mode) {
+  let byMode = sightlines.get(surfaces);
+  if (!byMode) sightlines.set(surfaces, byMode = new Map());
+  let list = byMode.get(mode);
   if (!list) {
-    list = surfaces.filter(s => s.kind === 'absorb' || s.kind === 'detector' || collectsPointSource(s));
-    sightlines.set(surfaces, list);
+    list = surfaces.filter(s => s.kind === 'absorb' || s.kind === 'detector' || s.kind === 'retina' || collectsPointSource(s, mode));
+    byMode.set(mode, list);
   }
   return list;
 }
@@ -5934,7 +6032,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
   // Genuine branches weaker than the old 2 % drawing floor, spent against
   // weakBranchBudget: what bounds the cost of tracing faint light.
   let weakBranches = 0;
-  const integrationSurfaces = surfaces.filter(surface => surface.kind === 'detector');
+  const integrationSurfaces = surfaces.filter(surface => surface.kind === 'detector' || surface.kind === 'retina');
   const stack = rays0.map(r => {
     const opl = Number.isFinite(r.oplStart) ? r.oplStart : 0;
     const gdd = Number.isFinite(r.gddStart) ? r.gddStart
@@ -6081,12 +6179,16 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // blocker, a housing, a detector -- ends the search, and a ray with
         // no collector ahead of it fades without being traced further.
         // Fluorescence keeps the collector list above and the nearest hit.
-        const ahead = r.captureMode === 'collectors'
-          ? nearestHit({ x: r.x, y: r.y }, { x: r.dx, y: r.dy }, pointSourceSightline(surfaces), r.last)
+        // A point source caught by every optical element is caught by the
+        // first one it meets within its range, whatever that is.
+        const ahead = collectorRule(r.captureMode)
+          ? nearestHit({ x: r.x, y: r.y }, { x: r.dx, y: r.dy }, pointSourceSightline(surfaces, r.captureMode), r.last)
           : null;
-        const captured = r.captureMode === 'collectors'
-          ? Boolean(ahead && ahead.t <= CAPTURE && collectsPointSource(ahead.surface))
-          : hit && hit.t <= CAPTURE && COLLECTORS.has(hit.surface.kind);
+        const captured = collectorRule(r.captureMode)
+          ? Boolean(ahead && ahead.t <= CAPTURE && collectsPointSource(ahead.surface, r.captureMode))
+          : r.captureMode === 'all'
+            ? Boolean(hit && hit.t <= CAPTURE && catchesPointSource(hit.surface))
+            : hit && hit.t <= CAPTURE && COLLECTORS.has(hit.surface.kind);
         if (!captured) {
           // The glow of an uncollected ray stops at the first surface it
           // meets, whatever that is: drawn on through a filter it would show
@@ -6105,12 +6207,25 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // The transmitted child starts AT the collector, having already used
         // up hit.t of its range. Handing it the full range again would let a
         // chain of partial mirrors walk near-field light across the bench.
-        if (r.captureMode === 'collectors') {
+        if (collectorRule(r.captureMode)) {
           // The collector may still be several optics away. Until the ray
           // gets there it carries what is left of its range, so a partial
           // mirror reached through a filter limits its leak exactly as one
           // reached directly does.
           r.sourceRange = { evanLen: EVAN_LEN, captureLen: CAPTURE, captureMode: r.captureMode };
+        } else if (r.captureMode === 'all') {
+          // Caught here, at hit.t. A lens, a mirror or a fiber tip collects
+          // the light; anything else -- a filter, a splitter, a prism, glass
+          // -- acts on it and hands on light that is still the source's
+          // diverging emission, so every branch leaving it keeps only the
+          // range that is left and fades again unless caught within it. A
+          // partial mirror's leak keeps that range too, as in the other mode.
+          // The fresh fade is never longer than the range left, so whatever
+          // the drawn glow touches can still catch it.
+          const captureLeft = Math.max(0, CAPTURE - hit.t);
+          const left = { evanLen: Math.min(EVAN_LEN, captureLeft), captureLen: captureLeft, captureMode: 'all' };
+          if (!collectsPointSource(hit.surface)) r.rangeLeft = left;
+          else if (['mirror', 'cmirror'].includes(hit.surface.kind)) r.carriedEvan = left;
         } else {
           r.carriedEvan = {
             evanLen: Math.max(0, EVAN_LEN - hit.t),
@@ -6130,7 +6245,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           captureMode: r.sourceRange.captureMode,
         };
         r.carriedEvan = ['mirror', 'cmirror'].includes(hit.surface.kind) ? left : null;
-        r.sourceRange = collectsPointSource(hit.surface) ? null : left;
+        r.sourceRange = collectsPointSource(hit.surface, left.captureMode) ? null : left;
       }
       if (!hit) {
         appendPoint(r, { x: r.x + r.dx * MAXLEN, y: r.y + r.dy * MAXLEN }, MAXLEN);
@@ -6196,7 +6311,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // 2PP voxel marks, which its own writeVoxel flag already gates.
       const holder = hit.surface.el?.type;
       if ((holder === 'stage' || holder === 'sample') && r.writeReference) {
-        if (writeHits && hit.surface.data.writeVoxel && r.pulse && !r.pulse.interferenceUnknown) {
+        if (writeHits && hit.surface.data.writeVoxel && r.pulse && !r.incoherent && !r.pulse.interferenceUnknown) {
           writeHits.push({
             stageId: hit.surface.el.id,
             x: hit.p.x,
@@ -6245,7 +6360,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           });
         }
       }
-      if (!coherent?.dryRun && hit.surface.kind === 'detector') recordDetectorHit(r, hit);
+      if (!coherent?.dryRun && (hit.surface.kind === 'detector' || hit.surface.kind === 'retina')) recordDetectorHit(r, hit);
       if (hit.surface.kind === 'phaseplate') {
         // Same bookkeeping as the delay line, except the added path depends on
         // where this particular ray crossed the aperture -- which is what turns
@@ -6323,6 +6438,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // clearing it here covers that route too.
       const carriedEvan = r.carriedEvan;
       r.carriedEvan = null;
+      // Likewise the range a point-source ray keeps after an optic that caught
+      // it without collecting it: it applies to what leaves this interaction.
+      const rangeLeft = r.rangeLeft;
+      r.rangeLeft = null;
       interactionRay = r; interactionReshapesPulse = false; interactionPorts = null;
       const children = interact(r, hit);
       const ports = interactionPorts;
@@ -6470,7 +6589,11 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         && !('spectralField' in c0)
         && !('approximation' in c0)
         && !('pulse' in c0) // state changes split so probes read each segment
-        && !('trainPieces' in c0); // and so does a change to what is drawn
+        && !('trainPieces' in c0) // and so does a change to what is drawn
+        // Light that fades again from here starts a new ray: a fading glow is
+        // drawn from its ray's last point, and must not take the caught leg
+        // behind it along.
+        && !rangeLeft;
       if (single) {
         // The ray carries on as itself, so the provenance rule is applied to
         // it here: a conversion that lands on the wavelength the ray already
@@ -6542,6 +6665,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         const childGdd = 'gdd' in c ? c.gdd : r.gdd;
         const childDelayDifference = 'groupDelayDifferenceFs' in c
           ? c.groupDelayDifferenceFs : r.groupDelayDifferenceFs;
+        const inheritedRange = rangeLeft && !c.evan && !('sourceId' in c) ? rangeLeft
+          : c.tag === 'T' ? carriedEvan : null;
         stack.push({
           x: ox, y: oy, dx: c.d.x, dy: c.d.y,
           // Anything that reaches here starts a new branch string: a real
@@ -6583,11 +6708,14 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           // upstream continues from where the parent's pattern had reached.
           chopped: c.chopped || continuedChop(r.chopped, polylineLength(r.pts)),
           // A branch that merely passed THROUGH a collector was never
-          // collected, so it stays evanescent with the range it had.
-          evan: c.evan || Boolean(c.tag === 'T' && carriedEvan),
-          evanLen: c.evanLen ?? (c.tag === 'T' ? carriedEvan?.evanLen : undefined),
-          captureLen: c.captureLen ?? (c.tag === 'T' ? carriedEvan?.captureLen : undefined),
-          captureMode: c.captureMode ?? (c.tag === 'T' ? carriedEvan?.captureMode : undefined),
+          // collected, so it stays evanescent with the range it had; so does
+          // every branch of an optic that caught point-source light without
+          // collecting it. Light generated here is a new emitter with rules
+          // of its own.
+          evan: c.evan || Boolean(inheritedRange),
+          evanLen: c.evanLen ?? inheritedRange?.evanLen,
+          captureLen: c.captureLen ?? inheritedRange?.captureLen,
+          captureMode: c.captureMode ?? inheritedRange?.captureMode,
           // The range belongs to the collected light and what continues it.
           // Light generated here -- fluorescence, with a range of its own --
           // is a new emitter and must not inherit the pump's.
@@ -6789,6 +6917,10 @@ function assembleDrawables(paths, opts, drawables) {
   // outline runs along the whole polyline; each segment therefore carries the
   // pattern forward by the distance before it, or the fill would restart at
   // every bend the outline passes straight through.
+  // A specimen's angular fan is independent of the pump's transverse grid.
+  for (const r of paths) {
+    if (r.sample == null) pushRay(r, 2, opOf(r), false);
+  }
   const bySample = new Map();
   for (const r of paths) {
     if (r.sample === null || r.sample === undefined || r.pts.length < 2) continue;
@@ -7027,6 +7159,7 @@ export function traceScene(elements, beams = [], options = {}) {
   coarsePortCache = new Map();
   cellSpectrumCache = new Map();
   specimenIncident = new Map();
+  specimenEmissionSamples = new WeakMap();
   opoStates = new Map();
   opaStates = new Map();
   sourceWattsById = new Map(elements
@@ -7188,7 +7321,7 @@ export function traceScene(elements, beams = [], options = {}) {
     || (s.kind === 'transmit' && MIX_CONVERTS.has(s.data.convert))
     || s.kind === 'opapump' || s.kind === 'opaseed'
     || (s.kind === 'attenuate' && s.data.specimen && s.el
-        && ['linear', 'nonlinear'].includes(specimenTypeOf(s.el.params))));
+        && ['linear', 'nonlinear', 'resin'].includes(specimenTypeOf(s.el.params))));
   // An OPA cascade is planned stage by stage: in each pass, OPAs planned in
   // the pass before emit their outputs, so the next stage sees its seed (or
   // its pump) and is planned in turn. Passes stop when the plans no longer

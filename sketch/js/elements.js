@@ -11,6 +11,7 @@ import { conicMirrorGeometry, conicMirrorSize, conicMirrorSVG, conicMirrorSurfac
 
 import { distToSegment, esc, formatSignal, rotPt, smoothPath, toWorld, wavelengthToColor, newScatterSeed } from './util.js';
 import { uid } from './util.js';
+import { emissionRayCount, ISOTROPIC_KINDS } from './emission.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
@@ -1492,10 +1493,8 @@ function probeCardPlacement(el, card, scale) {
 // optically inert specimen that only attenuates the excitation.
 export const MAX_SAMPLE_CHANNELS = 5;
 
-// A specimen is one of four kinds. Absorbing and resin have no signal
-// channels at all; the two "specimen" types each offer their own menu of
-// stackable signals, because a linear process and a nonlinear one are never
-// alternatives for the same physical sample.
+// Each specimen type offers its own signal menu. Resin can optionally
+// fluoresce during writing; that signal does not model or prove curing.
 export const SPECIMEN_TYPES = [
   ['absorbing', 'Absorbing specimen'],
   ['resin', 'Photocurable resin'],
@@ -1520,10 +1519,12 @@ export const NONLINEAR_SIGNAL_KINDS = [
 export function signalKindsFor(specimenType) {
   if (specimenType === 'linear') return LINEAR_SIGNAL_KINDS;
   if (specimenType === 'nonlinear') return NONLINEAR_SIGNAL_KINDS;
+  if (specimenType === 'resin') return NONLINEAR_SIGNAL_KINDS.filter(([kind]) => kind === 'tpef');
   return [];
 }
 
 const LINEAR_KIND_SET = new Set(LINEAR_SIGNAL_KINDS.map(([k]) => k));
+const RESIN_KIND_SET = new Set(['tpef']);
 const NONLINEAR_KIND_SET = new Set(NONLINEAR_SIGNAL_KINDS.map(([k]) => k));
 export const ALL_SIGNAL_KINDS = [...LINEAR_SIGNAL_KINDS, ...NONLINEAR_SIGNAL_KINDS];
 
@@ -1541,7 +1542,7 @@ export const TWO_BEAM_KINDS = new Set(['sfg', 'cars', 'srs']);
 // distinction to offer. The parametric signals are generated along the
 // excitation direction and are forward-dominant, with a weaker backward
 // (epi) lobe that real epi-detected CARS/SHG setups rely on.
-export const ISOTROPIC_KINDS = new Set(['fluor', 'raman', 'tpef', 'thpef']);
+export { ISOTROPIC_KINDS };
 export const EPI_CAPABLE_KINDS = new Set(['shg', 'thg', 'sfg', 'cars']);
 // These modify the excitation beam in place rather than emitting a new one.
 export const MODIFIER_KINDS = new Set(['phase', 'srs']);
@@ -1609,7 +1610,8 @@ export function fluorophoreAbsorption(id, excitationWl, order = 1) {
 
 export function newSampleChannel(kind = 'fluor') {
   return {
-    kind, wl: 520, eff: 0.1, epi: false, epiRatio: 0.15, autoWl: true,
+    kind, ...(ISOTROPIC_KINDS.has(kind) ? { nrays: emissionRayCount({ kind }) } : {}),
+    wl: 520, eff: 0.1, epi: false, epiRatio: 0.15, autoWl: true,
     autoColor: true, color: '#22c55e',
     material: 'lipid',        // spontaneous Raman fingerprint
     fluorophore: 'custom',    // emission band for the fluorescence kinds
@@ -1658,15 +1660,29 @@ export function specimenTypeOf(p) {
 }
 
 export function sampleChannels(p) {
+  return honoredChannels(p).map(({ channel }) => channel);
+}
+
+// Where each honored channel sits in params.channels, so an editor row writes
+// to the channel it shows and never to a dormant one stored before it. A
+// legacy single-mode specimen has no stored list yet; the first edit writes
+// exactly the honored rows (see the inspector), so their own order is theirs.
+export function sampleChannelIndices(p) {
+  return honoredChannels(p).map(({ index }, row) => index ?? row);
+}
+
+function honoredChannels(p) {
   const type = specimenTypeOf(p);
-  // Absorbing and resin specimens emit nothing. Channels the user configured
-  // under another type are kept in params (so switching back restores them)
-  // but take no part in the trace, and a channel is only ever honored under
-  // the type whose menu offers it.
-  const allowed = type === 'linear' ? LINEAR_KIND_SET : type === 'nonlinear' ? NONLINEAR_KIND_SET : null;
+  // Resin emission is explicitly enabled, so saved resins with dormant
+  // channels keep opening without gaining a signal. Other types still only
+  // honor the channels their own menus offer.
+  const allowed = type === 'linear' ? LINEAR_KIND_SET : type === 'nonlinear' ? NONLINEAR_KIND_SET
+    : type === 'resin' && p.resinFluorescence === true ? RESIN_KIND_SET : null;
   if (!allowed) return [];
-  const raw = Array.isArray(p?.channels) && p.channels.length ? p.channels : legacySampleChannels(p);
-  return raw.filter(c => allowed.has(c.kind)).slice(0, MAX_SAMPLE_CHANNELS);
+  const stored = Array.isArray(p?.channels) && p.channels.length;
+  const raw = stored ? p.channels : legacySampleChannels(p);
+  return raw.map((channel, i) => ({ channel, index: stored ? i : null }))
+    .filter(({ channel }) => allowed.has(channel.kind)).slice(0, MAX_SAMPLE_CHANNELS);
 }
 
 // Two-beam signals only happen while both pulses are at the spot together.
@@ -1770,11 +1786,12 @@ function sampleModeParams() {
       // carry — stacked channels, a legacy single `mode`, or the old
       // per-material `sampleKind`.
       migrate: p => specimenTypeOf({ ...p, specimenType: null }) },
-    // Only the two signal-bearing types show a channel list; the resin's own
-    // preview controls live on the stage, next to its piezo scan.
+    { key: 'resinFluorescence', label: 'Two-photon fluorescence', type: 'checkbox', def: false,
+      show: p => specimenTypeOf(p) === 'resin' },
+    // Writing preview and optional fluorescence have separate controls.
     { key: 'channels', label: 'Signals generated', type: 'signals', def: [], show: p => {
       const type = specimenTypeOf(p);
-      return type === 'linear' || type === 'nonlinear';
+      return type === 'linear' || type === 'nonlinear' || (type === 'resin' && p.resinFluorescence === true);
     } },
     // Arrival timing is a number, not a picture: a picosecond is a third of a
     // millimetre of path, which no drawing at bench scale can show. A specimen
@@ -2605,11 +2622,44 @@ function opaStateCore(plan, p) {
   return lines.join('\n');
 }
 
-// How far an uncollected point-source ray is drawn, and the capture range a
-// point source had before the range became a parameter (1.5x the glow).
+// How far an uncaught point-source ray is drawn, the capture range a point
+// source had before the range became a parameter (1.5x the glow), and the
+// longest range a user may set.
 const POINT_SOURCE_GLOW_MM = 110;
 const POINT_SOURCE_MAX_RAYS = 4096;
 const POINT_SOURCE_LEGACY_CAPTURE_MM = 165;
+const POINT_SOURCE_MAX_CAPTURE_MM = 100000;
+
+// Human eye (reduced, in air): focal-length range and the 60 D default.
+export const EYE_MIN_FOCUS_MM = 12;
+export const EYE_MAX_FOCUS_MM = 40;
+export const EYE_DEFAULT_LENGTH_MM = 16.7;
+// 0.8 x 15 mm = 12 mm: the largest pupil fits inside the shortest eye's front wall.
+export const EYE_MIN_LENGTH_MM = 15;
+export const EYE_MAX_PUPIL_MM = 12;
+
+export function eyePowerD(params) {
+  const f = Number(params?.focus);
+  return Number.isFinite(f) && f > 0 ? 1000 / f : NaN;
+}
+
+// The spectacle correction, at the eye's lens, that would focus distant
+// light on this retina: negative for a too-strong (myopic) eye, positive for
+// a too-weak (hyperopic) one.
+export function eyeRefractionD(params) {
+  const length = Number(params?.diameter);
+  const power = eyePowerD(params);
+  if (!(length > 0) || !Number.isFinite(power)) return NaN;
+  return 1000 / length - power;
+}
+
+function eyeRefractionLabel(params) {
+  const error = eyeRefractionD(params);
+  if (!Number.isFinite(error)) return '—';
+  if (Math.abs(error) < 0.125) return '0.00 D (emmetropic)';
+  const sign = error > 0 ? '+' : '−';
+  return `${sign}${Math.abs(error).toFixed(2)} D (${error > 0 ? 'hyperopic' : 'myopic'})`;
+}
 
 export const registry = {
 
@@ -2748,7 +2798,7 @@ export const registry = {
     params: [
       { key: 'displayScale', label: 'Display scale', type: 'number', min: 0.5, max: 2.5, step: 0.1, def: 1 },
       // The same emitter, wearing one of two hats. A discharge lamp is
-      // geometrically a point source -- isotropic, incoherent, collected the
+      // geometrically a point source -- isotropic, incoherent, caught the
       // same way -- and differs only in emitting a fixed set of lines instead
       // of a wavelength you type, so it is a mode here rather than an element
       // of its own.
@@ -2767,13 +2817,31 @@ export const registry = {
       { key: 'linesReadout', label: 'Lines', type: 'readout', readout: p => lampLineSummary(p.lampType), show: p => p.sourceKind === 'lamp' },
       { key: 'spread', label: 'Emission angle (°)', type: 'number', min: 10, max: 360, step: 10, def: 360 },
       { key: 'nrays', label: 'Rays', type: 'number', min: 4, max: POINT_SOURCE_MAX_RAYS, step: 2, def: 12, slider: true },
-      // How far from the source a lens, mirror or fiber tip may sit and still
-      // collect its light. Sketches saved before this control existed traced with a fixed
-      // 165 mm, so they load at that instead of the new default.
+      // What catches the light within the capture range. A new source is
+      // caught by every optical element; a sketch saved before this control
+      // existed was drawn with only lenses, mirrors and fiber tips collecting,
+      // and opens that way.
+      {
+        key: 'catchMode', label: 'Caught by', type: 'select', def: 'all',
+        options: [['all', 'Any optic'], ['collectors', 'Collectors']],
+        // Sketches saved before this choice traced with lenses, mirrors and
+        // fiber tips as the only collectors, and keep exactly that.
+        legacyOptions: [['lensmirror', 'Lenses & mirrors']],
+        migrate: () => 'lensmirror',
+        note: p => p.catchMode === 'lensmirror'
+          ? 'The rule this setup was saved with: only a lens, mirror or fiber tip within the capture range collects the light; optics in front of it act on it. Choose Collectors to let detectors collect too.'
+          : p.catchMode === 'collectors'
+          ? 'Only a lens, mirror, fiber tip or detector within the capture range collects the light; other optics in front of it act on it.'
+          : 'Any optic within the capture range acts on the light. A lens, mirror, fiber tip or detector collects it; past any other optic only the range left counts. Light sources do not catch it.',
+      },
+      // How far from the source light can still be caught. Sketches saved
+      // before this control existed traced with a fixed 165 mm, so they load
+      // at that instead of the new default.
       {
         key: 'captureRange', label: 'Capture range (mm)', type: 'number',
-        min: POINT_SOURCE_GLOW_MM, max: 5000, step: 5, def: 1000,
+        min: POINT_SOURCE_GLOW_MM, max: POINT_SOURCE_MAX_CAPTURE_MM, step: 5, def: 1000,
         migrate: () => POINT_SOURCE_LEGACY_CAPTURE_MM,
+        note: 'Light nothing catches within this distance fades out, as an isotropic emitter dims with distance. A drawing convention, not an inverse-square calculation.',
       },
       P.autoColor, P.color,
     ],
@@ -2808,8 +2876,9 @@ export const registry = {
       const n = Number.isFinite(count) ? Math.min(POINT_SOURCE_MAX_RAYS, Math.max(4, Math.round(count))) : 12;
       const range = Number(el.params.captureRange);
       const captureLen = Number.isFinite(range)
-        ? Math.min(5000, Math.max(POINT_SOURCE_GLOW_MM, range))
+        ? Math.min(POINT_SOURCE_MAX_CAPTURE_MM, Math.max(POINT_SOURCE_GLOW_MM, range))
         : POINT_SOURCE_LEGACY_CAPTURE_MM;
+      const captureMode = ['collectors', 'lensmirror'].includes(el.params.catchMode) ? el.params.catchMode : 'all';
       for (let i = 0; i < n; i++) {
         // A full-circle source must not duplicate the -180°/+180° sample.
         const aDeg = spread >= 359.999
@@ -2818,7 +2887,7 @@ export const registry = {
         const a = aDeg * Math.PI / 180;
         out.push({
           x: 0, y: 0, dx: Math.cos(a), dy: Math.sin(a),
-          evan: true, evanLen: POINT_SOURCE_GLOW_MM, captureLen, captureMode: 'collectors',
+          evan: true, evanLen: POINT_SOURCE_GLOW_MM, captureLen, captureMode,
         });
       }
       return out;
@@ -4201,9 +4270,39 @@ export const registry = {
     dataPort: el => ({ x: (el.params.diameter || 30) / 2 + 3, y: 0 }),
     size_: el => ({ w: (el.params.diameter || 30) + 6, h: (el.params.diameter || 30) + 6 }),
     params: [
-      { key: 'diameter', label: 'Eye diameter (mm)', type: 'number', min: 18, max: 60, step: 1, def: 30 },
-      { key: 'pupil', label: 'Pupil diameter (mm)', type: 'number', min: 2, max: 12, step: 0.5, def: 12 },
-      { key: 'focus', label: 'Lens focal length (mm)', type: 'number', min: 20, max: 35, step: 0.5, def: 30 },
+      // A reduced eye in air: one thin lens at the pupil, the retina one eye
+      // length behind it. The defaults are the textbook 60 D eye, whose
+      // air-equivalent length is 1000/60 = 16.7 mm. Sketches saved before
+      // these defaults (30 mm eye, 12 mm pupil, 30 mm focal length) load at
+      // the values they were drawn with.
+      { key: 'diameter', label: 'Eye length (mm)', type: 'number', min: EYE_MIN_LENGTH_MM, max: 60, step: 0.1, slider: true, def: EYE_DEFAULT_LENGTH_MM, migrate: () => 30 },
+      { key: 'pupil', label: 'Pupil diameter (mm)', type: 'number', min: 1, max: EYE_MAX_PUPIL_MM, step: 0.5, def: 4, migrate: () => 12 },
+      {
+        key: 'powerUnit', label: 'Optical power as', type: 'select', def: 'mm',
+        options: [['mm', 'Focal length (mm)'], ['D', 'Dioptres (D)']],
+      },
+      {
+        key: 'focus', label: 'Lens focal length (mm)', type: 'number', min: EYE_MIN_FOCUS_MM, max: EYE_MAX_FOCUS_MM, step: 0.1, slider: true,
+        def: EYE_DEFAULT_LENGTH_MM, migrate: () => 30, show: p => p.powerUnit !== 'D',
+      },
+      // The dioptre field is a view of the same focal length, so a sketch
+      // stores one number whichever unit it was edited in.
+      {
+        key: 'powerD', label: 'Eye power (D)', type: 'derived',
+        min: Math.round(1000 / EYE_MAX_FOCUS_MM * 4) / 4, max: Math.round(1000 / EYE_MIN_FOCUS_MM * 4) / 4, step: 0.25, slider: true,
+        get: p => Math.round(eyePowerD(p) * 100) / 100,
+        set: (p, value) => {
+          const D = Number(value);
+          if (Number.isFinite(D) && D > 0) p.focus = Math.min(EYE_MAX_FOCUS_MM, Math.max(EYE_MIN_FOCUS_MM, 1000 / D));
+        },
+        show: p => p.powerUnit === 'D',
+      },
+      { key: 'refraction', label: 'Refractive error', type: 'readout', wide: true, readout: p => eyeRefractionLabel(p) },
+      { key: 'retinalReflectivity', label: 'Retinal reflectivity (%)', type: 'number', min: 0, max: 100, step: 0.1, slider: true, def: 0 },
+      {
+        key: 'retinalDiffuse', label: 'Diffuse share of reflection (%)', type: 'number', min: 0, max: 100, step: 1, def: 0,
+        show: p => Number(p.retinalReflectivity) > 0,
+      },
     ],
     svg(el) {
       const scale = (el.params.diameter || 30) / 30;
@@ -4220,17 +4319,33 @@ export const registry = {
     },
     surfaces(el) {
       // the pupil acts as an ideal lens that focuses collimated light onto
-      // the retina; the rest of the eyeball absorbs
+      // the retina; the rest of the eyeball absorbs. The retina may send part
+      // of the light back towards the pupil, so the outside of the back wall
+      // is a separate absorber just behind it: light arriving from behind the
+      // eye stops there instead of reaching (and reflecting off) the retina.
       const scale = (el.params.diameter || 30) / 30;
-      const radius = 15 * scale, retina = 13 * scale;
-      const h = Math.min(radius * 0.8, Math.max(1, el.params.pupil / 2));
+      const radius = 15 * scale, retina = 13 * scale, back = radius + 0.5 * scale;
+      // The traced pupil is the one the control sets: the shortest eye
+      // (EYE_MIN_LENGTH_MM) still leaves room for the largest pupil inside the
+      // front wall, so the cap below only guards malformed input.
+      const h = Math.min(radius * 0.8, Math.max(0.05, Number(el.params.pupil) / 2 || 0.05));
       return [
         { x1: -radius, y1: -h, x2: -radius, y2: h, kind: 'lens', data: { f: el.params.focus } },
         { x1: -radius, y1: -radius, x2: -radius, y2: -h, kind: 'absorb' },
         { x1: -radius, y1: h, x2: -radius, y2: radius, kind: 'absorb' },
-        { x1: -radius, y1: -radius, x2: radius, y2: -radius, kind: 'absorb' },
-        { x1: -radius, y1: radius, x2: radius, y2: radius, kind: 'absorb' },
-        { x1: radius, y1: -retina, x2: radius, y2: retina, kind: 'detector', data: { aperture: 2 * retina, detectorType: 'Retina' } },
+        { x1: -radius, y1: -radius, x2: back, y2: -radius, kind: 'absorb' },
+        { x1: -radius, y1: radius, x2: back, y2: radius, kind: 'absorb' },
+        {
+          x1: radius, y1: -retina, x2: radius, y2: retina, kind: 'retina',
+          data: {
+            aperture: 2 * retina, detectorType: 'Retina',
+            refl: el.params.retinalReflectivity ?? 0, diffuse: el.params.retinalDiffuse ?? 0,
+            // where the pupil is, seen from the retina: diffusely scattered
+            // light is only sent towards the part of the eye it can leave by
+            pupilDistance: 2 * radius, pupilHalf: h,
+          },
+        },
+        { x1: back, y1: -radius, x2: back, y2: radius, kind: 'absorb' },
       ];
     },
   },
@@ -5885,7 +6000,7 @@ const ELEMENT_HELP = {
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
   ledsource: 'Emits a collimated beam of incoherent light from an LED behind its own collimator, with an illustrative single-colour or two-band white spectrum. It never interferes, and its residual divergence is not modelled.',
-  pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp. A lens, a mirror or a fiber tip within the capture range collects its rays, which carry on as ordinary light; other optics on the way act on that light but collect nothing themselves, and a ray with no collector ahead is drawn as a short fading glow. The range is a drawing convention that keeps the canvas readable, not attenuation. A parabolic mirror with the source at its focus collimates it.',
+  pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp. Any optical element within the capture range catches its rays and acts on them as on any light; a lens, a mirror, a fiber tip or a detector collects them, and after any other optic only the range that is left still counts. Light that nothing catches fades out within a short distance. The range is a drawing convention for how far an isotropic emitter stays visible, not an inverse-square calculation. A parabolic mirror with the source at its focus collimates it.',
   objarrow: 'Traces a ray fan from the object’s anchor on the optical axis and separately draws an ideal paraxial image; the image marker does not model downstream clipping.',
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',
@@ -5927,7 +6042,7 @@ const ELEMENT_HELP = {
   detector: 'Measures qualitative ray signal, spectrum, polarization, and spot span.',
   pmt: 'Multiplies a faint signal into a readable one, and reports whether it actually clears the tube\u2019s own dark floor.',
   camera: 'Measures a pixel-integrated one-dimensional intensity profile and resolves supported same-source interference from sized CW, pulsed and supercontinuum beams.',
-  eye: 'Focuses through a configurable pupil and reports the qualitative retinal signal and spot.',
+  eye: 'A reduced eye: focuses through a configurable pupil, set by focal length or dioptres; reports the retinal signal, spot and power; and can reflect part of the light back, mirror-like or diffusely.',
   display: 'Shows the live qualitative output of a linked photodetector, PMT, camera, or retina.',
   aom: 'Deflects first-order light with a configurable modulation efficiency and zero order, under square, sine or sawtooth RF modulation (the ramp sweeping from falling through triangular to rising). A square gate can also draw both orders chopped in opposition, so the switching stays visible on a beam drawn as a steady line.',
   phasemodulator: 'Writes a voltage-driven optical path across the whole beam without touching its polarization \u2014 invisible alone, and an amplitude modulator in one arm of an interferometer.',

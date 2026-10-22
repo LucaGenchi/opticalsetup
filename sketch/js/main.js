@@ -1373,13 +1373,14 @@ function syncViewControls(detail = getViewportDetail()) {
 function syncPulseControls(detail = getPulsePlayback()) {
   const controls = $('pulseControls');
   if (!controls) return;
-  controls.classList.toggle('is-idle', !detail.hasPulses);
+  const hasAnimation = detail.hasPulses || detail.hasMotion;
+  controls.classList.toggle('is-idle', !hasAnimation);
   const play = $('btnPulsePlay');
   play.textContent = detail.playing ? 'Ⅱ' : '▶';
-  play.title = detail.playing ? 'Pause pulse animation' : 'Play pulse animation';
+  play.title = detail.playing ? 'Pause animation' : 'Play animation';
   play.setAttribute('aria-label', play.title);
-  play.setAttribute('aria-pressed', String(detail.playing && detail.hasPulses));
-  play.classList.toggle('active', detail.playing && detail.hasPulses);
+  play.setAttribute('aria-pressed', String(detail.playing && hasAnimation));
+  play.classList.toggle('active', detail.playing && hasAnimation);
   $('pulseDisplay').value = detail.mode;
   $('pulseSpeed').value = detail.mechanicsMode ? 'mechanics' : String(detail.speedNsPerSecond);
   $('pulseScaleNote').textContent = detail.mechanicsMode

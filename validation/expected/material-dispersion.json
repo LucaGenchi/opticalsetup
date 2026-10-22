@@ -1,0 +1,1958 @@
+{
+ "app": "calculators/dispersion/materials.js: materialDispersion, materialAbbe; calculators/dispersion/dispersion-calculator.js: computeDispersion",
+ "cases": [
+  {
+   "expected": {
+    "groupIndex": 1.659495992,
+    "gvdFs2PerMm": 206.1508148,
+    "index": 1.552770264,
+    "todFs3PerMm": 71.16833684
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nbk7",
+    "wavelengthNm": 300
+   },
+   "name": "nbk7 at 300 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.526649647,
+    "gvdFs2PerMm": 44.65179715,
+    "index": 1.510776231,
+    "todFs3PerMm": 32.10136831
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nbk7",
+    "wavelengthNm": 800
+   },
+   "name": "nbk7 at 800 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.520122185,
+    "gvdFs2PerMm": 17.90610097,
+    "index": 1.505929503,
+    "todFs3PerMm": 54.80559156
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nbk7",
+    "wavelengthNm": 1118.62
+   },
+   "name": "nbk7 at 1118.62 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.533672118,
+    "gvdFs2PerMm": -249.7376711,
+    "index": 1.48601771,
+    "todFs3PerMm": 1347.1502
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nbk7",
+    "wavelengthNm": 2500
+   },
+   "name": "nbk7 at 2500 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.594443875,
+    "gvdFs2PerMm": 143.172583,
+    "index": 1.51457772,
+    "todFs3PerMm": 41.5913829
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nfk51a",
+    "wavelengthNm": 290
+   },
+   "name": "nfk51a at 290 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.493241676,
+    "gvdFs2PerMm": 33.77324033,
+    "index": 1.482314874,
+    "todFs3PerMm": 21.55155441
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nfk51a",
+    "wavelengthNm": 800
+   },
+   "name": "nfk51a at 800 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.488103812,
+    "gvdFs2PerMm": 16.87441193,
+    "index": 1.479159275,
+    "todFs3PerMm": 33.1010466
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nfk51a",
+    "wavelengthNm": 1112.34
+   },
+   "name": "nfk51a at 1112.34 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.493350921,
+    "gvdFs2PerMm": -116.2446372,
+    "index": 1.467858653,
+    "todFs3PerMm": 604.1413325
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nfk51a",
+    "wavelengthNm": 2500
+   },
+   "name": "nfk51a at 2500 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.931220407,
+    "gvdFs2PerMm": 653.9878594,
+    "index": 1.722811351,
+    "todFs3PerMm": 550.3999593
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nsf5",
+    "wavelengthNm": 380
+   },
+   "name": "nsf5 at 380 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.692279495,
+    "gvdFs2PerMm": 126.4461764,
+    "index": 1.658629959,
+    "todFs3PerMm": 83.71738123
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nsf5",
+    "wavelengthNm": 800
+   },
+   "name": "nsf5 at 800 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.671002527,
+    "gvdFs2PerMm": 62.98206373,
+    "index": 1.648556365,
+    "todFs3PerMm": 98.94163958
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nsf5",
+    "wavelengthNm": 1168.85
+   },
+   "name": "nsf5 at 1168.85 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.675703964,
+    "gvdFs2PerMm": -219.2428726,
+    "index": 1.625990844,
+    "todFs3PerMm": 1285.267901
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nsf5",
+    "wavelengthNm": 2500
+   },
+   "name": "nsf5 at 2500 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 2.054096426,
+    "gvdFs2PerMm": 849.7052913,
+    "index": 1.790578895,
+    "todFs3PerMm": 744.0721851
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nsf10",
+    "wavelengthNm": 380
+   },
+   "name": "nsf10 at 380 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.751263259,
+    "gvdFs2PerMm": 156.5237126,
+    "index": 1.711297333,
+    "todFs3PerMm": 102.5222633
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nsf10",
+    "wavelengthNm": 800
+   },
+   "name": "nsf10 at 800 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.724651095,
+    "gvdFs2PerMm": 81.5969979,
+    "index": 1.699639364,
+    "todFs3PerMm": 111.2179871
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nsf10",
+    "wavelengthNm": 1168.85
+   },
+   "name": "nsf10 at 1168.85 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.725229027,
+    "gvdFs2PerMm": -197.2215588,
+    "index": 1.676511406,
+    "todFs3PerMm": 1204.529329
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nsf10",
+    "wavelengthNm": 2500
+   },
+   "name": "nsf10 at 2500 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 2.237740408,
+    "gvdFs2PerMm": 1266.75262,
+    "index": 1.870021617,
+    "todFs3PerMm": 1280.946757
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nsf11",
+    "wavelengthNm": 370
+   },
+   "name": "nsf11 at 370 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.811492262,
+    "gvdFs2PerMm": 187.4987192,
+    "index": 1.764619918,
+    "todFs3PerMm": 123.9935073
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nsf11",
+    "wavelengthNm": 800
+   },
+   "name": "nsf11 at 800 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.779828257,
+    "gvdFs2PerMm": 100.0221162,
+    "index": 1.751271713,
+    "todFs3PerMm": 127.2235605
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nsf11",
+    "wavelengthNm": 1162.57
+   },
+   "name": "nsf11 at 1162.57 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.777912619,
+    "gvdFs2PerMm": -202.2761137,
+    "index": 1.725840028,
+    "todFs3PerMm": 1269.588759
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nsf11",
+    "wavelengthNm": 2500
+   },
+   "name": "nsf11 at 2500 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 2.204880393,
+    "gvdFs2PerMm": 1226.691962,
+    "index": 1.846036016,
+    "todFs3PerMm": 1241.723677
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nsf14",
+    "wavelengthNm": 365
+   },
+   "name": "nsf14 at 365 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.787141944,
+    "gvdFs2PerMm": 176.6582812,
+    "index": 1.742868044,
+    "todFs3PerMm": 115.7494785
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nsf14",
+    "wavelengthNm": 800
+   },
+   "name": "nsf14 at 800 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.757380067,
+    "gvdFs2PerMm": 95.11848148,
+    "index": 1.730323342,
+    "todFs3PerMm": 119.5674106
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nsf14",
+    "wavelengthNm": 1159.43
+   },
+   "name": "nsf14 at 1159.43 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.755460779,
+    "gvdFs2PerMm": -192.3046611,
+    "index": 1.706205183,
+    "todFs3PerMm": 1210.414168
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nsf14",
+    "wavelengthNm": 2500
+   },
+   "name": "nsf14 at 2500 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 2.389566227,
+    "gvdFs2PerMm": 1569.105621,
+    "index": 1.947473827,
+    "todFs3PerMm": 1667.281344
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nsf57",
+    "wavelengthNm": 370
+   },
+   "name": "nsf57 at 370 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.877171698,
+    "gvdFs2PerMm": 219.0932483,
+    "index": 1.823434034,
+    "todFs3PerMm": 145.0384188
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nsf57",
+    "wavelengthNm": 800
+   },
+   "name": "nsf57 at 800 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.840059339,
+    "gvdFs2PerMm": 118.6378981,
+    "index": 1.808316386,
+    "todFs3PerMm": 142.4074109
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nsf57",
+    "wavelengthNm": 1162.57
+   },
+   "name": "nsf57 at 1162.57 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.834852832,
+    "gvdFs2PerMm": -193.5755429,
+    "index": 1.781385028,
+    "todFs3PerMm": 1258.799111
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nsf57",
+    "wavelengthNm": 2500
+   },
+   "name": "nsf57 at 2500 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 2.216494037,
+    "gvdFs2PerMm": 877.2273812,
+    "index": 1.923857913,
+    "todFs3PerMm": 694.0035252
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nlasf9",
+    "wavelengthNm": 365
+   },
+   "name": "nlasf9 at 365 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.874431076,
+    "gvdFs2PerMm": 164.7094784,
+    "index": 1.832475141,
+    "todFs3PerMm": 102.754685
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nlasf9",
+    "wavelengthNm": 800
+   },
+   "name": "nlasf9 at 800 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.84643737,
+    "gvdFs2PerMm": 90.26392613,
+    "index": 1.820517295,
+    "todFs3PerMm": 111.8351965
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nlasf9",
+    "wavelengthNm": 1159.43
+   },
+   "name": "nlasf9 at 1159.43 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.844555552,
+    "gvdFs2PerMm": -181.8471435,
+    "index": 1.79737799,
+    "todFs3PerMm": 1140.854276
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "nlasf9",
+    "wavelengthNm": 2500
+   },
+   "name": "nlasf9 at 2500 nm (SCHOTT)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.76760062,
+    "gvdFs2PerMm": 364.2410911,
+    "index": 1.53835762,
+    "todFs3PerMm": 129.5730977
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "silica",
+    "wavelengthNm": 210
+   },
+   "name": "silica at 210 nm (Malitson 1965)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.467144755,
+    "gvdFs2PerMm": 36.1619983,
+    "index": 1.453317255,
+    "todFs3PerMm": 27.49726172
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "silica",
+    "wavelengthNm": 800
+   },
+   "name": "silica at 800 nm (Malitson 1965)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.462363108,
+    "gvdFs2PerMm": -23.5846685,
+    "index": 1.444471848,
+    "todFs3PerMm": 137.3915238
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "silica",
+    "wavelengthNm": 1512.35
+   },
+   "name": "silica at 1512.35 nm (Malitson 1965)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.521771682,
+    "gvdFs2PerMm": -1387.637283,
+    "index": 1.399279772,
+    "todFs3PerMm": 13100.10416
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "silica",
+    "wavelengthNm": 3710
+   },
+   "name": "silica at 3710 nm (Malitson 1965)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.588939464,
+    "gvdFs2PerMm": 171.818138,
+    "index": 1.475754569,
+    "todFs3PerMm": 46.83658737
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "caf2",
+    "wavelengthNm": 230
+   },
+   "name": "caf2 at 230 nm (Malitson 1963)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.438896773,
+    "gvdFs2PerMm": 27.87340068,
+    "index": 1.430529326,
+    "todFs3PerMm": 16.34221736
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "caf2",
+    "wavelengthNm": 800
+   },
+   "name": "caf2 at 800 nm (Malitson 1963)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.444950784,
+    "gvdFs2PerMm": -227.030119,
+    "index": 1.411882839,
+    "todFs3PerMm": 1501.935722
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "caf2",
+    "wavelengthNm": 3753.79
+   },
+   "name": "caf2 at 3753.79 nm (Malitson 1963)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.579713754,
+    "gvdFs2PerMm": -7213.270636,
+    "index": 1.308237467,
+    "todFs3PerMm": 163279.8553
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "caf2",
+    "wavelengthNm": 9700
+   },
+   "name": "caf2 at 9700 nm (Malitson 1963)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 2.336034163,
+    "gvdFs2PerMm": 672.8911818,
+    "index": 1.912709408,
+    "todFs3PerMm": 257.6731699
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "sapphire-o",
+    "wavelengthNm": 200
+   },
+   "name": "sapphire-o at 200 nm (Malitson and Dodge 1972)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.781553803,
+    "gvdFs2PerMm": 58.03885731,
+    "index": 1.760132585,
+    "todFs3PerMm": 42.12377743
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "sapphire-o",
+    "wavelengthNm": 800
+   },
+   "name": "sapphire-o at 800 nm (Malitson and Dodge 1972)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.778660586,
+    "gvdFs2PerMm": -118.2686223,
+    "index": 1.737973078,
+    "todFs3PerMm": 514.8720528
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "sapphire-o",
+    "wavelengthNm": 1986.08
+   },
+   "name": "sapphire-o at 1986.08 nm (Malitson and Dodge 1972)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.921348842,
+    "gvdFs2PerMm": -3975.976694,
+    "index": 1.62403175,
+    "todFs3PerMm": 45715.68673
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "sapphire-o",
+    "wavelengthNm": 5000
+   },
+   "name": "sapphire-o at 5000 nm (Malitson and Dodge 1972)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 2.317403495,
+    "gvdFs2PerMm": 666.3825562,
+    "index": 1.901626171,
+    "todFs3PerMm": 261.9978667
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "sapphire-e",
+    "wavelengthNm": 200
+   },
+   "name": "sapphire-e at 200 nm (Malitson and Dodge 1972)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.773288522,
+    "gvdFs2PerMm": 56.62548766,
+    "index": 1.752199587,
+    "todFs3PerMm": 41.3989091
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "sapphire-e",
+    "wavelengthNm": 800
+   },
+   "name": "sapphire-e at 800 nm (Malitson and Dodge 1972)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.770677195,
+    "gvdFs2PerMm": -116.8696936,
+    "index": 1.730216692,
+    "todFs3PerMm": 503.6509436
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "sapphire-e",
+    "wavelengthNm": 1986.08
+   },
+   "name": "sapphire-e at 1986.08 nm (Malitson and Dodge 1972)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.906116632,
+    "gvdFs2PerMm": -3659.397257,
+    "index": 1.618386428,
+    "todFs3PerMm": 40506.35142
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "sapphire-e",
+    "wavelengthNm": 5000
+   },
+   "name": "sapphire-e at 5000 nm (Malitson and Dodge 1972)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.952166026,
+    "gvdFs2PerMm": 442.9427537,
+    "index": 1.65090228,
+    "todFs3PerMm": 137.4989853
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "quartz-o",
+    "wavelengthNm": 198
+   },
+   "name": "quartz-o at 198 nm (Ghosh 1999)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.554267861,
+    "gvdFs2PerMm": 42.01446657,
+    "index": 1.538335512,
+    "todFs3PerMm": 31.58051915
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "quartz-o",
+    "wavelengthNm": 800
+   },
+   "name": "quartz-o at 800 nm (Ghosh 1999)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.551589544,
+    "gvdFs2PerMm": 34.17660503,
+    "index": 1.536730203,
+    "todFs3PerMm": 35.8613281
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "quartz-o",
+    "wavelengthNm": 888.28
+   },
+   "name": "quartz-o at 888.28 nm (Ghosh 1999)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.555045344,
+    "gvdFs2PerMm": -126.8730231,
+    "index": 1.520047953,
+    "todFs3PerMm": 581.1202715
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "quartz-o",
+    "wavelengthNm": 2053.1
+   },
+   "name": "quartz-o at 2053.1 nm (Ghosh 1999)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.97761733,
+    "gvdFs2PerMm": 463.5770193,
+    "index": 1.663972181,
+    "todFs3PerMm": 145.6488226
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "quartz-e",
+    "wavelengthNm": 198
+   },
+   "name": "quartz-e at 198 nm (Ghosh 1999)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.563736832,
+    "gvdFs2PerMm": 43.33719503,
+    "index": 1.547230109,
+    "todFs3PerMm": 32.75125869
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "quartz-e",
+    "wavelengthNm": 800
+   },
+   "name": "quartz-e at 800 nm (Ghosh 1999)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.560975761,
+    "gvdFs2PerMm": 35.20592809,
+    "index": 1.545566172,
+    "todFs3PerMm": 37.21836621
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "quartz-e",
+    "wavelengthNm": 888.28
+   },
+   "name": "quartz-e at 888.28 nm (Ghosh 1999)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.564710981,
+    "gvdFs2PerMm": -132.7652244,
+    "index": 1.528193862,
+    "todFs3PerMm": 607.2195523
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "quartz-e",
+    "wavelengthNm": 2053.1
+   },
+   "name": "quartz-e at 2053.1 nm (Ghosh 1999)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 3.046687596,
+    "gvdFs2PerMm": 2464.969846,
+    "index": 1.946863612,
+    "todFs3PerMm": 1759.61284
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "bbo-o",
+    "wavelengthNm": 188
+   },
+   "name": "bbo-o at 188 nm (Tamosauskas et al. 2018)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.684402947,
+    "gvdFs2PerMm": 75.54388746,
+    "index": 1.660400323,
+    "todFs3PerMm": 50.67247861
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "bbo-o",
+    "wavelengthNm": 800
+   },
+   "name": "bbo-o at 800 nm (Tamosauskas et al. 2018)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.678213455,
+    "gvdFs2PerMm": -152.7838758,
+    "index": 1.637440337,
+    "todFs3PerMm": 803.5788703
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "bbo-o",
+    "wavelengthNm": 2052.97
+   },
+   "name": "bbo-o at 2052.97 nm (Tamosauskas et al. 2018)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 2.239206168,
+    "gvdFs2PerMm": -34941.45909,
+    "index": 1.451711835,
+    "todFs3PerMm": 966356.6975
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "bbo-o",
+    "wavelengthNm": 5200
+   },
+   "name": "bbo-o at 5200 nm (Tamosauskas et al. 2018)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 2.567940632,
+    "gvdFs2PerMm": 2209.061827,
+    "index": 1.745478986,
+    "todFs3PerMm": 2261.776897
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "bbo-e",
+    "wavelengthNm": 188
+   },
+   "name": "bbo-e at 188 nm (Tamosauskas et al. 2018)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.560357159,
+    "gvdFs2PerMm": 58.83126205,
+    "index": 1.545468327,
+    "todFs3PerMm": 30.77910872
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "bbo-e",
+    "wavelengthNm": 800
+   },
+   "name": "bbo-e at 800 nm (Tamosauskas et al. 2018)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.545841339,
+    "gvdFs2PerMm": -5.190843953,
+    "index": 1.536733509,
+    "todFs3PerMm": 120.7280334
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "bbo-e",
+    "wavelengthNm": 2052.97
+   },
+   "name": "bbo-e at 2052.97 nm (Tamosauskas et al. 2018)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.570370794,
+    "gvdFs2PerMm": -752.797494,
+    "index": 1.51473319,
+    "todFs3PerMm": 8938.531799
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "bbo-e",
+    "wavelengthNm": 5200
+   },
+   "name": "bbo-e at 5200 nm (Tamosauskas et al. 2018)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.967760013,
+    "gvdFs2PerMm": 244.0625033,
+    "index": 1.86082616,
+    "todFs3PerMm": 75.13035328
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "yag",
+    "wavelengthNm": 400
+   },
+   "name": "yag at 400 nm (Zelmon et al. 1998)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.849603816,
+    "gvdFs2PerMm": 98.45418949,
+    "index": 1.821432495,
+    "todFs3PerMm": 56.51376806
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "yag",
+    "wavelengthNm": 800
+   },
+   "name": "yag at 800 nm (Zelmon et al. 1998)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.831816203,
+    "gvdFs2PerMm": -82.11365697,
+    "index": 1.798771384,
+    "todFs3PerMm": 477.7708243
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "yag",
+    "wavelengthNm": 2111.66
+   },
+   "name": "yag at 2111.66 nm (Zelmon et al. 1998)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.925087239,
+    "gvdFs2PerMm": -2683.549047,
+    "index": 1.72199594,
+    "todFs3PerMm": 30680.97781
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "yag",
+    "wavelengthNm": 5000
+   },
+   "name": "yag at 5000 nm (Zelmon et al. 1998)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 3.393125718,
+    "gvdFs2PerMm": 3787.791493,
+    "index": 2.675407055,
+    "todFs3PerMm": 6497.552938
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "znse",
+    "wavelengthNm": 540
+   },
+   "name": "znse at 540 nm (Connolly et al. 1979 / Tatian 1984)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 2.727889239,
+    "gvdFs2PerMm": 1025.471685,
+    "index": 2.52417563,
+    "todFs3PerMm": 880.7120529
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "znse",
+    "wavelengthNm": 800
+   },
+   "name": "znse at 800 nm (Connolly et al. 1979 / Tatian 1984)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 2.451901925,
+    "gvdFs2PerMm": -319.277998,
+    "index": 2.421340533,
+    "todFs3PerMm": 5237.952055
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "znse",
+    "wavelengthNm": 7111.29
+   },
+   "name": "znse at 7111.29 nm (Connolly et al. 1979 / Tatian 1984)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 2.58428169,
+    "gvdFs2PerMm": -14919.03304,
+    "index": 2.327826771,
+    "todFs3PerMm": 707759.5898
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "znse",
+    "wavelengthNm": 18200
+   },
+   "name": "znse at 18200 nm (Connolly et al. 1979 / Tatian 1984)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 3.670882486,
+    "gvdFs2PerMm": 1462.728942,
+    "index": 3.497513423,
+    "todFs3PerMm": 3327.808023
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "si",
+    "wavelengthNm": 1357
+   },
+   "name": "si at 1357 nm (Salzberg and Villa 1957 / Tatian 1984)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 3.605295,
+    "gvdFs2PerMm": 1119.38518,
+    "index": 3.477723756,
+    "todFs3PerMm": 1366.484966
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "si",
+    "wavelengthNm": 1550
+   },
+   "name": "si at 1550 nm (Salzberg and Villa 1957 / Tatian 1984)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 3.433826544,
+    "gvdFs2PerMm": 308.3602516,
+    "index": 3.422160021,
+    "todFs3PerMm": 829.604203
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "si",
+    "wavelengthNm": 4960.04
+   },
+   "name": "si at 4960.04 nm (Salzberg and Villa 1957 / Tatian 1984)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 3.419887933,
+    "gvdFs2PerMm": 136.5636318,
+    "index": 3.417501237,
+    "todFs3PerMm": 824.4011638
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "si",
+    "wavelengthNm": 11040
+   },
+   "name": "si at 11040 nm (Salzberg and Villa 1957 / Tatian 1984)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 2.128369661,
+    "gvdFs2PerMm": 2323.816662,
+    "index": 1.467946586,
+    "todFs3PerMm": 3943.432839
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "water",
+    "wavelengthNm": 182
+   },
+   "name": "water at 182 nm (Daimon and Masumura 2007)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.356700125,
+    "gvdFs2PerMm": 54.82206952,
+    "index": 1.335285581,
+    "todFs3PerMm": 23.80458079
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "water",
+    "wavelengthNm": 534.38
+   },
+   "name": "water at 534.38 nm (Daimon and Masumura 2007)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.34245018,
+    "gvdFs2PerMm": 24.88104468,
+    "index": 1.328608788,
+    "todFs3PerMm": 33.10308824
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "water",
+    "wavelengthNm": 800
+   },
+   "name": "water at 800 nm (Daimon and Masumura 2007)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.340667645,
+    "gvdFs2PerMm": -16.60604744,
+    "index": 1.323560161,
+    "todFs3PerMm": 121.8391611
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "water",
+    "wavelengthNm": 1129
+   },
+   "name": "water at 1129 nm (Daimon and Masumura 2007)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.000396536,
+    "gvdFs2PerMm": 0.1489597445,
+    "index": 1.000308003,
+    "todFs3PerMm": 0.05586985119
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "air",
+    "wavelengthNm": 230
+   },
+   "name": "air at 230 nm (Ciddor 1996)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.0002805,
+    "gvdFs2PerMm": 0.02211931747,
+    "index": 1.000275221,
+    "todFs3PerMm": 0.009992062364
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "air",
+    "wavelengthNm": 773.27
+   },
+   "name": "air at 773.27 nm (Ciddor 1996)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.00027997,
+    "gvdFs2PerMm": 0.0213099505,
+    "index": 1.000275048,
+    "todFs3PerMm": 0.00989691647
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "air",
+    "wavelengthNm": 800
+   },
+   "name": "air at 800 nm (Ciddor 1996)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.000274238,
+    "gvdFs2PerMm": 0.009733885197,
+    "index": 1.000273158,
+    "todFs3PerMm": 0.008910269871
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "air",
+    "wavelengthNm": 1690
+   },
+   "name": "air at 1690 nm (Ciddor 1996)",
+   "tolerance": {
+    "groupIndex": 1e-09,
+    "gvdFs2PerMm": 1e-09,
+    "index": 1e-09,
+    "todFs3PerMm": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "gvdFs2PerMm": 0.004636569022
+   },
+   "inputs": {
+    "kind": "point",
+    "material": "silica",
+    "wavelengthNm": 1272.7
+   },
+   "name": "silica near zero GVD, 1272.7 nm",
+   "note": "GVD crosses zero here; 1e-9 fs^2/mm absolute.",
+   "tolerance": {
+    "gvdFs2PerMm": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "abbe": 64.17,
+    "nd": 1.5168
+   },
+   "inputs": {
+    "kind": "abbe",
+    "material": "nbk7"
+   },
+   "name": "nbk7 catalogue nd and Vd",
+   "note": "Published values, checked to half a unit of the last quoted digit.",
+   "tolerance": {
+    "abbe": 0.005,
+    "nd": 5e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "abbe": 84.47,
+    "nd": 1.48656
+   },
+   "inputs": {
+    "kind": "abbe",
+    "material": "nfk51a"
+   },
+   "name": "nfk51a catalogue nd and Vd",
+   "note": "Published values, checked to half a unit of the last quoted digit.",
+   "tolerance": {
+    "abbe": 0.005,
+    "nd": 5e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "abbe": 32.25,
+    "nd": 1.67271
+   },
+   "inputs": {
+    "kind": "abbe",
+    "material": "nsf5"
+   },
+   "name": "nsf5 catalogue nd and Vd",
+   "note": "Published values, checked to half a unit of the last quoted digit.",
+   "tolerance": {
+    "abbe": 0.005,
+    "nd": 5e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "abbe": 28.53,
+    "nd": 1.72828
+   },
+   "inputs": {
+    "kind": "abbe",
+    "material": "nsf10"
+   },
+   "name": "nsf10 catalogue nd and Vd",
+   "note": "Published values, checked to half a unit of the last quoted digit.",
+   "tolerance": {
+    "abbe": 0.005,
+    "nd": 5e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "abbe": 25.68,
+    "nd": 1.78472
+   },
+   "inputs": {
+    "kind": "abbe",
+    "material": "nsf11"
+   },
+   "name": "nsf11 catalogue nd and Vd",
+   "note": "Published values, checked to half a unit of the last quoted digit.",
+   "tolerance": {
+    "abbe": 0.005,
+    "nd": 5e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "abbe": 26.53,
+    "nd": 1.76182
+   },
+   "inputs": {
+    "kind": "abbe",
+    "material": "nsf14"
+   },
+   "name": "nsf14 catalogue nd and Vd",
+   "note": "Published values, checked to half a unit of the last quoted digit.",
+   "tolerance": {
+    "abbe": 0.005,
+    "nd": 5e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "abbe": 23.78,
+    "nd": 1.84666
+   },
+   "inputs": {
+    "kind": "abbe",
+    "material": "nsf57"
+   },
+   "name": "nsf57 catalogue nd and Vd",
+   "note": "Published values, checked to half a unit of the last quoted digit.",
+   "tolerance": {
+    "abbe": 0.005,
+    "nd": 5e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "abbe": 32.17,
+    "nd": 1.85025
+   },
+   "inputs": {
+    "kind": "abbe",
+    "material": "nlasf9"
+   },
+   "name": "nlasf9 catalogue nd and Vd",
+   "note": "Published values, checked to half a unit of the last quoted digit.",
+   "tolerance": {
+    "abbe": 0.005,
+    "nd": 5e-06
+   }
+  },
+  {
+   "expected": {
+    "addedDelayFs": 15582.27176,
+    "addedOpticalPathMm": 4.533172549,
+    "bandwidthTHz": 14.05277147,
+    "delaySpreadFs": 31.95771809,
+    "gddFs2": 361.619983,
+    "outputFs": 44.78358097,
+    "todFs3": 274.9726172,
+    "transformLimitFs": 31.38171008
+   },
+   "inputs": {
+    "bandwidthNm": 30,
+    "kind": "calculator",
+    "material": "silica",
+    "shape": "gauss",
+    "thicknessMm": 10,
+    "wavelengthNm": 800
+   },
+   "name": "10 mm silica, 30 nm FWHM at 800 nm",
+   "note": "Delay spread is a difference of two group indices: 1e-8 for the cancellation.",
+   "tolerance": {
+    "addedDelayFs": 1e-09,
+    "addedOpticalPathMm": 1e-09,
+    "bandwidthTHz": 1e-09,
+    "delaySpreadFs": 1e-08,
+    "gddFs2": 1e-09,
+    "outputFs": 1e-09,
+    "todFs3": 1e-09,
+    "transformLimitFs": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "addedDelayFs": 65619.02921,
+    "addedOpticalPathMm": 18.87288279,
+    "bandwidthTHz": 3.390997734,
+    "delaySpreadFs": 66.77405476,
+    "gddFs2": 3133.731808,
+    "outputFs": 146.2071377,
+    "todFs3": 2938.664838,
+    "transformLimitFs": 130.0502196
+   },
+   "inputs": {
+    "bandwidthNm": 12,
+    "kind": "calculator",
+    "material": "nsf11",
+    "shape": "gauss",
+    "thicknessMm": 25,
+    "wavelengthNm": 1030
+   },
+   "name": "25 mm nsf11, 12 nm FWHM at 1030 nm",
+   "note": "Delay spread is a difference of two group indices: 1e-8 for the cancellation.",
+   "tolerance": {
+    "addedDelayFs": 1e-09,
+    "addedOpticalPathMm": 1e-09,
+    "bandwidthTHz": 1e-09,
+    "delaySpreadFs": 1e-08,
+    "gddFs2": 1e-09,
+    "outputFs": 1e-09,
+    "todFs3": 1e-09,
+    "transformLimitFs": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "addedDelayFs": 2270.175673,
+    "addedOpticalPathMm": 0.6509627346,
+    "bandwidthTHz": 11.99169832,
+    "delaySpreadFs": 0.4616142928,
+    "gddFs2": 6.093815298,
+    "outputFs": 36.77831115,
+    "todFs3": 137.3214922,
+    "transformLimitFs": 36.7754415
+   },
+   "inputs": {
+    "bandwidthNm": 40,
+    "kind": "calculator",
+    "material": "water",
+    "shape": "gauss",
+    "thicknessMm": 2,
+    "wavelengthNm": 1000
+   },
+   "name": "2 mm water, 40 nm FWHM at 1000 nm",
+   "note": "Delay spread is a difference of two group indices: 1e-8 for the cancellation.",
+   "tolerance": {
+    "addedDelayFs": 1e-09,
+    "addedOpticalPathMm": 1e-09,
+    "bandwidthTHz": 1e-09,
+    "delaySpreadFs": 1e-08,
+    "gddFs2": 1e-09,
+    "outputFs": 1e-09,
+    "todFs3": 1e-09,
+    "transformLimitFs": 1e-09
+   }
+  }
+ ],
+ "citations": [
+  "SCHOTT AG, optical glass Zemax catalogue 2017-01-20 and data sheets (N-BK7, N-FK51A, N-SF5, N-SF10, N-SF11, N-SF14, N-SF57, N-LASF9)",
+  "I. H. Malitson, J. Opt. Soc. Am. 55, 1205 (1965), doi:10.1364/JOSA.55.001205 (fused silica)",
+  "I. H. Malitson, Appl. Opt. 2, 1103 (1963), doi:10.1364/AO.2.001103 (CaF2)",
+  "I. H. Malitson and M. J. Dodge, J. Opt. Soc. Am. 62, 1405 (1972); M. J. Dodge, Handbook of Laser Science and Technology IV (1986) (sapphire)",
+  "G. Ghosh, Opt. Commun. 163, 95 (1999), doi:10.1016/S0030-4018(99)00091-7 (crystalline quartz)",
+  "G. Tamosauskas et al., Opt. Mater. Express 8, 1410 (2018), doi:10.1364/OME.8.001410 (BBO)",
+  "D. E. Zelmon, D. L. Small and R. Page, Appl. Opt. 37, 4933 (1998), doi:10.1364/AO.37.004933 (YAG)",
+  "J. Connolly et al., Proc. SPIE 181, 141 (1979); B. Tatian, Appl. Opt. 23, 4477 (1984) (ZnSe and Si fits)",
+  "C. D. Salzberg and J. J. Villa, J. Opt. Soc. Am. 47, 244 (1957), doi:10.1364/JOSA.47.000244 (Si)",
+  "M. Daimon and A. Masumura, Appl. Opt. 46, 3811 (2007), doi:10.1364/AO.46.003811 (water, 20 C)",
+  "P. E. Ciddor, Appl. Opt. 35, 1566 (1996), doi:10.1364/AO.35.001566 (standard dry air)",
+  "M. N. Polyanskiy, Sci. Data 11, 94 (2024), doi:10.1038/s41597-023-02898-2 (refractiveindex.info database, CC0: transcription source)"
+ ],
+ "convergence": "Central differences in angular frequency at h = 1e-7 omega in 50-digit arithmetic: truncation about 1e-14 relative; cancellation in the differences leaves round-off of about 3e-28 relative in beta_3 (fused silica, 800 nm), larger near a zero of beta_3 but far below the tolerance.",
+ "domain": "Every material at both fit endpoints, a fractional interior wavelength and 800 or 1550 nm; fused silica at its zero-GVD crossing; three thickness and bandwidth cases for GDD, TOD, the delay spread, Gaussian stretching and the added group delay and optical path.",
+ "fidelity": "computed",
+ "id": "material-dispersion",
+ "outside_scope": "Declines: `materialDispersion` and `computeDispersion` return null or an error outside each material's fit domain, for a bandwidth not smaller than the central wavelength, and for plot ranges outside the domain. A bandwidth edge outside the domain removes only the delay spread.",
+ "provenance": "Coefficients as printed in the refractiveindex.info database (CC0) for each primary source, entered in the database's own formula conventions; SCHOTT nd and Vd from the same catalogue release as the coefficients, so they check transcription and the Abbe evaluation, not the fit itself.",
+ "reference": "Published dispersion formulas in their printed form, 50-digit decimal arithmetic, k(omega) differentiated numerically in angular frequency; SCHOTT catalogue nd and Vd",
+ "reference_file": "validation/reference/material_dispersion.py",
+ "scope": "Room-temperature published fits inside each stated domain; principal indices of birefringent crystals; transform-limited Gaussian input stretched by GDD only; no absorption, temperature, stress or air-to-vacuum correction.",
+ "title": "Material dispersion calculator: n, n_g, GVD, TOD and pulse stretching",
+ "tolerance_rationale": "1e-9 relative is double-precision agreement with a numerically exact reference (1e-9 fs^2/mm absolute at the zero-GVD crossing; 1e-8 for the delay spread, a difference of two group indices). Catalogue anchors use half a unit of the last quoted digit."
+}
