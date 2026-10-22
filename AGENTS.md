@@ -108,14 +108,18 @@ the toolbar, palette, canvas, and inspector do not overflow.
 - Diagram-only elements must not silently absorb or redirect rays.
 - Normalize malformed sketches instead of assuming all fields are present.
 - **A saved setup must keep opening.** A scene saved or shared today is
-  expected to open and behave in a later version, either because the format
-  stayed compatible or because the app converts it on load. Conversions that
-  were explicitly approved stay: the pulsed-laser source controls (#148) and
-  the argon fiber opening without `lossModel` at its computed loss (#143).
+  expected to open in a later version, either because the format stayed
+  compatible or because the app converts it on load. Opening is the promise,
+  not identical results: when a later version fixes a bug or corrects the
+  physics, an old scene shows the corrected behaviour, and the PR description
+  says which results change and why. Do not keep a known error alive for
+  compatibility. Conversions that were explicitly approved stay: the
+  pulsed-laser source controls (#148) and the argon fiber opening without
+  `lossModel` at its computed loss (#143).
   Never delete or weaken an existing conversion to satisfy a policy sentence.
   A change that cannot stay compatible needs the scene version raised, a
   conversion on load, or — where the old scene genuinely cannot be
-  reproduced — a clear "unsupported version" message naming what is missing,
+  opened — a clear "unsupported version" message naming what is missing,
   never a silent wrong result. Say in the PR description which of these a
   format change uses.
 - **A released app does not change.** Each `MAJOR.MINOR` app stays at
