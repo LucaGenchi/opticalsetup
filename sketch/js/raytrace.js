@@ -5965,14 +5965,18 @@ export function closedLoop(node, r) {
 }
 
 // What collects a point source's light: the working surfaces of every element
-// in the Lenses and Mirrors categories, and a fiber tip. An absorbing rim on
-// one of those elements is not a collector.
+// in the Lenses, Mirrors and Detectors categories, and a fiber tip. An
+// absorbing rim or housing on one of those elements is not a collector. A
+// sketch saved before detectors collected (`lensmirror`) keeps them out.
 const POINT_SOURCE_COLLECTOR_CATEGORIES = new Set(['Lenses', 'Mirrors']);
-function collectsPointSource(surface) {
+function collectsPointSource(surface, mode) {
   if (surface.kind === 'fiberin') return true;
   if (surface.kind === 'absorb') return false;
-  return POINT_SOURCE_COLLECTOR_CATEGORIES.has(registry[surface.el?.type]?.category);
+  const category = registry[surface.el?.type]?.category;
+  if (category === 'Detectors') return mode !== 'lensmirror';
+  return POINT_SOURCE_COLLECTOR_CATEGORIES.has(category);
 }
+const collectorRule = mode => mode === 'collectors' || mode === 'lensmirror';
 // What catches a point source set to be caught by every optical element: any
 // traced surface except the housing of another light source, which is not an
 // optic -- a laser next to a lamp must not soak up its rays.
@@ -6146,11 +6150,11 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // Fluorescence keeps the collector list above and the nearest hit.
         // A point source caught by every optical element is caught by the
         // first one it meets within its range, whatever that is.
-        const ahead = r.captureMode === 'collectors'
+        const ahead = collectorRule(r.captureMode)
           ? nearestHit({ x: r.x, y: r.y }, { x: r.dx, y: r.dy }, pointSourceSightline(surfaces), r.last)
           : null;
-        const captured = r.captureMode === 'collectors'
-          ? Boolean(ahead && ahead.t <= CAPTURE && collectsPointSource(ahead.surface))
+        const captured = collectorRule(r.captureMode)
+          ? Boolean(ahead && ahead.t <= CAPTURE && collectsPointSource(ahead.surface, r.captureMode))
           : r.captureMode === 'all'
             ? Boolean(hit && hit.t <= CAPTURE && catchesPointSource(hit.surface))
             : hit && hit.t <= CAPTURE && COLLECTORS.has(hit.surface.kind);
@@ -6172,7 +6176,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // The transmitted child starts AT the collector, having already used
         // up hit.t of its range. Handing it the full range again would let a
         // chain of partial mirrors walk near-field light across the bench.
-        if (r.captureMode === 'collectors') {
+        if (collectorRule(r.captureMode)) {
           // The collector may still be several optics away. Until the ray
           // gets there it carries what is left of its range, so a partial
           // mirror reached through a filter limits its leak exactly as one
@@ -6210,7 +6214,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           captureMode: r.sourceRange.captureMode,
         };
         r.carriedEvan = ['mirror', 'cmirror'].includes(hit.surface.kind) ? left : null;
-        r.sourceRange = collectsPointSource(hit.surface) ? null : left;
+        r.sourceRange = collectsPointSource(hit.surface, left.captureMode) ? null : left;
       }
       if (!hit) {
         appendPoint(r, { x: r.x + r.dx * MAXLEN, y: r.y + r.dy * MAXLEN }, MAXLEN);

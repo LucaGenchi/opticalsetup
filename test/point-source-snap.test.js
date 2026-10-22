@@ -33,8 +33,9 @@ test('point source rays fade evanescently unless a nearby lens collects them', (
 });
 
 // ---- capture range, caught by lenses, mirrors and fiber tips ---------------
-// The rule every sketch saved before "Caught by" existed opens with: lenses
-// and mirrors (every element of those two categories) and fiber tips collect
+// The rule every sketch saved before "Caught by" existed opens with
+// ('lensmirror'): lenses and mirrors (every element of those two categories)
+// and fiber tips collect
 // a point source's light within its capture range. Other optics neither
 // collect it nor hide a collector behind them; opaque things do hide it. A ray
 // with no collector ahead fades at 110 mm. The partial-mirror and fiber cases
@@ -43,7 +44,7 @@ test('point source rays fade evanescently unless a nearby lens collects them', (
 
 function pointSource(params = {}) {
   const src = createElement('pointsource', 0, 0);
-  Object.assign(src.params, { nrays: 4, catchMode: 'collectors' }, params);
+  Object.assign(src.params, { nrays: 4, catchMode: 'lensmirror' }, params);
   return src;
 }
 
@@ -78,14 +79,14 @@ test('a new point source has a 1 m capture range, and a sketch saved without one
   const fresh = createElement('pointsource', 0, 0);
   assert.equal(fresh.params.captureRange, 1000);
   assert.equal(fresh.params.catchMode, 'all');
-  assert.ok(registry.pointsource.source(pointSource()).every(r => r.captureLen === 1000 && r.captureMode === 'collectors'));
+  assert.ok(registry.pointsource.source(pointSource()).every(r => r.captureLen === 1000 && r.captureMode === 'lensmirror'));
 
   const saved = pointSource();
   delete saved.params.captureRange;
   delete saved.params.catchMode;
   const load = element => parseSketch(JSON.stringify({ app: 'optics2d', version: 1, elements: [element], beams: [] }), registry).elements[0];
   assert.equal(load(saved).params.captureRange, 165, 'no stored range: the range it was drawn with');
-  assert.equal(load(saved).params.catchMode, 'collectors', 'no stored rule: the rule it was drawn with');
+  assert.equal(load(saved).params.catchMode, 'lensmirror', 'no stored rule: the rule it was drawn with');
   assert.equal(load(pointSource({ captureRange: 400 })).params.captureRange, 400, 'a stored range is kept');
   assert.equal(load(pointSource()).params.captureRange, 1000, 'a stored default is kept too');
 

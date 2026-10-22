@@ -13,7 +13,7 @@ import '../sketch/js/detector-instruments.js';
 // does.
 const mk = (type, x, y, rot = 0, params = {}) => {
   const el = createElement(type, x, y); el.rot = rot;
-  if (type === 'pointsource') Object.assign(el.params, { captureRange: 165, catchMode: 'collectors' });
+  if (type === 'pointsource') Object.assign(el.params, { captureRange: 165, catchMode: 'lensmirror' });
   Object.assign(el.params, params); return el;
 };
 

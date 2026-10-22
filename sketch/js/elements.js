@@ -2806,10 +2806,15 @@ export const registry = {
       {
         key: 'catchMode', label: 'Caught by', type: 'select', def: 'all',
         options: [['all', 'Any optic'], ['collectors', 'Collectors']],
-        migrate: () => 'collectors',
-        note: p => p.catchMode === 'collectors'
-          ? 'Only a lens, mirror or fiber tip within the capture range collects the light; optics in front of it act on it. Setups saved before this choice existed open this way.'
-          : 'Any optic within the capture range acts on the light, and a bare detector reads it. A lens, mirror or fiber tip collects it; past any other optic only the range left counts. Light sources do not catch it.',
+        // Sketches saved before this choice traced with lenses, mirrors and
+        // fiber tips as the only collectors, and keep exactly that.
+        legacyOptions: [['lensmirror', 'Lenses & mirrors']],
+        migrate: () => 'lensmirror',
+        note: p => p.catchMode === 'lensmirror'
+          ? 'The rule this setup was saved with: only a lens, mirror or fiber tip within the capture range collects the light; optics in front of it act on it. Choose Collectors to let detectors collect too.'
+          : p.catchMode === 'collectors'
+          ? 'Only a lens, mirror, fiber tip or detector within the capture range collects the light; other optics in front of it act on it.'
+          : 'Any optic within the capture range acts on the light. A lens, mirror, fiber tip or detector collects it; past any other optic only the range left counts. Light sources do not catch it.',
       },
       // How far from the source light can still be caught. Sketches saved
       // before this control existed traced with a fixed 165 mm, so they load
@@ -2854,7 +2859,7 @@ export const registry = {
       const captureLen = Number.isFinite(range)
         ? Math.min(POINT_SOURCE_MAX_CAPTURE_MM, Math.max(POINT_SOURCE_GLOW_MM, range))
         : POINT_SOURCE_LEGACY_CAPTURE_MM;
-      const captureMode = el.params.catchMode === 'collectors' ? 'collectors' : 'all';
+      const captureMode = ['collectors', 'lensmirror'].includes(el.params.catchMode) ? el.params.catchMode : 'all';
       for (let i = 0; i < n; i++) {
         // A full-circle source must not duplicate the -180°/+180° sample.
         const aDeg = spread >= 359.999
@@ -5976,7 +5981,7 @@ const ELEMENT_HELP = {
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
   ledsource: 'Emits a collimated beam of incoherent light from an LED behind its own collimator, with an illustrative single-colour or two-band white spectrum. It never interferes, and its residual divergence is not modelled.',
-  pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp. Any optical element within the capture range catches its rays and acts on them as on any light; a lens, a mirror or a fiber tip collects them, and after any other optic only the range that is left still counts. Light that nothing catches fades out within a short distance. The range is a drawing convention for how far an isotropic emitter stays visible, not an inverse-square calculation. A parabolic mirror with the source at its focus collimates it.',
+  pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp. Any optical element within the capture range catches its rays and acts on them as on any light; a lens, a mirror, a fiber tip or a detector collects them, and after any other optic only the range that is left still counts. Light that nothing catches fades out within a short distance. The range is a drawing convention for how far an isotropic emitter stays visible, not an inverse-square calculation. A parabolic mirror with the source at its focus collimates it.',
   objarrow: 'Traces a ray fan from the object’s anchor on the optical axis and separately draws an ideal paraxial image; the image marker does not model downstream clipping.',
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',

@@ -60,12 +60,29 @@ test('a new source is caught by every optical element within 1 m; a saved one ke
   const saved = source({ captureRange: 400 });
   delete saved.params.catchMode;
   const [old] = load([saved]);
-  assert.equal(old.params.catchMode, 'collectors', 'saved before the control: lenses, mirrors and fiber tips');
+  assert.equal(old.params.catchMode, 'lensmirror', 'saved before the control: lenses, mirrors and fiber tips');
   assert.equal(old.params.captureRange, 400);
   assert.equal(signal([old], at('detector', 300)), 0, 'and it still reads nothing on a bare detector');
 
   const [malformed] = load([source({ catchMode: 'everything' })]);
-  assert.ok(['all', 'collectors'].includes(malformed.params.catchMode));
+  assert.ok(['all', 'collectors', 'lensmirror'].includes(malformed.params.catchMode));
+  assert.equal(load([source({ catchMode: 'lensmirror' })])[0].params.catchMode, 'lensmirror', 'the saved rule round-trips');
+});
+
+test('under Collectors a detector collects like a lens; a saved sketch keeps it out', () => {
+  // A bare detector facing the source reads it, an ND in front acts on the
+  // light, a beam block in front hides it, and a filter alone collects nothing.
+  const collectors = (params = {}) => source({ catchMode: 'collectors', ...params });
+  close(signal([collectors()], faceAt(500)), 0.25, 'bare detector');
+  close(signal([collectors(), at('filter', 200, 0, { ftype: 'nd', trans: 0.3 })], faceAt(500)), 0.075, 'ND in front');
+  assert.equal(signal([collectors(), at('blocker', 200)], faceAt(500)), 0, 'blocked');
+  assert.equal(signal([collectors()], faceAt(1100)), 0, 'out of range');
+  assert.ok(fadesAtGlow(sourcePoints([collectors(), at('filter', 300)])), 'a filter alone still collects nothing');
+  assert.equal(signal([source({ catchMode: 'lensmirror' })], faceAt(500)), 0, 'the saved rule: no detector');
+  // The eye is a detector too: its retina reads a source in front of it.
+  const eye = at('eye', 400);
+  paths([collectors({ nrays: 64 }), eye]);
+  assert.ok((detectorReading(eye.id)?.signal ?? 0) > 0, 'the eye reads it');
 });
 
 test('the range reaches 100 m, is clamped there, and a bare detector reads only inside it', () => {

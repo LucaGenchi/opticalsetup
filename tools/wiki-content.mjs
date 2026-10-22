@@ -651,9 +651,10 @@ export const wikiEntries = [
         its light can still be caught. Within it, every optical element acts on the light
         as it would on any other: glass refracts it, a <a href="../filter/">filter</a>
         filters it, a <a href="../detector/">detector</a> facing the source reads it, and a
-        beam block stops it. A lens, a <a href="../mirror/">mirror</a> or a fiber tip
-        collects the light — every element in the Lenses and Mirrors groups does — and what
-        leaves it is ordinary light that travels on at any distance. Any other optic
+        beam block stops it. A lens, a <a href="../mirror/">mirror</a>, a detector or a fiber
+        tip collects the light — every element in the Lenses, Mirrors and Detectors groups
+        does — and what leaves a lens or a mirror is ordinary light that travels on at any
+        distance. Any other optic
         hands on light that is still spreading from the source, so it keeps only the range
         that is left: a filter 300&nbsp;mm away passes light that can still be caught for
         another 700&nbsp;mm, and fades after that. The housing of a laser or another source
@@ -662,11 +663,13 @@ export const wikiEntries = [
         caught light arrives at full ray weight, and light nothing catches is not traced
         further.</p>
         <p><strong>Caught by</strong> chooses the rule. <em>Any optic</em> is the default.
-        <em>Collectors</em> is the earlier rule, which a sketch saved before the choice
-        existed opens with: only lenses, mirrors and fiber tips collect, a filter or a
-        polarizer in front of the collecting lens acts on the light without collecting it,
-        a detector facing the source reads nothing, and something opaque in the way hides the
-        collector. Such a sketch also keeps the 165&nbsp;mm range it was drawn with.</p>
+        Under <em>Collectors</em> only lenses, mirrors, detectors and fiber tips catch the
+        light: a filter or a polarizer in front of one acts on the light without collecting
+        it, and something opaque in the way hides it. A sketch saved before the choice
+        existed opens with the rule it was drawn with, shown as <em>Lenses &amp; mirrors</em>:
+        the same, except that a detector facing the source reads nothing. Such a sketch also
+        keeps the 165&nbsp;mm range it was drawn with. Choose <em>Collectors</em> or
+        <em>Any optic</em> to update it.</p>
         <p>The embedded bench above shows the arrangement that makes collection
         clearest: a <a href="../oap/">parabolic mirror</a> with the source exactly at its
         focus, 25&nbsp;mm in front of the vertex, turning isotropic emission into a parallel
