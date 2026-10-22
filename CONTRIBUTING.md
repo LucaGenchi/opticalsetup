@@ -58,8 +58,11 @@ Beyond that:
    not say.
 4. **Limits are stated.** Each model's assumptions and validity range are
    written in its wiki article or in [docs/model-details.md](docs/model-details.md).
-   Outside that range the app says the value is unavailable, with a reason,
-   rather than returning a confident wrong number.
+   A new quantitative model declines outside its stated scope with a reason,
+   rather than returning a confident wrong number. Where an existing function
+   instead clamps to the edge of its data (as the glass catalogue does), that
+   is documented, and a clamped result is not validated at the requested
+   input.
 5. **Nothing non-finite reaches the screen.** User inputs are clamped where
    they enter, and no NaN or infinite coordinate, direction or power may
    reach rendering or export.
@@ -76,14 +79,15 @@ Beyond that:
 
 ### Without writing code
 
-- **Share a setup.** Press **Propose** in the app toolbar. It sends your
-  current sketch and description for review; accepted setups get their own
-  page in the Community section. Please write a short text description: what
+- **Share a setup.** Press **Propose** in the app toolbar. It opens a
+  prefilled public GitHub issue with your current sketch and description;
+  sign in to GitHub and submit the issue there to send it for review.
+  Accepted setups get their own page in the Community section. Please write a short text description: what
   the setup is, what it is used for, and anything a reader should notice in
   it, with citations to the papers or books it comes from where relevant.
   You choose whether to publish it under CC BY 4.0 with credit, and it stays
-  yours. (The same submission can be made from GitHub with the *Propose a
-  community setup* issue form.)
+  yours. (The prefilled issue uses the *Propose a community setup* issue
+  form, which you can also open directly on GitHub.)
 - **Suggest a built-in example.** Open an issue describing the setup and the
   literature it comes from; built-in examples are curated and cite their
   sources.
