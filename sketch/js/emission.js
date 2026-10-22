@@ -11,3 +11,10 @@ export function emissionRayCount(channel = {}) {
   const value = Number.isFinite(channel.nrays) ? channel.nrays : fallback;
   return Math.round(Math.min(EMISSION_RAY_LIMITS.max, Math.max(EMISSION_RAY_LIMITS.min, value)));
 }
+
+// Switching a signal's kind carries the ray count over only when the user set
+// it; a count still at the old kind's default takes the new kind's default.
+export function emissionRayCountAfterKindChange(channel = {}, kind) {
+  const untouched = !Number.isFinite(channel.nrays) || emissionRayCount(channel) === emissionRayCount({ kind: channel.kind });
+  return untouched ? emissionRayCount({ kind }) : emissionRayCount({ kind, nrays: channel.nrays });
+}

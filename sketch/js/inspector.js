@@ -3,12 +3,12 @@
 // Right-hand inspector: edit properties of the selected element or manual beam.
 
 import { state, changed, pushUndo, findSelected } from './state.js';
-import { emissionRayCount, EMISSION_RAY_LIMITS } from './emission.js';
+import { emissionRayCount, emissionRayCountAfterKindChange, EMISSION_RAY_LIMITS } from './emission.js';
 import { MAX_AOTF_CHANNELS, newAotfChannel, normalizeAotfChannels } from './aotf.js';
 import {
   registry, cameraProfileSVG, cameraReadingState, newShaperLayer, MAX_SHAPER_LAYERS, getElementMeta, getDirectManipulation, resolveDisplaySensor,
   newSampleChannel, MAX_SAMPLE_CHANNELS, MIXING_KINDS, EPI_CAPABLE_KINDS, sampleChannels,
-  signalKindsFor, specimenTypeOf, channelWarning, defaultEmissionWl, drivingExcitationWl,
+  signalKindsFor, SIGNAL_GENERATION_NOTES, specimenTypeOf, channelWarning, defaultEmissionWl, drivingExcitationWl,
   EMISSION_ORDER, ISOTROPIC_KINDS, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
   FLUOROPHORES, fluorophoreSpec, normalizeSupercontinuumParams,
 } from './elements.js';
@@ -668,6 +668,8 @@ function signalsHTML(sel) {
   const incident = incidentWlsAt(sel);
   const excitation = drivingExcitationWl(incident);
   let h = `<div class="lsechead">Signals generated — stack up to ${MAX_SAMPLE_CHANNELS}</div>`;
+  const generation = SIGNAL_GENERATION_NOTES[specimenTypeOf(sel.params)];
+  if (generation) h += `<div class="hint">${esc(generation)}</div>`;
   channels.forEach((c, i) => {
     h += `<div class="layer"><div class="layerrow">
       <select data-ci="${i}" data-ck="kind" aria-label="Signal ${i + 1} type">` +
@@ -1448,6 +1450,9 @@ export function applyInput(inp, rebuild = false) {
         const seeded = defaultEmissionWl(c.kind, drivingExcitationWl(incidentWlsAt(sel)));
         if (seeded) c.wl = seeded;
       }
+    } else if (ckey === 'kind') {
+      if (ISOTROPIC_KINDS.has(val)) c.nrays = emissionRayCountAfterKindChange(c, val);
+      c.kind = val;
     } else if (ckey === 'transferEff') {
       c.transferEff = Math.min(0.5, Math.max(0.01, val / 100)); // shown as a percentage
     } else {

@@ -3,9 +3,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement, registry, newSampleChannel, sampleChannels } from '../sketch/js/elements.js';
-import { emissionRayCount } from '../sketch/js/emission.js';
+import { emissionRayCount, emissionRayCountAfterKindChange } from '../sketch/js/emission.js';
 import { traceScene, detectorReading, specimenIncidentBeams, probeBeamsAt } from '../sketch/js/raytrace.js';
-import { parseSketch } from '../sketch/js/state.js';
+import { parseSketch, state } from '../sketch/js/state.js';
+import { initInspector, renderInspector, applyInput } from '../sketch/js/inspector.js';
 
 function bench({ kind = 'tpef', nrays = 20, width = 40, gap = 8, offset = 0 } = {}) {
   const laser = createElement('pulsedlaser', 0, 0);
@@ -120,4 +121,39 @@ test('old resin channels stay dormant, and angular counts normalize and round-tr
     assert.equal(sampleChannels(load(el.params).params)[0].nrays, expected);
   }
   assert.equal(emissionRayCount({ kind: 'raman' }), 14, 'legacy Raman angular sampling');
+});
+
+test('switching signal kind keeps a chosen ray count and follows an untouched default', () => {
+  assert.equal(emissionRayCountAfterKindChange(newSampleChannel('fluor'), 'raman'), 14);
+  assert.equal(emissionRayCountAfterKindChange(newSampleChannel('raman'), 'fluor'), 20);
+  assert.equal(emissionRayCountAfterKindChange({ kind: 'fluor', nrays: 64 }, 'raman'), 64);
+  assert.equal(emissionRayCountAfterKindChange({ kind: 'shg' }, 'raman'), 14, 'a non-emitting kind carries no count');
+  assert.equal(emissionRayCountAfterKindChange({ kind: 'fluor', nrays: NaN }, 'tpef'), 20);
+  // Through the inspector: Fluorescence → Raman shows the Raman default.
+  const { sample, elements } = bench({ kind: 'fluor' });
+  Object.assign(state, { elements, beams: [], selection: { kind: 'element', id: sample.id }, embedMode: false });
+  const panel = { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] };
+  initInspector(panel); traceScene(elements); renderInspector();
+  applyInput({ dataset: { ci: '0', ck: 'kind' }, type: 'select-one', value: 'raman' }, true);
+  assert.equal(sample.params.channels[0].kind, 'raman');
+  assert.equal(sample.params.channels[0].nrays, 14);
+  assert.match(panel.innerHTML, /Emission rays \/ line/);
+});
+
+test('each specimen type states where its signals come from and that the sketch ignores focusing', () => {
+  const panel = { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] };
+  initInspector(panel);
+  for (const [kind, type, pattern] of [['fluor', 'linear', /in focus and out of it/], ['tpef', 'nonlinear', /only from the focus/]]) {
+    const { sample, elements } = bench({ kind });
+    assert.equal(sample.params.specimenType, type);
+    Object.assign(state, { elements, beams: [], selection: { kind: 'element', id: sample.id }, embedMode: false });
+    traceScene(elements); renderInspector();
+    assert.match(panel.innerHTML, pattern);
+    assert.match(panel.innerHTML, /where the beam crosses the specimen line/);
+  }
+  const { sample, elements } = bench();
+  Object.assign(sample.params, { specimenType: 'absorbing' });
+  Object.assign(state, { elements, beams: [], selection: { kind: 'element', id: sample.id }, embedMode: false });
+  renderInspector();
+  assert.doesNotMatch(panel.innerHTML, /specimen line/, 'an absorbing specimen generates nothing to explain');
 });
