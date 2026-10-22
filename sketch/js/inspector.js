@@ -8,7 +8,7 @@ import { MAX_AOTF_CHANNELS, newAotfChannel, normalizeAotfChannels } from './aotf
 import {
   registry, cameraProfileSVG, cameraReadingState, newShaperLayer, MAX_SHAPER_LAYERS, getElementMeta, getDirectManipulation, resolveDisplaySensor,
   newSampleChannel, MAX_SAMPLE_CHANNELS, MIXING_KINDS, EPI_CAPABLE_KINDS, sampleChannels,
-  signalKindsFor, SIGNAL_GENERATION_NOTES, specimenTypeOf, channelWarning, defaultEmissionWl, drivingExcitationWl,
+  signalKindsFor, specimenTypeOf, channelWarning, defaultEmissionWl, drivingExcitationWl,
   EMISSION_ORDER, ISOTROPIC_KINDS, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
   FLUOROPHORES, fluorophoreSpec, normalizeSupercontinuumParams,
 } from './elements.js';
@@ -668,8 +668,6 @@ function signalsHTML(sel) {
   const incident = incidentWlsAt(sel);
   const excitation = drivingExcitationWl(incident);
   let h = `<div class="lsechead">Signals generated — stack up to ${MAX_SAMPLE_CHANNELS}</div>`;
-  const generation = SIGNAL_GENERATION_NOTES[specimenTypeOf(sel.params)];
-  if (generation) h += `<div class="hint">${esc(generation)}</div>`;
   channels.forEach((c, i) => {
     h += `<div class="layer"><div class="layerrow">
       <select data-ci="${i}" data-ck="kind" aria-label="Signal ${i + 1} type">` +

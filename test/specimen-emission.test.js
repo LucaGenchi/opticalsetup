@@ -139,21 +139,3 @@ test('switching signal kind keeps a chosen ray count and follows an untouched de
   assert.equal(sample.params.channels[0].nrays, 14);
   assert.match(panel.innerHTML, /Emission rays \/ line/);
 });
-
-test('each specimen type states where its signals come from and that the sketch ignores focusing', () => {
-  const panel = { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] };
-  initInspector(panel);
-  for (const [kind, type, pattern] of [['fluor', 'linear', /in focus and out of it/], ['tpef', 'nonlinear', /only from the focus/]]) {
-    const { sample, elements } = bench({ kind });
-    assert.equal(sample.params.specimenType, type);
-    Object.assign(state, { elements, beams: [], selection: { kind: 'element', id: sample.id }, embedMode: false });
-    traceScene(elements); renderInspector();
-    assert.match(panel.innerHTML, pattern);
-    assert.match(panel.innerHTML, /where the beam crosses the specimen line/);
-  }
-  const { sample, elements } = bench();
-  Object.assign(sample.params, { specimenType: 'absorbing' });
-  Object.assign(state, { elements, beams: [], selection: { kind: 'element', id: sample.id }, embedMode: false });
-  renderInspector();
-  assert.doesNotMatch(panel.innerHTML, /specimen line/, 'an absorbing specimen generates nothing to explain');
-});

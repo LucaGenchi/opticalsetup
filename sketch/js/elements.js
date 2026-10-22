@@ -1516,15 +1516,6 @@ export const NONLINEAR_SIGNAL_KINDS = [
   ['srs', 'Stimulated Raman (SRS)'],
 ];
 
-// Where each specimen type's signals come from in a real sample, and what the
-// tracer does instead. Every channel is emitted where the beam crosses the
-// specimen line; no intensity or focal-volume dependence is computed.
-export const SIGNAL_GENERATION_NOTES = {
-  linear: 'Linear signals (fluorescence, Raman) come from all along the illuminated path in a real specimen, in focus and out of it, so they carry no optical sectioning. Here each is emitted where the beam crosses the specimen line.',
-  nonlinear: 'Nonlinear signals (multiphoton fluorescence, harmonics, CARS, SRS) come essentially only from the focus, where the intensity peaks — this is what gives them optical sectioning. Here each is emitted where the beam crosses the specimen line, whether or not the beam is focused there.',
-  resin: 'Two-photon fluorescence comes essentially only from the focus, where the intensity peaks. Here it is emitted where the beam crosses the specimen line, whether or not the beam is focused there.',
-};
-
 export function signalKindsFor(specimenType) {
   if (specimenType === 'linear') return LINEAR_SIGNAL_KINDS;
   if (specimenType === 'nonlinear') return NONLINEAR_SIGNAL_KINDS;
