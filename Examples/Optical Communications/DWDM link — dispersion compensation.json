@@ -461,7 +461,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "**Try:** set the DCF β₂ to 0 → the duration readout shows 73 ps, three times the 25 ps bit slot · set the DCF length to 1.2 km → 23 ps, partial compensation · delete a laser → its port goes dark.",
+        "text": "**Try:** set the DCF β₂ to 0 → the duration readout shows 73 ps, about three 25 ps bit slots · set the DCF length to 1.2 km → 23 ps, partial compensation · delete a laser → its port goes dark.",
         "fontSize": 11,
         "fill": "#44505c"
       }

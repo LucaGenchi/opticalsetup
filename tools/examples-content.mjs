@@ -1616,7 +1616,7 @@ export const exampleEntries = [
       can make pulses with a 33% duty cycle, a full width at half maximum of a
       third of the bit slot${cite(4)}, here about 8.3&nbsp;ps. After 10&nbsp;km of
       standard fibre a Gaussian pulse of that width is about 73&nbsp;ps wide and
-      smears across three bit slots. The resulting intersymbol interference
+      smears across about three bit slots. The resulting intersymbol interference
       distorts the amplitude of the one-bits and raises the level within the
       zero-bits${cite(4)}. In Winzer and Essiambre's comparison of formats at
       42.7&nbsp;Gb/s, most tolerate an accumulated dispersion of only about
@@ -1651,7 +1651,7 @@ export const exampleEntries = [
       25&nbsp;ps slot; it shows timing, not pulse shape.</p>
       <p>Things to try. Select the blue DCF and set its β₂ to 0. The duration
       probe, and the pulse width in any receiver's inspector, now read
-      73&nbsp;ps: each pulse is wider than three 25&nbsp;ps bit slots, so
+      73&nbsp;ps: each pulse spans about three 25&nbsp;ps bit slots, so
       neighbouring bits overlap. Set the DCF back and shorten it to 1.2&nbsp;km:
       64&nbsp;ps² of dispersion remain and the pulses read 22.9&nbsp;ps, nearly the
       whole bit slot. Delete a laser and only its receiver goes dark.</p>`,
