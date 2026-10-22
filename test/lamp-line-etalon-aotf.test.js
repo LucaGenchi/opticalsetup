@@ -32,12 +32,16 @@ function trace(build = () => []) {
   const oap = createElement('oap', 150, 200);
   oap.rot = 180;
   Object.assign(oap.params, { length: 60, f: 25 });
+  // Reject the direct 45-degree lamp ray at the side detector; measure only
+  // the port of the element under test, not unfiltered stray light.
+  const shield = createElement('blocker', 250, 275);
+  shield.params.length = 20;
   const through = createElement('detector', 700, 200);
   through.params.aperture = 200;
   const reflected = createElement('detector', 400, 420);
   reflected.rot = 90;
   reflected.params.aperture = 200;
-  traceScene([lamp, oap, ...build(), through, reflected]);
+  traceScene([lamp, oap, shield, ...build(), through, reflected]);
   const signal = d => detectorReading(d.id)?.signal ?? 0;
   return { t: signal(through), r: signal(reflected) };
 }

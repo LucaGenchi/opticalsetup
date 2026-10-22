@@ -227,15 +227,25 @@ as intensities. An incomplete trace or a route through an optic whose carrier ph
 not represented falls back to conservative deposited intensity rather than inventing a
 phase.
 
-A point source's rays are collected by lenses, mirrors (every element of those
-two palette groups) and fiber tips within its capture range (1 m by default,
-110 mm to 5 m; 165 mm for a sketch saved before the control existed). A
-collected ray is ordinary light from the source on, so an optic in front of the
-collector acts on it; no other element collects, and an opaque one hides the
-collector behind it. A ray with no collector ahead is drawn as a glow fading
-within 110 mm and reaches no detector. The range is a drawing convention that
-keeps a 360° emitter from covering the canvas, not attenuation or an
-inverse-square law: collected light arrives at full ray weight.
+A point source's rays are caught within its capture range (1 m by default, 110
+mm to 100 m; 165 mm for a sketch saved before the control existed). What catches
+them is set on the source ("Caught by"). By default ("Any optic") it is every
+optical element: the first traced surface a ray meets within the range acts on
+it as on any light, so glass refracts it, a filter filters it and a bare
+detector reads it. A lens, a mirror, a detector (every element of those three
+palette groups) or a fiber tip collects the light, and what leaves a lens or
+mirror is ordinary light at any distance. Any other optic hands on light that is
+still the source's diverging emission: every branch leaving it keeps only the
+range that is left, as the light leaking through a partial mirror does. The
+housing of another light source does not catch the rays. Light that nothing
+catches is drawn as a glow fading within 110 mm (never further than the range
+left) and reaches no detector. "Collectors" lets only those collectors catch: an
+optic in front of one acts on the light, and an opaque one hides it. Sketches
+saved before this choice existed open with the rule they were drawn with, shown
+as "Lenses & mirrors": the same, except that a detector does not collect. Either
+way the range is a drawing convention for how far an isotropic emitter stays
+visible, not attenuation or an inverse-square law: caught light arrives at full
+ray weight.
 
 The metalens is a zero-thickness paraxial phase-gradient proxy rather than an
 electromagnetic metasurface solver. In chromatic mode its focal length follows the

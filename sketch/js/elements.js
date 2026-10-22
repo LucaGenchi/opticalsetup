@@ -2622,10 +2622,12 @@ function opaStateCore(plan, p) {
   return lines.join('\n');
 }
 
-// How far an uncollected point-source ray is drawn, and the capture range a
-// point source had before the range became a parameter (1.5x the glow).
+// How far an uncaught point-source ray is drawn, the capture range a point
+// source had before the range became a parameter (1.5x the glow), and the
+// longest range a user may set.
 const POINT_SOURCE_GLOW_MM = 110;
 const POINT_SOURCE_LEGACY_CAPTURE_MM = 165;
+const POINT_SOURCE_MAX_CAPTURE_MM = 100000;
 
 // Human eye (reduced, in air): focal-length range and the 60 D default.
 export const EYE_MIN_FOCUS_MM = 12;
@@ -2795,7 +2797,7 @@ export const registry = {
     params: [
       { key: 'displayScale', label: 'Display scale', type: 'number', min: 0.5, max: 2.5, step: 0.1, def: 1 },
       // The same emitter, wearing one of two hats. A discharge lamp is
-      // geometrically a point source -- isotropic, incoherent, collected the
+      // geometrically a point source -- isotropic, incoherent, caught the
       // same way -- and differs only in emitting a fixed set of lines instead
       // of a wavelength you type, so it is a mode here rather than an element
       // of its own.
@@ -2814,13 +2816,31 @@ export const registry = {
       { key: 'linesReadout', label: 'Lines', type: 'readout', readout: p => lampLineSummary(p.lampType), show: p => p.sourceKind === 'lamp' },
       { key: 'spread', label: 'Emission angle (°)', type: 'number', min: 10, max: 360, step: 10, def: 360 },
       { key: 'nrays', label: 'Rays', type: 'number', min: 4, max: 128, step: 2, def: 12 },
-      // How far from the source a lens, mirror or fiber tip may sit and still
-      // collect its light. Sketches saved before this control existed traced with a fixed
-      // 165 mm, so they load at that instead of the new default.
+      // What catches the light within the capture range. A new source is
+      // caught by every optical element; a sketch saved before this control
+      // existed was drawn with only lenses, mirrors and fiber tips collecting,
+      // and opens that way.
+      {
+        key: 'catchMode', label: 'Caught by', type: 'select', def: 'all',
+        options: [['all', 'Any optic'], ['collectors', 'Collectors']],
+        // Sketches saved before this choice traced with lenses, mirrors and
+        // fiber tips as the only collectors, and keep exactly that.
+        legacyOptions: [['lensmirror', 'Lenses & mirrors']],
+        migrate: () => 'lensmirror',
+        note: p => p.catchMode === 'lensmirror'
+          ? 'The rule this setup was saved with: only a lens, mirror or fiber tip within the capture range collects the light; optics in front of it act on it. Choose Collectors to let detectors collect too.'
+          : p.catchMode === 'collectors'
+          ? 'Only a lens, mirror, fiber tip or detector within the capture range collects the light; other optics in front of it act on it.'
+          : 'Any optic within the capture range acts on the light. A lens, mirror, fiber tip or detector collects it; past any other optic only the range left counts. Light sources do not catch it.',
+      },
+      // How far from the source light can still be caught. Sketches saved
+      // before this control existed traced with a fixed 165 mm, so they load
+      // at that instead of the new default.
       {
         key: 'captureRange', label: 'Capture range (mm)', type: 'number',
-        min: POINT_SOURCE_GLOW_MM, max: 5000, step: 5, def: 1000,
+        min: POINT_SOURCE_GLOW_MM, max: POINT_SOURCE_MAX_CAPTURE_MM, step: 5, def: 1000,
         migrate: () => POINT_SOURCE_LEGACY_CAPTURE_MM,
+        note: 'Light nothing catches within this distance fades out, as an isotropic emitter dims with distance. A drawing convention, not an inverse-square calculation.',
       },
       P.autoColor, P.color,
     ],
@@ -2854,8 +2874,9 @@ export const registry = {
       const n = Math.max(1, Math.round(nrays));
       const range = Number(el.params.captureRange);
       const captureLen = Number.isFinite(range)
-        ? Math.min(5000, Math.max(POINT_SOURCE_GLOW_MM, range))
+        ? Math.min(POINT_SOURCE_MAX_CAPTURE_MM, Math.max(POINT_SOURCE_GLOW_MM, range))
         : POINT_SOURCE_LEGACY_CAPTURE_MM;
+      const captureMode = ['collectors', 'lensmirror'].includes(el.params.catchMode) ? el.params.catchMode : 'all';
       for (let i = 0; i < n; i++) {
         // A full-circle source must not duplicate the -180°/+180° sample.
         const aDeg = spread >= 359.999
@@ -2864,7 +2885,7 @@ export const registry = {
         const a = aDeg * Math.PI / 180;
         out.push({
           x: 0, y: 0, dx: Math.cos(a), dy: Math.sin(a),
-          evan: true, evanLen: POINT_SOURCE_GLOW_MM, captureLen, captureMode: 'collectors',
+          evan: true, evanLen: POINT_SOURCE_GLOW_MM, captureLen, captureMode,
         });
       }
       return out;
@@ -5977,7 +5998,7 @@ const ELEMENT_HELP = {
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
   ledsource: 'Emits a collimated beam of incoherent light from an LED behind its own collimator, with an illustrative single-colour or two-band white spectrum. It never interferes, and its residual divergence is not modelled.',
-  pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp. A lens, a mirror or a fiber tip within the capture range collects its rays, which carry on as ordinary light; other optics on the way act on that light but collect nothing themselves, and a ray with no collector ahead is drawn as a short fading glow. The range is a drawing convention that keeps the canvas readable, not attenuation. A parabolic mirror with the source at its focus collimates it.',
+  pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp. Any optical element within the capture range catches its rays and acts on them as on any light; a lens, a mirror, a fiber tip or a detector collects them, and after any other optic only the range that is left still counts. Light that nothing catches fades out within a short distance. The range is a drawing convention for how far an isotropic emitter stays visible, not an inverse-square calculation. A parabolic mirror with the source at its focus collimates it.',
   objarrow: 'Traces a ray fan from the object’s anchor on the optical axis and separately draws an ideal paraxial image; the image marker does not model downstream clipping.',
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',

@@ -759,7 +759,10 @@ function signalsHTML(sel) {
 // numeric and drew "Show excitation spot" as a number box.
 function paramField(p, sel) {
   const v = sel.params[p.key];
-  if (p.type === 'number') return numberField(p.label, `data-p="${p.key}"`, v, resolvedParam(p, sel.params));
+  // A param may explain its current setting underneath its control.
+  const noteText = typeof p.note === 'function' ? p.note(sel.params) : p.note;
+  const note = noteText ? `<div class="hint param-note">${esc(noteText)}</div>` : '';
+  if (p.type === 'number') return numberField(p.label, `data-p="${p.key}"`, v, resolvedParam(p, sel.params)) + note;
   if (p.type === 'optsize') return optsizeField(p, v);
   if (p.type === 'text') return field(p.label, `<input type="text" data-p="${p.key}" ${p.key === 'orders' ? 'maxlength="200"' : ''} value="${esc(v)}">`);
   if (p.type === 'checkbox') return field(p.label, `<input type="checkbox" data-p="${p.key}" ${v ? 'checked' : ''}>`);
@@ -771,7 +774,7 @@ function paramField(p, sel) {
     ];
     return field(p.label, `<select data-p="${p.key}">`
       + options.map(([ov, ol, disabled]) => `<option value="${ov}" ${ov === v ? 'selected' : ''} ${disabled ? 'disabled' : ''}>${esc(ol)}</option>`).join('')
-      + `</select>`);
+      + `</select>`) + note;
   }
   if (p.type === 'derived-select') {
     const selected = p.get(sel.params);
