@@ -32,16 +32,18 @@ test('point source rays fade evanescently unless a nearby lens collects them', (
   assert.ok(maxCollected > 1000, `lens-collected rays propagate on, got ${maxCollected}`);
 });
 
-// ---- capture range --------------------------------------------------------
-// Lenses and mirrors (every element of those two categories) and fiber tips
-// collect a point source's light within its capture range. Other optics
-// neither collect it nor hide a collector behind them; opaque things do hide
-// it. A ray with no collector ahead fades at 110 mm. The partial-mirror and
-// fiber cases follow Andrea Bertoncini's tests in #191.
+// ---- capture range, caught by lenses, mirrors and fiber tips ---------------
+// The rule every sketch saved before "Caught by" existed opens with: lenses
+// and mirrors (every element of those two categories) and fiber tips collect
+// a point source's light within its capture range. Other optics neither
+// collect it nor hide a collector behind them; opaque things do hide it. A ray
+// with no collector ahead fades at 110 mm. The partial-mirror and fiber cases
+// follow Andrea Bertoncini's tests in #191. The default rule, every optical
+// element, is covered in point-source-catch.test.js.
 
 function pointSource(params = {}) {
   const src = createElement('pointsource', 0, 0);
-  Object.assign(src.params, { nrays: 4 }, params);
+  Object.assign(src.params, { nrays: 4, catchMode: 'collectors' }, params);
   return src;
 }
 
@@ -73,13 +75,17 @@ function readBehind(between, source = pointSource()) {
 }
 
 test('a new point source has a 1 m capture range, and a sketch saved without one keeps 165 mm', () => {
-  assert.equal(createElement('pointsource', 0, 0).params.captureRange, 1000);
+  const fresh = createElement('pointsource', 0, 0);
+  assert.equal(fresh.params.captureRange, 1000);
+  assert.equal(fresh.params.catchMode, 'all');
   assert.ok(registry.pointsource.source(pointSource()).every(r => r.captureLen === 1000 && r.captureMode === 'collectors'));
 
   const saved = pointSource();
   delete saved.params.captureRange;
+  delete saved.params.catchMode;
   const load = element => parseSketch(JSON.stringify({ app: 'optics2d', version: 1, elements: [element], beams: [] }), registry).elements[0];
   assert.equal(load(saved).params.captureRange, 165, 'no stored range: the range it was drawn with');
+  assert.equal(load(saved).params.catchMode, 'collectors', 'no stored rule: the rule it was drawn with');
   assert.equal(load(pointSource({ captureRange: 400 })).params.captureRange, 400, 'a stored range is kept');
   assert.equal(load(pointSource()).params.captureRange, 1000, 'a stored default is kept too');
 
@@ -94,12 +100,12 @@ test('the capture range is clamped at its schema boundary, and never reaches the
   const load = captureRange => parseSketch(JSON.stringify({
     app: 'optics2d', version: 1, beams: [], elements: [pointSource({ captureRange })],
   }), registry).elements[0].params.captureRange;
-  assert.equal(load(1e9), 5000);
+  assert.equal(load(1e9), 100000);
   assert.equal(load(-50), 110);
   assert.equal(load(0), 110);
   for (const bad of [NaN, Infinity, -Infinity, 'far', null, undefined]) {
     const rays = registry.pointsource.source({ params: { spread: 360, nrays: 4, captureRange: bad } });
-    assert.ok(rays.every(r => Number.isFinite(r.captureLen) && r.captureLen >= 110 && r.captureLen <= 5000), String(bad));
+    assert.ok(rays.every(r => Number.isFinite(r.captureLen) && r.captureLen >= 110 && r.captureLen <= 100000), String(bad));
   }
 });
 

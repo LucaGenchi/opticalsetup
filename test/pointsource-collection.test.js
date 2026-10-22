@@ -8,10 +8,12 @@ import { traceAll, detectorReading } from '../sketch/js/raytrace.js';
 import '../sketch/js/detector-instruments.js';
 
 // These benches were laid out for the 165 mm capture range a point source had
-// before the range became a parameter, so the source keeps it here.
+// before the range became a parameter, and for collection by lenses, mirrors
+// and fiber tips only, so the source keeps both here -- as a sketch saved then
+// does.
 const mk = (type, x, y, rot = 0, params = {}) => {
   const el = createElement(type, x, y); el.rot = rot;
-  if (type === 'pointsource') el.params.captureRange = 165;
+  if (type === 'pointsource') Object.assign(el.params, { captureRange: 165, catchMode: 'collectors' });
   Object.assign(el.params, params); return el;
 };
 

@@ -879,6 +879,8 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
    footer action, so it drops the separator the Duplicate/Delete row carries. */
 .btnrow.screen-link { margin-top: 10px; padding-top: 0; border-top: none; }
 .hint { color: var(--muted); font-size: 12px; line-height: 1.5; margin-top: 6px; }
+/* A param's explanation sits under its own control, apart from the next one. */
+.hint.param-note { margin: -3px 0 12px; }
 
 /* A signal channel the current bench cannot actually produce. Themed from
    the shared danger tokens so it reads the same in light and dark. */
