@@ -69,6 +69,18 @@ test('a new source is caught by every optical element within 1 m; a saved one ke
   assert.equal(load([source({ catchMode: 'lensmirror' })])[0].params.catchMode, 'lensmirror', 'the saved rule round-trips');
 });
 
+test('under the saved-sketch rule the eye\'s pupil lens does not hide a collector', () => {
+  // Found in review of #260: the look-ahead used the new collector list, so
+  // the pupil lens stood in front of the real lens and ended the search.
+  const eye = at('eye', 0, 0, { length: 16.7 });
+  const saved = at('pointsource', 7, 0, { nrays: 4, captureRange: 400 });
+  delete saved.params.catchMode;
+  const [old] = load([saved]);
+  assert.equal(old.params.catchMode, 'lensmirror');
+  const lens = at('lens', -100, 0, { f: 100, dia: 200 });
+  close(signal([old, eye, lens], at('detector', -219, 0, {}, 180)), 0.25, 'collected by the lens, as on main');
+});
+
 test('under Collectors a detector collects like a lens; a saved sketch keeps it out', () => {
   // A bare detector facing the source reads it, an ND in front acts on the
   // light, a beam block in front hides it, and a filter alone collects nothing.

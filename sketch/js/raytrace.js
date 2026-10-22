@@ -5984,14 +5984,17 @@ function catchesPointSource(surface) {
   return registry[surface.el?.type]?.category !== 'Sources';
 }
 // The surfaces a point-source ray looks along for a collector: the collectors
-// themselves and whatever is opaque. Cached per surface list, which is built
-// once per trace.
+// of its rule and whatever is opaque. Cached per surface list, which is built
+// once per trace, and per rule: under the saved-sketch rule the eye's pupil
+// lens is not a collector, so it must not stand in front of one.
 const sightlines = new WeakMap();
-function pointSourceSightline(surfaces) {
-  let list = sightlines.get(surfaces);
+function pointSourceSightline(surfaces, mode) {
+  let byMode = sightlines.get(surfaces);
+  if (!byMode) sightlines.set(surfaces, byMode = new Map());
+  let list = byMode.get(mode);
   if (!list) {
-    list = surfaces.filter(s => s.kind === 'absorb' || s.kind === 'detector' || s.kind === 'retina' || collectsPointSource(s));
-    sightlines.set(surfaces, list);
+    list = surfaces.filter(s => s.kind === 'absorb' || s.kind === 'detector' || s.kind === 'retina' || collectsPointSource(s, mode));
+    byMode.set(mode, list);
   }
   return list;
 }
@@ -6151,7 +6154,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // A point source caught by every optical element is caught by the
         // first one it meets within its range, whatever that is.
         const ahead = collectorRule(r.captureMode)
-          ? nearestHit({ x: r.x, y: r.y }, { x: r.dx, y: r.dy }, pointSourceSightline(surfaces), r.last)
+          ? nearestHit({ x: r.x, y: r.y }, { x: r.dx, y: r.dy }, pointSourceSightline(surfaces, r.captureMode), r.last)
           : null;
         const captured = collectorRule(r.captureMode)
           ? Boolean(ahead && ahead.t <= CAPTURE && collectsPointSource(ahead.surface, r.captureMode))
