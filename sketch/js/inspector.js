@@ -96,33 +96,43 @@ function sliderProgress(value, min, max) {
   return Math.max(0, Math.min(100, (Number(value) - min) / (max - min) * 100));
 }
 
-// A logarithmic slider (`slider: 'log'`) for a span of several decades: the
-// range input runs over LOG_SLIDER_STEPS positions, and each position maps to
-// a value on the param's own step ladder, so equal travel is an equal ratio.
-// The exact number field beside it keeps the param's true limits.
-export const LOG_SLIDER_STEPS = 1000;
-export function logSliderPosition(value, min, max) {
+// A logarithmic slider (`slider: 'log'`) for a span of several decades. Its
+// positions are a fixed ladder of values on the param's step, each one step
+// or LOG_SLIDER_RATIO above the last, whichever is more: small counts are all
+// there, large ones go up by ratio. Every position is one value and reads
+// back as itself, and each arrow key reaches the next value. The exact number
+// field beside it keeps every value the param accepts.
+const LOG_SLIDER_RATIO = 1.06;
+const ladders = new Map();
+export function logSliderLadder(min, max, step) {
+  const key = `${min}:${max}:${step}`;
+  let ladder = ladders.get(key);
+  if (!ladder) {
+    const snap = x => (step > 0 ? min + Math.round((x - min) / step) * step : x);
+    ladder = [min];
+    for (let v = min; v < max;) {
+      v = Math.min(max, Math.max(v + (step > 0 ? step : v * (LOG_SLIDER_RATIO - 1)), snap(v * LOG_SLIDER_RATIO)));
+      ladder.push(Number(v.toFixed(10)));
+    }
+    ladders.set(key, ladder);
+  }
+  return ladder;
+}
+// The ladder position nearest a value by ratio; any value maps somewhere.
+export function logSliderPosition(value, min, max, step) {
+  const ladder = logSliderLadder(min, max, step);
   const v = Math.min(max, Math.max(min, Number(value)));
   if (!Number.isFinite(v)) return 0;
-  return Math.round(LOG_SLIDER_STEPS * Math.log(v / min) / Math.log(max / min));
+  let best = 0;
+  for (let i = 1; i < ladder.length; i++) {
+    if (Math.abs(Math.log(ladder[i] / v)) < Math.abs(Math.log(ladder[best] / v))) best = i;
+  }
+  return best;
 }
 export function logSliderValue(position, min, max, step) {
-  const t = Math.min(1, Math.max(0, Number(position) / LOG_SLIDER_STEPS));
-  if (!Number.isFinite(t) || t <= 0) return min;
-  if (t >= 1) return max;
-  const raw = min * (max / min) ** t;
-  const snapped = step > 0 ? min + Math.round((raw - min) / step) * step : raw;
-  return Math.min(max, Math.max(min, Number(snapped.toFixed(10))));
-}
-// The value a log slider moved to from `current`. Near the low end one
-// position is less than one step of the param, and the panel rebuilt on commit
-// puts the thumb back where `current` sits, so an arrow key would never get
-// anywhere: a move that lands on the same value takes the next step instead.
-export function logSliderStep(position, current, min, max, step) {
-  const value = logSliderValue(position, min, max, step);
-  if (value !== current || !Number.isFinite(Number(current))) return value;
-  const direction = Math.sign(Number(position) - logSliderPosition(current, min, max));
-  return direction ? Math.min(max, Math.max(min, current + direction * step)) : value;
+  const ladder = logSliderLadder(min, max, step);
+  const i = Math.round(Number(position));
+  return ladder[Number.isFinite(i) ? Math.min(ladder.length - 1, Math.max(0, i)) : 0];
 }
 
 function numberField(labelText, attrs, value, param = {}) {
@@ -143,10 +153,11 @@ function numberField(labelText, attrs, value, param = {}) {
   const id = `control-${controlSerial++}`;
   const parts = splitFieldLabel(labelText);
   const log = param.slider === 'log';
-  const position = log ? logSliderPosition(displayValue, min, max) : displayValue;
-  const progress = (log ? 100 * position / LOG_SLIDER_STEPS : sliderProgress(displayValue, min, max)).toFixed(2);
+  const last = log ? logSliderLadder(min, max, step).length - 1 : 0;
+  const position = log ? logSliderPosition(displayValue, min, max, step) : displayValue;
+  const progress = (log ? 100 * position / last : sliderProgress(displayValue, min, max)).toFixed(2);
   const rangeLimits = log
-    ? `min="0" max="${LOG_SLIDER_STEPS}" step="1" data-scale="log" data-log-min="${min}" data-log-max="${max}" data-log-step="${step}"`
+    ? `min="0" max="${last}" step="1" data-scale="log" data-log-min="${min}" data-log-max="${max}" data-log-step="${step}"`
     : limits;
   return `<div class="field slider-field" role="group" aria-labelledby="${id}-label">
     <div class="field-heading"><span id="${id}-label">${esc(parts.label)}</span>${parts.unit ? `<span class="field-unit">${esc(parts.unit)}</span>` : ''}</div>
@@ -1396,12 +1407,8 @@ export function applyInput(inp, rebuild = false) {
   let val;
   if (inp.type === 'checkbox') val = inp.checked;
   else if (inp.type === 'range' && inp.dataset.scale === 'log') {
-    // Already on the param's ladder and within its limits.
-    const [lo, hi, ladder] = [Number(inp.dataset.logMin), Number(inp.dataset.logMax), Number(inp.dataset.logStep)];
-    val = logSliderStep(parseFloat(inp.value), sel.params[pkey], lo, hi, ladder);
-    // A move promoted to the next step puts the thumb on that step, so the
-    // `change` that follows reads the same value instead of undoing it.
-    if (val !== logSliderValue(parseFloat(inp.value), lo, hi, ladder)) inp.value = String(logSliderPosition(val, lo, hi));
+    // A ladder value: already on the param's step and within its limits.
+    val = logSliderValue(parseFloat(inp.value), Number(inp.dataset.logMin), Number(inp.dataset.logMax), Number(inp.dataset.logStep));
     inp.setAttribute('aria-valuetext', String(val));
   }
   else if (inp.type === 'number' || inp.type === 'range') {
@@ -1421,7 +1428,7 @@ export function applyInput(inp, rebuild = false) {
   }
   else val = inp.value;
   if (inp.dataset.controlId) {
-    const logPosition = range => logSliderPosition(val, Number(range.dataset.logMin), Number(range.dataset.logMax));
+    const logPosition = range => logSliderPosition(val, Number(range.dataset.logMin), Number(range.dataset.logMax), Number(range.dataset.logStep));
     panel.querySelectorAll('[data-control-id]').forEach(peer => {
       if (peer === inp || peer.dataset.controlId !== inp.dataset.controlId) return;
       if (peer.dataset.scale === 'log') {
@@ -1436,7 +1443,7 @@ export function applyInput(inp, rebuild = false) {
     if (range) {
       // Dragged directly, the fill follows the thumb, not the quantized value.
       const progress = range.dataset.scale === 'log'
-        ? 100 * (range === inp ? Number(range.value) : logPosition(range)) / LOG_SLIDER_STEPS
+        ? 100 * (range === inp ? Number(range.value) : logPosition(range)) / Number(range.max)
         : sliderProgress(val, Number(range.min), Number(range.max));
       range.style.setProperty('--range-progress', `${progress}%`);
     }

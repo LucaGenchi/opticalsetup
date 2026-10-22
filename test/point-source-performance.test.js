@@ -109,49 +109,52 @@ test('many dense sources export as finite vector geometry without argument overf
   }
 });
 
-test('the Rays slider is logarithmic: equal travel is an equal ratio, ends exact', async () => {
-  const { shouldUseSlider, logSliderPosition, logSliderValue, logSliderStep, LOG_SLIDER_STEPS } = await import('../sketch/js/inspector.js');
+test('the Rays slider is a logarithmic ladder: each position one count, read back as itself', async () => {
+  const { shouldUseSlider, logSliderLadder, logSliderPosition, logSliderValue } = await import('../sketch/js/inspector.js');
   const spec = registry.pointsource.params.find(p => p.key === 'nrays');
   assert.equal(spec.slider, 'log');
   assert.ok(shouldUseSlider(spec));
   assert.equal(shouldUseSlider({ ...spec, min: 0 }), false, 'a log slider needs a positive minimum');
   const { min, max, step } = spec;
-  assert.equal(logSliderValue(0, min, max, step), 4);
-  assert.equal(logSliderValue(LOG_SLIDER_STEPS, min, max, step), 4096);
-  // The old 4-128 range now takes half the travel, not 3 %.
-  assert.equal(logSliderPosition(128, min, max), LOG_SLIDER_STEPS / 2);
-  let previous = 0;
-  for (let position = 0; position <= LOG_SLIDER_STEPS; position++) {
-    const value = logSliderValue(position, min, max, step);
-    assert.ok(Number.isInteger(value) && value % 2 === 0 && value >= previous, `position ${position}: ${value}`);
-    previous = value;
+  const ladder = logSliderLadder(min, max, step);
+  const last = ladder.length - 1;
+  assert.equal(ladder[0], 4);
+  assert.equal(ladder[last], 4096);
+  for (let i = 1; i <= last; i++) {
+    assert.ok(ladder[i] > ladder[i - 1] && Number.isInteger(ladder[i]) && ladder[i] % 2 === 0, `rung ${i}: ${ladder[i]}`);
   }
-  // Every value the field accepts lands back within one step of itself.
-  for (const value of [4, 12, 64, 128, 256, 1000, 4096]) {
-    const back = logSliderValue(logSliderPosition(value, min, max), min, max, step);
-    assert.ok(Math.abs(back - value) <= Math.max(step, value * 0.01), `${value} -> ${back}`);
+  // Every count up to 48 is on the ladder, so the low end skips nothing;
+  // 4-128 rays take over a third of the travel, not 3 %; each later rung is
+  // at most 6 % above the one before, plus the rounding to an even count.
+  for (let n = 4; n <= 48; n += 2) assert.ok(ladder.includes(n), `${n} rays`);
+  const share = logSliderPosition(128, min, max, step) / last;
+  assert.ok(share > 0.35 && share < 0.5, `128 rays at ${share}`);
+  for (let i = 1; i <= last; i++) {
+    assert.ok(ladder[i] <= ladder[i - 1] * 1.06 + step, `rung ${i}: ${ladder[i - 1]} -> ${ladder[i]}`);
   }
+  // Each position is one count and reads back as itself: the change event
+  // that follows any input keeps what the input set, and every arrow key
+  // reaches the next count (found in review: from 108 an arrow step was
+  // undone on change, and releasing a drag at 6 rays changed it to 8).
+  for (let p = 0; p <= last; p++) {
+    const value = logSliderValue(p, min, max, step);
+    assert.equal(logSliderPosition(value, min, max, step), p, `position ${p} reads back`);
+    if (p > 0) assert.ok(value > logSliderValue(p - 1, min, max, step), `position ${p} advances`);
+  }
+  // A typed count off the ladder, such as 108, puts the thumb on the nearest
+  // rung; an arrow key from there moves to a neighbouring rung and stays.
+  const from108 = logSliderPosition(108, min, max, step);
+  const left = logSliderValue(from108 - 1, min, max, step);
+  assert.ok(Math.abs(logSliderValue(from108, min, max, step) - 108) <= 4);
+  assert.ok(left < 108 && logSliderValue(logSliderPosition(left, min, max, step), min, max, step) === left);
+  const six = logSliderPosition(6, min, max, step);
+  assert.equal(logSliderValue(six, min, max, step), 6, 'releasing at 6 rays keeps 6');
+  // Values the exact field accepts off the ladder land on the nearest rung.
+  assert.equal(logSliderValue(logSliderPosition(4094, min, max, step), min, max, step), 4096);
   for (const bad of [NaN, -5, 1e9]) {
-    const position = logSliderPosition(bad, min, max);
-    assert.ok(position >= 0 && position <= LOG_SLIDER_STEPS);
+    const position = logSliderPosition(bad, min, max, step);
+    assert.ok(position >= 0 && position <= last);
   }
-  // Found in review: one arrow-key position at the low end maps back to the
-  // same count, and the rebuilt panel returns the thumb there, so single key
-  // presses never advanced. Replay that cycle: each press moves one position
-  // from where the rebuilt panel puts the thumb, and must reach a new count.
-  for (const direction of [1, -1]) {
-    let count = direction > 0 ? 12 : 4096;
-    for (let press = 0; press < 40; press++) {
-      const moved = logSliderPosition(count, min, max) + direction;
-      const next = logSliderStep(moved, count, min, max, step);
-      assert.ok(direction > 0 ? next > count || count === max : next < count || count === min, `press ${press} from ${count}`);
-      // The input event moves the thumb onto the new value; the change event
-      // that follows reads it there and must keep it.
-      const thumb = next === logSliderValue(moved, min, max, step) ? moved : logSliderPosition(next, min, max);
-      assert.equal(logSliderStep(thumb, next, min, max, step), next, `change after press ${press}`);
-      count = next;
-    }
-  }
-  assert.equal(logSliderStep(logSliderPosition(4, min, max) - 1, 4, min, max, step), 4, 'stops at the floor');
-  assert.equal(logSliderStep(LOG_SLIDER_STEPS + 1, 4096, min, max, step), 4096, 'stops at the ceiling');
+  assert.equal(logSliderValue(-3, min, max, step), 4);
+  assert.equal(logSliderValue(1e9, min, max, step), 4096);
 });
