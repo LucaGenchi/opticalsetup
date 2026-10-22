@@ -108,3 +108,31 @@ test('many dense sources export as finite vector geometry without argument overf
     state.elements = oldElements; state.beams = oldBeams;
   }
 });
+
+test('the Rays slider is logarithmic: equal travel is an equal ratio, ends exact', async () => {
+  const { shouldUseSlider, logSliderPosition, logSliderValue, LOG_SLIDER_STEPS } = await import('../sketch/js/inspector.js');
+  const spec = registry.pointsource.params.find(p => p.key === 'nrays');
+  assert.equal(spec.slider, 'log');
+  assert.ok(shouldUseSlider(spec));
+  assert.equal(shouldUseSlider({ ...spec, min: 0 }), false, 'a log slider needs a positive minimum');
+  const { min, max, step } = spec;
+  assert.equal(logSliderValue(0, min, max, step), 4);
+  assert.equal(logSliderValue(LOG_SLIDER_STEPS, min, max, step), 4096);
+  // The old 4-128 range now takes half the travel, not 3 %.
+  assert.equal(logSliderPosition(128, min, max), LOG_SLIDER_STEPS / 2);
+  let previous = 0;
+  for (let position = 0; position <= LOG_SLIDER_STEPS; position++) {
+    const value = logSliderValue(position, min, max, step);
+    assert.ok(Number.isInteger(value) && value % 2 === 0 && value >= previous, `position ${position}: ${value}`);
+    previous = value;
+  }
+  // Every value the field accepts lands back within one step of itself.
+  for (const value of [4, 12, 64, 128, 256, 1000, 4096]) {
+    const back = logSliderValue(logSliderPosition(value, min, max), min, max, step);
+    assert.ok(Math.abs(back - value) <= Math.max(step, value * 0.01), `${value} -> ${back}`);
+  }
+  for (const bad of [NaN, -5, 1e9]) {
+    const position = logSliderPosition(bad, min, max);
+    assert.ok(position >= 0 && position <= LOG_SLIDER_STEPS);
+  }
+});

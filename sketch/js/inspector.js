@@ -87,12 +87,32 @@ export function shouldUseSlider(param = {}) {
   if (param.slider === false) return false;
   const min = Number(param.min), max = Number(param.max), step = Number(param.step);
   if (!Number.isFinite(min) || !Number.isFinite(max) || !Number.isFinite(step) || max <= min || step <= 0) return false;
+  if (param.slider === 'log') return min > 0;
   if (param.slider === true) return true;
   return (max - min) / step <= 200;
 }
 
 function sliderProgress(value, min, max) {
   return Math.max(0, Math.min(100, (Number(value) - min) / (max - min) * 100));
+}
+
+// A logarithmic slider (`slider: 'log'`) for a span of several decades: the
+// range input runs over LOG_SLIDER_STEPS positions, and each position maps to
+// a value on the param's own step ladder, so equal travel is an equal ratio.
+// The exact number field beside it keeps the param's true limits.
+export const LOG_SLIDER_STEPS = 1000;
+export function logSliderPosition(value, min, max) {
+  const v = Math.min(max, Math.max(min, Number(value)));
+  if (!Number.isFinite(v)) return 0;
+  return Math.round(LOG_SLIDER_STEPS * Math.log(v / min) / Math.log(max / min));
+}
+export function logSliderValue(position, min, max, step) {
+  const t = Math.min(1, Math.max(0, Number(position) / LOG_SLIDER_STEPS));
+  if (!Number.isFinite(t) || t <= 0) return min;
+  if (t >= 1) return max;
+  const raw = min * (max / min) ** t;
+  const snapped = step > 0 ? min + Math.round((raw - min) / step) * step : raw;
+  return Math.min(max, Math.max(min, Number(snapped.toFixed(10))));
 }
 
 function numberField(labelText, attrs, value, param = {}) {
@@ -112,11 +132,16 @@ function numberField(labelText, attrs, value, param = {}) {
 
   const id = `control-${controlSerial++}`;
   const parts = splitFieldLabel(labelText);
-  const progress = sliderProgress(displayValue, min, max).toFixed(2);
+  const log = param.slider === 'log';
+  const position = log ? logSliderPosition(displayValue, min, max) : displayValue;
+  const progress = (log ? 100 * position / LOG_SLIDER_STEPS : sliderProgress(displayValue, min, max)).toFixed(2);
+  const rangeLimits = log
+    ? `min="0" max="${LOG_SLIDER_STEPS}" step="1" data-scale="log" data-log-min="${min}" data-log-max="${max}" data-log-step="${step}"`
+    : limits;
   return `<div class="field slider-field" role="group" aria-labelledby="${id}-label">
     <div class="field-heading"><span id="${id}-label">${esc(parts.label)}</span>${parts.unit ? `<span class="field-unit">${esc(parts.unit)}</span>` : ''}</div>
     <div class="slider-inputs">
-      <input type="range" ${attrs}${negAttr} data-control-id="${id}" data-control-role="range" ${limits} value="${displayValue}" aria-labelledby="${id}-label" style="--range-progress:${progress}%">
+      <input type="range" ${attrs}${negAttr} data-control-id="${id}" data-control-role="range" ${rangeLimits} value="${position}" aria-labelledby="${id}-label"${log ? ` aria-valuetext="${displayValue}"` : ''} style="--range-progress:${progress}%">
       <span class="number-wrap">${negative ? '<span class="negsign">−</span>' : ''}<input type="number" ${attrs}${negAttr} data-control-id="${id}" data-control-role="number" ${limits} value="${displayValue}" aria-label="${esc(labelText)} exact value"></span>
     </div>
   </div>`;
@@ -1360,6 +1385,11 @@ export function applyInput(inp, rebuild = false) {
   const key = inp.dataset.k, pkey = inp.dataset.p;
   let val;
   if (inp.type === 'checkbox') val = inp.checked;
+  else if (inp.type === 'range' && inp.dataset.scale === 'log') {
+    // Already on the param's ladder and within its limits.
+    val = logSliderValue(parseFloat(inp.value), Number(inp.dataset.logMin), Number(inp.dataset.logMax), Number(inp.dataset.logStep));
+    inp.setAttribute('aria-valuetext', String(val));
+  }
   else if (inp.type === 'number' || inp.type === 'range') {
     val = parseFloat(inp.value);
     if (!Number.isFinite(val)) return;
@@ -1377,14 +1407,24 @@ export function applyInput(inp, rebuild = false) {
   }
   else val = inp.value;
   if (inp.dataset.controlId) {
+    const logPosition = range => logSliderPosition(val, Number(range.dataset.logMin), Number(range.dataset.logMax));
     panel.querySelectorAll('[data-control-id]').forEach(peer => {
-      if (peer !== inp && peer.dataset.controlId === inp.dataset.controlId) peer.value = String(val);
+      if (peer === inp || peer.dataset.controlId !== inp.dataset.controlId) return;
+      if (peer.dataset.scale === 'log') {
+        peer.value = String(logPosition(peer));
+        peer.setAttribute('aria-valuetext', String(val));
+      } else peer.value = String(val);
     });
     const range = inp.dataset.controlRole === 'range'
       ? inp
       : [...panel.querySelectorAll('[data-control-id]')].find(peer =>
         peer.dataset.controlId === inp.dataset.controlId && peer.dataset.controlRole === 'range');
-    if (range) range.style.setProperty('--range-progress', `${sliderProgress(val, Number(range.min), Number(range.max))}%`);
+    if (range) {
+      const progress = range.dataset.scale === 'log'
+        ? 100 * logPosition(range) / LOG_SLIDER_STEPS
+        : sliderProgress(val, Number(range.min), Number(range.max));
+      range.style.setProperty('--range-progress', `${progress}%`);
+    }
   }
   if (inp.maxLength > 0 && typeof val === 'string' && val.length > inp.maxLength) {
     val = val.slice(0, inp.maxLength);

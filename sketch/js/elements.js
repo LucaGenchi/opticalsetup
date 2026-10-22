@@ -2816,7 +2816,7 @@ export const registry = {
       },
       { key: 'linesReadout', label: 'Lines', type: 'readout', readout: p => lampLineSummary(p.lampType), show: p => p.sourceKind === 'lamp' },
       { key: 'spread', label: 'Emission angle (°)', type: 'number', min: 10, max: 360, step: 10, def: 360 },
-      { key: 'nrays', label: 'Rays', type: 'number', min: 4, max: POINT_SOURCE_MAX_RAYS, step: 2, def: 12, slider: true },
+      { key: 'nrays', label: 'Rays', type: 'number', min: 4, max: POINT_SOURCE_MAX_RAYS, step: 2, def: 12, slider: 'log' },
       // What catches the light within the capture range. A new source is
       // caught by every optical element; a sketch saved before this control
       // existed was drawn with only lenses, mirrors and fiber tips collecting,

@@ -511,7 +511,9 @@ function renderBeams() {
     }
     beamLayer.innerHTML = s;
   }
-  if (scene !== displayedBeamScene || viewKey !== displayedBeamView) {
+  // Only a dense point source draws into a canvas layer; without one there is
+  // nothing to resize or repaint, and no reason to query the layer each frame.
+  if (pointSourceLayers.length && (scene !== displayedBeamScene || viewKey !== displayedBeamView)) {
     for (const layer of beamLayer.querySelectorAll('[data-point-source-layer]')) {
       // Cancel the enclosing world transform; the canvas is sized in screen
       // pixels and sits in the same stacking position as these traced rays.
