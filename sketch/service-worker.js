@@ -35,6 +35,7 @@ const PRECACHE_PATHS = [
   "./js/detector-instruments.js",
   "./js/detector-measurements.js",
   "./js/elements.js",
+  "./js/emission.js",
   "./js/etalon.js",
   "./js/examples-data.js",
   "./js/export.js",

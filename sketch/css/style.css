@@ -833,6 +833,7 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 }
 .layerrow { display: flex; gap: 6px; margin-bottom: 8px; }
 .layerrow select { flex: 1; color: var(--text); font: inherit; padding: 4px 6px; border: 1px solid var(--border); border-radius: 5px; background: var(--panel); }
+.layerrow select[data-ck="kind"] { min-width: 0; }
 .layerdel { flex: 0 0 26px; padding: 2px; color: var(--muted); }
 .layerdel:hover { color: var(--danger); background: var(--danger-bg); }
 .layeradd { width: 100%; margin-top: 2px; border-style: dashed; color: var(--muted); }
