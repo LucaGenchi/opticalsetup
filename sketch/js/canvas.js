@@ -16,7 +16,9 @@ import {
 import { immersionLayerSVG } from './immersion.js';
 import { polygonScannerState } from './polygon-scanner.js';
 import { mixReading, specimenTimingReading, traceScene, getTraceRevision } from './raytrace.js';
-import { SceneTraceCache, drawPointSourceCanvas, POINT_SOURCE_CANVAS_THRESHOLD } from './point-source-rendering.js';
+import {
+  SceneTraceCache, drawPointSourceCanvas, POINT_SOURCE_CANVAS_THRESHOLD, denseRepaint, screenRectInWorld,
+} from './point-source-rendering.js';
 import { pulseArrivalsAtPath, pulseMarkers } from './pulses.js';
 import { toLocal, toWorld, rotPt, distToSegment, distinctPoints, manualBeamSVG, esc } from './util.js';
 import {
@@ -34,8 +36,26 @@ import {
 let svg, viewport, gridLayer, highlightLayer, immersionLayer, beamLayer, pulseLayer, manualLayer, elementLayer, voxelLayer, overlayLayer;
 let statusEl;
 const pointSourceTraceCache = new SceneTraceCache(traceScene, getTraceRevision);
-let displayedBeamScene = null, displayedBeamView = null;
+let displayedBeamScene = null;
 let pointSourceLayers = [];
+// Offscreen canvases for the dense layers, the view they were last painted
+// for, and the pending repaint once a pan or zoom settles.
+let denseCanvases = [], densePainted = null, denseTimer = null;
+const DENSE_SETTLE_MS = 150;
+function paintDenseLayers() {
+  clearTimeout(denseTimer);
+  denseTimer = null;
+  const v = state.view, width = svg.clientWidth, height = svg.clientHeight, dpr = window.devicePixelRatio;
+  const rect = screenRectInWorld(v, width, height);
+  for (const image of beamLayer.querySelectorAll('[data-point-source-layer]')) {
+    const index = Number(image.dataset.pointSourceLayer);
+    const canvas = denseCanvases[index] ||= document.createElement('canvas');
+    if (!drawPointSourceCanvas(canvas, pointSourceLayers[index], v, width, height, dpr)) continue;
+    image.setAttribute('href', canvas.toDataURL('image/png'));
+    for (const [key, value] of Object.entries(rect)) image.setAttribute(key, value);
+  }
+  densePainted = { x: v.x, y: v.y, z: v.z, width, height, dpr };
+}
 let interactionFrame = null;
 function renderInteraction() {
   if (!state.elements.some(el => el.type === 'pointsource' && el.params.nrays >= POINT_SOURCE_CANVAS_THRESHOLD)) {
@@ -78,8 +98,11 @@ export function setMeasurementsCallback(fn) { onMeasurementsChange = fn; }
 
 export function initCanvas(svgElement, statusElement) {
   svg = svgElement;
-  displayedBeamScene = displayedBeamView = null;
+  displayedBeamScene = null;
   pointSourceLayers = [];
+  clearTimeout(denseTimer);
+  denseTimer = null;
+  densePainted = null;
   statusEl = statusElement;
   svg.innerHTML = `
     <defs>
@@ -484,9 +507,8 @@ function renderBeams() {
   signalHits = scene.signalHits || [];
   sampleHitPositions.clear();
   for (const hit of signalHits) sampleHitPositions.set(hit.stageId, hit);
-  const width = svg.clientWidth, height = svg.clientHeight;
-  const viewKey = JSON.stringify([state.view, width, height, window.devicePixelRatio]);
-  if (scene !== displayedBeamScene) {
+  const sceneChanged = scene !== displayedBeamScene;
+  if (sceneChanged) {
     let s = '';
     pointSourceLayers = [];
     let rasterRun = null;
@@ -495,7 +517,7 @@ function renderBeams() {
         if (!rasterRun) {
           rasterRun = [];
           const index = pointSourceLayers.push(rasterRun) - 1;
-          s += `<foreignObject data-point-source-layer="${index}" pointer-events="none"><canvas xmlns="http://www.w3.org/1999/xhtml" style="display:block"></canvas></foreignObject>`;
+          s += `<image data-point-source-layer="${index}" preserveAspectRatio="none" pointer-events="none"/>`;
         }
         rasterRun.push(d);
         continue;
@@ -511,21 +533,20 @@ function renderBeams() {
     }
     beamLayer.innerHTML = s;
   }
-  // Only a dense point source draws into a canvas layer; without one there is
-  // nothing to resize or repaint, and no reason to query the layer each frame.
-  if (pointSourceLayers.length && (scene !== displayedBeamScene || viewKey !== displayedBeamView)) {
-    for (const layer of beamLayer.querySelectorAll('[data-point-source-layer]')) {
-      // Cancel the enclosing world transform; the canvas is sized in screen
-      // pixels and sits in the same stacking position as these traced rays.
-      const v = state.view;
-      layer.setAttribute('width', width);
-      layer.setAttribute('height', height);
-      layer.setAttribute('transform', `scale(${1 / v.z}) translate(${-v.x} ${-v.y})`);
-      drawPointSourceCanvas(layer.querySelector('canvas'), pointSourceLayers[Number(layer.dataset.pointSourceLayer)], v, width, height, window.devicePixelRatio);
+  // Only a dense point source draws into a raster layer; without one there is
+  // nothing to repaint, and no reason to query the layer each frame.
+  if (pointSourceLayers.length) {
+    const plan = denseRepaint(sceneChanged, densePainted, {
+      x: state.view.x, y: state.view.y, z: state.view.z,
+      width: svg.clientWidth, height: svg.clientHeight, dpr: window.devicePixelRatio,
+    });
+    if (plan === 'now') paintDenseLayers();
+    else if (plan === 'later') {
+      clearTimeout(denseTimer);
+      denseTimer = setTimeout(paintDenseLayers, DENSE_SETTLE_MS);
     }
   }
   displayedBeamScene = scene;
-  displayedBeamView = viewKey;
   announceMixingState(state.elements);
   renderPulseLayer();
   syncPulseAnimation();

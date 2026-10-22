@@ -4,7 +4,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement, registry } from '../sketch/js/elements.js';
 import { traceScene, getTraceRevision, detectorReading } from '../sketch/js/raytrace.js';
-import { SceneTraceCache } from '../sketch/js/point-source-rendering.js';
+import { SceneTraceCache, screenRectInWorld, denseRepaint } from '../sketch/js/point-source-rendering.js';
+import { readFileSync } from 'node:fs';
 import { parseSketch, state } from '../sketch/js/state.js';
 import { buildSVG } from '../sketch/js/export.js';
 import '../sketch/js/detector-instruments.js';
@@ -157,4 +158,27 @@ test('the Rays slider is a logarithmic ladder: each position one count, read bac
   }
   assert.equal(logSliderValue(-3, min, max, step), 4);
   assert.equal(logSliderValue(1e9, min, max, step), 4096);
+});
+
+test('the dense layer is an SVG image placed in world space, repainted only when needed', () => {
+  // Safari painted a canvas inside <foreignObject> above every later SVG
+  // element, so lenses and mirrors disappeared behind dense rays.
+  const canvasSource = readFileSync(new URL('../sketch/js/canvas.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(canvasSource, /foreignObject/);
+  assert.match(canvasSource, /<image data-point-source-layer=/);
+  // The image covers exactly what the screen shows, so the viewport transform
+  // maps it back onto the screen pixel for pixel.
+  const view = { x: 120, y: -40, z: 2 };
+  const rect = screenRectInWorld(view, 800, 600);
+  assert.deepEqual(rect, { x: -60, y: 20, width: 400, height: 300 });
+  assert.equal(rect.x * view.z + view.x, 0);
+  assert.equal((rect.y + rect.height) * view.z + view.y, 600);
+  const painted = { x: 120, y: -40, z: 2, width: 800, height: 600, dpr: 2 };
+  assert.equal(denseRepaint(false, painted, { ...painted }), 'none', 'a selection change repaints nothing');
+  assert.equal(denseRepaint(false, painted, { ...painted, x: 150 }), 'later', 'a pan moves the image, then fills the edges');
+  assert.equal(denseRepaint(false, painted, { ...painted, z: 3 }), 'later', 'a zoom scales it, then sharpens');
+  assert.equal(denseRepaint(true, painted, { ...painted }), 'now', 'new rays');
+  assert.equal(denseRepaint(false, painted, { ...painted, width: 900 }), 'now', 'a resized canvas');
+  assert.equal(denseRepaint(false, painted, { ...painted, dpr: 1 }), 'now', 'another screen');
+  assert.equal(denseRepaint(false, null, { ...painted }), 'now', 'never painted');
 });

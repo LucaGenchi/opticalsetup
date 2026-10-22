@@ -2,7 +2,28 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Dense point sources use pixels on screen, retaining the same traced vector
 // geometry for measurements and exports. Laser envelopes stay in SVG.
+//
+// The pixels are drawn on an offscreen canvas and shown as an SVG <image> in
+// the beam layer. An HTML canvas inside a <foreignObject> was painted above
+// every later SVG element in Safari, hiding the lenses and mirrors drawn over
+// the rays; an <image> keeps its place in the SVG paint order in every browser.
 export const POINT_SOURCE_CANVAS_THRESHOLD = 256;
+
+// The world rectangle the screen shows: where the <image> painted for this
+// view sits, so that panning moves it with everything else.
+export function screenRectInWorld(view, width, height) {
+  return { x: -view.x / view.z, y: -view.y / view.z, width: width / view.z, height: height / view.z };
+}
+
+// Whether the dense layer must be painted again: at once when the rays or the
+// screen changed, after the view settles when it only moved or zoomed (the
+// image travels with the view meanwhile; encoding it costs tens of ms), or not.
+export function denseRepaint(sceneChanged, painted, now) {
+  if (sceneChanged || !painted || painted.width !== now.width || painted.height !== now.height
+      || painted.dpr !== now.dpr) return 'now';
+  if (painted.x !== now.x || painted.y !== now.y || painted.z !== now.z) return 'later';
+  return 'none';
+}
 
 export class SceneTraceCache {
   constructor(trace, revision) {
