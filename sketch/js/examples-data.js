@@ -123,6 +123,18 @@ export const examples = [
     "slug": "multiphoton-microscope-shg-and-two-photon-fluorescence"
   },
   {
+    "group": "Ophthalmology",
+    "name": "Retinal imaging — Linnik interferometer with a model eye",
+    "path": "../Examples/Ophthalmology/Retinal%20imaging%20%E2%80%94%20Linnik%20interferometer%20with%20a%20model%20eye.json",
+    "slug": "retinal-imaging-linnik-interferometer-with-a-model-eye"
+  },
+  {
+    "group": "Optical Communications",
+    "name": "DWDM link — dispersion compensation",
+    "path": "../Examples/Optical%20Communications/DWDM%20link%20%E2%80%94%20dispersion%20compensation.json",
+    "slug": "dwdm-link-dispersion-compensation"
+  },
+  {
     "group": "Scanning",
     "name": "Polygon scanner — line scanning",
     "path": "../Examples/Scanning/Polygon%20scanner%20%E2%80%94%20line%20scanning.json",

@@ -17,6 +17,13 @@ diagram-only components.
 4. Work on a focused branch named `codex/<short-topic>`; do not commit directly
    to `main`.
 
+## Choose the change workflow
+
+Before changing anything public, read
+[docs/contributor-workflow.md](docs/contributor-workflow.md): it routes each
+kind of change to its files, generators, checks and release level, and
+describes the release. This file stays the policy.
+
 ## Project map
 
 - `index.html` — static marketing/SEO landing page at the site root (no app
@@ -152,8 +159,7 @@ ships keep their own notices; see `THIRD-PARTY-NOTICES.md`.
   (`docs/release-policy.md`): a hand-cut `vMAJOR.MINOR.PATCH` whose pull
   request, once merged, is tagged and deployed. Say "merged" for work on
   `main`, and "live" only after a release has been deployed and read back.
-  Cut a release only when Luca asks for one. Until the activation steps in
-  that document are done, Pages still serves `main` directly.
+  Cut a release only when Luca asks for one.
   Only Luca can change these settings (**Settings → Branches → main**); do not
   ask for them to be relaxed to get a change merged.
 - Keep commits focused and describe behavior, not implementation trivia.

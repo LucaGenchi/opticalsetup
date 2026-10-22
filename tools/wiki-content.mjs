@@ -959,7 +959,8 @@ export const wikiEntries = [
         <span class="w">R₁ &gt; 0</span> and <span class="w">R₂ &lt; 0</span>;
         <span class="w">R = 0</span> makes that face plane. The Shape readout names the
         resulting profile so the sign convention can be checked directly.</p>
-        <p>The selectable N-BK7, fused-silica, N-SF5, and N-SF11 models use each glass's
+        <p>The selectable catalogue glasses (fused silica and the SCHOTT N-BK7, N-FK51A,
+        N-SF5, N-SF10, N-SF11, N-SF14, N-SF57 and N-LASF9) use each glass's
         published d-line index and Abbe number${cite(4)}. If a requested radius is too
         small for the clear aperture, or the centre thickness would make the faces cross,
         the inspector shows the exact constructible geometry the tracer uses instead of
@@ -1827,8 +1828,9 @@ export const wikiEntries = [
         reflection instead of exiting, exactly as a real prism does. For dispersion,
         broadband and supercontinuum beams are sampled at several discrete wavelengths
         across their band, and each sample refracts with its own wavelength-dependent
-        index, so the beam visibly fans into a spectrum. N-BK7, fused silica, N-SF5, and
-        N-SF11 are selectable; existing sketches still default to N-BK7. Pulsed rays add
+        index, so the beam visibly fans into a spectrum. Fused silica and the SCHOTT
+        glasses N-BK7, N-FK51A, N-SF5, N-SF10, N-SF11, N-SF14, N-SF57 and N-LASF9 are
+        selectable; existing sketches still default to N-BK7. Pulsed rays add
         GDD from their actual traced distance inside the selected glass.</p>`,
       formulas: [
         { tex: 'n^2(\\lambda)=1+\\sum_i\\frac{B_i\\lambda^2}{\\lambda^2-C_i}', caption: 'The selected glass\'s published three-term Sellmeier curve.' },
@@ -1918,8 +1920,9 @@ export const wikiEntries = [
         custom cross-section (a light pipe's tapered profile, a freeform prism, a
         corrective wedge) refracts and totally-internally-reflects exactly like the
         fixed-geometry <a href="../prism/">Prism</a>, just without being locked to a
-        triangle. Choose a constant refractive index or one of four catalogue models:
-        N-BK7, fused silica, N-SF5, and N-SF11. A broadband beam through a catalogue-glass
+        triangle. Choose a constant refractive index or one of nine catalogue models:
+        fused silica and the SCHOTT glasses N-BK7, N-FK51A, N-SF5, N-SF10, N-SF11,
+        N-SF14, N-SF57 and N-LASF9. A broadband beam through a catalogue-glass
         boundary is sampled by wavelength and visibly disperses into a spectrum.</p>`,
       formulas: [],
       limitations: `<p>The catalogue options use published Sellmeier curves, so GDD
@@ -5875,12 +5878,62 @@ export const wikiEntries = [
   },
   {
     type: 'eye', title: 'Human eye', category: 'Detectors',
-    summary: "Focuses light through an adjustable pupil onto a modeled retina, for exploring how focal length and pupil size change the detected spot.",
-    realWorld: { html: `<p>The eye forms an image on the retina using the refractive power of the cornea and crystalline lens. The iris controls the pupil opening, while accommodation changes the lens shape to bring different object distances into focus.</p>` },
+    summary: "A reduced eye: a pupil and one lens focus light onto a retina that detects it and can reflect part of it back, mirror-like or diffusely.",
+    realWorld: {
+      html: `<p>The eye forms an image on the retina using the refractive power of the cornea and crystalline lens, about 60 dioptres in total, in an eyeball about 24 mm long${cite(2)}. Schematic eyes describe it at very different levels of detail, from a single refracting surface to four aspheric surfaces with a gradient-index lens${cite(1)}. The iris sets the pupil, between roughly 2 mm in bright light and 8 mm in the dark${cite(3)}. An eye whose power does not match its length is myopic (too strong) or hyperopic (too weak), and the spectacle power that corrects it is its refractive error. The fundus sends a small fraction of the light back from several layers${cite(6)}: Delori and Pflibsen measured an equivalent reflectance of about 1–2 % at 560 nm and 10–12.5 % at 805 nm, depending on the retinal site${cite(4)}. Most of it is diffuse; a smaller directional part, guided by the cone photoreceptors, returns towards a preferred region of the pupil, usually near its centre${cite(5, 10)}. This returned light is what ophthalmoscopes, fundus cameras, scanning laser ophthalmoscopes and OCT systems detect.</p>`,
+      formulas: [
+        { tex: String.raw`P = \frac{1000}{f}`, caption: 'Optical power P in dioptres from the focal length f in millimetres.' },
+        { tex: String.raw`E = \frac{1000}{L} - P`, caption: 'Refractive error E for an eye of length L (mm): negative is myopic, positive hyperopic, both at the eye\'s lens.' },
+        { tex: String.raw`\eta = R\,d\,\sin^2\alpha`, caption: 'Share η of the light reaching the retina that leaves the pupil diffusely, for reflectivity R, diffuse share d and pupil half-angle α seen from the retina.' },
+      ],
+      html2: `<h3>More detailed eye models</h3>
+        <p>A schematic eye is built for a purpose, and the simplest one that answers the question is usually the best${cite(1)}. A reduced eye, with one refracting surface or one thin lens, gets the power, the focus and the refractive error right, which is enough to explain how an ophthalmoscope, a fundus camera or a model eye on the bench works. Finer questions need finer models:</p>
+        <ul>
+          <li><strong>Finite schematic eyes</strong> trace real rays through four aspheric surfaces, two of the cornea and two of the lens, to a curved retina, with the pupil in front of the lens. They predict spherical aberration, off-axis aberrations over a wide field, and how the eye changes as it accommodates${cite(7, 8)}.</li>
+          <li><strong>Gradient-index lenses</strong> replace the uniform crystalline lens with one whose index rises towards its centre, as in the real lens. Such models reproduce measured spherical aberration and predict chromatic aberration${cite(2)}, change with the refractive error of myopic eyes${cite(12)}, or, with a tilted and decentred lens, match aberrations measured across 80° of the horizontal visual field${cite(13)}.</li>
+          <li><strong>Individual aberrations</strong> vary widely from eye to eye; population studies describe them statistically with Zernike polynomials${cite(11)}.</li>
+          <li><strong>Chromatic dispersion</strong>: the cornea, humours and lens are dispersive, so the eye focuses blue light in front of red light; their indices follow Cauchy's equation${cite(14)}.</li>
+          <li><strong>The fundus reflection</strong> depends strongly on wavelength and comes from several layers, from the photoreceptors to the pigment epithelium and the blood-filled choroid${cite(15, 4, 6)}. Monte Carlo models of light transport through these layers agree well with measured spectra${cite(16)}. Part of the reflection is directional: guided back by the cones, it peaks in a preferred region of the pupil, usually near the centre and different from one person to another, and its strength depends on where the light entered${cite(10, 5)}.</li>
+          <li><strong>Exposure limits</strong> for light entering the eye depend on wavelength, exposure duration and the size of the retinal image, and ophthalmic instruments are assessed against them${cite(9)}.</li>
+        </ul>`,
+    },
     inOpticalSetup: {
-      html: `<p>The pupil clips incoming rays, an equivalent thin lens bends the accepted light, and a retinal detector records the resulting signal. Adjust <em>Eye diameter</em>, <em>Pupil diameter</em>, and <em>Lens focal length</em> to compare the illuminated spot. A linked detector screen makes the retinal reading visible beside the eye.</p><p>In the example, a parallel beam enters the pupil. Change the focal length to move the best focus relative to the retinal plane, or narrow the pupil to admit less of the beam.</p>`,
-      limitations: `<p>This is a geometric teaching model, not an anatomical eye prescription. It does not predict visual acuity, diffraction, accommodation dynamics, retinal physiology, or laser exposure limits.</p>`,
-    }, related: ['lens', 'camera', 'display'],
+      html: `<p>OpticalSetup models a <em>reduced eye in air</em>: the pupil clips incoming rays, one thin lens at the pupil bends them, and the retina sits one <em>eye length</em> behind it, where a retinal detector records the signal. A new eye is the textbook 60 D eye: 16.7 mm focal length, the same length, and a 4 mm pupil. Its length is the air-equivalent one, shorter than the 24 mm of a real eyeball${cite(2)}, so that ray angles inside and outside the eye stay right.</p><p>Set the power as a <em>focal length</em> or in <em>dioptres</em>: both edit the same lens, and a sketch stores the focal length whichever you choose. The <em>Refractive error</em> line compares the power with the length; change either to model a myopic or hyperopic eye and watch the retinal spot spread.</p><p><em>Retinal reflectivity</em> (0–100 %, default 0) sends that fraction of the light back from the retina. <em>Diffuse share</em> splits it: the mirror-like part goes back through the lens, so a collimated beam focused on the retina returns collimated, like a cat's eye, and the eye can stand in for the lens-and-mirror pair that ophthalmic instruments use to model it. The diffuse part scatters in all directions as a Lambertian surface would. Only the part headed for the pupil can leave, so it is traced as a small fan across the pupil carrying exactly that share; what would hit the eye wall is absorbed. A beamsplitter in front of the eye routes either return to a camera or detector.</p><p>The retinal reading counts all the light that reaches the retina, whatever fraction is reflected, and the inspector shows it in watts, carried from the sources' configured power like a power meter's reading. Light arriving at the back of the eyeball is blocked by the eye wall: it neither reaches the retina nor reflects. Sketches saved before the 60 D defaults open with the 30 mm eye, 12 mm pupil and 30 mm focal length they were drawn with.</p>`,
+      html2: `<h3>Making the eye more realistic</h3>
+        <p>Every eye setting is yours to choose: start from the 60 D default and change only what your setup needs.</p>
+        <ul>
+          <li><strong>A refractive error</strong> E (negative for myopia): change the power to 1000/L − E and keep the length, or change the length to 1000/(P + E) and keep the power. A −3 D myopic eye is the default eye at about 62.9 D, or the default eye lengthened to about 17.6 mm.</li>
+          <li><strong>Looking at something near</strong>: an object d metres away needs 1/d extra dioptres of accommodation, 2.5 D for a page at 40 cm. Add them to the power.</li>
+          <li><strong>The pupil</strong>: about 2–3 mm in bright light and 6–8 mm when dark-adapted or dilated${cite(3)}.</li>
+          <li><strong>A bench model eye</strong>, a lens with a target at its focus as used to test ophthalmic instruments: set the focal length to the lens's, the eye length equal to it, and the retinal reflectivity to the target's reflectance (close to 100 % for a mirror). Then choose a 0 % diffuse share for a mirror target or 100 % for a white card; the diffuse-share control appears once the reflectivity is above zero.</li>
+          <li><strong>The fundus reflection at your wavelength</strong>, as an illustrative starting point rather than a calibrated value. Delori and Pflibsen report an <em>equivalent reflectance</em>, calibrated for a diffusely reflecting fundus behind clear media in an eye of 22 mm focal length. At the nasal fundus and at the fovea it is about 1.4 and 0.3 % at 480 nm, 2.3 and 1.2 % at 560 nm, 6.4 and 3.3 % at 610 nm, 10.2 and 6.7 % at 675 nm, and 12.5 and 10.4 % at 805 nm, and individual eyes differ from these averages by tens of percent${cite(4)}. Set the retinal reflectivity first, then the diffuse share to 100 %. This eye collects diffuse light over its own length L, so the same reflectivity returns about (22 mm / L)² as much light, 1.7 times as much in the default 16.7 mm eye; to match the measured return with the same pupil, multiply the tabulated value by (L / 22 mm)², about 0.58 for the default eye.</li>
+          <li><strong>A directional return</strong>: a diffuse share a little below 100 % adds a mirror-like part, the closest this eye comes to the cone-guided light of a real retina.</li>
+        </ul>
+        <p>What the eye cannot do is listed under <em>Simplified vs. reality</em> below; the detailed models above are the ones to reach for when those limits matter.</p>`,
+      limitations: `<p>This is a geometric teaching model, not an anatomical eye prescription. One thin lens replaces the cornea and crystalline lens, so the pupil and the lens coincide: an instrument that images a source exactly into the pupil (Maxwellian view) is approximated, not reproduced. It is not a finite schematic eye with aspheric surfaces and a curved retina${cite(7, 8, 2)}, so it does not predict visual acuity, diffraction, aberrations, accommodation dynamics or retinal physiology.</p><p>The retina is a single plane. Its diffuse share uses the 3-D Lambertian fraction for a round pupil, exact on axis and estimated from the in-plane extent off axis; there are no retinal layers, no depth structure and no wavelength dependence, although the real fundus reflects five to eight times more at 805 nm than at 560 nm${cite(4)}. The mirror-like part reflects specularly, whereas the directional light of a real retina returns towards a preferred region of the pupil, usually near its centre, with a strength that depends on where the light entered${cite(10)}. The power at the retina is not compared with any exposure limit${cite(9)} and must not be used for laser-safety decisions. The carrier phase through the eye is not modeled, so the eye's return adds power to an interferometer's output but does not form fringes.</p>`,
+    },
+    citations: [
+      { label: 'D. A. Atchison and L. N. Thibos, "Optical models of the human eye," Clinical and Experimental Optometry 99(2), 99–106 (2016)', url: 'https://doi.org/10.1111/cxo.12352' },
+      { label: 'H.-L. Liou and N. A. Brennan, "Anatomically accurate, finite model eye for optical modeling," J. Opt. Soc. Am. A 14(8), 1684–1695 (1997)', url: 'https://doi.org/10.1364/JOSAA.14.001684' },
+      { label: 'A. B. Watson and J. I. Yellott, "A unified formula for light-adapted pupil size," Journal of Vision 12(10):12 (2012)', url: 'https://doi.org/10.1167/12.10.12' },
+      { label: 'F. C. Delori and K. P. Pflibsen, "Spectral reflectance of the human ocular fundus," Applied Optics 28(6), 1061–1077 (1989)', url: 'https://doi.org/10.1364/AO.28.001061' },
+      { label: 'J. van de Kraats and D. van Norren, "Directional and nondirectional spectral reflection from the human fovea," J. Biomed. Opt. 13(2), 024010 (2008)', url: 'https://doi.org/10.1117/1.2899151' },
+      { label: 'T. T. J. M. Berendschot, P. J. DeLint and D. van Norren, "Fundus reflectance — historical and present ideas," Progress in Retinal and Eye Research 22(2), 171–200 (2003)', url: 'https://doi.org/10.1016/S1350-9462(02)00060-5' },
+      { label: 'R. Navarro, J. Santamaría and J. Bescós, "Accommodation-dependent model of the human eye with aspherics," J. Opt. Soc. Am. A 2(8), 1273–1280 (1985)', url: 'https://doi.org/10.1364/JOSAA.2.001273' },
+      { label: 'I. Escudero-Sanz and R. Navarro, "Off-axis aberrations of a wide-angle schematic eye model," J. Opt. Soc. Am. A 16(8), 1881–1891 (1999)', url: 'https://doi.org/10.1364/JOSAA.16.001881' },
+      { label: 'F. C. Delori, R. H. Webb and D. H. Sliney, "Maximum permissible exposures for ocular safety (ANSI 2000), with emphasis on ophthalmic devices," J. Opt. Soc. Am. A 24(5), 1250–1265 (2007)', url: 'https://doi.org/10.1364/JOSAA.24.001250' },
+      { label: 'S. A. Burns, S. Wu, F. Delori and A. E. Elsner, "Direct measurement of human-cone-photoreceptor alignment," J. Opt. Soc. Am. A 12(10), 2329–2338 (1995)', url: 'https://doi.org/10.1364/JOSAA.12.002329' },
+      { label: 'L. N. Thibos, X. Hong, A. Bradley and X. Cheng, "Statistical variation of aberration structure and image quality in a normal population of healthy eyes," J. Opt. Soc. Am. A 19(12), 2329–2348 (2002)', url: 'https://doi.org/10.1364/JOSAA.19.002329' },
+      { label: 'D. A. Atchison, "Optical models for human myopic eyes," Vision Research 46(14), 2236–2250 (2006)', url: 'https://doi.org/10.1016/j.visres.2006.01.004' },
+      { label: 'J. Polans, B. Jaeken, R. P. McNabb, P. Artal and J. A. Izatt, "Wide-field optical model of the human eye with asymmetrically tilted and decentered lens that reproduces measured ocular aberrations," Optica 2(2), 124–134 (2015)', url: 'https://doi.org/10.1364/OPTICA.2.000124' },
+      { label: 'D. A. Atchison and G. Smith, "Chromatic dispersions of the ocular media of human eyes," J. Opt. Soc. Am. A 22(1), 29–37 (2005)', url: 'https://doi.org/10.1364/JOSAA.22.000029' },
+      { label: 'D. van Norren and L. F. Tiemeijer, "Spectral reflectance of the human eye," Vision Research 26(2), 313–320 (1986)', url: 'https://doi.org/10.1016/0042-6989(86)90028-3' },
+      { label: 'S. J. Preece and E. Claridge, "Monte Carlo modelling of the spectral reflectance of the human eye," Physics in Medicine and Biology 47(16), 2863–2877 (2002)', url: 'https://doi.org/10.1088/0031-9155/47/16/303' },
+    ],
+    resources: [
+      { label: 'D. A. Atchison, Optics of the Human Eye, 2nd ed. (CRC Press, 2023)', url: 'https://www.routledge.com/Optics-of-the-Human-Eye/Atchison/p/book/9781003128601' },
+    ],
+    related: ['lens', 'bs', 'camera', 'display'],
   },
   {
     type: 'generaldetector', title: 'General detector', category: 'Detectors',

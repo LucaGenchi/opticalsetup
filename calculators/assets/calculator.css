@@ -10,6 +10,9 @@
   --series-3: #1baf7a;
   --chart-grid: #e6eaf1;
   --chart-axis: #b8c1cf;
+  /* Highlighted x interval (probed window, laser bandwidth): yellow, which
+     stands apart from the blue and orange series in both themes. */
+  --chart-band: #f2b705;
   --error: #b3261e;
   --error-soft: #fdecea;
   --good: #1e7a3c;
@@ -21,6 +24,7 @@
     --series-3: #199e70;
     --chart-grid: #1f2a3f;
     --chart-axis: #3a4a66;
+    --chart-band: #ffd23f;
     --error: #ff8a80;
     --error-soft: #3a1d1d;
     --good: #6fd08c;
@@ -34,10 +38,10 @@
 .calc-page .tagline { max-width: 75ch; }
 .calc-page .cite { font-size: .78em; vertical-align: super; line-height: 0; margin-left: 1px; }
 
-/* Model / evidence / code facts under the title */
+/* Model / evidence / code facts, below the interactive part */
 .calc-facts {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px;
-  margin: 18px 0 26px;
+  margin: 30px 0 0;
 }
 .calc-facts > div { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; }
 .calc-facts dt { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; font-weight: 700; color: var(--muted); }
@@ -56,22 +60,26 @@
 }
 .calc-group legend { font-weight: 700; font-size: 13px; color: var(--ink); padding: 0 4px; }
 .calc-group.optional { grid-column: 1 / -1; }
+/* A form with a single group uses its whole width rather than one track. */
+.calc-inputs > .calc-group:only-of-type { grid-column: 1 / -1; }
 .calc-field { display: grid; grid-template-columns: 1fr 108px; gap: 2px 10px; align-items: center; margin: 7px 0 9px; }
 .calc-field label { font-size: 13px; color: var(--text); }
 .calc-field label .sym { color: var(--muted); font-style: italic; margin-left: 4px; }
 .calc-field .unit { color: var(--muted); font-size: 12px; }
 .calc-field .control { display: flex; align-items: center; gap: 5px; }
-.calc-field input[type=number] {
+.calc-field input[type=number], .calc-field select {
   width: 100%; min-width: 0; padding: 4px 7px; font: inherit; font-size: 13.5px;
   font-variant-numeric: tabular-nums; color: var(--text);
   background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
 }
-.calc-field input[type=number]:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-.calc-field input[aria-invalid="true"] { border-color: var(--error); background: var(--error-soft); }
+.calc-field input[type=number]:focus, .calc-field select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.calc-field [aria-invalid="true"] { border-color: var(--error); background: var(--error-soft); }
+.calc-field.choice { grid-template-columns: 1fr; }
 .calc-field .help { grid-column: 1 / -1; font-size: 11.8px; color: var(--muted); line-height: 1.4; }
 .calc-field.check { grid-template-columns: auto 1fr; justify-content: start; }
 .calc-field.check label { display: flex; gap: 8px; align-items: center; font-weight: 600; }
 .calc-field.is-off { opacity: .45; }
+.hide-inactive .calc-field.is-off { display: none; }
 
 .calc-output { position: sticky; top: 14px; display: flex; flex-direction: column; gap: 10px; }
 @media (max-width: 960px) { .calc-output { position: static; } }
@@ -92,7 +100,8 @@
 .calc-results tr:last-child th, .calc-results tr:last-child td { border-bottom: 0; }
 .calc-results th { font-weight: 500; color: var(--muted); }
 .calc-results th a { color: inherit; }
-.calc-results td { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+.calc-results td { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
+.calc-results td.text { white-space: normal; text-align: right; }
 .calc-results td small { display: block; color: var(--muted); font-size: 11.8px; }
 .calc-results tr.group th { color: var(--ink); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; background: var(--bg); }
 .calc-notes { list-style: none; display: flex; flex-direction: column; gap: 6px; }
@@ -180,3 +189,28 @@
 }
 .calc-reset:hover { color: var(--accent); border-color: var(--accent); }
 .chart-host .chart-note { font-size: 12px; margin-top: 4px; }
+
+/* ---------- extra panels and controls below the graphs ---------- */
+.calc-panel { margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--border); }
+.calc-panel-head { grid-column: 1 / -1; }
+.calc-panel-head h2 { font-size: 19px; color: var(--ink); letter-spacing: -.01em; }
+.calc-panel-head p { color: var(--muted); font-size: 13.5px; margin-top: 4px; max-width: 75ch; }
+.calc-plot-form { margin-top: 12px; grid-template-columns: minmax(0, 1fr); max-width: 760px; }
+.calc-plot-form .calc-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 18px; }
+.calc-plot-form .calc-group legend { grid-column: 1 / -1; }
+.chart-band { fill: var(--chart-band); fill-opacity: .32; stroke: var(--chart-band); stroke-width: 1.5; }
+
+/* ---------- column layout: source | material | output ----------
+   Each column keeps its own height: a form, then its results right below. */
+.calc-columns { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.calc-column { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.calc-columns .calc-inputs { grid-template-columns: minmax(0, 1fr); }
+.calc-columns .calc-output { position: static; display: flex; flex-direction: column; gap: 10px; }
+.calc-actions { grid-column: 1 / -1; }
+.calc-actions:empty { display: none; }
+.calc-results:empty { display: none; }
+@media (max-width: 1060px) {
+  .calc-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .calc-columns .calc-output { grid-column: 1 / -1; }
+}
+@media (max-width: 700px) { .calc-columns { grid-template-columns: minmax(0, 1fr); } }

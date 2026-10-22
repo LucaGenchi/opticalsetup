@@ -1,0 +1,250 @@
+{
+ "elements": 15,
+ "beams": 0,
+ "drawables": {
+  "count": 442,
+  "byType": {
+   "poly": 408,
+   "path": 34
+  },
+  "colors": {
+   "#8b1a1a": 442
+  },
+  "points": 1700,
+  "sum": [
+   388950,
+   517250
+  ],
+  "bbox": [
+   106,
+   177.5,
+   342.5,
+   570
+  ],
+  "digest": "8560e615"
+ },
+ "drawnElements": {
+  "textlabel:eoph0t01": "918d777b",
+  "cwlaser:eoph0src": "741f7087",
+  "bs:eoph0bs1": "948cfc36",
+  "eye:eoph0eye": "df9e4b66",
+  "filter:eoph0nd1": "7c86a177",
+  "lens:eoph0L4l": "21f36c16",
+  "mirror:eoph0M1m": "81e74feb",
+  "lens:eoph0L7l": "21f36c16",
+  "camera:eoph0cam": "4f8e3887",
+  "textlabel:eoph0t02": "85e6eb8a",
+  "textlabel:eoph0t03": "b00ccfeb",
+  "textlabel:eoph0t04": "a6b0afb1",
+  "textlabel:eoph0t05": "3577df2a",
+  "textlabel:eoph0t06": "48520b3f",
+  "textlabel:eoph0t07": "8d1decb2"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "readouts": {
+  "eye:eoph0eye": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 840,
+    "bandMin": 840,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#ff3030",
+    "convergence": null,
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 0.5,
+    "detectorType": "Retina",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": 1,
+     "s2": 0,
+     "s3": 0
+    },
+    "outputSignal": 0.5,
+    "polarization": "Linear 0°",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "retina",
+    "samples": 25,
+    "saturated": false,
+    "signal": 0.5,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.5,
+      "sourceId": "eoph0src"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#8b1a1a",
+      "continuum": false,
+      "power": 0.5,
+      "sourceId": "eoph0src",
+      "wavelength": 840,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 2.40548322e-15,
+    "wavelength": 840
+   }
+  },
+  "camera:eoph0cam": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 840,
+    "bandMin": 840,
+    "centroid": -2.71298769e-15,
+    "coherentPaths": 0,
+    "color": "#ff3030",
+    "convergence": null,
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0.013753125,
+     0.013753125,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "depositedSignal": 0.02750625,
+    "detectorType": "Camera sensor",
+    "gain": null,
+    "interference": {
+     "applied": false,
+     "coherentSources": 0,
+     "excludedHits": 50,
+     "fallbackReason": "carrier phase is not modeled through filter",
+     "partial": false,
+     "pathCount": 0,
+     "phaseIssues": [
+      "carrier phase is not modeled through filter",
+      "carrier phase is not modeled through eye"
+     ],
+     "reason": "carrier phase is not modeled through filter"
+    },
+    "normalizedStokes": {
+     "s1": 1,
+     "s2": 0,
+     "s3": 0
+    },
+    "outputSignal": 0.02750625,
+    "polarization": "Linear 0°",
+    "profile": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0.013753125,
+     0.013753125,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "profileColors": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     "#ff3030",
+     "#ff3030",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "profileMode": "deposited",
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "camera",
+    "samples": 50,
+    "saturated": false,
+    "signal": 0.02750625,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.02750625,
+      "sourceId": "eoph0src"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#8b1a1a",
+      "continuum": false,
+      "power": 0.02750625,
+      "sourceId": "eoph0src",
+      "wavelength": 840,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 6.8278716e-14,
+    "wavelength": 840
+   }
+  }
+ },
+ "fibers": {}
+}
