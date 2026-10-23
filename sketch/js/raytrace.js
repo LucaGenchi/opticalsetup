@@ -7263,7 +7263,8 @@ function volumeCrossing(s, ray, hit, d, record) {
   const axial = point => (focus ? dot(sub(point, focus.point), focus.axis) : 0);
   const at = f => add(entry, mul(d, f * lengthMm));
   // Spots along the path: one for a path no longer than SPOT_SPACING_MM,
-  // otherwise at most that far apart, and never more than MAX_SPOTS.
+  // otherwise aimed at that spacing, but never more than MAX_SPOTS (so a long
+  // path has them further apart).
   const parts = lengthMm <= SPOT_SPACING_MM ? 1 : Math.min(MAX_SPOTS, Math.ceil(lengthMm / SPOT_SPACING_MM) + 1);
   const spots = order => (lengthMm > 1e-9
     ? volumeEmissionPoints(order, axial(entry), axial(exit), focus, parts)
