@@ -15,6 +15,9 @@ only when a release is cut.
   `opticalsetup.com/v1.0/sketch/#sketch=…`. It keeps opening in the app that
   made it, so a later release does not redraw it or change its numbers. When a
   newer release exists, the kept copy says so and links to the current app.
+  Kept copies are never patched: a later fix to a bug or to the physics
+  reaches a shared setup when it is opened in the current app, which may
+  then show a corrected result.
 - The current app keeps one autosave across releases. A kept copy has its own,
   so an older app never overwrites the bench saved by the current one.
 

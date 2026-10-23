@@ -87,12 +87,52 @@ export function shouldUseSlider(param = {}) {
   if (param.slider === false) return false;
   const min = Number(param.min), max = Number(param.max), step = Number(param.step);
   if (!Number.isFinite(min) || !Number.isFinite(max) || !Number.isFinite(step) || max <= min || step <= 0) return false;
+  if (param.slider === 'log') return min > 0;
   if (param.slider === true) return true;
   return (max - min) / step <= 200;
 }
 
 function sliderProgress(value, min, max) {
   return Math.max(0, Math.min(100, (Number(value) - min) / (max - min) * 100));
+}
+
+// A logarithmic slider (`slider: 'log'`) for a span of several decades. Its
+// positions are a fixed ladder of values on the param's step, each one step
+// or LOG_SLIDER_RATIO above the last, whichever is more: small counts are all
+// there, large ones go up by ratio. Every position is one value and reads
+// back as itself, and each arrow key reaches the next value. The exact number
+// field beside it keeps every value the param accepts.
+const LOG_SLIDER_RATIO = 1.06;
+const ladders = new Map();
+export function logSliderLadder(min, max, step) {
+  const key = `${min}:${max}:${step}`;
+  let ladder = ladders.get(key);
+  if (!ladder) {
+    const snap = x => (step > 0 ? min + Math.round((x - min) / step) * step : x);
+    ladder = [min];
+    for (let v = min; v < max;) {
+      v = Math.min(max, Math.max(v + (step > 0 ? step : v * (LOG_SLIDER_RATIO - 1)), snap(v * LOG_SLIDER_RATIO)));
+      ladder.push(Number(v.toFixed(10)));
+    }
+    ladders.set(key, ladder);
+  }
+  return ladder;
+}
+// The ladder position nearest a value by ratio; any value maps somewhere.
+export function logSliderPosition(value, min, max, step) {
+  const ladder = logSliderLadder(min, max, step);
+  const v = Math.min(max, Math.max(min, Number(value)));
+  if (!Number.isFinite(v)) return 0;
+  let best = 0;
+  for (let i = 1; i < ladder.length; i++) {
+    if (Math.abs(Math.log(ladder[i] / v)) < Math.abs(Math.log(ladder[best] / v))) best = i;
+  }
+  return best;
+}
+export function logSliderValue(position, min, max, step) {
+  const ladder = logSliderLadder(min, max, step);
+  const i = Math.round(Number(position));
+  return ladder[Number.isFinite(i) ? Math.min(ladder.length - 1, Math.max(0, i)) : 0];
 }
 
 function numberField(labelText, attrs, value, param = {}) {
@@ -112,11 +152,17 @@ function numberField(labelText, attrs, value, param = {}) {
 
   const id = `control-${controlSerial++}`;
   const parts = splitFieldLabel(labelText);
-  const progress = sliderProgress(displayValue, min, max).toFixed(2);
+  const log = param.slider === 'log';
+  const last = log ? logSliderLadder(min, max, step).length - 1 : 0;
+  const position = log ? logSliderPosition(displayValue, min, max, step) : displayValue;
+  const progress = (log ? 100 * position / last : sliderProgress(displayValue, min, max)).toFixed(2);
+  const rangeLimits = log
+    ? `min="0" max="${last}" step="1" data-scale="log" data-log-min="${min}" data-log-max="${max}" data-log-step="${step}"`
+    : limits;
   return `<div class="field slider-field" role="group" aria-labelledby="${id}-label">
     <div class="field-heading"><span id="${id}-label">${esc(parts.label)}</span>${parts.unit ? `<span class="field-unit">${esc(parts.unit)}</span>` : ''}</div>
     <div class="slider-inputs">
-      <input type="range" ${attrs}${negAttr} data-control-id="${id}" data-control-role="range" ${limits} value="${displayValue}" aria-labelledby="${id}-label" style="--range-progress:${progress}%">
+      <input type="range" ${attrs}${negAttr} data-control-id="${id}" data-control-role="range" ${rangeLimits} value="${position}" aria-labelledby="${id}-label"${log ? ` aria-valuetext="${displayValue}"` : ''} style="--range-progress:${progress}%">
       <span class="number-wrap">${negative ? '<span class="negsign">−</span>' : ''}<input type="number" ${attrs}${negAttr} data-control-id="${id}" data-control-role="number" ${limits} value="${displayValue}" aria-label="${esc(labelText)} exact value"></span>
     </div>
   </div>`;
@@ -1360,6 +1406,11 @@ export function applyInput(inp, rebuild = false) {
   const key = inp.dataset.k, pkey = inp.dataset.p;
   let val;
   if (inp.type === 'checkbox') val = inp.checked;
+  else if (inp.type === 'range' && inp.dataset.scale === 'log') {
+    // A ladder value: already on the param's step and within its limits.
+    val = logSliderValue(parseFloat(inp.value), Number(inp.dataset.logMin), Number(inp.dataset.logMax), Number(inp.dataset.logStep));
+    inp.setAttribute('aria-valuetext', String(val));
+  }
   else if (inp.type === 'number' || inp.type === 'range') {
     val = parseFloat(inp.value);
     if (!Number.isFinite(val)) return;
@@ -1377,14 +1428,25 @@ export function applyInput(inp, rebuild = false) {
   }
   else val = inp.value;
   if (inp.dataset.controlId) {
+    const logPosition = range => logSliderPosition(val, Number(range.dataset.logMin), Number(range.dataset.logMax), Number(range.dataset.logStep));
     panel.querySelectorAll('[data-control-id]').forEach(peer => {
-      if (peer !== inp && peer.dataset.controlId === inp.dataset.controlId) peer.value = String(val);
+      if (peer === inp || peer.dataset.controlId !== inp.dataset.controlId) return;
+      if (peer.dataset.scale === 'log') {
+        peer.value = String(logPosition(peer));
+        peer.setAttribute('aria-valuetext', String(val));
+      } else peer.value = String(val);
     });
     const range = inp.dataset.controlRole === 'range'
       ? inp
       : [...panel.querySelectorAll('[data-control-id]')].find(peer =>
         peer.dataset.controlId === inp.dataset.controlId && peer.dataset.controlRole === 'range');
-    if (range) range.style.setProperty('--range-progress', `${sliderProgress(val, Number(range.min), Number(range.max))}%`);
+    if (range) {
+      // Dragged directly, the fill follows the thumb, not the quantized value.
+      const progress = range.dataset.scale === 'log'
+        ? 100 * (range === inp ? Number(range.value) : logPosition(range)) / Number(range.max)
+        : sliderProgress(val, Number(range.min), Number(range.max));
+      range.style.setProperty('--range-progress', `${progress}%`);
+    }
   }
   if (inp.maxLength > 0 && typeof val === 'string' && val.length > inp.maxLength) {
     val = val.slice(0, inp.maxLength);

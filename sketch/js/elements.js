@@ -2656,6 +2656,7 @@ function opaStateCore(plan, p) {
 // source had before the range became a parameter (1.5x the glow), and the
 // longest range a user may set.
 const POINT_SOURCE_GLOW_MM = 110;
+const POINT_SOURCE_MAX_RAYS = 4096;
 const POINT_SOURCE_LEGACY_CAPTURE_MM = 165;
 const POINT_SOURCE_MAX_CAPTURE_MM = 100000;
 
@@ -2845,7 +2846,7 @@ export const registry = {
       },
       { key: 'linesReadout', label: 'Lines', type: 'readout', readout: p => lampLineSummary(p.lampType), show: p => p.sourceKind === 'lamp' },
       { key: 'spread', label: 'Emission angle (°)', type: 'number', min: 10, max: 360, step: 10, def: 360 },
-      { key: 'nrays', label: 'Rays', type: 'number', min: 4, max: 128, step: 2, def: 12 },
+      { key: 'nrays', label: 'Rays', type: 'number', min: 4, max: POINT_SOURCE_MAX_RAYS, step: 2, def: 12, slider: 'log' },
       // What catches the light within the capture range. A new source is
       // caught by every optical element; a sketch saved before this control
       // existed was drawn with only lenses, mirrors and fiber tips collecting,
@@ -2901,7 +2902,8 @@ export const registry = {
     },
     source(el) {
       const { spread, nrays } = el.params, out = [];
-      const n = Math.max(1, Math.round(nrays));
+      const count = Number(nrays);
+      const n = Number.isFinite(count) ? Math.min(POINT_SOURCE_MAX_RAYS, Math.max(4, Math.round(count))) : 12;
       const range = Number(el.params.captureRange);
       const captureLen = Number.isFinite(range)
         ? Math.min(POINT_SOURCE_MAX_CAPTURE_MM, Math.max(POINT_SOURCE_GLOW_MM, range))
