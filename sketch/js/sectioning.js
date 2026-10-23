@@ -163,10 +163,12 @@ export function volumeEmissionPoints(order, startMm, endMm, focus, parts) {
   return out;
 }
 
-// Spots 1/k apart along a path of length 1, one of them at `anchor`, each
-// sharing the part of the path nearer to it than to any other.
+// At most k spots along a path of length 1, one of them at `anchor` and the
+// others 1/(k - 1) apart, each sharing the part of the path nearer to it than
+// to any other.
 function evenSpots(k, anchor) {
-  const step = 1 / k;
+  if (k <= 1) return [{ at: Math.min(1, Math.max(0, anchor)), share: 1, level: 1 }];
+  const step = 1 / (k - 1);
   const at = [];
   for (let j = Math.ceil((0 - anchor) / step - 1e-9); anchor + j * step <= 1 + 1e-9; j++) {
     at.push(Math.min(1, Math.max(0, anchor + j * step)));

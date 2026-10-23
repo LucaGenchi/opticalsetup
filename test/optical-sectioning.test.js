@@ -110,9 +110,18 @@ test('a linear signal samples the focus itself when the focus is on the path', (
   const points = volumeEmissionPoints(1, -3, 7, { ok: true, zRMm: 0.001 }, 4);
   const at = points.map(p => p.at);
   assert.ok(at.some(x => Math.abs(x - 0.3) < 1e-12), `a spot at the focus: ${at}`);
-  for (let i = 1; i < at.length; i++) assert.ok(Math.abs(at[i] - at[i - 1] - 0.25) < 1e-12);
+  for (let i = 1; i < at.length; i++) assert.ok(Math.abs(at[i] - at[i - 1] - 1 / 3) < 1e-12);
   assert.ok(Math.abs(points.reduce((s, p) => s + p.share, 0) - 1) < 1e-12);
   assert.ok(points.every(p => p.level === 1 && p.share > 0));
+  // Never more spots than asked for, wherever the focus is (Andrea, #261:
+  // a centred focus with 16 gave 17).
+  for (const parts of [1, 2, 3, 16]) {
+    for (const start of [-10, -7.3, -5, -1e-9, 0]) {
+      const spots = volumeEmissionPoints(1, start, start + 20, { ok: true, zRMm: 0.001 }, parts);
+      assert.ok(spots.length <= parts, `${parts} asked, ${spots.length} given (focus at ${-start})`);
+      assert.ok(Math.abs(spots.reduce((s, p) => s + p.share, 0) - 1) < 1e-12);
+    }
+  }
 });
 
 test('a linear signal grows with the path and never passes one', () => {

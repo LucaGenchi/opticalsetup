@@ -320,8 +320,9 @@ and comes back, off a mirror, interacts again, and its returning beam is
 recorded as a separate crossing. It emits along each ray's straight path through that layer
 (`volumeCrossing` in `sketch/js/raytrace.js`):
 
-- Linear channels: evenly along the path, about one spot per 0.5 mm
-  (`SPOT_SPACING_MM`, at most `MAX_SPOTS` = 16). When the beam's focus lies on
+- Linear channels: evenly along the path, spots at most 0.5 mm apart
+  (`SPOT_SPACING_MM`; one spot for a path no longer than that, and never more
+  than `MAX_SPOTS` = 16). When the beam's focus lies on
   the path, the spots are placed so that one sits exactly at the focus (what a
   confocal pinhole images), each carrying the stretch of path nearest to it.
   Their efficiency is per millimetre: the path converts 1 − (1 − eff)^L
