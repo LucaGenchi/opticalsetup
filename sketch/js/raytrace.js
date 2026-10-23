@@ -2010,9 +2010,24 @@ function carriesWholeTrain(ray) {
     && Math.min(...pieces.map(p => p.lo)) <= lo + tolerance && Math.max(...pieces.map(p => p.hi)) >= hi - tolerance;
 }
 
+// A specimen's mid-line and its side edges are one specimen: what any of them
+// sees is recorded once, under the element.
+const probeKeyOf = surface => (surface.kind === 'specimen' && surface.el ? `specimen:${surface.el.id}` : surface.id);
+
+// Whether a ray is already inside this specimen: the last element it went
+// through is this one, so it is crossing a second of its surfaces on the
+// same pass (its mid-line after a side edge, or the reverse) and must not
+// interact again.
+function crossingSameSpecimen(ray, surface) {
+  if (surface.kind !== 'specimen' || !surface.el || !surface.data?.volume) return false;
+  const last = String(ray.branch || '').split('>').pop();
+  return last.startsWith(`${surface.el.id}:`);
+}
+
 function recordProbeBeam(surface, ray, hit = null) {
-  let seen = specimenProbe.get(surface.id);
-  if (!seen) specimenProbe.set(surface.id, seen = []);
+  const probeKey = probeKeyOf(surface);
+  let seen = specimenProbe.get(probeKey);
+  if (!seen) specimenProbe.set(probeKey, seen = []);
   const key = probeBeamKey(ray);
   const weight = Math.max(0, ray.intensity || 0);
   const already = seen.find(b => b.key === key);
@@ -2273,7 +2288,7 @@ function specimenMixedOutputs(channel, ray, d, data, elementId, origins = null) 
     const child = {
       d, wl, bw: 0, spec: null, pol: undefined, stokes: null, pulse,
       color: tint, sourceId: elementId, intensity: forward, tag: `sfg${Math.round(wl)}`,
-      ...(origins?.forward ? { origin: origins.forward } : {}),
+      ...(origins?.forward ? { origin: origins.forward, oplShift: origins.forwardShift } : {}),
     };
     out.push(child);
     if (channel.epi) {
@@ -2285,7 +2300,7 @@ function specimenMixedOutputs(channel, ray, d, data, elementId, origins = null) 
           intensity: forward * ratio,
           power: Number.isFinite(ray.power) ? ray.power * eff * gate * ratio * focal : undefined,
           tag: `esfg${Math.round(wl)}`,
-          ...(origins?.epi ? { origin: origins.epi } : {}),
+          ...(origins?.epi ? { origin: origins.epi, oplShift: origins.epiShift } : {}),
         });
       }
     }
@@ -3798,6 +3813,7 @@ function retinalScatter(ray, hit, s, d, n, fraction) {
 function interact(ray, hit) {
   const s = hit.surface, d = { x: ray.dx, y: ray.dy }, k = s.kind, data = s.data;
   const t = norm(sub(s.b, s.a));
+  if (crossingSameSpecimen(ray, s)) return [{ d }];
   // The spectral model supplies average energy, not a combined temporal
   // field. Do not seed a nonlinear converter or a nonlinear specimen with
   // the representative arm's obsolete pulse: their yield depends on peak
@@ -4920,7 +4936,7 @@ function interact(ray, hit) {
                 intensity: EMISSION_DRAW_INT * spot.level,
                 power: Number.isFinite(spontaneous.power) ? spontaneous.power * yieldFraction * spot.share / (N * shifts.length) : undefined,
                 sample: null, sampleCount: 1, sampleGrid: null,
-                ...(spot.origin ? { origin: spot.origin } : {}),
+                ...(spot.origin ? { origin: spot.origin, oplShift: spot.oplShift } : {}),
                 tag: `r${ci}_${Math.round(shift)}_${volume ? `${k}_` : ''}${i}`,
               });
             }));
@@ -4949,7 +4965,7 @@ function interact(ray, hit) {
               intensity: EMISSION_DRAW_INT * spot.level,
               power: Number.isFinite(spontaneous.power) ? spontaneous.power * strength * spot.share / N : undefined,
               sample: null, sampleCount: 1, sampleGrid: null,
-              ...(spot.origin ? { origin: spot.origin } : {}),
+              ...(spot.origin ? { origin: spot.origin, oplShift: spot.oplShift } : {}),
               tag: volume ? `f${ci}_${k}_${i}` : `f${ci}_${i}`,
             });
           }));
@@ -4982,7 +4998,7 @@ function interact(ray, hit) {
         const tint = channelColor(c, wl);
         out.push({
           d, wl, bw: 0, spec: null, pol: undefined, stokes: null, color: tint, sourceId: emittedFrom, intensity: forward, tag: `c${ci}`,
-          ...(volume?.origins.forward ? { origin: volume.origins.forward } : {}),
+          ...(volume ? { origin: volume.origins.forward, oplShift: volume.origins.forwardShift } : {}),
         });
         if (c.epi && EPI_KINDS.has(c.kind)) {
           const ratio = Math.min(1, Math.max(0, c.epiRatio ?? 0.15));
@@ -4993,7 +5009,7 @@ function interact(ray, hit) {
               intensity: forward * ratio,
               power: Number.isFinite(ray.power) ? ray.power * eff * ratio * focal : undefined,
               tag: `e${ci}`,
-              ...(volume?.origins.epi ? { origin: volume.origins.epi } : {}),
+              ...(volume ? { origin: volume.origins.epi, oplShift: volume.origins.epiShift } : {}),
             });
           }
         }
@@ -6725,6 +6741,9 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           weakBranches++;
         }
         const ox = c.origin ? c.origin.x : hit.p.x, oy = c.origin ? c.origin.y : hit.p.y;
+        // A child launched away from the hit (`origin`) says how much optical
+        // path lies between the hit and its start.
+        const childOpl = r.opl + (c.origin && Number.isFinite(c.oplShift) ? c.oplShift : 0);
         const childGdd = 'gdd' in c ? c.gdd : r.gdd;
         const childDelayDifference = 'groupDelayDifferenceFs' in c
           ? c.groupDelayDifferenceFs : r.groupDelayDifferenceFs;
@@ -6759,7 +6778,9 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             : (c.wl === undefined || c.wl === r.wl) && !('spec' in c && c.spec) ? (r.sliceSpec || null) : null,
           spectralHi: Number.isFinite(c.spectralHi) ? c.spectralHi
             : (c.wl === undefined || c.wl === r.wl) ? r.spectralHi : null,
-          speckle: c.speckle || r.speckle || false,
+          // Incoherent light (fluorescence, Raman) does not speckle, even
+          // behind a diffuser or driven by a speckled beam.
+          speckle: r.incoherent || c.incoherent ? false : c.speckle || r.speckle || false,
           // Once a dispersive optic has taken a beam apart, the pieces stay
           // apart: the flag rides along so their colour keeps being derived
           // from the wavelength each piece actually carries. Light a specimen
@@ -6819,10 +6840,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           // A child with a pulse of its own (light an OPO generated) carries
           // its own dispersion trace; without one it continues its parent's.
           gddTrace: ('pulse' in c ? Boolean(c.pulse) : r.gddTrace)
-            ? [{ opl: r.opl, gdd: childGdd, linear: false }] : null,
+            ? [{ opl: childOpl, gdd: childGdd, linear: false }] : null,
           groupDelayDifferenceFs: childDelayDifference,
           groupDelayDifferenceTrace: ('pulse' in c ? Boolean(c.pulse) : r.groupDelayDifferenceTrace)
-            ? [{ opl: r.opl, value: childDelayDifference, linear: false }] : null,
+            ? [{ opl: childOpl, value: childDelayDifference, linear: false }] : null,
           pulse: 'pulse' in c ? c.pulse : r.pulse,
           // Spontaneous emission (fluorescence, Raman) is incoherent light. It
           // keeps the pump's record, which still times it for detectors, but
@@ -6854,8 +6875,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           hidden: r.hidden || Boolean(c.hidden),
           retainWeak: childRetainsWeak,
           pts: [{ x: ox, y: oy }],
-          opl: r.opl,
-          opls: [r.opl],
+          opl: childOpl,
+          opls: [childOpl],
           segmentIntensities: [],
           segmentPowers: [],
           segmentHistories: [],
@@ -7165,8 +7186,7 @@ function settleFocus(surface, beams) {
 function focusPlacement(surface, focus) {
   const halfThickness = Number(surface.data.halfThickness) || 0;
   const halfWidth = Number(surface.data.halfWidth) || 0;
-  const along = norm(sub(surface.b, surface.a));
-  const mid = mul(add(surface.a, surface.b), 0.5);
+  const { along, mid } = activeRect(surface);
   let normal = perp(along);
   if (dot(normal, focus.axis) < 0) normal = mul(normal, -1);
   const rel = sub(focus.point, mid);
@@ -7183,11 +7203,19 @@ function focusPlacement(surface, focus) {
 // layer is away from the focus; without one, all of it), and where forward
 // and backward coherent signals leave from -- the point on the path nearest
 // the focus, or, without a focus, the face they leave by.
+// The active layer's mid-line in world space: its direction and centre. A
+// side edge carries the mid-line it belongs to.
+function activeRect(surface) {
+  const m = surface.data?.midLine;
+  const a = m && surface.el ? toWorld(surface.el, m.x1, m.y1) : surface.a;
+  const b = m && surface.el ? toWorld(surface.el, m.x2, m.y2) : surface.b;
+  return { along: norm(sub(b, a)), mid: mul(add(a, b), 0.5) };
+}
+
 function volumeCrossing(s, ray, hit, d, record) {
   const halfThickness = Number(s.data.halfThickness) || 0;
   const halfWidth = Number(s.data.halfWidth) || 0;
-  const along = norm(sub(s.b, s.a));
-  const mid = mul(add(s.a, s.b), 0.5);
+  const { along, mid } = activeRect(s);
   const normal = perp(along);
   const across = dot(d, normal), sideways = dot(d, along);
   const x0 = dot(sub(hit.p, mid), along);
@@ -7204,12 +7232,20 @@ function volumeCrossing(s, ray, hit, d, record) {
   const focus = record?.focus?.ok ? record.focus : null;
   const axial = point => (focus ? dot(sub(point, focus.point), focus.axis) : 0);
   const at = f => add(entry, mul(d, f * lengthMm));
-  // Parts along the path: about one every SPOT_SPACING_MM, two to eight.
-  const parts = Math.min(8, Math.max(2, Math.ceil(lengthMm / SPOT_SPACING_MM)));
+  // Parts along the path: about one every SPOT_SPACING_MM, at most eight.
+  const parts = Math.min(8, Math.max(1, Math.ceil(lengthMm / SPOT_SPACING_MM)));
   const spots = order => (lengthMm > 1e-9
     ? volumeEmissionPoints(order, axial(entry), axial(exit), focus, parts)
     : [{ at: 0.5, share: 1, level: 1 }]);
-  const points = order => spots(order).map(p => ({ origin: at(p.at), share: p.share, level: p.level }));
+  // The light emitted away from the hit has travelled to (or not yet
+  // reached) that point: its optical path is the hit's, shifted along the
+  // ray by the distance in the specimen's medium.
+  const index = Number.isFinite(ray.ior) && ray.ior > 0 ? ray.ior : 1;
+  const shiftTo = point => dot(sub(point, hit.p), d) * index;
+  const points = order => spots(order).map(p => {
+    const origin = at(p.at);
+    return { origin, oplShift: shiftTo(origin), share: p.share, level: p.level };
+  });
   const share = order => (order > 1 && focus ? spots(order).reduce((sum, p) => sum + p.share, 0) : 1);
   let forward = exit, epi = entry;
   if (focus && lengthMm > 1e-9) {
@@ -7217,7 +7253,10 @@ function volumeCrossing(s, ray, hit, d, record) {
     const f = end > start ? Math.min(1, Math.max(0, -start / (end - start))) : 0.5;
     forward = epi = at(f);
   }
-  return { lengthMm, points, share, origins: { forward, epi } };
+  return {
+    lengthMm, points, share,
+    origins: { forward, epi, forwardShift: shiftTo(forward), epiShift: shiftTo(epi) },
+  };
 }
 
 // Trace everything. The static drawables remain export-safe while pulseTracks
@@ -7479,8 +7518,8 @@ export function traceScene(elements, beams = [], options = {}) {
       for (const s of surfaces) {
         if (s.kind !== 'specimen' && !(s.kind === 'transmit' && MIX_CONVERTS.has(s.data.convert))
             && !(s.kind === 'attenuate' && s.data.specimen)) continue;
-        const beams = (specimenProbe.get(s.id) || []).map(settleProbeBeam);
-        if (s.kind === 'specimen' && s.data.volume) settleFocus(s, beams);
+        const beams = (specimenProbe.get(probeKeyOf(s)) || []).map(settleProbeBeam);
+        if (s.kind === 'specimen' && s.data.volume && !s.data.edge) settleFocus(s, beams);
         s.data.incidentBeams = beams;
         s.data.incidentWls = [...new Set(beams.map(b => b.wl))];
         if (s.el) specimenIncident.set(s.el.id, beams);

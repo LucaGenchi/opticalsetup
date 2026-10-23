@@ -302,11 +302,18 @@ a sandwich (glass, active layer, glass; the default, 1.5 / 2 / 1.5 mm), a sample
 a slide (the active layer on the top or bottom face of one glass) or a cuvette
 (glass all round, the inside active); the stage offers slides and sandwiches.
 Glass thickness is 0.1–10 mm and the active layer 0.1–20 mm. The glass is
-passive: no emission and no refraction. A scene saved before layouts loads as
-`thin` (`migrate: () => 'thin'`): a thin sheet, every signal emitted where the
-beam crosses its mid-line, with no intensity dependence. A layered specimen is
-crossed at the middle of its active layer and emits along each ray's straight
-path through that layer (`volumeCrossing` in `sketch/js/raytrace.js`):
+passive: no emission and no refraction. A specimen saved before layouts (a thin
+sheet `thickness` thick, emitting where the beam crossed its mid-line) loads as
+a sandwich of the same total thickness, a third glass on each side and a third
+active (`migrateThinSpecimen`, through the definition's `migrateParams` hook in
+`sketch/js/state.js`); each linear channel's efficiency becomes the
+per-millimetre value 1 − (1 − eff)^(1/L) that gives the old total over that
+layer at normal incidence, and nonlinear efficiencies are kept. The specimen's
+surfaces are its active layer's mid-line and its two side edges, so a ray
+crossing the layer through a side is seen too; a ray already inside the
+specimen (its branch last went through it) passes its other surfaces without
+interacting again. It emits along each ray's straight path through that layer
+(`volumeCrossing` in `sketch/js/raytrace.js`):
 
 - Linear channels: evenly along the path, about one spot per 1.5 mm (two to
   eight). Their efficiency is per millimetre: the path converts
@@ -318,18 +325,22 @@ path through that layer (`volumeCrossing` in `sketch/js/raytrace.js`):
   Gaussian focus in air: w0 = λ/(π NA), zR = π w0²/λ. Only the part of the
   path where the intensity is at least 1/1000 of the focus's (|z| ≤ 31.6 zR)
   emits (`volumeEmissionPoints`); each piece is weighted by the exact
-  integral of (1 + (z/zR)²)^−(n−1) over it, divided by the integral over the
-  whole beam, so the shares add up to the part of the focal signal the layer
-  holds: about 1 for a focal region inside a thicker layer, less for a
-  thinner layer, 0 for a focus away from the layer. Orders: 2PEF, χ⁽²⁾ (SHG
+  integral of (1 + (z/zR)²)^−(n−1) over it, divided by the integral over
+  |z| ≤ 31.6 zR, so the shares add up to the part of the focal signal the
+  layer holds: exactly 1 for a focal region inside a thicker layer, less for
+  a thinner layer or a focus just outside it, 0 for a focus more than
+  31.6 zR from the layer. Orders: 2PEF, χ⁽²⁾ (SHG
   and SFG) and SRS 2; 3PEF, THG and CARS 3. Coherent forward and backward
   signals and the SRS transfer depth are scaled by the same share and leave
-  from the point of each path nearest the focus.
+  from the point of each path nearest the focus; their optical path is the
+  hit's shifted to that point (`oplShift`).
 - Without a focus — a collimated or one-ray beam, or speckle (rays marked by
   a diffuser) — nonlinear channels emit evenly along the path with their full
   efficiency, and coherent signals leave from the exit and entry faces.
 
-The *Focus inside* readout lists each beam whose focus lies inside the active
+Incoherent light (fluorescence, Raman) is never marked as speckle, even
+behind a diffuser or driven by a speckled beam. The *Focus inside* readout lists
+each beam whose focus lies inside the active
 layer (wavelength, distance into the layer from the entry face, zR) and is
 hidden otherwise. The glow drawn from each spot is in proportion to its
 strength. The 1/1000 limit is illustrative. Not included: aberrations, the

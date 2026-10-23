@@ -108,11 +108,10 @@ function yieldIntegral(order, u) {
   return sum * h / 3;
 }
 
-// The whole focal signal: the integral over every slice along the beam.
+// The whole focal signal: the integral over every slice within the cutoff,
+// so a layer holding all of the focal region gives exactly its efficiency.
 function fullYield(order) {
-  if (order === 2) return Math.PI;
-  if (order === 3) return Math.PI / 2;
-  return 2 * yieldIntegral(order, 1e4);
+  return 2 * yieldIntegral(order, CUTOFF_U);
 }
 
 // Where along one crossing of the active layer a signal is emitted. `startMm`

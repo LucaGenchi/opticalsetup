@@ -976,31 +976,23 @@ test('the excitation spot is the only circle a specimen draws, and the toggle go
   }
 });
 
-test('a thin sheet\'s thickness is a presentation control that never moves the optical surface', () => {
+test('glass and active thickness set how the specimen is drawn and where it is crossed', () => {
   for (const type of ['sample', 'stage']) {
     const el = createElement(type, 0, 0);
-    // The layout scenes saved before layouts existed load with.
-    el.params.sampleLayout = 'thin';
-    const spec = registry[type].params.find(p => p.key === 'thickness');
-    assert.ok(spec, `${type} exposes a thickness`);
-    assert.equal(spec.appearance, true, 'and it lives in Label & appearance');
-    assert.equal(spec.def, 6);
-
-    const glassHeight = svg => Number((svg.match(/<rect [^>]*height="([\d.]+)"[^>]*fill="[^"]*"[^>]*stroke="#/) || [])[1]
-      ?? (svg.match(/height="([\d.]+)"/) || [])[1]);
-    const thin = glassHeight(registry[type].svg(el));
-    el.params.thickness = 16;
-    const thick = glassHeight(registry[type].svg(el));
-    assert.ok(thick > thin, `${type} glass should be drawn thicker, got ${thin} then ${thick}`);
-    assert.ok(getSize(el).h >= 16, 'and the element box grows to contain it');
-
-    // The traced surface is a thin sheet at the same place either way.
-    const surfaceOf = e => registry[type].surfaces(e).find(su => su.kind === 'attenuate' || su.kind === 'specimen');
-    el.params.thickness = 2;
-    const thinSurface = surfaceOf(el);
-    el.params.thickness = 20;
-    const thickSurface = surfaceOf(el);
-    assert.deepEqual(thinSurface, thickSurface, `${type} thickness must not move or change the optical surface`);
+    const legacy = registry[type].params.find(p => p.key === 'thickness');
+    assert.equal(legacy.show(el.params), false, `${type}: the old total thickness is only read on load`);
+    // The default sandwich: 1.5 + 2 + 1.5 mm.
+    assert.ok(getSize(el).h >= 5);
+    Object.assign(el.params, { glassThickness: 4, activeThickness: 8 });
+    assert.ok(getSize(el).h >= 16, `${type}: the element box grows to contain 4 + 8 + 4 mm`);
+    // A specimen with signals is crossed at the middle of its active layer:
+    // a sandwich's centre, and a slide's active face.
+    Object.assign(el.params, { specimenType: 'linear', channels: [newSampleChannel('fluor')] });
+    const crossing = () => registry[type].surfaces(el).find(su => su.kind === 'specimen' && !su.data.edge);
+    assert.equal(crossing().y1, 0);
+    Object.assign(el.params, { sampleLayout: 'slide', activeSide: 'top' });
+    assert.equal(crossing().y1, -(4 + 8) / 2 + 8 / 2);
+    assert.equal(crossing().data.halfThickness, 4);
   }
 });
 

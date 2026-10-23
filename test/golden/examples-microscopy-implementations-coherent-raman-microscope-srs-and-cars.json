@@ -63,7 +63,7 @@
   "textlabel:eenzabj5": "bcc7ce2f",
   "textlabel:er20ltdw": "ca3337ba",
   "textlabel:euvczmt4": "47125b12",
-  "stage:e17so0o1": "730cb6dc",
+  "stage:e17so0o1": "446bb21c",
   "eom:ex1nikcx": "687e7e5b",
   "polarizer:ertk38vw": "4cf8e4bb",
   "highlight:eryqxoww": "776c5bfe",
@@ -703,6 +703,23 @@
     {
      "branch": "evgazbrh>eaceg0bp:hwp>eg3ksg58:pol>eapb46vw:T>e227dxsg:R",
      "bw": 0.895231636,
+     "focus": {
+      "axis": {
+       "x": 1.53184641e-13,
+       "y": -1
+      },
+      "depthMm": 1,
+      "inside": true,
+      "na": 0.224859507,
+      "ok": true,
+      "point": {
+       "x": 975,
+       "y": 102
+      },
+      "w0Mm": 0.00110416373,
+      "zMm": 0,
+      "zRMm": 0.00491046051
+     },
      "gates": [],
      "gddRange": [
       1859.19433,
@@ -823,6 +840,23 @@
     {
      "branch": "ex99xumu>e5ercpjt:hwp>ebij0qw1:pol>ex1nikcx:ret>ertk38vw:pol>egy525hq:T>eapb46vw:R>e227dxsg:R",
      "bw": 1.56106384,
+     "focus": {
+      "axis": {
+       "x": 6.33996557e-15,
+       "y": -1
+      },
+      "depthMm": 1,
+      "inside": true,
+      "na": 0.224859507,
+      "ok": true,
+      "point": {
+       "x": 975,
+       "y": 102
+      },
+      "w0Mm": 0.00145806236,
+      "zMm": 0,
+      "zRMm": 0.00648432606
+     },
      "gates": [
       {
        "duty": 0.5,

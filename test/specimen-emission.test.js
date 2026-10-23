@@ -17,8 +17,8 @@ function bench({ kind = 'tpef', nrays = 20, width = 40, gap = 8, offset = 0 } = 
   sample.rot = 90;
   Object.assign(sample.params, {
     aperture: 80, specimenType: kind === 'fluor' || kind === 'raman' ? 'linear' : 'nonlinear',
-    // The thin mid-line model these tests measure (saved scenes keep it).
-    sampleLayout: 'thin',
+    // 1 mm of active layer: its efficiency per millimetre is the old efficiency, from one spot.
+    activeThickness: 1,
     transmitExc: false,
     channels: [{ ...newSampleChannel(kind), nrays, eff: 0.5, autoWl: false, wl: 900 }],
   });

@@ -60,22 +60,23 @@ test('the thin-slice yield is a Lorentzian per extra photon', () => {
   assert.ok(relativeYield(3, 1e300) === 0);
 });
 
+const U = Math.sqrt(1 / MIN_RELATIVE_INTENSITY - 1);
+const F3 = u => (u / (1 + u * u) + Math.atan(u)) / 2;
+
 test('a focus inside a thick layer gives the whole focal signal, from the focus', () => {
   const points = volumeEmissionPoints(2, -10, 10, { ok: true, zRMm: 0.001 }, 8);
   assert.equal(points.length, 1, 'one spot');
   assert.ok(Math.abs(points[0].at - 0.5) < 1e-12 && points[0].level === 1);
-  // Within ±31.6 zR of the focus: 2·atan(31.6)/π of the whole.
-  const U = Math.sqrt(1 / MIN_RELATIVE_INTENSITY - 1);
-  assert.ok(Math.abs(points[0].share - 2 * Math.atan(U) / Math.PI) < 1e-9);
-  assert.ok(points[0].share > 0.97);
+  // The whole focal region within the cutoff is inside: exactly the efficiency.
+  assert.ok(Math.abs(points[0].share - 1) < 1e-12);
 });
 
 test('a layer shorter than the focal region holds its share of the focal signal', () => {
-  // ±1 zR, second order: 2·atan(1)/π = 1/2; third order: (1/2 + π/4)/(π/2).
+  // ±1 zR, against the focal signal within ±U zR.
   const half = volumeEmissionPoints(2, -1, 1, { ok: true, zRMm: 1 }, 4);
-  assert.ok(Math.abs(half.reduce((s, p) => s + p.share, 0) - 0.5) < 1e-12);
+  assert.ok(Math.abs(half.reduce((s, p) => s + p.share, 0) - Math.atan(1) / Math.atan(U)) < 1e-12);
   const third = volumeEmissionPoints(3, -1, 1, { ok: true, zRMm: 1 }, 4);
-  assert.ok(Math.abs(third.reduce((s, p) => s + p.share, 0) - (0.5 + Math.PI / 4) / (Math.PI / 2)) < 1e-12);
+  assert.ok(Math.abs(third.reduce((s, p) => s + p.share, 0) - F3(1) / F3(U)) < 1e-12);
 });
 
 test('nothing is generated where the intensity is under 1/1000 of the focus', () => {
@@ -86,13 +87,12 @@ test('nothing is generated where the intensity is under 1/1000 of the focus', ()
   // A layer from 20 to 60 zR: only its part up to 31.6 zR emits, faintly.
   const edge = volumeEmissionPoints(2, 20 * zR, 60 * zR, { ok: true, zRMm: zR }, 4);
   assert.ok(edge.length > 0);
-  const U = Math.sqrt(1 / MIN_RELATIVE_INTENSITY - 1);
   for (const p of edge) {
     const u = 20 + p.at * 40;
     assert.ok(u <= U + 1e-9, `emits within the cutoff, at ${u} zR`);
     assert.ok(Math.abs(p.level - relativeYield(2, u)) < 1e-12);
   }
-  assert.ok(Math.abs(edge.reduce((s, p) => s + p.share, 0) - (Math.atan(U) - Math.atan(20)) / Math.PI) < 1e-12);
+  assert.ok(Math.abs(edge.reduce((s, p) => s + p.share, 0) - (Math.atan(U) - Math.atan(20)) / (2 * Math.atan(U))) < 1e-12);
 });
 
 test('a linear signal, or a beam without a focus, emits evenly along the path', () => {
@@ -114,22 +114,43 @@ test('a linear signal grows with the path and never passes one', () => {
   assert.equal(linearPathFraction(0.1, -2), 0);
 });
 
-test('a new specimen is a sandwich; a saved one without a layout stays a thin sheet', () => {
+test('a new specimen is a sandwich; a saved one loads as the sandwich of its thickness', () => {
   for (const type of ['sample', 'stage']) {
     const fresh = createElement(type, 0, 0);
     assert.equal(fresh.params.sampleLayout, 'sandwich');
     assert.equal(fresh.params.glassThickness, 1.5);
     assert.equal(fresh.params.activeThickness, 2);
+    assert.equal(fresh.params.showSignalSpot, false, 'the excitation spot starts off');
     const layers = sampleLayers(fresh.params, 10);
     assert.equal(layers.total, 5, '1.5 + 2 + 1.5 mm');
     assert.deepEqual([layers.active.y0, layers.active.y1], [-1, 1]);
     assert.equal(layers.glass.length, 2);
+    // Saved before layouts: a 6 mm thin sheet, its fluorescence at 0.1 and its
+    // Raman at 0.4, without the excitation-spot setting.
     const saved = createElement(type, 0, 0);
-    delete saved.params.sampleLayout;
-    Object.assign(saved.params, { specimenType: 'linear', channels: [newSampleChannel('fluor')] });
-    const loaded = parseSketch(JSON.stringify({ version: 1, elements: [saved] }), registry);
-    assert.equal(loaded.elements[0].params.sampleLayout, 'thin');
-    assert.equal(isVolumeSpecimen(loaded.elements[0].params), false);
+    for (const key of ['sampleLayout', 'glassThickness', 'activeThickness', 'showSignalSpot']) delete saved.params[key];
+    Object.assign(saved.params, {
+      specimenType: 'linear', thickness: 6,
+      channels: [{ ...newSampleChannel('fluor'), eff: 0.1 }, { ...newSampleChannel('raman'), eff: 0.4 }],
+    });
+    const p = parseSketch(JSON.stringify({ version: 1, elements: [saved] }), registry).elements[0].params;
+    assert.equal(p.sampleLayout, 'sandwich');
+    assert.equal(p.glassThickness, 2);
+    assert.equal(p.activeThickness, 2);
+    assert.equal(p.showSignalSpot, true, 'the spot stays as the scene had it');
+    assert.ok(isVolumeSpecimen(p));
+    // Per millimetre, so the 2 mm layer converts what the sheet did.
+    for (const [c, old] of [[p.channels[0], 0.1], [p.channels[1], 0.4]]) {
+      assert.ok(Math.abs(linearPathFraction(c.eff, 2) - old) < 1e-12, `${c.kind}: ${c.eff}`);
+    }
+    // A nonlinear channel keeps its efficiency: it is the focal total.
+    const nonlinear = createElement(type, 0, 0);
+    for (const key of ['sampleLayout', 'glassThickness', 'activeThickness']) delete nonlinear.params[key];
+    Object.assign(nonlinear.params, { specimenType: 'nonlinear', thickness: 3, channels: [{ ...newSampleChannel('tpef'), eff: 0.3 }] });
+    const q = parseSketch(JSON.stringify({ version: 1, elements: [nonlinear] }), registry).elements[0].params;
+    assert.equal(q.channels[0].eff, 0.3);
+    assert.equal(q.glassThickness, 1);
+    assert.equal(q.activeThickness, 1);
   }
   // The stage holds slides and sandwiches, not cuvettes.
   const layouts = type => registry[type].params.find(p => p.key === 'sampleLayout').options.map(([id]) => id);
@@ -311,7 +332,7 @@ function srsThenTpef({ srs = true } = {}) {
   const first = createElement('sample', 140, 0);
   first.rot = 90;
   Object.assign(first.params, {
-    aperture: 40, specimenType: 'nonlinear', sampleLayout: 'thin', transmitExc: true, transmission: 1,
+    aperture: 40, specimenType: 'nonlinear', activeThickness: 1, transmitExc: true, transmission: 1,
     channels: srs ? [{ ...newSampleChannel('srs'), transferEff: 0.3, requireOverlap: false }] : [],
   });
   const lens = createElement('lens', 180, 0);
@@ -366,4 +387,65 @@ test('the focus readout names each beam that focuses inside, and only those', ()
   const origins = emissionOrigins(drawables);
   assert.ok(origins.includes(200), `spots ${origins}`);
   assert.ok(origins.every(x => Math.abs(x - 200) <= 2.5), `spots ${origins}`);
+});
+
+test('the sample layout comes first in the specimen\'s controls', () => {
+  for (const type of ['sample', 'stage']) {
+    const keys = registry[type].params.map(p => p.key);
+    assert.ok(keys.indexOf('sampleLayout') < keys.indexOf('specimenType'));
+    assert.ok(keys.indexOf('activeThickness') < keys.indexOf('channels'));
+  }
+});
+
+test('fluorescence driven through a diffuser is not drawn as speckle', () => {
+  // Incoherent light does not speckle, however speckled its pump -- including
+  // the part the objective collects and sends back.
+  const { drawables } = objectiveBench({ kind: 'tpef', diffuser: true });
+  const color = wavelengthToColor(560);
+  assert.ok(drawables.some(d => d.type === 'dots'), 'the pump is speckle');
+  assert.equal(drawables.filter(d => d.type === 'dots' && d.color === color).length, 0);
+  assert.ok(drawables.some(d => d.color === color), 'the fluorescence is drawn');
+});
+
+test('a ray crossing the active layer without crossing its mid-line still generates', () => {
+  // Andrea (#261): y = x - 175 crosses 7.07 mm of a 20 mm active layer
+  // centred at (200, 0), entering through a side and leaving by a face.
+  const laser = createElement('cwlaser', 150, -25);
+  laser.rot = 45;
+  Object.assign(laser.params, { wavelength: 488, beamMode: 'line' });
+  const sample = createElement('sample', 200, 0);
+  sample.rot = 90;
+  Object.assign(sample.params, {
+    aperture: 40, activeThickness: 20, specimenType: 'linear',
+    channels: [{ ...newSampleChannel('fluor'), eff: 0.1, autoWl: false, wl: 560 }],
+  });
+  const { drawables } = traceScene([laser, sample]);
+  assert.equal(specimenIncidentBeams(sample.id).length, 1, 'the crossing is seen');
+  assert.ok(emissionOrigins(drawables).length >= 1, 'and emits');
+  // Once only: a ray inside the layer crossing the mid-line as well is
+  // already inside it.
+  const straight = createElement('cwlaser', 150, 0);
+  Object.assign(straight.params, { wavelength: 488, beamMode: 'line' });
+  const plain = traceScene([straight, sample]);
+  const fans = emissionOrigins(plain.drawables);
+  assert.equal(new Set(fans).size, fans.length);
+});
+
+test('light generated away from the hit is timed from where it is generated', () => {
+  // Andrea (#261): a collimated pulse through a 20 mm THG layer. The
+  // harmonic leaves from the exit face, so behind the specimen it has the
+  // same path as the pump.
+  const laser = createElement('pulsedlaser', 0, 0);
+  Object.assign(laser.params, { wavelength: 800, beamMode: 'line', temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 100 });
+  const sample = createElement('sample', 200, 0);
+  sample.rot = 90;
+  Object.assign(sample.params, {
+    aperture: 40, activeThickness: 20, specimenType: 'nonlinear', transmitExc: true, transmission: 1,
+    channels: [{ ...newSampleChannel('thg'), eff: 0.2 }],
+  });
+  traceScene([laser, sample]);
+  const beams = probeBeamsAt(280, 0, 2);
+  const pump = beams.find(b => Math.abs(b.wl - 800) < 1), thg = beams.find(b => Math.abs(b.wl - 800 / 3) < 1);
+  assert.ok(pump && thg);
+  assert.ok(Math.abs(thg.oplMm - pump.oplMm) < 1e-9, `THG ${thg.oplMm} mm, pump ${pump.oplMm} mm`);
 });
