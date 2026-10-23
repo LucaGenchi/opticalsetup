@@ -21,6 +21,12 @@ wherever one exists:
   exactly, piece by piece (the stored curve is linear between its 1 nm
   samples and the filters are constant between their edges), and through
   logistic edges by Simpson quadrature on a 0.002 nm grid;
+- the average over an LED band by Simpson quadrature, and a band's
+  leakage through hard filters by the closed-form integral of lambda times
+  a Gaussian;
+- pulsed excitation by integrating the rate equation through trains of
+  finite Gaussian pulses until the state after a pulse repeats;
+- the narrowest notch that reaches its blocking by bisection;
 - the detector curves against the values their datasheets tabulate,
   converting cathode radiant sensitivity S to quantum efficiency as
   QE = S h c / (e lambda).
@@ -287,6 +293,112 @@ def qe_case(detector, nm, sensitivity_ma_w=None, qe=None, digits=None):
             "expected": {"qe": sig(value)}, "tolerance": {"qe": 6e-4 if qe is None else 0.005}, "absolute": True}
 
 
+def gauss(nm, center, fwhm):
+    sigma = fwhm / (2 * math.sqrt(2 * math.log(2)))
+    return math.exp(-0.5 * ((nm - center) / sigma) ** 2)
+
+
+def led_excitation_case(center, fwhm):
+    """The stored EGFP excitation curve averaged over a Gaussian band's
+    photons (power per nm times lambda), by Simpson on 0.005 nm over
+    +/-6 FWHM."""
+    lo, hi = center - 6 * fwhm, center + 6 * fwhm
+    n = int(round((hi - lo) / 0.005))
+    num = simpson(lambda nm: gauss(nm, center, fwhm) * nm * stored_value(EGFP["excitation"], nm), lo, hi, n)
+    den = simpson(lambda nm: gauss(nm, center, fwhm) * nm, lo, hi, n)
+    return {"name": f"EGFP excitation averaged over a {center:g} nm band, {fwhm:g} nm FWHM",
+            "inputs": {"kind": "sourceExcitation", "source": {"kind": "led", "centerNm": center, "bandwidthNm": fwhm}},
+            "expected": {"relative": sig(num / den)}, "tolerance": {"relative": 1e-4},
+            "note": "The app integrates by the trapezoidal rule on 0.05 nm, across the stored curve's 1 nm kinks, which its grid does not hit: an error of order h^2 times the slope changes, below 1e-5 here."}
+
+
+def band_integral(a, b, center, sigma):
+    """Integral of lambda * exp(-(lambda - c)^2 / (2 sigma^2)) over [a, b], in closed form."""
+    g = lambda x: math.exp(-0.5 * ((x - center) / sigma) ** 2) if math.isfinite(x) else 0.0
+    e = lambda x: math.erf((x - center) / (sigma * math.sqrt(2))) if math.isfinite(x) else math.copysign(1.0, x)
+    return sigma ** 2 * (g(a) - g(b)) + center * sigma * math.sqrt(math.pi / 2) * (e(b) - e(a))
+
+
+def leak_case(name, source, filters):
+    """The fraction of a Gaussian band's photons a stack of hard-edged
+    filters passes: piecewise constant transmission times the closed-form
+    integral of lambda times the Gaussian over each piece."""
+    center = source["centerNm"]
+    fwhm = source["bandwidthNm"] if source["kind"] == "led" else 0.441 * center ** 2 / (C_M_PER_S * 1e-6 * source["pulseFs"])
+    sigma = fwhm / (2 * math.sqrt(2 * math.log(2)))
+    cuts = sorted({e for f in filters for e in edges(f)})
+    bounds = [-math.inf, *cuts, math.inf]
+    stack = [hard_filter(f) for f in filters]
+    passed = 0.0
+    for a, b in zip(bounds, bounds[1:]):
+        mid = (a + b) / 2 if math.isfinite(a) and math.isfinite(b) else (b - 1 if math.isfinite(b) else a + 1)
+        t = 1.0
+        for f in stack:
+            t *= f(mid)
+        passed += t * band_integral(a, b, center, sigma)
+    total = center * sigma * math.sqrt(2 * math.pi)
+    return {"name": f"source leakage, {name}", "inputs": {"kind": "sourceLeak", "source": source, "filters": filters},
+            "expected": {"transmission": sig(passed / total)}, "tolerance": {"transmission": 1e-4},
+            "note": "The app splits its trapezoid at the hard edges; the error left, h^2/12 times the jump in slope there, is below 4e-5 of the total for a 3.5 nm band and far less for wider ones."}
+
+
+def pulse_train_case(fluence_photons, sigma, rep_mhz, pulse_fs, lifetime_ns, qy):
+    """A two-level molecule under Gaussian pulses: RK4 through each pulse
+    (+/-4 FWHM, 4000 steps, decay included), exact decay until the next
+    one, repeated until the state after a pulse stops changing."""
+    tau, period, tp = lifetime_ns * 1e-9, 1e-6 / rep_mhz, pulse_fs * 1e-15
+    peak = fluence_photons * 2 * math.sqrt(math.log(2) / math.pi) / tp     # photons cm^-2 s^-1 at the pulse peak
+    k = lambda t: sigma * peak * math.exp(-4 * math.log(2) * t * t / (tp * tp))
+    f = lambda t, y: k(t) * (1 - y) - y / tau
+    steps, span = 4000, 8 * tp
+    h = span / steps
+    before = 0.0
+    for _ in range(2000):
+        y, t, emitted = before, -span / 2, 0.0
+        for _ in range(steps):
+            a = f(t, y); b = f(t + h / 2, y + h * a / 2); c = f(t + h / 2, y + h * b / 2); d = f(t + h, y + h * c)
+            y_next = y + h * (a + 2 * b + 2 * c + d) / 6
+            emitted += h * (y + y_next) / 2 / tau
+            y, t = y_next, t + h
+        after = y
+        rest = period - span
+        emitted += after * (1 - math.exp(-rest / tau))
+        next_before = after * math.exp(-rest / tau)
+        if abs(next_before - before) < 1e-16:
+            break
+        before = next_before
+    # The state is read 4 FWHM after the pulse peak; the app's "after the
+    # pulse" is at the pulse itself, so the decay since the peak is undone.
+    expected = {"excitedAfterPulse": sig(after * math.exp(span / 2 / tau)), "emissionRate": sig(rep_mhz * 1e6 * qy * emitted)}
+    return {"name": f"pulse train, sigma F = {sigma * fluence_photons:g}, {rep_mhz:g} MHz, {pulse_fs:g} fs, tau {lifetime_ns:g} ns",
+            "inputs": {"kind": "pulsed", "fluence": fluence_photons, "crossSectionCm2": sigma, "repRateMHz": rep_mhz,
+                       "pulseFs": pulse_fs, "lifetimeNs": lifetime_ns, "quantumYield": qy},
+            "expected": expected, "tolerance": {key: 1e-4 for key in expected},
+            "note": "The app's per-pulse model neglects decay during the pulse, a relative error of order pulse/lifetime (at most 4e-5 in these cases); the integration itself converges to 1e-9."}
+
+
+def notch_case(edge, peak, od):
+    """The width at which a logistic notch's centre reaches OD - 0.1, by
+    bisection on the notch written from its definition."""
+    w9, tb = 2 * math.log(9), 10 ** -od
+
+    def centre_od(width):
+        s = 1 / (1 + math.exp(-(width / 2) * w9 / edge))
+        band = s * s
+        return -math.log10(tb + (peak - tb) * (1 - band))
+
+    lo, hi = 0.0, 100 * edge
+    for _ in range(200):
+        mid = (lo + hi) / 2
+        if centre_od(mid) < od - 0.1:
+            lo = mid
+        else:
+            hi = mid
+    return {"name": f"narrowest notch, {edge:g} nm edges, T {peak:g}, OD {od:g}",
+            "inputs": {"kind": "notch", "edgeWidthNm": edge, "peakTransmission": peak, "blockingOd": od},
+            "expected": {"widthNm": sig((lo + hi) / 2)}, "tolerance": {"widthNm": 1e-9}}
+
+
 def cases():
     egfp_sigma = cross_section_case(55900)["expected"]["crossSectionCm2"]
     bandpass = {"type": "bandpass", "centerNm": 525, "widthNm": 50, "edgeWidthNm": 0, "peakTransmission": 0.95, "blockingOd": 6}
@@ -312,14 +424,21 @@ def cases():
         qe_case("bialkali", 400, 110), qe_case("gaasp", 420, 108), qe_case("gaasp", 550, 176),
         qe_case("gaas", 420, 15), qe_case("gaas", 550, 50), qe_case("gaas", 800, 90),
         qe_case("scmos", 550, qe=0.95),
+        led_excitation_case(470, 25), led_excitation_case(405, 15), led_excitation_case(530, 60),
+        leak_case("470 nm LED, 25 nm, into a dichroic and a 525/50 bandpass", {"kind": "led", "centerNm": 470, "bandwidthNm": 25}, [dichroic, bandpass]),
+        leak_case("505 nm LED, 30 nm, into a 525/50 bandpass", {"kind": "led", "centerNm": 505, "bandwidthNm": 30}, [bandpass]),
+        leak_case("488 nm 100 fs pulses into a dichroic and a 525/50 bandpass", {"kind": "pulsed", "centerNm": 488, "pulseFs": 100}, [dichroic, bandpass]),
+        pulse_train_case(1e14, 2e-16, 80, 100, 2.6, 0.6), pulse_train_case(5e15, 2.13e-16, 80, 100, 2.6, 0.6),
+        pulse_train_case(2e15, 2e-16, 1000, 100, 4.0, 1.0),
+        notch_case(3, 0.95, 6), notch_case(1, 0.9, 4), notch_case(5, 0.98, 2),
     ]
 
 
 MODEL = {
     "id": "fluorescence",
     "title": "One-photon fluorescence: excitation, detection and saturation",
-    "app": "sketch/js/fluorescence.js: absorptionCrossSectionCm2, focusPeakIntensityWcm2, widefieldIntensityWcm2, moleculeRates, collectionFraction, spectrumValue, detectionFractions, detectorQe (used by calculators/fluorescence/)",
-    "reference": "Beer-Lambert slab for sigma; Airy-pattern power by Bessel quadrature; RK4 two-level steady state with bisection for saturation; solid-angle quadrature; exact piecewise integration of the stored spectrum through hard filters and Simpson quadrature through logistic edges; datasheet sensitivities converted to QE",
+    "app": "sketch/js/fluorescence.js: absorptionCrossSectionCm2, focusPeakIntensityWcm2, widefieldIntensityWcm2, moleculeRates, pulsedMoleculeRates, collectionFraction, spectrumValue, detectionFractions, detectorQe, sourceAverage, sourceTransmission, notchMinimumWidthNm (used by calculators/fluorescence/)",
+    "reference": "Beer-Lambert slab for sigma; Airy-pattern power by Bessel quadrature; RK4 two-level steady state with bisection for saturation, and RK4 through trains of finite Gaussian pulses; solid-angle quadrature; exact piecewise integration of the stored spectrum through hard filters and Simpson quadrature through logistic edges; band averages by Simpson quadrature and by the closed-form Gaussian integral; notch width by bisection; datasheet sensitivities converted to QE",
     "citations": [
         "J. R. Lakowicz, Principles of Fluorescence Spectroscopy, 3rd ed., Springer (2006), ISBN 978-0-387-31278-1: chapters 1-2 (extinction, quantum yield, lifetime)",
         "M. Born and E. Wolf, Principles of Optics, 7th ed., Cambridge University Press (1999), section 8.5.2 (Airy pattern; 83.8 % inside the first dark ring)",
@@ -330,10 +449,10 @@ MODEL = {
         "T. J. Lambert, Nat. Methods 16, 277-278 (2019), doi:10.1038/s41592-019-0352-8 (FPbase; the EGFP curves used as data)",
     ],
     "provenance": "Cross-section and photon flux written from the Beer-Lambert law and E = hc/lambda with the exact SI constants; the focus from Born and Wolf's Airy pattern, whose first-ring fraction the quadrature reproduces to three figures; the steady state from the two-level rate equation in Lakowicz; detector values from the tables of the datasheets named.",
-    "domain": "Cross-sections for epsilon from 1e3 to 2.5e5 M^-1 cm^-1; foci at NA 0.5-1.45 and 405-640 nm; widefield fields of 0.2 and 5 mm; steady states from kt = 0.01 to 50; collection at NA 0.5-1.4 in air, water and oil; the EGFP excitation curve on, between and outside its samples; EGFP emission through no filters, a bandpass, a dichroic plus bandpass with flat QE, a notch and an edge between samples, hard and with 1-5 nm logistic edges; seven datasheet QE values.",
-    "convergence": "Airy power: Simpson on 80000 intervals to v = 400 plus the averaged tail 4/(pi v); RK4 with 6000 steps over 60 relaxation times and a 200-step bisection; Simpson on 2000 intervals for the solid angle and on 0.002 nm for logistic edges; hard edges exactly.",
-    "tolerance_rationale": "1e-9 relative for algebra and exact integrals, 1e-8 for the integrated steady state, 1e-5 for the focus (its quadrature tail), 2e-5 for logistic edges (the app's trapezoid error bound, stated in the case); datasheet values at 6e-4 absolute (three stored decimals) or 0.005 for a two-figure percentage.",
+    "domain": "Cross-sections for epsilon from 1e3 to 2.5e5 M^-1 cm^-1; foci at NA 0.5-1.45 and 405-640 nm; widefield fields of 0.2 and 5 mm; steady states from kt = 0.01 to 50; pulse trains from sigma F = 0.02 to 1.1, at 80 MHz and 1 GHz; LED bands of 15-60 nm and a 100 fs pulse, averaged and leaking through hard filters; notch widths for OD 2-6; collection at NA 0.5-1.4 in air, water and oil; the EGFP excitation curve on, between and outside its samples; EGFP emission through no filters, a bandpass, a dichroic plus bandpass with flat QE, a notch and an edge between samples, hard and with 1-5 nm logistic edges; seven datasheet QE values.",
+    "convergence": "Airy power: Simpson on 80000 intervals to v = 400 plus the averaged tail 4/(pi v); RK4 with 6000 steps over 60 relaxation times and a 200-step bisection; 4000 RK4 steps through each pulse, iterated until the post-pulse state changes by under 1e-16; Simpson on 2000 intervals for the solid angle and on 0.002 nm for logistic edges; hard edges exactly.",
+    "tolerance_rationale": "1e-9 relative for algebra and exact integrals, 1e-8 for the integrated steady state, 1e-5 for the focus (its quadrature tail), 2e-5 for logistic edges and 1e-4 for band averages (the app's trapezoid error bounds, stated in the cases), 1e-4 for pulse trains (the per-pulse model's neglect of decay during the pulse, of order pulse/lifetime); datasheet values at 6e-4 absolute (three stored decimals) or 0.005 for a two-figure percentage.",
     "outside_scope": "The calculator declines wavelengths outside 250-1000 nm, a blocking level not below the peak transmission, an NA above the sample index, and missing extinction coefficients or quantum yields; a spectrum is zero outside its measured range.",
     "fidelity": "computed",
-    "scope": "One-photon excitation by a monochromatic CW line; stored curves linear between 1 nm samples; generic filters with logistic edges; two-level steady state; scalar paraxial Airy focus; isotropic emitter. Not the fluorophore data themselves, which are FPbase's.",
+    "scope": "One-photon excitation by a CW line, a Gaussian LED band or transform-limited Gaussian pulses much shorter than the lifetime; stored curves linear between 1 nm samples; generic filters with logistic edges; two-level steady state; scalar paraxial Airy focus; isotropic emitter. Not the fluorophore data themselves, which are FPbase's.",
 }

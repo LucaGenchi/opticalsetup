@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { INPUTS, DEFAULTS, MAX_FILTERS, computeFluorescence, RATE_INPUTS, RATE_DEFAULTS, computeRates } from './fluorescence-calculator.js';
+import { INPUTS, DEFAULTS, MAX_FILTERS, SOURCE_LABELS, computeFluorescence, RATE_INPUTS, RATE_DEFAULTS, computeRates } from './fluorescence-calculator.js';
 import { DETECTOR_PRESETS, parseCurveCsv, spectrumRangeNm } from '../../sketch/js/fluorescence.js';
 import { mountCalculator } from '../assets/simple-calculator-page.js';
 import { formatNumber } from '../assets/calculator-kit.js';
@@ -64,8 +64,17 @@ function markerRows(e, source) {
   ];
 }
 
+// How the source reads in a heading: "488 nm CW laser", "470 nm LED,
+// 25 nm FWHM", "800 nm pulsed laser, 100 fs".
+function sourceName(src) {
+  const at = `${formatNumber(src.centerNm, 6)} nm`;
+  if (src.kind === 'led') return `${at} LED, ${formatNumber(src.fwhmNm, 3)} nm FWHM`;
+  if (src.kind === 'pulsed') return `${at} pulsed laser, ${formatNumber(src.pulseFs, 4)} fs`;
+  return `${at} CW laser`;
+}
+
 main = mountCalculator({ inputs: INPUTS, defaults: DEFAULTS, hideInactive: true, groups: {
-  laser: { title: 'Excitation laser (CW)' },
+  source: { title: 'Excitation source' },
   fluor: { title: 'Fluorescent marker' },
   second: { title: 'Second marker' },
   ...Object.fromEntries(Array.from({ length: MAX_FILTERS }, (_, k) => [`filter${k + 1}`, { title: `Filter ${k + 1}`, form: 'detect-form' }])),
@@ -78,18 +87,20 @@ main = mountCalculator({ inputs: INPUTS, defaults: DEFAULTS, hideInactive: true,
   // Under the graphs and the detection path: the excitation and detection
   // efficiencies side by side, then each marker's own numbers.
   rows: r => {
-    const m = r.main, s = r.second;
+    const m = r.main, s = r.second, src = r.source, line = src.kind === 'cw';
+    const at = line ? 'at the laser' : 'over the source spectrum';
     return {
       excitation: [
-        { group: `Excitation efficiency at ${formatNumber(r.laserNm, 6)} nm` },
-        ['Relative to the excitation peak', pct(m.relative), '%', 3],
-        ['Extinction coefficient at the laser', m.extinctionAtLaser, 'M⁻¹ cm⁻¹', 4],
-        ['Absorption cross-section at the laser', m.crossSectionCm2, 'cm²', 3],
-        ['Brightness at the laser, ε(λ)·Φ', m.brightnessAtLaser, 'M⁻¹ cm⁻¹', 3],
+        { group: `Excitation efficiency, ${sourceName(src)}` },
+        ...(src.kind === 'pulsed' ? [['Bandwidth (transform limit)', src.fwhmNm, 'nm', 3]] : []),
+        [line ? 'Relative to the excitation peak' : 'Relative to the excitation peak, averaged', pct(m.relative), '%', 3],
+        [`Extinction coefficient ${at}`, m.extinctionAtLaser, 'M⁻¹ cm⁻¹', 4],
+        [`Absorption cross-section ${at}`, m.crossSectionCm2, 'cm²', 3],
+        [`Brightness ${at}, ε·Φ`, m.brightnessAtLaser, 'M⁻¹ cm⁻¹', 3],
         ...(s ? [
-          { group: `${s.meta.name} at the laser` },
+          { group: `${s.meta.name} ${at}` },
           ['Relative to its excitation peak', pct(s.relative), '%', 3],
-          ['Its brightness at the laser, ε(λ)·Φ', s.brightnessAtLaser, 'M⁻¹ cm⁻¹', 3],
+          ['Its brightness, ε·Φ', s.brightnessAtLaser, 'M⁻¹ cm⁻¹', 3],
         ] : []),
       ],
       detection: [
@@ -97,26 +108,30 @@ main = mountCalculator({ inputs: INPUTS, defaults: DEFAULTS, hideInactive: true,
         ['Emission through the filters', pct(m.transmitted), '%', 3],
         ...(r.detector.type === 'ideal' ? [] : [['Mean detector QE over that light', pct(m.meanQe), '%', 3]]),
         ['Emission detected', pct(m.detected), '%', 3],
-        ['Laser line through the filters', r.laserTransmission, '', 3],
-        ['Laser blocking', r.laserOdCapped ? `≥ ${formatNumber(r.laserOd, 3)} OD` : `${formatNumber(r.laserOd, 3)} OD`],
+        [line ? 'Laser line through the filters' : 'Source light through the filters', r.sourceTransmission, '', 3],
+        [line ? 'Laser blocking' : 'Source blocking', r.sourceOdCapped ? `≥ ${formatNumber(r.sourceOd, 3)} OD` : `${formatNumber(r.sourceOd, 3)} OD`],
         ...(s ? [
           { group: `Crosstalk from ${s.meta.name}` },
           ['Its emission detected', pct(s.detected), '%', 3],
           ['Its signal ÷ the main marker’s', r.crosstalk, '', 3],
         ] : []),
       ],
-      marker: markerRows(m, r.source),
-      marker2: s ? markerRows(s, r.source) : [],
+      marker: markerRows(m, r.library),
+      marker2: s ? markerRows(s, r.library) : [],
     };
   },
   notes: r => {
-    const out = [], m = r.main, [exLo, exHi] = spectrumRangeNm(m.data.excitation);
-    if (r.laserNm < exLo || r.laserNm > exHi) out.push(`${r.laserNm} nm is outside ${m.meta.name}’s measured excitation curve (${exLo}–${exHi} nm), so its excitation is taken as zero.`);
-    out.push(`Relative excitation is the ${m.meta.excitationType} curve at the laser divided by its value at the ${m.meta.exMaxNm} nm peak, where the extinction coefficient is quoted; ε(λ) and σ(λ) scale with it.`);
+    const out = [], m = r.main, src = r.source, [exLo, exHi] = spectrumRangeNm(m.data.excitation);
+    if (src.centerNm < exLo || src.centerNm > exHi) out.push(`${src.centerNm} nm is outside ${m.meta.name}’s measured excitation curve (${exLo}–${exHi} nm), so its excitation there is taken as zero.`);
+    out.push(src.kind === 'cw'
+      ? `Relative excitation is the ${m.meta.excitationType} curve at the laser divided by its value at the ${m.meta.exMaxNm} nm peak, where the extinction coefficient is quoted; ε and σ scale with it.`
+      : `Relative excitation is the ${m.meta.excitationType} curve averaged over the source’s photons, divided by its value at the ${m.meta.exMaxNm} nm peak, where the extinction coefficient is quoted; ε and σ scale with it.`);
+    if (src.kind === 'led') out.push('The LED is a Gaussian band, as the canvas’s LED source. A real LED’s long-wavelength tail is often stronger, and an excitation filter usually trims it.');
+    if (src.kind === 'pulsed') out.push('Transform-limited Gaussian pulses, as the canvas’s pulsed laser: the bandwidth follows from the duration. A chirped pulse has a wider spectrum.');
     if (m.meta.excitationType === 'absorption') out.push('FPbase has an absorption spectrum for this protein, not an excitation spectrum. For one emitting species they have the same shape.');
     out.push('The detected fractions count emitted photons over the whole emission spectrum, before the collection geometry (see the rate panel below).');
-    if (r.filters.length === 0) out.push('No filters: all emission, and all scattered laser light, reach the detector.');
-    else if (r.laserTransmission > 1e-3) out.push('The filters pass more than 10⁻³ of the laser line. Scattered laser light is often far stronger than the fluorescence, which is why emission filters block the line at OD 6 or more.');
+    if (r.filters.length === 0) out.push('No filters: all emission, and all scattered source light, reach the detector.');
+    else if (r.sourceTransmission > 1e-3) out.push('The filters pass more than 10⁻³ of the source light. Scattered excitation light is often far stronger than the fluorescence, which is why emission filters block it at OD 6 or more.');
     if (r.detector.type === 'preset') {
       const p = DETECTOR_PRESETS[r.detector.id];
       out.push(`${p.label}: typical curve of the ${p.product} (${p.anchors}). Another detector of the same kind can differ by several percentage points.`);
@@ -126,17 +141,18 @@ main = mountCalculator({ inputs: INPUTS, defaults: DEFAULTS, hideInactive: true,
     if (r.second) {
       out.push(r.crosstalk === null
         ? `No crosstalk ratio: FPbase lists no extinction coefficient or quantum yield for one of the two.`
-        : `The ratio compares ε(λ)·Φ·(fraction detected) of ${r.second.meta.name} with ${m.meta.name}, at equal concentrations and the same collection; it is the bleed-through of the second label into this channel.`);
+        : `The ratio compares ε·Φ·(fraction detected) of ${r.second.meta.name} with ${m.meta.name}, at equal concentrations and the same collection; it is the bleed-through of the second label into this channel.`);
     }
     return out;
   },
   graphs: r => {
-    const p = r.plot, [a, b] = p.curves;
+    const p = r.plot, [a, b] = p.curves, src = r.source;
     const series = [
       { name: `Excitation, ${r.main.meta.name}`, color: '--series-1', values: a.ex, fill: 'light' },
       { name: `Emission, ${r.main.meta.name}`, color: '--series-2', values: a.em, fill: 'light' },
       { name: 'Emission detected', color: '--series-2', values: p.detected, fill: 'strong' },
       ...(r.filters.length ? [{ name: 'Filter stack transmission', color: '--series-3', values: p.T }] : []),
+      ...(p.source ? [{ name: `${SOURCE_LABELS[src.kind]} spectrum`, color: '--chart-band', values: p.source, fill: 'light' }] : []),
       ...(r.detector.type === 'ideal' ? [] : [{ name: 'Detector QE', color: '--muted', values: p.qe, dash: true }]),
       ...(b ? [
         { name: `Excitation, ${r.second.meta.name}`, color: '--series-1', values: b.ex, dash: true },
@@ -144,19 +160,19 @@ main = mountCalculator({ inputs: INPUTS, defaults: DEFAULTS, hideInactive: true,
       ] : []),
     ];
     const top = Math.max(1.05, ...series.flatMap(s => s.values).map(v => v * 1.02));
-    const laser = [{ x: r.laserNm, label: `${formatNumber(r.laserNm, 6)} nm laser` }];
+    const centre = [{ x: src.centerNm, label: `${formatNumber(src.centerNm, 6)} nm ${src.kind === 'led' ? 'LED' : 'laser'}` }];
     return {
       spectra: { x: p.x, xLabel: 'Wavelength (nm)', xUnit: 'nm', yLabel: 'Fraction of peak, transmission, QE', series,
-        yMin: 0, yMax: top, vlines: laser, formatX: n => formatNumber(n, 5), formatY: n => formatNumber(n, 3) },
+        yMin: 0, yMax: top, vlines: centre, formatX: n => formatNumber(n, 5), formatY: n => formatNumber(n, 3) },
       od: r.filters.length ? { x: p.x, xLabel: 'Wavelength (nm)', xUnit: 'nm', yLabel: 'Optical density of the stack',
         series: [{ name: 'Filter stack OD', color: '--series-3', values: p.od }],
-        yMin: 0, yMax: Math.max(1, Math.ceil(Math.max(...p.od))), vlines: laser, formatX: n => formatNumber(n, 5), formatY: n => formatNumber(n, 3) }
+        yMin: 0, yMax: Math.max(1, Math.ceil(Math.max(...p.od))), vlines: centre, formatX: n => formatNumber(n, 5), formatY: n => formatNumber(n, 3) }
         : { message: 'No filters in the detection path.' },
     };
   },
   onResult: r => {
     rateContext = r.ok ? {
-      laserNm: r.laserNm, name: r.main.meta.name, crossSectionCm2: r.main.crossSectionCm2,
+      source: r.source, photonJ: r.photonJ, name: r.main.meta.name, crossSectionCm2: r.main.crossSectionCm2,
       quantumYield: r.main.meta.quantumYield, lifetimeNs: r.main.meta.lifetimeNs, detected: r.main.detected,
     } : null;
     rate?.update();
@@ -166,18 +182,31 @@ main = mountCalculator({ inputs: INPUTS, defaults: DEFAULTS, hideInactive: true,
 rate = mountCalculator({ panel: 'rate', inputs: RATE_INPUTS, defaults: RATE_DEFAULTS, hideInactive: true, groups: {
   beam: { title: 'Illumination' }, objective: { title: 'Objective and sample' }, molecule: { title: 'Excited state' },
 }, compute: raw => computeRates(raw, rateContext),
+  context: () => ({ source: rateContext?.source.kind ?? 'cw' }),
   rows: r => [
     { group: r.values.geometry === 'focus' ? 'At the centre of the focus' : 'In the field' },
-    [r.values.geometry === 'focus' ? 'Peak intensity' : 'Intensity', r.intensityWcm2, 'W/cm²', 3],
-    ['Photon flux φ', r.photonFlux, 'photons cm⁻² s⁻¹', 3],
+    [r.values.geometry === 'focus' ? 'Peak intensity (average over time)' : 'Intensity (average over time)', r.intensityWcm2, 'W/cm²', 3],
+    ...(r.pulsed ? [
+      ['Pulse energy', r.pulseEnergyJ, 'J', 3], ['Peak power', r.peakPowerW, 'W', 3],
+      ['Peak intensity during a pulse', r.peakIntensityWcm2, 'W/cm²', 3],
+      ['Photon fluence per pulse F', r.pulseFluence, 'photons/cm²', 3],
+    ] : [['Photon flux φ', r.photonFlux, 'photons cm⁻² s⁻¹', 3]]),
     { group: `One ${r.context.name} molecule` },
-    ['Absorption cross-section at the laser', r.context.crossSectionCm2, 'cm²', 3],
-    ['Excitation rate k = σφ', r.absorptionRate, 's⁻¹', 3],
-    ['Saturation parameter kτ', r.saturationParameter, '', 3],
-    ['Fraction in the excited state', pct(r.excitedFraction), '%', 3],
-    ['Emission rate', r.emissionRate, 'photons/s', 3],
-    ['Saturation intensity (kτ = 1)', r.saturationIntensityWcm2, 'W/cm²', 3],
-    ['Power at the sample for kτ = 1', r.saturationPowerW === null ? null : r.saturationPowerW * 1e3, 'mW', 3],
+    ['Absorption cross-section', r.context.crossSectionCm2, 'cm²', 3],
+    ...(r.pulsed ? [
+      ['Saturation parameter σF', r.saturationParameter, '', 3],
+      ['Probability of excitation per pulse', pct(r.probability), '%', 3],
+      ['Fraction excited after each pulse', pct(r.excitedAfterPulse), '%', 3],
+      ['Emission rate', r.emissionRate, 'photons/s', 3],
+      ['Average power for σF = 1', r.saturationPowerW * 1e3, 'mW', 3],
+    ] : [
+      ['Excitation rate k = σφ', r.absorptionRate, 's⁻¹', 3],
+      ['Saturation parameter kτ', r.saturationParameter, '', 3],
+      ['Fraction in the excited state', pct(r.excitedFraction), '%', 3],
+      ['Emission rate', r.emissionRate, 'photons/s', 3],
+      ['Saturation intensity (kτ = 1)', r.saturationIntensityWcm2, 'W/cm²', 3],
+      ['Power at the sample for kτ = 1', r.saturationPowerW === null ? null : r.saturationPowerW * 1e3, 'mW', 3],
+    ]),
     { group: 'Reaching the detector' },
     ['Collected by the objective', pct(r.collection), '%', 3],
     ['Then detected (filters × QE, above)', pct(r.context.detected), '%', 3],
@@ -187,13 +216,20 @@ rate = mountCalculator({ panel: 'rate', inputs: RATE_INPUTS, defaults: RATE_DEFA
     const out = [];
     out.push(r.lifetimeSource === 'library' ? `Lifetime ${formatNumber(r.lifetimeNs, 3)} ns from the library.`
       : r.lifetimeSource === 'entered' ? `Lifetime ${formatNumber(r.lifetimeNs, 3)} ns as entered.`
-        : `No lifetime is listed for ${r.context.name}: the rates are unsaturated, and saturation is not estimated. Choose “Enter it” to add one.`);
-    if (r.saturationParameter > 0.1) out.push(`kτ = ${formatNumber(r.saturationParameter, 2)}: the signal no longer grows in proportion to the power, and the effective focus broadens. Real fluorophores also enter triplet and dark states well below this, which lowers the signal further.`);
+        : r.pulsed ? `No lifetime is listed for ${r.context.name}: the molecule is taken to relax fully between pulses. Choose “Enter it” to add one.`
+          : `No lifetime is listed for ${r.context.name}: the rates are unsaturated, and saturation is not estimated. Choose “Enter it” to add one.`);
+    if (r.pulsed) {
+      out.push('Pulses much shorter than the lifetime: during a pulse the molecule does not decay, so it is excited with probability 1 − exp(−σF), then decays until the next pulse.');
+      if (r.saturationParameter > 0.1) out.push(`σF = ${formatNumber(r.saturationParameter, 2)}: a good part of the molecules is already excited by each pulse, so the signal no longer grows in proportion to the power. Pulsed excitation saturates at a much lower average power than CW excitation.`);
+      if (r.relaxFactor > 0.05) out.push(`The molecule has not fully relaxed when the next pulse arrives (${formatNumber(r.relaxFactor * 100, 2)} % still excited), which lowers the signal per pulse.`);
+    } else if (r.saturationParameter > 0.1) {
+      out.push(`kτ = ${formatNumber(r.saturationParameter, 2)}: the signal no longer grows in proportion to the power, and the effective focus broadens. Real fluorophores also enter triplet and dark states well below this, which lowers the signal further.`);
+    }
     out.push(r.values.geometry === 'focus'
       ? 'Focus: the peak of a scalar, paraxial Airy pattern from a uniformly filled pupil. At high NA the vectorial focus is somewhat wider, and the peak lower.'
       : 'Widefield: a uniform (flat-top) field; a Gaussian or uneven field has a higher peak than this average.');
     out.push('Collection counts an isotropic emitter in a uniform medium; dipole orientation, nearby interfaces and the objective’s own transmission are not included.');
-    out.push('Two-level steady state: no triplet or dark states, photobleaching, stimulated emission or pulsed excitation.');
+    out.push(`Two-level model: no triplet or dark states, photobleaching or stimulated emission${r.pulsed ? ', and no two-photon absorption at the high peak intensity' : ''}.`);
     return out;
   },
 });

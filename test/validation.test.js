@@ -23,7 +23,8 @@ import { CONVERSION_DEFAULTS, computeConversion } from '../calculators/nonlinear
 import { CRS_DEFAULTS, computeCrs, RESOLUTION_DEFAULTS, computeResolution } from '../calculators/coherent-raman/crs-calculator.js';
 import {
   absorptionCrossSectionCm2, focusPeakIntensityWcm2, widefieldIntensityWcm2, moleculeRates, collectionFraction,
-  spectrumValue, detectionFractions, detectorQe,
+  spectrumValue, detectionFractions, detectorQe, excitationSource, sourceAverage, sourceTransmission,
+  pulsedMoleculeRates, notchMinimumWidthNm,
 } from '../sketch/js/fluorescence.js';
 
 // The quantitative models listed in docs/validation.md are checked against
@@ -56,6 +57,14 @@ const APP = {
     if (kind === 'collection') return { fraction: collectionFraction(inputs.na, inputs.mediumIndex) };
     if (kind === 'excitation') return { relative: spectrumValue(egfp.excitation, inputs.nm) };
     if (kind === 'qe') return { qe: detectorQe({ type: 'preset', id: inputs.detector }, inputs.nm) };
+    if (kind === 'sourceExcitation') return { relative: sourceAverage(excitationSource(inputs.source), nm => spectrumValue(egfp.excitation, nm)) };
+    if (kind === 'sourceLeak') return { transmission: sourceTransmission(excitationSource(inputs.source), inputs.filters) };
+    if (kind === 'notch') return { widthNm: notchMinimumWidthNm(inputs) };
+    if (kind === 'pulsed') {
+      // The fluence as an average intensity at a unit photon energy.
+      const { fluence, repRateMHz, ...rest } = inputs;
+      return pulsedMoleculeRates({ ...rest, repRateMHz, photonJ: 1, averageIntensityWcm2: fluence * repRateMHz * 1e6 });
+    }
     // kind === 'detection': EGFP's stored emission through the stack.
     return detectionFractions(egfp.emission, inputs.filters, inputs.qe === null ? { type: 'ideal' } : { type: 'flat', qe: inputs.qe });
   },

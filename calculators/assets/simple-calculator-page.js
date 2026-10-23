@@ -13,8 +13,10 @@ import { renderForm, readForm, syncForm, lineChart, formatNumber } from './calcu
 // `onResult` sees every result, so one panel can feed another; the returned
 // `update` recomputes the panel. With `hideInactive`, fields whose `when`
 // condition is off disappear instead of being greyed out, for pages where
-// a mode selector decides which fields apply.
-export function mountCalculator({ panel = 'calc', inputs, defaults, groups, compute, rows, notes = () => [], graphs = null, onResult = () => {}, hideInactive = false }) {
+// a mode selector decides which fields apply. `context` adds values from
+// elsewhere on the page that `when` conditions may test (a source chosen in
+// another panel).
+export function mountCalculator({ panel = 'calc', inputs, defaults, groups, compute, rows, notes = () => [], graphs = null, onResult = () => {}, hideInactive = false, context = () => ({}) }) {
   const mainId = `${panel}-form`;
   const formIds = [...new Set([mainId, ...Object.values(groups).map(g => g.form ?? mainId)])];
   const forms = formIds.map(id => document.getElementById(id));
@@ -65,7 +67,7 @@ export function mountCalculator({ panel = 'calc', inputs, defaults, groups, comp
   function update() {
     const raw = readForm(forms, inputs);
     const result = compute(raw);
-    syncForm(forms, inputs, raw, new Set((result.errors ?? []).map(e => e.id)));
+    syncForm(forms, inputs, { ...raw, ...context() }, new Set((result.errors ?? []).map(e => e.id)));
     for (const table of [...tables, ...filled]) table.textContent = '';
     filled.clear();
     noteList.textContent = '';

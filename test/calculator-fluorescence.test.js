@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs';
 import { DEFAULTS, computeFluorescence, RATE_DEFAULTS, computeRates } from '../calculators/fluorescence/fluorescence-calculator.js';
 import {
   filterTransmission, stackTransmission, detectionFractions, detectorQe, spectrumValue, parseCurveCsv, curveInUnits,
+  excitationSource, sourceAverage, sourcePhotonEnergyJ, sourceTransmission, notchMinimumWidthNm, pulsedMoleculeRates, photonEnergyJ,
   absorptionCrossSectionCm2, focusPeakIntensityWcm2, moleculeRates, collectionFraction, DETECTOR_PRESETS,
 } from '../sketch/js/fluorescence.js';
 
@@ -80,7 +81,7 @@ test('the default page: EGFP, a 488 nm laser, 525/50 after a 495 nm dichroic, th
   close(r.main.transmitted, budget.transmitted); close(r.main.detected, budget.detected);
   assert.ok(r.main.meanQe > 0.3 && r.main.meanQe < 0.42, `GaAsP over green emission: ${r.main.meanQe}`);
   // The laser sits 12 nm below the bandpass edge and 7 nm below the dichroic's.
-  assert.ok(r.laserOd > 7 && r.laserOd < 8, `laser blocked at OD ${r.laserOd}`);
+  assert.ok(r.sourceOd > 7 && r.sourceOd < 8, `laser blocked at OD ${r.sourceOd}`);
   assert.equal(r.second, null);
   assert.equal(r.crosstalk, null);
   // Nothing non-finite reaches the chart.
@@ -105,8 +106,8 @@ test('a second fluorophore: its excitation, its detection and the crosstalk rati
 });
 
 test('declined inputs and loading states', () => {
-  assert.equal(run({ laserNm: 249 }).ok, false);
-  assert.equal(run({ laserNm: '' }).ok, false);
+  assert.equal(run({ centerNm: 249 }).ok, false);
+  assert.equal(run({ centerNm: '' }).ok, false);
   const od = run({ f1Peak: 50, f1Od: 0.2 });
   assert.equal(od.ok, false);
   assert.equal(od.errors[0].id, 'f1Od');
@@ -115,7 +116,7 @@ test('declined inputs and loading states', () => {
   assert.equal(computeFluorescence(DEFAULTS, { data: { error: new Error('404') } }).ok, false);
   assert.equal(computeFluorescence(DEFAULTS, { data: mcherry }).ok, false, 'a file for another fluorophore is refused');
   // A laser outside the measured excitation curve excites nothing.
-  const far = run({ laserNm: 700 });
+  const far = run({ centerNm: 700 });
   assert.equal(far.ok, true);
   assert.ok(far.main.relative < 0.01);
 });
@@ -130,8 +131,8 @@ test('filter and detector files: chosen, read, refused', () => {
   const r = run({ f1Type: 'measured', f1File: 'bp.csv', f2Type: 'none' }, { f1File: { name: 'bp.csv', parsed } });
   assert.deepEqual(r.files.map(f => [f.unit, f.from]), [['percent', 'header']]);
   assert.equal(r.ok, true);
-  close(r.laserTransmission, 0, 0);
-  assert.equal(r.laserOdCapped, true, 'zero transmission is capped for the chart');
+  close(r.sourceTransmission, 0, 0);
+  assert.equal(r.sourceOdCapped, true, 'zero transmission is capped for the chart');
   assert.ok(r.plot.od.every(v => v <= r.plot.odCap));
   const bad = run({ f1Type: 'measured', f1File: 'x.csv' }, { f1File: { name: 'x.csv', error: 'Wavelengths must be in nm, between 150 and 3000.' } });
   assert.equal(bad.ok, false);
@@ -166,15 +167,15 @@ test('a file in percent with small values is not read as fractions (review of #2
   // A constant 0.1 % under a "(%)" header: 10⁻³, OD 3, not 10 %.
   const percent = parseCurveCsv('Wavelength (nm),Transmission (%)\n300,0.1\n900,0.1\n');
   const filter = units => run({ f1Type: 'measured', f1File: 'nd.csv', f1FileUnits: units, f2Type: 'none' }, { f1File: { name: 'nd.csv', parsed: percent } });
-  close(filter('auto').laserTransmission, 1e-3, 1e-12);
-  close(filter('auto').laserOd, 3, 1e-12);
+  close(filter('auto').sourceTransmission, 1e-3, 1e-12);
+  close(filter('auto').sourceOd, 3, 1e-12);
   // The user can override the header.
-  close(filter('fraction').laserTransmission, 0.1, 1e-12);
+  close(filter('fraction').sourceTransmission, 0.1, 1e-12);
   // Without a header, small values are fractions unless the user says percent.
   const bare = parseCurveCsv('300,0.1\n900,0.1\n');
   const plain = units => run({ f1Type: 'measured', f1File: 'b.csv', f1FileUnits: units, f2Type: 'none' }, { f1File: { name: 'b.csv', parsed: bare } });
-  close(plain('auto').laserTransmission, 0.1, 1e-12);
-  close(plain('percent').laserTransmission, 1e-3, 1e-12);
+  close(plain('auto').sourceTransmission, 0.1, 1e-12);
+  close(plain('percent').sourceTransmission, 1e-3, 1e-12);
   assert.deepEqual(plain('percent').files[0].from, 'chosen');
   // Values above 1.5 are not fractions: refused on the units control.
   const big = parseCurveCsv('300,50\n900,50\n');
@@ -215,7 +216,7 @@ test('detector presets stay inside 0–1 and are zero outside their range', () =
 
 test('the rate panel: focus, widefield, saturation and what it declines', () => {
   const main = run();
-  const context = { laserNm: 488, name: 'EGFP', crossSectionCm2: main.main.crossSectionCm2, quantumYield: 0.6, lifetimeNs: 2.6, detected: main.main.detected };
+  const context = { source: main.source, photonJ: main.photonJ, name: 'EGFP', crossSectionCm2: main.main.crossSectionCm2, quantumYield: 0.6, lifetimeNs: 2.6, detected: main.main.detected };
   const r = computeRates(RATE_DEFAULTS, context);
   assert.equal(r.ok, true);
   close(r.intensityWcm2, focusPeakIntensityWcm2(1e-4, 488, 1.2));
@@ -241,4 +242,75 @@ test('the rate panel: focus, widefield, saturation and what it declines', () => 
   assert.equal(computeRates(RATE_DEFAULTS, null).ok, false);
   assert.equal(computeRates(RATE_DEFAULTS, { ...context, crossSectionCm2: 0 }).ok, false, 'no absorption at the laser');
   assert.equal(collectionFraction(1.4, 1.33), null);
+});
+
+test('sources: a CW line, an LED band and a transform-limited pulse', () => {
+  const cw = run();
+  assert.equal(cw.source.kind, 'cw');
+  close(cw.main.relative, spectrumValue(egfp.excitation, 488));
+  close(cw.photonJ, photonEnergyJ(488));
+  // An LED averages the excitation curve over its photons; a narrow one tends to the line.
+  const led = run({ source: 'led', centerNm: 470, bandwidthNm: 25 });
+  assert.equal(led.ok, true);
+  assert.equal(led.source.fwhmNm, 25);
+  const band = excitationSource({ kind: 'led', centerNm: 470, bandwidthNm: 25 });
+  close(led.main.relative, sourceAverage(band, nm => spectrumValue(egfp.excitation, nm)));
+  assert.ok(led.main.relative < spectrumValue(egfp.excitation, 470) + 0.05 && led.main.relative > 0.5);
+  const thin = sourceAverage(excitationSource({ kind: 'led', centerNm: 470, bandwidthNm: 5 }), nm => spectrumValue(egfp.excitation, nm));
+  assert.ok(Math.abs(thin - spectrumValue(egfp.excitation, 470)) < 0.01, `5 nm LED ${thin}`);
+  assert.equal(run({ source: 'led', bandwidthNm: 4 }).ok, false, 'below the canvas LED range');
+  assert.ok(led.plot.source && led.plot.source.every(Number.isFinite));
+  // The LED's tail leaks through the emission filters far more than a line does.
+  assert.ok(led.sourceTransmission > cw.sourceTransmission * 10);
+  // A 100 fs pulse at 488 nm is 3.50 nm wide (0.441 λ²/cτ).
+  const pulse = run({ source: 'pulsed', pulseFs: 100 });
+  close(pulse.source.fwhmNm, 0.441 * 488 ** 2 / (299.792458 * 100), 1e-12);
+  assert.ok(Math.abs(pulse.main.relative - cw.main.relative) < 0.01);
+  // A long pulse is a line for the plot (narrower than the 1 nm grid can show).
+  assert.equal(run({ source: 'pulsed', pulseFs: 1000 }).plot.source, null);
+  // Photon energy: hc ∫w / ∫wλ, close to hc/λ₀ for a symmetric band.
+  close(sourcePhotonEnergyJ(band), photonEnergyJ(470), 1e-3);
+});
+
+test('a notch must be wide enough to reach its blocking (review of #263)', () => {
+  // 9 nm with 3 nm edges at OD 6 only reaches OD 2.6 at its centre: refused.
+  const shallow = run({ f2Type: 'notch', f2Center: 600, f2Width: 9, f2EdgeWidth: 3, f2Od: 6 });
+  assert.equal(shallow.ok, false);
+  assert.match(shallow.errors[0].message, /at least 21\.6 nm wide/);
+  // At the minimum width the centre reaches OD 6 to 0.1.
+  const spec = { edgeWidthNm: 3, peakTransmission: 0.95, blockingOd: 6 };
+  const w = notchMinimumWidthNm(spec);
+  const notch = { type: 'notch', centerNm: 600, widthNm: w, ...spec };
+  close(-Math.log10(filterTransmission(notch, 600)), 5.9, 1e-9);
+  assert.equal(run({ f2Type: 'notch', f2Center: 600, f2Width: 22, f2EdgeWidth: 3, f2Od: 6 }).ok, true);
+  assert.equal(notchMinimumWidthNm({ ...spec, edgeWidthNm: 0 }), 0, 'ideal steps');
+});
+
+test('pulsed excitation: the per-pulse model, its linear limit and what it declines', () => {
+  const main = run({ source: 'pulsed', pulseFs: 100 });
+  const context = { source: main.source, photonJ: main.photonJ, name: 'EGFP', crossSectionCm2: main.main.crossSectionCm2, quantumYield: 0.6, lifetimeNs: 2.6, detected: main.main.detected };
+  const r = computeRates({ ...RATE_DEFAULTS, repRateMHz: 80 }, context);
+  assert.equal(r.ok, true);
+  assert.equal(r.pulsed, true);
+  close(r.pulseEnergyJ, 1e-4 / 80e6);
+  close(r.probability, -Math.expm1(-r.saturationParameter));
+  assert.ok(r.saturationParameter > 1, 'pulsed excitation saturates at 100 µW in a 1.2 NA focus');
+  // Far below saturation it emits what CW excitation of the same average power does.
+  const weak = computeRates({ ...RATE_DEFAULTS, powerMw: 1e-6 }, context);
+  const cwLike = moleculeRates({ intensityWcm2: weak.intensityWcm2, photonJ: main.photonJ, crossSectionCm2: context.crossSectionCm2, lifetimeNs: 2.6, quantumYield: 0.6 });
+  close(weak.emissionRate, cwLike.emissionRate, 1e-5);
+  // Incomplete relaxation at a high repetition rate lowers the signal per pulse.
+  const fast = pulsedMoleculeRates({ averageIntensityWcm2: 1e5, photonJ: main.photonJ, crossSectionCm2: 2e-16, repRateMHz: 1000, pulseFs: 100, lifetimeNs: 4, quantumYield: 1 });
+  assert.ok(fast.relaxFactor > 0.7 && fast.excitedAfterPulse > fast.probability);
+  // σF = 1 at the saturation power.
+  close(computeRates({ ...RATE_DEFAULTS, powerMw: r.saturationPowerW * 1e3 }, context).saturationParameter, 1, 1e-9);
+  // Pulses not much shorter than the lifetime are declined; so is an LED in a focus.
+  assert.equal(computeRates(RATE_DEFAULTS, { ...context, source: { ...main.source, pulseFs: 3e5 } }).ok, false);
+  const led = run({ source: 'led', centerNm: 470 });
+  const ledContext = { ...context, source: led.source, photonJ: led.photonJ, crossSectionCm2: led.main.crossSectionCm2 };
+  assert.equal(computeRates(RATE_DEFAULTS, ledContext).ok, false);
+  assert.equal(computeRates({ ...RATE_DEFAULTS, geometry: 'widefield', powerMw: 10 }, ledContext).ok, true);
+  // The repetition rate only applies to pulsed sources.
+  assert.equal(computeRates({ ...RATE_DEFAULTS, repRateMHz: '' }, { ...context, source: run().source }).ok, true);
+  assert.equal(computeRates({ ...RATE_DEFAULTS, repRateMHz: '' }, context).ok, false);
 });

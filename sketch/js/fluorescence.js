@@ -1,9 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Linear (one-photon) fluorescence with measured spectra: how strongly a
-// laser line excites a fluorophore, which fraction of its emission a stack
-// of filters and a detector pass, and the excitation rate and saturation of
-// one molecule in a focus or a widefield field. DOM-free and in plain
+// source (a CW laser line, an LED, a pulsed laser) excites a fluorophore,
+// which fraction of its emission a stack of filters and a detector pass,
+// and the excitation rate and saturation of one molecule in a focus or a
+// widefield field. DOM-free and in plain
 // numbers with units in their names, for the fluorescence calculator and
 // its tests; the spectra come from sketch/data/fluorophores/ (see
 // fluorophore-library.js).
@@ -12,6 +13,8 @@
 // peak is 1000 (an excitation curve may exceed 1000 away from the peak its
 // extinction coefficient refers to, at a protein's 280 nm band). A measured
 // curve loaded by the user is { x: [nm], y: [0–1] }, sorted by wavelength.
+
+import { gaussianSpectrum, spectrumWeight, transformLimitedBandwidthNm } from './spectrum.js';
 
 const H_J_S = 6.62607015e-34;
 const C_M_S = 299792458;
@@ -134,16 +137,17 @@ export function detectorQe(detector, nm) {
 
 const INTEGRATION_STEP_NM = 0.05;
 
-// ∫ f over [lo, hi] by the trapezoidal rule on a 0.05 nm grid, split at the
-// listed wavelengths so a hard filter edge falls on an interval end; each
-// piece is sampled just inside its ends, so a step is integrated exactly.
-function integrate(f, lo, hi, breaks) {
+// ∫ f over [lo, hi] by the trapezoidal rule on a 0.05 nm grid (or finer),
+// split at the listed wavelengths so a hard filter edge falls on an
+// interval end; each piece is sampled just inside its ends, so a step is
+// integrated exactly.
+function integrate(f, lo, hi, breaks, step = INTEGRATION_STEP_NM) {
   const cuts = [lo, ...breaks.filter(b => b > lo && b < hi).sort((a, b) => a - b), hi];
   let sum = 0;
   for (let i = 0; i + 1 < cuts.length; i++) {
     const a = cuts[i], b = cuts[i + 1];
     if (!(b > a)) continue;
-    const n = Math.max(1, Math.ceil((b - a) / INTEGRATION_STEP_NM)), h = (b - a) / n, eps = Math.min(1e-9, h * 1e-6);
+    const n = Math.max(1, Math.ceil((b - a) / step)), h = (b - a) / n, eps = Math.min(1e-9, h * 1e-6);
     let s = (f(a + eps) + f(b - eps)) / 2;
     for (let k = 1; k < n; k++) s += f(a + k * h);
     sum += s * h;
@@ -165,6 +169,57 @@ export function detectionFractions(emission, filters, detector) {
     // The detector's QE averaged over the light that reaches it.
     meanQe: transmitted > 0 ? detected / transmitted : null,
   };
+}
+
+// ---------------- the excitation source ----------------
+
+// A CW laser line is monochromatic. An LED is a Gaussian band of FWHM Δλ
+// and a pulsed laser a transform-limited Gaussian pulse, Δλ = 0.441λ²/(cτ):
+// the same spectra the canvas's LED source and pulsed laser emit.
+//   { kind: 'cw' | 'led' | 'pulsed', centerNm, bandwidthNm (LED), pulseFs (pulsed) }
+export function excitationSource({ kind, centerNm, bandwidthNm = 0, pulseFs = 0 }) {
+  const fwhmNm = kind === 'led' ? bandwidthNm : kind === 'pulsed' ? transformLimitedBandwidthNm(pulseFs, centerNm) : 0;
+  return { kind, centerNm, fwhmNm, ...(kind === 'pulsed' ? { pulseFs } : {}), spec: fwhmNm > 0 ? gaussianSpectrum(centerNm, fwhmNm) : null };
+}
+
+// The source's relative power per nm, 1 at its centre (0 for a line).
+export const sourceWeight = (source, nm) => (source.spec ? spectrumWeight(source.spec, nm) : 0);
+
+// ±5 FWHM holds the whole Gaussian (beyond it, below e⁻⁶⁹); the step
+// resolves the narrowest band.
+const sourceWindow = source => [Math.max(1, source.centerNm - 5 * source.fwhmNm), source.centerNm + 5 * source.fwhmNm];
+const sourceStep = source => Math.min(INTEGRATION_STEP_NM, source.fwhmNm / 20);
+
+// f averaged over the source's photons: f(λ₀) for a line, otherwise
+// ∫ w(λ) λ f(λ) dλ / ∫ w(λ) λ dλ, since w is power per nm and photons per
+// nm go as w·λ. `breaks` are hard steps in f.
+export function sourceAverage(source, f, breaks = []) {
+  if (!source.spec) return f(source.centerNm);
+  const [lo, hi] = sourceWindow(source), step = sourceStep(source);
+  const photons = nm => spectrumWeight(source.spec, nm) * nm;
+  return integrate(nm => photons(nm) * f(nm), lo, hi, breaks, step) / integrate(photons, lo, hi, [], step);
+}
+
+// Mean photon energy: hc/λ₀ for a line, hc ∫w dλ / ∫w λ dλ for a band.
+export function sourcePhotonEnergyJ(source) {
+  if (!source.spec) return photonEnergyJ(source.centerNm);
+  const [lo, hi] = sourceWindow(source), step = sourceStep(source);
+  const w = nm => spectrumWeight(source.spec, nm);
+  return H_J_S * C_M_S * 1e9 * integrate(w, lo, hi, [], step) / integrate(nm => w(nm) * nm, lo, hi, [], step);
+}
+
+// Fraction of the source's photons the filter stack passes.
+export const sourceTransmission = (source, filters) => sourceAverage(source, nm => stackTransmission(filters, nm), filters.flatMap(filterEdges));
+
+// The narrowest notch whose centre still reaches its set blocking to 0.1
+// OD: the leak (T_p − T_b)(1 − s(W/2)²) at the centre must stay within
+// (10^0.1 − 1)·T_b, which solves in closed form for the logistic edges.
+export function notchMinimumWidthNm({ edgeWidthNm, peakTransmission, blockingOd }) {
+  if (!(edgeWidthNm > 0)) return 0;
+  const block = 10 ** -blockingOd;
+  const q = (10 ** 0.1 - 1) * block / (peakTransmission - block);
+  const s = Math.sqrt(Math.max(0, 1 - q));
+  return edgeWidthNm * Math.log(s / (1 - s)) / LN9;
 }
 
 // ---------------- excitation rate and saturation ----------------
@@ -191,8 +246,9 @@ export function collectionFraction(na, mediumIndex) {
 // photon flux Φ = I/(hν); steady-state excited fraction kτ/(1 + kτ) and
 // emission rate Φ_F·k/(1 + kτ). Saturation (kτ = 1) is at I_sat = hν/(στ).
 // Without a lifetime only the unsaturated rates are given.
-export function moleculeRates({ intensityWcm2, wavelengthNm, crossSectionCm2, lifetimeNs = null, quantumYield }) {
-  const photonFlux = intensityWcm2 / photonEnergyJ(wavelengthNm);
+// `photonJ` overrides hc/λ for a band's mean photon energy.
+export function moleculeRates({ intensityWcm2, wavelengthNm, photonJ = photonEnergyJ(wavelengthNm), crossSectionCm2, lifetimeNs = null, quantumYield }) {
+  const photonFlux = intensityWcm2 / photonJ;
   const absorptionRate = crossSectionCm2 * photonFlux;
   if (!(lifetimeNs > 0)) {
     return { photonFlux, absorptionRate, saturationParameter: null, excitedFraction: null, emissionRate: quantumYield * absorptionRate, saturationIntensityWcm2: null };
@@ -202,7 +258,32 @@ export function moleculeRates({ intensityWcm2, wavelengthNm, crossSectionCm2, li
   return {
     photonFlux, absorptionRate, saturationParameter: s, excitedFraction: s / (1 + s),
     emissionRate: quantumYield * absorptionRate / (1 + s),
-    saturationIntensityWcm2: crossSectionCm2 > 0 ? photonEnergyJ(wavelengthNm) / (crossSectionCm2 * tau) : null,
+    saturationIntensityWcm2: crossSectionCm2 > 0 ? photonJ / (crossSectionCm2 * tau) : null,
+  };
+}
+
+// Gaussian pulses: peak power = 2√(ln2/π) · pulse energy / τ_FWHM.
+const GAUSS_PEAK_FACTOR = 2 * Math.sqrt(Math.LN2 / Math.PI);
+
+// One molecule under a train of pulses much shorter than its lifetime.
+// During a pulse it does not decay, so it is excited with probability
+// p = 1 − exp(−σF), F the pulse's photon fluence; between pulses (period T)
+// the excited population decays by e^(−T/τ). In the periodic steady state
+// the fraction excited after a pulse is N₊ = p / (1 − (1 − p)e^(−T/τ)), and
+// each period emits Φ_F·N₊(1 − e^(−T/τ)) photons. Without a lifetime the
+// molecule is taken to relax fully between pulses. σF = 1 is saturation.
+export function pulsedMoleculeRates({ averageIntensityWcm2, photonJ, crossSectionCm2, repRateMHz, pulseFs, lifetimeNs = null, quantumYield }) {
+  const rep = repRateMHz * 1e6;
+  const fluence = averageIntensityWcm2 / (rep * photonJ);
+  const saturationParameter = crossSectionCm2 * fluence;
+  const probability = -Math.expm1(-saturationParameter);
+  const relax = lifetimeNs > 0 ? Math.exp(-1e9 / (rep * lifetimeNs)) : 0;
+  const excitedAfterPulse = probability / (1 - (1 - probability) * relax);
+  return {
+    pulseFluence: fluence, saturationParameter, probability, excitedAfterPulse, relaxFactor: relax,
+    emissionRate: rep * quantumYield * excitedAfterPulse * (1 - relax),
+    peakIntensityWcm2: averageIntensityWcm2 / rep * GAUSS_PEAK_FACTOR / (pulseFs * 1e-15),
+    saturationFluence: crossSectionCm2 > 0 ? 1 / crossSectionCm2 : null,
   };
 }
 
@@ -234,7 +315,9 @@ export function parseCurveCsv(text, { minNm = 150, maxNm = 3000 } = {}) {
   const x = [...byNm.keys()].sort((a, b) => a - b);
   if (x.length < 2) return { ok: false, message: 'The file needs at least two different wavelengths.' };
   const values = x.map(nm => byNm.get(nm).sum / byNm.get(nm).n);
-  return { ok: true, x, values, header, maxValue: Math.max(...values), points: x.length, rangeNm: [x[0], x.at(-1)] };
+  // A loop, not Math.max(...values): a long file exceeds the argument limit.
+  const maxValue = values.reduce((m, v) => (v > m ? v : m), -Infinity);
+  return { ok: true, x, values, header, maxValue, points: x.length, rangeNm: [x[0], x.at(-1)] };
 }
 
 // A parsed file as a 0–1 curve. `units` is 'fraction', 'percent', or

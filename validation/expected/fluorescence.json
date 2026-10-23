@@ -1,5 +1,5 @@
 {
- "app": "sketch/js/fluorescence.js: absorptionCrossSectionCm2, focusPeakIntensityWcm2, widefieldIntensityWcm2, moleculeRates, collectionFraction, spectrumValue, detectionFractions, detectorQe (used by calculators/fluorescence/)",
+ "app": "sketch/js/fluorescence.js: absorptionCrossSectionCm2, focusPeakIntensityWcm2, widefieldIntensityWcm2, moleculeRates, pulsedMoleculeRates, collectionFraction, spectrumValue, detectionFractions, detectorQe, sourceAverage, sourceTransmission, notchMinimumWidthNm (used by calculators/fluorescence/)",
  "cases": [
   {
    "expected": {
@@ -593,6 +593,266 @@
    "tolerance": {
     "qe": 0.005
    }
+  },
+  {
+   "expected": {
+    "relative": 0.7720014797
+   },
+   "inputs": {
+    "kind": "sourceExcitation",
+    "source": {
+     "bandwidthNm": 25,
+     "centerNm": 470,
+     "kind": "led"
+    }
+   },
+   "name": "EGFP excitation averaged over a 470 nm band, 25 nm FWHM",
+   "note": "The app integrates by the trapezoidal rule on 0.05 nm, across the stored curve's 1 nm kinks, which its grid does not hit: an error of order h^2 times the slope changes, below 1e-5 here.",
+   "tolerance": {
+    "relative": 0.0001
+   }
+  },
+  {
+   "expected": {
+    "relative": 0.1732873112
+   },
+   "inputs": {
+    "kind": "sourceExcitation",
+    "source": {
+     "bandwidthNm": 15,
+     "centerNm": 405,
+     "kind": "led"
+    }
+   },
+   "name": "EGFP excitation averaged over a 405 nm band, 15 nm FWHM",
+   "note": "The app integrates by the trapezoidal rule on 0.05 nm, across the stored curve's 1 nm kinks, which its grid does not hit: an error of order h^2 times the slope changes, below 1e-5 here.",
+   "tolerance": {
+    "relative": 0.0001
+   }
+  },
+  {
+   "expected": {
+    "relative": 0.1648860978
+   },
+   "inputs": {
+    "kind": "sourceExcitation",
+    "source": {
+     "bandwidthNm": 60,
+     "centerNm": 530,
+     "kind": "led"
+    }
+   },
+   "name": "EGFP excitation averaged over a 530 nm band, 60 nm FWHM",
+   "note": "The app integrates by the trapezoidal rule on 0.05 nm, across the stored curve's 1 nm kinks, which its grid does not hit: an error of order h^2 times the slope changes, below 1e-5 here.",
+   "tolerance": {
+    "relative": 0.0001
+   }
+  },
+  {
+   "expected": {
+    "transmission": 0.00223046986
+   },
+   "inputs": {
+    "filters": [
+     {
+      "blockingOd": 1.5,
+      "edgeNm": 495,
+      "edgeWidthNm": 0,
+      "peakTransmission": 0.93,
+      "type": "longpass"
+     },
+     {
+      "blockingOd": 6,
+      "centerNm": 525,
+      "edgeWidthNm": 0,
+      "peakTransmission": 0.95,
+      "type": "bandpass",
+      "widthNm": 50
+     }
+    ],
+    "kind": "sourceLeak",
+    "source": {
+     "bandwidthNm": 25,
+     "centerNm": 470,
+     "kind": "led"
+    }
+   },
+   "name": "source leakage, 470 nm LED, 25 nm, into a dichroic and a 525/50 bandpass",
+   "note": "The app splits its trapezoid at the hard edges; the error left, h^2/12 times the jump in slope there, is below 4e-5 of the total for a 3.5 nm band and far less for wider ones.",
+   "tolerance": {
+    "transmission": 0.0001
+   }
+  },
+  {
+   "expected": {
+    "transmission": 0.6286505602
+   },
+   "inputs": {
+    "filters": [
+     {
+      "blockingOd": 6,
+      "centerNm": 525,
+      "edgeWidthNm": 0,
+      "peakTransmission": 0.95,
+      "type": "bandpass",
+      "widthNm": 50
+     }
+    ],
+    "kind": "sourceLeak",
+    "source": {
+     "bandwidthNm": 30,
+     "centerNm": 505,
+     "kind": "led"
+    }
+   },
+   "name": "source leakage, 505 nm LED, 30 nm, into a 525/50 bandpass",
+   "note": "The app splits its trapezoid at the hard edges; the error left, h^2/12 times the jump in slope there, is below 4e-5 of the total for a 3.5 nm band and far less for wider ones.",
+   "tolerance": {
+    "transmission": 0.0001
+   }
+  },
+  {
+   "expected": {
+    "transmission": 3.162393191e-08
+   },
+   "inputs": {
+    "filters": [
+     {
+      "blockingOd": 1.5,
+      "edgeNm": 495,
+      "edgeWidthNm": 0,
+      "peakTransmission": 0.93,
+      "type": "longpass"
+     },
+     {
+      "blockingOd": 6,
+      "centerNm": 525,
+      "edgeWidthNm": 0,
+      "peakTransmission": 0.95,
+      "type": "bandpass",
+      "widthNm": 50
+     }
+    ],
+    "kind": "sourceLeak",
+    "source": {
+     "centerNm": 488,
+     "kind": "pulsed",
+     "pulseFs": 100
+    }
+   },
+   "name": "source leakage, 488 nm 100 fs pulses into a dichroic and a 525/50 bandpass",
+   "note": "The app splits its trapezoid at the hard edges; the error left, h^2/12 times the jump in slope there, is below 4e-5 of the total for a 3.5 nm band and far less for wider ones.",
+   "tolerance": {
+    "transmission": 0.0001
+   }
+  },
+  {
+   "expected": {
+    "emissionRate": 950308.9155,
+    "excitedAfterPulse": 0.01996111672
+   },
+   "inputs": {
+    "crossSectionCm2": 2e-16,
+    "fluence": 100000000000000.0,
+    "kind": "pulsed",
+    "lifetimeNs": 2.6,
+    "pulseFs": 100,
+    "quantumYield": 0.6,
+    "repRateMHz": 80
+   },
+   "name": "pulse train, sigma F = 0.02, 80 MHz, 100 fs, tau 2.6 ns",
+   "note": "The app's per-pulse model neglects decay during the pulse, a relative error of order pulse/lifetime (at most 4e-5 in these cases); the integration itself converges to 1e-9.",
+   "tolerance": {
+    "emissionRate": 0.0001,
+    "excitedAfterPulse": 0.0001
+   }
+  },
+  {
+   "expected": {
+    "emissionRate": 31284571.89,
+    "excitedAfterPulse": 0.6571253028
+   },
+   "inputs": {
+    "crossSectionCm2": 2.13e-16,
+    "fluence": 5000000000000000.0,
+    "kind": "pulsed",
+    "lifetimeNs": 2.6,
+    "pulseFs": 100,
+    "quantumYield": 0.6,
+    "repRateMHz": 80
+   },
+   "name": "pulse train, sigma F = 1.065, 80 MHz, 100 fs, tau 2.6 ns",
+   "note": "The app's per-pulse model neglects decay during the pulse, a relative error of order pulse/lifetime (at most 4e-5 in these cases); the integration itself converges to 1e-9.",
+   "tolerance": {
+    "emissionRate": 0.0001,
+    "excitedAfterPulse": 0.0001
+   }
+  },
+  {
+   "expected": {
+    "emissionRate": 152577628.6,
+    "excitedAfterPulse": 0.6897738988
+   },
+   "inputs": {
+    "crossSectionCm2": 2e-16,
+    "fluence": 2000000000000000.0,
+    "kind": "pulsed",
+    "lifetimeNs": 4.0,
+    "pulseFs": 100,
+    "quantumYield": 1.0,
+    "repRateMHz": 1000
+   },
+   "name": "pulse train, sigma F = 0.4, 1000 MHz, 100 fs, tau 4 ns",
+   "note": "The app's per-pulse model neglects decay during the pulse, a relative error of order pulse/lifetime (at most 4e-5 in these cases); the integration itself converges to 1e-9.",
+   "tolerance": {
+    "emissionRate": 0.0001,
+    "excitedAfterPulse": 0.0001
+   }
+  },
+  {
+   "expected": {
+    "widthNm": 21.58438231
+   },
+   "inputs": {
+    "blockingOd": 6,
+    "edgeWidthNm": 3,
+    "kind": "notch",
+    "peakTransmission": 0.95
+   },
+   "name": "narrowest notch, 3 nm edges, T 0.95, OD 6",
+   "tolerance": {
+    "widthNm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "widthNm": 5.074223955
+   },
+   "inputs": {
+    "blockingOd": 4,
+    "edgeWidthNm": 1,
+    "kind": "notch",
+    "peakTransmission": 0.9
+   },
+   "name": "narrowest notch, 1 nm edges, T 0.9, OD 4",
+   "tolerance": {
+    "widthNm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "widthNm": 15.05778931
+   },
+   "inputs": {
+    "blockingOd": 2,
+    "edgeWidthNm": 5,
+    "kind": "notch",
+    "peakTransmission": 0.98
+   },
+   "name": "narrowest notch, 5 nm edges, T 0.98, OD 2",
+   "tolerance": {
+    "widthNm": 1e-09
+   }
   }
  ],
  "citations": [
@@ -604,15 +864,15 @@
   "Hamamatsu Photonics, ORCA-Fusion BT (C15440-20UP) catalogue SCAS0143J (95 % QE at 550 nm)",
   "T. J. Lambert, Nat. Methods 16, 277-278 (2019), doi:10.1038/s41592-019-0352-8 (FPbase; the EGFP curves used as data)"
  ],
- "convergence": "Airy power: Simpson on 80000 intervals to v = 400 plus the averaged tail 4/(pi v); RK4 with 6000 steps over 60 relaxation times and a 200-step bisection; Simpson on 2000 intervals for the solid angle and on 0.002 nm for logistic edges; hard edges exactly.",
- "domain": "Cross-sections for epsilon from 1e3 to 2.5e5 M^-1 cm^-1; foci at NA 0.5-1.45 and 405-640 nm; widefield fields of 0.2 and 5 mm; steady states from kt = 0.01 to 50; collection at NA 0.5-1.4 in air, water and oil; the EGFP excitation curve on, between and outside its samples; EGFP emission through no filters, a bandpass, a dichroic plus bandpass with flat QE, a notch and an edge between samples, hard and with 1-5 nm logistic edges; seven datasheet QE values.",
+ "convergence": "Airy power: Simpson on 80000 intervals to v = 400 plus the averaged tail 4/(pi v); RK4 with 6000 steps over 60 relaxation times and a 200-step bisection; 4000 RK4 steps through each pulse, iterated until the post-pulse state changes by under 1e-16; Simpson on 2000 intervals for the solid angle and on 0.002 nm for logistic edges; hard edges exactly.",
+ "domain": "Cross-sections for epsilon from 1e3 to 2.5e5 M^-1 cm^-1; foci at NA 0.5-1.45 and 405-640 nm; widefield fields of 0.2 and 5 mm; steady states from kt = 0.01 to 50; pulse trains from sigma F = 0.02 to 1.1, at 80 MHz and 1 GHz; LED bands of 15-60 nm and a 100 fs pulse, averaged and leaking through hard filters; notch widths for OD 2-6; collection at NA 0.5-1.4 in air, water and oil; the EGFP excitation curve on, between and outside its samples; EGFP emission through no filters, a bandpass, a dichroic plus bandpass with flat QE, a notch and an edge between samples, hard and with 1-5 nm logistic edges; seven datasheet QE values.",
  "fidelity": "computed",
  "id": "fluorescence",
  "outside_scope": "The calculator declines wavelengths outside 250-1000 nm, a blocking level not below the peak transmission, an NA above the sample index, and missing extinction coefficients or quantum yields; a spectrum is zero outside its measured range.",
  "provenance": "Cross-section and photon flux written from the Beer-Lambert law and E = hc/lambda with the exact SI constants; the focus from Born and Wolf's Airy pattern, whose first-ring fraction the quadrature reproduces to three figures; the steady state from the two-level rate equation in Lakowicz; detector values from the tables of the datasheets named.",
- "reference": "Beer-Lambert slab for sigma; Airy-pattern power by Bessel quadrature; RK4 two-level steady state with bisection for saturation; solid-angle quadrature; exact piecewise integration of the stored spectrum through hard filters and Simpson quadrature through logistic edges; datasheet sensitivities converted to QE",
+ "reference": "Beer-Lambert slab for sigma; Airy-pattern power by Bessel quadrature; RK4 two-level steady state with bisection for saturation, and RK4 through trains of finite Gaussian pulses; solid-angle quadrature; exact piecewise integration of the stored spectrum through hard filters and Simpson quadrature through logistic edges; band averages by Simpson quadrature and by the closed-form Gaussian integral; notch width by bisection; datasheet sensitivities converted to QE",
  "reference_file": "validation/reference/fluorescence.py",
- "scope": "One-photon excitation by a monochromatic CW line; stored curves linear between 1 nm samples; generic filters with logistic edges; two-level steady state; scalar paraxial Airy focus; isotropic emitter. Not the fluorophore data themselves, which are FPbase's.",
+ "scope": "One-photon excitation by a CW line, a Gaussian LED band or transform-limited Gaussian pulses much shorter than the lifetime; stored curves linear between 1 nm samples; generic filters with logistic edges; two-level steady state; scalar paraxial Airy focus; isotropic emitter. Not the fluorophore data themselves, which are FPbase's.",
  "title": "One-photon fluorescence: excitation, detection and saturation",
- "tolerance_rationale": "1e-9 relative for algebra and exact integrals, 1e-8 for the integrated steady state, 1e-5 for the focus (its quadrature tail), 2e-5 for logistic edges (the app's trapezoid error bound, stated in the case); datasheet values at 6e-4 absolute (three stored decimals) or 0.005 for a two-figure percentage."
+ "tolerance_rationale": "1e-9 relative for algebra and exact integrals, 1e-8 for the integrated steady state, 1e-5 for the focus (its quadrature tail), 2e-5 for logistic edges and 1e-4 for band averages (the app's trapezoid error bounds, stated in the cases), 1e-4 for pulse trains (the per-pulse model's neglect of decay during the pulse, of order pulse/lifetime); datasheet values at 6e-4 absolute (three stored decimals) or 0.005 for a two-figure percentage."
 }
