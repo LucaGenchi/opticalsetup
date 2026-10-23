@@ -28,30 +28,45 @@ function report(scene) {
 }
 
 test('box-filter transmissions are reused without changing their result', () => {
+  // Expected values are snapshots taken before anything could alter the
+  // cache: a value read back through the cache would share its fate.
   const spec = gaussianSpectrum(520, 40);
   const longpass = wl => (wl >= 510 ? 1 : 0);
   const first = applyTransmission(spec, 520, longpass, [510]);
-  const fresh = applyTransmission(structuredClone(spec), 520, longpass, [510]);
+  const expected = structuredClone(first);
   assert.ok(first.fraction > 0 && first.fraction < 1);
-  assert.deepEqual(first, fresh);
+  assert.equal(first.spec.kind, 'sampled');
+  assert.deepEqual(applyTransmission(structuredClone(spec), 520, longpass, [510]), expected);
   first.fraction = 0;
   first.wl = NaN;
-  const again = applyTransmission(spec, 520, longpass, [510]);
-  assert.deepEqual(again, fresh, 'a caller changing its result does not reach the next caller');
+  first.spec.w.fill(0);
+  first.spec.lo = 0;
+  assert.deepEqual(applyTransmission(spec, 520, longpass, [510]), expected,
+    'a caller changing its result, profile included, does not reach the next caller');
+  // A profile changed in place is judged by what it is now: moved above the
+  // edge, more of it passes and the passed light is redder.
+  const moved = gaussianSpectrum(520, 40);
+  applyTransmission(moved, 520, longpass, [510]);
+  moved.center = 560;
+  const redder = applyTransmission(moved, 520, longpass, [510]);
+  assert.ok(redder.fraction > expected.fraction + 0.1 && redder.wl > expected.wl + 20);
+  const sampled = { kind: 'sampled', lo: 480, hi: 560, w: Array.from({ length: 33 }, (_, i) => (i < 16 ? 1 : 0.01)) };
+  const before = applyTransmission(sampled, 520, longpass, [510]);
+  sampled.w.reverse();
+  const after = applyTransmission(sampled, 520, longpass, [510]);
+  assert.ok(after.fraction > before.fraction + 0.5, 'reweighting a sampled profile in place is seen');
   // Same profile and edge, different transmission on either side.
   const half = applyTransmission(spec, 520, wl => (wl >= 510 ? 0.5 : 0), [510]);
-  assert.ok(Math.abs(half.fraction - fresh.fraction / 2) < 1e-12);
+  assert.ok(Math.abs(half.fraction - expected.fraction / 2) < 1e-12);
   // A blocked result stays blocked.
   assert.equal(applyTransmission(spec, 520, () => 0, [510]), null);
-  // Far more distinct edges than one profile keeps: every answer still equals
-  // a fresh computation, and the first edge comes back the same.
-  for (let i = 0; i < 200; i++) {
-    const edge = 470 + i * 0.5;
-    const fn = wl => (wl >= edge ? 1 : 0);
-    assert.deepEqual(applyTransmission(spec, 520, fn, [edge]),
-      applyTransmission(structuredClone(spec), 520, fn, [edge]));
-  }
-  assert.deepEqual(applyTransmission(spec, 520, longpass, [510]), fresh);
+  // Far more distinct edges than the cache keeps: each answer, computed again
+  // after the cache has been emptied, is what it was the first time.
+  const edges = Array.from({ length: 600 }, (_, i) => 470 + i * 0.125);
+  const through = edge => applyTransmission(spec, 520, wl => (wl >= edge ? 1 : 0), [edge]);
+  const firstTime = edges.map(edge => structuredClone(through(edge)));
+  edges.forEach((edge, i) => assert.deepEqual(through(edge), firstTime[i]));
+  assert.deepEqual(applyTransmission(spec, 520, longpass, [510]), expected);
 });
 
 test('two pulses in one scene read as they do alone', () => {
