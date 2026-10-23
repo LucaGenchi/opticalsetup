@@ -670,6 +670,13 @@ export const wikiEntries = [
         the same, except that a detector facing the source reads nothing. Such a sketch also
         keeps the 165&nbsp;mm range it was drawn with. Choose <em>Collectors</em> or
         <em>Any optic</em> to update it.</p>
+        <p>The <strong>Rays</strong> slider and exact number field allow 4 to 4096 angular samples; the
+        slider steps by ratio — every count up to 48, then about 6&nbsp;% per step — so 4 to
+        128 rays take some 40&nbsp;% of its travel, and the number field takes any exact count. More
+        rays resolve small collecting apertures more reliably, at increased tracing cost.
+        Dense point sources use a canvas layer on screen; measurements use every
+        authored ray and SVG exports retain the traced vector paths. Pan, zoom and
+        selection changes reuse the trace while the optical setup stays unchanged.</p>
         <p>The embedded bench above shows the arrangement that makes collection
         clearest: a <a href="../oap/">parabolic mirror</a> with the source exactly at its
         focus, 25&nbsp;mm in front of the vertex, turning isotropic emission into a parallel
