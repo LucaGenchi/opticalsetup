@@ -21,6 +21,8 @@ export function mountCalculator({ panel = 'calc', inputs, defaults, groups, comp
   if (hideInactive) forms.forEach(form => form.classList.add('hide-inactive'));
   const status = document.getElementById(`${panel}-status`);
   const tables = [...forms[0].closest('section').querySelectorAll('table.calc-results')];
+  // Tables elsewhere on the page that the last result filled.
+  const filled = new Set();
   const noteList = document.getElementById(`${panel}-notes`);
   const hosts = graphs ? [...document.querySelectorAll('[data-chart]')] : [];
   const reset = document.createElement('button');
@@ -64,7 +66,8 @@ export function mountCalculator({ panel = 'calc', inputs, defaults, groups, comp
     const raw = readForm(forms, inputs);
     const result = compute(raw);
     syncForm(forms, inputs, raw, new Set((result.errors ?? []).map(e => e.id)));
-    for (const table of tables) table.textContent = '';
+    for (const table of [...tables, ...filled]) table.textContent = '';
+    filled.clear();
     noteList.textContent = '';
     status.className = `calc-status${result.ok || result.pending ? '' : ' is-error'}`;
     // A valid result needs no banner; the status line appears only for an
@@ -81,7 +84,9 @@ export function mountCalculator({ panel = 'calc', inputs, defaults, groups, comp
     } else {
       const out = rows(result);
       for (const [id, list] of Object.entries(Array.isArray(out) ? { [panel]: out } : out)) {
-        fill(document.getElementById(`${id}-results`), list);
+        const table = document.getElementById(`${id}-results`);
+        fill(table, list);
+        filled.add(table);
       }
       for (const text of notes(result)) {
         const li = document.createElement('li'); li.textContent = text; noteList.append(li);

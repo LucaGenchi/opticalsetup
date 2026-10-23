@@ -1,0 +1,199 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+// The fluorescence calculator and the model it runs (sketch/js/
+// fluorescence.js): excitation at the laser, the detection budget through
+// stacked filters and a detector, crosstalk, laser blocking, the rate panel,
+// the user's curve files, and what is declined.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { DEFAULTS, computeFluorescence, RATE_DEFAULTS, computeRates } from '../calculators/fluorescence/fluorescence-calculator.js';
+import {
+  filterTransmission, stackTransmission, detectionFractions, detectorQe, spectrumValue, parseCurveCsv,
+  absorptionCrossSectionCm2, focusPeakIntensityWcm2, moleculeRates, collectionFraction, DETECTOR_PRESETS,
+} from '../sketch/js/fluorescence.js';
+
+const load = id => JSON.parse(readFileSync(new URL(`../sketch/data/fluorophores/${id}.json`, import.meta.url), 'utf8'));
+const egfp = load('egfp'), mcherry = load('mcherry'), tdtomato = load('tdtomato');
+const files = { egfp, mcherry, tdtomato };
+const run = (values = {}, curves = {}) => {
+  const raw = { ...DEFAULTS, ...values };
+  return computeFluorescence(raw, { data: files[raw.fluorophore], secondData: raw.second === 'none' ? null : files[raw.second], curves });
+};
+const close = (a, b, tol = 1e-12) => assert.ok(Math.abs(a - b) <= tol * Math.max(1, Math.abs(b)), `${a} vs ${b}`);
+const finite = list => list.every(Number.isFinite);
+
+test('the generic filter: peak, blocking, half-maximum edges, hard steps', () => {
+  const lp = { type: 'longpass', edgeNm: 500, edgeWidthNm: 4, peakTransmission: 0.9, blockingOd: 6 };
+  close(filterTransmission(lp, 500), (0.9 + 1e-6) / 2);
+  close(filterTransmission(lp, 600), 0.9, 1e-9);
+  close(filterTransmission(lp, 400), 1e-6, 1e-9);
+  // The 10 %–90 % width is the edge width.
+  const t10 = 1e-6 + (0.9 - 1e-6) * 0.1, t90 = 1e-6 + (0.9 - 1e-6) * 0.9;
+  close(filterTransmission(lp, 498), t10, 1e-9);
+  close(filterTransmission(lp, 502), t90, 1e-9);
+  const sp = { ...lp, type: 'shortpass' };
+  close(filterTransmission(sp, 498), t90, 1e-9);
+  const hard = { ...lp, edgeWidthNm: 0 };
+  assert.equal(filterTransmission(hard, 499.999), 1e-6);
+  assert.equal(filterTransmission(hard, 500.001), 0.9);
+  const bp = { type: 'bandpass', centerNm: 525, widthNm: 50, edgeWidthNm: 2, peakTransmission: 0.95, blockingOd: 6 };
+  const notch = { ...bp, type: 'notch' };
+  for (const nm of [450, 500, 525, 549, 600]) {
+    const s = (filterTransmission(bp, nm) - 1e-6) / (0.95 - 1e-6);
+    close((filterTransmission(notch, nm) - 1e-6) / (0.95 - 1e-6), 1 - s, 1e-9);
+  }
+  close(stackTransmission([bp, lp], 525), filterTransmission(bp, 525) * filterTransmission(lp, 525));
+  assert.equal(stackTransmission([], 525), 1);
+  // Huge exponents do not overflow.
+  assert.ok(Number.isFinite(filterTransmission({ ...lp, edgeWidthNm: 1e-9 }, 900)));
+});
+
+test('the detection budget: no filters pass everything, a stack is never above any of its filters', () => {
+  const none = detectionFractions(egfp.emission, [], { type: 'ideal' });
+  close(none.transmitted, 1, 1e-12); close(none.detected, 1, 1e-12); close(none.meanQe, 1, 1e-12);
+  const bp = { type: 'bandpass', centerNm: 525, widthNm: 50, edgeWidthNm: 3, peakTransmission: 0.95, blockingOd: 6 };
+  const lp = { type: 'longpass', edgeNm: 495, edgeWidthNm: 3, peakTransmission: 0.93, blockingOd: 1.5 };
+  const one = detectionFractions(egfp.emission, [bp], { type: 'ideal' });
+  const two = detectionFractions(egfp.emission, [bp, lp], { type: 'flat', qe: 0.4 });
+  assert.ok(two.transmitted < one.transmitted && one.transmitted < 0.95);
+  close(two.detected, two.transmitted * 0.4, 1e-12);
+  close(two.meanQe, 0.4, 1e-12);
+  // Blocking everything: the stack passes only the OD floor.
+  const dark = detectionFractions(egfp.emission, [{ type: 'shortpass', edgeNm: 260, edgeWidthNm: 0, peakTransmission: 1, blockingOd: 10 }], { type: 'ideal' });
+  close(dark.transmitted, 1e-10, 1e-9);
+});
+
+test('the default page: EGFP, a 488 nm laser, 525/50 after a 495 nm dichroic, then a GaAsP PMT', () => {
+  // No detector by default: what the filters pass is what is counted.
+  const plain = run();
+  assert.equal(plain.ok, true);
+  assert.equal(plain.detector.type, 'ideal');
+  close(plain.main.detected, plain.main.transmitted, 1e-12);
+  const r = run({ detector: 'gaasp' });
+  assert.equal(r.ok, true);
+  close(r.main.relative, spectrumValue(egfp.excitation, 488));
+  assert.ok(r.main.relative > 0.99);
+  close(r.main.extinctionAtLaser, 55900 * r.main.relative);
+  close(r.main.crossSectionCm2, absorptionCrossSectionCm2(55900 * r.main.relative));
+  const budget = detectionFractions(egfp.emission, r.filters, { type: 'preset', id: 'gaasp' });
+  close(r.main.transmitted, budget.transmitted); close(r.main.detected, budget.detected);
+  assert.ok(r.main.meanQe > 0.3 && r.main.meanQe < 0.42, `GaAsP over green emission: ${r.main.meanQe}`);
+  // The laser sits 12 nm below the bandpass edge and 7 nm below the dichroic's.
+  assert.ok(r.laserOd > 7 && r.laserOd < 8, `laser blocked at OD ${r.laserOd}`);
+  assert.equal(r.second, null);
+  assert.equal(r.crosstalk, null);
+  // Nothing non-finite reaches the chart.
+  const p = r.plot;
+  assert.ok(finite(p.x) && finite(p.T) && finite(p.od) && finite(p.qe) && finite(p.detected) && p.curves.every(c => finite(c.ex) && finite(c.em)));
+  assert.ok(p.x[0] <= 488 && p.x.at(-1) >= 600);
+});
+
+test('a second fluorophore: its excitation, its detection and the crosstalk ratio', () => {
+  const r = run({ second: 'mcherry' });
+  assert.equal(r.ok, true);
+  const s = r.second;
+  close(s.relative, spectrumValue(mcherry.excitation, 488));
+  assert.ok(s.relative < 0.15, 'mCherry is excited weakly at 488 nm');
+  const ratio = (72000 * s.relative * 0.22 * s.detected) / (55900 * r.main.relative * 0.6 * r.main.detected);
+  close(r.crosstalk, ratio, 1e-12);
+  assert.ok(r.crosstalk < 0.01);
+  // The same label as the second fluorophore crosstalks one to one.
+  close(run({ second: 'egfp' }).crosstalk, 1, 1e-12);
+  // Waiting for a second file.
+  assert.equal(computeFluorescence({ ...DEFAULTS, second: 'mcherry' }, { data: egfp, secondData: undefined }).pending, true);
+});
+
+test('declined inputs and loading states', () => {
+  assert.equal(run({ laserNm: 249 }).ok, false);
+  assert.equal(run({ laserNm: '' }).ok, false);
+  const od = run({ f1Peak: 50, f1Od: 0.2 });
+  assert.equal(od.ok, false);
+  assert.equal(od.errors[0].id, 'f1Od');
+  assert.equal(run({ f1Type: 'bandpass', f1Center: 250, f1Width: 500 }).ok, false, 'a band reaching 0 nm');
+  assert.equal(computeFluorescence(DEFAULTS, { data: undefined }).pending, true);
+  assert.equal(computeFluorescence(DEFAULTS, { data: { error: new Error('404') } }).ok, false);
+  assert.equal(computeFluorescence(DEFAULTS, { data: mcherry }).ok, false, 'a file for another fluorophore is refused');
+  // A laser outside the measured excitation curve excites nothing.
+  const far = run({ laserNm: 700 });
+  assert.equal(far.ok, true);
+  assert.ok(far.main.relative < 0.01);
+});
+
+test('filter and detector files: chosen, read, refused', () => {
+  const pending = run({ f1Type: 'measured', f1File: 'bp.csv' });
+  assert.equal(pending.pending, true, 'chosen but not read yet');
+  assert.equal(run({ f1Type: 'measured', f1File: '' }).ok, false, 'no file chosen');
+  const parsed = parseCurveCsv('Wavelength (nm),T (%)\n500,0\n510,90\n540,90\n550,0\n');
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.percent, true);
+  const r = run({ f1Type: 'measured', f1File: 'bp.csv', f2Type: 'none' }, { f1File: { name: 'bp.csv', curve: parsed.curve } });
+  assert.equal(r.ok, true);
+  close(r.laserTransmission, 0, 0);
+  assert.equal(r.laserOdCapped, true, 'zero transmission is capped for the chart');
+  assert.ok(r.plot.od.every(v => v <= r.plot.odCap));
+  const bad = run({ f1Type: 'measured', f1File: 'x.csv' }, { f1File: { name: 'x.csv', error: 'Wavelengths must be in nm, between 150 and 3000.' } });
+  assert.equal(bad.ok, false);
+  assert.match(bad.errors[0].message, /Filter 1: Wavelengths/);
+  const qe = parseCurveCsv('400\t0.2\n600\t0.4\n');
+  const d = run({ detector: 'measured', detectorFile: 'qe.txt' }, { detectorFile: { name: 'qe.txt', curve: qe.curve } });
+  assert.equal(d.ok, true);
+  close(detectorQe(d.detector, 500), 0.3, 1e-12);
+  const flat = run({ detector: 'flat', detectorQe: 50 });
+  close(flat.main.detected, flat.main.transmitted * 0.5, 1e-12);
+  const ideal = run({ detector: 'ideal' });
+  close(ideal.main.detected, ideal.main.transmitted, 1e-12);
+});
+
+test('parsing curve files', () => {
+  assert.equal(parseCurveCsv('').ok, false);
+  assert.equal(parseCurveCsv('500,0.5').ok, false, 'one row');
+  assert.equal(parseCurveCsv('0.5,0.1\n0.6,0.2').ok, false, 'micrometres are refused, not guessed');
+  const p = parseCurveCsv('# comment\n600;0.5\n500;0.2\n500;0.4\n700;1.2\n');
+  assert.equal(p.ok, true);
+  assert.equal(p.percent, false);
+  assert.deepEqual(p.curve.x, [500, 600, 700]);
+  close(p.curve.y[0], 0.3, 1e-12);
+  assert.equal(p.curve.y[2], 1, 'noise above 1 is clamped');
+  assert.equal(parseCurveCsv('500 50\n600 101\n').curve.y[1], 1);
+});
+
+test('detector presets stay inside 0–1 and are zero outside their range', () => {
+  for (const [id, preset] of Object.entries(DETECTOR_PRESETS)) {
+    const nms = preset.points.map(p => p[0]);
+    assert.deepEqual(nms, [...nms].sort((a, b) => a - b), `${id}: sorted`);
+    assert.ok(preset.points.every(([, q]) => q >= 0 && q <= 1), `${id}: 0–1`);
+    assert.equal(detectorQe({ type: 'preset', id }, nms[0] - 1), 0);
+    assert.equal(detectorQe({ type: 'preset', id }, nms.at(-1) + 1), 0);
+  }
+});
+
+test('the rate panel: focus, widefield, saturation and what it declines', () => {
+  const main = run();
+  const context = { laserNm: 488, name: 'EGFP', crossSectionCm2: main.main.crossSectionCm2, quantumYield: 0.6, lifetimeNs: 2.6, detected: main.main.detected };
+  const r = computeRates(RATE_DEFAULTS, context);
+  assert.equal(r.ok, true);
+  close(r.intensityWcm2, focusPeakIntensityWcm2(1e-4, 488, 1.2));
+  const m = moleculeRates({ intensityWcm2: r.intensityWcm2, wavelengthNm: 488, crossSectionCm2: context.crossSectionCm2, lifetimeNs: 2.6, quantumYield: 0.6 });
+  close(r.excitedFraction, m.excitedFraction);
+  assert.ok(r.excitedFraction > 0.1 && r.excitedFraction < 0.4, '100 µW in a 1.2 NA focus is well into saturation');
+  close(r.collection, collectionFraction(1.2, 1.33));
+  close(r.detectedRate, r.emissionRate * r.collection * main.main.detected);
+  // kτ = 1 at the saturation power.
+  const atSat = computeRates({ ...RATE_DEFAULTS, powerMw: r.saturationPowerW * 1e3 }, context);
+  close(atSat.saturationParameter, 1, 1e-9);
+  const wide = computeRates({ ...RATE_DEFAULTS, geometry: 'widefield', powerMw: 10, fieldUm: 200 }, context);
+  close(wide.intensityWcm2, 4 * 0.01 / (Math.PI * 0.02 ** 2));
+  assert.ok(wide.excitedFraction < 1e-3);
+  // Without a lifetime: unsaturated rates only.
+  const noTau = computeRates(RATE_DEFAULTS, { ...context, lifetimeNs: null });
+  assert.equal(noTau.ok, true);
+  assert.equal(noTau.saturationParameter, null);
+  assert.equal(noTau.saturationPowerW, null);
+  close(noTau.emissionRate, 0.6 * noTau.absorptionRate);
+  close(computeRates({ ...RATE_DEFAULTS, lifetimeFrom: 'manual', lifetimeNs: 4 }, { ...context, lifetimeNs: null }).lifetimeNs, 4);
+  assert.equal(computeRates({ ...RATE_DEFAULTS, na: 1.4, mediumIndex: 1.33 }, context).ok, false, 'NA above the index');
+  assert.equal(computeRates(RATE_DEFAULTS, null).ok, false);
+  assert.equal(computeRates(RATE_DEFAULTS, { ...context, crossSectionCm2: 0 }).ok, false, 'no absorption at the laser');
+  assert.equal(collectionFraction(1.4, 1.33), null);
+});

@@ -89,7 +89,9 @@ reference implementations; see [docs/validation.md](docs/validation.md) and
   workbench models and frequency relations: material dispersion (GVD, TOD and
   pulse stretching), nonlinear frequency conversion (SHG, THG, SFG, DFG, OPO),
   coherent Raman scattering (CARS, CSRS, resolution, and the probed window on
-  measured reference spectra) and parametric
+  measured reference spectra), one-photon fluorescence (a CW laser on measured
+  fluorescent-protein spectra from FPbase, stacked emission filters, typical
+  detector QE, crosstalk and saturation) and parametric
   amplification.
 - **Community** — setups shared by users; accepted submissions get their own
   page and appear in the app's community menu.

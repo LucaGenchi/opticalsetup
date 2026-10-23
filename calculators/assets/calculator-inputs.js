@@ -20,6 +20,12 @@ export function parseInputs(inputs, raw) {
       continue;
     }
     if (!isInputActive(input, raw)) continue;
+    // A file input reads as the chosen file's name; the page parses the
+    // file itself and hands the result to the calculator.
+    if (input.type === 'file') {
+      values[input.id] = String(v ?? '');
+      continue;
+    }
     if (input.type === 'select') {
       if (!input.options.some(([id]) => id === v)) errors.push({ id: input.id, message: `${input.label}: choose an option.` });
       else values[input.id] = v;

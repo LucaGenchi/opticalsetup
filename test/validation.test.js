@@ -21,6 +21,10 @@ import { materialDispersion, materialAbbe } from '../calculators/dispersion/mate
 import { DISPERSION_DEFAULTS, computeDispersion } from '../calculators/dispersion/dispersion-calculator.js';
 import { CONVERSION_DEFAULTS, computeConversion } from '../calculators/nonlinear-conversion/conversion-calculator.js';
 import { CRS_DEFAULTS, computeCrs, RESOLUTION_DEFAULTS, computeResolution } from '../calculators/coherent-raman/crs-calculator.js';
+import {
+  absorptionCrossSectionCm2, focusPeakIntensityWcm2, widefieldIntensityWcm2, moleculeRates, collectionFraction,
+  spectrumValue, detectionFractions, detectorQe,
+} from '../sketch/js/fluorescence.js';
 
 // The quantitative models listed in docs/validation.md are checked against
 // separately written reference implementations (validation/reference/*.py,
@@ -41,7 +45,20 @@ const C_NM_PER_FS = 299.792458;
 
 // How each reference case is answered by the app. Returns an object with the
 // same keys as the case's `expected`.
+const egfp = JSON.parse(readFileSync(new URL('../sketch/data/fluorophores/egfp.json', import.meta.url), 'utf8'));
+
 const APP = {
+  fluorescence: ({ kind, ...inputs }) => {
+    if (kind === 'crossSection') return { crossSectionCm2: absorptionCrossSectionCm2(inputs.extinctionM) };
+    if (kind === 'focus') return { intensityWcm2: focusPeakIntensityWcm2(inputs.powerW, inputs.wavelengthNm, inputs.na) };
+    if (kind === 'widefield') return { intensityWcm2: widefieldIntensityWcm2(inputs.powerW, inputs.diameterUm) };
+    if (kind === 'rates') return moleculeRates(inputs);
+    if (kind === 'collection') return { fraction: collectionFraction(inputs.na, inputs.mediumIndex) };
+    if (kind === 'excitation') return { relative: spectrumValue(egfp.excitation, inputs.nm) };
+    if (kind === 'qe') return { qe: detectorQe({ type: 'preset', id: inputs.detector }, inputs.nm) };
+    // kind === 'detection': EGFP's stored emission through the stack.
+    return detectionFractions(egfp.emission, inputs.filters, inputs.qe === null ? { type: 'ideal' } : { type: 'flat', qe: inputs.qe });
+  },
   'material-dispersion': ({ kind, material, wavelengthNm, ...inputs }) => {
     if (kind === 'point') return materialDispersion(material, wavelengthNm);
     if (kind === 'abbe') return { nd: materialDispersion(material, 587.5618)?.index, abbe: materialAbbe(material) };
@@ -155,7 +172,7 @@ const APP = {
   },
 };
 
-for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion']) {
+for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence']) {
   const model = expected(name);
   for (const c of model.cases) {
     test(`${model.id}: ${c.name}`, () => {

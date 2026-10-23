@@ -66,6 +66,25 @@ straight two-point baseline subtracted, and min–max scaled to 0–1000.
   name each ROD entry and its contributors. Only spectra contributed to ROD
   directly are used, not the RRUFF spectra it also republishes.
 
+## Fluorophore spectra
+
+The fluorescence calculator ships measured excitation and emission spectra
+of fluorescent proteins under `sketch/data/fluorophores/`, one JSON file per
+fluorophore, built by `tools/build-fluorophore-spectra.mjs` from FPbase,
+https://www.fpbase.org (T. J. Lambert, "FPbase: a community-editable
+fluorescent protein database", *Nature Methods* 16, 277–278 (2019),
+doi:10.1038/s41592-019-0352-8). They are other people's measurements, not
+offered under the GPL. FPbase states that its data are free of all copyright
+restrictions and available for commercial and non-commercial use, and asks
+users to credit the original authors (https://www.fpbase.org/terms/); each
+file names the paper FPbase credits for that protein. Changes made: FPbase's
+1 nm samples kept, negative values set to zero, each curve scaled to its peak
+and stored as integers, zero runs at the ends trimmed.
+
+The typical detector quantum-efficiency curves in `sketch/js/fluorescence.js`
+are OpticalSetup's own approximations, drawn from values and figures in
+Hamamatsu Photonics datasheets named there; they are not Hamamatsu data files.
+
 ## Community setups
 
 Scenes and descriptions under `community-submissions/` are their authors'

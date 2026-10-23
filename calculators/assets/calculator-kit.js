@@ -60,7 +60,7 @@ export function renderForm(form, inputs, groups, values) {
       const control = document.createElement(input.type === 'select' ? 'select' : 'input');
       control.id = id;
       control.name = input.id;
-      control.setAttribute('aria-describedby', helpId);
+      if (input.help) control.setAttribute('aria-describedby', helpId);
       if (input.type === 'select') {
         row.classList.add('choice');
         label.textContent = input.label;
@@ -80,6 +80,13 @@ export function renderForm(form, inputs, groups, values) {
           optgroups.get(groupLabel).append(option);
         }
         control.value = values[input.id];
+        row.append(label, control);
+      } else if (input.type === 'file') {
+        // The page reads the file; the form only carries its name.
+        row.classList.add('choice', 'file');
+        control.type = 'file';
+        if (input.accept) control.accept = input.accept;
+        label.textContent = input.label;
         row.append(label, control);
       } else if (input.type === 'checkbox') {
         control.type = 'checkbox';
@@ -114,11 +121,13 @@ export function renderForm(form, inputs, groups, values) {
         }
         row.append(label, wrap);
       }
-      const help = document.createElement('div');
-      help.className = 'help';
-      help.id = helpId;
-      help.textContent = input.help;
-      row.append(help);
+      if (input.help) {
+        const help = document.createElement('div');
+        help.className = 'help';
+        help.id = helpId;
+        help.textContent = input.help;
+        row.append(help);
+      }
       fieldset.append(row);
     }
     form.append(fieldset);
@@ -133,7 +142,7 @@ export function readForm(forms, inputs) {
   const raw = {};
   for (const input of inputs) {
     const el = formControl(forms, input.id);
-    raw[input.id] = input.type === 'checkbox' ? el.checked : el.value;
+    raw[input.id] = input.type === 'checkbox' ? el.checked : input.type === 'file' ? el.files?.[0]?.name ?? '' : el.value;
   }
   return raw;
 }
@@ -181,9 +190,11 @@ const el = (name, attrs = {}, parent) => {
   return node;
 };
 
-// series: [{ key, name, color (CSS var), values: number|null per x }]
+// series: [{ key, name, color (CSS var), values: number|null per x,
+//            fill: 'light' | 'strong' (area down to zero), dash: true }]
 // options: { x: [...], xLabel, yLabel, yLog, yMin, yMax, marker: {x, y} | null,
-//            band: {lo, hi, label} | null, formatX, formatY, message }
+//            band: {lo, hi, label} | null, vlines: [{x, label}],
+//            formatX, formatY, message }
 export function lineChart(host, table, options) {
   host.textContent = '';
   if (table) table.textContent = '';
@@ -205,7 +216,10 @@ export function lineChart(host, table, options) {
     for (const s of shown) {
       const item = document.createElement('span');
       const key = document.createElement('i');
-      key.style.background = `var(${s.color})`;
+      // A dashed series gets the chart's own 6-on, 4-off dash in its key.
+      key.style.background = s.dash ? `repeating-linear-gradient(90deg, var(${s.color}) 0 6px, transparent 6px 10px)` : `var(${s.color})`;
+      if (s.dash) key.className = 'dash';
+      else if (s.fill === 'strong') key.className = 'area';
       item.append(key, document.createTextNode(s.name));
       legend.append(item);
     }
@@ -261,6 +275,23 @@ export function lineChart(host, table, options) {
   el('text', { class: 'chart-label', x: pad.left + plotW / 2, y: height - 6, 'text-anchor': 'middle' }, svg).textContent = options.xLabel;
   el('text', { class: 'chart-label', x: 13, y: pad.top + plotH / 2, 'text-anchor': 'middle', transform: `rotate(-90 13 ${pad.top + plotH / 2})` }, svg).textContent = options.yLabel;
 
+  // Filled areas first, under every line; a run of values draws down to
+  // the baseline (zero, or the axis floor).
+  const base = sy(Math.max(ys.lo, Math.min(ys.hi, options.yLog ? ys.lo : 0)));
+  for (const s of shown.filter(s => s.fill)) {
+    let d = '', run = [];
+    const flush = () => {
+      if (run.length > 1) d += `M${run[0][0]},${base}L${run.map(p => p.join(',')).join('L')}L${run.at(-1)[0]},${base}Z`;
+      run = [];
+    };
+    s.values.forEach((v, k) => {
+      if (v === null || !Number.isFinite(v) || (options.yLog && !(v > 0))) { flush(); return; }
+      run.push([sx(x[k]).toFixed(1), sy(Math.min(Math.max(v, ys.lo), ys.hi)).toFixed(1)]);
+    });
+    flush();
+    el('path', { class: `chart-area${s.fill === 'strong' ? ' strong' : ''}`, d, fill: `var(${s.color})` }, svg);
+  }
+
   // lines (a null value breaks the line); drawn last-first so the first
   // series, the one the page is about, sits on top where they coincide
   for (const s of [...shown].reverse()) {
@@ -270,7 +301,18 @@ export function lineChart(host, table, options) {
       d += `${pen ? 'L' : 'M'}${sx(x[k]).toFixed(1)},${sy(v).toFixed(1)}`;
       pen = true;
     });
-    el('path', { class: 'chart-line', d, stroke: `var(${s.color})` }, svg);
+    el('path', { class: `chart-line${s.dash ? ' dash' : ''}`, d, stroke: `var(${s.color})` }, svg);
+  }
+
+  // Vertical marker lines (a laser line), labelled at the top.
+  for (const line of options.vlines ?? []) {
+    if (!(line.x >= xs.lo && line.x <= xs.hi)) continue;
+    const xPos = sx(line.x);
+    el('line', { class: 'chart-vline', x1: xPos, x2: xPos, y1: pad.top, y2: pad.top + plotH }, svg);
+    if (line.label) {
+      const right = xPos < pad.left + plotW - 90;
+      el('text', { class: 'chart-vline-label', x: xPos + (right ? 5 : -5), y: pad.top + 12, 'text-anchor': right ? 'start' : 'end' }, svg).textContent = line.label;
+    }
   }
   if (options.marker && Number.isFinite(options.marker.y)) {
     el('circle', { class: 'chart-marker', cx: sx(options.marker.x), cy: sy(options.marker.y), r: 5, fill: `var(${shown[0]?.color ?? '--series-1'})` }, svg);
