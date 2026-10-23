@@ -1829,10 +1829,8 @@ function sampleModeParams(layouts = SAMPLE_LAYOUTS) {
       show: (p, el) => isVolumeSpecimen(p) && specimenFocusReadout(el ? specimenFocusReading(el.id) : null) !== null,
       readout: (p, el) => specimenFocusReadout(el ? specimenFocusReading(el.id) : null) || '',
     },
-    // A marker, not a model of where the signal forms: off for new specimens,
-    // kept as it was in scenes saved before the default changed.
-    { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: false, appearance: true,
-      migrate: () => true },
+    // A marker, not a model of where the signal forms: off unless switched on.
+    { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: false, appearance: true },
     { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => specimenTypeOf(p) === 'resin' },
     { key: 'voxelSize', label: 'Voxel marker (mm)', type: 'number', min: 0.1, max: 6, step: 0.1, def: 0.6, show: p => specimenTypeOf(p) === 'resin' && p.voxelPreview },
     { key: 'transmitExc', label: 'Transmit excitation', type: 'checkbox', def: true, show: p => specimenTypeOf(p) !== 'absorbing' },

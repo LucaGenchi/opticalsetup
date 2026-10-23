@@ -31,8 +31,10 @@ export const NONLINEAR_ORDER = { tpef: 2, shg: 2, srs: 2, thpef: 3, thg: 3, cars
 export const MIN_RELATIVE_INTENSITY = 1e-3;
 const CUTOFF_U = Math.sqrt(1 / MIN_RELATIVE_INTENSITY - 1);
 
-// How far apart the emission spots along a path are, roughly.
-export const SPOT_SPACING_MM = 1.5;
+// How far apart the emission spots along a path are, roughly, and how many
+// one crossing may have.
+export const SPOT_SPACING_MM = 0.5;
+export const MAX_SPOTS = 16;
 
 // Below this convergence a bundle is treated as collimated: its focus is too
 // far away to place, and the specimen sees the same beam wherever it sits.
@@ -125,11 +127,17 @@ function fullYield(order) {
 //   a focal region far shorter than that); shares are fractions of the whole
 //   focal signal, so they add up to what this layer holds of it (at most 1,
 //   nothing for a layer away from the focus).
-// - Without a focus, or for a linear signal: `parts` even spots sharing 1.
+// - Without a focus, or for a linear signal: about `parts` even spots sharing
+//   1. When the beam's focus lies on the path, one spot sits exactly on it
+//   (what a confocal pinhole images), the others a whole spacing apart, each
+//   carrying the stretch of path nearest to it.
 export function volumeEmissionPoints(order, startMm, endMm, focus, parts) {
   const k = Math.max(1, Math.round(Number(parts) || 1));
-  const uniform = () => Array.from({ length: k }, (_, i) => ({ at: (i + 0.5) / k, share: 1 / k, level: 1 }));
   const n = Number(order);
+  const onPath = focus?.ok && Number.isFinite(startMm) && Number.isFinite(endMm) && endMm !== startMm
+    && Math.min(startMm, endMm) <= 0 && Math.max(startMm, endMm) >= 0;
+  const uniform = () => (onPath ? evenSpots(k, -startMm / (endMm - startMm))
+    : Array.from({ length: k }, (_, i) => ({ at: (i + 0.5) / k, share: 1 / k, level: 1 })));
   if (!(n > 1) || !focus?.ok || !(focus.zRMm > 0)) return uniform();
   if (!Number.isFinite(startMm) || !Number.isFinite(endMm) || startMm === endMm) return [];
   const u0 = Math.min(startMm, endMm) / focus.zRMm, u1 = Math.max(startMm, endMm) / focus.zRMm;
@@ -153,6 +161,20 @@ export function volumeEmissionPoints(order, startMm, endMm, focus, parts) {
     else out.push(placed);
   }
   return out;
+}
+
+// Spots 1/k apart along a path of length 1, one of them at `anchor`, each
+// sharing the part of the path nearer to it than to any other.
+function evenSpots(k, anchor) {
+  const step = 1 / k;
+  const at = [];
+  for (let j = Math.ceil((0 - anchor) / step - 1e-9); anchor + j * step <= 1 + 1e-9; j++) {
+    at.push(Math.min(1, Math.max(0, anchor + j * step)));
+  }
+  return at.map((x, i) => {
+    const lo = i ? (at[i - 1] + x) / 2 : 0, hi = i < at.length - 1 ? (x + at[i + 1]) / 2 : 1;
+    return { at: x, share: hi - lo, level: 1 };
+  }).filter(spot => spot.share > 0);
 }
 
 // The fraction of the excitation a linear signal converts over a path, from

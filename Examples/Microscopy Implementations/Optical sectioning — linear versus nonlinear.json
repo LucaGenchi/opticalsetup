@@ -19,8 +19,8 @@
   {
    "id": "ekxiyafy",
    "type": "cwlaser",
-   "x": 0,
-   "y": 0,
+   "x": 25,
+   "y": -15,
    "rot": 0,
    "label": "",
    "showLabel": false,
@@ -39,8 +39,8 @@
   {
    "id": "eqmu7d7q",
    "type": "textlabel",
-   "x": -30,
-   "y": -30,
+   "x": -5,
+   "y": -45,
    "rot": 0,
    "label": "",
    "showLabel": false,
@@ -51,37 +51,27 @@
    }
   },
   {
-   "id": "en32eayb",
-   "type": "lens",
-   "x": 150,
-   "y": 0,
-   "rot": 0,
-   "label": "",
-   "showLabel": false,
-   "params": {
-    "f": 100,
-    "dia": 25.4,
-    "transEff": 100
-   }
-  },
-  {
    "id": "e9ttpvah",
    "type": "sample",
-   "x": 250,
-   "y": 0,
+   "x": 205,
+   "y": -14.75,
    "rot": 90,
    "label": "",
    "showLabel": false,
    "params": {
     "aperture": 30,
+    "sampleLayout": "cuvette",
+    "activeSide": "top",
+    "glassThickness": 1,
+    "activeThickness": 6,
     "specimenType": "linear",
     "resinFluorescence": false,
     "channels": [
      {
       "kind": "fluor",
-      "nrays": 20,
+      "nrays": 24,
       "wl": 520,
-      "eff": 0.02,
+      "eff": 0.1,
       "epi": false,
       "epiRatio": 0.15,
       "autoWl": true,
@@ -95,12 +85,8 @@
       "requireOverlap": true
      }
     ],
-    "sampleLayout": "cuvette",
-    "activeSide": "top",
-    "glassThickness": 1,
-    "activeThickness": 20,
     "thickness": 6,
-    "showSignalSpot": true,
+    "showSignalSpot": false,
     "voxelPreview": false,
     "voxelSize": 0.6,
     "transmitExc": true,
@@ -114,8 +100,8 @@
   {
    "id": "er8ohihf",
    "type": "beamdump",
-   "x": 330,
-   "y": 0,
+   "x": 235,
+   "y": -15,
    "rot": 0,
    "label": "",
    "showLabel": false,
@@ -124,24 +110,10 @@
    }
   },
   {
-   "id": "ezbjyd74",
-   "type": "textlabel",
-   "x": 226,
-   "y": 25,
-   "rot": 0,
-   "label": "",
-   "showLabel": false,
-   "params": {
-    "text": "20 mm cuvette",
-    "fontSize": 8,
-    "fill": "#333333"
-   }
-  },
-  {
    "id": "ev6du01z",
    "type": "pulsedlaser",
-   "x": 0,
-   "y": 150,
+   "x": 25,
+   "y": 30,
    "rot": 0,
    "label": "",
    "showLabel": false,
@@ -169,8 +141,8 @@
   {
    "id": "ev49piyp",
    "type": "textlabel",
-   "x": -30,
-   "y": 120,
+   "x": -5,
+   "y": 62,
    "rot": 0,
    "label": "",
    "showLabel": false,
@@ -181,35 +153,25 @@
    }
   },
   {
-   "id": "e4brrx3e",
-   "type": "lens",
-   "x": 150,
-   "y": 150,
-   "rot": 0,
-   "label": "",
-   "showLabel": false,
-   "params": {
-    "f": 100,
-    "dia": 25.4,
-    "transEff": 100
-   }
-  },
-  {
    "id": "ev4gzne4",
    "type": "sample",
-   "x": 250,
-   "y": 150,
+   "x": 205,
+   "y": 30,
    "rot": 90,
    "label": "",
    "showLabel": false,
    "params": {
     "aperture": 30,
+    "sampleLayout": "cuvette",
+    "activeSide": "top",
+    "glassThickness": 1,
+    "activeThickness": 6,
     "specimenType": "nonlinear",
     "resinFluorescence": false,
     "channels": [
      {
       "kind": "tpef",
-      "nrays": 20,
+      "nrays": 24,
       "wl": 520,
       "eff": 0.3,
       "epi": false,
@@ -225,12 +187,8 @@
       "requireOverlap": true
      }
     ],
-    "sampleLayout": "cuvette",
-    "activeSide": "top",
-    "glassThickness": 1,
-    "activeThickness": 20,
     "thickness": 6,
-    "showSignalSpot": true,
+    "showSignalSpot": false,
     "voxelPreview": false,
     "voxelSize": 0.6,
     "transmitExc": true,
@@ -244,8 +202,8 @@
   {
    "id": "e3e4nw3o",
    "type": "beamdump",
-   "x": 330,
-   "y": 150,
+   "x": 235,
+   "y": 30,
    "rot": 0,
    "label": "",
    "showLabel": false,
@@ -254,24 +212,10 @@
    }
   },
   {
-   "id": "ee9jre6w",
-   "type": "textlabel",
-   "x": 226,
-   "y": 175,
-   "rot": 0,
-   "label": "",
-   "showLabel": false,
-   "params": {
-    "text": "20 mm cuvette",
-    "fontSize": 8,
-    "fill": "#333333"
-   }
-  },
-  {
    "id": "e40uu0mi",
    "type": "textlabel",
-   "x": -30,
-   "y": 215,
+   "x": 255,
+   "y": -15,
    "rot": 0,
    "label": "",
    "showLabel": false,
@@ -284,8 +228,8 @@
   {
    "id": "ei18rt9s",
    "type": "textlabel",
-   "x": -30,
-   "y": 233,
+   "x": 255,
+   "y": 32,
    "rot": 0,
    "label": "",
    "showLabel": false,
@@ -296,17 +240,76 @@
    }
   },
   {
-   "id": "e8igwasx",
-   "type": "textlabel",
-   "x": -30,
-   "y": 251,
+   "id": "e5jv2s6x",
+   "type": "objective",
+   "x": 184,
+   "y": -15,
    "rot": 0,
    "label": "",
    "showLabel": false,
    "params": {
-    "text": "Select the lower cuvette to read where its focus lies.",
-    "fontSize": 11,
-    "fill": "#333333"
+    "efl": 10,
+    "workingDistance": 5,
+    "immersion": "air",
+    "immersionIndex": 1.333,
+    "na": 0.4,
+    "showAcceptance": false,
+    "transEff": 100,
+    "frontAperture": 11
+   }
+  },
+  {
+   "id": "e0zooly4",
+   "type": "objective",
+   "x": 184,
+   "y": 30,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "efl": 10,
+    "workingDistance": 5,
+    "immersion": "air",
+    "immersionIndex": 1.333,
+    "na": 0.4,
+    "showAcceptance": false,
+    "transEff": 100,
+    "frontAperture": 11
+   }
+  },
+  {
+   "id": "eoq8q6qi",
+   "type": "filter",
+   "x": 120,
+   "y": 31,
+   "rot": 0,
+   "label": "Laser line filter",
+   "showLabel": false,
+   "params": {
+    "ftype": "bandpass",
+    "cutoff": 500,
+    "center": 920,
+    "band": 40,
+    "trans": 0.5,
+    "length": 25.4
+   },
+   "labelPos": "t"
+  },
+  {
+   "id": "exb369h2",
+   "type": "filter",
+   "x": 120,
+   "y": -15,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "ftype": "bandpass",
+    "cutoff": 500,
+    "center": 488,
+    "band": 1,
+    "trans": 0.5,
+    "length": 25.4
    }
   }
  ],

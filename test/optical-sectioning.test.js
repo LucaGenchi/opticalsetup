@@ -96,11 +96,23 @@ test('nothing is generated where the intensity is under 1/1000 of the focus', ()
 });
 
 test('a linear signal, or a beam without a focus, emits evenly along the path', () => {
-  for (const [order, focus] of [[1, { ok: true, zRMm: 0.1 }], [2, null], [2, { ok: false, reason: 'speckle' }]]) {
-    const points = volumeEmissionPoints(order, -10, 10, focus, 4);
+  for (const [order, focus] of [[1, null], [2, null], [2, { ok: false, reason: 'speckle' }], [1, { ok: true, zRMm: 0.1 }]]) {
+    // A focus off the path anchors nothing.
+    const points = volumeEmissionPoints(order, 5, 25, focus, 4);
     assert.deepEqual(points.map(p => p.at), [0.125, 0.375, 0.625, 0.875]);
     assert.ok(points.every(p => p.share === 0.25 && p.level === 1));
   }
+});
+
+test('a linear signal samples the focus itself when the focus is on the path', () => {
+  // What a confocal pinhole images: one spot exactly at the focus, the
+  // others a spacing apart, each carrying the path nearest to it.
+  const points = volumeEmissionPoints(1, -3, 7, { ok: true, zRMm: 0.001 }, 4);
+  const at = points.map(p => p.at);
+  assert.ok(at.some(x => Math.abs(x - 0.3) < 1e-12), `a spot at the focus: ${at}`);
+  for (let i = 1; i < at.length; i++) assert.ok(Math.abs(at[i] - at[i - 1] - 0.25) < 1e-12);
+  assert.ok(Math.abs(points.reduce((s, p) => s + p.share, 0) - 1) < 1e-12);
+  assert.ok(points.every(p => p.level === 1 && p.share > 0));
 });
 
 test('a linear signal grows with the path and never passes one', () => {
@@ -137,7 +149,7 @@ test('a new specimen is a sandwich; a saved one loads as the sandwich of its thi
     assert.equal(p.sampleLayout, 'sandwich');
     assert.equal(p.glassThickness, 2);
     assert.equal(p.activeThickness, 2);
-    assert.equal(p.showSignalSpot, true, 'the spot stays as the scene had it');
+    assert.equal(p.showSignalSpot, false, 'the excitation spot is off unless the scene switched it on');
     assert.ok(isVolumeSpecimen(p));
     // Per millimetre, so the 2 mm layer converts what the sheet did.
     for (const [c, old] of [[p.channels[0], 0.1], [p.channels[1], 0.4]]) {
@@ -560,4 +572,36 @@ test('a tilted specimen near a wide focus is still crossed by one beam', () => {
   const moved = bench(110 - 0.1 * Math.SQRT1_2, 0.1 * Math.SQRT1_2);
   assert.equal(specimenIncidentBeams(moved.sample.id).length, 1);
   assert.deepEqual(emissionOrigins(moved.drawables), []);
+});
+
+test('the example: fluorescence sampled every 0.5 mm through the focus, two-photon only at it', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const text = await readFile(new URL('../Examples/Microscopy Implementations/Optical sectioning — linear versus nonlinear.json', import.meta.url), 'utf8');
+  const scene = parseSketch(text, registry);
+  const { drawables } = traceScene(scene.elements, scene.beams);
+  for (const sample of scene.elements.filter(e => e.type === 'sample')) {
+    const [focus] = specimenFocusReading(sample.id).filter(r => r.ok && r.inside);
+    assert.ok(focus, `${sample.params.specimenType}: focused inside`);
+    // Fan origins on the beam's axis through the focus, drawn at least a
+    // tenth as bright as the brightest.
+    const spots = new Map();
+    for (const d of drawables) {
+      if (d.type !== 'path' || d.w !== 1.8 || Math.abs(d.pts[0].y - focus.point.y) > 1e-6) continue;
+      const x = Number(d.pts[0].x.toFixed(6));
+      const spot = spots.get(x) || { n: 0, opacity: 0 };
+      spot.n++;
+      spot.opacity = Math.max(spot.opacity, d.opacity);
+      spots.set(x, spot);
+    }
+    const fans = [...spots].filter(([, s]) => s.n >= 10);
+    const brightest = Math.max(...fans.map(([, s]) => s.opacity));
+    const xs = fans.filter(([, s]) => s.opacity >= brightest / 10).map(([x]) => x).sort((a, b) => a - b);
+    assert.ok(xs.some(x => Math.abs(x - focus.point.x) < 1e-6), `${sample.params.specimenType}: a spot at the focus, ${xs}`);
+    if (sample.params.specimenType === 'linear') {
+      assert.ok(xs.length >= 10, `along the 6 mm layer: ${xs}`);
+      for (let i = 1; i < xs.length; i++) assert.ok(xs[i] - xs[i - 1] <= 0.5 + 1e-9);
+    } else {
+      assert.deepEqual(xs.map(x => Number(x.toFixed(6))), [Number(focus.point.x.toFixed(6))]);
+    }
+  }
 });

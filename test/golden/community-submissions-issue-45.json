@@ -2,19 +2,19 @@
  "elements": 27,
  "beams": 3,
  "drawables": {
-  "count": 535,
+  "count": 680,
   "byType": {
    "poly": 344,
-   "path": 191
+   "path": 336
   },
   "colors": {
-   "#00ff38": 205,
+   "#00ff38": 350,
    "#8b1a1a": 330
   },
-  "points": 1769,
+  "points": 2070,
   "sum": [
-   350607.164,
-   230553.67
+   376073.335,
+   305973.533
   ],
   "bbox": [
    25,
@@ -22,7 +22,7 @@
    500.8058,
    274
   ],
-  "digest": "aecc9647"
+  "digest": "73a0fb3b"
  },
  "drawnElements": {
   "pulsedlaser:ejwmt7kk": "9417886c",
@@ -367,7 +367,7 @@
     "profileMode": null,
     "profileScale": "absolute",
     "pulse": {
-     "arrivalSpreadPs": 2.32445457,
+     "arrivalSpreadPs": 4.03752954,
      "branches": [
       {
        "gates": [],
@@ -883,8 +883,8 @@
     "color": "#00ff38",
     "convergence": {
      "diverging": true,
-     "fullAngleDeg": 1.60318267,
-     "slopePerMm": 0.00236115459
+     "fullAngleDeg": 1.64848932,
+     "slopePerMm": 0.00239157677
     },
     "dark": false,
     "darkOutput": 0.0001,
@@ -901,7 +901,7 @@
     "profileMode": null,
     "profileScale": "absolute",
     "pulse": {
-     "arrivalSpreadPs": 2.65536619,
+     "arrivalSpreadPs": 2.78444713,
      "branches": [
       {
        "gates": [],
@@ -909,7 +909,7 @@
       }
      ],
      "dispersionModel": "Gaussian GDD · transform-limited",
-     "earliestPathDelayNs": 6.19813886,
+     "earliestPathDelayNs": 6.19813821,
      "envelope": null,
      "fieldIssue": null,
      "gddFs2": 4172.84675,
@@ -937,7 +937,7 @@
        "gddFs2": 4172.84675,
        "groupDelayDifferenceFs": -102.386702,
        "inputGddFs2": 0,
-       "pathDelayNs": 6.19813886,
+       "pathDelayNs": 6.19813821,
        "phaseNs": 0,
        "pulseShape": "gauss",
        "pulseWidthFs": 180,
@@ -951,7 +951,7 @@
      "transformLimited": true
     },
     "readoutKind": "pmt",
-    "samples": 10,
+    "samples": 20,
     "saturated": false,
     "signal": 0.0050151725,
     "snr": 501.51725,
@@ -1395,7 +1395,7 @@
       "widthNm": 2.43954134
      }
     ],
-    "spotSpan": 11.8504803,
+    "spotSpan": 14.5658728,
     "wavelength": 507
    }
   },

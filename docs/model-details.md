@@ -320,9 +320,12 @@ and comes back, off a mirror, interacts again, and its returning beam is
 recorded as a separate crossing. It emits along each ray's straight path through that layer
 (`volumeCrossing` in `sketch/js/raytrace.js`):
 
-- Linear channels: evenly along the path, about one spot per 1.5 mm (two to
-  eight). Their efficiency is per millimetre: the path converts
-  1 − (1 − eff)^L (`linearPathFraction`).
+- Linear channels: evenly along the path, about one spot per 0.5 mm
+  (`SPOT_SPACING_MM`, at most `MAX_SPOTS` = 16). When the beam's focus lies on
+  the path, the spots are placed so that one sits exactly at the focus (what a
+  confocal pinhole images), each carrying the stretch of path nearest to it.
+  Their efficiency is per millimetre: the path converts 1 − (1 − eff)^L
+  (`linearPathFraction`).
 - Nonlinear channels follow the beam's focus. The probe pass records where
   each sampling ray of a beam crosses the specimen; `bundleFocus` in
   `sketch/js/sectioning.js` finds the plane of least spread along the beam
@@ -340,8 +343,9 @@ recorded as a separate crossing. It emits along each ray's straight path through
   from the point of each path nearest the focus; their optical path is the
   hit's shifted to that point (`oplShift`).
 - Without a focus — a collimated or one-ray beam, or speckle (rays marked by
-  a diffuser) — nonlinear channels emit evenly along the path with their full
-  efficiency, and coherent signals leave from the exit and entry faces.
+  a diffuser) — nonlinear channels emit evenly along the path, at the same
+  spacing, with their full efficiency, and coherent signals leave from the
+  exit and entry faces.
 
 Incoherent light (fluorescence, Raman) is never marked as speckle, even
 behind a diffuser or driven by a speckled beam. The *Focus inside* readout lists

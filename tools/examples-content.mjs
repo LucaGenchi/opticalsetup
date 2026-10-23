@@ -506,51 +506,79 @@ export const exampleEntries = [
   {
     match: 'Optical sectioning — linear versus nonlinear',
     title: 'Optical sectioning: linear versus nonlinear signals',
-    tagline: 'One focused beam through a fluorescent cuvette: one-photon fluorescence glows along the whole path, two-photon fluorescence only at the focus.',
+    tagline: 'The same objective focusing into the same fluorescent cuvette: one-photon fluorescence glows along the whole beam, two-photon fluorescence only at the focus.',
     html: `
-      <p>A focused beam carries the same power through every plane along its path; only
-      the area it is spread over changes. A signal that grows in proportion to the
-      intensity — one-photon fluorescence, spontaneous Raman — therefore comes from a thin
-      layer equally well wherever that layer sits in the cone: out-of-focus planes add
-      their light to the image, and a confocal microscope needs a pinhole to reject it.</p>
-      <p>A signal that grows as the n-th power of the intensity behaves differently.
-      Through a layer the power is fixed, but the intensity falls as the beam widens, so
-      the signal falls as the beam area to the power n − 1. For a Gaussian focus that is
-      (1 + (z/z<sub>R</sub>)²)<sup>−(n−1)</sup> at a distance z from the focus, with
-      z<sub>R</sub> the Rayleigh range. Two-photon fluorescence (n = 2) from a layer a few
-      Rayleigh ranges away is already a small fraction of its value at the focus; three-photon
-      fluorescence and third-harmonic generation (n = 3) fall faster still. That is the
-      optical sectioning of multiphoton microscopy: the signal itself only comes from the
-      focal region, so no pinhole is needed. Nonlinear light does not need a focus as
-      such — a wide-field or speckle beam of high enough peak power generates it too — but
-      it then comes from everywhere the beam is, with no sectioning.</p>`,
+      <p>Optical sectioning is what lets a microscope image one plane inside a thick specimen
+      without the planes above and below it washing the image out. Two very different
+      physical mechanisms give it, and this setup shows why they differ.</p>
+      <h3>Linear signals come from the whole beam</h3>
+      <p>A focused beam carries the same power through every plane along its path; only the
+      area it is spread over changes. A signal that grows in proportion to the intensity —
+      one-photon fluorescence, spontaneous Raman — therefore comes from a thin slice of the
+      specimen equally well wherever the slice sits in the cone, in focus or not. A wide-field
+      fluorescence microscope collects all of it, so out-of-focus light adds a haze to the
+      image. A confocal microscope removes it after the fact: a pinhole in front of the
+      detector, conjugate to the focus, rejects the fluorescence excited above and below the
+      plane in focus${cite(2)}. The fluorescence is still generated everywhere along the beam,
+      and so is the photobleaching${cite(2)}.</p>
+      <h3>Nonlinear signals come from the focus</h3>
+      <p>Two-photon fluorescence needs two photons absorbed together, so it grows with the
+      square of the excitation intensity${cite(1, 2)}. Through each slice the power is fixed but
+      the intensity falls as the beam widens, so the signal from a slice falls as the beam's
+      area to the power n − 1 for an n-photon process. For a Gaussian focus that is
+      (1 + (z/z<sub>R</sub>)²)<sup>−(n−1)</sup> at a distance z from the focus, where
+      z<sub>R</sub> is the Rayleigh range: a slice a few Rayleigh ranges away already gives a
+      small fraction of what the focal slice gives, and three-photon fluorescence and third
+      harmonic generation (n = 3) fall off faster still. The fluorescence, and the bleaching,
+      are confined to the focal region${cite(1)}: the sectioning is intrinsic to the
+      excitation, no pinhole is needed, and every emitted photon can be collected, even
+      scattered ones${cite(2)}. This is what Denk, Strickler and Webb showed in the first
+      two-photon laser-scanning microscope${cite(1)}.</p>
+      <p>Nonlinear light does not need a focus as such. A wide-field or speckle beam with enough
+      peak power generates it too, but then it comes from everywhere the beam is, and there
+      is no sectioning.</p>`,
     inOpticalSetupTitle: 'What this setup demonstrates',
     inOpticalSetupHtml: `
-      <p>Each arm focuses a 10&nbsp;mm beam with an f&nbsp;=&nbsp;100&nbsp;mm lens into the
-      middle of a cuvette of GFP solution, 20&nbsp;mm inside. In the upper arm a 488&nbsp;nm
-      laser drives one-photon fluorescence: it glows along the whole path through the
-      cuvette. In the lower arm a 920&nbsp;nm femtosecond laser drives two-photon
-      fluorescence: it glows at the focus, fading within a few millimetres — this gentle
-      lens has a Rayleigh range of about 120&nbsp;µm.</p>
-      <p>Select the lower cuvette to read where its focus is. Move the cuvette so its inside
-      starts more than 4 mm past the focus, and the two-photon signal disappears; remove
-      the lens, and the collimated beam generates it along the whole path instead. A microscope objective
-      focuses far more tightly: try a sample on the piezo stage, a thin active layer
-      between two glasses, under a 40× objective.</p>`,
-    limitations: `<p>The cuvette is a qualitative layered specimen: each ray crosses it in a
-      straight line, and the signal is emitted from a few spots along that line. The focus is
-      an ideal diffraction-limited Gaussian in air, estimated from the convergence of the
-      traced rays: no aberrations, refractive index, scattering or high-NA vector effects.
-      Only where the intensity is at least 1/1000 of the focus's is two-photon light
-      generated, an illustrative limit. The one-photon signal grows with the path, at its
-      efficiency per millimetre. Neither is a cross-section or a peak-intensity
-      calculation.</p>`,
-    citations: [],
+      <p>Both arms are the same: a laser, a laser-line filter, an objective (EFL 10&nbsp;mm,
+      NA 0.4, working distance 5&nbsp;mm) and a cuvette of GFP solution with 1&nbsp;mm glass
+      walls and 6&nbsp;mm inside, focused 3&nbsp;mm into it. Only the excitation differs.</p>
+      <ul>
+        <li><strong>488&nbsp;nm, continuous:</strong> one-photon fluorescence glows along the
+        whole 6&nbsp;mm path through the cuvette, including the cone before and after the focus.
+        The workbench emits it from spots every 0.5&nbsp;mm along the beam, one of them exactly
+        at the focus — the point a confocal pinhole would image.</li>
+        <li><strong>920&nbsp;nm, 150&nbsp;fs:</strong> two-photon fluorescence comes only from
+        the focus. Select the cuvette: <em>Focus inside</em> gives the focus 3&nbsp;mm into the
+        active layer with a Rayleigh range of about 2.4&nbsp;µm.</li>
+      </ul>
+      <p>Things to try. Move the lower cuvette so the focus lies in its glass wall, more than
+      about 75&nbsp;µm (31.6 Rayleigh ranges) from the inside, and the two-photon signal
+      disappears while the upper one does not change. Replace the objective with a weak lens,
+      and the two-photon glow stretches along the beam as the focus grows longer. Put a
+      diffuser in the beam, or remove the objective, and there is no focus left to section
+      with: the two-photon signal comes from the whole path, like the one-photon one. The
+      specimen's <em>Sample layout</em> also offers a thin layer between two glasses, the
+      usual microscopy sample.</p>`,
+    limitations: `<p>The cuvette is a qualitative layered specimen. Each ray crosses it in a
+      straight line, with no refraction at the glass, and the signal is emitted from a few
+      spots along that line. The focus is an ideal diffraction-limited Gaussian in air,
+      estimated from the convergence of the traced rays: no aberrations, refractive index,
+      scattering or high-NA vector effects. Two-photon light is generated only where the
+      intensity is at least 1/1000 of the focus's, an illustrative limit; a real microscope's
+      sectioning (a few micrometres) is set by the detected signal, not by a cutoff. The
+      one-photon signal grows with the path at its efficiency per millimetre, and the
+      two-photon total is its efficiency, reached when the focal region lies inside the active
+      layer; neither is a cross-section or a peak-intensity calculation. No pinhole or confocal
+      detection is part of this setup.</p>`,
+    citations: [
+      { label: 'W. Denk, J. H. Strickler and W. W. Webb, "Two-photon laser scanning fluorescence microscopy," Science 248, 73–76 (1990)', url: 'https://doi.org/10.1126/science.2321027' },
+      { label: 'P. Luu, S. E. Fraser and F. Schneider, "More than double the fun with two-photon excitation microscopy," Communications Biology 7, 364 (2024)', url: 'https://doi.org/10.1038/s42003-024-06057-0' },
+    ],
     resources: [
       { label: 'RP Photonics Encyclopedia — Multiphoton Microscopy', url: 'https://www.rp-photonics.com/multiphoton_microscopy.html' },
       { label: 'RP Photonics Encyclopedia — Gaussian Beams', url: 'https://www.rp-photonics.com/gaussian_beams.html' },
     ],
-    related: ['sample', 'pulsedlaser', 'cwlaser', 'lens'],
+    related: ['sample', 'objective', 'pulsedlaser', 'cwlaser', 'filter', 'stage'],
   },
   {
     match: 'Coherent Raman microscope — SRS and CARS',

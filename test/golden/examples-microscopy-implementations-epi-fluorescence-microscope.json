@@ -2,27 +2,27 @@
  "elements": 13,
  "beams": 0,
  "drawables": {
-  "count": 340,
+  "count": 694,
   "byType": {
-   "path": 244,
+   "path": 598,
    "poly": 96
   },
   "colors": {
    "#00f7ff": 104,
-   "#00ff38": 236
+   "#00ff38": 590
   },
-  "points": 880,
+  "points": 1600,
   "sum": [
-   212383.994,
-   252245.464
+   407059.97,
+   483013.646
   ],
   "bbox": [
    21,
    -53,
    297.7683,
-   361.3946
+   361.8946
   ],
-  "digest": "0a3f437b"
+  "digest": "b322f372"
  },
  "drawnElements": {
   "textlabel:title": "a4968fa7",
@@ -36,7 +36,7 @@
   "filter:emission-filter": "22c67037",
   "lens:tube-lens": "21f36c16",
   "camera:camera": "8753c379",
-  "display:camera-screen": "3dba24ce",
+  "display:camera-screen": "5f008954",
   "textlabel:note-stage": "142b1895"
  },
  "pulseTracks": [],
@@ -105,13 +105,13 @@
     "approximations": [],
     "bandMax": 550.531915,
     "bandMin": 499.468085,
-    "centroid": -3.24789587e-14,
+    "centroid": -1.06022952e-14,
     "coherentPaths": 0,
     "color": "#2bff1a",
     "convergence": {
      "diverging": false,
-     "fullAngleDeg": 2.60342523,
-     "slopePerMm": -0.0329171475
+     "fullAngleDeg": 2.95856305,
+     "slopePerMm": -0.029648585
     },
     "dark": false,
     "darkOutput": null,
@@ -126,10 +126,10 @@
      0,
      0,
      0,
-     0.000614293185,
-     0.01519527,
-     0.01519527,
-     0.000614293185,
+     0.000961698021,
+     0.0148478651,
+     0.0148478651,
+     0.000961698021,
      0,
      0,
      0,
@@ -147,7 +147,7 @@
     "interference": {
      "applied": false,
      "coherentSources": 0,
-     "excludedHits": 4,
+     "excludedHits": 10,
      "fallbackReason": null,
      "partial": false,
      "pathCount": 0,
@@ -170,10 +170,10 @@
      0,
      0,
      0,
-     0.000614293185,
-     0.01519527,
-     0.01519527,
-     0.000614293185,
+     0.000961698021,
+     0.0148478651,
+     0.0148478651,
+     0.000961698021,
      0,
      0,
      0,
@@ -215,7 +215,7 @@
     "profileScale": "fit",
     "pulse": null,
     "readoutKind": "camera",
-    "samples": 4,
+    "samples": 10,
     "saturated": false,
     "signal": 0.0316191263,
     "snr": null,
@@ -659,7 +659,7 @@
       "widthNm": 1.06382979
      }
     ],
-    "spotSpan": 1.44427899,
+    "spotSpan": 2.07804493,
     "wavelength": 517.343266
    }
   }
