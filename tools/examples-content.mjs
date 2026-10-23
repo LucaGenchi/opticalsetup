@@ -509,8 +509,9 @@ export const exampleEntries = [
     tagline: 'The same objective focusing into the same fluorescent cuvette: one-photon fluorescence glows along the whole beam, two-photon fluorescence only at the focus.',
     html: `
       <p>Optical sectioning is what lets a microscope image one plane inside a thick specimen
-      without the planes above and below it washing the image out. Two very different
-      physical mechanisms give it, and this setup shows why they differ.</p>
+      without the planes above and below it washing the image out. In this setup only the
+      nonlinear signal is sectioned: the same focused beam excites one-photon fluorescence
+      all along its path, and two-photon fluorescence only at its focus.</p>
       <h3>Linear signals come from the whole beam</h3>
       <p>A focused beam carries the same power through every plane along its path; only the
       area it is spread over changes. A signal that grows in proportion to the intensity —
