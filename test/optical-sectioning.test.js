@@ -407,28 +407,79 @@ test('fluorescence driven through a diffuser is not drawn as speckle', () => {
   assert.ok(drawables.some(d => d.color === color), 'the fluorescence is drawn');
 });
 
-test('a ray crossing the active layer without crossing its mid-line still generates', () => {
-  // Andrea (#261): y = x - 175 crosses 7.07 mm of a 20 mm active layer
-  // centred at (200, 0), entering through a side and leaving by a face.
-  const laser = createElement('cwlaser', 150, -25);
-  laser.rot = 45;
+// Emitted power of fans launched along a straight line through `through`,
+// heading `way`: a huge circle tangent to that line catches the half of every
+// fan on one side.
+const emittedAlong = (through, way, wl = 560) => {
+  const n = { x: -way.y, y: way.x };
+  return probeBeamsAt(through.x + n.x * 1e6, through.y + n.y * 1e6, 1e6 - 1e-6)
+    .filter(b => Math.abs(b.wl - wl) < 0.5).reduce((sum, b) => sum + b.power, 0);
+};
+
+function obliqueBench({ rot = 45, from = { x: 150, y: -25 }, active = 20 } = {}) {
+  const laser = createElement('cwlaser', from.x, from.y);
+  laser.rot = rot;
   Object.assign(laser.params, { wavelength: 488, beamMode: 'line' });
   const sample = createElement('sample', 200, 0);
   sample.rot = 90;
   Object.assign(sample.params, {
-    aperture: 40, activeThickness: 20, specimenType: 'linear',
+    aperture: 40, activeThickness: active, specimenType: 'linear',
     channels: [{ ...newSampleChannel('fluor'), eff: 0.1, autoWl: false, wl: 560 }],
   });
   const { drawables } = traceScene([laser, sample]);
+  return { sample, drawables };
+}
+
+test('a ray crossing the active layer through a side generates along its real path', () => {
+  // Andrea (#261): y = x - 175 crosses a 20 mm active layer centred at
+  // (200, 0) from (190, 15) to (195, 20): 7.07 mm, in through a face and
+  // out through a side, never crossing the mid-line.
+  const { sample, drawables } = obliqueBench();
   assert.equal(specimenIncidentBeams(sample.id).length, 1, 'the crossing is seen');
-  assert.ok(emissionOrigins(drawables).length >= 1, 'and emits');
-  // Once only: a ray inside the layer crossing the mid-line as well is
-  // already inside it.
-  const straight = createElement('cwlaser', 150, 0);
-  Object.assign(straight.params, { wavelength: 488, beamMode: 'line' });
-  const plain = traceScene([straight, sample]);
-  const fans = emissionOrigins(plain.drawables);
-  assert.equal(new Set(fans).size, fans.length);
+  const color = wavelengthToColor(560);
+  const spots = [...new Set(drawables.filter(d => d.type === 'path' && d.color === color && d.w === 1.8)
+    .map(d => `${d.pts[0].x.toFixed(4)},${d.pts[0].y.toFixed(4)}`))]
+    .map(k => k.split(',').map(Number))
+    .filter(([x, y]) => Math.abs(y - (x - 175)) < 1e-6);
+  assert.ok(spots.length >= 1);
+  for (const [x, y] of spots) assert.ok(x >= 190 - 1e-9 && x <= 195 + 1e-9 && y <= 20 + 1e-9, `spot (${x}, ${y}) inside the layer`);
+  const way = { x: Math.SQRT1_2, y: Math.SQRT1_2 };
+  const oblique = emittedAlong({ x: 192.5, y: 17.5 }, way);
+  // The same 7.07 mm at normal incidence emits the same: 1 - 0.9^7.07.
+  const straight = obliqueBench({ rot: 0, from: { x: 120, y: 0 }, active: 5 * Math.SQRT2 });
+  const reference = emittedAlong({ x: 200, y: 0 }, { x: 1, y: 0 });
+  assert.ok(reference > 0 && Math.abs(oblique / reference - 1) < 1e-9, `oblique ${oblique}, straight ${reference}`);
+  assert.ok(straight.sample);
+});
+
+test('light coming back off a mirror crosses the specimen again', () => {
+  // Andrea (#261): an ideal mirror keeps the ray's branch, so the returning
+  // light looked as if it were still inside the specimen.
+  const bench = refl => {
+    const laser = createElement('cwlaser', 100, 0);
+    Object.assign(laser.params, { wavelength: 488, beamMode: 'line' });
+    const sample = createElement('sample', 200, 0);
+    sample.rot = 90;
+    Object.assign(sample.params, {
+      aperture: 40, activeThickness: 1, specimenType: 'linear', transmitExc: true, transmission: 0.8,
+      channels: [{ ...newSampleChannel('fluor'), eff: 0.1, autoWl: false, wl: 560 }],
+    });
+    const elements = [laser, sample];
+    if (refl !== null) {
+      const mirror = createElement('mirror', 300, 0);
+      Object.assign(mirror.params, { refl, length: 2 });
+      elements.push(mirror);
+    }
+    traceScene(elements);
+    return emitted(sample);
+  };
+  const once = bench(null);
+  assert.ok(once > 0);
+  for (const refl of [100, 99.99]) {
+    const twice = bench(refl);
+    // Back through the specimen with 0.8 of the beam: 0.1 + 0.08 = 0.18.
+    assert.ok(Math.abs(twice / once - (1 + 0.8 * refl / 100)) < 1e-6, `R ${refl}%: ${twice / once}`);
+  }
 });
 
 test('light generated away from the hit is timed from where it is generated', () => {

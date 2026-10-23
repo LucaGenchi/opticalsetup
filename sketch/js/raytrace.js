@@ -113,8 +113,11 @@ let gateTransmissionCache = new Map();
 // Set of wavelengths observed arriving at that specimen.
 let specimenProbe = null;
 let specimenEmissionSamples = new WeakMap();
-// probe beam record -> its key without gates (see beamRecordFor).
+// probe beam record -> its key without gates, and the way it was travelling
+// (see beamRecordFor).
 const probeBaseKeys = new WeakMap();
+const probeDirections = new WeakMap();
+const RETURN_SUFFIX = '|return';
 // element id -> wavelengths observed arriving at its specimen surface on the
 // last trace. Read by the inspector to derive emission defaults and warn
 // about channels the bench cannot drive; empty when nothing illuminates it.
@@ -2015,20 +2018,31 @@ function carriesWholeTrain(ray) {
 const probeKeyOf = surface => (surface.kind === 'specimen' && surface.el ? `specimen:${surface.el.id}` : surface.id);
 
 // Whether a ray is already inside this specimen: the last element it went
-// through is this one, so it is crossing a second of its surfaces on the
-// same pass (its mid-line after a side edge, or the reverse) and must not
-// interact again.
+// through is this one and it starts within the active layer, so it is
+// crossing a second of its surfaces on the same pass (its mid-line after a
+// side edge, or the reverse) and must not interact again. Light that left
+// and came back -- off a mirror that kept its branch -- starts outside.
 function crossingSameSpecimen(ray, surface) {
   if (surface.kind !== 'specimen' || !surface.el || !surface.data?.volume) return false;
   const last = String(ray.branch || '').split('>').pop();
-  return last.startsWith(`${surface.el.id}:`);
+  if (!last.startsWith(`${surface.el.id}:`)) return false;
+  const { along, mid } = activeRect(surface);
+  const rel = sub({ x: ray.x, y: ray.y }, mid);
+  const tolerance = 1e-6;
+  return Math.abs(dot(rel, perp(along))) <= (Number(surface.data.halfThickness) || 0) + tolerance
+    && Math.abs(dot(rel, along)) <= (Number(surface.data.halfWidth) || 0) + tolerance;
 }
 
 function recordProbeBeam(surface, ray, hit = null) {
   const probeKey = probeKeyOf(surface);
   let seen = specimenProbe.get(probeKey);
   if (!seen) specimenProbe.set(probeKey, seen = []);
-  const key = probeBeamKey(ray);
+  // A beam coming back the other way (off a mirror behind) is a separate
+  // crossing, recorded beside the first.
+  let key = probeBeamKey(ray);
+  let returning = false;
+  const outgoing = seen.find(b => b.key === key);
+  if (outgoing && !sameWay(outgoing, ray)) { key += RETURN_SUFFIX; returning = true; }
   const weight = Math.max(0, ray.intensity || 0);
   const already = seen.find(b => b.key === key);
   // A beam sampled by several rays is one beam: its power is theirs together,
@@ -2094,7 +2108,8 @@ function recordProbeBeam(surface, ray, hit = null) {
     ...(ray.speckle ? { speckle: true } : {}),
   };
   specimenEmissionSamples.set(beam, { sample, distance });
-  probeBaseKeys.set(beam, probeBeamKey(ray, { withGates: false }));
+  probeBaseKeys.set(beam, probeBeamKey(ray, { withGates: false }) + (returning ? RETURN_SUFFIX : ''));
+  probeDirections.set(beam, { x: ray.dx, y: ray.dy });
   seen.push(beam);
 }
 
@@ -2114,12 +2129,20 @@ function settleProbeBeam(beam) {
 // along also accepts the one beam on the same path with the same train,
 // whatever its gates.
 function beamRecordFor(ray, beams) {
+  const list = (beams || []).filter(beam => sameWay(beam, ray));
   const key = probeBeamKey(ray);
-  const exact = (beams || []).find(beam => beam.key === key);
+  const exact = list.find(beam => beam.key === key || beam.key === key + RETURN_SUFFIX);
   if (exact) return exact;
   const base = probeBeamKey(ray, { withGates: false });
-  const same = (beams || []).filter(beam => probeBaseKeys.get(beam) === base);
+  const same = list.filter(beam => probeBaseKeys.get(beam) === base || probeBaseKeys.get(beam) === base + RETURN_SUFFIX);
   return same.length === 1 ? same[0] : null;
+}
+
+// Whether a ray travels the way a recorded beam did: a beam's sampling rays
+// converge or diverge, but never turn back.
+function sameWay(beam, ray) {
+  const way = probeDirections.get(beam);
+  return !way || !Number.isFinite(ray?.dx) || way.x * ray.dx + way.y * ray.dy >= 0;
 }
 
 // One incoherent fan per arriving excitation branch, powered by all the
@@ -7218,10 +7241,14 @@ function volumeCrossing(s, ray, hit, d, record) {
   const { along, mid } = activeRect(s);
   const normal = perp(along);
   const across = dot(d, normal), sideways = dot(d, along);
-  const x0 = dot(sub(hit.p, mid), along);
+  // Where the hit is in the rectangle: on the mid-line, or on a side edge.
+  const x0 = dot(sub(hit.p, mid), along), y0 = dot(sub(hit.p, mid), normal);
   // Parameter range along d (from the hit) that stays inside the rectangle.
   let lo = -Infinity, hi = Infinity;
-  if (Math.abs(across) > 1e-9) { const t = halfThickness / Math.abs(across); lo = -t; hi = t; }
+  if (Math.abs(across) > 1e-9) {
+    const a = (-halfThickness - y0) / across, b = (halfThickness - y0) / across;
+    lo = Math.min(a, b); hi = Math.max(a, b);
+  }
   if (Math.abs(sideways) > 1e-9) {
     const a = (-halfWidth - x0) / sideways, b = (halfWidth - x0) / sideways;
     lo = Math.max(lo, Math.min(a, b)); hi = Math.min(hi, Math.max(a, b));

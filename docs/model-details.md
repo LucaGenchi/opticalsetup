@@ -308,11 +308,16 @@ a sandwich of the same total thickness, a third glass on each side and a third
 active (`migrateThinSpecimen`, through the definition's `migrateParams` hook in
 `sketch/js/state.js`); each linear channel's efficiency becomes the
 per-millimetre value 1 − (1 − eff)^(1/L) that gives the old total over that
-layer at normal incidence, and nonlinear efficiencies are kept. The specimen's
+layer at normal incidence, and nonlinear efficiencies are kept. A
+per-millimetre efficiency cannot pass 1, so a very high old efficiency on a
+very thin old specimen rounds up: above about 0.975 at the thinnest, 0.3 mm
+(a 0.1 mm active layer), the converted total is 1 rather than the saved value. The specimen's
 surfaces are its active layer's mid-line and its two side edges, so a ray
 crossing the layer through a side is seen too; a ray already inside the
-specimen (its branch last went through it) passes its other surfaces without
-interacting again. It emits along each ray's straight path through that layer
+specimen (its branch last went through it and it starts within the active
+layer) passes its other surfaces without interacting again; light that left
+and comes back, off a mirror, interacts again, and its returning beam is
+recorded as a separate crossing. It emits along each ray's straight path through that layer
 (`volumeCrossing` in `sketch/js/raytrace.js`):
 
 - Linear channels: evenly along the path, about one spot per 1.5 mm (two to
