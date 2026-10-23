@@ -533,3 +533,31 @@ test('a very wide cone is one beam, however far apart its edge rays point', () =
   const flat = bench(false);
   assert.ok(Math.abs(cone.power / flat.power - 1) < 1e-9, `cone ${cone.power}, flat ${flat.power}`);
 });
+
+test('a tilted specimen near a wide focus is still crossed by one beam', () => {
+  // Andrea (#261): tilted 45° at the apex of a wide cone, one beam crosses
+  // the layer from both sides; it is still one crossing.
+  const bench = (x, y) => {
+    const laser = createElement('pulsedlaser', 0, 0);
+    Object.assign(laser.params, { wavelength: 920, beamMode: 'beam', beamWidth: 25 });
+    const lens = createElement('lens', 100, 0);
+    Object.assign(lens.params, { f: 10, dia: 40 });
+    const sample = createElement('sample', x, y);
+    sample.rot = 45;
+    Object.assign(sample.params, {
+      aperture: 10, activeThickness: 0.1, specimenType: 'nonlinear',
+      channels: [{ ...newSampleChannel('tpef'), eff: 0.2, autoWl: false, wl: 560 }],
+    });
+    const { drawables } = traceScene([laser, lens, sample]);
+    return { sample, drawables };
+  };
+  const centred = bench(110, 0);
+  assert.equal(specimenIncidentBeams(centred.sample.id).length, 1, 'one beam record');
+  const [reading] = specimenFocusReading(centred.sample.id);
+  assert.ok(reading.ok && reading.inside && reading.zRMm < 0.001, `zR ${reading.zRMm}`);
+  // Moved 0.1 mm along its normal, every crossing is beyond the cutoff
+  // (about 15 µm here): nothing is generated.
+  const moved = bench(110 - 0.1 * Math.SQRT1_2, 0.1 * Math.SQRT1_2);
+  assert.equal(specimenIncidentBeams(moved.sample.id).length, 1);
+  assert.deepEqual(emissionOrigins(moved.drawables), []);
+});

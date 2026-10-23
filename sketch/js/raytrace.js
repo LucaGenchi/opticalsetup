@@ -113,11 +113,10 @@ let gateTransmissionCache = new Map();
 // Set of wavelengths observed arriving at that specimen.
 let specimenProbe = null;
 let specimenEmissionSamples = new WeakMap();
-// probe beam record -> its key without gates, and the side of its surface it
-// crossed from (see beamRecordFor).
+// probe beam record -> its key without gates, and the specimen whose
+// crossings it counts (see beamRecordFor).
 const probeBaseKeys = new WeakMap();
-const probeDirections = new WeakMap();
-const RETURN_SUFFIX = '|return';
+const probeElements = new WeakMap();
 // element id -> wavelengths observed arriving at its specimen surface on the
 // last trace. Read by the inspector to derive emission defaults and warn
 // about channels the bench cannot drive; empty when nothing illuminates it.
@@ -2037,15 +2036,11 @@ function recordProbeBeam(surface, ray, hit = null) {
   const probeKey = probeKeyOf(surface);
   let seen = specimenProbe.get(probeKey);
   if (!seen) specimenProbe.set(probeKey, seen = []);
-  // A beam crossing back the other way (off a mirror behind) is a separate
-  // crossing, recorded beside the first. Which way is the side of the surface
-  // it crosses from: every ray of a converging cone crosses from the same
-  // side, however wide the cone.
-  const side = crossingSide(surface, ray);
-  let key = probeBeamKey(ray);
-  let returning = false;
-  const outgoing = seen.find(b => b.key === key);
-  if (outgoing && !sameWay(outgoing, ray)) { key += RETURN_SUFFIX; returning = true; }
+  // A beam coming back through a specimen (off a mirror behind) is a
+  // separate crossing, recorded beside the first: see passSuffix.
+  const element = surface.kind === 'specimen' ? surface.el?.id || null : null;
+  const suffix = passSuffix(ray, element);
+  const key = probeBeamKey(ray) + suffix;
   const weight = Math.max(0, ray.intensity || 0);
   const already = seen.find(b => b.key === key);
   // A beam sampled by several rays is one beam: its power is theirs together,
@@ -2111,8 +2106,8 @@ function recordProbeBeam(surface, ray, hit = null) {
     ...(ray.speckle ? { speckle: true } : {}),
   };
   specimenEmissionSamples.set(beam, { sample, distance });
-  probeBaseKeys.set(beam, probeBeamKey(ray, { withGates: false }) + (returning ? RETURN_SUFFIX : ''));
-  probeDirections.set(beam, side);
+  probeBaseKeys.set(beam, probeBeamKey(ray, { withGates: false }) + suffix);
+  if (element) probeElements.set(beam, element);
   seen.push(beam);
 }
 
@@ -2132,29 +2127,25 @@ function settleProbeBeam(beam) {
 // along also accepts the one beam on the same path with the same train,
 // whatever its gates.
 function beamRecordFor(ray, beams) {
-  const list = (beams || []).filter(beam => sameWay(beam, ray));
+  const list = beams || [];
   const key = probeBeamKey(ray);
-  const exact = list.find(beam => beam.key === key || beam.key === key + RETURN_SUFFIX);
+  const exact = list.find(beam => beam.key === key + passSuffix(ray, probeElements.get(beam)));
   if (exact) return exact;
   const base = probeBeamKey(ray, { withGates: false });
-  const same = list.filter(beam => probeBaseKeys.get(beam) === base || probeBaseKeys.get(beam) === base + RETURN_SUFFIX);
+  const same = list.filter(beam => probeBaseKeys.get(beam) === base + passSuffix(ray, probeElements.get(beam)));
   return same.length === 1 ? same[0] : null;
 }
 
-// Which side of a recorded surface a ray crosses from: the normal it was
-// recorded against, and the sign of the ray along it. A specimen's side
-// edges share its mid-line's normal.
-function crossingSide(surface, ray) {
-  const along = surface.kind === 'specimen' ? activeRect(surface).along : norm(sub(surface.b, surface.a));
-  const normal = perp(along);
-  return { normal, sign: normal.x * ray.dx + normal.y * ray.dy >= 0 ? 1 : -1 };
-}
-
-// Whether a ray crosses the way a recorded beam did.
-function sameWay(beam, ray) {
-  const side = probeDirections.get(beam);
-  if (!side || !Number.isFinite(ray?.dx)) return true;
-  return (side.normal.x * ray.dx + side.normal.y * ray.dy >= 0 ? 1 : -1) === side.sign;
+// Which time a ray is crossing a specimen: every crossing adds the specimen
+// to the ray's branch, in the probe and in the real trace alike, so the
+// times it is already there are the crossings before this one. The first
+// crossing has no suffix; light that comes back off a mirror is a second
+// one, a beam of its own. (A direction would not do: near the apex of a wide
+// cone a tilted specimen is crossed from both sides by one beam.)
+function passSuffix(ray, element) {
+  if (!element) return '';
+  const before = String(ray?.branch || '').split('>').filter(step => step.startsWith(`${element}:`)).length;
+  return before ? `|pass${before + 1}` : '';
 }
 
 // One incoherent fan per arriving excitation branch, powered by all the
