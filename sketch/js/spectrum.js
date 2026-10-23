@@ -286,6 +286,13 @@ export function applyTransmission(spec, centerWl, transmissionFn, edges = null) 
   };
 }
 
+// The result depends only on the profile and each piece's edges and
+// transmission. Box filters meet the same profile with the same edges again
+// and again -- every ray one fluorescent spot emits carries one profile to one
+// dichroic -- so it is kept per profile object (profiles are never changed
+// once made), up to STEP_CACHE_SIZE results each.
+const stepCache = new WeakMap();
+const STEP_CACHE_SIZE = 64;
 function applyStepTransmission(spec, transmissionFn, edges) {
   const [lo, hi] = spectrumSupport(spec);
   const cuts = [...new Set(edges.filter(e => Number.isFinite(e) && e > lo && e < hi))].sort((a, b) => a - b);
@@ -295,8 +302,21 @@ function applyStepTransmission(spec, transmissionFn, edges) {
     const a = bounds[i], b = bounds[i + 1];
     if (!(b > a)) continue;
     const t = Math.max(0, Math.min(1, Number(transmissionFn((a + b) / 2)) || 0));
-    pieces.push({ a, b, t, power: incidentOver(spec, a, b) });
+    pieces.push({ a, b, t });
   }
+  let results = stepCache.get(spec);
+  if (!results) stepCache.set(spec, results = new Map());
+  const key = pieces.map(p => `${p.a}|${p.b}|${p.t}`).join(';');
+  if (!results.has(key)) {
+    if (results.size >= STEP_CACHE_SIZE) results.clear();
+    results.set(key, stepTransmission(spec, pieces));
+  }
+  const result = results.get(key);
+  return result && { ...result };
+}
+
+function stepTransmission(spec, pieces) {
+  for (const p of pieces) p.power = incidentOver(spec, p.a, p.b);
   const total = pieces.reduce((sum, p) => sum + p.power, 0);
   if (!(total > 0)) return null;
   const fraction = pieces.reduce((sum, p) => sum + p.t * p.power, 0) / total;

@@ -35,7 +35,9 @@ import {
 
 let svg, viewport, gridLayer, highlightLayer, immersionLayer, beamLayer, pulseLayer, manualLayer, elementLayer, voxelLayer, overlayLayer;
 let statusEl;
-const pointSourceTraceCache = new SceneTraceCache(traceScene, getTraceRevision);
+// Every render goes through the cache: a pan, zoom or selection leaves the
+// traced inputs alone, so it neither re-traces nor rebuilds the beam layer.
+const traceCache = new SceneTraceCache(traceScene, getTraceRevision);
 let displayedBeamScene = null;
 let pointSourceLayers = [];
 // Offscreen canvases for the dense layers, the view they were last painted
@@ -497,10 +499,7 @@ function announceMixingState(elements) {
 }
 
 function renderBeams() {
-  const opticalElements = animatedOpticalElements();
-  const hasPointSource = opticalElements.some(el => el.type === 'pointsource');
-  const scene = hasPointSource ? pointSourceTraceCache.get(opticalElements, state.beams)
-    : traceScene(opticalElements, state.beams);
+  const scene = traceCache.get(animatedOpticalElements(), state.beams);
   const drawables = scene.drawables;
   pulseTracks = scene.pulseTracks;
   writeHits = scene.writeHits || [];
@@ -523,12 +522,16 @@ function renderBeams() {
         continue;
       }
       rasterRun = null;
+      // Each shape is only a fill or only a stroke, so fill-opacity and
+      // stroke-opacity draw what opacity would. Element opacity made the
+      // browser composite every one of a specimen's thousands of glow strokes
+      // as a layer of its own, on every pan and zoom.
       if (d.type === 'poly') {
-        s += `<polygon points="${ptsAttr(d.pts)}" fill="${d.color}" opacity="${d.opacity}" stroke="none"/>`;
+        s += `<polygon points="${ptsAttr(d.pts)}" fill="${d.color}" fill-opacity="${d.opacity}" stroke="none"/>`;
       } else if (d.type === 'dots') {
-        s += `<g fill="${d.color}">` + d.dots.map(o => `<circle cx="${o.x.toFixed(1)}" cy="${o.y.toFixed(1)}" r="${o.r.toFixed(2)}" opacity="${o.o.toFixed(2)}"/>`).join('') + `</g>`;
+        s += `<g fill="${d.color}">` + d.dots.map(o => `<circle cx="${o.x.toFixed(1)}" cy="${o.y.toFixed(1)}" r="${o.r.toFixed(2)}" fill-opacity="${o.o.toFixed(2)}"/>`).join('') + `</g>`;
       } else {
-        s += `<polyline points="${ptsAttr(d.pts)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}${d.dash && d.dashOffset ? ` stroke-dashoffset="${d.dashOffset}"` : ''}/>`;
+        s += `<polyline points="${ptsAttr(d.pts)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" stroke-opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}${d.dash && d.dashOffset ? ` stroke-dashoffset="${d.dashOffset}"` : ''}/>`;
       }
     }
     beamLayer.innerHTML = s;

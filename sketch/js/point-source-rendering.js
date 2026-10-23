@@ -25,6 +25,8 @@ export function denseRepaint(sceneChanged, painted, now) {
   return 'none';
 }
 
+// The canvas traces every scene through this, dense point source or not: the
+// flag only marks dense point-source drawables for the raster layer.
 export class SceneTraceCache {
   constructor(trace, revision) {
     this.trace = trace;

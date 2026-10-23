@@ -1930,12 +1930,20 @@ const EMISSION_CAPTURE_MM = 100;
 
 // Angles sampled with density proportional to 1 + AXIS_BIAS * cos^2 around
 // `axisAngle`, by inverting that distribution's CDF. Equal-probability
-// sampling means every ray still carries the same power.
+// sampling means every ray still carries the same power. The offsets from
+// the axis depend only on the count and bias, and every emission spot asks
+// for the same few, so they are computed once.
+const emissionOffsets = new Map();
 function emissionAngles(count, axisAngle, bias = AXIS_BIAS) {
+  const key = `${count}|${bias}`;
+  if (!emissionOffsets.has(key)) emissionOffsets.set(key, emissionAngleOffsets(count, bias));
+  return emissionOffsets.get(key).map(offset => axisAngle + offset);
+}
+function emissionAngleOffsets(count, bias) {
   const total = 2 * Math.PI * (1 + bias / 2);
   // CDF of the density, measured from the axis direction.
   const cdf = u => (u * (1 + bias / 2) + bias * Math.sin(2 * u) / 4) / total;
-  const angles = [];
+  const offsets = [];
   for (let i = 0; i < count; i++) {
     const target = (i + 0.5) / count;
     let lo = 0, hi = 2 * Math.PI;
@@ -1943,9 +1951,9 @@ function emissionAngles(count, axisAngle, bias = AXIS_BIAS) {
       const mid = (lo + hi) / 2;
       if (cdf(mid) < target) lo = mid; else hi = mid;
     }
-    angles.push(axisAngle + (lo + hi) / 2);
+    offsets.push((lo + hi) / 2);
   }
-  return angles;
+  return offsets;
 }
 // Below this the two pulses barely meet and the signal is reported as absent
 // rather than as a vanishing sliver.
@@ -5852,10 +5860,19 @@ function pulseSpectrumPiece(ray, pulse, power = 1) {
   return hi > lo ? { spec, lo, hi, power } : null;
 }
 // Where the pulse's emitted band carries at least 1 % of its peak weight.
+// It is asked for at every filter and detector a pulse meets and depends
+// only on the band, a flat or Gaussian profile, so it is computed once per
+// band and trace. Callers only read the region.
 const BAND_GRID = 257;
+let pulseBandRegionCache = new Map();
 function pulseBandRegion(pulse) {
   const band = pulseBand(pulse);
   if (!band) return null;
+  const key = [band.kind, band.center, band.fwhm, band.lo, band.hi].join('|');
+  if (!pulseBandRegionCache.has(key)) pulseBandRegionCache.set(key, bandRegion(band));
+  return pulseBandRegionCache.get(key);
+}
+function bandRegion(band) {
   const [lo, hi] = spectrumSupport(band);
   const weights = Array.from({ length: BAND_GRID }, (_, i) => spectrumWeight(band, lo + (hi - lo) * i / (BAND_GRID - 1)));
   const peak = Math.max(...weights);
@@ -7367,6 +7384,7 @@ export function traceScene(elements, beams = [], options = {}) {
   compressorGdd = new Map();
   metalensHits = new Map();
   gateTransmissionCache = new Map();
+  pulseBandRegionCache = new Map();
   coarsePortCache = new Map();
   cellSpectrumCache = new Map();
   specimenIncident = new Map();
