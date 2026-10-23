@@ -108,7 +108,7 @@ function dimSignalScene(overrides = {}) {
   stage.rot = 90;
   stage.params.specimenType = 'linear';
   // The thin mid-line model these tests measure (saved scenes keep it).
-  stage.params.volumeSpecimen = false;
+  stage.params.sampleLayout = 'thin';
   stage.params.transmitExc = false;
   stage.params.channels = [{
     // A faint specimen under the whole surviving pump beam.

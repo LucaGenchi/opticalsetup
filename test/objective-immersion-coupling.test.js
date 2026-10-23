@@ -38,6 +38,9 @@ function contactElement(type, id, source, dx, dy = 0) {
   // that either truly crosses the objective's horizontal forward ray or does
   // not, depending on dy and aperture.
   element.rot = 90;
+  // A thin sheet, whose drawn thickness is the `thickness` field these
+  // placements use.
+  if (type === 'sample' || type === 'stage') element.params.sampleLayout = 'thin';
   // Place the nearest visible specimen face, not its centre plane, at dx.
   element.x += (element.params.thickness || 6) / 2;
   return element;

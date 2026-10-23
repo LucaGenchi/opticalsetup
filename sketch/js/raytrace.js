@@ -6,7 +6,7 @@
 // polygons (beam-mode envelope between the two edge rays).
 
 import { emissionRayCount } from './emission.js';
-import { NONLINEAR_ORDER, bundleFocus, linearPathFraction, volumeEmissionPoints } from './sectioning.js';
+import { NONLINEAR_ORDER, SPOT_SPACING_MM, bundleFocus, linearPathFraction, volumeEmissionPoints } from './sectioning.js';
 import { POINT_SOURCE_CANVAS_THRESHOLD } from './point-source-rendering.js';
 
 import {
@@ -2138,7 +2138,7 @@ function gateEffectiveLevels(gate) {
   return gate.invert ? { high: 1 - high, low: 1 - low } : { high, low };
 }
 
-export function srsTransferGate(channel, ray, incidentBeams, elementId) {
+export function srsTransferGate(channel, ray, incidentBeams, elementId, scale = 1) {
   const beams = incidentBeams || [];
   const modulatedPartners = beams.filter(b =>
     Math.abs(b.wl - ray.wl) >= MIXING_MIN_SEPARATION_NM && b.gates?.length);
@@ -2170,7 +2170,8 @@ export function srsTransferGate(channel, ray, incidentBeams, elementId) {
   const overlap = channelOverlap(channel, ray, donor, beams, elementId).factor;
   if (overlap < MIN_OVERLAP) return null;
   const source = donor.gates[0];
-  const depth = Math.min(0.5, Math.max(0.01, channel.transferEff ?? 0.1)) * overlap;
+  const depth = Math.min(0.5, Math.max(0.01, channel.transferEff ?? 0.1)) * overlap * scale;
+  if (!(depth > 0)) return null;
   // The two beams are not symmetric. Energy flows from the blue photon to
   // the red one, so when the PUMP (the shorter wavelength) carries the
   // modulation the Stokes beam is amplified while the pump is on — that is
@@ -2259,7 +2260,8 @@ function specimenMixedOutputs(channel, ray, d, data, elementId, origins = null) 
     const gate = channelOverlap(channel, ray, partner, data.incidentBeams, elementId).factor;
     if (gate < MIN_OVERLAP) continue;
     const tint = channelColor(channel, wl);
-    const forward = ray.intensity * eff * gate;
+    const focal = Number.isFinite(origins?.share) ? origins.share : 1;
+    const forward = ray.intensity * eff * gate * focal;
     // This light exists only while both pulses are there, so it is the pair's
     // train -- not the driving beam's, whose duration and transform-limited
     // claim are not this signal's.
@@ -2281,7 +2283,7 @@ function specimenMixedOutputs(channel, ray, d, data, elementId, origins = null) 
           ...child,
           d: { x: -d.x, y: -d.y },
           intensity: forward * ratio,
-          power: Number.isFinite(ray.power) ? ray.power * eff * gate * ratio : undefined,
+          power: Number.isFinite(ray.power) ? ray.power * eff * gate * ratio * focal : undefined,
           tag: `esfg${Math.round(wl)}`,
           ...(origins?.epi ? { origin: origins.epi } : {}),
         });
@@ -4879,7 +4881,7 @@ function interact(ray, hit) {
             stokes = applyRetarder(stokes, c.axis ?? 45, c.retardance ?? 90);
             retarded = true;
           } else if (c.kind === 'srs' && ray.pulse) {
-            const transferred = srsTransferGate(c, ray, data.incidentBeams, s.el?.id || null);
+            const transferred = srsTransferGate(c, ray, data.incidentBeams, s.el?.id || null, volume ? volume.share(2) : 1);
             if (transferred) { pulse = withGate(pulse, transferred); gated = true; }
           }
         }
@@ -4958,7 +4960,10 @@ function interact(ray, hit) {
         // of them. The second harmonic is emitted whatever the timing; the
         // pair's sum frequency only while both pulses are at the spot.
         if (c.kind === 'shg' && emitting) {
-          for (const mixed of specimenMixedOutputs(c, ray, d, data, s.el?.id || null, volume?.origins)) out.push(mixed);
+          const pairs = volume ? { ...volume.origins, share: volume.share(2) } : null;
+          if (!pairs || pairs.share > 0) {
+            for (const mixed of specimenMixedOutputs(c, ray, d, data, s.el?.id || null, pairs)) out.push(mixed);
+          }
         }
         const wl = specimenSignalWl(c, ray.wl, data.incidentWls);
         if (!(wl > 0)) continue;
@@ -4969,7 +4974,11 @@ function interact(ray, hit) {
           overlap = channelOverlap(c, ray, mixingPartner(ray, data.incidentBeams), data.incidentBeams, s.el?.id || null).factor;
           if (overlap < MIN_OVERLAP) continue;
         }
-        const forward = ray.intensity * eff * overlap;
+        // In an active layer, the share of the focal signal this crossing
+        // holds; a layer away from the focus generates none.
+        const focal = volume ? volume.share(NONLINEAR_ORDER[c.kind] || 1) : 1;
+        if (!(focal > 0)) continue;
+        const forward = ray.intensity * eff * overlap * focal;
         const tint = channelColor(c, wl);
         out.push({
           d, wl, bw: 0, spec: null, pol: undefined, stokes: null, color: tint, sourceId: emittedFrom, intensity: forward, tag: `c${ci}`,
@@ -4982,7 +4991,7 @@ function interact(ray, hit) {
               d: { x: -d.x, y: -d.y }, wl, bw: 0, spec: null, pol: undefined, stokes: null,
               color: tint, sourceId: emittedFrom,
               intensity: forward * ratio,
-              power: Number.isFinite(ray.power) ? ray.power * eff * ratio : undefined,
+              power: Number.isFinite(ray.power) ? ray.power * eff * ratio * focal : undefined,
               tag: `e${ci}`,
               ...(volume?.origins.epi ? { origin: volume.origins.epi } : {}),
             });
@@ -7166,11 +7175,14 @@ function focusPlacement(surface, focus) {
   return { inside, depthMm: across + halfThickness };
 }
 
-// One ray's path through a volume specimen: where it enters and leaves the
-// rectangle (no refraction is modelled, so it is straight), the emission
-// spots for a signal of a given order along it, and where forward and
-// backward coherent signals leave from -- the most intense point on the path,
-// or, without a focus, the face they leave by.
+// One ray's path through a specimen's active layer: where it enters and
+// leaves the layer's rectangle (no refraction is modelled, so it is straight),
+// the emission spots for a signal of a given order along it, the share of the
+// signal of that order this crossing generates (sectioning.js: with a focus,
+// the share of the whole focal signal inside the layer, nothing when the
+// layer is away from the focus; without one, all of it), and where forward
+// and backward coherent signals leave from -- the point on the path nearest
+// the focus, or, without a focus, the face they leave by.
 function volumeCrossing(s, ray, hit, d, record) {
   const halfThickness = Number(s.data.halfThickness) || 0;
   const halfWidth = Number(s.data.halfWidth) || 0;
@@ -7189,22 +7201,23 @@ function volumeCrossing(s, ray, hit, d, record) {
   if (!Number.isFinite(lo) || !Number.isFinite(hi) || !(hi > lo)) { lo = 0; hi = 0; }
   const entry = add(hit.p, mul(d, lo)), exit = add(hit.p, mul(d, hi));
   const lengthMm = hi - lo;
-  const focus = record?.focus?.ok && record.focus.inside ? record.focus : null;
-  const known = record?.focus?.ok ? record.focus : null;
-  const axial = point => (known ? dot(sub(point, known.point), known.axis) : 0);
+  const focus = record?.focus?.ok ? record.focus : null;
+  const axial = point => (focus ? dot(sub(point, focus.point), focus.axis) : 0);
   const at = f => add(entry, mul(d, f * lengthMm));
-  // Parts along the path: about one every 1.5 mm, between two and eight.
-  const parts = Math.min(8, Math.max(2, Math.ceil(lengthMm / 1.5)));
-  const points = order => (lengthMm > 1e-9
-    ? volumeEmissionPoints(order, axial(entry), axial(exit), known, parts)
-    : [{ at: 0.5, share: 1, level: 1 }]).map(p => ({ origin: at(p.at), share: p.share, level: p.level }));
+  // Parts along the path: about one every SPOT_SPACING_MM, two to eight.
+  const parts = Math.min(8, Math.max(2, Math.ceil(lengthMm / SPOT_SPACING_MM)));
+  const spots = order => (lengthMm > 1e-9
+    ? volumeEmissionPoints(order, axial(entry), axial(exit), focus, parts)
+    : [{ at: 0.5, share: 1, level: 1 }]);
+  const points = order => spots(order).map(p => ({ origin: at(p.at), share: p.share, level: p.level }));
+  const share = order => (order > 1 && focus ? spots(order).reduce((sum, p) => sum + p.share, 0) : 1);
   let forward = exit, epi = entry;
-  if (known && lengthMm > 1e-9) {
+  if (focus && lengthMm > 1e-9) {
     const start = axial(entry), end = axial(exit);
     const f = end > start ? Math.min(1, Math.max(0, -start / (end - start))) : 0.5;
     forward = epi = at(f);
   }
-  return { lengthMm, points, origins: { forward, epi }, focusInside: Boolean(focus) };
+  return { lengthMm, points, share, origins: { forward, epi } };
 }
 
 // Trace everything. The static drawables remain export-safe while pulseTracks

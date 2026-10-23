@@ -6,11 +6,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Optical sectioning: linear versus nonlinear signals — Examples | OpticalSetup</title>
-<meta name="description" content="One focused beam through a thick fluorescent specimen: one-photon fluorescence glows along the whole path, two-photon fluorescence only at the focus.">
+<meta name="description" content="One focused beam through a fluorescent cuvette: one-photon fluorescence glows along the whole path, two-photon fluorescence only at the focus.">
 <link rel="canonical" href="https://opticalsetup.com/example-setups/optical-sectioning-linear-versus-nonlinear/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Optical sectioning: linear versus nonlinear signals — OpticalSetup Examples">
-<meta property="og:description" content="One focused beam through a thick fluorescent specimen: one-photon fluorescence glows along the whole path, two-photon fluorescence only at the focus.">
+<meta property="og:description" content="One focused beam through a fluorescent cuvette: one-photon fluorescence glows along the whole path, two-photon fluorescence only at the focus.">
 <meta property="og:url" content="https://opticalsetup.com/example-setups/optical-sectioning-linear-versus-nonlinear/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="../../sketch/icons/icon.svg">
@@ -62,7 +62,7 @@
     <main class="wiki-article" style="max-width: 760px;">
       <div class="crumb"><a href="../../example-setups/">Examples</a> / Microscopy Implementations / Optical sectioning: linear versus nonlinear signals</div>
       <h1>Optical sectioning: linear versus nonlinear signals</h1>
-      <p class="tagline" style="margin-top: 10px;">One focused beam through a thick fluorescent specimen: one-photon fluorescence glows along the whole path, two-photon fluorescence only at the focus.</p>
+      <p class="tagline" style="margin-top: 10px;">One focused beam through a fluorescent cuvette: one-photon fluorescence glows along the whole path, two-photon fluorescence only at the focus.</p>
 
       <a class="place-cta" href="../../sketch/?example=optical-sectioning-linear-versus-nonlinear">Open in the canvas →</a>
 
@@ -97,27 +97,30 @@
       <div class="sim-block">
 
       <p>Each arm focuses a 10&nbsp;mm beam with an f&nbsp;=&nbsp;100&nbsp;mm lens into the
-      middle of a 20&nbsp;mm GFP specimen whose whole thickness is active. In the upper arm a
-      488&nbsp;nm laser drives one-photon fluorescence: it glows along the whole path
-      through the specimen. In the lower arm a 920&nbsp;nm femtosecond laser drives
-      two-photon fluorescence: it glows only at the focus.</p>
-      <p>Select the lower specimen to read where its focus is: 10&nbsp;mm deep, with a
-      Rayleigh range of about 120&nbsp;µm for this beam. Remove the lens and the beam
-      crosses the specimen collimated: the two-photon fluorescence then comes from the
-      whole path too, and the focus readout disappears.</p>
-        <div class="limitations"><span class="lbl">What you won't see</span><p>The specimen is a qualitative volume: each ray crosses it in a straight
-      line, and the signal is emitted from a few spots along that line. The focus is an
-      ideal diffraction-limited Gaussian in air, estimated from the convergence of the traced
-      rays: no aberrations, refractive index, scattering or high-NA vector effects. The
-      two-photon signal's total is its efficiency, wherever it comes from; the beam decides
-      only where. The one-photon signal grows with the path, at its efficiency per
-      millimetre. Neither is a cross-section or a peak-intensity calculation.</p></div>
+      middle of a cuvette of GFP solution, 20&nbsp;mm inside. In the upper arm a 488&nbsp;nm
+      laser drives one-photon fluorescence: it glows along the whole path through the
+      cuvette. In the lower arm a 920&nbsp;nm femtosecond laser drives two-photon
+      fluorescence: it glows at the focus, fading within a few millimetres — this gentle
+      lens has a Rayleigh range of about 120&nbsp;µm.</p>
+      <p>Select the lower cuvette to read where its focus is. Move the cuvette so the focus
+      falls in its glass wall, and the two-photon signal disappears; remove the lens, and
+      the collimated beam generates it along the whole path instead. A microscope objective
+      focuses far more tightly: try a sample on the piezo stage, a thin active layer
+      between two glasses, under a 40× objective.</p>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>The cuvette is a qualitative layered specimen: each ray crosses it in a
+      straight line, and the signal is emitted from a few spots along that line. The focus is
+      an ideal diffraction-limited Gaussian in air, estimated from the convergence of the
+      traced rays: no aberrations, refractive index, scattering or high-NA vector effects.
+      Only where the intensity is at least 1/1000 of the focus's is two-photon light
+      generated, an illustrative limit. The one-photon signal grows with the path, at its
+      efficiency per millimetre. Neither is a cross-section or a peak-intensity
+      calculation.</p></div>
       </div>
 
 
       <h2 class="section-head real"><span class="sw"></span>Related components</h2>
       <div class="related-list">
-        <a href="../../wiki/sample/"><svg viewBox="-34 -34 68 68" aria-hidden="true"><rect x="-25" y="-3.00" width="50" height="6" fill="#c9e4f5" stroke="none"/></svg>Sample</a><a href="../../wiki/pulsedlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="-3"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">LASER</text><g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>Pulsed Laser</a><a href="../../wiki/cwlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">CW LASER</text><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>CW Laser</a><a href="../../wiki/lens/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0,-12.7 Q 9,0 0,12.7 Q -9,0 0,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Thin convex lens</a>
+        <a href="../../wiki/sample/"><svg viewBox="-34 -34 68 68" aria-hidden="true"><rect x="-25.00" y="-2.50" width="50.00" height="1.50" fill="#c9e4f5" fill-opacity="0.45" stroke="none"/><rect x="-25.00" y="1.00" width="50.00" height="1.50" fill="#c9e4f5" fill-opacity="0.45" stroke="none"/><rect x="-25.00" y="-1.00" width="50.00" height="2.00" fill="#69737e" fill-opacity="0.3" stroke="none"/></svg>Sample</a><a href="../../wiki/pulsedlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="-3"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">LASER</text><g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>Pulsed Laser</a><a href="../../wiki/cwlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">CW LASER</text><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>CW Laser</a><a href="../../wiki/lens/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0,-12.7 Q 9,0 0,12.7 Q -9,0 0,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Thin convex lens</a>
       </div>
 
 

@@ -506,7 +506,7 @@ export const exampleEntries = [
   {
     match: 'Optical sectioning — linear versus nonlinear',
     title: 'Optical sectioning: linear versus nonlinear signals',
-    tagline: 'One focused beam through a thick fluorescent specimen: one-photon fluorescence glows along the whole path, two-photon fluorescence only at the focus.',
+    tagline: 'One focused beam through a fluorescent cuvette: one-photon fluorescence glows along the whole path, two-photon fluorescence only at the focus.',
     html: `
       <p>A focused beam carries the same power through every plane along its path; only
       the area it is spread over changes. A signal that grows in proportion to the
@@ -527,21 +527,24 @@ export const exampleEntries = [
     inOpticalSetupTitle: 'What this setup demonstrates',
     inOpticalSetupHtml: `
       <p>Each arm focuses a 10&nbsp;mm beam with an f&nbsp;=&nbsp;100&nbsp;mm lens into the
-      middle of a 20&nbsp;mm GFP specimen whose whole thickness is active. In the upper arm a
-      488&nbsp;nm laser drives one-photon fluorescence: it glows along the whole path
-      through the specimen. In the lower arm a 920&nbsp;nm femtosecond laser drives
-      two-photon fluorescence: it glows only at the focus.</p>
-      <p>Select the lower specimen to read where its focus is: 10&nbsp;mm deep, with a
-      Rayleigh range of about 120&nbsp;µm for this beam. Remove the lens and the beam
-      crosses the specimen collimated: the two-photon fluorescence then comes from the
-      whole path too, and the focus readout disappears.</p>`,
-    limitations: `<p>The specimen is a qualitative volume: each ray crosses it in a straight
-      line, and the signal is emitted from a few spots along that line. The focus is an
-      ideal diffraction-limited Gaussian in air, estimated from the convergence of the traced
-      rays: no aberrations, refractive index, scattering or high-NA vector effects. The
-      two-photon signal's total is its efficiency, wherever it comes from; the beam decides
-      only where. The one-photon signal grows with the path, at its efficiency per
-      millimetre. Neither is a cross-section or a peak-intensity calculation.</p>`,
+      middle of a cuvette of GFP solution, 20&nbsp;mm inside. In the upper arm a 488&nbsp;nm
+      laser drives one-photon fluorescence: it glows along the whole path through the
+      cuvette. In the lower arm a 920&nbsp;nm femtosecond laser drives two-photon
+      fluorescence: it glows at the focus, fading within a few millimetres — this gentle
+      lens has a Rayleigh range of about 120&nbsp;µm.</p>
+      <p>Select the lower cuvette to read where its focus is. Move the cuvette so the focus
+      falls in its glass wall, and the two-photon signal disappears; remove the lens, and
+      the collimated beam generates it along the whole path instead. A microscope objective
+      focuses far more tightly: try a sample on the piezo stage, a thin active layer
+      between two glasses, under a 40× objective.</p>`,
+    limitations: `<p>The cuvette is a qualitative layered specimen: each ray crosses it in a
+      straight line, and the signal is emitted from a few spots along that line. The focus is
+      an ideal diffraction-limited Gaussian in air, estimated from the convergence of the
+      traced rays: no aberrations, refractive index, scattering or high-NA vector effects.
+      Only where the intensity is at least 1/1000 of the focus's is two-photon light
+      generated, an illustrative limit. The one-photon signal grows with the path, at its
+      efficiency per millimetre. Neither is a cross-section or a peak-intensity
+      calculation.</p>`,
     citations: [],
     resources: [
       { label: 'RP Photonics Encyclopedia — Multiphoton Microscopy', url: 'https://www.rp-photonics.com/multiphoton_microscopy.html' },

@@ -297,38 +297,44 @@ fluorescence, harmonics, CARS, SRS) are concentrated near the focal region,
 because they scale with a power of the intensity. Nonlinear generation does not
 itself need a focus; an intense unfocused or speckle beam also drives it.
 
-A specimen saved before the *Whole thickness active* switch existed loads with
-it off: a thin specimen, every signal emitted where the beam crosses its
-mid-line, with no intensity dependence, so it does not show this difference. New
-specimens start with it on (`volumeSpecimen`, `migrate: () => false` in the
-registry). A volume specimen emits along each ray's straight path through its
-drawn rectangle (`volumeCrossing` in `sketch/js/raytrace.js`; no refraction):
+Specimens are layered (`sampleLayout`, `sampleLayers` in `sketch/js/elements.js`):
+a sandwich (glass, active layer, glass; the default, 1.5 / 2 / 1.5 mm), a sample on
+a slide (the active layer on the top or bottom face of one glass) or a cuvette
+(glass all round, the inside active); the stage offers slides and sandwiches.
+Glass thickness is 0.1–10 mm and the active layer 0.1–20 mm. The glass is
+passive: no emission and no refraction. A scene saved before layouts loads as
+`thin` (`migrate: () => 'thin'`): a thin sheet, every signal emitted where the
+beam crosses its mid-line, with no intensity dependence. A layered specimen is
+crossed at the middle of its active layer and emits along each ray's straight
+path through that layer (`volumeCrossing` in `sketch/js/raytrace.js`):
 
 - Linear channels: evenly along the path, about one spot per 1.5 mm (two to
   eight). Their efficiency is per millimetre: the path converts
   1 − (1 − eff)^L (`linearPathFraction`).
-- Nonlinear channels keep their efficiency as the total. The probe pass records
-  where each sampling ray of a beam crosses the specimen; `bundleFocus` in
+- Nonlinear channels follow the beam's focus. The probe pass records where
+  each sampling ray of a beam crosses the specimen; `bundleFocus` in
   `sketch/js/sectioning.js` finds the plane of least spread along the beam
-  axis, the convergence NA from the rays' angular spread, and an ideal Gaussian
-  focus in air: w0 = λ/(π NA), zR = π w0²/λ. The path is split into the same
-  spots, each weighted by the exact integral of (1 + (z/zR)²)^−(n−1) over its
-  piece (`volumeEmissionPoints`) and emitting from its most intense point; a
-  piece below 1e-6 of the most intense point inside the specimen generates
-  nothing. Orders: 2PEF, χ⁽²⁾ (SHG and SFG) and SRS 2; 3PEF, THG and CARS 3.
-  Without a focus — a collimated or one-ray beam, or speckle (rays marked by a
-  diffuser) — the spots are even. A focus outside the specimen weights the path
-  against its most intense point inside.
-- Coherent forward and backward signals leave from the most intense point on
-  each ray's path (the face nearest the focus, or the exit and entry faces with
-  no focus); their power is unchanged. SRS is unchanged.
+  axis, the convergence NA from the rays' angular spread, and an ideal
+  Gaussian focus in air: w0 = λ/(π NA), zR = π w0²/λ. Only the part of the
+  path where the intensity is at least 1/1000 of the focus's (|z| ≤ 31.6 zR)
+  emits (`volumeEmissionPoints`); each piece is weighted by the exact
+  integral of (1 + (z/zR)²)^−(n−1) over it, divided by the integral over the
+  whole beam, so the shares add up to the part of the focal signal the layer
+  holds: about 1 for a focal region inside a thicker layer, less for a
+  thinner layer, 0 for a focus away from the layer. Orders: 2PEF, χ⁽²⁾ (SHG
+  and SFG) and SRS 2; 3PEF, THG and CARS 3. Coherent forward and backward
+  signals and the SRS transfer depth are scaled by the same share and leave
+  from the point of each path nearest the focus.
+- Without a focus — a collimated or one-ray beam, or speckle (rays marked by
+  a diffuser) — nonlinear channels emit evenly along the path with their full
+  efficiency, and coherent signals leave from the exit and entry faces.
 
-The *Focus inside* readout lists each beam whose focus lies inside the
-rectangle (wavelength, depth below the entry face, zR) and is hidden otherwise.
-The glow drawn from each spot is in proportion to its strength. Not included:
-aberrations, the specimen's index and refraction, scattering, excitation
-absorbed along the path, high-NA vector effects and the Gouy phase of coherent
-signals.
+The *Focus inside* readout lists each beam whose focus lies inside the active
+layer (wavelength, distance into the layer from the entry face, zR) and is
+hidden otherwise. The glow drawn from each spot is in proportion to its
+strength. The 1/1000 limit is illustrative. Not included: aberrations, the
+specimen's index and refraction, scattering, excitation absorbed along the
+path, high-NA vector effects and the Gouy phase of coherent signals.
 
 Standalone objectives are set by effective focal length (EFL) — the focal length of
 the whole assembly as one equivalent lens — plus a working distance

@@ -2,20 +2,20 @@
  "elements": 16,
  "beams": 0,
  "drawables": {
-  "count": 1886,
+  "count": 1656,
   "byType": {
-   "path": 1742,
+   "path": 1512,
    "poly": 144
   },
   "colors": {
    "#00f7ff": 78,
-   "#00ff38": 1730,
+   "#00ff38": 1500,
    "#8b1a1a": 78
   },
-  "points": 4074,
+  "points": 3612,
   "sum": [
-   984305.146,
-   288900
+   868849.736,
+   219600
   ],
   "bbox": [
    46,
@@ -23,25 +23,25 @@
    320,
    172.7683
   ],
-  "digest": "21c11dd3"
+  "digest": "d9a336b4"
  },
  "drawnElements": {
-  "textlabel:e39tiiu5": "bb31f03c",
-  "cwlaser:eqy613fj": "613d38dc",
-  "textlabel:etwm47qi": "a55d3150",
-  "lens:e9m31bgi": "21f36c16",
-  "sample:e124en58": "5b419621",
-  "beamdump:ehharii0": "2ac2293d",
-  "textlabel:enntxb7b": "f9d613c2",
-  "pulsedlaser:eba0a6cr": "9417886c",
-  "textlabel:e93dka3a": "3ec20a76",
-  "lens:e6efpa6k": "21f36c16",
-  "sample:eb8na3zh": "5b419621",
-  "beamdump:e6pu8kc8": "2ac2293d",
-  "textlabel:ebasgusp": "f9d613c2",
-  "textlabel:ekqtimrj": "c3535b33",
-  "textlabel:eg3jcgqp": "5175180d",
-  "textlabel:euqs9grd": "2621a533"
+  "textlabel:e6okg9yc": "bb31f03c",
+  "cwlaser:ekxiyafy": "613d38dc",
+  "textlabel:eqmu7d7q": "a55d3150",
+  "lens:en32eayb": "21f36c16",
+  "sample:e9ttpvah": "bf94c118",
+  "beamdump:er8ohihf": "2ac2293d",
+  "textlabel:ezbjyd74": "e4be7372",
+  "pulsedlaser:ev6du01z": "9417886c",
+  "textlabel:ev49piyp": "3ec20a76",
+  "lens:e4brrx3e": "21f36c16",
+  "sample:ev4gzne4": "a453ab55",
+  "beamdump:e3e4nw3o": "2ac2293d",
+  "textlabel:ee9jre6w": "e4be7372",
+  "textlabel:e40uu0mi": "b1dc4ca5",
+  "textlabel:ei18rt9s": "5175180d",
+  "textlabel:e8igwasx": "5881869b"
  },
  "pulseTracks": [
   {
@@ -53,14 +53,14 @@
     198
    ],
    "pulse": {
-    "sourceId": "eba0a6cr",
+    "sourceId": "ev6du01z",
     "repRateMHz": 80,
     "pulseWidthFs": 150,
     "phaseNs": 0,
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "0abc5538"
+   "digest": "bb930dbb"
   },
   {
    "intensity": 0.9,
@@ -71,14 +71,14 @@
     268
    ],
    "pulse": {
-    "sourceId": "eba0a6cr",
+    "sourceId": "ev6du01z",
     "repRateMHz": 80,
     "pulseWidthFs": 150,
     "phaseNs": 0,
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "15c9374f"
+   "digest": "15942758"
   }
  ],
  "writeHits": {
@@ -87,13 +87,13 @@
  },
  "signalHits": {
   "count": 2,
-  "digest": "0aa79dd1"
+  "digest": "5504e3b7"
  },
  "readouts": {
-  "sample:e124en58": {
+  "sample:e9ttpvah": {
    "specimenIncident": [
     {
-     "branch": "eqy613fj",
+     "branch": "ekxiyafy",
      "bw": 0,
      "focus": {
       "axis": {
@@ -109,7 +109,7 @@
        "y": 7.10542736e-17
       },
       "w0Mm": 0.00311058545,
-      "zMm": 1.84467826e-16,
+      "zMm": 4.30424926e-16,
       "zRMm": 0.062289425
      },
      "gates": [],
@@ -119,12 +119,12 @@
      ],
      "gddSum": 9285.92231,
      "intensity": 25,
-     "key": "488.000000000/eqy613fj////",
+     "key": "488.000000000/ekxiyafy////",
      "opl": 198.045121,
      "oplMin": 198,
      "oplSum": 4951.12802,
      "oplWeight": 25,
-     "originId": "eqy613fj",
+     "originId": "ekxiyafy",
      "power": 1,
      "pulse": null,
      "spec": null,
@@ -133,10 +133,10 @@
     }
    ]
   },
-  "sample:eb8na3zh": {
+  "sample:ev4gzne4": {
    "specimenIncident": [
     {
-     "branch": "eba0a6cr",
+     "branch": "ev6du01z",
      "bw": 8.30046232,
      "focus": {
       "axis": {
@@ -162,12 +162,12 @@
      ],
      "gddSum": 3481.86435,
      "intensity": 25,
-     "key": "920.000000000/eba0a6cr/80/0/150/",
+     "key": "920.000000000/ev6du01z/80/0/150/",
      "opl": 198.045121,
      "oplMin": 198,
      "oplSum": 4951.12802,
      "oplWeight": 25,
-     "originId": "eba0a6cr",
+     "originId": "ev6du01z",
      "power": 1,
      "pulse": {
       "avgPowerW": 0.1,
@@ -177,7 +177,7 @@
       "pulseShape": "gauss",
       "pulseWidthFs": 150,
       "repRateMHz": 80,
-      "sourceId": "eba0a6cr",
+      "sourceId": "ev6du01z",
       "spectrumHiNm": 930.574645,
       "spectrumKind": "gauss",
       "spectrumLoNm": 909.425355,

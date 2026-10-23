@@ -1,17 +1,20 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Where a volume specimen's signals come from along the excitation path.
+// Where a specimen's active layer generates its signals along the excitation
+// path.
 //
 // A linear signal (fluorescence, spontaneous Raman) comes equally from every
 // part of the illuminated path. A signal of order n goes as the n-th power of
-// the intensity; through a thin slice of the specimen the beam's power is
-// fixed while its area grows as w², so the slice gives ~ 1/w^(2(n-1)). With an
-// ideal Gaussian focus that is (1 + (z/zR)²)^-(n-1) relative to the focus, and
-// the slices of the path are weighted by its exact integral. So a focus inside
-// the specimen concentrates a nonlinear signal there (optical sectioning),
-// while a beam without a focus inside -- collimated, wide-field, speckle, or
-// focused somewhere else -- generates it along the whole path.
+// the intensity; through a thin slice the beam's power is fixed while its area
+// grows as w², so the slice gives ~ 1/w^(2(n-1)). With an ideal Gaussian
+// focus that is (1 + (z/zR)²)^-(n-1) relative to the focus, and the slices of
+// the path are weighted by its exact integral: a layer gives the share of the
+// whole focal signal that lies inside it. Only where the intensity is at
+// least 1/1000 of the focus's does anything emit, so a focused beam whose
+// focus lies away from the layer generates nothing there (optical
+// sectioning), while a beam without a focus -- collimated, wide-field or
+// speckle -- generates along the whole path.
 //
 // The focus is found from the beam's own sampling rays as they cross the
 // specimen. Its size is the diffraction limit of their convergence (in air);
@@ -23,9 +26,13 @@
 // field it supplies (Ip·Is and Ip²·Is).
 export const NONLINEAR_ORDER = { tpef: 2, shg: 2, srs: 2, thpef: 3, thg: 3, cars: 3 };
 
-// A part of the path weaker than this, relative to the most intense point the
-// beam reaches inside the specimen, generates nothing.
-export const MIN_RELATIVE_SIGNAL = 1e-6;
+// Where a focused beam's intensity is below this fraction of its intensity at
+// the focus, nothing is generated: within about ±31.6 zR of the focus.
+export const MIN_RELATIVE_INTENSITY = 1e-3;
+const CUTOFF_U = Math.sqrt(1 / MIN_RELATIVE_INTENSITY - 1);
+
+// How far apart the emission spots along a path are, roughly.
+export const SPOT_SPACING_MM = 1.5;
 
 // Below this convergence a bundle is treated as collimated: its focus is too
 // far away to place, and the specimen sees the same beam wherever it sits.
@@ -95,41 +102,52 @@ export function relativeYield(order, u) {
 function yieldIntegral(order, u) {
   if (order === 2) return Math.atan(u);
   if (order === 3) return (u / (1 + u * u) + Math.atan(u)) / 2;
-  const steps = 400, a = 0, h = (u - a) / steps;
-  let sum = relativeYield(order, a) + relativeYield(order, u);
-  for (let i = 1; i < steps; i++) sum += relativeYield(order, a + i * h) * (i % 2 ? 4 : 2);
+  const steps = 400, h = u / steps;
+  let sum = relativeYield(order, 0) + relativeYield(order, u);
+  for (let i = 1; i < steps; i++) sum += relativeYield(order, i * h) * (i % 2 ? 4 : 2);
   return sum * h / 3;
 }
 
-// Where along one crossing of the specimen a signal is emitted. `startMm` and
-// `endMm` are the axial positions where the path enters and leaves, measured
-// from the beam's focus (so a focus inside has startMm < 0 < endMm); `focus`
-// carries zRMm, or is null/not ok for a beam with no focus. The path is split
-// into `parts` equal pieces; each returns where it emits (`at`, 0..1 along the
-// path), its share of the signal (`share`, summing to 1 before the cutoff) and
-// how intense it is relative to the most intense point inside (`level`).
-// Pieces with level below MIN_RELATIVE_SIGNAL are left out.
+// The whole focal signal: the integral over every slice along the beam.
+function fullYield(order) {
+  if (order === 2) return Math.PI;
+  if (order === 3) return Math.PI / 2;
+  return 2 * yieldIntegral(order, 1e4);
+}
+
+// Where along one crossing of the active layer a signal is emitted. `startMm`
+// and `endMm` are the axial positions where the path enters and leaves the
+// layer, measured from the beam's focus (a focus inside has startMm < 0 <
+// endMm); `focus` carries zRMm, or is null/not ok for a beam with no focus.
+// Each spot returns where it emits (`at`, 0..1 along the path), its `share`
+// and how intense it is relative to the focus (`level`, for drawing).
+// - With a focus: only the part of the path within the intensity cutoff
+//   emits, in pieces about SPOT_SPACING_MM long (at most `parts`, and one for
+//   a focal region far shorter than that); shares are fractions of the whole
+//   focal signal, so they add up to what this layer holds of it (at most 1,
+//   nothing for a layer away from the focus).
+// - Without a focus, or for a linear signal: `parts` even spots sharing 1.
 export function volumeEmissionPoints(order, startMm, endMm, focus, parts) {
   const k = Math.max(1, Math.round(Number(parts) || 1));
   const uniform = () => Array.from({ length: k }, (_, i) => ({ at: (i + 0.5) / k, share: 1 / k, level: 1 }));
   const n = Number(order);
-  if (!(n > 1) || !focus?.ok || !(focus.zRMm > 0) || !Number.isFinite(startMm) || !Number.isFinite(endMm)) return uniform();
+  if (!(n > 1) || !focus?.ok || !(focus.zRMm > 0)) return uniform();
+  if (!Number.isFinite(startMm) || !Number.isFinite(endMm) || startMm === endMm) return [];
   const u0 = Math.min(startMm, endMm) / focus.zRMm, u1 = Math.max(startMm, endMm) / focus.zRMm;
-  const total = yieldIntegral(n, u1) - yieldIntegral(n, u0);
-  if (!(total > 0) || !(u1 > u0)) return uniform();
-  const peak = relativeYield(n, Math.min(u1, Math.max(u0, 0)));
+  const lo = Math.max(u0, -CUTOFF_U), hi = Math.min(u1, CUTOFF_U);
+  if (!(hi > lo)) return [];
+  const full = fullYield(n);
+  const pieces = Math.min(k, Math.max(1, Math.ceil((hi - lo) * focus.zRMm / SPOT_SPACING_MM)));
   const out = [];
-  for (let i = 0; i < k; i++) {
-    const a = u0 + (u1 - u0) * i / k, b = u0 + (u1 - u0) * (i + 1) / k;
+  for (let i = 0; i < pieces; i++) {
+    const a = lo + (hi - lo) * i / pieces, b = lo + (hi - lo) * (i + 1) / pieces;
     // Each piece emits from its most intense point: the focus itself in
     // the piece that holds it.
     const u = Math.min(b, Math.max(a, 0));
-    const level = peak > 0 ? relativeYield(n, u) / peak : 0;
-    if (!(level >= MIN_RELATIVE_SIGNAL)) continue;
-    const share = (yieldIntegral(n, b) - yieldIntegral(n, a)) / total;
+    const share = (yieldIntegral(n, b) - yieldIntegral(n, a)) / full;
     if (!(share > 0)) continue;
     const at = (u - u0) / (u1 - u0);
-    const placed = { at: startMm <= endMm ? at : 1 - at, share, level: Math.min(1, level) };
+    const placed = { at: startMm <= endMm ? at : 1 - at, share, level: Math.min(1, relativeYield(n, u)) };
     // Two pieces meeting at the focus both emit from it: one spot.
     const same = out.find(p => Math.abs(p.at - placed.at) < 1e-12);
     if (same) same.share += placed.share;

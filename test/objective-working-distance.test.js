@@ -232,6 +232,8 @@ test('committing objective coordinates refreshes the derived immersion-bridge hi
   objective.params.workingDistance = 10;
   const sample = createElement('sample', 27, 0);
   sample.rot = 90;
+  // A 6 mm thin sheet: its near face is 3 mm before its centre.
+  sample.params.sampleLayout = 'thin';
   const panel = inspectorFor(objective, [sample]);
 
   assert.match(panel.innerHTML, /data-objective-coupling-status="connected"/);

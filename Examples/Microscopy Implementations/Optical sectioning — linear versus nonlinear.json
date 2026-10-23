@@ -3,7 +3,7 @@
  "version": 1,
  "elements": [
   {
-   "id": "e39tiiu5",
+   "id": "e6okg9yc",
    "type": "textlabel",
    "x": -30,
    "y": -80,
@@ -17,7 +17,7 @@
    }
   },
   {
-   "id": "eqy613fj",
+   "id": "ekxiyafy",
    "type": "cwlaser",
    "x": 0,
    "y": 0,
@@ -37,7 +37,7 @@
    }
   },
   {
-   "id": "etwm47qi",
+   "id": "eqmu7d7q",
    "type": "textlabel",
    "x": -30,
    "y": -30,
@@ -51,7 +51,7 @@
    }
   },
   {
-   "id": "e9m31bgi",
+   "id": "en32eayb",
    "type": "lens",
    "x": 150,
    "y": 0,
@@ -65,7 +65,7 @@
    }
   },
   {
-   "id": "e124en58",
+   "id": "e9ttpvah",
    "type": "sample",
    "x": 250,
    "y": 0,
@@ -95,8 +95,11 @@
       "requireOverlap": true
      }
     ],
-    "volumeSpecimen": true,
-    "thickness": 20,
+    "sampleLayout": "cuvette",
+    "activeSide": "top",
+    "glassThickness": 1,
+    "activeThickness": 20,
+    "thickness": 6,
     "showSignalSpot": true,
     "voxelPreview": false,
     "voxelSize": 0.6,
@@ -109,7 +112,7 @@
    }
   },
   {
-   "id": "ehharii0",
+   "id": "er8ohihf",
    "type": "beamdump",
    "x": 330,
    "y": 0,
@@ -121,21 +124,21 @@
    }
   },
   {
-   "id": "enntxb7b",
+   "id": "ezbjyd74",
    "type": "textlabel",
-   "x": 222,
+   "x": 226,
    "y": 25,
    "rot": 0,
    "label": "",
    "showLabel": false,
    "params": {
-    "text": "20 mm specimen",
+    "text": "20 mm cuvette",
     "fontSize": 8,
     "fill": "#333333"
    }
   },
   {
-   "id": "eba0a6cr",
+   "id": "ev6du01z",
    "type": "pulsedlaser",
    "x": 0,
    "y": 150,
@@ -164,7 +167,7 @@
    }
   },
   {
-   "id": "e93dka3a",
+   "id": "ev49piyp",
    "type": "textlabel",
    "x": -30,
    "y": 120,
@@ -178,7 +181,7 @@
    }
   },
   {
-   "id": "e6efpa6k",
+   "id": "e4brrx3e",
    "type": "lens",
    "x": 150,
    "y": 150,
@@ -192,7 +195,7 @@
    }
   },
   {
-   "id": "eb8na3zh",
+   "id": "ev4gzne4",
    "type": "sample",
    "x": 250,
    "y": 150,
@@ -222,8 +225,11 @@
       "requireOverlap": true
      }
     ],
-    "volumeSpecimen": true,
-    "thickness": 20,
+    "sampleLayout": "cuvette",
+    "activeSide": "top",
+    "glassThickness": 1,
+    "activeThickness": 20,
+    "thickness": 6,
     "showSignalSpot": true,
     "voxelPreview": false,
     "voxelSize": 0.6,
@@ -236,7 +242,7 @@
    }
   },
   {
-   "id": "e6pu8kc8",
+   "id": "e3e4nw3o",
    "type": "beamdump",
    "x": 330,
    "y": 150,
@@ -248,21 +254,21 @@
    }
   },
   {
-   "id": "ebasgusp",
+   "id": "ee9jre6w",
    "type": "textlabel",
-   "x": 222,
+   "x": 226,
    "y": 175,
    "rot": 0,
    "label": "",
    "showLabel": false,
    "params": {
-    "text": "20 mm specimen",
+    "text": "20 mm cuvette",
     "fontSize": 8,
     "fill": "#333333"
    }
   },
   {
-   "id": "ekqtimrj",
+   "id": "e40uu0mi",
    "type": "textlabel",
    "x": -30,
    "y": 215,
@@ -270,13 +276,13 @@
    "label": "",
    "showLabel": false,
    "params": {
-    "text": "One-photon excitation: fluorescence all along the path through the specimen.",
+    "text": "One-photon excitation: fluorescence all along the path through the cuvette.",
     "fontSize": 11,
     "fill": "#333333"
    }
   },
   {
-   "id": "eg3jcgqp",
+   "id": "ei18rt9s",
    "type": "textlabel",
    "x": -30,
    "y": 233,
@@ -290,7 +296,7 @@
    }
   },
   {
-   "id": "euqs9grd",
+   "id": "e8igwasx",
    "type": "textlabel",
    "x": -30,
    "y": 251,
@@ -298,7 +304,7 @@
    "label": "",
    "showLabel": false,
    "params": {
-    "text": "Select the lower specimen to read where its focus lies.",
+    "text": "Select the lower cuvette to read where its focus lies.",
     "fontSize": 11,
     "fill": "#333333"
    }
