@@ -5,15 +5,19 @@ import { DETECTOR_PRESETS, parseCurveCsv, spectrumRangeNm } from '../../sketch/j
 import { mountCalculator } from '../assets/simple-calculator-page.js';
 import { formatNumber } from '../assets/calculator-kit.js';
 
-// Spectrum files load one fluorophore at a time, on demand.
+// Spectrum files load one fluorophore at a time, on demand. A failed load
+// is shown, and retried when the fluorophore is chosen again a few seconds
+// later (a server or a connection that was down).
 const files = new Map();
+const RETRY_MS = 3000;
 let main = null, rate = null;
 function spectrumFile(id) {
-  if (!files.has(id)) {
+  const known = files.get(id);
+  if (!files.has(id) || (known?.error && Date.now() - known.at > RETRY_MS)) {
     files.set(id, undefined);
     fetch(new URL(`../../sketch/data/fluorophores/${encodeURIComponent(id)}.json`, import.meta.url))
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then(data => files.set(id, data), error => files.set(id, { error }))
+      .then(data => files.set(id, data), error => files.set(id, { error, at: Date.now() }))
       .finally(() => main?.update());
   }
   return files.get(id);
@@ -31,7 +35,7 @@ document.addEventListener('change', async event => {
   try {
     if (file.size > MAX_FILE_BYTES) throw new Error('The file is larger than 2 MB.');
     const parsed = parseCurveCsv(await file.text());
-    curves[input.name] = parsed.ok ? { name: file.name, curve: parsed.curve, parsed } : { name: file.name, error: parsed.message };
+    curves[input.name] = parsed.ok ? { name: file.name, parsed } : { name: file.name, error: parsed.message };
   } catch (error) {
     curves[input.name] = { name: file.name, error: error.message || 'The file could not be read.' };
   }
@@ -117,9 +121,8 @@ main = mountCalculator({ inputs: INPUTS, defaults: DEFAULTS, hideInactive: true,
       const p = DETECTOR_PRESETS[r.detector.id];
       out.push(`${p.label}: typical curve of the ${p.product} (${p.anchors}). Another detector of the same kind can differ by several percentage points.`);
     }
-    for (const [id, c] of Object.entries(curves)) {
-      if (c.parsed && r.values[id] === c.name) out.push(`${c.name}: ${c.parsed.points} points, ${c.parsed.rangeNm[0]}–${c.parsed.rangeNm[1]} nm, read as ${c.parsed.percent ? 'percent' : 'fractions'}; zero outside that range.`);
-    }
+    const how = { header: 'as its header states', values: 'from its values', chosen: 'as chosen' };
+    for (const f of r.files) out.push(`${f.name}: ${f.points} points, ${f.rangeNm[0]}–${f.rangeNm[1]} nm, read as ${f.unit === 'percent' ? 'percent' : 'fractions'} (${how[f.from]}); zero outside that range.`);
     if (r.second) {
       out.push(r.crosstalk === null
         ? `No crosstalk ratio: FPbase lists no extinction coefficient or quantum yield for one of the two.`

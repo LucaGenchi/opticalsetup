@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DEFAULTS, computeFluorescence, RATE_DEFAULTS, computeRates } from '../calculators/fluorescence/fluorescence-calculator.js';
 import {
-  filterTransmission, stackTransmission, detectionFractions, detectorQe, spectrumValue, parseCurveCsv,
+  filterTransmission, stackTransmission, detectionFractions, detectorQe, spectrumValue, parseCurveCsv, curveInUnits,
   absorptionCrossSectionCm2, focusPeakIntensityWcm2, moleculeRates, collectionFraction, DETECTOR_PRESETS,
 } from '../sketch/js/fluorescence.js';
 
@@ -126,8 +126,9 @@ test('filter and detector files: chosen, read, refused', () => {
   assert.equal(run({ f1Type: 'measured', f1File: '' }).ok, false, 'no file chosen');
   const parsed = parseCurveCsv('Wavelength (nm),T (%)\n500,0\n510,90\n540,90\n550,0\n');
   assert.equal(parsed.ok, true);
-  assert.equal(parsed.percent, true);
-  const r = run({ f1Type: 'measured', f1File: 'bp.csv', f2Type: 'none' }, { f1File: { name: 'bp.csv', curve: parsed.curve } });
+  assert.equal(parsed.header, 'percent');
+  const r = run({ f1Type: 'measured', f1File: 'bp.csv', f2Type: 'none' }, { f1File: { name: 'bp.csv', parsed } });
+  assert.deepEqual(r.files.map(f => [f.unit, f.from]), [['percent', 'header']]);
   assert.equal(r.ok, true);
   close(r.laserTransmission, 0, 0);
   assert.equal(r.laserOdCapped, true, 'zero transmission is capped for the chart');
@@ -136,7 +137,7 @@ test('filter and detector files: chosen, read, refused', () => {
   assert.equal(bad.ok, false);
   assert.match(bad.errors[0].message, /Filter 1: Wavelengths/);
   const qe = parseCurveCsv('400\t0.2\n600\t0.4\n');
-  const d = run({ detector: 'measured', detectorFile: 'qe.txt' }, { detectorFile: { name: 'qe.txt', curve: qe.curve } });
+  const d = run({ detector: 'measured', detectorFile: 'qe.txt' }, { detectorFile: { name: 'qe.txt', parsed: qe } });
   assert.equal(d.ok, true);
   close(detectorQe(d.detector, 500), 0.3, 1e-12);
   const flat = run({ detector: 'flat', detectorQe: 50 });
@@ -151,11 +152,55 @@ test('parsing curve files', () => {
   assert.equal(parseCurveCsv('0.5,0.1\n0.6,0.2').ok, false, 'micrometres are refused, not guessed');
   const p = parseCurveCsv('# comment\n600;0.5\n500;0.2\n500;0.4\n700;1.2\n');
   assert.equal(p.ok, true);
-  assert.equal(p.percent, false);
-  assert.deepEqual(p.curve.x, [500, 600, 700]);
-  close(p.curve.y[0], 0.3, 1e-12);
-  assert.equal(p.curve.y[2], 1, 'noise above 1 is clamped');
-  assert.equal(parseCurveCsv('500 50\n600 101\n').curve.y[1], 1);
+  assert.equal(p.header, null);
+  assert.deepEqual(p.x, [500, 600, 700]);
+  close(p.values[0], 0.3, 1e-12);
+  const asRead = curveInUnits(p);
+  assert.deepEqual([asRead.unit, asRead.from], ['fraction', 'values']);
+  assert.equal(asRead.curve.y[2], 1, 'noise above 1 is clamped');
+  assert.equal(curveInUnits(parseCurveCsv('500 50\n600 101\n')).curve.y[1], 1);
+  assert.equal(parseCurveCsv('wavelength, T (fraction)\n500 0.5\n600 0.6').header, 'fraction');
+});
+
+test('a file in percent with small values is not read as fractions (review of #263)', () => {
+  // A constant 0.1 % under a "(%)" header: 10⁻³, OD 3, not 10 %.
+  const percent = parseCurveCsv('Wavelength (nm),Transmission (%)\n300,0.1\n900,0.1\n');
+  const filter = units => run({ f1Type: 'measured', f1File: 'nd.csv', f1FileUnits: units, f2Type: 'none' }, { f1File: { name: 'nd.csv', parsed: percent } });
+  close(filter('auto').laserTransmission, 1e-3, 1e-12);
+  close(filter('auto').laserOd, 3, 1e-12);
+  // The user can override the header.
+  close(filter('fraction').laserTransmission, 0.1, 1e-12);
+  // Without a header, small values are fractions unless the user says percent.
+  const bare = parseCurveCsv('300,0.1\n900,0.1\n');
+  const plain = units => run({ f1Type: 'measured', f1File: 'b.csv', f1FileUnits: units, f2Type: 'none' }, { f1File: { name: 'b.csv', parsed: bare } });
+  close(plain('auto').laserTransmission, 0.1, 1e-12);
+  close(plain('percent').laserTransmission, 1e-3, 1e-12);
+  assert.deepEqual(plain('percent').files[0].from, 'chosen');
+  // Values above 1.5 are not fractions: refused on the units control.
+  const big = parseCurveCsv('300,50\n900,50\n');
+  const refused = run({ f1Type: 'measured', f1File: 'p.csv', f1FileUnits: 'fraction', f2Type: 'none' }, { f1File: { name: 'p.csv', parsed: big } });
+  assert.equal(refused.ok, false);
+  assert.equal(refused.errors[0].id, 'f1FileUnits');
+  const qe = run({ detector: 'measured', detectorFile: 'q.csv', detectorFileUnits: 'percent' }, { detectorFile: { name: 'q.csv', parsed: bare } });
+  close(detectorQe(qe.detector, 500), 1e-3, 1e-12);
+});
+
+test('a band must be at least three edge widths wide (review of #263)', () => {
+  assert.equal(run({ f1Width: 8, f1EdgeWidth: 3 }).ok, false);
+  const narrow = run({ f1Width: 0.5, f1EdgeWidth: 3 });
+  assert.deepEqual(narrow.errors.map(e => e.id), ['f1Width', 'f1EdgeWidth']);
+  assert.equal(run({ f2Type: 'notch', f2Center: 600, f2Width: 5, f2EdgeWidth: 2 }).ok, false, 'notch too');
+  assert.equal(run({ f1Width: 9, f1EdgeWidth: 3 }).ok, true);
+  assert.equal(run({ f1Width: 2, f1EdgeWidth: 0 }).ok, true, 'ideal steps allow any width');
+  // At the limit the band keeps its peak and FWHM to 0.3 %.
+  const bp = { type: 'bandpass', centerNm: 525, widthNm: 9, edgeWidthNm: 3, peakTransmission: 0.9, blockingOd: 6 };
+  const t = nm => filterTransmission(bp, nm);
+  assert.ok(t(525) >= 0.997 * 0.9, `peak ${t(525)}`);
+  const half = 0.9 / 2;
+  let lo = 525, hi = 525;
+  while (t(lo) > half) lo -= 0.0005;
+  while (t(hi) > half) hi += 0.0005;
+  assert.ok(Math.abs((hi - lo) - 9) <= 0.003 * 9, `FWHM ${hi - lo}`);
 });
 
 test('detector presets stay inside 0–1 and are zero outside their range', () => {

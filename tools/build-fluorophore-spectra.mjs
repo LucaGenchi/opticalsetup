@@ -53,13 +53,18 @@ const C = {
 
 // [FPbase slug, category, state] — `state` names one of several states
 // (its FPbase state slug is <slug>_<state>), with the label shown for it.
+// Left out because FPbase stores another protein's curve for them, so the
+// page would show a relative's measurement: mEGFP and mEmerald (EGFP's),
+// mCitrine and YPet (Citrine's), EYFP and Venus (Citrine's emission),
+// Cerulean (ECFP's) and mClover3 (Clover's). The build refuses any two
+// entries that share a curve.
 const ENTRIES = [
   ['sirius', C.blue], ['ebfp2', C.blue], ['mtagbfp2', C.blue], ['tagbfp', C.blue], ['t-sapphire', C.blue],
-  ['ecfp', C.cyan], ['cerulean', C.cyan], ['mcerulean3', C.cyan], ['mturquoise2', C.cyan], ['mtfp1', C.cyan],
-  ['avgfp', C.green], ['egfp', C.green], ['megfp', C.green], ['superfolder-gfp', C.green], ['memerald', C.green],
-  ['mneongreen', C.green], ['mwasabi', C.green], ['clover', C.green], ['mclover3', C.green], ['mgreenlantern', C.green],
+  ['ecfp', C.cyan], ['mcerulean3', C.cyan], ['mturquoise2', C.cyan], ['mtfp1', C.cyan],
+  ['avgfp', C.green], ['egfp', C.green], ['superfolder-gfp', C.green],
+  ['mneongreen', C.green], ['mwasabi', C.green], ['clover', C.green], ['mgreenlantern', C.green],
   ['staygold', C.green], ['mstaygold', C.green], ['mbaojin', C.green], ['gamillus', C.green, ['on', 'on state']], ['aausfp1', C.green],
-  ['eyfp', C.yellow], ['venus', C.yellow], ['mvenus', C.yellow], ['citrine', C.yellow], ['mcitrine', C.yellow], ['ypet', C.yellow],
+  ['mvenus', C.yellow], ['citrine', C.yellow],
   ['mko2', C.orange], ['mkokappa', C.orange], ['morange2', C.orange],
   ['dsred', C.red], ['dsred-express2', C.red], ['tdtomato', C.red], ['mscarlet', C.red], ['mscarlet-i', C.red], ['mscarlet3', C.red],
   ['mruby2', C.red], ['mruby3', C.red], ['mapple', C.red], ['tagrfp', C.red], ['tagrfp-t', C.red], ['mcherry', C.red],
@@ -231,6 +236,16 @@ async function build(dir) {
       spectraReferences: spectraRefs,
       ...curves,
     });
+  }
+  // One curve, one protein: a copy of another entry's curve is not a
+  // measurement of this one.
+  const owners = new Map();
+  for (const f of fluorophores) {
+    for (const role of ['excitation', 'emission']) {
+      const key = `${f[role].startNm}:${f[role].values.join(',')}`;
+      if (owners.has(key)) throw new Error(`${f.id} ${role}: the same curve as ${owners.get(key)}; leave one of them out`);
+      owners.set(key, `${f.id} ${role}`);
+    }
   }
   const order = Object.values(C);
   fluorophores.sort((a, b) => order.indexOf(a.category) - order.indexOf(b.category) || a.emMaxNm - b.emMaxNm || a.name.localeCompare(b.name));

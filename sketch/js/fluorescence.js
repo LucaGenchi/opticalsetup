@@ -208,30 +208,43 @@ export function moleculeRates({ intensityWcm2, wavelengthNm, crossSectionCm2, li
 
 // ---------------- measured curves from a file ----------------
 
-// A two-column text file (wavelength in nm, then transmission or QE as a
-// fraction or in percent), separated by commas, semicolons, tabs or spaces.
-// Lines without two numbers (headers, comments) are skipped. Values above
-// 1.5 anywhere mean the file is in percent. Repeated wavelengths are
-// averaged; values are clamped to 0–1 (measurement noise).
+// A two-column text file (wavelength in nm, then transmission or QE),
+// separated by commas, semicolons, tabs or spaces. Lines without two
+// numbers (headers, comments) are skipped; a header before the data that
+// names % or percent, or fraction, records the unit it states. Repeated
+// wavelengths are averaged. The values stay as written: curveInUnits
+// converts them.
 export function parseCurveCsv(text, { minNm = 150, maxNm = 3000 } = {}) {
   const rows = [];
+  let header = null;
   for (const line of String(text).split(/\r?\n/)) {
     const cells = line.trim().split(/[\s,;]+/).filter(Boolean);
-    if (cells.length < 2) continue;
     const nm = Number(cells[0]), v = Number(cells[1]);
-    if (Number.isFinite(nm) && Number.isFinite(v)) rows.push([nm, v]);
+    if (cells.length >= 2 && Number.isFinite(nm) && Number.isFinite(v)) { rows.push([nm, v]); continue; }
+    if (!rows.length && header === null) header = /%|percent/i.test(line) ? 'percent' : /fraction|\(\s*0\s*[-–]\s*1\s*\)/i.test(line) ? 'fraction' : null;
   }
   if (rows.length < 2) return { ok: false, message: 'The file needs at least two rows of “wavelength, value”.' };
   if (rows.some(([nm]) => nm < minNm || nm > maxNm)) return { ok: false, message: `Wavelengths must be in nm, between ${minNm} and ${maxNm}.` };
-  const percent = rows.some(([, v]) => v > 1.5);
   const byNm = new Map();
   for (const [nm, v] of rows) {
     const slot = byNm.get(nm) ?? { sum: 0, n: 0 };
-    slot.sum += percent ? v / 100 : v; slot.n++;
+    slot.sum += v; slot.n++;
     byNm.set(nm, slot);
   }
   const x = [...byNm.keys()].sort((a, b) => a - b);
   if (x.length < 2) return { ok: false, message: 'The file needs at least two different wavelengths.' };
-  const y = x.map(nm => { const { sum, n } = byNm.get(nm); return Math.min(1, Math.max(0, sum / n)); });
-  return { ok: true, curve: { x, y }, percent, points: x.length, rangeNm: [x[0], x.at(-1)] };
+  const values = x.map(nm => byNm.get(nm).sum / byNm.get(nm).n);
+  return { ok: true, x, values, header, maxValue: Math.max(...values), points: x.length, rangeNm: [x[0], x.at(-1)] };
+}
+
+// A parsed file as a 0–1 curve. `units` is 'fraction', 'percent', or
+// 'auto': the unit its header states, else percent when a value exceeds
+// 1.5. Values are clamped to 0–1 (measurement noise); a "fraction" above
+// 1.5 is refused rather than clamped.
+export function curveInUnits(parsed, units = 'auto') {
+  const unit = units !== 'auto' ? units : parsed.header ?? (parsed.maxValue > 1.5 ? 'percent' : 'fraction');
+  const from = units !== 'auto' ? 'chosen' : parsed.header ? 'header' : 'values';
+  if (unit === 'fraction' && parsed.maxValue > 1.5) return { ok: false, message: 'values above 1.5 cannot be fractions; choose percent.' };
+  const scale = unit === 'percent' ? 0.01 : 1;
+  return { ok: true, unit, from, curve: { x: parsed.x, y: parsed.values.map(v => Math.min(1, Math.max(0, v * scale))) } };
 }

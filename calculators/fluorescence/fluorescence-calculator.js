@@ -9,13 +9,14 @@ import { FLUOROPHORE_LIBRARY, FLUOROPHORE_SOURCES } from '../../sketch/js/fluoro
 import {
   spectrumValue, spectrumRangeNm, absorptionCrossSectionCm2, filterTransmission, stackTransmission, detectorQe,
   detectionFractions, focusPeakIntensityWcm2, widefieldIntensityWcm2, focusPowerW, widefieldPowerW,
-  collectionFraction, moleculeRates, DETECTOR_PRESETS,
+  collectionFraction, moleculeRates, curveInUnits, DETECTOR_PRESETS,
 } from '../../sketch/js/fluorescence.js';
 import { defaultsFor, parseInputs, unavailable } from '../assets/calculator-inputs.js';
 
 export const LIBRARY = new Map(FLUOROPHORE_LIBRARY.map(f => [f.id, f]));
 const SCOPE_NM = [250, 1000];
 export const MAX_FILTERS = 2;
+export const BAND_EDGES = 3;
 const FILTER_KINDS = ['bandpass', 'longpass', 'shortpass', 'notch'];
 const OD_CAP = 12;
 const fluorophoreOptions = FLUOROPHORE_LIBRARY.map(f => [f.id, f.name, f.category]);
@@ -26,6 +27,10 @@ export const MAIN_INPUTS = [
   { id: 'fluorophore', group: 'fluor', label: 'Fluorophore', type: 'select', value: 'egfp', options: fluorophoreOptions },
   { id: 'second', group: 'second', label: 'Fluorophore', type: 'select', value: 'none', options: [['none', 'None'], ...fluorophoreOptions] },
 ];
+
+// How a loaded file's values are read: as its header says (else percent
+// when a value exceeds 1.5), or as chosen.
+const UNIT_OPTIONS = [['auto', 'As the file says'], ['fraction', 'Fractions (0–1)'], ['percent', 'Percent (0–100)']];
 
 // The detection path (second form): two filters, then the detector.
 const filterInputs = i => {
@@ -51,6 +56,8 @@ const filterInputs = i => {
       ...generic, help: 'Transmission outside the passband is 10^−OD: OD 6 passes one part per million.' },
     { id: `${p}File`, group: `filter${i}`, label: 'Transmission file', type: 'file', accept: '.csv,.txt,.tsv,text/csv,text/plain',
       when: `${p}Type`, whenValue: 'measured', help: 'Two columns: wavelength in nm, then transmission (0–1 or %). Read in your browser, never uploaded. Outside the file’s range the transmission is taken as 0.' },
+    { id: `${p}FileUnits`, group: `filter${i}`, label: 'Values in', type: 'select', value: 'auto', options: UNIT_OPTIONS,
+      when: `${p}Type`, whenValue: 'measured' },
   ];
 };
 export const DETECT_INPUTS = [
@@ -62,6 +69,8 @@ export const DETECT_INPUTS = [
     when: 'detector', whenValue: 'flat' },
   { id: 'detectorFile', group: 'detector', label: 'QE file', type: 'file', accept: '.csv,.txt,.tsv,text/csv,text/plain',
     when: 'detector', whenValue: 'measured', help: 'Two columns: wavelength in nm, then QE (0–1 or %). Read in your browser, never uploaded. Outside the file’s range the QE is taken as 0.' },
+  { id: 'detectorFileUnits', group: 'detector', label: 'Values in', type: 'select', value: 'auto', options: UNIT_OPTIONS,
+    when: 'detector', whenValue: 'measured' },
 ];
 export const INPUTS = [...MAIN_INPUTS, ...DETECT_INPUTS];
 export const DEFAULTS = defaultsFor(INPUTS);
@@ -69,23 +78,27 @@ export const DEFAULTS = defaultsFor(INPUTS);
 const od = t => (t > 10 ** -OD_CAP ? -Math.log10(t) : OD_CAP);
 
 // The filters and detector as fluorescence.js takes them. `curves` holds
-// the files the page has read: { [inputId]: { name, curve } | { name, error } }.
+// the files the page has read: { [inputId]: { name, parsed } | { name, error } }.
 function detectionPath(v, curves) {
-  const errors = [], filters = [];
+  const errors = [], filters = [], files = [];
   let pending = false;
   const curveFor = id => {
     const loaded = curves[id];
     if (!v[id]) return { error: 'choose a file.' };
     // Chosen but not read yet: the page re-runs the calculator once it is.
     if (!loaded || loaded.name !== v[id]) { pending = true; return {}; }
-    return loaded.error ? { error: loaded.error } : { curve: loaded.curve };
+    if (loaded.error) return { error: loaded.error };
+    const read = curveInUnits(loaded.parsed, v[`${id}Units`]);
+    if (!read.ok) return { error: read.message, id: `${id}Units` };
+    files.push({ name: loaded.name, points: loaded.parsed.points, rangeNm: loaded.parsed.rangeNm, unit: read.unit, from: read.from });
+    return { curve: read.curve };
   };
   for (let i = 1; i <= MAX_FILTERS; i++) {
     const p = `f${i}`, type = v[`${p}Type`];
     if (type === 'none') continue;
     if (type === 'measured') {
-      const { curve, error } = curveFor(`${p}File`);
-      if (error) errors.push({ id: `${p}File`, message: `Filter ${i}: ${error}` });
+      const { curve, error, id } = curveFor(`${p}File`);
+      if (error) errors.push({ id: id ?? `${p}File`, message: `Filter ${i}: ${error}` });
       else if (curve) filters.push({ index: i, type, curve, name: curves[`${p}File`].name });
       continue;
     }
@@ -98,6 +111,14 @@ function detectionPath(v, curves) {
       errors.push({ id: `${p}Width`, message: `Filter ${i}: the band must lie at positive wavelengths.` });
       continue;
     }
+    // Narrower than three edge widths, the two edges overlap and the band
+    // no longer reaches its peak transmission or its FWHM; from there on
+    // both hold to 0.3 %.
+    if ((type === 'bandpass' || type === 'notch') && v[`${p}Width`] < BAND_EDGES * v[`${p}EdgeWidth`]) {
+      const message = `Filter ${i}: the width must be at least ${BAND_EDGES} times the edge width, or the band does not reach its peak transmission and FWHM.`;
+      errors.push({ id: `${p}Width`, message }, { id: `${p}EdgeWidth`, message });
+      continue;
+    }
     filters.push({ index: i, type, peakTransmission, blockingOd, edgeWidthNm: v[`${p}EdgeWidth`],
       centerNm: v[`${p}Center`], widthNm: v[`${p}Width`], edgeNm: v[`${p}Edge`] });
   }
@@ -105,11 +126,11 @@ function detectionPath(v, curves) {
   if (v.detector === 'flat') detector = { type: 'flat', qe: v.detectorQe / 100 };
   else if (DETECTOR_PRESETS[v.detector]) detector = { type: 'preset', id: v.detector };
   else if (v.detector === 'measured') {
-    const { curve, error } = curveFor('detectorFile');
-    if (error) errors.push({ id: 'detectorFile', message: `Detector: ${error}` });
+    const { curve, error, id } = curveFor('detectorFile');
+    if (error) errors.push({ id: id ?? 'detectorFile', message: `Detector: ${error}` });
     else if (curve) detector = { type: 'measured', curve, name: curves.detectorFile.name };
   }
-  return { filters, detector, errors, pending };
+  return { filters, detector, errors, pending, files };
 }
 
 // What one fluorophore does with this laser and this detection path.
@@ -143,14 +164,14 @@ export function computeFluorescence(raw, { data, secondData, curves = {} } = {})
   if (path.errors.length) return { ok: false, errors: path.errors };
   if (path.pending) return { ok: false, pending: true, message: 'Reading the file…' };
   if (data === undefined || (metaB && secondData === undefined)) return { ok: false, pending: true, message: 'Loading the spectra…' };
-  if (!loaded(data, v.fluorophore)) return unavailable('This fluorophore’s spectra could not be loaded.', 'fluorophore');
-  if (metaB && !loaded(secondData, v.second)) return unavailable('The second fluorophore’s spectra could not be loaded.', 'second');
+  if (!loaded(data, v.fluorophore)) return unavailable('This fluorophore’s spectra could not be loaded. Check the connection, then choose it again.', 'fluorophore');
+  if (metaB && !loaded(secondData, v.second)) return unavailable('The second fluorophore’s spectra could not be loaded. Check the connection, then choose it again.', 'second');
   const { filters, detector } = path;
   const main = evaluate(meta, data, v.laserNm, filters, detector);
   const second = metaB ? evaluate(metaB, secondData, v.laserNm, filters, detector) : null;
   const laserTransmission = stackTransmission(filters, v.laserNm);
   return {
-    ok: true, values: v, laserNm: v.laserNm, main, second, filters, detector,
+    ok: true, values: v, laserNm: v.laserNm, main, second, filters, detector, files: path.files,
     laserTransmission, laserOd: od(laserTransmission), laserOdCapped: !(laserTransmission > 10 ** -OD_CAP),
     crosstalk: second && main.signal > 0 && second.signal !== null ? second.signal / main.signal : null,
     source: FLUOROPHORE_SOURCES[meta.source],

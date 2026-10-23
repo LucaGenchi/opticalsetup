@@ -74,6 +74,21 @@ test('well-known proteins keep the peaks their papers publish', () => {
   // A two-state indicator appears in both states, named for each.
   assert.ok(FLUOROPHORE_LIBRARY.some(f => f.id === 'jrgeco1a-calcium-saturated' && f.name === 'jRGECO1a (Ca²⁺-bound)'));
   assert.ok(FLUOROPHORE_LIBRARY.some(f => f.id === 'jrgeco1a-calcium-free'));
-  // Records whose listed peaks disagree with their own curves are left out.
-  for (const id of ['dsred', 'mruby2', 'gcamp6f']) assert.ok(!FLUOROPHORE_LIBRARY.some(f => f.id === id), id);
+  // Records whose listed peaks disagree with their own curves are left out,
+  // and so are proteins whose FPbase curve is another protein's.
+  for (const id of ['dsred', 'mruby2', 'gcamp6f', 'megfp', 'memerald', 'mcitrine', 'ypet', 'eyfp', 'venus', 'cerulean', 'mclover3']) {
+    assert.ok(!FLUOROPHORE_LIBRARY.some(f => f.id === id), id);
+  }
+});
+
+test('no two fluorophores share a curve', () => {
+  const seen = new Map();
+  for (const { id } of FLUOROPHORE_LIBRARY) {
+    const f = load(id);
+    for (const role of ['excitation', 'emission']) {
+      const key = `${f[role].startNm}:${f[role].values.join(',')}`;
+      assert.ok(!seen.has(key), `${id} ${role} is the same curve as ${seen.get(key)}`);
+      seen.set(key, `${id} ${role}`);
+    }
+  }
 });
