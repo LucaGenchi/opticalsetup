@@ -500,3 +500,36 @@ test('light generated away from the hit is timed from where it is generated', ()
   assert.ok(pump && thg);
   assert.ok(Math.abs(thg.oplMm - pump.oplMm) < 1e-9, `THG ${thg.oplMm} mm, pump ${pump.oplMm} mm`);
 });
+
+test('a very wide cone is one beam, however far apart its edge rays point', () => {
+  // Andrea (#261): a 25 mm beam focused by an f = 10 mm lens has edge rays
+  // more than 90° apart; they still cross the specimen from the same side.
+  const bench = lens => {
+    const laser = createElement('pulsedlaser', 0, 0);
+    Object.assign(laser.params, { wavelength: 920, beamMode: 'beam', beamWidth: 25 });
+    const elements = [laser];
+    if (lens) {
+      const l = createElement('lens', 100, 0);
+      Object.assign(l.params, { f: 10, dia: 40 });
+      elements.push(l);
+    }
+    const sample = createElement('sample', 110, 0);
+    sample.rot = 90;
+    Object.assign(sample.params, {
+      activeThickness: 0.1, specimenType: 'nonlinear',
+      channels: [{ ...newSampleChannel('tpef'), eff: 0.2, autoWl: false, wl: 560 }],
+    });
+    elements.push(sample);
+    traceScene(elements);
+    return { sample, power: emitted(sample) };
+  };
+  const cone = bench(true);
+  assert.equal(specimenIncidentBeams(cone.sample.id).length, 1, 'one beam record');
+  const readings = specimenFocusReading(cone.sample.id);
+  assert.equal(readings.length, 1);
+  assert.ok(readings[0].inside);
+  // The layer holds the whole focal region: the full efficiency, as for the
+  // same beam unfocused.
+  const flat = bench(false);
+  assert.ok(Math.abs(cone.power / flat.power - 1) < 1e-9, `cone ${cone.power}, flat ${flat.power}`);
+});
