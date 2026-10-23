@@ -38,6 +38,8 @@ function twoColourBench(channels, { aperture = 40 } = {}) {
   const sample = createElement('sample', 200, 0);
   sample.rot = 90;
   sample.params.aperture = aperture;
+  // The thin mid-line model these tests measure (saved scenes keep it).
+  sample.params.volumeSpecimen = false;
   sample.params.specimenType = specimenTypeFor(channels);
   sample.params.channels = channels;
   const detector = createElement('detector', 400, 0);
@@ -50,6 +52,8 @@ function singleColourBench(channels, wavelength = 800) {
   laser.params.wavelength = wavelength;
   const sample = createElement('sample', 200, 0);
   sample.rot = 90;
+  // The thin mid-line model these tests measure (saved scenes keep it).
+  sample.params.volumeSpecimen = false;
   sample.params.specimenType = specimenTypeFor(channels);
   sample.params.channels = channels;
   const detector = createElement('detector', 400, 0);

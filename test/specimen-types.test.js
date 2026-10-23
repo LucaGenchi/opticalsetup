@@ -976,12 +976,12 @@ test('the excitation spot is the only circle a specimen draws, and the toggle go
   }
 });
 
-test('sample thickness is a presentation control that never moves the optical surface', () => {
+test('sample thickness is a presentation control on a thin-line specimen, never moving the optical surface', () => {
   for (const type of ['sample', 'stage']) {
     const el = createElement(type, 0, 0);
     const spec = registry[type].params.find(p => p.key === 'thickness');
     assert.ok(spec, `${type} exposes a thickness`);
-    assert.equal(spec.appearance, true, 'and it lives in Label & appearance');
+    assert.equal(spec.appearance(el.params), true, 'and it lives in Label & appearance while nothing emits');
     assert.equal(spec.def, 6);
 
     const glassHeight = svg => Number((svg.match(/<rect [^>]*height="([\d.]+)"[^>]*fill="[^"]*"[^>]*stroke="#/) || [])[1]

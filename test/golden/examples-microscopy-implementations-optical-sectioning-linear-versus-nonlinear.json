@@ -1,51 +1,47 @@
 {
- "elements": 20,
+ "elements": 16,
  "beams": 0,
  "drawables": {
-  "count": 668,
+  "count": 1886,
   "byType": {
-   "path": 476,
-   "poly": 192
+   "path": 1742,
+   "poly": 144
   },
   "colors": {
-   "#00f7ff": 104,
-   "#00ff38": 460,
-   "#8b1a1a": 104
+   "#00f7ff": 78,
+   "#00ff38": 1730,
+   "#8b1a1a": 78
   },
-  "points": 1724,
+  "points": 4074,
   "sum": [
-   371141.47,
-   129300
+   984305.146,
+   288900
   ],
   "bbox": [
    46,
    -22.7683,
-   310,
+   320,
    172.7683
   ],
-  "digest": "3f549221"
+  "digest": "21c11dd3"
  },
  "drawnElements": {
-  "textlabel:ev29plk5": "bb31f03c",
-  "textlabel:ebtvopqj": "1ee9fe25",
-  "textlabel:evsapqhq": "c2e00981",
-  "textlabel:e97egeud": "1ee9fe25",
-  "textlabel:equlixd2": "c2e00981",
-  "cwlaser:esb87h6l": "613d38dc",
-  "textlabel:eehpeszp": "a55d3150",
-  "lens:ewoafgy4": "21f36c16",
-  "sample:epkvb3uy": "6b348105",
-  "sample:efop9ohc": "6b348105",
-  "beamdump:exyjgutn": "2ac2293d",
-  "pulsedlaser:e689lk19": "9417886c",
-  "textlabel:epmekl75": "3ec20a76",
-  "lens:e0sq1plb": "21f36c16",
-  "sample:em5vl46c": "6b348105",
-  "sample:eyhrasrg": "6b348105",
-  "beamdump:eh9zd6lq": "2ac2293d",
-  "textlabel:ehfqwscd": "abacb398",
-  "textlabel:e88vf6zd": "c43ff8da",
-  "textlabel:efxqphq3": "ee215310"
+  "textlabel:e39tiiu5": "bb31f03c",
+  "cwlaser:eqy613fj": "613d38dc",
+  "textlabel:etwm47qi": "a55d3150",
+  "lens:e9m31bgi": "21f36c16",
+  "sample:e124en58": "5b419621",
+  "beamdump:ehharii0": "2ac2293d",
+  "textlabel:enntxb7b": "f9d613c2",
+  "pulsedlaser:eba0a6cr": "9417886c",
+  "textlabel:e93dka3a": "3ec20a76",
+  "lens:e6efpa6k": "21f36c16",
+  "sample:eb8na3zh": "5b419621",
+  "beamdump:e6pu8kc8": "2ac2293d",
+  "textlabel:ebasgusp": "f9d613c2",
+  "textlabel:ekqtimrj": "c3535b33",
+  "textlabel:eg3jcgqp": "5175180d",
+  "textlabel:euqs9grd": "2621a533"
  },
  "pulseTracks": [
   {
@@ -54,53 +50,35 @@
    "points": 3,
    "opl": [
     0,
-    158
+    198
    ],
    "pulse": {
-    "sourceId": "e689lk19",
+    "sourceId": "eba0a6cr",
     "repRateMHz": 80,
     "pulseWidthFs": 150,
     "phaseNs": 0,
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "307fce73"
+   "digest": "0abc5538"
   },
   {
    "intensity": 0.9,
    "color": "#8b1a1a",
    "points": 2,
    "opl": [
-    158,
-    198
-   ],
-   "pulse": {
-    "sourceId": "e689lk19",
-    "repRateMHz": 80,
-    "pulseWidthFs": 150,
-    "phaseNs": 0,
-    "spectrumReshaped": false,
-    "gates": 0
-   },
-   "digest": "8ecf2192"
-  },
-  {
-   "intensity": 0.81,
-   "color": "#8b1a1a",
-   "points": 2,
-   "opl": [
     198,
-    258
+    268
    ],
    "pulse": {
-    "sourceId": "e689lk19",
+    "sourceId": "eba0a6cr",
     "repRateMHz": 80,
     "pulseWidthFs": 150,
     "phaseNs": 0,
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "4c91c4da"
+   "digest": "15c9374f"
   }
  ],
  "writeHits": {
@@ -108,15 +86,32 @@
   "digest": "811c9dc5"
  },
  "signalHits": {
-  "count": 4,
-  "digest": "13c73b1a"
+  "count": 2,
+  "digest": "0aa79dd1"
  },
  "readouts": {
-  "sample:epkvb3uy": {
+  "sample:e124en58": {
    "specimenIncident": [
     {
-     "branch": "esb87h6l",
+     "branch": "eqy613fj",
      "bw": 0,
+     "focus": {
+      "axis": {
+       "x": 1,
+       "y": 2.77680946e-19
+      },
+      "depthMm": 10,
+      "inside": true,
+      "na": 0.0499376169,
+      "ok": true,
+      "point": {
+       "x": 250,
+       "y": 7.10542736e-17
+      },
+      "w0Mm": 0.00311058545,
+      "zMm": 1.84467826e-16,
+      "zRMm": 0.062289425
+     },
      "gates": [],
      "gddRange": [
       371.436893,
@@ -124,12 +119,12 @@
      ],
      "gddSum": 9285.92231,
      "intensity": 25,
-     "key": "488.000000000/esb87h6l////",
-     "opl": 158.027072,
-     "oplMin": 158,
-     "oplSum": 3950.67681,
+     "key": "488.000000000/eqy613fj////",
+     "opl": 198.045121,
+     "oplMin": 198,
+     "oplSum": 4951.12802,
      "oplWeight": 25,
-     "originId": "esb87h6l",
+     "originId": "eqy613fj",
      "power": 1,
      "pulse": null,
      "spec": null,
@@ -138,42 +133,26 @@
     }
    ]
   },
-  "sample:efop9ohc": {
+  "sample:eb8na3zh": {
    "specimenIncident": [
     {
-     "branch": "esb87h6l>epkvb3uy:x",
-     "bw": 0,
-     "gates": [],
-     "gddRange": [
-      371.436893,
-      371.436893
-     ],
-     "gddSum": 8357.33008,
-     "intensity": 22.5,
-     "key": "488.000000000/esb87h6l>epkvb3uy:x////",
-     "opl": 198.045121,
-     "oplMin": 198,
-     "oplSum": 4456.01521,
-     "oplWeight": 22.5,
-     "originId": "esb87h6l",
-     "power": 0.9,
-     "pulse": null,
-     "spec": null,
-     "spreadSum": 0,
-     "wl": 488
-    }
-   ]
-  },
-  "sample:em5vl46c": {
-   "specimenIncident": [
-    {
-     "branch": "e689lk19",
+     "branch": "eba0a6cr",
      "bw": 8.30046232,
      "focus": {
+      "axis": {
+       "x": 1,
+       "y": 2.77680946e-19
+      },
+      "depthMm": 10,
+      "inside": true,
       "na": 0.0499376169,
       "ok": true,
+      "point": {
+       "x": 250,
+       "y": 150
+      },
       "w0Mm": 0.00586421846,
-      "zMm": 40,
+      "zMm": 0,
       "zRMm": 0.117430883
      },
      "gates": [],
@@ -183,12 +162,12 @@
      ],
      "gddSum": 3481.86435,
      "intensity": 25,
-     "key": "920.000000000/e689lk19/80/0/150/",
-     "opl": 158.027072,
-     "oplMin": 158,
-     "oplSum": 3950.67681,
+     "key": "920.000000000/eba0a6cr/80/0/150/",
+     "opl": 198.045121,
+     "oplMin": 198,
+     "oplSum": 4951.12802,
      "oplWeight": 25,
-     "originId": "e689lk19",
+     "originId": "eba0a6cr",
      "power": 1,
      "pulse": {
       "avgPowerW": 0.1,
@@ -198,7 +177,7 @@
       "pulseShape": "gauss",
       "pulseWidthFs": 150,
       "repRateMHz": 80,
-      "sourceId": "e689lk19",
+      "sourceId": "eba0a6cr",
       "spectrumHiNm": 930.574645,
       "spectrumKind": "gauss",
       "spectrumLoNm": 909.425355,
@@ -211,57 +190,6 @@
       "kind": "gauss"
      },
      "spreadSum": -163.941157,
-     "wl": 920
-    }
-   ]
-  },
-  "sample:eyhrasrg": {
-   "specimenIncident": [
-    {
-     "branch": "e689lk19>em5vl46c:x",
-     "bw": 8.30046232,
-     "focus": {
-      "na": 0.0499376169,
-      "ok": true,
-      "w0Mm": 0.00586421846,
-      "zMm": -8.52651283e-14,
-      "zRMm": 0.117430883
-     },
-     "gates": [],
-     "gddRange": [
-      139.274574,
-      139.274574
-     ],
-     "gddSum": 3133.67792,
-     "intensity": 22.5,
-     "key": "920.000000000/e689lk19>em5vl46c:x/80/0/150/",
-     "opl": 198.045121,
-     "oplMin": 198,
-     "oplSum": 4456.01521,
-     "oplWeight": 22.5,
-     "originId": "e689lk19",
-     "power": 0.9,
-     "pulse": {
-      "avgPowerW": 0.1,
-      "bandwidthNm": 8.30046232,
-      "centerWavelengthNm": 920,
-      "phaseNs": 0,
-      "pulseShape": "gauss",
-      "pulseWidthFs": 150,
-      "repRateMHz": 80,
-      "sourceId": "e689lk19",
-      "spectrumHiNm": 930.574645,
-      "spectrumKind": "gauss",
-      "spectrumLoNm": 909.425355,
-      "transformLimitFs": 150,
-      "transformLimited": true
-     },
-     "spec": {
-      "center": 920,
-      "fwhm": 8.30046232,
-      "kind": "gauss"
-     },
-     "spreadSum": -147.547042,
      "wl": 920
     }
    ]

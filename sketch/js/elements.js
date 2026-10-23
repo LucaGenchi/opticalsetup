@@ -16,7 +16,7 @@ import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, po
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
 import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
-import { NONLINEAR_ORDER, focusYield } from './sectioning.js';
+import { NONLINEAR_ORDER } from './sectioning.js';
 import { opaSettings, opaGainAt, MAX_OPA_STAGES, MAX_GATE_BANDWIDTH_RATIO, MIN_PHASE_KEPT_GAIN } from './opa.js';
 import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
 import {
@@ -1810,17 +1810,21 @@ function sampleModeParams() {
         return srs ? `${timing}. Stimulated Raman transfer not drawn: ${srs}.` : timing;
       },
     },
-    // Optional thin-layer optical sectioning (sectioning.js). Off unless the
-    // user switches it on, so saved specimens keep their yields.
-    { key: 'focusSectioning', label: 'Focus-dependent yield', type: 'checkbox', def: false,
-      show: p => sampleChannels(p).some(c => NONLINEAR_ORDER[c.kind]) },
+    // The whole drawn thickness emits (sectioning.js): linear signals along
+    // the path, nonlinear ones towards a focus inside. New specimens start
+    // with it; a scene saved before it existed keeps its mid-line emission.
+    { key: 'volumeSpecimen', label: 'Whole thickness active', type: 'checkbox', def: true,
+      migrate: () => false, show: p => sampleChannels(p).length > 0 },
+    { key: 'thickness', label: 'Sample thickness (mm)', type: 'number', min: 0.15, htmlMin: 0, max: 20, step: 0.5, def: 6,
+      appearance: p => !isVolumeSpecimen(p) },
+    // Shown only while a beam focuses inside the specimen: a wide-field,
+    // collimated or speckle beam has nothing to report here.
     {
-      key: 'focusReading', label: 'Focus', type: 'readout', wide: true,
-      show: p => p.focusSectioning === true && sampleChannels(p).some(c => NONLINEAR_ORDER[c.kind]),
-      readout: (p, el) => specimenFocusReadout(el ? specimenFocusReading(el.id) : null, sampleChannels(p)),
+      key: 'focusReading', label: 'Focus inside', type: 'readout', wide: true,
+      show: (p, el) => isVolumeSpecimen(p) && specimenFocusReadout(el ? specimenFocusReading(el.id) : null) !== null,
+      readout: (p, el) => specimenFocusReadout(el ? specimenFocusReading(el.id) : null) || '',
     },
     { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: true, appearance: true },
-    { key: 'thickness', label: 'Sample thickness (mm)', type: 'number', min: 0.15, htmlMin: 0, max: 20, step: 0.5, def: 6, appearance: true },
     { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => specimenTypeOf(p) === 'resin' },
     { key: 'voxelSize', label: 'Voxel marker (mm)', type: 'number', min: 0.1, max: 6, step: 0.1, def: 0.6, show: p => specimenTypeOf(p) === 'resin' && p.voxelPreview },
     { key: 'transmitExc', label: 'Transmit excitation', type: 'checkbox', def: true, show: p => specimenTypeOf(p) !== 'absorbing' },
@@ -1963,10 +1967,11 @@ function stageSampleColor(params) {
   return '#e2758f';
 }
 
-// How thick the specimen glass is DRAWN. The tracer crosses it as a thin
-// sheet whatever this says, so it is presentation only — it never changes
-// where a ray meets the specimen or what it does there.
+// How thick the specimen is. A specimen whose whole thickness is active emits
+// along the path through it; otherwise the tracer crosses it as a thin sheet
+// and the thickness is only how it is drawn.
 export const sampleThickness = p => Math.min(20, Math.max(0.15, p?.thickness ?? 6));
+export const isVolumeSpecimen = p => p?.volumeSpecimen === true && sampleChannels(p).length > 0;
 
 function signalSpotSVG(el) {
   const hit = el._signalHitLocal;
@@ -1988,7 +1993,7 @@ function sampleSurfaces(el, h) {
       x1: -h, y1: 0, x2: h, y2: 0, kind: 'specimen',
       data: {
         channels, transmitExc: p.transmitExc, transmission: p.transmission, writeVoxel, reportHit,
-        sectioning: p.focusSectioning === true && channels.some(c => NONLINEAR_ORDER[c.kind]),
+        volume: p.volumeSpecimen === true, halfThickness: sampleThickness(p) / 2, halfWidth: h,
       },
     }];
   }
@@ -2419,21 +2424,15 @@ export function specimenTimingReadout(reading) {
   return `${pair}: ${apart}, ${sig3(reading.overlap * 100)}% temporal overlap`;
 }
 
-// Where the strongest beam's focus lies relative to the specimen layer, and
-// what that does to each order of nonlinear signal the specimen carries.
+// Each beam that focuses inside a volume specimen: its wavelength, how deep
+// below the face it enters by, and its Rayleigh range. Null when no beam
+// focuses inside -- a wide-field, collimated or speckle beam, or a focus
+// elsewhere -- so the inspector shows nothing.
 const lengthText = mm => (Math.abs(mm) < 1 ? `${sig3(mm * 1000)} µm` : `${sig3(mm)} mm`);
-export function specimenFocusReadout(reading, channels = []) {
-  if (!reading) return 'No beam reaches the specimen yet';
-  if (!reading.ok) {
-    return reading.reason === 'collimated'
-      ? 'Collimated beam: no focus, signals not scaled'
-      : 'Beam drawn as one ray: focus unknown, signals not scaled';
-  }
-  const orders = [...new Set(channels.map(c => NONLINEAR_ORDER[c.kind]).filter(Boolean))].sort();
-  const where = Math.abs(reading.zMm) < 1e-6 ? 'Focus on the layer'
-    : `Focus ${lengthText(Math.abs(reading.zMm))} ${reading.zMm > 0 ? 'beyond' : 'before'} the layer`;
-  const yields = orders.map(n => `×${sig3(focusYield(n, reading))} ${n === 2 ? '2nd' : '3rd'}-order`).join(', ');
-  return `${where} · zR ${lengthText(reading.zRMm)} · ${yields}`;
+export function specimenFocusReadout(readings) {
+  const inside = (Array.isArray(readings) ? readings : []).filter(r => r?.ok && r.inside);
+  if (!inside.length) return null;
+  return inside.map(r => `${nm4(r.wl)} nm: ${lengthText(Math.max(0, r.depthMm))} deep · zR ${lengthText(r.zRMm)}`).join('; ');
 }
 
 export function specimenTimingText(reading) {
@@ -5316,7 +5315,9 @@ export const registry = {
     svg(el) {
       const p = el.params;
       const h = (p.aperture || 34) / 2, t = sampleThickness(p);
-      return `<rect x="${-h}" y="${(-t / 2).toFixed(2)}" width="${2 * h}" height="${t}" fill="${GLASS}" stroke="none"/>` +
+      // A volume specimen is see-through, so where inside it the light is
+      // generated can be seen.
+      return `<rect x="${-h}" y="${(-t / 2).toFixed(2)}" width="${2 * h}" height="${t}" fill="${GLASS}"${isVolumeSpecimen(p) ? ' fill-opacity="0.3"' : ''} stroke="none"/>` +
         signalSpotSVG(el);
     },
     // Both visible specimen faces are explicit immersion contacts. They are
@@ -5367,7 +5368,7 @@ export const registry = {
       const t = sampleThickness(p);
       return `<path d="M ${-outer},-8 L ${-outer},6 L ${-windowX},6" fill="none" stroke="#4d565f" stroke-width="4"/>` +
         `<path d="M ${outer},-8 L ${outer},6 L ${windowX},6" fill="none" stroke="#4d565f" stroke-width="4"/>` +
-        `<rect x="${-clear}" y="${(-t / 2).toFixed(2)}" width="${2 * clear}" height="${t}" fill="${GLASS}" fill-opacity="0.75" stroke="none"/>` +
+        `<rect x="${-clear}" y="${(-t / 2).toFixed(2)}" width="${2 * clear}" height="${t}" fill="${GLASS}" fill-opacity="${isVolumeSpecimen(p) ? 0.3 : 0.75}" stroke="none"/>` +
         spot +
         (p.voxelPreview ? `<circle cx="0" cy="-0.5" r="6.2" fill="none" stroke="#7c3aed" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>` : '');
     },

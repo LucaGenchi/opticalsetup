@@ -83,6 +83,8 @@ test('a specimen signal is charged to the laser that pumped it, not the specimen
   const slide = createElement('sample', 210, 0);
   slide.rot = 90;
   slide.params.specimenType = 'linear';
+  // The thin mid-line model these tests measure (saved scenes keep it).
+  slide.params.volumeSpecimen = false;
   slide.params.transmitExc = true;
   slide.params.transmission = 0.9;
   slide.params.aperture = 44;

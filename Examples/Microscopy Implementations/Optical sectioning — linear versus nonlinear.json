@@ -3,7 +3,7 @@
  "version": 1,
  "elements": [
   {
-   "id": "ev29plk5",
+   "id": "e39tiiu5",
    "type": "textlabel",
    "x": -30,
    "y": -80,
@@ -17,63 +17,7 @@
    }
   },
   {
-   "id": "ebtvopqj",
-   "type": "textlabel",
-   "x": 183,
-   "y": 25,
-   "rot": 0,
-   "label": "",
-   "showLabel": false,
-   "params": {
-    "text": "Out of focus",
-    "fontSize": 8,
-    "fill": "#333333"
-   }
-  },
-  {
-   "id": "evsapqhq",
-   "type": "textlabel",
-   "x": 241,
-   "y": 25,
-   "rot": 0,
-   "label": "",
-   "showLabel": false,
-   "params": {
-    "text": "At focus",
-    "fontSize": 8,
-    "fill": "#333333"
-   }
-  },
-  {
-   "id": "e97egeud",
-   "type": "textlabel",
-   "x": 183,
-   "y": 175,
-   "rot": 0,
-   "label": "",
-   "showLabel": false,
-   "params": {
-    "text": "Out of focus",
-    "fontSize": 8,
-    "fill": "#333333"
-   }
-  },
-  {
-   "id": "equlixd2",
-   "type": "textlabel",
-   "x": 241,
-   "y": 175,
-   "rot": 0,
-   "label": "",
-   "showLabel": false,
-   "params": {
-    "text": "At focus",
-    "fontSize": 8,
-    "fill": "#333333"
-   }
-  },
-  {
-   "id": "esb87h6l",
+   "id": "eqy613fj",
    "type": "cwlaser",
    "x": 0,
    "y": 0,
@@ -93,7 +37,7 @@
    }
   },
   {
-   "id": "eehpeszp",
+   "id": "etwm47qi",
    "type": "textlabel",
    "x": -30,
    "y": -30,
@@ -107,7 +51,7 @@
    }
   },
   {
-   "id": "ewoafgy4",
+   "id": "e9m31bgi",
    "type": "lens",
    "x": 150,
    "y": 0,
@@ -121,51 +65,7 @@
    }
   },
   {
-   "id": "epkvb3uy",
-   "type": "sample",
-   "x": 210,
-   "y": 0,
-   "rot": 90,
-   "label": "",
-   "showLabel": false,
-   "params": {
-    "aperture": 30,
-    "specimenType": "linear",
-    "resinFluorescence": false,
-    "channels": [
-     {
-      "kind": "fluor",
-      "nrays": 20,
-      "wl": 520,
-      "eff": 0.3,
-      "epi": false,
-      "epiRatio": 0.15,
-      "autoWl": true,
-      "autoColor": true,
-      "color": "#22c55e",
-      "material": "lipid",
-      "fluorophore": "gfp",
-      "retardance": 90,
-      "axis": 45,
-      "transferEff": 0.1,
-      "requireOverlap": true
-     }
-    ],
-    "focusSectioning": false,
-    "showSignalSpot": true,
-    "thickness": 1,
-    "voxelPreview": false,
-    "voxelSize": 0.6,
-    "transmitExc": true,
-    "transmission": 0.9,
-    "mode": "none",
-    "fluorWl": 520,
-    "carsWl": 660,
-    "signalEff": 0.1
-   }
-  },
-  {
-   "id": "efop9ohc",
+   "id": "e124en58",
    "type": "sample",
    "x": 250,
    "y": 0,
@@ -181,7 +81,7 @@
       "kind": "fluor",
       "nrays": 20,
       "wl": 520,
-      "eff": 0.3,
+      "eff": 0.02,
       "epi": false,
       "epiRatio": 0.15,
       "autoWl": true,
@@ -195,9 +95,9 @@
       "requireOverlap": true
      }
     ],
-    "focusSectioning": false,
+    "volumeSpecimen": true,
+    "thickness": 20,
     "showSignalSpot": true,
-    "thickness": 1,
     "voxelPreview": false,
     "voxelSize": 0.6,
     "transmitExc": true,
@@ -209,9 +109,9 @@
    }
   },
   {
-   "id": "exyjgutn",
+   "id": "ehharii0",
    "type": "beamdump",
-   "x": 320,
+   "x": 330,
    "y": 0,
    "rot": 0,
    "label": "",
@@ -221,7 +121,21 @@
    }
   },
   {
-   "id": "e689lk19",
+   "id": "enntxb7b",
+   "type": "textlabel",
+   "x": 222,
+   "y": 25,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "20 mm specimen",
+    "fontSize": 8,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "eba0a6cr",
    "type": "pulsedlaser",
    "x": 0,
    "y": 150,
@@ -250,7 +164,7 @@
    }
   },
   {
-   "id": "epmekl75",
+   "id": "e93dka3a",
    "type": "textlabel",
    "x": -30,
    "y": 120,
@@ -264,7 +178,7 @@
    }
   },
   {
-   "id": "e0sq1plb",
+   "id": "e6efpa6k",
    "type": "lens",
    "x": 150,
    "y": 150,
@@ -278,51 +192,7 @@
    }
   },
   {
-   "id": "em5vl46c",
-   "type": "sample",
-   "x": 210,
-   "y": 150,
-   "rot": 90,
-   "label": "",
-   "showLabel": false,
-   "params": {
-    "aperture": 30,
-    "specimenType": "nonlinear",
-    "resinFluorescence": false,
-    "channels": [
-     {
-      "kind": "tpef",
-      "nrays": 20,
-      "wl": 520,
-      "eff": 0.3,
-      "epi": false,
-      "epiRatio": 0.15,
-      "autoWl": true,
-      "autoColor": true,
-      "color": "#22c55e",
-      "material": "lipid",
-      "fluorophore": "gfp",
-      "retardance": 90,
-      "axis": 45,
-      "transferEff": 0.1,
-      "requireOverlap": true
-     }
-    ],
-    "focusSectioning": true,
-    "showSignalSpot": true,
-    "thickness": 1,
-    "voxelPreview": false,
-    "voxelSize": 0.6,
-    "transmitExc": true,
-    "transmission": 0.9,
-    "mode": "none",
-    "fluorWl": 520,
-    "carsWl": 660,
-    "signalEff": 0.1
-   }
-  },
-  {
-   "id": "eyhrasrg",
+   "id": "eb8na3zh",
    "type": "sample",
    "x": 250,
    "y": 150,
@@ -352,9 +222,9 @@
       "requireOverlap": true
      }
     ],
-    "focusSectioning": true,
+    "volumeSpecimen": true,
+    "thickness": 20,
     "showSignalSpot": true,
-    "thickness": 1,
     "voxelPreview": false,
     "voxelSize": 0.6,
     "transmitExc": true,
@@ -366,9 +236,9 @@
    }
   },
   {
-   "id": "eh9zd6lq",
+   "id": "e6pu8kc8",
    "type": "beamdump",
-   "x": 320,
+   "x": 330,
    "y": 150,
    "rot": 0,
    "label": "",
@@ -378,7 +248,21 @@
    }
   },
   {
-   "id": "ehfqwscd",
+   "id": "ebasgusp",
+   "type": "textlabel",
+   "x": 222,
+   "y": 175,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "20 mm specimen",
+    "fontSize": 8,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "ekqtimrj",
    "type": "textlabel",
    "x": -30,
    "y": 215,
@@ -386,13 +270,13 @@
    "label": "",
    "showLabel": false,
    "params": {
-    "text": "One-photon excitation: both layers fluoresce.",
+    "text": "One-photon excitation: fluorescence all along the path through the specimen.",
     "fontSize": 11,
     "fill": "#333333"
    }
   },
   {
-   "id": "e88vf6zd",
+   "id": "eg3jcgqp",
    "type": "textlabel",
    "x": -30,
    "y": 233,
@@ -400,13 +284,13 @@
    "label": "",
    "showLabel": false,
    "params": {
-    "text": "Two-photon excitation: only the layer at the focus does.",
+    "text": "Two-photon excitation: essentially only from the focus.",
     "fontSize": 11,
     "fill": "#333333"
    }
   },
   {
-   "id": "efxqphq3",
+   "id": "euqs9grd",
    "type": "textlabel",
    "x": -30,
    "y": 251,
@@ -414,7 +298,7 @@
    "label": "",
    "showLabel": false,
    "params": {
-    "text": "Select a lower layer to read its distance from the focus.",
+    "text": "Select the lower specimen to read where its focus lies.",
     "fontSize": 11,
     "fill": "#333333"
    }
