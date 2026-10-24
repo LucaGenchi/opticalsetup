@@ -172,7 +172,7 @@ main = mountCalculator({ inputs: INPUTS, defaults: DEFAULTS, hideInactive: true,
   },
   onResult: r => {
     rateContext = r.ok ? {
-      source: r.source, photonJ: r.photonJ, name: r.main.meta.name, crossSectionCm2: r.main.crossSectionCm2,
+      source: r.source, photonJ: r.photonJ, name: r.main.meta.name, crossSectionCm2: r.main.crossSectionCm2, focusFactor: r.main.focusFactor,
       quantumYield: r.main.meta.quantumYield, lifetimeNs: r.main.meta.lifetimeNs, detected: r.main.detected,
     } : null;
     rate?.update();
@@ -193,6 +193,7 @@ rate = mountCalculator({ panel: 'rate', inputs: RATE_INPUTS, defaults: RATE_DEFA
     ] : [['Photon flux φ', r.photonFlux, 'photons cm⁻² s⁻¹', 3]]),
     { group: `One ${r.context.name} molecule` },
     ['Absorption cross-section', r.context.crossSectionCm2, 'cm²', 3],
+    ...(r.effectiveCrossSectionCm2 !== r.context.crossSectionCm2 ? [['Effective at the focus centre', r.effectiveCrossSectionCm2, 'cm²', 3]] : []),
     ...(r.pulsed ? [
       ['Saturation parameter σF', r.saturationParameter, '', 3],
       ['Probability of excitation per pulse', pct(r.probability), '%', 3],
@@ -225,6 +226,7 @@ rate = mountCalculator({ panel: 'rate', inputs: RATE_INPUTS, defaults: RATE_DEFA
     } else if (r.saturationParameter > 0.1) {
       out.push(`kτ = ${formatNumber(r.saturationParameter, 2)}: the signal no longer grows in proportion to the power, and the effective focus broadens. Real fluorophores also enter triplet and dark states well below this, which lowers the signal further.`);
     }
+    if (r.effectiveCrossSectionCm2 !== r.context.crossSectionCm2) out.push(`Each wavelength of the source focuses to its own Airy peak (∝ P(λ)/λ²), so at the centre of the focus the band excites ${formatNumber(r.context.focusFactor, 4)}× what its average cross-section at the central wavelength gives.`);
     out.push(r.values.geometry === 'focus'
       ? 'Focus: the peak of a scalar, paraxial Airy pattern from a uniformly filled pupil. At high NA the vectorial focus is somewhat wider, and the peak lower.'
       : 'Widefield: a uniform (flat-top) field; a Gaussian or uneven field has a higher peak than this average.');

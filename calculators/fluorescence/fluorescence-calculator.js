@@ -11,7 +11,7 @@ import {
   spectrumValue, spectrumRangeNm, absorptionCrossSectionCm2, filterTransmission, stackTransmission, detectorQe,
   detectionFractions, focusPeakIntensityWcm2, widefieldIntensityWcm2, focusPowerW, widefieldPowerW,
   collectionFraction, moleculeRates, pulsedMoleculeRates, curveInUnits, excitationSource, sourceAverage,
-  sourcePhotonEnergyJ, sourceTransmission, sourceWeight, notchMinimumWidthNm, DETECTOR_PRESETS,
+  sourcePhotonEnergyJ, sourceTransmission, sourceWeight, notchMinimumWidthNm, focusSpectralFactor, DETECTOR_PRESETS,
 } from '../../sketch/js/fluorescence.js';
 import { LED_MIN_BANDWIDTH_NM, LED_MAX_BANDWIDTH_NM } from '../../sketch/js/spectrum.js';
 import { defaultsFor, parseInputs, unavailable } from '../assets/calculator-inputs.js';
@@ -154,12 +154,13 @@ function detectionPath(v, curves) {
 // What one fluorophore does with this source and this detection path. For
 // a band, the relative excitation is averaged over the source's photons.
 function evaluate(meta, data, source, filters, detector) {
-  const relative = sourceAverage(source, nm => spectrumValue(data.excitation, nm));
+  const excitationAt = nm => spectrumValue(data.excitation, nm);
+  const relative = sourceAverage(source, excitationAt);
   const extinction = meta.extinctionM;
   const fractions = detectionFractions(data.emission, filters, detector);
   const brightness = extinction && meta.quantumYield ? extinction * meta.quantumYield : null;
   return {
-    meta, data, relative, ...fractions,
+    meta, data, relative, ...fractions, focusFactor: focusSpectralFactor(source, excitationAt),
     extinctionAtLaser: extinction ? extinction * relative : null,
     crossSectionCm2: extinction ? absorptionCrossSectionCm2(extinction * relative) : null,
     brightness, brightnessAtLaser: brightness === null ? null : brightness * relative,
@@ -257,13 +258,16 @@ export const RATE_INPUTS = [
     when: 'lifetimeFrom', whenValue: 'manual', help: 'Fluorescence lifetime τ of the excited state.' },
 ];
 export const RATE_DEFAULTS = defaultsFor(RATE_INPUTS);
+const formatPeriod = ns => (ns >= 1 ? `${Number(ns.toPrecision(3))} ns` : `${Number((ns * 1e3).toPrecision(3))} ps`);
 
-// Pulses must be this much shorter than the lifetime for the per-pulse
-// model; without a lifetime, fluorescent proteins' ≥ 1 ns is assumed.
-const PULSE_TO_LIFETIME = 0.1, ASSUMED_LIFETIME_NS = 1;
+// Pulses must be this much shorter than the lifetime, and than the
+// period between them, for the per-pulse model; without a lifetime,
+// fluorescent proteins' ≥ 1 ns is assumed.
+const PULSE_TO_LIFETIME = 0.1, PULSE_TO_PERIOD = 0.1, ASSUMED_LIFETIME_NS = 1;
 
-// context: { source, photonJ, name, crossSectionCm2, quantumYield,
-// lifetimeNs, detected } from the main panel, or null while it is invalid.
+// context: { source, photonJ, name, crossSectionCm2, focusFactor,
+// quantumYield, lifetimeNs, detected } from the main panel, or null while
+// it is invalid.
 // The source kind decides which inputs apply, so it joins the raw values.
 export function computeRates(raw, context) {
   const { values: v, errors } = parseInputs(RATE_INPUTS, { ...raw, source: context?.source.kind ?? 'cw' });
@@ -279,22 +283,28 @@ export function computeRates(raw, context) {
   if (pulsed && source.pulseFs > PULSE_TO_LIFETIME * (lifetimeNs ?? ASSUMED_LIFETIME_NS) * 1e6) {
     return unavailable(`Pulses of ${source.pulseFs} fs are not much shorter than the ${lifetimeNs ? `${lifetimeNs} ns` : 'assumed 1 ns'} lifetime, which the per-pulse model needs (at most a tenth of it).`, null);
   }
+  if (pulsed && source.pulseFs * 1e-15 > PULSE_TO_PERIOD / (v.repRateMHz * 1e6)) {
+    return unavailable(`At ${v.repRateMHz} MHz the pulses are ${formatPeriod(1e3 / v.repRateMHz)} apart, too close for ${source.pulseFs} fs pulses: the per-pulse model needs at least ten pulse durations between them.`, 'repRateMHz');
+  }
   const powerW = v.powerMw * 1e-3;
   const focus = v.geometry === 'focus';
   const intensityAt = p => (focus ? focusPeakIntensityWcm2(p, source.centerNm, v.na) : widefieldIntensityWcm2(p, v.fieldUm));
   const powerFor = intensity => (focus ? focusPowerW(intensity, source.centerNm, v.na) : widefieldPowerW(intensity, v.fieldUm));
   const intensityWcm2 = intensityAt(powerW);
-  const common = { crossSectionCm2: context.crossSectionCm2, photonJ: context.photonJ, lifetimeNs, quantumYield: context.quantumYield };
+  // In a focus each wavelength of a band has its own Airy peak; the factor
+  // folds that into the cross-section (1 for a line, and in widefield).
+  const crossSectionCm2 = context.crossSectionCm2 * (focus ? context.focusFactor ?? 1 : 1);
+  const common = { crossSectionCm2, photonJ: context.photonJ, lifetimeNs, quantumYield: context.quantumYield };
   const rates = pulsed
     ? pulsedMoleculeRates({ ...common, averageIntensityWcm2: intensityWcm2, repRateMHz: v.repRateMHz, pulseFs: source.pulseFs })
     : moleculeRates({ ...common, intensityWcm2 });
   // The average power that brings the molecule to saturation: kτ = 1, or
   // σF = 1 per pulse (fluence 1/σ at the repetition rate).
-  const saturationPowerW = pulsed ? powerFor(v.repRateMHz * 1e6 * context.photonJ / context.crossSectionCm2)
+  const saturationPowerW = pulsed ? powerFor(v.repRateMHz * 1e6 * context.photonJ / crossSectionCm2)
     : rates.saturationIntensityWcm2 === null ? null : powerFor(rates.saturationIntensityWcm2);
   const collection = collectionFraction(v.na, v.mediumIndex);
   return {
-    ok: true, values: v, context, pulsed, lifetimeNs: lifetimeNs ?? null, lifetimeSource: v.lifetimeFrom === 'manual' ? 'entered' : lifetimeNs ? 'library' : null,
+    ok: true, values: v, context, pulsed, effectiveCrossSectionCm2: crossSectionCm2, lifetimeNs: lifetimeNs ?? null, lifetimeSource: v.lifetimeFrom === 'manual' ? 'entered' : lifetimeNs ? 'library' : null,
     intensityWcm2, ...rates, collection, saturationPowerW,
     ...(pulsed ? { pulseEnergyJ: powerW / (v.repRateMHz * 1e6), peakPowerW: powerW / (v.repRateMHz * 1e6) * 2 * Math.sqrt(Math.LN2 / Math.PI) / (source.pulseFs * 1e-15) } : {}),
     detectedRate: rates.emissionRate * collection * context.detected,

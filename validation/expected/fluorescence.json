@@ -713,7 +713,7 @@
   },
   {
    "expected": {
-    "transmission": 3.162393191e-08
+    "transmission": 3.162393194e-08
    },
    "inputs": {
     "filters": [
@@ -852,6 +852,60 @@
    "name": "narrowest notch, 5 nm edges, T 0.98, OD 2",
    "tolerance": {
     "widthNm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "factor": 1.27821194
+   },
+   "inputs": {
+    "kind": "focusFactor",
+    "source": {
+     "centerNm": 560,
+     "kind": "pulsed",
+     "pulseFs": 5
+    }
+   },
+   "name": "focus spectral factor, EGFP, 560 nm 5 fs pulse",
+   "note": "As for the band averages: the app's 0.05 nm trapezoid across the curve's 1 nm kinks.",
+   "tolerance": {
+    "factor": 0.0001
+   }
+  },
+  {
+   "expected": {
+    "factor": 1.001327099
+   },
+   "inputs": {
+    "kind": "focusFactor",
+    "source": {
+     "centerNm": 488,
+     "kind": "pulsed",
+     "pulseFs": 20
+    }
+   },
+   "name": "focus spectral factor, EGFP, 488 nm 20 fs pulse",
+   "note": "As for the band averages: the app's 0.05 nm trapezoid across the curve's 1 nm kinks.",
+   "tolerance": {
+    "factor": 0.0001
+   }
+  },
+  {
+   "expected": {
+    "factor": 0.9999896448
+   },
+   "inputs": {
+    "kind": "focusFactor",
+    "source": {
+     "centerNm": 488,
+     "kind": "pulsed",
+     "pulseFs": 100
+    }
+   },
+   "name": "focus spectral factor, EGFP, 488 nm 100 fs pulse",
+   "note": "As for the band averages: the app's 0.05 nm trapezoid across the curve's 1 nm kinks.",
+   "tolerance": {
+    "factor": 0.0001
    }
   }
  ],

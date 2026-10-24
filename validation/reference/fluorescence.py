@@ -27,6 +27,8 @@ wherever one exists:
 - pulsed excitation by integrating the rate equation through trains of
   finite Gaussian pulses until the state after a pulse repeats;
 - the narrowest notch that reaches its blocking by bisection;
+- a band's excitation at the centre of a focus, each wavelength weighted
+  by its own Airy peak, by Simpson quadrature;
 - the detector curves against the values their datasheets tabulate,
   converting cathode radiant sensitivity S to quantum efficiency as
   QE = S h c / (e lambda).
@@ -315,8 +317,19 @@ def led_excitation_case(center, fwhm):
 def band_integral(a, b, center, sigma):
     """Integral of lambda * exp(-(lambda - c)^2 / (2 sigma^2)) over [a, b], in closed form."""
     g = lambda x: math.exp(-0.5 * ((x - center) / sigma) ** 2) if math.isfinite(x) else 0.0
-    e = lambda x: math.erf((x - center) / (sigma * math.sqrt(2))) if math.isfinite(x) else math.copysign(1.0, x)
-    return sigma ** 2 * (g(a) - g(b)) + center * sigma * math.sqrt(math.pi / 2) * (e(b) - e(a))
+    z = lambda x: (x - center) / (sigma * math.sqrt(2))
+
+    def erf_diff(lo, hi):
+        # erf(hi) - erf(lo) without cancellation in a tail, where both are
+        # near +-1: as a difference of erfc on the side the interval lies on.
+        zl, zh = z(lo), z(hi)
+        if zl >= 0:
+            return math.erfc(zl) - math.erfc(zh)
+        if zh <= 0:
+            return math.erfc(-zh) - math.erfc(-zl)
+        return math.erf(zh) - math.erf(zl)
+
+    return sigma ** 2 * (g(a) - g(b)) + center * sigma * math.sqrt(math.pi / 2) * erf_diff(a, b)
 
 
 def leak_case(name, source, filters):
@@ -377,6 +390,23 @@ def pulse_train_case(fluence_photons, sigma, rep_mhz, pulse_fs, lifetime_ns, qy)
             "note": "The app's per-pulse model neglects decay during the pulse, a relative error of order pulse/lifetime (at most 4e-5 in these cases); the integration itself converges to 1e-9."}
 
 
+def focus_factor_case(center, pulse_fs):
+    """How much more a transform-limited pulse excites EGFP at the centre of
+    an Airy focus, where each wavelength's peak goes as P(lambda)/lambda^2,
+    than its photon-averaged cross-section at the central wavelength gives;
+    Simpson on 0.005 nm over +/-6 FWHM."""
+    fwhm = 0.441 * center ** 2 / (C_M_PER_S * 1e-6 * pulse_fs)
+    lo, hi = max(1.0, center - 6 * fwhm), center + 6 * fwhm
+    n = int(round((hi - lo) / 0.005))
+    w = lambda nm: gauss(nm, center, fwhm) * stored_value(EGFP["excitation"], nm)
+    centre = simpson(lambda nm: w(nm) / nm, lo, hi, n)
+    average = simpson(lambda nm: w(nm) * nm, lo, hi, n)
+    return {"name": f"focus spectral factor, EGFP, {center:g} nm {pulse_fs:g} fs pulse",
+            "inputs": {"kind": "focusFactor", "source": {"kind": "pulsed", "centerNm": center, "pulseFs": pulse_fs}},
+            "expected": {"factor": sig(center ** 2 * centre / average)}, "tolerance": {"factor": 1e-4},
+            "note": "As for the band averages: the app's 0.05 nm trapezoid across the curve's 1 nm kinks."}
+
+
 def notch_case(edge, peak, od):
     """The width at which a logistic notch's centre reaches OD - 0.1, by
     bisection on the notch written from its definition."""
@@ -431,6 +461,7 @@ def cases():
         pulse_train_case(1e14, 2e-16, 80, 100, 2.6, 0.6), pulse_train_case(5e15, 2.13e-16, 80, 100, 2.6, 0.6),
         pulse_train_case(2e15, 2e-16, 1000, 100, 4.0, 1.0),
         notch_case(3, 0.95, 6), notch_case(1, 0.9, 4), notch_case(5, 0.98, 2),
+        focus_factor_case(560, 5), focus_factor_case(488, 20), focus_factor_case(488, 100),
     ]
 
 

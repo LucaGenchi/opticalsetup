@@ -310,6 +310,17 @@ test('pulsed excitation: the per-pulse model, its linear limit and what it decli
   const ledContext = { ...context, source: led.source, photonJ: led.photonJ, crossSectionCm2: led.main.crossSectionCm2 };
   assert.equal(computeRates(RATE_DEFAULTS, ledContext).ok, false);
   assert.equal(computeRates({ ...RATE_DEFAULTS, geometry: 'widefield', powerMw: 10 }, ledContext).ok, true);
+  // Pulses must also fit between one another (review of #263: 200 ps at 10 GHz).
+  assert.equal(computeRates({ ...RATE_DEFAULTS, repRateMHz: 10000 }, { ...context, source: { ...main.source, pulseFs: 2e5 } }).errors[0].id, 'repRateMHz');
+  assert.equal(computeRates({ ...RATE_DEFAULTS, repRateMHz: 400 }, { ...context, source: { ...main.source, pulseFs: 2e5 } }).ok, true);
+  // In a focus each wavelength of a band has its own Airy peak (review of #263):
+  // a 5 fs pulse at 560 nm excites EGFP 1.278× more at the focus centre.
+  const short = run({ source: 'pulsed', centerNm: 560, pulseFs: 5 });
+  assert.ok(Math.abs(short.main.focusFactor - 1.278) < 1e-3, `factor ${short.main.focusFactor}`);
+  const shortContext = { ...context, source: short.source, photonJ: short.photonJ, crossSectionCm2: short.main.crossSectionCm2, focusFactor: short.main.focusFactor };
+  close(computeRates({ ...RATE_DEFAULTS, powerMw: 1e-6 }, shortContext).effectiveCrossSectionCm2, short.main.crossSectionCm2 * short.main.focusFactor);
+  close(computeRates({ ...RATE_DEFAULTS, geometry: 'widefield', powerMw: 1e-6 }, shortContext).effectiveCrossSectionCm2, short.main.crossSectionCm2, 0);
+  assert.equal(run().main.focusFactor, 1, 'a line');
   // The repetition rate only applies to pulsed sources.
   assert.equal(computeRates({ ...RATE_DEFAULTS, repRateMHz: '' }, { ...context, source: run().source }).ok, true);
   assert.equal(computeRates({ ...RATE_DEFAULTS, repRateMHz: '' }, context).ok, false);

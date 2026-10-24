@@ -208,6 +208,19 @@ export function sourcePhotonEnergyJ(source) {
   return H_J_S * C_M_S * 1e9 * integrate(w, lo, hi, [], step) / integrate(nm => w(nm) * nm, lo, hi, [], step);
 }
 
+// In a diffraction-limited focus each wavelength has its own Airy peak,
+// π NA² P(λ)/λ², so the excitation rate at the centre is ∝ ∫ w f / λ dλ
+// rather than the photon average (∝ ∫ w λ f dλ) taken at λ₀. This factor,
+// λ₀² ∫ w f/λ dλ / ∫ w λ f dλ, converts one into the other: 1 for a line,
+// above 1 for a broad band (its blue side focuses tighter).
+export function focusSpectralFactor(source, f) {
+  if (!source.spec) return 1;
+  const [lo, hi] = sourceWindow(source), step = sourceStep(source);
+  const w = nm => spectrumWeight(source.spec, nm) * f(nm);
+  const average = integrate(nm => w(nm) * nm, lo, hi, [], step);
+  return average > 0 ? source.centerNm ** 2 * integrate(nm => w(nm) / nm, lo, hi, [], step) / average : 1;
+}
+
 // Fraction of the source's photons the filter stack passes.
 export const sourceTransmission = (source, filters) => sourceAverage(source, nm => stackTransmission(filters, nm), filters.flatMap(filterEdges));
 
