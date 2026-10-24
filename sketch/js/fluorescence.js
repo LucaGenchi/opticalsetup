@@ -211,8 +211,9 @@ export function sourcePhotonEnergyJ(source) {
 // In a diffraction-limited focus each wavelength has its own Airy peak,
 // π NA² P(λ)/λ², so the excitation rate at the centre is ∝ ∫ w f / λ dλ
 // rather than the photon average (∝ ∫ w λ f dλ) taken at λ₀. This factor,
-// λ₀² ∫ w f/λ dλ / ∫ w λ f dλ, converts one into the other: 1 for a line,
-// above 1 for a broad band (its blue side focuses tighter).
+// λ₀² ∫ w f/λ dλ / ∫ w λ f dλ, converts one into the other: 1 for a line;
+// for a band above 1 when f weighs its blue side, which focuses tighter,
+// and below 1 when f weighs its red side.
 export function focusSpectralFactor(source, f) {
   if (!source.spec) return 1;
   const [lo, hi] = sourceWindow(source), step = sourceStep(source);
