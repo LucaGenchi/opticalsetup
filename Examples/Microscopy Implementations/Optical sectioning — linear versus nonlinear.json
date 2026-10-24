@@ -1,0 +1,317 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "e6okg9yc",
+   "type": "textlabel",
+   "x": -30,
+   "y": -80,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Optical sectioning: linear versus nonlinear",
+    "fontSize": 16,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "ekxiyafy",
+   "type": "cwlaser",
+   "x": 25,
+   "y": -15,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "wavelength": 488,
+    "avgPowerW": 0.1,
+    "beamMode": "beam",
+    "beamWidth": 10,
+    "pol": 0,
+    "coherenceLengthMm": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw"
+   }
+  },
+  {
+   "id": "eqmu7d7q",
+   "type": "textlabel",
+   "x": -5,
+   "y": -45,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "488 nm CW: one-photon fluorescence",
+    "fontSize": 11,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "e9ttpvah",
+   "type": "sample",
+   "x": 205,
+   "y": -14.75,
+   "rot": 90,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "aperture": 30,
+    "sampleLayout": "cuvette",
+    "activeSide": "top",
+    "glassThickness": 1,
+    "activeThickness": 6,
+    "specimenType": "linear",
+    "resinFluorescence": false,
+    "channels": [
+     {
+      "kind": "fluor",
+      "nrays": 24,
+      "wl": 520,
+      "eff": 0.1,
+      "epi": false,
+      "epiRatio": 0.15,
+      "autoWl": true,
+      "autoColor": true,
+      "color": "#22c55e",
+      "material": "lipid",
+      "fluorophore": "gfp",
+      "retardance": 90,
+      "axis": 45,
+      "transferEff": 0.1,
+      "requireOverlap": true
+     }
+    ],
+    "thickness": 6,
+    "showSignalSpot": false,
+    "voxelPreview": false,
+    "voxelSize": 0.6,
+    "transmitExc": true,
+    "transmission": 0.9,
+    "mode": "none",
+    "fluorWl": 520,
+    "carsWl": 660,
+    "signalEff": 0.1
+   }
+  },
+  {
+   "id": "er8ohihf",
+   "type": "beamdump",
+   "x": 235,
+   "y": -15,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "aperture": 30
+   }
+  },
+  {
+   "id": "ev6du01z",
+   "type": "pulsedlaser",
+   "x": 25,
+   "y": 30,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "wavelength": 920,
+    "avgPowerW": 0.1,
+    "beamMode": "beam",
+    "beamWidth": 10,
+    "repRateMHz": 80,
+    "pulsePhaseNs": 0,
+    "transformLimited": true,
+    "pulseWidthFs": 150,
+    "pulseShape": "gauss",
+    "bandwidth": 5,
+    "inputChirp": "positive",
+    "chirpGddFs2": 0,
+    "pol": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "showPulse": true,
+    "temporalMode": "pulsed",
+    "interference": true
+   }
+  },
+  {
+   "id": "ev49piyp",
+   "type": "textlabel",
+   "x": -5,
+   "y": 62,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "920 nm, 150 fs: two-photon fluorescence",
+    "fontSize": 11,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "ev4gzne4",
+   "type": "sample",
+   "x": 205,
+   "y": 30,
+   "rot": 90,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "aperture": 30,
+    "sampleLayout": "cuvette",
+    "activeSide": "top",
+    "glassThickness": 1,
+    "activeThickness": 6,
+    "specimenType": "nonlinear",
+    "resinFluorescence": false,
+    "channels": [
+     {
+      "kind": "tpef",
+      "nrays": 24,
+      "wl": 520,
+      "eff": 0.3,
+      "epi": false,
+      "epiRatio": 0.15,
+      "autoWl": true,
+      "autoColor": true,
+      "color": "#22c55e",
+      "material": "lipid",
+      "fluorophore": "gfp",
+      "retardance": 90,
+      "axis": 45,
+      "transferEff": 0.1,
+      "requireOverlap": true
+     }
+    ],
+    "thickness": 6,
+    "showSignalSpot": false,
+    "voxelPreview": false,
+    "voxelSize": 0.6,
+    "transmitExc": true,
+    "transmission": 0.9,
+    "mode": "none",
+    "fluorWl": 520,
+    "carsWl": 660,
+    "signalEff": 0.1
+   }
+  },
+  {
+   "id": "e3e4nw3o",
+   "type": "beamdump",
+   "x": 235,
+   "y": 30,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "aperture": 30
+   }
+  },
+  {
+   "id": "e40uu0mi",
+   "type": "textlabel",
+   "x": 255,
+   "y": -15,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "One-photon excitation: fluorescence all along the path through the cuvette.",
+    "fontSize": 11,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "ei18rt9s",
+   "type": "textlabel",
+   "x": 255,
+   "y": 32,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Two-photon excitation: essentially only from the focus.",
+    "fontSize": 11,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "e5jv2s6x",
+   "type": "objective",
+   "x": 184,
+   "y": -15,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "efl": 10,
+    "workingDistance": 5,
+    "immersion": "air",
+    "immersionIndex": 1.333,
+    "na": 0.4,
+    "showAcceptance": false,
+    "transEff": 100,
+    "frontAperture": 11
+   }
+  },
+  {
+   "id": "e0zooly4",
+   "type": "objective",
+   "x": 184,
+   "y": 30,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "efl": 10,
+    "workingDistance": 5,
+    "immersion": "air",
+    "immersionIndex": 1.333,
+    "na": 0.4,
+    "showAcceptance": false,
+    "transEff": 100,
+    "frontAperture": 11
+   }
+  },
+  {
+   "id": "eoq8q6qi",
+   "type": "filter",
+   "x": 120,
+   "y": 31,
+   "rot": 0,
+   "label": "Laser line filter",
+   "showLabel": false,
+   "params": {
+    "ftype": "bandpass",
+    "cutoff": 500,
+    "center": 920,
+    "band": 40,
+    "trans": 0.5,
+    "length": 25.4
+   },
+   "labelPos": "t"
+  },
+  {
+   "id": "exb369h2",
+   "type": "filter",
+   "x": 120,
+   "y": -15,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "ftype": "bandpass",
+    "cutoff": 500,
+    "center": 488,
+    "band": 1,
+    "trans": 0.5,
+    "length": 25.4
+   }
+  }
+ ],
+ "beams": []
+}

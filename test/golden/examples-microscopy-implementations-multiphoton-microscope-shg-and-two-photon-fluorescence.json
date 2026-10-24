@@ -52,7 +52,7 @@
   "textlabel:er20ltdw": "2c0ac3dc",
   "textlabel:eopybvvu": "3cecab0f",
   "textlabel:epj6lki8": "3429983d",
-  "stage:e17so0o1": "730cb6dc",
+  "stage:e17so0o1": "446bb21c",
   "filter:enpv2557": "22c67037"
  },
  "pulseTracks": [
@@ -1884,6 +1884,23 @@
     {
      "branch": "evgazbrh>eaceg0bp:hwp>eg3ksg58:pol>e227dxsg:R",
      "bw": 8.30291537,
+     "focus": {
+      "axis": {
+       "x": -4.78898831e-14,
+       "y": -1
+      },
+      "depthMm": 1,
+      "inside": true,
+      "na": 0.224859507,
+      "ok": true,
+      "point": {
+       "x": 975,
+       "y": 102
+      },
+      "w0Mm": 0.00130234696,
+      "zMm": 0,
+      "zRMm": 0.00579182522
+     },
      "gates": [],
      "gddRange": [
       1361.1519,

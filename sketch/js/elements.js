@@ -15,7 +15,8 @@ import { emissionRayCount, ISOTROPIC_KINDS } from './emission.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
-import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
+import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
+import { NONLINEAR_ORDER } from './sectioning.js';
 import { opaSettings, opaGainAt, MAX_OPA_STAGES, MAX_GATE_BANDWIDTH_RATIO, MIN_PHASE_KEPT_GAIN } from './opa.js';
 import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
 import {
@@ -1779,8 +1780,16 @@ export function channelWarning(channel, incident) {
   return null;
 }
 
-function sampleModeParams() {
+function sampleModeParams(layouts = SAMPLE_LAYOUTS) {
   return [
+    // First, how the specimen is built: glass and an active layer, which
+    // generates the signals along the path through it (sectioning.js). A
+    // scene saved before layouts loads as a sandwich (migrateThinSpecimen).
+    { key: 'sampleLayout', label: 'Sample layout', type: 'select', def: 'sandwich', options: layouts },
+    { key: 'activeSide', label: 'Active layer on', type: 'select', def: 'top',
+      options: [['top', 'Top face'], ['bottom', 'Bottom face']], show: p => sampleLayoutOf(p) === 'slide' },
+    { key: 'glassThickness', label: 'Glass thickness (mm)', type: 'number', min: 0.1, max: 10, step: 0.1, def: 1.5 },
+    { key: 'activeThickness', label: 'Active sample thickness (mm)', type: 'number', min: 0.1, max: 20, step: 0.1, def: 2 },
     { key: 'specimenType', label: 'Specimen type', type: 'select', def: 'absorbing', options: SPECIMEN_TYPES,
       // Sketches predating the type selector are read from what they do
       // carry — stacked channels, a legacy single `mode`, or the old
@@ -1809,8 +1818,19 @@ function sampleModeParams() {
         return srs ? `${timing}. Stimulated Raman transfer not drawn: ${srs}.` : timing;
       },
     },
-    { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: true, appearance: true },
-    { key: 'thickness', label: 'Sample thickness (mm)', type: 'number', min: 0.15, htmlMin: 0, max: 20, step: 0.5, def: 6, appearance: true },
+    // The total thickness of a specimen saved before layouts: hidden, kept so
+    // the conversion on load can read it.
+    { key: 'thickness', label: 'Sample thickness (mm)', type: 'number', min: 0.15, htmlMin: 0, max: 20, step: 0.5, def: 6,
+      show: () => false },
+    // Shown only while a beam focuses inside the active layer: a wide-field,
+    // collimated or speckle beam has nothing to report here.
+    {
+      key: 'focusReading', label: 'Focus inside', type: 'readout', wide: true,
+      show: (p, el) => isVolumeSpecimen(p) && specimenFocusReadout(el ? specimenFocusReading(el.id) : null) !== null,
+      readout: (p, el) => specimenFocusReadout(el ? specimenFocusReading(el.id) : null) || '',
+    },
+    // A marker, not a model of where the signal forms: off unless switched on.
+    { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: false, appearance: true },
     { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => specimenTypeOf(p) === 'resin' },
     { key: 'voxelSize', label: 'Voxel marker (mm)', type: 'number', min: 0.1, max: 6, step: 0.1, def: 0.6, show: p => specimenTypeOf(p) === 'resin' && p.voxelPreview },
     { key: 'transmitExc', label: 'Transmit excitation', type: 'checkbox', def: true, show: p => specimenTypeOf(p) !== 'absorbing' },
@@ -1953,10 +1973,78 @@ function stageSampleColor(params) {
   return '#e2758f';
 }
 
-// How thick the specimen glass is DRAWN. The tracer crosses it as a thin
-// sheet whatever this says, so it is presentation only — it never changes
-// where a ray meets the specimen or what it does there.
+// How a specimen is built: glass and an active layer, which generates the
+// signals along the path through it. A cuvette (glass all round, the inside
+// active), a sample on a slide (the active layer on its top or bottom face)
+// or a sandwich (the active layer between two glasses).
+export const SAMPLE_LAYOUTS = [
+  ['sandwich', 'Sandwich between two glasses'], ['slide', 'Sample on a slide'], ['cuvette', 'Cuvette'],
+];
+export const STAGE_LAYOUTS = SAMPLE_LAYOUTS.filter(([id]) => id !== 'cuvette');
+const LAYOUT_IDS = new Set(SAMPLE_LAYOUTS.map(([id]) => id));
+export const sampleLayoutOf = p => (LAYOUT_IDS.has(p?.sampleLayout) ? p.sampleLayout : 'sandwich');
+// The total thickness a specimen saved before layouts was drawn with.
 export const sampleThickness = p => Math.min(20, Math.max(0.15, p?.thickness ?? 6));
+export const isVolumeSpecimen = p => sampleChannels(p).length > 0;
+const clampMm = (value, min, max, fallback) => Math.min(max, Math.max(min, Number.isFinite(value) ? value : fallback));
+
+// The layers of a specimen in its own frame (y across the thickness, top at
+// -y), for a half-width `halfWidth`: its total thickness, the active layer
+// and the glass pieces.
+export function sampleLayers(p, halfWidth) {
+  const layout = sampleLayoutOf(p);
+  const g = clampMm(p.glassThickness, 0.1, 10, 1.5), a = clampMm(p.activeThickness, 0.1, 20, 2);
+  if (layout === 'slide') {
+    const total = g + a, top = p.activeSide !== 'bottom';
+    const activeY0 = top ? -total / 2 : total / 2 - a;
+    const glassY0 = top ? -total / 2 + a : -total / 2;
+    return {
+      layout, total, active: { y0: activeY0, y1: activeY0 + a, halfWidth },
+      glass: [{ x0: -halfWidth, x1: halfWidth, y0: glassY0, y1: glassY0 + g }],
+    };
+  }
+  const total = 2 * g + a;
+  const glass = [
+    { x0: -halfWidth, x1: halfWidth, y0: -total / 2, y1: -total / 2 + g },
+    { x0: -halfWidth, x1: halfWidth, y0: total / 2 - g, y1: total / 2 },
+  ];
+  if (layout === 'cuvette') {
+    // Side walls too: the inside is narrower by a wall on each end.
+    const inner = Math.max(0.5, halfWidth - g);
+    glass.push({ x0: -halfWidth, x1: -inner, y0: -a / 2, y1: a / 2 }, { x0: inner, x1: halfWidth, y0: -a / 2, y1: a / 2 });
+    return { layout, total, active: { y0: -a / 2, y1: a / 2, halfWidth: inner }, glass };
+  }
+  return { layout, total, active: { y0: -a / 2, y1: a / 2, halfWidth }, glass };
+}
+
+// A specimen saved before layouts was a thin sheet `thickness` thick (6 mm
+// unless set) that emitted where the beam crossed its mid-line. It loads as a
+// sandwich of the same total thickness, a third of it glass on each side and
+// a third active (2 / 2 / 2 mm for the default). Fluorescence and Raman now
+// grow along the path, so their efficiency becomes the per-millimetre value
+// that gives the old total over that active layer at normal incidence.
+const migrateSavedSpecimen = (params, raw) => (raw.sampleLayout === undefined ? migrateThinSpecimen(params) : {});
+export function migrateThinSpecimen(params) {
+  const third = Math.min(10, Math.max(0.1, sampleThickness(params) / 3));
+  const rows = sampleChannels(params);
+  const perMm = eff => {
+    const e = Math.min(1, Math.max(0, Number.isFinite(eff) ? eff : 0.1));
+    return e >= 1 ? 1 : 1 - (1 - e) ** (1 / third);
+  };
+  const channels = (Array.isArray(params.channels) && params.channels.length ? params.channels : rows)
+    .map(c => (NONLINEAR_ORDER[c.kind] || !Number.isFinite(c.eff ?? 0.1) ? { ...c } : { ...c, eff: perMm(c.eff ?? 0.1) }));
+  return { sampleLayout: 'sandwich', glassThickness: third, activeThickness: Math.min(20, third), channels };
+}
+
+// A specimen drawn: see-through glass and the active layer tinted by what it
+// emits.
+function sampleLayersSVG(p, halfWidth, glassOpacity) {
+  const layers = sampleLayers(p, halfWidth);
+  const rect = (r, fill, opacity) => `<rect x="${r.x0.toFixed(2)}" y="${r.y0.toFixed(2)}" width="${(r.x1 - r.x0).toFixed(2)}" height="${(r.y1 - r.y0).toFixed(2)}" fill="${fill}" fill-opacity="${opacity}" stroke="none"/>`;
+  const { active } = layers;
+  return layers.glass.map(r => rect(r, GLASS, glassOpacity)).join('')
+    + rect({ x0: -active.halfWidth, x1: active.halfWidth, y0: active.y0, y1: active.y1 }, stageSampleColor(p), 0.3);
+}
 
 function signalSpotSVG(el) {
   const hit = el._signalHitLocal;
@@ -1967,6 +2055,9 @@ function signalSpotSVG(el) {
 
 function sampleSurfaces(el, h) {
   const p = el.params;
+  // A layered specimen is crossed at the middle of its active layer.
+  const { active } = sampleLayers(p, h);
+  const mid = (active.y0 + active.y1) / 2, w = active.halfWidth;
   const writeVoxel = specimenTypeOf(p) === 'resin' && p.voxelPreview === true;
   const reportHit = true;
   const channels = sampleChannels(p);
@@ -1974,13 +2065,20 @@ function sampleSurfaces(el, h) {
   // its signals from the same spot on a single crossing. An inert specimen
   // (no channels) keeps the plain attenuate/absorb behavior it always had.
   if (channels.length) {
-    return [{
-      x1: -h, y1: 0, x2: h, y2: 0, kind: 'specimen',
-      data: { channels, transmitExc: p.transmitExc, transmission: p.transmission, writeVoxel, reportHit },
-    }];
+    const data = {
+      channels, transmitExc: p.transmitExc, transmission: p.transmission, writeVoxel, reportHit,
+      volume: isVolumeSpecimen(p), halfThickness: (active.y1 - active.y0) / 2, halfWidth: w,
+      midLine: { x1: -w, y1: mid, x2: w, y2: mid },
+    };
+    const midLine = { x1: -w, y1: mid, x2: w, y2: mid, kind: 'specimen', data };
+    if (!data.volume) return [midLine];
+    // The side edges catch a ray that crosses the active layer without
+    // crossing its mid-line: in through a side and out through a face.
+    const edge = x => ({ x1: x, y1: active.y0, x2: x, y2: active.y1, kind: 'specimen', data: { ...data, edge: true } });
+    return [midLine, edge(-w), edge(w)];
   }
   return p.transmitExc
-    ? [{ x1: -h, y1: 0, x2: h, y2: 0, kind: 'attenuate', data: { transmission: p.transmission, writeVoxel, reportHit, specimen: true } }]
+    ? [{ x1: -w, y1: mid, x2: w, y2: mid, kind: 'attenuate', data: { transmission: p.transmission, writeVoxel, reportHit, specimen: true } }]
     : rectAbsorb(2 * h, 8).map(s => ({ ...s, data: { reportHit } }));
 }
 
@@ -2404,6 +2502,17 @@ export function specimenTimingReadout(reading) {
     ? `${formatMixDelay(reading.skewNs)} apart (${sig3(pathMm)} mm of path)`
     : 'arriving together';
   return `${pair}: ${apart}, ${sig3(reading.overlap * 100)}% temporal overlap`;
+}
+
+// Each beam that focuses inside a specimen's active layer: its wavelength,
+// how far into the layer from the face it enters by, and its Rayleigh range. Null when no beam
+// focuses inside -- a wide-field, collimated or speckle beam, or a focus
+// elsewhere -- so the inspector shows nothing.
+const lengthText = mm => (Math.abs(mm) < 1 ? `${sig3(mm * 1000)} µm` : `${sig3(mm)} mm`);
+export function specimenFocusReadout(readings) {
+  const inside = (Array.isArray(readings) ? readings : []).filter(r => r?.ok && r.inside);
+  if (!inside.length) return null;
+  return inside.map(r => `${nm4(r.wl)} nm: ${lengthText(Math.max(0, r.depthMm))} into the active layer · zR ${lengthText(r.zRMm)}`).join('; ');
 }
 
 export function specimenTimingText(reading) {
@@ -5281,26 +5390,27 @@ export const registry = {
     // Horizontal at rot 0: the clear-aperture/long axis runs left-right
     // (local x), the beam crosses it top-to-bottom (local y).
     label: 'Sample', category: 'Specimens', paletteOrder: 1, size: { w: 40, h: 14 },
-    size_: el => ({ w: (el.params.aperture || 34) + 6, h: Math.max(14, sampleThickness(el.params) + 8) }),
-    params: [{ key: 'aperture', label: 'Sample width (mm)', type: 'number', min: 6, max: 150, step: 2, def: 50, appearance: true }, ...sampleModeParams()],
+    size_: el => ({ w: (el.params.aperture || 34) + 6, h: Math.max(14, sampleLayers(el.params, 1).total + 8) }),
+    params: [{ key: 'aperture', label: 'Sample width (mm)', type: 'number', min: 6, max: 150, step: 2, def: 50, appearance: true }, ...sampleModeParams(SAMPLE_LAYOUTS)],
     svg(el) {
       const p = el.params;
-      const h = (p.aperture || 34) / 2, t = sampleThickness(p);
-      return `<rect x="${-h}" y="${(-t / 2).toFixed(2)}" width="${2 * h}" height="${t}" fill="${GLASS}" stroke="none"/>` +
-        signalSpotSVG(el);
+      // Layers are see-through, so where in the active layer the light is
+      // generated can be seen.
+      return sampleLayersSVG(p, (p.aperture || 34) / 2, 0.45) + signalSpotSVG(el);
     },
     // Both visible specimen faces are explicit immersion contacts. They are
     // target surfaces, not separate liquid elements, and never move merely
     // because an objective couples to one.
     immersionContact: el => {
       const halfWidth = (el.params.aperture || 34) / 2;
-      const halfThickness = sampleThickness(el.params) / 2;
+      const halfThickness = sampleLayers(el.params, halfWidth).total / 2;
       return [
         { x1: -halfWidth, y1: -halfThickness, x2: halfWidth, y2: -halfThickness },
         { x1: -halfWidth, y1: halfThickness, x2: halfWidth, y2: halfThickness },
       ];
     },
     surfaces: el => sampleSurfaces(el, (el.params.aperture || 34) / 2),
+    migrateParams: migrateSavedSpecimen,
   },
 
   stage: {
@@ -5309,7 +5419,7 @@ export const registry = {
     // (local y). The mounting brackets grip the specimen's left/right short
     // edges accordingly.
     label: 'Sample on piezo stage', category: 'Specimens', paletteOrder: 2, size: { w: 56, h: 22 },
-    size_: el => ({ w: (el.params.aperture || 50) + 30, h: Math.max(22, sampleThickness(el.params) + 14) }),
+    size_: el => ({ w: (el.params.aperture || 50) + 30, h: Math.max(22, sampleLayers(el.params, 1).total + 14) }),
     params: [
       { key: 'pzHeading', label: 'Piezo movement', type: 'section' },
       { key: 'pzMode', label: 'Scan pattern', type: 'select', def: 'static', options: [['static', 'Static'], ['xy', 'XY — long axis'], ['z', 'Z — depth'], ['sync', 'XYZ sync — raster']] },
@@ -5324,7 +5434,7 @@ export const registry = {
       // still declared so pre-existing sketches keep loading and can be read
       // by specimenTypeOf().
       { key: 'sampleKind', label: 'Sample material', type: 'select', def: 'generic', show: () => false, options: [['generic', 'General sample'], ['fluorescent', 'Fluorescent specimen'], ['resin', 'Photocurable resin'], ['nonlinear', 'Nonlinear specimen'], ['opaque', 'Absorbing specimen']] },
-      ...sampleModeParams(),
+      ...sampleModeParams(STAGE_LAYOUTS),
     ],
     svg(el) {
       const p = el.params;
@@ -5334,16 +5444,15 @@ export const registry = {
       // its left and right short edges and protrude 20% of the glass length
       // inward, leaving a 60%-of-length window between them for the beam.
       const windowX = clear * 0.6;
-      const t = sampleThickness(p);
       return `<path d="M ${-outer},-8 L ${-outer},6 L ${-windowX},6" fill="none" stroke="#4d565f" stroke-width="4"/>` +
         `<path d="M ${outer},-8 L ${outer},6 L ${windowX},6" fill="none" stroke="#4d565f" stroke-width="4"/>` +
-        `<rect x="${-clear}" y="${(-t / 2).toFixed(2)}" width="${2 * clear}" height="${t}" fill="${GLASS}" fill-opacity="0.75" stroke="none"/>` +
+        sampleLayersSVG(p, clear, 0.45) +
         spot +
         (p.voxelPreview ? `<circle cx="0" cy="-0.5" r="6.2" fill="none" stroke="#7c3aed" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>` : '');
     },
     immersionContact: el => {
       const halfWidth = (el.params.aperture || 50) / 2;
-      const halfThickness = sampleThickness(el.params) / 2;
+      const halfThickness = sampleLayers(el.params, halfWidth).total / 2;
       return [
         { x1: -halfWidth, y1: -halfThickness, x2: halfWidth, y2: -halfThickness },
         { x1: -halfWidth, y1: halfThickness, x2: halfWidth, y2: halfThickness },
@@ -5357,6 +5466,7 @@ export const registry = {
       ];
       return [...mount, ...sampleSurfaces(el, clear)];
     },
+    migrateParams: migrateSavedSpecimen,
   },
 
   // ---------------- Imaging ----------------

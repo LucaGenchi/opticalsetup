@@ -17,8 +17,11 @@ function bench({ kind = 'tpef', nrays = 20, width = 40, gap = 8, offset = 0 } = 
   sample.rot = 90;
   Object.assign(sample.params, {
     aperture: 80, specimenType: kind === 'fluor' || kind === 'raman' ? 'linear' : 'nonlinear',
+    // A 0.5 mm active layer emits from one spot. The two-photon efficiency
+    // is the total; fluorescence's 0.75 per mm gives the same 0.5 over it.
+    activeThickness: 0.5,
     transmitExc: false,
-    channels: [{ ...newSampleChannel(kind), nrays, eff: 0.5, autoWl: false, wl: 900 }],
+    channels: [{ ...newSampleChannel(kind), nrays, eff: kind === 'fluor' || kind === 'raman' ? 0.75 : 0.5, autoWl: false, wl: 900 }],
   });
   return { laser, stop, sample, elements: [laser, stop, sample] };
 }

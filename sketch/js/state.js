@@ -301,6 +301,10 @@ function normalizeElement(raw, definitions, used) {
     if (spec.migrate && raw.params?.[spec.key] === undefined) params[spec.key] = spec.migrate(params, raw.params || {});
   }
   if (raw.type === 'objective') Object.assign(params, normalizeObjectiveParams(params));
+  // An element whose saved form changed in a way that touches several params
+  // at once converts them together, from the normalized params and the raw
+  // saved ones (a specimen saved before sample layouts, for example).
+  if (typeof def?.migrateParams === 'function') Object.assign(params, def.migrateParams(params, raw.params || {}));
   // Channels used to carry a width each. The migration above has already
   // taken the device's passband from them; normalizing here drops the retired
   // key rather than carrying it forward into every future save of the file.
