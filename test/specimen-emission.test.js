@@ -73,7 +73,7 @@ test('blocking all excitation produces no fluorescence or specimen arrival', () 
 });
 
 test('angular ray count changes the fan resolution without multiplying its power', () => {
-  for (const nrays of [4, 8, 20, 64, 128]) {
+  for (const nrays of [12, 16, 20, 36, 48]) {
     const { sample, elements } = bench({ nrays });
     const result = traceScene(elements);
     const firstSegments = result.drawables.filter(d => d.type === 'path'
@@ -115,7 +115,7 @@ test('old resin channels stay dormant, and angular counts normalize and round-tr
   const old = load({ specimenType: 'resin', channels: [newSampleChannel('tpef')] });
   assert.equal(old.params.resinFluorescence, false);
   assert.deepEqual(sampleChannels(old.params), []);
-  for (const [raw, expected] of [[undefined, 20], [NaN, 20], [Infinity, 20], [-10, 4], [10000, 128], [19.6, 20]]) {
+  for (const [raw, expected] of [[undefined, 20], [NaN, 20], [Infinity, 20], [-10, 12], [4, 12], [64, 48], [10000, 48], [19.6, 20]]) {
     assert.equal(emissionRayCount({ kind: 'tpef', nrays: raw }), expected);
     const el = load({ specimenType: 'resin', resinFluorescence: true,
       channels: [{ ...newSampleChannel('tpef'), nrays: raw }, newSampleChannel('shg')] });
@@ -129,7 +129,7 @@ test('old resin channels stay dormant, and angular counts normalize and round-tr
 test('switching signal kind keeps a chosen ray count and follows an untouched default', () => {
   assert.equal(emissionRayCountAfterKindChange(newSampleChannel('fluor'), 'raman'), 14);
   assert.equal(emissionRayCountAfterKindChange(newSampleChannel('raman'), 'fluor'), 20);
-  assert.equal(emissionRayCountAfterKindChange({ kind: 'fluor', nrays: 64 }, 'raman'), 64);
+  assert.equal(emissionRayCountAfterKindChange({ kind: 'fluor', nrays: 36 }, 'raman'), 36);
   assert.equal(emissionRayCountAfterKindChange({ kind: 'shg' }, 'raman'), 14, 'a non-emitting kind carries no count');
   assert.equal(emissionRayCountAfterKindChange({ kind: 'fluor', nrays: NaN }, 'tpef'), 20);
   // Through the inspector: Fluorescence → Raman shows the Raman default.
@@ -157,10 +157,10 @@ test('inspector rows edit the shown channel, not a dormant one stored before it'
   assert.match(panel.innerHTML, /data-ci="1" data-ck="nrays"/);
   assert.doesNotMatch(panel.innerHTML, /data-ci="0"/);
   assert.match(panel.innerHTML, /aria-label="Signal 1 type"/, 'labels count shown rows');
-  applyInput({ dataset: { ci: '1', ck: 'nrays' }, type: 'number', value: '64' }, true);
+  applyInput({ dataset: { ci: '1', ck: 'nrays' }, type: 'number', value: '36' }, true);
   applyInput({ dataset: { ci: '1', ck: 'eff' }, type: 'number', value: '0.3' }, true);
   const [shg, tpef] = stage.params.channels;
-  assert.equal(tpef.nrays, 64);
+  assert.equal(tpef.nrays, 36);
   assert.equal(tpef.eff, 0.3);
   assert.equal(shg.eff, newSampleChannel('shg').eff, 'the dormant channel is untouched');
   assert.equal(shg.nrays, undefined);

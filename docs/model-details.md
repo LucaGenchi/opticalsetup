@@ -283,7 +283,7 @@ Incoherent specimen signals (fluorescence and spontaneous Raman) emit one fan
 per arriving excitation branch, placed on a surviving sampling ray nearest the
 beam centre and weighted by the combined excitation that reached the specimen.
 Clipping a pump edge does not extinguish a still-illuminated specimen. Each
-channel offers 4–128 emission rays over 360° (per line for Raman), sharing a fixed
+channel offers 12–48 emission rays over 360° (per line for Raman), sharing a fixed
 emitted weight across the fan. The legacy defaults are 20 for fluorescence and
 14 per Raman line. Angular sampling is denser near the excitation axis, so
 collection readings can change with resolution; this is not calibrated isotropic
