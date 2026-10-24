@@ -286,6 +286,14 @@ export function applyTransmission(spec, centerWl, transmissionFn, edges = null) 
   };
 }
 
+// The result depends only on the profile and each piece's edges and
+// transmission. Box filters meet the same profile with the same edges again
+// and again -- every ray one fluorescent spot emits carries one Gaussian to
+// one dichroic -- so results for Gaussian and flat profiles, which are fully
+// described by a few numbers, are kept by those numbers. Each caller gets its
+// own copy. Sampled and line profiles are computed afresh.
+const stepCache = new Map();
+const STEP_CACHE_SIZE = 256;
 function applyStepTransmission(spec, transmissionFn, edges) {
   const [lo, hi] = spectrumSupport(spec);
   const cuts = [...new Set(edges.filter(e => Number.isFinite(e) && e > lo && e < hi))].sort((a, b) => a - b);
@@ -295,8 +303,21 @@ function applyStepTransmission(spec, transmissionFn, edges) {
     const a = bounds[i], b = bounds[i + 1];
     if (!(b > a)) continue;
     const t = Math.max(0, Math.min(1, Number(transmissionFn((a + b) / 2)) || 0));
-    pieces.push({ a, b, t, power: incidentOver(spec, a, b) });
+    pieces.push({ a, b, t });
   }
+  if (spec.kind !== 'gauss' && spec.kind !== 'flat') return stepTransmission(spec, pieces);
+  const key = [spec.kind, spec.center, spec.fwhm, spec.lo, spec.hi, spec.interference ? 1 : 0,
+    ...pieces.flatMap(p => [p.a, p.b, p.t])].join('|');
+  if (!stepCache.has(key)) {
+    if (stepCache.size >= STEP_CACHE_SIZE) stepCache.clear();
+    stepCache.set(key, stepTransmission(spec, pieces));
+  }
+  const result = stepCache.get(key);
+  return result && { ...result, spec: result.spec && { ...result.spec, w: [...result.spec.w] } };
+}
+
+function stepTransmission(spec, pieces) {
+  for (const p of pieces) p.power = incidentOver(spec, p.a, p.b);
   const total = pieces.reduce((sum, p) => sum + p.power, 0);
   if (!(total > 0)) return null;
   const fraction = pieces.reduce((sum, p) => sum + p.t * p.power, 0) / total;
