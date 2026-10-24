@@ -3,8 +3,10 @@
 
 // Angular sampling controls for incoherent specimen signals. Defaults keep
 // the fluorescence and Raman grids used by sketches saved before this control.
+// Every emission spot launches a full fan, so the range stops at 48: more
+// makes dragging a specimen slow.
 export const ISOTROPIC_KINDS = new Set(['fluor', 'raman', 'tpef', 'thpef']);
-export const EMISSION_RAY_LIMITS = { min: 4, max: 128, step: 2 };
+export const EMISSION_RAY_LIMITS = { min: 12, max: 48, step: 2 };
 
 export function emissionRayCount(channel = {}) {
   const fallback = channel.kind === 'raman' ? 14 : 20;

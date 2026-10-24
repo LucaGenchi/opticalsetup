@@ -80,6 +80,18 @@ const CATEGORY_ORDER = [
   'Microscopy Implementations',
 ];
 
+// Within a category, examples named here come first, in this order (a
+// teaching order); the rest follow alphabetically. Names are file names
+// without `.json`, so the order never touches an example's slug.
+const EXAMPLE_ORDER = {
+  'Microscopy Implementations': [
+    'Optical sectioning — linear versus nonlinear',
+    'Epi-fluorescence microscope',
+    'Multiphoton microscope — SHG and two photon fluorescence',
+    'Coherent Raman microscope — SRS and CARS',
+  ],
+};
+
 async function main() {
   let listing;
   try {
@@ -118,9 +130,11 @@ async function main() {
 
   for (const category of categories) {
     const dir = join(EXAMPLES_DIR, category);
+    const order = EXAMPLE_ORDER[category] || [];
+    const place = f => { const i = order.indexOf(f.replace(/\.json$/i, '')); return i < 0 ? order.length : i; };
     const files = (await readdir(dir))
       .filter(f => f.toLowerCase().endsWith('.json'))
-      .sort((a, b) => a.localeCompare(b));
+      .sort((a, b) => place(a) - place(b) || a.localeCompare(b));
     for (const file of files) {
       const full = join(dir, file);
       const text = await readFile(full, 'utf-8');
