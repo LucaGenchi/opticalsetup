@@ -107,6 +107,8 @@ function dimSignalScene(overrides = {}) {
   const stage = createElement('stage', 200, 0);
   stage.rot = 90;
   stage.params.specimenType = 'linear';
+  // 1 mm of active layer: its efficiency per millimetre is the old efficiency, from one spot.
+  stage.params.activeThickness = 1;
   stage.params.transmitExc = false;
   stage.params.channels = [{
     // A faint specimen under the whole surviving pump beam.

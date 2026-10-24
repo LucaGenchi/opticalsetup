@@ -283,22 +283,81 @@ Incoherent specimen signals (fluorescence and spontaneous Raman) emit one fan
 per arriving excitation branch, placed on a surviving sampling ray nearest the
 beam centre and weighted by the combined excitation that reached the specimen.
 Clipping a pump edge does not extinguish a still-illuminated specimen. Each
-channel offers 4–128 emission rays over 360° (per line for Raman), sharing a fixed
+channel offers 12–48 emission rays over 360° (per line for Raman), sharing a fixed
 emitted weight across the fan. The legacy defaults are 20 for fluorescence and
 14 per Raman line. Angular sampling is denser near the excitation axis, so
 collection readings can change with resolution; this is not calibrated isotropic
 radiometry. The two-photon label imposes the photon-energy/wavelength rule,
-not an intensity-squared focal response, cross-section, lifetime, bleaching, or
-curing model.
+not a cross-section, lifetime, bleaching, or curing model; its focal response is
+the optional thin-layer estimate below.
 
-Every specimen signal is emitted where the beam crosses the specimen line. In a
-tightly focused microscope, linear signals (fluorescence, spontaneous Raman) come
-from the whole illuminated cone, while nonlinear ones (multiphoton fluorescence,
-harmonics, CARS, SRS) are concentrated near the focal region, because they scale
-with a power of the intensity. Nonlinear generation does not itself need a focus;
-an intense unfocused beam also drives it. The tracer computes no intensity
-profile, so it does not reproduce this difference: an unfocused beam generates a
-nonlinear signal as readily as a focused one.
+In a tightly focused microscope, linear signals (fluorescence, spontaneous Raman)
+come from the whole illuminated cone, while nonlinear ones (multiphoton
+fluorescence, harmonics, CARS, SRS) are concentrated near the focal region,
+because they scale with a power of the intensity. Nonlinear generation does not
+itself need a focus; an intense unfocused or speckle beam also drives it.
+
+Specimens are layered (`sampleLayout`, `sampleLayers` in `sketch/js/elements.js`):
+a sandwich (glass, active layer, glass; the default, 1.5 / 2 / 1.5 mm), a sample on
+a slide (the active layer on the top or bottom face of one glass) or a cuvette
+(glass all round, the inside active); the stage offers slides and sandwiches.
+Glass thickness is 0.1–10 mm and the active layer 0.1–20 mm. The glass is
+passive: no emission and no refraction. A specimen saved before layouts (a thin
+sheet `thickness` thick, emitting where the beam crossed its mid-line) loads as
+a sandwich of the same total thickness, a third glass on each side and a third
+active (`migrateThinSpecimen`, through the definition's `migrateParams` hook in
+`sketch/js/state.js`); each linear channel's efficiency becomes the
+per-millimetre value 1 − (1 − eff)^(1/L) that gives the old total over that
+layer at normal incidence, and nonlinear efficiencies are kept. A
+per-millimetre efficiency cannot pass 1, so a very high old efficiency on a
+very thin old specimen rounds up: above about 0.975 at the thinnest, 0.3 mm
+(a 0.1 mm active layer), the converted total is 1 rather than the saved value. The specimen's
+surfaces are its active layer's mid-line and its two side edges, so a ray
+crossing the layer through a side is seen too; a ray already inside the
+specimen (its branch last went through it and it starts within the active
+layer) passes its other surfaces without interacting again; light that left
+and comes back, off a mirror, interacts again, and its returning beam is
+recorded as a separate crossing. It emits along each ray's straight path through that layer
+(`volumeCrossing` in `sketch/js/raytrace.js`):
+
+- Linear channels: evenly along the path, spots aimed at 0.5 mm apart
+  (`SPOT_SPACING_MM`; one spot for a path no longer than that). A crossing
+  never has more than `MAX_SPOTS` = 16, so a longer path has them further
+  apart: a 20 mm path with the focus in its middle gets 15, 1.33 mm apart.
+  When the beam's focus lies on
+  the path, the spots are placed so that one sits exactly at the focus (what a
+  confocal pinhole images), each carrying the stretch of path nearest to it.
+  Their efficiency is per millimetre: the path converts 1 − (1 − eff)^L
+  (`linearPathFraction`).
+- Nonlinear channels follow the beam's focus. The probe pass records where
+  each sampling ray of a beam crosses the specimen; `bundleFocus` in
+  `sketch/js/sectioning.js` finds the plane of least spread along the beam
+  axis, the convergence NA from the rays' angular spread, and an ideal
+  Gaussian focus in air: w0 = λ/(π NA), zR = π w0²/λ. Only the part of the
+  path where the intensity is at least 1/1000 of the focus's (|z| ≤ 31.6 zR)
+  emits (`volumeEmissionPoints`); each piece is weighted by the exact
+  integral of (1 + (z/zR)²)^−(n−1) over it, divided by the integral over
+  |z| ≤ 31.6 zR, so the shares add up to the part of the focal signal the
+  layer holds: exactly 1 for a focal region inside a thicker layer, less for
+  a thinner layer or a focus just outside it, 0 for a focus more than
+  31.6 zR from the layer. Orders: 2PEF, χ⁽²⁾ (SHG
+  and SFG) and SRS 2; 3PEF, THG and CARS 3. Coherent forward and backward
+  signals and the SRS transfer depth are scaled by the same share and leave
+  from the point of each path nearest the focus; their optical path is the
+  hit's shifted to that point (`oplShift`).
+- Without a focus — a collimated or one-ray beam, or speckle (rays marked by
+  a diffuser) — nonlinear channels emit evenly along the path, at the same
+  spacing, with their full efficiency, and coherent signals leave from the
+  exit and entry faces.
+
+Incoherent light (fluorescence, Raman) is never marked as speckle, even
+behind a diffuser or driven by a speckled beam. The *Focus inside* readout lists
+each beam whose focus lies inside the active
+layer (wavelength, distance into the layer from the entry face, zR) and is
+hidden otherwise. The glow drawn from each spot is in proportion to its
+strength. The 1/1000 limit is illustrative. Not included: aberrations, the
+specimen's index and refraction, scattering, excitation absorbed along the
+path, high-NA vector effects and the Gouy phase of coherent signals.
 
 Standalone objectives are set by effective focal length (EFL) — the focal length of
 the whole assembly as one equivalent lens — plus a working distance

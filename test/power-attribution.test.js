@@ -83,6 +83,8 @@ test('a specimen signal is charged to the laser that pumped it, not the specimen
   const slide = createElement('sample', 210, 0);
   slide.rot = 90;
   slide.params.specimenType = 'linear';
+  // 1 mm of active layer: its efficiency per millimetre is the old efficiency, from one spot.
+  slide.params.activeThickness = 1;
   slide.params.transmitExc = true;
   slide.params.transmission = 0.9;
   slide.params.aperture = 44;

@@ -1,0 +1,312 @@
+{
+ "elements": 15,
+ "beams": 0,
+ "drawables": {
+  "count": 1904,
+  "byType": {
+   "path": 1736,
+   "poly": 168
+  },
+  "colors": {
+   "#00f7ff": 88,
+   "#00ff38": 1728,
+   "#8b1a1a": 88
+  },
+  "points": 4212,
+  "sum": [
+   824236.028,
+   -36239.6962
+  ],
+  "bbox": [
+   71,
+   -38.2753,
+   225.0207,
+   53.2753
+  ],
+  "digest": "96071d02"
+ },
+ "drawnElements": {
+  "textlabel:e6okg9yc": "bb31f03c",
+  "cwlaser:ekxiyafy": "613d38dc",
+  "textlabel:eqmu7d7q": "a55d3150",
+  "sample:e9ttpvah": "ccd0067c",
+  "beamdump:er8ohihf": "2ac2293d",
+  "pulsedlaser:ev6du01z": "9417886c",
+  "textlabel:ev49piyp": "3ec20a76",
+  "sample:ev4gzne4": "227469b1",
+  "beamdump:e3e4nw3o": "2ac2293d",
+  "textlabel:e40uu0mi": "b1dc4ca5",
+  "textlabel:ei18rt9s": "5175180d",
+  "objective:e5jv2s6x": "f63cbcf7",
+  "objective:e0zooly4": "f63cbcf7",
+  "filter:eoq8q6qi": "22c67037",
+  "filter:exb369h2": "22c67037"
+ },
+ "pulseTracks": [
+  {
+   "intensity": 1,
+   "color": "#8b1a1a",
+   "points": 2,
+   "opl": [
+    0,
+    43
+   ],
+   "pulse": {
+    "sourceId": "ev6du01z",
+    "repRateMHz": 80,
+    "pulseWidthFs": 150,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "9ca77595"
+  },
+  {
+   "intensity": 1,
+   "color": "#8b1a1a",
+   "points": 3,
+   "opl": [
+    43,
+    128
+   ],
+   "pulse": {
+    "sourceId": "ev6du01z",
+    "repRateMHz": 80,
+    "pulseWidthFs": 150,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "9bb60691"
+  },
+  {
+   "intensity": 0.9,
+   "color": "#8b1a1a",
+   "points": 2,
+   "opl": [
+    128,
+    148
+   ],
+   "pulse": {
+    "sourceId": "ev6du01z",
+    "repRateMHz": 80,
+    "pulseWidthFs": 150,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "e8e01f25"
+  }
+ ],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 2,
+  "digest": "08a10c95"
+ },
+ "readouts": {
+  "sample:e9ttpvah": {
+   "specimenIncident": [
+    {
+     "branch": "ekxiyafy",
+     "bw": 0,
+     "focus": {
+      "axis": {
+       "x": 1,
+       "y": -2.09623264e-17
+      },
+      "depthMm": 3,
+      "inside": true,
+      "na": 0.351123442,
+      "ok": true,
+      "point": {
+       "x": 205,
+       "y": -15
+      },
+      "w0Mm": 0.000442394913,
+      "zMm": 0,
+      "zRMm": 0.00125994127
+     },
+     "gates": [],
+     "gddRange": [
+      2727.96322,
+      2727.96322
+     ],
+     "gddSum": 51831.3011,
+     "intensity": 19,
+     "key": "488.000000000/ekxiyafy////",
+     "opl": 128.254649,
+     "oplMin": 128,
+     "oplSum": 2436.83834,
+     "oplWeight": 19,
+     "originId": "ekxiyafy",
+     "power": 0.76,
+     "pulse": null,
+     "spec": null,
+     "spreadSum": 0,
+     "wl": 488
+    }
+   ]
+  },
+  "sample:ev4gzne4": {
+   "specimenIncident": [
+    {
+     "branch": "ev6du01z>eoq8q6qi:0",
+     "bw": 8.30291537,
+     "focus": {
+      "axis": {
+       "x": 1,
+       "y": -2.09623264e-17
+      },
+      "depthMm": 3,
+      "inside": true,
+      "na": 0.351123442,
+      "ok": true,
+      "point": {
+       "x": 205,
+       "y": 30
+      },
+      "w0Mm": 0.000834023197,
+      "zMm": 0,
+      "zRMm": 0.00237529911
+     },
+     "gates": [],
+     "gddRange": [
+      1022.88147,
+      1022.88147
+     ],
+     "gddSum": 19434.748,
+     "intensity": 19,
+     "key": "920.000000000/ev6du01z>eoq8q6qi:0/80/0/150/",
+     "opl": 128.254649,
+     "oplMin": 128,
+     "oplSum": 2436.83834,
+     "oplWeight": 19,
+     "originId": "ev6du01z",
+     "power": 0.76,
+     "pulse": {
+      "avgPowerW": 0.1,
+      "bandwidthNm": 8.30046232,
+      "centerWavelengthNm": 920,
+      "phaseNs": 0,
+      "pulseShape": "gauss",
+      "pulseWidthFs": 150,
+      "repRateMHz": 80,
+      "sourceId": "ev6du01z",
+      "spectrumHiNm": 930.574645,
+      "spectrumKind": "gauss",
+      "spectrumLoNm": 909.425355,
+      "transformLimitFs": 150,
+      "transformLimited": true
+     },
+     "spec": {
+      "hi": 930.574645,
+      "kind": "sampled",
+      "lo": 909.425355,
+      "w": {
+       "length": 65,
+       "sum": 26.6757715,
+       "min": 0.0111089965,
+       "max": 1,
+       "every16th": [
+        0.0111089965,
+        0.324652467,
+        1,
+        0.324652467,
+        0.0111089965
+       ],
+       "samples": [
+        0.0111089965,
+        0.0146524968,
+        0.0191571718,
+        0.0248275643,
+        0.0318947934,
+        0.0406151844,
+        0.0512672504,
+        0.0641467385,
+        0.0795595087,
+        0.0978120957,
+        0.119199928,
+        0.143993333,
+        0.172421624,
+        0.204655791,
+        0.240790474,
+        0.280826137,
+        0.324652467,
+        0.372034186,
+        0.422600443,
+        0.47583897,
+        0.531095991,
+        0.587582697,
+        0.644388725,
+        0.700502719,
+        0.754839602,
+        0.806273688,
+        0.853676361,
+        0.895956621,
+        0.932102492,
+        0.961221141,
+        0.982575469,
+        0.995615111,
+        1,
+        0.995615111,
+        0.982575469,
+        0.961221141,
+        0.932102492,
+        0.895956621,
+        0.853676361,
+        0.806273688,
+        0.754839602,
+        0.700502719,
+        0.644388725,
+        0.587582697,
+        0.531095991,
+        0.47583897,
+        0.422600443,
+        0.372034186,
+        0.324652467,
+        0.280826137,
+        0.240790474,
+        0.204655791,
+        0.172421624,
+        0.143993333,
+        0.119199928,
+        0.0978120957,
+        0.0795595087,
+        0.0641467385,
+        0.0512672504,
+        0.0406151844,
+        0.0318947934,
+        0.0248275643,
+        0.0191571718,
+        0.0146524968,
+        0.0111089965
+       ]
+      }
+     },
+     "spreadSum": -915.071568,
+     "wl": 920
+    }
+   ]
+  },
+  "objective:e5jv2s6x": {
+   "objectivePupil": {
+    "beamDiameter": 10,
+    "fill": 1.25,
+    "pupilDiameter": 8,
+    "transmitted": 0.64
+   }
+  },
+  "objective:e0zooly4": {
+   "objectivePupil": {
+    "beamDiameter": 10,
+    "fill": 1.25,
+    "pupilDiameter": 8,
+    "transmitted": 0.64
+   }
+  }
+ },
+ "fibers": {}
+}

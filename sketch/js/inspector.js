@@ -11,9 +11,11 @@ import {
   signalKindsFor, specimenTypeOf, channelWarning, defaultEmissionWl, drivingExcitationWl,
   EMISSION_ORDER, ISOTROPIC_KINDS, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
   FLUOROPHORES, fluorophoreSpec, normalizeSupercontinuumParams,
+  isVolumeSpecimen,
 } from './elements.js';
 import { detectorReading, fiberReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace, weakLightShortfallFromLastTrace } from './raytrace.js';
 import { envelopeAutocorrelation } from './pulse-field.js';
+import { NONLINEAR_ORDER } from './sectioning.js';
 import { pulseTransmissionAt } from './pulses.js';
 import {
   FIBER_PROPAGATION_FIELDS, normalizeFiberDispersion, HOLLOW_CORE_FIELDS, normalizeHollowCore,
@@ -73,6 +75,11 @@ export const REBUILD_ON_COMMIT_KEYS = [
   'extension', 'immersion', 'preset', 'material', 'showDepleted', 'modMode',
   'measurementMode', 'prop', 'sync', 'sourceKind',
 ];
+
+// A param is presentation when it says so, or -- for one that is physical in
+// some modes only, such as a specimen's thickness -- when it says so for these
+// params.
+const isAppearance = (p, sel) => (typeof p.appearance === 'function' ? p.appearance(sel.params) : Boolean(p.appearance));
 
 function field(labelText, inputHTML, className = '') {
   return `<label class="field${className ? ` ${className}` : ''}"><span>${esc(labelText)}</span>${inputHTML}</label>`;
@@ -777,7 +784,10 @@ function signalsHTML(sel) {
     // than emitting light of their own, so an emission efficiency would be
     // meaningless for them.
     if (!MODIFIER_KINDS.has(c.kind)) {
-      h += numberField('Efficiency', `data-ci="${i}" data-ck="eff"`, c.eff, { min: 0, max: 1, step: 0.05 });
+      // A volume specimen's fluorescence and Raman grow with the path, so
+      // their efficiency is per millimetre of it.
+      const perMm = isVolumeSpecimen(sel.params) && !NONLINEAR_ORDER[c.kind];
+      h += numberField(perMm ? 'Efficiency per mm' : 'Efficiency', `data-ci="${i}" data-ck="eff"`, c.eff, { min: 0, max: 1, step: 0.05 });
       h += field('Color from λ', `<input type="checkbox" data-ci="${i}" data-ck="autoColor" ${c.autoColor !== false ? 'checked' : ''}>`);
       if (c.autoColor === false) {
         h += field('Signal color', `<input type="color" data-ci="${i}" data-ck="color" value="${esc(c.color || '#22c55e')}">`);
@@ -1051,8 +1061,8 @@ export function renderInspector() {
         if (p.canvasEdit) continue;
         // Physical-size fields that read as presentation rather than physics
         // are rendered down in Label & appearance instead (see below).
-        if (p.appearance) continue;
-        if (p.show && !p.show(sel.params)) continue;
+        if (isAppearance(p, sel)) continue;
+        if (p.show && !p.show(sel.params, sel)) continue;
         if (p.type === 'section') {
           if (sel.type === 'objective' && !objectiveHintInserted) {
             sectionFields += objectiveCouplingHint(sel);
@@ -1085,8 +1095,8 @@ export function renderInspector() {
       if (!def.noLabel) {
         let appearanceFields = '';
         for (const p of def.params || []) {
-          if (!p.appearance || p.hidden) continue;
-          if (p.show && !p.show(sel.params)) continue;
+          if (!isAppearance(p, sel) || p.hidden) continue;
+          if (p.show && !p.show(sel.params, sel)) continue;
           appearanceFields += paramField(p, sel);
         }
         appearanceFields += field('Label', `<input type="text" data-k="label" value="${esc(sel.label || '')}">`);

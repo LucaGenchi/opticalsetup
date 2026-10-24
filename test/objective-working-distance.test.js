@@ -232,6 +232,9 @@ test('committing objective coordinates refreshes the derived immersion-bridge hi
   objective.params.workingDistance = 10;
   const sample = createElement('sample', 27, 0);
   sample.rot = 90;
+  // A 6 mm specimen (2 mm glass, 2 mm sample, 2 mm glass): its near face is
+  // 3 mm before its centre.
+  Object.assign(sample.params, { glassThickness: 2, activeThickness: 2 });
   const panel = inspectorFor(objective, [sample]);
 
   assert.match(panel.innerHTML, /data-objective-coupling-status="connected"/);

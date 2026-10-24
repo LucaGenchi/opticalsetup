@@ -153,7 +153,7 @@
       "requireOverlap": true
      }
     ],
-    "showSignalSpot": true,
+    "showSignalSpot": false,
     "thickness": 6,
     "voxelPreview": false,
     "voxelSize": 0.6,

@@ -106,9 +106,9 @@ export const examples = [
   },
   {
     "group": "Microscopy Implementations",
-    "name": "Coherent Raman microscope — SRS and CARS",
-    "path": "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
-    "slug": "coherent-raman-microscope-srs-and-cars"
+    "name": "Optical sectioning — linear versus nonlinear",
+    "path": "../Examples/Microscopy%20Implementations/Optical%20sectioning%20%E2%80%94%20linear%20versus%20nonlinear.json",
+    "slug": "optical-sectioning-linear-versus-nonlinear"
   },
   {
     "group": "Microscopy Implementations",
@@ -121,6 +121,12 @@ export const examples = [
     "name": "Multiphoton microscope — SHG and two photon fluorescence",
     "path": "../Examples/Microscopy%20Implementations/Multiphoton%20microscope%20%E2%80%94%20SHG%20and%20two%20photon%20fluorescence.json",
     "slug": "multiphoton-microscope-shg-and-two-photon-fluorescence"
+  },
+  {
+    "group": "Microscopy Implementations",
+    "name": "Coherent Raman microscope — SRS and CARS",
+    "path": "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
+    "slug": "coherent-raman-microscope-srs-and-cars"
   },
   {
     "group": "Ophthalmology",
