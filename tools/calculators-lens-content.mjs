@@ -32,7 +32,7 @@ export const lensCalculators = [
           id: 'spot', title: 'Spot',
           assumptions: `<p>Each spot diagram is where real rays from one field point cross the image plane. The rays fill the entrance pupil on a square grid of equal cells (the pupil sampling setting), so every ray stands for the same pupil area and the RMS radius is an area-weighted average. Points are plotted relative to the chief ray of the primary wavelength and coloured by wavelength. The RMS and geometric (largest) radii are measured from the spot’s own centroid.</p>
             <p>The dashed circle is the Airy radius, 1.22 λ N<sub>w</sub>, with N<sub>w</sub> the paraxial working F-number: the first dark ring of a perfect lens’s diffraction pattern${c('born')}. A spot much smaller than that circle is “diffraction limited”, and geometric optics no longer describes it; a spot much larger is dominated by aberrations. This page does not yet compute the diffraction pattern itself.</p>
-            <p>Rays that miss a surface, are totally internally reflected, are cut by a clear aperture you set, or would have to cross a lens whose faces intersect, are counted and left out of the statistics; the notes below the plots say how many.</p>`,
+            <p>Rays that miss a surface, are totally internally reflected, are cut by a clear aperture you set or by the stop, or would have to cross a lens whose faces intersect, are counted and left out of the statistics; the notes below the plots say how many. With paraxial aiming some rays can cross the stop outside its radius, because the real pupil is shifted and distorted; real aiming fills the stop exactly.</p>`,
         },
       ],
     },
@@ -69,7 +69,7 @@ export const lensCalculators = [
         formulas: [
           { tex: String.raw`\mathbf d' = \mu\,\mathbf d + \left(\sqrt{1 - \mu^2\,(1 - \cos^2 I)} - \mu \cos I\right)\mathbf N, \qquad \mu = n/n', \quad \cos I = \mathbf d\cdot\mathbf N`, caption: 'When the square root’s argument is negative the ray is totally internally reflected, and stops there.' },
         ],
-        html2: `<p>Rays are named by their field and their normalized pupil coordinates (p<sub>x</sub>, p<sub>y</sub>), |p| ≤ 1. With <b>paraxial aiming</b> (the default) a ray is aimed at that point of the paraxial entrance pupil. At large fields or apertures the real pupil is shifted and distorted, so the ray no longer passes where intended through the stop. <b>Real aiming</b> instead finds, by Newton iteration, the ray that crosses the stop at (p<sub>x</sub>, p<sub>y</sub>) times the stop radius. It costs a few traces per ray.</p>`,
+        html2: `<p>Rays are named by their field and their normalized pupil coordinates (p<sub>x</sub>, p<sub>y</sub>), |p| ≤ 1. With <b>paraxial aiming</b> (the default) a ray is aimed at that point of the paraxial entrance pupil. At large fields or apertures the real pupil is shifted and distorted, so the ray no longer passes where intended through the stop. <b>Real aiming</b> instead finds, by Newton iteration, the ray that crosses the stop at (p<sub>x</sub>, p<sub>y</sub>) times the stop radius. It costs a few traces per ray. Either way the stop cuts any ray that crosses it outside its radius, as a real iris would; the Cooke triplet and the curved-first singlet presets use real aiming for that reason.</p>`,
       },
       {
         id: 'spots',

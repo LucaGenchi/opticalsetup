@@ -116,6 +116,9 @@ export function analyzeSystem(input) {
   for (const [kind, count] of Object.entries(failureCounts)) {
     if (kind === 'clipped') continue;
     warnings.push({ kind: 'rays', text: `${count} spot ray${count === 1 ? '' : 's'} ${FAILURES[kind] ?? kind} and ${count === 1 ? 'is' : 'are'} left out of the spot statistics.` });
+    if (kind === 'stop' && sys.rayAiming === 'paraxial') {
+      warnings.push({ kind: 'aiming', text: 'Aimed at the paraxial entrance pupil, some rays cross the stop outside its radius, because the real pupil is shifted and distorted (pupil aberration). Real ray aiming fills the stop exactly.' });
+    }
   }
   spots.forEach(s => {
     if (s.vignetting > 0) warnings.push({ kind: 'vignetting', text: `Field ${fmt(s.field, 4)}${sys.fields.type === 'angle' ? '°' : ' mm'}: ${(100 * s.vignetting).toFixed(1)} % of the pupil is clipped by a set clear aperture (vignetting).` });

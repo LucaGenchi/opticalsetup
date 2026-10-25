@@ -23,6 +23,9 @@ const close = (got, want, tol, label = '') => assert.ok(Math.abs(got - want) <= 
 const rel = (got, want, tol, label = '') => close(got, want, tol * Math.abs(want), label);
 
 const cooke = () => presetSystem('cooke');
+// The Optiland comparison: paraxial aiming and no clipping at the stop, as
+// Optiland traces these rays (its stop has no aperture of its own here).
+const cookeAsOptiland = () => normalizeSystem({ ...cooke(), rayAiming: 'paraxial' });
 
 // ------------------------------------------------- second check: Optiland
 
@@ -41,11 +44,11 @@ test('Cooke triplet: paraxial data agree with Optiland 0.5.5', () => {
 });
 
 test('Cooke triplet: 63 real skew rays land where Optiland puts them (paraxial aiming)', () => {
-  const sys = cooke();
+  const sys = cookeAsOptiland();
   const fo = firstOrder(sys, 550);
   for (const r of optiland.rays) {
     const model = traceModel(sys, r.um * 1000, fo);
-    const t = traceRay(model, r.Hy * 20, r.Px, r.Py, model.zLast + 42.20778);
+    const t = traceRay(model, r.Hy * 20, r.Px, r.Py, model.zLast + 42.20778, { clip: false });
     assert.ok(t.ok, JSON.stringify(r));
     close(t.x, r.x, 1e-9, `x of ${JSON.stringify(r)}`);
     close(t.y, r.y, 1e-9, `y of ${JSON.stringify(r)}`);
@@ -54,18 +57,25 @@ test('Cooke triplet: 63 real skew rays land where Optiland puts them (paraxial a
 });
 
 test('Cooke triplet: RMS spots on a 64 × 64 grid agree with Optiland', () => {
-  const result = analyzeSystem({ ...cooke(), pupilSamples: 64 });
-  assert.ok(result.ok);
-  result.spots.forEach((spot, fi) => {
+  const sys = cookeAsOptiland();
+  const fo = firstOrder(sys, 550);
+  const grid = pupilGrid(64);
+  [0, 14, 20].forEach((field, fi) => {
     const ref = optiland.spots[fi];
-    const primary = spot.perWavelength[1];
-    assert.equal(primary.x.length, ref.rays);
+    const spots = [480, 550, 650].map(nm => {
+      const model = traceModel(sys, nm, fo);
+      const rays = grid.map(([px, py]) => traceRay(model, field, px, py, model.zLast + 42.20778, { clip: false }));
+      assert.ok(rays.every(r => r.ok));
+      return { nm, x: rays.map(r => r.x), y: rays.map(r => r.y) };
+    });
+    const primary = spotStats(spots[1].x, spots[1].y);
+    assert.equal(spots[1].x.length, ref.rays);
     // Optiland's definition: each wavelength about the primary centroid.
     close(primary.cx, ref.centroid_primary[0], 1e-9, 'centroid x');
     close(primary.cy, ref.centroid_primary[1], 1e-9, 'centroid y');
-    for (const w of spot.perWavelength) {
+    for (const w of spots) {
       const rms = Math.sqrt(w.x.reduce((s, x, i) => s + (x - primary.cx) ** 2 + (w.y[i] - primary.cy) ** 2, 0) / w.x.length);
-      rel(rms, ref.rms[String(w.nm / 1000)], 1e-7, `field ${spot.field} ${w.nm} nm`);
+      rel(rms, ref.rms[String(w.nm / 1000)], 1e-7, `field ${field} ${w.nm} nm`);
     }
   });
 });
@@ -144,7 +154,7 @@ test('real ray aiming lands on the stop where paraxial aiming does not', () => {
   const sys = normalizeSystem({ ...cooke(), rayAiming: 'real' });
   const fo = firstOrder(sys, 550);
   const model = traceModel(sys, 550, fo);
-  const stopHit = e => traceFrom(model, ...Object.values(launch(model, 20, e[0], e[1])), { until: model.stop + 1 }).P;
+  const stopHit = e => traceFrom(model, ...Object.values(launch(model, 20, e[0], e[1])), { until: model.stop + 1, clip: false }).P;
   for (const py of [-1, 0, 0.5]) {
     const real = aim(model, 20, 0.3, py, 'real');
     assert.ok(real.ok);
@@ -295,11 +305,11 @@ test('a spherical design opens in the canvas as a Lens group; anything else says
   assert.deepEqual(lens.params.rows.map(r => [r.r, r.glass]), sys.surfaces.map(s => [s.radius, s.material]));
   assert.equal(lens.params.rows[3].stop, true, 'the stop, in air after surface 4, carries across');
   // The canvas reads the rows back unchanged. Its one clear diameter for
-  // every surface thickens the thin flint, which moves f by 7 µm: the page
-  // says so rather than hiding it.
+  // every surface (the largest rim, here the first lens's) thickens the thin
+  // flint, which moves f by about 0.4 %: the page says so rather than hiding it.
   const canvasF = surfaceTableCardinals(normalizeSurfaceTable(lens.params.rows), 550, { diameter: lens.params.dia }).f;
   close(out.canvasEfl, canvasF, 1e-12);
-  rel(canvasF, firstOrder(sys, 550).efl, 1e-3, 'EFL in the canvas');
+  rel(canvasF, firstOrder(sys, 550).efl, 0.01, 'EFL in the canvas');
   assert.match(out.note, /thickening any lens/);
   assert.equal(canvasScene(presetSystem('achromat'), analyzeSystem(presetSystem('achromat'))).ok, true);
   assert.equal(out.scene.elements.find(e => e.type === 'cwlaser').params.wavelength, 550);
@@ -311,5 +321,47 @@ test('a spherical design opens in the canvas as a Lens group; anything else says
     const refused = canvasScene(normalizeSystem(system));
     assert.equal(refused.ok, false);
     assert.ok(refused.reasons.some(r => why.test(r)), refused.reasons.join('; '));
+  }
+});
+
+// Review of #267 (P1): with the entrance pupil beyond the first surface's
+// centre of curvature, the numerically stable root lands on the far sheet of
+// the sphere; the other root is the real crossing and must be tried.
+test('an entrance pupil beyond the first centre of curvature still finds the first surface', () => {
+  const sys = normalizeSystem({
+    wavelengthsNm: [587.5618], primaryWavelength: 0, aperture: { type: 'epd', value: 10 },
+    surfaces: [{ radius: 51.68, thickness: 4, material: 'nbk7' }, { radius: 0, thickness: 40 }, { radius: 0, thickness: 50, stop: true }],
+  });
+  const fo = firstOrder(sys, 587.5618);
+  assert.ok(fo.zEp > 51.68, 'the pupil sits beyond the centre of curvature');
+  const model = traceModel(sys, 587.5618, fo);
+  const chief = traceRay(model, 0, 0, 0, 100, { path: true });
+  assert.ok(chief.ok);
+  close(chief.points[1][2], 0, 1e-12, 'the axial ray meets surface 1 at its vertex');
+  const r = analyzeSystem(sys);
+  assert.equal(r.spots[0].lost, 0);
+});
+
+// Review of #267 (P2): the stop clips at its own radius. Paraxially aimed
+// rays that the real pupil puts outside it are lost and said to be; real
+// aiming fills the stop exactly and loses none.
+test('the aperture stop clips at its radius; real aiming fills it exactly', () => {
+  const paraxial = analyzeSystem(cookeAsOptiland());
+  assert.ok(paraxial.spots[0].perWavelength.every(w => w.failed.stop > 0), 'rim rays pass outside the stop on axis');
+  assert.equal(paraxial.spots[0].vignetting, 0, 'losses at the stop are not vignetting by a set aperture');
+  assert.ok(paraxial.warnings.some(w => w.kind === 'aiming'));
+  const real = analyzeSystem(cooke());
+  assert.equal(real.spots.reduce((s, sp) => s + sp.lost, 0), 0);
+  assert.ok(!real.warnings.some(w => w.kind === 'aiming'));
+  // No ray counted in a spot crossed the stop outside its radius.
+  const fo = firstOrder(cooke(), 550);
+  const model = traceModel(cooke(), 550, fo);
+  for (const [px, py] of pupilGrid(32)) {
+    for (const field of [0, 14, 20]) {
+      const t = traceRay(model, field, px, py, 60.17675, { path: true });
+      assert.ok(t.ok);
+      const p = t.points[model.stop + 1];
+      assert.ok(Math.hypot(p[0], p[1]) <= fo.stopRadius * (1 + 1e-7));
+    }
   }
 });

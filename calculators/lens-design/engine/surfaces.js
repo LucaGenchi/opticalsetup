@@ -74,10 +74,16 @@ export function normalAt(surf, x, y) {
 export function intersect(surf, P, D, minT = -1e-9) {
   const [px, py, pz] = P, [dx, dy, dz] = D;
   const { c, k } = surf;
-  let t;
+  // Both roots of the conic, each kept only if it lies on the surface's own
+  // sheet (the one the sag formula describes, not the far side of a sphere
+  // or the other nappe of a hyperboloid). A ray starting beyond the centre
+  // of curvature (an entrance pupil far behind the first surface) has its
+  // real intersection at the root the numerically stable formula does not
+  // pick first, so neither root is preferred until both are checked.
+  const roots = [];
   if (!c) {
     if (Math.abs(dz) < 1e-15) return { fail: 'miss' };
-    t = -pz / dz;
+    roots.push(-pz / dz);
   } else {
     // c(x² + y² + (1+k) z²) − 2z = 0 along the ray: A t² + 2B t + C = 0.
     const A = c * (dx * dx + dy * dy + (1 + k) * dz * dz);
@@ -85,22 +91,26 @@ export function intersect(surf, P, D, minT = -1e-9) {
     const C = c * (px * px + py * py + (1 + k) * pz * pz) - 2 * pz;
     const disc = B * B - A * C;
     if (disc < 0) return { fail: 'miss' };
-    // The root that tends to the vertex plane as c → 0: the surface's own
-    // sheet, not the far side of the sphere or the other nappe.
-    const denom = -B + (B <= 0 ? 1 : -1) * Math.sqrt(disc);
-    if (denom === 0) return { fail: 'miss' };
-    t = C / denom;
+    const q = -B + (B <= 0 ? 1 : -1) * Math.sqrt(disc);
+    if (q !== 0) roots.push(C / q);
+    if (A !== 0) roots.push(q / A);
   }
-  if (!surf.hasAsphere) {
+  const onSheet = t => {
     const x = px + t * dx, y = py + t * dy, rho = x * x + y * y;
-    if (rho > conicDomain(surf) * (1 + 1e-12)) return { fail: 'miss' };
+    if (!Number.isFinite(t) || rho > conicDomain(surf) * (1 + 1e-12)) return false;
     const z = pz + t * dz;
-    // The stable root can still land on the wrong sheet of a closed conic for
-    // a steep ray; the sag check catches it.
-    const s = sag(surf, rho);
-    if (!(Math.abs(z - s) <= 1e-7 * Math.max(1, Math.abs(z)))) return { fail: 'miss' };
-    return t >= minT ? { t } : { fail: 'behind' };
+    return Math.abs(z - sag(surf, rho)) <= 1e-7 * Math.max(1, Math.abs(z));
+  };
+  const valid = roots.filter(onSheet).sort((a, b) => a - b);
+  // The first crossing along the ray that is not behind it. For the first
+  // surface (minT = −∞) that is the first crossing of a ray arriving from the
+  // object side.
+  let t = valid.find(v => v >= minT);
+  if (!surf.hasAsphere) {
+    if (t !== undefined) return { t };
+    return valid.length ? { fail: 'behind' } : { fail: 'miss' };
   }
+  if (t === undefined) t = valid[0];
   // Newton on f(t) = z(t) − sag(ρ(t)), from the conic (or plane) solution.
   if (!Number.isFinite(t)) t = Math.abs(dz) > 1e-15 ? -pz / dz : 0;
   for (let i = 0; i < NEWTON_MAX_ITERATIONS; i++) {

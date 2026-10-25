@@ -957,6 +957,198 @@
    }
   },
   {
+   "absolute": true,
+   "expected": {
+    "x": 0.0,
+    "y": 0.0
+   },
+   "inputs": {
+    "field": 0.0,
+    "kind": "ray",
+    "nm": 587.5618,
+    "px": 0.0,
+    "py": 0.0,
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       3.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 40.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "stop": true,
+       "thickness": 50.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      587.5618
+     ]
+    }
+   },
+   "name": "entrance pupil beyond the first centre of curvature: real ray field 0.0, pupil (0.0, 0.0), 587.5618 nm",
+   "tolerance": {
+    "x": 1e-09,
+    "y": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "x": 0.0,
+    "y": 0.35604121653339327
+   },
+   "inputs": {
+    "field": 0.0,
+    "kind": "ray",
+    "nm": 587.5618,
+    "px": 0.0,
+    "py": 1.0,
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       3.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 40.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "stop": true,
+       "thickness": 50.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      587.5618
+     ]
+    }
+   },
+   "name": "entrance pupil beyond the first centre of curvature: real ray field 0.0, pupil (0.0, 1.0), 587.5618 nm",
+   "tolerance": {
+    "x": 1e-09,
+    "y": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "x": 0.19700034692254076,
+    "y": 4.352146381492381
+   },
+   "inputs": {
+    "field": 3.0,
+    "kind": "ray",
+    "nm": 587.5618,
+    "px": 0.6,
+    "py": -0.8,
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       3.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 40.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "stop": true,
+       "thickness": 50.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      587.5618
+     ]
+    }
+   },
+   "name": "entrance pupil beyond the first centre of curvature: real ray field 3.0, pupil (0.6, -0.8), 587.5618 nm",
+   "tolerance": {
+    "x": 1e-09,
+    "y": 1e-09
+   }
+  },
+  {
    "expected": {
     "SI": 0.0013704760133264645
    },

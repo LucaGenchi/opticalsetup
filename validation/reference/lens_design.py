@@ -288,6 +288,16 @@ def finite_pcx():
     return s
 
 
+def far_pupil():
+    """A stop 44 mm behind a plano-convex lens puts the entrance pupil beyond
+    the first surface's centre of curvature (review of PR #267)."""
+    return base([
+        {"radius": 51.68, "thickness": 4.0, "material": "nbk7"},
+        {"radius": 0.0, "thickness": 40.0, "material": "air"},
+        {"radius": 0.0, "thickness": 50.0, "material": "air", "stop": True},
+    ], epd=10.0, fields=(0.0, 3.0), wavelengths=(587.5618,), primary=0)
+
+
 def pcx(curved_first, thickness):
     rows = [{"radius": 51.68, "thickness": thickness, "material": "nbk7", "stop": True},
             {"radius": 0.0, "thickness": 100.0, "material": "air"}]
@@ -360,6 +370,7 @@ def cases():
         ("Cooke triplet", COOKE, [(20.0, 0.0, 1.0, 480.0), (20.0, 0.6, -0.7, 650.0), (14.0, -1.0, 0.0, 550.0), (0.0, 0.3, 0.9, 480.0)]),
         ("aspheric singlet", ASPHERE, [(0.0, 0.0, 1.0, 587.5618), (4.0, 0.7, 0.7, 486.1327), (4.0, 0.0, -0.95, 656.2725)]),
         ("plano-convex at a finite object", finite_pcx(), [(5.0, 0.0, 1.0, 587.5618), (5.0, 0.8, -0.5, 486.1327)]),
+        ("entrance pupil beyond the first centre of curvature", far_pupil(), [(0.0, 0.0, 0.0, 587.5618), (0.0, 0.0, 1.0, 587.5618), (3.0, 0.6, -0.8, 587.5618)]),
     ]:
         primary = first_order(system, system["wavelengthsNm"][system["primaryWavelength"]])
         z_img = fixed_image_z(system)

@@ -15,7 +15,9 @@
 // height sits at +y. With "real" ray aiming, (px, py) instead name the point
 // (px, py)·r_stop on the stop, found by Newton iteration from the paraxial
 // aim. A ray that misses a surface, is totally internally reflected, is
-// clipped by a set clear semi-diameter, or would have to travel backward
+// clipped by a set clear semi-diameter or by the stop's own radius (a
+// paraxially aimed ray can pass outside it, because the real pupil is not
+// the paraxial one), or would have to travel backward
 // (surfaces crossing at that height) stops there and says so.
 
 import { makeSurface, intersect, normalAt, refract } from './surfaces.js';
@@ -27,6 +29,7 @@ export const FAILURES = {
   'no-convergence': 'asphere intersection did not converge',
   tir: 'total internal reflection',
   clipped: 'clipped by a clear aperture',
+  stop: 'passed outside the aperture stop',
   aim: 'real ray aiming did not converge',
   image: 'did not reach the image plane',
 };
@@ -39,6 +42,7 @@ export function traceModel(system, wavelengthNm, fo) {
     const entry = {
       z, type: s.type, focal: s.focal, geom: makeSurface(s),
       clip: s.semiDiameter > 0 && !s.stop ? s.semiDiameter : 0,
+      stopClip: s.stop ? fo.stopRadius : 0,
       n1: n[j], n2: n[j + 1],
     };
     z += s.thickness;
@@ -64,8 +68,11 @@ export function launch(model, fieldValue, ex, ey) {
 
 // Trace from (P, D) through surfaces [0, until), recording the path when
 // asked and, in `extent`, the largest squared height met on each surface.
-// Returns the state after the last surface traced.
-export function traceFrom(model, P, D, { until = model.surfaces.length, path = false, extent = null } = {}) {
+// Returns the state after the last surface traced. `clip: false` lets a ray
+// through every aperture, the stop included: real aiming's trial rays need
+// that while they search, and so does a comparison with a program that does
+// not clip at the stop.
+export function traceFrom(model, P, D, { until = model.surfaces.length, path = false, extent = null, clip = true } = {}) {
   let p = P.slice(), d = D.slice(), opl = 0;
   const points = path ? [p.slice()] : null;
   for (let j = 0; j < until; j++) {
@@ -79,8 +86,12 @@ export function traceFrom(model, P, D, { until = model.surfaces.length, path = f
     opl += s.n1 * hit.t;
     if (points) points.push(p.slice());
     if (extent) extent[j] = Math.max(extent[j], p[0] * p[0] + p[1] * p[1]);
-    if (s.clip && p[0] * p[0] + p[1] * p[1] > s.clip * s.clip * (1 + 1e-12)) {
+    if (clip && s.clip && p[0] * p[0] + p[1] * p[1] > s.clip * s.clip * (1 + 1e-12)) {
       return { ok: false, fail: 'clipped', surface: j, points };
+    }
+    // The margin covers real aiming's own 1e-9 tolerance at the rim.
+    if (clip && s.stopClip && Math.hypot(p[0], p[1]) > s.stopClip * (1 + 1e-7)) {
+      return { ok: false, fail: 'stop', surface: j, points };
     }
     if (s.type === 'paraxial') {
       // An ideal thin lens: direction tangents change by −(x, y)/f, which
@@ -105,7 +116,7 @@ export function aim(model, fieldValue, px, py, mode = model.system.rayAiming) {
   const target = [px * fo.stopRadius, py * fo.stopRadius];
   const stopAt = r => {
     const { P, D } = launch(model, fieldValue, r[0], r[1]);
-    const t = traceFrom(model, P, D, { until: model.stop + 1 });
+    const t = traceFrom(model, P, D, { until: model.stop + 1, clip: false });
     return t.ok ? [t.P[0] - target[0], t.P[1] - target[1]] : null;
   };
   let e = guess;
@@ -125,11 +136,11 @@ export function aim(model, fieldValue, px, py, mode = model.system.rayAiming) {
 }
 
 // One named ray, all the way to the plane z = zImage (global).
-export function traceRay(model, fieldValue, px, py, zImage, { path = false, extent = null } = {}) {
+export function traceRay(model, fieldValue, px, py, zImage, { path = false, extent = null, clip = true } = {}) {
   const a = aim(model, fieldValue, px, py);
   if (!a.ok) return { ok: false, fail: 'aim', surface: model.stop, points: null };
   const { P, D } = launch(model, fieldValue, a.e[0], a.e[1]);
-  const t = traceFrom(model, P, D, { path, extent });
+  const t = traceFrom(model, P, D, { path, extent, clip });
   if (!t.ok) return t;
   if (!(t.D[2] > 1e-12)) return { ok: false, fail: 'image', surface: model.surfaces.length, points: t.points };
   const s = (zImage - t.P[2]) / t.D[2];

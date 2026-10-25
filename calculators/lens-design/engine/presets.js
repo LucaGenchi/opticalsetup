@@ -29,6 +29,9 @@ export const PRESETS = [
     note: 'N-BK7, f 100 mm at the d line (R = (n_d − 1) f), 4 mm thick, at F/10. The orientation that shares the bending between both faces: small spherical aberration.',
     system: {
       name: 'Plano-convex, curved side toward the object', ...visible,
+      // The stop is the curved face: off axis, paraxially aimed rays meet it
+      // a little outside its radius, so these presets aim real rays.
+      rayAiming: 'real',
       aperture: { type: 'epd', value: 10 }, fields: { type: 'angle', values: [0, 3, 5] },
       surfaces: [
         { radius: 51.68, thickness: 4, material: 'nbk7', stop: true },
@@ -69,7 +72,7 @@ export const PRESETS = [
     source: 'Optiland samples/objectives.py, class CookeTriplet (v0.5.5)',
     system: {
       name: 'Cooke triplet',
-      wavelengthsNm: [480, 550, 650], primaryWavelength: 1,
+      wavelengthsNm: [480, 550, 650], primaryWavelength: 1, rayAiming: 'real',
       aperture: { type: 'epd', value: 10 }, fields: { type: 'angle', values: [0, 14, 20] },
       image: { focus: 'fixed' },
       surfaces: [

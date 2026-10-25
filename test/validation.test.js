@@ -60,8 +60,10 @@ const APP = {
     if (kind === 'seidel') return { SI: seidelSums(system, fo).total.SI };
     if (kind === 'spot') return { rms: analyzeSystem(system).spots[0].poly.rms };
     // kind === 'ray': to the fixed image plane, every surface's thickness on.
+    // Geometry only: the reference has no apertures, so neither does this
+    // trace (a paraxially aimed rim ray may cross the stop just outside it).
     const model = traceModel(system, nm, fo);
-    const r = traceRay(model, field, px, py, model.zLast + system.surfaces.at(-1).thickness);
+    const r = traceRay(model, field, px, py, model.zLast + system.surfaces.at(-1).thickness, { clip: false });
     return { x: r.x, y: r.y };
   },
   fluorescence: ({ kind, ...inputs }) => {
