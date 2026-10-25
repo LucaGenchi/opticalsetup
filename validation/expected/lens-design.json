@@ -1,0 +1,1236 @@
+{
+ "app": "calculators/lens-design/engine/paraxial.js: firstOrder, seidelSums; calculators/lens-design/engine/trace.js: traceRay; calculators/lens-design/engine/analyze.js: analyzeSystem",
+ "cases": [
+  {
+   "absolute": true,
+   "expected": {
+    "bfl": 42.41506325770836,
+    "efl": 49.99998196121056,
+    "imageDistance": 42.41506325770836,
+    "xpd": 10.233729396225378,
+    "zEp": 11.512155158392497,
+    "zXp": -8.753565263009547
+   },
+   "inputs": {
+    "kind": "first-order",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       14.0,
+       20.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 1,
+     "surfaces": [
+      {
+       "material": "nsk16",
+       "radius": 22.01359,
+       "thickness": 3.25896
+      },
+      {
+       "material": "air",
+       "radius": -435.76044,
+       "thickness": 6.00755
+      },
+      {
+       "material": "f2",
+       "radius": -22.21328,
+       "thickness": 0.99997
+      },
+      {
+       "material": "air",
+       "radius": 20.29192,
+       "stop": true,
+       "thickness": 4.75041
+      },
+      {
+       "material": "nsk16",
+       "radius": 79.6836,
+       "thickness": 2.95208
+      },
+      {
+       "material": "air",
+       "radius": -18.39533,
+       "thickness": 42.20778
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      480.0,
+      550.0,
+      650.0
+     ]
+    }
+   },
+   "name": "Cooke triplet: first-order data at 550.0 nm",
+   "tolerance": {
+    "bfl": 1e-09,
+    "efl": 1e-09,
+    "imageDistance": 1e-09,
+    "xpd": 1e-09,
+    "zEp": 1e-09,
+    "zXp": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "bfl": 95.86320944581124,
+    "efl": 100.07608972546508,
+    "imageDistance": 95.86320944581124,
+    "xpd": 20.369288518890126,
+    "zEp": 0.0,
+    "zXp": -6.060727827205455
+   },
+   "inputs": {
+    "kind": "first-order",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 20.0
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       2.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 1,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 60.65,
+       "stop": true,
+       "thickness": 6.0
+      },
+      {
+       "material": "nsf11",
+       "radius": -61.02,
+       "thickness": 3.5
+      },
+      {
+       "material": "air",
+       "radius": -131.55,
+       "thickness": 97.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      486.1327,
+      587.5618,
+      656.2725
+     ]
+    }
+   },
+   "name": "cemented achromat: first-order data at 587.5618 nm",
+   "tolerance": {
+    "bfl": 1e-09,
+    "efl": 1e-09,
+    "imageDistance": 1e-09,
+    "xpd": 1e-09,
+    "zEp": 1e-09,
+    "zXp": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "bfl": 47.459955191619315,
+    "efl": 50.930538449695575,
+    "imageDistance": 47.459955191619315,
+    "xpd": 16.165233245829377,
+    "zEp": 0.0,
+    "zXp": -3.9965468943188265
+   },
+   "inputs": {
+    "kind": "first-order",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 16.0
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       4.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 1,
+     "surfaces": [
+      {
+       "asphere": [
+        -2e-06,
+        1e-09
+       ],
+       "conic": -0.6,
+       "material": "nbk7",
+       "radius": 30.0,
+       "stop": true,
+       "thickness": 6.0
+      },
+      {
+       "asphere": [
+        4e-06
+       ],
+       "conic": 3.0,
+       "material": "air",
+       "radius": -200.0,
+       "thickness": 52.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      486.1327,
+      587.5618,
+      656.2725
+     ]
+    }
+   },
+   "name": "aspheric singlet: first-order data at 587.5618 nm",
+   "tolerance": {
+    "bfl": 1e-09,
+    "efl": 1e-09,
+    "imageDistance": 1e-09,
+    "xpd": 1e-09,
+    "zEp": 1e-09,
+    "zXp": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "bfl": 97.36286258248549,
+    "efl": 99.99999332419002,
+    "imageDistance": 197.3628425550573,
+    "xpd": 9.736286908224562,
+    "zEp": 2.708558988208188,
+    "zXp": -0.0
+   },
+   "inputs": {
+    "kind": "first-order",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "fields": {
+      "type": "height",
+      "values": [
+       0.0,
+       5.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": false,
+      "distanceMm": 200.0
+     },
+     "primaryWavelength": 1,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "stop": true,
+       "thickness": 190.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      486.1327,
+      587.5618,
+      656.2725
+     ]
+    }
+   },
+   "name": "plano-convex at a finite object: first-order data at 587.5618 nm",
+   "tolerance": {
+    "bfl": 1e-09,
+    "efl": 1e-09,
+    "imageDistance": 1e-09,
+    "xpd": 1e-09,
+    "zEp": 1e-09,
+    "zXp": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "x": 0.0,
+    "y": 18.149351189239113
+   },
+   "inputs": {
+    "field": 20.0,
+    "kind": "ray",
+    "nm": 480.0,
+    "px": 0.0,
+    "py": 1.0,
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       14.0,
+       20.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 1,
+     "surfaces": [
+      {
+       "material": "nsk16",
+       "radius": 22.01359,
+       "thickness": 3.25896
+      },
+      {
+       "material": "air",
+       "radius": -435.76044,
+       "thickness": 6.00755
+      },
+      {
+       "material": "f2",
+       "radius": -22.21328,
+       "thickness": 0.99997
+      },
+      {
+       "material": "air",
+       "radius": 20.29192,
+       "stop": true,
+       "thickness": 4.75041
+      },
+      {
+       "material": "nsk16",
+       "radius": 79.6836,
+       "thickness": 2.95208
+      },
+      {
+       "material": "air",
+       "radius": -18.39533,
+       "thickness": 42.20778
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      480.0,
+      550.0,
+      650.0
+     ]
+    }
+   },
+   "name": "Cooke triplet: real ray field 20.0, pupil (0.0, 1.0), 480.0 nm",
+   "tolerance": {
+    "x": 1e-09,
+    "y": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "x": 0.003192111278052856,
+    "y": 18.1229029097999
+   },
+   "inputs": {
+    "field": 20.0,
+    "kind": "ray",
+    "nm": 650.0,
+    "px": 0.6,
+    "py": -0.7,
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       14.0,
+       20.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 1,
+     "surfaces": [
+      {
+       "material": "nsk16",
+       "radius": 22.01359,
+       "thickness": 3.25896
+      },
+      {
+       "material": "air",
+       "radius": -435.76044,
+       "thickness": 6.00755
+      },
+      {
+       "material": "f2",
+       "radius": -22.21328,
+       "thickness": 0.99997
+      },
+      {
+       "material": "air",
+       "radius": 20.29192,
+       "stop": true,
+       "thickness": 4.75041
+      },
+      {
+       "material": "nsk16",
+       "radius": 79.6836,
+       "thickness": 2.95208
+      },
+      {
+       "material": "air",
+       "radius": -18.39533,
+       "thickness": 42.20778
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      480.0,
+      550.0,
+      650.0
+     ]
+    }
+   },
+   "name": "Cooke triplet: real ray field 20.0, pupil (0.6, -0.7), 650.0 nm",
+   "tolerance": {
+    "x": 1e-09,
+    "y": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "x": 0.021397788051045197,
+    "y": 12.421314745616453
+   },
+   "inputs": {
+    "field": 14.0,
+    "kind": "ray",
+    "nm": 550.0,
+    "px": -1.0,
+    "py": 0.0,
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       14.0,
+       20.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 1,
+     "surfaces": [
+      {
+       "material": "nsk16",
+       "radius": 22.01359,
+       "thickness": 3.25896
+      },
+      {
+       "material": "air",
+       "radius": -435.76044,
+       "thickness": 6.00755
+      },
+      {
+       "material": "f2",
+       "radius": -22.21328,
+       "thickness": 0.99997
+      },
+      {
+       "material": "air",
+       "radius": 20.29192,
+       "stop": true,
+       "thickness": 4.75041
+      },
+      {
+       "material": "nsk16",
+       "radius": 79.6836,
+       "thickness": 2.95208
+      },
+      {
+       "material": "air",
+       "radius": -18.39533,
+       "thickness": 42.20778
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      480.0,
+      550.0,
+      650.0
+     ]
+    }
+   },
+   "name": "Cooke triplet: real ray field 14.0, pupil (-1.0, 0.0), 550.0 nm",
+   "tolerance": {
+    "x": 1e-09,
+    "y": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "x": -0.00030751380800153605,
+    "y": -0.0009225414240048302
+   },
+   "inputs": {
+    "field": 0.0,
+    "kind": "ray",
+    "nm": 480.0,
+    "px": 0.3,
+    "py": 0.9,
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       14.0,
+       20.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 1,
+     "surfaces": [
+      {
+       "material": "nsk16",
+       "radius": 22.01359,
+       "thickness": 3.25896
+      },
+      {
+       "material": "air",
+       "radius": -435.76044,
+       "thickness": 6.00755
+      },
+      {
+       "material": "f2",
+       "radius": -22.21328,
+       "thickness": 0.99997
+      },
+      {
+       "material": "air",
+       "radius": 20.29192,
+       "stop": true,
+       "thickness": 4.75041
+      },
+      {
+       "material": "nsk16",
+       "radius": 79.6836,
+       "thickness": 2.95208
+      },
+      {
+       "material": "air",
+       "radius": -18.39533,
+       "thickness": 42.20778
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      480.0,
+      550.0,
+      650.0
+     ]
+    }
+   },
+   "name": "Cooke triplet: real ray field 0.0, pupil (0.3, 0.9), 480.0 nm",
+   "tolerance": {
+    "x": 1e-09,
+    "y": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "x": 0.0,
+    "y": -0.4697111576740616
+   },
+   "inputs": {
+    "field": 0.0,
+    "kind": "ray",
+    "nm": 587.5618,
+    "px": 0.0,
+    "py": 1.0,
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 16.0
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       4.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 1,
+     "surfaces": [
+      {
+       "asphere": [
+        -2e-06,
+        1e-09
+       ],
+       "conic": -0.6,
+       "material": "nbk7",
+       "radius": 30.0,
+       "stop": true,
+       "thickness": 6.0
+      },
+      {
+       "asphere": [
+        4e-06
+       ],
+       "conic": 3.0,
+       "material": "air",
+       "radius": -200.0,
+       "thickness": 52.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      486.1327,
+      587.5618,
+      656.2725
+     ]
+    }
+   },
+   "name": "aspheric singlet: real ray field 0.0, pupil (0.0, 1.0), 587.5618 nm",
+   "tolerance": {
+    "x": 1e-09,
+    "y": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "x": -0.410444578840651,
+    "y": 3.441523252413715
+   },
+   "inputs": {
+    "field": 4.0,
+    "kind": "ray",
+    "nm": 486.1327,
+    "px": 0.7,
+    "py": 0.7,
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 16.0
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       4.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 1,
+     "surfaces": [
+      {
+       "asphere": [
+        -2e-06,
+        1e-09
+       ],
+       "conic": -0.6,
+       "material": "nbk7",
+       "radius": 30.0,
+       "stop": true,
+       "thickness": 6.0
+      },
+      {
+       "asphere": [
+        4e-06
+       ],
+       "conic": 3.0,
+       "material": "air",
+       "radius": -200.0,
+       "thickness": 52.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      486.1327,
+      587.5618,
+      656.2725
+     ]
+    }
+   },
+   "name": "aspheric singlet: real ray field 4.0, pupil (0.7, 0.7), 486.1327 nm",
+   "tolerance": {
+    "x": 1e-09,
+    "y": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "x": 0.0,
+    "y": 4.397320595324993
+   },
+   "inputs": {
+    "field": 4.0,
+    "kind": "ray",
+    "nm": 656.2725,
+    "px": 0.0,
+    "py": -0.95,
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 16.0
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       4.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 1,
+     "surfaces": [
+      {
+       "asphere": [
+        -2e-06,
+        1e-09
+       ],
+       "conic": -0.6,
+       "material": "nbk7",
+       "radius": 30.0,
+       "stop": true,
+       "thickness": 6.0
+      },
+      {
+       "asphere": [
+        4e-06
+       ],
+       "conic": 3.0,
+       "material": "air",
+       "radius": -200.0,
+       "thickness": 52.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      486.1327,
+      587.5618,
+      656.2725
+     ]
+    }
+   },
+   "name": "aspheric singlet: real ray field 4.0, pupil (0.0, -0.95), 656.2725 nm",
+   "tolerance": {
+    "x": 1e-09,
+    "y": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "x": 0.0,
+    "y": -4.665783295456823
+   },
+   "inputs": {
+    "field": 5.0,
+    "kind": "ray",
+    "nm": 587.5618,
+    "px": 0.0,
+    "py": 1.0,
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "fields": {
+      "type": "height",
+      "values": [
+       0.0,
+       5.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": false,
+      "distanceMm": 200.0
+     },
+     "primaryWavelength": 1,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "stop": true,
+       "thickness": 190.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      486.1327,
+      587.5618,
+      656.2725
+     ]
+    }
+   },
+   "name": "plano-convex at a finite object: real ray field 5.0, pupil (0.0, 1.0), 587.5618 nm",
+   "tolerance": {
+    "x": 1e-09,
+    "y": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "x": 0.01669931375009792,
+    "y": -4.814615777322213
+   },
+   "inputs": {
+    "field": 5.0,
+    "kind": "ray",
+    "nm": 486.1327,
+    "px": 0.8,
+    "py": -0.5,
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "fields": {
+      "type": "height",
+      "values": [
+       0.0,
+       5.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": false,
+      "distanceMm": 200.0
+     },
+     "primaryWavelength": 1,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "stop": true,
+       "thickness": 190.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      486.1327,
+      587.5618,
+      656.2725
+     ]
+    }
+   },
+   "name": "plano-convex at a finite object: real ray field 5.0, pupil (0.8, -0.5), 486.1327 nm",
+   "tolerance": {
+    "x": 1e-09,
+    "y": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "SI": 0.0013704760133264645
+   },
+   "inputs": {
+    "kind": "seidel",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "stop": true,
+       "thickness": 0.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      587.5618
+     ]
+    }
+   },
+   "name": "thin plano-convex, curved side first: Seidel S_I against Welford's thin-lens formula",
+   "tolerance": {
+    "SI": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "SI": 0.0013611579351133962
+   },
+   "inputs": {
+    "kind": "seidel",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "stop": true,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      587.5618
+     ]
+    }
+   },
+   "name": "4 mm plano-convex, curved side first: Seidel S_I against the real-ray fit",
+   "note": "the fit to rho^3, rho^5 and rho^7 leaves a ninth-order residue near 1e-7 relative",
+   "tolerance": {
+    "SI": 1e-05
+   }
+  },
+  {
+   "expected": {
+    "SI": 0.005383834437686164
+   },
+   "inputs": {
+    "kind": "seidel",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 0.0,
+       "stop": true,
+       "thickness": 0.0
+      },
+      {
+       "material": "air",
+       "radius": -51.68,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      587.5618
+     ]
+    }
+   },
+   "name": "thin plano-convex, flat side first: Seidel S_I against Welford's thin-lens formula",
+   "tolerance": {
+    "SI": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "SI": 0.005383834452664894
+   },
+   "inputs": {
+    "kind": "seidel",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 0.0,
+       "stop": true,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": -51.68,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      587.5618
+     ]
+    }
+   },
+   "name": "4 mm plano-convex, flat side first: Seidel S_I against the real-ray fit",
+   "note": "the fit to rho^3, rho^5 and rho^7 leaves a ninth-order residue near 1e-7 relative",
+   "tolerance": {
+    "SI": 1e-05
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "rms": 6.599619892805578e-15
+   },
+   "inputs": {
+    "kind": "spot",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 40.0
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 0.0,
+       "stop": true,
+       "thickness": 5.0
+      },
+      {
+       "conic": -2.300682344660986,
+       "material": "air",
+       "radius": -51.680003450058834,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      587.5618
+     ]
+    }
+   },
+   "name": "plano-hyperbolic singlet (k = -n^2): on-axis spot of an aberration-free surface",
+   "tolerance": {
+    "rms": 1e-09
+   }
+  }
+ ],
+ "citations": [
+  "W. T. Welford, Aberrations of Optical Systems (Adam Hilger, 1986), ch. 7-8: Seidel sums, the conic/aspheric term, and the thin-lens S_I in shape and conjugate variables",
+  "W. J. Smith, Modern Optical Engineering, 4th ed. (McGraw-Hill, 2008), ch. 2-3 and 10: paraxial matrices, pupils, real ray tracing",
+  "E. Hecht, Optics, 5th ed., section 6.2: ray-transfer matrices",
+  "Optiland v0.5.5 (MIT licence), samples/objectives.py CookeTriplet: the Cooke prescription (the OpticStudio 'Cooke 40 degree field' sample)"
+ ],
+ "convergence": "Bisection to 200 halvings (far past double precision); the surface normal from a 1e-6 mm central difference, accurate to about 1e-12 in direction.",
+ "domain": "Rotationally symmetric refracting systems in air, objects at infinity and at 200 mm, fields up to 20 deg, F/2.5 to F/10, visible wavelengths.",
+ "fidelity": "computed",
+ "id": "lens-design",
+ "outside_scope": "Mirrors, tilts, decentres and diffraction are outside this model.",
+ "provenance": "Textbook relations evaluated here; the plano-hyperbolic singlet is the classical aplanatic surface (Descartes ovoid for an object at infinity), whose image is a point.",
+ "reference": "ABCD ray-transfer matrices; bisection surface intersections with tangential-component refraction; Welford's thin-lens S_I; a polynomial fit to real transverse ray aberration",
+ "reference_file": "validation/reference/lens_design.py",
+ "scope": "Geometric optics: paraxial first-order data and exact skew-ray tracing of spherical, conic and even-aspheric refracting surfaces, plus third-order theory.",
+ "title": "Lens designer: first-order data, real skew rays, Seidel spherical aberration",
+ "tolerance_rationale": "1e-9 mm (absolute: an exit pupil can sit exactly on a vertex) is two independent evaluations of the same geometry in double precision; 1e-5 on the fitted S_I is the truncation of the odd-power fit."
+}

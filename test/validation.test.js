@@ -21,6 +21,10 @@ import { materialDispersion, materialAbbe } from '../calculators/dispersion/mate
 import { DISPERSION_DEFAULTS, computeDispersion } from '../calculators/dispersion/dispersion-calculator.js';
 import { CONVERSION_DEFAULTS, computeConversion } from '../calculators/nonlinear-conversion/conversion-calculator.js';
 import { CRS_DEFAULTS, computeCrs, RESOLUTION_DEFAULTS, computeResolution } from '../calculators/coherent-raman/crs-calculator.js';
+import { normalizeSystem } from '../calculators/lens-design/engine/system.js';
+import { firstOrder, seidelSums } from '../calculators/lens-design/engine/paraxial.js';
+import { traceModel, traceRay } from '../calculators/lens-design/engine/trace.js';
+import { analyzeSystem } from '../calculators/lens-design/engine/analyze.js';
 import {
   absorptionCrossSectionCm2, focusPeakIntensityWcm2, widefieldIntensityWcm2, moleculeRates, collectionFraction,
   spectrumValue, detectionFractions, detectorQe, excitationSource, sourceAverage, sourceTransmission,
@@ -49,6 +53,17 @@ const C_NM_PER_FS = 299.792458;
 const egfp = JSON.parse(readFileSync(new URL('../sketch/data/fluorophores/egfp.json', import.meta.url), 'utf8'));
 
 const APP = {
+  'lens-design': ({ kind, system: raw, field, px, py, nm }) => {
+    const system = normalizeSystem(raw);
+    const fo = firstOrder(system, system.wavelengthsNm[system.primaryWavelength]);
+    if (kind === 'first-order') return { efl: fo.efl, bfl: fo.bfl, zEp: fo.zEp, zXp: fo.zXp, xpd: 2 * fo.rXp, imageDistance: fo.imageDistance };
+    if (kind === 'seidel') return { SI: seidelSums(system, fo).total.SI };
+    if (kind === 'spot') return { rms: analyzeSystem(system).spots[0].poly.rms };
+    // kind === 'ray': to the fixed image plane, every surface's thickness on.
+    const model = traceModel(system, nm, fo);
+    const r = traceRay(model, field, px, py, model.zLast + system.surfaces.at(-1).thickness);
+    return { x: r.x, y: r.y };
+  },
   fluorescence: ({ kind, ...inputs }) => {
     if (kind === 'crossSection') return { crossSectionCm2: absorptionCrossSectionCm2(inputs.extinctionM) };
     if (kind === 'focus') return { intensityWcm2: focusPeakIntensityWcm2(inputs.powerW, inputs.wavelengthNm, inputs.na) };
@@ -182,7 +197,7 @@ const APP = {
   },
 };
 
-for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence']) {
+for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'lens-design']) {
   const model = expected(name);
   for (const c of model.cases) {
     test(`${model.id}: ${c.name}`, () => {

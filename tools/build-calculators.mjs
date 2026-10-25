@@ -71,7 +71,7 @@ function header(base) {
   </header>`;
 }
 
-function head({ title, description, path, base, katex: withKatex }) {
+function head({ title, description, path, base, katex: withKatex, stylesheet = null }) {
   return `<!DOCTYPE html>
 <!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
      SPDX-License-Identifier: GPL-3.0-or-later
@@ -91,7 +91,7 @@ function head({ title, description, path, base, katex: withKatex }) {
 <link rel="icon" href="${base}${ICON}">
 ${withKatex ? `<link rel="stylesheet" href="${base}/wiki/assets/katex.min.css">\n` : ''}<link rel="stylesheet" href="${base}/wiki/assets/wiki.css">
 <link rel="stylesheet" href="${base}/calculators/assets/calculator.css">
-</head>`;
+${stylesheet ? `<link rel="stylesheet" href="${esc(stylesheet)}">\n` : ''}</head>`;
 }
 
 const footer = base => `
@@ -229,6 +229,35 @@ function layoutSection(calc) {
 // Links into the repository must name a file that exists here, so a page
 // cannot ship a link that 404s once its branch is merged.
 const REPO_BLOB = 'https://github.com/LucaGenchi/opticalsetup/blob/main/';
+// A workbench: an editor on the left and tabbed analyses on the right, for a
+// page whose inputs are a table rather than a form (the lens designer). The
+// page script builds the editor and fills each tab's plot and body; the
+// generator writes the frame, the tabs and each tab's "Model and
+// assumptions" text, so those read without JavaScript.
+function workbenchSection(calc) {
+  const { slug, workbench } = calc;
+  if (!workbench.tabs?.length || workbench.tabs.some(t => !/^[a-z][a-z0-9-]*$/.test(t.id) || !t.title || !t.assumptions)) {
+    throw new Error(`${slug}: a workbench needs tabs, each with a lowercase id, a title and its assumptions`);
+  }
+  const tabs = workbench.tabs;
+  return `<noscript><p class="calc-status is-error">This calculator needs JavaScript. The physics and formulas below read without it.</p></noscript>
+    <section class="bench" id="calculator" aria-label="${esc(workbench.label)}">
+      <div class="bench-editor" id="bench-editor"></div>
+      <div class="bench-results">
+        <div class="bench-tabs" role="tablist" aria-label="Analyses">
+          ${tabs.map((t, i) => `<button type="button" role="tab" class="bench-tab" id="tab-${t.id}" aria-controls="panel-${t.id}" aria-selected="${i === 0}"${i ? ' tabindex="-1"' : ''}>${esc(t.title)}</button>`).join('\n          ')}
+        </div>
+        <div class="calc-status" id="calc-status" role="status" aria-live="polite"></div>
+        ${tabs.map((t, i) => `<div class="bench-panel" role="tabpanel" id="panel-${t.id}" aria-labelledby="tab-${t.id}"${i ? ' hidden' : ''}>
+          <div class="bench-plot" data-plot="${t.id}"></div>
+          <div class="bench-body" data-body="${t.id}"></div>
+          <details class="bench-model"><summary>Model and assumptions</summary>${t.assumptions}</details>
+        </div>`).join('\n        ')}
+        <ul class="calc-notes" id="calc-notes"></ul>
+      </div>
+    </section>`;
+}
+
 async function checkRepoLinks(label, text) {
   for (const m of text.matchAll(/https:\/\/github\.com\/LucaGenchi\/opticalsetup\/blob\/main\/([^"'#?\s)\\<]+)/g)) {
     const path = decodeURIComponent(m[1]);
@@ -260,7 +289,7 @@ function calculatorPage(calc) {
     title: `${calc.title} calculator — OpticalSetup`,
     description: calc.summary,
     path: `/calculators/${calc.slug}/`,
-    base, katex: true,
+    base, katex: true, stylesheet: calc.stylesheet,
   })}
 <body class="calc-body">
 ${header(base)}
@@ -269,7 +298,7 @@ ${header(base)}
     <h1>${esc(calc.title)}</h1>
     <p class="tagline">${esc(calc.summary)}</p>
 
-    ${calc.layout ? layoutSection(calc) : `${calc.columns ? columnsSection(calc.slug, calc.columns) : panelSection('calc')}
+    ${calc.workbench ? workbenchSection(calc) : calc.layout ? layoutSection(calc) : `${calc.columns ? columnsSection(calc.slug, calc.columns) : panelSection('calc')}
     ${(calc.panels ?? []).map(p => panelSection(p.id, p)).join('\n    ')}
 
     ${graphsSection(calc)}
