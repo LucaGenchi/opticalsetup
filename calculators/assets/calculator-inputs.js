@@ -4,7 +4,9 @@
 
 // An input with `when` is active while that checkbox is ticked, or, with
 // `whenValue`, while that select holds the value (or one of an array of them).
+// With `all`, a list of such conditions, it is active while every one holds.
 export function isInputActive(input, raw) {
+  if (input.all) return input.all.every(condition => isInputActive(condition, raw));
   if (!input.when) return true;
   if (input.whenValue === undefined) return Boolean(raw[input.when]);
   const wanted = Array.isArray(input.whenValue) ? input.whenValue : [input.whenValue];

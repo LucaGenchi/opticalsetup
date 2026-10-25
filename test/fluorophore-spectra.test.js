@@ -52,7 +52,18 @@ test('every fluorophore file is indexed, credited and well formed', () => {
     assert.ok(f.extinctionM === null || f.extinctionM > 0);
     assert.ok(f.quantumYield === null || (f.quantumYield > 0 && f.quantumYield <= 1));
     assert.ok(f.lifetimeNs === null || f.lifetimeNs > 0);
-    assert.equal(FLUOROPHORE_INPUTS_SHA256.filter(i => i.id === f.id).length, 3, `${f.id}: input hashes recorded`);
+    assert.equal(FLUOROPHORE_INPUTS_SHA256.filter(i => i.id === f.id).length, f.twoPhoton ? 4 : 3, `${f.id}: input hashes recorded`);
+    // A two-photon curve: in the near infrared, 1000 at its peak, listed in
+    // the index with its peak cross-section (or null).
+    if (f.twoPhoton) {
+      const t = f.twoPhoton;
+      assert.equal(t.type, 'two-photon');
+      assert.equal(t.values[t.peakNm - t.startNm], 1000, `${f.id}: two-photon curve scaled at its peak`);
+      assert.ok(t.startNm >= 500 && range(t)[1] <= 1400, `${f.id}: two-photon range ${range(t)}`);
+      assert.ok(t.peakGm === null || t.peakGm > 0);
+      assert.equal(meta.twoPhotonPeakNm, t.peakNm);
+      assert.equal(meta.twoPhotonPeakGm, t.peakGm);
+    } else assert.equal(meta.twoPhotonPeakNm, undefined);
   }
 });
 
@@ -69,6 +80,11 @@ test('well-known proteins keep the peaks their papers publish', () => {
   assert.equal(egfp.extinctionM, 55900);
   assert.equal(egfp.quantumYield, 0.6);
   assert.equal(egfp.reference.doi, '10.1016/0378-1119(95)00685-0');
+  // EGFP's two-photon peak: 927 nm, about 40 GM (Drobizhev et al. 2011).
+  const tp = load('egfp').twoPhoton;
+  assert.equal(tp.peakNm, 927);
+  assert.ok(Math.abs(tp.peakGm - 39.6) < 0.1, `${tp.peakGm} GM`);
+  assert.ok(FLUOROPHORE_LIBRARY.filter(f => f.twoPhotonPeakNm).length >= 30);
   // R-GECO1's curves are credited to the paper that measured them.
   assert.match(load('r-geco1-calcium-free').attribution, /Molina et al\. \(2019\), doi:10\.1016\/j\.bpj\.2019\.04\.007/);
   // A two-state indicator appears in both states, named for each.
@@ -85,7 +101,7 @@ test('no two fluorophores share a curve', () => {
   const seen = new Map();
   for (const { id } of FLUOROPHORE_LIBRARY) {
     const f = load(id);
-    for (const role of ['excitation', 'emission']) {
+    for (const role of ['excitation', 'emission', 'twoPhoton'].filter(r => f[r])) {
       const key = `${f[role].startNm}:${f[role].values.join(',')}`;
       assert.ok(!seen.has(key), `${id} ${role} is the same curve as ${seen.get(key)}`);
       seen.set(key, `${id} ${role}`);
