@@ -149,6 +149,11 @@ function panelSection(id, panel = null) {
     </section>`;
 }
 
+// A column's results tables: `results: '<id>'` with `label`, or a list of
+// [id, label] pairs for several tables under one form.
+const resultTables = col => (Array.isArray(col.results) ? col.results : col.results ? [[col.results, col.label]] : [])
+  .map(([id, label]) => `<table class="calc-results" id="${id}-results" aria-label="${esc(label)}"></table>`).join('\n        ');
+
 // The main calculator laid out as columns, each an input form with an
 // optional results table under it, plus one output column for the status,
 // the main results and the notes. The first form must be `calc`, the main
@@ -165,12 +170,60 @@ function columnsSection(slug, columns) {
       </div>` : `
       <div class="calc-column">
         <form class="calc-inputs" id="${col.form}-form" autocomplete="off" novalidate></form>
-        ${col.results ? `<table class="calc-results" id="${col.results}-results" aria-label="${esc(col.label)}"></table>` : ''}
+        ${resultTables(col)}
       </div>`).join('');
   return `<noscript><p class="calc-status is-error">This calculator needs JavaScript. The physics and formulas below read without it.</p></noscript>
     <section class="calc-app calc-columns" id="calculator" aria-label="Calculator">${cells}
       <div class="calc-actions" id="calc-actions"></div>
     </section>`;
+}
+
+function graphsSection(calc) {
+  return calc.graphs.length ? `<section class="calc-graphs" aria-label="Graphs">
+      ${calc.graphs.map((g, i) => `<figure class="calc-chart${g.wide ? ' wide' : ''}" id="chart-${g.id}">
+        <figcaption><span class="chart-num">${i + 1}</span><span><b>${esc(g.title)}</b><br><span class="chart-note">${esc(g.note)}</span></span></figcaption>
+        <div class="chart-host" data-chart="${g.id}"></div>
+        <details class="chart-data"><summary>Data table</summary><div class="chart-table" data-table="${g.id}"></div></details>
+      </figure>`).join('\n      ')}
+    </section>` : '';
+}
+
+// A page that orders its own blocks, top to bottom: `layout` lists forms
+// (their groups side by side, three to a row, with an optional note under
+// the first two), the graphs, the results
+// (status, tables two to a row, notes) and titled groups of further tables.
+// The extra `panels` follow the last block.
+function layoutSection(calc) {
+  const { slug, layout } = calc;
+  if (layout[0]?.form !== 'calc' || layout.filter(b => b.output).length !== 1 || layout.filter(b => b.graphs).length !== (calc.graphs.length ? 1 : 0)) {
+    throw new Error(`${slug}: a layout needs the calc form first, one output block and, with graphs, one graphs block`);
+  }
+  const blocks = layout.map(block => {
+    if (block.graphs) return graphsSection(calc);
+    if (block.form) {
+      return `<section class="calc-block"${block.form === 'calc' ? ' id="calculator"' : ''} aria-label="${esc(block.label)}">
+      <form class="calc-inputs calc-grid-3" id="${block.form}-form" autocomplete="off" novalidate></form>${block.note ? `
+      <p class="calc-block-note">${esc(block.note)}</p>` : ''}
+    </section>`;
+    }
+    const tables = `<div class="calc-grid-2">
+        ${resultTables(block)}
+      </div>`;
+    if (block.output) {
+      return `<section class="calc-block calc-results-block" aria-label="${esc(block.label)}">
+      <div class="calc-status" id="calc-status" role="status" aria-live="polite"></div>
+      ${tables}
+      <ul class="calc-notes" id="calc-notes"></ul>
+      <div class="calc-actions" id="calc-actions"></div>
+    </section>`;
+    }
+    return `<section class="calc-block" aria-labelledby="${block.id}-title">
+      <h2 class="calc-block-title" id="${block.id}-title">${esc(block.title)}</h2>
+      ${tables}
+    </section>`;
+  });
+  return [`<noscript><p class="calc-status is-error">This calculator needs JavaScript. The physics and formulas below read without it.</p></noscript>`,
+    ...blocks, ...(calc.panels ?? []).map(p => panelSection(p.id, p))].join('\n    ');
 }
 
 // Links into the repository must name a file that exists here, so a page
@@ -216,17 +269,11 @@ ${header(base)}
     <h1>${esc(calc.title)}</h1>
     <p class="tagline">${esc(calc.summary)}</p>
 
-    ${calc.columns ? columnsSection(calc.slug, calc.columns) : panelSection('calc')}
+    ${calc.layout ? layoutSection(calc) : `${calc.columns ? columnsSection(calc.slug, calc.columns) : panelSection('calc')}
     ${(calc.panels ?? []).map(p => panelSection(p.id, p)).join('\n    ')}
 
-    ${calc.graphs.length ? `<section class="calc-graphs" aria-label="Graphs">
-      ${calc.graphs.map((g, i) => `<figure class="calc-chart" id="chart-${g.id}">
-        <figcaption><span class="chart-num">${i + 1}</span><span><b>${esc(g.title)}</b><br><span class="chart-note">${esc(g.note)}</span></span></figcaption>
-        <div class="chart-host" data-chart="${g.id}"></div>
-        <details class="chart-data"><summary>Data table</summary><div class="chart-table" data-table="${g.id}"></div></details>
-      </figure>`).join('\n      ')}
-    </section>` : ''}
-    ${calc.plotControls ? `<form class="calc-inputs calc-plot-form" id="plot-form" autocomplete="off" novalidate aria-label="${esc(calc.plotControls.title)}"></form>` : ''}
+    ${graphsSection(calc)}
+    ${calc.plotControls ? `<form class="calc-inputs calc-plot-form" id="plot-form" autocomplete="off" novalidate aria-label="${esc(calc.plotControls.title)}"></form>` : ''}`}
 
     <dl class="calc-facts" aria-label="About this calculator">
       ${calc.facts.map(f => `<div><dt>${esc(f.label)}</dt><dd>${f.html}</dd></div>`).join('\n      ')}

@@ -13,14 +13,18 @@ import { renderForm, readForm, syncForm, lineChart, formatNumber } from './calcu
 // `onResult` sees every result, so one panel can feed another; the returned
 // `update` recomputes the panel. With `hideInactive`, fields whose `when`
 // condition is off disappear instead of being greyed out, for pages where
-// a mode selector decides which fields apply.
-export function mountCalculator({ panel = 'calc', inputs, defaults, groups, compute, rows, notes = () => [], graphs = null, onResult = () => {}, hideInactive = false }) {
+// a mode selector decides which fields apply. `context` adds values from
+// elsewhere on the page that `when` conditions may test (a source chosen in
+// another panel).
+export function mountCalculator({ panel = 'calc', inputs, defaults, groups, compute, rows, notes = () => [], graphs = null, onResult = () => {}, hideInactive = false, context = () => ({}) }) {
   const mainId = `${panel}-form`;
   const formIds = [...new Set([mainId, ...Object.values(groups).map(g => g.form ?? mainId)])];
   const forms = formIds.map(id => document.getElementById(id));
   if (hideInactive) forms.forEach(form => form.classList.add('hide-inactive'));
   const status = document.getElementById(`${panel}-status`);
   const tables = [...forms[0].closest('section').querySelectorAll('table.calc-results')];
+  // Tables elsewhere on the page that the last result filled.
+  const filled = new Set();
   const noteList = document.getElementById(`${panel}-notes`);
   const hosts = graphs ? [...document.querySelectorAll('[data-chart]')] : [];
   const reset = document.createElement('button');
@@ -63,8 +67,9 @@ export function mountCalculator({ panel = 'calc', inputs, defaults, groups, comp
   function update() {
     const raw = readForm(forms, inputs);
     const result = compute(raw);
-    syncForm(forms, inputs, raw, new Set((result.errors ?? []).map(e => e.id)));
-    for (const table of tables) table.textContent = '';
+    syncForm(forms, inputs, { ...raw, ...context() }, new Set((result.errors ?? []).map(e => e.id)));
+    for (const table of [...tables, ...filled]) table.textContent = '';
+    filled.clear();
     noteList.textContent = '';
     status.className = `calc-status${result.ok || result.pending ? '' : ' is-error'}`;
     // A valid result needs no banner; the status line appears only for an
@@ -81,7 +86,9 @@ export function mountCalculator({ panel = 'calc', inputs, defaults, groups, comp
     } else {
       const out = rows(result);
       for (const [id, list] of Object.entries(Array.isArray(out) ? { [panel]: out } : out)) {
-        fill(document.getElementById(`${id}-results`), list);
+        const table = document.getElementById(`${id}-results`);
+        fill(table, list);
+        filled.add(table);
       }
       for (const text of notes(result)) {
         const li = document.createElement('li'); li.textContent = text; noteList.append(li);
