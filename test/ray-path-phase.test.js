@@ -128,3 +128,56 @@ test('a probe on one colour of a fanned pulse sends the reader to a detector', (
   assert.equal(probe.pulse.durationFs, null);
   assert.match(probe.pulse.durationIssue, /a detector reads the duration/);
 });
+
+test('a narrow band keeps the GDD it resolves, and says when rounding hides it', () => {
+  const want = reference.cases.find(c => c.name.startsWith('four Brewster')).expected.gddFs2;
+  for (const bandwidth of [1, 0.1]) {
+    const { pulse } = trace('four Brewster silica prisms', { laser: { bandwidth, pulseWidthFs: 1e7 } }).reading;
+    assert.ok(Math.abs(pulse.gddFs2 / want - 1) < 1e-4, `${bandwidth} nm: ${pulse.gddFs2} fs²`);
+    assert.equal(pulse.gddBoundFs2, undefined);
+  }
+  // At 0.001 nm the colours' phases differ by less than the paths' rounding:
+  // the paths add no GDD, the bound says how large it could be, and a GDD
+  // that small leaves the duration at its limit (it read -894 fs² before).
+  const { pulse } = trace('four Brewster silica prisms', { laser: { bandwidth: 0.001, pulseWidthFs: 1e7 } }).reading;
+  assert.ok(pulse.gddBoundFs2 > Math.abs(want), `bound ${pulse.gddBoundFs2} fs²`);
+  assert.equal(pulse.gddFs2, 0);
+  assert.match(pulse.dispersionModel, /not resolved at this bandwidth/);
+  assert.ok(Math.abs(pulse.stretchedPulseWidthFs / pulse.transformLimitFs - 1) < 1e-9);
+});
+
+test('the fit is not swamped by long paths over a narrow band', () => {
+  // 0.2 nm across five samples, 2 m of path: the absolute phases are 1.6e7
+  // rad, the curvature about 0.1 milliradian.
+  const center = 800, gdd = -5000;
+  const samples = [-0.1, -0.05, 0, 0.05, 0.1].map(d => {
+    const nm = center + d, x = omega(nm) - omega(center);
+    const phi = 2 * Math.PI * 2000 / (nm * 1e-6) + gdd / 2 * x * x;
+    return { wavelengthNm: nm, pathMm: phi * nm * 1e-6 / (2 * Math.PI), cycles: 0 };
+  });
+  const fit = pathPhaseFit(samples, center, {});
+  assert.ok(fit.gddNoiseFs2 < 0.01 * Math.abs(gdd), `noise ${fit.gddNoiseFs2}`);
+  assert.ok(Math.abs(fit.gddFs2 - gdd) <= fit.gddNoiseFs2, `${fit.gddFs2} against ${gdd} ± ${fit.gddNoiseFs2}`);
+});
+
+test('dispersion further along does not change what a probe reads upstream', () => {
+  // A 10 mm silica window at normal incidence, a probe after it, then (or
+  // not) the four prisms: the beam at the probe is the same either way.
+  const window = () => {
+    const slab = createElement('freeglass', 100, 0);
+    Object.assign(slab.params, { material: 'silica', scale: 1, transEff: 100,
+      vertices: [{ x: -5, y: -20 }, { x: 5, y: -20 }, { x: 5, y: 20 }, { x: -5, y: 20 }] });
+    return slab;
+  };
+  const read = withPrisms => {
+    trace('four Brewster silica prisms', {
+      laser: { pulseWidthFs: 20, transformLimited: true },
+      extra: [window()],
+      edit: scene => { if (!withPrisms) scene.splice(0, scene.length, ...scene.filter(el => el.type === 'detector')); },
+    });
+    return probeAt(120, 0)?.pulse;
+  };
+  const alone = read(false), before = read(true);
+  assert.ok(Number.isFinite(alone.durationFs), alone.durationIssue);
+  assert.equal(before.durationFs, alone.durationFs);
+});

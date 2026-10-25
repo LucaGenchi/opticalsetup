@@ -109,6 +109,8 @@ const PATH_PHASE_SURFACES = new Set([
 // Arriving samples that differ in direction or position by more than this are
 // not one recombined beam: the reading is then the central ray's.
 const PATH_PHASE_ANGLE_RAD = 1e-5;
+// The path GDD counts as resolved when rounding moves it by under 1 %.
+const PATH_PHASE_RESOLVED = 0.01;
 const PATH_PHASE_OFFSET_MM = 0.01;
 const PATH_PHASE_PROBE_NOTE = 'After a prism or grating the colours travel apart; a detector reads the duration from all of them';
 const PATH_PHASE_ANGULAR = 'Colours leave at different angles — angular dispersion remains, so there is no single duration here; the GDD shown is the central ray\u2019s';
@@ -1027,31 +1029,41 @@ function withPathPhase(hits) {
     });
     const C_NM_PER_FS = 299.792458;
     if (!valid || !samples.every(sample => Number.isFinite(sample.pathMm))) continue;
-    const fit = pathPhaseFit(samples, centerNm, { loNm: pulse?.spectrumLoNm, hiNm: pulse?.spectrumHiNm });
+    const coordinateScaleMm = Math.max(...group.map(h => Math.max(Math.abs(h.arrivalX), Math.abs(h.arrivalY))));
+    const fit = pathPhaseFit(samples, centerNm, { loNm: pulse?.spectrumLoNm, hiNm: pulse?.spectrumHiNm, coordinateScaleMm });
     if (!fit) continue;
+    // A band so narrow that rounding in the paths can move the GDD by more
+    // than 1 % (or 0.01 fs²) does not resolve it. The paths then add none:
+    // a GDD below that bound cannot change the duration of so narrow a band.
+    const unresolved = fit.gddNoiseFs2 > Math.max(PATH_PHASE_RESOLVED * Math.abs(fit.gddFs2), 0.01);
     const pathGddAt = nm => {
+      if (unresolved) return 0;
       const x = 2 * Math.PI * C_NM_PER_FS * (1 / nm - 1 / centerNm);
       return fit.gddFs2 + fit.todFs3 * x + fit.fodFs4 * x * x / 2;
     };
-    const groupDelayDifferenceFs = Number.isFinite(fit.delaySpreadFs)
-      ? ref.groupDelayDifferenceFs - ref.pathPhase.glassSpreadFs + fit.delaySpreadFs : null;
+    const pathSpread = unresolved ? 0 : fit.delaySpreadFs;
+    const groupDelayDifferenceFs = Number.isFinite(pathSpread)
+      ? ref.groupDelayDifferenceFs - ref.pathPhase.glassSpreadFs + pathSpread : null;
     // The duration uses the GDD alone, as it does for glass; say so when the
     // phase beyond it is large inside the bandwidth's FWHM.
     const halfWidthNm = Number.isFinite(pulse?.bandwidthNm) ? pulse.bandwidthNm / 2 : 0;
     const higher = halfWidthNm > 0 && halfWidthNm < centerNm ? Math.max(
       Math.abs(higherOrderPhaseRad(fit, centerNm, centerNm - halfWidthNm)),
       Math.abs(higherOrderPhaseRad(fit, centerNm, centerNm + halfWidthNm))) : 0;
-    const pathPhaseNote = [
-      lateral > PATH_PHASE_OFFSET_MM ? 'GDD from the ray paths, on the central ray: the colours arrive side by side'
-        : 'GDD from the ray paths',
-      ...(higher > PATH_PHASE_HIGHER_ORDER_RAD ? ['third- and higher-order phase, not in this duration, is large across the bandwidth'] : []),
-    ].join('; ');
+    const pathPhaseNote = unresolved
+      ? 'GDD from the ray paths not resolved at this bandwidth; too small to change this duration'
+      : [
+        lateral > PATH_PHASE_OFFSET_MM ? 'GDD from the ray paths, on the central ray: the colours arrive side by side'
+          : 'GDD from the ray paths',
+        ...(higher > PATH_PHASE_HIGHER_ORDER_RAD ? ['third- and higher-order phase, not in this duration, is large across the bandwidth'] : []),
+      ].join('; ');
     for (const h of group) {
       replaced.set(h, {
         ...h, gddFs2: h.gddFs2 - h.pathPhase.glassGddFs2 + pathGddAt(h.wl),
         ...(groupDelayDifferenceFs === null ? {} : { groupDelayDifferenceFs }),
         pathPhaseNote,
         pathPhaseAngular: angular > PATH_PHASE_ANGLE_RAD,
+        ...(unresolved ? { pathGddBoundFs2: fit.gddNoiseFs2 } : {}),
       });
     }
   }
@@ -1372,6 +1384,9 @@ export function detectorReading(elementId) {
         gates: Array.isArray(p.gates) ? p.gates.map(g => ({ ...g })) : [],
         pathDelayNs: Math.min(...sourceHits.map(h => h.pathDelayNs)),
         gddFs2,
+        // Only when the paths' GDD was too small to resolve: it is below this.
+        ...(sourceHits.some(h => h.pathGddBoundFs2)
+          ? { gddBoundFs2: Math.max(...sourceHits.map(h => h.pathGddBoundFs2 || 0)) } : {}),
         groupDelayDifferenceFs,
         stretchedPulseWidthFs: duration?.durationFs ?? null,
         dispersionModel: duration?.model ?? null,
@@ -1445,6 +1460,8 @@ export function detectorReading(elementId) {
       branches,
       gddFs2,
       gddRangeFs2: [Math.min(...gddValues), Math.max(...gddValues)],
+      ...(trains.some(train => train.gddBoundFs2)
+        ? { gddBoundFs2: Math.max(...trains.map(train => train.gddBoundFs2 || 0)) } : {}),
       groupDelayDifferenceFs: duration?.groupDelayDifferenceFs ?? null,
       stretchedPulseWidthFs: duration?.stretchedPulseWidthFs ?? null,
       dispersionModel: duration?.dispersionModel ?? null,
@@ -1551,7 +1568,9 @@ function probePulseDuration(path, segment, along) {
   // One sample of a fanned pulse is one colour; the pulse it belongs to is
   // read where its colours arrive together. Samples that never separated (a
   // window at normal incidence) still carry the pulse's glass GDD.
-  if (path.pathPhase?.fanned && !path.pathPhase.issue) return { durationFs: null, issue: PATH_PHASE_PROBE_NOTE };
+  if (path.pathPhase?.fanned && !path.pathPhase.issue && segment >= (path.fannedFromSegment ?? 0)) {
+    return { durationFs: null, issue: PATH_PHASE_PROBE_NOTE };
+  }
   const pulse = drawnPulse(path);
   if (pulse.fieldIssue) return { durationFs: null, issue: pulse.fieldIssue };
   const a = path.opls?.[segment], b = path.opls?.[segment + 1];
@@ -6935,6 +6954,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         }
       }
       const c0 = children[0];
+      const nextPhase = r.pathPhase || c0.pathFamily ? nextPathPhase(r, c0, hit.surface) : null;
       const single = children.length === 1 && !c0.tag
         && (c0.wl === undefined || c0.wl === r.wl)
         && (c0.bw === undefined || c0.bw === r.bw)
@@ -6963,7 +6983,12 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         if (c0.intensity !== undefined && r.intensity > 0 && Number.isFinite(r.power)) {
           r.power *= c0.intensity / r.intensity;
         }
-        if (r.pathPhase || c0.pathFamily) r.pathPhase = nextPathPhase(r, c0, hit.surface);
+        if (r.pathPhase || c0.pathFamily) {
+          // The segments from here on carry colours turned apart; a probe on
+          // an earlier one still reads them as the one beam they were there.
+          if (nextPhase?.fanned && !r.pathPhase?.fanned) r.fannedFromSegment = r.pts.length - 1;
+          r.pathPhase = nextPhase;
+        }
         r.x = hit.p.x; r.y = hit.p.y;
         r.dx = c0.d.x; r.dy = c0.d.y;
         if (c0.intensity !== undefined) r.intensity = c0.intensity;
@@ -7118,6 +7143,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           ior: 'ior' in c ? c.ior : (r.ior || 1),
           gdd: childGdd,
           pathPhase: nextPathPhase(r, c, hit.surface),
+          fannedFromSegment: 0,
           // A child with a pulse of its own (light an OPO generated) carries
           // its own dispersion trace; without one it continues its parent's.
           gddTrace: ('pulse' in c ? Boolean(c.pulse) : r.gddTrace)

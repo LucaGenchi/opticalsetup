@@ -61,6 +61,11 @@ N arriving samples (an exact interpolation for N = 5):
     φ(ω) ≈ a₀ + a₁ x + a₂ x² + a₃ x³ + a₄ x⁴,   GDD = 2 a₂,
     τ(ω) = dφ/dω,   delay spread = τ(ω_red edge) − τ(ω_blue edge).
 
+The phases are taken relative to the sample nearest the centre,
+`(L_k − L_ref)/λ_k + Δcycles`: the part left out, `L_ref/λ = L_ref ω/2πc`, is
+linear in ω and carries no GDD, and kept in, its ~10⁷ rad would bury the
+curvature of a narrow band.
+
 Each sample is then given the fitted GDD at its own wavelength,
 `2a₂ + 6a₃x + 12a₄x²`, as glass gives each sample its own, so the existing
 duration, delay-spread, filtered-pulse and path-agreement rules apply
@@ -123,9 +128,20 @@ Limits of the model, stated where the reading is shown:
 - **Sampling.** Five samples across ±3σ resolve the phase to the accuracy
   quoted in `docs/validation.md`; the error grows with bandwidth and with the
   fourth and higher derivatives of the phase.
+- **Narrow bands.** The paths are double-precision sums, so the colours'
+  phase differences carry rounding of about four ulps of the largest path or
+  coordinate (on the reference layouts this bounded the measured GDD error by
+  5.7× or more). The fit propagates it to a bound on the GDD. Where the bound
+  exceeds 1 % of the GDD (or 0.01 fs²) — on the reference layouts, bands
+  of 0.01 nm and less at 800 nm; 0.1 nm is still resolved — the paths add no GDD, the reading shows the
+  bound as unresolved, and the duration model line says so. Such a GDD cannot
+  change the duration: the bound and the squared transform limit both scale
+  as 1/Δω², and their ratio is about 10⁻⁹.
 - **Probes, drawn pulses, the compressor box's input reading.** A probe on
   one sample whose colours were turned apart cannot see the others, so it
-  states that the duration is read at a detector. The pulse packets drawn
+  states that the duration is read at a detector. The sample records the
+  segment where its colours were turned apart, so a probe on an earlier
+  segment of the same path reads as before. The pulse packets drawn
   along the beam, and the "GDD at input" a pulse compressor box shows, still
   use each sample's glass GDD.
 

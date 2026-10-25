@@ -48,34 +48,57 @@ function polynomialFit(z, values, degree) {
   return a.map((row, i) => row[m] / row[i]);
 }
 
+// Rounding in a traced path: its length and the coordinates it ends at are
+// sums of double-precision terms, each good to about one part in 2^52 of its
+// size. Four ulps of the largest bounded the GDD error measured on the
+// reference layouts (four-prism, prism pair, single prism, grating pair,
+// stretcher; 1 to 0.001 nm) by a factor of 5.7 or more.
+const PATH_ROUNDING = 4 * Number.EPSILON;
+
+// The polynomial coefficients through phases at the points' x, after taking
+// off the line through the outermost points (the phases' linear part is
+// group delay, much larger than the curvature). Linear in the phases.
+function fitPhases(xs, phis) {
+  const n = xs.length, first = 0, last = n - 1;
+  const slope = (phis[last] - phis[first]) / (xs[last] - xs[first]);
+  const residual = phis.map((phi, i) => (phi - phis[first]) - slope * (xs[i] - xs[first]));
+  const scale = Math.max(...xs.map(Math.abs));
+  if (!(scale > 0)) return null;
+  const c = polynomialFit(xs.map(x => x / scale), residual, Math.min(n - 1, 4));
+  if (!c || !c.every(Number.isFinite)) return null;
+  const coefficient = j => (j < c.length ? c[j] / scale ** j : 0);
+  return { a1: coefficient(1) + slope, a2: coefficient(2), a3: coefficient(3), a4: coefficient(4) };
+}
+
 // samples: [{ wavelengthNm, pathMm, cycles }], one per distinct wavelength.
-// Returns { gddFs2, todFs3, fodFs4, delaySpreadFs } or null when fewer than
-// three wavelengths arrive or a number is not finite. TOD and FOD are zero
-// where too few samples arrive to fit them. The delay spread is the group
-// delay of the red band edge minus the blue one, the convention of
-// glassGroupDelayDifferenceFs; null without both edges.
-export function pathPhaseFit(samples, centerNm, { loNm = null, hiNm = null } = {}) {
+// Returns { gddFs2, todFs3, fodFs4, delaySpreadFs, gddNoiseFs2 } or null when
+// fewer than three wavelengths arrive or a number is not finite. TOD and FOD
+// are zero where too few samples arrive to fit them. The delay spread is the
+// group delay of the red band edge minus the blue one, the convention of
+// glassGroupDelayDifferenceFs; null without both edges. `coordinateScaleMm`
+// is the size of the coordinates the paths were measured in, which bounds
+// their rounding together with the paths' own length.
+//
+// The phases are taken relative to the sample nearest the centre:
+// (path − path_ref)/λ + (cycles − cycles_ref). What that leaves out,
+// path_ref/λ = path_ref ω/2πc and a constant, is linear in ω and carries no
+// GDD; kept in, its 1e7 rad would bury the curvature of a narrow band.
+// `gddNoiseFs2` is what the paths' rounding can move the GDD by. Below it the
+// GDD is not resolved; it then cannot change a duration either, since both
+// the noise and the squared transform limit scale as 1/Δω².
+export function pathPhaseFit(samples, centerNm, { loNm = null, hiNm = null, coordinateScaleMm = 0 } = {}) {
   if (!(centerNm > 0) || !Array.isArray(samples)) return null;
   const w0 = omegaOf(centerNm);
-  const points = samples.map(s => ({
-    x: omegaOf(s.wavelengthNm) - w0,
-    phi: 2 * Math.PI * (s.pathMm / (s.wavelengthNm * 1e-6) + (s.cycles || 0)),
-  })).filter(p => Number.isFinite(p.x) && Number.isFinite(p.phi)).sort((p, q) => p.x - q.x);
-  if (points.length < 3 || points.length !== samples.length) return null;
-  for (let i = 1; i < points.length; i++) if (!(points[i].x > points[i - 1].x)) return null;
-  // The phases are about 1e7 rad and the part that carries the GDD is about
-  // 1 rad, so the line through the outermost samples comes off first.
-  const first = points[0], last = points[points.length - 1];
-  const slope = (last.phi - first.phi) / (last.x - first.x);
-  const residual = points.map(p => (p.phi - first.phi) - slope * (p.x - first.x));
-  const scale = Math.max(...points.map(p => Math.abs(p.x)));
-  if (!(scale > 0)) return null;
-  const degree = Math.min(points.length - 1, 4);
-  const c = polynomialFit(points.map(p => p.x / scale), residual, degree);
-  if (!c || !c.every(Number.isFinite)) return null;
-  // Back to powers of x = ω − ω₀; the trend adds to the linear term.
-  const coefficient = j => (j < c.length ? c[j] / scale ** j : 0);
-  const a1 = coefficient(1) + slope, a2 = coefficient(2), a3 = coefficient(3), a4 = coefficient(4);
+  const sorted = samples.filter(s => [s.wavelengthNm, s.pathMm, s.cycles || 0].every(Number.isFinite))
+    .map(s => ({ ...s, x: omegaOf(s.wavelengthNm) - w0 })).sort((p, q) => p.x - q.x);
+  if (sorted.length < 3 || sorted.length !== samples.length) return null;
+  for (let i = 1; i < sorted.length; i++) if (!(sorted[i].x > sorted[i - 1].x)) return null;
+  const ref = sorted.reduce((best, p) => (Math.abs(p.x) < Math.abs(best.x) ? p : best));
+  const xs = sorted.map(p => p.x);
+  const phis = sorted.map(p => 2 * Math.PI * ((p.pathMm - ref.pathMm) / (p.wavelengthNm * 1e-6) + ((p.cycles || 0) - (ref.cycles || 0))));
+  const fit = fitPhases(xs, phis);
+  if (!fit) return null;
+  const { a1, a2, a3, a4 } = fit;
   const delayAt = nm => {
     const x = omegaOf(nm) - w0;
     return a1 + 2 * a2 * x + 3 * a3 * x * x + 4 * a4 * x ** 3;
@@ -83,7 +106,19 @@ export function pathPhaseFit(samples, centerNm, { loNm = null, hiNm = null } = {
   const gddFs2 = 2 * a2, todFs3 = 6 * a3, fodFs4 = 24 * a4;
   const delaySpreadFs = loNm > 0 && hiNm > loNm ? delayAt(hiNm) - delayAt(loNm) : null;
   if (![gddFs2, todFs3, fodFs4].every(Number.isFinite)) return null;
-  return { gddFs2, todFs3, fodFs4, delaySpreadFs: Number.isFinite(delaySpreadFs) ? delaySpreadFs : null };
+  // Rounding: each phase can be off by δφ; the fit is linear in the phases,
+  // so the GDD can move by δφ times the sum of its sensitivities.
+  const shortestMm = Math.min(...sorted.map(p => p.wavelengthNm)) * 1e-6;
+  const largestPath = Math.max(...sorted.map(p => Math.abs(p.pathMm)), Math.abs(coordinateScaleMm));
+  const largestCycles = Math.max(...sorted.map(p => Math.abs(p.cycles || 0)));
+  const phaseNoise = 2 * Math.PI * PATH_ROUNDING * (largestPath / shortestMm + largestCycles);
+  let gain = 0;
+  for (let k = 0; k < xs.length; k++) {
+    const unit = fitPhases(xs, xs.map((_, i) => (i === k ? 1 : 0)));
+    gain += Math.abs(2 * (unit?.a2 ?? Infinity));
+  }
+  const gddNoiseFs2 = phaseNoise * gain;
+  return { gddFs2, todFs3, fodFs4, delaySpreadFs: Number.isFinite(delaySpreadFs) ? delaySpreadFs : null, gddNoiseFs2 };
 }
 
 // The phase a fit has beyond second order at a wavelength, in rad.
