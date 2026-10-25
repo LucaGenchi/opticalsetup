@@ -338,6 +338,7 @@ test('two-photon fluorescence: a pulsed laser on the two-photon spectrum', () =>
   assert.equal(r.process, 'twophoton');
   assert.equal(r.source.kind, 'pulsed');
   assert.equal(r.source.centerNm, 920);
+  assert.equal(r.source.pulseFs, 150);
   close(r.main.relative, sourceAverage(r.source, nm => spectrumValue(egfp.twoPhoton, nm)));
   close(r.main.twoPhotonCrossSectionGm, egfp.twoPhoton.peakGm * r.main.relative);
   close(r.main.actionCrossSectionGm, r.main.twoPhotonCrossSectionGm * 0.6);
@@ -369,22 +370,24 @@ test('two-photon rates: n = σ₂ g_p F²/τ_p per pulse, its quadratic limit an
   const main = run({ process: 'twophoton' });
   const context = { process: 'twophoton', source: main.source, photonJ: main.photonJ, name: 'EGFP', crossSectionGm: main.main.twoPhotonCrossSectionGm,
     quantumYield: 0.6, lifetimeNs: 2.6, detected: main.main.detected };
-  const r = computeRates({ ...RATE_DEFAULTS, powerMw: 10 }, context);
+  // Two-photon mode has its own default power, 10 mW.
+  assert.equal(RATE_DEFAULTS.powerMw2p, 10);
+  const r = computeRates(RATE_DEFAULTS, context);
   assert.equal(r.ok, true);
   assert.equal(r.twoPhoton, true);
   const F = r.intensityWcm2 / (80e6 * main.photonJ);
-  close(r.saturationParameter, context.crossSectionGm * GM_CM4_S * TWO_PHOTON_GP * F * F / 100e-15, 1e-12);
+  close(r.saturationParameter, context.crossSectionGm * GM_CM4_S * TWO_PHOTON_GP * F * F / 150e-15, 1e-12);
   // Far below saturation the signal goes as the square of the power.
-  const a = computeRates({ ...RATE_DEFAULTS, powerMw: 0.1 }, context), b = computeRates({ ...RATE_DEFAULTS, powerMw: 0.2 }, context);
+  const a = computeRates({ ...RATE_DEFAULTS, powerMw2p: 0.1 }, context), b = computeRates({ ...RATE_DEFAULTS, powerMw2p: 0.2 }, context);
   close(b.emissionRate / a.emissionRate, 4, 1e-3);
   // And halving the repetition rate at the same average power doubles it.
-  close(computeRates({ ...RATE_DEFAULTS, powerMw: 0.1, repRateMHz: 40 }, context).emissionRate / a.emissionRate, 2, 1e-3);
+  close(computeRates({ ...RATE_DEFAULTS, powerMw2p: 0.1, repRateMHz: 40 }, context).emissionRate / a.emissionRate, 2, 1e-3);
   // n = 1 at the saturation power.
-  close(computeRates({ ...RATE_DEFAULTS, powerMw: r.saturationPowerW * 1e3 }, context).saturationParameter, 1, 1e-9);
+  close(computeRates({ ...RATE_DEFAULTS, powerMw2p: r.saturationPowerW * 1e3 }, context).saturationParameter, 1, 1e-9);
   // Without σ₂ there are no absolute rates.
   assert.equal(computeRates(RATE_DEFAULTS, { ...context, crossSectionGm: null }).ok, false);
   assert.equal(computeRates(RATE_DEFAULTS, { ...context, crossSectionGm: 0 }).ok, false);
   // Same model as the one-photon trains for the decay between pulses.
-  const direct = twoPhotonPulsedRates({ averageIntensityWcm2: r.intensityWcm2, photonJ: main.photonJ, crossSectionGm: context.crossSectionGm, repRateMHz: 80, pulseFs: 100, lifetimeNs: 2.6, quantumYield: 0.6 });
+  const direct = twoPhotonPulsedRates({ averageIntensityWcm2: r.intensityWcm2, photonJ: main.photonJ, crossSectionGm: context.crossSectionGm, repRateMHz: 80, pulseFs: 150, lifetimeNs: 2.6, quantumYield: 0.6 });
   close(r.emissionRate, direct.emissionRate, 1e-12);
 });

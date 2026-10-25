@@ -51,26 +51,35 @@ let rateContext = null;
 // the band peaks (two-photon curves rising into a higher state).
 const atEdge = c => c.peakNm === c.startNm;
 
-function markerRows(e, source) {
-  const f = e.meta, ref = e.data.reference;
-  return [
-    { group: f.name },
-    ['Colour class', f.category], ...(f.oligomer ? [['Oligomeric state', f.oligomer]] : []),
+// A fluorophore's own numbers and where they come from: its one-photon
+// absorption and brightness, or in two-photon mode its two-photon peak and
+// cross-sections in their place.
+function markerRows(e, source, two = false) {
+  const f = e.meta, ref = e.data.reference, tp = e.data.twoPhoton;
+  const gm = x => (x === null ? 'not listed' : `${formatNumber(x, 3)} GM`);
+  const excitation = two ? [
+    ['Two-photon excitation peak', `${nm(tp.peakNm)}${atEdge(tp) ? ' (end of the measured curve)' : ''}`],
+    ['Emission peak', nm(f.emMaxNm)],
+    ['Two-photon cross-section σ₂ (peak)', gm(tp.peakGm)], ['Quantum yield Φ', f.quantumYield, '', 3],
+    ['Action cross-section σ₂·Φ (peak)', gm(tp.peakGm !== null && f.quantumYield ? tp.peakGm * f.quantumYield : null)],
+    ['Fluorescence lifetime', f.lifetimeNs === null ? 'not listed' : `${formatNumber(f.lifetimeNs, 3)} ns`],
+    ['Two-photon curve', `${spectrumRangeNm(tp).join('–')} nm`],
+  ] : [
     ['Excitation peak', nm(f.exMaxNm)], ['Emission peak', nm(f.emMaxNm)], ['Stokes shift', nm(f.emMaxNm - f.exMaxNm)],
     ['Extinction coefficient ε (peak)', f.extinctionM, 'M⁻¹ cm⁻¹', 6], ['Quantum yield Φ', f.quantumYield, '', 3],
     ['Brightness ε·Φ', e.brightness, 'M⁻¹ cm⁻¹', 4],
     ['Fluorescence lifetime', f.lifetimeNs === null ? 'not listed' : `${formatNumber(f.lifetimeNs, 3)} ns`],
     ['Excitation curve', f.excitationType === 'absorption' ? 'absorption spectrum' : 'excitation spectrum'],
-    ...(e.data.twoPhoton ? [
-      ['Two-photon peak', `${nm(e.data.twoPhoton.peakNm)}${atEdge(e.data.twoPhoton) ? ' (end of the measured curve)' : ''}`],
-      ['Two-photon cross-section σ₂ (peak)', e.data.twoPhoton.peakGm === null ? 'not listed' : `${formatNumber(e.data.twoPhoton.peakGm, 3)} GM`],
-      ['Two-photon curve', `${spectrumRangeNm(e.data.twoPhoton).join('–')} nm`],
-    ] : []),
+  ];
+  return [
+    { group: f.name },
+    ['Colour class', f.category], ...(f.oligomer ? [['Oligomeric state', f.oligomer]] : []),
+    ...excitation,
     ['Data', source.short],
     ...(ref ? [['Protein’s paper', `${ref.citation}, ${ref.journal}, doi:${ref.doi}`]] : []),
     ...e.data.spectraReferences.map(sr => ['Spectra measured in', `${sr.citation}, doi:${sr.doi}`]),
-    ...(e.data.twoPhoton?.reference && !e.data.spectraReferences.some(sr => sr.doi === e.data.twoPhoton.reference.doi)
-      ? [['Two-photon spectrum measured in', `${e.data.twoPhoton.reference.citation}, doi:${e.data.twoPhoton.reference.doi}`]] : []),
+    ...(two && tp.reference && !e.data.spectraReferences.some(sr => sr.doi === tp.reference.doi)
+      ? [['Two-photon spectrum measured in', `${tp.reference.citation}, doi:${tp.reference.doi}`]] : []),
     ['Terms', source.licenseName],
   ];
 }
@@ -169,8 +178,8 @@ main = mountCalculator({ inputs: INPUTS, defaults: DEFAULTS, hideInactive: true,
           ['Its signal ÷ the main marker’s', r.crosstalk, '', 3],
         ] : []),
       ],
-      marker: markerRows(m, r.library),
-      marker2: s ? markerRows(s, r.library) : [],
+      marker: markerRows(m, r.library, two),
+      marker2: s ? markerRows(s, r.library, two) : [],
     };
   },
   notes: r => {
@@ -236,7 +245,7 @@ main = mountCalculator({ inputs: INPUTS, defaults: DEFAULTS, hideInactive: true,
 rate = mountCalculator({ panel: 'rate', inputs: RATE_INPUTS, defaults: RATE_DEFAULTS, hideInactive: true, groups: {
   beam: { title: 'Illumination' }, objective: { title: 'Objective and sample' }, molecule: { title: 'Excited state' },
 }, compute: raw => computeRates(raw, rateContext),
-  context: () => ({ source: rateContext?.source.kind ?? 'cw' }),
+  context: () => ({ source: rateContext?.source.kind ?? 'cw', process: rateContext?.process ?? 'linear' }),
   rows: r => [
     { group: r.values.geometry === 'focus' ? 'At the centre of the focus' : 'In the field' },
     [r.values.geometry === 'focus' ? 'Peak intensity (average over time)' : 'Intensity (average over time)', r.intensityWcm2, 'W/cm²', 3],

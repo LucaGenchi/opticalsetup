@@ -51,7 +51,7 @@ export const MAIN_INPUTS = [
     when: 'source', whenValue: 'pulsed', help: 'Transform-limited Gaussian pulses; the bandwidth follows from the duration.' },
   { id: 'source2p', group: 'source', label: 'Source', type: 'select', value: 'pulsed', options: [['pulsed', SOURCE_LABELS.pulsed]], ...twoPhoton },
   { id: 'centerNm2p', group: 'source', label: 'Central wavelength', unit: 'nm', value: 920, min: TWO_PHOTON_SCOPE_NM[0], max: TWO_PHOTON_SCOPE_NM[1], arrowStep: 1, ...twoPhoton },
-  { id: 'pulseFs2p', group: 'source', label: 'Pulse duration (FWHM)', unit: 'fs', value: 100, min: 5, max: 1e6, arrowStep: 10, ...twoPhoton,
+  { id: 'pulseFs2p', group: 'source', label: 'Pulse duration (FWHM)', unit: 'fs', value: 150, min: 5, max: 1e6, arrowStep: 10, ...twoPhoton,
     help: 'Transform-limited Gaussian pulses; the bandwidth follows from the duration.' },
   { id: 'fluorophore', group: 'fluor', label: 'Fluorophore', type: 'select', value: 'egfp', options: fluorophoreOptions, ...linear },
   { id: 'fluorophore2p', group: 'fluor', label: 'Fluorophore', type: 'select', value: 'egfp', options: twoPhotonOptions, ...twoPhoton },
@@ -288,7 +288,9 @@ export const RATE_INPUTS = [
     options: [['focus', 'Focused spot (confocal, point scanning)'], ['widefield', 'Widefield (uniform field)']],
     help: 'A diffraction-limited focus of the objective, or a flat-top field of a given diameter.' },
   { id: 'powerMw', group: 'beam', label: 'Average power at the sample', unit: 'mW', value: 0.1, min: 1e-6, max: 10000,
-    help: 'Average power after the objective. Confocal imaging typically uses 1–100 µW (0.001–0.1 mW).' },
+    when: 'process', whenValue: 'linear', help: 'Average power after the objective. Confocal imaging typically uses 1–100 µW (0.001–0.1 mW).' },
+  { id: 'powerMw2p', group: 'beam', label: 'Average power at the sample', unit: 'mW', value: 10, min: 1e-6, max: 10000,
+    when: 'process', whenValue: 'twophoton', help: 'Average power after the objective. Two-photon imaging typically uses 5–50 mW.' },
   { id: 'repRateMHz', group: 'beam', label: 'Repetition rate', unit: 'MHz', value: 80, min: 0.001, max: 1e6, arrowStep: 1,
     when: 'source', whenValue: 'pulsed', help: 'With the average power it sets each pulse’s energy, and so its peak power.' },
   { id: 'fieldUm', group: 'beam', label: 'Field diameter', unit: 'µm', value: 200, min: 1, max: 100000, arrowStep: 10,
@@ -314,9 +316,10 @@ const PULSE_TO_LIFETIME = 0.1, PULSE_TO_PERIOD = 0.1, ASSUMED_LIFETIME_NS = 1;
 // context: { process, source, photonJ, name, crossSectionCm2 (one-photon)
 // or crossSectionGm (two-photon), focusFactor, quantumYield, lifetimeNs,
 // detected } from the main panel, or null while it is invalid.
-// The source kind decides which inputs apply, so it joins the raw values.
+// The source kind and the process decide which inputs apply, so they join
+// the raw values.
 export function computeRates(raw, context) {
-  const { values: v, errors } = parseInputs(RATE_INPUTS, { ...raw, source: context?.source.kind ?? 'cw' });
+  const { values: v, errors } = parseInputs(RATE_INPUTS, { ...raw, source: context?.source.kind ?? 'cw', process: context?.process ?? 'linear' });
   if (errors.length) return { ok: false, errors };
   if (!context) return unavailable('Set a valid source, fluorophore and detection path above to estimate the rates.', null);
   const { source } = context;
@@ -337,7 +340,7 @@ export function computeRates(raw, context) {
   if (pulsed && source.pulseFs * 1e-15 > PULSE_TO_PERIOD / (v.repRateMHz * 1e6)) {
     return unavailable(`At ${v.repRateMHz} MHz the pulses are ${formatPeriod(1e3 / v.repRateMHz)} apart, too close for ${source.pulseFs} fs pulses: the per-pulse model needs at least ten pulse durations between them.`, 'repRateMHz');
   }
-  const powerW = v.powerMw * 1e-3;
+  const powerW = (two ? v.powerMw2p : v.powerMw) * 1e-3;
   const focus = v.geometry === 'focus';
   const intensityAt = p => (focus ? focusPeakIntensityWcm2(p, source.centerNm, v.na) : widefieldIntensityWcm2(p, v.fieldUm));
   const powerFor = intensity => (focus ? focusPowerW(intensity, source.centerNm, v.na) : widefieldPowerW(intensity, v.fieldUm));
