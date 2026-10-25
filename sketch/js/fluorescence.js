@@ -281,23 +281,47 @@ const GAUSS_PEAK_FACTOR = 2 * Math.sqrt(Math.LN2 / Math.PI);
 
 // One molecule under a train of pulses much shorter than its lifetime.
 // During a pulse it does not decay, so it is excited with probability
-// p = 1 − exp(−σF), F the pulse's photon fluence; between pulses (period T)
-// the excited population decays by e^(−T/τ). In the periodic steady state
-// the fraction excited after a pulse is N₊ = p / (1 − (1 − p)e^(−T/τ)), and
-// each period emits Φ_F·N₊(1 − e^(−T/τ)) photons. Without a lifetime the
-// molecule is taken to relax fully between pulses. σF = 1 is saturation.
+// p = 1 − exp(−n), n the excitations the pulse drives in a ground-state
+// molecule; between pulses (period T) the excited population decays by
+// e^(−T/τ). In the periodic steady state the fraction excited after a pulse
+// is N₊ = p / (1 − (1 − p)e^(−T/τ)), and each period emits
+// Φ_F·N₊(1 − e^(−T/τ)) photons. Without a lifetime the molecule is taken to
+// relax fully between pulses. n = 1 is saturation.
+function pulseTrainResponse(n, rep, lifetimeNs, quantumYield) {
+  const probability = -Math.expm1(-n);
+  const relax = lifetimeNs > 0 ? Math.exp(-1e9 / (rep * lifetimeNs)) : 0;
+  const excitedAfterPulse = probability / (1 - (1 - probability) * relax);
+  return { saturationParameter: n, probability, excitedAfterPulse, relaxFactor: relax, emissionRate: rep * quantumYield * excitedAfterPulse * (1 - relax) };
+}
+
+// One-photon excitation by short pulses: n = σF, F the pulse's photon
+// fluence.
 export function pulsedMoleculeRates({ averageIntensityWcm2, photonJ, crossSectionCm2, repRateMHz, pulseFs, lifetimeNs = null, quantumYield }) {
   const rep = repRateMHz * 1e6;
   const fluence = averageIntensityWcm2 / (rep * photonJ);
-  const saturationParameter = crossSectionCm2 * fluence;
-  const probability = -Math.expm1(-saturationParameter);
-  const relax = lifetimeNs > 0 ? Math.exp(-1e9 / (rep * lifetimeNs)) : 0;
-  const excitedAfterPulse = probability / (1 - (1 - probability) * relax);
   return {
-    pulseFluence: fluence, saturationParameter, probability, excitedAfterPulse, relaxFactor: relax,
-    emissionRate: rep * quantumYield * excitedAfterPulse * (1 - relax),
+    pulseFluence: fluence, ...pulseTrainResponse(crossSectionCm2 * fluence, rep, lifetimeNs, quantumYield),
     peakIntensityWcm2: averageIntensityWcm2 / rep * GAUSS_PEAK_FACTOR / (pulseFs * 1e-15),
     saturationFluence: crossSectionCm2 > 0 ? 1 / crossSectionCm2 : null,
+  };
+}
+
+// 1 GM (Göppert-Mayer) = 10⁻⁵⁰ cm⁴ s per photon.
+export const GM_CM4_S = 1e-50;
+// ∫φ(t)²dt = g_p F²/τ_p for a Gaussian pulse of FWHM τ_p: g_p = √(2 ln2/π).
+export const TWO_PHOTON_GP = Math.sqrt(2 * Math.LN2 / Math.PI);
+
+// Two-photon excitation by short Gaussian pulses: a pulse of photon fluence
+// F drives n = σ₂ g_p F²/τ_p excitations in a ground-state molecule, σ₂ the
+// two-photon cross-section; the pulse train then responds as above. n = 1
+// is saturation, at the fluence F = √(τ_p/(σ₂ g_p)).
+export function twoPhotonPulsedRates({ averageIntensityWcm2, photonJ, crossSectionGm, repRateMHz, pulseFs, lifetimeNs = null, quantumYield }) {
+  const rep = repRateMHz * 1e6, tau = pulseFs * 1e-15, sigma2 = crossSectionGm * GM_CM4_S;
+  const fluence = averageIntensityWcm2 / (rep * photonJ);
+  return {
+    pulseFluence: fluence, ...pulseTrainResponse(sigma2 * TWO_PHOTON_GP * fluence * fluence / tau, rep, lifetimeNs, quantumYield),
+    peakIntensityWcm2: averageIntensityWcm2 / rep * GAUSS_PEAK_FACTOR / tau,
+    saturationFluence: sigma2 > 0 ? Math.sqrt(tau / (sigma2 * TWO_PHOTON_GP)) : null,
   };
 }
 

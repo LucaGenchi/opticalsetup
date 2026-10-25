@@ -47,6 +47,10 @@ const nm = x => `${formatNumber(x, 4)} nm`;
 let rateContext = null;
 
 // A fluorophore's own numbers and where they come from.
+// A curve whose maximum is its first sample: the measurement stops before
+// the band peaks (two-photon curves rising into a higher state).
+const atEdge = c => c.peakNm === c.startNm;
+
 function markerRows(e, source) {
   const f = e.meta, ref = e.data.reference;
   return [
@@ -57,9 +61,16 @@ function markerRows(e, source) {
     ['Brightness ε·Φ', e.brightness, 'M⁻¹ cm⁻¹', 4],
     ['Fluorescence lifetime', f.lifetimeNs === null ? 'not listed' : `${formatNumber(f.lifetimeNs, 3)} ns`],
     ['Excitation curve', f.excitationType === 'absorption' ? 'absorption spectrum' : 'excitation spectrum'],
+    ...(e.data.twoPhoton ? [
+      ['Two-photon peak', `${nm(e.data.twoPhoton.peakNm)}${atEdge(e.data.twoPhoton) ? ' (end of the measured curve)' : ''}`],
+      ['Two-photon cross-section σ₂ (peak)', e.data.twoPhoton.peakGm === null ? 'not listed' : `${formatNumber(e.data.twoPhoton.peakGm, 3)} GM`],
+      ['Two-photon curve', `${spectrumRangeNm(e.data.twoPhoton).join('–')} nm`],
+    ] : []),
     ['Data', source.short],
     ...(ref ? [['Protein’s paper', `${ref.citation}, ${ref.journal}, doi:${ref.doi}`]] : []),
     ...e.data.spectraReferences.map(sr => ['Spectra measured in', `${sr.citation}, doi:${sr.doi}`]),
+    ...(e.data.twoPhoton?.reference && !e.data.spectraReferences.some(sr => sr.doi === e.data.twoPhoton.reference.doi)
+      ? [['Two-photon spectrum measured in', `${e.data.twoPhoton.reference.citation}, doi:${e.data.twoPhoton.reference.doi}`]] : []),
     ['Terms', source.licenseName],
   ];
 }
@@ -73,24 +84,66 @@ function sourceName(src) {
   return `${at} CW laser`;
 }
 
+// The notes under the efficiencies, for two-photon excitation.
+function twoPhotonNotes(r) {
+  const out = [], m = r.main, src = r.source, tp = m.data.twoPhoton, [lo, hi] = spectrumRangeNm(tp);
+  if (src.centerNm < lo || src.centerNm > hi) out.push(`${src.centerNm} nm is outside ${m.meta.name}’s measured two-photon curve (${lo}–${hi} nm), so its two-photon excitation there is taken as zero.`);
+  out.push(tp.peakGm === null
+    ? `Relative excitation is the two-photon curve averaged over the pulse’s photons, divided by its maximum at ${tp.peakNm} nm. FPbase lists no two-photon cross-section σ₂ for ${m.meta.name}, so absolute values are not available.`
+    : `Relative excitation is the two-photon curve averaged over the pulse’s photons, divided by its value at the ${tp.peakNm} nm peak, where FPbase lists σ₂ = ${formatNumber(tp.peakGm, 3)} GM; σ₂ at the laser scales with it.`);
+  if (atEdge(tp)) out.push(`The curve’s maximum is its first point (${tp.peakNm} nm): the two-photon spectrum keeps rising towards shorter wavelengths, into a higher excited state, beyond what was measured.`);
+  out.push('Averaging σ₂ over the pulse spectrum approximates two-photon absorption of a broad pulse, which strictly depends on the pulse’s second-harmonic spectrum; it holds while the band is narrow next to the two-photon spectrum, and pulses wider than 5 % of the wavelength are declined.');
+  out.push('After two-photon excitation the molecule emits from the same state as after one-photon excitation, so the one-photon emission spectrum and quantum yield apply. One-photon absorption at the laser wavelength is not included.');
+  out.push('The detected fractions count emitted photons over the whole emission spectrum, before the collection geometry (see the rate panel below).');
+  if (r.filters.length === 0) out.push('No filters: all emission, and all scattered laser light, reach the detector.');
+  else if (r.sourceTransmission > 1e-3) out.push('The filters pass more than 10⁻³ of the laser light. Scattered laser light is far stronger than the fluorescence; two-photon microscopes block it with a shortpass filter on the emission side.');
+  if (r.detector.type === 'preset') {
+    const p = DETECTOR_PRESETS[r.detector.id];
+    out.push(`${p.label}: typical curve of the ${p.product} (${p.anchors}). Another detector of the same kind can differ by several percentage points.`);
+  }
+  if (r.second) {
+    out.push(r.crosstalk === null
+      ? 'No crosstalk ratio: FPbase lists no two-photon cross-section or quantum yield for one of the two.'
+      : `The ratio compares σ₂·Φ·(fraction detected) of ${r.second.meta.name} with ${m.meta.name}, at equal concentrations under the same pulses; both scale with the square of the intensity, so it holds at any power below saturation.`);
+  }
+  return out;
+}
+
 main = mountCalculator({ inputs: INPUTS, defaults: DEFAULTS, hideInactive: true, groups: {
-  source: { title: 'Excitation source' },
-  fluor: { title: 'Fluorescent marker' },
-  second: { title: 'Second marker' },
+  process: { title: 'Fluorescence' },
+  source: { title: 'Excitation source', form: 'markers-form' },
+  fluor: { title: 'Fluorescent marker', form: 'markers-form' },
+  second: { title: 'Second marker', form: 'markers-form' },
   ...Object.fromEntries(Array.from({ length: MAX_FILTERS }, (_, k) => [`filter${k + 1}`, { title: `Filter ${k + 1}`, form: 'detect-form' }])),
   detector: { title: 'Detector', form: 'detect-form' },
-}, compute: raw => computeFluorescence(raw, {
-  data: spectrumFile(raw.fluorophore),
-  secondData: raw.second === 'none' ? null : spectrumFile(raw.second),
-  curves,
-}),
+}, compute: raw => {
+  const two = raw.process === 'twophoton', second = two ? raw.second2p : raw.second;
+  return computeFluorescence(raw, {
+    data: spectrumFile(two ? raw.fluorophore2p : raw.fluorophore),
+    secondData: second === 'none' ? null : spectrumFile(second),
+    curves,
+  });
+},
   // Under the graphs and the detection path: the excitation and detection
   // efficiencies side by side, then each marker's own numbers.
   rows: r => {
-    const m = r.main, s = r.second, src = r.source, line = src.kind === 'cw';
+    const m = r.main, s = r.second, src = r.source, two = r.process === 'twophoton', line = src.kind === 'cw';
     const at = line ? 'at the laser' : 'over the source spectrum';
+    const gm = x => (x === null ? 'not listed on FPbase' : `${formatNumber(x, 3)} GM`);
+    const excitation = two ? [
+      { group: `Two-photon excitation, ${sourceName(src)}` },
+      ['Bandwidth (transform limit)', src.fwhmNm, 'nm', 3],
+      [atEdge(m.data.twoPhoton) ? 'Relative to the curve’s maximum, averaged' : 'Relative to the two-photon peak, averaged', pct(m.relative), '%', 3],
+      ['Two-photon cross-section σ₂', gm(m.twoPhotonCrossSectionGm)],
+      ['Action cross-section σ₂·Φ', gm(m.actionCrossSectionGm)],
+      ...(s ? [
+        { group: `${s.meta.name} under the same pulses` },
+        ['Relative to its two-photon peak', pct(s.relative), '%', 3],
+        ['Its action cross-section σ₂·Φ', gm(s.actionCrossSectionGm)],
+      ] : []),
+    ] : null;
     return {
-      excitation: [
+      excitation: excitation ?? [
         { group: `Excitation efficiency, ${sourceName(src)}` },
         ...(src.kind === 'pulsed' ? [['Bandwidth (transform limit)', src.fwhmNm, 'nm', 3]] : []),
         [line ? 'Relative to the excitation peak' : 'Relative to the excitation peak, averaged', pct(m.relative), '%', 3],
@@ -108,8 +161,8 @@ main = mountCalculator({ inputs: INPUTS, defaults: DEFAULTS, hideInactive: true,
         ['Emission through the filters', pct(m.transmitted), '%', 3],
         ...(r.detector.type === 'ideal' ? [] : [['Mean detector QE over that light', pct(m.meanQe), '%', 3]]),
         ['Emission detected', pct(m.detected), '%', 3],
-        [line ? 'Laser line through the filters' : 'Source light through the filters', r.sourceTransmission, '', 3],
-        [line ? 'Laser blocking' : 'Source blocking', r.sourceOdCapped ? `≥ ${formatNumber(r.sourceOd, 3)} OD` : `${formatNumber(r.sourceOd, 3)} OD`],
+        [line ? 'Laser line through the filters' : two ? 'Laser light through the filters' : 'Source light through the filters', r.sourceTransmission, '', 3],
+        [line ? 'Laser blocking' : two ? 'Laser blocking' : 'Source blocking', r.sourceOdCapped ? `≥ ${formatNumber(r.sourceOd, 3)} OD` : `${formatNumber(r.sourceOd, 3)} OD`],
         ...(s ? [
           { group: `Crosstalk from ${s.meta.name}` },
           ['Its emission detected', pct(s.detected), '%', 3],
@@ -121,6 +174,7 @@ main = mountCalculator({ inputs: INPUTS, defaults: DEFAULTS, hideInactive: true,
     };
   },
   notes: r => {
+    if (r.process === 'twophoton') return twoPhotonNotes(r);
     const out = [], m = r.main, src = r.source, [exLo, exHi] = spectrumRangeNm(m.data.excitation);
     if (src.centerNm < exLo || src.centerNm > exHi) out.push(`${src.centerNm} nm is outside ${m.meta.name}’s measured excitation curve (${exLo}–${exHi} nm), so its excitation there is taken as zero.`);
     out.push(src.kind === 'cw'
@@ -146,16 +200,16 @@ main = mountCalculator({ inputs: INPUTS, defaults: DEFAULTS, hideInactive: true,
     return out;
   },
   graphs: r => {
-    const p = r.plot, [a, b] = p.curves, src = r.source;
+    const p = r.plot, [a, b] = p.curves, src = r.source, two = r.process === 'twophoton';
     const series = [
-      { name: `Excitation, ${r.main.meta.name}`, color: '--series-1', values: a.ex, fill: 'light' },
+      { name: `${two ? 'Two-photon excitation' : 'Excitation'}, ${r.main.meta.name}`, color: '--series-1', values: a.ex, fill: 'light' },
       { name: `Emission, ${r.main.meta.name}`, color: '--series-2', values: a.em, fill: 'light' },
       { name: 'Emission detected', color: '--series-2', values: p.detected, fill: 'strong' },
       ...(r.filters.length ? [{ name: 'Filter stack transmission', color: '--series-3', values: p.T }] : []),
-      ...(p.source ? [{ name: `${SOURCE_LABELS[src.kind]} spectrum`, color: '--chart-band', values: p.source, fill: 'light' }] : []),
+      ...(p.source && !two ? [{ name: `${SOURCE_LABELS[src.kind]} spectrum`, color: '--chart-band', values: p.source, fill: 'light' }] : []),
       ...(r.detector.type === 'ideal' ? [] : [{ name: 'Detector QE', color: '--muted', values: p.qe, dash: true }]),
       ...(b ? [
-        { name: `Excitation, ${r.second.meta.name}`, color: '--series-1', values: b.ex, dash: true },
+        { name: `${two ? 'Two-photon excitation' : 'Excitation'}, ${r.second.meta.name}`, color: '--series-1', values: b.ex, dash: true },
         { name: `Emission, ${r.second.meta.name}`, color: '--series-2', values: b.em, dash: true },
       ] : []),
     ];
@@ -172,7 +226,7 @@ main = mountCalculator({ inputs: INPUTS, defaults: DEFAULTS, hideInactive: true,
   },
   onResult: r => {
     rateContext = r.ok ? {
-      source: r.source, photonJ: r.photonJ, name: r.main.meta.name, crossSectionCm2: r.main.crossSectionCm2, focusFactor: r.main.focusFactor,
+      process: r.process, crossSectionGm: r.main.twoPhotonCrossSectionGm ?? null, source: r.source, photonJ: r.photonJ, name: r.main.meta.name, crossSectionCm2: r.main.crossSectionCm2, focusFactor: r.main.focusFactor,
       quantumYield: r.main.meta.quantumYield, lifetimeNs: r.main.meta.lifetimeNs, detected: r.main.detected,
     } : null;
     rate?.update();
@@ -192,14 +246,16 @@ rate = mountCalculator({ panel: 'rate', inputs: RATE_INPUTS, defaults: RATE_DEFA
       ['Photon fluence per pulse F', r.pulseFluence, 'photons/cm²', 3],
     ] : [['Photon flux φ', r.photonFlux, 'photons cm⁻² s⁻¹', 3]]),
     { group: `One ${r.context.name} molecule` },
-    ['Absorption cross-section', r.context.crossSectionCm2, 'cm²', 3],
-    ...(r.effectiveCrossSectionCm2 !== r.context.crossSectionCm2 ? [['Effective at the focus centre', r.effectiveCrossSectionCm2, 'cm²', 3]] : []),
+    ...(r.twoPhoton ? [['Two-photon cross-section σ₂', r.context.crossSectionGm, 'GM', 3]] : [
+      ['Absorption cross-section', r.context.crossSectionCm2, 'cm²', 3],
+      ...(r.effectiveCrossSectionCm2 !== r.context.crossSectionCm2 ? [['Effective at the focus centre', r.effectiveCrossSectionCm2, 'cm²', 3]] : []),
+    ]),
     ...(r.pulsed ? [
-      ['Saturation parameter σF', r.saturationParameter, '', 3],
+      [r.twoPhoton ? 'Excitations per pulse n = σ₂g_pF²/τ_p' : 'Saturation parameter σF', r.saturationParameter, '', 3],
       ['Probability of excitation per pulse', pct(r.probability), '%', 3],
       ['Fraction excited after each pulse', pct(r.excitedAfterPulse), '%', 3],
       ['Emission rate', r.emissionRate, 'photons/s', 3],
-      ['Average power for σF = 1', r.saturationPowerW * 1e3, 'mW', 3],
+      [r.twoPhoton ? 'Average power for n = 1' : 'Average power for σF = 1', r.saturationPowerW * 1e3, 'mW', 3],
     ] : [
       ['Excitation rate k = σφ', r.absorptionRate, 's⁻¹', 3],
       ['Saturation parameter kτ', r.saturationParameter, '', 3],
@@ -220,8 +276,14 @@ rate = mountCalculator({ panel: 'rate', inputs: RATE_INPUTS, defaults: RATE_DEFA
         : r.pulsed ? `No lifetime is listed for ${r.context.name}: the molecule is taken to relax fully between pulses. Choose “Enter it” to add one.`
           : `No lifetime is listed for ${r.context.name}: the rates are unsaturated, and saturation is not estimated. Choose “Enter it” to add one.`);
     if (r.pulsed) {
-      out.push('Pulses much shorter than the lifetime: during a pulse the molecule does not decay, so it is excited with probability 1 − exp(−σF), then decays until the next pulse.');
-      if (r.saturationParameter > 0.1) out.push(`σF = ${formatNumber(r.saturationParameter, 2)}: a good part of the molecules is already excited by each pulse, so the signal no longer grows in proportion to the power. Pulsed excitation saturates at a much lower average power than CW excitation.`);
+      out.push(r.twoPhoton
+        ? 'Pulses much shorter than the lifetime: a Gaussian pulse of photon fluence F drives n = σ₂g_pF²/τ_p two-photon excitations (g_p = 0.664), so the molecule is excited with probability 1 − exp(−n), then decays until the next pulse. The signal grows with the square of the power until n nears 1.'
+        : 'Pulses much shorter than the lifetime: during a pulse the molecule does not decay, so it is excited with probability 1 − exp(−σF), then decays until the next pulse.');
+      if (r.saturationParameter > 0.1) {
+        out.push(r.twoPhoton
+          ? `n = ${formatNumber(r.saturationParameter, 2)}: a good part of the molecules at the focus centre is already excited by each pulse, so the signal grows more slowly than the square of the power, and the excited volume broadens.`
+          : `σF = ${formatNumber(r.saturationParameter, 2)}: a good part of the molecules is already excited by each pulse, so the signal no longer grows in proportion to the power. Pulsed excitation saturates at a much lower average power than CW excitation.`);
+      }
       if (r.relaxFactor > 0.05) out.push(`The molecule has not fully relaxed when the next pulse arrives (${formatNumber(r.relaxFactor * 100, 2)} % still excited), which lowers the signal per pulse.`);
     } else if (r.saturationParameter > 0.1) {
       out.push(`kτ = ${formatNumber(r.saturationParameter, 2)}: the signal no longer grows in proportion to the power, and the effective focus broadens. Real fluorophores also enter triplet and dark states well below this, which lowers the signal further.`);
@@ -231,7 +293,9 @@ rate = mountCalculator({ panel: 'rate', inputs: RATE_INPUTS, defaults: RATE_DEFA
       ? 'Focus: the peak of a scalar, paraxial Airy pattern from a uniformly filled pupil. At high NA the vectorial focus is somewhat wider, and the peak lower.'
       : 'Widefield: a uniform (flat-top) field; a Gaussian or uneven field has a higher peak than this average.');
     out.push('Collection counts an isotropic emitter in a uniform medium; dipole orientation, nearby interfaces and the objective’s own transmission are not included.');
-    out.push(`Two-level model: no triplet or dark states, photobleaching or stimulated emission${r.pulsed ? ', and no two-photon absorption at the high peak intensity' : ''}.`);
+    out.push(r.twoPhoton
+      ? 'Two-level model: no triplet or dark states, photobleaching (which grows faster than the square of the power under two-photon excitation), stimulated emission or one-photon absorption at the laser wavelength.'
+      : `Two-level model: no triplet or dark states, photobleaching or stimulated emission${r.pulsed ? ', and no two-photon absorption at the high peak intensity' : ''}.`);
     return out;
   },
 });

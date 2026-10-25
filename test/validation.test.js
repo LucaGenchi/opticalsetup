@@ -24,7 +24,7 @@ import { CRS_DEFAULTS, computeCrs, RESOLUTION_DEFAULTS, computeResolution } from
 import {
   absorptionCrossSectionCm2, focusPeakIntensityWcm2, widefieldIntensityWcm2, moleculeRates, collectionFraction,
   spectrumValue, detectionFractions, detectorQe, excitationSource, sourceAverage, sourceTransmission,
-  pulsedMoleculeRates, notchMinimumWidthNm, focusSpectralFactor,
+  pulsedMoleculeRates, twoPhotonPulsedRates, notchMinimumWidthNm, focusSpectralFactor,
 } from '../sketch/js/fluorescence.js';
 
 // The quantitative models listed in docs/validation.md are checked against
@@ -61,6 +61,10 @@ const APP = {
     if (kind === 'sourceLeak') return { transmission: sourceTransmission(excitationSource(inputs.source), inputs.filters) };
     if (kind === 'notch') return { widthNm: notchMinimumWidthNm(inputs) };
     if (kind === 'focusFactor') return { factor: focusSpectralFactor(excitationSource(inputs.source), nm => spectrumValue(egfp.excitation, nm)) };
+    if (kind === 'twoPhotonPulsed') {
+      const { fluence, repRateMHz, ...rest } = inputs;
+      return twoPhotonPulsedRates({ ...rest, repRateMHz, photonJ: 1, averageIntensityWcm2: fluence * repRateMHz * 1e6 });
+    }
     if (kind === 'pulsed') {
       // The fluence as an average intensity at a unit photon energy.
       const { fluence, repRateMHz, ...rest } = inputs;

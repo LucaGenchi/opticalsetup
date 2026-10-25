@@ -7,19 +7,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { DEFAULTS, computeFluorescence, RATE_DEFAULTS, computeRates } from '../calculators/fluorescence/fluorescence-calculator.js';
+import { DEFAULTS, INPUTS, computeFluorescence, RATE_DEFAULTS, computeRates } from '../calculators/fluorescence/fluorescence-calculator.js';
 import {
   filterTransmission, stackTransmission, detectionFractions, detectorQe, spectrumValue, parseCurveCsv, curveInUnits,
   excitationSource, sourceAverage, sourcePhotonEnergyJ, sourceTransmission, notchMinimumWidthNm, pulsedMoleculeRates, photonEnergyJ,
+  twoPhotonPulsedRates, TWO_PHOTON_GP, GM_CM4_S,
   absorptionCrossSectionCm2, focusPeakIntensityWcm2, moleculeRates, collectionFraction, DETECTOR_PRESETS,
 } from '../sketch/js/fluorescence.js';
 
 const load = id => JSON.parse(readFileSync(new URL(`../sketch/data/fluorophores/${id}.json`, import.meta.url), 'utf8'));
 const egfp = load('egfp'), mcherry = load('mcherry'), tdtomato = load('tdtomato');
-const files = { egfp, mcherry, tdtomato };
+const mscarlet = load('mscarlet');
+const files = { egfp, mcherry, tdtomato, mscarlet };
 const run = (values = {}, curves = {}) => {
   const raw = { ...DEFAULTS, ...values };
-  return computeFluorescence(raw, { data: files[raw.fluorophore], secondData: raw.second === 'none' ? null : files[raw.second], curves });
+  const two = raw.process === 'twophoton', id = two ? raw.fluorophore2p : raw.fluorophore, second = two ? raw.second2p : raw.second;
+  return computeFluorescence(raw, { data: files[id], secondData: second === 'none' ? null : files[second], curves });
 };
 const close = (a, b, tol = 1e-12) => assert.ok(Math.abs(a - b) <= tol * Math.max(1, Math.abs(b)), `${a} vs ${b}`);
 const finite = list => list.every(Number.isFinite);
@@ -324,4 +327,64 @@ test('pulsed excitation: the per-pulse model, its linear limit and what it decli
   // The repetition rate only applies to pulsed sources.
   assert.equal(computeRates({ ...RATE_DEFAULTS, repRateMHz: '' }, { ...context, source: run().source }).ok, true);
   assert.equal(computeRates({ ...RATE_DEFAULTS, repRateMHz: '' }, context).ok, false);
+});
+
+test('two-photon fluorescence: a pulsed laser on the two-photon spectrum', () => {
+  // Only markers with a two-photon spectrum are offered.
+  const list = INPUTS.find(i => i.id === 'fluorophore2p').options.map(o => o[0]);
+  assert.ok(list.includes('egfp') && list.includes('mcherry') && !list.includes('mvenus'));
+  const r = run({ process: 'twophoton' });
+  assert.equal(r.ok, true);
+  assert.equal(r.process, 'twophoton');
+  assert.equal(r.source.kind, 'pulsed');
+  assert.equal(r.source.centerNm, 920);
+  close(r.main.relative, sourceAverage(r.source, nm => spectrumValue(egfp.twoPhoton, nm)));
+  close(r.main.twoPhotonCrossSectionGm, egfp.twoPhoton.peakGm * r.main.relative);
+  close(r.main.actionCrossSectionGm, r.main.twoPhotonCrossSectionGm * 0.6);
+  // The emission side is the one-photon emission, as in linear mode.
+  close(r.main.transmitted, run().main.transmitted, 1e-12);
+  // The graph spans the laser and the emission.
+  assert.ok(r.plot.x[0] <= 500 && r.plot.x.at(-1) >= 1000);
+  assert.ok(r.plot.curves[0].ex.every(Number.isFinite));
+  // The linear-mode inputs do not apply, and keep their own values.
+  assert.equal(run({ process: 'twophoton', centerNm: '' }).ok, true);
+  assert.equal(run({ process: 'twophoton', centerNm2p: 500 }).ok, false, 'below the two-photon range');
+  // Broad pulses are declined: 10 fs at 920 nm is 12.4 % of the wavelength.
+  const broad = run({ process: 'twophoton', pulseFs2p: 10 });
+  assert.equal(broad.ok, false);
+  assert.equal(broad.errors[0].id, 'pulseFs2p');
+  // A marker without a listed σ₂: relative excitation only.
+  const scarlet = run({ process: 'twophoton', fluorophore2p: 'mscarlet' });
+  assert.equal(scarlet.ok, true);
+  assert.equal(scarlet.main.twoPhotonCrossSectionGm, null);
+  assert.equal(scarlet.crosstalk, null);
+  // Crosstalk: σ₂·Φ·η ratio.
+  const two = run({ process: 'twophoton', second2p: 'mcherry' });
+  close(two.crosstalk, two.second.signal / two.main.signal, 1e-12);
+  close(two.second.signal, mcherry.twoPhoton.peakGm * two.second.relative * 0.22 * two.second.detected, 1e-12);
+});
+
+test('two-photon rates: n = σ₂ g_p F²/τ_p per pulse, its quadratic limit and saturation', () => {
+  close(TWO_PHOTON_GP, Math.sqrt(2 * Math.LN2 / Math.PI), 1e-15);
+  const main = run({ process: 'twophoton' });
+  const context = { process: 'twophoton', source: main.source, photonJ: main.photonJ, name: 'EGFP', crossSectionGm: main.main.twoPhotonCrossSectionGm,
+    quantumYield: 0.6, lifetimeNs: 2.6, detected: main.main.detected };
+  const r = computeRates({ ...RATE_DEFAULTS, powerMw: 10 }, context);
+  assert.equal(r.ok, true);
+  assert.equal(r.twoPhoton, true);
+  const F = r.intensityWcm2 / (80e6 * main.photonJ);
+  close(r.saturationParameter, context.crossSectionGm * GM_CM4_S * TWO_PHOTON_GP * F * F / 100e-15, 1e-12);
+  // Far below saturation the signal goes as the square of the power.
+  const a = computeRates({ ...RATE_DEFAULTS, powerMw: 0.1 }, context), b = computeRates({ ...RATE_DEFAULTS, powerMw: 0.2 }, context);
+  close(b.emissionRate / a.emissionRate, 4, 1e-3);
+  // And halving the repetition rate at the same average power doubles it.
+  close(computeRates({ ...RATE_DEFAULTS, powerMw: 0.1, repRateMHz: 40 }, context).emissionRate / a.emissionRate, 2, 1e-3);
+  // n = 1 at the saturation power.
+  close(computeRates({ ...RATE_DEFAULTS, powerMw: r.saturationPowerW * 1e3 }, context).saturationParameter, 1, 1e-9);
+  // Without σ₂ there are no absolute rates.
+  assert.equal(computeRates(RATE_DEFAULTS, { ...context, crossSectionGm: null }).ok, false);
+  assert.equal(computeRates(RATE_DEFAULTS, { ...context, crossSectionGm: 0 }).ok, false);
+  // Same model as the one-photon trains for the decay between pulses.
+  const direct = twoPhotonPulsedRates({ averageIntensityWcm2: r.intensityWcm2, photonJ: main.photonJ, crossSectionGm: context.crossSectionGm, repRateMHz: 80, pulseFs: 100, lifetimeNs: 2.6, quantumYield: 0.6 });
+  close(r.emissionRate, direct.emissionRate, 1e-12);
 });

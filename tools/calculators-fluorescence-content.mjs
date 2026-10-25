@@ -14,12 +14,15 @@ const fpbase = FLUOROPHORE_SOURCES.fpbase;
 const fileOf = id => JSON.parse(readFileSync(new URL(`../sketch/data/fluorophores/${id}.json`, import.meta.url), 'utf8'));
 const paperLink = r => `<a href="https://doi.org/${r.doi}">${r.citation}</a>`;
 const num = (x, unit = '') => (x === null ? '—' : `${x.toLocaleString('en-US')}${unit}`);
+const twoPhotonCell = f => (f.twoPhotonPeakNm ? `${f.twoPhotonPeakNm}${f.twoPhotonPeakGm === null ? '' : `, ${Number(f.twoPhotonPeakGm.toPrecision(3))} GM`}` : '—');
+const twoPhotonCount = FLUOROPHORE_LIBRARY.filter(f => f.twoPhotonPeakNm).length;
+const twoPhotonGmCount = FLUOROPHORE_LIBRARY.filter(f => f.twoPhotonPeakGm).length;
 const libraryRows = FLUOROPHORE_CATEGORIES.map(category => {
   const rows = FLUOROPHORE_LIBRARY.filter(f => f.category === category);
-  return `<tr><th colspan="6" scope="colgroup">${category} (${rows.length})</th></tr>\n${rows.map(f => {
+  return `<tr><th colspan="7" scope="colgroup">${category} (${rows.length})</th></tr>\n${rows.map(f => {
     const { reference, spectraReferences } = fileOf(f.id);
     const paper = [...(reference ? [paperLink(reference)] : []), ...spectraReferences.map(r => `spectra: ${paperLink(r)}`)].join('; ');
-    return `<tr><td>${f.name}</td><td>${f.exMaxNm} / ${f.emMaxNm}</td><td>${num(f.extinctionM)}</td><td>${num(f.quantumYield)}</td><td>${num(f.lifetimeNs)}</td><td>${paper}</td></tr>`;
+    return `<tr><td>${f.name}</td><td>${f.exMaxNm} / ${f.emMaxNm}</td><td>${num(f.extinctionM)}</td><td>${num(f.quantumYield)}</td><td>${num(f.lifetimeNs)}</td><td>${twoPhotonCell(f)}</td><td>${paper}</td></tr>`;
   }).join('\n')}`;
 }).join('\n');
 
@@ -27,13 +30,14 @@ const detectorRows = Object.values(DETECTOR_PRESETS).map((d, i) => `<tr><th scop
 
 export const fluorescenceCalculators = [
   {
-    slug: 'fluorescence', title: 'Fluorescence excitation and detection', script: 'page.js',
-    card: 'An LED, CW or pulsed laser on a fluorescent protein’s measured spectra: excitation efficiency, emission through filters and a detector, crosstalk, source blocking and saturation.',
-    summary: 'Choose an excitation source (an LED, a CW laser or a pulsed laser) and a fluorophore, then emission filters and a detector. Read how strongly the source excites it, how much of its emission is detected, how well the source light is blocked, the crosstalk from a second label, and the excitation rate and saturation of one molecule.',
+    slug: 'fluorescence', title: 'Fluorescence', script: 'page.js',
+    card: 'Linear (one-photon) or two-photon excited fluorescence of fluorescent proteins, on their measured spectra: excitation efficiency, emission through filters and a detector, crosstalk, source blocking and saturation.',
+    summary: 'Choose linear (one-photon excited) or nonlinear (two-photon excited) fluorescence, a source (an LED, a CW laser or a pulsed laser; pulsed only for two-photon) and a fluorophore, then emission filters and a detector. Read how strongly the source excites it, how much of its emission is detected, how well the source light is blocked, the crosstalk from a second label, and the excitation rate and saturation of one molecule.',
     // Top to bottom: the laser and markers, the graphs, the detection path,
     // the two efficiencies, then each marker's own numbers.
     layout: [
-      { form: 'calc', label: 'Laser and fluorescent markers' },
+      { form: 'calc', label: 'Fluorescence process' },
+      { form: 'markers', label: 'Source and fluorescent markers' },
       { graphs: true },
       { form: 'detect', label: 'Detection path', note: 'Filters multiply: the stack passes the product of their transmissions.' },
       { output: true, label: 'Excitation and detection efficiency', results: [['excitation', 'Excitation efficiency'], ['detection', 'Detection efficiency']] },
@@ -46,7 +50,7 @@ export const fluorescenceCalculators = [
       { id: 'od', wide: true, title: 'Blocking of the filter stack', note: 'Optical density −log₁₀T of the whole stack, shown up to 12. The source’s wavelengths need a high value: scattered excitation light can be far stronger than the fluorescence.' },
     ],
     facts: [
-      { label: 'Model', html: 'Measured one-photon spectra; Gaussian LED bands and transform-limited pulses; generic filters with logistic edges, or your measured curves; typical detector QE curves; a two-level model for saturation, steady under CW and LED light, per pulse under short pulses.' },
+      { label: 'Model', html: 'Measured one-photon and two-photon spectra; one- and two-photon excitation by short pulses per pulse; Gaussian LED bands and transform-limited pulses; generic filters with logistic edges, or your measured curves; typical detector QE curves; a two-level model for saturation, steady under CW and LED light, per pulse under short pulses.' },
       { label: 'Evidence', html: `Equations checked against an independent Python reference (Airy-pattern quadrature, an integrated rate equation, exact filter integrals) and against the detectors’ datasheet values: <a href="${GITHUB}/docs/validation.md" target="_blank" rel="noopener">validation table</a>. The spectra are FPbase’s; they are not checked here.` },
       { label: 'Data', html: `${count} fluorescent proteins from FPbase ${cite(1, 2)}, each credited to its original paper. Dyes follow once their redistribution terms are confirmed.` },
       { label: 'Code', html: `<a href="${GITHUB}/sketch/js/fluorescence.js" target="_blank" rel="noopener">fluorescence.js</a>, a workbench module the canvas’s specimens can use, and the <a href="${GITHUB}/calculators/fluorescence/fluorescence-calculator.js" target="_blank" rel="noopener">calculator module</a>.` },
@@ -62,6 +66,12 @@ export const fluorescenceCalculators = [
           { tex: String.raw`\Delta\lambda_{\mathrm{pulse}}=\frac{0.441\,\lambda_0^2}{c\,\tau_p},\qquad \bar X=\frac{\int w(\lambda)\,\lambda\,X(\lambda)\,d\lambda}{X(\lambda_{\mathrm{peak}})\int w(\lambda)\,\lambda\,d\lambda}` },
         ],
         html4: `<p>X̄, or X(λ<sub>0</sub>)/X(λ<sub>peak</sub>) for a line, is the “relative excitation” the page reports, and Φ<sub>F</sub> is the fluorescence quantum yield. The molecular brightness B compares fluorophores at their own peaks; B at the source compares them under the light you have. The excitation curve in the first graph is X(λ) itself, so the best of the sources you have can be read off it. A few proteins have only an absorption spectrum on FPbase; it is used the same way.</p>`,
+      },
+      { id: 'twophoton', title: 'Two-photon excitation',
+        html: `<p>Choosing nonlinear fluorescence switches to two-photon excitation: the molecule absorbs two near-infrared photons at once, with a probability that goes as the square of the intensity, and then emits as after one-photon excitation, so its emission spectrum and quantum yield are unchanged ${cite(15, 16)}. Its strength is the two-photon cross-section σ₂, in GM (1 GM = 10⁻⁵⁰ cm⁴ s per photon), and its spectrum is measured against the laser wavelength; the first graph draws it there, on the same axis as the emission. It is not the one-photon spectrum at twice the wavelength: EGFP’s two-photon peak is near 927 nm, not 976 nm ${cite(13)}. Only pulsed lasers are offered, and the list holds the ${twoPhotonCount} proteins for which FPbase has a two-photon spectrum, ${twoPhotonGmCount} of them with the peak cross-section that absolute rates need. FPbase records the source of six of these curves (Molina et al. ${cite(17)}); for the rest it names none, though for fourteen proteins its references include Drobizhev et al. ${cite(13)}.</p>`,
+        html2: '<p>The relative excitation is the two-photon curve averaged over the pulse’s photons, and σ₂ at the laser scales from its peak value. Strictly, a broad pulse’s two-photon absorption depends on its second-harmonic spectrum; the average is a fair estimate while the pulse is narrow next to the two-photon spectrum, and pulses wider than 5 % of the wavelength (about 20 fs at 920 nm) are declined. For Gaussian pulses of FWHM τ<sub>p</sub> and photon fluence F, a ground-state molecule at the centre of the focus is driven to n excitations per pulse, and the pulse train then responds as in the one-photon case below:</p>',
+        formulas2: [{ tex: String.raw`n=\sigma_2\,g_p\,\frac{F^2}{\tau_p},\qquad g_p=\sqrt{\frac{2\ln 2}{\pi}}\approx0.664,\qquad p=1-e^{-n}` }],
+        html3: `<p>Here g<sub>p</sub> is the temporal factor of a Gaussian pulse, ∫I(t)²dt = g<sub>p</sub>(∫I dt)²/τ<sub>p</sub> ${cite(15)}. At the same average power the signal grows as 1/(f<sub>rep</sub>τ<sub>p</sub>), which is why the repetition rate and the pulse duration both matter; n = 1 marks saturation. Crosstalk compares σ₂·Φ·η of the two labels, which both scale with the square of the intensity.</p>`,
       },
       { id: 'detection', title: 'Filters, detector and the detected fraction',
         html: '<p>The emission spectrum E(λ) passes a stack of filters, whose transmissions multiply, and reaches a detector of quantum efficiency Q(λ). The page reports the fraction of the emitted photons the filters pass, and the fraction that is then counted, over the whole emission spectrum:</p>',
@@ -108,7 +118,9 @@ ${detectorRows}
         html5: '<p>The page also gives the average power at the sample that would bring kτ, or σF, to 1 in the chosen geometry. In practice the signal of a real fluorophore stops growing in proportion to the power well before that, because triplet and other dark states fill up and the molecule bleaches; the two-level numbers are an upper bound on the rate, not a prediction of the image.</p>',
       },
       { id: 'parameters', title: 'Every parameter', parameterTable: true, rows: [
-        ['λ<sub>0</sub>', 'Central wavelength', 'nm', 'Vacuum wavelength of the source, 250–1000 nm. A CW laser’s linewidth is neglected.'],
+        ['—', 'Fluorescence process', '—', 'Linear (one-photon excited) or nonlinear (two-photon excited); two-photon takes a pulsed laser and the markers with a two-photon spectrum.'],
+        ['λ<sub>0</sub>', 'Central wavelength', 'nm', 'Vacuum wavelength of the source: 250–1000 nm for one-photon, 550–1400 nm for two-photon excitation. A CW laser’s linewidth is neglected.'],
+        ['σ<sub>2</sub>', 'Two-photon cross-section', 'GM', 'At the peak FPbase lists, scaled by the two-photon curve to the laser; 1 GM = 10⁻⁵⁰ cm⁴ s.'],
         ['Δλ', 'LED bandwidth', 'nm', 'FWHM of the LED’s Gaussian band, 5–200 nm, the canvas LED’s range.'],
         ['τ<sub>p</sub>', 'Pulse duration', 'fs', 'Intensity FWHM of transform-limited Gaussian pulses, 5 fs–1 ns.'],
         ['f<sub>rep</sub>', 'Repetition rate', 'MHz', 'Pulses per second (rate panel, pulsed sources only).'],
@@ -128,11 +140,12 @@ ${detectorRows}
         ['D', 'Field diameter', 'µm', 'Diameter of a uniform widefield field.'],
       ] },
       { id: 'spectra', title: 'The fluorophore library',
-        html: `<p>The spectra and numbers come from FPbase, the community-edited fluorescent protein database ${cite(1)}. FPbase states that its data are free of copyright restrictions, for commercial and non-commercial use, with credit to the original authors ${cite(2)}; each protein’s file names the paper FPbase credits for the protein and, where FPbase records one, the paper its curves come from, listed below. An entry with neither is left out. They are measurements, not modelled. Each curve is kept at FPbase’s 1 nm sampling: negative values (baseline noise) are set to zero and the curve is scaled to its peak. The excitation peak is taken within 5 nm of the absorption maximum FPbase lists, the wavelength its ε refers to, so a protein’s 280 nm aromatic band can rise above it.</p><p>A record is left out when a listed peak lies more than 5 nm from its own curve’s, because the numbers and the curve then disagree: DsRed and mRuby2 (emission 11 and 7 nm apart) are left out for that reason, and GCaMP6f because its record lists peaks of 300 and 800 nm. Proteins for which FPbase stores another protein’s curve are left out too, since the page would show a relative’s measurement: mEGFP and mEmerald (EGFP’s curves), mCitrine and YPet (Citrine’s), EYFP and Venus (Citrine’s emission), Cerulean (ECFP’s) and mClover3 (Clover’s). Calcium indicators appear in both of their states. Dye spectra (Alexa Fluor, ATTO, cyanine and other dyes) are left out for now: on FPbase most record no source, or only a manufacturer, so their redistribution terms are being confirmed first.</p><p>Other collections were checked and not used: PhotochemCAD ${cite(10)} and the MPI Brain Research spectra viewer ${cite(11)} state no licence for their spectra, and PubSpectra ${cite(12)} has none recorded and dates from 2006. Manufacturers’ spectra viewers do not grant redistribution.</p><details><summary>All ${count} fluorophores</summary><div class="table-scroll"><table class="param-table"><thead><tr><th>Fluorophore</th><th>Peaks ex / em (nm)</th><th>ε (M⁻¹ cm⁻¹)</th><th>Φ<sub>F</sub></th><th>τ (ns)</th><th>Original data</th></tr></thead><tbody>\n${libraryRows}\n</tbody></table></div></details>`,
+        html: `<p>The spectra and numbers come from FPbase, the community-edited fluorescent protein database ${cite(1)}. FPbase states that its data are free of copyright restrictions, for commercial and non-commercial use, with credit to the original authors ${cite(2)}; each protein’s file names the paper FPbase credits for the protein and, where FPbase records one, the paper its curves come from, listed below. An entry with neither is left out. They are measurements, not modelled. Each curve is kept at FPbase’s 1 nm sampling: negative values (baseline noise) are set to zero and the curve is scaled to its peak. The excitation peak is taken within 5 nm of the absorption maximum FPbase lists, the wavelength its ε refers to, so a protein’s 280 nm aromatic band can rise above it.</p><p>A record is left out when a listed peak lies more than 5 nm from its own curve’s, because the numbers and the curve then disagree: DsRed and mRuby2 (emission 11 and 7 nm apart) are left out for that reason, and GCaMP6f because its record lists peaks of 300 and 800 nm. Proteins for which FPbase stores another protein’s curve are left out too, since the page would show a relative’s measurement: mEGFP and mEmerald (EGFP’s curves), mCitrine and YPet (Citrine’s), EYFP and Venus (Citrine’s emission), Cerulean (ECFP’s) and mClover3 (Clover’s). Calcium indicators appear in both of their states. Dye spectra (Alexa Fluor, ATTO, cyanine and other dyes) are left out for now: on FPbase most record no source, or only a manufacturer, so their redistribution terms are being confirmed first.</p><p>Other collections were checked and not used: PhotochemCAD ${cite(10)} and the MPI Brain Research spectra viewer ${cite(11)} state no licence for their spectra, and PubSpectra ${cite(12)} has none recorded and dates from 2006. Manufacturers’ spectra viewers do not grant redistribution.</p><details><summary>All ${count} fluorophores</summary><div class="table-scroll"><table class="param-table"><thead><tr><th>Fluorophore</th><th>Peaks ex / em (nm)</th><th>ε (M⁻¹ cm⁻¹)</th><th>Φ<sub>F</sub></th><th>τ (ns)</th><th>Two-photon peak (nm, σ₂)</th><th>Original data</th></tr></thead><tbody>\n${libraryRows}\n</tbody></table></div></details>`,
       },
       { id: 'precision', title: 'Precision and limits',
         html: `<p>The arithmetic is checked against an independent Python reference to 10⁻⁹ for algebra and exact integrals, 10⁻⁵ for the focus, 2×10⁻⁵ for logistic filter edges and 10⁻⁴ for averages over a source band and for pulse trains, where the page integrates by the trapezoidal rule on 0.05 nm (finer for narrow bands) and splits at hard edges so that ideal steps are exact. The pulse-train check integrates the rate equation through finite pulses; the per-pulse model differs from it by about the ratio of pulse duration to lifetime. The detector curves reproduce their datasheets’ tabulated values to the third decimal. These checks say the page evaluates its model correctly; the inputs set its accuracy. Published ε and Φ<sub>F</sub> of one protein often differ by 10–20 % between papers; spectra depend on pH, temperature and environment, and FPbase does not record whether an emission curve was measured in photons or in energy per wavelength, which matters a little for broad emission. Read the fractions as good to a few percent at best.</p><p>Not modelled:</p><ul>
-  <li>Two- and three-photon excitation. Their spectra are not the one-photon spectrum at λ/2 or λ/3: EGFP’s two-photon peak is near 927 nm, not 976 nm ${cite(13)}.</li>
+  <li>Three-photon excitation, and two-photon excitation of dyes, for which no openly licensed two-photon spectra were found.</li>
+  <li>Two-photon absorption of a broad pulse beyond the average over its spectrum, and one-photon absorption at a two-photon laser’s wavelength.</li>
   <li>Pulses not much shorter than the lifetime, chirped pulses, stimulated emission, triplet and dark states, photobleaching and photoswitching kinetics.</li>
   <li>An excitation filter in front of an LED, and an LED’s real, often asymmetric, spectrum: the page uses a Gaussian band.</li>
   <li>Concentration effects: inner-filter absorption, reabsorption of the emission, quenching and energy transfer between labels.</li>
@@ -157,6 +170,9 @@ ${detectorRows}
       { label: 'G. McNamara, PubSpectra (2006; no licence recorded)', url: 'https://works.bepress.com/gmcnamara/9/' },
       { label: 'M. Drobizhev, N. S. Makarov, S. E. Tillo, T. E. Hughes and A. Rebane, “Two-photon absorption properties of fluorescent proteins,” Nat. Methods 8, 393–399 (2011)', url: 'https://doi.org/10.1038/nmeth.1596' },
       { label: 'J.-C. Diels and W. Rudolph, Ultrashort Laser Pulse Phenomena, 2nd ed., Academic Press (2006), chapter 1: time–bandwidth product of Gaussian pulses', url: 'https://doi.org/10.1016/B978-0-12-215493-5.X5000-9' },
+      { label: 'C. Xu and W. W. Webb, “Measurement of two-photon excitation cross sections of molecular fluorophores with data from 690 to 1050 nm,” J. Opt. Soc. Am. B 13, 481–491 (1996)', url: 'https://doi.org/10.1364/JOSAB.13.000481' },
+      { label: 'W. R. Zipfel, R. M. Williams and W. W. Webb, “Nonlinear magic: multiphoton microscopy in the biosciences,” Nat. Biotechnol. 21, 1369–1377 (2003)', url: 'https://doi.org/10.1038/nbt899' },
+      { label: 'R. S. Molina, Y. Qian, J. Wu, Y. Shen, R. E. Campbell, M. Drobizhev and T. E. Hughes, “Understanding the fluorescence change in red genetically encoded calcium ion indicators,” Biophys. J. 116, 1873–1886 (2019)', url: 'https://doi.org/10.1016/j.bpj.2019.04.007' },
     ],
   },
 ];

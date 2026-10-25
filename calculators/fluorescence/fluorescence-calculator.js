@@ -1,41 +1,62 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
-// The fluorescence calculator: an LED, a CW laser line or a pulsed laser on
-// a fluorophore's measured excitation spectrum, its emission through filters
-// and onto a
-// detector, a second fluorophore's crosstalk, and the excitation rate and
-// saturation of one molecule. DOM-free; the page loads the spectrum files
+// The fluorescence calculator. Linear (one-photon) fluorescence: an LED, a
+// CW laser line or a pulsed laser on a fluorophore's measured excitation
+// spectrum. Nonlinear (two-photon) fluorescence: a pulsed laser on its
+// measured two-photon spectrum. Then, for both, its emission through filters
+// and onto a detector, a second fluorophore's crosstalk, and the excitation
+// rate and saturation of one molecule. DOM-free; the page loads the spectrum files
 // and the user's curve files and passes them in.
 import { FLUOROPHORE_LIBRARY, FLUOROPHORE_SOURCES } from '../../sketch/js/fluorophore-library.js';
 import {
   spectrumValue, spectrumRangeNm, absorptionCrossSectionCm2, filterTransmission, stackTransmission, detectorQe,
   detectionFractions, focusPeakIntensityWcm2, widefieldIntensityWcm2, focusPowerW, widefieldPowerW,
   collectionFraction, moleculeRates, pulsedMoleculeRates, curveInUnits, excitationSource, sourceAverage,
-  sourcePhotonEnergyJ, sourceTransmission, sourceWeight, notchMinimumWidthNm, focusSpectralFactor, DETECTOR_PRESETS,
+  sourcePhotonEnergyJ, sourceTransmission, sourceWeight, notchMinimumWidthNm, focusSpectralFactor, twoPhotonPulsedRates, DETECTOR_PRESETS,
 } from '../../sketch/js/fluorescence.js';
 import { LED_MIN_BANDWIDTH_NM, LED_MAX_BANDWIDTH_NM } from '../../sketch/js/spectrum.js';
 import { defaultsFor, parseInputs, unavailable } from '../assets/calculator-inputs.js';
 
 export const LIBRARY = new Map(FLUOROPHORE_LIBRARY.map(f => [f.id, f]));
 const SCOPE_NM = [250, 1000];
+// Lasers for two-photon excitation: the near infrared the FPbase two-photon
+// spectra cover (550–1380 nm).
+const TWO_PHOTON_SCOPE_NM = [550, 1400];
+// The two-photon spectrum is averaged over the pulse's spectrum, an
+// approximation that holds while the band is narrow next to the spectrum:
+// up to 5 % of the wavelength (about 20 fs pulses at 920 nm).
+const TWO_PHOTON_MAX_RELATIVE_BANDWIDTH = 0.05;
 export const MAX_FILTERS = 2;
 export const BAND_EDGES = 3;
 const FILTER_KINDS = ['bandpass', 'longpass', 'shortpass', 'notch'];
 const OD_CAP = 12;
 const fluorophoreOptions = FLUOROPHORE_LIBRARY.map(f => [f.id, f.name, f.category]);
+const twoPhotonOptions = FLUOROPHORE_LIBRARY.filter(f => f.twoPhotonPeakNm).map(f => [f.id, f.name, f.category]);
+export const PROCESS_LABELS = { linear: 'Linear (one-photon excited) fluorescence', twophoton: 'Nonlinear (two-photon excited) fluorescence' };
+const linear = { when: 'process', whenValue: 'linear' }, twoPhoton = { when: 'process', whenValue: 'twophoton' };
 
 // The excitation source and the fluorophores (main form). The LED's band
 // and the pulse duration take the canvas's own ranges.
 export const SOURCE_LABELS = { cw: 'CW laser', led: 'LED', pulsed: 'Pulsed laser' };
+// Each process keeps its own wavelength, pulse duration and markers, so
+// switching back and forth loses nothing; two-photon excitation is by a
+// pulsed laser only, and lists only the markers with a two-photon spectrum.
 export const MAIN_INPUTS = [
-  { id: 'source', group: 'source', label: 'Source', type: 'select', value: 'cw', options: Object.entries(SOURCE_LABELS) },
-  { id: 'centerNm', group: 'source', label: 'Central wavelength', unit: 'nm', value: 488, min: SCOPE_NM[0], max: SCOPE_NM[1], arrowStep: 1 },
+  { id: 'process', group: 'process', label: 'Process', type: 'select', value: 'linear', options: Object.entries(PROCESS_LABELS) },
+  { id: 'source', group: 'source', label: 'Source', type: 'select', value: 'cw', options: Object.entries(SOURCE_LABELS), ...linear },
+  { id: 'centerNm', group: 'source', label: 'Central wavelength', unit: 'nm', value: 488, min: SCOPE_NM[0], max: SCOPE_NM[1], arrowStep: 1, ...linear },
   { id: 'bandwidthNm', group: 'source', label: 'Bandwidth (FWHM)', unit: 'nm', value: 25, min: LED_MIN_BANDWIDTH_NM, max: LED_MAX_BANDWIDTH_NM, arrowStep: 1,
     when: 'source', whenValue: 'led' },
   { id: 'pulseFs', group: 'source', label: 'Pulse duration (FWHM)', unit: 'fs', value: 100, min: 5, max: 1e6, arrowStep: 10,
     when: 'source', whenValue: 'pulsed', help: 'Transform-limited Gaussian pulses; the bandwidth follows from the duration.' },
-  { id: 'fluorophore', group: 'fluor', label: 'Fluorophore', type: 'select', value: 'egfp', options: fluorophoreOptions },
-  { id: 'second', group: 'second', label: 'Fluorophore', type: 'select', value: 'none', options: [['none', 'None'], ...fluorophoreOptions] },
+  { id: 'source2p', group: 'source', label: 'Source', type: 'select', value: 'pulsed', options: [['pulsed', SOURCE_LABELS.pulsed]], ...twoPhoton },
+  { id: 'centerNm2p', group: 'source', label: 'Central wavelength', unit: 'nm', value: 920, min: TWO_PHOTON_SCOPE_NM[0], max: TWO_PHOTON_SCOPE_NM[1], arrowStep: 1, ...twoPhoton },
+  { id: 'pulseFs2p', group: 'source', label: 'Pulse duration (FWHM)', unit: 'fs', value: 100, min: 5, max: 1e6, arrowStep: 10, ...twoPhoton,
+    help: 'Transform-limited Gaussian pulses; the bandwidth follows from the duration.' },
+  { id: 'fluorophore', group: 'fluor', label: 'Fluorophore', type: 'select', value: 'egfp', options: fluorophoreOptions, ...linear },
+  { id: 'fluorophore2p', group: 'fluor', label: 'Fluorophore', type: 'select', value: 'egfp', options: twoPhotonOptions, ...twoPhoton },
+  { id: 'second', group: 'second', label: 'Fluorophore', type: 'select', value: 'none', options: [['none', 'None'], ...fluorophoreOptions], ...linear },
+  { id: 'second2p', group: 'second', label: 'Fluorophore', type: 'select', value: 'none', options: [['none', 'None'], ...twoPhotonOptions], ...twoPhoton },
 ];
 
 // How a loaded file's values are read: as its header says (else percent
@@ -153,7 +174,10 @@ function detectionPath(v, curves) {
 
 // What one fluorophore does with this source and this detection path. For
 // a band, the relative excitation is averaged over the source's photons.
-function evaluate(meta, data, source, filters, detector) {
+// Two-photon excitation reads the two-photon spectrum and its peak
+// cross-section σ₂ (GM) instead of ε.
+function evaluate(meta, data, source, filters, detector, process) {
+  if (process === 'twophoton') return evaluateTwoPhoton(meta, data, source, filters, detector);
   const excitationAt = nm => spectrumValue(data.excitation, nm);
   const relative = sourceAverage(source, excitationAt);
   const extinction = meta.extinctionM;
@@ -170,7 +194,22 @@ function evaluate(meta, data, source, filters, detector) {
   };
 }
 
-const loaded = (data, id) => data && !data.error && data.id === id && data.excitation?.values && data.emission?.values;
+function evaluateTwoPhoton(meta, data, source, filters, detector) {
+  const relative = sourceAverage(source, nm => spectrumValue(data.twoPhoton, nm));
+  const fractions = detectionFractions(data.emission, filters, detector);
+  const peakGm = data.twoPhoton.peakGm, qy = meta.quantumYield;
+  const sigma2 = peakGm ? peakGm * relative : null;
+  return {
+    meta, data, relative, ...fractions, focusFactor: 1, twoPhotonCrossSectionGm: sigma2,
+    actionCrossSectionGm: sigma2 !== null && qy ? sigma2 * qy : null,
+    // σ₂(λ)·Φ·η: signal per molecule at equal excitation, which for two
+    // labels under the same pulses scales the same way with intensity.
+    signal: sigma2 !== null && qy ? sigma2 * qy * fractions.detected : null,
+  };
+}
+
+const loaded = (data, id, process) => data && !data.error && data.id === id && data.excitation?.values && data.emission?.values
+  && (process !== 'twophoton' || data.twoPhoton?.values);
 
 // raw: the main and detection forms. context: { data, secondData } — the
 // loaded spectrum files (undefined while loading, { error } on failure) —
@@ -178,25 +217,32 @@ const loaded = (data, id) => data && !data.error && data.id === id && data.excit
 export function computeFluorescence(raw, { data, secondData, curves = {} } = {}) {
   const { values: v, errors } = parseInputs(INPUTS, raw);
   if (errors.length) return { ok: false, errors };
-  const meta = LIBRARY.get(v.fluorophore);
-  const metaB = v.second === 'none' ? null : LIBRARY.get(v.second);
+  const process = v.process, two = process === 'twophoton';
+  const id = two ? v.fluorophore2p : v.fluorophore, idB = two ? v.second2p : v.second;
+  const meta = LIBRARY.get(id);
+  const metaB = idB === 'none' ? null : LIBRARY.get(idB);
   const path = detectionPath(v, curves);
   if (path.errors.length) return { ok: false, errors: path.errors };
   if (path.pending) return { ok: false, pending: true, message: 'Reading the file…' };
   if (data === undefined || (metaB && secondData === undefined)) return { ok: false, pending: true, message: 'Loading the spectra…' };
-  if (!loaded(data, v.fluorophore)) return unavailable('This fluorophore’s spectra could not be loaded. Check the connection, then choose it again.', 'fluorophore');
-  if (metaB && !loaded(secondData, v.second)) return unavailable('The second fluorophore’s spectra could not be loaded. Check the connection, then choose it again.', 'second');
+  if (!loaded(data, id, process)) return unavailable('This fluorophore’s spectra could not be loaded. Check the connection, then choose it again.', two ? 'fluorophore2p' : 'fluorophore');
+  if (metaB && !loaded(secondData, idB, process)) return unavailable('The second fluorophore’s spectra could not be loaded. Check the connection, then choose it again.', two ? 'second2p' : 'second');
   const { filters, detector } = path;
-  const source = excitationSource({ kind: v.source, centerNm: v.centerNm, bandwidthNm: v.bandwidthNm, pulseFs: v.pulseFs });
-  const main = evaluate(meta, data, source, filters, detector);
-  const second = metaB ? evaluate(metaB, secondData, source, filters, detector) : null;
+  const source = two
+    ? excitationSource({ kind: 'pulsed', centerNm: v.centerNm2p, pulseFs: v.pulseFs2p })
+    : excitationSource({ kind: v.source, centerNm: v.centerNm, bandwidthNm: v.bandwidthNm, pulseFs: v.pulseFs });
+  if (two && source.fwhmNm > TWO_PHOTON_MAX_RELATIVE_BANDWIDTH * source.centerNm) {
+    return unavailable(`${v.pulseFs2p} fs pulses at ${v.centerNm2p} nm are ${Number(source.fwhmNm.toPrecision(3))} nm wide, more than 5 % of the wavelength: averaging the two-photon spectrum over so broad a pulse is not a reliable estimate. Use longer pulses.`, 'pulseFs2p');
+  }
+  const main = evaluate(meta, data, source, filters, detector, process);
+  const second = metaB ? evaluate(metaB, secondData, source, filters, detector, process) : null;
   const leak = sourceTransmission(source, filters);
   return {
-    ok: true, values: v, source, photonJ: sourcePhotonEnergyJ(source), main, second, filters, detector, files: path.files,
+    ok: true, values: v, process, source, photonJ: sourcePhotonEnergyJ(source), main, second, filters, detector, files: path.files,
     sourceTransmission: leak, sourceOd: od(leak), sourceOdCapped: !(leak > 10 ** -OD_CAP),
     crosstalk: second && main.signal > 0 && second.signal !== null ? second.signal / main.signal : null,
     library: FLUOROPHORE_SOURCES[meta.source],
-    plot: plotData(source, [main, second].filter(Boolean), filters, detector),
+    plot: plotData(source, [main, second].filter(Boolean), filters, detector, two ? 'twoPhoton' : 'excitation'),
   };
 }
 
@@ -206,11 +252,11 @@ const DRAWN_BAND_NM = 3;
 
 // The plotted window: the fluorophores' spectra (where above 0.5 % of
 // their peak) and the source, padded and rounded to 10 nm, at 1 nm.
-function plotData(source, items, filters, detector) {
+function plotData(source, items, filters, detector, excitationRole) {
   const drawn = source.fwhmNm >= DRAWN_BAND_NM;
   let lo = source.centerNm - (drawn ? 1.5 * source.fwhmNm : 0), hi = source.centerNm + (drawn ? 1.5 * source.fwhmNm : 0);
   for (const { data } of items) {
-    for (const s of [data.excitation, data.emission]) {
+    for (const s of [data[excitationRole], data.emission]) {
       const [a, b] = spectrumRangeNm(s);
       const k0 = s.values.findIndex(v => v > 5), k1 = s.values.length - 1 - [...s.values].reverse().findIndex(v => v > 5);
       lo = Math.min(lo, Math.max(a, s.startNm + k0 * s.stepNm, 280));
@@ -218,13 +264,13 @@ function plotData(source, items, filters, detector) {
     }
   }
   lo = Math.max(SCOPE_NM[0], Math.floor((lo - 10) / 10) * 10);
-  hi = Math.min(1100, Math.ceil((hi + 10) / 10) * 10);
+  hi = Math.min(TWO_PHOTON_SCOPE_NM[1], Math.ceil((hi + 10) / 10) * 10);
   const x = [];
   for (let nm = lo; nm <= hi; nm++) x.push(nm);
   const T = x.map(nm => stackTransmission(filters, nm));
   const qe = x.map(nm => detectorQe(detector, nm));
   const curves = items.map(({ data }) => ({
-    ex: x.map(nm => spectrumValue(data.excitation, nm)),
+    ex: x.map(nm => spectrumValue(data[excitationRole], nm)),
     em: x.map(nm => spectrumValue(data.emission, nm)),
   }));
   return {
@@ -265,9 +311,9 @@ const formatPeriod = ns => (ns >= 1 ? `${Number(ns.toPrecision(3))} ns` : `${Num
 // fluorescent proteins' ≥ 1 ns is assumed.
 const PULSE_TO_LIFETIME = 0.1, PULSE_TO_PERIOD = 0.1, ASSUMED_LIFETIME_NS = 1;
 
-// context: { source, photonJ, name, crossSectionCm2, focusFactor,
-// quantumYield, lifetimeNs, detected } from the main panel, or null while
-// it is invalid.
+// context: { process, source, photonJ, name, crossSectionCm2 (one-photon)
+// or crossSectionGm (two-photon), focusFactor, quantumYield, lifetimeNs,
+// detected } from the main panel, or null while it is invalid.
 // The source kind decides which inputs apply, so it joins the raw values.
 export function computeRates(raw, context) {
   const { values: v, errors } = parseInputs(RATE_INPUTS, { ...raw, source: context?.source.kind ?? 'cw' });
@@ -276,7 +322,12 @@ export function computeRates(raw, context) {
   const { source } = context;
   if (v.na > v.mediumIndex) return unavailable('The NA cannot exceed the sample’s refractive index: that light does not propagate in the sample.', 'na', 'mediumIndex');
   if (source.kind === 'led' && v.geometry === 'focus') return unavailable('An LED cannot be focused to a diffraction-limited spot: its light is spatially incoherent. Choose widefield.', 'geometry');
-  if (!(context.crossSectionCm2 > 0)) return unavailable(`${context.name} does not absorb this source in its measured spectrum, or has no extinction coefficient listed.`, null);
+  const two = context.process === 'twophoton';
+  if (two && !(context.crossSectionGm > 0)) {
+    return unavailable(context.crossSectionGm === 0 ? `${context.name} does not absorb two photons at this wavelength in its measured spectrum.`
+      : `FPbase lists no two-photon cross-section (in GM) for ${context.name}: its relative two-photon excitation is shown above, but not absolute rates.`, null);
+  }
+  if (!two && !(context.crossSectionCm2 > 0)) return unavailable(`${context.name} does not absorb this source in its measured spectrum, or has no extinction coefficient listed.`, null);
   if (!(context.quantumYield > 0)) return unavailable(`No quantum yield is listed for ${context.name}.`, null);
   const lifetimeNs = v.lifetimeFrom === 'manual' ? v.lifetimeNs : context.lifetimeNs;
   const pulsed = source.kind === 'pulsed';
@@ -293,18 +344,20 @@ export function computeRates(raw, context) {
   const intensityWcm2 = intensityAt(powerW);
   // In a focus each wavelength of a band has its own Airy peak; the factor
   // folds that into the cross-section (1 for a line, and in widefield).
-  const crossSectionCm2 = context.crossSectionCm2 * (focus ? context.focusFactor ?? 1 : 1);
-  const common = { crossSectionCm2, photonJ: context.photonJ, lifetimeNs, quantumYield: context.quantumYield };
-  const rates = pulsed
-    ? pulsedMoleculeRates({ ...common, averageIntensityWcm2: intensityWcm2, repRateMHz: v.repRateMHz, pulseFs: source.pulseFs })
-    : moleculeRates({ ...common, intensityWcm2 });
+  const crossSectionCm2 = two ? null : context.crossSectionCm2 * (focus ? context.focusFactor ?? 1 : 1);
+  const common = { photonJ: context.photonJ, lifetimeNs, quantumYield: context.quantumYield };
+  const pulses = { averageIntensityWcm2: intensityWcm2, repRateMHz: v.repRateMHz, pulseFs: source.pulseFs };
+  const rates = two ? twoPhotonPulsedRates({ ...common, ...pulses, crossSectionGm: context.crossSectionGm })
+    : pulsed ? pulsedMoleculeRates({ ...common, ...pulses, crossSectionCm2 })
+      : moleculeRates({ ...common, crossSectionCm2, intensityWcm2 });
   // The average power that brings the molecule to saturation: kτ = 1, or
-  // σF = 1 per pulse (fluence 1/σ at the repetition rate).
-  const saturationPowerW = pulsed ? powerFor(v.repRateMHz * 1e6 * context.photonJ / crossSectionCm2)
+  // one excitation per pulse (σF = 1, or σ₂g_pF²/τ_p = 1), at the
+  // repetition rate.
+  const saturationPowerW = pulsed ? powerFor(v.repRateMHz * 1e6 * context.photonJ * (two ? rates.saturationFluence : 1 / crossSectionCm2))
     : rates.saturationIntensityWcm2 === null ? null : powerFor(rates.saturationIntensityWcm2);
   const collection = collectionFraction(v.na, v.mediumIndex);
   return {
-    ok: true, values: v, context, pulsed, effectiveCrossSectionCm2: crossSectionCm2, lifetimeNs: lifetimeNs ?? null, lifetimeSource: v.lifetimeFrom === 'manual' ? 'entered' : lifetimeNs ? 'library' : null,
+    ok: true, values: v, context, pulsed, twoPhoton: two, effectiveCrossSectionCm2: crossSectionCm2, lifetimeNs: lifetimeNs ?? null, lifetimeSource: v.lifetimeFrom === 'manual' ? 'entered' : lifetimeNs ? 'library' : null,
     intensityWcm2, ...rates, collection, saturationPowerW,
     ...(pulsed ? { pulseEnergyJ: powerW / (v.repRateMHz * 1e6), peakPowerW: powerW / (v.repRateMHz * 1e6) * 2 * Math.sqrt(Math.LN2 / Math.PI) / (source.pulseFs * 1e-15) } : {}),
     detectedRate: rates.emissionRate * collection * context.detected,
