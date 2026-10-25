@@ -10,7 +10,8 @@ import { glassAbbe, glassGVD, glassGroupDelayDifferenceFs, glassGroupIndex, glas
 import { transformLimitedBandwidthNm } from '../sketch/js/spectrum.js';
 import { hollowCoreCoefficients, marcatiliLossDbPerM } from '../sketch/js/fiber.js';
 import { propagateEnvelope, fieldMetrics } from '../sketch/js/pulse-field.js';
-import { thickLensCardinals } from '../sketch/js/elements.js';
+import { createElement, estimatedThinLensThicknessMm, thickLensCardinals } from '../sketch/js/elements.js';
+import { traceScene, detectorReading } from '../sketch/js/raytrace.js';
 import { analyzerTransmission, linearStokes, retarder } from '../sketch/js/polarization.js';
 import { finesseForReflectivity, reflectivityForFinesse } from '../sketch/js/etalon.js';
 import { parametricGainCoefficient, parametricPair, parametricSmallSignalGain } from '../sketch/js/parametric.js';
@@ -49,6 +50,26 @@ const C_NM_PER_FS = 299.792458;
 const egfp = JSON.parse(readFileSync(new URL('../sketch/data/fluorophores/egfp.json', import.meta.url), 'utf8'));
 
 const APP = {
+  // A traced scene: the reference's layout, read at its detector. The
+  // reference states the GDD of the paths; a thin lens's estimated glass is a
+  // separate model (estimatedThinLensThicknessMm) and is taken off again.
+  'ray-path-phase': ({ source, elements, detectorId }) => {
+    const laser = createElement('pulsedlaser', source.x, source.y);
+    laser.rot = source.rot;
+    Object.assign(laser.params, { beamMode: 'line', wavelength: source.wavelengthNm, transformLimited: false,
+      bandwidth: source.bandwidthNm, pulseWidthFs: 1000 });
+    const scene = elements.map(e => {
+      const el = createElement(e.type, e.x, e.y);
+      Object.assign(el, { id: e.id, rot: e.rot });
+      Object.assign(el.params, e.params);
+      return el;
+    });
+    traceScene([laser, ...scene]);
+    const lensGlass = scene.filter(el => el.type === 'lens')
+      .reduce((sum, el) => sum + glassGVD('nbk7', source.wavelengthNm) * estimatedThinLensThicknessMm(el.params), 0);
+    const pulse = detectorReading(detectorId)?.pulse;
+    return { gddFs2: pulse ? pulse.gddFs2 - lensGlass : NaN };
+  },
   fluorescence: ({ kind, ...inputs }) => {
     if (kind === 'crossSection') return { crossSectionCm2: absorptionCrossSectionCm2(inputs.extinctionM) };
     if (kind === 'focus') return { intensityWcm2: focusPeakIntensityWcm2(inputs.powerW, inputs.wavelengthNm, inputs.na) };
@@ -186,7 +207,7 @@ const APP = {
   },
 };
 
-for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence']) {
+for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase']) {
   const model = expected(name);
   for (const c of model.cases) {
     test(`${model.id}: ${c.name}`, () => {

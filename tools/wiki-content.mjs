@@ -1825,7 +1825,7 @@ export const wikiEntries = [
   },
   {
     type: 'prism',
-    summary: "Refracts light at its triangular glass boundaries, separating wavelengths through material dispersion and adding pulse dispersion according to the traced path.",
+    summary: "Refracts light at its triangular glass boundaries, separating wavelengths through material dispersion; a pulse's GDD comes from the paths its colours take, so a prism pair compresses.",
     title: 'Prism',
     category: 'Dispersive elements',
     realWorld: {
@@ -1851,15 +1851,26 @@ export const wikiEntries = [
         across their band, and each sample refracts with its own wavelength-dependent
         index, so the beam visibly fans into a spectrum. Fused silica and the SCHOTT
         glasses N-BK7, N-FK51A, N-SF5, N-SF10, N-SF11, N-SF14, N-SF57 and N-LASF9 are
-        selectable; existing sketches still default to N-BK7. Pulsed rays add
-        GDD from their actual traced distance inside the selected glass.</p>`,
+        selectable; existing sketches still default to N-BK7.</p>
+        <p>For a pulse, each colour carries the phase of its own traced path: the
+        index of the glass times the distance inside it, plus the air between. A
+        detector reads the GDD from those phases, so it includes what the geometry
+        does as well as the glass: a pair of prisms gives the negative GDD of a
+        prism compressor, more insertion adds the glass back, and the detector says
+        whether the colours arrive together, side by side, or still diverging (then
+        it gives the central ray's GDD and no duration).</p>`,
       formulas: [
         { tex: 'n^2(\\lambda)=1+\\sum_i\\frac{B_i\\lambda^2}{\\lambda^2-C_i}', caption: 'The selected glass\'s published three-term Sellmeier curve.' },
       ],
       limitations: `<p>The Sellmeier curves make refractive index and GDD accurate to a
         few percent over their valid transparent ranges, but absorption bands,
         temperature, coatings, and surface quality are not modeled; the fixed per-face
-        transmission is the only loss.</p>`,
+        transmission is the only loss. The path phase is two-dimensional, sampled at
+        five or nine wavelengths, and needs the colours to reach the detector through
+        elements whose phase is modelled (mirrors, glass, gratings, ideal lenses,
+        filters and similar); otherwise each ray keeps the GDD of its own glass path.
+        A probe on one colour cannot see the others, so after a prism it points to a
+        detector for the duration.</p>`,
     },
     related: ['grating', 'glassrod', 'freeglass', 'thicklens', 'dichroic'],
     resources: [
@@ -1894,8 +1905,17 @@ export const wikiEntries = [
         up the orders that geometrically exist. Their light is not dropped with them: it
         goes to the orders that do exist, as it does on a real grating when an order
         passes off. A 2400&nbsp;lines/mm grating at 532&nbsp;nm has nowhere to send the
-        beam but the zeroth order, and sends all of it there.</p>`,
-      formulas: [],
+        beam but the zeroth order, and sends all of it there.</p>
+        <p>For a pulse, each diffracted colour also carries the phase the grating
+        adds, <span class="w">2πm x/d</span> at the point <span class="w">x</span>
+        where it is diffracted, the term that turns it by the grating equation. With
+        the phase of its path, that gives a detector the GDD of a grating pair
+        (Treacy's compressor) or of a stretcher built with lenses, and a single
+        grating's fan reads as the central ray's GDD with no duration, since its
+        colours still diverge.</p>`,
+      formulas: [
+        { tex: '\\mathrm{GDD} = -\\frac{m^2\\lambda^3 G}{2\\pi c^2 d^2\\cos^3\\beta}', caption: "A parallel grating pair at perpendicular separation G and diffraction angle β (Treacy 1969); the tracer reproduces it from the traced paths." },
+      ],
       limitations: `<p>Diffraction efficiency is split evenly across the configured
         orders that propagate, rather than computed from the groove profile (a real
         blazed grating concentrates most of the light into one order by design) — order
