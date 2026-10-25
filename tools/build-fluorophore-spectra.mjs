@@ -100,7 +100,8 @@ const AGG = { m: 'monomer', d: 'dimer', wd: 'weak dimer', td: 'tandem dimer', t:
 
 const PROTEIN_QUERY = uuid => `{ protein(id: "${uuid}") { name slug agg
   primaryReference { doi citation title journal year volume pages }
-  states { name slug exMax emMax extCoeff qy lifetime
+  references { doi citation }
+  states { name slug exMax emMax extCoeff qy lifetime twopExMax twopPeakGm
     spectra { id subtype source reference { doi citation } } } } }`;
 
 const sha256 = async file => createHash('sha256').update(await readFile(file)).digest('hex');
@@ -118,8 +119,8 @@ async function get(url, init = {}) {
 }
 const exists = file => readFile(file).then(() => true, () => false);
 
-// The state an entry uses, and its excitation (or, without one, absorption)
-// and emission spectra.
+// The state an entry uses, its excitation (or, without one, absorption)
+// and emission spectra, and its two-photon spectrum where FPbase has one.
 function pick(entry, protein) {
   const states = protein.states.filter(s => s.exMax && s.emMax);
   const state = entry.state ? states.find(s => s.slug === `${protein.slug}_${entry.state}`) : states.length === 1 ? states[0] : null;
@@ -128,7 +129,7 @@ function pick(entry, protein) {
   const excitation = of('EX') ?? of('AB');
   const emission = of('EM');
   if (!excitation || !emission) throw new Error(`${entry.id}: needs an excitation or absorption spectrum and an emission spectrum`);
-  return { state, excitation, emission };
+  return { state, excitation, emission, twoPhoton: of('A_2P') ?? null };
 }
 
 async function fetchAll(dir) {
@@ -148,8 +149,8 @@ async function fetchAll(dir) {
     const record = JSON.parse(text);
     if (record.errors || !record.data?.protein) throw new Error(`${slug}: ${JSON.stringify(record.errors ?? 'no protein')}`);
     for (const entry of ENTRIES.filter(e => e.slug === slug)) {
-      const { excitation, emission } = pick(entry, record.data.protein);
-      for (const spectrum of [excitation, emission]) {
+      const { excitation, emission, twoPhoton } = pick(entry, record.data.protein);
+      for (const spectrum of [excitation, emission, twoPhoton].filter(Boolean)) {
         const file = join(dir, `spectrum-${spectrum.id}.csv`);
         if (await exists(file)) continue;
         await writeFile(file, await get(`${FPBASE}/spectra_csv/?q=${spectrum.id}`));
@@ -193,7 +194,7 @@ async function build(dir) {
   for (const entry of ENTRIES) {
     const recordFile = join(dir, `${entry.slug}.json`);
     const protein = JSON.parse(await readFile(recordFile, 'utf8')).data.protein;
-    const { state, excitation, emission } = pick(entry, protein);
+    const { state, excitation, emission, twoPhoton } = pick(entry, protein);
     const curves = {};
     for (const [role, spectrum] of [['excitation', excitation], ['emission', emission]]) {
       const file = join(dir, `spectrum-${spectrum.id}.csv`);
@@ -225,6 +226,23 @@ async function build(dir) {
       inputs.splice(-3);
       continue;
     }
+    // The two-photon spectrum, scaled to its peak near the wavelength FPbase
+    // lists with the peak cross-section (in GM); left out, with only the
+    // one-photon data kept, when that peak is not a peak of the curve.
+    let twoPhotonCurve = null;
+    if (twoPhoton) {
+      const file = join(dir, `spectrum-${twoPhoton.id}.csv`);
+      const curve = readCsv(await readFile(file, 'utf8'), twoPhoton.id, state.twopExMax ?? null);
+      if (curve.isPeak) {
+        delete curve.isPeak;
+        inputs.push({ id: entry.id, file: `spectrum-${twoPhoton.id}.csv`, sha256: await sha256(file) });
+        twoPhotonCurve = {
+          type: 'two-photon', fpbaseSpectrumId: Number(twoPhoton.id), peakGm: state.twopPeakGm ?? null,
+          ...(twoPhoton.reference?.doi ? { reference: { citation: twoPhoton.reference.citation, doi: twoPhoton.reference.doi } } : {}),
+          ...curve,
+        };
+      } else console.warn(`${entry.id}: two-photon spectrum left out, FPbase's ${state.twopExMax} nm is not a peak of it`);
+    }
     fluorophores.push({
       id: entry.id, name: entry.stateLabel ? `${protein.name} (${entry.stateLabel})` : protein.name,
       kind: 'protein', category: entry.category, source: 'fpbase', license: SOURCE.license,
@@ -235,13 +253,14 @@ async function build(dir) {
       reference: ref ? { citation: ref.citation, title: ref.title, journal: ref.journal, year: ref.year, volume: ref.volume, pages: ref.pages, doi: ref.doi } : null,
       spectraReferences: spectraRefs,
       ...curves,
+      ...(twoPhotonCurve ? { twoPhoton: twoPhotonCurve } : {}),
     });
   }
   // One curve, one protein: a copy of another entry's curve is not a
   // measurement of this one.
   const owners = new Map();
   for (const f of fluorophores) {
-    for (const role of ['excitation', 'emission']) {
+    for (const role of ['excitation', 'emission', 'twoPhoton'].filter(r => f[r])) {
       const key = `${f[role].startNm}:${f[role].values.join(',')}`;
       if (owners.has(key)) throw new Error(`${f.id} ${role}: the same curve as ${owners.get(key)}; leave one of them out`);
       owners.set(key, `${f.id} ${role}`);
@@ -256,6 +275,8 @@ async function build(dir) {
     const credits = [
       ...(f.reference ? [`protein: ${f.reference.citation}, ${f.reference.journal} (${f.reference.year}), doi:${f.reference.doi}`] : []),
       ...f.spectraReferences.map(r => `spectra: ${r.citation}, doi:${r.doi}`),
+      ...(f.twoPhoton?.reference && f.twoPhoton.reference.doi !== f.reference?.doi && !f.spectraReferences.some(r => r.doi === f.twoPhoton.reference.doi)
+        ? [`two-photon spectrum: ${f.twoPhoton.reference.citation}, doi:${f.twoPhoton.reference.doi}`] : []),
     ];
     const file = { ...f, attribution: `${SOURCE.citation}; ${credits.join('; ')}`, sourceUrl: f.fpbaseUrl, licenseUrl: SOURCE.licenseUrl, changes };
     await writeFile(join(DATA, `${f.id}.json`), `${JSON.stringify(file)}\n`);
@@ -263,8 +284,9 @@ async function build(dir) {
   const range = c => [c.startNm, c.startNm + (c.values.length - 1) * c.stepNm];
   // The index holds what a list and a quick estimate need; the references
   // and the curves are in each fluorophore's file.
-  const index = fluorophores.map(({ excitation, emission, reference, spectraReferences, fpbaseUrl, license, ...meta }) => ({
+  const index = fluorophores.map(({ excitation, emission, twoPhoton, reference, spectraReferences, fpbaseUrl, license, ...meta }) => ({
     ...meta, excitationType: excitation.type, excitationRangeNm: range(excitation), emissionRangeNm: range(emission),
+    ...(twoPhoton ? { twoPhotonPeakNm: twoPhoton.peakNm, twoPhotonPeakGm: twoPhoton.peakGm, twoPhotonRangeNm: range(twoPhoton) } : {}),
   }));
   const lines = list => `[\n${list.map(item => ` ${JSON.stringify(item)}`).join(',\n')}\n]`;
   const module = `// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
