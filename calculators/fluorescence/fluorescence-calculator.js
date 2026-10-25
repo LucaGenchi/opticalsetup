@@ -46,9 +46,9 @@ export const MAIN_INPUTS = [
   { id: 'source', group: 'source', label: 'Source', type: 'select', value: 'cw', options: Object.entries(SOURCE_LABELS), ...linear },
   { id: 'centerNm', group: 'source', label: 'Central wavelength', unit: 'nm', value: 488, min: SCOPE_NM[0], max: SCOPE_NM[1], arrowStep: 1, ...linear },
   { id: 'bandwidthNm', group: 'source', label: 'Bandwidth (FWHM)', unit: 'nm', value: 25, min: LED_MIN_BANDWIDTH_NM, max: LED_MAX_BANDWIDTH_NM, arrowStep: 1,
-    when: 'source', whenValue: 'led' },
+    all: [linear, { when: 'source', whenValue: 'led' }] },
   { id: 'pulseFs', group: 'source', label: 'Pulse duration (FWHM)', unit: 'fs', value: 100, min: 5, max: 1e6, arrowStep: 10,
-    when: 'source', whenValue: 'pulsed', help: 'Transform-limited Gaussian pulses; the bandwidth follows from the duration.' },
+    all: [linear, { when: 'source', whenValue: 'pulsed' }], help: 'Transform-limited Gaussian pulses; the bandwidth follows from the duration.' },
   { id: 'source2p', group: 'source', label: 'Source', type: 'select', value: 'pulsed', options: [['pulsed', SOURCE_LABELS.pulsed]], ...twoPhoton },
   { id: 'centerNm2p', group: 'source', label: 'Central wavelength', unit: 'nm', value: 920, min: TWO_PHOTON_SCOPE_NM[0], max: TWO_PHOTON_SCOPE_NM[1], arrowStep: 1, ...twoPhoton },
   { id: 'pulseFs2p', group: 'source', label: 'Pulse duration (FWHM)', unit: 'fs', value: 150, min: 5, max: 1e6, arrowStep: 10, ...twoPhoton,
@@ -354,7 +354,7 @@ export function computeRates(raw, context) {
     : pulsed ? pulsedMoleculeRates({ ...common, ...pulses, crossSectionCm2 })
       : moleculeRates({ ...common, crossSectionCm2, intensityWcm2 });
   // The average power that brings the molecule to saturation: kτ = 1, or
-  // one excitation per pulse (σF = 1, or σ₂g_pF²/τ_p = 1), at the
+  // one excitation per pulse (σF = 1, or σ₂g_pF²/(2τ_p) = 1), at the
   // repetition rate.
   const saturationPowerW = pulsed ? powerFor(v.repRateMHz * 1e6 * context.photonJ * (two ? rates.saturationFluence : 1 / crossSectionCm2))
     : rates.saturationIntensityWcm2 === null ? null : powerFor(rates.saturationIntensityWcm2);

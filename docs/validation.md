@@ -213,6 +213,7 @@ Sources:
 Sources:
 
 - C. Xu and W. W. Webb, J. Opt. Soc. Am. B 13, 481-491 (1996), doi:10.1364/JOSAB.13.000481 (two-photon excitation by Gaussian pulses, g_p)
+- S. de Reguardati, J. Pahapill, A. Mikhailov, Y. Stepanenko and A. Rebane, Opt. Express 24, 9053 (2016), doi:10.1364/OE.24.009053, Eqs. (1)-(2) (sigma2 by photon-flux loss; excitation rate sigma2 I^2 / 2)
 - J. R. Lakowicz, Principles of Fluorescence Spectroscopy, 3rd ed., Springer (2006), ISBN 978-0-387-31278-1: chapters 1-2 (extinction, quantum yield, lifetime)
 - M. Born and E. Wolf, Principles of Optics, 7th ed., Cambridge University Press (1999), section 8.5.2 (Airy pattern; 83.8 % inside the first dark ring)
 - NIST DLMF, chapter 10 (Bessel functions: power series 10.2.2, Hankel expansion 10.17.3)

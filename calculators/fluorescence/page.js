@@ -260,7 +260,7 @@ rate = mountCalculator({ panel: 'rate', inputs: RATE_INPUTS, defaults: RATE_DEFA
       ...(r.effectiveCrossSectionCm2 !== r.context.crossSectionCm2 ? [['Effective at the focus centre', r.effectiveCrossSectionCm2, 'cm²', 3]] : []),
     ]),
     ...(r.pulsed ? [
-      [r.twoPhoton ? 'Excitations per pulse n = σ₂g_pF²/τ_p' : 'Saturation parameter σF', r.saturationParameter, '', 3],
+      [r.twoPhoton ? 'Excitations per pulse n = σ₂g_pF²/(2τ_p)' : 'Saturation parameter σF', r.saturationParameter, '', 3],
       ['Probability of excitation per pulse', pct(r.probability), '%', 3],
       ['Fraction excited after each pulse', pct(r.excitedAfterPulse), '%', 3],
       ['Emission rate', r.emissionRate, 'photons/s', 3],
@@ -286,7 +286,7 @@ rate = mountCalculator({ panel: 'rate', inputs: RATE_INPUTS, defaults: RATE_DEFA
           : `No lifetime is listed for ${r.context.name}: the rates are unsaturated, and saturation is not estimated. Choose “Enter it” to add one.`);
     if (r.pulsed) {
       out.push(r.twoPhoton
-        ? 'Pulses much shorter than the lifetime: a Gaussian pulse of photon fluence F drives n = σ₂g_pF²/τ_p two-photon excitations (g_p = 0.664), so the molecule is excited with probability 1 − exp(−n), then decays until the next pulse. The signal grows with the square of the power until n nears 1.'
+        ? 'Pulses much shorter than the lifetime: a Gaussian pulse of photon fluence F drives n = σ₂g_pF²/(2τ_p) two-photon excitations (g_p = 0.664; the ½ because each excitation absorbs two photons), so the molecule is excited with probability 1 − exp(−n), then decays until the next pulse. The signal grows with the square of the power until n nears 1.'
         : 'Pulses much shorter than the lifetime: during a pulse the molecule does not decay, so it is excited with probability 1 − exp(−σF), then decays until the next pulse.');
       if (r.saturationParameter > 0.1) {
         out.push(r.twoPhoton

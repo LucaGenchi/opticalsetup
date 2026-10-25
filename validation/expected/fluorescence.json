@@ -910,8 +910,8 @@
   },
   {
    "expected": {
-    "emissionRate": 127.5420621,
-    "excitedAfterPulse": 2.67900488e-06
+    "emissionRate": 63.77107408,
+    "excitedAfterPulse": 1.339503344e-06
    },
    "inputs": {
     "crossSectionGm": 40,
@@ -922,7 +922,7 @@
     "quantumYield": 0.6,
     "repRateMHz": 80
    },
-   "name": "two-photon pulse train, n = 2.66e-06, 80 MHz, 100 fs, tau 2.6 ns",
+   "name": "two-photon pulse train, n = 1.33e-06, 80 MHz, 100 fs, tau 2.6 ns",
    "note": "As for one-photon pulse trains: the app's per-pulse model neglects decay during the pulse, a relative error of order pulse/lifetime (at most 4e-5 here).",
    "tolerance": {
     "emissionRate": 0.0001,
@@ -931,8 +931,8 @@
   },
   {
    "expected": {
-    "emissionRate": 29409001.16,
-    "excitedAfterPulse": 0.6177304494
+    "emissionRate": 18190484.61,
+    "excitedAfterPulse": 0.3820882349
    },
    "inputs": {
     "crossSectionGm": 40,
@@ -943,7 +943,7 @@
     "quantumYield": 0.6,
     "repRateMHz": 80
    },
-   "name": "two-photon pulse train, n = 0.957, 80 MHz, 100 fs, tau 2.6 ns",
+   "name": "two-photon pulse train, n = 0.478, 80 MHz, 100 fs, tau 2.6 ns",
    "note": "As for one-photon pulse trains: the app's per-pulse model neglects decay during the pulse, a relative error of order pulse/lifetime (at most 4e-5 here).",
    "tolerance": {
     "emissionRate": 0.0001,
@@ -952,8 +952,8 @@
   },
   {
    "expected": {
-    "emissionRate": 143852742.7,
-    "excitedAfterPulse": 0.7249599071
+    "emissionRate": 105498308.3,
+    "excitedAfterPulse": 0.5316696228
    },
    "inputs": {
     "crossSectionGm": 140,
@@ -964,7 +964,7 @@
     "quantumYield": 0.7,
     "repRateMHz": 1000
    },
-   "name": "two-photon pulse train, n = 0.558, 1000 MHz, 150 fs, tau 3 ns",
+   "name": "two-photon pulse train, n = 0.279, 1000 MHz, 150 fs, tau 3 ns",
    "note": "As for one-photon pulse trains: the app's per-pulse model neglects decay during the pulse, a relative error of order pulse/lifetime (at most 4e-5 here).",
    "tolerance": {
     "emissionRate": 0.0001,
@@ -974,6 +974,7 @@
  ],
  "citations": [
   "C. Xu and W. W. Webb, J. Opt. Soc. Am. B 13, 481-491 (1996), doi:10.1364/JOSAB.13.000481 (two-photon excitation by Gaussian pulses, g_p)",
+  "S. de Reguardati, J. Pahapill, A. Mikhailov, Y. Stepanenko and A. Rebane, Opt. Express 24, 9053 (2016), doi:10.1364/OE.24.009053, Eqs. (1)-(2) (sigma2 by photon-flux loss; excitation rate sigma2 I^2 / 2)",
   "J. R. Lakowicz, Principles of Fluorescence Spectroscopy, 3rd ed., Springer (2006), ISBN 978-0-387-31278-1: chapters 1-2 (extinction, quantum yield, lifetime)",
   "M. Born and E. Wolf, Principles of Optics, 7th ed., Cambridge University Press (1999), section 8.5.2 (Airy pattern; 83.8 % inside the first dark ring)",
   "NIST DLMF, chapter 10 (Bessel functions: power series 10.2.2, Hankel expansion 10.17.3)",

@@ -347,8 +347,12 @@ test('two-photon fluorescence: a pulsed laser on the two-photon spectrum', () =>
   // The graph spans the laser and the emission.
   assert.ok(r.plot.x[0] <= 500 && r.plot.x.at(-1) >= 1000);
   assert.ok(r.plot.curves[0].ex.every(Number.isFinite));
-  // The linear-mode inputs do not apply, and keep their own values.
+  // The linear-mode inputs do not apply, and keep their own values, even
+  // with an LED or a pulsed laser chosen there (review of #266).
   assert.equal(run({ process: 'twophoton', centerNm: '' }).ok, true);
+  assert.equal(run({ process: 'twophoton', source: 'led', bandwidthNm: '' }).ok, true);
+  assert.equal(run({ process: 'twophoton', source: 'pulsed', pulseFs: '' }).ok, true);
+  assert.equal(run({ source: 'led', bandwidthNm: '' }).ok, false, 'still required in linear mode');
   assert.equal(run({ process: 'twophoton', centerNm2p: 500 }).ok, false, 'below the two-photon range');
   // Broad pulses are declined: 10 fs at 920 nm is 12.4 % of the wavelength.
   const broad = run({ process: 'twophoton', pulseFs2p: 10 });
@@ -365,7 +369,7 @@ test('two-photon fluorescence: a pulsed laser on the two-photon spectrum', () =>
   close(two.second.signal, mcherry.twoPhoton.peakGm * two.second.relative * 0.22 * two.second.detected, 1e-12);
 });
 
-test('two-photon rates: n = σ₂ g_p F²/τ_p per pulse, its quadratic limit and saturation', () => {
+test('two-photon rates: n = σ₂ g_p F²/(2τ_p) per pulse, its quadratic limit and saturation', () => {
   close(TWO_PHOTON_GP, Math.sqrt(2 * Math.LN2 / Math.PI), 1e-15);
   const main = run({ process: 'twophoton' });
   const context = { process: 'twophoton', source: main.source, photonJ: main.photonJ, name: 'EGFP', crossSectionGm: main.main.twoPhotonCrossSectionGm,
@@ -376,7 +380,8 @@ test('two-photon rates: n = σ₂ g_p F²/τ_p per pulse, its quadratic limit an
   assert.equal(r.ok, true);
   assert.equal(r.twoPhoton, true);
   const F = r.intensityWcm2 / (80e6 * main.photonJ);
-  close(r.saturationParameter, context.crossSectionGm * GM_CM4_S * TWO_PHOTON_GP * F * F / 150e-15, 1e-12);
+  // σ₂ is an absorption cross-section: two photons per excitation (review of #266).
+  close(r.saturationParameter, context.crossSectionGm * GM_CM4_S * TWO_PHOTON_GP * F * F / (2 * 150e-15), 1e-12);
   // Far below saturation the signal goes as the square of the power.
   const a = computeRates({ ...RATE_DEFAULTS, powerMw2p: 0.1 }, context), b = computeRates({ ...RATE_DEFAULTS, powerMw2p: 0.2 }, context);
   close(b.emissionRate / a.emissionRate, 4, 1e-3);

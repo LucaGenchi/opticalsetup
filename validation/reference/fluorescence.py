@@ -24,7 +24,7 @@ wherever one exists:
 - the average over an LED band by Simpson quadrature, and a band's
   leakage through hard filters by the closed-form integral of lambda times
   a Gaussian;
-- pulsed excitation, one- and two-photon (k = sigma phi, or sigma2 phi^2),
+- pulsed excitation, one- and two-photon (k = sigma phi, or sigma2 phi^2 / 2),
   by integrating the rate equation through trains of finite Gaussian
   pulses until the state after a pulse repeats;
 - the narrowest notch that reaches its blocking by bisection;
@@ -410,14 +410,16 @@ def focus_factor_case(center, pulse_fs):
 
 def two_photon_train_case(fluence_photons, sigma2_gm, rep_mhz, pulse_fs, lifetime_ns, qy):
     """Two-photon excitation by Gaussian pulses: the rate equation with
-    k(t) = sigma2 phi(t)^2 integrated through each pulse by RK4 (decay
+    k(t) = sigma2 phi(t)^2 / 2 (de Reguardati et al., Opt. Express 24, 9053
+    (2016), Eq. (2): sigma2 defined by the photon-flux loss, two photons per
+    excitation) integrated through each pulse by RK4 (decay
     included), exact decay until the next pulse, repeated until the state
     after a pulse repeats. The pulse's temporal factor g_p is not used: it
     comes out of the integration."""
     tau, period, tp = lifetime_ns * 1e-9, 1e-6 / rep_mhz, pulse_fs * 1e-15
     sigma2 = sigma2_gm * 1e-50
     peak = fluence_photons * 2 * math.sqrt(math.log(2) / math.pi) / tp
-    k = lambda t: sigma2 * (peak * math.exp(-4 * math.log(2) * t * t / (tp * tp))) ** 2
+    k = lambda t: 0.5 * sigma2 * (peak * math.exp(-4 * math.log(2) * t * t / (tp * tp))) ** 2
     f = lambda t, y: k(t) * (1 - y) - y / tau
     steps, span = 4000, 8 * tp
     h = span / steps
@@ -437,7 +439,7 @@ def two_photon_train_case(fluence_photons, sigma2_gm, rep_mhz, pulse_fs, lifetim
             break
         before = next_before
     expected = {"excitedAfterPulse": sig(after * math.exp(span / 2 / tau)), "emissionRate": sig(rep_mhz * 1e6 * qy * emitted)}
-    n = sigma2 * math.sqrt(2 * math.log(2) / math.pi) * fluence_photons ** 2 / tp
+    n = 0.5 * sigma2 * math.sqrt(2 * math.log(2) / math.pi) * fluence_photons ** 2 / tp
     return {"name": f"two-photon pulse train, n = {n:.3g}, {rep_mhz:g} MHz, {pulse_fs:g} fs, tau {lifetime_ns:g} ns",
             "inputs": {"kind": "twoPhotonPulsed", "fluence": fluence_photons, "crossSectionGm": sigma2_gm, "repRateMHz": rep_mhz,
                        "pulseFs": pulse_fs, "lifetimeNs": lifetime_ns, "quantumYield": qy},
@@ -512,6 +514,7 @@ MODEL = {
     "reference": "Beer-Lambert slab for sigma; Airy-pattern power by Bessel quadrature; RK4 two-level steady state with bisection for saturation, and RK4 through trains of finite Gaussian pulses; solid-angle quadrature; exact piecewise integration of the stored spectrum through hard filters and Simpson quadrature through logistic edges; band averages by Simpson quadrature and by the closed-form Gaussian integral; notch width by bisection; datasheet sensitivities converted to QE",
     "citations": [
         "C. Xu and W. W. Webb, J. Opt. Soc. Am. B 13, 481-491 (1996), doi:10.1364/JOSAB.13.000481 (two-photon excitation by Gaussian pulses, g_p)",
+        "S. de Reguardati, J. Pahapill, A. Mikhailov, Y. Stepanenko and A. Rebane, Opt. Express 24, 9053 (2016), doi:10.1364/OE.24.009053, Eqs. (1)-(2) (sigma2 by photon-flux loss; excitation rate sigma2 I^2 / 2)",
         "J. R. Lakowicz, Principles of Fluorescence Spectroscopy, 3rd ed., Springer (2006), ISBN 978-0-387-31278-1: chapters 1-2 (extinction, quantum yield, lifetime)",
         "M. Born and E. Wolf, Principles of Optics, 7th ed., Cambridge University Press (1999), section 8.5.2 (Airy pattern; 83.8 % inside the first dark ring)",
         "NIST DLMF, chapter 10 (Bessel functions: power series 10.2.2, Hankel expansion 10.17.3)",

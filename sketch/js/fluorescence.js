@@ -311,17 +311,20 @@ export const GM_CM4_S = 1e-50;
 // ∫φ(t)²dt = g_p F²/τ_p for a Gaussian pulse of FWHM τ_p: g_p = √(2 ln2/π).
 export const TWO_PHOTON_GP = Math.sqrt(2 * Math.LN2 / Math.PI);
 
-// Two-photon excitation by short Gaussian pulses: a pulse of photon fluence
-// F drives n = σ₂ g_p F²/τ_p excitations in a ground-state molecule, σ₂ the
-// two-photon cross-section; the pulse train then responds as above. n = 1
-// is saturation, at the fluence F = √(τ_p/(σ₂ g_p)).
+// Two-photon excitation by short Gaussian pulses. σ₂ is the two-photon
+// absorption cross-section, defined by the loss of photon flux, so each
+// excitation takes two absorbed photons and the excitation rate is ½σ₂φ²
+// (the convention of the standards FPbase's values are measured against).
+// A pulse of photon fluence F then drives n = σ₂ g_p F²/(2τ_p) excitations
+// in a ground-state molecule; the pulse train responds as above. n = 1 is
+// saturation, at the fluence F = √(2τ_p/(σ₂ g_p)).
 export function twoPhotonPulsedRates({ averageIntensityWcm2, photonJ, crossSectionGm, repRateMHz, pulseFs, lifetimeNs = null, quantumYield }) {
   const rep = repRateMHz * 1e6, tau = pulseFs * 1e-15, sigma2 = crossSectionGm * GM_CM4_S;
   const fluence = averageIntensityWcm2 / (rep * photonJ);
   return {
-    pulseFluence: fluence, ...pulseTrainResponse(sigma2 * TWO_PHOTON_GP * fluence * fluence / tau, rep, lifetimeNs, quantumYield),
+    pulseFluence: fluence, ...pulseTrainResponse(sigma2 * TWO_PHOTON_GP * fluence * fluence / (2 * tau), rep, lifetimeNs, quantumYield),
     peakIntensityWcm2: averageIntensityWcm2 / rep * GAUSS_PEAK_FACTOR / tau,
-    saturationFluence: sigma2 > 0 ? Math.sqrt(tau / (sigma2 * TWO_PHOTON_GP)) : null,
+    saturationFluence: sigma2 > 0 ? Math.sqrt(2 * tau / (sigma2 * TWO_PHOTON_GP)) : null,
   };
 }
 
