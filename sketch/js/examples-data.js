@@ -166,6 +166,12 @@ export const examples = [
   },
   {
     "group": "Ultrashort Pulses",
+    "name": "Prism compressor — undoing the chirp of a glass rod",
+    "path": "../Examples/Ultrashort%20Pulses/Prism%20compressor%20%E2%80%94%20undoing%20the%20chirp%20of%20a%20glass%20rod.json",
+    "slug": "prism-compressor-undoing-the-chirp-of-a-glass-rod"
+  },
+  {
+    "group": "Ultrashort Pulses",
     "name": "Ultrashort pulse chirping",
     "path": "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json",
     "slug": "ultrashort-pulse-chirping"

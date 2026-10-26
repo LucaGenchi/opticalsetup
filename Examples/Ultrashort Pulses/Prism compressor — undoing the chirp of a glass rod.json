@@ -1,0 +1,303 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "t1",
+   "type": "textlabel",
+   "x": 40,
+   "y": 40,
+   "rot": 0,
+   "params": {
+    "text": "Prism compressor — undoing the chirp of a glass rod",
+    "fontSize": 18,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "t2",
+   "type": "textlabel",
+   "x": 40,
+   "y": 70,
+   "rot": 0,
+   "params": {
+    "text": "800 nm · 31 fs transform-limited Gaussian · four N-SF10 Brewster prisms, GDD from the traced ray paths",
+    "fontSize": 13,
+    "fill": "#666666"
+   }
+  },
+  {
+   "id": "t3",
+   "type": "textlabel",
+   "x": 40,
+   "y": 130,
+   "rot": 0,
+   "params": {
+    "text": "1 — REFERENCE: nothing in the beam. 31 fs in, 31 fs measured.",
+    "fontSize": 14,
+    "fill": "#276aa2"
+   }
+  },
+  {
+   "id": "src1",
+   "type": "pulsedlaser",
+   "x": 100.0,
+   "y": 195,
+   "rot": 0,
+   "params": {
+    "wavelength": 800,
+    "beamMode": "line",
+    "pulseWidthFs": 31.4,
+    "transformLimited": true,
+    "pulseShape": "gauss",
+    "repRateMHz": 80,
+    "avgPowerW": 0.1,
+    "showPulse": true
+   },
+   "label": "31 fs · 800 nm",
+   "showLabel": true,
+   "labelPos": "t"
+  },
+  {
+   "id": "ac1",
+   "type": "autocorrelator",
+   "x": 600,
+   "y": 195,
+   "rot": 0,
+   "params": {
+    "aperture": 34,
+    "assumedShape": "gauss",
+    "timeSpanPs": 0.5
+   },
+   "label": "autocorrelator",
+   "showLabel": true,
+   "labelPos": "b"
+  },
+  {
+   "id": "sc1",
+   "type": "display",
+   "x": 1000,
+   "y": 195,
+   "rot": 0,
+   "params": {
+    "sensorId": "ac1",
+    "displayScale": 1.7,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "t4",
+   "type": "textlabel",
+   "x": 40,
+   "y": 345,
+   "rot": 0,
+   "params": {
+    "text": "2 — CHIRPED: 30 mm of N-BK7 adds about +1 340 fs². The pulse stretches to about 122 fs.",
+    "fontSize": 14,
+    "fill": "#8f2d2d"
+   }
+  },
+  {
+   "id": "src2",
+   "type": "pulsedlaser",
+   "x": 100.0,
+   "y": 410,
+   "rot": 0,
+   "params": {
+    "wavelength": 800,
+    "beamMode": "line",
+    "pulseWidthFs": 31.4,
+    "transformLimited": true,
+    "pulseShape": "gauss",
+    "repRateMHz": 80,
+    "avgPowerW": 0.1,
+    "showPulse": true
+   }
+  },
+  {
+   "id": "rod2",
+   "type": "glassrod",
+   "x": 230,
+   "y": 410,
+   "rot": 0,
+   "params": {
+    "material": "nbk7",
+    "rodlen": 30,
+    "dia": 20,
+    "ior": 1.52
+   },
+   "label": "N-BK7 · 30 mm",
+   "showLabel": true,
+   "labelPos": "b"
+  },
+  {
+   "id": "ac2",
+   "type": "autocorrelator",
+   "x": 600,
+   "y": 410,
+   "rot": 0,
+   "params": {
+    "aperture": 34,
+    "assumedShape": "gauss",
+    "timeSpanPs": 0.5
+   }
+  },
+  {
+   "id": "sc2",
+   "type": "display",
+   "x": 1000,
+   "y": 410,
+   "rot": 0,
+   "params": {
+    "sensorId": "ac2",
+    "displayScale": 1.7,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "t5",
+   "type": "textlabel",
+   "x": 40,
+   "y": 560,
+   "rot": 0,
+   "params": {
+    "text": "3 — COMPRESSED: four Brewster prisms (161 mm of air within each pair) give the opposite GDD from their geometry. Back to 31 fs.",
+    "fontSize": 14,
+    "fill": "#1f7a4d"
+   }
+  },
+  {
+   "id": "src3",
+   "type": "pulsedlaser",
+   "x": 100.0,
+   "y": 625,
+   "rot": 0,
+   "params": {
+    "wavelength": 800,
+    "beamMode": "line",
+    "pulseWidthFs": 31.4,
+    "transformLimited": true,
+    "pulseShape": "gauss",
+    "repRateMHz": 80,
+    "avgPowerW": 0.1,
+    "showPulse": true
+   }
+  },
+  {
+   "id": "rod3",
+   "type": "glassrod",
+   "x": 230,
+   "y": 625,
+   "rot": 0,
+   "params": {
+    "material": "nbk7",
+    "rodlen": 30,
+    "dia": 20,
+    "ior": 1.52
+   }
+  },
+  {
+   "type": "prism",
+   "id": "p1",
+   "x": 425.4923,
+   "y": 635.055354,
+   "rot": 29.400070911,
+   "params": {
+    "apex": 60.599929089,
+    "psize": 25.4,
+    "material": "nsf10"
+   },
+   "label": "N-SF10 Brewster prisms",
+   "showLabel": true,
+   "labelPos": "t"
+  },
+  {
+   "type": "prism",
+   "id": "p2",
+   "x": 521.441818,
+   "y": 755.639774,
+   "rot": 209.400070911,
+   "params": {
+    "apex": 60.599929089,
+    "psize": 25.4,
+    "material": "nsf10"
+   }
+  },
+  {
+   "type": "prism",
+   "id": "p3",
+   "x": 614.15321,
+   "y": 755.639774,
+   "rot": 150.599929089,
+   "params": {
+    "apex": 60.599929089,
+    "psize": 25.4,
+    "material": "nsf10"
+   }
+  },
+  {
+   "type": "prism",
+   "id": "p4",
+   "x": 710.102728,
+   "y": 635.055354,
+   "rot": 330.599929089,
+   "params": {
+    "apex": 60.599929089,
+    "psize": 25.4,
+    "material": "nsf10"
+   }
+  },
+  {
+   "id": "ac3",
+   "type": "autocorrelator",
+   "x": 853.595029,
+   "y": 625.0,
+   "rot": 0.0,
+   "params": {
+    "aperture": 34,
+    "assumedShape": "gauss",
+    "timeSpanPs": 0.5
+   }
+  },
+  {
+   "id": "sc3",
+   "type": "display",
+   "x": 1100,
+   "y": 625,
+   "rot": 0,
+   "params": {
+    "sensorId": "ac3",
+    "displayScale": 1.7,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "t6",
+   "type": "textlabel",
+   "x": 40,
+   "y": 930,
+   "rot": 0,
+   "params": {
+    "text": "The prisms' GDD is not a set number: each colour is traced through the glass and the air between, and the",
+    "fontSize": 12,
+    "fill": "#666666"
+   }
+  },
+  {
+   "id": "t7",
+   "type": "textlabel",
+   "x": 40,
+   "y": 952,
+   "rot": 0,
+   "params": {
+    "text": "detector reads the GDD from the phases of those paths. Push a prism further into the beam to add glass back.",
+    "fontSize": 12,
+    "fill": "#666666"
+   }
+  }
+ ],
+ "beams": []
+}
