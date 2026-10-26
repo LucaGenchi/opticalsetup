@@ -365,3 +365,25 @@ test('the aperture stop clips at its radius; real aiming fills it exactly', () =
     }
   }
 });
+
+// Review of #267 (follow-up): conic roots seed Newton for an asphere, so they
+// are checked against the bare conic. Checking them against the full sag
+// threw the seed away; the vertex-plane fallback then fell outside the
+// sphere (r = 11 > R = 10) and a ray that does meet the surface was a miss.
+test('an asphere keeps its conic seed when the vertex-plane crossing is outside the conic', async () => {
+  const { makeSurface, intersect, sag } = await import('../calculators/lens-design/engine/surfaces.js');
+  const surf = makeSurface({ radius: 10, conic: 0, asphere: [1e-5] });
+  const n = Math.sqrt(26), P = [0, 11, 0], D = [0, -1 / n, 5 / n];
+  const hit = intersect(surf, P, D, -Infinity);
+  assert.ok(hit.t !== undefined, `got ${JSON.stringify(hit)}`);
+  // Independent bisection on z(t) − sag(t) over the near sheet.
+  const g = t => P[2] + t * D[2] - sag(surf, (P[1] + t * D[1]) ** 2);
+  let lo = 6, hi = 9; // at t < 5.1 the ray is still outside the sphere
+  assert.ok(g(lo) < 0 && g(hi) > 0);
+  for (let i = 0; i < 200; i++) { const mid = (lo + hi) / 2; if (g(mid) < 0) lo = mid; else hi = mid; }
+  close(hit.t, lo, 1e-10, 't');
+  close(P[1] + hit.t * D[1], 9.5660366395, 1e-9, 'y (Andrea’s bisection)');
+  close(P[2] + hit.t * D[2], 7.1698168024, 1e-9, 'z (Andrea’s bisection)');
+  // The same ray without the A4 term still meets the bare sphere.
+  assert.ok(intersect(makeSurface({ radius: 10 }), P, D, -Infinity).t !== undefined);
+});

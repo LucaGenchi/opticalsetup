@@ -95,11 +95,15 @@ export function intersect(surf, P, D, minT = -1e-9) {
     if (q !== 0) roots.push(C / q);
     if (A !== 0) roots.push(q / A);
   }
+  // The roots solve the bare conic, so they are checked against it; the
+  // polynomial terms enter only in the Newton refinement below. Checking
+  // them against the full sag would reject a good seed of an asphere.
+  const conic = surf.hasAsphere ? { c, k, a: [] } : surf;
   const onSheet = t => {
     const x = px + t * dx, y = py + t * dy, rho = x * x + y * y;
     if (!Number.isFinite(t) || rho > conicDomain(surf) * (1 + 1e-12)) return false;
     const z = pz + t * dz;
-    return Math.abs(z - sag(surf, rho)) <= 1e-7 * Math.max(1, Math.abs(z));
+    return Math.abs(z - sag(conic, rho)) <= 1e-7 * Math.max(1, Math.abs(z));
   };
   const valid = roots.filter(onSheet).sort((a, b) => a - b);
   // The first crossing along the ray that is not behind it. For the first
