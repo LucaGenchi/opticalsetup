@@ -107,7 +107,9 @@ app on 2026-09-29. For the overview, see [the README](../README.md).
   aperture stops and emergent axial colour, with ray intersections and surface
   normals computed on the true curved surface, and catalogue-glass dispersion,
   spectral band arithmetic at filters, Malus's law, grating equation,
-  Sellmeier glass/prism dispersion and second-order pulse GDD, cavity round trips
+  Sellmeier glass/prism dispersion and second-order pulse GDD, Fresnel
+  transmission and polarization at prism faces
+  ([docs/physics/prism-fresnel.md](physics/prism-fresnel.md)), cavity round trips
   with partial mirrors (a passive loop's remaining round trips summed in closed
   form), optical parametric oscillation and seeded amplification with photon
   accounting (a stretched seed amplified colour by colour where the pump meets

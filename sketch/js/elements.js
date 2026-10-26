@@ -3021,6 +3021,35 @@ export const registry = {
     },
   },
 
+  // A mirror coated right up to one straight, unbevelled edge, so a beam
+  // can pass just beside that edge while one a few millimetres over is
+  // reflected: the pickoff of a folded compressor or a double pass. In this
+  // top view it reflects exactly as a flat mirror does; the drawing marks the
+  // sharp edge (square, coated to the end) against the round back.
+  dmirror: {
+    label: 'D-shaped mirror', category: 'Mirrors', paletteOrder: 0.5, size: { w: 16, h: 30 },
+    aliases: ['d mirror', 'd-shaped pickoff', 'pickoff mirror', 'pick-off mirror', 'knife-edge mirror', 'half mirror'],
+    params: [
+      { key: 'length', label: 'Optic size', type: 'optsize', def: 12.7 },
+      { key: 'sharpEdge', label: 'Sharp edge', type: 'select', def: 'top', options: [['top', 'Top end'], ['bottom', 'Bottom end']] },
+      ...reflectivityParams(),
+    ],
+    size_: el => ({ w: 16, h: el.params.length + 6 }),
+    svg(el) {
+      const L = el.params.length / 2, sign = el.params.sharpEdge === 'bottom' ? 1 : -1;
+      // The substrate behind the face: square at the sharp edge, rounded at
+      // the other end, where the D's curve is.
+      const sharp = sign * L, round = -sign * L, r = Math.min(4, L / 2);
+      const body = `<path d="M 0,${sharp} L -6,${sharp} L -6,${round - sign * r} Q -6,${round} ${-6 + r},${round} L 0,${round} Z" fill="#e8eaee" stroke="#888" stroke-width="1"/>`;
+      return body + `<line x1="0" y1="${-L}" x2="0" y2="${L}" stroke="#444" stroke-width="3.5"/>`
+        + `<line x1="-7" y1="${sharp}" x2="3" y2="${sharp}" stroke="#444" stroke-width="1.5"/>`;
+    },
+    surfaces(el) {
+      const L = el.params.length / 2;
+      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'mirror', data: { refl: el.params.refl, showTransmitted: el.params.showTransmitted } }];
+    },
+  },
+
   galvo: {
     label: 'Galvo mirror', category: 'Mirrors', paletteOrder: 4, size: { w: 30, h: 40 },
     size_: el => {
@@ -4008,6 +4037,11 @@ export const registry = {
       { key: 'lines', label: 'Lines / mm', type: 'number', min: 50, max: 3600, step: 50, def: 600 },
       { key: 'orders', label: 'Orders (e.g. -1,0,1)', type: 'text', def: '1' },
       { key: 'transmissive', label: 'Transmissive', type: 'checkbox', def: false },
+      // What a diffracted order keeps of the power its share brings, per
+      // bounce: a compressor's four bounces at 90 % pass 66 %. The rest is
+      // lost (absorbed or sent to orders not traced). 100 % keeps scenes
+      // saved before the setting existed as they were.
+      { key: 'efficiency', label: 'Diffraction efficiency per order (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
     ],
     size_: el => ({ w: 16, h: el.params.length + 6 }),
@@ -4020,7 +4054,8 @@ export const registry = {
     surfaces(el) {
       const L = el.params.length / 2, p = el.params;
       const orders = [...new Set(String(p.orders).split(',').map(s => parseInt(s.trim(), 10)).filter(n => Number.isFinite(n)))].slice(0, 21);
-      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'grating', data: { d: 1e6 / p.lines, orders: orders.length ? orders : [1], transmissive: p.transmissive } }];
+      const efficiency = Math.min(1, Math.max(0.01, (Number(p.efficiency) || 100) / 100));
+      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'grating', data: { d: 1e6 / p.lines, orders: orders.length ? orders : [1], transmissive: p.transmissive, efficiency } }];
     },
   },
 
@@ -4061,7 +4096,9 @@ export const registry = {
     },
     surfaces(el) {
       const { left, top, right } = prismGeometry(el);
-      const data = { material: el.params.material, transmission: 0.98 };
+      // Fresnel at each face, from its real angle and the light's
+      // polarization (docs/physics/prism-fresnel.md).
+      const data = { material: el.params.material, fresnel: true };
       return [
         { x1: left.x, y1: left.y, x2: top.x, y2: top.y, kind: 'refract', data: { ...data, topologyKey: 'edge-0' } },
         { x1: top.x, y1: top.y, x2: right.x, y2: right.y, kind: 'refract', data: { ...data, topologyKey: 'edge-1' } },
@@ -6006,6 +6043,7 @@ const DIRECT = {
   pointsource: { resize: { uniform: 'displayScale' }, tune: { key: 'spread', short: 'angle' } },
   objarrow: { resize: { y: 'height' }, tune: { key: 'spread', short: 'fan', when: p => p.raysMode === 'fan' } },
   mirror: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
+  dmirror: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
   galvo: { resize: { y: 'length' }, tune: { key: 'commandAngle', short: 'center' } },
   polygonscanner: { resize: { uniform: 'diameter' }, tune: { key: 'scanPhase', short: 'phase' } },
   retroreflector: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },

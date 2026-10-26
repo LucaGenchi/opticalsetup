@@ -73,7 +73,7 @@
         </div>
         <div class="cat">
           <div class="cat-name">Mirrors</div>
-          <ul><li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/conicmirror/" class="">Conic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/polygonscanner/" class="">Polygon scanner</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li></ul>
+          <ul><li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/dmirror/" class="">D-shaped mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/conicmirror/" class="">Conic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/polygonscanner/" class="">Polygon scanner</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Lenses</div>
@@ -176,7 +176,9 @@
         goes to the orders that do exist, as it does on a real grating when an order
         passes off. A 2400&nbsp;lines/mm grating at 532&nbsp;nm has nowhere to send the
         beam but the zeroth order, and sends all of it there.</p>
-        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>Diffraction efficiency is split evenly across the configured
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p><strong>Diffraction efficiency per order</strong> sets the share
+        each diffracted order keeps per bounce (100&nbsp;% by default, so older sketches are
+        unchanged); a compressor's four bounces at 90&nbsp;% pass 66&nbsp;%. Power is split evenly across the configured
         orders that propagate, rather than computed from the groove profile (a real
         blazed grating concentrates most of the light into one order by design) — order
         existence and angle are exact, relative brightness between orders is not. Since
