@@ -83,9 +83,9 @@ function fitPhases(xs, phis) {
 // (path − path_ref)/λ + (cycles − cycles_ref). What that leaves out,
 // path_ref/λ = path_ref ω/2πc and a constant, is linear in ω and carries no
 // GDD; kept in, its 1e7 rad would bury the curvature of a narrow band.
-// `gddNoiseFs2` is what the paths' rounding can move the GDD by. Below it the
-// GDD is not resolved; it then cannot change a duration either, since both
-// the noise and the squared transform limit scale as 1/Δω².
+// `gddNoiseFs2` is what the paths' rounding can move the GDD by: the GDD is
+// gddFs2 ± gddNoiseFs2. It grows as the band narrows and as the coordinates
+// grow, so a caller that relies on the GDD has to check it.
 export function pathPhaseFit(samples, centerNm, { loNm = null, hiNm = null, coordinateScaleMm = 0 } = {}) {
   if (!(centerNm > 0) || !Array.isArray(samples)) return null;
   const w0 = omegaOf(centerNm);

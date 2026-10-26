@@ -111,6 +111,9 @@ const PATH_PHASE_SURFACES = new Set([
 const PATH_PHASE_ANGLE_RAD = 1e-5;
 // The path GDD counts as resolved when rounding moves it by under 1 %.
 const PATH_PHASE_RESOLVED = 0.01;
+// Where it does not, the duration must agree to 1 % across the uncertainty.
+const PATH_PHASE_DURATION_TOLERANCE = 0.01;
+const pathPhaseUncertain = fs2 => `GDD from the ray paths uncertain by ±${fs2 < 10 ? fs2.toFixed(2) : Math.round(fs2).toLocaleString()} fs² from rounding (a very narrow band, or a scene far from the origin), enough to change the duration — duration unavailable`;
 const PATH_PHASE_OFFSET_MM = 0.01;
 const PATH_PHASE_PROBE_NOTE = 'After a prism or grating the colours travel apart; a detector reads the duration from all of them';
 const PATH_PHASE_ANGULAR = 'Colours leave at different angles — angular dispersion remains, so there is no single duration here; the GDD shown is the central ray\u2019s';
@@ -1032,16 +1035,16 @@ function withPathPhase(hits) {
     const coordinateScaleMm = Math.max(...group.map(h => Math.max(Math.abs(h.arrivalX), Math.abs(h.arrivalY))));
     const fit = pathPhaseFit(samples, centerNm, { loNm: pulse?.spectrumLoNm, hiNm: pulse?.spectrumHiNm, coordinateScaleMm });
     if (!fit) continue;
-    // A band so narrow that rounding in the paths can move the GDD by more
-    // than 1 % (or 0.01 fs²) does not resolve it. The paths then add none:
-    // a GDD below that bound cannot change the duration of so narrow a band.
-    const unresolved = fit.gddNoiseFs2 > Math.max(PATH_PHASE_RESOLVED * Math.abs(fit.gddFs2), 0.01);
+    // Rounding in the paths can move the GDD by up to gddNoiseFs2. Where
+    // that exceeds 1 % (or 0.01 fs²) -- a very narrow band, or a scene far
+    // from the origin -- the estimate is kept with that uncertainty, and the
+    // duration is checked at both ends of it (see the trains below).
+    const uncertain = fit.gddNoiseFs2 > Math.max(PATH_PHASE_RESOLVED * Math.abs(fit.gddFs2), 0.01);
     const pathGddAt = nm => {
-      if (unresolved) return 0;
       const x = 2 * Math.PI * C_NM_PER_FS * (1 / nm - 1 / centerNm);
       return fit.gddFs2 + fit.todFs3 * x + fit.fodFs4 * x * x / 2;
     };
-    const pathSpread = unresolved ? 0 : fit.delaySpreadFs;
+    const pathSpread = fit.delaySpreadFs;
     const groupDelayDifferenceFs = Number.isFinite(pathSpread)
       ? ref.groupDelayDifferenceFs - ref.pathPhase.glassSpreadFs + pathSpread : null;
     // The duration uses the GDD alone, as it does for glass; say so when the
@@ -1050,20 +1053,19 @@ function withPathPhase(hits) {
     const higher = halfWidthNm > 0 && halfWidthNm < centerNm ? Math.max(
       Math.abs(higherOrderPhaseRad(fit, centerNm, centerNm - halfWidthNm)),
       Math.abs(higherOrderPhaseRad(fit, centerNm, centerNm + halfWidthNm))) : 0;
-    const pathPhaseNote = unresolved
-      ? 'GDD from the ray paths not resolved at this bandwidth; too small to change this duration'
-      : [
-        lateral > PATH_PHASE_OFFSET_MM ? 'GDD from the ray paths, on the central ray: the colours arrive side by side'
-          : 'GDD from the ray paths',
-        ...(higher > PATH_PHASE_HIGHER_ORDER_RAD ? ['third- and higher-order phase, not in this duration, is large across the bandwidth'] : []),
-      ].join('; ');
+    const pathPhaseNote = [
+      lateral > PATH_PHASE_OFFSET_MM ? 'GDD from the ray paths, on the central ray: the colours arrive side by side'
+        : 'GDD from the ray paths',
+      ...(uncertain ? ['rounding in the traced paths leaves it uncertain; the duration holds across that range'] : []),
+      ...(higher > PATH_PHASE_HIGHER_ORDER_RAD ? ['third- and higher-order phase, not in this duration, is large across the bandwidth'] : []),
+    ].join('; ');
     for (const h of group) {
       replaced.set(h, {
         ...h, gddFs2: h.gddFs2 - h.pathPhase.glassGddFs2 + pathGddAt(h.wl),
         ...(groupDelayDifferenceFs === null ? {} : { groupDelayDifferenceFs }),
         pathPhaseNote,
         pathPhaseAngular: angular > PATH_PHASE_ANGLE_RAD,
-        ...(unresolved ? { pathGddBoundFs2: fit.gddNoiseFs2 } : {}),
+        ...(uncertain ? { pathGddUncertaintyFs2: fit.gddNoiseFs2 } : {}),
       });
     }
   }
@@ -1356,6 +1358,26 @@ export function detectorReading(elementId) {
           : pulseDurationAcrossPaths(p, centerHits.map(h => ({
             gddFs2: h.gddFs2, groupDelayDifferenceFs: h.groupDelayDifferenceFs || 0, weight: h.power,
           })));
+      // GDD from the ray paths that rounding leaves uncertain: the duration
+      // stands only if it is the same at both ends of that range.
+      const gddUncertaintyFs2 = Math.max(0, ...sourceHits.map(h => h.pathGddUncertaintyFs2 || 0));
+      if (gddUncertaintyFs2 > 0 && duration?.available !== false) {
+        const shifted = sign => {
+          if (p.field) return null;
+          const shift = sign * gddUncertaintyFs2;
+          const result = filteredRecord
+            ? filteredTrainDuration(p, sourceHits.map(h => ({ ...h, gddFs2: h.gddFs2 + shift })))
+            : pulseDurationAcrossPaths(p, centerHits.map(h => ({
+              gddFs2: h.gddFs2 + shift, groupDelayDifferenceFs: h.groupDelayDifferenceFs || 0, weight: h.power,
+            })));
+          return result?.available === false ? null : result?.durationFs;
+        };
+        const low = shifted(-1), high = shifted(1);
+        if (!Number.isFinite(low) || !Number.isFinite(high)
+            || Math.abs(high - low) > PATH_PHASE_DURATION_TOLERANCE * duration.durationFs) {
+          duration = { durationFs: null, available: false, model: pathPhaseUncertain(gddUncertaintyFs2) };
+        }
+      }
       // A prism or grating fans the pulse into wavelength samples, and an
       // aperture can then catch only some of them. The duration model assumes
       // the whole band arrives, so where the arriving cells leave part of it
@@ -1384,9 +1406,8 @@ export function detectorReading(elementId) {
         gates: Array.isArray(p.gates) ? p.gates.map(g => ({ ...g })) : [],
         pathDelayNs: Math.min(...sourceHits.map(h => h.pathDelayNs)),
         gddFs2,
-        // Only when the paths' GDD was too small to resolve: it is below this.
-        ...(sourceHits.some(h => h.pathGddBoundFs2)
-          ? { gddBoundFs2: Math.max(...sourceHits.map(h => h.pathGddBoundFs2 || 0)) } : {}),
+        // Only when rounding left the paths' GDD uncertain by this much.
+        ...(gddUncertaintyFs2 > 0 ? { gddUncertaintyFs2 } : {}),
         groupDelayDifferenceFs,
         stretchedPulseWidthFs: duration?.durationFs ?? null,
         dispersionModel: duration?.model ?? null,
@@ -1460,8 +1481,8 @@ export function detectorReading(elementId) {
       branches,
       gddFs2,
       gddRangeFs2: [Math.min(...gddValues), Math.max(...gddValues)],
-      ...(trains.some(train => train.gddBoundFs2)
-        ? { gddBoundFs2: Math.max(...trains.map(train => train.gddBoundFs2 || 0)) } : {}),
+      ...(trains.some(train => train.gddUncertaintyFs2)
+        ? { gddUncertaintyFs2: Math.max(...trains.map(train => train.gddUncertaintyFs2 || 0)) } : {}),
       groupDelayDifferenceFs: duration?.groupDelayDifferenceFs ?? null,
       stretchedPulseWidthFs: duration?.stretchedPulseWidthFs ?? null,
       dispersionModel: duration?.dispersionModel ?? null,

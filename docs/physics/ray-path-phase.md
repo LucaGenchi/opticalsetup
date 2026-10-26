@@ -128,15 +128,15 @@ Limits of the model, stated where the reading is shown:
 - **Sampling.** Five samples across ±3σ resolve the phase to the accuracy
   quoted in `docs/validation.md`; the error grows with bandwidth and with the
   fourth and higher derivatives of the phase.
-- **Narrow bands.** The paths are double-precision sums, so the colours'
-  phase differences carry rounding of about four ulps of the largest path or
+- **Rounding.** The paths are double-precision sums, so the colours' phase
+  differences carry rounding of about four ulps of the largest path or
   coordinate (on the reference layouts this bounded the measured GDD error by
-  5.7× or more). The fit propagates it to a bound on the GDD. Where the bound
-  exceeds 1 % of the GDD (or 0.01 fs²) — on the reference layouts, bands
-  of 0.01 nm and less at 800 nm; 0.1 nm is still resolved — the paths add no GDD, the reading shows the
-  bound as unresolved, and the duration model line says so. Such a GDD cannot
-  change the duration: the bound and the squared transform limit both scale
-  as 1/Δω², and their ratio is about 10⁻⁹.
+  5.7× or more). The fit propagates it to an uncertainty on the GDD. Where
+  that exceeds 1 % of the GDD (or 0.01 fs²) — a band of a few hundredths of a
+  nanometre or less, or a scene far from the origin — the fitted GDD is kept
+  and shown with `± uncertainty`, and the duration is evaluated at both ends
+  of that range: it is given only if the two agree to 1 %, and otherwise it
+  is unavailable with that reason.
 - **Probes, drawn pulses, the compressor box's input reading.** A probe on
   one sample whose colours were turned apart cannot see the others, so it
   states that the duration is read at a detector. The sample records the

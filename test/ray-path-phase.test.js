@@ -18,14 +18,14 @@ import { pathPhaseFit, higherOrderPhaseRad } from '../sketch/js/path-phase.js';
 const reference = JSON.parse(readFileSync(new URL('../validation/expected/ray-path-phase.json', import.meta.url), 'utf8'));
 const layout = name => reference.cases.find(c => c.name.startsWith(name)).inputs;
 
-function trace(name, { laser = {}, extra = [], edit = () => {} } = {}) {
+function trace(name, { laser = {}, extra = [], edit = () => {}, shift = 0 } = {}) {
   const { source, elements, detectorId } = layout(name);
-  const src = createElement('pulsedlaser', source.x, source.y);
+  const src = createElement('pulsedlaser', source.x + shift, source.y);
   src.rot = source.rot;
   Object.assign(src.params, { beamMode: 'line', wavelength: source.wavelengthNm, transformLimited: false,
     bandwidth: source.bandwidthNm, pulseWidthFs: 1000, ...laser });
   const scene = elements.map(e => {
-    const el = createElement(e.type, e.x, e.y);
+    const el = createElement(e.type, e.x + shift, e.y);
     Object.assign(el, { id: e.id, rot: e.rot });
     Object.assign(el.params, e.params);
     return el;
@@ -129,21 +129,35 @@ test('a probe on one colour of a fanned pulse sends the reader to a detector', (
   assert.match(probe.pulse.durationIssue, /a detector reads the duration/);
 });
 
-test('a narrow band keeps the GDD it resolves, and says when rounding hides it', () => {
+test('a narrow band keeps its GDD with the uncertainty rounding leaves', () => {
   const want = reference.cases.find(c => c.name.startsWith('four Brewster')).expected.gddFs2;
   for (const bandwidth of [1, 0.1]) {
     const { pulse } = trace('four Brewster silica prisms', { laser: { bandwidth, pulseWidthFs: 1e7 } }).reading;
     assert.ok(Math.abs(pulse.gddFs2 / want - 1) < 1e-4, `${bandwidth} nm: ${pulse.gddFs2} fs²`);
-    assert.equal(pulse.gddBoundFs2, undefined);
+    assert.equal(pulse.gddUncertaintyFs2, undefined);
   }
-  // At 0.001 nm the colours' phases differ by less than the paths' rounding:
-  // the paths add no GDD, the bound says how large it could be, and a GDD
-  // that small leaves the duration at its limit (it read -894 fs² before).
-  const { pulse } = trace('four Brewster silica prisms', { laser: { bandwidth: 0.001, pulseWidthFs: 1e7 } }).reading;
-  assert.ok(pulse.gddBoundFs2 > Math.abs(want), `bound ${pulse.gddBoundFs2} fs²`);
-  assert.equal(pulse.gddFs2, 0);
-  assert.match(pulse.dispersionModel, /not resolved at this bandwidth/);
-  assert.ok(Math.abs(pulse.stretchedPulseWidthFs / pulse.transformLimitFs - 1) < 1e-9);
+  // Narrower, the phases differ by little more than the paths' rounding: the
+  // estimate stays, with an uncertainty that contains the true value (it read
+  // -894 fs² at 0.001 nm before, then 0 ± 12.7 at 0.03 nm), and the duration
+  // is given only because it is the same across that range.
+  for (const bandwidth of [0.03, 0.01, 0.001]) {
+    const { pulse } = trace('four Brewster silica prisms', { laser: { bandwidth, pulseWidthFs: 1e7 } }).reading;
+    assert.ok(pulse.gddUncertaintyFs2 > 0, `${bandwidth} nm: uncertainty given`);
+    assert.ok(Math.abs(pulse.gddFs2 - want) <= pulse.gddUncertaintyFs2, `${bandwidth} nm: ${pulse.gddFs2} ± ${pulse.gddUncertaintyFs2} fs²`);
+    assert.match(pulse.dispersionModel, /uncertain; the duration holds across that range/);
+    assert.ok(Math.abs(pulse.stretchedPulseWidthFs / pulse.transformLimitFs - 1) < 1e-3);
+  }
+});
+
+test('a scene far from the origin keeps the reading honest about its rounding', () => {
+  // The same four prisms moved 1e9 mm along x: coordinates that large leave
+  // the 30 nm GDD uncertain by about 12 fs², enough to move a 31 fs pulse, so
+  // the duration declines rather than being given from one end of the range.
+  const want = reference.cases.find(c => c.name.startsWith('four Brewster')).expected.gddFs2;
+  const { pulse } = trace('four Brewster silica prisms', { shift: 1e9 }).reading;
+  assert.ok(Math.abs(pulse.gddFs2 - want) <= pulse.gddUncertaintyFs2, `${pulse.gddFs2} ± ${pulse.gddUncertaintyFs2} fs²`);
+  assert.equal(pulse.stretchedPulseWidthFs, null);
+  assert.match(pulse.dispersionModel, /uncertain by ±\d+ fs² from rounding/);
 });
 
 test('the fit is not swamped by long paths over a narrow band', () => {
