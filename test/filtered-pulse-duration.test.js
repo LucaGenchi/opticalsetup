@@ -108,7 +108,7 @@ test('a broad filtered band behind glass declines instead of one quadratic phase
   assert.match(bare.dispersionModel, /^Filtered continuum/);
 });
 
-test('a grating order and a filter give the same pulse in either order', () => {
+test('a grating order and a filter pass the same light in either order', () => {
   // A grating keeps each order sample's slice as fanLo/fanHi; a filter cuts it
   // as it cuts a slice of a glass-fanned band.
   const angle = Math.atan2(2880, -5264);
@@ -134,7 +134,13 @@ test('a grating order and a filter give the same pulse in either order', () => {
     const first = through(true, source), after = through(false, source);
     close(after.signal, share, 0.01, `${label}: 10 nm of the band passes`);
     close(first.signal, after.signal, 0.03 * after.signal, `${label}: power either way`);
-    close(first.pulse.stretchedPulseWidthFs, after.pulse.stretchedPulseWidthFs, 0.02 * after.pulse.stretchedPulseWidthFs, `${label}: duration either way`);
+    // Filter first, the grating fans the 10 nm band into colours that still
+    // diverge at the detector: no single duration (docs/physics/ray-path-phase.md).
+    assert.equal(first.pulse.stretchedPulseWidthFs, null, `${label}: filter first`);
+    assert.match(first.pulse.dispersionModel, /angular dispersion remains/);
+    // In the fan, the filter leaves one sample's slice: too few colours to
+    // read a path phase, so the slice is timed from its own spectrum, as
+    // before that model.
     close(after.pulse.stretchedPulseWidthFs, 190, 5, `${label}: the 10 nm limit`);
   }
 });

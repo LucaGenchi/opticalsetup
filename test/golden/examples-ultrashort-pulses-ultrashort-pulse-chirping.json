@@ -90,7 +90,7 @@
    "points": 3,
    "opl": [
     118,
-    369.407161
+    369.406401
    ],
    "pulse": {
     "sourceId": "e8",
@@ -100,7 +100,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "bfd95648"
+   "digest": "e6c73b34"
   },
   {
    "intensity": 0.198113462,
@@ -108,7 +108,7 @@
    "points": 3,
    "opl": [
     118,
-    369.443214
+    369.443897
    ],
    "pulse": {
     "sourceId": "e8",
@@ -118,7 +118,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "189b7108"
+   "digest": "9ab14262"
   },
   {
    "intensity": 0.505277467,
@@ -144,7 +144,7 @@
    "points": 3,
    "opl": [
     118,
-    369.520931
+    369.520232
    ],
    "pulse": {
     "sourceId": "e8",
@@ -154,7 +154,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "4fb9b004"
+   "digest": "4298432c"
   },
   {
    "intensity": 0.0100478044,
@@ -162,7 +162,7 @@
    "points": 3,
    "opl": [
     118,
-    369.558292
+    369.559088
    ],
    "pulse": {
     "sourceId": "e8",
@@ -172,7 +172,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "f45b243f"
+   "digest": "8ba95937"
   },
   {
    "intensity": 1,
@@ -198,7 +198,7 @@
    "points": 4,
    "opl": [
     98,
-    399.407161
+    399.406401
    ],
    "pulse": {
     "sourceId": "e13",
@@ -208,7 +208,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "cb759ce6"
+   "digest": "ba02b932"
   },
   {
    "intensity": 0.198113462,
@@ -216,7 +216,7 @@
    "points": 4,
    "opl": [
     98,
-    399.443214
+    399.443897
    ],
    "pulse": {
     "sourceId": "e13",
@@ -226,7 +226,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "c66ec131"
+   "digest": "b58eed70"
   },
   {
    "intensity": 0.505277467,
@@ -252,7 +252,7 @@
    "points": 4,
    "opl": [
     98,
-    399.520931
+    399.520232
    ],
    "pulse": {
     "sourceId": "e13",
@@ -262,7 +262,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "8db55186"
+   "digest": "bd7aed0a"
   },
   {
    "intensity": 0.0100478044,
@@ -270,7 +270,7 @@
    "points": 4,
    "opl": [
     98,
-    399.558292
+    399.559088
    ],
    "pulse": {
     "sourceId": "e13",
@@ -280,7 +280,7 @@
     "spectrumReshaped": false,
     "gates": 0
    },
-   "digest": "aad379e2"
+   "digest": "d01917a6"
   }
  ],
  "writeHits": {
@@ -846,7 +846,7 @@
     "profileMode": null,
     "profileScale": "absolute",
     "pulse": {
-     "arrivalSpreadPs": 0.504119085,
+     "arrivalSpreadPs": 0.509307087,
      "branches": [
       {
        "gates": [],
@@ -854,7 +854,7 @@
       }
      ],
      "dispersionModel": "Gaussian GDD · transform-limited",
-     "earliestPathDelayNs": 1.23220965,
+     "earliestPathDelayNs": 1.23220712,
      "envelope": null,
      "fieldIssue": null,
      "gddFs2": 38680.2107,
@@ -882,7 +882,7 @@
        "gddFs2": 38680.2107,
        "groupDelayDifferenceFs": -1820.91471,
        "inputGddFs2": 0,
-       "pathDelayNs": 1.23220965,
+       "pathDelayNs": 1.23220712,
        "phaseNs": 0,
        "pulseShape": "gauss",
        "pulseWidthFs": 150,
@@ -1396,7 +1396,7 @@
     "profileMode": null,
     "profileScale": "absolute",
     "pulse": {
-     "arrivalSpreadPs": 0.504119085,
+     "arrivalSpreadPs": 0.509307087,
      "branches": [
       {
        "gates": [],
@@ -1404,7 +1404,7 @@
       }
      ],
      "dispersionModel": "Gaussian GDD · transform-limited",
-     "earliestPathDelayNs": 1.33227888,
+     "earliestPathDelayNs": 1.33227635,
      "envelope": null,
      "fieldIssue": null,
      "gddFs2": 0.210661997,
@@ -1432,7 +1432,7 @@
        "gddFs2": 0.210661997,
        "groupDelayDifferenceFs": -0.26507723,
        "inputGddFs2": 0,
-       "pathDelayNs": 1.33227888,
+       "pathDelayNs": 1.33227635,
        "phaseNs": 0,
        "pulseShape": "gauss",
        "pulseWidthFs": 150,

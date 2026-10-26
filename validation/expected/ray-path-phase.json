@@ -1,0 +1,707 @@
+{
+ "app": "sketch/js/raytrace.js: traceScene, detectorReading (pulse.gddFs2); sketch/js/path-phase.js: pathPhaseFit",
+ "cases": [
+  {
+   "expected": {
+    "gddFs2": 437.8875567
+   },
+   "inputs": {
+    "detectorId": "det",
+    "elements": [
+     {
+      "id": "plate",
+      "params": {
+       "material": "silica",
+       "scale": 1,
+       "vertices": [
+        {
+         "x": -5.0,
+         "y": -30
+        },
+        {
+         "x": 5.0,
+         "y": -30
+        },
+        {
+         "x": 5.0,
+         "y": 30
+        },
+        {
+         "x": -5.0,
+         "y": 30
+        }
+       ]
+      },
+      "rot": 55.47,
+      "type": "freeglass",
+      "x": 150.0,
+      "y": 0.0
+     },
+     {
+      "id": "det",
+      "params": {
+       "aperture": 40
+      },
+      "rot": 0.0,
+      "type": "detector",
+      "x": 321.516236064,
+      "y": 4.33791529
+     }
+    ],
+    "kind": "scene",
+    "source": {
+     "bandwidthNm": 10,
+     "rot": 0,
+     "wavelengthNm": 800,
+     "x": 0,
+     "y": 0
+    }
+   },
+   "name": "10 mm silica plate at 55.47 deg, 10 nm FWHM at 800 nm",
+   "note": "Five-sample quartic, as the app samples: 9.3e-09 relative from the exact derivative; tolerance twice that, floored at 1e-6. Closed form agrees to 1e-12.",
+   "tolerance": {
+    "gddFs2": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "gddFs2": 2290.784677
+   },
+   "inputs": {
+    "detectorId": "det",
+    "elements": [
+     {
+      "id": "plate",
+      "params": {
+       "material": "nsf10",
+       "scale": 1,
+       "vertices": [
+        {
+         "x": -10.0,
+         "y": -30
+        },
+        {
+         "x": 10.0,
+         "y": -30
+        },
+        {
+         "x": 10.0,
+         "y": 30
+        },
+        {
+         "x": -10.0,
+         "y": 30
+        }
+       ]
+      },
+      "rot": 45.0,
+      "type": "freeglass",
+      "x": 150.0,
+      "y": 0.0
+     },
+     {
+      "id": "det",
+      "params": {
+       "aperture": 40
+      },
+      "rot": -0.0,
+      "type": "detector",
+      "x": 325.454891122,
+      "y": 7.687244501
+     }
+    ],
+    "kind": "scene",
+    "source": {
+     "bandwidthNm": 30,
+     "rot": 0,
+     "wavelengthNm": 1030,
+     "x": 0,
+     "y": 0
+    }
+   },
+   "name": "20 mm nsf10 plate at 45 deg, 30 nm FWHM at 1030 nm",
+   "note": "Five-sample quartic, as the app samples: 2.5e-07 relative from the exact derivative; tolerance twice that, floored at 1e-6. Closed form agrees to 1e-12.",
+   "tolerance": {
+    "gddFs2": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "gddFs2": -255.4543329
+   },
+   "inputs": {
+    "detectorId": "det",
+    "elements": [
+     {
+      "id": "p1",
+      "params": {
+       "apex": 69.062243505,
+       "material": "silica",
+       "psize": 25.4
+      },
+      "rot": 20.937756495,
+      "type": "prism",
+      "x": 147.933065275,
+      "y": 10.160847314
+     },
+     {
+      "id": "p2",
+      "params": {
+       "apex": 69.062243505,
+       "material": "silica",
+       "psize": 25.4
+      },
+      "rot": 200.937756495,
+      "type": "prism",
+      "x": 530.953499999,
+      "y": 326.999143161
+     },
+     {
+      "id": "det",
+      "params": {
+       "aperture": 40
+      },
+      "rot": -0.0,
+      "type": "detector",
+      "x": 698.710383682,
+      "y": 336.593136675
+     }
+    ],
+    "kind": "scene",
+    "source": {
+     "bandwidthNm": 10,
+     "rot": 0,
+     "wavelengthNm": 800,
+     "x": 0,
+     "y": 0
+    }
+   },
+   "name": "Brewster silica prism pair, 500 mm, single pass, 10 nm FWHM at 800 nm",
+   "note": "Five-sample quartic, as the app samples: 2.6e-08 relative from the exact derivative; tolerance twice that, floored at 1e-6. Closed form agrees to 1e-12.",
+   "tolerance": {
+    "gddFs2": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "gddFs2": -212.4208922
+   },
+   "inputs": {
+    "detectorId": "det",
+    "elements": [
+     {
+      "id": "p1",
+      "params": {
+       "apex": 69.062243505,
+       "material": "silica",
+       "psize": 25.4
+      },
+      "rot": 20.937756495,
+      "type": "prism",
+      "x": 147.933065275,
+      "y": 10.160847314
+     },
+     {
+      "id": "p2",
+      "params": {
+       "apex": 69.062243505,
+       "material": "silica",
+       "psize": 25.4
+      },
+      "rot": 200.937756495,
+      "type": "prism",
+      "x": 456.728839979,
+      "y": 261.219692241
+     },
+     {
+      "id": "p3",
+      "params": {
+       "apex": 69.062243505,
+       "material": "silica",
+       "psize": 25.4
+      },
+      "rot": 159.062243505,
+      "type": "prism",
+      "x": 555.890244161,
+      "y": 261.219692241
+     },
+     {
+      "id": "p4",
+      "params": {
+       "apex": 69.062243505,
+       "material": "silica",
+       "psize": 25.4
+      },
+      "rot": 339.062243505,
+      "type": "prism",
+      "x": 864.686018865,
+      "y": 10.160847314
+     },
+     {
+      "id": "det",
+      "params": {
+       "aperture": 40
+      },
+      "rot": -0.0,
+      "type": "detector",
+      "x": 1031.61908414,
+      "y": -0.0
+     }
+    ],
+    "kind": "scene",
+    "source": {
+     "bandwidthNm": 30,
+     "rot": 0,
+     "wavelengthNm": 800,
+     "x": 0,
+     "y": 0
+    }
+   },
+   "name": "four Brewster silica prisms, 400 mm pairs, 30 nm FWHM at 800 nm",
+   "note": "Five-sample quartic, as the app samples: 4.7e-06 relative from the exact derivative; tolerance twice that, floored at 1e-6. Closed form agrees to 1e-12.",
+   "tolerance": {
+    "gddFs2": 1e-05
+   }
+  },
+  {
+   "expected": {
+    "gddFs2": 2443.516394
+   },
+   "inputs": {
+    "detectorId": "det",
+    "elements": [
+     {
+      "id": "p1",
+      "params": {
+       "apex": 60.599929089,
+       "material": "nsf10",
+       "psize": 40
+      },
+      "rot": 29.400070911,
+      "type": "prism",
+      "x": 157.449820619,
+      "y": 7.333722281
+     },
+     {
+      "id": "p2",
+      "params": {
+       "apex": 60.599929089,
+       "material": "nsf10",
+       "psize": 40
+      },
+      "rot": 209.400070911,
+      "type": "prism",
+      "x": 332.886118055,
+      "y": 254.091773403
+     },
+     {
+      "id": "retro",
+      "params": {
+       "length": 40
+      },
+      "rot": 0.0,
+      "type": "retroreflector",
+      "x": 427.385000732,
+      "y": 266.493402026
+     },
+     {
+      "id": "pickoff",
+      "params": {
+       "length": 6
+      },
+      "rot": -45.0,
+      "type": "mirror",
+      "x": 60.0,
+      "y": -5.000000001
+     },
+     {
+      "id": "det",
+      "params": {
+       "aperture": 40
+      },
+      "rot": -90.0,
+      "type": "detector",
+      "x": 60.0,
+      "y": -124.000000001
+     }
+    ],
+    "kind": "scene",
+    "source": {
+     "bandwidthNm": 10,
+     "rot": 0,
+     "wavelengthNm": 800,
+     "x": 0,
+     "y": 0
+    }
+   },
+   "name": "Brewster nsf10 prism pair, 300 mm, double pass through a roof reflector, 10 nm FWHM at 800 nm",
+   "note": "Five-sample quartic, as the app samples: 1.5e-07 relative from the exact derivative; tolerance twice that, floored at 1e-6. Closed form agrees to 1e-12.",
+   "tolerance": {
+    "gddFs2": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "gddFs2": -249606.2941
+   },
+   "inputs": {
+    "detectorId": "det",
+    "elements": [
+     {
+      "id": "g1",
+      "params": {
+       "length": 60,
+       "lines": 1200,
+       "orders": "1",
+       "transmissive": false
+      },
+      "rot": 35.0,
+      "type": "grating",
+      "x": 150.0,
+      "y": 0.0
+     },
+     {
+      "id": "g2",
+      "params": {
+       "length": 60,
+       "lines": 1200,
+       "orders": "-1",
+       "transmissive": false
+      },
+      "rot": 35.0,
+      "type": "grating",
+      "x": -8.919369504,
+      "y": -34.556638554
+     },
+     {
+      "id": "det",
+      "params": {
+       "aperture": 20
+      },
+      "rot": 0.0,
+      "type": "detector",
+      "x": 310.080630496,
+      "y": -34.556638554
+     }
+    ],
+    "kind": "scene",
+    "source": {
+     "bandwidthNm": 10,
+     "rot": 0,
+     "wavelengthNm": 800,
+     "x": 0,
+     "y": 0
+    }
+   },
+   "name": "1200 l/mm grating pair, G = 150 mm, single pass, 10 nm FWHM at 800 nm",
+   "note": "Five-sample quartic, as the app samples: 1.4e-07 relative from the exact derivative; tolerance twice that, floored at 1e-6. Closed form agrees to 1e-12.",
+   "tolerance": {
+    "gddFs2": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "gddFs2": -493788.5254
+   },
+   "inputs": {
+    "detectorId": "det",
+    "elements": [
+     {
+      "id": "g1",
+      "params": {
+       "length": 60,
+       "lines": 1000,
+       "orders": "1",
+       "transmissive": false
+      },
+      "rot": 40.0,
+      "type": "grating",
+      "x": 150.0,
+      "y": 0.0
+     },
+     {
+      "id": "g2",
+      "params": {
+       "length": 60,
+       "lines": 1000,
+       "orders": "-1",
+       "transmissive": false
+      },
+      "rot": 40.0,
+      "type": "grating",
+      "x": 46.400124097,
+      "y": -32.106858386
+     },
+     {
+      "id": "retro",
+      "params": {
+       "length": 40
+      },
+      "rot": 0.0,
+      "type": "retroreflector",
+      "x": 146.400124097,
+      "y": -28.106858386
+     },
+     {
+      "id": "pickoff",
+      "params": {
+       "length": 16
+      },
+      "rot": 45.0,
+      "type": "mirror",
+      "x": 60.0,
+      "y": 8.000000001
+     },
+     {
+      "id": "det",
+      "params": {
+       "aperture": 30
+      },
+      "rot": 90.0,
+      "type": "detector",
+      "x": 60.0,
+      "y": 127.000000001
+     }
+    ],
+    "kind": "scene",
+    "source": {
+     "bandwidthNm": 10,
+     "rot": 0,
+     "wavelengthNm": 1030,
+     "x": 0,
+     "y": 0
+    }
+   },
+   "name": "1000 l/mm grating pair, G = 100 mm, double pass through a roof reflector, 10 nm FWHM at 1030 nm",
+   "note": "Five-sample quartic, as the app samples: 5.5e-08 relative from the exact derivative; tolerance twice that, floored at 1e-6. Closed form agrees to 1e-12.",
+   "tolerance": {
+    "gddFs2": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "gddFs2": 306956.3138
+   },
+   "inputs": {
+    "detectorId": "det",
+    "elements": [
+     {
+      "id": "g1",
+      "params": {
+       "length": 60,
+       "lines": 1200,
+       "orders": "1",
+       "transmissive": false
+      },
+      "rot": 35.0,
+      "type": "grating",
+      "x": 150.0,
+      "y": 0.0
+     },
+     {
+      "id": "l1",
+      "params": {
+       "dia": 50,
+       "f": 300
+      },
+      "rot": -167.732145306,
+      "type": "lens",
+      "x": -45.432987906,
+      "y": -42.496437946
+     },
+     {
+      "id": "l2",
+      "params": {
+       "dia": 50,
+       "f": 300
+      },
+      "rot": -167.732145306,
+      "type": "lens",
+      "x": -631.731951624,
+      "y": -169.985751785
+     },
+     {
+      "id": "g2",
+      "params": {
+       "length": 60,
+       "lines": 1200,
+       "orders": "-1",
+       "transmissive": false
+      },
+      "rot": 169.535709388,
+      "type": "grating",
+      "x": -827.16493953,
+      "y": -212.482189731
+     },
+     {
+      "id": "det",
+      "params": {
+       "aperture": 30
+      },
+      "rot": 24.535709388,
+      "type": "detector",
+      "x": -673.425193692,
+      "y": -142.303200356
+     }
+    ],
+    "kind": "scene",
+    "source": {
+     "bandwidthNm": 10,
+     "rot": 0,
+     "wavelengthNm": 800,
+     "x": 0,
+     "y": 0
+    }
+   },
+   "name": "1200 l/mm grating stretcher, f = 300 mm, gratings 200 and 200 mm from the lenses, 10 nm FWHM at 800 nm",
+   "note": "Five-sample quartic, as the app samples: 9.5e-08 relative from the exact derivative; tolerance twice that, floored at 1e-6. Closed form agrees to 0.01.",
+   "tolerance": {
+    "gddFs2": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "gddFs2": -2085.433173
+   },
+   "inputs": {
+    "detectorId": "det",
+    "elements": [
+     {
+      "id": "p1",
+      "params": {
+       "apex": 60.599929089,
+       "material": "nsf10",
+       "psize": 25.4
+      },
+      "rot": 29.400070911,
+      "type": "prism",
+      "x": 147.219092087,
+      "y": 9.046299327
+     },
+     {
+      "id": "det",
+      "params": {
+       "aperture": 40
+      },
+      "rot": 58.800141822,
+      "type": "detector",
+      "x": 318.766345881,
+      "y": 274.843006319
+     }
+    ],
+    "kind": "scene",
+    "source": {
+     "bandwidthNm": 10,
+     "rot": 0,
+     "wavelengthNm": 800,
+     "x": 0,
+     "y": 0
+    }
+   },
+   "name": "one Brewster nsf10 prism, detector 300 mm after it, 10 nm FWHM at 800 nm",
+   "note": "Five-sample quartic, as the app samples: 9.9e-08 relative from the exact derivative; tolerance twice that, floored at 1e-6. Closed form agrees to 1e-12.",
+   "tolerance": {
+    "gddFs2": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "gddFs2": -2.47837945e-07
+   },
+   "inputs": {
+    "detectorId": "det",
+    "elements": [
+     {
+      "id": "g1",
+      "params": {
+       "length": 60,
+       "lines": 1200,
+       "orders": "1",
+       "transmissive": false
+      },
+      "rot": 35.0,
+      "type": "grating",
+      "x": 150.0,
+      "y": 0.0
+     },
+     {
+      "id": "l1",
+      "params": {
+       "dia": 50,
+       "f": 300
+      },
+      "rot": -167.732145306,
+      "type": "lens",
+      "x": -143.149481859,
+      "y": -63.74465692
+     },
+     {
+      "id": "l2",
+      "params": {
+       "dia": 50,
+       "f": 300
+      },
+      "rot": -167.732145306,
+      "type": "lens",
+      "x": -729.448445577,
+      "y": -191.23397076
+     },
+     {
+      "id": "g2",
+      "params": {
+       "length": 60,
+       "lines": 1200,
+       "orders": "-1",
+       "transmissive": false
+      },
+      "rot": 169.535709388,
+      "type": "grating",
+      "x": -1022.597927436,
+      "y": -254.97862768
+     },
+     {
+      "id": "det",
+      "params": {
+       "aperture": 30
+      },
+      "rot": 24.535709388,
+      "type": "detector",
+      "x": -868.858181598,
+      "y": -184.799638306
+     }
+    ],
+    "kind": "scene",
+    "source": {
+     "bandwidthNm": 10,
+     "rot": 0,
+     "wavelengthNm": 800,
+     "x": 0,
+     "y": 0
+    }
+   },
+   "name": "1200 l/mm grating stretcher, f = 300 mm, gratings 300 and 300 mm from the lenses (zero-dispersion line), 10 nm FWHM at 800 nm",
+   "note": "Paraxially zero; the exact model leaves -2.48e-07 fs^2. The five-sample quartic, as the app samples, reads -0.0149 fs^2 (phase beyond fourth order); absolute tolerance twice that, in fs^2, floored at 0.01.",
+   "tolerance": {
+    "gddFs2": 0.03
+   }
+  }
+ ],
+ "citations": [
+  "E. B. Treacy, IEEE J. Quantum Electron. 5(9), 454-458 (1969), doi:10.1109/JQE.1969.1076303 (grating pair)",
+  "R. L. Fork, O. E. Martinez and J. P. Gordon, Opt. Lett. 9(5), 150-152 (1984) (prism pair, apex path P = l cos beta)",
+  "O. E. Martinez, IEEE J. Quantum Electron. 23(1), 59-64 (1987), doi:10.1109/JQE.1987.1073201 (grating stretcher with lenses)",
+  "I. H. Malitson, J. Opt. Soc. Am. 55, 1205 (1965); SCHOTT optical glass catalogue (N-SF10) for the indices, as in material_dispersion.py"
+ ],
+ "convergence": "Five-point central difference at h = 1e-4 omega_0 in 40-digit arithmetic: truncation about 1e-17 relative, round-off about 1e-25. The app's own discretisation (a quartic through five wavelengths across +-3 sigma) is evaluated on the reference trace and quoted per case.",
+ "domain": "Fused silica and N-SF10 at 800 and 1030 nm, 10 and 30 nm FWHM; plates at 45 and 55.47 degrees; Brewster pairs 300-500 mm with 3-12 mm insertion, single, double (roof reflector) and four-prism; 1000 and 1200 l/mm pairs at 35-40 degrees, single and double pass; a 1200 l/mm stretcher with f = 300 mm, gratings 200 and 300 mm from the lenses.",
+ "fidelity": "computed",
+ "id": "ray-path-phase",
+ "outside_scope": "A family of wavelength samples that meets an element without a modelled path phase, changes wavelength, or arrives twice at one wavelength keeps each ray's glass GDD (the previous behaviour)",
+ "provenance": "Element geometry from the scene format (prism vertices, mirror, roof and grating lines, thin-lens line, detector face); glass indices from the published Sellmeier forms; every layout has a closed form asserted on it (the stretcher's only to paraxial order).",
+ "reference": "Own 2D ray tracer in 40-digit decimal arithmetic, phase differentiated in angular frequency by central differences; closed forms of Treacy (grating pair), Fork, Martinez and Gordon (prism pair) and plane-wave phase matching (tilted plate) asserted on the same layouts",
+ "reference_file": "validation/reference/ray_path_phase.py",
+ "scope": "In-plane layouts of flat mirrors, roof reflectors, prisms, plane-parallel glass, plane gratings and ideal thin lenses; Gaussian pulses sampled at five wavelengths",
+ "title": "Spectral phase from the ray paths: GDD of plates, prism pairs, grating pairs and a grating stretcher",
+ "tolerance_rationale": "Twice the app's five-sample discretisation error measured on the reference trace, floored at 1e-6 relative for double-precision tracing; the zero-dispersion stretcher is absolute, in fs^2."
+}

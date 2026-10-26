@@ -257,7 +257,7 @@ test('a passband or notch between sample points is still detected, before or aft
   close(farNotch.stretchedPulseWidthFs, plain.stretchedPulseWidthFs, 1e-9);
 });
 
-test('a detector catching only part of a grating fan declines; one catching the fan answers', () => {
+test('a detector catching only part of a grating fan declines; one catching all of a still-diverging fan declines for that', () => {
   const at = aperture => {
     const source = laser({ pulseWidthFs: 10, transformLimited: true });
     const grating = createElement('grating', 200, 0);
@@ -270,8 +270,14 @@ test('a detector catching only part of a grating fan declines; one catching the 
     traceScene([source, grating, det]);
     return detectorReading(det.id)?.pulse;
   };
+  // The whole fan arrives, but its colours still diverge, so the duration
+  // depends on where it is read: the GDD is the central ray's and no single
+  // duration is given (docs/physics/ray-path-phase.md). A fan the second
+  // grating of a pair makes parallel again is timed: test/ray-path-phase.test.js.
   const whole = at(60);
-  assert.ok(Number.isFinite(whole.stretchedPulseWidthFs), whole.dispersionModel);
+  assert.equal(whole.stretchedPulseWidthFs, null);
+  assert.match(whole.dispersionModel, /angular dispersion remains/);
+  assert.ok(whole.gddFs2 < 0, `angular dispersion gives negative GDD on the central ray (${whole.gddFs2} fs²)`);
   const slice = at(6);
   assert.equal(slice.stretchedPulseWidthFs, null);
   assert.equal(slice.dispersionModel, DISPERSION_UNAVAILABLE.partialFan);
