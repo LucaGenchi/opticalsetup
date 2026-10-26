@@ -65,4 +65,13 @@ for Hy in (0.0, 0.7, 1.0):
                   "rms": {str(w): float(np.sqrt(np.mean((x - cx) ** 2 + (y - cy) ** 2))) for w, (x, y) in pts.items()},
                   "centroid_primary": [float(cx), float(cy)]})
 out["spots"] = spots
+# f-tan distortion at the image plane, as Optiland's Distortion analysis
+# computes it: the real chief ray against a near-axis chief ray scaled by tan.
+distortion = []
+for Hy in (0.7, 1.0):
+    lens.trace_generic(Hx=np.zeros(2), Hy=np.array([1e-10, Hy]), Px=0, Py=0, wavelength=0.55)
+    yr = lens.surface_group.y[-1, :]
+    yp = yr[0] / np.tan(1e-10 * np.radians(20)) * np.tan(Hy * np.radians(20))
+    distortion.append({"Hy": Hy, "um": 0.55, "percent": float(100 * (yr[1] - yp) / yp)})
+out["distortion"] = distortion
 json.dump(out, sys.stdout, indent=1)

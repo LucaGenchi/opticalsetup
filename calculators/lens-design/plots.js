@@ -129,31 +129,74 @@ export function drawLayout(host, result) {
 
 // ------------------------------------------------------------------ spots
 
-// Draw every field's spot into one canvas, `columns` across. Points are in
-// µm from the chief ray of the primary wavelength (or the centroid when the
-// chief ray fails). `common` puts every field on the scale of the largest.
+// Draw every field's spot into one canvas, `columns` across, under a key
+// (wavelength colours, the Airy circle, the chief-ray origin) that travels
+// with the PNG export. Each panel has its own µm axes measured from the
+// chief ray of the primary wavelength (or from the centroid when the chief
+// ray fails); `common` puts every field on the scale of the largest.
 export function drawSpots(canvas, result, { common = true } = {}) {
   const ctx = canvas.getContext('2d');
   const dpr = window.devicePixelRatio || 1;
   const cssWidth = canvas.parentElement.clientWidth || 600;
   const spots = result?.ok ? result.spots : [];
   const n = Math.max(1, spots.length);
-  const columns = Math.max(1, Math.min(n, Math.floor(cssWidth / 200)));
+  const columns = Math.max(1, Math.min(n, Math.floor(cssWidth / 240)));
   const cell = cssWidth / columns;
   const rowsCount = Math.ceil(n / columns);
-  const label = 46;
+  const CAPTION = 44, PAD_L = 46, PAD_R = 10, PAD_T = 6, PAD_B = 36, KEY_LINE = 22;
+  const box = Math.max(60, cell - PAD_L - PAD_R);
+  const rowHeight = PAD_T + box + PAD_B + CAPTION;
+  const font = getComputedStyle(document.body).fontFamily;
+  const airyUm = result?.ok ? result.airyRadius * 1e3 : 0;
+
+  // The key's items, laid out in lines that fit the width.
+  ctx.font = `12px ${font}`;
+  const items = result?.ok ? [
+    ...result.system.wavelengthsNm.map(nm => ({ kind: 'wavelength', nm, text: `${formatNumber(nm, 4)} nm`, icon: 14 })),
+    { kind: 'airy', text: `Airy radius ${formatNumber(airyUm, 3)} µm`, icon: 18 },
+    { kind: 'origin', text: 'origin: chief ray', icon: 15 },
+  ] : [];
+  let lineX = 4, lineIndex = 0;
+  for (const item of items) {
+    const width = item.icon + ctx.measureText(item.text).width + 14;
+    if (lineX > 4 && lineX + width > cssWidth) { lineIndex += 1; lineX = 4; }
+    item.x = lineX; item.line = lineIndex;
+    lineX += width;
+  }
+  const KEY = 8 + (lineIndex + 1) * KEY_LINE;
+  const height = KEY + rowsCount * rowHeight;
   canvas.style.width = `${cssWidth}px`;
-  canvas.style.height = `${rowsCount * (cell + label)}px`;
+  canvas.style.height = `${height}px`;
   canvas.width = Math.round(cssWidth * dpr);
-  canvas.height = Math.round(rowsCount * (cell + label) * dpr);
+  canvas.height = Math.round(height * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = css('--panel');
-  ctx.fillRect(0, 0, cssWidth, rowsCount * (cell + label));
+  ctx.fillRect(0, 0, cssWidth, height);
   if (!spots.length) return;
 
-  const airyUm = result.airyRadius * 1e3;
+  const ink = css('--ink'), muted = css('--muted'), grid = css('--chart-grid'), axis = css('--chart-axis');
+
+  // Key: one swatch per wavelength, then the Airy circle and the origin.
+  ctx.font = `12px ${font}`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.lineWidth = 1;
+  for (const item of items) {
+    const kx = item.x, ky = 4 + KEY_LINE / 2 + item.line * KEY_LINE;
+    if (item.kind === 'wavelength') {
+      ctx.fillStyle = wavelengthToColor(item.nm);
+      ctx.beginPath(); ctx.arc(kx + 5, ky, 4.5, 0, 2 * Math.PI); ctx.fill();
+    } else if (item.kind === 'airy') {
+      ctx.strokeStyle = muted; ctx.setLineDash([3, 2]);
+      ctx.beginPath(); ctx.arc(kx + 7, ky, 6, 0, 2 * Math.PI); ctx.stroke(); ctx.setLineDash([]);
+    } else {
+      ctx.strokeStyle = ink;
+      ctx.beginPath(); ctx.moveTo(kx, ky); ctx.lineTo(kx + 10, ky); ctx.moveTo(kx + 5, ky - 5); ctx.lineTo(kx + 5, ky + 5); ctx.stroke();
+    }
+    ctx.fillStyle = ink;
+    ctx.fillText(item.text, kx + item.icon, ky);
+  }
+
   const refOf = s => s.chief ?? { x: s.poly.cx, y: s.poly.cy };
   const extent = s => {
+    if (!s.poly.count) return airyUm;
     const ref = refOf(s);
     let m = airyUm;
     for (const w of s.perWavelength) for (let i = 0; i < w.x.length; i++) {
@@ -163,51 +206,75 @@ export function drawSpots(canvas, result, { common = true } = {}) {
   };
   const extents = spots.map(extent);
   const shared = Math.max(...extents);
-  const ink = css('--ink'), muted = css('--muted'), grid = css('--chart-grid');
-  const font = getComputedStyle(document.body).fontFamily;
+  const fieldLabel = s => `${formatNumber(s.field, 4)}${result.fieldUnit === '°' ? '°' : ' mm'}`;
 
   spots.forEach((s, k) => {
     const col = k % columns, row = Math.floor(k / columns);
-    const x0 = col * cell, y0 = row * (cell + label);
+    const left = col * cell + PAD_L, top = KEY + row * rowHeight + PAD_T;
+    const cx = left + box / 2, cy = top + box / 2;
     const half = (common ? shared : extents[k]) * 1.08;
-    const box = cell - 16, cx = x0 + cell / 2, cy = y0 + 8 + box / 2;
     const scale = box / (2 * half);
-    ctx.strokeStyle = grid; ctx.lineWidth = 1;
-    ctx.strokeRect(cx - box / 2, cy - box / 2, box, box);
-    ctx.beginPath(); ctx.moveTo(cx - box / 2, cy); ctx.lineTo(cx + box / 2, cy); ctx.moveTo(cx, cy - box / 2); ctx.lineTo(cx, cy + box / 2); ctx.stroke();
+
+    // Grid and ticks at round multiples of the step, 0 at the chief ray.
+    // Two to five ticks each side of the chief ray.
+    const step = niceLength(half / 2);
+    const ticks = [];
+    for (let v = -Math.floor(half / step) * step; v <= half + 1e-9; v += step) ticks.push(Math.abs(v) < step * 1e-6 ? 0 : v);
+    ctx.lineWidth = 1;
+    for (const v of ticks) {
+      const px = cx + v * scale, py = cy - v * scale;
+      ctx.strokeStyle = v === 0 ? axis : grid;
+      ctx.beginPath(); ctx.moveTo(px, top); ctx.lineTo(px, top + box); ctx.moveTo(left, py); ctx.lineTo(left + box, py); ctx.stroke();
+    }
+    ctx.strokeStyle = axis; ctx.strokeRect(left, top, box, box);
+    ctx.fillStyle = muted; ctx.font = `10.5px ${font}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for (const v of ticks) ctx.fillText(formatNumber(v, 3), cx + v * scale, top + box + 4);
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (const v of ticks) ctx.fillText(formatNumber(v, 3), left - 5, cy - v * scale);
+    ctx.fillStyle = ink; ctx.font = `11px ${font}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText('x (µm)', cx, top + box + 19);
+    ctx.save(); ctx.translate(left - 36, cy); ctx.rotate(-Math.PI / 2);
+    ctx.textBaseline = 'middle'; ctx.fillText('y (µm)', 0, 0); ctx.restore();
+
+    const captionY = top + box + PAD_B;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillStyle = ink; ctx.font = `600 12.5px ${font}`;
+    ctx.fillText(`Field ${fieldLabel(s)}`, cx, captionY + 2);
+    ctx.font = `12px ${font}`; ctx.fillStyle = muted;
+
     // Every ray of this field failed: its statistics are NaN by design, so
     // nothing is drawn from them; the notes say which failures.
     if (!s.poly.count) {
-      ctx.fillStyle = muted; ctx.textAlign = 'center'; ctx.font = `12.5px ${font}`;
+      ctx.textBaseline = 'middle';
       ctx.fillText('No ray reaches the image', cx, cy);
-      ctx.fillStyle = ink; ctx.font = `600 12.5px ${font}`;
-      ctx.fillText(`${formatNumber(s.field, 4)}${result.fieldUnit === '°' ? '°' : ' mm'}`, cx, y0 + cell + 10);
       return;
     }
+    ctx.fillText(`RMS ${formatNumber(s.poly.rms * 1e3, 3)} µm · largest ${formatNumber(s.poly.geo * 1e3, 3)} µm`, cx, captionY + 20);
+
     const ref = refOf(s);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(left, top, box, box); ctx.clip();
     // Airy circle about the polychromatic centroid.
     ctx.setLineDash([4, 3]); ctx.strokeStyle = muted;
     ctx.beginPath();
     ctx.arc(cx + (s.poly.cx - ref.x) * 1e3 * scale, cy - (s.poly.cy - ref.y) * 1e3 * scale, airyUm * scale, 0, 2 * Math.PI);
     ctx.stroke(); ctx.setLineDash([]);
     const dot = Math.max(1, Math.min(2.2, box / 160));
-    for (const w of s.perWavelength) {
-      ctx.fillStyle = wavelengthToColor(w.nm);
-      for (let i = 0; i < w.x.length; i++) {
+    // Interleaved ray by ray, so where colours overlap none hides the
+    // others behind it (drawn colour by colour, the last one would cover
+    // an on-axis spot entirely).
+    const colours = s.perWavelength.map(w => wavelengthToColor(w.nm));
+    const longest = Math.max(...s.perWavelength.map(w => w.x.length));
+    for (let i = 0; i < longest; i++) {
+      s.perWavelength.forEach((w, wi) => {
+        if (i >= w.x.length) return;
+        ctx.fillStyle = colours[wi];
         ctx.fillRect(cx + (w.x[i] - ref.x) * 1e3 * scale - dot / 2, cy - (w.y[i] - ref.y) * 1e3 * scale - dot / 2, dot, dot);
-      }
+      });
     }
-    // Scale bar and caption.
-    const bar = niceLength(half * 0.8);
-    ctx.strokeStyle = ink; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(cx - box / 2 + 6, cy + box / 2 - 6); ctx.lineTo(cx - box / 2 + 6 + bar * scale, cy + box / 2 - 6); ctx.stroke();
-    ctx.fillStyle = ink; ctx.font = `11px ${font}`; ctx.textAlign = 'left';
-    ctx.fillText(`${formatNumber(bar, 3)} µm`, cx - box / 2 + 6, cy + box / 2 - 10);
-    ctx.textAlign = 'center';
-    ctx.font = `600 12.5px ${font}`;
-    ctx.fillText(`${formatNumber(s.field, 4)}${result.fieldUnit === '°' ? '°' : ' mm'}`, cx, y0 + cell + 10);
-    ctx.font = `12px ${font}`; ctx.fillStyle = muted;
-    ctx.fillText(`RMS ${formatNumber(s.poly.rms * 1e3, 3)} µm · GEO ${formatNumber(s.poly.geo * 1e3, 3)} µm`, cx, y0 + cell + 27);
+    ctx.restore();
   });
 }
 

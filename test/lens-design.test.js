@@ -405,3 +405,22 @@ test('a field with no surviving ray is reported, not drawn', () => {
   assertFinite(r.layoutRays, 'layoutRays');
   assertFinite(r.surfaces, 'surfaces');
 });
+
+test('distortion and lateral colour: zero for a perfect lens, Optiland’s values for the Cooke triplet', () => {
+  for (const s of analyzeSystem(presetSystem('perfect')).spots) {
+    if (s.field) close(s.distortion, 0, 1e-12, `perfect lens distortion at ${s.field}°`);
+    close(s.lateralColour, 0, 1e-15, 'no colour in an ideal lens');
+  }
+  // Optiland's f-tan distortion: the real chief ray at the image plane
+  // against a near-axis chief ray scaled by tan θ, with paraxial aiming.
+  const r = analyzeSystem(cookeAsOptiland());
+  for (const ref of optiland.distortion) {
+    const spot = r.spots.find(s => s.field === ref.Hy * 20);
+    close(100 * spot.distortion, ref.percent, 1e-7, `distortion at ${spot.field}°`);
+  }
+  assert.equal(r.spots[0].distortion, null, 'undefined on axis');
+  // Lateral colour is the distance between the extreme wavelengths' centroids.
+  const edge = r.spots[2], short = edge.perWavelength[0], long = edge.perWavelength[2];
+  close(edge.lateralColour, Math.hypot(short.cx - long.cx, short.cy - long.cy), 1e-15);
+  assert.equal(analyzeSystem({ ...cooke(), wavelengthsNm: [550], primaryWavelength: 0 }).spots[2].lateralColour, null, 'one wavelength: none');
+});

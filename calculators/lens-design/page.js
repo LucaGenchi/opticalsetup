@@ -268,12 +268,17 @@ function renderSpot(plot, body, r) {
     const off = ref ? Math.hypot(s.poly.cx - ref.x, s.poly.cy - ref.y) : NaN;
     return [`${formatNumber(s.field, 4)}${r.fieldUnit === '°' ? '°' : ' mm'}`, um(s.poly.rms), um(s.poly.geo),
       ...s.perWavelength.map(w => (w.count ? um(w.rms) : '—')),
-      Number.isFinite(off) ? um(off) : '—', `${s.lost} of ${s.rays}`, `${formatNumber(100 * s.vignetting, 3)} %`];
+      Number.isFinite(off) ? um(off) : '—',
+      s.lateralColour == null ? '—' : um(s.lateralColour),
+      s.distortion == null ? '—' : `${formatNumber(100 * s.distortion, 3)} %`,
+      `${s.lost} of ${s.rays}`, `${formatNumber(100 * s.vignetting, 3)} %`];
   });
   body.append(el('h3', { text: 'Spot sizes' }), el('div', { class: 'bench-scroll' }, table('Spot sizes by field', rows, {
-    head: ['Field', 'RMS radius', 'Largest radius', ...nms.map(nm => `RMS at ${formatNumber(nm, 4)} nm`), 'Centroid from chief ray', 'Rays lost', 'Vignetted'],
+    head: ['Field', 'RMS radius', 'Largest radius', ...nms.map(nm => `RMS at ${formatNumber(nm, 4)} nm`), 'Centroid from chief ray', 'Lateral colour', 'Distortion', 'Rays lost', 'Vignetted'],
     cls: 'calc-results bench-spot-table',
-  })), el('p', { class: 'bench-note', text: `Airy radius ${um(r.airyRadius)} (dashed circle). Radii are from each spot’s polychromatic centroid; the plots are centred on the chief ray of the primary wavelength.` }));
+  })), el('p', { class: 'bench-note' },
+    document.createTextNode(`Radii are from each spot’s polychromatic centroid; the plots are centred on the chief ray of the primary wavelength. Lateral colour is the distance between the centroids of the shortest and longest wavelengths; distortion compares the chief ray with its paraxial height. `),
+    el('a', { href: '#reading-spots', text: 'How to read a spot diagram' }), document.createTextNode('.')));
 }
 
 function spotCsv(r) {

@@ -94,6 +94,16 @@ export function analyzeSystem(input) {
   const shift = zImage - zParaxial;
 
   const airy = 1.22 * primaryNm * 1e-6 * fo.workingFno;
+  // Where the paraxial chief ray of a field meets the chosen image plane.
+  // The paraxial chief ray is traced for the largest field and is linear in
+  // tan θ (or in the object height), so other fields scale from it.
+  const fieldMax = Math.max(...fields);
+  const lastIndex = fo.chief.y.length - 1;
+  const paraxialEdge = fo.chief.y[lastIndex] + fo.chief.u[lastIndex] * (zImage - zLast);
+  const paraxialHeight = field => (!fieldMax ? 0 : sys.fields.type === 'angle'
+    ? paraxialEdge * Math.tan(field * Math.PI / 180) / Math.tan(fieldMax * Math.PI / 180)
+    : paraxialEdge * field / fieldMax);
+  const byNm = sys.wavelengthsNm.map((nm, i) => [nm, i]).sort((x, y) => x[0] - y[0]);
   const primaryModel = models[sys.primaryWavelength];
   const spots = fields.map((field, fi) => {
     const chief = traceRay(primaryModel, field, 0, 0, zImage);
@@ -107,7 +117,14 @@ export function analyzeSystem(input) {
       return { nm: sys.wavelengthsNm[wi], x: xs, y: ys, failed: w.failed, ...spotStats(xs, ys) };
     });
     const poly = spotStats(perWavelength.flatMap(w => w.x), perWavelength.flatMap(w => w.y));
-    return { field, chief: ref, perWavelength, poly, rays: total, lost, vignetting: total ? clipped / total : 0 };
+    // Distortion: the real chief ray against its paraxial height, as a
+    // fraction (only off axis). Lateral colour: how far apart the centroids
+    // of the shortest and longest wavelengths land.
+    const ideal = paraxialHeight(field);
+    const distortion = ref && Math.abs(ideal) > 1e-12 ? (ref.y - ideal) / ideal : null;
+    const short = perWavelength[byNm[0][1]], long = perWavelength[byNm[byNm.length - 1][1]];
+    const lateralColour = byNm.length > 1 && short.count && long.count ? Math.hypot(short.cx - long.cx, short.cy - long.cy) : null;
+    return { field, chief: ref, perWavelength, poly, rays: total, lost, vignetting: total ? clipped / total : 0, paraxialHeight: ideal, distortion, lateralColour };
   });
 
   // Ray failures, one warning per kind with where it happens.

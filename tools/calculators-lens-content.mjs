@@ -30,7 +30,7 @@ export const lensCalculators = [
         },
         {
           id: 'spot', title: 'Spot',
-          assumptions: `<p>Each spot diagram is where real rays from one field point cross the image plane. The rays fill the entrance pupil on a square grid of equal cells (the pupil sampling setting), so every ray stands for the same pupil area and the RMS radius is an area-weighted average. Points are plotted relative to the chief ray of the primary wavelength and coloured by wavelength. The RMS and geometric (largest) radii are measured from the spot’s own centroid.</p>
+          assumptions: `<p>Each spot diagram is where real rays from one field point cross the image plane. The rays fill the entrance pupil on a square grid of equal cells (the pupil sampling setting), so every ray stands for the same pupil area and the RMS radius is an area-weighted average. The axes are in micrometres in the image plane, with the origin (+) at the chief ray of the primary wavelength; the key above the plots gives each wavelength’s colour. The RMS and geometric (largest) radii are measured from the spot’s own centroid. <a href="#reading-spots">How to read a spot diagram</a> walks through the shapes and the numbers.</p>
             <p>The dashed circle is the Airy radius, 1.22 λ N<sub>w</sub>, with N<sub>w</sub> the paraxial working F-number: the first dark ring of a perfect lens’s diffraction pattern${c('born')}. A spot much smaller than that circle is “diffraction limited”, and geometric optics no longer describes it; a spot much larger is dominated by aberrations. This page does not yet compute the diffraction pattern itself.</p>
             <p>Rays that miss a surface, are totally internally reflected, are cut by a clear aperture you set or by the stop, or would have to cross a lens whose faces intersect, are counted and left out of the statistics; the notes below the plots say how many. With paraxial aiming some rays can cross the stop outside its radius, because the real pupil is shifted and distorted; real aiming fills the stop exactly.</p>`,
         },
@@ -82,6 +82,34 @@ export const lensCalculators = [
         formulas2: [
           { tex: String.raw`\Delta_\text{best} = -\,\frac{\sum_\text{fields} \overline{(\mathbf r_i - \bar{\mathbf r})\cdot(\mathbf s_i - \bar{\mathbf s})}}{\sum_\text{fields} \overline{|\mathbf s_i - \bar{\mathbf s}|^2}}`, caption: 'r are positions at the paraxial focus and s = (d_x/d_z, d_y/d_z) the direction tangents; bars are means over the rays of one field.' },
         ],
+      },
+      {
+        id: 'reading-spots',
+        title: 'How to read a spot diagram',
+        html: `<p>A spot diagram answers one question: <em>where does the light from one point of the object land?</em> A perfect lens would put every ray on a single point. Each dot is one ray, coloured by its wavelength, plotted in micrometres from the chief ray (the + at the origin), with y in the plane of the field. Read the panels in order: first the size, then the shape, then the colours, then how all three change from the centre of the field to its edge. The “Same scale for every field” box lets you compare sizes between panels directly; untick it to see the shape of a small spot.</p>
+          <h3>The numbers to look at</h3>
+          <ul>
+            <li><b>RMS radius</b>, the root-mean-square distance of the rays from their centroid, is the single best measure of how sharp the image is. Lower is better.</li>
+            <li><b>Compare it with the Airy radius</b> (the dashed circle), the size of the blur that diffraction alone imposes. A spot much larger than the circle is limited by aberrations, and improving the design will sharpen the image. A spot that fits well inside it is <em>diffraction-limited</em>: the real image is then the Airy pattern, and the dots no longer describe it${c('born', 'smith')}. Try the curved-side-first singlet: at 587.6 nm its RMS radius is 6.9 µm against an Airy radius of 7.2 µm.</li>
+            <li><b>Largest radius</b> says how far the outermost rays stray. When it is several times the RMS radius, a faint halo or tail surrounds a brighter core, as for the Cooke triplet at 14° (largest 44 µm, RMS 16 µm).</li>
+            <li><b>RMS at each wavelength</b>: spots of very different sizes in different colours on axis mean <em>axial colour</em>, each colour focusing at a different distance (the “Focus by wavelength” table on the Layout tab).</li>
+            <li><b>Centroid from chief ray</b>: zero on axis by symmetry. Off axis it measures how lopsided the spot is, which is mostly coma.</li>
+            <li><b>Lateral colour</b>: how far apart the shortest and longest wavelengths land off axis. It shows as coloured fringes at the edges of the field.</li>
+            <li><b>Distortion</b>: where the chief ray lands compared with its paraxial height, in percent. It does not blur the image, it bends it: positive is pincushion, negative is barrel.</li>
+            <li><b>Rays lost and vignetted</b>: light that never reaches the image. Vignetting darkens the edge of the field.</li>
+          </ul>
+          <p>If the image goes to a camera, compare the spot with the pixel pitch as well: a spot much smaller than a pixel buys sharpness the sensor cannot record, while a spot spread over several pixels blurs the finest detail.</p>
+          <h3>Recognizing the aberrations</h3>
+          <p>Each Seidel aberration leaves a typical mark, and grows in its own way with the pupil radius ρ and the field height H${c('welford', 'smith')}:</p>
+          <ul>
+            <li><b>Spherical aberration</b> (blur ∝ ρ³, the same at every field): a round, symmetric spot on axis, a dense core in a wider halo. The rim of the lens focuses at a different distance from its centre, so the spot shrinks when the image plane moves toward that compromise. For pure third-order spherical aberration the best RMS focus is exactly three times smaller than the paraxial one. Try the flat-side-first singlet with only the 0° field, the single wavelength 587.5618 nm and “Best RMS focus”: 27.6 µm becomes 9.2 µm. With several fields, best focus balances all of them, so the axial spot alone improves less.</li>
+            <li><b>Coma</b> (∝ ρ² H): off axis only, a comet with its point at the chief ray and its tail fanning toward or away from the axis. The centroid moves away from the chief ray.</li>
+            <li><b>Astigmatism</b> (∝ ρ H²): the spot stretches into a line, and the line turns by 90° as the image plane passes through focus, with a rounder spot in between. Try the Cooke triplet with an image-plane offset of −0.15 mm and then +0.3 mm: the 14° spot becomes a vertical line (RMS widths 2 × 21 µm), then a horizontal one (23 × 5 µm).</li>
+            <li><b>Field curvature</b> (∝ ρ H²): the sharpest image lies on a curved surface, so on a flat image plane the spots grow toward the edge of the field even when each could be sharp at its own focus.</li>
+            <li><b>Distortion</b> (∝ H³): the spots stay sharp but sit in the wrong place; read it in the Distortion column, not in the shapes.</li>
+            <li><b>Chromatic aberration</b>: on axis, colours of different sizes (axial colour). Compare the singlet, whose blue F-line spot is 45 µm while its yellow d-line spot is 7 µm, with the achromat, whose three colours focus within 0.06 mm of each other. Off axis, colours shifted apart sideways (lateral colour).</li>
+          </ul>
+          <p>Real lenses show these together, and good designs balance them against each other rather than removing each one. The Seidel table on the Layout tab says which ones a design carries and which surface contributes them. Higher-order terms the table does not list become visible in the spots at large apertures and fields.</p>`,
       },
       {
         id: 'seidel',

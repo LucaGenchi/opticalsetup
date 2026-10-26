@@ -17,7 +17,7 @@ improvement to it broke twenty tests that had no opinion about the example at
 all.
 
 `optiland-cooke-triplet.json` is the lens designer's second check: the Cooke
-triplet preset traced by Optiland 0.5.5 (paraxial data, 63 individual rays,
+triplet preset traced by Optiland 0.5.5 (paraxial data, 63 individual rays, f-tan distortion,
 and RMS spots on the app's 64 × 64 pupil grid), written by
 `optiland-cooke-triplet.py`. That script needs Optiland and is not run by the
 suite; the JSON records what it printed.
