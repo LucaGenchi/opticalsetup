@@ -1361,19 +1361,20 @@ export function detectorReading(elementId) {
       // GDD from the ray paths that rounding leaves uncertain: the duration
       // stands only if it holds across the whole range. A GDD shift δ also
       // moves the band edges' group-delay spread by δ(ω_red − ω_blue), which
-      // is what the flat-band model times. Within the range the duration
-      // depends only on how far the total GDD (or, flat-band, the spread) is
-      // from zero, so its extremes lie at the two ends or where that crosses
-      // zero: those, and the reading itself, are what is compared.
+      // is what the flat-band model times. For the analytic models (Gaussian,
+      // sech², flat band) the duration depends only on how far the total GDD
+      // (or, flat-band, the spread) is from zero, so its extremes lie at the
+      // two ends or where that crosses zero: those, and the reading itself,
+      // are what is compared. A filtered spectrum's transform has no such
+      // property -- its width can peak inside the range -- and a sampled
+      // field has none either, so for those an uncertain GDD declines.
       const gddUncertaintyFs2 = Math.max(0, ...sourceHits.map(h => h.pathGddUncertaintyFs2 || 0));
       if (gddUncertaintyFs2 > 0 && duration?.available !== false) {
         const spreadPerFs2 = gddGroupDelayDifferenceFs(1, p.spectrumLoNm, p.spectrumHiNm) || 0;
         const durationAt = shift => {
-          if (p.field) return null;
-          const move = h => ({ gddFs2: h.gddFs2 + shift, groupDelayDifferenceFs: (h.groupDelayDifferenceFs || 0) + shift * spreadPerFs2 });
-          const result = filteredRecord
-            ? filteredTrainDuration(p, sourceHits.map(h => ({ ...h, ...move(h) })))
-            : pulseDurationAcrossPaths(p, centerHits.map(h => ({ ...move(h), weight: h.power })));
+          const result = pulseDurationAcrossPaths(p, centerHits.map(h => ({
+            gddFs2: h.gddFs2 + shift, groupDelayDifferenceFs: (h.groupDelayDifferenceFs || 0) + shift * spreadPerFs2, weight: h.power,
+          })));
           return result?.available === false ? null : result?.durationFs;
         };
         const u = gddUncertaintyFs2;
@@ -1381,7 +1382,7 @@ export function detectorReading(elementId) {
           ...(Number.isFinite(duration.totalGddFs2) ? [-duration.totalGddFs2] : []),
           ...(Number.isFinite(duration.groupDelayDifferenceFs) && spreadPerFs2 ? [-duration.groupDelayDifferenceFs / spreadPerFs2] : []),
         ].filter(shift => Math.abs(shift) <= u);
-        const durations = [duration.durationFs, ...shifts.map(durationAt)];
+        const durations = filteredRecord || p.field ? [NaN] : [duration.durationFs, ...shifts.map(durationAt)];
         if (!durations.every(Number.isFinite)
             || Math.max(...durations) - Math.min(...durations) > PATH_PHASE_DURATION_TOLERANCE * duration.durationFs) {
           duration = { durationFs: null, available: false, model: pathPhaseUncertain(gddUncertaintyFs2) };
