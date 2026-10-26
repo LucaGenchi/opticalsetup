@@ -31,9 +31,9 @@ const CATALOGUE = [
     range: [210, 3710],
   },
   {
-    // Malitson, Appl. Opt. 2, 1103 (1963), measured at 24 °C; the published
-    // fit covers 0.23-9.7 µm.
-    id: 'caf2', label: 'CaF₂ calcium fluoride (nd 1.434 / V 95.0)',
+    // Malitson, Appl. Opt. 2, 1103 (1963), 24 °C; the same coefficients the
+    // dispersion calculator lists.
+    id: 'caf2', label: 'Calcium fluoride, CaF₂ (nd 1.434 / V 95.0)',
     B: [0.5675888, 0.4710914, 3.8484723],
     C: [0.050263605 ** 2, 0.1003909 ** 2, 34.649040 ** 2],
     range: [230, 9700],
@@ -167,6 +167,18 @@ export function glassIndex(id, wavelength = LAMBDA_D) {
   const index = squaredIndex > 0 && Number.isFinite(squaredIndex) ? Math.sqrt(squaredIndex) : null;
   cache[bucket] = index;
   return index;
+}
+
+// The same curve evaluated at the exact wavelength, without the cache's
+// 0.1 nm buckets. The path phase of a split pulse needs it: its colours'
+// phases differ by a fraction of a radian across steps of a few nm, and the
+// buckets' rounding of up to 0.05 nm would move a sample's phase in glass by
+// a comparable amount (docs/physics/ray-path-phase.md).
+export function glassIndexUnbucketed(id, wavelength) {
+  const glass = GLASSES.get(id);
+  if (!glass) return null;
+  const { squaredIndex } = sellmeierTerms(glass, wavelength);
+  return squaredIndex > 0 && Number.isFinite(squaredIndex) ? Math.sqrt(squaredIndex) : null;
 }
 
 // The true wavelengths of the Fraunhofer lines the Abbe number is defined on.

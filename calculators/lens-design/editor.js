@@ -9,7 +9,7 @@
 // the table. Text from files goes in through textContent and value only.
 
 import { ASPHERE_ORDERS, LIMITS, defaultSurface } from './engine/system.js';
-import { MATERIAL_OPTIONS, AIR, CONSTANT } from './engine/materials.js';
+import { MATERIAL_OPTIONS, AIR, CONSTANT, glassShortName } from './engine/materials.js';
 import { formatNumber } from '../assets/calculator-kit.js';
 
 const el = (tag, props = {}, ...children) => {
@@ -49,8 +49,8 @@ const radiusText = r => (r === 0 ? '∞' : String(r));
 function shortMaterial([id, label]) {
   if (id === AIR) return 'Air';
   if (id === CONSTANT) return 'Constant n';
-  const m = label.match(/^(\S+).*nd ([\d.]+) \/ V ([\d.]+)/);
-  return m ? `${m[1]} ${m[2]}/${m[3]}` : label;
+  const m = label.match(/nd ([\d.]+) \/ V ([\d.]+)/);
+  return m ? `${glassShortName(label)} ${m[1]}/${m[2]}` : label;
 }
 
 export function createEditor(host, { presets, onChange, onPreset, onImport, onExport }) {

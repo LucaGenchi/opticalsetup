@@ -1,0 +1,403 @@
+{
+ "app": "sketch/js/fresnel.js: fresnelTransmittances, throughFace",
+ "cases": [
+  {
+   "expected": {
+    "Tp": 0.96,
+    "Ts": 0.96
+   },
+   "inputs": {
+    "incidenceDeg": 0.0,
+    "kind": "transmittance",
+    "n1": 1.0,
+    "n2": 1.5
+   },
+   "name": "n 1.0 to 1.5 at 0.0 deg",
+   "tolerance": {
+    "Tp": 1e-12,
+    "Ts": 1e-12
+   }
+  },
+  {
+   "expected": {
+    "Tp": 0.97475085345157,
+    "Ts": 0.94220389459679
+   },
+   "inputs": {
+    "incidenceDeg": 30.0,
+    "kind": "transmittance",
+    "n1": 1.0,
+    "n2": 1.5
+   },
+   "name": "n 1.0 to 1.5 at 30.0 deg",
+   "tolerance": {
+    "Tp": 1e-12,
+    "Ts": 1e-12
+   }
+  },
+  {
+   "expected": {
+    "Tp": 1.0,
+    "Ts": 0.85207100591716
+   },
+   "inputs": {
+    "incidenceDeg": 56.30993247402,
+    "kind": "transmittance",
+    "n1": 1.0,
+    "n2": 1.5
+   },
+   "name": "n 1.0 to 1.5 at 56.30993247402 deg",
+   "tolerance": {
+    "Tp": 1e-12,
+    "Ts": 1e-12
+   }
+  },
+  {
+   "expected": {
+    "Tp": 0.76318619636664,
+    "Ts": 0.46140509425042
+   },
+   "inputs": {
+    "incidenceDeg": 80.0,
+    "kind": "transmittance",
+    "n1": 1.0,
+    "n2": 1.5
+   },
+   "name": "n 1.0 to 1.5 at 80.0 deg",
+   "tolerance": {
+    "Tp": 1e-12,
+    "Ts": 1e-12
+   }
+  },
+  {
+   "expected": {
+    "Tp": 0.99999999914569,
+    "Ts": 0.75907661197251
+   },
+   "inputs": {
+    "incidenceDeg": 59.6964,
+    "kind": "transmittance",
+    "n1": 1.0,
+    "n2": 1.7112
+   },
+   "name": "n 1.0 to 1.7112 at 59.6964 deg",
+   "tolerance": {
+    "Tp": 1e-12,
+    "Ts": 1e-12
+   }
+  },
+  {
+   "expected": {
+    "Tp": 0.99999999267054,
+    "Ts": 0.7589910332808
+   },
+   "inputs": {
+    "incidenceDeg": 30.3036,
+    "kind": "transmittance",
+    "n1": 1.7112,
+    "n2": 1.0
+   },
+   "name": "n 1.7112 to 1.0 at 30.3036 deg",
+   "tolerance": {
+    "Tp": 1e-12,
+    "Ts": 1e-12
+   }
+  },
+  {
+   "expected": {
+    "Tp": 0.96290019076075,
+    "Ts": 0.73524760007871
+   },
+   "inputs": {
+    "incidenceDeg": 40.0,
+    "kind": "transmittance",
+    "n1": 1.4533,
+    "n2": 1.0
+   },
+   "name": "n 1.4533 to 1.0 at 40.0 deg",
+   "tolerance": {
+    "Tp": 1e-12,
+    "Ts": 1e-12
+   }
+  },
+  {
+   "expected": {
+    "Tp": 0.99999999998131,
+    "Ts": 0.87230315426146
+   },
+   "inputs": {
+    "incidenceDeg": 55.469,
+    "kind": "transmittance",
+    "n1": 1.0,
+    "n2": 1.4533
+   },
+   "name": "n 1.0 to 1.4533 at 55.469 deg",
+   "tolerance": {
+    "Tp": 1e-12,
+    "Ts": 1e-12
+   }
+  },
+  {
+   "expected": {
+    "Tp": 0.66067800330984,
+    "Ts": 0.39483142869088
+   },
+   "inputs": {
+    "incidenceDeg": 43.0,
+    "kind": "transmittance",
+    "n1": 1.4533,
+    "n2": 1.0
+   },
+   "name": "n 1.4533 to 1.0 at 43.0 deg",
+   "tolerance": {
+    "Tp": 1e-12,
+    "Ts": 1e-12
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "T": 0.99999999914569,
+    "s1": 1.0,
+    "s2": 0.0,
+    "s3": -0.0
+   },
+   "inputs": {
+    "Tp": 0.9999999991456878,
+    "Ts": 0.7590766119725083,
+    "azimuthDeg": 0,
+    "ellipticityDeg": 0,
+    "kind": "stokes"
+   },
+   "name": "state az 0 chi 0 through n 1.0 to 1.7112 at 59.6964 deg",
+   "tolerance": {
+    "T": 1e-12,
+    "s1": 1e-12,
+    "s2": 1e-12,
+    "s3": 1e-12
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "T": 0.75907661197251,
+    "s1": -1.0,
+    "s2": 0.0,
+    "s3": 0.0
+   },
+   "inputs": {
+    "Tp": 0.9999999991456878,
+    "Ts": 0.7590766119725083,
+    "azimuthDeg": 90,
+    "ellipticityDeg": 0,
+    "kind": "stokes"
+   },
+   "name": "state az 90 chi 0 through n 1.0 to 1.7112 at 59.6964 deg",
+   "tolerance": {
+    "T": 1e-12,
+    "s1": 1e-12,
+    "s2": 1e-12,
+    "s3": 1e-12
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "T": 0.8795383055591,
+    "s1": 0.13696014468638,
+    "s2": 0.99057655876135,
+    "s3": 0.0
+   },
+   "inputs": {
+    "Tp": 0.9999999991456878,
+    "Ts": 0.7590766119725083,
+    "azimuthDeg": 45,
+    "ellipticityDeg": 0,
+    "kind": "stokes"
+   },
+   "name": "state az 45 chi 0 through n 1.0 to 1.7112 at 59.6964 deg",
+   "tolerance": {
+    "T": 1e-12,
+    "s1": 1e-12,
+    "s2": 1e-12,
+    "s3": 1e-12
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "T": 0.8795383055591,
+    "s1": 0.13696014468638,
+    "s2": 0.0,
+    "s3": 0.99057655876135
+   },
+   "inputs": {
+    "Tp": 0.9999999991456878,
+    "Ts": 0.7590766119725083,
+    "azimuthDeg": 0,
+    "ellipticityDeg": 45,
+    "kind": "stokes"
+   },
+   "name": "state az 0 chi 45 through n 1.0 to 1.7112 at 59.6964 deg",
+   "tolerance": {
+    "T": 1e-12,
+    "s1": 1e-12,
+    "s2": 1e-12,
+    "s3": 1e-12
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "T": 0.93613678783444,
+    "s1": 0.57011916232608,
+    "s2": 0.75739065261823,
+    "s3": 0.31831358763825
+   },
+   "inputs": {
+    "Tp": 0.9999999991456878,
+    "Ts": 0.7590766119725083,
+    "azimuthDeg": 30,
+    "ellipticityDeg": 10,
+    "kind": "stokes"
+   },
+   "name": "state az 30 chi 10 through n 1.0 to 1.7112 at 59.6964 deg",
+   "tolerance": {
+    "T": 1e-12,
+    "s1": 1e-12,
+    "s2": 1e-12,
+    "s3": 1e-12
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "T": 0.97475085345157,
+    "s1": 1.0,
+    "s2": 0.0,
+    "s3": -0.0
+   },
+   "inputs": {
+    "Tp": 0.97475085345157,
+    "Ts": 0.9422038945967869,
+    "azimuthDeg": 0,
+    "ellipticityDeg": 0,
+    "kind": "stokes"
+   },
+   "name": "state az 0 chi 0 through n 1.0 to 1.5 at 30.0 deg",
+   "tolerance": {
+    "T": 1e-12,
+    "s1": 1e-12,
+    "s2": 1e-12,
+    "s3": 1e-12
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "T": 0.94220389459679,
+    "s1": -1.0,
+    "s2": 0.0,
+    "s3": 0.0
+   },
+   "inputs": {
+    "Tp": 0.97475085345157,
+    "Ts": 0.9422038945967869,
+    "azimuthDeg": 90,
+    "ellipticityDeg": 0,
+    "kind": "stokes"
+   },
+   "name": "state az 90 chi 0 through n 1.0 to 1.5 at 30.0 deg",
+   "tolerance": {
+    "T": 1e-12,
+    "s1": 1e-12,
+    "s2": 1e-12,
+    "s3": 1e-12
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "T": 0.95847737402418,
+    "s1": 0.01697847009061,
+    "s2": 0.99985585538786,
+    "s3": 0.0
+   },
+   "inputs": {
+    "Tp": 0.97475085345157,
+    "Ts": 0.9422038945967869,
+    "azimuthDeg": 45,
+    "ellipticityDeg": 0,
+    "kind": "stokes"
+   },
+   "name": "state az 45 chi 0 through n 1.0 to 1.5 at 30.0 deg",
+   "tolerance": {
+    "T": 1e-12,
+    "s1": 1e-12,
+    "s2": 1e-12,
+    "s3": 1e-12
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "T": 0.95847737402418,
+    "s1": 0.01697847009061,
+    "s2": 0.0,
+    "s3": 0.99985585538786
+   },
+   "inputs": {
+    "Tp": 0.97475085345157,
+    "Ts": 0.9422038945967869,
+    "azimuthDeg": 0,
+    "ellipticityDeg": 45,
+    "kind": "stokes"
+   },
+   "name": "state az 0 chi 45 through n 1.0 to 1.5 at 30.0 deg",
+   "tolerance": {
+    "T": 1e-12,
+    "s1": 1e-12,
+    "s2": 1e-12,
+    "s3": 1e-12
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "T": 0.96612340829039,
+    "s1": 0.48297198184388,
+    "s2": 0.80724079776582,
+    "s3": 0.33926443841963
+   },
+   "inputs": {
+    "Tp": 0.97475085345157,
+    "Ts": 0.9422038945967869,
+    "azimuthDeg": 30,
+    "ellipticityDeg": 10,
+    "kind": "stokes"
+   },
+   "name": "state az 30 chi 10 through n 1.0 to 1.5 at 30.0 deg",
+   "tolerance": {
+    "T": 1e-12,
+    "s1": 1e-12,
+    "s2": 1e-12,
+    "s3": 1e-12
+   }
+  }
+ ],
+ "citations": [
+  "M. Born and E. Wolf, Principles of Optics, 7th ed., Cambridge University Press (1999), section 1.5.2",
+  "E. Hecht, Optics, 5th ed., Pearson (2017), section 4.6.2"
+ ],
+ "convergence": "Closed form; no discretisation.",
+ "domain": "Air to glass and glass to air for n = 1.45-1.71 at 0-80 degrees; s, p, 45-degree linear, circular and elliptical inputs.",
+ "fidelity": "computed",
+ "id": "fresnel",
+ "outside_scope": "Beyond the critical angle the tracer reflects the ray totally, as before; absorption and coatings are not modelled",
+ "provenance": "Closed-form Fresnel coefficients; analytic limits (normal incidence, Brewster from either side) asserted in the module.",
+ "reference": "Textbook amplitude transmission coefficients with the obliquity factor (n2 cos t / n1 cos i)|t|^2 in 40-digit decimals; output state from Jones vectors",
+ "reference_file": "validation/reference/fresnel.py",
+ "scope": "Lossless, uncoated, non-magnetic interfaces between real indices, below the critical angle",
+ "title": "Fresnel transmission and polarization at prism faces",
+ "tolerance_rationale": "1e-12: double-precision agreement with closed-form expressions (absolute for the Stokes components)."
+}

@@ -10,13 +10,15 @@ import { glassAbbe, glassGVD, glassGroupDelayDifferenceFs, glassGroupIndex, glas
 import { transformLimitedBandwidthNm } from '../sketch/js/spectrum.js';
 import { hollowCoreCoefficients, marcatiliLossDbPerM } from '../sketch/js/fiber.js';
 import { propagateEnvelope, fieldMetrics } from '../sketch/js/pulse-field.js';
-import { thickLensCardinals } from '../sketch/js/elements.js';
+import { createElement, estimatedThinLensThicknessMm, thickLensCardinals } from '../sketch/js/elements.js';
+import { traceScene, detectorReading } from '../sketch/js/raytrace.js';
 import { analyzerTransmission, linearStokes, retarder } from '../sketch/js/polarization.js';
 import { finesseForReflectivity, reflectivityForFinesse } from '../sketch/js/etalon.js';
 import { parametricGainCoefficient, parametricPair, parametricSmallSignalGain } from '../sketch/js/parametric.js';
 import { allocateParametricAmplifier } from '../sketch/js/parametric-amplifier.js';
 import { spectralFieldResult } from '../sketch/js/spectral-coherence.js';
 import { coupledWaveConversion } from '../calculators/opa/coupled-wave.js';
+import { fresnelTransmittances, throughFace } from '../sketch/js/fresnel.js';
 import { materialDispersion, materialAbbe } from '../calculators/dispersion/materials.js';
 import { DISPERSION_DEFAULTS, computeDispersion } from '../calculators/dispersion/dispersion-calculator.js';
 import { CONVERSION_DEFAULTS, computeConversion } from '../calculators/nonlinear-conversion/conversion-calculator.js';
@@ -65,6 +67,36 @@ const APP = {
     const model = traceModel(system, nm, fo);
     const r = traceRay(model, field, px, py, model.zLast + system.surfaces.at(-1).thickness, { clip: false });
     return { x: r.x, y: r.y };
+  },
+  fresnel: ({ kind, ...inputs }) => {
+    if (kind === 'transmittance') {
+      return fresnelTransmittances(inputs.n1, inputs.n2, Math.cos(inputs.incidenceDeg * Math.PI / 180));
+    }
+    // kind === 'stokes': a pure state of azimuth a (from p) and ellipticity χ.
+    const a = 2 * inputs.azimuthDeg * Math.PI / 180, chi = 2 * inputs.ellipticityDeg * Math.PI / 180;
+    const stokes = { s1: Math.cos(chi) * Math.cos(a), s2: Math.cos(chi) * Math.sin(a), s3: Math.sin(chi) };
+    const { T, stokes: out } = throughFace(stokes, { Ts: inputs.Ts, Tp: inputs.Tp });
+    return { T, ...out };
+  },
+  // A traced scene: the reference's layout, read at its detector. The
+  // reference states the GDD of the paths; a thin lens's estimated glass is a
+  // separate model (estimatedThinLensThicknessMm) and is taken off again.
+  'ray-path-phase': ({ source, elements, detectorId }) => {
+    const laser = createElement('pulsedlaser', source.x, source.y);
+    laser.rot = source.rot;
+    Object.assign(laser.params, { beamMode: 'line', wavelength: source.wavelengthNm, transformLimited: false,
+      bandwidth: source.bandwidthNm, pulseWidthFs: 1000 });
+    const scene = elements.map(e => {
+      const el = createElement(e.type, e.x, e.y);
+      Object.assign(el, { id: e.id, rot: e.rot });
+      Object.assign(el.params, e.params);
+      return el;
+    });
+    traceScene([laser, ...scene]);
+    const lensGlass = scene.filter(el => el.type === 'lens')
+      .reduce((sum, el) => sum + glassGVD('nbk7', source.wavelengthNm) * estimatedThinLensThicknessMm(el.params), 0);
+    const pulse = detectorReading(detectorId)?.pulse;
+    return { gddFs2: pulse ? pulse.gddFs2 - lensGlass : NaN };
   },
   fluorescence: ({ kind, ...inputs }) => {
     if (kind === 'crossSection') return { crossSectionCm2: absorptionCrossSectionCm2(inputs.extinctionM) };
@@ -203,7 +235,7 @@ const APP = {
   },
 };
 
-for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'lens-design']) {
+for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'lens-design']) {
   const model = expected(name);
   for (const c of model.cases) {
     test(`${model.id}: ${c.name}`, () => {

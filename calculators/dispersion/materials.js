@@ -5,7 +5,7 @@
 // index, GVD and TOD from published dispersion formulas, with analytic
 // wavelength derivatives up to third order. DOM-free.
 //
-// The workbench's catalogue glasses (the SCHOTT glasses and fused silica)
+// The workbench's catalogue glasses (the SCHOTT glasses, fused silica and CaF₂)
 // take their coefficients from sketch/js/glass.js, so the calculator and the
 // tracer share one source; the crystals, liquids and gases are
 // calculator-only. Each entry keeps its source's own

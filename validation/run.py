@@ -23,7 +23,7 @@ REFERENCE = os.path.join(ROOT, "validation", "reference")
 EXPECTED = os.path.join(ROOT, "validation", "expected")
 REPORT = os.path.join(ROOT, "docs", "validation.md")
 CONVERGENCE = os.path.join(ROOT, "validation", "expected", "convergence.json")
-MODULES = ["sellmeier", "pulse", "argon_capillary", "nlse", "paraxial", "opa", "broadband_interference", "wavelength_conversion", "material_dispersion", "fluorescence", "lens_design"]
+MODULES = ["sellmeier", "pulse", "argon_capillary", "nlse", "paraxial", "opa", "broadband_interference", "wavelength_conversion", "material_dispersion", "fluorescence", "ray_path_phase", "fresnel", "lens_design"]
 
 sys.path.insert(0, REFERENCE)
 
@@ -46,7 +46,7 @@ UNCOVERED = [
     ("Sum- and difference-frequency mixing durations, widths and overlap (the wavelengths are checked through the conversion calculator)", "sketch/js/parametric.js"),
     ("Objective focal length, NA, acceptance angle and pupil relations", "sketch/js/objective.js"),
     ("Acousto-optic deflection angle and efficiency", "sketch/js/acousto-optic.js, sketch/js/aotf.js"),
-    ("Grating and prism dispersion as the tracer applies them, including order efficiency", "sketch/js/raytrace.js"),
+    ("Grating order efficiency and the power each prism or grating sample carries (their spectral phase is checked under the ray-path phase row)", "sketch/js/raytrace.js"),
     ("Filtered-pulse duration: the numerical transform, the assumed-sweep continuum estimate and the decline rules", "sketch/js/pulse-field.js: quadraticPhasePulse; sketch/js/glass.js: filteredPulseDuration"),
     ("Etalon fringe-resolved mean transmission", "sketch/js/raytrace.js: etalonMeanTransmission"),
     ("Sampled-envelope intensity autocorrelation", "sketch/js/pulse-field.js: envelopeAutocorrelation"),

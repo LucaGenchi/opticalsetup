@@ -424,3 +424,12 @@ test('distortion and lateral colour: zero for a perfect lens, Optiland’s value
   close(edge.lateralColour, Math.hypot(short.cx - long.cx, short.cy - long.cy), 1e-15);
   assert.equal(analyzeSystem({ ...cooke(), wavelengthsNm: [550], primaryWavelength: 0 }).spots[2].lateralColour, null, 'one wavelength: none');
 });
+
+test('every catalogue glass has a readable short name', async () => {
+  const { GLASSES } = await import('../sketch/js/glass.js');
+  const { glassShortName } = await import('../calculators/lens-design/engine/materials.js');
+  const names = [...GLASSES.values()].map(g => glassShortName(g.label));
+  assert.deepEqual(names.slice(0, 3), ['N-BK7', 'Fused silica', 'CaF₂']);
+  assert.ok(names.every(n => n && !n.includes('(') && n.length <= 14), names.join(', '));
+  assert.equal(new Set(names).size, names.length, 'no two glasses share a name');
+});

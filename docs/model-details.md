@@ -107,7 +107,9 @@ app on 2026-09-29. For the overview, see [the README](../README.md).
   aperture stops and emergent axial colour, with ray intersections and surface
   normals computed on the true curved surface, and catalogue-glass dispersion,
   spectral band arithmetic at filters, Malus's law, grating equation,
-  Sellmeier glass/prism dispersion and second-order pulse GDD, cavity round trips
+  Sellmeier glass/prism dispersion and second-order pulse GDD, Fresnel
+  transmission and polarization at prism faces
+  ([docs/physics/prism-fresnel.md](physics/prism-fresnel.md)), cavity round trips
   with partial mirrors (a passive loop's remaining round trips summed in closed
   form), optical parametric oscillation and seeded amplification with photon
   accounting (a stretched seed amplified colour by colour where the pump meets
@@ -189,8 +191,14 @@ that survives, transformed numerically with the source's quadratic phase plus th
 GDD, while one effective quadratic phase describes the band (a broad band behind thick
 glass, or an etalon's comb, reads unavailable); a filtered supercontinuum is an
 assumed-sweep estimate that takes its duration as a linear sweep across its band. Where the phase is unknown, or paths of different dispersion meet at one
-detector, the dispersed duration is reported as unavailable rather than derived. The pulse
-compressor is a signed lumped-GDD proxy, not a traced grating/prism/chirped-mirror layout.
+detector, the dispersed duration is reported as unavailable rather than derived. Where a
+prism or grating turns a pulse's colours apart, the GDD a detector reads comes from the phase
+of each colour's traced path (its optical path, a grating's added phase, an ideal lens's
+paraxial path), so prism and grating compressors and grating stretchers give their GDD; the
+colours must reach the detector through elements whose phase is modelled, or each ray keeps
+its glass GDD, and where they still diverge the duration is unavailable
+([docs/physics/ray-path-phase.md](physics/ray-path-phase.md)). The pulse compressor box is a
+signed lumped-GDD proxy, not a traced grating/prism/chirped-mirror layout.
 
 Fibers also offer an opt-in **Hollow core · argon** model: a bounded scalar
 Fourier-envelope calculation with capillary/gas β₂, Kerr self-phase modulation

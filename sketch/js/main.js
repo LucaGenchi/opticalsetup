@@ -827,6 +827,14 @@ const demoScenes = {
     }, { label: '10 kHz scan — angles exaggerated to be visible', showLabel: true, labelPos: 'b' }),
     mkDemo('box', 420, 230, 0, { text: '', w: 3, h: 100, behavior: 'block', fill: '#f2f3f5' }, { label: 'screen — no moving mirror', showLabel: true, labelPos: 'r' }),
   ],
+  // The in-plane pickoff: in past the sharp edge, back from a roof reflector
+  // 20 mm over, and off the coating to a detector.
+  dmirror: () => [
+    mkDemo('cwlaser', 40, 180, 0, { wavelength: 633, beamMode: 'line' }),
+    mkDemo('dmirror', 230, 203, 45, { length: 12.7, sharpEdge: 'top' }, { label: 'D-shaped pickoff — the incoming beam passes its sharp edge', showLabel: true, labelPos: 'b' }),
+    mkDemo('retroreflector', 460, 190, 0, { length: 50.8 }),
+    mkDemo('detector', 230, 320, 90, { aperture: 26 }),
+  ],
   retroreflector: () => [
     mkDemo('cwlaser', 60, 145, 0),
     mkDemo('retroreflector', 260, 160, 0, {

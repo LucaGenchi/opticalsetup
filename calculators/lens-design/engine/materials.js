@@ -25,11 +25,21 @@ export const MATERIAL_OPTIONS = [
 
 export const isKnownMaterial = id => id === AIR || id === CONSTANT || GLASSES.has(id);
 
-// Short name for tables: the catalogue label up to its first space.
+// Short name of a catalogue glass from its label: "N-BK7 crown (nd …)" ->
+// "N-BK7", "Calcium fluoride, CaF₂ (nd …)" -> "CaF₂", "Fused silica (nd …)"
+// -> "Fused silica".
+export function glassShortName(label) {
+  const name = label.split(' (nd')[0];
+  if (name.includes(',')) return name.split(',').at(-1).trim();
+  const code = name.split(' ')[0];
+  return /\d/.test(code) ? code : name;
+}
+
 export function materialName(id, index) {
   if (id === AIR) return 'air';
   if (id === CONSTANT) return `n = ${index}`;
-  return GLASSES.get(id)?.label.split(' ')[0] ?? id;
+  const glass = GLASSES.get(id);
+  return glass ? glassShortName(glass.label) : id;
 }
 
 export function materialIndex(id, wavelengthNm, constantIndex = 1.5) {
