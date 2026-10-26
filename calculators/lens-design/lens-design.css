@@ -24,6 +24,11 @@
 }
 
 .calc-page:has(.bench) { max-width: 1480px; }
+/* The physics text spans the same width as the facts above it. */
+.calc-page:has(.bench) .calc-article,
+.calc-page:has(.bench) .calc-article p,
+.calc-page:has(.bench) .calc-article ul,
+.calc-page:has(.bench) .calc-article h3 { max-width: none; }
 .bench {
   display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 18px; align-items: start;
 }

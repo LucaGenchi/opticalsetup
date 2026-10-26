@@ -89,7 +89,10 @@ export function drawLayout(host, result) {
     }
   }
   // Image plane.
-  const imgH = Math.max(...result.spots.map(s => Math.abs(s.chief?.y ?? s.poly.cy ?? 0)), yMax * 0.3) * 1.1;
+  // Tall enough for every image point that exists (a field whose rays all
+  // fail has no centroid).
+  const heights = result.spots.map(s => Math.abs(s.chief?.y ?? s.poly.cy)).filter(Number.isFinite);
+  const imgH = Math.max(...heights, yMax * 0.3) * 1.1;
   line([[image.z, -imgH], [image.z, imgH]], 'lay-image', { w: 1.5 });
 
   // Surface numbers above each vertex, and a scale bar.
@@ -172,6 +175,15 @@ export function drawSpots(canvas, result, { common = true } = {}) {
     ctx.strokeStyle = grid; ctx.lineWidth = 1;
     ctx.strokeRect(cx - box / 2, cy - box / 2, box, box);
     ctx.beginPath(); ctx.moveTo(cx - box / 2, cy); ctx.lineTo(cx + box / 2, cy); ctx.moveTo(cx, cy - box / 2); ctx.lineTo(cx, cy + box / 2); ctx.stroke();
+    // Every ray of this field failed: its statistics are NaN by design, so
+    // nothing is drawn from them; the notes say which failures.
+    if (!s.poly.count) {
+      ctx.fillStyle = muted; ctx.textAlign = 'center'; ctx.font = `12.5px ${font}`;
+      ctx.fillText('No ray reaches the image', cx, cy);
+      ctx.fillStyle = ink; ctx.font = `600 12.5px ${font}`;
+      ctx.fillText(`${formatNumber(s.field, 4)}${result.fieldUnit === '°' ? '°' : ' mm'}`, cx, y0 + cell + 10);
+      return;
+    }
     const ref = refOf(s);
     // Airy circle about the polychromatic centroid.
     ctx.setLineDash([4, 3]); ctx.strokeStyle = muted;

@@ -387,3 +387,21 @@ test('an asphere keeps its conic seed when the vertex-plane crossing is outside 
   // The same ray without the A4 term still meets the bare sphere.
   assert.ok(intersect(makeSurface({ radius: 10 }), P, D, -Infinity).t !== undefined);
 });
+
+// A field whose every ray fails has no spot: its statistics are NaN by
+// design (never drawn), the notes say so, and everything that is drawn stays
+// finite.
+test('a field with no surviving ray is reported, not drawn', () => {
+  const sys = normalizeSystem({ ...presetSystem('pcx-curved-first'), surfaces: presetSystem('pcx-curved-first').surfaces.map((s, i) => (i === 1 ? { ...s, semiDiameter: 0.1 } : s)) });
+  const r = analyzeSystem(sys);
+  assert.ok(r.ok);
+  const empty = r.spots.filter(s => !s.poly.count);
+  assert.ok(empty.length >= 2, 'the off-axis fields lose every ray');
+  for (const s of empty) {
+    assert.ok(Number.isNaN(s.poly.rms));
+    assert.ok(r.warnings.some(w => w.text.includes(`Field ${Number(s.field).toPrecision(4)}°: no ray reaches the image`)));
+  }
+  assert.ok(!r.warnings.some(w => /drawn about its centroid/.test(w.text) && empty.some(s => w.text.startsWith(`Field ${Number(s.field).toPrecision(4)}°`))));
+  assertFinite(r.layoutRays, 'layoutRays');
+  assertFinite(r.surfaces, 'surfaces');
+});

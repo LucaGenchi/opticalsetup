@@ -16,7 +16,7 @@ export const lensCalculators = [
     slug: 'lens-design',
     title: 'Lens design',
     card: 'Enter a lens prescription and trace real rays in 3D: first-order data, Seidel aberrations, layout and spot diagrams.',
-    summary: 'Type in a lens, surface by surface, or start from a preset: a perfect lens, a singlet, an achromat, a Cooke triplet. The page traces real skew rays through it and draws the layout and the spot diagrams, next to the paraxial data and the third-order aberrations. It is a sketching and teaching tool, not a full design program: there is no optimization or tolerancing.',
+    summary: 'Enter a lens surface by surface, or start from a preset: a perfect lens, a singlet, an achromat or a Cooke triplet. The page traces real skew rays through it and draws the layout and spot diagrams alongside the paraxial data and the third-order aberrations. Optimization and tolerancing are left to dedicated lens design software.',
     script: 'page.js',
     stylesheet: 'lens-design.css',
     graphs: [],

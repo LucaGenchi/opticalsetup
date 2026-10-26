@@ -122,7 +122,9 @@ export function analyzeSystem(input) {
   }
   spots.forEach(s => {
     if (s.vignetting > 0) warnings.push({ kind: 'vignetting', text: `Field ${fmt(s.field, 4)}${sys.fields.type === 'angle' ? '°' : ' mm'}: ${(100 * s.vignetting).toFixed(1)} % of the pupil is clipped by a set clear aperture (vignetting).` });
-    if (!s.chief) warnings.push({ kind: 'rays', text: `Field ${fmt(s.field, 4)}${sys.fields.type === 'angle' ? '°' : ' mm'}: the chief ray fails, so this spot is drawn about its centroid.` });
+    const where = `Field ${fmt(s.field, 4)}${sys.fields.type === 'angle' ? '°' : ' mm'}`;
+    if (!s.poly.count) warnings.push({ kind: 'rays', text: `${where}: no ray reaches the image, so there is no spot to draw.` });
+    else if (!s.chief) warnings.push({ kind: 'rays', text: `${where}: the chief ray fails, so this spot is drawn about its centroid.` });
   });
 
   // Meridional layout rays at the primary wavelength.
