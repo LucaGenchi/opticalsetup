@@ -980,9 +980,9 @@ export const wikiEntries = [
         <span class="w">R₁ &gt; 0</span> and <span class="w">R₂ &lt; 0</span>;
         <span class="w">R = 0</span> makes that face plane. The Shape readout names the
         resulting profile so the sign convention can be checked directly.</p>
-        <p>The selectable catalogue glasses (fused silica and the SCHOTT N-BK7, N-FK51A,
-        N-SF5, N-SF10, N-SF11, N-SF14, N-SF57 and N-LASF9) use each glass's
-        published d-line index and Abbe number${cite(4)}. If a requested radius is too
+        <p>The selectable catalogue glasses (fused silica, calcium fluoride (CaF₂) and the SCHOTT N-BK7, N-FK51A,
+        N-SK16, F2, N-SF5, N-SF10, N-SF11, N-SF14, N-SF57 and N-LASF9) use each glass's
+        published d-line index and Abbe number${cite(4, 5)}. If a requested radius is too
         small for the clear aperture, or the centre thickness would make the faces cross,
         the inspector shows the exact constructible geometry the tracer uses instead of
         hiding the adjustment.</p>
@@ -1019,6 +1019,7 @@ export const wikiEntries = [
       { label: 'Thorlabs — N-BK7 plano-convex lenses: the lensmaker equation for a thick lens', url: 'https://www.thorlabs.com/n-bk7-plano-convex-lenses-uncoated?tabName=Tutorial' },
       { label: 'RP Photonics Encyclopedia — Spherical aberrations', url: 'https://www.rp-photonics.com/spherical_aberrations.html' },
       { label: 'SCHOTT — Optical-glass collection datasheets', url: 'https://www.schott.com/en-gb/products/optical-glass/-/media/Project/OnEx/Products/O/optical-glass/Downloads/schott-optical-glass-collection-datasheets-english-may2019.pdf' },
+      { label: 'I. H. Malitson, “A redetermination of some optical properties of calcium fluoride,” Appl. Opt. 2, 1103 (1963) — CaF₂ Sellmeier curve', url: 'https://doi.org/10.1364/AO.2.001103' },
     ],
     resources: [
       { label: 'SCHOTT — Optical-glass technical properties', url: 'https://www.schott.com/en-gb/products/optical-glass/technical-details' },
@@ -1850,7 +1851,7 @@ export const wikiEntries = [
         broadband and supercontinuum beams are sampled at several discrete wavelengths
         across their band, and each sample refracts with its own wavelength-dependent
         index, so the beam visibly fans into a spectrum. Fused silica, CaF₂ and the SCHOTT
-        glasses N-BK7, N-FK51A, N-SF5, N-SF10, N-SF11, N-SF14, N-SF57 and N-LASF9 are
+        glasses N-BK7, N-FK51A, N-SK16, F2, N-SF5, N-SF10, N-SF11, N-SF14, N-SF57 and N-LASF9 are
         selectable; existing sketches still default to N-BK7.</p>
         <p>For a pulse, each colour carries the phase of its own traced path: the
         index of the glass times the distance inside it, plus the air between. A
@@ -1969,8 +1970,8 @@ export const wikiEntries = [
         custom cross-section (a light pipe's tapered profile, a freeform prism, a
         corrective wedge) refracts and totally-internally-reflects exactly like the
         fixed-geometry <a href="../prism/">Prism</a>, just without being locked to a
-        triangle. Choose a constant refractive index or one of nine catalogue models:
-        fused silica and the SCHOTT glasses N-BK7, N-FK51A, N-SF5, N-SF10, N-SF11,
+        triangle. Choose a constant refractive index or one of twelve catalogue models:
+        fused silica, calcium fluoride (CaF₂) and the SCHOTT glasses N-BK7, N-FK51A, N-SK16, F2, N-SF5, N-SF10, N-SF11,
         N-SF14, N-SF57 and N-LASF9. A broadband beam through a catalogue-glass
         boundary is sampled by wavelength and visibly disperses into a spectrum.</p>`,
       formulas: [],

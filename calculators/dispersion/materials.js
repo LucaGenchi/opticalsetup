@@ -40,6 +40,8 @@ const catalogueGlass = (id, group, extra = {}) => {
 const MATERIAL_LIST = [
   catalogueGlass('nbk7', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
   catalogueGlass('nfk51a', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
+  catalogueGlass('nsk16', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
+  catalogueGlass('f2', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
   catalogueGlass('nsf5', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
   catalogueGlass('nsf10', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
   catalogueGlass('nsf11', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
