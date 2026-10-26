@@ -5950,7 +5950,7 @@ export const wikiEntries = [
     citations: [],
     resources: [
       { label: 'Newport — Beam pickoff with D-shaped mirrors (application note)', url: 'https://www.newport.com/n/d-shaped-beam-pickoff' },
-      { label: 'A. Ahmad et al., single-prism femtosecond pulse compressor with a D-shaped pickoff (arXiv:1306.5011)', url: 'https://arxiv.org/abs/1306.5011' },
+      { label: 'L. Kong and M. Cui, single-prism femtosecond pulse compressor with a D-shaped pickoff (arXiv:1306.5011)', url: 'https://arxiv.org/abs/1306.5011' },
     ],
   },
   {

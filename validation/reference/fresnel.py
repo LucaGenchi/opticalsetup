@@ -20,8 +20,10 @@ Analytic limits checked inside cases(): normal incidence T = 4 n1 n2 /
 (n1 + n2)^2 for both polarizations, and T_p = 1 at Brewster's angle from
 either side.
 
-Arithmetic: 40-digit decimals; the formulas are closed form, so the
-tolerance is double-precision agreement (1e-12).
+Arithmetic: 40-digit decimals throughout, trigonometry by series, so the
+expected file is the same on every machine (platform floating-point trig can
+differ in its last bits). The formulas are closed form, so the tolerance is
+double-precision agreement (1e-12).
 """
 from decimal import Decimal as D, getcontext
 import math
@@ -31,12 +33,29 @@ from common import sig
 getcontext().prec = 40
 
 
+PI = D("3.141592653589793238462643383279502884197")
+
+
+def _sin(x):
+    # Taylor series in 40-digit decimals: the same digits on every machine,
+    # unlike the platform's floating-point trig, whose last bits vary.
+    x = x % (2 * PI)
+    term, total, k = x, x, 1
+    while abs(term) > D("1e-45"):
+        term *= -x * x / ((2 * k) * (2 * k + 1))
+        total += term
+        k += 1
+    return total
+
+
+def _cos(x):
+    return _sin(x + PI / 2)
+
+
 def transmittances(n1, n2, incidence_deg):
     n1, n2 = D(repr(n1)), D(repr(n2))
-    i = D(repr(math.radians(incidence_deg)))
-    # cos and sin by series would be overkill: float trig is exact to 1e-16,
-    # far below the 1e-12 tolerance; Decimal keeps the algebra clean.
-    ci, si = D(repr(math.cos(float(i)))), D(repr(math.sin(float(i))))
+    i = D(repr(incidence_deg)) * PI / 180
+    ci, si = _cos(i), _sin(i)
     st = n1 * si / n2
     if st >= 1:
         return None
@@ -44,22 +63,25 @@ def transmittances(n1, n2, incidence_deg):
     ts = 2 * n1 * ci / (n1 * ci + n2 * ct)
     tp = 2 * n1 * ci / (n2 * ci + n1 * ct)
     factor = (n2 * ct) / (n1 * ci)
-    return float(factor * ts * ts), float(factor * tp * tp)
+    return factor * ts * ts, factor * tp * tp
 
 
 def stokes_after(Ts, Tp, azimuth_deg, ellipticity_deg=0.0):
     """Pure input state (azimuth from p, ellipticity angle chi), as a Jones
-    vector; returns transmitted fraction and the output Stokes vector."""
-    a, chi = math.radians(azimuth_deg), math.radians(ellipticity_deg)
+    vector of decimal (real, imaginary) pairs; returns the transmitted
+    fraction and the output Stokes vector."""
+    a, chi = D(repr(azimuth_deg)) * PI / 180, D(repr(ellipticity_deg)) * PI / 180
     # Jones vector (E_p, E_s) for azimuth a and ellipticity chi.
-    ep = complex(math.cos(a) * math.cos(chi), -math.sin(a) * math.sin(chi))
-    es = complex(math.sin(a) * math.cos(chi), math.cos(a) * math.sin(chi))
-    op, os_ = ep * math.sqrt(Tp), es * math.sqrt(Ts)
-    total = abs(op) ** 2 + abs(os_) ** 2
-    s1 = (abs(op) ** 2 - abs(os_) ** 2) / total
-    s2 = 2 * (op * os_.conjugate()).real / total
-    s3 = -2 * (op * os_.conjugate()).imag / total
-    return total, s1, s2, s3
+    ep = (_cos(a) * _cos(chi), -_sin(a) * _sin(chi))
+    es = (_sin(a) * _cos(chi), _cos(a) * _sin(chi))
+    rp, rs = Tp.sqrt(), Ts.sqrt()
+    op, os_ = (ep[0] * rp, ep[1] * rp), (es[0] * rs, es[1] * rs)
+    ip, is_ = op[0] ** 2 + op[1] ** 2, os_[0] ** 2 + os_[1] ** 2
+    total = ip + is_
+    # op * conj(os): real and imaginary parts.
+    re = op[0] * os_[0] + op[1] * os_[1]
+    im = op[1] * os_[0] - op[0] * os_[1]
+    return total, (ip - is_) / total, 2 * re / total, -2 * im / total
 
 
 def cases():
@@ -67,19 +89,19 @@ def cases():
     # Normal incidence and Brewster limits.
     for n1, n2 in ((1.0, 1.5), (1.0, 1.7112), (1.4533, 1.0)):
         Ts, Tp = transmittances(n1, n2, 0.0)
-        limit = 4 * n1 * n2 / (n1 + n2) ** 2
-        assert abs(Ts - limit) < 1e-14 and abs(Tp - limit) < 1e-14
+        limit = 4 * D(repr(n1)) * D(repr(n2)) / (D(repr(n1)) + D(repr(n2))) ** 2
+        assert abs(Ts - limit) < D("1e-30") and abs(Tp - limit) < D("1e-30")
         theta_b = math.degrees(math.atan(n2 / n1))
-        assert abs(transmittances(n1, n2, theta_b)[1] - 1) < 1e-14
+        # Brewster from a float angle: good to about 1e-16 in the angle.
+        assert abs(transmittances(n1, n2, theta_b)[1] - 1) < D("1e-14")
     for n1, n2, angle in ((1.0, 1.5, 0.0), (1.0, 1.5, 30.0), (1.0, 1.5, 56.30993247402), (1.0, 1.5, 80.0),
                           (1.0, 1.7112, 59.6964), (1.7112, 1.0, 30.3036), (1.4533, 1.0, 40.0),
                           (1.0, 1.4533, 55.469), (1.4533, 1.0, 43.0)):
-        r = transmittances(n1, n2, angle)
-        Ts, Tp = r
+        Ts, Tp = transmittances(n1, n2, angle)
         out.append({
             "name": f"n {n1} to {n2} at {angle} deg",
             "inputs": {"kind": "transmittance", "n1": n1, "n2": n2, "incidenceDeg": angle},
-            "expected": {"Ts": sig(Ts, 14), "Tp": sig(Tp, 14)},
+            "expected": {"Ts": sig(float(Ts), 14), "Tp": sig(float(Tp), 14)},
             "tolerance": {"Ts": 1e-12, "Tp": 1e-12},
         })
     # Polarization through a face: s, p, 45 deg linear, circular, and an
@@ -90,8 +112,8 @@ def cases():
             T, s1, s2, s3 = stokes_after(Ts, Tp, az, chi)
             out.append({
                 "name": f"state az {az} chi {chi} through n {n1} to {n2} at {angle} deg",
-                "inputs": {"kind": "stokes", "Ts": Ts, "Tp": Tp, "azimuthDeg": az, "ellipticityDeg": chi},
-                "expected": {"T": sig(T, 14), "s1": s1, "s2": s2, "s3": s3},
+                "inputs": {"kind": "stokes", "Ts": sig(float(Ts), 17), "Tp": sig(float(Tp), 17), "azimuthDeg": az, "ellipticityDeg": chi},
+                "expected": {"T": sig(float(T), 14), "s1": round(float(s1), 14), "s2": round(float(s2), 14), "s3": round(float(s3), 14)},
                 "tolerance": {"T": 1e-12, "s1": 1e-12, "s2": 1e-12, "s3": 1e-12},
                 "absolute": True,
             })

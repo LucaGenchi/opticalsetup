@@ -47,7 +47,7 @@ const CHOP_SCHEMATIC_PERIOD_MM = 14;
 const MIN_DRAWN_INTENSITY = 1e-12;
 import {
   linearStokes, cloneStokes, retarder as applyRetarder, analyzerTransmission,
-  legacyPolarization, polarizationDescription, stokesAngleDeg, degreeOfPolarization,
+  legacyPolarization, polarizationDescription,
 } from './polarization.js';
 import { fresnelTransmittances, throughFace } from './fresnel.js';
 import { arcParameterAtPoint, circularArcThrough } from './polygon.js';
@@ -3788,8 +3788,10 @@ function cellChild(ray, d, cell, lo, hi, tag, share = 1) {
 // time-averaged level a slow instrument would read.
 function polModThrough(ray, transmissionOf) {
   const m = ray.polMod;
-  const high = transmissionOf(m.stokesHigh);
-  const low = transmissionOf(m.stokesLow);
+  // Each state's share of the power, where a Fresnel face upstream has
+  // passed the two states differently (continuous light; 1 otherwise).
+  const high = transmissionOf(m.stokesHigh) * (m.weightHigh ?? 1);
+  const low = transmissionOf(m.stokesLow) * (m.weightLow ?? 1);
   return {
     high,
     low,
@@ -4110,20 +4112,43 @@ function interact(ray, hit) {
         // A prism face transmits by Fresnel at its real angle and acts as a
         // partial polarizer along p, the canvas plane
         // (docs/physics/prism-fresnel.md); other glass keeps its own setting.
-        const fresnel = data.fresnel ? fresnelTransmittances(n1, n2, dot(d, n)) : null;
+        // Snell's law can still hand back the grazing ray at exactly the
+        // critical angle, where Fresnel transmission has fallen to zero; the
+        // two meet there, so that ray carries nothing.
+        const fresnel = data.fresnel ? (fresnelTransmittances(n1, n2, dot(d, n)) || { Ts: 0, Tp: 0 }) : null;
         const face = fresnel ? throughFace(ray.stokes, fresnel) : null;
+        // Light an EOM switches between two states: each state crosses the
+        // face with its own transmission. A pulse train carries that as a
+        // gate, as an analyzer does; continuous light carries each state's
+        // share of the power as a weight the next analyzer applies.
+        let modulation = null;
+        if (face && ray.polMod) {
+          const m = ray.polMod, high = throughFace(m.stokesHigh, fresnel), low = throughFace(m.stokesLow, fresnel);
+          const states = { ...m, stokesHigh: high.stokes, stokesLow: low.stokes };
+          if (ray.pulse) {
+            modulation = { factor: 1, fields: { polMod: states, pulse: withGate(ray.pulse, {
+              opl: m.opl, frequencyMHz: m.frequencyMHz, phaseNs: m.phaseNs, duty: m.duty, shape: 'square', high: high.T, low: low.T,
+            }) } };
+          } else {
+            const wHigh = m.weightHigh ?? 1, wLow = m.weightLow ?? 1;
+            const mean = m.duty * wHigh * high.T + (1 - m.duty) * wLow * low.T;
+            modulation = { factor: mean, fields: { polMod: mean > 0
+              ? { ...states, weightHigh: wHigh * high.T / mean, weightLow: wLow * low.T / mean } : states } };
+          }
+        }
         const polarization = face ? {
           stokes: face.stokes, faceStokes: true,
-          // A pure linear state stays linear, its azimuth turned toward p.
-          ...(typeof ray.pol === 'number' && Math.abs(face.stokes.s3) < 1e-9
-            && degreeOfPolarization(face.stokes) > 1 - 1e-9 ? { pol: stokesAngleDeg(face.stokes) } : {}),
+          // The legacy label follows the state: circular light leaves
+          // elliptical, unpolarized light partly p-polarized.
+          pol: legacyPolarization(face.stokes),
+          ...(modulation ? modulation.fields : {}),
         } : {};
         return {
           d: transmitted, wl, bw: bandwidth, ...specField, ...colorField, tag,
           medium: inside ? null : materialId,
           mediumMaterial: inside ? null : (materialDispersive ? data.material : null),
           ior: n2,
-          intensity: intensity * (face ? face.T : Math.min(1, Math.max(0, data.transmission ?? 1))),
+          intensity: intensity * (modulation ? modulation.factor : face ? face.T : Math.min(1, Math.max(0, data.transmission ?? 1))),
           ...polarization,
         };
       };

@@ -33,7 +33,7 @@ import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
   pointInBoundary, sampleBoundary,
 } from './polygon.js';
-import { polarizationDescription, stokesAngleDeg } from './polarization.js';
+import { polarizationDescription, stokesAngleDeg, degreeOfPolarization } from './polarization.js';
 import {
   authoredPulseTiming, glassIndex, isDispersiveGlass, GLASS_OPTIONS, MAX_BANDWIDTH_NM, MAX_SOURCE_GDD_FS2, MIN_BANDWIDTH_NM,
 } from './glass.js';
@@ -990,6 +990,18 @@ function probePolCard(rd) {
       `<line x1="0" y1="-8.5" x2="0" y2="8.5"/></g>` +
       `<path d="M -6,-11 L 6,-11 M 3,-13.5 L 6,-11 L 3,-8.5" fill="none" stroke="#7c3aed" stroke-width="1.2"/>`;
     lab = `${name(rd.polMod.stokesLow)} ↔ ${name(rd.polMod.stokesHigh)} · ${rate}`;
+    labSize = 7;
+  } else if (rd.stokes && degreeOfPolarization(rd.stokes) >= 0.02 && degreeOfPolarization(rd.stokes) < 0.985) {
+    // Partly polarized (unpolarized light after a prism face): neither the
+    // pure state its azimuth suggests nor unpolarized. Drawn as the
+    // unpolarized star with the polarized part's axis over it.
+    const dop = degreeOfPolarization(rd.stokes), angle = stokesAngleDeg(rd.stokes);
+    const elliptical = Math.abs(rd.stokes.s3) >= 0.015 * dop;
+    icon = `<g stroke="#999" stroke-width="1.1"><line x1="-8" y1="0" x2="8" y2="0"/><line x1="0" y1="-8" x2="0" y2="8"/><line x1="-5.7" y1="-5.7" x2="5.7" y2="5.7"/><line x1="-5.7" y1="5.7" x2="5.7" y2="-5.7"/></g>` +
+      `<g transform="rotate(${-angle})">${elliptical
+        ? '<ellipse cx="0" cy="0" rx="8.5" ry="4" fill="none" stroke="#333" stroke-width="1.6"/>'
+        : '<line x1="-8.5" y1="0" x2="8.5" y2="0" stroke="#333" stroke-width="1.6"/>'}</g>`;
+    lab = `${Math.round(dop * 100)} % polarized · ${elliptical ? 'elliptical' : 'linear'} ${Math.round(angle)}°`;
     labSize = 7;
   } else if (rd.pol === 'c') {
     icon = `<path d="M 8,2 A 8.2 8.2 0 1 1 3,-7.7" fill="none" stroke="#333" stroke-width="1.6"/>` +

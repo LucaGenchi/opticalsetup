@@ -6,8 +6,8 @@ A prism face transmitted a fixed 98 % of the light whatever its angle or
 polarization. That hides what makes Brewster-cut prisms the standard for
 pulse compressors: at Brewster's angle the p-polarized light (in the plane of
 incidence, the canvas plane) crosses each face with no reflection loss, while
-s-polarized light loses about 15 % per face in N-SF10. A four-prism
-compressor has eight faces.
+s-polarized light loses about 24 % per face in N-SF10 at 800 nm (13 % in
+fused silica). A four-prism compressor has eight faces.
 
 ## Model and conventions
 
@@ -51,11 +51,23 @@ not a beamsplitter in the app.
 
 ## Effect on saved scenes
 
-Prisms in scenes saved before this model transmit by Fresnel too: a prism
-used at Brewster's angle with p-polarized light now loses nothing, and a
-prism at other angles, or with unpolarized or s-polarized light, loses about
-4–15 % per face instead of 2 %. Power readings behind prisms change
+Prisms in scenes saved before this model transmit by Fresnel too, instead of
+2 % loss per face. A prism used at Brewster's angle with p-polarized light now
+loses nothing. Otherwise the loss depends on the glass, the angle and the
+polarization: at normal incidence about 3 % (CaF₂, fused silica) to 7 %
+(N-SF10) per face; s-polarized light at Brewster's angle 12–24 %; more toward
+grazing incidence, and none at all past the critical angle, where the ray is
+totally reflected. Power and polarization readings behind prisms change
 accordingly; nothing else does.
+
+At exactly the critical angle, where Snell's law gives a grazing exit ray,
+the Fresnel transmission is zero and that ray carries nothing.
+
+**Modulated polarization.** Light an electro-optic modulator switches between
+two states crosses each face once per state, with that state's transmission.
+A pulse train carries the difference as a gate (as an analyzer does);
+continuous light carries each state's share of the power to the next
+analyzer.
 
 ## Checks
 
