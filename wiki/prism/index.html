@@ -6,11 +6,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Prism — Optics Encyclopedia | OpticalSetup</title>
-<meta name="description" content="Refracts light at its triangular glass boundaries, separating wavelengths through material dispersion and adding pulse dispersion according to the traced path. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<meta name="description" content="Refracts light at its triangular glass boundaries, separating wavelengths through material dispersion; a pulse's GDD comes from the paths its colours take, so a prism pair compresses. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
 <link rel="canonical" href="https://opticalsetup.com/wiki/prism/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Prism — OpticalSetup Encyclopedia">
-<meta property="og:description" content="Refracts light at its triangular glass boundaries, separating wavelengths through material dispersion and adding pulse dispersion according to the traced path.">
+<meta property="og:description" content="Refracts light at its triangular glass boundaries, separating wavelengths through material dispersion; a pulse's GDD comes from the paths its colours take, so a prism pair compresses.">
 <meta property="og:url" content="https://opticalsetup.com/wiki/prism/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="../../sketch/icons/icon.svg">
@@ -140,7 +140,7 @@
           <h1>Prism</h1>
         </div>
       </div>
-      <p class="tagline">Refracts light at its triangular glass boundaries, separating wavelengths through material dispersion and adding pulse dispersion according to the traced path.</p>
+      <p class="tagline">Refracts light at its triangular glass boundaries, separating wavelengths through material dispersion; a pulse's GDD comes from the paths its colours take, so a prism pair compresses.</p>
       <a class="place-cta" href="../../sketch/?demo=prism">Open in the canvas →</a>
 
       <div class="embed-wrap">
@@ -176,8 +176,14 @@
         across their band, and each sample refracts with its own wavelength-dependent
         index, so the beam visibly fans into a spectrum. Fused silica, CaF₂ and the SCHOTT
         glasses N-BK7, N-FK51A, N-SF5, N-SF10, N-SF11, N-SF14, N-SF57 and N-LASF9 are
-        selectable; existing sketches still default to N-BK7. Pulsed rays add
-        GDD from their actual traced distance inside the selected glass.</p>
+        selectable; existing sketches still default to N-BK7.</p>
+        <p>For a pulse, each colour carries the phase of its own traced path: the
+        index of the glass times the distance inside it, plus the air between. A
+        detector reads the GDD from those phases, so it includes what the geometry
+        does as well as the glass: a pair of prisms gives the negative GDD of a
+        prism compressor, more insertion adds the glass back, and the detector says
+        whether the colours arrive together, side by side, or still diverging (then
+        it gives the central ray's GDD and no duration).</p>
         <p>Each face transmits by the Fresnel equations at the angle the ray actually
         meets it, for its polarization: p-polarized light (in the canvas plane, the
         app's 0°) at Brewster's angle crosses without loss, which is why compressor
@@ -191,7 +197,12 @@
         <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The Sellmeier curves make refractive index and GDD accurate to a
         few percent over their valid transparent ranges, but absorption bands,
         temperature, coatings, and surface quality are not modeled. Faces are uncoated:
-        Fresnel reflection is the only loss, and the reflected light is not traced.</p></div>
+        Fresnel reflection is the only loss, and the reflected light is not traced. The path phase is two-dimensional, sampled at
+        five or nine wavelengths, and needs the colours to reach the detector through
+        elements whose phase is modelled (mirrors, glass, gratings, ideal lenses,
+        filters and similar); otherwise each ray keeps the GDD of its own glass path.
+        A probe on one colour cannot see the others, so after a prism it points to a
+        detector for the duration.</p></div>
       </div>
 
 

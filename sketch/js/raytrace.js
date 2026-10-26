@@ -24,6 +24,7 @@ import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband, 
 import { aodDeflectionDeg } from './acousto-optic.js';
 import { capillaryLossDbPerM, fiberPropagation, hollowCoreCoefficients } from './fiber.js';
 import { propagateEnvelope, fieldMetrics } from './pulse-field.js';
+import { pathPhaseFit, higherOrderPhaseRad, PATH_PHASE_HIGHER_ORDER_RAD } from './path-phase.js';
 
 // What each argon capillary did on the last trace, for its inspector panel.
 const hollowReadings = new Map();
@@ -54,6 +55,7 @@ import { arcParameterAtPoint, circularArcThrough } from './polygon.js';
 import {
   gddGroupDelayDifferenceFs, glassGVD, glassGroupDelayDifferenceFs, glassIndex,
   isDispersiveGlass, authoredPulseTiming, pulseDurationAfterDispersion, pulseDurationAcrossPaths, filteredPulseDuration, PATHS_DISAGREE, DISPERSION_UNAVAILABLE, PATH_PHASE_TOLERANCE_RAD,
+  glassIndexUnbucketed,
 } from './glass.js';
 import {
   gaussianSpectrum, flatSpectrum, lineSpectrum, scaleSpectrum, spectrumSamples, spectrumStats, spectrumSupport, spectrumWeight,
@@ -92,6 +94,30 @@ let weakLightShortfall = new Map();
 let loopClosures = [];
 let lastSignalHits = [];
 let detectorHits = new Map();
+// Each split of a broadband ray into wavelength samples at a prism or grating
+// starts a family; its samples carry the phase of their own paths (see
+// docs/physics/ray-path-phase.md), and a detector they all reach reads the
+// pulse's GDD from them. Numbered per trace.
+let pathFamilySeq = 0;
+// The surfaces whose effect on a sample's phase is its geometry, its glass
+// index, a grating's added cycles or an ideal lens's path. A family that
+// meets anything else keeps each ray's glass GDD instead.
+const PATH_PHASE_SURFACES = new Set([
+  'mirror', 'conicmirror', 'cmirror', 'refract', 'grating', 'lens', 'gdd', 'attenuate',
+  'dichroic', 'filter', 'split', 'polarizer', 'wp', 'retarder', 'pbs', 'isolator', 'chop',
+  'delay', 'phasemod', 'phaseplate', 'detector',
+]);
+// Arriving samples that differ in direction or position by more than this are
+// not one recombined beam: the reading is then the central ray's.
+const PATH_PHASE_ANGLE_RAD = 1e-5;
+// The path GDD counts as resolved when rounding moves it by under 1 %.
+const PATH_PHASE_RESOLVED = 0.01;
+// Where it does not, the duration must agree to 1 % across the uncertainty.
+const PATH_PHASE_DURATION_TOLERANCE = 0.01;
+const pathPhaseUncertain = fs2 => `GDD from the ray paths uncertain by ±${fs2 < 10 ? fs2.toFixed(2) : Math.round(fs2).toLocaleString()} fs² from rounding (a very narrow band, or a scene far from the origin), enough to change the duration — duration unavailable`;
+const PATH_PHASE_OFFSET_MM = 0.01;
+const PATH_PHASE_PROBE_NOTE = 'After a prism or grating the colours travel apart; a detector reads the duration from all of them';
+const PATH_PHASE_ANGULAR = 'Colours leave at different angles — angular dispersion remains, so there is no single duration here; the GDD shown is the central ray\u2019s';
 // Rays whose centres cross a camera plane just outside its finite face still
 // define the boundary of the adjacent ray tube. Keep those near misses
 // separate from measured hits so camera deposition can clip the continuous
@@ -947,7 +973,104 @@ function detectorSample(ray, surface, u, oplMm, pathKey, sensorMiss = false) {
     groupDelayDifferenceFs: Number.isFinite(ray.groupDelayDifferenceFs)
       ? ray.groupDelayDifferenceFs : 0,
     pulse: ray.pulse ? { ...ray.pulse } : null,
+    // Where the sample arrived, in what medium, and the phase its path
+    // carries since a prism or grating split it (see withPathPhase).
+    pathPhase: ray.pathPhase || null,
+    arrivalX: surface.a.x + (surface.b.x - surface.a.x) * u,
+    arrivalY: surface.a.y + (surface.b.y - surface.a.y) * u,
+    ior: Math.min(3, Math.max(1, ray.ior || 1)),
   };
+}
+
+// The pulse's GDD from the paths its colours took (docs/physics/ray-path-phase.md).
+// Hits of one family -- the wavelength samples of one split -- are read at
+// one point, the arrival of the sample nearest the centre wavelength: each
+// sample's wave is carried along its own direction to its wavefront through
+// that point. A polynomial through their phases gives the GDD at each
+// sample's wavelength, as glass gives each sample its own. Each sample's other GDD (before the split, a compressor
+// box, a lens's estimated glass) is its running GDD less the glass GDD it
+// picked up since the split, which the phase already contains.
+//
+// Only families whose colours were turned apart are read this way: where
+// none was, every sample took the same path and its glass GDD is already
+// exact. Returns copies; a family that cannot be read keeps each ray's
+// glass GDD, as before this model.
+function withPathPhase(hits) {
+  const families = new Map();
+  for (const h of hits) {
+    if (!h.pathPhase) continue;
+    const group = families.get(h.pathPhase.family) || [];
+    group.push(h);
+    families.set(h.pathPhase.family, group);
+  }
+  if (!families.size) return hits;
+  const replaced = new Map();
+  for (const group of families.values()) {
+    if (!group.some(h => h.pathPhase.fanned) || group.some(h => h.pathPhase.issue)) continue;
+    // A colour arriving by two paths, or too few colours to fit.
+    if (new Set(group.map(h => h.wl)).size !== group.length || group.length < 3) continue;
+    const pulse = group[0].pulse;
+    const centerNm = Number.isFinite(pulse?.centerWavelengthNm) ? pulse.centerWavelengthNm
+      : group.reduce((sum, h) => sum + h.wl, 0) / group.length;
+    const ref = group.reduce((best, h) => (Math.abs(h.wl - centerNm) < Math.abs(best.wl - centerNm) ? h : best));
+    const u0 = norm({ x: ref.dx, y: ref.dy });
+    let angular = 0, lateral = 0, valid = true;
+    const samples = group.map(h => {
+      const u = norm({ x: h.dx, y: h.dy });
+      const along = dot(u, u0);
+      if (!(along > 0.5)) valid = false;
+      // The sample's wave at the reference point: its phase at its own
+      // arrival, carried along its direction to its wavefront through that
+      // point, in the medium at the detector. A tilted colour read at its own
+      // crossing of a common plane would take kL/cos δθ where its wave at the
+      // point has kL cos δθ, and turn angular dispersion's negative GDD
+      // positive.
+      const offset = { x: ref.arrivalX - h.arrivalX, y: ref.arrivalY - h.arrivalY };
+      const s = offset.x * u.x + offset.y * u.y;
+      angular = Math.max(angular, Math.abs(u.x * u0.y - u.y * u0.x));
+      lateral = Math.max(lateral, Math.abs(offset.x * u0.y - offset.y * u0.x));
+      return { wavelengthNm: h.wl, pathMm: h.pathPhase.pathMm + h.ior * s + h.pathPhase.lensPathMm, cycles: h.pathPhase.cycles };
+    });
+    const C_NM_PER_FS = 299.792458;
+    if (!valid || !samples.every(sample => Number.isFinite(sample.pathMm))) continue;
+    const coordinateScaleMm = Math.max(...group.map(h => Math.max(Math.abs(h.arrivalX), Math.abs(h.arrivalY))));
+    const fit = pathPhaseFit(samples, centerNm, { loNm: pulse?.spectrumLoNm, hiNm: pulse?.spectrumHiNm, coordinateScaleMm });
+    if (!fit) continue;
+    // Rounding in the paths can move the GDD by up to gddNoiseFs2. Where
+    // that exceeds 1 % (or 0.01 fs²) -- a very narrow band, or a scene far
+    // from the origin -- the estimate is kept with that uncertainty, and the
+    // duration is checked at both ends of it (see the trains below).
+    const uncertain = fit.gddNoiseFs2 > Math.max(PATH_PHASE_RESOLVED * Math.abs(fit.gddFs2), 0.01);
+    const pathGddAt = nm => {
+      const x = 2 * Math.PI * C_NM_PER_FS * (1 / nm - 1 / centerNm);
+      return fit.gddFs2 + fit.todFs3 * x + fit.fodFs4 * x * x / 2;
+    };
+    const pathSpread = fit.delaySpreadFs;
+    const groupDelayDifferenceFs = Number.isFinite(pathSpread)
+      ? ref.groupDelayDifferenceFs - ref.pathPhase.glassSpreadFs + pathSpread : null;
+    // The duration uses the GDD alone, as it does for glass; say so when the
+    // phase beyond it is large inside the bandwidth's FWHM.
+    const halfWidthNm = Number.isFinite(pulse?.bandwidthNm) ? pulse.bandwidthNm / 2 : 0;
+    const higher = halfWidthNm > 0 && halfWidthNm < centerNm ? Math.max(
+      Math.abs(higherOrderPhaseRad(fit, centerNm, centerNm - halfWidthNm)),
+      Math.abs(higherOrderPhaseRad(fit, centerNm, centerNm + halfWidthNm))) : 0;
+    const pathPhaseNote = [
+      lateral > PATH_PHASE_OFFSET_MM ? 'GDD from the ray paths, on the central ray: the colours arrive side by side'
+        : 'GDD from the ray paths',
+      ...(uncertain ? ['rounding in the traced paths leaves it uncertain; the duration holds across that range'] : []),
+      ...(higher > PATH_PHASE_HIGHER_ORDER_RAD ? ['third- and higher-order phase, not in this duration, is large across the bandwidth'] : []),
+    ].join('; ');
+    for (const h of group) {
+      replaced.set(h, {
+        ...h, gddFs2: h.gddFs2 - h.pathPhase.glassGddFs2 + pathGddAt(h.wl),
+        ...(groupDelayDifferenceFs === null ? {} : { groupDelayDifferenceFs }),
+        pathPhaseNote,
+        pathPhaseAngular: angular > PATH_PHASE_ANGLE_RAD,
+        ...(uncertain ? { pathGddUncertaintyFs2: fit.gddNoiseFs2 } : {}),
+      });
+    }
+  }
+  return replaced.size ? hits.map(h => replaced.get(h) || h) : hits;
 }
 
 function recordDetectorHit(ray, hit) {
@@ -1165,7 +1288,7 @@ export function detectorReading(elementId) {
     // polarimeter's own Stokes readout was fixed for.
     normalizedStokes = null;
   }
-  const pulsed = activeHits.filter(h => h.pulse);
+  const pulsed = withPathPhase(activeHits.filter(h => h.pulse));
   let pulse = null;
   if (pulsed.length) {
     const delays = pulsed.map(h => h.pathDelayNs).filter(Number.isFinite);
@@ -1236,6 +1359,36 @@ export function detectorReading(elementId) {
           : pulseDurationAcrossPaths(p, centerHits.map(h => ({
             gddFs2: h.gddFs2, groupDelayDifferenceFs: h.groupDelayDifferenceFs || 0, weight: h.power,
           })));
+      // GDD from the ray paths that rounding leaves uncertain: the duration
+      // stands only if it holds across the whole range. A GDD shift δ also
+      // moves the band edges' group-delay spread by δ(ω_red − ω_blue), which
+      // is what the flat-band model times. For the analytic models (Gaussian,
+      // sech², flat band) the duration depends only on how far the total GDD
+      // (or, flat-band, the spread) is from zero, so its extremes lie at the
+      // two ends or where that crosses zero: those, and the reading itself,
+      // are what is compared. A filtered spectrum's transform has no such
+      // property -- its width can peak inside the range -- and a sampled
+      // field has none either, so for those an uncertain GDD declines.
+      const gddUncertaintyFs2 = Math.max(0, ...sourceHits.map(h => h.pathGddUncertaintyFs2 || 0));
+      if (gddUncertaintyFs2 > 0 && duration?.available !== false) {
+        const spreadPerFs2 = gddGroupDelayDifferenceFs(1, p.spectrumLoNm, p.spectrumHiNm) || 0;
+        const durationAt = shift => {
+          const result = pulseDurationAcrossPaths(p, centerHits.map(h => ({
+            gddFs2: h.gddFs2 + shift, groupDelayDifferenceFs: (h.groupDelayDifferenceFs || 0) + shift * spreadPerFs2, weight: h.power,
+          })));
+          return result?.available === false ? null : result?.durationFs;
+        };
+        const u = gddUncertaintyFs2;
+        const shifts = [-u, u,
+          ...(Number.isFinite(duration.totalGddFs2) ? [-duration.totalGddFs2] : []),
+          ...(Number.isFinite(duration.groupDelayDifferenceFs) && spreadPerFs2 ? [-duration.groupDelayDifferenceFs / spreadPerFs2] : []),
+        ].filter(shift => Math.abs(shift) <= u);
+        const durations = filteredRecord || p.field ? [NaN] : [duration.durationFs, ...shifts.map(durationAt)];
+        if (!durations.every(Number.isFinite)
+            || Math.max(...durations) - Math.min(...durations) > PATH_PHASE_DURATION_TOLERANCE * duration.durationFs) {
+          duration = { durationFs: null, available: false, model: pathPhaseUncertain(gddUncertaintyFs2) };
+        }
+      }
       // A prism or grating fans the pulse into wavelength samples, and an
       // aperture can then catch only some of them. The duration model assumes
       // the whole band arrives, so where the arriving cells leave part of it
@@ -1246,6 +1399,17 @@ export function detectorReading(elementId) {
       if (duration?.available !== false && !filteredRecord && !fannedBandCovered(p, sourceHits)) {
         duration = { durationFs: null, available: false, model: DISPERSION_UNAVAILABLE.partialFan };
       }
+      // Colours still diverging: the duration depends on where it is read.
+      if (duration?.available !== false && sourceHits.some(h => h.pathPhaseAngular)) {
+        duration = { durationFs: null, available: false, model: PATH_PHASE_ANGULAR };
+      }
+      // Say where the GDD came from, and that it is the central ray's when
+      // the colours arrive side by side.
+      const pathNotes = [...new Set(sourceHits.map(h => h.pathPhaseNote).filter(Boolean))];
+      const pathNote = pathNotes.find(note => note !== 'GDD from the ray paths') || pathNotes[0];
+      if (pathNote && duration && duration.available !== false) {
+        duration = { ...duration, model: duration.model ? `${duration.model} · ${pathNote}` : pathNote };
+      }
       return {
         repRateMHz: p.repRateMHz,
         pulseWidthFs: p.pulseWidthFs,
@@ -1253,6 +1417,8 @@ export function detectorReading(elementId) {
         gates: Array.isArray(p.gates) ? p.gates.map(g => ({ ...g })) : [],
         pathDelayNs: Math.min(...sourceHits.map(h => h.pathDelayNs)),
         gddFs2,
+        // Only when rounding left the paths' GDD uncertain by this much.
+        ...(gddUncertaintyFs2 > 0 ? { gddUncertaintyFs2 } : {}),
         groupDelayDifferenceFs,
         stretchedPulseWidthFs: duration?.durationFs ?? null,
         dispersionModel: duration?.model ?? null,
@@ -1326,6 +1492,8 @@ export function detectorReading(elementId) {
       branches,
       gddFs2,
       gddRangeFs2: [Math.min(...gddValues), Math.max(...gddValues)],
+      ...(trains.some(train => train.gddUncertaintyFs2)
+        ? { gddUncertaintyFs2: Math.max(...trains.map(train => train.gddUncertaintyFs2 || 0)) } : {}),
       groupDelayDifferenceFs: duration?.groupDelayDifferenceFs ?? null,
       stretchedPulseWidthFs: duration?.stretchedPulseWidthFs ?? null,
       dispersionModel: duration?.dispersionModel ?? null,
@@ -1439,6 +1607,12 @@ function segmentPolarization(path, segment) {
 }
 
 function probePulseDuration(path, segment, along) {
+  // One sample of a fanned pulse is one colour; the pulse it belongs to is
+  // read where its colours arrive together. Samples that never separated (a
+  // window at normal incidence) still carry the pulse's glass GDD.
+  if (path.pathPhase?.fanned && !path.pathPhase.issue && segment >= (path.fannedFromSegment ?? 0)) {
+    return { durationFs: null, issue: PATH_PHASE_PROBE_NOTE };
+  }
   const pulse = drawnPulse(path);
   if (pulse.fieldIssue) return { durationFs: null, issue: pulse.fieldIssue };
   const a = path.opls?.[segment], b = path.opls?.[segment + 1];
@@ -3500,6 +3674,17 @@ function lensBend(dir, hitP, s, f, hc = 0) {
   return norm(add(np, mul(t, u2)));
 }
 
+// The optical path an ideal thin lens adds at height h, -h²/(2f): the
+// paraxial phase of a lens, consistent with lensBend's tangent mapping to
+// second order in the ray angles. It is what lets the colours of a pulse
+// through a stretcher's lenses keep the right relative phase.
+function idealLensPathMm(hitP, s, f) {
+  if (!Number.isFinite(f) || !f) return 0;
+  const t = norm(sub(s.b, s.a));
+  const h = dot(sub(hitP, mul(add(s.a, s.b), 0.5)), t);
+  return -h * h / (2 * f);
+}
+
 function dichroicTransmits(wl, d) {
   if (d.dtype === 'longpass') return wl >= d.cutoff;
   if (d.dtype === 'shortpass') return wl <= d.cutoff;
@@ -4007,9 +4192,11 @@ function interact(ray, hit) {
       // does not bring marginal rays to the paraxial focus, and pretending
       // otherwise hid the entire reason parabolic mirrors exist.
       const focused = data.arc ? reflect(d, n) : lensBend(reflect(d, n), hit.p, s, data.f);
-      if (R >= 1) return [{ d: focused }];
+      // Only a mirror drawn without its real surface is an ideal focuser.
+      const lensPathMm = data.arc ? 0 : idealLensPathMm(hit.p, s, data.f);
+      if (R >= 1) return [{ d: focused, lensPathMm }];
       const out = [];
-      if (R > 0) out.push({ d: focused, intensity: ray.intensity * R, tag: 'R', retainWeak: true });
+      if (R > 0) out.push({ d: focused, intensity: ray.intensity * R, tag: 'R', retainWeak: true, lensPathMm });
       // As for a flat mirror: the leak is traced only when asked for.
       if (R < 1 && data.showTransmitted) out.push({ d, intensity: ray.intensity * (1 - R), tag: 'T', retainWeak: true });
       return out;
@@ -4066,6 +4253,7 @@ function interact(ray, hit) {
       return [{
         d: bent,
         intensity: ray.intensity * T,
+        lensPathMm: idealLensPathMm(hit.p, s, data.f),
         gdd: (Number.isFinite(ray.gdd) ? ray.gdd : 0) + estimatedGdd,
         groupDelayDifferenceFs: (Number.isFinite(ray.groupDelayDifferenceFs)
           ? ray.groupDelayDifferenceFs : 0) + (Number.isFinite(delayChange) ? delayChange : 0),
@@ -4080,8 +4268,12 @@ function interact(ray, hit) {
       // user-set index (glass rods) has no dispersion to sample.
       const materialDispersive = isDispersiveGlass(data.material);
       const dispersive = materialDispersive && ray.bw > 0;
+      // A split pulse's samples refract by the exact curve: their phases are
+      // read from these paths, and the cache's 0.1 nm buckets would move the
+      // angles enough to show in the GDD. Other light keeps the cached index.
+      const indexAt = (dispersive || ray.pathPhase) ? glassIndexUnbucketed : glassIndex;
       const transmitAt = (wl, intensity = ray.intensity, tag, bandwidth = ray.bw) => {
-        const dispersiveIor = materialDispersive ? glassIndex(data.material, wl) : data.ior;
+        const dispersiveIor = materialDispersive ? indexAt(data.material, wl) : data.ior;
         const materialIor = Math.min(2.5, Math.max(1.01, dispersiveIor || 1.52));
         // A broadband source born inside the body initially carries one
         // center-wavelength IOR. Once sampled at the exit, each wavelength
@@ -4154,12 +4346,14 @@ function interact(ray, hit) {
       };
       if (dispersive) {
         const samples = wlSamples(ray);
+        const pathFamily = samples.length > 1 ? `pf${++pathFamilySeq}` : null;
         // Each sample is one slice of a beam that is still physically single
         // until the colours actually separate. Carrying the sibling count lets
         // the renderer draw the overlapping region at a share of full opacity
         // instead of stacking eight saturated colours on the same pixels.
         return samples.map((s, i) => ({
           ...transmitAt(s.wl, ray.intensity * s.weight, `w${i}`, 0),
+          ...(pathFamily ? { pathFamily } : {}),
           spectralCount: samples.length,
           // A lamp's lines are not slices of a continuum: each leaves as the
           // line it is. wlSamples() still hands a line midpoint bounds, and
@@ -4438,6 +4632,11 @@ function interact(ray, hit) {
       const wls = wlSamples(ray);
       const counts = propagatingOrderCounts(data.orders, wls, si, data.d);
       const refined = refinedOrderSamples(ray, data.orders, wls, counts, si, data.d);
+      // The phase a diffracted order picks up here, in cycles: m x / d at the
+      // hit's position x along the grating. It is what turns the tangential
+      // wavevector by 2πm/d (the grating equation used below).
+      const across = dot(sub(hit.p, s.a), t) / (data.d * 1e-6);
+      const splits = ray.bw > 0 && wls.length > 1;
       for (const m of data.orders) {
         // The undiffracted order keeps the incident spectrum intact. It
         // redirects the whole band specularly (or passes it straight through),
@@ -4483,9 +4682,12 @@ function interact(ray, hit) {
             intensity: (sample.share != null ? ray.intensity * sample.share
               : ray.intensity * wls[i].weight / counts[i]) * (data.efficiency ?? 1),
             tag: 'm' + m + (wls.length > 1 ? 'w' + i : ''),
+            gratingCycles: m * across, gratingOrder: m,
+            ...(splits ? { pathFamily: `pf${pathFamilySeq + 1}m${m}` } : {}),
           });
         }
       }
+      if (splits) pathFamilySeq++;
       return out;
     }
     case 'diffuser': {
@@ -6196,6 +6398,73 @@ function pointSourceSightline(surfaces, mode) {
   return list;
 }
 
+// Path a surface adds without a segment (a delay line, a phase object or
+// modulator), added to a split sample's phase path as it is to its OPL.
+function addPathPhaseOpl(r, extraOpl) {
+  if (r.pathPhase && !r.pathPhase.issue && extraOpl) r.pathPhase = { ...r.pathPhase, pathMm: r.pathPhase.pathMm + extraOpl };
+}
+
+// What a child carries of its parent's path phase. A split at a prism or
+// grating starts a family; afterwards each interaction either adds its known
+// contribution or marks the family as one whose phase is not modelled, which
+// sends its detector back to each ray's glass GDD.
+// How much a refraction turns neighbouring colours apart, |dθ/dλ| in rad/nm,
+// from Snell's law n₁ sin θ₁ = n₂ sin θ₂ at fixed incidence:
+// cos θ₂ dθ₂ = (sin θ₁ dn₁ − sin θ₂ dn₂) / n₂. The surface normal is along
+// n₁ d₁ − n₂ d₂, so curved faces need nothing more.
+function refractionDispersionRadPerNm(r, c) {
+  if (!c.d || String(c.tag || '').endsWith('tir')) return 0;
+  const n1 = r.ior || 1, n2 = c.ior || 1;
+  const axis = { x: n1 * r.dx - n2 * c.d.x, y: n1 * r.dy - n2 * c.d.y };
+  const length = Math.hypot(axis.x, axis.y);
+  if (!(length > 1e-12)) return 0;
+  const nn = { x: axis.x / length, y: axis.y / length };
+  const sin1 = Math.abs(r.dx * nn.y - r.dy * nn.x), sin2 = Math.abs(c.d.x * nn.y - c.d.y * nn.x);
+  const cos2 = Math.abs(c.d.x * nn.x + c.d.y * nn.y);
+  const slope = material => (material
+    ? (glassIndexUnbucketed(material, r.wl + 0.5) - glassIndexUnbucketed(material, r.wl - 0.5)) : 0);
+  const after = 'mediumMaterial' in c ? c.mediumMaterial : r.mediumMaterial;
+  const value = Math.abs(sin1 * slope(r.mediumMaterial) - sin2 * slope(after)) / (n2 * Math.max(cos2, 1e-6));
+  return Number.isFinite(value) ? value : 0;
+}
+
+// Below this summed angular dispersion the colours stay together for all
+// practical purposes (a window a few degrees off normal, a converging cone
+// through a rod: about 1e-6 rad/nm, a few fs² per metre of angular GDD); a
+// Brewster prism face gives about 1.4e-5.
+const FANNED_RAD_PER_NM = 2e-6;
+
+// `fanned` records that the colours have been turned apart (refraction in
+// dispersive glass above FANNED_RAD_PER_NM, a diffracted order): from there
+// a single sample's glass GDD no longer describes the pulse, which a probe,
+// seeing one sample, needs to know, and which decides whether a detector
+// reads the family's path phase.
+function nextPathPhase(r, c, surface) {
+  const turn = surface.kind === 'refract' && isDispersiveGlass(surface.data.material)
+    ? refractionDispersionRadPerNm(r, c) : 0;
+  const diffracted = surface.kind === 'grating' && Boolean(c.gratingOrder);
+  const fresh = family => ({ family, pathMm: 0, cycles: 0, lensPathMm: 0, glassGddFs2: 0, glassSpreadFs: 0,
+    turnRadPerNm: turn, fanned: diffracted || turn > FANNED_RAD_PER_NM, issue: null });
+  if (c.pathFamily) {
+    return r.pathPhase ? { ...fresh(c.pathFamily), issue: 'split again after an earlier split' } : fresh(c.pathFamily);
+  }
+  const pp = r.pathPhase;
+  if (!pp) return null;
+  if (pp.issue) return pp;
+  const issue = !PATH_PHASE_SURFACES.has(surface.kind) ? `${surface.kind} has no modelled path phase`
+    : (c.wl !== undefined && c.wl !== r.wl) ? 'wavelength changed on the way'
+    : c.origin ? 'relaunched away from the surface'
+    : ('sourceId' in c && c.sourceId !== r.sourceId) ? 'light generated on the way'
+    : null;
+  if (issue) return { ...pp, issue };
+  if (!c.gratingCycles && !c.lensPathMm && !turn && !diffracted) return pp;
+  const turnRadPerNm = pp.turnRadPerNm + turn;
+  return {
+    ...pp, cycles: pp.cycles + (c.gratingCycles || 0), lensPathMm: pp.lensPathMm + (c.lensPathMm || 0),
+    turnRadPerNm, fanned: pp.fanned || diffracted || turnRadPerNm > FANNED_RAD_PER_NM,
+  };
+}
+
 function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent = null) {
   const done = [];
   // Genuine branches weaker than the old 2 % drawing floor, spent against
@@ -6227,6 +6496,12 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
     const length = Math.max(0, geometricLength);
     const ng = Math.min(3, Math.max(1, r.ior || 1));
     r.opl += length * ng;
+    // The phase path of a split pulse's sample, in glass from the exact
+    // curve (as its refraction is).
+    if (r.pathPhase && !r.pathPhase.issue) {
+      const n = r.mediumMaterial ? glassIndexUnbucketed(r.mediumMaterial, r.wl) : ng;
+      r.pathPhase = { ...r.pathPhase, pathMm: r.pathPhase.pathMm + length * (Number.isFinite(n) ? n : ng) };
+    }
     if (r.mediumMaterial) {
       const oplStart = r.opl - length * ng;
       const gddStart = r.gdd;
@@ -6243,6 +6518,13 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       const spreadStart = r.groupDelayDifferenceFs;
       const delayDifference = glassGroupDelayDifferenceFs(r.mediumMaterial, lo, hi, length);
       if (Number.isFinite(delayDifference)) r.groupDelayDifferenceFs += delayDifference;
+      if (r.pathPhase && !r.pathPhase.issue) {
+        r.pathPhase = {
+          ...r.pathPhase,
+          glassGddFs2: r.pathPhase.glassGddFs2 + (r.gdd - gddStart),
+          glassSpreadFs: r.pathPhase.glassSpreadFs + (r.groupDelayDifferenceFs - spreadStart),
+        };
+      }
       if (r.groupDelayDifferenceTrace && r.groupDelayDifferenceFs !== spreadStart) {
         const last = r.groupDelayDifferenceTrace.at(-1);
         if (!last || last.opl !== oplStart || last.value !== spreadStart) {
@@ -6548,6 +6830,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           r.pts.push({ x: hit.p.x, y: hit.p.y });
           r.opl += extraOpl;
           r.opls.push(r.opl);
+          addPathPhaseOpl(r, extraOpl);
         }
       }
       if (hit.surface.kind === 'phasemod') {
@@ -6563,8 +6846,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           r.pts.push({ x: hit.p.x, y: hit.p.y });
           // A negative drive shortens the path; keep the total non-negative so
           // downstream arrival-time bookkeeping stays sane.
+          const before = r.opl;
           r.opl = Math.max(0, r.opl + extraOpl);
           r.opls.push(r.opl);
+          addPathPhaseOpl(r, r.opl - before);
         }
       }
       if (hit.surface.kind === 'delay') {
@@ -6577,6 +6862,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           r.pts.push({ x: hit.p.x, y: hit.p.y });
           r.opl += extraOpl;
           r.opls.push(r.opl);
+          addPathPhaseOpl(r, extraOpl);
         }
       }
       if (hit.surface.kind === 'fiberin') {
@@ -6749,6 +7035,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         }
       }
       const c0 = children[0];
+      const nextPhase = r.pathPhase || c0.pathFamily ? nextPathPhase(r, c0, hit.surface) : null;
       const single = children.length === 1 && !c0.tag
         && (c0.wl === undefined || c0.wl === r.wl)
         && (c0.bw === undefined || c0.bw === r.bw)
@@ -6779,6 +7066,12 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         if (c0.incoherent === true) r.incoherent = true;
         if (c0.intensity !== undefined && r.intensity > 0 && Number.isFinite(r.power)) {
           r.power *= c0.intensity / r.intensity;
+        }
+        if (r.pathPhase || c0.pathFamily) {
+          // The segments from here on carry colours turned apart; a probe on
+          // an earlier one still reads them as the one beam they were there.
+          if (nextPhase?.fanned && !r.pathPhase?.fanned) r.fannedFromSegment = r.pts.length - 1;
+          r.pathPhase = nextPhase;
         }
         r.x = hit.p.x; r.y = hit.p.y;
         r.dx = c0.d.x; r.dy = c0.d.y;
@@ -6937,6 +7230,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           keepWeak: 'keepWeak' in c ? c.keepWeak : r.keepWeak,
           ior: 'ior' in c ? c.ior : (r.ior || 1),
           gdd: childGdd,
+          pathPhase: nextPathPhase(r, c, hit.surface),
+          fannedFromSegment: 0,
           // A child with a pulse of its own (light an OPO generated) carries
           // its own dispersion trace; without one it continues its parent's.
           gddTrace: ('pulse' in c ? Boolean(c.pulse) : r.gddTrace)
@@ -7434,6 +7729,7 @@ export function traceScene(elements, beams = [], options = {}) {
     ? options.weakBranchBudget : WEAK_BRANCH_BUDGET;
   hollowReadings.clear();
   detectorHits = new Map();
+  pathFamilySeq = 0;
   detectorMisses = new Map();
   incompleteCoherenceIds = new Map();
   objectivePupilHits = new Map();

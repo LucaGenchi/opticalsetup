@@ -479,6 +479,8 @@ function measurementHTML(el) {
     && Math.abs(gddRange[1] - gddRange[0]) > 0.5;
   const gddText = rd.pulse
     ? (variedGdd ? `${formatGdd(gddRange[0])} to ${formatGdd(gddRange[1])}` : formatGdd(rd.pulse.gddFs2 || 0))
+      // Rounding in the traced paths leaves the GDD uncertain by this much.
+      + (rd.pulse.gddUncertaintyFs2 ? ` ± ${formatGdd(rd.pulse.gddUncertaintyFs2)}` : '')
     : '';
   let stretchText = '';
   if (rd.pulse && !rd.pulse.mixed) {
