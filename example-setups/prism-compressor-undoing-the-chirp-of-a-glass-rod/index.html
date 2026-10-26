@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prism compressor — Examples | OpticalSetup</title>
+<meta name="description" content="A 31 fs pulse stretched to 122 fs by 30 mm of N-BK7, and brought back to 31 fs by four Brewster prisms whose GDD comes from the traced ray paths.">
+<link rel="canonical" href="https://opticalsetup.com/example-setups/prism-compressor-undoing-the-chirp-of-a-glass-rod/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Prism compressor — OpticalSetup Examples">
+<meta property="og:description" content="A 31 fs pulse stretched to 122 fs by 30 mm of N-BK7, and brought back to 31 fs by four Brewster prisms whose GDD comes from the traced ray paths.">
+<meta property="og:url" content="https://opticalsetup.com/example-setups/prism-compressor-undoing-the-chirp-of-a-glass-rod/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="../../sketch/icons/icon.svg">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+<link rel="stylesheet" href="../../example-setups/assets/examples.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../calculators/">Calculators</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell" style="grid-template-columns: 1fr;">
+    <main class="wiki-article" style="max-width: 760px;">
+      <div class="crumb"><a href="../../example-setups/">Examples</a> / Ultrashort Pulses / Prism compressor</div>
+      <h1>Prism compressor</h1>
+      <p class="tagline" style="margin-top: 10px;">A 31 fs pulse stretched to 122 fs by 30 mm of N-BK7, and brought back to 31 fs by four Brewster prisms whose GDD comes from the traced ray paths.</p>
+
+      <a class="place-cta" href="../../sketch/?example=prism-compressor-undoing-the-chirp-of-a-glass-rod">Open in the canvas →</a>
+
+      <div class="embed-wrap" style="height: auto; aspect-ratio: 1260 / 1112; max-height: 900px; min-height: 440px;">
+        <iframe class="embed-frame" src="../../sketch/?example=prism-compressor-undoing-the-chirp-of-a-glass-rod&amp;embed=1"
+          title="Prism compressor — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace of the setup above, shown as a picture. Open it in the canvas to take it apart, retune it, and save or export it as your own.</p>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Background</h2>
+
+      <p>Glass gives a pulse positive group delay dispersion: the red end of its spectrum
+      travels faster than the blue, so the pulse leaves longer than it arrived. A prism
+      pair gives the opposite sign without needing a lens or a grating. The first prism
+      fans the colours out at slightly different angles; the second, cut and turned the
+      same way but inverted, catches each colour where it has arrived and sends it on
+      parallel to the others. Between them the blue colours travel a longer path than the
+      red ones, which is negative GDD.</p>
+      <p>Fork, Martinez and Gordon showed that the optical path between the two apices is
+      simply <span class="w">P = l cos β</span>, with <span class="w">l</span> the distance
+      between the apices and <span class="w">β</span> the angle between that line and each
+      colour's ray. Its second derivative with frequency is the pair's GDD: negative, and
+      growing with the separation. Pushing a prism further into the beam adds glass, and
+      with it positive GDD, so separation sets the coarse value and insertion fine-tunes it.
+      A second, mirror-image pair (or a mirror sending the light back through the first)
+      gathers the colours back into one beam.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>What this setup demonstrates</h2>
+      <div class="sim-block">
+
+      <p>Three identical 31&nbsp;fs, 800&nbsp;nm transform-limited Gaussian sources, each
+      measured by its own autocorrelator wired to a screen.</p>
+      <p>The first arm is the reference. The second passes through 30&nbsp;mm of N-BK7, about
+      +1&nbsp;340&nbsp;fs², and the pulse stretches to about 122&nbsp;fs. The third adds four
+      N-SF10 prisms cut for Brewster's angle at 800&nbsp;nm, in two mirror-image pairs whose
+      apices are 161&nbsp;mm apart along the beam. Nothing in the scene states their GDD: each
+      colour of the pulse is traced through the glass and the air between, and the
+      autocorrelator reads the GDD from the phases of those paths. Here they cancel the rod
+      to within a fraction of a fs², and the pulse is back to 31&nbsp;fs.</p>
+      <p>Select a prism and move it: a second pair further from the first adds negative GDD,
+      and pushing a prism into the beam adds the glass back. The screen of the third arm
+      follows, and its inspector names where the GDD came from.</p>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>The duration is computed from the GDD alone: the prisms' third-order
+      dispersion, which limits real compressors for very short pulses, is in the traced
+      phase but not in the duration (the duration model line says so when it is large).
+      The layout is two-dimensional, so the folded double pass of a lab compressor, where a
+      mirror sends the beam back slightly lower and a D-shaped mirror picks it off, is
+      drawn here as the equivalent four-prism line. Surface losses are a fixed fraction
+      per face rather than the Fresnel loss at the actual angle and polarization.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/prism/"><svg viewBox="-23.664696837416493 -23.664696837416493 47.329393674832986 47.329393674832986" aria-hidden="true"><path d="M 0,-12.7 L -14.664696837416493,12.7 L 14.664696837416493,12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Prism</a><a href="../../wiki/glassrod/"><svg viewBox="-38 -38 76 76" aria-hidden="true"><rect x="-30" y="-6.35" width="60" height="12.7" rx="4" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5"/></svg>Glass rod</a><a href="../../wiki/pulsedlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="-3"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">LASER</text><g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>Pulsed Laser</a><a href="../../wiki/autocorrelator/"><svg viewBox="-35 -35 70 70" aria-hidden="true"><rect x="-28" y="-15" width="56" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-29.7" y="-11" width="3.4" height="22" rx="1" fill="#fca5a5" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">AC</text><circle cx="20" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Autocorrelator</a><a href="../../wiki/pulsecompressor/"><svg viewBox="-32 -32 64 64" aria-hidden="true"><rect x="-24" y="-15" width="48" height="30" rx="4" fill="#eee4fb" stroke="#70479c" stroke-width="1.5"/><g  fill="none" stroke="#70479c" stroke-width="1.5" stroke-linecap="round"><path d="M -17,-7 C -8,-7 -7,-2 0,-2 C 7,-2 8,-7 17,-7"/><path d="M -17,7 C -8,7 -7,2 0,2 C 7,2 8,7 17,7"/></g><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="750" fill="#4f2e73">−GDD</text></svg>Pulse compressor</a>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://materias.df.uba.ar/onla2020c2/files/2020/10/1984_Fork_OPtLett_Negative-dispersion-using-pairs-of-prisms.pdf" target="_blank" rel="noopener">R. L. Fork, O. E. Martinez and J. P. Gordon, “Negative dispersion using pairs of prisms,” Opt. Lett. 9, 150–152 (1984)</a></li>
+      </ol>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://en.wikipedia.org/wiki/Prism_compressor" target="_blank" rel="noopener">Wikipedia — Prism compressor</a></li><li><a href="https://toolbox.lightcon.com/tools/prismpair" target="_blank" rel="noopener">Light Conversion Optics Toolbox — Two prism compressor</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">Examples are written and maintained with the project. For setups shared by users, see the <a href="../../community/">community section</a>; for how each component works, see the <a href="../../wiki/">wiki</a>.</footer>
+</body>
+</html>

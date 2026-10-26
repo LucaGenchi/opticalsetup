@@ -5,7 +5,7 @@
 // family of cache names and only ever deletes, or reads, its own.
 const KEPT_RELEASE = (/\/(v\d+\.\d+)\/sketch\/$/.exec(new URL('./', self.location.href).pathname) || [])[1] || '';
 const CACHE_FAMILY = KEPT_RELEASE ? `opticalsetup-kept-${KEPT_RELEASE}-` : 'opticalsetup-pwa-';
-const CACHE_NAME = `${CACHE_FAMILY}v153`;
+const CACHE_NAME = `${CACHE_FAMILY}v154`;
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -92,16 +92,17 @@ const PRECACHE_PATHS = [
   "../Examples/Nonlinear%20Optics/Near%20infrared%20supercontinuum%20in%20YAG.json",
   "../Examples/Nonlinear%20Optics/Optical%20parametric%20oscillator%20%E2%80%94%20ring%20cavity%2C%20element%20by%20element.json",
   "../Examples/Nonlinear%20Optics/Synchronously%20pumped%20picosecond%20OPO.json",
-  "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
+  "../Examples/Microscopy%20Implementations/Optical%20sectioning%20%E2%80%94%20linear%20versus%20nonlinear.json",
   "../Examples/Microscopy%20Implementations/Epi-fluorescence%20microscope.json",
   "../Examples/Microscopy%20Implementations/Multiphoton%20microscope%20%E2%80%94%20SHG%20and%20two%20photon%20fluorescence.json",
-  "../Examples/Microscopy%20Implementations/Optical%20sectioning%20%E2%80%94%20linear%20versus%20nonlinear.json",
+  "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
   "../Examples/Ophthalmology/Retinal%20imaging%20%E2%80%94%20Linnik%20interferometer%20with%20a%20model%20eye.json",
   "../Examples/Optical%20Communications/DWDM%20link%20%E2%80%94%20dispersion%20compensation.json",
   "../Examples/Scanning/Polygon%20scanner%20%E2%80%94%20line%20scanning.json",
   "../Examples/Ultrashort%20Pulses/Finding%20time%20zero%20%E2%80%94%20sum%20frequency%20of%20two%20beams.json",
   "../Examples/Ultrashort%20Pulses/Hollow-core%20pulse%20compressor.json",
   "../Examples/Ultrashort%20Pulses/OPCPA%20%E2%80%94%20stretch%2C%20amplify%2C%20recompress.json",
+  "../Examples/Ultrashort%20Pulses/Prism%20compressor%20%E2%80%94%20undoing%20the%20chirp%20of%20a%20glass%20rod.json",
   "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json"
 ];
 
