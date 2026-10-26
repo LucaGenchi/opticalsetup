@@ -8,7 +8,7 @@
 // being typed in; structural edits (adding a row, changing a type) rebuild
 // the table. Text from files goes in through textContent and value only.
 
-import { ASPHERE_ORDERS, LIMITS, defaultSurface } from './engine/system.js';
+import { ASPHERE_ORDERS, LIMITS, DIFFRACTION_GRIDS, DIFFRACTION_PADDING, defaultSurface } from './engine/system.js';
 import { MATERIAL_OPTIONS, AIR, CONSTANT, glassShortName } from './engine/materials.js';
 import { formatNumber } from '../assets/calculator-kit.js';
 
@@ -108,6 +108,12 @@ export function createEditor(host, { presets, onChange, onPreset, onImport, onEx
     offset: text(),
     aiming: select([['paraxial', 'Paraxial (fast)'], ['real', 'Real, to the stop']]),
     samples: select([16, 24, 32, 48, 64, 96, 128].map(n => [String(n), `${n} × ${n} grid`])),
+    weights: el('input', { type: 'text', spellcheck: false }),
+    grid: select(DIFFRACTION_GRIDS.map(n => [String(n), `${n} across the pupil`])),
+    padding: select(DIFFRACTION_PADDING.map(q => [String(q), `${q}× (FFT ${q} N)`])),
+    illumination: select([['uniform', 'Uniform'], ['gaussian', 'Gaussian beam']]),
+    beamRatio: text(),
+    vignetting: select([['on', 'Cut the beam (vignetting)'], ['off', 'Ignored']]),
   };
   const rows = {
     object: field('object', 'Object', c.object),
@@ -121,12 +127,19 @@ export function createEditor(host, { presets, onChange, onPreset, onImport, onEx
     offset: field('offset', 'Image plane offset', c.offset, { unit: 'mm', help: 'Added to the chosen focus; + moves away from the lens.' }),
     aiming: field('aiming', 'Ray aiming', c.aiming, { help: 'Real aiming makes each ray cross the stop where its pupil coordinate says; use it at wide fields or apertures.' }),
     samples: field('samples', 'Pupil sampling', c.samples),
+    weights: field('weights', 'Wavelength weights', c.weights, { help: 'Relative power of each wavelength in the polychromatic PSF and MTF.' }),
+    grid: field('grid', 'Pupil grid N', c.grid, { help: 'Samples across the pupil for the wavefront and PSF; finer grids follow stronger aberrations.' }),
+    padding: field('padding', 'Zero padding Q', c.padding, { help: 'The PSF is sampled every λN/Q; 2 is the Nyquist minimum.' }),
+    illumination: field('illumination', 'Pupil illumination', c.illumination),
+    beamRatio: field('beam-ratio', 'Beam radius', c.beamRatio, { unit: '× pupil', help: '1/e² intensity radius of the Gaussian beam, in entrance-pupil radii.' }),
+    vignetting: field('vignetting', 'Clear apertures', c.vignetting),
   };
   const group = (title, ...children) => el('fieldset', { class: 'calc-group' }, el('legend', { text: title }), ...children);
   form.append(
     group('Object and aperture', rows.object, rows.distance, rows.apertureType, rows.apertureValue),
-    group('Fields and wavelengths', rows.fields, rows.wavelengths, rows.primary),
+    group('Fields and wavelengths', rows.fields, rows.wavelengths, rows.primary, rows.weights),
     group('Image and rays', rows.focus, rows.offset, rows.aiming, rows.samples),
+    group('Diffraction', rows.grid, rows.padding, rows.illumination, rows.beamRatio, rows.vignetting),
   );
 
   const commit = mutate => {
@@ -158,6 +171,7 @@ export function createEditor(host, { presets, onChange, onPreset, onImport, onEx
   for (const [input, apply] of [
     [c.fields, (s, v) => { s.fields.values = v; }],
     [c.wavelengths, (s, v) => { s.wavelengthsNm = v; s.primaryWavelength = Math.min(s.primaryWavelength, v.length - 1); }],
+    [c.weights, (s, v) => { s.wavelengthWeights = v; }],
   ]) {
     input.addEventListener('input', () => {
       const v = parseList(input.value);
@@ -171,6 +185,11 @@ export function createEditor(host, { presets, onChange, onPreset, onImport, onEx
   numberInput(c.offset, (s, v) => { s.image.offsetMm = v; });
   c.aiming.addEventListener('change', () => commit(s => { s.rayAiming = c.aiming.value; }));
   c.samples.addEventListener('change', () => commit(s => { s.pupilSamples = Number(c.samples.value); }));
+  c.grid.addEventListener('change', () => commit(s => { s.diffraction.grid = Number(c.grid.value); }));
+  c.padding.addEventListener('change', () => commit(s => { s.diffraction.padding = Number(c.padding.value); }));
+  c.illumination.addEventListener('change', () => commit(s => { s.diffraction.illumination = c.illumination.value; }));
+  numberInput(c.beamRatio, (s, v) => { s.diffraction.beamRatio = v; });
+  c.vignetting.addEventListener('change', () => commit(s => { s.diffraction.vignetting = c.vignetting.value === 'on'; }));
 
   // ---------------- lens data table ----------------
   const table = el('table', { class: 'bench-table', id: 'lens-table', 'aria-label': 'Lens data: one row per surface' });
@@ -321,6 +340,14 @@ export function createEditor(host, { presets, onChange, onPreset, onImport, onEx
       c.samples.append(el('option', { value: c.samples.value, text: `${c.samples.value} × ${c.samples.value} grid` }));
       c.samples.value = String(s.pupilSamples);
     }
+    c.weights.value = listText(s.wavelengthWeights);
+    rows.weights.hidden = s.wavelengthsNm.length < 2;
+    c.grid.value = String(s.diffraction.grid);
+    c.padding.value = String(s.diffraction.padding);
+    c.illumination.value = s.diffraction.illumination;
+    c.beamRatio.value = String(s.diffraction.beamRatio);
+    rows.beamRatio.hidden = s.diffraction.illumination !== 'gaussian';
+    c.vignetting.value = s.diffraction.vignetting ? 'on' : 'off';
     for (const input of form.querySelectorAll('input')) invalid(input, false);
   }
 

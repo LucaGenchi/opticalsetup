@@ -23,7 +23,7 @@ const PROFILE_SAMPLES = 48;
 
 const fmt = (v, d = 3) => Number(v).toPrecision(d);
 
-function checkSystem(sys) {
+export function checkSystem(sys) {
   const errors = [];
   sys.surfaces.forEach((s, j) => {
     if (s.type !== 'paraxial') return;
