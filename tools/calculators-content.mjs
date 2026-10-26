@@ -11,6 +11,7 @@
 
 import { wavelengthCalculators } from './calculators-wavelength-content.mjs';
 import { fluorescenceCalculators } from './calculators-fluorescence-content.mjs';
+import { compressorCalculators } from './calculators-compressor-content.mjs';
 
 export const cite = (...n) => n.map(k => `<a class="cite" href="#ref-${k}">[${k}]</a>`).join('');
 
@@ -18,6 +19,7 @@ const GITHUB = 'https://github.com/LucaGenchi/opticalsetup/blob/main';
 
 export const calculators = [
   ...wavelengthCalculators,
+  ...compressorCalculators,
   ...fluorescenceCalculators,
   {
     slug: 'opa',

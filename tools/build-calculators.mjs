@@ -200,6 +200,23 @@ function layoutSection(calc) {
   }
   const blocks = layout.map(block => {
     if (block.graphs) return graphsSection(calc);
+    // The main form beside a live figure of what it describes, with a short
+    // results table and the reset under the figure.
+    if (block.form && block.preview) {
+      return `<section class="calc-workbench" id="calculator" aria-label="${esc(block.label)}">
+      <form class="calc-inputs" id="${block.form}-form" autocomplete="off" novalidate></form>
+      <div class="calc-workbench-side">
+        <figure class="calc-preview">
+          <div class="calc-preview-figure" id="preview-figure"></div>
+          <figcaption id="preview-caption"></figcaption>
+          <p class="calc-preview-note" id="preview-note"></p>
+          <a class="btn calc-preview-open" id="preview-open" target="_blank" rel="noopener" aria-disabled="true">${esc(block.preview)}</a>
+        </figure>
+        <table class="calc-results" id="${block.results}-results" aria-label="${esc(block.resultsLabel)}"></table>
+        <div class="calc-actions" id="calc-actions"></div>
+      </div>
+    </section>`;
+    }
     if (block.form) {
       return `<section class="calc-block"${block.form === 'calc' ? ' id="calculator"' : ''} aria-label="${esc(block.label)}">
       <form class="calc-inputs calc-grid-3" id="${block.form}-form" autocomplete="off" novalidate></form>${block.note ? `
@@ -210,11 +227,11 @@ function layoutSection(calc) {
         ${resultTables(block)}
       </div>`;
     if (block.output) {
+      const actions = layout.some(b => b.preview) ? '' : '\n      <div class="calc-actions" id="calc-actions"></div>';
       return `<section class="calc-block calc-results-block" aria-label="${esc(block.label)}">
       <div class="calc-status" id="calc-status" role="status" aria-live="polite"></div>
       ${tables}
-      <ul class="calc-notes" id="calc-notes"></ul>
-      <div class="calc-actions" id="calc-actions"></div>
+      <ul class="calc-notes" id="calc-notes"></ul>${actions}
     </section>`;
     }
     return `<section class="calc-block" aria-labelledby="${block.id}-title">
