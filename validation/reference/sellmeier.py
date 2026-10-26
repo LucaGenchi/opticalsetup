@@ -3,9 +3,10 @@
 """Catalogue glass dispersion: index, Abbe number, group index and GVD.
 
 Reference: the published three-term Sellmeier coefficients (Schott optical
-glass data sheets for N-BK7, N-FK51A, N-SF5, N-SF10, N-SF11, N-SF14, N-SF57
-and N-LASF9; Malitson, J. Opt. Soc. Am. 55, 1205 (1965),
-doi:10.1364/JOSA.55.001205, for fused silica), evaluated here directly, with the wavelength derivatives taken numerically. The app
+glass data sheets for N-BK7, N-FK51A, N-SK16, F2, N-SF5, N-SF10, N-SF11,
+N-SF14, N-SF57 and N-LASF9; Malitson, J. Opt. Soc. Am. 55, 1205 (1965),
+doi:10.1364/JOSA.55.001205, for fused silica; Malitson, Appl. Opt. 2, 1103
+(1963), doi:10.1364/AO.2.001103, for CaF2), evaluated here directly, with the wavelength derivatives taken numerically. The app
 evaluates the same coefficients but derives GVD from the analytic derivative
 of the Sellmeier sum (sketch/js/glass.js), so agreement checks that
 derivation and its unit bookkeeping, not the coefficients.
@@ -47,6 +48,18 @@ GLASSES = {
     "nfk51a": {
         "B": [0.971247817, 0.216901417, 0.904651666],
         "C": [0.00472301995, 0.0153575612, 168.68133],
+    },
+    "nsk16": {
+        "B": [1.34317774, 0.241144399, 0.994317969],
+        "C": [0.00704687339, 0.0229005, 92.7508526],
+    },
+    "f2": {
+        "B": [1.34533359, 0.209073176, 0.937357162],
+        "C": [0.00997743871, 0.0470450767, 111.886764],
+    },
+    "caf2": {
+        "B": [0.5675888, 0.4710914, 3.8484723],
+        "C": [0.050263605 ** 2, 0.1003909 ** 2, 34.649040 ** 2],
     },
     "nsf10": {
         "B": [1.62153902, 0.256287842, 1.64447552],
@@ -174,6 +187,14 @@ def cases():
                 "tolerance": {"index": 1e-7, "groupIndex": 1e-6, "gvdFs2PerMm": 2e-3 if nm % 1 else 2e-4},
                 **({"note": "app buckets GVD to the nearest nm; 587.6 nm is evaluated at 588 nm"} if nm % 1 else {}),
             })
+            # Near a zero-dispersion wavelength (CaF2's is close to 1.55 um) a
+            # relative GVD tolerance measures only this reference's finite-
+            # difference rounding, about 1e-4 fs^2/mm; check it absolutely.
+            if abs(out[-1]["expected"]["gvdFs2PerMm"]) < 1:
+                out[-1]["absolute"] = True
+                out[-1]["tolerance"]["gvdFs2PerMm"] = 2e-4
+                out[-1]["note"] = "GVD near zero: absolute tolerance in fs^2/mm, set by the reference's finite-difference rounding"
+
         out.append({
             "name": f"{glass} Abbe number",
             "inputs": {"glass": glass},

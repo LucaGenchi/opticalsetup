@@ -74,7 +74,7 @@ export const wavelengthCalculators = [
       },
     ],
     references: [
-      { label: 'SCHOTT AG, Optical glass data sheets and Zemax catalogue (2017-01-20): N-BK7, N-FK51A, N-SF5, N-SF10, N-SF11, N-SF14, N-SF57 and N-LASF9 dispersion constants, nd and Vd.', url: 'https://www.schott.com/shop/medias/schott-optical-glass-collection-datasheets-english-march2018.pdf?context=bWFzdGVyfHJvb3R8NTQwMzA2MXxhcHBsaWNhdGlvbi9wZGZ8aDllL2hlZS84ODE3NDA4ODY4MzgyLnBkZnw2Y2VlYjY0Njk3YzBkYzU4NDliOGMxMzVmNjgwZmRiYzdlYWMxYmJmZDU1NjdmYjIxYzU5MTQ4NmE1YjhmMGQ2' },
+      { label: 'SCHOTT AG, Optical glass data sheets and Zemax catalogue (2017-01-20): N-BK7, N-FK51A, N-SK16, F2, N-SF5, N-SF10, N-SF11, N-SF14, N-SF57 and N-LASF9 dispersion constants, nd and Vd.', url: 'https://www.schott.com/shop/medias/schott-optical-glass-collection-datasheets-english-march2018.pdf?context=bWFzdGVyfHJvb3R8NTQwMzA2MXxhcHBsaWNhdGlvbi9wZGZ8aDllL2hlZS84ODE3NDA4ODY4MzgyLnBkZnw2Y2VlYjY0Njk3YzBkYzU4NDliOGMxMzVmNjgwZmRiYzdlYWMxYmJmZDU1NjdmYjIxYzU5MTQ4NmE1YjhmMGQ2' },
       { label: 'I. H. Malitson, “Interspecimen comparison of the refractive index of fused silica,” J. Opt. Soc. Am. 55, 1205–1208 (1965).', url: 'https://doi.org/10.1364/JOSA.55.001205' },
       { label: 'I. H. Malitson, “A redetermination of some optical properties of calcium fluoride,” Appl. Opt. 2, 1103–1107 (1963).', url: 'https://doi.org/10.1364/AO.2.001103' },
       { label: 'I. H. Malitson and M. J. Dodge, “Refractive index and birefringence of synthetic sapphire,” J. Opt. Soc. Am. 62, 1405 (1972); dispersion formula in M. J. Dodge, Handbook of Laser Science and Technology, Vol. IV, CRC Press (1986), p. 30.', url: 'https://opg.optica.org/josa/abstract.cfm?uri=josa-62-11-1336' },

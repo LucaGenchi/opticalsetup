@@ -838,6 +838,347 @@
   },
   {
    "expected": {
+    "groupIndex": 1.707772854,
+    "gvdFs2PerMm": 160.8309628,
+    "index": 1.638525759
+   },
+   "inputs": {
+    "glass": "nsk16",
+    "wavelengthNm": 400
+   },
+   "name": "nsk16 at 400 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.651661851,
+    "gvdFs2PerMm": 92.19806929,
+    "index": 1.620407933
+   },
+   "inputs": {
+    "glass": "nsk16",
+    "wavelengthNm": 587.6
+   },
+   "name": "nsk16 at 587.6 nm",
+   "note": "app buckets GVD to the nearest nm; 587.6 nm is evaluated at 588 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.632302247,
+    "gvdFs2PerMm": 59.48892677,
+    "index": 1.61285968
+   },
+   "inputs": {
+    "glass": "nsk16",
+    "wavelengthNm": 800
+   },
+   "name": "nsk16 at 800 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.624689727,
+    "gvdFs2PerMm": 35.96882533,
+    "index": 1.608452378
+   },
+   "inputs": {
+    "glass": "nsk16",
+    "wavelengthNm": 1030
+   },
+   "name": "nsk16 at 1030 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.622186507,
+    "gvdFs2PerMm": -19.56174084,
+    "index": 1.601297514
+   },
+   "inputs": {
+    "glass": "nsk16",
+    "wavelengthNm": 1550
+   },
+   "name": "nsk16 at 1550 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "abbe": 60.32364916
+   },
+   "inputs": {
+    "glass": "nsk16"
+   },
+   "name": "nsk16 Abbe number",
+   "tolerance": {
+    "abbe": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "groupDelayDifferenceFs": -7.014139131
+   },
+   "inputs": {
+    "glass": "nsk16",
+    "hiNm": 820,
+    "lengthMm": 1,
+    "loNm": 780
+   },
+   "name": "nsk16 group delay 780-820 nm per mm",
+   "tolerance": {
+    "groupDelayDifferenceFs": 1e-05
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.785382617,
+    "gvdFs2PerMm": 372.1754775,
+    "index": 1.65215474
+   },
+   "inputs": {
+    "glass": "f2",
+    "wavelengthNm": 400
+   },
+   "name": "f2 at 400 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.670849658,
+    "gvdFs2PerMm": 168.0866306,
+    "index": 1.620036834
+   },
+   "inputs": {
+    "glass": "f2",
+    "wavelengthNm": 587.6
+   },
+   "name": "f2 at 587.6 nm",
+   "note": "app buckets GVD to the nearest nm; 587.6 nm is evaluated at 588 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.636346682,
+    "gvdFs2PerMm": 105.1357114,
+    "index": 1.608386648
+   },
+   "inputs": {
+    "glass": "f2",
+    "wavelengthNm": 800
+   },
+   "name": "f2 at 800 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.622503582,
+    "gvdFs2PerMm": 70.23164892,
+    "index": 1.602469273
+   },
+   "inputs": {
+    "glass": "f2",
+    "wavelengthNm": 1030
+   },
+   "name": "f2 at 1030 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.614257253,
+    "gvdFs2PerMm": 11.82632446,
+    "index": 1.594874216
+   },
+   "inputs": {
+    "glass": "f2",
+    "wavelengthNm": 1550
+   },
+   "name": "f2 at 1550 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "abbe": 36.36649125
+   },
+   "inputs": {
+    "glass": "f2"
+   },
+   "name": "f2 Abbe number",
+   "tolerance": {
+    "abbe": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "groupDelayDifferenceFs": -12.39723457
+   },
+   "inputs": {
+    "glass": "f2",
+    "hiNm": 820,
+    "lengthMm": 1,
+    "loNm": 780
+   },
+   "name": "f2 group delay 780-820 nm per mm",
+   "tolerance": {
+    "groupDelayDifferenceFs": 1e-05
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.472066708,
+    "gvdFs2PerMm": 67.50247653,
+    "index": 1.44185367
+   },
+   "inputs": {
+    "glass": "caf2",
+    "wavelengthNm": 400
+   },
+   "name": "caf2 at 400 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.447735646,
+    "gvdFs2PerMm": 41.35901159,
+    "index": 1.433848376
+   },
+   "inputs": {
+    "glass": "caf2",
+    "wavelengthNm": 587.6
+   },
+   "name": "caf2 at 587.6 nm",
+   "note": "app buckets GVD to the nearest nm; 587.6 nm is evaluated at 588 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.438896773,
+    "gvdFs2PerMm": 27.87339512,
+    "index": 1.430529326
+   },
+   "inputs": {
+    "glass": "caf2",
+    "wavelengthNm": 800
+   },
+   "name": "caf2 at 800 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "groupIndex": 1.435216014,
+    "gvdFs2PerMm": 18.49298461,
+    "index": 1.428688026
+   },
+   "inputs": {
+    "glass": "caf2",
+    "wavelengthNm": 1030
+   },
+   "name": "caf2 at 1030 nm",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "groupIndex": 1.433263557,
+    "gvdFs2PerMm": -0.07233375231,
+    "index": 1.426024327
+   },
+   "inputs": {
+    "glass": "caf2",
+    "wavelengthNm": 1550
+   },
+   "name": "caf2 at 1550 nm",
+   "note": "GVD near zero: absolute tolerance in fs^2/mm, set by the reference's finite-difference rounding",
+   "tolerance": {
+    "groupIndex": 1e-06,
+    "gvdFs2PerMm": 0.0002,
+    "index": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "abbe": 94.99585585
+   },
+   "inputs": {
+    "glass": "caf2"
+   },
+   "name": "caf2 Abbe number",
+   "tolerance": {
+    "abbe": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "groupDelayDifferenceFs": -3.286161851
+   },
+   "inputs": {
+    "glass": "caf2",
+    "hiNm": 820,
+    "lengthMm": 1,
+    "loNm": 780
+   },
+   "name": "caf2 group delay 780-820 nm per mm",
+   "tolerance": {
+    "groupDelayDifferenceFs": 1e-05
+   }
+  },
+  {
+   "expected": {
     "groupIndex": 1.997146477,
     "gvdFs2PerMm": 691.2781594,
     "index": 1.778259755
