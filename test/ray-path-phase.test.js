@@ -261,3 +261,26 @@ test('a short pulse through one prism keeps its duration when the leftover angle
     assert.match(pulse.dispersionModel, /slightly different angles/);
   }
 });
+
+test('a flat band whose colours still diverge checks the spread that times it', () => {
+  // The flat-band model times the band edges' delay spread, which the
+  // angular GDD over the next metre moves too: 117 fs here becomes about
+  // 343 fs a metre on, so none is given.
+  const { pulse } = trace('one Brewster nsf10 prism', {
+    continuum: { scMin: 795, scMax: 805, pulseWidthFs: 100 },
+    edit: scene => { scene.find(e => e.id === 'det').params.aperture = 1000; },
+  }).reading;
+  assert.equal(pulse.stretchedPulseWidthFs, null);
+  assert.match(pulse.dispersionModel, /angular dispersion remains/);
+});
+
+test('diverging colours that would compress the pulse within the next metre give no duration', () => {
+  // The duration is the same at both ends of the metre (about 163 fs) but
+  // passes through about 94 fs where the angular GDD cancels the chirp.
+  const { pulse } = trace('one Brewster nsf10 prism', {
+    laser: { transformLimited: false, inputChirp: 'positive', chirpGddFs2: 6611.06 },
+    edit: scene => { scene.find(e => e.id === 'det').params.aperture = 1000; },
+  }).reading;
+  assert.equal(pulse.stretchedPulseWidthFs, null);
+  assert.match(pulse.dispersionModel, /angular dispersion remains/);
+});

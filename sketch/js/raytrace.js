@@ -1382,35 +1382,42 @@ export function detectorReading(elementId) {
           : pulseDurationAcrossPaths(p, centerHits.map(h => ({
             gddFs2: h.gddFs2, groupDelayDifferenceFs: h.groupDelayDifferenceFs || 0, weight: h.power,
           })));
-      // GDD from the ray paths that rounding leaves uncertain: the duration
-      // stands only if it holds across the whole range. A GDD shift δ also
-      // moves the band edges' group-delay spread by δ(ω_red − ω_blue), which
-      // is what the flat-band model times. For the analytic models (Gaussian,
-      // sech², flat band) the duration depends only on how far the total GDD
-      // (or, flat-band, the spread) is from zero, so its extremes lie at the
-      // two ends or where that crosses zero: those, and the reading itself,
-      // are what is compared. A filtered spectrum's transform has no such
-      // property -- its width can peak inside the range -- and a sampled
-      // field has none either, so for those an uncertain GDD declines.
-      const gddUncertaintyFs2 = Math.max(0, ...sourceHits.map(h => h.pathGddUncertaintyFs2 || 0));
-      if (gddUncertaintyFs2 > 0 && duration?.available !== false) {
-        const spreadPerFs2 = gddGroupDelayDifferenceFs(1, p.spectrumLoNm, p.spectrumHiNm) || 0;
-        const durationAt = shift => {
-          const result = pulseDurationAcrossPaths(p, centerHits.map(h => ({
-            gddFs2: h.gddFs2 + shift, groupDelayDifferenceFs: (h.groupDelayDifferenceFs || 0) + shift * spreadPerFs2, weight: h.power,
-          })));
-          return result?.available === false ? null : result?.durationFs;
-        };
-        const u = gddUncertaintyFs2;
-        const shifts = [-u, u,
+      // The duration if the total GDD were shifted by `shift`. A GDD shift δ
+      // also moves the band edges' group-delay spread by δ(ω_red − ω_blue),
+      // which is what the flat-band model times. For the analytic models
+      // (Gaussian, sech², flat band) the duration depends only on how far the
+      // total GDD (or, flat-band, the spread) is from zero, so over a range of
+      // shifts its extremes lie at the two ends or where that crosses zero:
+      // those, and the reading itself, are what `durationsAcross` returns. A
+      // filtered spectrum's transform has no such property -- its width can
+      // peak inside the range -- and a sampled field has none either, so for
+      // those it returns NaN and the caller declines.
+      const spreadPerFs2 = gddGroupDelayDifferenceFs(1, p.spectrumLoNm, p.spectrumHiNm) || 0;
+      const durationAt = shift => {
+        const result = pulseDurationAcrossPaths(p, centerHits.map(h => ({
+          gddFs2: h.gddFs2 + shift, groupDelayDifferenceFs: (h.groupDelayDifferenceFs || 0) + shift * spreadPerFs2, weight: h.power,
+        })));
+        return result?.available === false ? null : result?.durationFs;
+      };
+      const durationsAcross = (from, to) => {
+        if (filteredRecord || p.field) return [NaN];
+        const shifts = [from, to,
           ...(Number.isFinite(duration.totalGddFs2) ? [-duration.totalGddFs2] : []),
           ...(Number.isFinite(duration.groupDelayDifferenceFs) && spreadPerFs2 ? [-duration.groupDelayDifferenceFs / spreadPerFs2] : []),
-        ].filter(shift => Math.abs(shift) <= u);
-        const durations = filteredRecord || p.field ? [NaN] : [duration.durationFs, ...shifts.map(durationAt)];
-        if (!durations.every(Number.isFinite)
-            || Math.max(...durations) - Math.min(...durations) > PATH_PHASE_DURATION_TOLERANCE * duration.durationFs) {
-          duration = { durationFs: null, available: false, model: pathPhaseUncertain(gddUncertaintyFs2) };
-        }
+        ].filter(shift => shift >= from && shift <= to);
+        return [duration.durationFs, ...shifts.map(durationAt)];
+      };
+      const holdsAcross = (from, to, tolerance) => {
+        const durations = durationsAcross(from, to);
+        return durations.every(Number.isFinite)
+          && Math.max(...durations) - Math.min(...durations) <= tolerance * duration.durationFs;
+      };
+      // GDD from the ray paths that rounding leaves uncertain: the duration
+      // stands only if it holds across the whole range.
+      const gddUncertaintyFs2 = Math.max(0, ...sourceHits.map(h => h.pathGddUncertaintyFs2 || 0));
+      if (gddUncertaintyFs2 > 0 && duration?.available !== false
+          && !holdsAcross(-gddUncertaintyFs2, gddUncertaintyFs2, PATH_PHASE_DURATION_TOLERANCE)) {
+        duration = { durationFs: null, available: false, model: pathPhaseUncertain(gddUncertaintyFs2) };
       }
       // A prism or grating fans the pulse into wavelength samples, and an
       // aperture can then catch only some of them. The duration model assumes
@@ -1423,18 +1430,13 @@ export function detectorReading(elementId) {
         duration = { durationFs: null, available: false, model: DISPERSION_UNAVAILABLE.partialFan };
       }
       // Colours still diverging: the duration depends on where it is read.
-      // It stands only if the GDD angular dispersion adds over the next metre
-      // moves it by under 1 % (analytic models; a filtered or sampled pulse
-      // declines).
+      // It stands only if it moves by under 1 % anywhere over the next metre,
+      // where angular dispersion adds up to `angularFs2` of GDD (analytic
+      // models; a filtered or sampled pulse declines).
       const angularFs2 = Math.min(0, ...sourceHits.map(h => h.pathPhaseAngularFs2 ?? 0));
       let angularNote = null;
       if (duration?.available !== false && sourceHits.some(h => h.pathPhaseAngular)) {
-        const ahead = filteredRecord || p.field ? null : pulseDurationAcrossPaths(p, centerHits.map(h => ({
-          gddFs2: h.gddFs2 + angularFs2, groupDelayDifferenceFs: h.groupDelayDifferenceFs || 0, weight: h.power,
-        })));
-        const change = ahead?.available === false || !Number.isFinite(ahead?.durationFs) ? Infinity
-          : Math.abs(ahead.durationFs - duration.durationFs) / duration.durationFs;
-        if (change > PATH_PHASE_ANGULAR_TOLERANCE) {
+        if (!holdsAcross(angularFs2, 0, PATH_PHASE_ANGULAR_TOLERANCE)) {
           duration = { durationFs: null, available: false, model: PATH_PHASE_ANGULAR };
         } else {
           angularNote = 'on the central ray: the colours leave at slightly different angles, which changes this duration by under 1 % over the next metre';
