@@ -9,7 +9,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { createElement } from '../sketch/js/elements.js';
+import { createElement, registry } from '../sketch/js/elements.js';
+import { parseSketch } from '../sketch/js/state.js';
+import '../sketch/js/detector-instruments.js';
 import { traceScene, detectorReading, probeAt } from '../sketch/js/raytrace.js';
 import { gddGroupDelayDifferenceFs, DISPERSION_UNAVAILABLE } from '../sketch/js/glass.js';
 import { pathPhaseFit, higherOrderPhaseRad } from '../sketch/js/path-phase.js';
@@ -239,4 +241,23 @@ test('a filtered pulse with an uncertain GDD declines its duration', () => {
   assert.ok(pulse.gddUncertaintyFs2 > 100, `uncertainty ${pulse.gddUncertaintyFs2} fs²`);
   assert.equal(pulse.stretchedPulseWidthFs, null);
   assert.match(pulse.dispersionModel, /uncertain by ±/);
+});
+
+test('a short pulse through one prism keeps its duration when the leftover angles barely matter', () => {
+  // A 10 mm, 150 fs beam at 920 nm through a 60° N-BK7 prism, read by an
+  // autocorrelator of any size (Luca's scene). The colours leave 0.025° apart
+  // and each part of the beam crosses a different thickness of glass, but over
+  // a metre that angular dispersion moves a 150 fs pulse by 0.3 %: the reading
+  // stands, with a note, instead of declining.
+  const file = new URL('./fixtures/prism-920nm-150fs-beam.json', import.meta.url);
+  for (const [aperture, y] of [[30, 50], [60, 50], [120, 50], [10, 56], [10, 84]]) {
+    const scene = parseSketch(readFileSync(file, 'utf8'), registry);
+    const ac = scene.elements.find(e => e.type === 'autocorrelator');
+    Object.assign(ac, { y });
+    ac.params.aperture = aperture;
+    traceScene(scene.elements, scene.beams);
+    const pulse = detectorReading(ac.id)?.pulse;
+    assert.ok(Math.abs(pulse.stretchedPulseWidthFs - 150) < 1.5, `${aperture} mm at y ${y}: ${pulse.stretchedPulseWidthFs} fs (${pulse.dispersionModel})`);
+    assert.match(pulse.dispersionModel, /slightly different angles/);
+  }
 });

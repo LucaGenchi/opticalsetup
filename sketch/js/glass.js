@@ -546,7 +546,8 @@ export function pulseDurationAfterDispersion(pulse, pathGddFs2 = 0, groupDelayDi
 // must agree in phase, not merely in width. Three tests, all required:
 //  - the quadratic phase each path adds, relative to their mean, stays within
 //    0.1 rad at the edge of the pulse's FWHM bandwidth;
-//  - a broad band's endpoint delays agree within 2 % of the duration;
+//  - a flat (broad) band's endpoint delays, which are its duration, agree
+//    within 2 % of it;
 //  - every path's own duration, and the mean-GDD duration, agree within 2 %.
 // The 2 % and 0.1 rad are a display heuristic for small variations -- the
 // few fs² across a thick lens's aperture -- not a proof that distinct fields
@@ -573,8 +574,10 @@ export function pulseDurationAcrossPaths(pulse, paths) {
     const phase = list.map(p => Math.abs(p.gddFs2 - meanGdd) * halfWidth * halfWidth / 2);
     if (Math.max(...phase) > PATH_PHASE_TOLERANCE_RAD) return disagree;
   }
+  // The endpoint delays are what a flat band's duration is; for a Gaussian
+  // or sech² pulse the phase test above and the widths below decide.
   const delaySpread = Math.max(...list.map(p => Math.abs((p.groupDelayDifferenceFs || 0) - meanDelay)));
-  if (delaySpread > PATH_SPREAD_TOLERANCE * central.durationFs) return disagree;
+  if (pulse?.spectrumKind === 'flat' && delaySpread > PATH_SPREAD_TOLERANCE * central.durationFs) return disagree;
   const widths = list.map(p => pulseDurationAfterDispersion(pulse, p.gddFs2, p.groupDelayDifferenceFs || 0)?.durationFs);
   if (widths.some(w => !Number.isFinite(w))) return disagree;
   const all = [...widths, central.durationFs];

@@ -1,0 +1,80 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "ev6du01z",
+   "type": "pulsedlaser",
+   "x": 25,
+   "y": 30,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "wavelength": 920,
+    "avgPowerW": 0.1,
+    "beamMode": "beam",
+    "beamWidth": 10,
+    "repRateMHz": 80,
+    "pulsePhaseNs": 0,
+    "transformLimited": true,
+    "pulseWidthFs": 150,
+    "pulseShape": "gauss",
+    "bandwidth": 5,
+    "inputChirp": "positive",
+    "chirpGddFs2": 0,
+    "pol": 90,
+    "autoColor": true,
+    "color": "#e02020",
+    "showPulse": true,
+    "temporalMode": "pulsed",
+    "interference": true
+   }
+  },
+  {
+   "id": "e5er16lo",
+   "type": "prism",
+   "x": 275,
+   "y": 50,
+   "rot": 35,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "apex": 60,
+    "psize": 64.5,
+    "material": "nbk7"
+   }
+  },
+  {
+   "id": "e415qwl9",
+   "type": "autocorrelator",
+   "x": 360,
+   "y": 50,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "aperture": 30,
+    "assumedShape": "gauss",
+    "measurementMode": "auto",
+    "timeSpanPs": "auto"
+   }
+  },
+  {
+   "id": "ef4p3awn",
+   "type": "display",
+   "x": 600,
+   "y": 100,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "e415qwl9",
+    "displayScale": 1,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  }
+ ],
+ "beams": []
+}

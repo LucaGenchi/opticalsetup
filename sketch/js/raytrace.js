@@ -110,6 +110,21 @@ const PATH_PHASE_SURFACES = new Set([
 // Arriving samples that differ in direction or position by more than this are
 // not one recombined beam: the reading is then the central ray's.
 const PATH_PHASE_ANGLE_RAD = 1e-5;
+// Colours still diverging make the duration depend on where it is read. Where
+// the GDD that angular dispersion adds over the next metre changes the
+// duration by under 1 %, the reading stands with a note; otherwise it
+// declines.
+const PATH_PHASE_ANGULAR_DISTANCE_MM = 1000;
+const PATH_PHASE_ANGULAR_TOLERANCE = 0.01;
+// −k L (dθ/dω)² for the least-squares slope of angle against frequency.
+function angularGddPerMetre(turns, centerNm) {
+  const n = turns.length;
+  const mw = turns.reduce((sum, t) => sum + t.omega, 0) / n, ma = turns.reduce((sum, t) => sum + t.angle, 0) / n;
+  const sxx = turns.reduce((sum, t) => sum + (t.omega - mw) ** 2, 0);
+  const slope = sxx > 0 ? turns.reduce((sum, t) => sum + (t.omega - mw) * (t.angle - ma), 0) / sxx : 0;
+  const k = 2 * Math.PI / (centerNm * 1e-6);
+  return -k * PATH_PHASE_ANGULAR_DISTANCE_MM * slope * slope;
+}
 // The path GDD counts as resolved when rounding moves it by under 1 %.
 const PATH_PHASE_RESOLVED = 0.01;
 // Where it does not, the duration must agree to 1 % across the uncertainty.
@@ -1015,9 +1030,13 @@ function withPathPhase(hits) {
     const ref = group.reduce((best, h) => (Math.abs(h.wl - centerNm) < Math.abs(best.wl - centerNm) ? h : best));
     const u0 = norm({ x: ref.dx, y: ref.dy });
     let angular = 0, lateral = 0, valid = true;
+    // Each colour's direction against the centre's (signed), to measure the
+    // angular dispersion dθ/dω that is left.
+    const turns = [];
     const samples = group.map(h => {
       const u = norm({ x: h.dx, y: h.dy });
       const along = dot(u, u0);
+      turns.push({ omega: 2 * Math.PI * 299.792458 / h.wl, angle: Math.asin(Math.max(-1, Math.min(1, u.x * u0.y - u.y * u0.x))) });
       if (!(along > 0.5)) valid = false;
       // The sample's wave at the reference point: its phase at its own
       // arrival, carried along its direction to its wavefront through that
@@ -1066,6 +1085,10 @@ function withPathPhase(hits) {
         ...(groupDelayDifferenceFs === null ? {} : { groupDelayDifferenceFs }),
         pathPhaseNote,
         pathPhaseAngular: angular > PATH_PHASE_ANGLE_RAD,
+        // The GDD angular dispersion adds over the next metre on the central
+        // ray, −k L (dθ/dω)²: whether the colours still diverging matters
+        // for the duration (see the trains).
+        ...(angular > PATH_PHASE_ANGLE_RAD ? { pathPhaseAngularFs2: angularGddPerMetre(turns, centerNm) } : {}),
         ...(uncertain ? { pathGddUncertaintyFs2: fit.gddNoiseFs2 } : {}),
       });
     }
@@ -1400,13 +1423,28 @@ export function detectorReading(elementId) {
         duration = { durationFs: null, available: false, model: DISPERSION_UNAVAILABLE.partialFan };
       }
       // Colours still diverging: the duration depends on where it is read.
+      // It stands only if the GDD angular dispersion adds over the next metre
+      // moves it by under 1 % (analytic models; a filtered or sampled pulse
+      // declines).
+      const angularFs2 = Math.min(0, ...sourceHits.map(h => h.pathPhaseAngularFs2 ?? 0));
+      let angularNote = null;
       if (duration?.available !== false && sourceHits.some(h => h.pathPhaseAngular)) {
-        duration = { durationFs: null, available: false, model: PATH_PHASE_ANGULAR };
+        const ahead = filteredRecord || p.field ? null : pulseDurationAcrossPaths(p, centerHits.map(h => ({
+          gddFs2: h.gddFs2 + angularFs2, groupDelayDifferenceFs: h.groupDelayDifferenceFs || 0, weight: h.power,
+        })));
+        const change = ahead?.available === false || !Number.isFinite(ahead?.durationFs) ? Infinity
+          : Math.abs(ahead.durationFs - duration.durationFs) / duration.durationFs;
+        if (change > PATH_PHASE_ANGULAR_TOLERANCE) {
+          duration = { durationFs: null, available: false, model: PATH_PHASE_ANGULAR };
+        } else {
+          angularNote = 'on the central ray: the colours leave at slightly different angles, which changes this duration by under 1 % over the next metre';
+        }
       }
       // Say where the GDD came from, and that it is the central ray's when
       // the colours arrive side by side.
       const pathNotes = [...new Set(sourceHits.map(h => h.pathPhaseNote).filter(Boolean))];
-      const pathNote = pathNotes.find(note => note !== 'GDD from the ray paths') || pathNotes[0];
+      const pathNote = angularNote ? `GDD from the ray paths, ${angularNote}`
+        : pathNotes.find(note => note !== 'GDD from the ray paths') || pathNotes[0];
       if (pathNote && duration && duration.available !== false) {
         duration = { ...duration, model: duration.model ? `${duration.model} · ${pathNote}` : pathNote };
       }

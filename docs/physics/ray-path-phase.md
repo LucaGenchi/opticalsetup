@@ -114,8 +114,14 @@ Limits of the model, stated where the reading is shown:
   (a vertical roof mirror) are not represented.
 - **Colours still diverging.** When the arriving samples are not parallel
   (angular dispersion remains, as after a single prism or grating), the
-  duration depends on where it is read: the GDD shown is the central ray's,
-  and the duration is unavailable with that reason.
+  duration depends on where it is read: the GDD shown is the central ray's.
+  How much it depends is the GDD angular dispersion adds over the next metre,
+  `−k₀ L (dθ/dω)²` with L = 1 m and dθ/dω the least-squares slope of the
+  colours' directions against frequency. If adding it changes the duration by
+  under 1 %, the duration is given with a note saying so (a short pulse
+  through a single prism, whose colours leave a fraction of a millirad apart);
+  otherwise it is unavailable with that reason (a grating's fan). A filtered or
+  sampled pulse with diverging colours declines.
 - **Colours side by side.** When they are parallel but displaced (spatial
   chirp, as after a single pass of a prism or grating pair), the GDD is the
   spectral phase on the central ray and the duration is given, with the
