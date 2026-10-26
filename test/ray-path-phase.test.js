@@ -18,12 +18,14 @@ import { pathPhaseFit, higherOrderPhaseRad } from '../sketch/js/path-phase.js';
 const reference = JSON.parse(readFileSync(new URL('../validation/expected/ray-path-phase.json', import.meta.url), 'utf8'));
 const layout = name => reference.cases.find(c => c.name.startsWith(name)).inputs;
 
-function trace(name, { laser = {}, extra = [], edit = () => {}, shift = 0 } = {}) {
+function trace(name, { laser = {}, extra = [], edit = () => {}, shift = 0, continuum = null } = {}) {
   const { source, elements, detectorId } = layout(name);
-  const src = createElement('pulsedlaser', source.x + shift, source.y);
+  const src = createElement(continuum ? 'sclaser' : 'pulsedlaser', source.x + shift, source.y);
   src.rot = source.rot;
-  Object.assign(src.params, { beamMode: 'line', wavelength: source.wavelengthNm, transformLimited: false,
-    bandwidth: source.bandwidthNm, pulseWidthFs: 1000, ...laser });
+  Object.assign(src.params, continuum
+    ? { beamMode: 'line', temporalMode: 'pulsed', ...continuum }
+    : { beamMode: 'line', wavelength: source.wavelengthNm, transformLimited: false,
+      bandwidth: source.bandwidthNm, pulseWidthFs: 1000, ...laser });
   const scene = elements.map(e => {
     const el = createElement(e.type, e.x + shift, e.y);
     Object.assign(el, { id: e.id, rot: e.rot });
@@ -194,4 +196,30 @@ test('dispersion further along does not change what a probe reads upstream', () 
   const alone = read(false), before = read(true);
   assert.ok(Number.isFinite(alone.durationFs), alone.durationIssue);
   assert.equal(before.durationFs, alone.durationFs);
+});
+
+test('the duration check covers the whole uncertainty, compression point included', () => {
+  // Four prisms moved 1e10 mm, the source chirped to cancel the estimated
+  // GDD: the reading sits at the transform limit, and both ends of the
+  // ±123 fs² uncertainty give the same longer pulse. Comparing the ends alone
+  // passed it; the duration varies 5.8 % across the range.
+  const estimate = trace('four Brewster silica prisms', { shift: 1e10 }).reading.pulse;
+  assert.ok(estimate.gddUncertaintyFs2 > 50, `uncertainty ${estimate.gddUncertaintyFs2} fs²`);
+  const { pulse } = trace('four Brewster silica prisms', {
+    shift: 1e10, laser: { inputChirp: 'positive', chirpGddFs2: -estimate.gddFs2 },
+  }).reading;
+  assert.equal(pulse.stretchedPulseWidthFs, null);
+  assert.match(pulse.dispersionModel, /uncertain by ±/);
+});
+
+test('a flat-band continuum checks the delay spread its duration comes from', () => {
+  // The flat-band model times the pulse from the band edges' delay spread,
+  // not the GDD: the uncertainty has to move that spread too. Here it moves
+  // the duration between about 100.7 and 103.3 fs, so none is given.
+  const { pulse } = trace('four Brewster silica prisms', {
+    shift: 1e9, continuum: { scMin: 785, scMax: 815, pulseWidthFs: 100 },
+  }).reading;
+  assert.ok(pulse.gddUncertaintyFs2 > 10, `uncertainty ${pulse.gddUncertaintyFs2} fs²`);
+  assert.equal(pulse.stretchedPulseWidthFs, null);
+  assert.match(pulse.dispersionModel, /uncertain by ±/);
 });
