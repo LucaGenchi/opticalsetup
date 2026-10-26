@@ -163,7 +163,7 @@
    "y": 560,
    "rot": 0,
    "params": {
-    "text": "3 — COMPRESSED: two Brewster pairs 161 mm apart give the opposite GDD from their geometry. Back to 31 fs.",
+    "text": "3 — COMPRESSED: four Brewster prisms (161 mm of air within each pair) give the opposite GDD from their geometry. Back to 31 fs.",
     "fontSize": 14,
     "fill": "#1f7a4d"
    }

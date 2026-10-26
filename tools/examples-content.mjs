@@ -910,37 +910,52 @@ export const exampleEntries = [
       pair gives the opposite sign without needing a lens or a grating. The first prism
       fans the colours out at slightly different angles; the second, cut and turned the
       same way but inverted, catches each colour where it has arrived and sends it on
-      parallel to the others. Between them the blue colours travel a longer path than the
-      red ones, which is negative GDD.</p>
-      <p>Fork, Martinez and Gordon showed that the optical path between the two apices is
-      simply <span class="w">P = l cos β</span>, with <span class="w">l</span> the distance
-      between the apices and <span class="w">β</span> the angle between that line and each
-      colour's ray. Its second derivative with frequency is the pair's GDD: negative, and
-      growing with the separation. Pushing a prism further into the beam adds glass, and
-      with it positive GDD, so separation sets the coarse value and insertion fine-tunes it.
-      A second, mirror-image pair (or a mirror sending the light back through the first)
-      gathers the colours back into one beam.</p>`,
+      parallel to the others.</p>
+      <p>Each colour leaves with the phase <span class="w">φ(ω) = ωP(ω)/c</span> of its
+      optical path <span class="w">P</span>; its group delay is
+      <span class="w">dφ/dω</span> and the GDD is <span class="w">d²φ/dω²</span>. What
+      makes the pair's GDD negative is how that phase changes with frequency, not which
+      colour's path happens to be longer: through the pair the blue colours have the
+      <em>shorter</em> group delay and arrive before the red ones, the opposite of what glass
+      does${cite(1)}.</p>
+      <p>Fork, Martinez and Gordon showed that the optical path between the wavefronts
+      through the two apices is simply <span class="w">P = l cos β</span>, with
+      <span class="w">l</span> the distance between the apices and <span class="w">β</span>
+      the angle between that line and each colour's ray. The GDD that follows from
+      <span class="w">ωP/c</span> is negative and grows with <span class="w">l</span>, so
+      the spacing <em>within</em> a pair sets it; pushing a prism further into the beam adds
+      glass, and with it positive GDD, so insertion fine-tunes it. A second, mirror-image
+      pair (or a mirror sending the light back through the first) gathers the colours back
+      into one beam; between the two pairs the colours travel parallel, so that gap adds no
+      GDD.</p>`,
     inOpticalSetupTitle: 'What this setup demonstrates',
     inOpticalSetupHtml: `
       <p>Three identical 31&nbsp;fs, 800&nbsp;nm transform-limited Gaussian sources, each
       measured by its own autocorrelator wired to a screen.</p>
       <p>The first arm is the reference. The second passes through 30&nbsp;mm of N-BK7, about
       +1&nbsp;340&nbsp;fs², and the pulse stretches to about 122&nbsp;fs. The third adds four
-      N-SF10 prisms cut for Brewster's angle at 800&nbsp;nm, in two mirror-image pairs whose
-      apices are 161&nbsp;mm apart along the beam. Nothing in the scene states their GDD: each
+      N-SF10 prisms cut for Brewster's angle at 800&nbsp;nm, in two mirror-image pairs; within
+      each pair the central ray crosses 161&nbsp;mm of air between the prisms, and their apices
+      are 165.3&nbsp;mm apart. Nothing in the scene states their GDD: each
       colour of the pulse is traced through the glass and the air between, and the
       autocorrelator reads the GDD from the phases of those paths. Here they cancel the rod
       to within a fraction of a fs², and the pulse is back to 31&nbsp;fs.</p>
-      <p>Select a prism and move it: a second pair further from the first adds negative GDD,
-      and pushing a prism into the beam adds the glass back. The screen of the third arm
-      follows, and its inspector names where the GDD came from.</p>`,
+      <p>Select a prism and move it. Spreading the two prisms of a pair further apart along
+      the beam (keeping every colour on their faces) adds negative GDD; moving the second
+      pair as a whole further from the first changes nothing, since the colours are
+      parallel there; pushing a prism into the beam adds the glass back. The screen of the
+      third arm follows, and its inspector names where the GDD came from.</p>`,
     limitations: `<p>The duration is computed from the GDD alone: the prisms' third-order
       dispersion, which limits real compressors for very short pulses, is in the traced
       phase but not in the duration (the duration model line says so when it is large).
       The layout is two-dimensional, so the folded double pass of a lab compressor, where a
       mirror sends the beam back slightly lower and a D-shaped mirror picks it off, is
       drawn here as the equivalent four-prism line. Surface losses are a fixed fraction
-      per face rather than the Fresnel loss at the actual angle and polarization.</p>`,
+      per face rather than the Fresnel loss at the actual angle and polarization. The pulse
+      packets drawn along the beam still use each colour's glass GDD alone: after the
+      prisms the drawn packet looks like a pulse of about 260&nbsp;fs, while the
+      autocorrelator, which reads the GDD from the ray paths, gives 31&nbsp;fs. The
+      recompression shows in the detector reading, not in the drawn packets.</p>`,
     citations: [
       { label: 'R. L. Fork, O. E. Martinez and J. P. Gordon, “Negative dispersion using pairs of prisms,” Opt. Lett. 9, 150–152 (1984)', url: 'https://materias.df.uba.ar/onla2020c2/files/2020/10/1984_Fork_OPtLett_Negative-dispersion-using-pairs-of-prisms.pdf' },
     ],
