@@ -18,6 +18,7 @@ import { parametricGainCoefficient, parametricPair, parametricSmallSignalGain } 
 import { allocateParametricAmplifier } from '../sketch/js/parametric-amplifier.js';
 import { spectralFieldResult } from '../sketch/js/spectral-coherence.js';
 import { coupledWaveConversion } from '../calculators/opa/coupled-wave.js';
+import { fresnelTransmittances, throughFace } from '../sketch/js/fresnel.js';
 import { materialDispersion, materialAbbe } from '../calculators/dispersion/materials.js';
 import { DISPERSION_DEFAULTS, computeDispersion } from '../calculators/dispersion/dispersion-calculator.js';
 import { CONVERSION_DEFAULTS, computeConversion } from '../calculators/nonlinear-conversion/conversion-calculator.js';
@@ -50,6 +51,16 @@ const C_NM_PER_FS = 299.792458;
 const egfp = JSON.parse(readFileSync(new URL('../sketch/data/fluorophores/egfp.json', import.meta.url), 'utf8'));
 
 const APP = {
+  fresnel: ({ kind, ...inputs }) => {
+    if (kind === 'transmittance') {
+      return fresnelTransmittances(inputs.n1, inputs.n2, Math.cos(inputs.incidenceDeg * Math.PI / 180));
+    }
+    // kind === 'stokes': a pure state of azimuth a (from p) and ellipticity χ.
+    const a = 2 * inputs.azimuthDeg * Math.PI / 180, chi = 2 * inputs.ellipticityDeg * Math.PI / 180;
+    const stokes = { s1: Math.cos(chi) * Math.cos(a), s2: Math.cos(chi) * Math.sin(a), s3: Math.sin(chi) };
+    const { T, stokes: out } = throughFace(stokes, { Ts: inputs.Ts, Tp: inputs.Tp });
+    return { T, ...out };
+  },
   // A traced scene: the reference's layout, read at its detector. The
   // reference states the GDD of the paths; a thin lens's estimated glass is a
   // separate model (estimatedThinLensThicknessMm) and is taken off again.
@@ -207,7 +218,7 @@ const APP = {
   },
 };
 
-for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase']) {
+for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel']) {
   const model = expected(name);
   for (const c of model.cases) {
     test(`${model.id}: ${c.name}`, () => {

@@ -31,6 +31,14 @@ const CATALOGUE = [
     range: [210, 3710],
   },
   {
+    // Malitson, Appl. Opt. 2, 1103 (1963), 24 °C; the same coefficients the
+    // dispersion calculator lists.
+    id: 'caf2', label: 'Calcium fluoride, CaF₂ (nd 1.434 / V 95.0)',
+    B: [0.5675888, 0.4710914, 3.8484723],
+    C: [0.050263605 ** 2, 0.1003909 ** 2, 34.649040 ** 2],
+    range: [230, 9700],
+  },
+  {
     id: 'nfk51a', label: 'N-FK51A fluorite crown (nd 1.487 / V 84.5)',
     B: [0.971247817, 0.216901417, 0.904651666],
     C: [0.00472301995, 0.0153575612, 168.68133],

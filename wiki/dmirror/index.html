@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>D-shaped mirror — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="A flat mirror coated to one sharp edge, so one beam passes beside it while another, millimetres away, is reflected: the pickoff of folded compressors. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/dmirror/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="D-shaped mirror — OpticalSetup Encyclopedia">
+<meta property="og:description" content="A flat mirror coated to one sharp edge, so one beam passes beside it while another, millimetres away, is reflected: the pickoff of folded compressors.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/dmirror/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="../../sketch/icons/icon.svg">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../calculators/">Calculators</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+
+        <div class="cat">
+          <div class="cat-name">Annotations</div>
+          <ul><li><a href="../../wiki/figureframe/" class="">Figure frame</a></li><li><a href="../../wiki/probe/" class="">Beam probe</a></li><li><a href="../../wiki/highlight/" class="">Highlight</a></li><li><a href="../../wiki/textlabel/" class="">Text label</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul><li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li><li><a href="../../wiki/ledsource/" class="">LED</a></li><li><a href="../../wiki/pointsource/" class="">Point source</a></li><li><a href="../../wiki/objarrow/" class="">Object</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul><li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/dmirror/" class="current">D-shaped mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/conicmirror/" class="">Conic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/polygonscanner/" class="">Polygon scanner</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <div class="cat-sub">Ideal lenses</div><ul><li><a href="../../wiki/lens/" class="">Thin convex lens</a></li><li><a href="../../wiki/lensc/" class="">Thin concave lens</a></li><li><a href="../../wiki/telescope/" class="">Conjugated thin lens pair</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li></ul><div class="cat-sub">Real lenses</div><ul><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group</a></li><li><a href="../../wiki/asphericlens/" class="">Aspheric lens</a></li></ul><div class="cat-sub">Metalenses</div><ul><li><a href="../../wiki/metalens/" class="">Metalens</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Fibers</div>
+          <ul><li><a href="../../wiki/fiber/" class="">Optical fiber</a></li><li><a href="../../wiki/barefiber/" class="">Bare fiber</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul><li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul><li><a href="../../wiki/polarizer/" class="">Polarizer</a></li><li><a href="../../wiki/hwp/" class="">Half-wave plate</a></li><li><a href="../../wiki/qwp/" class="">Quarter-wave plate</a></li><li><a href="../../wiki/pbs/" class="">Polarizing beamsplitter</a></li><li><a href="../../wiki/isolator/" class="">Optical isolator</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Beam Block</div>
+          <ul><li><a href="../../wiki/slit/" class="">Slit</a></li><li><a href="../../wiki/beamdump/" class="">Beam dump</a></li><li><a href="../../wiki/blocker/" class="">Invisible blocker</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Wavefront Shaping</div>
+          <ul><li><a href="../../wiki/slm/" class="">Spatial light modulator</a></li><li><a href="../../wiki/metasurface/" class="">Metasurface</a></li><li><a href="../../wiki/dmd/" class="">Digital micromirror device</a></li><li><a href="../../wiki/dm/" class="">Deformable mirror</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul><li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/camera/" class="">Camera</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li><li><a href="../../wiki/polarimeter/" class="">Polarimeter</a></li><li><a href="../../wiki/spectrometer/" class="">Spectrometer</a></li><li><a href="../../wiki/autocorrelator/" class="">Autocorrelator</a></li><li><a href="../../wiki/generaldetector/" class="">General detector</a></li><li><a href="../../wiki/display/" class="">Detector screen</a></li><li><a href="../../wiki/eye/" class="">Human eye</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul><li><a href="../../wiki/chopper/" class="">Chopper</a></li></ul><div class="cat-sub">Acousto-optic</div><ul><li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aod/" class="">Acousto-optic deflector (AOD)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li></ul><div class="cat-sub">Electro-optic</div><ul><li><a href="../../wiki/eom/" class="">Electro-optic modulator (EOM)</a></li><li><a href="../../wiki/phasemodulator/" class="">Phase modulator</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul><li><a href="../../wiki/delayline/" class="">Mechanical delay line</a></li><li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Nonlinear Optics</div>
+          <ul><li><a href="../../wiki/crystal/" class="">Crystal</a></li><li><a href="../../wiki/opo/" class="">OPO</a></li><li><a href="../../wiki/opa/" class="">OPA</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Specimens</div>
+          <ul><li><a href="../../wiki/sample/" class="">Sample</a></li><li><a href="../../wiki/stage/" class="">Sample on piezo stage</a></li><li><a href="../../wiki/phaseplate/" class="">Phase object</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Custom</div>
+          <ul><li><a href="../../wiki/box/" class="">Custom box</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lab elements</div>
+          <ul><li><a href="../../wiki/gascell/" class="">Gas cell</a></li><li><a href="../../wiki/window/" class="">Optical window</a></li></ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#mirrors">Mirrors</a> / D-shaped mirror</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-15.35 -15.35 30.7 30.7" aria-hidden="true"><path d="M 0,-6.35 L -6,-6.35 L -6,9.524999999999999 Q -6,6.35 -2.825,6.35 L 0,6.35 Z" fill="#e8eaee" stroke="#888" stroke-width="1"/><line x1="0" y1="-6.35" x2="0" y2="6.35" stroke="#444" stroke-width="3.5"/><line x1="-7" y1="-6.35" x2="3" y2="-6.35" stroke="#444" stroke-width="1.5"/></svg></div>
+        <div>
+          <h1>D-shaped mirror</h1>
+        </div>
+      </div>
+      <p class="tagline">A flat mirror coated to one sharp edge, so one beam passes beside it while another, millimetres away, is reflected: the pickoff of folded compressors.</p>
+      <a class="place-cta" href="../../sketch/?demo=dmirror">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=dmirror&amp;embed=1"
+          title="D-shaped mirror — a live trace of the scene described below"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace, not a picture of one — but this preview is not interactive. Open it in the canvas to move things, change parameters, and save or export your own version.</p>
+
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+
+        <p>A round mirror cannot sit close to a beam: its mount, its bevel and the last
+        millimetre of uncoated glass all get in the way. A <strong>D-shaped mirror</strong>
+        is cut along a chord and coated right up to that straight edge, which is left sharp
+        rather than bevelled. Two beams a few millimetres apart can then be separated: one
+        passes just beside the edge, the other lands on the coating next to it and is
+        reflected away.</p>
+        <p>That is the job it does in a prism or grating compressor. The beam goes in past
+        the edge, through the dispersive elements to a fold mirror that sends it back a
+        little displaced, through the elements again, and onto the D-shaped mirror, which
+        picks the compressed beam off. In the lab the displacement is usually vertical: the
+        incoming beam passes just above the mirror and the returning one, a few millimetres
+        lower, is reflected out.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+
+        <p>The canvas is a top view, so the D-shaped mirror reflects exactly as a flat <a
+        href="../mirror/">mirror</a> does, with the same reflectivity settings. Its drawing
+        marks which end is the sharp, coated edge (square, with a short bar) and which is
+        the round back; <strong>Sharp edge</strong> flips it.</p>
+        <p>Because the view is two-dimensional, the pickoff works in the plane: the
+        returning beam has to come back displaced <em>sideways</em> and pass the mirror's
+        edge on the other side from the incoming one. A vertical displacement, the usual lab
+        arrangement, is not represented. For a dispersive double pass, displace the return
+        with a slightly tilted flat end mirror rather than with a <a
+        href="../retroreflector/">retroreflector</a>: an in-plane roof reflector reverses the
+        colours' order across the beam, so the second pass doubles the spatial chirp instead
+        of undoing it.</p>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>Only the reflecting face is traced. The substrate, the uncoated
+        back and the mount do not block light, and the edge is perfectly sharp: real
+        D-shaped mirrors clip a beam that comes within a few hundred micrometres of the edge
+        and scatter a little from it. Reflectivity has the plain mirror's caveats: no angle,
+        polarization or wavelength dependence.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/mirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><line x1="0" y1="-12.7" x2="0" y2="12.7" stroke="#444" stroke-width="3.5"/><line x1="-1.5" y1="-12.7" x2="-7.5" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="-6.233333333333333" x2="-7.5" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="0.2333333333333325" x2="-7.5" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="6.699999999999999" x2="-7.5" y2="12.7" stroke="#888" stroke-width="1"/></svg>Mirror</a><a href="../../wiki/retroreflector/"><svg viewBox="-23.7 -23.7 47.4 47.4" aria-hidden="true"><path d="M -12.7,12.7 L 0,0 L -12.7,-12.7" fill="#e8eaee" fill-opacity="0.3" stroke="#444" stroke-width="3.5"/></svg>Retroreflector</a><a href="../../wiki/prism/"><svg viewBox="-23.664696837416493 -23.664696837416493 47.329393674832986 47.329393674832986" aria-hidden="true"><path d="M 0,-12.7 L -14.664696837416493,12.7 L 14.664696837416493,12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Prism</a><a href="../../wiki/grating/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="0" y="-12.7" width="6" height="25.4" fill="#e8e0f0" stroke="#5d5575" stroke-width="1.5"/><line x1="0" y1="-9.7" x2="4" y2="-9.7" stroke="#333" stroke-width="1"/><line x1="0" y1="-4.699999999999999" x2="4" y2="-4.699999999999999" stroke="#333" stroke-width="1"/><line x1="0" y1="0.3000000000000007" x2="4" y2="0.3000000000000007" stroke="#333" stroke-width="1"/><line x1="0" y1="5.300000000000001" x2="4" y2="5.300000000000001" stroke="#333" stroke-width="1"/></svg>Diffraction grating</a>
+      </div>
+
+
+
+
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.newport.com/n/d-shaped-beam-pickoff" target="_blank" rel="noopener">Newport — Beam pickoff with D-shaped mirrors (application note)</a></li><li><a href="https://arxiv.org/abs/1306.5011" target="_blank" rel="noopener">L. Kong and M. Cui, single-prism femtosecond pulse compressor with a D-shaped pickoff (arXiv:1306.5011)</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">Every "In OpticalSetup" section above says exactly what the model computes and where it stops. Selected quantitative models are checked against independent reference implementations; see <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/docs/validation.md" target="_blank" rel="noopener">the validation table</a>.</footer>
+</body>
+</html>

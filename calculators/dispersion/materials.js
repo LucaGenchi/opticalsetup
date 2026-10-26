@@ -5,7 +5,7 @@
 // index, GVD and TOD from published dispersion formulas, with analytic
 // wavelength derivatives up to third order. DOM-free.
 //
-// The workbench's catalogue glasses (the SCHOTT glasses and fused silica)
+// The workbench's catalogue glasses (the SCHOTT glasses, fused silica and CaF₂)
 // take their coefficients from sketch/js/glass.js, so the calculator and the
 // tracer share one source; the crystals, liquids and gases are
 // calculator-only. Each entry keeps its source's own
@@ -48,9 +48,7 @@ const MATERIAL_LIST = [
   catalogueGlass('nlasf9', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
 
   catalogueGlass('silica', CRYSTAL, { ref: 'malitson1965', conditions: '20 °C', indexReference: 'unstated' }),
-  { id: 'caf2', label: 'Calcium fluoride, CaF₂', group: CRYSTAL, form: 'sellmeier', A: 0,
-    terms: [[0.5675888, 0.050263605 ** 2], [0.4710914, 0.1003909 ** 2], [3.8484723, 34.649040 ** 2]],
-    range: [230, 9700], ref: 'malitson1963', conditions: '24 °C', indexReference: 'unstated' },
+  catalogueGlass('caf2', CRYSTAL, { label: 'Calcium fluoride, CaF₂', ref: 'malitson1963', conditions: '24 °C', indexReference: 'unstated' }),
   { id: 'sapphire-o', label: 'Sapphire, Al₂O₃, ordinary ray', group: CRYSTAL, form: 'sellmeier', A: 0,
     terms: [[1.4313493, 0.0726631 ** 2], [0.65054713, 0.1193242 ** 2], [5.3414021, 18.028251 ** 2]],
     range: [200, 5000], ref: 'malitson1972', conditions: '20 °C; ordinary ray (E ⟂ c axis)', birefringent: true, indexReference: 'unstated' },

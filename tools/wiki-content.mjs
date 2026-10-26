@@ -1849,7 +1849,7 @@ export const wikiEntries = [
         reflection instead of exiting, exactly as a real prism does. For dispersion,
         broadband and supercontinuum beams are sampled at several discrete wavelengths
         across their band, and each sample refracts with its own wavelength-dependent
-        index, so the beam visibly fans into a spectrum. Fused silica and the SCHOTT
+        index, so the beam visibly fans into a spectrum. Fused silica, CaF₂ and the SCHOTT
         glasses N-BK7, N-FK51A, N-SF5, N-SF10, N-SF11, N-SF14, N-SF57 and N-LASF9 are
         selectable; existing sketches still default to N-BK7.</p>
         <p>For a pulse, each colour carries the phase of its own traced path: the
@@ -1858,14 +1858,20 @@ export const wikiEntries = [
         does as well as the glass: a pair of prisms gives the negative GDD of a
         prism compressor, more insertion adds the glass back, and the detector says
         whether the colours arrive together, side by side, or still diverging (then
-        it gives the central ray's GDD and no duration).</p>`,
+        it gives the central ray's GDD and no duration).</p>
+        <p>Each face transmits by the Fresnel equations at the angle the ray actually
+        meets it, for its polarization: p-polarized light (in the canvas plane, the
+        app's 0°) at Brewster's angle crosses without loss, which is why compressor
+        prisms are cut for it, while s-polarized light loses several percent per face.
+        The face also turns linear polarization toward p and leaves unpolarized light
+        partly p-polarized.</p>`,
       formulas: [
         { tex: 'n^2(\\lambda)=1+\\sum_i\\frac{B_i\\lambda^2}{\\lambda^2-C_i}', caption: 'The selected glass\'s published three-term Sellmeier curve.' },
       ],
       limitations: `<p>The Sellmeier curves make refractive index and GDD accurate to a
         few percent over their valid transparent ranges, but absorption bands,
-        temperature, coatings, and surface quality are not modeled; the fixed per-face
-        transmission is the only loss. The path phase is two-dimensional, sampled at
+        temperature, coatings, and surface quality are not modeled. Faces are uncoated:
+        Fresnel reflection is the only loss, and the reflected light is not traced. The path phase is two-dimensional, sampled at
         five or nine wavelengths, and needs the colours to reach the detector through
         elements whose phase is modelled (mirrors, glass, gratings, ideal lenses,
         filters and similar); otherwise each ray keeps the GDD of its own glass path.
@@ -1916,7 +1922,9 @@ export const wikiEntries = [
       formulas: [
         { tex: '\\mathrm{GDD} = -\\frac{m^2\\lambda^3 G}{2\\pi c^2 d^2\\cos^3\\beta}', caption: "A parallel grating pair at perpendicular separation G and diffraction angle β (Treacy 1969); the tracer reproduces it from the traced paths." },
       ],
-      limitations: `<p>Diffraction efficiency is split evenly across the configured
+      limitations: `<p><strong>Diffraction efficiency per order</strong> sets the share
+        each diffracted order keeps per bounce (100&nbsp;% by default, so older sketches are
+        unchanged); a compressor's four bounces at 90&nbsp;% pass 66&nbsp;%. Power is split evenly across the configured
         orders that propagate, rather than computed from the groove profile (a real
         blazed grating concentrates most of the light into one order by design) — order
         existence and angle are exact, relative brightness between orders is not. Since
@@ -5915,6 +5923,54 @@ export const wikiEntries = [
     ],
     resources: [
       { label: 'RP Photonics Encyclopedia — Retroreflectors', url: 'https://www.rp-photonics.com/retroreflectors.html' },
+    ],
+  },
+  {
+    type: 'dmirror',
+    summary: "A flat mirror coated to one sharp edge, so one beam passes beside it while another, millimetres away, is reflected: the pickoff of folded compressors.",
+    title: 'D-shaped mirror',
+    category: 'Mirrors',
+    realWorld: {
+      html: `
+        <p>A round mirror cannot sit close to a beam: its mount, its bevel and the last
+        millimetre of uncoated glass all get in the way. A <strong>D-shaped mirror</strong>
+        is cut along a chord and coated right up to that straight edge, which is left sharp
+        rather than bevelled. Two beams a few millimetres apart can then be separated: one
+        passes just beside the edge, the other lands on the coating next to it and is
+        reflected away.</p>
+        <p>That is the job it does in a prism or grating compressor. The beam goes in past
+        the edge, through the dispersive elements to a fold mirror that sends it back a
+        little displaced, through the elements again, and onto the D-shaped mirror, which
+        picks the compressed beam off. In the lab the displacement is usually vertical: the
+        incoming beam passes just above the mirror and the returning one, a few millimetres
+        lower, is reflected out.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The canvas is a top view, so the D-shaped mirror reflects exactly as a flat <a
+        href="../mirror/">mirror</a> does, with the same reflectivity settings. Its drawing
+        marks which end is the sharp, coated edge (square, with a short bar) and which is
+        the round back; <strong>Sharp edge</strong> flips it.</p>
+        <p>Because the view is two-dimensional, the pickoff works in the plane: the
+        returning beam has to come back displaced <em>sideways</em> and pass the mirror's
+        edge on the other side from the incoming one. A vertical displacement, the usual lab
+        arrangement, is not represented. For a dispersive double pass, displace the return
+        with a slightly tilted flat end mirror rather than with a <a
+        href="../retroreflector/">retroreflector</a>: an in-plane roof reflector reverses the
+        colours' order across the beam, so the second pass doubles the spatial chirp instead
+        of undoing it.</p>`,
+      formulas: [],
+      limitations: `<p>Only the reflecting face is traced. The substrate, the uncoated
+        back and the mount do not block light, and the edge is perfectly sharp: real
+        D-shaped mirrors clip a beam that comes within a few hundred micrometres of the edge
+        and scatter a little from it. Reflectivity has the plain mirror's caveats: no angle,
+        polarization or wavelength dependence.</p>`,
+    },
+    related: ['mirror', 'retroreflector', 'prism', 'grating'],
+    citations: [],
+    resources: [
+      { label: 'Newport — Beam pickoff with D-shaped mirrors (application note)', url: 'https://www.newport.com/n/d-shaped-beam-pickoff' },
+      { label: 'L. Kong and M. Cui, single-prism femtosecond pulse compressor with a D-shaped pickoff (arXiv:1306.5011)', url: 'https://arxiv.org/abs/1306.5011' },
     ],
   },
   {

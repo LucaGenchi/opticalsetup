@@ -50,6 +50,7 @@ import {
   linearStokes, cloneStokes, retarder as applyRetarder, analyzerTransmission,
   legacyPolarization, polarizationDescription,
 } from './polarization.js';
+import { fresnelTransmittances, throughFace } from './fresnel.js';
 import { arcParameterAtPoint, circularArcThrough } from './polygon.js';
 import {
   gddGroupDelayDifferenceFs, glassGVD, glassGroupDelayDifferenceFs, glassIndex,
@@ -1595,6 +1596,16 @@ export function detectorReading(elementId) {
 const drawnPulse = ray => (ray?.pulse && Array.isArray(ray.trainPieces) && ray.trainPieces.length
   ? { ...ray.pulse, spectrumReshaped: true, filteredPieces: ray.trainPieces } : ray?.pulse);
 
+// The polarization on one segment of a traced path: a prism face changes it
+// without starting a new path, and records from which segment on.
+function segmentPolarization(path, segment) {
+  const history = path.polHistory;
+  if (!history) return { pol: path.pol, stokes: cloneStokes(path.stokes) };
+  let state = history[0];
+  for (const entry of history) if (entry.from <= segment) state = entry;
+  return { pol: state.pol, stokes: cloneStokes(state.stokes) };
+}
+
 function probePulseDuration(path, segment, along) {
   // One sample of a fanned pulse is one colour; the pulse it belongs to is
   // read where its colours arrive together. Samples that never separated (a
@@ -1639,8 +1650,8 @@ export function probeAt(x, y, tol = 16) {
   }
   const duration = best?.pulse ? probePulseDuration(best, bestSegment, bestAlong) : null;
   return best ? {
-    wl: best.wl, bw: best.bw || 0, spec: best.spec || null, pol: best.pol,
-    stokes: cloneStokes(best.stokes), intensity: best.intensity,
+    wl: best.wl, bw: best.bw || 0, spec: best.spec || null, ...segmentPolarization(best, bestSegment),
+    intensity: best.intensity,
     // Which source this ray came from, so the probe can quote that source's
     // configured watts, and what its train looks like here -- including any
     // gates picked up on the way, which is what the time plot draws.
@@ -1733,10 +1744,12 @@ export function probeBeamsAt(x, y, radius) {
     entry.along = along;
     entry.opl = Number.isFinite(o0) && Number.isFinite(o1) ? o0 + (o1 - o0) * along : (r.opl || 0);
     const pulse = r.pulse;
+    const { pol, stokes } = segmentPolarization(r, i);
+    entry.pol = pol; entry.stokes = stokes;
     const key = JSON.stringify([
       r.originId || null, round(r.wl, 3), round(r.bw || 0, 3), specKey(r.spec),
-      typeof r.pol === 'number' ? round(r.pol, 1) : r.pol ?? null,
-      r.stokes ? [round(r.stokes.s1, 3), round(r.stokes.s2, 3), round(r.stokes.s3, 3)] : null,
+      typeof pol === 'number' ? round(pol, 1) : pol ?? null,
+      stokes ? [round(stokes.s1, 3), round(stokes.s2, 3), round(stokes.s3, 3)] : null,
       r.polMod ? JSON.stringify(r.polMod, (k, v) => (typeof v === 'number' ? round(v, 6) : v)) : null,
       pulse ? [round(pulse.repRateMHz, 9), round(pulse.phaseNs || 0, 9), round(pulse.pulseWidthFs, 3), pulse.pulseShape || '',
         (pulse.gates || []).map(gateKey)] : null,
@@ -1795,7 +1808,7 @@ export function probeBeamsAt(x, y, radius) {
       const duration = r.pulse && r.gddTrace !== undefined ? probePulseDuration(r, main.segment, main.along) : null;
       const propagationNs = opl / C_MM_PER_NS;
       beams.push({
-        wl: r.wl, bw: r.bw || 0, spec: r.spec || null, pol: r.pol, stokes: cloneStokes(r.stokes),
+        wl: r.wl, bw: r.bw || 0, spec: r.spec || null, pol: main.pol, stokes: cloneStokes(main.stokes),
         intensity: r.segmentIntensities?.[main.segment] ?? r.intensity,
         sourceId: r.sourceId || null, originId: r.originId || null,
         approximation: r.approximation || null, polMod: r.polMod || null,
@@ -3960,8 +3973,10 @@ function cellChild(ray, d, cell, lo, hi, tag, share = 1) {
 // time-averaged level a slow instrument would read.
 function polModThrough(ray, transmissionOf) {
   const m = ray.polMod;
-  const high = transmissionOf(m.stokesHigh);
-  const low = transmissionOf(m.stokesLow);
+  // Each state's share of the power, where a Fresnel face upstream has
+  // passed the two states differently (continuous light; 1 otherwise).
+  const high = transmissionOf(m.stokesHigh) * (m.weightHigh ?? 1);
+  const low = transmissionOf(m.stokesLow) * (m.weightLow ?? 1);
   return {
     high,
     low,
@@ -4286,12 +4301,47 @@ function interact(ray, hit) {
             tag: tag ? `${tag}-tir` : 'tir',
           };
         }
+        // A prism face transmits by Fresnel at its real angle and acts as a
+        // partial polarizer along p, the canvas plane
+        // (docs/physics/prism-fresnel.md); other glass keeps its own setting.
+        // Snell's law can still hand back the grazing ray at exactly the
+        // critical angle, where Fresnel transmission has fallen to zero; the
+        // two meet there, so that ray carries nothing.
+        const fresnel = data.fresnel ? (fresnelTransmittances(n1, n2, dot(d, n)) || { Ts: 0, Tp: 0 }) : null;
+        const face = fresnel ? throughFace(ray.stokes, fresnel) : null;
+        // Light an EOM switches between two states: each state crosses the
+        // face with its own transmission. A pulse train carries that as a
+        // gate, as an analyzer does; continuous light carries each state's
+        // share of the power as a weight the next analyzer applies.
+        let modulation = null;
+        if (face && ray.polMod) {
+          const m = ray.polMod, high = throughFace(m.stokesHigh, fresnel), low = throughFace(m.stokesLow, fresnel);
+          const states = { ...m, stokesHigh: high.stokes, stokesLow: low.stokes };
+          if (ray.pulse) {
+            modulation = { factor: 1, fields: { polMod: states, pulse: withGate(ray.pulse, {
+              opl: m.opl, frequencyMHz: m.frequencyMHz, phaseNs: m.phaseNs, duty: m.duty, shape: 'square', high: high.T, low: low.T,
+            }) } };
+          } else {
+            const wHigh = m.weightHigh ?? 1, wLow = m.weightLow ?? 1;
+            const mean = m.duty * wHigh * high.T + (1 - m.duty) * wLow * low.T;
+            modulation = { factor: mean, fields: { polMod: mean > 0
+              ? { ...states, weightHigh: wHigh * high.T / mean, weightLow: wLow * low.T / mean } : states } };
+          }
+        }
+        const polarization = face ? {
+          stokes: face.stokes, faceStokes: true,
+          // The legacy label follows the state: circular light leaves
+          // elliptical, unpolarized light partly p-polarized.
+          pol: legacyPolarization(face.stokes),
+          ...(modulation ? modulation.fields : {}),
+        } : {};
         return {
           d: transmitted, wl, bw: bandwidth, ...specField, ...colorField, tag,
           medium: inside ? null : materialId,
           mediumMaterial: inside ? null : (materialDispersive ? data.material : null),
           ior: n2,
-          intensity: intensity * Math.min(1, Math.max(0, data.transmission ?? 1)),
+          intensity: intensity * (modulation ? modulation.factor : face ? face.T : Math.min(1, Math.max(0, data.transmission ?? 1))),
+          ...polarization,
         };
       };
       if (dispersive) {
@@ -4629,8 +4679,8 @@ function interact(ray, hit) {
             // A cell an order passes off inside carries the share of the part
             // it propagates in; any other is the node's weight among the
             // orders alive there.
-            intensity: sample.share != null ? ray.intensity * sample.share
-              : ray.intensity * wls[i].weight / counts[i],
+            intensity: (sample.share != null ? ray.intensity * sample.share
+              : ray.intensity * wls[i].weight / counts[i]) * (data.efficiency ?? 1),
             tag: 'm' + m + (wls.length > 1 ? 'w' + i : ''),
             gratingCycles: m * across, gratingOrder: m,
             ...(splits ? { pathFamily: `pf${pathFamilySeq + 1}m${m}` } : {}),
@@ -6992,8 +7042,11 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         && (c0.spec === undefined || c0.spec === r.spec)
         && !(c0.speckle && !r.speckle)
         && !(c0.chopped && !r.chopped)
-        && !('pol' in c0 && c0.pol !== r.pol)
-        && !('stokes' in c0)
+        // A prism face's Fresnel polarization change continues the ray; the
+        // segment it starts on is recorded so a probe reads each segment's
+        // own state (segmentPolarization). Any other change splits it.
+        && (c0.faceStokes || !('pol' in c0 && c0.pol !== r.pol))
+        && (c0.faceStokes || !('stokes' in c0))
         && !('polMod' in c0)
         && !('spectralField' in c0)
         && !('approximation' in c0)
@@ -7023,6 +7076,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         r.x = hit.p.x; r.y = hit.p.y;
         r.dx = c0.d.x; r.dy = c0.d.y;
         if (c0.intensity !== undefined) r.intensity = c0.intensity;
+        if (c0.faceStokes) {
+          r.polHistory ||= [{ from: 0, pol: r.pol, stokes: cloneStokes(r.stokes) }];
+          r.polHistory.push({ from: r.pts.length - 1, pol: 'pol' in c0 ? c0.pol : r.pol, stokes: cloneStokes(c0.stokes) });
+        }
         if ('pol' in c0) r.pol = c0.pol;
         if ('stokes' in c0) r.stokes = cloneStokes(c0.stokes);
         if ('medium' in c0) r.medium = c0.medium;
