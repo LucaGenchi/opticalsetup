@@ -223,3 +223,20 @@ test('a flat-band continuum checks the delay spread its duration comes from', ()
   assert.equal(pulse.stretchedPulseWidthFs, null);
   assert.match(pulse.dispersionModel, /uncertain by ±/);
 });
+
+test('a filtered pulse with an uncertain GDD declines its duration', () => {
+  // A bandpass and a notch cut the spectrum; the scene sits far from the
+  // origin, so rounding leaves the GDD uncertain by about ±1370 fs². The
+  // filtered transform's width is not monotonic in the GDD: three points
+  // agreed at about 140 fs while 3250 fs², inside the range, gives 197 fs.
+  const filters = [
+    Object.assign(createElement('filter', 80 + 1.37e6, 0), { params: { ...createElement('filter').params, ftype: 'bandpass', center: 800, band: 30 } }),
+    Object.assign(createElement('filter', 110 + 1.37e6, 0), { params: { ...createElement('filter').params, ftype: 'notch', center: 796.5, band: 15 } }),
+  ];
+  const { pulse } = trace('four Brewster silica prisms', {
+    shift: 1.37e6, laser: { inputChirp: 'positive', chirpGddFs2: 2810 }, extra: filters,
+  }).reading;
+  assert.ok(pulse.gddUncertaintyFs2 > 100, `uncertainty ${pulse.gddUncertaintyFs2} fs²`);
+  assert.equal(pulse.stretchedPulseWidthFs, null);
+  assert.match(pulse.dispersionModel, /uncertain by ±/);
+});

@@ -136,11 +136,13 @@ Limits of the model, stated where the reading is shown:
   nanometre or less, or a scene far from the origin — the fitted GDD is kept
   and shown with `± uncertainty`, and the duration is checked across that
   range, moving the band edges' delay spread with the GDD (the flat-band model
-  times the pulse from it). Within the range the duration depends only on how
-  far the total GDD, or for a flat band the spread, is from zero, so its
-  extremes are at the two ends or at that zero: the duration is given only if
-  those and the reading agree to 1 %, and is otherwise unavailable with that
-  reason. The four-ulp allowance is an estimate checked on the reference
+  times the pulse from it). For a Gaussian, sech² or flat-band pulse the
+  duration depends only on how far the total GDD, or for a flat band the
+  spread, is from zero, so its extremes are at the two ends or at that zero:
+  the duration is given only if those and the reading agree to 1 %, and is
+  otherwise unavailable with that reason. A filtered spectrum's numerical
+  transform, or a sampled field, has no such property (its width can peak
+  inside the range), so with an uncertain GDD its duration is unavailable. The four-ulp allowance is an estimate checked on the reference
   layouts, not a formal bound for every geometry.
 - **Probes, drawn pulses, the compressor box's input reading.** A probe on
   one sample whose colours were turned apart cannot see the others, so it
