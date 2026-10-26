@@ -1,0 +1,103 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Content of the point-scanning microscope page.
+
+const cite = (...n) => n.map(k => `<a class="cite" href="#ref-${k}">[${k}]</a>`).join('');
+const GITHUB = 'https://github.com/LucaGenchi/opticalsetup/blob/main';
+
+export const scanningCalculators = [
+  {
+    slug: 'point-scanning', title: 'Point-scanning resolution and field of view', script: 'page.js',
+    card: 'Lateral and axial resolution of a scanned focus with or without a confocal pinhole, or with two- and three-photon excitation; field of view and the spot displacement of a galvo mirror.',
+    summary: 'Estimate the lateral and axial resolution of a point-scanning microscope from the excitation wavelength, the objective’s NA and the detection: a confocal pinhole for fluorescence, spontaneous Raman or scattered light, or two- and three-photon excitation without one. A second panel gives the field of view, how far the focus moves for a galvo angle, the pixel size and how the beam fills the objective.',
+    facts: [
+      { label: 'Model', html: 'Scalar focus of a uniformly filled circular pupil, computed numerically; the confocal pinhole integrated over its area; N-photon point images as the N-th power of the excitation focus. Ideal thin-lens scan relay.' },
+      { label: 'Evidence', html: `Checked against an independent Python reference and against the closed forms of the Zeiss monograph ${cite(1)} in their limits: <a href="${GITHUB}/docs/validation.md" target="_blank" rel="noopener">validation table</a>. Not compared with a measurement.` },
+      { label: 'Code', html: `<a href="${GITHUB}/calculators/point-scanning/psf.js" target="_blank" rel="noopener">psf.js</a> (point images) and <a href="${GITHUB}/calculators/point-scanning/scanning-calculator.js" target="_blank" rel="noopener">scanning-calculator.js</a>; immersion indices and NA limits from the canvas’s <a href="../../wiki/objective/">objective</a>.` },
+    ],
+    graphsAfterMain: true,
+    graphs: [
+      { id: 'lateral', title: 'Point image across the focus', note: 'Signal from a point object as the focus scans across it, normalized to its peak. The FWHM is the lateral resolution.' },
+      { id: 'axial', title: 'Point image along the axis', note: 'Signal from a point object as the focus scans along the optical axis. The FWHM is the axial resolution.' },
+    ],
+    panels: [{ id: 'scan', title: 'Field of view and galvo scanning',
+      intro: `How far the focus moves in the sample when a galvanometer mirror turns, through a scan lens, a tube lens and the objective ${cite(12)}; the field this covers, the pixel size, and how the beam fills the objective’s back aperture. The NA and the lateral resolution come from the panel above.`,
+      graphs: [{ id: 'scan', title: 'Spot displacement against galvo angle', note: 'Position of the focus in the sample. The band is the scan range; the marker is the chosen angle. The dashed curve is the other scan-lens mapping.' }] }],
+    sections: [
+      { id: 'focus', title: 'The scanned focus',
+        html: `<p>A point-scanning microscope focuses a laser to a spot, moves the spot over the sample and records one signal per position. The image of a point object is therefore the spot itself, weighted by what the detector accepts ${cite(1, 4)}. For a uniformly filled circular pupil, the scalar intensity near the focus depends on two dimensionless optical coordinates, one across and one along the axis ${cite(2, 5)}:</p>`,
+        formulas: [
+          { tex: String.raw`v=\frac{2\pi}{\lambda}\,\mathrm{NA}\,r,\qquad u=\frac{4\pi}{\lambda}\left(n-\sqrt{n^2-\mathrm{NA}^2}\right)z=\frac{8\pi n}{\lambda}\sin^2\!\frac{\alpha}{2}\,z`, caption: `So et al. write u = 4k sin²(α/2) z and v = k sin α r with k = 2πn/λ ${cite(2)}; NA = n sin α.` },
+          { tex: String.raw`h(u,v)=\left|\,2\int_0^1 J_0(v\rho)\,e^{-iu\rho^2/2}\,\rho\,d\rho\,\right|^2`, caption: `So et al., Eq. 2 ${cite(2)}; Born and Wolf derive the same field with Lommel functions ${cite(5)}.` },
+          { tex: String.raw`h(0,v)=\left[\frac{2J_1(v)}{v}\right]^2,\qquad h(u,0)=\left[\frac{\sin(u/4)}{u/4}\right]^2`, caption: 'In the focal plane the Airy pattern; on the axis a sinc². Their half-maximum points give the lateral and axial FWHM.' },
+        ],
+        html2: `<p>Without a pinhole a one-photon signal is proportional to the excitation intensity at the object, so the point image is h at the excitation wavelength. Its FWHM is 0.5145 λ<sub>exc</sub>/NA across and 0.8859 λ<sub>exc</sub>/(n − √(n² − NA²)) along the axis, the values the Zeiss monograph rounds to 0.51 and 0.88 (its eqs. 2 and 3) ${cite(1)}. For a small NA the axial expression tends to 1.77 nλ/NA² (its eq. 2a). The page finds each FWHM by bisection on the computed profile and converts optical units to micrometres:</p>`,
+        formulas2: [{ tex: String.raw`\mathrm{FWHM}_{\text{lat}}=\frac{2v_{1/2}}{2\pi}\,\frac{\lambda_{\text{exc}}}{\mathrm{NA}},\qquad \mathrm{FWHM}_{\text{ax}}=\frac{2u_{1/2}}{4\pi}\,\frac{\lambda_{\text{exc}}}{n-\sqrt{n^2-\mathrm{NA}^2}}` }],
+        html3: `<p>The FWHM is not the same as the two-point resolution: the Rayleigh criterion places two incoherent points at the Airy pattern’s first zero, 0.61 λ/NA apart. Without a pinhole, a one-photon scanner has no optical sectioning: every plane of a uniform fluorescent layer returns the same total signal, so the axial FWHM describes isolated points only ${cite(2)}.</p>`,
+        parameterTable: true,
+        rows: [
+          ['λ<sub>exc</sub>', 'Excitation wavelength', 'nm', 'Vacuum wavelength of the scanning laser.'],
+          ['λ<sub>det</sub>', 'Detected wavelength', 'nm', 'Emission peak, Raman Stokes line, or λ<sub>exc</sub> for scattered light. It matters only with a pinhole.'],
+          ['NA', 'Numerical aperture', '—', 'n sin α of the objective; must be below n.'],
+          ['n', 'Refractive index', '—', 'Immersion medium, taken to equal the sample’s.'],
+          ['α', 'Aperture half-angle', '°', 'asin(NA/n), the half-angle of the focused cone.'],
+          ['PH', 'Pinhole diameter', 'AU', 'Back-projected to the sample, in Airy units of the detected light: 1 AU = 1.22 λ<sub>det</sub>/NA.'],
+          ['N', 'Photons per event', '—', '2 for two-photon fluorescence and SHG, 3 for three-photon fluorescence and THG.'],
+        ],
+      },
+      { id: 'confocal', title: 'The confocal pinhole',
+        html: `<p>A pinhole in a plane conjugate to the focus accepts light from a small region around it. The total point image is the product of the illumination and detection point images (Zeiss eq. 1) ${cite(1)}, and the detection point image is the detected-wavelength PSF summed over the back-projected pinhole of radius R ${cite(3)}:</p>`,
+        formulas: [
+          { tex: String.raw`\mathrm{PSF}_{\text{tot}}(r,z)=h_{\text{exc}}(r,z)\cdot D(r,z),\qquad D(r,z)=\iint_{|\mathbf s|\le R} h_{\text{det}}\big(|\mathbf r-\mathbf s|,\,z\big)\,d^2s` },
+          { tex: String.raw`1\ \mathrm{AU}=\frac{1.22\,\lambda_{\text{det}}}{\mathrm{NA}},\qquad R=\frac{\mathrm{PH}}{2}\ \Longleftrightarrow\ v_R=1.22\,\pi\,\mathrm{PH}\,[\mathrm{AU}]`, caption: `The Zeiss monograph defines 1 AU as the Airy-disc diameter ${cite(1)}; this page evaluates it at the detected wavelength, the light the pinhole passes.` },
+        ],
+        html2: `<p>The two coordinates of h<sub>det</sub> scale with λ<sub>exc</sub>/λ<sub>det</sub>, so a Stokes shift widens the detection side. The page evaluates D numerically for any pinhole between 0 and 10 AU. In the two limits it reproduces the monograph’s closed forms, listed beside the result for comparison ${cite(1)}:</p><ul><li><b>Large pinhole (PH &gt; 1 AU)</b>, “geometric-optical confocality”: the resolution is that of the excitation spot alone (eqs. 2, 3). The pinhole still rejects light from other planes; the monograph measures that by the optical slice thickness, the axial FWHM of the detection PSF (eq. 4).</li><li><b>Point pinhole (PH &lt; 0.25 AU)</b>, “wave-optical confocality”: the total PSF is h<sub>exc</sub>·h<sub>det</sub>, which the monograph approximates with one mean wavelength λ̄ (eqs. 6–8).</li></ul>`,
+        formulas2: [
+          { tex: String.raw`\mathrm{FWHM}_{\text{slice}}\approx\sqrt{\left(\frac{0.88\,\lambda_{\text{det}}}{n-\sqrt{n^2-\mathrm{NA}^2}}\right)^2+\left(\frac{\sqrt2\,n\,\mathrm{PH}}{\mathrm{NA}}\right)^2}\qquad(\mathrm{PH}>1\ \mathrm{AU},\ \mathrm{PH\ in\ \mu m\ at\ the\ sample})`, caption: 'Zeiss eq. 4. The page reports the same quantity computed from D(0, z) for the actual pinhole; the geometric term uses NA/n for the defocus blur, a small-angle estimate, so the two part at high NA.' },
+          { tex: String.raw`\bar\lambda\approx\sqrt2\,\frac{\lambda_{\text{exc}}\lambda_{\text{det}}}{\sqrt{\lambda_{\text{exc}}^2+\lambda_{\text{det}}^2}},\qquad \mathrm{FWHM}_{\text{lat}}=0.37\,\frac{\bar\lambda}{\mathrm{NA}},\qquad \mathrm{FWHM}_{\text{ax}}=0.64\,\frac{\bar\lambda}{n-\sqrt{n^2-\mathrm{NA}^2}}`, caption: 'Zeiss eqs. 6, 8 and 7. With λ<sub>det</sub> = λ<sub>exc</sub> the exact values are 0.3693 and 0.6378.' },
+        ],
+        html3: `<p>Resolution and optical sectioning are different properties ${cite(4)}. At 1 AU the computed lateral width is within a few per cent of the open-detector value, yet the pinhole already rejects light from other planes; the lateral gain appears only well below 1 AU, where the detected signal falls steeply ${cite(1)}. The monograph recommends z steps of half the slice thickness.</p><p><b>Spontaneous Raman</b> is a linear, incoherent signal like fluorescence; the detected wavelength is the Stokes line of the chosen shift:</p>`,
+        formulas3: [{ tex: String.raw`\frac{1}{\lambda_{\text{det}}}=\frac{1}{\lambda_{\text{exc}}}-\frac{\Delta\tilde\nu}{10^7}\qquad(\lambda\ \text{in nm},\ \Delta\tilde\nu\ \text{in cm}^{-1})` }],
+        html4: `<p><b>Scattered or reflected light</b> is treated as coming from point-like incoherent scatterers. Extended reflecting structures image coherently: the monograph notes, for example, a factor 0.45 instead of 0.64 in eq. 7 for a mirror ${cite(1)}. In confocal Raman and reflection work an index mismatch between immersion and sample can make the real depth resolution much worse than these figures ${cite(11)}.</p>`,
+      },
+      { id: 'multiphoton', title: 'Two- and three-photon excitation',
+        html: `<p>An N-photon signal grows with the N-th power of the excitation intensity, so the point image is the excitation focus raised to that power ${cite(2, 6, 7)}. Detection needs no pinhole: a large, non-descanned detector collects everything.</p>`,
+        formulas: [{ tex: String.raw`\mathrm{PSF}_N(u,v)=h_{\text{exc}}(u,v)^N`, caption: `So et al. write the two-photon case as I²(u/2, v/2), in the optical units of half the excitation wavelength ${cite(2)}.` }],
+        html2: `<p>Raising the profile to a power narrows it: at the same wavelength the two-photon point image is about 1.39 times narrower than the one-photon one (0.3693 against 0.5145 λ/NA), the three-photon image about 1.70 times. A two-photon process is, however, excited at roughly twice the wavelength a one-photon process needs for the same transition, so it is wider than one-photon excitation at λ/N; the page lists both comparisons ${cite(2, 6)}. Horton et al. used three-photon excitation at 1700 nm to image deep in the scattering mouse brain ${cite(8)}.</p><p>What multiphoton excitation gains is sectioning without a pinhole: the total signal from a uniform plane falls away from the focus instead of staying constant ${cite(2)}, so the axial FWHM here is also the optical section. Second- and third-harmonic generation from a point-like object have the same point image; extended objects add coherent effects (phase matching, the Gouy phase) that are not modelled.</p>`,
+      },
+      { id: 'scanning', title: 'Field of view and galvo scanning',
+        html: `<p>An infinity-corrected objective’s magnification is defined with its maker’s tube lens: 200 mm for Nikon and Leica, 180 mm for Olympus and 165 mm for Zeiss ${cite(13)}. The objective’s focal length follows from it, and the field of view in the sample is the field number divided by the magnification ${cite(14)}:</p>`,
+        formulas: [{ tex: String.raw`f_{\text{obj}}=\frac{f_{\text{ref}}}{M},\qquad \mathrm{FOV}=\frac{\mathrm{FN}}{M}` }],
+        html2: `<p>In a laser-scanning microscope a galvanometer mirror tilts the beam, a scan lens turns the tilt into a position in an intermediate image, and the tube lens and the objective image that plane onto the sample ${cite(12)}. A mirror turned by θ<sub>mech</sub> deflects the beam by twice that angle. An ideal, distortion-free scan lens places the beam at f<sub>SL</sub> tan θ; an f-theta lens at f<sub>SL</sub> θ ${cite(12)}:</p>`,
+        formulas2: [
+          { tex: String.raw`\theta_{\text{opt}}=2\,\theta_{\text{mech}},\qquad h=f_{\text{SL}}\tan\theta_{\text{opt}}\ \ \text{or}\ \ f_{\text{SL}}\,\theta_{\text{opt}}` },
+          { tex: String.raw`x=\frac{f_{\text{obj}}}{f_{\text{TL}}}\,h,\qquad \tan\theta_{\text{pupil}}=\frac{h}{f_{\text{TL}}},\qquad x\approx f_{\text{obj}}\,\frac{f_{\text{SL}}}{f_{\text{TL}}}\,\theta_{\text{opt}}`, caption: 'x is the displacement of the focus in the sample and θ<sub>pupil</sub> the beam angle at the back aperture. The field width is twice x at half the peak-to-peak range.' },
+        ],
+        html3: `<p>Scan and tube lens form a telescope that images the galvo onto the objective’s back aperture and expands the beam by f<sub>TL</sub>/f<sub>SL</sub> ${cite(12)}. The resolution panel assumes a uniformly filled aperture. The Zeiss monograph describes the fill by the truncation ratio T of the 1/e² beam diameter to the pupil diameter: below about 0.6 the focus is Gaussian, above about 1 it is close to the Airy pattern, and beyond 3 the resolution no longer improves while more power is clipped ${cite(1)}.</p>`,
+        formulas3: [
+          { tex: String.raw`D_{\text{pupil}}=2\,f_{\text{obj}}\,\mathrm{NA},\qquad T=\frac{d_{\text{beam}}\,f_{\text{TL}}/f_{\text{SL}}}{D_{\text{pupil}}}` },
+          { tex: String.raw`d_{\text{pix}}=\frac{\text{field width}}{\text{pixels per line}}\ \le\ \frac{\mathrm{FWHM}_{\text{lat}}}{2}`, caption: 'The Nyquist sampling the Zeiss monograph recommends: two pixels per lateral FWHM.' },
+        ],
+      },
+      { id: 'precision', title: 'Precision and limits',
+        html: `<p><b>Numerics.</b> Bessel functions use rational approximations accurate to about 10⁻⁸. The pinhole integral uses Gauss–Legendre quadrature (64 radial × 48 angular nodes across the pinhole, 128 nodes over the pupil for the defocused field), and each FWHM is bisected to round-off. An independent Python reference, using integral representations of the Bessel functions and a different quadrature, agrees with the page to 10⁻⁶ relative or better in every case of the validation table (the test tolerance is 10⁻⁵); the open and point-pinhole limits are also checked against their analytic half-maximum points.</p><p><b>Scope.</b> Scalar optics with a uniformly filled, aberration-free circular pupil; the axial coordinate uses n(1 − cos α), exact on the axis, and the defocused field off the axis is the paraxial form. Above about NA/n = 0.7 the vector nature of the focused field (Richards and Wolf ${cite(9)}) widens the real focus along the polarization, which this page does not include. Emission is taken at a single wavelength; a broad band widens the detection side slightly. The sample is assumed index-matched to the immersion medium, non-scattering and free of aberrations; real foci deep in tissue or through a mismatched index are wider, and the depth scale itself changes ${cite(11)}. Cole et al. describe how to measure the point image with sub-resolution beads and compare it with such limits ${cite(10)}.</p><p><b>Scanning.</b> Thin, ideal scan and tube lenses in a telescope that images the galvo onto the back aperture; an objective that maps the pupil angle to f<sub>obj</sub> tan θ; no distortion, field curvature or vignetting. The field number limits where the objective is corrected; the page flags a scanned field beyond it but does not model the loss.</p>`,
+      },
+    ],
+    references: [
+      { label: 'S. Wilhelm, Confocal Laser Scanning Microscopy: Principles, Carl Zeiss Microscopy GmbH, publication 60-1-0030/e (2010); copy hosted by the Technion Biomedical Core Facility.', url: 'https://bcf.technion.ac.il/wp-content/uploads/2015/10/Confocal-Principles.pdf' },
+      { label: 'P. T. C. So, C. Y. Dong, B. R. Masters and K. M. Berland, “Two-photon excitation fluorescence microscopy,” Annu. Rev. Biomed. Eng. 2, 399–429 (2000).', url: 'https://doi.org/10.1146/annurev.bioeng.2.1.399' },
+      { label: 'T. Wilson and A. R. Carlini, “Size of the detector in confocal imaging systems,” Opt. Lett. 12, 227–229 (1987).', url: 'https://doi.org/10.1364/OL.12.000227' },
+      { label: 'T. Wilson, “Resolution and optical sectioning in the confocal microscope,” J. Microsc. 244, 113–121 (2011).', url: 'https://doi.org/10.1111/j.1365-2818.2011.03549.x' },
+      { label: 'M. Born and E. Wolf, Principles of Optics, 7th ed., Cambridge University Press (1999): Fraunhofer diffraction at a circular aperture and the three-dimensional light distribution near a focus.', url: 'https://doi.org/10.1017/CBO9781139644181' },
+      { label: 'M. Gu and C. J. R. Sheppard, “Comparison of three-dimensional imaging properties between two-photon and single-photon fluorescence microscopy,” J. Microsc. 177, 128–137 (1995).', url: 'https://doi.org/10.1111/j.1365-2818.1995.tb03543.x' },
+      { label: 'C. J. R. Sheppard, “Image formation in three-photon fluorescence microscopy,” Bioimaging 4, 124–128 (1996).', url: 'https://doi.org/10.1002/1361-6374(199609)4:3<124::AID-BIO2>3.0.CO;2-2' },
+      { label: 'N. G. Horton, K. Wang, D. Kobat, C. G. Clark, F. W. Wise, C. B. Schaffer and C. Xu, “In vivo three-photon microscopy of subcortical structures within an intact mouse brain,” Nat. Photonics 7, 205–209 (2013).', url: 'https://doi.org/10.1038/nphoton.2012.336' },
+      { label: 'B. Richards and E. Wolf, “Electromagnetic diffraction in optical systems, II. Structure of the image field in an aplanatic system,” Proc. R. Soc. Lond. A 253, 358–379 (1959).', url: 'https://doi.org/10.1098/rspa.1959.0200' },
+      { label: 'R. W. Cole, T. Jinadasa and C. M. Brown, “Measuring and interpreting point spread functions to determine confocal microscope resolution and ensure quality control,” Nat. Protoc. 6, 1929–1941 (2011).', url: 'https://doi.org/10.1038/nprot.2011.407' },
+      { label: 'N. J. Everall, “Confocal Raman microscopy: why the depth resolution and spatial accuracy can be much worse than you think,” Appl. Spectrosc. 54, 1515–1520 (2000).', url: 'https://doi.org/10.1366/0003702001948439' },
+      { label: 'A. Negrean and H. D. Mansvelder, “Optimal lens design and use in laser-scanning microscopy,” Biomed. Opt. Express 5, 1588 (2014).', url: 'https://doi.org/10.1364/BOE.5.001588' },
+      { label: 'K. R. Spring and M. W. Davidson, “Infinity optical systems,” Evident (Olympus) Microscopy Resource Center.', url: 'https://evidentscientific.com/en/microscope-resource/knowledge-hub/anatomy/infinityintro' },
+      { label: 'Nikon, Microscopy glossary: field of view (field number divided by the objective magnification).', url: 'https://www.microscope.healthcare.nikon.com/resources/glossary/field-of-view' },
+    ],
+  },
+];

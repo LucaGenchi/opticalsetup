@@ -149,6 +149,17 @@ function panelSection(id, panel = null) {
     </section>`;
 }
 
+// The extra panels, each followed by its own graphs (`panel.graphs`), which
+// continue the page's numbering.
+function panelsWithGraphs(calc) {
+  let first = calc.graphs.length + 1;
+  return (calc.panels ?? []).map(p => {
+    const html = `${panelSection(p.id, p)}${p.graphs?.length ? `\n    ${graphsSection(calc, p.graphs, first)}` : ''}`;
+    first += p.graphs?.length ?? 0;
+    return html;
+  }).join('\n    ');
+}
+
 // A column's results tables: `results: '<id>'` with `label`, or a list of
 // [id, label] pairs for several tables under one form.
 const resultTables = col => (Array.isArray(col.results) ? col.results : col.results ? [[col.results, col.label]] : [])
@@ -178,10 +189,12 @@ function columnsSection(slug, columns) {
     </section>`;
 }
 
-function graphsSection(calc) {
-  return calc.graphs.length ? `<section class="calc-graphs" aria-label="Graphs">
-      ${calc.graphs.map((g, i) => `<figure class="calc-chart${g.wide ? ' wide' : ''}" id="chart-${g.id}">
-        <figcaption><span class="chart-num">${i + 1}</span><span><b>${esc(g.title)}</b><br><span class="chart-note">${esc(g.note)}</span></span></figcaption>
+// A list of graphs, numbered from `first`: the page's own (`calc.graphs`),
+// or a panel's, which follow it directly and continue the numbering.
+function graphsSection(calc, graphs = calc.graphs, first = 1) {
+  return graphs.length ? `<section class="calc-graphs" aria-label="Graphs">
+      ${graphs.map((g, i) => `<figure class="calc-chart${g.wide ? ' wide' : ''}" id="chart-${g.id}">
+        <figcaption><span class="chart-num">${first + i}</span><span><b>${esc(g.title)}</b><br><span class="chart-note">${esc(g.note)}</span></span></figcaption>
         <div class="chart-host" data-chart="${g.id}"></div>
         <details class="chart-data"><summary>Data table</summary><div class="chart-table" data-table="${g.id}"></div></details>
       </figure>`).join('\n      ')}
@@ -269,10 +282,11 @@ ${header(base)}
     <h1>${esc(calc.title)}</h1>
     <p class="tagline">${esc(calc.summary)}</p>
 
-    ${calc.layout ? layoutSection(calc) : `${calc.columns ? columnsSection(calc.slug, calc.columns) : panelSection('calc')}
-    ${(calc.panels ?? []).map(p => panelSection(p.id, p)).join('\n    ')}
+    ${calc.layout ? layoutSection(calc) : `${calc.columns ? columnsSection(calc.slug, calc.columns) : panelSection('calc')}${calc.graphsAfterMain ? `
+    ${graphsSection(calc)}` : ''}
+    ${panelsWithGraphs(calc)}
 
-    ${graphsSection(calc)}
+    ${calc.graphsAfterMain ? '' : graphsSection(calc)}
     ${calc.plotControls ? `<form class="calc-inputs calc-plot-form" id="plot-form" autocomplete="off" novalidate aria-label="${esc(calc.plotControls.title)}"></form>` : ''}`}
 
     <dl class="calc-facts" aria-label="About this calculator">

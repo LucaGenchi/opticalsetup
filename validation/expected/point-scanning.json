@@ -1,0 +1,322 @@
+{
+ "app": "calculators/point-scanning/scanning-calculator.js: computeResolution, computeScan (point images in calculators/point-scanning/psf.js)",
+ "cases": [
+  {
+   "expected": {
+    "axialUm": 0.9573256591,
+    "lateralUm": 0.2510745287
+   },
+   "inputs": {
+    "immersion": "water",
+    "kind": "resolution",
+    "mode": "linear",
+    "na": 1.0,
+    "pinhole": "open",
+    "wavelengthNm": 488
+   },
+   "name": "one-photon, no pinhole: 488 nm, NA 1.0 water",
+   "tolerance": {
+    "axialUm": 1e-05,
+    "lateralUm": 1e-05
+   }
+  },
+  {
+   "expected": {
+    "axialUm": 12.17456599,
+    "lateralUm": 1.085588638
+   },
+   "inputs": {
+    "immersion": "air",
+    "kind": "resolution",
+    "mode": "linear",
+    "na": 0.3,
+    "pinhole": "open",
+    "wavelengthNm": 633
+   },
+   "name": "one-photon, no pinhole: 633 nm, NA 0.3 air",
+   "tolerance": {
+    "axialUm": 1e-05,
+    "lateralUm": 1e-05
+   }
+  },
+  {
+   "expected": {
+    "axialUm": 0.7107329829,
+    "lateralUm": 0.1858495499,
+    "sliceUm": 1.020101112
+   },
+   "inputs": {
+    "emissionNm": 520,
+    "immersion": "water",
+    "kind": "resolution",
+    "mode": "linear",
+    "na": 1.0,
+    "pinhole": "pinhole",
+    "pinholeAu": 0,
+    "wavelengthNm": 488
+   },
+   "name": "confocal, point pinhole: 488/520 nm, NA 1.0 water",
+   "tolerance": {
+    "axialUm": 1e-05,
+    "lateralUm": 1e-05,
+    "sliceUm": 1e-05
+   }
+  },
+  {
+   "expected": {
+    "axialUm": 0.7821243784,
+    "lateralUm": 0.2462322094,
+    "sliceUm": 1.315656894
+   },
+   "inputs": {
+    "emissionNm": 520,
+    "immersion": "water",
+    "kind": "resolution",
+    "mode": "linear",
+    "na": 1.0,
+    "pinhole": "pinhole",
+    "pinholeAu": 1,
+    "wavelengthNm": 488
+   },
+   "name": "confocal, 1 AU: 488/520 nm, NA 1.0 water",
+   "tolerance": {
+    "axialUm": 1e-05,
+    "lateralUm": 1e-05,
+    "sliceUm": 1e-05
+   }
+  },
+  {
+   "expected": {
+    "axialUm": 0.3951202113,
+    "lateralUm": 0.1624215627,
+    "sliceUm": 0.6060763236
+   },
+   "inputs": {
+    "detection": "raman",
+    "immersion": "oil",
+    "kind": "resolution",
+    "mode": "linear",
+    "na": 1.4,
+    "pinhole": "pinhole",
+    "pinholeAu": 0.5,
+    "ramanShiftCm": 2900,
+    "wavelengthNm": 532
+   },
+   "name": "confocal Raman, 0.5 AU: 532 nm + 2900 cm-1, NA 1.4 oil",
+   "tolerance": {
+    "axialUm": 1e-05,
+    "lateralUm": 1e-05,
+    "sliceUm": 1e-05
+   }
+  },
+  {
+   "expected": {
+    "axialUm": 4.139760072,
+    "lateralUm": 0.6517282358,
+    "sliceUm": 14.26176955
+   },
+   "inputs": {
+    "detection": "elastic",
+    "immersion": "air",
+    "kind": "resolution",
+    "mode": "linear",
+    "na": 0.5,
+    "pinhole": "pinhole",
+    "pinholeAu": 3,
+    "wavelengthNm": 633
+   },
+   "name": "confocal reflection, 3 AU: 633 nm, NA 0.5 air",
+   "tolerance": {
+    "axialUm": 1e-05,
+    "lateralUm": 1e-05,
+    "sliceUm": 1e-05
+   }
+  },
+  {
+   "expected": {
+    "axialUm": 2.064660922,
+    "lateralUm": 0.3607667997,
+    "sliceUm": 22.43843555
+   },
+   "inputs": {
+    "emissionNm": 610,
+    "immersion": "custom",
+    "immersionIndex": 1.45,
+    "kind": "resolution",
+    "mode": "linear",
+    "na": 0.8,
+    "pinhole": "pinhole",
+    "pinholeAu": 10,
+    "wavelengthNm": 561
+   },
+   "name": "confocal, 10 AU: 561/610 nm, NA 0.8 custom n 1.45",
+   "tolerance": {
+    "axialUm": 1e-05,
+    "lateralUm": 1e-05,
+    "sliceUm": 1e-05
+   }
+  },
+  {
+   "expected": {
+    "axialUm": 1.299432483,
+    "lateralUm": 0.3397840645
+   },
+   "inputs": {
+    "immersion": "water",
+    "kind": "resolution",
+    "mode": "nonlinear",
+    "na": 1.0,
+    "nlWavelengthNm": 920,
+    "order": "2"
+   },
+   "name": "two-photon: 920 nm, NA 1.0 water",
+   "tolerance": {
+    "axialUm": 1e-05,
+    "lateralUm": 1e-05
+   }
+  },
+  {
+   "expected": {
+    "axialUm": 1.740153384,
+    "lateralUm": 0.4906484459
+   },
+   "inputs": {
+    "immersion": "water",
+    "kind": "resolution",
+    "mode": "nonlinear",
+    "na": 1.05,
+    "nlWavelengthNm": 1700,
+    "order": "3"
+   },
+   "name": "three-photon: 1700 nm, NA 1.05 water",
+   "tolerance": {
+    "axialUm": 1e-05,
+    "lateralUm": 1e-05
+   }
+  },
+  {
+   "expected": {
+    "beamAtPupilMm": 20.0,
+    "displacementUm": 87.30192373,
+    "fieldUm": 349.6340597,
+    "fillRatio": 1.0,
+    "objectFieldUm": 1100.0,
+    "objectiveMm": 10.0,
+    "pupilAngleDeg": 0.50019047
+   },
+   "inputs": {
+    "angleDeg": 1,
+    "angleKind": "mechanical",
+    "beamMm": 5,
+    "fieldNumberMm": 22,
+    "kind": "scan",
+    "magnification": 20,
+    "mapping": "tan",
+    "na": 1.0,
+    "rangeDeg": 4,
+    "scanLensMm": 50,
+    "tubeLensMm": 200,
+    "tubeReference": "200"
+   },
+   "name": "20x/200 mm, 50/200 mm relay, 1 deg mechanical, tan",
+   "tolerance": {
+    "beamAtPupilMm": 1e-09,
+    "displacementUm": 1e-09,
+    "fieldUm": 1e-09,
+    "fillRatio": 1e-09,
+    "objectFieldUm": 1e-09,
+    "objectiveMm": 1e-09,
+    "pupilAngleDeg": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "beamAtPupilMm": 12.0,
+    "displacementUm": 376.9911184,
+    "fieldUm": 628.3185307,
+    "fillRatio": 0.8333333333,
+    "objectFieldUm": 720.0,
+    "objectiveMm": 7.2,
+    "pupilAngleDeg": 2.997262944
+   },
+   "inputs": {
+    "angleDeg": 12,
+    "angleKind": "optical",
+    "beamMm": 3,
+    "fieldNumberMm": 18,
+    "kind": "scan",
+    "magnification": 25,
+    "mapping": "ftheta",
+    "na": 1.0,
+    "rangeDeg": 20,
+    "scanLensMm": 75,
+    "tubeLensMm": 300,
+    "tubeReference": "180"
+   },
+   "name": "25x/180 mm, 75/300 mm, 12 deg optical, f-theta",
+   "tolerance": {
+    "beamAtPupilMm": 1e-09,
+    "displacementUm": 1e-09,
+    "fieldUm": 1e-09,
+    "fillRatio": 1e-09,
+    "objectFieldUm": 1e-09,
+    "objectiveMm": 1e-09,
+    "pupilAngleDeg": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "beamAtPupilMm": 16.87179487,
+    "displacementUm": -165.8733096,
+    "fieldUm": 714.814619,
+    "fillRatio": 3.230769231,
+    "objectFieldUm": 396.8253968,
+    "objectiveMm": 2.611111111,
+    "pupilAngleDeg": -3.6348844
+   },
+   "inputs": {
+    "angleDeg": -7.5,
+    "angleKind": "mechanical",
+    "beamMm": 4,
+    "fieldNumberMm": 25,
+    "kind": "scan",
+    "magnification": 63,
+    "mapping": "tan",
+    "na": 1.0,
+    "rangeDeg": 30,
+    "scanLensMm": 39,
+    "tubeLensMm": 164.5,
+    "tubeReference": "custom",
+    "tubeReferenceMm": 164.5
+   },
+   "name": "63x custom 164.5 mm, -7.5 deg mechanical, tan",
+   "tolerance": {
+    "beamAtPupilMm": 1e-09,
+    "displacementUm": 1e-09,
+    "fieldUm": 1e-09,
+    "fillRatio": 1e-09,
+    "objectFieldUm": 1e-09,
+    "objectiveMm": 1e-09,
+    "pupilAngleDeg": 1e-09
+   }
+  }
+ ],
+ "citations": [
+  "S. Wilhelm, Confocal Laser Scanning Microscopy: Principles, Carl Zeiss Microscopy (2010), eqs. 1-8 (closed-form limits)",
+  "P. T. C. So et al., Annu. Rev. Biomed. Eng. 2, 399-429 (2000), doi:10.1146/annurev.bioeng.2.1.399, Eq. 2 (focal intensity, two-photon PSF)",
+  "T. Wilson and A. R. Carlini, Opt. Lett. 12, 227-229 (1987), doi:10.1364/OL.12.000227 (finite pinhole)",
+  "M. Born and E. Wolf, Principles of Optics, 7th ed. (1999) (Airy pattern, field near focus)",
+  "A. Negrean and H. D. Mansvelder, Biomed. Opt. Express 5, 1588 (2014), doi:10.1364/BOE.5.001588 (scan-lens mappings)"
+ ],
+ "convergence": "Bessel trapezoid with 64 + 2|x| nodes; Simpson with 600 pupil and 240 pinhole-radius intervals for the axial response and 400 intervals per segment for the lateral one; 60-step bisection. Doubling every grid moves no width by more than 1e-6 relative (the largest change, 9e-7, is the 10 AU slice thickness).",
+ "domain": "One-photon without a pinhole (water, air), with a point pinhole and with 0.5, 1, 3 and 10 AU pinholes (fluorescence with a Stokes shift, spontaneous Raman in oil, elastic reflection in air, a custom index); two-photon at 920 nm and three-photon at 1700 nm; scan geometry for 200, 180 and custom reference tube lenses, mechanical and optical angles, negative angles, tan and f-theta mappings.",
+ "fidelity": "computed",
+ "id": "point-scanning",
+ "outside_scope": "Declines an NA not below the medium's index, wavelengths outside 200-3000 nm, a Raman Stokes line beyond 3000 nm, pinholes above 10 AU and optical deflections beyond +/-60 degrees.",
+ "provenance": "Optical coordinates and h(u, v) from So et al. Eq. 2; confocal product and pinhole integral from the Zeiss monograph's Eq. 1 and Wilson and Carlini; N-photon point image as h^N. The open and point-pinhole limits reproduce the monograph's rounded 0.51, 0.88, 0.37 and 0.64 coefficients (0.5145, 0.8859, 0.3693, 0.6378 here).",
+ "reference": "Bessel functions from Bessel's integral (trapezoid over one period); focal field by Simpson in the pupil radius; the pinhole's lateral response as an arc-weighted integral over the distance from the object point; FWHM by bisection; scan geometry in closed form",
+ "reference_file": "validation/reference/point_scanning.py",
+ "scope": "Scalar focus of a uniformly filled, aberration-free circular pupil with the n(1 - cos alpha) axial scale; incoherent point objects; ideal thin-lens scan relay.",
+ "title": "Point-scanning microscope resolution and galvo scan geometry",
+ "tolerance_rationale": "1e-5 relative for the widths: the app's fixed Gauss-Legendre quadrature (64 x 48 nodes over the pinhole, 128 over the pupil) and its 1e-8 Bessel approximations, both well inside it; 1e-9 for the closed-form scan geometry."
+}
