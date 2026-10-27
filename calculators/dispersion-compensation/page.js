@@ -11,7 +11,7 @@ import { formatNumber } from '../assets/calculator-kit.js';
 import { registry, getVisualBounds } from '../../sketch/js/elements.js';
 import { traceScene } from '../../sketch/js/raytrace.js';
 import { buildShareURL } from '../../sketch/js/share.js';
-import { canvasScene } from './compressor-model.js';
+import { canvasScene, lensGlassGddFs2 } from './compressor-model.js';
 
 const figure = document.getElementById('preview-figure');
 const caption = document.getElementById('preview-caption');
@@ -68,7 +68,7 @@ function rows(r) {
     geometry.push([g.kind === 'stretcher' ? 'Colour spread on the gratings (equivalent pair, FWHM band)' : 'Colour spread on grating 2 (FWHM band)', ...mm(g.spreadMm)],
       ['Grating aperture needed (spread + beam footprint)', ...mm(g.apertureMm)]);
   }
-  geometry.push(['Spatial chirp at the output (FWHM band)', g.outputChirpMm ? `${formatNumber(g.outputChirpMm, 3)} mm` : r.layout.passes === 2 ? 'none (out-of-plane roof)' : 'none']);
+  geometry.push(['Spatial chirp at the output (FWHM band)', g.outputChirpMm > 1e-6 ? `${formatNumber(g.outputChirpMm, 3)} mm` : 'none']);
 
   const dispersion = [{ group: 'Dispersion at the central wavelength' },
     ['Compensator GDD', r.comp.gddFs2, 'fs²', 6], ['Compensator TOD', r.comp.todFs3, 'fs³', 5], ['Compensator FOD', r.comp.fodFs4, 'fs⁴', 4]];
@@ -89,14 +89,15 @@ function rows(r) {
 
 function notes(r) {
   const v = r.values, out = [];
-  if (r.layout.kind === 'stretcher') out.push('The stretcher’s dispersion is that of the equivalent grating pair, to paraxial order in the ideal lenses; the canvas traces the lenses exactly and reads within about 0.2 % of it here.');
-  if (r.layout.passes === 2) out.push('The figure folds the double pass with a roof mirror in its own plane, which returns the beam beside the input but reverses the colours across it, so the spatial chirp of one pass doubles instead of cancelling. In the lab the roof is turned out of the plane and the return passes below the input: same dispersion, no spatial chirp. The numbers here are for that.');
+  if (r.layout.kind === 'stretcher') out.push(`The stretcher’s dispersion is that of the equivalent grating pair, to paraxial order in ideal lenses without glass. The canvas traces the lenses exactly and also gives each one an estimated thickness of N-BK7, whose GDD it reads with the rest: ${formatNumber(lensGlassGddFs2(r.layout, v), 3)} fs² more here.`);
+  if (r.layout.passes === 2) out.push('The double pass ends on a flat mirror square to the beam, which sends each colour back along its own path: the beam leaves as it came in, with twice one pass’s dispersion and the colours together again. In the plane of the figure the return retraces the input, so a beamsplitter takes it out, and the canvas loses half the light at each crossing. In the lab the end mirror is tipped slightly out of the plane, and a pickoff mirror just above the input takes the return without loss; the transmission above is for that.');
+  else if (r.geometry.outputChirpMm > 1e-6) out.push(`One pass of a single pair leaves the colours side by side across the beam: ${formatNumber(r.geometry.outputChirpMm, 3)} mm between the edges of the FWHM band, on a ${formatNumber(v.beamDiameterMm, 3)} mm beam. A double pass or a four-element sequence brings them back together.`);
   if (r.outputFs === null) out.push('The output is too long for the Fourier transform used here (more than 2¹⁸ points), so only its GDD-only duration is given.');
   if (r.inputFs === null) out.push('The input is too long for the Fourier transform used here, so only its GDD-only duration is given.');
   if (v.chirp === 'material') out.push('The input carries the material’s full dispersion, every order, from its published fit.');
   else if (v.chirp === 'gdd') out.push('The input carries the GDD, TOD and FOD entered, and nothing beyond them.');
   out.push('The output duration includes every order of both phases, from a Fourier transform of the spectrum; the GDD-only figure is the analytic one, for comparison. Plane waves along the central ray: beam size, diffraction and the colours’ spread across a finite beam are not modelled.');
-  if (r.geometry.kind === 'prism') out.push('Prism losses: Fresnel reflection at each uncoated face for the polarization chosen; no absorption. Mirror and pickoff losses are not included.');
+  if (r.geometry.kind === 'prism') out.push('Prism losses: Fresnel reflection at each uncoated face for the polarization chosen; no absorption. Mirror losses are not included.');
   else out.push('Grating losses: the efficiency entered, once per diffraction. Mirror and lens losses are not included.');
   return out;
 }
@@ -184,7 +185,7 @@ function drawFigure(r) {
     return;
   }
   const v = r.values, label = { 'prism-pair': 'Prism pair', 'four-prism': 'Four prisms', 'grating-pair': 'Grating pair', 'four-grating': 'Four gratings', stretcher: 'Grating stretcher' }[v.layout];
-  caption.textContent = `${label}${r.layout.passes === 2 ? ', double pass' : ''}, drawn to scale and traced by the canvas at ${formatNumber(v.wavelengthNm, 5)} nm: the colours of the ${formatNumber(v.bandwidthNm, 3)} nm band fan out and recombine on their way to the detector, an autocorrelator in the canvas.`;
+  caption.textContent = `${label}${r.layout.passes === 2 ? ', double pass' : ''}, drawn to scale and traced by the canvas at ${formatNumber(v.wavelengthNm, 5)} nm: the colours of the ${formatNumber(v.bandwidthNm, 3)} nm band fan out and ${r.geometry.outputChirpMm > 1e-6 ? 'leave side by side' : 'come back together'} on their way to the detector, an autocorrelator in the canvas.`;
   const chirp = v.sceneChirp;
   if (chirp?.block) caption.textContent += ` The ${formatNumber(chirp.block.lengthMm, 4)} mm block before it carries the chirp.`;
   else if (chirp) caption.textContent += ` The source carries the chirp as its GDD (${formatNumber(chirp.gddFs2, 4)} fs²); the canvas does not carry the input’s TOD and FOD.`;

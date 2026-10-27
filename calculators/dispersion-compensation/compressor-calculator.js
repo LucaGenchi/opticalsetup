@@ -26,9 +26,9 @@ export const COMPRESSOR_INPUTS = [
   { id: 'layout', type: 'select', group: 'layout', label: 'Layout', value: 'prism-pair', options: LAYOUTS,
     help: 'Choosing a layout loads its example bench; every value can then be changed.' },
   { id: 'passes', type: 'select', group: 'layout', label: 'Passes', value: '2',
-    options: [['1', 'Single pass'], ['2', 'Double pass (roof mirror and pickoff)']],
+    options: [['1', 'Single pass'], ['2', 'Double pass (flat end mirror)']],
     when: 'layout', whenValue: ['prism-pair', 'grating-pair', 'stretcher'],
-    help: 'A double pass doubles the dispersion and, built with a roof turned out of the plane, removes the spatial chirp one pass leaves.' },
+    help: 'A flat mirror sends each colour back along its own path: twice the dispersion, and the colours one pass leaves side by side meet again, so the beam leaves as it came in.' },
   { id: 'solve', type: 'select', group: 'layout', label: 'Separation', value: 'target',
     options: [['target', 'Solved for a target net GDD'], ['manual', 'Set by hand']],
     help: 'Solved: the distance that brings the net GDD (input chirp plus compensator) to the target. The figure moves with it.' },
@@ -128,8 +128,8 @@ export const LAYOUT_PRESETS = {
       efficiencyPct: 92, beamDiameterMm: 3 },
   },
   stretcher: {
-    note: 'The stretcher of a Ti:sapphire amplifier: two 1200 lines/mm gratings and two f = 500 mm lenses, stretching a 31 fs pulse with +10⁶ fs² to about 88 ps.',
-    values: { passes: '1', solve: 'target', targetGddFs2: 1e6, wavelengthNm: 800, bandwidthNm: 30, shape: 'gauss', chirp: 'none',
+    note: 'The stretcher of a Ti:sapphire amplifier: two 1200 lines/mm gratings and two f = 500 mm lenses in a double pass, stretching a 31 fs pulse with +10⁶ fs² to about 88 ps.',
+    values: { passes: '2', solve: 'target', targetGddFs2: 1e6, wavelengthNm: 800, bandwidthNm: 30, shape: 'gauss', chirp: 'none',
       lines: 1200, gratingIncidenceDeg: 45, focalMm: 500, gratingLensMm: 200, lensDiameterMm: 100, gratingSizeMm: 100,
       efficiencyPct: 92, beamDiameterMm: 2 },
   },
@@ -356,8 +356,7 @@ function geometryOf(layout, v) {
       glassGddFs2: m ? m.gvdFs2PerMm * glassPerPass * layout.passes : null,
       spreadMm, apertureMm: spreadMm === null ? null : spreadMm + v.beamDiameterMm,
       brewsterDeg: Math.atan(g.n0) / D2R, n0: g.n0,
-      // A single pass of one pair leaves the colours side by side.
-      outputChirpMm: layout.passes === 1 && pairs.length === 1 ? spreadMm : 0,
+      outputChirpMm: layout.outputChirpMm,
     };
   }
   const { gr } = layout;
@@ -375,8 +374,7 @@ function geometryOf(layout, v) {
     separationMm: layout.kind === 'stretcher' ? null : G, slantMm: layout.kind === 'stretcher' ? null : G / Math.cos(b0),
     effectiveSeparationMm: layout.kind === 'stretcher' ? layout.effectiveSeparationMm : null,
     spreadMm, apertureMm: spreadMm === null ? null : spreadMm + v.beamDiameterMm / Math.cos(b0),
-    outputChirpMm: layout.passes === 1 && layout.kind === 'grating' && layout.pairs.length === 1 && spreadMm !== null
-      ? spreadMm * Math.cos(gr.incidenceDeg * D2R) : 0,
+    outputChirpMm: layout.outputChirpMm,
   };
 }
 

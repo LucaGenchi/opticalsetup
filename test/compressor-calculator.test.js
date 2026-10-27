@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import {
   COMPRESSOR_DEFAULTS, LAYOUT_PRESETS, computeCompressor, pulseFromPhase, separationScan, gddScan,
 } from '../calculators/dispersion-compensation/compressor-calculator.js';
-import { canvasScene, omegaOf } from '../calculators/dispersion-compensation/compressor-model.js';
+import { canvasScene, omegaOf, lensGlassGddFs2 } from '../calculators/dispersion-compensation/compressor-model.js';
 import { traceScene, detectorReading } from '../sketch/js/raytrace.js';
 import { gaussianPulseDurationAfterGDD, sech2PulseDurationAfterGDD } from '../sketch/js/glass.js';
 
@@ -24,16 +24,19 @@ test('every example bench computes, draws and reads the same GDD on the canvas',
     assert.equal(r.net.gddFs2, r.values.targetGddFs2, `${layout}: the solve meets its target`);
     traceScene(r.layout.elements);
     const pulse = detectorReading(r.layout.elements.at(-1).id)?.pulse;
-    // The stretcher's numbers are paraxial; the canvas traces its lenses.
-    const tolerance = layout === 'stretcher' ? 3e-3 : 5e-5;
     // A block of glass in the scene carries the chirp, and the canvas reads
     // its GDD together with the compensator's; a source chirp it keeps apart.
-    const want = r.comp.gddFs2 + (r.values.sceneChirp?.block ? r.chirp.gddFs2 : 0);
-    assert.ok(Math.abs(pulse.gddFs2 - want) < tolerance * Math.abs(r.comp.gddFs2), `${layout}: page ${want}, canvas ${pulse.gddFs2}`);
-    // Either way the canvas times the compensated pulse as the page's
+    // The canvas also reads the glass it gives the stretcher's lenses, which
+    // the page's ideal lenses do not have.
+    const glass = lensGlassGddFs2(r.layout, r.values);
+    assert.equal(glass > 0, layout === 'stretcher');
+    const want = r.comp.gddFs2 + glass + (r.values.sceneChirp?.block ? r.chirp.gddFs2 : 0);
+    assert.ok(Math.abs(pulse.gddFs2 - want) < 5e-5 * Math.abs(r.comp.gddFs2), `${layout}: page ${want}, canvas ${pulse.gddFs2}`);
+    // Either way the canvas times the compensated pulse as the analytic
     // GDD-only duration does.
-    assert.ok(Math.abs(pulse.stretchedPulseWidthFs / r.outputGddOnlyFs - 1) < Math.max(tolerance, 1e-3),
-      `${layout}: page ${r.outputGddOnlyFs} fs, canvas ${pulse.stretchedPulseWidthFs} fs`);
+    const net = r.net.gddFs2 + glass;
+    const duration = r.values.shape === 'gauss' ? gaussianPulseDurationAfterGDD(r.tlFs, net) : sech2PulseDurationAfterGDD(r.tlFs, net);
+    assert.ok(Math.abs(pulse.stretchedPulseWidthFs / duration - 1) < 1e-3, `${layout}: page ${duration} fs, canvas ${pulse.stretchedPulseWidthFs} fs`);
   }
 });
 
@@ -88,17 +91,50 @@ test('a target out of reach, or a wavelength outside the glass, is unavailable w
   assert.equal(blue.ok, false);
 });
 
+// Where the canvas's rays end on the output detector, one per colour.
+const arrivals = r => {
+  const det = r.layout.elements.at(-1);
+  return traceScene(r.layout.elements).drawables.filter(s => s.type === 'path').map(s => s.pts.at(-1))
+    .filter(p => Math.hypot(p.x - det.x, p.y - det.y) < det.params.aperture);
+};
+
+test('a double pass returns the beam as it came in: every colour on the same line', () => {
+  for (const [layout, extra] of [['prism-pair', {}], ['prism-pair', { insertion2Mm: 5 }], ['grating-pair', {}], ['stretcher', {}]]) {
+    const r = computeCompressor(form(layout, { passes: '2', ...extra }));
+    assert.equal(r.figureIssue, null, `${layout}: ${r.figureIssue}`);
+    assert.equal(r.geometry.outputChirpMm, 0);
+    assert.ok(r.layout.elements.some(el => el.type === 'mirror') && !r.layout.elements.some(el => el.type === 'retroreflector'));
+    const at = arrivals(r);
+    assert.ok(at.length >= 3, `${layout}: ${at.length} colours arrive`);
+    for (const p of at) assert.ok(Math.hypot(p.x - at[0].x, p.y - at[0].y) < 1e-6, `${layout}: colours ${JSON.stringify(at)}`);
+  }
+});
+
+test('one pass of a pair leaves the colours side by side, as Treacy\'s geometry gives', () => {
+  const r = computeCompressor(form('grating-pair', { passes: '1' }));
+  const { gr } = r.layout, G = r.layout.pairs[0].separationMm, s = Math.sin(gr.incidenceDeg * Math.PI / 180);
+  const tanBeta = nm => Math.tan(Math.asin(nm * gr.lines * 1e-6 - s));
+  const want = G * Math.abs(tanBeta(785) - tanBeta(815)) * Math.cos(gr.incidenceDeg * Math.PI / 180);
+  assert.ok(Math.abs(r.geometry.outputChirpMm / want - 1) < 1e-9, `${r.geometry.outputChirpMm} vs ${want}`);
+  const at = arrivals(r);
+  assert.ok(Math.max(...at.map(p => p.y)) - Math.min(...at.map(p => p.y)) > want);
+  // The stretcher's single pass is a grating pair too.
+  assert.ok(computeCompressor(form('stretcher', { passes: '1' })).geometry.outputChirpMm > 10);
+});
+
 test('a bench that cannot be drawn in the plane still gives its numbers, and says why', () => {
-  // Too little glass for the in-plane return: the figure shows one pass.
-  const thin = computeCompressor(form('prism-pair', { insertion2Mm: 5 }));
-  assert.ok(thin.ok);
-  assert.match(thin.figureIssue, /at least \d+(\.5)? mm of glass/);
-  assert.ok(!thin.layout.elements.some(el => el.type === 'retroreflector'));
-  assert.equal(thin.layout.passes, 2);
   // Near Littrow the second grating sits in the input beam.
   const littrow = computeCompressor(form('grating-pair', { gratingIncidenceDeg: 29 }));
   assert.ok(littrow.ok && Number.isFinite(littrow.comp.gddFs2));
   assert.match(littrow.figureIssue, /in height/);
+  // Gratings smaller than the colours' spread clip the band.
+  const small = computeCompressor(form('grating-pair', { gratingSizeMm: 20 }));
+  assert.equal(small.comp.gddFs2, computeCompressor(form('grating-pair')).comp.gddFs2);
+  assert.match(small.figureIssue, /clipped/);
+  // A stretcher at s = f has no GDD to compare against relatively: the
+  // canvas's lens glass is all it reads, and the figure stands.
+  const flat = computeCompressor(form('stretcher', { solve: 'manual', gratingLensMm: 500 }));
+  assert.equal(flat.figureIssue, null);
 });
 
 test('the grating pair\'s GDD is Treacy\'s explicit formula', () => {

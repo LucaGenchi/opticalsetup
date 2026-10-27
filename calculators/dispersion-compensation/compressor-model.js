@@ -20,11 +20,11 @@
 // page and the canvas describe one bench: test/compressor-calculator.test.js
 // traces that scene and compares the canvas's own GDD reading.
 
-import { createElement } from '../../sketch/js/elements.js';
+import { createElement, estimatedThinLensThicknessMm } from '../../sketch/js/elements.js';
 import { fresnelTransmittances } from '../../sketch/js/fresnel.js';
 import { traceScene, detectorReading } from '../../sketch/js/raytrace.js';
-import { DISPERSION_UNAVAILABLE } from '../../sketch/js/glass.js';
-import { materialIndexDerivatives } from '../dispersion/materials.js';
+import { DISPERSION_UNAVAILABLE, glassGVD } from '../../sketch/js/glass.js';
+import { materialIndexDerivatives, materialDispersion } from '../dispersion/materials.js';
 
 const C_MM_PER_FS = 2.99792458e-4;
 const C_UM_PER_FS = 0.299792458;
@@ -179,10 +179,9 @@ const isPrism = layout => layout === 'prism-pair' || layout === 'four-prism';
 // The source at the origin facing +x; the first optic at least this far
 // from it (buildFigure moves it further when the drawing needs room).
 const SOURCE_TO_FIRST_MM = 250;
-// A double pass returns at least this far beside the input, where a
-// D-shaped pickoff sends it out, PICKOFF_GAP_MM past the source (or past
-// the block of glass that carries the input chirp).
-const RETURN_SEPARATION_MM = 4;
+// A double pass ends on a mirror at least END_MIRROR_GAP_MM past the last
+// optic; its return leaves the input line at a beamsplitter PICKOFF_GAP_MM
+// past the source (or past the block of glass that carries the input chirp).
 const END_MIRROR_GAP_MM = 120;
 const PICKOFF_GAP_MM = 78;
 const SOURCE_FRONT_MM = 52;
@@ -243,14 +242,15 @@ function placeGratingPair(g, hit, dir, mirror) {
   return { gratings: [g1, g2], hits: [hit, hit2], exit: hit2, dir: d2, between: d1, rot, order, cosBeta, separationMm: g.separationMm };
 }
 
-// The central wavelength's ray from p along d through `optics` in order:
-// its points, the direction it leaves in and the glass it crossed in each
-// prism, or null where it misses one.
-function follow(optics, p, d, wavelengthNm, n0) {
+// One wavelength's ray from p along d through `optics` in order: its points,
+// the direction it leaves in and the glass it crossed in each prism, or null
+// where it misses one or the glass has no index there.
+function follow(optics, p, d, wavelengthNm) {
   const points = [p], glass = [];
   for (const el of optics) {
     if (el.type === 'prism') {
-      const t = throughPrism(el, p, d, n0);
+      const n = materialIndexDerivatives(el.params.material, wavelengthNm)?.n;
+      const t = n && throughPrism(el, p, d, n);
       if (!t) return null;
       points.push(t.entry, t.exit);
       glass.push(t.glassMm);
@@ -276,97 +276,68 @@ function follow(optics, p, d, wavelengthNm, n0) {
   return { points, p, d, glass };
 }
 
-// The canvas elements after the last optic: for a double pass a roof mirror
-// in the plane of the figure, set off the beam so the return comes back
-// beside the input, parallel to it, and a D-shaped pickoff beside the input
-// sends it out; then an autocorrelator on the output. A parallel shift
-// leaves the dispersion of a pair unchanged (its phase depends only on the
-// prisms' or gratings' positions), so the GDD is exactly twice one pass; an
-// in-plane roof does reverse the colours' order across the beam, which a
-// roof turned out of the plane would not, so the return is as wide as twice
-// one pass's spatial chirp. The offset, the pickoff and the autocorrelator
-// are sized from the band's edges, traced: the smallest offset whose whole
-// return clears the input by PICKOFF_CLEARANCE_MM and crosses every optic.
-const PICKOFF_CLEARANCE_MM = 2;
-function finish(source, optics, exit, dir, passes, v, n0, firstMm, pickoffX) {
+// The canvas elements after the last optic. A double pass ends on a flat
+// mirror square to the colours, which leave a pair parallel: each colour
+// comes back along its own path, so the return is the input beam again,
+// recompressed, with the colours on top of each other (no spatial chirp) and
+// exactly twice one pass's phase. In the plane of the figure it retraces the
+// input, so a beamsplitter on the input line sends it out (in the lab the end
+// mirror is tipped out of the plane and a pickoff above the input takes it
+// without loss); a beam dump takes the input's reflection. Then an
+// autocorrelator on the output, sized from the band's edges, traced.
+function finish(source, optics, exit, dir, passes, v, firstMm, pickoffX) {
   const out = [];
   // The band's edges, beyond the FWHM (the canvas samples a Gaussian out to
   // ±3σ, 1.27 FWHM).
   const colours = [v.wavelengthNm, v.wavelengthNm - 1.3 * v.bandwidthNm, v.wavelengthNm + 1.3 * v.bandwidthNm];
   const begin = [firstMm - 50, 0];
-  let outPoint, outDir, across;
+  const left = [-dir[1], dir[0]];
+  // A colour that misses an optic is left out here; buildFigure's trace
+  // finds it and says so.
+  const ends = colours.map(nm => follow(optics, begin, [1, 0], nm)).filter(Boolean);
+  // Where each colour crosses the line through `at` across the beam.
+  const across = at => ends.map(e => meet(e.p, e.d, at, vadd(at, left))?.u ?? 0);
+  // One pass of a single pair leaves the colours side by side: their offset
+  // at the FWHM edges, measured across the output.
+  const edges = [v.wavelengthNm - v.bandwidthNm / 2, v.wavelengthNm + v.bandwidthNm / 2].map(nm => follow(optics, begin, [1, 0], nm));
+  const sideBySide = edges.every(Boolean) ? Math.abs(meet(edges[0].p, edges[0].d, edges[1].p, vadd(edges[1].p, left))?.u ?? 0) : null;
+  let outPoint, outDir, width;
   if (passes === 2) {
-    const left = [-dir[1], dir[0]];
-    // Past every optic: reflective gratings send the light back, so the
-    // last one can sit behind the first.
-    const reach = Math.max(...optics.map(el => vdot(vsub([el.x, el.y], exit), dir) + (el.params.length ?? el.params.psize ?? el.params.dia ?? 25) / 2 + 30));
-    const gap = Math.max(END_MIRROR_GAP_MM, reach);
-    // Each colour's ray as it leaves the last optic, then back from a roof
-    // offset by `shift` to `side` (a roof returns a ray mirrored about its
-    // apex line, so the ray at lateral position x comes back at 2·shift − x).
-    const back = (side, shift) => {
-      const offsets = [];
-      for (const nm of colours) {
-        const go = follow(optics, begin, [1, 0], nm, n0);
-        if (!go) return null;
-        const apexLine = vadd(exit, vmul(left, side * shift));
-        const x = vdot(vsub(go.p, apexLine), left);
-        const r = follow(optics.toReversed(), vadd(vadd(go.p, vmul(go.d, gap)), vmul(left, -2 * x)), vmul(go.d, -1), nm, n0);
-        if (!r || !(r.d[0] < 0)) return null;
-        offsets.push(r.p[1] + r.d[1] * (pickoffX - r.p[0]) / r.d[0]);
-      }
-      return offsets;
-    };
-    let ret = null;
-    for (let shift = RETURN_SEPARATION_MM / 2; shift <= 200 && !ret; shift *= 1.25) {
-      for (const side of [1, -1]) {
-        const offsets = back(side, shift);
-        if (offsets && offsets.every(o => Math.sign(o) === Math.sign(offsets[0]) && Math.abs(o) >= PICKOFF_CLEARANCE_MM + 2)) {
-          ret = { side, shift, offsets };
-          break;
-        }
+    // Past any optic in the output's way: reflective gratings send the light
+    // back, so an earlier one can lie ahead of the last.
+    let gap = END_MIRROR_GAP_MM;
+    for (let moved = true; moved;) {
+      moved = false;
+      for (const el of optics) {
+        const half = (el.params.length ?? el.params.psize ?? el.params.dia ?? 25) / 2;
+        const along = vdot(vsub([el.x, el.y], exit), dir), aside = Math.abs(vdot(vsub([el.x, el.y], exit), left));
+        if (along > 1e-6 && along + half + 30 > gap && aside < half + 20) { gap = along + half + 30; moved = true; }
       }
     }
-    if (!ret) {
-      const larger = optics.some(el => el.type === 'lens') ? 'the lenses or gratings' : 'the gratings';
-      return { error: 'return', message: `In the plane of the figure the return, beside the input, misses an optic: larger ${larger.replace('the ', '')} would let it through.` };
-    }
-    const width = Math.max(...ret.offsets) - Math.min(...ret.offsets);
-    const apex = vadd(vadd(exit, vmul(dir, gap + 12)), vmul(left, ret.side * ret.shift));
-    const roof = createElement('retroreflector', apex[0], apex[1]);
-    roof.rot = angleOf(dir);
-    roof.params.length = Math.min(500, 2 * Math.SQRT2 * (ret.shift + width + 6));
-    out.push(roof);
-    const side = Math.sign(ret.offsets[0]);
-    const near = side * Math.min(...ret.offsets.map(Math.abs)), far = side * Math.max(...ret.offsets.map(Math.abs));
-    // The pickoff's sharp edge between the input and the return's nearest
-    // colour, the mirror extending across the whole return at 45°, turned to
-    // send the output to the side of the figure the optics leave free.
+    const at = vadd(exit, vmul(dir, gap));
+    const xs = across(at);
+    const centre = vadd(at, vmul(left, (Math.max(...xs) + Math.min(...xs)) / 2));
+    const end = createElement('mirror', centre[0], centre[1]);
+    end.rot = angleOf(dir);
+    end.params.length = Math.max(25.4, Math.ceil(Math.max(...xs) - Math.min(...xs) + 12));
+    out.push(end);
+    // The return leaves the beamsplitter to the side of the figure the
+    // optics leave free; the input's reflection goes the other way, to a dump.
     const meanY = optics.reduce((sum, el) => sum + el.y, 0) / optics.length;
     const outSide = meanY > 0 ? -1 : 1;
-    const rot = outSide > 0 ? 45 : -45, t = rotate([0, 1], rot);
-    const sigma = Math.sign(t[1]) * side;
-    const length = Math.max(12.7, (Math.abs(far) - Math.abs(near)) * Math.SQRT2 + 8);
-    const edge = [pickoffX, near / 2];
-    const centre = vadd(edge, vmul(t, sigma * length / 2));
-    const pick = createElement('dmirror', centre[0], centre[1]);
-    pick.rot = rot;
-    Object.assign(pick.params, { length, sharpEdge: sigma > 0 ? 'top' : 'bottom' });
-    out.push(pick);
-    const midY = (near + far) / 2;
-    outPoint = [pickoffX + (midY - edge[1]) * t[0] / t[1], midY];
+    const split = createElement('bs', pickoffX, 0);
+    split.rot = outSide > 0 ? 0 : 90;
+    out.push(split);
+    const dump = createElement('beamdump', pickoffX, -outSide * 60);
+    dump.rot = angleOf([0, -outSide]);
+    out.push(dump);
+    outPoint = [pickoffX, 0];
     outDir = [0, outSide];
-    across = Math.abs(far - near);
+    width = 0;
   } else {
-    // The output's width where the autocorrelator sits.
-    const ends = colours.map(nm => follow(optics, begin, [1, 0], nm, n0)).filter(Boolean);
-    const at = vadd(exit, vmul(dir, 150)), left = [-dir[1], dir[0]];
-    const xs = ends.map(e => {
-      const m = meet(e.p, e.d, at, vadd(at, left));
-      return m ? m.u : 0;
-    });
+    const xs = across(vadd(exit, vmul(dir, 150)));
     outPoint = exit; outDir = dir;
-    across = Math.max(...xs) - Math.min(...xs);
+    width = Math.max(...xs) - Math.min(...xs);
   }
   // A plain detector stands in for the autocorrelator, which only the canvas
   // registers (its module also drives the canvas's palette); the scene
@@ -374,9 +345,9 @@ function finish(source, optics, exit, dir, passes, v, n0, firstMm, pickoffX) {
   // (canvasScene).
   const ac = createElement('detector', outPoint[0] + outDir[0] * 150, outPoint[1] + outDir[1] * 150);
   ac.rot = angleOf(outDir);
-  ac.params.aperture = Math.min(120, Math.max(30, 2 * Math.ceil((across + 10) / 2)));
+  ac.params.aperture = Math.min(120, Math.max(30, 2 * Math.ceil((width + 10) / 2)));
   out.push(ac);
-  return { elements: [...source, ...optics, ...out] };
+  return { elements: [...source, ...optics, ...out], outputChirpMm: passes === 2 ? 0 : sideBySide };
 }
 
 // The layout's geometry and canvas scene, or { error } when it cannot be
@@ -424,22 +395,9 @@ export function buildLayout(v, firstMm = SOURCE_TO_FIRST_MM) {
     const last = pairs.at(-1);
     const passes = v.layout === 'prism-pair' ? v.passes : 1;
     const optics = pairs.flatMap(p => p.prisms);
-    const done = finish(source, optics, last.exit, last.dir, passes, v, g.n0, firstMm, pickoffX);
+    const done = finish(source, optics, last.exit, last.dir, passes, v, firstMm, pickoffX);
     const layout = { kind: 'prism', g, pairs, passes, dimension: { a: pair.legs[0].exit, b: pair.legs[1].entry } };
-    if (done.error === 'return') {
-      // The return, beside the input, must still cross both prisms: the
-      // least glass in the second prism that lets it, for the note.
-      const widest = 2 * g.sizeMm * Math.tan(g.apexDeg * D2R / 2);
-      let need = null;
-      for (let glass = Math.ceil(v.insertion2Mm * 2) / 2 + 0.5; glass <= widest && need === null; glass += 0.5) {
-        const trial = placePrismPair(g, start, [1, 0], v.insertion1Mm, glass, false);
-        if (trial && !finish(source, trial.prisms, trial.exit, trial.dir, passes, v, g.n0, firstMm, pickoffX).error) need = glass;
-      }
-      return onePassFigure(layout, source, optics, last, v, g.n0, firstMm, pickoffX, need === null
-        ? 'In the plane of the figure the return, beside the input, would leave the prisms: larger prisms would let it through.'
-        : `In the plane of the figure the return, beside the input, would leave the prisms: it needs at least ${need} mm of glass in the second prism.`);
-    }
-    return done.error ? { error: done.message } : { ...layout, elements: done.elements };
+    return { ...layout, ...done };
   }
   const lines = v.lines, gr = { lines, incidenceDeg: v.gratingIncidenceDeg, wavelengthNm: v.wavelengthNm, sizeMm: v.gratingSizeMm };
   if (v.layout === 'stretcher') {
@@ -463,7 +421,7 @@ export function buildLayout(v, firstMm = SOURCE_TO_FIRST_MM) {
     const rot2 = Math.atan2(-t2[0], t2[1]) / D2R;
     const hit2 = vadd(start, vmul(axis, 2 * s + 2 * v.focalMm));
     // Of the two orders, the one that makes the colours parallel again.
-    const colour = (m, nm) => follow([g1, l1, l2, gratingAt(hit2, rot2, lines, m, v.gratingSizeMm)], [firstMm - 50, 0], [1, 0], nm, 1);
+    const colour = (m, nm) => follow([g1, l1, l2, gratingAt(hit2, rot2, lines, m, v.gratingSizeMm)], [firstMm - 50, 0], [1, 0], nm);
     const order2 = [1, -1].find(m => {
       const a = colour(m, v.wavelengthNm - 1), b = colour(m, v.wavelengthNm + 1);
       return a && b && Math.abs(vcross(a.d, b.d)) < 1e-9;
@@ -473,11 +431,10 @@ export function buildLayout(v, firstMm = SOURCE_TO_FIRST_MM) {
     const outDir = colour(order2, v.wavelengthNm).d;
     const normal = [-t1[1], t1[0]];
     const cosBeta = Math.abs(vdot(axis, normal));
-    const done = finish(source, [g1, l1, l2, g2], hit2, outDir, v.passes, v, 1, firstMm, pickoffX);
+    const done = finish(source, [g1, l1, l2, g2], hit2, outDir, v.passes, v, firstMm, pickoffX);
     const layout = { kind: 'stretcher', gr, cosBeta, axis, passes: v.passes,
       effectiveSeparationMm: (2 * s - 2 * v.focalMm) * cosBeta, dimension: { a: start, b: [l1.x, l1.y] } };
-    if (done.error === 'return') return onePassFigure(layout, source, [g1, l1, l2, g2], { exit: hit2, dir: outDir }, v, 1, firstMm, pickoffX, done.message);
-    return done.error ? { error: done.message } : { ...layout, elements: done.elements };
+    return { ...layout, ...done };
   }
   const pair = placeGratingPair({ ...gr, separationMm: v.gratingSeparationMm }, start, [1, 0], false);
   if (!pair) return { error: 'Order −1 is evanescent at this incidence and line density.' };
@@ -498,37 +455,49 @@ export function buildLayout(v, firstMm = SOURCE_TO_FIRST_MM) {
   const last = pairs.at(-1);
   const passes = v.layout === 'grating-pair' ? v.passes : 1;
   const optics = pairs.flatMap(p => p.gratings);
-  const done = finish(source, optics, last.exit, last.dir, passes, v, 1, firstMm, pickoffX);
+  const done = finish(source, optics, last.exit, last.dir, passes, v, firstMm, pickoffX);
   const layout = { kind: 'grating', gr, pairs, passes, dimension: { a: pair.hits[0], b: pair.hits[1] } };
-  if (done.error === 'return') return onePassFigure(layout, source, optics, last, v, 1, firstMm, pickoffX, done.message);
-  return done.error ? { error: done.message } : { ...layout, elements: done.elements };
+  return { ...layout, ...done };
 }
 
-// A double pass whose in-plane return cannot be drawn: the figure shows one
-// pass and says why; the phase is still the double pass's.
-function onePassFigure(layout, source, optics, last, v, n0, firstMm, pickoffX, figureIssue) {
-  const done = finish(source, optics, last.exit, last.dir, 1, v, n0, firstMm, pickoffX);
-  return done.error ? { error: done.message } : { ...layout, elements: done.elements, figureIssue: `${figureIssue} The figure shows one pass; the numbers are for two.` };
-}
-
-// The layout as a canvas scene whose own tracer delivers the whole band to
-// the autocorrelator. Reflective gratings fold the light back over the
-// input, so where the beams cross an optic the bench moves further from the
-// source (which changes nothing in the dispersion) until they clear it.
-// Where no distance works, the layout comes back with `figureIssue`.
+// The layout as a canvas scene whose own tracer reads the page's GDD at the
+// autocorrelator: the whole band delivered, no beam crossing an optic on the
+// way. Reflective gratings fold the light back over the input, so where the
+// reading is off the bench moves further from the source (which changes
+// nothing in the dispersion) until it agrees. Where no distance works, the
+// layout comes back with `figureIssue`; the numbers never depend on it.
 const FIRST_OPTIC_MM = [SOURCE_TO_FIRST_MM, 400, 600, 900, 1300, 2000];
+// How closely the canvas must agree: the stretcher's numbers are paraxial and
+// the canvas traces its lenses exactly.
+const FIGURE_TOLERANCE = { prism: 2e-4, grating: 2e-4, stretcher: 1e-3 };
+const FIGURE_FLOOR_FS2 = 10;
+
+// The GDD the canvas adds for its lenses' glass: it gives each thin lens an
+// estimated thickness of N-BK7, crossed once a pass. The page's lenses are
+// ideal and glassless.
+export function lensGlassGddFs2(layout, v) {
+  return (layout.elements ?? []).filter(el => el.type === 'lens')
+    .reduce((sum, el) => sum + glassGVD('nbk7', v.wavelengthNm) * estimatedThinLensThicknessMm(el.params) * layout.passes, 0);
+}
 export function buildFigure(v) {
   let layout = null;
   for (const firstMm of FIRST_OPTIC_MM) {
     layout = buildLayout(v, firstMm);
-    if (layout.error || layout.figureIssue) return layout;
+    if (layout.error) return layout;
+    const comp = dispersionAt(layout, v.wavelengthNm)?.gddFs2;
+    if (!Number.isFinite(comp)) return layout;
+    // The canvas reads the block of glass that carries the chirp together
+    // with the compensator; a source chirp it keeps apart.
+    const block = v.sceneChirp?.block;
+    const want = comp + lensGlassGddFs2(layout, v) + (block ? (materialDispersion(block.material, v.wavelengthNm)?.gvdFs2PerMm ?? 0) * block.lengthMm : 0);
     traceScene(layout.elements);
     const pulse = detectorReading(layout.elements.at(-1).id)?.pulse;
-    if (Number.isFinite(pulse?.gddFs2) && !String(pulse.dispersionModel ?? '').includes(DISPERSION_UNAVAILABLE.partialFan)) return layout;
+    if (Number.isFinite(pulse?.gddFs2) && !String(pulse.dispersionModel ?? '').includes(DISPERSION_UNAVAILABLE.partialFan)
+      && Math.abs(pulse.gddFs2 - want) <= FIGURE_TOLERANCE[layout.kind] * Math.abs(comp) + FIGURE_FLOOR_FS2) return layout;
   }
   return { ...layout, figureIssue: layout.kind === 'prism'
     ? 'In the plane of the figure part of the band misses a prism or the detector (the colours spread wider than the optics), so the drawing and the canvas scene do not deliver the whole band; larger prisms would.'
-    : 'In the plane of the figure a beam crosses an optic or is clipped (near Littrow, for instance, the second grating sits in the input beam), so the drawing and the canvas scene do not deliver the whole band. Real benches separate such beams in height.' };
+    : 'In the plane of the figure a beam crosses an optic or is clipped (near Littrow, for instance, the beams leaving the second grating run close to the first), so the drawing and the canvas scene do not read these numbers. Real benches separate such beams in height; larger optics help where the colours are clipped.' };
 }
 
 // The scene as the canvas opens it: the output detector becomes an
