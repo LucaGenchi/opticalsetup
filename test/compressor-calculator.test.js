@@ -46,7 +46,7 @@ test('the page quotes the defaults as its content does', () => {
   assert.ok(Math.abs(pair.slopeFs2PerMm + 2.17) < 0.01 && Math.abs(pair.solved.value - 705.5) < 0.1);
   assert.ok(Math.abs(four.slopeFs2PerMm + 18.1) < 0.05 && Math.abs(four.outputFs - 34.8) < 0.1);
   assert.ok(Math.abs(gratings.slopeFs2PerMm + 2883) < 1 && Math.abs(gratings.solved.value - 346.8) < 0.1);
-  assert.ok(Math.abs(fibre.outputFs - 205.3) < 0.2 && Math.abs(fibre.tlFs - 139.3) < 0.1);
+  assert.ok(Math.abs(fibre.outputFs - 205.0) < 0.1 && Math.abs(fibre.tlFs - 139.3) < 0.1);
   assert.ok(Math.abs(gratings.throughput.transmission - 0.92 ** 4) < 1e-12);
 });
 
@@ -131,10 +131,13 @@ test('a bench that cannot be drawn in the plane still gives its numbers, and say
   const small = computeCompressor(form('grating-pair', { gratingSizeMm: 20 }));
   assert.equal(small.comp.gddFs2, computeCompressor(form('grating-pair')).comp.gddFs2);
   assert.match(small.figureIssue, /clipped/);
-  // A stretcher at s = f has no GDD to compare against relatively: the
-  // canvas's lens glass is all it reads, and the figure stands.
-  const flat = computeCompressor(form('stretcher', { solve: 'manual', gratingLensMm: 500 }));
-  assert.equal(flat.figureIssue, null);
+  // Only lost light counts against the figure: a stretcher at s = f with a
+  // wide band delivers it all, though the canvas's GDD (its lens glass, its
+  // fit) differs from the page's.
+  for (const extra of [{}, { bandwidthNm: 40, lensDiameterMm: 200, gratingSizeMm: 250 }]) {
+    const flat = computeCompressor(form('stretcher', { solve: 'manual', gratingLensMm: 500, ...extra }));
+    assert.equal(flat.figureIssue, null, JSON.stringify(extra));
+  }
 });
 
 test('the grating pair\'s GDD is Treacy\'s explicit formula', () => {
@@ -161,4 +164,39 @@ test('the graphs are finite where they are drawn', () => {
     assert.ok(scan.fs.filter(x => x !== null).every(Number.isFinite), layout);
     assert.ok(gdd.comp.every(Number.isFinite), layout);
   }
+});
+
+test('the Fourier pulse: positive TOD trails, and the duration does not depend on the first guess', () => {
+  const v = { wavelengthNm: 800, bandwidthNm: 30, shape: 'gauss' }, w0 = omegaOf(800);
+  const { times, intensity } = pulseFromPhase(v, w => 1e4 * (w - w0) ** 3 / 6, 60).profile;
+  const centroid = times.reduce((sum, t, i) => sum + t * intensity[i], 0) / intensity.reduce((sum, I) => sum + I, 0);
+  // E(t) ∝ ∫ √S e^{iφ} e^{−iωt} dω: the group delay φ′ = TOD Δω²/2 is positive.
+  assert.ok(Math.abs(centroid - 7.0297) < 1e-3, `${centroid}`);
+  const fibre = computeCompressor(form('four-grating'));
+  const phase = w => fibre.compPhase(w) + fibre.chirpPhase(w);
+  const durations = [150, 1000, 30000].map(guess => pulseFromPhase(fibre.values, phase, guess).durationFs);
+  for (const d of durations) assert.ok(Math.abs(d / durations[0] - 1) < 2e-4, `${durations}`);
+});
+
+test('a pulse the transform cannot give says why: too long, or outside a glass', () => {
+  // A large FOD with no GDD: the window follows the pulse, not the band's wings.
+  const fod = computeCompressor(form('grating-pair', { solve: 'manual', lines: 50, gratingIncidenceDeg: 45, gratingSeparationMm: 1,
+    chirp: 'gdd', inputGddFs2: 0, inputTodFs3: 0, inputFodFs4: 1e9 }));
+  assert.ok(Math.abs(fod.outputFs - 275.72) < 0.05, `${fod.outputFs}`);
+  const blue = computeCompressor(form('grating-pair', { wavelengthNm: 250, bandwidthNm: 40, chirp: 'material', chirpMaterial: 'silica', chirpLengthMm: 10 }));
+  assert.equal(blue.outputFs, null);
+  assert.equal(blue.outputFailure, 'domain');
+  const long = computeCompressor(form('grating-pair', { solve: 'manual', gratingSeparationMm: 5000, chirp: 'none', bandwidthNm: 60 }));
+  assert.equal(long.outputFailure, 'long');
+});
+
+test('the scene carries what the page computes, or says it cannot', () => {
+  // The grating efficiency entered reaches the canvas's gratings.
+  const half = computeCompressor(form('grating-pair', { efficiencyPct: 50 }));
+  assert.deepEqual(half.layout.elements.filter(el => el.type === 'grating').map(el => el.params.efficiency), [50, 50]);
+  assert.equal(half.figureIssue, null);
+  // A chirp beyond what the canvas source carries is flagged.
+  const big = computeCompressor(form('grating-pair', { inputGddFs2: 2e7, inputTodFs3: 0, inputFodFs4: 0, bandwidthNm: 1 }));
+  assert.ok(big.ok && big.values.sceneChirp.clipped);
+  assert.equal(computeCompressor(form('grating-pair')).values.sceneChirp.clipped, false);
 });

@@ -24,7 +24,7 @@ import { createElement, estimatedThinLensThicknessMm } from '../../sketch/js/ele
 import { fresnelTransmittances } from '../../sketch/js/fresnel.js';
 import { traceScene, detectorReading } from '../../sketch/js/raytrace.js';
 import { DISPERSION_UNAVAILABLE, glassGVD } from '../../sketch/js/glass.js';
-import { materialIndexDerivatives, materialDispersion } from '../dispersion/materials.js';
+import { materialIndexDerivatives } from '../dispersion/materials.js';
 
 const C_MM_PER_FS = 2.99792458e-4;
 const C_UM_PER_FS = 0.299792458;
@@ -287,6 +287,9 @@ function follow(optics, p, d, wavelengthNm) {
 // autocorrelator on the output, sized from the band's edges, traced.
 function finish(source, optics, exit, dir, passes, v, firstMm, pickoffX) {
   const out = [];
+  // The scene's gratings diffract with the efficiency entered, as the
+  // page's transmission does.
+  for (const el of optics) if (el.type === 'grating') el.params.efficiency = v.efficiencyPct;
   // The band's edges, beyond the FWHM (the canvas samples a Gaussian out to
   // ±3σ, 1.27 FWHM).
   const colours = [v.wavelengthNm, v.wavelengthNm - 1.3 * v.bandwidthNm, v.wavelengthNm + 1.3 * v.bandwidthNm];
@@ -335,8 +338,9 @@ function finish(source, optics, exit, dir, passes, v, firstMm, pickoffX) {
     outDir = [0, outSide];
     width = 0;
   } else {
+    // Centred on the band, which one pass of a pair leaves side by side.
     const xs = across(vadd(exit, vmul(dir, 150)));
-    outPoint = exit; outDir = dir;
+    outPoint = vadd(exit, vmul(left, (Math.max(...xs) + Math.min(...xs)) / 2)); outDir = dir;
     width = Math.max(...xs) - Math.min(...xs);
   }
   // A plain detector stands in for the autocorrelator, which only the canvas
@@ -345,7 +349,7 @@ function finish(source, optics, exit, dir, passes, v, firstMm, pickoffX) {
   // (canvasScene).
   const ac = createElement('detector', outPoint[0] + outDir[0] * 150, outPoint[1] + outDir[1] * 150);
   ac.rot = angleOf(outDir);
-  ac.params.aperture = Math.min(120, Math.max(30, 2 * Math.ceil((width + 10) / 2)));
+  ac.params.aperture = Math.min(120, Math.max(30, 2 * Math.ceil((1.3 * width + 20) / 2)));
   out.push(ac);
   return { elements: [...source, ...optics, ...out], outputChirpMm: passes === 2 ? 0 : sideBySide };
 }
@@ -460,17 +464,19 @@ export function buildLayout(v, firstMm = SOURCE_TO_FIRST_MM) {
   return { ...layout, ...done };
 }
 
-// The layout as a canvas scene whose own tracer reads the page's GDD at the
-// autocorrelator: the whole band delivered, no beam crossing an optic on the
-// way. Reflective gratings fold the light back over the input, so where the
-// reading is off the bench moves further from the source (which changes
-// nothing in the dispersion) until it agrees. Where no distance works, the
-// layout comes back with `figureIssue`; the numbers never depend on it.
+// The layout as a canvas scene whose own tracer delivers the whole band to
+// the autocorrelator, with all the light the bench passes: no colour lost,
+// no beam crossing an optic on the way. Reflective gratings fold the light
+// back over the input, so where light is lost the bench moves further from
+// the source (which changes nothing in the dispersion) until none is; light
+// arriving beyond what the bench passes has come by a wrong path. Where
+// no distance works, the layout comes back with `figureIssue`; the numbers
+// never depend on it. Only lost light counts: the canvas's GDD reading
+// differs from the page's by its own models (the glass of its lenses, its
+// fit to traced colours), which is not a fault of the drawing.
 const FIRST_OPTIC_MM = [SOURCE_TO_FIRST_MM, 400, 600, 900, 1300, 2000];
-// How closely the canvas must agree: the stretcher's numbers are paraxial and
-// the canvas traces its lenses exactly.
-const FIGURE_TOLERANCE = { prism: 2e-4, grating: 2e-4, stretcher: 1e-3 };
-const FIGURE_FLOOR_FS2 = 10;
+// How far the delivered light may differ from what the bench passes.
+const FIGURE_LOSS = 1e-3;
 
 // The GDD the canvas adds for its lenses' glass: it gives each thin lens an
 // estimated thickness of N-BK7, crossed once a pass. The page's lenses are
@@ -479,25 +485,34 @@ export function lensGlassGddFs2(layout, v) {
   return (layout.elements ?? []).filter(el => el.type === 'lens')
     .reduce((sum, el) => sum + glassGVD('nbk7', v.wavelengthNm) * estimatedThinLensThicknessMm(el.params) * layout.passes, 0);
 }
+// The fraction of the source's light the block of glass that carries the
+// chirp passes in the canvas (its faces reflect some), traced on its own.
+function blockTransmission(layout) {
+  const block = layout.elements.find(el => el.type === 'freeglass');
+  if (!block) return 1;
+  const right = Math.max(...block.params.vertices.map(p => p.x)) * block.params.scale + block.x;
+  // Clear of the block (a detector's body reaches back from its face).
+  const probe = createElement('detector', right + 40, block.y);
+  traceScene([layout.elements[0], block, probe]);
+  return detectorReading(probe.id)?.signal ?? 1;
+}
+
 export function buildFigure(v) {
   let layout = null;
   for (const firstMm of FIRST_OPTIC_MM) {
     layout = buildLayout(v, firstMm);
     if (layout.error) return layout;
-    const comp = dispersionAt(layout, v.wavelengthNm)?.gddFs2;
-    if (!Number.isFinite(comp)) return layout;
-    // The canvas reads the block of glass that carries the chirp together
-    // with the compensator; a source chirp it keeps apart.
-    const block = v.sceneChirp?.block;
-    const want = comp + lensGlassGddFs2(layout, v) + (block ? (materialDispersion(block.material, v.wavelengthNm)?.gvdFs2PerMm ?? 0) * block.lengthMm : 0);
+    // A double pass leaves through a beamsplitter, crossed twice.
+    const expected = throughput(layout, v).transmission * (layout.passes === 2 ? 0.25 : 1) * blockTransmission(layout);
     traceScene(layout.elements);
-    const pulse = detectorReading(layout.elements.at(-1).id)?.pulse;
+    const reading = detectorReading(layout.elements.at(-1).id);
+    const pulse = reading?.pulse;
     if (Number.isFinite(pulse?.gddFs2) && !String(pulse.dispersionModel ?? '').includes(DISPERSION_UNAVAILABLE.partialFan)
-      && Math.abs(pulse.gddFs2 - want) <= FIGURE_TOLERANCE[layout.kind] * Math.abs(comp) + FIGURE_FLOOR_FS2) return layout;
+      && Math.abs(reading.signal / expected - 1) <= FIGURE_LOSS) return layout;
   }
   return { ...layout, figureIssue: layout.kind === 'prism'
     ? 'In the plane of the figure part of the band misses a prism or the detector (the colours spread wider than the optics), so the drawing and the canvas scene do not deliver the whole band; larger prisms would.'
-    : 'In the plane of the figure a beam crosses an optic or is clipped (near Littrow, for instance, the beams leaving the second grating run close to the first), so the drawing and the canvas scene do not read these numbers. Real benches separate such beams in height; larger optics help where the colours are clipped.' };
+    : 'In the plane of the figure a beam crosses an optic or is clipped (near Littrow, for instance, the beam leaving the second grating runs back across the first), so the drawing and the canvas scene lose part of the light. Real benches separate such beams in height; larger optics help where the colours are clipped.' };
 }
 
 // The scene as the canvas opens it: the output detector becomes an

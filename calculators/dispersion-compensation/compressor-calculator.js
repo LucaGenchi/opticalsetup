@@ -193,10 +193,12 @@ const spectrum = (shape, x) => (shape === 'sech2' ? 1 / Math.cosh(1.762747174039
 export const MAX_FFT_POINTS = 2 ** 18;
 
 // The intensity FWHM of the pulse whose spectral phase is `phase(ω)` (rad,
-// linear terms removed), from its Fourier transform; `guessFs` sizes the
-// time window. Returns { durationFs, profile } or null when the window
-// would need more than `maxPoints` points, or more than 10⁻⁴ of the
-// spectrum falls where a material or grating has no value.
+// linear terms removed), from its Fourier transform
+// E(t) ∝ ∫ √S(ω) e^{iφ(ω)} e^{−iωt} dω, so positive TOD trails the pulse;
+// `guessFs` sizes the time window. Returns { durationFs, profile }, or
+// { durationFs: null, reason } with reason 'long' when the window would need
+// more than `maxPoints` points, 'domain' when more than 10⁻⁴ of the spectrum
+// falls where a material or grating has no value.
 export function pulseFromPhase(v, phase, guessFs, maxPoints = MAX_FFT_POINTS) {
   const w0 = omegaOf(v.wavelengthNm);
   const dw = 2 * Math.PI * C_NM_PER_FS * v.bandwidthNm / v.wavelengthNm ** 2;
@@ -205,7 +207,7 @@ export function pulseFromPhase(v, phase, guessFs, maxPoints = MAX_FFT_POINTS) {
   const span = Math.max(16 * dw, 100 * Math.PI / guessFs);
   for (let window = Math.max(8 * guessFs, 40 * Math.PI / dw); ; window *= 2) {
     const n = 2 ** Math.ceil(Math.log2(Math.max(256, window * span / (2 * Math.PI))));
-    if (n > maxPoints) return null;
+    if (n > maxPoints) return { durationFs: null, profile: null, reason: 'long' };
     const step = span / n, re = new Float64Array(n), im = new Float64Array(n);
     let lost = 0, total = 0;
     for (let i = 0; i < n; i++) {
@@ -220,8 +222,8 @@ export function pulseFromPhase(v, phase, guessFs, maxPoints = MAX_FFT_POINTS) {
       const k = (i - n / 2 + n) % n;
       re[k] = a * Math.cos(p); im[k] = a * Math.sin(p);
     }
-    if (lost > 1e-4 * total) return null;
-    fft(re, im, true);
+    if (lost > 1e-4 * total) return { durationFs: null, profile: null, reason: 'domain' };
+    fft(re, im);
     const dt = 2 * Math.PI / span;
     const intensity = Array.from({ length: n }, (_, i) => {
       const k = (i + n / 2) % n;
@@ -238,6 +240,9 @@ export function pulseFromPhase(v, phase, guessFs, maxPoints = MAX_FFT_POINTS) {
     const cross = (i, j) => i + (half - intensity[i]) / (intensity[j] - intensity[i]) * (j - i);
     const t0 = first > 0 ? cross(first - 1, first) : first, t1 = last < n - 1 ? cross(last + 1, last) : last;
     const durationFs = Math.abs(t1 - t0) * dt;
+    // The time step is a fiftieth of the guess; a pulse shorter than the
+    // guess is measured again on a step a fiftieth of itself.
+    if (durationFs < 0.9 * guessFs) return pulseFromPhase(v, phase, durationFs, maxPoints);
     const tAt = i => (i - n / 2) * dt;
     return { durationFs, profile: { times: intensity.map((_, i) => tAt(i)), intensity: intensity.map(I => I / peak) } };
   }
@@ -246,6 +251,17 @@ export function pulseFromPhase(v, phase, guessFs, maxPoints = MAX_FFT_POINTS) {
 // --------------------------------------------------------------- compute
 function analyticDuration(v, tlFs, gddFs2) {
   return v.shape === 'sech2' ? sech2PulseDurationAfterGDD(tlFs, gddFs2) : gaussianPulseDurationAfterGDD(tlFs, gddFs2);
+}
+
+// A first estimate of the duration, to size the Fourier window: the GDD's
+// analytic stretch plus the delay the TOD and FOD give at the spectrum's
+// half maximum (each order's group delay, φ⁽ⁿ⁾ Δωⁿ⁻¹/(n−1)!). The window
+// then grows until the pulse's wings fall off its edges, so a modest
+// estimate costs nothing; an estimate from the band's far wings would ask
+// for a window far longer than the pulse.
+function durationGuess(v, tlFs, { gddFs2, todFs3, fodFs4 }) {
+  const dw = Math.PI * C_NM_PER_FS * v.bandwidthNm / v.wavelengthNm ** 2;
+  return analyticDuration(v, tlFs, gddFs2) + Math.abs(todFs3) * dw ** 2 / 2 + Math.abs(fodFs4 ?? 0) * dw ** 3 / 6;
 }
 
 // The layout at a value of the solved variable.
@@ -266,9 +282,11 @@ export function computeCompressor(raw) {
   // How the scene carries the chirp: a block of the material when the canvas
   // has the glass and it is short enough to draw, else the source's GDD.
   const drawable = v.chirp === 'material' && GLASSES.has(v.chirpMaterial) && v.chirpLengthMm > 0 && v.chirpLengthMm <= MAX_BLOCK_MM;
+  // The canvas source carries at most ±MAX_SOURCE_GDD_FS2; beyond that the
+  // scene carries less chirp than the page compensates, and says so.
   v.sceneChirp = v.chirp === 'none' ? null : drawable
     ? { block: { material: v.chirpMaterial, lengthMm: v.chirpLengthMm } }
-    : { gddFs2: Math.max(-MAX_SOURCE_GDD_FS2, Math.min(MAX_SOURCE_GDD_FS2, chirp.gddFs2)) };
+    : { gddFs2: Math.max(-MAX_SOURCE_GDD_FS2, Math.min(MAX_SOURCE_GDD_FS2, chirp.gddFs2)), clipped: Math.abs(chirp.gddFs2) > MAX_SOURCE_GDD_FS2 };
 
   // Solve: the GDD is linear in the separation (each layout's phase is), so
   // two evaluations give it exactly.
@@ -313,16 +331,15 @@ export function computeCompressor(raw) {
     const a = compPhase(w), b = chirp.phase(w);
     return a === null || b === null ? null : a + b;
   };
-  const guess = (gdd, tod) => analyticDuration(v, tlFs, gdd) + Math.abs(tod) * (2 * Math.PI * C_NM_PER_FS * v.bandwidthNm / v.wavelengthNm ** 2) ** 2;
-  const output = pulseFromPhase(v, sumPhase, guess(net.gddFs2, net.todFs3));
-  const input0 = pulseFromPhase(v, chirp.phase, guess(chirp.gddFs2, chirp.todFs3));
+  const output = pulseFromPhase(v, sumPhase, durationGuess(v, tlFs, net));
+  const input0 = pulseFromPhase(v, chirp.phase, durationGuess(v, tlFs, chirp));
   const transform = pulseFromPhase(v, () => 0, tlFs);
   return {
     ok: true, values: v, layout, solved, comp, chirp: { gddFs2: chirp.gddFs2, todFs3: chirp.todFs3, fodFs4: chirp.fodFs4 }, net, tlFs,
     slopeFs2PerMm,
     inputGddOnlyFs: analyticDuration(v, tlFs, chirp.gddFs2), outputGddOnlyFs: analyticDuration(v, tlFs, net.gddFs2),
-    inputFs: input0?.durationFs ?? null, outputFs: output?.durationFs ?? null,
-    profiles: { output: output?.profile ?? null, input: input0?.profile ?? null, transform: transform?.profile ?? null },
+    inputFs: input0.durationFs, outputFs: output.durationFs, inputFailure: input0.reason ?? null, outputFailure: output.reason ?? null,
+    profiles: { output: output.profile, input: input0.profile, transform: transform.profile },
     throughput: throughput(layout, v), figureIssue: layout.figureIssue ?? null,
     geometry: geometryOf(layout, v),
     compPhase, chirpPhase: chirp.phase,
@@ -422,8 +439,9 @@ export function separationScan(result, count = 61) {
       const p = phaseJet(layout, w), c = result.chirpPhase(w);
       return p && c !== null ? p[0] - p0[0] - p0[1] * (w - w0) + c : null;
     };
-    const guess = analyticDuration(v, tlFs, gdd) + Math.abs(tod) * (2 * Math.PI * C_NM_PER_FS * v.bandwidthNm / v.wavelengthNm ** 2) ** 2;
-    out.fs.push(guess < 30 * tlFs ? pulseFromPhase(v, phase, guess, 2 ** 14)?.durationFs ?? null : null);
+    // The compensator's FOD changes slowly with the separation: the bench's.
+    const guess = durationGuess(v, tlFs, { gddFs2: gdd, todFs3: tod, fodFs4: result.net.fodFs4 });
+    out.fs.push(guess < 30 * tlFs ? pulseFromPhase(v, phase, guess, 2 ** 14).durationFs : null);
     out.gddOnly.push(analyticDuration(v, tlFs, gdd));
   }
   return { ...out, label: input.label, unit: input.unit, value: center };

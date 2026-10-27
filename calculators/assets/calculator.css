@@ -241,6 +241,10 @@
 /* ---------- workbench: the form beside a live figure ---------- */
 .calc-workbench { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 18px; align-items: start; }
 .calc-workbench .calc-inputs { grid-template-columns: minmax(0, 1fr); }
+/* Wide enough for a long unit (lines/mm) beside a seven-digit value. */
+.calc-workbench .calc-field { grid-template-columns: 1fr 150px; }
+.calc-workbench .calc-field.choice { grid-template-columns: 1fr; }
+.calc-workbench .calc-field.check { grid-template-columns: auto 1fr; }
 .calc-workbench-side { position: sticky; top: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .calc-preview { margin: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
 .calc-preview-figure { background: #ffffff; border-radius: 8px; overflow: hidden; }
