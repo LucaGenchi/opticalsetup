@@ -181,6 +181,8 @@ export function gaussianScan(result, count = 401, local = 161) {
   around(0, input.rayleighMm, lo, lens ? Math.min(hi, lens.positionMm) : hi);
   if (lens && lens.distanceMm > 0) around(lens.positionMm + lens.distanceMm, lens.output.rayleighMm, Math.max(lo, lens.positionMm), hi);
   if (v.zMm >= lo && v.zMm <= hi) zs.push(v.zMm);
+  // The lens plane itself, so the incoming beam is drawn right up to it.
+  if (lens && lens.positionMm > lo && lens.positionMm < hi) zs.push(lens.positionMm);
   const points = [...new Set(zs)].sort((a, b) => a - b).map(zMm => ({ zMm, ...beamAlong(result, zMm) }));
   if (lens && lens.positionMm > lo && lens.positionMm < hi) {
     const at = points.findIndex(p => p.zMm > lens.positionMm);

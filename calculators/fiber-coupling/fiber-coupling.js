@@ -16,10 +16,13 @@
 // a lateral offset x₀ and a tilt θ. Geometry: x₀ is where the beam's centre
 // meets the fiber face, measured from the fiber axis; θ is the angle of the
 // beam's axis to the fiber's, in the same plane, positive when the beam
-// travels toward +x (the side of a positive offset). On the face the tilt is
-// a phase gradient kθ; its sign matters together with an offset and defocus.
+// travels toward +x (the side of a positive offset). Fields carry exp(−ikz)
+// (Kogelnik and Li), the convention in which exp(−ikx²/(2q)) diverges past
+// the waist, so that beam carries exp(−ikθx) on the face. Its sign matters
+// together with an offset and defocus; the Python reference pins it by
+// propagating the field.
 //
-//   η_x = 2 √(Re A · B) / |A + B| · exp(2 Re[(2A x₀ + ikθ)² / (4(A + B)) − A x₀²]),
+//   η_x = 2 √(Re A · B) / |A + B| · exp(2 Re[(2A x₀ − ikθ)² / (4(A + B)) − A x₀²]),
 //
 // and η = η_x(x₀, θ) · η_y(0, 0). With no offset, tilt or defocus this is
 // (2 w w_m / (w² + w_m²))². Units: λ in nm, beam diameter in mm, mode and
@@ -60,7 +63,7 @@ function overlapAxis(waistUm, modeRadiusUm, axialOffsetUm, offsetUm, tiltMrad, w
   const A = div([0, k / 2], [axialOffsetUm, zr]);
   const B = [1 / (modeRadiusUm * modeRadiusUm), 0];
   const sum = add(A, B);
-  const linear = add(scale(A, 2 * offsetUm), [0, k * tiltMrad * 1e-3]);
+  const linear = add(scale(A, 2 * offsetUm), [0, -k * tiltMrad * 1e-3]);
   const exponent = add(div(mul(linear, linear), scale(sum, 4)), scale(A, -offsetUm * offsetUm));
   return 2 * Math.sqrt(A[0] * B[0]) / Math.hypot(sum[0], sum[1]) * Math.exp(2 * exponent[0]);
 }
@@ -139,6 +142,12 @@ export function computeFiberCoupling(raw) {
     }
   } else mode = { modeFieldDiameterUm: v.mfdUm };
   const modeRadiusUm = mode.modeFieldDiameterUm / 2;
+  // The fiber mode's own far-field half angle, in air: a mode this small
+  // spreads beyond the paraxial approximation as well.
+  const modeDivergenceMrad = v.wavelengthNm * 1e-3 / (Math.PI * modeRadiusUm) * 1e3;
+  if (modeDivergenceMrad > PARAXIAL_LIMIT_MRAD) {
+    return unavailable(`A ${mode.modeFieldDiameterUm.toPrecision(3)} µm mode at ${v.wavelengthNm} nm spreads at a half angle of ${steepText(modeDivergenceMrad)}: beyond the paraxial approximation the Gaussian-mode model rests on. Single-mode fibers have modes several wavelengths wide.`, v.fiberMode === 'step' ? 'coreDiameterUm' : 'mfdUm');
+  }
   const focus = focusCollimated(v.beamDiameterMm, v.wavelengthNm, v.focalMm);
   const waistUm = focus.beam.waistUm;
   if (!(Number.isFinite(waistUm) && waistUm > 0 && Number.isFinite(focus.distanceMm)) || focus.beam.halfDivergenceMrad > PARAXIAL_LIMIT_MRAD) {
@@ -153,8 +162,6 @@ export function computeFiberCoupling(raw) {
   const offsets = { axialOffsetUm: v.axialOffsetUm, lateralOffsetUm: v.lateralOffsetUm, tiltMrad: v.tiltMrad };
   const matchEfficiency = gaussianCoupling(base);
   const efficiency = gaussianCoupling({ ...base, ...offsets });
-  // The fiber mode's own far-field half angle, in air.
-  const modeDivergenceMrad = v.wavelengthNm * 1e-3 / (Math.PI * modeRadiusUm) * 1e3;
   return {
     ok: true, values: v, mode, modeRadiusUm, modeDivergenceMrad, focus,
     focusWaistUm: waistUm, focusDistanceMm: focus.distanceMm,

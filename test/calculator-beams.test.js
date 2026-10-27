@@ -171,10 +171,16 @@ test('widths are named 1/e² for TEM₀₀ and second-moment (D4σ) for M² > 1'
 });
 
 test('fiber coupling: offset on the face, tilt signed in its plane', () => {
-  // The reviewer's case: w′ = w_m = 5 µm, 100 µm past the focus, 5 µm off.
+  // The reviewer's case, from her Fresnel propagation of the field:
+  // w′ = w_m = 5 µm, 100 µm past the focus, 5 µm off. A beam travelling
+  // away from the axis (+θ) came from a focus nearer the axis, so it couples
+  // better (the Python reference pins the direction by propagation).
   const at = (dz, t) => gaussianCoupling({ waistUm: 5, modeRadiusUm: 5, wavelengthNm: 1550, axialOffsetUm: dz, lateralOffsetUm: 5, tiltMrad: t });
-  close(at(100, 30), 0.1962039, 1e-6);
-  close(at(100, -30), 0.3603770, 1e-6);
+  close(at(100, 30), 0.3603770, 1e-6);
+  close(at(100, -30), 0.1962039, 1e-6);
+  // The same beam seen from its focus: 100 µm back along a +30 mrad path its
+  // centre was 3 µm nearer the axis; at its focus the offset alone counts.
+  assert.ok(at(100, 30) > at(100, 0) && at(100, 0) > at(100, -30));
   // Before the focus the curvature turns over and so does the better sign;
   // at the focus the sign does not matter.
   close(at(-100, -30), at(100, 30), 1e-12);
@@ -204,6 +210,17 @@ test('fiber coupling: the face may not sit before the lens, and the focus-error 
   assert.ok(fiber({ lateralOffsetUm: 1000 }).lossDb > 300);
 });
 
+test('fiber coupling: a mode too small for the paraxial model is refused, not matched', () => {
+  const tiny = fiber({ mfdUm: 0.5 });
+  assert.equal(tiny.ok, false);
+  assert.match(tiny.errors[0].message, /1974 mrad/);
+  // Just inside the limit it is accepted, and its matching lens is accepted too.
+  const mfd = 2 * 1550e-3 / (Math.PI * 0.3) * 1.01;
+  const edge = fiber({ mfdUm: mfd });
+  assert.ok(edge.ok && edge.modeDivergenceMrad < 300);
+  assert.ok(fiber({ mfdUm: mfd, focalMm: edge.optimalFocalMm }).ok);
+});
+
 test('Gaussian graph: a tight focus is sampled at its waist, and the lens plane splits the curvature', () => {
   const r = beam({ lens: true, waistUm: 1000, lensDistanceMm: 0, focalMm: 15 });
   const scan = gaussianScan(r);
@@ -218,6 +235,9 @@ test('Gaussian graph: a tight focus is sampled at its waist, and the lens plane 
   const s2 = gaussianScan(slow);
   close(Math.min(...s2.filter(p => p.zMm < slow.lens.positionMm).map(p => p.radiusUm)), 50, 1e-12);
   close(Math.min(...s2.filter(p => p.after).map(p => p.radiusUm)), slow.focusWaistUm, 1e-12);
+  // The lens plane is sampled from both sides, however far down the line.
+  const g2 = s2.findIndex(p => p.gap);
+  assert.ok(g2 > 0 && s2[g2 - 1].zMm === slow.lens.positionMm && !s2[g2 - 1].after && s2[g2].after);
 });
 
 // The numbers the page text quotes, recomputed. A change to the engine that

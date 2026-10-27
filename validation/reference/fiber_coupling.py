@@ -146,23 +146,63 @@ def focus(w_in_um, nm, f_mm):
     return math.sqrt(zr * lam / math.pi) * 1e3, s     # waist radius um, distance mm
 
 
-def overlap_1d(w_beam_um, w_mode_um, dz_um, dx_um, tilt_mrad, nm):
-    """|∫ u g*|^2 / (∫|u|^2 ∫|g|^2) along one axis, by the trapezoid rule:
-    u is the beam on the face (waist w_beam, face dz past the waist, centred
-    at dx, tilted by tilt), g the fiber mode exp(-x^2/w_mode^2)."""
+# Fields carry exp(-ikz) (Kogelnik and Li): with q = dz + i z_R the factor
+# exp(-ik x^2/(2q)) is a wavefront diverging past the waist, and a beam
+# travelling toward +x at a small angle t carries exp(-ik t x).
+def face_field(x, w_beam_um, dz_um, dx_um, tilt_mrad, nm):
+    """The focused beam on the fiber face: waist w_beam, the face dz past
+    the waist, centred at dx on the face, travelling at tilt toward +x."""
     lam = nm * 1e-3                                       # um
     k = 2 * math.pi / lam
+    q = dz_um + 1j * math.pi * w_beam_um ** 2 / lam
+    return cmath.exp(-1j * k * (x - dx_um) ** 2 / (2 * q) - 1j * k * tilt_mrad * 1e-3 * x)
+
+
+def fresnel_propagate(field, xs, length_um, nm, out_xs):
+    """Paraxial free-space propagation over length_um by direct summation
+    of the Fresnel kernel exp(-ik (x - x')^2 / (2L)) in the same convention."""
+    k = 2 * math.pi / (nm * 1e-3)
+    h = xs[1] - xs[0]
+    out = []
+    for x in out_xs:
+        terms = [u * cmath.exp(-1j * k * (x - xp) ** 2 / (2 * length_um)) for u, xp in zip(field, xs)]
+        out.append(complex(math.fsum(t.real for t in terms), math.fsum(t.imag for t in terms)) * h)
+    return out
+
+
+def check_field_convention():
+    """Pin the geometry of face_field by propagating it, not by algebra:
+    (1) an untilted beam propagated L by the Fresnel kernel is the beam
+    face_field describes L further on (so the kernel and the curvature term
+    use one convention), and (2) a beam tilted by +t moves toward +x by tL."""
+    nm, w, L, t = 1550, 5.0, 200.0, 30.0
+    xs = [-150 + i * 0.25 for i in range(1201)]
+    norm = lambda a, b: abs(sum(p * q.conjugate() for p, q in zip(a, b))) ** 2 / (sum(abs(p) ** 2 for p in a) * sum(abs(q) ** 2 for q in b))
+    start = [face_field(x, w, 0, 0, 0, nm) for x in xs]
+    far = fresnel_propagate(start, xs, L, nm, xs)
+    match = norm(far, [face_field(x, w, L, 0, 0, nm) for x in xs])
+    if not match > 1 - 1e-6:
+        raise AssertionError(f"Fresnel kernel and beam curvature disagree: overlap {match}")
+    tilted = fresnel_propagate([face_field(x, w, 0, 0, t, nm) for x in xs], xs, L, nm, xs)
+    centre = sum(x * abs(u) ** 2 for x, u in zip(xs, tilted)) / sum(abs(u) ** 2 for u in tilted)
+    if not abs(centre - t * 1e-3 * L) < 1e-3 * t * 1e-3 * L + 1e-6:
+        raise AssertionError(f"a +{t} mrad tilt moved the beam to {centre} um after {L} um, not +{t * 1e-3 * L}")
+    return match, centre
+
+
+def overlap_1d(w_beam_um, w_mode_um, dz_um, dx_um, tilt_mrad, nm):
+    """|∫ u g*|^2 / (∫|u|^2 ∫|g|^2) along one axis, by the trapezoid rule:
+    u is the beam on the face (face_field), g the fiber mode exp(-x^2/w_mode^2)."""
+    lam = nm * 1e-3                                       # um
     zr = math.pi * w_beam_um ** 2 / lam
-    q = dz_um + 1j * zr
     span = 12 * max(w_beam_um * math.sqrt(1 + (dz_um / zr) ** 2), w_mode_um) + abs(dx_um)
     n = 6000
     h = 2 * span / n
-    re = im = pu = pg = 0.0
     terms_re, terms_im, terms_u, terms_g = [], [], [], []
     for i in range(n + 1):
         x = -span + i * h
         c = 0.5 if i in (0, n) else 1.0
-        u = cmath.exp(-1j * k * (x - dx_um) ** 2 / (2 * q) + 1j * k * tilt_mrad * 1e-3 * x)
+        u = face_field(x, w_beam_um, dz_um, dx_um, tilt_mrad, nm)
         g = math.exp(-x * x / w_mode_um ** 2)
         z = u * g
         terms_re.append(c * z.real); terms_im.append(c * z.imag)
@@ -200,6 +240,7 @@ def coupling_case(name, inputs):
 
 
 def cases():
+    check_field_convention()
     out = []
     # The fiber mode: Marcuse's fit against the exact LP01 best Gaussian, and
     # the cutoff wavelength from the first zero of J0.
@@ -247,7 +288,7 @@ MODEL = {
         "H. Kogelnik and T. Li, Appl. Opt. 5, 1550-1567 (1966), doi:10.1364/AO.5.001550 (Gaussian beams, ABCD law)",
         "W. B. Joyce and B. C. DeLoach, Appl. Opt. 23, 4187-4196 (1984), doi:10.1364/AO.23.004187 (alignment of Gaussian beams: offset, tilt, defocus)",
     ],
-    "provenance": "The eigenvalue equation and field written from Gloge's weakly-guiding analysis; the coupling as the normalized overlap integral of the two fields on the face, as in Kogelnik and in Joyce and DeLoach. Marcuse's fit and the page's closed-form overlap are not used here.",
+    "provenance": "The eigenvalue equation and field written from Gloge's weakly-guiding analysis; the coupling as the normalized overlap integral of the two fields on the face, as in Kogelnik and in Joyce and DeLoach. Marcuse's fit and the page's closed-form overlap are not used here. The face field's geometry is pinned by propagation, not algebra: a Fresnel-kernel propagation of the beam reproduces its own q-parameter curvature, and a tilt of +t moves the beam toward +x by t per unit length.",
     "domain": "Step-index fibers with V 1.4-2.75 (633-1550 nm, one above the single-mode cutoff, cores 3.5-8.2 um, NA 0.12-0.14); collimated beams of 0.8-2 mm focused by 4.5-11 mm lenses; aligned, and with lateral offsets (on the fiber face) to 2 um, axial offsets to +/-30 um and tilts of either sign to 20 mrad in the plane of the offset, separately and together.",
     "convergence": "Bessel integrals by the trapezoid rule (400 and 800 nodes); 100- and 120-step bisections; mode overlaps by Simpson's rule on 200 core intervals and cladding steps of 0.01-0.25 core radii out to where the field has fallen by e^-40 (at least 12 core radii); the best Gaussian bracketed on a 61-point logarithmic scan from 0.3 to 30 core radii (it must fall inside) and refined by golden-section search to 80 steps; face overlaps by the trapezoid rule on 6000 intervals over 12 beam widths; focal-length bisection to 200 steps.",
     "tolerance_rationale": "1e-9 relative for the V number, cutoff and every coupling quantity computed from the same mode radius (algebra and spectrally accurate quadrature); 1 % on the mode-field diameter and 2 % on the aligned coupling through a fiber given by core and NA, because the page uses Marcuse's fit and the reference the exact LP01 mode (at large misalignments a 1 % radius error can move the efficiency by more). Values that pass through the best-Gaussian optimum are stored to 6 digits, which it fixes to about 1e-8.",
