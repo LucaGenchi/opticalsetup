@@ -8,7 +8,7 @@ const cite = (...n) => n.map(k => `<a class="cite" href="#ref-${k}">[${k}]</a>`)
 
 const GITHUB = 'https://github.com/LucaGenchi/opticalsetup/blob/main';
 
-const REF = { welford: 1, smith: 2, spencer: 3, kingslake: 4, born: 5, optiland: 6, malitson: 7, schott: 8, goodman: 9, noll: 10, siegman: 11 };
+const REF = { welford: 1, smith: 2, spencer: 3, kingslake: 4, born: 5, optiland: 6, malitson: 7, schott: 8, goodman: 9, noll: 10, siegman: 11, opticstudio: 12 };
 const c = (...keys) => cite(...keys.map(k => REF[k]));
 
 export const lensCalculators = [
@@ -75,8 +75,8 @@ export const lensCalculators = [
         formulas: [
           { tex: String.raw`z(r) = \frac{c\,r^2}{1 + \sqrt{1 - (1+k)\,c^2 r^2}} + A_4 r^4 + A_6 r^6 + \dots + A_{16} r^{16}, \qquad c = 1/R`, caption: 'k = 0 is a sphere, −1 a paraboloid, below −1 a hyperboloid, between −1 and 0 a prolate ellipsoid. The same convention as the canvas’s Aspheric lens.' },
         ],
-        html2: `<p>One surface is the <b>aperture stop</b>, the opening that limits the beam. The aperture is set in object space: as the entrance-pupil diameter, as the F-number f/D for an object at infinity, or as the object-space numerical aperture n sin θ for a near object. Fields are angles for an object at infinity and heights for a near one; a positive field sends rays toward +y (the convention of OpticStudio and Optiland). Glass indices are the canvas catalogue’s published Sellmeier curves, relative to air${c('schott', 'malitson')}, evaluated at the exact wavelength; outside a glass’s fitted range the index is held at the edge of the range, and a note says so. A constant index is available for a material with no dispersion.</p>
-          <p>An <b>ideal lens</b> row is a perfect thin lens of focal length f in air: it bends every ray so that each object point is imaged to exactly one point. It is the reference against which real lenses are judged, and the starting point for a layout before real glass is chosen.</p>`,
+        html2: `<p>One surface is the <b>aperture stop</b>, the opening that limits the beam. The aperture is set in object space: as the entrance-pupil diameter, as the F-number f/D for an object at infinity, or as the object-space numerical aperture n sin θ for a near object. Fields are angles for an object at infinity and heights for a near one; a positive field sends rays toward +y (the same convention as other design programs${c('opticstudio', 'optiland')}). Glass indices are the canvas catalogue’s published Sellmeier curves, relative to air${c('schott', 'malitson')}, evaluated at the exact wavelength; outside a glass’s fitted range the index is held at the edge of the range, and a note says so. A constant index is available for a material with no dispersion.</p>
+          <p>A <b>perfect lens</b> (an ideal lens) is a row whose material is set to “Perfect lens”: a thin lens of focal length f in air, entered in the Radius column, that bends every ray so that each object point is imaged to exactly one point. It is the reference against which real lenses are judged, and the starting point for a layout before real glass is chosen.</p>`,
       },
       {
         id: 'paraxial',
@@ -153,7 +153,7 @@ export const lensCalculators = [
         formulas: [
           { tex: String.raw`W(p_x, p_y) = \frac{\mathrm{OPL}_\text{chief} - \mathrm{OPL}(p_x, p_y)}{\lambda}`, caption: 'In waves, counted from a common wavefront in object space (the object point, or a plane normal to an incoming collimated beam) to the reference sphere. The chief ray of each wavelength has W = 0.' },
         ],
-        html2: `<p>This is the convention of OpticStudio and Optiland. An ideal lens row has no glass to count, so it is given the optical path that makes it perfect between the paraxial conjugates of its beam: every ray from an object point then arrives at its image point with the same path. The shape of W is usually described by its <b>Zernike polynomials</b>, a set of shapes that are orthogonal over a circle: tilt, defocus, astigmatism, coma, spherical aberration and their higher orders. In Noll’s normalization${c('noll')} each has unit RMS over the pupil, so</p>`,
+        html2: `<p>This is the convention of OpticStudio and Optiland. A perfect-lens row has no glass to count, so it is given the optical path that makes it perfect between the paraxial conjugates of its beam: every ray from an object point then arrives at its image point with the same path. The shape of W is usually described by its <b>Zernike polynomials</b>, a set of shapes that are orthogonal over a circle: tilt, defocus, astigmatism, coma, spherical aberration and their higher orders. In Noll’s normalization${c('noll')} each has unit RMS over the pupil, so</p>`,
         formulas2: [
           { tex: String.raw`W(\rho, \theta) = \sum_j a_j Z_j(\rho, \theta), \qquad \sigma_W^2 = \sum_{j \ge 2} a_j^2`, caption: 'σ_W is the RMS wavefront error with piston (j = 1) removed; with tilt (j = 2, 3) removed as well it measures the sharpness of the image.' },
         ],
@@ -260,7 +260,7 @@ export const lensCalculators = [
       {
         id: 'scope',
         title: 'Not in this version',
-        html: `<p>Out of scope: optimization and tolerancing, mirrors, tilted or decentred surfaces, non-sequential paths, gradient-index and diffractive surfaces, vector diffraction, partially coherent illumination (Abbe’s and Hopkins’s theories of the microscope), field-dependent (non-isoplanatic) imaging of large targets, fiber modes other than a Gaussian, polarization ray tracing and coatings. For those, a full design program such as Optiland${c('optiland')} is the right tool.</p>
+        html: `<p>Out of scope: optimization and tolerancing, mirrors, tilted or decentred surfaces, non-sequential paths, gradient-index and diffractive surfaces, vector diffraction, partially coherent illumination (Abbe’s and Hopkins’s theories of the microscope), field-dependent (non-isoplanatic) imaging of large targets, fiber modes other than a Gaussian, polarization ray tracing and coatings. For those, a full design program is the right tool: Zemax OpticStudio${c('opticstudio')}, the industry standard, or the open-source Optiland${c('optiland')}.</p>
           <p>The Cooke triplet preset is the “Cooke 40 degree field” sample of OpticStudio as distributed with Optiland${c('optiland')}, with SCHOTT N-SK16 in place of the original SK16 and its image plane where the prescription puts it. The achromat is the canvas’s own lens-group preset; the singlets are derived from the lensmaker’s equation at the d line.</p>`,
       },
     ],
@@ -276,6 +276,7 @@ export const lensCalculators = [
       { label: 'J. W. Goodman, Introduction to Fourier Optics, 3rd ed. (Roberts & Company, 2005), chapter 6: the pupil function, coherent and incoherent imaging, the coherent transfer function, the OTF and the MTF of a circular pupil.', url: 'https://search.worldcat.org/isbn/9780974707723' },
       { label: 'R. J. Noll, “Zernike polynomials and atmospheric turbulence,” J. Opt. Soc. Am. 66, 207–211 (1976): the ordering and normalization of the Zernike terms.', url: 'https://doi.org/10.1364/JOSA.66.000207' },
       { label: 'A. E. Siegman, Lasers (University Science Books, 1986), section 17.2: focusing a Gaussian beam.', url: 'https://search.worldcat.org/isbn/9780935702118' },
+      { label: 'Ansys, “How to design a singlet lens, Part 1: Setup,” Zemax OpticStudio knowledge base, section “Defining fields in OpticStudio”: positive field angles give the ray a positive slope.', url: 'https://optics.ansys.com/hc/en-us/articles/42661252179987-How-to-design-a-singlet-lens-Part-1-Setup' },
     ],
   },
 ];
