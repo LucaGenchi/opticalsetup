@@ -15,7 +15,7 @@ export const compressorCalculators = [
     summary: 'Choose a prism or grating layout, the pulse and the chirp it carries; the page solves the separation (or takes yours), draws the bench to scale with the canvas’s own tracer, and gives the compensator’s GDD, TOD and FOD, the output pulse from every order of the phase, the colours’ spread and the transmission.',
     facts: [
       { label: 'Model', html: 'Exact plane-wave phase of each layout along the central ray: Fork, Martinez and Gordon’s apex path for prisms, Treacy’s for gratings, Martinez’s equivalent pair for the stretcher (paraxial). The output pulse is the Fourier transform of the spectrum with every order of the phase.' },
-      { label: 'Evidence', html: `The bench drawn here is a canvas scene: its tracer reads the same GDD to better than 10⁻⁴ on every default (for the stretcher once the glass the canvas gives its lenses is taken off), and in a double pass it brings every colour back onto one line. An independent Python reference checks GDD, TOD, FOD, the solved separation and the transmission: <a href="${GITHUB}/docs/validation.md" target="_blank" rel="noopener">validation table</a>.` },
+      { label: 'Evidence', html: `The bench drawn here is a canvas scene: its tracer reads the same GDD to better than 10⁻⁴ on every default (for the stretcher once the glass the canvas gives its lenses is taken off), and in a double pass it brings every colour back onto one line. An independent Python reference checks GDD, TOD, FOD, the solved separation and the transmission: <a href="${GITHUB}/docs/validation.md" target="_blank" rel="noopener">validation table</a>. As an outside check, Light Conversion’s online compressor calculators ${cite(6)} give the same grating-pair GDD and TOD, and the same prism-pair GDD to 5 × 10⁻⁴ on matched benches.` },
       { label: 'Code', html: `<a href="${GITHUB}/calculators/dispersion-compensation/compressor-model.js" target="_blank" rel="noopener">compressor-model.js</a> builds the bench from the canvas’s own elements (prism, grating, lens, mirror, beamsplitter) and glass catalogue; “Open in the canvas” opens that scene.` },
     ],
     layout: [
@@ -108,6 +108,7 @@ export const compressorCalculators = [
     <tr><td>GDD, TOD, FOD and the solved separation</td><td>An independent reference in 40-digit arithmetic: its own geometry and ray tracer, derivatives by finite differences, Treacy’s explicit GDD</td><td>see the <a href="${GITHUB}/docs/validation.md" target="_blank" rel="noopener">validation table</a></td></tr>
     <tr><td>Fresnel transmission</td><td>The same reference, from the amplitude coefficients</td><td>see the validation table</td></tr>
     <tr><td>Output duration</td><td>The analytic Gaussian and sech² durations when the phase is pure GDD</td><td>better than 10⁻³</td></tr>
+    <tr><td>GDD and TOD of grating and prism pairs, double pass</td><td>Light Conversion’s two-prism and grating-pair compressor calculators ${cite(6)}, on benches matched in geometry (perpendicular grating separation; glass in each prism and the path between them)</td><td>grating pairs identical to 10⁻¹¹; prism pairs GDD within 5 × 10⁻⁴ and TOD within 1 % in fused silica, where both use the same index fit (the residual is consistent with numerical derivatives of the index on their side)</td></tr>
   </tbody>
 </table>
 <p>The page shows dispersion to the nearest fs², fs³ or fs⁴ and durations to the nearest fs (a tenth of a fs below 10 fs): the computation is far more precise than that, but the glass data and the plane-wave model hold no more.</p>
@@ -133,7 +134,7 @@ export const compressorCalculators = [
       { label: 'O. E. Martinez, “3000 times grating compressor with positive group velocity dispersion: application to fiber compensation in 1.3–1.6 µm region”, IEEE J. Quantum Electron. 23, 59–64 (1987)', url: 'https://doi.org/10.1109/JQE.1987.1073201' },
       { label: 'D. Strickland and G. Mourou, “Compression of amplified chirped optical pulses”, Opt. Commun. 56, 219–221 (1985)', url: 'https://doi.org/10.1016/0030-4018(85)90120-8' },
       { label: 'M. Pessot, P. Maine and G. Mourou, “1000 times expansion/compression of optical pulses for chirped pulse amplification”, Opt. Commun. 62, 419–421 (1987)', url: 'https://doi.org/10.1016/0030-4018(87)90011-3' },
-      { label: 'Light Conversion, Optics Toolbox: two-prism compressor and grating-pair compressor calculators, the starting point for this page', url: 'https://toolbox.lightcon.com/tools/prismpair' },
+      { label: 'Light Conversion, Optics Toolbox: two-prism compressor and grating-pair compressor calculators, used here as an outside check of the results', url: 'https://toolbox.lightcon.com/tools/prismpair' },
     ],
   },
 ];
