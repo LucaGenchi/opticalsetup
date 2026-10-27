@@ -86,23 +86,39 @@ def best_gaussian_radius(V):
     u = lp01_u(V)
     w = math.sqrt(V * V - u * u)
     j0u, k0w = bessel_j(0, u), bessel_k(0, w)
-    # The mode on a radial grid (core radius 1), tabulated once.
-    core = [(r, bessel_j(0, u * r) / j0u) for r in (k / 200 for k in range(201))]
-    out = 12.0
-    clad = [(r, bessel_k(0, w * r) / k0w) for r in (1 + k * (out - 1) / 2200 for k in range(2201))]
+    # The mode on radial grids (core radius 1), tabulated once: the core,
+    # then the cladding in segments of growing step out to where the field
+    # K0(w r) has fallen by e^-40 (at low V the mode reaches many core radii).
+    out = max(12.0, 40.0 / w)
+    segments = [[(r, bessel_j(0, u * r) / j0u) for r in (k / 200 for k in range(201))]]
+    for a, b, step in ((1.0, 3.0, 0.01), (3.0, 12.0, 0.05), (12.0, out, 0.25)):
+        if b <= a:
+            continue
+        n = 2 * math.ceil((b - a) / step / 2)
+        segments.append([(r, bessel_k(0, w * r) / k0w) for r in (a + k * (b - a) / n for k in range(n + 1))])
 
-    def integrate(pairs, g):
-        n = len(pairs) - 1
-        h = (pairs[-1][0] - pairs[0][0]) / n
-        return math.fsum((1 if k in (0, n) else 4 if k % 2 else 2) * g(r, e) for k, (r, e) in enumerate(pairs)) * h / 3
+    def integrate(g):
+        total = []
+        for pairs in segments:
+            n = len(pairs) - 1
+            h = (pairs[-1][0] - pairs[0][0]) / n
+            total.append(math.fsum((1 if k in (0, n) else 4 if k % 2 else 2) * g(r, e) for k, (r, e) in enumerate(pairs)) * h / 3)
+        return math.fsum(total)
 
-    power = integrate(core, lambda r, e: e * e * r) + integrate(clad, lambda r, e: e * e * r)
+    power = integrate(lambda r, e: e * e * r)
 
     def eta(s):
-        cross = integrate(core, lambda r, e: e * math.exp(-r * r / s ** 2) * r) + integrate(clad, lambda r, e: e * math.exp(-r * r / s ** 2) * r)
+        cross = integrate(lambda r, e: e * math.exp(-r * r / s ** 2) * r)
         return cross ** 2 / (power * s * s / 4)
 
-    lo, hi = 0.5, 3.0
+    # Bracket the optimum on a coarse logarithmic scan (it must lie inside
+    # the scan, not on its edge), then refine by golden-section search.
+    grid = [0.3 * 100 ** (k / 60) for k in range(61)]
+    values = [eta(s) for s in grid]
+    best = max(range(len(grid)), key=values.__getitem__)
+    if best in (0, len(grid) - 1):
+        raise ValueError(f"V = {V}: the best Gaussian lies outside the search range")
+    lo, hi = grid[best - 1], grid[best + 1]
     g = (math.sqrt(5) - 1) / 2
     a, b = hi - g * (hi - lo), lo + g * (hi - lo)
     fa, fb = eta(a), eta(b)
@@ -173,8 +189,12 @@ def coupling_case(name, inputs):
     for _ in range(200):
         mid = math.sqrt(lo * hi)
         lo, hi = (mid, hi) if focus(w_in, nm, mid)[0] < w_mode else (lo, mid)
-    expected = {"focusWaistUm": sig(w_f), "focusDistanceMm": sig(s), "matchEfficiency": sig(matched),
-                "efficiency": sig(eff), "optimalFocalMm": sig(math.sqrt(lo * hi))}
+    # Through a fiber given by core and NA the mode radius sits on a flat
+    # optimum, known to about 1e-8: keep 6 digits so the expected file does
+    # not depend on the machine's maths library.
+    digits = 6 if inputs["fiberMode"] == "step" else 10
+    expected = {"focusWaistUm": sig(w_f), "focusDistanceMm": sig(s), "matchEfficiency": sig(matched, digits),
+                "efficiency": sig(eff, digits), "optimalFocalMm": sig(math.sqrt(lo * hi), digits)}
     return {"name": name, "inputs": {"kind": "coupling", **inputs}, "expected": expected,
             "tolerance": {k: 1e-9 for k in expected}}
 
@@ -190,7 +210,7 @@ def cases():
         out.append({
             "name": f"step-index core {core} um, NA {na}, {nm} nm (V = {V:.3f}): mode-field diameter against the exact LP01 mode",
             "inputs": {"kind": "fiber", "wavelengthNm": nm, "coreDiameterUm": core, "na": na},
-            "expected": {"vNumber": sig(V), "cutoffNm": sig(2 * math.pi * a * na / J0_ZERO * 1e3), "modeFieldDiameterUm": sig(2 * s * a)},
+            "expected": {"vNumber": sig(V), "cutoffNm": sig(2 * math.pi * a * na / J0_ZERO * 1e3), "modeFieldDiameterUm": sig(2 * s * a, 6)},
             "tolerance": {"vNumber": 1e-9, "cutoffNm": 1e-9, "modeFieldDiameterUm": 1e-2},
             "note": f"the page uses Marcuse's fit; the reference fits the exact LP01 mode, whose best Gaussian couples to it at {best:.4f}. The fit's accuracy, about 1 %, sets the tolerance",
         })
@@ -201,6 +221,10 @@ def cases():
         coupling_case("same, 20 um axial offset", {**base, "axialOffsetUm": 20.0}),
         coupling_case("same, 5 mrad tilt", {**base, "tiltMrad": 5.0}),
         coupling_case("same, all three together", {**base, "lateralOffsetUm": 1.5, "axialOffsetUm": -15.0, "tiltMrad": 3.0}),
+        # Offset and tilt in one plane: the offset is where the beam's centre
+        # meets the fiber face, a positive tilt travels toward it.
+        coupling_case("same, 2 um offset, 30 um past the focus, tilted 20 mrad toward the offset side", {**base, "lateralOffsetUm": 2.0, "axialOffsetUm": 30.0, "tiltMrad": 20.0}),
+        coupling_case("same, tilted 20 mrad back toward the axis", {**base, "lateralOffsetUm": 2.0, "axialOffsetUm": 30.0, "tiltMrad": -20.0}),
         coupling_case("780 nm, 1.2 mm beam, f 8 mm, MFD 5.3 um, mismatched and offset", {**base, "wavelengthNm": 780, "beamDiameterMm": 1.2, "focalMm": 8.0, "mfdUm": 5.3, "lateralOffsetUm": 0.8, "tiltMrad": 4.0}),
         coupling_case("633 nm, 0.8 mm beam, f 4.5 mm, core 3.5 um NA 0.12 (mode from the exact LP01 fit)", {**base, "wavelengthNm": 633, "beamDiameterMm": 0.8, "focalMm": 4.5, "fiberMode": "step", "coreDiameterUm": 3.5, "na": 0.12}),
     ]
@@ -224,10 +248,10 @@ MODEL = {
         "W. B. Joyce and B. C. DeLoach, Appl. Opt. 23, 4187-4196 (1984), doi:10.1364/AO.23.004187 (alignment of Gaussian beams: offset, tilt, defocus)",
     ],
     "provenance": "The eigenvalue equation and field written from Gloge's weakly-guiding analysis; the coupling as the normalized overlap integral of the two fields on the face, as in Kogelnik and in Joyce and DeLoach. Marcuse's fit and the page's closed-form overlap are not used here.",
-    "domain": "Step-index fibers with V 1.4-2.75 (633-1550 nm, one above the single-mode cutoff, cores 3.5-8.2 um, NA 0.12-0.14); collimated beams of 0.8-2 mm focused by 4.5-11 mm lenses; aligned, and with lateral offsets to 1.5 um, axial offsets to +/-20 um and tilts to 5 mrad, separately and together.",
-    "convergence": "Bessel integrals by the trapezoid rule (400 and 800 nodes); 100- and 120-step bisections; mode overlaps by Simpson's rule on 200 core and 2200 cladding intervals to 12 core radii; golden-section search to 80 steps; face overlaps by the trapezoid rule on 6000 intervals over 12 beam widths; focal-length bisection to 200 steps.",
-    "tolerance_rationale": "1e-9 relative for the V number, cutoff and every coupling quantity computed from the same mode radius (algebra and spectrally accurate quadrature); 1 % on the mode-field diameter and 2 % on coupling through a fiber given by core and NA, because the page uses Marcuse's fit and the reference the exact LP01 mode.",
-    "outside_scope": "Declines a mode or beam diameter that is not positive, a non-positive focal length, and V outside 1.2-3.5, where Marcuse's fit leaves the exact mode by more than 1 % (at V = 1 it is 70 % too wide); above 2.405 the fit still describes LP01, but the fiber is no longer single-mode, and the page says so.",
+    "domain": "Step-index fibers with V 1.4-2.75 (633-1550 nm, one above the single-mode cutoff, cores 3.5-8.2 um, NA 0.12-0.14); collimated beams of 0.8-2 mm focused by 4.5-11 mm lenses; aligned, and with lateral offsets (on the fiber face) to 2 um, axial offsets to +/-30 um and tilts of either sign to 20 mrad in the plane of the offset, separately and together.",
+    "convergence": "Bessel integrals by the trapezoid rule (400 and 800 nodes); 100- and 120-step bisections; mode overlaps by Simpson's rule on 200 core intervals and cladding steps of 0.01-0.25 core radii out to where the field has fallen by e^-40 (at least 12 core radii); the best Gaussian bracketed on a 61-point logarithmic scan from 0.3 to 30 core radii (it must fall inside) and refined by golden-section search to 80 steps; face overlaps by the trapezoid rule on 6000 intervals over 12 beam widths; focal-length bisection to 200 steps.",
+    "tolerance_rationale": "1e-9 relative for the V number, cutoff and every coupling quantity computed from the same mode radius (algebra and spectrally accurate quadrature); 1 % on the mode-field diameter and 2 % on the aligned coupling through a fiber given by core and NA, because the page uses Marcuse's fit and the reference the exact LP01 mode (at large misalignments a 1 % radius error can move the efficiency by more). Values that pass through the best-Gaussian optimum are stored to 6 digits, which it fixes to about 1e-8.",
+    "outside_scope": "Declines a mode or beam diameter that is not positive, a non-positive focal length, and V outside 1.2-3.5, the range checked here. The reference finds the fit within 1 % of the exact mode's best Gaussian from V = 1.0 (-0.49 %) to about 4.0 (-0.72 %), and degrading below: -3.6 % at V = 0.9, -13 % at V = 0.8. Above 2.405 the fit still describes LP01, but the fiber is no longer single-mode, and the page says so.",
     "fidelity": "computed",
     "scope": "Paraxial scalar coupling of a TEM00 beam into the fundamental mode, approximated as a Gaussian; ideal thin lens; no Fresnel reflection, aberrations, polarization or cladding modes.",
 }

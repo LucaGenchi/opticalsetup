@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { GAUSSIAN_INPUTS, GAUSSIAN_DEFAULTS, computeGaussianBeam, gaussianScan } from './gaussian-beam.js';
+import { GAUSSIAN_INPUTS, GAUSSIAN_DEFAULTS, computeGaussianBeam, gaussianScan, widthNames } from './gaussian-beam.js';
 import { mountCalculator } from '../assets/simple-calculator-page.js';
 import { formatNumber } from '../assets/calculator-kit.js';
 
@@ -13,21 +13,21 @@ mountCalculator({ inputs: GAUSSIAN_INPUTS, defaults: GAUSSIAN_DEFAULTS, groups: 
 }, compute: computeGaussianBeam, hideInactive: true,
   rows: r => {
     const v = r.values, b = r.input, tem00 = v.m2 === 1, lens = r.lens;
-    const at = r.at;
+    const at = r.at, name = widthNames(v.m2);
     return {
       beam: [{ group: 'The beam at its waist' },
-        row('Waist radius w₀', b.waistUm), row('Waist diameter 2w₀', 2 * b.waistUm),
+        row(`Waist ${name.radius} w₀`, b.waistUm), row(`Waist ${name.diameter}`, 2 * b.waistUm),
         ['Rayleigh range z_R', b.rayleighMm, 'mm'], ['Depth of focus 2z_R', 2 * b.rayleighMm, 'mm'],
         ['Divergence, half angle θ', b.halfDivergenceMrad, 'mrad'], ['Divergence, full angle 2θ', 2 * b.halfDivergenceMrad, 'mrad'],
         ['Beam parameter product w₀θ', b.bppMmMrad, 'mm·mrad'],
         ...(r.waistIntensityWcm2 ? [['Peak intensity at the waist', r.waistIntensityWcm2, 'W/cm²', 4]] : [])],
       focus: lens ? [{ group: `After the ${lens.focalMm > 0 ? 'converging' : 'diverging'} lens` },
-        row('New waist radius', lens.output.waistUm), row('New waist diameter', 2 * lens.output.waistUm),
+        row(`New waist ${name.radius}`, lens.output.waistUm), row(`New waist ${name.diameter}`, 2 * lens.output.waistUm),
         lens.distanceMm >= 0 ? ['Waist distance after the lens', lens.distanceMm, 'mm'] : ['Virtual waist, before the lens', -lens.distanceMm, 'mm'],
         ['New Rayleigh range', lens.output.rayleighMm, 'mm'], ['New divergence, full angle', 2 * lens.output.halfDivergenceMrad, 'mrad'],
-        ['Magnification w₀′/w₀', lens.magnification, '', 4], row('Beam radius at the lens', lens.lensRadiusUm)] : [],
+        ['Magnification w₀′/w₀', lens.magnification, '', 4], row(`Beam ${name.radius} at the lens`, lens.lensRadiusUm)] : [],
       calc: [{ group: `At z = ${formatNumber(v.zMm, 6)} mm${at.after ? ', after the lens' : ''}` },
-        row('Beam radius w', at.radiusUm), row('Beam diameter 2w (1/e²)', 2 * at.radiusUm),
+        row(`Beam ${name.radius} w`, at.radiusUm), row(`Beam ${name.diameter}`, 2 * at.radiusUm),
         ...(tem00 ? [row('Diameter at half maximum', 2 * at.radiusUm * Math.sqrt(Math.log(2) / 2))] : []),
         at.after ? ['Ratio to the new waist w/w₀′', at.radiusUm / lens.output.waistUm, '', 4] : ['Ratio to the waist w/w₀', at.radiusUm / b.waistUm, '', 4],
         Number.isFinite(at.curvatureMm) ? ['Wavefront radius of curvature R', at.curvatureMm, 'mm'] : ['Wavefront radius of curvature R', 'flat (at the waist)'],
@@ -37,8 +37,8 @@ mountCalculator({ inputs: GAUSSIAN_INPUTS, defaults: GAUSSIAN_DEFAULTS, groups: 
   },
   notes: r => {
     const v = r.values, out = [];
-    out.push(v.m2 === 1 ? 'An ideal TEM₀₀ Gaussian beam: widths are 1/e² intensity radii.'
-      : `M² = ${formatNumber(v.m2, 4)}: the embedded-Gaussian rule (λ → M²λ) gives the second-moment width and divergence. The profile is not Gaussian, so the half-maximum diameter, peak intensity and Gouy phase are not given.`);
+    out.push(v.m2 === 1 ? 'An ideal TEM₀₀ Gaussian beam: widths are 1/e² intensity radii and diameters.'
+      : `M² = ${formatNumber(v.m2, 4)}: the embedded-Gaussian rule (λ → M²λ) gives second-moment widths (radius 2σ, diameter D4σ, ISO 11146) and divergence, which are not 1/e² widths for a non-Gaussian profile. For the same reason the half-maximum diameter, peak intensity and Gouy phase are not given.`);
     if (v.index !== 1) out.push(`In a medium of index ${formatNumber(v.index, 4)}: the wavelength there is λ/n, which lengthens the Rayleigh range and narrows the divergence by n.`);
     if (r.lens) {
       const { lens } = r;
@@ -55,22 +55,28 @@ mountCalculator({ inputs: GAUSSIAN_INPUTS, defaults: GAUSSIAN_DEFAULTS, groups: 
     return out;
   },
   graphs: r => {
-    const scan = gaussianScan(r), x = scan.map(p => p.zMm);
-    const big = Math.max(...scan.map(p => p.radiusUm)) >= 2000;
-    const unit = big ? 'mm' : 'µm', k = big ? 1e-3 : 1;
-    const vlines = [{ x: 0, label: 'waist' }];
-    if (r.lens) {
-      vlines.push({ x: r.lens.positionMm, label: 'lens' });
-      // Labelled only when it sits clear of the lens line (8 % of the plot).
-      if (r.lens.distanceMm > 0.08 * (x.at(-1) - x[0])) vlines.push({ x: r.lens.positionMm + r.lens.distanceMm, label: 'new waist' });
+    // The lens plane appears twice in the scan, before and after it: the
+    // radius is continuous there, the curvature jumps, so its line breaks.
+    const scan = gaussianScan(r), x = [], radius = [], curvature = [];
+    for (const p of scan) {
+      if (p.gap) { x.push(p.zMm); radius.push(p.radiusUm); curvature.push(null); }
+      x.push(p.zMm); radius.push(p.radiusUm); curvature.push(1000 / p.curvatureMm);
     }
+    const big = Math.max(...radius) >= 2000;
+    const unit = big ? 'mm' : 'µm', k = big ? 1e-3 : 1;
+    const name = widthNames(r.values.m2);
+    // Marker lines, the lens first; one that would sit within 8 % of the
+    // plot of another is left out, so labels never overlap.
+    const marks = r.lens ? [{ x: r.lens.positionMm, label: 'lens' }, ...(r.lens.distanceMm > 0 ? [{ x: r.lens.positionMm + r.lens.distanceMm, label: 'new waist' }] : []), { x: 0, label: 'waist' }] : [{ x: 0, label: 'waist' }];
+    const vlines = [];
+    for (const m of marks) if (vlines.every(o => Math.abs(o.x - m.x) > 0.08 * (x.at(-1) - x[0]))) vlines.push(m);
     return {
       caustic: { x, xLabel: 'Distance from the input waist z (mm)', xUnit: 'mm', yLabel: `Beam radius w (${unit})`, yMin: 0,
-        series: [{ name: 'Beam radius w(z)', color: '--series-1', fill: 'light', values: scan.map(p => p.radiusUm * k) }],
+        series: [{ name: `Beam ${name.radius}`, color: '--series-1', fill: 'light', values: radius.map(w => w * k) }],
         vlines, marker: { x: r.values.zMm, y: r.at.radiusUm * k },
         formatX: n => formatNumber(n, 4), formatY: n => formatNumber(n, 4) },
       curvature: { x, xLabel: 'Distance from the input waist z (mm)', xUnit: 'mm', yLabel: 'Wavefront curvature 1/R (1/m)',
-        series: [{ name: 'Curvature 1/R', color: '--series-1', values: scan.map(p => 1000 / p.curvatureMm) }],
+        series: [{ name: 'Curvature 1/R', color: '--series-1', values: curvature }],
         vlines, marker: { x: r.values.zMm, y: 1000 / r.at.curvatureMm },
         formatX: n => formatNumber(n, 4), formatY: n => formatNumber(n, 4) },
     };

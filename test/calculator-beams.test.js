@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { GAUSSIAN_DEFAULTS, computeGaussianBeam, gaussianBeam, beamAt, thinLensFocus, waistFrom, gaussianScan } from '../calculators/gaussian-beam/gaussian-beam.js';
+import { GAUSSIAN_DEFAULTS, computeGaussianBeam, gaussianBeam, beamAt, thinLensFocus, waistFrom, gaussianScan, widthNames, PARAXIAL_LIMIT_MRAD } from '../calculators/gaussian-beam/gaussian-beam.js';
 import { FIBER_DEFAULTS, computeFiberCoupling, gaussianCoupling, fiberMode, matchingFocalMm, couplingScan, SINGLE_MODE_V } from '../calculators/fiber-coupling/fiber-coupling.js';
 import { beamCalculators } from '../tools/calculators-beam-content.mjs';
 
@@ -125,16 +125,99 @@ test('fiber coupling: the mode, its range and the tolerances', () => {
     close(-10 * Math.log10(eta / r.matchEfficiency), 1, 1e-9, key);
   }
   // Scans: finite, between 0 and 1, and through the current reading.
-  const odd = [{}, { lateralOffsetUm: 50, axialOffsetUm: -2000, tiltMrad: 200 }, { beamDiameterMm: 0.01 }, { focalMm: 0.1 }, { fiberMode: 'step', wavelengthNm: 633, coreDiameterUm: 3.5, na: 0.12 }];
+  const odd = [{}, { lateralOffsetUm: 50, axialOffsetUm: -2000, tiltMrad: 200 }, { lateralOffsetUm: 3, axialOffsetUm: 80, tiltMrad: -40 }, { beamDiameterMm: 0.01 }, { focalMm: 1.2, beamDiameterMm: 0.4 }, { fiberMode: 'step', wavelengthNm: 633, coreDiameterUm: 3.5, na: 0.12 }];
   for (const c of odd) {
     const res = fiber(c);
     assert.ok(res.ok, JSON.stringify(c));
     for (const key of ['focalMm', 'lateralOffsetUm', 'axialOffsetUm', 'tiltMrad']) {
       const scan = couplingScan(res, key);
-      assert.ok(scan.every(p => Number.isFinite(p.x) && p.efficiency >= 0 && p.efficiency <= 1 + 1e-12), `${JSON.stringify(c)} ${key}`);
+      assert.ok(scan.every(p => Number.isFinite(p.x) && (p.efficiency === null || (p.efficiency >= 0 && p.efficiency <= 1 + 1e-12))), `${JSON.stringify(c)} ${key}`);
     }
     assert.ok(Object.values(res.tolerance).every(Number.isFinite));
   }
+});
+
+// Review of PR #275: the paraxial limit after a lens and on the fiber page,
+// widths named for M² > 1, the offset-and-tilt geometry, the fiber face
+// before the lens, and a focus the graph must not step over.
+test('the paraxial limit holds after a lens and on the fiber page, with nothing non-finite', () => {
+  const lensed = beam({ lens: true, waistUm: 500, lensDistanceMm: 0, focalMm: 0.1 });
+  assert.equal(lensed.ok, false);
+  assert.match(lensed.errors[0].message, /5000 mrad/);
+  assert.equal(beam({ lens: true, lensDistanceMm: 0, focalMm: 1e-9 }).ok, false);
+  assert.equal(beam({ lens: true, lensDistanceMm: 0, focalMm: -1e-9 }).ok, false);
+  const near = beam({ lens: true, waistUm: 1000, lensDistanceMm: 0, focalMm: 15 });
+  assert.ok(near.ok && near.lens.output.halfDivergenceMrad < PARAXIAL_LIMIT_MRAD);
+  assert.equal(fiber({ focalMm: 0.1 }).ok, false);
+  assert.equal(fiber({ focalMm: 0.1, beamDiameterMm: 100 }).ok, false);
+  // The focal-length graph has no value where the page would refuse.
+  const r = fiber({ beamDiameterMm: 20, focalMm: 40 });
+  const scan = couplingScan(r, 'focalMm');
+  for (const p of scan) {
+    const steep = computeFiberCoupling({ ...FIBER_DEFAULTS, beamDiameterMm: 20, focalMm: p.x });
+    assert.equal(p.efficiency === null, !steep.ok, `f = ${p.x}`);
+  }
+  assert.ok(scan.some(p => p.efficiency === null) && scan.some(p => p.efficiency !== null));
+});
+
+test('widths are named 1/e² for TEM₀₀ and second-moment (D4σ) for M² > 1', () => {
+  assert.match(widthNames(1).diameter, /1\/e²/);
+  for (const m2 of [1.01, 1.3, 20]) {
+    const n = widthNames(m2);
+    assert.match(n.diameter, /D4σ/);
+    assert.match(n.radius, /2σ/);
+    assert.doesNotMatch(`${n.radius} ${n.diameter} ${n.kind}`, /1\/e²/);
+  }
+});
+
+test('fiber coupling: offset on the face, tilt signed in its plane', () => {
+  // The reviewer's case: w′ = w_m = 5 µm, 100 µm past the focus, 5 µm off.
+  const at = (dz, t) => gaussianCoupling({ waistUm: 5, modeRadiusUm: 5, wavelengthNm: 1550, axialOffsetUm: dz, lateralOffsetUm: 5, tiltMrad: t });
+  close(at(100, 30), 0.1962039, 1e-6);
+  close(at(100, -30), 0.3603770, 1e-6);
+  // Before the focus the curvature turns over and so does the better sign;
+  // at the focus the sign does not matter.
+  close(at(-100, -30), at(100, 30), 1e-12);
+  close(at(0, 30), at(0, -30), 1e-12);
+  // The page accepts both signs and its tolerance is symmetric.
+  assert.ok(fiber({ tiltMrad: -10 }).ok);
+  close(fiber({ tiltMrad: -10 }).efficiency, fiber({ tiltMrad: 10 }).efficiency, 1e-12);
+  const scan = couplingScan(fiber({}), 'tiltMrad');
+  assert.ok(scan[0].x < 0 && scan.at(-1).x > 0);
+});
+
+test('fiber coupling: the face may not sit before the lens, and the focus-error graph stops there', () => {
+  const r = fiber({});
+  const lensUm = r.focusDistanceMm * 1e3;
+  const before = fiber({ axialOffsetUm: -20000 });
+  assert.equal(before.ok, false);
+  assert.match(before.errors[0].message, /before the lens/);
+  assert.equal(fiber({ axialOffsetUm: -Math.ceil(lensUm) }).ok, false);
+  assert.ok(fiber({ axialOffsetUm: -Math.floor(lensUm) + 1 }).ok);
+  // A long focal length with a large focus error: the scan would reach past
+  // the lens, so it is cut at the lens plane.
+  const deep = fiber({ focalMm: 1.5, beamDiameterMm: 0.2, axialOffsetUm: 1000 });
+  assert.ok(deep.ok);
+  const scan = couplingScan(deep, 'axialOffsetUm');
+  assert.ok(scan[0].x > -deep.focusDistanceMm * 1e3, `${scan[0].x} vs ${-deep.focusDistanceMm * 1e3}`);
+  // Far off the fiber nothing couples, and the loss is said, not drawn as a dash.
+  assert.ok(fiber({ lateralOffsetUm: 1000 }).lossDb > 300);
+});
+
+test('Gaussian graph: a tight focus is sampled at its waist, and the lens plane splits the curvature', () => {
+  const r = beam({ lens: true, waistUm: 1000, lensDistanceMm: 0, focalMm: 15 });
+  const scan = gaussianScan(r);
+  close(Math.min(...scan.map(p => p.radiusUm)), r.focusWaistUm, 1e-12);
+  const gap = scan.findIndex(p => p.gap);
+  assert.ok(gap > 0 && scan[gap].zMm === scan[gap - 1].zMm && scan[gap].zMm === r.lens.positionMm);
+  close(scan[gap].radiusUm, scan[gap - 1].radiusUm, 1e-12, 'the radius is continuous at the lens');
+  close(1 / scan[gap].curvatureMm - 1 / scan[gap - 1].curvatureMm, -1 / r.lens.focalMm, 1e-9, 'the curvature jumps by −1/f');
+  assert.ok(scan.every((p, i) => i === 0 || p.zMm >= scan[i - 1].zMm), 'sorted');
+  // And for a slow beam with a lens far down the line, both waists are hit.
+  const slow = beam({ lens: true, waistUm: 50, wavelengthNm: 632.8, lensDistanceMm: 3000, focalMm: 200, zMm: 3200 });
+  const s2 = gaussianScan(slow);
+  close(Math.min(...s2.filter(p => p.zMm < slow.lens.positionMm).map(p => p.radiusUm)), 50, 1e-12);
+  close(Math.min(...s2.filter(p => p.after).map(p => p.radiusUm)), slow.focusWaistUm, 1e-12);
 });
 
 // The numbers the page text quotes, recomputed. A change to the engine that

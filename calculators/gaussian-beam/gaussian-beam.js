@@ -9,8 +9,24 @@
 //   z_R = π w₀² n / (M² λ),   θ = M² λ / (π n w₀),
 //   w(z) = w₀ √(1 + (z/z_R)²),   R(z) = z (1 + (z_R/z)²),   ψ(z) = atan(z/z_R).
 //
+// Widths are 1/e² intensity radii for TEM₀₀. For M² > 1 the same formulas
+// describe second-moment widths (ISO 11146): the radius 2σ and diameter
+// D4σ, which equal the 1/e² values only for a Gaussian profile.
+//
 // Units: λ in nm, beam radii in µm, distances and focal lengths in mm,
 // angles in mrad, power in W, intensity in W/cm².
+
+// Beyond this half angle the paraxial formulas do not hold.
+export const PARAXIAL_LIMIT_MRAD = 300;
+
+// A half angle for a refusal: the formulas' own number while it still
+// means something.
+export const steepText = mrad => (mrad <= 1e4 ? `${Math.round(mrad)} mrad` : 'more than 10 rad');
+
+// What the widths are called: 1/e² for TEM₀₀, second moments otherwise.
+export const widthNames = m2 => (m2 === 1
+  ? { radius: 'radius (1/e²)', diameter: 'diameter (1/e²)', kind: '1/e² intensity' }
+  : { radius: 'radius (second moment, 2σ)', diameter: 'diameter (D4σ)', kind: 'second-moment (D4σ)' });
 import { defaultsFor, parseInputs, unavailable } from '../assets/calculator-inputs.js';
 
 const effectiveWavelengthMm = (wavelengthNm, m2, index) => m2 * wavelengthNm * 1e-6 / index;
@@ -63,13 +79,13 @@ export const GAUSSIAN_INPUTS = [
     help: 'Vacuum wavelength.' },
   { id: 'given', type: 'select', group: 'beam', label: 'Beam given by', value: 'waist',
     options: [['waist', 'Waist radius w₀'], ['diameter', 'Waist diameter 2w₀'], ['divergence', 'Full divergence angle 2θ'], ['rayleigh', 'Rayleigh range z_R']],
-    help: 'Any one of these fixes the others. All widths are 1/e² intensity radii or diameters.' },
+    help: 'Any one of these fixes the others. Widths are 1/e² intensity values for a TEM₀₀ beam, second-moment (D4σ) values for M² > 1.' },
   { id: 'waistUm', group: 'beam', label: 'Waist radius w₀', unit: 'µm', value: 500, min: 0.1, max: 1e6, when: 'given', whenValue: 'waist',
-    help: '1/e² intensity radius at the narrowest point.' },
+    help: 'Radius at the narrowest point: 1/e² for TEM₀₀, the second-moment radius 2σ for M² > 1.' },
   { id: 'waistDiameterUm', group: 'beam', label: 'Waist diameter 2w₀', unit: 'µm', value: 1000, min: 0.2, max: 2e6, when: 'given', whenValue: 'diameter',
-    help: '1/e² intensity diameter at the narrowest point.' },
+    help: 'Diameter at the narrowest point: 1/e² for TEM₀₀, D4σ for M² > 1.' },
   { id: 'divergenceMrad', group: 'beam', label: 'Full divergence 2θ', unit: 'mrad', value: 1.355, min: 1e-4, max: 1000, when: 'given', whenValue: 'divergence',
-    help: 'Full far-field angle of the 1/e² diameter. Paraxial: keep it well below 1 rad.' },
+    help: 'Full far-field angle of the diameter (1/e², or D4σ for M² > 1). Paraxial: keep it well below 1 rad.' },
   { id: 'rayleighMm', group: 'beam', label: 'Rayleigh range z_R', unit: 'mm', value: 738, min: 1e-4, max: 1e9, when: 'given', whenValue: 'rayleigh',
     help: 'Distance from the waist to where the area has doubled.' },
   { id: 'm2', group: 'beam', label: 'Beam quality M²', unit: '', value: 1, min: 1, max: 1000, arrowStep: 0.1,
@@ -105,10 +121,16 @@ export function computeGaussianBeam(raw) {
   if (v.lens && v.focalMm === 0) return unavailable('A focal length of 0 is not a lens.', 'focalMm');
   const waistUm = waistFrom(v.given, v[VALUE_ID[v.given]], v.wavelengthNm, v.m2, v.index);
   const input = gaussianBeam({ waistUm, wavelengthNm: v.wavelengthNm, m2: v.m2, index: v.index });
-  if (input.halfDivergenceMrad > 300) return unavailable(`This waist diverges at ${Math.round(input.halfDivergenceMrad)} mrad (half angle): far outside the paraxial approximation these formulas rest on. Choose a larger waist or a smaller divergence.`, VALUE_ID[v.given]);
+  if (input.halfDivergenceMrad > PARAXIAL_LIMIT_MRAD) return unavailable(`This waist diverges at ${steepText(input.halfDivergenceMrad)} (half angle): far outside the paraxial approximation these formulas rest on. Choose a larger waist or a smaller divergence.`, VALUE_ID[v.given]);
   let lens = null;
   if (v.lens) {
     const focus = thinLensFocus(input, v.lensDistanceMm, v.focalMm);
+    if (![focus.beam.waistUm, focus.distanceMm, focus.beam.rayleighMm].every(Number.isFinite) || !(focus.beam.waistUm > 0)) {
+      return unavailable('This lens gives no finite beam after it: choose a focal length further from 0.', 'focalMm');
+    }
+    if (focus.beam.halfDivergenceMrad > PARAXIAL_LIMIT_MRAD) {
+      return unavailable(`The lens turns the beam into one with a half angle of ${steepText(focus.beam.halfDivergenceMrad)}: far outside the paraxial approximation these formulas rest on. Choose a longer focal length.`, 'focalMm');
+    }
     lens = { positionMm: v.lensDistanceMm, focalMm: v.focalMm, output: focus.beam, distanceMm: focus.distanceMm, magnification: focus.magnification, lensRadiusUm: focus.lensRadiusUm };
   }
   const result = { ok: true, values: v, input, lens };
@@ -132,19 +154,38 @@ export function plotSpan(result) {
   const points = [v.zMm];
   if (!lens) points.push(-2 * input.rayleighMm, 2 * input.rayleighMm);
   else {
-    const waistAt = lens.positionMm + lens.distanceMm;
-    points.push(-Math.min(2 * input.rayleighMm, Math.max(lens.positionMm, input.rayleighMm) / 2), 0, lens.positionMm);
-    if (lens.distanceMm > 0) points.push(waistAt + Math.max(2 * lens.output.rayleighMm, 0.5 * lens.distanceMm));
-    else points.push(lens.positionMm + Math.max(2 * Math.abs(lens.distanceMm), 2 * lens.output.rayleighMm, lens.positionMm));
+    // After the lens: past the new waist, or out from a virtual one.
+    const after = lens.distanceMm > 0 ? lens.distanceMm + Math.max(2 * lens.output.rayleighMm, 0.5 * lens.distanceMm)
+      : Math.max(2 * Math.abs(lens.distanceMm), 2 * lens.output.rayleighMm, lens.positionMm);
+    // Before the input waist: some of its near field, but never more than
+    // the stretch after the lens, which is what the lens is there for.
+    points.push(-Math.min(2 * input.rayleighMm, Math.max(lens.positionMm, input.rayleighMm) / 2, lens.positionMm + after), 0, lens.positionMm, lens.positionMm + after);
   }
   const lo = Math.min(...points), hi = Math.max(...points), pad = 0.05 * (hi - lo || 1);
   return [lo - pad, hi + pad];
 }
 
-export function gaussianScan(result, count = 401) {
+// The graphs' samples: an even grid over the span, plus a fine grid within
+// four Rayleigh ranges of each waist (so a tight focus is never stepped
+// over), the reading point, and the lens plane twice, just before and just
+// after it (the second marked `gap`: the curvature jumps there).
+export function gaussianScan(result, count = 401, local = 161) {
   const [lo, hi] = plotSpan(result);
-  return Array.from({ length: count }, (_, i) => {
-    const zMm = lo + (hi - lo) * i / (count - 1);
-    return { zMm, ...beamAlong(result, zMm) };
-  });
+  const { input, lens, values: v } = result;
+  const zs = Array.from({ length: count }, (_, i) => lo + (hi - lo) * i / (count - 1));
+  const around = (centre, zr, from, to) => {
+    const a = Math.max(from, centre - 4 * zr), b = Math.min(to, centre + 4 * zr);
+    if (b > a) for (let i = 0; i < local; i++) zs.push(a + (b - a) * i / (local - 1));
+    if (centre >= from && centre <= to) zs.push(centre);
+  };
+  around(0, input.rayleighMm, lo, lens ? Math.min(hi, lens.positionMm) : hi);
+  if (lens && lens.distanceMm > 0) around(lens.positionMm + lens.distanceMm, lens.output.rayleighMm, Math.max(lo, lens.positionMm), hi);
+  if (v.zMm >= lo && v.zMm <= hi) zs.push(v.zMm);
+  const points = [...new Set(zs)].sort((a, b) => a - b).map(zMm => ({ zMm, ...beamAlong(result, zMm) }));
+  if (lens && lens.positionMm > lo && lens.positionMm < hi) {
+    const at = points.findIndex(p => p.zMm > lens.positionMm);
+    const after = { zMm: lens.positionMm, ...beamAt(lens.output, -lens.distanceMm), after: true, gap: true };
+    points.splice(at < 0 ? points.length : at, 0, after);
+  }
+  return points;
 }

@@ -8,12 +8,16 @@
 //
 //   V = 2π a NA / λ,   w_m / a = 0.65 + 1.619 V^(−3/2) + 2.879 V^(−6),
 //
-// which stays within 1 % of the best Gaussian for the exact LP₀₁ mode for
-// 1.2 ≤ V ≤ 3.5 (checked by the Python reference). The efficiency is the
+// which the Python reference checks against the best Gaussian for the exact
+// LP₀₁ mode over 1.2 ≤ V ≤ 3.5, the range this page accepts (within 1 %). The efficiency is the
 // normalized overlap of the focused beam and that mode on the fiber face,
 // in closed form. Per transverse axis, with the beam's complex curvature
 // A = ik/(2q) (q = Δz + i z_R′ at the face, Δz past the focus), B = 1/w_m²,
-// a lateral offset x₀ and a tilt θ,
+// a lateral offset x₀ and a tilt θ. Geometry: x₀ is where the beam's centre
+// meets the fiber face, measured from the fiber axis; θ is the angle of the
+// beam's axis to the fiber's, in the same plane, positive when the beam
+// travels toward +x (the side of a positive offset). On the face the tilt is
+// a phase gradient kθ; its sign matters together with an offset and defocus.
 //
 //   η_x = 2 √(Re A · B) / |A + B| · exp(2 Re[(2A x₀ + ikθ)² / (4(A + B)) − A x₀²]),
 //
@@ -21,12 +25,15 @@
 // (2 w w_m / (w² + w_m²))². Units: λ in nm, beam diameter in mm, mode and
 // offsets in µm, distances in mm, tilt in mrad.
 import { defaultsFor, parseInputs, unavailable } from '../assets/calculator-inputs.js';
-import { gaussianBeam, thinLensFocus } from '../gaussian-beam/gaussian-beam.js';
+import { gaussianBeam, thinLensFocus, steepText } from '../gaussian-beam/gaussian-beam.js';
 
 // First zero of J₀: LP₁₁ is guided above it.
 export const SINGLE_MODE_V = 2.404825557695773;
-// Where Marcuse's fit holds to 1 % (the Python reference's exact-mode check).
+// The range of V in which the page uses Marcuse's fit: where the Python
+// reference checks it against the exact mode (within 1 % there).
 export const MARCUSE_V = [1.2, 3.5];
+// Beyond this half angle (rad) the paraxial beam formulas do not hold.
+export const PARAXIAL_LIMIT_MRAD = 300;
 
 export function fiberMode({ wavelengthNm, coreDiameterUm, na }) {
   const a = coreDiameterUm / 2;
@@ -95,12 +102,12 @@ export const FIBER_INPUTS = [
     help: 'Step-index core.' },
   { id: 'na', group: 'fiber', label: 'Numerical aperture', unit: '', value: 0.14, min: 0.01, max: 0.5, arrowStep: 0.01, when: 'fiberMode', whenValue: 'step',
     help: 'NA = √(n_core² − n_clad²), the index-profile NA.' },
-  { id: 'lateralOffsetUm', group: 'align', label: 'Lateral offset', unit: 'µm', value: 0, min: 0, max: 1000, arrowStep: 0.1,
-    help: 'Distance between the focus and the fiber axis, across the beam.' },
+  { id: 'lateralOffsetUm', group: 'align', label: 'Lateral offset on the face', unit: 'µm', value: 0, min: 0, max: 1000, arrowStep: 0.1,
+    help: 'Where the beam’s centre meets the fiber face, measured from the fiber axis.' },
   { id: 'axialOffsetUm', group: 'align', label: 'Axial offset from the focus', unit: 'µm', value: 0, min: -100000, max: 100000, arrowStep: 1,
     help: 'Fiber face beyond (positive) or before (negative) the focused waist.' },
-  { id: 'tiltMrad', group: 'align', label: 'Tilt', unit: 'mrad', value: 0, min: 0, max: 300, arrowStep: 0.5,
-    help: 'Angle between the beam axis and the fiber axis.' },
+  { id: 'tiltMrad', group: 'align', label: 'Tilt', unit: 'mrad', value: 0, min: -300, max: 300, arrowStep: 0.5,
+    help: 'Angle between the beam axis and the fiber axis, in the plane of the offset: positive when the beam travels away from the axis on the offset side, negative when back toward it.' },
 ];
 export const FIBER_DEFAULTS = defaultsFor(FIBER_INPUTS);
 
@@ -128,12 +135,20 @@ export function computeFiberCoupling(raw) {
   if (v.fiberMode === 'step') {
     mode = fiberMode(v);
     if (!mode.inFit) {
-      return unavailable(`V = ${mode.vNumber.toFixed(3)}: outside ${MARCUSE_V[0]}–${MARCUSE_V[1]}, where the Gaussian fit to the fundamental mode holds to 1 %. Enter the mode-field diameter instead.`, 'coreDiameterUm', 'na');
+      return unavailable(`V = ${mode.vNumber.toFixed(3)}: outside ${MARCUSE_V[0]}–${MARCUSE_V[1]}, the range in which this page’s Gaussian fit to the fundamental mode is checked. Enter the mode-field diameter instead.`, 'coreDiameterUm', 'na');
     }
   } else mode = { modeFieldDiameterUm: v.mfdUm };
   const modeRadiusUm = mode.modeFieldDiameterUm / 2;
   const focus = focusCollimated(v.beamDiameterMm, v.wavelengthNm, v.focalMm);
   const waistUm = focus.beam.waistUm;
+  if (!(Number.isFinite(waistUm) && waistUm > 0 && Number.isFinite(focus.distanceMm)) || focus.beam.halfDivergenceMrad > PARAXIAL_LIMIT_MRAD) {
+    return unavailable(`The lens focuses the beam at a half angle of ${steepText(focus.beam.halfDivergenceMrad)}, far outside the paraxial approximation this page rests on (and the acceptance of any single-mode fiber). Choose a longer focal length or a narrower beam.`, 'focalMm', 'beamDiameterMm');
+  }
+  // The face must lie after the lens: before it the light is still the
+  // incoming beam, not the focused one.
+  if (!(focus.distanceMm + v.axialOffsetUm * 1e-3 > 0)) {
+    return unavailable(`An axial offset of ${v.axialOffsetUm} µm puts the fiber face ${(-(focus.distanceMm + v.axialOffsetUm * 1e-3)).toFixed(3)} mm before the lens; the focus is ${focus.distanceMm.toFixed(3)} mm after it.`, 'axialOffsetUm');
+  }
   const base = { waistUm, modeRadiusUm, wavelengthNm: v.wavelengthNm };
   const offsets = { axialOffsetUm: v.axialOffsetUm, lateralOffsetUm: v.lateralOffsetUm, tiltMrad: v.tiltMrad };
   const matchEfficiency = gaussianCoupling(base);
@@ -165,15 +180,20 @@ export function couplingScan(result, key, count = 241) {
     const centre = result.optimalFocalMm ?? v.focalMm, lo = Math.min(centre, v.focalMm) / 3, hi = Math.max(centre, v.focalMm) * 3;
     return Array.from({ length: count }, (_, i) => {
       const f = lo * (hi / lo) ** (i / (count - 1));
-      return { x: f, efficiency: gaussianCoupling({ ...base, waistUm: focusCollimated(v.beamDiameterMm, v.wavelengthNm, f).beam.waistUm }) };
+      const focus = focusCollimated(v.beamDiameterMm, v.wavelengthNm, f);
+      // No value where the page would refuse: beyond the paraxial limit, or
+      // with the face before the lens.
+      const valid = focus.beam.halfDivergenceMrad <= PARAXIAL_LIMIT_MRAD && focus.distanceMm + v.axialOffsetUm * 1e-3 > 0;
+      return { x: f, efficiency: valid ? gaussianCoupling({ ...base, waistUm: focus.beam.waistUm }) : null };
     });
   }
   const reach = roundUp({
     lateralOffsetUm: Math.max(3 * result.tolerance.lateralUm, 1.2 * v.lateralOffsetUm),
     axialOffsetUm: Math.max(3 * result.tolerance.axialUm, 1.2 * Math.abs(v.axialOffsetUm)),
-    tiltMrad: Math.max(3 * result.tolerance.tiltMrad, 1.2 * v.tiltMrad),
+    tiltMrad: Math.max(3 * result.tolerance.tiltMrad, 1.2 * Math.abs(v.tiltMrad)),
   }[key]);
-  const span = key === 'axialOffsetUm' ? [-reach, reach] : [0, reach];
+  // The axial scan stops at the lens; tilt runs both ways.
+  const span = key === 'axialOffsetUm' ? [Math.max(-reach, -result.focusDistanceMm * 1e3 * (1 - 1e-6)), reach] : key === 'tiltMrad' ? [-Math.min(reach, PARAXIAL_LIMIT_MRAD), Math.min(reach, PARAXIAL_LIMIT_MRAD)] : [0, reach];
   return Array.from({ length: count }, (_, i) => {
     const x = span[0] + (span[1] - span[0]) * i / (count - 1);
     return { x, efficiency: gaussianCoupling({ ...base, [key]: x }) };

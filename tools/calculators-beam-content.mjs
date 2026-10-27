@@ -51,7 +51,7 @@ export const beamCalculators = [
         formulas: [
           { tex: String.raw`z_R = \frac{\pi w_0^2 n}{M^2\lambda},\qquad \theta = \frac{M^2\lambda}{\pi n w_0},\qquad w_0\theta = \frac{M^2\lambda}{\pi n}` },
         ],
-        html2: '<p>So the 0.5 mm, 1064 nm beam with M² = 1.5 has a Rayleigh range of 492 mm instead of 738 mm, and diverges at 1.02 mrad. M² describes widths and divergence; it says nothing about the shape of the profile, so for M² &gt; 1 the page gives no peak intensity, half-maximum diameter or Gouy phase.</p>',
+        html2: `<p>So the 0.5 mm, 1064 nm beam with M² = 1.5 has a Rayleigh range of 492 mm instead of 738 mm, and diverges at 1.02 mrad. The widths are then second-moment widths, the radius 2σ and the diameter D4σ of ISO 11146 ${cite(4)}, which equal the 1/e² widths only for a Gaussian profile; the page labels them so. M² says nothing about the shape of the profile, so for M² &gt; 1 the page gives no peak intensity, half-maximum diameter or Gouy phase.</p>`,
       },
       { id: 'lens', title: 'Focusing with a thin lens',
         html: `<p>A thin lens turns one Gaussian beam into another. Self’s equations give the new waist and where it forms, for an input waist a distance s before a lens of focal length f ${cite(2)}:</p>`,
@@ -61,7 +61,7 @@ export const beamCalculators = [
         html2: '<p>Two limits are worth knowing. A beam that reaches the lens collimated (its waist at the lens, z<sub>R</sub> ≫ f) focuses to w₀′ ≈ λf/(πw₀) at almost exactly f. A 1064 nm beam with a 1 mm waist and a 100 mm lens gives a 33.8 µm waist at 99.89 mm. But when z<sub>R</sub> is not much longer than f, the waist forms well short of the focal point: with a 0.25 mm waist (z<sub>R</sub> = 185 mm) the same lens focuses at 77.3 mm. Ray optics would put both at 100 mm. A waist placed at the front focal plane (s = f) comes out at the back focal plane, magnified by f/z<sub>R</sub>: a 50 µm HeNe waist becomes 403 µm.</p>',
       },
       { id: 'precision', title: 'Precision and limits',
-        html: '<p>An independent Python reference propagates the complex beam parameter q with ABCD matrices, finds the waist after a lens where q is imaginary, and recovers a waist from a divergence by bisection on the far-field limit. It never uses the closed forms above. The page agrees with it to 10⁻⁹ relative, through converging, imaging, virtual-waist and diverging lenses.</p><p>The formulas are paraxial: they hold while the beam’s angles are small, roughly below 0.1 rad, so a waist of a few wavelengths or less is outside them. The page refuses half-angle divergences above 0.3 rad and warns above 0.1 rad after a lens. The lens is ideal and thin, with no aberrations or clipping. An aperture of radius a passes 1 − exp(−2a²/w²) of a TEM₀₀ beam: 99 % at a = 1.52 w, 99.99 % at a = 2.15 w. The medium is uniform and lossless, and widths are 1/e² intensity values throughout.</p>',
+        html: '<p>An independent Python reference propagates the complex beam parameter q with ABCD matrices, finds the waist after a lens where q is imaginary, and recovers a waist from a divergence by bisection on the far-field limit. It never uses the closed forms above. The page agrees with it to 10⁻⁹ relative, through converging, imaging, virtual-waist and diverging lenses.</p><p>The formulas are paraxial: they hold while the beam’s angles are small, roughly below 0.1 rad, so a waist of a few wavelengths or less is outside them. The page refuses a beam whose half-angle divergence exceeds 0.3 rad, before or after the lens, and warns above 0.1 rad after it. The lens is ideal and thin, with no aberrations or clipping. An aperture of radius a passes 1 − exp(−2a²/w²) of a TEM₀₀ beam: 99 % at a = 1.52 w, 99.99 % at a = 2.15 w. The medium is uniform and lossless. Widths are 1/e² intensity values for TEM₀₀ and second-moment values for M² &gt; 1.</p>',
       },
     ],
     references: [KOGELNIK, SELF, SIEGMAN, ISO],
@@ -77,9 +77,9 @@ export const beamCalculators = [
     ],
     graphs: [
       { id: 'focal', wide: true, title: 'Efficiency against focal length', note: 'With the alignment as set; the line marks the focal length that matches the mode.' },
-      { id: 'lateral', title: 'Lateral offset', note: 'The focus moved across the fiber face.' },
-      { id: 'axial', title: 'Focus error', note: 'The fiber face before (negative) or beyond (positive) the focused waist.' },
-      { id: 'tilt', title: 'Tilt', note: 'The angle between the beam and the fiber axis.' },
+      { id: 'lateral', title: 'Lateral offset', note: 'Where the beam’s centre meets the fiber face, from the fiber axis.' },
+      { id: 'axial', title: 'Focus error', note: 'The fiber face before (negative) or beyond (positive) the focused waist; the graph stops at the lens.' },
+      { id: 'tilt', title: 'Tilt', note: 'The angle between the beam and the fiber axis, in the plane of the offset: positive when the beam travels away from the axis on the offset side.' },
     ],
     columns: [
       { form: 'calc', results: 'focus', label: 'The focused beam' },
@@ -110,14 +110,14 @@ export const beamCalculators = [
         formulas: [
           { tex: String.raw`\eta = \frac{\left|\iint E_\text{beam}\,E_\text{mode}^{*}\,dA\right|^2}{\iint|E_\text{beam}|^2dA\,\iint|E_\text{mode}|^2dA},\qquad \eta_0 = \left(\frac{2\,w'w_m}{w'^2+w_m^2}\right)^2` },
         ],
-        html2: '<p>A lateral offset d, a tilt θ and a focus error Δz each lower it. For matched waists (w′ = w<sub>m</sub> = w) and one error at a time the losses take simple forms:</p>',
+        html2: '<p>A lateral offset d, a tilt θ and a focus error Δz each lower it. Here d is where the beam’s centre meets the fiber face, Δz how far the face lies past the focused waist, and θ the angle between the beam and the fiber axis in the plane of the offset, positive when the beam travels away from the axis on the offset side. With an offset and a focus error together, the sign of the tilt matters, because the wavefront on the face is curved: with the face past the focus, a beam heading back toward the axis couples better; with the face before the focus, one heading away from it. For matched waists (w′ = w<sub>m</sub> = w) and one error at a time the losses take simple forms:</p>',
         formulas2: [
           { tex: String.raw`\eta_d = e^{-d^2/w^2},\qquad \eta_\theta = e^{-(\pi w\theta/\lambda)^2},\qquad \eta_{\Delta z} = \frac{1}{1+\left(\Delta z/2z_R\right)^2}`, caption: 'The page evaluates the general overlap in closed form, with all three errors and any waist ratio at once.' },
         ],
         html3: '<p>Lateral offset is the critical one: the example loses 1 dB (21 % of the light) at a 2.55 µm offset, against 58 µm of focus error and 44.6 mrad of tilt. Offset and focus tolerances grow with the mode size and the tilt tolerance shrinks with it: a larger mode is easier to hit and harder to aim.</p>',
       },
       { id: 'precision', title: 'Precision and limits',
-        html: '<p>An independent Python reference integrates the overlap numerically on the fiber face, focuses the beam with the ABCD law, finds the matching focal length by bisection and computes the exact LP₀₁ mode from its Bessel-function equation. The page agrees with it to 10⁻⁹ relative for a given mode-field diameter, and within the fit’s 1 % (2 % in efficiency) when the mode comes from core and NA.</p><p>Not included: Fresnel reflection at the fiber face (about 3.4 % for uncoated silica, 0.15 dB; an anti-reflection coating or index matching removes most of it), lens aberrations, clipping by the lens or by a connector, polarization, beams with M² &gt; 1, and the slight non-Gaussian shape of the true mode. The page gives the ideal upper bound for the alignment you enter.</p>',
+        html: '<p>An independent Python reference integrates the overlap numerically on the fiber face, focuses the beam with the ABCD law, finds the matching focal length by bisection and computes the exact LP₀₁ mode from its Bessel-function equation. The page agrees with it to 10⁻⁹ relative for a given mode-field diameter, and within the fit’s 1 % (2 % in the aligned efficiency) when the mode comes from core and NA.</p><p>Not included: Fresnel reflection at the fiber face (about 3.4 % for uncoated silica, 0.15 dB; an anti-reflection coating or index matching removes most of it), lens aberrations, clipping by the lens or by a connector, polarization, beams with M² &gt; 1, and the slight non-Gaussian shape of the true mode. The page refuses a focus steeper than 0.3 rad (half angle) and a fiber face placed before the lens. Its efficiency is the overlap of ideal Gaussian fields, not a guaranteed upper bound: a real fiber’s mode can couple slightly more or less, especially far from alignment.</p>',
       },
     ],
     references: [GLOGE, MARCUSE, KOGELNIK, JOYCE, SELF],

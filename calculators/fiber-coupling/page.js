@@ -27,7 +27,8 @@ mountCalculator({ inputs: FIBER_INPUTS, defaults: FIBER_DEFAULTS, groups: {
       calc: [{ group: 'Lens choice' },
         r.optimalFocalMm ? ['Focal length that matches the mode', r.optimalFocalMm, 'mm', 4] : ['Focal length that matches the mode', 'none: the beam is not larger than the mode'],
         ['Mode matching with this lens', percent(r.matchEfficiency), '%', 4], ['Loss from mode mismatch', r.matchLossDb, 'dB', 3],
-        ...(misaligned ? [{ group: 'With the misalignments set' }, ['Coupling efficiency', percent(r.efficiency), '%', 4], ['Coupling loss', r.lossDb, 'dB', 3]] : []),
+        ...(misaligned ? [{ group: 'With the misalignments set' }, ['Coupling efficiency', percent(r.efficiency), '%', 4],
+          r.lossDb <= 300 ? ['Coupling loss', r.lossDb, 'dB', 3] : ['Coupling loss', 'more than 300 dB: nothing couples']] : []),
         { group: 'Alignment that costs 1 dB more' },
         ['Lateral offset', r.tolerance.lateralUm, 'µm', 3], ['Axial offset (either way)', r.tolerance.axialUm, 'µm', 3], ['Tilt', r.tolerance.tiltMrad, 'mrad', 3]],
     };
@@ -42,6 +43,7 @@ mountCalculator({ inputs: FIBER_INPUTS, defaults: FIBER_DEFAULTS, groups: {
     if (r.optimalFocalMm && Math.abs(v.focalMm / r.optimalFocalMm - 1) > 0.05) out.push(`A ${formatNumber(r.optimalFocalMm, 3)} mm lens would match the mode exactly (100 % for a perfect Gaussian mode).`);
     if (r.focus.beam.halfDivergenceMrad > 100) out.push('The focused beam converges faster than 0.1 rad: beyond the paraxial approximation, and beyond the acceptance of most single-mode fibers.');
     if (r.focus.input.rayleighMm < 10 * v.focalMm) out.push('The input beam’s Rayleigh range is not long compared with the focal length: it is not really collimated, and the waist forms well short of f (the page accounts for this).');
+    out.push('The lateral offset is where the beam’s centre meets the fiber face; the tilt lies in the same plane, positive when the beam travels away from the axis on the offset side. With an offset and a focus error, the sign of the tilt matters.');
     out.push('The 1 dB alignment figures move one axis at a time from perfect alignment. Each graph below varies one quantity with the others as set.');
     return out;
   },
@@ -49,7 +51,7 @@ mountCalculator({ inputs: FIBER_INPUTS, defaults: FIBER_DEFAULTS, groups: {
     const chart = (key, xLabel, xUnit, x0, vlines = []) => {
       const scan = couplingScan(r, key);
       return { x: scan.map(p => p.x), xLabel, xUnit, yLabel: 'Coupling efficiency (%)', yMin: 0, yMax: 100,
-        series: [{ name: 'Efficiency', color: '--series-1', values: scan.map(p => percent(p.efficiency)) }],
+        series: [{ name: 'Efficiency', color: '--series-1', values: scan.map(p => (p.efficiency === null ? null : percent(p.efficiency))) }],
         vlines, marker: { x: x0, y: percent(r.efficiency) },
         formatX: n => formatNumber(n, 4), formatY: n => formatNumber(n, 4) };
     };
@@ -58,7 +60,7 @@ mountCalculator({ inputs: FIBER_INPUTS, defaults: FIBER_DEFAULTS, groups: {
       focal: chart('focalMm', 'Lens focal length f (mm)', 'mm', v.focalMm, r.optimalFocalMm ? [{ x: r.optimalFocalMm, label: 'matched' }] : []),
       lateral: chart('lateralOffsetUm', 'Lateral offset (µm)', 'µm', v.lateralOffsetUm),
       axial: chart('axialOffsetUm', 'Axial offset from the focus (µm)', 'µm', v.axialOffsetUm),
-      tilt: chart('tiltMrad', 'Tilt (mrad)', 'mrad', v.tiltMrad),
+      tilt: chart('tiltMrad', 'Tilt, positive away from the axis (mrad)', 'mrad', v.tiltMrad),
     };
   },
 });
