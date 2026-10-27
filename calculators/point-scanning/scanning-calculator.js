@@ -131,8 +131,9 @@ export function computeResolution(raw) {
       pointLateralUm: 0.37 * um(meanNm) / na, pointAxialUm: 0.64 * um(meanNm) / axialNa,
       sliceUm: pinholeAu === null ? null : Math.hypot(0.88 * um(detNm) / axialNa, Math.SQRT2 * n * result.pinholeUm / na),
     };
-  } else {
-    // The same objective, one-photon without a pinhole at the same
+  } else if (!signal.harmonic) {
+    // Fluorescence only (a harmonic has no one-photon counterpart): the
+    // same objective, one-photon without a pinhole at the same
     // wavelength and at λ/N (the transition the N photons reach together):
     // lateral widths only, as neither has an axial resolution.
     result.sameWavelength = { lateralUm: excitation.lateralUm };
@@ -157,6 +158,11 @@ export function resolutionProfiles(r, count = 161) {
   const grid = span => Array.from({ length: count }, (_, i) => -span + 2 * span * i / (count - 1));
   const xs = grid(1.6 * Math.max(r.lateralUm, r.excitationLateralUm));
   const lat = f => xs.map(x => f(Math.abs(x) / latScale));
+  if (!r.linear && r.signal.harmonic) {
+    // A harmonic has no one-photon counterpart to compare with.
+    const zs = grid(1.6 * r.axialUm);
+    return { lateral: { x: xs, own: lat(r.psf.lateral), others: [] }, axial: { x: zs, own: zs.map(z => r.psf.axial(Math.abs(z) / axScale)), others: [] } };
+  }
   if (!r.linear) {
     // The one-photon comparison at λ/N has optical coordinates N times the
     // excitation's.

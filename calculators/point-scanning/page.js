@@ -42,6 +42,8 @@ mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hide
       ...(r.linear ? [['1 AU at the detected wavelength (at the sample)', r.auUm, 'µm', 3]] : []),
       ...(r.pinholeUm !== null ? [['Pinhole diameter at the sample', r.pinholeUm, 'µm', 3]] : []),
     ];
+    // A harmonic has no one-photon counterpart: no comparison tables.
+    if (!r.linear && r.signal.harmonic) return { 'res-focus': focus, 'res-light': light };
     if (!r.linear) {
       return {
         'res-focus': focus, 'res-light': light,
@@ -93,8 +95,9 @@ mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hide
     if (r.linear && r.values.detection === 'elastic') out.push('Scattered or reflected light is treated as coming from point-like, incoherent scatterers. A mirror or an interface images coherently and gives narrower axial responses (Zeiss quotes 0.45 instead of 0.64 for a mirror).');
     if (r.linear && r.values.detection === 'raman') out.push(`The Stokes line of a ${formatNumber(r.values.ramanShiftCm, 5)} cm⁻¹ shift lies at ${nm(r.detNm)}.`);
     if (!r.linear) {
-      out.push(`The signal follows the ${r.order === 2 ? 'square' : 'cube'} of the excitation intensity, so the point image is the excitation PSF to the power ${r.order}: laterally narrower than one-photon excitation at the same wavelength, wider than one-photon excitation at λ/${r.order}. Along the axis the signal is confined to the focus, which gives optical sectioning without a pinhole; one-photon excitation without a pinhole has none.`);
-      out.push(`The one-photon confocal comparison is excited at ${nm(r.transitionConfocalNm)} and detects ${r.signal.harmonic ? 'the same wavelength as the harmonic' : `the emission at ${nm(r.detNm)}`} through a 1 AU pinhole. One-photon excitation still reaches every plane the beam crosses; only the pinhole rejects their signal.`);
+      out.push(`The signal follows the ${r.order === 2 ? 'square' : 'cube'} of the excitation intensity, so the point image is the excitation PSF to the power ${r.order}, and the signal is confined to the focus: optical sectioning without a pinhole.`);
+      if (!r.signal.harmonic) out.push(`Laterally the point image is narrower than one-photon excitation at the same wavelength and wider than one-photon excitation at λ/${r.order}; one-photon excitation without a pinhole has no optical sectioning.`);
+      if (!r.signal.harmonic) out.push(`The one-photon confocal comparison is excited at ${nm(r.transitionConfocalNm)} and detects the emission at ${nm(r.detNm)} through a 1 AU pinhole. One-photon excitation still reaches every plane the beam crosses; only the pinhole rejects their signal.`);
       if (r.signal.harmonic) out.push(`${r.order === 2 ? 'SHG' : 'THG'} is generated coherently at exactly λ/${r.order} = ${nm(r.detNm)}. The point image applies to a point-like source; extended structures add coherent effects (phase matching, the Gouy phase, forward and backward emission) that are not modelled.`);
     }
     if (r.na / r.n > 0.7) out.push('Above about NA/n = 0.7, the polarization of the focused light widens the real focus along the polarization direction; this scalar model does not include it.');

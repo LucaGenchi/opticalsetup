@@ -103,7 +103,7 @@ test('N-photon point images narrow against one-photon at the same wavelength', (
   for (const [signal, order] of [['2pf', 2], ['3pf', 3], ['shg', 2], ['thg', 3]]) {
     const r = resolution({ mode: 'nonlinear', signal, nlWavelengthNm: 1000, na: 1.0 });
     assert.equal(r.order, order);
-    assert.ok(r.lateralUm < r.sameWavelength.lateralUm && r.lateralUm > r.transition.lateralUm);
+    if (!r.signal.harmonic) assert.ok(r.lateralUm < r.sameWavelength.lateralUm && r.lateralUm > r.transition.lateralUm);
     assert.ok(r.axialUm < r.excitationAxialUm && r.axialUm > r.excitationAxialUm / Number(order));
     assert.equal(r.pinholeAu, null);
   }
@@ -149,7 +149,7 @@ test('nonlinear signals: harmonics at λ/N, and a one-photon confocal comparison
   // The comparison is the linear calculator at λ/N with a 1 AU pinhole.
   for (const [values, linear] of [
     [{ signal: '2pf', nlWavelengthNm: 920, nlEmissionNm: 520 }, { wavelengthNm: 460, detection: 'fluorescence', emissionNm: 520 }],
-    [{ signal: 'thg', nlWavelengthNm: 1200 }, { wavelengthNm: 400, detection: 'elastic' }],
+    [{ signal: '3pf', nlWavelengthNm: 1500, nlEmissionNm: 600 }, { wavelengthNm: 500, detection: 'fluorescence', emissionNm: 600 }],
   ]) {
     const r = resolution({ mode: 'nonlinear', ...values });
     const one = resolution({ pinhole: 'pinhole', pinholeAu: 1, ...linear });
@@ -158,6 +158,15 @@ test('nonlinear signals: harmonics at λ/N, and a one-photon confocal comparison
     const p = resolutionProfiles(r);
     assert.ok(p.axial.others[0].flat && p.axial.others[0].values.every(y => y === 1));
     assert.match(p.axial.others[1].name, /1 AU/);
+  }
+  // A harmonic has no one-photon counterpart: no comparison at all.
+  for (const signal of ['shg', 'thg']) {
+    const r = resolution({ mode: 'nonlinear', signal });
+    assert.equal(r.sameWavelength, undefined);
+    assert.equal(r.transitionConfocal, undefined);
+    const p = resolutionProfiles(r);
+    assert.equal(p.lateral.others.length, 0);
+    assert.equal(p.axial.others.length, 0);
   }
   // Fluorescence is emitted beyond λ/N.
   const anti = resolution({ mode: 'nonlinear', signal: '3pf', nlWavelengthNm: 1700, nlEmissionNm: 520 });
