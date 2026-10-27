@@ -362,6 +362,11 @@ export function createEditor(host, { presets, onChange, onPreset, onImport, onEx
       syncSystem();
       renderTable();
     },
+    // Settings edited outside the editor (the imaging and coupling tabs):
+    // keep them for the next edit, and change nothing shown.
+    adopt(next) {
+      system = next;
+    },
     // The normalized result of the user's own edit: keep what is being typed.
     update(next, { structural }) {
       const focus = document.activeElement;
