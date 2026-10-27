@@ -194,8 +194,11 @@ export function resolutionProfiles(r, count = 161) {
         { name: 'Confocal, point pinhole', values: zs.map(z => point.axial(Math.abs(z) / axScale)) }] },
     };
   }
-  // The detection response is wider: reach past its half-maximum points.
-  const zs = grid(Math.max(1.6 * r.axialUm, 0.75 * r.sliceUm));
+  // The detection response is wider: reach past its half-maximum points,
+  // and keep the central peak as finely sampled as the span alone would.
+  const core = grid(1.6 * r.axialUm), wide = grid(Math.max(1.6 * r.axialUm, 0.75 * r.sliceUm));
+  const zs = wide.at(-1) > core.at(-1)
+    ? [...wide.filter(z => Math.abs(z) > core.at(-1)), ...core].sort((a, b) => a - b) : core;
   const b = r.exNm / r.detNm;
   return {
     lateral: { x: xs, own: lat(r.psf.lateral), others: [{ name: 'No pinhole', values: lat(effectivePsf({}).lateral) }] },

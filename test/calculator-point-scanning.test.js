@@ -189,6 +189,27 @@ test('the axial graph reaches past the half maximum of the pinhole response', ()
   }
 });
 
+test('a wide axial graph still samples the central peak finely', () => {
+  // Half width read from the plotted samples by linear interpolation.
+  const plottedFwhm = ({ x, own }) => {
+    const edge = side => {
+      let i = own.indexOf(Math.max(...own));
+      while (own[i + side] >= 0.5) i += side;
+      const j = i + side;
+      return x[i] + (x[j] - x[i]) * (own[i] - 0.5) / (own[i] - own[j]);
+    };
+    return edge(1) - edge(-1);
+  };
+  for (const raw of [{ pinholeAu: 10 }, { pinholeAu: 10, wavelengthNm: 200, emissionNm: 3000 }]) {
+    const r = resolution(raw);
+    const p = resolutionProfiles(r).axial;
+    assert.ok(r.ok);
+    close(plottedFwhm(p), r.axialUm, 0.01);
+    assert.ok(p.x.every((z, i) => i === 0 || z > p.x[i - 1]));
+    assert.ok(p.others[0].values[0] < 0.5 && p.others[0].values.at(-1) < 0.5);
+  }
+});
+
 test('spontaneous Raman detects the Stokes line of the shift', () => {
   const r = resolution({ detection: 'raman', wavelengthNm: 532, ramanShiftCm: 2900 });
   close(r.detNm, ramanStokesWl(532, 2900), 1e-12);

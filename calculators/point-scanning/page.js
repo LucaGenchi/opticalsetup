@@ -103,6 +103,7 @@ mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hide
       if (!r.signal.harmonic) {
         out.push(`The one-photon confocal comparison is excited at ${nm(r.transitionConfocalNm)} and detects the emission at ${nm(r.detNm)} through a ${formatNumber(r.transitionConfocalAu, 3)} AU pinhole. One-photon excitation still reaches every plane the beam crosses; only the pinhole rejects their signal.`);
         out.push('About 1 AU is the typical pinhole and, for most fluorescence work, the best compromise between signal and depth discrimination; with weak fluorescence a wider pinhole trades sectioning for signal. These are ideal values: measured confocal resolution often falls short of them, while nonlinear microscopes come close to theirs.');
+        out.push('Two-photon excitation is chosen for other reasons: it bleaches and damages the specimen less outside the focus, sections without a pinhole, and its near-infrared light reaches deeper into scattering tissue.');
       }
       if (r.signal.harmonic) out.push(`${r.order === 2 ? 'SHG' : 'THG'} is generated coherently at exactly λ/${r.order} = ${nm(r.detNm)}. The point image applies to a point-like source; extended structures add coherent effects (phase matching, the Gouy phase, forward and backward emission) that are not modelled.`);
     }
