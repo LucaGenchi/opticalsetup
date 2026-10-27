@@ -244,7 +244,7 @@ function energyWindow(I, M, hMin, fraction) {
 }
 
 // Largest OPD step (waves) between neighbouring valid samples.
-function largestStep(samples, opd) {
+export function largestStep(samples, opd) {
   const { M, index } = samples;
   const grid = new Float64Array(M * M).fill(NaN);
   for (let k = 0; k < index.length; k++) grid[index[k]] = opd[k];
@@ -262,7 +262,7 @@ function largestStep(samples, opd) {
 // How far the image-space direction cosines of the traced rays depart from
 // an affine map of the pupil coordinates, as a fraction of the map's span:
 // 0 for a perfect FFT grid.
-function pupilDistortion(bundle, z, sphere) {
+export function pupilDistortion(bundle, z, sphere) {
   const rows = sphereDirections(bundle, z, sphere);
   let worst = 0, span = 0;
   for (const axis of [0, 1]) {

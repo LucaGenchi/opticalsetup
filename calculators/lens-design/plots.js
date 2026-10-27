@@ -287,7 +287,8 @@ export function drawSpots(canvas, result, { common = true } = {}) {
 const VIRIDIS = ['#440154', '#482878', '#3e4989', '#31688e', '#26828e', '#1f9e89', '#35b779', '#6ece58', '#fde725'];
 const DIVERGING = ['#2166ac', '#4393c3', '#92c5de', '#d1e5f0', '#f7f7f7', '#fddbc7', '#f4a582', '#d6604d', '#b2182b'];
 const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
-const ramps = { viridis: VIRIDIS.map(rgb), diverging: DIVERGING.map(rgb) };
+// grey, black to white, for images of a target.
+const ramps = { viridis: VIRIDIS.map(rgb), diverging: DIVERGING.map(rgb), grey: ['#000000', '#ffffff'].map(rgb) };
 export function colourAt(name, t) {
   const stops = ramps[name], x = Math.min(1, Math.max(0, t)) * (stops.length - 1);
   const i = Math.min(stops.length - 2, Math.floor(x)), f = x - i;

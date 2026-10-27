@@ -42,6 +42,13 @@ export const LIMITS = Object.freeze({
   imageOffset: 1e5,
   weight: 1e6,
   beamRatio: [0.05, 10],
+  separation: [0.05, 20],
+  frequency: [0.02, 1.5],
+  spokes: [4, 200],
+  mfdUm: [0.1, 1000],
+  offsetUm: 1e4,
+  axialUm: 1e5,
+  tiltMrad: 300,
 });
 
 // Diffraction settings: the pupil grid N (samples across the pupil at the
@@ -54,6 +61,24 @@ export const DIFFRACTION_PADDING = [2, 4];
 export const ILLUMINATIONS = ['uniform', 'gaussian'];
 export function defaultDiffraction() {
   return { grid: 64, padding: 2, illumination: 'uniform', beamRatio: 1, vignetting: true };
+}
+
+// Imaging settings (engine/imaging.js): the target, sized in units of the
+// lens's own resolution so that one setting suits any lens. `separation` is
+// the two points' distance in Rayleigh distances 0.61 λ/NA; `frequency` the
+// bars' or grating's spatial frequency as a fraction of the incoherent
+// cutoff 2 NA/λ; `phaseDeg` the second point's phase in coherent light;
+// `spokes` the Siemens star's number of dark–bright cycles. Fiber settings
+// (engine/coupling.js): the mode-field diameter at the wavelength, the core's
+// offset from the primary chief ray's image point, and the fiber's tilt from
+// the optical axis. Files without them read with these defaults.
+export const IMAGING_TARGETS = ['points', 'bars', 'grating', 'star'];
+export const IMAGING_AXES = ['x', 'y'];
+export function defaultImaging() {
+  return { target: 'points', axis: 'x', separation: 1, phaseDeg: 0, frequency: 0.6, spokes: 36 };
+}
+export function defaultCoupling() {
+  return { mfdUm: 4, offsetXUm: 0, offsetYUm: 0, axialUm: 0, tiltXMrad: 0, tiltYMrad: 0, fresnel: false };
 }
 
 // Fraunhofer F, d and C lines (nm): the default visible set.
@@ -145,6 +170,31 @@ export function normalizeSystem(raw = {}) {
     vignetting: df.vignetting !== false,
   };
 
+  const ig = src.imaging && typeof src.imaging === 'object' ? src.imaging : {};
+  const iDefault = defaultImaging();
+  // The phase is kept in [0, 360).
+  const phase = finite(ig.phaseDeg, iDefault.phaseDeg) % 360;
+  const imaging = {
+    target: IMAGING_TARGETS.includes(ig.target) ? ig.target : iDefault.target,
+    axis: IMAGING_AXES.includes(ig.axis) ? ig.axis : iDefault.axis,
+    separation: clamp(finite(ig.separation, iDefault.separation), ...LIMITS.separation),
+    phaseDeg: phase < 0 ? phase + 360 : phase,
+    frequency: clamp(finite(ig.frequency, iDefault.frequency), ...LIMITS.frequency),
+    spokes: clamp(Math.round(finite(ig.spokes, iDefault.spokes)), ...LIMITS.spokes),
+  };
+
+  const cp = src.coupling && typeof src.coupling === 'object' ? src.coupling : {};
+  const cDefault = defaultCoupling();
+  const coupling = {
+    mfdUm: clamp(finite(cp.mfdUm, cDefault.mfdUm), ...LIMITS.mfdUm),
+    offsetXUm: clampAbs(finite(cp.offsetXUm, 0), LIMITS.offsetUm),
+    offsetYUm: clampAbs(finite(cp.offsetYUm, 0), LIMITS.offsetUm),
+    axialUm: clampAbs(finite(cp.axialUm, 0), LIMITS.axialUm),
+    tiltXMrad: clampAbs(finite(cp.tiltXMrad, 0), LIMITS.tiltMrad),
+    tiltYMrad: clampAbs(finite(cp.tiltYMrad, 0), LIMITS.tiltMrad),
+    fresnel: cp.fresnel === true,
+  };
+
   const im = src.image && typeof src.image === 'object' ? src.image : {};
   const focus = ['paraxial', 'best-rms', 'fixed'].includes(im.focus) ? im.focus : 'paraxial';
 
@@ -163,6 +213,8 @@ export function normalizeSystem(raw = {}) {
     rayAiming: src.rayAiming === 'real' ? 'real' : 'paraxial',
     pupilSamples: clamp(Math.round(finite(src.pupilSamples, 32)), ...LIMITS.pupilSamples),
     diffraction,
+    imaging,
+    coupling,
   };
 }
 

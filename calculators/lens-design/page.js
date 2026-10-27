@@ -5,7 +5,8 @@
 // edit is normalized (engine/system.js), analysed in a worker
 // (engine/analyze.js) and drawn; the diffraction tabs ask a second worker
 // (engine/diffraction.js) for the chosen field, after each geometric
-// result, and only while one of them is open. The last design is
+// result, and only while one of them is open, and the imaging and coupling
+// tabs a worker each (engine/imaging.js, engine/coupling.js) likewise. The last design is
 // remembered in this browser only. Numbers shown here are formatted from the
 // analysis, never recomputed.
 
@@ -76,8 +77,11 @@ if (worker) {
 // edit, another field) is stopped by ending the worker and starting a new
 // one, so a 256-sample grid never holds up the next answer.
 const DIFFRACTION_TABS = ['wavefront', 'psf', 'mtf'];
+// Tabs that show one wavelength at a time.
+const MONOCHROMATIC_TABS = ['wavefront', 'imaging', 'coupling'];
 let diffWorker = null, diffBusy = false, diffNoWorker = false, diffId = 0;
-let diffResult = null, diffFor = null;
+// The result, and the prescription and field it was computed for.
+let diffResult = null, diffFor = null, diffField = null;
 const view = { field: 0, wavelength: 'poly', psfLog: false };
 
 function startDiffWorker() {
@@ -102,6 +106,7 @@ function requestDiffraction() {
   const id = ++diffId;
   diffFor = r; diffResult = null;
   view.field = Math.min(view.field, r.system.fields.values.length - 1);
+  diffField = view.field;
   const message = { id, kind: 'diffraction', system: r.system, field: view.field, zImage: r.image.z };
   if (diffBusy && diffWorker) { diffWorker.terminate(); diffWorker = null; }
   if (!diffWorker && !diffNoWorker) diffWorker = startDiffWorker();
@@ -234,9 +239,10 @@ function showResult(result) {
   const notes = $('#calc-notes');
   notes.textContent = '';
   for (const w of result?.warnings ?? []) notes.append(el('li', { text: w.text }));
-  for (const id of ['layout', 'spot', ...DIFFRACTION_TABS]) dirty.add(id);
+  for (const id of ['layout', 'spot', ...DIFFRACTION_TABS, ...COHERENT_TABS]) dirty.add(id);
   // The diffraction results belong to the previous prescription now.
   diffResult = null; diffFor = null;
+  for (const job of Object.values(jobs)) { job.result = null; job.for = null; }
   renderTab(activeTab);
   updateOpenLink(result);
 }
@@ -254,6 +260,7 @@ function renderTab(id) {
   if (id === 'layout') renderLayout(plot, body, result);
   if (id === 'spot') renderSpot(plot, body, result);
   if (DIFFRACTION_TABS.includes(id)) renderDiffraction(id, plot, body, result);
+  if (COHERENT_TABS.includes(id)) renderCoherent(id, plot, body, result);
 }
 
 function exportBar(...buttons) {
@@ -375,15 +382,14 @@ function diffractionControls(id, r) {
   fieldSelect.value = String(view.field);
   fieldSelect.addEventListener('change', () => {
     view.field = Number(fieldSelect.value);
-    requestDiffraction();
-    for (const t of DIFFRACTION_TABS) dirty.add(t);
+    for (const t of [...DIFFRACTION_TABS, ...COHERENT_TABS]) dirty.add(t);
     renderTab(activeTab);
   });
   const many = r.system.wavelengthsNm.length > 1;
-  const options = [...(many && id !== 'wavefront' ? [['poly', 'Polychromatic']] : []), ...r.system.wavelengthsNm.map((nm, i) => [String(i), nmText(nm)])];
+  const options = [...(many && !MONOCHROMATIC_TABS.includes(id) ? [['poly', 'Polychromatic']] : []), ...r.system.wavelengthsNm.map((nm, i) => [String(i), nmText(nm)])];
   const wlSelect = el('select', { 'aria-label': 'Wavelength' }, ...options.map(([v, t]) => el('option', { value: v, text: t })));
   wlSelect.value = String(selectedWavelength(id, r));
-  wlSelect.addEventListener('change', () => { view.wavelength = wlSelect.value === 'poly' ? 'poly' : Number(wlSelect.value); for (const t of DIFFRACTION_TABS) dirty.add(t); renderTab(activeTab); });
+  wlSelect.addEventListener('change', () => { view.wavelength = wlSelect.value === 'poly' ? 'poly' : Number(wlSelect.value); for (const t of [...DIFFRACTION_TABS, ...COHERENT_TABS]) dirty.add(t); renderTab(activeTab); });
   const bar = el('div', { class: 'bench-spot-controls bench-diffraction-controls' },
     el('label', { class: 'bench-check' }, document.createTextNode('Field'), fieldSelect),
     el('label', { class: 'bench-check' }, document.createTextNode('Wavelength'), wlSelect));
@@ -395,10 +401,11 @@ function diffractionControls(id, r) {
   return bar;
 }
 
-// 'poly' or a wavelength index; the wavefront tab shows one wavelength.
+// 'poly' or a wavelength index; the wavefront, imaging and coupling tabs
+// show one wavelength.
 function selectedWavelength(id, r) {
   const many = r.system.wavelengthsNm.length > 1;
-  if (view.wavelength === 'poly') return many && id !== 'wavefront' ? 'poly' : r.system.primaryWavelength;
+  if (view.wavelength === 'poly') return many && !MONOCHROMATIC_TABS.includes(id) ? 'poly' : r.system.primaryWavelength;
   return Math.min(view.wavelength, r.system.wavelengthsNm.length - 1);
 }
 
@@ -414,7 +421,7 @@ function modelLabel(d, choice) {
 
 function renderDiffraction(id, plot, body, r) {
   plot.append(diffractionControls(id, r));
-  if (diffFor !== r || (!diffResult && !diffBusy)) requestDiffraction();
+  if (diffFor !== r || diffField !== view.field || (!diffResult && !diffBusy)) requestDiffraction();
   if (!diffResult) {
     plot.append(el('p', { class: 'chart-message', text: 'Computing the wavefront and its diffraction…' }));
     dirty.add(id);
@@ -678,6 +685,308 @@ function renderMtf(plot, body, r, d, choice) {
 function mtfCsv(d, sel, count) {
   const lines = ['frequency_cycles_per_mm,tangential,sagittal,perfect_tangential,perfect_sagittal'];
   for (let k = 0; k < count; k++) lines.push([d.frequencies[k], sel.mtf.tan[k], sel.mtf.sag[k], sel.mtfIdeal.tan[k], sel.mtfIdeal.sag[k]].map(v => Number(v).toPrecision(6)).join(','));
+  return `${lines.join('\n')}\n`;
+}
+
+// --------------------------------------------- imaging and fiber coupling
+
+// The imaging and coupling tabs each have a worker of their own, run as the
+// diffraction worker is (a newer request stops a busy one), for the chosen
+// field and wavelength and the tab's own settings. Those settings live in
+// the prescription (system.imaging, system.coupling), so a saved file keeps
+// them; editing them asks for no new geometric analysis.
+const COHERENT_TABS = ['imaging', 'coupling'];
+const jobs = Object.fromEntries(COHERENT_TABS.map(kind => [kind, { worker: null, busy: false, noWorker: false, id: 0, result: null, for: null, key: '' }]));
+const jobKey = (kind, r) => `${view.field}|${selectedWavelength(kind, r)}|${JSON.stringify(current[kind])}`;
+
+function startJobWorker(kind) {
+  const job = jobs[kind];
+  try {
+    const w = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
+    w.onmessage = e => receiveJob(kind, e.data);
+    w.onerror = e => {
+      e.preventDefault?.();
+      job.worker = null; job.noWorker = true; job.busy = false;
+      requestJob(kind);
+    };
+    return w;
+  } catch {
+    job.noWorker = true;
+    return null;
+  }
+}
+
+function requestJob(kind) {
+  const r = lastResult, job = jobs[kind];
+  if (!r?.ok) return;
+  view.field = Math.min(view.field, r.system.fields.values.length - 1);
+  const id = ++job.id;
+  job.for = r; job.key = jobKey(kind, r); job.result = null;
+  const message = { id, kind, system: { ...r.system, [kind]: current[kind] }, field: view.field, zImage: r.image.z, wavelength: selectedWavelength(kind, r) };
+  if (job.busy && job.worker) { job.worker.terminate(); job.worker = null; }
+  if (!job.worker && !job.noWorker) job.worker = startJobWorker(kind);
+  if (job.worker) { job.busy = true; job.worker.postMessage(message); return; }
+  setTimeout(async () => {
+    const run = kind === 'imaging' ? (await import('./engine/imaging.js')).analyzeImaging : (await import('./engine/coupling.js')).analyzeCoupling;
+    let out;
+    try { out = { id, result: run(message.system, message) }; } catch (error) { out = { id, error: String(error?.message ?? error) }; }
+    receiveJob(kind, out);
+  }, 0);
+}
+
+function receiveJob(kind, { id, result, error }) {
+  const job = jobs[kind];
+  if (id !== job.id) return;
+  job.busy = false;
+  job.result = error ? { ok: false, errors: [`The ${kind} analysis failed: ${error}`], warnings: [] } : result;
+  dirty.add(kind);
+  renderTab(activeTab);
+}
+
+// A tab setting changed: keep it in the prescription and recompute that tab.
+function changeSetting(kind, mutate) {
+  const next = structuredClone(current);
+  mutate(next[kind]);
+  current = normalizeSystem(next);
+  editor.adopt(current);
+  save();
+  dirty.add(kind);
+  renderTab(activeTab);
+}
+
+// A labelled number box that commits on change (Enter or leaving it).
+function numberSetting(kind, key, label, unit, digits = 4) {
+  const input = el('input', { type: 'text', inputMode: 'decimal', value: formatNumber(current[kind][key], digits), class: 'bench-number' });
+  input.setAttribute('aria-label', `${label}${unit ? ` (${unit})` : ''}`);
+  input.addEventListener('change', () => {
+    const v = Number(input.value.trim().replace(',', '.').replace('−', '-'));
+    if (input.value.trim() === '' || !Number.isFinite(v)) { input.setAttribute('aria-invalid', 'true'); return; }
+    changeSetting(kind, s => { s[key] = v; });
+  });
+  return el('label', { class: 'bench-check' }, document.createTextNode(label), input, unit ? el('span', { class: 'bench-unit', text: unit }) : null);
+}
+function choiceSetting(kind, key, label, options) {
+  const select = el('select', { 'aria-label': label }, ...options.map(([v, t]) => el('option', { value: v, text: t })));
+  select.value = String(current[kind][key]);
+  select.addEventListener('change', () => changeSetting(kind, s => { s[key] = select.value; }));
+  return el('label', { class: 'bench-check' }, document.createTextNode(label), select);
+}
+
+function imagingControls() {
+  const t = current.imaging;
+  const items = [choiceSetting('imaging', 'target', 'Target', [['points', 'Two points'], ['bars', 'Bar target'], ['grating', 'Grating'], ['star', 'Siemens star']])];
+  const along = () => choiceSetting('imaging', 'axis', t.target === 'points' ? 'Side by side along' : 'Varying along', [['x', 'x'], ['y', 'y']]);
+  if (t.target === 'points') items.push(numberSetting('imaging', 'separation', 'Separation', '× Rayleigh distance', 3), along(), numberSetting('imaging', 'phaseDeg', 'Phase of the second point', '°', 4));
+  if (t.target === 'bars' || t.target === 'grating') items.push(numberSetting('imaging', 'frequency', 'Frequency', '× 2 NA/λ', 3));
+  if (t.target === 'grating') items.push(along());
+  if (t.target === 'star') items.push(numberSetting('imaging', 'spokes', 'Cycles round the star', '', 4));
+  return el('div', { class: 'bench-spot-controls bench-diffraction-controls bench-settings' }, ...items);
+}
+
+function couplingControls() {
+  const box = el('input', { type: 'checkbox', checked: current.coupling.fresnel });
+  box.addEventListener('change', () => changeSetting('coupling', s => { s.fresnel = box.checked; }));
+  return el('div', { class: 'bench-spot-controls bench-diffraction-controls bench-settings' },
+    numberSetting('coupling', 'mfdUm', 'Mode-field diameter', 'µm'),
+    numberSetting('coupling', 'offsetXUm', 'Core offset x', 'µm'),
+    numberSetting('coupling', 'offsetYUm', 'Core offset y', 'µm'),
+    numberSetting('coupling', 'axialUm', 'Face past the image plane', 'µm'),
+    numberSetting('coupling', 'tiltXMrad', 'Tilt from the chief ray, x', 'mrad'),
+    numberSetting('coupling', 'tiltYMrad', 'Tilt from the chief ray, y', 'mrad'),
+    el('label', { class: 'bench-check' }, box, document.createTextNode('Uncoated surfaces (Fresnel reflection)')));
+}
+
+function renderCoherent(kind, plot, body, r) {
+  plot.append(diffractionControls(kind, r), kind === 'imaging' ? imagingControls() : couplingControls());
+  const job = jobs[kind];
+  if (job.for !== r || job.key !== jobKey(kind, r) || (!job.result && !job.busy)) requestJob(kind);
+  if (!job.result) {
+    plot.append(el('p', { class: 'chart-message', text: kind === 'imaging' ? 'Computing the image…' : 'Computing the coupling…' }));
+    dirty.add(kind);
+    return;
+  }
+  const d = job.result;
+  if (!d.ok) {
+    plot.append(el('div', { class: 'calc-status is-error' }, el('b', { text: kind === 'imaging' ? 'No image.' : 'No coupling.' }), el('ul', {}, ...(d.errors ?? []).map(e => el('li', { text: e })))));
+    return;
+  }
+  if (d.warnings.length) plot.append(el('ul', { class: 'bench-banner', role: 'note' }, ...d.warnings.map(w => el('li', { text: w.text }))));
+  const pupil = d.illumination.illumination === 'gaussian' ? `Gaussian beam of ${formatNumber(d.illumination.beamRatio, 3)} pupil radii` : 'uniform pupil';
+  const label = kind === 'imaging'
+    ? `Scalar, isoplanatic (the PSF of field ${fieldText(d, d.fieldValue)} for the whole target), monochromatic ${nmText(d.nm)}; fully incoherent, and fully coherent (a plane wave along the chief ray); ${pupil}.`
+    : `Scalar, coherent, monochromatic ${nmText(d.nm)}; Gaussian fiber mode; ${pupil}; field ${fieldText(d, d.fieldValue)}.`;
+  plot.append(el('p', { class: 'bench-note bench-model-label', text: label }));
+  if (kind === 'imaging') renderImaging(plot, body, r, d);
+  else renderCoupling(plot, body, r, d);
+}
+
+const umText = mmValue => `${formatNumber(mmValue * 1e3, 3)} µm`;
+// The midpoint is the brightest point: no dip, the two are not resolved.
+const dipText = v => (v >= 1 - 1e-9 ? '100 % (no dip)' : `${formatNumber(100 * v, 3)} %`);
+const pct = v => `${formatNumber(100 * v, 3)} %`;
+const xy = (v, f) => (Math.abs(v.x - v.y) <= 1e-9 * Math.max(Math.abs(v.x), Math.abs(v.y)) ? f(v.x) : `${f(v.x)} (x), ${f(v.y)} (y)`);
+
+function renderImaging(plot, body, r, d) {
+  const h = d.window, n = 2 * h + 1, step = d.spacing * 1e3, ext = (h + 0.5) * step;
+  let top = 1e-12;
+  for (const v of d.incoherent) top = Math.max(top, v);
+  for (const v of d.coherent) top = Math.max(top, v);
+  const point = d.normalization === 'point';
+  const barLabel = point ? 'Intensity (one point, perfect lens = 1)' : 'Intensity (clear area = 1)';
+  const geo = d.geometry;
+  const overlay = which => (ctx, toX, toY, scale) => {
+    ctx.strokeStyle = 'rgba(255, 140, 60, .9)'; ctx.lineWidth = 1.2;
+    if (d.points) {
+      for (const [x, y] of d.points) {
+        const px = toX(x * 1e3), py = toY(y * 1e3);
+        ctx.beginPath(); ctx.moveTo(px - 5, py); ctx.lineTo(px + 5, py); ctx.moveTo(px, py - 5); ctx.lineTo(px, py + 5); ctx.stroke();
+      }
+    }
+    if (geo.cutoffRadius && which) {
+      const c = geo.cutoffRadius[which];
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.ellipse(toX(0), toY(0), c.x * 1e3 * scale, c.y * 1e3 * scale, 0, 0, 2 * Math.PI); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  };
+  const panel = (values, title, range, label, which = null, colourLabel = barLabel) => {
+    const canvas = heatCanvas(label);
+    const holder = el('div', { class: 'bench-heat-holder' }, canvas);
+    const draw = () => drawHeatmap(canvas, {
+      values, cols: n, rows: n, extent: [-ext, ext, -ext, ext], range, colormap: 'grey', smooth: true,
+      xLabel: 'x (µm)', yLabel: 'y (µm)', barLabel: colourLabel,
+      barTicks: roundTicks(range[0], range[1]).map(v => [v, formatNumber(v, 3)]), title, overlay: overlay(which),
+    });
+    return { holder, canvas, draw };
+  };
+  const panels = [];
+  if (d.object) panels.push(panel(d.object, 'Target', [0, 1], 'The target as a perfect lens without diffraction would image it.', null, 'Transmission'));
+  panels.push(panel(d.incoherent, 'Incoherent light', [0, top], `Image in incoherent light at ${nmText(d.nm)}.`, 'incoherent'));
+  panels.push(panel(d.coherent, 'Coherent light', [0, top], `Image in coherent light at ${nmText(d.nm)}.`, 'coherent'));
+  const grid = el('div', { class: 'bench-image-grid' }, ...panels.map(p => p.holder));
+  const name = fileSafe(r.system.name);
+  plot.append(grid,
+    el('p', { class: 'bench-note', text: `${d.points ? '+ : where the two points are. ' : ''}${geo.cutoffRadius ? 'Dashed: where the star’s pattern reaches each image’s cutoff frequency; inside it, no contrast passes. ' : ''}Both images share one intensity scale.` }),
+    exportBar(['Download incoherent PNG', () => downloadCanvas(panels.at(-2).canvas, `${name}-image-incoherent.png`)],
+      ['Download coherent PNG', () => downloadCanvas(panels.at(-1).canvas, `${name}-image-coherent.png`)],
+      ['Download CSV', () => downloadText(imageCsv(d), `${name}-image.csv`, 'text/csv')]));
+  const drawAll = () => panels.forEach(p => p.draw());
+  drawAll();
+  observeResize(grid, drawAll);
+
+  // The profile through the centre, or the star's contrast against radius.
+  const pr = d.profile, radial = pr.axis === 'radius';
+  const xs = Array.from(pr.positions, v => v * 1e3);
+  const host = el('div', { class: 'chart-host bench-chart' });
+  body.append(el('h3', { text: radial ? 'Contrast against radius' : `Profile along ${pr.axis} through the centre` }), host);
+  lineChart(host, null, {
+    x: xs, xLabel: radial ? 'Radius from the star’s centre (µm)' : `${pr.axis} (µm)`,
+    yLabel: radial ? 'Contrast' : point ? 'Intensity (one point = 1)' : 'Intensity (clear area = 1)', ...(radial ? {} : { yMin: 0 }),
+    series: [
+      { key: 'i', name: 'Incoherent', color: '--series-1', values: Array.from(pr.incoherent) },
+      { key: 'c', name: 'Coherent', color: '--series-2', values: Array.from(pr.coherent) },
+      ...(pr.object && !radial ? [{ key: 'o', name: 'Target', color: '--muted', dash: true, values: Array.from(pr.object) }] : []),
+    ],
+    vlines: radial ? [{ x: geo.cutoffRadius.incoherent.x * 1e3, label: 'incoherent cutoff' }, { x: geo.cutoffRadius.coherent.x * 1e3, label: 'coherent cutoff' }] : [],
+    formatX: v => formatNumber(v, 3), formatY: v => formatNumber(v, 3),
+  });
+  if (radial) body.append(el('p', { class: 'bench-note', text: 'Contrast between the middle of a bright spoke and the middle of the next dark one, along the spokes nearest +x; the marks are where the spokes’ frequency reaches each cutoff (in y, the direction the pattern varies there).' }));
+
+  const rows = [
+    ['Coherent cutoff NA/λ', xy(d.cutoff.coherent, v => `${formatNumber(v, 4)} cycles/mm`)],
+    ['Incoherent cutoff 2 NA/λ', xy(d.cutoff.incoherent, v => `${formatNumber(v, 4)} cycles/mm`)],
+    ['Rayleigh distance 0.61 λ/NA', xy(d.rayleigh, umText)],
+  ];
+  const ro = d.readout, t = d.target;
+  if (t.target === 'points') {
+    rows.push(
+      ['Separation', `${umText(geo.separation)} (${formatNumber(t.separation, 3)} Rayleigh distance${t.separation === 1 ? '' : 's'})`],
+      ['Midpoint ÷ brightest point on the line through them, incoherent', dipText(ro.dip.incoherent)],
+      [`Midpoint ÷ brightest point on that line, coherent (phase ${formatNumber(t.phaseDeg, 4)}°)`, dipText(ro.dip.coherent)],
+    );
+  } else if (t.target === 'bars') {
+    const c = ro.contrast;
+    rows.push(
+      ['Bar width', umText(geo.barWidth)],
+      ['Frequency 1/(2 × width)', `${formatNumber(geo.frequency, 4)} cycles/mm`],
+      ['Contrast across the vertical bars: incoherent, coherent', `${formatNumber(c.incoherent.vertical, 3)}, ${formatNumber(c.coherent.vertical, 3)}`],
+      ['Contrast across the horizontal bars: incoherent, coherent', `${formatNumber(c.incoherent.horizontal, 3)}, ${formatNumber(c.coherent.horizontal, 3)}`],
+    );
+  } else if (t.target === 'grating') {
+    rows.push(
+      ['Frequency (a whole number of periods across the field)', `${formatNumber(geo.frequency, 4)} cycles/mm (period ${umText(geo.period)})`],
+      ['Modulation: incoherent, coherent', `${formatNumber(ro.modulation.incoherent, 3)}, ${formatNumber(ro.modulation.coherent, 3)}`],
+    );
+  } else {
+    rows.push(
+      ['Star radius, cycles', `${umText(geo.radius)}, ${geo.spokes}`],
+      ['Radius where incoherent contrast ends', xy(geo.cutoffRadius.incoherent, umText)],
+      ['Radius where coherent contrast ends', xy(geo.cutoffRadius.coherent, umText)],
+    );
+  }
+  rows.push(['Image sample spacing', `${formatNumber(step, 4)} µm`], ['Computed field (periodic)', umText(d.fieldOfView)]);
+  body.append(el('h3', { text: 'Image' }), table('Imaging figures', rows),
+    el('p', { class: 'bench-note' }, document.createTextNode('Contrast is (bright − dark)/(bright + dark) between the bars’ centres and the gaps; negative means the pattern is reversed. '),
+      el('a', { href: '#reading-imaging', text: 'How to read the images' }), document.createTextNode('.')));
+}
+
+function imageCsv(d) {
+  const pr = d.profile, lines = [`${pr.axis}_um,incoherent,coherent${pr.object ? ',target' : ''}`];
+  pr.positions.forEach((z, k) => lines.push([(z * 1e3).toPrecision(6), pr.incoherent[k].toPrecision(6), pr.coherent[k].toPrecision(6), ...(pr.object ? [pr.object[k].toPrecision(3)] : [])].join(',')));
+  return `${lines.join('\n')}\n`;
+}
+
+const dB = v => (v > 0 ? `${formatNumber(-10 * Math.log10(v), 3)} dB` : '—');
+// η, or why there is none: a core too far from the focus for the grid.
+const etaText = (v, withDb = true) => (Number.isFinite(v) ? `${pct(v)}${withDb ? ` (${dB(v)})` : ''}` : 'not resolved on this pupil grid');
+
+function renderCoupling(plot, body, r, d) {
+  const f = d.fiber, s = d.scan;
+  const host = (title, chart) => { const h = el('div', { class: 'chart-host bench-chart' }); plot.append(el('h3', { class: 'bench-chart-title', text: title }), h); chart(h); };
+  host('Coupling against the core’s lateral offset', h => lineChart(h, null, {
+    x: Array.from(s.lateral), xLabel: 'Core offset (µm)', yLabel: 'Coupling η (%)', yMin: 0,
+    series: [
+      { key: 'x', name: 'Moving in x', color: '--series-1', values: Array.from(s.x, v => 100 * v) },
+      { key: 'y', name: 'Moving in y', color: '--series-2', dash: true, values: Array.from(s.y, v => 100 * v) },
+    ],
+    vlines: [{ x: f.offsetXUm, label: 'x set' }, ...(Math.abs(f.offsetYUm - f.offsetXUm) > 1e-9 ? [{ x: f.offsetYUm, label: 'y set' }] : [])],
+    formatX: v => formatNumber(v, 3), formatY: v => formatNumber(v, 3),
+  }));
+  host('Coupling against the face’s axial position', h => lineChart(h, null, {
+    x: Array.from(s.axial), xLabel: 'Face past the image plane (µm)', yLabel: 'Coupling η (%)', yMin: 0,
+    series: [{ key: 'z', name: 'Coupling', color: '--series-1', values: Array.from(s.z, v => 100 * v) }],
+    vlines: [{ x: f.axialUm, label: 'set' }],
+    formatX: v => formatNumber(v, 3), formatY: v => formatNumber(v, 3),
+  }));
+  plot.append(exportBar(['Download CSV', () => downloadText(couplingCsv(d), `${fileSafe(r.system.name)}-coupling.csv`, 'text/csv')]));
+
+  const use = el('button', { type: 'button', class: 'bench-button', text: `Use ${formatNumber(d.best.mfdUm, 3)} µm` });
+  use.addEventListener('click', () => changeSetting('coupling', c => { c.mfdUm = Number(d.best.mfdUm.toPrecision(3)); }));
+  const rows = [
+    ['Coupling into the mode, η', etaText(d.eta)],
+    { group: 'Where the light goes' },
+    ['Perfect lens, aligned (mode mismatch only)', pct(d.ideal)],
+    ['This lens, aligned (adds the aberrations)', pct(d.aligned)],
+    ['This lens, as set (adds the misalignment)', etaText(d.eta, false)],
+    ['Beam inside the entrance pupil', pct(d.inPupil)],
+    ['Through the apertures', pct(d.transmission)],
+    [`Uncoated surfaces at normal incidence${d.fresnelApplied ? '' : ' (not applied)'}`, pct(d.fresnel)],
+    ['Power in the fiber mode ÷ beam power', etaText(d.total)],
+    { group: 'Fiber' },
+    ['Mode: 1/e² radius, divergence, Rayleigh range', `${umText(d.modeRadius)}, ${formatNumber(d.modeDivergence * 1e3, 3)} mrad, ${umText(d.modeRayleigh)}`],
+    ['Best mode-field diameter for this beam, aligned', `${formatNumber(d.best.mfdUm, 3)} µm (η ${pct(d.best.eta)})`],
+    ['Chief ray at the image, from the axis (the fiber’s axis follows it)', xy({ x: d.chiefAngle.x * 1e3, y: d.chiefAngle.y * 1e3 }, v => `${formatNumber(v, 3)} mrad`)],
+    ['Image-space NA, traced', xy(d.na, v => formatNumber(v, 4))],
+  ];
+  body.append(el('h3', { text: 'Coupling' }), table('Coupling figures', rows), el('div', { class: 'bench-export' }, use),
+    el('p', { class: 'bench-note' }, document.createTextNode('η is the share of the light reaching the fiber’s face that enters its mode; the light lost before the face is listed under it. '),
+      el('a', { href: '#reading-coupling', text: 'How to read the coupling' }), document.createTextNode('.')));
+}
+
+function couplingCsv(d) {
+  const s = d.scan, lines = ['offset_um,eta_moving_x,eta_moving_y,face_past_image_um,eta_axial'];
+  // Positions the grid cannot resolve are left empty.
+  for (let k = 0; k < s.lateral.length; k++) lines.push([s.lateral[k], s.x[k], s.y[k], s.axial[k], s.z[k]].map(v => (Number.isFinite(v) ? Number(v).toPrecision(6) : '')).join(','));
   return `${lines.join('\n')}\n`;
 }
 
