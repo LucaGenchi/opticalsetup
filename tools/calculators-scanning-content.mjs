@@ -15,14 +15,28 @@ export const scanningCalculators = [
       { label: 'Evidence', html: `Checked against an independent Python reference and against the closed forms of the Zeiss monograph ${cite(1)} in their limits: <a href="${GITHUB}/docs/validation.md" target="_blank" rel="noopener">validation table</a>. Not compared with a measurement.` },
       { label: 'Code', html: `<a href="${GITHUB}/calculators/point-scanning/psf.js" target="_blank" rel="noopener">psf.js</a> (point images) and <a href="${GITHUB}/calculators/point-scanning/scanning-calculator.js" target="_blank" rel="noopener">scanning-calculator.js</a>; immersion indices and NA limits from the canvas’s <a href="../../wiki/objective/">objective</a>.` },
     ],
-    graphsAfterMain: true,
+    // Top to bottom in each panel: the inputs three to a row, the graphs,
+    // the results two to a row, then the notes.
+    layout: [
+      { form: 'calc', label: 'Excitation, objective and detector' },
+      { graphs: true },
+      { output: true, label: 'Resolution', results: [['res-focus', 'Resolution of this configuration'], ['res-light', 'Wavelengths and aperture'], ['res-compare', 'First comparison'], ['res-limits', 'Second comparison']] },
+    ],
     graphs: [
       { id: 'lateral', title: 'Point image across the focus', note: 'Signal from a point object as the focus scans across it, normalized to its peak. The FWHM is the lateral resolution.' },
       { id: 'axial', title: 'Point image along the axis', note: 'Signal from a point object as the focus scans along the optical axis. The FWHM is the axial resolution.' },
     ],
     panels: [{ id: 'scan', title: 'Field of view and galvo scanning',
       intro: `How far the focus moves in the sample when a galvanometer mirror turns, through a scan lens, a tube lens and the objective ${cite(12)}; the field this covers, the pixel size, and how the beam fills the objective’s back aperture. The NA and the lateral resolution come from the panel above.`,
-      graphs: [{ id: 'scan', title: 'Spot displacement against galvo angle', note: 'Position of the focus in the sample. The band is the scan range; the marker is the chosen angle. The dashed curve is the other scan-lens mapping.' }] }],
+      layout: [
+        { form: 'scan', label: 'Objective, lenses and galvanometer mirror' },
+        { graphs: true },
+        { output: true, label: 'Field and scan', results: [['scan-objective', 'Objective'], ['scan-spot', 'Spot displacement'], ['scan-field', 'Scanned field'], ['scan-beam', 'Beam at the objective']] },
+      ],
+      graphs: [
+        { id: 'scan', title: 'Spot displacement against galvo angle', note: 'Position of the focus in the sample. The band is the scan range; the marker is the chosen angle. The dashed curve is the other scan-lens mapping.' },
+        { id: 'ramps', title: 'X and Y command voltages of a raster frame', note: 'Eight lines drawn for clarity, over a square field (the same range on both axes); amplitude from the scan range and the driver scale factor. A unidirectional flyback is drawn at 20 % of the line period, an illustrative value. The band is the slow mirror’s return to the first line.' },
+      ] }],
     sections: [
       { id: 'focus', title: 'The scanned focus',
         html: `<p>A point-scanning microscope focuses a laser to a spot, moves the spot over the sample and records one signal per position. The image of a point object is therefore the spot itself, weighted by what the detector accepts ${cite(1, 4)}. For a uniformly filled circular pupil, the scalar intensity near the focus depends on two dimensionless optical coordinates, one across and one along the axis ${cite(2, 5)}:</p>`,
@@ -80,6 +94,10 @@ export const scanningCalculators = [
           { tex: String.raw`d_{\text{pix}}\le\frac{1}{2f_c},\qquad f_c=\begin{cases}2\,\mathrm{NA}/\lambda_{\text{exc}} & \text{one-photon, no pinhole}\\ 2\,\mathrm{NA}/\lambda_{\text{exc}}+2\,\mathrm{NA}/\lambda_{\text{det}} & \text{one-photon, pinhole}\\ 2N\,\mathrm{NA}/\lambda_{\text{exc}} & N\text{-photon}\end{cases}`, caption: `The sampling theorem applied to the point image: f<sub>c</sub> is the highest spatial frequency it passes, the cutoff of its transfer function. A product of PSFs has the convolution of their transfer functions, so the cutoffs add; the PSF width and the cutoff are different measures ${cite(7)}. Near f<sub>c</sub> the contrast is weak, and with a large pinhole the detection part adds little, so the FWHM rule is the usual practical choice.` },
         ],
       },
+      { id: 'raster', title: 'Raster scanning with two galvos',
+        html: `<p>A frame is scanned line by line. The fast mirror (X) sweeps the focus across one line; the slow mirror (Y) then moves it to the next, and after the last line returns it to the first. Each mirror follows the command voltage from its servo driver, proportional to its rotation (volts per degree, the driver’s scale factor). The page draws both commands for the field set above.</p><ul><li><b>Unidirectional.</b> The fast command is a sawtooth: a linear ramp, then a quick flyback. Pixels are recorded only while the mirror moves at constant speed; the data taken during the turnaround and the flyback are discarded, so only part of each line period, the fill fraction, makes the image ${cite(15)}.</li><li><b>Bidirectional (serpentine).</b> The fast command is a triangle and both sweeps record a line, every other one in reverse, so no time is spent on a flyback. A galvo’s inertia makes it lag its command, by about 7 % of the line period in the ScanImage example ${cite(15)}, and the lag grows into image distortion at higher line rates ${cite(16)}. In a bidirectional image it shifts the forward and the return lines in opposite directions, so the two must be aligned by a delay or phase correction, or vertical edges look jagged.</li></ul><p>Here the slow mirror advances one line during each flyback or turnaround and holds still while a line is recorded. The graph shows the commands, not the mirror positions, which lag and round the corners.</p>`,
+        formulas: [{ tex: String.raw`V_X=\pm\,s\,\frac{\Theta_{\text{mech}}}{2},\qquad V_Y(\text{line }k)=-V_0+2V_0\,\frac{k}{N-1}`, caption: 's is the driver scale factor (V per mechanical degree), Θ<sub>mech</sub> the peak-to-peak mechanical scan range, V<sub>0</sub> the slow axis’s amplitude (equal to the fast one for a square field) and N the number of lines.' }],
+      },
       { id: 'precision', title: 'Precision and limits',
         html: `<p><b>Numerics.</b> Bessel functions use rational approximations accurate to about 10⁻⁸. The pinhole integral uses Gauss–Legendre quadrature (64 radial × 48 angular nodes across the pinhole, 128 nodes over the pupil for the defocused field), and each FWHM is bisected to round-off. An independent Python reference, using integral representations of the Bessel functions and a different quadrature, agrees with the page to 10⁻⁶ relative or better in every case of the validation table (the test tolerance is 10⁻⁵); the open and point-pinhole limits are also checked against their analytic half-maximum points.</p><p><b>Scope.</b> Scalar optics with a uniformly filled, aberration-free circular pupil; the axial coordinate uses n(1 − cos α), exact on the axis, and the defocused field off the axis is the paraxial form. Above about NA/n = 0.7 the vector nature of the focused field (Richards and Wolf ${cite(9)}) widens the real focus along the polarization, which this page does not include. Emission is taken at a single wavelength; a broad band widens the detection side slightly. The sample is assumed index-matched to the immersion medium, non-scattering and free of aberrations; real foci deep in tissue or through a mismatched index are wider, and the depth scale itself changes ${cite(11)}. Cole et al. describe how to measure the point image with sub-resolution beads and compare it with such limits ${cite(10)}.</p><p><b>Scanning.</b> Thin, ideal scan and tube lenses in a telescope that images the galvo onto the back aperture; an objective that maps the pupil angle to f<sub>obj</sub> tan θ; no distortion, field curvature or vignetting. The field number limits where the objective is corrected; the page flags a scanned field beyond it but does not model the loss.</p>`,
       },
@@ -99,6 +117,8 @@ export const scanningCalculators = [
       { label: 'A. Negrean and H. D. Mansvelder, “Optimal lens design and use in laser-scanning microscopy,” Biomed. Opt. Express 5, 1588 (2014).', url: 'https://doi.org/10.1364/BOE.5.001588' },
       { label: 'K. R. Spring and M. W. Davidson, “Infinity optical systems,” Evident (Olympus) Microscopy Resource Center.', url: 'https://evidentscientific.com/en/microscope-resource/knowledge-hub/anatomy/infinityintro' },
       { label: 'Nikon, Microscopy glossary: field of view (field number divided by the objective magnification).', url: 'https://www.microscope.healthcare.nikon.com/resources/glossary/field-of-view' },
+      { label: 'T. A. Pologruto, B. L. Sabatini and K. Svoboda, “ScanImage: flexible software for operating laser scanning microscopes,” BioMed. Eng. OnLine 2, 13 (2003).', url: 'https://doi.org/10.1186/1475-925X-2-13' },
+      { label: 'W. Wang, Z. Wu and H. Zeng, “Image distortion and its correction in linear galvanometric mirrors–based laser-scanning microscopy,” J. Biomed. Opt. 20, 056001 (2015).', url: 'https://doi.org/10.1117/1.JBO.20.5.056001' },
     ],
   },
 ];

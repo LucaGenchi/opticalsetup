@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { besselJ0, besselJ1, airyIntensity, axialIntensity, effectivePsf, halfWidth, pinholeResponse } from '../calculators/point-scanning/psf.js';
-import { RESOLUTION_DEFAULTS, computeResolution, resolutionProfiles, SCAN_DEFAULTS, computeScan, scanProfile, sampleDisplacementUm } from '../calculators/point-scanning/scanning-calculator.js';
+import { RESOLUTION_DEFAULTS, computeResolution, resolutionProfiles, SCAN_DEFAULTS, computeScan, scanProfile, scanRamps, sampleDisplacementUm } from '../calculators/point-scanning/scanning-calculator.js';
 import { ramanStokesWl } from '../sketch/js/elements.js';
 
 const close = (got, want, tol = 1e-9) => assert.ok(Math.abs(got - want) <= tol * Math.max(1e-12, Math.abs(want)), `${got} != ${want}`);
@@ -200,9 +200,36 @@ test('scan inputs outside the model are refused', () => {
   }
 });
 
-test('the page numbers the resolution graphs before the scan panel and its graph', () => {
+test('raster commands: sawtooth or triangle on X, one step per line on Y', () => {
+  const at = (p, t) => p.x.findIndex(x => Math.abs(x - t) < 1e-9);
+  // 4° mechanical peak to peak at 0.5 V/°: ±1 V; optical angles halve it.
+  close(scan({}).commandAmplitudeV, 1);
+  close(scan({ angleKind: 'optical', rangeDeg: 4 }).commandAmplitudeV, 0.5);
+  close(scan({ voltsPerDeg: 1 }).commandAmplitudeV, 2);
+  for (const bidirectional of [false, true]) {
+    const p = scanRamps(scan({ bidirectional }), { lines: 8, samplesPerLine: 100 });
+    assert.ok(p.fast.every(Number.isFinite) && p.slow.every(Number.isFinite));
+    assert.ok(Math.max(...p.fast.map(Math.abs), ...p.slow.map(Math.abs)) <= 1 + 1e-12);
+    // Lines step evenly from −1 V to +1 V, and the frame flies back to −1 V.
+    for (let k = 0; k < 8; k++) close(p.slow[at(p, k + 0.5)] + 2, -1 + 2 * k / 7 + 2, 1e-12);
+    close(p.slow.at(-1), -1); close(p.fast.at(-1), -1);
+    if (!bidirectional) {
+      // Every line starts at −1 V: the sawtooth ramps up and flies back.
+      for (let k = 0; k < 8; k++) close(p.fast[at(p, k)], -1);
+      close(p.fast[at(p, 0.4)] + 1, 1, 1e-12);
+    } else {
+      // A triangle: even lines run up, odd lines down, with no flyback.
+      for (let k = 0; k < 8; k++) close(p.fast[at(p, k)], k % 2 ? 1 : -1);
+      close(p.fast[at(p, 1.5)] + 1, 1, 1e-12);
+    }
+  }
+});
+
+test('the page lays out each panel as inputs, graphs, then results, numbering the graphs in order', () => {
   const html = readFileSync(new URL('../calculators/point-scanning/index.html', import.meta.url), 'utf8');
-  const order = ['id="calculator"', 'id="chart-lateral"', 'id="chart-axial"', 'id="scan-panel"', 'id="chart-scan"'].map(s => html.indexOf(s));
+  const order = ['id="calc-form"', 'id="chart-lateral"', 'id="chart-axial"', 'id="res-focus-results"', 'id="res-limits-results"', 'id="calc-notes"',
+    'id="scan-panel"', 'id="scan-form"', 'id="chart-scan"', 'id="chart-ramps"', 'id="scan-objective-results"', 'id="scan-beam-results"', 'id="scan-notes"'].map(s => html.indexOf(s));
   assert.ok(order.every((i, k) => i > 0 && (k === 0 || i > order[k - 1])), order.join(', '));
   assert.match(html, /chart-num">3<\/span><span><b>Spot displacement/);
+  assert.match(html, /chart-num">4<\/span><span><b>X and Y command voltages/);
 });

@@ -1,11 +1,13 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { RESOLUTION_INPUTS, RESOLUTION_DEFAULTS, computeResolution, resolutionProfiles,
-  SCAN_INPUTS, SCAN_DEFAULTS, computeScan, scanProfile } from './scanning-calculator.js';
+  SCAN_INPUTS, SCAN_DEFAULTS, computeScan, scanProfile, scanRamps } from './scanning-calculator.js';
 import { mountCalculator } from '../assets/simple-calculator-page.js';
 import { formatNumber } from '../assets/calculator-kit.js';
 
 const PHOTONS = { 2: 'Two-photon', 3: 'Three-photon' };
+// Group headings are set in capitals, which would turn λ into Λ.
+const FRACTION = { 2: 'half', 3: 'a third of' };
 const nm = x => `${formatNumber(x, 4)} nm`;
 
 // The scan panel reads the NA and the lateral resolution from the panel above.
@@ -22,11 +24,15 @@ const profileChart = (x, xLabel, own, other, otherName) => ({
 mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hideInactive: true, groups: {
   process: { title: 'Excitation and detected light' }, objective: { title: 'Objective' }, detector: { title: 'Detector' },
 }, compute: computeResolution, charts: ['lateral', 'axial'],
+  // Four tables, two to a row: this configuration, its wavelengths, and two
+  // comparisons.
   rows: r => {
-    const own = [
+    const focus = [
       { group: r.linear ? 'This configuration (FWHM of the scanned point image)' : `${PHOTONS[r.order]} excitation (FWHM of the scanned point image)` },
       ['Lateral resolution', r.lateralUm, 'µm', 3], ['Axial resolution', r.axialUm, 'µm', 3],
       ...(r.linear ? [r.sliceUm === null ? ['Optical section', 'None without a pinhole'] : ['Axial FWHM of the pinhole’s detection response', r.sliceUm, 'µm', 3]] : []),
+    ];
+    const light = [
       { group: 'Wavelengths and aperture' },
       ['Excitation wavelength', r.exNm, 'nm', 6],
       ...(r.linear && r.detNm !== r.exNm ? [[`Detected wavelength (${r.detectionLabel.toLowerCase()})`, r.detNm, 'nm', 6]] : []),
@@ -35,28 +41,37 @@ mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hide
       ...(r.pinholeUm !== null ? [['Pinhole diameter at the sample', r.pinholeUm, 'µm', 3]] : []),
     ];
     if (!r.linear) {
-      return [...own,
-        { group: 'For comparison: the same objective, one-photon, no pinhole' },
-        [`At the same wavelength (${nm(r.exNm)}): lateral`, r.sameWavelength.lateralUm, 'µm', 3],
-        [`At the same wavelength (${nm(r.exNm)}): axial`, r.sameWavelength.axialUm, 'µm', 3],
-        [`At λ/${r.order} (${nm(r.exNm / r.order)}): lateral`, r.transition.lateralUm, 'µm', 3],
-        [`At λ/${r.order} (${nm(r.exNm / r.order)}): axial`, r.transition.axialUm, 'µm', 3],
-        ['Lateral width relative to one-photon at the same wavelength', r.lateralUm / r.sameWavelength.lateralUm, '×', 3],
-        ['Axial width relative to one-photon at the same wavelength', r.axialUm / r.sameWavelength.axialUm, '×', 3],
-      ];
+      return {
+        'res-focus': focus, 'res-light': light,
+        'res-compare': [
+          { group: `For comparison: one-photon at the same wavelength (${nm(r.exNm)}), no pinhole` },
+          ['Lateral', r.sameWavelength.lateralUm, 'µm', 3], ['Axial', r.sameWavelength.axialUm, 'µm', 3],
+          ['Lateral width of this configuration, relative', r.lateralUm / r.sameWavelength.lateralUm, '×', 3],
+          ['Axial width of this configuration, relative', r.axialUm / r.sameWavelength.axialUm, '×', 3],
+        ],
+        'res-limits': [
+          { group: `For comparison: one-photon at ${FRACTION[r.order]} the wavelength (${nm(r.exNm / r.order)}), no pinhole` },
+          ['Lateral', r.transition.lateralUm, 'µm', 3], ['Axial', r.transition.axialUm, 'µm', 3],
+        ],
+      };
     }
     const c = r.closedForm;
-    return [...own,
-      { group: 'For comparison: the same objective and wavelengths' },
-      ['No pinhole: lateral', r.open.lateralUm, 'µm', 3], ['No pinhole: axial', r.open.axialUm, 'µm', 3],
-      ['Point pinhole (0 AU): lateral', r.pointPinhole.lateralUm, 'µm', 3], ['Point pinhole (0 AU): axial', r.pointPinhole.axialUm, 'µm', 3],
-      { group: `Closed forms of the Zeiss monograph (λ̄ = ${nm(c.meanNm)})` },
-      ['Eq. 3, PH > 1 AU: lateral 0.51 λexc/NA', c.openLateralUm, 'µm', 3],
-      ['Eq. 2, PH > 1 AU: axial 0.88 λexc/(n − √(n² − NA²))', c.openAxialUm, 'µm', 3],
-      ['Eq. 8, PH < 0.25 AU: lateral 0.37 λ̄/NA', c.pointLateralUm, 'µm', 3],
-      ['Eq. 7, PH < 0.25 AU: axial 0.64 λ̄/(n − √(n² − NA²))', c.pointAxialUm, 'µm', 3],
-      ...(c.sliceUm === null ? [] : [['Eq. 4, PH > 1 AU: optical slice thickness', c.sliceUm, 'µm', 3]]),
-    ];
+    return {
+      'res-focus': focus, 'res-light': light,
+      'res-compare': [
+        { group: 'For comparison: the same objective and wavelengths' },
+        ['No pinhole: lateral', r.open.lateralUm, 'µm', 3], ['No pinhole: axial', r.open.axialUm, 'µm', 3],
+        ['Point pinhole (0 AU): lateral', r.pointPinhole.lateralUm, 'µm', 3], ['Point pinhole (0 AU): axial', r.pointPinhole.axialUm, 'µm', 3],
+      ],
+      'res-limits': [
+        { group: `Closed forms of the Zeiss monograph (mean wavelength ${nm(c.meanNm)})` },
+        ['Eq. 3, PH > 1 AU: lateral 0.51 λexc/NA', c.openLateralUm, 'µm', 3],
+        ['Eq. 2, PH > 1 AU: axial 0.88 λexc/(n − √(n² − NA²))', c.openAxialUm, 'µm', 3],
+        ['Eq. 8, PH < 0.25 AU: lateral 0.37 λ̄/NA', c.pointLateralUm, 'µm', 3],
+        ['Eq. 7, PH < 0.25 AU: axial 0.64 λ̄/(n − √(n² − NA²))', c.pointAxialUm, 'µm', 3],
+        ...(c.sliceUm === null ? [] : [['Eq. 4, PH > 1 AU: optical slice thickness', c.sliceUm, 'µm', 3]]),
+      ],
+    };
   },
   notes: r => {
     const out = [];
@@ -97,33 +112,41 @@ mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hide
 });
 
 const MAPPING = { tan: 'f·tan θ', ftheta: 'f·θ' };
+const rampChart = (p, bidirectional) => ({
+  x: p.x, xLabel: 'Time (line periods)', xUnit: 'lines', yLabel: 'Command voltage (V)',
+  formatX: n => formatNumber(n, 3), formatY: n => formatNumber(n, 4),
+  band: { lo: p.lines, hi: p.lines + 1, label: 'Frame flyback' },
+  series: [{ name: `Fast axis X (${bidirectional ? 'triangle' : 'sawtooth'})`, color: '--series-1', values: p.fast },
+    { name: 'Slow axis Y (one step per line)', color: '--series-2', values: p.slow }],
+});
 scan = mountCalculator({ panel: 'scan', inputs: SCAN_INPUTS, defaults: SCAN_DEFAULTS, hideInactive: true, groups: {
   objective: { title: 'Objective' }, scan: { title: 'Scan and tube lenses' }, galvo: { title: 'Galvanometer mirror' },
-}, compute: raw => computeScan(raw, focus.na ? focus : null), charts: ['scan'],
-  rows: r => [
-    { group: 'Objective' },
+}, compute: raw => computeScan(raw, focus.na ? focus : null), charts: ['scan', 'ramps'],
+  rows: r => ({
+    'scan-objective': [{ group: 'Objective' },
     ['Focal length f_obj = f_ref / M', r.objectiveMm, 'mm', 4],
     ['Magnification with your tube lens (f_TL / f_obj)', r.systemMagnification, '×', 4],
     ['Field of view (field number / M)', r.objectFieldUm, 'µm', 4],
-    ['Back-aperture diameter (2 f_obj NA)', r.pupilMm, 'mm', 3],
-    { group: `Spot displacement for ${formatNumber(r.values.angleDeg, 4)}° (${r.values.angleKind})` },
+    ['Back-aperture diameter (2 f_obj NA)', r.pupilMm, 'mm', 3]],
+    'scan-spot': [{ group: `Spot displacement for ${formatNumber(r.values.angleDeg, 4)}° (${r.values.angleKind})` },
     ['Optical deflection at the galvo', r.opticalDeg, '°', 4],
     ['Beam angle at the back aperture', r.pupilAngleDeg, '°', 4],
     ['Height in the intermediate image', r.intermediateMm, 'mm', 4],
     ['Displacement at the sample', r.displacementUm, 'µm', 4],
-    [`Small-angle slope, per ° ${r.values.angleKind}`, r.umPerDegree, 'µm', 4],
-    { group: `Scanned field (${formatNumber(r.values.rangeDeg, 4)}° peak to peak)` },
+    [`Small-angle slope, per ° ${r.values.angleKind}`, r.umPerDegree, 'µm', 4]],
+    'scan-field': [{ group: `Scanned field (${formatNumber(r.values.rangeDeg, 4)}° peak to peak)` },
     ['Field width', r.fieldUm, 'µm', 4], ['Diagonal of a square field', r.diagonalUm, 'µm', 4],
     ['Pixel size', r.pixelUm, 'µm', 3],
     ['Largest pixel, two per lateral FWHM (FWHM / 2)', r.halfFwhmPixelUm, 'µm', 3],
     ['Pixels per line, two per FWHM', r.pixelsNeeded, '', 6],
     ['Largest pixel for the band limit, 1 / (2 f_c)', r.bandPixelUm, 'µm', 3],
     ['Pixels per line for the band limit', r.bandPixelsNeeded, '', 6],
-    { group: 'Beam at the objective' },
+    ['Fast-axis command amplitude (± V)', r.commandAmplitudeV, 'V', 4]],
+    'scan-beam': [{ group: 'Beam at the objective' },
     ['Expansion by scan and tube lens (f_TL / f_SL)', r.relay, '×', 4],
     ['Beam diameter at the back aperture (1/e²)', r.beamAtPupilMm, 'mm', 3],
-    ['Fill ratio T (beam / aperture)', r.fillRatio, '', 3],
-  ],
+    ['Fill ratio T (beam / aperture)', r.fillRatio, '', 3]],
+  }),
   notes: r => {
     const out = [];
     if (r.values.angleKind === 'mechanical') out.push('A mirror turned by θ deflects the beam by 2θ, so the optical angles are twice the entered rotation.');
@@ -144,6 +167,9 @@ scan = mountCalculator({ panel: 'scan', inputs: SCAN_INPUTS, defaults: SCAN_DEFA
     }
     const other = r.values.mapping === 'tan' ? 'ftheta' : 'tan';
     if (r.displacementUm !== 0) out.push(`With an ${MAPPING[other]} scan lens the displacement would be ${formatNumber(r.otherMappingUm, 4)} µm (${formatNumber(100 * (r.otherMappingUm / r.displacementUm - 1), 2)} %).`);
+    out.push(r.values.bidirectional
+      ? 'Bidirectional: the fast mirror follows a triangle and both sweeps record a line, so no time is lost to a flyback. The mirror lags its command, which shifts the forward lines one way and the return lines the other; the two must be aligned (a phase or delay setting) or vertical edges look jagged.'
+      : 'Unidirectional: the fast mirror follows a sawtooth; a line is recorded on the linear ramp only, and the flyback and the turnaround are discarded.');
     out.push('The scan and tube lenses are assumed to image the galvo pivot onto the back aperture, so the beam pivots there without walking off. Relays between two galvos do not change the result if they image at unit magnification.');
     return out;
   },
@@ -157,6 +183,7 @@ scan = mountCalculator({ panel: 'scan', inputs: SCAN_INPUTS, defaults: SCAN_DEFA
         marker: { x: r.values.angleDeg, y: r.displacementUm },
         series: [{ name: `${MAPPING[r.values.mapping]} (selected)`, color: '--series-1', values: p[r.values.mapping] },
           { name: MAPPING[other], color: '--series-3', dash: true, values: p[other] }] },
+      ramps: rampChart(scanRamps(r), r.values.bidirectional),
     };
   },
 });

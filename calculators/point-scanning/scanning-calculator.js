@@ -163,6 +163,10 @@ export const SCAN_INPUTS = [
     help: 'Full swing of the scan, symmetric about the centre; it sets the field width.' },
   { id: 'pixels', group: 'galvo', label: 'Pixels per line', unit: '', value: 512, min: 2, max: 16384,
     help: 'Samples across the field width, for the pixel size.' },
+  { id: 'voltsPerDeg', group: 'galvo', label: 'Driver scale factor', unit: 'V/°', value: 0.5, min: 0.01, max: 10,
+    help: 'Command voltage per degree of mirror rotation (mechanical), as set on the galvo’s servo driver; take it from the driver’s datasheet.' },
+  { id: 'bidirectional', type: 'checkbox', group: 'galvo', label: 'Bidirectional (serpentine) scanning', value: false,
+    help: 'Record on both sweeps of the fast mirror, instead of only on the forward ramp.' },
 ];
 export const SCAN_DEFAULTS = defaultsFor(SCAN_INPUTS);
 
@@ -210,6 +214,9 @@ export function computeScan(raw, focus = null) {
     umPerDegree: 1000 * v.scanLensMm * objectiveMm / v.tubeLensMm * optical * DEG,
     fieldUm, diagonalUm: Math.SQRT2 * fieldUm, objectFieldUm,
     relay, systemMagnification: v.tubeLensMm / objectiveMm,
+    // Fast-axis command amplitude: the mechanical half-range times the
+    // driver's scale.
+    commandAmplitudeV: rangeOpticalDeg / 4 * v.voltsPerDeg,
     pupilMm, beamAtPupilMm, fillRatio: pupilMm ? beamAtPupilMm / pupilMm : null,
     pixelUm, halfFwhmPixelUm, bandPixelUm, lateralUm: focus?.lateralUm ?? null,
     pixelsNeeded: halfFwhmPixelUm ? Math.ceil(fieldUm / halfFwhmPixelUm) : null,
@@ -226,4 +233,37 @@ export function scanProfile(r, count = 121) {
   const geometry = { scanLensMm: r.values.scanLensMm, tubeLensMm: r.values.tubeLensMm, objectiveMm: r.objectiveMm };
   const curve = mapping => x.map(deg => sampleDisplacementUm({ ...geometry, mapping, opticalRad: r.optical * deg * DEG }));
   return { x, tan: curve('tan'), ftheta: curve('ftheta') };
+}
+
+// Command voltages of a raster frame against time, in line periods, drawn
+// with `lines` lines over a square field: the fast (x) mirror sweeps each
+// line, the slow (y) mirror advances one line per sweep and returns at the
+// end of the frame. Unidirectional: a sawtooth whose ramp takes
+// `rampFraction` of the line period and whose flyback the rest.
+// Bidirectional: a triangle, with every sweep used. The slow mirror steps
+// during the flyback (or within `turn` of the turnaround) and flies back
+// over one line period.
+export function scanRamps(r, { lines = 8, samplesPerLine = 100, rampFraction = 0.8, turn = 0.05 } = {}) {
+  const a = r.commandAmplitudeV, bi = r.values.bidirectional;
+  const level = k => -a + 2 * a * Math.min(k, lines - 1) / (lines - 1);
+  const ease = (from, to, f) => from + (to - from) * Math.min(1, Math.max(0, f));
+  const fast = t => {
+    const k = Math.floor(t), f = t - k;
+    if (k >= lines) return -a;
+    if (bi) return (k % 2 ? 1 : -1) * (a - 2 * a * f);
+    return f < rampFraction ? -a + 2 * a * f / rampFraction : a - 2 * a * (f - rampFraction) / (1 - rampFraction);
+  };
+  const slow = t => {
+    const k = Math.floor(t), f = t - k;
+    if (k >= lines) return ease(a, -a, f);
+    if (k === lines - 1) return bi ? ease(level(k - 1), level(k), (f + turn / 2) / turn) : level(k);
+    if (!bi) return f < rampFraction ? level(k) : ease(level(k), level(k + 1), (f - rampFraction) / (1 - rampFraction));
+    if (f < turn / 2 && k > 0) return ease(level(k - 1), level(k), (f + turn / 2) / turn);
+    if (f > 1 - turn / 2) return ease(level(k), level(k + 1), (f - 1 + turn / 2) / turn);
+    return level(k);
+  };
+  const count = (lines + 1) * samplesPerLine + 1;
+  const x = Array.from({ length: count }, (_, i) => i / samplesPerLine);
+  // The last sample belongs to the end of the frame flyback.
+  return { x, fast: x.map(t => t >= lines + 1 ? -a : fast(t)), slow: x.map(t => t >= lines + 1 ? -a : slow(t)), lines, rampFraction };
 }
