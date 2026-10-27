@@ -31,6 +31,8 @@ import { traceModel, traceRay } from '../calculators/lens-design/engine/trace.js
 import { analyzeSystem } from '../calculators/lens-design/engine/analyze.js';
 import { analyzeDiffraction } from '../calculators/lens-design/engine/diffraction.js';
 import { traceBundle, referenceSphere, opdWaves } from '../calculators/lens-design/engine/wavefront.js';
+import { analyzeImaging, prepareImaging, twoPointAt } from '../calculators/lens-design/engine/imaging.js';
+import { analyzeCoupling } from '../calculators/lens-design/engine/coupling.js';
 import { GAUSSIAN_DEFAULTS, computeGaussianBeam } from '../calculators/gaussian-beam/gaussian-beam.js';
 import { FIBER_DEFAULTS, computeFiberCoupling, fiberMode } from '../calculators/fiber-coupling/fiber-coupling.js';
 import {
@@ -67,6 +69,24 @@ const APP = {
     if (!r.ok) throw new Error(JSON.stringify(r.errors));
     return { separationMm: r.solved?.value, gddFs2: r.comp.gddFs2, todFs3: r.comp.todFs3, fodFs4: r.comp.fodFs4,
       transmission: r.throughput.transmission };
+  },
+  'lens-coherent': ({ kind, system, field = 0, points, phaseDeg, at }) => {
+    if (kind === 'two-point-midpoint') {
+      const r = analyzeImaging(system);
+      return { incoherent: r.readout.midpoint.incoherent, coherent: r.readout.midpoint.coherent };
+    }
+    if (kind === 'grating') return analyzeImaging(system).readout.modulation;
+    if (kind === 'two-point') {
+      const prep = prepareImaging(system, { field });
+      const out = {};
+      at.forEach(([x, y], i) => {
+        const v = twoPointAt(prep, points, phaseDeg * Math.PI / 180, x, y);
+        out[`incoherent${i}`] = v.incoherent; out[`coherent${i}`] = v.coherent;
+      });
+      return out;
+    }
+    const r = analyzeCoupling(system, { field, scans: false });
+    return kind === 'coupling-best' ? { eta: r.best.eta } : { eta: r.eta };
   },
   // Resolution widths, or the scan geometry with the NA the scan panel
   // receives from the resolution panel.
@@ -279,7 +299,7 @@ const APP = {
   },
 };
 
-for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'dispersion-compensation', 'lens-design', 'gaussian-beam', 'fiber-coupling', 'point-scanning']) {
+for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'dispersion-compensation', 'lens-design', 'lens-coherent', 'gaussian-beam', 'fiber-coupling', 'point-scanning']) {
   const model = expected(name);
   for (const c of model.cases) {
     test(`${model.id}: ${c.name}`, () => {

@@ -138,8 +138,8 @@ export function createEditor(host, { presets, onChange, onPreset, onImport, onEx
   form.append(
     group('Object and aperture', rows.object, rows.distance, rows.apertureType, rows.apertureValue),
     group('Fields and wavelengths', rows.fields, rows.wavelengths, rows.primary, rows.weights),
-    group('Image and rays', rows.focus, rows.offset, rows.aiming, rows.samples),
     group('Diffraction', rows.grid, rows.padding, rows.illumination, rows.beamRatio, rows.vignetting),
+    group('Image and rays', rows.focus, rows.offset, rows.aiming, rows.samples),
   );
 
   const commit = mutate => {
@@ -200,6 +200,7 @@ export function createEditor(host, { presets, onChange, onPreset, onImport, onEx
     el('div', { class: 'bench-table-actions' }, addLast), openNote);
 
   const MATERIALS = MATERIAL_OPTIONS.map(o => [o[0], shortMaterial(o)]);
+  const PERFECT = 'perfect-lens';
   const cellInput = (label, value, apply, opts = {}) => {
     const input = el('input', { type: 'text', inputMode: 'decimal', spellcheck: false, value, 'aria-label': label, class: 'bench-cell' });
     if (opts.placeholder) input.placeholder = opts.placeholder;
@@ -217,17 +218,17 @@ export function createEditor(host, { presets, onChange, onPreset, onImport, onEx
     const ideal = s.type === 'paraxial';
     const tr = el('tr', { 'data-row': String(j) });
     if (s.stop) tr.classList.add('is-stop');
-    const type = el('select', { 'aria-label': `Surface ${n} type`, class: 'bench-cell' },
-      el('option', { value: 'standard', text: 'Standard' }), el('option', { value: 'paraxial', text: 'Ideal' }));
-    type.value = s.type;
-    type.addEventListener('change', () => commit(x => {
-      x.surfaces[j] = { ...x.surfaces[j], type: type.value };
-      if (type.value === 'paraxial') { x.surfaces[j].material = AIR; x.surfaces[j].thickness = x.surfaces[j].focal ?? 100; }
-    }));
-    const shape = ideal
-      ? cellInput(`Surface ${n} focal length (mm)`, String(s.focal), (x, v) => { x.surfaces[j].focal = v; })
-      : cellInput(`Surface ${n} radius (mm), ∞ for flat`, radiusText(s.radius), (x, v) => { x.surfaces[j].radius = v; }, { infinity: true });
-    shape.classList.add('is-wide');
+    // A perfect (ideal) lens is chosen in the Material column: it has no
+    // glass, and its Radius cell takes the focal length instead.
+    let shape;
+    if (ideal) {
+      const focal = cellInput(`Surface ${n} focal length (mm)`, String(s.focal), (x, v) => { x.surfaces[j].focal = v; });
+      focal.classList.add('is-wide');
+      shape = el('span', { class: 'bench-focal-cell', title: 'Focal length of the perfect lens (mm)' }, el('span', { class: 'bench-focal-label', text: 'f' }), focal);
+    } else {
+      shape = cellInput(`Surface ${n} radius (mm), ∞ for flat`, radiusText(s.radius), (x, v) => { x.surfaces[j].radius = v; }, { infinity: true });
+      shape.classList.add('is-wide');
+    }
     const thickness = cellInput(`Thickness after surface ${n} (mm)`, String(s.thickness), (x, v) => { x.surfaces[j].thickness = v; });
     thickness.classList.add('is-wide');
     const isLast = j === system.surfaces.length - 1;
@@ -235,16 +236,21 @@ export function createEditor(host, { presets, onChange, onPreset, onImport, onEx
       thickness.classList.add('is-unused');
       thickness.title = 'Not used: the image plane is placed by the “Image plane at” setting.';
     }
-    let material;
-    if (ideal) material = el('span', { class: 'bench-fixed', text: 'air' });
-    else {
-      const sel = el('select', { 'aria-label': `Material after surface ${n}`, class: 'bench-cell bench-material' },
-        ...MATERIALS.map(([v, t]) => el('option', { value: v, text: t })));
-      sel.value = s.material;
-      sel.addEventListener('change', () => commit(x => { x.surfaces[j].material = sel.value; }));
-      material = el('span', { class: 'bench-material-cell' }, sel,
-        s.material === CONSTANT ? cellInput(`Surface ${n} constant index`, String(s.index), (x, v) => { x.surfaces[j].index = v; }) : null);
-    }
+    const sel = el('select', { 'aria-label': `Material after surface ${n}`, class: 'bench-cell bench-material' },
+      ...MATERIALS.map(([v, t]) => el('option', { value: v, text: t })),
+      el('option', { value: PERFECT, text: 'Perfect lens' }));
+    sel.value = ideal ? PERFECT : s.material;
+    sel.addEventListener('change', () => commit(x => {
+      const r = x.surfaces[j];
+      if (sel.value === PERFECT) {
+        if (r.type !== 'paraxial') { r.type = 'paraxial'; r.material = AIR; r.thickness = r.focal ?? 100; }
+      } else {
+        r.type = 'standard';
+        r.material = sel.value;
+      }
+    }));
+    const material = el('span', { class: 'bench-material-cell' }, sel,
+      !ideal && s.material === CONSTANT ? cellInput(`Surface ${n} constant index`, String(s.index), (x, v) => { x.surfaces[j].index = v; }) : null);
     const conic = ideal ? el('span', { class: 'bench-fixed', text: '—' })
       : cellInput(`Surface ${n} conic constant`, String(s.conic), (x, v) => { x.surfaces[j].conic = v; });
     conic.classList.add('is-conic');
@@ -276,7 +282,7 @@ export function createEditor(host, { presets, onChange, onPreset, onImport, onEx
       }), { disabled: system.surfaces.length <= 1 }));
     tr.append(
       el('th', { scope: 'row', text: String(n) }),
-      el('td', {}, type), el('td', {}, shape), el('td', {}, thickness), el('td', {}, material),
+      el('td', {}, shape), el('td', {}, thickness), el('td', {}, material),
       el('td', {}, conic), el('td', {}, semi), el('td', { class: 'center' }, stop), el('td', {}, actions));
     const out = [tr];
     if (open && !ideal) {
@@ -284,7 +290,7 @@ export function createEditor(host, { presets, onChange, onPreset, onImport, onEx
         el('span', { text: `A${order}` }),
         cellInput(`Surface ${n} A${order} (mm^${1 - order})`, String(s.asphere[i]), (x, v) => { x.surfaces[j].asphere[i] = v; })));
       out.push(el('tr', { class: 'bench-asphere-row' }, el('td', {}),
-        el('td', { colSpan: 8 }, el('div', { class: 'bench-asphere' },
+        el('td', { colSpan: 7 }, el('div', { class: 'bench-asphere' },
           el('span', { class: 'bench-asphere-title', text: `Surface ${n}: z += A4 r⁴ + A6 r⁶ + … (r in mm)` }), ...cells))));
     }
     return out;
@@ -296,14 +302,14 @@ export function createEditor(host, { presets, onChange, onPreset, onImport, onEx
   function renderTable() {
     table.textContent = '';
     table.append(el('thead', {}, el('tr', {},
-      ...['#', 'Type', 'Radius', 'Thickness', 'Material', 'Conic', 'Semi-Ø', 'Stop', ''].map((t, i) =>
-        el('th', { scope: 'col', text: t, title: ['Surface number', '', 'Radius of curvature (mm); + centre of curvature to the right', 'Axial distance to the next surface (mm)', 'Medium after the surface', 'Conic constant k', 'Clear semi-diameter (mm); empty = just large enough', 'Aperture stop', ''][i] })))));
+      ...['#', 'Radius', 'Thickness', 'Material', 'Conic', 'Semi-Ø', 'Stop', ''].map((t, i) =>
+        el('th', { scope: 'col', text: t, title: ['Surface number', 'Radius of curvature (mm); + centre of curvature to the right; for a perfect lens, its focal length f', 'Axial distance to the next surface (mm)', 'Medium after the surface, or a perfect lens', 'Conic constant k', 'Clear semi-diameter (mm); empty = just large enough', 'Aperture stop', ''][i] })))));
     const body = el('tbody');
     body.append(el('tr', { class: 'bench-end' },
-      el('th', { scope: 'row', text: 'Obj' }), el('td', { text: 'Object' }), el('td', { text: '∞' }),
+      el('th', { scope: 'row', text: 'Obj', title: 'Object' }), el('td', { text: '∞' }),
       el('td', { text: objectText() }), el('td', { text: 'Air' }), el('td', { colSpan: 4 })));
     system.surfaces.forEach((s, j) => body.append(...surfaceRow(s, j)));
-    body.append(el('tr', { class: 'bench-end' }, el('th', { scope: 'row', text: 'Img' }), el('td', { text: 'Image' }), imageCell));
+    body.append(el('tr', { class: 'bench-end' }, el('th', { scope: 'row', text: 'Img', title: 'Image' }), imageCell));
     table.append(body);
     updateImageText();
   }
@@ -361,6 +367,11 @@ export function createEditor(host, { presets, onChange, onPreset, onImport, onEx
       presetNote.textContent = note;
       syncSystem();
       renderTable();
+    },
+    // Settings edited outside the editor (the imaging and coupling tabs):
+    // keep them for the next edit, and change nothing shown.
+    adopt(next) {
+      system = next;
     },
     // The normalized result of the user's own edit: keep what is being typed.
     update(next, { structural }) {
