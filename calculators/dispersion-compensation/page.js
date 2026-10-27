@@ -42,14 +42,14 @@ form.addEventListener('change', e => {
 }, true);
 
 // Dispersion to the nearest fs², fs³ or fs⁴ and durations to the nearest fs
-// (a tenth below 10 fs, ps past 10 ps): further digits are below what the
-// models and the glass data hold.
+// (a tenth below 10 fs; past 10 ps in ps, to the fs): further digits are
+// below what the models and the glass data hold.
 const grouped = n => (n < 0 ? '-' : '') + String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f');
 const whole = (x, unit) => {
   if (!Number.isFinite(x)) return '—';
   return Math.abs(x) >= 1e15 ? `${formatNumber(x, 4)} ${unit}` : `${grouped(Math.round(x) || 0)} ${unit}`;
 };
-const fs = x => [!Number.isFinite(x) ? '—' : x >= 1e4 ? `${formatNumber(x / 1000, 3)} ps` : x < 10 ? `${formatNumber(Math.round(x * 10) / 10, 3)} fs` : whole(x, 'fs')];
+const fs = x => [!Number.isFinite(x) ? '—' : x >= 1e4 ? `${grouped(Math.floor(Math.round(x) / 1000))}.${String(Math.round(x) % 1000).padStart(3, '0')} ps` : x < 10 ? `${formatNumber(Math.round(x * 10) / 10, 3)} fs` : whole(x, 'fs')];
 const mm = x => [x, 'mm', 4];
 
 function rows(r) {
@@ -202,7 +202,12 @@ function drawFigure(r) {
   if (chirp?.block) caption.textContent += ` The ${formatNumber(chirp.block.lengthMm, 4)} mm block before it carries the chirp.`;
   else if (chirp?.clipped) caption.textContent += ` The canvas source carries at most ${formatNumber(Math.abs(chirp.gddFs2), 3)} fs², so the scene carries that much of the ${whole(Math.abs(r.chirp.gddFs2), 'fs²')} entered: in the canvas the output stays chirped, and the canvas does not carry the input’s TOD and FOD either.`;
   else if (chirp) caption.textContent += ` The source carries the chirp as its GDD (${whole(chirp.gddFs2, 'fs²')}); the canvas does not carry the input’s TOD and FOD.`;
-  if (r.figureIssue) caption.textContent = `${r.figureIssue} The numbers do not depend on the drawing.`;
+  // A figure note replaces the description, but a scene that cannot carry
+  // the whole input chirp is still said.
+  if (r.figureIssue) {
+    caption.textContent = `${r.figureIssue} The numbers do not depend on the drawing.`;
+    if (chirp?.clipped) caption.textContent += ` The canvas source also carries only ${formatNumber(Math.abs(chirp.gddFs2), 3)} fs² of the ${whole(Math.abs(r.chirp.gddFs2), 'fs²')} entered.`;
+  }
   figure.innerHTML = sceneSVG(r);
   presetNote.textContent = LAYOUT_PRESETS[v.layout].note;
   // The share link is built asynchronously (gzip); only the latest stands.

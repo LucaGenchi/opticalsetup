@@ -131,13 +131,17 @@ test('a bench that cannot be drawn in the plane still gives its numbers, and say
   const small = computeCompressor(form('grating-pair', { gratingSizeMm: 20 }));
   assert.equal(small.comp.gddFs2, computeCompressor(form('grating-pair')).comp.gddFs2);
   assert.match(small.figureIssue, /clipped/);
-  // Only lost light counts against the figure: a stretcher at s = f with a
-  // wide band delivers it all, though the canvas's GDD (its lens glass, its
-  // fit) differs from the page's.
+  // Only missing colours count against the figure, not how the canvas's own
+  // models differ from the page's: a stretcher at s = f with a wide band
+  // (the canvas's GDD carries its lens glass), and a broad band through
+  // s-polarized Brewster prisms (Fresnel loss varies across the band).
   for (const extra of [{}, { bandwidthNm: 40, lensDiameterMm: 200, gratingSizeMm: 250 }]) {
     const flat = computeCompressor(form('stretcher', { solve: 'manual', gratingLensMm: 500, ...extra }));
     assert.equal(flat.figureIssue, null, JSON.stringify(extra));
   }
+  const broad = computeCompressor(form('prism-pair', { prismMaterial: 'nsf10', polarization: 's', wavelengthNm: 600, bandwidthNm: 140,
+    chirp: 'none', solve: 'manual', separationMm: 100, insertion1Mm: 30, insertion2Mm: 30, prismSizeMm: 100 }));
+  assert.equal(broad.figureIssue, null);
 });
 
 test('the grating pair\'s GDD is Treacy\'s explicit formula', () => {
