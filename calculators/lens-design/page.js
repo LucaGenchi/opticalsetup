@@ -422,7 +422,7 @@ function renderDiffraction(id, plot, body, r) {
   }
   const d = diffResult;
   if (!d.ok) {
-    plot.append(el('div', { class: 'calc-status is-error' }, el('b', { text: 'No diffraction analysis for this field.' }), el('ul', {}, ...(d.errors ?? []).map(e => el('li', { text: e })))));
+    plot.append(el('div', { class: 'calc-status is-error' }, el('b', { text: 'No diffraction analysis.' }), el('ul', {}, ...(d.errors ?? []).map(e => el('li', { text: e })))));
     return;
   }
   const choice = selectedWavelength(id, r);
@@ -585,7 +585,7 @@ function renderPsf(plot, body, r, d, choice) {
     const series = d.perWavelength.map((w, i) => ({ key: `wl${i}`, name: nmText(w.nm), color: `--wl-${i}`, values: Array.from(tf.strehl[i]) }));
     if (tf.poly) series.unshift({ key: 'poly', name: 'Polychromatic', color: '--ink', values: Array.from(tf.poly) });
     body.append(el('h3', { text: 'Strehl ratio through focus' }), tfHost,
-      el('p', { class: 'bench-note', text: `Moving the image plane from where it is now (0); ${tf.grid} samples across the pupil. A negative shift moves it toward the lens.` }),
+      el('p', { class: 'bench-note', text: `Moving the image plane from where it is now (0); ${focusGridText(tf)}. A negative shift moves it toward the lens.${tf.aliased.some(Boolean) ? ' Planes where the wavefront is too steep to sample are left out.' : ''}` }),
       exportBar(['Download CSV', () => downloadText(focusCsv(d), `${fileSafe(r.system.name)}-through-focus.csv`, 'text/csv')]));
     lineChart(tfHost, null, {
       x: Array.from(tf.shifts, z => z * 1e3), xLabel: 'Image-plane shift (µm)', yLabel: 'Strehl ratio', yMin: 0, yMax: 1,
@@ -615,11 +615,19 @@ function psfCsv(d, sel) {
   return `${lines.join('\n')}\n`;
 }
 
+// The pupil grid of the through-focus planes: each plane takes the
+// coarsest that samples its wavefront.
+function focusGridText(tf) {
+  const [lo, hi] = tf.gridRange;
+  return lo === hi ? `${lo} samples across the pupil` : `${lo} to ${hi} samples across the pupil, finer where the wavefront is steeper`;
+}
+
 function focusCsv(d) {
   const tf = d.throughFocus;
-  const head = ['shift_um', ...(tf.poly ? ['strehl_polychromatic'] : []), ...d.perWavelength.map(w => `strehl_${Math.round(w.nm)}nm`)];
+  const value = v => (Number.isFinite(v) ? v.toPrecision(6) : '');
+  const head = ['shift_um', ...(tf.poly ? ['strehl_polychromatic'] : []), ...d.perWavelength.map(w => `strehl_${Math.round(w.nm)}nm`), 'pupil_samples_across', 'aliased'];
   const lines = [head.join(',')];
-  tf.shifts.forEach((z, i) => lines.push([(z * 1e3).toPrecision(6), ...(tf.poly ? [tf.poly[i].toPrecision(6)] : []), ...tf.strehl.map(s => s[i].toPrecision(6))].join(',')));
+  tf.shifts.forEach((z, i) => lines.push([(z * 1e3).toPrecision(6), ...(tf.poly ? [value(tf.poly[i])] : []), ...tf.strehl.map(s => value(s[i])), tf.planeGrid[i] || '', tf.aliased[i] ? 'yes' : 'no'].join(',')));
   return `${lines.join('\n')}\n`;
 }
 

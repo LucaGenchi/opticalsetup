@@ -256,7 +256,7 @@ Sources:
 - **Provenance.** Textbook relations evaluated here; the plano-hyperbolic singlet is the classical aplanatic surface (Descartes ovoid for an object at infinity), whose image is a point.
 - **Cases run.** Rotationally symmetric refracting systems in air, objects at infinity and at 200 mm, fields up to 20 deg, F/2.5 to F/10, visible wavelengths; diffraction cases for a perfect F/10 lens at 587.6 nm, up to 0.75 waves of defocus.
 - **Method.** Bisection to 200 halvings (far past double precision); the surface normal from a complex-step derivative; Simpson's rule on 4000 intervals over the pupil radius (the defocus integrand is smooth, error below 1e-12).
-- **Tolerances.** 1e-9 mm and 1e-8 waves (absolute: an exit pupil can sit exactly on a vertex) are two independent evaluations of the same geometry in double precision; 1e-5 on the fitted S_I is the truncation of the odd-power fit; 3e-4 on the defocus Strehl ratio and 3e-3 on the MTF are the app's sampled pupil (square cells filling a disc), and the 1 % on the Gaussian waist its sampled PSF.
+- **Tolerances.** 1e-9 mm and 1e-8 waves (absolute: an exit pupil can sit exactly on a vertex) are two independent evaluations of the same geometry in double precision; 1e-5 on the fitted S_I is the truncation of the odd-power fit; 3e-4 on the defocus Strehl ratio and 3e-3 on the MTF are the app's sampled pupil (square cells filling a disc), and the 1 % on the Gaussian waist its sampled PSF. The phase-2 expected values are stored rounded (the OPD to 1e-8 waves, the rest to 10 significant digits), because their last digits depend on the platform's maths library.
 
 Sources:
 

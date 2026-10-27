@@ -1357,7 +1357,7 @@
   {
    "absolute": true,
    "expected": {
-    "opd": 0.8710314490204238
+    "opd": 0.87103145
    },
    "inputs": {
     "field": 20.0,
@@ -1437,7 +1437,7 @@
   {
    "absolute": true,
    "expected": {
-    "opd": 1.6112464488552785
+    "opd": 1.61124645
    },
    "inputs": {
     "field": 20.0,
@@ -1517,7 +1517,7 @@
   {
    "absolute": true,
    "expected": {
-    "opd": 0.8700432734907684
+    "opd": 0.87004327
    },
    "inputs": {
     "field": 14.0,
@@ -1597,7 +1597,7 @@
   {
    "absolute": true,
    "expected": {
-    "opd": -1.4957162529392258
+    "opd": -1.49571625
    },
    "inputs": {
     "field": 14.0,
@@ -1677,7 +1677,7 @@
   {
    "absolute": true,
    "expected": {
-    "opd": -0.7223142783156316
+    "opd": -0.72231428
    },
    "inputs": {
     "field": 0.0,
@@ -1757,7 +1757,7 @@
   {
    "absolute": true,
    "expected": {
-    "opd": 72.64769602161391
+    "opd": 72.64769602
    },
    "inputs": {
     "field": 0.0,
@@ -1825,7 +1825,7 @@
   {
    "absolute": true,
    "expected": {
-    "opd": 107.3559841728293
+    "opd": 107.35598417
    },
    "inputs": {
     "field": 4.0,
@@ -1893,7 +1893,7 @@
   {
    "absolute": true,
    "expected": {
-    "opd": 62.81676196866202
+    "opd": 62.81676197
    },
    "inputs": {
     "field": 4.0,
@@ -1961,7 +1961,7 @@
   {
    "absolute": true,
    "expected": {
-    "opd": -3.576017489384884
+    "opd": -3.57601749
    },
    "inputs": {
     "field": 5.0,
@@ -2020,7 +2020,7 @@
   {
    "absolute": true,
    "expected": {
-    "opd": -1.013810450381871
+    "opd": -1.01381045
    },
    "inputs": {
     "field": 5.0,
@@ -2079,7 +2079,7 @@
   {
    "absolute": true,
    "expected": {
-    "strehl": 0.9676810014899029
+    "strehl": 0.9676810015
    },
    "inputs": {
     "kind": "defocus",
@@ -2131,7 +2131,7 @@
   {
    "absolute": true,
    "expected": {
-    "strehl": 0.8116267887667258
+    "strehl": 0.8116267888
    },
    "inputs": {
     "kind": "defocus",
@@ -2183,7 +2183,7 @@
   {
    "absolute": true,
    "expected": {
-    "strehl": 0.40870132403147474
+    "strehl": 0.408701324
    },
    "inputs": {
     "kind": "defocus",
@@ -2235,7 +2235,7 @@
   {
    "absolute": true,
    "expected": {
-    "strehl": 0.09334562671457725
+    "strehl": 0.09334562671
    },
    "inputs": {
     "kind": "defocus",
@@ -2287,8 +2287,8 @@
   {
    "absolute": true,
    "expected": {
-    "sagittal": 0.8728885715695383,
-    "tangential": 0.8728885715695383
+    "sagittal": 0.8728885716,
+    "tangential": 0.8728885716
    },
    "inputs": {
     "frequency": 16.99825173926972,
@@ -2342,8 +2342,8 @@
   {
    "absolute": true,
    "expected": {
-    "sagittal": 0.6850376424742927,
-    "tangential": 0.6850376424742927
+    "sagittal": 0.6850376425,
+    "tangential": 0.6850376425
    },
    "inputs": {
     "frequency": 42.4956293481743,
@@ -2397,8 +2397,8 @@
   {
    "absolute": true,
    "expected": {
-    "sagittal": 0.5046315754686909,
-    "tangential": 0.5046315754686909
+    "sagittal": 0.5046315755,
+    "tangential": 0.5046315755
    },
    "inputs": {
     "frequency": 67.99300695707888,
@@ -2452,8 +2452,8 @@
   {
    "absolute": true,
    "expected": {
-    "sagittal": 0.3368301287489332,
-    "tangential": 0.3368301287489332
+    "sagittal": 0.3368301287,
+    "tangential": 0.3368301287
    },
    "inputs": {
     "frequency": 93.49038456598346,
@@ -2507,8 +2507,8 @@
   {
    "absolute": true,
    "expected": {
-    "sagittal": 0.18812040437418737,
-    "tangential": 0.18812040437418737
+    "sagittal": 0.1881204044,
+    "tangential": 0.1881204044
    },
    "inputs": {
     "frequency": 118.98776217488802,
@@ -2562,8 +2562,8 @@
   {
    "absolute": true,
    "expected": {
-    "sagittal": 0.06814744003269331,
-    "tangential": 0.06814744003269331
+    "sagittal": 0.06814744003,
+    "tangential": 0.06814744003
    },
    "inputs": {
     "frequency": 144.48513978379262,
@@ -2617,8 +2617,8 @@
   {
    "absolute": true,
    "expected": {
-    "sagittal": 0.013320011010141292,
-    "tangential": 0.013320011010141292
+    "sagittal": 0.01332001101,
+    "tangential": 0.01332001101
    },
    "inputs": {
     "frequency": 161.48339152306232,
@@ -2671,7 +2671,7 @@
   },
   {
    "expected": {
-    "waist": 0.014962138374715455
+    "waist": 0.01496213837
    },
    "inputs": {
     "kind": "gaussian",
@@ -2724,7 +2724,7 @@
   },
   {
    "expected": {
-    "waist": 0.00935133648419716
+    "waist": 0.009351336484
    },
    "inputs": {
     "kind": "gaussian",
@@ -2848,5 +2848,5 @@
  "reference_file": "validation/reference/lens_design.py",
  "scope": "Geometric optics: paraxial first-order data and exact skew-ray tracing of spherical, conic and even-aspheric refracting surfaces, plus third-order theory; scalar diffraction from the exit-pupil wavefront.",
  "title": "Lens designer: first-order data, real skew rays, Seidel spherical aberration, wavefront and diffraction",
- "tolerance_rationale": "1e-9 mm and 1e-8 waves (absolute: an exit pupil can sit exactly on a vertex) are two independent evaluations of the same geometry in double precision; 1e-5 on the fitted S_I is the truncation of the odd-power fit; 3e-4 on the defocus Strehl ratio and 3e-3 on the MTF are the app's sampled pupil (square cells filling a disc), and the 1 % on the Gaussian waist its sampled PSF."
+ "tolerance_rationale": "1e-9 mm and 1e-8 waves (absolute: an exit pupil can sit exactly on a vertex) are two independent evaluations of the same geometry in double precision; 1e-5 on the fitted S_I is the truncation of the odd-power fit; 3e-4 on the defocus Strehl ratio and 3e-3 on the MTF are the app's sampled pupil (square cells filling a disc), and the 1 % on the Gaussian waist its sampled PSF. The phase-2 expected values are stored rounded (the OPD to 1e-8 waves, the rest to 10 significant digits), because their last digits depend on the platform's maths library."
 }

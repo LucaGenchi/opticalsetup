@@ -18,7 +18,7 @@ import { pupilGrid, spotStats, bestFocusShift } from '../calculators/lens-design
 import { PRESETS, presetSystem } from '../calculators/lens-design/engine/presets.js';
 import { materialIndex } from '../calculators/lens-design/engine/materials.js';
 import { surfaceTableCardinals, presetRows } from '../sketch/js/lensgroup.js';
-import { analyzeDiffraction, pupilSamples, psfFromPupil, mtfFromPsf, intensityAt, refinedPeak } from '../calculators/lens-design/engine/diffraction.js';
+import { analyzeDiffraction, pupilSamples, psfFromPupil, mtfFromPsf, intensityAt, refinedPeak, commonFftSize, MIN_ACROSS, ALIAS_WAVES } from '../calculators/lens-design/engine/diffraction.js';
 import { traceBundle, referenceSphere, opdWaves } from '../calculators/lens-design/engine/wavefront.js';
 import { fitZernike, zernikeBasis, nollToNm } from '../calculators/lens-design/engine/zernike.js';
 import { fft2 } from '../calculators/lens-design/engine/fft.js';
@@ -742,8 +742,63 @@ test('diffraction outputs stay finite across random prescriptions', () => {
         for (const v of [...w.mtf.tan, ...w.mtf.sag, w.strehl, w.strehlAtChief, w.peakAt.x, w.peakAt.y]) assert.ok(Number.isFinite(v), `trial ${trial}`);
         assert.ok(w.strehl >= 0 && w.strehl <= 1 + 1e-9);
       }
-      for (const s of r.throughFocus.strehl) for (const v of s) assert.ok(Number.isFinite(v));
+      // A through-focus plane has a value unless it is flagged aliased.
+      const tf = r.throughFocus;
+      for (const s of tf.strehl) s.forEach((v, i) => assert.ok(tf.aliased[i] ? Number.isNaN(v) : Number.isFinite(v), `trial ${trial}, plane ${i}`));
     }
+  }
+});
+
+test('every wavelength keeps enough pupil samples on the common grid, or the analysis says why not', () => {
+  const lens = { aperture: { type: 'epd', value: 10 }, surfaces: [{ type: 'paraxial', focal: 100, thickness: 100, stop: true }] };
+  // 400 nm and 10.6 µm differ 26-fold: at 32 samples for the longer, the
+  // shorter would need an FFT of 2048.
+  const wide = analyzeDiffraction(normalizeSystem({ ...lens, wavelengthsNm: [400, 10600], wavelengthWeights: [0, 1], primaryWavelength: 1, diffraction: { grid: 32 } }));
+  assert.equal(wide.ok, false);
+  assert.match(wide.errors[0], /400 nm to 10600 nm/);
+  assert.equal(analyzeDiffraction(normalizeSystem({ ...lens, wavelengthsNm: [10600], primaryWavelength: 0, diffraction: { grid: 32 } })).perWavelength[0].strehl.toFixed(6), '1.000000');
+  // 400 to 2000 nm fits: the grid grows so the longer still gets 32 samples
+  // across, and a perfect lens stays perfect at both.
+  const nir = analyzeDiffraction(normalizeSystem({ ...lens, wavelengthsNm: [400, 2000], primaryWavelength: 0 }), { throughFocus: false });
+  assert.equal(nir.ok, true);
+  assert.equal(nir.fftSize, 512);
+  for (const w of nir.perWavelength) {
+    assert.ok(Math.min(w.samplesAcross.x, w.samplesAcross.y) >= MIN_ACROSS - 1e-9, `${w.nm} nm`);
+    assert.ok(Math.abs(w.strehl - 1) < 1e-6, `${w.nm} nm: ${w.strehl}`);
+  }
+  assert.ok(Math.abs(nir.poly.strehl - 1) < 1e-6);
+  assert.equal(commonFftSize(128, 1, 4), 128);
+  assert.equal(commonFftSize(64, 1, 4), 128);
+  assert.equal(commonFftSize(64, 1, 64), null);
+  // A clear aperture behind the lens that passes the chief ray but none of
+  // the pupil samples: no PSF, said plainly; with apertures off, a perfect one.
+  const cut = { ...lens, wavelengthsNm: [LAMBDA_D], primaryWavelength: 0, surfaces: [{ ...lens.surfaces[0], thickness: 50 }, { radius: 0, thickness: 50, semiDiameter: 0.05 }], diffraction: { grid: 32 } };
+  const dark = analyzeDiffraction(normalizeSystem(cut));
+  assert.equal(dark.ok, false);
+  assert.match(dark.errors[0], /only 0 of the \d+ pupil samples carry light/);
+  assert.ok(Math.abs(analyzeDiffraction(normalizeSystem({ ...cut, diffraction: { grid: 32, vignetting: false } })).perWavelength[0].strehl - 1) < 1e-6);
+});
+
+test('through focus: the grid refines until the wavefront is sampled, and planes still aliased are flagged', () => {
+  // 8 mm past the focus of an F/10 lens: about 17 waves of defocus. At
+  // N = 256 the image plane itself is sampled (0.24 waves per sample), so
+  // the curve's value at zero shift is the analysis's own Strehl ratio.
+  const r = analyzeDiffraction(perfectMono({ image: { focus: 'paraxial', offsetMm: 8 }, diffraction: { grid: 256 } }));
+  const tf = r.throughFocus, mid = (tf.shifts.length - 1) / 2;
+  assert.ok(!r.warnings.some(w => w.kind === 'aliasing'));
+  assert.equal(tf.grid, 256);
+  assert.ok(Math.abs(tf.strehl[0][mid] / r.perWavelength[0].strehl - 1) < 1e-9, `${tf.strehl[0][mid]} against ${r.perWavelength[0].strehl}`);
+  // The far planes, further from focus still, alias even at 256: flagged,
+  // valueless and named in a warning.
+  const flagged = [...tf.aliased.keys()].filter(i => tf.aliased[i]);
+  assert.ok(flagged.length > 0 && flagged.every(i => tf.shifts[i] > 0 && Number.isNaN(tf.strehl[0][i]) && tf.largestStep[i] > ALIAS_WAVES));
+  assert.ok(tf.largestStep.every((v, i) => tf.aliased[i] || v <= ALIAS_WAVES));
+  assert.ok(r.warnings.some(w => w.kind === 'focus-aliasing'));
+  // The presets' through-focus curves need no flag at any field.
+  for (const field of [0, 1, 2]) {
+    const c = analyzeDiffraction(normalizeSystem(cooke()), { field });
+    assert.ok(!c.warnings.some(w => w.kind === 'focus-aliasing'), `field ${field}`);
+    assert.ok(c.throughFocus.aliased.every(v => !v));
   }
 });
 

@@ -31,6 +31,7 @@ import cmath
 import json
 import math
 
+from common import sig
 from sellmeier import index as glass_index
 
 PRIMARY_LINES = [486.1327, 587.5618, 656.2725]
@@ -492,7 +493,7 @@ def cases():
             out.append({
                 "name": f"{name}: OPD on the reference sphere, field {field}, pupil ({px}, {py}), {nm} nm",
                 "inputs": {"kind": "opd", "system": system, "field": field, "px": px, "py": py, "nm": nm},
-                "expected": {"opd": opd_waves(system, nm, field, px, py, z_img)},
+                "expected": {"opd": round(opd_waves(system, nm, field, px, py, z_img), 8)},
                 "tolerance": {"opd": 1e-8},
                 "absolute": True,
             })
@@ -506,7 +507,7 @@ def cases():
         out.append({
             "name": f"perfect lens F/10, image plane {dz:.4f} mm past focus (about {w020} waves of defocus): Strehl ratio on axis",
             "inputs": {"kind": "defocus", "system": system},
-            "expected": {"strehl": defocus_strehl(100.0, 5.0, 587.5618, dz)},
+            "expected": {"strehl": sig(defocus_strehl(100.0, 5.0, 587.5618, dz))},
             "tolerance": {"strehl": 3e-4},
             "absolute": True,
             "note": "the app sums a 256-sample pupil grid (the square cells fill the disc to about 1e-4); the reference integrates the radius by Simpson's rule to 1e-12",
@@ -519,7 +520,7 @@ def cases():
         out.append({
             "name": f"perfect lens F/10: diffraction-limited MTF at {nu} of the cutoff ({nu * cutoff:.2f} cycles/mm)",
             "inputs": {"kind": "mtf", "system": system, "frequency": nu * cutoff},
-            "expected": {"tangential": diffraction_limited_mtf(nu), "sagittal": diffraction_limited_mtf(nu)},
+            "expected": {"tangential": sig(diffraction_limited_mtf(nu)), "sagittal": sig(diffraction_limited_mtf(nu))},
             "tolerance": {"tangential": 3e-3, "sagittal": 3e-3},
             "absolute": True,
             "note": "NA = sin(atan(r/f)) for the ideal lens; the sampled pupil and that NA leave about 1e-3",
@@ -531,7 +532,7 @@ def cases():
         out.append({
             "name": f"perfect lens f 100 mm, Gaussian beam of 1/e^2 radius {w_in} mm (no truncation): focused waist",
             "inputs": {"kind": "gaussian", "system": system},
-            "expected": {"waist": 587.5618e-6 * 100.0 / (math.pi * w_in)},
+            "expected": {"waist": sig(587.5618e-6 * 100.0 / (math.pi * w_in))},
             "tolerance": {"waist": 1e-2},
             "note": "w0 = lambda f / (pi w), the paraxial Gaussian-beam focus; the app's waist is 2 sigma of its sampled PSF",
         })
@@ -566,7 +567,7 @@ MODEL = {
     "provenance": "Textbook relations evaluated here; the plano-hyperbolic singlet is the classical aplanatic surface (Descartes ovoid for an object at infinity), whose image is a point.",
     "domain": "Rotationally symmetric refracting systems in air, objects at infinity and at 200 mm, fields up to 20 deg, F/2.5 to F/10, visible wavelengths; diffraction cases for a perfect F/10 lens at 587.6 nm, up to 0.75 waves of defocus.",
     "convergence": "Bisection to 200 halvings (far past double precision); the surface normal from a complex-step derivative; Simpson's rule on 4000 intervals over the pupil radius (the defocus integrand is smooth, error below 1e-12).",
-    "tolerance_rationale": "1e-9 mm and 1e-8 waves (absolute: an exit pupil can sit exactly on a vertex) are two independent evaluations of the same geometry in double precision; 1e-5 on the fitted S_I is the truncation of the odd-power fit; 3e-4 on the defocus Strehl ratio and 3e-3 on the MTF are the app's sampled pupil (square cells filling a disc), and the 1 % on the Gaussian waist its sampled PSF.",
+    "tolerance_rationale": "1e-9 mm and 1e-8 waves (absolute: an exit pupil can sit exactly on a vertex) are two independent evaluations of the same geometry in double precision; 1e-5 on the fitted S_I is the truncation of the odd-power fit; 3e-4 on the defocus Strehl ratio and 3e-3 on the MTF are the app's sampled pupil (square cells filling a disc), and the 1 % on the Gaussian waist its sampled PSF. The phase-2 expected values are stored rounded (the OPD to 1e-8 waves, the rest to 10 significant digits), because their last digits depend on the platform's maths library.",
     "outside_scope": "Mirrors, tilts, decentres, vector (high-NA) diffraction, and the Fresnel-number focal shift are outside this model.",
     "fidelity": "computed",
     "scope": "Geometric optics: paraxial first-order data and exact skew-ray tracing of spherical, conic and even-aspheric refracting surfaces, plus third-order theory; scalar diffraction from the exit-pupil wavefront.",
