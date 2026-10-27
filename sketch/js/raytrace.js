@@ -118,6 +118,24 @@ const pathPhaseUncertain = fs2 => `GDD from the ray paths uncertain by ±${fs2 <
 const PATH_PHASE_OFFSET_MM = 0.01;
 const PATH_PHASE_PROBE_NOTE = 'After a prism or grating the colours travel apart; a detector reads the duration from all of them';
 const PATH_PHASE_ANGULAR = 'Colours leave at different angles — angular dispersion remains, so there is no single duration here; the GDD shown is the central ray\u2019s';
+
+// How the traced colours of a split arrive: the angle and the width they
+// span across the band they cover, measured across the central colour's
+// direction, and whether they count as parallel and as overlapping by the
+// same limits the duration uses. Several splits reaching one detector report
+// the widest of each and are parallel only if every one is.
+function mergeColourSpreads(spreads) {
+  const list = spreads.filter(Boolean);
+  if (!list.length) return null;
+  return {
+    loNm: Math.min(...list.map(c => c.loNm)),
+    hiNm: Math.max(...list.map(c => c.hiNm)),
+    angleRad: Math.max(...list.map(c => c.angleRad)),
+    lateralMm: Math.max(...list.map(c => c.lateralMm)),
+    parallel: list.every(c => c.parallel),
+    overlapping: list.every(c => c.overlapping),
+  };
+}
 // Rays whose centres cross a camera plane just outside its finite face still
 // define the boundary of the adjacent ray tube. Keep those near misses
 // separate from measured hits so camera deposition can clip the continuous
@@ -1005,6 +1023,7 @@ function withPathPhase(hits) {
   }
   if (!families.size) return hits;
   const replaced = new Map();
+  const spreads = new Map();
   for (const group of families.values()) {
     if (!group.some(h => h.pathPhase.fanned) || group.some(h => h.pathPhase.issue)) continue;
     // A colour arriving by two paths, or too few colours to fit.
@@ -1015,6 +1034,7 @@ function withPathPhase(hits) {
     const ref = group.reduce((best, h) => (Math.abs(h.wl - centerNm) < Math.abs(best.wl - centerNm) ? h : best));
     const u0 = norm({ x: ref.dx, y: ref.dy });
     let angular = 0, lateral = 0, valid = true;
+    const angles = [], offsets = [];
     const samples = group.map(h => {
       const u = norm({ x: h.dx, y: h.dy });
       const along = dot(u, u0);
@@ -1029,9 +1049,23 @@ function withPathPhase(hits) {
       const s = offset.x * u.x + offset.y * u.y;
       angular = Math.max(angular, Math.abs(u.x * u0.y - u.y * u0.x));
       lateral = Math.max(lateral, Math.abs(offset.x * u0.y - offset.y * u0.x));
+      angles.push(Math.atan2(u.x * u0.y - u.y * u0.x, along));
+      offsets.push(offset.x * u0.y - offset.y * u0.x);
       return { wavelengthNm: h.wl, pathMm: h.pathPhase.pathMm + h.ior * s + h.pathPhase.lensPathMm, cycles: h.pathPhase.cycles };
     });
     const C_NM_PER_FS = 299.792458;
+    // The geometry stands even where the phase below cannot be fitted.
+    const colourSpread = {
+      loNm: Math.min(...group.map(h => h.wl)),
+      hiNm: Math.max(...group.map(h => h.wl)),
+      angleRad: Math.max(...angles) - Math.min(...angles),
+      lateralMm: Math.max(...offsets) - Math.min(...offsets),
+      parallel: angular <= PATH_PHASE_ANGLE_RAD,
+      overlapping: lateral <= PATH_PHASE_OFFSET_MM,
+    };
+    if ([colourSpread.angleRad, colourSpread.lateralMm].every(Number.isFinite)) {
+      for (const h of group) spreads.set(h, colourSpread);
+    }
     if (!valid || !samples.every(sample => Number.isFinite(sample.pathMm))) continue;
     const coordinateScaleMm = Math.max(...group.map(h => Math.max(Math.abs(h.arrivalX), Math.abs(h.arrivalY))));
     const fit = pathPhaseFit(samples, centerNm, { loNm: pulse?.spectrumLoNm, hiNm: pulse?.spectrumHiNm, coordinateScaleMm });
@@ -1070,7 +1104,11 @@ function withPathPhase(hits) {
       });
     }
   }
-  return replaced.size ? hits.map(h => replaced.get(h) || h) : hits;
+  if (!replaced.size && !spreads.size) return hits;
+  return hits.map(h => {
+    const read = replaced.get(h) || h;
+    return spreads.has(h) ? { ...read, colourSpread: spreads.get(h) } : read;
+  });
 }
 
 function recordDetectorHit(ray, hit) {
@@ -1403,6 +1441,7 @@ export function detectorReading(elementId) {
       if (duration?.available !== false && sourceHits.some(h => h.pathPhaseAngular)) {
         duration = { durationFs: null, available: false, model: PATH_PHASE_ANGULAR };
       }
+      const colourSpread = mergeColourSpreads([...new Set(sourceHits.map(h => h.colourSpread))]);
       // Say where the GDD came from, and that it is the central ray's when
       // the colours arrive side by side.
       const pathNotes = [...new Set(sourceHits.map(h => h.pathPhaseNote).filter(Boolean))];
@@ -1422,6 +1461,8 @@ export function detectorReading(elementId) {
         groupDelayDifferenceFs,
         stretchedPulseWidthFs: duration?.durationFs ?? null,
         dispersionModel: duration?.model ?? null,
+        // Only where colours split by a prism or grating arrive.
+        ...(colourSpread ? { colourSpread } : {}),
         transformLimitFs: duration?.transformLimitFs ?? null,
         inputGddFs2: duration?.inputGddFs2 ?? null,
         totalGddFs2: duration?.totalGddFs2 ?? gddFs2,
@@ -1500,6 +1541,8 @@ export function detectorReading(elementId) {
       transformLimitFs: duration?.transformLimitFs ?? null,
       inputGddFs2: duration?.inputGddFs2 ?? null,
       totalGddFs2: duration?.totalGddFs2 ?? gddFs2,
+      ...(trains.some(train => train.colourSpread)
+        ? { colourSpread: mergeColourSpreads(trains.map(train => train.colourSpread)) } : {}),
       envelope: !mixed && trains.length === 1 ? trains[0].envelope : null,
       fieldIssue: trains.find(t => t.fieldIssue)?.fieldIssue || null,
       ...(pulsed.some(h => h.pulse.interferenceUnknown) ? { interferenceUnknown: true } : {}),

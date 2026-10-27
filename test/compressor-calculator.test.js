@@ -37,6 +37,16 @@ test('every example bench computes, draws and reads the same GDD on the canvas',
     const net = r.net.gddFs2 + glass;
     const duration = r.values.shape === 'gauss' ? gaussianPulseDurationAfterGDD(r.tlFs, net) : sech2PulseDurationAfterGDD(r.tlFs, net);
     assert.ok(Math.abs(pulse.stretchedPulseWidthFs / duration - 1) < 1e-3, `${layout}: page ${duration} fs, canvas ${pulse.stretchedPulseWidthFs} fs`);
+    // The colours leave as one beam: parallel and on top of each other.
+    assert.equal(pulse.colourSpread?.parallel, true, layout);
+    assert.equal(pulse.colourSpread?.overlapping, true, layout);
+  }
+  // One pass of a pair leaves them parallel and side by side, as the page says.
+  for (const layout of ['prism-pair', 'grating-pair']) {
+    const r = computeCompressor(form(layout, { passes: '1' }));
+    traceScene(r.layout.elements);
+    const spread = detectorReading(r.layout.elements.at(-1).id).pulse.colourSpread;
+    assert.ok(r.geometry.outputChirpMm > 0 && spread.parallel && !spread.overlapping, `${layout}: ${JSON.stringify(spread)}`);
   }
 });
 

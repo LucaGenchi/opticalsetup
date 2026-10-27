@@ -391,6 +391,22 @@ function autocorrelatorRows(rd, source) {
       ${reading.shapeMismatch ? `<dt>Shape mismatch</dt><dd>Source is ${shapeName(actual)}, so this reads ${Math.abs((error - 1) * 100).toFixed(0)}% ${error > 1 ? 'long' : 'short'} — ${fs(reading.truePulseWidthFs)} actual</dd>` : ''}`;
 }
 
+// How the colours a prism or grating split arrive here: parallel or at
+// different angles, overlapping or side by side, across the traced band.
+export function colourSpreadText(spread) {
+  if (!spread) return '';
+  const band = `${spread.loNm.toFixed(1)}–${spread.hiNm.toFixed(1)} nm`;
+  const span = Math.max(spread.hiNm - spread.loNm, 1e-9);
+  const angle = rad => (rad < 1e-3 ? `${(rad * 1e6).toPrecision(3)} µrad` : `${(rad * 1e3).toPrecision(3)} mrad`);
+  const width = mm => `${mm.toPrecision(3)} mm`;
+  if (!spread.parallel) {
+    return `At different angles: ${angle(spread.angleRad)} across ${band} (${angle(spread.angleRad / span)}/nm), angular dispersion remains; `
+      + (spread.overlapping ? 'overlapping at this face' : `side by side over ${width(spread.lateralMm)} at this face`);
+  }
+  return spread.overlapping ? `Parallel and overlapping across ${band}`
+    : `Parallel, side by side over ${width(spread.lateralMm)} across ${band} (${width(spread.lateralMm / span)}/nm, spatial chirp)`;
+}
+
 export function pulseEnvelopeHTML(envelope) {
   if (!envelope) return '';
   const { timeFs, intensity } = envelope;
@@ -502,6 +518,7 @@ function measurementHTML(el) {
       <dt>Accumulated GDD</dt><dd>${gddText}</dd>
       ${stretchText ? `<dt>${rd.pulse.envelope ? 'Computed FWHM' : 'Dispersed duration'}</dt><dd>${stretchText}</dd>` : ''}
       ${!rd.pulse.mixed && rd.pulse.dispersionModel ? `<dt>Duration model</dt><dd>${esc(rd.pulse.dispersionModel)}</dd>` : ''}
+      ${rd.pulse.colourSpread ? `<dt>Colours</dt><dd>${esc(colourSpreadText(rd.pulse.colourSpread))}</dd>` : ''}
       <dt>Earliest path delay</dt><dd>${rd.pulse.earliestPathDelayNs.toFixed(3)} ns</dd>
       <dt>Path spread</dt><dd>${rd.pulse.arrivalSpreadPs < 0.001 ? '&lt;0.001' : rd.pulse.arrivalSpreadPs.toFixed(3)} ps</dd>` : '';
   const pulseTimeline = pulseTimelineHTML(rd.pulse, rd.color) + pulseEnvelopeHTML(rd.pulse?.envelope);

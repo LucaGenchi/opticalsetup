@@ -120,6 +120,12 @@ Limits of the model, stated where the reading is shown:
   chirp, as after a single pass of a prism or grating pair), the GDD is the
   spectral phase on the central ray and the duration is given, with the
   duration model line saying so.
+- **How the colours arrive is shown.** Every detector reading the pulse has a
+  *Colours* row (the reading's `colourSpread`): the angle and the width the
+  traced colours span across the central colour's direction, over the band
+  they cover, with the same 10 µrad and 0.01 mm limits deciding "parallel"
+  and "overlapping". Several splits reaching one detector report the widest
+  of each. The geometry is read even where the phase fit is not.
 - **Ideal lenses are paraxial.** The thin lens bends rays by
   `tan θ_out = tan θ_in − h/f`; its path `−h²/(2f)` agrees with that bend to
   second order in the ray angles, so a stretcher built from ideal lenses has
