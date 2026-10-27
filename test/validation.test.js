@@ -29,6 +29,8 @@ import { traceModel, traceRay } from '../calculators/lens-design/engine/trace.js
 import { analyzeSystem } from '../calculators/lens-design/engine/analyze.js';
 import { analyzeDiffraction } from '../calculators/lens-design/engine/diffraction.js';
 import { traceBundle, referenceSphere, opdWaves } from '../calculators/lens-design/engine/wavefront.js';
+import { GAUSSIAN_DEFAULTS, computeGaussianBeam } from '../calculators/gaussian-beam/gaussian-beam.js';
+import { FIBER_DEFAULTS, computeFiberCoupling, fiberMode } from '../calculators/fiber-coupling/fiber-coupling.js';
 import {
   absorptionCrossSectionCm2, focusPeakIntensityWcm2, widefieldIntensityWcm2, moleculeRates, collectionFraction,
   spectrumValue, detectionFractions, detectorQe, excitationSource, sourceAverage, sourceTransmission,
@@ -152,6 +154,8 @@ const APP = {
     if (kind === 'abbe') return { nd: materialDispersion(material, 587.5618)?.index, abbe: materialAbbe(material) };
     return computeDispersion({ ...DISPERSION_DEFAULTS, material, wavelengthNm, ...inputs });
   },
+  'gaussian-beam': inputs => computeGaussianBeam({ ...GAUSSIAN_DEFAULTS, ...inputs }),
+  'fiber-coupling': ({ kind, ...inputs }) => (kind === 'fiber' ? fiberMode(inputs) : computeFiberCoupling({ ...FIBER_DEFAULTS, ...inputs })),
   'wavelength-conversion': ({ kind, ...inputs }) => {
     if (kind === 'crs') return computeCrs({ ...CRS_DEFAULTS, ...inputs });
     if (kind === 'resolution') return computeResolution({ ...RESOLUTION_DEFAULTS, ...inputs });
@@ -260,7 +264,7 @@ const APP = {
   },
 };
 
-for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'lens-design']) {
+for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'lens-design', 'gaussian-beam', 'fiber-coupling']) {
   const model = expected(name);
   for (const c of model.cases) {
     test(`${model.id}: ${c.name}`, () => {

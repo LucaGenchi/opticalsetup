@@ -1,0 +1,404 @@
+{
+ "app": "calculators/fiber-coupling/fiber-coupling.js: computeFiberCoupling (mode radius by Marcuse's fit, focused beam by calculators/gaussian-beam/gaussian-beam.js: thinLensFocus, overlap in closed form)",
+ "cases": [
+  {
+   "expected": {
+    "cutoffNm": 1499.713089,
+    "modeFieldDiameterUm": 9.14609,
+    "vNumber": 2.326805398
+   },
+   "inputs": {
+    "coreDiameterUm": 8.2,
+    "kind": "fiber",
+    "na": 0.14,
+    "wavelengthNm": 1550
+   },
+   "name": "step-index core 8.2 um, NA 0.14, 1550 nm (V = 2.327): mode-field diameter against the exact LP01 mode",
+   "note": "the page uses Marcuse's fit; the reference fits the exact LP01 mode, whose best Gaussian couples to it at 0.9961. The fit's accuracy, about 1 %, sets the tolerance",
+   "tolerance": {
+    "cutoffNm": 1e-09,
+    "modeFieldDiameterUm": 0.01,
+    "vNumber": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "cutoffNm": 1499.713089,
+    "modeFieldDiameterUm": 8.24567,
+    "vNumber": 2.753090356
+   },
+   "inputs": {
+    "coreDiameterUm": 8.2,
+    "kind": "fiber",
+    "na": 0.14,
+    "wavelengthNm": 1310
+   },
+   "name": "step-index core 8.2 um, NA 0.14, 1310 nm (V = 2.753): mode-field diameter against the exact LP01 mode",
+   "note": "the page uses Marcuse's fit; the reference fits the exact LP01 mode, whose best Gaussian couples to it at 0.9979. The fit's accuracy, about 1 %, sets the tolerance",
+   "tolerance": {
+    "cutoffNm": 1e-09,
+    "modeFieldDiameterUm": 0.01,
+    "vNumber": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "cutoffNm": 747.2438041,
+    "modeFieldDiameterUm": 4.94222,
+    "vNumber": 2.303834613
+   },
+   "inputs": {
+    "coreDiameterUm": 4.4,
+    "kind": "fiber",
+    "na": 0.13,
+    "wavelengthNm": 780
+   },
+   "name": "step-index core 4.4 um, NA 0.13, 780 nm (V = 2.304): mode-field diameter against the exact LP01 mode",
+   "note": "the page uses Marcuse's fit; the reference fits the exact LP01 mode, whose best Gaussian couples to it at 0.9959. The fit's accuracy, about 1 %, sets the tolerance",
+   "tolerance": {
+    "cutoffNm": 1e-09,
+    "modeFieldDiameterUm": 0.01,
+    "vNumber": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "cutoffNm": 548.6755205,
+    "modeFieldDiameterUm": 4.24888,
+    "vNumber": 2.084469059
+   },
+   "inputs": {
+    "coreDiameterUm": 3.5,
+    "kind": "fiber",
+    "na": 0.12,
+    "wavelengthNm": 633
+   },
+   "name": "step-index core 3.5 um, NA 0.12, 633 nm (V = 2.084): mode-field diameter against the exact LP01 mode",
+   "note": "the page uses Marcuse's fit; the reference fits the exact LP01 mode, whose best Gaussian couples to it at 0.9932. The fit's accuracy, about 1 %, sets the tolerance",
+   "tolerance": {
+    "cutoffNm": 1e-09,
+    "modeFieldDiameterUm": 0.01,
+    "vNumber": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "cutoffNm": 783.8221721,
+    "modeFieldDiameterUm": 6.52991,
+    "vNumber": 1.923424074
+   },
+   "inputs": {
+    "coreDiameterUm": 5.0,
+    "kind": "fiber",
+    "na": 0.12,
+    "wavelengthNm": 980
+   },
+   "name": "step-index core 5.0 um, NA 0.12, 980 nm (V = 1.923): mode-field diameter against the exact LP01 mode",
+   "note": "the page uses Marcuse's fit; the reference fits the exact LP01 mode, whose best Gaussian couples to it at 0.9898. The fit's accuracy, about 1 %, sets the tolerance",
+   "tolerance": {
+    "cutoffNm": 1e-09,
+    "modeFieldDiameterUm": 0.01,
+    "vNumber": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "cutoffNm": 1097.351041,
+    "modeFieldDiameterUm": 6.41341,
+    "vNumber": 2.480204727
+   },
+   "inputs": {
+    "coreDiameterUm": 6.0,
+    "kind": "fiber",
+    "na": 0.14,
+    "wavelengthNm": 1064
+   },
+   "name": "step-index core 6.0 um, NA 0.14, 1064 nm (V = 2.480): mode-field diameter against the exact LP01 mode",
+   "note": "the page uses Marcuse's fit; the reference fits the exact LP01 mode, whose best Gaussian couples to it at 0.9971. The fit's accuracy, about 1 %, sets the tolerance",
+   "tolerance": {
+    "cutoffNm": 1e-09,
+    "modeFieldDiameterUm": 0.01,
+    "vNumber": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "cutoffNm": 522.5481147,
+    "modeFieldDiameterUm": 8.09673,
+    "vNumber": 1.396263402
+   },
+   "inputs": {
+    "coreDiameterUm": 4.0,
+    "kind": "fiber",
+    "na": 0.1,
+    "wavelengthNm": 900
+   },
+   "name": "step-index core 4.0 um, NA 0.1, 900 nm (V = 1.396): mode-field diameter against the exact LP01 mode",
+   "note": "the page uses Marcuse's fit; the reference fits the exact LP01 mode, whose best Gaussian couples to it at 0.9635. The fit's accuracy, about 1 %, sets the tolerance",
+   "tolerance": {
+    "cutoffNm": 1e-09,
+    "modeFieldDiameterUm": 0.01,
+    "vNumber": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efficiency": 0.9981749207,
+    "focusDistanceMm": 10.99967601,
+    "focusWaistUm": 5.427103634,
+    "matchEfficiency": 0.9981749207,
+    "optimalFocalMm": 10.53967914
+   },
+   "inputs": {
+    "beamDiameterMm": 2.0,
+    "fiberMode": "mfd",
+    "focalMm": 11.0,
+    "kind": "coupling",
+    "mfdUm": 10.4,
+    "wavelengthNm": 1550
+   },
+   "name": "1550 nm, 2 mm beam, f 11 mm, MFD 10.4 um: aligned",
+   "tolerance": {
+    "efficiency": 1e-09,
+    "focusDistanceMm": 1e-09,
+    "focusWaistUm": 1e-09,
+    "matchEfficiency": 1e-09,
+    "optimalFocalMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efficiency": 0.963455403,
+    "focusDistanceMm": 10.99967601,
+    "focusWaistUm": 5.427103634,
+    "matchEfficiency": 0.9981749207,
+    "optimalFocalMm": 10.53967914
+   },
+   "inputs": {
+    "beamDiameterMm": 2.0,
+    "fiberMode": "mfd",
+    "focalMm": 11.0,
+    "kind": "coupling",
+    "lateralOffsetUm": 1.0,
+    "mfdUm": 10.4,
+    "wavelengthNm": 1550
+   },
+   "name": "same, 1 um lateral offset",
+   "tolerance": {
+    "efficiency": 1e-09,
+    "focusDistanceMm": 1e-09,
+    "focusWaistUm": 1e-09,
+    "matchEfficiency": 1e-09,
+    "optimalFocalMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efficiency": 0.9686232342,
+    "focusDistanceMm": 10.99967601,
+    "focusWaistUm": 5.427103634,
+    "matchEfficiency": 0.9981749207,
+    "optimalFocalMm": 10.53967914
+   },
+   "inputs": {
+    "axialOffsetUm": 20.0,
+    "beamDiameterMm": 2.0,
+    "fiberMode": "mfd",
+    "focalMm": 11.0,
+    "kind": "coupling",
+    "mfdUm": 10.4,
+    "wavelengthNm": 1550
+   },
+   "name": "same, 20 um axial offset",
+   "tolerance": {
+    "efficiency": 1e-09,
+    "focusDistanceMm": 1e-09,
+    "focusWaistUm": 1e-09,
+    "matchEfficiency": 1e-09,
+    "optimalFocalMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efficiency": 0.9952887025,
+    "focusDistanceMm": 10.99967601,
+    "focusWaistUm": 5.427103634,
+    "matchEfficiency": 0.9981749207,
+    "optimalFocalMm": 10.53967914
+   },
+   "inputs": {
+    "beamDiameterMm": 2.0,
+    "fiberMode": "mfd",
+    "focalMm": 11.0,
+    "kind": "coupling",
+    "mfdUm": 10.4,
+    "tiltMrad": 5.0,
+    "wavelengthNm": 1550
+   },
+   "name": "same, 5 mrad tilt",
+   "tolerance": {
+    "efficiency": 1e-09,
+    "focusDistanceMm": 1e-09,
+    "focusWaistUm": 1e-09,
+    "matchEfficiency": 1e-09,
+    "optimalFocalMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efficiency": 0.9044200816,
+    "focusDistanceMm": 10.99967601,
+    "focusWaistUm": 5.427103634,
+    "matchEfficiency": 0.9981749207,
+    "optimalFocalMm": 10.53967914
+   },
+   "inputs": {
+    "axialOffsetUm": -15.0,
+    "beamDiameterMm": 2.0,
+    "fiberMode": "mfd",
+    "focalMm": 11.0,
+    "kind": "coupling",
+    "lateralOffsetUm": 1.5,
+    "mfdUm": 10.4,
+    "tiltMrad": 3.0,
+    "wavelengthNm": 1550
+   },
+   "name": "same, all three together",
+   "tolerance": {
+    "efficiency": 1e-09,
+    "focusDistanceMm": 1e-09,
+    "focusWaistUm": 1e-09,
+    "matchEfficiency": 1e-09,
+    "optimalFocalMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efficiency": 0.8091759029,
+    "focusDistanceMm": 10.99967601,
+    "focusWaistUm": 5.427103634,
+    "matchEfficiency": 0.9981749207,
+    "optimalFocalMm": 10.53967914
+   },
+   "inputs": {
+    "axialOffsetUm": 30.0,
+    "beamDiameterMm": 2.0,
+    "fiberMode": "mfd",
+    "focalMm": 11.0,
+    "kind": "coupling",
+    "lateralOffsetUm": 2.0,
+    "mfdUm": 10.4,
+    "tiltMrad": 20.0,
+    "wavelengthNm": 1550
+   },
+   "name": "same, 2 um offset, 30 um past the focus, tilted 20 mrad toward the offset side",
+   "tolerance": {
+    "efficiency": 1e-09,
+    "focusDistanceMm": 1e-09,
+    "focusWaistUm": 1e-09,
+    "matchEfficiency": 1e-09,
+    "optimalFocalMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efficiency": 0.7498740061,
+    "focusDistanceMm": 10.99967601,
+    "focusWaistUm": 5.427103634,
+    "matchEfficiency": 0.9981749207,
+    "optimalFocalMm": 10.53967914
+   },
+   "inputs": {
+    "axialOffsetUm": 30.0,
+    "beamDiameterMm": 2.0,
+    "fiberMode": "mfd",
+    "focalMm": 11.0,
+    "kind": "coupling",
+    "lateralOffsetUm": 2.0,
+    "mfdUm": 10.4,
+    "tiltMrad": -20.0,
+    "wavelengthNm": 1550
+   },
+   "name": "same, tilted 20 mrad back toward the axis",
+   "tolerance": {
+    "efficiency": 1e-09,
+    "focusDistanceMm": 1e-09,
+    "focusWaistUm": 1e-09,
+    "matchEfficiency": 1e-09,
+    "optimalFocalMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efficiency": 0.8846959367,
+    "focusDistanceMm": 7.999756476,
+    "focusWaistUm": 3.310372431,
+    "matchEfficiency": 0.9520825377,
+    "optimalFocalMm": 6.404078256
+   },
+   "inputs": {
+    "beamDiameterMm": 1.2,
+    "fiberMode": "mfd",
+    "focalMm": 8.0,
+    "kind": "coupling",
+    "lateralOffsetUm": 0.8,
+    "mfdUm": 5.3,
+    "tiltMrad": 4.0,
+    "wavelengthNm": 780
+   },
+   "name": "780 nm, 1.2 mm beam, f 8 mm, MFD 5.3 um, mismatched and offset",
+   "tolerance": {
+    "efficiency": 1e-09,
+    "focusDistanceMm": 1e-09,
+    "focusWaistUm": 1e-09,
+    "matchEfficiency": 1e-09,
+    "optimalFocalMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efficiency": 0.995809,
+    "focusDistanceMm": 4.499855492,
+    "focusWaistUm": 2.266727881,
+    "matchEfficiency": 0.995809,
+    "optimalFocalMm": 4.21752
+   },
+   "inputs": {
+    "beamDiameterMm": 0.8,
+    "coreDiameterUm": 3.5,
+    "fiberMode": "step",
+    "focalMm": 4.5,
+    "kind": "coupling",
+    "mfdUm": 10.4,
+    "na": 0.12,
+    "wavelengthNm": 633
+   },
+   "name": "633 nm, 0.8 mm beam, f 4.5 mm, core 3.5 um NA 0.12 (mode from the exact LP01 fit)",
+   "note": "the mode radius comes from the exact LP01 best Gaussian here and from Marcuse's fit on the page; the 1 % difference in radius moves the efficiency and the matching focal length by up to 2 %",
+   "tolerance": {
+    "efficiency": 0.02,
+    "focusDistanceMm": 1e-09,
+    "focusWaistUm": 1e-09,
+    "matchEfficiency": 0.02,
+    "optimalFocalMm": 0.02
+   }
+  }
+ ],
+ "citations": [
+  "D. Gloge, Appl. Opt. 10, 2252-2258 (1971), doi:10.1364/AO.10.002252 (LP modes, eigenvalue equation, cutoff V = 2.405)",
+  "D. Marcuse, Bell Syst. Tech. J. 56, 703-718 (1977), doi:10.1002/j.1538-7305.1977.tb00534.x (Gaussian approximation of the fundamental mode)",
+  "H. Kogelnik and T. Li, Appl. Opt. 5, 1550-1567 (1966), doi:10.1364/AO.5.001550 (Gaussian beams, ABCD law)",
+  "W. B. Joyce and B. C. DeLoach, Appl. Opt. 23, 4187-4196 (1984), doi:10.1364/AO.23.004187 (alignment of Gaussian beams: offset, tilt, defocus)"
+ ],
+ "convergence": "Bessel integrals by the trapezoid rule (400 and 800 nodes); 100- and 120-step bisections; mode overlaps by Simpson's rule on 200 core intervals and cladding steps of 0.01-0.25 core radii out to where the field has fallen by e^-40 (at least 12 core radii); the best Gaussian bracketed on a 61-point logarithmic scan from 0.3 to 30 core radii (it must fall inside) and refined by golden-section search to 80 steps; face overlaps by the trapezoid rule on 6000 intervals over 12 beam widths; focal-length bisection to 200 steps.",
+ "domain": "Step-index fibers with V 1.4-2.75 (633-1550 nm, one above the single-mode cutoff, cores 3.5-8.2 um, NA 0.12-0.14); collimated beams of 0.8-2 mm focused by 4.5-11 mm lenses; aligned, and with lateral offsets (on the fiber face) to 2 um, axial offsets to +/-30 um and tilts of either sign to 20 mrad in the plane of the offset, separately and together.",
+ "fidelity": "computed",
+ "id": "fiber-coupling",
+ "outside_scope": "Declines a mode or beam diameter that is not positive, a non-positive focal length, and V outside 1.2-3.5, the range checked here. The reference finds the fit within 1 % of the exact mode's best Gaussian from V = 1.0 (-0.49 %) to about 4.0 (-0.72 %), and degrading below: -3.6 % at V = 0.9, -13 % at V = 0.8. Above 2.405 the fit still describes LP01, but the fiber is no longer single-mode, and the page says so.",
+ "provenance": "The eigenvalue equation and field written from Gloge's weakly-guiding analysis; the coupling as the normalized overlap integral of the two fields on the face, as in Kogelnik and in Joyce and DeLoach. Marcuse's fit and the page's closed-form overlap are not used here. The face field's geometry is pinned by propagation, not algebra: a Fresnel-kernel propagation of the beam reproduces its own q-parameter curvature, and a tilt of +t moves the beam toward +x by t per unit length.",
+ "reference": "Exact weakly-guiding LP01 mode from its Bessel-function eigenvalue equation, best-coupling Gaussian by golden-section search on the overlap; focused beam by the ABCD law on q; coupling efficiency by trapezoid quadrature of the overlap integral on the fiber face; matching focal length by bisection",
+ "reference_file": "validation/reference/fiber_coupling.py",
+ "scope": "Paraxial scalar coupling of a TEM00 beam into the fundamental mode, approximated as a Gaussian; ideal thin lens; no Fresnel reflection, aberrations, polarization or cladding modes.",
+ "title": "Gaussian-beam coupling into a single-mode fiber",
+ "tolerance_rationale": "1e-9 relative for the V number, cutoff and every coupling quantity computed from the same mode radius (algebra and spectrally accurate quadrature); 1 % on the mode-field diameter and 2 % on the aligned coupling through a fiber given by core and NA, because the page uses Marcuse's fit and the reference the exact LP01 mode (at large misalignments a 1 % radius error can move the efficiency by more). Values that pass through the best-Gaussian optimum are stored to 6 digits, which it fixes to about 1e-8."
+}
