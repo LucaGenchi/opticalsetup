@@ -80,7 +80,8 @@ const DIFFRACTION_TABS = ['wavefront', 'psf', 'mtf'];
 // Tabs that show one wavelength at a time.
 const MONOCHROMATIC_TABS = ['wavefront', 'imaging', 'coupling'];
 let diffWorker = null, diffBusy = false, diffNoWorker = false, diffId = 0;
-let diffResult = null, diffFor = null;
+// The result, and the prescription and field it was computed for.
+let diffResult = null, diffFor = null, diffField = null;
 const view = { field: 0, wavelength: 'poly', psfLog: false };
 
 function startDiffWorker() {
@@ -105,6 +106,7 @@ function requestDiffraction() {
   const id = ++diffId;
   diffFor = r; diffResult = null;
   view.field = Math.min(view.field, r.system.fields.values.length - 1);
+  diffField = view.field;
   const message = { id, kind: 'diffraction', system: r.system, field: view.field, zImage: r.image.z };
   if (diffBusy && diffWorker) { diffWorker.terminate(); diffWorker = null; }
   if (!diffWorker && !diffNoWorker) diffWorker = startDiffWorker();
@@ -380,7 +382,6 @@ function diffractionControls(id, r) {
   fieldSelect.value = String(view.field);
   fieldSelect.addEventListener('change', () => {
     view.field = Number(fieldSelect.value);
-    if (DIFFRACTION_TABS.includes(id)) requestDiffraction();
     for (const t of [...DIFFRACTION_TABS, ...COHERENT_TABS]) dirty.add(t);
     renderTab(activeTab);
   });
@@ -420,7 +421,7 @@ function modelLabel(d, choice) {
 
 function renderDiffraction(id, plot, body, r) {
   plot.append(diffractionControls(id, r));
-  if (diffFor !== r || (!diffResult && !diffBusy)) requestDiffraction();
+  if (diffFor !== r || diffField !== view.field || (!diffResult && !diffBusy)) requestDiffraction();
   if (!diffResult) {
     plot.append(el('p', { class: 'chart-message', text: 'Computing the wavefront and its diffraction…' }));
     dirty.add(id);
@@ -936,6 +937,8 @@ function imageCsv(d) {
 }
 
 const dB = v => (v > 0 ? `${formatNumber(-10 * Math.log10(v), 3)} dB` : '—');
+// η, or why there is none: a core too far from the focus for the grid.
+const etaText = (v, withDb = true) => (Number.isFinite(v) ? `${pct(v)}${withDb ? ` (${dB(v)})` : ''}` : 'not resolved on this pupil grid');
 
 function renderCoupling(plot, body, r, d) {
   const f = d.fiber, s = d.scan;
@@ -960,15 +963,15 @@ function renderCoupling(plot, body, r, d) {
   const use = el('button', { type: 'button', class: 'bench-button', text: `Use ${formatNumber(d.best.mfdUm, 3)} µm` });
   use.addEventListener('click', () => changeSetting('coupling', c => { c.mfdUm = Number(d.best.mfdUm.toPrecision(3)); }));
   const rows = [
-    ['Coupling into the mode, η', `${pct(d.eta)} (${dB(d.eta)})`],
+    ['Coupling into the mode, η', etaText(d.eta)],
     { group: 'Where the light goes' },
     ['Perfect lens, aligned (mode mismatch only)', pct(d.ideal)],
     ['This lens, aligned (adds the aberrations)', pct(d.aligned)],
-    ['This lens, as set (adds the misalignment)', pct(d.eta)],
+    ['This lens, as set (adds the misalignment)', etaText(d.eta, false)],
     ['Beam inside the entrance pupil', pct(d.inPupil)],
     ['Through the apertures', pct(d.transmission)],
     [`Uncoated surfaces at normal incidence${d.fresnelApplied ? '' : ' (not applied)'}`, pct(d.fresnel)],
-    ['Power in the fiber mode ÷ beam power', `${pct(d.total)} (${dB(d.total)})`],
+    ['Power in the fiber mode ÷ beam power', etaText(d.total)],
     { group: 'Fiber' },
     ['Mode: 1/e² radius, divergence, Rayleigh range', `${umText(d.modeRadius)}, ${formatNumber(d.modeDivergence * 1e3, 3)} mrad, ${umText(d.modeRayleigh)}`],
     ['Best mode-field diameter for this beam, aligned', `${formatNumber(d.best.mfdUm, 3)} µm (η ${pct(d.best.eta)})`],
@@ -982,7 +985,8 @@ function renderCoupling(plot, body, r, d) {
 
 function couplingCsv(d) {
   const s = d.scan, lines = ['offset_um,eta_moving_x,eta_moving_y,face_past_image_um,eta_axial'];
-  for (let k = 0; k < s.lateral.length; k++) lines.push([s.lateral[k], s.x[k], s.y[k], s.axial[k], s.z[k]].map(v => Number(v).toPrecision(6)).join(','));
+  // Positions the grid cannot resolve are left empty.
+  for (let k = 0; k < s.lateral.length; k++) lines.push([s.lateral[k], s.x[k], s.y[k], s.axial[k], s.z[k]].map(v => (Number.isFinite(v) ? Number(v).toPrecision(6) : '')).join(','));
   return `${lines.join('\n')}\n`;
 }
 

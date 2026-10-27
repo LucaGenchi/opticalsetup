@@ -97,7 +97,7 @@ export function monochromaticPupil(input, { field = 0, zImage = null, wavelength
   // its 1/e² radius sets the Fresnel number (and its focal shift).
   const zDistance = Math.abs(zImage - zXp);
   const radius = fo.rXp * (d.illumination === 'gaussian' ? Math.min(1, d.beamRatio) : 1);
-  const fresnel = Number.isFinite(fo.zXp) && zDistance > 0 ? radius * radius / (primaryNm * 1e-6 * zDistance) : Infinity;
+  const fresnel = Number.isFinite(fo.zXp) && zDistance > 0 ? radius * radius / (nm * 1e-6 * zDistance) : Infinity;
   if (fresnel < FRESNEL_LIMIT) {
     warnings.push({ kind: 'fresnel', text: `The Fresnel number of the exit pupil seen from the image, a²/(λz) = ${fmt(fresnel, 3)}, is below ${FRESNEL_LIMIT}${radius < fo.rXp ? ' (for the Gaussian beam’s radius)' : ''}: the focus is not where the pupil-based (Debye) model puts it (focal shift), so these results are unreliable. This happens with very small or very slow optics, or a narrow beam.` });
   }

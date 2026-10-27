@@ -1215,6 +1215,76 @@
   {
    "absolute": true,
    "expected": {
+    "eta": 0.332787
+   },
+   "inputs": {
+    "field": 0,
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 0,
+      "mfdUm": 8.383518268318491,
+      "offsetXUm": 0,
+      "offsetYUm": 0,
+      "tiltXMrad": 30.0,
+      "tiltYMrad": -20.0
+     },
+     "diffraction": {
+      "beamRatio": 0.8,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       3.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "stop": true,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      587.5618
+     ]
+    }
+   },
+   "name": "curved-side-first singlet, field 0.0 deg, 587.5618 nm, MFD 8.384 um: coupling, Gaussian beam 0.8 pupil radii, tilted 30 mrad in x and -20 mrad in y",
+   "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
+   "tolerance": {
+    "eta": 0.0005
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
     "coherent0": 0.177243,
     "coherent1": 0.113706,
     "coherent2": 0.107622,
@@ -1629,7 +1699,7 @@
   {
    "absolute": true,
    "expected": {
-    "eta": 0.161618
+    "eta": 0.161833
    },
    "inputs": {
     "field": 1,
@@ -1699,7 +1769,7 @@
   {
    "absolute": true,
    "expected": {
-    "eta": 0.143028
+    "eta": 0.143126
    },
    "inputs": {
     "field": 1,
@@ -1761,6 +1831,76 @@
     }
    },
    "name": "curved-side-first singlet, field 3.0 deg, 587.5618 nm, MFD 8.395 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up, tilted 20 mrad down",
+   "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
+   "tolerance": {
+    "eta": 0.0005
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.069329
+   },
+   "inputs": {
+    "field": 1,
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 0,
+      "mfdUm": 8.394805881651894,
+      "offsetXUm": 0,
+      "offsetYUm": 0,
+      "tiltXMrad": 30.0,
+      "tiltYMrad": -20.0
+     },
+     "diffraction": {
+      "beamRatio": 0.8,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       3.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "stop": true,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      587.5618
+     ]
+    }
+   },
+   "name": "curved-side-first singlet, field 3.0 deg, 587.5618 nm, MFD 8.395 um: coupling, Gaussian beam 0.8 pupil radii, tilted 30 mrad in x and -20 mrad in y",
    "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
    "tolerance": {
     "eta": 0.0005
@@ -2462,6 +2602,97 @@
     }
    },
    "name": "Cooke triplet, field 0.0 deg, 550.0 nm, MFD 3.910 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up, tilted 20 mrad down",
+   "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
+   "tolerance": {
+    "eta": 0.0005
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.0875629
+   },
+   "inputs": {
+    "field": 0,
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 0,
+      "mfdUm": 3.9100021621088197,
+      "offsetXUm": 0,
+      "offsetYUm": 0,
+      "tiltXMrad": 30.0,
+      "tiltYMrad": -20.0
+     },
+     "diffraction": {
+      "beamRatio": 0.8,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       14.0,
+       20.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nsk16",
+       "radius": 22.01359,
+       "thickness": 3.25896
+      },
+      {
+       "material": "air",
+       "radius": -435.76044,
+       "thickness": 6.00755
+      },
+      {
+       "material": "f2",
+       "radius": -22.21328,
+       "thickness": 0.99997
+      },
+      {
+       "material": "air",
+       "radius": 20.29192,
+       "stop": true,
+       "thickness": 4.75041
+      },
+      {
+       "material": "nsk16",
+       "radius": 79.6836,
+       "thickness": 2.95208
+      },
+      {
+       "material": "air",
+       "radius": -18.39533,
+       "thickness": 42.20778
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      550.0
+     ]
+    }
+   },
+   "name": "Cooke triplet, field 0.0 deg, 550.0 nm, MFD 3.910 um: coupling, Gaussian beam 0.8 pupil radii, tilted 30 mrad in x and -20 mrad in y",
    "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
    "tolerance": {
     "eta": 0.0005

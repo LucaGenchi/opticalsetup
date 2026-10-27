@@ -40,7 +40,7 @@
 // on request, the reflections of uncoated surfaces at normal incidence.
 
 import { traceBundle, opdWaves, sphereCrossing } from './wavefront.js';
-import { illumination, pupilSamples, largestStep } from './diffraction.js';
+import { illumination, pupilSamples, largestStep, ALIAS_WAVES } from './diffraction.js';
 import { monochromaticPupil, bundleChecks } from './pupil.js';
 
 // Above this half-angle (rad) the mode's far field is not paraxial.
@@ -53,6 +53,20 @@ const fmt = (v, d = 3) => String(Number(Number(v).toPrecision(d)));
 function niceUp(v) {
   const p = 10 ** Math.floor(Math.log10(v)), m = v / p;
   return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
+}
+
+// The fiber's axis: the chief-ray direction c turned by the tilt, a
+// rotation by hypot(tx, ty) (rad) toward tx·e1 + ty·e2, where e1 is the
+// direction across c nearest +x and e2 = c × e1 (nearest +y). The angle
+// from the chief ray is then exactly the tilt asked for.
+export function fiberAxisFrom(c, tx, ty) {
+  const t = Math.hypot(tx, ty);
+  if (t === 0) return [...c];
+  const e = [1 - c[0] * c[0], -c[0] * c[1], -c[0] * c[2]], l = Math.hypot(...e);
+  const e1 = e.map(v => v / l);
+  const e2 = [c[1] * e1[2] - c[2] * e1[1], c[2] * e1[0] - c[0] * e1[2], c[0] * e1[1] - c[1] * e1[0]];
+  const ct = Math.cos(t), st = Math.sin(t) / t;
+  return [0, 1, 2].map(i => ct * c[i] + st * (tx * e1[i] + ty * e2[i]));
 }
 
 // Maximum of f on [a, b] by golden section.
@@ -112,9 +126,8 @@ export function analyzeCoupling(input, { scans = true, ...options } = {}) {
   const E = [0, 0, p.zXp];
   // The fiber's axis: along the primary chief ray, turned by the tilt.
   const c = p.chiefDirection;
-  const ax = c[0] + Math.sin(fiber.tiltXMrad * 1e-3), ay = c[1] + Math.sin(fiber.tiltYMrad * 1e-3);
-  if (!(ax * ax + ay * ay < 1)) return { ok: false, errors: ['The fiber’s tilt turns it beyond 90° from the axis.'], warnings };
-  const fiberAxis = [ax, ay, Math.sqrt(1 - ax * ax - ay * ay)];
+  const fiberAxis = fiberAxisFrom(c, fiber.tiltXMrad * 1e-3, fiber.tiltYMrad * 1e-3);
+  if (!(fiberAxis[2] > 0)) return { ok: false, errors: ['The fiber’s tilt turns it beyond 90° from the axis.'], warnings };
   // The mode's far field across the pupil, in samples: too few integrate
   // badly.
   const modeSamples = theta0 / (Math.max(Math.abs(scale.ax), Math.abs(scale.ay)) * g.dpx);
@@ -135,7 +148,9 @@ export function analyzeCoupling(input, { scans = true, ...options } = {}) {
   // each sample's direction s to C, its solid angle dΩ (from the local
   // derivatives of s over the pupil grid), and its amplitude A·√dΩ·e^{−2πiW}
   // (the pupil sample carries power A² over dΩ). `aberrated: false` drops
-  // W: a perfect lens with the same pupil.
+  // W: a perfect lens with the same pupil. `step` is the largest change of
+  // the path between neighbouring samples, in waves: a core moved far from
+  // the focus tilts or curves the wavefront until the grid aliases it.
   const field = (C, aberrated = true) => {
     const R = Math.hypot(C[0] - E[0], C[1] - E[1], C[2] - E[2]);
     const K = bundle.K;
@@ -154,10 +169,11 @@ export function analyzeCoupling(input, { scans = true, ...options } = {}) {
       const lo = a >= 0 && Number.isFinite(v[a]) ? a : k, hi = b >= 0 && Number.isFinite(v[b]) ? b : k;
       return lo === hi ? NaN : (v[hi] - v[lo]) / (span * ((lo === k || hi === k) ? 1 : 2));
     };
-    const out = { s: [], re: [], im: [], power: 0 };
+    const out = { s: [], re: [], im: [], power: 0, step: 0 };
     for (let k = 0; k < K; k++) {
       if (!Number.isFinite(sx[k])) continue;
       const [l, r, dn, up] = nb[k];
+      for (const j of [r, up]) if (j >= 0 && Number.isFinite(opl[j])) out.step = Math.max(out.step, Math.abs(opl[j] - opl[k]) / lambda);
       const J = slope(sx, k, l, r, g.dpx) * slope(sy, k, dn, up, g.dpy) - slope(sx, k, dn, up, g.dpy) * slope(sy, k, l, r, g.dpx);
       const dOmega = (Number.isFinite(J) ? Math.abs(J) : affine) * g.dpx * g.dpy / sz[k];
       const a = lit[k] * Math.sqrt(dOmega), ph = aberrated ? -2 * Math.PI * (ref - opl[k]) / lambda : 0;
@@ -181,14 +197,28 @@ export function analyzeCoupling(input, { scans = true, ...options } = {}) {
   };
   const C0 = sphere.C;
   const at = (dxUm, dyUm, dzUm) => [C0[0] + dxUm * 1e-3, C0[1] + dyUm * 1e-3, C0[2] + dzUm * 1e-3];
-  const coupledAt = (dxUm, dyUm, dzUm) => eta(field(at(dxUm, dyUm, dzUm)));
-
   const aligned = field(C0), ideal = field(C0, false);
+  // A moved core is resolved while its wavefront is sampled as well as the
+  // aligned one (half a wave between neighbours, or the aligned step when
+  // the aberrations alone exceed that, which the aliasing warning reports);
+  // beyond it the sum can show false peaks, so η is left undefined (NaN).
+  const stepLimit = Math.max(ALIAS_WAVES, aligned.step);
+  let worstStep = 0;
+  const coupledAt = (dxUm, dyUm, dzUm) => {
+    const f = field(at(dxUm, dyUm, dzUm));
+    if (f.step > stepLimit) { worstStep = Math.max(worstStep, f.step); return NaN; }
+    return eta(f);
+  };
   const result = {
     ideal: eta(ideal, c),
     aligned: eta(aligned, c),
     eta: coupledAt(fiber.offsetXUm, fiber.offsetYUm, fiber.axialUm),
   };
+  const resolved = Number.isFinite(result.eta);
+  const finer = N < 256 ? ` (${N * 2} or more)` : '';
+  if (!resolved) {
+    warnings.push({ kind: 'coupling-aliasing', text: `With the core where it is set, the wavefront measured from it changes by up to ${fmt(worstStep, 2)} wave${fmt(worstStep, 2) === '1' ? '' : 's'} between neighbouring pupil samples, so the coupling there cannot be computed on this grid (the sum would show false peaks). Choose a finer pupil grid${finer}, or a core nearer the focus; that far from it, the coupling is very small anyway.` });
+  }
   // The mode that suits this beam best, aligned with the chief ray: over
   // the paraxial range of mode sizes, a scan in log θ₀ then golden section.
   const lo = Math.log(0.02 * Math.min(p.na.x, p.na.y)), hi = Math.log(MODE_LIMIT);
@@ -222,16 +252,20 @@ export function analyzeCoupling(input, { scans = true, ...options } = {}) {
       y: Float64Array.from(xs, v => coupledAt(fiber.offsetXUm, v, fiber.axialUm)),
       z: Float64Array.from(zs, v => coupledAt(fiber.offsetXUm, fiber.offsetYUm, v)),
     };
+    scan.unresolved = [scan.x, scan.y, scan.z].reduce((count, a) => count + a.filter(v => Number.isNaN(v)).length, 0);
+    if (scan.unresolved) {
+      warnings.push({ kind: 'scan-aliasing', text: `${scan.unresolved} of the ${3 * SCAN_POINTS} scan positions are too far from the focus for this pupil grid to sample the wavefront, and are left out of the plots; a finer pupil grid${finer} reaches further.` });
+    }
   }
 
-  for (const v of [result.ideal, result.aligned, result.eta, etaBest]) {
+  for (const v of [result.ideal, result.aligned, ...(resolved ? [result.eta] : []), etaBest]) {
     if (!Number.isFinite(v)) return { ok: false, errors: ['The coupling is not finite; this is a bug worth reporting.'], warnings };
   }
   return {
     ok: true, warnings,
     nm, wavelength: p.wi, field: p.fi, fieldValue: p.fieldValue, fieldUnit: sys.fields.type === 'angle' ? '°' : 'mm',
     fiber: { ...fiber }, chiefAngle: { x: Math.asin(c[0]), y: Math.asin(c[1]) }, modeRadius: w0, modeDivergence: theta0, modeRayleigh: Math.PI * w0 * w0 * n / lambda,
-    na: p.na, ...result,
+    na: p.na, ...result, resolved, fiberAxis,
     best: { mfdUm: bestMfdUm, eta: etaBest },
     inPupil, transmission, fresnel, fresnelApplied: fiber.fresnel, throughput,
     total: throughput * result.eta,

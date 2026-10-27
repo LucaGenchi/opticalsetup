@@ -256,6 +256,34 @@ def poly_grad(coef, x, y, degree=8):
     return gx, gy
 
 
+def fiber_axis(c, tilt_mrad):
+    """The chief-ray direction c turned by the tilt: a rotation (Rodrigues)
+    by t = hypot(tx, ty) about the unit vector c x d, where d is the
+    direction across c that the tilt points to, tx along the direction
+    across c nearest +x and ty along c x (that one). The angle from c is
+    then t, which is checked."""
+    tx, ty = tilt_mrad[0] * 1e-3, tilt_mrad[1] * 1e-3
+    t = math.hypot(tx, ty)
+    if t == 0:
+        return list(c)
+    ex = [1.0 - c[0] * c[0], -c[0] * c[1], -c[0] * c[2]]
+    norm = math.sqrt(sum(v * v for v in ex))
+    ex = [v / norm for v in ex]
+    ey = cross(c, ex)
+    d = [(tx * ex[i] + ty * ey[i]) / t for i in range(3)]
+    k = cross(c, d)
+    kv = cross(k, c)
+    kdot = sum(k[i] * c[i] for i in range(3))
+    axis = [c[i] * math.cos(t) + kv[i] * math.sin(t) + k[i] * kdot * (1 - math.cos(t)) for i in range(3)]
+    angle = math.acos(max(-1.0, min(1.0, sum(axis[i] * c[i] for i in range(3)))))
+    assert abs(angle - t) < 1e-12, (angle, t)
+    return axis
+
+
+def cross(a, b):
+    return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+
+
 def coupling(pupil, mfd_um, offset_um=(0.0, 0.0, 0.0), tilt_mrad=(0.0, 0.0), beam_ratio=None):
     """eta for a Gaussian mode (1/e^2 radius mfd/2) with its core at the
     chief ray's image point plus `offset` and its axis along the chief ray
@@ -268,9 +296,7 @@ def coupling(pupil, mfd_um, offset_um=(0.0, 0.0, 0.0), tilt_mrad=(0.0, 0.0), bea
     cx = lstsq(rows, [s[0] for s, _ in dirs])
     cy = lstsq(rows, [s[1] for s, _ in dirs])
     pc, dc, _ = pupil.chief
-    ax = dc[0] + math.sin(tilt_mrad[0] * 1e-3)
-    ay = dc[1] + math.sin(tilt_mrad[1] * 1e-3)
-    axis = [ax, ay, math.sqrt(1 - ax * ax - ay * ay)]
+    axis = fiber_axis(dc, tilt_mrad)
     total, power = 0j, 0.0
     for (px, py, w), (s, W) in zip(pupil.nodes, dirs):
         lx, ly = poly_grad(cx, px, py)
@@ -420,6 +446,7 @@ def cases():
             ("Gaussian beam 0.8 pupil radii, core 1 um down and 20 um past the image", (0, -1.0, 20.0), (0, 0), 0.8),
             ("Gaussian beam 0.8 pupil radii, core 1 um up, tilted 20 mrad up", (0, 1.0, 0), (0, 20.0), 0.8),
             ("Gaussian beam 0.8 pupil radii, core 1 um up, tilted 20 mrad down", (0, 1.0, 0), (0, -20.0), 0.8),
+            ("Gaussian beam 0.8 pupil radii, tilted 30 mrad in x and -20 mrad in y", (0, 0, 0), (30.0, -20.0), 0.8),
         ]:
             eta = coupling(pupil, best_mfd, offset, tilt, ratio)
             sys_c = json.loads(json.dumps(system))

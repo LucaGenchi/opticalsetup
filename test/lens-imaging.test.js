@@ -9,7 +9,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { analyzeImaging, prepareImaging, twoPointAt, RAYLEIGH } from '../calculators/lens-design/engine/imaging.js';
-import { analyzeCoupling, modeNorm, fresnelTransmission, MODE_LIMIT } from '../calculators/lens-design/engine/coupling.js';
+import { analyzeCoupling, modeNorm, fresnelTransmission, fiberAxisFrom, MODE_LIMIT } from '../calculators/lens-design/engine/coupling.js';
+import { monochromaticPupil } from '../calculators/lens-design/engine/pupil.js';
 import { analyzeDiffraction } from '../calculators/lens-design/engine/diffraction.js';
 import { normalizeSystem, systemToJSON, systemFromJSON, defaultImaging, defaultCoupling } from '../calculators/lens-design/engine/system.js';
 import { mediumIndices } from '../calculators/lens-design/engine/paraxial.js';
@@ -146,6 +147,60 @@ test('Coupling: η never exceeds 1, the mode norm is the hemisphere integral, re
   for (let j = 0; j < sys.surfaces.length; j++) T *= 1 - ((n[j] - n[j + 1]) / (n[j] + n[j + 1])) ** 2;
   near(fresnelTransmission(sys, n), T, 1e-15, 'Fresnel product');
   assert.equal(fresnelTransmission(normalizeSystem(perfect()), [1, 1]), 1, 'an ideal lens has no surface');
+});
+
+test('Coupling: a core too far from the focus for the pupil grid is left undefined, never a false peak', () => {
+  // Andrea's case (#276): a 376 µm offset puts exactly one wave of tilt
+  // between neighbouring samples of a 64 grid, and the sum read 80 %; on a
+  // finer grid the overlap is about 10⁻⁸.
+  const p = presetSystem('perfect');
+  for (const grid of [64, 128]) {
+    const r = couple({ ...p, diffraction: { ...p.diffraction, grid } }, { mfdUm: 8.38, offsetYUm: 376.039552 });
+    assert.ok(r.ok && !r.resolved && Number.isNaN(r.eta) && Number.isNaN(r.total), `grid ${grid}: unresolved`);
+    assert.ok(r.warnings.some(w => w.kind === 'coupling-aliasing'), 'said so');
+    assert.ok(r.scan.unresolved > 0 && r.warnings.some(w => w.kind === 'scan-aliasing'), 'scan points left out');
+    for (const a of [r.scan.x, r.scan.y, r.scan.z]) for (const v of a) assert.ok(Number.isNaN(v) || (v >= 0 && v <= 1));
+  }
+  // Within reach of the grid nothing is left out, and the far ends of a
+  // scan the 64 grid cannot sample come back on a finer one.
+  const near0 = couple(p, { mfdUm: 8.38, offsetYUm: 5 });
+  assert.ok(near0.resolved && near0.scan.unresolved === 0 && Number.isFinite(near0.eta));
+  const cooke = presetSystem('cooke');
+  assert.ok(couple(cooke, {}, { field: 2 }).scan.unresolved > 0, 'Cooke at 20°, 64 grid: the far axial ends');
+  assert.equal(couple({ ...cooke, diffraction: { ...cooke.diffraction, grid: 128 } }, {}, { field: 2 }).scan.unresolved, 0, '128 grid');
+});
+
+test('Coupling: the tilt turns the fiber from the chief ray by exactly the angle set', () => {
+  const angle = (a, b) => Math.acos(Math.min(1, a.reduce((s, v, i) => s + v * b[i], 0)));
+  // Off axis: the Cooke triplet at 20° (#276 read 108 mrad for 100).
+  const cooke = { ...presetSystem('cooke'), fields: { type: 'angle', values: [20] } };
+  for (const [tx, ty] of [[0, 100], [100, 0], [-60, 80], [0, -300]]) {
+    const r = couple(cooke, { tiltXMrad: tx, tiltYMrad: ty }, { scans: false });
+    const c = [Math.sin(r.chiefAngle.x), Math.sin(r.chiefAngle.y)];
+    c.push(Math.sqrt(1 - c[0] ** 2 - c[1] ** 2));
+    near(angle(r.fiberAxis, c), Math.hypot(tx, ty) * 1e-3, 1e-12, `tilt ${tx}, ${ty}`);
+  }
+  // Toward +x and +y: on axis the axis is (sin t, 0, cos t) and (0, sin t, cos t).
+  near(fiberAxisFrom([0, 0, 1], 0.1, 0)[0], Math.sin(0.1), 1e-15, '+x');
+  near(fiberAxisFrom([0, 0, 1], 0, 0.1)[1], Math.sin(0.1), 1e-15, '+y');
+  // Positive y tilt turns a chief ray going up further up.
+  const up = [0, Math.sin(0.3), Math.cos(0.3)];
+  near(Math.asin(fiberAxisFrom(up, 0, 0.1)[1]), 0.4, 1e-12, 'further up');
+  // A perfect lens at 45° with the largest tilt allowed: about 62°, not refused.
+  const p45 = { ...presetSystem('perfect'), fields: { type: 'angle', values: [45] } };
+  const r45 = couple(p45, { tiltYMrad: 300 }, { scans: false });
+  assert.ok(r45.ok, 'not refused');
+  near(Math.acos(r45.fiberAxis[2]), Math.PI / 4 + 0.3, 1e-9, 'about 62.2° from the axis');
+});
+
+test('Pupil: the Fresnel-number guard uses the wavelength shown, not the primary one', () => {
+  // f = 100 mm, a Gaussian beam of 2 mm radius: a²/(λz) is 80 at 500 nm
+  // and 4 at 10 µm, below the limit of 10 (#276).
+  const sys = { surfaces: [{ type: 'paraxial', focal: 100, thickness: 100, stop: true }], aperture: { type: 'epd', value: 8 }, wavelengthsNm: [500, 10000], primaryWavelength: 0, image: { focus: 'paraxial' }, diffraction: { grid: 64, padding: 2, illumination: 'gaussian', beamRatio: 0.5 } };
+  const short = monochromaticPupil(sys, { field: 0, wavelength: 0 }), long = monochromaticPupil(sys, { field: 0, wavelength: 1 });
+  near(short.fresnel, 80, 1e-9, '500 nm');
+  near(long.fresnel, 4, 1e-9, '10 µm');
+  assert.ok(!short.warnings.some(w => w.kind === 'fresnel') && long.warnings.some(w => w.kind === 'fresnel'));
 });
 
 test('Settings: old files read with defaults, new ones round-trip, inputs are clamped', () => {
