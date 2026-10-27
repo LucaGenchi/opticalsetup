@@ -14,11 +14,12 @@ const nm = x => `${formatNumber(x, 4)} nm`;
 const focus = { na: null, lateralUm: null, bandPixelUm: null };
 let scan = null;
 
+const NO_SECTIONING = 'None: no optical sectioning';
 const profileChart = (x, xLabel, own, other, otherName) => ({
   x, xLabel, xUnit: 'µm', yLabel: 'Normalized signal', yMin: 0, yMax: 1.05,
   formatX: n => formatNumber(n, 3), formatY: n => formatNumber(n, 3),
   series: [{ name: 'This configuration', color: '--series-1', values: own },
-    { name: otherName, color: '--series-3', dash: true, values: other }],
+    ...(other ? [{ name: otherName, color: '--series-3', dash: true, values: other }] : [])],
 });
 
 mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hideInactive: true, groups: {
@@ -29,8 +30,9 @@ mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hide
   rows: r => {
     const focus = [
       { group: r.linear ? 'This configuration (FWHM of the scanned point image)' : `${PHOTONS[r.order]} excitation (FWHM of the scanned point image)` },
-      ['Lateral resolution', r.lateralUm, 'µm', 3], ['Axial resolution', r.axialUm, 'µm', 3],
-      ...(r.linear ? [r.sliceUm === null ? ['Optical section', 'None without a pinhole'] : ['Axial FWHM of the pinhole’s detection response', r.sliceUm, 'µm', 3]] : []),
+      ['Lateral resolution', r.lateralUm, 'µm', 3],
+      r.sectioning ? ['Axial resolution', r.axialUm, 'µm', 3] : ['Axial resolution', `${NO_SECTIONING} without a pinhole`],
+      ...(r.sliceUm != null ? [['Axial FWHM of the pinhole’s detection response', r.sliceUm, 'µm', 3]] : []),
     ];
     const light = [
       { group: 'Wavelengths and aperture' },
@@ -45,13 +47,12 @@ mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hide
         'res-focus': focus, 'res-light': light,
         'res-compare': [
           { group: `For comparison: one-photon at the same wavelength (${nm(r.exNm)}), no pinhole` },
-          ['Lateral', r.sameWavelength.lateralUm, 'µm', 3], ['Axial', r.sameWavelength.axialUm, 'µm', 3],
+          ['Lateral', r.sameWavelength.lateralUm, 'µm', 3], ['Axial', NO_SECTIONING],
           ['Lateral width of this configuration, relative', r.lateralUm / r.sameWavelength.lateralUm, '×', 3],
-          ['Axial width of this configuration, relative', r.axialUm / r.sameWavelength.axialUm, '×', 3],
         ],
         'res-limits': [
           { group: `For comparison: one-photon at ${FRACTION[r.order]} the wavelength (${nm(r.exNm / r.order)}), no pinhole` },
-          ['Lateral', r.transition.lateralUm, 'µm', 3], ['Axial', r.transition.axialUm, 'µm', 3],
+          ['Lateral', r.transition.lateralUm, 'µm', 3], ['Axial', NO_SECTIONING],
         ],
       };
     }
@@ -60,13 +61,14 @@ mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hide
       'res-focus': focus, 'res-light': light,
       'res-compare': [
         { group: 'For comparison: the same objective and wavelengths' },
-        ['No pinhole: lateral', r.open.lateralUm, 'µm', 3], ['No pinhole: axial', r.open.axialUm, 'µm', 3],
+        ...(r.pinholeAu === null ? [] : [['No pinhole: lateral', r.excitationLateralUm, 'µm', 3], ['No pinhole: axial', NO_SECTIONING]]),
         ['Point pinhole (0 AU): lateral', r.pointPinhole.lateralUm, 'µm', 3], ['Point pinhole (0 AU): axial', r.pointPinhole.axialUm, 'µm', 3],
       ],
+      // The axial forms describe a pinhole; without one they do not apply.
       'res-limits': [
         { group: `Closed forms of the Zeiss monograph (mean wavelength ${nm(c.meanNm)})` },
         ['Eq. 3, PH > 1 AU: lateral 0.51 λexc/NA', c.openLateralUm, 'µm', 3],
-        ['Eq. 2, PH > 1 AU: axial 0.88 λexc/(n − √(n² − NA²))', c.openAxialUm, 'µm', 3],
+        ...(r.pinholeAu === null ? [] : [['Eq. 2, PH > 1 AU: axial 0.88 λexc/(n − √(n² − NA²))', c.openAxialUm, 'µm', 3]]),
         ['Eq. 8, PH < 0.25 AU: lateral 0.37 λ̄/NA', c.pointLateralUm, 'µm', 3],
         ['Eq. 7, PH < 0.25 AU: axial 0.64 λ̄/(n − √(n² − NA²))', c.pointAxialUm, 'µm', 3],
         ...(c.sliceUm === null ? [] : [['Eq. 4, PH > 1 AU: optical slice thickness', c.sliceUm, 'µm', 3]]),
@@ -75,7 +77,7 @@ mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hide
   },
   notes: r => {
     const out = [];
-    if (r.linear && r.pinholeAu === null) out.push('Without a pinhole, a one-photon point scanner has no optical sectioning: a uniform fluorescent layer gives the same total signal at every depth. The axial width describes an isolated point object.');
+    if (r.linear && r.pinholeAu === null) out.push('Without a pinhole there is no axial resolution: a one-photon signal is excited in every plane the beam crosses, and a uniform fluorescent layer gives the same total signal at every depth, so the detector cannot tell which depth the light came from. A confocal pinhole, or multiphoton excitation, adds that depth selection.');
     if (r.pinholeAu !== null) {
       out.push(`The pinhole passes ${formatNumber(r.pinholeAu, 3)} AU = ${formatNumber(r.pinholeUm, 3)} µm back-projected to the sample; the physical pinhole is this times the magnification from the sample to the pinhole plane.`);
       if (r.pinholeAu <= 0.25) out.push('Below about 0.25 AU the resolution approaches the point-pinhole limit while the detected signal keeps falling.');
@@ -89,7 +91,7 @@ mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hide
     if (r.linear && r.values.detection === 'elastic') out.push('Scattered or reflected light is treated as coming from point-like, incoherent scatterers. A mirror or an interface images coherently and gives narrower axial responses (Zeiss quotes 0.45 instead of 0.64 for a mirror).');
     if (r.linear && r.values.detection === 'raman') out.push(`The Stokes line of a ${formatNumber(r.values.ramanShiftCm, 5)} cm⁻¹ shift lies at ${nm(r.detNm)}.`);
     if (!r.linear) {
-      out.push(`The signal follows the ${r.order === 2 ? 'square' : 'cube'} of the excitation intensity, so the point image is the excitation PSF to the power ${r.order}: narrower than one-photon excitation at the same wavelength, wider than one-photon excitation at λ/${r.order}. Its gain is optical sectioning without a pinhole.`);
+      out.push(`The signal follows the ${r.order === 2 ? 'square' : 'cube'} of the excitation intensity, so the point image is the excitation PSF to the power ${r.order}: laterally narrower than one-photon excitation at the same wavelength, wider than one-photon excitation at λ/${r.order}. Along the axis the signal is confined to the focus, which gives optical sectioning without a pinhole; one-photon excitation without a pinhole has none.`);
       out.push('Harmonic generation from a point-like object has the same point image; extended objects add coherent effects (phase matching, the Gouy phase) that are not modelled.');
     }
     if (r.na / r.n > 0.7) out.push('Above about NA/n = 0.7, the polarization of the focused light widens the real focus along the polarization direction; this scalar model does not include it.');
@@ -100,7 +102,8 @@ mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hide
     const p = resolutionProfiles(r);
     return {
       lateral: profileChart(p.lateral.x, 'Lateral position (µm)', p.lateral.own, p.lateral.other, p.comparisonName),
-      axial: profileChart(p.axial.x, 'Axial position (µm)', p.axial.own, p.axial.other, p.comparisonName),
+      axial: p.axial ? profileChart(p.axial.x, 'Axial position (µm)', p.axial.own, p.axial.detection, 'Pinhole’s detection response alone')
+        : { message: 'No axial profile without a pinhole: a one-photon signal is excited in every plane the beam crosses, so there is no optical sectioning. Add a pinhole or use multiphoton excitation.' },
     };
   },
   onResult: r => {

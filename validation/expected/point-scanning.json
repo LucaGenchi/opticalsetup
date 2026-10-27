@@ -3,7 +3,7 @@
  "cases": [
   {
    "expected": {
-    "axialUm": 0.9573256591,
+    "excitationAxialUm": 0.9573256591,
     "lateralUm": 0.2510745287
    },
    "inputs": {
@@ -16,13 +16,13 @@
    },
    "name": "one-photon, no pinhole: 488 nm, NA 1.0 water",
    "tolerance": {
-    "axialUm": 1e-05,
+    "excitationAxialUm": 1e-05,
     "lateralUm": 1e-05
    }
   },
   {
    "expected": {
-    "axialUm": 12.17456599,
+    "excitationAxialUm": 12.17456599,
     "lateralUm": 1.085588638
    },
    "inputs": {
@@ -35,7 +35,7 @@
    },
    "name": "one-photon, no pinhole: 633 nm, NA 0.3 air",
    "tolerance": {
-    "axialUm": 1e-05,
+    "excitationAxialUm": 1e-05,
     "lateralUm": 1e-05
    }
   },

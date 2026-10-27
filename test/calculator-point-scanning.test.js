@@ -26,12 +26,12 @@ test('open and point-pinhole limits hit their analytic half-maximum points', () 
   close(halfWidth(axialIntensity, 0.1), 4 * 1.391557378, 1e-8);
   const r = resolution({ pinhole: 'open', wavelengthNm: 500, na: 0.5, immersion: 'air' });
   close(r.lateralUm, 2 * 1.616339948 * 0.5 / (2 * Math.PI * 0.5), 1e-8);
-  close(r.axialUm, 2 * 4 * 1.391557378 * 0.5 / (4 * Math.PI * (1 - Math.sqrt(0.75))), 1e-8);
+  close(r.excitationAxialUm, 2 * 4 * 1.391557378 * 0.5 / (4 * Math.PI * (1 - Math.sqrt(0.75))), 1e-8);
   // The Zeiss monograph rounds these to 0.51 and 0.88, and the point-pinhole
   // ones (equal wavelengths) to 0.37 and 0.64.
   const point = resolution({ pinhole: 'pinhole', pinholeAu: 0, detection: 'elastic', wavelengthNm: 500, na: 0.5, immersion: 'air' });
   close(r.lateralUm, r.closedForm.openLateralUm, 0.01);
-  close(r.axialUm, r.closedForm.openAxialUm, 0.01);
+  close(r.excitationAxialUm, r.closedForm.openAxialUm, 0.01);
   close(point.lateralUm, point.closedForm.pointLateralUm, 0.01);
   close(point.axialUm, point.closedForm.pointAxialUm, 0.01);
 });
@@ -59,9 +59,31 @@ test('the pinhole moves the widths monotonically between the point and open limi
   close(widths[0].lateralUm, widths[0].pointPinhole.lateralUm, 1e-12);
   // A 10 AU pinhole leaves the excitation spot alone.
   close(widths.at(-1).lateralUm, open.lateralUm, 1e-3);
-  close(widths.at(-1).axialUm, open.axialUm, 1e-3);
+  close(widths.at(-1).axialUm, open.excitationAxialUm, 1e-3);
   assert.equal(open.sliceUm, null);
   assert.equal(open.sectioning, false);
+});
+
+test('one-photon excitation without a pinhole has no axial resolution', () => {
+  for (const detection of ['fluorescence', 'raman', 'elastic']) {
+    const r = resolution({ pinhole: 'open', detection });
+    assert.equal(r.ok, true);
+    assert.equal(r.sectioning, false);
+    assert.equal(r.axialUm, null);
+    assert.ok(r.excitationAxialUm > 0);
+    assert.equal(resolutionProfiles(r).axial, null);
+  }
+  // Any pinhole, or N-photon excitation, confines the signal in depth.
+  for (const values of [{ pinholeAu: 0 }, { pinholeAu: 10 }, { mode: 'nonlinear', order: '2' }]) {
+    const r = resolution(values);
+    assert.equal(r.sectioning, true);
+    assert.ok(r.axialUm > 0);
+    assert.ok(resolutionProfiles(r).axial.own.every(Number.isFinite));
+  }
+  // The comparisons with one-photon excitation without a pinhole are lateral only.
+  const two = resolution({ mode: 'nonlinear', order: '2' });
+  assert.deepEqual(Object.keys(two.sameWavelength), ['lateralUm']);
+  assert.deepEqual(Object.keys(two.transition), ['lateralUm']);
 });
 
 test('the pinhole response is normalized and its radius follows the Airy unit', () => {
@@ -78,7 +100,7 @@ test('N-photon point images narrow against one-photon at the same wavelength', (
   for (const order of ['2', '3']) {
     const r = resolution({ mode: 'nonlinear', order, nlWavelengthNm: 1000, na: 1.0 });
     assert.ok(r.lateralUm < r.sameWavelength.lateralUm && r.lateralUm > r.transition.lateralUm);
-    assert.ok(r.axialUm < r.sameWavelength.axialUm && r.axialUm > r.transition.axialUm);
+    assert.ok(r.axialUm < r.excitationAxialUm && r.axialUm > r.excitationAxialUm / Number(order));
     assert.equal(r.pinholeAu, null);
   }
   const two = resolution({ mode: 'nonlinear', order: '2', nlWavelengthNm: 1000 });
@@ -135,7 +157,8 @@ test('profiles are finite, peak at 1 and cross one half at the reported FWHM', (
   for (const values of [{}, { pinhole: 'open' }, { mode: 'nonlinear', order: '3', nlWavelengthNm: 1300 }]) {
     const r = resolution(values);
     const p = resolutionProfiles(r);
-    for (const curve of [p.lateral.own, p.lateral.other, p.axial.own, p.axial.other]) {
+    const curves = [p.lateral.own, p.lateral.other, ...(p.axial ? [p.axial.own, ...(p.axial.detection ? [p.axial.detection] : [])] : [])];
+    for (const curve of curves) {
       assert.ok(curve.every(Number.isFinite));
       assert.ok(Math.max(...curve) <= 1 + 1e-9);
     }

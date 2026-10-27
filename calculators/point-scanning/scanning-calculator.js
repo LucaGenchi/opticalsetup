@@ -75,14 +75,23 @@ export function computeResolution(raw) {
   const ratio = exNm / detNm;
   const psf = effectivePsf({ order, pinholeAu, detectionRatio: ratio });
   const own = widths(psf, exNm, na, axialNa);
-  const open = widths(effectivePsf({}), exNm, na, axialNa);
+  // The excitation focus alone. Laterally it is the one-photon resolution
+  // without a pinhole; along the axis it is not a resolution there, because
+  // every plane the beam crosses is excited and detected alike.
+  const excitation = widths(effectivePsf({}), exNm, na, axialNa);
   const auUm = 1.22 * um(detNm) / na;
+  const sectioning = linear ? pinholeAu !== null : true;
   const result = {
     ok: true, values: v, linear, order, exNm, detNm, detectionLabel, n, na, axialNa, pinholeAu,
     apertureHalfAngleDeg: Math.asin(na / n) * 180 / Math.PI,
-    ...own, psf, open, auUm,
+    lateralUm: own.lateralUm,
+    // Axial resolution only where the signal is confined in depth: with a
+    // pinhole, or with N-photon excitation.
+    axialUm: sectioning ? own.axialUm : null,
+    excitationAxialUm: excitation.axialUm,
+    psf, excitationLateralUm: excitation.lateralUm, auUm,
     pinholeUm: pinholeAu === null ? null : pinholeAu * auUm,
-    sectioning: linear ? pinholeAu !== null : true,
+    sectioning,
     // Highest spatial frequency the point image passes (cycles/µm). The
     // transfer function of a product of PSFs is the convolution of theirs,
     // so the cutoffs add: 2NA/λ per factor of h, at that factor's wavelength.
@@ -106,28 +115,35 @@ export function computeResolution(raw) {
       sliceUm: pinholeAu === null ? null : Math.hypot(0.88 * um(detNm) / axialNa, Math.SQRT2 * n * result.pinholeUm / na),
     };
   } else {
-    // The same objective, one-photon at the same wavelength and at λ/N (the
-    // transition the N photons reach together).
-    result.sameWavelength = open;
-    result.transition = { lateralUm: open.lateralUm / order, axialUm: open.axialUm / order };
+    // The same objective, one-photon without a pinhole at the same
+    // wavelength and at λ/N (the transition the N photons reach together):
+    // lateral widths only, as neither has an axial resolution.
+    result.sameWavelength = { lateralUm: excitation.lateralUm };
+    result.transition = { lateralUm: excitation.lateralUm / order };
   }
   return result;
 }
 
-// Normalized profiles through the focus, for the graphs: this configuration
-// and one comparison curve.
+// Normalized profiles through the focus, for the graphs. Across the focus:
+// this configuration and one comparison. Along the axis: this
+// configuration and, with a pinhole, the pinhole's detection response
+// alone; without a pinhole there is no axial profile to show (`null`).
 export function resolutionProfiles(r, count = 161) {
   const comparison = !r.linear ? { name: 'One-photon at the same wavelength', psf: effectivePsf({}) }
     : r.pinholeAu === null ? { name: 'Confocal, point pinhole', psf: effectivePsf({ pinholeAu: 0, detectionRatio: r.exNm / r.detNm }) }
       : { name: 'No pinhole', psf: effectivePsf({}) };
   const latScale = um(r.exNm) / (2 * Math.PI * r.na), axScale = um(r.exNm) / (4 * Math.PI * r.axialNa);
-  const latSpan = 1.6 * Math.max(r.lateralUm, r.open.lateralUm), axSpan = 1.6 * Math.max(r.axialUm, r.open.axialUm);
   const grid = span => Array.from({ length: count }, (_, i) => -span + 2 * span * i / (count - 1));
-  const xs = grid(latSpan), zs = grid(axSpan);
+  const xs = grid(1.6 * Math.max(r.lateralUm, r.excitationLateralUm));
+  const lateral = { x: xs, own: xs.map(x => r.psf.lateral(Math.abs(x) / latScale)), other: xs.map(x => comparison.psf.lateral(Math.abs(x) / latScale)) };
+  if (!r.sectioning) return { comparisonName: comparison.name, lateral, axial: null };
+  // The detection response is wider; show up to three axial widths of it.
+  const zs = grid(1.6 * Math.max(r.axialUm, Math.min(r.sliceUm ?? 0, 3 * r.axialUm)));
+  const b = r.exNm / r.detNm;
   return {
-    comparisonName: comparison.name,
-    lateral: { x: xs, own: xs.map(x => r.psf.lateral(Math.abs(x) / latScale)), other: xs.map(x => comparison.psf.lateral(Math.abs(x) / latScale)) },
-    axial: { x: zs, own: zs.map(z => r.psf.axial(Math.abs(z) / axScale)), other: zs.map(z => comparison.psf.axial(Math.abs(z) / axScale)) },
+    comparisonName: comparison.name, lateral,
+    axial: { x: zs, own: zs.map(z => r.psf.axial(Math.abs(z) / axScale)),
+      detection: r.linear ? zs.map(z => r.psf.detection.axial(b * Math.abs(z) / axScale)) : null },
   };
 }
 

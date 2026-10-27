@@ -137,8 +137,10 @@ def resolution(ex_nm, det_nm, na, n, pinhole_au=None, order=1):
         out["axialUm"] = ax_um(half_width(lambda u: sinc2(u) ** order, 0.1), ex_nm)
         return out
     if pinhole_au is None:
+        # No axial resolution without a pinhole (every plane is excited and
+        # detected); the excitation focus still has an axial width.
         out["lateralUm"] = lat_um(half_width(airy, 0.05), ex_nm)
-        out["axialUm"] = ax_um(half_width(sinc2, 0.1), ex_nm)
+        out["excitationAxialUm"] = ax_um(half_width(sinc2, 0.1), ex_nm)
         return out
     if pinhole_au == 0:
         lat = lambda v: airy(v) * airy(beta * v)
