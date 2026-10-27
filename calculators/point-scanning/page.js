@@ -55,8 +55,8 @@ mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hide
         'res-limits': [
           { group: `For comparison: one-photon at ${FRACTION[r.order]} the wavelength (${nm(r.exNm / r.order)})` },
           ['No pinhole: lateral', r.transition.lateralUm, 'µm', 3], ['No pinhole: axial', NO_SECTIONING],
-          ['Confocal, 1 AU pinhole: lateral', r.transitionConfocal.lateralUm, 'µm', 3],
-          ['Confocal, 1 AU pinhole: axial', r.transitionConfocal.axialUm, 'µm', 3],
+          [`Confocal, ${formatNumber(r.transitionConfocalAu, 3)} AU pinhole: lateral`, r.transitionConfocal.lateralUm, 'µm', 3],
+          [`Confocal, ${formatNumber(r.transitionConfocalAu, 3)} AU pinhole: axial`, r.transitionConfocal.axialUm, 'µm', 3],
         ],
       };
     }
@@ -81,7 +81,10 @@ mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hide
   },
   notes: r => {
     const out = [];
-    if (r.linear && r.pinholeAu === null) out.push('Without a pinhole there is no axial resolution: a one-photon signal is excited in every plane the beam crosses, and a uniform fluorescent layer gives the same total signal at every depth, so the detector cannot tell which depth the light came from. A confocal pinhole, or multiphoton excitation, adds that depth selection.');
+    if (r.linear && r.pinholeAu === null) {
+      out.push('Without a pinhole there is no optical sectioning: a one-photon signal is excited in every plane the beam crosses, and a uniform fluorescent layer gives the same total signal at every depth, so the detector cannot tell which depth the light came from. A confocal pinhole, or multiphoton excitation, adds that depth selection.');
+      out.push(`The page therefore lists no axial resolution here; that is a choice of what to report. An isolated bead on a dark background still shows an axial profile, ${formatNumber(r.excitationAxialUm, 3)} µm FWHM (the excitation focus). In a real sample the fluorescence above and below the focus adds to it, the same total from every plane, so this width does not tell where the signal came from.`);
+    }
     if (r.pinholeAu !== null) {
       out.push(`The pinhole passes ${formatNumber(r.pinholeAu, 3)} AU = ${formatNumber(r.pinholeUm, 3)} µm back-projected to the sample; the physical pinhole is this times the magnification from the sample to the pinhole plane.`);
       if (r.pinholeAu <= 0.25) out.push('Below about 0.25 AU the resolution approaches the point-pinhole limit while the detected signal keeps falling.');
@@ -97,7 +100,10 @@ mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hide
     if (!r.linear) {
       out.push(`The signal follows the ${r.order === 2 ? 'square' : 'cube'} of the excitation intensity, so the point image is the excitation PSF to the power ${r.order}, and the signal is confined to the focus: optical sectioning without a pinhole.`);
       if (!r.signal.harmonic) out.push(`Laterally the point image is narrower than one-photon excitation at the same wavelength and wider than one-photon excitation at λ/${r.order}; one-photon excitation without a pinhole has no optical sectioning.`);
-      if (!r.signal.harmonic) out.push(`The one-photon confocal comparison is excited at ${nm(r.transitionConfocalNm)} and detects the emission at ${nm(r.detNm)} through a 1 AU pinhole. One-photon excitation still reaches every plane the beam crosses; only the pinhole rejects their signal.`);
+      if (!r.signal.harmonic) {
+        out.push(`The one-photon confocal comparison is excited at ${nm(r.transitionConfocalNm)} and detects the emission at ${nm(r.detNm)} through a ${formatNumber(r.transitionConfocalAu, 3)} AU pinhole. One-photon excitation still reaches every plane the beam crosses; only the pinhole rejects their signal.`);
+        out.push('About 1 AU is the typical pinhole and, for most fluorescence work, the best compromise between signal and depth discrimination; with weak fluorescence a wider pinhole trades sectioning for signal. These are ideal values: measured confocal resolution often falls short of them, while nonlinear microscopes come close to theirs.');
+      }
       if (r.signal.harmonic) out.push(`${r.order === 2 ? 'SHG' : 'THG'} is generated coherently at exactly λ/${r.order} = ${nm(r.detNm)}. The point image applies to a point-like source; extended structures add coherent effects (phase matching, the Gouy phase, forward and backward emission) that are not modelled.`);
     }
     if (r.na / r.n > 0.7) out.push('Above about NA/n = 0.7, the polarization of the focused light widens the real focus along the polarization direction; this scalar model does not include it.');

@@ -159,6 +159,12 @@ test('nonlinear signals: harmonics at λ/N, and a one-photon confocal comparison
     assert.ok(p.axial.others[0].flat && p.axial.others[0].values.every(y => y === 1));
     assert.match(p.axial.others[1].name, /1 AU/);
   }
+  // The comparison pinhole can be opened from its 1 AU default.
+  const wide = resolution({ mode: 'nonlinear', signal: '2pf', comparisonAu: 2 });
+  const wideOne = resolution({ wavelengthNm: 460, emissionNm: 520, pinholeAu: 2 });
+  close(wide.transitionConfocal.axialUm, wideOne.axialUm, 1e-12);
+  assert.match(resolutionProfiles(wide).axial.others[1].name, /2 AU/);
+  assert.equal(resolution({ mode: 'nonlinear', signal: '2pf', comparisonAu: 11 }).ok, false);
   // A harmonic has no one-photon counterpart: no comparison at all.
   for (const signal of ['shg', 'thg']) {
     const r = resolution({ mode: 'nonlinear', signal });
@@ -172,6 +178,15 @@ test('nonlinear signals: harmonics at λ/N, and a one-photon confocal comparison
   const anti = resolution({ mode: 'nonlinear', signal: '3pf', nlWavelengthNm: 1700, nlEmissionNm: 520 });
   assert.equal(anti.ok, false);
   assert.ok(anti.errors.some(e => e.id === 'nlEmissionNm'));
+});
+
+test('the axial graph reaches past the half maximum of the pinhole response', () => {
+  for (const pinholeAu of [0.5, 1, 3, 10]) {
+    const p = resolutionProfiles(resolution({ pinholeAu }));
+    const detection = p.axial.others[0].values;
+    assert.ok(detection[0] < 0.5 && detection.at(-1) < 0.5, `${pinholeAu} AU`);
+    assert.ok(p.axial.own.every(Number.isFinite) && detection.every(Number.isFinite));
+  }
 });
 
 test('spontaneous Raman detects the Stokes line of the shift', () => {

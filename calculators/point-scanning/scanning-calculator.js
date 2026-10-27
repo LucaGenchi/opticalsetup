@@ -44,6 +44,9 @@ export const RESOLUTION_INPUTS = [
   { id: 'pinholeAu', group: 'detector', label: 'Pinhole diameter', unit: 'AU', value: 1, min: 0, max: 10,
     all: [{ when: 'mode', whenValue: 'linear' }, { when: 'pinhole', whenValue: 'pinhole' }],
     help: 'In Airy units of the detected light: 1 AU = 1.22 λ_det/NA, back-projected to the sample. 0 is the ideal point pinhole.' },
+  { id: 'comparisonAu', group: 'detector', label: 'Pinhole of the one-photon comparison', unit: 'AU', value: 1, min: 0, max: 10,
+    all: [{ when: 'mode', whenValue: 'nonlinear' }, { when: 'signal', whenValue: ['2pf', '3pf'] }],
+    help: 'For the one-photon confocal comparison at λ/N. 1 AU is the usual setting; dim samples are often imaged with a wider pinhole.' },
 ];
 export const RESOLUTION_DEFAULTS = defaultsFor(RESOLUTION_INPUTS);
 
@@ -138,10 +141,12 @@ export function computeResolution(raw) {
     // lateral widths only, as neither has an axial resolution.
     result.sameWavelength = { lateralUm: excitation.lateralUm };
     result.transition = { lateralUm: excitation.lateralUm / order };
-    // One-photon confocal at λ/N with a 1 AU pinhole, detecting the same
-    // signal wavelength: the usual alternative to N-photon excitation.
+    // One-photon confocal at λ/N with the chosen pinhole (1 AU by default),
+    // detecting the same emission: the usual alternative to N-photon
+    // excitation.
     result.transitionConfocalNm = exNm / order;
-    result.transitionConfocalPsf = effectivePsf({ pinholeAu: 1, detectionRatio: exNm / order / detNm });
+    result.transitionConfocalAu = v.comparisonAu;
+    result.transitionConfocalPsf = effectivePsf({ pinholeAu: v.comparisonAu, detectionRatio: exNm / order / detNm });
     result.transitionConfocal = widths(result.transitionConfocalPsf, exNm / order, na, axialNa);
   }
   return result;
@@ -168,7 +173,7 @@ export function resolutionProfiles(r, count = 161) {
     // excitation's.
     const zs = grid(1.6 * r.axialUm);
     const confocal = r.transitionConfocalPsf, k = r.order;
-    const confocalName = `One-photon confocal at ${Number(r.transitionConfocalNm.toFixed(1))} nm, 1 AU`;
+    const confocalName = `One-photon confocal at ${Number(r.transitionConfocalNm.toFixed(1))} nm, ${Number(r.transitionConfocalAu.toFixed(2))} AU`;
     return {
       lateral: { x: xs, own: lat(r.psf.lateral), others: [
         { name: 'One-photon at the same wavelength, no pinhole', values: lat(effectivePsf({}).lateral) },
@@ -189,8 +194,8 @@ export function resolutionProfiles(r, count = 161) {
         { name: 'Confocal, point pinhole', values: zs.map(z => point.axial(Math.abs(z) / axScale)) }] },
     };
   }
-  // The detection response is wider; show up to three axial widths of it.
-  const zs = grid(1.6 * Math.max(r.axialUm, Math.min(r.sliceUm ?? 0, 3 * r.axialUm)));
+  // The detection response is wider: reach past its half-maximum points.
+  const zs = grid(Math.max(1.6 * r.axialUm, 0.75 * r.sliceUm));
   const b = r.exNm / r.detNm;
   return {
     lateral: { x: xs, own: lat(r.psf.lateral), others: [{ name: 'No pinhole', values: lat(effectivePsf({}).lateral) }] },
