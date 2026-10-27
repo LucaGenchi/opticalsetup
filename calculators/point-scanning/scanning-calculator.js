@@ -14,13 +14,16 @@ export const RESOLUTION_INPUTS = [
   { id: 'mode', type: 'select', group: 'process', label: 'Excitation', value: 'linear',
     options: [['linear', 'One-photon (linear)'], ['nonlinear', 'Multiphoton (nonlinear)']],
     help: 'One-photon signals (fluorescence, spontaneous Raman, scattering) grow linearly with the excitation intensity; N-photon signals (2P/3P fluorescence, harmonics) with its N-th power.' },
-  { id: 'order', type: 'select', group: 'process', label: 'Photons per event', value: '2', when: 'mode', whenValue: 'nonlinear',
-    options: [['2', '2 (2P fluorescence, SHG)'], ['3', '3 (3P fluorescence, THG)']],
-    help: 'N, the power of the excitation intensity the signal follows.' },
+  { id: 'signal', type: 'select', group: 'process', label: 'Signal', value: '2pf', when: 'mode', whenValue: 'nonlinear',
+    options: [['2pf', 'Two-photon fluorescence'], ['shg', 'Second-harmonic generation (SHG)'], ['3pf', 'Three-photon fluorescence'], ['thg', 'Third-harmonic generation (THG)']],
+    help: 'Two-photon fluorescence and SHG follow the square of the excitation intensity, three-photon fluorescence and THG its cube. A harmonic is emitted at exactly λ/2 or λ/3.' },
   { id: 'wavelengthNm', group: 'process', label: 'Excitation wavelength', unit: 'nm', value: 488, min: WAVELENGTH_SCOPE[0], max: WAVELENGTH_SCOPE[1],
     when: 'mode', whenValue: 'linear', help: 'Vacuum wavelength of the scanning laser.' },
   { id: 'nlWavelengthNm', group: 'process', label: 'Excitation wavelength', unit: 'nm', value: 920, min: WAVELENGTH_SCOPE[0], max: WAVELENGTH_SCOPE[1],
     when: 'mode', whenValue: 'nonlinear', help: 'Vacuum wavelength of the pulsed laser (for example 920 nm for GFP, or 1700 nm for three-photon imaging).' },
+  { id: 'nlEmissionNm', group: 'process', label: 'Emission wavelength', unit: 'nm', value: 520, min: WAVELENGTH_SCOPE[0], max: WAVELENGTH_SCOPE[1],
+    all: [{ when: 'mode', whenValue: 'nonlinear' }, { when: 'signal', whenValue: ['2pf', '3pf'] }],
+    help: 'Peak of the detected emission. It does not change the multiphoton point image; it sets the one-photon confocal comparison.' },
   { id: 'detection', type: 'select', group: 'process', label: 'Detected light', value: 'fluorescence', when: 'mode', whenValue: 'linear',
     options: [['fluorescence', 'Fluorescence'], ['raman', 'Spontaneous Raman'], ['elastic', 'Scattered or reflected light']],
     help: 'Sets the wavelength the pinhole sees: the emission, the Raman Stokes line or the excitation itself. Without a pinhole it does not change the resolution.' },
@@ -45,6 +48,14 @@ export const RESOLUTION_INPUTS = [
 export const RESOLUTION_DEFAULTS = defaultsFor(RESOLUTION_INPUTS);
 
 const um = nm => nm / 1000;
+// Photons per event (the power of the excitation intensity) of each
+// nonlinear signal, and whether it is a harmonic, emitted at λ/N.
+export const SIGNALS = {
+  '2pf': { order: 2, harmonic: false, label: 'Two-photon fluorescence' },
+  shg: { order: 2, harmonic: true, label: 'Second-harmonic generation' },
+  '3pf': { order: 3, harmonic: false, label: 'Three-photon fluorescence' },
+  thg: { order: 3, harmonic: true, label: 'Third-harmonic generation' },
+};
 // FWHM in µm from a half width in optical units.
 const lateralUm = (halfV, lambdaNm, na) => 2 * halfV * um(lambdaNm) / (2 * Math.PI * na);
 const axialUm = (halfU, lambdaNm, axialNa) => 2 * halfU * um(lambdaNm) / (4 * Math.PI * axialNa);
@@ -62,9 +73,15 @@ export function computeResolution(raw) {
   // n − √(n² − NA²) = n(1 − cos α): the axial optical coordinate's scale.
   const axialNa = n - Math.sqrt(n * n - na * na);
   const linear = v.mode === 'linear';
-  const order = linear ? 1 : Number(v.order);
+  const signal = linear ? null : SIGNALS[v.signal];
+  const order = linear ? 1 : signal.order;
   const exNm = linear ? v.wavelengthNm : v.nlWavelengthNm;
   let detNm = exNm, detectionLabel = 'Excitation wavelength';
+  if (signal?.harmonic) { detNm = exNm / order; detectionLabel = order === 2 ? 'Second harmonic' : 'Third harmonic'; }
+  if (signal && !signal.harmonic) {
+    detNm = v.nlEmissionNm; detectionLabel = 'Emission';
+    if (!(detNm > exNm / order)) return unavailable(`Fluorescence is emitted at a longer wavelength than λ/${order} = ${Number((exNm / order).toFixed(1))} nm, the transition the ${order} photons reach.`, 'nlEmissionNm', 'nlWavelengthNm');
+  }
   if (linear && v.detection === 'fluorescence') { detNm = v.emissionNm; detectionLabel = 'Emission'; }
   if (linear && v.detection === 'raman') {
     detNm = ramanStokesWl(exNm, v.ramanShiftCm);
@@ -82,7 +99,7 @@ export function computeResolution(raw) {
   const auUm = 1.22 * um(detNm) / na;
   const sectioning = linear ? pinholeAu !== null : true;
   const result = {
-    ok: true, values: v, linear, order, exNm, detNm, detectionLabel, n, na, axialNa, pinholeAu,
+    ok: true, values: v, linear, order, signal, exNm, detNm, detectionLabel, n, na, axialNa, pinholeAu,
     apertureHalfAngleDeg: Math.asin(na / n) * 180 / Math.PI,
     lateralUm: own.lateralUm,
     // Axial resolution only where the signal is confined in depth: with a
@@ -120,30 +137,59 @@ export function computeResolution(raw) {
     // lateral widths only, as neither has an axial resolution.
     result.sameWavelength = { lateralUm: excitation.lateralUm };
     result.transition = { lateralUm: excitation.lateralUm / order };
+    // One-photon confocal at λ/N with a 1 AU pinhole, detecting the same
+    // signal wavelength: the usual alternative to N-photon excitation.
+    result.transitionConfocalNm = exNm / order;
+    result.transitionConfocalPsf = effectivePsf({ pinholeAu: 1, detectionRatio: exNm / order / detNm });
+    result.transitionConfocal = widths(result.transitionConfocalPsf, exNm / order, na, axialNa);
   }
   return result;
 }
 
-// Normalized profiles through the focus, for the graphs. Across the focus:
-// this configuration and one comparison. Along the axis: this
-// configuration and, with a pinhole, the pinhole's detection response
-// alone; without a pinhole there is no axial profile to show (`null`).
+// Normalized profiles through the focus, for the graphs: this configuration
+// and its comparisons, each { name, values }. Along the axis, one-photon
+// excitation without a pinhole has no point-image width to show; its line
+// is the signal from a thin uniform layer, the same at every depth (`flat`).
+// With a pinhole the comparison along the axis is the pinhole's detection
+// response alone.
 export function resolutionProfiles(r, count = 161) {
-  const comparison = !r.linear ? { name: 'One-photon at the same wavelength', psf: effectivePsf({}) }
-    : r.pinholeAu === null ? { name: 'Confocal, point pinhole', psf: effectivePsf({ pinholeAu: 0, detectionRatio: r.exNm / r.detNm }) }
-      : { name: 'No pinhole', psf: effectivePsf({}) };
   const latScale = um(r.exNm) / (2 * Math.PI * r.na), axScale = um(r.exNm) / (4 * Math.PI * r.axialNa);
   const grid = span => Array.from({ length: count }, (_, i) => -span + 2 * span * i / (count - 1));
   const xs = grid(1.6 * Math.max(r.lateralUm, r.excitationLateralUm));
-  const lateral = { x: xs, own: xs.map(x => r.psf.lateral(Math.abs(x) / latScale)), other: xs.map(x => comparison.psf.lateral(Math.abs(x) / latScale)) };
-  if (!r.sectioning) return { comparisonName: comparison.name, lateral, axial: null };
+  const lat = f => xs.map(x => f(Math.abs(x) / latScale));
+  if (!r.linear) {
+    // The one-photon comparison at λ/N has optical coordinates N times the
+    // excitation's.
+    const zs = grid(1.6 * r.axialUm);
+    const confocal = r.transitionConfocalPsf, k = r.order;
+    const confocalName = `One-photon confocal at ${Number(r.transitionConfocalNm.toFixed(1))} nm, 1 AU`;
+    return {
+      lateral: { x: xs, own: lat(r.psf.lateral), others: [
+        { name: 'One-photon at the same wavelength, no pinhole', values: lat(effectivePsf({}).lateral) },
+        { name: confocalName, values: lat(v => confocal.lateral(k * v)) }] },
+      axial: { x: zs, own: zs.map(z => r.psf.axial(Math.abs(z) / axScale)), others: [
+        { name: 'One-photon, no pinhole (thin layer, no sectioning)', values: zs.map(() => 1), flat: true },
+        { name: confocalName, values: zs.map(z => confocal.axial(k * Math.abs(z) / axScale)) }] },
+    };
+  }
+  const point = effectivePsf({ pinholeAu: 0, detectionRatio: r.exNm / r.detNm });
+  if (!r.sectioning) {
+    const zs = grid(1.6 * r.pointPinhole.axialUm);
+    return {
+      lateral: { x: xs, own: lat(r.psf.lateral), others: [{ name: 'Confocal, point pinhole', values: lat(point.lateral) }] },
+      // This configuration is the flat layer line; the point pinhole's
+      // point image shows what a pinhole adds.
+      axial: { x: zs, own: zs.map(() => 1), ownFlat: true, others: [
+        { name: 'Confocal, point pinhole', values: zs.map(z => point.axial(Math.abs(z) / axScale)) }] },
+    };
+  }
   // The detection response is wider; show up to three axial widths of it.
   const zs = grid(1.6 * Math.max(r.axialUm, Math.min(r.sliceUm ?? 0, 3 * r.axialUm)));
   const b = r.exNm / r.detNm;
   return {
-    comparisonName: comparison.name, lateral,
-    axial: { x: zs, own: zs.map(z => r.psf.axial(Math.abs(z) / axScale)),
-      detection: r.linear ? zs.map(z => r.psf.detection.axial(b * Math.abs(z) / axScale)) : null },
+    lateral: { x: xs, own: lat(r.psf.lateral), others: [{ name: 'No pinhole', values: lat(effectivePsf({}).lateral) }] },
+    axial: { x: zs, own: zs.map(z => r.psf.axial(Math.abs(z) / axScale)), others: [
+      { name: 'Pinhole’s detection response alone', values: zs.map(z => r.psf.detection.axial(b * Math.abs(z) / axScale)) }] },
   };
 }
 

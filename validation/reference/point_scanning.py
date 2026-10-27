@@ -211,9 +211,9 @@ def cases():
                  633, 633, 0.5, 1.0, 3),
         res_case("confocal, 10 AU: 561/610 nm, NA 0.8 custom n 1.45", {"mode": "linear", "wavelengthNm": 561, "emissionNm": 610, "na": 0.8, "immersion": "custom", "immersionIndex": 1.45, "pinhole": "pinhole", "pinholeAu": 10},
                  561, 610, 0.8, 1.45, 10),
-        res_case("two-photon: 920 nm, NA 1.0 water", {"mode": "nonlinear", "order": "2", "nlWavelengthNm": 920, "na": 1.0, "immersion": "water"},
+        res_case("two-photon: 920 nm, NA 1.0 water", {"mode": "nonlinear", "signal": "2pf", "nlWavelengthNm": 920, "na": 1.0, "immersion": "water"},
                  920, 920, 1.0, 1.333, None, 2),
-        res_case("three-photon: 1700 nm, NA 1.05 water", {"mode": "nonlinear", "order": "3", "nlWavelengthNm": 1700, "na": 1.05, "immersion": "water"},
+        res_case("third harmonic: 1700 nm, NA 1.05 water", {"mode": "nonlinear", "signal": "thg", "nlWavelengthNm": 1700, "na": 1.05, "immersion": "water"},
                  1700, 1700, 1.05, 1.333, None, 3),
     ]
     scans = [
@@ -245,7 +245,7 @@ MODEL = {
         "A. Negrean and H. D. Mansvelder, Biomed. Opt. Express 5, 1588 (2014), doi:10.1364/BOE.5.001588 (scan-lens mappings)",
     ],
     "provenance": "Optical coordinates and h(u, v) from So et al. Eq. 2; confocal product and pinhole integral from the Zeiss monograph's Eq. 1 and Wilson and Carlini; N-photon point image as h^N. The open and point-pinhole limits reproduce the monograph's rounded 0.51, 0.88, 0.37 and 0.64 coefficients (0.5145, 0.8859, 0.3693, 0.6378 here).",
-    "domain": "One-photon without a pinhole (water, air), with a point pinhole and with 0.5, 1, 3 and 10 AU pinholes (fluorescence with a Stokes shift, spontaneous Raman in oil, elastic reflection in air, a custom index); two-photon at 920 nm and three-photon at 1700 nm; scan geometry for 200, 180 and custom reference tube lenses, mechanical and optical angles, negative angles, tan and f-theta mappings.",
+    "domain": "One-photon without a pinhole (water, air), with a point pinhole and with 0.5, 1, 3 and 10 AU pinholes (fluorescence with a Stokes shift, spontaneous Raman in oil, elastic reflection in air, a custom index); two-photon fluorescence at 920 nm and third-harmonic generation (cube of the intensity) at 1700 nm; scan geometry for 200, 180 and custom reference tube lenses, mechanical and optical angles, negative angles, tan and f-theta mappings.",
     "convergence": "Bessel trapezoid with 64 + 2|x| nodes; Simpson with 600 pupil and 240 pinhole-radius intervals for the axial response and 400 intervals per segment for the lateral one; 60-step bisection. Doubling every grid moves no width by more than 1e-6 relative (the largest change, 9e-7, is the 10 AU slice thickness).",
     "tolerance_rationale": "1e-5 relative for the widths: the app's fixed Gauss-Legendre quadrature (64 x 48 nodes over the pinhole, 128 over the pupil) and its 1e-8 Bessel approximations, both well inside it; 1e-9 for the closed-form scan geometry.",
     "outside_scope": "Declines an NA not below the medium's index, wavelengths outside 200-3000 nm, a Raman Stokes line beyond 3000 nm, pinholes above 10 AU and optical deflections beyond +/-60 degrees.",

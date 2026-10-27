@@ -167,7 +167,7 @@
     "mode": "nonlinear",
     "na": 1.0,
     "nlWavelengthNm": 920,
-    "order": "2"
+    "signal": "2pf"
    },
    "name": "two-photon: 920 nm, NA 1.0 water",
    "tolerance": {
@@ -186,9 +186,9 @@
     "mode": "nonlinear",
     "na": 1.05,
     "nlWavelengthNm": 1700,
-    "order": "3"
+    "signal": "thg"
    },
-   "name": "three-photon: 1700 nm, NA 1.05 water",
+   "name": "third harmonic: 1700 nm, NA 1.05 water",
    "tolerance": {
     "axialUm": 1e-05,
     "lateralUm": 1e-05
@@ -309,7 +309,7 @@
   "A. Negrean and H. D. Mansvelder, Biomed. Opt. Express 5, 1588 (2014), doi:10.1364/BOE.5.001588 (scan-lens mappings)"
  ],
  "convergence": "Bessel trapezoid with 64 + 2|x| nodes; Simpson with 600 pupil and 240 pinhole-radius intervals for the axial response and 400 intervals per segment for the lateral one; 60-step bisection. Doubling every grid moves no width by more than 1e-6 relative (the largest change, 9e-7, is the 10 AU slice thickness).",
- "domain": "One-photon without a pinhole (water, air), with a point pinhole and with 0.5, 1, 3 and 10 AU pinholes (fluorescence with a Stokes shift, spontaneous Raman in oil, elastic reflection in air, a custom index); two-photon at 920 nm and three-photon at 1700 nm; scan geometry for 200, 180 and custom reference tube lenses, mechanical and optical angles, negative angles, tan and f-theta mappings.",
+ "domain": "One-photon without a pinhole (water, air), with a point pinhole and with 0.5, 1, 3 and 10 AU pinholes (fluorescence with a Stokes shift, spontaneous Raman in oil, elastic reflection in air, a custom index); two-photon fluorescence at 920 nm and third-harmonic generation (cube of the intensity) at 1700 nm; scan geometry for 200, 180 and custom reference tube lenses, mechanical and optical angles, negative angles, tan and f-theta mappings.",
  "fidelity": "computed",
  "id": "point-scanning",
  "outside_scope": "Declines an NA not below the medium's index, wavelengths outside 200-3000 nm, a Raman Stokes line beyond 3000 nm, pinholes above 10 AU and optical deflections beyond +/-60 degrees.",

@@ -5,7 +5,6 @@ import { RESOLUTION_INPUTS, RESOLUTION_DEFAULTS, computeResolution, resolutionPr
 import { mountCalculator } from '../assets/simple-calculator-page.js';
 import { formatNumber } from '../assets/calculator-kit.js';
 
-const PHOTONS = { 2: 'Two-photon', 3: 'Three-photon' };
 // Group headings are set in capitals, which would turn λ into Λ.
 const FRACTION = { 2: 'half', 3: 'a third of' };
 const nm = x => `${formatNumber(x, 4)} nm`;
@@ -15,11 +14,12 @@ const focus = { na: null, lateralUm: null, bandPixelUm: null };
 let scan = null;
 
 const NO_SECTIONING = 'None: no optical sectioning';
-const profileChart = (x, xLabel, own, other, otherName) => ({
-  x, xLabel, xUnit: 'µm', yLabel: 'Normalized signal', yMin: 0, yMax: 1.05,
+const COLORS = ['--series-3', '--series-2'];
+const profileChart = (profile, xLabel) => ({
+  x: profile.x, xLabel, xUnit: 'µm', yLabel: 'Normalized signal', yMin: 0, yMax: 1.05,
   formatX: n => formatNumber(n, 3), formatY: n => formatNumber(n, 3),
-  series: [{ name: 'This configuration', color: '--series-1', values: own },
-    ...(other ? [{ name: otherName, color: '--series-3', dash: true, values: other }] : [])],
+  series: [{ name: profile.ownFlat ? 'This configuration (thin layer, no sectioning)' : 'This configuration', color: '--series-1', values: profile.own },
+    ...profile.others.map((o, i) => ({ name: o.name, color: COLORS[i], dash: true, values: o.values }))],
 });
 
 mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hideInactive: true, groups: {
@@ -29,7 +29,7 @@ mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hide
   // comparisons.
   rows: r => {
     const focus = [
-      { group: r.linear ? 'This configuration (FWHM of the scanned point image)' : `${PHOTONS[r.order]} excitation (FWHM of the scanned point image)` },
+      { group: r.linear ? 'This configuration (FWHM of the scanned point image)' : `${r.signal.label} (FWHM of the scanned point image)` },
       ['Lateral resolution', r.lateralUm, 'µm', 3],
       r.sectioning ? ['Axial resolution', r.axialUm, 'µm', 3] : ['Axial resolution', `${NO_SECTIONING} without a pinhole`],
       ...(r.sliceUm != null ? [['Axial FWHM of the pinhole’s detection response', r.sliceUm, 'µm', 3]] : []),
@@ -37,7 +37,7 @@ mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hide
     const light = [
       { group: 'Wavelengths and aperture' },
       ['Excitation wavelength', r.exNm, 'nm', 6],
-      ...(r.linear && r.detNm !== r.exNm ? [[`Detected wavelength (${r.detectionLabel.toLowerCase()})`, r.detNm, 'nm', 6]] : []),
+      ...(r.detNm !== r.exNm ? [[`Detected wavelength (${r.detectionLabel.toLowerCase()})`, r.detNm, 'nm', 6]] : []),
       ['Aperture half-angle α = asin(NA/n)', r.apertureHalfAngleDeg, '°', 3],
       ...(r.linear ? [['1 AU at the detected wavelength (at the sample)', r.auUm, 'µm', 3]] : []),
       ...(r.pinholeUm !== null ? [['Pinhole diameter at the sample', r.pinholeUm, 'µm', 3]] : []),
@@ -51,8 +51,10 @@ mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hide
           ['Lateral width of this configuration, relative', r.lateralUm / r.sameWavelength.lateralUm, '×', 3],
         ],
         'res-limits': [
-          { group: `For comparison: one-photon at ${FRACTION[r.order]} the wavelength (${nm(r.exNm / r.order)}), no pinhole` },
-          ['Lateral', r.transition.lateralUm, 'µm', 3], ['Axial', NO_SECTIONING],
+          { group: `For comparison: one-photon at ${FRACTION[r.order]} the wavelength (${nm(r.exNm / r.order)})` },
+          ['No pinhole: lateral', r.transition.lateralUm, 'µm', 3], ['No pinhole: axial', NO_SECTIONING],
+          ['Confocal, 1 AU pinhole: lateral', r.transitionConfocal.lateralUm, 'µm', 3],
+          ['Confocal, 1 AU pinhole: axial', r.transitionConfocal.axialUm, 'µm', 3],
         ],
       };
     }
@@ -92,7 +94,8 @@ mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hide
     if (r.linear && r.values.detection === 'raman') out.push(`The Stokes line of a ${formatNumber(r.values.ramanShiftCm, 5)} cm⁻¹ shift lies at ${nm(r.detNm)}.`);
     if (!r.linear) {
       out.push(`The signal follows the ${r.order === 2 ? 'square' : 'cube'} of the excitation intensity, so the point image is the excitation PSF to the power ${r.order}: laterally narrower than one-photon excitation at the same wavelength, wider than one-photon excitation at λ/${r.order}. Along the axis the signal is confined to the focus, which gives optical sectioning without a pinhole; one-photon excitation without a pinhole has none.`);
-      out.push('Harmonic generation from a point-like object has the same point image; extended objects add coherent effects (phase matching, the Gouy phase) that are not modelled.');
+      out.push(`The one-photon confocal comparison is excited at ${nm(r.transitionConfocalNm)} and detects ${r.signal.harmonic ? 'the same wavelength as the harmonic' : `the emission at ${nm(r.detNm)}`} through a 1 AU pinhole. One-photon excitation still reaches every plane the beam crosses; only the pinhole rejects their signal.`);
+      if (r.signal.harmonic) out.push(`${r.order === 2 ? 'SHG' : 'THG'} is generated coherently at exactly λ/${r.order} = ${nm(r.detNm)}. The point image applies to a point-like source; extended structures add coherent effects (phase matching, the Gouy phase, forward and backward emission) that are not modelled.`);
     }
     if (r.na / r.n > 0.7) out.push('Above about NA/n = 0.7, the polarization of the focused light widens the real focus along the polarization direction; this scalar model does not include it.');
     out.push('Uniformly filled back aperture, no aberrations, sample index matched to the immersion medium. Deep in tissue or through an index mismatch the focus is wider.');
@@ -101,9 +104,8 @@ mountCalculator({ inputs: RESOLUTION_INPUTS, defaults: RESOLUTION_DEFAULTS, hide
   graphs: r => {
     const p = resolutionProfiles(r);
     return {
-      lateral: profileChart(p.lateral.x, 'Lateral position (µm)', p.lateral.own, p.lateral.other, p.comparisonName),
-      axial: p.axial ? profileChart(p.axial.x, 'Axial position (µm)', p.axial.own, p.axial.detection, 'Pinhole’s detection response alone')
-        : { message: 'No axial profile without a pinhole: a one-photon signal is excited in every plane the beam crosses, so there is no optical sectioning. Add a pinhole or use multiphoton excitation.' },
+      lateral: profileChart(p.lateral, 'Lateral position (µm)'),
+      axial: profileChart(p.axial, 'Axial position (µm)'),
     };
   },
   onResult: r => {

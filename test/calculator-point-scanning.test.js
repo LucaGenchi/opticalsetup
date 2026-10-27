@@ -38,7 +38,7 @@ test('open and point-pinhole limits hit their analytic half-maximum points', () 
 
 test('a point pinhole at the excitation wavelength gives the two-photon point image at that wavelength', () => {
   const point = resolution({ pinhole: 'pinhole', pinholeAu: 0, detection: 'elastic', wavelengthNm: 800, na: 0.8 });
-  const twoPhoton = resolution({ mode: 'nonlinear', order: '2', nlWavelengthNm: 800, na: 0.8 });
+  const twoPhoton = resolution({ mode: 'nonlinear', signal: '2pf', nlWavelengthNm: 800, na: 0.8 });
   close(point.lateralUm, twoPhoton.lateralUm, 1e-12);
   close(point.axialUm, twoPhoton.axialUm, 1e-12);
 });
@@ -71,17 +71,20 @@ test('one-photon excitation without a pinhole has no axial resolution', () => {
     assert.equal(r.sectioning, false);
     assert.equal(r.axialUm, null);
     assert.ok(r.excitationAxialUm > 0);
-    assert.equal(resolutionProfiles(r).axial, null);
+    // The axial graph draws it as the flat signal of a thin layer.
+    const axial = resolutionProfiles(r).axial;
+    assert.equal(axial.ownFlat, true);
+    assert.ok(axial.own.every(y => y === 1));
   }
   // Any pinhole, or N-photon excitation, confines the signal in depth.
-  for (const values of [{ pinholeAu: 0 }, { pinholeAu: 10 }, { mode: 'nonlinear', order: '2' }]) {
+  for (const values of [{ pinholeAu: 0 }, { pinholeAu: 10 }, { mode: 'nonlinear', signal: '2pf' }]) {
     const r = resolution(values);
     assert.equal(r.sectioning, true);
     assert.ok(r.axialUm > 0);
     assert.ok(resolutionProfiles(r).axial.own.every(Number.isFinite));
   }
   // The comparisons with one-photon excitation without a pinhole are lateral only.
-  const two = resolution({ mode: 'nonlinear', order: '2' });
+  const two = resolution({ mode: 'nonlinear', signal: '2pf' });
   assert.deepEqual(Object.keys(two.sameWavelength), ['lateralUm']);
   assert.deepEqual(Object.keys(two.transition), ['lateralUm']);
 });
@@ -97,20 +100,21 @@ test('the pinhole response is normalized and its radius follows the Airy unit', 
 });
 
 test('N-photon point images narrow against one-photon at the same wavelength', () => {
-  for (const order of ['2', '3']) {
-    const r = resolution({ mode: 'nonlinear', order, nlWavelengthNm: 1000, na: 1.0 });
+  for (const [signal, order] of [['2pf', 2], ['3pf', 3], ['shg', 2], ['thg', 3]]) {
+    const r = resolution({ mode: 'nonlinear', signal, nlWavelengthNm: 1000, na: 1.0 });
+    assert.equal(r.order, order);
     assert.ok(r.lateralUm < r.sameWavelength.lateralUm && r.lateralUm > r.transition.lateralUm);
     assert.ok(r.axialUm < r.excitationAxialUm && r.axialUm > r.excitationAxialUm / Number(order));
     assert.equal(r.pinholeAu, null);
   }
-  const two = resolution({ mode: 'nonlinear', order: '2', nlWavelengthNm: 1000 });
+  const two = resolution({ mode: 'nonlinear', signal: '2pf', nlWavelengthNm: 1000 });
   close(two.sameWavelength.lateralUm / two.lateralUm, 1.6163399 / 1.1601, 1e-3);
 });
 
 test('the band-limited pixel follows the cutoff of the point image, not its FWHM', () => {
   // N-photon: h^N passes up to 2N NA/λ, so the pixel is λ/(4 N NA).
-  close(resolution({ mode: 'nonlinear', order: '2', nlWavelengthNm: 1000, na: 1 }).bandPixelUm, 0.125, 1e-12);
-  close(resolution({ mode: 'nonlinear', order: '3', nlWavelengthNm: 1000, na: 1 }).bandPixelUm, 1 / 12, 1e-12);
+  close(resolution({ mode: 'nonlinear', signal: '2pf', nlWavelengthNm: 1000, na: 1 }).bandPixelUm, 0.125, 1e-12);
+  close(resolution({ mode: 'nonlinear', signal: '3pf', nlWavelengthNm: 1000, na: 1 }).bandPixelUm, 1 / 12, 1e-12);
   // One-photon without a pinhole: λ/(4 NA); with any pinhole the detection
   // band adds 2 NA/λ_det, however large the pinhole.
   close(resolution({ pinhole: 'open', wavelengthNm: 500, na: 0.5 }).bandPixelUm, 0.25, 1e-12);
@@ -118,7 +122,7 @@ test('the band-limited pixel follows the cutoff of the point image, not its FWHM
     close(resolution({ pinholeAu, wavelengthNm: 500, emissionNm: 600, na: 0.5 }).bandPixelUm, 1 / (2 * (2 * 0.5 / 0.5 + 2 * 0.5 / 0.6)), 1e-12);
   }
   // The FWHM rule is coarser than the band limit in every mode.
-  for (const values of [{}, { pinhole: 'open' }, { mode: 'nonlinear', order: '2' }, { mode: 'nonlinear', order: '3' }]) {
+  for (const values of [{}, { pinhole: 'open' }, { mode: 'nonlinear', signal: '2pf' }, { mode: 'nonlinear', signal: '3pf' }]) {
     const r = resolution(values);
     assert.ok(r.lateralUm / 2 > r.bandPixelUm);
   }
@@ -134,6 +138,31 @@ test('the detection response alone is never narrower than the total axial point 
   const point = resolution({ pinholeAu: 0, emissionNm: 488 });
   close(point.axialUm, point.closedForm.pointAxialUm, 0.01);
   assert.ok(point.sliceUm > 1.3 * point.axialUm);
+});
+
+test('nonlinear signals: harmonics at λ/N, and a one-photon confocal comparison at λ/N', () => {
+  close(resolution({ mode: 'nonlinear', signal: 'shg', nlWavelengthNm: 1000 }).detNm, 500, 1e-12);
+  close(resolution({ mode: 'nonlinear', signal: 'thg', nlWavelengthNm: 1200 }).detNm, 400, 1e-12);
+  // SHG and two-photon fluorescence share the point image.
+  const shg = resolution({ mode: 'nonlinear', signal: 'shg' }), tpf = resolution({ mode: 'nonlinear', signal: '2pf' });
+  close(shg.lateralUm, tpf.lateralUm, 1e-12); close(shg.axialUm, tpf.axialUm, 1e-12);
+  // The comparison is the linear calculator at λ/N with a 1 AU pinhole.
+  for (const [values, linear] of [
+    [{ signal: '2pf', nlWavelengthNm: 920, nlEmissionNm: 520 }, { wavelengthNm: 460, detection: 'fluorescence', emissionNm: 520 }],
+    [{ signal: 'thg', nlWavelengthNm: 1200 }, { wavelengthNm: 400, detection: 'elastic' }],
+  ]) {
+    const r = resolution({ mode: 'nonlinear', ...values });
+    const one = resolution({ pinhole: 'pinhole', pinholeAu: 1, ...linear });
+    close(r.transitionConfocal.lateralUm, one.lateralUm, 1e-12);
+    close(r.transitionConfocal.axialUm, one.axialUm, 1e-12);
+    const p = resolutionProfiles(r);
+    assert.ok(p.axial.others[0].flat && p.axial.others[0].values.every(y => y === 1));
+    assert.match(p.axial.others[1].name, /1 AU/);
+  }
+  // Fluorescence is emitted beyond λ/N.
+  const anti = resolution({ mode: 'nonlinear', signal: '3pf', nlWavelengthNm: 1700, nlEmissionNm: 520 });
+  assert.equal(anti.ok, false);
+  assert.ok(anti.errors.some(e => e.id === 'nlEmissionNm'));
 });
 
 test('spontaneous Raman detects the Stokes line of the shift', () => {
@@ -154,10 +183,10 @@ test('resolution inputs outside the model are refused with a reason', () => {
 });
 
 test('profiles are finite, peak at 1 and cross one half at the reported FWHM', () => {
-  for (const values of [{}, { pinhole: 'open' }, { mode: 'nonlinear', order: '3', nlWavelengthNm: 1300 }]) {
+  for (const values of [{}, { pinhole: 'open' }, { mode: 'nonlinear', signal: '3pf', nlWavelengthNm: 1300 }]) {
     const r = resolution(values);
     const p = resolutionProfiles(r);
-    const curves = [p.lateral.own, p.lateral.other, ...(p.axial ? [p.axial.own, ...(p.axial.detection ? [p.axial.detection] : [])] : [])];
+    const curves = [p.lateral.own, p.axial.own, ...p.lateral.others.map(o => o.values), ...p.axial.others.map(o => o.values)];
     for (const curve of curves) {
       assert.ok(curve.every(Number.isFinite));
       assert.ok(Math.max(...curve) <= 1 + 1e-9);
