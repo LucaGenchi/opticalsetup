@@ -127,6 +127,11 @@ test('a bench that cannot be drawn in the plane still gives its numbers, and say
   const littrow = computeCompressor(form('grating-pair', { gratingIncidenceDeg: 29 }));
   assert.ok(littrow.ok && Number.isFinite(littrow.comp.gddFs2));
   assert.match(littrow.figureIssue, /in height/);
+  // With a narrow band every colour still arrives there, but off the wrong
+  // path: the colours leave at different angles.
+  const narrow = computeCompressor(form('grating-pair', { gratingIncidenceDeg: 29, bandwidthNm: 1 }));
+  assert.equal(narrow.comp.gddFs2, littrow.comp.gddFs2);
+  assert.match(narrow.figureIssue, /in height/);
   // Gratings smaller than the colours' spread clip the band.
   const small = computeCompressor(form('grating-pair', { gratingSizeMm: 20 }));
   assert.equal(small.comp.gddFs2, computeCompressor(form('grating-pair')).comp.gddFs2);

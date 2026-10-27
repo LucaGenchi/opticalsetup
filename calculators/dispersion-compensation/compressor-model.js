@@ -473,11 +473,18 @@ export function buildLayout(v, firstMm = SOURCE_TO_FIRST_MM) {
 // dispersion) until none does. Where no distance works, the layout comes
 // back with `figureIssue`; the numbers never depend on it. The canvas flags
 // a gap inside the band (its partial fan); the band's edges, whose weak
-// colours that test lets go, must arrive too. Only missing colours count: how much light each delivers (Fresnel loss across the
-// band, grating efficiency) and the canvas's GDD reading (its lens glass,
-// its fit to traced colours) follow the canvas's own models, which differ
-// from the page's without any fault in the drawing.
+// colours that test lets go, must arrive too. A band that arrives whole can
+// still have taken the wrong path (near Littrow, a colour bounced back off the
+// first grating), and then the colours leave at different angles: every
+// bench here sends them out parallel, so the canvas finding angular
+// dispersion at the detector marks the figure wrong too. Only missing or
+// misdirected colours count: how much light each delivers (Fresnel loss
+// across the band, grating efficiency) and the canvas's GDD reading (its lens
+// glass, its fit to traced colours) follow the canvas's own models, which
+// differ from the page's without any fault in the drawing.
 const FIRST_OPTIC_MM = [SOURCE_TO_FIRST_MM, 400, 600, 900, 1300, 2000];
+// The canvas's note where the colours reaching a detector still diverge.
+const ANGULAR_DISPERSION = 'angular dispersion remains';
 
 // The GDD the canvas adds for its lenses' glass: it gives each thin lens an
 // estimated thickness of N-BK7, crossed once a pass. The page's lenses are
@@ -504,12 +511,13 @@ export function buildFigure(v) {
     traceScene(layout.elements);
     const reading = detectorReading(layout.elements.at(-1).id);
     const pulse = reading?.pulse;
-    if (Number.isFinite(pulse?.gddFs2) && !String(pulse.dispersionModel ?? '').includes(DISPERSION_UNAVAILABLE.partialFan)
-      && wholeBand(reading, v)) return layout;
+    const model = String(pulse?.dispersionModel ?? '');
+    if (Number.isFinite(pulse?.gddFs2) && !model.includes(DISPERSION_UNAVAILABLE.partialFan)
+      && !model.includes(ANGULAR_DISPERSION) && wholeBand(reading, v)) return layout;
   }
   return { ...layout, figureIssue: layout.kind === 'prism'
     ? 'In the plane of the figure part of the band misses a prism or the detector (the colours spread wider than the optics), so the drawing and the canvas scene do not deliver the whole band; larger prisms would.'
-    : 'In the plane of the figure a beam crosses an optic or is clipped (near Littrow, for instance, the beam leaving the second grating runs back across the first), so the drawing and the canvas scene do not deliver the whole band. Real benches separate such beams in height; larger optics help where the colours are clipped.' };
+    : 'In the plane of the figure a beam crosses an optic or is clipped (near Littrow, for instance, the beam leaving the second grating runs back across the first), so the drawing and the canvas scene do not deliver the whole band along the designed path. Real benches separate such beams in height; larger optics help where the colours are clipped.' };
 }
 
 // The scene as the canvas opens it: the output detector becomes an
