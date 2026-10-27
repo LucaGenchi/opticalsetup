@@ -12,6 +12,7 @@
 import { wavelengthCalculators } from './calculators-wavelength-content.mjs';
 import { fluorescenceCalculators } from './calculators-fluorescence-content.mjs';
 import { compressorCalculators } from './calculators-compressor-content.mjs';
+import { lensCalculators } from './calculators-lens-content.mjs';
 
 export const cite = (...n) => n.map(k => `<a class="cite" href="#ref-${k}">[${k}]</a>`).join('');
 
@@ -21,6 +22,7 @@ export const calculators = [
   ...wavelengthCalculators,
   ...compressorCalculators,
   ...fluorescenceCalculators,
+  ...lensCalculators,
   {
     slug: 'opa',
     title: 'Optical parametric amplifier (OPA)',

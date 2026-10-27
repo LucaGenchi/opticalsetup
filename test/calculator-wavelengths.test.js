@@ -32,7 +32,7 @@ test('every workbench glass evaluates the canvas catalogue curve', () => {
   // Every SCHOTT glass the calculator offers is one the canvas can place, so
   // the two lists cannot drift apart again.
   const schott = MATERIAL_OPTIONS.filter(([, , group]) => group === 'Optical glass (SCHOTT)').map(([id]) => id);
-  assert.deepEqual(schott, ['nbk7', 'nfk51a', 'nsf5', 'nsf10', 'nsf11', 'nsf14', 'nsf57', 'nlasf9']);
+  assert.deepEqual(schott, ['nbk7', 'nfk51a', 'nsk16', 'f2', 'nsf5', 'nsf10', 'nsf11', 'nsf14', 'nsf57', 'nlasf9']);
   for (const id of schott) assert.ok(GLASSES.has(id), `${id} is in the canvas catalogue`);
 });
 

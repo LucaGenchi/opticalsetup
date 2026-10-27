@@ -1,0 +1,148 @@
+/* SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+   SPDX-License-Identifier: GPL-3.0-or-later
+   Lens design page: the editor | analyses workbench, on top of calculator.css. */
+
+:root {
+  /* Field colours in the layout: the calculators' series order, extended. */
+  --field-1: var(--series-1);
+  --field-2: var(--series-2);
+  --field-3: var(--series-3);
+  --field-4: #8a5cd6;
+  --field-5: #c8407a;
+  --field-6: #9a7b0c;
+  --glass-fill: rgba(64, 132, 214, .14);
+  --glass-edge: #3c5f8c;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --field-4: #a586e8;
+    --field-5: #e06a9b;
+    --field-6: #d6b23a;
+    --glass-fill: rgba(102, 147, 255, .16);
+    --glass-edge: #8fb0e8;
+  }
+}
+
+.calc-page:has(.bench) { max-width: 1480px; }
+/* The physics text spans the same width as the facts above it. */
+.calc-page:has(.bench) .calc-article,
+.calc-page:has(.bench) .calc-article p,
+.calc-page:has(.bench) .calc-article ul,
+.calc-page:has(.bench) .calc-article h3 { max-width: none; }
+.bench {
+  display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 18px; align-items: start;
+}
+@media (max-width: 1100px) { .bench { grid-template-columns: 1fr; } }
+
+/* ---------- editor ---------- */
+.bench-editor { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.bench-bar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; }
+.bench-preset { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; color: var(--ink); min-width: 0; flex: 1 1 260px; }
+.bench-preset select { flex: 1; min-width: 0; }
+.bench-actions, .bench-export, .bench-table-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.bench select, .bench input[type=text] {
+  font: inherit; font-size: 13px; color: var(--text); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 6px; padding: 4px 7px; min-width: 0;
+}
+.bench select:focus, .bench input:focus, .bench-button:focus-visible, .bench-icon:focus-visible, .bench-tab:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px;
+}
+.bench [aria-invalid="true"] { border-color: var(--error); background: var(--error-soft); }
+.bench-button {
+  font: inherit; font-size: 12.5px; color: var(--text); background: var(--panel); text-decoration: none;
+  border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; cursor: pointer; white-space: nowrap;
+}
+.bench-button:hover { color: var(--accent); border-color: var(--accent); text-decoration: none; }
+.bench-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.bench-button.primary:hover { color: #fff; filter: brightness(1.08); }
+.bench-button[aria-disabled="true"] { opacity: .45; pointer-events: none; }
+.bench-note { font-size: 12.5px; color: var(--muted); }
+.bench-note:empty { display: none; }
+.bench-heading { font-size: 15px; color: var(--ink); margin-top: 4px; }
+
+.bench-system { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.bench-system .calc-field { grid-template-columns: 1fr 120px; }
+.bench-system .calc-field.choice { grid-template-columns: 1fr; }
+.bench-system .calc-field input[type=text] { width: 100%; font-variant-numeric: tabular-nums; }
+.bench-system .calc-field[data-field="fields"], .bench-system .calc-field[data-field="wavelengths"] { grid-template-columns: 1fr; }
+.bench-system .calc-field[hidden] { display: none; }
+
+/* ---------- lens data table ---------- */
+.bench-table-wrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }
+.bench-table { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.bench-table th, .bench-table td { padding: 4px 4px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+.bench-table thead th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 650; background: var(--bg); }
+.bench-table tbody th { color: var(--muted); font-weight: 600; width: 2.2em; }
+.bench-table td.center { text-align: center; }
+.bench-table tr.is-stop th { color: var(--accent); }
+.bench-table tr.bench-end td, .bench-table tr.bench-end th { color: var(--muted); background: var(--bg); }
+.bench-image-text { white-space: normal !important; }
+.bench-cell { width: 5.2em; }
+.bench-cell.is-conic { width: 4.2em; }
+.bench-cell.is-wide { width: 7.2em; }
+select.bench-cell { width: auto; max-width: 8em; }
+.bench-material-cell { display: inline-flex; gap: 4px; align-items: center; }
+.bench-material-cell input { width: 4.4em; }
+.bench-cell.is-unused { color: var(--muted); border-style: dashed; }
+.bench-fixed { color: var(--muted); padding: 0 7px; }
+.bench-row-actions { display: inline-flex; gap: 3px; }
+.bench-icon {
+  font: inherit; font-size: 12px; line-height: 1; min-width: 24px; height: 24px; padding: 0 5px; cursor: pointer;
+  color: var(--muted); background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+}
+.bench-icon:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.bench-icon:disabled { opacity: .35; cursor: default; }
+.bench-icon.is-set, .bench-icon[aria-expanded="true"] { color: var(--accent); border-color: var(--sim-border); background: var(--accent-soft); }
+.bench-asphere-row td { background: var(--bg); }
+.bench-asphere { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 2px 0 4px; }
+.bench-asphere-title { flex-basis: 100%; font-size: 11.5px; color: var(--muted); }
+.bench-asphere-term { display: inline-flex; gap: 4px; align-items: center; }
+.bench-asphere-term span { color: var(--muted); font-size: 11.5px; }
+.bench-asphere-term input { width: 7.5em; }
+
+/* ---------- analyses ---------- */
+.bench-results { display: flex; flex-direction: column; gap: 10px; min-width: 0; position: sticky; top: 14px; }
+@media (max-width: 1100px) { .bench-results { position: static; } }
+.bench-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); }
+.bench-tab {
+  font: inherit; font-size: 13.5px; font-weight: 600; color: var(--muted); background: none; cursor: pointer;
+  border: 1px solid transparent; border-bottom: 0; border-radius: 8px 8px 0 0; padding: 6px 14px; margin-bottom: -1px;
+}
+.bench-tab[aria-selected="true"] { color: var(--ink); background: var(--panel); border-color: var(--border); }
+.bench-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+.bench-panel[hidden] { display: none; }
+.bench-plot { position: relative; min-width: 0; }
+.bench-layout { display: block; width: 100%; height: auto; max-height: 62vh; }
+.bench-legend { margin: 6px 0 0; }
+.bench-export { justify-content: flex-end; margin-top: 6px; }
+.bench-spot-controls { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 12px; margin-bottom: 6px; }
+.bench-spot-controls .bench-export { margin-top: 0; }
+.bench-check { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; }
+.bench-spot-holder { width: 100%; min-width: 0; }
+.bench-spots { display: block; }
+.bench-body h3 { font-size: 13px; color: var(--ink); margin: 14px 0 6px; }
+.bench-tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 0 14px; }
+.bench-scroll { overflow-x: auto; }
+.bench-seidel td, .bench-spot-table td { text-align: right; }
+.bench-seidel thead th, .bench-spot-table thead th { font-size: 11.5px; white-space: nowrap; }
+.bench-model { margin-top: 12px; font-size: 13px; }
+.bench-model summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.bench-model p { margin-top: 8px; max-width: 72ch; }
+
+/* Layout drawing */
+.lay-axis { stroke: var(--chart-axis); fill: none; }
+.lay-glass { fill: var(--glass-fill); stroke: var(--glass-edge); stroke-linejoin: round; }
+.lay-surface { fill: none; stroke: var(--glass-edge); }
+.lay-ideal { fill: none; stroke: var(--ink); stroke-linecap: round; stroke-linejoin: round; }
+.lay-stop { stroke: var(--ink); stroke-linecap: butt; }
+.lay-ray { fill: none; stroke-linejoin: round; opacity: .9; }
+.lay-ray.is-failed { opacity: .6; }
+.lay-fail { stroke: var(--error); fill: none; }
+.lay-image { stroke: var(--ink); fill: none; }
+.lay-scale { stroke: var(--ink); fill: none; }
+.lay-labels text { fill: var(--muted); font-family: inherit; }
+
+@media (max-width: 640px) {
+  .bench-system .calc-field { grid-template-columns: 1fr 104px; }
+  .bench-tab { padding: 6px 10px; }
+}
