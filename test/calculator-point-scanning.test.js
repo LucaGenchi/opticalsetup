@@ -85,6 +85,35 @@ test('N-photon point images narrow against one-photon at the same wavelength', (
   close(two.sameWavelength.lateralUm / two.lateralUm, 1.6163399 / 1.1601, 1e-3);
 });
 
+test('the band-limited pixel follows the cutoff of the point image, not its FWHM', () => {
+  // N-photon: h^N passes up to 2N NA/λ, so the pixel is λ/(4 N NA).
+  close(resolution({ mode: 'nonlinear', order: '2', nlWavelengthNm: 1000, na: 1 }).bandPixelUm, 0.125, 1e-12);
+  close(resolution({ mode: 'nonlinear', order: '3', nlWavelengthNm: 1000, na: 1 }).bandPixelUm, 1 / 12, 1e-12);
+  // One-photon without a pinhole: λ/(4 NA); with any pinhole the detection
+  // band adds 2 NA/λ_det, however large the pinhole.
+  close(resolution({ pinhole: 'open', wavelengthNm: 500, na: 0.5 }).bandPixelUm, 0.25, 1e-12);
+  for (const pinholeAu of [0, 1, 10]) {
+    close(resolution({ pinholeAu, wavelengthNm: 500, emissionNm: 600, na: 0.5 }).bandPixelUm, 1 / (2 * (2 * 0.5 / 0.5 + 2 * 0.5 / 0.6)), 1e-12);
+  }
+  // The FWHM rule is coarser than the band limit in every mode.
+  for (const values of [{}, { pinhole: 'open' }, { mode: 'nonlinear', order: '2' }, { mode: 'nonlinear', order: '3' }]) {
+    const r = resolution(values);
+    assert.ok(r.lateralUm / 2 > r.bandPixelUm);
+  }
+});
+
+test('the detection response alone is never narrower than the total axial point image', () => {
+  for (const pinholeAu of [0, 0.5, 1, 3]) {
+    const r = resolution({ pinholeAu, emissionNm: 488 });
+    assert.ok(r.sliceUm > r.axialUm, `${pinholeAu} AU`);
+  }
+  // 488/488 nm, NA 1, water, point pinhole: the section is the total axial
+  // FWHM (about 0.64 λ/(n − √(n² − NA²))), not the detection width.
+  const point = resolution({ pinholeAu: 0, emissionNm: 488 });
+  close(point.axialUm, point.closedForm.pointAxialUm, 0.01);
+  assert.ok(point.sliceUm > 1.3 * point.axialUm);
+});
+
 test('spontaneous Raman detects the Stokes line of the shift', () => {
   const r = resolution({ detection: 'raman', wavelengthNm: 532, ramanShiftCm: 2900 });
   close(r.detNm, ramanStokesWl(532, 2900), 1e-12);
@@ -134,17 +163,20 @@ test('galvo displacement: optical angle twice the rotation, both lens mappings',
 });
 
 test('the scan panel uses the resolution panel for the pupil and Nyquist sampling', () => {
-  const r = scan({ beamMm: 2.5 }, { na: 1.0, lateralUm: 0.25 });
+  const r = scan({ beamMm: 2.5 }, { na: 1.0, lateralUm: 0.25, bandPixelUm: 0.1 });
   close(r.pupilMm, 20);
   close(r.beamAtPupilMm, 10);
   close(r.fillRatio, 0.5);
-  close(r.nyquistPixelUm, 0.125);
+  close(r.halfFwhmPixelUm, 0.125);
   assert.equal(r.pixelsNeeded, Math.ceil(r.fieldUm / 0.125));
+  close(r.bandPixelUm, 0.1);
+  assert.equal(r.bandPixelsNeeded, Math.ceil(r.fieldUm / 0.1));
   const alone = scan({}, null);
   assert.equal(alone.ok, true);
   assert.equal(alone.pupilMm, null);
   assert.equal(alone.fillRatio, null);
   assert.equal(alone.pixelsNeeded, null);
+  assert.equal(alone.bandPixelsNeeded, null);
 });
 
 test('scan inputs outside the model are refused', () => {
@@ -156,6 +188,16 @@ test('scan inputs outside the model are refused', () => {
   const p = scanProfile(scan({ angleDeg: 5, rangeDeg: 2 }));
   assert.ok(p.tan.every(Number.isFinite) && p.ftheta.every(Number.isFinite));
   assert.ok(Math.max(...p.x) >= 5);
+  // At the edge of the accepted mechanical range the graph stops at ±60°
+  // optical, short of tan's pole.
+  for (const values of [{ angleDeg: 30 }, { angleDeg: 0, rangeDeg: 60 }]) {
+    const r = scan(values);
+    assert.equal(r.ok, true);
+    const edge = scanProfile(r);
+    close(Math.max(...edge.x) * r.optical, 60, 1e-12);
+    const limit = sampleDisplacementUm({ opticalRad: 60 * Math.PI / 180, scanLensMm: 50, tubeLensMm: 200, objectiveMm: 10 });
+    assert.ok(Math.max(...edge.tan.map(Math.abs)) <= limit * (1 + 1e-12));
+  }
 });
 
 test('the page numbers the resolution graphs before the scan panel and its graph', () => {

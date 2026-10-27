@@ -83,12 +83,19 @@ export function computeResolution(raw) {
     ...own, psf, open, auUm,
     pinholeUm: pinholeAu === null ? null : pinholeAu * auUm,
     sectioning: linear ? pinholeAu !== null : true,
+    // Highest spatial frequency the point image passes (cycles/µm). The
+    // transfer function of a product of PSFs is the convolution of theirs,
+    // so the cutoffs add: 2NA/λ per factor of h, at that factor's wavelength.
+    cutoffPerUm: 2 * na * (order / um(exNm) + (pinholeAu === null ? 0 : 1 / um(detNm))),
   };
+  // Sampling theorem: two samples per period of that frequency.
+  result.bandPixelUm = 1 / (2 * result.cutoffPerUm);
   if (linear) {
     // Point-pinhole limit: h_ex · h_det.
     result.pointPinhole = widths(effectivePsf({ pinholeAu: 0, detectionRatio: ratio }), exNm, na, axialNa);
-    // Zeiss's optical slice thickness: the FWHM of the detection PSF on the
-    // axis, here computed for the actual pinhole.
+    // Axial FWHM of the pinhole's detection response D alone: the quantity
+    // Zeiss eq. 4 estimates, which the monograph calls the optical slice
+    // thickness from 1 AU up (below 1 AU it takes the axial resolution).
     result.sliceUm = pinholeAu === null ? null : axialUm(halfWidth(psf.detection.axial, 0.2), detNm, axialNa);
     // Closed forms of Carl Zeiss's monograph (eqs. 2, 3, 4, 6, 7, 8).
     const meanNm = Math.SQRT2 * exNm * detNm / Math.hypot(exNm, detNm);
@@ -170,8 +177,8 @@ export function sampleDisplacementUm({ opticalRad, scanLensMm, tubeLensMm, objec
   return 1000 * h * objectiveMm / tubeLensMm;
 }
 
-// `focus` carries the NA and lateral FWHM from the resolution panel (null
-// when that panel has no valid result).
+// `focus` carries the NA, the lateral FWHM and the band-limited pixel from
+// the resolution panel (null when that panel has no valid result).
 export function computeScan(raw, focus = null) {
   const { values: v, errors } = parseInputs(SCAN_INPUTS, raw);
   if (errors.length) return { ok: false, errors };
@@ -190,7 +197,10 @@ export function computeScan(raw, focus = null) {
   const pupilMm = focus?.na ? 2 * objectiveMm * focus.na : null;
   const beamAtPupilMm = v.beamMm * relay;
   const pixelUm = fieldUm / v.pixels;
-  const nyquistPixelUm = focus?.lateralUm ? focus.lateralUm / 2 : null;
+  // Two pixels per lateral FWHM (the Zeiss rule), and the sampling theorem
+  // applied to the point image's band limit.
+  const halfFwhmPixelUm = focus?.lateralUm ? focus.lateralUm / 2 : null;
+  const bandPixelUm = focus?.bandPixelUm ?? null;
   return {
     ok: true, values: v, optical, referenceMm, objectiveMm, opticalDeg, rangeOpticalDeg,
     pupilAngleDeg: Math.atan(intermediateMm / v.tubeLensMm) / DEG,
@@ -201,15 +211,17 @@ export function computeScan(raw, focus = null) {
     fieldUm, diagonalUm: Math.SQRT2 * fieldUm, objectFieldUm,
     relay, systemMagnification: v.tubeLensMm / objectiveMm,
     pupilMm, beamAtPupilMm, fillRatio: pupilMm ? beamAtPupilMm / pupilMm : null,
-    pixelUm, nyquistPixelUm, lateralUm: focus?.lateralUm ?? null,
-    pixelsNeeded: nyquistPixelUm ? Math.ceil(fieldUm / nyquistPixelUm) : null,
+    pixelUm, halfFwhmPixelUm, bandPixelUm, lateralUm: focus?.lateralUm ?? null,
+    pixelsNeeded: halfFwhmPixelUm ? Math.ceil(fieldUm / halfFwhmPixelUm) : null,
+    bandPixelsNeeded: bandPixelUm ? Math.ceil(fieldUm / bandPixelUm) : null,
   };
 }
 
 // Displacement against galvo angle (as entered) over the scan range and the
-// chosen angle, for both lens mappings.
+// chosen angle, for both lens mappings. The margin around them stops at the
+// ±60° optical deflection the panel accepts, short of tan's pole at 90°.
 export function scanProfile(r, count = 121) {
-  const span = Math.max(r.values.rangeDeg / 2, Math.abs(r.values.angleDeg)) * 1.5;
+  const span = Math.min(Math.max(r.values.rangeDeg / 2, Math.abs(r.values.angleDeg)) * 1.5, 60 / r.optical);
   const x = Array.from({ length: count }, (_, i) => -span + 2 * span * i / (count - 1));
   const geometry = { scanLensMm: r.values.scanLensMm, tubeLensMm: r.values.tubeLensMm, objectiveMm: r.objectiveMm };
   const curve = mapping => x.map(deg => sampleDisplacementUm({ ...geometry, mapping, opticalRad: r.optical * deg * DEG }));
