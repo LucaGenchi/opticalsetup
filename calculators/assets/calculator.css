@@ -65,7 +65,7 @@
 .calc-field { display: grid; grid-template-columns: 1fr 108px; gap: 2px 10px; align-items: center; margin: 7px 0 9px; }
 .calc-field label { font-size: 13px; color: var(--text); }
 .calc-field label .sym { color: var(--muted); font-style: italic; margin-left: 4px; }
-.calc-field .unit { color: var(--muted); font-size: 12px; }
+.calc-field .unit { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .calc-field .control { display: flex; align-items: center; gap: 5px; }
 .calc-field input[type=number], .calc-field select {
   width: 100%; min-width: 0; padding: 4px 7px; font: inherit; font-size: 13.5px;
@@ -80,6 +80,8 @@
 .calc-field.check label { display: flex; gap: 8px; align-items: center; font-weight: 600; }
 .calc-field.is-off { opacity: .45; }
 .hide-inactive .calc-field.is-off { display: none; }
+/* A group whose every field is off (a detector that only one mode has). */
+.hide-inactive .calc-group:not(:has(.calc-field:not(.is-off))) { display: none; }
 
 .calc-output { position: sticky; top: 14px; display: flex; flex-direction: column; gap: 10px; }
 @media (max-width: 960px) { .calc-output { position: static; } }

@@ -11,6 +11,7 @@
 
 import { wavelengthCalculators } from './calculators-wavelength-content.mjs';
 import { fluorescenceCalculators } from './calculators-fluorescence-content.mjs';
+import { scanningCalculators } from './calculators-scanning-content.mjs';
 import { lensCalculators } from './calculators-lens-content.mjs';
 import { beamCalculators } from './calculators-beam-content.mjs';
 
@@ -21,6 +22,7 @@ const GITHUB = 'https://github.com/LucaGenchi/opticalsetup/blob/main';
 export const calculators = [
   ...wavelengthCalculators,
   ...fluorescenceCalculators,
+  ...scanningCalculators,
   ...lensCalculators,
   ...beamCalculators,
   {
