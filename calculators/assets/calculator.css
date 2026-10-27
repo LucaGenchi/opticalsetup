@@ -244,3 +244,24 @@
   .calc-block-note { width: auto; text-align: left; }
 }
 @media (max-width: 700px) { .calc-grid-2 { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- workbench: the form beside a live figure ---------- */
+.calc-workbench { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.calc-workbench .calc-inputs { grid-template-columns: minmax(0, 1fr); }
+/* Wide enough for a long unit (lines/mm) beside a seven-digit value. */
+.calc-workbench .calc-field { grid-template-columns: 1fr 150px; }
+.calc-workbench .calc-field.choice { grid-template-columns: 1fr; }
+.calc-workbench .calc-field.check { grid-template-columns: auto 1fr; }
+.calc-workbench-side { position: sticky; top: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.calc-preview { margin: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
+.calc-preview-figure { background: #ffffff; border-radius: 8px; overflow: hidden; }
+.calc-preview-figure svg { display: block; width: 100%; height: auto; max-height: 62vh; }
+.calc-preview-figure.is-stale { opacity: .45; }
+.calc-preview figcaption { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+.calc-preview-note { font-size: 12.5px; color: var(--text); margin-top: 6px; }
+.calc-preview-open { display: inline-block; margin-top: 8px; }
+.calc-preview-open[aria-disabled="true"] { opacity: .5; pointer-events: none; }
+@media (max-width: 960px) {
+  .calc-workbench { grid-template-columns: 1fr; }
+  .calc-workbench-side { position: static; order: -1; }
+}

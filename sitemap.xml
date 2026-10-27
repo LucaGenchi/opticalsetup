@@ -517,6 +517,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://opticalsetup.com/calculators/dispersion-compensation/</loc>
+    <lastmod>2026-10-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://opticalsetup.com/calculators/fluorescence/</loc>
     <lastmod>2026-10-27</lastmod>
     <changefreq>monthly</changefreq>

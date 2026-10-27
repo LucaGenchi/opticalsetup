@@ -961,7 +961,7 @@ export const exampleEntries = [
     ],
     resources: [
       { label: 'Wikipedia — Prism compressor', url: 'https://en.wikipedia.org/wiki/Prism_compressor' },
-      { label: 'Light Conversion Optics Toolbox — Two prism compressor', url: 'https://toolbox.lightcon.com/tools/prismpair' },
+      { label: 'Light Conversion Optics Toolbox — Two prism compressor, an outside calculator to double-check a prism pair’s GDD and TOD', url: 'https://toolbox.lightcon.com/tools/prismpair' },
     ],
     related: ['prism', 'glassrod', 'pulsedlaser', 'autocorrelator', 'pulsecompressor'],
   },

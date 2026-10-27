@@ -19,6 +19,7 @@ import { allocateParametricAmplifier } from '../sketch/js/parametric-amplifier.j
 import { spectralFieldResult } from '../sketch/js/spectral-coherence.js';
 import { coupledWaveConversion } from '../calculators/opa/coupled-wave.js';
 import { fresnelTransmittances, throughFace } from '../sketch/js/fresnel.js';
+import { computeCompressor } from '../calculators/dispersion-compensation/compressor-calculator.js';
 import { materialDispersion, materialAbbe } from '../calculators/dispersion/materials.js';
 import { DISPERSION_DEFAULTS, computeDispersion } from '../calculators/dispersion/dispersion-calculator.js';
 import { CONVERSION_DEFAULTS, computeConversion } from '../calculators/nonlinear-conversion/conversion-calculator.js';
@@ -62,6 +63,13 @@ const C_NM_PER_FS = 299.792458;
 const egfp = JSON.parse(readFileSync(new URL('../sketch/data/fluorophores/egfp.json', import.meta.url), 'utf8'));
 
 const APP = {
+  // The calculator's form values, as strings, as the page submits them.
+  'dispersion-compensation': inputs => {
+    const r = computeCompressor(Object.fromEntries(Object.entries(inputs).map(([k, v]) => [k, String(v)])));
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    return { separationMm: r.solved?.value, gddFs2: r.comp.gddFs2, todFs3: r.comp.todFs3, fodFs4: r.comp.fodFs4,
+      transmission: r.throughput.transmission };
+  },
   'lens-coherent': ({ kind, system, field = 0, points, phaseDeg, at }) => {
     if (kind === 'two-point-midpoint') {
       const r = analyzeImaging(system);
@@ -291,7 +299,7 @@ const APP = {
   },
 };
 
-for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'lens-design', 'lens-coherent', 'gaussian-beam', 'fiber-coupling', 'point-scanning']) {
+for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'dispersion-compensation', 'lens-design', 'lens-coherent', 'gaussian-beam', 'fiber-coupling', 'point-scanning']) {
   const model = expected(name);
   for (const c of model.cases) {
     test(`${model.id}: ${c.name}`, () => {
