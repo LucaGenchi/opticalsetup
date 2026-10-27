@@ -19,6 +19,13 @@
 // paraxially aimed ray can pass outside it, because the real pupil is not
 // the paraxial one), or would have to travel backward
 // (surfaces crossing at that height) stops there and says so.
+//
+// Each trace also adds up the optical path length n·t from its start, for
+// the wavefront (wavefront.js). An ideal lens has no thickness to add, so it
+// contributes the path that makes it stigmatic: every ray from a point O at
+// the lens's paraxial object distance a meets at O's ideal image I, and the
+// path O → Q → I through any lens point Q is made equal to the straight
+// path O → vertex → I (see idealLensPath).
 
 import { makeSurface, intersect, normalAt, refract } from './surfaces.js';
 import { mediumIndices } from './paraxial.js';
@@ -44,6 +51,7 @@ export function traceModel(system, wavelengthNm, fo) {
       clip: s.semiDiameter > 0 && !s.stop ? s.semiDiameter : 0,
       stopClip: s.stop ? fo.stopRadius : 0,
       n1: n[j], n2: n[j + 1],
+      conjugate: s.type === 'paraxial' ? paraxialConjugate(fo, j) : null,
     };
     z += s.thickness;
     return entry;
@@ -52,6 +60,50 @@ export function traceModel(system, wavelengthNm, fo) {
 }
 
 const unit = v => { const l = Math.hypot(v[0], v[1], v[2]); return [v[0] / l, v[1] / l, v[2] / l]; };
+
+// The ideal lens at surface j works between the conjugates of the primary
+// wavelength's paraxial marginal ray: the object at a distance a in front of
+// it (negative: a virtual object behind it; infinite: a collimated beam).
+function paraxialConjugate(fo, j) {
+  const uIn = j === 0 ? fo.objectSlope.marginal : fo.marginal.u[j - 1];
+  const y = fo.marginal.y[j];
+  return Math.abs(uIn) < 1e-15 * Math.max(1, Math.abs(y)) ? Infinity : y / uIn;
+}
+
+const sign = v => (v < 0 ? -1 : 1);
+
+// Optical path an ideal lens of focal length f adds to the ray that meets it
+// at Q = (x, y) (relative to its vertex) with unit direction d before it and
+// dOut after it. The ray is taken to come from the point O where it crosses
+// the object plane z = −a, imaged to I = (m O_x, m O_y, b), with
+// 1/b = 1/f − 1/a and m = −b/a; the ray through the vertex is undeviated, so
+//
+//   φ = σ_a (|O| − |Q − O|) + σ_b (|I| − |I − Q|),
+//
+// with σ = −1 for a virtual point (light does not travel that leg). A
+// collimated input (a infinite) gives σ_a(|O| − |Q − O|) → −Q·d; a
+// collimated output (a = f) gives σ_b(|I| − |I − Q|) → Q·dOut. A lens
+// sitting exactly at its own object (a = 0) is given the thin-lens
+// quadratic phase −r²/2f.
+export function idealLensPath(f, a, x, y, d, dOut) {
+  if (Math.abs(a) < 1e-12 * Math.max(1, Math.abs(f))) return -(x * x + y * y) / (2 * f);
+  let front, O;
+  if (!Number.isFinite(a)) {
+    front = -(x * d[0] + y * d[1]);
+    O = null;
+  } else {
+    const s = a / d[2];
+    O = [x - s * d[0], y - s * d[1], -a];
+    front = sign(a) * (Math.hypot(...O) - Math.abs(s));
+  }
+  const inv = 1 / f - (O ? 1 / a : 0);
+  if (Math.abs(inv) < 1e-15 / Math.max(1, Math.abs(f))) return front + x * dOut[0] + y * dOut[1];
+  const b = 1 / inv;
+  // The image of O, or for a collimated input the focal-plane point that
+  // direction d is focused to.
+  const I = O ? [-b / a * O[0], -b / a * O[1], b] : [f * d[0] / d[2], f * d[1] / d[2], f];
+  return front + sign(b) * (Math.hypot(...I) - Math.hypot(I[0] - x, I[1] - y, I[2]));
+}
 
 // Starting point and direction for an aim point (ex, ey) on the entrance-
 // pupil plane.
@@ -97,7 +149,9 @@ export function traceFrom(model, P, D, { until = model.surfaces.length, path = f
       // An ideal thin lens: direction tangents change by −(x, y)/f, which
       // images every object plane perfectly onto its conjugate.
       const tx = d[0] / d[2] - p[0] / s.focal, ty = d[1] / d[2] - p[1] / s.focal;
-      d = unit([tx, ty, 1]);
+      const out = unit([tx, ty, 1]);
+      opl += idealLensPath(s.focal, s.conjugate, p[0], p[1], d, out);
+      d = out;
     } else {
       const N = normalAt(s.geom, p[0], p[1]);
       const r = refract(d, N, s.n1, s.n2);

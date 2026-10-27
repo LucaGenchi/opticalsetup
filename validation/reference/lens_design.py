@@ -1,7 +1,9 @@
 # SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Lens designer: first-order data, real skew rays, Seidel spherical
-aberration and the ideal aplanatic singlet.
+aberration, the ideal aplanatic singlet, and the wavefront and diffraction
+results built on them (OPD, defocus Strehl ratio, diffraction-limited MTF,
+focused Gaussian waist).
 
 Reference methods, chosen to differ from the app's (calculators/lens-design/
 engine/): first-order data from 2x2 ray-transfer (ABCD) matrices in reduced
@@ -12,7 +14,12 @@ across the surface instead of the vector form of Snell's law; the thin-lens
 spherical aberration from Welford's shape/conjugate formula instead of a
 surface-by-surface sum; and the third-order coefficient of a real lens from a
 polynomial fit to its real transverse ray aberration, which owes nothing to
-Seidel theory.
+Seidel theory. For the diffraction side: the optical path difference from
+the bisection trace's own path lengths, with the reference sphere met by
+choosing the crossing nearer the exit pupil; the on-axis Strehl ratio of a
+defocused perfect lens by one-dimensional quadrature of its exact
+(non-parabolic) path difference; the MTF and the Gaussian waist from their
+closed forms.
 
 Conventions match the app's documented ones (they are the page's, not
 choices hidden in the code): z axis, light toward +z, R > 0 with the centre
@@ -21,8 +28,10 @@ every wavelength aimed at the primary wavelength's paraxial entrance pupil.
 """
 
 import cmath
+import json
 import math
 
+from common import sig
 from sellmeier import index as glass_index
 
 PRIMARY_LINES = [486.1327, 587.5618, 656.2725]
@@ -203,11 +212,14 @@ def trace(system, nm, field, px, py, primary_fo):
     if system["object"]["atInfinity"]:
         th = math.radians(field)
         p, d = aim, [0.0, math.sin(th), math.cos(th)]
+        # Optical path from the plane through the origin normal to the beam.
+        opl = sum(p[i] * d[i] for i in range(3))
     else:
         o = [0.0, field, -system["object"]["distanceMm"]]
         v = [aim[i] - o[i] for i in range(3)]
         length = math.sqrt(sum(c * c for c in v))
         p, d = o, [c / length for c in v]
+        opl = 0.0
     z_vertex = 0.0
     for j, s in enumerate(S):
         local = [p[0], p[1], p[2] - z_vertex]
@@ -218,6 +230,7 @@ def trace(system, nm, field, px, py, primary_fo):
             if t is None:
                 return None
         p = [p[i] + t * d[i] for i in range(3)]
+        opl += n[j] * t
         if s.get("type") == "paraxial":
             tx = d[0] / d[2] - p[0] / s["focal"]
             ty = d[1] / d[2] - p[1] / s["focal"]
@@ -228,20 +241,88 @@ def trace(system, nm, field, px, py, primary_fo):
             if d is None:
                 return None
         z_vertex += s["thickness"]
-    return p, d
+    return p, d, opl
 
 
 def image_point(system, nm, field, px, py, z_image, primary_fo):
     r = trace(system, nm, field, px, py, primary_fo)
     if r is None:
         return None
-    p, d = r
+    p, d, _ = r
     t = (z_image - p[2]) / d[2]
     return p[0] + t * d[0], p[1] + t * d[1]
 
 
 def fixed_image_z(system):
     return sum(s["thickness"] for s in system["surfaces"])
+
+
+def opd_waves(system, nm, field, px, py, z_image):
+    """OPD (waves) of one ray on the exit-pupil reference sphere: centred on
+    the primary chief ray's image point, through the axial exit-pupil point,
+    relative to this wavelength's own chief ray. Real surfaces only."""
+    primary = system["wavelengthsNm"][system["primaryWavelength"]]
+    fo = first_order(system, primary)
+    pc, dc, _ = trace(system, primary, field, 0.0, 0.0, fo)
+    t = (z_image - pc[2]) / dc[2]
+    centre = [pc[i] + t * dc[i] for i in range(3)]
+    z_last = sum(s["thickness"] for s in system["surfaces"][:-1])
+    pupil = [0.0, 0.0, z_last + fo["zXp"]]
+    radius = math.sqrt(sum((centre[i] - pupil[i]) ** 2 for i in range(3)))
+    n_img = media(system, nm)[-1]
+
+    def path(qx, qy):
+        p, d, opl = trace(system, nm, field, qx, qy, fo)
+        # |p + s d - centre|^2 = R^2; of the two crossings, the one nearer
+        # the exit pupil.
+        w = [p[i] - centre[i] for i in range(3)]
+        b = sum(d[i] * w[i] for i in range(3))
+        c = sum(v * v for v in w) - radius * radius
+        root = math.sqrt(b * b - c)
+        crossings = [-b - root, -b + root]
+        s = min(crossings, key=lambda s: sum((p[i] + s * d[i] - pupil[i]) ** 2 for i in range(3)))
+        return opl + n_img * s
+
+    return (path(0.0, 0.0) - path(px, py)) / (nm * 1e-6)
+
+
+def simpson(f, a, b, n=4000):
+    h = (b - a) / n
+    total = f(a) + f(b)
+    for k in range(1, n):
+        total += (4 if k % 2 else 2) * f(a + k * h)
+    return total * h / 3
+
+
+def defocus_strehl(f, r_ep, nm, dz):
+    """On-axis intensity of a perfect lens (every ray of the collimated beam
+    meets at its focus F, equal paths) on the plane dz past F, relative to
+    focus: the reference sphere is centred on the axial point of that plane
+    and passes through the lens vertex (the exit pupil). A ray from lens
+    height h travels L = sqrt(h^2 + f^2) to F; it meets the sphere a
+    distance t along its way, so OPD = (L - f - t) / lambda exactly."""
+    lam = nm * 1e-6
+    R = f + dz
+
+    def w(rho):
+        h = rho * r_ep
+        L = math.sqrt(h * h + f * f)
+        dy, dzr = -h / L, f / L
+        # |(h + t dy, t dzr - R)| = R: t^2 + 2 t (h dy - R dzr) + h^2 = 0,
+        # the small root.
+        b = h * dy - R * dzr
+        t = h * h / (-b + math.sqrt(b * b - h * h))
+        return (L - f - t) / lam
+
+    re = simpson(lambda r: math.cos(2 * math.pi * w(r)) * 2 * r, 0.0, 1.0)
+    im = simpson(lambda r: math.sin(2 * math.pi * w(r)) * 2 * r, 0.0, 1.0)
+    return re * re + im * im
+
+
+def diffraction_limited_mtf(nu):
+    """Uniform circular pupil, nu in units of the cutoff 2 NA / lambda."""
+    phi = math.acos(nu)
+    return 2 / math.pi * (phi - math.cos(phi) * math.sin(phi))
 
 
 # ------------------------------------------------------- prescriptions used
@@ -402,6 +483,59 @@ def cases():
             "tolerance": {"SI": 1e-5},
             "note": "the fit to rho^3, rho^5 and rho^7 leaves a ninth-order residue near 1e-7 relative",
         })
+    for name, system, rays in [
+        ("Cooke triplet", COOKE, [(20.0, 0.0, 1.0, 550.0), (20.0, 0.6, -0.7, 480.0), (14.0, -1.0, 0.0, 650.0), (14.0, 0.3, 0.9, 550.0), (0.0, 0.0, -1.0, 480.0)]),
+        ("aspheric singlet", ASPHERE, [(0.0, 0.0, 1.0, 587.5618), (4.0, 0.7, 0.7, 486.1327), (4.0, 0.0, -0.95, 656.2725)]),
+        ("plano-convex at a finite object", finite_pcx(), [(5.0, 0.0, 1.0, 587.5618), (5.0, 0.8, -0.5, 486.1327)]),
+    ]:
+        z_img = fixed_image_z(system)
+        for field, px, py, nm in rays:
+            out.append({
+                "name": f"{name}: OPD on the reference sphere, field {field}, pupil ({px}, {py}), {nm} nm",
+                "inputs": {"kind": "opd", "system": system, "field": field, "px": px, "py": py, "nm": nm},
+                "expected": {"opd": round(opd_waves(system, nm, field, px, py, z_img), 8)},
+                "tolerance": {"opd": 1e-8},
+                "absolute": True,
+            })
+    perfect = base([{"type": "paraxial", "focal": 100.0, "thickness": 100.0, "stop": True}],
+                   epd=10.0, wavelengths=(587.5618,), primary=0, focus="paraxial")
+    for w020 in (0.1, 0.25, 0.5, 0.75):
+        dz = w020 * 587.5618e-6 * 2 / 0.05 ** 2
+        system = json.loads(json.dumps(perfect))
+        system["image"]["offsetMm"] = dz
+        system["diffraction"] = {"grid": 256, "padding": 2}
+        out.append({
+            "name": f"perfect lens F/10, image plane {dz:.4f} mm past focus (about {w020} waves of defocus): Strehl ratio on axis",
+            "inputs": {"kind": "defocus", "system": system},
+            "expected": {"strehl": sig(defocus_strehl(100.0, 5.0, 587.5618, dz))},
+            "tolerance": {"strehl": 3e-4},
+            "absolute": True,
+            "note": "the app sums a 256-sample pupil grid (the square cells fill the disc to about 1e-4); the reference integrates the radius by Simpson's rule to 1e-12",
+        })
+    na = 5.0 / math.hypot(5.0, 100.0)
+    cutoff = 2 * na / 587.5618e-6
+    system = json.loads(json.dumps(perfect))
+    system["diffraction"] = {"grid": 128, "padding": 2}
+    for nu in (0.1, 0.25, 0.4, 0.55, 0.7, 0.85, 0.95):
+        out.append({
+            "name": f"perfect lens F/10: diffraction-limited MTF at {nu} of the cutoff ({nu * cutoff:.2f} cycles/mm)",
+            "inputs": {"kind": "mtf", "system": system, "frequency": nu * cutoff},
+            "expected": {"tangential": sig(diffraction_limited_mtf(nu)), "sagittal": sig(diffraction_limited_mtf(nu))},
+            "tolerance": {"tangential": 3e-3, "sagittal": 3e-3},
+            "absolute": True,
+            "note": "NA = sin(atan(r/f)) for the ideal lens; the sampled pupil and that NA leave about 1e-3",
+        })
+    for ratio in (0.25, 0.4):
+        system = json.loads(json.dumps(perfect))
+        system["diffraction"] = {"grid": 128, "padding": 4, "illumination": "gaussian", "beamRatio": ratio}
+        w_in = ratio * 5.0
+        out.append({
+            "name": f"perfect lens f 100 mm, Gaussian beam of 1/e^2 radius {w_in} mm (no truncation): focused waist",
+            "inputs": {"kind": "gaussian", "system": system},
+            "expected": {"waist": sig(587.5618e-6 * 100.0 / (math.pi * w_in))},
+            "tolerance": {"waist": 1e-2},
+            "note": "w0 = lambda f / (pi w), the paraxial Gaussian-beam focus; the app's waist is 2 sigma of its sampled PSF",
+        })
     hyp = plano_hyperbolic()
     fo = first_order(hyp, 587.5618)
     z_img = fixed_image_z(hyp)
@@ -418,20 +552,23 @@ def cases():
 
 MODEL = {
     "id": "lens-design",
-    "title": "Lens designer: first-order data, real skew rays, Seidel spherical aberration",
-    "app": "calculators/lens-design/engine/paraxial.js: firstOrder, seidelSums; calculators/lens-design/engine/trace.js: traceRay; calculators/lens-design/engine/analyze.js: analyzeSystem",
-    "reference": "ABCD ray-transfer matrices; bisection surface intersections with tangential-component refraction; Welford's thin-lens S_I; a polynomial fit to real transverse ray aberration",
+    "title": "Lens designer: first-order data, real skew rays, Seidel spherical aberration, wavefront and diffraction",
+    "app": "calculators/lens-design/engine/paraxial.js: firstOrder, seidelSums; calculators/lens-design/engine/trace.js: traceRay; calculators/lens-design/engine/analyze.js: analyzeSystem; calculators/lens-design/engine/wavefront.js: opdWaves; calculators/lens-design/engine/diffraction.js: analyzeDiffraction",
+    "reference": "ABCD ray-transfer matrices; bisection surface intersections with tangential-component refraction and their summed path lengths; Welford's thin-lens S_I; a polynomial fit to real transverse ray aberration; Simpson quadrature of the exact defocus path difference; the closed-form diffraction-limited MTF and Gaussian focus",
     "citations": [
         "W. T. Welford, Aberrations of Optical Systems (Adam Hilger, 1986), ch. 7-8: Seidel sums, the conic/aspheric term, and the thin-lens S_I in shape and conjugate variables",
         "W. J. Smith, Modern Optical Engineering, 4th ed. (McGraw-Hill, 2008), ch. 2-3 and 10: paraxial matrices, pupils, real ray tracing",
         "E. Hecht, Optics, 5th ed., section 6.2: ray-transfer matrices",
+        "M. Born and E. Wolf, Principles of Optics, 7th ed. (Cambridge University Press, 1999), section 8.5 (the Airy pattern) and chapter 9 (the diffraction theory of aberrations: the Strehl ratio, defocus)",
+        "J. W. Goodman, Introduction to Fourier Optics, 3rd ed. (Roberts & Company, 2005), ch. 6: the incoherent OTF and the diffraction-limited MTF of a circular pupil",
+        "A. E. Siegman, Lasers (University Science Books, 1986), section 17.2: Gaussian beam focusing, w0 = lambda f / (pi w)",
         "Optiland v0.5.5 (MIT licence), samples/objectives.py CookeTriplet: the Cooke prescription (the OpticStudio 'Cooke 40 degree field' sample)",
     ],
     "provenance": "Textbook relations evaluated here; the plano-hyperbolic singlet is the classical aplanatic surface (Descartes ovoid for an object at infinity), whose image is a point.",
-    "domain": "Rotationally symmetric refracting systems in air, objects at infinity and at 200 mm, fields up to 20 deg, F/2.5 to F/10, visible wavelengths.",
-    "convergence": "Bisection to 200 halvings (far past double precision); the surface normal from a 1e-6 mm central difference, accurate to about 1e-12 in direction.",
-    "tolerance_rationale": "1e-9 mm (absolute: an exit pupil can sit exactly on a vertex) is two independent evaluations of the same geometry in double precision; 1e-5 on the fitted S_I is the truncation of the odd-power fit.",
-    "outside_scope": "Mirrors, tilts, decentres and diffraction are outside this model.",
+    "domain": "Rotationally symmetric refracting systems in air, objects at infinity and at 200 mm, fields up to 20 deg, F/2.5 to F/10, visible wavelengths; diffraction cases for a perfect F/10 lens at 587.6 nm, up to 0.75 waves of defocus.",
+    "convergence": "Bisection to 200 halvings (far past double precision); the surface normal from a complex-step derivative; Simpson's rule on 4000 intervals over the pupil radius (the defocus integrand is smooth, error below 1e-12).",
+    "tolerance_rationale": "1e-9 mm and 1e-8 waves (absolute: an exit pupil can sit exactly on a vertex) are two independent evaluations of the same geometry in double precision; 1e-5 on the fitted S_I is the truncation of the odd-power fit; 3e-4 on the defocus Strehl ratio and 3e-3 on the MTF are the app's sampled pupil (square cells filling a disc), and the 1 % on the Gaussian waist its sampled PSF. The phase-2 expected values are stored rounded (the OPD to 1e-8 waves, the rest to 10 significant digits), because their last digits depend on the platform's maths library.",
+    "outside_scope": "Mirrors, tilts, decentres, vector (high-NA) diffraction, and the Fresnel-number focal shift are outside this model.",
     "fidelity": "computed",
-    "scope": "Geometric optics: paraxial first-order data and exact skew-ray tracing of spherical, conic and even-aspheric refracting surfaces, plus third-order theory.",
+    "scope": "Geometric optics: paraxial first-order data and exact skew-ray tracing of spherical, conic and even-aspheric refracting surfaces, plus third-order theory; scalar diffraction from the exit-pupil wavefront.",
 }

@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The lens designer's drawings: the meridional layout (SVG, to scale, equal
-// axes) and the spot diagrams (one canvas, because a 128 × 128 pupil grid is
-// tens of thousands of points). Colours come from the page's CSS custom
+// axes), the spot diagrams (one canvas, because a 128 × 128 pupil grid is
+// tens of thousands of points) and the heat maps of the wavefront and the
+// PSF (canvas images with axes and a colour bar). Colours come from the page's CSS custom
 // properties, read at draw time, so both follow the light and dark themes;
 // exports inline them.
 
@@ -277,6 +278,110 @@ export function drawSpots(canvas, result, { common = true } = {}) {
     ctx.restore();
   });
 }
+
+// ------------------------------------------------------------- heat maps
+
+// Perceptually even maps, as linear runs between published anchor colours:
+// viridis (sequential, for the PSF) and ColorBrewer's RdBu (diverging, for
+// the wavefront: blue behind the reference sphere, red ahead of it).
+const VIRIDIS = ['#440154', '#482878', '#3e4989', '#31688e', '#26828e', '#1f9e89', '#35b779', '#6ece58', '#fde725'];
+const DIVERGING = ['#2166ac', '#4393c3', '#92c5de', '#d1e5f0', '#f7f7f7', '#fddbc7', '#f4a582', '#d6604d', '#b2182b'];
+const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+const ramps = { viridis: VIRIDIS.map(rgb), diverging: DIVERGING.map(rgb) };
+export function colourAt(name, t) {
+  const stops = ramps[name], x = Math.min(1, Math.max(0, t)) * (stops.length - 1);
+  const i = Math.min(stops.length - 2, Math.floor(x)), f = x - i;
+  return stops[i].map((v, k) => Math.round(v + (stops[i + 1][k] - v) * f));
+}
+
+// ticks: values at round multiples of a step, between lo and hi.
+function roundTicks(lo, hi, count = 4) {
+  const step = niceLength((hi - lo) / count) || 1;
+  const out = [];
+  for (let v = Math.ceil(lo / step - 1e-9) * step; v <= hi + step * 1e-9; v += step) out.push(Math.abs(v) < step * 1e-9 ? 0 : v);
+  return out;
+}
+
+// values: rows × cols, row 0 at the bottom (−y). extent: the outer edges of
+// the grid in plot units, [x0, x1, y0, y1]. range: the values mapped to the
+// two ends of the colour bar. `barTicks` are [value, label] pairs; `overlay`
+// draws on top with the plot's coordinate transforms.
+export function drawHeatmap(canvas, { values, cols, rows, extent, range, colormap = 'viridis', smooth = false, xLabel, yLabel, barLabel, barTicks, title = '', overlay = null }) {
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const cssWidth = Math.min(canvas.parentElement.clientWidth || 480, 620);
+  const PAD_L = 50, PAD_T = title ? 24 : 8, PAD_B = 42, BAR = 74;
+  const side = Math.max(140, Math.min(cssWidth - PAD_L - BAR, 460));
+  const width = PAD_L + side + BAR, height = PAD_T + side + PAD_B;
+  canvas.style.width = `${width}px`; canvas.style.height = `${height}px`;
+  canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = css('--panel'); ctx.fillRect(0, 0, width, height);
+  const font = getComputedStyle(document.body).fontFamily;
+  const ink = css('--ink'), muted = css('--muted'), axis = css('--chart-axis');
+
+  // The image, one pixel per sample, then scaled into the square.
+  const image = document.createElement('canvas');
+  image.width = cols; image.height = rows;
+  const ictx = image.getContext('2d'), data = ictx.createImageData(cols, rows);
+  const [lo, hi] = range, span = hi - lo || 1;
+  for (let i = 0; i < rows; i++) for (let j = 0; j < cols; j++) {
+    const v = values[i * cols + j], o = ((rows - 1 - i) * cols + j) * 4;
+    if (!Number.isFinite(v)) { data.data[o + 3] = 0; continue; }
+    const [r, g, b] = colourAt(colormap, (v - lo) / span);
+    data.data[o] = r; data.data[o + 1] = g; data.data[o + 2] = b; data.data[o + 3] = 255;
+  }
+  ictx.putImageData(data, 0, 0);
+  const [x0, x1, y0, y1] = extent;
+  const sx = side / (x1 - x0), sy = side / (y1 - y0), scale = Math.min(sx, sy);
+  const w = (x1 - x0) * scale, h = (y1 - y0) * scale;
+  const left = PAD_L + (side - w) / 2, top = PAD_T + (side - h) / 2;
+  const toX = x => left + (x - x0) * scale, toY = y => top + h - (y - y0) * scale;
+  ctx.imageSmoothingEnabled = smooth;
+  ctx.drawImage(image, left, top, w, h);
+  ctx.strokeStyle = axis; ctx.lineWidth = 1; ctx.strokeRect(left, top, w, h);
+
+  ctx.font = `10.5px ${font}`; ctx.fillStyle = muted;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (const v of roundTicks(x0, x1)) {
+    ctx.beginPath(); ctx.moveTo(toX(v), top + h); ctx.lineTo(toX(v), top + h + 4); ctx.stroke();
+    ctx.fillText(formatNumber(v, 3), toX(v), top + h + 6);
+  }
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (const v of roundTicks(y0, y1)) {
+    ctx.beginPath(); ctx.moveTo(left - 4, toY(v)); ctx.lineTo(left, toY(v)); ctx.stroke();
+    ctx.fillText(formatNumber(v, 3), left - 6, toY(v));
+  }
+  ctx.fillStyle = ink; ctx.font = `11px ${font}`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText(xLabel, left + w / 2, top + h + 22);
+  ctx.save(); ctx.translate(12, top + h / 2); ctx.rotate(-Math.PI / 2); ctx.textBaseline = 'middle'; ctx.fillText(yLabel, 0, 0); ctx.restore();
+  if (title) { ctx.font = `600 12.5px ${font}`; ctx.textBaseline = 'top'; ctx.fillText(title, left + w / 2, 4); }
+  if (overlay) {
+    ctx.save(); ctx.beginPath(); ctx.rect(left, top, w, h); ctx.clip();
+    overlay(ctx, toX, toY, scale);
+    ctx.restore();
+  }
+
+  // Colour bar.
+  const bx = PAD_L + side + 14, bw = 12, by = PAD_T, bh = side;
+  for (let k = 0; k < bh; k++) {
+    const [r, g, b] = colourAt(colormap, 1 - k / (bh - 1));
+    ctx.fillStyle = `rgb(${r},${g},${b})`; ctx.fillRect(bx, by + k, bw, 1.5);
+  }
+  ctx.strokeStyle = axis; ctx.strokeRect(bx, by, bw, bh);
+  ctx.font = `10.5px ${font}`; ctx.fillStyle = muted; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  for (const [v, label] of barTicks) {
+    const y = by + bh * (1 - (v - lo) / span);
+    if (y < by - 0.5 || y > by + bh + 0.5) continue;
+    ctx.beginPath(); ctx.moveTo(bx + bw, y); ctx.lineTo(bx + bw + 3, y); ctx.stroke();
+    ctx.fillText(label, bx + bw + 5, y);
+  }
+  ctx.fillStyle = ink; ctx.font = `11px ${font}`;
+  ctx.save(); ctx.translate(width - 8, by + bh / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(barLabel, 0, 0); ctx.restore();
+}
+
+export { roundTicks };
 
 // ----------------------------------------------------------------- export
 

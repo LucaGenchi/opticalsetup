@@ -40,7 +40,21 @@ export const LIMITS = Object.freeze({
   na: [1e-6, 0.999],
   pupilSamples: [4, 128],
   imageOffset: 1e5,
+  weight: 1e6,
+  beamRatio: [0.05, 10],
 });
+
+// Diffraction settings: the pupil grid N (samples across the pupil at the
+// shortest wavelength), the zero-padding factor Q (FFT size N·Q, at most
+// 1024), the illumination of the entrance pupil, and whether apertures cut
+// the beam. A file without them (format version 1 from before they existed)
+// reads with these defaults.
+export const DIFFRACTION_GRIDS = [32, 64, 128, 256];
+export const DIFFRACTION_PADDING = [2, 4];
+export const ILLUMINATIONS = ['uniform', 'gaussian'];
+export function defaultDiffraction() {
+  return { grid: 64, padding: 2, illumination: 'uniform', beamRatio: 1, vignetting: true };
+}
 
 // Fraunhofer F, d and C lines (nm): the default visible set.
 export const LINES_FDC = [486.1327, 587.5618, 656.2725];
@@ -115,6 +129,22 @@ export function normalizeSystem(raw = {}) {
   if (!wavelengthsNm.length) wavelengthsNm = [587.5618];
   const primary = clamp(Math.round(finite(src.primaryWavelength, Math.floor(wavelengthsNm.length / 2))), 0, wavelengthsNm.length - 1);
 
+  // One weight per wavelength for the polychromatic sums; missing ones are
+  // 1, and all zero means equal weights.
+  const rawWeights = Array.isArray(src.wavelengthWeights) ? src.wavelengthWeights : [];
+  let wavelengthWeights = wavelengthsNm.map((_, i) => clamp(finite(rawWeights[i], 1), 0, LIMITS.weight));
+  if (!wavelengthWeights.some(w => w > 0)) wavelengthWeights = wavelengthsNm.map(() => 1);
+
+  const df = src.diffraction && typeof src.diffraction === 'object' ? src.diffraction : {};
+  const dDefault = defaultDiffraction();
+  const diffraction = {
+    grid: DIFFRACTION_GRIDS.includes(Number(df.grid)) ? Number(df.grid) : dDefault.grid,
+    padding: DIFFRACTION_PADDING.includes(Number(df.padding)) ? Number(df.padding) : dDefault.padding,
+    illumination: ILLUMINATIONS.includes(df.illumination) ? df.illumination : dDefault.illumination,
+    beamRatio: clamp(finite(df.beamRatio, dDefault.beamRatio), ...LIMITS.beamRatio),
+    vignetting: df.vignetting !== false,
+  };
+
   const im = src.image && typeof src.image === 'object' ? src.image : {};
   const focus = ['paraxial', 'best-rms', 'fixed'].includes(im.focus) ? im.focus : 'paraxial';
 
@@ -126,11 +156,13 @@ export function normalizeSystem(raw = {}) {
     aperture: { type: apertureType, value: apertureValue },
     fields: { type: fieldType, values: fieldValues },
     wavelengthsNm,
+    wavelengthWeights,
     primaryWavelength: primary,
     surfaces,
     image: { focus, offsetMm: clampAbs(finite(im.offsetMm, 0), LIMITS.imageOffset) },
     rayAiming: src.rayAiming === 'real' ? 'real' : 'paraxial',
     pupilSamples: clamp(Math.round(finite(src.pupilSamples, 32)), ...LIMITS.pupilSamples),
+    diffraction,
   };
 }
 

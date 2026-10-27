@@ -27,6 +27,8 @@ import { normalizeSystem } from '../calculators/lens-design/engine/system.js';
 import { firstOrder, seidelSums } from '../calculators/lens-design/engine/paraxial.js';
 import { traceModel, traceRay } from '../calculators/lens-design/engine/trace.js';
 import { analyzeSystem } from '../calculators/lens-design/engine/analyze.js';
+import { analyzeDiffraction } from '../calculators/lens-design/engine/diffraction.js';
+import { traceBundle, referenceSphere, opdWaves } from '../calculators/lens-design/engine/wavefront.js';
 import {
   absorptionCrossSectionCm2, focusPeakIntensityWcm2, widefieldIntensityWcm2, moleculeRates, collectionFraction,
   spectrumValue, detectionFractions, detectorQe, excitationSource, sourceAverage, sourceTransmission,
@@ -55,9 +57,32 @@ const C_NM_PER_FS = 299.792458;
 const egfp = JSON.parse(readFileSync(new URL('../sketch/data/fluorophores/egfp.json', import.meta.url), 'utf8'));
 
 const APP = {
-  'lens-design': ({ kind, system: raw, field, px, py, nm }) => {
+  'lens-design': ({ kind, system: raw, field, px, py, nm, frequency }) => {
     const system = normalizeSystem(raw);
-    const fo = firstOrder(system, system.wavelengthsNm[system.primaryWavelength]);
+    const primaryNm = system.wavelengthsNm[system.primaryWavelength];
+    const fo = firstOrder(system, primaryNm);
+    if (kind === 'opd') {
+      // To the fixed image plane, with no apertures (as the reference).
+      const model = traceModel(system, nm, fo), primary = traceModel(system, primaryNm, fo);
+      const z = model.zLast + system.surfaces.at(-1).thickness, zXp = model.zLast + fo.zXp;
+      const sphere = referenceSphere(traceBundle(primary, field, [0], [0], { clip: false }), z, zXp);
+      const own = traceBundle(model, field, [0], [0], { clip: false });
+      return { opd: opdWaves(traceBundle(model, field, [px], [py], { clip: false }), own, z, sphere)[0] };
+    }
+    if (kind === 'defocus' || kind === 'mtf' || kind === 'gaussian') {
+      const r = analyzeDiffraction(system, { throughFocus: false });
+      const w = r.perWavelength[0];
+      if (kind === 'defocus') return { strehl: w.strehlAtChief };
+      if (kind === 'mtf') {
+        const k = frequency / r.frequencies[1], i = Math.floor(k), t = k - i;
+        return { tangential: w.mtf.tan[i] * (1 - t) + w.mtf.tan[i + 1] * t, sagittal: w.mtf.sag[i] * (1 - t) + w.mtf.sag[i + 1] * t };
+      }
+      // The 1/e² radius of a Gaussian spot is twice its standard deviation.
+      const h = r.window, n = 2 * h + 1;
+      let sum = 0, second = 0;
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { sum += w.psf[i * n + j]; second += w.psf[i * n + j] * ((j - h) * r.spacing) ** 2; }
+      return { waist: 2 * Math.sqrt(second / sum) };
+    }
     if (kind === 'first-order') return { efl: fo.efl, bfl: fo.bfl, zEp: fo.zEp, zXp: fo.zXp, xpd: 2 * fo.rXp, imageDistance: fo.imageDistance };
     if (kind === 'seidel') return { SI: seidelSums(system, fo).total.SI };
     if (kind === 'spot') return { rms: analyzeSystem(system).spots[0].poly.rms };
