@@ -24,12 +24,15 @@ import { materialDispersion, materialAbbe } from '../calculators/dispersion/mate
 import { DISPERSION_DEFAULTS, computeDispersion } from '../calculators/dispersion/dispersion-calculator.js';
 import { CONVERSION_DEFAULTS, computeConversion } from '../calculators/nonlinear-conversion/conversion-calculator.js';
 import { CRS_DEFAULTS, computeCrs, RESOLUTION_DEFAULTS, computeResolution } from '../calculators/coherent-raman/crs-calculator.js';
+import { RESOLUTION_DEFAULTS as SCANNING_RESOLUTION_DEFAULTS, computeResolution as computeScanningResolution, SCAN_DEFAULTS, computeScan } from '../calculators/point-scanning/scanning-calculator.js';
 import { normalizeSystem } from '../calculators/lens-design/engine/system.js';
 import { firstOrder, seidelSums } from '../calculators/lens-design/engine/paraxial.js';
 import { traceModel, traceRay } from '../calculators/lens-design/engine/trace.js';
 import { analyzeSystem } from '../calculators/lens-design/engine/analyze.js';
 import { analyzeDiffraction } from '../calculators/lens-design/engine/diffraction.js';
 import { traceBundle, referenceSphere, opdWaves } from '../calculators/lens-design/engine/wavefront.js';
+import { GAUSSIAN_DEFAULTS, computeGaussianBeam } from '../calculators/gaussian-beam/gaussian-beam.js';
+import { FIBER_DEFAULTS, computeFiberCoupling, fiberMode } from '../calculators/fiber-coupling/fiber-coupling.js';
 import {
   absorptionCrossSectionCm2, focusPeakIntensityWcm2, widefieldIntensityWcm2, moleculeRates, collectionFraction,
   spectrumValue, detectionFractions, detectorQe, excitationSource, sourceAverage, sourceTransmission,
@@ -64,6 +67,12 @@ const APP = {
     if (!r.ok) throw new Error(JSON.stringify(r.errors));
     return { separationMm: r.solved?.value, gddFs2: r.comp.gddFs2, todFs3: r.comp.todFs3, fodFs4: r.comp.fodFs4,
       transmission: r.throughput.transmission };
+  },
+  // Resolution widths, or the scan geometry with the NA the scan panel
+  // receives from the resolution panel.
+  'point-scanning': ({ kind, na, ...inputs }) => {
+    if (kind === 'scan') return computeScan({ ...SCAN_DEFAULTS, ...inputs }, { na, lateralUm: null });
+    return computeScanningResolution({ ...SCANNING_RESOLUTION_DEFAULTS, na, ...inputs });
   },
   'lens-design': ({ kind, system: raw, field, px, py, nm, frequency }) => {
     const system = normalizeSystem(raw);
@@ -160,6 +169,8 @@ const APP = {
     if (kind === 'abbe') return { nd: materialDispersion(material, 587.5618)?.index, abbe: materialAbbe(material) };
     return computeDispersion({ ...DISPERSION_DEFAULTS, material, wavelengthNm, ...inputs });
   },
+  'gaussian-beam': inputs => computeGaussianBeam({ ...GAUSSIAN_DEFAULTS, ...inputs }),
+  'fiber-coupling': ({ kind, ...inputs }) => (kind === 'fiber' ? fiberMode(inputs) : computeFiberCoupling({ ...FIBER_DEFAULTS, ...inputs })),
   'wavelength-conversion': ({ kind, ...inputs }) => {
     if (kind === 'crs') return computeCrs({ ...CRS_DEFAULTS, ...inputs });
     if (kind === 'resolution') return computeResolution({ ...RESOLUTION_DEFAULTS, ...inputs });
@@ -268,7 +279,7 @@ const APP = {
   },
 };
 
-for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'dispersion-compensation', 'lens-design']) {
+for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'dispersion-compensation', 'lens-design', 'gaussian-beam', 'fiber-coupling', 'point-scanning']) {
   const model = expected(name);
   for (const c of model.cases) {
     test(`${model.id}: ${c.name}`, () => {

@@ -178,10 +178,12 @@ function columnsSection(slug, columns) {
     </section>`;
 }
 
-function graphsSection(calc) {
-  return calc.graphs.length ? `<section class="calc-graphs" aria-label="Graphs">
-      ${calc.graphs.map((g, i) => `<figure class="calc-chart${g.wide ? ' wide' : ''}" id="chart-${g.id}">
-        <figcaption><span class="chart-num">${i + 1}</span><span><b>${esc(g.title)}</b><br><span class="chart-note">${esc(g.note)}</span></span></figcaption>
+// A list of graphs, numbered from `first`: the page's own (`calc.graphs`),
+// or a panel's, which follow it directly and continue the numbering.
+function graphsSection(calc, graphs = calc.graphs, first = 1) {
+  return graphs.length ? `<section class="calc-graphs" aria-label="Graphs">
+      ${graphs.map((g, i) => `<figure class="calc-chart${g.wide ? ' wide' : ''}" id="chart-${g.id}">
+        <figcaption><span class="chart-num">${first + i}</span><span><b>${esc(g.title)}</b><br><span class="chart-note">${esc(g.note)}</span></span></figcaption>
         <div class="chart-host" data-chart="${g.id}"></div>
         <details class="chart-data"><summary>Data table</summary><div class="chart-table" data-table="${g.id}"></div></details>
       </figure>`).join('\n      ')}
@@ -192,14 +194,15 @@ function graphsSection(calc) {
 // (their groups side by side, three to a row, with an optional note under
 // the first two), the graphs, the results
 // (status, tables two to a row, notes) and titled groups of further tables.
-// The extra `panels` follow the last block.
-function layoutSection(calc) {
-  const { slug, layout } = calc;
-  if (layout[0]?.form !== 'calc' || layout.filter(b => b.output).length !== 1 || layout.filter(b => b.graphs).length !== (calc.graphs.length ? 1 : 0)) {
-    throw new Error(`${slug}: a layout needs the calc form first, one output block and, with graphs, one graphs block`);
+// The extra `panels` follow the last block; a panel with its own `layout`
+// (whose first form is the panel's id) is laid out the same way, with its
+// own `graphs` continuing the page's numbering.
+function layoutBlocks(calc, layout, prefix = 'calc', graphs = calc.graphs, first = 1) {
+  if (layout[0]?.form !== prefix || layout.filter(b => b.output).length !== 1 || layout.filter(b => b.graphs).length !== (graphs.length ? 1 : 0)) {
+    throw new Error(`${calc.slug}: a layout needs the ${prefix} form first, one output block and, with graphs, one graphs block`);
   }
-  const blocks = layout.map(block => {
-    if (block.graphs) return graphsSection(calc);
+  return layout.map(block => {
+    if (block.graphs) return graphsSection(calc, graphs, first);
     // The main form beside a live figure of what it describes, with a short
     // results table and the reset under the figure.
     if (block.form && block.preview) {
@@ -213,7 +216,7 @@ function layoutSection(calc) {
           <a class="btn calc-preview-open" id="preview-open" target="_blank" rel="noopener" aria-disabled="true">${esc(block.preview)}</a>
         </figure>
         <table class="calc-results" id="${block.results}-results" aria-label="${esc(block.resultsLabel)}"></table>
-        <div class="calc-actions" id="calc-actions"></div>
+        <div class="calc-actions" id="${prefix}-actions"></div>
       </div>
     </section>`;
     }
@@ -227,11 +230,11 @@ function layoutSection(calc) {
         ${resultTables(block)}
       </div>`;
     if (block.output) {
-      const actions = layout.some(b => b.preview) ? '' : '\n      <div class="calc-actions" id="calc-actions"></div>';
+      const actions = layout.some(b => b.preview) ? '' : `\n      <div class="calc-actions" id="${prefix}-actions"></div>`;
       return `<section class="calc-block calc-results-block" aria-label="${esc(block.label)}">
-      <div class="calc-status" id="calc-status" role="status" aria-live="polite"></div>
+      <div class="calc-status" id="${prefix}-status" role="status" aria-live="polite"></div>
       ${tables}
-      <ul class="calc-notes" id="calc-notes"></ul>${actions}
+      <ul class="calc-notes" id="${prefix}-notes"></ul>${actions}
     </section>`;
     }
     return `<section class="calc-block" aria-labelledby="${block.id}-title">
@@ -239,8 +242,25 @@ function layoutSection(calc) {
       ${tables}
     </section>`;
   });
+}
+
+function layoutSection(calc) {
+  let first = calc.graphs.length + 1;
+  const panels = (calc.panels ?? []).map(p => {
+    if (!p.layout) return panelSection(p.id, p);
+    const graphs = p.graphs ?? [];
+    const blocks = layoutBlocks(calc, p.layout, p.id, graphs, first);
+    first += graphs.length;
+    return `<section class="calc-panel" id="${p.id}-panel" aria-labelledby="${p.id}-title">
+      <div class="calc-panel-head">
+        <h2 id="${p.id}-title">${esc(p.title)}</h2>
+        ${p.intro ? `<p>${p.intro}</p>` : ''}
+      </div>
+    ${blocks.join('\n    ')}
+    </section>`;
+  });
   return [`<noscript><p class="calc-status is-error">This calculator needs JavaScript. The physics and formulas below read without it.</p></noscript>`,
-    ...blocks, ...(calc.panels ?? []).map(p => panelSection(p.id, p))].join('\n    ');
+    ...layoutBlocks(calc, calc.layout), ...panels].join('\n    ');
 }
 
 // Links into the repository must name a file that exists here, so a page

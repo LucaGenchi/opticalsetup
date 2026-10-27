@@ -15,8 +15,9 @@ import { renderForm, readForm, syncForm, lineChart, formatNumber } from './calcu
 // condition is off disappear instead of being greyed out, for pages where
 // a mode selector decides which fields apply. `context` adds values from
 // elsewhere on the page that `when` conditions may test (a source chosen in
-// another panel).
-export function mountCalculator({ panel = 'calc', inputs, defaults, groups, compute, rows, notes = () => [], graphs = null, onResult = () => {}, hideInactive = false, context = () => ({}) }) {
+// another panel). On a page where several panels draw graphs, `charts`
+// lists the chart ids this panel owns; without it the panel draws them all.
+export function mountCalculator({ panel = 'calc', inputs, defaults, groups, compute, rows, notes = () => [], graphs = null, charts = null, onResult = () => {}, hideInactive = false, context = () => ({}) }) {
   const mainId = `${panel}-form`;
   const formIds = [...new Set([mainId, ...Object.values(groups).map(g => g.form ?? mainId)])];
   const forms = formIds.map(id => document.getElementById(id));
@@ -26,7 +27,7 @@ export function mountCalculator({ panel = 'calc', inputs, defaults, groups, comp
   // Tables elsewhere on the page that the last result filled.
   const filled = new Set();
   const noteList = document.getElementById(`${panel}-notes`);
-  const hosts = graphs ? [...document.querySelectorAll('[data-chart]')] : [];
+  const hosts = graphs ? [...document.querySelectorAll('[data-chart]')].filter(h => !charts || charts.includes(h.dataset.chart)) : [];
   const reset = document.createElement('button');
   reset.type = 'button';
   reset.className = 'calc-reset';
@@ -57,11 +58,11 @@ export function mountCalculator({ panel = 'calc', inputs, defaults, groups, comp
     }
   }
   function draw(result) {
-    const charts = result.ok ? graphs(result) : {};
+    const drawn = result.ok ? graphs(result) : {};
     const message = result.pending ? result.message : 'No graph until the inputs are valid.';
     for (const host of hosts) {
       const id = host.dataset.chart;
-      lineChart(host, document.querySelector(`[data-table="${id}"]`), charts[id] ?? { message });
+      lineChart(host, document.querySelector(`[data-table="${id}"]`), drawn[id] ?? { message });
     }
   }
   function update() {
