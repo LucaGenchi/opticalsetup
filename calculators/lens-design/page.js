@@ -3,17 +3,21 @@
 //
 // The lens design page: editor on the left, analyses on the right. Every
 // edit is normalized (engine/system.js), analysed in a worker
-// (engine/analyze.js) and drawn; the last design is remembered in this
-// browser only. Numbers shown here are formatted from the analysis, never
-// recomputed.
+// (engine/analyze.js) and drawn; the diffraction tabs ask a second worker
+// (engine/diffraction.js) for the chosen field, after each geometric
+// result, and only while one of them is open. The last design is
+// remembered in this browser only. Numbers shown here are formatted from the
+// analysis, never recomputed.
 
 import { PRESETS, presetSystem, DEFAULT_PRESET } from './engine/presets.js';
 import { normalizeSystem, systemToJSON, systemFromJSON } from './engine/system.js';
 import { canvasScene } from './engine/canvas-export.js';
 import { createEditor } from './editor.js';
-import { drawLayout, drawSpots, downloadSvgAsPng, downloadCanvas, downloadText, fileSafe } from './plots.js';
+import { drawLayout, drawSpots, drawHeatmap, roundTicks, downloadSvgAsPng, downloadCanvas, downloadText, fileSafe } from './plots.js';
+import { ZERNIKE_NAMES } from './engine/zernike.js';
 import { buildShareURL } from '../../sketch/js/share.js';
-import { formatNumber } from '../assets/calculator-kit.js';
+import { wavelengthToColor } from '../../sketch/js/util.js';
+import { formatNumber, lineChart } from '../assets/calculator-kit.js';
 
 const STORAGE_KEY = 'opticalsetup-lens-design';
 const $ = sel => document.querySelector(sel);
@@ -66,6 +70,56 @@ if (worker) {
     worker = null;
     analyze(current);
   };
+}
+
+// The diffraction worker. A request that a newer one makes useless (an
+// edit, another field) is stopped by ending the worker and starting a new
+// one, so a 256-sample grid never holds up the next answer.
+const DIFFRACTION_TABS = ['wavefront', 'psf', 'mtf'];
+let diffWorker = null, diffBusy = false, diffNoWorker = false, diffId = 0;
+let diffResult = null, diffFor = null;
+const view = { field: 0, wavelength: 'poly', psfLog: false };
+
+function startDiffWorker() {
+  try {
+    const w = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
+    w.onmessage = e => receiveDiffraction(e.data);
+    w.onerror = e => {
+      e.preventDefault?.();
+      diffWorker = null; diffNoWorker = true; diffBusy = false;
+      requestDiffraction();
+    };
+    return w;
+  } catch {
+    diffNoWorker = true;
+    return null;
+  }
+}
+
+function requestDiffraction() {
+  const r = lastResult;
+  if (!r?.ok) return;
+  const id = ++diffId;
+  diffFor = r; diffResult = null;
+  view.field = Math.min(view.field, r.system.fields.values.length - 1);
+  const message = { id, kind: 'diffraction', system: r.system, field: view.field, zImage: r.image.z };
+  if (diffBusy && diffWorker) { diffWorker.terminate(); diffWorker = null; }
+  if (!diffWorker && !diffNoWorker) diffWorker = startDiffWorker();
+  if (diffWorker) { diffBusy = true; diffWorker.postMessage(message); return; }
+  setTimeout(async () => {
+    const { analyzeDiffraction } = await import('./engine/diffraction.js');
+    let out;
+    try { out = { id, result: analyzeDiffraction(message.system, message) }; } catch (error) { out = { id, error: String(error?.message ?? error) }; }
+    receiveDiffraction(out);
+  }, 0);
+}
+
+function receiveDiffraction({ id, result, error }) {
+  if (id !== diffId) return;
+  diffBusy = false;
+  diffResult = error ? { ok: false, errors: [`The diffraction analysis failed: ${error}`], warnings: [] } : result;
+  for (const t of DIFFRACTION_TABS) dirty.add(t);
+  renderTab(activeTab);
 }
 
 // --------------------------------------------------------------- state
@@ -180,7 +234,9 @@ function showResult(result) {
   const notes = $('#calc-notes');
   notes.textContent = '';
   for (const w of result?.warnings ?? []) notes.append(el('li', { text: w.text }));
-  for (const id of ['layout', 'spot']) dirty.add(id);
+  for (const id of ['layout', 'spot', ...DIFFRACTION_TABS]) dirty.add(id);
+  // The diffraction results belong to the previous prescription now.
+  diffResult = null; diffFor = null;
   renderTab(activeTab);
   updateOpenLink(result);
 }
@@ -197,6 +253,7 @@ function renderTab(id) {
   if (!result.ok) { plot.append(el('p', { class: 'chart-message', text: 'Nothing to draw until the prescription can be analysed.' })); return; }
   if (id === 'layout') renderLayout(plot, body, result);
   if (id === 'spot') renderSpot(plot, body, result);
+  if (DIFFRACTION_TABS.includes(id)) renderDiffraction(id, plot, body, result);
 }
 
 function exportBar(...buttons) {
@@ -303,6 +360,325 @@ function observeResize(node, redraw) {
     redraw();
   });
   resizeObserver.observe(node);
+}
+
+// ------------------------------------------------------------- diffraction
+
+const fieldText = (r, v) => `${formatNumber(v, 4)}${r.fieldUnit === '°' ? '°' : ' mm'}`;
+const nmText = nm => `${formatNumber(nm, 4)} nm`;
+
+// The field and wavelength choosers above every diffraction tab, plus the
+// log switch on the PSF tab.
+function diffractionControls(id, r) {
+  const fieldSelect = el('select', { 'aria-label': 'Field' },
+    ...r.system.fields.values.map((v, i) => el('option', { value: String(i), text: fieldText(r, v) })));
+  fieldSelect.value = String(view.field);
+  fieldSelect.addEventListener('change', () => {
+    view.field = Number(fieldSelect.value);
+    requestDiffraction();
+    for (const t of DIFFRACTION_TABS) dirty.add(t);
+    renderTab(activeTab);
+  });
+  const many = r.system.wavelengthsNm.length > 1;
+  const options = [...(many && id !== 'wavefront' ? [['poly', 'Polychromatic']] : []), ...r.system.wavelengthsNm.map((nm, i) => [String(i), nmText(nm)])];
+  const wlSelect = el('select', { 'aria-label': 'Wavelength' }, ...options.map(([v, t]) => el('option', { value: v, text: t })));
+  wlSelect.value = String(selectedWavelength(id, r));
+  wlSelect.addEventListener('change', () => { view.wavelength = wlSelect.value === 'poly' ? 'poly' : Number(wlSelect.value); for (const t of DIFFRACTION_TABS) dirty.add(t); renderTab(activeTab); });
+  const bar = el('div', { class: 'bench-spot-controls bench-diffraction-controls' },
+    el('label', { class: 'bench-check' }, document.createTextNode('Field'), fieldSelect),
+    el('label', { class: 'bench-check' }, document.createTextNode('Wavelength'), wlSelect));
+  if (id === 'psf') {
+    const log = el('input', { type: 'checkbox', checked: view.psfLog });
+    log.addEventListener('change', () => { view.psfLog = log.checked; dirty.add('psf'); renderTab('psf'); });
+    bar.append(el('label', { class: 'bench-check' }, log, document.createTextNode('Logarithmic scale')));
+  }
+  return bar;
+}
+
+// 'poly' or a wavelength index; the wavefront tab shows one wavelength.
+function selectedWavelength(id, r) {
+  const many = r.system.wavelengthsNm.length > 1;
+  if (view.wavelength === 'poly') return many && id !== 'wavefront' ? 'poly' : r.system.primaryWavelength;
+  return Math.min(view.wavelength, r.system.wavelengthsNm.length - 1);
+}
+
+// What every diffraction result is, said where it is shown.
+function modelLabel(d, choice) {
+  const weights = d.perWavelength.map(w => formatNumber(w.weight, 3)).join(' : ');
+  const light = choice === 'poly'
+    ? `polychromatic, an incoherent sum of ${d.perWavelength.length} wavelengths weighted ${weights}`
+    : `monochromatic, ${nmText(d.perWavelength[choice].nm)}`;
+  const pupil = d.illumination.illumination === 'gaussian' ? `Gaussian beam of ${formatNumber(d.illumination.beamRatio, 3)} pupil radii` : 'uniform pupil';
+  return `Scalar diffraction, isoplanatic, ${light}; ${pupil}; field ${fieldText(d, d.fieldValue)}.`;
+}
+
+function renderDiffraction(id, plot, body, r) {
+  plot.append(diffractionControls(id, r));
+  if (diffFor !== r || (!diffResult && !diffBusy)) requestDiffraction();
+  if (!diffResult) {
+    plot.append(el('p', { class: 'chart-message', text: 'Computing the wavefront and its diffraction…' }));
+    dirty.add(id);
+    return;
+  }
+  const d = diffResult;
+  if (!d.ok) {
+    plot.append(el('div', { class: 'calc-status is-error' }, el('b', { text: 'No diffraction analysis.' }), el('ul', {}, ...(d.errors ?? []).map(e => el('li', { text: e })))));
+    return;
+  }
+  const choice = selectedWavelength(id, r);
+  if (d.warnings.length) plot.append(el('ul', { class: 'bench-banner', role: 'note' }, ...d.warnings.map(w => el('li', { text: w.text }))));
+  plot.append(el('p', { class: 'bench-note bench-model-label', text: modelLabel(d, choice) }));
+  if (id === 'wavefront') renderWavefront(plot, body, r, d, choice);
+  if (id === 'psf') renderPsf(plot, body, r, d, choice);
+  if (id === 'mtf') renderMtf(plot, body, r, d, choice);
+}
+
+const heatCanvas = label => {
+  const canvas = el('canvas', { class: 'bench-heatmap', role: 'img' });
+  canvas.setAttribute('aria-label', label);
+  return canvas;
+};
+
+function renderWavefront(plot, body, r, d, wi) {
+  const w = d.perWavelength[wi], wf = w.wavefront;
+  // Drawn with piston removed, as the RMS is: red ahead of the mean, blue
+  // behind it.
+  const shown = Float32Array.from(wf.map, v => v - wf.mean);
+  let extreme = 1e-9;
+  for (const v of shown) if (Number.isFinite(v)) extreme = Math.max(extreme, Math.abs(v));
+  const canvas = heatCanvas(`Wavefront error at ${nmText(w.nm)}: RMS ${formatNumber(wf.rms, 3)} waves, peak to valley ${formatNumber(wf.pv, 3)} waves.`);
+  const holder = el('div', { class: 'bench-heat-holder' }, canvas);
+  const draw = () => drawHeatmap(canvas, {
+    values: shown, cols: wf.cols, rows: wf.rows,
+    extent: [-wf.cols / 2 * wf.step.x, wf.cols / 2 * wf.step.x, -wf.rows / 2 * wf.step.y, wf.rows / 2 * wf.step.y],
+    range: [-extreme, extreme], colormap: 'diverging',
+    xLabel: 'Pupil x (normalized)', yLabel: 'Pupil y (normalized)', barLabel: 'OPD, piston removed (waves)',
+    barTicks: roundTicks(-extreme, extreme).map(v => [v, formatNumber(v, 3)]),
+    title: `Field ${fieldText(d, d.fieldValue)}, ${nmText(w.nm)}`,
+  });
+  plot.append(holder, exportBar(
+    ['Download PNG', () => downloadCanvas(canvas, `${fileSafe(r.system.name)}-wavefront.png`)],
+    ['Download CSV', () => downloadText(wavefrontCsv(w), `${fileSafe(r.system.name)}-wavefront-${Math.round(w.nm)}nm.csv`, 'text/csv')]));
+  draw();
+  observeResize(holder, draw);
+
+  const marechal = Math.exp(-((2 * Math.PI * wf.rmsTilt) ** 2));
+  const rows = [
+    ['RMS wavefront error (piston removed)', `${formatNumber(wf.rms, 3)} waves`],
+    ['RMS with tilt also removed', `${formatNumber(wf.rmsTilt, 3)} waves`],
+    ['Peak to valley', `${formatNumber(wf.pv, 3)} waves`],
+    ['Strehl ratio (PSF peak)', formatNumber(w.strehl, 3)],
+    ['Maréchal estimate, exp(−(2πσ)²)', formatNumber(marechal, 3)],
+    ['Samples across the pupil (x × y)', `${w.samplesAcross.x.toFixed(1)} × ${w.samplesAcross.y.toFixed(1)}`],
+    ['Largest step between neighbouring samples', `${formatNumber(wf.largestStep, 3)} waves`],
+  ];
+  body.append(el('h3', { text: 'Wavefront' }), table('Wavefront statistics', rows));
+  if (wf.zernike) {
+    const z = wf.zernike;
+    // A coefficient below 10⁻⁵ waves is rounding, not aberration.
+    const coef = v => (Math.abs(v) < 1e-5 ? '0' : formatNumber(v, 3));
+    const terms = z.terms.slice(0, 15).map((t, i) => [`Z${t.j}`, ZERNIKE_NAMES[t.j] ?? '', `${t.n}, ${t.m}`, coef(z.coefficients[i])]);
+    const t = el('table', { class: 'calc-results bench-zernike', 'aria-label': 'Zernike coefficients (Noll), waves' });
+    t.append(el('thead', {}, el('tr', {}, ...['Term', 'Name', 'n, m', 'Coefficient (waves)'].map(h => el('th', { scope: 'col', text: h })))));
+    const tb = el('tbody');
+    for (const [a, b, c, v] of terms) tb.append(el('tr', {}, el('th', { scope: 'row', text: a }), el('td', { text: b }), el('td', { text: c }), el('td', { text: v })));
+    tb.append(el('tr', {}, el('th', { scope: 'row', text: 'Rest' }), el('td', { text: `Terms 16–${z.terms.length} (in the CSV) and the fit residual` }), el('td', { text: '' }),
+      el('td', { text: formatNumber(Math.hypot(...z.coefficients.slice(15), z.residualRms), 3) })));
+    t.append(tb);
+    body.append(el('h3', { text: 'Zernike coefficients (Noll, RMS-normalized)' }), el('div', { class: 'bench-scroll' }, t),
+      exportBar(['Download Zernike CSV', () => downloadText(zernikeCsv(w), `${fileSafe(r.system.name)}-zernike-${Math.round(w.nm)}nm.csv`, 'text/csv')]));
+  }
+  body.append(el('p', { class: 'bench-note', text: 'OPD is the chief ray’s optical path minus the ray’s, on a sphere centred where the primary wavelength’s chief ray meets the image plane: positive where the wavefront is ahead of that sphere. The map has its mean removed; the CSV keeps the OPD from the chief ray. Another wavelength’s map also shows its lateral colour, as a tilt. ' },
+    el('a', { href: '#reading-diffraction', text: 'How to read the wavefront, PSF and MTF' }), document.createTextNode('.')));
+}
+
+function wavefrontCsv(w) {
+  const wf = w.wavefront, lines = ['pupil_x,pupil_y,opd_waves_from_chief_ray'];
+  for (let i = 0; i < wf.rows; i++) for (let j = 0; j < wf.cols; j++) {
+    const v = wf.map[i * wf.cols + j];
+    if (Number.isFinite(v)) lines.push(`${((j + 0.5 - wf.cols / 2) * wf.step.x).toPrecision(8)},${((i + 0.5 - wf.rows / 2) * wf.step.y).toPrecision(8)},${v.toPrecision(8)}`);
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+function zernikeCsv(w) {
+  const z = w.wavefront.zernike;
+  return `noll_j,n,m,name,coefficient_waves\n${z.terms.map((t, i) => `${t.j},${t.n},${t.m},${ZERNIKE_NAMES[t.j] ?? ''},${z.coefficients[i].toPrecision(8)}`).join('\n')}\nresidual_rms,,,,${z.residualRms.toPrecision(8)}\n`;
+}
+
+// The PSF being shown: one wavelength's, or the polychromatic sum.
+function psfOf(d, choice) {
+  if (choice === 'poly') return { psf: d.poly.psf, cut: d.poly.idealCut, strehl: d.poly.strehl, peakAt: d.poly.peakAt, mtf: d.poly.mtf, mtfIdeal: d.poly.mtfIdeal, nm: d.primaryNm };
+  const w = d.perWavelength[choice];
+  return { psf: w.psf, cut: w.idealCut, strehl: w.strehl, peakAt: w.peakAt, mtf: w.mtf, mtfIdeal: w.mtfIdeal, nm: w.nm, w };
+}
+
+// Series colours for the charts: one CSS custom property per wavelength.
+function setWavelengthColours(host, d) {
+  d.perWavelength.forEach((w, i) => host.style.setProperty(`--wl-${i}`, wavelengthToColor(w.nm)));
+}
+
+// The centred (2v+1)² part of a (2h+1)² crop.
+function zoom(values, h, v) {
+  const n = 2 * h + 1, m = 2 * v + 1, out = new Float32Array(m * m);
+  for (let i = 0; i < m; i++) for (let j = 0; j < m; j++) out[i * m + j] = values[(i + h - v) * n + (j + h - v)];
+  return out;
+}
+
+function renderPsf(plot, body, r, d, choice) {
+  const full = psfOf(d, choice), h = d.viewWindow, n = 2 * h + 1, um = d.spacing * 1e3;
+  const sel = { ...full, psf: zoom(full.psf, d.window, h), cut: { x: full.cut.x.slice(d.window - h, d.window + h + 1) } };
+  let max = 0;
+  for (const v of sel.psf) max = Math.max(max, v);
+  max = Math.max(max, 1e-12);
+  const values = view.psfLog ? Float32Array.from(sel.psf, v => Math.log10(Math.max(v, max * 1e-7))) : sel.psf;
+  const range = view.psfLog ? [Math.log10(max) - 5, Math.log10(max)] : [0, max];
+  const primary = d.perWavelength[d.primary];
+  const ref = sel.w ?? primary;
+  const airy = 1.22 * ref.nm * 1e-6 / (2 * ref.na.x) * 1e3;
+  const canvas = heatCanvas(`Point-spread function: Strehl ratio ${formatNumber(sel.strehl, 3)}; ${n} × ${n} samples ${formatNumber(um, 3)} µm apart.`);
+  const holder = el('div', { class: 'bench-heat-holder' }, canvas);
+  const ext = (h + 0.5) * um;
+  const draw = () => drawHeatmap(canvas, {
+    values, cols: n, rows: n, extent: [-ext, ext, -ext, ext], range, smooth: true,
+    xLabel: 'x (µm)', yLabel: 'y (µm)',
+    barLabel: view.psfLog ? 'log₁₀ intensity (perfect lens = 0)' : 'Intensity (perfect lens peak = 1)',
+    barTicks: view.psfLog
+      ? Array.from({ length: 6 }, (_, k) => Math.floor(range[1]) - k).map(v => [v, String(v)])
+      : roundTicks(0, max).map(v => [v, formatNumber(v, 3)]),
+    title: `Field ${fieldText(d, d.fieldValue)}, ${choice === 'poly' ? 'polychromatic' : nmText(sel.nm)}`,
+    overlay(ctx, toX, toY, scale) {
+      ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.setLineDash([4, 3]); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(toX(0), toY(0), airy * scale, 0, 2 * Math.PI); ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(toX(0) - 5, toY(0)); ctx.lineTo(toX(0) + 5, toY(0)); ctx.moveTo(toX(0), toY(0) - 5); ctx.lineTo(toX(0), toY(0) + 5); ctx.stroke();
+    },
+  });
+  plot.append(holder, el('p', { class: 'bench-note', text: `Dashed circle: the Airy radius 1.22 λ/(2 NA) = ${formatNumber(airy, 3)} µm at ${nmText(ref.nm)}; + : the primary chief ray.` }),
+    exportBar(['Download PNG', () => downloadCanvas(canvas, `${fileSafe(r.system.name)}-psf.png`)],
+      ['Download CSV', () => downloadText(psfCsv(d, full), `${fileSafe(r.system.name)}-psf.csv`, 'text/csv')]));
+  draw();
+  observeResize(holder, draw);
+
+  // Cross-sections through the peak, each relative to its own peak so that
+  // the shapes compare (the heights are the Strehl ratio, in the table).
+  const pi = Math.round(sel.peakAt.y / d.spacing) + h, pj = Math.round(sel.peakAt.x / d.spacing) + h;
+  const row = Math.min(n - 1, Math.max(0, pi)), col = Math.min(n - 1, Math.max(0, pj));
+  const xs = Array.from({ length: n }, (_, k) => (k - h) * um);
+  const peak = Math.max(sel.psf[row * n + col], 1e-30), idealPeak = Math.max(...sel.cut.x, 1e-30);
+  const cutHost = el('div', { class: 'chart-host bench-chart' });
+  body.append(el('h3', { text: 'Cross-sections through the peak' }), cutHost);
+  lineChart(cutHost, null, {
+    x: xs, xLabel: 'Position (µm)', yLabel: 'Intensity / its peak', yMin: 0,
+    series: [
+      { key: 'x', name: 'Along x', color: '--series-1', values: xs.map((_, k) => sel.psf[row * n + k] / peak) },
+      { key: 'y', name: 'Along y', color: '--series-2', values: xs.map((_, k) => sel.psf[k * n + col] / peak) },
+      { key: 'ideal', name: 'Perfect lens', color: '--muted', dash: true, values: Array.from(sel.cut.x, v => v / idealPeak) },
+    ],
+    formatX: v => formatNumber(v, 3), formatY: v => formatNumber(v, 3),
+  });
+
+  // Through focus.
+  const tf = d.throughFocus;
+  if (tf) {
+    const tfHost = el('div', { class: 'chart-host bench-chart' });
+    setWavelengthColours(tfHost, d);
+    const series = d.perWavelength.map((w, i) => ({ key: `wl${i}`, name: nmText(w.nm), color: `--wl-${i}`, values: Array.from(tf.strehl[i]) }));
+    if (tf.poly) series.unshift({ key: 'poly', name: 'Polychromatic', color: '--ink', values: Array.from(tf.poly) });
+    body.append(el('h3', { text: 'Strehl ratio through focus' }), tfHost,
+      el('p', { class: 'bench-note', text: `Moving the image plane from where it is now (0); ${focusGridText(tf, d)}. A negative shift moves it toward the lens.${tf.aliased.some(Boolean) ? ' Planes where the wavefront is too steep to sample are left out.' : ''}` }),
+      exportBar(['Download CSV', () => downloadText(focusCsv(d), `${fileSafe(r.system.name)}-through-focus.csv`, 'text/csv')]));
+    lineChart(tfHost, null, {
+      x: Array.from(tf.shifts, z => z * 1e3), xLabel: 'Image-plane shift (µm)', yLabel: 'Strehl ratio', yMin: 0, yMax: 1,
+      series, vlines: [{ x: 0, label: 'image plane' }], formatX: v => formatNumber(v, 3), formatY: v => formatNumber(v, 3),
+    });
+  }
+
+  const rows = [
+    ['Strehl ratio (PSF peak)', formatNumber(sel.strehl, 3)],
+    ...(sel.w ? [['Strehl ratio at the chief ray', formatNumber(sel.w.strehlAtChief, 3)]] : []),
+    ['Peak position from the chief ray', `${formatNumber(sel.peakAt.x * 1e3, 3)}, ${formatNumber(sel.peakAt.y * 1e3, 3)} µm`],
+    ...(sel.w ? [
+      ['Image-space NA (x, y), traced', `${formatNumber(sel.w.na.x, 4)}, ${formatNumber(sel.w.na.y, 4)}`],
+      ['Light through the apertures', `${formatNumber(100 * sel.w.transmission, 4)} %`],
+    ] : []),
+    ['PSF sample spacing', `${formatNumber(um, 4)} µm`],
+    ['Pupil grid, padding, FFT', `${d.grid} × ${d.padding} → ${d.fftSize} × ${d.fftSize}${d.fftSize > d.grid * d.padding ? ' (grown so that every wavelength keeps 32 samples across the pupil)' : ''}`],
+    ...(sel.w ? [['Samples across the pupil (x × y)', `${formatNumber(sel.w.samplesAcross.x, 3)} × ${formatNumber(sel.w.samplesAcross.y, 3)}`]] : []),
+    ['Fresnel number of the exit pupil', Number.isFinite(d.fresnelNumber) ? formatNumber(d.fresnelNumber, 3) : '∞'],
+    ['Pupil distortion', `${formatNumber(100 * d.pupilDistortion, 3)} %`],
+  ];
+  body.append(el('h3', { text: 'Point-spread function' }), table('PSF figures', rows));
+}
+
+function psfCsv(d, sel) {
+  const h = d.window, n = 2 * h + 1, um = d.spacing * 1e3, lines = ['x_um,y_um,intensity_rel_perfect_peak'];
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) lines.push(`${((j - h) * um).toPrecision(6)},${((i - h) * um).toPrecision(6)},${sel.psf[i * n + j].toPrecision(6)}`);
+  return `${lines.join('\n')}\n`;
+}
+
+// The pupil sampling of the through-focus planes at the primary
+// wavelength: each plane takes the coarsest grid that samples its wavefront.
+function focusGridText(tf, d) {
+  const [lo, hi] = tf.across.map(v => formatNumber(v, 3));
+  const at = `at ${nmText(d.primaryNm)}`;
+  return lo === hi ? `${lo} samples across the pupil ${at}` : `${lo} to ${hi} samples across the pupil ${at}, more where the wavefront is steeper`;
+}
+
+function focusCsv(d) {
+  const tf = d.throughFocus;
+  const value = v => (Number.isFinite(v) ? v.toPrecision(6) : '');
+  const head = ['shift_um', ...(tf.poly ? ['strehl_polychromatic'] : []), ...d.perWavelength.map(w => `strehl_${Math.round(w.nm)}nm`), `pupil_samples_across_${Math.round(d.primaryNm)}nm`, 'aliased'];
+  const lines = [head.join(',')];
+  tf.shifts.forEach((z, i) => lines.push([(z * 1e3).toPrecision(6), ...(tf.poly ? [value(tf.poly[i])] : []), ...tf.strehl.map(s => value(s[i])), tf.planeAcross[i] ? tf.planeAcross[i].toPrecision(4) : '', tf.aliased[i] ? 'yes' : 'no'].join(',')));
+  return `${lines.join('\n')}\n`;
+}
+
+// MTF value at frequency f by linear interpolation, or null past the data.
+function mtfAt(freqs, values, f) {
+  const k = f / freqs[1], i = Math.floor(k);
+  if (!(i >= 0 && i + 1 < values.length)) return null;
+  return values[i] + (values[i + 1] - values[i]) * (k - i);
+}
+// The first frequency where the MTF falls to `level`.
+function mtfCrossing(freqs, values, level) {
+  for (let i = 1; i < values.length; i++) if (values[i] <= level) return freqs[i - 1] + (freqs[i] - freqs[i - 1]) * (values[i - 1] - level) / (values[i - 1] - values[i]);
+  return null;
+}
+
+function renderMtf(plot, body, r, d, choice) {
+  const sel = psfOf(d, choice);
+  const cutoffs = choice === 'poly' ? d.perWavelength.flatMap(w => [w.cutoff.tangential, w.cutoff.sagittal]) : [sel.w.cutoff.tangential, sel.w.cutoff.sagittal];
+  const top = Math.max(...cutoffs);
+  const freqs = Array.from(d.frequencies);
+  const count = Math.min(freqs.length, freqs.findIndex(f => f > top) + 1 || freqs.length);
+  const xs = freqs.slice(0, count);
+  const host = el('div', { class: 'chart-host bench-chart' });
+  plot.append(host);
+  lineChart(host, null, {
+    x: xs, xLabel: 'Spatial frequency (cycles/mm)', yLabel: 'MTF', yMin: 0, yMax: 1,
+    series: [
+      { key: 't', name: 'Tangential', color: '--series-1', values: Array.from(sel.mtf.tan.slice(0, count)) },
+      { key: 's', name: 'Sagittal', color: '--series-2', dash: true, values: Array.from(sel.mtf.sag.slice(0, count)) },
+      { key: 'it', name: 'Perfect lens, tangential', color: '--muted', values: Array.from(sel.mtfIdeal.tan.slice(0, count)) },
+      { key: 'is', name: 'Perfect lens, sagittal', color: '--muted', dash: true, values: Array.from(sel.mtfIdeal.sag.slice(0, count)) },
+    ],
+    formatX: v => formatNumber(v, 3), formatY: v => formatNumber(v, 3),
+  });
+  plot.append(exportBar(['Download CSV', () => downloadText(mtfCsv(d, sel, count), `${fileSafe(r.system.name)}-mtf.csv`, 'text/csv')]));
+
+  const marks = [10, 20, 50, 100, 200, 500, 1000].filter(f => f < top * 0.98);
+  const rows = marks.map(f => [`${f} cycles/mm`, formatNumber(mtfAt(freqs, sel.mtf.tan, f), 3), formatNumber(mtfAt(freqs, sel.mtf.sag, f), 3), formatNumber(mtfAt(freqs, sel.mtfIdeal.tan, f), 3)]);
+  const fifty = [mtfCrossing(xs, sel.mtf.tan, 0.5), mtfCrossing(xs, sel.mtf.sag, 0.5), mtfCrossing(xs, sel.mtfIdeal.tan, 0.5)];
+  rows.push(['MTF50 (cycles/mm)', ...fifty.map(v => (v == null ? '—' : formatNumber(v, 3)))]);
+  if (sel.w) rows.push(['Cutoff 2 NA/λ (cycles/mm)', formatNumber(sel.w.cutoff.tangential, 4), formatNumber(sel.w.cutoff.sagittal, 4), '']);
+  body.append(el('h3', { text: 'Modulation transfer' }), el('div', { class: 'bench-scroll' }, table('MTF values', rows, { head: ['Frequency', 'Tangential', 'Sagittal', 'Perfect lens'] })),
+    el('p', { class: 'bench-note', text: 'Tangential: a pattern whose stripes run across the field direction (frequency along y); sagittal: along it. Polychromatic curves are the transform of the summed PSF.' }));
+}
+
+function mtfCsv(d, sel, count) {
+  const lines = ['frequency_cycles_per_mm,tangential,sagittal,perfect_tangential,perfect_sagittal'];
+  for (let k = 0; k < count; k++) lines.push([d.frequencies[k], sel.mtf.tan[k], sel.mtf.sag[k], sel.mtfIdeal.tan[k], sel.mtfIdeal.sag[k]].map(v => Number(v).toPrecision(6)).join(','));
+  return `${lines.join('\n')}\n`;
 }
 
 // ------------------------------------------------- open in the canvas

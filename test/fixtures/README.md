@@ -21,3 +21,12 @@ triplet preset traced by Optiland 0.5.5 (paraxial data, 63 individual rays, f-ta
 and RMS spots on the app's 64 × 64 pupil grid), written by
 `optiland-cooke-triplet.py`. That script needs Optiland and is not run by the
 suite; the JSON records what it printed.
+
+`optiland-cooke-wavefront.json` is the same check for the wavefront and
+diffraction: Optiland's OPD for 63 named rays, its Noll Zernike fits on the
+app's 32-cell pupil grid, and its FFT PSF (Strehl ratio and peak) and FFT MTF
+on a 64-point pupil in a 128-point FFT, written by
+`optiland-cooke-wavefront.py`. Optiland weights the pupil by the glasses'
+internal transmittance and the app does not, so each PSF entry also records
+the lossless Strehl ratio from Optiland's own OPD; the tests compare with
+both, at the tolerance each difference allows.

@@ -146,3 +146,17 @@ select.bench-cell { width: auto; max-width: 8em; }
   .bench-system .calc-field { grid-template-columns: 1fr 104px; }
   .bench-tab { padding: 6px 10px; }
 }
+
+/* ---------- diffraction ---------- */
+.bench-diffraction-controls { justify-content: flex-start; gap: 6px 16px; }
+.bench-diffraction-controls select { margin-left: 6px; }
+.bench-banner {
+  list-style: none; margin: 6px 0; padding: 8px 12px; font-size: 12.5px; color: var(--text);
+  background: var(--bg); border: 1px solid var(--chart-band); border-left-width: 4px; border-radius: 8px;
+}
+.bench-banner li + li { margin-top: 4px; }
+.bench-model-label { margin: 4px 0 6px; }
+.bench-heat-holder { min-width: 0; }
+.bench-heatmap { display: block; max-width: 100%; margin: 0 auto; }
+.bench-chart { min-height: 240px; }
+.bench-zernike td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
