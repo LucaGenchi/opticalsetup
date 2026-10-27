@@ -585,7 +585,7 @@ function renderPsf(plot, body, r, d, choice) {
     const series = d.perWavelength.map((w, i) => ({ key: `wl${i}`, name: nmText(w.nm), color: `--wl-${i}`, values: Array.from(tf.strehl[i]) }));
     if (tf.poly) series.unshift({ key: 'poly', name: 'Polychromatic', color: '--ink', values: Array.from(tf.poly) });
     body.append(el('h3', { text: 'Strehl ratio through focus' }), tfHost,
-      el('p', { class: 'bench-note', text: `Moving the image plane from where it is now (0); ${focusGridText(tf)}. A negative shift moves it toward the lens.${tf.aliased.some(Boolean) ? ' Planes where the wavefront is too steep to sample are left out.' : ''}` }),
+      el('p', { class: 'bench-note', text: `Moving the image plane from where it is now (0); ${focusGridText(tf, d)}. A negative shift moves it toward the lens.${tf.aliased.some(Boolean) ? ' Planes where the wavefront is too steep to sample are left out.' : ''}` }),
       exportBar(['Download CSV', () => downloadText(focusCsv(d), `${fileSafe(r.system.name)}-through-focus.csv`, 'text/csv')]));
     lineChart(tfHost, null, {
       x: Array.from(tf.shifts, z => z * 1e3), xLabel: 'Image-plane shift (µm)', yLabel: 'Strehl ratio', yMin: 0, yMax: 1,
@@ -602,7 +602,8 @@ function renderPsf(plot, body, r, d, choice) {
       ['Light through the apertures', `${formatNumber(100 * sel.w.transmission, 4)} %`],
     ] : []),
     ['PSF sample spacing', `${formatNumber(um, 4)} µm`],
-    ['Pupil grid, padding, FFT', `${d.grid} × ${d.padding} → ${d.fftSize} × ${d.fftSize}`],
+    ['Pupil grid, padding, FFT', `${d.grid} × ${d.padding} → ${d.fftSize} × ${d.fftSize}${d.fftSize > d.grid * d.padding ? ' (grown so that every wavelength keeps 32 samples across the pupil)' : ''}`],
+    ...(sel.w ? [['Samples across the pupil (x × y)', `${formatNumber(sel.w.samplesAcross.x, 3)} × ${formatNumber(sel.w.samplesAcross.y, 3)}`]] : []),
     ['Fresnel number of the exit pupil', Number.isFinite(d.fresnelNumber) ? formatNumber(d.fresnelNumber, 3) : '∞'],
     ['Pupil distortion', `${formatNumber(100 * d.pupilDistortion, 3)} %`],
   ];
@@ -615,19 +616,20 @@ function psfCsv(d, sel) {
   return `${lines.join('\n')}\n`;
 }
 
-// The pupil grid of the through-focus planes: each plane takes the
-// coarsest that samples its wavefront.
-function focusGridText(tf) {
-  const [lo, hi] = tf.gridRange;
-  return lo === hi ? `${lo} samples across the pupil` : `${lo} to ${hi} samples across the pupil, finer where the wavefront is steeper`;
+// The pupil sampling of the through-focus planes at the primary
+// wavelength: each plane takes the coarsest grid that samples its wavefront.
+function focusGridText(tf, d) {
+  const [lo, hi] = tf.across.map(v => formatNumber(v, 3));
+  const at = `at ${nmText(d.primaryNm)}`;
+  return lo === hi ? `${lo} samples across the pupil ${at}` : `${lo} to ${hi} samples across the pupil ${at}, more where the wavefront is steeper`;
 }
 
 function focusCsv(d) {
   const tf = d.throughFocus;
   const value = v => (Number.isFinite(v) ? v.toPrecision(6) : '');
-  const head = ['shift_um', ...(tf.poly ? ['strehl_polychromatic'] : []), ...d.perWavelength.map(w => `strehl_${Math.round(w.nm)}nm`), 'pupil_samples_across', 'aliased'];
+  const head = ['shift_um', ...(tf.poly ? ['strehl_polychromatic'] : []), ...d.perWavelength.map(w => `strehl_${Math.round(w.nm)}nm`), `pupil_samples_across_${Math.round(d.primaryNm)}nm`, 'aliased'];
   const lines = [head.join(',')];
-  tf.shifts.forEach((z, i) => lines.push([(z * 1e3).toPrecision(6), ...(tf.poly ? [value(tf.poly[i])] : []), ...tf.strehl.map(s => value(s[i])), tf.planeGrid[i] || '', tf.aliased[i] ? 'yes' : 'no'].join(',')));
+  tf.shifts.forEach((z, i) => lines.push([(z * 1e3).toPrecision(6), ...(tf.poly ? [value(tf.poly[i])] : []), ...tf.strehl.map(s => value(s[i])), tf.planeAcross[i] ? tf.planeAcross[i].toPrecision(4) : '', tf.aliased[i] ? 'yes' : 'no'].join(',')));
   return `${lines.join('\n')}\n`;
 }
 

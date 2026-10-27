@@ -759,14 +759,28 @@ test('every wavelength keeps enough pupil samples on the common grid, or the ana
   assert.equal(analyzeDiffraction(normalizeSystem({ ...lens, wavelengthsNm: [10600], primaryWavelength: 0, diffraction: { grid: 32 } })).perWavelength[0].strehl.toFixed(6), '1.000000');
   // 400 to 2000 nm fits: the grid grows so the longer still gets 32 samples
   // across, and a perfect lens stays perfect at both.
-  const nir = analyzeDiffraction(normalizeSystem({ ...lens, wavelengthsNm: [400, 2000], primaryWavelength: 0 }), { throughFocus: false });
+  const nir = analyzeDiffraction(normalizeSystem({ ...lens, wavelengthsNm: [400, 2000], primaryWavelength: 0 }));
   assert.equal(nir.ok, true);
   assert.equal(nir.fftSize, 512);
   for (const w of nir.perWavelength) {
     assert.ok(Math.min(w.samplesAcross.x, w.samplesAcross.y) >= MIN_ACROSS - 1e-9, `${w.nm} nm`);
     assert.ok(Math.abs(w.strehl - 1) < 1e-6, `${w.nm} nm: ${w.strehl}`);
+    // The frequencies still reach this wavelength's cutoff, where its MTF
+    // has fallen to nothing, after passing one half.
+    const f = nir.frequencies, cutoff = w.cutoff.tangential;
+    assert.ok(f.at(-1) >= cutoff * (1 - 1e-9), `${w.nm} nm: frequencies end at ${f.at(-1)}, cutoff ${cutoff}`);
+    const near = f.findIndex(v => v >= 0.98 * cutoff);
+    assert.ok(w.mtf.tan[near] < 0.01 && w.mtf.tan.some(v => v < 0.5), `${w.nm} nm`);
   }
   assert.ok(Math.abs(nir.poly.strehl - 1) < 1e-6);
+  // Without growth the range is N + 1 frequencies, the last at the cutoff.
+  for (const padding of [2, 4]) assert.equal(analyzeDiffraction(perfectMono({ diffraction: { grid: 64, padding } }), { throughFocus: false }).frequencies.length, 65);
+  // Through focus reports the samples actually across the pupil at the
+  // primary wavelength (400 nm here: 256 on the grown grid, not N = 64).
+  const tf = nir.throughFocus, mid = (tf.shifts.length - 1) / 2;
+  assert.equal(tf.planeAcross[mid], Math.min(nir.perWavelength[0].samplesAcross.x, nir.perWavelength[0].samplesAcross.y));
+  assert.ok(Math.abs(tf.planeAcross[mid] - 256) < 1e-9);
+  assert.ok(tf.planeAcross.every(v => v >= MIN_ACROSS * 2000 / 400 - 1e-9));
   assert.equal(commonFftSize(128, 1, 4), 128);
   assert.equal(commonFftSize(64, 1, 4), 128);
   assert.equal(commonFftSize(64, 1, 64), null);
@@ -786,7 +800,7 @@ test('through focus: the grid refines until the wavefront is sampled, and planes
   const r = analyzeDiffraction(perfectMono({ image: { focus: 'paraxial', offsetMm: 8 }, diffraction: { grid: 256 } }));
   const tf = r.throughFocus, mid = (tf.shifts.length - 1) / 2;
   assert.ok(!r.warnings.some(w => w.kind === 'aliasing'));
-  assert.equal(tf.grid, 256);
+  assert.ok(Math.abs(tf.across[1] - 256) < 1e-9 && Math.abs(tf.planeAcross[mid] - 256) < 1e-9);
   assert.ok(Math.abs(tf.strehl[0][mid] / r.perWavelength[0].strehl - 1) < 1e-9, `${tf.strehl[0][mid]} against ${r.perWavelength[0].strehl}`);
   // The far planes, further from focus still, alias even at 256: flagged,
   // valueless and named in a warning.

@@ -353,8 +353,10 @@ export function analyzeDiffraction(input, { field = 0, zImage = null, throughFoc
   }
 
   const weightsTotal = sys.wavelengthWeights.reduce((a, b) => a + b, 0);
-  // Frequencies up to the highest cutoff, 1/s_min = N samples of 1/(MΔ).
-  const freqCount = Math.min(M / 2, N + 1);
+  // Frequencies up to the highest cutoff, 1/s_min = M/Q samples of 1/(MΔ)
+  // (N unless the grid grew; at Q = 2 the last is the Nyquist sample, where
+  // the MTF has reached zero).
+  const freqCount = M / Q + 1;
   const polyI = new Float64Array(M * M), polyIdeal = new Float64Array(M * M);
   let polyIdealPeak = 0;
 
@@ -470,16 +472,20 @@ export function analyzeDiffraction(input, { field = 0, zImage = null, throughFoc
   if (distortion > PUPIL_DISTORTION_LIMIT) {
     warnings.push({ kind: 'pupil', text: `The rays leave the lens up to ${fmt(100 * distortion, 2)} % away from an evenly spaced grid of directions (pupil distortion); the FFT assumes an even grid, so the PSF and MTF are approximate. Real ray aiming can help.` });
   }
-  if (d.illumination === 'gaussian' && d.beamRatio * N / 2 < 3) {
-    warnings.push({ kind: 'beam', text: `The Gaussian beam spans only ${fmt(d.beamRatio * N / 2, 2)} pupil samples to its 1/e² radius; choose a finer grid.` });
+  // The beam's 1/e² radius in samples, where the pupil is sampled most
+  // coarsely (the longest wavelength, which can have fewer than N).
+  const fewest = Math.min(...perWavelength.map(w => Math.min(w.samplesAcross.x, w.samplesAcross.y)));
+  if (d.illumination === 'gaussian' && d.beamRatio * fewest / 2 < 3) {
+    warnings.push({ kind: 'beam', text: `The Gaussian beam spans only ${fmt(d.beamRatio * fewest / 2, 2)} pupil samples to its 1/e² radius; choose a finer grid.` });
   }
 
-  const own = { strehl: perWavelength.map(w => w.strehl), poly: poly?.strehl ?? NaN, step: Math.max(...perWavelength.map(w => w.wavefront.largestStep)), grid: N };
+  const primaryAcross = perWavelength[sys.primaryWavelength].samplesAcross;
+  const own = { strehl: perWavelength.map(w => w.strehl), poly: poly?.strehl ?? NaN, step: Math.max(...perWavelength.map(w => w.wavefront.largestStep)), across: Math.min(primaryAcross.x, primaryAcross.y) };
   const focus = throughFocus ? throughFocusCurve(sys, models, chiefs, primaryChief, gridFor, sMin, sMax, paraxialNa[sys.primaryWavelength], zImage, zXp, fo, fieldValue, own) : null;
   const aliasedPlanes = focus ? focus.shifts.filter((_, i) => focus.aliased[i]) : [];
   if (aliasedPlanes.length) {
     const lo = Math.min(...aliasedPlanes), hi = Math.max(...aliasedPlanes);
-    warnings.push({ kind: 'focus-aliasing', text: `Through focus, ${aliasedPlanes.length} of the ${focus.shifts.length} planes (shifts ${shiftText(lo)} to ${shiftText(hi)}) change the wavefront by more than half a wave between neighbouring pupil samples even at ${focus.grid} samples across, so they have no Strehl ratio and are left off the plot. The wavefront there is too far from the reference sphere for a sampled pupil.` });
+    warnings.push({ kind: 'focus-aliasing', text: `Through focus, ${aliasedPlanes.length} of the ${focus.shifts.length} planes (shifts ${shiftText(lo)} to ${shiftText(hi)}) change the wavefront by more than half a wave between neighbouring pupil samples even at ${fmt(focus.across[1], 3)} samples across at ${fmt(primaryNm, 4)} nm, so they have no Strehl ratio and are left off the plot. The wavefront there is too far from the reference sphere for a sampled pupil.` });
   }
 
   return {
@@ -504,8 +510,11 @@ export function analyzeDiffraction(input, { field = 0, zImage = null, throughFoc
 // neighbouring samples (each plane's Strehl ratio is relative to a perfect
 // lens on its own grid); a plane aliased even on the finest is flagged
 // `aliased` and has no value (NaN). The plane at zero shift is the
-// analysis's own (`own`: its Strehl ratios, largest step and grid), so the
-// curve passes through the value the page shows.
+// analysis's own (`own`: its Strehl ratios, largest step and samples
+// across), so the curve passes through the value the page shows.
+// `planeAcross` is the number of samples actually across the pupil at the
+// primary wavelength (the grid level is a request: the FFT grows so that
+// every wavelength keeps MIN_ACROSS, which gives the shorter ones more).
 function throughFocusCurve(sys, models, chiefs, primaryChief, gridFor, sMin, sMax, na, zImage, zXp, fo, fieldValue, own) {
   const d = sys.diffraction;
   const levels = new Map();
@@ -537,11 +546,13 @@ function throughFocusCurve(sys, models, chiefs, primaryChief, gridFor, sMin, sMa
   const shifts = Float64Array.from({ length: K }, (_, i) => -range + 2 * range * i / (K - 1));
   const weightsTotal = sys.wavelengthWeights.reduce((a, b) => a + b, 0);
   const strehl = sys.wavelengthsNm.map(() => new Float64Array(K));
-  const poly = new Float64Array(K), aliased = new Uint8Array(K), largest = new Float64Array(K), planeGrid = new Uint16Array(K);
+  const poly = new Float64Array(K), aliased = new Uint8Array(K), largest = new Float64Array(K), planeAcross = new Float64Array(K);
+  const pw = sys.primaryWavelength;
+  const acrossOf = g => Math.min(2 / g.dpx, 2 / g.dpy);
   const mid = (K - 1) / 2;
   for (let i = 0; i < K; i++) {
     if (i === mid) {
-      largest[i] = own.step; planeGrid[i] = own.grid;
+      largest[i] = own.step; planeAcross[i] = own.across;
       const bad = own.step > ALIAS_WAVES;
       aliased[i] = bad ? 1 : 0;
       strehl.forEach((s, wi) => { s[i] = bad ? NaN : own.strehl[wi]; });
@@ -563,7 +574,7 @@ function throughFocusCurve(sys, models, chiefs, primaryChief, gridFor, sMin, sMa
       while (next < finest && step * n / next > ALIAS_WAVES) next *= 2;
       n = next;
     }
-    largest[i] = step; planeGrid[i] = L.N;
+    largest[i] = step; planeAcross[i] = acrossOf(L.grids[pw]);
     if (step > ALIAS_WAVES) { aliased[i] = 1; poly[i] = NaN; strehl.forEach(s => { s[i] = NaN; }); continue; }
     const { M, grids, bundles, amps } = L;
     const sum = new Float64Array(M * M), parts = [];
@@ -587,9 +598,10 @@ function throughFocusCurve(sys, models, chiefs, primaryChief, gridFor, sMin, sMa
     const peak = refinedPeak(sum, M, at, (u, v) => parts.reduce((t, [c, exact]) => t + c * exact(u, v), 0));
     poly[i] = idealPeak > 0 ? peak.value / idealPeak : 0;
   }
-  const used = [...planeGrid].filter(n => n > 0);
+  const used = [...planeAcross].filter(n => n > 0);
+  const across = used.length ? [Math.min(...used), Math.max(...used)] : [acrossOf(level(base).grids[pw]), acrossOf(level(base).grids[pw])];
   return {
-    grid: used.length ? Math.max(...used) : base, gridRange: used.length ? [Math.min(...used), Math.max(...used)] : [base, base], planeGrid,
+    across, planeAcross,
     shifts, strehl, poly: sys.wavelengthsNm.length > 1 ? poly : null, aliased, largestStep: largest,
   };
 }

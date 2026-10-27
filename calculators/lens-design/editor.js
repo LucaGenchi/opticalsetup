@@ -128,7 +128,7 @@ export function createEditor(host, { presets, onChange, onPreset, onImport, onEx
     aiming: field('aiming', 'Ray aiming', c.aiming, { help: 'Real aiming makes each ray cross the stop where its pupil coordinate says; use it at wide fields or apertures.' }),
     samples: field('samples', 'Pupil sampling', c.samples),
     weights: field('weights', 'Wavelength weights', c.weights, { help: 'Relative power of each wavelength in the polychromatic PSF and MTF.' }),
-    grid: field('grid', 'Pupil grid N', c.grid, { help: 'Samples across the pupil for the wavefront and PSF; finer grids follow stronger aberrations.' }),
+    grid: field('grid', 'Pupil grid N', c.grid, { help: 'Samples across the pupil for the wavefront and PSF, at the wavelength that needs the finest sampling; finer grids follow stronger aberrations.' }),
     padding: field('padding', 'Zero padding Q', c.padding, { help: 'The PSF is sampled every λN/Q; 2 is the Nyquist minimum.' }),
     illumination: field('illumination', 'Pupil illumination', c.illumination),
     beamRatio: field('beam-ratio', 'Beam radius', c.beamRatio, { unit: '× pupil', help: '1/e² intensity radius of the Gaussian beam, in entrance-pupil radii.' }),
