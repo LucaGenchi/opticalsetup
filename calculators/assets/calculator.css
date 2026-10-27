@@ -245,6 +245,8 @@
 .calc-workbench .calc-field { grid-template-columns: 1fr 150px; }
 .calc-workbench .calc-field.choice { grid-template-columns: 1fr; }
 .calc-workbench .calc-field.check { grid-template-columns: auto 1fr; }
+/* Beside a full-width workbench the article uses the page's width too. */
+.calc-workbench ~ .calc-article, .calc-workbench ~ .calc-article p, .calc-workbench ~ .calc-article ul, .calc-workbench ~ .calc-article h3 { max-width: none; }
 .calc-workbench-side { position: sticky; top: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .calc-preview { margin: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
 .calc-preview-figure { background: #ffffff; border-radius: 8px; overflow: hidden; }

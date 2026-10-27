@@ -15,7 +15,7 @@ export const compressorCalculators = [
     summary: 'Choose a prism or grating layout, the pulse and the chirp it carries; the page solves the separation (or takes yours), draws the bench to scale with the canvas’s own tracer, and gives the compensator’s GDD, TOD and FOD, the output pulse from every order of the phase, the colours’ spread and the transmission.',
     facts: [
       { label: 'Model', html: 'Exact plane-wave phase of each layout along the central ray: Fork, Martinez and Gordon’s apex path for prisms, Treacy’s for gratings, Martinez’s equivalent pair for the stretcher (paraxial). The output pulse is the Fourier transform of the spectrum with every order of the phase.' },
-      { label: 'Evidence', html: `The bench drawn here is a canvas scene: its tracer reads the same GDD to better than 10⁻⁴ on every default (for the stretcher once the glass the canvas gives its lenses is taken off), and in a double pass it brings every colour back onto one line. An independent Python reference checks GDD, TOD, FOD, the solved separation and the transmission: <a href="${GITHUB}/docs/validation.md" target="_blank" rel="noopener">validation table</a>. As an outside check, Light Conversion’s online compressor calculators ${cite(6)} give the same grating-pair GDD and TOD, and the same prism-pair GDD to 5 × 10⁻⁴ on matched benches.` },
+      { label: 'Evidence', html: `Checked against an independent program in 40-digit arithmetic, with its own geometry, ray tracing and derivatives: GDD, TOD, the solved separation and the transmission agree to 10⁻⁹, FOD to 2 × 10⁻³ (<a href="${GITHUB}/docs/validation.md" target="_blank" rel="noopener">validation table</a>). As an outside check, Light Conversion’s online compressor calculators ${cite(6)} give the same grating-pair GDD and TOD, and the same prism-pair GDD to 5 × 10⁻⁴.` },
       { label: 'Code', html: `<a href="${GITHUB}/calculators/dispersion-compensation/compressor-model.js" target="_blank" rel="noopener">compressor-model.js</a> builds the bench from the canvas’s own elements (prism, grating, lens, mirror, beamsplitter) and glass catalogue; “Open in the canvas” opens that scene.` },
     ],
     layout: [
@@ -44,7 +44,7 @@ export const compressorCalculators = [
         formulas3: [
           { tex: String.raw`\varphi(\omega)=\frac{\omega}{c}\,G\cos\beta(\omega),\qquad \sin\beta=\frac{\lambda}{d}-\sin\gamma,\qquad \mathrm{GDD}=-\frac{\lambda^3 G}{2\pi c^2 d^2\cos^3\beta}`, caption: 'γ is the angle of incidence, β the diffraction angle, d the groove spacing. The GDD is Treacy’s explicit form, which the page’s derivative reproduces.' },
         ],
-        html4: `<p><b>Grating stretcher.</b> Two gratings with two lenses of focal length f between them, 2f apart, each grating a distance s from its lens: the lenses image one grating onto the other, and the pair acts like a grating pair of separation (s₁ + s₂ − 2f) cos β ${cite(3)}. With the gratings inside the focal planes that is negative, and the GDD positive: the stretcher of a chirped-pulse amplifier ${cite(4, 5)}. This holds to paraxial order in ideal thin lenses without glass. The canvas traces the lenses exactly and gives each an estimated thickness of N-BK7: taking that glass’s GDD off, it reads the page’s GDD to 5 × 10⁻⁶ on the default double pass.</p>`,
+        html4: `<p><b>Grating stretcher.</b> Two gratings with two lenses of focal length f between them, 2f apart, each grating a distance s from its lens: the lenses image one grating onto the other, and the pair acts like a grating pair of separation (s₁ + s₂ − 2f) cos β ${cite(3)}. With the gratings inside the focal planes that is negative, and the GDD positive: the stretcher of a chirped-pulse amplifier ${cite(4, 5)}. This holds to paraxial order in ideal thin lenses without glass; in the canvas the lenses also carry an estimated thickness of N-BK7, whose GDD it adds.</p>`,
         formulas4: [
           { tex: String.raw`G_\text{eq}=(s_1+s_2-2f)\cos\beta_0` },
         ],
@@ -104,11 +104,11 @@ export const compressorCalculators = [
 <table class="param-table">
   <thead><tr><th>Quantity</th><th>Checked against</th><th>Agreement</th></tr></thead>
   <tbody>
-    <tr><td>GDD of each default bench</td><td>The canvas’s own tracer on the drawn scene, which fits the phase of traced wavelength samples</td><td>better than 2 × 10⁻⁵ (prisms and gratings); 5 × 10⁻⁶ for the stretcher, once the GDD of the glass the canvas gives its lenses is taken off</td></tr>
-    <tr><td>GDD, TOD, FOD and the solved separation</td><td>An independent reference in 40-digit arithmetic: its own geometry and ray tracer, derivatives by finite differences, Treacy’s explicit GDD</td><td>see the <a href="${GITHUB}/docs/validation.md" target="_blank" rel="noopener">validation table</a></td></tr>
-    <tr><td>Fresnel transmission</td><td>The same reference, from the amplitude coefficients</td><td>see the validation table</td></tr>
-    <tr><td>Output duration</td><td>The analytic Gaussian and sech² durations when the phase is pure GDD</td><td>better than 10⁻³</td></tr>
+    <tr><td>GDD, TOD, the solved separation and the transmission</td><td>An independent program in 40-digit arithmetic, with its own geometry, ray tracing and derivatives, on seven benches: both prism layouts, both grating layouts and the stretcher, in p and s light (<a href="${GITHUB}/docs/validation.md" target="_blank" rel="noopener">validation table</a>)</td><td>10⁻⁹</td></tr>
+    <tr><td>FOD</td><td>The same program</td><td>2 × 10⁻³: the page takes the FOD from differences of its phase in double precision</td></tr>
+    <tr><td>Grating-pair GDD</td><td>Treacy’s explicit formula ${cite(2)}</td><td>10⁻¹⁰</td></tr>
     <tr><td>GDD and TOD of grating and prism pairs, double pass</td><td>Light Conversion’s two-prism and grating-pair compressor calculators ${cite(6)}, on benches matched in geometry (perpendicular grating separation; glass in each prism and the path between them)</td><td>grating pairs identical to 10⁻¹¹; prism pairs GDD within 5 × 10⁻⁴ and TOD within 1 % in fused silica, where both use the same index fit (the residual is consistent with numerical derivatives of the index on their side)</td></tr>
+    <tr><td>Output duration</td><td>The analytic Gaussian and sech² durations when the phase is pure GDD</td><td>10⁻³</td></tr>
   </tbody>
 </table>
 <p>The page shows dispersion to the nearest fs², fs³ or fs⁴ and durations to the nearest fs (a tenth of a fs below 10 fs): the computation is far more precise than that, but the glass data and the plane-wave model hold no more.</p>
