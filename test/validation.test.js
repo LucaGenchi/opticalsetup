@@ -23,6 +23,7 @@ import { materialDispersion, materialAbbe } from '../calculators/dispersion/mate
 import { DISPERSION_DEFAULTS, computeDispersion } from '../calculators/dispersion/dispersion-calculator.js';
 import { CONVERSION_DEFAULTS, computeConversion } from '../calculators/nonlinear-conversion/conversion-calculator.js';
 import { CRS_DEFAULTS, computeCrs, RESOLUTION_DEFAULTS, computeResolution } from '../calculators/coherent-raman/crs-calculator.js';
+import { RESOLUTION_DEFAULTS as SCANNING_RESOLUTION_DEFAULTS, computeResolution as computeScanningResolution, SCAN_DEFAULTS, computeScan } from '../calculators/point-scanning/scanning-calculator.js';
 import { normalizeSystem } from '../calculators/lens-design/engine/system.js';
 import { firstOrder, seidelSums } from '../calculators/lens-design/engine/paraxial.js';
 import { traceModel, traceRay } from '../calculators/lens-design/engine/trace.js';
@@ -78,6 +79,12 @@ const APP = {
     }
     const r = analyzeCoupling(system, { field, scans: false });
     return kind === 'coupling-best' ? { eta: r.best.eta } : { eta: r.eta };
+  },
+  // Resolution widths, or the scan geometry with the NA the scan panel
+  // receives from the resolution panel.
+  'point-scanning': ({ kind, na, ...inputs }) => {
+    if (kind === 'scan') return computeScan({ ...SCAN_DEFAULTS, ...inputs }, { na, lateralUm: null });
+    return computeScanningResolution({ ...SCANNING_RESOLUTION_DEFAULTS, na, ...inputs });
   },
   'lens-design': ({ kind, system: raw, field, px, py, nm, frequency }) => {
     const system = normalizeSystem(raw);
@@ -284,7 +291,7 @@ const APP = {
   },
 };
 
-for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'lens-design', 'lens-coherent', 'gaussian-beam', 'fiber-coupling']) {
+for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'lens-design', 'lens-coherent', 'gaussian-beam', 'fiber-coupling', 'point-scanning']) {
   const model = expected(name);
   for (const c of model.cases) {
     test(`${model.id}: ${c.name}`, () => {
