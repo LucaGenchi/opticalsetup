@@ -121,7 +121,7 @@ export function createEditor(host, { presets, onChange, onPreset, onImport, onEx
     apertureType: field('aperture-type', 'Aperture set by', c.apertureType),
     apertureValue: field('aperture-value', 'Aperture', c.apertureValue, { unit: 'mm' }),
     fields: field('fields', 'Fields', c.fields, { unit: '°', help: `Up to ${LIMITS.fields}, separated by commas.` }),
-    wavelengths: field('wavelengths', 'Wavelengths', c.wavelengths, { unit: 'nm', help: `Up to ${LIMITS.wavelengths}, separated by commas.` }),
+    wavelengths: field('wavelengths', 'Wavelengths', c.wavelengths, { unit: 'nm', help: `Up to ${LIMITS.wavelengths}, separated by commas, in whole nanometres (decimals are rounded).` }),
     primary: field('primary', 'Primary wavelength', c.primary),
     focus: field('focus', 'Image plane at', c.focus),
     offset: field('offset', 'Image plane offset', c.offset, { unit: 'mm', help: 'Added to the chosen focus; + moves away from the lens.' }),

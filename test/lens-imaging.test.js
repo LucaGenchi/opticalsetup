@@ -17,7 +17,7 @@ import { mediumIndices } from '../calculators/lens-design/engine/paraxial.js';
 import { presetSystem } from '../calculators/lens-design/engine/presets.js';
 import { computeFiberCoupling, FIBER_DEFAULTS } from '../calculators/fiber-coupling/fiber-coupling.js';
 
-const LAMBDA = 587.5618;
+const LAMBDA = 588;
 const perfect = (diffraction = {}, extra = {}) => ({
   surfaces: [{ type: 'paraxial', focal: 100, thickness: 100, stop: true }],
   aperture: { type: 'epd', value: 10 }, wavelengthsNm: [LAMBDA], primaryWavelength: 0,
@@ -152,10 +152,11 @@ test('Coupling: η never exceeds 1, the mode norm is the hemisphere integral, re
 test('Coupling: a core too far from the focus for the pupil grid is left undefined, never a false peak', () => {
   // Andrea's case (#276): a 376 µm offset puts exactly one wave of tilt
   // between neighbouring samples of a 64 grid, and the sum read 80 %; on a
-  // finer grid the overlap is about 10⁻⁸.
+  // finer grid the overlap is about 10⁻⁸. (The offset scales with λ: it was
+  // 376.039552 µm at 587.5618 nm, 376.32 µm at 588 nm.)
   const p = presetSystem('perfect');
   for (const grid of [64, 128]) {
-    const r = couple({ ...p, diffraction: { ...p.diffraction, grid } }, { mfdUm: 8.38, offsetYUm: 376.039552 });
+    const r = couple({ ...p, diffraction: { ...p.diffraction, grid } }, { mfdUm: 8.38, offsetYUm: 376.32 });
     assert.ok(r.ok && !r.resolved && Number.isNaN(r.eta) && Number.isNaN(r.total), `grid ${grid}: unresolved`);
     assert.ok(r.warnings.some(w => w.kind === 'coupling-aliasing'), 'said so');
     assert.ok(r.scan.unresolved > 0 && r.warnings.some(w => w.kind === 'scan-aliasing'), 'scan points left out');
@@ -221,7 +222,7 @@ test('Settings: old files read with defaults, new ones round-trip, inputs are cl
 test('Text: every number the page quotes about imaging and coupling', () => {
   const p = presetSystem('perfect');
   const pts = image(p, { target: 'points' });
-  assert.equal(pts.rayleigh.x.toFixed(5), '0.00717', 'Rayleigh distance 7.17 µm');
+  assert.equal(pts.rayleigh.x.toFixed(5), '0.00718', 'Rayleigh distance 7.18 µm');
   assert.equal(pts.cutoff.incoherent.x.toFixed(0), '170');
   assert.equal(pts.cutoff.coherent.x.toFixed(0), '85');
   assert.equal(pts.na.x.toFixed(3), '0.050');
@@ -247,7 +248,7 @@ test('Text: every number the page quotes about imaging and coupling', () => {
 
   const c0 = couple(p, {}, { scans: false });
   assert.equal((100 * c0.best.eta).toFixed(1), '81.4');
-  assert.equal(c0.best.mfdUm.toFixed(2), '8.38');
+  assert.equal(c0.best.mfdUm.toFixed(2), '8.39');
   const g = couple({ ...p, diffraction: { ...normalizeSystem(p).diffraction, illumination: 'gaussian', beamRatio: 0.5 } }, {}, { scans: false });
   assert.equal((100 * g.best.eta).toFixed(2), '99.97');
   assert.equal(g.best.mfdUm.toFixed(1), '15.0');

@@ -611,7 +611,7 @@ function renderPsf(plot, body, r, d, choice) {
     ['PSF sample spacing', `${formatNumber(um, 4)} µm`],
     ['Pupil grid, padding, FFT', `${d.grid} × ${d.padding} → ${d.fftSize} × ${d.fftSize}${d.fftSize > d.grid * d.padding ? ' (grown so that every wavelength keeps 32 samples across the pupil)' : ''}`],
     ...(sel.w ? [['Samples across the pupil (x × y)', `${formatNumber(sel.w.samplesAcross.x, 3)} × ${formatNumber(sel.w.samplesAcross.y, 3)}`]] : []),
-    ['Fresnel number of the exit pupil', Number.isFinite(d.fresnelNumber) ? formatNumber(d.fresnelNumber, 3) : '∞'],
+    ['Fresnel number of the exit pupil', Number.isFinite(d.fresnelNumber) ? `${formatNumber(d.fresnelNumber, 3)}${d.perWavelength.length > 1 ? ` (at ${formatNumber(d.fresnelNm, 4)} nm, the longest)` : ''}` : '∞'],
     ['Pupil distortion', `${formatNumber(100 * d.pupilDistortion, 3)} %`],
   ];
   body.append(el('h3', { text: 'Point-spread function' }), table('PSF figures', rows));
