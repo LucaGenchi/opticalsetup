@@ -17,7 +17,8 @@ import {
   fluorophoreSpec, fluorophoreAbsorption, metalensFocalLength, opoPortLocal, OPO_ACCEPTANCE_DEG,
   opaPortLocal, OPA_ACCEPTANCE_DEG,
 } from './elements.js';
-import { planOpa, chirpedSignalPulse, MAX_OPA_STAGES, MIN_PHASE_KEPT_GAIN } from './opa.js';
+import { arrivingPulse, planOpa, chirpedSignalPulse, MAX_OPA_STAGES, MIN_PHASE_KEPT_GAIN } from './opa.js';
+import { chirpMismatch, crsResolutionCm, ramanShiftCm } from './coherent-raman.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, meanGateTransmission, pulseGateTransmission, pulseOverlap, traceValueAt } from './pulses.js';
 import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband, aotfWingHalfWidth } from './aotf.js';
@@ -316,6 +317,56 @@ function recordSpecimenTiming(elementId, reading) {
   if (held && held.state === 'mixing' && reading.state !== 'mixing') return;
   if (held && held.state !== 'ignored' && reading.state === 'ignored') return;
   specimenTimingStates.set(elementId, reading);
+}
+
+// A pulse whose chirp stretches it by under about half a percent, or a pair
+// whose chirps differ by as little, counts as transform-limited or as equally
+// chirped: Eq. (5) then holds to that half percent.
+const CHIRP_TOLERANCE = 0.1;
+
+// What a specimen's coherent Raman excitation addresses, read from the beams
+// that reach it: the pump (the shortest colour on the spot) and the Stokes
+// (the longest), each with its wavelength, bandwidth and duration after the
+// dispersion of its path; the Raman shift they drive; and the spectral
+// resolution of that excitation, with the condition the formula needs (see
+// coherent-raman.js). Where a colour arrives on more than one path, its
+// strongest arrival is read.
+export function specimenRamanReading(elementId) {
+  const beams = (specimenIncident.get(elementId) || []).filter(b => b.wl > 0 && b.intensity > 0);
+  if (!beams.length) return null;
+  const shortest = Math.min(...beams.map(b => b.wl)), longest = Math.max(...beams.map(b => b.wl));
+  if (longest - shortest < MIXING_MIN_SEPARATION_NM) return { state: 'oneColour', wl: shortest };
+  const strongest = wl => beams.filter(b => Math.abs(b.wl - wl) < MIXING_MIN_SEPARATION_NM)
+    .reduce((best, b) => (b.intensity > best.intensity ? b : best));
+  const colours = beams.map(b => b.wl).sort((a, b) => a - b)
+    .filter((wl, i, list) => i === 0 || wl - list[i - 1] >= MIXING_MIN_SEPARATION_NM).length;
+  const describe = beam => {
+    const pulsed = beam.pulse?.repRateMHz > 0;
+    const arrival = pulsed ? arrivingPulse(arrivalRecord(beam)) : null;
+    const durationFs = arrival?.pulse?.pulseWidthFs;
+    return {
+      wl: beam.wl, bwNm: beam.bw > 0 ? beam.bw : 0, pulsed,
+      durationFs: durationFs > 0 ? durationFs : null,
+      phase: arrival?.phase || null, issue: arrival?.issue || null,
+    };
+  };
+  const pump = describe(strongest(shortest)), stokes = describe(strongest(longest));
+  const reading = { pump, stokes, colours, shiftCm: ramanShiftCm(pump.wl, stokes.wl) };
+  if (!pump.pulsed || !stokes.pulsed) return { ...reading, state: 'continuous' };
+  if (!pump.durationFs || !stokes.durationFs) {
+    return { ...reading, state: 'durationUnknown', issue: pump.issue || stokes.issue };
+  }
+  const resolutionCm = crsResolutionCm(pump.durationFs / 1000, stokes.durationFs / 1000);
+  const mismatch = chirpMismatch(pump.phase, stokes.phase);
+  const stretch = ({ tau0Fs, gddFs2 }) => Math.abs(4 * Math.LN2 * gddFs2 / (tau0Fs * tau0Fs));
+  const phase = mismatch === null ? 'unknown'
+    : mismatch > CHIRP_TOLERANCE ? 'chirpMismatch'
+      : stretch(pump.phase) <= CHIRP_TOLERANCE && stretch(stokes.phase) <= CHIRP_TOLERANCE ? 'transformLimited'
+        // Equal chirps, or one beam chirped so long beside a short one that
+        // the difference cannot show: only the first is spectral focusing.
+        : stretch(pump.phase) > CHIRP_TOLERANCE && stretch(stokes.phase) > CHIRP_TOLERANCE ? 'equalChirp'
+          : 'chirpNegligible';
+  return { ...reading, state: 'resolved', resolutionCm, phase };
 }
 
 export function specimenTimingReading(elementId) {
@@ -7662,6 +7713,21 @@ function volumeCrossing(s, ray, hit, d, record) {
 
 // Trace everything. The static drawables remain export-safe while pulseTracks
 // carry absolute optical path lengths for the canvas-only animation layer.
+// One probed beam as it arrives: its train, the mean dispersion of the rays
+// that drew it, and its watts. What an OPA port plans from, and what a
+// specimen's coherent Raman readout times.
+function arrivalRecord(beam) {
+  const watts = sourceWattsById.get(beam.originId);
+  const mean = sum => (beam.oplWeight > 0 && Number.isFinite(sum) ? sum / beam.oplWeight : 0);
+  return {
+    key: beam.key, wl: beam.wl, bw: beam.bw || 0, spec: beam.spec || null, opl: beam.opl,
+    pulse: beam.arrivingPulse || beam.pulse, power: beam.power, originId: beam.originId,
+    gddFs2: mean(beam.gddSum), groupDelayDifferenceFs: mean(beam.spreadSum), gddRange: beam.gddRange || null,
+    parametricPath: beam.parametricPath || [],
+    powerW: Number.isFinite(watts) ? watts * beam.power : null,
+  };
+}
+
 // Each OPA's plan, from the beams its two ports recorded in one planning
 // pass. Returns a fingerprint of the plans, so traceScene can tell when a
 // further pass (which lets planned OPAs emit, revealing the next stage of a
@@ -7677,18 +7743,7 @@ function planOpaElements(surfaces) {
     ports.set(s.el.id, entry);
   }
   for (const [id, { el, pumps, seeds }] of ports) {
-    const record = beam => {
-      const watts = sourceWattsById.get(beam.originId);
-      const mean = sum => (beam.oplWeight > 0 && Number.isFinite(sum) ? sum / beam.oplWeight : 0);
-      return {
-        key: beam.key, wl: beam.wl, bw: beam.bw || 0, spec: beam.spec || null, opl: beam.opl,
-        pulse: beam.arrivingPulse || beam.pulse, power: beam.power, originId: beam.originId,
-        gddFs2: mean(beam.gddSum), groupDelayDifferenceFs: mean(beam.spreadSum), gddRange: beam.gddRange || null,
-        parametricPath: beam.parametricPath || [],
-        powerW: Number.isFinite(watts) ? watts * beam.power : null,
-      };
-    };
-    const pumpRecords = pumps.map(record), seedRecords = seeds.map(record);
+    const pumpRecords = pumps.map(arrivalRecord), seedRecords = seeds.map(arrivalRecord);
     const plan = planOpa(el.params, {
       pump: pumpRecords.length === 1 ? pumpRecords[0] : null, pumps: pumpRecords, seeds: seedRecords,
     });

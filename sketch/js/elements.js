@@ -15,7 +15,7 @@ import { emissionRayCount, ISOTROPIC_KINDS } from './emission.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
-import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
+import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenRamanReading, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
 import { NONLINEAR_ORDER } from './sectioning.js';
 import { opaSettings, opaGainAt, MAX_OPA_STAGES, MAX_GATE_BANDWIDTH_RATIO, MIN_PHASE_KEPT_GAIN } from './opa.js';
 import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
@@ -1830,6 +1830,15 @@ function sampleModeParams(layouts = SAMPLE_LAYOUTS) {
         return srs ? `${timing}. Stimulated Raman transfer not drawn: ${srs}.` : timing;
       },
     },
+    // Which vibration a coherent Raman specimen is addressing, and how finely:
+    // read from the pump and Stokes as they arrive, after every glass on the
+    // way, so a delay stage, a chirp or a filter upstream shows up here.
+    {
+      key: 'ramanProbe', label: 'Coherent Raman excitation', type: 'readout', wide: true,
+      show: p => specimenTypeOf(p) === 'nonlinear'
+        && sampleChannels(p).some(c => c.kind === 'cars' || c.kind === 'srs'),
+      readout: (p, el) => specimenRamanReadout(el ? specimenRamanReading(el.id) : null),
+    },
     // The total thickness of a specimen saved before layouts: hidden, kept so
     // the conversion on load can read it.
     { key: 'thickness', label: 'Sample thickness (mm)', type: 'number', min: 0.15, htmlMin: 0, max: 20, step: 0.5, def: 6,
@@ -2525,6 +2534,37 @@ export function specimenFocusReadout(readings) {
   const inside = (Array.isArray(readings) ? readings : []).filter(r => r?.ok && r.inside);
   if (!inside.length) return null;
   return inside.map(r => `${nm4(r.wl)} nm: ${lengthText(Math.max(0, r.depthMm))} into the active layer · zR ${lengthText(r.zRMm)}`).join('; ');
+}
+
+// The coherent Raman readout: the two beams as they reach the specimen, the
+// Raman shift they drive and the spectral resolution of that excitation, with
+// the condition Eq. (5) of Mohseni et al. holds under (see coherent-raman.js).
+export function specimenRamanReadout(reading) {
+  if (!reading) return 'No beams reach the specimen yet';
+  if (reading.state === 'oneColour') {
+    return `One colour only (${nm4(reading.wl)} nm): coherent Raman needs a pump and a longer-wavelength Stokes beam`;
+  }
+  const beam = (name, b) => [`${name} ${nm4(b.wl)} nm`,
+    b.bwNm > 0 ? `${sig3(b.bwNm)} nm FWHM` : null,
+    b.pulsed ? (b.durationFs ? `${formatFs(b.durationFs)} here` : null) : 'continuous'].filter(Boolean).join(', ');
+  const beams = `${beam('Pump', reading.pump)}; ${beam('Stokes', reading.stokes)}`;
+  const shift = `${reading.shiftCm.toFixed(1)} cm⁻¹ probed`;
+  const extra = reading.colours > 2
+    ? ` (${reading.colours} colours on the spot: the shortest is read as the pump, the longest as the Stokes)` : '';
+  if (reading.state === 'continuous') {
+    return `${beams} → ${shift}; resolution not estimated: it is set by the pulse durations, and a beam here is continuous${extra}`;
+  }
+  if (reading.state === 'durationUnknown') {
+    return `${beams} → ${shift}; resolution not estimated: ${reading.issue || 'a pulse duration is not known here'}${extra}`;
+  }
+  const res = `${sig3(reading.resolutionCm)} cm⁻¹`;
+  const resolution = reading.phase === 'transformLimited' ? `${res} resolution (transform-limited pulses)`
+    : reading.phase === 'equalChirp' ? `${res} resolution (equally chirped pulses, as in spectral focusing)`
+      : reading.phase === 'chirpNegligible' ? `${res} resolution (the pulses are chirped differently, too little to change it)`
+      : reading.phase === 'chirpMismatch'
+        ? `at least ${res} resolution: the pulses are chirped differently, which broadens it further`
+        : `${res} resolution if the pulses are transform-limited or equally chirped (their spectral phase is not known here)`;
+  return `${beams} → ${shift}, ${resolution}${extra}`;
 }
 
 export function specimenTimingText(reading) {
