@@ -2644,27 +2644,33 @@ export function specimenRamanReadout(reading) {
   // A filtered spectrum is treated as a Gaussian pulse of its own duration:
   // an estimate, marked here and explained in the readout's pop-up.
   const res = `${reading.estimate ? '≈ ' : ''}${sig3(reading.resolutionCm)} cm⁻¹`;
-  const estimated = reading.estimate ? ', estimated for a filtered spectrum' : '';
+  const estimated = reading.estimate ? ', a Gaussian-pulse estimate' : '';
   const resolution = reading.phase === 'transformLimited' ? `${res} resolution (transform-limited pulses${estimated})`
     : reading.phase === 'equalChirp' ? `${res} resolution (equally chirped pulses, as in spectral focusing${estimated})`
       : reading.phase === 'chirpNegligible' ? `${res} resolution (the pulses are chirped differently, too little to change it${estimated})`
       : reading.phase === 'chirpMismatch'
         ? `at least ${res} resolution${estimated}: the pulses are chirped differently, which broadens it further`
-        : `${res} resolution if the pulses are transform-limited or equally chirped (their spectral phase is not known here)`;
+        : `${res} resolution if the pulses are transform-limited or equally chirped (their spectral phase is not known here${estimated})`;
   return `${beams} → ${shift}, ${resolution}${extra}`;
 }
 
 // What the coherent Raman readout's pop-up says: why a resolution read from a
-// filtered spectrum is an estimate. Null when nothing needs it.
+// pulse that is not a Gaussian is an estimate. Null when nothing needs it.
+const NOT_GAUSSIAN = {
+  reshaped: 'its spectrum was reshaped upstream, by a filter or an amplifier\u2019s gain',
+  sech2: 'it is a sech\u00b2 pulse',
+  computed: 'its envelope is computed numerically',
+};
 export function specimenRamanPopup(reading) {
   if (reading?.state !== 'resolved' || !reading.estimate) return null;
-  const both = reading.pump.reshaped && reading.stokes.reshaped;
-  const which = both ? 'pump and Stokes spectra' : reading.pump.reshaped ? 'pump spectrum' : 'Stokes spectrum';
-  return `Estimate. A filter upstream reshaped the ${which}, so ${both ? 'neither pulse is' : 'that pulse is no longer'} a Gaussian. `
-    + `${both ? 'Each' : 'Its'} duration here is computed from the band that survived, with the chirp the source gave it and the dispersion of the path, `
-    + `and the resolution formula (Mohseni et al., Eq. 5) then treats ${both ? 'each' : 'it'} as a Gaussian in time of that duration; `
-    + 'so does the shift a delay between chirped pulses gives. '
-    + 'The true excitation profile of a reshaped spectrum can be wider: tens of percent for a flat-topped band.';
+  const beams = [['pump', reading.pump], ['Stokes', reading.stokes]].filter(([, b]) => NOT_GAUSSIAN[b.shape]);
+  const why = beams.map(([name, b]) => `The ${name} is not a Gaussian: ${NOT_GAUSSIAN[b.shape]}.`).join(' ');
+  const reshaped = beams.some(([, b]) => b.shape === 'reshaped')
+    ? ' A reshaped spectrum\u2019s duration is computed from the band that survived, with the chirp the source gave it and the dispersion of the path.' : '';
+  const delay = reading.delayShift === 'computed' ? '; so does the shift a delay between chirped pulses gives' : '';
+  return `Estimate. ${why}${reshaped} The resolution formula (Mohseni et al., Eq. 5) is written for Gaussian pulses, `
+    + `and treats each pulse as a Gaussian in time of its duration here${delay}. `
+    + 'The true excitation profile can differ by tens of percent: wider for a flat-topped band, about 12 % narrower for two sech\u00b2 pulses.';
 }
 
 export function specimenTimingText(reading) {

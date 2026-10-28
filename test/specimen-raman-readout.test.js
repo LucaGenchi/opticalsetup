@@ -82,6 +82,28 @@ test('the chirp mismatch is the broadening a Gaussian beat really has', () => {
   }
 });
 
+test('the pop-up\u2019s figure for sech² pulses: about 12 % narrower than Eq. (5)', () => {
+  // The excitation of two transform-limited 2 ps sech² pulses: the amplitude
+  // spectrum of the product of their fields, by numerical Fourier transform.
+  const tau = 2000, t0 = tau / 1.7627;
+  const span = 20000, steps = 40000, dt = 2 * span / steps;
+  const amplitude = w => {
+    let re = 0, im = 0;
+    for (let i = 0; i <= steps; i++) {
+      const t = -span + i * dt, m = 1 / Math.cosh(t / t0) ** 2;
+      re += m * Math.cos(w * t); im += m * Math.sin(w * t);
+    }
+    return Math.hypot(re, im);
+  };
+  const peak = amplitude(0);
+  let lo = 0, hi = 1e-4;
+  while (amplitude(hi) > peak / 2) hi *= 2;
+  for (let k = 0; k < 60; k++) { const mid = (lo + hi) / 2; if (amplitude(mid) > peak / 2) lo = mid; else hi = mid; }
+  const sechCm = 2 * lo / (2 * Math.PI * 2.99792458e-5);
+  close(sechCm, 12.97, 0.01, 'the review\u2019s value');
+  close(sechCm / crsResolutionCm(2, 2), 0.88, 0.005, 'about 12 % narrower');
+});
+
 // Spectral focusing's scan, from its definition: the excitation spectrum is
 // the cross-correlation of the pump and Stokes spectral fields, each a
 // Gaussian amplitude with the quadratic phase ½ GDD Δω² and a group delay
@@ -259,22 +281,46 @@ test('the probed shift follows the delay between chirped pulses, as spectral foc
   assert.equal(bench({ shape: 'sech2' }).reading.delayShift, null, 'no delay, nothing to say');
 });
 
-test('a filtered spectrum gives an estimate, marked and explained', () => {
+test('a pulse that is not a Gaussian gives an estimate, marked and explained', () => {
   // The review's bench: 20 fs pulses cut to 10 and 1 nm. Each duration is the
   // filtered band's own, with the source's chirp and the path's dispersion.
   const { reading } = bench({
     widthFs: 20, filters: [{ ftype: 'bandpass', center: 800, band: 10 }, { ftype: 'bandpass', center: 1040, band: 1 }],
   });
   assert.equal(reading.state, 'resolved');
-  assert.ok(reading.pump.reshaped && reading.stokes.reshaped && reading.estimate);
+  assert.equal(reading.pump.shape, 'reshaped');
+  assert.equal(reading.stokes.shape, 'reshaped');
+  assert.ok(reading.estimate);
   close(reading.resolutionCm, crsResolutionCm(reading.pump.durationFs / 1000, reading.stokes.durationFs / 1000), 1e-9);
   close(reading.resolutionCm, 110, 1);
-  assert.match(specimenRamanReadout(reading), /, ≈ 110 cm⁻¹ resolution \(transform-limited pulses, estimated for a filtered spectrum\)$/);
-  assert.match(specimenRamanPopup(reading), /^Estimate\. A filter upstream reshaped the pump and Stokes spectra, so neither pulse is a Gaussian\..*as a Gaussian in time of that duration/);
+  assert.match(specimenRamanReadout(reading), /, ≈ 110 cm⁻¹ resolution \(transform-limited pulses, a Gaussian-pulse estimate\)$/);
+  assert.match(specimenRamanPopup(reading), /^Estimate\. The pump is not a Gaussian: its spectrum was reshaped upstream, by a filter or an amplifier’s gain\. The Stokes is not a Gaussian: its spectrum was reshaped upstream.*computed from the band that survived.*as a Gaussian in time of its duration here/);
 
   const one = bench({ widthFs: 20, filters: [null, { ftype: 'bandpass', center: 1040, band: 2 }] }).reading;
-  assert.ok(!one.pump.reshaped && one.stokes.reshaped);
-  assert.match(specimenRamanPopup(one), /reshaped the Stokes spectrum, so that pulse is no longer a Gaussian/);
+  assert.equal(one.pump.shape, 'gaussian');
+  assert.equal(one.stokes.shape, 'reshaped');
+  assert.match(specimenRamanPopup(one), /^Estimate\. The Stokes is not a Gaussian: its spectrum was reshaped upstream/);
+  assert.doesNotMatch(specimenRamanPopup(one), /The pump is not/);
+
+  // sech² pulses: Eq. (5) is for Gaussians, and two transform-limited 2 ps
+  // sech² pulses really excite a 12.97 cm⁻¹ profile (the transform of the
+  // product of their fields), not 14.7. The value is marked, not hidden.
+  const sech = bench({ shape: 'sech2' }).reading;
+  assert.equal(sech.pump.shape, 'sech2');
+  assert.ok(sech.estimate);
+  assert.match(specimenRamanReadout(sech),
+    /, ≈ 14\.7 cm⁻¹ resolution if the pulses are transform-limited or equally chirped \(their spectral phase is not known here, a Gaussian-pulse estimate\)$/);
+  assert.match(specimenRamanPopup(sech), /The pump is not a Gaussian: it is a sech² pulse\. The Stokes is not a Gaussian: it is a sech² pulse\. The resolution formula/);
+  assert.doesNotMatch(specimenRamanPopup(sech), /band that survived/, 'nothing was filtered');
+  assert.doesNotMatch(specimenRamanPopup(sech), /delay/, 'no delay shift is computed without the phase');
+  assert.match(specimenRamanPopup(reading), /of its duration here; so does the shift a delay between chirped pulses gives\./);
+  assert.match(specimenRamanPopup(sech), /about 12 % narrower for two sech² pulses/);
+  // A numerically computed envelope (an OPA's, say) is named as such.
+  const computed = { ...sech, pump: { ...sech.pump, shape: 'computed' }, stokes: { ...sech.stokes, shape: 'gaussian' } };
+  assert.match(specimenRamanPopup(computed), /^Estimate\. The pump is not a Gaussian: its envelope is computed numerically\. The resolution/);
+  // A Gaussian pair needs no estimate.
+  assert.equal(bench().reading.pump.shape, 'gaussian');
+  assert.ok(!bench().reading.estimate);
   // An unfiltered pair needs no pop-up.
   assert.equal(specimenRamanPopup(bench().reading), null);
   assert.equal(specimenRamanPopup(null), null);

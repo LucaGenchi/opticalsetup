@@ -364,10 +364,15 @@ export function specimenRamanReading(elementId) {
     return {
       wl: beam.wl, bwNm: beam.bw > 0 ? beam.bw : 0, pulsed,
       durationFs: durationFs > 0 ? durationFs : null,
-      // A filter upstream reshaped this spectrum: its duration is the one the
-      // surviving band has with the source's chirp and the path's dispersion
-      // (filteredPulseDuration), but it is no longer a Gaussian.
-      reshaped: Boolean(record?.pulse?.spectrumReshaped),
+      // Whether the pulse is the Gaussian Eq. (5) is written for. A spectrum a
+      // filter or an amplifier's gain reshaped has the duration its surviving
+      // band gives with the source's chirp and the path's dispersion
+      // (filteredPulseDuration); a sech² pulse and a numerically computed
+      // envelope have their own durations. None is a Gaussian, so a reading
+      // from them is an estimate.
+      shape: record?.pulse?.spectrumReshaped ? 'reshaped'
+        : record?.pulse?.field ? 'computed'
+          : record?.pulse?.pulseShape === 'sech2' ? 'sech2' : 'gaussian',
       phase: arrival?.phase || null, issue: arrival?.issue || null,
     };
   };
@@ -401,7 +406,7 @@ export function specimenRamanReading(elementId) {
         // the difference cannot show: only the first is spectral focusing.
         : stretch(pump.phase) > CHIRP_TOLERANCE && stretch(stokes.phase) > CHIRP_TOLERANCE ? 'equalChirp'
           : 'chirpNegligible';
-  return { ...reading, state: 'resolved', resolutionCm, phase, estimate: pump.reshaped || stokes.reshaped };
+  return { ...reading, state: 'resolved', resolutionCm, phase, estimate: pump.shape !== 'gaussian' || stokes.shape !== 'gaussian' };
 }
 
 export function specimenTimingReading(elementId) {
