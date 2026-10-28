@@ -15,11 +15,11 @@ import {
   sumFrequencyWl, carsAntiStokesWl, ramanShifts, ramanStokesWl,
   drivingExcitationWl, channelNeedsExcitationProbe, specimenTypeOf,
   fluorophoreSpec, fluorophoreAbsorption, metalensFocalLength, opoPortLocal, OPO_ACCEPTANCE_DEG,
-  opaPortLocal, OPA_ACCEPTANCE_DEG,
+  opaPortLocal, OPA_ACCEPTANCE_DEG, twoBeamOrders,
 } from './elements.js';
 import { planOpa, chirpedSignalPulse, MAX_OPA_STAGES, MIN_PHASE_KEPT_GAIN } from './opa.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
-import { C_MM_PER_NS, meanGateTransmission, pulseGateTransmission, pulseOverlap, traceValueAt } from './pulses.js';
+import { C_MM_PER_NS, meanGateTransmission, pulseGateTransmission, traceValueAt } from './pulses.js';
 import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband, aotfWingHalfWidth } from './aotf.js';
 import { aodDeflectionDeg } from './acousto-optic.js';
 import { capillaryLossDbPerM, fiberPropagation, hollowCoreCoefficients } from './fiber.js';
@@ -2455,7 +2455,8 @@ export function srsTransferGate(channel, ray, incidentBeams, elementId, scale = 
 // This is the same timing model the crystal's mixing uses: the Gaussian
 // overlap integral, coincidence with the nearest pulse of the other train, and
 // only trains at one nominal repetition rate — a rate mismatch is reported as
-// not modelled rather than waved through at full strength.
+// not modelled rather than waved through at full strength. CARS takes two
+// photons from its pump, so the pump's envelope counts twice (twoBeamOrders).
 function channelOverlap(channel, ray, partner, beams, elementId) {
   if (!partner) return { factor: 1, state: 'oneBeam' };
   if (channel.requireOverlap === false) {
@@ -2464,7 +2465,7 @@ function channelOverlap(channel, ray, partner, beams, elementId) {
     recordSpecimenTiming(elementId, { kind: channel.kind, driverWl: ray.wl, partnerWl: partner.wl, state: 'ignored' });
     return { factor: 1, state: 'ignored' };
   }
-  const overlap = mixOverlap(rayAsBeam(ray, beams), partner);
+  const overlap = mixOverlap(rayAsBeam(ray, beams), partner, twoBeamOrders(channel.kind, ray.wl, partner.wl));
   const reading = {
     kind: channel.kind, driverWl: ray.wl, partnerWl: partner.wl,
     skewNs: overlap.skewNs, overlap: overlap.factor,
