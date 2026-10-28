@@ -396,15 +396,14 @@ function autocorrelatorRows(rd, source) {
 export function colourSpreadText(spread) {
   if (!spread) return '';
   const band = `${spread.loNm.toFixed(1)}–${spread.hiNm.toFixed(1)} nm`;
-  const span = Math.max(spread.hiNm - spread.loNm, 1e-9);
   const angle = rad => (rad < 1e-3 ? `${(rad * 1e6).toPrecision(3)} µrad` : `${(rad * 1e3).toPrecision(3)} mrad`);
   const width = mm => `${mm.toPrecision(3)} mm`;
   if (!spread.parallel) {
-    return `At different angles: ${angle(spread.angleRad)} across ${band} (${angle(spread.angleRad / span)}/nm), angular dispersion remains; `
+    return `At different angles: ${angle(spread.angleRad)} across ${band} (${angle(spread.radPerNm)}/nm), angular dispersion remains; `
       + (spread.overlapping ? 'overlapping at this face' : `side by side over ${width(spread.lateralMm)} at this face`);
   }
   return spread.overlapping ? `Parallel and overlapping across ${band}`
-    : `Parallel, side by side over ${width(spread.lateralMm)} across ${band} (${width(spread.lateralMm / span)}/nm, spatial chirp)`;
+    : `Parallel, side by side over ${width(spread.lateralMm)} across ${band} (${width(spread.mmPerNm)}/nm, spatial chirp)`;
 }
 
 export function pulseEnvelopeHTML(envelope) {

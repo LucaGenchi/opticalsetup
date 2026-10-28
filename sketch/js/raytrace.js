@@ -123,13 +123,25 @@ const PATH_PHASE_ANGULAR = 'Colours leave at different angles — angular disper
 // How the traced colours of a split arrive: the angle and the width they
 // span across the band they cover, measured across the central colour's
 // direction, and whether they count as parallel and as overlapping by the
-// same limits the duration uses. Several splits reaching one detector (two
-// sources, say) are kept one per band, bluest first: a width or an angle per
-// nm holds only within the band it was measured across.
-function colourSpreadList(spreads) {
-  const list = [...new Set(spreads.flat().filter(Boolean))].sort((x, y) => x.loNm - y.loNm || x.hiNm - y.hiNm);
-  return list.length ? list : null;
+// same limits the duration uses. A source's splits reaching one detector --
+// the rays across a beam's width, or two arms -- read as one: the widest of
+// each, parallel only if every one is, and the rates per nm each split's own
+// (a width is never divided by a band it was not measured across). Separate
+// sources keep a reading each.
+function mergeColourSpreads(spreads) {
+  const list = [...new Set(spreads.filter(Boolean))];
+  if (!list.length) return null;
+  const widest = key => Math.max(...list.map(c => c[key]));
+  return {
+    loNm: Math.min(...list.map(c => c.loNm)), hiNm: widest('hiNm'),
+    angleRad: widest('angleRad'), lateralMm: widest('lateralMm'),
+    radPerNm: widest('radPerNm'), mmPerNm: widest('mmPerNm'),
+    parallel: list.every(c => c.parallel), overlapping: list.every(c => c.overlapping),
+  };
 }
+// Diverging colours known from where they land, where no path phase was
+// fitted: no duration, and no claim about which ray the GDD is.
+const COLOURS_DIVERGE = 'Colours leave at different angles — angular dispersion remains, so there is no single duration here';
 // Rays whose centres cross a camera plane just outside its finite face still
 // define the boundary of the adjacent ray tube. Keep those near misses
 // separate from measured hits so camera deposition can clip the continuous
@@ -1136,6 +1148,8 @@ function withPathPhase(hits) {
       parallel: angular <= PATH_PHASE_ANGLE_RAD,
       overlapping: lateral <= PATH_PHASE_OFFSET_MM,
     };
+    colourSpread.radPerNm = colourSpread.angleRad / (colourSpread.hiNm - colourSpread.loNm);
+    colourSpread.mmPerNm = colourSpread.lateralMm / (colourSpread.hiNm - colourSpread.loNm);
     if (colourSpread.hiNm > colourSpread.loNm && [colourSpread.angleRad, colourSpread.lateralMm].every(Number.isFinite)) {
       for (const h of group) spreads.set(h, colourSpread);
     }
@@ -1528,11 +1542,15 @@ export function detectorReading(elementId) {
       if (duration?.available !== false && !filteredRecord && !fannedBandCovered(p, sourceHits)) {
         duration = { durationFs: null, available: false, model: DISPERSION_UNAVAILABLE.partialFan };
       }
+      const colourSpread = mergeColourSpreads(sourceHits.map(h => h.colourSpread));
       // Colours still diverging: the duration depends on where it is read.
+      // Where landing places alone show it (no path phase fitted), the GDD
+      // is the rays' own.
       if (duration?.available !== false && sourceHits.some(h => h.pathPhaseAngular)) {
         duration = { durationFs: null, available: false, model: PATH_PHASE_ANGULAR };
+      } else if (duration?.available !== false && colourSpread?.parallel === false) {
+        duration = { durationFs: null, available: false, model: COLOURS_DIVERGE };
       }
-      const colourSpreads = colourSpreadList(sourceHits.map(h => h.colourSpread));
       // Say where the GDD came from, and that it is the central ray's when
       // the colours arrive side by side.
       const pathNotes = [...new Set(sourceHits.map(h => h.pathPhaseNote).filter(Boolean))];
@@ -1553,7 +1571,7 @@ export function detectorReading(elementId) {
         stretchedPulseWidthFs: duration?.durationFs ?? null,
         dispersionModel: duration?.model ?? null,
         // Only where colours split by a prism or grating arrive.
-        ...(colourSpreads ? { colourSpreads } : {}),
+        ...(colourSpread ? { colourSpread } : {}),
         transformLimitFs: duration?.transformLimitFs ?? null,
         inputGddFs2: duration?.inputGddFs2 ?? null,
         totalGddFs2: duration?.totalGddFs2 ?? gddFs2,
@@ -1632,8 +1650,9 @@ export function detectorReading(elementId) {
       transformLimitFs: duration?.transformLimitFs ?? null,
       inputGddFs2: duration?.inputGddFs2 ?? null,
       totalGddFs2: duration?.totalGddFs2 ?? gddFs2,
-      ...(trains.some(train => train.colourSpreads)
-        ? { colourSpreads: colourSpreadList(trains.map(train => train.colourSpreads)) } : {}),
+      // One reading per source, bluest first.
+      ...(trains.some(train => train.colourSpread)
+        ? { colourSpreads: trains.map(train => train.colourSpread).filter(Boolean).sort((x, y) => x.loNm - y.loNm || x.hiNm - y.hiNm) } : {}),
       envelope: !mixed && trains.length === 1 ? trains[0].envelope : null,
       fieldIssue: trains.find(t => t.fieldIssue)?.fieldIssue || null,
       ...(pulsed.some(h => h.pulse.interferenceUnknown) ? { interferenceUnknown: true } : {}),

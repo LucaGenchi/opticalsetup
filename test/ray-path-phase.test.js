@@ -202,6 +202,35 @@ test('where the colours land is read even where their phase cannot be fitted', (
   assert.equal(one.pulse.colourSpreads, undefined);
 });
 
+test('a beam with a width reads its colours once, and diverging colours decline the duration without a fit', () => {
+  // The laser's default beam traces rays across its width, each split on
+  // its own: one source still gives one reading, at the same width and rate
+  // as a single ray's colours.
+  for (const name of ['1200 l/mm grating pair, G = 150 mm, single pass', 'four Brewster silica prisms']) {
+    const { reading } = trace(name, { laser: { beamMode: 'beam' } });
+    assert.ok(reading.samples > 25, `${name}: rays across the beam (${reading.samples})`);
+    assert.equal(reading.pulse.colourSpreads.length, 1, name);
+    const [spread] = reading.pulse.colourSpreads;
+    const line = trace(name).reading.pulse.colourSpreads[0];
+    assert.ok(Math.abs(spread.lateralMm - line.lateralMm) < 1e-6 && Math.abs(spread.mmPerNm - line.mmPerNm) < 1e-6, `${name}: ${JSON.stringify(spread)}`);
+  }
+  // One prism behind a wide AOTF, whose path phase is not followed: no fit,
+  // but the colours are known to leave at different angles, so no duration.
+  const { reading } = trace('one Brewster nsf10 prism', {
+    edit: scene => {
+      const det = scene.find(el => el.id === 'det');
+      const aotf = createElement('aotf', det.x - 60 * Math.cos(det.rot * Math.PI / 180), det.y - 60 * Math.sin(det.rot * Math.PI / 180));
+      aotf.rot = det.rot;
+      Object.assign(aotf.params, { channels: [{ wl: 800, eff: 1 }], passband: 2000, deflect: 0 });
+      scene.push(aotf);
+    },
+  });
+  assert.equal(reading.samples, 5);
+  assert.equal(reading.pulse.colourSpreads[0].parallel, false);
+  assert.equal(reading.pulse.stretchedPulseWidthFs, null);
+  assert.match(reading.pulse.dispersionModel, /^Colours leave at different angles — angular dispersion remains, so there is no single duration here$/);
+});
+
 test('two split bands at one detector are read one per band', () => {
   // Two sources, 750 and 800 nm, 10 nm each, through one pass of the grating
   // pair: each band keeps its own width and its own mm per nm, which the
