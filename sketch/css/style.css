@@ -769,6 +769,26 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
   flex: none; width: 100%; min-height: 0; display: block;
   padding: 6px 8px; line-height: 1.4; white-space: pre-line;
 }
+/* A readout's explanation: a small button beside its label opens it as a
+   pop-up (the native popover, so Escape and a click outside close it). */
+.readout-info {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; margin-left: 6px; padding: 0; vertical-align: 1px;
+  border: 1px solid var(--border-strong); border-radius: 50%;
+  background: var(--surface); color: var(--muted);
+  font: italic 600 10px/1 Georgia, serif; cursor: pointer;
+}
+.readout-info:hover { color: var(--accent); border-color: var(--accent); }
+.readout-info:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.readout-info[hidden] { display: none; }
+.readout-popup {
+  position: fixed; inset: auto; margin: 0;
+  width: min(360px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; padding: 10px 12px;
+  border: 1px solid var(--border-strong); border-radius: 8px;
+  background: var(--panel); color: var(--text);
+  font-size: 12px; line-height: 1.45;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+}
 .field input[type="color"] { flex: 0 0 40px; width: 40px; height: 26px; padding: 1px; border: 1px solid var(--border); border-radius: 5px; background: none; }
 .field input[type="checkbox"] {
   appearance: none; position: relative; flex: 0 0 34px; width: 34px; height: 19px;

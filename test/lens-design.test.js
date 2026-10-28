@@ -702,6 +702,26 @@ test('polychromatic PSF: weights, one image grid, and a Strehl ratio that counts
   assert.ok(Math.min(...across) < sys.diffraction.grid);
 });
 
+test('PSF: the Fresnel-number guard uses the longest wavelength and the Gaussian beam radius', () => {
+  // f = 100 mm, 4 mm pupil: a²/(λz) is 80 at 500 nm and 20 at 2 µm for
+  // the whole pupil; a beam of half the pupil radius gives 20 and 5, below
+  // the limit of 10 (the primary wavelength and the whole pupil gave 80).
+  const sys = (illumination, wavelengthsNm) => normalizeSystem({ surfaces: [{ type: 'paraxial', focal: 100, thickness: 100, stop: true }], aperture: { type: 'epd', value: 4 }, wavelengthsNm, primaryWavelength: 0, image: { focus: 'paraxial' }, diffraction: { grid: 64, padding: 2, illumination, beamRatio: 0.5 } });
+  const flags = r => r.warnings.some(w => w.kind === 'fresnel');
+  const uniform = analyzeDiffraction(sys('uniform', [500, 2000]), { throughFocus: false });
+  close(uniform.fresnelNumber, 20, 1e-9);
+  assert.equal(uniform.fresnelNm, 2000);
+  assert.ok(!flags(uniform), 'the whole pupil stays above 10 at 2 µm');
+  const beam = analyzeDiffraction(sys('gaussian', [500, 2000]), { throughFocus: false });
+  close(beam.fresnelNumber, 5, 1e-9);
+  assert.ok(flags(beam), 'the narrow beam at 2 µm is flagged');
+  assert.match(beam.warnings.find(w => w.kind === 'fresnel').text, /at 2000 nm.*Gaussian beam/);
+  // Boundary: the same beam at 500 nm alone stays above the limit.
+  const visible = analyzeDiffraction(sys('gaussian', [500]), { throughFocus: false });
+  close(visible.fresnelNumber, 20, 1e-9);
+  assert.ok(!flags(visible));
+});
+
 test('diffraction validity guards: aliasing, Fresnel number, high NA, a narrow beam, no rays', () => {
   const kinds = r => r.warnings.map(w => w.kind);
   const blurred = analyzeDiffraction(perfectMono({ image: { focus: 'paraxial', offsetMm: 8 }, diffraction: { grid: 32 } }), { throughFocus: false });

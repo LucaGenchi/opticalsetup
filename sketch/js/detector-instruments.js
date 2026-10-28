@@ -1145,7 +1145,9 @@ async function enhancePalette() {
   renderAll();
 }
 
-if (typeof document !== 'undefined') {
+// Only the app has a palette to rebuild: a calculator page registers these
+// instruments to trace and draw them, and must not pull in the canvas.
+if (typeof document !== 'undefined' && document.getElementById('palette')) {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', enhancePalette, { once: true });
   else setTimeout(enhancePalette, 0);
 }
