@@ -883,9 +883,16 @@ function paramField(p, sel) {
     // `wide` gives the value the whole row instead of the 112px value column.
     // A readout that holds a sentence rather than a number wraps into a tall,
     // unreadable ribbon otherwise.
-    return field(p.label,
-      `<output class="readout" data-p="${p.key}">${esc(p.readout(sel.params, sel))}</output>`,
-      p.wide ? 'field-wide' : '');
+    const output = `<output class="readout" data-p="${p.key}">${esc(p.readout(sel.params, sel))}</output>`;
+    if (!p.popup) return field(p.label, output, p.wide ? 'field-wide' : '');
+    // A readout may explain its current value in a pop-up, opened from a
+    // small button beside its label and shown only while there is something
+    // to explain. Not a <label>: a click on the value must not open it.
+    const popup = p.popup(sel.params, sel);
+    const id = `readout-popup-${p.key}`;
+    return `<div class="field${p.wide ? ' field-wide' : ''}"><span>${esc(p.label)}`
+      + `<button type="button" class="readout-info" data-readout-info="${p.key}" popovertarget="${id}" aria-label="About this value"${popup ? '' : ' hidden'}>i</button></span>`
+      + `${output}<div class="readout-popup" id="${id}" data-readout-popup="${p.key}" popover>${esc(popup || '')}</div></div>`;
   }
   // Editable, but backed by another param instead of its own storage:
   // displayed value comes from `get`, and a commit writes through `set`
@@ -907,6 +914,15 @@ function refreshReadouts(sel) {
   panel.querySelectorAll('output.readout[data-p]').forEach(output => {
     const spec = readouts.get(output.dataset.p);
     if (spec?.readout) output.textContent = String(spec.readout(sel.params, sel));
+  });
+  panel.querySelectorAll('[data-readout-popup]').forEach(popup => {
+    const spec = readouts.get(popup.dataset.readoutPopup);
+    if (!spec?.popup) return;
+    const text = spec.popup(sel.params, sel) || '';
+    popup.textContent = text;
+    const button = panel.querySelector(`[data-readout-info="${popup.dataset.readoutPopup}"]`);
+    if (button) button.hidden = !text;
+    if (!text && popup.matches?.(':popover-open')) popup.hidePopover();
   });
 }
 
@@ -1204,6 +1220,28 @@ export function renderInspector() {
   });
   panel.querySelectorAll('[data-section]').forEach(section => {
     section.addEventListener('toggle', () => sectionState.set(section.dataset.section, section.open));
+  });
+  // A readout's pop-up opens under its button, kept inside the window: the
+  // click runs before the popover is shown, so it never appears elsewhere.
+  panel.querySelectorAll('[data-readout-info]').forEach(button => {
+    button.addEventListener('click', () => {
+      const popup = panel.querySelector(`[data-readout-popup="${button.dataset.readoutInfo}"]`);
+      if (!popup) return;
+      const rect = button.getBoundingClientRect();
+      const width = Math.min(360, window.innerWidth - 32);
+      popup.style.left = `${Math.max(16, Math.min(rect.right - width, window.innerWidth - width - 16))}px`;
+      popup.style.top = `${rect.bottom + 6}px`;
+    });
+  });
+  // Too near the bottom of the window, it opens above its button instead.
+  panel.querySelectorAll('[data-readout-popup]').forEach(popup => {
+    popup.addEventListener('toggle', event => {
+      if (event.newState !== 'open') return;
+      const button = panel.querySelector(`[data-readout-info="${popup.dataset.readoutPopup}"]`);
+      const box = popup.getBoundingClientRect();
+      if (!button || box.bottom <= window.innerHeight - 16) return;
+      popup.style.top = `${Math.max(16, button.getBoundingClientRect().top - 6 - box.height)}px`;
+    });
   });
   const del = panel.querySelector('#inspDel');
   if (del) del.addEventListener('click', () => document.dispatchEvent(new CustomEvent('optics:delete')));

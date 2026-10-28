@@ -1020,6 +1020,17 @@ function directValueLabel(el, tune) {
   return `${tune.short || tune.param.label} ${rounded}${unitMatch ? ` ${unitMatch[1]}` : ''}`;
 }
 
+const pivotAngle = (el, w) => Math.atan2(w.y - el.y, w.x - el.x) * 180 / Math.PI;
+
+// The angle a rotation drag gives its element: where it started, turned by
+// as much as the pointer has turned about the pivot since the grab, in 5°
+// steps unless `free`.
+export function dragRotation(drag, w, free = false) {
+  let a = drag.rot + pivotAngle(drag.el, w) - drag.grab;
+  if (!free) a = Math.round(a / 5) * 5;
+  return ((a % 360) + 360) % 360;
+}
+
 function resizeHandleLocations(resize, hw, hh) {
   if (resize.uniform || (resize.x && resize.y)) {
     return [{ x: -hw, y: -hh, sx: -1, sy: -1 }, { x: hw, y: -hh, sx: 1, sy: -1 },
@@ -1796,7 +1807,12 @@ function onDown(e) {
   }
   // rotation handle?
   if (hitRotHandle(sel, w) && !state.embedMode) {
-    drag = { mode: 'rotate', el: sel, moved: false };
+    // The handle sits above the box centre, which is not the pivot for an
+    // element whose box is offset (a long laser housing, an objective), so
+    // the drag turns the element by how far the pointer turns about the
+    // pivot, never to the pointer's own angle.
+    drag = { mode: 'rotate', el: sel, moved: false, rot: sel.rot || 0,
+      grab: pivotAngle(sel, w) };
     svg.setPointerCapture(e.pointerId);
     return;
   }
@@ -1897,9 +1913,7 @@ function onMove(e) {
     drag.el.y = y;
     renderInteraction();
   } else if (drag.mode === 'rotate') {
-    let a = Math.atan2(w.y - drag.el.y, w.x - drag.el.x) * 180 / Math.PI + 90;
-    if (!e.shiftKey) a = Math.round(a / 5) * 5;
-    a = ((a % 360) + 360) % 360;
+    const a = dragRotation(drag, w, e.shiftKey);
     if (a === drag.el.rot) return;
     if (!drag.moved) { pushUndo(); drag.moved = true; }
     drag.el.rot = a;

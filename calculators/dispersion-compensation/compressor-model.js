@@ -20,7 +20,8 @@
 // page and the canvas describe one bench: test/compressor-calculator.test.js
 // traces that scene and compares the canvas's own GDD reading.
 
-import { createElement, estimatedThinLensThicknessMm } from '../../sketch/js/elements.js';
+import { createElement, estimatedThinLensThicknessMm, registry } from '../../sketch/js/elements.js';
+import '../../sketch/js/detector-instruments.js';
 import { fresnelTransmittances } from '../../sketch/js/fresnel.js';
 import { traceScene, detectorReading } from '../../sketch/js/raytrace.js';
 import { DISPERSION_UNAVAILABLE, glassGVD } from '../../sketch/js/glass.js';
@@ -344,11 +345,11 @@ function finish(source, optics, exit, dir, passes, v, firstMm, pickoffX) {
     outPoint = vadd(exit, vmul(left, (Math.max(...xs) + Math.min(...xs)) / 2)); outDir = dir;
     width = Math.max(...xs) - Math.min(...xs);
   }
-  // A plain detector stands in for the autocorrelator, which only the canvas
-  // registers (its module also drives the canvas's palette); the scene
-  // "Open in the canvas" sends has the autocorrelator in its place
-  // (canvasScene).
-  const ac = createElement('detector', outPoint[0] + outDir[0] * 150, outPoint[1] + outDir[1] * 150);
+  // The autocorrelator the canvas opens, traced here as it is there: its face
+  // 150 mm along the output and its box behind it, away from the optics, so
+  // the box does not clip a beam on its way to them.
+  const back = -registry.autocorrelator.sensorFaceX;
+  const ac = createElement('autocorrelator', outPoint[0] + outDir[0] * (150 + back), outPoint[1] + outDir[1] * (150 + back));
   ac.rot = angleOf(outDir);
   ac.params.aperture = Math.min(120, Math.max(30, 2 * Math.ceil((1.3 * width + 20) / 2)));
   out.push(ac);
@@ -520,11 +521,11 @@ export function buildFigure(v) {
     : 'In the plane of the figure a beam crosses an optic or is clipped (near Littrow, for instance, the beam leaving the second grating runs back across the first), so the drawing and the canvas scene do not deliver the whole band along the designed path. Real benches separate such beams in height; larger optics help where the colours are clipped.' };
 }
 
-// The scene as the canvas opens it: the output detector becomes an
-// autocorrelator of the same size, which reads the pulse duration.
+// The scene as the canvas opens it: the layout's own elements, the output
+// autocorrelator unlabelled and set only by its size.
 export function canvasScene(layout) {
   const elements = layout.elements.map((el, i) => i === layout.elements.length - 1
-    ? { id: el.id, type: 'autocorrelator', x: el.x, y: el.y, rot: el.rot, label: '', showLabel: false, params: { aperture: el.params.aperture } }
+    ? { id: el.id, type: el.type, x: el.x, y: el.y, rot: el.rot, label: '', showLabel: false, params: { aperture: el.params.aperture } }
     : el);
   return { app: 'optics2d', version: 1, elements, beams: [] };
 }
