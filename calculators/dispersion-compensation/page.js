@@ -197,7 +197,7 @@ function drawFigure(r) {
     return;
   }
   const v = r.values, label = { 'prism-pair': 'Prism pair', 'four-prism': 'Four prisms', 'grating-pair': 'Grating pair', 'four-grating': 'Four gratings', stretcher: 'Grating stretcher' }[v.layout];
-  caption.textContent = `${label}${r.layout.passes === 2 ? ', double pass' : ''}, drawn to scale and traced by the canvas at ${formatNumber(v.wavelengthNm, 5)} nm: the colours of the ${formatNumber(v.bandwidthNm, 3)} nm band fan out and ${r.geometry.outputChirpMm > 1e-6 ? 'leave side by side' : 'come back together'} on their way to the detector, an autocorrelator in the canvas.`;
+  caption.textContent = `${label}${r.layout.passes === 2 ? ', double pass' : ''}, drawn to scale and traced by the canvas at ${formatNumber(v.wavelengthNm, 5)} nm: the colours of the ${formatNumber(v.bandwidthNm, 3)} nm band fan out and ${r.geometry.outputChirpMm > 1e-6 ? 'leave side by side' : 'come back together'} on their way to the autocorrelator.`;
   const chirp = v.sceneChirp;
   if (chirp?.block) caption.textContent += ` The ${formatNumber(chirp.block.lengthMm, 4)} mm block before it carries the chirp.`;
   else if (chirp?.clipped) caption.textContent += ` The canvas source carries at most ${formatNumber(Math.abs(chirp.gddFs2), 3)} fs², so the scene carries that much of the ${whole(Math.abs(r.chirp.gddFs2), 'fs²')} entered: in the canvas the output stays chirped, and the canvas does not carry the input’s TOD and FOD either.`;

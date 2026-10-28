@@ -15,7 +15,7 @@ import { emissionRayCount, ISOTROPIC_KINDS } from './emission.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
-import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
+import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenRamanReading, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
 import { NONLINEAR_ORDER } from './sectioning.js';
 import { opaSettings, opaGainAt, MAX_OPA_STAGES, MAX_GATE_BANDWIDTH_RATIO, MIN_PHASE_KEPT_GAIN } from './opa.js';
 import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, mixOverlap, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
@@ -1844,6 +1844,16 @@ function sampleModeParams(layouts = SAMPLE_LAYOUTS) {
         return srs ? `${timing}. Stimulated Raman transfer not drawn: ${srs}.` : timing;
       },
     },
+    // Which vibration a coherent Raman specimen is addressing, and how finely:
+    // read from the pump and Stokes as they arrive, after every glass on the
+    // way, so a delay stage, a chirp or a filter upstream shows up here.
+    {
+      key: 'ramanProbe', label: 'Coherent Raman excitation', type: 'readout', wide: true,
+      show: p => specimenTypeOf(p) === 'nonlinear'
+        && sampleChannels(p).some(c => c.kind === 'cars' || c.kind === 'srs'),
+      readout: (p, el) => specimenRamanReadout(el ? specimenRamanReading(el.id) : null),
+      popup: (p, el) => specimenRamanPopup(el ? specimenRamanReading(el.id) : null),
+    },
     // The total thickness of a specimen saved before layouts: hidden, kept so
     // the conversion on load can read it.
     { key: 'thickness', label: 'Sample thickness (mm)', type: 'number', min: 0.15, htmlMin: 0, max: 20, step: 0.5, def: 6,
@@ -2358,6 +2368,80 @@ function laserSource(el) {
   return [{ x: 52, y: 0, dx: 1, dy: 0 }];
 }
 
+// A laser's housing is appearance only. It grows backwards from its fixed
+// front face (x = 46), so the exit port and the emission point at x = 52 never
+// move, and it may be drawn taller than the beam needs but never shorter, so
+// a thick beam still never exceeds its source. The beam itself is untouched.
+const LASER_FRONT_X = 46;
+const LASER_HOUSING_LENGTH = { min: 40, max: 1000, def: 92 };
+const LASER_HOUSING_MAX_HEIGHT = 500;
+
+function laserHousing(el) {
+  const p = el.params;
+  const length = clampMm(Number(p.housingLength), LASER_HOUSING_LENGTH.min, LASER_HOUSING_LENGTH.max, LASER_HOUSING_LENGTH.def);
+  const height = Math.max(laserH(el), clampMm(Number(p.housingHeight), 0, LASER_HOUSING_MAX_HEIGHT, 0));
+  return { back: LASER_FRONT_X - length, length, height, center: LASER_FRONT_X - length / 2 };
+}
+
+function laserHousingParams(color, outline) {
+  return [
+    { key: 'housingLength', label: 'Housing length (mm)', type: 'number', appearance: true,
+      min: LASER_HOUSING_LENGTH.min, max: LASER_HOUSING_LENGTH.max, step: 1, def: LASER_HOUSING_LENGTH.def },
+    {
+      key: 'housingHeight', label: 'Housing height (mm)', type: 'number', appearance: true,
+      min: 34, max: LASER_HOUSING_MAX_HEIGHT, step: 1, def: 34,
+      note: p => {
+        const needed = laserH({ params: p });
+        return needed > Number(p.housingHeight) ? `Drawn ${needed} mm tall: the ${p.beamWidth} mm beam needs at least that.` : '';
+      },
+    },
+    // `outline` is the default housing's own stroke, so an untouched laser
+    // draws exactly as it did before the housing could change.
+    { key: 'housingColor', label: 'Housing color', type: 'color', appearance: true, def: color, outline },
+  ];
+}
+
+// Outline a shade darker than the fill, and a label that stays readable on
+// a light housing.
+function housingShade(hex, factor) {
+  const n = parseInt(hex.slice(1), 16);
+  return `#${[16, 8, 0].map(s => Math.round(((n >> s) & 255) * factor).toString(16).padStart(2, '0')).join('')}`;
+}
+function housingInk(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const luma = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+  return luma > 0.6 ? '#1f2329' : '#fff';
+}
+
+const laserHousingGeometry = {
+  size_: el => { const box = laserHousing(el); return { w: box.length + 12, h: box.height + 4 }; },
+  boxAnchor: el => ({ x: laserHousing(el).center, y: 0 }),
+  surfaces: el => {
+    const { back, height } = laserHousing(el), y = height / 2;
+    return [
+      { x1: back, y1: -y, x2: LASER_FRONT_X, y2: -y, kind: 'absorb' },
+      { x1: LASER_FRONT_X, y1: -y, x2: LASER_FRONT_X, y2: y, kind: 'absorb' },
+      { x1: LASER_FRONT_X, y1: y, x2: back, y2: y, kind: 'absorb' },
+      { x1: back, y1: y, x2: back, y2: -y, kind: 'absorb' },
+    ];
+  },
+};
+
+const COLOR_HEX = /^#[0-9a-f]{6}$/i;
+
+// The housing box with its markings (label, pulse glyph) centred on it; the
+// markings shrink with a housing shorter than the default, never grow.
+function laserHousingSVG(el, markings) {
+  const { back, length, height, center } = laserHousing(el);
+  const spec = registry[el.type].params.find(p => p.key === 'housingColor');
+  const fill = COLOR_HEX.test(el.params.housingColor) ? el.params.housingColor : spec.def;
+  const stroke = fill.toLowerCase() === spec.def ? spec.outline : housingShade(fill, 0.6);
+  const scale = Math.min(1, length / LASER_HOUSING_LENGTH.def);
+  const marks = markings(housingInk(fill));
+  return `<rect x="${back}" y="${-height / 2}" width="${length}" height="${height}" rx="4" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>` +
+    (center === 0 && scale === 1 ? marks : `<g transform="translate(${center} 0)${scale === 1 ? '' : ` scale(${scale})`}">${marks}</g>`);
+}
+
 // Peak power of a mode-locked pulse train: the pulse energy (average power
 // spread over one repetition period) delivered within a single pulse, scaled
 // by the shape factor relating an envelope's FWHM duration to its true peak.
@@ -2539,6 +2623,68 @@ export function specimenFocusReadout(readings) {
   const inside = (Array.isArray(readings) ? readings : []).filter(r => r?.ok && r.inside);
   if (!inside.length) return null;
   return inside.map(r => `${nm4(r.wl)} nm: ${lengthText(Math.max(0, r.depthMm))} into the active layer · zR ${lengthText(r.zRMm)}`).join('; ');
+}
+
+// The coherent Raman readout: the two beams as they reach the specimen, the
+// Raman shift they drive and the spectral resolution of that excitation, with
+// the condition Eq. (5) of Mohseni et al. holds under (see coherent-raman.js).
+export function specimenRamanReadout(reading) {
+  if (!reading) return 'No beams reach the specimen yet';
+  if (reading.state === 'oneColour') {
+    return `One colour only (${nm4(reading.wl)} nm): coherent Raman needs a pump and a longer-wavelength Stokes beam`;
+  }
+  const beam = (name, b) => [`${name} ${nm4(b.wl)} nm`,
+    b.bwNm > 0 ? `${sig3(b.bwNm)} nm FWHM` : null,
+    b.pulsed ? (b.durationFs ? `${formatFs(b.durationFs)} here` : null) : 'continuous'].filter(Boolean).join(', ');
+  const beams = `${beam('Pump', reading.pump)}; ${beam('Stokes', reading.stokes)}`;
+  const cm = x => (Number.isFinite(x) ? x.toFixed(1) : '—');
+  // A delay between chirped pulses pairs other colours than the carriers:
+  // the spectral-focusing scan, said when it moves the shift visibly.
+  const late = reading.delayFs > 0 ? 'after' : 'before';
+  const delay = Number.isFinite(reading.delayFs) ? `the Stokes arriving ${formatFs(Math.abs(reading.delayFs))} ${late} the pump` : '';
+  const shift = reading.delayShift === 'computed' && Math.abs(reading.shiftCm - reading.carrierShiftCm) >= 0.05
+    ? `${cm(reading.shiftCm)} cm⁻¹ probed (${cm(reading.carrierShiftCm)} cm⁻¹ between the carriers, moved by ${delay})`
+    : reading.delayShift === 'unknownPhase'
+      ? `${cm(reading.carrierShiftCm)} cm⁻¹ between the carriers (with ${delay}, the shift actually probed is not computed: the pulses' spectral phase is not known here)`
+      : `${cm(reading.shiftCm)} cm⁻¹ probed`;
+  const extra = reading.colours > 2
+    ? ` (${reading.colours} colours on the spot: the shortest is read as the pump, the longest as the Stokes)` : '';
+  if (reading.state === 'continuous') {
+    return `${beams} → ${shift}; resolution not estimated: it is set by the pulse durations, and a beam here is continuous${extra}`;
+  }
+  if (reading.state === 'durationUnknown') {
+    return `${beams} → ${shift}; resolution not estimated: ${reading.issue || 'a pulse duration is not known here'}${extra}`;
+  }
+  // A filtered spectrum is treated as a Gaussian pulse of its own duration:
+  // an estimate, marked here and explained in the readout's pop-up.
+  const res = `${reading.estimate ? '≈ ' : ''}${sig3(reading.resolutionCm)} cm⁻¹`;
+  const estimated = reading.estimate ? ', a Gaussian-pulse estimate' : '';
+  const resolution = reading.phase === 'transformLimited' ? `${res} resolution (transform-limited pulses${estimated})`
+    : reading.phase === 'equalChirp' ? `${res} resolution (equally chirped pulses, as in spectral focusing${estimated})`
+      : reading.phase === 'chirpNegligible' ? `${res} resolution (the pulses are chirped differently, too little to change it${estimated})`
+      : reading.phase === 'chirpMismatch'
+        ? `at least ${res} resolution${estimated}: the pulses are chirped differently, which broadens it further`
+        : `${res} resolution if the pulses are transform-limited or equally chirped (their spectral phase is not known here${estimated})`;
+  return `${beams} → ${shift}, ${resolution}${extra}`;
+}
+
+// What the coherent Raman readout's pop-up says: why a resolution read from a
+// pulse that is not a Gaussian is an estimate. Null when nothing needs it.
+const NOT_GAUSSIAN = {
+  reshaped: 'its spectrum was reshaped upstream, by a filter or an amplifier\u2019s gain',
+  sech2: 'it is a sech\u00b2 pulse',
+  computed: 'its envelope is computed numerically',
+};
+export function specimenRamanPopup(reading) {
+  if (reading?.state !== 'resolved' || !reading.estimate) return null;
+  const beams = [['pump', reading.pump], ['Stokes', reading.stokes]].filter(([, b]) => NOT_GAUSSIAN[b.shape]);
+  const why = beams.map(([name, b]) => `The ${name} is not a Gaussian: ${NOT_GAUSSIAN[b.shape]}.`).join(' ');
+  const reshaped = beams.some(([, b]) => b.shape === 'reshaped')
+    ? ' A reshaped spectrum\u2019s duration is computed from the band that survived, with the chirp the source gave it and the dispersion of the path.' : '';
+  const delay = reading.delayShift === 'computed' ? '; so does the shift a delay between chirped pulses gives' : '';
+  return `Estimate. ${why}${reshaped} The resolution formula (Mohseni et al., Eq. 5) is written for Gaussian pulses, `
+    + `and treats each pulse as a Gaussian in time of its duration here${delay}. `
+    + 'The true excitation profile can differ by tens of percent: wider for a flat-topped band, about 12 % narrower for two sech\u00b2 pulses.';
 }
 
 export function specimenTimingText(reading) {
@@ -2803,7 +2949,7 @@ export const registry = {
     label: 'CW Laser', category: 'Sources', paletteOrder: 0, size: { w: 104, h: 38 },
     aliases: ['laser', 'continuous wave laser', 'cw laser', 'diode laser', 'helium neon', 'he-ne'],
     snapPt: { x: 52, y: 0 }, // beam exit aperture
-    size_: el => ({ w: 104, h: laserH(el) + 4 }),
+    ...laserHousingGeometry,
     params: [
       P.wavelength,
       { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 0.1 },
@@ -2829,14 +2975,14 @@ export const registry = {
       },
       P.autoColor, P.color,
       pinnedParam('temporalMode', 'cw'),
+      ...laserHousingParams('#3a3f46', '#22252a'),
     ],
     svg(el) {
-      const h = laserH(el), hh = h / 2, ap = laserAperture(el);
-      return `<rect x="-46" y="${-hh}" width="92" height="${h}" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/>` +
-        `<text x="0" y="0" ${isFlipped(el) ? 'transform="rotate(180)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">CW LASER</text>` +
+      const ap = laserAperture(el);
+      return laserHousingSVG(el, ink =>
+        `<text x="0" y="0" ${isFlipped(el) ? 'transform="rotate(180)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="${ink}">CW LASER</text>`) +
         `<rect x="46" y="${-ap}" width="5" height="${2 * ap}" fill="#666" stroke="#444" stroke-width="1"/>`;
     },
-    surfaces: el => rectAbsorb(92, laserH(el)),
     source: laserSource,
   },
 
@@ -2844,7 +2990,7 @@ export const registry = {
     label: 'Pulsed Laser', category: 'Sources', paletteOrder: 1, size: { w: 104, h: 38 },
     aliases: ['pulsed laser', 'ultrafast laser', 'femtosecond laser', 'mode-locked laser', 'fs laser', 'ti:sapphire'],
     snapPt: { x: 52, y: 0 },
-    size_: el => ({ w: 104, h: laserH(el) + 4 }),
+    ...laserHousingGeometry,
     params: [
       P.wavelength,
       { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 0.1 },
@@ -2908,16 +3054,17 @@ export const registry = {
       },
       SHOW_PULSE_PARAM,
       pinnedParam('temporalMode', 'pulsed'),
+      // Drawn in Label & appearance; the Interference panel stays last.
+      ...laserHousingParams('#3a3f46', '#22252a'),
       ...pulsedInterferenceParams('pulsedlaser'),
     ],
     svg(el) {
-      const h = laserH(el), hh = h / 2, ap = laserAperture(el);
-      return `<rect x="-46" y="${-hh}" width="92" height="${h}" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/>` +
-        `<text x="0" y="-3" ${isFlipped(el) ? 'transform="rotate(180)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">LASER</text>` +
-        `<g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g>` +
+      const ap = laserAperture(el);
+      return laserHousingSVG(el, ink =>
+        `<text x="0" y="-3" ${isFlipped(el) ? 'transform="rotate(180)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="${ink}">LASER</text>` +
+        `<g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g>`) +
         `<rect x="46" y="${-ap}" width="5" height="${2 * ap}" fill="#666" stroke="#444" stroke-width="1"/>`;
     },
-    surfaces: el => rectAbsorb(92, laserH(el)),
     source: laserSource,
   },
 
@@ -5992,15 +6139,17 @@ registry.sclaser = {
     { ...P.color, def: '#cbd8ea' },
     SHOW_PULSE_PARAM,
     pinnedParam('temporalMode', 'pulsed'),
+    // Drawn in Label & appearance; the Interference panel stays last.
+    ...laserHousingParams('#24233a', '#171629'),
     ...pulsedInterferenceParams('sclaser'),
   ],
   svg(el) {
-    const h = laserH(el), hh = h / 2, ap = laserAperture(el);
+    const ap = laserAperture(el);
     const stripes = ['#7c3aed', '#2563eb', '#10b981', '#eab308', '#f97316', '#ef4444']
       .map((c, i) => `<rect x="${46 + i * 0.85}" y="${-ap}" width="1" height="${2 * ap}" fill="${c}"/>`).join('');
-    return `<rect x="-46" y="${-hh}" width="92" height="${h}" rx="4" fill="#24233a" stroke="#171629" stroke-width="1.5"/>` +
-      `<text x="0" y="-3" ${isFlipped(el) ? 'transform="rotate(180)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="750" letter-spacing="1.1" fill="#fff">SC LASER</text>` +
-      `<g stroke="#c4b5fd" stroke-width="1.1"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g>` + stripes;
+    return laserHousingSVG(el, ink =>
+      `<text x="0" y="-3" ${isFlipped(el) ? 'transform="rotate(180)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="750" letter-spacing="1.1" fill="${ink}">SC LASER</text>` +
+      `<g stroke="#c4b5fd" stroke-width="1.1"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g>`) + stripes;
   },
 };
 
@@ -6413,16 +6562,17 @@ export function getVisualBounds(el, { includeLabel = true, elements = [] } = {})
   if (includeLabel && el.showLabel && el.label) {
     const width = Math.max(8, String(el.label).length * 6.2);
     const pos = el.labelPos || 'b';
+    // Placed around the box centre, as labelSVG() draws it.
     if (pos === 'b') {
-      const y = el.y + ey + 13;
-      x0 = Math.min(x0, el.x - width / 2); x1 = Math.max(x1, el.x + width / 2); y1 = Math.max(y1, y + 3);
+      const y = cy + ey + 13;
+      x0 = Math.min(x0, cx - width / 2); x1 = Math.max(x1, cx + width / 2); y1 = Math.max(y1, y + 3);
     } else if (pos === 't') {
-      const y = el.y - ey - 7;
-      x0 = Math.min(x0, el.x - width / 2); x1 = Math.max(x1, el.x + width / 2); y0 = Math.min(y0, y - 11);
+      const y = cy - ey - 7;
+      x0 = Math.min(x0, cx - width / 2); x1 = Math.max(x1, cx + width / 2); y0 = Math.min(y0, y - 11);
     } else if (pos === 'l') {
-      x0 = Math.min(x0, el.x - ex - 7 - width); y0 = Math.min(y0, el.y - 7); y1 = Math.max(y1, el.y + 7);
+      x0 = Math.min(x0, cx - ex - 7 - width); y0 = Math.min(y0, cy - 7); y1 = Math.max(y1, cy + 7);
     } else {
-      x1 = Math.max(x1, el.x + ex + 7 + width); y0 = Math.min(y0, el.y - 7); y1 = Math.max(y1, el.y + 7);
+      x1 = Math.max(x1, cx + ex + 7 + width); y0 = Math.min(y0, cy - 7); y1 = Math.max(y1, cy + 7);
     }
   }
   return { x0, y0, x1, y1 };
@@ -6500,7 +6650,12 @@ export function labelSVG(el) {
   const ex = (Math.abs(sz.w * Math.cos(a)) + Math.abs(sz.h * Math.sin(a))) / 2;
   const ey = (Math.abs(sz.w * Math.sin(a)) + Math.abs(sz.h * Math.cos(a))) / 2;
   const pos = el.labelPos || 'b';
-  let x = el.x, y = el.y, anchor = 'middle', base = '';
+  // Beside the drawn box, which is not always centred on the origin (a
+  // laser's housing grows backwards from its exit).
+  const off = boxAnchor(el);
+  let x = el.x + off.x * Math.cos(a) - off.y * Math.sin(a);
+  let y = el.y + off.x * Math.sin(a) + off.y * Math.cos(a);
+  let anchor = 'middle', base = '';
   if (pos === 'b') y += ey + 13;
   else if (pos === 't') y -= ey + 7;
   else if (pos === 'l') { x -= ex + 7; anchor = 'end'; base = 'dominant-baseline="central"'; }
