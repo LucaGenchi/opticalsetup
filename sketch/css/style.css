@@ -186,6 +186,7 @@ button.danger:hover { background: var(--danger-bg); }
 }
 .share-dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
 .about-text { margin: 12px 0 0; color: var(--text); font-size: 12px; line-height: 1.55; }
+.about-citation { padding: 8px 10px; border-left: 2px solid var(--accent); overflow-wrap: anywhere; }
 .about-links { display: flex; gap: 14px; margin: 16px 0 0; font-size: 12px; }
 .share-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
 .share-dialog h2 { margin-top: 2px; font-size: 18px; letter-spacing: -.25px; }
