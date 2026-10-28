@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { ramanStokesWl, carsAntiStokesWl } from '../../sketch/js/elements.js';
+import { crsResolutionCm, crsResolutionGHz, ramanShiftCm as shiftOf, RESOLUTION_PREFACTOR_PS_CM } from '../../sketch/js/coherent-raman.js';
 import { defaultsFor, parseInputs, unavailable } from '../assets/calculator-inputs.js';
 
 const C_CM_PER_S = 29979245800;
@@ -27,8 +28,7 @@ export function computeCrs(raw) {
   let pumpNm = v.pumpNm, stokesNm = v.stokesNm, ramanShiftCm = v.ramanShiftCm;
   if (v.mode === 'pump-stokes') {
     if (!(stokesNm > pumpNm)) return unavailable('Stokes wavelength must be longer than the pump wavelength.', 'stokesNm', 'pumpNm');
-    // Subtract wavelengths first to retain precision for small shifts.
-    ramanShiftCm = 1e7 * (stokesNm - pumpNm) / pumpNm / stokesNm;
+    ramanShiftCm = shiftOf(pumpNm, stokesNm);
     if (ramanShiftCm > MAX_SHIFT_CM) return unavailable(`The Raman shift exceeds this calculator’s ${MAX_SHIFT_CM} cm⁻¹ scope.`, 'stokesNm', 'pumpNm');
   } else {
     if (!(ramanShiftCm > 0)) return unavailable('Raman shift must be positive.', 'ramanShiftCm');
@@ -54,7 +54,7 @@ export function computeCrs(raw) {
 // Spectral resolution of coherent Raman excitation by Gaussian pulses,
 // transform-limited or equally chirped (spectral focusing), from the pump
 // and Stokes intensity FWHM durations: Mohseni, Polzer and Hellerer, Opt.
-// Express 26, 10230 (2018), Eq. (5).
+// Express 26, 10230 (2018), Eq. (5), as the specimen's readout uses it.
 export const RESOLUTION_INPUTS = [
   { id: 'pumpPs', group: 'durations', label: 'Pump duration', symbol: 'τ<sub>p</sub>', unit: 'ps', value: 2, min: 0.005, max: 10000,
     help: 'Intensity FWHM. For spectral focusing, the chirped duration at the sample.' },
@@ -62,11 +62,11 @@ export const RESOLUTION_INPUTS = [
     help: 'Intensity FWHM. Spectral focusing needs the same chirp on both beams.' },
 ];
 export const RESOLUTION_DEFAULTS = defaultsFor(RESOLUTION_INPUTS);
-export const RESOLUTION_PREFACTOR_PS_CM = 2 * Math.SQRT2 * Math.LN2 / (Math.PI * C_CM_PER_S) * 1e12;
+export { RESOLUTION_PREFACTOR_PS_CM };
 
 export function computeResolution(raw) {
   const { values: v, errors } = parseInputs(RESOLUTION_INPUTS, raw);
   if (errors.length) return { ok: false, errors };
-  const resolutionCm = RESOLUTION_PREFACTOR_PS_CM * Math.hypot(1 / v.pumpPs, 1 / v.stokesPs);
-  return { ok: true, ...v, resolutionCm, resolutionGHz: resolutionCm * C_CM_PER_S * 1e-9 };
+  const resolutionCm = crsResolutionCm(v.pumpPs, v.stokesPs);
+  return { ok: true, ...v, resolutionCm, resolutionGHz: crsResolutionGHz(resolutionCm) };
 }
