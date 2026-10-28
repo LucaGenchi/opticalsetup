@@ -354,5 +354,6 @@ Sources:
 
 - Wikipedia, "Lens (optics)": lensmaker's equation with thickness, principal planes
 - Wikipedia, "Cardinal point (optics)": principal planes of a thick lens, focal and nodal points
+- S. A. Konijnenberg, A. J. H. Adam and H. P. Urbach, BSc Optics (TU Delft Open, 2021), section 2.6: the thick lens's power and principal planes from its vertices, and ray matrices
 - Wikipedia, "Spherical aberration": the best-form shape of a single lens from the Coddington shape and position factors
 - H. Kogelnik and T. Li, Appl. Opt. 5, 1550-1567 (1966), doi:10.1364/AO.5.001550 (the ABCD law for the complex beam parameter)

@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  LENS_DEFAULTS, FIBER_DEFAULTS, computeThickLens, computeFiber, lensData, bestFormRatio, beamDiagram, canvasScene,
+  LENS_DEFAULTS, FIBER_DEFAULTS, computeThickLens, computeFiber, lensData, bestFormRatio, beamDiagram, canvasScene, chromaticScan,
   singletRays, singletSystem, aplanaticRays, focusFrom, beamPupil, fresnelTransmission, GAUSSIAN_SHARE,
 } from '../calculators/thin-thick-lens/thick-lens.js';
 import { gaussianCoupling } from '../calculators/fiber-coupling/fiber-coupling.js';
@@ -23,10 +23,15 @@ const radii = (front, back, t, x = {}) => ({ lensKind: 'biconvex', spec: 'radii'
 const plano = (R, t, x = {}) => ({ lensKind: 'planoconvex', spec: 'radii', convexRadiusMm: R, thicknessMm: t, ...x });
 
 test('lens data: thin and thick limits', () => {
-  // The ideal lens: f as given, H and H′ in its plane.
+  // The ideal lens: f as given, H and H′ in its plane, no glass and the
+  // same f at every wavelength.
   const ideal = lensOnly({ lensKind: 'ideal' });
   assert.equal(ideal.efl, 11);
   assert.ok(ideal.h1Mm === 0 && ideal.h2Mm === 0 && ideal.bfl === 11);
+  assert.equal(ideal.values.glass, undefined);
+  assert.ok(chromaticScan(ideal.values, ideal.lens).every(p => p.efl === 11 && p.bfl === 11 && p.thin === 11));
+  // It takes wavelengths outside every glass's range.
+  assert.ok(lensOnly({ lensKind: 'ideal', wavelengthNm: 10000 }).ok);
   // A plano-convex lens, curved side first: thickness leaves f alone, H
   // sits on the curved vertex, H′ t/n inside the flat back.
   const pcx = lensOnly(plano(5.5, 3));
@@ -113,6 +118,21 @@ test('the ideal lens reproduces the Gaussian beam', () => {
   const cut = run({ lensKind: 'ideal', diameterMm: 2 });
   close(cut.clipShare, 1 - Math.exp(-2), 1e-12);
   assert.ok(cut.scan.ideal.bestRadiusUm > 1.05 * w0);
+});
+
+test('the focusing NA and the through-focus window', () => {
+  const r = run({});
+  close(r.focusNa, Math.sin(r.ideal.halfAngleMrad * 1e-3), 1e-15);
+  close(r.focusNa, 1 / 11, 2e-3, 'about w/f');
+  // The window holds F′ and each lens's brightest plane with room on both
+  // sides, on round steps: flat side first, its focus 268 µm before F′.
+  for (const x of [{}, { orientation: 'plano' }]) {
+    const r = run(x), s = r.scan, zr = r.ideal.rayleighMm, b = s.real.bestShiftMm, room = Math.max(3 * zr, Math.abs(b));
+    assert.ok(s.shiftsMm[0] <= Math.min(-3 * zr, b - room) + 1e-12, `${JSON.stringify(x)} low end`);
+    assert.ok(s.shiftsMm.at(-1) >= Math.max(3 * zr, b + room) - 1e-12, `${JSON.stringify(x)} high end`);
+  }
+  const flip = run({ orientation: 'plano' }).scan;
+  assert.ok(Math.abs(flip.shiftsMm[0] + 0.6) < 1e-12 && Math.abs(flip.shiftsMm.at(-1) - 0.2) < 1e-12, 'flat side first: −600 to 200 µm');
 });
 
 test('slower beams follow the paraxial Gaussian more closely', () => {
@@ -220,12 +240,16 @@ test('refusals and partial results', () => {
   const crossed = run(radii(5.5, 5.5, 0.5));
   assert.ok(crossed.ok && crossed.realIssue && crossed.scan.ideal && !crossed.scan.real);
   assert.equal(beamDiagram(crossed).outline, null);
+  // A lens narrower than the beam.
+  assert.deepEqual(lensOnly({ diameterMm: 1.9 }).errors.map(e => e.id), ['diameterMm', 'beamDiameterMm']);
+  assert.ok(lensOnly({ diameterMm: 2 }).ok, 'as wide as the beam');
   // A lit pupil too steep for the model.
   assert.ok(run(plano(3.1, 4, { beamDiameterMm: 6 })).beamIssue);
   // Fiber modes the page cannot take.
   const r = run({});
   assert.equal(fiber(r, { mfdUm: 0.5 }).ok, false, 'a mode spreading beyond 0.3 rad');
   assert.equal(fiber(r, { fiberMode: 'step', coreDiameterUm: 2, na: 0.05 }).ok, false, 'V outside the fit');
+  assert.equal(fiber(r, { fiberMode: 'index', coreIndex: 1.44, claddingIndex: 1.45 }).ok, false, 'a core below its cladding');
   assert.ok(fiber(lensOnly({}), {}).pending, 'no focus computed above');
   // Every number the page draws is finite.
   for (const kind of ['real', 'ideal']) for (const key of ['peak', 'radiusUm']) assert.ok(r.scan[kind][key].every(Number.isFinite), `${kind} ${key}`);
@@ -326,6 +350,16 @@ test('the lens opens in the canvas', () => {
 });
 
 test('the fiber panel: modes, losses and scans', () => {
+  // From the indices: NA = √(n_core² − n_clad²), and then the same mode as
+  // the core diameter and that NA.
+  const byIndex = fiber(run({}), { fiberMode: 'index', coreIndex: 1.4508, claddingIndex: 1.444, coreRadiusUm: 4.1 });
+  close(byIndex.mode.na, Math.sqrt(1.4508 ** 2 - 1.444 ** 2), 1e-15);
+  const byNa = fiber(run({}), { fiberMode: 'step', coreDiameterUm: 8.2, na: byIndex.mode.na });
+  close(byIndex.values.mfdUm, byNa.values.mfdUm, 1e-15);
+  close(byIndex.real.aligned, byNa.real.aligned, 1e-15);
+  // An ideal lens reflects nowhere: uncoated, only the fiber end loses.
+  const ideal = run({ lensKind: 'ideal' });
+  close(fiber(ideal, { fresnel: true }).through, ideal.clipShare * (1 - ((materialIndex('silica', 1550) - 1) / (materialIndex('silica', 1550) + 1)) ** 2), 1e-15);
   // The default core and NA guide LP₁₁ too at 1310 nm (V = 2.75).
   const at1310 = fiber(run({ wavelengthNm: 1310 }), { fiberMode: 'step' });
   assert.equal(at1310.mode.singleMode, false);
@@ -359,6 +393,8 @@ test('the numbers quoted on the thin and thick lens page are the engine’s', ()
   const says = fragment => assert.ok(text.includes(fragment), `the text no longer says “${fragment}”`);
   const sigf = (x, d) => String(Number(Number(x).toPrecision(d)));
   const fixed = (x, d) => Number(x).toFixed(d);
+  // Lengths in µm, to 0.1 µm as the page rounds them.
+  const um = x => String(Math.round(x * 10) / 10);
 
   const d = run({});
   says(`for f = 11 mm at 1550 nm, where n = ${fixed(d.n, 5)}`);
@@ -372,20 +408,20 @@ test('the numbers quoted on the thin and thick lens page are the engine’s', ()
   says(`the best form has R₁ = ${fixed(best.values.r1Mm, 3)} mm and R₂ = −${sigf(-best.values.r2Mm, 4)} mm, ${fixed(best.values.thicknessMm, 3)} mm thick`);
   const at = nm => lensData({ ...d.values, wavelengthNm: nm }).efl;
   says(`f = ${fixed(at(486.1), 2)} mm at 486.1 nm (the F line) and ${fixed(at(656.3), 2)} mm at 656.3 nm (the C line); at 1300 nm it is ${fixed(at(1300), 2)} mm, at 1550 nm ${fixed(at(1550), 2)} mm`);
-  says(`to a ${sigf(d.ideal.waistUm, 3)} µm waist, ${fixed(d.ideal.fromV2Mm, 3)} mm after the back vertex, with a Rayleigh range of ${sigf(d.ideal.rayleighMm * 1e3, 4)} µm, converging at ${sigf(d.ideal.halfAngleMrad, 4)} mrad`);
+  says(`to a ${um(d.ideal.waistUm)} µm waist, ${fixed(d.ideal.fromV2Mm, 3)} mm after the back vertex, with a Rayleigh range of ${um(d.ideal.rayleighMm * 1e3)} µm, converging at ${sigf(d.ideal.halfAngleMrad, 4)} mrad: a focusing NA of ${sigf(d.focusNa, 3)}`);
   const s = d.scan.real;
-  says(`the singlet reaches only ${sigf(s.paraxialStrehl, 2)} at its paraxial focus F′. Its brightest plane lies ${sigf(-s.bestShiftMm * 1e3, 4)} µm closer to the lens, where the Strehl ratio is ${sigf(s.strehl, 3)} and the spot radius ${sigf(s.bestRadiusUm, 3)} µm, against ${sigf(d.scan.ideal.bestRadiusUm, 3)} µm for the ideal lens`);
+  says(`the singlet reaches only ${sigf(s.paraxialStrehl, 2)} at its paraxial focus F′. Its brightest plane lies ${um(-s.bestShiftMm * 1e3)} µm closer to the lens, where the Strehl ratio is ${sigf(s.strehl, 3)} and the spot radius ${um(s.bestRadiusUm)} µm, against ${um(d.scan.ideal.bestRadiusUm)} µm for the ideal lens`);
   const flip = run({ orientation: 'plano' });
-  says(`the best Strehl ratio falls to ${sigf(flip.scan.real.strehl, 3)}, ${sigf(-flip.scan.real.bestShiftMm * 1e3, 4)} µm before F′`);
+  says(`the best Strehl ratio falls to ${sigf(flip.scan.real.strehl, 3)}, ${um(-flip.scan.real.bestShiftMm * 1e3)} µm before F′`);
   const equiRun = run({ lensKind: 'biconvex' }), bestRun = run({ lensKind: 'biconvex', shape: 'best' });
   says(`an equi-convex lens reaches ${sigf(equiRun.scan.real.strehl, 3)} and the best form ${sigf(bestRun.scan.real.strehl, 3)}`);
   const narrow = run({ beamDiameterMm: 1 });
   says(`With a 1 mm beam the plano-convex singlet is nearly perfect (${sigf(narrow.scan.real.strehl, 3)})`);
   const f = fiber(d);
-  says(`the ideal lens couples ${sigf(100 * f.ideal.aligned, 3)} %. The singlet couples best, ${sigf(100 * f.real.aligned, 3)} %, with the fiber ${sigf(-f.real.shiftMm * 1e3, 4)} µm closer to the lens than F′`);
-  says(`the singlet’s coupling halves with the core ${sigf(f.real.halfLateralUm, 3)} µm off the axis (the ideal lens’s ${sigf(f.ideal.halfLateralUm, 3)} µm), or with the fiber tilted by ${sigf(f.real.halfTiltMrad, 3)} mrad (${sigf(f.ideal.halfTiltMrad, 3)} mrad)`);
+  says(`the ideal lens couples ${sigf(100 * f.ideal.aligned, 3)} %. The singlet couples best, ${sigf(100 * f.real.aligned, 3)} %, with the fiber ${um(-f.real.shiftMm * 1e3)} µm closer to the lens than F′`);
+  says(`the singlet’s coupling halves with the core ${um(f.real.halfLateralUm)} µm off the axis (the ideal lens’s ${um(f.ideal.halfLateralUm)} µm), or with the fiber tilted by ${sigf(f.real.halfTiltMrad, 3)} mrad (${sigf(f.ideal.halfTiltMrad, 3)} mrad)`);
   says(`Flat side first, the best is ${sigf(100 * fiber(flip).real.aligned, 3)} %; the best form reaches ${sigf(100 * fiber(bestRun).real.aligned, 3)} %`);
-  says(`yet couples only ${sigf(100 * fiber(narrow).real.aligned, 3)} %, because its ${sigf(narrow.ideal.waistUm, 4)} µm waist`);
+  says(`yet couples only ${sigf(100 * fiber(narrow).real.aligned, 3)} %, because its ${um(narrow.ideal.waistUm)} µm waist`);
   const lossy = fiber(d, { fresnel: true });
   says(`together ${sigf(100 * lossy.through, 3)} % for the example, which brings the singlet to ${sigf(100 * lossy.real.efficiency, 3)} %`);
 });

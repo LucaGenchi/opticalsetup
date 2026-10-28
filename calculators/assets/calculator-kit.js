@@ -61,6 +61,8 @@ export function renderForm(form, inputs, groups, values) {
       control.id = id;
       control.name = input.id;
       if (input.help) control.setAttribute('aria-describedby', helpId);
+      // A tip shows on hover instead of a line of help under the field.
+      if (input.tip) { control.title = input.tip; label.title = input.tip; }
       if (input.type === 'select') {
         row.classList.add('choice');
         label.textContent = input.label;
@@ -193,7 +195,7 @@ const el = (name, attrs = {}, parent) => {
 // series: [{ key, name, color (CSS var), values: number|null per x,
 //            fill: 'light' | 'strong' (area down to zero), dash: true }]
 // options: { x: [...], xLabel, yLabel, yLog, yMin, yMax, marker: {x, y} | null,
-//            band: {lo, hi, label} | null, vlines: [{x, label}],
+//            band: {lo, hi, label} | null, vlines: [{x, label, side}],
 //            formatX, formatY, message }
 export function lineChart(host, table, options) {
   host.textContent = '';
@@ -304,13 +306,14 @@ export function lineChart(host, table, options) {
     el('path', { class: `chart-line${s.dash ? ' dash' : ''}`, d, stroke: `var(${s.color})` }, svg);
   }
 
-  // Vertical marker lines (a laser line), labelled at the top.
+  // Vertical marker lines (a laser line), labelled at the top: on their
+  // right, unless `side: 'left'` or too near the plot's right edge.
   for (const line of options.vlines ?? []) {
     if (!(line.x >= xs.lo && line.x <= xs.hi)) continue;
     const xPos = sx(line.x);
     el('line', { class: 'chart-vline', x1: xPos, x2: xPos, y1: pad.top, y2: pad.top + plotH }, svg);
     if (line.label) {
-      const right = xPos < pad.left + plotW - 90;
+      const right = line.side !== 'left' && xPos < pad.left + plotW - 90;
       el('text', { class: 'chart-vline-label', x: xPos + (right ? 5 : -5), y: pad.top + 12, 'text-anchor': right ? 'start' : 'end' }, svg).textContent = line.label;
     }
   }

@@ -60,8 +60,6 @@ export const GAUSSIAN_SHARE = 1 - Math.exp(-2);
 // aperture, if smaller): beyond 3.5 w lies 2 × 10⁻¹¹ of the power, and the
 // edge's ringing no longer moves the focus radius (it does by 5 × 10⁻⁴ at 2.5 w).
 export const PUPIL_BEAM_RADII = 3.5;
-// The engine's beam-to-pupil ratio range.
-const BEAM_RATIO_MAX = 10;
 // Radial pupil samples (powers of two: coarser strides divide them), tried
 // in turn until every integral is resolved, the fewest Simpson intervals
 // used, and the largest wavefront step (waves) and Bessel phase step (rad)
@@ -471,9 +469,17 @@ function focusOn(v, lens, ideal, samples, { withReal = true } = {}) {
     const peak = bestShift(s => m.peak(m.plane(s)), reach[kind]);
     out[kind] = { model: m, bestShiftMm: peak.shiftMm, strehl: peak.value, reachMm: reach[kind], clipped: rays[kind].clipped };
   }
-  const span = niceUp(Math.max(3 * zr, ...kinds.map(kind => 1.5 * Math.abs(out[kind].bestShiftMm))));
-  out.span = span;
-  out.shiftsMm = Array.from({ length: SCAN_POINTS }, (_, i) => -span + 2 * span * i / (SCAN_POINTS - 1));
+  // The scan spans three Rayleigh ranges about F′ and about each lens's
+  // brightest plane, and as far again past it, on round steps.
+  let lo = -3 * zr, hi = 3 * zr;
+  for (const kind of kinds) {
+    const b = out[kind].bestShiftMm, wide = Math.max(3 * zr, Math.abs(b));
+    lo = Math.min(lo, b - wide); hi = Math.max(hi, b + wide);
+  }
+  const step = niceUp((hi - lo) / 8);
+  lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+  out.span = (hi - lo) / 2;
+  out.shiftsMm = Array.from({ length: SCAN_POINTS }, (_, i) => lo + (hi - lo) * i / (SCAN_POINTS - 1));
   out.samples = samples;
   const planes = {};
   for (const kind of kinds) {
@@ -505,29 +511,25 @@ const designed = { when: 'spec', whenValue: 'focal' };
 const manual = { when: 'spec', whenValue: 'radii' };
 
 export const LENS_INPUTS = [
-  { id: 'wavelengthNm', group: 'laser', label: 'Wavelength', unit: 'nm', value: 1550, min: 200, max: 20000, arrowStep: 1,
-    help: 'Vacuum wavelength of the CW laser, inside the glass’s fitted range.' },
+  { id: 'wavelengthNm', group: 'laser', label: 'Wavelength', unit: 'nm', value: 1550, min: 200, max: 20000, arrowStep: 1 },
   { id: 'beamDiameterMm', group: 'laser', label: 'Beam diameter (1/e²)', unit: 'mm', value: 2, min: 0.001, max: 1000, arrowStep: 0.1,
     help: 'At the lens, where the collimated TEM₀₀ beam has its waist.' },
   { id: 'lensKind', type: 'select', group: 'lens', label: 'Lens', value: 'planoconvex',
-    options: [['ideal', 'Ideal thin lens'], ['planoconvex', 'Plano-convex singlet'], ['biconvex', 'Bi-convex singlet']],
-    help: 'The ideal lens has no aberrations; a singlet has two spherical faces, and its rays are traced.' },
+    options: [['ideal', 'Ideal thin lens'], ['planoconvex', 'Plano-convex singlet'], ['biconvex', 'Bi-convex singlet']] },
   { id: 'orientation', type: 'select', group: 'lens', label: 'Toward the laser', value: 'convex', when: 'lensKind', whenValue: 'planoconvex',
-    options: [['convex', 'Curved side first'], ['plano', 'Flat side first']],
-    help: 'Curved side first shares the bending between both faces and focuses a collimated beam better.' },
+    options: [['convex', 'Curved side first (best focusing)'], ['plano', 'Flat side first (worse focusing)']] },
   { id: 'spec', type: 'select', group: 'lens', label: 'Given by', value: 'focal', ...singlet,
     options: [['focal', 'Focal length, diameter and edge'], ['radii', 'Radii and centre thickness']],
-    help: 'From f, the page designs the radii and the centre thickness; or enter them yourself.' },
+    tip: 'Focal length, diameter and edge: the page designs the radii and the centre thickness that give this f with this edge thickness. Radii and centre thickness: enter the lens’s shape yourself, and the page computes its f.' },
   { id: 'shape', type: 'select', group: 'lens', label: 'Bi-convex shape', value: 'equi', all: [{ when: 'lensKind', whenValue: 'biconvex' }, designed],
     options: [['equi', 'Equi-convex (R₂ = −R₁)'], ['best', 'Best form (least spherical aberration)']],
     help: 'Best form: the thin-lens shape with the least spherical aberration for a collimated beam, its stronger face toward the laser.' },
-  { id: 'glass', type: 'select', group: 'lens', label: 'Glass', value: 'nbk7', options: GLASS_CHOICES,
-    help: 'From the canvas’s glass catalogue. For the ideal lens it sets only how f changes with wavelength.' },
+  { id: 'glass', type: 'select', group: 'lens', label: 'Glass', value: 'nbk7', options: GLASS_CHOICES, ...singlet },
   { id: 'focalMm', group: 'size', label: 'Effective focal length f', unit: 'mm', value: 11, min: 0.1, max: 100000, arrowStep: 0.5,
     any: [{ when: 'lensKind', whenValue: 'ideal' }, { all: [singlet, designed] }],
     help: 'At the laser’s wavelength, from the principal plane H′ to the focus F′.' },
   { id: 'diameterMm', group: 'size', label: 'Clear diameter D', unit: 'mm', value: 6, min: 0.01, max: 1000, arrowStep: 0.5,
-    help: 'The aperture of the lens: it clips the beam and, for a singlet, sets the edge thickness.' },
+    help: 'At least the beam’s 1/e² diameter; for a singlet it also sets the edge thickness.' },
   { id: 'edgeMm', group: 'size', label: 'Edge thickness', unit: 'mm', value: 1, min: 0, max: 1000, arrowStep: 0.1, all: [singlet, designed],
     help: 'At the clear diameter; with f and D it fixes the centre thickness.' },
   { id: 'convexRadiusMm', group: 'size', label: 'Radius of the curved face', unit: 'mm', value: 5.5, min: 0.01, max: 10000, arrowStep: 0.1,
@@ -554,7 +556,8 @@ export function bestFormRatio(n) {
   return c < 1 ? (1 + c) / (1 - c) : null;
 }
 
-// The ideal lens: a thin lens of focal length f in the plane of V₁ = V₂.
+// The ideal lens: a thin lens of focal length f in the plane of V₁ = V₂, the
+// same f at every wavelength.
 function idealLens(f, n) {
   return {
     n, ideal: true, matrix: { Ay: 1, Au: -1 / f, By: 0, Bu: 1 }, power: 1 / f, afocal: false,
@@ -566,8 +569,8 @@ function idealLens(f, n) {
 // thickness, and its lens data at the laser's wavelength; or the reason
 // there is none, with the inputs to correct.
 export function designLens(v) {
+  if (v.lensKind === 'ideal') return { lens: idealLens(v.focalMm, null), r1Mm: null, r2Mm: null, thicknessMm: 0 };
   const n = materialIndex(v.glass, v.wavelengthNm), h = v.diameterMm / 2;
-  if (v.lensKind === 'ideal') return { lens: idealLens(v.focalMm, n), r1Mm: null, r2Mm: null, thicknessMm: 0 };
   const data = (r1Mm, r2Mm, thicknessMm) => ({ r1Mm, r2Mm, thicknessMm, lens: { ...lensData({ glass: v.glass, wavelengthNm: v.wavelengthNm, r1Mm, r2Mm, thicknessMm }), r1Mm, r2Mm } });
   if (v.lensKind === 'planoconvex') {
     // Flat on one side, the thickness term vanishes: f = R/(n − 1) exactly.
@@ -619,17 +622,13 @@ function edge(v) {
 }
 
 // Lens data over the glass's range, for the chromatic graph: the thick lens
-// and the thin-lens formula with the same radii; for the ideal lens, a thin
-// lens of this glass with focal length f at the laser's wavelength.
+// and the thin-lens formula with the same radii; the ideal lens keeps its f.
 export function chromaticScan(v, lens, count = 161) {
-  const [lo, hi] = glassWavelengthRange(v.glass);
+  const [lo, hi] = lens.ideal ? [350, 2500] : glassWavelengthRange(v.glass);
   const a = Math.max(lo, Math.min(350, v.wavelengthNm)), b = Math.min(hi, Math.max(2500, v.wavelengthNm));
   return Array.from({ length: count }, (_, i) => {
     const nm = a + (b - a) * i / (count - 1);
-    if (lens.ideal) {
-      const f = v.focalMm * (lens.n - 1) / (materialIndex(v.glass, nm) - 1);
-      return { nm, efl: f, bfl: f, thin: f };
-    }
+    if (lens.ideal) return { nm, efl: v.focalMm, bfl: v.focalMm, thin: v.focalMm };
     const d = lensData({ ...v, wavelengthNm: nm });
     return { nm, efl: d.afocal ? null : d.efl, bfl: d.afocal ? null : d.bfl, thin: Number.isFinite(d.thinFocalMm) ? d.thinFocalMm : null };
   });
@@ -638,10 +637,11 @@ export function chromaticScan(v, lens, count = 161) {
 export function computeThickLens(raw, { focus = true } = {}) {
   const { values: input, errors } = parseInputs(LENS_INPUTS, raw);
   if (errors.length) return { ok: false, errors };
-  if (!isWavelengthInGlassRange(input.glass, input.wavelengthNm)) {
+  if (input.lensKind !== 'ideal' && !isWavelengthInGlassRange(input.glass, input.wavelengthNm)) {
     const [lo, hi] = glassWavelengthRange(input.glass);
     return unavailable(`${glassName(input.glass)} is fitted from ${lo} to ${hi} nm; choose a wavelength inside that range.`, 'wavelengthNm');
   }
+  if (input.diameterMm < input.beamDiameterMm) return unavailable(`The clear diameter (${fmt(input.diameterMm)} mm) is smaller than the beam’s 1/e² diameter (${fmt(input.beamDiameterMm)} mm): choose a lens at least as wide as the beam.`, 'diameterMm', 'beamDiameterMm');
   const design = designLens(input);
   if (design.reason) return unavailable(design.reason, ...design.ids);
   const { lens } = design;
@@ -660,10 +660,11 @@ export function computeThickLens(raw, { focus = true } = {}) {
     return result;
   }
   result.ideal = ideal;
+  // The focused beam's NA: the sine of its 1/e² half angle, λ/(π w₀′).
+  result.focusNa = Math.sin(ideal.halfAngleMrad * 1e-3);
   result.clipShare = apertureShare(v.diameterMm, v.beamDiameterMm);
   if (!focus) return result;
   if (ideal.halfAngleMrad > 300) { result.beamIssue = `The focused beam converges at ${fmt(ideal.halfAngleMrad, 3)} mrad (half angle), beyond the 0.3 rad the paraxial beam and the scalar focus allow.`; return result; }
-  if (v.beamDiameterMm / v.diameterMm > BEAM_RATIO_MAX) { result.beamIssue = `The beam is more than ${BEAM_RATIO_MAX} times the clear diameter: the lens passes only its centre, a nearly even disc of light, which this page does not model as a beam.`; return result; }
   if (geometry && !(geometry.edgeMm > 0)) { result.realIssue = `The faces cross before the clear diameter (edge thickness ${fmt(geometry.edgeMm, 3)} mm): a real lens needs more centre thickness, so only the ideal lens is shown.`; }
   // The pupil's rim seen from the focus, and the Fresnel number of the lit
   // pupil: the Debye integral holds for a large one (engine/pupil.js).
@@ -682,14 +683,18 @@ export function computeThickLens(raw, { focus = true } = {}) {
 
 export const FIBER_INPUTS = [
   { id: 'fiberMode', type: 'select', group: 'fiber', label: 'Fiber mode given by', value: 'mfd',
-    options: [['mfd', 'Mode-field diameter (datasheet)'], ['step', 'Core diameter and NA (step index)']],
-    help: 'The mode is taken as a Gaussian of this 1/e² diameter.' },
+    options: [['mfd', 'Mode-field diameter (datasheet)'], ['step', 'Core diameter and NA'], ['index', 'Core and cladding indices, core radius']],
+    help: 'The mode is taken as a Gaussian of this 1/e² diameter; from the core, by Marcuse’s fit for a step-index fiber.' },
   { id: 'mfdUm', group: 'fiber', label: 'Mode-field diameter', unit: 'µm', value: 10.4, min: 0.5, max: 200, arrowStep: 0.1, when: 'fiberMode', whenValue: 'mfd',
     help: '1/e² intensity diameter of the fundamental mode at the laser’s wavelength.' },
   { id: 'coreDiameterUm', group: 'fiber', label: 'Core diameter', unit: 'µm', value: 8.2, min: 0.5, max: 100, arrowStep: 0.1, when: 'fiberMode', whenValue: 'step',
     help: 'Step-index core; the mode follows from Marcuse’s fit.' },
   { id: 'na', group: 'fiber', label: 'Numerical aperture', unit: '', value: 0.14, min: 0.01, max: 0.5, arrowStep: 0.01, when: 'fiberMode', whenValue: 'step',
     help: 'NA = √(n_core² − n_clad²), the index-profile NA.' },
+  { id: 'coreIndex', group: 'fiber', label: 'Core index n_core', unit: '', value: 1.4508, min: 1, max: 4, arrowStep: 0.0001, when: 'fiberMode', whenValue: 'index' },
+  { id: 'claddingIndex', group: 'fiber', label: 'Cladding index n_clad', unit: '', value: 1.444, min: 1, max: 4, arrowStep: 0.0001, when: 'fiberMode', whenValue: 'index' },
+  { id: 'coreRadiusUm', group: 'fiber', label: 'Core radius', unit: 'µm', value: 4.1, min: 0.25, max: 50, arrowStep: 0.05, when: 'fiberMode', whenValue: 'index',
+    help: 'At the laser’s wavelength; NA = √(n_core² − n_clad²).' },
   { id: 'fresnel', type: 'checkbox', group: 'fiber', label: 'Uncoated surfaces (Fresnel reflections)', value: false,
     help: 'Loses the normal-incidence reflection at both lens faces and at a fused-silica fiber end.' },
 ];
@@ -699,12 +704,12 @@ export const FIBER_DEFAULTS = defaultsFor(FIBER_INPUTS);
 export const OFFSET_POINTS = 41;
 
 // The light reaching the fiber: the beam's share through the clear
-// aperture and, uncoated, the transmission of the two lens faces and the
-// fiber end at normal incidence.
+// aperture and, uncoated, the transmission of a singlet's two faces (n
+// null for the ideal lens) and the fiber end at normal incidence.
 const reflectance = n => ((n - 1) / (n + 1)) ** 2;
 export function fresnelTransmission(n, wavelengthNm) {
   const silica = materialIndex('silica', Math.min(3710, Math.max(210, wavelengthNm)));
-  return (1 - reflectance(n)) ** 2 * (1 - reflectance(silica));
+  return (n === null ? 1 : (1 - reflectance(n)) ** 2) * (1 - reflectance(silica));
 }
 
 // Per lens, the fiber at its best plane on the axis; cached on the lens
@@ -759,18 +764,23 @@ export function computeFiber(lensResult, raw) {
   const { values: f, errors } = parseInputs(FIBER_INPUTS, raw);
   if (errors.length) return { ok: false, errors };
   const v = lensResult.values;
-  let mode = null, mfdUm = f.mfdUm;
-  if (f.fiberMode === 'step') {
-    mode = fiberMode({ wavelengthNm: v.wavelengthNm, coreDiameterUm: f.coreDiameterUm, na: f.na });
-    if (!mode.inFit) return unavailable(`V = ${mode.vNumber.toFixed(3)}: outside ${MARCUSE_V[0]}–${MARCUSE_V[1]}, where this page’s Gaussian fit to the fundamental mode is checked. Enter the mode-field diameter instead.`, 'coreDiameterUm', 'na');
+  let mode = null, mfdUm = f.mfdUm, na = null;
+  if (f.fiberMode !== 'mfd') {
+    const ids = f.fiberMode === 'step' ? ['coreDiameterUm', 'na'] : ['coreIndex', 'claddingIndex', 'coreRadiusUm'];
+    if (f.fiberMode === 'index' && !(f.coreIndex > f.claddingIndex)) return unavailable('The core’s index must be above the cladding’s for the fiber to guide.', 'coreIndex', 'claddingIndex');
+    na = f.fiberMode === 'step' ? f.na : Math.sqrt(f.coreIndex ** 2 - f.claddingIndex ** 2);
+    const core = f.fiberMode === 'step' ? f.coreDiameterUm : 2 * f.coreRadiusUm;
+    mode = { ...fiberMode({ wavelengthNm: v.wavelengthNm, coreDiameterUm: core, na }), na };
+    if (!mode.inFit) return unavailable(`V = ${mode.vNumber.toFixed(3)}: outside ${MARCUSE_V[0]}–${MARCUSE_V[1]}, where this page’s Gaussian fit to the fundamental mode is checked. Enter the mode-field diameter instead.`, ...ids);
     mfdUm = mode.modeFieldDiameterUm;
   }
   const theta = v.wavelengthNm * 1e-3 / (Math.PI * mfdUm / 2);
-  if (theta > MODE_LIMIT) return unavailable(`A ${fmt(mfdUm, 3)} µm mode at ${fmt(v.wavelengthNm)} nm spreads at ${fmt(theta * 1e3, 3)} mrad (1/e² half angle), beyond the ${MODE_LIMIT * 1e3} mrad the Gaussian mode model allows.`, f.fiberMode === 'step' ? 'coreDiameterUm' : 'mfdUm');
+  if (theta > MODE_LIMIT) return unavailable(`A ${fmt(mfdUm, 3)} µm mode at ${fmt(v.wavelengthNm)} nm spreads at ${fmt(theta * 1e3, 3)} mrad (1/e² half angle), beyond the ${MODE_LIMIT * 1e3} mrad the Gaussian mode model allows.`, { mfd: 'mfdUm', step: 'coreDiameterUm', index: 'coreRadiusUm' }[f.fiberMode]);
   if (!lensResult.scan) return { pending: true, message: lensResult.beamIssue ?? 'No focus above to couple into.' };
   const focus = fiberFocus(lensResult, mfdUm);
-  if (!focus.ok) return unavailable(focus.reason, f.fiberMode === 'step' ? 'coreDiameterUm' : 'mfdUm');
+  if (!focus.ok) return unavailable(focus.reason, { mfd: 'mfdUm', step: 'coreDiameterUm', index: 'coreRadiusUm' }[f.fiberMode]);
   const w = mfdUm / 2000, ideal = lensResult.ideal, kinds = focus.kinds;
+  // An ideal lens has no faces to reflect at: only the fiber end, uncoated.
   const through = lensResult.clipShare * (f.fresnel ? fresnelTransmission(lensResult.lens.n, v.wavelengthNm) : 1);
   // Scan ranges, out to where a Gaussian beam's coupling is nearly gone:
   // twice √(w₀′² + w_m²) across, 1.5 √(θ′² + θ₀²) in angle (within the mode
@@ -807,7 +817,7 @@ export function computeFiber(lensResult, raw) {
 export function beamDiagram(result) {
   const { values: v, lens, geometry } = result;
   const t = v.thicknessMm, f = lens.efl;
-  const marks = { F: -lens.ffl, F2: t + lens.bfl, H: lens.h1Mm, H2: t + lens.h2Mm };
+  const marks = { F: -lens.ffl, F2: t + lens.bfl, H: lens.h1Mm, H2: t + lens.h2Mm, V1: 0, V2: t };
   const lo = Math.min(marks.F, -0.2 * f) - 0.1 * f, hi = Math.max(marks.F2, t) + 0.3 * f;
   const w = v.beamDiameterMm / 2, reach = Math.min(w, 0.999 * v.diameterMm / 2);
   const heights = [1 / 3, 2 / 3, 1].map(x => x * reach);

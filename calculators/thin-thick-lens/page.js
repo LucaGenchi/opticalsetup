@@ -18,12 +18,17 @@ const caption = document.getElementById('preview-caption');
 const figureNote = document.getElementById('preview-note');
 const openLink = document.getElementById('preview-open');
 
-// A length in mm, shown in µm below 1 mm.
-const length = mm => (Math.abs(mm) >= 1 ? [mm, 'mm'] : [mm * 1e3, 'µm']);
-const lengthRow = (label, mm, digits) => [label, ...length(mm), digits];
-const signed = mm => (Math.abs(mm) < 1e-9 ? '0 mm (at the vertex)' : `${mm < 0 ? '−' : '+'}${formatNumber(Math.abs(mm), 4)} mm`);
+// Lengths to micrometre resolution: in mm to 0.001 mm, and in µm, for the
+// focus's few-micrometre sizes, to 0.1 µm.
+const roundMm = mm => Math.round(mm * 1e3) / 1e3;
+const roundUm = um => (Number.isFinite(um) ? Math.round(um * 10) / 10 : um);
+const mmRow = (label, mm) => [label, roundMm(mm), 'mm', 12];
+const umRow = (label, um) => [label, roundUm(um), 'µm', 12];
+const lengthRow = (label, mm) => (Math.abs(mm) >= 1 ? mmRow(label, mm) : umRow(label, mm * 1e3));
+const mmText = mm => `${formatNumber(roundMm(mm), 12)} mm`;
+const signed = mm => (Math.abs(roundMm(mm)) < 1e-9 ? '0 mm (at the vertex)' : `${mm < 0 ? '−' : '+'}${mmText(Math.abs(mm))}`);
 const KIND = { ideal: 'Ideal thin lens', planoconvex: 'Plano-convex singlet', biconvex: 'Bi-convex singlet' };
-const radius = mm => (mm ? `${formatNumber(mm, 5)} mm` : 'flat');
+const radius = mm => (mm ? mmText(mm) : 'flat');
 
 // The lens and its focus at a glance; the rest of the lens data below.
 function rows(r) {
@@ -31,35 +36,35 @@ function rows(r) {
   const key = [{ group: `${KIND[v.lensKind]} at ${formatNumber(v.wavelengthNm, 5)} nm` }];
   if (!lens.ideal) {
     key.push(['Radii R₁ / R₂', `${radius(v.r1Mm)} / ${radius(v.r2Mm)}`],
-      ['Centre / edge thickness', `${formatNumber(v.thicknessMm, 5)} mm / ${formatNumber(r.geometry.edgeMm, 4)} mm`]);
+      ['Centre / edge thickness', `${mmText(v.thicknessMm)} / ${mmText(r.geometry.edgeMm)}`]);
   }
-  key.push(['Focal length f', lens.efl, 'mm'], ['Back focal length (V₂ to F′)', lens.bfl, 'mm']);
-  if (r.ideal && !r.beamIssue) key.push(['Focused waist, ideal (1/e² radius)', r.ideal.waistUm, 'µm', 4]);
+  key.push(mmRow('Focal length f', lens.efl), mmRow('Back focal length (V₂ to F′)', lens.bfl));
+  if (r.ideal && !r.beamIssue) key.push(['Focusing NA (1/e² half angle)', r.focusNa, '', 3], umRow('Focused waist, ideal (1/e² radius)', r.ideal.waistUm));
   if (r.scan?.real) key.push(['Singlet Strehl ratio, best plane', r.scan.real.strehl, '', 3]);
 
   const out = [{ group: 'Cardinal points and shape' }];
   if (lens.ideal) {
     out.push(['Principal planes', 'H = H′, in the plane of the lens'], ['Focal points', 'f before and after it']);
   } else {
-    out.push(['Refractive index n', lens.n, '', 6], ['Focal length, thin-lens formula', lens.thinFocalMm, 'mm'],
-      ['Front focal length (F to V₁)', lens.ffl, 'mm'],
+    out.push(['Refractive index n', lens.n, '', 6], mmRow('Focal length, thin-lens formula', lens.thinFocalMm),
+      mmRow('Front focal length (F to V₁)', lens.ffl),
       ['Principal plane H from V₁', signed(lens.h1Mm)], ['Principal plane H′ from V₂', signed(lens.h2Mm)],
       ['Shape factor (R₂ + R₁)/(R₂ − R₁)', lens.shape === null ? 'undefined (equal curvatures)' : formatNumber(lens.shape, 4)]);
   }
 
   const focus = [];
   if (r.ideal) {
-    focus.push({ group: 'Gaussian beam, ideal lens' }, ['Focused waist w₀′ (1/e² radius)', r.ideal.waistUm, 'µm', 4],
-      lengthRow('Waist after V₂', r.ideal.fromV2Mm, 6), ['Rayleigh range z_R′', r.ideal.rayleighMm * 1e3, 'µm', 4],
-      ['Convergence, half angle', r.ideal.halfAngleMrad, 'mrad', 4], ['Share of the beam inside D', 100 * r.clipShare, '%', 6]);
+    focus.push({ group: 'Gaussian beam, ideal lens' }, umRow('Focused waist w₀′ (1/e² radius)', r.ideal.waistUm),
+      lengthRow('Waist after V₂', r.ideal.fromV2Mm), umRow('Rayleigh range z_R′', r.ideal.rayleighMm * 1e3),
+      ['Convergence, half angle', r.ideal.halfAngleMrad, 'mrad', 4], ['Focusing NA, sin of that angle', r.focusNa, '', 3], ['Share of the beam inside D', 100 * r.clipShare, '%', 6]);
   }
   const s = r.scan;
   if (s) {
-    focus.push({ group: 'Through focus' }, ['Ideal lens: spot radius (86.5 %)', s.ideal.bestRadiusUm, 'µm', 4]);
+    focus.push({ group: 'Through focus' }, umRow('Ideal lens: spot radius (86.5 %)', s.ideal.bestRadiusUm));
     if (s.real) {
-      focus.push(['Singlet: Strehl ratio at F′', s.real.paraxialStrehl, '', 3], ['Singlet: spot radius at F′', s.real.paraxialRadiusUm, 'µm', 4],
-        ['Singlet: brightest plane from F′', s.real.bestShiftMm * 1e3, 'µm', 4], ['Singlet: Strehl ratio there', s.real.strehl, '', 3],
-        ['Singlet: spot radius there', s.real.bestRadiusUm, 'µm', 4]);
+      focus.push(['Singlet: Strehl ratio at F′', s.real.paraxialStrehl, '', 3], umRow('Singlet: spot radius at F′', s.real.paraxialRadiusUm),
+        umRow('Singlet: brightest plane from F′', s.real.bestShiftMm * 1e3), ['Singlet: Strehl ratio there', s.real.strehl, '', 3],
+        umRow('Singlet: spot radius there', s.real.bestRadiusUm));
     }
   }
   return { key, lens: out, focus };
@@ -87,19 +92,21 @@ function graphs(r) {
     colour: {
       x: colour.map(p => p.nm), xLabel: 'Wavelength (nm)', xUnit: 'nm', yLabel: 'Focal length (mm)',
       series: r.lens.ideal
-        ? [{ name: 'Thin lens of this glass', color: '--series-3', values: colour.map(p => p.thin) }]
+        ? [{ name: 'Ideal thin lens (no dispersion)', color: '--series-3', values: colour.map(p => p.thin) }]
         : [
           { name: 'Effective focal length f', color: '--series-1', values: colour.map(p => p.efl) },
           { name: 'Back focal length', color: '--series-1', dash: true, values: colour.map(p => p.bfl) },
-          { name: 'Ideal thin lens, same radii', color: '--series-3', values: colour.map(p => p.thin) },
+          { name: 'Thin-lens formula, same radii', color: '--series-3', values: colour.map(p => p.thin) },
         ],
-      // The scale starts near the curves, so their change shows.
-      yMin: 0.98 * Math.min(...colour.flatMap(p => [p.efl, p.bfl, p.thin]).filter(Number.isFinite)),
+      // The scale starts near the curves, so their change shows; a constant
+      // f gets a band around it.
+      yMin: r.lens.ideal ? 0.9 * r.lens.efl : 0.98 * Math.min(...colour.flatMap(p => [p.efl, p.bfl, p.thin]).filter(Number.isFinite)),
+      ...(r.lens.ideal ? { yMax: 1.1 * r.lens.efl } : {}),
       marker: { x: r.values.wavelengthNm, y: r.lens.efl }, vlines: [{ x: r.values.wavelengthNm, label: `${formatNumber(r.values.wavelengthNm, 5)} nm` }],
       formatX: n => formatNumber(n, 5), formatY: n => formatNumber(n, 5),
     },
   };
-  if (!s) return { ...out, beam: none, psf: none };
+  if (!s) return { ...out, beam: none };
   const x = s.shiftsMm.map(micron), span = 2 * micron(s.span);
   // Marker lines, F′ first; one within 8 % of the plot of another is left out.
   const lines = marks => {
@@ -114,22 +121,9 @@ function graphs(r) {
       { name: 'Singlet', color: '--series-1', values: real ? real.radiusUm : x.map(() => null) },
       { name: 'Ideal thin lens', color: '--series-3', values: s.ideal.radiusUm },
     ],
-    vlines: lines([{ x: 0, label: 'F′' }, real && { x: micron(real.bestShiftMm), label: 'singlet brightest' }]),
-    formatX: n => formatNumber(n, 4), formatY: n => formatNumber(n, 4),
-  };
-  // Across the focus: out to three ideal waists, or twice the singlet's
-  // spot (its whole reach when the spot is wider), on a symmetric grid.
-  const spot = real ? (Number.isFinite(real.bestRadiusUm) ? 2 * real.bestRadiusUm : real.radiusLimitUm) : 0;
-  const ideal = s.ideal.model, reach = Math.min(Math.max(3 * r.ideal.waistUm, spot), s.ideal.radiusLimitUm, real ? real.radiusLimitUm : Infinity);
-  const radii = Array.from({ length: 161 }, (_, i) => -reach + 2 * reach * i / 160);
-  const relative = (model, plane) => radii.map(u => model.intensity(plane, Math.abs(u) * 1e-3) * model.norm / ideal.norm);
-  out.psf = {
-    x: radii, xLabel: 'Distance from the axis (µm)', xUnit: 'µm', yLabel: 'Intensity (ideal peak = 1)', yMin: 0,
-    series: [
-      { name: 'Singlet, brightest plane', color: '--series-1', values: real ? relative(real.model, real.atBest) : radii.map(() => null) },
-      { name: 'Singlet at F′', color: '--series-1', dash: true, values: real ? relative(real.model, real.atParaxial) : radii.map(() => null) },
-      { name: 'Ideal thin lens', color: '--series-3', values: relative(ideal, s.ideal.atBest) },
-    ],
+    // Each label on its line's outer side, so two near lines do not collide.
+    vlines: lines([{ x: 0, label: 'F′' }, real && { x: micron(real.bestShiftMm), label: 'singlet brightest' }])
+      .map((m, i, all) => ({ ...m, side: all.length > 1 && m.x === Math.min(...all.map(o => o.x)) ? 'left' : 'right' })),
     formatX: n => formatNumber(n, 4), formatY: n => formatNumber(n, 4),
   };
   return out;
@@ -170,6 +164,13 @@ function diagramSVG(g) {
     const z = g.marks[key];
     body += `<circle cx="${z}" cy="0" r="${2.2 * u}" fill="#2b3240"/><text x="${z}" y="${font * 1.2}" font-size="${font}" fill="#2b3240" text-anchor="middle">${label}</text>`;
   }
+  // A singlet's vertices, where its faces meet the axis, under the lens.
+  if (g.outline) {
+    const apart = g.marks.V2 - g.marks.V1 > 2 * font;
+    for (const [key, label, anchor] of [['V1', 'V₁', apart ? 'middle' : 'end'], ['V2', 'V₂', apart ? 'middle' : 'start']]) {
+      body += `<text x="${g.marks[key]}" y="${g.halfDiameter + font * 1.1}" font-size="${0.85 * font}" fill="#2b3240" text-anchor="${anchor}">${label}</text>`;
+    }
+  }
   body += '</g>';
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${lo} ${-H / 2} ${W} ${H}" font-family="Helvetica, Arial, sans-serif" role="img" aria-label="${esc(caption.textContent)}">${body}</svg>`;
 }
@@ -183,7 +184,7 @@ function drawFigure(r) {
     return;
   }
   const g = beamDiagram(r);
-  const lensText = r.lens.ideal ? 'the ideal lens (its principal planes in its plane)' : g.outline ? 'the lens, its principal planes H and H′' : 'the lens (its faces cross at this diameter, so it is drawn as a thin-lens line at H)';
+  const lensText = r.lens.ideal ? 'the ideal lens (its principal planes in its plane)' : g.outline ? 'the lens with its vertices V₁ and V₂ (where its faces meet the axis), its principal planes H and H′' : 'the lens (its faces cross at this diameter, so it is drawn as a thin-lens line at H)';
   caption.textContent = `To scale, in the plane of the axis: ${lensText}, its focal points F and F′, and rays of the laser beam at a third, two thirds and all of its 1/e² radius${r.lens.ideal || !g.outline ? ', bent toward F′' : ', traced through both faces: the outer ones cross the axis before F′ (spherical aberration)'}.`;
   figure.innerHTML = diagramSVG(g);
   const scene = canvasScene(r.values, r.lens);
@@ -200,17 +201,17 @@ function drawFigure(r) {
 let lensResult = null, fiber = null;
 
 function fiberRows(f) {
-  const mode = [{ group: `Mode-field diameter ${formatNumber(f.values.mfdUm, 4)} µm` }, ['Far-field half angle θ₀ (1/e²)', f.theta * 1e3, 'mrad', 4]];
-  if (f.mode) mode.push(['V number', f.mode.vNumber, '', 4], ['Cutoff wavelength', f.mode.cutoffNm, 'nm', 4], ['Single-mode here', f.mode.singleMode ? 'yes' : 'no: LP₁₁ is guided too']);
+  const mode = [{ group: `Mode-field diameter ${formatNumber(roundUm(f.values.mfdUm), 12)} µm` }, ['Far-field half angle θ₀ (1/e²)', f.theta * 1e3, 'mrad', 4]];
+  if (f.mode) mode.push(['Numerical aperture', f.mode.na, '', 4], ['V number', f.mode.vNumber, '', 4], ['Cutoff wavelength', f.mode.cutoffNm, 'nm', 4], ['Single-mode here', f.mode.singleMode ? 'yes' : 'no: LP₁₁ is guided too']);
   mode.push(['Light reaching the fiber', 100 * f.through, '%', 4]);
   const coupling = [];
   for (const [kind, name] of [['real', 'Singlet'], ['ideal', 'Ideal thin lens']]) {
     if (!f[kind]) continue;
     const k = f[kind], shiftUm = k.shiftMm * 1e3;
-    // Below a nanometre the search's rounding, not a position.
-    coupling.push({ group: name }, Math.abs(shiftUm) < 1e-3 ? ['Best fiber position', 'at F′'] : ['Best fiber position from F′', shiftUm, 'µm', 4],
+    // Under 0.05 µm the search's rounding, not a position.
+    coupling.push({ group: name }, Math.abs(roundUm(shiftUm)) < 0.05 ? ['Best fiber position', 'at F′'] : umRow('Best fiber position from F′', shiftUm),
       ['Mode overlap there', 100 * k.aligned, '%', 4], ['Coupling efficiency', 100 * k.efficiency, '%', 4],
-      ['Lateral offset that halves it', k.halfLateralUm, 'µm', 3], ['Tilt that halves it', k.halfTiltMrad, 'mrad', 3]);
+      umRow('Lateral offset that halves it', k.halfLateralUm), ['Tilt that halves it', k.halfTiltMrad, 'mrad', 3]);
   }
   return { 'fiber-mode': mode, 'fiber-coupling': coupling };
 }
@@ -237,7 +238,7 @@ function fiberGraphs(f) {
 }
 
 mountCalculator({
-  inputs: LENS_INPUTS, defaults: LENS_DEFAULTS, hideInactive: true, charts: ['beam', 'psf', 'colour'],
+  inputs: LENS_INPUTS, defaults: LENS_DEFAULTS, hideInactive: true, charts: ['beam', 'colour'],
   groups: { laser: { title: 'Laser' }, lens: { title: 'Lens' }, size: { title: 'Dimensions' } },
   compute: computeThickLens, rows, notes, graphs,
   onResult: r => { drawFigure(r); lensResult = r; fiber?.update(); },
