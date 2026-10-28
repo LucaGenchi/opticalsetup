@@ -21,7 +21,6 @@
     "insertion2Mm": 12,
     "layout": "prism-pair",
     "pairGapMm": 100,
-    "passes": "2",
     "polarization": "p",
     "prismCut": "brewster",
     "prismMaterial": "silica",
@@ -84,10 +83,10 @@
   },
   {
    "expected": {
-    "fodFs4": -324396.3173,
-    "gddFs2": -23508.62298,
-    "todFs3": -85578.50867,
-    "transmission": 0.1007832427
+    "fodFs4": -648792.6347,
+    "gddFs2": -47017.24597,
+    "todFs3": -171157.0173,
+    "transmission": 0.01015726201
    },
    "inputs": {
     "apexDeg": 60,
@@ -99,7 +98,6 @@
     "insertion2Mm": 8,
     "layout": "prism-pair",
     "pairGapMm": 100,
-    "passes": "1",
     "polarization": "s",
     "prismCut": "custom",
     "prismMaterial": "nsf11",
@@ -110,7 +108,7 @@
     "targetGddFs2": 0,
     "wavelengthNm": 1030
    },
-   "name": "prism pair set by hand: 60 deg N-SF11 prisms at 50 deg, s-polarized, single pass",
+   "name": "prism pair set by hand: 60 deg N-SF11 prisms at 50 deg, s-polarized, double pass",
    "note": "GDD, TOD, the solved separation and the transmission to 1e-9 (closed forms in both programs; the app in double precision). FOD to 2e-3: the app takes it from fourth differences of its double-precision phase, about 1 fs^4 of rounding on phases of 10^7 rad.",
    "tolerance": {
     "fodFs4": 0.002,
@@ -143,7 +141,6 @@
     "layout": "grating-pair",
     "lensDiameterMm": 100,
     "lines": 1200,
-    "passes": "2",
     "shape": "gauss",
     "solve": "target",
     "targetGddFs2": 0,
@@ -199,10 +196,10 @@
   },
   {
    "expected": {
-    "fodFs4": -257807029.1,
-    "gddFs2": -3531310.159,
-    "todFs3": 23522114.61,
-    "transmission": 0.9025
+    "fodFs4": -515614058.2,
+    "gddFs2": -7062620.317,
+    "todFs3": 47044229.23,
+    "transmission": 0.81450625
    },
    "inputs": {
     "bandwidthNm": 10,
@@ -217,13 +214,12 @@
     "layout": "grating-pair",
     "lensDiameterMm": 100,
     "lines": 1500,
-    "passes": "1",
     "shape": "gauss",
     "solve": "manual",
     "targetGddFs2": 0,
     "wavelengthNm": 1030
    },
-   "name": "grating pair set by hand: 1500 lines/mm at 50 deg, 1030 nm, single pass",
+   "name": "grating pair set by hand: 1500 lines/mm at 50 deg, 1030 nm, double pass",
    "note": "GDD, TOD, the solved separation and the transmission to 1e-9 (closed forms in both programs; the app in double precision). FOD to 2e-3: the app takes it from fourth differences of its double-precision phase, about 1 fs^4 of rounding on phases of 10^7 rad.",
    "tolerance": {
     "fodFs4": 0.002,
@@ -236,9 +232,9 @@
    "expected": {
     "fodFs4": 4002097.386,
     "gddFs2": 1000000.0,
-    "separationMm": 141.5277329,
+    "separationMm": 320.7638665,
     "todFs3": -1604583.617,
-    "transmission": 0.8464
+    "transmission": 0.71639296
    },
    "inputs": {
     "bandwidthNm": 30,
@@ -252,13 +248,12 @@
     "layout": "stretcher",
     "lensDiameterMm": 100,
     "lines": 1200,
-    "passes": "1",
     "shape": "gauss",
     "solve": "target",
     "targetGddFs2": 1000000.0,
     "wavelengthNm": 800
    },
-   "name": "grating stretcher: 1200 lines/mm, f = 500 mm, solved for +1e6 fs^2",
+   "name": "grating stretcher, double pass: 1200 lines/mm, f = 500 mm, solved for +1e6 fs^2",
    "note": "GDD, TOD, the solved separation and the transmission to 1e-9 (closed forms in both programs; the app in double precision). FOD to 2e-3: the app takes it from fourth differences of its double-precision phase, about 1 fs^4 of rounding on phases of 10^7 rad.",
    "tolerance": {
     "fodFs4": 0.002,
@@ -276,7 +271,7 @@
   "M. Born and E. Wolf, Principles of Optics, 7th ed., section 1.5.2 (Fresnel formulae)"
  ],
  "convergence": "Seven-point central differences in 40-digit arithmetic at h = 1e-4 omega0: truncation of order (h/omega0)^4 ~ 1e-16 relative for GDD and TOD and (h/omega0)^2 ~ 1e-8 for FOD; round-off below 1e-18.",
- "domain": "800 and 1030 nm; 8-30 nm FWHM; fused silica, N-SF10 and N-SF11 prisms, Brewster-cut and 60 deg at 50 deg incidence, p and s; 1000-1500 lines/mm gratings at 45-50 deg, single and double pass; a 1200 lines/mm stretcher with f = 500 mm; chirps from N-BK7, fused silica and entered GDD.",
+ "domain": "800 and 1030 nm; 8-30 nm FWHM; fused silica, N-SF10 and N-SF11 prisms, Brewster-cut and 60 deg at 50 deg incidence, p and s; 1000-1500 lines/mm gratings at 45-50 deg, double pass and four-grating; a 1200 lines/mm stretcher, double pass, with f = 500 mm; chirps from N-BK7, fused silica and entered GDD.",
  "fidelity": "computed",
  "id": "dispersion-compensation",
  "outside_scope": "Beam size, diffraction, grating efficiency curves, absorption and mirror losses",

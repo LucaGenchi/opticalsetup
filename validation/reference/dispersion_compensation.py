@@ -175,7 +175,9 @@ def grating_phase(v, separation):
     else:
         G = dec(separation)
         pairs = 2 if v["layout"] == "four-grating" else 1
-    passes = int(v["passes"]) if v["layout"] in ("grating-pair", "stretcher") else 1
+    # A pair or a stretcher is always double-passed; a four-element sequence
+    # is two pairs passed once.
+    passes = 2 if v["layout"] in ("grating-pair", "stretcher") else 1
 
     def phi(omega):
         sb = beta_sin(omega)
@@ -201,8 +203,7 @@ def compensator(v, separation):
         if v["layout"] == "four-prism":
             b, _ = prism_pair_phase(v, v["insertion2Mm"], v["insertion1Mm"], separation)
             return (lambda w: a(w) + b(w)), angles, None
-        passes = int(v["passes"])
-        return (lambda w: a(w) * passes), angles, None
+        return (lambda w: a(w) * 2), angles, None
     phi, treacy = grating_phase(v, separation)
     return phi, None, treacy
 
@@ -241,11 +242,11 @@ def evaluate(v):
         Ts1, Tp1 = fresnel_air_to_glass(angles["n0"], angles["theta1"])
         Ts4, Tp4 = fresnel_air_to_glass(angles["n0"], angles["t4"])
         per_pair = (Ts1 * Ts4) ** 2 if v["polarization"] == "s" else (Tp1 * Tp4) ** 2
-        pairs = 2 if v["layout"] == "four-prism" else int(v["passes"])
+        pairs = 2  # two pairs, or one pair passed twice
         out["transmission"] = per_pair ** pairs
     else:
         diffractions = 2 * (1 if v["layout"] == "stretcher" else 2 if v["layout"] == "four-grating" else 1)
-        diffractions *= int(v["passes"]) if v["layout"] in ("grating-pair", "stretcher") else 1
+        diffractions *= 2 if v["layout"] in ("grating-pair", "stretcher") else 1
         out["transmission"] = (dec(v["efficiencyPct"]) / 100) ** diffractions
     return out
 
@@ -258,31 +259,31 @@ PRISM = {"prismCut": "brewster", "apexDeg": 60, "incidenceDeg": 55, "prismSizeMm
 GRATING = {"focalMm": 500, "gratingLensMm": 200, "lensDiameterMm": 100, "gratingSizeMm": 160, "efficiencyPct": 92}
 BENCHES = [
     ("prism pair, double pass: fused silica, 10 mm of N-BK7 to cancel", {
-        **PULSE, **PRISM, "layout": "prism-pair", "passes": "2", "solve": "target", "targetGddFs2": 0, "wavelengthNm": 800,
+        **PULSE, **PRISM, "layout": "prism-pair", "solve": "target", "targetGddFs2": 0, "wavelengthNm": 800,
         "chirp": "material", "chirpMaterial": "nbk7", "chirpLengthMm": 10, "prismMaterial": "silica",
         "separationMm": 600, "insertion1Mm": 3, "insertion2Mm": 12}),
     ("four N-SF10 prisms: 30 mm of N-BK7 to cancel", {
         **PULSE, **PRISM, "layout": "four-prism", "solve": "target", "targetGddFs2": 0, "wavelengthNm": 800,
         "chirp": "material", "chirpMaterial": "nbk7", "chirpLengthMm": 30, "prismMaterial": "nsf10",
         "separationMm": 160, "insertion1Mm": 3, "insertion2Mm": 5}),
-    ("prism pair set by hand: 60 deg N-SF11 prisms at 50 deg, s-polarized, single pass", {
-        **PULSE, **PRISM, "layout": "prism-pair", "passes": "1", "solve": "manual", "targetGddFs2": 0, "wavelengthNm": 1030,
+    ("prism pair set by hand: 60 deg N-SF11 prisms at 50 deg, s-polarized, double pass", {
+        **PULSE, **PRISM, "layout": "prism-pair", "solve": "manual", "targetGddFs2": 0, "wavelengthNm": 1030,
         "chirp": "none", "prismMaterial": "nsf11", "prismCut": "custom", "apexDeg": 60, "incidenceDeg": 50,
         "polarization": "s", "separationMm": 450, "insertion1Mm": 4, "insertion2Mm": 8}),
     ("grating pair, double pass: 1200 lines/mm at 45 deg, entered chirp", {
-        **PULSE, **GRATING, "layout": "grating-pair", "passes": "2", "solve": "target", "targetGddFs2": 0, "wavelengthNm": 800,
+        **PULSE, **GRATING, "layout": "grating-pair", "solve": "target", "targetGddFs2": 0, "wavelengthNm": 800,
         "chirp": "gdd", "inputGddFs2": 1e6, "inputTodFs3": -1.6046e6, "inputFodFs4": 4.002e6, "lines": 1200,
         "gratingIncidenceDeg": 45, "gratingSeparationMm": 300}),
     ("four 1000 lines/mm gratings at 1030 nm: 20 m of fused silica to cancel", {
         **PULSE, **GRATING, "layout": "four-grating", "solve": "target", "targetGddFs2": 0, "wavelengthNm": 1030,
         "bandwidthNm": 8, "shape": "sech2", "chirp": "material", "chirpMaterial": "silica", "chirpLengthMm": 20000,
         "lines": 1000, "gratingIncidenceDeg": 45, "gratingSeparationMm": 100, "gratingSizeMm": 50}),
-    ("grating pair set by hand: 1500 lines/mm at 50 deg, 1030 nm, single pass", {
-        **PULSE, **GRATING, "layout": "grating-pair", "passes": "1", "solve": "manual", "targetGddFs2": 0, "wavelengthNm": 1030,
+    ("grating pair set by hand: 1500 lines/mm at 50 deg, 1030 nm, double pass", {
+        **PULSE, **GRATING, "layout": "grating-pair", "solve": "manual", "targetGddFs2": 0, "wavelengthNm": 1030,
         "bandwidthNm": 10, "chirp": "none", "lines": 1500, "gratingIncidenceDeg": 50, "gratingSeparationMm": 200,
         "gratingSizeMm": 100, "efficiencyPct": 95}),
-    ("grating stretcher: 1200 lines/mm, f = 500 mm, solved for +1e6 fs^2", {
-        **PULSE, **GRATING, "layout": "stretcher", "passes": "1", "solve": "target", "targetGddFs2": 1e6, "wavelengthNm": 800,
+    ("grating stretcher, double pass: 1200 lines/mm, f = 500 mm, solved for +1e6 fs^2", {
+        **PULSE, **GRATING, "layout": "stretcher", "solve": "target", "targetGddFs2": 1e6, "wavelengthNm": 800,
         "chirp": "none", "lines": 1200, "gratingIncidenceDeg": 45}),
 ]
 
@@ -321,7 +322,7 @@ MODEL = {
     "scope": "Plane waves along the central ray; prisms of the canvas's glass catalogue, Brewster-cut or set by hand; reflective gratings in order -1; ideal thin lenses to paraxial order in the stretcher",
     "outside_scope": "Beam size, diffraction, grating efficiency curves, absorption and mirror losses",
     "provenance": "Sellmeier forms from material_dispersion.py (SCHOTT catalogue, Malitson); geometry and phase written from the cited papers.",
-    "domain": "800 and 1030 nm; 8-30 nm FWHM; fused silica, N-SF10 and N-SF11 prisms, Brewster-cut and 60 deg at 50 deg incidence, p and s; 1000-1500 lines/mm gratings at 45-50 deg, single and double pass; a 1200 lines/mm stretcher with f = 500 mm; chirps from N-BK7, fused silica and entered GDD.",
+    "domain": "800 and 1030 nm; 8-30 nm FWHM; fused silica, N-SF10 and N-SF11 prisms, Brewster-cut and 60 deg at 50 deg incidence, p and s; 1000-1500 lines/mm gratings at 45-50 deg, double pass and four-grating; a 1200 lines/mm stretcher, double pass, with f = 500 mm; chirps from N-BK7, fused silica and entered GDD.",
     "convergence": "Seven-point central differences in 40-digit arithmetic at h = 1e-4 omega0: truncation of order (h/omega0)^4 ~ 1e-16 relative for GDD and TOD and (h/omega0)^2 ~ 1e-8 for FOD; round-off below 1e-18.",
     "tolerance_rationale": "1e-9 where both sides evaluate closed forms (the app in double precision); 2e-3 for FOD, which the app takes from fourth differences in double precision.",
 }
