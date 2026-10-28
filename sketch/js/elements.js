@@ -15,7 +15,7 @@ import { emissionRayCount, ISOTROPIC_KINDS } from './emission.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
-import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenRamanReading, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
+import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenRamanReading, specimenSrsNote, specimenTimingReading, supercontinuumReading, twoBeamPartner } from './raytrace.js';
 import { NONLINEAR_ORDER } from './sectioning.js';
 import { opaSettings, opaGainAt, MAX_OPA_STAGES, MAX_GATE_BANDWIDTH_RATIO, MIN_PHASE_KEPT_GAIN } from './opa.js';
 import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, mixOverlap, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
@@ -1709,23 +1709,58 @@ function honoredChannels(p) {
 
 // Two-beam signals only happen while both pulses are at the spot together.
 // When they are not, say by how much and in which direction to fix it, so a
-// silent signal is diagnosable instead of mysterious. Judged by the tracer's
-// own timing model, so the inspector never contradicts what is drawn.
+// silent signal is diagnosable instead of mysterious. Judged pair by pair, as
+// the tracer pairs the beams and with its own timing model, so the inspector
+// never contradicts what is drawn: a pair that cannot mix is named without
+// declaring silent a specimen another pair is lighting.
 function overlapWarning(channel, records) {
   if (channel.requireOverlap === false) return null;
-  const sorted = [...records].sort((a, b) => a.wl - b.wl);
-  const a = sorted[0], b = sorted[sorted.length - 1];
-  const { factor, skewNs, comparable, unsupported } = mixOverlap(a, b, twoBeamOrders(channel.kind, a.wl, b.wl));
   const what = channel.kind === 'srs' ? 'Stimulated Raman' : channel.kind === 'sfg' ? 'Sum frequency' : 'CARS';
-  if (unsupported) {
-    return `${what} timing is not modelled between ${sig3(a.pulse.repRateMHz)} and ${sig3(b.pulse.repRateMHz)} MHz trains, `
+  const timed = twoBeamPairs(channel.kind, records)
+    .map(([a, b]) => ({ a, b, ...mixOverlap(a, b, twoBeamOrders(channel.kind, a.wl, b.wl)) }));
+  const rates = ({ a, b }) => `${nm4(a.wl)} nm at ${sig3(a.pulse.repRateMHz)} MHz and ${nm4(b.wl)} nm at ${sig3(b.pulse.repRateMHz)} MHz`;
+  const timedPairs = timed.filter(t => !t.unsupported);
+  const unsupported = timed.find(t => t.unsupported);
+  if (!timedPairs.length) {
+    if (!unsupported) return null;
+    return `${what} timing is not modelled between ${sig3(unsupported.a.pulse.repRateMHz)} and ${sig3(unsupported.b.pulse.repRateMHz)} MHz trains, `
       + 'so no signal is drawn. Run both lasers at one repetition rate.';
   }
-  if (!comparable || factor >= 0.5) return null;
-  const skewPs = skewNs * 1000;
-  const pathMm = skewNs * 299.792458;
-  return `${what} needs the two pulses to arrive together: they are ${skewPs.toFixed(skewPs < 10 ? 2 : 0)} ps apart `
-    + `(${pathMm.toFixed(pathMm < 10 ? 2 : 0)} mm of path). Match the arms, or add a delay line.`;
+  const score = t => (t.comparable ? t.factor : 1);
+  const best = timedPairs.reduce((x, y) => (score(y) > score(x) ? y : x));
+  const notes = [];
+  if (best.comparable && best.factor < 0.5) {
+    const skewPs = best.skewNs * 1000;
+    const pathMm = best.skewNs * 299.792458;
+    notes.push(`${what} needs the two pulses to arrive together: they are ${skewPs.toFixed(skewPs < 10 ? 2 : 0)} ps apart `
+      + `(${pathMm.toFixed(pathMm < 10 ? 2 : 0)} mm of path). Match the arms, or add a delay line.`);
+  }
+  if (unsupported) {
+    notes.push(`The pair ${rates(unsupported)} is not mixed: timing between different repetition rates is not modelled.`);
+  }
+  return notes.join(' ') || null;
+}
+
+// The beam pairs the tracer times for a two-beam channel. Sum frequency and
+// CARS pair every beam with its partner (twoBeamPartner); stimulated Raman
+// pairs each unmodulated beam with the one modulated beam that drives it, and
+// a scene outside that model (see srsTransferGate) falls back to the same
+// partners. Each pair once.
+function twoBeamPairs(kind, records) {
+  const pairs = [];
+  const add = (a, b) => {
+    if (a && b && !pairs.some(([x, y]) => (x === a && y === b) || (x === b && y === a))) pairs.push([a, b]);
+  };
+  if (kind === 'srs') {
+    for (const beam of records) {
+      if (beam.gates?.length) continue;
+      const donors = records.filter(d => d.gates?.length && Math.abs(d.wl - beam.wl) >= 1);
+      if (donors.length === 1) add(beam, donors[0]);
+    }
+    if (pairs.length) return pairs;
+  }
+  for (const beam of records) add(beam, twoBeamPartner(kind, beam, records));
+  return pairs;
 }
 
 // Whether a channel has to know what else is illuminating the specimen —

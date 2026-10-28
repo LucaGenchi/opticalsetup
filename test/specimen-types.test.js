@@ -497,6 +497,78 @@ test('two-beam signals between different repetition rates are not drawn, and say
   assert.equal(channelWarning(ch('cars'), [rated(800, 80), rated(1040, 80)]), null);
 });
 
+// Pulsed lasers on one nonlinear specimen, all on the same horizontal path
+// length to it; each `backFs` moves its laser back so its pulses arrive that
+// much later. Returns the traced readings and the incident records.
+function timingBench(lasers, channel = ch('cars', { eff: 0.5 })) {
+  const sources = lasers.map(({ wl, fs, rate = 80, backFs = 0 }, i) => {
+    const source = createElement('pulsedlaser', -backFs * 1e-6 * C_MM_PER_NS, (i - (lasers.length - 1) / 2) * 20);
+    Object.assign(source.params, {
+      wavelength: wl, temporalMode: 'pulsed', repRateMHz: rate, pulseWidthFs: fs, beamMode: 'line',
+    });
+    return source;
+  });
+  const sample = createElement('sample', 200, 0);
+  sample.rot = 90;
+  Object.assign(sample.params, { aperture: 80, specimenType: 'nonlinear', channels: [channel] });
+  const detector = createElement('detector', 400, 0);
+  detector.params.aperture = 100;
+  traceAll([...sources, sample, detector]);
+  const records = specimenIncidentBeams(sample.id);
+  return {
+    reading: specimenTimingReading(sample.id),
+    warning: channelWarning(channel, records),
+    hasCars: (detectorReading(detector.id)?.spectrum || []).some(s => Math.abs(s.wavelength - 650.4) < 2),
+  };
+}
+
+test('CARS picks its partner by its own timing gate, not the plain overlap', () => {
+  // Review case: a 200 fs pump with a 400 fs Stokes 450 fs late keeps 4.42 %
+  // of CARS. A second 1040 nm Stokes of 50 fs, 200 fs late, overlaps the pump
+  // better by the plain product (7.4 % against 6.0 %), but CARS weighs the
+  // pump twice and keeps only 0.72 % of it: the 400 fs one is the partner, and
+  // the line stays.
+  const pump = { wl: 800, fs: 200 }, slow = { wl: 1040, fs: 400, backFs: 450 }, quick = { wl: 1040, fs: 50, backFs: 200 };
+  const cars = (tauP, tauS, dt) => Math.exp(-4 * Math.LN2 * dt * dt / (tauP * tauP / 2 + tauS * tauS));
+  const plain = (tauP, tauS, dt) => Math.exp(-4 * Math.LN2 * dt * dt / (tauP * tauP + tauS * tauS));
+  assert.ok(plain(200, 50, 200) > plain(200, 400, 450), 'the plain overlap would choose the 50 fs Stokes');
+  assert.ok(cars(200, 50, 200) < 0.02 && cars(200, 400, 450) > 0.02, 'CARS only keeps the 400 fs one');
+
+  const alone = timingBench([pump, slow]);
+  assert.ok(alone.hasCars);
+  assert.ok(Math.abs(alone.reading.overlap - cars(200, 400, 450)) < 1e-6, `${alone.reading.overlap}`);
+  const both = timingBench([pump, slow, quick]);
+  assert.ok(both.hasCars, 'the line stays with a worse-timed Stokes beside the good one');
+  assert.equal(both.reading.state, 'mixing');
+  assert.ok(Math.abs(both.reading.overlap - cars(200, 400, 450)) < 1e-6, `${both.reading.overlap}`);
+  // The inspector times the same pair: 0.45 ps apart, not the 50 fs beam's 0.20.
+  assert.match(both.warning, /they are 0\.45 ps apart/);
+  // Sum frequency weighs both beams once and still picks by the plain overlap.
+  const sum = timingBench([pump, slow, quick], ch('shg', { eff: 0.5 }));
+  assert.equal(sum.reading.state, 'mixing');
+  assert.ok(Math.abs(sum.reading.overlap - plain(200, 50, 200)) < 1e-6, `${sum.reading.overlap}`);
+});
+
+test('the timing warning speaks of the pairs the tracer makes, not one global pair', () => {
+  // Review case: pumps at 800 nm running at 37 and 80 MHz, a 1040 nm Stokes at
+  // 80 MHz, all together. The 80 MHz pair draws CARS at full overlap, so the
+  // inspector must not say that no signal is drawn; it names the pair it
+  // cannot time instead.
+  const bench = timingBench([{ wl: 800, fs: 200, rate: 37 }, { wl: 800, fs: 200 }, { wl: 1040, fs: 200 }]);
+  assert.ok(bench.hasCars);
+  assert.equal(bench.reading.state, 'mixing');
+  assert.equal(bench.reading.overlap, 1);
+  assert.doesNotMatch(bench.warning, /no signal is drawn/);
+  assert.equal(bench.warning,
+    'The pair 800 nm at 37 MHz and 1040 nm at 80 MHz is not mixed: timing between different repetition rates is not modelled.');
+  // With no pair it can time, the verdict is the global one.
+  const none = timingBench([{ wl: 800, fs: 200, rate: 37 }, { wl: 1040, fs: 200 }]);
+  assert.ok(!none.hasCars);
+  assert.match(none.warning, /^CARS timing is not modelled between 37 and 80 MHz trains, so no signal is drawn/);
+  // And a well-timed pair at one rate needs no warning at all.
+  assert.equal(timingBench([{ wl: 800, fs: 200 }, { wl: 1040, fs: 200 }]).warning, null);
+});
+
 test('SRS needs a second beam, and says so when there is only one', () => {
   const alone = srsBench({ secondBeam: false }).reading;
   assert.equal(alone, null, 'nothing reaches the Stokes detector without a Stokes beam');
