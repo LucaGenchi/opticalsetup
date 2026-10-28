@@ -2649,7 +2649,7 @@ export function specimenRamanReadout(reading) {
     : reading.phase === 'equalChirp' ? `${res} resolution (equally chirped pulses, as in spectral focusing${estimated})`
       : reading.phase === 'chirpNegligible' ? `${res} resolution (the pulses are chirped differently, too little to change it${estimated})`
       : reading.phase === 'chirpMismatch'
-        ? `at least ${res} resolution: the pulses are chirped differently, which broadens it further${estimated}`
+        ? `at least ${res} resolution${estimated}: the pulses are chirped differently, which broadens it further`
         : `${res} resolution if the pulses are transform-limited or equally chirped (their spectral phase is not known here)`;
   return `${beams} → ${shift}, ${resolution}${extra}`;
 }

@@ -1221,6 +1221,28 @@ export function renderInspector() {
   panel.querySelectorAll('[data-section]').forEach(section => {
     section.addEventListener('toggle', () => sectionState.set(section.dataset.section, section.open));
   });
+  // A readout's pop-up opens under its button, kept inside the window: the
+  // click runs before the popover is shown, so it never appears elsewhere.
+  panel.querySelectorAll('[data-readout-info]').forEach(button => {
+    button.addEventListener('click', () => {
+      const popup = panel.querySelector(`[data-readout-popup="${button.dataset.readoutInfo}"]`);
+      if (!popup) return;
+      const rect = button.getBoundingClientRect();
+      const width = Math.min(360, window.innerWidth - 32);
+      popup.style.left = `${Math.max(16, Math.min(rect.right - width, window.innerWidth - width - 16))}px`;
+      popup.style.top = `${rect.bottom + 6}px`;
+    });
+  });
+  // Too near the bottom of the window, it opens above its button instead.
+  panel.querySelectorAll('[data-readout-popup]').forEach(popup => {
+    popup.addEventListener('toggle', event => {
+      if (event.newState !== 'open') return;
+      const button = panel.querySelector(`[data-readout-info="${popup.dataset.readoutPopup}"]`);
+      const box = popup.getBoundingClientRect();
+      if (!button || box.bottom <= window.innerHeight - 16) return;
+      popup.style.top = `${Math.max(16, button.getBoundingClientRect().top - 6 - box.height)}px`;
+    });
+  });
   const del = panel.querySelector('#inspDel');
   if (del) del.addEventListener('click', () => document.dispatchEvent(new CustomEvent('optics:delete')));
   const dup = panel.querySelector('#inspDup');

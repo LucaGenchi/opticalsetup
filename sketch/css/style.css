@@ -782,7 +782,8 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 .readout-info:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .readout-info[hidden] { display: none; }
 .readout-popup {
-  max-width: min(360px, calc(100vw - 32px)); padding: 10px 12px;
+  position: fixed; inset: auto; margin: 0;
+  width: min(360px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; padding: 10px 12px;
   border: 1px solid var(--border-strong); border-radius: 8px;
   background: var(--panel); color: var(--text);
   font-size: 12px; line-height: 1.45;
