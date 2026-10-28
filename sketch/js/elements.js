@@ -15,7 +15,7 @@ import { emissionRayCount, ISOTROPIC_KINDS } from './emission.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
-import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
+import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenRamanReading, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
 import { NONLINEAR_ORDER } from './sectioning.js';
 import { opaSettings, opaGainAt, MAX_OPA_STAGES, MAX_GATE_BANDWIDTH_RATIO, MIN_PHASE_KEPT_GAIN } from './opa.js';
 import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
@@ -1830,6 +1830,16 @@ function sampleModeParams(layouts = SAMPLE_LAYOUTS) {
         return srs ? `${timing}. Stimulated Raman transfer not drawn: ${srs}.` : timing;
       },
     },
+    // Which vibration a coherent Raman specimen is addressing, and how finely:
+    // read from the pump and Stokes as they arrive, after every glass on the
+    // way, so a delay stage, a chirp or a filter upstream shows up here.
+    {
+      key: 'ramanProbe', label: 'Coherent Raman excitation', type: 'readout', wide: true,
+      show: p => specimenTypeOf(p) === 'nonlinear'
+        && sampleChannels(p).some(c => c.kind === 'cars' || c.kind === 'srs'),
+      readout: (p, el) => specimenRamanReadout(el ? specimenRamanReading(el.id) : null),
+      popup: (p, el) => specimenRamanPopup(el ? specimenRamanReading(el.id) : null),
+    },
     // The total thickness of a specimen saved before layouts: hidden, kept so
     // the conversion on load can read it.
     { key: 'thickness', label: 'Sample thickness (mm)', type: 'number', min: 0.15, htmlMin: 0, max: 20, step: 0.5, def: 6,
@@ -2599,6 +2609,68 @@ export function specimenFocusReadout(readings) {
   const inside = (Array.isArray(readings) ? readings : []).filter(r => r?.ok && r.inside);
   if (!inside.length) return null;
   return inside.map(r => `${nm4(r.wl)} nm: ${lengthText(Math.max(0, r.depthMm))} into the active layer · zR ${lengthText(r.zRMm)}`).join('; ');
+}
+
+// The coherent Raman readout: the two beams as they reach the specimen, the
+// Raman shift they drive and the spectral resolution of that excitation, with
+// the condition Eq. (5) of Mohseni et al. holds under (see coherent-raman.js).
+export function specimenRamanReadout(reading) {
+  if (!reading) return 'No beams reach the specimen yet';
+  if (reading.state === 'oneColour') {
+    return `One colour only (${nm4(reading.wl)} nm): coherent Raman needs a pump and a longer-wavelength Stokes beam`;
+  }
+  const beam = (name, b) => [`${name} ${nm4(b.wl)} nm`,
+    b.bwNm > 0 ? `${sig3(b.bwNm)} nm FWHM` : null,
+    b.pulsed ? (b.durationFs ? `${formatFs(b.durationFs)} here` : null) : 'continuous'].filter(Boolean).join(', ');
+  const beams = `${beam('Pump', reading.pump)}; ${beam('Stokes', reading.stokes)}`;
+  const cm = x => (Number.isFinite(x) ? x.toFixed(1) : '—');
+  // A delay between chirped pulses pairs other colours than the carriers:
+  // the spectral-focusing scan, said when it moves the shift visibly.
+  const late = reading.delayFs > 0 ? 'after' : 'before';
+  const delay = Number.isFinite(reading.delayFs) ? `the Stokes arriving ${formatFs(Math.abs(reading.delayFs))} ${late} the pump` : '';
+  const shift = reading.delayShift === 'computed' && Math.abs(reading.shiftCm - reading.carrierShiftCm) >= 0.05
+    ? `${cm(reading.shiftCm)} cm⁻¹ probed (${cm(reading.carrierShiftCm)} cm⁻¹ between the carriers, moved by ${delay})`
+    : reading.delayShift === 'unknownPhase'
+      ? `${cm(reading.carrierShiftCm)} cm⁻¹ between the carriers (with ${delay}, the shift actually probed is not computed: the pulses' spectral phase is not known here)`
+      : `${cm(reading.shiftCm)} cm⁻¹ probed`;
+  const extra = reading.colours > 2
+    ? ` (${reading.colours} colours on the spot: the shortest is read as the pump, the longest as the Stokes)` : '';
+  if (reading.state === 'continuous') {
+    return `${beams} → ${shift}; resolution not estimated: it is set by the pulse durations, and a beam here is continuous${extra}`;
+  }
+  if (reading.state === 'durationUnknown') {
+    return `${beams} → ${shift}; resolution not estimated: ${reading.issue || 'a pulse duration is not known here'}${extra}`;
+  }
+  // A filtered spectrum is treated as a Gaussian pulse of its own duration:
+  // an estimate, marked here and explained in the readout's pop-up.
+  const res = `${reading.estimate ? '≈ ' : ''}${sig3(reading.resolutionCm)} cm⁻¹`;
+  const estimated = reading.estimate ? ', a Gaussian-pulse estimate' : '';
+  const resolution = reading.phase === 'transformLimited' ? `${res} resolution (transform-limited pulses${estimated})`
+    : reading.phase === 'equalChirp' ? `${res} resolution (equally chirped pulses, as in spectral focusing${estimated})`
+      : reading.phase === 'chirpNegligible' ? `${res} resolution (the pulses are chirped differently, too little to change it${estimated})`
+      : reading.phase === 'chirpMismatch'
+        ? `at least ${res} resolution${estimated}: the pulses are chirped differently, which broadens it further`
+        : `${res} resolution if the pulses are transform-limited or equally chirped (their spectral phase is not known here${estimated})`;
+  return `${beams} → ${shift}, ${resolution}${extra}`;
+}
+
+// What the coherent Raman readout's pop-up says: why a resolution read from a
+// pulse that is not a Gaussian is an estimate. Null when nothing needs it.
+const NOT_GAUSSIAN = {
+  reshaped: 'its spectrum was reshaped upstream, by a filter or an amplifier\u2019s gain',
+  sech2: 'it is a sech\u00b2 pulse',
+  computed: 'its envelope is computed numerically',
+};
+export function specimenRamanPopup(reading) {
+  if (reading?.state !== 'resolved' || !reading.estimate) return null;
+  const beams = [['pump', reading.pump], ['Stokes', reading.stokes]].filter(([, b]) => NOT_GAUSSIAN[b.shape]);
+  const why = beams.map(([name, b]) => `The ${name} is not a Gaussian: ${NOT_GAUSSIAN[b.shape]}.`).join(' ');
+  const reshaped = beams.some(([, b]) => b.shape === 'reshaped')
+    ? ' A reshaped spectrum\u2019s duration is computed from the band that survived, with the chirp the source gave it and the dispersion of the path.' : '';
+  const delay = reading.delayShift === 'computed' ? '; so does the shift a delay between chirped pulses gives' : '';
+  return `Estimate. ${why}${reshaped} The resolution formula (Mohseni et al., Eq. 5) is written for Gaussian pulses, `
+    + `and treats each pulse as a Gaussian in time of its duration here${delay}. `
+    + 'The true excitation profile can differ by tens of percent: wider for a flat-topped band, about 12 % narrower for two sech\u00b2 pulses.';
 }
 
 export function specimenTimingText(reading) {

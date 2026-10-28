@@ -30,6 +30,7 @@ const PRECACHE_PATHS = [
   "./js/point-source-rendering.js",
   "./js/polygon-scanner.js",
   "./js/clipboard.js",
+  "./js/coherent-raman.js",
   "./js/lamps.js",
   "./js/probe.js",
   "./js/community-data.js",
