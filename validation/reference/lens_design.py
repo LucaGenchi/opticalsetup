@@ -34,7 +34,8 @@ import math
 from common import sig
 from sellmeier import index as glass_index
 
-PRIMARY_LINES = [486.1327, 587.5618, 656.2725]
+# The Fraunhofer F, d and C lines to the whole nanometre, as the app takes them.
+PRIMARY_LINES = [486, 588, 656]
 
 
 # ---------------------------------------------------------------- materials
@@ -376,7 +377,7 @@ def far_pupil():
         {"radius": 51.68, "thickness": 4.0, "material": "nbk7"},
         {"radius": 0.0, "thickness": 40.0, "material": "air"},
         {"radius": 0.0, "thickness": 50.0, "material": "air", "stop": True},
-    ], epd=10.0, fields=(0.0, 3.0), wavelengths=(587.5618,), primary=0)
+    ], epd=10.0, fields=(0.0, 3.0), wavelengths=(588,), primary=0)
 
 
 def pcx(curved_first, thickness):
@@ -385,16 +386,16 @@ def pcx(curved_first, thickness):
     if not curved_first:
         rows = [{"radius": 0.0, "thickness": thickness, "material": "nbk7", "stop": True},
                 {"radius": -51.68, "thickness": 100.0, "material": "air"}]
-    return base(rows, epd=10.0, wavelengths=(587.5618,), primary=0, focus="paraxial")
+    return base(rows, epd=10.0, wavelengths=(588,), primary=0, focus="paraxial")
 
 
 def plano_hyperbolic():
-    n = n_of("nbk7", 587.5618)
+    n = n_of("nbk7", 588)
     f = 100.0
     return base([
         {"radius": 0.0, "thickness": 5.0, "material": "nbk7", "stop": True},
         {"radius": -(n - 1) * f, "conic": -n * n, "thickness": f, "material": "air"},
-    ], epd=40.0, wavelengths=(587.5618,), primary=0)
+    ], epd=40.0, wavelengths=(588,), primary=0)
 
 
 # --------------------------------------------------------------- the checks
@@ -449,9 +450,9 @@ def cases():
         })
     for name, system, rays in [
         ("Cooke triplet", COOKE, [(20.0, 0.0, 1.0, 480.0), (20.0, 0.6, -0.7, 650.0), (14.0, -1.0, 0.0, 550.0), (0.0, 0.3, 0.9, 480.0)]),
-        ("aspheric singlet", ASPHERE, [(0.0, 0.0, 1.0, 587.5618), (4.0, 0.7, 0.7, 486.1327), (4.0, 0.0, -0.95, 656.2725)]),
-        ("plano-convex at a finite object", finite_pcx(), [(5.0, 0.0, 1.0, 587.5618), (5.0, 0.8, -0.5, 486.1327)]),
-        ("entrance pupil beyond the first centre of curvature", far_pupil(), [(0.0, 0.0, 0.0, 587.5618), (0.0, 0.0, 1.0, 587.5618), (3.0, 0.6, -0.8, 587.5618)]),
+        ("aspheric singlet", ASPHERE, [(0.0, 0.0, 1.0, 588), (4.0, 0.7, 0.7, 486), (4.0, 0.0, -0.95, 656)]),
+        ("plano-convex at a finite object", finite_pcx(), [(5.0, 0.0, 1.0, 588), (5.0, 0.8, -0.5, 486)]),
+        ("entrance pupil beyond the first centre of curvature", far_pupil(), [(0.0, 0.0, 0.0, 588), (0.0, 0.0, 1.0, 588), (3.0, 0.6, -0.8, 588)]),
     ]:
         primary = first_order(system, system["wavelengthsNm"][system["primaryWavelength"]])
         z_img = fixed_image_z(system)
@@ -464,7 +465,7 @@ def cases():
                 "tolerance": {"x": 1e-9, "y": 1e-9},
                 "absolute": True,
             })
-    nd = n_of("nbk7", 587.5618)
+    nd = n_of("nbk7", 588)
     for curved_first in (True, False):
         system = pcx(curved_first, 0.0)
         K = (nd - 1) / 51.68
@@ -479,14 +480,14 @@ def cases():
         out.append({
             "name": f"4 mm plano-convex, {'curved' if curved_first else 'flat'} side first: Seidel S_I against the real-ray fit",
             "inputs": {"kind": "seidel", "system": thick},
-            "expected": {"SI": fitted_si(thick, 587.5618)},
+            "expected": {"SI": fitted_si(thick, 588)},
             "tolerance": {"SI": 1e-5},
             "note": "the fit to rho^3, rho^5 and rho^7 leaves a ninth-order residue near 1e-7 relative",
         })
     for name, system, rays in [
         ("Cooke triplet", COOKE, [(20.0, 0.0, 1.0, 550.0), (20.0, 0.6, -0.7, 480.0), (14.0, -1.0, 0.0, 650.0), (14.0, 0.3, 0.9, 550.0), (0.0, 0.0, -1.0, 480.0)]),
-        ("aspheric singlet", ASPHERE, [(0.0, 0.0, 1.0, 587.5618), (4.0, 0.7, 0.7, 486.1327), (4.0, 0.0, -0.95, 656.2725)]),
-        ("plano-convex at a finite object", finite_pcx(), [(5.0, 0.0, 1.0, 587.5618), (5.0, 0.8, -0.5, 486.1327)]),
+        ("aspheric singlet", ASPHERE, [(0.0, 0.0, 1.0, 588), (4.0, 0.7, 0.7, 486), (4.0, 0.0, -0.95, 656)]),
+        ("plano-convex at a finite object", finite_pcx(), [(5.0, 0.0, 1.0, 588), (5.0, 0.8, -0.5, 486)]),
     ]:
         z_img = fixed_image_z(system)
         for field, px, py, nm in rays:
@@ -498,22 +499,22 @@ def cases():
                 "absolute": True,
             })
     perfect = base([{"type": "paraxial", "focal": 100.0, "thickness": 100.0, "stop": True}],
-                   epd=10.0, wavelengths=(587.5618,), primary=0, focus="paraxial")
+                   epd=10.0, wavelengths=(588,), primary=0, focus="paraxial")
     for w020 in (0.1, 0.25, 0.5, 0.75):
-        dz = w020 * 587.5618e-6 * 2 / 0.05 ** 2
+        dz = w020 * 588e-6 * 2 / 0.05 ** 2
         system = json.loads(json.dumps(perfect))
         system["image"]["offsetMm"] = dz
         system["diffraction"] = {"grid": 256, "padding": 2}
         out.append({
             "name": f"perfect lens F/10, image plane {dz:.4f} mm past focus (about {w020} waves of defocus): Strehl ratio on axis",
             "inputs": {"kind": "defocus", "system": system},
-            "expected": {"strehl": sig(defocus_strehl(100.0, 5.0, 587.5618, dz))},
+            "expected": {"strehl": sig(defocus_strehl(100.0, 5.0, 588, dz))},
             "tolerance": {"strehl": 3e-4},
             "absolute": True,
             "note": "the app sums a 256-sample pupil grid (the square cells fill the disc to about 1e-4); the reference integrates the radius by Simpson's rule to 1e-12",
         })
     na = 5.0 / math.hypot(5.0, 100.0)
-    cutoff = 2 * na / 587.5618e-6
+    cutoff = 2 * na / 588e-6
     system = json.loads(json.dumps(perfect))
     system["diffraction"] = {"grid": 128, "padding": 2}
     for nu in (0.1, 0.25, 0.4, 0.55, 0.7, 0.85, 0.95):
@@ -532,14 +533,14 @@ def cases():
         out.append({
             "name": f"perfect lens f 100 mm, Gaussian beam of 1/e^2 radius {w_in} mm (no truncation): focused waist",
             "inputs": {"kind": "gaussian", "system": system},
-            "expected": {"waist": sig(587.5618e-6 * 100.0 / (math.pi * w_in))},
+            "expected": {"waist": sig(588e-6 * 100.0 / (math.pi * w_in))},
             "tolerance": {"waist": 1e-2},
             "note": "w0 = lambda f / (pi w), the paraxial Gaussian-beam focus; the app's waist is 2 sigma of its sampled PSF",
         })
     hyp = plano_hyperbolic()
-    fo = first_order(hyp, 587.5618)
+    fo = first_order(hyp, 588)
     z_img = fixed_image_z(hyp)
-    pts = [image_point(hyp, 587.5618, 0.0, px, py, z_img, fo) for px, py in [(0, 1), (0.6, 0.6), (-0.9, 0.2), (0.1, -0.4), (0, 0.5)]]
+    pts = [image_point(hyp, 588, 0.0, px, py, z_img, fo) for px, py in [(0, 1), (0.6, 0.6), (-0.9, 0.2), (0.1, -0.4), (0, 0.5)]]
     out.append({
         "name": "plano-hyperbolic singlet (k = -n^2): on-axis spot of an aberration-free surface",
         "inputs": {"kind": "spot", "system": hyp},
@@ -565,7 +566,7 @@ MODEL = {
         "Optiland v0.5.5 (MIT licence), samples/objectives.py CookeTriplet: the Cooke prescription (the OpticStudio 'Cooke 40 degree field' sample)",
     ],
     "provenance": "Textbook relations evaluated here; the plano-hyperbolic singlet is the classical aplanatic surface (Descartes ovoid for an object at infinity), whose image is a point.",
-    "domain": "Rotationally symmetric refracting systems in air, objects at infinity and at 200 mm, fields up to 20 deg, F/2.5 to F/10, visible wavelengths; diffraction cases for a perfect F/10 lens at 587.6 nm, up to 0.75 waves of defocus.",
+    "domain": "Rotationally symmetric refracting systems in air, objects at infinity and at 200 mm, fields up to 20 deg, F/2.5 to F/10, visible wavelengths; diffraction cases for a perfect F/10 lens at 588 nm, up to 0.75 waves of defocus.",
     "convergence": "Bisection to 200 halvings (far past double precision); the surface normal from a complex-step derivative; Simpson's rule on 4000 intervals over the pupil radius (the defocus integrand is smooth, error below 1e-12).",
     "tolerance_rationale": "1e-9 mm and 1e-8 waves (absolute: an exit pupil can sit exactly on a vertex) are two independent evaluations of the same geometry in double precision; 1e-5 on the fitted S_I is the truncation of the odd-power fit; 3e-4 on the defocus Strehl ratio and 3e-3 on the MTF are the app's sampled pupil (square cells filling a disc), and the 1 % on the Gaussian waist its sampled PSF. The phase-2 expected values are stored rounded (the OPD to 1e-8 waves, the rest to 10 significant digits), because their last digits depend on the platform's maths library.",
     "outside_scope": "Mirrors, tilts, decentres, vector (high-NA) diffraction, and the Fresnel-number focal shift are outside this model.",
