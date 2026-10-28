@@ -477,15 +477,14 @@ export function buildLayout(v, firstMm = SOURCE_TO_FIRST_MM) {
 // colours that test lets go, must arrive too. A band that arrives whole can
 // still have taken the wrong path (near Littrow, a colour bounced back off the
 // first grating), and then the colours leave at different angles: every
-// bench here sends them out parallel, so the canvas finding angular
-// dispersion at the detector marks the figure wrong too. Only missing or
+// bench here sends them out parallel, so the canvas's reading of the colours
+// at the detector (its colour spread) finding them not parallel marks the
+// figure wrong too. Only missing or
 // misdirected colours count: how much light each delivers (Fresnel loss
 // across the band, grating efficiency) and the canvas's GDD reading (its lens
 // glass, its fit to traced colours) follow the canvas's own models, which
 // differ from the page's without any fault in the drawing.
 const FIRST_OPTIC_MM = [SOURCE_TO_FIRST_MM, 400, 600, 900, 1300, 2000];
-// The canvas's note where the colours reaching a detector still diverge.
-const ANGULAR_DISPERSION = 'angular dispersion remains';
 
 // The GDD the canvas adds for its lenses' glass: it gives each thin lens an
 // estimated thickness of N-BK7, crossed once a pass. The page's lenses are
@@ -512,9 +511,8 @@ export function buildFigure(v) {
     traceScene(layout.elements);
     const reading = detectorReading(layout.elements.at(-1).id);
     const pulse = reading?.pulse;
-    const model = String(pulse?.dispersionModel ?? '');
-    if (Number.isFinite(pulse?.gddFs2) && !model.includes(DISPERSION_UNAVAILABLE.partialFan)
-      && !model.includes(ANGULAR_DISPERSION) && wholeBand(reading, v)) return layout;
+    if (Number.isFinite(pulse?.gddFs2) && !String(pulse.dispersionModel ?? '').includes(DISPERSION_UNAVAILABLE.partialFan)
+      && !pulse.colourSpreads?.some(spread => !spread.parallel) && wholeBand(reading, v)) return layout;
   }
   return { ...layout, figureIssue: layout.kind === 'prism'
     ? 'In the plane of the figure part of the band misses a prism or the detector (the colours spread wider than the optics), so the drawing and the canvas scene do not deliver the whole band; larger prisms would.'

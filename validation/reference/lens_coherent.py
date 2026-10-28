@@ -187,7 +187,7 @@ def check_debye_convention():
     """With the sphere centred delta to the side of the focus, the Debye
     intensity must peak back at the focus (-delta from the centre)."""
     system = pcx(True, 4.0)
-    nm = 587.5618
+    nm = 588
     fo = first_order(system, nm)
     z_image = sum(s["thickness"] for s in system["surfaces"][:-1]) + fo["imageDistance"]
     pupil = Pupil(system, 0.0, z_image, pupil_nodes(10, 24))
@@ -331,7 +331,7 @@ def golden_max(f, a, b, steps=120):
 
 def perfect(**diffraction):
     s = base([{"type": "paraxial", "focal": 100.0, "thickness": 100.0, "stop": True}],
-             epd=10.0, wavelengths=(587.5618,), primary=0, focus="paraxial")
+             epd=10.0, wavelengths=(588,), primary=0, focus="paraxial")
     s["diffraction"] = {"grid": 128, "padding": 2, **diffraction}
     return s
 
@@ -377,7 +377,7 @@ def cases():
         })
 
     # Perfect lens: fiber coupling closed forms.
-    lam = 587.5618e-6
+    lam = 588e-6
     best = golden_max(lambda u: 2 * (1 - math.exp(-u * u)) ** 2 / (u * u), 0.5, 2.0)
     out.append({
         "name": "perfect lens F/10, uniform pupil: best Gaussian mode, 2 (1 - exp(-alpha^2))^2 / alpha^2 at its maximum",
@@ -475,7 +475,7 @@ MODEL = {
         "A. E. Siegman, Lasers (University Science Books, 1986), section 17.2: Gaussian beam focusing",
     ],
     "provenance": "Textbook relations evaluated here; the coupling overlaps of Gaussian beams are derived from the overlap integral and checked against the numerical quadrature, not transcribed.",
-    "domain": "A perfect F/10 lens at 587.6 nm; a curved-side-first N-BK7 singlet (F/10) on axis and at 3 deg; the Cooke triplet (F/5) on axis at 550 nm; separations near the Rayleigh distance; offsets of a few micrometres, tilts of 20 mrad.",
+    "domain": "A perfect F/10 lens at 588 nm; a curved-side-first N-BK7 singlet (F/10) on axis and at 3 deg; the Cooke triplet (F/5) on axis at 550 nm; separations near the Rayleigh distance; offsets of a few micrometres, tilts of 20 mrad.",
     "convergence": "20 x 64 polar nodes (the wavefronts here stay below a wave, so the azimuthal trapezoid converges well past 1e-6); a degree-8 polynomial for the directions; Simpson's rule on 20000 intervals for the mode's normalization.",
     "tolerance_rationale": "The app's square pupil grid (128 samples across) has a staircase rim that differs from the circle: 3e-3 on the images and 2e-3 on coupling through a uniformly lit pupil allow for it (the largest differences found are 2.0e-3 and 1.0e-3); a Gaussian beam of 0.8 pupil radii is dim at the rim, so 5e-4 (found: 3.1e-4); the perfect lens's Gaussian overlaps, which barely reach the rim, 1e-4 (found: 2e-5). Expected values are stored to 6 significant digits, as the last digits depend on the platform's maths library.",
     "outside_scope": "Partial coherence, vector (high-NA) diffraction, fiber modes other than a Gaussian, and the Fresnel-number focal shift are outside this model.",
