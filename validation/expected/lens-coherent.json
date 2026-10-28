@@ -49,7 +49,7 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
@@ -108,7 +108,7 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
@@ -167,7 +167,7 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
@@ -226,7 +226,7 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
@@ -285,7 +285,7 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
@@ -338,7 +338,7 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
@@ -362,7 +362,7 @@
      },
      "coupling": {
       "axialUm": 0,
-      "mfdUm": 18.70267296839432,
+      "mfdUm": 18.71662130760689,
       "offsetXUm": 0,
       "offsetYUm": 0,
       "tiltXMrad": 0,
@@ -400,7 +400,7 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
@@ -413,7 +413,7 @@
   {
    "absolute": true,
    "expected": {
-    "eta": 0.9886260183
+    "eta": 0.9886428625
    },
    "inputs": {
     "kind": "coupling",
@@ -424,7 +424,7 @@
      },
      "coupling": {
       "axialUm": 0,
-      "mfdUm": 18.70267296839432,
+      "mfdUm": 18.71662130760689,
       "offsetXUm": 0,
       "offsetYUm": 1.0,
       "tiltXMrad": 0,
@@ -462,7 +462,7 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
@@ -475,7 +475,7 @@
   {
    "absolute": true,
    "expected": {
-    "eta": 0.955285089
+    "eta": 0.9553501954
    },
    "inputs": {
     "kind": "coupling",
@@ -486,7 +486,7 @@
      },
      "coupling": {
       "axialUm": 0,
-      "mfdUm": 18.70267296839432,
+      "mfdUm": 18.71662130760689,
       "offsetXUm": 2.0,
       "offsetYUm": 0,
       "tiltXMrad": 0,
@@ -524,7 +524,7 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
@@ -547,8 +547,8 @@
       "value": 10.0
      },
      "coupling": {
-      "axialUm": 467.566824209858,
-      "mfdUm": 18.70267296839432,
+      "axialUm": 467.91553269017226,
+      "mfdUm": 18.71662130760689,
       "offsetXUm": 0,
       "offsetYUm": 0,
       "tiltXMrad": 0,
@@ -586,7 +586,7 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
@@ -610,7 +610,7 @@
      },
      "coupling": {
       "axialUm": 0,
-      "mfdUm": 18.70267296839432,
+      "mfdUm": 18.71662130760689,
       "offsetXUm": 0,
       "offsetYUm": 0,
       "tiltXMrad": 0,
@@ -648,7 +648,7 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
@@ -661,14 +661,14 @@
   {
    "absolute": true,
    "expected": {
-    "coherent0": 0.849528,
-    "coherent1": 0.686192,
-    "coherent2": 0.684513,
-    "coherent3": 0.464743,
-    "incoherent0": 0.440994,
-    "incoherent1": 0.764267,
-    "incoherent2": 0.609751,
-    "incoherent3": 0.571943
+    "coherent0": 0.850162,
+    "coherent1": 0.686588,
+    "coherent2": 0.685163,
+    "coherent3": 0.465389,
+    "incoherent0": 0.441274,
+    "incoherent1": 0.764598,
+    "incoherent2": 0.609881,
+    "incoherent3": 0.572306
    },
    "inputs": {
     "at": [
@@ -677,7 +677,7 @@
       0.0
      ],
      [
-      0.0035822973726536396,
+      0.00358509584505423,
       0.0
      ],
      [
@@ -694,11 +694,11 @@
     "phaseDeg": 0.0,
     "points": [
      [
-      0.0035822973726536396,
+      0.00358509584505423,
       0.0
      ],
      [
-      -0.0035822973726536396,
+      -0.00358509584505423,
       0.003
      ]
     ],
@@ -744,11 +744,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "curved-side-first singlet, field 0.0 deg, 587.5618 nm: two points, second at phase 0.0 deg, intensity at four positions",
+   "name": "curved-side-first singlet, field 0.0 deg, 588 nm: two points, second at phase 0.0 deg, intensity at four positions",
    "note": "relative to a perfect lens's peak; the app sums a 128-sample square grid, this file a 20 x 64 polar quadrature",
    "tolerance": {
     "coherent0": 0.003,
@@ -764,14 +764,14 @@
   {
    "absolute": true,
    "expected": {
-    "coherent0": 0.169043,
-    "coherent1": 0.57262,
-    "coherent2": 0.794069,
-    "coherent3": 0.441218,
-    "incoherent0": 0.440994,
-    "incoherent1": 0.764267,
-    "incoherent2": 0.609751,
-    "incoherent3": 0.571943
+    "coherent0": 0.169259,
+    "coherent1": 0.572978,
+    "coherent2": 0.793831,
+    "coherent3": 0.441329,
+    "incoherent0": 0.441274,
+    "incoherent1": 0.764598,
+    "incoherent2": 0.609881,
+    "incoherent3": 0.572306
    },
    "inputs": {
     "at": [
@@ -780,7 +780,7 @@
       0.0
      ],
      [
-      0.0035822973726536396,
+      0.00358509584505423,
       0.0
      ],
      [
@@ -797,11 +797,11 @@
     "phaseDeg": 120.0,
     "points": [
      [
-      0.0035822973726536396,
+      0.00358509584505423,
       0.0
      ],
      [
-      -0.0035822973726536396,
+      -0.00358509584505423,
       0.003
      ]
     ],
@@ -847,11 +847,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "curved-side-first singlet, field 0.0 deg, 587.5618 nm: two points, second at phase 120.0 deg, intensity at four positions",
+   "name": "curved-side-first singlet, field 0.0 deg, 588 nm: two points, second at phase 120.0 deg, intensity at four positions",
    "note": "relative to a perfect lens's peak; the app sums a 128-sample square grid, this file a 20 x 64 polar quadrature",
    "tolerance": {
     "coherent0": 0.003,
@@ -867,7 +867,7 @@
   {
    "absolute": true,
    "expected": {
-    "eta": 0.646279
+    "eta": 0.646511
    },
    "inputs": {
     "field": 0,
@@ -879,7 +879,7 @@
      },
      "coupling": {
       "axialUm": 0,
-      "mfdUm": 8.383518268318491,
+      "mfdUm": 8.39006742994668,
       "offsetXUm": 0,
       "offsetYUm": 0,
       "tiltXMrad": 0,
@@ -922,11 +922,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "curved-side-first singlet, field 0.0 deg, 587.5618 nm, MFD 8.384 um: coupling, aligned, uniform pupil",
+   "name": "curved-side-first singlet, field 0.0 deg, 588 nm, MFD 8.390 um: coupling, aligned, uniform pupil",
    "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
    "tolerance": {
     "eta": 0.002
@@ -935,7 +935,7 @@
   {
    "absolute": true,
    "expected": {
-    "eta": 0.734363
+    "eta": 0.734598
    },
    "inputs": {
     "field": 0,
@@ -947,7 +947,7 @@
      },
      "coupling": {
       "axialUm": 20.0,
-      "mfdUm": 8.383518268318491,
+      "mfdUm": 8.39006742994668,
       "offsetXUm": 0,
       "offsetYUm": 1.0,
       "tiltXMrad": 0,
@@ -992,11 +992,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "curved-side-first singlet, field 0.0 deg, 587.5618 nm, MFD 8.384 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up and 20 um past the image",
+   "name": "curved-side-first singlet, field 0.0 deg, 588 nm, MFD 8.390 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up and 20 um past the image",
    "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
    "tolerance": {
     "eta": 0.0005
@@ -1005,7 +1005,7 @@
   {
    "absolute": true,
    "expected": {
-    "eta": 0.734363
+    "eta": 0.734598
    },
    "inputs": {
     "field": 0,
@@ -1017,7 +1017,7 @@
      },
      "coupling": {
       "axialUm": 20.0,
-      "mfdUm": 8.383518268318491,
+      "mfdUm": 8.39006742994668,
       "offsetXUm": 0,
       "offsetYUm": -1.0,
       "tiltXMrad": 0,
@@ -1062,11 +1062,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "curved-side-first singlet, field 0.0 deg, 587.5618 nm, MFD 8.384 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um down and 20 um past the image",
+   "name": "curved-side-first singlet, field 0.0 deg, 588 nm, MFD 8.390 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um down and 20 um past the image",
    "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
    "tolerance": {
     "eta": 0.0005
@@ -1075,7 +1075,7 @@
   {
    "absolute": true,
    "expected": {
-    "eta": 0.613983
+    "eta": 0.614103
    },
    "inputs": {
     "field": 0,
@@ -1087,7 +1087,7 @@
      },
      "coupling": {
       "axialUm": 0,
-      "mfdUm": 8.383518268318491,
+      "mfdUm": 8.39006742994668,
       "offsetXUm": 0,
       "offsetYUm": 1.0,
       "tiltXMrad": 0,
@@ -1132,11 +1132,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "curved-side-first singlet, field 0.0 deg, 587.5618 nm, MFD 8.384 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up, tilted 20 mrad up",
+   "name": "curved-side-first singlet, field 0.0 deg, 588 nm, MFD 8.390 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up, tilted 20 mrad up",
    "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
    "tolerance": {
     "eta": 0.0005
@@ -1145,7 +1145,7 @@
   {
    "absolute": true,
    "expected": {
-    "eta": 0.563492
+    "eta": 0.563671
    },
    "inputs": {
     "field": 0,
@@ -1157,7 +1157,7 @@
      },
      "coupling": {
       "axialUm": 0,
-      "mfdUm": 8.383518268318491,
+      "mfdUm": 8.39006742994668,
       "offsetXUm": 0,
       "offsetYUm": 1.0,
       "tiltXMrad": 0,
@@ -1202,11 +1202,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "curved-side-first singlet, field 0.0 deg, 587.5618 nm, MFD 8.384 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up, tilted 20 mrad down",
+   "name": "curved-side-first singlet, field 0.0 deg, 588 nm, MFD 8.390 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up, tilted 20 mrad down",
    "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
    "tolerance": {
     "eta": 0.0005
@@ -1215,7 +1215,7 @@
   {
    "absolute": true,
    "expected": {
-    "eta": 0.332787
+    "eta": 0.332854
    },
    "inputs": {
     "field": 0,
@@ -1227,7 +1227,7 @@
      },
      "coupling": {
       "axialUm": 0,
-      "mfdUm": 8.383518268318491,
+      "mfdUm": 8.39006742994668,
       "offsetXUm": 0,
       "offsetYUm": 0,
       "tiltXMrad": 30.0,
@@ -1272,11 +1272,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "curved-side-first singlet, field 0.0 deg, 587.5618 nm, MFD 8.384 um: coupling, Gaussian beam 0.8 pupil radii, tilted 30 mrad in x and -20 mrad in y",
+   "name": "curved-side-first singlet, field 0.0 deg, 588 nm, MFD 8.390 um: coupling, Gaussian beam 0.8 pupil radii, tilted 30 mrad in x and -20 mrad in y",
    "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
    "tolerance": {
     "eta": 0.0005
@@ -1285,14 +1285,14 @@
   {
    "absolute": true,
    "expected": {
-    "coherent0": 0.177243,
-    "coherent1": 0.113706,
-    "coherent2": 0.107622,
-    "coherent3": 0.110688,
-    "incoherent0": 0.0888114,
-    "incoherent1": 0.0730055,
-    "incoherent2": 0.0659248,
-    "incoherent3": 0.0671637
+    "coherent0": 0.177281,
+    "coherent1": 0.113754,
+    "coherent2": 0.107795,
+    "coherent3": 0.110754,
+    "incoherent0": 0.0888316,
+    "incoherent1": 0.0731344,
+    "incoherent2": 0.0660306,
+    "incoherent3": 0.0672501
    },
    "inputs": {
     "at": [
@@ -1301,7 +1301,7 @@
       0.0
      ],
      [
-      0.0035871205967814594,
+      0.0035899228408691076,
       0.0
      ],
      [
@@ -1318,11 +1318,11 @@
     "phaseDeg": 0.0,
     "points": [
      [
-      0.0035871205967814594,
+      0.0035899228408691076,
       0.0
      ],
      [
-      -0.0035871205967814594,
+      -0.0035899228408691076,
       0.003
      ]
     ],
@@ -1368,11 +1368,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "curved-side-first singlet, field 3.0 deg, 587.5618 nm: two points, second at phase 0.0 deg, intensity at four positions",
+   "name": "curved-side-first singlet, field 3.0 deg, 588 nm: two points, second at phase 0.0 deg, intensity at four positions",
    "note": "relative to a perfect lens's peak; the app sums a 128-sample square grid, this file a 20 x 64 polar quadrature",
    "tolerance": {
     "coherent0": 0.003,
@@ -1388,14 +1388,14 @@
   {
    "absolute": true,
    "expected": {
-    "coherent0": 0.0376689,
-    "coherent1": 0.00228245,
-    "coherent2": 0.0892435,
-    "coherent3": 0.00245633,
-    "incoherent0": 0.0888114,
-    "incoherent1": 0.0730055,
-    "incoherent2": 0.0659248,
-    "incoherent3": 0.0671637
+    "coherent0": 0.0376587,
+    "coherent1": 0.00227323,
+    "coherent2": 0.0893874,
+    "coherent3": 0.00245512,
+    "incoherent0": 0.0888316,
+    "incoherent1": 0.0731344,
+    "incoherent2": 0.0660306,
+    "incoherent3": 0.0672501
    },
    "inputs": {
     "at": [
@@ -1404,7 +1404,7 @@
       0.0
      ],
      [
-      0.0035871205967814594,
+      0.0035899228408691076,
       0.0
      ],
      [
@@ -1421,11 +1421,11 @@
     "phaseDeg": 120.0,
     "points": [
      [
-      0.0035871205967814594,
+      0.0035899228408691076,
       0.0
      ],
      [
-      -0.0035871205967814594,
+      -0.0035899228408691076,
       0.003
      ]
     ],
@@ -1471,11 +1471,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "curved-side-first singlet, field 3.0 deg, 587.5618 nm: two points, second at phase 120.0 deg, intensity at four positions",
+   "name": "curved-side-first singlet, field 3.0 deg, 588 nm: two points, second at phase 120.0 deg, intensity at four positions",
    "note": "relative to a perfect lens's peak; the app sums a 128-sample square grid, this file a 20 x 64 polar quadrature",
    "tolerance": {
     "coherent0": 0.003,
@@ -1491,7 +1491,7 @@
   {
    "absolute": true,
    "expected": {
-    "eta": 0.08138
+    "eta": 0.0814798
    },
    "inputs": {
     "field": 1,
@@ -1503,7 +1503,7 @@
      },
      "coupling": {
       "axialUm": 0,
-      "mfdUm": 8.394805881651894,
+      "mfdUm": 8.401363870020035,
       "offsetXUm": 0,
       "offsetYUm": 0,
       "tiltXMrad": 0,
@@ -1546,11 +1546,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "curved-side-first singlet, field 3.0 deg, 587.5618 nm, MFD 8.395 um: coupling, aligned, uniform pupil",
+   "name": "curved-side-first singlet, field 3.0 deg, 588 nm, MFD 8.401 um: coupling, aligned, uniform pupil",
    "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
    "tolerance": {
     "eta": 0.002
@@ -1559,7 +1559,7 @@
   {
    "absolute": true,
    "expected": {
-    "eta": 0.207424
+    "eta": 0.207634
    },
    "inputs": {
     "field": 1,
@@ -1571,7 +1571,7 @@
      },
      "coupling": {
       "axialUm": 20.0,
-      "mfdUm": 8.394805881651894,
+      "mfdUm": 8.401363870020035,
       "offsetXUm": 0,
       "offsetYUm": 1.0,
       "tiltXMrad": 0,
@@ -1616,11 +1616,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "curved-side-first singlet, field 3.0 deg, 587.5618 nm, MFD 8.395 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up and 20 um past the image",
+   "name": "curved-side-first singlet, field 3.0 deg, 588 nm, MFD 8.401 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up and 20 um past the image",
    "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
    "tolerance": {
     "eta": 0.0005
@@ -1629,7 +1629,7 @@
   {
    "absolute": true,
    "expected": {
-    "eta": 0.198756
+    "eta": 0.198948
    },
    "inputs": {
     "field": 1,
@@ -1641,7 +1641,7 @@
      },
      "coupling": {
       "axialUm": 20.0,
-      "mfdUm": 8.394805881651894,
+      "mfdUm": 8.401363870020035,
       "offsetXUm": 0,
       "offsetYUm": -1.0,
       "tiltXMrad": 0,
@@ -1686,11 +1686,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "curved-side-first singlet, field 3.0 deg, 587.5618 nm, MFD 8.395 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um down and 20 um past the image",
+   "name": "curved-side-first singlet, field 3.0 deg, 588 nm, MFD 8.401 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um down and 20 um past the image",
    "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
    "tolerance": {
     "eta": 0.0005
@@ -1699,7 +1699,7 @@
   {
    "absolute": true,
    "expected": {
-    "eta": 0.161833
+    "eta": 0.162003
    },
    "inputs": {
     "field": 1,
@@ -1711,7 +1711,7 @@
      },
      "coupling": {
       "axialUm": 0,
-      "mfdUm": 8.394805881651894,
+      "mfdUm": 8.401363870020035,
       "offsetXUm": 0,
       "offsetYUm": 1.0,
       "tiltXMrad": 0,
@@ -1756,11 +1756,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "curved-side-first singlet, field 3.0 deg, 587.5618 nm, MFD 8.395 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up, tilted 20 mrad up",
+   "name": "curved-side-first singlet, field 3.0 deg, 588 nm, MFD 8.401 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up, tilted 20 mrad up",
    "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
    "tolerance": {
     "eta": 0.0005
@@ -1769,7 +1769,7 @@
   {
    "absolute": true,
    "expected": {
-    "eta": 0.143126
+    "eta": 0.143284
    },
    "inputs": {
     "field": 1,
@@ -1781,7 +1781,7 @@
      },
      "coupling": {
       "axialUm": 0,
-      "mfdUm": 8.394805881651894,
+      "mfdUm": 8.401363870020035,
       "offsetXUm": 0,
       "offsetYUm": 1.0,
       "tiltXMrad": 0,
@@ -1826,11 +1826,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "curved-side-first singlet, field 3.0 deg, 587.5618 nm, MFD 8.395 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up, tilted 20 mrad down",
+   "name": "curved-side-first singlet, field 3.0 deg, 588 nm, MFD 8.401 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up, tilted 20 mrad down",
    "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
    "tolerance": {
     "eta": 0.0005
@@ -1839,7 +1839,7 @@
   {
    "absolute": true,
    "expected": {
-    "eta": 0.069329
+    "eta": 0.0694031
    },
    "inputs": {
     "field": 1,
@@ -1851,7 +1851,7 @@
      },
      "coupling": {
       "axialUm": 0,
-      "mfdUm": 8.394805881651894,
+      "mfdUm": 8.401363870020035,
       "offsetXUm": 0,
       "offsetYUm": 0,
       "tiltXMrad": 30.0,
@@ -1896,11 +1896,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "curved-side-first singlet, field 3.0 deg, 587.5618 nm, MFD 8.395 um: coupling, Gaussian beam 0.8 pupil radii, tilted 30 mrad in x and -20 mrad in y",
+   "name": "curved-side-first singlet, field 3.0 deg, 588 nm, MFD 8.401 um: coupling, Gaussian beam 0.8 pupil radii, tilted 30 mrad in x and -20 mrad in y",
    "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
    "tolerance": {
     "eta": 0.0005
@@ -2705,7 +2705,7 @@
   "A. E. Siegman, Lasers (University Science Books, 1986), section 17.2: Gaussian beam focusing"
  ],
  "convergence": "20 x 64 polar nodes (the wavefronts here stay below a wave, so the azimuthal trapezoid converges well past 1e-6); a degree-8 polynomial for the directions; Simpson's rule on 20000 intervals for the mode's normalization.",
- "domain": "A perfect F/10 lens at 587.6 nm; a curved-side-first N-BK7 singlet (F/10) on axis and at 3 deg; the Cooke triplet (F/5) on axis at 550 nm; separations near the Rayleigh distance; offsets of a few micrometres, tilts of 20 mrad.",
+ "domain": "A perfect F/10 lens at 588 nm; a curved-side-first N-BK7 singlet (F/10) on axis and at 3 deg; the Cooke triplet (F/5) on axis at 550 nm; separations near the Rayleigh distance; offsets of a few micrometres, tilts of 20 mrad.",
  "fidelity": "computed",
  "id": "lens-coherent",
  "outside_scope": "Partial coherence, vector (high-NA) diffraction, fiber modes other than a Gaussian, and the Fresnel-number focal shift are outside this model.",
