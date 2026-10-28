@@ -460,10 +460,15 @@ export function analyzeDiffraction(input, { field = 0, zImage = null, throughFoc
   }
   const vignetted = perWavelength.find(w => w.vignetting > 0);
   if (vignetted && d.vignetting) warnings.push({ kind: 'vignetting', text: `${fmt(100 * vignetted.vignetting, 3)} % of the pupil is cut by apertures at ${fmt(vignetted.nm, 4)} nm; the pupil function is zero there (vignetting).` });
+  // The Fresnel number is smallest at the longest wavelength, and a Gaussian
+  // beam narrower than the pupil focuses like a smaller pupil (its 1/e²
+  // radius), as on the Imaging and Coupling tabs.
   const zDistance = Math.abs(zImage - zXp);
-  const fresnel = Number.isFinite(fo.zXp) && zDistance > 0 ? fo.rXp * fo.rXp / (primaryNm * 1e-6 * zDistance) : Infinity;
+  const fresnelNm = Math.max(...sys.wavelengthsNm);
+  const radius = fo.rXp * (d.illumination === 'gaussian' ? Math.min(1, d.beamRatio) : 1);
+  const fresnel = Number.isFinite(fo.zXp) && zDistance > 0 ? radius * radius / (fresnelNm * 1e-6 * zDistance) : Infinity;
   if (fresnel < FRESNEL_LIMIT) {
-    warnings.push({ kind: 'fresnel', text: `The Fresnel number of the exit pupil seen from the image, a²/(λz) = ${fmt(fresnel, 3)}, is below ${FRESNEL_LIMIT}: the focus is not where the pupil-based (Debye) model puts it (focal shift), so this PSF is unreliable. This happens with very small or very slow optics.` });
+    warnings.push({ kind: 'fresnel', text: `The Fresnel number of the exit pupil seen from the image, a²/(λz) = ${fmt(fresnel, 3)}${many ? ` at ${fmt(fresnelNm, 4)} nm` : ''}, is below ${FRESNEL_LIMIT}${radius < fo.rXp ? ' (for the Gaussian beam’s radius)' : ''}: the focus is not where the pupil-based (Debye) model puts it (focal shift), so this PSF is unreliable. This happens with very small or very slow optics, or a narrow beam.` });
   }
   if (fo.naImage > HIGH_NA || fo.naObject > HIGH_NA) {
     warnings.push({ kind: 'high-na', text: `The numerical aperture exceeds ${HIGH_NA}: scalar diffraction ignores polarization, which matters at high NA. A vector-diffraction tool (for example Optiland, open source) is the right check.` });
@@ -494,7 +499,7 @@ export function analyzeDiffraction(input, { field = 0, zImage = null, throughFoc
     primary: sys.primaryWavelength, primaryNm, reference,
     grid: N, padding: Q, fftSize: M, spacing: dx, window: h, viewWindow: hView,
     image: { z: zImage, center: sphere.C, radius: sphere.R, fromChief: sphere.fromChief },
-    fresnelNumber: fresnel, pupilDistortion: distortion,
+    fresnelNumber: fresnel, fresnelNm, pupilDistortion: distortion,
     illumination: { ...d },
     frequencies: Float64Array.from({ length: freqCount }, (_, k) => k / (M * dx)),
     perWavelength, poly, throughFocus: focus,
