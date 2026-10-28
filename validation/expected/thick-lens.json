@@ -651,6 +651,33 @@
    }
   },
   {
+   "expected": {
+    "efl": 4.4214828,
+    "r1Mm": 3.499999991,
+    "r2Mm": -3.499999991,
+    "thicknessMm": 4.394448742
+   },
+   "inputs": {
+    "diameterMm": 6.0,
+    "edgeMm": 1.0,
+    "focalMm": 4.4214828,
+    "glass": "nbk7",
+    "kind": "design",
+    "lensKind": "biconvex",
+    "orientation": "convex",
+    "shape": "equi",
+    "spec": "focal",
+    "wavelengthNm": 1550.0
+   },
+   "name": "design: equi-convex N-BK7, f = 4.4214828 mm, D = 6 mm, 1 mm edge, at 1550 nm (near the strongest such lens)",
+   "tolerance": {
+    "efl": 1e-09,
+    "r1Mm": 1e-09,
+    "r2Mm": 1e-09,
+    "thicknessMm": 1e-09
+   }
+  },
+  {
    "absolute": true,
    "expected": {
     "eta0": 0.718613,
@@ -677,7 +704,7 @@
     "wavelengthNm": 1550.0
    },
    "name": "real singlet: the example lens, 2 mm beam, MFD 10.4 um, at 0 um, -80 um, -110 um from F'",
-   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule and an offset fiber's azimuth by the trapezoid rule; this file 256 Gauss-Legendre nodes along the radius and 160 over the azimuth",
+   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule, a lateral offset's azimuth as J0 and a tilt's over its lit arc by 64 Gauss-Legendre nodes; this file 256 Gauss-Legendre nodes along the radius and 160 over the azimuth",
    "tolerance": {
     "eta0": 0.0001,
     "eta1": 0.0001,
@@ -714,7 +741,7 @@
     "wavelengthNm": 1550.0
    },
    "name": "real singlet: flat side first, 2 mm beam, MFD 10.4 um, at 0 um, -80 um, -110 um from F'",
-   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule and an offset fiber's azimuth by the trapezoid rule; this file 256 Gauss-Legendre nodes along the radius and 160 over the azimuth",
+   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule, a lateral offset's azimuth as J0 and a tilt's over its lit arc by 64 Gauss-Legendre nodes; this file 256 Gauss-Legendre nodes along the radius and 160 over the azimuth",
    "tolerance": {
     "eta0": 0.0001,
     "eta1": 0.0001,
@@ -751,7 +778,7 @@
     "wavelengthNm": 1550.0
    },
    "name": "real singlet: the example lens, 1.4 mm beam, MFD 10.4 um, at 0 um, -80 um, -110 um from F'",
-   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule and an offset fiber's azimuth by the trapezoid rule; this file 256 Gauss-Legendre nodes along the radius and 160 over the azimuth",
+   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule, a lateral offset's azimuth as J0 and a tilt's over its lit arc by 64 Gauss-Legendre nodes; this file 256 Gauss-Legendre nodes along the radius and 160 over the azimuth",
    "tolerance": {
     "eta0": 0.0001,
     "eta1": 0.0001,
@@ -785,7 +812,7 @@
     "wavelengthNm": 1000.0
    },
    "name": "real singlet: flat side first, designed at 1000 nm, 2 mm beam, MFD 10.4 um, at 0 um, -200 um from F'",
-   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule and an offset fiber's azimuth by the trapezoid rule; this file 512 Gauss-Legendre nodes along the radius and 160 over the azimuth",
+   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule, a lateral offset's azimuth as J0 and a tilt's over its lit arc by 64 Gauss-Legendre nodes; this file 512 Gauss-Legendre nodes along the radius and 160 over the azimuth",
    "tolerance": {
     "eta0": 0.0001,
     "eta1": 0.0001,
@@ -798,8 +825,7 @@
    "expected": {
     "eta0": 0.801987,
     "eta1": 0.863416,
-    "eta2": 0.763945,
-    "eta3": 0.761379
+    "eta2": 0.245423
    },
    "inputs": {
     "beamDiameterMm": 2.0,
@@ -809,14 +835,12 @@
     "lateralUm": [
      2.0,
      0.0,
-     2.0,
-     2.0
+     0.0
     ],
     "mfdUm": 10.4,
     "r1Mm": 5.507172473215541,
     "r2Mm": 0.0,
     "shiftsMm": [
-     -0.08,
      -0.08,
      -0.08,
      -0.08
@@ -825,24 +849,23 @@
     "tiltMrad": [
      0.0,
      20.0,
-     20.0,
-     -20.0
+     100.0
     ],
     "wavelengthNm": 1550.0
    },
-   "name": "real singlet: the example lens, 2 mm beam, MFD 10.4 um, the fiber 80 um before F' set off by (2 um, 0), (0, 20 mrad), (2 um, 20 mrad) and (2 um, -20 mrad), at -80 um, -80 um, -80 um, -80 um from F'",
-   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule and an offset fiber's azimuth by the trapezoid rule; this file 256 Gauss-Legendre nodes along the radius and 160 over the azimuth",
+   "name": "real singlet: the example lens, 2 mm beam, MFD 10.4 um, the fiber 80 um before F' moved 2 um across or tilted by 20 and 100 mrad, at -80 um, -80 um, -80 um from F'",
+   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule, a lateral offset's azimuth as J0 and a tilt's over its lit arc by 64 Gauss-Legendre nodes; this file 256 Gauss-Legendre nodes along the radius and 160 over the azimuth",
    "tolerance": {
     "eta0": 0.0001,
     "eta1": 0.0001,
-    "eta2": 0.0001,
-    "eta3": 0.0001
+    "eta2": 0.0001
    }
   },
   {
    "absolute": true,
    "expected": {
-    "eta0": 0.560733
+    "eta0": 0.580248,
+    "eta1": 0.62738
    },
    "inputs": {
     "beamDiameterMm": 2.0,
@@ -850,24 +873,28 @@
     "glass": "nbk7",
     "kind": "singlet",
     "lateralUm": [
-     3.0
+     3.0,
+     0.0
     ],
     "mfdUm": 10.4,
     "r1Mm": 5.507172473215541,
     "r2Mm": 0.0,
     "shiftsMm": [
+     0.0,
      0.0
     ],
     "thicknessMm": 1.8888450000123926,
     "tiltMrad": [
+     0.0,
      30.0
     ],
     "wavelengthNm": 1550.0
    },
-   "name": "real singlet: the example lens, 2 mm beam, MFD 10.4 um, at F' set off by 3 um and tilted by 30 mrad, at 0 um from F'",
-   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule and an offset fiber's azimuth by the trapezoid rule; this file 256 Gauss-Legendre nodes along the radius and 160 over the azimuth",
+   "name": "real singlet: the example lens, 2 mm beam, MFD 10.4 um, at F' moved 3 um across or tilted by 30 mrad, at 0 um, 0 um from F'",
+   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule, a lateral offset's azimuth as J0 and a tilt's over its lit arc by 64 Gauss-Legendre nodes; this file 256 Gauss-Legendre nodes along the radius and 160 over the azimuth",
    "tolerance": {
-    "eta0": 0.0001
+    "eta0": 0.0001,
+    "eta1": 0.0001
    }
   },
   {
@@ -930,14 +957,14 @@
   "H. Kogelnik and T. Li, Appl. Opt. 5, 1550-1567 (1966), doi:10.1364/AO.5.001550 (the ABCD law for the complex beam parameter)"
  ],
  "convergence": "Closed forms in double precision; the secant method to 1e-15. The radial quadrature: 96 nodes leave the flat-first singlet (tens of waves at the rim of its pupil) 7e-3 off, 160 nodes 3e-5, 256 nodes below 1e-6; at 1000 nm 256 nodes are 5e-6 off and 512 are used; the central difference uses 1e-5 of the pupil radius. The azimuth: 160 nodes, past convergence for these offsets. The 2-D check: 64 x 24 polar nodes and a degree-8 polynomial.",
- "domain": "Eight singlets (plano-convex both ways, bi-convex, positive meniscus, bi-concave, a thick CaF2 lens) from 587.6 to 4000 nm; seven designed from f (plano-convex both ways, equi-convex and best form, N-BK7, fused silica and CaF2, f from 11 to 100 mm); collimated beams of 0.5 to 10 mm; the designed plano-convex singlet at 1550 nm with 1.4 and 2 mm beams at the paraxial focus and 80 and 110 um before it, flat side first at 1000 nm where the page traces 4096 rays, a 200 um mode, and the fiber set off by up to 3 um and tilted by up to 30 mrad.",
+ "domain": "Eight singlets (plano-convex both ways, bi-convex, positive meniscus, bi-concave, a thick CaF2 lens) from 587.6 to 4000 nm; eight designed from f (plano-convex both ways, equi-convex and best form, N-BK7, fused silica and CaF2, f from 4.42 to 100 mm, one near the strongest equi-convex lens its diameter allows); collimated beams of 0.5 to 10 mm; the designed plano-convex singlet at 1550 nm with 1.4 and 2 mm beams at the paraxial focus and 80 and 110 um before it, flat side first at 1000 nm where the page traces 4096 rays, a 200 um mode, and the fiber moved by up to 3 um across the axis or tilted by up to 100 mrad.",
  "fidelity": "computed",
  "id": "thick-lens",
  "outside_scope": "The page refuses wavelengths outside a glass's fitted range, afocal lenses, radii smaller than the clear radius, a focal length too short for the diameter and edge, a best form that is not bi-convex (n from 1.686), and beams whose lit pupil reaches NA 0.9; the real singlet is not traced when its faces cross at the clear diameter.",
  "provenance": "The closed forms written from the cited articles; the interface and slab matrices are the standard ray-transfer matrices; the ray trace and quadrature are this repository's independent Python lens references.",
- "reference": "Closed forms of the thick-lens lensmaker's equation and principal planes; a design from f by the closed-form plano-convex radius and the secant method on the closed-form power; the complex beam parameter carried through both refracting surfaces; the real singlet by lens_design.py's ray trace at Gauss-Legendre nodes along the pupil radius, the area ratio by central differences, an offset fiber's azimuth by Gauss-Legendre nodes, and for the example lens the 2-D overlap of lens_coherent.coupling",
+ "reference": "Closed forms of the thick-lens lensmaker's equation and principal planes; a design from f by the closed-form plano-convex radius and the secant method on the closed-form power (the app: the strongest lens first, then bisection); the complex beam parameter carried through both refracting surfaces; the real singlet by lens_design.py's ray trace at Gauss-Legendre nodes along the pupil radius, the area ratio by central differences, an offset fiber's azimuth by Gauss-Legendre nodes, and for the example lens the 2-D overlap of lens_coherent.coupling",
  "reference_file": "validation/reference/thick_lens.py",
- "scope": "Paraxial first-order optics of a spherical singlet in air; a collimated TEM00 beam focused on axis, scalar and monochromatic, with a Gaussian fiber mode on the axis or set off and tilted in one plane.",
+ "scope": "Paraxial first-order optics of a spherical singlet in air; a collimated TEM00 beam focused on axis, scalar and monochromatic, with a Gaussian fiber mode on the axis, or moved across it or tilted, one way at a time.",
  "title": "Thin and thick lens: lens data, design from f, Gaussian focus, real singlet focus and fiber coupling with offsets",
  "tolerance_rationale": "1e-9 relative for the algebra and the designs. 1e-4 absolute on the singlet's peak and coupling, against differences found below 3e-6 (the two quadratures of the same model converge to the same value), and 1e-4 relative on the 200 um mode's small coupling, against 2e-5; expected values stored to 6 significant digits, as the last digits depend on the platform's maths library."
 }

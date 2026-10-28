@@ -23,22 +23,26 @@ const length = mm => (Math.abs(mm) >= 1 ? [mm, 'mm'] : [mm * 1e3, 'µm']);
 const lengthRow = (label, mm, digits) => [label, ...length(mm), digits];
 const signed = mm => (Math.abs(mm) < 1e-9 ? '0 mm (at the vertex)' : `${mm < 0 ? '−' : '+'}${formatNumber(Math.abs(mm), 4)} mm`);
 const KIND = { ideal: 'Ideal thin lens', planoconvex: 'Plano-convex singlet', biconvex: 'Bi-convex singlet' };
+const radius = mm => (mm ? `${formatNumber(mm, 5)} mm` : 'flat');
 
+// The lens and its focus at a glance; the rest of the lens data below.
 function rows(r) {
   const { lens, values: v } = r;
-  const key = [{ group: 'At a glance' }, ['Focal length f', lens.efl, 'mm'], ['Back focal length (V₂ to F′)', lens.bfl, 'mm']];
+  const key = [{ group: `${KIND[v.lensKind]} at ${formatNumber(v.wavelengthNm, 5)} nm` }];
+  if (!lens.ideal) {
+    key.push(['Radii R₁ / R₂', `${radius(v.r1Mm)} / ${radius(v.r2Mm)}`],
+      ['Centre / edge thickness', `${formatNumber(v.thicknessMm, 5)} mm / ${formatNumber(r.geometry.edgeMm, 4)} mm`]);
+  }
+  key.push(['Focal length f', lens.efl, 'mm'], ['Back focal length (V₂ to F′)', lens.bfl, 'mm']);
   if (r.ideal && !r.beamIssue) key.push(['Focused waist, ideal (1/e² radius)', r.ideal.waistUm, 'µm', 4]);
   if (r.scan?.real) key.push(['Singlet Strehl ratio, best plane', r.scan.real.strehl, '', 3]);
 
-  const out = [{ group: `${KIND[v.lensKind]} at ${formatNumber(v.wavelengthNm, 5)} nm` }];
+  const out = [{ group: 'Cardinal points and shape' }];
   if (lens.ideal) {
-    out.push(['Focal length f', lens.efl, 'mm'], ['Power 1/f', 1000 / lens.efl, 'D', 4], ['Principal planes', 'H = H′, in the plane of the lens']);
+    out.push(['Principal planes', 'H = H′, in the plane of the lens'], ['Focal points', 'f before and after it']);
   } else {
-    out.push(['Refractive index n', lens.n, '', 6],
-      ['Front radius R₁', v.r1Mm ? formatNumber(v.r1Mm, 5) + ' mm' : 'flat'], ['Back radius R₂', v.r2Mm ? formatNumber(v.r2Mm, 5) + ' mm' : 'flat'],
-      ['Centre thickness t', v.thicknessMm, 'mm', 5], ['Edge thickness at the clear diameter', r.geometry.edgeMm, 'mm', 4],
-      ['Focal length f, thick lens', lens.efl, 'mm'], ['Focal length, thin-lens formula', lens.thinFocalMm, 'mm'], ['Power 1/f', 1000 / lens.efl, 'D', 4],
-      ['Back focal length (V₂ to F′)', lens.bfl, 'mm'], ['Front focal length (F to V₁)', lens.ffl, 'mm'],
+    out.push(['Refractive index n', lens.n, '', 6], ['Focal length, thin-lens formula', lens.thinFocalMm, 'mm'],
+      ['Front focal length (F to V₁)', lens.ffl, 'mm'],
       ['Principal plane H from V₁', signed(lens.h1Mm)], ['Principal plane H′ from V₂', signed(lens.h2Mm)],
       ['Shape factor (R₂ + R₁)/(R₂ − R₁)', lens.shape === null ? 'undefined (equal curvatures)' : formatNumber(lens.shape, 4)]);
   }
@@ -202,10 +206,11 @@ function fiberRows(f) {
   const coupling = [];
   for (const [kind, name] of [['real', 'Singlet'], ['ideal', 'Ideal thin lens']]) {
     if (!f[kind]) continue;
+    const k = f[kind], shiftUm = k.shiftMm * 1e3;
     // Below a nanometre the search's rounding, not a position.
-    const shiftUm = f[kind].shiftMm * 1e3;
-    coupling.push({ group: name }, Math.abs(shiftUm) < 1e-3 ? ['Best fiber position', 'at F′'] : ['Best fiber position from F′', shiftUm, 'µm', 4], ['Mode overlap, aligned', 100 * f[kind].aligned, '%', 4],
-      ['Mode overlap, with these offsets', 100 * f[kind].eta, '%', 4], ['Coupling efficiency', 100 * f[kind].efficiency, '%', 4]);
+    coupling.push({ group: name }, Math.abs(shiftUm) < 1e-3 ? ['Best fiber position', 'at F′'] : ['Best fiber position from F′', shiftUm, 'µm', 4],
+      ['Mode overlap there', 100 * k.aligned, '%', 4], ['Coupling efficiency', 100 * k.efficiency, '%', 4],
+      ['Lateral offset that halves it', k.halfLateralUm, 'µm', 3], ['Tilt that halves it', k.halfTiltMrad, 'mrad', 3]);
   }
   return { 'fiber-mode': mode, 'fiber-coupling': coupling };
 }
@@ -213,34 +218,22 @@ function fiberRows(f) {
 function fiberNotes(f) {
   const out = [];
   if (f.mode && !f.mode.singleMode) out.push(`V = ${formatNumber(f.mode.vNumber, 4)} is above ${formatNumber(SINGLE_MODE_V, 4)}: at this wavelength the fiber also guides LP₁₁. The coupling here is into the fundamental mode only.`);
-  if (['real', 'ideal'].some(k => f[k] && !Number.isFinite(f[k].eta))) out.push('With these offsets the phase across the pupil changes too fast for its samples: the coupling there is left out. It is very small that far off anyway.');
-  out.push('The fiber sits on the axis at each lens’s best position, its axis along the lens’s; the offsets move its core across the axis and turn it, in one plane. The coupling efficiency is the mode overlap times the light reaching the fiber: the beam’s share inside the clear diameter' + (f.values.fresnel ? ', and the transmission of the uncoated lens faces and fiber end.' : '.'));
+  out.push('The fiber sits on the axis at each lens’s best position, its axis along the lens’s. The coupling efficiency is the mode overlap times the light reaching the fiber: the beam’s share inside the clear diameter' + (f.values.fresnel ? ', and the transmission of the uncoated lens faces and fiber end.' : '.') + ' Each graph moves the fiber one way only, from that position; the focus is round, so a lateral offset in any direction is the same.');
   return out;
 }
 
 function fiberGraphs(f) {
   const kinds = [['real', 'Singlet', '--series-1'], ['ideal', 'Ideal thin lens', '--series-3']].filter(([k]) => f.scans[k]);
-  const plot = (axis, x, label, unit, at) => ({
-    x, xLabel: label, xUnit: unit, yLabel: 'Mode overlap (%)', yMin: 0, yMax: 100,
-    series: kinds.map(([k, name, color]) => ({ name, color, values: f.scans[k][axis].map(e => (Number.isFinite(e) ? 100 * e : null)) })),
-    vlines: at ? [{ x: at, label: 'set' }] : [],
-    formatX: n => formatNumber(n, 4), formatY: n => formatNumber(n, 4),
+  const plot = (axis, x, label, unit, vlines = []) => ({
+    x, xLabel: label, xUnit: unit, yLabel: 'Coupling efficiency (%)', yMin: 0, yMax: 100,
+    series: kinds.map(([k, name, color]) => ({ name, color, values: f.scans[k][axis].map(e => (Number.isFinite(e) ? 100 * e * f.through : null)) })),
+    vlines, formatX: n => formatNumber(n, 4), formatY: n => formatNumber(n, 4),
   });
   return {
-    lateral: plot('lateral', f.scans.lateralUm, 'Lateral offset (µm)', 'µm', f.values.lateralUm),
-    tilt: plot('tilt', f.scans.tiltMrad, 'Angular offset (mrad)', 'mrad', f.values.tiltMrad),
+    lateral: plot('lateral', f.scans.lateralUm, 'Lateral offset of the core (µm)', 'µm'),
+    axial: plot('axial', f.scans.axialUm, 'Fiber position from F′ (µm)', 'µm', [{ x: 0, label: 'F′' }]),
+    tilt: plot('tilt', f.scans.tiltMrad, 'Tilt of the fiber (mrad)', 'mrad'),
   };
-}
-
-// The sliders span the scans' ranges.
-function fitSliders(f) {
-  if (!f.ok) return;
-  for (const [id, range] of [['lateralUm', f.lateralRangeUm], ['tiltMrad', f.tiltRangeMrad]]) {
-    const slider = document.getElementById(`in-${id}-slider`);
-    if (!slider) continue;
-    slider.min = -range; slider.max = range;
-    slider.value = f.values[id];
-  }
 }
 
 mountCalculator({
@@ -251,7 +244,7 @@ mountCalculator({
 });
 
 fiber = mountCalculator({
-  panel: 'fiber', inputs: FIBER_INPUTS, defaults: FIBER_DEFAULTS, hideInactive: true, charts: ['lateral', 'tilt'],
-  groups: { fiber: { title: 'Fiber' }, align: { title: 'Alignment' } },
-  compute: raw => computeFiber(lensResult, raw), rows: fiberRows, notes: fiberNotes, graphs: fiberGraphs, onResult: fitSliders,
+  panel: 'fiber', inputs: FIBER_INPUTS, defaults: FIBER_DEFAULTS, hideInactive: true, charts: ['lateral', 'axial', 'tilt'],
+  groups: { fiber: { title: 'Fiber' } },
+  compute: raw => computeFiber(lensResult, raw), rows: fiberRows, notes: fiberNotes, graphs: fiberGraphs,
 });

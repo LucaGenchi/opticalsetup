@@ -57,6 +57,13 @@ test('a singlet designed from its focal length has that focal length and edge', 
       assert.ok(Math.abs(r.geometry.edgeMm - 2) < 1e-12, `${glass} ${JSON.stringify(x)} edge ${r.geometry.edgeMm}`);
     }
   }
+  // Near hemispherical faces the power falls again as the centre thickens:
+  // a lens on the far side of the strongest one is still found, and the
+  // refusal names the strongest.
+  const tight = lensOnly({ lensKind: 'biconvex', focalMm: 4.4214828 });
+  close(tight.values.r1Mm, 3.5, 1e-7);
+  close(tight.values.thicknessMm, 4.3944487, 1e-7);
+  assert.match(lensOnly({ lensKind: 'biconvex', focalMm: 3 }).errors[0].message, /the strongest has f = 4\.36\d mm/);
   // Plano-convex: R = (n − 1)f exactly, either way round.
   const pc = lensOnly({});
   close(pc.values.r1Mm, (pc.n - 1) * 11, 1e-15);
@@ -139,15 +146,43 @@ test('the fiber set off: the ideal lens follows the Gaussian closed form', () =>
   // A clear aperture that cuts nothing: the closed form's untruncated beam.
   const r = run({ lensKind: 'ideal', diameterMm: 25 }), m = r.scan.ideal.model, zr = r.ideal.rayleighMm;
   for (const z of [0, zr, -zr]) {
-    for (const [dx, tilt] of [[3, 0], [0, 40], [3, 30], [3, -30]]) {
+    for (const [dx, tilt] of [[3, 0], [0, 40], [0, -40]]) {
       close(m.coupling(m.plane(z), 5.2e-3, dx * 1e-3, tilt * 1e-3),
         gaussianCoupling({ waistUm: r.ideal.waistUm, modeRadiusUm: 5.2, wavelengthNm: 1550, axialOffsetUm: z * 1e3, lateralOffsetUm: dx, tiltMrad: tilt }),
         3e-3, `z ${z}, ${dx} µm, ${tilt} mrad`);
     }
   }
-  // At the waist the two offsets do not interact: ±τ couple alike.
-  const p = m.plane(0);
-  close(m.coupling(p, 5.2e-3, 3e-3, 0.03), m.coupling(p, 5.2e-3, 3e-3, -0.03), 1e-9, 'no cross term at the waist');
+  assert.throws(() => m.coupling(m.plane(0), 5.2e-3, 3e-3, 0.03), /one offset at a time/);
+});
+
+test('the tilted fiber’s arc of azimuth matches a brute-force ring, quickly', () => {
+  // A 200 µm mode at 350 nm tilted 100 mrad: its far field lights a sliver
+  // of each ring. Against the trapezoid rule on 20000 azimuths, and fast.
+  const r = run({ lensKind: 'ideal', wavelengthNm: 350 }), m = r.scan.ideal.model, p = m.plane(0), w = 0.1;
+  const theta = m.lambda / (Math.PI * w), N = m.samples;
+  const brute = tau => {
+    let re = 0, im = 0;
+    const ring = s => {
+      const c = Math.sqrt(1 - s * s), M = 20000;
+      let sum = 0;
+      for (let j = 0; j <= M; j++) { const ca = s * Math.cos(Math.PI * j / M) * Math.sin(tau) + c * Math.cos(tau); sum += (j === 0 || j === M ? 0.5 : 1) * Math.exp(-(1 - ca * ca) / theta ** 2); }
+      return sum / M;
+    };
+    for (let k = 0; k <= N; k++) {
+      if (!(p.weight[k] > 0)) continue;
+      const c = (k === 0 || k === N ? 1 : k % 2 ? 4 : 2) / (3 * N) * p.weight[k] * k / N * ring(p.s[k]), ph = -2 * Math.PI * p.opd[k];
+      re += c * Math.cos(ph); im += c * Math.sin(ph);
+    }
+    return re * re + im * im;
+  };
+  const ratio = (brute(0.1) / brute(0)) * m.coupling(p, w);
+  const t0 = performance.now(), fast = m.coupling(p, w, 0, 0.1);
+  assert.ok(performance.now() - t0 < 50, 'one tilted overlap in well under a frame');
+  close(fast, ratio, 1e-5, 'arc');
+  // The whole fiber panel for that case, three scans included.
+  const t1 = performance.now();
+  assert.ok(fiber(r, { mfdUm: 200 }).ok);
+  assert.ok(performance.now() - t1 < 2000, 'fiber panel time');
 });
 
 test('the singlet’s coupling matches the lens designer’s two-dimensional overlap', () => {
@@ -162,12 +197,9 @@ test('the singlet’s coupling matches the lens designer’s two-dimensional ove
     close(m.coupling(m.plane(0), 5.2e-3), engine(0), 1e-4, `${JSON.stringify(x)} at F′`);
     if (x.orientation || x.beamDiameterMm) continue;
     // Set off near the best plane, they differ only in where the sphere is
-    // centred (the engine's on the core): to a few 10⁻³, with the same
-    // sign of the offsets' cross term.
+    // centred (the engine's on the core): to a few 10⁻³.
     const p = m.plane(-0.08);
-    for (const [dx, tilt] of [[3, 0], [0, 30], [3, 30], [3, -30]]) close(m.coupling(p, 5.2e-3, dx * 1e-3, tilt * 1e-3), engine(-0.08, dx, tilt), 5e-3, `${dx} µm, ${tilt} mrad`);
-    const mine = m.coupling(p, 5.2e-3, 3e-3, 0.03) - m.coupling(p, 5.2e-3, 3e-3, -0.03), theirs = engine(-0.08, 3, 30) - engine(-0.08, 3, -30);
-    assert.ok(Math.sign(mine) === Math.sign(theirs) && mine !== 0, `cross term ${mine} vs ${theirs}`);
+    for (const [dx, tilt] of [[3, 0], [0, 30], [0, -30]]) close(m.coupling(p, 5.2e-3, dx * 1e-3, tilt * 1e-3), engine(-0.08, dx, tilt), 5e-3, `${dx} µm, ${tilt} mrad`);
   }
 });
 
@@ -198,7 +230,7 @@ test('refusals and partial results', () => {
   // Every number the page draws is finite.
   for (const kind of ['real', 'ideal']) for (const key of ['peak', 'radiusUm']) assert.ok(r.scan[kind][key].every(Number.isFinite), `${kind} ${key}`);
   const f = fiber(r);
-  for (const kind of ['real', 'ideal']) for (const axis of ['lateral', 'tilt']) assert.ok(f.scans[kind][axis].every(Number.isFinite), `${kind} ${axis}`);
+  for (const kind of ['real', 'ideal']) for (const axis of ['lateral', 'axial', 'tilt']) assert.ok(f.scans[kind][axis].every(Number.isFinite), `${kind} ${axis}`);
 });
 
 test('a wavefront the pupil grid cannot follow is traced finer, or refused', () => {
@@ -304,16 +336,20 @@ test('the fiber panel: modes, losses and scans', () => {
   const R = n => ((n - 1) / (n + 1)) ** 2, ns = materialIndex('silica', 1550);
   close(lossy.through, r.clipShare * (1 - R(r.n)) ** 2 * (1 - R(ns)), 1e-12);
   close(fresnelTransmission(r.n, 1550), (1 - R(r.n)) ** 2 * (1 - R(ns)), 1e-15);
-  close(lossy.real.efficiency, lossy.real.eta * lossy.through, 1e-15);
-  assert.equal(plain.real.eta, plain.real.aligned);
-  // The scans pass through the aligned value, peak there, and are cached:
-  // moving a slider reuses them.
-  const mid = (plain.scans.lateralUm.length - 1) / 2;
-  close(plain.scans.real.lateral[mid], plain.real.aligned, 1e-12);
-  assert.ok(plain.scans.real.lateral.every(v => v <= plain.real.aligned + 1e-12));
-  assert.equal(fiber(r, { lateralUm: 2 }).scans, plain.scans);
+  close(lossy.real.efficiency, lossy.real.aligned * lossy.through, 1e-15);
+  // The lateral and angular scans start at the best position's value and
+  // fall from it; the axial scan peaks within a step of it.
+  for (const kind of ['real', 'ideal']) {
+    const s = plain.scans[kind], best = plain[kind].aligned;
+    close(s.lateral[0], best, 1e-12); close(s.tilt[0], best, 1e-12);
+    for (const axis of ['lateral', 'tilt', 'axial']) assert.ok(s[axis].every(v => v <= best + 1e-9), `${kind} ${axis}`);
+    assert.ok(Math.max(...s.axial) > 0.99 * best, `${kind} axial peak`);
+    // The halving offsets lie where the scans cross half the best.
+    assert.ok(plain[kind].halfLateralUm > 0 && plain[kind].halfTiltMrad > 0);
+    close(plain[kind].model.coupling(plain[kind].plane, 5.2e-3, plain[kind].halfLateralUm * 1e-3, 0), best / 2, 2e-2, 'half lateral');
+  }
   // The angular scan stays inside the mode model's 0.3 rad.
-  assert.ok(plain.tiltRangeMrad <= 300);
+  assert.ok(plain.scans.tiltMrad.at(-1) <= 300);
 });
 
 // The numbers the page text quotes, recomputed. A change to the engine that
@@ -347,8 +383,7 @@ test('the numbers quoted on the thin and thick lens page are the engine’s', ()
   says(`With a 1 mm beam the plano-convex singlet is nearly perfect (${sigf(narrow.scan.real.strehl, 3)})`);
   const f = fiber(d);
   says(`the ideal lens couples ${sigf(100 * f.ideal.aligned, 3)} %. The singlet couples best, ${sigf(100 * f.real.aligned, 3)} %, with the fiber ${sigf(-f.real.shiftMm * 1e3, 4)} µm closer to the lens than F′`);
-  const lateral = fiber(d, { lateralUm: 2 }), tilt = fiber(d, { tiltMrad: 20 });
-  says(`Moved 2 µm across, the singlet’s fiber takes ${sigf(100 * lateral.real.eta, 3)} % (the ideal lens’s ${sigf(100 * lateral.ideal.eta, 3)} %); turned by 20 mrad, ${sigf(100 * tilt.real.eta, 3)} % (${sigf(100 * tilt.ideal.eta, 3)} %)`);
+  says(`the singlet’s coupling halves with the core ${sigf(f.real.halfLateralUm, 3)} µm off the axis (the ideal lens’s ${sigf(f.ideal.halfLateralUm, 3)} µm), or with the fiber tilted by ${sigf(f.real.halfTiltMrad, 3)} mrad (${sigf(f.ideal.halfTiltMrad, 3)} mrad)`);
   says(`Flat side first, the best is ${sigf(100 * fiber(flip).real.aligned, 3)} %; the best form reaches ${sigf(100 * fiber(bestRun).real.aligned, 3)} %`);
   says(`yet couples only ${sigf(100 * fiber(narrow).real.aligned, 3)} %, because its ${sigf(narrow.ideal.waistUm, 4)} µm waist`);
   const lossy = fiber(d, { fresnel: true });

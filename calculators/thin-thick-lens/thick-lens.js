@@ -4,7 +4,8 @@
 // Thin and thick lenses focusing a laser: a collimated CW Gaussian beam
 // through an ideal thin lens or a spherical singlet of catalogue glass in
 // air (plano-convex either way round, or bi-convex), its focus, and its
-// coupling into a single-mode fiber set off laterally or tilted.
+// coupling into a single-mode fiber, and how it falls as the fiber moves
+// across the axis, along it, or tilts.
 //
 // Conventions. Light travels toward +z; a radius is positive when its centre
 // of curvature lies after its vertex (R₁ > 0 and R₂ < 0 for a bi-convex
@@ -346,35 +347,61 @@ export function focusFrom({ bundle, zFocus, zXp, amp }) {
   //
   //   η = |2π ∫ A √(J/cos θ) e^(−s²/θ₀²) e^(−2πiW) ρ dρ|² / (2π ∫A²ρdρ · ∫|M|²dΩ).
   //
-  // A fiber set off by Δ across the axis, along x, and tilted by τ toward
-  // +x: the mode's far field is exp(−sin²α/θ₀²), α the angle between a
-  // direction and the fiber's axis (as the engine takes it), and each plane
-  // wave reaches the moved core with the phase 2π s cos φ Δ/λ. Both depend
-  // on the azimuth φ only through cos φ, so the ring of directions at each s
-  // is averaged over φ in [0, π] by the trapezoid rule, exact to rounding
-  // for a smooth periodic integrand once its points outnumber the phases
-  // it spans; the radial integral is as before, sampled finely enough for
-  // the phase's rate 2πΔ max(ds/dρ)/λ. `strict` gives NaN where the pupil
-  // samples are too coarse, instead of marking the model unresolved.
+  // A fiber set off, one way at a time. Moved by Δ across the axis, each
+  // plane wave reaches the core with the phase 2π s cos φ Δ/λ, and its
+  // average over the azimuth φ is exactly J₀(2π s Δ/λ). Tilted by τ, the
+  // mode's far field is exp(−sin²α/θ₀²), α the angle between a direction and
+  // the fiber's axis (as the engine takes it): with cos α = s sin τ cos φ +
+  // cos θ cos τ, it is negligible (below e⁻⁴⁰ of its peak) outside an arc
+  // about φ = 0, which Gauss–Legendre nodes cover. The radial integral is
+  // sampled finely enough for the phase's rate 2πΔ max(ds/dρ)/λ and the
+  // mode's width. `strict` gives NaN where the pupil samples are too coarse,
+  // instead of marking the model unresolved.
   const coupling = (p, modeRadiusMm, lateralMm = 0, tiltRad = 0, strict = false) => {
-    const theta = lambda / (Math.PI * modeRadiusMm), norm = 2 * Math.PI / (sumA2 * modeNorm(theta));
-    if (!lateralMm && !tiltRad) return norm * sum(p, k => Math.exp(-p.s[k] * p.s[k] / (theta * theta)), 0, theta / dsMax, strict);
-    const kx = 2 * Math.PI * lateralMm / lambda, st = Math.sin(tiltRad), ct = Math.cos(tiltRad);
+    const theta = lambda / (Math.PI * modeRadiusMm), norm = 2 * Math.PI / (sumA2 * modeNorm(theta)), t2 = theta * theta;
+    if (lateralMm && tiltRad) throw new Error('coupling: one offset at a time');
+    if (!tiltRad) {
+      const kx = 2 * Math.PI * Math.abs(lateralMm) / lambda;
+      const g = kx ? k => Math.exp(-p.s[k] * p.s[k] / t2) * besselJ0(kx * p.s[k]) : k => Math.exp(-p.s[k] * p.s[k] / t2);
+      return norm * sum(p, g, kx * dsMax, theta / dsMax, strict);
+    }
+    const st = Math.sin(Math.abs(tiltRad)), ct = Math.cos(tiltRad);
     const ring = k => {
-      const s = p.s[k], c = Math.sqrt(1 - s * s);
-      const M = 24 + 2 * Math.ceil(Math.abs(kx) * s + 2 * s * Math.abs(st) / (theta * theta));
-      let re = 0, im = 0;
-      for (let j = 0; j <= M; j++) {
-        const cp = Math.cos(Math.PI * j / M), ca = s * cp * st + c * ct;
-        const e = (j === 0 || j === M ? 0.5 : 1) * Math.exp(-(1 - ca * ca) / (theta * theta)), ph = kx * s * cp;
-        re += e * Math.cos(ph); im += e * Math.sin(ph);
+      const s = p.s[k], a = s * st, b = Math.sqrt(1 - s * s) * ct, top = a + b;
+      // cos α falls with φ; the arc ends where sin²α has grown by 40 θ₀².
+      const floor = Math.sqrt(Math.max(0, top * top - 40 * t2));
+      const phiEnd = a > 0 ? Math.acos(Math.max(-1, Math.min(1, (floor - b) / a))) : Math.PI;
+      let sumArc = 0;
+      for (let j = 0; j < ARC_NODES.length; j++) {
+        const ca = a * Math.cos(phiEnd * ARC_NODES[j]) + b;
+        sumArc += ARC_WEIGHTS[j] * Math.exp(-(1 - ca * ca) / t2);
       }
-      return [re / M, im / M];
+      return sumArc * phiEnd / Math.PI;
     };
-    return norm * sum(p, ring, Math.abs(kx) * dsMax, theta / dsMax, strict);
+    return norm * sum(p, ring, 0, theta / dsMax, strict);
   };
   return { ok: true, lambda, zFocus, norm, plane, peak, intensity, radiusHolding, coupling, radiusLimit, bundle, samples: N, resolved: () => !unresolved };
 }
+
+// Gauss–Legendre nodes and weights on [0, 1] (Newton on P_n), for the arc
+// of azimuth a tilted fiber's mode lights.
+function gaussLegendre01(n) {
+  const x = new Float64Array(n), w = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    let z = Math.cos(Math.PI * (i + 0.75) / (n + 0.5)), dp = 0;
+    for (let it = 0; it < 100; it++) {
+      let p0 = 1, p1 = z;
+      for (let k = 2; k <= n; k++) { const p2 = ((2 * k - 1) * z * p1 - (k - 1) * p0) / k; p0 = p1; p1 = p2; }
+      dp = n * (z * p1 - p0) / (z * z - 1);
+      const dz = p1 / dp;
+      z -= dz;
+      if (Math.abs(dz) < 1e-16) break;
+    }
+    x[i] = (1 - z) / 2; w[i] = 1 / ((1 - z * z) * dp * dp);
+  }
+  return { x, w };
+}
+const { x: ARC_NODES, w: ARC_WEIGHTS } = gaussLegendre01(64);
 
 // Maximum of f on [a, b] by golden section.
 function goldenMax(f, a, b, steps = 50) {
@@ -559,17 +586,26 @@ export function designLens(v) {
     return data(r1, -r2, v.thicknessMm);
   }
   // Bi-convex from f: |R₂| = k R₁, the centre as thick as the edge plus
-  // both sags, R₁ found by bisection on the power. Near the smallest radii
-  // (faces nearly hemispheres) the lens is thickest and strongest, so f too
-  // short for this D has no solution.
+  // both sags. The power is not monotonic in R₁: tighter faces bend more,
+  // but near hemispheres the centre thickens fast and the power falls
+  // again. So the strongest lens is found first (a scan in log R₁, then
+  // golden section); an f shorter than its focal length has no lens, and a
+  // longer one is found by bisection on the larger-radius side, where the
+  // power falls steadily toward the thin lens's.
   const k = v.shape === 'best' ? bestFormRatio(n) : 1;
   if (k === null) return { reason: `At n = ${fmt(n, 5)} the shape with the least spherical aberration for a collimated beam is not bi-convex (that needs n below 1.686): choose the equi-convex shape, or a plano-convex lens curved side first.`, ids: ['shape', 'glass'] };
   const thick = R1 => v.edgeMm + sagMm(R1, h) + sagMm(k * R1, h);
   const power = R1 => lensData({ glass: v.glass, wavelengthNm: v.wavelengthNm, r1Mm: R1, r2Mm: -k * R1, thicknessMm: thick(R1) }).power;
   // From the smallest radii up to twice the thin lens's R₁ = (n − 1)f(1 + k)/k.
-  let lo = h * Math.max(1, 1 / k) * (1 + 1e-9), hi = 2 * (n - 1) * v.focalMm * (1 + k) / k + 2 * lo;
+  const least = h * Math.max(1, 1 / k) * (1 + 1e-9);
+  let hi = 2 * (n - 1) * v.focalMm * (1 + k) / k + 2 * least;
   const goal = 1 / v.focalMm;
-  if (!(power(lo) > goal)) return { reason: `No ${v.shape === 'best' ? 'best-form' : 'equi-convex'} lens of ${glassName(v.glass)} with a ${fmt(v.diameterMm)} mm clear diameter and a ${fmt(v.edgeMm)} mm edge is as strong as f = ${fmt(v.focalMm)} mm: its faces would have to curve more tightly than the clear radius allows. Choose a longer f, a smaller D or a thinner edge.`, ids: ['focalMm', 'diameterMm', 'edgeMm'] };
+  const radii = Array.from({ length: 201 }, (_, i) => least * (hi / least) ** (i / 200)), powers = radii.map(power);
+  let best = 0;
+  powers.forEach((p, i) => { if (p > powers[best]) best = i; });
+  const [peak, strongest] = goldenMax(power, radii[Math.max(0, best - 1)], radii[Math.min(200, best + 1)], 80);
+  let lo = peak;
+  if (!(strongest > goal)) return { reason: `No ${v.shape === 'best' ? 'best-form' : 'equi-convex'} lens of ${glassName(v.glass)} with a ${fmt(v.diameterMm)} mm clear diameter and a ${fmt(v.edgeMm)} mm edge is as strong as f = ${fmt(v.focalMm)} mm: the strongest has f = ${fmt(1 / strongest)} mm, and tighter faces only thicken it. Choose a longer f, a smaller D or a thinner edge.`, ids: ['focalMm', 'diameterMm', 'edgeMm'] };
   while (power(hi) > goal) hi *= 2;
   for (let i = 0; i < 200 && hi - lo > 1e-15 * hi; i++) { const mid = (lo + hi) / 2; if (power(mid) > goal) lo = mid; else hi = mid; }
   const R1 = (lo + hi) / 2;
@@ -654,31 +690,27 @@ export const FIBER_INPUTS = [
     help: 'Step-index core; the mode follows from Marcuse’s fit.' },
   { id: 'na', group: 'fiber', label: 'Numerical aperture', unit: '', value: 0.14, min: 0.01, max: 0.5, arrowStep: 0.01, when: 'fiberMode', whenValue: 'step',
     help: 'NA = √(n_core² − n_clad²), the index-profile NA.' },
-  { id: 'lateralUm', group: 'align', label: 'Lateral offset', unit: 'µm', value: 0, min: -1000, max: 1000, arrowStep: 0.1, slider: true,
-    help: 'The core moved across the axis, in the plane of the tilt.' },
-  { id: 'tiltMrad', group: 'align', label: 'Angular offset', unit: 'mrad', value: 0, min: -300, max: 300, arrowStep: 0.5, slider: true,
-    help: 'The fiber’s axis turned from the lens’s, toward positive offsets.' },
-  { id: 'fresnel', type: 'checkbox', group: 'align', label: 'Uncoated surfaces (Fresnel reflections)', value: false,
+  { id: 'fresnel', type: 'checkbox', group: 'fiber', label: 'Uncoated surfaces (Fresnel reflections)', value: false,
     help: 'Loses the normal-incidence reflection at both lens faces and at a fused-silica fiber end.' },
 ];
 export const FIBER_DEFAULTS = defaultsFor(FIBER_INPUTS);
 
-// Points on the lateral and angular scans.
+// Points on each offset scan.
 export const OFFSET_POINTS = 41;
 
-// The coupled share η and the light reaching the fiber: the beam's share
-// through the clear aperture and, uncoated, the transmission of the two
-// lens faces and the fiber end at normal incidence.
+// The light reaching the fiber: the beam's share through the clear
+// aperture and, uncoated, the transmission of the two lens faces and the
+// fiber end at normal incidence.
 const reflectance = n => ((n - 1) / (n + 1)) ** 2;
 export function fresnelTransmission(n, wavelengthNm) {
   const silica = materialIndex('silica', Math.min(3710, Math.max(210, wavelengthNm)));
   return (1 - reflectance(n)) ** 2 * (1 - reflectance(silica));
 }
 
-// Per lens, the fiber at its best plane on the axis (no offsets), and the
-// coupling scans across it; cached on the lens result, as the offsets do
-// not move it. The rays are retraced on a finer pupil grid when the mode's
-// far field needs it; with none fine enough, the coupling is refused.
+// Per lens, the fiber at its best plane on the axis; cached on the lens
+// result for each mode. The rays are retraced on a finer pupil grid when
+// the mode's far field needs it; with none fine enough, the coupling is
+// refused.
 const fiberCache = new WeakMap();
 function fiberFocus(result, mfdUm) {
   let cache = fiberCache.get(result);
@@ -691,15 +723,11 @@ function fiberFocusOn(result, mfdUm) {
   const { values: v, lens, scan } = result, w = mfdUm / 2000;
   const kinds = ['real', 'ideal'].filter(kind => scan[kind]);
   for (const samples of PUPIL_SAMPLES.filter(n => n >= scan.samples)) {
-    const models = {};
-    for (const kind of kinds) {
-      if (samples === scan.samples) { models[kind] = scan[kind].model; continue; }
-      models[kind] = focusFrom(kind === 'real' ? singletRays(v, lens, samples) : aplanaticRays(v, lens, samples));
-    }
-    const out = { ok: true, samples };
+    const out = { ok: true, samples, kinds };
     let resolved = true;
     for (const kind of kinds) {
-      const m = models[kind], reach = scan[kind].reachMm;
+      const m = samples === scan.samples ? scan[kind].model : focusFrom(kind === 'real' ? singletRays(v, lens, samples) : aplanaticRays(v, lens, samples));
+      const reach = scan[kind].reachMm;
       const eta = s => m.coupling(m.plane(s), w, 0, 0, true);
       const xs = Array.from({ length: 81 }, (_, i) => -reach + 2 * reach * i / 80), ys = xs.map(eta);
       if (ys.some(Number.isNaN)) { resolved = false; break; }
@@ -713,22 +741,19 @@ function fiberFocusOn(result, mfdUm) {
   return { ok: false, reason: `The fiber mode’s far field is too narrow for the pupil to be sampled across it on ${PUPIL_SAMPLES.at(-1)} samples: a mode this wide takes almost none of this beam anyway. Choose a smaller mode-field diameter.` };
 }
 
-// The scans across the best plane: lateral, then angular, each with the
-// other offset at zero.
-function fiberScans(focus, kinds, w, lateralUm, tiltMrad) {
-  const lateral = Array.from({ length: OFFSET_POINTS }, (_, i) => -lateralUm + 2 * lateralUm * i / (OFFSET_POINTS - 1));
-  const tilt = Array.from({ length: OFFSET_POINTS }, (_, i) => -tiltMrad + 2 * tiltMrad * i / (OFFSET_POINTS - 1));
-  const out = { lateralUm: lateral, tiltMrad: tilt };
-  for (const kind of kinds) {
-    const { model: m, plane } = focus[kind];
-    out[kind] = {
-      lateral: lateral.map(x => m.coupling(plane, w, x * 1e-3, 0, true)),
-      tilt: tilt.map(a => m.coupling(plane, w, 0, a * 1e-3, true)),
-    };
+// Where a scan that starts at its peak first falls to half of it, by linear
+// interpolation (null when it does not within the scan).
+function halfPoint(xs, ys) {
+  const half = ys[0] / 2;
+  for (let i = 1; i < xs.length; i++) {
+    if (ys[i] <= half && ys[i - 1] > half) return xs[i - 1] + (xs[i] - xs[i - 1]) * (ys[i - 1] - half) / (ys[i - 1] - ys[i]);
   }
-  return out;
+  return null;
 }
 
+// The coupling efficiency of each lens with the fiber at its best plane,
+// and as the fiber is moved across the axis (a radius: the focus is round),
+// along it, or tilted, one way at a time.
 export function computeFiber(lensResult, raw) {
   if (!lensResult?.ok) return { pending: true, message: 'Set a valid laser and lens above first.' };
   const { values: f, errors } = parseInputs(FIBER_INPUTS, raw);
@@ -742,29 +767,32 @@ export function computeFiber(lensResult, raw) {
   }
   const theta = v.wavelengthNm * 1e-3 / (Math.PI * mfdUm / 2);
   if (theta > MODE_LIMIT) return unavailable(`A ${fmt(mfdUm, 3)} µm mode at ${fmt(v.wavelengthNm)} nm spreads at ${fmt(theta * 1e3, 3)} mrad (1/e² half angle), beyond the ${MODE_LIMIT * 1e3} mrad the Gaussian mode model allows.`, f.fiberMode === 'step' ? 'coreDiameterUm' : 'mfdUm');
-  if (Math.abs(f.tiltMrad) * 1e-3 > MODE_LIMIT) return unavailable(`An angular offset beyond ${MODE_LIMIT * 1e3} mrad leaves the paraxial mode model.`, 'tiltMrad');
   if (!lensResult.scan) return { pending: true, message: lensResult.beamIssue ?? 'No focus above to couple into.' };
   const focus = fiberFocus(lensResult, mfdUm);
   if (!focus.ok) return unavailable(focus.reason, f.fiberMode === 'step' ? 'coreDiameterUm' : 'mfdUm');
-  const kinds = ['real', 'ideal'].filter(kind => focus[kind]);
-  const w = mfdUm / 2000, waistUm = lensResult.ideal.waistUm;
-  // Scan ranges: out to where a Gaussian beam's overlap is nearly gone,
-  // twice √(w₀′² + w_m²) across and 1.5 √(θ′² + θ₀²) in angle (within the
-  // mode model's angles), or past the set offsets.
-  const lateralUm = niceUp(Math.max(2 * Math.hypot(waistUm, mfdUm / 2), 1.25 * Math.abs(f.lateralUm)));
-  const tiltMrad = Math.min(MODE_LIMIT * 1e3, niceUp(Math.max(1.5 * Math.hypot(theta * 1e3, lensResult.ideal.halfAngleMrad), 1.25 * Math.abs(f.tiltMrad))));
-  let scans = focus.scans?.get(`${lateralUm}|${tiltMrad}`);
-  if (!scans) {
-    focus.scans ??= new Map();
-    scans = fiberScans(focus, kinds, w, lateralUm, tiltMrad);
-    focus.scans.set(`${lateralUm}|${tiltMrad}`, scans);
-  }
+  const w = mfdUm / 2000, ideal = lensResult.ideal, kinds = focus.kinds;
   const through = lensResult.clipShare * (f.fresnel ? fresnelTransmission(lensResult.lens.n, v.wavelengthNm) : 1);
-  const out = { ok: true, values: { ...f, mfdUm }, mode, theta, samples: focus.samples, through, scans, lateralRangeUm: lateralUm, tiltRangeMrad: tiltMrad };
+  // Scan ranges, out to where a Gaussian beam's coupling is nearly gone:
+  // twice √(w₀′² + w_m²) across, 1.5 √(θ′² + θ₀²) in angle (within the mode
+  // model's angles), and along the axis three times the longer Rayleigh
+  // range, or past both lenses' best planes.
+  const modeRayleighMm = Math.PI * w * w / (v.wavelengthNm * 1e-6);
+  const lateralUm = niceUp(2 * Math.hypot(ideal.waistUm, mfdUm / 2));
+  const tiltMrad = Math.min(MODE_LIMIT * 1e3, niceUp(1.5 * Math.hypot(theta * 1e3, ideal.halfAngleMrad)));
+  const axialMm = niceUp(Math.max(3 * Math.max(ideal.rayleighMm, modeRayleighMm), ...kinds.map(kind => 1.5 * Math.abs(focus[kind].shiftMm))));
+  const line = (lo, hi) => Array.from({ length: OFFSET_POINTS }, (_, i) => lo + (hi - lo) * i / (OFFSET_POINTS - 1));
+  const scans = { lateralUm: line(0, lateralUm), axialUm: line(-axialMm * 1e3, axialMm * 1e3), tiltMrad: line(0, tiltMrad) };
+  const out = { ok: true, values: { ...f, mfdUm }, mode, theta, samples: focus.samples, through, scans };
   for (const kind of kinds) {
     const { model: m, plane, shiftMm, aligned } = focus[kind];
-    const eta = m.coupling(plane, w, f.lateralUm * 1e-3, f.tiltMrad * 1e-3, true);
-    out[kind] = { shiftMm, aligned, eta, efficiency: eta * through };
+    const lateral = scans.lateralUm.map(x => m.coupling(plane, w, x * 1e-3, 0, true));
+    const tilt = scans.tiltMrad.map(a => m.coupling(plane, w, 0, a * 1e-3, true));
+    const axial = scans.axialUm.map(z => m.coupling(m.plane(z * 1e-3), w, 0, 0, true));
+    scans[kind] = { lateral, tilt, axial };
+    out[kind] = {
+      model: m, plane, shiftMm, aligned, efficiency: aligned * through,
+      halfLateralUm: halfPoint(scans.lateralUm, lateral), halfTiltMrad: halfPoint(scans.tiltMrad, tilt),
+    };
   }
   return out;
 }

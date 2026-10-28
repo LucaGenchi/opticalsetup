@@ -263,6 +263,9 @@ def cases():
         ("best-form N-BK7, f = 50 mm, D = 25 mm, 2 mm edge, at 587.6 nm", "nbk7", 587.6, "biconvex", 50.0, 25.0, 2.0, "convex", "best"),
         ("equi-convex fused silica, f = 100 mm, D = 25.4 mm, 3 mm edge, at 1064 nm", "silica", 1064.0, "biconvex", 100.0, 25.4, 3.0, "convex", "equi"),
         ("plano-convex CaF2, f = 20 mm, D = 10 mm, 1.5 mm edge, at 4000 nm", "caf2", 4000.0, "planoconvex", 20.0, 10.0, 1.5, "convex", "equi"),
+        # Near its strongest (f = 4.365 mm): faces of 3.5 mm on a 6 mm
+        # diameter, the centre 4.4 mm thick.
+        ("equi-convex N-BK7, f = 4.4214828 mm, D = 6 mm, 1 mm edge, at 1550 nm (near the strongest such lens)", "nbk7", 1550.0, "biconvex", 4.4214828, 6.0, 1.0, "convex", "equi"),
     ]:
         r1, r2, t = design(glass, nm, kind, f, dia, edge, orientation, shape)
         values = {"r1Mm": r1, "r2Mm": r2, "thicknessMm": t, "efl": lens(glass, nm, r1, r2, t)["f"]}
@@ -287,11 +290,11 @@ def cases():
         # About 2.5 times the waves of the 1550 nm case: the page samples
         # the pupil 4096 times here.
         ("flat side first, designed at 1000 nm, 2 mm beam, MFD 10.4 um", "nbk7", 1000.0, flip1000, 6.0, 2.0, 10.4, [0.0, -0.2], None, 512),
-        # The fiber set off: across the axis, tilted, and both ways round
-        # together (their cross term), 80 um before F', near its best plane.
-        ("the example lens, 2 mm beam, MFD 10.4 um, the fiber 80 um before F' set off by (2 um, 0), (0, 20 mrad), (2 um, 20 mrad) and (2 um, -20 mrad)",
-         "nbk7", 1550.0, ex, 6.0, 2.0, 10.4, [-0.08] * 4, [(2e-3, 0.0), (0.0, 0.02), (2e-3, 0.02), (2e-3, -0.02)], 256),
-        ("the example lens, 2 mm beam, MFD 10.4 um, at F' set off by 3 um and tilted by 30 mrad", "nbk7", 1550.0, ex, 6.0, 2.0, 10.4, [0.0], [(3e-3, 0.03)], 256),
+        # The fiber set off one way at a time, 80 um before F' (near its
+        # best plane) and at F'.
+        ("the example lens, 2 mm beam, MFD 10.4 um, the fiber 80 um before F' moved 2 um across or tilted by 20 and 100 mrad",
+         "nbk7", 1550.0, ex, 6.0, 2.0, 10.4, [-0.08] * 3, [(2e-3, 0.0), (0.0, 0.02), (0.0, 0.1)], 256),
+        ("the example lens, 2 mm beam, MFD 10.4 um, at F' moved 3 um across or tilted by 30 mrad", "nbk7", 1550.0, ex, 6.0, 2.0, 10.4, [0.0, 0.0], [(3e-3, 0.0), (0.0, 0.03)], 256),
     ]:
         system, z_focus, beta = singlet(glass, nm, r1, r2, t, dia, bd)
         values = focus_values(system, z_focus, beta, mfd, shifts, nr=nr, offsets=offsets)
@@ -313,7 +316,7 @@ def cases():
             "expected": expected,
             "tolerance": tolerance,
             "absolute": True,
-            "note": f"the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule and an offset fiber's azimuth by the trapezoid rule; this file {nr} Gauss-Legendre nodes along the radius and 160 over the azimuth",
+            "note": f"the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule, a lateral offset's azimuth as J0 and a tilt's over its lit arc by 64 Gauss-Legendre nodes; this file {nr} Gauss-Legendre nodes along the radius and 160 over the azimuth",
         })
     # A wide mode (200 um) has a far field narrower than 2 % of the pupil
     # radius: checked relatively, as the coupling is small.
@@ -349,7 +352,7 @@ MODEL = {
     "id": "thick-lens",
     "title": "Thin and thick lens: lens data, design from f, Gaussian focus, real singlet focus and fiber coupling with offsets",
     "app": "calculators/thin-thick-lens/thick-lens.js: lensData, designLens, idealFocus, singletRays, focusFrom",
-    "reference": "Closed forms of the thick-lens lensmaker's equation and principal planes; a design from f by the closed-form plano-convex radius and the secant method on the closed-form power; the complex beam parameter carried through both refracting surfaces; the real singlet by lens_design.py's ray trace at Gauss-Legendre nodes along the pupil radius, the area ratio by central differences, an offset fiber's azimuth by Gauss-Legendre nodes, and for the example lens the 2-D overlap of lens_coherent.coupling",
+    "reference": "Closed forms of the thick-lens lensmaker's equation and principal planes; a design from f by the closed-form plano-convex radius and the secant method on the closed-form power (the app: the strongest lens first, then bisection); the complex beam parameter carried through both refracting surfaces; the real singlet by lens_design.py's ray trace at Gauss-Legendre nodes along the pupil radius, the area ratio by central differences, an offset fiber's azimuth by Gauss-Legendre nodes, and for the example lens the 2-D overlap of lens_coherent.coupling",
     "citations": [
         "Wikipedia, \"Lens (optics)\": lensmaker's equation with thickness, principal planes",
         "Wikipedia, \"Cardinal point (optics)\": principal planes of a thick lens, focal and nodal points",
@@ -357,10 +360,10 @@ MODEL = {
         "H. Kogelnik and T. Li, Appl. Opt. 5, 1550-1567 (1966), doi:10.1364/AO.5.001550 (the ABCD law for the complex beam parameter)",
     ],
     "provenance": "The closed forms written from the cited articles; the interface and slab matrices are the standard ray-transfer matrices; the ray trace and quadrature are this repository's independent Python lens references.",
-    "domain": "Eight singlets (plano-convex both ways, bi-convex, positive meniscus, bi-concave, a thick CaF2 lens) from 587.6 to 4000 nm; seven designed from f (plano-convex both ways, equi-convex and best form, N-BK7, fused silica and CaF2, f from 11 to 100 mm); collimated beams of 0.5 to 10 mm; the designed plano-convex singlet at 1550 nm with 1.4 and 2 mm beams at the paraxial focus and 80 and 110 um before it, flat side first at 1000 nm where the page traces 4096 rays, a 200 um mode, and the fiber set off by up to 3 um and tilted by up to 30 mrad.",
+    "domain": "Eight singlets (plano-convex both ways, bi-convex, positive meniscus, bi-concave, a thick CaF2 lens) from 587.6 to 4000 nm; eight designed from f (plano-convex both ways, equi-convex and best form, N-BK7, fused silica and CaF2, f from 4.42 to 100 mm, one near the strongest equi-convex lens its diameter allows); collimated beams of 0.5 to 10 mm; the designed plano-convex singlet at 1550 nm with 1.4 and 2 mm beams at the paraxial focus and 80 and 110 um before it, flat side first at 1000 nm where the page traces 4096 rays, a 200 um mode, and the fiber moved by up to 3 um across the axis or tilted by up to 100 mrad.",
     "convergence": "Closed forms in double precision; the secant method to 1e-15. The radial quadrature: 96 nodes leave the flat-first singlet (tens of waves at the rim of its pupil) 7e-3 off, 160 nodes 3e-5, 256 nodes below 1e-6; at 1000 nm 256 nodes are 5e-6 off and 512 are used; the central difference uses 1e-5 of the pupil radius. The azimuth: 160 nodes, past convergence for these offsets. The 2-D check: 64 x 24 polar nodes and a degree-8 polynomial.",
     "tolerance_rationale": "1e-9 relative for the algebra and the designs. 1e-4 absolute on the singlet's peak and coupling, against differences found below 3e-6 (the two quadratures of the same model converge to the same value), and 1e-4 relative on the 200 um mode's small coupling, against 2e-5; expected values stored to 6 significant digits, as the last digits depend on the platform's maths library.",
     "outside_scope": "The page refuses wavelengths outside a glass's fitted range, afocal lenses, radii smaller than the clear radius, a focal length too short for the diameter and edge, a best form that is not bi-convex (n from 1.686), and beams whose lit pupil reaches NA 0.9; the real singlet is not traced when its faces cross at the clear diameter.",
     "fidelity": "computed",
-    "scope": "Paraxial first-order optics of a spherical singlet in air; a collimated TEM00 beam focused on axis, scalar and monochromatic, with a Gaussian fiber mode on the axis or set off and tilted in one plane.",
+    "scope": "Paraxial first-order optics of a spherical singlet in air; a collimated TEM00 beam focused on axis, scalar and monochromatic, with a Gaussian fiber mode on the axis, or moved across it or tilted, one way at a time.",
 }
