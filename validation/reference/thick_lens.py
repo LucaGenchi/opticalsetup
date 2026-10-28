@@ -239,6 +239,19 @@ def cases():
             "absolute": True,
             "note": f"the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule; this file {nr} Gauss-Legendre nodes",
         })
+    # A wide mode (200 um) has a far field narrower than 2 % of the pupil
+    # radius: checked relatively, as the coupling is small.
+    system, z_focus, beta = singlet("nbk7", 1550.0, 5.5, 0.0, 3.0, 6.0, 2.0)
+    shifts = [0.0, -0.08]
+    values = focus_values(system, z_focus, beta, 200.0, shifts, nr=1024)
+    out.append({
+        "name": "real singlet: the example lens, 2 mm beam, MFD 200 um (a far field 2 % of the pupil wide): coupling at F' and 80 um before it",
+        "inputs": {"kind": "singlet", "glass": "nbk7", "wavelengthNm": 1550.0, "r1Mm": 5.5, "r2Mm": 0.0, "thicknessMm": 3.0,
+                   "diameterMm": 6.0, "beamDiameterMm": 2.0, "mfdUm": 200.0, "shiftsMm": shifts},
+        "expected": {f"eta{i}": sig(eta, 6) for i, (_, eta) in enumerate(values)},
+        "tolerance": {f"eta{i}": 1e-4 for i in range(len(shifts))},
+        "note": "1024 Gauss-Legendre nodes (256 and 512 agree to 3e-9)",
+    })
     # The example lens's coupling at F' over the whole pupil, in two
     # dimensions (lens_coherent.coupling centres its sphere on the core, so
     # off the focus it is a slightly different approximation).

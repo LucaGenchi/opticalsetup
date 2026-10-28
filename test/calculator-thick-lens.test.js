@@ -10,7 +10,7 @@ import {
   focusFrom, beamPupil, GAUSSIAN_SHARE,
 } from '../calculators/thin-thick-lens/thick-lens.js';
 import { gaussianCoupling } from '../calculators/fiber-coupling/fiber-coupling.js';
-import { analyzeCoupling } from '../calculators/lens-design/engine/coupling.js';
+import { analyzeCoupling, modeNorm } from '../calculators/lens-design/engine/coupling.js';
 import { thickLensCalculators } from '../tools/calculators-thick-lens-content.mjs';
 
 const close = (a, b, rel, label = '') => assert.ok(Math.abs(a - b) <= rel * Math.max(Math.abs(b), 1e-300), `${label} ${a} vs ${b}`);
@@ -189,6 +189,28 @@ test('a wavefront the pupil grid cannot follow is traced finer, or refused', () 
   const wide = run({ r1Mm: 0, r2Mm: -5.5, beamDiameterMm: 4 });
   assert.ok(wide.scan.real.radiusUm.some(x => !Number.isFinite(x)));
   assert.ok(wide.scan.real.radiusLimitUm > 0 && wide.scan.ideal.radiusUm.every(Number.isFinite));
+});
+
+test('a wide fiber mode’s narrow far field is integrated finely', () => {
+  // The ideal lens at F′ (s = aρ, J = a², W = 0), its overlap integrated
+  // directly on 2¹⁸ intervals.
+  const direct = (v, f, n = 1 << 18) => {
+    const { epd, beamRatio } = beamPupil(v), a = epd / 2 / f, theta = v.wavelengthNm * 1e-6 / (Math.PI * v.mfdUm / 2000);
+    let overlap = 0, power = 0;
+    for (let i = 0; i <= n; i++) {
+      const rho = i / n, wt = (i === 0 || i === n ? 1 : i % 2 ? 4 : 2) / (3 * n), A = Math.exp(-((rho / beamRatio) ** 2)), s = a * rho;
+      overlap += wt * A * a / Math.sqrt(Math.sqrt(1 - s * s)) * Math.exp(-((s / theta) ** 2)) * rho;
+      power += wt * A * A * rho;
+    }
+    return 2 * Math.PI * overlap * overlap / (power * modeNorm(theta));
+  };
+  // A 200 µm mode: its far field spans 2 % of the pupil radius at 1550 nm,
+  // 0.4 % at 350 nm, where the rays are traced 4096 times.
+  for (const [nm, samples] of [[1550, 1024], [350, 4096]]) {
+    const r = run({ mfdUm: 200, wavelengthNm: nm });
+    assert.equal(r.scan.samples, samples, `${nm} nm`);
+    close(r.scan.ideal.paraxialCoupling, direct(r.values, r.lens.efl), 1e-4, `${nm} nm`);
+  }
 });
 
 test('a focus behind the back face is not shown as one in air', () => {

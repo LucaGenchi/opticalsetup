@@ -629,6 +629,33 @@
    }
   },
   {
+   "expected": {
+    "eta0": 0.0116821,
+    "eta1": 0.011682
+   },
+   "inputs": {
+    "beamDiameterMm": 2.0,
+    "diameterMm": 6.0,
+    "glass": "nbk7",
+    "kind": "singlet",
+    "mfdUm": 200.0,
+    "r1Mm": 5.5,
+    "r2Mm": 0.0,
+    "shiftsMm": [
+     0.0,
+     -0.08
+    ],
+    "thicknessMm": 3.0,
+    "wavelengthNm": 1550.0
+   },
+   "name": "real singlet: the example lens, 2 mm beam, MFD 200 um (a far field 2 % of the pupil wide): coupling at F' and 80 um before it",
+   "note": "1024 Gauss-Legendre nodes (256 and 512 agree to 3e-9)",
+   "tolerance": {
+    "eta0": 0.0001,
+    "eta1": 0.0001
+   }
+  },
+  {
    "absolute": true,
    "expected": {
     "eta0": 0.722392

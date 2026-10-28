@@ -65,9 +65,10 @@ const BEAM_RATIO_MAX = 10;
 // per interval. With wavefront steps up to 0.25 waves the singlet's peak
 // and coupling stay within 3 × 10⁻⁶ of their values on 16384 samples
 // (plano-convex singlets both ways round, 2 to 4 mm beams, 400 to 1550 nm,
-// planes from 1 mm before F′ to 1 mm after); 0.5 waves leave 10⁻⁴.
+// planes from 1 mm before F′ to 1 mm after); 0.5 waves leave 10⁻⁴. A fiber
+// mode's far field exp(−s²/θ₀²) gets at least MODE_STEPS intervals per θ₀.
 export const PUPIL_SAMPLES = [1024, 4096];
-const RHO = PUPIL_SAMPLES[0], MIN_INTERVALS = 64, MAX_WAVE_STEP = 0.25, MAX_BESSEL_STEP = 0.25;
+const RHO = PUPIL_SAMPLES[0], MIN_INTERVALS = 64, MAX_WAVE_STEP = 0.25, MAX_BESSEL_STEP = 0.25, MODE_STEPS = 8;
 // Steps of the radius grid per λ/s_max, and the farthest radius it reaches,
 // in λ/s_max: where the Bessel phase step on the coarsest pupil grid
 // reaches MAX_BESSEL_STEP, so every grid resolves it there. A spot wider
@@ -305,7 +306,7 @@ export function focusFrom({ bundle, zFocus, zXp, amp }) {
   // the integral of |U|² over a plane (Parseval), which the radius holding
   // a share of the power is taken against.
   const weight = new Float64Array(N + 1);
-  let sMax = 0, sumA2c = 0;
+  let sMax = 0, sumA2c = 0, dsMax = 0;
   for (let k = 0; k <= N; k++) {
     if (!Number.isFinite(s[k])) continue;
     const lo = k > 0 && Number.isFinite(s[k - 1]) ? k - 1 : k, hi = k < N && Number.isFinite(s[k + 1]) ? k + 1 : k;
@@ -314,6 +315,7 @@ export function focusFrom({ bundle, zFocus, zXp, amp }) {
     weight[k] = amp[k] * Math.sqrt(Math.abs(k ? s[k] / rho[k] * ds : ds * ds) / cos);
     sumA2c += w[k] * amp[k] * amp[k] * rho[k] / cos;
     sMax = Math.max(sMax, s[k]);
+    dsMax = Math.max(dsMax, Math.abs(ds));
   }
   // Another plane, Δz past the focus: each plane wave of the Debye integral
   // advances by Δz cos θ, so W = W0 + Δz (1 − cos θ)/λ (from the axial
@@ -326,12 +328,13 @@ export function focusFrom({ bundle, zFocus, zXp, amp }) {
     return { z: zFocus + shiftMm, shiftMm, s, opd, weight, steepest, sMax };
   };
   // Σ weight·g(k)·e^(−2πiW) ρ over Simpson nodes on a stride of the samples
-  // fine enough for the wavefront and for the oscillation `rate` (rad per
-  // unit of ρ) of g; when even the samples themselves are too coarse, the
-  // sum is kept but marked unresolved.
+  // fine enough for the wavefront, for the oscillation `rate` (rad per unit
+  // of ρ) of g, and for g's narrowest feature `scale` (in ρ); when even the
+  // samples themselves are too coarse, the sum is kept but marked
+  // unresolved.
   let unresolved = false;
-  const sum = (p, g, rate = 0) => {
-    const tooCoarse = stride => p.steepest * stride > MAX_WAVE_STEP || rate * stride / N > MAX_BESSEL_STEP;
+  const sum = (p, g, rate = 0, scale = Infinity) => {
+    const tooCoarse = stride => p.steepest * stride > MAX_WAVE_STEP || rate * stride / N > MAX_BESSEL_STEP || MODE_STEPS * stride / N > scale;
     let stride = N / MIN_INTERVALS;
     while (stride > 1 && tooCoarse(stride)) stride /= 2;
     if (tooCoarse(stride)) unresolved = true;
@@ -385,12 +388,13 @@ export function focusFrom({ bundle, zFocus, zXp, amp }) {
   // Coupling into a fiber whose core sits at the plane's axial point, its
   // axis along the lens's: the overlap on the sphere about the core with
   // the mode's far field exp(−s²/θ₀²), θ₀ = λ/(π w₀), each ray standing for
-  // the solid angle dΩ = J dpupil / cos θ (engine/coupling.js):
+  // the solid angle dΩ = J dpupil / cos θ (engine/coupling.js). A wide mode
+  // has a narrow far field: θ₀ spans θ₀/max(ds/dρ) of the pupil radius.
   //
   //   η = |2π ∫ A √(J/cos θ) e^(−s²/θ₀²) e^(−2πiW) ρ dρ|² / (2π ∫A²ρdρ · ∫|M|²dΩ).
   const coupling = (p, modeRadiusMm) => {
     const theta = lambda / (Math.PI * modeRadiusMm);
-    const overlap = sum(p, k => Math.exp(-p.s[k] * p.s[k] / (theta * theta)));
+    const overlap = sum(p, k => Math.exp(-p.s[k] * p.s[k] / (theta * theta)), 0, theta / dsMax);
     return 2 * Math.PI * overlap / (sumA2 * modeNorm(theta));
   };
   return { ok: true, lambda, zFocus, norm, plane, peak, intensity, radiusHolding, coupling, radiusLimit, bundle, samples: N, resolved: () => !unresolved };
