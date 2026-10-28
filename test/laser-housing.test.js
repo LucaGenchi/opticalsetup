@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { boxAnchor, createElement, getSize, getVisualBounds, labelSVG, registry } from '../sketch/js/elements.js';
-import { traceScene } from '../sketch/js/raytrace.js';
+import { detectorReading, traceScene } from '../sketch/js/raytrace.js';
 import { initInspector, renderInspector } from '../sketch/js/inspector.js';
 import { parseSketch, state } from '../sketch/js/state.js';
 import '../sketch/js/detector-instruments.js';
@@ -144,4 +144,22 @@ test('turning a long housing by its handle starts from its own angle, not a jump
     assert.equal(dragRotation(drag, quarter), 90, `${length} mm`);
     assert.equal(dragRotation({ ...drag, rot: 30 }, quarter), 120, 'from any starting angle');
   }
+});
+
+test('a housing absorbs where it is drawn: a longer one blocks a beam that crosses it', () => {
+  // Laser B fires downwards at x = -200, behind laser A, into a detector.
+  const a = Object.assign(laser('cwlaser'), { id: 'a' });
+  const b = Object.assign(createElement('cwlaser', -200, -150), { id: 'b', rot: 90 });
+  Object.assign(b.params, { beamMode: 'line', wavelength: 450 });
+  const detector = Object.assign(createElement('detector', -200, 150), { id: 'det', rot: 90 });
+  const power = () => {
+    traceScene([a, b, detector]);
+    return detectorReading('det')?.signal ?? 0;
+  };
+  assert.ok(power() > 0, 'the default 92 mm housing ends at x = -46, clear of the beam');
+  a.params.housingLength = 400; // now spans x = -354 to 46
+  assert.equal(power(), 0, 'the long housing stands in the beam and absorbs it');
+  a.params.housingLength = 92;
+  a.params.housingHeight = 400; // tall, but still short of x = -200
+  assert.ok(power() > 0, 'height alone does not reach a beam behind the box');
 });
