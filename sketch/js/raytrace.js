@@ -15,12 +15,12 @@ import {
   sumFrequencyWl, carsAntiStokesWl, ramanShifts, ramanStokesWl,
   drivingExcitationWl, channelNeedsExcitationProbe, specimenTypeOf,
   fluorophoreSpec, fluorophoreAbsorption, metalensFocalLength, opoPortLocal, OPO_ACCEPTANCE_DEG,
-  opaPortLocal, OPA_ACCEPTANCE_DEG,
+  opaPortLocal, OPA_ACCEPTANCE_DEG, twoBeamOrders,
 } from './elements.js';
 import { arrivingPulse, planOpa, chirpedSignalPulse, MAX_OPA_STAGES, MIN_PHASE_KEPT_GAIN } from './opa.js';
 import { chirpMismatch, crsResolutionCm, ramanShiftCm, spectralFocusingShiftCm } from './coherent-raman.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
-import { C_MM_PER_NS, meanGateTransmission, pulseGateTransmission, pulseOverlap, traceValueAt } from './pulses.js';
+import { C_MM_PER_NS, meanGateTransmission, pulseGateTransmission, traceValueAt } from './pulses.js';
 import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband, aotfWingHalfWidth } from './aotf.js';
 import { aodDeflectionDeg } from './acousto-optic.js';
 import { capillaryLossDbPerM, fiberPropagation, hollowCoreCoefficients } from './fiber.js';
@@ -2296,8 +2296,9 @@ function emissionAngleOffsets(count, bias) {
   return offsets;
 }
 // Below this the two pulses barely meet and the signal is reported as absent
-// rather than as a vanishing sliver.
-const MIN_OVERLAP = 0.02;
+// rather than as a vanishing sliver. The inspector's timing warning says so
+// at the same threshold.
+export const MIN_OVERLAP = 0.02;
 const clampConversion = value => Math.min(MAX_CONVERSION, Math.max(0, Number(value) || 0));
 
 // The wavelength one signal channel produces for a ray of wavelength rayWl.
@@ -2608,7 +2609,8 @@ export function srsTransferGate(channel, ray, incidentBeams, elementId, scale = 
 // This is the same timing model the crystal's mixing uses: the Gaussian
 // overlap integral, coincidence with the nearest pulse of the other train, and
 // only trains at one nominal repetition rate — a rate mismatch is reported as
-// not modelled rather than waved through at full strength.
+// not modelled rather than waved through at full strength. CARS takes two
+// photons from its pump, so the pump's envelope counts twice (twoBeamOrders).
 function channelOverlap(channel, ray, partner, beams, elementId) {
   if (!partner) return { factor: 1, state: 'oneBeam' };
   if (channel.requireOverlap === false) {
@@ -2617,7 +2619,7 @@ function channelOverlap(channel, ray, partner, beams, elementId) {
     recordSpecimenTiming(elementId, { kind: channel.kind, driverWl: ray.wl, partnerWl: partner.wl, state: 'ignored' });
     return { factor: 1, state: 'ignored' };
   }
-  const overlap = mixOverlap(rayAsBeam(ray, beams), partner);
+  const overlap = mixOverlap(rayAsBeam(ray, beams), partner, twoBeamOrders(channel.kind, ray.wl, partner.wl));
   const reading = {
     kind: channel.kind, driverWl: ray.wl, partnerWl: partner.wl,
     skewNs: overlap.skewNs, overlap: overlap.factor,
@@ -2682,23 +2684,25 @@ function specimenMixedOutputs(channel, ray, d, data, elementId, origins = null) 
   return out;
 }
 
-// The incident beam a mixing channel pairs the current ray with: the longest
+// The incident beam a two-beam channel pairs a beam with: the longest
 // wavelength present, matching how specimenSignalWl picks the Stokes partner.
 // Where that colour arrives on more than one path -- two arms of a split beam,
-// say -- the one that actually meets this pulse is the partner.
-function mixingPartner(ray, incidentBeams) {
+// say -- the one that actually meets this pulse is the partner, judged by the
+// channel's own timing gate (twoBeamOrders: CARS weighs its pump twice), so
+// the choice and the gate applied to it never disagree. Shared with the
+// inspector's timing warning.
+export function twoBeamPartner(kind, beam, beams) {
+  const overlap = other => mixOverlap(beam, other, twoBeamOrders(kind, beam.wl, other.wl)).factor;
   let best = null;
-  for (const beam of incidentBeams || []) {
-    if (Math.abs(beam.wl - ray.wl) < MIXING_MIN_SEPARATION_NM) continue;
-    if (!best || beam.wl > best.wl) { best = beam; continue; }
-    if (Math.abs(beam.wl - best.wl) < MIXING_MIN_SEPARATION_NM) {
-      const here = mixOverlap(rayAsBeam(ray, incidentBeams), beam).factor;
-      const there = mixOverlap(rayAsBeam(ray, incidentBeams), best).factor;
-      if (here > there) best = beam;
-    }
+  for (const other of beams || []) {
+    if (Math.abs(other.wl - beam.wl) < MIXING_MIN_SEPARATION_NM) continue;
+    if (!best || other.wl > best.wl) { best = other; continue; }
+    if (Math.abs(other.wl - best.wl) < MIXING_MIN_SEPARATION_NM && overlap(other) > overlap(best)) best = other;
   }
   return best;
 }
+
+const mixingPartner = (ray, incidentBeams, kind) => twoBeamPartner(kind, rayAsBeam(ray, incidentBeams), incidentBeams);
 
 // The drawing color of one signal channel: true to its own wavelength by
 // default, or a custom tint so several channels can be told apart on a busy
@@ -5426,7 +5430,7 @@ function interact(ray, hit) {
         // the two beams, no signal.
         let overlap = 1;
         if (MIXING_KINDS.has(c.kind) && c.autoWl !== false) {
-          overlap = channelOverlap(c, ray, mixingPartner(ray, data.incidentBeams), data.incidentBeams, s.el?.id || null).factor;
+          overlap = channelOverlap(c, ray, mixingPartner(ray, data.incidentBeams, c.kind), data.incidentBeams, s.el?.id || null).factor;
           if (overlap < MIN_OVERLAP) continue;
         }
         // In an active layer, the share of the focal signal this crossing
