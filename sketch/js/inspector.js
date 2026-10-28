@@ -883,9 +883,16 @@ function paramField(p, sel) {
     // `wide` gives the value the whole row instead of the 112px value column.
     // A readout that holds a sentence rather than a number wraps into a tall,
     // unreadable ribbon otherwise.
-    return field(p.label,
-      `<output class="readout" data-p="${p.key}">${esc(p.readout(sel.params, sel))}</output>`,
-      p.wide ? 'field-wide' : '');
+    const output = `<output class="readout" data-p="${p.key}">${esc(p.readout(sel.params, sel))}</output>`;
+    if (!p.popup) return field(p.label, output, p.wide ? 'field-wide' : '');
+    // A readout may explain its current value in a pop-up, opened from a
+    // small button beside its label and shown only while there is something
+    // to explain. Not a <label>: a click on the value must not open it.
+    const popup = p.popup(sel.params, sel);
+    const id = `readout-popup-${p.key}`;
+    return `<div class="field${p.wide ? ' field-wide' : ''}"><span>${esc(p.label)}`
+      + `<button type="button" class="readout-info" data-readout-info="${p.key}" popovertarget="${id}" aria-label="About this value"${popup ? '' : ' hidden'}>i</button></span>`
+      + `${output}<div class="readout-popup" id="${id}" data-readout-popup="${p.key}" popover>${esc(popup || '')}</div></div>`;
   }
   // Editable, but backed by another param instead of its own storage:
   // displayed value comes from `get`, and a commit writes through `set`
@@ -907,6 +914,15 @@ function refreshReadouts(sel) {
   panel.querySelectorAll('output.readout[data-p]').forEach(output => {
     const spec = readouts.get(output.dataset.p);
     if (spec?.readout) output.textContent = String(spec.readout(sel.params, sel));
+  });
+  panel.querySelectorAll('[data-readout-popup]').forEach(popup => {
+    const spec = readouts.get(popup.dataset.readoutPopup);
+    if (!spec?.popup) return;
+    const text = spec.popup(sel.params, sel) || '';
+    popup.textContent = text;
+    const button = panel.querySelector(`[data-readout-info="${popup.dataset.readoutPopup}"]`);
+    if (button) button.hidden = !text;
+    if (!text && popup.matches?.(':popover-open')) popup.hidePopover();
   });
 }
 

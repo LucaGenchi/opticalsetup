@@ -6,9 +6,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createElement, newSampleChannel, registry, specimenRamanReadout } from '../sketch/js/elements.js';
+import { createElement, newSampleChannel, registry, specimenRamanPopup, specimenRamanReadout } from '../sketch/js/elements.js';
 import { traceAll, specimenRamanReading } from '../sketch/js/raytrace.js';
-import { chirpMismatch, crsResolutionCm, ramanShiftCm, RESOLUTION_PREFACTOR_PS_CM } from '../sketch/js/coherent-raman.js';
+import { chirpMismatch, crsResolutionCm, ramanShiftCm, RESOLUTION_PREFACTOR_PS_CM, spectralFocusingShiftCm } from '../sketch/js/coherent-raman.js';
 import { computeResolution } from '../calculators/coherent-raman/crs-calculator.js';
 
 const close = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg ?? ''} ${a} vs ${b}`);
@@ -82,26 +82,87 @@ test('the chirp mismatch is the broadening a Gaussian beat really has', () => {
   }
 });
 
-// Two lasers on one nonlinear specimen, each arm optionally through a pulse
-// compressor that adds `gdd` fs².
-function bench({ wls = [800, 1040], widthFs = 2000, gdd = [0, 0], cw = [false, false], kinds = ['cars'] } = {}) {
+// Spectral focusing's scan, from its definition: the excitation spectrum is
+// the cross-correlation of the pump and Stokes spectral fields, each a
+// Gaussian amplitude with the quadratic phase ½ GDD Δω² and a group delay
+// set by its arrival time. Its peak, found numerically, is the vibration
+// the pair addresses.
+function excitationPeakCm(pump, stokes, delayFs) {
+  const a0 = tau => 2 * Math.LN2 / (tau * tau);
+  const ap = a0(pump.tau0Fs), as = a0(stokes.tau0Fs);
+  const span = 6 * Math.sqrt(Math.max(ap, as)), steps = 6000, dx = 2 * span / steps;
+  const amplitude = y => {
+    let re = 0, im = 0;
+    for (let i = 0; i <= steps; i++) {
+      const x = -span + i * dx;
+      const mag = Math.exp(-((x + y) ** 2) / (4 * ap) - x * x / (4 * as));
+      // The Stokes field's own delay enters as its group delay, −x·delay.
+      const arg = 0.5 * pump.gddFs2 * (x + y) ** 2 - 0.5 * stokes.gddFs2 * x * x - x * delayFs;
+      re += mag * Math.cos(arg); im += mag * Math.sin(arg);
+    }
+    return Math.hypot(re, im);
+  };
+  let lo = -0.05, hi = 0.05;
+  for (let k = 0; k < 120; k++) {
+    const m1 = lo + (hi - lo) / 3, m2 = hi - (hi - lo) / 3;
+    if (amplitude(m1) < amplitude(m2)) lo = m1; else hi = m2;
+  }
+  return (lo + hi) / 2 / (2 * Math.PI * 2.99792458e-5);
+}
+
+test('a delay between chirped pulses moves the vibration they address', () => {
+  const cases = [
+    [{ tau0Fs: 100, gddFs2: 60000 }, { tau0Fs: 100, gddFs2: 60000 }, 150],
+    [{ tau0Fs: 100, gddFs2: 60000 }, { tau0Fs: 100, gddFs2: 60000 }, -150],
+    [{ tau0Fs: 150, gddFs2: 20000 }, { tau0Fs: 300, gddFs2: -10000 }, 200],
+    [{ tau0Fs: 80, gddFs2: -40000 }, { tau0Fs: 120, gddFs2: -40000 }, 90],
+  ];
+  for (const [pump, stokes, delay] of cases) {
+    close(spectralFocusingShiftCm(pump, stokes, delay), excitationPeakCm(pump, stokes, delay), 1e-3, JSON.stringify([pump, stokes, delay]));
+  }
+  // A Stokes 150 fs after a pump, both 100 fs stretched by 60 000 fs²: the
+  // 13.2 cm⁻¹ the review measured, and Eq. (6) of Mohseni et al.,
+  // dt/(2πc GDD) = 13.27 cm⁻¹, in the limit of strong chirp.
+  close(spectralFocusingShiftCm(cases[0][0], cases[0][1], 150), 13.224, 1e-3);
+  const strong = { tau0Fs: 100, gddFs2: 2e6 };
+  const eq6 = 150 / 2e6 / (2 * Math.PI * 2.99792458e-5);
+  close(spectralFocusingShiftCm(strong, strong, 150), eq6, 1e-5 * eq6, 'Eq. (6)');
+  // Transform-limited pulses bring every colour at once: no scan.
+  close(spectralFocusingShiftCm({ tau0Fs: 100, gddFs2: 0 }, { tau0Fs: 300, gddFs2: 0 }, 500), 0, 1e-12);
+  for (const bad of [[null, strong, 1], [strong, strong, NaN], [{ tau0Fs: 0, gddFs2: 0 }, strong, 1]]) {
+    assert.equal(spectralFocusingShiftCm(...bad), null);
+  }
+});
+
+// Lasers on one nonlinear specimen, each arm optionally through a pulse
+// compressor adding `gdd` fs² and a filter, and each laser optionally moved
+// back by `backMm` so its pulses arrive later.
+function bench({
+  wls = [800, 1040], widthFs = 2000, gdd = [0, 0], cw = [false, false], kinds = ['cars'],
+  filters = [], backMm = [], shape = 'gauss',
+} = {}) {
   const elements = [];
   wls.forEach((wl, i) => {
-    const y = i === 0 ? -6 : 6;
-    const laser = createElement(cw[i] ? 'cwlaser' : 'pulsedlaser', 0, y);
+    const y = (i - (wls.length - 1) / 2) * 30;
+    const laser = createElement(cw[i] ? 'cwlaser' : 'pulsedlaser', -(backMm[i] || 0), y);
     Object.assign(laser.params, { wavelength: wl, beamMode: 'line' });
-    if (!cw[i]) Object.assign(laser.params, { repRateMHz: 80, pulseWidthFs: widthFs });
+    if (!cw[i]) Object.assign(laser.params, { repRateMHz: 80, pulseWidthFs: widthFs, pulseShape: shape });
     elements.push(laser);
     if (gdd[i]) {
       const compressor = createElement('pulsecompressor', 100, y);
       Object.assign(compressor.params, { gddFs2: gdd[i], aperture: 10 });
       elements.push(compressor);
     }
+    if (filters[i]) {
+      const filter = createElement('filter', 150, y);
+      Object.assign(filter.params, filters[i]);
+      elements.push(filter);
+    }
   });
   const sample = createElement('sample', 200, 0);
   sample.rot = 90;
   Object.assign(sample.params, {
-    aperture: 40, specimenType: 'nonlinear', channels: kinds.map(k => ({ ...newSampleChannel(k), eff: 0.5 })),
+    aperture: 80, specimenType: 'nonlinear', channels: kinds.map(k => ({ ...newSampleChannel(k), eff: 0.5 })),
   });
   elements.push(sample);
   traceAll(elements);
@@ -166,6 +227,73 @@ test('what cannot be estimated is said, not guessed', () => {
 
   assert.equal(specimenRamanReadout(null), 'No beams reach the specimen yet');
   assert.equal(specimenRamanReading('no-such-element'), null);
+});
+
+test('the probed shift follows the delay between chirped pulses, as spectral focusing scans', () => {
+  // The review's bench: 100 fs pulses, +60 000 fs² in both arms, the Stokes
+  // laser 45 µm further back -- 150 fs late.
+  const delayed = bench({ widthFs: 100, gdd: [60000, 60000], backMm: [0, 150e-6 * 299.792458] }).reading;
+  close(delayed.delayFs, 150, 1e-6);
+  close(delayed.carrierShiftCm, ramanShiftCm(800, 1040), 1e-9);
+  close(delayed.shiftCm - delayed.carrierShiftCm, 13.224, 1e-3);
+  assert.equal(delayed.delayShift, 'computed');
+  assert.match(specimenRamanReadout(delayed),
+    /→ 2897\.8 cm⁻¹ probed \(2884\.6 cm⁻¹ between the carriers, moved by the Stokes arriving 150 fs after the pump\), [\d.]+ cm⁻¹ resolution \(equally chirped pulses/);
+  // The pump late instead: the scan goes the other way.
+  const early = bench({ widthFs: 100, gdd: [60000, 60000], backMm: [150e-6 * 299.792458, 0] }).reading;
+  close(early.shiftCm - early.carrierShiftCm, -13.224, 1e-3);
+  assert.match(specimenRamanReadout(early), /the Stokes arriving 150 fs before the pump/);
+
+  // Transform-limited pulses do not scan, delayed or not.
+  const plain = bench({ backMm: [0, 0.1] }).reading;
+  assert.ok(plain.delayFs > 300);
+  close(plain.shiftCm, plain.carrierShiftCm, 1e-9);
+  assert.match(specimenRamanReadout(plain), /→ 2884\.6 cm⁻¹ probed, 14\.7 cm⁻¹ resolution/);
+
+  // Without the spectral phase the scan cannot be computed: the readout gives
+  // the carriers' difference and says so.
+  const sech = bench({ shape: 'sech2', backMm: [0, 0.1] }).reading;
+  assert.equal(sech.delayShift, 'unknownPhase');
+  assert.match(specimenRamanReadout(sech),
+    /→ 2884\.6 cm⁻¹ between the carriers \(with the Stokes arriving 333\.6 fs after the pump, the shift actually probed is not computed/);
+  assert.equal(bench({ shape: 'sech2' }).reading.delayShift, null, 'no delay, nothing to say');
+});
+
+test('a filtered spectrum gives an estimate, marked and explained', () => {
+  // The review's bench: 20 fs pulses cut to 10 and 1 nm. Each duration is the
+  // filtered band's own, with the source's chirp and the path's dispersion.
+  const { reading } = bench({
+    widthFs: 20, filters: [{ ftype: 'bandpass', center: 800, band: 10 }, { ftype: 'bandpass', center: 1040, band: 1 }],
+  });
+  assert.equal(reading.state, 'resolved');
+  assert.ok(reading.pump.reshaped && reading.stokes.reshaped && reading.estimate);
+  close(reading.resolutionCm, crsResolutionCm(reading.pump.durationFs / 1000, reading.stokes.durationFs / 1000), 1e-9);
+  close(reading.resolutionCm, 110, 1);
+  assert.match(specimenRamanReadout(reading), /, ≈ 110 cm⁻¹ resolution \(transform-limited pulses, estimated for a filtered spectrum\)$/);
+  assert.match(specimenRamanPopup(reading), /^Estimate\. A filter upstream reshaped the pump and Stokes spectra, so neither pulse is a Gaussian\..*as a Gaussian in time of that duration/);
+
+  const one = bench({ widthFs: 20, filters: [null, { ftype: 'bandpass', center: 1040, band: 2 }] }).reading;
+  assert.ok(!one.pump.reshaped && one.stokes.reshaped);
+  assert.match(specimenRamanPopup(one), /reshaped the Stokes spectrum, so that pulse is no longer a Gaussian/);
+  // An unfiltered pair needs no pop-up.
+  assert.equal(specimenRamanPopup(bench().reading), null);
+  assert.equal(specimenRamanPopup(null), null);
+});
+
+test('close colours never make one beam both pump and Stokes', () => {
+  // The review's bench: 800, 800.5 and 801 nm with the outer two dimmed.
+  // The strongest beam near either end is the 800.5 nm one; it cannot be both.
+  const nd = { ftype: 'nd', trans: 0.5 };
+  const { reading } = bench({ wls: [800, 800.5, 801], filters: [nd, null, nd] });
+  assert.equal(reading.state, 'resolved');
+  assert.ok(reading.stokes.wl - reading.pump.wl >= 1, `${reading.pump.wl} / ${reading.stokes.wl}`);
+  assert.ok(Number.isFinite(reading.shiftCm));
+  assert.doesNotThrow(() => specimenRamanReadout(reading));
+  // Wider apart, the strongest beam at each end is still read.
+  const wide = bench({ wls: [800, 800.5, 1040, 1040.5], filters: [nd, null, null, nd] }).reading;
+  assert.equal(wide.colours, 2);
+  close(wide.pump.wl, 800.5, 1e-9);
+  close(wide.stokes.wl, 1040, 1e-9);
 });
 
 test('the readout appears on both specimen holders, for CARS or SRS only', () => {

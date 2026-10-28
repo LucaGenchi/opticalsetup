@@ -45,3 +45,30 @@ export function chirpMismatch(pump, stokes) {
   const p = phase(pump), s = phase(stokes);
   return Math.abs(p.b - s.b) / (p.a + s.a);
 }
+
+// How far a delay between chirped pulses moves the vibration they address,
+// in cm⁻¹: the spectral-focusing scan. With linear chirps each colour arrives
+// at its own time, so a pump–Stokes delay pairs different colours; for
+// strongly and equally chirped pulses the shift is dt / (2πc GDD), Eq. (6)
+// of Mohseni et al. Here it is the exact centre of the excitation spectrum
+// for Gaussian pulses of any chirp: the cross-correlation of the two spectra,
+// each exp(−Δω² τ0²/(8 ln2)) with the quadratic phase ½ GDD Δω², whose
+// centre lies at Δ Im(A₁/K) / (2 Re(A₁A₂/K)) with A₁ = α_p − i GDD_p/2,
+// A₂ = α_S + i GDD_S/2, K = A₁ + A₂, α = τ0²/(8 ln2) and Δ the pump's lead
+// over the Stokes. Transform-limited pulses give zero: all their colours
+// arrive together. `delayFs` is the Stokes arrival after the pump's.
+export function spectralFocusingShiftCm(pump, stokes, delayFs) {
+  if (!(pump?.tau0Fs > 0) || !(stokes?.tau0Fs > 0) || !Number.isFinite(delayFs)
+    || !Number.isFinite(pump.gddFs2) || !Number.isFinite(stokes.gddFs2)) return null;
+  const alpha = tau0 => tau0 * tau0 / (8 * Math.LN2);
+  const a1 = { re: alpha(pump.tau0Fs), im: -pump.gddFs2 / 2 };
+  const a2 = { re: alpha(stokes.tau0Fs), im: stokes.gddFs2 / 2 };
+  const k = { re: a1.re + a2.re, im: a1.im + a2.im };
+  const kk = k.re * k.re + k.im * k.im;
+  // A₁/K and A₁A₂/K, written out.
+  const ratioIm = (a1.im * k.re - a1.re * k.im) / kk;
+  const prod = { re: a1.re * a2.re - a1.im * a2.im, im: a1.re * a2.im + a1.im * a2.re };
+  const prodRe = (prod.re * k.re + prod.im * k.im) / kk;
+  const radPerFs = -delayFs * ratioIm / (2 * prodRe);
+  return radPerFs / (2 * Math.PI * C_CM_PER_S * 1e-15);
+}

@@ -1838,6 +1838,7 @@ function sampleModeParams(layouts = SAMPLE_LAYOUTS) {
       show: p => specimenTypeOf(p) === 'nonlinear'
         && sampleChannels(p).some(c => c.kind === 'cars' || c.kind === 'srs'),
       readout: (p, el) => specimenRamanReadout(el ? specimenRamanReading(el.id) : null),
+      popup: (p, el) => specimenRamanPopup(el ? specimenRamanReading(el.id) : null),
     },
     // The total thickness of a specimen saved before layouts: hidden, kept so
     // the conversion on load can read it.
@@ -2548,7 +2549,16 @@ export function specimenRamanReadout(reading) {
     b.bwNm > 0 ? `${sig3(b.bwNm)} nm FWHM` : null,
     b.pulsed ? (b.durationFs ? `${formatFs(b.durationFs)} here` : null) : 'continuous'].filter(Boolean).join(', ');
   const beams = `${beam('Pump', reading.pump)}; ${beam('Stokes', reading.stokes)}`;
-  const shift = `${reading.shiftCm.toFixed(1)} cm⁻¹ probed`;
+  const cm = x => (Number.isFinite(x) ? x.toFixed(1) : '—');
+  // A delay between chirped pulses pairs other colours than the carriers:
+  // the spectral-focusing scan, said when it moves the shift visibly.
+  const late = reading.delayFs > 0 ? 'after' : 'before';
+  const delay = Number.isFinite(reading.delayFs) ? `the Stokes arriving ${formatFs(Math.abs(reading.delayFs))} ${late} the pump` : '';
+  const shift = reading.delayShift === 'computed' && Math.abs(reading.shiftCm - reading.carrierShiftCm) >= 0.05
+    ? `${cm(reading.shiftCm)} cm⁻¹ probed (${cm(reading.carrierShiftCm)} cm⁻¹ between the carriers, moved by ${delay})`
+    : reading.delayShift === 'unknownPhase'
+      ? `${cm(reading.carrierShiftCm)} cm⁻¹ between the carriers (with ${delay}, the shift actually probed is not computed: the pulses' spectral phase is not known here)`
+      : `${cm(reading.shiftCm)} cm⁻¹ probed`;
   const extra = reading.colours > 2
     ? ` (${reading.colours} colours on the spot: the shortest is read as the pump, the longest as the Stokes)` : '';
   if (reading.state === 'continuous') {
@@ -2557,14 +2567,30 @@ export function specimenRamanReadout(reading) {
   if (reading.state === 'durationUnknown') {
     return `${beams} → ${shift}; resolution not estimated: ${reading.issue || 'a pulse duration is not known here'}${extra}`;
   }
-  const res = `${sig3(reading.resolutionCm)} cm⁻¹`;
-  const resolution = reading.phase === 'transformLimited' ? `${res} resolution (transform-limited pulses)`
-    : reading.phase === 'equalChirp' ? `${res} resolution (equally chirped pulses, as in spectral focusing)`
-      : reading.phase === 'chirpNegligible' ? `${res} resolution (the pulses are chirped differently, too little to change it)`
+  // A filtered spectrum is treated as a Gaussian pulse of its own duration:
+  // an estimate, marked here and explained in the readout's pop-up.
+  const res = `${reading.estimate ? '≈ ' : ''}${sig3(reading.resolutionCm)} cm⁻¹`;
+  const estimated = reading.estimate ? ', estimated for a filtered spectrum' : '';
+  const resolution = reading.phase === 'transformLimited' ? `${res} resolution (transform-limited pulses${estimated})`
+    : reading.phase === 'equalChirp' ? `${res} resolution (equally chirped pulses, as in spectral focusing${estimated})`
+      : reading.phase === 'chirpNegligible' ? `${res} resolution (the pulses are chirped differently, too little to change it${estimated})`
       : reading.phase === 'chirpMismatch'
-        ? `at least ${res} resolution: the pulses are chirped differently, which broadens it further`
+        ? `at least ${res} resolution: the pulses are chirped differently, which broadens it further${estimated}`
         : `${res} resolution if the pulses are transform-limited or equally chirped (their spectral phase is not known here)`;
   return `${beams} → ${shift}, ${resolution}${extra}`;
+}
+
+// What the coherent Raman readout's pop-up says: why a resolution read from a
+// filtered spectrum is an estimate. Null when nothing needs it.
+export function specimenRamanPopup(reading) {
+  if (reading?.state !== 'resolved' || !reading.estimate) return null;
+  const both = reading.pump.reshaped && reading.stokes.reshaped;
+  const which = both ? 'pump and Stokes spectra' : reading.pump.reshaped ? 'pump spectrum' : 'Stokes spectrum';
+  return `Estimate. A filter upstream reshaped the ${which}, so ${both ? 'neither pulse is' : 'that pulse is no longer'} a Gaussian. `
+    + `${both ? 'Each' : 'Its'} duration here is computed from the band that survived, with the chirp the source gave it and the dispersion of the path, `
+    + `and the resolution formula (Mohseni et al., Eq. 5) then treats ${both ? 'each' : 'it'} as a Gaussian in time of that duration; `
+    + 'so does the shift a delay between chirped pulses gives. '
+    + 'The true excitation profile of a reshaped spectrum can be wider: tens of percent for a flat-topped band.';
 }
 
 export function specimenTimingText(reading) {

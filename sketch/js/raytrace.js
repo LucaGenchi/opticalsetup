@@ -18,7 +18,7 @@ import {
   opaPortLocal, OPA_ACCEPTANCE_DEG,
 } from './elements.js';
 import { arrivingPulse, planOpa, chirpedSignalPulse, MAX_OPA_STAGES, MIN_PHASE_KEPT_GAIN } from './opa.js';
-import { chirpMismatch, crsResolutionCm, ramanShiftCm } from './coherent-raman.js';
+import { chirpMismatch, crsResolutionCm, ramanShiftCm, spectralFocusingShiftCm } from './coherent-raman.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, meanGateTransmission, pulseGateTransmission, pulseOverlap, traceValueAt } from './pulses.js';
 import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband, aotfWingHalfWidth } from './aotf.js';
@@ -327,32 +327,67 @@ const CHIRP_TOLERANCE = 0.1;
 // What a specimen's coherent Raman excitation addresses, read from the beams
 // that reach it: the pump (the shortest colour on the spot) and the Stokes
 // (the longest), each with its wavelength, bandwidth and duration after the
-// dispersion of its path; the Raman shift they drive; and the spectral
-// resolution of that excitation, with the condition the formula needs (see
+// dispersion of its path; the Raman shift they drive, which a delay between
+// chirped pulses moves (spectral focusing); and the spectral resolution of
+// that excitation, with the condition the formula needs (see
 // coherent-raman.js). Where a colour arrives on more than one path, its
 // strongest arrival is read.
 export function specimenRamanReading(elementId) {
   const beams = (specimenIncident.get(elementId) || []).filter(b => b.wl > 0 && b.intensity > 0);
   if (!beams.length) return null;
-  const shortest = Math.min(...beams.map(b => b.wl)), longest = Math.max(...beams.map(b => b.wl));
+  const sorted = beams.slice().sort((a, b) => a.wl - b.wl);
+  const shortest = sorted[0].wl, longest = sorted[sorted.length - 1].wl;
   if (longest - shortest < MIXING_MIN_SEPARATION_NM) return { state: 'oneColour', wl: shortest };
-  const strongest = wl => beams.filter(b => Math.abs(b.wl - wl) < MIXING_MIN_SEPARATION_NM)
-    .reduce((best, b) => (b.intensity > best.intensity ? b : best));
-  const colours = beams.map(b => b.wl).sort((a, b) => a - b)
-    .filter((wl, i, list) => i === 0 || wl - list[i - 1] >= MIXING_MIN_SEPARATION_NM).length;
+  // Colours are counted in groups narrower than the separation two beams need
+  // to mix, each starting at the shortest wavelength not yet counted.
+  let colours = 0;
+  for (let i = 0, start = -Infinity; i < sorted.length; i++) {
+    if (sorted[i].wl - start >= MIXING_MIN_SEPARATION_NM) { colours++; start = sorted[i].wl; }
+  }
+  // The pump is the strongest beam within that separation of the shortest
+  // colour, the Stokes the strongest of the rest within it of the longest: no
+  // beam is both. Two such beams too close to mix leave the extremes, which
+  // always can.
+  const strongest = list => list.reduce((best, b) => (b.intensity > best.intensity ? b : best));
+  const pumpGroup = sorted.filter(b => b.wl - shortest < MIXING_MIN_SEPARATION_NM);
+  const stokesGroup = sorted.filter(b => longest - b.wl < MIXING_MIN_SEPARATION_NM && !pumpGroup.includes(b));
+  let pumpBeam = strongest(pumpGroup), stokesBeam = strongest(stokesGroup);
+  if (stokesBeam.wl - pumpBeam.wl < MIXING_MIN_SEPARATION_NM) {
+    pumpBeam = sorted[0];
+    stokesBeam = sorted[sorted.length - 1];
+  }
   const describe = beam => {
     const pulsed = beam.pulse?.repRateMHz > 0;
-    const arrival = pulsed ? arrivingPulse(arrivalRecord(beam)) : null;
+    const record = pulsed ? arrivalRecord(beam) : null;
+    const arrival = record ? arrivingPulse(record) : null;
     const durationFs = arrival?.pulse?.pulseWidthFs;
     return {
       wl: beam.wl, bwNm: beam.bw > 0 ? beam.bw : 0, pulsed,
       durationFs: durationFs > 0 ? durationFs : null,
+      // A filter upstream reshaped this spectrum: its duration is the one the
+      // surviving band has with the source's chirp and the path's dispersion
+      // (filteredPulseDuration), but it is no longer a Gaussian.
+      reshaped: Boolean(record?.pulse?.spectrumReshaped),
       phase: arrival?.phase || null, issue: arrival?.issue || null,
     };
   };
-  const pump = describe(strongest(shortest)), stokes = describe(strongest(longest));
-  const reading = { pump, stokes, colours, shiftCm: ramanShiftCm(pump.wl, stokes.wl) };
+  const pump = describe(pumpBeam), stokes = describe(stokesBeam);
+  const carrierShiftCm = ramanShiftCm(pump.wl, stokes.wl);
+  const reading = { pump, stokes, colours, carrierShiftCm, shiftCm: carrierShiftCm, delayFs: null, delayShift: null };
   if (!pump.pulsed || !stokes.pulsed) return { ...reading, state: 'continuous' };
+  // The Stokes pulse's arrival after the pump's, at the nearest coincidence:
+  // the timing the signal itself is gated on.
+  const timing = mixOverlap(stokesBeam, pumpBeam);
+  if (timing.comparable && Number.isFinite(timing.offsetNs)) {
+    reading.delayFs = timing.offsetNs * 1e6;
+    const moved = pump.phase && stokes.phase ? spectralFocusingShiftCm(pump.phase, stokes.phase, reading.delayFs) : null;
+    if (Number.isFinite(moved)) {
+      reading.shiftCm = carrierShiftCm + moved;
+      reading.delayShift = 'computed';
+    } else if (Math.abs(reading.delayFs) >= 1) {
+      reading.delayShift = 'unknownPhase';
+    }
+  }
   if (!pump.durationFs || !stokes.durationFs) {
     return { ...reading, state: 'durationUnknown', issue: pump.issue || stokes.issue };
   }
@@ -366,7 +401,7 @@ export function specimenRamanReading(elementId) {
         // the difference cannot show: only the first is spectral focusing.
         : stretch(pump.phase) > CHIRP_TOLERANCE && stretch(stokes.phase) > CHIRP_TOLERANCE ? 'equalChirp'
           : 'chirpNegligible';
-  return { ...reading, state: 'resolved', resolutionCm, phase };
+  return { ...reading, state: 'resolved', resolutionCm, phase, estimate: pump.reshaped || stokes.reshaped };
 }
 
 export function specimenTimingReading(elementId) {
