@@ -128,3 +128,20 @@ test('malformed or missing housing fields open as the default housing', () => {
   assert.deepEqual(getSize(raw), { w: 104, h: 44 });
   assert.match(registry.sclaser.svg(raw), /fill="#24233a"/, 'the SC laser falls back to its own colour');
 });
+
+test('turning a long housing by its handle starts from its own angle, not a jump', async () => {
+  globalThis.window ??= { matchMedia: () => ({ matches: true }) };
+  globalThis.document ??= { addEventListener() {}, dispatchEvent() {} };
+  const { dragRotation } = await import('../sketch/js/canvas.js');
+  for (const length of [40, 92, 400]) {
+    const el = laser('cwlaser', { housingLength: length });
+    // The handle above the box centre, with a view zoom of 1.
+    const anchor = boxAnchor(el), handle = { x: anchor.x, y: -(getSize(el).h / 2 + 6) - 22 };
+    const drag = { el, rot: 0, grab: Math.atan2(handle.y, handle.x) * 180 / Math.PI };
+    assert.equal(dragRotation(drag, { x: handle.x + 1, y: handle.y }), 0, `${length} mm: a 1 px nudge keeps 0°`);
+    // A quarter turn of the pointer about the pivot is a quarter turn of the laser.
+    const quarter = { x: -handle.y, y: handle.x };
+    assert.equal(dragRotation(drag, quarter), 90, `${length} mm`);
+    assert.equal(dragRotation({ ...drag, rot: 30 }, quarter), 120, 'from any starting angle');
+  }
+});
