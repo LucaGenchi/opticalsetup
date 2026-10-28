@@ -34,7 +34,7 @@ import { traceBundle, referenceSphere, opdWaves } from '../calculators/lens-desi
 import { analyzeImaging, prepareImaging, twoPointAt } from '../calculators/lens-design/engine/imaging.js';
 import { analyzeCoupling } from '../calculators/lens-design/engine/coupling.js';
 import { GAUSSIAN_DEFAULTS, computeGaussianBeam } from '../calculators/gaussian-beam/gaussian-beam.js';
-import { LENS_DEFAULTS, computeThickLens, singletRays, focusFrom } from '../calculators/thin-thick-lens/thick-lens.js';
+import { LENS_DEFAULTS, computeThickLens, singletRays, focusFrom, PUPIL_SAMPLES } from '../calculators/thin-thick-lens/thick-lens.js';
 import { FIBER_DEFAULTS, computeFiberCoupling, fiberMode } from '../calculators/fiber-coupling/fiber-coupling.js';
 import {
   absorptionCrossSectionCm2, focusPeakIntensityWcm2, widefieldIntensityWcm2, moleculeRates, collectionFraction,
@@ -197,9 +197,13 @@ const APP = {
     if (kind === 'lens') return { efl: r.efl, bfl: r.bfl, ffl: r.ffl, h1Mm: r.h1Mm, h2Mm: r.h2Mm, thinFocalMm: r.lens.thinFocalMm, n: r.n };
     if (kind === 'image') return { fromV2: r.image.fromV2, magnification: r.image.magnification };
     if (kind === 'gaussian') return { waistUm: r.ideal.waistUm, fromV2Mm: r.ideal.fromV2Mm, rayleighMm: r.ideal.rayleighMm };
-    const m = focusFrom(singletRays(r.values, r.lens)), out = {};
-    shiftsMm.forEach((s, i) => { const p = m.plane(s); out[`peak${i}`] = m.peak(p); out[`eta${i}`] = m.coupling(p, r.values.mfdUm / 2000); });
-    return out;
+    // On the coarsest pupil grid that resolves these planes, as the page does.
+    for (const samples of PUPIL_SAMPLES) {
+      const m = focusFrom(singletRays(r.values, r.lens, samples)), out = {};
+      shiftsMm.forEach((s, i) => { const p = m.plane(s); out[`peak${i}`] = m.peak(p); out[`eta${i}`] = m.coupling(p, r.values.mfdUm / 2000); });
+      if (m.resolved()) return out;
+    }
+    return { ok: false, reason: 'unresolved on every pupil grid' };
   },
   'wavelength-conversion': ({ kind, ...inputs }) => {
     if (kind === 'crs') return computeCrs({ ...CRS_DEFAULTS, ...inputs });

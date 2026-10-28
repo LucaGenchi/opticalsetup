@@ -59,12 +59,20 @@ export const GAUSSIAN_SHARE = 1 - Math.exp(-2);
 export const PUPIL_BEAM_RADII = 3.5;
 // The engine's beam-to-pupil ratio range.
 const BEAM_RATIO_MAX = 10;
-// Radial pupil samples (a power of two: coarser strides divide it), the
-// fewest Simpson intervals used, and the largest wavefront step (waves) and
-// Bessel phase step (rad) per interval.
-const RHO = 1024, MIN_INTERVALS = 64, MAX_WAVE_STEP = 0.1, MAX_BESSEL_STEP = 0.25;
-// Steps of the radius grid per λ/a, and its largest length.
-const R_STEPS = 16, R_MAX_STEPS = 6000;
+// Radial pupil samples (powers of two: coarser strides divide them), tried
+// in turn until every integral is resolved, the fewest Simpson intervals
+// used, and the largest wavefront step (waves) and Bessel phase step (rad)
+// per interval. With wavefront steps up to 0.25 waves the singlet's peak
+// and coupling stay within 3 × 10⁻⁶ of their values on 16384 samples
+// (plano-convex singlets both ways round, 2 to 4 mm beams, 400 to 1550 nm,
+// planes from 1 mm before F′ to 1 mm after); 0.5 waves leave 10⁻⁴.
+export const PUPIL_SAMPLES = [1024, 4096];
+const RHO = PUPIL_SAMPLES[0], MIN_INTERVALS = 64, MAX_WAVE_STEP = 0.25, MAX_BESSEL_STEP = 0.25;
+// Steps of the radius grid per λ/s_max, and the farthest radius it reaches,
+// in λ/s_max: where the Bessel phase step on the coarsest pupil grid
+// reaches MAX_BESSEL_STEP, so every grid resolves it there. A spot wider
+// than that is not measured.
+const R_STEPS = 16, R_REACH = MAX_BESSEL_STEP * RHO / (2 * Math.PI);
 // Planes in the focus scans.
 export const SCAN_POINTS = 41;
 // Beyond this rim NA the page shows no focus; beyond HIGH_NA it warns that
@@ -212,19 +220,25 @@ function simpson(n) {
   return w;
 }
 
-const RHO_GRID = Float64Array.from({ length: RHO + 1 }, (_, k) => k / RHO);
+// n + 1 evenly spaced pupil radii from 0 to 1.
+const grids = new Map();
+const pupilGrid = n => {
+  if (!grids.has(n)) grids.set(n, Float64Array.from({ length: n + 1 }, (_, k) => k / n));
+  return grids.get(n);
+};
 
 // The real singlet's rays, traced by the engine along one radius of the
 // pupil (the x–z plane), as they leave the back face.
-export function singletRays(v, lens) {
+export function singletRays(v, lens, samples = RHO) {
   const sys = normalizeSystem(singletSystem(v, lens));
   const fo = firstOrder(sys, v.wavelengthNm);
   if (!fo.ok) return { ok: false, reason: fo.reason };
   const model = traceModel(sys, v.wavelengthNm, fo);
-  const bundle = traceBundle(model, 0, RHO_GRID, new Float64Array(RHO + 1));
+  const grid = pupilGrid(samples);
+  const bundle = traceBundle(model, 0, grid, new Float64Array(samples + 1));
   return {
     ok: true, bundle, zFocus: model.zLast + fo.imageDistance, zXp: Number.isFinite(fo.zXp) ? model.zLast + fo.zXp : model.zLast,
-    amp: Float64Array.from(RHO_GRID, (r, k) => (bundle.valid[k] ? illumination(sys.diffraction, r * r) : 0)),
+    amp: Float64Array.from(grid, (r, k) => (bundle.valid[k] ? illumination(sys.diffraction, r * r) : 0)),
     clipped: bundle.failed.clipped ?? 0,
   };
 }
@@ -234,60 +248,71 @@ export function singletRays(v, lens) {
 // wavefront error. Its rays, in the engine's bundle format, all pass
 // through the focus F at z = f with equal optical paths; its exit pupil is
 // the sphere of radius f about F.
-export function aplanaticRays(v, lens) {
+export function aplanaticRays(v, lens, samples = RHO) {
   const { epd, beamRatio } = beamPupil(v);
-  const f = lens.efl, K = RHO + 1;
+  const f = lens.efl, K = samples + 1, grid = pupilGrid(samples);
   const P = new Float64Array(3 * K), D = new Float64Array(3 * K);
   for (let k = 0; k < K; k++) {
-    const s = epd / 2 * RHO_GRID[k] / f;
+    const s = epd / 2 * grid[k] / f;
     P[3 * k + 2] = f;
     D[3 * k] = -s; D[3 * k + 2] = Math.sqrt(1 - s * s);
   }
-  const bundle = { K, px: RHO_GRID, valid: new Uint8Array(K).fill(1), P, D, opl: new Float64Array(K), nImage: 1, wavelengthNm: v.wavelengthNm };
-  return { ok: true, bundle, zFocus: f, zXp: 0, amp: Float64Array.from(RHO_GRID, r => Math.exp(-r * r / (beamRatio * beamRatio))), clipped: 0 };
+  const bundle = { K, px: grid, valid: new Uint8Array(K).fill(1), P, D, opl: new Float64Array(K), nImage: 1, wavelengthNm: v.wavelengthNm };
+  return { ok: true, bundle, zFocus: f, zXp: 0, amp: Float64Array.from(grid, r => Math.exp(-r * r / (beamRatio * beamRatio))), clipped: 0 };
 }
 
 // The focus of one lens on axis, from its rays: evaluated at any plane
 // (`shiftMm` from its paraxial focus). Each ray's wavefront W (waves, from
 // the axial ray) on the reference sphere about the paraxial focus through
-// the exit pupil, and the sphere's direction there, s = sin of its angle to
-// the axis. The pupil maps onto directions with the area ratio
-// J = (s/ρ) ds/dρ, so a ray of power A² per unit pupil area has the
-// amplitude A/√J per unit of s-area (the measure the engine's coupling
-// uses; its FFT fits one scale a instead, s = aρ), and
+// the exit pupil, and the sphere's direction there, s = sin θ of its angle
+// to the axis. The pupil maps onto directions with the area ratio
+// J = (s/ρ) ds/dρ, and a plane wave of direction s spans the solid angle
+// dΩ = d²s / cos θ, so a ray of power A² per unit pupil area has the
+// amplitude A √(cos θ / J) per unit solid angle (the measure the engine's
+// coupling uses; its FFT fits one scale a instead, s = aρ). The Debye
+// integral sums those amplitudes over d²s / cos θ:
 //
-//   U(r) = 2π ∫ A √J e^(−2πiW) J₀(2π s r/λ) ρ dρ.
+//   U(r) = 2π ∫ A √(J / cos θ) e^(−2πiW) J₀(2π s r/λ) ρ dρ,
+//
+// for the aplanat the familiar √cos θ apodization over the solid angle.
+// `resolved()` says whether every integral taken so far had steps fine
+// enough for its wavefront and Bessel phase; if not, the rays must be
+// traced on a finer grid.
 export function focusFrom({ bundle, zFocus, zXp, amp }) {
   const lambda = bundle.wavelengthNm * 1e-6;
   if (!bundle.valid[0]) return { ok: false, reason: 'The axial ray does not reach the focus.' };
   const lit = amp.reduce((n, a) => n + (a > 0 ? 1 : 0), 0);
   if (lit < 8) return { ok: false, reason: 'Apertures cut nearly all of the beam.' };
-  const rho = RHO_GRID, w = simpson(RHO);
+  const N = bundle.K - 1, rho = pupilGrid(N), w = simpson(N);
   // ∫ A² ρ dρ: the power, the same at every plane.
   let sumA2 = 0;
-  for (let k = 0; k <= RHO; k++) sumA2 += w[k] * amp[k] * amp[k] * rho[k];
+  for (let k = 0; k <= N; k++) sumA2 += w[k] * amp[k] * amp[k] * rho[k];
 
   // The pupil on the reference sphere about the paraxial focus: each ray's
   // wavefront W0 there and its direction s (the sphere's normal at the
   // ray), with its area ratio J.
   const { C, R } = referenceSphere(bundle, zFocus, zXp);
-  const s = new Float64Array(RHO + 1).fill(NaN), w0 = new Float64Array(RHO + 1).fill(NaN);
+  const s = new Float64Array(N + 1).fill(NaN), w0 = new Float64Array(N + 1).fill(NaN);
   const ref = sphereCrossing(bundle, 0, zFocus, C, R).opl;
-  for (let k = 0; k <= RHO; k++) {
+  for (let k = 0; k <= N; k++) {
     if (!(amp[k] > 0)) continue;
     const hit = sphereCrossing(bundle, k, zFocus, C, R);
     if (!hit) continue;
     s[k] = Math.abs(C[0] - hit.point[0]) / R;
     w0[k] = (ref - hit.opl) / lambda;
   }
-  const weight = new Float64Array(RHO + 1);
-  let sMax = 0;
-  for (let k = 0; k <= RHO; k++) {
+  // The weight A √(J / cos θ), and ∫ A² ρ dρ / cos θ over the same rays:
+  // the integral of |U|² over a plane (Parseval), which the radius holding
+  // a share of the power is taken against.
+  const weight = new Float64Array(N + 1);
+  let sMax = 0, sumA2c = 0;
+  for (let k = 0; k <= N; k++) {
     if (!Number.isFinite(s[k])) continue;
-    const lo = k > 0 && Number.isFinite(s[k - 1]) ? k - 1 : k, hi = k < RHO && Number.isFinite(s[k + 1]) ? k + 1 : k;
+    const lo = k > 0 && Number.isFinite(s[k - 1]) ? k - 1 : k, hi = k < N && Number.isFinite(s[k + 1]) ? k + 1 : k;
     if (lo === hi) continue;
-    const ds = (s[hi] - s[lo]) / (rho[hi] - rho[lo]);
-    weight[k] = amp[k] * Math.sqrt(Math.abs(k ? s[k] / rho[k] * ds : ds * ds));
+    const ds = (s[hi] - s[lo]) / (rho[hi] - rho[lo]), cos = Math.sqrt(1 - s[k] * s[k]);
+    weight[k] = amp[k] * Math.sqrt(Math.abs(k ? s[k] / rho[k] * ds : ds * ds) / cos);
+    sumA2c += w[k] * amp[k] * amp[k] * rho[k] / cos;
     sMax = Math.max(sMax, s[k]);
   }
   // Another plane, Δz past the focus: each plane wave of the Debye integral
@@ -297,16 +322,20 @@ export function focusFrom({ bundle, zFocus, zXp, amp }) {
   const plane = shiftMm => {
     const opd = Float64Array.from(w0, (w, k) => w + shiftMm * (1 - Math.sqrt(1 - s[k] * s[k])) / lambda);
     let steepest = 0;
-    for (let k = 1; k <= RHO; k++) if (weight[k] > 0 && weight[k - 1] > 0) steepest = Math.max(steepest, Math.abs(opd[k] - opd[k - 1]));
+    for (let k = 1; k <= N; k++) if (weight[k] > 0 && weight[k - 1] > 0) steepest = Math.max(steepest, Math.abs(opd[k] - opd[k - 1]));
     return { z: zFocus + shiftMm, shiftMm, s, opd, weight, steepest, sMax };
   };
   // Σ weight·g(k)·e^(−2πiW) ρ over Simpson nodes on a stride of the samples
   // fine enough for the wavefront and for the oscillation `rate` (rad per
-  // unit of ρ) of g.
+  // unit of ρ) of g; when even the samples themselves are too coarse, the
+  // sum is kept but marked unresolved.
+  let unresolved = false;
   const sum = (p, g, rate = 0) => {
-    let stride = RHO / MIN_INTERVALS;
-    while (stride > 1 && (p.steepest * stride > MAX_WAVE_STEP || rate * stride / RHO > MAX_BESSEL_STEP)) stride /= 2;
-    const n = RHO / stride, ws = simpson(n);
+    const tooCoarse = stride => p.steepest * stride > MAX_WAVE_STEP || rate * stride / N > MAX_BESSEL_STEP;
+    let stride = N / MIN_INTERVALS;
+    while (stride > 1 && tooCoarse(stride)) stride /= 2;
+    if (tooCoarse(stride)) unresolved = true;
+    const n = N / stride, ws = simpson(n);
     let re = 0, im = 0;
     for (let i = 0; i <= n; i++) {
       const k = i * stride, a = p.weight[k];
@@ -316,10 +345,11 @@ export function focusFrom({ bundle, zFocus, zXp, amp }) {
     }
     return re * re + im * im;
   };
-  // The unaberrated peak at the paraxial focus, (∫ A √J ρ dρ)², which every
-  // intensity is relative to (a lens with the same pupil and W = 0).
+  // The unaberrated peak at the paraxial focus, (∫ A √(J / cos θ) ρ dρ)²,
+  // which every intensity is relative to (a lens with the same pupil and
+  // W = 0).
   let sumAJ = 0;
-  for (let k = 0; k <= RHO; k++) sumAJ += w[k] * weight[k] * rho[k];
+  for (let k = 0; k <= N; k++) sumAJ += w[k] * weight[k] * rho[k];
   const norm = sumAJ * sumAJ;
 
   // Intensity at radius r (mm), relative to that peak.
@@ -328,15 +358,18 @@ export function focusFrom({ bundle, zFocus, zXp, amp }) {
     return sum(p, kappa ? k => besselJ0(kappa * p.s[k]) : () => 1, kappa * p.sMax) / norm;
   };
   const peak = p => intensity(p, 0);
-  // The radius that holds `share` of the power. In these units the power,
-  // λ² ∫ A² dpupil over (2π ∫ A √J ρ dρ)², is λ² ∫A²ρdρ / (2π (∫A√Jρdρ)²).
-  const total = lambda * lambda * sumA2 / (2 * Math.PI * norm);
+  // The radius that holds `share` of the power. In these units ∫|U|² over a
+  // plane, λ² ∫ A²/cos θ dpupil over (2π ∫ A √(J / cos θ) ρ dρ)², is
+  // λ² ∫A²ρdρ/cos θ / (2π (∫A√(J / cos θ)ρdρ)²).
+  const total = lambda * lambda * sumA2c / (2 * Math.PI * norm);
   // Simpson's rule in r on steps of λ/(R_STEPS s_max), and within the last
-  // pair of steps the integral of the quadratic through its three samples.
+  // pair of steps the integral of the quadratic through its three samples;
+  // NaN beyond radiusLimit.
+  const radiusLimit = R_REACH * lambda / sMax;
   const radiusHolding = (p, share = GAUSSIAN_SHARE) => {
     const h = lambda / (R_STEPS * p.sMax), goal = share * total / (2 * Math.PI);
     let held = 0, f0 = 0;
-    for (let i = 0; i < R_MAX_STEPS; i += 2) {
+    for (let i = 0; (i + 2) * h <= radiusLimit; i += 2) {
       const r0 = i * h, f1 = intensity(p, r0 + h) * (r0 + h), f2 = intensity(p, r0 + 2 * h) * (r0 + 2 * h);
       const b = (-3 * f0 + 4 * f1 - f2) / (2 * h), c = (f0 - 2 * f1 + f2) / (2 * h * h);
       const part = x => f0 * x + b * x * x / 2 + c * x * x * x / 3;
@@ -357,10 +390,10 @@ export function focusFrom({ bundle, zFocus, zXp, amp }) {
   //   η = |2π ∫ A √(J/cos θ) e^(−s²/θ₀²) e^(−2πiW) ρ dρ|² / (2π ∫A²ρdρ · ∫|M|²dΩ).
   const coupling = (p, modeRadiusMm) => {
     const theta = lambda / (Math.PI * modeRadiusMm);
-    const overlap = sum(p, k => Math.exp(-p.s[k] * p.s[k] / (theta * theta)) / Math.sqrt(Math.sqrt(1 - p.s[k] * p.s[k])));
+    const overlap = sum(p, k => Math.exp(-p.s[k] * p.s[k] / (theta * theta)));
     return 2 * Math.PI * overlap / (sumA2 * modeNorm(theta));
   };
-  return { ok: true, lambda, zFocus, norm, plane, peak, intensity, radiusHolding, coupling, bundle };
+  return { ok: true, lambda, zFocus, norm, plane, peak, intensity, radiusHolding, coupling, radiusLimit, bundle, samples: N, resolved: () => !unresolved };
 }
 
 // Maximum of f on [a, b] by golden section.
@@ -404,10 +437,20 @@ function axialSpread(rays, reach) {
 // scan about the paraxial focus, the peak intensity, the radius holding
 // 86.5 % of the power and, with a fiber, the coupling into it; then each
 // lens's best plane for the intensity and for the coupling. `withReal:
-// false` leaves the singlet out (a lens whose faces cross).
-export function focusAnalysis(v, lens, ideal, { withReal = true } = {}) {
+// false` leaves the singlet out (a lens whose faces cross). The rays are
+// traced on the coarsest pupil grid that resolves every integral taken;
+// when none does, the analysis is refused rather than shown wrong.
+export function focusAnalysis(v, lens, ideal, opts = {}) {
+  for (const samples of PUPIL_SAMPLES) {
+    const out = focusOn(v, lens, ideal, samples, opts);
+    if (!out.ok || out.resolved) return out;
+  }
+  return { ok: false, reason: `The wavefront or the spot varies too fast across the pupil to be integrated on ${PUPIL_SAMPLES.at(-1)} samples along its radius. Choose a narrower beam, a smaller clear diameter or a longer wavelength.` };
+}
+
+function focusOn(v, lens, ideal, samples, { withReal = true } = {}) {
   const kinds = withReal ? ['real', 'ideal'] : ['ideal'];
-  const rays = { ideal: aplanaticRays(v, lens), ...(withReal ? { real: singletRays(v, lens) } : {}) };
+  const rays = { ideal: aplanaticRays(v, lens, samples), ...(withReal ? { real: singletRays(v, lens, samples) } : {}) };
   const models = {};
   for (const kind of kinds) {
     const m = rays[kind].ok ? focusFrom(rays[kind]) : rays[kind];
@@ -426,19 +469,29 @@ export function focusAnalysis(v, lens, ideal, { withReal = true } = {}) {
   const span = niceUp(Math.max(3 * zr, ...kinds.flatMap(kind => [1.5 * Math.abs(out[kind].bestShiftMm), 1.5 * Math.abs(out[kind].fiberShiftMm)])));
   out.span = span;
   out.shiftsMm = Array.from({ length: SCAN_POINTS }, (_, i) => -span + 2 * span * i / (SCAN_POINTS - 1));
+  out.samples = samples;
+  const planes = {};
   for (const kind of kinds) {
     const m = models[kind], o = out[kind];
-    const planes = out.shiftsMm.map(s => m.plane(s));
-    o.peak = planes.map(p => m.peak(p));
-    o.radiusUm = planes.map(p => m.radiusHolding(p) * 1e3);
-    o.coupling = planes.map(p => m.coupling(p, modeRadiusMm));
+    planes[kind] = out.shiftsMm.map(s => m.plane(s));
+    o.peak = planes[kind].map(p => m.peak(p));
+    o.coupling = planes[kind].map(p => m.coupling(p, modeRadiusMm));
     o.atBest = m.plane(o.bestShiftMm);
     o.atParaxial = m.plane(0);
     o.paraxialStrehl = m.peak(o.atParaxial);
     o.paraxialCoupling = m.coupling(o.atParaxial, modeRadiusMm);
+    o.radiusLimitUm = m.radiusLimit * 1e3;
+  }
+  // The radii cost most: taken only once the grid resolves the wavefront.
+  out.resolved = kinds.every(kind => models[kind].resolved());
+  if (!out.resolved) return out;
+  for (const kind of kinds) {
+    const m = models[kind], o = out[kind];
+    o.radiusUm = planes[kind].map(p => m.radiusHolding(p) * 1e3);
     o.bestRadiusUm = m.radiusHolding(o.atBest) * 1e3;
     o.paraxialRadiusUm = m.radiusHolding(o.atParaxial) * 1e3;
   }
+  out.resolved = kinds.every(kind => models[kind].resolved());
   return out;
 }
 
@@ -518,6 +571,13 @@ export function computeThickLens(raw, { focus = true } = {}) {
   // The beam: only a converging lens focuses it.
   if (lens.efl < 0) { result.beamIssue = 'A diverging lens has no real focus: the beam leaves it diverging, so there is no spot or fiber coupling to show.'; return result; }
   const ideal = idealFocus(lens, v.beamDiameterMm, v.wavelengthNm);
+  // A positive f still leaves the beam diverging when F′ (or the beam's
+  // waist) lies before the back face: there is no focus in air.
+  if (!(lens.bfl > 0) || !(ideal.fromV2Mm > 0)) {
+    const [what, z] = lens.bfl > 0 ? ['The focused waist', ideal.fromV2Mm] : ['F′', lens.bfl];
+    result.beamIssue = `${what} lies ${fmt(-z)} mm before the back vertex V₂, ${-z < v.thicknessMm ? 'inside the glass' : 'before the lens'}: the beam leaves the back face diverging, so there is no focus in air for a spot or a fiber.`;
+    return result;
+  }
   result.ideal = ideal;
   result.clipShare = apertureShare(v.diameterMm, v.beamDiameterMm);
   result.gaussianEta = gaussianCoupling({ waistUm: ideal.waistUm, modeRadiusUm: v.mfdUm / 2, wavelengthNm: v.wavelengthNm });
@@ -595,14 +655,20 @@ export function canvasScene(v) {
   if (reasons.length) return { ok: false, reasons };
   const params = { r1: v.r1Mm, r2: v.r2Mm, thickness: v.thicknessMm, dia: v.diameterMm, glass: v.glass, transEff: 100 };
   const adjusted = thickLensAdjustment(params);
+  // The canvas laser's beam width runs from 1 to 60 mm.
+  const beamWidth = Math.min(60, Math.max(1, v.beamDiameterMm));
+  const notes = [
+    adjusted && `The canvas’s lens keeps an edge of at least 0.4 mm and radii above the clear radius, so it is drawn as R₁ ${fmt(adjusted.r1)}, R₂ ${fmt(adjusted.r2)}, t ${fmt(adjusted.thickness)} mm.`,
+    beamWidth !== v.beamDiameterMm && `The canvas’s laser beam is 1 to 60 mm wide, so it is drawn ${fmt(beamWidth)} mm wide, not ${fmt(v.beamDiameterMm)} mm.`,
+  ];
   return {
     ok: true,
-    note: adjusted ? `The canvas’s lens keeps an edge of at least 0.4 mm and radii above the clear radius, so it is drawn as R₁ ${fmt(adjusted.r1)}, R₂ ${fmt(adjusted.r2)}, t ${fmt(adjusted.thickness)} mm.` : '',
+    note: notes.filter(Boolean).join(' '),
     scene: {
       app: 'optics2d', version: 1, beams: [],
       elements: [
         { id: 'laser', type: 'cwlaser', x: -Math.round(v.thicknessMm / 2 + 60), y: 0, rot: 0, label: `${fmt(v.wavelengthNm, 5)} nm`, showLabel: true,
-          params: { wavelength: v.wavelengthNm, avgPowerW: 0.01, beamMode: 'beam', beamWidth: Math.min(60, Math.max(1, v.beamDiameterMm)) } },
+          params: { wavelength: v.wavelengthNm, avgPowerW: 0.01, beamMode: 'beam', beamWidth } },
         { id: 'lens', type: 'thicklens', x: 0, y: 0, rot: 0, label: 'Singlet', showLabel: true, labelPos: 'b', params },
       ],
     },

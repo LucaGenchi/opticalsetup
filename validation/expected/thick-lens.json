@@ -491,9 +491,9 @@
     "eta0": 0.722394,
     "eta1": 0.910833,
     "eta2": 0.878144,
-    "peak0": 0.38956,
-    "peak1": 0.658064,
-    "peak2": 0.698776
+    "peak0": 0.388564,
+    "peak1": 0.656964,
+    "peak2": 0.697858
    },
    "inputs": {
     "beamDiameterMm": 2.0,
@@ -512,7 +512,7 @@
     "wavelengthNm": 1550.0
    },
    "name": "real singlet: the example lens, 2 mm beam, MFD 10.4 um, at 0 um, -80 um, -110 um from F'",
-   "note": "the app integrates 1025 evenly spaced samples along the pupil radius by Simpson's rule; this file 256 Gauss-Legendre nodes",
+   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule; this file 256 Gauss-Legendre nodes",
    "tolerance": {
     "eta0": 0.0001,
     "eta1": 0.0001,
@@ -528,9 +528,9 @@
     "eta0": 0.370664,
     "eta1": 0.507256,
     "eta2": 0.559026,
-    "peak0": 0.150974,
-    "peak1": 0.22924,
-    "peak2": 0.263562
+    "peak0": 0.150499,
+    "peak1": 0.228578,
+    "peak2": 0.262829
    },
    "inputs": {
     "beamDiameterMm": 2.0,
@@ -549,7 +549,7 @@
     "wavelengthNm": 1550.0
    },
    "name": "real singlet: flat side first, 2 mm beam, MFD 10.4 um, at 0 um, -80 um, -110 um from F'",
-   "note": "the app integrates 1025 evenly spaced samples along the pupil radius by Simpson's rule; this file 256 Gauss-Legendre nodes",
+   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule; this file 256 Gauss-Legendre nodes",
    "tolerance": {
     "eta0": 0.0001,
     "eta1": 0.0001,
@@ -565,9 +565,9 @@
     "eta0": 0.764476,
     "eta1": 0.826793,
     "eta2": 0.782166,
-    "peak0": 0.750945,
-    "peak1": 0.92379,
-    "peak2": 0.88604
+    "peak0": 0.750467,
+    "peak1": 0.923595,
+    "peak2": 0.885929
    },
    "inputs": {
     "beamDiameterMm": 1.4,
@@ -586,7 +586,7 @@
     "wavelengthNm": 1550.0
    },
    "name": "real singlet: the example lens, 1.4 mm beam, MFD 10.4 um, at 0 um, -80 um, -110 um from F'",
-   "note": "the app integrates 1025 evenly spaced samples along the pupil radius by Simpson's rule; this file 256 Gauss-Legendre nodes",
+   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule; this file 256 Gauss-Legendre nodes",
    "tolerance": {
     "eta0": 0.0001,
     "eta1": 0.0001,
@@ -594,6 +594,38 @@
     "peak0": 0.0001,
     "peak1": 0.0001,
     "peak2": 0.0001
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta0": 0.443237,
+    "eta1": 0.652587,
+    "peak0": 0.103822,
+    "peak1": 0.302048
+   },
+   "inputs": {
+    "beamDiameterMm": 2.0,
+    "diameterMm": 6.0,
+    "glass": "nbk7",
+    "kind": "singlet",
+    "mfdUm": 10.4,
+    "r1Mm": 0.0,
+    "r2Mm": -5.5,
+    "shiftsMm": [
+     0.0,
+     -0.2
+    ],
+    "thicknessMm": 3.0,
+    "wavelengthNm": 1000.0
+   },
+   "name": "real singlet: flat side first, 2 mm beam at 1000 nm, MFD 10.4 um, at 0 um, -200 um from F'",
+   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule; this file 512 Gauss-Legendre nodes",
+   "tolerance": {
+    "eta0": 0.0001,
+    "eta1": 0.0001,
+    "peak0": 0.0001,
+    "peak1": 0.0001
    }
   },
   {
@@ -627,8 +659,8 @@
   "Wikipedia, \"Cardinal point (optics)\": principal planes of a thick lens, focal and nodal points",
   "H. Kogelnik and T. Li, Appl. Opt. 5, 1550-1567 (1966), doi:10.1364/AO.5.001550 (the ABCD law for the complex beam parameter)"
  ],
- "convergence": "Closed forms in double precision. The radial quadrature: 96 nodes leave the flat-first singlet (tens of waves at the rim of its pupil) 7e-3 off, 160 nodes 3e-5, 256 nodes below 1e-6; the central difference uses 1e-5 of the pupil radius. The 2-D check: 64 x 24 polar nodes and a degree-8 polynomial.",
- "domain": "Eight singlets (plano-convex both ways, biconvex, positive meniscus, biconcave, a thick CaF2 lens) from 587.6 to 4000 nm; objects inside and outside F and before a diverging lens; collimated beams of 0.5 to 10 mm; the real plano-convex singlet at 1550 nm with 1.4 and 2 mm beams, at the paraxial focus and 80 and 110 um before it.",
+ "convergence": "Closed forms in double precision. The radial quadrature: 96 nodes leave the flat-first singlet (tens of waves at the rim of its pupil) 7e-3 off, 160 nodes 3e-5, 256 nodes below 1e-6; at 1000 nm 256 nodes are 5e-6 off and 512 are used; the central difference uses 1e-5 of the pupil radius. The 2-D check: 64 x 24 polar nodes and a degree-8 polynomial.",
+ "domain": "Eight singlets (plano-convex both ways, biconvex, positive meniscus, biconcave, a thick CaF2 lens) from 587.6 to 4000 nm; objects inside and outside F and before a diverging lens; collimated beams of 0.5 to 10 mm; the real plano-convex singlet at 1550 nm with 1.4 and 2 mm beams, at the paraxial focus and 80 and 110 um before it, and flat side first at 1000 nm, where the page traces 4096 rays, at the paraxial focus and 200 um before it.",
  "fidelity": "computed",
  "id": "thick-lens",
  "outside_scope": "The page refuses wavelengths outside a glass's fitted range, afocal lenses, radii smaller than the clear radius, and beams whose lit pupil reaches NA 0.9; the real singlet is not traced when its faces cross at the clear diameter.",

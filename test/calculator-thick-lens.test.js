@@ -70,15 +70,23 @@ test('the image: lens formula, Newton, virtual images and the construction rays'
 test('the ideal lens reproduces the Gaussian beam', () => {
   const r = run({});
   const s = r.scan.ideal, w0 = r.ideal.waistUm;
-  close(s.bestRadiusUm, w0, 1e-3, 'focused waist');
-  close(s.bestCoupling, r.gaussianEta, 1e-3, 'coupling');
+  // Slightly tighter than the paraxial formula (the small-angle limit),
+  // by the amount the text quotes.
+  const waistError = s.bestRadiusUm / w0 - 1;
+  assert.ok(waistError < 0 && waistError > -1.5e-3, `focused waist ${waistError}`);
+  close(s.bestCoupling, r.gaussianEta, 1e-4, 'coupling');
+  const text = JSON.stringify(thickLensCalculators);
+  assert.ok(text.includes(`within ${(-100 * waistError).toFixed(2)} % of the Gaussian formula’s waist`), `waist ${waistError}`);
+  assert.ok(text.includes(`the Gaussian waist to ${(-waistError * 1e3).toFixed(1)} × 10⁻³`), `waist ${waistError}`);
   assert.ok(Math.abs(s.bestShiftMm) < 0.01 * r.ideal.rayleighMm, 'focus at F′');
   // One Rayleigh range away: √2 the radius, half the peak.
   const m = s.model, zr = r.ideal.rayleighMm;
   for (const z of [zr, -zr]) {
     const p = m.plane(z);
     close(m.radiusHolding(p) * 1e3, Math.SQRT2 * w0, 2.5e-3, 'radius at z_R');
-    close(m.peak(p), 0.5, 4e-3, 'peak at z_R');
+    // 0.4971 at the example's convergence: the paraxial 1/2 is the
+    // small-angle limit.
+    close(m.peak(p), 0.5, 7e-3, 'peak at z_R');
     close(m.coupling(p, r.values.mfdUm / 2000), gaussianCoupling({ waistUm: w0, modeRadiusUm: r.values.mfdUm / 2, wavelengthNm: 1550, axialOffsetUm: z * 1e3 }), 3e-3, 'coupling at z_R');
   }
   // The share held is GAUSSIAN_SHARE by definition of the radius.
@@ -156,6 +164,40 @@ test('refusals and partial results', () => {
   }
 });
 
+test('a wavefront the pupil grid cannot follow is traced finer, or refused', () => {
+  // Flat side first the wavefront needs 4096 samples; there the peak and
+  // coupling agree with 16384 samples.
+  const flip = run({ r1Mm: 0, r2Mm: -5.5 });
+  assert.equal(flip.scan.samples, 4096);
+  const fine = focusFrom(singletRays(flip.values, flip.lens, 16384)), plane = fine.plane(flip.scan.real.bestShiftMm);
+  assert.ok(Math.abs(fine.peak(plane) - flip.scan.real.strehl) < 1e-5, 'peak');
+  const mode = flip.values.mfdUm / 2000;
+  assert.ok(Math.abs(fine.coupling(plane, mode) - flip.scan.real.model.coupling(flip.scan.real.atBest, mode)) < 1e-5, 'coupling');
+  // On 1024 samples it is resolved at F′ but not 1 mm past it, where the
+  // search for its brightest plane reaches.
+  const coarse = focusFrom(singletRays(flip.values, flip.lens, 1024));
+  coarse.peak(coarse.plane(0));
+  assert.equal(coarse.resolved(), true);
+  coarse.peak(coarse.plane(1));
+  assert.equal(coarse.resolved(), false);
+  // Hundreds of waves (flat side first, a 5 mm beam at 350 nm): refused,
+  // not shown wrong.
+  const steep = run({ r1Mm: 0, r2Mm: -5.5, beamDiameterMm: 5, wavelengthNm: 350 });
+  assert.ok(steep.ok && !steep.scan && /4096 samples/.test(steep.beamIssue));
+  // A spot wider than the radius scan reaches: no radius, rather than a
+  // wrong one.
+  const wide = run({ r1Mm: 0, r2Mm: -5.5, beamDiameterMm: 4 });
+  assert.ok(wide.scan.real.radiusUm.some(x => !Number.isFinite(x)));
+  assert.ok(wide.scan.real.radiusLimitUm > 0 && wide.scan.ideal.radiusUm.every(Number.isFinite));
+});
+
+test('a focus behind the back face is not shown as one in air', () => {
+  // f stays positive, but F′ lies 9 mm before the back vertex, in the glass.
+  const thick = run({ thicknessMm: 30 });
+  assert.ok(thick.ok && thick.efl > 0 && thick.bfl < 0);
+  assert.ok(!thick.scan && !thick.ideal && /inside the glass/.test(thick.beamIssue));
+});
+
 test('the singlet opens in the canvas as its Thick spherical lens', () => {
   const r = lensOnly({});
   const scene = canvasScene(r.values);
@@ -164,6 +206,21 @@ test('the singlet opens in the canvas as its Thick spherical lens', () => {
   assert.deepEqual([lens.params.r1, lens.params.r2, lens.params.thickness, lens.params.dia, lens.params.glass], [5.5, 0, 3, 6, 'nbk7']);
   assert.equal(scene.note, '');
   assert.equal(canvasScene({ ...r.values, thicknessMm: 0 }).ok, false);
+  // The canvas laser is 1 to 60 mm wide: a beam outside is drawn at the
+  // nearest width, and the note says so.
+  for (const [d, drawn] of [[0.5, 1], [100, 60]]) {
+    const s = canvasScene({ ...r.values, beamDiameterMm: d, diameterMm: 200 });
+    assert.equal(s.scene.elements.find(e => e.type === 'cwlaser').params.beamWidth, drawn);
+    assert.match(s.note, new RegExp(`drawn ${drawn} mm wide, not ${d} mm`));
+  }
+});
+
+test('a fiber that guides more than one mode is said to', () => {
+  // The default core and NA guide LP₁₁ too at 1310 nm (V = 2.75).
+  const r = run({ fiberMode: 'step', wavelengthNm: 1310 });
+  assert.equal(r.mode.singleMode, false);
+  assert.ok(Math.abs(r.mode.vNumber - 2.753) < 1e-3);
+  assert.equal(run({ fiberMode: 'step' }).mode.singleMode, true);
 });
 
 // The numbers the page text quotes, recomputed. A change to the engine that

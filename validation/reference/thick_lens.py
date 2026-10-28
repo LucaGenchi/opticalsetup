@@ -132,13 +132,19 @@ def focus_values(system, z_focus, beta, mfd_um, shifts_mm, nr=256, delta=1e-5):
     def plane(shift):
         return [(sv, j, W + shift * (1 - math.sqrt(1 - sv * sv)) / lam) for sv, j, W in base_rows]
 
-    norm = sum(w * a * math.sqrt(j) * r for w, a, r, (_, j, _) in zip(weights, amp, radii, base_rows)) ** 2
+    # The Debye integrand per unit pupil area, A sqrt(J / cos theta): the
+    # amplitude A sqrt(cos theta / J) per unit solid angle, summed over
+    # d^2s / cos theta = J d^2rho / cos theta.
+    def field(a, sv, j):
+        return a * math.sqrt(j / math.sqrt(1 - sv * sv))
+
+    norm = sum(w * field(a, sv, j) * r for w, a, r, (sv, j, _) in zip(weights, amp, radii, base_rows)) ** 2
     power = sum(w * a * a * r for w, a, r in zip(weights, amp, radii))
     out = []
     for shift in shifts_mm:
         rows = plane(shift)
-        peak = sum(w * a * math.sqrt(j) * r * cmath.exp(-2j * math.pi * W) for w, a, r, (_, j, W) in zip(weights, amp, radii, rows))
-        over = sum(w * a * math.sqrt(j / math.sqrt(1 - sv * sv)) * math.exp(-sv * sv / theta ** 2) * r * cmath.exp(-2j * math.pi * W)
+        peak = sum(w * field(a, sv, j) * r * cmath.exp(-2j * math.pi * W) for w, a, r, (sv, j, W) in zip(weights, amp, radii, rows))
+        over = sum(w * field(a, sv, j) * math.exp(-sv * sv / theta ** 2) * r * cmath.exp(-2j * math.pi * W)
                    for w, a, r, (sv, j, W) in zip(weights, amp, radii, rows))
         out.append((abs(peak) ** 2 / norm, 2 * math.pi * abs(over) ** 2 / (power * mode_norm(theta))))
     return out
@@ -208,14 +214,16 @@ def cases():
             "tolerance": {k: 1e-9 for k in g},
         })
 
-    shifts = [0.0, -0.08, -0.11]
-    for name, glass, nm, r1, r2, t, dia, bd, mfd in [
-        ("the example lens, 2 mm beam, MFD 10.4 um", "nbk7", 1550.0, 5.5, 0.0, 3.0, 6.0, 2.0, 10.4),
-        ("flat side first, 2 mm beam, MFD 10.4 um", "nbk7", 1550.0, 0.0, -5.5, 3.0, 6.0, 2.0, 10.4),
-        ("the example lens, 1.4 mm beam, MFD 10.4 um", "nbk7", 1550.0, 5.5, 0.0, 3.0, 6.0, 1.4, 10.4),
+    for name, glass, nm, r1, r2, t, dia, bd, mfd, shifts, nr in [
+        ("the example lens, 2 mm beam, MFD 10.4 um", "nbk7", 1550.0, 5.5, 0.0, 3.0, 6.0, 2.0, 10.4, [0.0, -0.08, -0.11], 256),
+        ("flat side first, 2 mm beam, MFD 10.4 um", "nbk7", 1550.0, 0.0, -5.5, 3.0, 6.0, 2.0, 10.4, [0.0, -0.08, -0.11], 256),
+        ("the example lens, 1.4 mm beam, MFD 10.4 um", "nbk7", 1550.0, 5.5, 0.0, 3.0, 6.0, 1.4, 10.4, [0.0, -0.08, -0.11], 256),
+        # About 2.5 times the waves of the 1550 nm case: the page samples
+        # the pupil 4096 times here.
+        ("flat side first, 2 mm beam at 1000 nm, MFD 10.4 um", "nbk7", 1000.0, 0.0, -5.5, 3.0, 6.0, 2.0, 10.4, [0.0, -0.2], 512),
     ]:
         system, z_focus, beta = singlet(glass, nm, r1, r2, t, dia, bd)
-        values = focus_values(system, z_focus, beta, mfd, shifts)
+        values = focus_values(system, z_focus, beta, mfd, shifts, nr=nr)
         expected, tolerance = {}, {}
         for i, (peak, eta) in enumerate(values):
             expected[f"peak{i}"] = sig(peak, 6)
@@ -229,7 +237,7 @@ def cases():
             "expected": expected,
             "tolerance": tolerance,
             "absolute": True,
-            "note": "the app integrates 1025 evenly spaced samples along the pupil radius by Simpson's rule; this file 256 Gauss-Legendre nodes",
+            "note": f"the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule; this file {nr} Gauss-Legendre nodes",
         })
     # The example lens's coupling at F' over the whole pupil, in two
     # dimensions (lens_coherent.coupling centres its sphere on the core, so
@@ -259,8 +267,8 @@ MODEL = {
         "H. Kogelnik and T. Li, Appl. Opt. 5, 1550-1567 (1966), doi:10.1364/AO.5.001550 (the ABCD law for the complex beam parameter)",
     ],
     "provenance": "The closed forms written from the cited articles; the interface and slab matrices are the standard ray-transfer matrices; the ray trace and quadrature are this repository's independent Python lens references.",
-    "domain": "Eight singlets (plano-convex both ways, biconvex, positive meniscus, biconcave, a thick CaF2 lens) from 587.6 to 4000 nm; objects inside and outside F and before a diverging lens; collimated beams of 0.5 to 10 mm; the real plano-convex singlet at 1550 nm with 1.4 and 2 mm beams, at the paraxial focus and 80 and 110 um before it.",
-    "convergence": "Closed forms in double precision. The radial quadrature: 96 nodes leave the flat-first singlet (tens of waves at the rim of its pupil) 7e-3 off, 160 nodes 3e-5, 256 nodes below 1e-6; the central difference uses 1e-5 of the pupil radius. The 2-D check: 64 x 24 polar nodes and a degree-8 polynomial.",
+    "domain": "Eight singlets (plano-convex both ways, biconvex, positive meniscus, biconcave, a thick CaF2 lens) from 587.6 to 4000 nm; objects inside and outside F and before a diverging lens; collimated beams of 0.5 to 10 mm; the real plano-convex singlet at 1550 nm with 1.4 and 2 mm beams, at the paraxial focus and 80 and 110 um before it, and flat side first at 1000 nm, where the page traces 4096 rays, at the paraxial focus and 200 um before it.",
+    "convergence": "Closed forms in double precision. The radial quadrature: 96 nodes leave the flat-first singlet (tens of waves at the rim of its pupil) 7e-3 off, 160 nodes 3e-5, 256 nodes below 1e-6; at 1000 nm 256 nodes are 5e-6 off and 512 are used; the central difference uses 1e-5 of the pupil radius. The 2-D check: 64 x 24 polar nodes and a degree-8 polynomial.",
     "tolerance_rationale": "1e-9 relative for the algebra. 1e-4 absolute on the singlet's peak and coupling, against differences found below 3e-6 (the two quadratures of the same model converge to the same value); expected values stored to 6 significant digits, as the last digits depend on the platform's maths library.",
     "outside_scope": "The page refuses wavelengths outside a glass's fitted range, afocal lenses, radii smaller than the clear radius, and beams whose lit pupil reaches NA 0.9; the real singlet is not traced when its faces cross at the clear diameter.",
     "fidelity": "computed",

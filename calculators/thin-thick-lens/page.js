@@ -7,6 +7,7 @@ import { LENS_INPUTS, LENS_DEFAULTS, computeThickLens, chromaticScan, rayDiagram
 import { mountCalculator } from '../assets/simple-calculator-page.js';
 import { formatNumber } from '../assets/calculator-kit.js';
 import { buildShareURL } from '../../sketch/js/share.js';
+import { SINGLE_MODE_V } from '../fiber-coupling/fiber-coupling.js';
 
 const figure = document.getElementById('preview-figure');
 const caption = document.getElementById('preview-caption');
@@ -52,7 +53,8 @@ function rows(r) {
     focus.push({ group: 'Gaussian beam, ideal lens' }, ['Focused waist w₀′ (1/e² radius)', r.ideal.waistUm, 'µm', 4],
       lengthRow('Waist after V₂', r.ideal.fromV2Mm, 6), ['Rayleigh range z_R′', r.ideal.rayleighMm * 1e3, 'µm', 4],
       ['Convergence, half angle', r.ideal.halfAngleMrad, 'mrad', 4], ['Share of the beam inside D', 100 * r.clipShare, '%', 6]);
-    const mode = r.mode ? [['V number', r.mode.vNumber, '', 4], ['Cutoff wavelength', r.mode.cutoffNm, 'nm', 4]] : [];
+    const mode = r.mode ? [['V number', r.mode.vNumber, '', 4], ['Cutoff wavelength', r.mode.cutoffNm, 'nm', 4],
+      ['Single-mode here', r.mode.singleMode ? 'yes' : 'no: LP₁₁ is guided too']] : [];
     fiber.push({ group: `Mode-field diameter ${formatNumber(v.mfdUm, 4)} µm` }, ...mode,
       ['Gaussian mode matching, ideal lens', 100 * r.gaussianEta, '%', 4]);
   }
@@ -78,6 +80,9 @@ function notes(r) {
   if (r.rimNa > HIGH_NA) out.push(`The lit pupil reaches NA ${formatNumber(r.rimNa, 3)} at its rim: above ${HIGH_NA}, scalar diffraction ignores polarization, which then matters.`);
   if (r.fresnelNumber < FRESNEL_LIMIT) out.push(`The Fresnel number of the lit pupil, a²/(λf) = ${formatNumber(r.fresnelNumber, 3)}, is below ${FRESNEL_LIMIT}: the focus moves toward the lens from where the Debye integral puts it, so the curves are approximate.`);
   if (r.scan?.real?.clipped) out.push('Part of the beam meets the back face outside the clear diameter and is cut there.');
+  if (r.mode && !r.mode.singleMode && r.ideal) out.push(`V = ${formatNumber(r.mode.vNumber, 4)} is above ${formatNumber(SINGLE_MODE_V, 4)}: at this wavelength the fiber also guides LP₁₁. The coupling here is into the fundamental mode only.`);
+  const real = r.scan?.real;
+  if (real && [real.bestRadiusUm, real.paraxialRadiusUm, ...real.radiusUm].some(x => !Number.isFinite(x))) out.push(`The singlet’s spot grows wider than ${formatNumber(real.radiusLimitUm, 3)} µm, beyond which this page does not integrate it: its radius is left out there.`);
   if (!r.image.atInfinity) {
     const steep = Math.max(r.values.objectHeightMm / r.values.objectDistanceMm, Math.abs(r.image.heightMm) / Math.max(1e-9, Math.abs(r.image.imageFromH2)));
     if (steep > 0.1) out.push(`The construction rays reach ${formatNumber(Math.atan(steep) * 1e3, 3)} mrad from the axis: beyond about 0.1 rad the paraxial image is only a guide, and the real one is aberrated.`);
@@ -132,8 +137,9 @@ function graphs(r) {
     formatX: n => formatNumber(n, 4), formatY: n => formatNumber(n, 4),
   };
   // Across the focus: out to three ideal waists, or twice the singlet's
-  // spot, on a symmetric grid.
-  const ideal = s.ideal.model, reach = Math.max(3 * r.ideal.waistUm, real ? 2 * real.bestRadiusUm : 0);
+  // spot (its whole reach when the spot is wider), on a symmetric grid.
+  const spot = real ? (Number.isFinite(real.bestRadiusUm) ? 2 * real.bestRadiusUm : real.radiusLimitUm) : 0;
+  const ideal = s.ideal.model, reach = Math.min(Math.max(3 * r.ideal.waistUm, spot), s.ideal.radiusLimitUm, real ? real.radiusLimitUm : Infinity);
   const radii = Array.from({ length: 161 }, (_, i) => -reach + 2 * reach * i / 160);
   const relative = (model, plane) => radii.map(u => model.intensity(plane, Math.abs(u) * 1e-3) * model.norm / ideal.norm);
   out.psf = {
