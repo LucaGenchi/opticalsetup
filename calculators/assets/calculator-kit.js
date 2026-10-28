@@ -120,6 +120,22 @@ export function renderForm(form, inputs, groups, values) {
           wrap.append(unit);
         }
         row.append(label, wrap);
+        if (input.slider) {
+          // A slider under the number, for dragging. It carries no name, so
+          // the form reads the number; a page may narrow its range.
+          const slider = document.createElement('input');
+          slider.type = 'range';
+          slider.className = 'calc-slider';
+          slider.id = `${id}-slider`;
+          slider.min = input.min;
+          slider.max = input.max;
+          slider.step = input.arrowStep ?? 'any';
+          slider.value = values[input.id];
+          slider.setAttribute('aria-label', input.label);
+          slider.addEventListener('input', () => { control.value = slider.value; control.dispatchEvent(new Event('input', { bubbles: true })); });
+          control.addEventListener('input', () => { if (control.value !== '') slider.value = control.value; });
+          row.append(slider);
+        }
       }
       if (input.help) {
         const help = document.createElement('div');
@@ -153,7 +169,9 @@ export function syncForm(forms, inputs, raw, invalidIds = new Set()) {
     const el = formControl(forms, input.id);
     const off = !isInputActive(input, raw);
     el.disabled = off;
-    el.closest('.calc-field').classList.toggle('is-off', off);
+    const field = el.closest('.calc-field'), slider = field.querySelector('.calc-slider');
+    if (slider) slider.disabled = off;
+    field.classList.toggle('is-off', off);
     if (input.type !== 'checkbox') el.setAttribute('aria-invalid', String(invalidIds.has(input.id)));
   }
 }

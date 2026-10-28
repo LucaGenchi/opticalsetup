@@ -81,6 +81,7 @@
 .calc-field [aria-invalid="true"] { border-color: var(--error); background: var(--error-soft); }
 .calc-field.choice { grid-template-columns: 1fr; }
 .calc-field .help { grid-column: 1 / -1; font-size: 11.8px; color: var(--muted); line-height: 1.4; }
+.calc-field .calc-slider { grid-column: 1 / -1; width: 100%; margin: 2px 0 0; accent-color: var(--accent); }
 .calc-field.check { grid-template-columns: auto 1fr; justify-content: start; }
 .calc-field.check label { display: flex; gap: 8px; align-items: center; font-weight: 600; }
 .calc-field.is-off { opacity: .45; }

@@ -34,7 +34,7 @@ import { traceBundle, referenceSphere, opdWaves } from '../calculators/lens-desi
 import { analyzeImaging, prepareImaging, twoPointAt } from '../calculators/lens-design/engine/imaging.js';
 import { analyzeCoupling } from '../calculators/lens-design/engine/coupling.js';
 import { GAUSSIAN_DEFAULTS, computeGaussianBeam } from '../calculators/gaussian-beam/gaussian-beam.js';
-import { LENS_DEFAULTS, computeThickLens, singletRays, focusFrom, PUPIL_SAMPLES } from '../calculators/thin-thick-lens/thick-lens.js';
+import { LENS_DEFAULTS, lensData, designLens, idealFocus, singletRays, focusFrom, PUPIL_SAMPLES } from '../calculators/thin-thick-lens/thick-lens.js';
 import { FIBER_DEFAULTS, computeFiberCoupling, fiberMode } from '../calculators/fiber-coupling/fiber-coupling.js';
 import {
   absorptionCrossSectionCm2, focusPeakIntensityWcm2, widefieldIntensityWcm2, moleculeRates, collectionFraction,
@@ -192,16 +192,30 @@ const APP = {
   },
   'gaussian-beam': inputs => computeGaussianBeam({ ...GAUSSIAN_DEFAULTS, ...inputs }),
   'fiber-coupling': ({ kind, ...inputs }) => (kind === 'fiber' ? fiberMode(inputs) : computeFiberCoupling({ ...FIBER_DEFAULTS, ...inputs })),
-  'thick-lens': ({ kind, shiftsMm, ...inputs }) => {
-    const r = computeThickLens({ ...LENS_DEFAULTS, ...inputs }, { focus: false });
-    if (kind === 'lens') return { efl: r.efl, bfl: r.bfl, ffl: r.ffl, h1Mm: r.h1Mm, h2Mm: r.h2Mm, thinFocalMm: r.lens.thinFocalMm, n: r.n };
-    if (kind === 'image') return { fromV2: r.image.fromV2, magnification: r.image.magnification };
-    if (kind === 'gaussian') return { waistUm: r.ideal.waistUm, fromV2Mm: r.ideal.fromV2Mm, rayleighMm: r.ideal.rayleighMm };
+  // Lens data and the singlets take signed radii directly (the page's inputs
+  // reach them through designLens); a design takes the page's inputs.
+  'thick-lens': ({ kind, shiftsMm, lateralUm = [], tiltMrad = [], ...inputs }) => {
+    if (kind === 'design') {
+      const d = designLens({ ...LENS_DEFAULTS, ...inputs });
+      return d.reason ? { ok: false, reason: d.reason } : { r1Mm: d.r1Mm, r2Mm: d.r2Mm, thicknessMm: d.thicknessMm, efl: d.lens.efl };
+    }
+    const lens = { ...lensData(inputs), r1Mm: inputs.r1Mm, r2Mm: inputs.r2Mm };
+    if (kind === 'lens') return { efl: lens.efl, bfl: lens.bfl, ffl: lens.ffl, h1Mm: lens.h1Mm, h2Mm: lens.h2Mm, thinFocalMm: lens.thinFocalMm, n: lens.n };
+    if (kind === 'gaussian') {
+      const g = idealFocus(lens, inputs.beamDiameterMm, inputs.wavelengthNm);
+      return { waistUm: g.waistUm, fromV2Mm: g.fromV2Mm, rayleighMm: g.rayleighMm };
+    }
     // On the coarsest pupil grid that resolves these planes, as the page does.
     for (const samples of PUPIL_SAMPLES) {
-      const m = focusFrom(singletRays(r.values, r.lens, samples)), out = {};
-      shiftsMm.forEach((s, i) => { const p = m.plane(s); out[`peak${i}`] = m.peak(p); out[`eta${i}`] = m.coupling(p, r.values.mfdUm / 2000); });
-      if (m.resolved()) return out;
+      const m = focusFrom(singletRays(inputs, lens, samples)), out = {};
+      let strict = true;
+      shiftsMm.forEach((s, i) => {
+        const p = m.plane(s);
+        out[`peak${i}`] = m.peak(p);
+        out[`eta${i}`] = m.coupling(p, inputs.mfdUm / 2000, (lateralUm[i] ?? 0) * 1e-3, (tiltMrad[i] ?? 0) * 1e-3, true);
+        if (Number.isNaN(out[`eta${i}`])) strict = false;
+      });
+      if (strict && m.resolved()) return out;
     }
     return { ok: false, reason: 'unresolved on every pupil grid' };
   },
