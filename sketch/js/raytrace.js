@@ -2234,8 +2234,9 @@ function emissionAngleOffsets(count, bias) {
   return offsets;
 }
 // Below this the two pulses barely meet and the signal is reported as absent
-// rather than as a vanishing sliver.
-const MIN_OVERLAP = 0.02;
+// rather than as a vanishing sliver. The inspector's timing warning says so
+// at the same threshold.
+export const MIN_OVERLAP = 0.02;
 const clampConversion = value => Math.min(MAX_CONVERSION, Math.max(0, Number(value) || 0));
 
 // The wavelength one signal channel produces for a ray of wavelength rayWl.

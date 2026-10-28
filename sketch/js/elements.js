@@ -15,7 +15,7 @@ import { emissionRayCount, ISOTROPIC_KINDS } from './emission.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
-import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenRamanReading, specimenSrsNote, specimenTimingReading, supercontinuumReading, twoBeamPartner } from './raytrace.js';
+import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenRamanReading, specimenSrsNote, specimenTimingReading, supercontinuumReading, twoBeamPartner, MIN_OVERLAP } from './raytrace.js';
 import { NONLINEAR_ORDER } from './sectioning.js';
 import { opaSettings, opaGainAt, MAX_OPA_STAGES, MAX_GATE_BANDWIDTH_RATIO, MIN_PHASE_KEPT_GAIN } from './opa.js';
 import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, mixOverlap, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
@@ -1730,10 +1730,14 @@ function overlapWarning(channel, records) {
   const best = timedPairs.reduce((x, y) => (score(y) > score(x) ? y : x));
   const notes = [];
   if (best.comparable && best.factor < 0.5) {
+    // Say what the mismatch costs: the share of the signal still drawn, or
+    // that none is, below the tracer's own threshold.
     const skewPs = best.skewNs * 1000;
     const pathMm = best.skewNs * 299.792458;
-    notes.push(`${what} needs the two pulses to arrive together: they are ${skewPs.toFixed(skewPs < 10 ? 2 : 0)} ps apart `
-      + `(${pathMm.toFixed(pathMm < 10 ? 2 : 0)} mm of path). Match the arms, or add a delay line.`);
+    const apart = `the two pulses arrive ${skewPs.toFixed(skewPs < 10 ? 2 : 0)} ps apart (${pathMm.toFixed(pathMm < 10 ? 2 : 0)} mm of path)`;
+    notes.push(best.factor >= MIN_OVERLAP
+      ? `${what} is down to ${sig3(best.factor * 100)} % of its signal: ${apart}. Match the arms, or add a delay line.`
+      : `${what} is not drawn: ${apart}, and it needs at least ${sig3(MIN_OVERLAP * 100)} % of their overlap. Match the arms, or add a delay line.`);
   }
   if (unsupported) {
     notes.push(`The pair ${rates(unsupported)} is not mixed: timing between different repetition rates is not modelled.`);

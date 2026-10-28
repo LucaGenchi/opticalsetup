@@ -366,11 +366,20 @@ test('a mismatched pair is explained, in picoseconds and in millimetres of path'
     { wl: 1040, opl: 200 + skewMm, pulse: { repRateMHz: 40, pulseWidthFs: 200, phaseNs: 0 } },
   ]);
   assert.equal(channelWarning(ch('cars'), beams(0)), null, 'matched arms need no warning');
+  // 3 mm is 10 ps: nothing is drawn, and the warning says so.
   const warning = channelWarning(ch('cars'), beams(3));
-  assert.match(warning, /pulses to arrive together/);
-  assert.match(warning, /ps apart/);
-  assert.match(warning, /3\.00 mm of path/);
-  assert.match(warning, /delay line/);
+  assert.equal(warning, 'CARS is not drawn: the two pulses arrive 10 ps apart (3.00 mm of path), '
+    + 'and it needs at least 2 % of their overlap. Match the arms, or add a delay line.');
+  // Partly overlapped: the share of the signal still drawn. CARS weighs its
+  // 200 fs pump twice, so 52 µm (173 fs) leaves exp(−4 ln2 Δt²/(τ²/2 + τ²)).
+  const skewMm = 0.052, dtFs = skewMm / C_MM_PER_NS * 1e6;
+  const left = Math.exp(-4 * Math.LN2 * dtFs ** 2 / (200 ** 2 / 2 + 200 ** 2));
+  assert.equal(channelWarning(ch('cars'), beams(skewMm)),
+    `CARS is down to ${Number((left * 100).toPrecision(3))} % of its signal: the two pulses arrive 0.17 ps apart (0.05 mm of path). `
+    + 'Match the arms, or add a delay line.');
+  // Sum frequency weighs each pulse once and keeps more of the same pair.
+  const plainLeft = Math.exp(-4 * Math.LN2 * dtFs ** 2 / (2 * 200 ** 2));
+  assert.match(channelWarning(ch('sfg'), beams(skewMm)), new RegExp(`^Sum frequency is down to ${Number((plainLeft * 100).toPrecision(3))} %`));
   // Continuous-wave light is always present, so timing never applies to it.
   assert.equal(channelWarning(ch('cars'), [{ wl: 800, opl: 200 }, { wl: 1040, opl: 900 }]), null);
   // And the per-channel opt-out silences it.
@@ -541,8 +550,9 @@ test('CARS picks its partner by its own timing gate, not the plain overlap', () 
   assert.ok(both.hasCars, 'the line stays with a worse-timed Stokes beside the good one');
   assert.equal(both.reading.state, 'mixing');
   assert.ok(Math.abs(both.reading.overlap - cars(200, 400, 450)) < 1e-6, `${both.reading.overlap}`);
-  // The inspector times the same pair: 0.45 ps apart, not the 50 fs beam's 0.20.
-  assert.match(both.warning, /they are 0\.45 ps apart/);
+  // The inspector times the same pair: 0.45 ps apart and 4.42 % left, not the
+  // 50 fs beam's 0.20 ps.
+  assert.match(both.warning, /^CARS is down to 4\.42 % of its signal: the two pulses arrive 0\.45 ps apart/);
   // Sum frequency weighs both beams once and still picks by the plain overlap.
   const sum = timingBench([pump, slow, quick], ch('shg', { eff: 0.5 }));
   assert.equal(sum.reading.state, 'mixing');
