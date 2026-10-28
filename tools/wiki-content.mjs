@@ -163,7 +163,13 @@ export const wikiEntries = [
         fields always add, and only their cross term is scaled by
         <span class="w">V</span>. The two ports of an interferometer therefore always sum to
         the input, whether they are fringing hard or have washed out to a flat half
-        each.</p>`,
+        each.</p>
+        <p>Under <em>Label &amp; appearance</em>, every laser source sets its housing
+        length, height and colour. The box grows backwards from its front face, so the
+        exit port and the laser's own beam stay exactly where they were, and it is never
+        drawn shorter than the beam needs. The housing is still a solid object: like the
+        default box, it absorbs any light that strikes it where it is drawn, so a longer or
+        taller housing can block another beam that crosses it.</p>`,
       limitations: `<p>There is no modeled gain medium, cavity round trip, or threshold —
         wavelength, polarization, and power are configured directly as source parameters,
         not derived from first principles. Divergence and M² are not modeled: a collimated
