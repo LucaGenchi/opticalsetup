@@ -273,7 +273,7 @@ Sources:
 ### Lens designer: first-order data, real skew rays, Seidel spherical aberration, wavefront and diffraction
 
 - **Provenance.** Textbook relations evaluated here; the plano-hyperbolic singlet is the classical aplanatic surface (Descartes ovoid for an object at infinity), whose image is a point.
-- **Cases run.** Rotationally symmetric refracting systems in air, objects at infinity and at 200 mm, fields up to 20 deg, F/2.5 to F/10, visible wavelengths; diffraction cases for a perfect F/10 lens at 587.6 nm, up to 0.75 waves of defocus.
+- **Cases run.** Rotationally symmetric refracting systems in air, objects at infinity and at 200 mm, fields up to 20 deg, F/2.5 to F/10, visible wavelengths; diffraction cases for a perfect F/10 lens at 588 nm, up to 0.75 waves of defocus.
 - **Method.** Bisection to 200 halvings (far past double precision); the surface normal from a complex-step derivative; Simpson's rule on 4000 intervals over the pupil radius (the defocus integrand is smooth, error below 1e-12).
 - **Tolerances.** 1e-9 mm and 1e-8 waves (absolute: an exit pupil can sit exactly on a vertex) are two independent evaluations of the same geometry in double precision; 1e-5 on the fitted S_I is the truncation of the odd-power fit; 3e-4 on the defocus Strehl ratio and 3e-3 on the MTF are the app's sampled pupil (square cells filling a disc), and the 1 % on the Gaussian waist its sampled PSF. The phase-2 expected values are stored rounded (the OPD to 1e-8 waves, the rest to 10 significant digits), because their last digits depend on the platform's maths library.
 
@@ -290,7 +290,7 @@ Sources:
 ### Lens designer: imaging in coherent and incoherent light, and fiber coupling
 
 - **Provenance.** Textbook relations evaluated here; the coupling overlaps of Gaussian beams are derived from the overlap integral and checked against the numerical quadrature, not transcribed.
-- **Cases run.** A perfect F/10 lens at 587.6 nm; a curved-side-first N-BK7 singlet (F/10) on axis and at 3 deg; the Cooke triplet (F/5) on axis at 550 nm; separations near the Rayleigh distance; offsets of a few micrometres, tilts of 20 mrad.
+- **Cases run.** A perfect F/10 lens at 588 nm; a curved-side-first N-BK7 singlet (F/10) on axis and at 3 deg; the Cooke triplet (F/5) on axis at 550 nm; separations near the Rayleigh distance; offsets of a few micrometres, tilts of 20 mrad.
 - **Method.** 20 x 64 polar nodes (the wavefronts here stay below a wave, so the azimuthal trapezoid converges well past 1e-6); a degree-8 polynomial for the directions; Simpson's rule on 20000 intervals for the mode's normalization.
 - **Tolerances.** The app's square pupil grid (128 samples across) has a staircase rim that differs from the circle: 3e-3 on the images and 2e-3 on coupling through a uniformly lit pupil allow for it (the largest differences found are 2.0e-3 and 1.0e-3); a Gaussian beam of 0.8 pupil radii is dim at the rim, so 5e-4 (found: 3.1e-4); the perfect lens's Gaussian overlaps, which barely reach the rim, 1e-4 (found: 2e-5). Expected values are stored to 6 significant digits, as the last digits depend on the platform's maths library.
 

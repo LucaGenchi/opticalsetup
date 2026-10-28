@@ -81,8 +81,9 @@ export function defaultCoupling() {
   return { mfdUm: 4, offsetXUm: 0, offsetYUm: 0, axialUm: 0, tiltXMrad: 0, tiltYMrad: 0, fresnel: false };
 }
 
-// Fraunhofer F, d and C lines (nm): the default visible set.
-export const LINES_FDC = [486.1327, 587.5618, 656.2725];
+// Fraunhofer F, d and C lines (486.1327, 587.5618, 656.2725 nm), to the
+// whole nanometre like every wavelength here: the default visible set.
+export const LINES_FDC = [486, 588, 656];
 
 const finite = (value, fallback) => {
   const n = typeof value === 'string' && value.trim() === '' ? NaN : Number(value);
@@ -149,9 +150,11 @@ export function normalizeSystem(raw = {}) {
   if (fl.type && fl.type !== fieldType) fieldValues = [0];
   if (!fieldValues.length) fieldValues = [0];
 
+  // Wavelengths are whole nanometres; a saved design with decimals opens
+  // rounded.
   let wavelengthsNm = (Array.isArray(src.wavelengthsNm) ? src.wavelengthsNm : LINES_FDC)
-    .slice(0, LIMITS.wavelengths).map(v => clamp(finite(v, 587.5618), ...LIMITS.wavelengthNm));
-  if (!wavelengthsNm.length) wavelengthsNm = [587.5618];
+    .slice(0, LIMITS.wavelengths).map(v => clamp(Math.round(finite(v, 588)), ...LIMITS.wavelengthNm));
+  if (!wavelengthsNm.length) wavelengthsNm = [588];
   const primary = clamp(Math.round(finite(src.primaryWavelength, Math.floor(wavelengthsNm.length / 2))), 0, wavelengthsNm.length - 1);
 
   // One weight per wavelength for the polychromatic sums; missing ones are

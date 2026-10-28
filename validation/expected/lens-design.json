@@ -90,12 +90,12 @@
   {
    "absolute": true,
    "expected": {
-    "bfl": 95.86320944581124,
-    "efl": 100.07608972546508,
-    "imageDistance": 95.86320944581124,
-    "xpd": 20.369288518890126,
+    "bfl": 95.86340729446917,
+    "efl": 100.07634212487582,
+    "imageDistance": 95.86340729446917,
+    "xpd": 20.369301202701916,
     "zEp": 0.0,
-    "zXp": -6.060727827205455
+    "zXp": -6.060850505842903
    },
    "inputs": {
     "kind": "first-order",
@@ -141,13 +141,13 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      486.1327,
-      587.5618,
-      656.2725
+      486,
+      588,
+      656
      ]
     }
    },
-   "name": "cemented achromat: first-order data at 587.5618 nm",
+   "name": "cemented achromat: first-order data at 588 nm",
    "tolerance": {
     "bfl": 1e-09,
     "efl": 1e-09,
@@ -160,12 +160,12 @@
   {
    "absolute": true,
    "expected": {
-    "bfl": 47.459955191619315,
-    "efl": 50.930538449695575,
-    "imageDistance": 47.459955191619315,
-    "xpd": 16.165233245829377,
+    "bfl": 47.46170668939836,
+    "efl": 50.932331088385354,
+    "imageDistance": 47.46170668939836,
+    "xpd": 16.165229349005806,
     "zEp": 0.0,
-    "zXp": -3.9965468943188265
+    "zXp": -3.996594143304618
    },
    "inputs": {
     "kind": "first-order",
@@ -215,13 +215,13 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      486.1327,
-      587.5618,
-      656.2725
+      486,
+      588,
+      656
      ]
     }
    },
-   "name": "aspheric singlet: first-order data at 587.5618 nm",
+   "name": "aspheric singlet: first-order data at 588 nm",
    "tolerance": {
     "bfl": 1e-09,
     "efl": 1e-09,
@@ -234,11 +234,11 @@
   {
    "absolute": true,
    "expected": {
-    "bfl": 97.36286258248549,
-    "efl": 99.99999332419002,
-    "imageDistance": 197.3628425550573,
-    "xpd": 9.736286908224562,
-    "zEp": 2.708558988208188,
+    "bfl": 97.36637147535524,
+    "efl": 100.00353403013239,
+    "imageDistance": 197.37697406534474,
+    "xpd": 9.736293064004865,
+    "zEp": 2.7085899504471045,
     "zXp": -0.0
    },
    "inputs": {
@@ -280,13 +280,13 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      486.1327,
-      587.5618,
-      656.2725
+      486,
+      588,
+      656
      ]
     }
    },
-   "name": "plano-convex at a finite object: first-order data at 587.5618 nm",
+   "name": "plano-convex at a finite object: first-order data at 588 nm",
    "tolerance": {
     "bfl": 1e-09,
     "efl": 1e-09,
@@ -628,12 +628,12 @@
    "absolute": true,
    "expected": {
     "x": 0.0,
-    "y": -0.4697111576740616
+    "y": -0.46941201530802434
    },
    "inputs": {
     "field": 0.0,
     "kind": "ray",
-    "nm": 587.5618,
+    "nm": 588,
     "px": 0.0,
     "py": 1.0,
     "system": {
@@ -682,13 +682,13 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      486.1327,
-      587.5618,
-      656.2725
+      486,
+      588,
+      656
      ]
     }
    },
-   "name": "aspheric singlet: real ray field 0.0, pupil (0.0, 1.0), 587.5618 nm",
+   "name": "aspheric singlet: real ray field 0.0, pupil (0.0, 1.0), 588 nm",
    "tolerance": {
     "x": 1e-09,
     "y": 1e-09
@@ -697,13 +697,13 @@
   {
    "absolute": true,
    "expected": {
-    "x": -0.410444578840651,
-    "y": 3.441523252413715
+    "x": -0.4105536780733994,
+    "y": 3.441412105263784
    },
    "inputs": {
     "field": 4.0,
     "kind": "ray",
-    "nm": 486.1327,
+    "nm": 486,
     "px": 0.7,
     "py": 0.7,
     "system": {
@@ -752,13 +752,13 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      486.1327,
-      587.5618,
-      656.2725
+      486,
+      588,
+      656
      ]
     }
    },
-   "name": "aspheric singlet: real ray field 4.0, pupil (0.7, 0.7), 486.1327 nm",
+   "name": "aspheric singlet: real ray field 4.0, pupil (0.7, 0.7), 486 nm",
    "tolerance": {
     "x": 1e-09,
     "y": 1e-09
@@ -768,12 +768,12 @@
    "absolute": true,
    "expected": {
     "x": 0.0,
-    "y": 4.397320595324993
+    "y": 4.39745433167114
    },
    "inputs": {
     "field": 4.0,
     "kind": "ray",
-    "nm": 656.2725,
+    "nm": 656,
     "px": 0.0,
     "py": -0.95,
     "system": {
@@ -822,13 +822,13 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      486.1327,
-      587.5618,
-      656.2725
+      486,
+      588,
+      656
      ]
     }
    },
-   "name": "aspheric singlet: real ray field 4.0, pupil (0.0, -0.95), 656.2725 nm",
+   "name": "aspheric singlet: real ray field 4.0, pupil (0.0, -0.95), 656 nm",
    "tolerance": {
     "x": 1e-09,
     "y": 1e-09
@@ -838,12 +838,12 @@
    "absolute": true,
    "expected": {
     "x": 0.0,
-    "y": -4.665783295456823
+    "y": -4.665442077785904
    },
    "inputs": {
     "field": 5.0,
     "kind": "ray",
-    "nm": 587.5618,
+    "nm": 588,
     "px": 0.0,
     "py": 1.0,
     "system": {
@@ -883,13 +883,13 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      486.1327,
-      587.5618,
-      656.2725
+      486,
+      588,
+      656
      ]
     }
    },
-   "name": "plano-convex at a finite object: real ray field 5.0, pupil (0.0, 1.0), 587.5618 nm",
+   "name": "plano-convex at a finite object: real ray field 5.0, pupil (0.0, 1.0), 588 nm",
    "tolerance": {
     "x": 1e-09,
     "y": 1e-09
@@ -898,13 +898,13 @@
   {
    "absolute": true,
    "expected": {
-    "x": 0.01669931375009792,
-    "y": -4.814615777322213
+    "x": 0.016557749278898193,
+    "y": -4.814529164998863
    },
    "inputs": {
     "field": 5.0,
     "kind": "ray",
-    "nm": 486.1327,
+    "nm": 486,
     "px": 0.8,
     "py": -0.5,
     "system": {
@@ -944,13 +944,13 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      486.1327,
-      587.5618,
-      656.2725
+      486,
+      588,
+      656
      ]
     }
    },
-   "name": "plano-convex at a finite object: real ray field 5.0, pupil (0.8, -0.5), 486.1327 nm",
+   "name": "plano-convex at a finite object: real ray field 5.0, pupil (0.8, -0.5), 486 nm",
    "tolerance": {
     "x": 1e-09,
     "y": 1e-09
@@ -965,7 +965,7 @@
    "inputs": {
     "field": 0.0,
     "kind": "ray",
-    "nm": 587.5618,
+    "nm": 588,
     "px": 0.0,
     "py": 0.0,
     "system": {
@@ -1010,11 +1010,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "entrance pupil beyond the first centre of curvature: real ray field 0.0, pupil (0.0, 0.0), 587.5618 nm",
+   "name": "entrance pupil beyond the first centre of curvature: real ray field 0.0, pupil (0.0, 0.0), 588 nm",
    "tolerance": {
     "x": 1e-09,
     "y": 1e-09
@@ -1024,12 +1024,12 @@
    "absolute": true,
    "expected": {
     "x": 0.0,
-    "y": 0.35604121653339327
+    "y": 0.35620437248746883
    },
    "inputs": {
     "field": 0.0,
     "kind": "ray",
-    "nm": 587.5618,
+    "nm": 588,
     "px": 0.0,
     "py": 1.0,
     "system": {
@@ -1074,11 +1074,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "entrance pupil beyond the first centre of curvature: real ray field 0.0, pupil (0.0, 1.0), 587.5618 nm",
+   "name": "entrance pupil beyond the first centre of curvature: real ray field 0.0, pupil (0.0, 1.0), 588 nm",
    "tolerance": {
     "x": 1e-09,
     "y": 1e-09
@@ -1087,13 +1087,13 @@
   {
    "absolute": true,
    "expected": {
-    "x": 0.19700034692254076,
-    "y": 4.352146381492381
+    "x": 0.19710017596552842,
+    "y": 4.351890535154506
    },
    "inputs": {
     "field": 3.0,
     "kind": "ray",
-    "nm": 587.5618,
+    "nm": 588,
     "px": 0.6,
     "py": -0.8,
     "system": {
@@ -1138,11 +1138,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "entrance pupil beyond the first centre of curvature: real ray field 3.0, pupil (0.6, -0.8), 587.5618 nm",
+   "name": "entrance pupil beyond the first centre of curvature: real ray field 3.0, pupil (0.6, -0.8), 588 nm",
    "tolerance": {
     "x": 1e-09,
     "y": 1e-09
@@ -1150,7 +1150,7 @@
   },
   {
    "expected": {
-    "SI": 0.0013704760133264645
+    "SI": 0.0013704204572177875
    },
    "inputs": {
     "kind": "seidel",
@@ -1190,7 +1190,7 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
@@ -1201,7 +1201,7 @@
   },
   {
    "expected": {
-    "SI": 0.0013611579351133962
+    "SI": 0.0013611037590163567
    },
    "inputs": {
     "kind": "seidel",
@@ -1241,7 +1241,7 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
@@ -1253,7 +1253,7 @@
   },
   {
    "expected": {
-    "SI": 0.005383834437686164
+    "SI": 0.005383513929665374
    },
    "inputs": {
     "kind": "seidel",
@@ -1293,7 +1293,7 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
@@ -1304,7 +1304,7 @@
   },
   {
    "expected": {
-    "SI": 0.005383834452664894
+    "SI": 0.005383513944647315
    },
    "inputs": {
     "kind": "seidel",
@@ -1344,7 +1344,7 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
@@ -1757,12 +1757,12 @@
   {
    "absolute": true,
    "expected": {
-    "opd": 72.64769602
+    "opd": 72.55681265
    },
    "inputs": {
     "field": 0.0,
     "kind": "opd",
-    "nm": 587.5618,
+    "nm": 588,
     "px": 0.0,
     "py": 1.0,
     "system": {
@@ -1811,13 +1811,13 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      486.1327,
-      587.5618,
-      656.2725
+      486,
+      588,
+      656
      ]
     }
    },
-   "name": "aspheric singlet: OPD on the reference sphere, field 0.0, pupil (0.0, 1.0), 587.5618 nm",
+   "name": "aspheric singlet: OPD on the reference sphere, field 0.0, pupil (0.0, 1.0), 588 nm",
    "tolerance": {
     "opd": 1e-08
    }
@@ -1825,12 +1825,12 @@
   {
    "absolute": true,
    "expected": {
-    "opd": 107.35598417
+    "opd": 107.40977048
    },
    "inputs": {
     "field": 4.0,
     "kind": "opd",
-    "nm": 486.1327,
+    "nm": 486,
     "px": 0.7,
     "py": 0.7,
     "system": {
@@ -1879,13 +1879,13 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      486.1327,
-      587.5618,
-      656.2725
+      486,
+      588,
+      656
      ]
     }
    },
-   "name": "aspheric singlet: OPD on the reference sphere, field 4.0, pupil (0.7, 0.7), 486.1327 nm",
+   "name": "aspheric singlet: OPD on the reference sphere, field 4.0, pupil (0.7, 0.7), 486 nm",
    "tolerance": {
     "opd": 1e-08
    }
@@ -1893,12 +1893,12 @@
   {
    "absolute": true,
    "expected": {
-    "opd": 62.81676197
+    "opd": 62.85526419
    },
    "inputs": {
     "field": 4.0,
     "kind": "opd",
-    "nm": 656.2725,
+    "nm": 656,
     "px": 0.0,
     "py": -0.95,
     "system": {
@@ -1947,13 +1947,13 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      486.1327,
-      587.5618,
-      656.2725
+      486,
+      588,
+      656
      ]
     }
    },
-   "name": "aspheric singlet: OPD on the reference sphere, field 4.0, pupil (0.0, -0.95), 656.2725 nm",
+   "name": "aspheric singlet: OPD on the reference sphere, field 4.0, pupil (0.0, -0.95), 656 nm",
    "tolerance": {
     "opd": 1e-08
    }
@@ -1961,12 +1961,12 @@
   {
    "absolute": true,
    "expected": {
-    "opd": -3.57601749
+    "opd": -3.58068858
    },
    "inputs": {
     "field": 5.0,
     "kind": "opd",
-    "nm": 587.5618,
+    "nm": 588,
     "px": 0.0,
     "py": 1.0,
     "system": {
@@ -2006,13 +2006,13 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      486.1327,
-      587.5618,
-      656.2725
+      486,
+      588,
+      656
      ]
     }
    },
-   "name": "plano-convex at a finite object: OPD on the reference sphere, field 5.0, pupil (0.0, 1.0), 587.5618 nm",
+   "name": "plano-convex at a finite object: OPD on the reference sphere, field 5.0, pupil (0.0, 1.0), 588 nm",
    "tolerance": {
     "opd": 1e-08
    }
@@ -2020,12 +2020,12 @@
   {
    "absolute": true,
    "expected": {
-    "opd": -1.01381045
+    "opd": -1.0100853
    },
    "inputs": {
     "field": 5.0,
     "kind": "opd",
-    "nm": 486.1327,
+    "nm": 486,
     "px": 0.8,
     "py": -0.5,
     "system": {
@@ -2065,13 +2065,13 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      486.1327,
-      587.5618,
-      656.2725
+      486,
+      588,
+      656
      ]
     }
    },
-   "name": "plano-convex at a finite object: OPD on the reference sphere, field 5.0, pupil (0.8, -0.5), 486.1327 nm",
+   "name": "plano-convex at a finite object: OPD on the reference sphere, field 5.0, pupil (0.8, -0.5), 486 nm",
    "tolerance": {
     "opd": 1e-08
    }
@@ -2079,7 +2079,7 @@
   {
    "absolute": true,
    "expected": {
-    "strehl": 0.9676810015
+    "strehl": 0.9676810238
    },
    "inputs": {
     "kind": "defocus",
@@ -2101,7 +2101,7 @@
      "format": "opticalsetup-lens",
      "image": {
       "focus": "paraxial",
-      "offsetMm": 0.047004943999999986
+      "offsetMm": 0.04703999999999999
      },
      "object": {
       "atInfinity": true,
@@ -2118,7 +2118,7 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
@@ -2131,7 +2131,7 @@
   {
    "absolute": true,
    "expected": {
-    "strehl": 0.8116267888
+    "strehl": 0.8116270916
    },
    "inputs": {
     "kind": "defocus",
@@ -2153,7 +2153,7 @@
      "format": "opticalsetup-lens",
      "image": {
       "focus": "paraxial",
-      "offsetMm": 0.11751235999999997
+      "offsetMm": 0.11759999999999997
      },
      "object": {
       "atInfinity": true,
@@ -2170,11 +2170,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "perfect lens F/10, image plane 0.1175 mm past focus (about 0.25 waves of defocus): Strehl ratio on axis",
+   "name": "perfect lens F/10, image plane 0.1176 mm past focus (about 0.25 waves of defocus): Strehl ratio on axis",
    "note": "the app sums a 256-sample pupil grid (the square cells fill the disc to about 1e-4); the reference integrates the radius by Simpson's rule to 1e-12",
    "tolerance": {
     "strehl": 0.0003
@@ -2183,7 +2183,7 @@
   {
    "absolute": true,
    "expected": {
-    "strehl": 0.408701324
+    "strehl": 0.4087027377
    },
    "inputs": {
     "kind": "defocus",
@@ -2205,7 +2205,7 @@
      "format": "opticalsetup-lens",
      "image": {
       "focus": "paraxial",
-      "offsetMm": 0.23502471999999994
+      "offsetMm": 0.23519999999999994
      },
      "object": {
       "atInfinity": true,
@@ -2222,11 +2222,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "perfect lens F/10, image plane 0.2350 mm past focus (about 0.5 waves of defocus): Strehl ratio on axis",
+   "name": "perfect lens F/10, image plane 0.2352 mm past focus (about 0.5 waves of defocus): Strehl ratio on axis",
    "note": "the app sums a 256-sample pupil grid (the square cells fill the disc to about 1e-4); the reference integrates the radius by Simpson's rule to 1e-12",
    "tolerance": {
     "strehl": 0.0003
@@ -2235,7 +2235,7 @@
   {
    "absolute": true,
    "expected": {
-    "strehl": 0.09334562671
+    "strehl": 0.09334723243
    },
    "inputs": {
     "kind": "defocus",
@@ -2257,7 +2257,7 @@
      "format": "opticalsetup-lens",
      "image": {
       "focus": "paraxial",
-      "offsetMm": 0.3525370799999999
+      "offsetMm": 0.35279999999999995
      },
      "object": {
       "atInfinity": true,
@@ -2274,11 +2274,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "perfect lens F/10, image plane 0.3525 mm past focus (about 0.75 waves of defocus): Strehl ratio on axis",
+   "name": "perfect lens F/10, image plane 0.3528 mm past focus (about 0.75 waves of defocus): Strehl ratio on axis",
    "note": "the app sums a 256-sample pupil grid (the square cells fill the disc to about 1e-4); the reference integrates the radius by Simpson's rule to 1e-12",
    "tolerance": {
     "strehl": 0.0003
@@ -2291,7 +2291,7 @@
     "tangential": 0.8728885716
    },
    "inputs": {
-    "frequency": 16.99825173926972,
+    "frequency": 16.985583994521168,
     "kind": "mtf",
     "system": {
      "aperture": {
@@ -2328,11 +2328,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "perfect lens F/10: diffraction-limited MTF at 0.1 of the cutoff (17.00 cycles/mm)",
+   "name": "perfect lens F/10: diffraction-limited MTF at 0.1 of the cutoff (16.99 cycles/mm)",
    "note": "NA = sin(atan(r/f)) for the ideal lens; the sampled pupil and that NA leave about 1e-3",
    "tolerance": {
     "sagittal": 0.003,
@@ -2346,7 +2346,7 @@
     "tangential": 0.6850376425
    },
    "inputs": {
-    "frequency": 42.4956293481743,
+    "frequency": 42.46395998630292,
     "kind": "mtf",
     "system": {
      "aperture": {
@@ -2383,11 +2383,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "perfect lens F/10: diffraction-limited MTF at 0.25 of the cutoff (42.50 cycles/mm)",
+   "name": "perfect lens F/10: diffraction-limited MTF at 0.25 of the cutoff (42.46 cycles/mm)",
    "note": "NA = sin(atan(r/f)) for the ideal lens; the sampled pupil and that NA leave about 1e-3",
    "tolerance": {
     "sagittal": 0.003,
@@ -2401,7 +2401,7 @@
     "tangential": 0.5046315755
    },
    "inputs": {
-    "frequency": 67.99300695707888,
+    "frequency": 67.94233597808467,
     "kind": "mtf",
     "system": {
      "aperture": {
@@ -2438,11 +2438,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "perfect lens F/10: diffraction-limited MTF at 0.4 of the cutoff (67.99 cycles/mm)",
+   "name": "perfect lens F/10: diffraction-limited MTF at 0.4 of the cutoff (67.94 cycles/mm)",
    "note": "NA = sin(atan(r/f)) for the ideal lens; the sampled pupil and that NA leave about 1e-3",
    "tolerance": {
     "sagittal": 0.003,
@@ -2456,7 +2456,7 @@
     "tangential": 0.3368301287
    },
    "inputs": {
-    "frequency": 93.49038456598346,
+    "frequency": 93.42071196986643,
     "kind": "mtf",
     "system": {
      "aperture": {
@@ -2493,11 +2493,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "perfect lens F/10: diffraction-limited MTF at 0.55 of the cutoff (93.49 cycles/mm)",
+   "name": "perfect lens F/10: diffraction-limited MTF at 0.55 of the cutoff (93.42 cycles/mm)",
    "note": "NA = sin(atan(r/f)) for the ideal lens; the sampled pupil and that NA leave about 1e-3",
    "tolerance": {
     "sagittal": 0.003,
@@ -2511,7 +2511,7 @@
     "tangential": 0.1881204044
    },
    "inputs": {
-    "frequency": 118.98776217488802,
+    "frequency": 118.89908796164816,
     "kind": "mtf",
     "system": {
      "aperture": {
@@ -2548,11 +2548,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "perfect lens F/10: diffraction-limited MTF at 0.7 of the cutoff (118.99 cycles/mm)",
+   "name": "perfect lens F/10: diffraction-limited MTF at 0.7 of the cutoff (118.90 cycles/mm)",
    "note": "NA = sin(atan(r/f)) for the ideal lens; the sampled pupil and that NA leave about 1e-3",
    "tolerance": {
     "sagittal": 0.003,
@@ -2566,7 +2566,7 @@
     "tangential": 0.06814744003
    },
    "inputs": {
-    "frequency": 144.48513978379262,
+    "frequency": 144.37746395342992,
     "kind": "mtf",
     "system": {
      "aperture": {
@@ -2603,11 +2603,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "perfect lens F/10: diffraction-limited MTF at 0.85 of the cutoff (144.49 cycles/mm)",
+   "name": "perfect lens F/10: diffraction-limited MTF at 0.85 of the cutoff (144.38 cycles/mm)",
    "note": "NA = sin(atan(r/f)) for the ideal lens; the sampled pupil and that NA leave about 1e-3",
    "tolerance": {
     "sagittal": 0.003,
@@ -2621,7 +2621,7 @@
     "tangential": 0.01332001101
    },
    "inputs": {
-    "frequency": 161.48339152306232,
+    "frequency": 161.3630479479511,
     "kind": "mtf",
     "system": {
      "aperture": {
@@ -2658,11 +2658,11 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
-   "name": "perfect lens F/10: diffraction-limited MTF at 0.95 of the cutoff (161.48 cycles/mm)",
+   "name": "perfect lens F/10: diffraction-limited MTF at 0.95 of the cutoff (161.36 cycles/mm)",
    "note": "NA = sin(atan(r/f)) for the ideal lens; the sampled pupil and that NA leave about 1e-3",
    "tolerance": {
     "sagittal": 0.003,
@@ -2671,7 +2671,7 @@
   },
   {
    "expected": {
-    "waist": 0.01496213837
+    "waist": 0.01497329705
    },
    "inputs": {
     "kind": "gaussian",
@@ -2712,7 +2712,7 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
@@ -2724,7 +2724,7 @@
   },
   {
    "expected": {
-    "waist": 0.009351336484
+    "waist": 0.009358310654
    },
    "inputs": {
     "kind": "gaussian",
@@ -2765,7 +2765,7 @@
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
@@ -2778,7 +2778,7 @@
   {
    "absolute": true,
    "expected": {
-    "rms": 6.599619892805578e-15
+    "rms": 4.0943002132167226e-15
    },
    "inputs": {
     "kind": "spot",
@@ -2811,15 +2811,15 @@
        "thickness": 5.0
       },
       {
-       "conic": -2.300682344660986,
+       "conic": -2.3006268370223872,
        "material": "air",
-       "radius": -51.680003450058834,
+       "radius": -51.67817367777037,
        "thickness": 100.0
       }
      ],
      "version": 1,
      "wavelengthsNm": [
-      587.5618
+      588
      ]
     }
    },
@@ -2839,7 +2839,7 @@
   "Optiland v0.5.5 (MIT licence), samples/objectives.py CookeTriplet: the Cooke prescription (the OpticStudio 'Cooke 40 degree field' sample)"
  ],
  "convergence": "Bisection to 200 halvings (far past double precision); the surface normal from a complex-step derivative; Simpson's rule on 4000 intervals over the pupil radius (the defocus integrand is smooth, error below 1e-12).",
- "domain": "Rotationally symmetric refracting systems in air, objects at infinity and at 200 mm, fields up to 20 deg, F/2.5 to F/10, visible wavelengths; diffraction cases for a perfect F/10 lens at 587.6 nm, up to 0.75 waves of defocus.",
+ "domain": "Rotationally symmetric refracting systems in air, objects at infinity and at 200 mm, fields up to 20 deg, F/2.5 to F/10, visible wavelengths; diffraction cases for a perfect F/10 lens at 588 nm, up to 0.75 waves of defocus.",
  "fidelity": "computed",
  "id": "lens-design",
  "outside_scope": "Mirrors, tilts, decentres, vector (high-NA) diffraction, and the Fresnel-number focal shift are outside this model.",

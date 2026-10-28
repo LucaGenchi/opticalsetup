@@ -109,10 +109,10 @@ const welford = (n, K, y, B, C) => y ** 4 * K ** 3 / 4 * ((n / (n - 1)) ** 2 + (
   + 4 * (n + 1) / (n * (n - 1)) * B * C + (3 * n + 2) / n * C * C);
 
 test('plano-convex singlet: real-trace spherical aberration matches the Seidel and thin-lens values', () => {
-  const n = materialIndex('nbk7', 587.5618);
+  const n = materialIndex('nbk7', 588);
   for (const [id, B] of [['pcx-curved-first', 1], ['pcx-flat-first', -1]]) {
-    const sys = normalizeSystem({ ...presetSystem(id), wavelengthsNm: [587.5618], primaryWavelength: 0 });
-    const fo = firstOrder(sys, 587.5618);
+    const sys = normalizeSystem({ ...presetSystem(id), wavelengthsNm: [588], primaryWavelength: 0 });
+    const fo = firstOrder(sys, 588);
     const fitted = realTraceSI(sys);
     rel(seidelSums(sys, fo).total.SI, fitted, 1e-5, `${id}: surface sum vs real trace`);
     // The thin-lens formula ignores the 4 mm thickness, which lowers the
@@ -124,19 +124,19 @@ test('plano-convex singlet: real-trace spherical aberration matches the Seidel a
 });
 
 test('conic and A4 terms enter S_I: an aplanatic plano-hyperbolic singlet sums to zero', () => {
-  const n = materialIndex('nbk7', 587.5618);
+  const n = materialIndex('nbk7', 588);
   const sys = normalizeSystem({
-    wavelengthsNm: [587.5618], primaryWavelength: 0, aperture: { type: 'epd', value: 40 },
+    wavelengthsNm: [588], primaryWavelength: 0, aperture: { type: 'epd', value: 40 },
     surfaces: [{ radius: 0, thickness: 5, material: 'nbk7', stop: true }, { radius: -(n - 1) * 100, conic: -n * n, thickness: 100 }],
   });
-  const fo = firstOrder(sys, 587.5618);
+  const fo = firstOrder(sys, 588);
   close(seidelSums(sys, fo).total.SI, 0, 1e-15, 'S_I');
   const r = analyzeSystem(sys);
   close(r.spots[0].poly.rms, 0, 1e-12, 'RMS spot');
   // The same correction written as an A4 term instead of a conic.
   const c = 1 / sys.surfaces[1].radius;
   const asSphere = normalizeSystem({ ...sys, surfaces: [sys.surfaces[0], { ...sys.surfaces[1], conic: 0, asphere: [-n * n * c ** 3 / 8] }] });
-  close(seidelSums(asSphere, firstOrder(asSphere, 587.5618)).total.SI, 0, 1e-15, 'S_I with A4');
+  close(seidelSums(asSphere, firstOrder(asSphere, 588)).total.SI, 0, 1e-15, 'S_I with A4');
 });
 
 // ------------------------------------------------------------- the engine
@@ -147,7 +147,7 @@ test('perfect lens: a point image at every field, at infinity and at a finite ob
     close(spot.poly.rms, 0, 1e-12, `field ${spot.field}`);
     close(spot.chief.y, 100 * Math.tan(spot.field * Math.PI / 180), 1e-9, 'chief height f tan θ');
   }
-  close(r.airyRadius, 1.22 * 587.5618e-6 * 10, 1e-15, 'Airy radius 1.22 λ F/#');
+  close(r.airyRadius, 1.22 * 588e-6 * 10, 1e-15, 'Airy radius 1.22 λ F/#');
   const finite = analyzeSystem({ ...presetSystem('perfect'), object: { atInfinity: false, distanceMm: 300 }, fields: { type: 'height', values: [0, 10] } });
   close(finite.firstOrder.imageDistance, 150, 1e-9, '1/v = 1/f − 1/u');
   close(finite.firstOrder.magnification, -0.5, 1e-12, 'magnification');
@@ -209,14 +209,14 @@ test('the cemented achromat agrees with the canvas lens group it comes from', ()
 
 test('failing rays are reported by kind, never dropped silently', () => {
   const tir = analyzeSystem({
-    aperture: { type: 'epd', value: 18 }, wavelengthsNm: [587.5618], primaryWavelength: 0,
+    aperture: { type: 'epd', value: 18 }, wavelengthsNm: [588], primaryWavelength: 0,
     surfaces: [{ radius: 0, thickness: 3, material: 'nsf11', stop: true }, { radius: -10, thickness: 20 }],
   });
   assert.ok(tir.spots[0].perWavelength[0].failed.tir > 0, 'steep glass-to-air face: TIR');
   assert.ok(tir.warnings.some(w => /total internal reflection/.test(w.text)));
 
   const miss = analyzeSystem({
-    aperture: { type: 'epd', value: 14 }, wavelengthsNm: [587.5618], primaryWavelength: 0,
+    aperture: { type: 'epd', value: 14 }, wavelengthsNm: [588], primaryWavelength: 0,
     surfaces: [{ radius: 6, thickness: 4, material: 'nbk7', stop: true }, { radius: 0, thickness: 10 }],
   });
   assert.ok(miss.spots[0].perWavelength[0].failed.miss > 0, 'aperture wider than the sphere: miss');
@@ -227,7 +227,7 @@ test('failing rays are reported by kind, never dropped silently', () => {
   assert.ok(clipped.warnings.some(w => w.kind === 'vignetting'));
 
   const crossing = analyzeSystem({
-    aperture: { type: 'epd', value: 32 }, wavelengthsNm: [587.5618], primaryWavelength: 0,
+    aperture: { type: 'epd', value: 32 }, wavelengthsNm: [588], primaryWavelength: 0,
     surfaces: [{ radius: 20, thickness: 1, material: 'nbk7', stop: true }, { radius: -20, thickness: 15 }],
   });
   assert.ok(crossing.spots[0].perWavelength[0].failed.behind > 0, 'faces that cross: the ray would travel backward');
@@ -264,12 +264,24 @@ test('malformed prescriptions are normalized to finite, bounded values with one 
   assert.equal(sys.surfaces[1].radius, LIMITS.radius);
   assert.equal(sys.aperture.type, 'epd', 'NA needs a finite object');
   assert.deepEqual(sys.fields.values, [89, 0, 10]);
-  assert.deepEqual(sys.wavelengthsNm, [200, 587.5618, 20000]);
+  assert.deepEqual(sys.wavelengthsNm, [200, 588, 20000]);
   assert.equal(sys.pupilSamples, LIMITS.pupilSamples[1]);
   assert.equal(sys.image.focus, 'paraxial');
   assert.equal(sys.image.offsetMm, 0, 'a non-finite number falls back to the default');
   assert.equal(normalizeSystem({ image: { offsetMm: -1e9 } }).image.offsetMm, -LIMITS.imageOffset);
   assert.equal(normalizeSystem(null).surfaces.length, 2);
+});
+
+test('wavelengths are whole nanometres: typed and saved decimals are rounded', () => {
+  assert.deepEqual(normalizeSystem({}).wavelengthsNm, [486, 588, 656], 'F, d, C to the nanometre');
+  assert.deepEqual(normalizeSystem({ wavelengthsNm: [532.4, 532.5, 1064.0, '632.8'] }).wavelengthsNm, [532, 533, 1064, 633]);
+  // A design saved with the exact Fraunhofer lines opens on the rounded ones.
+  const saved = normalizeSystem({ wavelengthsNm: [486.1327, 587.5618, 656.2725], primaryWavelength: 1 });
+  assert.deepEqual(saved.wavelengthsNm, [486, 588, 656]);
+  assert.equal(saved.primaryWavelength, 1);
+  // Rounding happens before the range: 199.6 rounds up to 200, 20000.4 down.
+  assert.deepEqual(normalizeSystem({ wavelengthsNm: [199.6, 20000.4, 150] }).wavelengthsNm, [200, 20000, 200]);
+  assert.deepEqual(systemFromJSON(systemToJSON(saved)).system.wavelengthsNm, [486, 588, 656], 'round-trips');
 });
 
 test('prescription files round-trip and refuse what they cannot read', () => {
@@ -334,12 +346,12 @@ test('a spherical design opens in the canvas as a Lens group; anything else says
 // the sphere; the other root is the real crossing and must be tried.
 test('an entrance pupil beyond the first centre of curvature still finds the first surface', () => {
   const sys = normalizeSystem({
-    wavelengthsNm: [587.5618], primaryWavelength: 0, aperture: { type: 'epd', value: 10 },
+    wavelengthsNm: [588], primaryWavelength: 0, aperture: { type: 'epd', value: 10 },
     surfaces: [{ radius: 51.68, thickness: 4, material: 'nbk7' }, { radius: 0, thickness: 40 }, { radius: 0, thickness: 50, stop: true }],
   });
-  const fo = firstOrder(sys, 587.5618);
+  const fo = firstOrder(sys, 588);
   assert.ok(fo.zEp > 51.68, 'the pupil sits beyond the centre of curvature');
-  const model = traceModel(sys, 587.5618, fo);
+  const model = traceModel(sys, 588, fo);
   const chief = traceRay(model, 0, 0, 0, 100, { path: true });
   assert.ok(chief.ok);
   close(chief.points[1][2], 0, 1e-12, 'the axial ray meets surface 1 at its vertex');
@@ -442,7 +454,7 @@ test('every catalogue glass has a readable short name', async () => {
 // ------------------------------------------------ wavefront and diffraction
 
 const wavefrontRef = JSON.parse(readFileSync(new URL('./fixtures/optiland-cooke-wavefront.json', import.meta.url), 'utf8'));
-const LAMBDA_D = 587.5618;
+const LAMBDA_D = 588;
 // The perfect lens of the presets at one wavelength and one field.
 const perfectMono = (extra = {}) => normalizeSystem({
   ...presetSystem('perfect'), wavelengthsNm: [LAMBDA_D], primaryWavelength: 0, fields: { type: 'angle', values: [0] }, ...extra,
@@ -631,7 +643,7 @@ test('Zernike: Noll ordering, orthonormal on the disc, and a fit recovers its co
 });
 
 test('the PSF lands on the side the rays do, for an upright and an inverted exit pupil', () => {
-  const lines = { wavelengthsNm: [486.1327, LAMBDA_D, 656.2725], primaryWavelength: 1 };
+  const lines = { wavelengthsNm: [486, LAMBDA_D, 656], primaryWavelength: 1 };
   const plate = normalizeSystem({ ...lines, aperture: { type: 'epd', value: 10 }, fields: { type: 'angle', values: [0, 10] }, diffraction: { grid: 128 },
     surfaces: [{ type: 'paraxial', focal: 100, thickness: 20, stop: true }, { radius: 0, thickness: 20, material: 'f2' }, { radius: 0, thickness: 70 }] });
   // The same, then an ideal relay lens that images the stop upside down.
@@ -830,7 +842,7 @@ test('the numbers quoted in “How to read the wavefront, PSF and MTF” are the
   assert.equal(round(Math.exp(-((2 * Math.PI * c.wavefront.rmsTilt) ** 2)), 2), 0.75);
   assert.equal(round(-best(curved.throughFocus).shift, 2), 0.12);
   assert.equal(round(best(curved.throughFocus).strehl, 2), 0.98);
-  assert.equal(round(analyzeDiffraction(presetSystem('pcx-flat-first'), { field: 0, throughFocus: false }).perWavelength[1].strehl, 2), 0.11);
+  assert.equal(round(analyzeDiffraction(presetSystem('pcx-flat-first'), { field: 0, throughFocus: false }).perWavelength[1].strehl, 2), 0.12);
 
   const cooke = presetSystem('cooke'), geo = analyzeSystem(cooke);
   const axis = analyzeDiffraction(cooke, { field: 0, zImage: geo.image.z }), a = axis.perWavelength[1];
