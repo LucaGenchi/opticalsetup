@@ -518,7 +518,7 @@ function measurementHTML(el) {
       <dt>Accumulated GDD</dt><dd>${gddText}</dd>
       ${stretchText ? `<dt>${rd.pulse.envelope ? 'Computed FWHM' : 'Dispersed duration'}</dt><dd>${stretchText}</dd>` : ''}
       ${!rd.pulse.mixed && rd.pulse.dispersionModel ? `<dt>Duration model</dt><dd>${esc(rd.pulse.dispersionModel)}</dd>` : ''}
-      ${rd.pulse.colourSpread ? `<dt>Colours</dt><dd>${esc(colourSpreadText(rd.pulse.colourSpread))}</dd>` : ''}
+      ${(rd.pulse.colourSpreads || []).map(spread => `<dt>Colours</dt><dd>${esc(colourSpreadText(spread))}</dd>`).join('')}
       <dt>Earliest path delay</dt><dd>${rd.pulse.earliestPathDelayNs.toFixed(3)} ns</dd>
       <dt>Path spread</dt><dd>${rd.pulse.arrivalSpreadPs < 0.001 ? '&lt;0.001' : rd.pulse.arrivalSpreadPs.toFixed(3)} ps</dd>` : '';
   const pulseTimeline = pulseTimelineHTML(rd.pulse, rd.color) + pulseEnvelopeHTML(rd.pulse?.envelope);

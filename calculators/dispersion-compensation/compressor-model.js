@@ -511,7 +511,7 @@ export function buildFigure(v) {
     const reading = detectorReading(layout.elements.at(-1).id);
     const pulse = reading?.pulse;
     if (Number.isFinite(pulse?.gddFs2) && !String(pulse.dispersionModel ?? '').includes(DISPERSION_UNAVAILABLE.partialFan)
-      && pulse.colourSpread?.parallel !== false && wholeBand(reading, v)) return layout;
+      && !pulse.colourSpreads?.some(spread => !spread.parallel) && wholeBand(reading, v)) return layout;
   }
   return { ...layout, figureIssue: layout.kind === 'prism'
     ? 'In the plane of the figure part of the band misses a prism or the detector (the colours spread wider than the optics), so the drawing and the canvas scene do not deliver the whole band; larger prisms would.'
