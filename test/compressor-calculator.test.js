@@ -10,6 +10,8 @@ import {
 } from '../calculators/dispersion-compensation/compressor-calculator.js';
 import { canvasScene, omegaOf, lensGlassGddFs2 } from '../calculators/dispersion-compensation/compressor-model.js';
 import { traceScene, detectorReading } from '../sketch/js/raytrace.js';
+import { parseSketch } from '../sketch/js/state.js';
+import { registry } from '../sketch/js/elements.js';
 import { gaussianPulseDurationAfterGDD, sech2PulseDurationAfterGDD } from '../sketch/js/glass.js';
 
 const form = (layout, extra = {}) => Object.fromEntries(Object.entries({
@@ -174,6 +176,30 @@ test('the canvas opens the bench with an autocorrelator at the output', () => {
   assert.equal(scene.elements.at(-1).type, 'autocorrelator');
   assert.equal(scene.elements.at(-1).params.aperture, r.layout.elements.at(-1).params.aperture);
   assert.deepEqual(scene.elements.slice(0, -1), r.layout.elements.slice(0, -1));
+});
+
+test('the canvas scene delivers the colours the figure check traced, with its autocorrelator box in place', () => {
+  // One pass of a grating pair sends the bluest colour to the second grating
+  // past the output: an autocorrelator box reaching toward the optics would
+  // take it before it gets there.
+  for (const [layout, extra] of [...Object.keys(LAYOUT_PRESETS).map(k => [k, {}]),
+    ['grating-pair', { passes: '1' }], ['prism-pair', { passes: '1' }]]) {
+    const r = computeCompressor(form(layout, extra));
+    assert.equal(r.figureIssue, null, `${layout} ${JSON.stringify(extra)}: ${r.figureIssue}`);
+    traceScene(r.layout.elements);
+    const page = detectorReading(r.layout.elements.at(-1).id);
+    const { elements } = parseSketch(canvasScene(r.layout), registry);
+    traceScene(elements);
+    const canvas = detectorReading(elements.at(-1).id);
+    assert.equal(canvas.samples, page.samples, `${layout} ${JSON.stringify(extra)}`);
+    assert.equal(canvas.bandMin, page.bandMin, `${layout} ${JSON.stringify(extra)}`);
+    assert.equal(canvas.bandMax, page.bandMax, `${layout} ${JSON.stringify(extra)}`);
+    // Loading rounds the scene's numbers, which moves the fitted GDD a little.
+    assert.ok(Math.abs(canvas.pulse.gddFs2 / page.pulse.gddFs2 - 1) < 1e-3, `${layout} ${JSON.stringify(extra)}`);
+  }
+  const r = computeCompressor(form('grating-pair', { passes: '1' }));
+  traceScene(r.layout.elements);
+  assert.equal(detectorReading(r.layout.elements.at(-1).id).samples, 5);
 });
 
 test('the graphs are finite where they are drawn', () => {

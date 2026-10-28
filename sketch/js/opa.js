@@ -245,7 +245,11 @@ export function arrivingPulse(beam) {
   const chirp = d.transformLimitFs > 0 && Number.isFinite(d.inputGddFs2) && Number.isFinite(d.totalGddFs2) && centreNm > 0
     && (gaussian || strong)
     ? { tau0Fs: d.transformLimitFs, gddFs2: d.totalGddFs2, centreNm } : null;
-  return { pulse: { ...pulse, pulseWidthFs: d.durationFs }, chirp, issue: null };
+  // The Gaussian pulse's own spectral phase, whatever its spectrum looks like
+  // here: a coherent Raman readout needs only that, not the slice mapping.
+  const phase = pulse.pulseShape !== 'sech2' && d.transformLimitFs > 0 && Number.isFinite(d.totalGddFs2)
+    ? { tau0Fs: d.transformLimitFs, gddFs2: d.totalGddFs2 } : null;
+  return { pulse: { ...pulse, pulseWidthFs: d.durationFs }, chirp, phase, issue: null };
 }
 
 // The timing of one spectral slice of a chirped seed at wavelength wl: its
