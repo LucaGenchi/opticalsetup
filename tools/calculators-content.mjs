@@ -15,6 +15,7 @@ import { compressorCalculators } from './calculators-compressor-content.mjs';
 import { scanningCalculators } from './calculators-scanning-content.mjs';
 import { lensCalculators } from './calculators-lens-content.mjs';
 import { beamCalculators } from './calculators-beam-content.mjs';
+import { thickLensCalculators } from './calculators-thick-lens-content.mjs';
 
 export const cite = (...n) => n.map(k => `<a class="cite" href="#ref-${k}">[${k}]</a>`).join('');
 
@@ -25,6 +26,7 @@ export const calculators = [
   ...compressorCalculators,
   ...fluorescenceCalculators,
   ...scanningCalculators,
+  ...thickLensCalculators,
   ...lensCalculators,
   ...beamCalculators,
   {

@@ -1,0 +1,610 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// Thin and thick lenses: the first-order data of a spherical singlet of
+// catalogue glass in air, the image of an object, and the focus of a
+// collimated Gaussian beam by an ideal lens and by the real singlet.
+//
+// Conventions. Light travels toward +z; a radius is positive when its centre
+// of curvature lies after its vertex (R₁ > 0 and R₂ < 0 for a biconvex
+// lens), 0 for a flat face. Positions along the axis are signed, positive
+// toward +z: H from the front vertex V₁, H′ from the back vertex V₂. The
+// Gaussian lens formula uses distances from the principal planes, positive
+// for a real object before H and a real image after H′:
+//
+//   1/s + 1/s′ = 1/f,   m = −s′/s,   x x′ = f²  (x = s − f, x′ = s′ − f).
+//
+// The lens data come from the lens designer's paraxial (y-nu) trace
+// (calculators/lens-design/engine/paraxial.js): two rays give the system
+// matrix from V₁ to V₂, and from it f, the back and front focal distances
+// and the principal planes, which the Python reference checks against the
+// thick-lens formulas
+//
+//   1/f = (n − 1)[1/R₁ − 1/R₂ + (n − 1)t/(n R₁R₂)],
+//   H = −f(n − 1)t/(n R₂) from V₁,   H′ = −f(n − 1)t/(n R₁) from V₂.
+//
+// The beam is a collimated TEM₀₀ beam with its waist at V₁. Its paraxial
+// focus is Self's thin-lens result between the principal planes. Through
+// focus, two lenses are followed: the real singlet, traced by the lens
+// designer's engine, and an ideal lens of the same focal length that obeys
+// the sine condition (an aplanat: a ray at height h leaves toward the focus
+// at sin θ = h/f), both lit by the beam and limited by the clear aperture.
+// On axis their pupils are round, so the focus is the Debye integral in one
+// dimension, carried through focus in the Debye-Wolf form (see focusFrom),
+// with the wavefront W from the traced rays, and
+// the fiber coupling the overlap the engine's coupling.js takes, also in
+// one dimension. Units: mm, wavelengths in nm, focal spots and fiber modes
+// in µm.
+
+import { defaultsFor, parseInputs, unavailable } from '../assets/calculator-inputs.js';
+import { GLASSES, glassWavelengthRange, isWavelengthInGlassRange } from '../../sketch/js/glass.js';
+import { gaussianBeam, thinLensFocus } from '../gaussian-beam/gaussian-beam.js';
+import { fiberMode, gaussianCoupling, MARCUSE_V } from '../fiber-coupling/fiber-coupling.js';
+import { besselJ0 } from '../point-scanning/psf.js';
+import { normalizeSystem } from '../lens-design/engine/system.js';
+import { firstOrder, paraxialRay } from '../lens-design/engine/paraxial.js';
+import { materialIndex, glassShortName } from '../lens-design/engine/materials.js';
+import { traceModel } from '../lens-design/engine/trace.js';
+import { traceBundle, referenceSphere, sphereCrossing } from '../lens-design/engine/wavefront.js';
+import { illumination } from '../lens-design/engine/diffraction.js';
+import { modeNorm, MODE_LIMIT } from '../lens-design/engine/coupling.js';
+import { thickLensAdjustment } from '../../sketch/js/elements.js';
+
+// The share of a Gaussian beam's power inside its 1/e² radius, which also
+// defines the focus radius drawn for any beam: the radius holding this much.
+export const GAUSSIAN_SHARE = 1 - Math.exp(-2);
+// The beam fills the pupil out to this many 1/e² radii (or the clear
+// aperture, if smaller): beyond 3.5 w lies 2 × 10⁻¹¹ of the power, and the
+// edge's ringing no longer moves the focus radius (it does by 5 × 10⁻⁴ at 2.5 w).
+export const PUPIL_BEAM_RADII = 3.5;
+// The engine's beam-to-pupil ratio range.
+const BEAM_RATIO_MAX = 10;
+// Radial pupil samples (a power of two: coarser strides divide it), the
+// fewest Simpson intervals used, and the largest wavefront step (waves) and
+// Bessel phase step (rad) per interval.
+const RHO = 1024, MIN_INTERVALS = 64, MAX_WAVE_STEP = 0.1, MAX_BESSEL_STEP = 0.25;
+// Steps of the radius grid per λ/a, and its largest length.
+const R_STEPS = 16, R_MAX_STEPS = 6000;
+// Planes in the focus scans.
+export const SCAN_POINTS = 41;
+// Beyond this rim NA the page shows no focus; beyond HIGH_NA it warns that
+// scalar diffraction ignores polarization; below FRESNEL_LIMIT that the
+// focus is not where the Debye integral puts it (engine/diffraction.js).
+export const MAX_RIM_NA = 0.9, HIGH_NA = 0.6, FRESNEL_LIMIT = 10;
+
+export const GLASS_CHOICES = [...GLASSES.values()].map(g => [g.id, g.label]);
+
+// ---------------------------------------------------------------- lens
+
+const curvature = r => (r ? 1 / r : 0);
+
+// First-order data at one wavelength, from two y-nu rays through the
+// engine's surfaces: A enters at height 1, parallel; B at the vertex with
+// unit slope. Their heights at V₂ and slopes after it are the columns of
+// the system matrix [y₂, u₂] = [[A_y, B_y], [A_u, B_u]] [y₁, u₁].
+export function lensData({ glass, wavelengthNm, r1Mm, r2Mm, thicknessMm }) {
+  const n = materialIndex(glass, wavelengthNm);
+  const sys = { surfaces: [{ type: 'standard', radius: r1Mm, thickness: thicknessMm }, { type: 'standard', radius: r2Mm, thickness: 0 }] };
+  const media = [1, n, 1];
+  const A = paraxialRay(sys, media, 1, 0), B = paraxialRay(sys, media, 0, 1);
+  const matrix = { Ay: A.y[1], Au: A.u[1], By: B.y[1], Bu: B.u[1] };
+  const power = -matrix.Au;
+  const thinPower = (n - 1) * (curvature(r1Mm) - curvature(r2Mm));
+  if (Math.abs(power) < 1e-12) return { n, matrix, power: 0, afocal: true, thinPower, thinFocalMm: thinPower ? 1 / thinPower : Infinity };
+  const efl = 1 / power;
+  const bfl = -matrix.Ay / matrix.Au, ffl = -matrix.Bu / matrix.Au;
+  return {
+    n, matrix, power, afocal: false, efl, bfl, ffl,
+    // H from V₁ (its focal point lies f before it), H′ from V₂.
+    h1Mm: efl - ffl, h2Mm: bfl - efl,
+    thinPower, thinFocalMm: thinPower ? 1 / thinPower : Infinity,
+    // Coddington's shape factor (R₂ + R₁)/(R₂ − R₁): −1 and +1 are the two
+    // plano-convex orientations, 0 equi-convex.
+    shape: shapeFactor(r1Mm, r2Mm),
+  };
+}
+
+function shapeFactor(r1, r2) {
+  const c1 = curvature(r1), c2 = curvature(r2);
+  return c1 === c2 ? null : (c1 + c2) / (c1 - c2);
+}
+
+// Sag of a spherical face at height h (null when the sphere is smaller).
+export function sagMm(r, h) {
+  if (!r) return 0;
+  if (Math.abs(r) < h) return null;
+  return r - Math.sign(r) * Math.sqrt(r * r - h * h);
+}
+
+// The image of an object at distance d before V₁ and height h: the image
+// distance from V₂ is where the rays from the object point meet again,
+// y = (A_y + s′A_u) h + (A_y d + B_y + s′(A_u d + B_u)) u, so
+// s′ = −(A_y d + B_y)/(A_u d + B_u) and m = A_y + s′A_u.
+export function imageOf(lens, distanceMm, heightMm) {
+  const { Ay, Au, By, Bu } = lens.matrix;
+  const den = Au * distanceMm + Bu;
+  if (lens.afocal || Math.abs(den) < 1e-12 * Math.max(1, Math.abs(Ay * distanceMm + By))) return { atInfinity: true };
+  const fromV2 = -(Ay * distanceMm + By) / den;
+  const magnification = Ay + fromV2 * Au;
+  const s = distanceMm + lens.h1Mm, s2 = fromV2 - lens.h2Mm;
+  return {
+    atInfinity: false, fromV2, magnification, heightMm: magnification * heightMm,
+    real: fromV2 > 0, upright: magnification > 0,
+    objectFromH: s, imageFromH2: s2,
+    newtonX: s - lens.efl, newtonX2: s2 - lens.efl,
+  };
+}
+
+// The thin-lens estimate with distances from the lens's centre.
+export function thinImage(lens, distanceMm, thicknessMm) {
+  const s = distanceMm + thicknessMm / 2, f = lens.thinFocalMm;
+  const inv = 1 / f - 1 / s;
+  if (!Number.isFinite(f) || Math.abs(inv) < 1e-15) return { atInfinity: true };
+  const s2 = 1 / inv;
+  return { atInfinity: false, fromCentre: s2, fromV2: s2 - thicknessMm / 2, magnification: -s2 / s };
+}
+
+// The three construction rays from the object's tip, traced paraxially
+// through both faces (the y-nu heights at the vertex planes and the slope in
+// the glass), from the object to zEnd (z from V₁). Each is drawn as it
+// travels; `back` is the extension of the light leaving the lens backward,
+// to the virtual image or to H′, and `front` the incoming ray's extension
+// forward to H.
+export function constructionRays(lens, thicknessMm, distanceMm, heightMm, zEnd) {
+  const z0 = -distanceMm, h = heightMm, rays = [];
+  const add = (name, u0) => {
+    const y1 = h + distanceMm * u0;
+    const sys = { surfaces: [{ type: 'standard', radius: lens.r1Mm, thickness: thicknessMm }, { type: 'standard', radius: lens.r2Mm, thickness: 0 }] };
+    const r = paraxialRay(sys, [1, lens.n, 1], y1, u0);
+    const y2 = r.y[1], u2 = r.u[1];
+    rays.push({
+      name, path: [[z0, h], [0, y1], [thicknessMm, y2], [zEnd, y2 + u2 * (zEnd - thicknessMm)]],
+      slopeOut: u2, heightOut: y2,
+    });
+  };
+  add('parallel', 0);
+  const zF = -lens.ffl, zH = lens.h1Mm;
+  if (Math.abs(zF - z0) > 1e-9 * Math.max(1, Math.abs(lens.efl))) add('focal', -h / (zF - z0));
+  if (Math.abs(zH - z0) > 1e-9 * Math.max(1, Math.abs(lens.efl))) add('nodal', -h / (zH - z0));
+  return rays;
+}
+
+// ---------------------------------------------------------------- beam
+
+// The ideal focus of a collimated TEM₀₀ beam (waist at V₁): a thin lens of
+// focal length f at H, seen from H′ (Self's equations).
+export function idealFocus(lens, beamDiameterMm, wavelengthNm) {
+  const input = gaussianBeam({ waistUm: beamDiameterMm * 500, wavelengthNm });
+  const focus = thinLensFocus(input, lens.h1Mm, lens.efl);
+  return {
+    waistUm: focus.beam.waistUm, rayleighMm: focus.beam.rayleighMm, halfAngleMrad: focus.beam.halfDivergenceMrad,
+    fromH2Mm: focus.distanceMm, fromV2Mm: focus.distanceMm + lens.h2Mm,
+  };
+}
+
+// The share of the beam a round aperture of diameter D passes.
+export const apertureShare = (diameterMm, beamDiameterMm) => 1 - Math.exp(-2 * (diameterMm / beamDiameterMm) ** 2);
+
+// The pupil the beam fills: out to PUPIL_BEAM_RADII of its 1/e² radius, or
+// to the clear aperture if that is smaller; `beamRatio` is the beam's 1/e²
+// radius in units of the pupil's (the engine's convention).
+export function beamPupil(v) {
+  const w = v.beamDiameterMm / 2, epd = Math.min(v.diameterMm, 2 * PUPIL_BEAM_RADII * w);
+  return { epd, beamRatio: w / (epd / 2) };
+}
+
+// The real singlet as the lens designer's engine describes it: the front
+// face is the stop, the back face clips at the clear diameter.
+export function singletSystem(v, lens) {
+  const { epd, beamRatio } = beamPupil(v);
+  return {
+    name: 'Singlet', object: { atInfinity: true }, aperture: { type: 'epd', value: epd }, fields: { type: 'angle', values: [0] },
+    wavelengthsNm: [v.wavelengthNm], primaryWavelength: 0, image: { focus: 'paraxial' },
+    surfaces: [{ radius: v.r1Mm, thickness: v.thicknessMm, material: v.glass, stop: true }, { radius: v.r2Mm, thickness: lens.bfl, semiDiameter: v.diameterMm / 2 }],
+    diffraction: { grid: 64, padding: 2, illumination: 'gaussian', beamRatio, vignetting: true },
+  };
+}
+
+// Simpson weights on n (even) intervals of [0, 1].
+function simpson(n) {
+  const w = new Float64Array(n + 1);
+  for (let i = 0; i <= n; i++) w[i] = (i === 0 || i === n ? 1 : i % 2 ? 4 : 2) / (3 * n);
+  return w;
+}
+
+const RHO_GRID = Float64Array.from({ length: RHO + 1 }, (_, k) => k / RHO);
+
+// The real singlet's rays, traced by the engine along one radius of the
+// pupil (the x–z plane), as they leave the back face.
+export function singletRays(v, lens) {
+  const sys = normalizeSystem(singletSystem(v, lens));
+  const fo = firstOrder(sys, v.wavelengthNm);
+  if (!fo.ok) return { ok: false, reason: fo.reason };
+  const model = traceModel(sys, v.wavelengthNm, fo);
+  const bundle = traceBundle(model, 0, RHO_GRID, new Float64Array(RHO + 1));
+  return {
+    ok: true, bundle, zFocus: model.zLast + fo.imageDistance, zXp: Number.isFinite(fo.zXp) ? model.zLast + fo.zXp : model.zLast,
+    amp: Float64Array.from(RHO_GRID, (r, k) => (bundle.valid[k] ? illumination(sys.diffraction, r * r) : 0)),
+    clipped: bundle.failed.clipped ?? 0,
+  };
+}
+
+// The ideal lens: aplanatic (it obeys the sine condition, sin θ = h/f), so
+// a beam of height h leaves it toward the focus at sin θ = h/f with no
+// wavefront error. Its rays, in the engine's bundle format, all pass
+// through the focus F at z = f with equal optical paths; its exit pupil is
+// the sphere of radius f about F.
+export function aplanaticRays(v, lens) {
+  const { epd, beamRatio } = beamPupil(v);
+  const f = lens.efl, K = RHO + 1;
+  const P = new Float64Array(3 * K), D = new Float64Array(3 * K);
+  for (let k = 0; k < K; k++) {
+    const s = epd / 2 * RHO_GRID[k] / f;
+    P[3 * k + 2] = f;
+    D[3 * k] = -s; D[3 * k + 2] = Math.sqrt(1 - s * s);
+  }
+  const bundle = { K, px: RHO_GRID, valid: new Uint8Array(K).fill(1), P, D, opl: new Float64Array(K), nImage: 1, wavelengthNm: v.wavelengthNm };
+  return { ok: true, bundle, zFocus: f, zXp: 0, amp: Float64Array.from(RHO_GRID, r => Math.exp(-r * r / (beamRatio * beamRatio))), clipped: 0 };
+}
+
+// The focus of one lens on axis, from its rays: evaluated at any plane
+// (`shiftMm` from its paraxial focus). Each ray's wavefront W (waves, from
+// the axial ray) on the reference sphere about the paraxial focus through
+// the exit pupil, and the sphere's direction there, s = sin of its angle to
+// the axis. The pupil maps onto directions with the area ratio
+// J = (s/ρ) ds/dρ, so a ray of power A² per unit pupil area has the
+// amplitude A/√J per unit of s-area (the measure the engine's coupling
+// uses; its FFT fits one scale a instead, s = aρ), and
+//
+//   U(r) = 2π ∫ A √J e^(−2πiW) J₀(2π s r/λ) ρ dρ.
+export function focusFrom({ bundle, zFocus, zXp, amp }) {
+  const lambda = bundle.wavelengthNm * 1e-6;
+  if (!bundle.valid[0]) return { ok: false, reason: 'The axial ray does not reach the focus.' };
+  const lit = amp.reduce((n, a) => n + (a > 0 ? 1 : 0), 0);
+  if (lit < 8) return { ok: false, reason: 'Apertures cut nearly all of the beam.' };
+  const rho = RHO_GRID, w = simpson(RHO);
+  // ∫ A² ρ dρ: the power, the same at every plane.
+  let sumA2 = 0;
+  for (let k = 0; k <= RHO; k++) sumA2 += w[k] * amp[k] * amp[k] * rho[k];
+
+  // The pupil on the reference sphere about the paraxial focus: each ray's
+  // wavefront W0 there and its direction s (the sphere's normal at the
+  // ray), with its area ratio J.
+  const { C, R } = referenceSphere(bundle, zFocus, zXp);
+  const s = new Float64Array(RHO + 1).fill(NaN), w0 = new Float64Array(RHO + 1).fill(NaN);
+  const ref = sphereCrossing(bundle, 0, zFocus, C, R).opl;
+  for (let k = 0; k <= RHO; k++) {
+    if (!(amp[k] > 0)) continue;
+    const hit = sphereCrossing(bundle, k, zFocus, C, R);
+    if (!hit) continue;
+    s[k] = Math.abs(C[0] - hit.point[0]) / R;
+    w0[k] = (ref - hit.opl) / lambda;
+  }
+  const weight = new Float64Array(RHO + 1);
+  let sMax = 0;
+  for (let k = 0; k <= RHO; k++) {
+    if (!Number.isFinite(s[k])) continue;
+    const lo = k > 0 && Number.isFinite(s[k - 1]) ? k - 1 : k, hi = k < RHO && Number.isFinite(s[k + 1]) ? k + 1 : k;
+    if (lo === hi) continue;
+    const ds = (s[hi] - s[lo]) / (rho[hi] - rho[lo]);
+    weight[k] = amp[k] * Math.sqrt(Math.abs(k ? s[k] / rho[k] * ds : ds * ds));
+    sMax = Math.max(sMax, s[k]);
+  }
+  // Another plane, Δz past the focus: each plane wave of the Debye integral
+  // advances by Δz cos θ, so W = W0 + Δz (1 − cos θ)/λ (from the axial
+  // wave). This is the angular spectrum of the focal field carried to the
+  // plane, exact within the Debye approximation.
+  const plane = shiftMm => {
+    const opd = Float64Array.from(w0, (w, k) => w + shiftMm * (1 - Math.sqrt(1 - s[k] * s[k])) / lambda);
+    let steepest = 0;
+    for (let k = 1; k <= RHO; k++) if (weight[k] > 0 && weight[k - 1] > 0) steepest = Math.max(steepest, Math.abs(opd[k] - opd[k - 1]));
+    return { z: zFocus + shiftMm, shiftMm, s, opd, weight, steepest, sMax };
+  };
+  // Σ weight·g(k)·e^(−2πiW) ρ over Simpson nodes on a stride of the samples
+  // fine enough for the wavefront and for the oscillation `rate` (rad per
+  // unit of ρ) of g.
+  const sum = (p, g, rate = 0) => {
+    let stride = RHO / MIN_INTERVALS;
+    while (stride > 1 && (p.steepest * stride > MAX_WAVE_STEP || rate * stride / RHO > MAX_BESSEL_STEP)) stride /= 2;
+    const n = RHO / stride, ws = simpson(n);
+    let re = 0, im = 0;
+    for (let i = 0; i <= n; i++) {
+      const k = i * stride, a = p.weight[k];
+      if (!(a > 0)) continue;
+      const c = ws[i] * a * rho[k] * g(k), ph = -2 * Math.PI * p.opd[k];
+      re += c * Math.cos(ph); im += c * Math.sin(ph);
+    }
+    return re * re + im * im;
+  };
+  // The unaberrated peak at the paraxial focus, (∫ A √J ρ dρ)², which every
+  // intensity is relative to (a lens with the same pupil and W = 0).
+  let sumAJ = 0;
+  for (let k = 0; k <= RHO; k++) sumAJ += w[k] * weight[k] * rho[k];
+  const norm = sumAJ * sumAJ;
+
+  // Intensity at radius r (mm), relative to that peak.
+  const intensity = (p, r) => {
+    const kappa = 2 * Math.PI * r / lambda;
+    return sum(p, kappa ? k => besselJ0(kappa * p.s[k]) : () => 1, kappa * p.sMax) / norm;
+  };
+  const peak = p => intensity(p, 0);
+  // The radius that holds `share` of the power. In these units the power,
+  // λ² ∫ A² dpupil over (2π ∫ A √J ρ dρ)², is λ² ∫A²ρdρ / (2π (∫A√Jρdρ)²).
+  const total = lambda * lambda * sumA2 / (2 * Math.PI * norm);
+  // Simpson's rule in r on steps of λ/(R_STEPS s_max), and within the last
+  // pair of steps the integral of the quadratic through its three samples.
+  const radiusHolding = (p, share = GAUSSIAN_SHARE) => {
+    const h = lambda / (R_STEPS * p.sMax), goal = share * total / (2 * Math.PI);
+    let held = 0, f0 = 0;
+    for (let i = 0; i < R_MAX_STEPS; i += 2) {
+      const r0 = i * h, f1 = intensity(p, r0 + h) * (r0 + h), f2 = intensity(p, r0 + 2 * h) * (r0 + 2 * h);
+      const b = (-3 * f0 + 4 * f1 - f2) / (2 * h), c = (f0 - 2 * f1 + f2) / (2 * h * h);
+      const part = x => f0 * x + b * x * x / 2 + c * x * x * x / 3;
+      if (held + part(2 * h) >= goal) {
+        let lo = 0, hi = 2 * h;
+        for (let k = 0; k < 50; k++) { const mid = (lo + hi) / 2; if (held + part(mid) >= goal) hi = mid; else lo = mid; }
+        return r0 + (lo + hi) / 2;
+      }
+      held += part(2 * h); f0 = f2;
+    }
+    return NaN;
+  };
+  // Coupling into a fiber whose core sits at the plane's axial point, its
+  // axis along the lens's: the overlap on the sphere about the core with
+  // the mode's far field exp(−s²/θ₀²), θ₀ = λ/(π w₀), each ray standing for
+  // the solid angle dΩ = J dpupil / cos θ (engine/coupling.js):
+  //
+  //   η = |2π ∫ A √(J/cos θ) e^(−s²/θ₀²) e^(−2πiW) ρ dρ|² / (2π ∫A²ρdρ · ∫|M|²dΩ).
+  const coupling = (p, modeRadiusMm) => {
+    const theta = lambda / (Math.PI * modeRadiusMm);
+    const overlap = sum(p, k => Math.exp(-p.s[k] * p.s[k] / (theta * theta)) / Math.sqrt(Math.sqrt(1 - p.s[k] * p.s[k])));
+    return 2 * Math.PI * overlap / (sumA2 * modeNorm(theta));
+  };
+  return { ok: true, lambda, zFocus, norm, plane, peak, intensity, radiusHolding, coupling, bundle };
+}
+
+// Maximum of f on [a, b] by golden section.
+function goldenMax(f, a, b, steps = 50) {
+  const g = (Math.sqrt(5) - 1) / 2;
+  let x1 = b - g * (b - a), x2 = a + g * (b - a), f1 = f(x1), f2 = f(x2);
+  for (let i = 0; i < steps; i++) {
+    if (f1 > f2) { b = x2; x2 = x1; f2 = f1; x1 = b - g * (b - a); f1 = f(x1); } else { a = x1; x1 = x2; f1 = f2; x2 = a + g * (b - a); f2 = f(x2); }
+  }
+  return f1 > f2 ? [x1, f1] : [x2, f2];
+}
+
+// Where f(shift) is largest within ±span: a scan, then golden section
+// about its best sample.
+export function bestShift(f, spanMm, count = 81) {
+  const xs = Array.from({ length: count }, (_, i) => -spanMm + 2 * spanMm * i / (count - 1));
+  const ys = xs.map(f);
+  let k = 0;
+  ys.forEach((y, i) => { if (y > ys[k]) k = i; });
+  const [shiftMm, value] = goldenMax(f, xs[Math.max(0, k - 1)], xs[Math.min(count - 1, k + 1)]);
+  return { shiftMm, value };
+}
+
+// 1, 2 or 5 times a power of ten, at least v.
+export const niceUp = v => { const p = 10 ** Math.floor(Math.log10(v)), m = v / p; return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p; };
+
+// How far from the paraxial focus the singlet's rays inside `reach` pupil
+// radii cross the axis (its longitudinal spherical aberration there).
+function axialSpread(rays, reach) {
+  const b = rays.bundle;
+  let worst = 0;
+  for (let k = 1; k < b.K; k++) {
+    if (!b.valid[k] || b.px[k] > reach || !(Math.abs(b.D[3 * k]) > 1e-15)) continue;
+    const zCross = b.P[3 * k + 2] - b.P[3 * k] * b.D[3 * k + 2] / b.D[3 * k];
+    worst = Math.max(worst, Math.abs(zCross - rays.zFocus));
+  }
+  return worst;
+}
+
+// The singlet and the ideal lens through focus: at each plane of a common
+// scan about the paraxial focus, the peak intensity, the radius holding
+// 86.5 % of the power and, with a fiber, the coupling into it; then each
+// lens's best plane for the intensity and for the coupling. `withReal:
+// false` leaves the singlet out (a lens whose faces cross).
+export function focusAnalysis(v, lens, ideal, { withReal = true } = {}) {
+  const kinds = withReal ? ['real', 'ideal'] : ['ideal'];
+  const rays = { ideal: aplanaticRays(v, lens), ...(withReal ? { real: singletRays(v, lens) } : {}) };
+  const models = {};
+  for (const kind of kinds) {
+    const m = rays[kind].ok ? focusFrom(rays[kind]) : rays[kind];
+    if (!m.ok) return { ok: false, reason: `${kind === 'real' ? 'The singlet' : 'The ideal lens'}: ${m.reason}` };
+    models[kind] = m;
+  }
+  const zr = ideal.rayleighMm, modeRadiusMm = v.mfdUm / 2000;
+  const reach = { ideal: 3 * zr, real: withReal ? Math.max(3 * zr, 1.5 * axialSpread(rays.real, Math.min(1, 2 * beamPupil(v).beamRatio))) : 0 };
+  const out = { ok: true };
+  for (const kind of kinds) {
+    const m = models[kind];
+    const peak = bestShift(s => m.peak(m.plane(s)), reach[kind]);
+    const fiber = bestShift(s => m.coupling(m.plane(s), modeRadiusMm), reach[kind]);
+    out[kind] = { model: m, bestShiftMm: peak.shiftMm, strehl: peak.value, fiberShiftMm: fiber.shiftMm, bestCoupling: fiber.value, clipped: rays[kind].clipped };
+  }
+  const span = niceUp(Math.max(3 * zr, ...kinds.flatMap(kind => [1.5 * Math.abs(out[kind].bestShiftMm), 1.5 * Math.abs(out[kind].fiberShiftMm)])));
+  out.span = span;
+  out.shiftsMm = Array.from({ length: SCAN_POINTS }, (_, i) => -span + 2 * span * i / (SCAN_POINTS - 1));
+  for (const kind of kinds) {
+    const m = models[kind], o = out[kind];
+    const planes = out.shiftsMm.map(s => m.plane(s));
+    o.peak = planes.map(p => m.peak(p));
+    o.radiusUm = planes.map(p => m.radiusHolding(p) * 1e3);
+    o.coupling = planes.map(p => m.coupling(p, modeRadiusMm));
+    o.atBest = m.plane(o.bestShiftMm);
+    o.atParaxial = m.plane(0);
+    o.paraxialStrehl = m.peak(o.atParaxial);
+    o.paraxialCoupling = m.coupling(o.atParaxial, modeRadiusMm);
+    o.bestRadiusUm = m.radiusHolding(o.atBest) * 1e3;
+    o.paraxialRadiusUm = m.radiusHolding(o.atParaxial) * 1e3;
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- page
+
+export const LENS_INPUTS = [
+  { id: 'glass', type: 'select', group: 'lens', label: 'Glass', value: 'nbk7', options: GLASS_CHOICES,
+    help: 'From the canvas’s glass catalogue: Sellmeier fits from the makers’ data sheets.' },
+  { id: 'wavelengthNm', group: 'lens', label: 'Wavelength', unit: 'nm', value: 1550, min: 200, max: 20000, arrowStep: 1,
+    help: 'Vacuum wavelength, inside the glass’s fitted range.' },
+  { id: 'r1Mm', group: 'lens', label: 'Front radius R₁', unit: 'mm', value: 5.5, min: -10000, max: 10000, arrowStep: 0.1,
+    help: 'Positive when the centre of curvature lies after the face (convex toward the light); 0 for flat.' },
+  { id: 'r2Mm', group: 'lens', label: 'Back radius R₂', unit: 'mm', value: 0, min: -10000, max: 10000, arrowStep: 0.1,
+    help: 'Negative for a back face convex toward the image; 0 for flat.' },
+  { id: 'thicknessMm', group: 'lens', label: 'Centre thickness t', unit: 'mm', value: 3, min: 0, max: 1000, arrowStep: 0.1,
+    help: '0 makes the thick lens a thin one.' },
+  { id: 'diameterMm', group: 'lens', label: 'Clear diameter D', unit: 'mm', value: 6, min: 0.01, max: 1000, arrowStep: 0.5,
+    help: 'The aperture of both faces: it clips the beam and fixes the edge thickness.' },
+  { id: 'objectDistanceMm', group: 'object', label: 'Object distance from V₁', unit: 'mm', value: 30, min: 0.001, max: 1e9, arrowStep: 1,
+    help: 'From the object to the front vertex, the lens’s first surface.' },
+  { id: 'objectHeightMm', group: 'object', label: 'Object height', unit: 'mm', value: 2, min: 0.001, max: 1e6, arrowStep: 0.1,
+    help: 'Above the axis. Paraxial: rays steeper than about 0.1 rad are outside the model.' },
+  { id: 'beamDiameterMm', group: 'beam', label: 'Beam diameter (1/e²)', unit: 'mm', value: 2, min: 0.001, max: 1000, arrowStep: 0.1,
+    help: 'A collimated TEM₀₀ beam with its waist at the lens.' },
+  { id: 'fiberMode', type: 'select', group: 'fiber', label: 'Fiber mode given by', value: 'mfd',
+    options: [['mfd', 'Mode-field diameter (datasheet)'], ['step', 'Core diameter and NA (step index)']],
+    help: 'The mode is taken as a Gaussian of this 1/e² diameter.' },
+  { id: 'mfdUm', group: 'fiber', label: 'Mode-field diameter', unit: 'µm', value: 10.4, min: 0.5, max: 200, arrowStep: 0.1, when: 'fiberMode', whenValue: 'mfd',
+    help: '1/e² intensity diameter of the fundamental mode at this wavelength.' },
+  { id: 'coreDiameterUm', group: 'fiber', label: 'Core diameter', unit: 'µm', value: 8.2, min: 0.5, max: 100, arrowStep: 0.1, when: 'fiberMode', whenValue: 'step',
+    help: 'Step-index core; the mode follows from Marcuse’s fit.' },
+  { id: 'na', group: 'fiber', label: 'Numerical aperture', unit: '', value: 0.14, min: 0.01, max: 0.5, arrowStep: 0.01, when: 'fiberMode', whenValue: 'step',
+    help: 'NA = √(n_core² − n_clad²), the index-profile NA.' },
+];
+export const LENS_DEFAULTS = defaultsFor(LENS_INPUTS);
+
+const fmt = (x, d = 4) => String(Number(Number(x).toPrecision(d)));
+
+// The edge thickness at the clear radius, or the reason there is none.
+function edge(v) {
+  const h = v.diameterMm / 2, s1 = sagMm(v.r1Mm, h), s2 = sagMm(v.r2Mm, h);
+  if (s1 === null || s2 === null) return { reason: `A ${s1 === null ? 'front' : 'back'} radius of ${fmt(Math.abs(s1 === null ? v.r1Mm : v.r2Mm))} mm is smaller than the ${fmt(h)} mm clear radius: no sphere reaches that far.` };
+  return { edgeMm: v.thicknessMm - s1 + s2, sag1Mm: s1, sag2Mm: s2 };
+}
+
+// Lens data over the glass's range, for the chromatic graph.
+export function chromaticScan(v, count = 161) {
+  const [lo, hi] = glassWavelengthRange(v.glass);
+  const a = Math.max(lo, Math.min(350, v.wavelengthNm)), b = Math.min(hi, Math.max(2500, v.wavelengthNm));
+  return Array.from({ length: count }, (_, i) => {
+    const nm = a + (b - a) * i / (count - 1);
+    const d = lensData({ ...v, wavelengthNm: nm });
+    return { nm, efl: d.afocal ? null : d.efl, bfl: d.afocal ? null : d.bfl, thin: Number.isFinite(d.thinFocalMm) ? d.thinFocalMm : null };
+  });
+}
+
+export function computeThickLens(raw, { focus = true } = {}) {
+  const { values: v, errors } = parseInputs(LENS_INPUTS, raw);
+  if (errors.length) return { ok: false, errors };
+  if (!isWavelengthInGlassRange(v.glass, v.wavelengthNm)) {
+    const [lo, hi] = glassWavelengthRange(v.glass);
+    return unavailable(`${glassShortName(GLASSES.get(v.glass).label)} is fitted from ${lo} to ${hi} nm; choose a wavelength inside that range.`, 'wavelengthNm');
+  }
+  const lens = { ...lensData(v), r1Mm: v.r1Mm, r2Mm: v.r2Mm };
+  if (lens.afocal) return unavailable('These radii and this thickness make an afocal lens (zero power): it has no focal points.', 'r1Mm', 'r2Mm', 'thicknessMm');
+  const geometry = edge(v);
+  if (geometry.reason) return unavailable(geometry.reason, v.r1Mm && sagMm(v.r1Mm, v.diameterMm / 2) === null ? 'r1Mm' : 'r2Mm', 'diameterMm');
+  const image = imageOf(lens, v.objectDistanceMm, v.objectHeightMm);
+  const thin = thinImage(lens, v.objectDistanceMm, v.thicknessMm);
+  let mode = null;
+  if (v.fiberMode === 'step') {
+    mode = fiberMode(v);
+    if (!mode.inFit) return unavailable(`V = ${mode.vNumber.toFixed(3)}: outside ${MARCUSE_V[0]}–${MARCUSE_V[1]}, where this page’s Gaussian fit to the fundamental mode is checked. Enter the mode-field diameter instead.`, 'coreDiameterUm', 'na');
+    v.mfdUm = mode.modeFieldDiameterUm;
+  }
+  const result = { ok: true, values: v, lens, geometry, image, thin, mode, efl: lens.efl, bfl: lens.bfl, ffl: lens.ffl, h1Mm: lens.h1Mm, h2Mm: lens.h2Mm, n: lens.n };
+  // The beam: only a converging lens focuses it.
+  if (lens.efl < 0) { result.beamIssue = 'A diverging lens has no real focus: the beam leaves it diverging, so there is no spot or fiber coupling to show.'; return result; }
+  const ideal = idealFocus(lens, v.beamDiameterMm, v.wavelengthNm);
+  result.ideal = ideal;
+  result.clipShare = apertureShare(v.diameterMm, v.beamDiameterMm);
+  result.gaussianEta = gaussianCoupling({ waistUm: ideal.waistUm, modeRadiusUm: v.mfdUm / 2, wavelengthNm: v.wavelengthNm });
+  if (!focus) return result;
+  if (ideal.halfAngleMrad > 300) { result.beamIssue = `The focused beam converges at ${fmt(ideal.halfAngleMrad, 3)} mrad (half angle), beyond the 0.3 rad the paraxial beam and the scalar focus allow.`; return result; }
+  if (v.beamDiameterMm / v.diameterMm > BEAM_RATIO_MAX) { result.beamIssue = `The beam is more than ${BEAM_RATIO_MAX} times the clear diameter: the lens passes only its centre, a nearly even disc of light, which this page does not model as a beam.`; return result; }
+  if (!(geometry.edgeMm > 0)) { result.realIssue = `The faces cross before the clear diameter (edge thickness ${fmt(geometry.edgeMm, 3)} mm): a real lens needs more centre thickness, so only the ideal lens is shown.`; }
+  const theta = v.wavelengthNm * 1e-3 / (Math.PI * v.mfdUm / 2);
+  if (theta > MODE_LIMIT) return unavailable(`A ${fmt(v.mfdUm, 3)} µm mode at ${fmt(v.wavelengthNm)} nm spreads at ${fmt(theta * 1e3, 3)} mrad (1/e² half angle), beyond the ${MODE_LIMIT * 1e3} mrad the Gaussian mode model allows.`, v.fiberMode === 'step' ? 'coreDiameterUm' : 'mfdUm');
+  // The pupil's rim seen from the focus, and the Fresnel number of the lit
+  // pupil: the Debye integral holds for a large one (engine/pupil.js).
+  const pupil = beamPupil(v);
+  result.rimNa = pupil.epd / 2 / lens.efl;
+  if (result.rimNa > MAX_RIM_NA) { result.beamIssue = `The lit pupil reaches a numerical aperture of ${fmt(result.rimNa, 3)} at its rim (sin θ = h/f): beyond ${MAX_RIM_NA}, where neither the ideal lens nor the scalar focus means much. Choose a narrower beam or a smaller clear diameter.`; return result; }
+  const lit = Math.min(v.beamDiameterMm, v.diameterMm) / 2;
+  result.fresnelNumber = lit * lit / (v.wavelengthNm * 1e-6 * lens.efl);
+  const scan = focusAnalysis(v, lens, ideal, { withReal: !result.realIssue });
+  if (!scan.ok) { result.beamIssue = scan.reason; return result; }
+  result.scan = scan;
+  return result;
+}
+
+// ---------------------------------------------------------------- figure
+
+// The ray diagram, to scale, in mm with z from V₁: the lens outline (null
+// when its faces cross), the cardinal points, the object and image, and the
+// three construction rays from the object's tip. `extend` are the rays'
+// dashed extensions: back to a virtual image, and to the principal planes,
+// where incoming and outgoing rays meet at equal heights.
+export function rayDiagram(result) {
+  const { values: v, lens, image, geometry } = result;
+  const t = v.thicknessMm, d = v.objectDistanceMm, h = v.objectHeightMm;
+  const marks = { F: -lens.ffl, F2: t + lens.bfl, H: lens.h1Mm, H2: t + lens.h2Mm };
+  const fixed = [-d, 0, t, ...Object.values(marks)];
+  // An image further out than three times the rest of the figure is left
+  // off it, and said to be.
+  const reach = 3 * (Math.max(...fixed) - Math.min(...fixed));
+  const imageZ = image.atInfinity ? null : t + image.fromV2;
+  const shown = imageZ !== null && imageZ > Math.min(...fixed) - reach && imageZ < Math.max(...fixed) + reach;
+  let lo = Math.min(...fixed, shown ? imageZ : Infinity), hi = Math.max(...fixed, shown ? imageZ : -Infinity);
+  const pad = 0.08 * (hi - lo);
+  lo -= pad; hi += pad;
+
+  const rays = constructionRays(lens, t, d, h, hi);
+  const extend = [];
+  for (const ray of rays) {
+    const [, [, y1], [, y2]] = ray.path, uIn = (y1 - h) / d;
+    extend.push([[0, y1], [marks.H, y1 + uIn * marks.H]]);
+    extend.push([[t, y2], [marks.H2, y2 + ray.slopeOut * (marks.H2 - t)]]);
+    if (shown && !image.real) extend.push([[t, y2], [imageZ, y2 + ray.slopeOut * (imageZ - t)]]);
+  }
+  let outline = null;
+  if (geometry.edgeMm >= 0) {
+    const half = v.diameterMm / 2, n = 40, face = (r, z0, y) => z0 + sagMm(r, Math.abs(y));
+    outline = [];
+    for (let i = 0; i <= n; i++) { const y = -half + 2 * half * i / n; outline.push([face(v.r1Mm, 0, y), y]); }
+    for (let i = n; i >= 0; i--) { const y = -half + 2 * half * i / n; outline.push([face(v.r2Mm, t, y), y]); }
+  }
+  const heights = [h, v.diameterMm / 2, ...(shown ? [Math.abs(image.heightMm)] : [])];
+  return {
+    z: [lo, hi], yMax: 1.25 * Math.max(...heights), outline, marks, rays, extend,
+    object: { z: -d, height: h },
+    image: shown ? { z: imageZ, height: image.heightMm, real: image.real } : null,
+    imageNote: image.atInfinity ? 'The object sits in the front focal plane: the image is at infinity.' : shown ? '' : `The image lies ${fmt(Math.abs(image.fromV2), 3)} mm ${image.fromV2 > 0 ? 'after' : 'before'} the back vertex, off the figure.`,
+  };
+}
+
+// The singlet on the canvas: a laser of this wavelength and beam width and
+// the canvas's Thick spherical lens, or the reasons it cannot hold it.
+export function canvasScene(v) {
+  const reasons = [];
+  if (v.thicknessMm < 0.5 || v.thicknessMm > 60) reasons.push('its centre thickness runs from 0.5 to 60 mm');
+  if ([v.r1Mm, v.r2Mm].some(r => Math.abs(r) > 2000)) reasons.push('its radii are limited to ±2000 mm');
+  if (v.diameterMm < 1 || v.diameterMm > 500) reasons.push('its diameter runs from 1 to 500 mm');
+  if (reasons.length) return { ok: false, reasons };
+  const params = { r1: v.r1Mm, r2: v.r2Mm, thickness: v.thicknessMm, dia: v.diameterMm, glass: v.glass, transEff: 100 };
+  const adjusted = thickLensAdjustment(params);
+  return {
+    ok: true,
+    note: adjusted ? `The canvas’s lens keeps an edge of at least 0.4 mm and radii above the clear radius, so it is drawn as R₁ ${fmt(adjusted.r1)}, R₂ ${fmt(adjusted.r2)}, t ${fmt(adjusted.thickness)} mm.` : '',
+    scene: {
+      app: 'optics2d', version: 1, beams: [],
+      elements: [
+        { id: 'laser', type: 'cwlaser', x: -Math.round(v.thicknessMm / 2 + 60), y: 0, rot: 0, label: `${fmt(v.wavelengthNm, 5)} nm`, showLabel: true,
+          params: { wavelength: v.wavelengthNm, avgPowerW: 0.01, beamMode: 'beam', beamWidth: Math.min(60, Math.max(1, v.beamDiameterMm)) } },
+        { id: 'lens', type: 'thicklens', x: 0, y: 0, rot: 0, label: 'Singlet', showLabel: true, labelPos: 'b', params },
+      ],
+    },
+  };
+}
