@@ -305,6 +305,36 @@ test('a wide fiber mode’s narrow far field is integrated finely', () => {
   }
 });
 
+test('a wide mode’s axial response is integrated over the pupil it weights', () => {
+  // A 200 µm mode at 350 nm takes only the central 1.3 % of the pupil
+  // radius: there the defocus is resolved far from the focus. The ideal
+  // lens's overlap (s = aρ, J = a², W = Δz(1 − cos θ)/λ), integrated
+  // directly on 2¹⁸ intervals, at 25 and 100 mm.
+  const r = run({ lensKind: 'ideal', wavelengthNm: 350 }), f = fiber(r, { mfdUm: 200 }), m = f.ideal.model;
+  const v = r.values, { epd, beamRatio } = beamPupil(v), a = epd / 2 / r.lens.efl, lambda = 350e-6, theta = lambda / (Math.PI * 0.1);
+  const direct = dz => {
+    const n = 1 << 18;
+    let re = 0, im = 0, power = 0;
+    for (let i = 0; i <= n; i++) {
+      const rho = i / n, wt = (i === 0 || i === n ? 1 : i % 2 ? 4 : 2) / (3 * n), A = Math.exp(-((rho / beamRatio) ** 2)), s = a * rho, c = Math.sqrt(1 - s * s);
+      const amp = wt * A * a / Math.sqrt(c) * Math.exp(-((s / theta) ** 2)) * rho, ph = -2 * Math.PI * dz * (1 - c) / lambda;
+      re += amp * Math.cos(ph); im += amp * Math.sin(ph); power += wt * A * A * rho;
+    }
+    return 2 * Math.PI * (re * re + im * im) / (power * modeNorm(theta));
+  };
+  for (const dz of [25, 100]) close(m.coupling(m.plane(dz), 0.1, 0, 0, true), direct(dz), 1e-4, `${dz} mm`);
+  // The axial scan has no gaps; where it cannot reach, it stops and says so.
+  assert.ok(f.scans.ideal.axial.every(Number.isFinite));
+  assert.ok(f.axialCut && f.axialCut.reachMm > 100 && f.scans.axialUm.at(-1) <= f.axialCut.reachMm * 1e3 + 1e-9);
+  assert.equal(fiber(run({}), {}).axialCut, null, 'the example is not cut');
+});
+
+test('uncoated losses only where fused silica is fitted', () => {
+  const far = run({ lensKind: 'ideal', wavelengthNm: 10000, focalMm: 5 });
+  assert.ok(fiber(far, { mfdUm: 100 }).ok, 'coated: no material needed');
+  assert.deepEqual(fiber(far, { mfdUm: 100, fresnel: true }).errors.map(e => e.id), ['fresnel']);
+});
+
 test('a focus behind the back face is not shown as one in air', () => {
   // f stays positive, but F′ lies 9 mm before the back vertex, in the glass.
   const thick = run(plano(5.5, 30));

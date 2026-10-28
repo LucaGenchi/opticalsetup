@@ -218,6 +218,7 @@ function fiberRows(f) {
 
 function fiberNotes(f) {
   const out = [];
+  if (f.axialCut) out.push(`The axial graph stops at ±${formatNumber(f.axialCut.reachMm, 3)} mm instead of ±${formatNumber(f.axialCut.wantedMm, 3)} mm: farther from the focus the defocus varies too fast across the pupil for this page’s sampling.`);
   if (f.mode && !f.mode.singleMode) out.push(`V = ${formatNumber(f.mode.vNumber, 4)} is above ${formatNumber(SINGLE_MODE_V, 4)}: at this wavelength the fiber also guides LP₁₁. The coupling here is into the fundamental mode only.`);
   out.push('The fiber sits on the axis at each lens’s best position, its axis along the lens’s. The coupling efficiency is the mode overlap times the light reaching the fiber: the beam’s share inside the clear diameter' + (f.values.fresnel ? ', and the transmission of the uncoated lens faces and fiber end.' : '.') + ' Each graph moves the fiber one way only, from that position; the focus is round, so a lateral offset in any direction is the same.');
   return out;

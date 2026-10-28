@@ -278,11 +278,21 @@ export function focusFrom({ bundle, zFocus, zXp, amp }) {
   // |Σ weight·g(k)·e^(−2πiW) ρ|² over Simpson nodes on a stride of the
   // samples fine enough for the wavefront, for the oscillation `rate` (rad
   // per unit of ρ) of g, and for g's narrowest feature `scale` (in ρ); g is
-  // real, or [re, im]. When even the samples themselves are too coarse, the
-  // sum is kept but marked unresolved, or, `strict`, is NaN.
+  // real, or [re, im]. With `sLimit`, g vanishes (below e⁻⁴⁰) for directions
+  // s beyond it: those samples are left out, and the wavefront need only be
+  // resolved where g is not. When even the samples themselves are too
+  // coarse, the sum is kept but marked unresolved, or, `strict`, is NaN.
   let unresolved = false;
-  const sum = (p, g, rate = 0, scale = Infinity, strict = false) => {
-    const tooCoarse = stride => p.steepest * stride > MAX_WAVE_STEP || rate * stride / N > MAX_BESSEL_STEP || MODE_STEPS * stride / N > scale;
+  const steepestWithin = (p, sLimit) => {
+    let worst = 0;
+    for (let k = 1; k <= N; k++) {
+      if (p.weight[k] > 0 && p.weight[k - 1] > 0 && s[k] <= sLimit && s[k - 1] <= sLimit) worst = Math.max(worst, Math.abs(p.opd[k] - p.opd[k - 1]));
+    }
+    return worst;
+  };
+  const sum = (p, g, rate = 0, scale = Infinity, strict = false, sLimit = Infinity) => {
+    const steepest = sLimit < sMax ? steepestWithin(p, sLimit) : p.steepest;
+    const tooCoarse = stride => steepest * stride > MAX_WAVE_STEP || rate * stride / N > MAX_BESSEL_STEP || MODE_STEPS * stride / N > scale;
     let stride = N / MIN_INTERVALS;
     while (stride > 1 && tooCoarse(stride)) stride /= 2;
     if (tooCoarse(stride)) {
@@ -293,7 +303,7 @@ export function focusFrom({ bundle, zFocus, zXp, amp }) {
     let re = 0, im = 0;
     for (let i = 0; i <= n; i++) {
       const k = i * stride, a = p.weight[k];
-      if (!(a > 0)) continue;
+      if (!(a > 0) || s[k] > sLimit) continue;
       const v = g(k), c = ws[i] * a * rho[k], ph = -2 * Math.PI * p.opd[k];
       const [gr, gi] = typeof v === 'number' ? [v, 0] : v, cr = Math.cos(ph), ci = Math.sin(ph);
       re += c * (gr * cr - gi * ci); im += c * (gr * ci + gi * cr);
@@ -358,10 +368,12 @@ export function focusFrom({ bundle, zFocus, zXp, amp }) {
   const coupling = (p, modeRadiusMm, lateralMm = 0, tiltRad = 0, strict = false) => {
     const theta = lambda / (Math.PI * modeRadiusMm), norm = 2 * Math.PI / (sumA2 * modeNorm(theta)), t2 = theta * theta;
     if (lateralMm && tiltRad) throw new Error('coupling: one offset at a time');
+    // The mode's far field is below e⁻⁴⁰ more than √40 θ₀ from its axis.
+    const sLimit = Math.sin(Math.abs(tiltRad)) + Math.sqrt(40) * theta;
     if (!tiltRad) {
       const kx = 2 * Math.PI * Math.abs(lateralMm) / lambda;
       const g = kx ? k => Math.exp(-p.s[k] * p.s[k] / t2) * besselJ0(kx * p.s[k]) : k => Math.exp(-p.s[k] * p.s[k] / t2);
-      return norm * sum(p, g, kx * dsMax, theta / dsMax, strict);
+      return norm * sum(p, g, kx * dsMax, theta / dsMax, strict, sLimit);
     }
     const st = Math.sin(Math.abs(tiltRad)), ct = Math.cos(tiltRad);
     const ring = k => {
@@ -376,7 +388,7 @@ export function focusFrom({ bundle, zFocus, zXp, amp }) {
       }
       return sumArc * phiEnd / Math.PI;
     };
-    return norm * sum(p, ring, 0, theta / dsMax, strict);
+    return norm * sum(p, ring, 0, theta / dsMax, strict, sLimit);
   };
   return { ok: true, lambda, zFocus, norm, plane, peak, intensity, radiusHolding, coupling, radiusLimit, bundle, samples: N, resolved: () => !unresolved };
 }
@@ -707,8 +719,9 @@ export const OFFSET_POINTS = 41;
 // aperture and, uncoated, the transmission of a singlet's two faces (n
 // null for the ideal lens) and the fiber end at normal incidence.
 const reflectance = n => ((n - 1) / (n + 1)) ** 2;
+export const SILICA_RANGE_NM = glassWavelengthRange('silica');
 export function fresnelTransmission(n, wavelengthNm) {
-  const silica = materialIndex('silica', Math.min(3710, Math.max(210, wavelengthNm)));
+  const silica = materialIndex('silica', wavelengthNm);
   return (n === null ? 1 : (1 - reflectance(n)) ** 2) * (1 - reflectance(silica));
 }
 
@@ -780,7 +793,9 @@ export function computeFiber(lensResult, raw) {
   const focus = fiberFocus(lensResult, mfdUm);
   if (!focus.ok) return unavailable(focus.reason, { mfd: 'mfdUm', step: 'coreDiameterUm', index: 'coreRadiusUm' }[f.fiberMode]);
   const w = mfdUm / 2000, ideal = lensResult.ideal, kinds = focus.kinds;
-  // An ideal lens has no faces to reflect at: only the fiber end, uncoated.
+  // An ideal lens has no faces to reflect at: only the fiber end, uncoated,
+  // whose fused silica is fitted over SILICA_RANGE_NM only.
+  if (f.fresnel && !isWavelengthInGlassRange('silica', v.wavelengthNm)) return unavailable(`Fused silica’s index is fitted from ${SILICA_RANGE_NM[0]} to ${SILICA_RANGE_NM[1]} nm, so the fiber end’s reflection at ${fmt(v.wavelengthNm)} nm is not known here: untick the uncoated surfaces.`, 'fresnel');
   const through = lensResult.clipShare * (f.fresnel ? fresnelTransmission(lensResult.lens.n, v.wavelengthNm) : 1);
   // Scan ranges, out to where a Gaussian beam's coupling is nearly gone:
   // twice √(w₀′² + w_m²) across, 1.5 √(θ′² + θ₀²) in angle (within the mode
@@ -790,9 +805,24 @@ export function computeFiber(lensResult, raw) {
   const lateralUm = niceUp(2 * Math.hypot(ideal.waistUm, mfdUm / 2));
   const tiltMrad = Math.min(MODE_LIMIT * 1e3, niceUp(1.5 * Math.hypot(theta * 1e3, ideal.halfAngleMrad)));
   const axialMm = niceUp(Math.max(3 * Math.max(ideal.rayleighMm, modeRayleighMm), ...kinds.map(kind => 1.5 * Math.abs(focus[kind].shiftMm))));
+  // Far along the axis the defocus phase varies too fast across the pupil
+  // for its samples (a wide mode's Rayleigh range can be tens of mm): the
+  // scan stops, on both sides alike, where every lens's coupling can still
+  // be integrated, found by bisection on that boundary.
+  let axialReachMm = axialMm;
+  for (const kind of kinds) {
+    const { model: m } = focus[kind];
+    for (const sign of [-1, 1]) {
+      const resolved = z => !Number.isNaN(m.coupling(m.plane(sign * z), w, 0, 0, true));
+      if (resolved(axialReachMm)) continue;
+      let lo = 0, hi = axialReachMm;
+      for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (resolved(mid)) lo = mid; else hi = mid; }
+      axialReachMm = lo;
+    }
+  }
   const line = (lo, hi) => Array.from({ length: OFFSET_POINTS }, (_, i) => lo + (hi - lo) * i / (OFFSET_POINTS - 1));
-  const scans = { lateralUm: line(0, lateralUm), axialUm: line(-axialMm * 1e3, axialMm * 1e3), tiltMrad: line(0, tiltMrad) };
-  const out = { ok: true, values: { ...f, mfdUm }, mode, theta, samples: focus.samples, through, scans };
+  const scans = { lateralUm: line(0, lateralUm), axialUm: line(-axialReachMm * 1e3, axialReachMm * 1e3), tiltMrad: line(0, tiltMrad) };
+  const out = { ok: true, values: { ...f, mfdUm }, mode, theta, samples: focus.samples, through, scans, axialCut: axialReachMm < axialMm ? { reachMm: axialReachMm, wantedMm: axialMm } : null };
   for (const kind of kinds) {
     const { model: m, plane, shiftMm, aligned } = focus[kind];
     const lateral = scans.lateralUm.map(x => m.coupling(plane, w, x * 1e-3, 0, true));
