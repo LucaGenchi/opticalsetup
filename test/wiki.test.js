@@ -1,8 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { registry } from '../sketch/js/elements.js';
 import '../sketch/js/etalon.js';
 import '../sketch/js/vipa.js';
@@ -33,4 +35,17 @@ test('every visible component and fiber tool has a built, discoverable wiki arti
       assert.ok(WIKI_TYPES.has(match[1]), `${entry.type} links to absent article ${match[1]}`);
     }
   }
+});
+
+// The generator pre-renders formulas with KaTeX, a dev dependency (npm ci).
+// CI installs it, so there a page edited by hand instead of through
+// wiki-content.mjs fails; on a bare checkout without it the check skips
+// with its reason.
+const root = fileURLToPath(new URL('..', import.meta.url));
+const katexInstalled = (() => {
+  try { return spawnSync(process.execPath, ['-e', "import('katex').then(() => process.exit(0), () => process.exit(1))"], { cwd: root }).status === 0; } catch { return false; }
+})();
+test('the committed wiki pages match their generator', { skip: !katexInstalled && 'KaTeX is not installed (npm install); the page generator cannot run' }, () => {
+  const result = spawnSync(process.execPath, ['tools/build-wiki.mjs', '--check'], { cwd: root, encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
 });
