@@ -371,7 +371,10 @@ export function focusFrom({ bundle, zFocus, zXp, amp }) {
   // fiber-coupling/lp01.js) the far field is the mode's own, M = F(k a sin α),
   // in place of the Gaussian, normalized over the hemisphere by
   // farFieldNorm. It falls off as a power of k a sin α, not as a Gaussian:
-  // directions beyond its `reach` (below 10⁻⁵ of its peak) are left out, a
+  // directions beyond its `reach` (below 10⁻⁵ of its peak) are left out,
+  // which matters only for couplings themselves near 10⁻⁵ or below (there
+  // the relative error can reach several 10⁻⁴; the 10⁻⁴ checks are
+  // absolute); a
   // tilt's arc runs out to there on 128 nodes, and the radial sampling
   // resolves its oscillation (period π in k a sin α) as well as θ₀, its best
   // Gaussian's angle.
@@ -802,13 +805,15 @@ function halfPoint(xs, ys) {
 // along it, or tilted, one way at a time. With `vNumber`, a fiber given by
 // its mode-field diameter couples through its exact LP₀₁ mode at that V
 // (the fiber coupling page), scaled so that its best Gaussian has that
-// diameter; without, through the Gaussian of that diameter.
-export function computeFiber(lensResult, raw, { vNumber = null } = {}) {
+// diameter; without, through the Gaussian of that diameter. A diameter the
+// caller derived (`mfdUm`, from a core and NA) replaces the input's and
+// skips its typed-in range, which the caller's own model has checked.
+export function computeFiber(lensResult, raw, { vNumber = null, mfdUm: derivedMfdUm = null } = {}) {
   if (!lensResult?.ok) return { pending: true, message: 'Set a valid laser and lens above first.' };
-  const { values: f, errors } = parseInputs(FIBER_INPUTS, raw);
+  const { values: f, errors } = parseInputs(FIBER_INPUTS, derivedMfdUm === null ? raw : { ...raw, fiberMode: 'mfd', mfdUm: FIBER_DEFAULTS.mfdUm });
   if (errors.length) return { ok: false, errors };
   const v = lensResult.values;
-  let mode = null, mfdUm = f.mfdUm, na = null;
+  let mode = null, mfdUm = derivedMfdUm ?? f.mfdUm, na = null;
   if (f.fiberMode !== 'mfd') {
     const ids = f.fiberMode === 'step' ? ['coreDiameterUm', 'na'] : ['coreIndex', 'claddingIndex', 'coreRadiusUm'];
     if (f.fiberMode === 'index' && !(f.coreIndex > f.claddingIndex)) return unavailable('The core’s index must be above the cladding’s for the fiber to guide.', 'coreIndex', 'claddingIndex');

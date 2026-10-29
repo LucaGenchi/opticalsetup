@@ -5,7 +5,7 @@
    "absolute": true,
    "expected": {
     "bestEta": 0.94394588,
-    "bestRatio": 2.845913,
+    "bestRatio": 2.84591,
     "u": 1.134125937
    },
    "inputs": {
@@ -17,7 +17,7 @@
    "note": "the far field by Simpson quadrature of the field times J0(q rho) here, by its closed form (the Lommel integrals and the eigenvalue equation) on the page, with rational approximations of J0 and J1 (about 1e-8)",
    "tolerance": {
     "bestEta": 1e-07,
-    "bestRatio": 1e-06,
+    "bestRatio": 1e-05,
     "u": 1e-07
    }
   },
@@ -25,7 +25,7 @@
    "absolute": true,
    "expected": {
     "bestEta": 0.97746363,
-    "bestRatio": 1.620903,
+    "bestRatio": 1.6209,
     "u": 1.366981264
    },
    "inputs": {
@@ -37,7 +37,7 @@
    "note": "the far field by Simpson quadrature of the field times J0(q rho) here, by its closed form (the Lommel integrals and the eigenvalue equation) on the page, with rational approximations of J0 and J1 (about 1e-8)",
    "tolerance": {
     "bestEta": 1e-07,
-    "bestRatio": 1e-06,
+    "bestRatio": 1e-05,
     "u": 1e-07
    }
   },
@@ -45,7 +45,7 @@
    "absolute": true,
    "expected": {
     "bestEta": 0.99061061,
-    "bestRatio": 1.2857477,
+    "bestRatio": 1.28575,
     "farField0": 0.83619409,
     "farField1": 0.30805013,
     "farField2": 0.0034972905,
@@ -64,7 +64,7 @@
    "note": "the far field by Simpson quadrature of the field times J0(q rho) here, by its closed form (the Lommel integrals and the eigenvalue equation) on the page, with rational approximations of J0 and J1 (about 1e-8)",
    "tolerance": {
     "bestEta": 1e-07,
-    "bestRatio": 1e-06,
+    "bestRatio": 1e-05,
     "farField0": 1e-07,
     "farField1": 1e-07,
     "farField2": 1e-07,
@@ -75,7 +75,7 @@
    "absolute": true,
    "expected": {
     "bestEta": 0.99612186,
-    "bestRatio": 1.1143054,
+    "bestRatio": 1.11431,
     "u": 1.627190024
    },
    "inputs": {
@@ -87,7 +87,7 @@
    "note": "the far field by Simpson quadrature of the field times J0(q rho) here, by its closed form (the Lommel integrals and the eigenvalue equation) on the page, with rational approximations of J0 and J1 (about 1e-8)",
    "tolerance": {
     "bestEta": 1e-07,
-    "bestRatio": 1e-06,
+    "bestRatio": 1e-05,
     "u": 1e-07
    }
   },
@@ -95,7 +95,7 @@
    "absolute": true,
    "expected": {
     "bestEta": 0.99666924,
-    "bestRatio": 1.0905302,
+    "bestRatio": 1.09053,
     "farField0": 0.90002773,
     "farField1": 0.39112337,
     "farField2": 0.009112889,
@@ -114,7 +114,7 @@
    "note": "the far field by Simpson quadrature of the field times J0(q rho) here, by its closed form (the Lommel integrals and the eigenvalue equation) on the page, with rational approximations of J0 and J1 (about 1e-8)",
    "tolerance": {
     "bestEta": 1e-07,
-    "bestRatio": 1e-06,
+    "bestRatio": 1e-05,
     "farField0": 1e-07,
     "farField1": 1e-07,
     "farField2": 1e-07,
@@ -125,7 +125,7 @@
    "absolute": true,
    "expected": {
     "bestEta": 0.99707849,
-    "bestRatio": 0.90095513,
+    "bestRatio": 0.900955,
     "u": 1.847349044
    },
    "inputs": {
@@ -137,7 +137,7 @@
    "note": "the far field by Simpson quadrature of the field times J0(q rho) here, by its closed form (the Lommel integrals and the eigenvalue equation) on the page, with rational approximations of J0 and J1 (about 1e-8)",
    "tolerance": {
     "bestEta": 1e-07,
-    "bestRatio": 1e-06,
+    "bestRatio": 1e-05,
     "u": 1e-07
    }
   },
@@ -145,7 +145,7 @@
    "absolute": true,
    "expected": {
     "bestEta": 0.99307532,
-    "bestRatio": 0.80647717,
+    "bestRatio": 0.806477,
     "farField0": 0.96443087,
     "farField1": 0.55894506,
     "farField2": 0.064780576,
@@ -164,7 +164,7 @@
    "note": "the far field by Simpson quadrature of the field times J0(q rho) here, by its closed form (the Lommel integrals and the eigenvalue equation) on the page, with rational approximations of J0 and J1 (about 1e-8)",
    "tolerance": {
     "bestEta": 1e-07,
-    "bestRatio": 1e-06,
+    "bestRatio": 1e-05,
     "farField0": 1e-07,
     "farField1": 1e-07,
     "farField2": 1e-07,
@@ -174,12 +174,12 @@
   {
    "expected": {
     "bestEfficiency": 0.99061061,
-    "coreDiameterUm": 8.0886789,
-    "efficiencyAt": 0.98913093,
+    "coreDiameterUm": 8.08868,
+    "efficiencyAt": 0.989131,
     "matchEfficiency": 0.99061061,
-    "optimalFocalMm": 10.539679,
-    "rangeMaxMm": 13.238294,
-    "rangeMinMm": 8.420025,
+    "optimalFocalMm": 10.5397,
+    "rangeMaxMm": 13.2383,
+    "rangeMinMm": 8.42003,
     "vNumber": 1.954890453
    },
    "inputs": {
@@ -195,24 +195,24 @@
    "note": "the page: the same mode from the eigenvalue equation and the same face overlap, a golden-section best Gaussian, the matching focal length in closed form and the 95 % ends by bisection on the waist ratio",
    "tolerance": {
     "bestEfficiency": 1e-06,
-    "coreDiameterUm": 1e-06,
-    "efficiencyAt": 1e-06,
+    "coreDiameterUm": 1e-05,
+    "efficiencyAt": 1e-05,
     "matchEfficiency": 1e-06,
-    "optimalFocalMm": 1e-06,
-    "rangeMaxMm": 1e-06,
-    "rangeMinMm": 1e-06,
-    "vNumber": 1e-06
+    "optimalFocalMm": 1e-05,
+    "rangeMaxMm": 1e-05,
+    "rangeMinMm": 1e-05,
+    "vNumber": 1e-09
    }
   },
   {
    "expected": {
     "bestEfficiency": 0.99499161,
-    "coreDiameterUm": 5.3621261,
-    "efficiencyAt": 0.98818011,
+    "coreDiameterUm": 5.36213,
+    "efficiencyAt": 0.98818,
     "matchEfficiency": 0.99499161,
-    "optimalFocalMm": 22.882859,
-    "rangeMaxMm": 28.838398,
-    "rangeMinMm": 18.228535,
+    "optimalFocalMm": 22.8829,
+    "rangeMaxMm": 28.8384,
+    "rangeMinMm": 18.2285,
     "vNumber": 2.214970908
    },
    "inputs": {
@@ -228,24 +228,24 @@
    "note": "the page: the same mode from the eigenvalue equation and the same face overlap, a golden-section best Gaussian, the matching focal length in closed form and the 95 % ends by bisection on the waist ratio",
    "tolerance": {
     "bestEfficiency": 1e-06,
-    "coreDiameterUm": 1e-06,
-    "efficiencyAt": 1e-06,
+    "coreDiameterUm": 1e-05,
+    "efficiencyAt": 1e-05,
     "matchEfficiency": 1e-06,
-    "optimalFocalMm": 1e-06,
-    "rangeMaxMm": 1e-06,
-    "rangeMinMm": 1e-06,
-    "vNumber": 1e-06
+    "optimalFocalMm": 1e-05,
+    "rangeMaxMm": 1e-05,
+    "rangeMinMm": 1e-05,
+    "vNumber": 1e-09
    }
   },
   {
    "expected": {
     "bestEfficiency": 0.99666924,
-    "coreDiameterUm": 9.5366454,
-    "efficiencyAt": 0.99499768,
+    "coreDiameterUm": 9.53665,
+    "efficiencyAt": 0.994998,
     "matchEfficiency": 0.99666924,
-    "optimalFocalMm": 10.539679,
-    "rangeMaxMm": 13.275015,
-    "rangeMinMm": 8.4016844,
+    "optimalFocalMm": 10.5397,
+    "rangeMaxMm": 13.275,
+    "rangeMinMm": 8.40168,
     "vNumber": 2.404825558
    },
    "inputs": {
@@ -261,24 +261,24 @@
    "note": "the page: the same mode from the eigenvalue equation and the same face overlap, a golden-section best Gaussian, the matching focal length in closed form and the 95 % ends by bisection on the waist ratio",
    "tolerance": {
     "bestEfficiency": 1e-06,
-    "coreDiameterUm": 1e-06,
-    "efficiencyAt": 1e-06,
+    "coreDiameterUm": 1e-05,
+    "efficiencyAt": 1e-05,
     "matchEfficiency": 1e-06,
-    "optimalFocalMm": 1e-06,
-    "rangeMaxMm": 1e-06,
-    "rangeMinMm": 1e-06,
-    "vNumber": 1e-06
+    "optimalFocalMm": 1e-05,
+    "rangeMaxMm": 1e-05,
+    "rangeMinMm": 1e-05,
+    "vNumber": 1e-09
    }
   },
   {
    "expected": {
     "bestEfficiency": 0.99437953,
-    "coreDiameterUm": 12.541569,
-    "efficiencyAt": 0.99235581,
+    "coreDiameterUm": 12.5416,
+    "efficiencyAt": 0.992356,
     "matchEfficiency": 0.99437953,
-    "optimalFocalMm": 10.539679,
-    "rangeMaxMm": 12.929177,
-    "rangeMinMm": 8.6170107,
+    "optimalFocalMm": 10.5397,
+    "rangeMaxMm": 12.9292,
+    "rangeMinMm": 8.61701,
     "vNumber": 4.499351043
    },
    "inputs": {
@@ -294,22 +294,22 @@
    "note": "the page: the same mode from the eigenvalue equation and the same face overlap, a golden-section best Gaussian, the matching focal length in closed form and the 95 % ends by bisection on the waist ratio",
    "tolerance": {
     "bestEfficiency": 1e-06,
-    "coreDiameterUm": 1e-06,
-    "efficiencyAt": 1e-06,
+    "coreDiameterUm": 1e-05,
+    "efficiencyAt": 1e-05,
     "matchEfficiency": 1e-06,
-    "optimalFocalMm": 1e-06,
-    "rangeMaxMm": 1e-06,
-    "rangeMinMm": 1e-06,
-    "vNumber": 1e-06
+    "optimalFocalMm": 1e-05,
+    "rangeMaxMm": 1e-05,
+    "rangeMinMm": 1e-05,
+    "vNumber": 1e-09
    }
   },
   {
    "expected": {
     "bestEfficiency": 0.94851363,
-    "coreDiameterUm": 3.9839961,
-    "efficiencyAt": 0.94751406,
+    "coreDiameterUm": 3.984,
+    "efficiencyAt": 0.947514,
     "matchEfficiency": 0.94851363,
-    "optimalFocalMm": 10.539679,
+    "optimalFocalMm": 10.5397,
     "rangeNone": 1,
     "vNumber": 1.241200288
    },
@@ -326,23 +326,23 @@
    "note": "the page: the same mode from the eigenvalue equation and the same face overlap, a golden-section best Gaussian, the matching focal length in closed form and the 95 % ends by bisection on the waist ratio",
    "tolerance": {
     "bestEfficiency": 1e-06,
-    "coreDiameterUm": 1e-06,
-    "efficiencyAt": 1e-06,
+    "coreDiameterUm": 1e-05,
+    "efficiencyAt": 1e-05,
     "matchEfficiency": 1e-06,
-    "optimalFocalMm": 1e-06,
+    "optimalFocalMm": 1e-05,
     "rangeNone": 1e-06,
-    "vNumber": 1e-06
+    "vNumber": 1e-09
    }
   },
   {
    "expected": {
     "bestEfficiency": 0.99609546,
-    "efficiencyAt": 0.9703651,
+    "efficiencyAt": 0.970365,
     "matchEfficiency": 0.99609546,
-    "modeFieldDiameterUm": 9.1460932,
-    "optimalFocalMm": 9.2689031,
-    "rangeMaxMm": 11.679505,
-    "rangeMinMm": 7.3853108,
+    "modeFieldDiameterUm": 9.14609,
+    "optimalFocalMm": 9.2689,
+    "rangeMaxMm": 11.6795,
+    "rangeMinMm": 7.38531,
     "vNumber": 2.326805398
    },
    "inputs": {
@@ -360,24 +360,24 @@
    "note": "the page: the same mode from the eigenvalue equation and the same face overlap, a golden-section best Gaussian, the matching focal length in closed form and the 95 % ends by bisection on the waist ratio",
    "tolerance": {
     "bestEfficiency": 1e-06,
-    "efficiencyAt": 1e-06,
+    "efficiencyAt": 1e-05,
     "matchEfficiency": 1e-06,
-    "modeFieldDiameterUm": 1e-06,
-    "optimalFocalMm": 1e-06,
-    "rangeMaxMm": 1e-06,
-    "rangeMinMm": 1e-06,
-    "vNumber": 1e-06
+    "modeFieldDiameterUm": 1e-05,
+    "optimalFocalMm": 1e-05,
+    "rangeMaxMm": 1e-05,
+    "rangeMinMm": 1e-05,
+    "vNumber": 1e-09
    }
   },
   {
    "expected": {
     "bestEfficiency": 0.99317015,
-    "efficiencyAt": 0.98963057,
+    "efficiencyAt": 0.989631,
     "matchEfficiency": 0.99317015,
-    "modeFieldDiameterUm": 4.2488844,
-    "optimalFocalMm": 4.2175204,
-    "rangeMaxMm": 5.3107594,
-    "rangeMinMm": 3.3618904,
+    "modeFieldDiameterUm": 4.24888,
+    "optimalFocalMm": 4.21752,
+    "rangeMaxMm": 5.31076,
+    "rangeMinMm": 3.36189,
     "vNumber": 2.084469059
    },
    "inputs": {
@@ -395,13 +395,13 @@
    "note": "the page: the same mode from the eigenvalue equation and the same face overlap, a golden-section best Gaussian, the matching focal length in closed form and the 95 % ends by bisection on the waist ratio",
    "tolerance": {
     "bestEfficiency": 1e-06,
-    "efficiencyAt": 1e-06,
+    "efficiencyAt": 1e-05,
     "matchEfficiency": 1e-06,
-    "modeFieldDiameterUm": 1e-06,
-    "optimalFocalMm": 1e-06,
-    "rangeMaxMm": 1e-06,
-    "rangeMinMm": 1e-06,
-    "vNumber": 1e-06
+    "modeFieldDiameterUm": 1e-05,
+    "optimalFocalMm": 1e-05,
+    "rangeMaxMm": 1e-05,
+    "rangeMinMm": 1e-05,
+    "vNumber": 1e-09
    }
   },
   {
@@ -778,11 +778,11 @@
    },
    "name": "633 nm, 0.8 mm beam, f 4.5 mm, core 3.5 um NA 0.12 (mode radius from the exact LP01 best Gaussian)",
    "tolerance": {
-    "efficiency": 1e-06,
+    "efficiency": 1e-05,
     "focusDistanceMm": 1e-09,
     "focusWaistUm": 1e-09,
-    "matchEfficiency": 1e-06,
-    "optimalFocalMm": 1e-06
+    "matchEfficiency": 1e-05,
+    "optimalFocalMm": 1e-05
    }
   }
  ],
@@ -802,5 +802,5 @@
  "reference_file": "validation/reference/fiber_coupling.py",
  "scope": "Paraxial scalar coupling of a TEM00 beam into the fundamental mode of an ideal weakly guiding step-index fiber (exact, or approximated as its best Gaussian for the closed forms); ideal thin lens; no Fresnel reflection, aberrations, polarization or cladding modes.",
  "title": "Gaussian-beam coupling into a single-mode fiber, through its exact LP01 mode",
- "tolerance_rationale": "1e-9 relative for the V number, cutoff and every Gaussian-mode coupling quantity computed from the same mode radius (algebra and spectrally accurate quadrature); 1e-6 relative on the exact-mode couplings, matching focal lengths and range ends, which pass through the best-Gaussian optimum (known to about 1e-8, stored to 8 digits); 1e-7 absolute on u, the best coupling and the far field (the page evaluates the far field with rational approximations of J0 and J1, good to about 1e-8), and 1e-6 on the best Gaussian's radius, which sits on a flat optimum; 1 % on Marcuse's mode-field diameter, the fit's accuracy."
+ "tolerance_rationale": "1e-9 relative for the V number, cutoff and every Gaussian-mode coupling quantity computed from the same mode radius (algebra and spectrally accurate quadrature); 1e-6 relative on the couplings at the optimum (flat there, stored to 8 digits) and 1e-5 on the values scaled by the best Gaussian's radius, which sits on a flat optimum known to about 1e-8 and is stored to 6 digits so the file does not depend on the platform (matching focal lengths, couplings off the optimum, range ends, core and mode diameters, and that radius itself); 1e-7 absolute on u, the best coupling and the far field (the page evaluates the far field with rational approximations of J0 and J1, good to about 1e-8); 1 % on Marcuse's mode-field diameter, the fit's accuracy."
 }

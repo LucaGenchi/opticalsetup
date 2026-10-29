@@ -575,3 +575,13 @@ test('fiber coupling: the page couples into the exact mode, not a Gaussian', () 
   assert.ok(loose.ok && loose.bestEfficiency < NEAR_MATCH && loose.range.none && loose.range.shownMinMm === null);
   assert.equal(setup({ fiberMode: 'step', coreDiameterUm: 2, na: 0.1 }).errors[0].id, 'coreDiameterUm');
 });
+
+// A mode derived from a core and NA is not held to the typed-in diameter's range.
+test('fiber coupling: a wide mode from core and NA reaches the real-lens part', () => {
+  const s = setup({ fiberMode: 'step', coreDiameterUm: 100, na: 0.01, wavelengthNm: 2500 });
+  assert.ok(s.ok && s.mode.modeFieldDiameterUm > 200);
+  const r = computeRealLens(s, { ...REAL_LENS_DEFAULTS, glass: 'caf2', focalMm: 500, diameterMm: 12.7, edgeMm: 2 });
+  assert.ok(r.ok, JSON.stringify(r.errors ?? r.message));
+  close(r.fiber.values.mfdUm, s.mode.modeFieldDiameterUm, 1e-12);
+  assert.ok(r.fiber.real.aligned > 0 && r.fiber.real.aligned < s.bestEfficiency);
+});

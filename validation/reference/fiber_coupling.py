@@ -332,18 +332,23 @@ def setup_case(name, inputs):
             mid = math.sqrt(inside * outside)
             inside, outside = (mid, outside) if coupling(mid) >= 0.95 else (inside, mid)
         return math.sqrt(inside * outside)
-    # Values through the best-Gaussian optimum are known to about 1e-8:
-    # 8 digits, so the file does not depend on the platform's maths library.
-    expected = {"vNumber": sig(V), "bestEfficiency": sig(best, 8), "matchEfficiency": sig(coupling(f_opt), 8),
-                "optimalFocalMm": sig(f_opt, 8), "efficiencyAt": sig(coupling(inputs["focalMm"]), 8),
-                ("coreDiameterUm" if inputs["fiberMode"] == "mfd" else "modeFieldDiameterUm"): sig(2 * a if inputs["fiberMode"] == "mfd" else 2 * w_mode, 8)}
+    # The best Gaussian sits on a flat optimum: its radius, and everything
+    # scaled by it (the core radius, a step-index fiber's mode radius, the
+    # focal lengths and the couplings off the optimum), is known to about
+    # 1e-8 and can move by that from one platform's maths library to
+    # another's. Those are stored to 6 digits (checked to 1e-5); the
+    # couplings at the optimum, flat there, to 8 (checked to 1e-6).
+    flat = {"bestEfficiency": sig(best, 8), "matchEfficiency": sig(coupling(f_opt), 8)}
+    scaled = {"optimalFocalMm": sig(f_opt, 6), "efficiencyAt": sig(coupling(inputs["focalMm"]), 6),
+              ("coreDiameterUm" if inputs["fiberMode"] == "mfd" else "modeFieldDiameterUm"): sig(2 * a if inputs["fiberMode"] == "mfd" else 2 * w_mode, 6)}
     if best >= 0.95:
-        expected["rangeMinMm"] = sig(edge(f_opt, f_opt / 100), 8)
-        expected["rangeMaxMm"] = sig(edge(f_opt, f_opt * 100), 8)
+        scaled["rangeMinMm"] = sig(edge(f_opt, f_opt / 100), 6)
+        scaled["rangeMaxMm"] = sig(edge(f_opt, f_opt * 100), 6)
     else:
-        expected["rangeNone"] = 1
+        flat["rangeNone"] = 1
+    expected = {"vNumber": sig(V), **flat, **scaled}
     return {"name": name, "inputs": {"kind": "setup", **inputs}, "expected": expected,
-            "tolerance": {k: 1e-6 for k in expected},
+            "tolerance": {"vNumber": 1e-9, **{k: 1e-6 for k in flat}, **{k: 1e-5 for k in scaled}},
             "note": "the page: the same mode from the eigenvalue equation and the same face overlap, a golden-section best Gaussian, the matching focal length in closed form and the 95 % ends by bisection on the waist ratio"}
 
 
@@ -356,15 +361,15 @@ def cases():
         u = lp01_u(V)
         s_best, best = best_gaussian_radius(V)
         qs = [u if q is None else q for q in qs]
-        expected = {"u": sig(u, 10), "bestRatio": sig(s_best, 8), "bestEta": sig(best, 8)}
+        expected = {"u": sig(u, 10), "bestRatio": sig(s_best, 6), "bestEta": sig(best, 8)}
         expected.update({f"farField{i}": sig(far_field_numeric(V, q), 8) for i, q in enumerate(qs)})
         out.append({
             "name": f"exact LP01 mode at V = {V:.4f}: u, the best Gaussian and its coupling" + (", and the far field at q = " + ", ".join(f"{q:.4g}" for q in qs) if qs else ""),
             "inputs": {"kind": "lp01", "vNumber": V, "qs": qs},
             "expected": expected,
             # The best Gaussian sits on a flat optimum: its radius is known to
-            # about 1e-7, its coupling far better.
-            "tolerance": {**{k: 1e-7 for k in expected}, "bestRatio": 1e-6},
+            # about 1e-8 (stored to 6 digits), its coupling far better.
+            "tolerance": {**{k: 1e-7 for k in expected}, "bestRatio": 1e-5},
             "absolute": True,
             "note": "the far field by Simpson quadrature of the field times J0(q rho) here, by its closed form (the Lommel integrals and the eigenvalue equation) on the page, with rational approximations of J0 and J1 (about 1e-8)",
         })
@@ -407,7 +412,7 @@ def cases():
     ]
     # Through the best-Gaussian optimum, known to about 1e-8.
     for key in ("matchEfficiency", "efficiency", "optimalFocalMm"):
-        out[-1]["tolerance"][key] = 1e-6
+        out[-1]["tolerance"][key] = 1e-5
     return out
 
 
@@ -425,7 +430,7 @@ MODEL = {
     "provenance": "The eigenvalue equation and field written from Gloge's weakly-guiding analysis; the coupling as the normalized overlap integral of the two fields on the face, as in Kogelnik and in Joyce and DeLoach. Marcuse's fit and the page's closed-form overlap are not used here. The face field's geometry is pinned by propagation, not algebra: a Fresnel-kernel propagation of the beam reproduces its own q-parameter curvature, and a tilt of +t moves the beam toward +x by t per unit length.",
     "domain": "The exact mode at V 1.2-5 (its far field at V 1.955, 2.405 and 5, up to q = 4); the first part for fibers given by mode-field diameter and cutoff (V 1.24-4.5, 1064 and 1550 nm, 2-5 mm beams) and by core and NA (633 and 1550 nm); Marcuse's fit for step-index fibers with V 1.4-2.75 (633-1550 nm, one above the single-mode cutoff, cores 3.5-8.2 um, NA 0.12-0.14); the Gaussian closed form for collimated beams of 0.8-2 mm focused by 4.5-11 mm lenses, aligned, and with lateral offsets (on the fiber face) to 2 um, axial offsets to +/-30 um and tilts of either sign to 20 mrad in the plane of the offset, separately and together.",
     "convergence": "Bessel integrals by the trapezoid rule (400 and 800 nodes); 100- and 120-step bisections; mode overlaps by Simpson's rule on 200 core intervals and cladding steps of 0.01-0.25 core radii out to where the field has fallen by e^-40 (at least 12 core radii); the best Gaussian bracketed on a 61-point logarithmic scan from 0.3 to 30 core radii (it must fall inside) and refined by golden-section search to 80 steps; face overlaps by the trapezoid rule on 6000 intervals over 12 beam widths; focal-length bisection to 200 steps.",
-    "tolerance_rationale": "1e-9 relative for the V number, cutoff and every Gaussian-mode coupling quantity computed from the same mode radius (algebra and spectrally accurate quadrature); 1e-6 relative on the exact-mode couplings, matching focal lengths and range ends, which pass through the best-Gaussian optimum (known to about 1e-8, stored to 8 digits); 1e-7 absolute on u, the best coupling and the far field (the page evaluates the far field with rational approximations of J0 and J1, good to about 1e-8), and 1e-6 on the best Gaussian's radius, which sits on a flat optimum; 1 % on Marcuse's mode-field diameter, the fit's accuracy.",
+    "tolerance_rationale": "1e-9 relative for the V number, cutoff and every Gaussian-mode coupling quantity computed from the same mode radius (algebra and spectrally accurate quadrature); 1e-6 relative on the couplings at the optimum (flat there, stored to 8 digits) and 1e-5 on the values scaled by the best Gaussian's radius, which sits on a flat optimum known to about 1e-8 and is stored to 6 digits so the file does not depend on the platform (matching focal lengths, couplings off the optimum, range ends, core and mode diameters, and that radius itself); 1e-7 absolute on u, the best coupling and the far field (the page evaluates the far field with rational approximations of J0 and J1, good to about 1e-8); 1 % on Marcuse's mode-field diameter, the fit's accuracy.",
     "outside_scope": "Declines a mode or beam diameter that is not positive, a non-positive focal length, and V outside 1.2-5, the range checked here (1.2-3.5 for Marcuse's fit in the Thin and thick lens engine). The reference finds the fit within 1 % of the exact mode's best Gaussian from V = 1.0 (-0.49 %) to about 4.0 (-0.72 %), and degrading below: -3.6 % at V = 0.9, -13 % at V = 0.8. Above 2.405 the fit still describes LP01, but the fiber is no longer single-mode, and the page says so.",
     "fidelity": "computed",
     "scope": "Paraxial scalar coupling of a TEM00 beam into the fundamental mode of an ideal weakly guiding step-index fiber (exact, or approximated as its best Gaussian for the closed forms); ideal thin lens; no Fresnel reflection, aberrations, polarization or cladding modes.",

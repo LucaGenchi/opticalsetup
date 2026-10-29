@@ -43,7 +43,7 @@ export function computeRealLens(setup, raw) {
   const lens = computeThickLens({ ...THICK_DEFAULTS, ...raw, wavelengthNm, beamDiameterMm });
   if (!lens.ok) return lens;
   const fresnel = isWavelengthInGlassRange('silica', wavelengthNm);
-  const fiber = computeFiber(lens, { ...THICK_FIBER_DEFAULTS, fiberMode: 'mfd', mfdUm: setup.mode.modeFieldDiameterUm, fresnel }, { vNumber: setup.mode.vNumber });
+  const fiber = computeFiber(lens, { ...THICK_FIBER_DEFAULTS, fiberMode: 'mfd', fresnel }, { vNumber: setup.mode.vNumber, mfdUm: setup.mode.modeFieldDiameterUm });
   if (fiber.pending) return { pending: true, message: fiber.message };
   if (!fiber.ok) return fiber;
   const surfaces = fresnel ? fresnelTransmission(lens.lens.n, wavelengthNm) : null;

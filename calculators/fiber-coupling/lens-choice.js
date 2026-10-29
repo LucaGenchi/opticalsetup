@@ -154,7 +154,7 @@ function tracePlanoConvex({ wavelengthNm, beamDiameterMm, focalMm, mfdUm, vNumbe
   // A narrow beam on a long lens focuses short of where the Debye integral
   // puts it; the traced figures would be wrong, not just approximate.
   if (lens.fresnelNumber < FRESNEL_LIMIT) return refused(`The lit pupil’s Fresnel number a²/(λf) is ${fmt(lens.fresnelNumber, 3)}, below ${FRESNEL_LIMIT}: the beam is too narrow for its focus to form where the traced model (the Debye integral) puts it. The ideal thin lens above still holds.`);
-  const fiber = computeFiber(lens, { ...SINGLET_FIBER_DEFAULTS, fiberMode: 'mfd', mfdUm, fresnel: false }, { vNumber });
+  const fiber = computeFiber(lens, { ...SINGLET_FIBER_DEFAULTS, fiberMode: 'mfd', fresnel: false }, { vNumber, mfdUm });
   if (!fiber.ok) return refused(fiber.errors?.[0]?.message ?? fiber.message);
   return {
     ...shape, thicknessMm: lens.values.thicknessMm, bflMm: lens.bfl, strehl: lens.scan.real.strehl, clipShare: lens.clipShare, fresnelNumber: lens.fresnelNumber,

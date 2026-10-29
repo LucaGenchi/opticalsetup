@@ -451,3 +451,9 @@ test('the numbers quoted on the thin and thick lens page are the engine’s', ()
   // text test/calculator-beams.test.js checks; this page only points there.
   says('Free space to fiber coupling</a> calculator, which traces these singlets');
 });
+
+// The summary is shown and indexed as plain text (escaped), so it carries no markup.
+test('every calculator summary is plain text', async () => {
+  const { calculators } = await import('../tools/calculators-content.mjs');
+  for (const calc of calculators) assert.ok(!/[<>]/.test(calc.summary ?? ''), `${calc.slug}: markup in its summary`);
+});
