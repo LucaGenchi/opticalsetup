@@ -82,7 +82,8 @@ is fixed); the partner is `E_p E_out*`, so
 `√(2Δν_p² + Δν_S²)` and `√(2Δν_S² + Δν_p²)` for transform-limited pulses and
 an instantaneous response; a narrow Raman line narrows them towards the pump
 and Stokes widths. This is the widest spectrum the inputs allow; a smaller acceptance
-bandwidth narrows it. Solving from a harmonic divides by `√n`. Inputs may be
+bandwidth narrows it, and group-velocity mismatch can compress an SHG
+spectrum well below it (Marangoni et al., Opt. Express 15, 8884 (2007)). Solving from a harmonic divides by `√n`. Inputs may be
 at most `λ/2` wide (a frequency FWHM of at most 0.47 ν); a generated
 spectrum not narrower than half its centre frequency (DFG of close, broad inputs; a
 fundamental from a very broad harmonic; an OPO output just past the pump)
