@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  COMPRESSOR_DEFAULTS, LAYOUT_PRESETS, computeCompressor, pulseFromPhase, separationScan, gddScan,
+  COMPRESSOR_DEFAULTS, COMPRESSOR_INPUTS, LAYOUT_PRESETS, computeCompressor, pulseFromPhase, separationScan, gddScan,
 } from '../calculators/dispersion-compensation/compressor-calculator.js';
 import { canvasScene, omegaOf, lensGlassGddFs2 } from '../calculators/dispersion-compensation/compressor-model.js';
 import { traceScene, detectorReading } from '../sketch/js/raytrace.js';
@@ -44,13 +44,20 @@ test('every example bench computes, draws and reads the same GDD on the canvas',
     assert.equal(pulse.colourSpreads[0].parallel, true, layout);
     assert.equal(pulse.colourSpreads[0].overlapping, true, layout);
   }
-  // One pass of a pair leaves them parallel and side by side, as the page says.
-  for (const layout of ['prism-pair', 'grating-pair']) {
-    const r = computeCompressor(form(layout, { passes: '1' }));
-    traceScene(r.layout.elements);
-    const [spread] = detectorReading(r.layout.elements.at(-1).id).pulse.colourSpreads;
-    assert.ok(r.geometry.outputChirpMm > 0 && spread.parallel && !spread.overlapping, `${layout}: ${JSON.stringify(spread)}`);
+});
+
+test('every layout is a compressor: a pair or a stretcher is always double-passed', () => {
+  // One pass of a pair leaves the colours side by side, which is no
+  // compressor, so the page offers none; a passes field from an older form
+  // is ignored.
+  assert.ok(!COMPRESSOR_INPUTS.some(input => input.id === 'passes'));
+  for (const layout of ['prism-pair', 'grating-pair', 'stretcher']) {
+    assert.equal(computeCompressor(form(layout)).layout.passes, 2, layout);
+    const stale = computeCompressor({ ...form(layout), passes: '1' });
+    assert.equal(stale.layout.passes, 2, layout);
+    assert.equal(stale.comp.gddFs2, computeCompressor(form(layout)).comp.gddFs2, layout);
   }
+  for (const layout of ['four-prism', 'four-grating']) assert.equal(computeCompressor(form(layout)).layout.passes, 1, layout);
 });
 
 test('the page quotes the defaults as its content does', () => {
@@ -113,26 +120,13 @@ const arrivals = r => {
 
 test('a double pass returns the beam as it came in: every colour on the same line', () => {
   for (const [layout, extra] of [['prism-pair', {}], ['prism-pair', { insertion2Mm: 5 }], ['grating-pair', {}], ['stretcher', {}]]) {
-    const r = computeCompressor(form(layout, { passes: '2', ...extra }));
+    const r = computeCompressor(form(layout, extra));
     assert.equal(r.figureIssue, null, `${layout}: ${r.figureIssue}`);
-    assert.equal(r.geometry.outputChirpMm, 0);
     assert.ok(r.layout.elements.some(el => el.type === 'mirror') && !r.layout.elements.some(el => el.type === 'retroreflector'));
     const at = arrivals(r);
     assert.ok(at.length >= 3, `${layout}: ${at.length} colours arrive`);
     for (const p of at) assert.ok(Math.hypot(p.x - at[0].x, p.y - at[0].y) < 1e-6, `${layout}: colours ${JSON.stringify(at)}`);
   }
-});
-
-test('one pass of a pair leaves the colours side by side, as Treacy\'s geometry gives', () => {
-  const r = computeCompressor(form('grating-pair', { passes: '1' }));
-  const { gr } = r.layout, G = r.layout.pairs[0].separationMm, s = Math.sin(gr.incidenceDeg * Math.PI / 180);
-  const tanBeta = nm => Math.tan(Math.asin(nm * gr.lines * 1e-6 - s));
-  const want = G * Math.abs(tanBeta(785) - tanBeta(815)) * Math.cos(gr.incidenceDeg * Math.PI / 180);
-  assert.ok(Math.abs(r.geometry.outputChirpMm / want - 1) < 1e-9, `${r.geometry.outputChirpMm} vs ${want}`);
-  const at = arrivals(r);
-  assert.ok(Math.max(...at.map(p => p.y)) - Math.min(...at.map(p => p.y)) > want);
-  // The stretcher's single pass is a grating pair too.
-  assert.ok(computeCompressor(form('stretcher', { passes: '1' })).geometry.outputChirpMm > 10);
 });
 
 test('a bench that cannot be drawn in the plane still gives its numbers, and says why', () => {
@@ -162,12 +156,12 @@ test('a bench that cannot be drawn in the plane still gives its numbers, and say
   assert.equal(broad.figureIssue, null);
 });
 
-test('the grating pair\'s GDD is Treacy\'s explicit formula', () => {
-  const r = computeCompressor(form('grating-pair', { solve: 'manual', gratingSeparationMm: 250, passes: '1' }));
+test('the grating pair\'s GDD is twice Treacy\'s explicit formula, one pass each way', () => {
+  const r = computeCompressor(form('grating-pair', { solve: 'manual', gratingSeparationMm: 250 }));
   const lam = 800e-6, d = 1 / 1200, c = 2.99792458e-4;
   const beta = Math.asin(800 * 1200e-6 - Math.sin(Math.PI / 4));
   const treacy = -(lam ** 3) * 250 / (2 * Math.PI * c * c * d * d * Math.cos(beta) ** 3);
-  assert.ok(Math.abs(r.comp.gddFs2 / treacy - 1) < 1e-10, `${r.comp.gddFs2} vs ${treacy}`);
+  assert.ok(Math.abs(r.comp.gddFs2 / (2 * treacy) - 1) < 1e-10, `${r.comp.gddFs2} vs 2 × ${treacy}`);
 });
 
 test('the canvas opens the bench with an autocorrelator at the output', () => {
@@ -179,11 +173,9 @@ test('the canvas opens the bench with an autocorrelator at the output', () => {
 });
 
 test('the canvas scene delivers the colours the figure check traced, with its autocorrelator box in place', () => {
-  // One pass of a grating pair sends the bluest colour to the second grating
-  // past the output: an autocorrelator box reaching toward the optics would
-  // take it before it gets there.
-  for (const [layout, extra] of [...Object.keys(LAYOUT_PRESETS).map(k => [k, {}]),
-    ['grating-pair', { passes: '1' }], ['prism-pair', { passes: '1' }]]) {
+  // The box sits behind the autocorrelator's face, away from the optics, so
+  // it takes no beam on its way to them.
+  for (const [layout, extra] of Object.keys(LAYOUT_PRESETS).map(k => [k, {}])) {
     const r = computeCompressor(form(layout, extra));
     assert.equal(r.figureIssue, null, `${layout} ${JSON.stringify(extra)}: ${r.figureIssue}`);
     traceScene(r.layout.elements);
@@ -197,9 +189,6 @@ test('the canvas scene delivers the colours the figure check traced, with its au
     // Loading rounds the scene's numbers, which moves the fitted GDD a little.
     assert.ok(Math.abs(canvas.pulse.gddFs2 / page.pulse.gddFs2 - 1) < 1e-3, `${layout} ${JSON.stringify(extra)}`);
   }
-  const r = computeCompressor(form('grating-pair', { passes: '1' }));
-  traceScene(r.layout.elements);
-  assert.equal(detectorReading(r.layout.elements.at(-1).id).samples, 5);
 });
 
 test('the graphs are finite where they are drawn', () => {
