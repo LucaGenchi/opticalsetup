@@ -3,6 +3,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
+  color-scheme: light;
   --bg: #f3f5f7;
   --panel: #ffffff;
   --border: #dfe3e8;
@@ -13,17 +14,19 @@
   --ink: #0a1a33;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #14171c;
-    --panel: #1b1f26;
-    --border: #2c323b;
-    --text: #e7eaee;
-    --muted: #9aa3b0;
-    --accent: #5b8cff;
-    --accent-soft: #1d2c47;
-    --ink: #e7eaee;
-  }
+/* The header switch (wiki/assets/site-header.js) or, until one is chosen, the
+   system appearance sets data-theme -- the app's convention and stored
+   choice, so the canvas and the site look alike. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #14171c;
+  --panel: #1b1f26;
+  --border: #2c323b;
+  --text: #e7eaee;
+  --muted: #9aa3b0;
+  --accent: #5b8cff;
+  --accent-soft: #1d2c47;
+  --ink: #e7eaee;
 }
 
 html, body {
@@ -66,6 +69,43 @@ a { color: var(--accent); }
 .header-actions { display: flex; align-items: center; gap: 18px; }
 .header-link { color: var(--muted); font-weight: 600; font-size: 14px; text-decoration: none; }
 .header-link:hover { color: var(--text); }
+button.header-link { font-family: inherit; background: none; border: 0; padding: 0; cursor: pointer; white-space: nowrap; }
+.theme-toggle {
+  display: grid; place-items: center; flex: 0 0 auto; width: 32px; height: 32px; padding: 0;
+  border: 1px solid var(--border); border-radius: 999px; background: transparent;
+  color: var(--muted); cursor: pointer;
+}
+.theme-toggle:hover { color: var(--text); border-color: var(--muted); }
+.theme-icon {
+  width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.theme-icon-moon { fill: currentColor; stroke: none; }
+.theme-icon-sun { display: none; }
+:root[data-theme="dark"] .theme-icon-moon { display: none; }
+:root[data-theme="dark"] .theme-icon-sun { display: block; }
+
+/* About: the dialog of the section pages (wiki/assets/wiki.css), in the
+   homepage's colours. */
+.site-dialog {
+  width: min(430px, calc(100vw - 28px)); max-height: calc(100vh - 28px); overflow: auto;
+  margin: auto; padding: 20px; border: 1px solid var(--border); border-radius: 13px;
+  background: var(--panel); color: var(--text); box-shadow: 0 24px 70px rgba(10, 26, 51, .24);
+}
+.site-dialog::backdrop { background: rgba(10, 19, 32, .42); backdrop-filter: blur(2px); }
+.site-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.site-dialog .eyebrow {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700;
+}
+.site-dialog h2 { margin-top: 2px; font-size: 18px; letter-spacing: -.25px; color: var(--ink); }
+.site-dialog-close {
+  flex: 0 0 auto; width: 30px; height: 30px; padding: 0; border: 1px solid var(--border);
+  border-radius: 999px; background: transparent; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer;
+}
+.site-dialog-close:hover { color: var(--text); border-color: var(--muted); }
+.about-text { margin: 12px 0 0; font-size: 13px; line-height: 1.55; }
+.about-citation { padding: 8px 10px; border-left: 2px solid var(--accent); overflow-wrap: anywhere; }
+.about-links { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 16px 0 0; font-size: 13px; }
 
 .btn {
   display: inline-flex;
@@ -204,17 +244,16 @@ main {
   text-align: center;
 }
 
-/* Four header links do not fit beside the brand on a phone: they take a
-   row of their own under it. */
-@media (max-width: 520px) {
-  .site-header { flex-wrap: wrap; row-gap: 8px; }
-  .header-actions { flex-basis: 100%; }
+@media (max-width: 800px) {
+  .header-cta { display: none; }
 }
+/* The section links, About and the light/dark switch do not fit beside the
+   brand on a phone: they take a row of their own under it, and wrap on the
+   narrowest screens. */
 @media (max-width: 640px) {
   .hero { padding: 44px 0 36px; }
-  .header-cta { display: none; }
-  .site-header { padding: 12px 16px; gap: 10px; }
+  .site-header { flex-wrap: wrap; row-gap: 8px; padding: 12px 16px; gap: 10px; }
   .brand { font-size: 16px; gap: 7px; }
-  .header-actions { gap: 12px; }
+  .header-actions { flex-basis: 100%; flex-wrap: wrap; gap: 6px 12px; }
   .header-link { font-size: 13px; }
 }

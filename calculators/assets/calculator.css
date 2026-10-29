@@ -24,21 +24,19 @@
   --error-soft: #fdecea;
   --good: #1e7a3c;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --series-1: #3987e5;
-    --series-2: #d95926;
-    --series-3: #199e70;
-    --series-4: #934b98;
-    --series-2-text: #e8743f;
-    --series-4-text: #c084c4;
-    --chart-grid: #1f2a3f;
-    --chart-axis: #3a4a66;
-    --chart-band: #ffd23f;
-    --error: #ff8a80;
-    --error-soft: #3a1d1d;
-    --good: #6fd08c;
-  }
+:root[data-theme="dark"] {
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #934b98;
+  --series-2-text: #e8743f;
+  --series-4-text: #c084c4;
+  --chart-grid: #1f2a3f;
+  --chart-axis: #3a4a66;
+  --chart-band: #ffd23f;
+  --error: #ff8a80;
+  --error-soft: #3a1d1d;
+  --good: #6fd08c;
 }
 
 .header-actions a.plain[aria-current="page"] { color: var(--accent); font-weight: 650; }
@@ -304,9 +302,7 @@
   grid-area: figure; margin: 0; min-width: 0; min-height: 160px; position: relative;
   background: var(--fig-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
 }
-@media (prefers-color-scheme: dark) {
-  .calc-stage-figure { --fig-bg: #20252d; --fig-ink: #edf2f8; --fig-muted: #94a3b8; --fig-dim: #aeb8c5; }
-}
+:root[data-theme="dark"] .calc-stage-figure { --fig-bg: #20252d; --fig-ink: #edf2f8; --fig-muted: #94a3b8; --fig-dim: #aeb8c5; }
 .calc-stage-figure svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 .calc-stage-figure .fig-ink { fill: var(--fig-ink); }
 .calc-stage-figure .fig-muted { fill: var(--fig-muted); }

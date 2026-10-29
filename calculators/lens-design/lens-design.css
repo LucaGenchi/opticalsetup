@@ -13,14 +13,12 @@
   --glass-fill: rgba(64, 132, 214, .14);
   --glass-edge: #3c5f8c;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --field-4: #a586e8;
-    --field-5: #e06a9b;
-    --field-6: #d6b23a;
-    --glass-fill: rgba(102, 147, 255, .16);
-    --glass-edge: #8fb0e8;
-  }
+:root[data-theme="dark"] {
+  --field-4: #a586e8;
+  --field-5: #e06a9b;
+  --field-6: #d6b23a;
+  --glass-fill: rgba(102, 147, 255, .16);
+  --glass-edge: #8fb0e8;
 }
 
 .calc-page:has(.bench) { max-width: 1480px; }

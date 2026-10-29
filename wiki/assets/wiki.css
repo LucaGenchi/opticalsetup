@@ -3,6 +3,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
+  color-scheme: light;
   --bg: #f5f7fb;
   --panel: #ffffff;
   --border: #dde3ec;
@@ -16,20 +17,22 @@
   --sim-border: #c9dbfe;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0c1320;
-    --panel: #131b2a;
-    --border: #24314a;
-    --text: #cbd3e1;
-    --muted: #8b96a8;
-    --accent: #6693ff;
-    --accent-soft: #1a2740;
-    --ink: #eef1f6;
-    --real-tint: #131b2a;
-    --sim-tint: #16223c;
-    --sim-border: #2a3c60;
-  }
+/* The header switch (wiki/assets/site-header.js) or, until one is chosen, the
+   system appearance sets data-theme -- the app's convention and stored
+   choice, so the canvas and these pages look alike. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0c1320;
+  --panel: #131b2a;
+  --border: #24314a;
+  --text: #cbd3e1;
+  --muted: #8b96a8;
+  --accent: #6693ff;
+  --accent-soft: #1a2740;
+  --ink: #eef1f6;
+  --real-tint: #131b2a;
+  --sim-tint: #16223c;
+  --sim-border: #2a3c60;
 }
 
 html, body { height: 100%; }
@@ -68,6 +71,46 @@ a:hover { text-decoration: underline; }
 .header-actions .btn:hover { text-decoration: none; opacity: .92; }
 .header-actions a.plain { color: var(--muted); }
 .header-actions a.plain:hover { color: var(--text); }
+.header-actions button.plain {
+  font: inherit; color: var(--muted); background: none; border: 0; padding: 0;
+  cursor: pointer; white-space: nowrap; flex: 0 0 auto;
+}
+.header-actions button.plain:hover { color: var(--text); }
+.theme-toggle {
+  display: grid; place-items: center; flex: 0 0 auto; width: 30px; height: 30px; padding: 0;
+  border: 1px solid var(--border); border-radius: 999px; background: transparent;
+  color: var(--muted); cursor: pointer;
+}
+.theme-toggle:hover { color: var(--text); border-color: var(--muted); }
+.theme-icon {
+  width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.theme-icon-moon { fill: currentColor; stroke: none; }
+.theme-icon-sun { display: none; }
+:root[data-theme="dark"] .theme-icon-moon { display: none; }
+:root[data-theme="dark"] .theme-icon-sun { display: block; }
+
+/* About: the app's dialog, in the site's colours. */
+.site-dialog {
+  width: min(430px, calc(100vw - 28px)); max-height: calc(100vh - 28px); overflow: auto;
+  margin: auto; padding: 20px; border: 1px solid var(--border); border-radius: 13px;
+  background: var(--panel); color: var(--text); box-shadow: 0 24px 70px rgba(10, 26, 51, .24);
+}
+.site-dialog::backdrop { background: rgba(10, 19, 32, .42); backdrop-filter: blur(2px); }
+.site-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.site-dialog .eyebrow {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700;
+}
+.site-dialog h2 { margin-top: 2px; font-size: 18px; letter-spacing: -.25px; color: var(--ink); }
+.site-dialog-close {
+  flex: 0 0 auto; width: 30px; height: 30px; padding: 0; border: 1px solid var(--border);
+  border-radius: 999px; background: transparent; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer;
+}
+.site-dialog-close:hover { color: var(--text); border-color: var(--muted); }
+.about-text { margin: 12px 0 0; font-size: 13px; line-height: 1.55; }
+.about-citation { padding: 8px 10px; border-left: 2px solid var(--accent); overflow-wrap: anywhere; }
+.about-links { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 16px 0 0; font-size: 13px; }
 
 /* ---------- shell: sidebar + article ---------- */
 .wiki-shell {
@@ -107,14 +150,15 @@ a:hover { text-decoration: underline; }
   .article-icon svg { width: 58px; height: 58px; }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 780px) {
   .header-actions .btn { display: none; }
 }
-/* Four header links do not fit beside the brand on a phone: they take a
-   row of their own under it. */
-@media (max-width: 520px) {
+/* The section links, About and the light/dark switch do not fit beside the
+   brand on a phone: they take a row of their own under it, and wrap on the
+   narrowest screens. */
+@media (max-width: 600px) {
   .site-header { flex-wrap: wrap; row-gap: 8px; padding: 12px 16px; }
-  .header-actions { flex-basis: 100%; gap: 14px; }
+  .header-actions { flex-basis: 100%; flex-wrap: wrap; gap: 6px 12px; }
 }
 
 /* ---------- article ---------- */
