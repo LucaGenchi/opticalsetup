@@ -11,7 +11,7 @@
 // the fiber at its best plane on the axis. The glass, diameter and edge are
 // rules of thumb for a catalogue lens, not an optimum; see choosePlanoConvex.
 import { parseInputs } from '../assets/calculator-inputs.js';
-import { FIBER_DEFAULTS, SETUP_INPUTS, resolveMode, matchingFocalMm, focusCollimated, gaussianCoupling, computeFiberCoupling, PARAXIAL_LIMIT_MRAD } from './fiber-coupling.js';
+import { SETUP_INPUTS, resolveMode, matchingFocalMm, focusCollimated, gaussianCoupling, PARAXIAL_LIMIT_MRAD } from './fiber-coupling.js';
 import { LENS_DEFAULTS as SINGLET_DEFAULTS, FIBER_DEFAULTS as SINGLET_FIBER_DEFAULTS, FRESNEL_LIMIT, computeThickLens, computeFiber } from '../thin-thick-lens/thick-lens.js';
 import { GLASSES, isWavelengthInGlassRange } from '../../sketch/js/glass.js';
 import { materialIndex, glassShortName } from '../lens-design/engine/materials.js';
@@ -155,14 +155,4 @@ export function computeFiberSetup(raw) {
   out.range = paraxialFocalRange(v.beamDiameterMm, v.wavelengthNm, m.modeRadiusUm);
   out.suggestion = planoConvexSuggestion({ wavelengthNm: v.wavelengthNm, beamDiameterMm: v.beamDiameterMm, focalMm: out.optimalFocalMm, mfdUm: m.mode.modeFieldDiameterUm });
   return out;
-}
-
-// The matching focal length as the second part of the page takes it (4
-// significant figures, aligned), and whether that part accepts it: its
-// input range and the paraxial limit both apply. Null with no match.
-export function matchingLensInput(setup) {
-  if (!setup.ok || setup.optimalFocalMm === null) return null;
-  const focalMm = Number(setup.optimalFocalMm.toPrecision(4));
-  const check = computeFiberCoupling({ ...FIBER_DEFAULTS, ...setup.raw, focalMm });
-  return { focalMm, ok: check.ok, reason: check.ok ? '' : check.errors[0].message };
 }

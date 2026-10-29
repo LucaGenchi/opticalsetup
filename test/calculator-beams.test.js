@@ -6,7 +6,9 @@ import { GAUSSIAN_DEFAULTS, computeGaussianBeam, gaussianBeam, beamAt, thinLensF
 import { LENS_DEFAULTS as SINGLET_DEFAULTS, FIBER_DEFAULTS as SINGLET_FIBER_DEFAULTS, FRESNEL_LIMIT, computeThickLens, computeFiber } from '../calculators/thin-thick-lens/thick-lens.js';
 import { FIBER_DEFAULTS, computeFiberCoupling, gaussianCoupling, fiberMode, matchingFocalMm, couplingScan, SINGLE_MODE_V, focusCollimated } from '../calculators/fiber-coupling/fiber-coupling.js';
 import { SETUP_INPUTS, LENS_INPUTS, FIBER_INPUTS } from '../calculators/fiber-coupling/fiber-coupling.js';
-import { computeFiberSetup, focalRange, focalScan, choosePlanoConvex, planoConvexGlass, planoConvexSuggestion, matchingLensInput, paraxialMinFocalMm, NEAR_MATCH, STOCK_DIAMETERS_MM } from '../calculators/fiber-coupling/lens-choice.js';
+import { computeFiberSetup, focalRange, focalScan, choosePlanoConvex, planoConvexGlass, planoConvexSuggestion, paraxialMinFocalMm, NEAR_MATCH, STOCK_DIAMETERS_MM } from '../calculators/fiber-coupling/lens-choice.js';
+import { REAL_LENS_INPUTS, REAL_LENS_DEFAULTS, SINGLETS, computeRealLens, suggestedLensInputs } from '../calculators/fiber-coupling/real-lens.js';
+import { LENS_INPUTS as THICK_LENS_INPUTS } from '../calculators/thin-thick-lens/thick-lens.js';
 import { beamCalculators } from '../tools/calculators-beam-content.mjs';
 
 const close = (a, b, rel = 1e-12, label = '') => assert.ok(Math.abs(a - b) <= rel * Math.max(Math.abs(b), 1e-300), `${label} ${a} vs ${b}`);
@@ -274,7 +276,17 @@ test('the numbers quoted on the Gaussian beam and fiber coupling pages are the e
   says(`has V = ${sigf(smf.vNumber, 3)} at 1550 nm, a cutoff at ${sigf(smf.cutoffNm, 4)} nm and a ${sigf(smf.modeFieldDiameterUm, 3)} µm mode by the fit`);
   const f = fiber({});
   says(`that is ${sigf(f.optimalFocalMm, 4)} mm.`);
-  says(`the 11 mm lens the second part of the page starts from gives a ${sigf(2 * f.focusWaistUm, 4)} µm spot, and ${sigf(100 * f.matchEfficiency, 3)} %`);
+  says(`an ideal 11 mm lens gives a ${sigf(2 * f.focusWaistUm, 4)} µm spot, and ${sigf(100 * f.matchEfficiency, 3)} %`);
+  // The second part's real lenses, from its default plano-convex singlet.
+  const real = o => computeRealLens(setup({}), { ...REAL_LENS_DEFAULTS, ...o }).fiber;
+  const pcx = real({});
+  says(`The ideal lens of the same focal length couples ${sigf(100 * pcx.ideal.efficiency, 3)} %; the singlet couples best, ${sigf(100 * pcx.real.efficiency, 3)} %, with the fiber ${sigf(-pcx.real.shiftMm * 1e3, 3)} µm closer to the lens than F′`);
+  says(`halves with the core ${sigf(pcx.real.halfLateralUm, 2)} µm off the axis (the ideal lens’s ${sigf(pcx.ideal.halfLateralUm, 2)} µm), or with the fiber tilted by ${sigf(pcx.real.halfTiltMrad, 3)} mrad (${sigf(pcx.ideal.halfTiltMrad, 3)} mrad)`);
+  says(`Flat side first, the best is ${sigf(100 * real({ orientation: 'plano' }).real.efficiency, 3)} %; a bi-convex lens of the best form for the same f reaches ${sigf(100 * real({ lensKind: 'biconvex', shape: 'best' }).real.efficiency, 2)} %, and an equi-convex one ${sigf(100 * real({ lensKind: 'biconvex', shape: 'equi' }).real.efficiency, 3)} %`);
+  const uncoated = real({ fresnel: true });
+  says(`pass ${sigf(100 * uncoated.through, 3)} % of the light, which brings the plano-convex singlet to ${sigf(100 * uncoated.real.efficiency, 2)} %`);
+  assert.deepEqual([REAL_LENS_DEFAULTS.lensKind, REAL_LENS_DEFAULTS.glass, REAL_LENS_DEFAULTS.focalMm, REAL_LENS_DEFAULTS.diameterMm, REAL_LENS_DEFAULTS.edgeMm, REAL_LENS_DEFAULTS.orientation], ['planoconvex', 'nbk7', 11, 6, 1, 'convex']);
+  says('starts from an 11 mm plano-convex lens of N-BK7, 6 mm across with a 1 mm edge, curved side toward the laser');
   const set = setup({});
   says(`from ${set.range.shownMinMm} to ${set.range.shownMaxMm} mm`);
   const pc = set.suggestion;
@@ -340,11 +352,12 @@ test('fiber coupling: the near-match range is where an ideal lens keeps 95 %', (
   close(focusCollimated(sv.beamDiameterMm, sv.wavelengthNm, steep.range.minMm).beam.halfDivergenceMrad, PARAXIAL_LIMIT_MRAD, 1e-9);
   const part2 = f => computeFiberCoupling({ ...FIBER_DEFAULTS, mfdUm: 3.5, focalMm: f }).ok;
   // The shown lower end (3.334 mm, the exact limit being 3.3333378 mm) is
-  // the shortest 4-figure focal length the second part accepts.
+  // the shortest 4-figure focal length the paraxial model accepts.
   const shown = steep.range.shownMinMm;
   assert.equal(shown, 3.334);
   assert.ok(part2(shown) && !part2(3.333) && !part2(steep.range.minMm * 0.99));
-  // Over many beams and wavelengths the shown lower end always passes, even
+  // Over many beams and wavelengths the shown lower end always passes the
+  // paraxial limit, even
   // where the limit's focal length lands a rounding error past it.
   for (const wavelengthNm of [405, 633, 1064, 1550]) {
     for (const beamDiameterMm of [0.5, 1, 2, 3.7, 6]) {
@@ -363,17 +376,54 @@ test('fiber coupling: the near-match range is where an ideal lens keeps 95 %', (
   assert.ok(scan.every(p => p.efficiency === null || (Number.isFinite(p.efficiency) && p.efficiency <= 1 + 1e-12)));
 });
 
-test('fiber coupling: the matching focal length goes to the second part only where it is accepted', () => {
-  const ok = matchingLensInput(setup({}));
-  assert.deepEqual(ok, { focalMm: 10.54, ok: true, reason: '' });
-  // A 20 µm beam onto a 1.5 µm mode matches at 0.0373 mm, below the 0.1 mm the lens input takes.
-  const tiny = setup({ wavelengthNm: 633, mfdUm: 1.5, beamDiameterMm: 0.02 });
-  assert.ok(tiny.ok && tiny.optimalFocalMm < 0.1);
-  const refused = matchingLensInput(tiny);
-  assert.equal(refused.ok, false);
-  assert.match(refused.reason, /0\.1–10000 mm/);
-  assert.equal(matchingLensInput(setup({ beamDiameterMm: 0.01 })), null);
-  assert.equal(matchingLensInput(setup({ mfdUm: 0.5 })), null);
+// The second part: a real singlet on the first part's laser and fiber.
+test('fiber coupling: the real-lens part takes the Thin and thick lens inputs, singlets only', () => {
+  const thick = new Map(THICK_LENS_INPUTS.map(i => [i.id, i]));
+  for (const input of REAL_LENS_INPUTS.filter(i => i.id !== 'fresnel')) {
+    const same = thick.get(input.id);
+    assert.ok(same, input.id);
+    assert.deepEqual({ ...input, options: undefined }, { ...same, options: undefined }, input.id);
+  }
+  assert.deepEqual(REAL_LENS_INPUTS.find(i => i.id === 'lensKind').options.map(o => o[0]), ['planoconvex', 'biconvex']);
+  assert.deepEqual(SINGLETS.map(o => o[0]), ['planoconvex', 'biconvex']);
+  assert.ok(!REAL_LENS_INPUTS.some(i => i.group === 'laser'), 'the laser comes from the first part');
+  // It waits for a valid first part, and refuses the ideal lens, which it draws beside every singlet anyway.
+  assert.equal(computeRealLens(setup({ mfdUm: 0.5 }), REAL_LENS_DEFAULTS).pending, true);
+  assert.equal(computeRealLens(null, REAL_LENS_DEFAULTS).pending, true);
+  assert.equal(computeRealLens(setup({}), { ...REAL_LENS_DEFAULTS, lensKind: 'ideal' }).ok, false);
+});
+
+test('fiber coupling: a real lens couples as on the Thin and thick lens page, and the suggestion carries over', () => {
+  const s = setup({});
+  // The same lens and fiber on the Thin and thick lens engine directly.
+  const r = computeRealLens(s, REAL_LENS_DEFAULTS);
+  const lensResult = computeThickLens({ ...SINGLET_DEFAULTS, wavelengthNm: 1550, beamDiameterMm: 2 });
+  const direct = computeFiber(lensResult, { ...SINGLET_FIBER_DEFAULTS, mfdUm: 10.4 });
+  close(r.fiber.real.efficiency, direct.real.efficiency, 1e-12);
+  close(r.fiber.ideal.efficiency, direct.ideal.efficiency, 1e-12);
+  // A step-index fiber reaches the lens part through its mode-field diameter.
+  const step = setup({ fiberMode: 'step' });
+  close(computeRealLens(step, REAL_LENS_DEFAULTS).fiber.values.mfdUm, step.mode.modeFieldDiameterUm, 1e-12);
+  // "Use the suggested plano-convex lens" sets the first part's lens, which couples as traced there.
+  const values = suggestedLensInputs(s);
+  assert.deepEqual(values, { lensKind: 'planoconvex', orientation: 'convex', spec: 'focal', glass: 'nbk7', focalMm: 10.5397, diameterMm: 6, edgeMm: 1 });
+  close(computeRealLens(s, { ...REAL_LENS_DEFAULTS, ...values }).fiber.real.efficiency, s.suggestion.efficiency, 1e-5);
+  assert.equal(suggestedLensInputs(setup({ beamDiameterMm: 0.01 })), null);
+  assert.equal(suggestedLensInputs(setup({ wavelengthNm: 10600, mfdUm: 30 })), null);
+  assert.equal(suggestedLensInputs(setup({ mfdUm: 0.5 })), null);
+  // The lens's own refusals reach this part: a lens narrower than the beam, a face too tight for its diameter.
+  const narrow = computeRealLens(s, { ...REAL_LENS_DEFAULTS, diameterMm: 1.5 });
+  assert.ok(!narrow.ok && narrow.errors.some(e => e.id === 'diameterMm'));
+  assert.equal(computeRealLens(s, { ...REAL_LENS_DEFAULTS, focalMm: 4 }).ok, false);
+  // A bi-convex lens given by its radii, and every number the graphs draw is finite or empty.
+  for (const o of [{}, { lensKind: 'biconvex', spec: 'radii' }, { lensKind: 'biconvex', shape: 'best' }, { orientation: 'plano', fresnel: true }]) {
+    const x = computeRealLens(s, { ...REAL_LENS_DEFAULTS, ...o });
+    assert.ok(x.ok, JSON.stringify(o));
+    for (const kind of ['real', 'ideal']) {
+      for (const axis of ['lateral', 'axial', 'tilt']) assert.ok(x.fiber.scans[kind][axis].every(e => e === null || Number.isNaN(e) || (Number.isFinite(e) && e >= 0 && e <= 1 + 1e-5)), `${kind} ${axis} ${JSON.stringify(o)}`);
+      assert.ok(Number.isFinite(x.fiber[kind].efficiency));
+    }
+  }
 });
 
 test('fiber coupling: with a beam no wider than the mode there is no lens to suggest', () => {

@@ -89,9 +89,11 @@ export function matchingFocalMm(beamDiameterMm, wavelengthNm, modeRadiusUm) {
   return w > m ? m * input.rayleighMm / Math.sqrt(w * w - m * m) : null;
 }
 
-// The page asks for the fiber and the laser first (`setup`), from which it
-// designs the lens; then for a lens of any focal length and its alignment
-// (`lens`), the part that may depart from that design.
+// The page asks for the fiber and the laser (`setup`), from which it designs
+// the lens; the ideal lens's focal length and its alignment (`lens`) complete
+// the closed-form model below, which the lens design, the range of near
+// matches and the tests evaluate. Real lenses are the page's second part
+// (real-lens.js).
 export const FIBER_INPUTS = [
   { id: 'fiberMode', type: 'select', group: 'fiber', label: 'Fiber mode given by', value: 'mfd',
     options: [['mfd', 'Mode-field diameter (datasheet)'], ['step', 'Core diameter and NA (step index)']],

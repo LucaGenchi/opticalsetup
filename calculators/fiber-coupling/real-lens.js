@@ -1,0 +1,51 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// The second part of the fiber coupling page: a spherical singlet of your
+// choosing, plano-convex or bi-convex, focusing the first part's laser into
+// its fiber. The lens is designed and traced by the Thin and thick lens
+// calculator's engine (calculators/thin-thick-lens/thick-lens.js, with its
+// own Python reference), with the same lens inputs as that page, and the
+// fiber placed at each lens's best position on the axis: the singlet beside
+// the ideal thin lens of the same focal length, and how each one's coupling
+// falls as the fiber moves across the axis, along it, or tilts.
+import {
+  LENS_INPUTS as THICK_INPUTS, LENS_DEFAULTS as THICK_DEFAULTS, FIBER_INPUTS as THICK_FIBER_INPUTS, FIBER_DEFAULTS as THICK_FIBER_DEFAULTS,
+  computeThickLens, computeFiber,
+} from '../thin-thick-lens/thick-lens.js';
+import { defaultsFor } from '../assets/calculator-inputs.js';
+
+export const SINGLETS = [['planoconvex', 'Plano-convex singlet'], ['biconvex', 'Bi-convex singlet']];
+
+// The Thin and thick lens page's lens and dimension inputs, its lens choice
+// cut to the two singlets (the ideal lens is drawn beside each anyway), and
+// its uncoated-surfaces switch. The laser and the fiber come from above.
+export const REAL_LENS_INPUTS = [
+  ...THICK_INPUTS.filter(i => i.group === 'lens' || i.group === 'size').map(i => (i.id === 'lensKind' ? { ...i, options: SINGLETS } : i)),
+  { ...THICK_FIBER_INPUTS.find(i => i.id === 'fresnel'), group: 'surfaces', help: 'Loses the normal-incidence reflection at both lens faces and at a fused-silica fiber end.' },
+];
+export const REAL_LENS_DEFAULTS = defaultsFor(REAL_LENS_INPUTS);
+
+// The lens on `setup`'s laser, and its coupling into `setup`'s mode (taken by
+// its mode-field diameter, however the first part was given it).
+export function computeRealLens(setup, raw) {
+  if (!setup?.ok) return { pending: true, message: 'Set a valid fiber and laser above first.' };
+  const { fresnel, ...shape } = raw;
+  if (!SINGLETS.some(([id]) => id === shape.lensKind)) return { ok: false, errors: [{ id: 'lensKind', message: 'Choose a plano-convex or a bi-convex singlet.' }] };
+  const lens = computeThickLens({ ...THICK_DEFAULTS, ...shape, wavelengthNm: setup.values.wavelengthNm, beamDiameterMm: setup.values.beamDiameterMm });
+  if (!lens.ok) return lens;
+  const fiber = computeFiber(lens, { ...THICK_FIBER_DEFAULTS, fiberMode: 'mfd', mfdUm: setup.mode.modeFieldDiameterUm, fresnel });
+  if (fiber.pending) return { pending: true, message: fiber.message };
+  if (!fiber.ok) return fiber;
+  return { ok: true, values: lens.values, lens, fiber };
+}
+
+// The inputs that set this part's lens to the first part's plano-convex
+// suggestion, or null when there is none. The focal length keeps six
+// figures, so the lens is the one traced above to well within its digits.
+export function suggestedLensInputs(setup) {
+  const s = setup?.ok ? setup.suggestion : null;
+  if (!s?.ok) return null;
+  const six = x => Number(x.toPrecision(6));
+  return { lensKind: 'planoconvex', orientation: 'convex', spec: 'focal', glass: s.glass, focalMm: six(setup.optimalFocalMm), diameterMm: six(s.diameterMm), edgeMm: six(s.edgeMm) };
+}
