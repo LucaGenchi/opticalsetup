@@ -142,7 +142,9 @@ Limits of the model, stated where the reading is shown:
   The geometry needs only two colours and is read even where the phase fit
   is not (too few colours, one arriving by two paths, an element whose path
   phase is not followed); colours it finds diverging decline the duration
-  there too.
+  there too, even where other colours of the same source have a fitted
+  phase that passes the one-metre rule above: that rule weighs only the GDD
+  it can compute.
 - **Ideal lenses are paraxial.** The thin lens bends rays by
   `tan θ_out = tan θ_in − h/f`; its path `−h²/(2f)` agrees with that bend to
   second order in the ray angles, so a stretcher built from ideal lenses has

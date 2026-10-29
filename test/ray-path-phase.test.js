@@ -414,6 +414,30 @@ test('a short pulse through one prism keeps its duration when the leftover angle
   }
 });
 
+test('a fitted family that passes the metre rule does not hide a diverging family without a fit', () => {
+  // Luca's scene read by a 120 mm autocorrelator, with an AOM across part of
+  // the beam (Andrea's case): the colours that cross it lose their path
+  // phase, those that miss it keep it. The fitted ones alone would give
+  // about 150 fs; the unfitted ones still diverge, so none is given. An AOM
+  // across the whole beam leaves no fitted family and declines the same way.
+  const file = new URL('./fixtures/prism-920nm-150fs-beam.json', import.meta.url);
+  const readWith = aperture => {
+    const scene = parseSketch(readFileSync(file, 'utf8'), registry);
+    scene.elements.find(e => e.type === 'autocorrelator').params.aperture = 120;
+    const aom = createElement('aom', 330, 70);
+    Object.assign(aom, { rot: 0 });
+    Object.assign(aom.params, { aperture, deflect: 0, eff: 1, zero: false, modulate: false });
+    scene.elements.push(aom);
+    traceScene(scene.elements, scene.beams);
+    return detectorReading(scene.elements.find(e => e.type === 'autocorrelator').id)?.pulse;
+  };
+  for (const aperture of [6, 100]) {
+    const pulse = readWith(aperture);
+    assert.equal(pulse.stretchedPulseWidthFs, null, `AOM ${aperture} mm: ${pulse.stretchedPulseWidthFs} fs (${pulse.dispersionModel})`);
+    assert.match(pulse.dispersionModel, /angular dispersion remains, so there is no single duration here$/);
+  }
+});
+
 test('a flat band whose colours still diverge checks the spread that times it', () => {
   // The flat-band model times the band edges' delay spread, which the
   // angular GDD over the next metre moves too: 117 fs here becomes about

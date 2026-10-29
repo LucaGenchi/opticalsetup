@@ -1594,17 +1594,18 @@ export function detectorReading(elementId) {
       // It stands only if it moves by under 1 % anywhere over the next metre,
       // where angular dispersion adds up to `angularFs2` of GDD (analytic
       // models; a filtered or sampled pulse declines). Where landing places
-      // alone show it (no path phase fitted), there is no such GDD to weigh.
+      // alone show it (no path phase fitted), there is no such GDD to weigh,
+      // so any such family declines, whatever the fitted ones say.
       const angularFs2 = Math.min(0, ...sourceHits.map(h => h.pathPhaseAngularFs2 ?? 0));
       let angularNote = null;
-      if (duration?.available !== false && sourceHits.some(h => h.pathPhaseAngular)) {
+      if (duration?.available !== false && sourceHits.some(h => h.colourSpread?.parallel === false && !h.pathPhaseAngular)) {
+        duration = { durationFs: null, available: false, model: COLOURS_DIVERGE };
+      } else if (duration?.available !== false && sourceHits.some(h => h.pathPhaseAngular)) {
         if (!holdsAcross(angularFs2, 0, PATH_PHASE_ANGULAR_TOLERANCE)) {
           duration = { durationFs: null, available: false, model: PATH_PHASE_ANGULAR };
         } else {
           angularNote = 'on the central ray: the colours leave at slightly different angles, which changes this duration by under 1 % over the next metre';
         }
-      } else if (duration?.available !== false && colourSpread?.parallel === false) {
-        duration = { durationFs: null, available: false, model: COLOURS_DIVERGE };
       }
       // Say where the GDD came from, and that it is the central ray's when
       // the colours arrive side by side.
