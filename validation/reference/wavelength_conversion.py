@@ -17,10 +17,12 @@ rapidly decaying integrands, so 1e-9 relative is round-off only.
 
 The conversion page's bandwidths are checked the same way, without the
 quadrature-sum rule: each input is a Gaussian pulse whose intensity
-spectrum has the entered frequency FWHM (dnu = c dlambda / lambda^2), with
-or without a linear chirp; the generated field is the product the process
-forms (E^2, E^3, E1 E2 or E1 E2*), and the FWHM of its intensity spectrum
-|F(Omega)|^2 is found by quadrature and bisection.
+spectrum, drawn against wavelength, has the entered FWHM in nm (both
+half-maximum wavelengths found by bisection on the curve, with no nm-to-THz
+formula), with or without a linear chirp; the generated field is the
+product the process forms (E^2, E^3, E1 E2 or E1 E2*), the FWHM of its
+intensity spectrum |F(Omega)|^2 is found by quadrature and bisection, and
+read back to nm on its curve against wavelength the same way.
 """
 import cmath
 import math
@@ -127,12 +129,37 @@ def generated_width_thz(factors):
     return 2 * (lo + hi) / 2 / (2 * math.pi)            # rad/ps -> THz
 
 
+def drawn_fwhm_nm(nm, thz):
+    """FWHM against wavelength of a Gaussian in frequency (FWHM thz) centred
+    at nm, as the page draws it: each half-maximum wavelength is found by
+    bisection on the curve itself."""
+    if thz == 0:
+        return 0.0
+    c_nm_thz = C_M_PER_S * 1e9 / 1e12
+    centre = c_nm_thz / nm
+
+    def above_half(lam):
+        return math.exp(-4 * math.log(2) * ((c_nm_thz / lam - centre) / thz) ** 2) > 0.5
+
+    def edge(inside, outside):
+        for _ in range(200):
+            mid = (inside + outside) / 2
+            inside, outside = (mid, outside) if above_half(mid) else (inside, mid)
+        return (inside + outside) / 2
+
+    return edge(nm, 100 * nm) - edge(nm, nm / 100)
+
+
 def width_thz(nm, bandwidth_nm):
-    return C_M_PER_S * 1e9 * bandwidth_nm / nm ** 2 / 1e12
-
-
-def width_nm(thz, nm):
-    return thz * 1e12 * nm ** 2 / (C_M_PER_S * 1e9)
+    """The frequency FWHM whose drawn curve is bandwidth_nm wide at nm,
+    by bisection on drawn_fwhm_nm (increasing in the width)."""
+    if bandwidth_nm == 0:
+        return 0.0
+    lo, hi = 0.0, 2 * C_M_PER_S * 1e9 / 1e12 / nm      # the curve keeps nu > 0 below 2 nu
+    for _ in range(200):
+        mid = (lo + hi) / 2
+        lo, hi = (mid, hi) if drawn_fwhm_nm(nm, mid) < bandwidth_nm else (lo, mid)
+    return (lo + hi) / 2
 
 
 def bandwidth_case(name, inputs, waves):
@@ -140,7 +167,7 @@ def bandwidth_case(name, inputs, waves):
     expected = {}
     for i, (nm, thz) in enumerate(waves):
         expected[f"wave{i}BwTHz"] = sig(thz)
-        expected[f"wave{i}BwNm"] = sig(width_nm(thz, nm))
+        expected[f"wave{i}BwNm"] = sig(drawn_fwhm_nm(nm, thz))
     return {"name": name, "inputs": {"kind": "conversion", **inputs}, "expected": expected,
             "tolerance": {k: 1e-9 for k in expected}}
 
@@ -191,7 +218,7 @@ def cases():
     # change the harmonic's width; SFG and DFG are checked with
     # transform-limited inputs, the case the page states.
     for process, order in (("shg", 2), ("thg", 3)):
-        for nm, bw, chirp in ((1064, 1, 0.0), (800, 30, 2.5), (1030.25, 7.5, -0.7)):
+        for nm, bw, chirp in ((1064, 1, 0.0), (800, 30, 2.5), (1030.25, 7.5, -0.7), (1064, 500, 0.0)):
             g = pulse_exponent(width_thz(nm, bw), chirp)
             out.append(bandwidth_case(f"{process.upper()} bandwidth, {bw} nm at {nm} nm" + (f", chirp ratio {chirp}" if chirp else ""),
                                       {"process": process, "known": "fundamental", "harmonicInputNm": nm, "harmonicBandwidthNm": bw},
@@ -203,8 +230,8 @@ def cases():
         out.append(bandwidth_case(f"{process.upper()} bandwidth from a {bw_h} nm harmonic at {nm_h:.6g} nm",
                                   {"process": process, "known": "harmonic", "harmonicInputNm": nm_h, "harmonicBandwidthNm": bw_h},
                                   [(1064, width_thz(nm_h, bw_h) / ratio), (nm_h, width_thz(nm_h, bw_h))]))
-    for process, a, b, bw_a, bw_b in (("sfg", 800, 1040, 10, 10), ("sfg", 1550, 1030, 40, 0), ("dfg", 800, 1040, 10, 10),
-                                      ("dfg", 1040, 1550.5, 5, 25)):
+    for process, a, b, bw_a, bw_b in (("sfg", 800, 1040, 10, 10), ("sfg", 1550, 1030, 40, 0), ("sfg", 800, 1040, 400, 10),
+                                      ("dfg", 800, 1040, 10, 10), ("dfg", 1040, 1550.5, 5, 25)):
         ga, gb = pulse_exponent(width_thz(a, bw_a)) if bw_a else 0j, pulse_exponent(width_thz(b, bw_b)) if bw_b else 0j
         out_hz = hz(a) + hz(b) if process == "sfg" else abs(hz(a) - hz(b))
         out_width = generated_width_thz([ga, gb if process == "sfg" else gb.conjugate()])
@@ -253,8 +280,8 @@ MODEL = {
         "M. Mohseni, C. Polzer and T. Hellerer, Opt. Express 26, 10230-10241 (2018), doi:10.1364/OE.26.010230, Eq. (5) (resolution)",
     ],
     "provenance": "Energy conservation written from Boyd; CARS and CSRS frequencies from Cheng and Xie and Heuke and Rigneault; the conversion bandwidths are recomputed from their definition, the spectrum of the product field of Gaussian input pulses; the resolution check recomputes the excitation-amplitude width that Eq. (5) of Mohseni et al. expresses in closed form, and the paper's 20.8 ps cm^-1 prefactor anchors it.",
-    "domain": "SHG and THG both directions; SFG; DFG in both input orders and near degeneracy; OPO from signal, idler and the degenerate point; two-color CARS and CSRS on the conversion page, with and without a CSRS solution; coherent Raman (two-color) in all three input modes, with and without a CSRS solution; resolution for equal, unequal, short and equally chirped pulses; SHG and THG bandwidths from the fundamental (with and without linear chirp) and from the harmonic; SFG and DFG bandwidths of transform-limited inputs, including one zero-width input.",
-    "convergence": "Closed-form arithmetic; the resolution and bandwidth quadratures use 4001 points over +/-14 effective widths and an 80-step bisection.",
+    "domain": "SHG and THG both directions; SFG; DFG in both input orders and near degeneracy; OPO from signal, idler and the degenerate point; two-color CARS and CSRS on the conversion page, with and without a CSRS solution; coherent Raman (two-color) in all three input modes, with and without a CSRS solution; resolution for equal, unequal, short and equally chirped pulses; SHG and THG bandwidths from the fundamental (with and without linear chirp, narrow and 500 nm wide) and from the harmonic; SFG and DFG bandwidths of transform-limited inputs, including one zero-width input and one input 400 nm wide; nm widths measured on each spectrum drawn against wavelength.",
+    "convergence": "Closed-form arithmetic; the resolution and bandwidth quadratures use 4001 points over +/-14 effective widths and an 80-step bisection; the nm widths use 200-step bisections on the curve against wavelength.",
     "tolerance_rationale": "1e-9 relative for floating-point identities and for the spectrally accurate quadrature; exact rational anchors at 1e-12; the published three-figure prefactor at half a unit in its last place (0.25 %).",
     "outside_scope": "Declines non-finite or out-of-range inputs, input bandwidths above half their wavelength, equal DFG inputs, an OPO output not longer than the pump, reversed or equal pump and Stokes, non-positive shifts and inferred pump or Stokes wavelengths outside 100-20000 nm; CSRS alone is omitted when the Raman frequency is not below the probing frequency.",
     "fidelity": "computed",

@@ -182,14 +182,16 @@ test('nonlinear conversion declines impossible inputs', () => {
 test('nonlinear conversion bandwidths: harmonics by √n, SFG and DFG in quadrature', () => {
   const C = 299792.458;
   const shg = conversion({});
-  close(shg.waves[0].bandwidthTHz, C * 1 / 1064 ** 2);
+  // A narrow spectrum: Δν ≈ cΔλ/λ², and the harmonic is 2√2 narrower in nm.
+  close(shg.waves[0].bandwidthNm, 1, 1e-12);
+  close(shg.waves[0].bandwidthTHz, C * 1 / 1064 ** 2, 1e-6);
   close(shg.waves[1].bandwidthTHz, Math.SQRT2 * shg.waves[0].bandwidthTHz);
-  close(shg.waves[1].bandwidthNm, 1 / (2 * Math.SQRT2));
+  close(shg.waves[1].bandwidthNm, 1 / (2 * Math.SQRT2), 1e-6);
   const thg = conversion({ process: 'thg', harmonicBandwidthNm: 3 });
   close(thg.waves[1].bandwidthTHz, Math.sqrt(3) * thg.waves[0].bandwidthTHz);
   // Solving back from the harmonic divides by the same factor.
   const back = conversion({ known: 'harmonic', harmonicInputNm: 532, harmonicBandwidthNm: 1 });
-  close(back.waves[0].bandwidthNm, 2 * Math.SQRT2);
+  close(back.waves[0].bandwidthNm, 2 * Math.SQRT2, 1e-5);
   assert.ok(back.fromHarmonic);
   for (const process of ['sfg', 'dfg']) {
     const r = conversion({ process, bandwidth1Nm: 10, bandwidth2Nm: 4 });
@@ -219,6 +221,37 @@ test('nonlinear conversion bandwidths: input limit and spectra that reach zero f
   assert.match(close1.bandwidthNote, /difference frequency spectrum would reach zero frequency/);
   // So does a fundamental solved from a very broad harmonic.
   assert.match(conversion({ known: 'harmonic', harmonicInputNm: 532, harmonicBandwidthNm: 200 }).bandwidthNote, /fundamental/);
+  // At the λ/2 limit the spectrum still stays above zero frequency, so the
+  // graph has finite coordinates and range (review of #294).
+  for (const values of [{ harmonicBandwidthNm: 532 }, { process: 'thg', harmonicBandwidthNm: 532 },
+    { process: 'sfg', wave1Nm: 800, bandwidth1Nm: 400 }, { process: 'dfg', bandwidth1Nm: 400, bandwidth2Nm: 520 }]) {
+    const r = conversion(values);
+    assert.equal(r.ok, true, JSON.stringify(values));
+    const { x, xMin, xMax, series } = conversionSpectrum(r);
+    assert.ok([...x, xMin, xMax].every(Number.isFinite), JSON.stringify(values));
+    assert.ok(series.every(s => s.values.every(v => v === null || Number.isFinite(v))), JSON.stringify(values));
+  }
+});
+
+test('nonlinear conversion bandwidths: each nm width is the FWHM of the drawn curve', () => {
+  // Measured on the Gaussian in frequency drawn against wavelength, by
+  // bisection on each side of the peak; inputs read back as entered.
+  const C = 299792.458;
+  const drawnFwhmNm = w => {
+    const f = nm => Math.exp(-4 * Math.LN2 * ((C / nm - w.frequencyTHz) / w.bandwidthTHz) ** 2);
+    const edge = (inside, outside) => {
+      for (let i = 0; i < 200; i++) { const mid = (inside + outside) / 2; if (f(mid) > 0.5) inside = mid; else outside = mid; }
+      return (inside + outside) / 2;
+    };
+    return edge(w.wavelengthNm, w.wavelengthNm * 100) - edge(w.wavelengthNm, w.wavelengthNm / 100);
+  };
+  for (const values of [{ harmonicBandwidthNm: 500 }, { harmonicBandwidthNm: 1 }, { process: 'thg', harmonicBandwidthNm: 300 },
+    { known: 'harmonic', harmonicInputNm: 532, harmonicBandwidthNm: 60 }, { process: 'sfg', wave1Nm: 800, bandwidth1Nm: 400 },
+    { process: 'dfg', wave1Nm: 1040, wave2Nm: 1550.5, bandwidth1Nm: 50, bandwidth2Nm: 250 }]) {
+    const r = conversion(values);
+    for (const w of r.waves) close(drawnFwhmNm(w), w.bandwidthNm, 1e-9);
+  }
+  close(conversion({ harmonicBandwidthNm: 500 }).waves[0].bandwidthNm, 500, 1e-12);
 });
 
 test('nonlinear conversion spectrum: sorted finite samples, unit peaks, lines for unmodelled widths', () => {

@@ -48,18 +48,25 @@ export const CONVERSION_DEFAULTS = defaultsFor(CONVERSION_INPUTS);
 const wave = (role, wavelengthNm, generated = false) => ({ role, wavelengthNm, frequencyTHz: C_NM_THZ / wavelengthNm, photonEv: HC_EV_NM / wavelengthNm,
   generated, bandwidthTHz: null, bandwidthNm: null });
 
-// Spectral widths. Every spectrum is a Gaussian in frequency whose FWHM is
-// Δν = cΔλ/λ², and a width is read back to nm the same way. A generated
-// field is a product of the input fields (E², E³, E₁E₂ or E₁E₂*), so for
-// Gaussian spectra its frequency FWHM adds in quadrature, each field counted
-// as often as it appears: √n Δν for the nth harmonic, √(Δν₁² + Δν₂²) for
-// SFG and DFG. Phase matching is taken to accept the whole spectrum.
-const widthTHz = (nm, bandwidthNm) => C_NM_THZ * bandwidthNm / (nm * nm);
-const widthNm = (thz, nm) => thz * nm * nm / C_NM_THZ;
+// Spectral widths. Every spectrum is a Gaussian in frequency, and a width in
+// nm is the FWHM of that curve against wavelength: its half-maximum points
+// sit at c/(ν ∓ Δν/2), so Δλ = cΔν/(ν² − Δν²/4), close to cΔν/ν² = λ²Δν/c
+// for a narrow spectrum and exact for a broad one. A generated field is a
+// product of the input fields (E², E³, E₁E₂ or E₁E₂*), so for Gaussian
+// spectra its frequency FWHM adds in quadrature, each field counted as often
+// as it appears: √n Δν for the nth harmonic, √(Δν₁² + Δν₂²) for SFG and
+// DFG. Phase matching is taken to accept the whole spectrum.
+// widthTHz inverts widthNm in a form that does not cancel for small Δλ.
+const widthTHz = (nm, bandwidthNm) => 2 * C_NM_THZ * bandwidthNm / (nm * (nm + Math.hypot(nm, bandwidthNm)));
+const widthNm = (thz, nm) => {
+  const nu = C_NM_THZ / nm;
+  return C_NM_THZ * thz / (nu * nu - thz * thz / 4);
+};
 // A width counts only while the spectrum keeps clear of zero frequency:
-// FWHM at most half the centre frequency, where the Gaussian has fallen to
-// about 1e-5 at ν = 0.
-const fitsAboveZero = w => w.bandwidthTHz <= w.frequencyTHz / 2;
+// FWHM below half the centre frequency, so the graph's ±2 FWHM stays above
+// ν = 0, where the Gaussian has fallen to about 1e-5. An input at most λ/2
+// wide is at most 0.47 ν wide.
+const fitsAboveZero = w => w.bandwidthTHz < w.frequencyTHz / 2;
 
 function withWidths(waves, widths) {
   const out = waves.map((w, i) => ({ ...w, bandwidthTHz: widths[i], bandwidthNm: widthNm(widths[i], w.wavelengthNm) }));
@@ -145,7 +152,10 @@ export function conversionSpectrum(result) {
   const xs = new Set();
   for (const w of peaks) {
     if (w.line) { w.line.forEach(nm => xs.add(nm)); continue; }
-    for (let k = -SAMPLES_PER_SIDE; k <= SAMPLES_PER_SIDE; k++) xs.add(C_NM_THZ / (w.frequencyTHz + k * SAMPLE_STEP * w.width));
+    for (let k = -SAMPLES_PER_SIDE; k <= SAMPLES_PER_SIDE; k++) {
+      const nu = w.frequencyTHz + k * SAMPLE_STEP * w.width;
+      if (nu > 0) xs.add(C_NM_THZ / nu);   // computeConversion keeps nu > 0; this keeps x finite regardless
+    }
   }
   const x = [...xs].sort((a, b) => a - b);
   const pad = 0.05 * (x.at(-1) - x[0]);

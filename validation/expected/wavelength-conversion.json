@@ -904,9 +904,9 @@
   {
    "expected": {
     "wave0BwNm": 1.0,
-    "wave0BwTHz": 0.2648118693,
-    "wave1BwNm": 0.3535533906,
-    "wave1BwTHz": 0.3745005371
+    "wave0BwTHz": 0.2648118108,
+    "wave1BwNm": 0.3535533516,
+    "wave1BwTHz": 0.3745004544
    },
    "inputs": {
     "harmonicBandwidthNm": 1,
@@ -926,9 +926,9 @@
   {
    "expected": {
     "wave0BwNm": 30.0,
-    "wave0BwTHz": 14.05277147,
-    "wave1BwNm": 10.60660172,
-    "wave1BwTHz": 19.87362
+    "wave0BwTHz": 14.04783451,
+    "wave1BwNm": 10.60473826,
+    "wave1BwTHz": 19.86663809
    },
    "inputs": {
     "harmonicBandwidthNm": 30,
@@ -948,9 +948,9 @@
   {
    "expected": {
     "wave0BwNm": 7.5,
-    "wave0BwTHz": 2.118345136,
-    "wave1BwNm": 2.651650429,
-    "wave1BwTHz": 2.995792421
+    "wave0BwTHz": 2.118317071,
+    "wave1BwNm": 2.651632864,
+    "wave1BwTHz": 2.995752732
    },
    "inputs": {
     "harmonicBandwidthNm": 7.5,
@@ -969,10 +969,32 @@
   },
   {
    "expected": {
-    "wave0BwNm": 1.414213562,
-    "wave0BwTHz": 0.3745005371,
+    "wave0BwNm": 500.0,
+    "wave0BwTHz": 125.8066549,
+    "wave1BwNm": 172.258717,
+    "wave1BwTHz": 177.9174776
+   },
+   "inputs": {
+    "harmonicBandwidthNm": 500,
+    "harmonicInputNm": 1064,
+    "kind": "conversion",
+    "known": "fundamental",
+    "process": "shg"
+   },
+   "name": "SHG bandwidth, 500 nm at 1064 nm",
+   "tolerance": {
+    "wave0BwNm": 1e-09,
+    "wave0BwTHz": 1e-09,
+    "wave1BwNm": 1e-09,
+    "wave1BwTHz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "wave0BwNm": 1.414213875,
+    "wave0BwTHz": 0.3745004544,
     "wave1BwNm": 0.5,
-    "wave1BwTHz": 0.5296237386
+    "wave1BwTHz": 0.5296236217
    },
    "inputs": {
     "harmonicBandwidthNm": 0.5,
@@ -992,9 +1014,9 @@
   {
    "expected": {
     "wave0BwNm": 1.0,
-    "wave0BwTHz": 0.2648118693,
-    "wave1BwNm": 0.1924500897,
-    "wave1BwTHz": 0.4586676121
+    "wave0BwTHz": 0.2648118108,
+    "wave1BwNm": 0.1924500614,
+    "wave1BwTHz": 0.4586675108
    },
    "inputs": {
     "harmonicBandwidthNm": 1,
@@ -1014,9 +1036,9 @@
   {
    "expected": {
     "wave0BwNm": 30.0,
-    "wave0BwTHz": 14.05277147,
-    "wave1BwNm": 5.773502692,
-    "wave1BwTHz": 24.34011417
+    "wave0BwTHz": 14.04783451,
+    "wave1BwNm": 5.772150319,
+    "wave1BwTHz": 24.33156311
    },
    "inputs": {
     "harmonicBandwidthNm": 30,
@@ -1036,9 +1058,9 @@
   {
    "expected": {
     "wave0BwNm": 7.5,
-    "wave0BwTHz": 2.118345136,
-    "wave1BwNm": 1.443375673,
-    "wave1BwTHz": 3.669081404
+    "wave0BwTHz": 2.118317071,
+    "wave1BwNm": 1.443362925,
+    "wave1BwTHz": 3.669032794
    },
    "inputs": {
     "harmonicBandwidthNm": 7.5,
@@ -1057,10 +1079,32 @@
   },
   {
    "expected": {
-    "wave0BwNm": 2.598076211,
-    "wave0BwTHz": 0.6880014181,
+    "wave0BwNm": 500.0,
+    "wave0BwTHz": 125.8066549,
+    "wave1BwNm": 92.97370909,
+    "wave1BwTHz": 217.9035182
+   },
+   "inputs": {
+    "harmonicBandwidthNm": 500,
+    "harmonicInputNm": 1064,
+    "kind": "conversion",
+    "known": "fundamental",
+    "process": "thg"
+   },
+   "name": "THG bandwidth, 500 nm at 1064 nm",
+   "tolerance": {
+    "wave0BwNm": 1e-09,
+    "wave0BwTHz": 1e-09,
+    "wave1BwNm": 1e-09,
+    "wave1BwTHz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "wave0BwNm": 2.598078793,
+    "wave0BwTHz": 0.6880010763,
     "wave1BwNm": 0.5,
-    "wave1BwTHz": 1.191653412
+    "wave1BwTHz": 1.19165282
    },
    "inputs": {
     "harmonicBandwidthNm": 0.5,
@@ -1080,11 +1124,11 @@
   {
    "expected": {
     "wave0BwNm": 10.0,
-    "wave0BwTHz": 4.684257156,
+    "wave0BwTHz": 4.684074192,
     "wave1BwNm": 10.0,
-    "wave1BwTHz": 2.771749797,
-    "wave2BwNm": 3.712089784,
-    "wave2BwTHz": 5.442872591
+    "wave1BwTHz": 2.771685734,
+    "wave2BwNm": 3.712022681,
+    "wave2BwTHz": 5.442682504
    },
    "inputs": {
     "bandwidth1Nm": 10,
@@ -1107,11 +1151,11 @@
   {
    "expected": {
     "wave0BwNm": 40.0,
-    "wave0BwTHz": 4.991341652,
+    "wave0BwTHz": 4.990510904,
     "wave1BwNm": 0.0,
     "wave1BwTHz": 0.0,
-    "wave2BwNm": 6.375217835,
-    "wave2BwTHz": 4.991341652
+    "wave2BwNm": 6.374325849,
+    "wave2BwTHz": 4.990510904
    },
    "inputs": {
     "bandwidth1Nm": 40,
@@ -1133,12 +1177,39 @@
   },
   {
    "expected": {
-    "wave0BwNm": 10.0,
-    "wave0BwTHz": 4.684257156,
+    "wave0BwNm": 400.0,
+    "wave0BwTHz": 176.9284981,
     "wave1BwNm": 10.0,
-    "wave1BwTHz": 2.771749797,
-    "wave2BwNm": 218.1883884,
-    "wave2BwTHz": 5.442872591
+    "wave1BwTHz": 2.771685734,
+    "wave2BwNm": 122.8697357,
+    "wave2BwTHz": 176.9502068
+   },
+   "inputs": {
+    "bandwidth1Nm": 400,
+    "bandwidth2Nm": 10,
+    "kind": "conversion",
+    "process": "sfg",
+    "wave1Nm": 800,
+    "wave2Nm": 1040
+   },
+   "name": "SFG bandwidth, 400 nm at 800 nm and 10 nm at 1040 nm",
+   "tolerance": {
+    "wave0BwNm": 1e-09,
+    "wave0BwTHz": 1e-09,
+    "wave1BwNm": 1e-09,
+    "wave1BwTHz": 1e-09,
+    "wave2BwNm": 1e-09,
+    "wave2BwTHz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "wave0BwNm": 10.0,
+    "wave0BwTHz": 4.684074192,
+    "wave1BwNm": 10.0,
+    "wave1BwTHz": 2.771685734,
+    "wave2BwNm": 218.397038,
+    "wave2BwTHz": 5.442682504
    },
    "inputs": {
     "bandwidth1Nm": 10,
@@ -1161,11 +1232,11 @@
   {
    "expected": {
     "wave0BwNm": 5.0,
-    "wave0BwTHz": 1.385874898,
+    "wave0BwTHz": 1.38586689,
     "wave1BwNm": 25.0,
-    "wave1BwTHz": 3.117576868,
-    "wave2BwNm": 113.5463811,
-    "wave2BwTHz": 3.411734861
+    "wave1BwTHz": 3.117374269,
+    "wave2BwNm": 113.5767983,
+    "wave2BwTHz": 3.411546478
    },
    "inputs": {
     "bandwidth1Nm": 5,
@@ -1542,8 +1613,8 @@
   "S. Heuke and H. Rigneault, Nat. Commun. 14, 3337 (2023), doi:10.1038/s41467-023-38941-4 (CSRS at 2 omega_S - omega_p)",
   "M. Mohseni, C. Polzer and T. Hellerer, Opt. Express 26, 10230-10241 (2018), doi:10.1364/OE.26.010230, Eq. (5) (resolution)"
  ],
- "convergence": "Closed-form arithmetic; the resolution and bandwidth quadratures use 4001 points over +/-14 effective widths and an 80-step bisection.",
- "domain": "SHG and THG both directions; SFG; DFG in both input orders and near degeneracy; OPO from signal, idler and the degenerate point; two-color CARS and CSRS on the conversion page, with and without a CSRS solution; coherent Raman (two-color) in all three input modes, with and without a CSRS solution; resolution for equal, unequal, short and equally chirped pulses; SHG and THG bandwidths from the fundamental (with and without linear chirp) and from the harmonic; SFG and DFG bandwidths of transform-limited inputs, including one zero-width input.",
+ "convergence": "Closed-form arithmetic; the resolution and bandwidth quadratures use 4001 points over +/-14 effective widths and an 80-step bisection; the nm widths use 200-step bisections on the curve against wavelength.",
+ "domain": "SHG and THG both directions; SFG; DFG in both input orders and near degeneracy; OPO from signal, idler and the degenerate point; two-color CARS and CSRS on the conversion page, with and without a CSRS solution; coherent Raman (two-color) in all three input modes, with and without a CSRS solution; resolution for equal, unequal, short and equally chirped pulses; SHG and THG bandwidths from the fundamental (with and without linear chirp, narrow and 500 nm wide) and from the harmonic; SFG and DFG bandwidths of transform-limited inputs, including one zero-width input and one input 400 nm wide; nm widths measured on each spectrum drawn against wavelength.",
  "fidelity": "computed",
  "id": "wavelength-conversion",
  "outside_scope": "Declines non-finite or out-of-range inputs, input bandwidths above half their wavelength, equal DFG inputs, an OPO output not longer than the pump, reversed or equal pump and Stokes, non-positive shifts and inferred pump or Stokes wavelengths outside 100-20000 nm; CSRS alone is omitted when the Raman frequency is not below the probing frequency.",
