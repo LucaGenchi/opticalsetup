@@ -3,8 +3,8 @@
 // The optics a dispersion compensator needs on the canvas. Prism faces
 // transmit by Fresnel at their real angle and polarization
 // (docs/physics/prism-fresnel.md); gratings keep a set diffraction
-// efficiency per order; CaF₂ is a canvas glass; a D-shaped mirror picks off
-// a returning beam.
+// efficiency per order; CaF₂ is a canvas glass; a D-shaped mirror reflects
+// one chosen pass of each beam and lets the other go by.
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -90,19 +90,74 @@ test('CaF₂ is a canvas glass with its published index', () => {
   assert.ok(Math.abs(glassIndex('caf2', 587.6) - 1.43385) < 2e-5);
 });
 
-test('a D-shaped mirror lets the incoming beam pass its edge and picks off the return', () => {
-  const mk = (type, x, y, rot, params) => Object.assign(createElement(type, x, y), { rot, params: { ...createElement(type).params, ...params } });
-  const laser = mk('cwlaser', 40, 180, 0, { wavelength: 633, beamMode: 'line' });
-  const pickoff = mk('dmirror', 230, 203, 45, { length: 12.7 });
-  const roof = mk('retroreflector', 460, 190, 0, { length: 50.8 });
-  const det = mk('detector', 230, 320, 90, { aperture: 26 });
+const mkOptic = (type, x, y, rot, params = {}) => Object.assign(createElement(type, x, y), { rot, params: { ...createElement(type).params, ...params } });
+
+// The D-shaped mirror at (230, 180), turned so the beam from the laser would
+// leave upward and a beam coming back from the right leaves downward.
+function pickoffScene(reflectsOn) {
+  const laser = mkOptic('cwlaser', 40, 180, 0, { wavelength: 633, beamMode: 'line' });
+  const pickoff = mkOptic('dmirror', 230, 180, 45, { length: 12.7, reflectsOn });
+  return { laser, pickoff };
+}
+
+test('a D-shaped mirror set to the second pass lets the beam go by and picks off its return', () => {
+  const { laser, pickoff } = pickoffScene('second');
+  assert.equal(createElement('dmirror').params.reflectsOn, 'second');
+  // An end mirror at normal incidence sends the beam back along its own line,
+  // as a vertically displaced return looks in a top view.
+  const end = mkOptic('mirror', 460, 180, 0);
+  const below = mkOptic('detector', 230, 320, 90, { aperture: 26 });
+  const above = mkOptic('detector', 230, 60, -90, { aperture: 26 });
+  traceScene([laser, pickoff, end, below, above]);
+  assert.ok(Math.abs(detectorReading(below.id).signal - 1) < 1e-9, 'the whole return is picked off');
+  assert.equal(detectorReading(above.id), null, 'the outgoing beam is not reflected');
+  // The pass that goes by is lossless even when the coating is not.
+  pickoff.params.refl = 80;
+  traceScene([laser, pickoff, end, below, above]);
+  assert.ok(Math.abs(detectorReading(below.id).signal - 0.8) < 1e-9);
+});
+
+test('a D-shaped mirror set to the first pass reflects the beam and lets its return go by', () => {
+  const { laser, pickoff } = pickoffScene('first');
+  const end = mkOptic('mirror', 230, 60, 90);
+  const below = mkOptic('detector', 230, 320, 90, { aperture: 26 });
+  const right = mkOptic('detector', 460, 180, 0, { aperture: 26 });
+  traceScene([laser, pickoff, end, below, right]);
+  assert.ok(Math.abs(detectorReading(below.id).signal - 1) < 1e-9, 'the return goes by to the detector below');
+  assert.equal(detectorReading(right.id), null, 'nothing goes on past the mirror on the first pass');
+});
+
+test('a D-shaped mirror counts only hits on its face, so an in-plane return is a first pass', () => {
+  // Beside the incoming beam, the mirror never meets it: the return, displaced
+  // sideways by a roof reflector, is the first beam to land on the face.
+  const laser = mkOptic('cwlaser', 40, 180, 0, { wavelength: 633, beamMode: 'line' });
+  const pickoff = mkOptic('dmirror', 230, 203, 45, { length: 12.7, reflectsOn: 'first' });
+  const roof = mkOptic('retroreflector', 460, 190, 0, { length: 50.8 });
+  const det = mkOptic('detector', 230, 320, 90, { aperture: 26 });
   traceScene([laser, pickoff, roof, det]);
-  assert.ok(Math.abs(detectorReading(det.id).signal - 1) < 1e-9, 'the whole return reaches the detector');
-  // Moved 20 mm into the incoming beam, it blocks the way in instead.
-  pickoff.y = 183;
+  assert.ok(Math.abs(detectorReading(det.id).signal - 1) < 1e-9);
+  pickoff.params.reflectsOn = 'second';
   traceScene([laser, pickoff, roof, det]);
-  assert.equal(detectorReading(det.id), null);
+  assert.equal(detectorReading(det.id), null, 'set to the second pass, the only hit goes by');
   assert.equal(registry.dmirror.category, 'Mirrors');
+});
+
+test('a D-shaped mirror treats every pass after the second as the second', () => {
+  // Out, back from the end mirror and reflected down (pass 2), then round
+  // three fold mirrors onto the face again from the left, 15 mm higher: the
+  // third pass reflects, as the second did, up to the detector above.
+  const { laser, pickoff } = pickoffScene('second');
+  pickoff.params.length = 50.8;
+  const end = mkOptic('mirror', 460, 180, 0);
+  const foldA = mkOptic('mirror', 230, 300, 45, { length: 12.7 });
+  const foldB = mkOptic('mirror', 150, 300, -45, { length: 12.7 });
+  const foldC = mkOptic('mirror', 150, 165, 45, { length: 12.7 });
+  const above = mkOptic('detector', 245, 60, -90, { aperture: 6 });
+  traceScene([laser, pickoff, end, foldA, foldB, foldC, above]);
+  assert.ok(Math.abs(detectorReading(above.id).signal - 1) < 1e-9, 'the third pass is reflected');
+  pickoff.params.reflectsOn = 'first';
+  traceScene([laser, pickoff, end, foldA, foldB, foldC, above]);
+  assert.equal(detectorReading(above.id), null, 'set to the first pass, nothing comes back to the face');
 });
 
 // Placed along the beam after the prism of brewsterPrism(): `distance` mm

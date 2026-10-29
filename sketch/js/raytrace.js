@@ -4383,6 +4383,17 @@ function retinalScatter(ray, hit, s, d, n, fraction) {
   return out;
 }
 
+// Which pass over a D-shaped pickoff this is for the arriving beam, and
+// whether the mirror reflects it. Each beam carries its own count per mirror,
+// held at 2: every pass after the second behaves as the second, so a loop
+// through the mirror repeats from there on, and loopState, which compares the
+// count, sums it only from there.
+function pickoffPass(ray, pickoff) {
+  const pass = (ray.pickoffPasses?.[pickoff.id] || 0) + 1;
+  const reflects = pickoff.reflectsOn === 'first' ? pass === 1 : pass >= 2;
+  return { reflects, passes: { ...(ray.pickoffPasses || {}), [pickoff.id]: Math.min(2, pass) } };
+}
+
 function interact(ray, hit) {
   const s = hit.surface, d = { x: ray.dx, y: ray.dy }, k = s.kind, data = s.data;
   const t = norm(sub(s.b, s.a));
@@ -4514,13 +4525,18 @@ function interact(ray, hit) {
       // user is budgeting the power that reaches the sample, and a 98 %
       // mirror's 2 % would only be clutter. Either way nothing is hidden: the
       // leak is drawn and traced, or it does not exist.
+      // A D-shaped pickoff reflects one pass of each beam; on the other the
+      // beam goes by unchanged, as it would just beside the sharp edge.
+      const pickoff = data.pickoff ? pickoffPass(ray, data.pickoff) : null;
+      if (pickoff && !pickoff.reflects) return [{ d, pickoffPasses: pickoff.passes }];
+      const passes = pickoff ? { pickoffPasses: pickoff.passes } : {};
       const R = Math.min(1, Math.max(0, (data.refl ?? 100) / 100));
-      if (R >= 1) return [{ d: reflect(d, n), phaseShift: Math.PI }];
+      if (R >= 1) return [{ d: reflect(d, n), phaseShift: Math.PI, ...passes }];
       const out = [];
-      if (R > 0) out.push({ d: reflect(d, n), intensity: ray.intensity * R, tag: 'R', retainWeak: true });
+      if (R > 0) out.push({ d: reflect(d, n), intensity: ray.intensity * R, tag: 'R', retainWeak: true, ...passes });
       // Solid polygon wheels absorb coating losses; leaking through the
       // wheel would otherwise produce spurious internal facet reflections.
-      if (R < 1 && !data.opaque && data.showTransmitted) out.push({ d, intensity: ray.intensity * (1 - R), tag: 'T', retainWeak: true });
+      if (R < 1 && !data.opaque && data.showTransmitted) out.push({ d, intensity: ray.intensity * (1 - R), tag: 'T', retainWeak: true, ...passes });
       return out;
     }
     case 'cmirror': {
@@ -6651,6 +6667,7 @@ function loopState(r) {
     r.dispersed, r.spectralContinuum, r.spectralWidthNm, r.spectralLo, r.spectralHi, r.fanLo, r.fanHi, r.sliceSpec,
     r.pulseDescribed, r.trainPieces,
     r.approximation, r.parametricPath, r.keepWeak, r.retainWeak, r.hidden, r.sample, r.phaseValid,
+    r.pickoffPasses || null,
   ];
 }
 
@@ -7442,6 +7459,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         if (Number.isFinite(c0.phaseOffset)) r.phaseOffset = c0.phaseOffset;
         else if (Number.isFinite(c0.phaseShift)) r.phaseOffset = (r.phaseOffset || 0) + c0.phaseShift;
         if (Number.isInteger(c0.fieldGroupCount)) r.fieldGroupCount = c0.fieldGroupCount;
+        if ('pickoffPasses' in c0) r.pickoffPasses = c0.pickoffPasses;
         if ('retainZeroField' in c0) r.retainZeroField = Boolean(c0.retainZeroField);
         if (c0.phaseValid === false) {
           r.phaseValid = false;
@@ -7612,6 +7630,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           // what the linear-only continuation left out.
           approximation: r.approximation || c.approximation || null,
           parametricPath: 'parametricPath' in c ? c.parametricPath : r.parametricPath,
+          pickoffPasses: 'pickoffPasses' in c ? c.pickoffPasses : (r.pickoffPasses || null),
           intensity: childIntensity,
           power: childPower,
           // A child can start a sampled beam of its own (an OPO spreading a
