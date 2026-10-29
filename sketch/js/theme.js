@@ -63,4 +63,12 @@ export function initTheme(button, {
   media?.addEventListener?.('change', event => {
     if (!explicitTheme) applyTheme(resolveTheme(null, event.matches), true);
   });
+
+  // Another OpticalSetup page switched the appearance -- a wiki page around
+  // this embedded canvas, or another tab -- so follow it.
+  window.addEventListener?.('storage', event => {
+    if (event.key !== THEME_STORAGE_KEY) return;
+    explicitTheme = event.newValue === 'dark' || event.newValue === 'light' ? event.newValue : null;
+    applyTheme(resolveTheme(explicitTheme, media?.matches), true);
+  });
 }

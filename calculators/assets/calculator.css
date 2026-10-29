@@ -24,21 +24,19 @@
   --error-soft: #fdecea;
   --good: #1e7a3c;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --series-1: #3987e5;
-    --series-2: #d95926;
-    --series-3: #199e70;
-    --series-4: #934b98;
-    --series-2-text: #e8743f;
-    --series-4-text: #c084c4;
-    --chart-grid: #1f2a3f;
-    --chart-axis: #3a4a66;
-    --chart-band: #ffd23f;
-    --error: #ff8a80;
-    --error-soft: #3a1d1d;
-    --good: #6fd08c;
-  }
+:root[data-theme="dark"] {
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #934b98;
+  --series-2-text: #e8743f;
+  --series-4-text: #c084c4;
+  --chart-grid: #1f2a3f;
+  --chart-axis: #3a4a66;
+  --chart-band: #ffd23f;
+  --error: #ff8a80;
+  --error-soft: #3a1d1d;
+  --good: #6fd08c;
 }
 
 .header-actions a.plain[aria-current="page"] { color: var(--accent); font-weight: 650; }

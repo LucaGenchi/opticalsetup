@@ -263,6 +263,13 @@ function renderTab(id) {
   if (COHERENT_TABS.includes(id)) renderCoherent(id, plot, body, result);
 }
 
+// The plots take their colours from the theme when drawn, so the light/dark
+// switch in the header draws them again.
+new MutationObserver(() => {
+  for (const id of ['layout', 'spot', ...DIFFRACTION_TABS, ...COHERENT_TABS]) dirty.add(id);
+  renderTab(activeTab);
+}).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
 function exportBar(...buttons) {
   return el('div', { class: 'bench-export' }, ...buttons.map(([text, onClick]) => {
     const b = el('button', { type: 'button', class: 'bench-button', text });
