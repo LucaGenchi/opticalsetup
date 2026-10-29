@@ -58,17 +58,22 @@ test('a canvas follows an appearance switched or cleared on another page, and ig
     initTheme(null, { root, media, storage });
     assert.equal(root.dataset.theme, 'light');
 
-    listeners.storage({ key: THEME_STORAGE_KEY, newValue: 'dark' });
+    const local = event => listeners.storage({ storageArea: storage, ...event });
+    local({ key: THEME_STORAGE_KEY, newValue: 'dark' });
     assert.equal(root.dataset.theme, 'dark');
-    listeners.storage({ key: 'opticalsetup-autosave', newValue: 'light' });
+    local({ key: 'opticalsetup-autosave', newValue: 'light' });
     assert.equal(root.dataset.theme, 'dark', 'an unrelated key changes nothing');
+    // sessionStorage.clear() in the page around an embedded canvas reaches it
+    // with a null key too, but the stored choice is untouched.
+    listeners.storage({ storageArea: { getItem: () => null }, key: null, newValue: null });
+    assert.equal(root.dataset.theme, 'dark', 'another storage area changes nothing');
     // The choice cleared elsewhere: back to the system appearance.
-    listeners.storage({ key: THEME_STORAGE_KEY, newValue: null });
+    local({ key: THEME_STORAGE_KEY, newValue: null });
     assert.equal(root.dataset.theme, 'light');
     // localStorage.clear() elsewhere arrives with a null key: the stored
     // choice is gone, so the system appearance applies and is followed again.
-    listeners.storage({ key: THEME_STORAGE_KEY, newValue: 'dark' });
-    listeners.storage({ key: null, newValue: null });
+    local({ key: THEME_STORAGE_KEY, newValue: 'dark' });
+    local({ key: null, newValue: null });
     assert.equal(root.dataset.theme, 'light');
     listeners.change({ matches: true });
     assert.equal(root.dataset.theme, 'dark', 'after a clear the system appearance is followed again');
