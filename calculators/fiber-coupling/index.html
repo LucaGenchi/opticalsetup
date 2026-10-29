@@ -6,11 +6,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fiber coupling calculator — OpticalSetup</title>
+<title>Free space to fiber coupling calculator — OpticalSetup</title>
 <meta name="description" content="Give the fiber and the laser, and the page designs the lens: the ideal thin lens that focuses the beam to the fiber’s mode, and a plano-convex lens to start from, traced with its spherical aberration. Then choose a lens of any focal length, set it off the fiber, and see what mode mismatch, lateral offset, focus error and tilt cost.">
 <link rel="canonical" href="https://opticalsetup.com/calculators/fiber-coupling/">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Fiber coupling calculator — OpticalSetup">
+<meta property="og:title" content="Free space to fiber coupling calculator — OpticalSetup">
 <meta property="og:description" content="Give the fiber and the laser, and the page designs the lens: the ideal thin lens that focuses the beam to the fiber’s mode, and a plano-convex lens to start from, traced with its spherical aberration. Then choose a lens of any focal length, set it off the fiber, and see what mode mismatch, lateral offset, focus error and tilt cost.">
 <meta property="og:url" content="https://opticalsetup.com/calculators/fiber-coupling/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
@@ -61,30 +61,36 @@
     </div>
   </header>
   <main class="calc-page">
-    <div class="crumb"><a href="../../calculators/">Calculators</a> / Fiber coupling</div>
-    <h1>Fiber coupling</h1>
+    <div class="crumb"><a href="../../calculators/">Calculators</a> / Free space to fiber coupling</div>
+    <h1>Free space to fiber coupling</h1>
     <p class="tagline">Give the fiber and the laser, and the page designs the lens: the ideal thin lens that focuses the beam to the fiber’s mode, and a plano-convex lens to start from, traced with its spherical aberration. Then choose a lens of any focal length, set it off the fiber, and see what mode mismatch, lateral offset, focus error and tilt cost.</p>
 
     <noscript><p class="calc-status is-error">This calculator needs JavaScript. The physics and formulas below read without it.</p></noscript>
-    <section class="calc-block" id="calculator" aria-label="Fiber and laser">
-      <form class="calc-inputs calc-grid-3" id="calc-form" autocomplete="off" novalidate></form>
+    <section class="calc-stage" id="calculator" aria-label="Laser and fiber">
+      <form class="calc-inputs calc-stage-left" id="calc-form" autocomplete="off" novalidate></form>
+      <figure class="calc-stage-figure" id="calc-figure"></figure>
+      <form class="calc-inputs calc-stage-right" id="fiber-form" autocomplete="off" novalidate></form>
+      <div class="calc-stage-side">
+        <table class="calc-results" id="mode-results" aria-label="The fiber mode"></table>
+      </div>
+      <div class="calc-stage-graphs">
+        <div class="calc-status" id="calc-status" role="status" aria-live="polite"></div>
+      <section class="calc-graphs" aria-label="Graphs">
+      <figure class="calc-chart wide" id="chart-focal">
+        <figcaption><span class="chart-num">1</span><span><b>Mode matching against focal length</b><br><span class="chart-note">An ideal thin lens, perfectly aligned; the line marks the focal length that matches the mode. A catalogue focal length inside the range in the table below keeps at least 95 %.</span></span></figcaption>
+        <div class="chart-host" data-chart="focal"></div>
+        <details class="chart-data"><summary>Data table</summary><div class="chart-table" data-table="focal"></div></details>
+      </figure>
+    </section>
+      </div>
     </section>
     <section class="calc-block calc-results-block" aria-label="The lens to use">
-      <div class="calc-status" id="calc-status" role="status" aria-live="polite"></div>
       <div class="calc-grid-2">
-        <table class="calc-results" id="mode-results" aria-label="The fiber mode"></table>
         <table class="calc-results" id="ideal-results" aria-label="The ideal thin lens"></table>
         <table class="calc-results" id="planoconvex-results" aria-label="A plano-convex lens to start from"></table>
       </div>
       <ul class="calc-notes" id="calc-notes"></ul>
       <div class="calc-actions" id="calc-actions"></div>
-    </section>
-    <section class="calc-graphs" aria-label="Graphs">
-      <figure class="calc-chart wide" id="chart-focal">
-        <figcaption><span class="chart-num">1</span><span><b>Mode matching against focal length</b><br><span class="chart-note">An ideal thin lens, perfectly aligned; the line marks the focal length that matches the mode. A catalogue focal length inside the range in the table keeps at least 95 %.</span></span></figcaption>
-        <div class="chart-host" data-chart="focal"></div>
-        <details class="chart-data"><summary>Data table</summary><div class="chart-table" data-table="focal"></div></details>
-      </figure>
     </section>
     <section class="calc-panel" id="lens-panel" aria-labelledby="lens-title">
       <div class="calc-panel-head">

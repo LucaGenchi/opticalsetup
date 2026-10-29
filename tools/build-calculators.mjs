@@ -196,13 +196,35 @@ function graphsSection(calc, graphs = calc.graphs, first = 1) {
 // (status, tables two to a row, notes) and titled groups of further tables.
 // The extra `panels` follow the last block; a panel with its own `layout`
 // (whose first form is the panel's id) is laid out the same way, with its
-// own `graphs` continuing the page's numbering.
+// own `graphs` continuing the page's numbering. A `stage` block may stand
+// for the first form and the graphs together (see below).
 function layoutBlocks(calc, layout, prefix = 'calc', graphs = calc.graphs, first = 1) {
-  if (layout[0]?.form !== prefix || layout.filter(b => b.output).length !== 1 || layout.filter(b => b.graphs).length !== (graphs.length ? 1 : 0)) {
-    throw new Error(`${calc.slug}: a layout needs the ${prefix} form first, one output block and, with graphs, one graphs block`);
+  const stage = layout[0]?.stage === prefix;
+  if (!(layout[0]?.form === prefix || stage) || layout.filter(b => b.output).length !== 1 || layout.filter(b => b.graphs || b.stage).length !== (graphs.length ? 1 : 0)) {
+    throw new Error(`${calc.slug}: a layout needs the ${prefix} form (or stage) first, one output block and, with graphs, one graphs block`);
   }
   return layout.map(block => {
     if (block.graphs) return graphsSection(calc, graphs, first);
+    // The form split around a figure of what it describes: the panel's form
+    // on the left, the figure (`<prefix>-figure`, drawn by the page) in the
+    // middle, the form `right` on the right (mountCalculator places a group
+    // there with `form: '<right>-form'`). The status and the graphs sit
+    // under the left two columns, with the `side` tables beside them under
+    // the right form.
+    if (block.stage) {
+      return `<section class="calc-stage"${prefix === 'calc' ? ' id="calculator"' : ''} aria-label="${esc(block.label)}">
+      <form class="calc-inputs calc-stage-left" id="${prefix}-form" autocomplete="off" novalidate></form>
+      <figure class="calc-stage-figure" id="${prefix}-figure"></figure>
+      <form class="calc-inputs calc-stage-right" id="${block.right}-form" autocomplete="off" novalidate></form>
+      <div class="calc-stage-side">
+        ${resultTables({ results: block.side })}
+      </div>
+      <div class="calc-stage-graphs">
+        <div class="calc-status" id="${prefix}-status" role="status" aria-live="polite"></div>
+      ${graphsSection(calc, graphs, first)}
+      </div>
+    </section>`;
+    }
     // The main form beside a live figure of what it describes, with a short
     // results table and the reset under the figure. A panel's figure has
     // its ids prefixed by the panel's (`<id>-preview-figure`, ...).
@@ -233,8 +255,8 @@ function layoutBlocks(calc, layout, prefix = 'calc', graphs = calc.graphs, first
       </div>`;
     if (block.output) {
       const actions = layout.some(b => b.preview) ? '' : `\n      <div class="calc-actions" id="${prefix}-actions"></div>`;
-      return `<section class="calc-block calc-results-block" aria-label="${esc(block.label)}">
-      <div class="calc-status" id="${prefix}-status" role="status" aria-live="polite"></div>
+      const status = stage ? '' : `\n      <div class="calc-status" id="${prefix}-status" role="status" aria-live="polite"></div>`;
+      return `<section class="calc-block calc-results-block" aria-label="${esc(block.label)}">${status}
       ${tables}
       <ul class="calc-notes" id="${prefix}-notes"></ul>${actions}
     </section>`;

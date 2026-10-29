@@ -7,6 +7,7 @@ import { FIBER_DEFAULTS, SETUP_INPUTS, LENS_INPUTS, computeFiberCoupling, coupli
 import { computeFiberSetup, focalScan, matchingLensInput } from './lens-choice.js';
 import { mountCalculator } from '../assets/simple-calculator-page.js';
 import { formatNumber } from '../assets/calculator-kit.js';
+import { wavelengthToColor } from '../../sketch/js/util.js';
 
 const percent = eta => 100 * eta;
 const pick = inputs => Object.fromEntries(inputs.map(i => [i.id, FIBER_DEFAULTS[i.id]]));
@@ -76,6 +77,33 @@ function setupNotes(r) {
   return out;
 }
 
+// ---------------------------------------------------------------- figure
+// The beam, the lens and the fiber, schematic (a millimetre beam onto a
+// micrometre mode cannot be drawn to scale), in the canvas's colours: the
+// beam in its wavelength's, and the matching focal length under it.
+const figure = document.getElementById('calc-figure');
+
+function drawFigure(r) {
+  figure.classList.toggle('is-stale', !r.ok);
+  if (!r.ok) return;
+  const v = r.values, beam = wavelengthToColor(v.wavelengthNm);
+  const focal = r.optimalFocalMm === null ? 'no lens matches' : `f = ${formatNumber(r.optimalFocalMm, 4)} mm`;
+  const label = `Schematic, not to scale: a ${formatNumber(v.wavelengthNm, 5)} nm beam ${formatNumber(v.beamDiameterMm, 4)} mm wide, a lens focusing it onto the fiber’s end${r.optimalFocalMm === null ? '; no lens matches this beam to the mode' : `, at the focal length that matches the mode, ${formatNumber(r.optimalFocalMm, 4)} mm`}.`;
+  const text = (x, y, size, anchor, content, fill = '#2b3240') => `<text x="${x}" y="${y}" font-size="${size}" text-anchor="${anchor}" fill="${fill}">${content}</text>`;
+  figure.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260" preserveAspectRatio="xMidYMid meet" font-family="Helvetica, Arial, sans-serif" role="img" aria-label="${label}">
+    <rect width="400" height="260" fill="#ffffff"/>
+    ${text(20, 64, 34, 'start', 'Laser')}${text(380, 64, 34, 'end', 'Fiber')}
+    <polygon points="0,124 200,124 300,138 300,142 200,156 0,156" fill="${beam}" fill-opacity="0.35"/>
+    <polyline points="0,124 200,124 300,138" fill="none" stroke="${beam}" stroke-width="2"/>
+    <polyline points="0,156 200,156 300,142" fill="none" stroke="${beam}" stroke-width="2"/>
+    <path d="M200,72 Q228,140 200,208 Q172,140 200,72 Z" fill="#cfe3f5" stroke="#2b6cb0" stroke-width="3"/>
+    <rect x="300" y="133" width="100" height="14" fill="#0ea5e9"/>
+    <g stroke="#5b6475" stroke-width="1"><line x1="200" y1="214" x2="200" y2="240"/><line x1="300" y1="150" x2="300" y2="240"/>
+      <line x1="204" y1="232" x2="296" y2="232"/><polyline points="209,228 203,232 209,236" fill="none"/><polyline points="291,228 297,232 291,236" fill="none"/></g>
+    ${text(250, 224, 16, 'middle', focal)}${text(8, 252, 12, 'start', 'Schematic, not to scale', '#8a93a3')}
+  </svg>`;
+}
+
 let setup = null, lens = null;
 
 // Start the second part's lens from the design: the matching focal length.
@@ -92,7 +120,7 @@ useIdeal.addEventListener('click', () => {
 
 mountCalculator({
   inputs: SETUP_INPUTS, defaults: pick(SETUP_INPUTS), hideInactive: true, charts: ['focal'],
-  groups: { fiber: { title: 'Fiber' }, laser: { title: 'Laser' } },
+  groups: { laser: { title: 'Laser' }, fiber: { title: 'Fiber', form: 'fiber-form' } },
   compute: computeFiberSetup, rows: setupRows, notes: setupNotes,
   graphs: r => {
     if (r.optimalFocalMm === null) return { focal: { message: 'No lens matches a beam that is not larger than the mode.' } };
@@ -106,6 +134,7 @@ mountCalculator({
   },
   onResult: r => {
     setup = r;
+    drawFigure(r);
     const ideal = matchingLensInput(r);
     useIdeal.disabled = !ideal?.ok;
     useIdeal.title = !r.ok ? 'Set a valid fiber and laser first.' : !ideal ? 'No lens matches the mode: see the notes above.'

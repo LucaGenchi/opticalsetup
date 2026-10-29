@@ -67,7 +67,7 @@ export const beamCalculators = [
     references: [KOGELNIK, SELF, SIEGMAN, ISO],
   },
   {
-    slug: 'fiber-coupling', title: 'Fiber coupling', script: 'page.js',
+    slug: 'fiber-coupling', title: 'Free space to fiber coupling', script: 'page.js',
     card: 'Couple a collimated laser beam into a single-mode fiber: the lens that matches the mode, a plano-convex lens to start from, and the alignment tolerances.',
     summary: 'Give the fiber and the laser, and the page designs the lens: the ideal thin lens that focuses the beam to the fiber’s mode, and a plano-convex lens to start from, traced with its spherical aberration. Then choose a lens of any focal length, set it off the fiber, and see what mode mismatch, lateral offset, focus error and tilt cost.',
     facts: [
@@ -76,12 +76,11 @@ export const beamCalculators = [
       { label: 'Code', html: `The <a href="${GITHUB}/calculators/fiber-coupling/fiber-coupling.js">calculator’s module</a>, its <a href="${GITHUB}/calculators/fiber-coupling/lens-choice.js">lens choice</a> and the <a href="${GITHUB}/validation/reference/fiber_coupling.py">Python reference</a>; the plano-convex lens is traced by the <a href="${GITHUB}/calculators/thin-thick-lens/thick-lens.js">Thin and thick lens module</a>.` },
     ],
     layout: [
-      { form: 'calc', label: 'Fiber and laser' },
-      { output: true, label: 'The lens to use', results: [['mode', 'The fiber mode'], ['ideal', 'The ideal thin lens'], ['planoconvex', 'A plano-convex lens to start from']] },
-      { graphs: true },
+      { stage: 'calc', right: 'fiber', label: 'Laser and fiber', side: [['mode', 'The fiber mode']] },
+      { output: true, label: 'The lens to use', results: [['ideal', 'The ideal thin lens'], ['planoconvex', 'A plano-convex lens to start from']] },
     ],
     graphs: [
-      { id: 'focal', wide: true, title: 'Mode matching against focal length', note: 'An ideal thin lens, perfectly aligned; the line marks the focal length that matches the mode. A catalogue focal length inside the range in the table keeps at least 95 %.' },
+      { id: 'focal', wide: true, title: 'Mode matching against focal length', note: 'An ideal thin lens, perfectly aligned; the line marks the focal length that matches the mode. A catalogue focal length inside the range in the table below keeps at least 95 %.' },
     ],
     panels: [{ id: 'lens', title: 'Your lens and its alignment',
       intro: 'A lens of any focal length, such as the catalogue value nearest the ideal one, with the fiber and laser above, and the fiber set off its focus: the mode matching, the coupling with the misalignments, and the alignment that costs 1 dB. The lens here is an ideal thin lens.',
