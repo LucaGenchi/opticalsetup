@@ -38,7 +38,7 @@ import { defaultsFor, parseInputs, unavailable } from '../assets/calculator-inpu
 import { GLASSES, glassWavelengthRange, isWavelengthInGlassRange } from '../../sketch/js/glass.js';
 import { materialIndex, glassShortName } from '../lens-design/engine/materials.js';
 import { lensData, designLens, sagMm, niceUp, GLASS_CHOICES } from '../thin-thick-lens/thick-lens.js';
-import { thickLensAdjustment, registry } from '../../sketch/js/elements.js';
+import { thickLensAdjustment, registry, MIN_CEMENT_GAP } from '../../sketch/js/elements.js';
 
 // Points on the image-against-object graphs.
 export const SCAN_POINTS = 401;
@@ -624,13 +624,17 @@ export function imagingCanvasScene(result) {
 }
 
 // The pair on the canvas: a laser beam (object at infinity) or a point
-// source at the object's tip, and both lenses at their spacing.
+// source at the object's tip, and both lenses at their spacing. Lenses in
+// contact (closer than the canvas's tracer resolves two optics, as for its
+// cemented glass) are not exported: the canvas would trace them as one.
 export function pairCanvasScene(result) {
   const { values: v, l1, l2 } = result;
   const c1 = canvasLens(l1, 'lens 1'), c2 = canvasLens(l2, 'lens 2');
   const beam = v.pairObject === 'infinity';
   const x = beam ? null : -l1.thicknessMm / 2 - result.objectDistanceMm;
+  const apart = result.gapMm - result.minimumGapMm;
   const reasons = [...c1.reasons, ...c2.reasons, ...sourceReasons(v.pairWavelengthNm, beam ? CANVAS.laserNm : CANVAS.nm, beam ? null : Math.hypot(x, v.pairHeightMm))];
+  if (apart < MIN_CEMENT_GAP) reasons.push(`it traces two lenses only when they are at least ${MIN_CEMENT_GAP} mm apart, and these are ${fmt(Math.max(0, apart), 3)} mm apart`);
   if (reasons.length) return { ok: false, reasons };
   const x2 = l1.thicknessMm / 2 + result.gapMm + l2.thicknessMm / 2;
   const notes = [c1.note, c2.note];

@@ -12,6 +12,7 @@ import {
 } from '../calculators/imaging/imaging.js';
 import { lensData } from '../calculators/thin-thick-lens/thick-lens.js';
 import { materialIndex } from '../calculators/lens-design/engine/materials.js';
+import { MIN_CEMENT_GAP } from '../sketch/js/elements.js';
 import { imagingCalculators } from '../tools/calculators-imaging-content.mjs';
 
 const close = (a, b, rel, label = '') => assert.ok(Math.abs(a - b) <= rel * Math.max(Math.abs(b), 1e-12), `${label} ${a} vs ${b}`);
@@ -230,6 +231,18 @@ test('the canvas: the lens with a point source at the object’s tip, the pair w
   assert.ok(!ir.ok && /100 to 12000 nm/.test(ir.reasons.join()));
   assert.ok(!pairCanvasScene(pair({ l1Kind: 'ideal', l2Kind: 'ideal', pairWavelengthNm: 15000 })).ok);
   assert.ok(!pairCanvasScene(pair({ pairObject: 'distance', pairDistanceMm: 2e5 })).ok);
+  // Lenses in contact are not exported, whether their powers cancel (an
+  // identity) or add; the calculation itself stays available.
+  for (const f2 of [-50, 150]) {
+    const contact = pair({ spacing: 'gap', gapMm: 0, l1Kind: 'ideal', l1FocalMm: 50, l2Kind: 'ideal', l2FocalMm: f2 });
+    assert.ok(contact.ok, `f₂ = ${f2}`);
+    const exported = pairCanvasScene(contact);
+    assert.ok(!exported.ok && /at least 0\.06 mm apart/.test(exported.reasons.join()), `f₂ = ${f2}`);
+    assert.ok(pairCanvasScene(pair({ spacing: 'gap', gapMm: 1, l1Kind: 'ideal', l1FocalMm: 50, l2Kind: 'ideal', l2FocalMm: f2 })).ok, `f₂ = ${f2}`);
+  }
+  // Singlets whose curved faces touch at the gap the overlap check allows.
+  const touching = pair({ spacing: 'gap', gapMm: 2.299, l1Kind: 'planoconcave', l1FocalMm: -50, l1Orientation: 'plano', l2Orientation: 'convex' });
+  assert.ok(touching.ok && !pairCanvasScene(touching).ok);
 });
 
 // The numbers the page text quotes, recomputed. A change to the engine that
@@ -264,6 +277,7 @@ test('the numbers quoted on the imaging page are the engine’s', () => {
   says(`puts the image ${fixed(f4.thinImage.fromLast, 1)} mm after lens 2: an error along the axis is multiplied by (f₂/f₁)² = ${sigf((f4.l2.efl / f4.l1.efl) ** 2, 6)}`);
   // The limits the text states are the schema's.
   says(`the field angle (up to ${PAIR_INPUTS.find(i => i.id === 'fieldDeg').max}°)`);
+  says(`Lenses closer than ${MIN_CEMENT_GAP} mm, in contact, are computed but not opened in the canvas`);
   const gp = pair({ spacing: 'gap', gapMm: 100 });
   says(`one lens of f = ${fixed(gp.cardinal.efl, 2)} mm whose F′ lies ${fixed(-gp.cardinal.bfl, 2)} mm before lens 2’s back vertex`);
   says(`The thin-lens model gives f = ${fixed(gp.thinCardinal.efl, 2)} mm`);
