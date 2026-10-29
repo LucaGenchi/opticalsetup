@@ -134,7 +134,9 @@ export function allocateParametricAmplifier({ pump, seeds = [], lengthM, maxDepl
     if (!Number.isFinite(overlap.factor) || !Number.isFinite(overlap.skewNs ?? 0)) return stop('invalidTiming');
     channel.overlap = overlap.factor;
     channel.skewNs = overlap.skewNs;
-    if (overlap.unsupported) return stop('repetitionUnsupported');
+    // A pump and seed at different rates, even one a multiple of the other,
+    // are outside the amplifier's model (mixOverlap times them for mixing).
+    if (overlap.unsupported || overlap.ratio >= 2) return stop('repetitionUnsupported');
     channel.lowOverlap = overlap.factor < MIN_OVERLAP;
     const gain = parametricSmallSignalGain({ gammaPerM: seed.gammaPerM, lengthM, deltaKPerM: seed.deltaKPerM ?? 0 });
     if (!gain) return stop('invalidGain');
