@@ -109,8 +109,9 @@ test('the range reaches 100 m, is clamped there, and a bare detector reads only 
 });
 
 // Placed so the ray along +x meets a surface: a slit's axis runs through its
-// gap, and a sample or stage at 0° lies along the ray.
-const PLACE = { slit: { y: 10 }, sample: { rot: 90 }, stage: { rot: 90 } };
+// gap, and a sample or stage at 0° lies along the ray. A D-shaped mirror is
+// set to reflect the first pass, the only one a ray from the source makes.
+const PLACE = { slit: { y: 10 }, sample: { rot: 90 }, stage: { rot: 90 }, dmirror: { params: { reflectsOn: 'first' } } };
 
 test('every element with a traced surface catches within range, except a light source', () => {
   const missed = [];
@@ -118,9 +119,9 @@ test('every element with a traced surface catches within range, except a light s
     if (def.hidden || type === 'pointsource') continue;
     const probe = createElement(type, 500, 0);
     const traced = (def.surfaces?.(probe) || []).length > 0;
-    const { y = 0, rot = 0 } = PLACE[type] || {};
-    const near = sourcePoints([source({ nrays: 64 }), at(type, 500, y, {}, rot)]);
-    const far = sourcePoints([source({ nrays: 64 }), at(type, 1500, y, {}, rot)]);
+    const { y = 0, rot = 0, params = {} } = PLACE[type] || {};
+    const near = sourcePoints([source({ nrays: 64 }), at(type, 500, y, params, rot)]);
+    const far = sourcePoints([source({ nrays: 64 }), at(type, 1500, y, params, rot)]);
     assert.ok(fadesAtGlow(far), `${type} 1.5 m away is out of range`);
     if (def.category === 'Sources' || !traced) {
       assert.ok(fadesAtGlow(near), `${type} must not catch the rays`);

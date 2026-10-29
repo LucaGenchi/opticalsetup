@@ -9,7 +9,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createElement, registry } from '../sketch/js/elements.js';
-import { traceScene, detectorReading, probeAt } from '../sketch/js/raytrace.js';
+import { readFileSync } from 'node:fs';
+import { traceScene, traceAll, detectorReading, probeAt } from '../sketch/js/raytrace.js';
+import { parseSketch } from '../sketch/js/state.js';
 import { glassIndex, GLASS_OPTIONS } from '../sketch/js/glass.js';
 import { fresnelTransmittances, throughFace } from '../sketch/js/fresnel.js';
 import { linearStokes } from '../sketch/js/polarization.js';
@@ -158,6 +160,38 @@ test('a D-shaped mirror treats every pass after the second as the second', () =>
   pickoff.params.reflectsOn = 'first';
   traceScene([laser, pickoff, end, foldA, foldB, foldC, above]);
   assert.equal(detectorReading(above.id), null, 'set to the first pass, nothing comes back to the face');
+});
+
+test('a D-shaped mirror a beam goes by keeps its carrier phase', () => {
+  // Across one arm of the bundled Mach-Zehnder, met once and so gone by: the
+  // interferometer still puts all the light in its bright port.
+  const readings = withMirror => {
+    const scene = parseSketch(readFileSync('test/fixtures/mach-zehnder.json', 'utf8'));
+    if (withMirror) scene.elements.push(mkOptic('dmirror', 520, 200, 0, { length: 25.4 }));
+    traceAll(scene.elements);
+    return scene.elements.filter(el => el.type === 'camera').map(camera => detectorReading(camera.id).signal);
+  };
+  const [bright, dark] = readings(true);
+  const [plainBright, plainDark] = readings(false);
+  assert.ok(Math.abs(bright - plainBright) < 1e-9 && Math.abs(dark - plainDark) < 1e-9,
+    `${bright} / ${dark} with the mirror, ${plainBright} / ${plainDark} without`);
+  assert.ok(Math.abs(bright - 1) < 1e-9);
+});
+
+test('a D-shaped mirror a point source\'s light goes by does not collect it', () => {
+  // Out of range at the detector, the light fades whether or not it went by
+  // a mirror on the way, under every catching rule.
+  for (const catchMode of ['all', 'collectors', 'lensmirror']) {
+    const signal = withMirror => {
+      const source = mkOptic('pointsource', 0, 0, 0, { nrays: 4, captureRange: 165, catchMode });
+      const det = mkOptic('detector', 500, 0, 0, { aperture: 26 });
+      const elements = [source, det];
+      if (withMirror) elements.push(mkOptic('dmirror', 100, 0, 0));
+      traceAll(elements);
+      return detectorReading(det.id)?.signal || 0;
+    };
+    assert.equal(signal(true), signal(false), `${catchMode}: going by the mirror changed the reading`);
+  }
 });
 
 // Placed along the beam after the prism of brewsterPrism(): `distance` mm
