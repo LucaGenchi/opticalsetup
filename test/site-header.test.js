@@ -44,7 +44,7 @@ test('the homepage and every section hub open in the stored appearance before th
   }
 });
 
-test('a canvas follows an appearance switched on another page, and ignores other keys', () => {
+test('a canvas follows an appearance switched or cleared on another page, and ignores other keys', () => {
   const previous = globalThis.window;
   const listeners = {};
   globalThis.window = {
@@ -54,7 +54,8 @@ test('a canvas follows an appearance switched on another page, and ignores other
   try {
     const root = { dataset: {}, classList: { add() {}, remove() {} } };
     const storage = { getItem: () => null, setItem() {} };
-    initTheme(null, { root, media: { matches: false }, storage });
+    const media = { matches: false, addEventListener: (type, fn) => { listeners[type] = fn; } };
+    initTheme(null, { root, media, storage });
     assert.equal(root.dataset.theme, 'light');
 
     listeners.storage({ key: THEME_STORAGE_KEY, newValue: 'dark' });
@@ -64,6 +65,13 @@ test('a canvas follows an appearance switched on another page, and ignores other
     // The choice cleared elsewhere: back to the system appearance.
     listeners.storage({ key: THEME_STORAGE_KEY, newValue: null });
     assert.equal(root.dataset.theme, 'light');
+    // localStorage.clear() elsewhere arrives with a null key: the stored
+    // choice is gone, so the system appearance applies and is followed again.
+    listeners.storage({ key: THEME_STORAGE_KEY, newValue: 'dark' });
+    listeners.storage({ key: null, newValue: null });
+    assert.equal(root.dataset.theme, 'light');
+    listeners.change({ matches: true });
+    assert.equal(root.dataset.theme, 'dark', 'after a clear the system appearance is followed again');
   } finally {
     globalThis.window = previous;
   }

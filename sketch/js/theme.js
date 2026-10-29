@@ -65,9 +65,10 @@ export function initTheme(button, {
   });
 
   // Another OpticalSetup page switched the appearance -- a wiki page around
-  // this embedded canvas, or another tab -- so follow it.
+  // this embedded canvas, or another tab -- so follow it. A null key is the
+  // whole storage cleared, the choice with it: back to the system appearance.
   window.addEventListener?.('storage', event => {
-    if (event.key !== THEME_STORAGE_KEY) return;
+    if (event.key !== THEME_STORAGE_KEY && event.key !== null) return;
     explicitTheme = event.newValue === 'dark' || event.newValue === 'light' ? event.newValue : null;
     applyTheme(resolveTheme(explicitTheme, media?.matches), true);
   });
