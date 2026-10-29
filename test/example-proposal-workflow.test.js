@@ -277,7 +277,6 @@ test('the CLI writes the proposal and its snapshot, reports a quotable error, an
 
     const first = await run(issue);
     assert.equal(first.status, 0);
-    assert.equal(first.outputs.issue_number, '77');
     assert.equal(first.outputs.proposal_file, 'community-submissions/issue-77.json');
     assert.equal(first.outputs.golden_file, 'test/golden/community-submissions-issue-77.json');
     assert.equal(first.outputs.error, undefined);
@@ -292,7 +291,6 @@ test('the CLI writes the proposal and its snapshot, reports a quotable error, an
 
     const rejected = await run({ ...issue, number: 78, body: issueBody({ checked: false }) });
     assert.equal(rejected.status, 1);
-    assert.equal(rejected.outputs.issue_number, '78', 'the submitter can still be answered');
     assert.match(rejected.outputs.error, /acknowledgement is required/);
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -313,4 +311,22 @@ test('the workflow recognises the form, can be re-run, and runs the suite as CI 
   assert.match(workflow, /PROPOSAL_ERROR: \$\{\{ steps\.proposal\.outputs\.error \}\}/,
     'the reason reaches the failure comment through the environment');
   assert.doesNotMatch(workflow, /ISSUE_BODY: \$\{\{/, 'the issue body is read from a file, not pasted into the environment');
+});
+
+// Andrea's review of #293: a failure before validation (the toolchain, or
+// reading the issue) left the issue unanswered, and a re-run could replace a
+// proposal branch a maintainer had already corrected.
+test('every failure can be answered on the issue, and a re-run never replaces a maintainer\'s correction', async () => {
+  const workflow = await readFile(new URL('../.github/workflows/example-proposal.yml', import.meta.url), 'utf8');
+  const steps = [...workflow.matchAll(/^      - (?:name|uses): (.+)$/gm)].map(match => match[1]);
+  assert.equal(steps[0], 'Identify the issue', 'the issue number is known before anything else can fail');
+  assert.match(workflow, /if: failure\(\) && steps\.issue\.outputs\.number != ''/);
+  assert.doesNotMatch(workflow, /steps\.proposal\.outputs\.issue_number/);
+
+  const commit = workflow.slice(workflow.indexOf('- name: Commit the proposal branch'), workflow.indexOf('- name: Open or find'));
+  const guard = commit.indexOf('git log --no-merges');
+  assert.ok(guard > 0 && guard < commit.indexOf('git switch -C'), 'existing commits are checked before the branch is rebuilt');
+  assert.ok(commit.indexOf('maintainer_changes=true') < commit.indexOf('git push'), 'and the run stops before any push');
+  assert.doesNotMatch(commit, /git log[^\n]*\|\s*grep -q/, 'no pipe into grep -q under pipefail');
+  assert.match(workflow, /MAINTAINER_CHANGES" == "true"/, 'the issue is told why nothing was replaced');
 });

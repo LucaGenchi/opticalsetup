@@ -351,8 +351,6 @@ export function reportableError(error) {
 function runFromEnvironment() {
   const issue = issueFromJSON(JSON.parse(readFileSync(process.env.ISSUE_JSON, 'utf8')));
   const number = Number(issue.issueNumber);
-  // Known before validation, so a rejected submission is still answered.
-  if (Number.isSafeInteger(number) && number > 0) writeOutput('issue_number', String(number));
   const result = materializeProposal(issue);
   // An accepted setup is changed by a reviewed pull request, never by
   // re-running its issue.
