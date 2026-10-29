@@ -3,8 +3,8 @@
 // The fiber coupling page: the fiber and the laser, from which it designs
 // the lens (lens-choice.js, graph 1); then a lens of any focal length and
 // its alignment, which reads the first panel's last result (graphs 2–4).
-import { FIBER_DEFAULTS, SETUP_INPUTS, LENS_INPUTS, computeFiberCoupling, couplingScan, SINGLE_MODE_V } from './fiber-coupling.js';
-import { computeFiberSetup, focalScan } from './lens-choice.js';
+import { FIBER_DEFAULTS, SETUP_INPUTS, LENS_INPUTS, computeFiberCoupling, couplingScan, SINGLE_MODE_V, PARAXIAL_LIMIT_MRAD } from './fiber-coupling.js';
+import { computeFiberSetup, focalScan, matchingLensInput } from './lens-choice.js';
 import { mountCalculator } from '../assets/simple-calculator-page.js';
 import { formatNumber } from '../assets/calculator-kit.js';
 
@@ -63,11 +63,14 @@ function setupNotes(r) {
     return out;
   }
   out.push('The ideal thin lens focuses the beam exactly to the mode: 100 % for a perfectly Gaussian mode, before the Fresnel reflection at the fiber face (about 3.4 % for uncoated silica).');
-  if (r.focus.input.rayleighMm < 10 * r.optimalFocalMm) out.push('The input beam’s Rayleigh range is not long compared with the focal length: it is not really collimated, and the waist forms well short of f (the page accounts for this).');
+  if (r.range.paraxialCut) out.push(`Shorter focal lengths would still match the mode to ${formatNumber(percent(r.range.eta), 3)} %, but focus steeper than ${formatNumber(PARAXIAL_LIMIT_MRAD / 1000, 3)} rad (half angle), outside the paraxial model this page rests on: the range starts at that limit.`);
+  const ideal = matchingLensInput(r);
+  if (!ideal.ok) out.push(`The second part cannot take the matching focal length (${formatNumber(ideal.focalMm, 4)} mm): ${ideal.reason}`);
+  if (r.focus.input.rayleighMm < 10 * r.optimalFocalMm) out.push('The input beam’s Rayleigh range is not long compared with the focal length: it is not really collimated, and the waist forms well short of f (the ideal thin lens figures account for this).');
   const s = r.suggestion;
   if (!s.ok) out.push(`No plano-convex suggestion: ${s.reason}`);
   else {
-    out.push(`The plano-convex lens is a catalogue-style starting point (a usual glass for the wavelength, the smallest common diameter at least twice the beam’s), traced through both faces with the fiber at its best position on the axis. Uncoated, its two faces would reflect another ${formatNumber(percent(s.faceLoss), 2)} %.`);
+    out.push(`The plano-convex lens is a catalogue-style starting point (a usual glass for the wavelength; the smallest common diameter at least twice the beam’s, or failing that the widest at least 1.5 times it), traced through both faces with the fiber at its best position on the axis. Its coupling counts the light its clear diameter clips: ${s.clipShare > 0.9999 ? 'more than 99.99' : formatNumber(percent(s.clipShare), 4)} % of the beam passes. Uncoated, its two faces would reflect another ${formatNumber(percent(s.faceLoss), 2)} %.`);
     if (s.efficiency < 0.9 * s.idealEfficiency) out.push(`Spherical aberration costs this plano-convex lens ${formatNumber(percent(1 - s.efficiency / s.idealEfficiency), 2)} % of the light: an aspheric lens or an achromatic doublet of the same focal length focuses much closer to the ideal.`);
   }
   return out;
@@ -81,8 +84,9 @@ useIdeal.type = 'button';
 useIdeal.className = 'calc-reset';
 useIdeal.textContent = 'Use the matching focal length';
 useIdeal.addEventListener('click', () => {
-  if (!setup?.ok || setup.optimalFocalMm === null) return;
-  document.getElementById('lens-form').elements.focalMm.value = String(Number(setup.optimalFocalMm.toPrecision(4)));
+  const ideal = setup && matchingLensInput(setup);
+  if (!ideal?.ok) return;
+  document.getElementById('lens-form').elements.focalMm.value = String(ideal.focalMm);
   lens.update();
 });
 
@@ -100,7 +104,14 @@ mountCalculator({
         formatX: n => formatNumber(n, 4), formatY: n => formatNumber(n, 4) },
     };
   },
-  onResult: r => { setup = r; useIdeal.disabled = !r.ok || r.optimalFocalMm === null; lens?.update(); },
+  onResult: r => {
+    setup = r;
+    const ideal = matchingLensInput(r);
+    useIdeal.disabled = !ideal?.ok;
+    useIdeal.title = !r.ok ? 'Set a valid fiber and laser first.' : !ideal ? 'No lens matches the mode: see the notes above.'
+      : ideal.ok ? `Set f = ${formatNumber(ideal.focalMm, 4)} mm` : 'The second part cannot take the matching focal length: see the notes above.';
+    lens?.update();
+  },
 });
 
 // ---------------------------------------------------------------- your lens

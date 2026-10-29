@@ -3,10 +3,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { GAUSSIAN_DEFAULTS, computeGaussianBeam, gaussianBeam, beamAt, thinLensFocus, waistFrom, gaussianScan, widthNames, PARAXIAL_LIMIT_MRAD } from '../calculators/gaussian-beam/gaussian-beam.js';
-import { LENS_DEFAULTS as SINGLET_DEFAULTS, FIBER_DEFAULTS as SINGLET_FIBER_DEFAULTS, computeThickLens, computeFiber } from '../calculators/thin-thick-lens/thick-lens.js';
+import { LENS_DEFAULTS as SINGLET_DEFAULTS, FIBER_DEFAULTS as SINGLET_FIBER_DEFAULTS, FRESNEL_LIMIT, computeThickLens, computeFiber } from '../calculators/thin-thick-lens/thick-lens.js';
 import { FIBER_DEFAULTS, computeFiberCoupling, gaussianCoupling, fiberMode, matchingFocalMm, couplingScan, SINGLE_MODE_V, focusCollimated } from '../calculators/fiber-coupling/fiber-coupling.js';
 import { SETUP_INPUTS, LENS_INPUTS, FIBER_INPUTS } from '../calculators/fiber-coupling/fiber-coupling.js';
-import { computeFiberSetup, focalRange, focalScan, choosePlanoConvex, planoConvexGlass, planoConvexSuggestion, NEAR_MATCH, STOCK_DIAMETERS_MM } from '../calculators/fiber-coupling/lens-choice.js';
+import { computeFiberSetup, focalRange, focalScan, choosePlanoConvex, planoConvexGlass, planoConvexSuggestion, matchingLensInput, paraxialMinFocalMm, NEAR_MATCH, STOCK_DIAMETERS_MM } from '../calculators/fiber-coupling/lens-choice.js';
 import { beamCalculators } from '../tools/calculators-beam-content.mjs';
 
 const close = (a, b, rel = 1e-12, label = '') => assert.ok(Math.abs(a - b) <= rel * Math.max(Math.abs(b), 1e-300), `${label} ${a} vs ${b}`);
@@ -291,6 +291,9 @@ test('the numbers quoted on the Gaussian beam and fiber coupling pages are the e
   const longer = planoConvexSuggestion({ wavelengthNm: 1550, beamDiameterMm: 2, focalMm: 1.05 * set.optimalFocalMm, mfdUm: 10.4 });
   assert.ok(longer.efficiency > pc.efficiency && longer.efficiency - pc.efficiency < 0.01);
   says('(1 mm per 12.7 mm of diameter, at least 1 mm)');
+  const share = q => 100 * (1 - Math.exp(-2 * q * q));
+  says(`which passes at least ${share(2).toFixed(2)} % of its power, or failing that the widest at least 1.5 times it (at least ${share(1.5).toFixed(1)} %)`);
+  says(`Fresnel number a²/(λf) is below ${FRESNEL_LIMIT}`);
   const ratio = q => (100 * (2 * q / (1 + q * q)) ** 2).toFixed(1);
   says(`a waist 10 % off still couples ${ratio(1.1)} %, 25 % off ${ratio(1.25)} %, 50 % off ${ratio(1.5)} %`);
   says(`(here ${sigf(f.focusDistanceMm, 6)} mm)`);
@@ -324,6 +327,17 @@ test('fiber coupling: the near-match range is where an ideal lens keeps 95 %', (
       assert.ok(eta(1.01 * s.range.maxMm) < NEAR_MATCH);
     }
   }
+  // The range stops at the paraxial limit the rest of the page applies:
+  // with a 3.5 µm mode its formal lower end focuses at about 354 mrad.
+  assert.equal(setup({}).range.paraxialCut, false);
+  const steep = setup({ mfdUm: 3.5 }), sv = steep.values;
+  assert.ok(steep.range.paraxialCut);
+  assert.ok(focalRange(sv.beamDiameterMm, sv.wavelengthNm, steep.modeRadiusUm).minMm < steep.range.minMm);
+  close(steep.range.minMm, paraxialMinFocalMm(sv.beamDiameterMm, sv.wavelengthNm));
+  close(focusCollimated(sv.beamDiameterMm, sv.wavelengthNm, steep.range.minMm).beam.halfDivergenceMrad, PARAXIAL_LIMIT_MRAD, 1e-9);
+  const part2 = f => computeFiberCoupling({ ...FIBER_DEFAULTS, mfdUm: 3.5, focalMm: f }).ok;
+  assert.ok(part2(steep.range.minMm * (1 + 1e-6)) && !part2(steep.range.minMm * 0.99));
+  assert.ok(steep.range.minMm < steep.optimalFocalMm);
   // A beam 1.1 times the mode: still 95 % with no lens at all, so the range is open above.
   assert.equal(focalRange(0.0114, 1550, 5.2).maxMm, null);
   // The graph peaks at the match, and stays finite or empty.
@@ -331,6 +345,19 @@ test('fiber coupling: the near-match range is where an ideal lens keeps 95 %', (
   const best = scan.reduce((a, p) => (p.efficiency > a.efficiency ? p : a));
   assert.ok(Math.abs(best.x / s.optimalFocalMm - 1) < 0.01);
   assert.ok(scan.every(p => p.efficiency === null || (Number.isFinite(p.efficiency) && p.efficiency <= 1 + 1e-12)));
+});
+
+test('fiber coupling: the matching focal length goes to the second part only where it is accepted', () => {
+  const ok = matchingLensInput(setup({}));
+  assert.deepEqual(ok, { focalMm: 10.54, ok: true, reason: '' });
+  // A 20 µm beam onto a 1.5 µm mode matches at 0.0373 mm, below the 0.1 mm the lens input takes.
+  const tiny = setup({ wavelengthNm: 633, mfdUm: 1.5, beamDiameterMm: 0.02 });
+  assert.ok(tiny.ok && tiny.optimalFocalMm < 0.1);
+  const refused = matchingLensInput(tiny);
+  assert.equal(refused.ok, false);
+  assert.match(refused.reason, /0\.1–10000 mm/);
+  assert.equal(matchingLensInput(setup({ beamDiameterMm: 0.01 })), null);
+  assert.equal(matchingLensInput(setup({ mfdUm: 0.5 })), null);
 });
 
 test('fiber coupling: with a beam no wider than the mode there is no lens to suggest', () => {
@@ -374,6 +401,15 @@ test('fiber coupling: the plano-convex suggestion, its glass and diameter rules,
   close(s.faceLoss, 1 - (1 - ((s.n - 1) / (s.n + 1)) ** 2) ** 2);
   // Asked again, the same suggestion, without tracing it twice.
   assert.equal(planoConvexSuggestion({ wavelengthNm: 1550, beamDiameterMm: 2, focalMm: setup({}).optimalFocalMm, mfdUm: 10.4 }), s);
+  // A narrow beam on a long lens: the Debye focus does not hold, so no traced figures.
+  assert.ok(s.fresnelNumber >= FRESNEL_LIMIT);
+  const slow = setup({ beamDiameterMm: 0.21, mfdUm: 200 });
+  assert.equal(slow.suggestion.ok, false);
+  assert.match(slow.suggestion.reason, /Fresnel number a²\/\(λf\) is 0\.102, below 10/);
+  // The fallback diameter clips a little, and the coupling counts it.
+  const clipped = setup({ mfdUm: 3.5 }).suggestion;
+  assert.equal(clipped.diameterMm, 3);
+  close(clipped.clipShare, 1 - Math.exp(-2 * 1.5 ** 2), 1e-9);
   // Refused suggestions say why, and the setup itself stays valid.
   for (const x of [{ wavelengthNm: 10600, mfdUm: 30 }, { beamDiameterMm: 100 }]) {
     const r = setup(x);
