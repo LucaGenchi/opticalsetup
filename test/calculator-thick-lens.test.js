@@ -447,11 +447,7 @@ test('the numbers quoted on the thin and thick lens page are the engine’s', ()
   says(`an equi-convex lens reaches ${sigf(equiRun.scan.real.strehl, 3)} and the best form ${sigf(bestRun.scan.real.strehl, 3)}`);
   const narrow = run({ beamDiameterMm: 1 });
   says(`With a 1 mm beam the plano-convex singlet is nearly perfect (${sigf(narrow.scan.real.strehl, 3)})`);
-  const f = fiber(d);
-  says(`the ideal lens couples ${sigf(100 * f.ideal.aligned, 3)} %. The singlet couples best, ${sigf(100 * f.real.aligned, 3)} %, with the fiber ${um(-f.real.shiftMm * 1e3)} µm closer to the lens than F′`);
-  says(`the singlet’s coupling halves with the core ${um(f.real.halfLateralUm)} µm off the axis (the ideal lens’s ${um(f.ideal.halfLateralUm)} µm), or with the fiber tilted by ${sigf(f.real.halfTiltMrad, 3)} mrad (${sigf(f.ideal.halfTiltMrad, 3)} mrad)`);
-  says(`Flat side first, the best is ${sigf(100 * fiber(flip).real.aligned, 3)} %; the best form reaches ${sigf(100 * fiber(bestRun).real.aligned, 3)} %`);
-  says(`yet couples only ${sigf(100 * fiber(narrow).real.aligned, 3)} %, because its ${um(narrow.ideal.waistUm)} µm waist`);
-  const lossy = fiber(d, { fresnel: true });
-  says(`together ${sigf(100 * lossy.through, 3)} % for the example, which brings the singlet to ${sigf(100 * lossy.real.efficiency, 3)} %`);
+  // Fiber coupling moved to the Free space to fiber coupling page, whose
+  // text test/calculator-beams.test.js checks; this page only points there.
+  says('Free space to fiber coupling</a> calculator, which traces these singlets');
 });

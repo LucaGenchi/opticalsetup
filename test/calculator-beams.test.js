@@ -287,6 +287,9 @@ test('the numbers quoted on the Gaussian beam and fiber coupling pages are the e
   says(`pass ${sigf(100 * uncoated.through, 3)} % of the light, which brings the plano-convex singlet to ${sigf(100 * uncoated.real.efficiency, 2)} %`);
   assert.deepEqual([REAL_LENS_DEFAULTS.lensKind, REAL_LENS_DEFAULTS.glass, REAL_LENS_DEFAULTS.focalMm, REAL_LENS_DEFAULTS.diameterMm, REAL_LENS_DEFAULTS.edgeMm, REAL_LENS_DEFAULTS.orientation], ['planoconvex', 'nbk7', 11, 6, 1, 'convex']);
   says('starts from an 11 mm plano-convex lens of N-BK7, 6 mm across with a 1 mm edge, curved side toward the laser');
+  const thin = setup({ beamDiameterMm: 1 }), thinLens = computeRealLens(thin, REAL_LENS_DEFAULTS);
+  says(`with a 1 mm beam the same singlet is nearly perfect, yet couples only ${sigf(100 * thinLens.fiber.real.efficiency, 3)} %, because its ${sigf(thinLens.lens.ideal.waistUm, 3)} µm waist radius is twice the mode’s ${sigf(thin.modeRadiusUm, 2)} µm; the first part matches it with a ${sigf(thin.optimalFocalMm, 3)} mm lens`);
+  assert.ok(thinLens.lens.scan.real.strehl > 0.98 && Math.abs(thinLens.lens.ideal.waistUm / thin.modeRadiusUm - 2) < 0.1);
   const set = setup({});
   says(`from ${set.range.shownMinMm} to ${set.range.shownMaxMm} mm`);
   const pc = set.suggestion;
