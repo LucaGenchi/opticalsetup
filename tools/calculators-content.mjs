@@ -16,6 +16,7 @@ import { scanningCalculators } from './calculators-scanning-content.mjs';
 import { lensCalculators } from './calculators-lens-content.mjs';
 import { beamCalculators } from './calculators-beam-content.mjs';
 import { thickLensCalculators } from './calculators-thick-lens-content.mjs';
+import { imagingCalculators } from './calculators-imaging-content.mjs';
 
 export const cite = (...n) => n.map(k => `<a class="cite" href="#ref-${k}">[${k}]</a>`).join('');
 
@@ -27,6 +28,7 @@ export const calculators = [
   ...fluorescenceCalculators,
   ...scanningCalculators,
   ...thickLensCalculators,
+  ...imagingCalculators,
   ...lensCalculators,
   ...beamCalculators,
   {

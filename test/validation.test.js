@@ -36,6 +36,7 @@ import { analyzeCoupling } from '../calculators/lens-design/engine/coupling.js';
 import { GAUSSIAN_DEFAULTS, computeGaussianBeam } from '../calculators/gaussian-beam/gaussian-beam.js';
 import { LENS_DEFAULTS, lensData, designLens, idealFocus, singletRays, focusFrom, PUPIL_SAMPLES } from '../calculators/thin-thick-lens/thick-lens.js';
 import { FIBER_DEFAULTS, computeFiberCoupling, fiberMode } from '../calculators/fiber-coupling/fiber-coupling.js';
+import { IMAGING_DEFAULTS, PAIR_DEFAULTS, computeImaging, computePair } from '../calculators/imaging/imaging.js';
 import {
   absorptionCrossSectionCm2, focusPeakIntensityWcm2, widefieldIntensityWcm2, moleculeRates, collectionFraction,
   spectrumValue, detectionFractions, detectorQe, excitationSource, sourceAverage, sourceTransmission,
@@ -219,6 +220,27 @@ const APP = {
     }
     return { ok: false, reason: 'unresolved on every pupil grid' };
   },
+  // One lens or a pair, from the page's own inputs; the results flattened
+  // to the reference's keys (only those it states are compared).
+  imaging: ({ kind, ...inputs }) => {
+    if (kind === 'one') {
+      const r = computeImaging({ ...IMAGING_DEFAULTS, ...inputs });
+      if (!r.ok) return r;
+      const { image: im, thin } = r;
+      return {
+        efl: r.lens.efl, fromLast: im.fromLast, magnification: im.magnification, heightMm: im.heightMm, objectFromH: im.objectFromH,
+        imageFromH2: im.imageFromH2, newtonX: im.newtonX, newtonX2: im.newtonX2, thinFromLast: thin.fromLast, thinMagnification: thin.magnification,
+      };
+    }
+    const r = computePair({ ...PAIR_DEFAULTS, ...inputs });
+    if (!r.ok) return r;
+    return {
+      gapMm: r.gapMm, thinGapMm: r.thinGapMm, lengthMm: r.lengthMm,
+      angular: r.telescope?.angular, expansion: r.telescope?.expansion, ...r.cardinal, thinEfl: r.thinCardinal?.efl,
+      beamDiameterMm: r.beam?.diameterMm, beamAngleDeg: r.beam?.angleDeg, focusFromLast: r.beam?.focusFromLast,
+      fromLast: r.image?.fromLast, magnification: r.image?.magnification, thinFromLast: r.thinImage?.fromLast, thinMagnification: r.thinImage?.magnification,
+    };
+  },
   'wavelength-conversion': ({ kind, ...inputs }) => {
     if (kind === 'crs') return computeCrs({ ...CRS_DEFAULTS, ...inputs });
     if (kind === 'resolution') return computeResolution({ ...RESOLUTION_DEFAULTS, ...inputs });
@@ -327,7 +349,7 @@ const APP = {
   },
 };
 
-for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'dispersion-compensation', 'lens-design', 'lens-coherent', 'gaussian-beam', 'fiber-coupling', 'point-scanning', 'thick-lens']) {
+for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'dispersion-compensation', 'lens-design', 'lens-coherent', 'gaussian-beam', 'fiber-coupling', 'point-scanning', 'thick-lens', 'imaging']) {
   const model = expected(name);
   for (const c of model.cases) {
     test(`${model.id}: ${c.name}`, () => {
