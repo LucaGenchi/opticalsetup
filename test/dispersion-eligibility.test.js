@@ -225,6 +225,20 @@ test('opposite chirps on separate paths do not cancel into a pulse neither carri
     pulseDurationAfterDispersion(p, 4465).durationFs, 0.05);
 });
 
+test('band-edge delays that differ by a few fs do not split a near-transform-limited pulse', () => {
+  // Parts of a beam through a prism cross different thicknesses of glass:
+  // their band edges arrive a few fs apart. For a Gaussian pulse that changes
+  // its duration in quadrature, not linearly, and the phase and width tests
+  // decide; a flat band, whose duration is that spread, still declines.
+  const p = { pulseWidthFs: 150, centerWavelengthNm: 920, transformLimited: true, pulseShape: 'gauss' };
+  const parts = [{ gddFs2: 100, groupDelayDifferenceFs: 0 }, { gddFs2: 220, groupDelayDifferenceFs: 10 }];
+  close(pulseDurationAcrossPaths(p, parts).durationFs, pulseDurationAfterDispersion(p, 160).durationFs, 0.05);
+  const flat = { pulseWidthFs: 150, transformLimitFs: 100, centerWavelengthNm: 800, spectrumKind: 'flat', pulseShape: 'gauss' };
+  const spread = pulseDurationAcrossPaths(flat, [{ gddFs2: 0, groupDelayDifferenceFs: 0 }, { gddFs2: 0, groupDelayDifferenceFs: 40 }]);
+  assert.equal(spread.durationFs, null);
+  assert.equal(spread.model, PATHS_DISAGREE);
+});
+
 function notch(x, center, band) {
   const element = createElement('dichroic', x, 0);
   Object.assign(element.params, { dtype: 'notch', center, band });

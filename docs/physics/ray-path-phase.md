@@ -114,8 +114,19 @@ Limits of the model, stated where the reading is shown:
   (a vertical roof mirror) are not represented.
 - **Colours still diverging.** When the arriving samples are not parallel
   (angular dispersion remains, as after a single prism or grating), the
-  duration depends on where it is read: the GDD shown is the central ray's,
-  and the duration is unavailable with that reason.
+  duration depends on where it is read: the GDD shown is the central ray's.
+  How much it depends is the GDD angular dispersion adds over the next metre,
+  `−k₀ L (dθ/dω)²` with L = 1 m and dθ/dω the least-squares slope of the
+  colours' directions against frequency. If the duration stays within 1 % of
+  the reading everywhere over that metre, the duration is given with a note
+  saying so (a short pulse through a single prism, whose colours leave a
+  fraction of a millirad apart); otherwise it is unavailable with that reason
+  (a grating's fan). "Everywhere" is checked at the two ends and where the
+  total GDD, or for a flat band the band edges' delay spread (which the added
+  GDD moves too), crosses zero in between, since the analytic durations grow
+  with their distance from zero: a chirped pulse the metre would compress and
+  stretch again declines. A filtered or sampled pulse with diverging colours
+  declines.
 - **Colours side by side.** When they are parallel but displaced (spatial
   chirp, as after a single pass of a prism or grating pair), the GDD is the
   spectral phase on the central ray and the duration is given, with the
@@ -131,7 +142,9 @@ Limits of the model, stated where the reading is shown:
   The geometry needs only two colours and is read even where the phase fit
   is not (too few colours, one arriving by two paths, an element whose path
   phase is not followed); colours it finds diverging decline the duration
-  there too.
+  there too, even where other colours of the same source have a fitted
+  phase that passes the one-metre rule above: that rule weighs only the GDD
+  it can compute.
 - **Ideal lenses are paraxial.** The thin lens bends rays by
   `tan θ_out = tan θ_in − h/f`; its path `−h²/(2f)` agrees with that bend to
   second order in the ray angles, so a stretcher built from ideal lenses has

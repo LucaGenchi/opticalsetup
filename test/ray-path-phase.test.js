@@ -9,7 +9,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { createElement } from '../sketch/js/elements.js';
+import { createElement, registry } from '../sketch/js/elements.js';
+import { parseSketch } from '../sketch/js/state.js';
+import '../sketch/js/detector-instruments.js';
 import { traceScene, detectorReading, probeAt } from '../sketch/js/raytrace.js';
 import { gddGroupDelayDifferenceFs, DISPERSION_UNAVAILABLE, glassIndexUnbucketed } from '../sketch/js/glass.js';
 import { colourSpreadText } from '../sketch/js/inspector.js';
@@ -391,4 +393,70 @@ test('a filtered pulse with an uncertain GDD declines its duration', () => {
   assert.ok(pulse.gddUncertaintyFs2 > 100, `uncertainty ${pulse.gddUncertaintyFs2} fs²`);
   assert.equal(pulse.stretchedPulseWidthFs, null);
   assert.match(pulse.dispersionModel, /uncertain by ±/);
+});
+
+test('a short pulse through one prism keeps its duration when the leftover angles barely matter', () => {
+  // A 10 mm, 150 fs beam at 920 nm through a 60° N-BK7 prism, read by an
+  // autocorrelator of any size (Luca's scene). The colours leave 0.025° apart
+  // and each part of the beam crosses a different thickness of glass, but over
+  // a metre that angular dispersion moves a 150 fs pulse by 0.3 %: the reading
+  // stands, with a note, instead of declining.
+  const file = new URL('./fixtures/prism-920nm-150fs-beam.json', import.meta.url);
+  for (const [aperture, y] of [[30, 50], [60, 50], [120, 50], [10, 56], [10, 84]]) {
+    const scene = parseSketch(readFileSync(file, 'utf8'), registry);
+    const ac = scene.elements.find(e => e.type === 'autocorrelator');
+    Object.assign(ac, { y });
+    ac.params.aperture = aperture;
+    traceScene(scene.elements, scene.beams);
+    const pulse = detectorReading(ac.id)?.pulse;
+    assert.ok(Math.abs(pulse.stretchedPulseWidthFs - 150) < 1.5, `${aperture} mm at y ${y}: ${pulse.stretchedPulseWidthFs} fs (${pulse.dispersionModel})`);
+    assert.match(pulse.dispersionModel, /slightly different angles/);
+  }
+});
+
+test('a fitted family that passes the metre rule does not hide a diverging family without a fit', () => {
+  // Luca's scene read by a 120 mm autocorrelator, with an AOM across part of
+  // the beam (Andrea's case): the colours that cross it lose their path
+  // phase, those that miss it keep it. The fitted ones alone would give
+  // about 150 fs; the unfitted ones still diverge, so none is given. An AOM
+  // across the whole beam leaves no fitted family and declines the same way.
+  const file = new URL('./fixtures/prism-920nm-150fs-beam.json', import.meta.url);
+  const readWith = aperture => {
+    const scene = parseSketch(readFileSync(file, 'utf8'), registry);
+    scene.elements.find(e => e.type === 'autocorrelator').params.aperture = 120;
+    const aom = createElement('aom', 330, 70);
+    Object.assign(aom, { rot: 0 });
+    Object.assign(aom.params, { aperture, deflect: 0, eff: 1, zero: false, modulate: false });
+    scene.elements.push(aom);
+    traceScene(scene.elements, scene.beams);
+    return detectorReading(scene.elements.find(e => e.type === 'autocorrelator').id)?.pulse;
+  };
+  for (const aperture of [6, 100]) {
+    const pulse = readWith(aperture);
+    assert.equal(pulse.stretchedPulseWidthFs, null, `AOM ${aperture} mm: ${pulse.stretchedPulseWidthFs} fs (${pulse.dispersionModel})`);
+    assert.match(pulse.dispersionModel, /angular dispersion remains, so there is no single duration here$/);
+  }
+});
+
+test('a flat band whose colours still diverge checks the spread that times it', () => {
+  // The flat-band model times the band edges' delay spread, which the
+  // angular GDD over the next metre moves too: 117 fs here becomes about
+  // 343 fs a metre on, so none is given.
+  const { pulse } = trace('one Brewster nsf10 prism', {
+    continuum: { scMin: 795, scMax: 805, pulseWidthFs: 100 },
+    edit: scene => { scene.find(e => e.id === 'det').params.aperture = 1000; },
+  }).reading;
+  assert.equal(pulse.stretchedPulseWidthFs, null);
+  assert.match(pulse.dispersionModel, /angular dispersion remains/);
+});
+
+test('diverging colours that would compress the pulse within the next metre give no duration', () => {
+  // The duration is the same at both ends of the metre (about 163 fs) but
+  // passes through about 94 fs where the angular GDD cancels the chirp.
+  const { pulse } = trace('one Brewster nsf10 prism', {
+    laser: { transformLimited: false, inputChirp: 'positive', chirpGddFs2: 6611.06 },
+    edit: scene => { scene.find(e => e.id === 'det').params.aperture = 1000; },
+  }).reading;
+  assert.equal(pulse.stretchedPulseWidthFs, null);
+  assert.match(pulse.dispersionModel, /angular dispersion remains/);
 });
