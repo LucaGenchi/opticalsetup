@@ -7,11 +7,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fiber coupling calculator — OpticalSetup</title>
-<meta name="description" content="Choose the lens that focuses a collimated laser beam onto a single-mode fiber, and see how much light couples: the mode-matching efficiency, and what lateral offset, focus error and tilt cost.">
+<meta name="description" content="Give the fiber and the laser, and the page designs the lens: the ideal thin lens that focuses the beam to the fiber’s mode, and a plano-convex lens to start from, traced with its spherical aberration. Then choose a lens of any focal length, set it off the fiber, and see what mode mismatch, lateral offset, focus error and tilt cost.">
 <link rel="canonical" href="https://opticalsetup.com/calculators/fiber-coupling/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Fiber coupling calculator — OpticalSetup">
-<meta property="og:description" content="Choose the lens that focuses a collimated laser beam onto a single-mode fiber, and see how much light couples: the mode-matching efficiency, and what lateral offset, focus error and tilt cost.">
+<meta property="og:description" content="Give the fiber and the laser, and the page designs the lens: the ideal thin lens that focuses the beam to the fiber’s mode, and a plano-convex lens to start from, traced with its spherical aberration. Then choose a lens of any focal length, set it off the fiber, and see what mode mismatch, lateral offset, focus error and tilt cost.">
 <meta property="og:url" content="https://opticalsetup.com/calculators/fiber-coupling/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="../../sketch/icons/icon.svg">
@@ -63,35 +63,49 @@
   <main class="calc-page">
     <div class="crumb"><a href="../../calculators/">Calculators</a> / Fiber coupling</div>
     <h1>Fiber coupling</h1>
-    <p class="tagline">Choose the lens that focuses a collimated laser beam onto a single-mode fiber, and see how much light couples: the mode-matching efficiency, and what lateral offset, focus error and tilt cost.</p>
+    <p class="tagline">Give the fiber and the laser, and the page designs the lens: the ideal thin lens that focuses the beam to the fiber’s mode, and a plano-convex lens to start from, traced with its spherical aberration. Then choose a lens of any focal length, set it off the fiber, and see what mode mismatch, lateral offset, focus error and tilt cost.</p>
 
     <noscript><p class="calc-status is-error">This calculator needs JavaScript. The physics and formulas below read without it.</p></noscript>
-    <section class="calc-app calc-columns" id="calculator" aria-label="Calculator">
-      <div class="calc-column">
-        <form class="calc-inputs" id="calc-form" autocomplete="off" novalidate></form>
-        <table class="calc-results" id="focus-results" aria-label="The focused beam"></table>
-      </div>
-      <div class="calc-column">
-        <form class="calc-inputs" id="fiber-form" autocomplete="off" novalidate></form>
+    <section class="calc-block" id="calculator" aria-label="Fiber and laser">
+      <form class="calc-inputs calc-grid-3" id="calc-form" autocomplete="off" novalidate></form>
+    </section>
+    <section class="calc-block calc-results-block" aria-label="The lens to use">
+      <div class="calc-status" id="calc-status" role="status" aria-live="polite"></div>
+      <div class="calc-grid-2">
         <table class="calc-results" id="mode-results" aria-label="The fiber mode"></table>
+        <table class="calc-results" id="ideal-results" aria-label="The ideal thin lens"></table>
+        <table class="calc-results" id="planoconvex-results" aria-label="A plano-convex lens to start from"></table>
       </div>
-      <div class="calc-column calc-output">
-        <div class="calc-status" id="calc-status" role="status" aria-live="polite"></div>
-        <table class="calc-results" id="calc-results" aria-label="Coupling"></table>
-        <ul class="calc-notes" id="calc-notes"></ul>
-      </div>
+      <ul class="calc-notes" id="calc-notes"></ul>
       <div class="calc-actions" id="calc-actions"></div>
     </section>
-
-
     <section class="calc-graphs" aria-label="Graphs">
       <figure class="calc-chart wide" id="chart-focal">
-        <figcaption><span class="chart-num">1</span><span><b>Efficiency against focal length</b><br><span class="chart-note">With the alignment as set; the line marks the focal length that matches the mode.</span></span></figcaption>
+        <figcaption><span class="chart-num">1</span><span><b>Mode matching against focal length</b><br><span class="chart-note">An ideal thin lens, perfectly aligned; the line marks the focal length that matches the mode. A catalogue focal length inside the range in the table keeps at least 95 %.</span></span></figcaption>
         <div class="chart-host" data-chart="focal"></div>
         <details class="chart-data"><summary>Data table</summary><div class="chart-table" data-table="focal"></div></details>
       </figure>
+    </section>
+    <section class="calc-panel" id="lens-panel" aria-labelledby="lens-title">
+      <div class="calc-panel-head">
+        <h2 id="lens-title">Your lens and its alignment</h2>
+        <p>A lens of any focal length, such as the catalogue value nearest the ideal one, with the fiber and laser above, and the fiber set off its focus: the mode matching, the coupling with the misalignments, and the alignment that costs 1 dB. The lens here is an ideal thin lens.</p>
+      </div>
+    <section class="calc-block" aria-label="Lens and alignment">
+      <form class="calc-inputs calc-grid-3" id="lens-form" autocomplete="off" novalidate></form>
+    </section>
+    <section class="calc-block calc-results-block" aria-label="Coupling">
+      <div class="calc-status" id="lens-status" role="status" aria-live="polite"></div>
+      <div class="calc-grid-2">
+        <table class="calc-results" id="lens-focus-results" aria-label="The focused beam"></table>
+        <table class="calc-results" id="lens-coupling-results" aria-label="Coupling"></table>
+      </div>
+      <ul class="calc-notes" id="lens-notes"></ul>
+      <div class="calc-actions" id="lens-actions"></div>
+    </section>
+    <section class="calc-graphs" aria-label="Graphs">
       <figure class="calc-chart" id="chart-lateral">
-        <figcaption><span class="chart-num">2</span><span><b>Lateral offset</b><br><span class="chart-note">Where the beam’s centre meets the fiber face, from the fiber axis.</span></span></figcaption>
+        <figcaption><span class="chart-num">2</span><span><b>Lateral offset</b><br><span class="chart-note">Where the beam’s centre meets the fiber face, from the fiber axis; the lens and the other misalignments as set.</span></span></figcaption>
         <div class="chart-host" data-chart="lateral"></div>
         <details class="chart-data"><summary>Data table</summary><div class="chart-table" data-table="lateral"></div></details>
       </figure>
@@ -106,12 +120,12 @@
         <details class="chart-data"><summary>Data table</summary><div class="chart-table" data-table="tilt"></div></details>
       </figure>
     </section>
-
+    </section>
 
     <dl class="calc-facts" aria-label="About this calculator">
-      <div><dt>Model</dt><dd>Overlap of a focused TEM₀₀ beam with a Gaussian approximation of the fiber’s fundamental mode; ideal thin lens.</dd></div>
-      <div><dt>Evidence</dt><dd>Checked against an independent Python reference that uses a different method: the exact fiber mode from its Bessel-function equation, and numerical overlap integrals on the fiber face. These checks do not establish experimental accuracy.</dd></div>
-      <div><dt>Code</dt><dd>The <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/calculators/fiber-coupling/fiber-coupling.js">calculator’s module</a>, and the <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/validation/reference/fiber_coupling.py">Python reference</a>.</dd></div>
+      <div><dt>Model</dt><dd>Overlap of a focused TEM₀₀ beam with a Gaussian approximation of the fiber’s fundamental mode, through an ideal thin lens; the suggested plano-convex lens traced by the <a href="../thin-thick-lens/">Thin and thick lens</a> calculator’s engine.</dd></div>
+      <div><dt>Evidence</dt><dd>Checked against an independent Python reference that uses a different method: the exact fiber mode from its Bessel-function equation, and numerical overlap integrals on the fiber face. These checks do not establish experimental accuracy. The plano-convex lens is the Thin and thick lens calculator’s model, checked by that page’s own reference.</dd></div>
+      <div><dt>Code</dt><dd>The <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/calculators/fiber-coupling/fiber-coupling.js">calculator’s module</a>, its <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/calculators/fiber-coupling/lens-choice.js">lens choice</a> and the <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/validation/reference/fiber_coupling.py">Python reference</a>; the plano-convex lens is traced by the <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/calculators/thin-thick-lens/thick-lens.js">Thin and thick lens module</a>.</dd></div>
     </dl>
 
     <nav class="calc-toc" aria-label="On this page">
@@ -145,7 +159,8 @@ c-22.3,46.7,-33.8,70.3,-34.5,71c-4.7,4.7,-12.3,7,-23,7s-12,-1,-12,-1
 s-109,-253,-109,-253c-72.7,-168,-109.3,-252,-110,-252c-10.7,8,-22,16.7,-34,26
 c-22,17.3,-33.3,26,-34,26s-26,-26,-26,-26s76,-59,76,-59s76,-60,76,-60z
 M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.3084em;"><span></span></span></span></span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">m</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.044em;">z</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:-0.044em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0077em;">R</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.13em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">≈</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.7936em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.1076em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">λ</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">π</span><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">m</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div></div>
-<p>For the example, a 2 mm beam at 1550 nm onto a 10.4 µm mode, that is 10.54 mm; the page’s 11 mm lens gives a 10.85 µm spot, and 99.8 % mode matching. The match is forgiving: a waist 10 % off still couples 99.1 %, 25 % off 95.2 %, 50 % off 85.2 %. The focused waist sits slightly short of f (here 10.9997 mm), which matters only for slow beams.</p>
+<p>For the example, a 2 mm beam at 1550 nm onto a 10.4 µm mode, that is 10.54 mm. The match is forgiving: a waist 10 % off still couples 99.1 %, 25 % off 95.2 %, 50 % off 85.2 %. Mode matching stays at 95 % or more for any focal length from 8.395 to 13.23 mm, so a catalogue lens in that range does nearly as well: the 11 mm lens the second part of the page starts from gives a 10.85 µm spot, and 99.8 %. The focused waist sits slightly short of f (here 10.9997 mm), which matters only for slow beams.</p>
+<p>A real lens is not ideal. The simplest one, a plano-convex singlet, brings its outer rays to a focus short of its inner ones (spherical aberration), which spreads the spot. The page suggests one at the matching focal length and traces it with the <a href="../thin-thick-lens/">Thin and thick lens</a> calculator’s engine, the fiber at its best position on the axis: its curved side toward the collimated beam, the way round with less spherical aberration; in N-BK7 from 350 to 2000 nm, UV fused silica below and CaF₂ above, the glasses such lenses are usually made of; on the smallest common diameter at least twice the beam’s. For the example it is a 6 mm N-BK7 lens with a 5.277 mm radius, 1.936 mm thick at the centre. Its focus has a Strehl ratio of 0.667, and with the fiber 82.6 µm nearer the lens than F′ it couples 90.6 %; flat side first it would couple 67.1 %. The aberration grows with the lens’s size at the same focusing angle: a 1 mm beam with f = 5.27 mm reaches the same mode at the same angle and couples 96.2 %, while a 5 mm beam at 1064 nm onto a 6.2 µm mode, f = 22.88 mm, couples only 60.5 %. An aspheric lens or an achromatic doublet of the same focal length removes most of this loss: the suggestion is a lens to start from, not the best one.</p>
       </section>
       <section id="coupling">
         <h2 class="section-head sim"><span class="sw"></span>Coupling efficiency</h2>
@@ -161,7 +176,7 @@ c-10,0,-16.667,5,-20,15z M188 15 H145 v585 v0 v585 h43z"/></svg></span></span></
       </section>
       <section id="precision">
         <h2 class="section-head sim"><span class="sw"></span>Precision and limits</h2>
-        <p>An independent Python reference integrates the overlap numerically on the fiber face, focuses the beam with the ABCD law, finds the matching focal length by bisection and computes the exact LP₀₁ mode from its Bessel-function equation. The page agrees with it to 10⁻⁹ relative for a given mode-field diameter, and within the fit’s 1 % (2 % in the aligned efficiency) when the mode comes from core and NA.</p><p>Not included: Fresnel reflection at the fiber face (about 3.4 % for uncoated silica, 0.15 dB; an anti-reflection coating or index matching removes most of it), lens aberrations, clipping by the lens or by a connector, polarization, beams with M² &gt; 1, and the slight non-Gaussian shape of the true mode. The page refuses a focus steeper than 0.3 rad (half angle) and a fiber face placed before the lens. Its efficiency is the overlap of ideal Gaussian fields, not a guaranteed upper bound: a real fiber’s mode can couple slightly more or less, especially far from alignment.</p>
+        <p>An independent Python reference integrates the overlap numerically on the fiber face, focuses the beam with the ABCD law, finds the matching focal length by bisection and computes the exact LP₀₁ mode from its Bessel-function equation. The page agrees with it to 10⁻⁹ relative for a given mode-field diameter, and within the fit’s 1 % (2 % in the aligned efficiency) when the mode comes from core and NA.</p><p>Not included: Fresnel reflection at the fiber face (about 3.4 % for uncoated silica, 0.15 dB; an anti-reflection coating or index matching removes most of it), the aberrations of any lens but the suggested plano-convex one, clipping by the lens or by a connector, polarization, beams with M² &gt; 1, and the slight non-Gaussian shape of the true mode. The page refuses a focus steeper than 0.3 rad (half angle) and a fiber face placed before the lens. Its efficiency is the overlap of ideal Gaussian fields, not a guaranteed upper bound: a real fiber’s mode can couple slightly more or less, especially far from alignment.</p><p>The plano-convex suggestion is the Thin and thick lens calculator’s model, with its precision and limits: the scalar focus of the traced singlet on axis, a Gaussian mode taken on the sphere about the fiber’s core. Its glass, diameter and edge thickness (1 mm per 12.7 mm of diameter, at least 1 mm) are rules of thumb for a catalogue lens, not an optimum, and its focal length is the ideal lens’s: a plano-convex lens slightly longer can couple a little more, as its aberrated spot is wider. Expect a catalogue lens to differ in focal length, thickness and coating.</p>
       </section>
       <section id="references">
         <h2 class="section-head real"><span class="sw"></span>References</h2>

@@ -89,13 +89,10 @@ export function matchingFocalMm(beamDiameterMm, wavelengthNm, modeRadiusUm) {
   return w > m ? m * input.rayleighMm / Math.sqrt(w * w - m * m) : null;
 }
 
+// The page asks for the fiber and the laser first (`setup`), from which it
+// designs the lens; then for a lens of any focal length and its alignment
+// (`lens`), the part that may depart from that design.
 export const FIBER_INPUTS = [
-  { id: 'wavelengthNm', group: 'laser', label: 'Wavelength', unit: 'nm', value: 1550, min: 200, max: 20000, arrowStep: 1,
-    help: 'Vacuum wavelength of the laser.' },
-  { id: 'beamDiameterMm', group: 'laser', label: 'Beam diameter at the lens (1/e²)', unit: 'mm', value: 2, min: 0.01, max: 100, arrowStep: 0.1,
-    help: 'A collimated TEM₀₀ beam, its waist at the lens.' },
-  { id: 'focalMm', group: 'laser', label: 'Lens focal length f', unit: 'mm', value: 11, min: 0.1, max: 10000, arrowStep: 0.1,
-    help: 'An ideal thin lens: no aberrations, aperture large enough not to clip the beam.' },
   { id: 'fiberMode', type: 'select', group: 'fiber', label: 'Fiber mode given by', value: 'mfd',
     options: [['mfd', 'Mode-field diameter (datasheet)'], ['step', 'Core diameter and NA (step index)']],
     help: 'Datasheets quote the mode-field diameter at one wavelength; the core and NA give it at any wavelength.' },
@@ -105,6 +102,12 @@ export const FIBER_INPUTS = [
     help: 'Step-index core.' },
   { id: 'na', group: 'fiber', label: 'Numerical aperture', unit: '', value: 0.14, min: 0.01, max: 0.5, arrowStep: 0.01, when: 'fiberMode', whenValue: 'step',
     help: 'NA = √(n_core² − n_clad²), the index-profile NA.' },
+  { id: 'wavelengthNm', group: 'laser', label: 'Wavelength', unit: 'nm', value: 1550, min: 200, max: 20000, arrowStep: 1,
+    help: 'Vacuum wavelength of the laser.' },
+  { id: 'beamDiameterMm', group: 'laser', label: 'Beam diameter at the lens (1/e²)', unit: 'mm', value: 2, min: 0.01, max: 100, arrowStep: 0.1,
+    help: 'A collimated TEM₀₀ beam, its waist at the lens: twice the waist radius w₀.' },
+  { id: 'focalMm', group: 'lens', label: 'Lens focal length f', unit: 'mm', value: 11, min: 0.1, max: 10000, arrowStep: 0.1,
+    help: 'An ideal thin lens: no aberrations, aperture large enough not to clip the beam.' },
   { id: 'lateralOffsetUm', group: 'align', label: 'Lateral offset on the face', unit: 'µm', value: 0, min: 0, max: 1000, arrowStep: 0.1,
     help: 'Where the beam’s centre meets the fiber face, measured from the fiber axis.' },
   { id: 'axialOffsetUm', group: 'align', label: 'Axial offset from the focus', unit: 'µm', value: 0, min: -100000, max: 100000, arrowStep: 1,
@@ -112,6 +115,8 @@ export const FIBER_INPUTS = [
   { id: 'tiltMrad', group: 'align', label: 'Tilt', unit: 'mrad', value: 0, min: -300, max: 300, arrowStep: 0.5,
     help: 'Angle between the beam axis and the fiber axis, in the plane of the offset: positive when the beam travels away from the axis on the offset side, negative when back toward it.' },
 ];
+export const SETUP_INPUTS = FIBER_INPUTS.filter(i => i.group === 'fiber' || i.group === 'laser');
+export const LENS_INPUTS = FIBER_INPUTS.filter(i => i.group === 'lens' || i.group === 'align');
 export const FIBER_DEFAULTS = defaultsFor(FIBER_INPUTS);
 
 const LOSS_1DB = 10 ** -0.1;
@@ -131,9 +136,9 @@ function toleranceFor(key, base, guess) {
   return (lo + hi) / 2;
 }
 
-export function computeFiberCoupling(raw) {
-  const { values: v, errors } = parseInputs(FIBER_INPUTS, raw);
-  if (errors.length) return { ok: false, errors };
+// The fiber's mode from the parsed inputs: its radius and far-field half
+// angle, or why the page's Gaussian model does not hold for it.
+export function resolveMode(v) {
   let mode;
   if (v.fiberMode === 'step') {
     mode = fiberMode(v);
@@ -148,6 +153,15 @@ export function computeFiberCoupling(raw) {
   if (modeDivergenceMrad > PARAXIAL_LIMIT_MRAD) {
     return unavailable(`A ${mode.modeFieldDiameterUm.toPrecision(3)} µm mode at ${v.wavelengthNm} nm spreads at a half angle of ${steepText(modeDivergenceMrad)}: beyond the paraxial approximation the Gaussian-mode model rests on. Single-mode fibers have modes several wavelengths wide.`, v.fiberMode === 'step' ? 'coreDiameterUm' : 'mfdUm');
   }
+  return { ok: true, mode, modeRadiusUm, modeDivergenceMrad };
+}
+
+export function computeFiberCoupling(raw) {
+  const { values: v, errors } = parseInputs(FIBER_INPUTS, raw);
+  if (errors.length) return { ok: false, errors };
+  const m = resolveMode(v);
+  if (!m.ok) return m;
+  const { mode, modeRadiusUm, modeDivergenceMrad } = m;
   const focus = focusCollimated(v.beamDiameterMm, v.wavelengthNm, v.focalMm);
   const waistUm = focus.beam.waistUm;
   if (!(Number.isFinite(waistUm) && waistUm > 0 && Number.isFinite(focus.distanceMm)) || focus.beam.halfDivergenceMrad > PARAXIAL_LIMIT_MRAD) {

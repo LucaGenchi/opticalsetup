@@ -202,7 +202,8 @@
   grid-column: 1 / -1; justify-self: start; font: inherit; font-size: 12.5px; color: var(--muted);
   background: none; border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; cursor: pointer;
 }
-.calc-reset:hover { color: var(--accent); border-color: var(--accent); }
+.calc-reset:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.calc-reset:disabled { opacity: .5; cursor: default; }
 .chart-host .chart-note { font-size: 12px; margin-top: 4px; }
 
 /* ---------- extra panels and controls below the graphs ---------- */
