@@ -24,9 +24,6 @@ const MAX_BLOCK_MM = 300;
 
 export const COMPRESSOR_INPUTS = [
   { id: 'layout', type: 'select', group: 'layout', label: 'Layout', value: 'prism-pair', options: LAYOUTS },
-  { id: 'passes', type: 'select', group: 'layout', label: 'Passes', value: '2',
-    options: [['1', 'Single pass'], ['2', 'Double pass (flat end mirror)']],
-    when: 'layout', whenValue: ['prism-pair', 'grating-pair', 'stretcher'] },
   { id: 'solve', type: 'select', group: 'layout', label: 'Separation', value: 'target',
     options: [['target', 'Solved for a target net GDD'], ['manual', 'Set by hand']] },
   { id: 'targetGddFs2', group: 'layout', label: 'Target net GDD', unit: 'fs²', value: 0, min: -1e8, max: 1e8,
@@ -96,7 +93,7 @@ export const COMPRESSOR_INPUTS = [
 export const LAYOUT_PRESETS = {
   'prism-pair': {
     note: 'A Ti:sapphire pulse after 10 mm of N-BK7 (a lens system’s glass), recompressed by a double-pass fused-silica pair.',
-    values: { passes: '2', solve: 'target', targetGddFs2: 0, wavelengthNm: 800, bandwidthNm: 30, shape: 'gauss', chirp: 'material',
+    values: { solve: 'target', targetGddFs2: 0, wavelengthNm: 800, bandwidthNm: 30, shape: 'gauss', chirp: 'material',
       chirpMaterial: 'nbk7', chirpLengthMm: 10, polarization: 'p', prismMaterial: 'silica', prismCut: 'brewster',
       separationMm: 600, insertion1Mm: 3, insertion2Mm: 12, prismSizeMm: 25.4, beamDiameterMm: 2 },
   },
@@ -108,7 +105,7 @@ export const LAYOUT_PRESETS = {
   },
   'grating-pair': {
     note: 'A chirped-pulse amplifier at 800 nm: the pulse the stretcher example makes (+10⁶ fs², about 88 ps), recompressed by a double-pass pair of the same gratings at the same angle, which cancels its third- and fourth-order dispersion too.',
-    values: { passes: '2', solve: 'target', targetGddFs2: 0, wavelengthNm: 800, bandwidthNm: 30, shape: 'gauss', chirp: 'gdd',
+    values: { solve: 'target', targetGddFs2: 0, wavelengthNm: 800, bandwidthNm: 30, shape: 'gauss', chirp: 'gdd',
       inputGddFs2: 1e6, inputTodFs3: -1.6046e6, inputFodFs4: 4.002e6, lines: 1200, gratingIncidenceDeg: 45, gratingSeparationMm: 300, gratingSizeMm: 160,
       efficiencyPct: 92, beamDiameterMm: 8 },
   },
@@ -120,7 +117,7 @@ export const LAYOUT_PRESETS = {
   },
   stretcher: {
     note: 'The stretcher of a Ti:sapphire amplifier: two 1200 lines/mm gratings and two f = 500 mm lenses in a double pass, stretching a 31 fs pulse with +10⁶ fs² to about 88 ps.',
-    values: { passes: '2', solve: 'target', targetGddFs2: 1e6, wavelengthNm: 800, bandwidthNm: 30, shape: 'gauss', chirp: 'none',
+    values: { solve: 'target', targetGddFs2: 1e6, wavelengthNm: 800, bandwidthNm: 30, shape: 'gauss', chirp: 'none',
       lines: 1200, gratingIncidenceDeg: 45, focalMm: 500, gratingLensMm: 200, lensDiameterMm: 100, gratingSizeMm: 100,
       efficiencyPct: 92, beamDiameterMm: 2 },
   },
@@ -261,7 +258,7 @@ const layoutWith = (v, value) => buildLayout({ ...v, [SOLVED[v.layout]]: value }
 export function computeCompressor(raw) {
   const { values: parsed, errors } = parseInputs(COMPRESSOR_INPUTS, raw);
   if (errors.length) return { ok: false, errors };
-  const v = { ...COMPRESSOR_DEFAULTS, ...parsed, passes: Number(parsed.passes ?? 1) };
+  const v = { ...COMPRESSOR_DEFAULTS, ...parsed };
   if (!(v.bandwidthNm < v.wavelengthNm / 4)) return unavailable('Keep the bandwidth under a quarter of the central wavelength.', 'bandwidthNm');
   const isPrism = PRISMS.includes(v.layout);
   if (isPrism && !brewsterCut(v.prismMaterial, v.wavelengthNm)) {
@@ -293,7 +290,7 @@ export function computeCompressor(raw) {
     const value = a + (v.targetGddFs2 - chirp.gddFs2 - ga) / slope;
     if (!(Number.isFinite(value) && value >= input.min && value <= input.max)) {
       const need = Number.isFinite(value) ? `${input.label} = ${value.toFixed(0)} ${input.unit}` : 'a different geometry';
-      return unavailable(`The target is out of reach: it needs ${need}, outside ${input.min}–${input.max} ${input.unit} (each mm adds ${slope.toPrecision(3)} fs²). Choose a more dispersive glass or grating, more passes, or a different target.`, 'targetGddFs2');
+      return unavailable(`The target is out of reach: it needs ${need}, outside ${input.min}–${input.max} ${input.unit} (each mm adds ${slope.toPrecision(3)} fs²). Choose a more dispersive glass or grating, or a different target.`, 'targetGddFs2');
     }
     solved = { id: solvedId, value, slopeFs2PerMm: slope };
     v[solvedId] = value;
@@ -364,7 +361,6 @@ function geometryOf(layout, v) {
       glassGddFs2: m ? m.gvdFs2PerMm * glassPerPass * layout.passes : null,
       spreadMm, apertureMm: spreadMm === null ? null : spreadMm + v.beamDiameterMm,
       brewsterDeg: Math.atan(g.n0) / D2R, n0: g.n0,
-      outputChirpMm: layout.outputChirpMm,
     };
   }
   const { gr } = layout;
@@ -382,7 +378,6 @@ function geometryOf(layout, v) {
     separationMm: layout.kind === 'stretcher' ? null : G, slantMm: layout.kind === 'stretcher' ? null : G / Math.cos(b0),
     effectiveSeparationMm: layout.kind === 'stretcher' ? layout.effectiveSeparationMm : null,
     spreadMm, apertureMm: spreadMm === null ? null : spreadMm + v.beamDiameterMm / Math.cos(b0),
-    outputChirpMm: layout.outputChirpMm,
   };
 }
 

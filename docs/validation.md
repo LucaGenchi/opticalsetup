@@ -260,7 +260,7 @@ Sources:
 ### Dispersion compensators: GDD, TOD and FOD of prism and grating layouts, the solved separation and the transmission
 
 - **Provenance.** Sellmeier forms from material_dispersion.py (SCHOTT catalogue, Malitson); geometry and phase written from the cited papers.
-- **Cases run.** 800 and 1030 nm; 8-30 nm FWHM; fused silica, N-SF10 and N-SF11 prisms, Brewster-cut and 60 deg at 50 deg incidence, p and s; 1000-1500 lines/mm gratings at 45-50 deg, single and double pass; a 1200 lines/mm stretcher with f = 500 mm; chirps from N-BK7, fused silica and entered GDD.
+- **Cases run.** 800 and 1030 nm; 8-30 nm FWHM; fused silica, N-SF10 and N-SF11 prisms, Brewster-cut and 60 deg at 50 deg incidence, p and s; 1000-1500 lines/mm gratings at 45-50 deg, double pass and four-grating; a 1200 lines/mm stretcher, double pass, with f = 500 mm; chirps from N-BK7, fused silica and entered GDD.
 - **Method.** Seven-point central differences in 40-digit arithmetic at h = 1e-4 omega0: truncation of order (h/omega0)^4 ~ 1e-16 relative for GDD and TOD and (h/omega0)^2 ~ 1e-8 for FOD; round-off below 1e-18.
 - **Tolerances.** 1e-9 where both sides evaluate closed forms (the app in double precision); 2e-3 for FOD, which the app takes from fourth differences in double precision.
 
