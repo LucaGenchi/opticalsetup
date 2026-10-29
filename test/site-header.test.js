@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { siteHeader, themeBootScript } from '../tools/site-header.mjs';
@@ -41,6 +41,21 @@ test('the homepage and every section hub open in the stored appearance before th
     assert.ok(boot < html.indexOf('<link rel="stylesheet"'), `${hub}: boot script precedes the stylesheets`);
     assert.match(html, /id="btnAbout"/, `${hub}: About button`);
     assert.match(html, /id="btnTheme"/, `${hub}: theme switch`);
+  }
+});
+
+test('site stylesheets take dark colours from the switch, never straight from the system', async () => {
+  const sheets = ['css/landing.css', 'wiki/assets/wiki.css', 'community/assets/community.css',
+    'example-setups/assets/examples.css', 'calculators/assets/calculator.css'];
+  for (const entry of await readdir(resolve(ROOT, 'calculators'), { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    for (const file of await readdir(resolve(ROOT, 'calculators', entry.name))) {
+      if (file.endsWith('.css')) sheets.push(`calculators/${entry.name}/${file}`);
+    }
+  }
+  for (const sheet of new Set(sheets)) {
+    const css = await readFile(resolve(ROOT, sheet), 'utf8');
+    assert.doesNotMatch(css, /prefers-color-scheme/, `${sheet}: use :root[data-theme="dark"] so the header switch applies`);
   }
 });
 

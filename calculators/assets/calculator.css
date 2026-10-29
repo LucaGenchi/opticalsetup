@@ -302,9 +302,7 @@
   grid-area: figure; margin: 0; min-width: 0; min-height: 160px; position: relative;
   background: var(--fig-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
 }
-@media (prefers-color-scheme: dark) {
-  .calc-stage-figure { --fig-bg: #20252d; --fig-ink: #edf2f8; --fig-muted: #94a3b8; --fig-dim: #aeb8c5; }
-}
+:root[data-theme="dark"] .calc-stage-figure { --fig-bg: #20252d; --fig-ink: #edf2f8; --fig-muted: #94a3b8; --fig-dim: #aeb8c5; }
 .calc-stage-figure svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 .calc-stage-figure .fig-ink { fill: var(--fig-ink); }
 .calc-stage-figure .fig-muted { fill: var(--fig-muted); }
