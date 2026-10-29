@@ -51,7 +51,7 @@ Two merges, both on github.com, each the ordinary green **Merge pull request** b
 
 ### If the "Propose" PR never shows up
 
-Read the workflow's comment on the issue, or its run on the [Actions tab](https://github.com/LucaGenchi/opticalsetup/actions). Once the cause is fixed — the submitter has corrected the issue, or a maintainer has fixed the checks — run it again: **Actions → Materialize example proposal → Run workflow**, enter the issue number, and run it from `main`. The same works for an issue the workflow never saw. A re-run updates the proposal's existing branch and pull request. It refuses an issue whose setup is already in `community-submissions/`, which is changed only by a reviewed pull request, and it stops without replacing anything if a maintainer has already committed to the proposal's branch: update that pull request by hand instead.
+Read the workflow's comment on the issue, or its run on the [Actions tab](https://github.com/LucaGenchi/opticalsetup/actions). Once the cause is fixed — the submitter has corrected the issue, or a maintainer has fixed the checks — run it again: **Actions → Materialize example proposal → Run workflow**, enter the issue number, and run it from `main`. The same works for an issue the workflow never saw. A re-run never replaces anything that already exists: it refuses an issue whose setup is already in `community-submissions/` (changed only by a reviewed pull request), and an issue whose proposal branch `example-proposal/issue-N` already exists. Update that pull request by hand, or, if it was closed and you want the workflow to start over, delete the branch first.
 
 ### If the "Publish" PR never shows up
 

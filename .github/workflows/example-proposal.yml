@@ -34,6 +34,9 @@ jobs:
     timeout-minutes: 15
     env:
       GH_TOKEN: ${{ github.token }}
+      # gh finds the repository without a checkout, so even a run that failed
+      # before checking out can still comment on the issue.
+      GH_REPO: ${{ github.repository }}
 
     steps:
       # First, so that a failure in any later step -- the toolchain, reading
@@ -92,11 +95,11 @@ jobs:
         id: checks
         run: npm test
 
-      # A re-run rebuilds the proposal branch from main. If a maintainer has
-      # already corrected the proposal there, replacing the branch would
-      # discard that work (a lease guards only against changes made during
-      # this run), so the run stops instead. The bot's own earlier commits,
-      # and merges such as "Update branch", do not count as corrections.
+      # A proposal branch, once pushed, belongs to its pull request and may
+      # carry a maintainer's corrections, so this workflow never replaces
+      # one: a re-run for an issue that already has its branch stops and says
+      # so. Without a force push, a branch created concurrently is not
+      # overwritten either.
       - name: Commit the proposal branch
         id: commit
         env:
@@ -105,28 +108,18 @@ jobs:
           GOLDEN_FILE: ${{ steps.proposal.outputs.golden_file }}
           COMMIT_SUBJECT: ${{ steps.proposal.outputs.commit_subject }}
         run: |
-          bot_email="41898282+github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
-          git config user.email "$bot_email"
-          remote_sha="$(git ls-remote --heads origin "$BRANCH_NAME" | awk '{print $1}')"
-          if [[ -n "$remote_sha" ]]; then
-            git fetch --quiet origin "refs/heads/$BRANCH_NAME"
-            authors="$(git log --no-merges --format='%ae' "HEAD..$remote_sha")"
-            if [[ -n "$authors" ]] && grep -qvxF "$bot_email" <<< "$authors"; then
-              echo "maintainer_changes=true" >> "$GITHUB_OUTPUT"
-              echo "$BRANCH_NAME has commits by someone other than this workflow; not replacing it."
-              exit 1
-            fi
+          if [[ -n "$(git ls-remote --heads origin "$BRANCH_NAME")" ]]; then
+            echo "branch_exists=true" >> "$GITHUB_OUTPUT"
+            echo "$BRANCH_NAME already exists; not replacing it."
+            exit 1
           fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -C "$BRANCH_NAME"
           git add "$PROPOSAL_FILE" "$GOLDEN_FILE"
           git diff --cached --check
           git commit -m "$COMMIT_SUBJECT"
-          if [[ -n "$remote_sha" ]]; then
-            git push --force-with-lease="refs/heads/$BRANCH_NAME:$remote_sha" origin "HEAD:refs/heads/$BRANCH_NAME"
-          else
-            git push --set-upstream origin "$BRANCH_NAME"
-          fi
+          git push --set-upstream origin "HEAD:refs/heads/$BRANCH_NAME"
 
       - name: Open or find the pull request
         id: pull_request
@@ -158,15 +151,15 @@ jobs:
           PROPOSAL_OUTCOME: ${{ steps.proposal.outcome }}
           PROPOSAL_ERROR: ${{ steps.proposal.outputs.error }}
           CHECKS_OUTCOME: ${{ steps.checks.outcome }}
-          MAINTAINER_CHANGES: ${{ steps.commit.outputs.maintainer_changes }}
+          BRANCH_EXISTS: ${{ steps.commit.outputs.branch_exists }}
         run: |
           run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           if [[ "$PROPOSAL_OUTCOME" == "failure" && -n "$PROPOSAL_ERROR" ]]; then
             body="The setup could not be turned into a proposal: **${PROPOSAL_ERROR}**. Please fix this and say so in a comment here; a maintainer will run the check again."
           elif [[ "$PROPOSAL_OUTCOME" == "failure" ]]; then
             body="The setup could not be traced or exported, so no pull request was opened. A maintainer will look at the [workflow run]($run_url)."
-          elif [[ "$MAINTAINER_CHANGES" == "true" ]]; then
-            body="This proposal's pull request already has changes from a maintainer, so this run did not replace it. A maintainer will update the pull request by hand: see the [workflow run]($run_url)."
+          elif [[ "$BRANCH_EXISTS" == "true" ]]; then
+            body="This proposal already has its branch and pull request, so this run did not replace them. A maintainer will update the pull request by hand: see the [workflow run]($run_url)."
           elif [[ "$CHECKS_OUTCOME" == "failure" ]]; then
             body="Your setup passed validation, but the repository's own checks failed, so no pull request was opened yet. This is for a maintainer to fix, not you: see the [workflow run]($run_url)."
           else

@@ -314,19 +314,77 @@ test('the workflow recognises the form, can be re-run, and runs the suite as CI 
 });
 
 // Andrea's review of #293: a failure before validation (the toolchain, or
-// reading the issue) left the issue unanswered, and a re-run could replace a
-// proposal branch a maintainer had already corrected.
-test('every failure can be answered on the issue, and a re-run never replaces a maintainer\'s correction', async () => {
+// reading the issue) left the issue unanswered; a run that failed before
+// checkout could not comment at all; and a re-run could replace a proposal
+// branch a maintainer had already corrected. Telling a correction from the
+// bot's own commits proved unreliable (an amend keeps the bot as author), so
+// an existing branch is never replaced.
+test('every failure can be answered on the issue, even before checkout', async () => {
   const workflow = await readFile(new URL('../.github/workflows/example-proposal.yml', import.meta.url), 'utf8');
   const steps = [...workflow.matchAll(/^      - (?:name|uses): (.+)$/gm)].map(match => match[1]);
   assert.equal(steps[0], 'Identify the issue', 'the issue number is known before anything else can fail');
   assert.match(workflow, /if: failure\(\) && steps\.issue\.outputs\.number != ''/);
   assert.doesNotMatch(workflow, /steps\.proposal\.outputs\.issue_number/);
+  assert.match(workflow, /^      GH_REPO: \$\{\{ github\.repository \}\}$/m, 'gh needs no checkout to find the repository');
+  assert.doesNotMatch(workflow, /--force|push -f/, 'nothing is ever force-pushed');
+});
 
-  const commit = workflow.slice(workflow.indexOf('- name: Commit the proposal branch'), workflow.indexOf('- name: Open or find'));
-  const guard = commit.indexOf('git log --no-merges');
-  assert.ok(guard > 0 && guard < commit.indexOf('git switch -C'), 'existing commits are checked before the branch is rebuilt');
-  assert.ok(commit.indexOf('maintainer_changes=true') < commit.indexOf('git push'), 'and the run stops before any push');
-  assert.doesNotMatch(commit, /git log[^\n]*\|\s*grep -q/, 'no pipe into grep -q under pipefail');
-  assert.match(workflow, /MAINTAINER_CHANGES" == "true"/, 'the issue is told why nothing was replaced');
+// The commit step's own shell script, exactly as the workflow runs it.
+function commitStepScript(workflow) {
+  const lines = workflow.slice(workflow.indexOf('- name: Commit the proposal branch')).split('\n');
+  const start = lines.findIndex(line => line.trim() === 'run: |') + 1;
+  const body = [];
+  for (const line of lines.slice(start)) {
+    if (line.trim() && !line.startsWith('          ')) break;
+    body.push(line.slice(10));
+  }
+  return body.join('\n');
+}
+
+test('a re-run never replaces an existing proposal branch', async t => {
+  if (spawnSync('git', ['--version']).status !== 0) return t.skip('git is not available');
+  const workflow = await readFile(new URL('../.github/workflows/example-proposal.yml', import.meta.url), 'utf8');
+  const root = await mkdtemp(join(tmpdir(), 'opticalsetup-proposal-branch-'));
+  const git = (cwd, ...args) => {
+    const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
+    assert.equal(result.status, 0, `git ${args.join(' ')}: ${result.stderr}`);
+    return result.stdout.trim();
+  };
+  try {
+    await writeFile(join(root, 'step.sh'), commitStepScript(workflow));
+    git(root, 'init', '-q', '--bare', 'remote.git');
+    git(root, 'init', '-q', 'work');
+    const work = join(root, 'work');
+    git(work, '-c', 'user.name=Main', '-c', 'user.email=main@example.com', 'commit', '-q', '--allow-empty', '-m', 'main');
+    git(work, 'remote', 'add', 'origin', join(root, 'remote.git'));
+    const run = async content => {
+      git(work, 'checkout', '-q', '--detach', git(work, 'rev-list', '--max-parents=0', 'HEAD', '--all').split('\n')[0]);
+      await writeFile(join(work, 'proposal.json'), content);
+      await writeFile(join(work, 'golden.json'), content);
+      const output = join(root, 'output');
+      await writeFile(output, '');
+      const result = spawnSync('bash', ['-e', '-o', 'pipefail', join(root, 'step.sh')], {
+        cwd: work, encoding: 'utf8',
+        env: {
+          ...process.env, GITHUB_OUTPUT: output, BRANCH_NAME: 'example-proposal/issue-9',
+          PROPOSAL_FILE: 'proposal.json', GOLDEN_FILE: 'golden.json', COMMIT_SUBJECT: 'Propose community setup: test',
+        },
+      });
+      return { status: result.status, output: await readFile(output, 'utf8') };
+    };
+    const tip = () => git(root, '--git-dir=remote.git', 'rev-parse', 'refs/heads/example-proposal/issue-9');
+
+    const first = await run('first\n');
+    assert.equal(first.status, 0, 'a new proposal branch is pushed');
+    assert.equal(first.output, '');
+    const pushed = tip();
+    assert.equal(git(root, '--git-dir=remote.git', 'show', `${pushed}:proposal.json`), 'first');
+
+    const again = await run('second\n');
+    assert.equal(again.status, 1, 'an existing branch stops the run');
+    assert.equal(again.output, 'branch_exists=true\n', 'and the issue is told why');
+    assert.equal(tip(), pushed, 'the existing branch, corrected or not, is left exactly as it was');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
