@@ -35,7 +35,9 @@ import { analyzeImaging, prepareImaging, twoPointAt } from '../calculators/lens-
 import { analyzeCoupling } from '../calculators/lens-design/engine/coupling.js';
 import { GAUSSIAN_DEFAULTS, computeGaussianBeam } from '../calculators/gaussian-beam/gaussian-beam.js';
 import { LENS_DEFAULTS, lensData, designLens, idealFocus, singletRays, focusFrom, PUPIL_SAMPLES } from '../calculators/thin-thick-lens/thick-lens.js';
-import { FIBER_DEFAULTS, computeFiberCoupling, fiberMode } from '../calculators/fiber-coupling/fiber-coupling.js';
+import { FIBER_DEFAULTS, computeFiberCoupling, fiberMode, focusCollimated } from '../calculators/fiber-coupling/fiber-coupling.js';
+import { lp01 } from '../calculators/fiber-coupling/lp01.js';
+import { computeFiberSetup, exactCoupling } from '../calculators/fiber-coupling/lens-choice.js';
 import { IMAGING_DEFAULTS, PAIR_DEFAULTS, computeImaging, computePair } from '../calculators/imaging/imaging.js';
 import {
   absorptionCrossSectionCm2, focusPeakIntensityWcm2, widefieldIntensityWcm2, moleculeRates, collectionFraction,
@@ -192,10 +194,27 @@ const APP = {
     return computeDispersion({ ...DISPERSION_DEFAULTS, material, wavelengthNm, ...inputs });
   },
   'gaussian-beam': inputs => computeGaussianBeam({ ...GAUSSIAN_DEFAULTS, ...inputs }),
-  'fiber-coupling': ({ kind, ...inputs }) => (kind === 'fiber' ? fiberMode(inputs) : computeFiberCoupling({ ...FIBER_DEFAULTS, ...inputs })),
+  'fiber-coupling': ({ kind, ...inputs }) => {
+    if (kind === 'fiber') return fiberMode(inputs);
+    if (kind === 'lp01') {
+      const m = lp01(inputs.vNumber);
+      return { u: m.u, bestRatio: m.best.ratio, bestEta: m.best.eta, ...Object.fromEntries(inputs.qs.map((q, i) => [`farField${i}`, m.farField(q)])) };
+    }
+    if (kind === 'setup') {
+      const { focalMm, ...raw } = inputs, r = computeFiberSetup({ ...FIBER_DEFAULTS, ...raw });
+      if (!r.ok) return { ok: false };
+      const at = focusCollimated(raw.beamDiameterMm, raw.wavelengthNm, focalMm).beam.waistUm;
+      return {
+        vNumber: r.mode.vNumber, bestEfficiency: r.bestEfficiency, matchEfficiency: r.matchEfficiency, optimalFocalMm: r.optimalFocalMm,
+        efficiencyAt: exactCoupling(r, at), coreDiameterUm: 2 * r.mode.coreRadiusUm, modeFieldDiameterUm: r.mode.modeFieldDiameterUm,
+        ...(r.range.none ? { rangeNone: 1 } : { rangeMinMm: r.range.minMm, rangeMaxMm: r.range.maxMm }),
+      };
+    }
+    return computeFiberCoupling({ ...FIBER_DEFAULTS, ...inputs });
+  },
   // Lens data and the singlets take signed radii directly (the page's inputs
   // reach them through designLens); a design takes the page's inputs.
-  'thick-lens': ({ kind, shiftsMm, lateralUm = [], tiltMrad = [], ...inputs }) => {
+  'thick-lens': ({ kind, shiftsMm, lateralUm = [], tiltMrad = [], vNumber, ...inputs }) => {
     if (kind === 'design') {
       const d = designLens({ ...LENS_DEFAULTS, ...inputs });
       return d.reason ? { ok: false, reason: d.reason } : { r1Mm: d.r1Mm, r2Mm: d.r2Mm, thicknessMm: d.thicknessMm, efl: d.lens.efl };
@@ -213,7 +232,9 @@ const APP = {
       shiftsMm.forEach((s, i) => {
         const p = m.plane(s);
         out[`peak${i}`] = m.peak(p);
-        out[`eta${i}`] = m.coupling(p, inputs.mfdUm / 2000, (lateralUm[i] ?? 0) * 1e-3, (tiltMrad[i] ?? 0) * 1e-3, true);
+        // The fiber coupling page's exact LP₀₁ mode, scaled to this mode-field diameter.
+        const exact = vNumber ? { lp: lp01(vNumber), coreRadiusMm: inputs.mfdUm / 2000 / lp01(vNumber).best.ratio } : null;
+        out[`eta${i}`] = m.coupling(p, inputs.mfdUm / 2000, (lateralUm[i] ?? 0) * 1e-3, (tiltMrad[i] ?? 0) * 1e-3, true, exact);
         if (Number.isNaN(out[`eta${i}`])) strict = false;
       });
       if (strict && m.resolved()) return out;
