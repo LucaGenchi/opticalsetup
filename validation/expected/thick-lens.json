@@ -1,0 +1,971 @@
+{
+ "app": "calculators/thin-thick-lens/thick-lens.js: lensData, designLens, idealFocus, singletRays, focusFrom",
+ "cases": [
+  {
+   "expected": {
+    "bfl": 8.986542749,
+    "efl": 10.98567374,
+    "ffl": 10.98567374,
+    "h2Mm": -1.999130987,
+    "n": 1.500652043,
+    "thinFocalMm": 10.98567374
+   },
+   "inputs": {
+    "diameterMm": 4.0,
+    "glass": "nbk7",
+    "kind": "lens",
+    "r1Mm": 5.5,
+    "r2Mm": 0.0,
+    "thicknessMm": 3.0,
+    "wavelengthNm": 1550.0
+   },
+   "name": "lens data: plano-convex N-BK7, R1 = 5.5 mm, t = 3 mm, at 1550 nm (the page's example)",
+   "tolerance": {
+    "bfl": 1e-09,
+    "efl": 1e-09,
+    "ffl": 1e-09,
+    "h2Mm": 1e-09,
+    "n": 1e-09,
+    "thinFocalMm": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "h1Mm": 0.0
+   },
+   "inputs": {
+    "diameterMm": 4.0,
+    "glass": "nbk7",
+    "kind": "lens",
+    "r1Mm": 5.5,
+    "r2Mm": 0.0,
+    "thicknessMm": 3.0,
+    "wavelengthNm": 1550.0
+   },
+   "name": "lens data: plano-convex N-BK7, R1 = 5.5 mm, t = 3 mm, at 1550 nm (the page's example): the principal plane on its vertex",
+   "tolerance": {
+    "h1Mm": 1e-12
+   }
+  },
+  {
+   "expected": {
+    "bfl": 10.98567374,
+    "efl": 10.98567374,
+    "ffl": 8.986542749,
+    "h1Mm": 1.999130987,
+    "n": 1.500652043,
+    "thinFocalMm": 10.98567374
+   },
+   "inputs": {
+    "diameterMm": 4.0,
+    "glass": "nbk7",
+    "kind": "lens",
+    "r1Mm": 0.0,
+    "r2Mm": -5.5,
+    "thicknessMm": 3.0,
+    "wavelengthNm": 1550.0
+   },
+   "name": "lens data: the same lens turned round, flat side first",
+   "tolerance": {
+    "bfl": 1e-09,
+    "efl": 1e-09,
+    "ffl": 1e-09,
+    "h1Mm": 1e-09,
+    "n": 1e-09,
+    "thinFocalMm": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "h2Mm": 0.0
+   },
+   "inputs": {
+    "diameterMm": 4.0,
+    "glass": "nbk7",
+    "kind": "lens",
+    "r1Mm": 0.0,
+    "r2Mm": -5.5,
+    "thicknessMm": 3.0,
+    "wavelengthNm": 1550.0
+   },
+   "name": "lens data: the same lens turned round, flat side first: the principal plane on its vertex",
+   "tolerance": {
+    "h2Mm": 1e-12
+   }
+  },
+  {
+   "expected": {
+    "bfl": 18.4891399,
+    "efl": 20.21066748,
+    "ffl": 18.4891399,
+    "h1Mm": 1.721527581,
+    "h2Mm": -1.721527581,
+    "n": 1.516798438,
+    "thinFocalMm": 19.34990369
+   },
+   "inputs": {
+    "diameterMm": 4.0,
+    "glass": "nbk7",
+    "kind": "lens",
+    "r1Mm": 20.0,
+    "r2Mm": -20.0,
+    "thicknessMm": 5.0,
+    "wavelengthNm": 587.6
+   },
+   "name": "lens data: biconvex N-BK7, R = +/-20 mm, t = 5 mm, at 587.6 nm",
+   "tolerance": {
+    "bfl": 1e-09,
+    "efl": 1e-09,
+    "ffl": 1e-09,
+    "h1Mm": 1e-09,
+    "h2Mm": 1e-09,
+    "n": 1e-09,
+    "thinFocalMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "bfl": 8.558160557,
+    "efl": 10.52876097,
+    "ffl": 10.52876097,
+    "h2Mm": -1.970600408,
+    "n": 1.522378656,
+    "thinFocalMm": 10.52876097
+   },
+   "inputs": {
+    "diameterMm": 4.0,
+    "glass": "nbk7",
+    "kind": "lens",
+    "r1Mm": 5.5,
+    "r2Mm": 0.0,
+    "thicknessMm": 3.0,
+    "wavelengthNm": 486.1
+   },
+   "name": "lens data: the example lens at the F line, 486.1 nm",
+   "tolerance": {
+    "bfl": 1e-09,
+    "efl": 1e-09,
+    "ffl": 1e-09,
+    "h2Mm": 1e-09,
+    "n": 1e-09,
+    "thinFocalMm": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "h1Mm": 0.0
+   },
+   "inputs": {
+    "diameterMm": 4.0,
+    "glass": "nbk7",
+    "kind": "lens",
+    "r1Mm": 5.5,
+    "r2Mm": 0.0,
+    "thicknessMm": 3.0,
+    "wavelengthNm": 486.1
+   },
+   "name": "lens data: the example lens at the F line, 486.1 nm: the principal plane on its vertex",
+   "tolerance": {
+    "h1Mm": 1e-12
+   }
+  },
+  {
+   "expected": {
+    "bfl": 8.712615279,
+    "efl": 10.69370055,
+    "ffl": 10.69370055,
+    "h2Mm": -1.981085271,
+    "n": 1.51432149,
+    "thinFocalMm": 10.69370055
+   },
+   "inputs": {
+    "diameterMm": 4.0,
+    "glass": "nbk7",
+    "kind": "lens",
+    "r1Mm": 5.5,
+    "r2Mm": 0.0,
+    "thicknessMm": 3.0,
+    "wavelengthNm": 656.3
+   },
+   "name": "lens data: the example lens at the C line, 656.3 nm",
+   "tolerance": {
+    "bfl": 1e-09,
+    "efl": 1e-09,
+    "ffl": 1e-09,
+    "h2Mm": 1e-09,
+    "n": 1e-09,
+    "thinFocalMm": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "h1Mm": 0.0
+   },
+   "inputs": {
+    "diameterMm": 4.0,
+    "glass": "nbk7",
+    "kind": "lens",
+    "r1Mm": 5.5,
+    "r2Mm": 0.0,
+    "thicknessMm": 3.0,
+    "wavelengthNm": 656.3
+   },
+   "name": "lens data: the example lens at the C line, 656.3 nm: the principal plane on its vertex",
+   "tolerance": {
+    "h1Mm": 1e-12
+   }
+  },
+  {
+   "expected": {
+    "bfl": 54.50209437,
+    "efl": 59.67346523,
+    "ffl": 61.6127293,
+    "h1Mm": -1.939264072,
+    "h2Mm": -5.171370858,
+    "n": 1.764619918,
+    "thinFocalMm": 62.77628774
+   },
+   "inputs": {
+    "diameterMm": 4.0,
+    "glass": "nsf11",
+    "kind": "lens",
+    "r1Mm": 30.0,
+    "r2Mm": 80.0,
+    "thicknessMm": 6.0,
+    "wavelengthNm": 800.0
+   },
+   "name": "lens data: positive meniscus N-SF11, R1 = 30, R2 = 80 mm, t = 6 mm, at 800 nm",
+   "tolerance": {
+    "bfl": 1e-09,
+    "efl": 1e-09,
+    "ffl": 1e-09,
+    "h1Mm": 1e-09,
+    "h2Mm": 1e-09,
+    "n": 1e-09,
+    "thinFocalMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "bfl": -44.82318119,
+    "efl": -44.13865841,
+    "ffl": -44.82318119,
+    "h1Mm": 0.684522779,
+    "h2Mm": -0.684522779,
+    "n": 1.44963099,
+    "thinFocalMm": -44.4809198
+   },
+   "inputs": {
+    "diameterMm": 4.0,
+    "glass": "silica",
+    "kind": "lens",
+    "r1Mm": -40.0,
+    "r2Mm": 40.0,
+    "thicknessMm": 2.0,
+    "wavelengthNm": 1064.0
+   },
+   "name": "lens data: biconcave fused silica, R = -/+40 mm, t = 2 mm, at 1064 nm",
+   "tolerance": {
+    "bfl": 1e-09,
+    "efl": 1e-09,
+    "ffl": 1e-09,
+    "h1Mm": 1e-09,
+    "h2Mm": 1e-09,
+    "n": 1e-09,
+    "thinFocalMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "bfl": 4.983279396,
+    "efl": 9.663729504,
+    "ffl": 4.983279396,
+    "h1Mm": 4.680450108,
+    "h2Mm": -4.680450108,
+    "n": 1.40963995,
+    "thinFocalMm": 7.32350445
+   },
+   "inputs": {
+    "diameterMm": 4.0,
+    "glass": "caf2",
+    "kind": "lens",
+    "r1Mm": 6.0,
+    "r2Mm": -6.0,
+    "thicknessMm": 10.0,
+    "wavelengthNm": 4000.0
+   },
+   "name": "lens data: thick CaF2 ball-like lens, R = +/-6 mm, t = 10 mm, at 4000 nm",
+   "tolerance": {
+    "bfl": 1e-09,
+    "efl": 1e-09,
+    "ffl": 1e-09,
+    "h1Mm": 1e-09,
+    "h2Mm": 1e-09,
+    "n": 1e-09,
+    "thinFocalMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "fromV2Mm": 8.986220025,
+    "rayleighMm": 0.05954186869,
+    "waistUm": 5.420035649
+   },
+   "inputs": {
+    "beamDiameterMm": 2.0,
+    "diameterMm": 4.0,
+    "glass": "nbk7",
+    "kind": "gaussian",
+    "r1Mm": 5.5,
+    "r2Mm": 0.0,
+    "thicknessMm": 3.0,
+    "wavelengthNm": 1550.0
+   },
+   "name": "Gaussian focus: the example lens, 2 mm beam",
+   "tolerance": {
+    "fromV2Mm": 1e-09,
+    "rayleighMm": 1e-09,
+    "waistUm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "fromV2Mm": 10.98540974,
+    "rayleighMm": 0.05954244738,
+    "waistUm": 5.420061988
+   },
+   "inputs": {
+    "beamDiameterMm": 2.0,
+    "diameterMm": 4.0,
+    "glass": "nbk7",
+    "kind": "gaussian",
+    "r1Mm": 0.0,
+    "r2Mm": -5.5,
+    "thicknessMm": 3.0,
+    "wavelengthNm": 1550.0
+   },
+   "name": "Gaussian focus: flat side first, 2 mm beam",
+   "tolerance": {
+    "fromV2Mm": 1e-09,
+    "rayleighMm": 1e-09,
+    "waistUm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "fromV2Mm": 18.48913948,
+    "rayleighMm": 0.003055999023,
+    "waistUm": 0.7560361515
+   },
+   "inputs": {
+    "beamDiameterMm": 10.0,
+    "diameterMm": 4.0,
+    "glass": "nbk7",
+    "kind": "gaussian",
+    "r1Mm": 20.0,
+    "r2Mm": -20.0,
+    "thicknessMm": 5.0,
+    "wavelengthNm": 587.6
+   },
+   "name": "Gaussian focus: biconvex, 10 mm beam at 587.6 nm",
+   "tolerance": {
+    "fromV2Mm": 1e-09,
+    "rayleighMm": 1e-09,
+    "waistUm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "fromV2Mm": 51.07589408,
+    "rayleighMm": 13.6484145,
+    "waistUm": 58.95371246
+   },
+   "inputs": {
+    "beamDiameterMm": 0.5,
+    "diameterMm": 4.0,
+    "glass": "nsf11",
+    "kind": "gaussian",
+    "r1Mm": 30.0,
+    "r2Mm": 80.0,
+    "thicknessMm": 6.0,
+    "wavelengthNm": 800.0
+   },
+   "name": "Gaussian focus: meniscus N-SF11, 0.5 mm beam at 800 nm (slow focus)",
+   "tolerance": {
+    "fromV2Mm": 1e-09,
+    "rayleighMm": 1e-09,
+    "waistUm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efl": 11.0,
+    "r1Mm": 5.507172473,
+    "thicknessMm": 1.888845
+   },
+   "inputs": {
+    "diameterMm": 6.0,
+    "edgeMm": 1.0,
+    "focalMm": 11.0,
+    "glass": "nbk7",
+    "kind": "design",
+    "lensKind": "planoconvex",
+    "orientation": "convex",
+    "shape": "equi",
+    "spec": "focal",
+    "wavelengthNm": 1550.0
+   },
+   "name": "design: plano-convex N-BK7, f = 11 mm, D = 6 mm, 1 mm edge, curved side first, at 1550 nm (the page's example)",
+   "tolerance": {
+    "efl": 1e-09,
+    "r1Mm": 1e-09,
+    "thicknessMm": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "r2Mm": 0.0
+   },
+   "inputs": {
+    "diameterMm": 6.0,
+    "edgeMm": 1.0,
+    "focalMm": 11.0,
+    "glass": "nbk7",
+    "kind": "design",
+    "lensKind": "planoconvex",
+    "orientation": "convex",
+    "shape": "equi",
+    "spec": "focal",
+    "wavelengthNm": 1550.0
+   },
+   "name": "design: plano-convex N-BK7, f = 11 mm, D = 6 mm, 1 mm edge, curved side first, at 1550 nm (the page's example): the flat face",
+   "tolerance": {
+    "r2Mm": 1e-12
+   }
+  },
+  {
+   "expected": {
+    "efl": 11.0,
+    "r2Mm": -5.507172473,
+    "thicknessMm": 1.888845
+   },
+   "inputs": {
+    "diameterMm": 6.0,
+    "edgeMm": 1.0,
+    "focalMm": 11.0,
+    "glass": "nbk7",
+    "kind": "design",
+    "lensKind": "planoconvex",
+    "orientation": "plano",
+    "shape": "equi",
+    "spec": "focal",
+    "wavelengthNm": 1550.0
+   },
+   "name": "design: the same, flat side first",
+   "tolerance": {
+    "efl": 1e-09,
+    "r2Mm": 1e-09,
+    "thicknessMm": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "r1Mm": 0.0
+   },
+   "inputs": {
+    "diameterMm": 6.0,
+    "edgeMm": 1.0,
+    "focalMm": 11.0,
+    "glass": "nbk7",
+    "kind": "design",
+    "lensKind": "planoconvex",
+    "orientation": "plano",
+    "shape": "equi",
+    "spec": "focal",
+    "wavelengthNm": 1550.0
+   },
+   "name": "design: the same, flat side first: the flat face",
+   "tolerance": {
+    "r1Mm": 1e-12
+   }
+  },
+  {
+   "expected": {
+    "efl": 11.0,
+    "r1Mm": 10.69502652,
+    "r2Mm": -10.69502652,
+    "thicknessMm": 1.858750864
+   },
+   "inputs": {
+    "diameterMm": 6.0,
+    "edgeMm": 1.0,
+    "focalMm": 11.0,
+    "glass": "nbk7",
+    "kind": "design",
+    "lensKind": "biconvex",
+    "orientation": "convex",
+    "shape": "equi",
+    "spec": "focal",
+    "wavelengthNm": 1550.0
+   },
+   "name": "design: equi-convex N-BK7, f = 11 mm, D = 6 mm, 1 mm edge, at 1550 nm",
+   "tolerance": {
+    "efl": 1e-09,
+    "r1Mm": 1e-09,
+    "r2Mm": 1e-09,
+    "thicknessMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efl": 11.0,
+    "r1Mm": 6.331064997,
+    "r2Mm": -38.13966821,
+    "thicknessMm": 1.874077701
+   },
+   "inputs": {
+    "diameterMm": 6.0,
+    "edgeMm": 1.0,
+    "focalMm": 11.0,
+    "glass": "nbk7",
+    "kind": "design",
+    "lensKind": "biconvex",
+    "orientation": "convex",
+    "shape": "best",
+    "spec": "focal",
+    "wavelengthNm": 1550.0
+   },
+   "name": "design: best-form N-BK7, f = 11 mm, D = 6 mm, 1 mm edge, at 1550 nm",
+   "tolerance": {
+    "efl": 1e-09,
+    "r1Mm": 1e-09,
+    "r2Mm": 1e-09,
+    "thicknessMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efl": 50.0,
+    "r1Mm": 29.47482184,
+    "r2Mm": -196.9881215,
+    "thicknessMm": 5.178840501
+   },
+   "inputs": {
+    "diameterMm": 25.0,
+    "edgeMm": 2.0,
+    "focalMm": 50.0,
+    "glass": "nbk7",
+    "kind": "design",
+    "lensKind": "biconvex",
+    "orientation": "convex",
+    "shape": "best",
+    "spec": "focal",
+    "wavelengthNm": 587.6
+   },
+   "name": "design: best-form N-BK7, f = 50 mm, D = 25 mm, 2 mm edge, at 587.6 nm",
+   "tolerance": {
+    "efl": 1e-09,
+    "r1Mm": 1e-09,
+    "r2Mm": 1e-09,
+    "thicknessMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efl": 100.0,
+    "r1Mm": 89.17268575,
+    "r2Mm": -89.17268575,
+    "thicknessMm": 4.818003833
+   },
+   "inputs": {
+    "diameterMm": 25.4,
+    "edgeMm": 3.0,
+    "focalMm": 100.0,
+    "glass": "silica",
+    "kind": "design",
+    "lensKind": "biconvex",
+    "orientation": "convex",
+    "shape": "equi",
+    "spec": "focal",
+    "wavelengthNm": 1064.0
+   },
+   "name": "design: equi-convex fused silica, f = 100 mm, D = 25.4 mm, 3 mm edge, at 1064 nm",
+   "tolerance": {
+    "efl": 1e-09,
+    "r1Mm": 1e-09,
+    "r2Mm": 1e-09,
+    "thicknessMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efl": 20.0,
+    "r1Mm": 8.192799009,
+    "thicknessMm": 3.202656052
+   },
+   "inputs": {
+    "diameterMm": 10.0,
+    "edgeMm": 1.5,
+    "focalMm": 20.0,
+    "glass": "caf2",
+    "kind": "design",
+    "lensKind": "planoconvex",
+    "orientation": "convex",
+    "shape": "equi",
+    "spec": "focal",
+    "wavelengthNm": 4000.0
+   },
+   "name": "design: plano-convex CaF2, f = 20 mm, D = 10 mm, 1.5 mm edge, at 4000 nm",
+   "tolerance": {
+    "efl": 1e-09,
+    "r1Mm": 1e-09,
+    "thicknessMm": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "r2Mm": 0.0
+   },
+   "inputs": {
+    "diameterMm": 10.0,
+    "edgeMm": 1.5,
+    "focalMm": 20.0,
+    "glass": "caf2",
+    "kind": "design",
+    "lensKind": "planoconvex",
+    "orientation": "convex",
+    "shape": "equi",
+    "spec": "focal",
+    "wavelengthNm": 4000.0
+   },
+   "name": "design: plano-convex CaF2, f = 20 mm, D = 10 mm, 1.5 mm edge, at 4000 nm: the flat face",
+   "tolerance": {
+    "r2Mm": 1e-12
+   }
+  },
+  {
+   "expected": {
+    "efl": 4.4214828,
+    "r1Mm": 3.499999991,
+    "r2Mm": -3.499999991,
+    "thicknessMm": 4.394448742
+   },
+   "inputs": {
+    "diameterMm": 6.0,
+    "edgeMm": 1.0,
+    "focalMm": 4.4214828,
+    "glass": "nbk7",
+    "kind": "design",
+    "lensKind": "biconvex",
+    "orientation": "convex",
+    "shape": "equi",
+    "spec": "focal",
+    "wavelengthNm": 1550.0
+   },
+   "name": "design: equi-convex N-BK7, f = 4.4214828 mm, D = 6 mm, 1 mm edge, at 1550 nm (near the strongest such lens)",
+   "tolerance": {
+    "efl": 1e-09,
+    "r1Mm": 1e-09,
+    "r2Mm": 1e-09,
+    "thicknessMm": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta0": 0.718613,
+    "eta1": 0.908825,
+    "eta2": 0.879444,
+    "peak0": 0.385825,
+    "peak1": 0.652107,
+    "peak2": 0.695195
+   },
+   "inputs": {
+    "beamDiameterMm": 2.0,
+    "diameterMm": 6.0,
+    "glass": "nbk7",
+    "kind": "singlet",
+    "mfdUm": 10.4,
+    "r1Mm": 5.507172473215541,
+    "r2Mm": 0.0,
+    "shiftsMm": [
+     0.0,
+     -0.08,
+     -0.11
+    ],
+    "thicknessMm": 1.8888450000123926,
+    "wavelengthNm": 1550.0
+   },
+   "name": "real singlet: the example lens, 2 mm beam, MFD 10.4 um, at 0 um, -80 um, -110 um from F'",
+   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule, a lateral offset's azimuth as J0 and a tilt's over its lit arc by 64 Gauss-Legendre nodes; this file 256 Gauss-Legendre nodes along the radius and 160 over the azimuth",
+   "tolerance": {
+    "eta0": 0.0001,
+    "eta1": 0.0001,
+    "eta2": 0.0001,
+    "peak0": 0.0001,
+    "peak1": 0.0001,
+    "peak2": 0.0001
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta0": 0.370942,
+    "eta1": 0.507141,
+    "eta2": 0.558719,
+    "peak0": 0.152715,
+    "peak1": 0.23156,
+    "peak2": 0.266086
+   },
+   "inputs": {
+    "beamDiameterMm": 2.0,
+    "diameterMm": 6.0,
+    "glass": "nbk7",
+    "kind": "singlet",
+    "mfdUm": 10.4,
+    "r1Mm": 0.0,
+    "r2Mm": -5.507172473215541,
+    "shiftsMm": [
+     0.0,
+     -0.08,
+     -0.11
+    ],
+    "thicknessMm": 1.8888450000123926,
+    "wavelengthNm": 1550.0
+   },
+   "name": "real singlet: flat side first, 2 mm beam, MFD 10.4 um, at 0 um, -80 um, -110 um from F'",
+   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule, a lateral offset's azimuth as J0 and a tilt's over its lit arc by 64 Gauss-Legendre nodes; this file 256 Gauss-Legendre nodes along the radius and 160 over the azimuth",
+   "tolerance": {
+    "eta0": 0.0001,
+    "eta1": 0.0001,
+    "eta2": 0.0001,
+    "peak0": 0.0001,
+    "peak1": 0.0001,
+    "peak2": 0.0001
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta0": 0.761914,
+    "eta1": 0.82615,
+    "eta2": 0.78316,
+    "peak0": 0.747664,
+    "peak1": 0.92242,
+    "peak2": 0.887787
+   },
+   "inputs": {
+    "beamDiameterMm": 1.4,
+    "diameterMm": 6.0,
+    "glass": "nbk7",
+    "kind": "singlet",
+    "mfdUm": 10.4,
+    "r1Mm": 5.507172473215541,
+    "r2Mm": 0.0,
+    "shiftsMm": [
+     0.0,
+     -0.08,
+     -0.11
+    ],
+    "thicknessMm": 1.8888450000123926,
+    "wavelengthNm": 1550.0
+   },
+   "name": "real singlet: the example lens, 1.4 mm beam, MFD 10.4 um, at 0 um, -80 um, -110 um from F'",
+   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule, a lateral offset's azimuth as J0 and a tilt's over its lit arc by 64 Gauss-Legendre nodes; this file 256 Gauss-Legendre nodes along the radius and 160 over the azimuth",
+   "tolerance": {
+    "eta0": 0.0001,
+    "eta1": 0.0001,
+    "eta2": 0.0001,
+    "peak0": 0.0001,
+    "peak1": 0.0001,
+    "peak2": 0.0001
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta0": 0.449187,
+    "eta1": 0.663204,
+    "peak0": 0.108967,
+    "peak1": 0.312677
+   },
+   "inputs": {
+    "beamDiameterMm": 2.0,
+    "diameterMm": 6.0,
+    "glass": "nbk7",
+    "kind": "singlet",
+    "mfdUm": 10.4,
+    "r1Mm": 0.0,
+    "r2Mm": -5.582524243833988,
+    "shiftsMm": [
+     0.0,
+     -0.2
+    ],
+    "thicknessMm": 1.8745972124331995,
+    "wavelengthNm": 1000.0
+   },
+   "name": "real singlet: flat side first, designed at 1000 nm, 2 mm beam, MFD 10.4 um, at 0 um, -200 um from F'",
+   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule, a lateral offset's azimuth as J0 and a tilt's over its lit arc by 64 Gauss-Legendre nodes; this file 512 Gauss-Legendre nodes along the radius and 160 over the azimuth",
+   "tolerance": {
+    "eta0": 0.0001,
+    "eta1": 0.0001,
+    "peak0": 0.0001,
+    "peak1": 0.0001
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta0": 0.801987,
+    "eta1": 0.863416,
+    "eta2": 0.245423
+   },
+   "inputs": {
+    "beamDiameterMm": 2.0,
+    "diameterMm": 6.0,
+    "glass": "nbk7",
+    "kind": "singlet",
+    "lateralUm": [
+     2.0,
+     0.0,
+     0.0
+    ],
+    "mfdUm": 10.4,
+    "r1Mm": 5.507172473215541,
+    "r2Mm": 0.0,
+    "shiftsMm": [
+     -0.08,
+     -0.08,
+     -0.08
+    ],
+    "thicknessMm": 1.8888450000123926,
+    "tiltMrad": [
+     0.0,
+     20.0,
+     100.0
+    ],
+    "wavelengthNm": 1550.0
+   },
+   "name": "real singlet: the example lens, 2 mm beam, MFD 10.4 um, the fiber 80 um before F' moved 2 um across or tilted by 20 and 100 mrad, at -80 um, -80 um, -80 um from F'",
+   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule, a lateral offset's azimuth as J0 and a tilt's over its lit arc by 64 Gauss-Legendre nodes; this file 256 Gauss-Legendre nodes along the radius and 160 over the azimuth",
+   "tolerance": {
+    "eta0": 0.0001,
+    "eta1": 0.0001,
+    "eta2": 0.0001
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta0": 0.580248,
+    "eta1": 0.62738
+   },
+   "inputs": {
+    "beamDiameterMm": 2.0,
+    "diameterMm": 6.0,
+    "glass": "nbk7",
+    "kind": "singlet",
+    "lateralUm": [
+     3.0,
+     0.0
+    ],
+    "mfdUm": 10.4,
+    "r1Mm": 5.507172473215541,
+    "r2Mm": 0.0,
+    "shiftsMm": [
+     0.0,
+     0.0
+    ],
+    "thicknessMm": 1.8888450000123926,
+    "tiltMrad": [
+     0.0,
+     30.0
+    ],
+    "wavelengthNm": 1550.0
+   },
+   "name": "real singlet: the example lens, 2 mm beam, MFD 10.4 um, at F' moved 3 um across or tilted by 30 mrad, at 0 um, 0 um from F'",
+   "note": "the app integrates 1025 or 4097 evenly spaced samples along the pupil radius by Simpson's rule, a lateral offset's azimuth as J0 and a tilt's over its lit arc by 64 Gauss-Legendre nodes; this file 256 Gauss-Legendre nodes along the radius and 160 over the azimuth",
+   "tolerance": {
+    "eta0": 0.0001,
+    "eta1": 0.0001
+   }
+  },
+  {
+   "expected": {
+    "eta0": 0.0117125,
+    "eta1": 0.0117123
+   },
+   "inputs": {
+    "beamDiameterMm": 2.0,
+    "diameterMm": 6.0,
+    "glass": "nbk7",
+    "kind": "singlet",
+    "mfdUm": 200.0,
+    "r1Mm": 5.507172473215541,
+    "r2Mm": 0.0,
+    "shiftsMm": [
+     0.0,
+     -0.08
+    ],
+    "thicknessMm": 1.8888450000123926,
+    "wavelengthNm": 1550.0
+   },
+   "name": "real singlet: the example lens, 2 mm beam, MFD 200 um (a far field 2 % of the pupil wide): coupling at F' and 80 um before it",
+   "note": "1024 Gauss-Legendre nodes (256 and 512 agree to 3e-9)",
+   "tolerance": {
+    "eta0": 0.0001,
+    "eta1": 0.0001
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta0": 0.718611
+   },
+   "inputs": {
+    "beamDiameterMm": 2.0,
+    "diameterMm": 6.0,
+    "glass": "nbk7",
+    "kind": "singlet",
+    "mfdUm": 10.4,
+    "r1Mm": 5.507172473215541,
+    "r2Mm": 0.0,
+    "shiftsMm": [
+     0.0
+    ],
+    "thicknessMm": 1.8888450000123926,
+    "wavelengthNm": 1550.0
+   },
+   "name": "real singlet: the example lens, 2 mm beam, MFD 10.4 um: coupling at F' over the whole pupil (2-D quadrature)",
+   "note": "lens_coherent.coupling: a 64 x 24 polar Gauss-Legendre grid over the disc, solid angles from a degree-8 polynomial fitted to the directions",
+   "tolerance": {
+    "eta0": 0.0001
+   }
+  }
+ ],
+ "citations": [
+  "Wikipedia, \"Lens (optics)\": lensmaker's equation with thickness, principal planes",
+  "Wikipedia, \"Cardinal point (optics)\": principal planes of a thick lens, focal and nodal points",
+  "S. A. Konijnenberg, A. J. H. Adam and H. P. Urbach, BSc Optics (TU Delft Open, 2021), section 2.6: the thick lens's power and principal planes from its vertices, and ray matrices",
+  "Wikipedia, \"Spherical aberration\": the best-form shape of a single lens from the Coddington shape and position factors",
+  "H. Kogelnik and T. Li, Appl. Opt. 5, 1550-1567 (1966), doi:10.1364/AO.5.001550 (the ABCD law for the complex beam parameter)"
+ ],
+ "convergence": "Closed forms in double precision; the secant method to 1e-15. The radial quadrature: 96 nodes leave the flat-first singlet (tens of waves at the rim of its pupil) 7e-3 off, 160 nodes 3e-5, 256 nodes below 1e-6; at 1000 nm 256 nodes are 5e-6 off and 512 are used; the central difference uses 1e-5 of the pupil radius. The azimuth: 160 nodes, past convergence for these offsets. The 2-D check: 64 x 24 polar nodes and a degree-8 polynomial.",
+ "domain": "Eight singlets (plano-convex both ways, bi-convex, positive meniscus, bi-concave, a thick CaF2 lens) from 587.6 to 4000 nm; eight designed from f (plano-convex both ways, equi-convex and best form, N-BK7, fused silica and CaF2, f from 4.42 to 100 mm, one near the strongest equi-convex lens its diameter allows); collimated beams of 0.5 to 10 mm; the designed plano-convex singlet at 1550 nm with 1.4 and 2 mm beams at the paraxial focus and 80 and 110 um before it, flat side first at 1000 nm where the page traces 4096 rays, a 200 um mode, and the fiber moved by up to 3 um across the axis or tilted by up to 100 mrad.",
+ "fidelity": "computed",
+ "id": "thick-lens",
+ "outside_scope": "The page refuses wavelengths outside a glass's fitted range, afocal lenses, radii smaller than the clear radius, a focal length too short for the diameter and edge, a best form that is not bi-convex (n from 1.686), and beams whose lit pupil reaches NA 0.9; the real singlet is not traced when its faces cross at the clear diameter.",
+ "provenance": "The closed forms written from the cited articles; the interface and slab matrices are the standard ray-transfer matrices; the ray trace and quadrature are this repository's independent Python lens references.",
+ "reference": "Closed forms of the thick-lens lensmaker's equation and principal planes; a design from f by the closed-form plano-convex radius and the secant method on the closed-form power (the app: the strongest lens first, then bisection); the complex beam parameter carried through both refracting surfaces; the real singlet by lens_design.py's ray trace at Gauss-Legendre nodes along the pupil radius, the area ratio by central differences, an offset fiber's azimuth by Gauss-Legendre nodes, and for the example lens the 2-D overlap of lens_coherent.coupling",
+ "reference_file": "validation/reference/thick_lens.py",
+ "scope": "Paraxial first-order optics of a spherical singlet in air; a collimated TEM00 beam focused on axis, scalar and monochromatic, with a Gaussian fiber mode on the axis, or moved across it or tilted, one way at a time.",
+ "title": "Thin and thick lens: lens data, design from f, Gaussian focus, real singlet focus and fiber coupling with offsets",
+ "tolerance_rationale": "1e-9 relative for the algebra and the designs. 1e-4 absolute on the singlet's peak and coupling, against differences found below 3e-6 (the two quadratures of the same model converge to the same value), and 1e-4 relative on the 200 um mode's small coupling, against 2e-5; expected values stored to 6 significant digits, as the last digits depend on the platform's maths library."
+}
