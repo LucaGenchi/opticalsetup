@@ -40,6 +40,16 @@ export const MAX_SPOTS = 16;
 // far away to place, and the specimen sees the same beam wherever it sits.
 const MIN_HALF_ANGLE = 1e-4;
 
+// The waist radius and Rayleigh range of an ideal (M² = 1) Gaussian beam
+// focused in air with numerical aperture `na` (the sine of its half-angle):
+// the diffraction limit of a cone, whatever its rays' geometric spot.
+export function gaussianFocus(wlNm, na) {
+  const wlMm = wlNm * 1e-6;
+  const w0Mm = wlMm / (Math.PI * na);
+  const zRMm = Math.PI * w0Mm * w0Mm / wlMm;
+  return { w0Mm, zRMm };
+}
+
 // The narrowest point of a bundle of straight rays, from where they cross the
 // specimen. `rays` are { p: {x,y}, d: {x,y} (unit), w: weight }; distances are
 // in canvas millimetres. Returns { ok: true, zMm, zRMm, na, w0Mm, point, axis }
@@ -83,9 +93,7 @@ export function bundleFocus(rays, wlNm) {
   // The plane where the bundle's spread is least.
   const zMm = -cov / varV;
   const na = halfTan / Math.hypot(1, halfTan);
-  const wlMm = wlNm * 1e-6;
-  const w0Mm = wlMm / (Math.PI * na);
-  const zRMm = Math.PI * w0Mm * w0Mm / wlMm;
+  const { w0Mm, zRMm } = gaussianFocus(wlNm, na);
   const point = { x: cx + zMm * ax + (mu + mv * zMm) * tx, y: cy + zMm * ay + (mu + mv * zMm) * ty };
   if (![zMm, na, w0Mm, zRMm, point.x, point.y].every(Number.isFinite) || !(zRMm > 0)) return { ok: false, reason: 'collimated' };
   return { ok: true, zMm, zRMm, na, w0Mm, point, axis: { x: ax, y: ay } };

@@ -6,7 +6,7 @@
 // polygons (beam-mode envelope between the two edge rays).
 
 import { emissionRayCount } from './emission.js';
-import { NONLINEAR_ORDER, MAX_SPOTS, SPOT_SPACING_MM, bundleFocus, linearPathFraction, volumeEmissionPoints } from './sectioning.js';
+import { NONLINEAR_ORDER, MAX_SPOTS, SPOT_SPACING_MM, bundleFocus, gaussianFocus, linearPathFraction, volumeEmissionPoints } from './sectioning.js';
 import { POINT_SOURCE_CANVAS_THRESHOLD } from './point-source-rendering.js';
 
 import {
@@ -622,6 +622,7 @@ function detectorConvergence(hits) {
       height: (h.u - 0.5) * (h.aperture || tlen),
       theta: Math.atan2(along, Math.abs(axial)),
       weight,
+      wl: h.wl,
     });
   }
   if (pts.length < 2) return null;
@@ -639,23 +640,25 @@ function detectorConvergence(hits) {
     num += fraction * (point.height - mh) * (point.theta - mt);
     den += fraction * (point.height - mh) ** 2;
   }
-  // Every ray at the same height (to rounding, relative to where on the
-  // face they land): nothing to fit.
-  const reach = Math.max(1, ...pts.map(point => Math.abs(point.height)));
-  if (!(den > 1e-18 * reach * reach)) return null;
-  const fittedSlope = num / den; // radians of tilt per mm of height
-  // The beam's width is weighted too: the extreme heights would let a
-  // negligible ray far from the beam multiply the reading. N evenly spaced
-  // rays of equal power span sqrt(12 (N-1)/(N+1)) standard deviations, so
-  // with the effective number of rays (sum w)^2 / sum w^2 this is exactly
-  // their edge-to-edge span, and a faint ray barely moves it. It never
-  // exceeds the span itself: heavier edge rays must not widen the cone past
-  // the outermost rays.
+  // A spread is weighted too: the extreme values would let a negligible ray
+  // far from the beam multiply the reading. N evenly spaced rays of equal
+  // power span sqrt(12 (N-1)/(N+1)) standard deviations, so with the
+  // effective number of rays (sum w)^2 / sum w^2 this is exactly their
+  // edge-to-edge span, and a faint ray barely moves it. It never exceeds the
+  // span itself: heavier edge rays must not widen the cone past the
+  // outermost rays.
   const sumSquares = pts.reduce((sum, point) => sum + point.weight ** 2, 0);
   const effectiveRays = totalWeight ** 2 / sumSquares;
-  const heights = pts.map(point => point.height);
-  const span = Math.max(...heights) - Math.min(...heights);
-  const width = Math.min(span, Math.sqrt(12 * den * (effectiveRays - 1) / (effectiveRays + 1)));
+  const weightedSpan = (variance, values) => Math.min(Math.max(...values) - Math.min(...values),
+    Math.sqrt(12 * variance * (effectiveRays - 1) / (effectiveRays + 1)));
+  // Every ray at the same height (to rounding, relative to where on the
+  // face they land): the face sits on a focus. There is no slope to fit,
+  // but the rays' angles still span the cone they converged in; rays at one
+  // height and one angle are a single ray, with nothing to report.
+  const reach = Math.max(1, ...pts.map(point => Math.abs(point.height)));
+  if (!(den > 1e-18 * reach * reach)) return focusConvergence(pts, totalWeight, mt, weightedSpan);
+  const fittedSlope = num / den; // radians of tilt per mm of height
+  const width = weightedSpan(den, pts.map(point => point.height));
   const fullAngleDeg = Math.abs(fittedSlope) * width * 180 / Math.PI;
   const slope = fullAngleDeg < 1e-12 ? 0 : fittedSlope;
   return {
@@ -663,6 +666,29 @@ function detectorConvergence(hits) {
     fullAngleDeg: slope === 0 ? 0 : fullAngleDeg,
     diverging: slope > 0,
   };
+}
+
+// The light at a detector face that sits on its focus: the full cone of the
+// arriving rays, weighed like the fitted cone either side of the focus so the
+// reading runs on continuously through it, and the waist and Rayleigh range
+// of an ideal Gaussian beam focused in that cone at the light's mean
+// wavelength. The geometric spot is a point; the waist is the diffraction
+// limit a real beam cannot beat there.
+function focusConvergence(pts, totalWeight, meanTheta, weightedSpan) {
+  const variance = pts.reduce((sum, point) => sum + point.weight / totalWeight * (point.theta - meanTheta) ** 2, 0);
+  // One angle too, to rounding (the same relative threshold as the heights,
+  // on angles of order a radian): a single ray, not a focus.
+  if (!(variance > 1e-18)) return null;
+  const cone = weightedSpan(variance, pts.map(point => point.theta));
+  const fullAngleDeg = cone * 180 / Math.PI;
+  const coloured = pts.filter(point => Number.isFinite(point.wl) && point.wl > 0);
+  const colouredWeight = coloured.reduce((sum, point) => sum + point.weight, 0);
+  const focus = { slopePerMm: null, fullAngleDeg, diverging: false, atFocus: true };
+  if (!(colouredWeight > 0)) return focus;
+  const wavelengthNm = coloured.reduce((sum, point) => sum + point.wl * point.weight, 0) / colouredWeight;
+  const { w0Mm, zRMm } = gaussianFocus(wavelengthNm, Math.sin(Math.min(Math.PI / 2, cone / 2)));
+  if (![w0Mm, zRMm].every(value => Number.isFinite(value) && value > 0)) return focus;
+  return { ...focus, wavelengthNm, waistMm: w0Mm, rayleighMm: zRMm };
 }
 
 const MAX_SPECTRUM_SAMPLES = 24;

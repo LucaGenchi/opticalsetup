@@ -120,6 +120,14 @@ function sampleWavefront(sensor, reading) {
   if (c.fullAngleDeg < 0.05) {
     return { state: 'COLLIMATED', divergenceDeg: 0, signedDivergenceDeg: 0 };
   }
+  // On the focus itself the light neither converges nor diverges: the
+  // reading is the cone it passes through, and the waist and Rayleigh range
+  // a Gaussian beam in that cone would have (absent without a wavelength).
+  if (c.atFocus) {
+    const gaussian = Number.isFinite(c.waistMm) && Number.isFinite(c.rayleighMm)
+      ? { waistMm: c.waistMm, rayleighMm: c.rayleighMm, wavelengthNm: c.wavelengthNm } : {};
+    return { state: 'FOCUS PLANE', divergenceDeg: c.fullAngleDeg, signedDivergenceDeg: 0, ...gaussian };
+  }
   return {
     state: c.diverging ? 'DIVERGING' : 'CONVERGING',
     divergenceDeg: c.fullAngleDeg,

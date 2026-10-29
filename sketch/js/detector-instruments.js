@@ -29,7 +29,7 @@ const DESCRIPTIONS = {
   detector: 'Measures the relative intensity incident on its active surface.',
   pmt: 'Amplifies a faint signal \u2014 fluorescence, microscopy, single-point detection \u2014 into a readable one, and reports whether it clears the tube\u2019s own dark floor.',
   powermeter: 'Reports absolute optical power by carrying each source\u2019s configured watts through everything that attenuated it on the way here.',
-  wavefrontdetector: 'Fits ray angle against position across its face to report whether the beam is collimated, converging or diverging, and its full cone angle.',
+  wavefrontdetector: 'Fits ray angle against position across its face to report whether the beam is collimated, converging or diverging, and its full cone angle; on a focus, the Gaussian waist and Rayleigh range of that cone.',
   polarimeter: 'Reports polarization state, normalized Stokes parameters, and a visual linear, circular, elliptical, or unpolarized representation.',
   spectrometer: 'Reports centre wavelength, detected spectral range, bandwidth, and a qualitative spectrum.',
   generaldetector: 'Reports intensity, power, beam size, wavefront, polarization and Stokes parameters, wavelength and bandwidth, plus pulse repetition rate and duration.',
@@ -267,6 +267,11 @@ function metrics(entries, columns = 2) {
     return `<text x="${x}" y="${y}" font-size="${fit(label, labelSize).toFixed(2)}" font-weight="700" fill="#5f7d8e">${esc(label)}</text>` +
       `<text x="${x}" y="${y + 6}" font-size="${fit(value, valueSize).toFixed(2)}" font-weight="680" fill="#d9e8ee">${esc(value)}</text>`;
   }).join('');
+}
+
+// A waist or Rayleigh range: micrometres below a millimetre, three figures.
+function focusLength(mm) {
+  return mm < 1 ? `${Number((mm * 1000).toPrecision(3))} µm` : `${Number(mm.toPrecision(3))} mm`;
 }
 
 function spectrumLabel(reading) {
@@ -1062,8 +1067,16 @@ function panel(sensor, reading, elements, view) {
       + partial;
   }
   if (sensor.type === 'wavefrontdetector') {
-    const wave = reading.wavefront, divergence = wave.state === 'COLLIMATED' ? '0.00°' : `${wave.divergenceDeg.toFixed(2)}°`;
-    return header(name, 'WAVEFRONT + INTENSITY', reading.pulse) + `<text x="35" y="-4" text-anchor="end" font-size="8.2" font-weight="780" fill="#e9e3ff">${wave.state}</text><text x="35" y="4" text-anchor="end" font-size="5.2" fill="#a99bd4">DIVERGENCE ${divergence}</text><text x="35" y="13" text-anchor="end" font-size="5.2" fill="#d9e8ee">INTENSITY Σw ${compactNumber(reading.signal)}</text>`;
+    const wave = reading.wavefront, intensity = `<text x="35" y="13" text-anchor="end" font-size="5.2" fill="#d9e8ee">INTENSITY Σw ${compactNumber(reading.signal)}</text>`;
+    if (wave.state === 'FOCUS PLANE') {
+      // Several colours focus to different waists: say which one is shown.
+      const at = reading.bandwidth > 0.05 ? ` · AT ${Math.round(wave.wavelengthNm)} nm` : '';
+      const gaussian = Number.isFinite(wave.waistMm)
+        ? `<text x="35" y="7" text-anchor="end" font-size="4.6" fill="#a99bd4">w₀ ${focusLength(wave.waistMm)} · zR ${focusLength(wave.rayleighMm)}${at}</text>` : '';
+      return header(name, 'WAVEFRONT + INTENSITY', reading.pulse) + `<text x="35" y="-6" text-anchor="end" font-size="8.2" font-weight="780" fill="#e9e3ff">${wave.state}</text><text x="35" y="1" text-anchor="end" font-size="4.6" fill="#a99bd4">CONE ${wave.divergenceDeg.toFixed(2)}°</text>${gaussian}${intensity}`;
+    }
+    const divergence = wave.state === 'COLLIMATED' ? '0.00°' : `${wave.divergenceDeg.toFixed(2)}°`;
+    return header(name, 'WAVEFRONT + INTENSITY', reading.pulse) + `<text x="35" y="-4" text-anchor="end" font-size="8.2" font-weight="780" fill="#e9e3ff">${wave.state}</text><text x="35" y="4" text-anchor="end" font-size="5.2" fill="#a99bd4">DIVERGENCE ${divergence}</text>${intensity}`;
   }
   if (sensor.type === 'polarimeter') return header(name, 'POLARIZATION · STOKES', reading.pulse) + polarizationGlyph(reading) +
     `<text x="-11" y="-5" font-size="6" font-weight="760" fill="#f5e8f1">${esc(String(reading.polarization).toUpperCase())}</text><text x="-11" y="3" font-size="4.4" fill="#b99aaa">DoP ${(100 * reading.stokes.normalized.degree).toFixed(0)}%</text><text x="-11" y="11" font-size="4.2" fill="#d9e8ee">S0 ${compactNumber(reading.stokes.s0)}  S1 ${compactNumber(reading.stokes.s1)}</text><text x="35" y="11" text-anchor="end" font-size="4.2" fill="#d9e8ee">S2 ${compactNumber(reading.stokes.s2)}  S3 ${compactNumber(reading.stokes.s3)}</text>`;
@@ -1087,9 +1100,16 @@ function panel(sensor, reading, elements, view) {
   ], 3);
   if (sensor.type === 'generaldetector') {
     const [power, unit] = formatPower(reading.detectedPowerW, reading.signal);
-    const wave = reading.wavefront.state === 'COLLIMATED' ? 'COLLIMATED' : `${reading.wavefront.state} ${reading.wavefront.divergenceDeg.toFixed(2)}°`;
+    const wavefront = reading.wavefront;
+    const wave = wavefront.state === 'COLLIMATED' ? 'COLLIMATED' : `${wavefront.state} ${wavefront.divergenceDeg.toFixed(2)}°`;
+    // On a focus the traced spot is a point: the size worth reading is the
+    // Gaussian waist, and how far either side the beam stays that narrow.
+    const focused = wavefront.state === 'FOCUS PLANE' && Number.isFinite(wavefront.waistMm);
+    const size = focused ? ['WAIST w₀', focusLength(wavefront.waistMm)]
+      : ['BEAM Ø', reading.beamDiameter > 0 ? `${reading.beamDiameter.toFixed(2)} mm` : 'POINT'];
+    const shape = focused ? ['FOCUS PLANE', `zR ${focusLength(wavefront.rayleighMm)}`] : ['WAVEFRONT', wave];
     return header(name, 'ALL LIGHT PROPERTIES', reading.pulse) + metrics([
-      ['POWER / INTENSITY', `${power} ${unit}`], ['BEAM Ø', reading.beamDiameter > 0 ? `${reading.beamDiameter.toFixed(2)} mm` : 'POINT'], ['WAVEFRONT', wave],
+      ['POWER / INTENSITY', `${power} ${unit}`], size, shape,
       ['POLARIZATION', String(reading.polarization).toUpperCase()], ['WAVELENGTH', spectrumLabel(reading)], ['PULSE', reading.pulse ? `${pulseRate(reading.pulse)}·${pulseDuration(reading.pulse)}`.replace(/ /g, '') : 'CW'],
     ], 3);
   }

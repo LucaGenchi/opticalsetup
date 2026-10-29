@@ -4088,7 +4088,7 @@ export const wikiEntries = [
 
   {
     type: 'wavefrontdetector',
-    summary: "Estimates beam convergence from ray angle versus position, reporting whether light is collimated, converging, or diverging and the corresponding full cone angle.",
+    summary: "Reads beam convergence from ray angle versus position: collimated, converging or diverging with the full cone angle, or a focus plane with its Gaussian waist and Rayleigh range.",
     title: 'Wavefront detector',
     category: 'Detectors',
     realWorld: {
@@ -4202,7 +4202,23 @@ export const wikiEntries = [
         millimetre — −20.0&nbsp;mm when the sensor face sits 80&nbsp;mm past that lens, +5.0&nbsp;mm
         when it sits 5&nbsp;mm beyond the focus. The reported cone angle is constant on both
         sides of the focus, as it should be: the beam narrows and re-expands, but the cone it
-        belongs to does not change.</p>`,
+        belongs to does not change.</p>
+        <p>With the sensor face exactly on the focus every ray lands at the same height, and
+        there is no line to fit. The panel then reads <strong>FOCUS PLANE</strong>: the cone
+        comes from the spread of the arriving angles alone, weighed by power like the fitted
+        cone either side, so it runs on continuously through the focus. The traced spot there
+        is a point, which no real beam reaches, so the panel also gives the
+        <strong>waist</strong> <span class="w">w₀</span> and <strong>Rayleigh range</strong>
+        <span class="w">z<sub>R</sub></span> an ideal Gaussian beam would have focused in that
+        cone, at the light's mean wavelength. The 10&nbsp;mm, 532&nbsp;nm beam of a
+        <span class="w">f</span>&nbsp;=&nbsp;100&nbsp;mm lens reads a 5.72° cone,
+        <span class="w">w₀</span>&nbsp;=&nbsp;3.39&nbsp;µm and
+        <span class="w">z<sub>R</sub></span>&nbsp;=&nbsp;67.9&nbsp;µm. A hundredth of a millimetre
+        either side the rays no longer meet, and the fitted CONVERGING or DIVERGING 5.73°
+        returns.</p>`,
+      formulas2: [
+        { tex: 'w_0 = \\frac{\\lambda}{\\pi\\,\\mathrm{NA}}, \\qquad z_R = \\frac{\\pi w_0^2}{\\lambda}, \\qquad \\mathrm{NA} = \\sin\\frac{\\Theta_{\\text{full}}}{2}', caption: 'The diffraction-limited waist radius and Rayleigh range of an M² = 1 Gaussian beam focused in air with the measured cone: the same model the specimens use for their focus.' },
+      ],
       limitations: `<p>A straight line through <span class="w">θ(h)</span> has exactly one
         shape term in it, and that term is <strong>defocus</strong>. Tilt is fitted and thrown
         away; everything above defocus — astigmatism, coma, spherical aberration, and every
@@ -4221,10 +4237,17 @@ export const wikiEntries = [
         arriving ray is used at full precision, so there is no maximum measurable slope and no
         minimum detectable one.</p>
         <p>The reading is geometric throughout: an angle in degrees, never an optical path
-        difference in waves, and with no wavelength dependence at all. There is no RMS or
-        peak-to-valley wavefront error, no Zernike decomposition, and no Strehl ratio. Finally,
-        the fit needs at least two rays at different heights — a single ray, or a source in
-        line mode, has no gradient to measure and reports collimated by default rather than
+        difference in waves. Only the focus plane's waist and Rayleigh range use the
+        wavelength, and they describe an ideal Gaussian beam in the traced cone, not the light
+        actually traced: they ignore M², aberrations and the medium's index, and a broadband
+        focus gives them at its mean wavelength. The focus plane is where the rays meet to
+        rounding; a sensor inside the Rayleigh range but not on that point still reads the
+        geometric convergence, although a real beam's wavefront there is nearly flat. Any rays
+        meeting at one point count, so two separate beams crossing on the face read as a focus,
+        as they read as one converging bundle off it. There is no RMS or peak-to-valley
+        wavefront error, no Zernike decomposition, and no Strehl ratio. Finally, the fit needs
+        at least two rays at different heights or angles — a single ray, or a source in line
+        mode, has no gradient to measure and reports collimated by default rather than
         declining to answer.</p>`,
     },
     related: ['dm', 'detector', 'camera', 'lens', 'metasurface'],
