@@ -10,34 +10,44 @@
 // the ideal thin lens of the same focal length, and how each one's coupling
 // falls as the fiber moves across the axis, along it, or tilts.
 import {
-  LENS_INPUTS as THICK_INPUTS, LENS_DEFAULTS as THICK_DEFAULTS, FIBER_INPUTS as THICK_FIBER_INPUTS, FIBER_DEFAULTS as THICK_FIBER_DEFAULTS,
-  computeThickLens, computeFiber,
+  LENS_INPUTS as THICK_INPUTS, LENS_DEFAULTS as THICK_DEFAULTS, FIBER_DEFAULTS as THICK_FIBER_DEFAULTS,
+  computeThickLens, computeFiber, fresnelTransmission,
 } from '../thin-thick-lens/thick-lens.js';
 import { defaultsFor } from '../assets/calculator-inputs.js';
+import { isWavelengthInGlassRange } from '../../sketch/js/glass.js';
 
 export const SINGLETS = [['planoconvex', 'Plano-convex singlet'], ['biconvex', 'Bi-convex singlet']];
 
+export const BEST_FORM_TIP = 'Best form: the thin-lens shape with the least spherical aberration for a collimated beam, its stronger face toward the laser.';
+
 // The Thin and thick lens page's lens and dimension inputs, its lens choice
 // cut to the two singlets (the ideal lens is drawn beside each anyway), and
-// its uncoated-surfaces switch. The laser and the fiber come from above.
-export const REAL_LENS_INPUTS = [
-  ...THICK_INPUTS.filter(i => i.group === 'lens' || i.group === 'size').map(i => (i.id === 'lensKind' ? { ...i, options: SINGLETS } : i)),
-  { ...THICK_FIBER_INPUTS.find(i => i.id === 'fresnel'), group: 'surfaces', help: 'Loses the normal-incidence reflection at both lens faces and at a fused-silica fiber end.' },
-];
+// the best form explained on hover. The laser and the fiber come from above.
+export const REAL_LENS_INPUTS = THICK_INPUTS.filter(i => i.group === 'lens' || i.group === 'size').map(i => {
+  if (i.id === 'lensKind') return { ...i, options: SINGLETS };
+  if (i.id === 'shape') { const { help, ...rest } = i; return { ...rest, optionTips: { best: BEST_FORM_TIP } }; }
+  return i;
+});
 export const REAL_LENS_DEFAULTS = defaultsFor(REAL_LENS_INPUTS);
 
 // The lens on `setup`'s laser, and its coupling into `setup`'s mode (taken by
-// its mode-field diameter, however the first part was given it).
+// its mode-field diameter, however the first part was given it). The lens's
+// two faces and the fiber end are uncoated, so the coupling is the mode
+// overlap times the light the clear diameter passes times what the three
+// surfaces transmit; beyond fused silica's fitted range the fiber end's
+// reflection is unknown and none is counted (`surfaces: null`).
 export function computeRealLens(setup, raw) {
   if (!setup?.ok) return { pending: true, message: 'Set a valid fiber and laser above first.' };
-  const { fresnel, ...shape } = raw;
-  if (!SINGLETS.some(([id]) => id === shape.lensKind)) return { ok: false, errors: [{ id: 'lensKind', message: 'Choose a plano-convex or a bi-convex singlet.' }] };
-  const lens = computeThickLens({ ...THICK_DEFAULTS, ...shape, wavelengthNm: setup.values.wavelengthNm, beamDiameterMm: setup.values.beamDiameterMm });
+  if (!SINGLETS.some(([id]) => id === raw.lensKind)) return { ok: false, errors: [{ id: 'lensKind', message: 'Choose a plano-convex or a bi-convex singlet.' }] };
+  const { wavelengthNm, beamDiameterMm } = setup.values;
+  const lens = computeThickLens({ ...THICK_DEFAULTS, ...raw, wavelengthNm, beamDiameterMm });
   if (!lens.ok) return lens;
-  const fiber = computeFiber(lens, { ...THICK_FIBER_DEFAULTS, fiberMode: 'mfd', mfdUm: setup.mode.modeFieldDiameterUm, fresnel });
+  const fresnel = isWavelengthInGlassRange('silica', wavelengthNm);
+  const fiber = computeFiber(lens, { ...THICK_FIBER_DEFAULTS, fiberMode: 'mfd', mfdUm: setup.mode.modeFieldDiameterUm, fresnel }, { vNumber: setup.mode.vNumber });
   if (fiber.pending) return { pending: true, message: fiber.message };
   if (!fiber.ok) return fiber;
-  return { ok: true, values: lens.values, lens, fiber };
+  const surfaces = fresnel ? fresnelTransmission(lens.lens.n, wavelengthNm) : null;
+  return { ok: true, values: lens.values, lens, fiber, clipShare: lens.clipShare, surfaces };
 }
 
 // The inputs that set this part's lens to the first part's plano-convex

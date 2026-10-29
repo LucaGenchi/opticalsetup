@@ -4,30 +4,49 @@
 // The first part of the fiber coupling page: from the fiber and the laser
 // alone, the ideal thin lens that matches the beam to the mode, the range of
 // focal lengths that stays close to that match, and a plano-convex singlet
-// to start from. The singlet is designed and traced by the Thin and thick
+// to start from. Every coupling here is into the exact LP₀₁ mode (lp01.js):
+// an ideal lens's waist w′ on the fiber face couples as the overlap of that
+// Gaussian with the mode, largest when w′ is the mode's best Gaussian radius
+// w_m, and then short of 100 % by the mode's departure from a Gaussian. The singlet is designed and traced by the Thin and thick
 // lens calculator's engine (calculators/thin-thick-lens/thick-lens.js, with
 // its own Python reference): curved side toward the collimated beam, the
 // orientation with less spherical aberration, and its coupling taken with
 // the fiber at its best plane on the axis. The glass, diameter and edge are
 // rules of thumb for a catalogue lens, not an optimum; see choosePlanoConvex.
 import { parseInputs } from '../assets/calculator-inputs.js';
-import { SETUP_INPUTS, resolveMode, matchingFocalMm, focusCollimated, gaussianCoupling, PARAXIAL_LIMIT_MRAD } from './fiber-coupling.js';
+import { SETUP_INPUTS, resolveMode, matchingFocalMm, focusCollimated, PARAXIAL_LIMIT_MRAD } from './fiber-coupling.js';
 import { LENS_DEFAULTS as SINGLET_DEFAULTS, FIBER_DEFAULTS as SINGLET_FIBER_DEFAULTS, FRESNEL_LIMIT, computeThickLens, computeFiber } from '../thin-thick-lens/thick-lens.js';
 import { GLASSES, isWavelengthInGlassRange } from '../../sketch/js/glass.js';
 import { materialIndex, glassShortName } from '../lens-design/engine/materials.js';
 
-// The mode matching the range of focal lengths keeps: 95 % (0.22 dB).
+// The coupling the range of focal lengths keeps: 95 % (0.22 dB).
 export const NEAR_MATCH = 0.95;
 
-// The focal lengths whose focus keeps a mode matching of at least `eta`.
-// With waist ratio r = w′/w_m, η₀ = (2r/(1 + r²))², so η₀ ≥ η for r between
-// (1 ∓ √(1 − s²))/s, s = √η; a collimated beam of radius w focuses to w′
-// through f = w′ z_R/√(w² − w′²), which grows with w′. Above w′ = w no lens
-// reaches the ratio: the range is then open (`maxMm` null).
-export function focalRange(beamDiameterMm, wavelengthNm, modeRadiusUm, eta = NEAR_MATCH) {
-  const s = Math.sqrt(eta), root = Math.sqrt(1 - eta);
+// Coupling of a Gaussian waist w′ = r w_m on the face against the waist
+// ratio r: into a Gaussian mode, (2r/(1 + r²))².
+export const gaussianRatioCoupling = r => (2 * r / (1 + r * r)) ** 2;
+
+// The focal lengths whose focus keeps a coupling of at least `eta`, given
+// the coupling against the waist ratio r = w′/w_m (`coupling`, largest at
+// r = 1 and falling either side). The two ratios where it equals `eta` are
+// found by bisection; a collimated beam of radius w focuses to w′ through
+// f = w′ z_R/√(w² − w′²), which grows with w′. Above w′ = w no lens reaches
+// the ratio: the range is then open (`maxMm` null). With the peak itself
+// below `eta` there is no range (`none`, both ends null).
+export function focalRange(beamDiameterMm, wavelengthNm, modeRadiusUm, coupling = gaussianRatioCoupling, eta = NEAR_MATCH) {
+  if (!(coupling(1) >= eta)) return { minMm: null, maxMm: null, eta, none: true };
   const f = ratio => matchingFocalMm(beamDiameterMm, wavelengthNm, ratio * modeRadiusUm);
-  return { minMm: f((1 - root) / s), maxMm: f((1 + root) / s), eta };
+  const cross = (inside, outside) => {
+    for (let i = 0; i < 200; i++) {
+      const mid = Math.sqrt(inside * outside);
+      if (coupling(mid) >= eta) inside = mid; else outside = mid;
+    }
+    return Math.sqrt(inside * outside);
+  };
+  let low = 0.5, high = 2;
+  while (coupling(low) >= eta) low /= 2;
+  while (coupling(high) >= eta && high < 1e9) high *= 2;
+  return { minMm: f(cross(1, low)), maxMm: f(cross(1, high)), eta, none: false };
 }
 
 // The shortest focal length whose focus stays within the paraxial limit the
@@ -53,23 +72,27 @@ export function roundInward(x, up) {
 // value read off the table keeps the match and passes the paraxial limit
 // in the second part. The lower end is nudged up by 10⁻⁹ first, as the
 // limit's focal length can land a rounding error past it.
-export function paraxialFocalRange(beamDiameterMm, wavelengthNm, modeRadiusUm, eta = NEAR_MATCH) {
-  const range = focalRange(beamDiameterMm, wavelengthNm, modeRadiusUm, eta);
+export function paraxialFocalRange(beamDiameterMm, wavelengthNm, modeRadiusUm, coupling = gaussianRatioCoupling, eta = NEAR_MATCH) {
+  const range = focalRange(beamDiameterMm, wavelengthNm, modeRadiusUm, coupling, eta);
+  if (range.none) return { ...range, paraxialCut: false, shownMinMm: null, shownMaxMm: null };
   const floor = paraxialMinFocalMm(beamDiameterMm, wavelengthNm);
   const cut = floor !== null && range.minMm < floor ? { ...range, minMm: floor, paraxialCut: true } : { ...range, paraxialCut: false };
   return { ...cut, shownMinMm: roundInward(cut.minMm * (1 + 1e-9), true), shownMaxMm: cut.maxMm === null ? null : roundInward(cut.maxMm, false) };
 }
 
-// Mode matching of an aligned ideal thin lens against its focal length,
-// over a factor of 3 either side of the match; null where the focus is
-// steeper than the paraxial limit.
+// The coupling of a waist w′ (µm) on the face into the setup's exact mode.
+export const exactCoupling = (setup, waistUm) => setup.mode.lp.gaussianOverlap(waistUm / setup.mode.coreRadiusUm);
+
+// Coupling of an aligned ideal thin lens into the exact mode against its
+// focal length, over a factor of 3 either side of the match; null where
+// the focus is steeper than the paraxial limit.
 export function focalScan(setup, count = 241) {
   const v = setup.values, centre = setup.optimalFocalMm, lo = centre / 3, hi = centre * 3;
   return Array.from({ length: count }, (_, i) => {
     const f = lo * (hi / lo) ** (i / (count - 1));
     const focus = focusCollimated(v.beamDiameterMm, v.wavelengthNm, f);
     const valid = focus.beam.halfDivergenceMrad <= PARAXIAL_LIMIT_MRAD;
-    return { x: f, efficiency: valid ? gaussianCoupling({ waistUm: focus.beam.waistUm, modeRadiusUm: setup.modeRadiusUm, wavelengthNm: v.wavelengthNm }) : null };
+    return { x: f, efficiency: valid ? exactCoupling(setup, focus.beam.waistUm) : null };
   });
 }
 
@@ -107,18 +130,18 @@ export function choosePlanoConvex({ wavelengthNm, beamDiameterMm, focalMm }) {
   return { ok: true, glass, name, n, radiusMm, diameterMm, edgeMm: Math.max(1, diameterMm / 12.7) };
 }
 
-// The suggested singlet, traced, and its coupling into the mode with the
-// fiber at its best plane (no Fresnel reflections, as on the rest of the
-// page). The last suggestion is kept, as tracing takes a fraction of a
-// second and the page asks again on every redraw.
+// The suggested singlet, traced, and its coupling into the exact mode at V
+// with the fiber at its best plane (no Fresnel reflections, as on the rest
+// of the first part). The last suggestion is kept, as tracing takes a
+// fraction of a second and the page asks again on every redraw.
 let last = { key: null, value: null };
-export function planoConvexSuggestion({ wavelengthNm, beamDiameterMm, focalMm, mfdUm }) {
-  const key = JSON.stringify([wavelengthNm, beamDiameterMm, focalMm, mfdUm]);
-  if (last.key !== key) last = { key, value: tracePlanoConvex({ wavelengthNm, beamDiameterMm, focalMm, mfdUm }) };
+export function planoConvexSuggestion({ wavelengthNm, beamDiameterMm, focalMm, mfdUm, vNumber }) {
+  const key = JSON.stringify([wavelengthNm, beamDiameterMm, focalMm, mfdUm, vNumber]);
+  if (last.key !== key) last = { key, value: tracePlanoConvex({ wavelengthNm, beamDiameterMm, focalMm, mfdUm, vNumber }) };
   return last.value;
 }
 
-function tracePlanoConvex({ wavelengthNm, beamDiameterMm, focalMm, mfdUm }) {
+function tracePlanoConvex({ wavelengthNm, beamDiameterMm, focalMm, mfdUm, vNumber }) {
   const shape = choosePlanoConvex({ wavelengthNm, beamDiameterMm, focalMm });
   if (!shape.ok) return shape;
   const lens = computeThickLens({
@@ -131,7 +154,7 @@ function tracePlanoConvex({ wavelengthNm, beamDiameterMm, focalMm, mfdUm }) {
   // A narrow beam on a long lens focuses short of where the Debye integral
   // puts it; the traced figures would be wrong, not just approximate.
   if (lens.fresnelNumber < FRESNEL_LIMIT) return refused(`The lit pupil’s Fresnel number a²/(λf) is ${fmt(lens.fresnelNumber, 3)}, below ${FRESNEL_LIMIT}: the beam is too narrow for its focus to form where the traced model (the Debye integral) puts it. The ideal thin lens above still holds.`);
-  const fiber = computeFiber(lens, { ...SINGLET_FIBER_DEFAULTS, fiberMode: 'mfd', mfdUm, fresnel: false });
+  const fiber = computeFiber(lens, { ...SINGLET_FIBER_DEFAULTS, fiberMode: 'mfd', mfdUm, fresnel: false }, { vNumber });
   if (!fiber.ok) return refused(fiber.errors?.[0]?.message ?? fiber.message);
   return {
     ...shape, thicknessMm: lens.values.thicknessMm, bflMm: lens.bfl, strehl: lens.scan.real.strehl, clipShare: lens.clipShare, fresnelNumber: lens.fresnelNumber,
@@ -149,10 +172,13 @@ export function computeFiberSetup(raw) {
   if (errors.length) return { ok: false, errors };
   const m = resolveMode(v);
   if (!m.ok) return m;
-  const out = { ok: true, raw, values: v, ...m, optimalFocalMm: matchingFocalMm(v.beamDiameterMm, v.wavelengthNm, m.modeRadiusUm) };
+  // The best any TEM₀₀ beam couples into the exact mode: through the lens
+  // that focuses it to the mode's best Gaussian, w′ = w_m.
+  const out = { ok: true, raw, values: v, ...m, bestEfficiency: m.mode.lp.best.eta, optimalFocalMm: matchingFocalMm(v.beamDiameterMm, v.wavelengthNm, m.modeRadiusUm) };
   if (out.optimalFocalMm === null) return out;
   out.focus = focusCollimated(v.beamDiameterMm, v.wavelengthNm, out.optimalFocalMm);
-  out.range = paraxialFocalRange(v.beamDiameterMm, v.wavelengthNm, m.modeRadiusUm);
-  out.suggestion = planoConvexSuggestion({ wavelengthNm: v.wavelengthNm, beamDiameterMm: v.beamDiameterMm, focalMm: out.optimalFocalMm, mfdUm: m.mode.modeFieldDiameterUm });
+  out.matchEfficiency = exactCoupling(out, out.focus.beam.waistUm);
+  out.range = paraxialFocalRange(v.beamDiameterMm, v.wavelengthNm, m.modeRadiusUm, r => m.mode.lp.gaussianOverlap(r * m.mode.lp.best.ratio));
+  out.suggestion = planoConvexSuggestion({ wavelengthNm: v.wavelengthNm, beamDiameterMm: v.beamDiameterMm, focalMm: out.optimalFocalMm, mfdUm: m.mode.modeFieldDiameterUm, vNumber: m.mode.vNumber });
   return out;
 }

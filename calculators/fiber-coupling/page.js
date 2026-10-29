@@ -7,7 +7,7 @@
 import { FIBER_DEFAULTS, SETUP_INPUTS, SINGLE_MODE_V, PARAXIAL_LIMIT_MRAD } from './fiber-coupling.js';
 import { computeFiberSetup, focalScan } from './lens-choice.js';
 import { REAL_LENS_INPUTS, REAL_LENS_DEFAULTS, computeRealLens, suggestedLensInputs } from './real-lens.js';
-import { HIGH_NA, FRESNEL_LIMIT } from '../thin-thick-lens/thick-lens.js';
+import { HIGH_NA, FRESNEL_LIMIT, SILICA_RANGE_NM } from '../thin-thick-lens/thick-lens.js';
 import { mountCalculator } from '../assets/simple-calculator-page.js';
 import { formatNumber } from '../assets/calculator-kit.js';
 import { wavelengthToColor } from '../../sketch/js/util.js';
@@ -17,12 +17,13 @@ const pick = inputs => Object.fromEntries(inputs.map(i => [i.id, FIBER_DEFAULTS[
 
 // ---------------------------------------------------------------- the lens to use
 function modeRows(r) {
-  const v = r.values;
-  return [{ group: 'The fiber mode' },
-    ['Mode-field diameter', r.mode.modeFieldDiameterUm, 'µm', 4],
-    ...(v.fiberMode === 'step' ? [['V number', r.mode.vNumber, '', 4], ['Single-mode cutoff wavelength', r.mode.cutoffNm, 'nm', 5],
-      ['Single-mode here', r.mode.singleMode ? 'yes' : 'no: LP₁₁ is guided too']] : []),
-    ['Mode divergence, half angle', r.modeDivergenceMrad, 'mrad', 4]];
+  const v = r.values, m = r.mode;
+  return [{ group: 'The fiber mode, LP₀₁' },
+    ['V number', m.vNumber, '', 4],
+    ...(v.fiberMode === 'step' ? [['Mode-field diameter', m.modeFieldDiameterUm, 'µm', 4], ['Single-mode cutoff wavelength', m.cutoffNm, 'nm', 5]] : [['Core diameter (step index)', 2 * m.coreRadiusUm, 'µm', 3]]),
+    ['Single-mode here', m.singleMode ? 'yes' : 'no: LP₁₁ is guided too'],
+    ['Mode divergence, half angle', r.modeDivergenceMrad, 'mrad', 4],
+    ['Best coupling of any TEM₀₀ beam', percent(r.bestEfficiency), '%', 4]];
 }
 
 function setupRows(r) {
@@ -35,12 +36,13 @@ function setupRows(r) {
   out.ideal = [{ group: 'The ideal thin lens' },
     ['Focal length that matches the mode', r.optimalFocalMm, 'mm', 4],
     ['Spot diameter at the waist (1/e²)', 2 * f.beam.waistUm, 'µm', 4],
+    ['Coupling efficiency', percent(r.matchEfficiency), '%', 4],
     ['Waist distance after the lens', f.distanceMm, 'mm', 6],
     ['Convergence, half angle', f.beam.halfDivergenceMrad, 'mrad', 4],
     ['Rayleigh range of the input beam', f.input.rayleighMm / 1000, 'm', 4],
     { group: `Focal lengths that keep ${formatNumber(percent(r.range.eta), 3)} % or more` },
-    ['From', r.range.shownMinMm, 'mm', 4],
-    r.range.shownMaxMm === null ? ['To', 'any longer f'] : ['To', r.range.shownMaxMm, 'mm', 4]];
+    ...(r.range.none ? [['Range', `none: no lens reaches ${formatNumber(percent(r.range.eta), 3)} % into this mode`]]
+      : [['From', r.range.shownMinMm, 'mm', 4], r.range.shownMaxMm === null ? ['To', 'any longer f'] : ['To', r.range.shownMaxMm, 'mm', 4]])];
   const s = r.suggestion;
   out.planoconvex = s.ok
     ? [{ group: `Plano-convex, ${s.name}, curved side toward the laser` },
@@ -58,15 +60,15 @@ function setupRows(r) {
 
 function setupNotes(r) {
   const v = r.values, out = [];
-  if (v.fiberMode === 'step') {
-    out.push('Mode-field diameter from Marcuse’s fit for an ideal step-index core. A real fiber’s datasheet value (usually the Petermann II diameter) can differ from it by more than the fit’s 1 %; prefer the datasheet value when you have it.');
-    if (!r.mode.singleMode) out.push(`V = ${formatNumber(r.mode.vNumber, 4)} is above ${formatNumber(SINGLE_MODE_V, 4)}: at this wavelength the fiber also guides LP₁₁. The efficiencies here are into the fundamental mode only.`);
-  }
+  out.push(v.fiberMode === 'step'
+    ? 'The exact LP₀₁ mode of an ideal step-index core, and the mode-field diameter of the Gaussian that couples to it best. A real fiber’s datasheet value (usually the Petermann II diameter) can differ from it; prefer the datasheet value when you have it.'
+    : 'The exact LP₀₁ mode of a step-index fiber with this V, sized so that the Gaussian that couples to it best has the datasheet’s mode-field diameter. Real fibers are not ideal step-index profiles, so their mode can differ slightly.');
+  if (!r.mode.singleMode) out.push(`V = ${formatNumber(r.mode.vNumber, 4)} is above ${formatNumber(SINGLE_MODE_V, 4)}: at this wavelength the fiber also guides LP₁₁. The efficiencies here are into the fundamental mode only.`);
   if (r.optimalFocalMm === null) {
     out.push('A positive lens only makes the beam smaller: with the beam no wider than the mode, none matches it. Expand the beam first, or choose a fiber with a smaller mode.');
     return out;
   }
-  out.push('The ideal thin lens focuses the beam exactly to the mode: 100 % for a perfectly Gaussian mode, before the Fresnel reflection at the fiber face (about 3.4 % for uncoated silica).');
+  out.push(`The ideal thin lens focuses the beam to the Gaussian that best matches the mode. The mode is not exactly Gaussian (a Bessel function in the core, a slower decay in the cladding), so even this couples ${formatNumber(percent(r.bestEfficiency), 4)} %, not 100 %: the most any TEM₀₀ beam can at V = ${formatNumber(r.mode.vNumber, 4)}. Before the Fresnel reflection at the fiber face (about 3.4 % for uncoated silica).`);
   if (r.range.paraxialCut) out.push(`Shorter focal lengths would still match the mode to ${formatNumber(percent(r.range.eta), 3)} %, but focus steeper than ${formatNumber(PARAXIAL_LIMIT_MRAD / 1000, 3)} rad (half angle), outside the paraxial model this page rests on: the range starts at that limit.`);
   if (r.focus.input.rayleighMm < 10 * r.optimalFocalMm) out.push('The input beam’s Rayleigh range is not long compared with the focal length: it is not really collimated, and the waist forms well short of f (the ideal thin lens figures account for this).');
   const s = r.suggestion;
@@ -129,9 +131,9 @@ mountCalculator({
     if (r.optimalFocalMm === null) return { focal: { message: 'No lens matches a beam that is not larger than the mode.' } };
     const scan = focalScan(r);
     return {
-      focal: { x: scan.map(p => p.x), xLabel: 'Lens focal length f (mm)', xUnit: 'mm', yLabel: 'Mode matching (%)', yMin: 0, yMax: 100,
+      focal: { x: scan.map(p => p.x), xLabel: 'Lens focal length f (mm)', xUnit: 'mm', yLabel: 'Coupling efficiency (%)', yMin: 0, yMax: 100,
         series: [{ name: 'Ideal thin lens', color: '--series-1', values: scan.map(p => (p.efficiency === null ? null : percent(p.efficiency))) }],
-        vlines: [{ x: r.optimalFocalMm, label: 'matched' }], marker: { x: r.optimalFocalMm, y: 100 },
+        vlines: [{ x: r.optimalFocalMm, label: 'matched' }], marker: { x: r.optimalFocalMm, y: percent(r.matchEfficiency) },
         formatX: n => formatNumber(n, 4), formatY: n => formatNumber(n, 4) },
     };
   },
@@ -163,29 +165,35 @@ function lensRows(r) {
     mmRow('Focal length f', l.efl), mmRow('Back focal length (V₂ to F′)', l.bfl),
     ['Focusing NA (1/e² half angle)', l.focusNa, '', 3], umRow('Focused waist, ideal (1/e² radius)', l.ideal.waistUm)];
   if (l.scan.real) key.push(['Singlet Strehl ratio, best plane', l.scan.real.strehl, '', 3]);
-  const coupling = [];
-  for (const [kind, name] of [['real', 'Singlet'], ['ideal', 'Ideal thin lens, same f']]) {
+  key.push({ group: 'Light reaching the fiber' }, r.clipShare > 0.9999 ? ['Beam inside the clear diameter', '> 99.99 %'] : ['Beam inside the clear diameter', percent(r.clipShare), '%', 4]);
+  if (r.surfaces !== null) key.push(['Through the uncoated faces and fiber end', percent(r.surfaces), '%', 3]);
+  key.push(['In all', percent(f.through), '%', 3]);
+  const out = { 'lens-key': key };
+  for (const [kind, name] of [['real', 'The singlet'], ['ideal', 'Ideal thin lens, same f']]) {
     if (!f[kind]) continue;
     const k = f[kind], shiftUm = k.shiftMm * 1e3;
     // Under 0.05 µm the search's rounding, not a position.
-    coupling.push({ group: name }, Math.abs(roundUm(shiftUm)) < 0.05 ? ['Best fiber position', 'at F′'] : umRow('Best fiber position from F′', shiftUm),
+    out[`lens-${kind}`] = [{ group: name }, Math.abs(roundUm(shiftUm)) < 0.05 ? ['Best fiber position', 'at F′'] : umRow('Best fiber position from F′', shiftUm),
       ['Mode overlap there', percent(k.aligned), '%', 4], ['Coupling efficiency', percent(k.efficiency), '%', 4],
-      umRow('Lateral offset that halves it', k.halfLateralUm), ['Tilt that halves it', k.halfTiltMrad, 'mrad', 3]);
+      umRow('Lateral offset that halves it', k.halfLateralUm), ['Tilt that halves it', k.halfTiltMrad, 'mrad', 3]];
   }
-  coupling.push({ group: 'Losses' }, ['Light reaching the fiber', percent(f.through), '%', 4]);
-  return { 'lens-key': key, 'lens-coupling': coupling };
+  return out;
 }
 
 function lensNotes(r) {
   const { lens: l, values: v, fiber: f } = r, out = [];
   if (l.realIssue) out.push(l.realIssue);
-  if (l.clipShare < 0.999) out.push(`The clear diameter passes ${formatNumber(percent(l.clipShare), 4)} % of the beam; the rest is lost, and the cut edge spreads the focus.`);
+  const pass = `${r.clipShare > 0.9999 ? 'more than 99.99' : formatNumber(percent(r.clipShare), 4)} % of the beam passes the clear diameter`;
+  out.push(r.surfaces === null
+    ? `The coupling efficiency is the mode overlap times the light reaching the fiber: ${pass}. Beyond ${SILICA_RANGE_NM[0]}–${SILICA_RANGE_NM[1]} nm fused silica’s index is not fitted, so the reflections at the lens faces and the fiber end are not counted.`
+    : `The coupling efficiency is the mode overlap times the light reaching the fiber: ${pass}, and the two uncoated lens faces and the fiber end transmit ${formatNumber(percent(r.surfaces), 3)} % of it, each reflecting a few percent at normal incidence. Anti-reflection coatings recover most of that, bringing the coupling close to the mode overlap. The ideal lens is counted with the same glass faces, for a like-for-like comparison.`);
+  if (l.clipShare < 0.999) out.push('The clear diameter cuts the beam, and its edge spreads the focus too.');
   if (l.rimNa > HIGH_NA) out.push(`The lit pupil reaches NA ${formatNumber(l.rimNa, 3)} at its rim: above ${HIGH_NA}, scalar diffraction ignores polarization, which then matters.`);
   if (l.fresnelNumber < FRESNEL_LIMIT) out.push(`The Fresnel number of the lit pupil, a²/(λf) = ${formatNumber(l.fresnelNumber, 3)}, is below ${FRESNEL_LIMIT}: the focus moves toward the lens from where the Debye integral puts it, so the figures are approximate.`);
   if (l.scan.real?.clipped) out.push('Part of the beam meets the back face outside the clear diameter and is cut there.');
   if (v.spec === 'focal') out.push(`Designed for f = ${formatNumber(v.focalMm, 5)} mm at ${formatNumber(v.wavelengthNm, 5)} nm with a ${formatNumber(v.edgeMm, 4)} mm edge: the radii and centre thickness above.`);
   if (f.axialCut) out.push(`The axial graph stops at ±${formatNumber(f.axialCut.reachMm, 3)} mm instead of ±${formatNumber(f.axialCut.wantedMm, 3)} mm: farther from the focus the defocus varies too fast across the pupil for this page’s sampling.`);
-  out.push('The singlet is traced through its two spherical faces; the ideal thin lens of the same focal length obeys the sine condition (an aplanat) and focuses the Gaussian beam to the Gaussian waist. The fiber sits on the axis at each lens’s best position, its axis along the lens’s. The coupling efficiency is the mode overlap times the light reaching the fiber: the beam’s share inside the clear diameter' + (f.values.fresnel ? ', and the transmission of the uncoated lens faces and fiber end.' : '.') + ' Each graph moves the fiber one way only, from that position; the focus is round, so a lateral offset in any direction is the same.');
+  out.push('The singlet is traced through its two spherical faces; the ideal thin lens of the same focal length obeys the sine condition (an aplanat) and focuses the Gaussian beam to the Gaussian waist. The fiber sits on the axis at each lens’s best position, its axis along the lens’s. Each graph moves the fiber one way only, from that position; the focus is round, so a lateral offset in any direction is the same.');
   return out;
 }
 
@@ -206,7 +214,7 @@ function lensGraphs(r) {
 
 lens = mountCalculator({
   panel: 'lens', inputs: REAL_LENS_INPUTS, defaults: REAL_LENS_DEFAULTS, hideInactive: true, charts: ['lateral', 'axial', 'tilt'],
-  groups: { lens: { title: 'Lens' }, size: { title: 'Dimensions' }, surfaces: { title: 'Surfaces' } },
+  groups: { lens: { title: 'Lens' }, size: { title: 'Dimensions' } },
   compute: raw => computeRealLens(setup, raw), rows: lensRows, notes: lensNotes, graphs: lensGraphs,
 });
 

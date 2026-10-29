@@ -1,6 +1,409 @@
 {
- "app": "calculators/fiber-coupling/fiber-coupling.js: computeFiberCoupling (mode radius by Marcuse's fit, focused beam by calculators/gaussian-beam/gaussian-beam.js: thinLensFocus, overlap in closed form)",
+ "app": "calculators/fiber-coupling/lp01.js: lp01 (the exact mode, its best Gaussian, its far field in closed form); calculators/fiber-coupling/lens-choice.js: computeFiberSetup (the ideal lens into the exact mode, the 95 % range); calculators/fiber-coupling/fiber-coupling.js: computeFiberCoupling (the closed form for a Gaussian mode, focused beam by calculators/gaussian-beam/gaussian-beam.js: thinLensFocus) and fiberMode (Marcuse's fit)",
  "cases": [
+  {
+   "absolute": true,
+   "expected": {
+    "bestEta": 0.94394588,
+    "bestRatio": 2.845913,
+    "u": 1.134125937
+   },
+   "inputs": {
+    "kind": "lp01",
+    "qs": [],
+    "vNumber": 1.2
+   },
+   "name": "exact LP01 mode at V = 1.2000: u, the best Gaussian and its coupling",
+   "note": "the far field by Simpson quadrature of the field times J0(q rho) here, by its closed form (the Lommel integrals and the eigenvalue equation) on the page, with rational approximations of J0 and J1 (about 1e-8)",
+   "tolerance": {
+    "bestEta": 1e-07,
+    "bestRatio": 1e-06,
+    "u": 1e-07
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "bestEta": 0.97746363,
+    "bestRatio": 1.620903,
+    "u": 1.366981264
+   },
+   "inputs": {
+    "kind": "lp01",
+    "qs": [],
+    "vNumber": 1.6
+   },
+   "name": "exact LP01 mode at V = 1.6000: u, the best Gaussian and its coupling",
+   "note": "the far field by Simpson quadrature of the field times J0(q rho) here, by its closed form (the Lommel integrals and the eigenvalue equation) on the page, with rational approximations of J0 and J1 (about 1e-8)",
+   "tolerance": {
+    "bestEta": 1e-07,
+    "bestRatio": 1e-06,
+    "u": 1e-07
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "bestEta": 0.99061061,
+    "bestRatio": 1.2857477,
+    "farField0": 0.83619409,
+    "farField1": 0.30805013,
+    "farField2": 0.0034972905,
+    "u": 1.512597406
+   },
+   "inputs": {
+    "kind": "lp01",
+    "qs": [
+     0.5,
+     1.5125974061564835,
+     4.0
+    ],
+    "vNumber": 1.954890453352693
+   },
+   "name": "exact LP01 mode at V = 1.9549: u, the best Gaussian and its coupling, and the far field at q = 0.5, 1.513, 4",
+   "note": "the far field by Simpson quadrature of the field times J0(q rho) here, by its closed form (the Lommel integrals and the eigenvalue equation) on the page, with rational approximations of J0 and J1 (about 1e-8)",
+   "tolerance": {
+    "bestEta": 1e-07,
+    "bestRatio": 1e-06,
+    "farField0": 1e-07,
+    "farField1": 1e-07,
+    "farField2": 1e-07,
+    "u": 1e-07
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "bestEta": 0.99612186,
+    "bestRatio": 1.1143054,
+    "u": 1.627190024
+   },
+   "inputs": {
+    "kind": "lp01",
+    "qs": [],
+    "vNumber": 2.33
+   },
+   "name": "exact LP01 mode at V = 2.3300: u, the best Gaussian and its coupling",
+   "note": "the far field by Simpson quadrature of the field times J0(q rho) here, by its closed form (the Lommel integrals and the eigenvalue equation) on the page, with rational approximations of J0 and J1 (about 1e-8)",
+   "tolerance": {
+    "bestEta": 1e-07,
+    "bestRatio": 1e-06,
+    "u": 1e-07
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "bestEta": 0.99666924,
+    "bestRatio": 1.0905302,
+    "farField0": 0.90002773,
+    "farField1": 0.39112337,
+    "farField2": 0.009112889,
+    "u": 1.64652809
+   },
+   "inputs": {
+    "kind": "lp01",
+    "qs": [
+     0.5,
+     1.6465280900283275,
+     4.0
+    ],
+    "vNumber": 2.404825557695773
+   },
+   "name": "exact LP01 mode at V = 2.4048: u, the best Gaussian and its coupling, and the far field at q = 0.5, 1.647, 4",
+   "note": "the far field by Simpson quadrature of the field times J0(q rho) here, by its closed form (the Lommel integrals and the eigenvalue equation) on the page, with rational approximations of J0 and J1 (about 1e-8)",
+   "tolerance": {
+    "bestEta": 1e-07,
+    "bestRatio": 1e-06,
+    "farField0": 1e-07,
+    "farField1": 1e-07,
+    "farField2": 1e-07,
+    "u": 1e-07
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "bestEta": 0.99707849,
+    "bestRatio": 0.90095513,
+    "u": 1.847349044
+   },
+   "inputs": {
+    "kind": "lp01",
+    "qs": [],
+    "vNumber": 3.5
+   },
+   "name": "exact LP01 mode at V = 3.5000: u, the best Gaussian and its coupling",
+   "note": "the far field by Simpson quadrature of the field times J0(q rho) here, by its closed form (the Lommel integrals and the eigenvalue equation) on the page, with rational approximations of J0 and J1 (about 1e-8)",
+   "tolerance": {
+    "bestEta": 1e-07,
+    "bestRatio": 1e-06,
+    "u": 1e-07
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "bestEta": 0.99307532,
+    "bestRatio": 0.80647717,
+    "farField0": 0.96443087,
+    "farField1": 0.55894506,
+    "farField2": 0.064780576,
+    "u": 1.994061353
+   },
+   "inputs": {
+    "kind": "lp01",
+    "qs": [
+     0.5,
+     1.994061353071959,
+     4.0
+    ],
+    "vNumber": 5.0
+   },
+   "name": "exact LP01 mode at V = 5.0000: u, the best Gaussian and its coupling, and the far field at q = 0.5, 1.994, 4",
+   "note": "the far field by Simpson quadrature of the field times J0(q rho) here, by its closed form (the Lommel integrals and the eigenvalue equation) on the page, with rational approximations of J0 and J1 (about 1e-8)",
+   "tolerance": {
+    "bestEta": 1e-07,
+    "bestRatio": 1e-06,
+    "farField0": 1e-07,
+    "farField1": 1e-07,
+    "farField2": 1e-07,
+    "u": 1e-07
+   }
+  },
+  {
+   "expected": {
+    "bestEfficiency": 0.99061061,
+    "coreDiameterUm": 8.0886789,
+    "efficiencyAt": 0.98913093,
+    "matchEfficiency": 0.99061061,
+    "optimalFocalMm": 10.539679,
+    "rangeMaxMm": 13.238294,
+    "rangeMinMm": 8.420025,
+    "vNumber": 1.954890453
+   },
+   "inputs": {
+    "beamDiameterMm": 2.0,
+    "cutoffNm": 1260,
+    "fiberMode": "mfd",
+    "focalMm": 11.0,
+    "kind": "setup",
+    "mfdUm": 10.4,
+    "wavelengthNm": 1550
+   },
+   "name": "the page's example: 1550 nm, 2 mm beam, MFD 10.4 um, cutoff 1260 nm (V = 1.955)",
+   "note": "the page: the same mode from the eigenvalue equation and the same face overlap, a golden-section best Gaussian, the matching focal length in closed form and the 95 % ends by bisection on the waist ratio",
+   "tolerance": {
+    "bestEfficiency": 1e-06,
+    "coreDiameterUm": 1e-06,
+    "efficiencyAt": 1e-06,
+    "matchEfficiency": 1e-06,
+    "optimalFocalMm": 1e-06,
+    "rangeMaxMm": 1e-06,
+    "rangeMinMm": 1e-06,
+    "vNumber": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "bestEfficiency": 0.99499161,
+    "coreDiameterUm": 5.3621261,
+    "efficiencyAt": 0.98818011,
+    "matchEfficiency": 0.99499161,
+    "optimalFocalMm": 22.882859,
+    "rangeMaxMm": 28.838398,
+    "rangeMinMm": 18.228535,
+    "vNumber": 2.214970908
+   },
+   "inputs": {
+    "beamDiameterMm": 5.0,
+    "cutoffNm": 980,
+    "fiberMode": "mfd",
+    "focalMm": 25.0,
+    "kind": "setup",
+    "mfdUm": 6.2,
+    "wavelengthNm": 1064
+   },
+   "name": "1064 nm, 5 mm beam, MFD 6.2 um, cutoff 980 nm",
+   "note": "the page: the same mode from the eigenvalue equation and the same face overlap, a golden-section best Gaussian, the matching focal length in closed form and the 95 % ends by bisection on the waist ratio",
+   "tolerance": {
+    "bestEfficiency": 1e-06,
+    "coreDiameterUm": 1e-06,
+    "efficiencyAt": 1e-06,
+    "matchEfficiency": 1e-06,
+    "optimalFocalMm": 1e-06,
+    "rangeMaxMm": 1e-06,
+    "rangeMinMm": 1e-06,
+    "vNumber": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "bestEfficiency": 0.99666924,
+    "coreDiameterUm": 9.5366454,
+    "efficiencyAt": 0.99499768,
+    "matchEfficiency": 0.99666924,
+    "optimalFocalMm": 10.539679,
+    "rangeMaxMm": 13.275015,
+    "rangeMinMm": 8.4016844,
+    "vNumber": 2.404825558
+   },
+   "inputs": {
+    "beamDiameterMm": 2.0,
+    "cutoffNm": 1550,
+    "fiberMode": "mfd",
+    "focalMm": 11.0,
+    "kind": "setup",
+    "mfdUm": 10.4,
+    "wavelengthNm": 1550
+   },
+   "name": "1550 nm at the cutoff (V = 2.405)",
+   "note": "the page: the same mode from the eigenvalue equation and the same face overlap, a golden-section best Gaussian, the matching focal length in closed form and the 95 % ends by bisection on the waist ratio",
+   "tolerance": {
+    "bestEfficiency": 1e-06,
+    "coreDiameterUm": 1e-06,
+    "efficiencyAt": 1e-06,
+    "matchEfficiency": 1e-06,
+    "optimalFocalMm": 1e-06,
+    "rangeMaxMm": 1e-06,
+    "rangeMinMm": 1e-06,
+    "vNumber": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "bestEfficiency": 0.99437953,
+    "coreDiameterUm": 12.541569,
+    "efficiencyAt": 0.99235581,
+    "matchEfficiency": 0.99437953,
+    "optimalFocalMm": 10.539679,
+    "rangeMaxMm": 12.929177,
+    "rangeMinMm": 8.6170107,
+    "vNumber": 4.499351043
+   },
+   "inputs": {
+    "beamDiameterMm": 2.0,
+    "cutoffNm": 2900,
+    "fiberMode": "mfd",
+    "focalMm": 11.0,
+    "kind": "setup",
+    "mfdUm": 10.4,
+    "wavelengthNm": 1550
+   },
+   "name": "V = 4.5, multimode: coupling into LP01 only",
+   "note": "the page: the same mode from the eigenvalue equation and the same face overlap, a golden-section best Gaussian, the matching focal length in closed form and the 95 % ends by bisection on the waist ratio",
+   "tolerance": {
+    "bestEfficiency": 1e-06,
+    "coreDiameterUm": 1e-06,
+    "efficiencyAt": 1e-06,
+    "matchEfficiency": 1e-06,
+    "optimalFocalMm": 1e-06,
+    "rangeMaxMm": 1e-06,
+    "rangeMinMm": 1e-06,
+    "vNumber": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "bestEfficiency": 0.94851363,
+    "coreDiameterUm": 3.9839961,
+    "efficiencyAt": 0.94751406,
+    "matchEfficiency": 0.94851363,
+    "optimalFocalMm": 10.539679,
+    "rangeNone": 1,
+    "vNumber": 1.241200288
+   },
+   "inputs": {
+    "beamDiameterMm": 2.0,
+    "cutoffNm": 800,
+    "fiberMode": "mfd",
+    "focalMm": 11.0,
+    "kind": "setup",
+    "mfdUm": 10.4,
+    "wavelengthNm": 1550
+   },
+   "name": "V = 1.24, far beyond the cutoff: no focal length keeps 95 %",
+   "note": "the page: the same mode from the eigenvalue equation and the same face overlap, a golden-section best Gaussian, the matching focal length in closed form and the 95 % ends by bisection on the waist ratio",
+   "tolerance": {
+    "bestEfficiency": 1e-06,
+    "coreDiameterUm": 1e-06,
+    "efficiencyAt": 1e-06,
+    "matchEfficiency": 1e-06,
+    "optimalFocalMm": 1e-06,
+    "rangeNone": 1e-06,
+    "vNumber": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "bestEfficiency": 0.99609546,
+    "efficiencyAt": 0.9703651,
+    "matchEfficiency": 0.99609546,
+    "modeFieldDiameterUm": 9.1460932,
+    "optimalFocalMm": 9.2689031,
+    "rangeMaxMm": 11.679505,
+    "rangeMinMm": 7.3853108,
+    "vNumber": 2.326805398
+   },
+   "inputs": {
+    "beamDiameterMm": 2.0,
+    "coreDiameterUm": 8.2,
+    "cutoffNm": 1260,
+    "fiberMode": "step",
+    "focalMm": 11.0,
+    "kind": "setup",
+    "mfdUm": 10.4,
+    "na": 0.14,
+    "wavelengthNm": 1550
+   },
+   "name": "step index, core 8.2 um, NA 0.14, 1550 nm",
+   "note": "the page: the same mode from the eigenvalue equation and the same face overlap, a golden-section best Gaussian, the matching focal length in closed form and the 95 % ends by bisection on the waist ratio",
+   "tolerance": {
+    "bestEfficiency": 1e-06,
+    "efficiencyAt": 1e-06,
+    "matchEfficiency": 1e-06,
+    "modeFieldDiameterUm": 1e-06,
+    "optimalFocalMm": 1e-06,
+    "rangeMaxMm": 1e-06,
+    "rangeMinMm": 1e-06,
+    "vNumber": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "bestEfficiency": 0.99317015,
+    "efficiencyAt": 0.98963057,
+    "matchEfficiency": 0.99317015,
+    "modeFieldDiameterUm": 4.2488844,
+    "optimalFocalMm": 4.2175204,
+    "rangeMaxMm": 5.3107594,
+    "rangeMinMm": 3.3618904,
+    "vNumber": 2.084469059
+   },
+   "inputs": {
+    "beamDiameterMm": 0.8,
+    "coreDiameterUm": 3.5,
+    "cutoffNm": 1260,
+    "fiberMode": "step",
+    "focalMm": 4.5,
+    "kind": "setup",
+    "mfdUm": 10.4,
+    "na": 0.12,
+    "wavelengthNm": 633
+   },
+   "name": "step index, core 3.5 um, NA 0.12, 633 nm, 0.8 mm beam",
+   "note": "the page: the same mode from the eigenvalue equation and the same face overlap, a golden-section best Gaussian, the matching focal length in closed form and the 95 % ends by bisection on the waist ratio",
+   "tolerance": {
+    "bestEfficiency": 1e-06,
+    "efficiencyAt": 1e-06,
+    "matchEfficiency": 1e-06,
+    "modeFieldDiameterUm": 1e-06,
+    "optimalFocalMm": 1e-06,
+    "rangeMaxMm": 1e-06,
+    "rangeMinMm": 1e-06,
+    "vNumber": 1e-06
+   }
+  },
   {
    "expected": {
     "cutoffNm": 1499.713089,
@@ -373,14 +776,13 @@
     "na": 0.12,
     "wavelengthNm": 633
    },
-   "name": "633 nm, 0.8 mm beam, f 4.5 mm, core 3.5 um NA 0.12 (mode from the exact LP01 fit)",
-   "note": "the mode radius comes from the exact LP01 best Gaussian here and from Marcuse's fit on the page; the 1 % difference in radius moves the efficiency and the matching focal length by up to 2 %",
+   "name": "633 nm, 0.8 mm beam, f 4.5 mm, core 3.5 um NA 0.12 (mode radius from the exact LP01 best Gaussian)",
    "tolerance": {
-    "efficiency": 0.02,
+    "efficiency": 1e-06,
     "focusDistanceMm": 1e-09,
     "focusWaistUm": 1e-09,
-    "matchEfficiency": 0.02,
-    "optimalFocalMm": 0.02
+    "matchEfficiency": 1e-06,
+    "optimalFocalMm": 1e-06
    }
   }
  ],
@@ -391,14 +793,14 @@
   "W. B. Joyce and B. C. DeLoach, Appl. Opt. 23, 4187-4196 (1984), doi:10.1364/AO.23.004187 (alignment of Gaussian beams: offset, tilt, defocus)"
  ],
  "convergence": "Bessel integrals by the trapezoid rule (400 and 800 nodes); 100- and 120-step bisections; mode overlaps by Simpson's rule on 200 core intervals and cladding steps of 0.01-0.25 core radii out to where the field has fallen by e^-40 (at least 12 core radii); the best Gaussian bracketed on a 61-point logarithmic scan from 0.3 to 30 core radii (it must fall inside) and refined by golden-section search to 80 steps; face overlaps by the trapezoid rule on 6000 intervals over 12 beam widths; focal-length bisection to 200 steps.",
- "domain": "Step-index fibers with V 1.4-2.75 (633-1550 nm, one above the single-mode cutoff, cores 3.5-8.2 um, NA 0.12-0.14); collimated beams of 0.8-2 mm focused by 4.5-11 mm lenses; aligned, and with lateral offsets (on the fiber face) to 2 um, axial offsets to +/-30 um and tilts of either sign to 20 mrad in the plane of the offset, separately and together.",
+ "domain": "The exact mode at V 1.2-5 (its far field at V 1.955, 2.405 and 5, up to q = 4); the first part for fibers given by mode-field diameter and cutoff (V 1.24-4.5, 1064 and 1550 nm, 2-5 mm beams) and by core and NA (633 and 1550 nm); Marcuse's fit for step-index fibers with V 1.4-2.75 (633-1550 nm, one above the single-mode cutoff, cores 3.5-8.2 um, NA 0.12-0.14); the Gaussian closed form for collimated beams of 0.8-2 mm focused by 4.5-11 mm lenses, aligned, and with lateral offsets (on the fiber face) to 2 um, axial offsets to +/-30 um and tilts of either sign to 20 mrad in the plane of the offset, separately and together.",
  "fidelity": "computed",
  "id": "fiber-coupling",
- "outside_scope": "Declines a mode or beam diameter that is not positive, a non-positive focal length, and V outside 1.2-3.5, the range checked here. The reference finds the fit within 1 % of the exact mode's best Gaussian from V = 1.0 (-0.49 %) to about 4.0 (-0.72 %), and degrading below: -3.6 % at V = 0.9, -13 % at V = 0.8. Above 2.405 the fit still describes LP01, but the fiber is no longer single-mode, and the page says so.",
+ "outside_scope": "Declines a mode or beam diameter that is not positive, a non-positive focal length, and V outside 1.2-5, the range checked here (1.2-3.5 for Marcuse's fit in the Thin and thick lens engine). The reference finds the fit within 1 % of the exact mode's best Gaussian from V = 1.0 (-0.49 %) to about 4.0 (-0.72 %), and degrading below: -3.6 % at V = 0.9, -13 % at V = 0.8. Above 2.405 the fit still describes LP01, but the fiber is no longer single-mode, and the page says so.",
  "provenance": "The eigenvalue equation and field written from Gloge's weakly-guiding analysis; the coupling as the normalized overlap integral of the two fields on the face, as in Kogelnik and in Joyce and DeLoach. Marcuse's fit and the page's closed-form overlap are not used here. The face field's geometry is pinned by propagation, not algebra: a Fresnel-kernel propagation of the beam reproduces its own q-parameter curvature, and a tilt of +t moves the beam toward +x by t per unit length.",
- "reference": "Exact weakly-guiding LP01 mode from its Bessel-function eigenvalue equation, best-coupling Gaussian by golden-section search on the overlap; focused beam by the ABCD law on q; coupling efficiency by trapezoid quadrature of the overlap integral on the fiber face; matching focal length by bisection",
+ "reference": "Exact weakly-guiding LP01 mode from its Bessel-function eigenvalue equation, best-coupling Gaussian by golden-section search on the overlap; the mode's far field by Simpson quadrature of its Hankel transform; focused beam by the ABCD law on q; coupling into a Gaussian mode by trapezoid quadrature of the overlap integral on the fiber face, into the exact mode by Simpson quadrature over the radius; matching focal length and the 95 % ends by bisection on the focal length",
  "reference_file": "validation/reference/fiber_coupling.py",
- "scope": "Paraxial scalar coupling of a TEM00 beam into the fundamental mode, approximated as a Gaussian; ideal thin lens; no Fresnel reflection, aberrations, polarization or cladding modes.",
- "title": "Gaussian-beam coupling into a single-mode fiber",
- "tolerance_rationale": "1e-9 relative for the V number, cutoff and every coupling quantity computed from the same mode radius (algebra and spectrally accurate quadrature); 1 % on the mode-field diameter and 2 % on the aligned coupling through a fiber given by core and NA, because the page uses Marcuse's fit and the reference the exact LP01 mode (at large misalignments a 1 % radius error can move the efficiency by more). Values that pass through the best-Gaussian optimum are stored to 6 digits, which it fixes to about 1e-8."
+ "scope": "Paraxial scalar coupling of a TEM00 beam into the fundamental mode of an ideal weakly guiding step-index fiber (exact, or approximated as its best Gaussian for the closed forms); ideal thin lens; no Fresnel reflection, aberrations, polarization or cladding modes.",
+ "title": "Gaussian-beam coupling into a single-mode fiber, through its exact LP01 mode",
+ "tolerance_rationale": "1e-9 relative for the V number, cutoff and every Gaussian-mode coupling quantity computed from the same mode radius (algebra and spectrally accurate quadrature); 1e-6 relative on the exact-mode couplings, matching focal lengths and range ends, which pass through the best-Gaussian optimum (known to about 1e-8, stored to 8 digits); 1e-7 absolute on u, the best coupling and the far field (the page evaluates the far field with rational approximations of J0 and J1, good to about 1e-8), and 1e-6 on the best Gaussian's radius, which sits on a flat optimum; 1 % on Marcuse's mode-field diameter, the fit's accuracy."
 }

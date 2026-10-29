@@ -47,6 +47,7 @@ import math
 from common import sig
 from lens_design import first_order, base, n_of
 from lens_coherent import Pupil, pupil_nodes, coupling, gauss_legendre, mode_norm
+from fiber_coupling import far_field_closed, best_gaussian_radius, simpson
 
 
 def lens(glass, nm, r1, r2, t):
@@ -140,7 +141,28 @@ def singlet(glass, nm, r1, r2, t, diameter, beam_diameter):
     return system, z_focus, w / (epd / 2)
 
 
-def focus_values(system, z_focus, beta, mfd_um, shifts_mm, nr=256, delta=1e-5, offsets=None, nphi=160):
+def exact_far_field(v_number, mfd_um, nm):
+    """The exact LP01 mode's far field M(s) = F(k a sin(alpha)) for a fiber
+    whose best Gaussian has diameter mfd_um at V, as a Catmull-Rom spline on
+    steps of 0.005 in q = k a s (the closed form, fiber_coupling.py, checked
+    there against quadrature), and its integral of |M|^2 over the hemisphere
+    by Simpson's rule in alpha."""
+    a = mfd_um / 2 / best_gaussian_radius(v_number)[0]
+    ka = 2 * math.pi * a / (nm * 1e-3)
+    F, h = far_field_closed(v_number), 0.005
+    table = [F(k * h) for k in range(int(ka / h) + 4)]
+
+    def M(sv):
+        x = ka * sv / h
+        i = min(int(x), len(table) - 3)
+        t = x - i
+        p0, p1, p2, p3 = (table[abs(i - 1)], table[i], table[i + 1], table[i + 2])
+        return p1 + 0.5 * t * (p2 - p0 + t * (2 * p0 - 5 * p1 + 4 * p2 - p3 + t * (3 * (p1 - p2) + p3 - p0)))
+    norm = 2 * math.pi * simpson(lambda al: M(math.sin(al)) ** 2 * math.sin(al), 0.0, math.pi / 2, 20000)
+    return M, norm
+
+
+def focus_values(system, z_focus, beta, mfd_um, shifts_mm, nr=256, delta=1e-5, offsets=None, nphi=160, v_number=None):
     """Peak intensity relative to the unaberrated pupil at the paraxial
     focus, and the coupling into a fiber at each shift, its core moved by
     `offsets` [(lateral mm, tilt rad)] across the axis in the x-z plane. On
@@ -148,7 +170,9 @@ def focus_values(system, z_focus, beta, mfd_um, shifts_mm, nr=256, delta=1e-5, o
     traced with two neighbours at +/- delta, whose directions give ds/drho by
     a central difference; the mode's far field exp(-sin^2 alpha/theta0^2),
     alpha from the fiber's axis, and the phase 2 pi s cos(phi) dx/lambda
-    averaged over the azimuth phi by Gauss-Legendre nodes on [0, pi]."""
+    averaged over the azimuth phi by Gauss-Legendre nodes on [0, pi]. With
+    v_number the mode is the exact LP01 mode at that V instead (its far
+    field from exact_far_field, over the whole azimuth)."""
     radii = [(x + 1) / 2 for x, _ in gauss_legendre(nr)]
     weights = [w / 2 for _, w in gauss_legendre(nr)]
     nodes = [(r + e, 0.0, 1.0) for r in radii for e in (-delta, 0.0, delta)]
@@ -181,15 +205,20 @@ def focus_values(system, z_focus, beta, mfd_um, shifts_mm, nr=256, delta=1e-5, o
     power = sum(w * a * a * r for w, a, r in zip(weights, amp, radii))
     phis = [(math.pi * (x + 1) / 2, w / 2) for x, w in gauss_legendre(nphi)]
 
+    if v_number is None:
+        far, far_norm = (lambda sa: math.exp(-sa * sa / theta ** 2)), mode_norm(theta)
+    else:
+        far, far_norm = exact_far_field(v_number, mfd_um, nm)
+
     def ring(sv, dx, tilt):
         """The mode's far field averaged over the azimuth at sin(theta) = sv."""
         if dx == 0 and tilt == 0:
-            return math.exp(-sv * sv / theta ** 2)
+            return far(sv)
         c, st, ct, kx = math.sqrt(1 - sv * sv), math.sin(tilt), math.cos(tilt), 2 * math.pi * dx / lam
         total = 0
         for phi, w in phis:
             ca = sv * math.cos(phi) * st + c * ct
-            total += w * math.exp(-(1 - ca * ca) / theta ** 2) * cmath.exp(1j * kx * sv * math.cos(phi))
+            total += w * far(math.sqrt(max(0.0, 1 - ca * ca))) * cmath.exp(1j * kx * sv * math.cos(phi))
         return total
 
     out = []
@@ -199,7 +228,7 @@ def focus_values(system, z_focus, beta, mfd_um, shifts_mm, nr=256, delta=1e-5, o
         peak = sum(w * field(a, sv, j) * r * cmath.exp(-2j * math.pi * W) for w, a, r, (sv, j, W) in zip(weights, amp, radii, rows))
         over = sum(w * field(a, sv, j) * ring(sv, dx, tilt) * r * cmath.exp(-2j * math.pi * W)
                    for w, a, r, (sv, j, W) in zip(weights, amp, radii, rows))
-        out.append((abs(peak) ** 2 / norm, 2 * math.pi * abs(over) ** 2 / (power * mode_norm(theta))))
+        out.append((abs(peak) ** 2 / norm, 2 * math.pi * abs(over) ** 2 / (power * far_norm)))
     return out
 
 
@@ -331,6 +360,29 @@ def cases():
         "tolerance": {f"eta{i}": 1e-4 for i in range(len(shifts))},
         "note": "1024 Gauss-Legendre nodes (256 and 512 agree to 3e-9)",
     })
+    # The fiber coupling page's exact LP01 mode in place of the Gaussian: its
+    # example fiber (MFD 10.4 um, 1260 nm cutoff, V = 1.955 at 1550 nm) on
+    # the example lens, on the axis and set off one way at a time.
+    V = 2.404825557695773 * 1260 / 1550
+    for name, shifts, offsets in [
+        ("on the axis at F', 80 and 110 um before it", [0.0, -0.08, -0.11], None),
+        ("80 um before F', moved 2 um across or tilted by 20 and 100 mrad", [-0.08] * 3, [(2e-3, 0.0), (0.0, 0.02), (0.0, 0.1)]),
+    ]:
+        system, z_focus, beta = singlet("nbk7", 1550.0, *ex, 6.0, 2.0)
+        values = focus_values(system, z_focus, beta, 10.4, shifts, nr=256, offsets=offsets, v_number=V)
+        inputs = {"kind": "singlet", "glass": "nbk7", "wavelengthNm": 1550.0, "r1Mm": ex[0], "r2Mm": ex[1], "thicknessMm": ex[2],
+                  "diameterMm": 6.0, "beamDiameterMm": 2.0, "mfdUm": 10.4, "vNumber": V, "shiftsMm": shifts}
+        if offsets:
+            inputs["lateralUm"] = [dx * 1e3 for dx, _ in offsets]
+            inputs["tiltMrad"] = [t * 1e3 for _, t in offsets]
+        out.append({
+            "name": f"real singlet into the exact LP01 mode (MFD 10.4 um, V = 1.955): the example lens, 2 mm beam, {name}",
+            "inputs": inputs,
+            "expected": {f"eta{i}": sig(eta, 6) for i, (_, eta) in enumerate(values)},
+            "tolerance": {f"eta{i}": 1e-4 for i in range(len(shifts))},
+            "absolute": True,
+            "note": "the mode's far field from its closed form, as a spline in this file and evaluated directly in the app; its tilted far field over the whole azimuth here (160 nodes), over the arc where it exceeds 1e-5 of its peak in the app (128 nodes)",
+        })
     # The example lens's coupling at F' over the whole pupil, in two
     # dimensions (lens_coherent.coupling centres its sphere on the core, so
     # off the focus it is a slightly different approximation).
@@ -361,10 +413,10 @@ MODEL = {
         "H. Kogelnik and T. Li, Appl. Opt. 5, 1550-1567 (1966), doi:10.1364/AO.5.001550 (the ABCD law for the complex beam parameter)",
     ],
     "provenance": "The closed forms written from the cited articles; the interface and slab matrices are the standard ray-transfer matrices; the ray trace and quadrature are this repository's independent Python lens references.",
-    "domain": "Eight singlets (plano-convex both ways, bi-convex, positive meniscus, bi-concave, a thick CaF2 lens) from 587.6 to 4000 nm; eight designed from f (plano-convex both ways, equi-convex and best form, N-BK7, fused silica and CaF2, f from 4.42 to 100 mm, one near the strongest equi-convex lens its diameter allows); collimated beams of 0.5 to 10 mm; the designed plano-convex singlet at 1550 nm with 1.4 and 2 mm beams at the paraxial focus and 80 and 110 um before it, flat side first at 1000 nm where the page traces 4096 rays, a 200 um mode, and the fiber moved by up to 3 um across the axis or tilted by up to 100 mrad.",
+    "domain": "Eight singlets (plano-convex both ways, bi-convex, positive meniscus, bi-concave, a thick CaF2 lens) from 587.6 to 4000 nm; eight designed from f (plano-convex both ways, equi-convex and best form, N-BK7, fused silica and CaF2, f from 4.42 to 100 mm, one near the strongest equi-convex lens its diameter allows); collimated beams of 0.5 to 10 mm; the designed plano-convex singlet at 1550 nm with 1.4 and 2 mm beams at the paraxial focus and 80 and 110 um before it, flat side first at 1000 nm where the page traces 4096 rays, a 200 um mode, and the fiber moved by up to 3 um across the axis or tilted by up to 100 mrad; the example lens into the exact LP01 mode of the fiber coupling page's example fiber (V = 1.955), on the axis and moved 2 um across or tilted by 20 and 100 mrad.",
     "convergence": "Closed forms in double precision; the secant method to 1e-15. The radial quadrature: 96 nodes leave the flat-first singlet (tens of waves at the rim of its pupil) 7e-3 off, 160 nodes 3e-5, 256 nodes below 1e-6; at 1000 nm 256 nodes are 5e-6 off and 512 are used; the central difference uses 1e-5 of the pupil radius. The azimuth: 160 nodes, past convergence for these offsets. The 2-D check: 64 x 24 polar nodes and a degree-8 polynomial.",
     "tolerance_rationale": "1e-9 relative for the algebra and the designs. 1e-4 absolute on the singlet's peak and coupling, against differences found below 3e-6 (the two quadratures of the same model converge to the same value), and 1e-4 relative on the 200 um mode's small coupling, against 2e-5; expected values stored to 6 significant digits, as the last digits depend on the platform's maths library.",
     "outside_scope": "The page refuses wavelengths outside a glass's fitted range, afocal lenses, radii smaller than the clear radius, a focal length too short for the diameter and edge, a best form that is not bi-convex (n from 1.686), and beams whose lit pupil reaches NA 0.9; the real singlet is not traced when its faces cross at the clear diameter.",
     "fidelity": "computed",
-    "scope": "Paraxial first-order optics of a spherical singlet in air; a collimated TEM00 beam focused on axis, scalar and monochromatic, with a Gaussian fiber mode on the axis, or moved across it or tilted, one way at a time.",
+    "scope": "Paraxial first-order optics of a spherical singlet in air; a collimated TEM00 beam focused on axis, scalar and monochromatic, with a Gaussian fiber mode, or the exact LP01 mode of a step-index fiber, on the axis, or moved across it or tilted, one way at a time.",
 }

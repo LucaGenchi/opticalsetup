@@ -245,6 +245,15 @@
   .calc-block-note { width: auto; text-align: left; }
 }
 @media (max-width: 700px) { .calc-grid-2 { grid-template-columns: minmax(0, 1fr); } }
+/* A form's groups in two of three columns, its side tables in the third. */
+.calc-form-side { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+.calc-form-side > .calc-inputs { grid-column: span 2; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+.calc-form-side-tables { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+@media (max-width: 860px) {
+  .calc-form-side { grid-template-columns: minmax(0, 1fr); }
+  .calc-form-side > .calc-inputs { grid-column: auto; }
+}
+@media (max-width: 640px) { .calc-form-side > .calc-inputs { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---------- workbench: the form beside a live figure ---------- */
 .calc-workbench { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 18px; align-items: start; }

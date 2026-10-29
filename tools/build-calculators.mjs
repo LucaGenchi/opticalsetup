@@ -244,6 +244,16 @@ function layoutBlocks(calc, layout, prefix = 'calc', graphs = calc.graphs, first
       </div>
     </section>`;
     }
+    // A form with `side` tables: its groups in the first two of three
+    // columns, the tables in the third.
+    if (block.form && block.side) {
+      return `<section class="calc-block calc-form-side" aria-label="${esc(block.label)}">
+      <form class="calc-inputs" id="${block.form}-form" autocomplete="off" novalidate></form>
+      <div class="calc-form-side-tables">
+        ${resultTables({ results: block.side })}
+      </div>
+    </section>`;
+    }
     if (block.form) {
       return `<section class="calc-block"${block.form === 'calc' ? ' id="calculator"' : ''} aria-label="${esc(block.label)}">
       <form class="calc-inputs calc-grid-3" id="${block.form}-form" autocomplete="off" novalidate></form>${block.note ? `
