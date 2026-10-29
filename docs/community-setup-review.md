@@ -5,7 +5,7 @@ Audience: repo maintainers with merge rights on `main` (currently Luca Genchi an
 ## How it works, end to end
 
 1. A user submits a setup, either through the app's **Propose setup** button or a GitHub issue. This opens a GitHub issue with the scene attached.
-2. The **"Materialize example proposal"** workflow parses, validates, traces, and exports that scene, then opens a pull request titled **"Propose community setup: `<name>`"** that adds one file: `community-submissions/issue-N.json`.
+2. The **"Materialize example proposal"** workflow parses, validates, traces, and exports that scene, then opens a pull request titled **"Propose community setup: `<name>`"** that adds two files: `community-submissions/issue-N.json` and its tracer snapshot `test/golden/community-submissions-issue-N.json`, which the golden tests compare it with from then on. It recognises a proposal by the form's **OpticalSetup share link** heading, so a submitter who retitles the issue is still picked up. If the setup breaks a rule (no share link, acknowledgement not ticked, too large, …) it comments the reason on the issue; if the repository's own checks fail instead, the comment says that is for a maintainer.
 3. **Merging that PR is the approval.** There is no separate status field or flag to flip — if you merge it, it's approved; if you close it instead, it's rejected. Nothing else happens on close.
 4. Merging triggers the **"Publish approved community setups"** workflow, which runs `node tools/build-community.mjs` (deterministic — same input always produces the same output) and opens a *second* pull request titled **"Publish approved community setups"**, containing only the two generated files it produced: `community/<slug>/index.html` and `sketch/js/community-data.js`.
 5. **Merging that second PR publishes the setup with the next release** — it then appears on the public Community page and in the app's "From the community" dropdown. A community setup alone is a patch release (`v1.0.0 → v1.0.1`); see [release-policy.md](release-policy.md). Until releases are activated (the last section of that document), merging it makes the setup live at once, as before.
@@ -23,7 +23,9 @@ thread; link that comment in the field if you do. The app itself stays GPL-3.0-o
 Close a submission whose author cannot grant those rights — material copied from a paper,
 say. Citing a paper or describing published apparatus independently is fine.
 
-Two merges, both on github.com, both just the ordinary green **Merge pull request** button. No repository settings, admin overrides, or local terminal needed for the normal path.
+Two merges, both on github.com, each the ordinary green **Merge pull request** button after one click to start its checks (below). No repository settings, admin overrides, or local terminal needed for the normal path.
+
+**Starting the checks on a bot pull request.** Both pull requests are opened by a workflow with its built-in token, and GitHub does not run CI on those by itself: the run waits for approval from someone with write access. `main` requires a passing **CI / test** check, so nothing merges until you approve it. On the pull request, find the workflow run awaiting approval (in the merge box, or the **Checks** tab), click **Approve and run**, and wait for **CI / test** to pass. If `main` has moved on, **Update branch** first: that push is yours, so its CI starts on its own.
 
 (Why two PRs instead of one: `main` requires a reviewed pull request with no bypass for any bot identity, on purpose — publishing should never get a direct-push shortcut, regardless of what any current or future workflow tries to do. Every touch to `main` costs a human click.)
 
@@ -35,15 +37,21 @@ Two merges, both on github.com, both just the ordinary green **Merge pull reques
 2. Open the PR titled **"Propose community setup: ..."**.
 3. Read the description (it links back to the source GitHub issue and the submitter's write-up) and check the **Files changed** tab for the raw scene JSON.
 4. Optional — sanity-check it visually before merging; see "Verifying locally" below.
-5. **Approve:** click **Merge pull request** (the default "Create a merge commit" option is fine).
-6. **Reject:** click **Close pull request** instead. Nothing else is required — no generated files are ever touched by an unmerged proposal, so there's nothing to clean up.
+5. Start its checks: **Approve and run** the waiting workflow run and wait for **CI / test** to pass (see above).
+6. **Approve:** click **Merge pull request** (the default "Create a merge commit" option is fine).
+7. **Reject:** click **Close pull request** instead. Nothing else is required — no generated files are ever touched by an unmerged proposal, so there's nothing to clean up.
 
 ### Step 2 — publish the generated pages
 
 1. Give it a minute or two after merging Step 1 for the "Publish approved community setups" workflow to run. You can watch it on the [Actions tab](https://github.com/LucaGenchi/opticalsetup/actions) if you want.
 2. A new PR titled **"Publish approved community setups"** appears automatically.
 3. Open it and check the **Files changed** tab — it should touch exactly `community/<slug>/index.html` and `sketch/js/community-data.js`, nothing else. There's nothing to hand-edit; it's pure generated output.
-4. Click **Merge pull request**. The setup goes live with the next release (a patch release is enough; see [release-policy.md](release-policy.md)).
+4. Start its checks: **Approve and run** the waiting workflow run and wait for **CI / test** to pass.
+5. Click **Merge pull request**. The setup goes live with the next release (a patch release is enough; see [release-policy.md](release-policy.md)).
+
+### If the "Propose" PR never shows up
+
+Read the workflow's comment on the issue, or its run on the [Actions tab](https://github.com/LucaGenchi/opticalsetup/actions). Once the cause is fixed — the submitter has corrected the issue, or a maintainer has fixed the checks — run it again: **Actions → Materialize example proposal → Run workflow**, enter the issue number, and run it from `main`. The same works for an issue the workflow never saw. A re-run never replaces anything that already exists: it refuses an issue whose setup is already in `community-submissions/` (changed only by a reviewed pull request), and an issue whose proposal branch `example-proposal/issue-N` already exists. Update that pull request by hand. If the branch has no pull request (the run pushed it but failed to open one), open one from the branch: `gh pr create --base main --head example-proposal/issue-N --fill`. If its pull request was closed and you want the workflow to start over, delete the branch first.
 
 ### If the "Publish" PR never shows up
 

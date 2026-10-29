@@ -2,13 +2,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import assert from 'node:assert/strict';
 import { gzipSync } from 'node:zlib';
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
+  ProposalError,
   extractProposalIssue,
+  issueFromJSON,
   materializeProposal,
+  reportableError,
   sceneFromShareURL,
 } from '../scripts/materialize-example-proposal.mjs';
+import { goldenDifferences } from '../tools/golden-compare.mjs';
+import { goldenFor, sceneFromFile } from '../tools/update-golden.mjs';
 
 const scene = {
   app: 'optics2d',
@@ -203,4 +212,179 @@ test('a licence is recorded only when its own box is ticked', () => {
     'and where it can be read');
   assert.ok(Date.parse(granted.recordedAt) > 0, 'recordedAt says when this record was written');
   assert.equal(granted.formVersion, 'example-proposal/2026-09', 'and which wording was accepted');
+});
+
+// --- The workflow end to end ---------------------------------------------
+// Every run since the golden snapshots arrived (#174) failed its own test
+// step, because a new submission had no snapshot; and a proposal retitled to
+// its setup's name was skipped without a word.
+
+test('a proposal carries the tracer snapshot the golden test compares it with', () => {
+  const result = materializeProposal({
+    issueNumber: 42,
+    issueBody: issueBody(),
+    userLogin: 'example-contributor',
+    createdAt: '2026-07-22T10:30:00Z',
+  });
+  assert.equal(result.goldenFile, 'test/golden/community-submissions-issue-42.json',
+    'the name the golden test looks for');
+  assert.equal(result.proposalText, `${JSON.stringify(result.proposal, null, 2)}\n`);
+  const recorded = JSON.parse(result.goldenText);
+  assert.equal(recorded.elements, 2);
+  assert.deepEqual(goldenDifferences(recorded, goldenFor(sceneFromFile(result.proposalText))), [],
+    'the snapshot matches the committed file as the suite will trace it');
+  assert.match(result.prBody, /tracer snapshot recorded/);
+});
+
+test('the issue is read from the event payload or from the API, never from a pull request', () => {
+  const issue = { number: 7, body: 'text', user: { login: 'someone' }, created_at: '2026-10-06T11:03:19Z' };
+  const expected = { issueNumber: 7, issueBody: 'text', userLogin: 'someone', createdAt: '2026-10-06T11:03:19Z' };
+  assert.deepEqual(issueFromJSON({ action: 'opened', issue }), expected, 'issues event');
+  assert.deepEqual(issueFromJSON(issue), expected, 'REST API, for a maintainer re-run');
+  assert.throws(() => issueFromJSON({ ...issue, pull_request: { url: 'x' } }), /pull request/);
+  assert.throws(() => issueFromJSON(null), ProposalError);
+});
+
+test('only the script\'s own validation messages are quoted back to the submitter', () => {
+  assert.equal(reportableError(new ProposalError('Share link must use an official OpticalSetup address')),
+    'Share link must use an official OpticalSetup address');
+  assert.equal(reportableError(new ProposalError('two\nlines @someone `code`')), "two lines ＠someone 'code'",
+    'one line, no mention, no code span');
+  assert.equal(reportableError(new ProposalError('x'.repeat(400))).length, 300);
+  assert.equal(reportableError(new TypeError('Unknown element type: <script>')), '',
+    'an unexpected exception may echo scene content and is not quoted');
+});
+
+test('the CLI writes the proposal and its snapshot, reports a quotable error, and never overwrites an accepted setup', async () => {
+  const script = fileURLToPath(new URL('../scripts/materialize-example-proposal.mjs', import.meta.url));
+  const root = await mkdtemp(join(tmpdir(), 'opticalsetup-proposal-'));
+  try {
+    const run = async issue => {
+      const event = join(root, 'event.json');
+      const output = join(root, `output-${Math.random().toString(36).slice(2)}`);
+      await writeFile(event, JSON.stringify({ action: 'opened', issue }));
+      await writeFile(output, '');
+      const result = spawnSync(process.execPath, [script], {
+        cwd: root, encoding: 'utf8', timeout: 60000,
+        env: { ...process.env, ISSUE_JSON: event, GITHUB_OUTPUT: output, RUNNER_TEMP: root },
+      });
+      assert.ifError(result.error);
+      const outputs = Object.fromEntries((await readFile(output, 'utf8')).trim().split('\n')
+        .filter(Boolean).map(line => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)]));
+      return { status: result.status, outputs };
+    };
+    const issue = { number: 77, body: issueBody(), user: { login: 'example-contributor' }, created_at: '2026-10-06T11:03:19Z' };
+
+    const first = await run(issue);
+    assert.equal(first.status, 0);
+    assert.equal(first.outputs.proposal_file, 'community-submissions/issue-77.json');
+    assert.equal(first.outputs.golden_file, 'test/golden/community-submissions-issue-77.json');
+    assert.equal(first.outputs.error, undefined);
+    const written = await readFile(join(root, first.outputs.proposal_file), 'utf8');
+    const snapshot = JSON.parse(await readFile(join(root, first.outputs.golden_file), 'utf8'));
+    assert.deepEqual(goldenDifferences(snapshot, goldenFor(sceneFromFile(written))), []);
+
+    const again = await run(issue);
+    assert.equal(again.status, 1, 'an accepted setup is changed by a reviewed pull request, not a re-run');
+    assert.match(again.outputs.error, /already accepted as community-submissions\/issue-77\.json/);
+    assert.equal(await readFile(join(root, first.outputs.proposal_file), 'utf8'), written, 'and is left as it was');
+
+    const rejected = await run({ ...issue, number: 78, body: issueBody({ checked: false }) });
+    assert.equal(rejected.status, 1);
+    assert.match(rejected.outputs.error, /acknowledgement is required/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('the workflow recognises the form, can be re-run, and runs the suite as CI does', async () => {
+  const workflow = await readFile(new URL('../.github/workflows/example-proposal.yml', import.meta.url), 'utf8');
+  const ci = await readFile(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /contains\(github\.event\.issue\.body, '### OpticalSetup share link'\)/,
+    'a proposal retitled to its setup name is still a proposal');
+  assert.match(workflow, /workflow_dispatch:\s+inputs:\s+issue:/, 'a maintainer can run it for an issue');
+  for (const step of [/node-version: (\S+)/, /python-version: (\S+)/]) {
+    assert.equal(workflow.match(step)?.[1], ci.match(step)?.[1], `same ${step.source.split(':')[0]} as CI`);
+  }
+  assert.match(workflow, /run: npm ci/);
+  assert.match(workflow, /git add "\$PROPOSAL_FILE" "\$GOLDEN_FILE"/);
+  assert.match(workflow, /PROPOSAL_ERROR: \$\{\{ steps\.proposal\.outputs\.error \}\}/,
+    'the reason reaches the failure comment through the environment');
+  assert.doesNotMatch(workflow, /ISSUE_BODY: \$\{\{/, 'the issue body is read from a file, not pasted into the environment');
+});
+
+// Andrea's review of #293: a failure before validation (the toolchain, or
+// reading the issue) left the issue unanswered; a run that failed before
+// checkout could not comment at all; and a re-run could replace a proposal
+// branch a maintainer had already corrected. Telling a correction from the
+// bot's own commits proved unreliable (an amend keeps the bot as author), so
+// an existing branch is never replaced.
+test('every failure can be answered on the issue, even before checkout', async () => {
+  const workflow = await readFile(new URL('../.github/workflows/example-proposal.yml', import.meta.url), 'utf8');
+  const steps = [...workflow.matchAll(/^      - (?:name|uses): (.+)$/gm)].map(match => match[1]);
+  assert.equal(steps[0], 'Identify the issue', 'the issue number is known before anything else can fail');
+  assert.match(workflow, /if: failure\(\) && steps\.issue\.outputs\.number != ''/);
+  assert.doesNotMatch(workflow, /steps\.proposal\.outputs\.issue_number/);
+  assert.match(workflow, /^      GH_REPO: \$\{\{ github\.repository \}\}$/m, 'gh needs no checkout to find the repository');
+  assert.doesNotMatch(workflow, /--force|push -f/, 'nothing is ever force-pushed');
+});
+
+// The commit step's own shell script, exactly as the workflow runs it.
+function commitStepScript(workflow) {
+  const lines = workflow.slice(workflow.indexOf('- name: Commit the proposal branch')).split('\n');
+  const start = lines.findIndex(line => line.trim() === 'run: |') + 1;
+  const body = [];
+  for (const line of lines.slice(start)) {
+    if (line.trim() && !line.startsWith('          ')) break;
+    body.push(line.slice(10));
+  }
+  return body.join('\n');
+}
+
+test('a re-run never replaces an existing proposal branch', async t => {
+  if (spawnSync('git', ['--version']).status !== 0) return t.skip('git is not available');
+  const workflow = await readFile(new URL('../.github/workflows/example-proposal.yml', import.meta.url), 'utf8');
+  const root = await mkdtemp(join(tmpdir(), 'opticalsetup-proposal-branch-'));
+  const git = (cwd, ...args) => {
+    const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
+    assert.equal(result.status, 0, `git ${args.join(' ')}: ${result.stderr}`);
+    return result.stdout.trim();
+  };
+  try {
+    await writeFile(join(root, 'step.sh'), commitStepScript(workflow));
+    git(root, 'init', '-q', '--bare', 'remote.git');
+    git(root, 'init', '-q', 'work');
+    const work = join(root, 'work');
+    git(work, '-c', 'user.name=Main', '-c', 'user.email=main@example.com', 'commit', '-q', '--allow-empty', '-m', 'main');
+    git(work, 'remote', 'add', 'origin', join(root, 'remote.git'));
+    const run = async content => {
+      git(work, 'checkout', '-q', '--detach', git(work, 'rev-list', '--max-parents=0', 'HEAD', '--all').split('\n')[0]);
+      await writeFile(join(work, 'proposal.json'), content);
+      await writeFile(join(work, 'golden.json'), content);
+      const output = join(root, 'output');
+      await writeFile(output, '');
+      const result = spawnSync('bash', ['-e', '-o', 'pipefail', join(root, 'step.sh')], {
+        cwd: work, encoding: 'utf8',
+        env: {
+          ...process.env, GITHUB_OUTPUT: output, BRANCH_NAME: 'example-proposal/issue-9',
+          PROPOSAL_FILE: 'proposal.json', GOLDEN_FILE: 'golden.json', COMMIT_SUBJECT: 'Propose community setup: test',
+        },
+      });
+      return { status: result.status, output: await readFile(output, 'utf8') };
+    };
+    const tip = () => git(root, '--git-dir=remote.git', 'rev-parse', 'refs/heads/example-proposal/issue-9');
+
+    const first = await run('first\n');
+    assert.equal(first.status, 0, 'a new proposal branch is pushed');
+    assert.equal(first.output, '');
+    const pushed = tip();
+    assert.equal(git(root, '--git-dir=remote.git', 'show', `${pushed}:proposal.json`), 'first');
+
+    const again = await run('second\n');
+    assert.equal(again.status, 1, 'an existing branch stops the run');
+    assert.equal(again.output, 'branch_exists=true\n', 'and the issue is told why');
+    assert.equal(tip(), pushed, 'the existing branch, corrected or not, is left exactly as it was');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

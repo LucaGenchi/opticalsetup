@@ -124,12 +124,17 @@ Everything happens on github.com; the full guide is
 
 1. A user presses **Propose** in the app, or opens an issue.
 2. A workflow opens **Propose community setup: &lt;name&gt;**, which adds
-   `community-submissions/issue-<N>.json`. Review the scene, the description,
-   the issue and the recorded licence.
+   `community-submissions/issue-<N>.json` and its golden snapshot. Review the
+   scene, the description, the issue and the recorded licence. If no pull
+   request appears, the workflow says why on the issue; re-run it from
+   **Actions → Materialize example proposal → Run workflow** with the issue
+   number.
+   Its CI waits for approval, since a workflow opened it: click
+   **Approve and run** on the pull request and wait for **CI / test**.
 3. Merging approves it; closing rejects it.
 4. A second workflow opens **Publish approved community setups** with the
    generated page, `sketch/js/community-data.js` and `sitemap.xml`. Review it,
-   don't edit it, and merge it.
+   don't edit it, approve its CI run the same way, and merge it.
 5. The setup is now merged but not visible. It goes out with the next release
    (a patch); several setups can share one release.
 
