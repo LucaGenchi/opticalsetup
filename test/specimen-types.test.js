@@ -570,7 +570,7 @@ test('the timing warning speaks of the pairs the tracer makes, not one global pa
   assert.equal(bench.reading.overlap, 1);
   assert.doesNotMatch(bench.warning, /no signal is drawn/);
   assert.equal(bench.warning,
-    'The pair 800 nm at 37 MHz and 1040 nm at 80 MHz is not mixed: timing between different repetition rates is not modelled.');
+    'The pair 800 nm at 37 MHz and 1040 nm at 80 MHz is not mixed: timing between rates that are not one a whole multiple of the other is not modelled.');
   // With no pair it can time, the verdict is the global one.
   const none = timingBench([{ wl: 800, fs: 200, rate: 37 }, { wl: 1040, fs: 200 }]);
   assert.ok(!none.hasCars);
