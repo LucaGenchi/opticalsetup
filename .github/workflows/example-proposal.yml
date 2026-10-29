@@ -159,7 +159,7 @@ jobs:
           elif [[ "$PROPOSAL_OUTCOME" == "failure" ]]; then
             body="The setup could not be traced or exported, so no pull request was opened. A maintainer will look at the [workflow run]($run_url)."
           elif [[ "$BRANCH_EXISTS" == "true" ]]; then
-            body="This proposal already has its branch and pull request, so this run did not replace them. A maintainer will update the pull request by hand: see the [workflow run]($run_url)."
+            body="This proposal already has its branch, so this run left it as it is. A maintainer will update its pull request by hand, or open one from the branch if none was created: see the [workflow run]($run_url)."
           elif [[ "$CHECKS_OUTCOME" == "failure" ]]; then
             body="Your setup passed validation, but the repository's own checks failed, so no pull request was opened yet. This is for a maintainer to fix, not you: see the [workflow run]($run_url)."
           else
