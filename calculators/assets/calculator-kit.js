@@ -196,7 +196,8 @@ const el = (name, attrs = {}, parent) => {
 //            fill: 'light' | 'strong' (area down to zero), dash: true }]
 // options: { x: [...], xMin, xMax, xLabel, yLabel, yLog, yMin, yMax, marker: {x, y} | null,
 //            band: {lo, hi, label} | null, vlines: [{x, label, side}],
-//            xMarks: [{x, label, color}] (labels under the x axis, in colour),
+//            xMarks: [{x, label, color, textColor}] (labels under the x axis:
+//            a tick in `color`, the text in `textColor`, a readable variant),
 //            formatX, formatY, message }
 export function lineChart(host, table, options) {
   host.textContent = '';
@@ -335,7 +336,7 @@ export function lineChart(host, table, options) {
   for (const m of marks) {
     const xPos = sx(m.x);
     el('line', { class: 'chart-xmark', x1: xPos, x2: xPos, y1: pad.top + plotH, y2: pad.top + plotH + 6, stroke: `var(${m.color})` }, svg);
-    el('text', { class: 'chart-xmark-label', x: m.center, y: pad.top + plotH + 32 + 15 * m.row, 'text-anchor': 'middle', fill: `var(${m.color})` }, svg).textContent = m.label;
+    el('text', { class: 'chart-xmark-label', x: m.center, y: pad.top + plotH + 32 + 15 * m.row, 'text-anchor': 'middle', fill: `var(${m.textColor ?? m.color})` }, svg).textContent = m.label;
   }
   if (options.marker && Number.isFinite(options.marker.y)) {
     el('circle', { class: 'chart-marker', cx: sx(options.marker.x), cy: sy(options.marker.y), r: 5, fill: `var(${shown[0]?.color ?? '--series-1'})` }, svg);

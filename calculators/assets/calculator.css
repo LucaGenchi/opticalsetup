@@ -11,6 +11,10 @@
   --series-2: #eb6834;
   --series-3: #1baf7a;
   --series-4: #6c3678;
+  /* Text in a series colour (labels under a chart's axis): the same hues,
+     at 4.5:1 or more on the panel for small text. */
+  --series-2-text: #b8461b;
+  --series-4-text: #6c3678;
   --chart-grid: #e6eaf1;
   --chart-axis: #b8c1cf;
   /* Highlighted x interval (probed window, laser bandwidth): yellow, which
@@ -26,6 +30,8 @@
     --series-2: #d95926;
     --series-3: #199e70;
     --series-4: #934b98;
+    --series-2-text: #e8743f;
+    --series-4-text: #c084c4;
     --chart-grid: #1f2a3f;
     --chart-axis: #3a4a66;
     --chart-band: #ffd23f;

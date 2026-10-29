@@ -36,7 +36,7 @@ const { update } = mountCalculator({ inputs: CONVERSION_INPUTS, defaults: CONVER
       formatX: v => formatNumber(v, 6),
       series: colored.map(s => ({ key: s.role, name: s.role, values: s.values, fill: 'light', color: s.color })),
       // Each generated wave's central wavelength under the axis, in its colour.
-      xMarks: colored.filter(s => s.generated).map(s => ({ x: s.wave.wavelengthNm, label: s.wave.wavelengthNm.toFixed(1), color: s.color })) } };
+      xMarks: colored.filter(s => s.generated).map(s => ({ x: s.wave.wavelengthNm, label: s.wave.wavelengthNm.toFixed(1), color: s.color, textColor: `${s.color}-text` })) } };
   },
   rows: r => ({
     calc: [
