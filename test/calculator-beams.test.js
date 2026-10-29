@@ -276,7 +276,7 @@ test('the numbers quoted on the Gaussian beam and fiber coupling pages are the e
   says(`that is ${sigf(f.optimalFocalMm, 4)} mm.`);
   says(`the 11 mm lens the second part of the page starts from gives a ${sigf(2 * f.focusWaistUm, 4)} µm spot, and ${sigf(100 * f.matchEfficiency, 3)} %`);
   const set = setup({});
-  says(`from ${sigf(set.range.minMm, 4)} to ${sigf(set.range.maxMm, 4)} mm`);
+  says(`from ${set.range.shownMinMm} to ${set.range.shownMaxMm} mm`);
   const pc = set.suggestion;
   says(`a ${pc.diameterMm} mm ${pc.name} lens with a ${sigf(pc.radiusMm, 4)} mm radius, ${sigf(pc.thicknessMm, 4)} mm thick at the centre`);
   says(`Strehl ratio of ${sigf(pc.strehl, 3)}, and with the fiber ${sigf(-pc.shiftMm * 1e3, 3)} µm nearer the lens than F′ it couples ${sigf(100 * pc.efficiency, 3)} %`);
@@ -319,6 +319,9 @@ test('fiber coupling: the near-match range is where an ideal lens keeps 95 %', (
     const s = setup(x), v = s.values, eta = f => gaussianCoupling({ waistUm: focusWaist(v, f), modeRadiusUm: s.modeRadiusUm, wavelengthNm: v.wavelengthNm });
     close(eta(s.range.minMm), NEAR_MATCH, 1e-9, 'min');
     assert.ok(eta(0.99 * s.range.minMm) < NEAR_MATCH && eta(1.01 * s.range.minMm) > NEAR_MATCH);
+    // The ends the table shows, rounded inward, still keep the match.
+    assert.ok(eta(s.range.shownMinMm) >= NEAR_MATCH && s.range.shownMinMm >= s.range.minMm);
+    if (s.range.maxMm !== null) assert.ok(eta(s.range.shownMaxMm) >= NEAR_MATCH && s.range.shownMaxMm <= s.range.maxMm);
     if (s.range.maxMm === null) {
       // Open above: no lens focuses the beam wide enough to leave the range.
       assert.ok(eta(1e4) >= NEAR_MATCH * (1 - 1e-9));
@@ -336,7 +339,20 @@ test('fiber coupling: the near-match range is where an ideal lens keeps 95 %', (
   close(steep.range.minMm, paraxialMinFocalMm(sv.beamDiameterMm, sv.wavelengthNm));
   close(focusCollimated(sv.beamDiameterMm, sv.wavelengthNm, steep.range.minMm).beam.halfDivergenceMrad, PARAXIAL_LIMIT_MRAD, 1e-9);
   const part2 = f => computeFiberCoupling({ ...FIBER_DEFAULTS, mfdUm: 3.5, focalMm: f }).ok;
-  assert.ok(part2(steep.range.minMm * (1 + 1e-6)) && !part2(steep.range.minMm * 0.99));
+  // The shown lower end (3.334 mm, the exact limit being 3.3333378 mm) is
+  // the shortest 4-figure focal length the second part accepts.
+  const shown = steep.range.shownMinMm;
+  assert.equal(shown, 3.334);
+  assert.ok(part2(shown) && !part2(3.333) && !part2(steep.range.minMm * 0.99));
+  // Over many beams and wavelengths the shown lower end always passes, even
+  // where the limit's focal length lands a rounding error past it.
+  for (const wavelengthNm of [405, 633, 1064, 1550]) {
+    for (const beamDiameterMm of [0.5, 1, 2, 3.7, 6]) {
+      const lo = setup({ wavelengthNm, beamDiameterMm, mfdUm: 1.2 * wavelengthNm / 1000 / 0.3 * 2 / Math.PI * 1.001 });
+      if (!lo.ok || lo.optimalFocalMm === null || !lo.range.paraxialCut) continue;
+      assert.ok(computeFiberCoupling({ ...FIBER_DEFAULTS, ...lo.raw, focalMm: lo.range.shownMinMm }).ok, `${wavelengthNm} nm, ${beamDiameterMm} mm`);
+    }
+  }
   assert.ok(steep.range.minMm < steep.optimalFocalMm);
   // A beam 1.1 times the mode: still 95 % with no lens at all, so the range is open above.
   assert.equal(focalRange(0.0114, 1550, 5.2).maxMm, null);

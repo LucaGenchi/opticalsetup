@@ -36,8 +36,8 @@ function setupRows(r) {
     ['Convergence, half angle', f.beam.halfDivergenceMrad, 'mrad', 4],
     ['Rayleigh range of the input beam', f.input.rayleighMm / 1000, 'm', 4],
     { group: `Focal lengths that keep ${formatNumber(percent(r.range.eta), 3)} % or more` },
-    ['From', r.range.minMm, 'mm', 4],
-    r.range.maxMm === null ? ['To', 'any longer f'] : ['To', r.range.maxMm, 'mm', 4]];
+    ['From', r.range.shownMinMm, 'mm', 4],
+    r.range.shownMaxMm === null ? ['To', 'any longer f'] : ['To', r.range.shownMaxMm, 'mm', 4]];
   const s = r.suggestion;
   out.planoconvex = s.ok
     ? [{ group: `Plano-convex, ${s.name}, curved side toward the laser` },

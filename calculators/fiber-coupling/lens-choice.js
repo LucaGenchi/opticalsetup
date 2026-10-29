@@ -38,12 +38,26 @@ export function paraxialMinFocalMm(beamDiameterMm, wavelengthNm) {
   return matchingFocalMm(beamDiameterMm, wavelengthNm, wavelengthNm * 1e-3 / (Math.PI * PARAXIAL_LIMIT_MRAD * 1e-3));
 }
 
+// A positive value rounded to 4 significant figures toward the inside of a
+// range: up for its lower end, down for its upper one. The tolerance, a
+// millionth of the last digit, keeps a value already on a digit there.
+export function roundInward(x, up) {
+  const unit = 10 ** (Math.floor(Math.log10(x)) - 3);
+  const k = up ? Math.ceil(x / unit - 1e-6) : Math.floor(x / unit + 1e-6);
+  return Number((k * unit).toPrecision(4));
+}
+
 // The near-match range, cut where it leaves the paraxial domain
-// (`paraxialCut`: its formal lower end lies beyond the limit).
+// (`paraxialCut`: its formal lower end lies beyond the limit), and its ends
+// as the page shows them (`shownMinMm`, `shownMaxMm`): rounded inward, so a
+// value read off the table keeps the match and passes the paraxial limit
+// in the second part. The lower end is nudged up by 10⁻⁹ first, as the
+// limit's focal length can land a rounding error past it.
 export function paraxialFocalRange(beamDiameterMm, wavelengthNm, modeRadiusUm, eta = NEAR_MATCH) {
   const range = focalRange(beamDiameterMm, wavelengthNm, modeRadiusUm, eta);
   const floor = paraxialMinFocalMm(beamDiameterMm, wavelengthNm);
-  return floor !== null && range.minMm < floor ? { ...range, minMm: floor, paraxialCut: true } : { ...range, paraxialCut: false };
+  const cut = floor !== null && range.minMm < floor ? { ...range, minMm: floor, paraxialCut: true } : { ...range, paraxialCut: false };
+  return { ...cut, shownMinMm: roundInward(cut.minMm * (1 + 1e-9), true), shownMaxMm: cut.maxMm === null ? null : roundInward(cut.maxMm, false) };
 }
 
 // Mode matching of an aligned ideal thin lens against its focal length,
