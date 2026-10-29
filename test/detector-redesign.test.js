@@ -7,6 +7,7 @@ import { createElement, registry } from '../sketch/js/elements.js';
 import { traceAll } from '../sketch/js/raytrace.js';
 import { DETECTOR_TYPES } from '../sketch/js/detector-instruments.js';
 import { enhancedReading } from '../sketch/js/detector-measurements.js';
+import { resolveSourceSpectrum, spectrumStats } from '../sketch/js/spectrum.js';
 
 function screenFor(sensor, elements, view = 'main') {
   const display = createElement('display', sensor.x + 130, sensor.y + 80);
@@ -399,6 +400,73 @@ test('a broadband focus says which wavelength its waist is for', () => {
   assert.equal(wave.state, 'FOCUS PLANE');
   assert.ok(wave.wavelengthNm > 500 && wave.wavelengthNm < 650, `mean ${wave.wavelengthNm}`);
   assert.match(screenFor(detector, elements), new RegExp(`· AT ${Math.round(wave.wavelengthNm)} nm<`));
+});
+
+test('a slow cone on its focus is still a focus, not collimated', () => {
+  // 1 mm over 2 m: a 0.0286° cone, below the 0.05° that reads collimated
+  // either side of the focus.
+  const laser = createElement('cwlaser', 0, 0);
+  laser.params.beamMode = 'beam';
+  laser.params.beamWidth = 1;
+  const lens = createElement('lens', 100, 0);
+  lens.params.f = 2000;
+  const detector = createElement('wavefrontdetector', 2126, 0);
+  detector.params.aperture = 30;
+  const elements = [laser, lens, detector];
+  traceAll(elements);
+  const wave = enhancedReading(detector, elements).wavefront;
+  assert.equal(wave.state, 'FOCUS PLANE');
+  assert.ok(Math.abs(wave.divergenceDeg - 2 * Math.atan(0.5 / 2000) * 180 / Math.PI) < 1e-9, `cone ${wave.divergenceDeg}`);
+  assert.ok(Math.abs(wave.waistMm - 532e-6 / (Math.PI * Math.sin(Math.atan(0.5 / 2000)))) < 1e-9, `waist ${wave.waistMm}`);
+  const svg = screenFor(detector, elements);
+  assert.match(svg, />FOCUS PLANE</);
+  assert.match(svg, /w₀ 677 µm · zR 2710 mm</);
+});
+
+test('a lamp focus takes its waist at the spectrum\'s centre, not its brightest line', () => {
+  const lamp = createElement('pointsource', 0, 0);
+  lamp.params.sourceKind = 'lamp';
+  lamp.params.lampType = 'hg';
+  lamp.params.nrays = 360;
+  lamp.params.spread = 360;
+  const lens = createElement('lens', 100, 0);
+  lens.params.f = 50;
+  lens.params.dia = 60;
+  const detector = createElement('wavefrontdetector', 226, 0);
+  detector.params.aperture = 60;
+  const elements = [lamp, lens, detector];
+  traceAll(elements);
+  const wave = enhancedReading(detector, elements).wavefront;
+  assert.equal(wave.state, 'FOCUS PLANE');
+  // Mercury's lines weighed by their strengths centre near 504.5 nm; its
+  // brightest line, 435.8 nm, is what each ray's own wavelength names.
+  const centre = spectrumStats(resolveSourceSpectrum('pointsource', lamp.params).spec).center;
+  assert.ok(Math.abs(centre - 504.5) < 0.01, `centre ${centre}`);
+  assert.ok(Math.abs(wave.wavelengthNm - centre) < 1e-6, `waist taken at ${wave.wavelengthNm}`);
+  const na = Math.sin(wave.divergenceDeg * Math.PI / 360);
+  assert.ok(Math.abs(wave.waistMm - centre * 1e-6 / (Math.PI * na)) < 1e-12);
+});
+
+test('every focus plane line fits the screen', () => {
+  // Monospace glyphs advance about 0.6 of the font size; right-aligned at
+  // x = 35, a line must not run past the screen's left edge at -42.2.
+  const fits = svg => {
+    const readout = svg.slice(svg.indexOf('data-detector-readout="wavefrontdetector"'));
+    const lines = [...readout.matchAll(/<text x="35"[^>]*text-anchor="end" font-size="([\d.]+)"[^>]*>([^<]*)</g)];
+    assert.equal(lines.length, 4, 'state, cone, waist and intensity');
+    for (const [, size, text] of lines) {
+      assert.ok(text.length * 0.6 * Number(size) <= 77.2, `"${text}" at ${size} is too wide`);
+    }
+  };
+  const led = createElement('ledsource', 0, 0);
+  const lens = createElement('lens', 100, 0);
+  lens.params.f = 100;
+  const detector = createElement('wavefrontdetector', 226, 0);
+  const svg = screenFor(detector, [led, lens, detector]);
+  assert.match(svg, /CONE 5\.72° · AT \d+ nm</);
+  fits(svg);
+  const laser = focusScene(0);
+  fits(screenFor(laser.detector, laser.elements));
 });
 
 test('one ray, rays sharing one path, or a parallel bundle are not a focus', () => {

@@ -274,7 +274,12 @@ c-10,0,-16.667,5,-20,15z M188 15 H145 v585 v1200 v585 h43z"/></svg></span></span
         <p>With the sensor face exactly on the focus every ray lands at the same height, and
         there is no line to fit. The panel then reads <strong>FOCUS PLANE</strong>: the cone
         comes from the spread of the arriving angles alone, weighed by power like the fitted
-        cone either side, so it runs on continuously through the focus. The traced spot there
+        cone either side. For a slow cone the two agree, so the reading runs on continuously
+        through the focus; for a steep one they do not, because the fit takes angle as linear
+        in height, which overstates a wide cone. A 30&nbsp;mm beam through an
+        <span class="w">f</span>&nbsp;=&nbsp;10&nbsp;mm lens reads 127.4° a hundredth of a
+        millimetre either side of the focus, and 112.6° on it, the true
+        2&nbsp;atan(15/10). The traced spot there
         is a point, which no real beam reaches, so the panel also gives the
         <strong>waist</strong> <span class="w">w₀</span> and <strong>Rayleigh range</strong>
         <span class="w">z<sub>R</sub></span> an ideal Gaussian beam would have focused in that

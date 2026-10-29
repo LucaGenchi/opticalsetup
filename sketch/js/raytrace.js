@@ -622,7 +622,7 @@ function detectorConvergence(hits) {
       height: (h.u - 0.5) * (h.aperture || tlen),
       theta: Math.atan2(along, Math.abs(axial)),
       weight,
-      wl: h.wl,
+      wl: hitMeanWavelength(h),
     });
   }
   if (pts.length < 2) return null;
@@ -668,12 +668,27 @@ function detectorConvergence(hits) {
   };
 }
 
+// The centre of the light one hit carries. A lamp's `wl` is its brightest
+// line and a continuum's may sit off its middle, so read the spectrum the
+// hit carries where it has one.
+function hitMeanWavelength(hit) {
+  const readable = ['lines', 'gauss', 'flat'].includes(hit.spec?.kind) || Array.isArray(hit.spec?.w);
+  const center = readable ? spectrumStats(hit.spec)?.center : null;
+  if (Number.isFinite(center) && center > 0) return center;
+  if (hit.spectralContinuum && Number.isFinite(hit.spectralLo) && Number.isFinite(hit.spectralHi)) {
+    return (hit.spectralLo + hit.spectralHi) / 2;
+  }
+  return hit.wl;
+}
+
 // The light at a detector face that sits on its focus: the full cone of the
-// arriving rays, weighed like the fitted cone either side of the focus so the
-// reading runs on continuously through it, and the waist and Rayleigh range
-// of an ideal Gaussian beam focused in that cone at the light's mean
-// wavelength. The geometric spot is a point; the waist is the diffraction
-// limit a real beam cannot beat there.
+// arriving rays, weighed like the fitted cone either side of the focus. For
+// a slow cone the two agree and the reading runs on continuously through
+// the focus; for a steep one the fit, taking angle as linear in height,
+// overstates the cone either side, and this is the true one. Also the
+// waist and Rayleigh range of an ideal Gaussian beam focused in that cone
+// at the light's mean wavelength. The geometric spot is a point; the waist
+// is the diffraction limit a real beam cannot beat there.
 function focusConvergence(pts, totalWeight, meanTheta, weightedSpan) {
   const variance = pts.reduce((sum, point) => sum + point.weight / totalWeight * (point.theta - meanTheta) ** 2, 0);
   // One angle too, to rounding (the same relative threshold as the heights,
