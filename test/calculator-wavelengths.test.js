@@ -12,7 +12,11 @@ import { transformLimitedDurationFs } from '../sketch/js/spectrum.js';
 
 const close = (got, want, tol = 1e-9) => assert.ok(Math.abs(got - want) <= tol * Math.max(1, Math.abs(want)), `${got} != ${want}`);
 const dispersion = values => computeDispersion({ ...DISPERSION_DEFAULTS, ...values });
-const conversion = values => computeConversion({ ...CONVERSION_DEFAULTS, ...values });
+// The values these tests were written for; the page's own defaults are
+// checked separately below.
+const CONVERSION_BASE = { harmonicInputNm: 1064, harmonicBandwidthNm: 1, wave1Nm: 800, bandwidth1Nm: 10, wave2Nm: 1040, bandwidth2Nm: 10,
+  pumpNm: 1030, pumpBandwidthNm: 1, outputNm: 1550, outputBandwidthNm: 10, ramanPumpNm: 1030, ramanPumpBandwidthNm: 1, stokesNm: 1458 };
+const conversion = values => computeConversion({ ...CONVERSION_DEFAULTS, ...CONVERSION_BASE, ...values });
 const crs = values => computeCrs({ ...CRS_DEFAULTS, ...values });
 const resolution = values => computeResolution({ ...RESOLUTION_DEFAULTS, ...values });
 
@@ -154,7 +158,7 @@ test('nonlinear conversion: harmonics both ways, SFG, DFG and OPO', () => {
 
 test('nonlinear conversion: CARS and CSRS agree with the Coherent Raman calculator', () => {
   for (const [pumpNm, stokesNm] of [[1030, 1458], [800, 1040], [600, 1300]]) {
-    const r = conversion({ process: 'crs', pumpNm, stokesNm });
+    const r = conversion({ process: 'crs', ramanPumpNm: pumpNm, stokesNm });
     const ref = crs({ mode: 'pump-stokes', pumpNm, stokesNm });
     assert.equal(r.ok, true);
     close(r.ramanShiftCm, ref.ramanShiftCm);
@@ -162,10 +166,10 @@ test('nonlinear conversion: CARS and CSRS agree with the Coherent Raman calculat
     if (ref.csrsNm === null) assert.equal(r.waves.length, 3, 'no CSRS wave when it would be impossible');
     else close(r.waves[3].wavelengthNm, ref.csrsNm);
   }
-  for (const bad of [{ stokesNm: 1000 }, { stokesNm: 1030 }, { pumpNm: 100, stokesNm: 20000 }, { stokesNm: '' }]) {
+  for (const bad of [{ stokesNm: 1000 }, { stokesNm: 1030 }, { ramanPumpNm: 100, stokesNm: 20000 }, { stokesNm: '' }]) {
     const r = conversion({ process: 'crs', ...bad });
     assert.equal(r.ok, false, JSON.stringify(bad));
-    assert.ok(r.errors.every(e => ['pumpNm', 'stokesNm'].includes(e.id)), 'errors name the conversion page fields');
+    assert.ok(r.errors.every(e => ['ramanPumpNm', 'stokesNm'].includes(e.id)), 'errors name the conversion page fields');
   }
 });
 
@@ -215,11 +219,25 @@ test('nonlinear conversion bandwidths: harmonics by √n, SFG and DFG in quadrat
   const cw = conversion({ process: 'opo', outputBandwidthNm: 0 });
   close(cw.waves[2].bandwidthTHz, cw.waves[0].bandwidthTHz);
   // CARS counts the pump twice, CSRS the Stokes beam twice.
-  const crsWidths = conversion({ process: 'crs', pumpBandwidthNm: 2, stokesBandwidthNm: 5 });
+  const crsWidths = conversion({ process: 'crs', ramanPumpBandwidthNm: 2, stokesBandwidthNm: 5 });
   const [p, st, cars, csrs] = crsWidths.waves.map(w => w.bandwidthTHz);
   close(cars, Math.sqrt(2 * p * p + st * st));
   close(csrs, Math.sqrt(2 * st * st + p * p));
-  assert.equal(conversion({ process: 'crs', pumpNm: 600, stokesNm: 1300 }).waves.length, 3);
+  assert.equal(conversion({ process: 'crs', ramanPumpNm: 600, stokesNm: 1300 }).waves.length, 3);
+});
+
+test('nonlinear conversion: the page opens on each process with valid example values', () => {
+  const page = values => computeConversion({ ...CONVERSION_DEFAULTS, ...values });
+  const nm = r => r.waves.map(w => [w.wavelengthNm, Math.round(w.bandwidthNm * 1e9) / 1e9]);
+  assert.deepEqual(nm(page({ process: 'shg' }))[0], [1030, 10]);
+  assert.deepEqual(nm(page({ process: 'thg' }))[0], [1030, 10]);
+  for (const process of ['sfg', 'dfg']) assert.deepEqual(nm(page({ process })).slice(0, 2), [[1030, 2], [800, 2]]);
+  assert.deepEqual(nm(page({ process: 'opo' })).slice(0, 2), [[515, 1], [800, 1]]);
+  assert.deepEqual(nm(page({ process: 'crs' })).slice(0, 2), [[785, 1], [1030, 1]]);
+  for (const process of ['shg', 'thg', 'sfg', 'dfg', 'opo', 'crs']) {
+    const r = page({ process });
+    assert.ok(r.ok && !r.bandwidthNote && r.waves.every(w => w.bandwidthNm > 0), process);
+  }
 });
 
 test('nonlinear conversion bandwidths: input limit and spectra that reach zero frequency', () => {
@@ -245,7 +263,7 @@ test('nonlinear conversion bandwidths: input limit and spectra that reach zero f
   const farIdler = conversion({ process: 'opo', outputNm: 1030.001 });
   assert.ok(farIdler.ok && farIdler.waves.every(w => w.bandwidthTHz === null));
   assert.match(farIdler.bandwidthNote, /the idler spectrum/);
-  assert.match(conversion({ process: 'crs', stokesNm: 2000, pumpBandwidthNm: 400, stokesBandwidthNm: 900 }).bandwidthNote, /CSRS \(coherent Stokes\) spectrum/);
+  assert.match(conversion({ process: 'crs', stokesNm: 2000, ramanPumpBandwidthNm: 400, stokesBandwidthNm: 900 }).bandwidthNote, /CSRS \(coherent Stokes\) spectrum/);
   // At the λ/2 limit the spectrum still stays above zero frequency, so the
   // graph has finite coordinates and range (review of #294).
   for (const values of [{ harmonicBandwidthNm: 532 }, { process: 'thg', harmonicBandwidthNm: 532 },
@@ -282,7 +300,7 @@ test('nonlinear conversion bandwidths: each nm width is the FWHM of the drawn cu
 test('nonlinear conversion spectrum: sorted finite samples, unit peaks, lines for unmodelled widths', () => {
   for (const values of [{}, { process: 'thg' }, { process: 'sfg' }, { process: 'dfg' }, { process: 'sfg', bandwidth2Nm: 0 },
     { process: 'opo' }, { process: 'opo', outputNm: 2060 }, { process: 'opo', pumpBandwidthNm: 0, outputBandwidthNm: 0 },
-    { process: 'crs' }, { process: 'crs', pumpNm: 600, stokesNm: 1300 }, { process: 'dfg', wave1Nm: 1064, wave2Nm: 1064.5 }]) {
+    { process: 'crs' }, { process: 'crs', ramanPumpNm: 600, stokesNm: 1300 }, { process: 'dfg', wave1Nm: 1064, wave2Nm: 1064.5 }]) {
     const r = conversion(values);
     const { x, xMin, xMax, series } = conversionSpectrum(r);
     const label = JSON.stringify(values);

@@ -740,7 +740,7 @@
    "inputs": {
     "kind": "conversion",
     "process": "crs",
-    "pumpNm": 1030,
+    "ramanPumpNm": 1030,
     "stokesNm": 1458
    },
    "name": "CRS pump 1030 nm, Stokes 1458 nm",
@@ -779,7 +779,7 @@
    "inputs": {
     "kind": "conversion",
     "process": "crs",
-    "pumpNm": 800,
+    "ramanPumpNm": 800,
     "stokesNm": 1040
    },
    "name": "CRS pump 800 nm, Stokes 1040 nm",
@@ -818,7 +818,7 @@
    "inputs": {
     "kind": "conversion",
     "process": "crs",
-    "pumpNm": 1064.5,
+    "ramanPumpNm": 1064.5,
     "stokesNm": 1180.25
    },
    "name": "CRS pump 1064.5 nm, Stokes 1180.25 nm",
@@ -854,7 +854,7 @@
    "inputs": {
     "kind": "conversion",
     "process": "crs",
-    "pumpNm": 600,
+    "ramanPumpNm": 600,
     "stokesNm": 1300
    },
    "name": "CRS pump 600 nm, Stokes 1300 nm",
@@ -1351,8 +1351,8 @@
    "inputs": {
     "kind": "conversion",
     "process": "crs",
-    "pumpBandwidthNm": 1,
-    "pumpNm": 1030,
+    "ramanPumpBandwidthNm": 1,
+    "ramanPumpNm": 1030,
     "stokesBandwidthNm": 1,
     "stokesNm": 1458
    },
@@ -1382,8 +1382,8 @@
    "inputs": {
     "kind": "conversion",
     "process": "crs",
-    "pumpBandwidthNm": 2,
-    "pumpNm": 800,
+    "ramanPumpBandwidthNm": 2,
+    "ramanPumpNm": 800,
     "stokesBandwidthNm": 5,
     "stokesNm": 1040
    },
@@ -1411,8 +1411,8 @@
    "inputs": {
     "kind": "conversion",
     "process": "crs",
-    "pumpBandwidthNm": 1,
-    "pumpNm": 600,
+    "ramanPumpBandwidthNm": 1,
+    "ramanPumpNm": 600,
     "stokesBandwidthNm": 3,
     "stokesNm": 1300
    },

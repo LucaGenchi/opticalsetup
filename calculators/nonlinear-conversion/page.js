@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { CONVERSION_INPUTS, CONVERSION_DEFAULTS, computeConversion, conversionSpectrum } from './conversion-calculator.js';
+import { CONVERSION_INPUTS, CONVERSION_DEFAULTS, PROCESSES, computeConversion, conversionSpectrum } from './conversion-calculator.js';
 import { mountCalculator } from '../assets/simple-calculator-page.js';
 import { formatNumber } from '../assets/calculator-kit.js';
 
@@ -17,7 +17,7 @@ const BANDWIDTH_NOTES = {
   harmonic: 'Bandwidths for Gaussian spectra and a crystal that phase-matches the whole spectrum: the harmonic field is a power of the fundamental field, so its frequency FWHM is √2 (SHG) or √3 (THG) times wider, with or without a linear chirp. A narrower acceptance bandwidth narrows the harmonic.',
   fromHarmonic: 'Solving back from the harmonic gives the narrowest fundamental that could produce it; a limited phase-matching acceptance would need a broader one.',
   mixing: 'Bandwidths for Gaussian spectra and a crystal that phase-matches the whole spectrum: the frequency FWHMs add in quadrature. This holds for transform-limited pulses and for independent CW lines; chirped inputs can give a narrower output, and so can a narrower acceptance bandwidth.',
-  opo: 'The bandwidth of the output you enter is set by the cavity and phase matching, so it is yours to give. The other output is the pump–output difference frequency, so its frequency FWHM is the quadrature sum of theirs, as in DFG: for transform-limited pulses and independent CW lines, and the widest it can be.',
+  opo: 'The bandwidth of the output you enter is set by the cavity and phase matching, so it is yours to give; it may exceed the pump’s, because only the sum of the signal and idler frequencies is fixed. The other output is the pump–output difference frequency, so its frequency FWHM is the quadrature sum of theirs, as in DFG: for transform-limited pulses and independent CW lines, and the widest it can be.',
   crs: 'Bandwidths for transform-limited Gaussian pulses and an instantaneous response (non-resonant, or a Raman line broader than the excitation): CARS is E_p²E_S* and CSRS E_S²E_p*, so the frequency FWHMs add in quadrature with the twice-used beam counted twice. A narrow Raman line narrows CARS towards the pump width and CSRS towards the Stokes width; the Coherent Raman calculator gives the spectral resolution.',
 };
 const MIXING_NOTE = { sfg: 'mixing', dfg: 'mixing', opo: 'opo', crs: 'crs' };
@@ -25,8 +25,8 @@ const MIXING_NOTE = { sfg: 'mixing', dfg: 'mixing', opo: 'opo', crs: 'crs' };
 // colours that stay apart under colour-vision deficiency, in both themes.
 const GIVEN = ['--series-1', '--series-3'], MADE = ['--series-2', '--series-4'];
 
-mountCalculator({ inputs: CONVERSION_INPUTS, defaults: CONVERSION_DEFAULTS, hideInactive: true, groups: {
-  process: { title: 'Process' }, waves: { title: 'Wavelengths' },
+const { update } = mountCalculator({ inputs: CONVERSION_INPUTS, defaults: CONVERSION_DEFAULTS, hideInactive: true, groups: {
+  process: { title: 'Process' }, waves: { title: 'Wavelength' }, waves2: { title: 'Second wavelength' },
 }, compute: computeConversion,
   graphs: r => {
     const { x, xMin, xMax, series } = conversionSpectrum(r);
@@ -61,3 +61,28 @@ mountCalculator({ inputs: CONVERSION_INPUTS, defaults: CONVERSION_DEFAULTS, hide
     ...(r.process === 'crs' && r.waves.length < 4 ? ['No CSRS wavelength: the Raman frequency is not below the Stokes frequency.'] : []),
     'Energy conservation, and the widest Gaussian spectrum each generated wave can have. Phase matching, crystal choice, acceptance bandwidths, power and conversion efficiency are not modelled.'],
 });
+
+// While the boxes sit side by side, they take the height of the tallest
+// process, so the graph below stays put when the process changes: each
+// process is shown once, unpainted, to measure it, and the measure is redone
+// when the width changes. Stacked in one column (a phone), they keep their
+// own height rather than leave a gap.
+const form = document.getElementById('calc-form');
+function reserveInputHeight() {
+  const select = document.getElementById('in-process');
+  const chosen = select.value;
+  form.style.minHeight = '';
+  if (getComputedStyle(form).gridTemplateColumns.split(' ').length < 3) return;
+  let tallest = 0;
+  for (const [process] of PROCESSES) {
+    select.value = process;
+    update();
+    tallest = Math.max(tallest, form.offsetHeight);
+  }
+  select.value = chosen;
+  update();
+  form.style.minHeight = `${tallest}px`;
+}
+reserveInputHeight();
+let resizing;
+window.addEventListener('resize', () => { clearTimeout(resizing); resizing = setTimeout(reserveInputHeight, 150); });

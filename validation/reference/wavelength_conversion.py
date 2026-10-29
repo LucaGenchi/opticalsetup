@@ -206,7 +206,7 @@ def cases():
         p, s = hz(pump), hz(stokes)
         waves = [("pump", p), ("stokes", s), ("cars", 2 * p - s)] + ([("csrs", 2 * s - p)] if 2 * s > p else [])
         out.append(conversion_case(f"CRS pump {pump} nm, Stokes {stokes} nm",
-                                   {"process": "crs", "pumpNm": pump, "stokesNm": stokes}, waves,
+                                   {"process": "crs", "ramanPumpNm": pump, "stokesNm": stokes}, waves,
                                    {"ramanShiftCm": sig((p - s) / C_CM_PER_S)}))
     out.append({"name": "THG exact anchor: 1064 nm gives 1064/3 nm",
                 "inputs": {"kind": "conversion", "process": "thg", "known": "fundamental", "harmonicInputNm": 1064},
@@ -258,7 +258,7 @@ def cases():
         if 2 * s_hz > p_hz:
             waves.append((C_M_PER_S / (2 * s_hz - p_hz) * 1e9, generated_width_thz([gs, gs, gp.conjugate()])))
         out.append(bandwidth_case(f"CRS bandwidth, pump {bw_p} nm at {pump} nm, Stokes {bw_s} nm at {stokes} nm",
-                                  {"process": "crs", "pumpNm": pump, "stokesNm": stokes, "pumpBandwidthNm": bw_p, "stokesBandwidthNm": bw_s},
+                                  {"process": "crs", "ramanPumpNm": pump, "stokesNm": stokes, "ramanPumpBandwidthNm": bw_p, "stokesBandwidthNm": bw_s},
                                   waves))
 
     pump, stokes = hz(800), hz(1040)

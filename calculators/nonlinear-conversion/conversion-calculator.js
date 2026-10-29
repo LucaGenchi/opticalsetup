@@ -24,29 +24,33 @@ export const CONVERSION_INPUTS = [
   { id: 'known', group: 'process', label: 'Known wave', type: 'select', value: 'fundamental',
     options: [['fundamental', 'Fundamental → harmonic'], ['harmonic', 'Harmonic → fundamental']],
     when: 'process', whenValue: ['shg', 'thg'], help: 'Choose which wave you know.' },
-  { id: 'harmonicInputNm', group: 'waves', label: 'Known wavelength', unit: 'nm', value: 1064, ...SCOPE,
+  { id: 'harmonicInputNm', group: 'waves', label: 'Known wavelength', unit: 'nm', value: 1030, ...SCOPE,
     when: 'process', whenValue: ['shg', 'thg'], help: 'Vacuum wavelength of the wave chosen above.' },
-  { id: 'harmonicBandwidthNm', group: 'waves', label: 'Bandwidth of the known wave (FWHM)', unit: 'nm', value: 1, min: 0, max: 10000,
+  { id: 'harmonicBandwidthNm', group: 'waves', label: 'Bandwidth of the known wave (FWHM)', unit: 'nm', value: 10, min: 0, max: 10000,
     when: 'process', whenValue: ['shg', 'thg'], help: 'Gaussian spectrum; 0 for a single line. At most half the wavelength.' },
-  { id: 'wave1Nm', group: 'waves', label: 'Input wavelength λ₁', unit: 'nm', value: 800, ...SCOPE,
+  { id: 'wave1Nm', group: 'waves', label: 'Input wavelength λ₁', unit: 'nm', value: 1030, ...SCOPE,
     when: 'process', whenValue: ['sfg', 'dfg'], help: 'Either input; the order does not matter.' },
-  { id: 'wave2Nm', group: 'waves', label: 'Input wavelength λ₂', unit: 'nm', value: 1040, ...SCOPE,
-    when: 'process', whenValue: ['sfg', 'dfg'], help: 'For DFG it must differ from λ₁.' },
-  { id: 'bandwidth1Nm', group: 'waves', label: 'Bandwidth of λ₁ (FWHM)', unit: 'nm', value: 10, min: 0, max: 10000,
+  { id: 'bandwidth1Nm', group: 'waves', label: 'Bandwidth of λ₁ (FWHM)', unit: 'nm', value: 2, min: 0, max: 10000,
     when: 'process', whenValue: ['sfg', 'dfg'], help: 'Gaussian spectrum; 0 for a single line. At most half the wavelength.' },
-  { id: 'bandwidth2Nm', group: 'waves', label: 'Bandwidth of λ₂ (FWHM)', unit: 'nm', value: 10, min: 0, max: 10000,
-    when: 'process', whenValue: ['sfg', 'dfg'], help: 'As for λ₁.' },
-  { id: 'pumpNm', group: 'waves', label: 'Pump wavelength', unit: 'nm', value: 1030, ...SCOPE,
-    when: 'process', whenValue: ['opo', 'crs'], help: 'Vacuum wavelength of the pump.' },
+  { id: 'pumpNm', group: 'waves', label: 'Pump wavelength', unit: 'nm', value: 515, ...SCOPE,
+    when: 'process', whenValue: 'opo', help: 'Vacuum wavelength of the pump.' },
   { id: 'pumpBandwidthNm', group: 'waves', label: 'Bandwidth of the pump (FWHM)', unit: 'nm', value: 1, min: 0, max: 10000,
-    when: 'process', whenValue: ['opo', 'crs'], help: 'Gaussian spectrum; 0 for a single line. At most half the wavelength.' },
-  { id: 'outputNm', group: 'waves', label: 'Signal or idler wavelength', unit: 'nm', value: 1550, ...SCOPE,
+    when: 'process', whenValue: 'opo', help: 'Gaussian spectrum; 0 for a single line. At most half the wavelength.' },
+  { id: 'ramanPumpNm', group: 'waves', label: 'Pump wavelength', unit: 'nm', value: 785, ...SCOPE,
+    when: 'process', whenValue: 'crs', help: 'Vacuum wavelength of the pump.' },
+  { id: 'ramanPumpBandwidthNm', group: 'waves', label: 'Bandwidth of the pump (FWHM)', unit: 'nm', value: 1, min: 0, max: 10000,
+    when: 'process', whenValue: 'crs', help: 'Gaussian spectrum; 0 for a single line. At most half the wavelength.' },
+  { id: 'wave2Nm', group: 'waves2', label: 'Input wavelength λ₂', unit: 'nm', value: 800, ...SCOPE,
+    when: 'process', whenValue: ['sfg', 'dfg'], help: 'For DFG it must differ from λ₁.' },
+  { id: 'bandwidth2Nm', group: 'waves2', label: 'Bandwidth of λ₂ (FWHM)', unit: 'nm', value: 2, min: 0, max: 10000,
+    when: 'process', whenValue: ['sfg', 'dfg'], help: 'As for λ₁.' },
+  { id: 'outputNm', group: 'waves2', label: 'Signal or idler wavelength', unit: 'nm', value: 800, ...SCOPE,
     when: 'process', whenValue: 'opo', help: 'Either output; it must be longer than the pump. The other is solved.' },
-  { id: 'outputBandwidthNm', group: 'waves', label: 'Bandwidth of that output (FWHM)', unit: 'nm', value: 10, min: 0, max: 10000,
-    when: 'process', whenValue: 'opo', help: 'Set by the cavity and phase matching, so enter your own; 0 for a single line.' },
-  { id: 'stokesNm', group: 'waves', label: 'Stokes wavelength', unit: 'nm', value: 1458, ...SCOPE,
+  { id: 'outputBandwidthNm', group: 'waves2', label: 'Bandwidth of that output (FWHM)', unit: 'nm', value: 1, min: 0, max: 10000,
+    when: 'process', whenValue: 'opo', help: 'Set by the cavity and phase matching, so enter your own; it may exceed the pump’s. 0 for a single line.' },
+  { id: 'stokesNm', group: 'waves2', label: 'Stokes wavelength', unit: 'nm', value: 1030, ...SCOPE,
     when: 'process', whenValue: 'crs', help: 'Longer than the pump. The Coherent Raman calculator also solves from a Raman shift.' },
-  { id: 'stokesBandwidthNm', group: 'waves', label: 'Bandwidth of the Stokes beam (FWHM)', unit: 'nm', value: 1, min: 0, max: 10000,
+  { id: 'stokesBandwidthNm', group: 'waves2', label: 'Bandwidth of the Stokes beam (FWHM)', unit: 'nm', value: 1, min: 0, max: 10000,
     when: 'process', whenValue: 'crs', help: 'Gaussian spectrum; 0 for a single line. At most half the wavelength.' },
 ];
 export const CONVERSION_DEFAULTS = defaultsFor(CONVERSION_INPUTS);
@@ -127,13 +131,13 @@ export function computeConversion(raw) {
   if (p === 'crs') {
     // Two-color CARS and CSRS from the Coherent Raman calculator itself, so
     // both pages decline the same inputs; its field names map onto ours.
-    const r = computeCrs({ ...CRS_DEFAULTS, mode: 'pump-stokes', pumpNm: v.pumpNm, stokesNm: v.stokesNm });
-    if (!r.ok) return { ok: false, errors: r.errors.map(e => ({ ...e, id: e.id === 'stokesNm' ? 'stokesNm' : 'pumpNm' })) };
-    const errors = [inputWidthError('pumpBandwidthNm', 'Bandwidth of the pump', v.pumpNm, v.pumpBandwidthNm),
+    const r = computeCrs({ ...CRS_DEFAULTS, mode: 'pump-stokes', pumpNm: v.ramanPumpNm, stokesNm: v.stokesNm });
+    if (!r.ok) return { ok: false, errors: r.errors.map(e => ({ ...e, id: e.id === 'stokesNm' ? 'stokesNm' : 'ramanPumpNm' })) };
+    const errors = [inputWidthError('ramanPumpBandwidthNm', 'Bandwidth of the pump', v.ramanPumpNm, v.ramanPumpBandwidthNm),
       inputWidthError('stokesBandwidthNm', 'Bandwidth of the Stokes beam', v.stokesNm, v.stokesBandwidthNm)].filter(Boolean);
     if (errors.length) return { ok: false, errors };
     // CARS is E_p²E_S*, CSRS E_S²E_p*: the field that appears twice counts twice.
-    const [wp, ws] = [widthTHz(v.pumpNm, v.pumpBandwidthNm), widthTHz(v.stokesNm, v.stokesBandwidthNm)];
+    const [wp, ws] = [widthTHz(v.ramanPumpNm, v.ramanPumpBandwidthNm), widthTHz(v.stokesNm, v.stokesBandwidthNm)];
     const csrs = r.csrsNm !== null;
     return { ok: true, process: p, bandwidths: true, ramanShiftCm: r.ramanShiftCm,
       ...withWidths([wave('Pump', r.pumpNm), wave('Stokes', r.stokesNm), wave('CARS (anti-Stokes)', r.antiStokesNm, true),
