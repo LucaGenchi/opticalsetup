@@ -133,6 +133,21 @@ export function pulseGateTransmission(pulse, sampleCount = 4096) {
     return drift < 1e-12 ? 1 : Math.ceil(1 / drift);
   }));
   const sampledPulseSpan = Math.max(count, slowCycleSamples, beatPulseSpan);
+  // Every gate locked to the train repeats after a whole number of pulses,
+  // and the pattern of all of them after the least common multiple of those.
+  // Spread samples can miss a feature one pulse wide in a long cycle -- a
+  // 1 kHz train picking one pulse in 80 000 of an 80 MHz one -- so when the
+  // samples have to be spread over a train that a slower one picks
+  // (coincidenceGate), the average is taken over every pulse of one whole
+  // pattern instead. Shorter patterns keep the consecutive samples below,
+  // whole cycles or within 1/4096 of them.
+  const picked = gates.some(g => g.pulsePicking);
+  const cycle = picked && sampledPulseSpan !== count ? lockedPulseCycle(gates, periodNs) : null;
+  if (cycle) {
+    let exact = 0;
+    for (let k = 0; k < cycle; k++) exact += pulseTransmissionAt(pulse, phaseNs + k * periodNs);
+    return exact / cycle;
+  }
   let passed = 0;
   for (let i = 0; i < count; i++) {
     // When a gate cycle contains more pulses than the bounded sample count,
@@ -143,6 +158,23 @@ export function pulseGateTransmission(pulse, sampleCount = 4096) {
     passed += pulseTransmissionAt(pulse, emissionTimeNs);
   }
   return passed / count;
+}
+
+// The number of pulses after which every gate's pattern on a train of period
+// `periodNs` repeats, when each gate's period is a whole number of pulses and
+// that number stays within MAX_LOCKED_CYCLE; null otherwise.
+const MAX_LOCKED_CYCLE = 1e6;
+function lockedPulseCycle(gates, periodNs) {
+  const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+  let cycle = 1;
+  for (const gate of gates) {
+    const pulses = 1000 / Math.min(1e6, Math.max(0.000001, gate.frequencyMHz || 1)) / periodNs;
+    const whole = Math.round(pulses);
+    if (!(whole >= 1) || Math.abs(pulses - whole) > 1e-9 * whole) return null;
+    cycle = cycle / gcd(cycle, whole) * whole;
+    if (cycle > MAX_LOCKED_CYCLE) return null;
+  }
+  return cycle;
 }
 
 // Time-domain trace a photodetector would show on an oscilloscope: where each

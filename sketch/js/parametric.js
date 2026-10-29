@@ -400,12 +400,15 @@ export function mixWavelength(kind, aWl, bWl) {
 // The product of two Gaussians in time: the mixed pulse is shorter than
 // either input, and a long pulse mixed with a short one takes the short
 // one's duration. This is the undepleted, transform-limited-Gaussian
-// statement, not a propagation calculation.
-export function mixDurationFs(aFs, bFs) {
+// statement, not a propagation calculation. A process taking several photons
+// from a beam goes as that power of its envelope (orderA, orderB, as in
+// mixOverlap): CARS, I_p^2 I_S, is (2/τ_p² + 1/τ_S²)^(-1/2).
+export function mixDurationFs(aFs, bFs, orderA = 1, orderB = 1) {
   const a = Number(aFs), b = Number(bFs);
-  if (!(a > 0)) return b > 0 ? b : null;
-  if (!(b > 0)) return a;
-  return 1 / Math.sqrt(1 / (a * a) + 1 / (b * b));
+  const photons = order => (Number.isFinite(order) && order >= 1 ? order : 1);
+  if (!(a > 0)) return b > 0 ? b / Math.sqrt(photons(orderB)) : null;
+  if (!(b > 0)) return a / Math.sqrt(photons(orderA));
+  return 1 / Math.sqrt(photons(orderA) / (a * a) + photons(orderB) / (b * b));
 }
 
 // How wide the mixed line is. Frequencies add, so for two uncorrelated
@@ -437,13 +440,13 @@ export function mixWidthNm(outWl, aWl, aFwhmNm, bWl, bFwhmNm) {
 // carries onward, so the stored phase reproduces that arrival.
 export function mixPulse(rayPulse, partnerPulse, {
   crystalId, kind, wl, bandwidthNm = 0, centerNs, oplMm = 0, repRateMHz, partnerPulseOffset = 0, periodNs = 0,
-  selfPulseOffset = 0, periodNsA = periodNs, periodNsB = periodNs,
+  selfPulseOffset = 0, periodNsA = periodNs, periodNsB = periodNs, orderA = 1, orderB = 1,
 } = {}) {
   const trains = [rayPulse, partnerPulse].filter(Boolean);
   if (!trains.length) return null;
   const timed = trains.find(t => t.repRateMHz > 0) || trains[0];
   const trainId = timed.sourceId || '';
-  const duration = mixDurationFs(rayPulse?.pulseWidthFs, partnerPulse?.pulseWidthFs);
+  const duration = mixDurationFs(rayPulse?.pulseWidthFs, partnerPulse?.pulseWidthFs, orderA, orderB);
   const rate = repRateMHz ?? timed.repRateMHz;
   const phaseNs = Number.isFinite(centerNs) ? centerNs - oplMm / C_MM_PER_NS : timed.phaseNs;
   // Both inputs' gates apply: each keeps the path it was imposed at, and is
@@ -543,8 +546,8 @@ export function mixOverlap(a, b, { orderA = 1, orderB = 1 } = {}) {
 // amplifier at 1 kHz. Both are taken as locked to one clock, as equal rates
 // are: each pulse of the slower train meets the nearest pulse of the faster
 // one, and the same pulse of the faster train every time, so only one fast
-// pulse in n takes part. Any other ratio has no such pattern here and is
-// reported as not modelled.
+// pulse in n takes part. Any other ratio, or one above a million, has no
+// such pattern here and is reported as not modelled.
 //
 // The result has the equal-rate fields, timed at the coincidence of the slow
 // train's pulse zero, plus what the slower train implies:
@@ -554,7 +557,9 @@ export function mixOverlap(a, b, { orderA = 1, orderB = 1 } = {}) {
 //       the arrival of its pulse that takes part (pulse-picking gates);
 //   selfPulseOffset, periodNsA, periodNsB -- which pulse of each train takes
 //       part, in that train's own periods, as partnerPulseOffset does.
-const MAX_TRAIN_RATIO = 1e7;
+// Up to 80 MHz beside 80 Hz: a detector averages a picked train exactly over
+// one whole pattern of up to a million pulses (pulseGateTransmission).
+const MAX_TRAIN_RATIO = 1e6;
 function trainRatioOverlap(a, b, { orderA = 1, orderB = 1 }, arrivalOf) {
   const repA = a.pulse.repRateMHz, repB = b.pulse.repRateMHz;
   const fastIsA = repA > repB;
@@ -600,6 +605,8 @@ export function coincidenceGate(overlap, oplMm, { high = 1, low = 0 } = {}) {
   return {
     opl: oplMm, frequencyMHz: overlap.repRateMHz, duty: 1 / overlap.ratio, shape: 'square',
     phaseNs: overlap.fastCoincidenceNs - overlap.fastPeriodNs / 2, high, low, depth: 1, invert: false,
+    // Averaged over every pulse of its pattern (pulseGateTransmission).
+    pulsePicking: true,
   };
 }
 

@@ -9,8 +9,8 @@ import assert from 'node:assert/strict';
 import { createElement, newSampleChannel, registry, channelWarning, specimenTimingReadout } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
 import { traceAll, detectorReading, specimenIncidentBeams, specimenTimingReading } from '../sketch/js/raytrace.js';
-import { mixOverlap, coincidenceGate } from '../sketch/js/parametric.js';
-import { gateTransmissionAt, C_MM_PER_NS } from '../sketch/js/pulses.js';
+import { mixOverlap, coincidenceGate, mixDurationFs } from '../sketch/js/parametric.js';
+import { gateTransmissionAt, pulseGateTransmission, C_MM_PER_NS } from '../sketch/js/pulses.js';
 import { allocateParametricAmplifier } from '../sketch/js/parametric-amplifier.js';
 
 const close = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg ?? ''} ${a} vs ${b}`);
@@ -65,6 +65,39 @@ test('the coincidence gate passes exactly the fast pulses a slow one meets', () 
   assert.equal(coincidenceGate(mixOverlap(beam(80), beam(80)), 0), null, 'equal rates pick nothing');
 });
 
+test('a detector averages a picked train exactly, however long its cycle', () => {
+  // 80 MHz beside 1 kHz: one pulse in 80 000 is met. With that pulse at 0.5
+  // and the rest at 1, the train passes 1 - 0.5/80000 on average, whichever
+  // pulse it is -- spread samples could miss it, or catch it too often.
+  const expected = 1 - 0.5 / 80000;
+  for (const metPulse of [0, 1, 12345, 79999]) {
+    const t = mixOverlap(beam(80), beam(0.001, metPulse * 12.5));
+    assert.equal(t.ratio, 80000);
+    const gate = coincidenceGate(t, 0, { high: 0.5, low: 1 });
+    const average = pulseGateTransmission({ repRateMHz: 80, pulseWidthFs: 200, phaseNs: 0, gates: [gate] });
+    close(average, expected, 1e-12, `met pulse ${metPulse}`);
+  }
+  // Shorter cycles: 4096 consecutive pulses, whole cycles for f/2 and f/1000
+  // and within 1/4096 of the depth otherwise.
+  for (const [n, tol] of [[2, 1e-12], [1000, 1e-12], [3, 0.5 / 4096], [7, 0.5 / 4096]]) {
+    const t = mixOverlap(beam(80), beam(80 / n, 12.5));
+    const gate = coincidenceGate(t, 0, { high: 0.5, low: 1 });
+    close(pulseGateTransmission({ repRateMHz: 80, pulseWidthFs: 200, phaseNs: 0, gates: [gate] }), 1 - 0.5 / n, tol, `f/${n}`);
+  }
+  // Above a million the pattern is not modelled.
+  assert.equal(mixOverlap(beam(80), beam(80 / 2e6)).unsupported, true);
+});
+
+test('the CARS train lasts as long as I_p^2 I_S does', () => {
+  // Two 200 fs Gaussian pulses: the plain product lasts 200/sqrt(2); with the
+  // pump counted twice, 200/sqrt(3).
+  close(mixDurationFs(200, 200), 200 / Math.SQRT2, 1e-9);
+  close(mixDurationFs(200, 200, 2, 1), 200 / Math.sqrt(3), 1e-9);
+  close(mixDurationFs(100, 400, 2, 1), 1 / Math.sqrt(2 / 100 ** 2 + 1 / 400 ** 2), 1e-9);
+  // Nonsense orders count one photon, never a non-finite duration.
+  for (const order of [0, -1, NaN, Infinity]) close(mixDurationFs(200, 200, order, 1), 200 / Math.SQRT2, 1e-9);
+});
+
 // Two lasers on one nonlinear specimen at the given rates, all on one path
 // length to it, read by a detector straight behind it.
 function bench({ rates = [80, 40], channel = ch('cars', { eff: 0.5 }), read = null } = {}) {
@@ -112,9 +145,11 @@ test('CARS between f and f/n: a picked Stokes keeps the level, a picked pump gai
   // large n is. Efficiency 0.5 times a gain of 1000 stops at 1.
   const amplifier = carsPower(bench({ rates: [0.08, 80] }).reading);
   close(amplifier / equal, 2, 1e-9, 'capped at efficiency 1');
-  // The signal is the coincidences' train.
+  // The signal is the coincidences' train, as long as I_p^2 I_S lasts.
   const trains = pickedStokes.reading?.pulse?.trains || [];
-  assert.ok(trains.some(t => t.repRateMHz === 40), JSON.stringify(trains.map(t => t.repRateMHz)));
+  const cars = trains.filter(t => t.repRateMHz === 40);
+  assert.ok(cars.length, JSON.stringify(trains.map(t => t.repRateMHz)));
+  close(cars[0].pulseWidthFs, 200 / Math.sqrt(3), 1e-6, 'CARS duration');
   assert.match(specimenTimingReadout(pickedStokes.timing),
     /arriving together, 100% temporal overlap; the 40 MHz pulses meet every second pulse of the 80 MHz train$/);
   assert.equal(warning, null, 'nothing to warn about');
@@ -151,6 +186,18 @@ test('the slower beam changes steadily, with nothing to lock in on', () => {
   assert.deepEqual((slow?.pulse?.trains || []).flatMap(t => t.gates || []), [], 'no modulation on the slower beam');
   close(slow.signal / without.signal, 1 + transferEff, 1e-9, 'a steady gain');
   assert.ok(plain.reading.signal > without.signal);
+});
+
+test('a 1 kHz train modulates an 80 MHz beam by the one pulse in 80 000 it meets', () => {
+  const without = bench({ rates: [80, 0.001], channel: ch('phase'), read: 800 }).reading;
+  const srs = bench({ rates: [80, 0.001], channel: ch('srs', { transferEff: 0.1 }), read: 800 }).reading;
+  const gates = (srs?.pulse?.trains || []).flatMap(t => t.gates || []);
+  assert.equal(gates.length, 1);
+  assert.equal(gates[0].frequencyMHz, 0.001);
+  // The met pulses lose half (capped), the others nothing: the average drops
+  // by 0.5/80000.
+  close(gates[0].high, 0.5, 1e-12);
+  close(srs.signal / without.signal, 1 - 0.5 / 80000, 1e-9);
 });
 
 test('SRS between rates says what it does not model', () => {

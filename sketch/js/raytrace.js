@@ -1035,7 +1035,7 @@ function averageGateTransmission(pulse) {
   // cached average.
   const key = [pulse.repRateMHz, pulse.pulseWidthFs, pulse.phaseNs, ...pulse.gates.flatMap(g => [
     g.opl, g.frequencyMHz, g.duty, g.phaseNs, g.shape || 'square', g.depth ?? 1,
-    g.symmetry ?? 1, g.invert ? 1 : 0, g.high ?? 1, g.low ?? 0,
+    g.symmetry ?? 1, g.invert ? 1 : 0, g.high ?? 1, g.low ?? 0, g.pulsePicking ? 1 : 0,
   ])].join('|');
   if (!gateTransmissionCache.has(key)) gateTransmissionCache.set(key, pulseGateTransmission(pulse));
   return gateTransmissionCache.get(key);
@@ -5517,6 +5517,7 @@ function interact(ray, hit) {
             strength = Math.min(1, eff * trainRatioGain(c.kind, ray, partner, timed.timing));
             train = mixPulse(ray.pulse, partner.pulse, {
               crystalId: s.el?.id || null, kind: c.kind, wl, ...trainTiming(timed.timing, ray.opl),
+              ...twoBeamOrders(c.kind, ray.wl, partner.wl),
             });
           }
         }
