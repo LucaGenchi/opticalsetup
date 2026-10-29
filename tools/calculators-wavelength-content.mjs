@@ -91,8 +91,8 @@ export const wavelengthCalculators = [
   },
   {
     slug: 'nonlinear-conversion', title: 'Nonlinear frequency conversion', script: 'page.js',
-    card: 'SHG, THG, SFG, DFG, OPO, CARS and CSRS wavelengths from energy conservation, with frequencies, photon energies and the widest bandwidth each generated wave can have.',
-    summary: 'Find the generated wavelength of second- and third-harmonic generation, sum- and difference-frequency generation, the signal and idler of an optical parametric oscillator, or the CARS and CSRS lines of a pump and Stokes pair. Every wave is shown as a vacuum wavelength, frequency and photon energy, and on a spectrum. Give the inputs a bandwidth to read the widest spectrum each generated wave can have.',
+    card: 'SHG, THG, SFG, DFG, OPO, CARS and CSRS wavelengths from energy conservation, with frequencies, photon energies and a Gaussian bandwidth estimate for each generated wave.',
+    summary: 'Find the generated wavelength of second- and third-harmonic generation, sum- and difference-frequency generation, the signal and idler of an optical parametric oscillator, or the CARS and CSRS lines of a pump and Stokes pair. Every wave is shown as a vacuum wavelength, frequency and photon energy, and on a spectrum. Give the inputs a bandwidth to read a Gaussian bandwidth estimate for each generated wave, under the assumptions stated for its process.',
     // Top to bottom: the process and wavelengths, the spectrum, the results.
     layout: [
       { form: 'calc', label: 'Process and wavelengths' },
@@ -101,7 +101,7 @@ export const wavelengthCalculators = [
     ],
     graphs: [{ id: 'spectrum', wide: true, title: 'Input and generated spectra', note: 'Each wave as a Gaussian in frequency, scaled to its own peak, so the heights do not compare powers; its bandwidth in nm is the FWHM of this curve. Given waves are blue and aqua, generated ones orange and plum, with their central wavelengths written under the axis in the same colour. A wave with zero bandwidth is a vertical line at its wavelength.' }],
     facts: [
-      { label: 'Model', html: 'Photon-energy conservation for χ⁽²⁾ and χ⁽³⁾ processes; the widest Gaussian spectrum of each generated wave, with the whole spectrum phase-matched. No crystal, phase-matching or efficiency model.' },
+      { label: 'Model', html: 'Photon-energy conservation for χ⁽²⁾ and χ⁽³⁾ processes; Gaussian bandwidth estimates under stated assumptions (whole spectrum phase-matched; a singly resonant OPO). No crystal, phase-matching or efficiency model.' },
       { label: 'Evidence', html: evidence },
       { label: 'Example', html: '1064 nm → 532 nm (SHG, as in NIST’s example <a class="cite" href="#ref-2">[2]</a>) and 354.67 nm (THG); a 515 nm-pumped OPO with an 800 nm signal has a 1445.6 nm idler. A 1 nm-wide 1064 nm fundamental gives a second harmonic at most 0.354 nm wide.' },
     ],
@@ -112,7 +112,7 @@ export const wavelengthCalculators = [
           caption: 'c = 299 792 458 m/s is the speed of light in vacuum and h = 6.626 070 15 × 10⁻³⁴ J s the Planck constant, both exact in the SI; E is shown in eV.' }],
         html2: '<p>Each input spectrum is a Gaussian in frequency. The bandwidth Δλ you enter (0 for a single line, at most half the wavelength) is the FWHM of that curve against wavelength. Its half-maximum points lie at c/(ν ∓ Δν/2), so the frequency FWHM Δν and Δλ are related by</p>',
         formulas2: [{ tex: String.raw`\Delta\lambda=\frac{c}{\nu-\Delta\nu/2}-\frac{c}{\nu+\Delta\nu/2}=\frac{c\,\Delta\nu}{\nu^2-\Delta\nu^2/4}\;\approx\;\frac{\lambda^2}{c}\,\Delta\nu` }],
-        html3: '<p>The approximation holds for a narrow spectrum. Generated widths are read back to nm the same way, so every width in nm is the FWHM of the curve drawn. When the crystal phase-matches the whole spectrum, the generated field is the product of the input fields and its spectrum the convolution of theirs; for Gaussians the frequency widths then add in quadrature, each field counted as often as it appears. That is the widest spectrum the inputs allow. The real width also depends on phase matching: an acceptance bandwidth smaller than this width narrows the generated spectrum, and the group-velocity mismatch between the waves can reshape it, as in the spectral compression of SHG below. Each process below gives the centre wavelength first, then the bandwidth.</p>',
+        html3: '<p>The approximation holds for a narrow spectrum. Generated widths are read back to nm the same way, so every width in nm is the FWHM of the curve drawn. When the crystal phase-matches the whole spectrum, the generated field is the product of the input fields and its spectrum the convolution of theirs; for Gaussians the frequency widths then add in quadrature, each field counted as often as it appears. For the harmonics, SFG, DFG and coherent Raman that is the widest spectrum the inputs allow; for the OPO it is an estimate in a stated regime. The real width also depends on phase matching: an acceptance bandwidth smaller than this width narrows the generated spectrum, and the group-velocity mismatch between the waves can reshape it, as in the spectral compression of SHG below. Each process below gives the centre wavelength first, then the bandwidth.</p>',
       },
       { id: 'harmonics', title: 'Harmonic generation (SHG and THG)',
         html: `<p>Second-harmonic generation (SHG) in a χ⁽²⁾ crystal combines two photons of the fundamental into one at twice its frequency. Third-harmonic generation (THG) combines three, either directly through χ⁽³⁾ or by cascading SHG with sum-frequency generation of the harmonic and the fundamental ${cite(1)}. The page solves either way, from the fundamental or from the harmonic:</p>`,

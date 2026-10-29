@@ -59,7 +59,7 @@ const { update } = mountCalculator({ inputs: CONVERSION_INPUTS, defaults: CONVER
     ...(r.waves.some(w => w.wavelengthNm > 20000) ? ['A wave lies beyond 20 µm, in the far infrared or terahertz range.'] : []),
     ...(r.degenerate ? ['Degenerate operation: signal and idler share one wavelength.'] : []),
     ...(r.process === 'crs' && r.waves.length < 4 ? ['No CSRS wavelength: the Raman frequency is not below the Stokes frequency.'] : []),
-    'Energy conservation, and the widest Gaussian spectrum each generated wave can have. Phase matching, crystal choice, acceptance bandwidths, power and conversion efficiency are not modelled.'],
+    'Energy conservation, and Gaussian bandwidth estimates under the stated assumptions. Phase matching, crystal choice, acceptance bandwidths, power and conversion efficiency are not modelled.'],
 });
 
 // While the boxes sit side by side, they take the height of the tallest

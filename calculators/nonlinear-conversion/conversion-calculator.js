@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Vacuum-wavelength energy conservation for the common nonlinear processes,
-// and the widest spectrum the inputs allow for each generated wave.
+// and Gaussian bandwidth estimates for each generated wave under stated
+// assumptions.
 import { mixWavelength } from '../../sketch/js/parametric.js';
 import { CRS_DEFAULTS, computeCrs } from '../coherent-raman/crs-calculator.js';
 import { defaultsFor, parseInputs, unavailable } from '../assets/calculator-inputs.js';
