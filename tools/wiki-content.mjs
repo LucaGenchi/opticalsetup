@@ -5107,6 +5107,19 @@ export const wikiEntries = [
         the setting it is, not as a measurement. The autocorrelation still cannot determine chirp itself; it is
         displaying the scene's propagation model and then applying the instrument's chosen
         deconvolution factor.</p>
+        <p>After a prism or grating has split the pulse into its colours, a <strong>Colours</strong>
+        row says how they arrive, measured from the traced colours across the band they cover.
+        <em>Parallel and overlapping</em> is one recombined beam, as a double-pass or
+        four-element compressor leaves it. <em>Parallel, side by side</em> gives the width they
+        span and its rate per nanometre: spatial chirp, as one pass of a prism or grating pair
+        leaves it. <em>At different angles</em> gives the angle they span and its rate per
+        nanometre: angular dispersion remains, as after a single prism, and there is then no
+        single duration to read. Colours count as parallel within 10&nbsp;µrad of the central
+        one and as overlapping within 0.01&nbsp;mm, the limits the duration uses. Two colours
+        are enough, so the row is there even where the duration is not, and colours found at
+        different angles always decline the duration. Each source gets one row, however wide its
+        beam; two sources get a row each. Every detector that reads the pulse shows the same
+        rows.</p>
         <h3>Cross-correlation mode</h3>
         <p><strong>Measurement mode</strong> switches the same box between correlating one
         source against itself and correlating <em>two</em> sources against each other. In
