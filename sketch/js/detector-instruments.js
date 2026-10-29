@@ -29,7 +29,7 @@ const DESCRIPTIONS = {
   detector: 'Measures the relative intensity incident on its active surface.',
   pmt: 'Amplifies a faint signal \u2014 fluorescence, microscopy, single-point detection \u2014 into a readable one, and reports whether it clears the tube\u2019s own dark floor.',
   powermeter: 'Reports absolute optical power by carrying each source\u2019s configured watts through everything that attenuated it on the way here.',
-  wavefrontdetector: 'Fits ray angle against position across its face to report whether the beam is collimated, converging or diverging, and its full cone angle; on a focus, the Gaussian waist and Rayleigh range of that cone.',
+  wavefrontdetector: 'Fits ray angle against position across its face to report whether the beam is collimated, converging or diverging, and its full cone angle; within three Rayleigh ranges of a focus, the Gaussian waist, its Rayleigh range and where it lies.',
   polarimeter: 'Reports polarization state, normalized Stokes parameters, and a visual linear, circular, elliptical, or unpolarized representation.',
   spectrometer: 'Reports centre wavelength, detected spectral range, bandwidth, and a qualitative spectrum.',
   generaldetector: 'Reports intensity, power, beam size, wavefront, polarization and Stokes parameters, wavelength and bandwidth, plus pulse repetition rate and duration.',
@@ -272,6 +272,14 @@ function metrics(entries, columns = 2) {
 // A waist or Rayleigh range: micrometres below a millimetre, three figures.
 function focusLength(mm) {
   return mm < 1 ? `${Number((mm * 1000).toPrecision(3))} µm` : `${Number(mm.toPrecision(3))} mm`;
+}
+
+// Where the waist is from the face: ahead (further along the beam), behind,
+// or on the face to within a thousandth of the Rayleigh range.
+function waistPlace(wave) {
+  const ahead = wave.waistAheadMm;
+  if (!Number.isFinite(ahead) || Math.abs(ahead) < 1e-3 * wave.rayleighMm) return 'ON THE FACE';
+  return `${focusLength(Math.abs(ahead))} ${ahead > 0 ? 'AHEAD' : 'BEHIND'}`;
 }
 
 function spectrumLabel(reading) {
@@ -1074,8 +1082,10 @@ function panel(sensor, reading, elements, view) {
       // still shrinks to the 74 units left of its right edge if it must.
       const line = (y, text) => `<text x="35" y="${y}" text-anchor="end" font-size="${Math.min(4.6, 74 / Math.max(1, text.length * 0.62)).toFixed(2)}" fill="#a99bd4">${esc(text)}</text>`;
       const at = reading.bandwidth > 0.05 && Number.isFinite(wave.wavelengthNm) ? ` · AT ${Math.round(wave.wavelengthNm)} nm` : '';
-      const gaussian = Number.isFinite(wave.waistMm) ? line(7, `w₀ ${focusLength(wave.waistMm)} · zR ${focusLength(wave.rayleighMm)}`) : '';
-      return header(name, 'WAVEFRONT + INTENSITY', reading.pulse) + `<text x="35" y="-6" text-anchor="end" font-size="8.2" font-weight="780" fill="#e9e3ff">${wave.state}</text>${line(1, `CONE ${wave.divergenceDeg.toFixed(2)}°${at}`)}${gaussian}${intensity}`;
+      const gaussian = Number.isFinite(wave.waistMm)
+        ? line(5.5, `w₀ ${focusLength(wave.waistMm)} · zR ${focusLength(wave.rayleighMm)}`) + line(11, `WAIST ${waistPlace(wave)}`) : '';
+      const low = `<text x="35" y="16.5" text-anchor="end" font-size="5.2" fill="#d9e8ee">INTENSITY Σw ${compactNumber(reading.signal)}</text>`;
+      return header(name, 'WAVEFRONT + INTENSITY', reading.pulse) + `<text x="35" y="-6.5" text-anchor="end" font-size="8.2" font-weight="780" fill="#e9e3ff">${wave.state}</text>${line(0, `CONE ${wave.divergenceDeg.toFixed(2)}°${at}`)}${gaussian}${gaussian ? low : intensity}`;
     }
     const divergence = wave.state === 'COLLIMATED' ? '0.00°' : `${wave.divergenceDeg.toFixed(2)}°`;
     return header(name, 'WAVEFRONT + INTENSITY', reading.pulse) + `<text x="35" y="-4" text-anchor="end" font-size="8.2" font-weight="780" fill="#e9e3ff">${wave.state}</text><text x="35" y="4" text-anchor="end" font-size="5.2" fill="#a99bd4">DIVERGENCE ${divergence}</text>${intensity}`;
@@ -1104,12 +1114,13 @@ function panel(sensor, reading, elements, view) {
     const [power, unit] = formatPower(reading.detectedPowerW, reading.signal);
     const wavefront = reading.wavefront;
     const wave = wavefront.state === 'COLLIMATED' ? 'COLLIMATED' : `${wavefront.state} ${wavefront.divergenceDeg.toFixed(2)}°`;
-    // On a focus the traced spot is a point: the size worth reading is the
-    // Gaussian waist, and how far either side the beam stays that narrow.
+    // Near a focus the traced spot is a point or nearly: the size worth
+    // reading is the Gaussian waist, how far either side the beam stays that
+    // narrow, and where the waist lies.
     const focused = wavefront.state === 'FOCUS PLANE' && Number.isFinite(wavefront.waistMm);
-    const size = focused ? ['WAIST w₀', focusLength(wavefront.waistMm)]
+    const size = focused ? ['WAIST w₀ · zR', `${focusLength(wavefront.waistMm)} · ${focusLength(wavefront.rayleighMm)}`]
       : ['BEAM Ø', reading.beamDiameter > 0 ? `${reading.beamDiameter.toFixed(2)} mm` : 'POINT'];
-    const shape = focused ? ['FOCUS PLANE', `zR ${focusLength(wavefront.rayleighMm)}`] : ['WAVEFRONT', wave];
+    const shape = focused ? ['FOCUS PLANE', `WAIST ${waistPlace(wavefront)}`] : ['WAVEFRONT', wave];
     return header(name, 'ALL LIGHT PROPERTIES', reading.pulse) + metrics([
       ['POWER / INTENSITY', `${power} ${unit}`], size, shape,
       ['POLARIZATION', String(reading.polarization).toUpperCase()], ['WAVELENGTH', spectrumLabel(reading)], ['PULSE', reading.pulse ? `${pulseRate(reading.pulse)}·${pulseDuration(reading.pulse)}`.replace(/ /g, '') : 'CW'],

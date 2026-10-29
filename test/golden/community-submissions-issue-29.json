@@ -69,6 +69,7 @@
      "fullAngleDeg": 9.3375886,
      "rayleighMm": 0.0255598904,
      "slopePerMm": null,
+     "waistAheadMm": 0,
      "waistMm": 0.0020804648,
      "wavelengthNm": 532
     },

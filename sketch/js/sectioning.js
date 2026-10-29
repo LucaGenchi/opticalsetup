@@ -38,7 +38,7 @@ export const MAX_SPOTS = 16;
 
 // Below this convergence a bundle is treated as collimated: its focus is too
 // far away to place, and the specimen sees the same beam wherever it sits.
-const MIN_HALF_ANGLE = 1e-4;
+export const MIN_HALF_ANGLE = 1e-4;
 
 // The waist radius and Rayleigh range of an ideal (M² = 1) Gaussian beam
 // focused in air with numerical aperture `na` (the sine of its half-angle):

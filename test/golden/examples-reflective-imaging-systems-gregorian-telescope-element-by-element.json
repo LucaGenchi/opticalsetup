@@ -54,9 +54,14 @@
     "coherentPaths": 0,
     "color": "#a3ff00",
     "convergence": {
-     "diverging": true,
-     "fullAngleDeg": 17.5122817,
-     "slopePerMm": 428368.499
+     "atFocus": true,
+     "diverging": false,
+     "fullAngleDeg": 21.2764041,
+     "rayleighMm": 0.00513709948,
+     "slopePerMm": null,
+     "waistAheadMm": -0.00000223829668,
+     "waistMm": 0.000948342898,
+     "wavelengthNm": 550
     },
     "dark": false,
     "darkOutput": null,

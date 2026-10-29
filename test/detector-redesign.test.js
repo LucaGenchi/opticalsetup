@@ -348,14 +348,7 @@ function focusScene(offset, view) {
 }
 
 test('a wavefront detector on a focus reads the focus plane, not collimated', () => {
-  const before = focusScene(-0.01).reading.wavefront;
   const at = focusScene(0).reading.wavefront;
-  const after = focusScene(0.01).reading.wavefront;
-  // Just off the focus the fit is unchanged.
-  assert.equal(before.state, 'CONVERGING');
-  assert.equal(before.divergenceDeg.toFixed(2), '5.73');
-  assert.equal(after.state, 'DIVERGING');
-  assert.equal(after.divergenceDeg.toFixed(2), '5.73');
   // On it the heights collapse, and the cone is read from the angles alone:
   // the 10 mm beam's edge rays at 5 mm over 100 mm.
   assert.equal(at.state, 'FOCUS PLANE');
@@ -369,6 +362,60 @@ test('a wavefront detector on a focus reads the focus plane, not collimated', ()
   assert.ok(Math.abs(at.waistMm - w0) < 1e-9 * w0, `waist ${at.waistMm}`);
   assert.ok(Math.abs(at.rayleighMm - Math.PI * w0 * w0 / wlMm) < 1e-9, `zR ${at.rayleighMm}`);
   assert.ok(Math.abs(at.waistMm - 0.00339) < 5e-6 && Math.abs(at.rayleighMm - 0.0679) < 5e-5);
+  assert.equal(at.waistAheadMm, 0);
+});
+
+test('within three Rayleigh ranges of the waist a face still reads the focus plane', () => {
+  const at = focusScene(0).reading.wavefront;
+  const zone = 3 * at.rayleighMm; // 0.204 mm
+  // Before the waist it lies ahead, past it behind; the cone, waist and
+  // Rayleigh range are the focus's own wherever the face sits in the zone.
+  for (const offset of [-0.01, -0.1, -0.2, 0.01, 0.1, 0.2]) {
+    assert.ok(Math.abs(offset) < zone);
+    const wave = focusScene(offset).reading.wavefront;
+    assert.equal(wave.state, 'FOCUS PLANE', `at ${offset} mm`);
+    assert.ok(Math.abs(wave.waistAheadMm + offset) < 1e-9, `waist ${wave.waistAheadMm} at ${offset}`);
+    assert.ok(Math.abs(wave.divergenceDeg - at.divergenceDeg) < 1e-9);
+    assert.equal(wave.waistMm, at.waistMm);
+    assert.equal(wave.rayleighMm, at.rayleighMm);
+  }
+  // Beyond the zone the fit reads as before.
+  const before = focusScene(-0.21).reading.wavefront;
+  const after = focusScene(0.21).reading.wavefront;
+  assert.equal(before.state, 'CONVERGING');
+  assert.equal(before.divergenceDeg.toFixed(2), '5.73');
+  assert.equal(after.state, 'DIVERGING');
+  assert.equal(after.divergenceDeg.toFixed(2), '5.73');
+  assert.equal(focusScene(-5).reading.wavefront.state, 'CONVERGING');
+});
+
+test('the focus plane screens say where the waist is', () => {
+  const ahead = focusScene(-0.1), behind = focusScene(0.15);
+  assert.match(screenFor(ahead.detector, ahead.elements), />WAIST 100 µm AHEAD</);
+  assert.match(screenFor(behind.detector, behind.elements), />WAIST 150 µm BEHIND</);
+  const general = createElement('generaldetector', 227 - 0.1, 0);
+  general.params.aperture = 30;
+  const scene = ahead.elements.map(element => (element === ahead.detector ? general : element));
+  const svg = screenFor(general, scene);
+  assert.match(svg, />FOCUS PLANE<\/text>[^]*?>WAIST 100 µm AHEAD</);
+  assert.match(svg, />WAIST w₀ · zR<\/text>[^]*?>3\.39 µm · 67\.9 µm</);
+});
+
+test('a cone too slow to place its focus reads collimated off the focus', () => {
+  // 0.1 mm over 2 m: a 2.5e-5 half-angle, below the 1e-4 a specimen also
+  // takes as collimated. Its Rayleigh range (271 m) would swallow any bench.
+  const laser = createElement('cwlaser', 0, 0);
+  laser.params.beamMode = 'beam';
+  laser.params.beamWidth = 0.1;
+  const lens = createElement('lens', 100, 0);
+  lens.params.f = 2000;
+  const detector = createElement('wavefrontdetector', 1126, 0);
+  const elements = [laser, lens, detector];
+  traceAll(elements);
+  assert.equal(enhancedReading(detector, elements).wavefront.state, 'COLLIMATED');
+  detector.x = 2126;
+  traceAll(elements);
+  assert.equal(enhancedReading(detector, elements).wavefront.state, 'FOCUS PLANE');
 });
 
 test('the focus plane screens show the waist and Rayleigh range', () => {
@@ -377,6 +424,7 @@ test('the focus plane screens show the waist and Rayleigh range', () => {
   assert.match(svg, />FOCUS PLANE</);
   assert.match(svg, /CONE 5\.72°/);
   assert.match(svg, /w₀ 3\.39 µm · zR 67\.9 µm</);
+  assert.match(svg, />WAIST ON THE FACE</);
   assert.doesNotMatch(svg, /COLLIMATED|DIVERGENCE/);
 
   // The general detector's body is 54 mm deep: its face is 27 mm ahead.
@@ -384,8 +432,8 @@ test('the focus plane screens show the waist and Rayleigh range', () => {
   general.params.aperture = 30;
   const scene = elements.map(element => (element === detector ? general : element));
   const generalSvg = screenFor(general, scene);
-  assert.match(generalSvg, />WAIST w₀<\/text>[^]*?>3\.39 µm</);
-  assert.match(generalSvg, />FOCUS PLANE<\/text>[^]*?>zR 67\.9 µm</);
+  assert.match(generalSvg, />WAIST w₀ · zR<\/text>[^]*?>3\.39 µm · 67\.9 µm</);
+  assert.match(generalSvg, />FOCUS PLANE<\/text>[^]*?>WAIST ON THE FACE</);
   assert.doesNotMatch(generalSvg, /COLLIMATED|POINT/);
 });
 
@@ -453,7 +501,7 @@ test('every focus plane line fits the screen', () => {
   const fits = svg => {
     const readout = svg.slice(svg.indexOf('data-detector-readout="wavefrontdetector"'));
     const lines = [...readout.matchAll(/<text x="35"[^>]*text-anchor="end" font-size="([\d.]+)"[^>]*>([^<]*)</g)];
-    assert.equal(lines.length, 4, 'state, cone, waist and intensity');
+    assert.equal(lines.length, 5, 'state, cone, waist, its place and intensity');
     for (const [, size, text] of lines) {
       assert.ok(text.length * 0.6 * Number(size) <= 77.2, `"${text}" at ${size} is too wide`);
     }
@@ -467,6 +515,8 @@ test('every focus plane line fits the screen', () => {
   fits(svg);
   const laser = focusScene(0);
   fits(screenFor(laser.detector, laser.elements));
+  const near = focusScene(-0.2);
+  fits(screenFor(near.detector, near.elements));
 });
 
 test('one ray, rays sharing one path, or a parallel bundle are not a focus', () => {

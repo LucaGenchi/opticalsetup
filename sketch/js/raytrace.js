@@ -6,7 +6,7 @@
 // polygons (beam-mode envelope between the two edge rays).
 
 import { emissionRayCount } from './emission.js';
-import { NONLINEAR_ORDER, MAX_SPOTS, SPOT_SPACING_MM, bundleFocus, gaussianFocus, linearPathFraction, volumeEmissionPoints } from './sectioning.js';
+import { NONLINEAR_ORDER, MAX_SPOTS, MIN_HALF_ANGLE, SPOT_SPACING_MM, bundleFocus, gaussianFocus, linearPathFraction, volumeEmissionPoints } from './sectioning.js';
 import { POINT_SOURCE_CANVAS_THRESHOLD } from './point-source-rendering.js';
 
 import {
@@ -673,7 +673,12 @@ function detectorConvergence(hits) {
   // but the rays' angles still span the cone they converged in; rays at one
   // height and one angle are a single ray, with nothing to report.
   const reach = Math.max(1, ...pts.map(point => Math.abs(point.height)));
-  if (!(den > 1e-18 * reach * reach)) return focusConvergence(pts, totalWeight, mt, weightedSpan);
+  const focus = focusConvergence(pts, totalWeight, mt, weightedSpan);
+  if (!(den > 1e-18 * reach * reach)) return focus && { ...focus, waistAheadMm: 0 };
+  // Close to the focus the face still reads it, with how far away the waist
+  // lies: an exact hit is near impossible to place by hand.
+  const waistAheadMm = focus && waistWithinFocusZone(pts, totalWeight, focus);
+  if (Number.isFinite(waistAheadMm)) return { ...focus, waistAheadMm };
   const fittedSlope = num / den; // radians of tilt per mm of height
   const width = weightedSpan(den, pts.map(point => point.height));
   const fullAngleDeg = Math.abs(fittedSlope) * width * 180 / Math.PI;
@@ -721,6 +726,25 @@ function focusConvergence(pts, totalWeight, meanTheta, weightedSpan) {
   const { w0Mm, zRMm } = gaussianFocus(wavelengthNm, Math.sin(Math.min(Math.PI / 2, cone / 2)));
   if (![w0Mm, zRMm].every(value => Number.isFinite(value) && value > 0)) return focus;
   return { ...focus, wavelengthNm, waistMm: w0Mm, rayleighMm: zRMm };
+}
+
+// How many Rayleigh ranges either side of the waist a face still reads the
+// focus plane: there the beam is at most sqrt(10) times its waist.
+export const FOCUS_ZONE_RAYLEIGH = 3;
+
+// Where the waist lies along the beam from the face (positive: further
+// along), when the face is within FOCUS_ZONE_RAYLEIGH Rayleigh ranges of it;
+// otherwise null. The waist sits at the plane where the rays' spread is
+// least. A cone too slow to place its focus (as for a specimen) has none.
+function waistWithinFocusZone(pts, totalWeight, focus) {
+  if (!(focus.rayleighMm > 0) || !(focus.fullAngleDeg * Math.PI / 360 > MIN_HALF_ANGLE)) return null;
+  const lines = pts.map(point => ({ h: point.height, t: Math.tan(point.theta), f: point.weight / totalWeight }));
+  const mh = lines.reduce((sum, line) => sum + line.f * line.h, 0);
+  const mt = lines.reduce((sum, line) => sum + line.f * line.t, 0);
+  let cov = 0, varT = 0;
+  for (const line of lines) { cov += line.f * (line.h - mh) * (line.t - mt); varT += line.f * (line.t - mt) ** 2; }
+  const ahead = -cov / varT;
+  return Number.isFinite(ahead) && Math.abs(ahead) <= FOCUS_ZONE_RAYLEIGH * focus.rayleighMm ? ahead : null;
 }
 
 const MAX_SPECTRUM_SAMPLES = 24;
