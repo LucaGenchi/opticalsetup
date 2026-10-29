@@ -657,11 +657,11 @@ export const exampleEntries = [
       pulses 6.7&nbsp;ps apart — twice the distance, since the beam crosses the stage and
       comes back. The anti-Stokes line then disappears, and the SRS channel loses its
       transferred modulation and returns to its unmodulated level, which is what a bench
-      sees. The gate is one qualitative envelope, though, not a process-specific delay
-      response: neither the I<sub>p</sub>²I<sub>s</sub> weighting of a real non-resonant CARS
-      signal nor any resonant dynamics are modelled, the spread of arrival times across a
-      focused cone is not treated as a timing spread, and only trains at the same repetition
-      rate are judged at all. The 20&nbsp;MHz
+      sees. CARS is gated as the instantaneous, non-resonant signal, which goes as
+      I<sub>p</sub>²I<sub>s</sub>: the pump counts twice, so its timing window is narrower
+      than the stimulated Raman one. No resonant dynamics are modelled, the spread of arrival
+      times across a focused cone is not treated as a timing spread, and only trains at the
+      same repetition rate are judged at all. The 20&nbsp;MHz
       modulation is applied to the beam and detected, but no lock-in demodulation happens,
       and the shot-noise-limited sensitivity that makes SRS work in practice is outside
       what a ray tracer can express.</p>`,
@@ -961,7 +961,7 @@ export const exampleEntries = [
     ],
     resources: [
       { label: 'Wikipedia — Prism compressor', url: 'https://en.wikipedia.org/wiki/Prism_compressor' },
-      { label: 'Light Conversion Optics Toolbox — Two prism compressor', url: 'https://toolbox.lightcon.com/tools/prismpair' },
+      { label: 'Light Conversion Optics Toolbox — Two prism compressor, an outside calculator to double-check a prism pair’s GDD and TOD', url: 'https://toolbox.lightcon.com/tools/prismpair' },
     ],
     related: ['prism', 'glassrod', 'pulsedlaser', 'autocorrelator', 'pulsecompressor'],
   },

@@ -480,12 +480,18 @@ export function mixPulse(rayPulse, partnerPulse, {
 // the normalised overlap integral is exp[−4 ln2 Δt²/(τ₁² + τ₂²)] and the
 // product peaks at the weighted mean of the two arrivals.
 //
+// A process that takes more than one photon from a beam weighs that beam's
+// envelope more than once: CARS goes as I_p² I_s, pump and probe being one
+// beam. A Gaussian raised to the n-th power is a Gaussian of FWHM τ/√n, so
+// `orderA`/`orderB` divide each width² by the number of photons that beam
+// gives. Both default to one, the sum and difference frequency of two beams.
+//
 // Only trains at the same nominal repetition rate are modelled. Different
 // rates are not a physical "never": 80 and 60 MHz coincide at 20 MHz, and
 // slightly detuned trains sweep through the delay, which is what asynchronous
 // optical sampling uses. This model has no epoch bookkeeping for those, so it
 // reports them as unsupported rather than pretending to a result.
-export function mixOverlap(a, b) {
+export function mixOverlap(a, b, { orderA = 1, orderB = 1 } = {}) {
   const repA = a?.pulse?.repRateMHz, repB = b?.pulse?.repRateMHz;
   const arrivalOf = beam => (beam.opl || 0) / C_MM_PER_NS + (beam.pulse?.phaseNs || 0);
   const pulsedA = repA > 0, pulsedB = repB > 0;
@@ -512,8 +518,9 @@ export function mixOverlap(a, b) {
   // offset is reported alongside the remainder.
   const wrapped = ((tA - tB) % periodNs + periodNs + periodNs / 2) % periodNs - periodNs / 2;
   const partnerPulseOffset = Math.round((tA - tB) / periodNs);
-  const widthA = Math.max(1, a.pulse.pulseWidthFs || 100) * 1e-6;
-  const widthB = Math.max(1, b.pulse.pulseWidthFs || 100) * 1e-6;
+  const photons = order => (Number.isFinite(order) && order >= 1 ? order : 1);
+  const widthA = Math.max(1, a.pulse.pulseWidthFs || 100) * 1e-6 / Math.sqrt(photons(orderA));
+  const widthB = Math.max(1, b.pulse.pulseWidthFs || 100) * 1e-6 / Math.sqrt(photons(orderB));
   const factor = Math.exp(-4 * Math.LN2 * wrapped * wrapped / (widthA * widthA + widthB * widthB));
   // The product of the two envelopes peaks between them, nearer the shorter
   // pulse, which is what pins the signal down in time.

@@ -23,7 +23,7 @@ REFERENCE = os.path.join(ROOT, "validation", "reference")
 EXPECTED = os.path.join(ROOT, "validation", "expected")
 REPORT = os.path.join(ROOT, "docs", "validation.md")
 CONVERGENCE = os.path.join(ROOT, "validation", "expected", "convergence.json")
-MODULES = ["sellmeier", "pulse", "argon_capillary", "nlse", "paraxial", "opa", "broadband_interference", "wavelength_conversion", "material_dispersion", "fluorescence", "ray_path_phase", "fresnel"]
+MODULES = ["sellmeier", "pulse", "argon_capillary", "nlse", "paraxial", "opa", "broadband_interference", "wavelength_conversion", "material_dispersion", "fluorescence", "ray_path_phase", "fresnel", "dispersion_compensation", "lens_design", "lens_coherent", "gaussian_beam", "fiber_coupling", "point_scanning", "thick_lens"]
 
 sys.path.insert(0, REFERENCE)
 

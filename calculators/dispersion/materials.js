@@ -40,6 +40,8 @@ const catalogueGlass = (id, group, extra = {}) => {
 const MATERIAL_LIST = [
   catalogueGlass('nbk7', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
   catalogueGlass('nfk51a', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
+  catalogueGlass('nsk16', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
+  catalogueGlass('f2', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
   catalogueGlass('nsf5', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
   catalogueGlass('nsf10', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
   catalogueGlass('nsf11', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
@@ -119,7 +121,7 @@ function formulaTerms(material, um) {
 // n and dⁿn/dλⁿ (µm⁻ⁿ) at a vacuum wavelength in nm, or null outside the
 // fit domain. For 'sellmeier' the derivatives follow from S = n²:
 // S' = 2nn', S'' = 2n'² + 2nn'', S''' = 6n'n'' + 2nn'''.
-function indexDerivatives(id, wavelengthNm) {
+export function materialIndexDerivatives(id, wavelengthNm) {
   const material = MATERIALS.get(id);
   if (!material || !isInMaterialRange(id, wavelengthNm)) return null;
   const um = wavelengthNm / 1000;
@@ -138,7 +140,7 @@ function indexDerivatives(id, wavelengthNm) {
 // derivatives in µm⁻ᵏ, 1e21 converts β₂ to fs²/mm and 1e30 converts β₃ to
 // fs³/mm.
 export function materialDispersion(id, wavelengthNm) {
-  const d = indexDerivatives(id, wavelengthNm);
+  const d = materialIndexDerivatives(id, wavelengthNm);
   if (!d) return null;
   const { um, n, n1, n2, n3 } = d;
   const c = C_METRES_PER_SECOND;
@@ -154,6 +156,6 @@ export function materialDispersion(id, wavelengthNm) {
 // Abbe number V_d = (n_d − 1)/(n_F − n_C), or null when the F, d and C
 // lines are not all inside the material's fit domain.
 export function materialAbbe(id) {
-  const [nd, nF, nC] = [LINE_D, LINE_F, LINE_C].map(nm => indexDerivatives(id, nm)?.n);
+  const [nd, nF, nC] = [LINE_D, LINE_F, LINE_C].map(nm => materialIndexDerivatives(id, nm)?.n);
   return [nd, nF, nC].every(Number.isFinite) && nF !== nC ? (nd - 1) / (nF - nC) : null;
 }

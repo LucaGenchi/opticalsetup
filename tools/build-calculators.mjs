@@ -71,7 +71,7 @@ function header(base) {
   </header>`;
 }
 
-function head({ title, description, path, base, katex: withKatex }) {
+function head({ title, description, path, base, katex: withKatex, stylesheet = null }) {
   return `<!DOCTYPE html>
 <!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
      SPDX-License-Identifier: GPL-3.0-or-later
@@ -91,7 +91,7 @@ function head({ title, description, path, base, katex: withKatex }) {
 <link rel="icon" href="${base}${ICON}">
 ${withKatex ? `<link rel="stylesheet" href="${base}/wiki/assets/katex.min.css">\n` : ''}<link rel="stylesheet" href="${base}/wiki/assets/wiki.css">
 <link rel="stylesheet" href="${base}/calculators/assets/calculator.css">
-</head>`;
+${stylesheet ? `<link rel="stylesheet" href="${esc(stylesheet)}">\n` : ''}</head>`;
 }
 
 const footer = base => `
@@ -178,10 +178,12 @@ function columnsSection(slug, columns) {
     </section>`;
 }
 
-function graphsSection(calc) {
-  return calc.graphs.length ? `<section class="calc-graphs" aria-label="Graphs">
-      ${calc.graphs.map((g, i) => `<figure class="calc-chart${g.wide ? ' wide' : ''}" id="chart-${g.id}">
-        <figcaption><span class="chart-num">${i + 1}</span><span><b>${esc(g.title)}</b><br><span class="chart-note">${esc(g.note)}</span></span></figcaption>
+// A list of graphs, numbered from `first`: the page's own (`calc.graphs`),
+// or a panel's, which follow it directly and continue the numbering.
+function graphsSection(calc, graphs = calc.graphs, first = 1) {
+  return graphs.length ? `<section class="calc-graphs" aria-label="Graphs">
+      ${graphs.map((g, i) => `<figure class="calc-chart${g.wide ? ' wide' : ''}" id="chart-${g.id}">
+        <figcaption><span class="chart-num">${first + i}</span><span><b>${esc(g.title)}</b><br><span class="chart-note">${esc(g.note)}</span></span></figcaption>
         <div class="chart-host" data-chart="${g.id}"></div>
         <details class="chart-data"><summary>Data table</summary><div class="chart-table" data-table="${g.id}"></div></details>
       </figure>`).join('\n      ')}
@@ -192,14 +194,32 @@ function graphsSection(calc) {
 // (their groups side by side, three to a row, with an optional note under
 // the first two), the graphs, the results
 // (status, tables two to a row, notes) and titled groups of further tables.
-// The extra `panels` follow the last block.
-function layoutSection(calc) {
-  const { slug, layout } = calc;
-  if (layout[0]?.form !== 'calc' || layout.filter(b => b.output).length !== 1 || layout.filter(b => b.graphs).length !== (calc.graphs.length ? 1 : 0)) {
-    throw new Error(`${slug}: a layout needs the calc form first, one output block and, with graphs, one graphs block`);
+// The extra `panels` follow the last block; a panel with its own `layout`
+// (whose first form is the panel's id) is laid out the same way, with its
+// own `graphs` continuing the page's numbering.
+function layoutBlocks(calc, layout, prefix = 'calc', graphs = calc.graphs, first = 1) {
+  if (layout[0]?.form !== prefix || layout.filter(b => b.output).length !== 1 || layout.filter(b => b.graphs).length !== (graphs.length ? 1 : 0)) {
+    throw new Error(`${calc.slug}: a layout needs the ${prefix} form first, one output block and, with graphs, one graphs block`);
   }
-  const blocks = layout.map(block => {
-    if (block.graphs) return graphsSection(calc);
+  return layout.map(block => {
+    if (block.graphs) return graphsSection(calc, graphs, first);
+    // The main form beside a live figure of what it describes, with a short
+    // results table and the reset under the figure.
+    if (block.form && block.preview) {
+      return `<section class="calc-workbench" id="calculator" aria-label="${esc(block.label)}">
+      <form class="calc-inputs" id="${block.form}-form" autocomplete="off" novalidate></form>
+      <div class="calc-workbench-side">
+        <figure class="calc-preview">
+          <div class="calc-preview-figure" id="preview-figure"></div>
+          <figcaption id="preview-caption"></figcaption>
+          <p class="calc-preview-note" id="preview-note"></p>
+          <a class="btn calc-preview-open" id="preview-open" target="_blank" rel="noopener" aria-disabled="true">${esc(block.preview)}</a>
+        </figure>
+        <table class="calc-results" id="${block.results}-results" aria-label="${esc(block.resultsLabel)}"></table>
+        <div class="calc-actions" id="${prefix}-actions"></div>
+      </div>
+    </section>`;
+    }
     if (block.form) {
       return `<section class="calc-block"${block.form === 'calc' ? ' id="calculator"' : ''} aria-label="${esc(block.label)}">
       <form class="calc-inputs calc-grid-3" id="${block.form}-form" autocomplete="off" novalidate></form>${block.note ? `
@@ -210,11 +230,11 @@ function layoutSection(calc) {
         ${resultTables(block)}
       </div>`;
     if (block.output) {
+      const actions = layout.some(b => b.preview) ? '' : `\n      <div class="calc-actions" id="${prefix}-actions"></div>`;
       return `<section class="calc-block calc-results-block" aria-label="${esc(block.label)}">
-      <div class="calc-status" id="calc-status" role="status" aria-live="polite"></div>
+      <div class="calc-status" id="${prefix}-status" role="status" aria-live="polite"></div>
       ${tables}
-      <ul class="calc-notes" id="calc-notes"></ul>
-      <div class="calc-actions" id="calc-actions"></div>
+      <ul class="calc-notes" id="${prefix}-notes"></ul>${actions}
     </section>`;
     }
     return `<section class="calc-block" aria-labelledby="${block.id}-title">
@@ -222,13 +242,59 @@ function layoutSection(calc) {
       ${tables}
     </section>`;
   });
+}
+
+function layoutSection(calc) {
+  let first = calc.graphs.length + 1;
+  const panels = (calc.panels ?? []).map(p => {
+    if (!p.layout) return panelSection(p.id, p);
+    const graphs = p.graphs ?? [];
+    const blocks = layoutBlocks(calc, p.layout, p.id, graphs, first);
+    first += graphs.length;
+    return `<section class="calc-panel" id="${p.id}-panel" aria-labelledby="${p.id}-title">
+      <div class="calc-panel-head">
+        <h2 id="${p.id}-title">${esc(p.title)}</h2>
+        ${p.intro ? `<p>${p.intro}</p>` : ''}
+      </div>
+    ${blocks.join('\n    ')}
+    </section>`;
+  });
   return [`<noscript><p class="calc-status is-error">This calculator needs JavaScript. The physics and formulas below read without it.</p></noscript>`,
-    ...blocks, ...(calc.panels ?? []).map(p => panelSection(p.id, p))].join('\n    ');
+    ...layoutBlocks(calc, calc.layout), ...panels].join('\n    ');
 }
 
 // Links into the repository must name a file that exists here, so a page
 // cannot ship a link that 404s once its branch is merged.
 const REPO_BLOB = 'https://github.com/LucaGenchi/opticalsetup/blob/main/';
+// A workbench: an editor on the left and tabbed analyses on the right, for a
+// page whose inputs are a table rather than a form (the lens designer). The
+// page script builds the editor and fills each tab's plot and body; the
+// generator writes the frame, the tabs and each tab's "Model and
+// assumptions" text, so those read without JavaScript.
+function workbenchSection(calc) {
+  const { slug, workbench } = calc;
+  if (!workbench.tabs?.length || workbench.tabs.some(t => !/^[a-z][a-z0-9-]*$/.test(t.id) || !t.title || !t.assumptions)) {
+    throw new Error(`${slug}: a workbench needs tabs, each with a lowercase id, a title and its assumptions`);
+  }
+  const tabs = workbench.tabs;
+  return `<noscript><p class="calc-status is-error">This calculator needs JavaScript. The physics and formulas below read without it.</p></noscript>
+    <section class="bench" id="calculator" aria-label="${esc(workbench.label)}">
+      <div class="bench-editor" id="bench-editor"></div>
+      <div class="bench-results">
+        <div class="bench-tabs" role="tablist" aria-label="Analyses">
+          ${tabs.map((t, i) => `<button type="button" role="tab" class="bench-tab" id="tab-${t.id}" aria-controls="panel-${t.id}" aria-selected="${i === 0}"${i ? ' tabindex="-1"' : ''}>${esc(t.title)}</button>`).join('\n          ')}
+        </div>
+        <div class="calc-status" id="calc-status" role="status" aria-live="polite"></div>
+        ${tabs.map((t, i) => `<div class="bench-panel" role="tabpanel" id="panel-${t.id}" aria-labelledby="tab-${t.id}"${i ? ' hidden' : ''}>
+          <div class="bench-plot" data-plot="${t.id}"></div>
+          <div class="bench-body" data-body="${t.id}"></div>
+          <details class="bench-model"><summary>Model and assumptions</summary>${t.assumptions}</details>
+        </div>`).join('\n        ')}
+        <ul class="calc-notes" id="calc-notes"></ul>
+      </div>
+    </section>`;
+}
+
 async function checkRepoLinks(label, text) {
   for (const m of text.matchAll(/https:\/\/github\.com\/LucaGenchi\/opticalsetup\/blob\/main\/([^"'#?\s)\\<]+)/g)) {
     const path = decodeURIComponent(m[1]);
@@ -260,7 +326,7 @@ function calculatorPage(calc) {
     title: `${calc.title} calculator — OpticalSetup`,
     description: calc.summary,
     path: `/calculators/${calc.slug}/`,
-    base, katex: true,
+    base, katex: true, stylesheet: calc.stylesheet,
   })}
 <body class="calc-body">
 ${header(base)}
@@ -269,7 +335,7 @@ ${header(base)}
     <h1>${esc(calc.title)}</h1>
     <p class="tagline">${esc(calc.summary)}</p>
 
-    ${calc.layout ? layoutSection(calc) : `${calc.columns ? columnsSection(calc.slug, calc.columns) : panelSection('calc')}
+    ${calc.workbench ? workbenchSection(calc) : calc.layout ? layoutSection(calc) : `${calc.columns ? columnsSection(calc.slug, calc.columns) : panelSection('calc')}
     ${(calc.panels ?? []).map(p => panelSection(p.id, p)).join('\n    ')}
 
     ${graphsSection(calc)}

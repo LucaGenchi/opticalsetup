@@ -1,0 +1,2718 @@
+{
+ "app": "calculators/lens-design/engine/imaging.js: analyzeImaging, twoPointAt; calculators/lens-design/engine/coupling.js: analyzeCoupling",
+ "cases": [
+  {
+   "absolute": true,
+   "expected": {
+    "coherent": 1.470063325,
+    "incoherent": 0.7350316624
+   },
+   "inputs": {
+    "kind": "two-point-midpoint",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "diffraction": {
+      "grid": 128,
+      "padding": 2
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "imaging": {
+      "phaseDeg": 0.0,
+      "separation": 1.0,
+      "target": "points"
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "focal": 100.0,
+       "stop": true,
+       "thickness": 100.0,
+       "type": "paraxial"
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "perfect lens F/10, two points at the Rayleigh distance, coherent in phase: midpoint intensity",
+   "note": "Airy amplitude 2 J1(v)/v at v = 3.8317/2 from each point; the app sums a 128-sample pupil grid",
+   "tolerance": {
+    "coherent": 0.003,
+    "incoherent": 0.003
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "coherent": 0.0,
+    "incoherent": 0.7350316624
+   },
+   "inputs": {
+    "kind": "two-point-midpoint",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "diffraction": {
+      "grid": 128,
+      "padding": 2
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "imaging": {
+      "phaseDeg": 180.0,
+      "separation": 1.0,
+      "target": "points"
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "focal": 100.0,
+       "stop": true,
+       "thickness": 100.0,
+       "type": "paraxial"
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "perfect lens F/10, two points at the Rayleigh distance, coherent in antiphase: midpoint intensity",
+   "note": "Airy amplitude 2 J1(v)/v at v = 3.8317/2 from each point; the app sums a 128-sample pupil grid",
+   "tolerance": {
+    "coherent": 0.003,
+    "incoherent": 0.003
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "coherent": 0.9999999959,
+    "incoherent": 0.8109769047
+   },
+   "inputs": {
+    "kind": "grating",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "diffraction": {
+      "grid": 64,
+      "padding": 2
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "imaging": {
+      "axis": "x",
+      "frequency": 0.25,
+      "target": "grating"
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "focal": 100.0,
+       "stop": true,
+       "thickness": 100.0,
+       "type": "paraxial"
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "perfect lens F/10, square-wave grating at 0.25000 of the incoherent cutoff: modulation",
+   "note": "the frequency is rounded to a whole number of periods across the computed field, round(fraction x N) / N of the cutoff",
+   "tolerance": {
+    "coherent": 0.003,
+    "incoherent": 0.003
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "coherent": 0.9999999959,
+    "incoherent": 0.6332445422
+   },
+   "inputs": {
+    "kind": "grating",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "diffraction": {
+      "grid": 64,
+      "padding": 2
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "imaging": {
+      "axis": "x",
+      "frequency": 0.4,
+      "target": "grating"
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "focal": 100.0,
+       "stop": true,
+       "thickness": 100.0,
+       "type": "paraxial"
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "perfect lens F/10, square-wave grating at 0.40625 of the incoherent cutoff: modulation",
+   "note": "the frequency is rounded to a whole number of periods across the computed field, round(fraction x N) / N of the cutoff",
+   "tolerance": {
+    "coherent": 0.003,
+    "incoherent": 0.003
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "coherent": 0.0,
+    "incoherent": 0.370693161
+   },
+   "inputs": {
+    "kind": "grating",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "diffraction": {
+      "grid": 64,
+      "padding": 2
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "imaging": {
+      "axis": "x",
+      "frequency": 0.6,
+      "target": "grating"
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "focal": 100.0,
+       "stop": true,
+       "thickness": 100.0,
+       "type": "paraxial"
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "perfect lens F/10, square-wave grating at 0.59375 of the incoherent cutoff: modulation",
+   "note": "the frequency is rounded to a whole number of periods across the computed field, round(fraction x N) / N of the cutoff",
+   "tolerance": {
+    "coherent": 0.003,
+    "incoherent": 0.003
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.8145287552
+   },
+   "inputs": {
+    "kind": "coupling-best",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "diffraction": {
+      "grid": 128,
+      "padding": 2
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "focal": 100.0,
+       "stop": true,
+       "thickness": 100.0,
+       "type": "paraxial"
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "perfect lens F/10, uniform pupil: best Gaussian mode, 2 (1 - exp(-alpha^2))^2 / alpha^2 at its maximum",
+   "note": "alpha = NA / theta0; the closed form is paraxial (the app's mode on the sphere adds theta^2/4 terms, about 5e-4 here)",
+   "tolerance": {
+    "eta": 0.001
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.9999962733
+   },
+   "inputs": {
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 0,
+      "mfdUm": 18.71662130760689,
+      "offsetXUm": 0,
+      "offsetYUm": 0,
+      "tiltXMrad": 0,
+      "tiltYMrad": 0
+     },
+     "diffraction": {
+      "beamRatio": 0.4,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "focal": 100.0,
+       "stop": true,
+       "thickness": 100.0,
+       "type": "paraxial"
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "perfect lens f 100 mm, Gaussian beam w = 2.0 mm, mode w0 = lambda f/(pi w): matched mode",
+   "note": "Gaussian overlaps: exp(-d^2/w0^2), 1/(1 + (dz/2 zR)^2), exp(-t^2/theta0^2), times the beam's share inside the pupil, 1 - exp(-2/beta^2); paraxial",
+   "tolerance": {
+    "eta": 0.0001
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.9886428625
+   },
+   "inputs": {
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 0,
+      "mfdUm": 18.71662130760689,
+      "offsetXUm": 0,
+      "offsetYUm": 1.0,
+      "tiltXMrad": 0,
+      "tiltYMrad": 0
+     },
+     "diffraction": {
+      "beamRatio": 0.4,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "focal": 100.0,
+       "stop": true,
+       "thickness": 100.0,
+       "type": "paraxial"
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "perfect lens f 100 mm, Gaussian beam w = 2.0 mm, mode w0 = lambda f/(pi w): core 1 um off axis",
+   "note": "Gaussian overlaps: exp(-d^2/w0^2), 1/(1 + (dz/2 zR)^2), exp(-t^2/theta0^2), times the beam's share inside the pupil, 1 - exp(-2/beta^2); paraxial",
+   "tolerance": {
+    "eta": 0.0001
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.9553501954
+   },
+   "inputs": {
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 0,
+      "mfdUm": 18.71662130760689,
+      "offsetXUm": 2.0,
+      "offsetYUm": 0,
+      "tiltXMrad": 0,
+      "tiltYMrad": 0
+     },
+     "diffraction": {
+      "beamRatio": 0.4,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "focal": 100.0,
+       "stop": true,
+       "thickness": 100.0,
+       "type": "paraxial"
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "perfect lens f 100 mm, Gaussian beam w = 2.0 mm, mode w0 = lambda f/(pi w): core 2 um off axis in x",
+   "note": "Gaussian overlaps: exp(-d^2/w0^2), 1/(1 + (dz/2 zR)^2), exp(-t^2/theta0^2), times the beam's share inside the pupil, 1 - exp(-2/beta^2); paraxial",
+   "tolerance": {
+    "eta": 0.0001
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.7999970187
+   },
+   "inputs": {
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 467.91553269017226,
+      "mfdUm": 18.71662130760689,
+      "offsetXUm": 0,
+      "offsetYUm": 0,
+      "tiltXMrad": 0,
+      "tiltYMrad": 0
+     },
+     "diffraction": {
+      "beamRatio": 0.4,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "focal": 100.0,
+       "stop": true,
+       "thickness": 100.0,
+       "type": "paraxial"
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "perfect lens f 100 mm, Gaussian beam w = 2.0 mm, mode w0 = lambda f/(pi w): face one Rayleigh range past the focus",
+   "note": "Gaussian overlaps: exp(-d^2/w0^2), 1/(1 + (dz/2 zR)^2), exp(-t^2/theta0^2), times the beam's share inside the pupil, 1 - exp(-2/beta^2); paraxial",
+   "tolerance": {
+    "eta": 0.0001
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.7787978808
+   },
+   "inputs": {
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 0,
+      "mfdUm": 18.71662130760689,
+      "offsetXUm": 0,
+      "offsetYUm": 0,
+      "tiltXMrad": 0,
+      "tiltYMrad": 10.0
+     },
+     "diffraction": {
+      "beamRatio": 0.4,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "focal": 100.0,
+       "stop": true,
+       "thickness": 100.0,
+       "type": "paraxial"
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "perfect lens f 100 mm, Gaussian beam w = 2.0 mm, mode w0 = lambda f/(pi w): fiber tilted by half the far-field angle",
+   "note": "Gaussian overlaps: exp(-d^2/w0^2), 1/(1 + (dz/2 zR)^2), exp(-t^2/theta0^2), times the beam's share inside the pupil, 1 - exp(-2/beta^2); paraxial",
+   "tolerance": {
+    "eta": 0.0001
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "coherent0": 0.850162,
+    "coherent1": 0.686588,
+    "coherent2": 0.685163,
+    "coherent3": 0.465389,
+    "incoherent0": 0.441274,
+    "incoherent1": 0.764598,
+    "incoherent2": 0.609881,
+    "incoherent3": 0.572306
+   },
+   "inputs": {
+    "at": [
+     [
+      0.0,
+      0.0
+     ],
+     [
+      0.00358509584505423,
+      0.0
+     ],
+     [
+      -0.002,
+      0.004
+     ],
+     [
+      0.003,
+      -0.002
+     ]
+    ],
+    "field": 0,
+    "kind": "two-point",
+    "phaseDeg": 0.0,
+    "points": [
+     [
+      0.00358509584505423,
+      0.0
+     ],
+     [
+      -0.00358509584505423,
+      0.003
+     ]
+    ],
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "diffraction": {
+      "grid": 128,
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       3.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "stop": true,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "curved-side-first singlet, field 0.0 deg, 588 nm: two points, second at phase 0.0 deg, intensity at four positions",
+   "note": "relative to a perfect lens's peak; the app sums a 128-sample square grid, this file a 20 x 64 polar quadrature",
+   "tolerance": {
+    "coherent0": 0.003,
+    "coherent1": 0.003,
+    "coherent2": 0.003,
+    "coherent3": 0.003,
+    "incoherent0": 0.003,
+    "incoherent1": 0.003,
+    "incoherent2": 0.003,
+    "incoherent3": 0.003
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "coherent0": 0.169259,
+    "coherent1": 0.572978,
+    "coherent2": 0.793831,
+    "coherent3": 0.441329,
+    "incoherent0": 0.441274,
+    "incoherent1": 0.764598,
+    "incoherent2": 0.609881,
+    "incoherent3": 0.572306
+   },
+   "inputs": {
+    "at": [
+     [
+      0.0,
+      0.0
+     ],
+     [
+      0.00358509584505423,
+      0.0
+     ],
+     [
+      -0.002,
+      0.004
+     ],
+     [
+      0.003,
+      -0.002
+     ]
+    ],
+    "field": 0,
+    "kind": "two-point",
+    "phaseDeg": 120.0,
+    "points": [
+     [
+      0.00358509584505423,
+      0.0
+     ],
+     [
+      -0.00358509584505423,
+      0.003
+     ]
+    ],
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "diffraction": {
+      "grid": 128,
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       3.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "stop": true,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "curved-side-first singlet, field 0.0 deg, 588 nm: two points, second at phase 120.0 deg, intensity at four positions",
+   "note": "relative to a perfect lens's peak; the app sums a 128-sample square grid, this file a 20 x 64 polar quadrature",
+   "tolerance": {
+    "coherent0": 0.003,
+    "coherent1": 0.003,
+    "coherent2": 0.003,
+    "coherent3": 0.003,
+    "incoherent0": 0.003,
+    "incoherent1": 0.003,
+    "incoherent2": 0.003,
+    "incoherent3": 0.003
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.646511
+   },
+   "inputs": {
+    "field": 0,
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 0,
+      "mfdUm": 8.39006742994668,
+      "offsetXUm": 0,
+      "offsetYUm": 0,
+      "tiltXMrad": 0,
+      "tiltYMrad": 0
+     },
+     "diffraction": {
+      "grid": 128,
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       3.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "stop": true,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "curved-side-first singlet, field 0.0 deg, 588 nm, MFD 8.390 um: coupling, aligned, uniform pupil",
+   "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
+   "tolerance": {
+    "eta": 0.002
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.734598
+   },
+   "inputs": {
+    "field": 0,
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 20.0,
+      "mfdUm": 8.39006742994668,
+      "offsetXUm": 0,
+      "offsetYUm": 1.0,
+      "tiltXMrad": 0,
+      "tiltYMrad": 0
+     },
+     "diffraction": {
+      "beamRatio": 0.8,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       3.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "stop": true,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "curved-side-first singlet, field 0.0 deg, 588 nm, MFD 8.390 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up and 20 um past the image",
+   "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
+   "tolerance": {
+    "eta": 0.0005
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.734598
+   },
+   "inputs": {
+    "field": 0,
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 20.0,
+      "mfdUm": 8.39006742994668,
+      "offsetXUm": 0,
+      "offsetYUm": -1.0,
+      "tiltXMrad": 0,
+      "tiltYMrad": 0
+     },
+     "diffraction": {
+      "beamRatio": 0.8,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       3.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "stop": true,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "curved-side-first singlet, field 0.0 deg, 588 nm, MFD 8.390 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um down and 20 um past the image",
+   "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
+   "tolerance": {
+    "eta": 0.0005
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.614103
+   },
+   "inputs": {
+    "field": 0,
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 0,
+      "mfdUm": 8.39006742994668,
+      "offsetXUm": 0,
+      "offsetYUm": 1.0,
+      "tiltXMrad": 0,
+      "tiltYMrad": 20.0
+     },
+     "diffraction": {
+      "beamRatio": 0.8,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       3.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "stop": true,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "curved-side-first singlet, field 0.0 deg, 588 nm, MFD 8.390 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up, tilted 20 mrad up",
+   "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
+   "tolerance": {
+    "eta": 0.0005
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.563671
+   },
+   "inputs": {
+    "field": 0,
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 0,
+      "mfdUm": 8.39006742994668,
+      "offsetXUm": 0,
+      "offsetYUm": 1.0,
+      "tiltXMrad": 0,
+      "tiltYMrad": -20.0
+     },
+     "diffraction": {
+      "beamRatio": 0.8,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       3.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "stop": true,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "curved-side-first singlet, field 0.0 deg, 588 nm, MFD 8.390 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up, tilted 20 mrad down",
+   "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
+   "tolerance": {
+    "eta": 0.0005
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.332854
+   },
+   "inputs": {
+    "field": 0,
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 0,
+      "mfdUm": 8.39006742994668,
+      "offsetXUm": 0,
+      "offsetYUm": 0,
+      "tiltXMrad": 30.0,
+      "tiltYMrad": -20.0
+     },
+     "diffraction": {
+      "beamRatio": 0.8,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       3.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "stop": true,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "curved-side-first singlet, field 0.0 deg, 588 nm, MFD 8.390 um: coupling, Gaussian beam 0.8 pupil radii, tilted 30 mrad in x and -20 mrad in y",
+   "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
+   "tolerance": {
+    "eta": 0.0005
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "coherent0": 0.177281,
+    "coherent1": 0.113754,
+    "coherent2": 0.107795,
+    "coherent3": 0.110754,
+    "incoherent0": 0.0888316,
+    "incoherent1": 0.0731344,
+    "incoherent2": 0.0660306,
+    "incoherent3": 0.0672501
+   },
+   "inputs": {
+    "at": [
+     [
+      0.0,
+      0.0
+     ],
+     [
+      0.0035899228408691076,
+      0.0
+     ],
+     [
+      -0.002,
+      0.004
+     ],
+     [
+      0.003,
+      -0.002
+     ]
+    ],
+    "field": 1,
+    "kind": "two-point",
+    "phaseDeg": 0.0,
+    "points": [
+     [
+      0.0035899228408691076,
+      0.0
+     ],
+     [
+      -0.0035899228408691076,
+      0.003
+     ]
+    ],
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "diffraction": {
+      "grid": 128,
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       3.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "stop": true,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "curved-side-first singlet, field 3.0 deg, 588 nm: two points, second at phase 0.0 deg, intensity at four positions",
+   "note": "relative to a perfect lens's peak; the app sums a 128-sample square grid, this file a 20 x 64 polar quadrature",
+   "tolerance": {
+    "coherent0": 0.003,
+    "coherent1": 0.003,
+    "coherent2": 0.003,
+    "coherent3": 0.003,
+    "incoherent0": 0.003,
+    "incoherent1": 0.003,
+    "incoherent2": 0.003,
+    "incoherent3": 0.003
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "coherent0": 0.0376587,
+    "coherent1": 0.00227323,
+    "coherent2": 0.0893874,
+    "coherent3": 0.00245512,
+    "incoherent0": 0.0888316,
+    "incoherent1": 0.0731344,
+    "incoherent2": 0.0660306,
+    "incoherent3": 0.0672501
+   },
+   "inputs": {
+    "at": [
+     [
+      0.0,
+      0.0
+     ],
+     [
+      0.0035899228408691076,
+      0.0
+     ],
+     [
+      -0.002,
+      0.004
+     ],
+     [
+      0.003,
+      -0.002
+     ]
+    ],
+    "field": 1,
+    "kind": "two-point",
+    "phaseDeg": 120.0,
+    "points": [
+     [
+      0.0035899228408691076,
+      0.0
+     ],
+     [
+      -0.0035899228408691076,
+      0.003
+     ]
+    ],
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "diffraction": {
+      "grid": 128,
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       3.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "stop": true,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "curved-side-first singlet, field 3.0 deg, 588 nm: two points, second at phase 120.0 deg, intensity at four positions",
+   "note": "relative to a perfect lens's peak; the app sums a 128-sample square grid, this file a 20 x 64 polar quadrature",
+   "tolerance": {
+    "coherent0": 0.003,
+    "coherent1": 0.003,
+    "coherent2": 0.003,
+    "coherent3": 0.003,
+    "incoherent0": 0.003,
+    "incoherent1": 0.003,
+    "incoherent2": 0.003,
+    "incoherent3": 0.003
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.0814798
+   },
+   "inputs": {
+    "field": 1,
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 0,
+      "mfdUm": 8.401363870020035,
+      "offsetXUm": 0,
+      "offsetYUm": 0,
+      "tiltXMrad": 0,
+      "tiltYMrad": 0
+     },
+     "diffraction": {
+      "grid": 128,
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       3.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "stop": true,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "curved-side-first singlet, field 3.0 deg, 588 nm, MFD 8.401 um: coupling, aligned, uniform pupil",
+   "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
+   "tolerance": {
+    "eta": 0.002
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.207634
+   },
+   "inputs": {
+    "field": 1,
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 20.0,
+      "mfdUm": 8.401363870020035,
+      "offsetXUm": 0,
+      "offsetYUm": 1.0,
+      "tiltXMrad": 0,
+      "tiltYMrad": 0
+     },
+     "diffraction": {
+      "beamRatio": 0.8,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       3.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "stop": true,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "curved-side-first singlet, field 3.0 deg, 588 nm, MFD 8.401 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up and 20 um past the image",
+   "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
+   "tolerance": {
+    "eta": 0.0005
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.198948
+   },
+   "inputs": {
+    "field": 1,
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 20.0,
+      "mfdUm": 8.401363870020035,
+      "offsetXUm": 0,
+      "offsetYUm": -1.0,
+      "tiltXMrad": 0,
+      "tiltYMrad": 0
+     },
+     "diffraction": {
+      "beamRatio": 0.8,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       3.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "stop": true,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "curved-side-first singlet, field 3.0 deg, 588 nm, MFD 8.401 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um down and 20 um past the image",
+   "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
+   "tolerance": {
+    "eta": 0.0005
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.162003
+   },
+   "inputs": {
+    "field": 1,
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 0,
+      "mfdUm": 8.401363870020035,
+      "offsetXUm": 0,
+      "offsetYUm": 1.0,
+      "tiltXMrad": 0,
+      "tiltYMrad": 20.0
+     },
+     "diffraction": {
+      "beamRatio": 0.8,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       3.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "stop": true,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "curved-side-first singlet, field 3.0 deg, 588 nm, MFD 8.401 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up, tilted 20 mrad up",
+   "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
+   "tolerance": {
+    "eta": 0.0005
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.143284
+   },
+   "inputs": {
+    "field": 1,
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 0,
+      "mfdUm": 8.401363870020035,
+      "offsetXUm": 0,
+      "offsetYUm": 1.0,
+      "tiltXMrad": 0,
+      "tiltYMrad": -20.0
+     },
+     "diffraction": {
+      "beamRatio": 0.8,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       3.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "stop": true,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "curved-side-first singlet, field 3.0 deg, 588 nm, MFD 8.401 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up, tilted 20 mrad down",
+   "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
+   "tolerance": {
+    "eta": 0.0005
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.0694031
+   },
+   "inputs": {
+    "field": 1,
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 0,
+      "mfdUm": 8.401363870020035,
+      "offsetXUm": 0,
+      "offsetYUm": 0,
+      "tiltXMrad": 30.0,
+      "tiltYMrad": -20.0
+     },
+     "diffraction": {
+      "beamRatio": 0.8,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       3.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "paraxial",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nbk7",
+       "radius": 51.68,
+       "stop": true,
+       "thickness": 4.0
+      },
+      {
+       "material": "air",
+       "radius": 0.0,
+       "thickness": 100.0
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      588
+     ]
+    }
+   },
+   "name": "curved-side-first singlet, field 3.0 deg, 588 nm, MFD 8.401 um: coupling, Gaussian beam 0.8 pupil radii, tilted 30 mrad in x and -20 mrad in y",
+   "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
+   "tolerance": {
+    "eta": 0.0005
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "coherent0": 0.0713619,
+    "coherent1": 0.0867064,
+    "coherent2": 0.0606415,
+    "coherent3": 0.000905764,
+    "incoherent0": 0.150499,
+    "incoherent1": 0.391938,
+    "incoherent2": 0.203233,
+    "incoherent3": 0.0390134
+   },
+   "inputs": {
+    "at": [
+     [
+      0.0,
+      0.0
+     ],
+     [
+      0.0016707532594429305,
+      0.0
+     ],
+     [
+      -0.002,
+      0.004
+     ],
+     [
+      0.003,
+      -0.002
+     ]
+    ],
+    "field": 0,
+    "kind": "two-point",
+    "phaseDeg": 0.0,
+    "points": [
+     [
+      0.0016707532594429305,
+      0.0
+     ],
+     [
+      -0.0016707532594429305,
+      0.003
+     ]
+    ],
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "diffraction": {
+      "grid": 128,
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       14.0,
+       20.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nsk16",
+       "radius": 22.01359,
+       "thickness": 3.25896
+      },
+      {
+       "material": "air",
+       "radius": -435.76044,
+       "thickness": 6.00755
+      },
+      {
+       "material": "f2",
+       "radius": -22.21328,
+       "thickness": 0.99997
+      },
+      {
+       "material": "air",
+       "radius": 20.29192,
+       "stop": true,
+       "thickness": 4.75041
+      },
+      {
+       "material": "nsk16",
+       "radius": 79.6836,
+       "thickness": 2.95208
+      },
+      {
+       "material": "air",
+       "radius": -18.39533,
+       "thickness": 42.20778
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      550.0
+     ]
+    }
+   },
+   "name": "Cooke triplet, field 0.0 deg, 550.0 nm: two points, second at phase 0.0 deg, intensity at four positions",
+   "note": "relative to a perfect lens's peak; the app sums a 128-sample square grid, this file a 20 x 64 polar quadrature",
+   "tolerance": {
+    "coherent0": 0.003,
+    "coherent1": 0.003,
+    "coherent2": 0.003,
+    "coherent3": 0.003,
+    "incoherent0": 0.003,
+    "incoherent1": 0.003,
+    "incoherent2": 0.003,
+    "incoherent3": 0.003
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "coherent0": 0.299459,
+    "coherent1": 0.635025,
+    "coherent2": 0.273969,
+    "coherent3": 0.0546386,
+    "incoherent0": 0.150499,
+    "incoherent1": 0.391938,
+    "incoherent2": 0.203233,
+    "incoherent3": 0.0390134
+   },
+   "inputs": {
+    "at": [
+     [
+      0.0,
+      0.0
+     ],
+     [
+      0.0016707532594429305,
+      0.0
+     ],
+     [
+      -0.002,
+      0.004
+     ],
+     [
+      0.003,
+      -0.002
+     ]
+    ],
+    "field": 0,
+    "kind": "two-point",
+    "phaseDeg": 120.0,
+    "points": [
+     [
+      0.0016707532594429305,
+      0.0
+     ],
+     [
+      -0.0016707532594429305,
+      0.003
+     ]
+    ],
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "diffraction": {
+      "grid": 128,
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       14.0,
+       20.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nsk16",
+       "radius": 22.01359,
+       "thickness": 3.25896
+      },
+      {
+       "material": "air",
+       "radius": -435.76044,
+       "thickness": 6.00755
+      },
+      {
+       "material": "f2",
+       "radius": -22.21328,
+       "thickness": 0.99997
+      },
+      {
+       "material": "air",
+       "radius": 20.29192,
+       "stop": true,
+       "thickness": 4.75041
+      },
+      {
+       "material": "nsk16",
+       "radius": 79.6836,
+       "thickness": 2.95208
+      },
+      {
+       "material": "air",
+       "radius": -18.39533,
+       "thickness": 42.20778
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      550.0
+     ]
+    }
+   },
+   "name": "Cooke triplet, field 0.0 deg, 550.0 nm: two points, second at phase 120.0 deg, intensity at four positions",
+   "note": "relative to a perfect lens's peak; the app sums a 128-sample square grid, this file a 20 x 64 polar quadrature",
+   "tolerance": {
+    "coherent0": 0.003,
+    "coherent1": 0.003,
+    "coherent2": 0.003,
+    "coherent3": 0.003,
+    "incoherent0": 0.003,
+    "incoherent1": 0.003,
+    "incoherent2": 0.003,
+    "incoherent3": 0.003
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.134115
+   },
+   "inputs": {
+    "field": 0,
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 0,
+      "mfdUm": 3.9100021621088197,
+      "offsetXUm": 0,
+      "offsetYUm": 0,
+      "tiltXMrad": 0,
+      "tiltYMrad": 0
+     },
+     "diffraction": {
+      "grid": 128,
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       14.0,
+       20.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nsk16",
+       "radius": 22.01359,
+       "thickness": 3.25896
+      },
+      {
+       "material": "air",
+       "radius": -435.76044,
+       "thickness": 6.00755
+      },
+      {
+       "material": "f2",
+       "radius": -22.21328,
+       "thickness": 0.99997
+      },
+      {
+       "material": "air",
+       "radius": 20.29192,
+       "stop": true,
+       "thickness": 4.75041
+      },
+      {
+       "material": "nsk16",
+       "radius": 79.6836,
+       "thickness": 2.95208
+      },
+      {
+       "material": "air",
+       "radius": -18.39533,
+       "thickness": 42.20778
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      550.0
+     ]
+    }
+   },
+   "name": "Cooke triplet, field 0.0 deg, 550.0 nm, MFD 3.910 um: coupling, aligned, uniform pupil",
+   "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
+   "tolerance": {
+    "eta": 0.002
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.221926
+   },
+   "inputs": {
+    "field": 0,
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 20.0,
+      "mfdUm": 3.9100021621088197,
+      "offsetXUm": 0,
+      "offsetYUm": 1.0,
+      "tiltXMrad": 0,
+      "tiltYMrad": 0
+     },
+     "diffraction": {
+      "beamRatio": 0.8,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       14.0,
+       20.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nsk16",
+       "radius": 22.01359,
+       "thickness": 3.25896
+      },
+      {
+       "material": "air",
+       "radius": -435.76044,
+       "thickness": 6.00755
+      },
+      {
+       "material": "f2",
+       "radius": -22.21328,
+       "thickness": 0.99997
+      },
+      {
+       "material": "air",
+       "radius": 20.29192,
+       "stop": true,
+       "thickness": 4.75041
+      },
+      {
+       "material": "nsk16",
+       "radius": 79.6836,
+       "thickness": 2.95208
+      },
+      {
+       "material": "air",
+       "radius": -18.39533,
+       "thickness": 42.20778
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      550.0
+     ]
+    }
+   },
+   "name": "Cooke triplet, field 0.0 deg, 550.0 nm, MFD 3.910 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up and 20 um past the image",
+   "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
+   "tolerance": {
+    "eta": 0.0005
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.221926
+   },
+   "inputs": {
+    "field": 0,
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 20.0,
+      "mfdUm": 3.9100021621088197,
+      "offsetXUm": 0,
+      "offsetYUm": -1.0,
+      "tiltXMrad": 0,
+      "tiltYMrad": 0
+     },
+     "diffraction": {
+      "beamRatio": 0.8,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       14.0,
+       20.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nsk16",
+       "radius": 22.01359,
+       "thickness": 3.25896
+      },
+      {
+       "material": "air",
+       "radius": -435.76044,
+       "thickness": 6.00755
+      },
+      {
+       "material": "f2",
+       "radius": -22.21328,
+       "thickness": 0.99997
+      },
+      {
+       "material": "air",
+       "radius": 20.29192,
+       "stop": true,
+       "thickness": 4.75041
+      },
+      {
+       "material": "nsk16",
+       "radius": 79.6836,
+       "thickness": 2.95208
+      },
+      {
+       "material": "air",
+       "radius": -18.39533,
+       "thickness": 42.20778
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      550.0
+     ]
+    }
+   },
+   "name": "Cooke triplet, field 0.0 deg, 550.0 nm, MFD 3.910 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um down and 20 um past the image",
+   "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
+   "tolerance": {
+    "eta": 0.0005
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.0645813
+   },
+   "inputs": {
+    "field": 0,
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 0,
+      "mfdUm": 3.9100021621088197,
+      "offsetXUm": 0,
+      "offsetYUm": 1.0,
+      "tiltXMrad": 0,
+      "tiltYMrad": 20.0
+     },
+     "diffraction": {
+      "beamRatio": 0.8,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       14.0,
+       20.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nsk16",
+       "radius": 22.01359,
+       "thickness": 3.25896
+      },
+      {
+       "material": "air",
+       "radius": -435.76044,
+       "thickness": 6.00755
+      },
+      {
+       "material": "f2",
+       "radius": -22.21328,
+       "thickness": 0.99997
+      },
+      {
+       "material": "air",
+       "radius": 20.29192,
+       "stop": true,
+       "thickness": 4.75041
+      },
+      {
+       "material": "nsk16",
+       "radius": 79.6836,
+       "thickness": 2.95208
+      },
+      {
+       "material": "air",
+       "radius": -18.39533,
+       "thickness": 42.20778
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      550.0
+     ]
+    }
+   },
+   "name": "Cooke triplet, field 0.0 deg, 550.0 nm, MFD 3.910 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up, tilted 20 mrad up",
+   "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
+   "tolerance": {
+    "eta": 0.0005
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.116367
+   },
+   "inputs": {
+    "field": 0,
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 0,
+      "mfdUm": 3.9100021621088197,
+      "offsetXUm": 0,
+      "offsetYUm": 1.0,
+      "tiltXMrad": 0,
+      "tiltYMrad": -20.0
+     },
+     "diffraction": {
+      "beamRatio": 0.8,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       14.0,
+       20.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nsk16",
+       "radius": 22.01359,
+       "thickness": 3.25896
+      },
+      {
+       "material": "air",
+       "radius": -435.76044,
+       "thickness": 6.00755
+      },
+      {
+       "material": "f2",
+       "radius": -22.21328,
+       "thickness": 0.99997
+      },
+      {
+       "material": "air",
+       "radius": 20.29192,
+       "stop": true,
+       "thickness": 4.75041
+      },
+      {
+       "material": "nsk16",
+       "radius": 79.6836,
+       "thickness": 2.95208
+      },
+      {
+       "material": "air",
+       "radius": -18.39533,
+       "thickness": 42.20778
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      550.0
+     ]
+    }
+   },
+   "name": "Cooke triplet, field 0.0 deg, 550.0 nm, MFD 3.910 um: coupling, Gaussian beam 0.8 pupil radii, core 1 um up, tilted 20 mrad down",
+   "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
+   "tolerance": {
+    "eta": 0.0005
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta": 0.0875629
+   },
+   "inputs": {
+    "field": 0,
+    "kind": "coupling",
+    "system": {
+     "aperture": {
+      "type": "epd",
+      "value": 10.0
+     },
+     "coupling": {
+      "axialUm": 0,
+      "mfdUm": 3.9100021621088197,
+      "offsetXUm": 0,
+      "offsetYUm": 0,
+      "tiltXMrad": 30.0,
+      "tiltYMrad": -20.0
+     },
+     "diffraction": {
+      "beamRatio": 0.8,
+      "grid": 128,
+      "illumination": "gaussian",
+      "padding": 2,
+      "vignetting": false
+     },
+     "fields": {
+      "type": "angle",
+      "values": [
+       0.0,
+       14.0,
+       20.0
+      ]
+     },
+     "format": "opticalsetup-lens",
+     "image": {
+      "focus": "fixed",
+      "offsetMm": 0.0
+     },
+     "object": {
+      "atInfinity": true,
+      "distanceMm": 100.0
+     },
+     "primaryWavelength": 0,
+     "surfaces": [
+      {
+       "material": "nsk16",
+       "radius": 22.01359,
+       "thickness": 3.25896
+      },
+      {
+       "material": "air",
+       "radius": -435.76044,
+       "thickness": 6.00755
+      },
+      {
+       "material": "f2",
+       "radius": -22.21328,
+       "thickness": 0.99997
+      },
+      {
+       "material": "air",
+       "radius": 20.29192,
+       "stop": true,
+       "thickness": 4.75041
+      },
+      {
+       "material": "nsk16",
+       "radius": 79.6836,
+       "thickness": 2.95208
+      },
+      {
+       "material": "air",
+       "radius": -18.39533,
+       "thickness": 42.20778
+      }
+     ],
+     "version": 1,
+     "wavelengthsNm": [
+      550.0
+     ]
+    }
+   },
+   "name": "Cooke triplet, field 0.0 deg, 550.0 nm, MFD 3.910 um: coupling, Gaussian beam 0.8 pupil radii, tilted 30 mrad in x and -20 mrad in y",
+   "note": "the app sums a 128-sample square grid with neighbour-difference solid angles; this file integrates a 20 x 64 polar quadrature with a fitted polynomial's derivatives",
+   "tolerance": {
+    "eta": 0.0005
+   }
+  }
+ ],
+ "citations": [
+  "J. W. Goodman, Introduction to Fourier Optics, 3rd ed. (Roberts & Company, 2005), ch. 6: coherent and incoherent imaging, the coherent transfer function and the OTF",
+  "M. Born and E. Wolf, Principles of Optics, 7th ed. (Cambridge University Press, 1999), section 8.5: the Airy pattern",
+  "A. E. Siegman, Lasers (University Science Books, 1986), section 17.2: Gaussian beam focusing"
+ ],
+ "convergence": "20 x 64 polar nodes (the wavefronts here stay below a wave, so the azimuthal trapezoid converges well past 1e-6); a degree-8 polynomial for the directions; Simpson's rule on 20000 intervals for the mode's normalization.",
+ "domain": "A perfect F/10 lens at 588 nm; a curved-side-first N-BK7 singlet (F/10) on axis and at 3 deg; the Cooke triplet (F/5) on axis at 550 nm; separations near the Rayleigh distance; offsets of a few micrometres, tilts of 20 mrad.",
+ "fidelity": "computed",
+ "id": "lens-coherent",
+ "outside_scope": "Partial coherence, vector (high-NA) diffraction, fiber modes other than a Gaussian, and the Fresnel-number focal shift are outside this model.",
+ "provenance": "Textbook relations evaluated here; the coupling overlaps of Gaussian beams are derived from the overlap integral and checked against the numerical quadrature, not transcribed.",
+ "reference": "Pupil integrals by Gauss-Legendre (radius) x trapezoid (azimuth) quadrature on lens_design.py's bisection trace; the Debye sum point by point; solid angles from a fitted polynomial's derivatives; the mode's hemisphere normalization by Simpson's rule; closed forms for a perfect lens (Airy amplitude, grating Fourier series through the MTF and the coherent cutoff, Gaussian overlaps)",
+ "reference_file": "validation/reference/lens_coherent.py",
+ "scope": "Scalar, isoplanatic imaging of a target through one field point's wavefront, in fully coherent and fully incoherent light; coherent coupling of the focused light into a Gaussian fiber mode.",
+ "title": "Lens designer: imaging in coherent and incoherent light, and fiber coupling",
+ "tolerance_rationale": "The app's square pupil grid (128 samples across) has a staircase rim that differs from the circle: 3e-3 on the images and 2e-3 on coupling through a uniformly lit pupil allow for it (the largest differences found are 2.0e-3 and 1.0e-3); a Gaussian beam of 0.8 pupil radii is dim at the rim, so 5e-4 (found: 3.1e-4); the perfect lens's Gaussian overlaps, which barely reach the rim, 1e-4 (found: 2e-5). Expected values are stored to 6 significant digits, as the last digits depend on the platform's maths library."
+}

@@ -1,0 +1,284 @@
+{
+ "app": "calculators/dispersion-compensation/compressor-calculator.js: computeCompressor (compressor-model.js: phaseJet, dispersionAt, throughput)",
+ "cases": [
+  {
+   "expected": {
+    "fodFs4": -4111.893148,
+    "gddFs2": -446.5179715,
+    "separationMm": 705.4803341,
+    "todFs3": -895.2963054,
+    "transmission": 1.0
+   },
+   "inputs": {
+    "apexDeg": 60,
+    "bandwidthNm": 30,
+    "beamDiameterMm": 2,
+    "chirp": "material",
+    "chirpLengthMm": 10,
+    "chirpMaterial": "nbk7",
+    "incidenceDeg": 55,
+    "insertion1Mm": 3,
+    "insertion2Mm": 12,
+    "layout": "prism-pair",
+    "pairGapMm": 100,
+    "polarization": "p",
+    "prismCut": "brewster",
+    "prismMaterial": "silica",
+    "prismSizeMm": 25.4,
+    "separationMm": 600,
+    "shape": "gauss",
+    "solve": "target",
+    "targetGddFs2": 0,
+    "wavelengthNm": 800
+   },
+   "name": "prism pair, double pass: fused silica, 10 mm of N-BK7 to cancel",
+   "note": "GDD, TOD, the solved separation and the transmission to 1e-9 (closed forms in both programs; the app in double precision). FOD to 2e-3: the app takes it from fourth differences of its double-precision phase, about 1 fs^4 of rounding on phases of 10^7 rad.",
+   "tolerance": {
+    "fodFs4": 0.002,
+    "gddFs2": 1e-09,
+    "separationMm": 1e-09,
+    "todFs3": 1e-09,
+    "transmission": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "fodFs4": -15108.64285,
+    "gddFs2": -1339.553915,
+    "separationMm": 211.9436512,
+    "todFs3": -7631.07981,
+    "transmission": 1.0
+   },
+   "inputs": {
+    "apexDeg": 60,
+    "bandwidthNm": 30,
+    "beamDiameterMm": 2,
+    "chirp": "material",
+    "chirpLengthMm": 30,
+    "chirpMaterial": "nbk7",
+    "incidenceDeg": 55,
+    "insertion1Mm": 3,
+    "insertion2Mm": 5,
+    "layout": "four-prism",
+    "pairGapMm": 100,
+    "polarization": "p",
+    "prismCut": "brewster",
+    "prismMaterial": "nsf10",
+    "prismSizeMm": 25.4,
+    "separationMm": 160,
+    "shape": "gauss",
+    "solve": "target",
+    "targetGddFs2": 0,
+    "wavelengthNm": 800
+   },
+   "name": "four N-SF10 prisms: 30 mm of N-BK7 to cancel",
+   "note": "GDD, TOD, the solved separation and the transmission to 1e-9 (closed forms in both programs; the app in double precision). FOD to 2e-3: the app takes it from fourth differences of its double-precision phase, about 1 fs^4 of rounding on phases of 10^7 rad.",
+   "tolerance": {
+    "fodFs4": 0.002,
+    "gddFs2": 1e-09,
+    "separationMm": 1e-09,
+    "todFs3": 1e-09,
+    "transmission": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "fodFs4": -648792.6347,
+    "gddFs2": -47017.24597,
+    "todFs3": -171157.0173,
+    "transmission": 0.01015726201
+   },
+   "inputs": {
+    "apexDeg": 60,
+    "bandwidthNm": 30,
+    "beamDiameterMm": 2,
+    "chirp": "none",
+    "incidenceDeg": 50,
+    "insertion1Mm": 4,
+    "insertion2Mm": 8,
+    "layout": "prism-pair",
+    "pairGapMm": 100,
+    "polarization": "s",
+    "prismCut": "custom",
+    "prismMaterial": "nsf11",
+    "prismSizeMm": 25.4,
+    "separationMm": 450,
+    "shape": "gauss",
+    "solve": "manual",
+    "targetGddFs2": 0,
+    "wavelengthNm": 1030
+   },
+   "name": "prism pair set by hand: 60 deg N-SF11 prisms at 50 deg, s-polarized, double pass",
+   "note": "GDD, TOD, the solved separation and the transmission to 1e-9 (closed forms in both programs; the app in double precision). FOD to 2e-3: the app takes it from fourth differences of its double-precision phase, about 1 fs^4 of rounding on phases of 10^7 rad.",
+   "tolerance": {
+    "fodFs4": 0.002,
+    "gddFs2": 1e-09,
+    "todFs3": 1e-09,
+    "transmission": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "fodFs4": -4002097.386,
+    "gddFs2": -1000000.0,
+    "separationMm": 346.819838,
+    "todFs3": 1604583.617,
+    "transmission": 0.71639296
+   },
+   "inputs": {
+    "bandwidthNm": 30,
+    "beamDiameterMm": 2,
+    "chirp": "gdd",
+    "efficiencyPct": 92,
+    "focalMm": 500,
+    "gratingIncidenceDeg": 45,
+    "gratingLensMm": 200,
+    "gratingSeparationMm": 300,
+    "gratingSizeMm": 160,
+    "inputFodFs4": 4002000.0,
+    "inputGddFs2": 1000000.0,
+    "inputTodFs3": -1604600.0,
+    "layout": "grating-pair",
+    "lensDiameterMm": 100,
+    "lines": 1200,
+    "shape": "gauss",
+    "solve": "target",
+    "targetGddFs2": 0,
+    "wavelengthNm": 800
+   },
+   "name": "grating pair, double pass: 1200 lines/mm at 45 deg, entered chirp",
+   "note": "GDD, TOD, the solved separation and the transmission to 1e-9 (closed forms in both programs; the app in double precision). FOD to 2e-3: the app takes it from fourth differences of its double-precision phase, about 1 fs^4 of rounding on phases of 10^7 rad.",
+   "tolerance": {
+    "fodFs4": 0.002,
+    "gddFs2": 1e-09,
+    "separationMm": 1e-09,
+    "todFs3": 1e-09,
+    "transmission": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "fodFs4": -3010227.875,
+    "gddFs2": -379451.5572,
+    "separationMm": 83.12063917,
+    "todFs3": 853579.1769,
+    "transmission": 0.71639296
+   },
+   "inputs": {
+    "bandwidthNm": 8,
+    "beamDiameterMm": 2,
+    "chirp": "material",
+    "chirpLengthMm": 20000,
+    "chirpMaterial": "silica",
+    "efficiencyPct": 92,
+    "focalMm": 500,
+    "gratingIncidenceDeg": 45,
+    "gratingLensMm": 200,
+    "gratingSeparationMm": 100,
+    "gratingSizeMm": 50,
+    "layout": "four-grating",
+    "lensDiameterMm": 100,
+    "lines": 1000,
+    "shape": "sech2",
+    "solve": "target",
+    "targetGddFs2": 0,
+    "wavelengthNm": 1030
+   },
+   "name": "four 1000 lines/mm gratings at 1030 nm: 20 m of fused silica to cancel",
+   "note": "GDD, TOD, the solved separation and the transmission to 1e-9 (closed forms in both programs; the app in double precision). FOD to 2e-3: the app takes it from fourth differences of its double-precision phase, about 1 fs^4 of rounding on phases of 10^7 rad.",
+   "tolerance": {
+    "fodFs4": 0.002,
+    "gddFs2": 1e-09,
+    "separationMm": 1e-09,
+    "todFs3": 1e-09,
+    "transmission": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "fodFs4": -515614058.2,
+    "gddFs2": -7062620.317,
+    "todFs3": 47044229.23,
+    "transmission": 0.81450625
+   },
+   "inputs": {
+    "bandwidthNm": 10,
+    "beamDiameterMm": 2,
+    "chirp": "none",
+    "efficiencyPct": 95,
+    "focalMm": 500,
+    "gratingIncidenceDeg": 50,
+    "gratingLensMm": 200,
+    "gratingSeparationMm": 200,
+    "gratingSizeMm": 100,
+    "layout": "grating-pair",
+    "lensDiameterMm": 100,
+    "lines": 1500,
+    "shape": "gauss",
+    "solve": "manual",
+    "targetGddFs2": 0,
+    "wavelengthNm": 1030
+   },
+   "name": "grating pair set by hand: 1500 lines/mm at 50 deg, 1030 nm, double pass",
+   "note": "GDD, TOD, the solved separation and the transmission to 1e-9 (closed forms in both programs; the app in double precision). FOD to 2e-3: the app takes it from fourth differences of its double-precision phase, about 1 fs^4 of rounding on phases of 10^7 rad.",
+   "tolerance": {
+    "fodFs4": 0.002,
+    "gddFs2": 1e-09,
+    "todFs3": 1e-09,
+    "transmission": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "fodFs4": 4002097.386,
+    "gddFs2": 1000000.0,
+    "separationMm": 320.7638665,
+    "todFs3": -1604583.617,
+    "transmission": 0.71639296
+   },
+   "inputs": {
+    "bandwidthNm": 30,
+    "beamDiameterMm": 2,
+    "chirp": "none",
+    "efficiencyPct": 92,
+    "focalMm": 500,
+    "gratingIncidenceDeg": 45,
+    "gratingLensMm": 200,
+    "gratingSizeMm": 160,
+    "layout": "stretcher",
+    "lensDiameterMm": 100,
+    "lines": 1200,
+    "shape": "gauss",
+    "solve": "target",
+    "targetGddFs2": 1000000.0,
+    "wavelengthNm": 800
+   },
+   "name": "grating stretcher, double pass: 1200 lines/mm, f = 500 mm, solved for +1e6 fs^2",
+   "note": "GDD, TOD, the solved separation and the transmission to 1e-9 (closed forms in both programs; the app in double precision). FOD to 2e-3: the app takes it from fourth differences of its double-precision phase, about 1 fs^4 of rounding on phases of 10^7 rad.",
+   "tolerance": {
+    "fodFs4": 0.002,
+    "gddFs2": 1e-09,
+    "separationMm": 1e-09,
+    "todFs3": 1e-09,
+    "transmission": 1e-09
+   }
+  }
+ ],
+ "citations": [
+  "R. L. Fork, O. E. Martinez and J. P. Gordon, Opt. Lett. 9, 150 (1984), doi:10.1364/OL.9.000150",
+  "E. B. Treacy, IEEE J. Quantum Electron. 5, 454-458 (1969), doi:10.1109/JQE.1969.1076303",
+  "O. E. Martinez, IEEE J. Quantum Electron. 23, 59-64 (1987), doi:10.1109/JQE.1987.1073201",
+  "M. Born and E. Wolf, Principles of Optics, 7th ed., section 1.5.2 (Fresnel formulae)"
+ ],
+ "convergence": "Seven-point central differences in 40-digit arithmetic at h = 1e-4 omega0: truncation of order (h/omega0)^4 ~ 1e-16 relative for GDD and TOD and (h/omega0)^2 ~ 1e-8 for FOD; round-off below 1e-18.",
+ "domain": "800 and 1030 nm; 8-30 nm FWHM; fused silica, N-SF10 and N-SF11 prisms, Brewster-cut and 60 deg at 50 deg incidence, p and s; 1000-1500 lines/mm gratings at 45-50 deg, double pass and four-grating; a 1200 lines/mm stretcher, double pass, with f = 500 mm; chirps from N-BK7, fused silica and entered GDD.",
+ "fidelity": "computed",
+ "id": "dispersion-compensation",
+ "outside_scope": "Beam size, diffraction, grating efficiency curves, absorption and mirror losses",
+ "provenance": "Sellmeier forms from material_dispersion.py (SCHOTT catalogue, Malitson); geometry and phase written from the cited papers.",
+ "reference": "The calculator's inputs rebuilt from the sources in 40-digit decimals: apex geometry and Fork-Martinez-Gordon phase for prisms, Treacy's plane-wave phase for gratings (his explicit GDD asserted), Martinez's equivalent pair for the stretcher, Fresnel amplitude coefficients; derivatives by seven-point finite differences",
+ "reference_file": "validation/reference/dispersion_compensation.py",
+ "scope": "Plane waves along the central ray; prisms of the canvas's glass catalogue, Brewster-cut or set by hand; reflective gratings in order -1; ideal thin lenses to paraxial order in the stretcher",
+ "title": "Dispersion compensators: GDD, TOD and FOD of prism and grating layouts, the solved separation and the transmission",
+ "tolerance_rationale": "1e-9 where both sides evaluate closed forms (the app in double precision); 2e-3 for FOD, which the app takes from fourth differences in double precision."
+}

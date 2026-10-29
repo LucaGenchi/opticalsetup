@@ -35,7 +35,12 @@
 
 .calc-page { max-width: 1180px; margin: 0 auto; padding: 28px 20px 72px; }
 .calc-page h1 { font-size: 30px; letter-spacing: -.015em; color: var(--ink); text-wrap: balance; }
-.calc-page .tagline { max-width: 75ch; }
+/* Every calculator page: the summary under the title and the physics text
+   span the page's width, in the same 17 px text, with clear space before the
+   calculator. */
+.calc-page .tagline { max-width: none; font-size: 17px; margin-bottom: 30px; }
+.calc-page .hub-hero, .calc-page .hub-hero p { max-width: none; }
+.calc-page .hub-hero p { font-size: 17px; }
 .calc-page .cite { font-size: .78em; vertical-align: super; line-height: 0; margin-left: 1px; }
 
 /* Model / evidence / code facts, below the interactive part */
@@ -65,7 +70,7 @@
 .calc-field { display: grid; grid-template-columns: 1fr 108px; gap: 2px 10px; align-items: center; margin: 7px 0 9px; }
 .calc-field label { font-size: 13px; color: var(--text); }
 .calc-field label .sym { color: var(--muted); font-style: italic; margin-left: 4px; }
-.calc-field .unit { color: var(--muted); font-size: 12px; }
+.calc-field .unit { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .calc-field .control { display: flex; align-items: center; gap: 5px; }
 .calc-field input[type=number], .calc-field select {
   width: 100%; min-width: 0; padding: 4px 7px; font: inherit; font-size: 13.5px;
@@ -80,6 +85,8 @@
 .calc-field.check label { display: flex; gap: 8px; align-items: center; font-weight: 600; }
 .calc-field.is-off { opacity: .45; }
 .hide-inactive .calc-field.is-off { display: none; }
+/* A group whose every field is off (a detector that only one mode has). */
+.hide-inactive .calc-group:not(:has(.calc-field:not(.is-off))) { display: none; }
 
 .calc-output { position: sticky; top: 14px; display: flex; flex-direction: column; gap: 10px; }
 @media (max-width: 960px) { .calc-output { position: static; } }
@@ -164,9 +171,9 @@
   font-size: 13px; color: var(--text);
 }
 .calc-toc a:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
-.calc-article { max-width: 780px; padding-top: 0; }
+.calc-article { max-width: none; padding-top: 0; font-size: 17px; }
 .calc-article section { scroll-margin-top: 16px; }
-.calc-article p, .calc-article ul, .calc-article h3 { max-width: 72ch; }
+.calc-article p, .calc-article ul, .calc-article h3 { max-width: none; }
 .table-scroll { overflow-x: auto; margin: 10px 0 18px; }
 .param-table { border-collapse: collapse; width: 100%; font-size: 13.5px; margin: 10px 0 18px; background: var(--panel); }
 .table-scroll .param-table { margin: 0; }
@@ -202,7 +209,7 @@
 .calc-panel { margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--border); }
 .calc-panel-head { grid-column: 1 / -1; }
 .calc-panel-head h2 { font-size: 19px; color: var(--ink); letter-spacing: -.01em; }
-.calc-panel-head p { color: var(--muted); font-size: 13.5px; margin-top: 4px; max-width: 75ch; }
+.calc-panel-head p { color: var(--muted); font-size: 13.5px; margin-top: 4px; }
 .calc-plot-form { margin-top: 12px; grid-template-columns: minmax(0, 1fr); max-width: 760px; }
 .calc-plot-form .calc-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 18px; }
 .calc-plot-form .calc-group legend { grid-column: 1 / -1; }
@@ -237,3 +244,24 @@
   .calc-block-note { width: auto; text-align: left; }
 }
 @media (max-width: 700px) { .calc-grid-2 { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- workbench: the form beside a live figure ---------- */
+.calc-workbench { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.calc-workbench .calc-inputs { grid-template-columns: minmax(0, 1fr); }
+/* Wide enough for a long unit (lines/mm) beside a seven-digit value. */
+.calc-workbench .calc-field { grid-template-columns: 1fr 150px; }
+.calc-workbench .calc-field.choice { grid-template-columns: 1fr; }
+.calc-workbench .calc-field.check { grid-template-columns: auto 1fr; }
+.calc-workbench-side { position: sticky; top: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.calc-preview { margin: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
+.calc-preview-figure { background: #ffffff; border-radius: 8px; overflow: hidden; }
+.calc-preview-figure svg { display: block; width: 100%; height: auto; max-height: 62vh; }
+.calc-preview-figure.is-stale { opacity: .45; }
+.calc-preview figcaption { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+.calc-preview-note { font-size: 12.5px; color: var(--text); margin-top: 6px; }
+.calc-preview-open { display: inline-block; margin-top: 8px; }
+.calc-preview-open[aria-disabled="true"] { opacity: .5; pointer-events: none; }
+@media (max-width: 960px) {
+  .calc-workbench { grid-template-columns: 1fr; }
+  .calc-workbench-side { position: static; order: -1; }
+}

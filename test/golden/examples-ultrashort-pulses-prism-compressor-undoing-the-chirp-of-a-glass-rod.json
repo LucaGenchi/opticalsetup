@@ -1388,6 +1388,18 @@
        "weight": 0.921596894
       }
      ],
+     "colourSpreads": [
+      {
+       "angleRad": 1.55431223e-15,
+       "hiNm": 838.197219,
+       "lateralMm": 3.41060513e-13,
+       "loNm": 761.802781,
+       "mmPerNm": 4.46446788e-15,
+       "overlapping": true,
+       "parallel": true,
+       "radPerNm": 2.03458822e-17
+      }
+     ],
      "dispersionModel": "Gaussian GDD · transform-limited · GDD from the ray paths",
      "earliestPathDelayNs": 2.8437985,
      "envelope": null,
@@ -1410,6 +1422,16 @@
      "trains": [
       {
        "centerWavelengthNm": 800.000007,
+       "colourSpread": {
+        "angleRad": 1.55431223e-15,
+        "hiNm": 838.197219,
+        "lateralMm": 3.41060513e-13,
+        "loNm": 761.802781,
+        "mmPerNm": 4.46446788e-15,
+        "overlapping": true,
+        "parallel": true,
+        "radPerNm": 2.03458822e-17
+       },
        "dispersionModel": "Gaussian GDD · transform-limited · GDD from the ray paths",
        "envelope": null,
        "fieldIssue": null,

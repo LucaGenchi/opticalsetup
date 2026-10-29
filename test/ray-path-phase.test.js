@@ -13,7 +13,8 @@ import { createElement, registry } from '../sketch/js/elements.js';
 import { parseSketch } from '../sketch/js/state.js';
 import '../sketch/js/detector-instruments.js';
 import { traceScene, detectorReading, probeAt } from '../sketch/js/raytrace.js';
-import { gddGroupDelayDifferenceFs, DISPERSION_UNAVAILABLE } from '../sketch/js/glass.js';
+import { gddGroupDelayDifferenceFs, DISPERSION_UNAVAILABLE, glassIndexUnbucketed } from '../sketch/js/glass.js';
+import { colourSpreadText } from '../sketch/js/inspector.js';
 import { pathPhaseFit, higherOrderPhaseRad } from '../sketch/js/path-phase.js';
 
 // The reference's layouts, so the geometry is the checked one.
@@ -107,6 +108,157 @@ test('colours still diverging at the detector give the central ray\'s GDD and no
   assert.ok(reading.pulse.gddFs2 < 0, 'angular dispersion outweighs the glass on the central ray');
   assert.equal(reading.pulse.stretchedPulseWidthFs, null);
   assert.match(reading.pulse.dispersionModel, /angular dispersion remains/);
+});
+
+// How far apart one pass of the reference grating pair (1200 l/mm, 35°
+// incidence, G = 150 mm) puts two colours: G (tan β₁ − tan β₂) cos θᵢ.
+function treacyWidthMm(loNm, hiNm) {
+  const theta = 35 * Math.PI / 180, d = 1e6 / 1200;
+  const tanBeta = nm => Math.tan(Math.asin(nm / d - Math.sin(theta)));
+  return 150 * Math.abs(tanBeta(hiNm) - tanBeta(loNm)) * Math.cos(theta);
+}
+
+test('a detector reads how the split colours arrive: parallel or not, overlapping or side by side', () => {
+  // Four prisms bring every colour back onto one path.
+  const only = name => {
+    const spreads = trace(name).reading.pulse.colourSpreads;
+    assert.equal(spreads.length, 1, name);
+    return spreads[0];
+  };
+  const four = only('four Brewster silica prisms');
+  assert.equal(four.parallel, true);
+  assert.equal(four.overlapping, true);
+  assert.ok(four.angleRad < 1e-12 && four.lateralMm < 1e-9, JSON.stringify(four));
+  assert.match(colourSpreadText(four), /^Parallel and overlapping across 761\.8–838\.2 nm$/);
+  // One pass of a grating pair leaves them parallel and side by side, as far
+  // apart as Treacy's geometry puts them: G (tan β₁ − tan β₂) cos θᵢ across
+  // the traced band, at 35° incidence and G = 150 mm.
+  const pair = only('1200 l/mm grating pair, G = 150 mm, single pass');
+  const expected = treacyWidthMm(pair.loNm, pair.hiNm);
+  assert.equal(pair.parallel, true);
+  assert.equal(pair.overlapping, false);
+  assert.ok(Math.abs(pair.lateralMm / expected - 1) < 1e-9, `${pair.lateralMm} mm against ${expected} mm`);
+  assert.match(colourSpreadText(pair), /^Parallel, side by side over 4\.79 mm across .* spatial chirp\)$/);
+  // One Brewster prism leaves them diverging by the difference of its
+  // deviations at the band's edges.
+  const one = only('one Brewster nsf10 prism');
+  const apex = 60.599929089 * Math.PI / 180, incidence = Math.atan(glassIndexUnbucketed('nsf10', 800));
+  const deviation = nm => {
+    const n = glassIndexUnbucketed('nsf10', nm);
+    return incidence + Math.asin(n * Math.sin(apex - Math.asin(Math.sin(incidence) / n))) - apex;
+  };
+  const spread = Math.abs(deviation(one.hiNm) - deviation(one.loNm));
+  assert.equal(one.parallel, false);
+  assert.ok(Math.abs(one.angleRad / spread - 1) < 1e-9, `${one.angleRad} rad against ${spread} rad`);
+  assert.match(colourSpreadText(one), /^At different angles: 2\.55 mrad across .*angular dispersion remains; side by side over .* at this face$/);
+});
+
+test('light no prism or grating split carries no colour reading', () => {
+  const laser = createElement('pulsedlaser', 0, 0);
+  Object.assign(laser.params, { beamMode: 'line', wavelength: 800, bandwidth: 10, pulseWidthFs: 100 });
+  const det = createElement('detector', 200, 0);
+  det.rot = 0;
+  traceScene([laser, det]);
+  const pulse = detectorReading(det.id).pulse;
+  assert.ok(pulse, 'the pulse arrives');
+  assert.equal(pulse.colourSpreads, undefined);
+  assert.equal(colourSpreadText(undefined), '');
+});
+
+test('where the colours land is read even where their phase cannot be fitted', () => {
+  // Behind an AOTF the path phase is not followed, and two colours are too
+  // few to fit: the GDD falls back, but the colours still have positions and
+  // directions.
+  const { reading } = trace('four Brewster silica prisms', {
+    edit: scene => {
+      const det = scene.find(el => el.id === 'det');
+      const aotf = createElement('aotf', det.x - 60, det.y);
+      Object.assign(aotf.params, { channels: [{ wl: 800, eff: 1 }], passband: 2000, deflect: 0 });
+      scene.push(aotf);
+    },
+  });
+  assert.doesNotMatch(reading.pulse.dispersionModel || '', /ray paths/);
+  assert.equal(reading.pulse.colourSpreads.length, 1);
+  assert.equal(reading.pulse.colourSpreads[0].parallel, true);
+  assert.equal(reading.pulse.colourSpreads[0].overlapping, true);
+  assert.equal(reading.pulse.colourSpreads[0].hiNm - reading.pulse.colourSpreads[0].loNm, reading.bandMax - reading.bandMin);
+  // A 2 mm detector moved 2 mm across the grating pair's fan catches two
+  // of its colours; a 1 mm one on the centre catches one, which has nothing
+  // to spread across.
+  const narrow = (aperture, acrossMm) => trace('1200 l/mm grating pair, G = 150 mm, single pass', {
+    edit: scene => {
+      const det = scene.find(el => el.id === 'det');
+      det.params.aperture = aperture;
+      det.x -= Math.sin(det.rot * Math.PI / 180) * acrossMm;
+      det.y += Math.cos(det.rot * Math.PI / 180) * acrossMm;
+    },
+  }).reading;
+  const two = narrow(2, 2);
+  assert.equal(two.samples, 2);
+  assert.equal(two.pulse.colourSpreads.length, 1);
+  const [spread] = two.pulse.colourSpreads;
+  assert.equal(spread.parallel, true);
+  assert.ok(Math.abs(spread.lateralMm / treacyWidthMm(spread.loNm, spread.hiNm) - 1) < 1e-9, JSON.stringify(spread));
+  const one = narrow(1, 0);
+  assert.equal(one.samples, 1);
+  assert.equal(one.pulse.colourSpreads, undefined);
+});
+
+test('a beam with a width reads its colours once, and diverging colours decline the duration without a fit', () => {
+  // The laser's default beam traces rays across its width, each split on
+  // its own: one source still gives one reading, at the same width and rate
+  // as a single ray's colours.
+  for (const name of ['1200 l/mm grating pair, G = 150 mm, single pass', 'four Brewster silica prisms']) {
+    const { reading } = trace(name, { laser: { beamMode: 'beam' } });
+    assert.ok(reading.samples > 25, `${name}: rays across the beam (${reading.samples})`);
+    assert.equal(reading.pulse.colourSpreads.length, 1, name);
+    const [spread] = reading.pulse.colourSpreads;
+    const line = trace(name).reading.pulse.colourSpreads[0];
+    assert.ok(Math.abs(spread.lateralMm - line.lateralMm) < 1e-6 && Math.abs(spread.mmPerNm - line.mmPerNm) < 1e-6, `${name}: ${JSON.stringify(spread)}`);
+  }
+  // One prism behind a wide AOTF, whose path phase is not followed: no fit,
+  // but the colours are known to leave at different angles, so no duration.
+  const { reading } = trace('one Brewster nsf10 prism', {
+    edit: scene => {
+      const det = scene.find(el => el.id === 'det');
+      const aotf = createElement('aotf', det.x - 60 * Math.cos(det.rot * Math.PI / 180), det.y - 60 * Math.sin(det.rot * Math.PI / 180));
+      aotf.rot = det.rot;
+      Object.assign(aotf.params, { channels: [{ wl: 800, eff: 1 }], passband: 2000, deflect: 0 });
+      scene.push(aotf);
+    },
+  });
+  assert.equal(reading.samples, 5);
+  assert.equal(reading.pulse.colourSpreads[0].parallel, false);
+  assert.equal(reading.pulse.stretchedPulseWidthFs, null);
+  assert.match(reading.pulse.dispersionModel, /^Colours leave at different angles — angular dispersion remains, so there is no single duration here$/);
+});
+
+test('two split bands at one detector are read one per band', () => {
+  // Two sources, 750 and 800 nm, 10 nm each, through one pass of the grating
+  // pair: each band keeps its own width and its own mm per nm, which the
+  // pair makes different (the merged reading had given 0.0635 mm/nm for
+  // both and the width of one).
+  const name = '1200 l/mm grating pair, G = 150 mm, single pass';
+  const { source } = layout(name);
+  const blue = createElement('pulsedlaser', source.x, source.y);
+  blue.rot = source.rot;
+  Object.assign(blue.params, { beamMode: 'line', wavelength: 750, transformLimited: false, bandwidth: 10, pulseWidthFs: 1000 });
+  const { reading } = trace(name, {
+    laser: { wavelength: 800, bandwidth: 10 },
+    extra: [blue],
+    edit: scene => { scene.find(el => el.id === 'det').params.aperture = 100; },
+  });
+  const spreads = reading.pulse.colourSpreads;
+  assert.equal(spreads.length, 2, JSON.stringify(spreads));
+  assert.ok(spreads[0].hiNm < 775 && spreads[1].loNm > 775, 'bluest first');
+  const perNm = spreads.map(c => c.lateralMm / (c.hiNm - c.loNm));
+  for (const c of spreads) {
+    assert.ok(Math.abs(c.lateralMm / treacyWidthMm(c.loNm, c.hiNm) - 1) < 1e-9, JSON.stringify(c));
+  }
+  assert.ok(perNm[1] > perNm[0] * 1.05, `${perNm} mm/nm`);
+  for (const [c, text] of spreads.map(c => [c, colourSpreadText(c)])) {
+    assert.match(text, new RegExp(`across ${c.loNm.toFixed(1)}–${c.hiNm.toFixed(1)} nm`));
+  }
 });
 
 test('a family through an element without a modelled path phase keeps each ray\'s glass GDD', () => {

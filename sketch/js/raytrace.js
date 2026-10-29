@@ -15,11 +15,12 @@ import {
   sumFrequencyWl, carsAntiStokesWl, ramanShifts, ramanStokesWl,
   drivingExcitationWl, channelNeedsExcitationProbe, specimenTypeOf,
   fluorophoreSpec, fluorophoreAbsorption, metalensFocalLength, opoPortLocal, OPO_ACCEPTANCE_DEG,
-  opaPortLocal, OPA_ACCEPTANCE_DEG,
+  opaPortLocal, OPA_ACCEPTANCE_DEG, twoBeamOrders,
 } from './elements.js';
-import { planOpa, chirpedSignalPulse, MAX_OPA_STAGES, MIN_PHASE_KEPT_GAIN } from './opa.js';
+import { arrivingPulse, planOpa, chirpedSignalPulse, MAX_OPA_STAGES, MIN_PHASE_KEPT_GAIN } from './opa.js';
+import { chirpMismatch, crsResolutionCm, ramanShiftCm, spectralFocusingShiftCm } from './coherent-raman.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
-import { C_MM_PER_NS, meanGateTransmission, pulseGateTransmission, pulseOverlap, traceValueAt } from './pulses.js';
+import { C_MM_PER_NS, meanGateTransmission, pulseGateTransmission, traceValueAt } from './pulses.js';
 import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband, aotfWingHalfWidth } from './aotf.js';
 import { aodDeflectionDeg } from './acousto-optic.js';
 import { capillaryLossDbPerM, fiberPropagation, hollowCoreCoefficients } from './fiber.js';
@@ -133,6 +134,29 @@ const pathPhaseUncertain = fs2 => `GDD from the ray paths uncertain by ±${fs2 <
 const PATH_PHASE_OFFSET_MM = 0.01;
 const PATH_PHASE_PROBE_NOTE = 'After a prism or grating the colours travel apart; a detector reads the duration from all of them';
 const PATH_PHASE_ANGULAR = 'Colours leave at different angles — angular dispersion remains, so there is no single duration here; the GDD shown is the central ray\u2019s';
+
+// How the traced colours of a split arrive: the angle and the width they
+// span across the band they cover, measured across the central colour's
+// direction, and whether they count as parallel and as overlapping by the
+// same limits the duration uses. A source's splits reaching one detector --
+// the rays across a beam's width, or two arms -- read as one: the widest of
+// each, parallel only if every one is, and the rates per nm each split's own
+// (a width is never divided by a band it was not measured across). Separate
+// sources keep a reading each.
+function mergeColourSpreads(spreads) {
+  const list = [...new Set(spreads.filter(Boolean))];
+  if (!list.length) return null;
+  const widest = key => Math.max(...list.map(c => c[key]));
+  return {
+    loNm: Math.min(...list.map(c => c.loNm)), hiNm: widest('hiNm'),
+    angleRad: widest('angleRad'), lateralMm: widest('lateralMm'),
+    radPerNm: widest('radPerNm'), mmPerNm: widest('mmPerNm'),
+    parallel: list.every(c => c.parallel), overlapping: list.every(c => c.overlapping),
+  };
+}
+// Diverging colours known from where they land, where no path phase was
+// fitted: no duration, and no claim about which ray the GDD is.
+const COLOURS_DIVERGE = 'Colours leave at different angles — angular dispersion remains, so there is no single duration here';
 // Rays whose centres cross a camera plane just outside its finite face still
 // define the boundary of the adjacent ray tube. Keep those near misses
 // separate from measured hits so camera deposition can clip the continuous
@@ -331,6 +355,96 @@ function recordSpecimenTiming(elementId, reading) {
   if (held && held.state === 'mixing' && reading.state !== 'mixing') return;
   if (held && held.state !== 'ignored' && reading.state === 'ignored') return;
   specimenTimingStates.set(elementId, reading);
+}
+
+// A pulse whose chirp stretches it by under about half a percent, or a pair
+// whose chirps differ by as little, counts as transform-limited or as equally
+// chirped: Eq. (5) then holds to that half percent.
+const CHIRP_TOLERANCE = 0.1;
+
+// What a specimen's coherent Raman excitation addresses, read from the beams
+// that reach it: the pump (the shortest colour on the spot) and the Stokes
+// (the longest), each with its wavelength, bandwidth and duration after the
+// dispersion of its path; the Raman shift they drive, which a delay between
+// chirped pulses moves (spectral focusing); and the spectral resolution of
+// that excitation, with the condition the formula needs (see
+// coherent-raman.js). Where a colour arrives on more than one path, its
+// strongest arrival is read.
+export function specimenRamanReading(elementId) {
+  const beams = (specimenIncident.get(elementId) || []).filter(b => b.wl > 0 && b.intensity > 0);
+  if (!beams.length) return null;
+  const sorted = beams.slice().sort((a, b) => a.wl - b.wl);
+  const shortest = sorted[0].wl, longest = sorted[sorted.length - 1].wl;
+  if (longest - shortest < MIXING_MIN_SEPARATION_NM) return { state: 'oneColour', wl: shortest };
+  // Colours are counted in groups narrower than the separation two beams need
+  // to mix, each starting at the shortest wavelength not yet counted.
+  let colours = 0;
+  for (let i = 0, start = -Infinity; i < sorted.length; i++) {
+    if (sorted[i].wl - start >= MIXING_MIN_SEPARATION_NM) { colours++; start = sorted[i].wl; }
+  }
+  // The pump is the strongest beam within that separation of the shortest
+  // colour, the Stokes the strongest of the rest within it of the longest: no
+  // beam is both. Two such beams too close to mix leave the extremes, which
+  // always can.
+  const strongest = list => list.reduce((best, b) => (b.intensity > best.intensity ? b : best));
+  const pumpGroup = sorted.filter(b => b.wl - shortest < MIXING_MIN_SEPARATION_NM);
+  const stokesGroup = sorted.filter(b => longest - b.wl < MIXING_MIN_SEPARATION_NM && !pumpGroup.includes(b));
+  let pumpBeam = strongest(pumpGroup), stokesBeam = strongest(stokesGroup);
+  if (stokesBeam.wl - pumpBeam.wl < MIXING_MIN_SEPARATION_NM) {
+    pumpBeam = sorted[0];
+    stokesBeam = sorted[sorted.length - 1];
+  }
+  const describe = beam => {
+    const pulsed = beam.pulse?.repRateMHz > 0;
+    const record = pulsed ? arrivalRecord(beam) : null;
+    const arrival = record ? arrivingPulse(record) : null;
+    const durationFs = arrival?.pulse?.pulseWidthFs;
+    return {
+      wl: beam.wl, bwNm: beam.bw > 0 ? beam.bw : 0, pulsed,
+      durationFs: durationFs > 0 ? durationFs : null,
+      // Whether the pulse is the Gaussian Eq. (5) is written for. A spectrum a
+      // filter or an amplifier's gain reshaped has the duration its surviving
+      // band gives with the source's chirp and the path's dispersion
+      // (filteredPulseDuration); a sech² pulse and a numerically computed
+      // envelope have their own durations. None is a Gaussian, so a reading
+      // from them is an estimate.
+      shape: record?.pulse?.spectrumReshaped ? 'reshaped'
+        : record?.pulse?.field ? 'computed'
+          : record?.pulse?.pulseShape === 'sech2' ? 'sech2' : 'gaussian',
+      phase: arrival?.phase || null, issue: arrival?.issue || null,
+    };
+  };
+  const pump = describe(pumpBeam), stokes = describe(stokesBeam);
+  const carrierShiftCm = ramanShiftCm(pump.wl, stokes.wl);
+  const reading = { pump, stokes, colours, carrierShiftCm, shiftCm: carrierShiftCm, delayFs: null, delayShift: null };
+  if (!pump.pulsed || !stokes.pulsed) return { ...reading, state: 'continuous' };
+  // The Stokes pulse's arrival after the pump's, at the nearest coincidence:
+  // the timing the signal itself is gated on.
+  const timing = mixOverlap(stokesBeam, pumpBeam);
+  if (timing.comparable && Number.isFinite(timing.offsetNs)) {
+    reading.delayFs = timing.offsetNs * 1e6;
+    const moved = pump.phase && stokes.phase ? spectralFocusingShiftCm(pump.phase, stokes.phase, reading.delayFs) : null;
+    if (Number.isFinite(moved)) {
+      reading.shiftCm = carrierShiftCm + moved;
+      reading.delayShift = 'computed';
+    } else if (Math.abs(reading.delayFs) >= 1) {
+      reading.delayShift = 'unknownPhase';
+    }
+  }
+  if (!pump.durationFs || !stokes.durationFs) {
+    return { ...reading, state: 'durationUnknown', issue: pump.issue || stokes.issue };
+  }
+  const resolutionCm = crsResolutionCm(pump.durationFs / 1000, stokes.durationFs / 1000);
+  const mismatch = chirpMismatch(pump.phase, stokes.phase);
+  const stretch = ({ tau0Fs, gddFs2 }) => Math.abs(4 * Math.LN2 * gddFs2 / (tau0Fs * tau0Fs));
+  const phase = mismatch === null ? 'unknown'
+    : mismatch > CHIRP_TOLERANCE ? 'chirpMismatch'
+      : stretch(pump.phase) <= CHIRP_TOLERANCE && stretch(stokes.phase) <= CHIRP_TOLERANCE ? 'transformLimited'
+        // Equal chirps, or one beam chirped so long beside a short one that
+        // the difference cannot show: only the first is spectral focusing.
+        : stretch(pump.phase) > CHIRP_TOLERANCE && stretch(stokes.phase) > CHIRP_TOLERANCE ? 'equalChirp'
+          : 'chirpNegligible';
+  return { ...reading, state: 'resolved', resolutionCm, phase, estimate: pump.shape !== 'gaussian' || stokes.shape !== 'gaussian' };
 }
 
 export function specimenTimingReading(elementId) {
@@ -1020,24 +1134,51 @@ function withPathPhase(hits) {
   }
   if (!families.size) return hits;
   const replaced = new Map();
+  const spreads = new Map();
   for (const group of families.values()) {
-    if (!group.some(h => h.pathPhase.fanned) || group.some(h => h.pathPhase.issue)) continue;
-    // A colour arriving by two paths, or too few colours to fit.
-    if (new Set(group.map(h => h.wl)).size !== group.length || group.length < 3) continue;
+    if (!group.some(h => h.pathPhase.fanned)) continue;
     const pulse = group[0].pulse;
     const centerNm = Number.isFinite(pulse?.centerWavelengthNm) ? pulse.centerWavelengthNm
       : group.reduce((sum, h) => sum + h.wl, 0) / group.length;
     const ref = group.reduce((best, h) => (Math.abs(h.wl - centerNm) < Math.abs(best.wl - centerNm) ? h : best));
     const u0 = norm({ x: ref.dx, y: ref.dy });
-    let angular = 0, lateral = 0, valid = true;
+    let angular = 0, lateral = 0;
+    const angles = [], offsets = [];
     // Each colour's direction against the centre's (signed), to measure the
     // angular dispersion dθ/dω that is left.
     const turns = [];
+    for (const h of group) {
+      const u = norm({ x: h.dx, y: h.dy });
+      const offset = { x: ref.arrivalX - h.arrivalX, y: ref.arrivalY - h.arrivalY };
+      angular = Math.max(angular, Math.abs(u.x * u0.y - u.y * u0.x));
+      lateral = Math.max(lateral, Math.abs(offset.x * u0.y - offset.y * u0.x));
+      angles.push(Math.atan2(u.x * u0.y - u.y * u0.x, dot(u, u0)));
+      turns.push({ omega: 2 * Math.PI * 299.792458 / h.wl, angle: angles[angles.length - 1] });
+      offsets.push(offset.x * u0.y - offset.y * u0.x);
+    }
+    // Where the colours land needs only two of them: it stands where the
+    // phase below cannot be fitted (too few colours, one arriving by two
+    // paths, a step the path phase does not follow).
+    const colourSpread = {
+      loNm: Math.min(...group.map(h => h.wl)),
+      hiNm: Math.max(...group.map(h => h.wl)),
+      angleRad: Math.max(...angles) - Math.min(...angles),
+      lateralMm: Math.max(...offsets) - Math.min(...offsets),
+      parallel: angular <= PATH_PHASE_ANGLE_RAD,
+      overlapping: lateral <= PATH_PHASE_OFFSET_MM,
+    };
+    colourSpread.radPerNm = colourSpread.angleRad / (colourSpread.hiNm - colourSpread.loNm);
+    colourSpread.mmPerNm = colourSpread.lateralMm / (colourSpread.hiNm - colourSpread.loNm);
+    if (colourSpread.hiNm > colourSpread.loNm && [colourSpread.angleRad, colourSpread.lateralMm].every(Number.isFinite)) {
+      for (const h of group) spreads.set(h, colourSpread);
+    }
+    if (group.some(h => h.pathPhase.issue)) continue;
+    // A colour arriving by two paths, or too few colours to fit.
+    if (new Set(group.map(h => h.wl)).size !== group.length || group.length < 3) continue;
+    let valid = true;
     const samples = group.map(h => {
       const u = norm({ x: h.dx, y: h.dy });
-      const along = dot(u, u0);
-      turns.push({ omega: 2 * Math.PI * 299.792458 / h.wl, angle: Math.asin(Math.max(-1, Math.min(1, u.x * u0.y - u.y * u0.x))) });
-      if (!(along > 0.5)) valid = false;
+      if (!(dot(u, u0) > 0.5)) valid = false;
       // The sample's wave at the reference point: its phase at its own
       // arrival, carried along its direction to its wavefront through that
       // point, in the medium at the detector. A tilted colour read at its own
@@ -1046,8 +1187,6 @@ function withPathPhase(hits) {
       // positive.
       const offset = { x: ref.arrivalX - h.arrivalX, y: ref.arrivalY - h.arrivalY };
       const s = offset.x * u.x + offset.y * u.y;
-      angular = Math.max(angular, Math.abs(u.x * u0.y - u.y * u0.x));
-      lateral = Math.max(lateral, Math.abs(offset.x * u0.y - offset.y * u0.x));
       return { wavelengthNm: h.wl, pathMm: h.pathPhase.pathMm + h.ior * s + h.pathPhase.lensPathMm, cycles: h.pathPhase.cycles };
     });
     const C_NM_PER_FS = 299.792458;
@@ -1093,7 +1232,11 @@ function withPathPhase(hits) {
       });
     }
   }
-  return replaced.size ? hits.map(h => replaced.get(h) || h) : hits;
+  if (!replaced.size && !spreads.size) return hits;
+  return hits.map(h => {
+    const read = replaced.get(h) || h;
+    return spreads.has(h) ? { ...read, colourSpread: spreads.get(h) } : read;
+  });
 }
 
 function recordDetectorHit(ray, hit) {
@@ -1429,10 +1572,12 @@ export function detectorReading(elementId) {
       if (duration?.available !== false && !filteredRecord && !fannedBandCovered(p, sourceHits)) {
         duration = { durationFs: null, available: false, model: DISPERSION_UNAVAILABLE.partialFan };
       }
+      const colourSpread = mergeColourSpreads(sourceHits.map(h => h.colourSpread));
       // Colours still diverging: the duration depends on where it is read.
       // It stands only if it moves by under 1 % anywhere over the next metre,
       // where angular dispersion adds up to `angularFs2` of GDD (analytic
-      // models; a filtered or sampled pulse declines).
+      // models; a filtered or sampled pulse declines). Where landing places
+      // alone show it (no path phase fitted), there is no such GDD to weigh.
       const angularFs2 = Math.min(0, ...sourceHits.map(h => h.pathPhaseAngularFs2 ?? 0));
       let angularNote = null;
       if (duration?.available !== false && sourceHits.some(h => h.pathPhaseAngular)) {
@@ -1441,6 +1586,8 @@ export function detectorReading(elementId) {
         } else {
           angularNote = 'on the central ray: the colours leave at slightly different angles, which changes this duration by under 1 % over the next metre';
         }
+      } else if (duration?.available !== false && colourSpread?.parallel === false) {
+        duration = { durationFs: null, available: false, model: COLOURS_DIVERGE };
       }
       // Say where the GDD came from, and that it is the central ray's when
       // the colours arrive side by side.
@@ -1462,6 +1609,8 @@ export function detectorReading(elementId) {
         groupDelayDifferenceFs,
         stretchedPulseWidthFs: duration?.durationFs ?? null,
         dispersionModel: duration?.model ?? null,
+        // Only where colours split by a prism or grating arrive.
+        ...(colourSpread ? { colourSpread } : {}),
         transformLimitFs: duration?.transformLimitFs ?? null,
         inputGddFs2: duration?.inputGddFs2 ?? null,
         totalGddFs2: duration?.totalGddFs2 ?? gddFs2,
@@ -1540,6 +1689,9 @@ export function detectorReading(elementId) {
       transformLimitFs: duration?.transformLimitFs ?? null,
       inputGddFs2: duration?.inputGddFs2 ?? null,
       totalGddFs2: duration?.totalGddFs2 ?? gddFs2,
+      // One reading per source, bluest first.
+      ...(trains.some(train => train.colourSpread)
+        ? { colourSpreads: trains.map(train => train.colourSpread).filter(Boolean).sort((x, y) => x.loNm - y.loNm || x.hiNm - y.hiNm) } : {}),
       envelope: !mixed && trains.length === 1 ? trains[0].envelope : null,
       fieldIssue: trains.find(t => t.fieldIssue)?.fieldIssue || null,
       ...(pulsed.some(h => h.pulse.interferenceUnknown) ? { interferenceUnknown: true } : {}),
@@ -2183,8 +2335,9 @@ function emissionAngleOffsets(count, bias) {
   return offsets;
 }
 // Below this the two pulses barely meet and the signal is reported as absent
-// rather than as a vanishing sliver.
-const MIN_OVERLAP = 0.02;
+// rather than as a vanishing sliver. The inspector's timing warning says so
+// at the same threshold.
+export const MIN_OVERLAP = 0.02;
 const clampConversion = value => Math.min(MAX_CONVERSION, Math.max(0, Number(value) || 0));
 
 // The wavelength one signal channel produces for a ray of wavelength rayWl.
@@ -2495,7 +2648,8 @@ export function srsTransferGate(channel, ray, incidentBeams, elementId, scale = 
 // This is the same timing model the crystal's mixing uses: the Gaussian
 // overlap integral, coincidence with the nearest pulse of the other train, and
 // only trains at one nominal repetition rate — a rate mismatch is reported as
-// not modelled rather than waved through at full strength.
+// not modelled rather than waved through at full strength. CARS takes two
+// photons from its pump, so the pump's envelope counts twice (twoBeamOrders).
 function channelOverlap(channel, ray, partner, beams, elementId) {
   if (!partner) return { factor: 1, state: 'oneBeam' };
   if (channel.requireOverlap === false) {
@@ -2504,7 +2658,7 @@ function channelOverlap(channel, ray, partner, beams, elementId) {
     recordSpecimenTiming(elementId, { kind: channel.kind, driverWl: ray.wl, partnerWl: partner.wl, state: 'ignored' });
     return { factor: 1, state: 'ignored' };
   }
-  const overlap = mixOverlap(rayAsBeam(ray, beams), partner);
+  const overlap = mixOverlap(rayAsBeam(ray, beams), partner, twoBeamOrders(channel.kind, ray.wl, partner.wl));
   const reading = {
     kind: channel.kind, driverWl: ray.wl, partnerWl: partner.wl,
     skewNs: overlap.skewNs, overlap: overlap.factor,
@@ -2569,23 +2723,25 @@ function specimenMixedOutputs(channel, ray, d, data, elementId, origins = null) 
   return out;
 }
 
-// The incident beam a mixing channel pairs the current ray with: the longest
+// The incident beam a two-beam channel pairs a beam with: the longest
 // wavelength present, matching how specimenSignalWl picks the Stokes partner.
 // Where that colour arrives on more than one path -- two arms of a split beam,
-// say -- the one that actually meets this pulse is the partner.
-function mixingPartner(ray, incidentBeams) {
+// say -- the one that actually meets this pulse is the partner, judged by the
+// channel's own timing gate (twoBeamOrders: CARS weighs its pump twice), so
+// the choice and the gate applied to it never disagree. Shared with the
+// inspector's timing warning.
+export function twoBeamPartner(kind, beam, beams) {
+  const overlap = other => mixOverlap(beam, other, twoBeamOrders(kind, beam.wl, other.wl)).factor;
   let best = null;
-  for (const beam of incidentBeams || []) {
-    if (Math.abs(beam.wl - ray.wl) < MIXING_MIN_SEPARATION_NM) continue;
-    if (!best || beam.wl > best.wl) { best = beam; continue; }
-    if (Math.abs(beam.wl - best.wl) < MIXING_MIN_SEPARATION_NM) {
-      const here = mixOverlap(rayAsBeam(ray, incidentBeams), beam).factor;
-      const there = mixOverlap(rayAsBeam(ray, incidentBeams), best).factor;
-      if (here > there) best = beam;
-    }
+  for (const other of beams || []) {
+    if (Math.abs(other.wl - beam.wl) < MIXING_MIN_SEPARATION_NM) continue;
+    if (!best || other.wl > best.wl) { best = other; continue; }
+    if (Math.abs(other.wl - best.wl) < MIXING_MIN_SEPARATION_NM && overlap(other) > overlap(best)) best = other;
   }
   return best;
 }
+
+const mixingPartner = (ray, incidentBeams, kind) => twoBeamPartner(kind, rayAsBeam(ray, incidentBeams), incidentBeams);
 
 // The drawing color of one signal channel: true to its own wavelength by
 // default, or a custom tint so several channels can be told apart on a busy
@@ -5313,7 +5469,7 @@ function interact(ray, hit) {
         // the two beams, no signal.
         let overlap = 1;
         if (MIXING_KINDS.has(c.kind) && c.autoWl !== false) {
-          overlap = channelOverlap(c, ray, mixingPartner(ray, data.incidentBeams), data.incidentBeams, s.el?.id || null).factor;
+          overlap = channelOverlap(c, ray, mixingPartner(ray, data.incidentBeams, c.kind), data.incidentBeams, s.el?.id || null).factor;
           if (overlap < MIN_OVERLAP) continue;
         }
         // In an active layer, the share of the focal signal this crossing
@@ -7702,6 +7858,21 @@ function volumeCrossing(s, ray, hit, d, record) {
 
 // Trace everything. The static drawables remain export-safe while pulseTracks
 // carry absolute optical path lengths for the canvas-only animation layer.
+// One probed beam as it arrives: its train, the mean dispersion of the rays
+// that drew it, and its watts. What an OPA port plans from, and what a
+// specimen's coherent Raman readout times.
+function arrivalRecord(beam) {
+  const watts = sourceWattsById.get(beam.originId);
+  const mean = sum => (beam.oplWeight > 0 && Number.isFinite(sum) ? sum / beam.oplWeight : 0);
+  return {
+    key: beam.key, wl: beam.wl, bw: beam.bw || 0, spec: beam.spec || null, opl: beam.opl,
+    pulse: beam.arrivingPulse || beam.pulse, power: beam.power, originId: beam.originId,
+    gddFs2: mean(beam.gddSum), groupDelayDifferenceFs: mean(beam.spreadSum), gddRange: beam.gddRange || null,
+    parametricPath: beam.parametricPath || [],
+    powerW: Number.isFinite(watts) ? watts * beam.power : null,
+  };
+}
+
 // Each OPA's plan, from the beams its two ports recorded in one planning
 // pass. Returns a fingerprint of the plans, so traceScene can tell when a
 // further pass (which lets planned OPAs emit, revealing the next stage of a
@@ -7717,18 +7888,7 @@ function planOpaElements(surfaces) {
     ports.set(s.el.id, entry);
   }
   for (const [id, { el, pumps, seeds }] of ports) {
-    const record = beam => {
-      const watts = sourceWattsById.get(beam.originId);
-      const mean = sum => (beam.oplWeight > 0 && Number.isFinite(sum) ? sum / beam.oplWeight : 0);
-      return {
-        key: beam.key, wl: beam.wl, bw: beam.bw || 0, spec: beam.spec || null, opl: beam.opl,
-        pulse: beam.arrivingPulse || beam.pulse, power: beam.power, originId: beam.originId,
-        gddFs2: mean(beam.gddSum), groupDelayDifferenceFs: mean(beam.spreadSum), gddRange: beam.gddRange || null,
-        parametricPath: beam.parametricPath || [],
-        powerW: Number.isFinite(watts) ? watts * beam.power : null,
-      };
-    };
-    const pumpRecords = pumps.map(record), seedRecords = seeds.map(record);
+    const pumpRecords = pumps.map(arrivalRecord), seedRecords = seeds.map(arrivalRecord);
     const plan = planOpa(el.params, {
       pump: pumpRecords.length === 1 ? pumpRecords[0] : null, pumps: pumpRecords, seeds: seedRecords,
     });

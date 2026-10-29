@@ -391,6 +391,21 @@ function autocorrelatorRows(rd, source) {
       ${reading.shapeMismatch ? `<dt>Shape mismatch</dt><dd>Source is ${shapeName(actual)}, so this reads ${Math.abs((error - 1) * 100).toFixed(0)}% ${error > 1 ? 'long' : 'short'} — ${fs(reading.truePulseWidthFs)} actual</dd>` : ''}`;
 }
 
+// How the colours a prism or grating split arrive here: parallel or at
+// different angles, overlapping or side by side, across the traced band.
+export function colourSpreadText(spread) {
+  if (!spread) return '';
+  const band = `${spread.loNm.toFixed(1)}–${spread.hiNm.toFixed(1)} nm`;
+  const angle = rad => (rad < 1e-3 ? `${(rad * 1e6).toPrecision(3)} µrad` : `${(rad * 1e3).toPrecision(3)} mrad`);
+  const width = mm => `${mm.toPrecision(3)} mm`;
+  if (!spread.parallel) {
+    return `At different angles: ${angle(spread.angleRad)} across ${band} (${angle(spread.radPerNm)}/nm), angular dispersion remains; `
+      + (spread.overlapping ? 'overlapping at this face' : `side by side over ${width(spread.lateralMm)} at this face`);
+  }
+  return spread.overlapping ? `Parallel and overlapping across ${band}`
+    : `Parallel, side by side over ${width(spread.lateralMm)} across ${band} (${width(spread.mmPerNm)}/nm, spatial chirp)`;
+}
+
 export function pulseEnvelopeHTML(envelope) {
   if (!envelope) return '';
   const { timeFs, intensity } = envelope;
@@ -502,6 +517,7 @@ function measurementHTML(el) {
       <dt>Accumulated GDD</dt><dd>${gddText}</dd>
       ${stretchText ? `<dt>${rd.pulse.envelope ? 'Computed FWHM' : 'Dispersed duration'}</dt><dd>${stretchText}</dd>` : ''}
       ${!rd.pulse.mixed && rd.pulse.dispersionModel ? `<dt>Duration model</dt><dd>${esc(rd.pulse.dispersionModel)}</dd>` : ''}
+      ${(rd.pulse.colourSpreads || []).map(spread => `<dt>Colours</dt><dd>${esc(colourSpreadText(spread))}</dd>`).join('')}
       <dt>Earliest path delay</dt><dd>${rd.pulse.earliestPathDelayNs.toFixed(3)} ns</dd>
       <dt>Path spread</dt><dd>${rd.pulse.arrivalSpreadPs < 0.001 ? '&lt;0.001' : rd.pulse.arrivalSpreadPs.toFixed(3)} ps</dd>` : '';
   const pulseTimeline = pulseTimelineHTML(rd.pulse, rd.color) + pulseEnvelopeHTML(rd.pulse?.envelope);
@@ -883,9 +899,16 @@ function paramField(p, sel) {
     // `wide` gives the value the whole row instead of the 112px value column.
     // A readout that holds a sentence rather than a number wraps into a tall,
     // unreadable ribbon otherwise.
-    return field(p.label,
-      `<output class="readout" data-p="${p.key}">${esc(p.readout(sel.params, sel))}</output>`,
-      p.wide ? 'field-wide' : '');
+    const output = `<output class="readout" data-p="${p.key}">${esc(p.readout(sel.params, sel))}</output>`;
+    if (!p.popup) return field(p.label, output, p.wide ? 'field-wide' : '');
+    // A readout may explain its current value in a pop-up, opened from a
+    // small button beside its label and shown only while there is something
+    // to explain. Not a <label>: a click on the value must not open it.
+    const popup = p.popup(sel.params, sel);
+    const id = `readout-popup-${p.key}`;
+    return `<div class="field${p.wide ? ' field-wide' : ''}"><span>${esc(p.label)}`
+      + `<button type="button" class="readout-info" data-readout-info="${p.key}" popovertarget="${id}" aria-label="About this value"${popup ? '' : ' hidden'}>i</button></span>`
+      + `${output}<div class="readout-popup" id="${id}" data-readout-popup="${p.key}" popover>${esc(popup || '')}</div></div>`;
   }
   // Editable, but backed by another param instead of its own storage:
   // displayed value comes from `get`, and a commit writes through `set`
@@ -907,6 +930,15 @@ function refreshReadouts(sel) {
   panel.querySelectorAll('output.readout[data-p]').forEach(output => {
     const spec = readouts.get(output.dataset.p);
     if (spec?.readout) output.textContent = String(spec.readout(sel.params, sel));
+  });
+  panel.querySelectorAll('[data-readout-popup]').forEach(popup => {
+    const spec = readouts.get(popup.dataset.readoutPopup);
+    if (!spec?.popup) return;
+    const text = spec.popup(sel.params, sel) || '';
+    popup.textContent = text;
+    const button = panel.querySelector(`[data-readout-info="${popup.dataset.readoutPopup}"]`);
+    if (button) button.hidden = !text;
+    if (!text && popup.matches?.(':popover-open')) popup.hidePopover();
   });
 }
 
@@ -1204,6 +1236,28 @@ export function renderInspector() {
   });
   panel.querySelectorAll('[data-section]').forEach(section => {
     section.addEventListener('toggle', () => sectionState.set(section.dataset.section, section.open));
+  });
+  // A readout's pop-up opens under its button, kept inside the window: the
+  // click runs before the popover is shown, so it never appears elsewhere.
+  panel.querySelectorAll('[data-readout-info]').forEach(button => {
+    button.addEventListener('click', () => {
+      const popup = panel.querySelector(`[data-readout-popup="${button.dataset.readoutInfo}"]`);
+      if (!popup) return;
+      const rect = button.getBoundingClientRect();
+      const width = Math.min(360, window.innerWidth - 32);
+      popup.style.left = `${Math.max(16, Math.min(rect.right - width, window.innerWidth - width - 16))}px`;
+      popup.style.top = `${rect.bottom + 6}px`;
+    });
+  });
+  // Too near the bottom of the window, it opens above its button instead.
+  panel.querySelectorAll('[data-readout-popup]').forEach(popup => {
+    popup.addEventListener('toggle', event => {
+      if (event.newState !== 'open') return;
+      const button = panel.querySelector(`[data-readout-info="${popup.dataset.readoutPopup}"]`);
+      const box = popup.getBoundingClientRect();
+      if (!button || box.bottom <= window.innerHeight - 16) return;
+      popup.style.top = `${Math.max(16, button.getBoundingClientRect().top - 6 - box.height)}px`;
+    });
   });
   const del = panel.querySelector('#inspDel');
   if (del) del.addEventListener('click', () => document.dispatchEvent(new CustomEvent('optics:delete')));
