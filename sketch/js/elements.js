@@ -1724,7 +1724,7 @@ function overlapWarning(channel, records) {
   if (!timedPairs.length) {
     if (!unsupported) return null;
     return `${what} timing is not modelled between ${sig3(unsupported.a.pulse.repRateMHz)} and ${sig3(unsupported.b.pulse.repRateMHz)} MHz trains, `
-      + 'so no signal is drawn. Run both lasers at one repetition rate.';
+      + 'so no signal is drawn. Run both lasers at one repetition rate, or one at a whole fraction of the other (80 and 40 MHz, say).';
   }
   const score = t => (t.comparable ? t.factor : 1);
   const best = timedPairs.reduce((x, y) => (score(y) > score(x) ? y : x));
@@ -1740,7 +1740,7 @@ function overlapWarning(channel, records) {
       : `${what} is not drawn: ${apart}, and it needs at least ${sig3(MIN_OVERLAP * 100)} % of their overlap. Match the arms, or add a delay line.`);
   }
   if (unsupported) {
-    notes.push(`The pair ${rates(unsupported)} is not mixed: timing between different repetition rates is not modelled.`);
+    notes.push(`The pair ${rates(unsupported)} is not mixed: timing between rates that are not one a whole multiple of the other is not modelled.`);
   }
   return notes.join(' ') || null;
 }
@@ -2611,14 +2611,14 @@ export function mixStateText(reading) {
   const sum = `${nm4(reading.driverWl)} + ${nm4(reading.partnerWl)} nm → ${nm4(reading.wl)} nm`;
   const pair = reading.dfgWl > 0 ? `${sum}, difference ${nm4(reading.dfgWl)} nm` : sum;
   if (reading.state === 'unsupported') {
-    return `Timing not modelled: the two beams run at ${sig3(reading.repRateMHz)} and ${sig3(reading.partnerRepRateMHz)} MHz. Only trains at the same repetition rate are mixed here, so ${sum} is not drawn.`;
+    return `Timing not modelled: the two beams run at ${sig3(reading.repRateMHz)} and ${sig3(reading.partnerRepRateMHz)} MHz. Only trains at one repetition rate, or one a whole multiple of the other, are mixed here, so ${sum} is not drawn.`;
   }
   if (reading.state === 'unsynchronized') {
     return `Only the second harmonics: the pulses arrive ${formatMixDelay(reading.skewNs)} apart, so nothing mixes. Match the path lengths, or scan a delay stage until the sum-frequency line appears at ${nm4(reading.wl)} nm.`;
   }
   const timing = reading.skewNs == null
     ? 'no pulse timing to match'
-    : `${formatMixDelay(reading.skewNs)} apart, ${sig3(reading.overlap * 100)}% temporal overlap`;
+    : `${formatMixDelay(reading.skewNs)} apart, ${sig3(reading.overlap * 100)}% temporal overlap${coincidenceText(reading)}`;
   const others = reading.alsoPairs > 0
     ? `; ${reading.alsoPairs} more pair${reading.alsoPairs > 1 ? 's' : ''} at this crystal` : '';
   return `${pair}, ${timing}${others}`;
@@ -2642,7 +2642,7 @@ export function specimenTimingReadout(reading) {
   if (reading.state === 'oneBeam') return 'One colour only: a second wavelength is needed for CARS, Raman transfer or sum frequency';
   const pair = `${nm4(reading.driverWl)} + ${nm4(reading.partnerWl)} nm`;
   if (reading.state === 'unsupported') {
-    return `${pair} at ${sig3(reading.repRateMHz)} and ${sig3(reading.partnerRepRateMHz)} MHz — timing not modelled between different repetition rates`;
+    return `${pair} at ${sig3(reading.repRateMHz)} and ${sig3(reading.partnerRepRateMHz)} MHz — timing not modelled between rates that are not one a whole multiple of the other`;
   }
   const pathMm = (reading.skewNs || 0) * 299.792458;
   // Below a femtosecond is matched, not a number worth printing: paths that
@@ -2650,7 +2650,17 @@ export function specimenTimingReadout(reading) {
   const apart = reading.skewNs > 1e-6
     ? `${formatMixDelay(reading.skewNs)} apart (${sig3(pathMm)} mm of path)`
     : 'arriving together';
-  return `${pair}: ${apart}, ${sig3(reading.overlap * 100)}% temporal overlap`;
+  return `${pair}: ${apart}, ${sig3(reading.overlap * 100)}% temporal overlap${coincidenceText(reading)}`;
+}
+
+// Between trains at f and f/n, which pulses meet: every n-th of the faster.
+function coincidenceText(reading) {
+  if (!(reading?.ratio >= 2)) return '';
+  const fast = Math.max(reading.repRateMHz, reading.partnerRepRateMHz), slow = Math.min(reading.repRateMHz, reading.partnerRepRateMHz);
+  const n = reading.ratio, tens = n % 100, unit = n % 10;
+  const suffix = tens >= 11 && tens <= 13 ? 'th' : unit === 1 ? 'st' : unit === 2 ? 'nd' : unit === 3 ? 'rd' : 'th';
+  const nth = n === 2 ? 'second' : n === 3 ? 'third' : `${n.toLocaleString('en-US')}${suffix}`;
+  return `; the ${sig3(slow)} MHz pulses meet every ${nth} pulse of the ${sig3(fast)} MHz train`;
 }
 
 // Each beam that focuses inside a specimen's active layer: its wavelength,
@@ -2732,7 +2742,7 @@ export function specimenTimingText(reading) {
     : reading.kind === 'cars' ? 'CARS'
       : 'Sum frequency';
   if (reading.state === 'unsupported') {
-    return `${what} timing not modelled: the two beams run at ${sig3(reading.repRateMHz)} and ${sig3(reading.partnerRepRateMHz)} MHz. Only trains at the same repetition rate are mixed here.`;
+    return `${what} timing not modelled: the two beams run at ${sig3(reading.repRateMHz)} and ${sig3(reading.partnerRepRateMHz)} MHz. Only trains at one repetition rate, or one a whole multiple of the other, are mixed here.`;
   }
   if (reading.state === 'unsynchronized') {
     const pathMm = reading.skewNs * 299.792458;
