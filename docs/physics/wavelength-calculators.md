@@ -66,7 +66,7 @@ constants). Energy conservation only: no phase matching or efficiency.
 
 Bandwidths (SHG, THG, SFG, DFG): each input is a Gaussian in frequency, and
 the entered `Δλ` is its FWHM against wavelength, exactly:
-`Δλ = c/(ν − Δν/2) − c/(ν + Δν/2) = cΔν/(ν² − Δν²/4)`, close to `cΔλ/λ²`
+`Δλ = c/(ν − Δν/2) − c/(ν + Δν/2) = cΔν/(ν² − Δν²/4)`, close to `λ²Δν/c`
 only for a narrow spectrum (500 nm at 1064 nm would otherwise draw 529 nm
 wide). Generated widths go back to nm the same way, so each nm value is the
 FWHM of the drawn curve. With the
