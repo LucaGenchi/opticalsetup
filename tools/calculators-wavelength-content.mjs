@@ -90,13 +90,20 @@ export const wavelengthCalculators = [
     ],
   },
   {
-    slug: 'nonlinear-conversion', title: 'Nonlinear frequency conversion', script: 'page.js', graphs: [],
-    card: 'SHG, THG, SFG, DFG, OPO, CARS and CSRS wavelengths from energy conservation, with frequencies and photon energies.',
-    summary: 'Find the generated wavelength of second- and third-harmonic generation, sum- and difference-frequency generation, the signal and idler of an optical parametric oscillator, or the CARS and CSRS lines of a pump and Stokes pair. Every wave is shown as a vacuum wavelength, frequency and photon energy.',
+    slug: 'nonlinear-conversion', title: 'Nonlinear frequency conversion', script: 'page.js',
+    card: 'SHG, THG, SFG, DFG, OPO, CARS and CSRS wavelengths from energy conservation, with frequencies, photon energies and the widest bandwidth a harmonic, sum or difference can have.',
+    summary: 'Find the generated wavelength of second- and third-harmonic generation, sum- and difference-frequency generation, the signal and idler of an optical parametric oscillator, or the CARS and CSRS lines of a pump and Stokes pair. Every wave is shown as a vacuum wavelength, frequency and photon energy, and on a spectrum. Give the harmonic, SFG or DFG inputs a bandwidth to read the widest spectrum the generated wave can have.',
+    // Top to bottom: the process and wavelengths, the spectrum, the results.
+    layout: [
+      { form: 'calc', label: 'Process and wavelengths' },
+      { graphs: true },
+      { output: true, label: 'Results', results: [['calc', 'Wavelengths, frequencies and photon energies'], ['details', 'Bandwidths and process']] },
+    ],
+    graphs: [{ id: 'spectrum', wide: true, title: 'Input and generated spectra', note: 'Each wave as a Gaussian in frequency, scaled to its own peak, so the heights do not compare powers. Given waves are blue and green, generated ones orange. A wave without a bandwidth (zero, or not modelled, as for the OPO and coherent Raman) is a vertical line at its wavelength.' }],
     facts: [
-      { label: 'Model', html: 'Photon-energy conservation for χ⁽²⁾ and χ⁽³⁾ processes. No crystal, phase-matching or efficiency model.' },
+      { label: 'Model', html: 'Photon-energy conservation for χ⁽²⁾ and χ⁽³⁾ processes; Gaussian spectral widths for the harmonics, SFG and DFG, with the whole spectrum phase-matched. No crystal, phase-matching or efficiency model.' },
       { label: 'Evidence', html: evidence },
-      { label: 'Example', html: '1064 nm → 532 nm (SHG, as in NIST’s example <a class="cite" href="#ref-2">[2]</a>) and 354.67 nm (THG); a 1030 nm-pumped OPO with a 1550 nm signal has a 3070.2 nm idler.' },
+      { label: 'Example', html: '1064 nm → 532 nm (SHG, as in NIST’s example <a class="cite" href="#ref-2">[2]</a>) and 354.67 nm (THG); a 1030 nm-pumped OPO with a 1550 nm signal has a 3070.2 nm idler. A 1 nm-wide 1064 nm fundamental gives a second harmonic at most 0.354 nm wide.' },
     ],
     sections: [
       { id: 'physics', title: 'Energy conservation',
@@ -110,8 +117,15 @@ export const wavelengthCalculators = [
         html2: `<p>SHG is the degenerate case of SFG, and DFG is the process behind parametric amplification: the lower-frequency input grows as the difference frequency is generated. In an OPO the signal is, by convention, the higher-frequency output; signal and idler meet at the degeneracy wavelength 2λ<sub>p</sub>. One pump photon yields one signal and one idler photon (Manley–Rowe), so at most a fraction λ<sub>p</sub>/λ of the converted pump power can go into each output ${cite(1)}. THG is generated either directly through χ⁽³⁾ or by cascading SHG with SFG ${cite(1)}. CARS and CSRS are four-wave mixing in χ⁽³⁾: a pump and a Stokes beam drive a vibration at their difference frequency, and the pump and Stokes photons scatter off it on either side. This page gives their wavelengths only; the <a href="../coherent-raman/">Coherent Raman scattering</a> calculator also solves from a Raman shift, estimates the spectral resolution and shows the probed window on reference spectra.</p>`,
         formulas2: [{ tex: String.raw`\nu\,[\mathrm{THz}]=\frac{299792.458}{\lambda\,[\mathrm{nm}]},\qquad E\,[\mathrm{eV}]=\frac{1239.841984}{\lambda\,[\mathrm{nm}]}` }],
       },
+      { id: 'bandwidth', title: 'Bandwidth of the generated wave',
+        html: '<p>Each input spectrum is taken as a Gaussian in frequency whose intensity FWHM is Δν = cΔλ/λ², from the bandwidth Δλ entered at the vacuum wavelength λ; generated widths are read back to nm the same way. When the crystal phase-matches the whole spectrum, the generated field is the product of the input fields: E² for SHG, E³ for THG, E₁E₂ for SFG and E₁E₂* for DFG. Its spectrum is then the convolution of the input field spectra, and for Gaussians the frequency widths add in quadrature, each field counted as often as it appears:</p>',
+        formulas: [
+          { tex: String.raw`\Delta\nu_{n\omega}=\sqrt{n}\,\Delta\nu,\qquad \Delta\nu_{\mathrm{SFG}}=\Delta\nu_{\mathrm{DFG}}=\sqrt{\Delta\nu_1^2+\Delta\nu_2^2},\qquad \Delta\lambda=\frac{\lambda^2}{c}\,\Delta\nu` },
+        ],
+        html2: '<p>For the harmonics the factor √n holds for transform-limited pulses, for pulses with a linear chirp (raising the field to the nth power multiplies both the chirp and the inverse square duration by n) and for broadband CW light with Gaussian statistics. A second harmonic is therefore √2 wider in frequency, but 2√2 narrower in wavelength, than its fundamental: 1 nm at 1064 nm gives 0.354 nm at 532 nm. For SFG and DFG the quadrature sum holds for transform-limited pulses and for independent CW lines. Chirped inputs can mix into a narrower output: equal chirps narrow a difference frequency (the spectral focusing of the <a href="../coherent-raman/">coherent Raman</a> page), opposite chirps a sum frequency. A crystal whose acceptance bandwidth is smaller than this width filters the generated spectrum further. The value is therefore the widest spectrum the inputs allow. Solving back from a harmonic gives the narrowest fundamental that could produce it. The OPO signal and idler widths are set by the cavity and phase matching, and the CARS and CSRS spectra by the Raman resonance, so those processes show line positions only.</p>',
+      },
       { id: 'precision', title: 'Precision and limits',
-        html: '<p>Known wavelengths are accepted from 100 to 20000 nm; generated waves may fall outside that interval (DFG of close wavelengths reaches the terahertz range). DFG needs two different inputs; an OPO output must be longer than the pump. An independent reference computes each process in SI frequencies and checks the page to 10⁻⁹ relative, with exact rational anchors.</p><p>Energy conservation says which wavelength a process would generate, not whether it does: phase matching, crystal transparency and damage, acceptance bandwidths, pulse overlap, power and conversion efficiency are not modelled. Wavelengths inside a medium are shorter by its refractive index; this page reports vacuum wavelengths throughout.</p>',
+        html: '<p>Known wavelengths are accepted from 100 to 20000 nm; generated waves may fall outside that interval (DFG of close wavelengths reaches the terahertz range). DFG needs two different inputs; an OPO output must be longer than the pump. An input bandwidth may be at most half its wavelength, which keeps its spectrum clear of zero frequency; when a generated spectrum would not be (DFG of close, broad inputs, or a fundamental solved from a very broad harmonic), the page gives no bandwidths and draws lines. An independent reference computes each process in SI frequencies and checks the page to 10⁻⁹ relative, with exact rational anchors. It also builds the generated field from Gaussian input pulses, transforms it by direct quadrature and measures the FWHM of its spectrum, with and without chirp, and agrees with the bandwidths to 10⁻⁹ relative.</p><p>Energy conservation says which wavelength a process would generate, not whether it does: phase matching, crystal transparency and damage, acceptance bandwidths, pulse overlap, power and conversion efficiency are not modelled. Spectra are Gaussian; other shapes and pulse-to-pulse fluctuations are not. Wavelengths inside a medium are shorter by its refractive index; this page reports vacuum wavelengths throughout.</p>',
       },
     ],
     references: [

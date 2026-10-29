@@ -64,6 +64,22 @@ Manley–Rowe shares `λ_p/λ_s` and `λ_p/λ_i` and the degeneracy wavelength
 also shown as a frequency and a photon energy (`hc/e` from the exact SI
 constants). Energy conservation only: no phase matching or efficiency.
 
+Bandwidths (SHG, THG, SFG, DFG): each input is a Gaussian in frequency with
+FWHM `Δν = cΔλ/λ²`; generated widths go back to nm the same way. With the
+whole spectrum phase-matched the generated field is the product of the input
+fields, so the frequency FWHMs add in quadrature, each field counted as often
+as it appears: `√n Δν` for the nth harmonic (also for linearly chirped
+pulses and Gaussian-statistics CW light) and `√(Δν₁² + Δν₂²)` for SFG and DFG
+(transform-limited pulses or independent CW lines; chirped inputs can mix
+narrower). This is the widest spectrum the inputs allow; a smaller acceptance
+bandwidth narrows it. Solving from a harmonic divides by `√n`. Inputs may be
+at most `λ/2` wide (FWHM at most half the centre frequency); a generated
+spectrum wider than half its centre frequency (DFG of close, broad inputs; a
+fundamental from a very broad harmonic) gets no bandwidths and a note. OPO
+and coherent Raman show line positions only. The spectrum graph draws each
+wave as its Gaussian against wavelength, scaled to its own peak, and a wave
+without a width as a vertical line.
+
 ## Coherent Raman scattering (`calculators/coherent-raman/`)
 
 Any two of pump, Stokes and Raman shift give the third:
@@ -108,6 +124,8 @@ SCHOTT glass. `validation/reference/wavelength_conversion.py` computes every
 process in SI frequencies with exact rational anchors, and recomputes the
 resolution as the FWHM of a quadrature Fourier transform of the driving term
 for transform-limited and equally chirped pulses, anchored by the paper's
-20.8 ps·cm⁻¹. `test/calculator-wavelengths.test.js` covers boundaries and
+20.8 ps·cm⁻¹. The conversion bandwidths are recomputed the same way, as the
+FWHM of the spectrum of the generated product field of Gaussian pulses, with
+and without chirp for the harmonics. `test/calculator-wavelengths.test.js` covers boundaries and
 declines; `test/raman-spectra.test.js` checks every spectrum's licence, credit
 and format, and eight solvents' band positions against their source's table. See `docs/validation.md` for the generated table.

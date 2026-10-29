@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { GLASSES, glassIndex, glassGVD, glassGroupIndex, glassAbbe } from '../sketch/js/glass.js';
 import { MATERIALS, MATERIAL_OPTIONS, materialDispersion, materialAbbe, isInMaterialRange } from '../calculators/dispersion/materials.js';
 import { DISPERSION_DEFAULTS, computeDispersion, dispersionScan } from '../calculators/dispersion/dispersion-calculator.js';
-import { CONVERSION_DEFAULTS, computeConversion } from '../calculators/nonlinear-conversion/conversion-calculator.js';
+import { CONVERSION_DEFAULTS, computeConversion, conversionSpectrum } from '../calculators/nonlinear-conversion/conversion-calculator.js';
 import { CRS_DEFAULTS, computeCrs, RESOLUTION_DEFAULTS, computeResolution, RESOLUTION_PREFACTOR_PS_CM } from '../calculators/coherent-raman/crs-calculator.js';
 import { isInputActive } from '../calculators/assets/calculator-inputs.js';
 import { transformLimitedDurationFs } from '../sketch/js/spectrum.js';
@@ -177,6 +177,70 @@ test('nonlinear conversion declines impossible inputs', () => {
   }
   // Inactive fields are ignored.
   assert.equal(conversion({ process: 'shg', wave1Nm: '', pumpNm: 'x' }).ok, true);
+});
+
+test('nonlinear conversion bandwidths: harmonics by √n, SFG and DFG in quadrature', () => {
+  const C = 299792.458;
+  const shg = conversion({});
+  close(shg.waves[0].bandwidthTHz, C * 1 / 1064 ** 2);
+  close(shg.waves[1].bandwidthTHz, Math.SQRT2 * shg.waves[0].bandwidthTHz);
+  close(shg.waves[1].bandwidthNm, 1 / (2 * Math.SQRT2));
+  const thg = conversion({ process: 'thg', harmonicBandwidthNm: 3 });
+  close(thg.waves[1].bandwidthTHz, Math.sqrt(3) * thg.waves[0].bandwidthTHz);
+  // Solving back from the harmonic divides by the same factor.
+  const back = conversion({ known: 'harmonic', harmonicInputNm: 532, harmonicBandwidthNm: 1 });
+  close(back.waves[0].bandwidthNm, 2 * Math.SQRT2);
+  assert.ok(back.fromHarmonic);
+  for (const process of ['sfg', 'dfg']) {
+    const r = conversion({ process, bandwidth1Nm: 10, bandwidth2Nm: 4 });
+    close(r.waves[2].bandwidthTHz, Math.hypot(r.waves[0].bandwidthTHz, r.waves[1].bandwidthTHz));
+    // A zero-width input passes the other's width through unchanged.
+    const one = conversion({ process, bandwidth1Nm: 10, bandwidth2Nm: 0 });
+    close(one.waves[2].bandwidthTHz, one.waves[0].bandwidthTHz);
+  }
+  const lines = conversion({ process: 'sfg', bandwidth1Nm: 0, bandwidth2Nm: 0 });
+  assert.deepEqual(lines.waves.map(w => w.bandwidthNm), [0, 0, 0]);
+  // OPO and coherent Raman show positions only.
+  for (const process of ['opo', 'crs']) assert.ok(conversion({ process }).waves.every(w => w.bandwidthTHz === null), process);
+});
+
+test('nonlinear conversion bandwidths: input limit and spectra that reach zero frequency', () => {
+  // An input may be up to half its wavelength wide, no more.
+  assert.equal(conversion({ harmonicBandwidthNm: 532 }).ok, true);
+  const wide = conversion({ harmonicBandwidthNm: 532.001 });
+  assert.equal(wide.ok, false);
+  assert.deepEqual(wide.errors.map(e => e.id), ['harmonicBandwidthNm']);
+  assert.deepEqual(conversion({ process: 'sfg', bandwidth2Nm: 600 }).errors.map(e => e.id), ['bandwidth2Nm']);
+  // DFG of close, broad inputs keeps its wavelengths but gives no widths.
+  const close1 = conversion({ process: 'dfg', wave1Nm: 1064, wave2Nm: 1064.5 });
+  assert.equal(close1.ok, true);
+  close(close1.waves[2].wavelengthNm, 1064 * 1064.5 / 0.5);
+  assert.ok(close1.waves.every(w => w.bandwidthTHz === null));
+  assert.match(close1.bandwidthNote, /difference frequency spectrum would reach zero frequency/);
+  // So does a fundamental solved from a very broad harmonic.
+  assert.match(conversion({ known: 'harmonic', harmonicInputNm: 532, harmonicBandwidthNm: 200 }).bandwidthNote, /fundamental/);
+});
+
+test('nonlinear conversion spectrum: sorted finite samples, unit peaks, lines for unmodelled widths', () => {
+  for (const values of [{}, { process: 'thg' }, { process: 'sfg' }, { process: 'dfg' }, { process: 'sfg', bandwidth2Nm: 0 },
+    { process: 'opo' }, { process: 'opo', outputNm: 2060 }, { process: 'crs' }, { process: 'dfg', wave1Nm: 1064, wave2Nm: 1064.5 }]) {
+    const r = conversion(values);
+    const { x, xMin, xMax, series } = conversionSpectrum(r);
+    const label = JSON.stringify(values);
+    assert.ok(x.every(Number.isFinite) && x.every((v, k) => k === 0 || v > x[k - 1]), `${label}: x ascending`);
+    assert.ok(xMin >= 0 && xMin < x[0] && xMax > x.at(-1), label);
+    assert.equal(series.length, r.waves.length, label);
+    series.forEach((s, i) => {
+      const shown = s.values.filter(v => v !== null);
+      assert.ok(shown.every(v => v >= 0 && v <= 1), label);
+      close(Math.max(...shown), 1, 1e-12);
+      assert.equal(s.generated, r.waves[i].generated, label);
+      if (!(r.waves[i].bandwidthTHz > 0)) {
+        assert.equal(shown.length, 3, `${label}: ${s.role} is a line`);
+        assert.equal(x[s.values.indexOf(1)], r.waves[i].wavelengthNm);
+      } else assert.equal(shown.length, 65, label);
+    });
+  }
 });
 
 test('coherent Raman: three input modes agree, CARS and CSRS on either side', () => {

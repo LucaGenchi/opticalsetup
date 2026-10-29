@@ -194,7 +194,7 @@ const el = (name, attrs = {}, parent) => {
 
 // series: [{ key, name, color (CSS var), values: number|null per x,
 //            fill: 'light' | 'strong' (area down to zero), dash: true }]
-// options: { x: [...], xLabel, yLabel, yLog, yMin, yMax, marker: {x, y} | null,
+// options: { x: [...], xMin, xMax, xLabel, yLabel, yLog, yMin, yMax, marker: {x, y} | null,
 //            band: {lo, hi, label} | null, vlines: [{x, label, side}],
 //            formatX, formatY, message }
 export function lineChart(host, table, options) {
@@ -233,7 +233,7 @@ export function lineChart(host, table, options) {
   const pad = { left: 56, right: 14, top: 10, bottom: 44 };
   const plotW = width - pad.left - pad.right, plotH = height - pad.top - pad.bottom;
 
-  const xs = linearTicks(Math.min(...x), Math.max(...x), Math.max(3, Math.round(plotW / 80)));
+  const xs = linearTicks(options.xMin ?? Math.min(...x), options.xMax ?? Math.max(...x), Math.max(3, Math.round(plotW / 80)));
   const all = shown.flatMap(s => s.values).filter(v => v !== null && Number.isFinite(v) && (!options.yLog || v > 0));
   let ys;
   if (options.yLog) {
