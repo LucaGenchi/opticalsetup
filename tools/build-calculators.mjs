@@ -204,16 +204,18 @@ function layoutBlocks(calc, layout, prefix = 'calc', graphs = calc.graphs, first
   return layout.map(block => {
     if (block.graphs) return graphsSection(calc, graphs, first);
     // The main form beside a live figure of what it describes, with a short
-    // results table and the reset under the figure.
+    // results table and the reset under the figure. A panel's figure has
+    // its ids prefixed by the panel's (`<id>-preview-figure`, ...).
     if (block.form && block.preview) {
-      return `<section class="calc-workbench" id="calculator" aria-label="${esc(block.label)}">
+      const pid = prefix === 'calc' ? 'preview' : `${prefix}-preview`;
+      return `<section class="calc-workbench"${prefix === 'calc' ? ' id="calculator"' : ''} aria-label="${esc(block.label)}">
       <form class="calc-inputs" id="${block.form}-form" autocomplete="off" novalidate></form>
       <div class="calc-workbench-side">
         <figure class="calc-preview">
-          <div class="calc-preview-figure" id="preview-figure"></div>
-          <figcaption id="preview-caption"></figcaption>
-          <p class="calc-preview-note" id="preview-note"></p>
-          <a class="btn calc-preview-open" id="preview-open" target="_blank" rel="noopener" aria-disabled="true">${esc(block.preview)}</a>
+          <div class="calc-preview-figure" id="${pid}-figure"></div>
+          <figcaption id="${pid}-caption"></figcaption>
+          <p class="calc-preview-note" id="${pid}-note"></p>
+          <a class="btn calc-preview-open" id="${pid}-open" target="_blank" rel="noopener" aria-disabled="true">${esc(block.preview)}</a>
         </figure>
         <table class="calc-results" id="${block.results}-results" aria-label="${esc(block.resultsLabel)}"></table>
         <div class="calc-actions" id="${prefix}-actions"></div>
