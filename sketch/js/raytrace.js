@@ -6,7 +6,7 @@
 // polygons (beam-mode envelope between the two edge rays).
 
 import { emissionRayCount } from './emission.js';
-import { NONLINEAR_ORDER, MAX_SPOTS, SPOT_SPACING_MM, bundleFocus, linearPathFraction, volumeEmissionPoints } from './sectioning.js';
+import { NONLINEAR_ORDER, MAX_SPOTS, MIN_HALF_ANGLE, SPOT_SPACING_MM, bundleFocus, gaussianFocus, linearPathFraction, volumeEmissionPoints } from './sectioning.js';
 import { POINT_SOURCE_CANVAS_THRESHOLD } from './point-source-rendering.js';
 
 import {
@@ -654,6 +654,7 @@ function detectorConvergence(hits) {
       height: (h.u - 0.5) * (h.aperture || tlen),
       theta: Math.atan2(along, Math.abs(axial)),
       weight,
+      wl: hitMeanWavelength(h),
     });
   }
   if (pts.length < 2) return null;
@@ -671,23 +672,30 @@ function detectorConvergence(hits) {
     num += fraction * (point.height - mh) * (point.theta - mt);
     den += fraction * (point.height - mh) ** 2;
   }
-  // Every ray at the same height (to rounding, relative to where on the
-  // face they land): nothing to fit.
-  const reach = Math.max(1, ...pts.map(point => Math.abs(point.height)));
-  if (!(den > 1e-18 * reach * reach)) return null;
-  const fittedSlope = num / den; // radians of tilt per mm of height
-  // The beam's width is weighted too: the extreme heights would let a
-  // negligible ray far from the beam multiply the reading. N evenly spaced
-  // rays of equal power span sqrt(12 (N-1)/(N+1)) standard deviations, so
-  // with the effective number of rays (sum w)^2 / sum w^2 this is exactly
-  // their edge-to-edge span, and a faint ray barely moves it. It never
-  // exceeds the span itself: heavier edge rays must not widen the cone past
-  // the outermost rays.
+  // A spread is weighted too: the extreme values would let a negligible ray
+  // far from the beam multiply the reading. N evenly spaced rays of equal
+  // power span sqrt(12 (N-1)/(N+1)) standard deviations, so with the
+  // effective number of rays (sum w)^2 / sum w^2 this is exactly their
+  // edge-to-edge span, and a faint ray barely moves it. It never exceeds the
+  // span itself: heavier edge rays must not widen the cone past the
+  // outermost rays.
   const sumSquares = pts.reduce((sum, point) => sum + point.weight ** 2, 0);
   const effectiveRays = totalWeight ** 2 / sumSquares;
-  const heights = pts.map(point => point.height);
-  const span = Math.max(...heights) - Math.min(...heights);
-  const width = Math.min(span, Math.sqrt(12 * den * (effectiveRays - 1) / (effectiveRays + 1)));
+  const weightedSpan = (variance, values) => Math.min(Math.max(...values) - Math.min(...values),
+    Math.sqrt(12 * variance * (effectiveRays - 1) / (effectiveRays + 1)));
+  // Every ray at the same height (to rounding, relative to where on the
+  // face they land): the face sits on a focus. There is no slope to fit,
+  // but the rays' angles still span the cone they converged in; rays at one
+  // height and one angle are a single ray, with nothing to report.
+  const reach = Math.max(1, ...pts.map(point => Math.abs(point.height)));
+  const focus = focusConvergence(pts, totalWeight, mt, weightedSpan);
+  if (!(den > 1e-18 * reach * reach)) return focus && { ...focus, waistAheadMm: 0 };
+  // Close to the focus the face still reads it, with how far away the waist
+  // lies: an exact hit is near impossible to place by hand.
+  const waistAheadMm = focus && waistWithinFocusZone(pts, focus);
+  if (Number.isFinite(waistAheadMm)) return { ...focus, waistAheadMm };
+  const fittedSlope = num / den; // radians of tilt per mm of height
+  const width = weightedSpan(den, pts.map(point => point.height));
   const fullAngleDeg = Math.abs(fittedSlope) * width * 180 / Math.PI;
   const slope = fullAngleDeg < 1e-12 ? 0 : fittedSlope;
   return {
@@ -695,6 +703,65 @@ function detectorConvergence(hits) {
     fullAngleDeg: slope === 0 ? 0 : fullAngleDeg,
     diverging: slope > 0,
   };
+}
+
+// The centre of the light one hit carries. A lamp's `wl` is its brightest
+// line and a continuum's may sit off its middle, so read the spectrum the
+// hit carries where it has one.
+function hitMeanWavelength(hit) {
+  const readable = ['lines', 'gauss', 'flat'].includes(hit.spec?.kind) || Array.isArray(hit.spec?.w);
+  const center = readable ? spectrumStats(hit.spec)?.center : null;
+  if (Number.isFinite(center) && center > 0) return center;
+  if (hit.spectralContinuum && Number.isFinite(hit.spectralLo) && Number.isFinite(hit.spectralHi)) {
+    return (hit.spectralLo + hit.spectralHi) / 2;
+  }
+  return hit.wl;
+}
+
+// The light at a detector face that sits on its focus: the full cone of the
+// arriving rays, weighed like the fitted cone either side of the focus. For
+// a slow cone the two agree and the reading runs on continuously through
+// the focus; for a steep one the fit, taking angle as linear in height,
+// overstates the cone either side, and this is the true one. Also the
+// waist and Rayleigh range of an ideal Gaussian beam focused in that cone
+// at the light's mean wavelength. The geometric spot is a point; the waist
+// is the diffraction limit a real beam cannot beat there.
+function focusConvergence(pts, totalWeight, meanTheta, weightedSpan) {
+  const variance = pts.reduce((sum, point) => sum + point.weight / totalWeight * (point.theta - meanTheta) ** 2, 0);
+  // One angle too, to rounding (the same relative threshold as the heights,
+  // on angles of order a radian): a single ray, not a focus.
+  if (!(variance > 1e-18)) return null;
+  const cone = weightedSpan(variance, pts.map(point => point.theta));
+  const fullAngleDeg = cone * 180 / Math.PI;
+  const coloured = pts.filter(point => Number.isFinite(point.wl) && point.wl > 0);
+  const colouredWeight = coloured.reduce((sum, point) => sum + point.weight, 0);
+  const focus = { slopePerMm: null, fullAngleDeg, diverging: false, atFocus: true };
+  if (!(colouredWeight > 0)) return focus;
+  const wavelengthNm = coloured.reduce((sum, point) => sum + point.wl * point.weight, 0) / colouredWeight;
+  const { w0Mm, zRMm } = gaussianFocus(wavelengthNm, Math.sin(Math.min(Math.PI / 2, cone / 2)));
+  if (![w0Mm, zRMm].every(value => Number.isFinite(value) && value > 0)) return focus;
+  return { ...focus, wavelengthNm, waistMm: w0Mm, rayleighMm: zRMm };
+}
+
+// How many Rayleigh ranges either side of the waist a face still reads the
+// focus plane: there the beam is at most sqrt(10) times its waist.
+export const FOCUS_ZONE_RAYLEIGH = 3;
+
+// Where the waist lies along the beam from the face (positive: further
+// along), when the face is within FOCUS_ZONE_RAYLEIGH Rayleigh ranges of it;
+// otherwise null. The rays are taken in the face's own frame (across it, and
+// along its normal) and handed to the specimens' bundleFocus, which measures
+// along the beam's axis, so a tilted face reads the same distance as a square
+// one. A cone too slow to place its focus has none; it is judged by the
+// power-weighted cone, since bundleFocus takes the outermost rays and a
+// negligible stray one would pass.
+function waistWithinFocusZone(pts, focus) {
+  if (!(focus.rayleighMm > 0) || !(focus.wavelengthNm > 0)) return null;
+  if (!(focus.fullAngleDeg * Math.PI / 360 > MIN_HALF_ANGLE)) return null;
+  const rays = pts.map(point => ({ p: { x: point.height, y: 0 }, d: { x: Math.sin(point.theta), y: Math.cos(point.theta) }, w: point.weight }));
+  const waist = bundleFocus(rays, focus.wavelengthNm);
+  if (!waist.ok) return null;
+  return Math.abs(waist.zMm) <= FOCUS_ZONE_RAYLEIGH * focus.rayleighMm ? waist.zMm : null;
 }
 
 const MAX_SPECTRUM_SAMPLES = 24;

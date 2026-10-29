@@ -1,0 +1,1144 @@
+{
+ "app": "calculators/imaging/imaging.js: buildLens, computeImaging, computePair",
+ "cases": [
+  {
+   "absolute": true,
+   "expected": {
+    "accepted": 1
+   },
+   "inputs": {
+    "kind": "one",
+    "lensCentreMm": 3.0,
+    "lensDiameterMm": 20.0,
+    "lensFocalMm": -19.3505483811274,
+    "lensGlass": "nbk7",
+    "lensKind": "planoconcave",
+    "lensSpec": "focal",
+    "wavelengthNm": 588.0
+   },
+   "name": "refusal boundary: plano-concave N-BK7, D = 20 mm, |f| = (D/2)/(n - 1) times 1.000001: accepted",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "accepted": 0
+   },
+   "inputs": {
+    "kind": "one",
+    "lensCentreMm": 3.0,
+    "lensDiameterMm": 20.0,
+    "lensFocalMm": -19.35050968006934,
+    "lensGlass": "nbk7",
+    "lensKind": "planoconcave",
+    "lensSpec": "focal",
+    "wavelengthNm": 588.0
+   },
+   "name": "refusal boundary: plano-concave N-BK7, D = 20 mm, |f| = (D/2)/(n - 1) times 0.999999: refused",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "accepted": 1
+   },
+   "inputs": {
+    "kind": "one",
+    "lensCentreMm": 3.0,
+    "lensDiameterMm": 20.0,
+    "lensFocalMm": -9.20484753203051,
+    "lensGlass": "nbk7",
+    "lensKind": "biconcave",
+    "lensSpec": "focal",
+    "wavelengthNm": 588.0
+   },
+   "name": "refusal boundary: equi-concave N-BK7, D = 20 mm, t = 3 mm, f where R = D/2, times 1.000001: accepted",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "accepted": 0
+   },
+   "inputs": {
+    "kind": "one",
+    "lensCentreMm": 3.0,
+    "lensDiameterMm": 20.0,
+    "lensFocalMm": -9.204829122353855,
+    "lensGlass": "nbk7",
+    "lensKind": "biconcave",
+    "lensSpec": "focal",
+    "wavelengthNm": 588.0
+   },
+   "name": "refusal boundary: equi-concave N-BK7, D = 20 mm, t = 3 mm, f where R = D/2, times 0.999999: refused",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "accepted": 1
+   },
+   "inputs": {
+    "kind": "one",
+    "lensBackRadiusMm": 30.0,
+    "lensCentreMm": 1.5273405856020077,
+    "lensDiameterMm": 12.0,
+    "lensFrontRadiusMm": 20.0,
+    "lensGlass": "nbk7",
+    "lensKind": "biconvex",
+    "lensSpec": "radii",
+    "wavelengthNm": 588.0
+   },
+   "name": "refusal boundary: bi-convex R1 = 20, R2 = -30 mm, D = 12 mm, centre thickness both sags times 1.000001: accepted",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "accepted": 0
+   },
+   "inputs": {
+    "kind": "one",
+    "lensBackRadiusMm": 30.0,
+    "lensCentreMm": 1.5273375309238912,
+    "lensDiameterMm": 12.0,
+    "lensFrontRadiusMm": 20.0,
+    "lensGlass": "nbk7",
+    "lensKind": "biconvex",
+    "lensSpec": "radii",
+    "wavelengthNm": 588.0
+   },
+   "name": "refusal boundary: bi-convex R1 = 20, R2 = -30 mm, D = 12 mm, centre thickness both sags times 0.999999: refused",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "accepted": 1
+   },
+   "inputs": {
+    "kind": "pair",
+    "l1DiameterMm": 25.4,
+    "l1FocalMm": 50.0,
+    "l1Kind": "ideal",
+    "l2DiameterMm": 25.4,
+    "l2FocalMm": -49.99995,
+    "l2Kind": "ideal",
+    "pairObject": "infinity",
+    "pairWavelengthNm": 633.0,
+    "spacing": "afocal"
+   },
+   "name": "refusal boundary: ideal lenses f1 = 50 mm, f2 = -50 mm times 0.999999, spaced afocal: accepted",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "accepted": 0
+   },
+   "inputs": {
+    "kind": "pair",
+    "l1DiameterMm": 25.4,
+    "l1FocalMm": 50.0,
+    "l1Kind": "ideal",
+    "l2DiameterMm": 25.4,
+    "l2FocalMm": -50.0,
+    "l2Kind": "ideal",
+    "pairObject": "infinity",
+    "pairWavelengthNm": 633.0,
+    "spacing": "afocal"
+   },
+   "name": "refusal boundary: ideal lenses f1 = 50 mm, f2 = -50 mm times 1.000000, spaced afocal: refused",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "accepted": 0
+   },
+   "inputs": {
+    "kind": "pair",
+    "l1DiameterMm": 25.4,
+    "l1FocalMm": 50.0,
+    "l1Kind": "ideal",
+    "l2DiameterMm": 25.4,
+    "l2FocalMm": -50.000049999999995,
+    "l2Kind": "ideal",
+    "pairObject": "infinity",
+    "pairWavelengthNm": 633.0,
+    "spacing": "afocal"
+   },
+   "name": "refusal boundary: ideal lenses f1 = 50 mm, f2 = -50 mm times 1.000001, spaced afocal: refused",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
+   "expected": {
+    "minimumGapMm": 2.298176642
+   },
+   "inputs": {
+    "gapMm": 10.0,
+    "kind": "pair",
+    "l1CentreMm": 3.0,
+    "l1DiameterMm": 25.4,
+    "l1FocalMm": -50.0,
+    "l1Glass": "nbk7",
+    "l1Kind": "planoconcave",
+    "l1Orientation": "plano",
+    "l1Spec": "focal",
+    "l2DiameterMm": 25.4,
+    "l2EdgeMm": 2.0,
+    "l2FocalMm": 150.0,
+    "l2Glass": "nbk7",
+    "l2Kind": "planoconvex",
+    "l2Orientation": "convex",
+    "l2Spec": "focal",
+    "pairObject": "infinity",
+    "pairWavelengthNm": 633.0,
+    "spacing": "gap"
+   },
+   "name": "refusal boundary: plano-concave flat side first then plano-convex curved side first: the least gap",
+   "tolerance": {
+    "minimumGapMm": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "accepted": 1
+   },
+   "inputs": {
+    "gapMm": 2.2981789401207413,
+    "kind": "pair",
+    "l1CentreMm": 3.0,
+    "l1DiameterMm": 25.4,
+    "l1FocalMm": -50.0,
+    "l1Glass": "nbk7",
+    "l1Kind": "planoconcave",
+    "l1Orientation": "plano",
+    "l1Spec": "focal",
+    "l2DiameterMm": 25.4,
+    "l2EdgeMm": 2.0,
+    "l2FocalMm": 150.0,
+    "l2Glass": "nbk7",
+    "l2Kind": "planoconvex",
+    "l2Orientation": "convex",
+    "l2Spec": "focal",
+    "pairObject": "infinity",
+    "pairWavelengthNm": 633.0,
+    "spacing": "gap"
+   },
+   "name": "refusal boundary: the same pair at the least gap times 1.000001: accepted",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "accepted": 0
+   },
+   "inputs": {
+    "gapMm": 2.2981743437674576,
+    "kind": "pair",
+    "l1CentreMm": 3.0,
+    "l1DiameterMm": 25.4,
+    "l1FocalMm": -50.0,
+    "l1Glass": "nbk7",
+    "l1Kind": "planoconcave",
+    "l1Orientation": "plano",
+    "l1Spec": "focal",
+    "l2DiameterMm": 25.4,
+    "l2EdgeMm": 2.0,
+    "l2FocalMm": 150.0,
+    "l2Glass": "nbk7",
+    "l2Kind": "planoconvex",
+    "l2Orientation": "convex",
+    "l2Spec": "focal",
+    "pairObject": "infinity",
+    "pairWavelengthNm": 633.0,
+    "spacing": "gap"
+   },
+   "name": "refusal boundary: the same pair at the least gap times 0.999999: refused",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
+   "expected": {
+    "efl": 20.21130148,
+    "fromLast": 31.45369031,
+    "heightMm": -1.924260109,
+    "imageFromH2": 33.17523522,
+    "magnification": -0.6414200364,
+    "newtonX": 31.51024342,
+    "newtonX2": 12.96393373,
+    "objectFromH": 51.7215449,
+    "thinFromLast": 28.14612328,
+    "thinMagnification": -0.5837356816
+   },
+   "inputs": {
+    "kind": "one",
+    "lensBackRadiusMm": 20.0,
+    "lensCentreMm": 5.0,
+    "lensDiameterMm": 12.0,
+    "lensFrontRadiusMm": 20.0,
+    "lensGlass": "nbk7",
+    "lensKind": "biconvex",
+    "lensSpec": "radii",
+    "objectDistanceMm": 50.0,
+    "objectHeightMm": 3.0,
+    "wavelengthNm": 588.0
+   },
+   "name": "one lens: the example, bi-convex N-BK7 R = +/-20 mm, t = 5 mm, object 50 mm before V1, at 588 nm",
+   "tolerance": {
+    "efl": 1e-09,
+    "fromLast": 1e-09,
+    "heightMm": 1e-09,
+    "imageFromH2": 1e-09,
+    "magnification": 1e-09,
+    "newtonX": 1e-09,
+    "newtonX2": 1e-09,
+    "objectFromH": 1e-09,
+    "thinFromLast": 1e-09,
+    "thinMagnification": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efl": 20.21130148,
+    "fromLast": -98.56617511,
+    "heightMm": 17.37482346,
+    "imageFromH2": -96.84463021,
+    "magnification": 5.791607819,
+    "newtonX": -3.489756578,
+    "newtonX2": -117.0559317,
+    "objectFromH": 16.7215449,
+    "thinFromLast": -185.4932157,
+    "thinMagnification": 10.45675518
+   },
+   "inputs": {
+    "kind": "one",
+    "lensBackRadiusMm": 20.0,
+    "lensCentreMm": 5.0,
+    "lensDiameterMm": 12.0,
+    "lensFrontRadiusMm": 20.0,
+    "lensGlass": "nbk7",
+    "lensKind": "biconvex",
+    "lensSpec": "radii",
+    "objectDistanceMm": 15.0,
+    "objectHeightMm": 3.0,
+    "wavelengthNm": 588.0
+   },
+   "name": "one lens: the example inside F: a virtual, enlarged image",
+   "tolerance": {
+    "efl": 1e-09,
+    "fromLast": 1e-09,
+    "heightMm": 1e-09,
+    "imageFromH2": 1e-09,
+    "magnification": 1e-09,
+    "newtonX": 1e-09,
+    "newtonX2": 1e-09,
+    "objectFromH": 1e-09,
+    "thinFromLast": 1e-09,
+    "thinMagnification": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efl": -18.56007991,
+    "fromLast": -15.22977538,
+    "heightMm": 0.7938332369,
+    "imageFromH2": -13.64887714,
+    "magnification": 0.264611079,
+    "newtonX": 70.14097815,
+    "newtonX2": 4.911202771,
+    "objectFromH": 51.58089824,
+    "thinFromLast": -16.63911335,
+    "thinMagnification": 0.2693164447
+   },
+   "inputs": {
+    "kind": "one",
+    "lensBackRadiusMm": 20.0,
+    "lensCentreMm": 5.0,
+    "lensDiameterMm": 12.0,
+    "lensFrontRadiusMm": 20.0,
+    "lensGlass": "nbk7",
+    "lensKind": "biconcave",
+    "lensSpec": "radii",
+    "objectDistanceMm": 50.0,
+    "objectHeightMm": 3.0,
+    "wavelengthNm": 588.0
+   },
+   "name": "one lens: the same radii bi-concave",
+   "tolerance": {
+    "efl": 1e-09,
+    "fromLast": 1e-09,
+    "heightMm": 1e-09,
+    "imageFromH2": 1e-09,
+    "magnification": 1e-09,
+    "newtonX": 1e-09,
+    "newtonX2": 1e-09,
+    "objectFromH": 1e-09,
+    "thinFromLast": 1e-09,
+    "thinMagnification": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efl": 50.0,
+    "fromLast": 82.18371501,
+    "heightMm": -2.142857143,
+    "imageFromH2": 85.71428571,
+    "magnification": -0.7142857143,
+    "newtonX": 70.0,
+    "newtonX2": 35.71428571,
+    "objectFromH": 120.0,
+    "thinFromLast": 81.72538385,
+    "thinMagnification": -0.6879987307
+   },
+   "inputs": {
+    "kind": "one",
+    "lensDiameterMm": 25.4,
+    "lensEdgeMm": 2.0,
+    "lensFocalMm": 50.0,
+    "lensGlass": "nbk7",
+    "lensKind": "planoconvex",
+    "lensOrientation": "convex",
+    "lensSpec": "focal",
+    "objectDistanceMm": 120.0,
+    "objectHeightMm": 3.0,
+    "wavelengthNm": 633.0
+   },
+   "name": "one lens: plano-convex N-BK7 designed for f = 50 mm, 2 mm edge, curved side first, object 120 mm away, at 633 nm",
+   "tolerance": {
+    "efl": 1e-09,
+    "fromLast": 1e-09,
+    "heightMm": 1e-09,
+    "imageFromH2": 1e-09,
+    "magnification": 1e-09,
+    "newtonX": 1e-09,
+    "newtonX2": 1e-09,
+    "objectFromH": 1e-09,
+    "thinFromLast": 1e-09,
+    "thinMagnification": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efl": 50.0,
+    "fromLast": -101.7963953,
+    "heightMm": 9.107783718,
+    "imageFromH2": -101.7963953,
+    "magnification": 3.035927906,
+    "newtonX": -16.4694293,
+    "newtonX2": -151.7963953,
+    "objectFromH": 33.5305707,
+    "thinFromLast": -96.97097135,
+    "thinMagnification": 2.885928373
+   },
+   "inputs": {
+    "kind": "one",
+    "lensDiameterMm": 25.4,
+    "lensEdgeMm": 2.0,
+    "lensFocalMm": 50.0,
+    "lensGlass": "nbk7",
+    "lensKind": "planoconvex",
+    "lensOrientation": "plano",
+    "lensSpec": "focal",
+    "objectDistanceMm": 30.0,
+    "objectHeightMm": 3.0,
+    "wavelengthNm": 633.0
+   },
+   "name": "one lens: the same flat side first, object 30 mm away (virtual)",
+   "tolerance": {
+    "efl": 1e-09,
+    "fromLast": 1e-09,
+    "heightMm": 1e-09,
+    "imageFromH2": 1e-09,
+    "magnification": 1e-09,
+    "newtonX": 1e-09,
+    "newtonX2": 1e-09,
+    "objectFromH": 1e-09,
+    "thinFromLast": 1e-09,
+    "thinMagnification": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efl": 100.0,
+    "fromLast": 147.7471829,
+    "heightMm": -1.496475848,
+    "imageFromH2": 149.8825283,
+    "magnification": -0.4988252826,
+    "newtonX": 200.4709935,
+    "newtonX2": 49.88252826,
+    "objectFromH": 300.4709935,
+    "thinFromLast": 146.7909073,
+    "thinMagnification": -0.4924865295
+   },
+   "inputs": {
+    "kind": "one",
+    "lensDiameterMm": 25.0,
+    "lensEdgeMm": 2.0,
+    "lensFocalMm": 100.0,
+    "lensGlass": "silica",
+    "lensKind": "biconvex",
+    "lensShape": "best",
+    "lensSpec": "focal",
+    "objectDistanceMm": 300.0,
+    "objectHeightMm": 3.0,
+    "wavelengthNm": 1064.0
+   },
+   "name": "one lens: best-form bi-convex fused silica, f = 100 mm, D = 25 mm, at 1064 nm, object 300 mm away",
+   "tolerance": {
+    "efl": 1e-09,
+    "fromLast": 1e-09,
+    "heightMm": 1e-09,
+    "imageFromH2": 1e-09,
+    "magnification": 1e-09,
+    "newtonX": 1e-09,
+    "newtonX2": 1e-09,
+    "objectFromH": 1e-09,
+    "thinFromLast": 1e-09,
+    "thinMagnification": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efl": -40.0,
+    "fromLast": -24.31032174,
+    "heightMm": 1.176725869,
+    "imageFromH2": -24.31032174,
+    "magnification": 0.3922419565,
+    "newtonX": 101.9778719,
+    "newtonX2": 15.68967826,
+    "objectFromH": 61.97787192,
+    "thinFromLast": -25.7364532,
+    "thinMagnification": 0.39408867
+   },
+   "inputs": {
+    "kind": "one",
+    "lensCentreMm": 3.0,
+    "lensDiameterMm": 20.0,
+    "lensFocalMm": -40.0,
+    "lensGlass": "nbk7",
+    "lensKind": "planoconcave",
+    "lensOrientation": "plano",
+    "lensSpec": "focal",
+    "objectDistanceMm": 60.0,
+    "objectHeightMm": 3.0,
+    "wavelengthNm": 588.0
+   },
+   "name": "one lens: plano-concave N-BK7 designed for f = -40 mm, t = 3 mm, flat side first, object 60 mm away",
+   "tolerance": {
+    "efl": 1e-09,
+    "fromLast": 1e-09,
+    "heightMm": 1e-09,
+    "imageFromH2": 1e-09,
+    "magnification": 1e-09,
+    "newtonX": 1e-09,
+    "newtonX2": 1e-09,
+    "objectFromH": 1e-09,
+    "thinFromLast": 1e-09,
+    "thinMagnification": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efl": -75.0,
+    "fromLast": -41.73956868,
+    "heightMm": 1.35796777,
+    "imageFromH2": -41.05080574,
+    "magnification": 0.4526559235,
+    "newtonX": 165.6887629,
+    "newtonX2": 33.94919426,
+    "objectFromH": 90.68876294,
+    "thinFromLast": -42.51894766,
+    "thinMagnification": 0.4522624401
+   },
+   "inputs": {
+    "kind": "one",
+    "lensCentreMm": 2.5,
+    "lensDiameterMm": 25.0,
+    "lensFocalMm": -75.0,
+    "lensGlass": "nsf11",
+    "lensKind": "biconcave",
+    "lensSpec": "focal",
+    "objectDistanceMm": 90.0,
+    "objectHeightMm": 3.0,
+    "wavelengthNm": 486.0
+   },
+   "name": "one lens: equi-concave N-SF11 designed for f = -75 mm, t = 2.5 mm, at 486 nm",
+   "tolerance": {
+    "efl": 1e-09,
+    "fromLast": 1e-09,
+    "heightMm": 1e-09,
+    "imageFromH2": 1e-09,
+    "magnification": 1e-09,
+    "newtonX": 1e-09,
+    "newtonX2": 1e-09,
+    "objectFromH": 1e-09,
+    "thinFromLast": 1e-09,
+    "thinMagnification": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efl": -71.79603886,
+    "fromLast": -30.48325544,
+    "heightMm": 1.844138882,
+    "imageFromH2": -27.66208324,
+    "magnification": 0.6147129608,
+    "newtonX": 116.7960389,
+    "newtonX2": 44.13395563,
+    "objectFromH": 45.0,
+    "thinFromLast": -30.4051039,
+    "thinMagnification": 0.6043639127
+   },
+   "inputs": {
+    "kind": "one",
+    "lensCentreMm": 4.0,
+    "lensDiameterMm": 20.0,
+    "lensGlass": "caf2",
+    "lensKind": "planoconcave",
+    "lensOrientation": "convex",
+    "lensRadiusMm": 30.0,
+    "lensSpec": "radii",
+    "objectDistanceMm": 45.0,
+    "objectHeightMm": 3.0,
+    "wavelengthNm": 3000.0
+   },
+   "name": "one lens: plano-concave CaF2, R = 30 mm, t = 4 mm, curved side first, at 3000 nm",
+   "tolerance": {
+    "efl": 1e-09,
+    "fromLast": 1e-09,
+    "heightMm": 1e-09,
+    "imageFromH2": 1e-09,
+    "magnification": 1e-09,
+    "newtonX": 1e-09,
+    "newtonX2": 1e-09,
+    "objectFromH": 1e-09,
+    "thinFromLast": 1e-09,
+    "thinMagnification": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efl": 40.0,
+    "fromLast": 66.66666667,
+    "heightMm": -2.0,
+    "imageFromH2": 66.66666667,
+    "magnification": -0.6666666667,
+    "newtonX": 60.0,
+    "newtonX2": 26.66666667,
+    "objectFromH": 100.0
+   },
+   "inputs": {
+    "kind": "one",
+    "lensDiameterMm": 25.0,
+    "lensFocalMm": 40.0,
+    "lensKind": "ideal",
+    "objectDistanceMm": 100.0,
+    "objectHeightMm": 3.0,
+    "wavelengthNm": 588.0
+   },
+   "name": "one lens: ideal thin lens, f = 40 mm, object 100 mm away",
+   "tolerance": {
+    "efl": 1e-09,
+    "fromLast": 1e-09,
+    "heightMm": 1e-09,
+    "imageFromH2": 1e-09,
+    "magnification": 1e-09,
+    "newtonX": 1e-09,
+    "newtonX2": 1e-09,
+    "objectFromH": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "efl": -40.0,
+    "fromLast": -17.14285714,
+    "heightMm": 1.714285714,
+    "imageFromH2": -17.14285714,
+    "magnification": 0.5714285714,
+    "newtonX": 70.0,
+    "newtonX2": 22.85714286,
+    "objectFromH": 30.0
+   },
+   "inputs": {
+    "kind": "one",
+    "lensDiameterMm": 25.0,
+    "lensFocalMm": -40.0,
+    "lensKind": "ideal",
+    "objectDistanceMm": 30.0,
+    "objectHeightMm": 3.0,
+    "wavelengthNm": 588.0
+   },
+   "name": "one lens: ideal thin lens, f = -40 mm, object 30 mm away",
+   "tolerance": {
+    "efl": 1e-09,
+    "fromLast": 1e-09,
+    "heightMm": 1e-09,
+    "imageFromH2": 1e-09,
+    "magnification": 1e-09,
+    "newtonX": 1e-09,
+    "newtonX2": 1e-09,
+    "objectFromH": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "angular": -0.3333333333,
+    "beamAngleDeg": -0.3333333333,
+    "beamDiameterMm": 15.0,
+    "expansion": -3.0,
+    "gapMm": 194.4557244,
+    "lengthMm": 202.8557585,
+    "thinGapMm": 195.799983
+   },
+   "inputs": {
+    "beamDiameterMm": 5.0,
+    "fieldDeg": 1.0,
+    "kind": "pair",
+    "l1DiameterMm": 25.4,
+    "l1EdgeMm": 2.0,
+    "l1FocalMm": 50.0,
+    "l1Glass": "nbk7",
+    "l1Kind": "planoconvex",
+    "l1Orientation": "convex",
+    "l1Spec": "focal",
+    "l2DiameterMm": 25.4,
+    "l2EdgeMm": 2.0,
+    "l2FocalMm": 150.0,
+    "l2Glass": "nbk7",
+    "l2Kind": "planoconvex",
+    "l2Orientation": "plano",
+    "l2Spec": "focal",
+    "pairObject": "infinity",
+    "pairWavelengthNm": 633.0,
+    "spacing": "afocal"
+   },
+   "name": "two lenses: Keplerian expander, plano-convex f = 50 and 150 mm at 633 nm (the example)",
+   "tolerance": {
+    "angular": 1e-09,
+    "beamAngleDeg": 1e-09,
+    "beamDiameterMm": 1e-09,
+    "expansion": 1e-09,
+    "gapMm": 1e-09,
+    "lengthMm": 1e-09,
+    "thinGapMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "angular": 0.3333333333,
+    "beamAngleDeg": 0.3333333333,
+    "beamDiameterMm": 15.0,
+    "expansion": 3.0,
+    "gapMm": 96.00620474,
+    "lengthMm": 102.0571335,
+    "thinGapMm": 96.97453564
+   },
+   "inputs": {
+    "beamDiameterMm": 5.0,
+    "fieldDeg": 1.0,
+    "kind": "pair",
+    "l1CentreMm": 3.0,
+    "l1DiameterMm": 25.4,
+    "l1FocalMm": -50.0,
+    "l1Glass": "nbk7",
+    "l1Kind": "planoconcave",
+    "l1Orientation": "convex",
+    "l1Spec": "focal",
+    "l2DiameterMm": 25.4,
+    "l2EdgeMm": 2.0,
+    "l2FocalMm": 150.0,
+    "l2Glass": "nbk7",
+    "l2Kind": "planoconvex",
+    "l2Orientation": "plano",
+    "l2Spec": "focal",
+    "pairObject": "infinity",
+    "pairWavelengthNm": 633.0,
+    "spacing": "afocal"
+   },
+   "name": "two lenses: Galilean expander, plano-concave f = -50 mm then plano-convex 150 mm",
+   "tolerance": {
+    "angular": 1e-09,
+    "beamAngleDeg": 1e-09,
+    "beamDiameterMm": 1e-09,
+    "expansion": 1e-09,
+    "gapMm": 1e-09,
+    "lengthMm": 1e-09,
+    "thinGapMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "angular": 3.0,
+    "beamAngleDeg": 3.0,
+    "beamDiameterMm": 1.666666667,
+    "expansion": 0.3333333333,
+    "gapMm": 96.97733267,
+    "lengthMm": 103.0460322,
+    "thinGapMm": 96.47271184
+   },
+   "inputs": {
+    "beamDiameterMm": 5.0,
+    "fieldDeg": 1.0,
+    "kind": "pair",
+    "l1DiameterMm": 25.4,
+    "l1EdgeMm": 2.0,
+    "l1FocalMm": 150.0,
+    "l1Glass": "nbk7",
+    "l1Kind": "planoconvex",
+    "l1Orientation": "convex",
+    "l1Spec": "focal",
+    "l2CentreMm": 3.0,
+    "l2DiameterMm": 25.4,
+    "l2FocalMm": -50.0,
+    "l2Glass": "nbk7",
+    "l2Kind": "biconcave",
+    "l2Spec": "focal",
+    "pairObject": "infinity",
+    "pairWavelengthNm": 1064.0,
+    "spacing": "afocal"
+   },
+   "name": "two lenses: Galilean reducer, plano-convex 150 mm then equi-concave -50 mm, at 1064 nm",
+   "tolerance": {
+    "angular": 1e-09,
+    "beamAngleDeg": 1e-09,
+    "beamDiameterMm": 1e-09,
+    "expansion": 1e-09,
+    "gapMm": 1e-09,
+    "lengthMm": 1e-09,
+    "thinGapMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "angular": -0.3333333333,
+    "expansion": -3.0,
+    "fromLast": 150.0,
+    "gapMm": 194.4557244,
+    "lengthMm": 202.8557585,
+    "magnification": -3.0,
+    "thinFromLast": 124.4035615,
+    "thinGapMm": 195.799983,
+    "thinMagnification": -3.0
+   },
+   "inputs": {
+    "kind": "pair",
+    "l1DiameterMm": 25.4,
+    "l1EdgeMm": 2.0,
+    "l1FocalMm": 50.0,
+    "l1Glass": "nbk7",
+    "l1Kind": "planoconvex",
+    "l1Orientation": "convex",
+    "l1Spec": "focal",
+    "l2DiameterMm": 25.4,
+    "l2EdgeMm": 2.0,
+    "l2FocalMm": 150.0,
+    "l2Glass": "nbk7",
+    "l2Kind": "planoconvex",
+    "l2Orientation": "plano",
+    "l2Spec": "focal",
+    "pairHeightMm": 4.0,
+    "pairObject": "focal",
+    "pairWavelengthNm": 633.0,
+    "spacing": "afocal"
+   },
+   "name": "two lenses: the example as a 4f relay, object in lens 1's front focal plane",
+   "tolerance": {
+    "angular": 1e-09,
+    "expansion": 1e-09,
+    "fromLast": 1e-09,
+    "gapMm": 1e-09,
+    "lengthMm": 1e-09,
+    "magnification": 1e-09,
+    "thinFromLast": 1e-09,
+    "thinGapMm": 1e-09,
+    "thinMagnification": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "angular": -0.3333333333,
+    "expansion": -3.0,
+    "fromLast": -300.0,
+    "gapMm": 194.4557244,
+    "lengthMm": 202.8557585,
+    "magnification": -3.0,
+    "thinFromLast": -325.5964385,
+    "thinGapMm": 195.799983,
+    "thinMagnification": -3.0
+   },
+   "inputs": {
+    "kind": "pair",
+    "l1DiameterMm": 25.4,
+    "l1EdgeMm": 2.0,
+    "l1FocalMm": 50.0,
+    "l1Glass": "nbk7",
+    "l1Kind": "planoconvex",
+    "l1Orientation": "convex",
+    "l1Spec": "focal",
+    "l2DiameterMm": 25.4,
+    "l2EdgeMm": 2.0,
+    "l2FocalMm": 150.0,
+    "l2Glass": "nbk7",
+    "l2Kind": "planoconvex",
+    "l2Orientation": "plano",
+    "l2Spec": "focal",
+    "pairDistanceMm": 100.0,
+    "pairHeightMm": 4.0,
+    "pairObject": "distance",
+    "pairWavelengthNm": 633.0,
+    "spacing": "afocal"
+   },
+   "name": "two lenses: the example spaced afocal, object 100 mm before lens 1 (Newton's form twice)",
+   "tolerance": {
+    "angular": 1e-09,
+    "expansion": 1e-09,
+    "fromLast": 1e-09,
+    "gapMm": 1e-09,
+    "lengthMm": 1e-09,
+    "magnification": 1e-09,
+    "thinFromLast": 1e-09,
+    "thinGapMm": 1e-09,
+    "thinMagnification": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "angular": -0.5,
+    "expansion": -2.0,
+    "fromLast": 200.0,
+    "gapMm": 300.0,
+    "lengthMm": 300.0,
+    "magnification": -2.0,
+    "thinFromLast": 200.0,
+    "thinGapMm": 300.0,
+    "thinMagnification": -2.0
+   },
+   "inputs": {
+    "kind": "pair",
+    "l1DiameterMm": 25.4,
+    "l1FocalMm": 100.0,
+    "l1Kind": "ideal",
+    "l2DiameterMm": 25.4,
+    "l2FocalMm": 200.0,
+    "l2Kind": "ideal",
+    "pairHeightMm": 4.0,
+    "pairObject": "focal",
+    "pairWavelengthNm": 633.0,
+    "spacing": "afocal"
+   },
+   "name": "two lenses: ideal lenses f = 100 and 200 mm as a 4f relay",
+   "tolerance": {
+    "angular": 1e-09,
+    "expansion": 1e-09,
+    "fromLast": 1e-09,
+    "gapMm": 1e-09,
+    "lengthMm": 1e-09,
+    "magnification": 1e-09,
+    "thinFromLast": 1e-09,
+    "thinGapMm": 1e-09,
+    "thinMagnification": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "bfl": -88.20684387,
+    "efl": 79.40228129,
+    "ffl": 23.5325729,
+    "focusFromLast": -88.20684387,
+    "gapMm": 100.0,
+    "h1Mm": 55.86970839,
+    "h2Mm": -167.6091252,
+    "lengthMm": 108.4000341,
+    "thinEfl": 78.28811414,
+    "thinGapMm": 100.0
+   },
+   "inputs": {
+    "beamDiameterMm": 5.0,
+    "fieldDeg": 1.0,
+    "gapMm": 100.0,
+    "kind": "pair",
+    "l1DiameterMm": 25.4,
+    "l1EdgeMm": 2.0,
+    "l1FocalMm": 50.0,
+    "l1Glass": "nbk7",
+    "l1Kind": "planoconvex",
+    "l1Orientation": "convex",
+    "l1Spec": "focal",
+    "l2DiameterMm": 25.4,
+    "l2EdgeMm": 2.0,
+    "l2FocalMm": 150.0,
+    "l2Glass": "nbk7",
+    "l2Kind": "planoconvex",
+    "l2Orientation": "plano",
+    "l2Spec": "focal",
+    "pairObject": "infinity",
+    "pairWavelengthNm": 633.0,
+    "spacing": "gap"
+   },
+   "name": "two lenses: the example at a 100 mm gap: the pair's f and principal planes",
+   "tolerance": {
+    "bfl": 1e-09,
+    "efl": 1e-09,
+    "ffl": 1e-09,
+    "focusFromLast": 1e-09,
+    "gapMm": 1e-09,
+    "h1Mm": 1e-09,
+    "h2Mm": 1e-09,
+    "lengthMm": 1e-09,
+    "thinEfl": 1e-09,
+    "thinGapMm": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "bfl": 13.18506042,
+    "efl": 45.60497986,
+    "ffl": 34.79834005,
+    "fromLast": 25.77460818,
+    "gapMm": 30.0,
+    "h1Mm": 10.80663981,
+    "h2Mm": -32.41991944,
+    "lengthMm": 38.40003408,
+    "magnification": -0.2760564263,
+    "thinEfl": 45.23522781,
+    "thinFromLast": 24.9667044,
+    "thinGapMm": 30.0,
+    "thinMagnification": -0.2696538248
+   },
+   "inputs": {
+    "gapMm": 30.0,
+    "kind": "pair",
+    "l1DiameterMm": 25.4,
+    "l1EdgeMm": 2.0,
+    "l1FocalMm": 50.0,
+    "l1Glass": "nbk7",
+    "l1Kind": "planoconvex",
+    "l1Orientation": "convex",
+    "l1Spec": "focal",
+    "l2DiameterMm": 25.4,
+    "l2EdgeMm": 2.0,
+    "l2FocalMm": 150.0,
+    "l2Glass": "nbk7",
+    "l2Kind": "planoconvex",
+    "l2Orientation": "plano",
+    "l2Spec": "focal",
+    "pairDistanceMm": 200.0,
+    "pairHeightMm": 4.0,
+    "pairObject": "distance",
+    "pairWavelengthNm": 633.0,
+    "spacing": "gap"
+   },
+   "name": "two lenses: the example at a 30 mm gap, object 200 mm away (lens by lens)",
+   "tolerance": {
+    "bfl": 1e-09,
+    "efl": 1e-09,
+    "ffl": 1e-09,
+    "fromLast": 1e-09,
+    "gapMm": 1e-09,
+    "h1Mm": 1e-09,
+    "h2Mm": 1e-09,
+    "lengthMm": 1e-09,
+    "magnification": 1e-09,
+    "thinEfl": 1e-09,
+    "thinFromLast": 1e-09,
+    "thinGapMm": 1e-09,
+    "thinMagnification": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "bfl": 8.724774668,
+    "efl": 24.26374788,
+    "ffl": 29.12132668,
+    "fromLast": 20.29601705,
+    "gapMm": 10.0,
+    "h1Mm": -4.857578797,
+    "h2Mm": -15.53897321,
+    "lengthMm": 17.0,
+    "magnification": -0.4768942721,
+    "thinEfl": 22.13960925,
+    "thinFromLast": 14.78355844,
+    "thinGapMm": 10.0,
+    "thinMagnification": -0.4105657785
+   },
+   "inputs": {
+    "gapMm": 10.0,
+    "kind": "pair",
+    "l1BackRadiusMm": 20.0,
+    "l1CentreMm": 5.0,
+    "l1DiameterMm": 12.0,
+    "l1FrontRadiusMm": 20.0,
+    "l1Glass": "nbk7",
+    "l1Kind": "biconvex",
+    "l1Spec": "radii",
+    "l2BackRadiusMm": 40.0,
+    "l2CentreMm": 2.0,
+    "l2DiameterMm": 20.0,
+    "l2FrontRadiusMm": 60.0,
+    "l2Glass": "nbk7",
+    "l2Kind": "biconcave",
+    "l2Spec": "radii",
+    "pairDistanceMm": 80.0,
+    "pairHeightMm": 4.0,
+    "pairObject": "distance",
+    "pairWavelengthNm": 588.0,
+    "spacing": "gap"
+   },
+   "name": "two lenses: bi-convex then bi-concave singlets by their radii at a 10 mm gap, object 80 mm away",
+   "tolerance": {
+    "bfl": 1e-09,
+    "efl": 1e-09,
+    "ffl": 1e-09,
+    "fromLast": 1e-09,
+    "gapMm": 1e-09,
+    "h1Mm": 1e-09,
+    "h2Mm": 1e-09,
+    "lengthMm": 1e-09,
+    "magnification": 1e-09,
+    "thinEfl": 1e-09,
+    "thinFromLast": 1e-09,
+    "thinGapMm": 1e-09,
+    "thinMagnification": 1e-09
+   }
+  }
+ ],
+ "citations": [
+  "Wikipedia, \"Lens (optics)\": the thin-lens formula, magnification and Newton's form, the thick-lens lensmaker's equation and principal planes, two lenses a distance apart",
+  "S. A. Konijnenberg, A. J. H. Adam and H. P. Urbach, BSc Optics (TU Delft Open, 2021), section 2.6: imaging with a thin lens, Newton's equation, two thin lenses (the image of the first is the object of the second), the thick lens's principal planes"
+ ],
+ "convergence": "Closed forms in double precision; the secant methods to 1e-15.",
+ "domain": "The refusal boundaries, each computed here and approached from both sides (a plano-concave and an equi-concave lens whose radius reaches the clear radius, a bi-convex lens whose faces meet at the rim, an afocal pair with f1 + f2 = 0 (refused at equality too), two lenses touching at their rims, and that least gap itself); eleven single lenses (bi-convex, bi-concave and plano-concave by their radii; plano-convex, best-form bi-convex, plano-concave and equi-concave designed from f; ideal lenses of either sign) in N-BK7, fused silica, N-SF11 and CaF2 from 486 to 3000 nm, with real and virtual images; nine pairs: Keplerian and Galilean expanders and a Galilean reducer spaced afocal, a 4f relay with singlets and with ideal lenses, an afocal pair imaging an object outside the focal plane, and pairs at 100, 30 and 10 mm gaps.",
+ "fidelity": "computed",
+ "id": "imaging",
+ "outside_scope": "The page refuses a wavelength outside a glass's fitted range, a focal length of the wrong sign for a convex or concave singlet, radii smaller than the clear radius, faces that cross before the clear diameter, an afocal spacing that would need f1 + f2 <= 0 or overlapping lenses, and a front focal plane of lens 1 that lies after it.",
+ "provenance": "The formulas written from the cited texts; the convex designs and thick-lens data are thick_lens.py's independent closed forms.",
+ "reference": "Gaussian imaging from each lens's principal planes, lens by lens for a pair; Newton's form twice for an afocal pair; Gullstrand's equation and its principal planes at a set gap; the closed-form thick-lens data, and the concave designs by the secant method (the app: ray-transfer matrices multiplied, the image read from the product, the equi-concave radius from a quadratic, the afocal gap from C(g) = 0)",
+ "reference_file": "validation/reference/imaging.py",
+ "scope": "Paraxial imaging by ideal thin lenses and spherical singlets in air, on the axis, at one wavelength, without apertures or aberrations.",
+ "title": "Imaging with lenses: one lens and its thin-lens model, telescopes, the 4f relay and two lenses at any gap",
+ "tolerance_rationale": "1e-9 relative: two exact methods for the same paraxial quantities, differing only by round-off; expected values stored to 10 significant digits. The refusal boundaries are approached 1e-6 relative from each side, far beyond that round-off, and must be accepted or refused exactly."
+}

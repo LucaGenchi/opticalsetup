@@ -4090,7 +4090,7 @@ export const wikiEntries = [
 
   {
     type: 'wavefrontdetector',
-    summary: "Estimates beam convergence from ray angle versus position, reporting whether light is collimated, converging, or diverging and the corresponding full cone angle.",
+    summary: "Reads beam convergence from ray angle versus position: collimated, converging or diverging with the full cone angle, or a focus plane with its Gaussian waist and Rayleigh range.",
     title: 'Wavefront detector',
     category: 'Detectors',
     realWorld: {
@@ -4204,7 +4204,36 @@ export const wikiEntries = [
         millimetre — −20.0&nbsp;mm when the sensor face sits 80&nbsp;mm past that lens, +5.0&nbsp;mm
         when it sits 5&nbsp;mm beyond the focus. The reported cone angle is constant on both
         sides of the focus, as it should be: the beam narrows and re-expands, but the cone it
-        belongs to does not change.</p>`,
+        belongs to does not change.</p>
+        <p>With the sensor face exactly on the focus every ray lands at the same height, and
+        there is no line to fit. The panel then reads <strong>FOCUS PLANE</strong>: the cone
+        comes from the spread of the arriving angles alone, weighed by power like the fitted
+        cone either side. For a slow cone the two agree, so the reading runs on continuously
+        through the focus; for a steep one they do not, because the fit takes angle as linear
+        in height, which overstates a wide cone. A 30&nbsp;mm beam through an
+        <span class="w">f</span>&nbsp;=&nbsp;10&nbsp;mm lens reads 127.4° a hundredth of a
+        millimetre either side of the focus, and 112.6° on it, the true
+        2&nbsp;atan(15/10). The traced spot there
+        is a point, which no real beam reaches, so the panel also gives the
+        <strong>waist</strong> <span class="w">w₀</span> and <strong>Rayleigh range</strong>
+        <span class="w">z<sub>R</sub></span> an ideal Gaussian beam would have focused in that
+        cone, at the light's mean wavelength. The 10&nbsp;mm, 532&nbsp;nm beam of a
+        <span class="w">f</span>&nbsp;=&nbsp;100&nbsp;mm lens reads a 5.72° cone,
+        <span class="w">w₀</span>&nbsp;=&nbsp;3.39&nbsp;µm and
+        <span class="w">z<sub>R</sub></span>&nbsp;=&nbsp;67.9&nbsp;µm.</p>
+        <p>A face placed by hand rarely lands exactly on that point, so it reads
+        <strong>FOCUS PLANE</strong> anywhere within three Rayleigh ranges of the waist, where
+        a Gaussian beam is at most √10 times its waist wide, and also says how far
+        <strong>ahead</strong> (further along the beam) or <strong>behind</strong> the waist
+        lies. The waist is placed where the rays' spread is least, and the cone, waist and
+        Rayleigh range are the focus's own wherever the face sits in that zone. For that lens
+        the zone is ±0.204&nbsp;mm: a face 0.1&nbsp;mm short of the focus reads the waist
+        100&nbsp;µm ahead. Beyond it the fitted CONVERGING or DIVERGING 5.73° returns. A cone
+        whose half-angle is under 10⁻⁴&nbsp;rad, too slow to place its focus (as for a
+        specimen), reads FOCUS PLANE only on the focus itself.</p>`,
+      formulas2: [
+        { tex: 'w_0 = \\frac{\\lambda}{\\pi\\,\\mathrm{NA}}, \\qquad z_R = \\frac{\\pi w_0^2}{\\lambda}, \\qquad \\mathrm{NA} = \\sin\\frac{\\Theta_{\\text{full}}}{2}', caption: 'The diffraction-limited waist radius and Rayleigh range of an M² = 1 Gaussian beam focused in air with the measured cone: the same model the specimens use for their focus.' },
+      ],
       limitations: `<p>A straight line through <span class="w">θ(h)</span> has exactly one
         shape term in it, and that term is <strong>defocus</strong>. Tilt is fitted and thrown
         away; everything above defocus — astigmatism, coma, spherical aberration, and every
@@ -4223,10 +4252,17 @@ export const wikiEntries = [
         arriving ray is used at full precision, so there is no maximum measurable slope and no
         minimum detectable one.</p>
         <p>The reading is geometric throughout: an angle in degrees, never an optical path
-        difference in waves, and with no wavelength dependence at all. There is no RMS or
-        peak-to-valley wavefront error, no Zernike decomposition, and no Strehl ratio. Finally,
-        the fit needs at least two rays at different heights — a single ray, or a source in
-        line mode, has no gradient to measure and reports collimated by default rather than
+        difference in waves. Only the focus plane's waist and Rayleigh range use the
+        wavelength, and they describe an ideal Gaussian beam in the traced cone, not the light
+        actually traced: they ignore M², aberrations and the medium's index, and a broadband
+        focus gives them at its mean wavelength. The zone around the focus is drawn from that
+        ideal beam too: an aberrated focus, whose rays never meet at one point, still reads
+        a waist at its plane of least spread. Any rays
+        meeting at one point count, so two separate beams crossing on the face read as a focus,
+        as they read as one converging bundle off it. There is no RMS or peak-to-valley
+        wavefront error, no Zernike decomposition, and no Strehl ratio. Finally, the fit needs
+        at least two rays at different heights or angles — a single ray, or a source in line
+        mode, has no gradient to measure and reports collimated by default rather than
         declining to answer.</p>`,
     },
     related: ['dm', 'detector', 'camera', 'lens', 'metasurface'],

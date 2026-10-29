@@ -53,7 +53,16 @@
     "centroid": null,
     "coherentPaths": 0,
     "color": "#65ff00",
-    "convergence": null,
+    "convergence": {
+     "atFocus": true,
+     "diverging": false,
+     "fullAngleDeg": 3.436716,
+     "rayleighMm": 0.188325851,
+     "slopePerMm": null,
+     "waistAheadMm": 0,
+     "waistMm": 0.00564723486,
+     "wavelengthNm": 532
+    },
     "dark": false,
     "darkOutput": null,
     "depositedProfile": null,
