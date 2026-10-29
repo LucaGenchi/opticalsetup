@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import {
   createElement, registry, newSampleChannel, sampleChannels, specimenTypeOf,
   signalKindsFor, channelWarning, defaultEmissionWl, drivingExcitationWl, specimenTimingText,
-  specimenTimingReadout,
+  specimenTimingReadout, twoBeamOrders,
   ramanShifts, ramanStokesWl, LINEAR_SIGNAL_KINDS, NONLINEAR_SIGNAL_KINDS,
   SPECIMEN_TYPES, MODIFIER_KINDS, EMISSION_ORDER,
   FLUOROPHORES, fluorophoreSpec, fluorophoreAbsorption,
@@ -20,7 +20,8 @@ import {
 import { gateTransmissionAt } from '../sketch/js/pulses.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { wavelengthToColor } from '../sketch/js/util.js';
-import { C_MM_PER_NS, pulseMarkers, pulseOverlap } from '../sketch/js/pulses.js';
+import { C_MM_PER_NS, pulseMarkers } from '../sketch/js/pulses.js';
+import { mixOverlap } from '../sketch/js/parametric.js';
 
 const ch = (kind, over = {}) => ({ ...newSampleChannel(kind), ...over });
 
@@ -365,15 +366,217 @@ test('a mismatched pair is explained, in picoseconds and in millimetres of path'
     { wl: 1040, opl: 200 + skewMm, pulse: { repRateMHz: 40, pulseWidthFs: 200, phaseNs: 0 } },
   ]);
   assert.equal(channelWarning(ch('cars'), beams(0)), null, 'matched arms need no warning');
+  // 3 mm is 10 ps: nothing is drawn, and the warning says so.
   const warning = channelWarning(ch('cars'), beams(3));
-  assert.match(warning, /pulses to arrive together/);
-  assert.match(warning, /ps apart/);
-  assert.match(warning, /3\.00 mm of path/);
-  assert.match(warning, /delay line/);
+  assert.equal(warning, 'CARS is not drawn: the two pulses arrive 10 ps apart (3.00 mm of path), '
+    + 'and it needs at least 2 % of their overlap. Match the arms, or add a delay line.');
+  // Partly overlapped: the share of the signal still drawn. CARS weighs its
+  // 200 fs pump twice, so 52 µm (173 fs) leaves exp(−4 ln2 Δt²/(τ²/2 + τ²)).
+  const skewMm = 0.052, dtFs = skewMm / C_MM_PER_NS * 1e6;
+  const left = Math.exp(-4 * Math.LN2 * dtFs ** 2 / (200 ** 2 / 2 + 200 ** 2));
+  assert.equal(channelWarning(ch('cars'), beams(skewMm)),
+    `CARS is down to ${Number((left * 100).toPrecision(3))} % of its signal: the two pulses arrive 0.17 ps apart (0.05 mm of path). `
+    + 'Match the arms, or add a delay line.');
+  // Sum frequency weighs each pulse once and keeps more of the same pair.
+  const plainLeft = Math.exp(-4 * Math.LN2 * dtFs ** 2 / (2 * 200 ** 2));
+  assert.match(channelWarning(ch('sfg'), beams(skewMm)), new RegExp(`^Sum frequency is down to ${Number((plainLeft * 100).toPrecision(3))} %`));
   // Continuous-wave light is always present, so timing never applies to it.
   assert.equal(channelWarning(ch('cars'), [{ wl: 800, opl: 200 }, { wl: 1040, opl: 900 }]), null);
   // And the per-channel opt-out silences it.
   assert.equal(channelWarning(ch('cars', { requireOverlap: false }), beams(3)), null);
+});
+
+test('CARS weighs its pump twice when timing a pair; other pairs take one photon each', () => {
+  // An independent reference: integrate I_a(t)^m I_b(t - Δ)^n numerically for
+  // Gaussian envelopes, normalised to Δ = 0, and compare with the closed form.
+  const gauss = (t, fwhm) => Math.exp(-4 * Math.LN2 * t * t / (fwhm * fwhm));
+  const integral = (tauA, tauB, m, n, delta) => {
+    const span = 6 * Math.max(tauA, tauB), steps = 4000, dt = 2 * span / steps;
+    let sum = 0;
+    for (let i = 0; i <= steps; i++) {
+      const t = -span + i * dt;
+      sum += gauss(t, tauA) ** m * gauss(t - delta, tauB) ** n;
+    }
+    return sum * dt;
+  };
+  const beam = (fs, oplMm) => ({ opl: oplMm, pulse: { repRateMHz: 80, pulseWidthFs: fs, phaseNs: 0 } });
+  for (const [tauA, tauB, m, n] of [[200, 200, 1, 1], [200, 200, 2, 1], [150, 400, 2, 1], [400, 150, 1, 2]]) {
+    for (const deltaFs of [0, 60, 150, 300]) {
+      const deltaMm = deltaFs * 1e-6 * C_MM_PER_NS;
+      const got = mixOverlap(beam(tauA, deltaMm), beam(tauB, 0), { orderA: m, orderB: n }).factor;
+      const want = integral(tauA, tauB, m, n, deltaFs) / integral(tauA, tauB, m, n, 0);
+      assert.ok(Math.abs(got - want) < 1e-6, `${tauA}/${tauB} fs, orders ${m}/${n}, ${deltaFs} fs: ${got} vs ${want}`);
+    }
+  }
+  // Equal 200 fs pulses 141 fs apart: the plain pair keeps half, CARS 2^(-4/3).
+  const half = 200 / Math.SQRT2 * 1e-6 * C_MM_PER_NS;
+  assert.ok(Math.abs(mixOverlap(beam(200, half), beam(200, 0)).factor - 0.5) < 1e-9);
+  assert.ok(Math.abs(mixOverlap(beam(200, half), beam(200, 0), twoBeamOrders('cars', 800, 1040)).factor
+    - 2 ** (-4 / 3)) < 1e-9);
+
+  // The pump is the shorter wavelength, whichever side of the pair it is on.
+  assert.deepEqual(twoBeamOrders('cars', 800, 1040), { orderA: 2, orderB: 1 });
+  assert.deepEqual(twoBeamOrders('cars', 1040, 800), { orderA: 1, orderB: 2 });
+  for (const kind of ['srs', 'sfg', 'shg']) assert.deepEqual(twoBeamOrders(kind, 800, 1040), { orderA: 1, orderB: 1 });
+  // Nonsense orders fall back to one photon, never to a non-finite overlap.
+  for (const order of [0, -1, 0.5, NaN, Infinity]) {
+    const plain = mixOverlap(beam(200, half), beam(200, 0)).factor;
+    assert.equal(mixOverlap(beam(200, half), beam(200, 0), { orderA: order }).factor, plain, `order ${order}`);
+  }
+  // The signal peaks nearer the beam that is weighed twice.
+  const early = mixOverlap(beam(200, 0), beam(200, 0.3), { orderA: 2, orderB: 1 });
+  const evenly = mixOverlap(beam(200, 0), beam(200, 0.3));
+  const tA = 0, tB = 0.3 / C_MM_PER_NS;
+  assert.ok(Math.abs(evenly.centerNs - (tA + tB) / 2) < 1e-12);
+  assert.ok(Math.abs(early.centerNs - (2 * tA + tB) / 3) < 1e-12);
+});
+
+test('CARS keeps less of a partly overlapped pair than sum frequency does, in the tracer', () => {
+  const bench = (kind, delayMm) => {
+    const laser = (wl, y) => {
+      const source = createElement('pulsedlaser', 0, y);
+      Object.assign(source.params, {
+        wavelength: wl, temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 200, beamMode: 'line',
+      });
+      return source;
+    };
+    const delay = createElement('delayline', 120, 6);
+    Object.assign(delay.params, { delayMm, aperture: 10 });
+    const sample = createElement('sample', 200, 0);
+    sample.rot = 90;
+    Object.assign(sample.params, {
+      aperture: 40, specimenType: 'nonlinear', channels: [ch(kind, { eff: 0.5 })],
+    });
+    traceAll([laser(800, -6), laser(1040, 6), delay, sample]);
+    return specimenTimingReading(sample.id);
+  };
+  // Pick a delay that leaves about a 140 fs skew, whatever the bench geometry
+  // adds, by reading the skew a zero delay line leaves.
+  const base = bench('cars', 0);
+  assert.equal(base.state, 'mixing');
+  const cars = bench('cars', 0.04), sum = bench('shg', 0.04);
+  assert.equal(cars.state, 'mixing');
+  assert.equal(sum.state, 'mixing');
+  assert.ok(Math.abs(cars.skewNs - sum.skewNs) < 1e-12, 'both are timed from the same arrivals');
+  const tau = 200e-6;
+  const expected = orders => Math.exp(-4 * Math.LN2 * cars.skewNs ** 2 / (tau * tau / orders[0] + tau * tau / orders[1]));
+  assert.ok(Math.abs(cars.overlap - expected([2, 1])) < 1e-9, `CARS ${cars.overlap}`);
+  assert.ok(Math.abs(sum.overlap - expected([1, 1])) < 1e-9, `sum frequency ${sum.overlap}`);
+  assert.ok(cars.skewNs > 0 && cars.overlap < sum.overlap, 'the pump counted twice narrows the window');
+});
+
+test('two-beam signals between different repetition rates are not drawn, and say so', () => {
+  // The permissive rule this replaces drew such a pair at full strength, as if
+  // every pulse met one of the other train. Timing between unequal rates is
+  // not modelled, so nothing is drawn and the inspector and canvas both say why.
+  const bench = (rateB, requireOverlap = true) => {
+    const laser = (wl, y, rate) => {
+      const source = createElement('pulsedlaser', 0, y);
+      Object.assign(source.params, {
+        wavelength: wl, temporalMode: 'pulsed', repRateMHz: rate, pulseWidthFs: 200, beamMode: 'line',
+      });
+      return source;
+    };
+    const sample = createElement('sample', 200, 0);
+    sample.rot = 90;
+    Object.assign(sample.params, {
+      aperture: 40, specimenType: 'nonlinear', channels: [ch('cars', { eff: 0.5, requireOverlap })],
+    });
+    const detector = createElement('detector', 400, 0);
+    detector.params.aperture = 60;
+    traceAll([laser(800, -6, 80), laser(1040, 6, rateB), sample, detector]);
+    return {
+      reading: specimenTimingReading(sample.id),
+      hasSignal: (detectorReading(detector.id)?.spectrum || []).some(s => Math.abs(s.wavelength - 650) < 2),
+    };
+  };
+  assert.ok(bench(80).hasSignal, 'matched rates and arms give the anti-Stokes line');
+  const mismatched = bench(37);
+  assert.ok(!mismatched.hasSignal, '80 and 37 MHz must not draw a full-strength CARS line');
+  assert.equal(mismatched.reading.state, 'unsupported');
+  assert.match(specimenTimingText(mismatched.reading), /timing not modelled: the two beams run at 80 and 37 MHz/);
+  // The opt-out still draws the schematic signal.
+  assert.ok(bench(37, false).hasSignal);
+
+  const rated = (wl, rate) => ({ wl, opl: 200, pulse: { repRateMHz: rate, pulseWidthFs: 200, phaseNs: 0 } });
+  assert.match(channelWarning(ch('cars'), [rated(800, 80), rated(1040, 37)]),
+    /CARS timing is not modelled between 80 and 37 MHz trains, so no signal is drawn/);
+  assert.match(channelWarning(ch('srs'), [rated(800, 80), rated(1040, 37)]), /^Stimulated Raman timing is not modelled/);
+  assert.equal(channelWarning(ch('cars', { requireOverlap: false }), [rated(800, 80), rated(1040, 37)]), null);
+  assert.equal(channelWarning(ch('cars'), [rated(800, 80), rated(1040, 80)]), null);
+});
+
+// Pulsed lasers on one nonlinear specimen, all on the same horizontal path
+// length to it; each `backFs` moves its laser back so its pulses arrive that
+// much later. Returns the traced readings and the incident records.
+function timingBench(lasers, channel = ch('cars', { eff: 0.5 })) {
+  const sources = lasers.map(({ wl, fs, rate = 80, backFs = 0 }, i) => {
+    const source = createElement('pulsedlaser', -backFs * 1e-6 * C_MM_PER_NS, (i - (lasers.length - 1) / 2) * 20);
+    Object.assign(source.params, {
+      wavelength: wl, temporalMode: 'pulsed', repRateMHz: rate, pulseWidthFs: fs, beamMode: 'line',
+    });
+    return source;
+  });
+  const sample = createElement('sample', 200, 0);
+  sample.rot = 90;
+  Object.assign(sample.params, { aperture: 80, specimenType: 'nonlinear', channels: [channel] });
+  const detector = createElement('detector', 400, 0);
+  detector.params.aperture = 100;
+  traceAll([...sources, sample, detector]);
+  const records = specimenIncidentBeams(sample.id);
+  return {
+    reading: specimenTimingReading(sample.id),
+    warning: channelWarning(channel, records),
+    hasCars: (detectorReading(detector.id)?.spectrum || []).some(s => Math.abs(s.wavelength - 650.4) < 2),
+  };
+}
+
+test('CARS picks its partner by its own timing gate, not the plain overlap', () => {
+  // Review case: a 200 fs pump with a 400 fs Stokes 450 fs late keeps 4.42 %
+  // of CARS. A second 1040 nm Stokes of 50 fs, 200 fs late, overlaps the pump
+  // better by the plain product (7.4 % against 6.0 %), but CARS weighs the
+  // pump twice and keeps only 0.72 % of it: the 400 fs one is the partner, and
+  // the line stays.
+  const pump = { wl: 800, fs: 200 }, slow = { wl: 1040, fs: 400, backFs: 450 }, quick = { wl: 1040, fs: 50, backFs: 200 };
+  const cars = (tauP, tauS, dt) => Math.exp(-4 * Math.LN2 * dt * dt / (tauP * tauP / 2 + tauS * tauS));
+  const plain = (tauP, tauS, dt) => Math.exp(-4 * Math.LN2 * dt * dt / (tauP * tauP + tauS * tauS));
+  assert.ok(plain(200, 50, 200) > plain(200, 400, 450), 'the plain overlap would choose the 50 fs Stokes');
+  assert.ok(cars(200, 50, 200) < 0.02 && cars(200, 400, 450) > 0.02, 'CARS only keeps the 400 fs one');
+
+  const alone = timingBench([pump, slow]);
+  assert.ok(alone.hasCars);
+  assert.ok(Math.abs(alone.reading.overlap - cars(200, 400, 450)) < 1e-6, `${alone.reading.overlap}`);
+  const both = timingBench([pump, slow, quick]);
+  assert.ok(both.hasCars, 'the line stays with a worse-timed Stokes beside the good one');
+  assert.equal(both.reading.state, 'mixing');
+  assert.ok(Math.abs(both.reading.overlap - cars(200, 400, 450)) < 1e-6, `${both.reading.overlap}`);
+  // The inspector times the same pair: 0.45 ps apart and 4.42 % left, not the
+  // 50 fs beam's 0.20 ps.
+  assert.match(both.warning, /^CARS is down to 4\.42 % of its signal: the two pulses arrive 0\.45 ps apart/);
+  // Sum frequency weighs both beams once and still picks by the plain overlap.
+  const sum = timingBench([pump, slow, quick], ch('shg', { eff: 0.5 }));
+  assert.equal(sum.reading.state, 'mixing');
+  assert.ok(Math.abs(sum.reading.overlap - plain(200, 50, 200)) < 1e-6, `${sum.reading.overlap}`);
+});
+
+test('the timing warning speaks of the pairs the tracer makes, not one global pair', () => {
+  // Review case: pumps at 800 nm running at 37 and 80 MHz, a 1040 nm Stokes at
+  // 80 MHz, all together. The 80 MHz pair draws CARS at full overlap, so the
+  // inspector must not say that no signal is drawn; it names the pair it
+  // cannot time instead.
+  const bench = timingBench([{ wl: 800, fs: 200, rate: 37 }, { wl: 800, fs: 200 }, { wl: 1040, fs: 200 }]);
+  assert.ok(bench.hasCars);
+  assert.equal(bench.reading.state, 'mixing');
+  assert.equal(bench.reading.overlap, 1);
+  assert.doesNotMatch(bench.warning, /no signal is drawn/);
+  assert.equal(bench.warning,
+    'The pair 800 nm at 37 MHz and 1040 nm at 80 MHz is not mixed: timing between different repetition rates is not modelled.');
+  // With no pair it can time, the verdict is the global one.
+  const none = timingBench([{ wl: 800, fs: 200, rate: 37 }, { wl: 1040, fs: 200 }]);
+  assert.ok(!none.hasCars);
+  assert.match(none.warning, /^CARS timing is not modelled between 37 and 80 MHz trains, so no signal is drawn/);
+  // And a well-timed pair at one rate needs no warning at all.
+  assert.equal(timingBench([{ wl: 800, fs: 200 }, { wl: 1040, fs: 200 }]).warning, null);
 });
 
 test('SRS needs a second beam, and says so when there is only one', () => {
@@ -574,7 +777,7 @@ test('packet positions agree with real synchronization, exactly in physical mode
     return Math.min(...markers.map(m => Math.abs(m.opl - oplAtSample)));
   };
   const aligned = (extra, mode) => Math.abs(gap(600, mode) - gap(600 + extra, mode)) < 0.01;
-  const synced = extra => pulseOverlap({ opl: 600, pulse }, { opl: 600 + extra, pulse }).factor > 0.999;
+  const synced = extra => mixOverlap({ opl: 600, pulse }, { opl: 600 + extra, pulse }).factor > 0.999;
 
   const period = C * periodNs;
   // A whole period of extra path is still synchronized — the pulse trains are
@@ -1274,8 +1477,9 @@ test('the specimen shows where the two beams are, not only when they are wrong',
   // Matched, and it says so rather than staying silent.
   assert.match(bench(0).text, /800 \+ 1040 nm: arriving together, 100% temporal overlap/);
   // Partly overlapping: the number moves continuously, which is what makes a
-  // delay scan readable.
-  assert.match(bench(0.2).text, /667 fs apart \(0\.2 mm of path\), 54% temporal overlap/);
+  // delay scan readable. CARS weighs its pump twice: exp(−4 ln2 Δt²/(τ²/2 + τ²))
+  // for two 1 ps pulses 667 fs apart, where a plain pair would keep 54%.
+  assert.match(bench(0.2).text, /667 fs apart \(0\.2 mm of path\), 43\.9% temporal overlap/);
   assert.match(bench(30).text, /100 ps apart \(30 mm of path\), 0% temporal overlap/);
 
   // And the readout is offered on both specimen holders when a two-beam signal
