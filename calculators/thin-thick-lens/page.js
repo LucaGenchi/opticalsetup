@@ -1,17 +1,16 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 // The thin and thick lens page: a laser and a lens (inputs -> thick-lens.js
-// -> the beam figure, results and graphs), then the fiber panel, which reads
-// the lens panel's last result.
+// -> the beam figure, results and graphs). Coupling the focus into a fiber
+// is the Free space to fiber coupling page's (fiber-coupling/real-lens.js).
 
 import {
-  LENS_INPUTS, LENS_DEFAULTS, FIBER_INPUTS, FIBER_DEFAULTS, computeThickLens, computeFiber, chromaticScan, beamDiagram, canvasScene,
+  LENS_INPUTS, LENS_DEFAULTS, computeThickLens, chromaticScan, beamDiagram, canvasScene,
   HIGH_NA, FRESNEL_LIMIT,
 } from './thick-lens.js';
 import { mountCalculator } from '../assets/simple-calculator-page.js';
 import { formatNumber } from '../assets/calculator-kit.js';
 import { buildShareURL } from '../../sketch/js/share.js';
-import { SINGLE_MODE_V } from '../fiber-coupling/fiber-coupling.js';
 
 const figure = document.getElementById('preview-figure');
 const caption = document.getElementById('preview-caption');
@@ -197,56 +196,9 @@ function drawFigure(r) {
     .catch(() => { if (token === shareToken) openLink.removeAttribute('href'); });
 }
 
-// ---------------------------------------------------------------- fiber
-let lensResult = null, fiber = null;
-
-function fiberRows(f) {
-  const mode = [{ group: `Mode-field diameter ${formatNumber(roundUm(f.values.mfdUm), 12)} µm` }, ['Far-field half angle θ₀ (1/e²)', f.theta * 1e3, 'mrad', 4]];
-  if (f.mode) mode.push(['Numerical aperture', f.mode.na, '', 4], ['V number', f.mode.vNumber, '', 4], ['Cutoff wavelength', f.mode.cutoffNm, 'nm', 4], ['Single-mode here', f.mode.singleMode ? 'yes' : 'no: LP₁₁ is guided too']);
-  mode.push(['Light reaching the fiber', 100 * f.through, '%', 4]);
-  const coupling = [];
-  for (const [kind, name] of [['real', 'Singlet'], ['ideal', 'Ideal thin lens']]) {
-    if (!f[kind]) continue;
-    const k = f[kind], shiftUm = k.shiftMm * 1e3;
-    // Under 0.05 µm the search's rounding, not a position.
-    coupling.push({ group: name }, Math.abs(roundUm(shiftUm)) < 0.05 ? ['Best fiber position', 'at F′'] : umRow('Best fiber position from F′', shiftUm),
-      ['Mode overlap there', 100 * k.aligned, '%', 4], ['Coupling efficiency', 100 * k.efficiency, '%', 4],
-      umRow('Lateral offset that halves it', k.halfLateralUm), ['Tilt that halves it', k.halfTiltMrad, 'mrad', 3]);
-  }
-  return { 'fiber-mode': mode, 'fiber-coupling': coupling };
-}
-
-function fiberNotes(f) {
-  const out = [];
-  if (f.axialCut) out.push(`The axial graph stops at ±${formatNumber(f.axialCut.reachMm, 3)} mm instead of ±${formatNumber(f.axialCut.wantedMm, 3)} mm: farther from the focus the defocus varies too fast across the pupil for this page’s sampling.`);
-  if (f.mode && !f.mode.singleMode) out.push(`V = ${formatNumber(f.mode.vNumber, 4)} is above ${formatNumber(SINGLE_MODE_V, 4)}: at this wavelength the fiber also guides LP₁₁. The coupling here is into the fundamental mode only.`);
-  out.push('The fiber sits on the axis at each lens’s best position, its axis along the lens’s. The coupling efficiency is the mode overlap times the light reaching the fiber: the beam’s share inside the clear diameter' + (f.values.fresnel ? ', and the transmission of the uncoated lens faces and fiber end.' : '.') + ' Each graph moves the fiber one way only, from that position; the focus is round, so a lateral offset in any direction is the same.');
-  return out;
-}
-
-function fiberGraphs(f) {
-  const kinds = [['real', 'Singlet', '--series-1'], ['ideal', 'Ideal thin lens', '--series-3']].filter(([k]) => f.scans[k]);
-  const plot = (axis, x, label, unit, vlines = []) => ({
-    x, xLabel: label, xUnit: unit, yLabel: 'Coupling efficiency (%)', yMin: 0, yMax: 100,
-    series: kinds.map(([k, name, color]) => ({ name, color, values: f.scans[k][axis].map(e => (Number.isFinite(e) ? 100 * e * f.through : null)) })),
-    vlines, formatX: n => formatNumber(n, 4), formatY: n => formatNumber(n, 4),
-  });
-  return {
-    lateral: plot('lateral', f.scans.lateralUm, 'Lateral offset of the core (µm)', 'µm'),
-    axial: plot('axial', f.scans.axialUm, 'Fiber position from F′ (µm)', 'µm', [{ x: 0, label: 'F′' }]),
-    tilt: plot('tilt', f.scans.tiltMrad, 'Tilt of the fiber (mrad)', 'mrad'),
-  };
-}
-
 mountCalculator({
   inputs: LENS_INPUTS, defaults: LENS_DEFAULTS, hideInactive: true, charts: ['beam', 'colour'],
   groups: { laser: { title: 'Laser' }, lens: { title: 'Lens' }, size: { title: 'Dimensions' } },
   compute: computeThickLens, rows, notes, graphs,
-  onResult: r => { drawFigure(r); lensResult = r; fiber?.update(); },
-});
-
-fiber = mountCalculator({
-  panel: 'fiber', inputs: FIBER_INPUTS, defaults: FIBER_DEFAULTS, hideInactive: true, charts: ['lateral', 'axial', 'tilt'],
-  groups: { fiber: { title: 'Fiber' } },
-  compute: raw => computeFiber(lensResult, raw), rows: fiberRows, notes: fiberNotes, graphs: fiberGraphs,
+  onResult: drawFigure,
 });

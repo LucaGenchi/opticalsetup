@@ -212,7 +212,8 @@
   grid-column: 1 / -1; justify-self: start; font: inherit; font-size: 12.5px; color: var(--muted);
   background: none; border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; cursor: pointer;
 }
-.calc-reset:hover { color: var(--accent); border-color: var(--accent); }
+.calc-reset:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.calc-reset:disabled { opacity: .5; cursor: default; }
 .chart-host .chart-note { font-size: 12px; margin-top: 4px; }
 
 /* ---------- extra panels and controls below the graphs ---------- */
@@ -254,6 +255,15 @@
   .calc-block-note { width: auto; text-align: left; }
 }
 @media (max-width: 700px) { .calc-grid-2 { grid-template-columns: minmax(0, 1fr); } }
+/* A form's groups in two of three columns, its side tables in the third. */
+.calc-form-side { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+.calc-form-side > .calc-inputs { grid-column: span 2; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+.calc-form-side-tables { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+@media (max-width: 860px) {
+  .calc-form-side { grid-template-columns: minmax(0, 1fr); }
+  .calc-form-side > .calc-inputs { grid-column: auto; }
+}
+@media (max-width: 640px) { .calc-form-side > .calc-inputs { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---------- workbench: the form beside a live figure ---------- */
 .calc-workbench { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 18px; align-items: start; }
@@ -274,4 +284,39 @@
 @media (max-width: 960px) {
   .calc-workbench { grid-template-columns: 1fr; }
   .calc-workbench-side { position: static; order: -1; }
+}
+
+/* ---------- stage: a form split around a figure, the graphs and a table under it ---------- */
+.calc-stage {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 18px;
+  grid-template-areas: "left figure right" "graphs graphs side";
+}
+.calc-stage-left { grid-area: left; }
+.calc-stage-right { grid-area: right; }
+.calc-stage-left, .calc-stage-right { grid-template-columns: minmax(0, 1fr); }
+/* The figure takes the height its neighbours give the row, never more: the
+   drawing is placed over it and scaled to fit. Its colours are the canvas's,
+   in either theme. */
+.calc-stage-figure {
+  --fig-bg: #fbfbfc; --fig-ink: #2b3240; --fig-muted: #8a93a3; --fig-dim: #5b6475;
+  grid-area: figure; margin: 0; min-width: 0; min-height: 160px; position: relative;
+  background: var(--fig-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+}
+@media (prefers-color-scheme: dark) {
+  .calc-stage-figure { --fig-bg: #20252d; --fig-ink: #edf2f8; --fig-muted: #94a3b8; --fig-dim: #aeb8c5; }
+}
+.calc-stage-figure svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.calc-stage-figure .fig-ink { fill: var(--fig-ink); }
+.calc-stage-figure .fig-muted { fill: var(--fig-muted); }
+.calc-stage-figure .fig-dim { stroke: var(--fig-dim); }
+.calc-stage-figure.is-stale { opacity: .45; }
+.calc-stage-side { grid-area: side; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.calc-stage-graphs { grid-area: graphs; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.calc-stage-graphs .calc-graphs { margin-top: 0; }
+@media (max-width: 900px) {
+  .calc-stage { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "left right" "figure side" "graphs graphs"; }
+}
+@media (max-width: 640px) {
+  .calc-stage { grid-template-columns: minmax(0, 1fr); grid-template-areas: "left" "figure" "right" "side" "graphs"; }
+  .calc-stage-figure { aspect-ratio: 2 / 1; }
 }

@@ -927,6 +927,80 @@
   {
    "absolute": true,
    "expected": {
+    "eta0": 0.704443,
+    "eta1": 0.886481,
+    "eta2": 0.860427
+   },
+   "inputs": {
+    "beamDiameterMm": 2.0,
+    "diameterMm": 6.0,
+    "glass": "nbk7",
+    "kind": "singlet",
+    "mfdUm": 10.4,
+    "r1Mm": 5.507172473215541,
+    "r2Mm": 0.0,
+    "shiftsMm": [
+     0.0,
+     -0.08,
+     -0.11
+    ],
+    "thicknessMm": 1.8888450000123926,
+    "vNumber": 1.954890453352693,
+    "wavelengthNm": 1550.0
+   },
+   "name": "real singlet into the exact LP01 mode (MFD 10.4 um, V = 1.955): the example lens, 2 mm beam, on the axis at F', 80 and 110 um before it",
+   "note": "the mode's far field from its closed form, as a spline in this file and evaluated directly in the app; its tilted far field over the whole azimuth here (160 nodes), over the arc where it exceeds 1e-5 of its peak in the app (128 nodes)",
+   "tolerance": {
+    "eta0": 0.0001,
+    "eta1": 0.0001,
+    "eta2": 0.0001
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "eta0": 0.787253,
+    "eta1": 0.842822,
+    "eta2": 0.247926
+   },
+   "inputs": {
+    "beamDiameterMm": 2.0,
+    "diameterMm": 6.0,
+    "glass": "nbk7",
+    "kind": "singlet",
+    "lateralUm": [
+     2.0,
+     0.0,
+     0.0
+    ],
+    "mfdUm": 10.4,
+    "r1Mm": 5.507172473215541,
+    "r2Mm": 0.0,
+    "shiftsMm": [
+     -0.08,
+     -0.08,
+     -0.08
+    ],
+    "thicknessMm": 1.8888450000123926,
+    "tiltMrad": [
+     0.0,
+     20.0,
+     100.0
+    ],
+    "vNumber": 1.954890453352693,
+    "wavelengthNm": 1550.0
+   },
+   "name": "real singlet into the exact LP01 mode (MFD 10.4 um, V = 1.955): the example lens, 2 mm beam, 80 um before F', moved 2 um across or tilted by 20 and 100 mrad",
+   "note": "the mode's far field from its closed form, as a spline in this file and evaluated directly in the app; its tilted far field over the whole azimuth here (160 nodes), over the arc where it exceeds 1e-5 of its peak in the app (128 nodes)",
+   "tolerance": {
+    "eta0": 0.0001,
+    "eta1": 0.0001,
+    "eta2": 0.0001
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
     "eta0": 0.718611
    },
    "inputs": {
@@ -958,14 +1032,14 @@
   "H. Kogelnik and T. Li, Appl. Opt. 5, 1550-1567 (1966), doi:10.1364/AO.5.001550 (the ABCD law for the complex beam parameter)"
  ],
  "convergence": "Closed forms in double precision; the secant method to 1e-15. The radial quadrature: 96 nodes leave the flat-first singlet (tens of waves at the rim of its pupil) 7e-3 off, 160 nodes 3e-5, 256 nodes below 1e-6; at 1000 nm 256 nodes are 5e-6 off and 512 are used; the central difference uses 1e-5 of the pupil radius. The azimuth: 160 nodes, past convergence for these offsets. The 2-D check: 64 x 24 polar nodes and a degree-8 polynomial.",
- "domain": "Eight singlets (plano-convex both ways, bi-convex, positive meniscus, bi-concave, a thick CaF2 lens) from 587.6 to 4000 nm; eight designed from f (plano-convex both ways, equi-convex and best form, N-BK7, fused silica and CaF2, f from 4.42 to 100 mm, one near the strongest equi-convex lens its diameter allows); collimated beams of 0.5 to 10 mm; the designed plano-convex singlet at 1550 nm with 1.4 and 2 mm beams at the paraxial focus and 80 and 110 um before it, flat side first at 1000 nm where the page traces 4096 rays, a 200 um mode, and the fiber moved by up to 3 um across the axis or tilted by up to 100 mrad.",
+ "domain": "Eight singlets (plano-convex both ways, bi-convex, positive meniscus, bi-concave, a thick CaF2 lens) from 587.6 to 4000 nm; eight designed from f (plano-convex both ways, equi-convex and best form, N-BK7, fused silica and CaF2, f from 4.42 to 100 mm, one near the strongest equi-convex lens its diameter allows); collimated beams of 0.5 to 10 mm; the designed plano-convex singlet at 1550 nm with 1.4 and 2 mm beams at the paraxial focus and 80 and 110 um before it, flat side first at 1000 nm where the page traces 4096 rays, a 200 um mode, and the fiber moved by up to 3 um across the axis or tilted by up to 100 mrad; the example lens into the exact LP01 mode of the fiber coupling page's example fiber (V = 1.955), on the axis and moved 2 um across or tilted by 20 and 100 mrad.",
  "fidelity": "computed",
  "id": "thick-lens",
  "outside_scope": "The page refuses wavelengths outside a glass's fitted range, afocal lenses, radii smaller than the clear radius, a focal length too short for the diameter and edge, a best form that is not bi-convex (n from 1.686), and beams whose lit pupil reaches NA 0.9; the real singlet is not traced when its faces cross at the clear diameter.",
  "provenance": "The closed forms written from the cited articles; the interface and slab matrices are the standard ray-transfer matrices; the ray trace and quadrature are this repository's independent Python lens references.",
  "reference": "Closed forms of the thick-lens lensmaker's equation and principal planes; a design from f by the closed-form plano-convex radius and the secant method on the closed-form power (the app: the strongest lens first, then bisection); the complex beam parameter carried through both refracting surfaces; the real singlet by lens_design.py's ray trace at Gauss-Legendre nodes along the pupil radius, the area ratio by central differences, an offset fiber's azimuth by Gauss-Legendre nodes, and for the example lens the 2-D overlap of lens_coherent.coupling",
  "reference_file": "validation/reference/thick_lens.py",
- "scope": "Paraxial first-order optics of a spherical singlet in air; a collimated TEM00 beam focused on axis, scalar and monochromatic, with a Gaussian fiber mode on the axis, or moved across it or tilted, one way at a time.",
+ "scope": "Paraxial first-order optics of a spherical singlet in air; a collimated TEM00 beam focused on axis, scalar and monochromatic, with a Gaussian fiber mode, or the exact LP01 mode of a step-index fiber, on the axis, or moved across it or tilted, one way at a time.",
  "title": "Thin and thick lens: lens data, design from f, Gaussian focus, real singlet focus and fiber coupling with offsets",
  "tolerance_rationale": "1e-9 relative for the algebra and the designs. 1e-4 absolute on the singlet's peak and coupling, against differences found below 3e-6 (the two quadratures of the same model converge to the same value), and 1e-4 relative on the 200 um mode's small coupling, against 2e-5; expected values stored to 6 significant digits, as the last digits depend on the platform's maths library."
 }

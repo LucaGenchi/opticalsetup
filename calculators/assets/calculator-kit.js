@@ -82,6 +82,14 @@ export function renderForm(form, inputs, groups, values) {
           optgroups.get(groupLabel).append(option);
         }
         control.value = values[input.id];
+        // `optionTips` explains some options on hover: on the option, and
+        // on the select while that option is chosen.
+        if (input.optionTips) {
+          for (const option of control.options) if (input.optionTips[option.value]) option.title = input.optionTips[option.value];
+          const showTip = () => { control.title = input.optionTips[control.value] ?? input.tip ?? ''; };
+          control.addEventListener('change', showTip);
+          showTip();
+        }
         row.append(label, control);
       } else if (input.type === 'file') {
         // The page reads the file; the form only carries its name.
