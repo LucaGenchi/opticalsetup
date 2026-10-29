@@ -3245,15 +3245,25 @@ export const registry = {
 
   // A mirror coated right up to one straight, unbevelled edge, so a beam
   // can pass just beside that edge while one a few millimetres over is
-  // reflected: the pickoff of a folded compressor or a double pass. In this
-  // top view it reflects exactly as a flat mirror does; the drawing marks the
-  // sharp edge (square, coated to the end) against the round back.
+  // reflected: the pickoff of a folded compressor or a double pass. In the
+  // lab the two beams are usually displaced vertically, which a top view
+  // cannot show, so the mirror counts each beam's passes over its face and
+  // reflects on the chosen one; on the other the beam goes by, as it would
+  // above the edge. The drawing marks the sharp edge (square, coated to the
+  // end) against the round back.
   dmirror: {
     label: 'D-shaped mirror', category: 'Mirrors', paletteOrder: 0.5, size: { w: 16, h: 30 },
     aliases: ['d mirror', 'd-shaped pickoff', 'pickoff mirror', 'pick-off mirror', 'knife-edge mirror', 'half mirror'],
     params: [
       { key: 'length', label: 'Optic size', type: 'optsize', def: 12.7 },
       { key: 'sharpEdge', label: 'Sharp edge', type: 'select', def: 'top', options: [['top', 'Top end'], ['bottom', 'Bottom end']] },
+      {
+        key: 'reflectsOn', label: 'Reflects on', type: 'select', def: 'second',
+        options: [['first', 'First pass'], ['second', 'Second pass']],
+        note: p => p.reflectsOn === 'first'
+          ? 'A beam is reflected the first time it meets the face and goes by on any later pass, as if it passed just beside the edge.'
+          : 'A beam goes by the first time it meets the face, as if it passed just beside the edge, and is reflected on its second and any later pass.',
+      },
       ...reflectivityParams(),
     ],
     size_: el => ({ w: 16, h: el.params.length + 6 }),
@@ -3268,7 +3278,13 @@ export const registry = {
     },
     surfaces(el) {
       const L = el.params.length / 2;
-      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'mirror', data: { refl: el.params.refl, showTransmitted: el.params.showTransmitted } }];
+      return [{
+        x1: 0, y1: -L, x2: 0, y2: L, kind: 'mirror',
+        data: {
+          refl: el.params.refl, showTransmitted: el.params.showTransmitted,
+          pickoff: { id: el.id, reflectsOn: el.params.reflectsOn === 'first' ? 'first' : 'second' },
+        },
+      }];
     },
   },
 

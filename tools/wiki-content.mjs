@@ -5988,7 +5988,7 @@ export const wikiEntries = [
   },
   {
     type: 'dmirror',
-    summary: "A flat mirror coated to one sharp edge, so one beam passes beside it while another, millimetres away, is reflected: the pickoff of folded compressors.",
+    summary: "A mirror coated to one sharp edge, the pickoff of folded compressors: it reflects each beam on its first or second pass and lets the other go by.",
     title: 'D-shaped mirror',
     category: 'Mirrors',
     realWorld: {
@@ -6008,24 +6008,34 @@ export const wikiEntries = [
     },
     inOpticalSetup: {
       html: `
-        <p>The canvas is a top view, so the D-shaped mirror reflects exactly as a flat <a
-        href="../mirror/">mirror</a> does, with the same reflectivity settings. Its drawing
-        marks which end is the sharp, coated edge (square, with a short bar) and which is
-        the round back; <strong>Sharp edge</strong> flips it.</p>
-        <p>Because the view is two-dimensional, the pickoff works in the plane: the
-        returning beam has to come back displaced <em>sideways</em> and pass the mirror's
-        edge on the other side from the incoming one. A vertical displacement, the usual lab
-        arrangement, is not represented. For a dispersive double pass, displace the return
-        with a slightly tilted flat end mirror rather than with a <a
-        href="../retroreflector/">retroreflector</a>: an in-plane roof reflector reverses the
-        colours' order across the beam, so the second pass doubles the spatial chirp instead
-        of undoing it.</p>`,
+        <p>The canvas is a top view, where the lab's vertical displacement cannot be drawn: the
+        beam going out and the one coming back lie on the same line. So the D-shaped mirror
+        counts how many times each beam meets its face and reflects only on the pass set by
+        <strong>Reflects on</strong>. On <em>Second pass</em>, the default, a beam goes by the
+        first time, unchanged and without loss, as if it passed just above the edge, and is
+        reflected when it comes back. On <em>First pass</em> it is reflected the first time and
+        goes by on its return. Every pass after the second behaves as the second. When it
+        reflects, it does so as a flat <a href="../mirror/">mirror</a> does, with the same
+        reflectivity settings.</p>
+        <p>Only hits on the face count. A pickoff laid out in the plane, with the return
+        displaced <em>sideways</em> so the incoming beam passes beside the mirror's edge and
+        never touches it, has the return as its first pass: set it to <em>First pass</em>.
+        Each beam keeps its own count, so two separate beams that each meet the mirror once
+        are both reflected, or both let by. The drawing marks which end is the sharp, coated
+        edge (square, with a short bar) and which is the round back; <strong>Sharp
+        edge</strong> flips it and does not change how the mirror acts.</p>
+        <p>For a dispersive double pass, send the beam back with a flat end mirror rather than
+        with a <a href="../retroreflector/">retroreflector</a>: an in-plane roof reflector
+        reverses the colours' order across the beam, so the second pass doubles the spatial
+        chirp instead of undoing it.</p>`,
       formulas: [],
       limitations: `<p>Only the reflecting face is traced. The substrate, the uncoated
         back and the mount do not block light, and the edge is perfectly sharp: real
         D-shaped mirrors clip a beam that comes within a few hundred micrometres of the edge
-        and scatter a little from it. Reflectivity has the plain mirror's caveats: no angle,
-        polarization or wavelength dependence.</p>`,
+        and scatter a little from it. Which pass reflects is the user's choice, not worked out
+        from beam heights, and a beam that goes by is not checked for clearing the edge.
+        Light a fiber relaunches starts a new count. Reflectivity has the plain mirror's
+        caveats: no angle, polarization or wavelength dependence.</p>`,
     },
     related: ['mirror', 'retroreflector', 'prism', 'grating'],
     citations: [],
