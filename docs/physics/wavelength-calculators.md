@@ -64,6 +64,39 @@ Manley–Rowe shares `λ_p/λ_s` and `λ_p/λ_i` and the degeneracy wavelength
 also shown as a frequency and a photon energy (`hc/e` from the exact SI
 constants). Energy conservation only: no phase matching or efficiency.
 
+Bandwidths (every process): each input is a Gaussian in frequency, and
+the entered `Δλ` is its FWHM against wavelength, exactly:
+`Δλ = c/(ν − Δν/2) − c/(ν + Δν/2) = cΔν/(ν² − Δν²/4)`, close to `λ²Δν/c`
+only for a narrow spectrum (500 nm at 1064 nm would otherwise draw 529 nm
+wide). Generated widths go back to nm the same way, so each nm value is the
+FWHM of the drawn curve. With the
+whole spectrum phase-matched the generated field is the product of the input
+fields, so the frequency FWHMs add in quadrature, each field counted as often
+as it appears: `√n Δν` for the nth harmonic (also for linearly chirped
+pulses and Gaussian-statistics CW light) and `√(Δν₁² + Δν₂²)` for SFG and DFG
+(transform-limited pulses or independent CW lines; chirped inputs can mix
+narrower). The OPO is taken as singly resonant: the entered output is the
+resonant wave and keeps the width the user gives (cavity and phase matching
+set it; it may exceed the pump's, since only `ν_s + ν_i = ν_p` is fixed); the
+non-resonant output is estimated as `E_p E_res*`, so `√(Δν_p² + Δν_res²)`.
+This is a stated-regime estimate, not a general oscillator property (doubly
+resonant cavities, high gain and wave correlations also shape the spectra),
+so entering the other output describes a different oscillator. CARS (`E_p² E_S*`) and CSRS (`E_S² E_p*`) get
+`√(2Δν_p² + Δν_S²)` and `√(2Δν_S² + Δν_p²)` for transform-limited pulses and
+an instantaneous response; a narrow Raman line narrows them towards the pump
+and Stokes widths. This is the widest spectrum the inputs allow; a smaller acceptance
+bandwidth narrows it, and group-velocity mismatch can compress an SHG
+spectrum well below it (Marangoni et al., Opt. Express 15, 8884 (2007)). Solving from a harmonic divides by `√n`. Inputs may be
+at most `λ/2` wide (a frequency FWHM of at most 0.47 ν); a generated
+spectrum not narrower than half its centre frequency (DFG of close, broad inputs; a
+fundamental from a very broad harmonic; an OPO output just past the pump)
+gets no bandwidths and a note. The spectrum graph draws each wave as its
+Gaussian against wavelength, scaled to its own peak, and a wave with zero
+width as a vertical line; given waves are blue and aqua, generated ones
+orange and plum (`--series-4`, validated with the other three for colour
+vision deficiency on both themes' panels), each generated wave's central
+wavelength written under the axis in its colour (`xMarks` of `lineChart`).
+
 ## Coherent Raman scattering (`calculators/coherent-raman/`)
 
 Any two of pump, Stokes and Raman shift give the third:
@@ -108,6 +141,10 @@ SCHOTT glass. `validation/reference/wavelength_conversion.py` computes every
 process in SI frequencies with exact rational anchors, and recomputes the
 resolution as the FWHM of a quadrature Fourier transform of the driving term
 for transform-limited and equally chirped pulses, anchored by the paper's
-20.8 ps·cm⁻¹. `test/calculator-wavelengths.test.js` covers boundaries and
+20.8 ps·cm⁻¹. The conversion bandwidths are recomputed the same way, as the
+FWHM of the spectrum of the generated product field of Gaussian pulses, with
+and without chirp for the harmonics, narrow and broad; every nm width, entered
+or generated, is found by bisection on the spectrum drawn against wavelength,
+with no nm-to-THz formula. `test/calculator-wavelengths.test.js` covers boundaries and
 declines; `test/raman-spectra.test.js` checks every spectrum's licence, credit
 and format, and eight solvents' band positions against their source's table. See `docs/validation.md` for the generated table.

@@ -4,10 +4,17 @@
 
 :root {
   /* Chart series: slots 1-2 of a colour-blind-validated categorical order,
-     slot 3 for the "without depletion" comparison. */
+     slot 3 for the "without depletion" comparison, slot 4 (plum) for a
+     fourth line; all four pass the colour-vision checks as a set, on the
+     panel colour of each theme. */
   --series-1: #2a78d6;
   --series-2: #eb6834;
   --series-3: #1baf7a;
+  --series-4: #6c3678;
+  /* Text in a series colour (labels under a chart's axis): the same hues,
+     at 4.5:1 or more on the panel for small text. */
+  --series-2-text: #b8461b;
+  --series-4-text: #6c3678;
   --chart-grid: #e6eaf1;
   --chart-axis: #b8c1cf;
   /* Highlighted x interval (probed window, laser bandwidth): yellow, which
@@ -22,6 +29,9 @@
     --series-1: #3987e5;
     --series-2: #d95926;
     --series-3: #199e70;
+    --series-4: #934b98;
+    --series-2-text: #e8743f;
+    --series-4-text: #c084c4;
     --chart-grid: #1f2a3f;
     --chart-axis: #3a4a66;
     --chart-band: #ffd23f;
@@ -144,6 +154,8 @@
 .chart-legend i.dash { width: 26px; border-radius: 0; }
 .chart-vline { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 3 3; }
 .chart-vline-label { fill: var(--text); font-size: 11.5px; font-weight: 650; }
+.chart-xmark { stroke-width: 2; }
+.chart-xmark-label { font-size: 11.5px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .chart-marker { stroke: var(--panel); stroke-width: 2; }
 .chart-cross { stroke: var(--muted); stroke-width: 1; }
 .chart-tooltip {

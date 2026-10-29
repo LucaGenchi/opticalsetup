@@ -247,7 +247,8 @@ const APP = {
     const r = computeConversion({ ...CONVERSION_DEFAULTS, ...inputs });
     if (!r.ok) return r;
     // Flatten the waves to the reference's wave<i>Nm / THz / Ev keys.
-    const flat = Object.fromEntries(r.waves.flatMap((w, i) => [[`wave${i}Nm`, w.wavelengthNm], [`wave${i}THz`, w.frequencyTHz], [`wave${i}Ev`, w.photonEv]]));
+    const flat = Object.fromEntries(r.waves.flatMap((w, i) => [[`wave${i}Nm`, w.wavelengthNm], [`wave${i}THz`, w.frequencyTHz], [`wave${i}Ev`, w.photonEv],
+      [`wave${i}BwNm`, w.bandwidthNm], [`wave${i}BwTHz`, w.bandwidthTHz]]));
     return { ...flat, signalShare: r.signalShare, idlerShare: r.idlerShare, degeneracyNm: r.degeneracyNm, ramanShiftCm: r.ramanShiftCm };
   },
   'broadband-interference': ({ spec, terms }) => ({ power: spectralFieldResult(spec, terms)?.power }),

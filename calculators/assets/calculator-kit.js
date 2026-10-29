@@ -194,8 +194,10 @@ const el = (name, attrs = {}, parent) => {
 
 // series: [{ key, name, color (CSS var), values: number|null per x,
 //            fill: 'light' | 'strong' (area down to zero), dash: true }]
-// options: { x: [...], xLabel, yLabel, yLog, yMin, yMax, marker: {x, y} | null,
+// options: { x: [...], xMin, xMax, xLabel, yLabel, yLog, yMin, yMax, marker: {x, y} | null,
 //            band: {lo, hi, label} | null, vlines: [{x, label, side}],
+//            xMarks: [{x, label, color, textColor}] (labels under the x axis:
+//            a tick in `color`, the text in `textColor`, a readable variant),
 //            formatX, formatY, message }
 export function lineChart(host, table, options) {
   host.textContent = '';
@@ -229,11 +231,25 @@ export function lineChart(host, table, options) {
   }
 
   const width = Math.max(280, Math.round(host.clientWidth || 360));
-  const height = Math.round(Math.min(300, Math.max(220, width * 0.62)));
   const pad = { left: 56, right: 14, top: 10, bottom: 44 };
-  const plotW = width - pad.left - pad.right, plotH = height - pad.top - pad.bottom;
+  const plotW = width - pad.left - pad.right;
+  const xs = linearTicks(options.xMin ?? Math.min(...x), options.xMax ?? Math.max(...x), Math.max(3, Math.round(plotW / 80)));
+  // x-axis marks sit in rows under the tick labels: each takes the first row
+  // where it clears the marks already placed (about 6.5 px per character).
+  const marks = [], rowEnds = [];
+  for (const m of [...(options.xMarks ?? [])].filter(m => m.x >= xs.lo && m.x <= xs.hi).sort((a, b) => a.x - b.x)) {
+    const half = m.label.length * 3.25 + 4;
+    const center = Math.max(pad.left + half, Math.min(width - pad.right - half,
+      pad.left + (m.x - xs.lo) / (xs.hi - xs.lo) * plotW));
+    let row = rowEnds.findIndex(end => center - half > end);
+    if (row < 0) row = rowEnds.push(-Infinity) - 1;
+    rowEnds[row] = center + half;
+    marks.push({ ...m, center, row });
+  }
+  pad.bottom += 15 * rowEnds.length;
+  const height = Math.round(Math.min(300, Math.max(220, width * 0.62))) + 15 * rowEnds.length;
+  const plotH = height - pad.top - pad.bottom;
 
-  const xs = linearTicks(Math.min(...x), Math.max(...x), Math.max(3, Math.round(plotW / 80)));
   const all = shown.flatMap(s => s.values).filter(v => v !== null && Number.isFinite(v) && (!options.yLog || v > 0));
   let ys;
   if (options.yLog) {
@@ -316,6 +332,11 @@ export function lineChart(host, table, options) {
       const right = line.side !== 'left' && xPos < pad.left + plotW - 90;
       el('text', { class: 'chart-vline-label', x: xPos + (right ? 5 : -5), y: pad.top + 12, 'text-anchor': right ? 'start' : 'end' }, svg).textContent = line.label;
     }
+  }
+  for (const m of marks) {
+    const xPos = sx(m.x);
+    el('line', { class: 'chart-xmark', x1: xPos, x2: xPos, y1: pad.top + plotH, y2: pad.top + plotH + 6, stroke: `var(${m.color})` }, svg);
+    el('text', { class: 'chart-xmark-label', x: m.center, y: pad.top + plotH + 32 + 15 * m.row, 'text-anchor': 'middle', fill: `var(${m.textColor ?? m.color})` }, svg).textContent = m.label;
   }
   if (options.marker && Number.isFinite(options.marker.y)) {
     el('circle', { class: 'chart-marker', cx: sx(options.marker.x), cy: sy(options.marker.y), r: 5, fill: `var(${shown[0]?.color ?? '--series-1'})` }, svg);
