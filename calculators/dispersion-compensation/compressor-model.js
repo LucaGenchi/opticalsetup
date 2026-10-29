@@ -302,10 +302,6 @@ function finish(source, optics, exit, dir, passes, v, firstMm, pickoffX) {
   const ends = colours.map(nm => follow(optics, begin, [1, 0], nm)).filter(Boolean);
   // Where each colour crosses the line through `at` across the beam.
   const across = at => ends.map(e => meet(e.p, e.d, at, vadd(at, left))?.u ?? 0);
-  // One pass of a single pair leaves the colours side by side: their offset
-  // at the FWHM edges, measured across the output.
-  const edges = [v.wavelengthNm - v.bandwidthNm / 2, v.wavelengthNm + v.bandwidthNm / 2].map(nm => follow(optics, begin, [1, 0], nm));
-  const sideBySide = edges.every(Boolean) ? Math.abs(meet(edges[0].p, edges[0].d, edges[1].p, vadd(edges[1].p, left))?.u ?? 0) : null;
   let outPoint, outDir, width;
   if (passes === 2) {
     // Past any optic in the output's way: reflective gratings send the light
@@ -340,7 +336,7 @@ function finish(source, optics, exit, dir, passes, v, firstMm, pickoffX) {
     outDir = [0, outSide];
     width = 0;
   } else {
-    // Centred on the band, which one pass of a pair leaves side by side.
+    // A four-element sequence: the output centred on the band.
     const xs = across(vadd(exit, vmul(dir, 150)));
     outPoint = vadd(exit, vmul(left, (Math.max(...xs) + Math.min(...xs)) / 2)); outDir = dir;
     width = Math.max(...xs) - Math.min(...xs);
@@ -353,7 +349,7 @@ function finish(source, optics, exit, dir, passes, v, firstMm, pickoffX) {
   ac.rot = angleOf(outDir);
   ac.params.aperture = Math.min(120, Math.max(30, 2 * Math.ceil((1.3 * width + 20) / 2)));
   out.push(ac);
-  return { elements: [...source, ...optics, ...out], outputChirpMm: passes === 2 ? 0 : sideBySide };
+  return { elements: [...source, ...optics, ...out] };
 }
 
 // The layout's geometry and canvas scene, or { error } when it cannot be
@@ -399,7 +395,7 @@ export function buildLayout(v, firstMm = SOURCE_TO_FIRST_MM) {
       pairs.push(second);
     }
     const last = pairs.at(-1);
-    const passes = v.layout === 'prism-pair' ? v.passes : 1;
+    const passes = v.layout === 'prism-pair' ? 2 : 1;
     const optics = pairs.flatMap(p => p.prisms);
     const done = finish(source, optics, last.exit, last.dir, passes, v, firstMm, pickoffX);
     const layout = { kind: 'prism', g, pairs, passes, dimension: { a: pair.legs[0].exit, b: pair.legs[1].entry } };
@@ -437,8 +433,8 @@ export function buildLayout(v, firstMm = SOURCE_TO_FIRST_MM) {
     const outDir = colour(order2, v.wavelengthNm).d;
     const normal = [-t1[1], t1[0]];
     const cosBeta = Math.abs(vdot(axis, normal));
-    const done = finish(source, [g1, l1, l2, g2], hit2, outDir, v.passes, v, firstMm, pickoffX);
-    const layout = { kind: 'stretcher', gr, cosBeta, axis, passes: v.passes,
+    const done = finish(source, [g1, l1, l2, g2], hit2, outDir, 2, v, firstMm, pickoffX);
+    const layout = { kind: 'stretcher', gr, cosBeta, axis, passes: 2,
       effectiveSeparationMm: (2 * s - 2 * v.focalMm) * cosBeta, dimension: { a: start, b: [l1.x, l1.y] } };
     return { ...layout, ...done };
   }
@@ -459,7 +455,7 @@ export function buildLayout(v, firstMm = SOURCE_TO_FIRST_MM) {
     pairs.push(second);
   }
   const last = pairs.at(-1);
-  const passes = v.layout === 'grating-pair' ? v.passes : 1;
+  const passes = v.layout === 'grating-pair' ? 2 : 1;
   const optics = pairs.flatMap(p => p.gratings);
   const done = finish(source, optics, last.exit, last.dir, passes, v, firstMm, pickoffX);
   const layout = { kind: 'grating', gr, pairs, passes, dimension: { a: pair.hits[0], b: pair.hits[1] } };
