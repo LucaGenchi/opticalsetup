@@ -1,25 +1,39 @@
 name: Materialize example proposal
 
+# A proposal is recognised by the form it was written on, not by its title:
+# people retitle the issue to their setup's name, and a retitled proposal
+# used to be skipped without a word. A maintainer can run this again for any
+# issue from the Actions tab (Run workflow, with the issue number), for a
+# skipped proposal or after the submitter has fixed what a failed run reported.
 on:
   issues:
     types: [opened]
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: Issue number of the proposal
+        required: true
+        type: number
 
 permissions:
   contents: write
   issues: write
   pull-requests: write
 
+concurrency:
+  group: example-proposal-${{ github.event.issue.number || inputs.issue }}
+  cancel-in-progress: false
+
 jobs:
   create-proposal-pr:
-    if: startsWith(github.event.issue.title, '[Example proposal]')
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      || startsWith(github.event.issue.title, '[Example proposal]')
+      || contains(github.event.issue.body, '### OpticalSetup share link')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       GH_TOKEN: ${{ github.token }}
-      ISSUE_NUMBER: ${{ github.event.issue.number }}
-      ISSUE_BODY: ${{ github.event.issue.body }}
-      ISSUE_USER_LOGIN: ${{ github.event.issue.user.login }}
-      ISSUE_CREATED_AT: ${{ github.event.issue.created_at }}
 
     steps:
       - name: Check out the reviewed workflow
@@ -27,23 +41,56 @@ jobs:
         with:
           fetch-depth: 0
 
+      # The same toolchain as CI (ci.yml). The suite's Python references
+      # compare numbers that depend on the interpreter version, so an
+      # unpinned runner fails checks that CI passes on the same commit.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dev dependencies
+        run: npm ci
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Event values reach the shell as environment variables rather than
+      # being pasted into the script text.
+      - name: Read the issue
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_ISSUE: ${{ inputs.issue }}
+        run: |
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            [[ "$INPUT_ISSUE" =~ ^[1-9][0-9]*$ ]] || { echo "Invalid issue number"; exit 1; }
+            gh api "repos/$GITHUB_REPOSITORY/issues/$INPUT_ISSUE" > "$RUNNER_TEMP/issue.json"
+          else
+            cp "$GITHUB_EVENT_PATH" "$RUNNER_TEMP/issue.json"
+          fi
+
       - name: Validate and materialize the proposal
         id: proposal
+        env:
+          ISSUE_JSON: ${{ runner.temp }}/issue.json
         run: node scripts/materialize-example-proposal.mjs
 
       - name: Run repository checks
+        id: checks
         run: npm test
 
       - name: Commit the proposal branch
         env:
           BRANCH_NAME: ${{ steps.proposal.outputs.branch_name }}
           PROPOSAL_FILE: ${{ steps.proposal.outputs.proposal_file }}
+          GOLDEN_FILE: ${{ steps.proposal.outputs.golden_file }}
           COMMIT_SUBJECT: ${{ steps.proposal.outputs.commit_subject }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -C "$BRANCH_NAME"
-          git add "$PROPOSAL_FILE"
+          git add "$PROPOSAL_FILE" "$GOLDEN_FILE"
           git diff --cached --check
           git commit -m "$COMMIT_SUBJECT"
           remote_sha="$(git ls-remote --heads origin "$BRANCH_NAME" | awk '{print $1}')"
@@ -68,11 +115,30 @@ jobs:
 
       - name: Link the pull request
         env:
+          ISSUE_NUMBER: ${{ steps.proposal.outputs.issue_number }}
           PR_URL: ${{ steps.pull_request.outputs.pr_url }}
         run: |
           gh issue comment "$ISSUE_NUMBER" --body "Automated validation passed and a publish-ready pull request is ready for maintainer review: $PR_URL"
 
+      # The submitter is told which of three things happened: their setup
+      # broke a stated rule (quoted), it could not be traced, or it passed and
+      # the repository's own checks failed, which is for a maintainer to fix.
       - name: Report a failed proposal
-        if: failure()
+        if: failure() && steps.proposal.outputs.issue_number != ''
+        env:
+          ISSUE_NUMBER: ${{ steps.proposal.outputs.issue_number }}
+          PROPOSAL_OUTCOME: ${{ steps.proposal.outcome }}
+          PROPOSAL_ERROR: ${{ steps.proposal.outputs.error }}
+          CHECKS_OUTCOME: ${{ steps.checks.outcome }}
         run: |
-          gh issue comment "$ISSUE_NUMBER" --body "The automated proposal checks could not prepare a pull request. The setup remains in this issue for maintainer review; see the workflow run for the validation result."
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          if [[ "$PROPOSAL_OUTCOME" == "failure" && -n "$PROPOSAL_ERROR" ]]; then
+            body="The setup could not be turned into a proposal: **${PROPOSAL_ERROR}**. Please fix this and say so in a comment here; a maintainer will run the check again."
+          elif [[ "$PROPOSAL_OUTCOME" == "failure" ]]; then
+            body="The setup could not be traced or exported, so no pull request was opened. A maintainer will look at the [workflow run]($run_url)."
+          elif [[ "$CHECKS_OUTCOME" == "failure" ]]; then
+            body="Your setup passed validation, but the repository's own checks failed, so no pull request was opened yet. This is for a maintainer to fix, not you: see the [workflow run]($run_url)."
+          else
+            body="The automated proposal checks could not prepare a pull request. The setup remains in this issue for maintainer review; see the [workflow run]($run_url)."
+          fi
+          gh issue comment "$ISSUE_NUMBER" --body "$body"

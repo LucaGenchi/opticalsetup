@@ -79,7 +79,7 @@ export async function sceneFiles() {
   return files.map(path => ({ path, slug: slugFor(path) }));
 }
 
-function slugFor(path) {
+export function slugFor(path) {
   return relative(ROOT, path).replace(/\.json$/, '')
     .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }

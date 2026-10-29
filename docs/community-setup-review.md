@@ -5,7 +5,7 @@ Audience: repo maintainers with merge rights on `main` (currently Luca Genchi an
 ## How it works, end to end
 
 1. A user submits a setup, either through the app's **Propose setup** button or a GitHub issue. This opens a GitHub issue with the scene attached.
-2. The **"Materialize example proposal"** workflow parses, validates, traces, and exports that scene, then opens a pull request titled **"Propose community setup: `<name>`"** that adds one file: `community-submissions/issue-N.json`.
+2. The **"Materialize example proposal"** workflow parses, validates, traces, and exports that scene, then opens a pull request titled **"Propose community setup: `<name>`"** that adds two files: `community-submissions/issue-N.json` and its tracer snapshot `test/golden/community-submissions-issue-N.json`, which the golden tests compare it with from then on. It recognises a proposal by the form's **OpticalSetup share link** heading, so a submitter who retitles the issue is still picked up. If the setup breaks a rule (no share link, acknowledgement not ticked, too large, …) it comments the reason on the issue; if the repository's own checks fail instead, the comment says that is for a maintainer.
 3. **Merging that PR is the approval.** There is no separate status field or flag to flip — if you merge it, it's approved; if you close it instead, it's rejected. Nothing else happens on close.
 4. Merging triggers the **"Publish approved community setups"** workflow, which runs `node tools/build-community.mjs` (deterministic — same input always produces the same output) and opens a *second* pull request titled **"Publish approved community setups"**, containing only the two generated files it produced: `community/<slug>/index.html` and `sketch/js/community-data.js`.
 5. **Merging that second PR publishes the setup with the next release** — it then appears on the public Community page and in the app's "From the community" dropdown. A community setup alone is a patch release (`v1.0.0 → v1.0.1`); see [release-policy.md](release-policy.md). Until releases are activated (the last section of that document), merging it makes the setup live at once, as before.
@@ -44,6 +44,10 @@ Two merges, both on github.com, both just the ordinary green **Merge pull reques
 2. A new PR titled **"Publish approved community setups"** appears automatically.
 3. Open it and check the **Files changed** tab — it should touch exactly `community/<slug>/index.html` and `sketch/js/community-data.js`, nothing else. There's nothing to hand-edit; it's pure generated output.
 4. Click **Merge pull request**. The setup goes live with the next release (a patch release is enough; see [release-policy.md](release-policy.md)).
+
+### If the "Propose" PR never shows up
+
+Read the workflow's comment on the issue, or its run on the [Actions tab](https://github.com/LucaGenchi/opticalsetup/actions). Once the cause is fixed — the submitter has corrected the issue, or a maintainer has fixed the checks — run it again: **Actions → Materialize example proposal → Run workflow**, enter the issue number, and run it from `main`. The same works for an issue the workflow never saw. A re-run updates the proposal's existing branch and pull request; it refuses an issue whose setup is already in `community-submissions/`, which is changed only by a reviewed pull request.
 
 ### If the "Publish" PR never shows up
 

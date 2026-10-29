@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { createHash } from 'node:crypto';
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { gunzipSync } from 'node:zlib';
 import { buildSVG } from '../sketch/js/export.js';
 import { registry } from '../sketch/js/elements.js';
@@ -18,8 +18,16 @@ import '../sketch/js/vipa.js';
 
 import { traceAll } from '../sketch/js/raytrace.js';
 import { parseSketch, state } from '../sketch/js/state.js';
+import { goldenFor, nonFiniteSeen, sceneFromFile, slugFor } from '../tools/update-golden.mjs';
+
+// A problem with the submission itself. Its message is written for the
+// submitter and is quoted back to them on the issue; any other exception is
+// reported only as "could not be traced", since its text may echo scene
+// content.
+export class ProposalError extends Error {}
 
 const REPOSITORY = 'LucaGenchi/opticalsetup';
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 // The current site and its GitHub Pages mirror, plus the mirror's old name:
 // links people shared before the repository was renamed still work.
 const ALLOWED_SHARE_LOCATIONS = new Set([
@@ -40,11 +48,11 @@ const INVALID_SVG_NUMBER = /\b(?:NaN|Infinity|-Infinity)\b/;
 function issueField(body, heading, nextHeading = null, { last = false } = {}) {
   const marker = `### ${heading}`;
   const startAt = last ? body.lastIndexOf(marker) : body.indexOf(marker);
-  if (startAt < 0) throw new Error(`Issue is missing “${heading}”`);
+  if (startAt < 0) throw new ProposalError(`Issue is missing “${heading}”`);
   const valueStart = startAt + marker.length;
   const valueEnd = nextHeading ? body.lastIndexOf(`### ${nextHeading}`) : body.indexOf('\n### ', valueStart);
   const value = body.slice(valueStart, valueEnd < valueStart ? body.length : valueEnd).trim();
-  if (!value || value === '_No response_') throw new Error(`Issue is missing “${heading}”`);
+  if (!value || value === '_No response_') throw new ProposalError(`Issue is missing “${heading}”`);
   return value;
 }
 
@@ -67,14 +75,14 @@ function optionalIssueField(body, heading, nextHeading = null, { last = false } 
 
 function cleanName(value) {
   const name = value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
-  if (name.length < 3 || name.length > 100) throw new Error('Setup name must contain 3–100 characters');
+  if (name.length < 3 || name.length > 100) throw new ProposalError('Setup name must contain 3–100 characters');
   return name;
 }
 
 function cleanDescription(value) {
   const description = value.trim();
   if (description.length < 10 || description.length > 2_000) {
-    throw new Error('Description must contain 10–2000 characters');
+    throw new ProposalError('Description must contain 10–2000 characters');
   }
   return description;
 }
@@ -82,20 +90,20 @@ function cleanDescription(value) {
 function cleanReference(value) {
   const reference = value.trim();
   if (!reference) return null;
-  if (reference.length > MAX_REFERENCE_CHARS) throw new Error(`Reference must be at most ${MAX_REFERENCE_CHARS} characters`);
+  if (reference.length > MAX_REFERENCE_CHARS) throw new ProposalError(`Reference must be at most ${MAX_REFERENCE_CHARS} characters`);
   return reference;
 }
 
 export function extractProposalIssue(body) {
-  if (typeof body !== 'string' || body.length > 80_000) throw new Error('Issue body is invalid or too large');
+  if (typeof body !== 'string' || body.length > 80_000) throw new ProposalError('Issue body is invalid or too large');
   const name = cleanName(issueField(body, 'Setup name', 'What does this setup demonstrate?'));
   const description = cleanDescription(issueField(body, 'What does this setup demonstrate?', 'OpticalSetup share link'));
   const setupField = issueField(body, 'OpticalSetup share link', 'Reference (optional)');
   const shareURL = setupField.match(/https:\/\/[^\s<>]+/)?.[0];
-  if (!shareURL) throw new Error('Issue does not contain an HTTPS OpticalSetup share link');
+  if (!shareURL) throw new ProposalError('Issue does not contain an HTTPS OpticalSetup share link');
   const reference = cleanReference(optionalIssueField(body, 'Reference (optional)', 'Contribution acknowledgement'));
   const acknowledgement = issueField(body, 'Contribution acknowledgement');
-  if (!/- \[[xX]\]/.test(acknowledgement)) throw new Error('Contribution acknowledgement is required');
+  if (!/- \[[xX]\]/.test(acknowledgement)) throw new ProposalError('Contribution acknowledgement is required');
   const license = grantFrom(rawIssueField(body, 'Contribution acknowledgement'));
   return { name, description, reference, shareURL, license };
 }
@@ -165,61 +173,61 @@ export function grantFrom(acknowledgement) {
 }
 
 function decodeBase64URL(value) {
-  if (!/^[A-Za-z0-9_-]+$/.test(value)) throw new Error('Share link contains invalid characters');
+  if (!/^[A-Za-z0-9_-]+$/.test(value)) throw new ProposalError('Share link contains invalid characters');
   return Buffer.from(value, 'base64url');
 }
 
 export function sceneFromShareURL(value) {
   let url;
-  try { url = new URL(value); } catch (_) { throw new Error('Share link is not a valid URL'); }
+  try { url = new URL(value); } catch (_) { throw new ProposalError('Share link is not a valid URL'); }
   // A link pinned to a kept release (/v1.2/sketch/) is the same address.
   const location = `${url.hostname.toLowerCase()}${url.pathname.replace(/\/v\d+\.\d+\/sketch\/$/, '/sketch/')}`;
   if (url.protocol !== 'https:' || !ALLOWED_SHARE_LOCATIONS.has(location)) {
-    throw new Error('Share link must use an official OpticalSetup address');
+    throw new ProposalError('Share link must use an official OpticalSetup address');
   }
-  if (!url.hash.startsWith('#sketch=')) throw new Error('Share link does not contain a setup');
+  if (!url.hash.startsWith('#sketch=')) throw new ProposalError('Share link does not contain a setup');
   const payload = url.hash.slice('#sketch='.length);
   const separator = payload.indexOf('.');
-  if (separator !== 1) throw new Error('Share link uses an unsupported format');
+  if (separator !== 1) throw new ProposalError('Share link uses an unsupported format');
   const encoded = decodeBase64URL(payload.slice(2));
   let bytes;
   if (payload[0] === 'g') {
     try { bytes = gunzipSync(encoded, { maxOutputLength: MAX_SCENE_BYTES + 1 }); }
-    catch (_) { throw new Error('Compressed setup is damaged or too large'); }
+    catch (_) { throw new ProposalError('Compressed setup is damaged or too large'); }
   } else if (payload[0] === 'j') {
     bytes = encoded;
   } else {
-    throw new Error('Share link uses an unsupported encoding');
+    throw new ProposalError('Share link uses an unsupported encoding');
   }
-  if (bytes.length > MAX_SCENE_BYTES) throw new Error('Setup is too large for an example proposal');
+  if (bytes.length > MAX_SCENE_BYTES) throw new ProposalError('Setup is too large for an example proposal');
   let raw;
   try { raw = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); }
-  catch (_) { throw new Error('Setup contains invalid JSON'); }
+  catch (_) { throw new ProposalError('Setup contains invalid JSON'); }
   return raw;
 }
 
 function validateSceneShape(raw) {
   if (!raw || typeof raw !== 'object' || !Array.isArray(raw.elements) || !Array.isArray(raw.beams)) {
-    throw new Error('Setup is not a complete OpticalSetup scene');
+    throw new ProposalError('Setup is not a complete OpticalSetup scene');
   }
-  if (raw.elements.length > MAX_ELEMENTS) throw new Error(`Setup exceeds the ${MAX_ELEMENTS}-element proposal limit`);
-  if (raw.beams.length > MAX_BEAMS) throw new Error(`Setup exceeds the ${MAX_BEAMS}-beam proposal limit`);
+  if (raw.elements.length > MAX_ELEMENTS) throw new ProposalError(`Setup exceeds the ${MAX_ELEMENTS}-element proposal limit`);
+  if (raw.beams.length > MAX_BEAMS) throw new ProposalError(`Setup exceeds the ${MAX_BEAMS}-beam proposal limit`);
   const sourceCount = raw.elements.reduce((sum, element) => sum + (registry[element?.type]?.source ? 1 : 0), 0);
-  if (sourceCount > MAX_SOURCES) throw new Error(`Setup exceeds the ${MAX_SOURCES}-source proposal limit`);
+  if (sourceCount > MAX_SOURCES) throw new ProposalError(`Setup exceeds the ${MAX_SOURCES}-source proposal limit`);
   const pointCount = raw.beams.reduce((sum, beam) => sum + (Array.isArray(beam?.pts) ? beam.pts.length : 0), 0);
-  if (pointCount > MAX_MANUAL_POINTS) throw new Error(`Setup exceeds the ${MAX_MANUAL_POINTS}-point proposal limit`);
+  if (pointCount > MAX_MANUAL_POINTS) throw new ProposalError(`Setup exceeds the ${MAX_MANUAL_POINTS}-point proposal limit`);
   const pending = [raw];
   while (pending.length) {
     const value = pending.pop();
     if (typeof value === 'string' && value.length > MAX_STRING_CHARS) {
-      throw new Error(`Setup contains text longer than ${MAX_STRING_CHARS} characters`);
+      throw new ProposalError(`Setup contains text longer than ${MAX_STRING_CHARS} characters`);
     }
     if (Array.isArray(value)) pending.push(...value);
     else if (value && typeof value === 'object') pending.push(...Object.values(value));
   }
   const ids = [...raw.elements, ...raw.beams].map(item => item?.id);
   if (ids.some(id => typeof id !== 'string' || !id) || new Set(ids).size !== ids.length) {
-    throw new Error('Every submitted object must have a unique ID');
+    throw new ProposalError('Every submitted object must have a unique ID');
   }
 }
 
@@ -229,10 +237,10 @@ function safePRName(name) {
 
 export function materializeProposal({ issueNumber, issueBody, userLogin, createdAt }) {
   const number = Number(issueNumber);
-  if (!Number.isSafeInteger(number) || number < 1) throw new Error('Issue number is invalid');
-  if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(userLogin || '')) throw new Error('GitHub user is invalid');
+  if (!Number.isSafeInteger(number) || number < 1) throw new ProposalError('Issue number is invalid');
+  if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(userLogin || '')) throw new ProposalError('GitHub user is invalid');
   const submittedAt = new Date(createdAt);
-  if (!Number.isFinite(submittedAt.getTime())) throw new Error('Issue creation time is invalid');
+  if (!Number.isFinite(submittedAt.getTime())) throw new ProposalError('Issue creation time is invalid');
   const fields = extractProposalIssue(issueBody);
   const raw = sceneFromShareURL(fields.shareURL);
   validateSceneShape(raw);
@@ -248,7 +256,7 @@ export function materializeProposal({ issueNumber, issueBody, userLogin, created
     state.elements = previous.elements;
     state.beams = previous.beams;
   }
-  if (!svg.startsWith('<svg ') || INVALID_SVG_NUMBER.test(svg)) throw new Error('Setup does not produce finite SVG output');
+  if (!svg.startsWith('<svg ') || INVALID_SVG_NUMBER.test(svg)) throw new ProposalError('Setup does not produce finite SVG output');
 
   const canonicalScene = { app: 'optics2d', version: 1, elements: scene.elements, beams: scene.beams };
   const sceneJSON = JSON.stringify(canonicalScene);
@@ -279,11 +287,21 @@ export function materializeProposal({ issueNumber, issueBody, userLogin, created
     sceneSha256: createHash('sha256').update(sceneJSON).digest('hex'),
     scene: canonicalScene,
   };
+  const proposalFile = `community-submissions/issue-${number}.json`;
+  const proposalText = `${JSON.stringify(proposal, null, 2)}\n`;
+  // The suite compares every submission with its tracer snapshot, so the
+  // snapshot travels with the proposal: without it the pull request fails
+  // its own checks. It is taken from the file exactly as it is committed.
+  const golden = goldenFor(sceneFromFile(proposalText));
+  if (nonFiniteSeen().length) throw new ProposalError('Setup produces non-finite readings');
   const safeName = safePRName(fields.name);
   const deliveryName = safeName || `Setup from issue ${number}`;
   return {
     proposal,
-    proposalFile: `community-submissions/issue-${number}.json`,
+    proposalFile,
+    proposalText,
+    goldenFile: `test/golden/${slugFor(resolve(REPO_ROOT, proposalFile))}.json`,
+    goldenText: `${JSON.stringify(golden, null, 1)}\n`,
     branchName: `example-proposal/issue-${number}`,
     commitSubject: `Propose community setup: ${deliveryName}`,
     prTitle: `Propose community setup: ${deliveryName}`,
@@ -296,6 +314,7 @@ export function materializeProposal({ issueNumber, issueBody, userLogin, created
       '- parsed and normalized with the current component registry',
       '- traced without an exception',
       '- exported to finite SVG geometry',
+      '- tracer snapshot recorded for the golden tests',
       '- passed the repository test suite before this pull request was opened',
       '',
       'Review the setup and description, then merge this pull request to approve it. The publishing workflow generates the Community page and app manifest after the merge. Close the pull request to reject it. No status or generated-file edits are required.',
@@ -308,22 +327,57 @@ function writeOutput(name, value) {
   appendFileSync(process.env.GITHUB_OUTPUT, `${name}=${value}\n`);
 }
 
+// The issue as the workflow saw it: the `issues` event payload carries it
+// under `issue`, while a maintainer's re-run fetches it from the REST API,
+// which returns the issue itself. A pull request is also an issue there.
+export function issueFromJSON(data) {
+  const issue = data?.issue ?? data;
+  if (!issue || typeof issue !== 'object') throw new ProposalError('Issue could not be read');
+  if (issue.pull_request) throw new ProposalError('This number is a pull request, not a proposal issue');
+  return {
+    issueNumber: issue.number,
+    issueBody: issue.body,
+    userLogin: issue.user?.login,
+    createdAt: issue.created_at,
+  };
+}
+
+// One line, safe to quote in an issue comment and to write as a step output.
+export function reportableError(error) {
+  if (!(error instanceof ProposalError)) return '';
+  return error.message.replace(/\s+/g, ' ').replace(/@/g, '＠').replace(/`/g, "'").slice(0, 300);
+}
+
 function runFromEnvironment() {
-  const result = materializeProposal({
-    issueNumber: process.env.ISSUE_NUMBER,
-    issueBody: process.env.ISSUE_BODY,
-    userLogin: process.env.ISSUE_USER_LOGIN,
-    createdAt: process.env.ISSUE_CREATED_AT,
-  });
-  mkdirSync('community-submissions', { recursive: true });
-  writeFileSync(result.proposalFile, `${JSON.stringify(result.proposal, null, 2)}\n`);
-  const bodyFile = `${process.env.RUNNER_TEMP || '/tmp'}/opticalsetup-example-pr-${process.env.ISSUE_NUMBER}.md`;
+  const issue = issueFromJSON(JSON.parse(readFileSync(process.env.ISSUE_JSON, 'utf8')));
+  const number = Number(issue.issueNumber);
+  // Known before validation, so a rejected submission is still answered.
+  if (Number.isSafeInteger(number) && number > 0) writeOutput('issue_number', String(number));
+  const result = materializeProposal(issue);
+  // An accepted setup is changed by a reviewed pull request, never by
+  // re-running its issue.
+  if (existsSync(result.proposalFile)) {
+    throw new ProposalError(`This setup was already accepted as ${result.proposalFile}`);
+  }
+  mkdirSync(dirname(result.proposalFile), { recursive: true });
+  writeFileSync(result.proposalFile, result.proposalText);
+  mkdirSync(dirname(result.goldenFile), { recursive: true });
+  writeFileSync(result.goldenFile, result.goldenText);
+  const bodyFile = `${process.env.RUNNER_TEMP || '/tmp'}/opticalsetup-example-pr-${number}.md`;
   writeFileSync(bodyFile, `${result.prBody}\n`);
   writeOutput('proposal_file', result.proposalFile);
+  writeOutput('golden_file', result.goldenFile);
   writeOutput('branch_name', result.branchName);
   writeOutput('commit_subject', result.commitSubject);
   writeOutput('pr_title', result.prTitle);
   writeOutput('pr_body_file', bodyFile);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) runFromEnvironment();
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  try { runFromEnvironment(); }
+  catch (error) {
+    writeOutput('error', reportableError(error));
+    console.error(error);
+    process.exitCode = 1;
+  }
+}
