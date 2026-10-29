@@ -155,17 +155,31 @@ test('a longer pulse pair tolerates a delay that kills a shorter one', () => {
   assert.ok(long.reading.overlap > 0.9, `overlap ${long.reading.overlap}`);
 });
 
-test('only equal repetition rates are modelled, and the rest say so', () => {
-  // Different rates are not physically silent — 80 and 60 MHz coincide at
+test('equal rates, or one a whole multiple of the other, are modelled, and the rest say so', () => {
+  // Other ratios are not physically silent — 80 and 60 MHz coincide at
   // 20 MHz — but this model keeps no pulse-by-pulse bookkeeping for them, so
   // it reports the timing as unsupported instead of inventing a result.
-  for (const repB of [37, 40, 60]) {
+  for (const repB of [37, 60, 160.5]) {
     const { reading, detector } = bench({ repB });
     assert.equal(reading.state, 'unsupported', `${repB} MHz`);
     assert.ok(!sawWavelength(detector, 450.27), `${repB} MHz drew a signal`);
-    assert.match(mixStateText(reading), /Timing not modelled/);
+    assert.match(mixStateText(reading), /Timing not modelled.*one a whole multiple of the other/);
   }
-  assert.equal(bench({ repB: 80 }).reading.state, 'mixing');
+  const equal = bench({ repB: 80 });
+  assert.equal(equal.reading.state, 'mixing');
+  // 80 and 40 MHz: every second 1030 nm pulse meets an 800 nm one, so the sum
+  // frequency is a 40 MHz train. The 80 MHz beam offers the pair only the
+  // pulses that are met, half of what it offers at equal rates.
+  const half = bench({ repB: 40 });
+  assert.equal(half.reading.state, 'mixing');
+  assert.equal(half.reading.ratio, 2);
+  assert.match(mixStateText(half.reading), /the 40 MHz pulses meet every second pulse of the 80 MHz train/);
+  assert.ok(sawWavelength(half.detector, 450.27), 'the sum frequency is drawn');
+  const sum = d => bandPower(d, 450.27, 8);
+  assert.ok(sum(half.detector) > 0 && sum(half.detector) < sum(equal.detector),
+    `${sum(half.detector)} against ${sum(equal.detector)} at equal rates`);
+  // And beside a 160 MHz train, the 80 MHz one is the slower.
+  assert.equal(bench({ repB: 160 }).reading.ratio, 2);
 });
 
 test('the overlap is the Gaussian overlap integral, not a look-alike', () => {

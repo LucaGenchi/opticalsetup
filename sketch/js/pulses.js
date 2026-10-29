@@ -133,6 +133,21 @@ export function pulseGateTransmission(pulse, sampleCount = 4096) {
     return drift < 1e-12 ? 1 : Math.ceil(1 / drift);
   }));
   const sampledPulseSpan = Math.max(count, slowCycleSamples, beatPulseSpan);
+  // Every gate locked to the train repeats after a whole number of pulses,
+  // and the pattern of all of them after the least common multiple of those.
+  // Spread samples can miss a feature one pulse wide in a long cycle -- a
+  // 1 kHz train picking one pulse in 80 000 of an 80 MHz one -- so when the
+  // samples have to be spread over a train that a slower one picks
+  // (coincidenceGate), the average is taken over every pulse of one whole
+  // pattern instead. Shorter patterns keep the consecutive samples below,
+  // whole cycles or within 1/4096 of them.
+  const picked = gates.some(g => g.pulsePicking);
+  const cycle = picked && sampledPulseSpan !== count ? lockedPulseCycle(gates, periodNs) : null;
+  if (cycle) {
+    let exact = 0;
+    for (let k = 0; k < cycle; k++) exact += pulseTransmissionAt(pulse, phaseNs + k * periodNs);
+    return exact / cycle;
+  }
   let passed = 0;
   for (let i = 0; i < count; i++) {
     // When a gate cycle contains more pulses than the bounded sample count,
@@ -143,6 +158,46 @@ export function pulseGateTransmission(pulse, sampleCount = 4096) {
     passed += pulseTransmissionAt(pulse, emissionTimeNs);
   }
   return passed / count;
+}
+
+// The number of pulses after which every gate's pattern on a train of period
+// `periodNs` repeats, when it does within MAX_LOCKED_CYCLE pulses; null
+// otherwise. A gate whose rate is p/q of the train's (in lowest terms) comes
+// back to the same pulse after q pulses -- a 1 kHz picking gate on an 80 MHz
+// train after 80 000, a 3 kHz chopper after 80 000 too, though its own period
+// is 80 000/3 pulses -- and all of them after the least common multiple of
+// their q. The ratio is read as the fraction a continued expansion finds.
+const MAX_LOCKED_CYCLE = 1e6;
+function lockedPulseCycle(gates, periodNs) {
+  const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+  let cycle = 1;
+  for (const gate of gates) {
+    const gatePeriodNs = 1000 / Math.min(1e6, Math.max(0.000001, gate.frequencyMHz || 1));
+    const pulsesPerTurn = lockedDenominator(periodNs / gatePeriodNs, MAX_LOCKED_CYCLE);
+    if (!pulsesPerTurn) return null;
+    cycle = cycle / gcd(cycle, pulsesPerTurn) * pulsesPerTurn;
+    if (cycle > MAX_LOCKED_CYCLE) return null;
+  }
+  return cycle;
+}
+
+// The denominator q of the fraction p/q that a positive ratio is, within a
+// part in 10^9, with q at most maxDenominator; null when there is none.
+function lockedDenominator(ratio, maxDenominator) {
+  if (!(ratio > 0) || !Number.isFinite(ratio)) return null;
+  let [h0, h1, k0, k1] = [0, 1, 1, 0];
+  let rest = ratio;
+  for (let step = 0; step < 64; step++) {
+    const whole = Math.floor(rest);
+    [h0, h1] = [h1, whole * h1 + h0];
+    [k0, k1] = [k1, whole * k1 + k0];
+    if (k1 > maxDenominator) return null;
+    if (Math.abs(ratio - h1 / k1) <= 1e-9 * ratio) return k1;
+    const fraction = rest - whole;
+    if (!(fraction > 0)) return null;
+    rest = 1 / fraction;
+  }
+  return null;
 }
 
 // Time-domain trace a photodetector would show on an oscilloscope: where each

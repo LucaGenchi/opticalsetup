@@ -400,12 +400,15 @@ export function mixWavelength(kind, aWl, bWl) {
 // The product of two Gaussians in time: the mixed pulse is shorter than
 // either input, and a long pulse mixed with a short one takes the short
 // one's duration. This is the undepleted, transform-limited-Gaussian
-// statement, not a propagation calculation.
-export function mixDurationFs(aFs, bFs) {
+// statement, not a propagation calculation. A process taking several photons
+// from a beam goes as that power of its envelope (orderA, orderB, as in
+// mixOverlap): CARS, I_p^2 I_S, is (2/τ_p² + 1/τ_S²)^(-1/2).
+export function mixDurationFs(aFs, bFs, orderA = 1, orderB = 1) {
   const a = Number(aFs), b = Number(bFs);
-  if (!(a > 0)) return b > 0 ? b : null;
-  if (!(b > 0)) return a;
-  return 1 / Math.sqrt(1 / (a * a) + 1 / (b * b));
+  const photons = order => (Number.isFinite(order) && order >= 1 ? order : 1);
+  if (!(a > 0)) return b > 0 ? b / Math.sqrt(photons(orderB)) : null;
+  if (!(b > 0)) return a / Math.sqrt(photons(orderA));
+  return 1 / Math.sqrt(photons(orderA) / (a * a) + photons(orderB) / (b * b));
 }
 
 // How wide the mixed line is. Frequencies add, so for two uncorrelated
@@ -437,12 +440,13 @@ export function mixWidthNm(outWl, aWl, aFwhmNm, bWl, bFwhmNm) {
 // carries onward, so the stored phase reproduces that arrival.
 export function mixPulse(rayPulse, partnerPulse, {
   crystalId, kind, wl, bandwidthNm = 0, centerNs, oplMm = 0, repRateMHz, partnerPulseOffset = 0, periodNs = 0,
+  selfPulseOffset = 0, periodNsA = periodNs, periodNsB = periodNs, orderA = 1, orderB = 1,
 } = {}) {
   const trains = [rayPulse, partnerPulse].filter(Boolean);
   if (!trains.length) return null;
   const timed = trains.find(t => t.repRateMHz > 0) || trains[0];
   const trainId = timed.sourceId || '';
-  const duration = mixDurationFs(rayPulse?.pulseWidthFs, partnerPulse?.pulseWidthFs);
+  const duration = mixDurationFs(rayPulse?.pulseWidthFs, partnerPulse?.pulseWidthFs, orderA, orderB);
   const rate = repRateMHz ?? timed.repRateMHz;
   const phaseNs = Number.isFinite(centerNs) ? centerNs - oplMm / C_MM_PER_NS : timed.phaseNs;
   // Both inputs' gates apply: each keeps the path it was imposed at, and is
@@ -450,12 +454,15 @@ export function mixPulse(rayPulse, partnerPulse, {
   // The partner's gates are rebased against the pulse of ITS train that takes
   // part, which can be whole periods from its own pulse zero: a gate passing
   // every second pulse has to be asked about the pulse that actually arrives.
-  const rebase = (train, pulseOffset) => {
+  // Between trains at different rates the driving beam's pulse that takes part
+  // can be whole periods from its pulse zero too, each counted in its own
+  // train's period (see mixOverlap).
+  const rebase = (train, pulseOffset, trainPeriodNs) => {
     if (!Array.isArray(train?.gates) || !train.gates.length) return [];
-    const shift = phaseNs - (Number.isFinite(train.phaseNs) ? train.phaseNs : 0) - pulseOffset * periodNs;
+    const shift = phaseNs - (Number.isFinite(train.phaseNs) ? train.phaseNs : 0) - pulseOffset * trainPeriodNs;
     return train.gates.map(g => ({ ...g, phaseNs: (Number.isFinite(g.phaseNs) ? g.phaseNs : 0) + shift }));
   };
-  const gates = [...rebase(rayPulse, 0), ...rebase(partnerPulse, partnerPulseOffset)];
+  const gates = [...rebase(rayPulse, selfPulseOffset, periodNsA), ...rebase(partnerPulse, partnerPulseOffset, periodNsB)];
   return {
     sourceId: `${trainId}›${crystalId || 'crystal'}:${kind || 'mix'}`,
     syncSourceId: timed.syncSourceId || trainId,
@@ -507,7 +514,7 @@ export function mixOverlap(a, b, { orderA = 1, orderB = 1 } = {}) {
     };
   }
   if (Math.abs(repA - repB) > 1e-9 * Math.max(repA, repB)) {
-    return { factor: 0, skewNs: null, comparable: false, unsupported: true, centerNs: null, repRateMHz: null };
+    return trainRatioOverlap(a, b, { orderA, orderB }, arrivalOf);
   }
   const periodNs = 1000 / repA;
   const tA = arrivalOf(a), tB = arrivalOf(b);
@@ -531,6 +538,75 @@ export function mixOverlap(a, b, { orderA = 1, orderB = 1 } = {}) {
   return {
     factor, skewNs: Math.abs(wrapped), offsetNs: wrapped, comparable: true, unsupported: false,
     centerNs, repRateMHz: repA, partnerPulseOffset, periodNs,
+  };
+}
+
+// Trains at different repetition rates, one a whole multiple of the other --
+// an 80 MHz oscillator beside its 40 MHz pulse-picked copy, or beside an
+// amplifier at 1 kHz. Both are taken as locked to one clock, as equal rates
+// are: each pulse of the slower train meets the nearest pulse of the faster
+// one, and the same pulse of the faster train every time, so only one fast
+// pulse in n takes part. Any other ratio, or one above a million, has no
+// such pattern here and is reported as not modelled.
+//
+// The result has the equal-rate fields, timed at the coincidence of the slow
+// train's pulse zero, plus what the slower train implies:
+//   ratio, slower ('a' or 'b')    -- n, and which beam is the slower train;
+//   repRateMHz, periodNs          -- the coincidences': the slower train's;
+//   fastRepRateMHz, fastPeriodNs, fastCoincidenceNs -- the faster train and
+//       the arrival of its pulse that takes part (pulse-picking gates);
+//   selfPulseOffset, periodNsA, periodNsB -- which pulse of each train takes
+//       part, in that train's own periods, as partnerPulseOffset does.
+// Up to 80 MHz beside 80 Hz: a detector averages a picked train exactly over
+// one whole pattern of up to a million pulses (pulseGateTransmission).
+const MAX_TRAIN_RATIO = 1e6;
+function trainRatioOverlap(a, b, { orderA = 1, orderB = 1 }, arrivalOf) {
+  const repA = a.pulse.repRateMHz, repB = b.pulse.repRateMHz;
+  const fastIsA = repA > repB;
+  const fastRate = Math.max(repA, repB), slowRate = Math.min(repA, repB);
+  const ratio = Math.round(fastRate / slowRate);
+  if (!(ratio >= 2) || ratio > MAX_TRAIN_RATIO || Math.abs(fastRate / slowRate - ratio) > 1e-6 * ratio) {
+    return { factor: 0, skewNs: null, comparable: false, unsupported: true, centerNs: null, repRateMHz: null };
+  }
+  const fastPeriodNs = 1000 / fastRate, periodNs = ratio * fastPeriodNs;
+  const tA = arrivalOf(a), tB = arrivalOf(b);
+  const tSlow = fastIsA ? tB : tA, tFast = fastIsA ? tA : tB;
+  // How far the slow train's pulse zero arrives after the fast pulse it meets.
+  const wrapped = ((tSlow - tFast) % fastPeriodNs + fastPeriodNs + fastPeriodNs / 2) % fastPeriodNs - fastPeriodNs / 2;
+  const fastCoincidenceNs = tSlow - wrapped;
+  const fastPulseOffset = Math.round((fastCoincidenceNs - tFast) / fastPeriodNs);
+  const photons = order => (Number.isFinite(order) && order >= 1 ? order : 1);
+  const widthA = Math.max(1, a.pulse.pulseWidthFs || 100) * 1e-6 / Math.sqrt(photons(orderA));
+  const widthB = Math.max(1, b.pulse.pulseWidthFs || 100) * 1e-6 / Math.sqrt(photons(orderB));
+  const factor = Math.exp(-4 * Math.LN2 * wrapped * wrapped / (widthA * widthA + widthB * widthB));
+  const weightA = 1 / (widthA * widthA), weightB = 1 / (widthB * widthB);
+  const arrivalA = fastIsA ? fastCoincidenceNs : tSlow, arrivalB = fastIsA ? tSlow : fastCoincidenceNs;
+  const centerNs = (arrivalA * weightA + arrivalB * weightB) / (weightA + weightB);
+  // offsetNs, as for equal rates: how far a's pulse arrives after b's.
+  const offsetNs = arrivalA - arrivalB;
+  return {
+    factor, skewNs: Math.abs(offsetNs), offsetNs, comparable: true, unsupported: false,
+    centerNs, repRateMHz: slowRate, periodNs,
+    ratio, slower: fastIsA ? 'b' : 'a',
+    fastRepRateMHz: fastRate, fastPeriodNs, fastCoincidenceNs,
+    selfPulseOffset: fastIsA ? fastPulseOffset : 0,
+    partnerPulseOffset: fastIsA ? 0 : fastPulseOffset,
+    periodNsA: 1000 / repA, periodNsB: 1000 / repB,
+  };
+}
+
+// The gate that picks, out of the faster train, the pulses a slower train
+// meets: high for one fast period around each coincidence, `low` between. It
+// is timed at the specimen or crystal, at path length `oplMm` of the beam it
+// goes on (see gateTransmissionAt). Two levels other than 1 and 0 make it a
+// transfer of the slower train's presence, as stimulated Raman needs.
+export function coincidenceGate(overlap, oplMm, { high = 1, low = 0 } = {}) {
+  if (!(overlap?.ratio >= 2) || !Number.isFinite(oplMm)) return null;
+  return {
+    opl: oplMm, frequencyMHz: overlap.repRateMHz, duty: 1 / overlap.ratio, shape: 'square',
+    phaseNs: overlap.fastCoincidenceNs - overlap.fastPeriodNs / 2, high, low, depth: 1, invert: false,
+    // Averaged over every pulse of its pattern (pulseGateTransmission).
+    pulsePicking: true,
   };
 }
 

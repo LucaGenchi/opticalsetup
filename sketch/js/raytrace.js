@@ -65,7 +65,7 @@ import {
 } from './spectrum.js';
 import { spectralFieldResult, spectralTermsAt, SPECTRAL_UNAVAILABLE, RECOMBINED_PULSE_UNAVAILABLE } from './spectral-coherence.js';
 import { cameraProfileFromHits } from './camera-profile.js';
-import { MAX_CONVERSION, MAX_OPO_DEPLETION, opoPulse, supercontinuumRange, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength, mixWidthNm } from './parametric.js';
+import { MAX_CONVERSION, MAX_OPO_DEPLETION, opoPulse, supercontinuumRange, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength, mixWidthNm, coincidenceGate } from './parametric.js';
 import { asphereSag, asphereSlope } from './asphere.js';
 
 // polylines from the most recent traceAll, kept for beam probes
@@ -448,6 +448,19 @@ export function mixReading(elementId) {
   return all.length > 1 ? { ...best, alsoPairs: all.length - 1 } : best;
 }
 
+// What mixPulse needs to time a pair's output train from mixOverlap: at the
+// coincidences, which between trains at different rates come at the slower
+// one's rate.
+function trainTiming(overlap, oplMm) {
+  return {
+    centerNs: overlap.centerNs, oplMm, repRateMHz: overlap.repRateMHz,
+    partnerPulseOffset: overlap.partnerPulseOffset, periodNs: overlap.periodNs,
+    ...(overlap.ratio >= 2 ? {
+      selfPulseOffset: overlap.selfPulseOffset, periodNsA: overlap.periodNsA, periodNsB: overlap.periodNsB,
+    } : {}),
+  };
+}
+
 // Sum- and difference-frequency generation in a chi(2) crystal (the model is
 // in parametric.js). The beam this ray carries is mixed with every other
 // colour at the crystal, and each pair produces light only while both pulses
@@ -475,11 +488,14 @@ function mixingOutputs(s, ray, d, data) {
   const remainder = 1 - shgShare;
   // How much of itself one beam offers a pair, and the factor that keeps a
   // beam in several pairs from offering more of itself than it has.
+  // Beside a slower train, only one pulse in n of the faster beam is met, and
+  // only that one can give anything to the pair.
   const request = (a, b) => {
     const overlap = mixOverlap(a, b);
     if (overlap.unsupported) return { overlap, ask: 0 };
     if (overlap.comparable && overlap.factor < MIN_OVERLAP) return { overlap, ask: 0 };
-    return { overlap, ask: fraction * overlap.factor };
+    const met = overlap.ratio >= 2 && overlap.slower === 'b' ? 1 / overlap.ratio : 1;
+    return { overlap, ask: fraction * overlap.factor * met };
   };
   const beamScale = beam => {
     const asked = beams
@@ -515,9 +531,11 @@ function mixingOutputs(s, ray, d, data) {
       skewNs: overlap.skewNs, overlap: overlap.factor,
       repRateMHz: ray.pulse?.repRateMHz ?? null,
       partnerRepRateMHz: partner.pulse?.repRateMHz ?? null,
+      ...(overlap.ratio >= 2 ? { ratio: overlap.ratio } : {}),
     };
-    // Trains at different nominal repetition rates are outside this model
-    // rather than physically impossible, and are reported as such.
+    // Trains at repetition rates that are not one a whole multiple of the
+    // other are outside this model rather than physically impossible, and are
+    // reported as such.
     if (overlap.unsupported) { pairs.push({ ...reading, state: 'unsupported' }); continue; }
     if (overlap.comparable && overlap.factor < MIN_OVERLAP) { pairs.push({ ...reading, state: 'unsynchronized' }); continue; }
     pairs.push({ ...reading, state: 'mixing' });
@@ -544,8 +562,7 @@ function mixingOutputs(s, ray, d, data) {
         intensity: total / lines.length,
         pulse: mixPulse(ray.pulse, partner.pulse, {
           crystalId, kind, wl, bandwidthNm: bw,
-          centerNs: overlap.centerNs, oplMm: ray.opl, repRateMHz: overlap.repRateMHz,
-          partnerPulseOffset: overlap.partnerPulseOffset, periodNs: overlap.periodNs,
+          ...trainTiming(overlap, ray.opl),
         }),
         parametricPath: path,
         // New light, referenced to the crystal exit like the OPO's outputs.
@@ -1059,7 +1076,7 @@ function averageGateTransmission(pulse) {
   // cached average.
   const key = [pulse.repRateMHz, pulse.pulseWidthFs, pulse.phaseNs, ...pulse.gates.flatMap(g => [
     g.opl, g.frequencyMHz, g.duty, g.phaseNs, g.shape || 'square', g.depth ?? 1,
-    g.symmetry ?? 1, g.invert ? 1 : 0, g.high ?? 1, g.low ?? 0,
+    g.symmetry ?? 1, g.invert ? 1 : 0, g.high ?? 1, g.low ?? 0, g.pulsePicking ? 1 : 0,
   ])].join('|');
   if (!gateTransmissionCache.has(key)) gateTransmissionCache.set(key, pulseGateTransmission(pulse));
   return gateTransmissionCache.get(key);
@@ -2573,6 +2590,22 @@ export function srsTransferGate(channel, ray, incidentBeams, elementId, scale = 
   const beams = incidentBeams || [];
   const modulatedPartners = beams.filter(b =>
     Math.abs(b.wl - ray.wl) >= MIXING_MIN_SEPARATION_NM && b.gates?.length);
+  // A partner at another repetition rate is a modulation of its own: a train
+  // at f/n meets one pulse in n of a train at f (see trainRatioTransfer).
+  const rate = ray.pulse?.repRateMHz;
+  const otherRate = beams.filter(b => Math.abs(b.wl - ray.wl) >= MIXING_MIN_SEPARATION_NM
+    && b.pulse?.repRateMHz > 0 && rate > 0 && Math.abs(b.pulse.repRateMHz - rate) > 1e-9 * Math.max(b.pulse.repRateMHz, rate));
+  if (otherRate.length) {
+    if ((ray.pulse?.gates || []).length || modulatedPartners.length) {
+      recordSrsNote(elementId, 'the beams run at different repetition rates and one is modulated as well, and a modulation on top of the slower train is not modelled');
+      return null;
+    }
+    if (otherRate.length > 1) {
+      recordSrsNote(elementId, 'more than one beam at another repetition rate could drive it, and only a single partner is modelled');
+      return null;
+    }
+    return trainRatioTransfer(channel, ray, otherRate[0], beams, elementId, scale);
+  }
   // What this model covers is one unmodulated beam receiving the modulation of
   // one other beam through one modulator. Anything beyond that is not drawn,
   // and says so, rather than being drawn as though it were modelled.
@@ -2643,6 +2676,36 @@ export function srsTransferGate(channel, ray, incidentBeams, elementId, scale = 
   };
 }
 
+// Stimulated Raman between a train at f and one at f/n: only one pulse in n
+// of the faster train meets a pulse of the slower one, so the slower train
+// modulates the faster beam at f/n with full depth -- the scheme that needs no
+// EOM or AOM -- and a lock-in at f/n reads it there. Each slow pulse carries n
+// times the energy at the same average power, so the met pulses change n
+// times as much (capped like the EOM case). The slower beam itself meets a
+// pulse of the faster one every time: it changes steadily, with nothing to
+// lock in on, and is returned as { steady } for its intensity.
+function trainRatioTransfer(channel, ray, partner, beams, elementId, scale) {
+  const timed = channelOverlap(channel, ray, partner, beams, elementId);
+  // With its overlap requirement off the channel is a schematic: the pulses
+  // are still picked as the trains dictate, at full strength.
+  if (timed.state === 'ignored') {
+    const timing = mixOverlap(rayAsBeam(ray, beams), partner);
+    if (!(timing.ratio >= 2)) return null;
+    Object.assign(timed, { factor: 1, timing });
+  }
+  if (!(timed.factor >= MIN_OVERLAP) || !(timed.timing?.ratio >= 2)) return null;
+  const sign = partner.wl < ray.wl ? 1 : -1;  // gain on the Stokes, loss on the pump
+  const transfer = Math.max(0.01, channel.transferEff ?? 0.1);
+  const receiverOpl = rayAsBeam(ray, beams).opl;
+  if (timed.timing.slower === 'b') {
+    const depth = Math.min(0.5, transfer * timed.timing.ratio) * timed.factor * scale;
+    if (!(depth > 0)) return null;
+    return coincidenceGate(timed.timing, Number.isFinite(receiverOpl) ? receiverOpl : 0, { high: 1 + sign * depth, low: 1 });
+  }
+  const depth = Math.min(0.5, transfer) * timed.factor * scale;
+  return depth > 0 ? { steady: 1 + sign * depth } : null;
+}
+
 // How much of a two-beam signal survives the arrival mismatch between the
 // beams driving it, judged beam to beam. Channels can opt out, for a schematic
 // that is about the signal rather than about timing.
@@ -2666,12 +2729,26 @@ function channelOverlap(channel, ray, partner, beams, elementId) {
     skewNs: overlap.skewNs, overlap: overlap.factor,
     repRateMHz: ray.pulse?.repRateMHz ?? null,
     partnerRepRateMHz: partner.pulse?.repRateMHz ?? null,
+    ...(overlap.ratio >= 2 ? { ratio: overlap.ratio } : {}),
   };
   const state = overlap.unsupported ? 'unsupported'
     : overlap.comparable && overlap.factor < MIN_OVERLAP ? 'unsynchronized'
       : 'mixing';
   recordSpecimenTiming(elementId, { ...reading, state });
-  return { factor: state === 'mixing' ? overlap.factor : 0, state, skewNs: overlap.skewNs };
+  return { factor: state === 'mixing' ? overlap.factor : 0, state, skewNs: overlap.skewNs, timing: overlap };
+}
+
+// A two-beam signal between trains at different rates, against the same two
+// beams at the faster rate with the same average powers. Only one pulse in n
+// of the faster train is met, but each pulse of the slower one carries n times
+// the energy, and the signal goes as the k-th power of the slower beam's
+// intensity, k the photons it gives (twoBeamOrders): n^(k-1) in all. CARS with
+// a picked Stokes keeps its level; with a picked pump it gains n; sum
+// frequency and stimulated Raman, one photon from each, keep theirs.
+function trainRatioGain(kind, ray, partner, timing) {
+  if (!(timing?.ratio >= 2)) return 1;
+  const { orderA, orderB } = twoBeamOrders(kind, ray.wl, partner.wl);
+  return timing.ratio ** ((timing.slower === 'a' ? orderA : orderB) - 1);
 }
 
 // The sum frequency of this beam with every other colour at the specimen. A
@@ -2698,9 +2775,7 @@ function specimenMixedOutputs(channel, ray, d, data, elementId, origins = null) 
     // train -- not the driving beam's, whose duration and transform-limited
     // claim are not this signal's.
     const pulse = mixPulse(ray.pulse, partner.pulse, {
-      crystalId: elementId, kind: 'sfg', wl,
-      centerNs: overlap.centerNs, oplMm: ray.opl, repRateMHz: overlap.repRateMHz,
-      partnerPulseOffset: overlap.partnerPulseOffset, periodNs: overlap.periodNs,
+      crystalId: elementId, kind: 'sfg', wl, ...trainTiming(overlap, ray.opl),
     });
     const child = {
       d, wl, bw: 0, spec: null, pol: undefined, stokes: null, pulse,
@@ -5382,7 +5457,8 @@ function interact(ray, hit) {
             retarded = true;
           } else if (c.kind === 'srs' && ray.pulse) {
             const transferred = srsTransferGate(c, ray, data.incidentBeams, s.el?.id || null, volume ? volume.share(2) : 1);
-            if (transferred) { pulse = withGate(pulse, transferred); gated = true; }
+            if (transferred?.steady > 0) exc.intensity *= transferred.steady;
+            else if (transferred) { pulse = withGate(pulse, transferred); gated = true; }
           }
         }
         if (retarded) exc.stokes = stokes;
@@ -5469,19 +5545,32 @@ function interact(ray, hit) {
         if (!(wl > 0)) continue;
         // Sum-frequency and CARS are wave mixing: no temporal overlap between
         // the two beams, no signal.
-        let overlap = 1;
+        let overlap = 1, strength = eff, train = null;
         if (MIXING_KINDS.has(c.kind) && c.autoWl !== false) {
-          overlap = channelOverlap(c, ray, mixingPartner(ray, data.incidentBeams, c.kind), data.incidentBeams, s.el?.id || null).factor;
+          const partner = mixingPartner(ray, data.incidentBeams, c.kind);
+          const timed = channelOverlap(c, ray, partner, data.incidentBeams, s.el?.id || null);
+          overlap = timed.factor;
           if (overlap < MIN_OVERLAP) continue;
+          // Beside a slower train the signal is the coincidences' train, and
+          // its level follows the pulse energies (trainRatioGain), kept a
+          // bounded proxy: never more than the driving beam brings.
+          if (timed.state === 'mixing' && timed.timing?.ratio >= 2) {
+            strength = Math.min(1, eff * trainRatioGain(c.kind, ray, partner, timed.timing));
+            train = mixPulse(ray.pulse, partner.pulse, {
+              crystalId: s.el?.id || null, kind: c.kind, wl, ...trainTiming(timed.timing, ray.opl),
+              ...twoBeamOrders(c.kind, ray.wl, partner.wl),
+            });
+          }
         }
         // In an active layer, the share of the focal signal this crossing
         // holds; a layer away from the focus generates none.
         const focal = volume ? volume.share(NONLINEAR_ORDER[c.kind] || 1) : 1;
         if (!(focal > 0)) continue;
-        const forward = ray.intensity * eff * overlap * focal;
+        const forward = ray.intensity * strength * overlap * focal;
         const tint = channelColor(c, wl);
         out.push({
           d, wl, bw: 0, spec: null, pol: undefined, stokes: null, color: tint, sourceId: emittedFrom, intensity: forward, tag: `c${ci}`,
+          ...(train ? { pulse: train } : {}),
           ...(volume ? { origin: volume.origins.forward, oplShift: volume.origins.forwardShift } : {}),
         });
         if (c.epi && EPI_KINDS.has(c.kind)) {
@@ -5491,7 +5580,8 @@ function interact(ray, hit) {
               d: { x: -d.x, y: -d.y }, wl, bw: 0, spec: null, pol: undefined, stokes: null,
               color: tint, sourceId: emittedFrom,
               intensity: forward * ratio,
-              power: Number.isFinite(ray.power) ? ray.power * eff * ratio * focal : undefined,
+              power: Number.isFinite(ray.power) ? ray.power * strength * ratio * focal : undefined,
+              ...(train ? { pulse: train } : {}),
               tag: `e${ci}`,
               ...(volume ? { origin: volume.origins.epi, oplShift: volume.origins.epiShift } : {}),
             });
