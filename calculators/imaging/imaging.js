@@ -299,8 +299,15 @@ export function computePair(raw) {
   const l1 = b1.lens, l2 = b2.lens, t1 = l1.thicknessMm, t2 = l2.thicknessMm;
   const afocal = v.spacing === 'afocal';
   const g = afocal ? afocalGap(l1.matrix, l2.matrix) : v.gapMm;
+  // Spaced afocal, H′ of lens 1 lies f₁ + f₂ before H of lens 2: that must
+  // be a positive distance (f₁ + f₂ = 0 would put two thin lenses in one
+  // plane, an identity, not a telescope), and leave the lenses apart.
+  const sum = l1.efl + l2.efl;
+  if (afocal && !(sum > 0)) {
+    return unavailable(`Spaced afocal, H′ of lens 1 must lie f₁ + f₂ = ${fmt(sum)} mm before H of lens 2, ${sum < 0 ? 'a negative distance' : 'in the same plane'}. A telescope needs f₁ + f₂ > 0: two converging lenses (Keplerian), or one converging and one diverging, the converging one the stronger in |f| (Galilean).`, 'l1FocalMm', 'l2FocalMm', 'l1Kind', 'l2Kind');
+  }
   if (afocal && !(g >= 0)) {
-    return unavailable(`Spaced afocal, lens 2 would start ${fmt(-g)} mm before lens 1 ends: H′ of lens 1 must lie f₁ + f₂ = ${fmt(l1.efl + l2.efl)} mm before H of lens 2${l1.efl + l2.efl < 0 ? ', a negative distance' : ''}. A telescope needs f₁ + f₂ > 0: two converging lenses (Keplerian), or one converging and one diverging, the converging one the stronger in |f| (Galilean).`, 'l1FocalMm', 'l2FocalMm', 'l1Kind', 'l2Kind');
+    return unavailable(`Spaced afocal, lens 2 would start ${fmt(-g)} mm before lens 1 ends: the principal planes must be f₁ + f₂ = ${fmt(sum)} mm apart, closer than these lenses’ thicknesses allow. Choose longer focal lengths, or a thinner lens.`, 'l1FocalMm', 'l2FocalMm', 'l1Kind', 'l2Kind');
   }
   const least = minimumGap(l1, l2);
   if (g < least - 1e-9) {

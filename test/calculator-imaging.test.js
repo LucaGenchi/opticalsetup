@@ -136,8 +136,12 @@ test('two lenses: Keplerian and Galilean telescopes, the 4f relay, and a pair at
   assert.ok(reducer.ok && reducer.fourierZ === null && !reducer.fourF);
   // A diverging lens 1 has no real front focal plane.
   assert.deepEqual(ids(pair({ l1Kind: 'planoconcave', l1FocalMm: -50, pairObject: 'focal' })), ['pairObject', 'l1Kind']);
-  // f₁ + f₂ ≤ 0 cannot be spaced afocal.
+  // f₁ + f₂ ≤ 0 cannot be spaced afocal; at equality two thin lenses would
+  // share one plane, which is refused too.
   assert.deepEqual(ids(pair({ l2Kind: 'planoconcave', l2FocalMm: -150 })), ['l1FocalMm', 'l2FocalMm', 'l1Kind', 'l2Kind']);
+  const same = pair({ l1Kind: 'ideal', l1FocalMm: 50, l2Kind: 'ideal', l2FocalMm: -50 });
+  assert.ok(!same.ok && /in the same plane/.test(same.errors[0].message));
+  assert.ok(pair({ l1Kind: 'ideal', l1FocalMm: 50, l2Kind: 'ideal', l2FocalMm: -49.9 }).ok);
   // At a set gap: lenses that would overlap are refused, with the gap to set.
   const facing = { spacing: 'gap', l1Kind: 'planoconcave', l1FocalMm: -50, l1Orientation: 'plano', l2Orientation: 'convex' };
   const tight = pair({ ...facing, gapMm: 0 });

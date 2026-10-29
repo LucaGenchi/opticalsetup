@@ -156,6 +156,28 @@
     "l1FocalMm": 50.0,
     "l1Kind": "ideal",
     "l2DiameterMm": 25.4,
+    "l2FocalMm": -50.0,
+    "l2Kind": "ideal",
+    "pairObject": "infinity",
+    "pairWavelengthNm": 633.0,
+    "spacing": "afocal"
+   },
+   "name": "refusal boundary: ideal lenses f1 = 50 mm, f2 = -50 mm times 1.000000, spaced afocal: refused",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "accepted": 0
+   },
+   "inputs": {
+    "kind": "pair",
+    "l1DiameterMm": 25.4,
+    "l1FocalMm": 50.0,
+    "l1Kind": "ideal",
+    "l2DiameterMm": 25.4,
     "l2FocalMm": -50.000049999999995,
     "l2Kind": "ideal",
     "pairObject": "infinity",
@@ -1109,7 +1131,7 @@
   "S. A. Konijnenberg, A. J. H. Adam and H. P. Urbach, BSc Optics (TU Delft Open, 2021), section 2.6: imaging with a thin lens, Newton's equation, two thin lenses (the image of the first is the object of the second), the thick lens's principal planes"
  ],
  "convergence": "Closed forms in double precision; the secant methods to 1e-15.",
- "domain": "The refusal boundaries, each computed here and approached from both sides (a plano-concave and an equi-concave lens whose radius reaches the clear radius, a bi-convex lens whose faces meet at the rim, an afocal pair with f1 + f2 = 0, two lenses touching at their rims, and that least gap itself); eleven single lenses (bi-convex, bi-concave and plano-concave by their radii; plano-convex, best-form bi-convex, plano-concave and equi-concave designed from f; ideal lenses of either sign) in N-BK7, fused silica, N-SF11 and CaF2 from 486 to 3000 nm, with real and virtual images; nine pairs: Keplerian and Galilean expanders and a Galilean reducer spaced afocal, a 4f relay with singlets and with ideal lenses, an afocal pair imaging an object outside the focal plane, and pairs at 100, 30 and 10 mm gaps.",
+ "domain": "The refusal boundaries, each computed here and approached from both sides (a plano-concave and an equi-concave lens whose radius reaches the clear radius, a bi-convex lens whose faces meet at the rim, an afocal pair with f1 + f2 = 0 (refused at equality too), two lenses touching at their rims, and that least gap itself); eleven single lenses (bi-convex, bi-concave and plano-concave by their radii; plano-convex, best-form bi-convex, plano-concave and equi-concave designed from f; ideal lenses of either sign) in N-BK7, fused silica, N-SF11 and CaF2 from 486 to 3000 nm, with real and virtual images; nine pairs: Keplerian and Galilean expanders and a Galilean reducer spaced afocal, a 4f relay with singlets and with ideal lenses, an afocal pair imaging an object outside the focal plane, and pairs at 100, 30 and 10 mm gaps.",
  "fidelity": "computed",
  "id": "imaging",
  "outside_scope": "The page refuses a wavelength outside a glass's fitted range, a focal length of the wrong sign for a convex or concave singlet, radii smaller than the clear radius, faces that cross before the clear diameter, an afocal spacing that would need f1 + f2 <= 0 or overlapping lenses, and a front focal plane of lens 1 that lies after it.",

@@ -227,8 +227,9 @@ def boundary_cases():
     for k, ok in ((1 + 1e-6, True), (1 - 1e-6, False)):
         pair_of(f"bi-convex R1 = 20, R2 = -30 mm, D = 12 mm, centre thickness both sags times {k:.6f}", ok, nm,
                 {"kind": "one", "wavelengthNm": nm, **page_inputs("lens", {**BICONVEX, "back": 30.0, "centre": t_least * k})})
-    # Afocal spacing needs f1 + f2 > 0.
-    for k, ok in ((1 - 1e-6, True), (1 + 1e-6, False)):
+    # Afocal spacing needs f1 + f2 > 0, strictly: at f1 + f2 = 0 two thin
+    # lenses would share one plane.
+    for k, ok in ((1 - 1e-6, True), (1.0, False), (1 + 1e-6, False)):
         pair_of(f"ideal lenses f1 = 50 mm, f2 = -50 mm times {k:.6f}, spaced afocal", ok, 633.0,
                 {"kind": "pair", "pairWavelengthNm": 633.0, "spacing": "afocal", "pairObject": "infinity",
                  **page_inputs("l1", {"kind": "ideal", "f": 50.0, "diameter": 25.4}), **page_inputs("l2", {"kind": "ideal", "f": -50.0 * k, "diameter": 25.4})})
@@ -289,7 +290,7 @@ MODEL = {
         "S. A. Konijnenberg, A. J. H. Adam and H. P. Urbach, BSc Optics (TU Delft Open, 2021), section 2.6: imaging with a thin lens, Newton's equation, two thin lenses (the image of the first is the object of the second), the thick lens's principal planes",
     ],
     "provenance": "The formulas written from the cited texts; the convex designs and thick-lens data are thick_lens.py's independent closed forms.",
-    "domain": "The refusal boundaries, each computed here and approached from both sides (a plano-concave and an equi-concave lens whose radius reaches the clear radius, a bi-convex lens whose faces meet at the rim, an afocal pair with f1 + f2 = 0, two lenses touching at their rims, and that least gap itself); eleven single lenses (bi-convex, bi-concave and plano-concave by their radii; plano-convex, best-form bi-convex, plano-concave and equi-concave designed from f; ideal lenses of either sign) in N-BK7, fused silica, N-SF11 and CaF2 from 486 to 3000 nm, with real and virtual images; nine pairs: Keplerian and Galilean expanders and a Galilean reducer spaced afocal, a 4f relay with singlets and with ideal lenses, an afocal pair imaging an object outside the focal plane, and pairs at 100, 30 and 10 mm gaps.",
+    "domain": "The refusal boundaries, each computed here and approached from both sides (a plano-concave and an equi-concave lens whose radius reaches the clear radius, a bi-convex lens whose faces meet at the rim, an afocal pair with f1 + f2 = 0 (refused at equality too), two lenses touching at their rims, and that least gap itself); eleven single lenses (bi-convex, bi-concave and plano-concave by their radii; plano-convex, best-form bi-convex, plano-concave and equi-concave designed from f; ideal lenses of either sign) in N-BK7, fused silica, N-SF11 and CaF2 from 486 to 3000 nm, with real and virtual images; nine pairs: Keplerian and Galilean expanders and a Galilean reducer spaced afocal, a 4f relay with singlets and with ideal lenses, an afocal pair imaging an object outside the focal plane, and pairs at 100, 30 and 10 mm gaps.",
     "convergence": "Closed forms in double precision; the secant methods to 1e-15.",
     "tolerance_rationale": "1e-9 relative: two exact methods for the same paraxial quantities, differing only by round-off; expected values stored to 10 significant digits. The refusal boundaries are approached 1e-6 relative from each side, far beyond that round-off, and must be accepted or refused exactly.",
     "outside_scope": "The page refuses a wavelength outside a glass's fitted range, a focal length of the wrong sign for a convex or concave singlet, radii smaller than the clear radius, faces that cross before the clear diameter, an afocal spacing that would need f1 + f2 <= 0 or overlapping lenses, and a front focal plane of lens 1 that lies after it.",
