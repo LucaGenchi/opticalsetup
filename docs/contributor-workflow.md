@@ -129,10 +129,12 @@ Everything happens on github.com; the full guide is
    request appears, the workflow says why on the issue; re-run it from
    **Actions → Materialize example proposal → Run workflow** with the issue
    number.
+   Its CI waits for approval, since a workflow opened it: click
+   **Approve and run** on the pull request and wait for **CI / test**.
 3. Merging approves it; closing rejects it.
 4. A second workflow opens **Publish approved community setups** with the
    generated page, `sketch/js/community-data.js` and `sitemap.xml`. Review it,
-   don't edit it, and merge it.
+   don't edit it, approve its CI run the same way, and merge it.
 5. The setup is now merged but not visible. It goes out with the next release
    (a patch); several setups can share one release.
 

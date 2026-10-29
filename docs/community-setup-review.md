@@ -23,7 +23,9 @@ thread; link that comment in the field if you do. The app itself stays GPL-3.0-o
 Close a submission whose author cannot grant those rights — material copied from a paper,
 say. Citing a paper or describing published apparatus independently is fine.
 
-Two merges, both on github.com, both just the ordinary green **Merge pull request** button. No repository settings, admin overrides, or local terminal needed for the normal path.
+Two merges, both on github.com, each the ordinary green **Merge pull request** button after one click to start its checks (below). No repository settings, admin overrides, or local terminal needed for the normal path.
+
+**Starting the checks on a bot pull request.** Both pull requests are opened by a workflow with its built-in token, and GitHub does not run CI on those by itself: the run waits for approval from someone with write access. `main` requires a passing **CI / test** check, so nothing merges until you approve it. On the pull request, find the workflow run awaiting approval (in the merge box, or the **Checks** tab), click **Approve and run**, and wait for **CI / test** to pass. If `main` has moved on, **Update branch** first: that push is yours, so its CI starts on its own.
 
 (Why two PRs instead of one: `main` requires a reviewed pull request with no bypass for any bot identity, on purpose — publishing should never get a direct-push shortcut, regardless of what any current or future workflow tries to do. Every touch to `main` costs a human click.)
 
@@ -35,15 +37,17 @@ Two merges, both on github.com, both just the ordinary green **Merge pull reques
 2. Open the PR titled **"Propose community setup: ..."**.
 3. Read the description (it links back to the source GitHub issue and the submitter's write-up) and check the **Files changed** tab for the raw scene JSON.
 4. Optional — sanity-check it visually before merging; see "Verifying locally" below.
-5. **Approve:** click **Merge pull request** (the default "Create a merge commit" option is fine).
-6. **Reject:** click **Close pull request** instead. Nothing else is required — no generated files are ever touched by an unmerged proposal, so there's nothing to clean up.
+5. Start its checks: **Approve and run** the waiting workflow run and wait for **CI / test** to pass (see above).
+6. **Approve:** click **Merge pull request** (the default "Create a merge commit" option is fine).
+7. **Reject:** click **Close pull request** instead. Nothing else is required — no generated files are ever touched by an unmerged proposal, so there's nothing to clean up.
 
 ### Step 2 — publish the generated pages
 
 1. Give it a minute or two after merging Step 1 for the "Publish approved community setups" workflow to run. You can watch it on the [Actions tab](https://github.com/LucaGenchi/opticalsetup/actions) if you want.
 2. A new PR titled **"Publish approved community setups"** appears automatically.
 3. Open it and check the **Files changed** tab — it should touch exactly `community/<slug>/index.html` and `sketch/js/community-data.js`, nothing else. There's nothing to hand-edit; it's pure generated output.
-4. Click **Merge pull request**. The setup goes live with the next release (a patch release is enough; see [release-policy.md](release-policy.md)).
+4. Start its checks: **Approve and run** the waiting workflow run and wait for **CI / test** to pass.
+5. Click **Merge pull request**. The setup goes live with the next release (a patch release is enough; see [release-policy.md](release-policy.md)).
 
 ### If the "Propose" PR never shows up
 
