@@ -101,7 +101,7 @@ test('Coupling: perfect lens, matched Gaussian beam: η → 1, and the closed-fo
   near(eta({ tiltXMrad: 1e3 * wIn / 100 / 2 }), Math.exp(-0.25), 1e-5, 'tilt exp(−t²/θ0²)');
 });
 
-test('Coupling: a perfect lens agrees with the Fiber coupling calculator’s closed form, offsets and tilts of both signs', () => {
+test('Coupling: a perfect lens agrees with the Free space to fiber coupling calculator’s closed form, offsets and tilts of both signs', () => {
   const sys = perfect({ grid: 128, illumination: 'gaussian', beamRatio: 0.4 });
   // Each face is placed from its own model's focus. The calculator's beam,
   // by Self's equations, waists f³/(f² + z_R²) = 2.2 µm nearer the lens than
