@@ -1,5 +1,5 @@
 {
- "app": "calculators/fiber-coupling/lp01.js: lp01 (the exact mode, its best Gaussian, its far field in closed form); calculators/fiber-coupling/lens-choice.js: computeFiberSetup (the ideal lens into the exact mode, the 95 % range); calculators/fiber-coupling/fiber-coupling.js: computeFiberCoupling (the closed form for a Gaussian mode, focused beam by calculators/gaussian-beam/gaussian-beam.js: thinLensFocus) and fiberMode (Marcuse's fit)",
+ "app": "calculators/fiber-coupling/lp01.js: lp01 (the exact mode, its best Gaussian, its far field in closed form); calculators/fiber-coupling/lens-choice.js: computeFiberSetup (the ideal lens into the exact mode, the 95 % range); calculators/fiber-coupling/fiber-coupling.js: computeFiberCoupling (the closed form for a Gaussian mode, focused beam by calculators/assets/gaussian-beam.js: thinLensFocus) and fiberMode (Marcuse's fit)",
  "cases": [
   {
    "absolute": true,

@@ -15,7 +15,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import katex from 'katex';
-import { calculators } from './calculators-content.mjs';
+import { calculators, calculatorCategories } from './calculators-content.mjs';
 import { siteHeader, themeBootScript } from './site-header.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -367,6 +367,14 @@ ${footer(base)}
 
 function hubPage() {
   const base = '..';
+  const listed = calculatorCategories.flatMap(cat => cat.slugs);
+  for (const calc of calculators) {
+    const n = listed.filter(slug => slug === calc.slug).length;
+    if (n !== 1) throw new Error(`${calc.slug}: listed in ${n} hub categories, not exactly one`);
+  }
+  for (const slug of listed) {
+    if (!calculators.some(c => c.slug === slug)) throw new Error(`hub category lists ${slug}, which is not a calculator`);
+  }
   return `${head({
     title: 'Calculators — OpticalSetup',
     description: 'Small calculators for optics: set the parameters, read the numbers and graphs, and see the formulas, their limits and how each was checked.',
@@ -379,9 +387,12 @@ ${header(base)}
       <h1>Calculators</h1>
       <p>Each calculator is one physical model on one page: set the parameters, read the results and graphs, then the physics behind them, with every formula, its assumptions, how precisely it is evaluated and the literature it comes from. Material models reuse the canvas’s catalogue and equations; wavelength converters evaluate frequency relations directly. Each page states its scope and reference checks.</p>
     </div>
-    <div class="calc-cards">
-      ${calculators.map(c => `<a class="calc-card" href="${base}/calculators/${c.slug}/"><b>${esc(c.title)}</b><span>${esc(c.card)}</span></a>`).join('\n      ')}
-    </div>
+    ${calculatorCategories.map(cat => `<section class="calc-category">
+      <h2>${esc(cat.title)}</h2>
+      <div class="calc-cards">
+        ${cat.slugs.map(slug => calculators.find(c => c.slug === slug)).map(c => `<a class="calc-card" href="${base}/calculators/${c.slug}/"><b>${esc(c.title)}</b><span>${esc(c.card)}</span></a>`).join('\n        ')}
+      </div>
+    </section>`).join('\n    ')}
   </main>
 ${footer(base)}
 </body>

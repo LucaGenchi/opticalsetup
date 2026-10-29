@@ -33,7 +33,6 @@ import { analyzeDiffraction } from '../calculators/lens-design/engine/diffractio
 import { traceBundle, referenceSphere, opdWaves } from '../calculators/lens-design/engine/wavefront.js';
 import { analyzeImaging, prepareImaging, twoPointAt } from '../calculators/lens-design/engine/imaging.js';
 import { analyzeCoupling } from '../calculators/lens-design/engine/coupling.js';
-import { GAUSSIAN_DEFAULTS, computeGaussianBeam } from '../calculators/gaussian-beam/gaussian-beam.js';
 import { LENS_DEFAULTS, lensData, designLens, idealFocus, singletRays, focusFrom, PUPIL_SAMPLES } from '../calculators/thin-thick-lens/thick-lens.js';
 import { FIBER_DEFAULTS, computeFiberCoupling, fiberMode, focusCollimated } from '../calculators/fiber-coupling/fiber-coupling.js';
 import { lp01 } from '../calculators/fiber-coupling/lp01.js';
@@ -193,7 +192,6 @@ const APP = {
     if (kind === 'abbe') return { nd: materialDispersion(material, 587.5618)?.index, abbe: materialAbbe(material) };
     return computeDispersion({ ...DISPERSION_DEFAULTS, material, wavelengthNm, ...inputs });
   },
-  'gaussian-beam': inputs => computeGaussianBeam({ ...GAUSSIAN_DEFAULTS, ...inputs }),
   'fiber-coupling': ({ kind, ...inputs }) => {
     if (kind === 'fiber') return fiberMode(inputs);
     if (kind === 'lp01') {
@@ -371,7 +369,7 @@ const APP = {
   },
 };
 
-for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'dispersion-compensation', 'lens-design', 'lens-coherent', 'gaussian-beam', 'fiber-coupling', 'point-scanning', 'thick-lens', 'imaging']) {
+for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'dispersion-compensation', 'lens-design', 'lens-coherent', 'fiber-coupling', 'point-scanning', 'thick-lens', 'imaging']) {
   const model = expected(name);
   for (const c of model.cases) {
     test(`${model.id}: ${c.name}`, () => {

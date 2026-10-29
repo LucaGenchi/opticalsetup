@@ -419,7 +419,7 @@ def cases():
 MODEL = {
     "id": "fiber-coupling",
     "title": "Gaussian-beam coupling into a single-mode fiber, through its exact LP01 mode",
-    "app": "calculators/fiber-coupling/lp01.js: lp01 (the exact mode, its best Gaussian, its far field in closed form); calculators/fiber-coupling/lens-choice.js: computeFiberSetup (the ideal lens into the exact mode, the 95 % range); calculators/fiber-coupling/fiber-coupling.js: computeFiberCoupling (the closed form for a Gaussian mode, focused beam by calculators/gaussian-beam/gaussian-beam.js: thinLensFocus) and fiberMode (Marcuse's fit)",
+    "app": "calculators/fiber-coupling/lp01.js: lp01 (the exact mode, its best Gaussian, its far field in closed form); calculators/fiber-coupling/lens-choice.js: computeFiberSetup (the ideal lens into the exact mode, the 95 % range); calculators/fiber-coupling/fiber-coupling.js: computeFiberCoupling (the closed form for a Gaussian mode, focused beam by calculators/assets/gaussian-beam.js: thinLensFocus) and fiberMode (Marcuse's fit)",
     "reference": "Exact weakly-guiding LP01 mode from its Bessel-function eigenvalue equation, best-coupling Gaussian by golden-section search on the overlap; the mode's far field by Simpson quadrature of its Hankel transform; focused beam by the ABCD law on q; coupling into a Gaussian mode by trapezoid quadrature of the overlap integral on the fiber face, into the exact mode by Simpson quadrature over the radius; matching focal length and the 95 % ends by bisection on the focal length",
     "citations": [
         "D. Gloge, Appl. Opt. 10, 2252-2258 (1971), doi:10.1364/AO.10.002252 (LP modes, eigenvalue equation, cutoff V = 2.405)",

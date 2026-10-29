@@ -31,7 +31,7 @@
 // (2 w w_m / (w² + w_m²))². Units: λ in nm, beam diameter in mm, mode and
 // offsets in µm, distances in mm, tilt in mrad.
 import { defaultsFor, parseInputs, unavailable } from '../assets/calculator-inputs.js';
-import { gaussianBeam, thinLensFocus, steepText } from '../gaussian-beam/gaussian-beam.js';
+import { gaussianBeam, thinLensFocus, steepText } from '../assets/gaussian-beam.js';
 import { lp01, J0_ZERO } from './lp01.js';
 
 // First zero of J₀: LP₁₁ is guided above it.

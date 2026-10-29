@@ -41,7 +41,7 @@
 
 import { defaultsFor, parseInputs, unavailable } from '../assets/calculator-inputs.js';
 import { GLASSES, glassWavelengthRange, isWavelengthInGlassRange } from '../../sketch/js/glass.js';
-import { gaussianBeam, thinLensFocus } from '../gaussian-beam/gaussian-beam.js';
+import { gaussianBeam, thinLensFocus } from '../assets/gaussian-beam.js';
 import { fiberMode, MARCUSE_V } from '../fiber-coupling/fiber-coupling.js';
 import { besselJ0 } from '../point-scanning/psf.js';
 import { normalizeSystem } from '../lens-design/engine/system.js';
