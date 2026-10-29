@@ -677,7 +677,7 @@ function detectorConvergence(hits) {
   if (!(den > 1e-18 * reach * reach)) return focus && { ...focus, waistAheadMm: 0 };
   // Close to the focus the face still reads it, with how far away the waist
   // lies: an exact hit is near impossible to place by hand.
-  const waistAheadMm = focus && waistWithinFocusZone(pts, totalWeight, focus);
+  const waistAheadMm = focus && waistWithinFocusZone(pts, focus);
   if (Number.isFinite(waistAheadMm)) return { ...focus, waistAheadMm };
   const fittedSlope = num / den; // radians of tilt per mm of height
   const width = weightedSpan(den, pts.map(point => point.height));
@@ -734,17 +734,19 @@ export const FOCUS_ZONE_RAYLEIGH = 3;
 
 // Where the waist lies along the beam from the face (positive: further
 // along), when the face is within FOCUS_ZONE_RAYLEIGH Rayleigh ranges of it;
-// otherwise null. The waist sits at the plane where the rays' spread is
-// least. A cone too slow to place its focus (as for a specimen) has none.
-function waistWithinFocusZone(pts, totalWeight, focus) {
-  if (!(focus.rayleighMm > 0) || !(focus.fullAngleDeg * Math.PI / 360 > MIN_HALF_ANGLE)) return null;
-  const lines = pts.map(point => ({ h: point.height, t: Math.tan(point.theta), f: point.weight / totalWeight }));
-  const mh = lines.reduce((sum, line) => sum + line.f * line.h, 0);
-  const mt = lines.reduce((sum, line) => sum + line.f * line.t, 0);
-  let cov = 0, varT = 0;
-  for (const line of lines) { cov += line.f * (line.h - mh) * (line.t - mt); varT += line.f * (line.t - mt) ** 2; }
-  const ahead = -cov / varT;
-  return Number.isFinite(ahead) && Math.abs(ahead) <= FOCUS_ZONE_RAYLEIGH * focus.rayleighMm ? ahead : null;
+// otherwise null. The rays are taken in the face's own frame (across it, and
+// along its normal) and handed to the specimens' bundleFocus, which measures
+// along the beam's axis, so a tilted face reads the same distance as a square
+// one. A cone too slow to place its focus has none; it is judged by the
+// power-weighted cone, since bundleFocus takes the outermost rays and a
+// negligible stray one would pass.
+function waistWithinFocusZone(pts, focus) {
+  if (!(focus.rayleighMm > 0) || !(focus.wavelengthNm > 0)) return null;
+  if (!(focus.fullAngleDeg * Math.PI / 360 > MIN_HALF_ANGLE)) return null;
+  const rays = pts.map(point => ({ p: { x: point.height, y: 0 }, d: { x: Math.sin(point.theta), y: Math.cos(point.theta) }, w: point.weight }));
+  const waist = bundleFocus(rays, focus.wavelengthNm);
+  if (!waist.ok) return null;
+  return Math.abs(waist.zMm) <= FOCUS_ZONE_RAYLEIGH * focus.rayleighMm ? waist.zMm : null;
 }
 
 const MAX_SPECTRUM_SAMPLES = 24;

@@ -389,6 +389,39 @@ test('within three Rayleigh ranges of the waist a face still reads the focus pla
   assert.equal(focusScene(-5).reading.wavefront.state, 'CONVERGING');
 });
 
+test('a tilted face measures the waist along the beam, not along its normal', () => {
+  // The face centre sits `offset` mm from the focus at x = 200, turned by
+  // `rot`; the detector's centre is 26 mm behind its face.
+  const tilted = (offset, rot) => {
+    const laser = createElement('cwlaser', 0, 0);
+    laser.params.beamMode = 'beam';
+    laser.params.beamWidth = 10;
+    const lens = createElement('lens', 100, 0);
+    lens.params.f = 100;
+    const angle = rot * Math.PI / 180;
+    const detector = createElement('wavefrontdetector', 200 + offset + 26 * Math.cos(angle), 26 * Math.sin(angle));
+    detector.params.aperture = 30;
+    detector.rot = rot;
+    const elements = [laser, lens, detector];
+    traceAll(elements);
+    return enhancedReading(detector, elements);
+  };
+  for (const rot of [60, -60]) {
+    // 300 µm from the waist along the beam is outside the 204 µm zone,
+    // however the face is turned.
+    assert.equal(tilted(-0.3, rot).wavefront.state, 'CONVERGING', `${rot}°`);
+    assert.equal(tilted(0.3, rot).wavefront.state, 'DIVERGING', `${rot}°`);
+    for (const offset of [-0.1, 0.1]) {
+      const reading = tilted(offset, rot);
+      assert.equal(reading.samples, 25);
+      assert.equal(reading.wavefront.state, 'FOCUS PLANE');
+      // Measured from where the rays cross the face on average, within a
+      // fraction of a percent of the face centre's distance.
+      assert.ok(Math.abs(reading.wavefront.waistAheadMm + offset) < 1e-3, `${rot}° ${offset}: ${reading.wavefront.waistAheadMm}`);
+    }
+  }
+});
+
 test('the focus plane screens say where the waist is', () => {
   const ahead = focusScene(-0.1), behind = focusScene(0.15);
   assert.match(screenFor(ahead.detector, ahead.elements), />WAIST 100 µm AHEAD</);
@@ -397,8 +430,42 @@ test('the focus plane screens say where the waist is', () => {
   general.params.aperture = 30;
   const scene = ahead.elements.map(element => (element === ahead.detector ? general : element));
   const svg = screenFor(general, scene);
-  assert.match(svg, />FOCUS PLANE<\/text>[^]*?>WAIST 100 µm AHEAD</);
-  assert.match(svg, />WAIST w₀ · zR<\/text>[^]*?>3\.39 µm · 67\.9 µm</);
+  assert.match(svg, />FOCUS PLANE<\/text>[^]*?>100 µm AHEAD</);
+  assert.match(svg, />WAIST w₀ \/ zR<\/text>[^]*?>3\.39 \/ 67\.9 µm</);
+});
+
+test('the general detector\'s focus cells stay inside their columns', () => {
+  // Three 26-unit columns from x = -35; the waist and focus cells (the
+  // first row's second and third) must end before the next column starts,
+  // and the last before the screen's edge at 42.2.
+  const general = (offset, build) => {
+    const scene = build(offset);
+    const detector = createElement('generaldetector', scene.faceX + 27, 0);
+    detector.params.aperture = 30;
+    const elements = [...scene.parts, detector];
+    const svg = screenFor(detector, elements);
+    return svg.slice(svg.indexOf('data-detector-readout="generaldetector"'));
+  };
+  const beam = (width, f) => offset => {
+    const laser = createElement('cwlaser', 0, 0);
+    laser.params.beamMode = 'beam';
+    laser.params.beamWidth = width;
+    const lens = createElement('lens', 100, 0);
+    lens.params.f = f;
+    return { parts: [laser, lens], faceX: 100 + f + offset };
+  };
+  const cases = [general(0, beam(10, 100)), general(-0.1, beam(10, 100)), general(0.15, beam(10, 100)),
+    general(1500, beam(1, 2000)), general(-1.5, beam(2, 100))];
+  for (const readout of cases) {
+    assert.match(readout, />FOCUS PLANE</);
+    const cells = [...readout.matchAll(/<text x="([-\d.]+)" y="(-8|-2)" font-size="([\d.]+)"[^>]*>([^<]*)</g)]
+      .filter(([, x]) => [-9, 17].includes(Number(x))).map(([, x, , size, text]) => [, x, size, text]);
+    assert.equal(cells.length, 4);
+    for (const [, x, size, text] of cells) {
+      const end = Number(x) + text.length * 0.6 * Number(size);
+      assert.ok(end <= (Number(x) === 17 ? 42.2 : Number(x) + 26), `"${text}" ends at ${end.toFixed(1)}`);
+    }
+  }
 });
 
 test('a cone too slow to place its focus reads collimated off the focus', () => {
@@ -432,8 +499,8 @@ test('the focus plane screens show the waist and Rayleigh range', () => {
   general.params.aperture = 30;
   const scene = elements.map(element => (element === detector ? general : element));
   const generalSvg = screenFor(general, scene);
-  assert.match(generalSvg, />WAIST w₀ · zR<\/text>[^]*?>3\.39 µm · 67\.9 µm</);
-  assert.match(generalSvg, />FOCUS PLANE<\/text>[^]*?>WAIST ON THE FACE</);
+  assert.match(generalSvg, />WAIST w₀ \/ zR<\/text>[^]*?>3\.39 \/ 67\.9 µm</);
+  assert.match(generalSvg, />FOCUS PLANE<\/text>[^]*?>ON THE FACE</);
   assert.doesNotMatch(generalSvg, /COLLIMATED|POINT/);
 });
 

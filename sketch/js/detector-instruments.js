@@ -274,6 +274,13 @@ function focusLength(mm) {
   return mm < 1 ? `${Number((mm * 1000).toPrecision(3))} µm` : `${Number(mm.toPrecision(3))} mm`;
 }
 
+// A waist and its Rayleigh range in one unit, short enough for a cell.
+function waistAndRange(w0Mm, zRMm) {
+  const micro = zRMm < 1, scale = micro ? 1000 : 1;
+  const figure = value => String(Number((value * scale).toPrecision(3)));
+  return `${figure(w0Mm)} / ${figure(zRMm)} ${micro ? 'µm' : 'mm'}`;
+}
+
 // Where the waist is from the face: ahead (further along the beam), behind,
 // or on the face to within a thousandth of the Rayleigh range.
 function waistPlace(wave) {
@@ -1118,9 +1125,9 @@ function panel(sensor, reading, elements, view) {
     // reading is the Gaussian waist, how far either side the beam stays that
     // narrow, and where the waist lies.
     const focused = wavefront.state === 'FOCUS PLANE' && Number.isFinite(wavefront.waistMm);
-    const size = focused ? ['WAIST w₀ · zR', `${focusLength(wavefront.waistMm)} · ${focusLength(wavefront.rayleighMm)}`]
+    const size = focused ? ['WAIST w₀ / zR', waistAndRange(wavefront.waistMm, wavefront.rayleighMm)]
       : ['BEAM Ø', reading.beamDiameter > 0 ? `${reading.beamDiameter.toFixed(2)} mm` : 'POINT'];
-    const shape = focused ? ['FOCUS PLANE', `WAIST ${waistPlace(wavefront)}`] : ['WAVEFRONT', wave];
+    const shape = focused ? ['FOCUS PLANE', waistPlace(wavefront)] : ['WAVEFRONT', wave];
     return header(name, 'ALL LIGHT PROPERTIES', reading.pulse) + metrics([
       ['POWER / INTENSITY', `${power} ${unit}`], size, shape,
       ['POLARIZATION', String(reading.polarization).toUpperCase()], ['WAVELENGTH', spectrumLabel(reading)], ['PULSE', reading.pulse ? `${pulseRate(reading.pulse)}·${pulseDuration(reading.pulse)}`.replace(/ /g, '') : 'CW'],
