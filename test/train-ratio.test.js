@@ -200,6 +200,50 @@ test('a 1 kHz train modulates an 80 MHz beam by the one pulse in 80 000 it meets
   close(srs.signal / without.signal, 1 - 0.5 / 80000, 1e-9);
 });
 
+test('a chopper after the sample keeps the picked pulse in the average', () => {
+  // The review's bench: pump at 80 MHz, Stokes at 1 kHz emitted 12.5 ns late,
+  // and a 3 kHz chopper on the pump after the sample. The chopper's period is
+  // 80000/3 pulses, not a whole number, but chopper and picking come back
+  // together every 80 000 pulses, so the average is still taken over all of
+  // them: the met pulse's 0.5 counts when the chopper is open on it.
+  const run = (channel, chopped = true) => {
+    const lasers = [[800, 80, 0, -6], [1040, 0.001, 12.5, 6]].map(([wl, rate, phase, y]) => {
+      const laser = createElement('pulsedlaser', 0, y);
+      Object.assign(laser.params, {
+        wavelength: wl, temporalMode: 'pulsed', repRateMHz: rate, pulseWidthFs: 200, beamMode: 'line', pulsePhaseNs: phase,
+      });
+      return laser;
+    });
+    const sample = createElement('sample', 200, 0);
+    sample.rot = 90;
+    Object.assign(sample.params, { aperture: 40, specimenType: 'nonlinear', channels: [channel] });
+    const chopper = createElement('chopper', 260, -6);
+    Object.assign(chopper.params, { modulate: true, frequencyHz: 3000, diameter: 10 });
+    const filter = createElement('filter', 300, -6);
+    Object.assign(filter.params, { ftype: 'shortpass', cutoff: 900, length: 8 });
+    const detector = createElement('detector', 380, -6);
+    detector.params.aperture = 8;
+    traceAll([...lasers, sample, ...(chopped ? [chopper] : []), filter, detector]);
+    return detectorReading(detector.id);
+  };
+  // Against the same beam with neither chopper nor transfer, whose gates are
+  // none: the pulse-by-pulse sum below is then the whole expected reading.
+  const bare = run(ch('phase'), false), srs = run(ch('srs', { transferEff: 0.1 }));
+  const gates = (srs?.pulse?.trains || []).flatMap(t => t.gates || []);
+  assert.equal(gates.length, 2, 'the picking gate and the chopper');
+  // Exhaustively, pulse by pulse over the whole pattern.
+  const train = srs.pulse.trains[0];
+  const pick = gates.find(g => g.pulsePicking), chop = gates.find(g => !g.pulsePicking);
+  let passed = 0;
+  for (let k = 0; k < 80000; k++) {
+    const t = (train.phaseNs || 0) + k * 12.5;
+    passed += gateTransmissionAt(chop, t) * gateTransmissionAt(pick, t);
+  }
+  close(srs.signal / bare.signal, passed / 80000, 1e-9, 'against the pulse-by-pulse sum');
+  // The chopper is open on the met pulse here: 0.5 less one met pulse's half.
+  close(srs.signal / bare.signal, 0.5 - 0.5 / 80000, 1e-9, 'the review\u2019s 0.49999375');
+});
+
 test('SRS between rates says what it does not model', () => {
   // An EOM on top of the slower train is a composite modulation.
   const transferEff = 0.1;
