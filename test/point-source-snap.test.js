@@ -121,7 +121,8 @@ test('the capture range includes its boundary and stops beyond it', () => {
 test('every lens and every mirror collects the source, and nothing else does', () => {
   for (const [type, def] of Object.entries(registry)) {
     if (def.hidden) continue;
-    const points = sourcePoints([pointSource(), at(type, 500)]);
+    // A D-shaped mirror collects on the pass it reflects: here the first.
+    const points = sourcePoints([pointSource(), at(type, 500, type === 'dmirror' ? { reflectsOn: 'first' } : {})]);
     if (def.category === 'Lenses' || def.category === 'Mirrors') {
       assert.ok(points.some(p => Math.hypot(p.x, p.y) > 450), `${type} must collect the ray aimed at it`);
     } else {

@@ -827,12 +827,13 @@ const demoScenes = {
     }, { label: '10 kHz scan — angles exaggerated to be visible', showLabel: true, labelPos: 'b' }),
     mkDemo('box', 420, 230, 0, { text: '', w: 3, h: 100, behavior: 'block', fill: '#f2f3f5' }, { label: 'screen — no moving mirror', showLabel: true, labelPos: 'r' }),
   ],
-  // The in-plane pickoff: in past the sharp edge, back from a roof reflector
-  // 20 mm over, and off the coating to a detector.
+  // The double-pass pickoff: the beam goes by on the way out (just above the
+  // sharp edge, in the lab), comes back from the end mirror along the same
+  // line, and is reflected off the coating to a detector on its second pass.
   dmirror: () => [
     mkDemo('cwlaser', 40, 180, 0, { wavelength: 633, beamMode: 'line' }),
-    mkDemo('dmirror', 230, 203, 45, { length: 12.7, sharpEdge: 'top' }, { label: 'D-shaped pickoff — the incoming beam passes its sharp edge', showLabel: true, labelPos: 'b' }),
-    mkDemo('retroreflector', 460, 190, 0, { length: 50.8 }),
+    mkDemo('dmirror', 230, 180, 45, { length: 12.7, sharpEdge: 'top', reflectsOn: 'second' }, { label: 'D-shaped pickoff — goes by on the first pass, reflects the return', showLabel: true, labelPos: 't' }),
+    mkDemo('mirror', 460, 180, 0, { length: 25.4 }, { label: 'end mirror — in the lab, the return comes back a few mm lower', showLabel: true, labelPos: 'b' }),
     mkDemo('detector', 230, 320, 90, { aperture: 26 }),
   ],
   retroreflector: () => [

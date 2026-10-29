@@ -4383,6 +4383,34 @@ function retinalScatter(ray, hit, s, d, n, fraction) {
   return out;
 }
 
+// Which pass over a D-shaped pickoff this is for the arriving beam, and
+// whether the mirror reflects it. Each beam carries its own count per mirror,
+// held at 2: every pass after the second behaves as the second, so a loop
+// through the mirror repeats from there on, and loopState, which compares the
+// count, sums it only from there.
+function pickoffPass(ray, pickoff) {
+  const pass = (ray.pickoffPasses?.[pickoff.id] || 0) + 1;
+  const reflects = pickoff.reflectsOn === 'first' ? pass === 1 : pass >= 2;
+  return { reflects, passes: { ...(ray.pickoffPasses || {}), [pickoff.id]: Math.min(2, pass) } };
+}
+
+// The nearest surface a ray really meets. A D-shaped pickoff on a pass it
+// lets go by is not met at all: the beam passes beside its edge, so nothing
+// about it changes -- its phase, a point source's range, what collects it --
+// and the pass is only counted. `passed` lists the pickoffs gone by.
+function nearestMetHit(r, surfaces) {
+  const p = { x: r.x, y: r.y }, d = { x: r.dx, y: r.dy };
+  let pool = surfaces, hit = nearestHit(p, d, pool, r.last);
+  const passed = [];
+  while (hit?.surface.data.pickoff && !pickoffPass(r, hit.surface.data.pickoff).reflects) {
+    const goneBy = hit.surface;
+    passed.push(goneBy.data.pickoff);
+    pool = pool.filter(s => s !== goneBy);
+    hit = nearestHit(p, d, pool, r.last);
+  }
+  return { hit, passed };
+}
+
 function interact(ray, hit) {
   const s = hit.surface, d = { x: ray.dx, y: ray.dy }, k = s.kind, data = s.data;
   const t = norm(sub(s.b, s.a));
@@ -4514,13 +4542,16 @@ function interact(ray, hit) {
       // user is budgeting the power that reaches the sample, and a 98 %
       // mirror's 2 % would only be clutter. Either way nothing is hidden: the
       // leak is drawn and traced, or it does not exist.
+      // A D-shaped pickoff is met only on the pass it reflects (see
+      // nearestMetHit); the light that leaves carries that pass in its count.
+      const passes = data.pickoff ? { pickoffPasses: pickoffPass(ray, data.pickoff).passes } : {};
       const R = Math.min(1, Math.max(0, (data.refl ?? 100) / 100));
-      if (R >= 1) return [{ d: reflect(d, n), phaseShift: Math.PI }];
+      if (R >= 1) return [{ d: reflect(d, n), phaseShift: Math.PI, ...passes }];
       const out = [];
-      if (R > 0) out.push({ d: reflect(d, n), intensity: ray.intensity * R, tag: 'R', retainWeak: true });
+      if (R > 0) out.push({ d: reflect(d, n), intensity: ray.intensity * R, tag: 'R', retainWeak: true, ...passes });
       // Solid polygon wheels absorb coating losses; leaking through the
       // wheel would otherwise produce spurious internal facet reflections.
-      if (R < 1 && !data.opaque && data.showTransmitted) out.push({ d, intensity: ray.intensity * (1 - R), tag: 'T', retainWeak: true });
+      if (R < 1 && !data.opaque && data.showTransmitted) out.push({ d, intensity: ray.intensity * (1 - R), tag: 'T', retainWeak: true, ...passes });
       return out;
     }
     case 'cmirror': {
@@ -6651,6 +6682,7 @@ function loopState(r) {
     r.dispersed, r.spectralContinuum, r.spectralWidthNm, r.spectralLo, r.spectralHi, r.fanLo, r.fanHi, r.sliceSpec,
     r.pulseDescribed, r.trainPieces,
     r.approximation, r.parametricPath, r.keepWeak, r.retainWeak, r.hidden, r.sample, r.phaseValid,
+    r.pickoffPasses || null,
   ];
 }
 
@@ -6906,7 +6938,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         noteWeakLightShortfall(r.originId, r.power, coherent);
         break;
       }
-      const hit = nearestHit({ x: r.x, y: r.y }, { x: r.dx, y: r.dy }, surfaces, r.last);
+      const { hit, passed: pickoffsPassed } = nearestMetHit(r, surfaces);
       // A weak branch that directly reaches a detector/sample is always
       // recorded, however faint.
       const measuredNext = LOW_POWER_MEASUREMENT_SURFACES.has(hit?.surface.kind);
@@ -6987,7 +7019,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // A point source caught by every optical element is caught by the
         // first one it meets within its range, whatever that is.
         const ahead = collectorRule(r.captureMode)
-          ? nearestHit({ x: r.x, y: r.y }, { x: r.dx, y: r.dy }, pointSourceSightline(surfaces, r.captureMode), r.last)
+          ? nearestMetHit(r, pointSourceSightline(surfaces, r.captureMode)).hit
           : null;
         const captured = collectorRule(r.captureMode)
           ? Boolean(ahead && ahead.t <= CAPTURE && collectsPointSource(ahead.surface, r.captureMode))
@@ -7052,6 +7084,9 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         r.carriedEvan = ['mirror', 'cmirror'].includes(hit.surface.kind) ? left : null;
         r.sourceRange = collectsPointSource(hit.surface, left.captureMode) ? null : left;
       }
+      // Counted only now: everything above judged the pickoffs on the way by
+      // the passes the ray had made when it set out.
+      for (const pickoff of pickoffsPassed) r.pickoffPasses = pickoffPass(r, pickoff).passes;
       if (!hit) {
         appendPoint(r, { x: r.x + r.dx * MAXLEN, y: r.y + r.dy * MAXLEN }, MAXLEN);
         break;
@@ -7442,6 +7477,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         if (Number.isFinite(c0.phaseOffset)) r.phaseOffset = c0.phaseOffset;
         else if (Number.isFinite(c0.phaseShift)) r.phaseOffset = (r.phaseOffset || 0) + c0.phaseShift;
         if (Number.isInteger(c0.fieldGroupCount)) r.fieldGroupCount = c0.fieldGroupCount;
+        if ('pickoffPasses' in c0) r.pickoffPasses = c0.pickoffPasses;
         if ('retainZeroField' in c0) r.retainZeroField = Boolean(c0.retainZeroField);
         if (c0.phaseValid === false) {
           r.phaseValid = false;
@@ -7612,6 +7648,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           // what the linear-only continuation left out.
           approximation: r.approximation || c.approximation || null,
           parametricPath: 'parametricPath' in c ? c.parametricPath : r.parametricPath,
+          pickoffPasses: 'pickoffPasses' in c ? c.pickoffPasses : (r.pickoffPasses || null),
           intensity: childIntensity,
           power: childPower,
           // A child can start a sampled beam of its own (an OPO spreading a
