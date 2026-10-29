@@ -212,3 +212,13 @@ export const calculators = [
     ],
   },
 ];
+
+// The hub's categories, in the order shown, each listing its pages by slug.
+// Every calculator belongs to exactly one; the build refuses otherwise.
+export const calculatorCategories = [
+  { title: 'Lenses', slugs: ['thin-thick-lens', 'imaging', 'lens-design'] },
+  { title: 'Dispersion', slugs: ['dispersion', 'dispersion-compensation'] },
+  { title: 'Fiber optics', slugs: ['fiber-coupling'] },
+  { title: 'Nonlinear optics', slugs: ['nonlinear-conversion', 'opa'] },
+  { title: 'Microscopy', slugs: ['point-scanning', 'fluorescence', 'coherent-raman'] },
+];

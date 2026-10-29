@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { GAUSSIAN_DEFAULTS, computeGaussianBeam, gaussianBeam, beamAt, thinLensFocus, waistFrom, gaussianScan, widthNames, PARAXIAL_LIMIT_MRAD } from '../calculators/gaussian-beam/gaussian-beam.js';
+import { gaussianBeam, beamAt, thinLensFocus } from '../calculators/assets/gaussian-beam.js';
 import { LENS_DEFAULTS as SINGLET_DEFAULTS, FIBER_DEFAULTS as SINGLET_FIBER_DEFAULTS, FRESNEL_LIMIT, computeThickLens, computeFiber, fresnelTransmission } from '../calculators/thin-thick-lens/thick-lens.js';
-import { FIBER_DEFAULTS, computeFiberCoupling, gaussianCoupling, fiberMode, matchingFocalMm, couplingScan, SINGLE_MODE_V, MODE_V, focusCollimated } from '../calculators/fiber-coupling/fiber-coupling.js';
+import { FIBER_DEFAULTS, PARAXIAL_LIMIT_MRAD, computeFiberCoupling, gaussianCoupling, fiberMode, matchingFocalMm, couplingScan, SINGLE_MODE_V, MODE_V, focusCollimated } from '../calculators/fiber-coupling/fiber-coupling.js';
 import { lp01, besselJ, besselK } from '../calculators/fiber-coupling/lp01.js';
 import { SETUP_INPUTS, LENS_INPUTS, FIBER_INPUTS } from '../calculators/fiber-coupling/fiber-coupling.js';
 import { computeFiberSetup, focalRange, focalScan, choosePlanoConvex, planoConvexGlass, planoConvexSuggestion, paraxialMinFocalMm, exactCoupling, NEAR_MATCH, STOCK_DIAMETERS_MM } from '../calculators/fiber-coupling/lens-choice.js';
@@ -13,7 +13,6 @@ import { LENS_INPUTS as THICK_LENS_INPUTS } from '../calculators/thin-thick-lens
 import { beamCalculators } from '../tools/calculators-beam-content.mjs';
 
 const close = (a, b, rel = 1e-12, label = '') => assert.ok(Math.abs(a - b) <= rel * Math.max(Math.abs(b), 1e-300), `${label} ${a} vs ${b}`);
-const beam = x => computeGaussianBeam({ ...GAUSSIAN_DEFAULTS, ...x });
 const fiber = x => computeFiberCoupling({ ...FIBER_DEFAULTS, ...x });
 const focusWaist = (v, f) => focusCollimated(v.beamDiameterMm, v.wavelengthNm, f).beam.waistUm;
 const setup = x => computeFiberSetup({ ...FIBER_DEFAULTS, ...x });
@@ -29,15 +28,12 @@ test('Gaussian beam: textbook identities', () => {
   // Far out, w/z tends to θ; the beam parameter product is λ/π.
   close(beamAt(b, 1e9 * b.rayleighMm).radiusUm * 1e-3 / (1e9 * b.rayleighMm) * 1e3, b.halfDivergenceMrad, 1e-12);
   close(b.bppMmMrad, 800e-6 / Math.PI * 1e3);
-  // The waist is flat; every way of giving the beam names the same one.
+  // The waist is flat.
   assert.equal(beamAt(b, 0).curvatureMm, Infinity);
-  for (const [given, value] of [['diameter', 600], ['divergence', 2 * b.halfDivergenceMrad], ['rayleigh', b.rayleighMm]]) close(waistFrom(given, value, 800), 300, 1e-12, given);
   // M² and n: z_R scales as n/M², θ as M²/n.
   const m = gaussianBeam({ waistUm: 300, wavelengthNm: 800, m2: 2, index: 1.5 });
   close(m.rayleighMm, b.rayleighMm * 1.5 / 2);
   close(m.halfDivergenceMrad, b.halfDivergenceMrad * 2 / 1.5);
-  // The form's defaults describe one beam, whichever way it is given.
-  for (const given of ['waist', 'diameter', 'divergence', 'rayleigh']) close(beam({ given }).waistUm, 500, 2e-3, given);
 });
 
 test('thin lens: Self’s equations in their limits', () => {
@@ -62,42 +58,6 @@ test('thin lens: Self’s equations in their limits', () => {
   assert.ok(thinLensFocus(b, 1, 100).distanceMm > 0);
   // A diverging lens: always virtual.
   assert.ok(thinLensFocus(wide, 0, -50).distanceMm < 0);
-  // Two lenses' worth of z: the beam after the lens is the focused one.
-  const r = beam({ lens: true, waistUm: 1000, focalMm: 100, lensDistanceMm: 0, zMm: 0 });
-  close(r.focusDistanceMm, thinLensFocus(r.input, 0, 100).distanceMm);
-  const atFocus = beam({ lens: true, waistUm: 1000, focalMm: 100, lensDistanceMm: 0, zMm: r.focusDistanceMm });
-  close(atFocus.radiusUm, atFocus.focusWaistUm, 1e-9);
-  assert.equal(atFocus.gouyDeg, null, 'no Gouy phase after the lens');
-});
-
-test('Gaussian beam: refusals and values withheld', () => {
-  const zero = beam({ lens: true, focalMm: 0 });
-  assert.equal(zero.ok, false);
-  assert.equal(beam({ waistUm: 0.1, wavelengthNm: 10000 }).ok, false, 'a 0.1 µm waist at 10 µm diverges far beyond paraxial');
-  assert.equal(beam({ waistUm: -1 }).ok, false);
-  assert.equal(beam({ m2: 0.5 }).ok, false);
-  const m2 = beam({ m2: 1.3 });
-  assert.equal(m2.gouyDeg, null);
-  assert.equal(m2.peakIntensityWcm2, null);
-  assert.equal(beam({ powerW: 0 }).peakIntensityWcm2, null);
-  // The energy check: 2P/(πw²) integrates back to P.
-  const r = beam({ waistUm: 100, powerW: 3, zMm: 0 });
-  const w = 100e-4, n = 20000, top = 6 * w;
-  let total = 0;
-  for (let i = 0; i < n; i++) { const rr = (i + 0.5) * top / n; total += r.peakIntensityWcm2 * Math.exp(-2 * rr * rr / (w * w)) * 2 * Math.PI * rr * top / n; }
-  close(total, 3, 1e-6);
-});
-
-test('Gaussian beam: the graphs stay finite for odd inputs', () => {
-  const cases = [{}, { zMm: -1e7 }, { lens: true }, { lens: true, focalMm: -20, lensDistanceMm: 0 }, { lens: true, focalMm: 1e5, lensDistanceMm: 3 },
-    { lens: true, lensDistanceMm: 100, focalMm: 100 }, { given: 'divergence', divergenceMrad: 500 }, { given: 'rayleigh', rayleighMm: 1e9 }, { m2: 1000, index: 4 }];
-  for (const c of cases) {
-    const r = beam(c);
-    assert.ok(r.ok, JSON.stringify(c));
-    const scan = gaussianScan(r);
-    assert.ok(scan.every(p => Number.isFinite(p.zMm) && Number.isFinite(p.radiusUm) && p.radiusUm > 0 && !Number.isNaN(p.curvatureMm)), JSON.stringify(c));
-    assert.ok(scan.some(p => p.zMm <= r.values.zMm) && scan.some(p => p.zMm >= r.values.zMm), 'the reading point is on the plot');
-  }
 });
 
 test('fiber coupling: overlap limits and closed forms', () => {
@@ -149,13 +109,6 @@ test('fiber coupling: the mode, its range and the tolerances', () => {
 // widths named for M² > 1, the offset-and-tilt geometry, the fiber face
 // before the lens, and a focus the graph must not step over.
 test('the paraxial limit holds after a lens and on the fiber page, with nothing non-finite', () => {
-  const lensed = beam({ lens: true, waistUm: 500, lensDistanceMm: 0, focalMm: 0.1 });
-  assert.equal(lensed.ok, false);
-  assert.match(lensed.errors[0].message, /5000 mrad/);
-  assert.equal(beam({ lens: true, lensDistanceMm: 0, focalMm: 1e-9 }).ok, false);
-  assert.equal(beam({ lens: true, lensDistanceMm: 0, focalMm: -1e-9 }).ok, false);
-  const near = beam({ lens: true, waistUm: 1000, lensDistanceMm: 0, focalMm: 15 });
-  assert.ok(near.ok && near.lens.output.halfDivergenceMrad < PARAXIAL_LIMIT_MRAD);
   assert.equal(fiber({ focalMm: 0.1 }).ok, false);
   assert.equal(fiber({ focalMm: 0.1, beamDiameterMm: 100 }).ok, false);
   // The focal-length graph has no value where the page would refuse.
@@ -166,16 +119,6 @@ test('the paraxial limit holds after a lens and on the fiber page, with nothing 
     assert.equal(p.efficiency === null, !steep.ok, `f = ${p.x}`);
   }
   assert.ok(scan.some(p => p.efficiency === null) && scan.some(p => p.efficiency !== null));
-});
-
-test('widths are named 1/e² for TEM₀₀ and second-moment (D4σ) for M² > 1', () => {
-  assert.match(widthNames(1).diameter, /1\/e²/);
-  for (const m2 of [1.01, 1.3, 20]) {
-    const n = widthNames(m2);
-    assert.match(n.diameter, /D4σ/);
-    assert.match(n.radius, /2σ/);
-    assert.doesNotMatch(`${n.radius} ${n.diameter} ${n.kind}`, /1\/e²/);
-  }
 });
 
 test('fiber coupling: offset on the face, tilt signed in its plane', () => {
@@ -229,49 +172,13 @@ test('fiber coupling: a mode too small for the paraxial model is refused, not ma
   assert.ok(fiber({ mfdUm: mfd, focalMm: edge.optimalFocalMm }).ok);
 });
 
-test('Gaussian graph: a tight focus is sampled at its waist, and the lens plane splits the curvature', () => {
-  const r = beam({ lens: true, waistUm: 1000, lensDistanceMm: 0, focalMm: 15 });
-  const scan = gaussianScan(r);
-  close(Math.min(...scan.map(p => p.radiusUm)), r.focusWaistUm, 1e-12);
-  const gap = scan.findIndex(p => p.gap);
-  assert.ok(gap > 0 && scan[gap].zMm === scan[gap - 1].zMm && scan[gap].zMm === r.lens.positionMm);
-  close(scan[gap].radiusUm, scan[gap - 1].radiusUm, 1e-12, 'the radius is continuous at the lens');
-  close(1 / scan[gap].curvatureMm - 1 / scan[gap - 1].curvatureMm, -1 / r.lens.focalMm, 1e-9, 'the curvature jumps by −1/f');
-  assert.ok(scan.every((p, i) => i === 0 || p.zMm >= scan[i - 1].zMm), 'sorted');
-  // And for a slow beam with a lens far down the line, both waists are hit.
-  const slow = beam({ lens: true, waistUm: 50, wavelengthNm: 632.8, lensDistanceMm: 3000, focalMm: 200, zMm: 3200 });
-  const s2 = gaussianScan(slow);
-  close(Math.min(...s2.filter(p => p.zMm < slow.lens.positionMm).map(p => p.radiusUm)), 50, 1e-12);
-  close(Math.min(...s2.filter(p => p.after).map(p => p.radiusUm)), slow.focusWaistUm, 1e-12);
-  // The lens plane is sampled from both sides, however far down the line.
-  const g2 = s2.findIndex(p => p.gap);
-  assert.ok(g2 > 0 && s2[g2 - 1].zMm === slow.lens.positionMm && !s2[g2 - 1].after && s2[g2].after);
-});
-
 // The numbers the page text quotes, recomputed. A change to the engine that
 // moves one of them fails here, so the text is updated with it.
-test('the numbers quoted on the Gaussian beam and fiber coupling pages are the engine’s', () => {
+test('the numbers quoted on the fiber coupling page are the engine’s', () => {
   const text = JSON.stringify(beamCalculators);
   const says = (fragment) => assert.ok(text.includes(fragment), `the text no longer says “${fragment}”`);
   const fixed = (x, d) => Number(x).toFixed(d);
   const sigf = (x, d) => String(Number(Number(x).toPrecision(d)));
-
-  const d = beam({});
-  says(`Rayleigh range is ${sigf(d.rayleighMm, 3)} mm and the half-angle divergence ${sigf(d.halfDivergenceMrad, 3)} mrad`);
-  says(`the radius is ${sigf(d.radiusUm / 1000, 3)} mm and the wavefront’s radius of curvature ${sigf(d.curvatureMm / 1000, 3)} m`);
-  says(`${sigf(d.waistIntensityWcm2, 3)} W/cm² at the waist and ${sigf(d.peakIntensityWcm2, 3)} W/cm² there`);
-  says(`${(100 * (1 - Math.exp(-2))).toFixed(1)} % of the power lies inside it`);
-  const m = beam({ m2: 1.5 });
-  says(`Rayleigh range of ${sigf(m.rayleighMm, 3)} mm instead of ${sigf(d.rayleighMm, 3)} mm, and diverges at ${sigf(m.halfDivergenceMrad, 3)} mrad`);
-  const c1 = beam({ lens: true, waistUm: 1000, focalMm: 100, lensDistanceMm: 0, zMm: 100 });
-  says(`gives a ${sigf(c1.focusWaistUm, 3)} µm waist at ${fixed(c1.focusDistanceMm, 2)} mm`);
-  const c2 = beam({ lens: true, waistUm: 250, focalMm: 100, lensDistanceMm: 0, zMm: 100 });
-  says(`with a 0.25 mm waist (z<sub>R</sub> = ${sigf(c2.rayleighMm, 3)} mm) the same lens focuses at ${sigf(c2.focusDistanceMm, 3)} mm`);
-  const ff = beam({ lens: true, wavelengthNm: 632.8, waistUm: 50, focalMm: 100, lensDistanceMm: 100, zMm: 300 });
-  says(`a 50 µm HeNe waist becomes ${sigf(ff.focusWaistUm, 3)} µm`);
-  const pass = a => (1 - Math.exp(-2 * a * a)) * 100;
-  says(`99 % at a = 1.52 w, 99.99 % at a = 2.15 w`);
-  assert.ok(pass(1.52) >= 99 && pass(1.51) < 99 && pass(2.15) >= 99.99 && pass(2.14) < 99.99);
 
   const smf = fiber({ fiberMode: 'step' });
   const smfSetup = setup({ fiberMode: 'step' });

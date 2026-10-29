@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Content of the Gaussian beam and fiber coupling pages. Every number quoted
+// Content of the fiber coupling page. Every number quoted
 // in the text is recomputed by test/calculator-beams.test.js.
 
 const cite = (...n) => n.map(k => `<a class="cite" href="#ref-${k}">[${k}]</a>`).join('');
@@ -9,63 +9,11 @@ const GITHUB = 'https://github.com/LucaGenchi/opticalsetup/blob/main';
 
 const KOGELNIK = { label: 'H. Kogelnik and T. Li, “Laser beams and resonators,” Appl. Opt. 5, 1550–1567 (1966).', url: 'https://doi.org/10.1364/AO.5.001550' };
 const SELF = { label: 'S. A. Self, “Focusing of spherical Gaussian beams,” Appl. Opt. 22, 658–661 (1983).', url: 'https://doi.org/10.1364/AO.22.000658' };
-const SIEGMAN = { label: 'A. E. Siegman, Lasers (University Science Books, 1986), chapters 16–17: Gaussian beams and their propagation.', url: 'https://search.worldcat.org/isbn/9780935702118' };
-const ISO = { label: 'ISO 11146-1:2021, Lasers and laser-related equipment — Test methods for laser beam widths, divergence angles and beam propagation ratios — Part 1: Stigmatic and simple astigmatic beams.', url: 'https://www.iso.org/standard/77769.html' };
 const GLOGE = { label: 'D. Gloge, “Weakly guiding fibers,” Appl. Opt. 10, 2252–2258 (1971).', url: 'https://doi.org/10.1364/AO.10.002252' };
 const MARCUSE = { label: 'D. Marcuse, “Loss analysis of single-mode fiber splices,” Bell Syst. Tech. J. 56, 703–718 (1977).', url: 'https://doi.org/10.1002/j.1538-7305.1977.tb00534.x' };
 const JOYCE = { label: 'W. B. Joyce and B. C. DeLoach, “Alignment of Gaussian beams,” Appl. Opt. 23, 4187–4196 (1984).', url: 'https://doi.org/10.1364/AO.23.004187' };
 
 export const beamCalculators = [
-  {
-    slug: 'gaussian-beam', title: 'Gaussian beam', script: 'page.js',
-    card: 'Waist, Rayleigh range, divergence and beam size at any distance; focusing by a thin lens, with M².',
-    summary: 'Give a laser beam by its waist, divergence or Rayleigh range, and read its size, wavefront curvature and Gouy phase at any distance. Add a thin lens to see where the beam focuses and how small the spot is.',
-    facts: [
-      { label: 'Model', html: 'Paraxial Gaussian beam (TEM₀₀, or the embedded Gaussian of an M² beam) in a uniform medium; an ideal thin lens by Self’s equations.' },
-      { label: 'Evidence', html: evidence('ABCD propagation of the complex beam parameter') },
-      { label: 'Code', html: `The <a href="${GITHUB}/calculators/gaussian-beam/gaussian-beam.js">calculator’s module</a>, and the <a href="${GITHUB}/validation/reference/gaussian_beam.py">Python reference</a>.` },
-    ],
-    graphs: [
-      { id: 'caustic', title: 'Beam radius along the axis', note: 'The 1/e² radius against distance from the input waist; the dot is the reading point. With a lens, the beam after it is the focused one.' },
-      { id: 'curvature', title: 'Wavefront curvature', note: '1/R in 1/m: zero at a waist (a flat wavefront), positive where the beam diverges, negative where it converges.' },
-    ],
-    columns: [
-      { form: 'calc', results: 'beam', label: 'The beam at its waist' },
-      { form: 'lens', results: 'focus', label: 'After the lens' },
-      { output: true, label: 'At the reading point' },
-    ],
-    sections: [
-      { id: 'beam', title: 'The Gaussian beam',
-        html: `<p>Most lasers emit, or can be cleaned up to, a beam whose intensity falls off from its axis as a Gaussian. Such a beam keeps its Gaussian shape as it travels: only its width and the curvature of its wavefront change ${cite(1, 3)}. Its width is given as the radius w where the intensity has fallen to 1/e² (13.5 %) of the peak; 86.5 % of the power lies inside it.</p>`,
-        formulas: [
-          { tex: String.raw`I(r, z) = \frac{2P}{\pi w(z)^2}\,e^{-2r^2/w(z)^2},\qquad w(z) = w_0\sqrt{1+\left(\frac{z}{z_R}\right)^2},\qquad z_R = \frac{\pi w_0^2 n}{\lambda}`, caption: 'w₀ is the waist, the narrowest radius; z is the distance from it; λ the vacuum wavelength and n the index of the medium.' },
-        ],
-        html2: '<p>The <b>Rayleigh range</b> z<sub>R</sub> divides the near field from the far field. Within ±z<sub>R</sub> of the waist the beam stays nearly parallel: at z<sub>R</sub> its radius has grown by √2 and its area doubled. Far beyond, the radius grows linearly with distance, at the divergence angle θ. The wavefront is flat at the waist, most curved at z = z<sub>R</sub>, and flat again far away, where it looks like a spherical wave from the waist. The Gouy phase ψ is an extra phase the beam picks up through its focus: 90° from the waist to the far field, 180° from far before to far after.</p>',
-        formulas2: [
-          { tex: String.raw`\theta = \frac{\lambda}{\pi n w_0},\qquad R(z) = z\left[1+\left(\frac{z_R}{z}\right)^2\right],\qquad \psi(z) = \arctan\frac{z}{z_R}` },
-        ],
-        html3: '<p>Waist and divergence trade against each other: their product w₀θ = λ/(πn), the <b>beam parameter product</b>, is fixed by the wavelength. A beam twice as wide spreads half as fast. With the page’s example, a 1064 nm beam with a 0.5 mm waist, the Rayleigh range is 738 mm and the half-angle divergence 0.677 mrad; 1 m from the waist the radius is 0.842 mm and the wavefront’s radius of curvature 1.54 m. At 1 W its peak intensity is 255 W/cm² at the waist and 89.8 W/cm² there.</p>',
-      },
-      { id: 'm2', title: 'Beam quality M²',
-        html: `<p>Real beams spread faster than an ideal Gaussian of the same waist. The beam propagation ratio M² measures by how much: it is the beam parameter product relative to the ideal one, measured from second-moment widths ${cite(4)}. Such a beam still follows the Gaussian formulas with λ replaced by M²λ, the <b>embedded Gaussian</b> rule ${cite(2, 4)}:</p>`,
-        formulas: [
-          { tex: String.raw`z_R = \frac{\pi w_0^2 n}{M^2\lambda},\qquad \theta = \frac{M^2\lambda}{\pi n w_0},\qquad w_0\theta = \frac{M^2\lambda}{\pi n}` },
-        ],
-        html2: `<p>So the 0.5 mm, 1064 nm beam with M² = 1.5 has a Rayleigh range of 492 mm instead of 738 mm, and diverges at 1.02 mrad. The widths are then second-moment widths, the radius 2σ and the diameter D4σ of ISO 11146 ${cite(4)}, which equal the 1/e² widths only for a Gaussian profile; the page labels them so. M² says nothing about the shape of the profile, so for M² &gt; 1 the page gives no peak intensity, half-maximum diameter or Gouy phase.</p>`,
-      },
-      { id: 'lens', title: 'Focusing with a thin lens',
-        html: `<p>A thin lens turns one Gaussian beam into another. Self’s equations give the new waist and where it forms, for an input waist a distance s before a lens of focal length f ${cite(2)}:</p>`,
-        formulas: [
-          { tex: String.raw`w_0' = \frac{w_0}{\sqrt{\left(1-s/f\right)^2+\left(z_R/f\right)^2}},\qquad s'' = f + \frac{(s-f)\,f^2}{(s-f)^2+z_R^2}`, caption: 's″ is the distance from the lens to the new waist; negative means a virtual waist before the lens.' },
-        ],
-        html2: '<p>Two limits are worth knowing. A beam that reaches the lens collimated (its waist at the lens, z<sub>R</sub> ≫ f) focuses to w₀′ ≈ λf/(πw₀) at almost exactly f. A 1064 nm beam with a 1 mm waist and a 100 mm lens gives a 33.8 µm waist at 99.89 mm. But when z<sub>R</sub> is not much longer than f, the waist forms well short of the focal point: with a 0.25 mm waist (z<sub>R</sub> = 185 mm) the same lens focuses at 77.3 mm. Ray optics would put both at 100 mm. A waist placed at the front focal plane (s = f) comes out at the back focal plane, magnified by f/z<sub>R</sub>: a 50 µm HeNe waist becomes 403 µm.</p>',
-      },
-      { id: 'precision', title: 'Precision and limits',
-        html: '<p>An independent Python reference propagates the complex beam parameter q with ABCD matrices, finds the waist after a lens where q is imaginary, and recovers a waist from a divergence by bisection on the far-field limit. It never uses the closed forms above. The page agrees with it to 10⁻⁹ relative, through converging, imaging, virtual-waist and diverging lenses.</p><p>The formulas are paraxial: they hold while the beam’s angles are small, roughly below 0.1 rad, so a waist of a few wavelengths or less is outside them. The page refuses a beam whose half-angle divergence exceeds 0.3 rad, before or after the lens, and warns above 0.1 rad after it. The lens is ideal and thin, with no aberrations or clipping. An aperture of radius a passes 1 − exp(−2a²/w²) of a TEM₀₀ beam: 99 % at a = 1.52 w, 99.99 % at a = 2.15 w. The medium is uniform and lossless. Widths are 1/e² intensity values for TEM₀₀ and second-moment values for M² &gt; 1.</p>',
-      },
-    ],
-    references: [KOGELNIK, SELF, SIEGMAN, ISO],
-  },
   {
     slug: 'fiber-coupling', title: 'Free space to fiber coupling', script: 'page.js',
     card: 'Couple a collimated laser beam into a single-mode fiber: the lens that matches the mode, a plano-convex lens to start from, and real singlets traced with their aberrations, against lateral, axial and angular offset.',
