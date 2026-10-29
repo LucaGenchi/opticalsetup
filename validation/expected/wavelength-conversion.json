@@ -1258,6 +1258,176 @@
   },
   {
    "expected": {
+    "wave0BwNm": 1.0,
+    "wave0BwTHz": 0.2825830779,
+    "wave1BwNm": 10.0,
+    "wave1BwTHz": 1.247822429,
+    "wave2BwNm": 40.22925856,
+    "wave2BwTHz": 1.279419403
+   },
+   "inputs": {
+    "kind": "conversion",
+    "outputBandwidthNm": 10,
+    "outputNm": 1550,
+    "process": "opo",
+    "pumpBandwidthNm": 1,
+    "pumpNm": 1030
+   },
+   "name": "OPO bandwidth, pump 1 nm at 1030 nm, output 10 nm at 1550 nm",
+   "tolerance": {
+    "wave0BwNm": 1e-09,
+    "wave0BwTHz": 1e-09,
+    "wave1BwNm": 1e-09,
+    "wave1BwTHz": 1e-09,
+    "wave2BwNm": 1e-09,
+    "wave2BwTHz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "wave0BwNm": 2.0,
+    "wave0BwTHz": 0.5651657563,
+    "wave1BwNm": 5.1165399,
+    "wave1BwTHz": 0.7971022916,
+    "wave2BwNm": 30.0,
+    "wave2BwTHz": 0.5621029543
+   },
+   "inputs": {
+    "kind": "conversion",
+    "outputBandwidthNm": 30,
+    "outputNm": 4000,
+    "process": "opo",
+    "pumpBandwidthNm": 2,
+    "pumpNm": 1030
+   },
+   "name": "OPO bandwidth, pump 2 nm at 1030 nm, output 30 nm at 4000 nm",
+   "tolerance": {
+    "wave0BwNm": 1e-09,
+    "wave0BwTHz": 1e-09,
+    "wave1BwNm": 1e-09,
+    "wave1BwTHz": 1e-09,
+    "wave2BwNm": 1e-09,
+    "wave2BwTHz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "wave0BwNm": 0.0,
+    "wave0BwTHz": 0.0,
+    "wave1BwNm": 25.0,
+    "wave1BwTHz": 11.70778524,
+    "wave2BwNm": 81.67797147,
+    "wave2BwTHz": 11.70778524
+   },
+   "inputs": {
+    "kind": "conversion",
+    "outputBandwidthNm": 25,
+    "outputNm": 800,
+    "process": "opo",
+    "pumpBandwidthNm": 0,
+    "pumpNm": 515
+   },
+   "name": "OPO bandwidth, pump 0 nm at 515 nm, output 25 nm at 800 nm",
+   "tolerance": {
+    "wave0BwNm": 1e-09,
+    "wave0BwTHz": 1e-09,
+    "wave1BwNm": 1e-09,
+    "wave1BwTHz": 1e-09,
+    "wave2BwNm": 1e-09,
+    "wave2BwTHz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "wave0BwNm": 1.0,
+    "wave0BwTHz": 0.2825830779,
+    "wave1BwNm": 1.0,
+    "wave1BwTHz": 0.1410280834,
+    "wave2BwNm": 0.8962580169,
+    "wave2BwTHz": 0.4237868711,
+    "wave3BwNm": 7.179573471,
+    "wave3BwTHz": 0.3458771987
+   },
+   "inputs": {
+    "kind": "conversion",
+    "process": "crs",
+    "pumpBandwidthNm": 1,
+    "pumpNm": 1030,
+    "stokesBandwidthNm": 1,
+    "stokesNm": 1458
+   },
+   "name": "CRS bandwidth, pump 1 nm at 1030 nm, Stokes 1 nm at 1458 nm",
+   "tolerance": {
+    "wave0BwNm": 1e-09,
+    "wave0BwTHz": 1e-09,
+    "wave1BwNm": 1e-09,
+    "wave1BwTHz": 1e-09,
+    "wave2BwNm": 1e-09,
+    "wave2BwTHz": 1e-09,
+    "wave3BwNm": 1e-09,
+    "wave3BwTHz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "wave0BwNm": 2.0,
+    "wave0BwTHz": 0.9368499674,
+    "wave1BwNm": 5.0,
+    "wave1BwTHz": 1.38586689,
+    "wave2BwNm": 2.702065056,
+    "wave2BwTHz": 1.917290474,
+    "wave3BwNm": 15.99502032,
+    "wave3BwTHz": 2.172312578
+   },
+   "inputs": {
+    "kind": "conversion",
+    "process": "crs",
+    "pumpBandwidthNm": 2,
+    "pumpNm": 800,
+    "stokesBandwidthNm": 5,
+    "stokesNm": 1040
+   },
+   "name": "CRS bandwidth, pump 2 nm at 800 nm, Stokes 5 nm at 1040 nm",
+   "tolerance": {
+    "wave0BwNm": 1e-09,
+    "wave0BwTHz": 1e-09,
+    "wave1BwNm": 1e-09,
+    "wave1BwTHz": 1e-09,
+    "wave2BwNm": 1e-09,
+    "wave2BwTHz": 1e-09,
+    "wave3BwNm": 1e-09,
+    "wave3BwTHz": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "wave0BwNm": 1.0,
+    "wave0BwTHz": 0.8327562495,
+    "wave1BwNm": 3.0,
+    "wave1BwTHz": 0.5321752524,
+    "wave2BwNm": 0.6556770681,
+    "wave2BwTHz": 1.292353064
+   },
+   "inputs": {
+    "kind": "conversion",
+    "process": "crs",
+    "pumpBandwidthNm": 1,
+    "pumpNm": 600,
+    "stokesBandwidthNm": 3,
+    "stokesNm": 1300
+   },
+   "name": "CRS bandwidth, pump 1 nm at 600 nm, Stokes 3 nm at 1300 nm",
+   "tolerance": {
+    "wave0BwNm": 1e-09,
+    "wave0BwTHz": 1e-09,
+    "wave1BwNm": 1e-09,
+    "wave1BwTHz": 1e-09,
+    "wave2BwNm": 1e-09,
+    "wave2BwTHz": 1e-09
+   }
+  },
+  {
+   "expected": {
     "antiStokesNm": 650.0,
     "csrsNm": 1485.714286,
     "pumpNm": 800.0,
@@ -1614,14 +1784,14 @@
   "M. Mohseni, C. Polzer and T. Hellerer, Opt. Express 26, 10230-10241 (2018), doi:10.1364/OE.26.010230, Eq. (5) (resolution)"
  ],
  "convergence": "Closed-form arithmetic; the resolution and bandwidth quadratures use 4001 points over +/-14 effective widths and an 80-step bisection; the nm widths use 200-step bisections on the curve against wavelength.",
- "domain": "SHG and THG both directions; SFG; DFG in both input orders and near degeneracy; OPO from signal, idler and the degenerate point; two-color CARS and CSRS on the conversion page, with and without a CSRS solution; coherent Raman (two-color) in all three input modes, with and without a CSRS solution; resolution for equal, unequal, short and equally chirped pulses; SHG and THG bandwidths from the fundamental (with and without linear chirp, narrow and 500 nm wide) and from the harmonic; SFG and DFG bandwidths of transform-limited inputs, including one zero-width input and one input 400 nm wide; nm widths measured on each spectrum drawn against wavelength.",
+ "domain": "SHG and THG both directions; SFG; DFG in both input orders and near degeneracy; OPO from signal, idler and the degenerate point; two-color CARS and CSRS on the conversion page, with and without a CSRS solution; coherent Raman (two-color) in all three input modes, with and without a CSRS solution; resolution for equal, unequal, short and equally chirped pulses; SHG and THG bandwidths from the fundamental (with and without linear chirp, narrow and 500 nm wide) and from the harmonic; SFG and DFG bandwidths of transform-limited inputs, including one zero-width input and one input 400 nm wide; OPO partner bandwidths with the entered output as signal or idler and a zero-width pump; CARS and CSRS bandwidths of transform-limited pulses, with and without a CSRS solution; nm widths measured on each spectrum drawn against wavelength.",
  "fidelity": "computed",
  "id": "wavelength-conversion",
  "outside_scope": "Declines non-finite or out-of-range inputs, input bandwidths above half their wavelength, equal DFG inputs, an OPO output not longer than the pump, reversed or equal pump and Stokes, non-positive shifts and inferred pump or Stokes wavelengths outside 100-20000 nm; CSRS alone is omitted when the Raman frequency is not below the probing frequency.",
  "provenance": "Energy conservation written from Boyd; CARS and CSRS frequencies from Cheng and Xie and Heuke and Rigneault; the conversion bandwidths are recomputed from their definition, the spectrum of the product field of Gaussian input pulses; the resolution check recomputes the excitation-amplitude width that Eq. (5) of Mohseni et al. expresses in closed form, and the paper's 20.8 ps cm^-1 prefactor anchors it.",
  "reference": "SI frequency arithmetic with exact rational anchors; resolution from a quadrature Fourier transform of the pump-Stokes driving term; conversion bandwidths from a quadrature Fourier transform of the generated field",
  "reference_file": "validation/reference/wavelength_conversion.py",
- "scope": "Vacuum wavelengths and energy conservation; Gaussian spectra for the bandwidths (whole spectrum phase-matched; SFG and DFG transform-limited) and Gaussian, transform-limited or equally chirped pulses for the resolution; no phase matching, yield, resonance spectrum or chirp mismatch. Generated spectra reaching zero frequency get no bandwidth (checked in the JavaScript tests).",
+ "scope": "Vacuum wavelengths and energy conservation; Gaussian spectra for the bandwidths (whole spectrum phase-matched; SFG, DFG, OPO partner, CARS and CSRS transform-limited, with an instantaneous Raman response) and Gaussian, transform-limited or equally chirped pulses for the resolution; no phase matching, yield, resonance spectrum or chirp mismatch. Generated spectra reaching zero frequency get no bandwidth (checked in the JavaScript tests).",
  "title": "Nonlinear frequency conversion and coherent Raman scattering",
  "tolerance_rationale": "1e-9 relative for floating-point identities and for the spectrally accurate quadrature; exact rational anchors at 1e-12; the published three-figure prefactor at half a unit in its last place (0.25 %)."
 }

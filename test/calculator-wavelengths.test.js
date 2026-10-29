@@ -202,8 +202,24 @@ test('nonlinear conversion bandwidths: harmonics by √n, SFG and DFG in quadrat
   }
   const lines = conversion({ process: 'sfg', bandwidth1Nm: 0, bandwidth2Nm: 0 });
   assert.deepEqual(lines.waves.map(w => w.bandwidthNm), [0, 0, 0]);
-  // OPO and coherent Raman show positions only.
-  for (const process of ['opo', 'crs']) assert.ok(conversion({ process }).waves.every(w => w.bandwidthTHz === null), process);
+  // OPO: the entered output keeps its width, the partner adds the pump's in
+  // quadrature, whether the entered output is the signal or the idler.
+  for (const outputNm of [1550, 4000]) {
+    const opo = conversion({ process: 'opo', outputNm, pumpBandwidthNm: 2, outputBandwidthNm: 30 });
+    const [pump, signal, idler] = opo.waves;
+    const [known, partner] = outputNm < 2060 ? [signal, idler] : [idler, signal];
+    close(known.bandwidthNm, 30, 1e-12);
+    close(partner.bandwidthTHz, Math.hypot(pump.bandwidthTHz, known.bandwidthTHz));
+  }
+  // A single-line output leaves the partner with the pump's frequency width.
+  const cw = conversion({ process: 'opo', outputBandwidthNm: 0 });
+  close(cw.waves[2].bandwidthTHz, cw.waves[0].bandwidthTHz);
+  // CARS counts the pump twice, CSRS the Stokes beam twice.
+  const crsWidths = conversion({ process: 'crs', pumpBandwidthNm: 2, stokesBandwidthNm: 5 });
+  const [p, st, cars, csrs] = crsWidths.waves.map(w => w.bandwidthTHz);
+  close(cars, Math.sqrt(2 * p * p + st * st));
+  close(csrs, Math.sqrt(2 * st * st + p * p));
+  assert.equal(conversion({ process: 'crs', pumpNm: 600, stokesNm: 1300 }).waves.length, 3);
 });
 
 test('nonlinear conversion bandwidths: input limit and spectra that reach zero frequency', () => {
@@ -213,14 +229,23 @@ test('nonlinear conversion bandwidths: input limit and spectra that reach zero f
   assert.equal(wide.ok, false);
   assert.deepEqual(wide.errors.map(e => e.id), ['harmonicBandwidthNm']);
   assert.deepEqual(conversion({ process: 'sfg', bandwidth2Nm: 600 }).errors.map(e => e.id), ['bandwidth2Nm']);
+  assert.deepEqual(conversion({ process: 'opo', pumpBandwidthNm: 515.001, outputBandwidthNm: 776 }).errors.map(e => e.id),
+    ['pumpBandwidthNm', 'outputBandwidthNm']);
+  assert.deepEqual(conversion({ process: 'crs', stokesBandwidthNm: 730 }).errors.map(e => e.id), ['stokesBandwidthNm']);
+  assert.equal(conversion({ process: 'opo', pumpBandwidthNm: 515, outputBandwidthNm: 775 }).ok, true);
   // DFG of close, broad inputs keeps its wavelengths but gives no widths.
   const close1 = conversion({ process: 'dfg', wave1Nm: 1064, wave2Nm: 1064.5 });
   assert.equal(close1.ok, true);
   close(close1.waves[2].wavelengthNm, 1064 * 1064.5 / 0.5);
   assert.ok(close1.waves.every(w => w.bandwidthTHz === null));
   assert.match(close1.bandwidthNote, /difference frequency spectrum would reach zero frequency/);
-  // So does a fundamental solved from a very broad harmonic.
+  // So does a fundamental solved from a very broad harmonic, and an OPO
+  // partner just past the pump.
   assert.match(conversion({ known: 'harmonic', harmonicInputNm: 532, harmonicBandwidthNm: 200 }).bandwidthNote, /fundamental/);
+  const farIdler = conversion({ process: 'opo', outputNm: 1030.001 });
+  assert.ok(farIdler.ok && farIdler.waves.every(w => w.bandwidthTHz === null));
+  assert.match(farIdler.bandwidthNote, /the idler spectrum/);
+  assert.match(conversion({ process: 'crs', stokesNm: 2000, pumpBandwidthNm: 400, stokesBandwidthNm: 900 }).bandwidthNote, /CSRS \(coherent Stokes\) spectrum/);
   // At the λ/2 limit the spectrum still stays above zero frequency, so the
   // graph has finite coordinates and range (review of #294).
   for (const values of [{ harmonicBandwidthNm: 532 }, { process: 'thg', harmonicBandwidthNm: 532 },
@@ -256,7 +281,8 @@ test('nonlinear conversion bandwidths: each nm width is the FWHM of the drawn cu
 
 test('nonlinear conversion spectrum: sorted finite samples, unit peaks, lines for unmodelled widths', () => {
   for (const values of [{}, { process: 'thg' }, { process: 'sfg' }, { process: 'dfg' }, { process: 'sfg', bandwidth2Nm: 0 },
-    { process: 'opo' }, { process: 'opo', outputNm: 2060 }, { process: 'crs' }, { process: 'dfg', wave1Nm: 1064, wave2Nm: 1064.5 }]) {
+    { process: 'opo' }, { process: 'opo', outputNm: 2060 }, { process: 'opo', pumpBandwidthNm: 0, outputBandwidthNm: 0 },
+    { process: 'crs' }, { process: 'crs', pumpNm: 600, stokesNm: 1300 }, { process: 'dfg', wave1Nm: 1064, wave2Nm: 1064.5 }]) {
     const r = conversion(values);
     const { x, xMin, xMax, series } = conversionSpectrum(r);
     const label = JSON.stringify(values);
@@ -271,7 +297,7 @@ test('nonlinear conversion spectrum: sorted finite samples, unit peaks, lines fo
       if (!(r.waves[i].bandwidthTHz > 0)) {
         assert.equal(shown.length, 3, `${label}: ${s.role} is a line`);
         assert.equal(x[s.values.indexOf(1)], r.waves[i].wavelengthNm);
-      } else assert.equal(shown.length, 65, label);
+      } else assert.ok(shown.length >= 65, label);   // its own 65, plus any overlapping wave's samples in range
     });
   }
 });

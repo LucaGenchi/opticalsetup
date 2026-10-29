@@ -17,10 +17,13 @@ const BANDWIDTH_NOTES = {
   harmonic: 'Bandwidths for Gaussian spectra and a crystal that phase-matches the whole spectrum: the harmonic field is a power of the fundamental field, so its frequency FWHM is √2 (SHG) or √3 (THG) times wider, with or without a linear chirp. A narrower acceptance bandwidth narrows the harmonic.',
   fromHarmonic: 'Solving back from the harmonic gives the narrowest fundamental that could produce it; a limited phase-matching acceptance would need a broader one.',
   mixing: 'Bandwidths for Gaussian spectra and a crystal that phase-matches the whole spectrum: the frequency FWHMs add in quadrature. This holds for transform-limited pulses and for independent CW lines; chirped inputs can give a narrower output, and so can a narrower acceptance bandwidth.',
-  lines: 'Lines only: the signal and idler bandwidths are set by the cavity and phase matching, not by energy conservation.',
-  crsLines: 'Lines only: the CARS and CSRS spectra depend on the Raman resonance and the pulse durations; the Coherent Raman calculator gives the spectral resolution.',
+  opo: 'The bandwidth of the output you enter is set by the cavity and phase matching, so it is yours to give. The other output is the pump–output difference frequency, so its frequency FWHM is the quadrature sum of theirs, as in DFG: for transform-limited pulses and independent CW lines, and the widest it can be.',
+  crs: 'Bandwidths for transform-limited Gaussian pulses and an instantaneous response (non-resonant, or a Raman line broader than the excitation): CARS is E_p²E_S* and CSRS E_S²E_p*, so the frequency FWHMs add in quadrature with the twice-used beam counted twice. A narrow Raman line narrows CARS towards the pump width and CSRS towards the Stokes width; the Coherent Raman calculator gives the spectral resolution.',
 };
-const COLORS = ['--series-1', '--series-3'];
+const MIXING_NOTE = { sfg: 'mixing', dfg: 'mixing', opo: 'opo', crs: 'crs' };
+// Given waves blue then aqua, generated ones orange then plum: four
+// colours that stay apart under colour-vision deficiency, in both themes.
+const GIVEN = ['--series-1', '--series-3'], MADE = ['--series-2', '--series-4'];
 
 mountCalculator({ inputs: CONVERSION_INPUTS, defaults: CONVERSION_DEFAULTS, hideInactive: true, groups: {
   process: { title: 'Process' }, waves: { title: 'Wavelengths' },
@@ -28,11 +31,12 @@ mountCalculator({ inputs: CONVERSION_INPUTS, defaults: CONVERSION_DEFAULTS, hide
   graphs: r => {
     const { x, xMin, xMax, series } = conversionSpectrum(r);
     let given = 0, made = 0;
+    const colored = series.map((s, i) => ({ ...s, color: s.generated ? MADE[made++ % 2] : GIVEN[given++ % 2], wave: r.waves[i] }));
     return { spectrum: { x, xMin, xMax, xLabel: 'Wavelength (nm)', xUnit: 'nm', yLabel: 'Normalized intensity (a.u.)', yMin: 0, yMax: 1,
       formatX: v => formatNumber(v, 6),
-      // Given waves blue then green, generated ones orange, the second dashed.
-      series: series.map(s => ({ key: s.role, name: s.role, values: s.values, fill: 'light',
-        ...(s.generated ? { color: '--series-2', dash: made++ > 0 } : { color: COLORS[given++ % 2] }) })) } };
+      series: colored.map(s => ({ key: s.role, name: s.role, values: s.values, fill: 'light', color: s.color })),
+      // Each generated wave's central wavelength under the axis, in its colour.
+      xMarks: colored.filter(s => s.generated).map(s => ({ x: s.wave.wavelengthNm, label: s.wave.wavelengthNm.toFixed(1), color: s.color })) } };
   },
   rows: r => ({
     calc: [
@@ -50,11 +54,10 @@ mountCalculator({ inputs: CONVERSION_INPUTS, defaults: CONVERSION_DEFAULTS, hide
   }),
   notes: r => [NOTES[r.process],
     ...(r.bandwidthNote ? [r.bandwidthNote] : r.waves.some(w => w.bandwidthTHz > 0)
-      ? [r.process === 'sfg' || r.process === 'dfg' ? BANDWIDTH_NOTES.mixing : BANDWIDTH_NOTES.harmonic,
+      ? [BANDWIDTH_NOTES[MIXING_NOTE[r.process] ?? 'harmonic'],
         ...(r.fromHarmonic ? [BANDWIDTH_NOTES.fromHarmonic] : [])] : []),
-    ...(r.process === 'opo' ? [BANDWIDTH_NOTES.lines] : r.process === 'crs' ? [BANDWIDTH_NOTES.crsLines] : []),
     ...(r.waves.some(w => w.wavelengthNm > 20000) ? ['A wave lies beyond 20 µm, in the far infrared or terahertz range.'] : []),
     ...(r.degenerate ? ['Degenerate operation: signal and idler share one wavelength.'] : []),
     ...(r.process === 'crs' && r.waves.length < 4 ? ['No CSRS wavelength: the Raman frequency is not below the Stokes frequency.'] : []),
-    'Energy conservation, and Gaussian spectral widths for the harmonics, SFG and DFG. Phase matching, crystal choice, acceptance bandwidths, power and conversion efficiency are not modelled.'],
+    'Energy conservation, and the widest Gaussian spectrum each generated wave can have. Phase matching, crystal choice, acceptance bandwidths, power and conversion efficiency are not modelled.'],
 });

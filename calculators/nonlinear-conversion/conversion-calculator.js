@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Vacuum-wavelength energy conservation for the common nonlinear processes,
-// and for the harmonics, SFG and DFG the widest spectrum the inputs allow.
+// and the widest spectrum the inputs allow for each generated wave.
 import { mixWavelength } from '../../sketch/js/parametric.js';
 import { CRS_DEFAULTS, computeCrs } from '../coherent-raman/crs-calculator.js';
 import { defaultsFor, parseInputs, unavailable } from '../assets/calculator-inputs.js';
@@ -38,10 +38,16 @@ export const CONVERSION_INPUTS = [
     when: 'process', whenValue: ['sfg', 'dfg'], help: 'As for λ₁.' },
   { id: 'pumpNm', group: 'waves', label: 'Pump wavelength', unit: 'nm', value: 1030, ...SCOPE,
     when: 'process', whenValue: ['opo', 'crs'], help: 'Vacuum wavelength of the pump.' },
+  { id: 'pumpBandwidthNm', group: 'waves', label: 'Bandwidth of the pump (FWHM)', unit: 'nm', value: 1, min: 0, max: 10000,
+    when: 'process', whenValue: ['opo', 'crs'], help: 'Gaussian spectrum; 0 for a single line. At most half the wavelength.' },
   { id: 'outputNm', group: 'waves', label: 'Signal or idler wavelength', unit: 'nm', value: 1550, ...SCOPE,
     when: 'process', whenValue: 'opo', help: 'Either output; it must be longer than the pump. The other is solved.' },
+  { id: 'outputBandwidthNm', group: 'waves', label: 'Bandwidth of that output (FWHM)', unit: 'nm', value: 10, min: 0, max: 10000,
+    when: 'process', whenValue: 'opo', help: 'Set by the cavity and phase matching, so enter your own; 0 for a single line.' },
   { id: 'stokesNm', group: 'waves', label: 'Stokes wavelength', unit: 'nm', value: 1458, ...SCOPE,
     when: 'process', whenValue: 'crs', help: 'Longer than the pump. The Coherent Raman calculator also solves from a Raman shift.' },
+  { id: 'stokesBandwidthNm', group: 'waves', label: 'Bandwidth of the Stokes beam (FWHM)', unit: 'nm', value: 1, min: 0, max: 10000,
+    when: 'process', whenValue: 'crs', help: 'Gaussian spectrum; 0 for a single line. At most half the wavelength.' },
 ];
 export const CONVERSION_DEFAULTS = defaultsFor(CONVERSION_INPUTS);
 
@@ -52,10 +58,12 @@ const wave = (role, wavelengthNm, generated = false) => ({ role, wavelengthNm, f
 // nm is the FWHM of that curve against wavelength: its half-maximum points
 // sit at c/(ν ∓ Δν/2), so Δλ = cΔν/(ν² − Δν²/4), close to cΔν/ν² = λ²Δν/c
 // for a narrow spectrum and exact for a broad one. A generated field is a
-// product of the input fields (E², E³, E₁E₂ or E₁E₂*), so for Gaussian
-// spectra its frequency FWHM adds in quadrature, each field counted as often
-// as it appears: √n Δν for the nth harmonic, √(Δν₁² + Δν₂²) for SFG and
-// DFG. Phase matching is taken to accept the whole spectrum.
+// product of the input fields (E², E³, E₁E₂, E₁E₂*, E_pE_s* for an OPO
+// partner, E_p²E_S* for CARS, E_S²E_p* for CSRS), so for Gaussian spectra
+// its frequency FWHM adds in quadrature, each field counted as often as it
+// appears: √n Δν for the nth harmonic, √(Δν₁² + Δν₂²) for SFG, DFG and the
+// OPO partner, √(2Δν_p² + Δν_S²) for CARS. Phase matching is taken to accept
+// the whole spectrum, and the Raman response to be instantaneous.
 // widthTHz inverts widthNm in a form that does not cancel for small Δλ.
 const widthTHz = (nm, bandwidthNm) => 2 * C_NM_THZ * bandwidthNm / (nm * (nm + Math.hypot(nm, bandwidthNm)));
 const widthNm = (thz, nm) => {
@@ -72,7 +80,8 @@ function withWidths(waves, widths) {
   const out = waves.map((w, i) => ({ ...w, bandwidthTHz: widths[i], bandwidthNm: widthNm(widths[i], w.wavelengthNm) }));
   if (out.every(fitsAboveZero)) return { waves: out };
   const bad = out.find(w => !fitsAboveZero(w));
-  return { waves, bandwidthNote: `No bandwidths: the ${bad.role.toLowerCase()} spectrum would reach zero frequency, so a Gaussian width does not describe it. Narrow the inputs or set them to 0.` };
+  const name = /^[A-Z]{2}/.test(bad.role) ? bad.role : bad.role[0].toLowerCase() + bad.role.slice(1);
+  return { waves, bandwidthNote: `No bandwidths: the ${name} spectrum would reach zero frequency, so a Gaussian width does not describe it. Narrow the inputs or set them to 0.` };
 }
 
 function inputWidthError(id, label, nm, bandwidthNm) {
@@ -120,9 +129,16 @@ export function computeConversion(raw) {
     // both pages decline the same inputs; its field names map onto ours.
     const r = computeCrs({ ...CRS_DEFAULTS, mode: 'pump-stokes', pumpNm: v.pumpNm, stokesNm: v.stokesNm });
     if (!r.ok) return { ok: false, errors: r.errors.map(e => ({ ...e, id: e.id === 'stokesNm' ? 'stokesNm' : 'pumpNm' })) };
-    return { ok: true, process: p, ramanShiftCm: r.ramanShiftCm,
-      waves: [wave('Pump', r.pumpNm), wave('Stokes', r.stokesNm), wave('CARS (anti-Stokes)', r.antiStokesNm, true),
-        ...(r.csrsNm === null ? [] : [wave('CSRS (coherent Stokes)', r.csrsNm, true)])] };
+    const errors = [inputWidthError('pumpBandwidthNm', 'Bandwidth of the pump', v.pumpNm, v.pumpBandwidthNm),
+      inputWidthError('stokesBandwidthNm', 'Bandwidth of the Stokes beam', v.stokesNm, v.stokesBandwidthNm)].filter(Boolean);
+    if (errors.length) return { ok: false, errors };
+    // CARS is E_p²E_S*, CSRS E_S²E_p*: the field that appears twice counts twice.
+    const [wp, ws] = [widthTHz(v.pumpNm, v.pumpBandwidthNm), widthTHz(v.stokesNm, v.stokesBandwidthNm)];
+    const csrs = r.csrsNm !== null;
+    return { ok: true, process: p, bandwidths: true, ramanShiftCm: r.ramanShiftCm,
+      ...withWidths([wave('Pump', r.pumpNm), wave('Stokes', r.stokesNm), wave('CARS (anti-Stokes)', r.antiStokesNm, true),
+        ...(csrs ? [wave('CSRS (coherent Stokes)', r.csrsNm, true)] : [])],
+      [wp, ws, Math.sqrt(2 * wp * wp + ws * ws), ...(csrs ? [Math.sqrt(2 * ws * ws + wp * wp)] : [])]) };
   }
   if (!(v.outputNm > v.pumpNm)) return unavailable('The signal or idler must be longer than the pump.', 'outputNm', 'pumpNm');
   // The partner is the pump–output difference frequency, as in DFG, without
@@ -133,10 +149,19 @@ export function computeConversion(raw) {
   // The signal is the higher-frequency output by convention.
   const [signalNm, idlerNm] = [v.outputNm, partnerNm].sort((a, b) => a - b);
   const degenerate = Math.abs(idlerNm - signalNm) <= 1e-9 * idlerNm;
-  return { ok: true, process: p, degenerate, degeneracyNm: 2 * v.pumpNm,
+  const widthErrors = [inputWidthError('pumpBandwidthNm', 'Bandwidth of the pump', v.pumpNm, v.pumpBandwidthNm),
+    inputWidthError('outputBandwidthNm', 'Bandwidth of that output', v.outputNm, v.outputBandwidthNm)].filter(Boolean);
+  if (widthErrors.length) return { ok: false, errors: widthErrors };
+  // The known output's width is the user's (cavity, phase matching); the
+  // partner is the pump–output difference frequency, E_pE_out*, as in DFG.
+  const [wp, wk] = [widthTHz(v.pumpNm, v.pumpBandwidthNm), widthTHz(v.outputNm, v.outputBandwidthNm)];
+  const wPartner = Math.hypot(wp, wk);
+  const knownIsSignal = v.outputNm <= partnerNm;
+  return { ok: true, process: p, bandwidths: true, degenerate, degeneracyNm: 2 * v.pumpNm,
     // Manley–Rowe: of the converted pump power, a fraction λ_p/λ goes to each output.
     signalShare: v.pumpNm / signalNm, idlerShare: v.pumpNm / idlerNm,
-    waves: [wave('Pump', v.pumpNm), wave('Signal', signalNm, true), wave('Idler', idlerNm, true)] };
+    ...withWidths([wave('Pump', v.pumpNm), wave('Signal', signalNm, true), wave('Idler', idlerNm, true)],
+      [wp, knownIsSignal ? wk : wPartner, knownIsSignal ? wPartner : wk]) };
 }
 
 // The spectrum graph: each wave as its Gaussian against wavelength, scaled

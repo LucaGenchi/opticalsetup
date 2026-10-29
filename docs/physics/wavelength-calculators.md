@@ -64,7 +64,7 @@ Manley–Rowe shares `λ_p/λ_s` and `λ_p/λ_i` and the degeneracy wavelength
 also shown as a frequency and a photon energy (`hc/e` from the exact SI
 constants). Energy conservation only: no phase matching or efficiency.
 
-Bandwidths (SHG, THG, SFG, DFG): each input is a Gaussian in frequency, and
+Bandwidths (every process): each input is a Gaussian in frequency, and
 the entered `Δλ` is its FWHM against wavelength, exactly:
 `Δλ = c/(ν − Δν/2) − c/(ν + Δν/2) = cΔν/(ν² − Δν²/4)`, close to `λ²Δν/c`
 only for a narrow spectrum (500 nm at 1064 nm would otherwise draw 529 nm
@@ -75,14 +75,22 @@ fields, so the frequency FWHMs add in quadrature, each field counted as often
 as it appears: `√n Δν` for the nth harmonic (also for linearly chirped
 pulses and Gaussian-statistics CW light) and `√(Δν₁² + Δν₂²)` for SFG and DFG
 (transform-limited pulses or independent CW lines; chirped inputs can mix
-narrower). This is the widest spectrum the inputs allow; a smaller acceptance
+narrower). An OPO's entered output keeps the width the user gives (cavity and
+phase matching set it); the partner is `E_p E_out*`, so
+`√(Δν_p² + Δν_out²)`. CARS (`E_p² E_S*`) and CSRS (`E_S² E_p*`) get
+`√(2Δν_p² + Δν_S²)` and `√(2Δν_S² + Δν_p²)` for transform-limited pulses and
+an instantaneous response; a narrow Raman line narrows them towards the pump
+and Stokes widths. This is the widest spectrum the inputs allow; a smaller acceptance
 bandwidth narrows it. Solving from a harmonic divides by `√n`. Inputs may be
 at most `λ/2` wide (a frequency FWHM of at most 0.47 ν); a generated
 spectrum not narrower than half its centre frequency (DFG of close, broad inputs; a
-fundamental from a very broad harmonic) gets no bandwidths and a note. OPO
-and coherent Raman show line positions only. The spectrum graph draws each
-wave as its Gaussian against wavelength, scaled to its own peak, and a wave
-without a width as a vertical line.
+fundamental from a very broad harmonic; an OPO output just past the pump)
+gets no bandwidths and a note. The spectrum graph draws each wave as its
+Gaussian against wavelength, scaled to its own peak, and a wave with zero
+width as a vertical line; given waves are blue and aqua, generated ones
+orange and plum (`--series-4`, validated with the other three for colour
+vision deficiency on both themes' panels), each generated wave's central
+wavelength written under the axis in its colour (`xMarks` of `lineChart`).
 
 ## Coherent Raman scattering (`calculators/coherent-raman/`)
 

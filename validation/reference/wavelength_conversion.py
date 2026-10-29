@@ -20,7 +20,8 @@ quadrature-sum rule: each input is a Gaussian pulse whose intensity
 spectrum, drawn against wavelength, has the entered FWHM in nm (both
 half-maximum wavelengths found by bisection on the curve, with no nm-to-THz
 formula), with or without a linear chirp; the generated field is the
-product the process forms (E^2, E^3, E1 E2 or E1 E2*), the FWHM of its
+product the process forms (E^2, E^3, E1 E2, E1 E2*, Ep Eout* for the OPO
+partner, Ep^2 ES* for CARS or ES^2 Ep* for CSRS), the FWHM of its
 intensity spectrum |F(Omega)|^2 is found by quadrature and bisection, and
 read back to nm on its curve against wavelength the same way.
 """
@@ -238,6 +239,27 @@ def cases():
         out.append(bandwidth_case(f"{process.upper()} bandwidth, {bw_a} nm at {a} nm and {bw_b} nm at {b} nm",
                                   {"process": process, "wave1Nm": a, "wave2Nm": b, "bandwidth1Nm": bw_a, "bandwidth2Nm": bw_b},
                                   [(a, width_thz(a, bw_a)), (b, width_thz(b, bw_b)), (C_M_PER_S / out_hz * 1e9, out_width)]))
+    # OPO: the entered output keeps its width; the partner is E_p E_out*.
+    for pump, known, bw_p, bw_k in ((1030, 1550, 1, 10), (1030, 4000, 2, 30), (515, 800, 0, 25)):
+        gp = pulse_exponent(width_thz(pump, bw_p)) if bw_p else 0j
+        gk = pulse_exponent(width_thz(known, bw_k)) if bw_k else 0j
+        partner_nm = C_M_PER_S / (hz(pump) - hz(known)) * 1e9
+        partner_width = generated_width_thz([gp, gk.conjugate()])
+        outputs = sorted([(known, width_thz(known, bw_k)), (partner_nm, partner_width)])   # signal first
+        out.append(bandwidth_case(f"OPO bandwidth, pump {bw_p} nm at {pump} nm, output {bw_k} nm at {known} nm",
+                                  {"process": "opo", "pumpNm": pump, "outputNm": known, "pumpBandwidthNm": bw_p, "outputBandwidthNm": bw_k},
+                                  [(pump, width_thz(pump, bw_p)), *outputs]))
+    # CARS is E_p^2 E_S*, CSRS E_S^2 E_p*, for transform-limited pulses.
+    for pump, stokes, bw_p, bw_s in ((1030, 1458, 1, 1), (800, 1040, 2, 5), (600, 1300, 1, 3)):
+        gp, gs = pulse_exponent(width_thz(pump, bw_p)), pulse_exponent(width_thz(stokes, bw_s))
+        p_hz, s_hz = hz(pump), hz(stokes)
+        waves = [(pump, width_thz(pump, bw_p)), (stokes, width_thz(stokes, bw_s)),
+                 (C_M_PER_S / (2 * p_hz - s_hz) * 1e9, generated_width_thz([gp, gp, gs.conjugate()]))]
+        if 2 * s_hz > p_hz:
+            waves.append((C_M_PER_S / (2 * s_hz - p_hz) * 1e9, generated_width_thz([gs, gs, gp.conjugate()])))
+        out.append(bandwidth_case(f"CRS bandwidth, pump {bw_p} nm at {pump} nm, Stokes {bw_s} nm at {stokes} nm",
+                                  {"process": "crs", "pumpNm": pump, "stokesNm": stokes, "pumpBandwidthNm": bw_p, "stokesBandwidthNm": bw_s},
+                                  waves))
 
     pump, stokes = hz(800), hz(1040)
     out.append(crs_case("CRS pump/Stokes 800/1040 nm", {"mode": "pump-stokes", "pumpNm": 800, "stokesNm": 1040}, pump, stokes))
@@ -280,10 +302,10 @@ MODEL = {
         "M. Mohseni, C. Polzer and T. Hellerer, Opt. Express 26, 10230-10241 (2018), doi:10.1364/OE.26.010230, Eq. (5) (resolution)",
     ],
     "provenance": "Energy conservation written from Boyd; CARS and CSRS frequencies from Cheng and Xie and Heuke and Rigneault; the conversion bandwidths are recomputed from their definition, the spectrum of the product field of Gaussian input pulses; the resolution check recomputes the excitation-amplitude width that Eq. (5) of Mohseni et al. expresses in closed form, and the paper's 20.8 ps cm^-1 prefactor anchors it.",
-    "domain": "SHG and THG both directions; SFG; DFG in both input orders and near degeneracy; OPO from signal, idler and the degenerate point; two-color CARS and CSRS on the conversion page, with and without a CSRS solution; coherent Raman (two-color) in all three input modes, with and without a CSRS solution; resolution for equal, unequal, short and equally chirped pulses; SHG and THG bandwidths from the fundamental (with and without linear chirp, narrow and 500 nm wide) and from the harmonic; SFG and DFG bandwidths of transform-limited inputs, including one zero-width input and one input 400 nm wide; nm widths measured on each spectrum drawn against wavelength.",
+    "domain": "SHG and THG both directions; SFG; DFG in both input orders and near degeneracy; OPO from signal, idler and the degenerate point; two-color CARS and CSRS on the conversion page, with and without a CSRS solution; coherent Raman (two-color) in all three input modes, with and without a CSRS solution; resolution for equal, unequal, short and equally chirped pulses; SHG and THG bandwidths from the fundamental (with and without linear chirp, narrow and 500 nm wide) and from the harmonic; SFG and DFG bandwidths of transform-limited inputs, including one zero-width input and one input 400 nm wide; OPO partner bandwidths with the entered output as signal or idler and a zero-width pump; CARS and CSRS bandwidths of transform-limited pulses, with and without a CSRS solution; nm widths measured on each spectrum drawn against wavelength.",
     "convergence": "Closed-form arithmetic; the resolution and bandwidth quadratures use 4001 points over +/-14 effective widths and an 80-step bisection; the nm widths use 200-step bisections on the curve against wavelength.",
     "tolerance_rationale": "1e-9 relative for floating-point identities and for the spectrally accurate quadrature; exact rational anchors at 1e-12; the published three-figure prefactor at half a unit in its last place (0.25 %).",
     "outside_scope": "Declines non-finite or out-of-range inputs, input bandwidths above half their wavelength, equal DFG inputs, an OPO output not longer than the pump, reversed or equal pump and Stokes, non-positive shifts and inferred pump or Stokes wavelengths outside 100-20000 nm; CSRS alone is omitted when the Raman frequency is not below the probing frequency.",
     "fidelity": "computed",
-    "scope": "Vacuum wavelengths and energy conservation; Gaussian spectra for the bandwidths (whole spectrum phase-matched; SFG and DFG transform-limited) and Gaussian, transform-limited or equally chirped pulses for the resolution; no phase matching, yield, resonance spectrum or chirp mismatch. Generated spectra reaching zero frequency get no bandwidth (checked in the JavaScript tests).",
+    "scope": "Vacuum wavelengths and energy conservation; Gaussian spectra for the bandwidths (whole spectrum phase-matched; SFG, DFG, OPO partner, CARS and CSRS transform-limited, with an instantaneous Raman response) and Gaussian, transform-limited or equally chirped pulses for the resolution; no phase matching, yield, resonance spectrum or chirp mismatch. Generated spectra reaching zero frequency get no bandwidth (checked in the JavaScript tests).",
 }
