@@ -1864,8 +1864,10 @@ export const wikiEntries = [
         detector reads the GDD from those phases, so it includes what the geometry
         does as well as the glass: a pair of prisms gives the negative GDD of a
         prism compressor, more insertion adds the glass back, and the detector says
-        whether the colours arrive together, side by side, or still diverging (then
-        it gives the central ray's GDD and no duration).</p>
+        whether the colours arrive together, side by side, or still diverging. Still
+        diverging, it gives the central ray's GDD, and a duration only where that
+        divergence would change it by under 1&nbsp;% over the next metre.</p>
+
         <p>Each face transmits by the Fresnel equations at the angle the ray actually
         meets it, for its polarization: p-polarized light (in the canvas plane, the
         app's 0°) at Brewster's angle crosses without loss, which is why compressor
@@ -1925,7 +1927,7 @@ export const wikiEntries = [
         the phase of its path, that gives a detector the GDD of a grating pair
         (Treacy's compressor) or of a stretcher built with lenses, and a single
         grating's fan reads as the central ray's GDD with no duration, since its
-        colours still diverge.</p>`,
+        colours diverge enough to change it within a metre.</p>`,
       formulas: [
         { tex: '\\mathrm{GDD} = -\\frac{m^2\\lambda^3 G}{2\\pi c^2 d^2\\cos^3\\beta}', caption: "A parallel grating pair at perpendicular separation G and diffraction angle β (Treacy 1969); the tracer reproduces it from the traced paths." },
       ],
@@ -5113,11 +5115,14 @@ export const wikiEntries = [
         four-element compressor leaves it. <em>Parallel, side by side</em> gives the width they
         span and its rate per nanometre: spatial chirp, as one pass of a prism or grating pair
         leaves it. <em>At different angles</em> gives the angle they span and its rate per
-        nanometre: angular dispersion remains, as after a single prism, and there is then no
-        single duration to read. Colours count as parallel within 10&nbsp;µrad of the central
-        one and as overlapping within 0.01&nbsp;mm, the limits the duration uses. Two colours
-        are enough, so the row is there even where the duration is not, and colours found at
-        different angles always decline the duration. Each source gets one row, however wide its
+        nanometre: angular dispersion remains, as after a single prism or a grating. The
+        duration then depends on where it is read, so it is given only where those angles would
+        change it by under 1&nbsp;% over the next metre (a short pulse through one prism), with
+        a note saying so, and is unavailable otherwise. Colours count as parallel within
+        10&nbsp;µrad of the central one and as overlapping within 0.01&nbsp;mm, the limits the
+        duration uses. Two colours are enough, so the row is there even where the duration is
+        not; colours found at different angles where the app cannot follow their phase always
+        decline the duration. Each source gets one row, however wide its
         beam; two sources get a row each. Every detector that reads the pulse shows the same
         rows.</p>
         <h3>Cross-correlation mode</h3>
