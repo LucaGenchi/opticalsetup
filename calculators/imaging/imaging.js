@@ -38,7 +38,7 @@ import { defaultsFor, parseInputs, unavailable } from '../assets/calculator-inpu
 import { GLASSES, glassWavelengthRange, isWavelengthInGlassRange } from '../../sketch/js/glass.js';
 import { materialIndex, glassShortName } from '../lens-design/engine/materials.js';
 import { lensData, designLens, sagMm, niceUp, GLASS_CHOICES } from '../thin-thick-lens/thick-lens.js';
-import { thickLensAdjustment } from '../../sketch/js/elements.js';
+import { thickLensAdjustment, registry } from '../../sketch/js/elements.js';
 
 // Points on the image-against-object graphs.
 export const SCAN_POINTS = 401;
@@ -72,13 +72,14 @@ export function cardinal(m, afocal = false) {
 
 // The image of an object d before the first vertex; `afocal` takes C = 0
 // exactly (a pair spaced afocal has C at round-off). An image at infinity
-// (the object in the front focal plane) has no distance.
+// (the object in the front focal plane) has no distance. In air the matrix
+// has A D − B C = 1, so m = A + C s′ = 1/(C d + D): the same value without
+// subtracting two nearly equal terms when the image is tiny.
 export function imageThrough(m, d, afocal = false) {
   const C = afocal ? 0 : m.Au;
   const num = m.Ay * d + m.By, den = C * d + m.Bu;
   if (!(Math.abs(den) > 1e-12 * (Math.abs(C * d) + Math.abs(m.Bu)))) return { atInfinity: true };
-  const fromLast = -num / den;
-  return { atInfinity: false, fromLast, magnification: m.Ay + C * fromLast };
+  return { atInfinity: false, fromLast: -num / den, magnification: 1 / den };
 }
 
 // ---------------------------------------------------------------- lenses
@@ -257,7 +258,7 @@ export const PAIR_INPUTS = [
   { id: 'gapMm', group: 'pair', label: 'Gap, V₂ of lens 1 to V₁ of lens 2', unit: 'mm', value: 100, min: 0, max: 100000, arrowStep: 1,
     when: 'spacing', whenValue: 'gap' },
   { id: 'pairObject', type: 'select', group: 'pair', label: 'Light in', value: 'infinity',
-    options: [['infinity', 'A collimated beam (object at infinity)'], ['focal', 'An object in the front focal plane of lens 1 (4f)'], ['distance', 'An object at a distance']] },
+    options: [['infinity', 'A collimated beam (object at infinity)'], ['focal', 'An object in lens 1’s front focal plane (4f, if afocal)'], ['distance', 'An object at a distance']] },
   { id: 'beamDiameterMm', group: 'pair', label: 'Beam diameter', unit: 'mm', value: 5, min: 0.001, max: 1000, arrowStep: 0.5,
     when: 'pairObject', whenValue: 'infinity', help: 'Of the collimated beam entering lens 1.' },
   { id: 'fieldDeg', group: 'pair', label: 'Field angle', unit: '°', value: 1, min: 0, max: 10, arrowStep: 0.1,
@@ -276,12 +277,13 @@ export const PAIR_DEFAULTS = defaultsFor(PAIR_INPUTS);
 // lens 1 f₁ + f₂ before H of lens 2.
 export const afocalGap = (m1, m2) => -(m2.Au * m1.Ay + m2.Bu * m1.Au) / (m2.Au * m1.Au);
 
-// The faces' closest approach across the smaller clear radius: lens 1's back
-// face against lens 2's front face, at the axis and at that radius.
-function clearance(l1, l2, g) {
+// The smallest gap between the vertices at which the lenses do not overlap:
+// lens 1's back face against lens 2's front face, at the axis and at the
+// smaller clear radius, where their sags are largest.
+export function minimumGap(l1, l2) {
   const h = Math.min(l1.diameterMm, l2.diameterMm) / 2;
-  const back = y => (l1.ideal ? 0 : sagMm(l1.r2Mm, y)), front = y => (l2.ideal ? 0 : sagMm(l2.r1Mm, y));
-  return Math.min(g, g + front(h) - back(h));
+  const back = l1.ideal ? 0 : sagMm(l1.r2Mm, h), front = l2.ideal ? 0 : sagMm(l2.r1Mm, h);
+  return Math.max(0, back - front);
 }
 
 export function computePair(raw) {
@@ -300,11 +302,12 @@ export function computePair(raw) {
   if (afocal && !(g >= 0)) {
     return unavailable(`Spaced afocal, lens 2 would start ${fmt(-g)} mm before lens 1 ends: H′ of lens 1 must lie f₁ + f₂ = ${fmt(l1.efl + l2.efl)} mm before H of lens 2${l1.efl + l2.efl < 0 ? ', a negative distance' : ''}. A telescope needs f₁ + f₂ > 0: two converging lenses (Keplerian), or one converging and one diverging, the converging one the stronger in |f| (Galilean).`, 'l1FocalMm', 'l2FocalMm', 'l1Kind', 'l2Kind');
   }
-  const room = clearance(l1, l2, g);
-  if (room < -1e-9) {
+  const least = minimumGap(l1, l2);
+  if (g < least - 1e-9) {
+    // The least gap shown is rounded up to the micrometre, so that it works.
     return afocal
       ? unavailable(`Spaced afocal (${fmt(g)} mm between the vertices), the lenses’ faces would cut into each other at their rims: choose lenses of longer focal length or smaller diameter.`, 'l1DiameterMm', 'l2DiameterMm')
-      : unavailable(`With a ${fmt(g)} mm gap the lenses’ faces cut into each other at their rims: set a gap of at least ${fmt(g - room)} mm.`, 'gapMm');
+      : unavailable(`With a ${fmt(g)} mm gap the lenses’ faces cut into each other at their rims: set a gap of at least ${Math.ceil(least * 1e3) / 1e3} mm.`, 'gapMm');
   }
   const system = chain(l1.matrix, gap(g), l2.matrix);
   // Near enough to afocal at a set gap counts as afocal too.
@@ -316,7 +319,7 @@ export function computePair(raw) {
   const thin = chain(gap(t1 / 2), thinLens(f1t), gap(t1 / 2 + gThin + t2 / 2), thinLens(f2t), gap(t2 / 2));
   const thinAfocal = afocal || Math.abs(thin.Au) < 1e-12 * (Math.abs(1 / f1t) + Math.abs(1 / f2t));
   const result = {
-    ok: true, values: v, l1, l2, gapMm: g, thinGapMm: gThin, lengthMm: t1 + g + t2, system, thin, afocal: isAfocal, thinAfocal,
+    ok: true, values: v, l1, l2, gapMm: g, minimumGapMm: least, thinGapMm: gThin, lengthMm: t1 + g + t2, system, thin, afocal: isAfocal, thinAfocal,
     cardinal: cardinal(system, isAfocal), thinCardinal: cardinal(thin, thinAfocal),
   };
   if (isAfocal) {
@@ -326,9 +329,13 @@ export function computePair(raw) {
       thinAngular: thinAfocal ? thin.Bu : null,
     };
   }
-  // Lens 1's back focal plane: a Fourier plane of the object, and in an
-  // afocal pair also lens 2's front focal plane.
-  result.fourierZ = t1 + l1.bfl;
+  // Lens 1's back focal plane holds the Fourier transform of an object in
+  // its front focal plane, if the light reaches it before lens 2 (a
+  // converging lens 1, its F′ in the gap); spaced afocal it is also lens 2's
+  // front focal plane, and the pair is a 4f system.
+  const between = l1.bfl > 0 && l1.bfl < g;
+  result.fourierZ = between ? t1 + l1.bfl : null;
+  result.fourF = between && afocal && v.pairObject === 'focal';
   if (v.pairObject === 'infinity') {
     result.beam = isAfocal
       ? { diameterMm: Math.abs(system.Ay) * v.beamDiameterMm, angleDeg: system.Bu * v.fieldDeg }
@@ -529,17 +536,31 @@ export function pairDiagram(result) {
 
 // ---------------------------------------------------------------- canvas
 
+// What the canvas's elements accept, from its registry: a scene outside
+// these limits would open as something else (normalised) or show nothing.
+const spec = (type, key) => registry[type].params.find(p => p.key === key);
+const CANVAS = {
+  nm: [spec('pointsource', 'wavelength').min, spec('pointsource', 'wavelength').max],
+  laserNm: [spec('cwlaser', 'wavelength').min, spec('cwlaser', 'wavelength').max],
+  capture: spec('pointsource', 'captureRange').max,
+  f: spec('lens', 'f').max,
+  thickness: [spec('thicklens', 'thickness').min, spec('thicklens', 'thickness').max],
+  radius: spec('thicklens', 'r1').max,
+  // An optic's diameter (its 'optsize'), as the canvas clamps it.
+  diameter: [1, 500],
+};
+
 // A lens as the canvas holds it, or the reasons it cannot: its Lens (the
 // ideal thin lens) or Thick spherical lens, and the note when the canvas
 // realises a singlet a little differently.
 function canvasLens(lens, name) {
   const reasons = [];
-  if (lens.diameterMm < 1 || lens.diameterMm > 500) reasons.push(`${name}’s diameter runs from 1 to 500 mm`);
+  if (lens.diameterMm < CANVAS.diameter[0] || lens.diameterMm > CANVAS.diameter[1]) reasons.push(`${name}’s diameter runs from ${CANVAS.diameter[0]} to ${CANVAS.diameter[1]} mm`);
   if (lens.ideal) {
-    if (Math.abs(lens.efl) > 3000) reasons.push(`${name}’s focal length runs from −3000 to 3000 mm`);
+    if (Math.abs(lens.efl) > CANVAS.f) reasons.push(`${name}’s focal length runs from −${CANVAS.f} to ${CANVAS.f} mm`);
   } else {
-    if (lens.thicknessMm < 0.5 || lens.thicknessMm > 60) reasons.push(`${name}’s centre thickness runs from 0.5 to 60 mm`);
-    if ([lens.r1Mm, lens.r2Mm].some(r => Math.abs(r) > 2000)) reasons.push(`${name}’s radii are limited to ±2000 mm`);
+    if (lens.thicknessMm < CANVAS.thickness[0] || lens.thicknessMm > CANVAS.thickness[1]) reasons.push(`${name}’s centre thickness runs from ${CANVAS.thickness[0]} to ${CANVAS.thickness[1]} mm`);
+    if ([lens.r1Mm, lens.r2Mm].some(r => Math.abs(r) > CANVAS.radius)) reasons.push(`${name}’s radii are limited to ±${CANVAS.radius} mm`);
   }
   const params = lens.ideal
     ? { f: Number(fmt(lens.efl, 6)), dia: lens.diameterMm, transEff: 100 }
@@ -551,15 +572,25 @@ function canvasLens(lens, name) {
   };
 }
 
+// The reasons a source cannot stand where the calculator puts it: its
+// wavelength, and for a point source how far its light carries.
+function sourceReasons(nm, [lo, hi], reach = null) {
+  const reasons = [];
+  if (nm < lo || nm > hi) reasons.push(`its sources run from ${lo} to ${hi} nm`);
+  if (reach !== null && reach > CANVAS.capture) reasons.push(`a point source’s light carries ${CANVAS.capture / 1000} m at most, and the lens is ${fmt(reach / 1000, 3)} m from the object`);
+  return reasons;
+}
+
 // A point source at the object's tip (x, y on the canvas, y downward),
-// aimed to fill a lens of half-diameter `half` centred at xLens.
+// aimed to fill a lens of half-diameter `half` centred at xLens, its light
+// carried a little past the lens.
 function pointSource(nm, x, y, xLens, half) {
   const deg = a => a * 180 / Math.PI, dist = xLens - x;
   const top = Math.atan2(-0.9 * half - y, dist), bottom = Math.atan2(0.9 * half - y, dist);
   return {
     id: 'object', type: 'pointsource', x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100, rot: Number(fmt(deg((top + bottom) / 2), 4)),
     label: 'Object tip', showLabel: true,
-    params: { wavelength: nm, bwMode: 'mono', spread: Math.min(360, Math.max(10, Number(fmt(deg(bottom - top), 3)))), nrays: 11, captureRange: Math.min(100000, Math.max(1000, Math.ceil(1.5 * Math.hypot(dist, y)))) },
+    params: { wavelength: nm, bwMode: 'mono', spread: Math.min(360, Math.max(10, Number(fmt(deg(bottom - top), 3)))), nrays: 11, captureRange: Math.min(CANVAS.capture, Math.max(1000, Math.ceil(1.5 * Math.hypot(dist, y)))) },
   };
 }
 
@@ -575,8 +606,9 @@ const scene = elements => ({ app: 'optics2d', version: 1, beams: [], elements })
 export function imagingCanvasScene(result) {
   const { values: v, lens } = result;
   const c = canvasLens(lens, 'the lens');
-  if (c.reasons.length) return { ok: false, reasons: c.reasons };
   const x = -lens.thicknessMm / 2 - v.objectDistanceMm;
+  const reasons = [...c.reasons, ...sourceReasons(v.wavelengthNm, CANVAS.nm, Math.hypot(x, v.objectHeightMm))];
+  if (reasons.length) return { ok: false, reasons };
   return {
     ok: true, note: c.note,
     scene: scene([pointSource(v.wavelengthNm, x, -v.objectHeightMm, 0, lens.diameterMm / 2),
@@ -589,17 +621,19 @@ export function imagingCanvasScene(result) {
 export function pairCanvasScene(result) {
   const { values: v, l1, l2 } = result;
   const c1 = canvasLens(l1, 'lens 1'), c2 = canvasLens(l2, 'lens 2');
-  const reasons = [...c1.reasons, ...c2.reasons];
+  const beam = v.pairObject === 'infinity';
+  const x = beam ? null : -l1.thicknessMm / 2 - result.objectDistanceMm;
+  const reasons = [...c1.reasons, ...c2.reasons, ...sourceReasons(v.pairWavelengthNm, beam ? CANVAS.laserNm : CANVAS.nm, beam ? null : Math.hypot(x, v.pairHeightMm))];
   if (reasons.length) return { ok: false, reasons };
   const x2 = l1.thicknessMm / 2 + result.gapMm + l2.thicknessMm / 2;
   const notes = [c1.note, c2.note];
   let source;
-  if (v.pairObject === 'infinity') {
+  if (beam) {
     source = laser(v.pairWavelengthNm, -l1.thicknessMm / 2 - Math.max(60, 0.3 * x2), v.beamDiameterMm);
     if (source.params.beamWidth !== v.beamDiameterMm) notes.push(`The canvas’s laser beam is 1 to 60 mm wide, so it is drawn ${fmt(source.params.beamWidth)} mm wide.`);
     if (v.fieldDeg > 0) notes.push('The canvas shows the beam on the axis only.');
   } else {
-    source = pointSource(v.pairWavelengthNm, -l1.thicknessMm / 2 - result.objectDistanceMm, -v.pairHeightMm, 0, l1.diameterMm / 2);
+    source = pointSource(v.pairWavelengthNm, x, -v.pairHeightMm, 0, l1.diameterMm / 2);
   }
   return {
     ok: true, note: notes.filter(Boolean).join(' '),

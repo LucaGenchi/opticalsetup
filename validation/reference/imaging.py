@@ -198,8 +198,57 @@ PCX150 = {**PCX50, "f": 150.0, "orientation": "plano"}
 PCV50 = {"kind": "planoconcave", "spec": "focal", "glass": "nbk7", "f": -50.0, "diameter": 25.4, "centre": 3.0, "orientation": "convex"}
 
 
+def boundary_cases():
+    """The page's refusals, each boundary computed here and approached from
+    both sides, 1e-6 relative inside and outside: the app accepts (1) or
+    refuses (0)."""
+    out = []
+
+    def pair_of(name, accepted, nm, inputs):
+        out.append({"name": f"refusal boundary: {name}: {'accepted' if accepted else 'refused'}", "inputs": inputs,
+                    "expected": {"accepted": 1 if accepted else 0}, "tolerance": {"accepted": 0}, "absolute": True})
+
+    nm, dia = 588.0, 20.0
+    n = n_of("nbk7", nm)
+    # A plano-concave lens needs R = (n - 1)|f| above the clear radius.
+    f_least = dia / 2 / (n - 1)
+    for k, ok in ((1 + 1e-6, True), (1 - 1e-6, False)):
+        pair_of(f"plano-concave N-BK7, D = 20 mm, |f| = (D/2)/(n - 1) times {k:.6f}", ok, nm,
+                {"kind": "one", "wavelengthNm": nm, **page_inputs("lens", {"kind": "planoconcave", "spec": "focal", "glass": "nbk7", "f": -f_least * k, "diameter": dia, "centre": 3.0})})
+    # An equi-concave lens of thickness t: the f whose radius is the clear
+    # radius, from the closed-form power.
+    t = 3.0
+    f_edge = thick("nbk7", nm, -dia / 2, dia / 2, t)["f"]
+    for k, ok in ((1 + 1e-6, True), (1 - 1e-6, False)):
+        pair_of(f"equi-concave N-BK7, D = 20 mm, t = 3 mm, f where R = D/2, times {k:.6f}", ok, nm,
+                {"kind": "one", "wavelengthNm": nm, **page_inputs("lens", {"kind": "biconcave", "spec": "focal", "glass": "nbk7", "f": f_edge * k, "diameter": dia, "centre": t})})
+    # A bi-convex lens by its radii: faces meet at the rim when t is both sags.
+    t_least = sag(20.0, 6.0) + sag(30.0, 6.0)
+    for k, ok in ((1 + 1e-6, True), (1 - 1e-6, False)):
+        pair_of(f"bi-convex R1 = 20, R2 = -30 mm, D = 12 mm, centre thickness both sags times {k:.6f}", ok, nm,
+                {"kind": "one", "wavelengthNm": nm, **page_inputs("lens", {**BICONVEX, "back": 30.0, "centre": t_least * k})})
+    # Afocal spacing needs f1 + f2 > 0.
+    for k, ok in ((1 - 1e-6, True), (1 + 1e-6, False)):
+        pair_of(f"ideal lenses f1 = 50 mm, f2 = -50 mm times {k:.6f}, spaced afocal", ok, 633.0,
+                {"kind": "pair", "pairWavelengthNm": 633.0, "spacing": "afocal", "pairObject": "infinity",
+                 **page_inputs("l1", {"kind": "ideal", "f": 50.0, "diameter": 25.4}), **page_inputs("l2", {"kind": "ideal", "f": -50.0 * k, "diameter": 25.4})})
+    # Two lenses touch at the smaller clear radius when the gap between the
+    # vertices equals lens 1's back sag less lens 2's front sag there.
+    s1 = {"kind": "planoconcave", "spec": "focal", "glass": "nbk7", "f": -50.0, "diameter": 25.4, "centre": 3.0, "orientation": "plano"}
+    s2 = {**PCX150, "orientation": "convex"}
+    r_back = (n_of("nbk7", 633.0) - 1) * 50.0
+    r_front, _, _ = design("nbk7", 633.0, "planoconvex", 150.0, 25.4, 2.0, "convex", "equi")
+    least = sag(r_back, 12.7) - sag(r_front, 12.7)
+    base = {"kind": "pair", "pairWavelengthNm": 633.0, "spacing": "gap", "pairObject": "infinity", **page_inputs("l1", s1), **page_inputs("l2", s2)}
+    out.append({"name": "refusal boundary: plano-concave flat side first then plano-convex curved side first: the least gap", "inputs": {**base, "gapMm": 10.0},
+                "expected": {"minimumGapMm": sig(least)}, "tolerance": {"minimumGapMm": 1e-9}})
+    for k, ok in ((1 + 1e-6, True), (1 - 1e-6, False)):
+        pair_of(f"the same pair at the least gap times {k:.6f}", ok, 633.0, {**base, "gapMm": least * k})
+    return out
+
+
 def cases():
-    out = [
+    out = boundary_cases() + [
         one_case("the example, bi-convex N-BK7 R = +/-20 mm, t = 5 mm, object 50 mm before V1, at 588 nm", 588.0, BICONVEX, 50.0),
         one_case("the example inside F: a virtual, enlarged image", 588.0, BICONVEX, 15.0),
         one_case("the same radii bi-concave", 588.0, BICONCAVE, 50.0),
@@ -240,9 +289,9 @@ MODEL = {
         "S. A. Konijnenberg, A. J. H. Adam and H. P. Urbach, BSc Optics (TU Delft Open, 2021), section 2.6: imaging with a thin lens, Newton's equation, two thin lenses (the image of the first is the object of the second), the thick lens's principal planes",
     ],
     "provenance": "The formulas written from the cited texts; the convex designs and thick-lens data are thick_lens.py's independent closed forms.",
-    "domain": "Eleven single lenses (bi-convex, bi-concave and plano-concave by their radii; plano-convex, best-form bi-convex, plano-concave and equi-concave designed from f; ideal lenses of either sign) in N-BK7, fused silica, N-SF11 and CaF2 from 486 to 3000 nm, with real and virtual images; nine pairs: Keplerian and Galilean expanders and a Galilean reducer spaced afocal, a 4f relay with singlets and with ideal lenses, an afocal pair imaging an object outside the focal plane, and pairs at 100, 30 and 10 mm gaps.",
+    "domain": "The refusal boundaries, each computed here and approached from both sides (a plano-concave and an equi-concave lens whose radius reaches the clear radius, a bi-convex lens whose faces meet at the rim, an afocal pair with f1 + f2 = 0, two lenses touching at their rims, and that least gap itself); eleven single lenses (bi-convex, bi-concave and plano-concave by their radii; plano-convex, best-form bi-convex, plano-concave and equi-concave designed from f; ideal lenses of either sign) in N-BK7, fused silica, N-SF11 and CaF2 from 486 to 3000 nm, with real and virtual images; nine pairs: Keplerian and Galilean expanders and a Galilean reducer spaced afocal, a 4f relay with singlets and with ideal lenses, an afocal pair imaging an object outside the focal plane, and pairs at 100, 30 and 10 mm gaps.",
     "convergence": "Closed forms in double precision; the secant methods to 1e-15.",
-    "tolerance_rationale": "1e-9 relative: two exact methods for the same paraxial quantities, differing only by round-off; expected values stored to 10 significant digits.",
+    "tolerance_rationale": "1e-9 relative: two exact methods for the same paraxial quantities, differing only by round-off; expected values stored to 10 significant digits. The refusal boundaries are approached 1e-6 relative from each side, far beyond that round-off, and must be accepted or refused exactly.",
     "outside_scope": "The page refuses a wavelength outside a glass's fitted range, a focal length of the wrong sign for a convex or concave singlet, radii smaller than the clear radius, faces that cross before the clear diameter, an afocal spacing that would need f1 + f2 <= 0 or overlapping lenses, and a front focal plane of lens 1 that lies after it.",
     "fidelity": "computed",
     "scope": "Paraxial imaging by ideal thin lenses and spherical singlets in air, on the axis, at one wavelength, without apertures or aberrations.",

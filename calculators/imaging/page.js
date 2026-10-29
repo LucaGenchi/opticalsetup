@@ -236,7 +236,7 @@ function pairRows(r) {
     light.push({ group: 'Thin-lens model' }, thin.atInfinity ? ['Final image', 'at infinity'] : mmRow('Final image after lens 2', thin.fromLast));
     if (!thin.atInfinity) light.push(['Magnification', thin.magnification, '', 6]);
   }
-  if (l1.efl > 0) light.push({ group: 'Fourier plane' }, mmRow('Lens 1’s back focal plane, after its V₂', l1.bfl));
+  if (v.pairObject === 'focal' && r.fourierZ !== null) light.push({ group: 'Fourier plane' }, mmRow('Lens 1’s back focal plane, after its V₂', l1.bfl));
   return { 'pair-key': key, 'pair-l1': lensTable(l1, 'Lens 1'), 'pair-l2': lensTable(l2, 'Lens 2'), 'pair-system': system, 'pair-image': light };
 }
 
@@ -246,7 +246,7 @@ function pairNotes(r) {
   if (t?.kind === 'keplerian') out.push(`Keplerian: both lenses converge, the image is inverted (angular magnification ${formatNumber(t.angular, 4)}), and a collimated beam comes to a real focus between them, in lens 1’s back focal plane.`);
   if (t?.kind === 'galilean') out.push(`Galilean: one lens diverges, the image is upright (angular magnification +${formatNumber(t.angular, 4)}), and there is no real focus inside: a collimated beam is never concentrated to a point between the lenses, and the pair is shorter than a Keplerian one of the same magnification.`);
   if (r.values.spacing === 'afocal' && !(r.l1.ideal && r.l2.ideal)) out.push(`Spaced by the thin-lens model, f₁ + f₂ between the lenses’ centres, the gap would be ${mmText(Math.abs(r.thinGapMm - r.gapMm))} ${r.thinGapMm > r.gapMm ? 'too long' : 'too short'}: the principal planes, not the centres, are f₁ + f₂ apart.`);
-  if (r.values.pairObject === 'focal' && r.image && !r.image.atInfinity) out.push(`The 4f relay: the object in lens 1’s front focal plane is imaged into lens 2’s back focal plane with m = −f₂/f₁, and lens 1’s back focal plane between them holds the object’s Fourier transform (its angular spectrum).`);
+  if (r.fourF) out.push(`The 4f relay: the object in lens 1’s front focal plane is imaged into lens 2’s back focal plane with m = −f₂/f₁, and lens 1’s back focal plane between them holds the object’s Fourier transform (its angular spectrum).`);
   if (r.values.pairObject !== 'infinity' && r.image && !r.image.atInfinity && !r.image.real) out.push('The final image is virtual: the light leaving lens 2 diverges as if from it, drawn dashed.');
   if (r.values.pairObject !== 'infinity' && !r.thinImage.atInfinity && !r.image.atInfinity) out.push('The thin-lens model images the same object, a distance before lens 1’s V₁, through thin lenses at the lenses’ centres; its error is the thickness’s effect.');
   const g = r.diagram;

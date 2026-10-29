@@ -2,6 +2,264 @@
  "app": "calculators/imaging/imaging.js: buildLens, computeImaging, computePair",
  "cases": [
   {
+   "absolute": true,
+   "expected": {
+    "accepted": 1
+   },
+   "inputs": {
+    "kind": "one",
+    "lensCentreMm": 3.0,
+    "lensDiameterMm": 20.0,
+    "lensFocalMm": -19.3505483811274,
+    "lensGlass": "nbk7",
+    "lensKind": "planoconcave",
+    "lensSpec": "focal",
+    "wavelengthNm": 588.0
+   },
+   "name": "refusal boundary: plano-concave N-BK7, D = 20 mm, |f| = (D/2)/(n - 1) times 1.000001: accepted",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "accepted": 0
+   },
+   "inputs": {
+    "kind": "one",
+    "lensCentreMm": 3.0,
+    "lensDiameterMm": 20.0,
+    "lensFocalMm": -19.35050968006934,
+    "lensGlass": "nbk7",
+    "lensKind": "planoconcave",
+    "lensSpec": "focal",
+    "wavelengthNm": 588.0
+   },
+   "name": "refusal boundary: plano-concave N-BK7, D = 20 mm, |f| = (D/2)/(n - 1) times 0.999999: refused",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "accepted": 1
+   },
+   "inputs": {
+    "kind": "one",
+    "lensCentreMm": 3.0,
+    "lensDiameterMm": 20.0,
+    "lensFocalMm": -9.20484753203051,
+    "lensGlass": "nbk7",
+    "lensKind": "biconcave",
+    "lensSpec": "focal",
+    "wavelengthNm": 588.0
+   },
+   "name": "refusal boundary: equi-concave N-BK7, D = 20 mm, t = 3 mm, f where R = D/2, times 1.000001: accepted",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "accepted": 0
+   },
+   "inputs": {
+    "kind": "one",
+    "lensCentreMm": 3.0,
+    "lensDiameterMm": 20.0,
+    "lensFocalMm": -9.204829122353855,
+    "lensGlass": "nbk7",
+    "lensKind": "biconcave",
+    "lensSpec": "focal",
+    "wavelengthNm": 588.0
+   },
+   "name": "refusal boundary: equi-concave N-BK7, D = 20 mm, t = 3 mm, f where R = D/2, times 0.999999: refused",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "accepted": 1
+   },
+   "inputs": {
+    "kind": "one",
+    "lensBackRadiusMm": 30.0,
+    "lensCentreMm": 1.5273405856020077,
+    "lensDiameterMm": 12.0,
+    "lensFrontRadiusMm": 20.0,
+    "lensGlass": "nbk7",
+    "lensKind": "biconvex",
+    "lensSpec": "radii",
+    "wavelengthNm": 588.0
+   },
+   "name": "refusal boundary: bi-convex R1 = 20, R2 = -30 mm, D = 12 mm, centre thickness both sags times 1.000001: accepted",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "accepted": 0
+   },
+   "inputs": {
+    "kind": "one",
+    "lensBackRadiusMm": 30.0,
+    "lensCentreMm": 1.5273375309238912,
+    "lensDiameterMm": 12.0,
+    "lensFrontRadiusMm": 20.0,
+    "lensGlass": "nbk7",
+    "lensKind": "biconvex",
+    "lensSpec": "radii",
+    "wavelengthNm": 588.0
+   },
+   "name": "refusal boundary: bi-convex R1 = 20, R2 = -30 mm, D = 12 mm, centre thickness both sags times 0.999999: refused",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "accepted": 1
+   },
+   "inputs": {
+    "kind": "pair",
+    "l1DiameterMm": 25.4,
+    "l1FocalMm": 50.0,
+    "l1Kind": "ideal",
+    "l2DiameterMm": 25.4,
+    "l2FocalMm": -49.99995,
+    "l2Kind": "ideal",
+    "pairObject": "infinity",
+    "pairWavelengthNm": 633.0,
+    "spacing": "afocal"
+   },
+   "name": "refusal boundary: ideal lenses f1 = 50 mm, f2 = -50 mm times 0.999999, spaced afocal: accepted",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "accepted": 0
+   },
+   "inputs": {
+    "kind": "pair",
+    "l1DiameterMm": 25.4,
+    "l1FocalMm": 50.0,
+    "l1Kind": "ideal",
+    "l2DiameterMm": 25.4,
+    "l2FocalMm": -50.000049999999995,
+    "l2Kind": "ideal",
+    "pairObject": "infinity",
+    "pairWavelengthNm": 633.0,
+    "spacing": "afocal"
+   },
+   "name": "refusal boundary: ideal lenses f1 = 50 mm, f2 = -50 mm times 1.000001, spaced afocal: refused",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
+   "expected": {
+    "minimumGapMm": 2.298176642
+   },
+   "inputs": {
+    "gapMm": 10.0,
+    "kind": "pair",
+    "l1CentreMm": 3.0,
+    "l1DiameterMm": 25.4,
+    "l1FocalMm": -50.0,
+    "l1Glass": "nbk7",
+    "l1Kind": "planoconcave",
+    "l1Orientation": "plano",
+    "l1Spec": "focal",
+    "l2DiameterMm": 25.4,
+    "l2EdgeMm": 2.0,
+    "l2FocalMm": 150.0,
+    "l2Glass": "nbk7",
+    "l2Kind": "planoconvex",
+    "l2Orientation": "convex",
+    "l2Spec": "focal",
+    "pairObject": "infinity",
+    "pairWavelengthNm": 633.0,
+    "spacing": "gap"
+   },
+   "name": "refusal boundary: plano-concave flat side first then plano-convex curved side first: the least gap",
+   "tolerance": {
+    "minimumGapMm": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "accepted": 1
+   },
+   "inputs": {
+    "gapMm": 2.2981789401207413,
+    "kind": "pair",
+    "l1CentreMm": 3.0,
+    "l1DiameterMm": 25.4,
+    "l1FocalMm": -50.0,
+    "l1Glass": "nbk7",
+    "l1Kind": "planoconcave",
+    "l1Orientation": "plano",
+    "l1Spec": "focal",
+    "l2DiameterMm": 25.4,
+    "l2EdgeMm": 2.0,
+    "l2FocalMm": 150.0,
+    "l2Glass": "nbk7",
+    "l2Kind": "planoconvex",
+    "l2Orientation": "convex",
+    "l2Spec": "focal",
+    "pairObject": "infinity",
+    "pairWavelengthNm": 633.0,
+    "spacing": "gap"
+   },
+   "name": "refusal boundary: the same pair at the least gap times 1.000001: accepted",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "accepted": 0
+   },
+   "inputs": {
+    "gapMm": 2.2981743437674576,
+    "kind": "pair",
+    "l1CentreMm": 3.0,
+    "l1DiameterMm": 25.4,
+    "l1FocalMm": -50.0,
+    "l1Glass": "nbk7",
+    "l1Kind": "planoconcave",
+    "l1Orientation": "plano",
+    "l1Spec": "focal",
+    "l2DiameterMm": 25.4,
+    "l2EdgeMm": 2.0,
+    "l2FocalMm": 150.0,
+    "l2Glass": "nbk7",
+    "l2Kind": "planoconvex",
+    "l2Orientation": "convex",
+    "l2Spec": "focal",
+    "pairObject": "infinity",
+    "pairWavelengthNm": 633.0,
+    "spacing": "gap"
+   },
+   "name": "refusal boundary: the same pair at the least gap times 0.999999: refused",
+   "tolerance": {
+    "accepted": 0
+   }
+  },
+  {
    "expected": {
     "efl": 20.21130148,
     "fromLast": 31.45369031,
@@ -851,7 +1109,7 @@
   "S. A. Konijnenberg, A. J. H. Adam and H. P. Urbach, BSc Optics (TU Delft Open, 2021), section 2.6: imaging with a thin lens, Newton's equation, two thin lenses (the image of the first is the object of the second), the thick lens's principal planes"
  ],
  "convergence": "Closed forms in double precision; the secant methods to 1e-15.",
- "domain": "Eleven single lenses (bi-convex, bi-concave and plano-concave by their radii; plano-convex, best-form bi-convex, plano-concave and equi-concave designed from f; ideal lenses of either sign) in N-BK7, fused silica, N-SF11 and CaF2 from 486 to 3000 nm, with real and virtual images; nine pairs: Keplerian and Galilean expanders and a Galilean reducer spaced afocal, a 4f relay with singlets and with ideal lenses, an afocal pair imaging an object outside the focal plane, and pairs at 100, 30 and 10 mm gaps.",
+ "domain": "The refusal boundaries, each computed here and approached from both sides (a plano-concave and an equi-concave lens whose radius reaches the clear radius, a bi-convex lens whose faces meet at the rim, an afocal pair with f1 + f2 = 0, two lenses touching at their rims, and that least gap itself); eleven single lenses (bi-convex, bi-concave and plano-concave by their radii; plano-convex, best-form bi-convex, plano-concave and equi-concave designed from f; ideal lenses of either sign) in N-BK7, fused silica, N-SF11 and CaF2 from 486 to 3000 nm, with real and virtual images; nine pairs: Keplerian and Galilean expanders and a Galilean reducer spaced afocal, a 4f relay with singlets and with ideal lenses, an afocal pair imaging an object outside the focal plane, and pairs at 100, 30 and 10 mm gaps.",
  "fidelity": "computed",
  "id": "imaging",
  "outside_scope": "The page refuses a wavelength outside a glass's fitted range, a focal length of the wrong sign for a convex or concave singlet, radii smaller than the clear radius, faces that cross before the clear diameter, an afocal spacing that would need f1 + f2 <= 0 or overlapping lenses, and a front focal plane of lens 1 that lies after it.",
@@ -860,5 +1118,5 @@
  "reference_file": "validation/reference/imaging.py",
  "scope": "Paraxial imaging by ideal thin lenses and spherical singlets in air, on the axis, at one wavelength, without apertures or aberrations.",
  "title": "Imaging with lenses: one lens and its thin-lens model, telescopes, the 4f relay and two lenses at any gap",
- "tolerance_rationale": "1e-9 relative: two exact methods for the same paraxial quantities, differing only by round-off; expected values stored to 10 significant digits."
+ "tolerance_rationale": "1e-9 relative: two exact methods for the same paraxial quantities, differing only by round-off; expected values stored to 10 significant digits. The refusal boundaries are approached 1e-6 relative from each side, far beyond that round-off, and must be accepted or refused exactly."
 }

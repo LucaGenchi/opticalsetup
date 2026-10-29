@@ -225,17 +225,17 @@ const APP = {
   imaging: ({ kind, ...inputs }) => {
     if (kind === 'one') {
       const r = computeImaging({ ...IMAGING_DEFAULTS, ...inputs });
-      if (!r.ok) return r;
+      if (!r.ok) return { accepted: 0 };
       const { image: im, thin } = r;
       return {
-        efl: r.lens.efl, fromLast: im.fromLast, magnification: im.magnification, heightMm: im.heightMm, objectFromH: im.objectFromH,
+        accepted: 1, efl: r.lens.efl, fromLast: im.fromLast, magnification: im.magnification, heightMm: im.heightMm, objectFromH: im.objectFromH,
         imageFromH2: im.imageFromH2, newtonX: im.newtonX, newtonX2: im.newtonX2, thinFromLast: thin.fromLast, thinMagnification: thin.magnification,
       };
     }
     const r = computePair({ ...PAIR_DEFAULTS, ...inputs });
-    if (!r.ok) return r;
+    if (!r.ok) return { accepted: 0 };
     return {
-      gapMm: r.gapMm, thinGapMm: r.thinGapMm, lengthMm: r.lengthMm,
+      accepted: 1, gapMm: r.gapMm, minimumGapMm: r.minimumGapMm, thinGapMm: r.thinGapMm, lengthMm: r.lengthMm,
       angular: r.telescope?.angular, expansion: r.telescope?.expansion, ...r.cardinal, thinEfl: r.thinCardinal?.efl,
       beamDiameterMm: r.beam?.diameterMm, beamAngleDeg: r.beam?.angleDeg, focusFromLast: r.beam?.focusFromLast,
       fromLast: r.image?.fromLast, magnification: r.image?.magnification, thinFromLast: r.thinImage?.fromLast, thinMagnification: r.thinImage?.magnification,

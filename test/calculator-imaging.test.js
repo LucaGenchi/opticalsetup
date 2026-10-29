@@ -126,19 +126,40 @@ test('two lenses: Keplerian and Galilean telescopes, the 4f relay, and a pair at
   const f4 = pair({ pairObject: 'focal' });
   close(f4.image.fromLast, f4.l2.bfl, 1e-12);
   close(f4.fourierZ, f4.l1.thicknessMm + f4.l1.bfl, 1e-15);
+  assert.equal(f4.fourF, true);
+  // At a gap shorter than lens 1's back focal length, lens 2 takes the
+  // light before that plane: no Fourier plane, no 4f.
+  const short = pair({ pairObject: 'focal', spacing: 'gap', gapMm: 10 });
+  assert.ok(short.ok && short.fourierZ === null && short.fourF === false);
+  // Nor in a Galilean reducer, whose F′ of lens 1 lies beyond lens 2.
+  const reducer = pair({ pairObject: 'focal', l1FocalMm: 150, l2Kind: 'biconcave', l2FocalMm: -50 });
+  assert.ok(reducer.ok && reducer.fourierZ === null && !reducer.fourF);
   // A diverging lens 1 has no real front focal plane.
   assert.deepEqual(ids(pair({ l1Kind: 'planoconcave', l1FocalMm: -50, pairObject: 'focal' })), ['pairObject', 'l1Kind']);
   // f₁ + f₂ ≤ 0 cannot be spaced afocal.
   assert.deepEqual(ids(pair({ l2Kind: 'planoconcave', l2FocalMm: -150 })), ['l1FocalMm', 'l2FocalMm', 'l1Kind', 'l2Kind']);
   // At a set gap: lenses that would overlap are refused, with the gap to set.
-  const tight = pair({ spacing: 'gap', gapMm: 0, l1Kind: 'planoconcave', l1FocalMm: -50, l1Orientation: 'plano', l2Orientation: 'convex' });
+  const facing = { spacing: 'gap', l1Kind: 'planoconcave', l1FocalMm: -50, l1Orientation: 'plano', l2Orientation: 'convex' };
+  const tight = pair({ ...facing, gapMm: 0 });
   assert.deepEqual(ids(tight), ['gapMm']);
-  assert.match(tight.errors[0].message, /at least \d/);
+  // The least gap it suggests is rounded up, so entering it works.
+  const suggested = Number(tight.errors[0].message.match(/at least ([\d.]+) mm/)[1]);
+  assert.equal(suggested, 2.299);
+  assert.ok(pair({ ...facing, gapMm: suggested }).ok);
+  close(pair({ ...facing, gapMm: suggested }).minimumGapMm, 2.2981766, 1e-7);
   // Two thin lenses at a gap e: Gullstrand's 1/f = 1/f₁ + 1/f₂ − e/(f₁f₂).
   const thinPair = pair({ spacing: 'gap', gapMm: 30, l1Kind: 'ideal', l2Kind: 'ideal' });
   close(thinPair.cardinal.efl, 1 / (1 / 50 + 1 / 150 - 30 / 7500), 1e-12);
   // A set gap of exactly f₁ + f₂ between ideal lenses is afocal too.
   assert.ok(pair({ spacing: 'gap', gapMm: 200, l1Kind: 'ideal', l2Kind: 'ideal' }).afocal);
+});
+
+test('a tiny image keeps its magnification and its sign', () => {
+  // Two 0.1 mm lenses 100 m apart, the object 1 km away: m = 1/(C d + D)
+  // does not cancel to zero as A + C s′ would.
+  const r = pair({ spacing: 'gap', gapMm: 100000, l1Kind: 'ideal', l1FocalMm: 0.1, l2Kind: 'ideal', l2FocalMm: 0.1, pairObject: 'distance', pairDistanceMm: 1e6 });
+  close(r.image.magnification, 1.0000021e-13, 1e-7);
+  assert.equal(r.image.upright, true);
 });
 
 test('graphs: the image runs off at the focal plane without a line joining its branches', () => {
@@ -195,6 +216,16 @@ test('the canvas: the lens with a point source at the object’s tip, the pair w
   close(p.scene.elements[2].x, k.l1.thicknessMm / 2 + k.gapMm + k.l2.thicknessMm / 2, 1e-5);
   assert.match(p.note, /on the axis only/);
   assert.equal(pairCanvasScene(pair({ pairObject: 'focal' })).scene.elements[0].type, 'pointsource');
+  // What the canvas cannot reproduce is declined with the reason, never
+  // opened as something else: an object beyond a point source's reach, a
+  // wavelength outside its sources'.
+  const far = imagingCanvasScene(one({ objectDistanceMm: 2e5 }));
+  assert.ok(!far.ok && /100 m at most/.test(far.reasons.join()));
+  assert.ok(imagingCanvasScene(one({ objectDistanceMm: 9e4 })).ok);
+  const ir = imagingCanvasScene(one(ideal(40, { wavelengthNm: 20000 })));
+  assert.ok(!ir.ok && /100 to 12000 nm/.test(ir.reasons.join()));
+  assert.ok(!pairCanvasScene(pair({ l1Kind: 'ideal', l2Kind: 'ideal', pairWavelengthNm: 15000 })).ok);
+  assert.ok(!pairCanvasScene(pair({ pairObject: 'distance', pairDistanceMm: 2e5 })).ok);
 });
 
 // The numbers the page text quotes, recomputed. A change to the engine that
