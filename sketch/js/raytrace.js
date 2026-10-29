@@ -111,6 +111,21 @@ const PATH_PHASE_SURFACES = new Set([
 // Arriving samples that differ in direction or position by more than this are
 // not one recombined beam: the reading is then the central ray's.
 const PATH_PHASE_ANGLE_RAD = 1e-5;
+// Colours still diverging make the duration depend on where it is read. Where
+// the GDD that angular dispersion adds over the next metre changes the
+// duration by under 1 %, the reading stands with a note; otherwise it
+// declines.
+const PATH_PHASE_ANGULAR_DISTANCE_MM = 1000;
+const PATH_PHASE_ANGULAR_TOLERANCE = 0.01;
+// −k L (dθ/dω)² for the least-squares slope of angle against frequency.
+function angularGddPerMetre(turns, centerNm) {
+  const n = turns.length;
+  const mw = turns.reduce((sum, t) => sum + t.omega, 0) / n, ma = turns.reduce((sum, t) => sum + t.angle, 0) / n;
+  const sxx = turns.reduce((sum, t) => sum + (t.omega - mw) ** 2, 0);
+  const slope = sxx > 0 ? turns.reduce((sum, t) => sum + (t.omega - mw) * (t.angle - ma), 0) / sxx : 0;
+  const k = 2 * Math.PI / (centerNm * 1e-6);
+  return -k * PATH_PHASE_ANGULAR_DISTANCE_MM * slope * slope;
+}
 // The path GDD counts as resolved when rounding moves it by under 1 %.
 const PATH_PHASE_RESOLVED = 0.01;
 // Where it does not, the duration must agree to 1 % across the uncertainty.
@@ -1213,12 +1228,16 @@ function withPathPhase(hits) {
     const u0 = norm({ x: ref.dx, y: ref.dy });
     let angular = 0, lateral = 0;
     const angles = [], offsets = [];
+    // Each colour's direction against the centre's (signed), to measure the
+    // angular dispersion dθ/dω that is left.
+    const turns = [];
     for (const h of group) {
       const u = norm({ x: h.dx, y: h.dy });
       const offset = { x: ref.arrivalX - h.arrivalX, y: ref.arrivalY - h.arrivalY };
       angular = Math.max(angular, Math.abs(u.x * u0.y - u.y * u0.x));
       lateral = Math.max(lateral, Math.abs(offset.x * u0.y - offset.y * u0.x));
       angles.push(Math.atan2(u.x * u0.y - u.y * u0.x, dot(u, u0)));
+      turns.push({ omega: 2 * Math.PI * 299.792458 / h.wl, angle: angles[angles.length - 1] });
       offsets.push(offset.x * u0.y - offset.y * u0.x);
     }
     // Where the colours land needs only two of them: it stands where the
@@ -1289,6 +1308,10 @@ function withPathPhase(hits) {
         ...(groupDelayDifferenceFs === null ? {} : { groupDelayDifferenceFs }),
         pathPhaseNote,
         pathPhaseAngular: angular > PATH_PHASE_ANGLE_RAD,
+        // The GDD angular dispersion adds over the next metre on the central
+        // ray, −k L (dθ/dω)²: whether the colours still diverging matters
+        // for the duration (see the trains).
+        ...(angular > PATH_PHASE_ANGLE_RAD ? { pathPhaseAngularFs2: angularGddPerMetre(turns, centerNm) } : {}),
         ...(uncertain ? { pathGddUncertaintyFs2: fit.gddNoiseFs2 } : {}),
       });
     }
@@ -1586,35 +1609,42 @@ export function detectorReading(elementId) {
           : pulseDurationAcrossPaths(p, centerHits.map(h => ({
             gddFs2: h.gddFs2, groupDelayDifferenceFs: h.groupDelayDifferenceFs || 0, weight: h.power,
           })));
-      // GDD from the ray paths that rounding leaves uncertain: the duration
-      // stands only if it holds across the whole range. A GDD shift δ also
-      // moves the band edges' group-delay spread by δ(ω_red − ω_blue), which
-      // is what the flat-band model times. For the analytic models (Gaussian,
-      // sech², flat band) the duration depends only on how far the total GDD
-      // (or, flat-band, the spread) is from zero, so its extremes lie at the
-      // two ends or where that crosses zero: those, and the reading itself,
-      // are what is compared. A filtered spectrum's transform has no such
-      // property -- its width can peak inside the range -- and a sampled
-      // field has none either, so for those an uncertain GDD declines.
-      const gddUncertaintyFs2 = Math.max(0, ...sourceHits.map(h => h.pathGddUncertaintyFs2 || 0));
-      if (gddUncertaintyFs2 > 0 && duration?.available !== false) {
-        const spreadPerFs2 = gddGroupDelayDifferenceFs(1, p.spectrumLoNm, p.spectrumHiNm) || 0;
-        const durationAt = shift => {
-          const result = pulseDurationAcrossPaths(p, centerHits.map(h => ({
-            gddFs2: h.gddFs2 + shift, groupDelayDifferenceFs: (h.groupDelayDifferenceFs || 0) + shift * spreadPerFs2, weight: h.power,
-          })));
-          return result?.available === false ? null : result?.durationFs;
-        };
-        const u = gddUncertaintyFs2;
-        const shifts = [-u, u,
+      // The duration if the total GDD were shifted by `shift`. A GDD shift δ
+      // also moves the band edges' group-delay spread by δ(ω_red − ω_blue),
+      // which is what the flat-band model times. For the analytic models
+      // (Gaussian, sech², flat band) the duration depends only on how far the
+      // total GDD (or, flat-band, the spread) is from zero, so over a range of
+      // shifts its extremes lie at the two ends or where that crosses zero:
+      // those, and the reading itself, are what `durationsAcross` returns. A
+      // filtered spectrum's transform has no such property -- its width can
+      // peak inside the range -- and a sampled field has none either, so for
+      // those it returns NaN and the caller declines.
+      const spreadPerFs2 = gddGroupDelayDifferenceFs(1, p.spectrumLoNm, p.spectrumHiNm) || 0;
+      const durationAt = shift => {
+        const result = pulseDurationAcrossPaths(p, centerHits.map(h => ({
+          gddFs2: h.gddFs2 + shift, groupDelayDifferenceFs: (h.groupDelayDifferenceFs || 0) + shift * spreadPerFs2, weight: h.power,
+        })));
+        return result?.available === false ? null : result?.durationFs;
+      };
+      const durationsAcross = (from, to) => {
+        if (filteredRecord || p.field) return [NaN];
+        const shifts = [from, to,
           ...(Number.isFinite(duration.totalGddFs2) ? [-duration.totalGddFs2] : []),
           ...(Number.isFinite(duration.groupDelayDifferenceFs) && spreadPerFs2 ? [-duration.groupDelayDifferenceFs / spreadPerFs2] : []),
-        ].filter(shift => Math.abs(shift) <= u);
-        const durations = filteredRecord || p.field ? [NaN] : [duration.durationFs, ...shifts.map(durationAt)];
-        if (!durations.every(Number.isFinite)
-            || Math.max(...durations) - Math.min(...durations) > PATH_PHASE_DURATION_TOLERANCE * duration.durationFs) {
-          duration = { durationFs: null, available: false, model: pathPhaseUncertain(gddUncertaintyFs2) };
-        }
+        ].filter(shift => shift >= from && shift <= to);
+        return [duration.durationFs, ...shifts.map(durationAt)];
+      };
+      const holdsAcross = (from, to, tolerance) => {
+        const durations = durationsAcross(from, to);
+        return durations.every(Number.isFinite)
+          && Math.max(...durations) - Math.min(...durations) <= tolerance * duration.durationFs;
+      };
+      // GDD from the ray paths that rounding leaves uncertain: the duration
+      // stands only if it holds across the whole range.
+      const gddUncertaintyFs2 = Math.max(0, ...sourceHits.map(h => h.pathGddUncertaintyFs2 || 0));
+      if (gddUncertaintyFs2 > 0 && duration?.available !== false
+          && !holdsAcross(-gddUncertaintyFs2, gddUncertaintyFs2, PATH_PHASE_DURATION_TOLERANCE)) {
+        duration = { durationFs: null, available: false, model: pathPhaseUncertain(gddUncertaintyFs2) };
       }
       // A prism or grating fans the pulse into wavelength samples, and an
       // aperture can then catch only some of them. The duration model assumes
@@ -1628,17 +1658,27 @@ export function detectorReading(elementId) {
       }
       const colourSpread = mergeColourSpreads(sourceHits.map(h => h.colourSpread));
       // Colours still diverging: the duration depends on where it is read.
-      // Where landing places alone show it (no path phase fitted), the GDD
-      // is the rays' own.
-      if (duration?.available !== false && sourceHits.some(h => h.pathPhaseAngular)) {
-        duration = { durationFs: null, available: false, model: PATH_PHASE_ANGULAR };
-      } else if (duration?.available !== false && colourSpread?.parallel === false) {
+      // It stands only if it moves by under 1 % anywhere over the next metre,
+      // where angular dispersion adds up to `angularFs2` of GDD (analytic
+      // models; a filtered or sampled pulse declines). Where landing places
+      // alone show it (no path phase fitted), there is no such GDD to weigh,
+      // so any such family declines, whatever the fitted ones say.
+      const angularFs2 = Math.min(0, ...sourceHits.map(h => h.pathPhaseAngularFs2 ?? 0));
+      let angularNote = null;
+      if (duration?.available !== false && sourceHits.some(h => h.colourSpread?.parallel === false && !h.pathPhaseAngular)) {
         duration = { durationFs: null, available: false, model: COLOURS_DIVERGE };
+      } else if (duration?.available !== false && sourceHits.some(h => h.pathPhaseAngular)) {
+        if (!holdsAcross(angularFs2, 0, PATH_PHASE_ANGULAR_TOLERANCE)) {
+          duration = { durationFs: null, available: false, model: PATH_PHASE_ANGULAR };
+        } else {
+          angularNote = 'on the central ray: the colours leave at slightly different angles, which changes this duration by under 1 % over the next metre';
+        }
       }
       // Say where the GDD came from, and that it is the central ray's when
       // the colours arrive side by side.
       const pathNotes = [...new Set(sourceHits.map(h => h.pathPhaseNote).filter(Boolean))];
-      const pathNote = pathNotes.find(note => note !== 'GDD from the ray paths') || pathNotes[0];
+      const pathNote = angularNote ? `GDD from the ray paths, ${angularNote}`
+        : pathNotes.find(note => note !== 'GDD from the ray paths') || pathNotes[0];
       if (pathNote && duration && duration.available !== false) {
         duration = { ...duration, model: duration.model ? `${duration.model} · ${pathNote}` : pathNote };
       }
