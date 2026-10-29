@@ -75,10 +75,13 @@ fields, so the frequency FWHMs add in quadrature, each field counted as often
 as it appears: `√n Δν` for the nth harmonic (also for linearly chirped
 pulses and Gaussian-statistics CW light) and `√(Δν₁² + Δν₂²)` for SFG and DFG
 (transform-limited pulses or independent CW lines; chirped inputs can mix
-narrower). An OPO's entered output keeps the width the user gives (cavity and
-phase matching set it; it may exceed the pump's, since only `ν_s + ν_i = ν_p`
-is fixed); the partner is `E_p E_out*`, so
-`√(Δν_p² + Δν_out²)`. CARS (`E_p² E_S*`) and CSRS (`E_S² E_p*`) get
+narrower). The OPO is taken as singly resonant: the entered output is the
+resonant wave and keeps the width the user gives (cavity and phase matching
+set it; it may exceed the pump's, since only `ν_s + ν_i = ν_p` is fixed); the
+non-resonant output is estimated as `E_p E_res*`, so `√(Δν_p² + Δν_res²)`.
+This is a stated-regime estimate, not a general oscillator property (doubly
+resonant cavities, high gain and wave correlations also shape the spectra),
+so entering the other output describes a different oscillator. CARS (`E_p² E_S*`) and CSRS (`E_S² E_p*`) get
 `√(2Δν_p² + Δν_S²)` and `√(2Δν_S² + Δν_p²)` for transform-limited pulses and
 an instantaneous response; a narrow Raman line narrows them towards the pump
 and Stokes widths. This is the widest spectrum the inputs allow; a smaller acceptance

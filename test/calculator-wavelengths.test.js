@@ -206,8 +206,9 @@ test('nonlinear conversion bandwidths: harmonics by √n, SFG and DFG in quadrat
   }
   const lines = conversion({ process: 'sfg', bandwidth1Nm: 0, bandwidth2Nm: 0 });
   assert.deepEqual(lines.waves.map(w => w.bandwidthNm), [0, 0, 0]);
-  // OPO: the entered output keeps its width, the partner adds the pump's in
-  // quadrature, whether the entered output is the signal or the idler.
+  // Singly resonant OPO: the entered (resonant) output keeps its width, the
+  // non-resonant one adds the pump's in quadrature, whether the entered
+  // output is the signal or the idler.
   for (const outputNm of [1550, 4000]) {
     const opo = conversion({ process: 'opo', outputNm, pumpBandwidthNm: 2, outputBandwidthNm: 30 });
     const [pump, signal, idler] = opo.waves;

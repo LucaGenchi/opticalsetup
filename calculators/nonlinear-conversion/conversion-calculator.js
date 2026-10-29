@@ -43,9 +43,9 @@ export const CONVERSION_INPUTS = [
     when: 'process', whenValue: ['sfg', 'dfg'], help: 'For DFG it must differ from λ₁.' },
   { id: 'bandwidth2Nm', group: 'waves2', label: 'Bandwidth of λ₂ (FWHM)', unit: 'nm', value: 2, min: 0, max: 10000,
     when: 'process', whenValue: ['sfg', 'dfg'] },
-  { id: 'outputNm', group: 'waves2', label: 'Signal or idler wavelength', unit: 'nm', value: 800, ...SCOPE,
-    when: 'process', whenValue: 'opo', help: 'Either output; it must be longer than the pump. The other is solved.' },
-  { id: 'outputBandwidthNm', group: 'waves2', label: 'Bandwidth of that output (FWHM)', unit: 'nm', value: 1, min: 0, max: 10000,
+  { id: 'outputNm', group: 'waves2', label: 'Resonant output wavelength', unit: 'nm', value: 800, ...SCOPE,
+    when: 'process', whenValue: 'opo', help: 'The signal or idler the cavity resonates; longer than the pump. The other output is solved.' },
+  { id: 'outputBandwidthNm', group: 'waves2', label: 'Bandwidth of the resonant output (FWHM)', unit: 'nm', value: 1, min: 0, max: 10000,
     when: 'process', whenValue: 'opo', help: 'Set by the cavity and phase matching, so enter your own; it may exceed the pump’s. 0 for a single line.' },
   { id: 'stokesNm', group: 'waves2', label: 'Stokes wavelength', unit: 'nm', value: 1030, ...SCOPE,
     when: 'process', whenValue: 'crs', help: 'Longer than the pump. The Coherent Raman calculator also solves from a Raman shift.' },
@@ -61,11 +61,12 @@ const wave = (role, wavelengthNm, generated = false) => ({ role, wavelengthNm, f
 // nm is the FWHM of that curve against wavelength: its half-maximum points
 // sit at c/(ν ∓ Δν/2), so Δλ = cΔν/(ν² − Δν²/4), close to cΔν/ν² = λ²Δν/c
 // for a narrow spectrum and exact for a broad one. A generated field is a
-// product of the input fields (E², E³, E₁E₂, E₁E₂*, E_pE_s* for an OPO
-// partner, E_p²E_S* for CARS, E_S²E_p* for CSRS), so for Gaussian spectra
+// product of the input fields (E², E³, E₁E₂, E₁E₂*, E_pE_res* for the
+// non-resonant output of a singly resonant OPO, E_p²E_S* for CARS, E_S²E_p*
+// for CSRS), so for Gaussian spectra
 // its frequency FWHM adds in quadrature, each field counted as often as it
 // appears: √n Δν for the nth harmonic, √(Δν₁² + Δν₂²) for SFG, DFG and the
-// OPO partner, √(2Δν_p² + Δν_S²) for CARS. Phase matching is taken to accept
+// non-resonant OPO output, √(2Δν_p² + Δν_S²) for CARS. Phase matching is taken to accept
 // the whole spectrum, and the Raman response to be instantaneous.
 // widthTHz inverts widthNm in a form that does not cancel for small Δλ.
 const widthTHz = (nm, bandwidthNm) => 2 * C_NM_THZ * bandwidthNm / (nm * (nm + Math.hypot(nm, bandwidthNm)));
@@ -153,10 +154,12 @@ export function computeConversion(raw) {
   const [signalNm, idlerNm] = [v.outputNm, partnerNm].sort((a, b) => a - b);
   const degenerate = Math.abs(idlerNm - signalNm) <= 1e-9 * idlerNm;
   const widthErrors = [inputWidthError('pumpBandwidthNm', 'Bandwidth of the pump', v.pumpNm, v.pumpBandwidthNm),
-    inputWidthError('outputBandwidthNm', 'Bandwidth of that output', v.outputNm, v.outputBandwidthNm)].filter(Boolean);
+    inputWidthError('outputBandwidthNm', 'Bandwidth of the resonant output', v.outputNm, v.outputBandwidthNm)].filter(Boolean);
   if (widthErrors.length) return { ok: false, errors: widthErrors };
-  // The known output's width is the user's (cavity, phase matching); the
-  // partner is the pump–output difference frequency, E_pE_out*, as in DFG.
+  // A singly resonant OPO: the entered output is the resonant wave, whose
+  // width is the user's (cavity, phase matching). The non-resonant output is
+  // estimated as the pump–resonant difference frequency, E_pE_res*, as in
+  // DFG; entering the other output describes a different oscillator.
   const [wp, wk] = [widthTHz(v.pumpNm, v.pumpBandwidthNm), widthTHz(v.outputNm, v.outputBandwidthNm)];
   const wPartner = Math.hypot(wp, wk);
   const knownIsSignal = v.outputNm <= partnerNm;
