@@ -1361,7 +1361,7 @@ function syncViewControls(detail = getViewportDetail()) {
   const readout = $('zoomReadout');
   if (readout) {
     readout.textContent = `${Math.round(detail.zoom * 100)}% · ${detail.step} mm grid`;
-    readout.title = `Zoom ${Math.round(detail.zoom * 100)}% — grid spacing is ${detail.step} mm`;
+    readout.title = `Zoom ${Math.round(detail.zoom * 100)}% — ${detail.step} mm grid. Wheel to zoom at pointer; drag empty space or Space+drag to pan; Shift+wheel to pan horizontally.`;
   }
   const scaleBarMm = detail.step * 2;
   const scaleBarLine = $('scaleBarLine');

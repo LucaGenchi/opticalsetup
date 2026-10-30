@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { clampZoom, gridDetailForZoom, MICRO_GRID_PITCH, pinchView, snapToGrid, zoomViewAt } from '../sketch/js/viewport.js';
+import { clampZoom, gridDetailForZoom, MICRO_GRID_PITCH, pinchView, snapToGrid, wheelView, zoomViewAt } from '../sketch/js/viewport.js';
 
 test('zoomViewAt keeps the world point under its screen anchor', () => {
   const start = { x: 60, y: 40, z: 1 };
@@ -75,4 +75,40 @@ test('precision snapping stays on a 0.25 mm lattice across the whole deep-zoom r
   // and below the threshold the coarser tiers are untouched
   assert.equal(snapToGrid(13.4, 9.99), 13);
   assert.equal(snapToGrid(13.4, 1), 25);
+});
+
+test('ordinary mouse wheel zooms around the pointer rather than scrolling the canvas', () => {
+  const view = { x: 60, y: 40, z: 1 };
+  const anchor = { x: 210, y: 140 };
+  const world = { x: (anchor.x - view.x) / view.z, y: (anchor.y - view.y) / view.z };
+  const zoomIn = wheelView(view, anchor, { deltaY: -120 });
+  const zoomOut = wheelView(view, anchor, { deltaY: 120 });
+  assert.ok(zoomIn.z > 1);
+  assert.ok(zoomOut.z < 1);
+  assert.ok(Math.abs(zoomIn.x + world.x * zoomIn.z - anchor.x) < 1e-9);
+  assert.ok(Math.abs(zoomIn.y + world.y * zoomIn.z - anchor.y) < 1e-9);
+  assert.deepEqual(view, { x: 60, y: 40, z: 1 }, 'a wheel event cannot mutate the previous view');
+});
+
+test('wheel delta modes and oversized wheel events produce bounded zoom', () => {
+  const view = { x: 0, y: 0, z: 1 };
+  const point = { x: 0, y: 0 };
+  assert.equal(wheelView(view, point, { deltaY: -3, deltaMode: 1 }).z,
+    wheelView(view, point, { deltaY: -48, deltaMode: 0 }).z);
+  assert.equal(wheelView(view, point, { deltaY: -1, deltaMode: 2, viewportHeight: 600 }).z,
+    wheelView(view, point, { deltaY: -300 }).z);
+  assert.ok(wheelView(view, point, { deltaY: -Infinity }).z === 1);
+  assert.equal(wheelView({ x: 0, y: 0, z: 64 }, point, { deltaY: -300 }).z, 64);
+  assert.equal(wheelView({ x: 0, y: 0, z: 0.15 }, point, { deltaY: 300 }).z, 0.15);
+});
+
+test('trackpad pinch still zooms while Shift-wheel and horizontal scroll pan', () => {
+  const view = { x: 60, y: 40, z: 1 };
+  const point = { x: 100, y: 200 };
+  assert.ok(wheelView(view, point, { deltaY: -5, ctrlKey: true }).z > 1);
+  assert.ok(wheelView(view, point, { deltaY: -5, metaKey: true }).z > 1);
+  assert.deepEqual(wheelView(view, point, { deltaY: 20, shiftKey: true }), { x: 40, y: 40, z: 1 });
+  assert.deepEqual(wheelView(view, point, { deltaX: 20 }), { x: 40, y: 40, z: 1 });
+  assert.deepEqual(wheelView(view, point, { deltaX: 5, deltaY: 10, shiftKey: true }),
+    { x: 55, y: 30, z: 1 });
 });
