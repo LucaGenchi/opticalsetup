@@ -27,7 +27,7 @@ import {
 import {
   FINE_GRID_PITCH, TABLE_HOLE_PITCH,
   gridDetailForZoom, pinchView, shouldOpenInspectorAfterSelectionGesture, snapToGrid,
-  VIEW_MAX_ZOOM, VIEW_MIN_ZOOM, zoomViewAt,
+  VIEW_MAX_ZOOM, VIEW_MIN_ZOOM, wheelView, zoomViewAt,
 } from './viewport.js';
 import {
   MAX_TIME_SCALE, MIN_TIME_SCALE, pulsePeriodNs, pulsesReadAsCW,
@@ -2143,16 +2143,12 @@ function bindWheel() {
   if (state.embedMode) return;
   svg.addEventListener('wheel', e => {
     e.preventDefault();
-    const v = state.view;
-    if (e.ctrlKey || e.metaKey) {
-      const r = svg.getBoundingClientRect();
-      const mx = e.clientX - r.left, my = e.clientY - r.top;
-      const factor = Math.exp(-e.deltaY * 0.012);
-      state.view = zoomViewAt(v, { x: mx, y: my }, factor);
-    } else {
-      v.x -= e.deltaX;
-      v.y -= e.deltaY;
-    }
+    const rect = svg.getBoundingClientRect();
+    state.view = wheelView(state.view,
+      { x: e.clientX - rect.left, y: e.clientY - rect.top },
+      { deltaX: e.deltaX, deltaY: e.deltaY, deltaMode: e.deltaMode,
+        ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey,
+        viewportHeight: rect.height });
     renderAll();
   }, { passive: false });
 }

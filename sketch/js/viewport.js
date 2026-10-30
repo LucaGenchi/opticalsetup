@@ -68,6 +68,31 @@ export function zoomViewAt(view, point, factor, min = VIEW_MIN_ZOOM, max = VIEW_
   };
 }
 
+// Ordinary wheel input zooms toward the pointer, like a drawing workbench.
+// Ctrl/Meta-wheel is also how browsers report trackpad pinch; keep that
+// gesture responsive. Horizontal/Shift-wheel remains available for panning.
+export function wheelView(view, anchor, {
+  deltaX = 0, deltaY = 0, deltaMode = 0,
+  ctrlKey = false, metaKey = false, shiftKey = false, viewportHeight = 800,
+} = {}) {
+  // WheelEvent deltas can be pixels, lines or pages depending on the device.
+  const pageHeight = Number.isFinite(viewportHeight) && viewportHeight > 0 ? viewportHeight : 800;
+  const unit = deltaMode === 1 ? 16 : deltaMode === 2 ? pageHeight : 1;
+  const dx = Number.isFinite(deltaX) ? deltaX * unit : 0;
+  const dy = Number.isFinite(deltaY) ? deltaY * unit : 0;
+
+  if (shiftKey && !ctrlKey && !metaKey) {
+    // Vertical Shift-wheel (including mice without horizontal wheels) pans X.
+    return { ...view, x: view.x - (dx || dy), y: view.y - (dx ? dy : 0) };
+  }
+  if (dy === 0) return { ...view, x: view.x - dx };
+
+  const pinch = ctrlKey || metaKey;
+  const limit = pinch ? 60 : 300; // prevent large discrete events jumping many zoom levels
+  const delta = Math.max(-limit, Math.min(limit, dy));
+  return zoomViewAt(view, anchor, Math.exp(-delta * (pinch ? 0.012 : 0.002)));
+}
+
 // Keep the world point below the initial pinch centre below the moving centre.
 // This combines two-finger panning and scaling without accumulating drift.
 export function pinchView(startView, startCenter, startDistance, center, distance, min = VIEW_MIN_ZOOM, max = VIEW_MAX_ZOOM) {
