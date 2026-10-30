@@ -1156,6 +1156,14 @@ function writeParam(el, key, value) {
   if (el.type === 'sclaser') Object.assign(el.params, normalizeSupercontinuumParams(el.params));
 }
 
+// The decimal places of a step such as 0.1, 0.05 or 1e-9. Snapping to a step
+// by multiplying back out leaves binary noise (82 × 0.1 is 8.200000000000001),
+// which the inspector and a saved sketch would then show in full.
+function stepDecimals(step) {
+  const [digits, exponent = 0] = String(step).toLowerCase().split('e');
+  return Math.max(0, (digits.split('.')[1] || '').length - Number(exponent));
+}
+
 function boundedParam(el, key, value) {
   const spec = (registry[el.type]?.params || []).find(param => param.key === key);
   if (!spec || !Number.isFinite(value)) return readParam(el, key);
@@ -1166,8 +1174,24 @@ function boundedParam(el, key, value) {
   const step = Number.isFinite(spec.step) && spec.step > 0 ? spec.step : (spec.type === 'optsize' ? 0.5 : 1);
   let magnitude = negative ? Math.abs(value) : value;
   magnitude = Math.min(hi, Math.max(lo, magnitude));
-  magnitude = Math.round(magnitude / step) * step;
+  magnitude = Number((Math.round(magnitude / step) * step).toFixed(Math.min(100, stepDecimals(step))));
   return negative ? -Math.abs(magnitude) : magnitude;
+}
+
+// The value a tune-knob drag has reached at pointer height `clientY`: one
+// param step per pixelsPerStep of travel from the grab, then clamped and
+// snapped to the step like every direct-manipulation write.
+export function tuneDragValue(drag, clientY) {
+  const spec = drag.tune.param;
+  const step = Number.isFinite(spec.step) && spec.step > 0 ? spec.step : 1;
+  const min = typeof spec.min === 'function' ? spec.min(drag.el.params) : spec.min;
+  const max = typeof spec.max === 'function' ? spec.max(drag.el.params) : spec.max;
+  const rangeSteps = Number.isFinite(min) && Number.isFinite(max)
+    ? Math.max(1, (max - min) / step) : 100;
+  const pixelsPerStep = drag.tune.pixelsPerStep
+    || Math.max(0.2, Math.min(4, 200 / rangeSteps));
+  const steps = Math.round((drag.clientY - clientY) / pixelsPerStep);
+  return boundedParam(drag.el, drag.tune.key, drag.value + steps * step);
 }
 
 // ---------- interactions ----------
@@ -1954,16 +1978,7 @@ function onMove(e) {
     setStatus(labels);
     renderInteraction();
   } else if (drag.mode === 'tune') {
-    const spec = drag.tune.param;
-    const step = Number.isFinite(spec.step) && spec.step > 0 ? spec.step : 1;
-    const min = typeof spec.min === 'function' ? spec.min(drag.el.params) : spec.min;
-    const max = typeof spec.max === 'function' ? spec.max(drag.el.params) : spec.max;
-    const rangeSteps = Number.isFinite(min) && Number.isFinite(max)
-      ? Math.max(1, (max - min) / step) : 100;
-    const pixelsPerStep = drag.tune.pixelsPerStep
-      || Math.max(0.2, Math.min(4, 200 / rangeSteps));
-    const steps = Math.round((drag.clientY - e.clientY) / pixelsPerStep);
-    const next = boundedParam(drag.el, drag.tune.key, drag.value + steps * step);
+    const next = tuneDragValue(drag, e.clientY);
     if (next === readParam(drag.el, drag.tune.key)) return;
     if (!drag.moved) { pushUndo(); drag.moved = true; }
     if (drag.pulseWidthFs !== undefined) drag.el.params.pulseWidthFs = drag.pulseWidthFs;
