@@ -6,6 +6,13 @@
       "scheme": 1,
       "rendererSha256": "f850881482fa310e4dd5d850b41d3571aef9714ddc74986aea39301f1fabc0d8",
       "siteSha256": "923a05895254f2106b25585d97e0b10081147765c7c517cc7dbf05d3e2f9c7f8"
+    },
+    {
+      "version": "v1.1.0",
+      "date": "2026-10-30",
+      "scheme": 1,
+      "rendererSha256": "b72fe452849ff74a5f216fe2cddbcadfc9288cd08929ca4fd8b62daa1ae1a2d3",
+      "siteSha256": "e93fc0ca55fb76b273f045a9e2f281902271788cf063245e9a397febb3d34a3a"
     }
   ]
 }
