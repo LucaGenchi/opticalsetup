@@ -50,9 +50,11 @@ test('the calculators hub finds a page by quantity, acronym or setup', () => {
   const expected = {
     'prism pair': 'dispersion-compensation', confocal: 'point-scanning', shg: 'nonlinear-conversion',
     smf: 'fiber-coupling', mtf: 'lens-design', telescope: 'imaging', srs: 'coherent-raman', gfp: 'fluorescence',
-    sellmeier: 'dispersion', opcpa: 'opa', lensmaker: 'thin-thick-lens', raman: 'coherent-raman',
+    sellmeier: 'dispersion', 'parametric gain': 'opa', lensmaker: 'thin-thick-lens', raman: 'coherent-raman',
   };
   for (const [query, slug] of Object.entries(expected)) assert.equal(top(calc, query)[0], slug, `"${query}" → ${top(calc, query).slice(0, 3)}`);
   assert.deepEqual(new Set(top(calc, 'gdd').slice(0, 2)), new Set(['dispersion', 'dispersion-compensation']));
   assert.deepEqual(top(calc, 'xyzzy'), []);
+  // a case the OPA page lists as not modelled must not send a search there
+  assert.ok(!top(calc, 'nopa').includes('opa') && !top(calc, 'opcpa').includes('opa'));
 });

@@ -224,7 +224,8 @@ export const calculatorCategories = [
 ];
 
 // What people type when they look for a page: acronyms, quantities and the
-// names of the setups each page computes. The hub's search ranks a page by
+// names of the setups each page computes -- never a case its "not modelled"
+// list excludes (no NOPA or OPCPA for the collinear, chirp-free OPA page). The hub's search ranks a page by
 // its title first, then these, then its card text, its summary and its
 // section titles. Every calculator needs some; the build refuses otherwise.
 export const calculatorKeywords = {
@@ -232,7 +233,7 @@ export const calculatorKeywords = {
   'dispersion-compensation': ['pulse compressor', 'prism pair', 'prism compressor', 'four-prism', 'grating pair', 'grating compressor', 'Treacy', 'stretcher', 'Martinez', 'CPA', 'GDD', 'TOD', 'FOD', 'chirp', 'negative dispersion'],
   'fiber-coupling': ['single-mode fiber', 'SMF', 'fibre coupling', 'mode field diameter', 'MFD', 'mode matching', 'LP01', 'V number', 'numerical aperture', 'NA', 'coupling efficiency', 'collimator', 'misalignment', 'overlap integral'],
   'nonlinear-conversion': ['SHG', 'THG', 'SFG', 'DFG', 'OPO', 'CARS', 'CSRS', 'second harmonic', 'third harmonic', 'frequency doubling', 'sum frequency', 'difference frequency', 'signal idler', 'energy conservation', 'wavelength converter', 'photon energy', 'wavenumber'],
-  'opa': ['OPA', 'parametric amplifier', 'parametric gain', 'NOPA', 'OPCPA', 'signal idler', 'seed', 'pump depletion', 'd_eff', 'deff', 'BBO', 'LBO', 'Manley-Rowe'],
+  'opa': ['OPA', 'parametric amplifier', 'parametric gain', 'signal idler', 'seed', 'pump depletion', 'd_eff', 'deff', 'BBO', 'PPKTP', 'Manley-Rowe'],
   'point-scanning': ['resolution', 'lateral resolution', 'axial resolution', 'confocal', 'pinhole', 'Airy unit', 'PSF', 'two-photon', '2P', 'three-photon', 'multiphoton', 'field of view', 'FOV', 'galvo', 'raster scan', 'NA', 'objective'],
   'fluorescence': ['fluorophore', 'fluorescent protein', 'GFP', 'EGFP', 'mCherry', 'FPbase', 'excitation spectrum', 'emission spectrum', 'two-photon', '2P', 'cross section', 'filter', 'dichroic', 'bleed-through', 'crosstalk', 'saturation', 'quantum yield', 'brightness'],
   'coherent-raman': ['CARS', 'CSRS', 'SRS', 'stimulated Raman', 'Raman shift', 'wavenumber', 'pump Stokes', 'vibrational', 'spectral resolution', 'Raman spectrum', 'reference spectra'],
