@@ -996,11 +996,15 @@ function buildPalette() {
     $('paletteEmpty').classList.toggle('is-visible', Boolean(q) && ranked.length === 0);
   });
   // Enter takes the best match, so "/ pbs Enter" places a polarizing BS.
+  // Focus then moves to the canvas: left in the search box, R and Escape
+  // would edit the query instead of rotating or cancelling the placement,
+  // since the canvas shortcuts ignore keys typed into a field.
   search.addEventListener('keydown', event => {
     const first = results.hidden ? null : results.querySelector('.palitem');
     if (event.key !== 'Enter' || !first) return;
     event.preventDefault();
     activate(first);
+    $('canvas').focus({ preventScroll: true });
   });
 }
 

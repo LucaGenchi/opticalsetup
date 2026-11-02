@@ -108,6 +108,22 @@ export function scoreTerm(field, quality) {
   return (FIELD_WEIGHT[field] ?? 0) * quality;
 }
 
+// A query of several words that spells out one whole name or alias
+// ("polarizing beamsplitter") is worth that whole match for every word, on
+// top of the words' own scores. Scored word by word only, the plain
+// beamsplitter would win it: its label matches "beamsplitter" whole and its
+// "non-polarizing" alias matches "polarizing" -- the name the user typed
+// counts for more than words that happen to recur elsewhere.
+function phraseScore(doc, terms) {
+  if (terms.length < 2) return 0;
+  const compact = terms.join('');
+  let best = 0;
+  for (const field of SEARCH_FIELDS) {
+    if (doc.fields[field].some(entry => entry.compact === compact)) best = Math.max(best, scoreTerm(field, MATCH.whole));
+  }
+  return best * terms.length;
+}
+
 // Ranks prepared documents for a query. Returns the matching ones, best
 // first; equal scores keep the caller's order, so the palette's own sequence
 // still decides between two equally good matches. An empty query returns [].
@@ -116,7 +132,7 @@ export function rankSearch(prepared, query) {
   if (!terms.length) return [];
   const results = [];
   prepared.forEach((doc, index) => {
-    let total = 0;
+    let total = phraseScore(doc, terms);
     for (const term of terms) {
       let best = 0;
       for (const field of SEARCH_FIELDS) {
