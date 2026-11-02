@@ -88,7 +88,7 @@ export const etalonDefinition = {
   paletteOrder: 4,
   aliases: [
     'fabry perot', 'fabry–pérot etalon', 'fabry-perot etalon', 'interferometer',
-    'spectral filter cavity', 'free spectral range', 'finesse',
+    'spectral filter cavity', 'free spectral range', 'finesse', 'FP', 'FPI',
   ],
   description: 'Two closely spaced, matched partially reflective coatings. Multi-beam interference gives narrow, periodic high-transmission peaks (the free spectral range) rather than a flat partial reflection — light off-resonance reflects, light at a resonance transmits at up to the coating-limited peak. Rotating the element shifts the resonance wavelength, like tilting a real etalon.',
   size: { w: 10, h: 41 },

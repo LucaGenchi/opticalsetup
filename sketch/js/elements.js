@@ -2996,7 +2996,7 @@ export const registry = {
   // ---------------- Sources ----------------
   cwlaser: {
     label: 'CW Laser', category: 'Sources', paletteOrder: 0, size: { w: 104, h: 38 },
-    aliases: ['laser', 'continuous wave laser', 'cw laser', 'diode laser', 'helium neon', 'he-ne'],
+    aliases: ['laser', 'continuous wave laser', 'cw laser', 'diode laser', 'helium neon', 'he-ne', 'HeNe', 'CW', 'DPSS', 'laser diode'],
     snapPt: { x: 52, y: 0 }, // beam exit aperture
     ...laserHousingGeometry,
     params: [
@@ -3037,7 +3037,7 @@ export const registry = {
 
   pulsedlaser: {
     label: 'Pulsed Laser', category: 'Sources', paletteOrder: 1, size: { w: 104, h: 38 },
-    aliases: ['pulsed laser', 'ultrafast laser', 'femtosecond laser', 'mode-locked laser', 'fs laser', 'ti:sapphire'],
+    aliases: ['pulsed laser', 'ultrafast laser', 'femtosecond laser', 'mode-locked laser', 'fs laser', 'ti:sapphire', 'Ti:Sa', 'ultrashort laser', 'picosecond laser', 'ps laser', 'oscillator'],
     snapPt: { x: 52, y: 0 },
     ...laserHousingGeometry,
     params: [
@@ -3228,6 +3228,7 @@ export const registry = {
   // ---------------- Mirrors ----------------
   mirror: {
     label: 'Mirror', category: 'Mirrors', paletteOrder: 0, size: { w: 14, h: 56 },
+    aliases: ['flat mirror', 'plane mirror', 'fold mirror', 'steering mirror', 'turning mirror', 'dielectric mirror', 'silver mirror', 'gold mirror', 'high reflector', 'HR mirror', 'partial reflector', 'output coupler'],
     params: [
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
       ...reflectivityParams(),
@@ -3290,6 +3291,7 @@ export const registry = {
 
   galvo: {
     label: 'Galvo mirror', category: 'Mirrors', paletteOrder: 4, size: { w: 30, h: 40 },
+    aliases: ['galvanometer', 'galvo scanner', 'scan mirror', 'scanning mirror', 'beam steering', 'resonant scanner'],
     size_: el => {
       const L = Math.max(6, el.params.length || 20);
       const sweep = Math.abs(el.params.commandAngle || 0) + (el.params.scanMode === 'static' ? 0 : Math.abs(el.params.scanAmplitude || 0));
@@ -3359,6 +3361,7 @@ export const registry = {
 
   retroreflector: {
     label: 'Retroreflector', category: 'Mirrors', paletteOrder: 5, size: { w: 24, h: 56 },
+    aliases: ['corner cube', 'roof mirror', 'hollow roof mirror', 'retro', 'delay stage'],
     size_: el => ({ w: el.params.length / 2 + 10, h: el.params.length + 10 }),
     params: [
       { key: 'moveHeading', label: 'Delay-line movement', type: 'section' },
@@ -3413,6 +3416,7 @@ export const registry = {
 
   cmirrorx: {
     label: 'Convex mirror', category: 'Mirrors', paletteOrder: 1, size: { w: 18, h: 56 },
+    aliases: ['convex spherical mirror', 'diverging mirror', 'negative mirror', 'curved mirror'],
     params: [
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
       { key: 'f', label: 'Focal length (mm)', type: 'number', min: 5, max: 2000, step: 5, def: -100, negative: true },
@@ -3430,6 +3434,7 @@ export const registry = {
 
   cmirror: {
     label: 'Concave mirror', category: 'Mirrors', paletteOrder: 2, size: { w: 18, h: 56 },
+    aliases: ['spherical mirror', 'focusing mirror', 'curved mirror', 'positive mirror'],
     params: [
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
       { key: 'f', label: 'Focal length (mm)', type: 'number', min: 5, max: 2000, step: 5, def: 100 },
@@ -3447,6 +3452,7 @@ export const registry = {
 
   oap: {
     label: 'Parabolic mirror', category: 'Mirrors', paletteOrder: 3, size: { w: 40, h: 90 },
+    aliases: ['OAP', 'off-axis parabolic mirror', 'off-axis parabola', 'paraboloid', 'collimating mirror', 'focusing mirror'],
     params: [
       { key: 'length', label: 'Optic size', type: 'optsize', def: 80 },
       { key: 'f', label: 'Focal length (mm)', type: 'number', min: 5, max: 2000, step: 5, def: 50 },
@@ -3511,7 +3517,7 @@ export const registry = {
   lens: {
     label: 'Thin convex lens', category: 'Lenses',
     paletteGroup: 'Ideal lenses', paletteOrder: 0, size: { w: 18, h: 56 },
-    aliases: ['convex lens', 'thin lens', 'positive lens', 'converging lens', 'ideal lens'],
+    aliases: ['convex lens', 'thin lens', 'positive lens', 'converging lens', 'ideal lens', 'focusing lens', 'collimating lens'],
     params: [
       { key: 'f', label: 'Focal length (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 100 },
       { key: 'dia', label: 'Diameter', type: 'optsize', def: 25.4 },
@@ -3752,7 +3758,7 @@ export const registry = {
   lensgroup: {
     label: 'Lens group', category: 'Lenses',
     paletteGroup: 'Real lenses', paletteOrder: 5,
-    aliases: ['achromat', 'achromatic doublet', 'cemented doublet', 'compound lens', 'prescription', 'surface table'],
+    aliases: ['achromat', 'achromatic doublet', 'cemented doublet', 'compound lens', 'prescription', 'surface table', 'doublet', 'triplet', 'multi-element lens'],
     params: [
       { key: 'preset', label: 'Prescription', type: 'select', def: 'doublet', options: PRESET_OPTIONS },
       // Edited by the row editor; a preset overrides it while one is selected.
@@ -3876,7 +3882,7 @@ export const registry = {
   telescope: {
     label: 'Conjugated thin lens pair', category: 'Lenses',
     paletteGroup: 'Ideal lenses', paletteOrder: 2, size: { w: 174, h: 62 },
-    aliases: ['telescope', 'beam expander', 'lens pair', 'relay', '4f', 'afocal', 'keplerian'],
+    aliases: ['telescope', 'beam expander', 'lens pair', 'relay', '4f', 'afocal', 'keplerian', 'beam reducer', '4f system', 'relay lens'],
     size_: el => ({ w: Math.max(30, el.params.f1 + el.params.f2) + 26, h: (el.params.dia || 25.4) + 10 }),
     params: [
       { key: 'f1', label: 'Lens 1 focal (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 100 },
@@ -3924,6 +3930,7 @@ export const registry = {
     // can lie outside the barrel for long-WD designs. It is never drawn — an
     // opaque barrel, not a visible singlet. See objective.js.
     label: 'Objective', category: 'Lenses',
+    aliases: ['microscope objective', 'objective lens', 'microscope', 'high NA', 'NA', 'water immersion', 'oil immersion', 'dry objective', 'air objective'],
     paletteGroup: 'Ideal lenses', paletteOrder: 3, size: { w: 36, h: 40 },
     snapPt: { x: OBJECTIVE_FRONT_X, y: 0 }, // physical sample-facing front tip
     // The objective owns the medium; immersion.js derives the disposable
@@ -4115,6 +4122,7 @@ export const registry = {
   // ---------------- Filters & splitters ----------------
   dichroic: {
     label: 'Dichroic mirror', category: 'Filters & Splitters', paletteOrder: 3, size: { w: 14, h: 56 },
+    aliases: ['dichroic beamsplitter', 'DM', 'hot mirror', 'cold mirror', 'harmonic separator', 'wavelength splitter', 'longpass mirror', 'shortpass mirror'],
     params: [
       { key: 'dtype', label: 'Type', type: 'select', def: 'longpass', options: [['longpass', 'Longpass (transmit long λ)'], ['shortpass', 'Shortpass (transmit short λ)'], ['bandpass', 'Bandpass'], ['notch', 'Band reflector (reflect one band)']] },
       { key: 'cutoff', label: 'Cutoff (nm)', type: 'number', min: 150, max: 8000, step: 5, def: 550, show: p => p.dtype !== 'bandpass' && p.dtype !== 'notch' },
@@ -4139,6 +4147,7 @@ export const registry = {
 
   filter: {
     label: 'Filter', category: 'Filters & Splitters', paletteOrder: 2, size: { w: 12, h: 42 },
+    aliases: ['ND', 'ND filter', 'neutral density', 'attenuator', 'OD', 'bandpass filter', 'longpass filter', 'shortpass filter', 'notch filter', 'colour filter', 'color filter', 'interference filter', 'emission filter', 'excitation filter'],
     params: [
       { key: 'ftype', label: 'Type', type: 'select', def: 'bandpass', options: [['bandpass', 'Bandpass'], ['longpass', 'Longpass'], ['shortpass', 'Shortpass'], ['notch', 'Notch (block one band)'], ['nd', 'Neutral density']] },
       { key: 'cutoff', label: 'Cutoff (nm)', type: 'number', min: 150, max: 8000, step: 5, def: 500, show: p => p.ftype === 'longpass' || p.ftype === 'shortpass' },
@@ -4161,6 +4170,7 @@ export const registry = {
 
   bs: {
     label: 'Beamsplitter', category: 'Filters & Splitters', paletteOrder: 1, size: { w: 30, h: 30 },
+    aliases: ['BS', 'beam splitter', 'non-polarizing beamsplitter', 'NPBS', 'cube beamsplitter', 'plate beamsplitter', 'pellicle', '50:50', 'partial mirror'],
     size_: el => ({ w: (el.params.size || 26) + 4, h: (el.params.size || 26) + 4 }),
     params: [
       { key: 'ratio', label: 'Transmission (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 0.5 },
@@ -4180,6 +4190,7 @@ export const registry = {
   // ---------------- Polarization ----------------
   polarizer: {
     label: 'Polarizer', category: 'Polarization', size: { w: 24, h: 56 },
+    aliases: ['polariser', 'linear polarizer', 'analyzer', 'analyser', 'Glan-Taylor', 'Glan-Thompson', 'wire grid polarizer', 'polarization filter', 'Malus'],
     size_: el => ({ w: 24, h: el.params.length + 6 }),
     params: [
       { key: 'pangle', label: 'Axis angle (°)', type: 'number', min: 0, max: 180, step: 5, def: 0 },
@@ -4203,6 +4214,7 @@ export const registry = {
 
   hwp: {
     label: 'λ/2 waveplate', category: 'Polarization', size: { w: 18, h: 56 },
+    aliases: ['HWP', 'half-wave plate', 'lambda/2', 'λ/2 plate', 'waveplate', 'wave plate', 'retarder', 'polarization rotator', 'polarisation rotator'],
     size_: el => ({ w: 18, h: el.params.length + 6 }),
     params: [
       { key: 'a', label: 'Fast axis (°)', type: 'number', min: 0, max: 180, step: 5, def: 22.5 },
@@ -4221,6 +4233,7 @@ export const registry = {
 
   qwp: {
     label: 'λ/4 waveplate', category: 'Polarization', size: { w: 18, h: 56 },
+    aliases: ['QWP', 'quarter-wave plate', 'lambda/4', 'λ/4 plate', 'waveplate', 'wave plate', 'retarder', 'circular polarization', 'circular polarisation'],
     size_: el => ({ w: 18, h: el.params.length + 6 }),
     params: [
       { key: 'a', label: 'Fast axis (°)', type: 'number', min: 0, max: 180, step: 5, def: 45 },
@@ -4239,6 +4252,7 @@ export const registry = {
 
   pbs: {
     label: 'Polarizing BS', category: 'Polarization', size: { w: 30, h: 30 },
+    aliases: ['PBS', 'polarizing beamsplitter', 'polarizing beam splitter', 'polarising beam splitter', 'PBS cube', 'thin film polarizer', 'TFP'],
     size_: el => ({ w: (el.params.size || 26) + 4, h: (el.params.size || 26) + 4 }),
     params: [{ key: 'size', label: 'Cube size', type: 'optsize', def: 25.4 }],
     svg(el) {
@@ -4255,6 +4269,7 @@ export const registry = {
 
   isolator: {
     label: 'Optical isolator', category: 'Polarization', size: { w: 50, h: 26 },
+    aliases: ['Faraday isolator', 'optical diode', 'back reflection protection'],
     size_: el => ({ w: 50, h: (el.params.aperture || 22) + 4 }),
     params: [{ key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 8, max: 100, step: 2, def: 22 }],
     svg(el) {
@@ -4271,6 +4286,7 @@ export const registry = {
   // ---------------- Dispersive elements ----------------
   grating: {
     label: 'Diffraction grating', category: 'Dispersive elements', size: { w: 16, h: 56 },
+    aliases: ['ruled grating', 'holographic grating', 'blazed grating', 'reflection grating', 'transmission grating', 'grating equation', 'lines per mm'],
     params: [
       { key: 'lines', label: 'Lines / mm', type: 'number', min: 50, max: 3600, step: 50, def: 600 },
       { key: 'orders', label: 'Orders (e.g. -1,0,1)', type: 'text', def: '1' },
@@ -4299,6 +4315,7 @@ export const registry = {
 
   slit: {
     label: 'Slit', category: 'Beam Block', size: { w: 10, h: 56 },
+    aliases: ['aperture', 'iris', 'iris diaphragm', 'diaphragm', 'pinhole', 'aperture stop', 'spatial filter'],
     params: [
       { key: 'gap', label: 'Gap (mm)', type: 'number', min: 0.5, max: 60, step: 0.5, def: 8 },
       { key: 'length', label: 'Plate size', type: 'optsize', def: 50.8 },
@@ -4322,6 +4339,7 @@ export const registry = {
 
   prism: {
     label: 'Prism', category: 'Dispersive elements', size: { w: 44, h: 44 },
+    aliases: ['dispersive prism', 'dispersing prism', 'equilateral prism', 'Brewster prism', 'glass prism'],
     size_: el => { const g = prismGeometry(el); return { w: g.width + 6, h: g.height + 6 }; },
     params: [
       { key: 'apex', label: 'Apex angle (°)', type: 'number', min: 10, max: 80, step: 5, def: 60 },
@@ -4398,6 +4416,7 @@ export const registry = {
 
   diffuser: {
     label: 'Diffuser', category: 'Dispersive elements', size: { w: 14, h: 56 },
+    aliases: ['diffusor', 'ground glass', 'scattering plate', 'engineered diffuser', 'scatterer'],
     scattering: true,
     size_: el => ({ w: 14, h: el.params.length + 6 }),
     params: [
@@ -4421,6 +4440,7 @@ export const registry = {
   // ---------------- Wavefront shaping ----------------
   slm: {
     label: 'SLM', category: 'Wavefront Shaping', size: { w: 30, h: 50 },
+    aliases: ['spatial light modulator', 'LCOS', 'liquid crystal', 'hologram', 'holographic beam shaping', 'beam shaping'],
     scattering: true,
     snapPt: { x: -9, y: 0 }, // active face
     params: [
@@ -4501,6 +4521,7 @@ export const registry = {
   },
   dmd: {
     label: 'DMD', category: 'Wavefront Shaping', size: { w: 30, h: 50 },
+    aliases: ['digital micromirror device', 'micromirror array', 'DLP', 'binary pattern', 'structured illumination'],
     snapPt: { x: -9, y: 0 }, // active face
     params: [
       { key: 'length', label: 'Active size (mm)', type: 'number', min: 10, max: 100, step: 2, def: 40 },
@@ -4531,6 +4552,7 @@ export const registry = {
 
   dm: {
     label: 'Deformable mirror', category: 'Wavefront Shaping', size: { w: 22, h: 56 },
+    aliases: ['DM', 'adaptive optics', 'AO', 'tip tilt', 'tip-tilt mirror', 'defocus', 'wavefront correction'],
     params: [
       { key: 'length', label: 'Aperture (mm)', type: 'number', min: 10, max: 100, step: 2, def: 50 },
       { key: 'f', label: 'Defocus focal length (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 200 },
@@ -4650,6 +4672,7 @@ export const registry = {
 
   eye: {
     label: 'Human eye', category: 'Detectors', readoutKind: 'retina', size: { w: 36, h: 36 },
+    aliases: ['eye', 'retina', 'eye model', 'eye safety', 'cornea', 'vision', 'observer'],
     snapPt: { x: -15, y: 0 }, // pupil
     dataPort: el => ({ x: (el.params.diameter || 30) / 2 + 3, y: 0 }),
     size_: el => ({ w: (el.params.diameter || 30) + 6, h: (el.params.diameter || 30) + 6 }),
@@ -4756,6 +4779,7 @@ export const registry = {
 
   beamdump: {
     label: 'Beam dump', category: 'Beam Block', size: { w: 24, h: 26 },
+    aliases: ['beam stop', 'beam block', 'beam trap', 'absorber', 'dump'],
     size_: el => ({ w: 24, h: (el.params.aperture || 22) + 4 }),
     params: [{ key: 'aperture', label: 'Absorber height (mm)', type: 'number', min: 6, max: 120, step: 2, def: 22 }],
     svg(el) {
@@ -4768,6 +4792,7 @@ export const registry = {
   // ---------------- Modulators & misc ----------------
   aom: {
     label: 'AOM', category: 'Modulators', paletteGroup: 'Acousto-optic', paletteOrder: 0, size: { w: 44, h: 30 },
+    aliases: ['acousto-optic modulator', 'acousto optic modulator', 'Bragg cell', 'RF modulator', 'shutter', 'pulse picker'],
     size_: el => ({ w: 44, h: (el.params.aperture || 26) + 4 }),
     params: [
       { key: 'aperture', label: 'Active aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 26 },
@@ -4909,6 +4934,7 @@ export const registry = {
 
   aotf: {
     label: 'AOTF', category: 'Modulators', paletteGroup: 'Acousto-optic', paletteOrder: 2, size: { w: 56, h: 30 },
+    aliases: ['acousto-optic tunable filter', 'acousto optic tunable filter', 'tunable filter', 'wavelength selector', 'line selector'],
     size_: el => ({ w: 56, h: (el.params.aperture || 26) + 4 }),
     params: [
       { key: 'aperture', label: 'Active aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 26 },
@@ -5108,6 +5134,7 @@ export const registry = {
 
   delayline: {
     label: 'Mechanical delay line', category: 'Pulse Timing', size: { w: 40, h: 32 },
+    aliases: ['delay stage', 'optical delay', 'time delay', 'pump-probe delay', 'translation stage', 'motorized stage', 'path length'],
     params: [
       {
         key: 'moveMode', label: 'Motion', type: 'select', def: 'static',
@@ -5154,7 +5181,7 @@ export const registry = {
 
   pulsecompressor: {
     label: 'Pulse compressor', category: 'Pulse Timing', size: { w: 52, h: 32 },
-    aliases: ['phase compressor', 'chirp compressor', 'gdd compressor', 'gdd compensator', 'chirped mirrors', 'grating compressor'],
+    aliases: ['phase compressor', 'chirp compressor', 'gdd compressor', 'gdd compensator', 'chirped mirrors', 'grating compressor', 'prism compressor', 'dispersion compensation', 'GDD'],
     size_: el => ({ w: 52, h: (el.params.aperture || 24) + 8 }),
     params: [
       {
@@ -5231,6 +5258,7 @@ export const registry = {
   // repetition rate.
   eom: {
     label: 'EOM', category: 'Modulators', paletteGroup: 'Electro-optic', paletteOrder: 3, size: { w: 48, h: 28 },
+    aliases: ['electro-optic modulator', 'electro optic modulator', 'Pockels cell', 'amplitude modulator', 'intensity modulator', 'polarization switch', 'pulse picker'],
     size_: el => ({ w: 48, h: (el.params.aperture || 24) + 4 }),
     params: [
       { key: 'aperture', label: 'Active aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 24 },
@@ -5278,6 +5306,7 @@ export const registry = {
 
   chopper: {
     label: 'Chopper', category: 'Modulators', size: { w: 40, h: 40 },
+    aliases: ['optical chopper', 'chopper wheel', 'beam chopper', 'lock-in', 'shutter'],
     size_: el => ({ w: (el.params.diameter || 40) + 4, h: (el.params.diameter || 40) + 4 }),
     params: [
       { key: 'modulate', label: 'Modulate on/off', type: 'checkbox', def: true },
@@ -5323,6 +5352,7 @@ export const registry = {
 
   crystal: {
     label: 'Crystal', category: 'Nonlinear Optics', size: { w: 36, h: 26 },
+    aliases: ['nonlinear crystal', 'BBO', 'LBO', 'KTP', 'PPLN', 'BiBO', 'SHG crystal', 'doubling crystal', 'frequency doubler', 'second harmonic', 'third harmonic', 'SHG', 'THG', 'SFG', 'sum frequency', 'χ(2)', 'chi2', 'supercontinuum'],
     size_: el => ({ w: 36, h: (el.params.aperture || 22) + 4 }),
     params: [
       { key: 'aperture', label: 'Crystal aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 22 },
@@ -5630,6 +5660,7 @@ export const registry = {
 
   glassrod: {
     label: 'Glass rod', category: 'Dispersive elements', size: { w: 64, h: 14 },
+    aliases: ['glass slab', 'glass block', 'light pipe', 'light guide', 'total internal reflection', 'TIR'],
     params: [
       { key: 'rodlen', label: 'Length (mm)', type: 'number', min: 20, max: 300, step: 5, def: 60 },
       { key: 'dia', label: 'Diameter', type: 'optsize', def: 12.7 },
@@ -5665,6 +5696,7 @@ export const registry = {
     // Horizontal at rot 0: the clear-aperture/long axis runs left-right
     // (local x), the beam crosses it top-to-bottom (local y).
     label: 'Sample', category: 'Specimens', paletteOrder: 1, size: { w: 40, h: 14 },
+    aliases: ['specimen', 'cuvette', 'slide', 'microscope slide', 'coverslip', 'cover glass', 'fluorescent sample', 'fluorescence', 'two-photon', 'SHG', 'THG', 'SFG', 'CARS', 'resin'],
     size_: el => ({ w: (el.params.aperture || 34) + 6, h: Math.max(14, sampleLayers(el.params, 1).total + 8) }),
     params: [{ key: 'aperture', label: 'Sample width (mm)', type: 'number', min: 6, max: 150, step: 2, def: 50, appearance: true }, ...sampleModeParams(SAMPLE_LAYOUTS)],
     svg(el) {
@@ -5694,6 +5726,7 @@ export const registry = {
     // (local y). The mounting brackets grip the specimen's left/right short
     // edges accordingly.
     label: 'Sample on piezo stage', category: 'Specimens', paletteOrder: 2, size: { w: 56, h: 22 },
+    aliases: ['piezo stage', 'scanning stage', 'XYZ stage', 'translation stage', 'sample scanning', 'z scan', '2PP', 'two-photon polymerization', 'direct laser writing'],
     size_: el => ({ w: (el.params.aperture || 50) + 30, h: Math.max(22, sampleLayers(el.params, 1).total + 14) }),
     params: [
       { key: 'pzHeading', label: 'Piezo movement', type: 'section' },
@@ -5747,6 +5780,7 @@ export const registry = {
   // ---------------- Imaging ----------------
   objarrow: {
     label: 'Object', category: 'Sources', size: { w: 20, h: 60 },
+    aliases: ['object arrow', 'imaging object', 'ray fan', 'image formation', 'letter F'],
     size_: el => ({ w: 20, h: 2 * el.params.height + 10 }),
     imaging: true,
     params: [
@@ -5793,6 +5827,7 @@ export const registry = {
 
   probe: {
     label: 'Beam probe (?)', category: 'Annotations', size: { w: 24, h: 24 },
+    aliases: ['beam probe', 'measurement point', 'spectrum label', 'wavelength label', 'power readout'],
     size_: el => {
       const scale = probeScale(el);
       return { w: 24 * scale, h: 24 * scale };
@@ -5909,6 +5944,7 @@ export const registry = {
 
   highlight: {
     label: 'Highlight', category: 'Annotations', background: true,
+    aliases: ['background', 'shade', 'shaded region', 'callout', 'emphasis'],
     size: el => ({ w: el.params.w, h: el.params.h }),
     // Painted in its own layer behind the grid holes, beams, and every other
     // element (see renderHighlights() in canvas.js) — purely a background
@@ -5941,6 +5977,7 @@ export const registry = {
   // ---------------- Custom ----------------
   box: {
     label: 'Custom box', category: 'Custom', size: el => ({ w: el.params.w + 4, h: el.params.h + 4 }),
+    aliases: ['enclosure', 'black box', 'housing', 'custom element', 'generic component', 'module'],
     params: [
       { key: 'text', label: 'Label', type: 'text', def: 'Device' },
       { key: 'w', label: 'Width (mm)', type: 'number', min: 10, max: 400, step: 5, def: 70 },
@@ -5959,6 +5996,7 @@ export const registry = {
 
   blocker: {
     label: 'Invisible blocker', category: 'Beam Block', size: el => ({ w: el.params.w + 4, h: el.params.h + 4 }),
+    aliases: ['hidden absorber', 'invisible beam block', 'hidden beam stop'],
     hideInExport: true,
     params: [
       { key: 'w', label: 'Width (mm)', type: 'number', min: 4, max: 400, step: 2, def: 16 },
@@ -5975,6 +6013,7 @@ export const registry = {
   },
 
   textlabel: {
+    aliases: ['text', 'label', 'caption', 'note', 'markdown', 'link', 'title'],
     label: 'Text label', category: 'Annotations', size: el => {
       const layout = markdownLayout(el.params.text, el.params.fontSize);
       return { w: layout.width, h: layout.height };
@@ -6005,6 +6044,7 @@ export const registry = {
   // or manual beam drawn through one is just layered on top — no binding.
   gascell: {
     label: 'Gas cell', category: 'Lab elements', size: { w: 94, h: 59 },
+    aliases: ['gas chamber', 'pressure cell', 'hollow-core fiber cell', 'HCF'],
     size_: el => ({ w: el.params.length + 4, h: el.params.height + 4 }),
     params: [
       { key: 'length', label: 'Length (mm)', type: 'number', min: 30, max: 250, step: 5, def: 90 },
@@ -6099,6 +6139,7 @@ export const registry = {
 
   window: {
     label: 'Optical window', category: 'Lab elements', size: { w: 12, h: 32 },
+    aliases: ['glass window', 'vacuum window', 'viewport', 'cell window'],
     size_: el => ({ w: 12, h: el.params.length + 6 }),
     params: [
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
@@ -6177,7 +6218,7 @@ registry.sclaser = {
   ...registry.pulsedlaser,
   label: 'Supercontinuum laser',
   paletteOrder: 2,
-  aliases: ['super continuum', 'white laser', 'broadband pulsed source', 'sc laser'],
+  aliases: ['super continuum', 'white laser', 'broadband pulsed source', 'sc laser', 'supercontinuum source', 'white light laser', 'SC'],
   params: [
     { ...P.wavelength, def: 500, show: () => false },
     { key: 'scMin', label: 'Spectrum minimum (nm)', type: 'number', min: 200,

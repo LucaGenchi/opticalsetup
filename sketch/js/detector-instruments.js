@@ -88,11 +88,11 @@ function instrumentDefinition({ label, code, readoutKind, paletteOrder, width, a
 
 Object.assign(registry.camera, {
   paletteOrder: 2, sensorFaceX: -22, description: DESCRIPTIONS.camera,
-  aliases: ['beam camera', 'beam profiler', 'image sensor', 'intensity profile', 'beam diameter', 'object image'],
+  aliases: ['beam camera', 'beam profiler', 'image sensor', 'intensity profile', 'beam diameter', 'object image', 'CCD', 'CMOS', 'sCMOS', 'EMCCD', 'line camera', 'pixel array'],
 });
 Object.assign(registry.detector, {
   paletteOrder: 1, sensorFaceX: -19, description: DESCRIPTIONS.detector,
-  aliases: ['photodiode', 'intensity detector', 'light intensity'],
+  aliases: ['photodiode', 'intensity detector', 'light intensity', 'PD', 'APD', 'avalanche photodiode', 'photocell', 'light sensor'],
 });
 Object.assign(registry.pmt, {
   label: 'Photomultiplier (PMT)', paletteOrder: 3, sensorFaceX: -26, description: DESCRIPTIONS.pmt,
@@ -100,19 +100,19 @@ Object.assign(registry.pmt, {
 });
 registry.powermeter = instrumentDefinition({
   label: 'Power meter', code: 'PWR', readoutKind: 'power', paletteOrder: 4, width: 48, accent: '#86efac',
-  aliases: ['optical power', 'watt meter', 'laser power'],
+  aliases: ['optical power', 'watt meter', 'laser power', 'power sensor', 'thermal sensor', 'thermopile'],
 });
 registry.wavefrontdetector = instrumentDefinition({
   label: 'Wavefront detector', code: 'WF', readoutKind: 'wavefront', paletteOrder: 5, width: 52, accent: '#c4b5fd',
-  aliases: ['wavefront sensor', 'collimation detector', 'divergence detector', 'shack hartmann'],
+  aliases: ['wavefront sensor', 'collimation detector', 'divergence detector', 'shack hartmann', 'Shack-Hartmann', 'SHWFS', 'beam waist', 'Rayleigh range'],
 });
 registry.polarimeter = instrumentDefinition({
   label: 'Polarimeter', code: 'POL', readoutKind: 'polarimeter', paletteOrder: 6, width: 48, accent: '#f9a8d4',
-  aliases: ['stokes', 'polarization detector', 'polarisation detector'],
+  aliases: ['stokes', 'polarization detector', 'polarisation detector', 'polarization analyzer', 'polarisation analyser'],
 });
 registry.spectrometer = instrumentDefinition({
   label: 'Spectrometer', code: 'SPEC', readoutKind: 'spectrometer', paletteOrder: 7, width: 54, accent: '#fde68a',
-  aliases: ['spectrum', 'wavelength detector', 'bandwidth detector'],
+  aliases: ['spectrum', 'wavelength detector', 'bandwidth detector', 'spectrograph', 'OSA', 'optical spectrum analyzer', 'wavemeter'],
 });
 // By default the displayed range tracks the live signal (padded 5 nm past
 // its detected [bandMin, bandMax] on each side, like the beam probe's own
@@ -1158,8 +1158,7 @@ function paletteItem(type) {
   const size = typeof def.size === 'function' ? def.size(element) : (def.size_ ? def.size_(element) : def.size);
   const viewBox = Math.max(size.w, size.h) + 12, meta = getElementMeta(type, element.params);
   const description = def.description || DESCRIPTIONS[type] || meta.description;
-  const search = `${def.label} ${def.category} ${description} ${(def.aliases || []).join(' ')}`.toLowerCase();
-  return `<button type="button" class="palitem" data-type="${type}" data-search="${esc(search)}" title="${esc(description)}"><svg viewBox="${-viewBox / 2} ${-viewBox / 2} ${viewBox} ${viewBox}">${def.svg(element)}</svg><span class="pal-copy"><span class="pal-label">${esc(def.label)}</span><span class="pal-desc">${esc(description)}</span></span><i class="cap-dot ${meta.tier}" title="${esc(meta.status)}"></i></button>`;
+  return `<button type="button" class="palitem" data-type="${type}" title="${esc(description)}"><svg viewBox="${-viewBox / 2} ${-viewBox / 2} ${viewBox} ${viewBox}">${def.svg(element)}</svg><span class="pal-copy"><span class="pal-label">${esc(def.label)}</span><span class="pal-desc">${esc(description)}</span></span><i class="cap-dot ${meta.tier}" title="${esc(meta.status)}"></i></button>`;
 }
 
 async function rebuildGroup(category) {
