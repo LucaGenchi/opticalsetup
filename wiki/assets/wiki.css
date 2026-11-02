@@ -335,6 +335,22 @@ footer.wiki-footer {
 .hub-card .name, .hub-card .desc { overflow-wrap: anywhere; }
 .hub-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
+/* Hub search (sketch/js/hub-search.js), shared by the wiki and calculators
+   hubs. While a search is typed, the ranked cards replace the categories. */
+.hub-search { position: relative; max-width: 560px; margin: 24px 0 4px; }
+.hub-search input {
+  width: 100%; font: inherit; font-size: 15px; padding: 10px 40px 10px 14px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--panel); color: var(--text);
+}
+.hub-search input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+.hub-search kbd {
+  position: absolute; right: 10px; top: 9px; padding: 1px 7px; border: 1px solid var(--border);
+  border-radius: 5px; color: var(--muted); font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.hub-search-status { display: block; min-height: 1.4em; margin-top: 6px; color: var(--muted); font-size: 13px; }
+.hub-search-results { margin: 10px 0 60px; }
+.hub-search[hidden], .hub-search-results[hidden], #hubGroups[hidden], #calcGroups[hidden] { display: none; }
+
 /* Reuse terms beside a community setup's byline: the grant its author
    actually gave, or a note that none was recorded. */
 .community-license { margin: 6px 0 0; color: var(--muted, #5b6472); font-size: 12px; line-height: 1.5; }

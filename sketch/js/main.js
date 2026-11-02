@@ -5,7 +5,7 @@
 import { copyableSelection, pasteObjects } from './clipboard.js';
 import { state, changed, onChange, pushUndo, undo, redo, canUndo, canRedo, findSelected, serialize, parseSketch, replaceScene, loadAutosave, replaceRecoveredAutosave } from './state.js';
 import {
-  registry, categories, createElement, getElementMeta, dataPortDirection, findFreePlacement,
+  registry, categories, createElement, getElementMeta, dataPortDirection, findFreePlacement, DRAWING_TOOL_ALIASES,
 } from './elements.js';
 // Registers the redesigned detector catalogue, the Etalon, and the VIPA
 // element onto `registry`. Imported here, not from pwa.js: service-worker
@@ -847,17 +847,9 @@ const demoScenes = {
 
 // ---------- palette ----------
 const FIBER_TOOLS = [
-  { tool: 'fiber', label: 'Fiber', desc: 'Draw an optical fiber patch cable: click waypoints, double-click to finish.', bare: false,
-    aliases: ['optical fiber', 'fibre', 'optical fibre', 'patch cable', 'patch cord', 'fiber optic', 'connector', 'single-mode fiber', 'SMF', 'hollow-core fiber', 'HCF', 'fiber link'] },
-  { tool: 'barefiber', label: 'Bare fiber', desc: 'Draw a bare optical fiber, without connectors: click waypoints, double-click to finish.', bare: true,
-    aliases: ['bare fibre', 'cleaved fiber', 'no connector', 'flat termination', 'optical fiber', 'fibre', 'fiber tip'] },
+  { tool: 'fiber', label: 'Fiber', desc: 'Draw an optical fiber patch cable: click waypoints, double-click to finish.', bare: false },
+  { tool: 'barefiber', label: 'Bare fiber', desc: 'Draw a bare optical fiber, without connectors: click waypoints, double-click to finish.', bare: true },
 ];
-// Search names for the palette's drawing tools, which have no registry entry
-// to carry aliases of their own.
-const TOOL_ALIASES = {
-  drawarrow: ['draw arrow', 'arrow annotation', 'beam path', 'pointer', 'multi-point arrow'],
-  ...Object.fromEntries(FIBER_TOOLS.map(ft => [ft.tool, ft.aliases])),
-};
 const FIBER_ICON_PTS = [{ x: -15, y: 7 }, { x: 0, y: -7 }, { x: 15, y: 7 }];
 const FIBER_ICON_VB = 44;
 
@@ -981,7 +973,7 @@ function buildPalette() {
       const category = item.closest('.palette-group')?.dataset.category || '';
       const tool = item.dataset.tool;
       const doc = tool
-        ? { id: tool, label: shown.label, aliases: TOOL_ALIASES[tool] || [], group: category, description: shown.description, extra: shown.status }
+        ? { id: tool, label: shown.label, aliases: DRAWING_TOOL_ALIASES[tool] || [], group: category, description: shown.description, extra: shown.status }
         : { ...componentSearchDocument(item.dataset.type, registry[item.dataset.type], shown), label: shown.label };
       documents.set(item, prepareSearchDocument({ ...doc, item }));
     }

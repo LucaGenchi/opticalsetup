@@ -15,8 +15,9 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import katex from 'katex';
-import { calculators, calculatorCategories } from './calculators-content.mjs';
+import { calculators, calculatorCategories, calculatorKeywords } from './calculators-content.mjs';
 import { siteHeader, themeBootScript } from './site-header.mjs';
+import { hubSearchBox } from './hub-search.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SITE_URL = 'https://opticalsetup.com';
@@ -375,6 +376,25 @@ function hubPage() {
   for (const slug of listed) {
     if (!calculators.some(c => c.slug === slug)) throw new Error(`hub category lists ${slug}, which is not a calculator`);
   }
+  for (const calc of calculators) {
+    if (!calculatorKeywords[calc.slug]?.length) throw new Error(`${calc.slug}: give it search keywords in calculatorKeywords`);
+  }
+  for (const slug of Object.keys(calculatorKeywords)) {
+    if (!calculators.some(c => c.slug === slug)) throw new Error(`calculatorKeywords lists ${slug}, which is not a calculator`);
+  }
+  const plain = html => String(html).replace(/<[^>]+>/g, '');
+  const search = hubSearchBox({
+    base, placeholder: 'Search calculators, quantities, acronyms…', label: 'Search the calculators',
+    groupsId: 'calcGroups', resultsClass: 'calc-cards',
+    docs: calculators.map(calc => ({
+      id: calc.slug,
+      label: calc.title,
+      aliases: calculatorKeywords[calc.slug],
+      group: calculatorCategories.find(cat => cat.slugs.includes(calc.slug)).title,
+      description: calc.card,
+      extra: [plain(calc.summary), ...(calc.sections || []).map(section => section.title)],
+    })),
+  });
   return `${head({
     title: 'Calculators — OpticalSetup',
     description: 'Small calculators for optics: set the parameters, read the numbers and graphs, and see the formulas, their limits and how each was checked.',
@@ -387,14 +407,19 @@ ${header(base)}
       <h1>Calculators</h1>
       <p>Each calculator is one physical model on one page: set the parameters, read the results and graphs, then the physics behind them, with every formula, its assumptions, how precisely it is evaluated and the literature it comes from. Material models reuse the canvas’s catalogue and equations; wavelength converters evaluate frequency relations directly. Each page states its scope and reference checks.</p>
     </div>
+    ${search.box}
+    ${search.results}
+    <div id="calcGroups">
     ${calculatorCategories.map(cat => `<section class="calc-category">
       <h2>${esc(cat.title)}</h2>
       <div class="calc-cards">
-        ${cat.slugs.map(slug => calculators.find(c => c.slug === slug)).map(c => `<a class="calc-card" href="${base}/calculators/${c.slug}/"><b>${esc(c.title)}</b><span>${esc(c.card)}</span></a>`).join('\n        ')}
+        ${cat.slugs.map(slug => calculators.find(c => c.slug === slug)).map(c => `<a class="calc-card" href="${base}/calculators/${c.slug}/" data-search-key="${c.slug}"><b>${esc(c.title)}</b><span>${esc(c.card)}</span></a>`).join('\n        ')}
       </div>
     </section>`).join('\n    ')}
+    </div>
   </main>
 ${footer(base)}
+${search.scripts}
 </body>
 </html>
 `;
