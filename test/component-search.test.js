@@ -5,6 +5,7 @@
 // component, and the component they meant has to come first.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { createElement, getElementMeta, registry } from '../sketch/js/elements.js';
 import { DESCRIPTIONS } from '../sketch/js/detector-instruments.js';
@@ -39,6 +40,11 @@ test('match levels: whole name, word, word start, inside, one letter off', () =>
   assert.equal(matchQuality('len', entries('Thin convex lens')), MATCH.prefix);
   assert.equal(matchQuality('splitter', entries('Beamsplitter')), MATCH.inside);
   assert.equal(matchQuality('dicroic', entries('Dichroic mirror')), MATCH.fuzzy);
+  // one deletion or one insertion is forgiven too, two changes are not
+  assert.equal(matchQuality('dichoic', entries('Dichroic mirror')), MATCH.fuzzy);
+  assert.equal(matchQuality('dichrroic', entries('Dichroic mirror')), MATCH.fuzzy);
+  assert.equal(matchQuality('dicrhoic', entries('Dichroic mirror')), MATCH.none);
+  assert.equal(matchQuality('dikroik', entries('Dichroic mirror')), MATCH.none);
 });
 
 test('short words never match inside another word', () => {
@@ -76,6 +82,15 @@ test('the start of a name is enough, and lenses outrank a mention in a descripti
   assert.ok(top('mir').slice(0, 5).every(type => /mirror/i.test(registry[type].label)), `mir → ${top('mir').slice(0, 5)}`);
 });
 
+test('a name typed out in full beats words that recur in other names', () => {
+  // "polarizing" also occurs in the plain beamsplitter's "non-polarizing"
+  // alias, and "beamsplitter" is that one's whole label
+  assert.equal(top('polarizing beamsplitter')[0], 'pbs');
+  assert.equal(top('polarizing beam splitter')[0], 'pbs');
+  assert.equal(top('non-polarizing beamsplitter')[0], 'bs');
+  assert.equal(top('beam splitter')[0], 'bs');
+});
+
 test('a shared acronym lists both components ahead of anything else', () => {
   assert.deepEqual(new Set(top('dm').slice(0, 2)), new Set(['dm', 'dichroic']));
 });
@@ -86,4 +101,11 @@ test('an empty or unknown query lists nothing', () => {
   assert.deepEqual(top('xyzzy'), []);
   // every word must match: a real word next to nonsense finds nothing
   assert.deepEqual(top('mirror xyzzy'), []);
+});
+
+test('Enter in the search hands the keyboard to the canvas, so R and Escape reach the placement', () => {
+  const main = readFileSync(new URL('../sketch/js/main.js', import.meta.url), 'utf8');
+  const handler = main.slice(main.indexOf("search.addEventListener('keydown'")).split('\n  });')[0];
+  assert.ok(handler.includes('activate(first)'), 'Enter places the best match');
+  assert.ok(handler.indexOf("$('canvas').focus(") > handler.indexOf('activate(first)'), 'and then focuses the canvas');
 });

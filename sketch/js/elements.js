@@ -4672,7 +4672,7 @@ export const registry = {
 
   eye: {
     label: 'Human eye', category: 'Detectors', readoutKind: 'retina', size: { w: 36, h: 36 },
-    aliases: ['eye', 'retina', 'eye model', 'eye safety', 'cornea', 'vision', 'observer'],
+    aliases: ['eye', 'retina', 'eye model', 'cornea', 'vision', 'observer'],
     snapPt: { x: -15, y: 0 }, // pupil
     dataPort: el => ({ x: (el.params.diameter || 30) / 2 + 3, y: 0 }),
     size_: el => ({ w: (el.params.diameter || 30) + 6, h: (el.params.diameter || 30) + 6 }),
@@ -5306,7 +5306,7 @@ export const registry = {
 
   chopper: {
     label: 'Chopper', category: 'Modulators', size: { w: 40, h: 40 },
-    aliases: ['optical chopper', 'chopper wheel', 'beam chopper', 'lock-in', 'shutter'],
+    aliases: ['optical chopper', 'chopper wheel', 'beam chopper', 'shutter'],
     size_: el => ({ w: (el.params.diameter || 40) + 4, h: (el.params.diameter || 40) + 4 }),
     params: [
       { key: 'modulate', label: 'Modulate on/off', type: 'checkbox', def: true },
