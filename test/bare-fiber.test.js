@@ -10,7 +10,7 @@ import { manualBeamSVG } from '../sketch/js/util.js';
 import { traceAll } from '../sketch/js/raytrace.js';
 
 const file = (elements = [], beams = []) => JSON.stringify({ app: 'optics2d', version: 1, elements, beams });
-const canvasSource = await readFile(new URL('../sketch/js/canvas.js', import.meta.url), 'utf8');
+import { createDrawnPath } from '../sketch/js/path-types.js';
 const mainSource = await readFile(new URL('../sketch/js/main.js', import.meta.url), 'utf8');
 const indexSource = await readFile(new URL('../sketch/index.html', import.meta.url), 'utf8');
 
@@ -74,8 +74,11 @@ test('the standalone Fiber toolbar button is gone', () => {
 });
 
 test('drawing with the barefiber tool creates a fiber beam with bare set, sharing the same defaults as the connectorized tool', () => {
-  assert.match(canvasSource, /drawing\.kindType === 'fiber' \|\| drawing\.kindType === 'barefiber'/);
-  assert.match(canvasSource, /bare: drawing\.kindType === 'barefiber',/);
+  const points = [{ x: 0, y: 0 }, { x: 50, y: 0 }];
+  const { id: bareId, ...bare } = createDrawnPath('barefiber', points);
+  const { id: patchId, ...patch } = createDrawnPath('fiber', points);
+  assert.equal(bare.bare, true);
+  assert.deepEqual({ ...bare, bare: false }, patch);
 });
 
 test('the beam leaving a fiber starts right at the output connector, not a couple mm downstream', () => {

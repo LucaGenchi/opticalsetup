@@ -9,7 +9,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = new URL('..', import.meta.url).pathname;
-const SOURCE_DIRS = ['sketch/js', 'sketch/css', 'css', 'tools', 'scripts', 'test', 'skills'];
+const SOURCE_DIRS = ['sketch/js', 'sketch/css', 'css', 'tools', 'scripts', 'test', 'skills', 'mcp'];
 const SINGLE_FILES = ['index.html', 'sketch/index.html', 'serve.mjs'];
 const EXTENSIONS = ['.js', '.mjs', '.css', '.html'];
 
