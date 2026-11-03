@@ -323,6 +323,8 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 .palitem:hover { border-color: var(--accent-border); background: var(--surface); transform: translateX(1px); }
 .palitem.is-active { border-color: var(--accent-border); background: var(--accent-soft); }
 .palitem[hidden], .palette-group[hidden] { display: none; }
+#paletteGroups[hidden], .palette-results[hidden] { display: none; }
+.palette-results { padding-top: 4px; }
 .palitem svg { width: 40px; height: 30px; pointer-events: none; }
 .pal-copy { min-width: 0; pointer-events: none; }
 .pal-label { display: block; color: var(--text); font-size: 11px; font-weight: 620; line-height: 1.2; }

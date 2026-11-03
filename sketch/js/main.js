@@ -34,6 +34,7 @@ import { qrSVG } from './qr.js';
 import { buildExampleProposalIssueURL } from './proposal.js';
 import { recommendedTimeScale, nextAutoScale, TIME_SCALES, elementDriveHz } from './timescale.js';
 import { initTheme } from './theme.js';
+import { componentSearchDocument, prepareSearchDocument, rankSearch } from './search.js';
 
 const $ = id => document.getElementById(id);
 
@@ -846,9 +847,17 @@ const demoScenes = {
 
 // ---------- palette ----------
 const FIBER_TOOLS = [
-  { tool: 'fiber', label: 'Fiber', desc: 'Draw an optical fiber patch cable: click waypoints, double-click to finish.', bare: false },
-  { tool: 'barefiber', label: 'Bare fiber', desc: 'Draw a bare optical fiber, without connectors: click waypoints, double-click to finish.', bare: true },
+  { tool: 'fiber', label: 'Fiber', desc: 'Draw an optical fiber patch cable: click waypoints, double-click to finish.', bare: false,
+    aliases: ['optical fiber', 'fibre', 'optical fibre', 'patch cable', 'patch cord', 'fiber optic', 'connector', 'single-mode fiber', 'SMF', 'hollow-core fiber', 'HCF', 'fiber link'] },
+  { tool: 'barefiber', label: 'Bare fiber', desc: 'Draw a bare optical fiber, without connectors: click waypoints, double-click to finish.', bare: true,
+    aliases: ['bare fibre', 'cleaved fiber', 'no connector', 'flat termination', 'optical fiber', 'fibre', 'fiber tip'] },
 ];
+// Search names for the palette's drawing tools, which have no registry entry
+// to carry aliases of their own.
+const TOOL_ALIASES = {
+  drawarrow: ['draw arrow', 'arrow annotation', 'beam path', 'pointer', 'multi-point arrow'],
+  ...Object.fromEntries(FIBER_TOOLS.map(ft => [ft.tool, ft.aliases])),
+};
 const FIBER_ICON_PTS = [{ x: -15, y: 7 }, { x: 0, y: -7 }, { x: 15, y: 7 }];
 const FIBER_ICON_VB = 44;
 
@@ -869,13 +878,8 @@ function buildPalette() {
     const sz = typeof def.size === 'function' ? def.size(el) : (def.size_ ? def.size_(el) : def.size);
     const vb = Math.max(sz.w, sz.h) + 12;
     const meta = getElementMeta(type, el.params);
-    const parameterSearch = (def.params || []).flatMap(param => [
-      param.label,
-      ...(param.options || []).flatMap(option => option),
-    ]).join(' ');
-    const search = `${def.label} ${cat} ${def.paletteGroup || ''} ${meta.status} ${meta.description} ${(def.aliases || []).join(' ')} ${parameterSearch}`.toLowerCase();
     total++;
-    return `<button type="button" class="palitem" data-type="${type}" data-search="${esc(search)}" title="${esc(meta.description)}">
+    return `<button type="button" class="palitem" data-type="${type}" title="${esc(meta.description)}">
       <svg viewBox="${-vb / 2} ${-vb / 2} ${vb} ${vb}">${def.svg(el)}</svg>
       <span class="pal-copy"><span class="pal-label">${esc(def.label)}</span><span class="pal-desc">${esc(meta.description)}</span></span>
       <i class="cap-dot ${meta.tier}" title="${esc(meta.status)}" aria-label="${esc(meta.status)}"></i></button>`;
@@ -901,8 +905,7 @@ function buildPalette() {
       const avb = Math.max(asz.w, asz.h) + 12;
       const ameta = getElementMeta('arrowann', arrowEl.params);
       const adesc = 'Draw a straight or multi-point arrow: click waypoints, double-click to finish.';
-      const asearch = `arrow draw beam annotation ${adesc}`.toLowerCase();
-      h += `<button type="button" class="palitem" data-tool="drawarrow" data-type="arrowann" data-search="${esc(asearch)}" title="${esc(adesc)}">
+      h += `<button type="button" class="palitem" data-tool="drawarrow" data-type="arrowann" title="${esc(adesc)}">
         <svg viewBox="${-avb / 2} ${-avb / 2} ${avb} ${avb}">${arrowDef.svg(arrowEl)}</svg>
         <span class="pal-copy"><span class="pal-label">Arrow</span><span class="pal-desc">${esc(adesc)}</span></span>
         <i class="cap-dot ${ameta.tier}" title="${esc(ameta.status)}" aria-label="${esc(ameta.status)}"></i></button>`;
@@ -916,8 +919,7 @@ function buildPalette() {
       // that same function for a real preview, not a hand-drawn stand-in.
       for (const ft of FIBER_TOOLS) {
         const iconBeam = { kind: 'fiber', pts: FIBER_ICON_PTS, color: '#e8a800', width: 4, bare: ft.bare };
-        const fsearch = `fiber optical patch cable ${ft.bare ? 'bare no connector flat termination' : 'connector'} ${ft.desc}`.toLowerCase();
-        h += `<button type="button" class="palitem" data-tool="${ft.tool}" data-search="${esc(fsearch)}" title="${esc(ft.desc)}">
+        h += `<button type="button" class="palitem" data-tool="${ft.tool}" title="${esc(ft.desc)}">
           <svg viewBox="${-FIBER_ICON_VB / 2} ${-FIBER_ICON_VB / 2} ${FIBER_ICON_VB} ${FIBER_ICON_VB}">${manualBeamSVG(iconBeam)}</svg>
           <span class="pal-copy"><span class="pal-label">${esc(ft.label)}</span><span class="pal-desc">${esc(ft.desc)}</span></span>
           <i class="cap-dot simulated" title="Simulated" aria-label="Simulated"></i></button>`;
@@ -950,43 +952,67 @@ function buildPalette() {
     }
     h += `</div></details>`;
   }
-  h += `</div><div id="paletteEmpty" class="palette-empty">No matching component.<br>Try a device, behavior, or category.</div>`;
+  h += `</div><div id="paletteResults" class="catlist palette-results" aria-label="Search results" hidden></div><div id="paletteEmpty" class="palette-empty">No matching component.<br>Try a device, behavior, or category.</div>`;
   pal.innerHTML = h;
   $('libraryCount').textContent = `${total} components`;
-  pal.querySelectorAll('.palitem').forEach(item => {
-    if (item.dataset.tool === 'drawarrow') {
-      item.addEventListener('click', () => { startBeamTool('beam'); closeMobileSheet('palette'); });
-      return;
+  const activate = item => {
+    if (item.dataset.tool === 'drawarrow') startBeamTool('beam');
+    else if (item.dataset.tool === 'fiber' || item.dataset.tool === 'barefiber') startBeamTool(item.dataset.tool);
+    else startPlacing(item.dataset.type);
+    closeMobileSheet('palette');
+  };
+  pal.querySelectorAll('.palitem').forEach(item => item.addEventListener('click', () => activate(item)));
+
+  // A search lists its matches as one ranked list instead of filtering the
+  // groups in place: the best match for "lens" or "power meter" belongs at
+  // the top, not wherever its category happens to sit. Each item's document
+  // is read from what the palette shows (the detector instruments rewrite
+  // their group after load), so it is made on first search, not here.
+  const groups = $('paletteGroups');
+  const results = $('paletteResults');
+  const documents = new WeakMap();
+  const documentFor = item => {
+    if (!documents.has(item)) {
+      const shown = {
+        label: item.querySelector('.pal-label')?.textContent || '',
+        description: item.querySelector('.pal-desc')?.textContent || '',
+        status: item.querySelector('.cap-dot')?.getAttribute('title') || '',
+      };
+      const category = item.closest('.palette-group')?.dataset.category || '';
+      const tool = item.dataset.tool;
+      const doc = tool
+        ? { id: tool, label: shown.label, aliases: TOOL_ALIASES[tool] || [], group: category, description: shown.description, extra: shown.status }
+        : { ...componentSearchDocument(item.dataset.type, registry[item.dataset.type], shown), label: shown.label };
+      documents.set(item, prepareSearchDocument({ ...doc, item }));
     }
-    if (item.dataset.tool === 'fiber' || item.dataset.tool === 'barefiber') {
-      item.addEventListener('click', () => { startBeamTool(item.dataset.tool); closeMobileSheet('palette'); });
-      return;
-    }
-    item.addEventListener('click', () => { startPlacing(item.dataset.type); closeMobileSheet('palette'); });
+    return documents.get(item);
+  };
+  results.addEventListener('click', event => {
+    const item = event.target.closest('.palitem');
+    if (item) activate(item);
   });
 
   const search = $('paletteSearch');
   search.addEventListener('input', () => {
-    const q = search.value.trim().toLowerCase();
-    const terms = q.split(/\s+/).filter(Boolean);
-    let visible = 0;
-    pal.querySelectorAll('.palette-group').forEach(group => {
-      let groupVisible = 0;
-      group.querySelectorAll('.palitem').forEach(item => {
-        const haystack = item.dataset.search;
-        const words = haystack.split(/[^a-z0-9λ]+/).filter(Boolean);
-        const match = !q || terms.every(term => term.length <= 3 ? words.includes(term) : haystack.includes(term));
-        item.hidden = !match;
-        if (match) { visible++; groupVisible++; }
-      });
-      group.hidden = groupVisible === 0;
-      group.querySelectorAll('.palette-subgroup').forEach(section => {
-        section.hidden = ![...section.querySelectorAll('.palitem')].some(item => !item.hidden);
-      });
-      if (q && groupVisible) group.open = true;
-    });
-    $('libraryCount').textContent = q ? `${visible} of ${total}` : `${total} components`;
-    $('paletteEmpty').classList.toggle('is-visible', visible === 0);
+    const items = [...groups.querySelectorAll('.palitem')];
+    const q = search.value.trim();
+    const ranked = q ? rankSearch(items.map(documentFor), q) : [];
+    results.replaceChildren(...ranked.map(({ doc }) => doc.item.cloneNode(true)));
+    groups.hidden = Boolean(q);
+    results.hidden = !q;
+    $('libraryCount').textContent = q ? `${ranked.length} of ${items.length}` : `${items.length} components`;
+    $('paletteEmpty').classList.toggle('is-visible', Boolean(q) && ranked.length === 0);
+  });
+  // Enter takes the best match, so "/ pbs Enter" places a polarizing BS.
+  // Focus then moves to the canvas: left in the search box, R and Escape
+  // would edit the query instead of rotating or cancelling the placement,
+  // since the canvas shortcuts ignore keys typed into a field.
+  search.addEventListener('keydown', event => {
+    const first = results.hidden ? null : results.querySelector('.palitem');
+    if (event.key !== 'Enter' || !first) return;
+    event.preventDefault();
+    activate(first);
+    $('canvas').focus({ preventScroll: true });
   });
 }
 
