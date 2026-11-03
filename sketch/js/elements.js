@@ -6487,7 +6487,7 @@ const ELEMENT_HELP = {
   probe: 'Reads the light crossing its sampling circle: average power adds up every beam there, as a power meter would; with several beams, the spectrum sums them, the wavelength view lists them, polarization shows each, and the time view says whether their pulses arrive together or how far apart. With one beam it reads that beam; pulse duration reads the nearest beam.',
   arrowann: 'Diagram annotation; does not interact with rays.',
   figureframe: 'Canvas-only export crop. Its border and handles never appear in the exported figure.',
-  textlabel: 'Markdown annotation with headings, lists, emphasis, and code; web and DOI addresses become clickable links. It does not interact with rays.',
+  textlabel: 'Markdown annotation with headings, lists, emphasis, code, and LaTeX formulas between $ signs; web and DOI addresses become clickable links. It does not interact with rays.',
   highlight: 'Background wash for calling out a region of the sketch; always drawn behind rays and elements, never interacts with rays.',
   box: 'Generic enclosure with explicit pass-through or beam-blocking behavior.',
   gascell: 'Diagram-only gas cell housing for gas-filled hollow-core fiber setups; never bends, blocks, or absorbs a ray.',
