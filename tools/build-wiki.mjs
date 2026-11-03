@@ -16,8 +16,9 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import katex from 'katex';
 import {
-  registry, categories, createElement, getSize, paletteOrderedTypes,
+  registry, categories, createElement, getSize, paletteOrderedTypes, DRAWING_TOOL_ALIASES,
 } from '../sketch/js/elements.js';
+import { componentSearchDocument } from '../sketch/js/search.js';
 // Some registry entries (etalon, vipa, and the detector-instruments variants)
 // register themselves as a side effect of import rather than living in
 // elements.js's static object literal — mirror main.js's imports so every
@@ -28,6 +29,7 @@ import '../sketch/js/detector-instruments.js';
 import { wikiEntries, wikiToolSubjects } from './wiki-content.mjs';
 import { calculators } from './calculators-content.mjs';
 import { siteHeader, themeBootScript } from './site-header.mjs';
+import { hubSearchBox } from './hub-search.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SITE_URL = 'https://opticalsetup.com';
@@ -260,8 +262,22 @@ ${(entry.extraDemos || []).map(extra => `
 `;
 }
 
+// The hub's search document for a page: the component's own search names, as
+// the palette ranks them, with the page title and summary in front.
+function hubSearchDocument(entry) {
+  const def = registry[entry.type];
+  if (!def) {
+    return { id: entry.type, label: entry.title, aliases: DRAWING_TOOL_ALIASES[entry.type] || [], group: entry.category, description: entry.summary };
+  }
+  return { ...componentSearchDocument(entry.type, def, { description: entry.summary }), label: entry.title };
+}
+
 function hubHTML(entries) {
   const base = '..';
+  const search = hubSearchBox({
+    base, placeholder: 'Search components, acronyms, effects…', label: 'Search the encyclopedia',
+    groupsId: 'hubGroups', resultsClass: 'hub-grid', docs: entries.map(hubSearchDocument),
+  });
   const byCategory = new Map();
   for (const e of entries) {
     if (!byCategory.has(e.category)) byCategory.set(e.category, []);
@@ -296,14 +312,16 @@ ${header(base)}
         <h1>The optics encyclopedia behind the canvas</h1>
         <p>Real-world physics and formulas for each component, paired with exactly how OpticalSetup models it — including where the simulation simplifies reality. Open any page straight into the live canvas.</p>
       </div>
-      <div class="hub-groups">
+      ${search.box}
+      ${search.results}
+      <div class="hub-groups" id="hubGroups">
         ${cats.map(cat => `
         <div class="hub-group" id="${cat.toLowerCase().replace(/[^a-z0-9]+/g, '-')}">
           <h2>${esc(cat)}</h2>
           ${subgroupedRuns(inPaletteOrder(byCategory.get(cat), cat)).map(run => `
             ${run.group ? `<h3 class="hub-sub">${esc(run.group)}</h3>` : ''}
             <div class="hub-grid">
-              ${run.entries.map(e => `<a class="hub-card" href="${base}/wiki/${e.type}/">
+              ${run.entries.map(e => `<a class="hub-card" href="${base}/wiki/${e.type}/" data-search-key="${e.type}">
                 <span class="ic">${iconSVG(e.type)}</span>
                 <span class="info"><span class="name">${esc(e.title)}</span><span class="desc">${esc(taglineOf(e))}</span></span>
               </a>`).join('')}
@@ -313,6 +331,7 @@ ${header(base)}
     </div>
   </div>
   <footer class="wiki-footer">Explore every component in the encyclopedia, or <a href="${base}/sketch/">open the full component library in the canvas</a> to see everything available today.</footer>
+${search.scripts}
 </body>
 </html>
 `;

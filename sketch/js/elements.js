@@ -6590,6 +6590,16 @@ export function getElementMeta(type, params = {}, context = {}) {
   };
 }
 
+// Search names for the drawing tools -- the arrow and the two fibers -- which
+// have no registry entry to carry aliases of their own. The palette and the
+// wiki hub both read them here, keyed by palette tool (the wiki pages of the
+// fibers share those keys).
+export const DRAWING_TOOL_ALIASES = {
+  drawarrow: ['draw arrow', 'arrow annotation', 'beam path', 'pointer', 'multi-point arrow'],
+  fiber: ['optical fiber', 'fibre', 'optical fibre', 'patch cable', 'patch cord', 'fiber optic', 'connector', 'single-mode fiber', 'SMF', 'hollow-core fiber', 'HCF', 'fiber link'],
+  barefiber: ['bare fibre', 'cleaved fiber', 'no connector', 'flat termination', 'optical fiber', 'fibre', 'fiber tip'],
+};
+
 export const categories = [
   'Annotations',
   'Sources',
