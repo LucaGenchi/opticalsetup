@@ -1290,7 +1290,7 @@ export function beginTextEdit(el = findSelected()) {
   wrapper.setAttribute('aria-label', 'Edit Markdown text annotation');
   wrapper.innerHTML = `<div class="canvas-text-editor-head"><span>Markdown text</span><button type="button">Done</button></div>` +
     `<textarea aria-label="Markdown text" spellcheck="true"></textarea>` +
-    `<div class="canvas-text-editor-help"><span><b>**bold**</b> · <i>*italic*</i> · # heading · - list · [link](https://…)</span><span>⌘↵ done · Esc cancel</span></div>`;
+    `<div class="canvas-text-editor-help"><span><b>**bold**</b> · <i>*italic*</i> · # heading · - list · [link](https://…) · $x^2$ math</span><span>⌘↵ done · Esc cancel</span></div>`;
   svg.parentElement.appendChild(wrapper);
   const textarea = wrapper.querySelector('textarea');
   const done = wrapper.querySelector('button');
