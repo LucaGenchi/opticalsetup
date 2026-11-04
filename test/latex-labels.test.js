@@ -87,6 +87,62 @@ test('a formula outranks emphasis, and a code span outranks a formula', () => {
   assert.equal(mathText(parseInlineMarkdown('`$HOME` and `$x$`')), '');
 });
 
+test('a code span after a price keeps its dollar signs', () => {
+  const tokens = parseInlineMarkdown('Costs $5 and `$x$`');
+  assert.deepEqual(tokens.map(({ text, code }) => ({ text, code: !!code })), [
+    { text: 'Costs $5 and ', code: false },
+    { text: '$x$', code: true },
+  ]);
+  assert.equal(mathText(tokens), '');
+});
+
+test('emphasis and links around a formula keep their style, and the formula renders', () => {
+  const bold = parseInlineMarkdown('**$x$**');
+  assert.ok(bold.every(token => token.math && token.bold), 'a bold formula, with no asterisks left over');
+  assert.equal(mathText(bold), 'x');
+
+  const link = parseInlineMarkdown('[value $x$](https://example.com)');
+  assert.ok(link.every(token => token.href === 'https://example.com'), 'caption text and formula both link');
+  assert.equal(mathText(link), 'x');
+  assert.doesNotMatch(link.map(token => token.text).join(''), /[[\]()]/);
+  assert.match(markdownTextSVG('[value $x$](https://example.com)', { fontSize: 14 }), /<a href="https:\/\/example\.com"[^>]*><tspan[^>]*font-style="italic"[^>]*>x<\/tspan><\/a>/);
+
+  const emphasis = parseInlineMarkdown('*phase $\\sin x$ shift*');
+  assert.equal(emphasis[0].text, 'phase ');
+  assert.ok(emphasis[0].italic);
+  assert.equal(emphasis.find(token => token.text === 'sin').italic, false, 'a function name stays upright inside emphasis');
+  assert.equal(emphasis.at(-1).text, ' shift');
+});
+
+test('a formula nested past the parser budget is shown as typed instead of overflowing the stack', () => {
+  const deep = [
+    `$${'{'.repeat(2000)}x$`,
+    `$${'{'.repeat(2000)}x${'}'.repeat(2000)}$`,
+    `$${'\\frac'.repeat(3000)}ab$`,
+    `$${'\\sqrt'.repeat(3000)}x$`,
+    `$${'\\left'.repeat(5000)}$`,
+    `$${'x^{'.repeat(3000)}$`,
+    `**$${'{'.repeat(2000)}x$**`,
+  ];
+  for (const text of deep) {
+    const label = text.slice(0, 12);
+    const tokens = parseInlineMarkdown(text);
+    assert.equal(mathText(tokens), '', label);
+    assert.equal(tokens.map(token => token.text).join(''), text.replace(/^\*\*|\*\*$/g, ''), `${label} stays as typed`);
+    const svg = markdownTextSVG(text, { fontSize: 14 });
+    assert.doesNotMatch(svg, /NaN|Infinity|undefined/, label);
+    const element = createElement('textlabel', 0, 0);
+    element.params.text = text;
+    const bounds = getVisualBounds(element);
+    assert.ok([bounds.x0, bounds.x1, bounds.y0, bounds.y1].every(Number.isFinite), label);
+  }
+  assert.equal(texRuns('{'.repeat(100) + 'x'), null);
+  // Nesting a real formula might use still renders.
+  assert.ok(texRuns(`${'{'.repeat(12)}x${'}'.repeat(12)}`).length > 0);
+  assert.ok(texRuns(`${'x^{'.repeat(12)}y${'}'.repeat(12)}`).length > 0);
+  assert.ok(texRuns(`${'\\frac{1}{'.repeat(12)}x${'}'.repeat(12)}`).length > 0);
+});
+
 test('prices stay plain text, an escaped dollar is literal, and formulas still open after them', () => {
   assert.deepEqual(parseInlineMarkdown('Costs $5 and $10.'), [{ text: 'Costs $5 and $10.', href: null }]);
   assert.deepEqual(parseInlineMarkdown('The \\$ sign'), [{ text: 'The $ sign', href: null }]);

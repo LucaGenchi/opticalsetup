@@ -10,12 +10,15 @@
 import { esc, linkifyText } from './util.js';
 import { texRuns } from './tex.js';
 
-const INLINE_TOKEN = /(\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|\*\*([^*\n]+)\*\*|__([^_\n]+)__|~~([^~\n]+)~~|`([^`\n]+)`|\*([^*\n]+)\*|_([^_\n]+)_)/gi;
+// Links, strong, strike-through and emphasis. This runs over a copy of the
+// line with its code spans and formulas masked out, so a * or _ inside one
+// never pairs with one outside it -- `$a_1 + b_1$` is math, not italics --
+// while a wrapper around one keeps its style: **$x$** is a bold formula.
+const INLINE_TOKEN = /(\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|\*\*([^*\n]+)\*\*|__([^_\n]+)__|~~([^~\n]+)~~|\*([^*\n]+)\*|_([^_\n]+)_)/gi;
 
-// A formula outranks emphasis -- `$a_1 + b_1$` is math, not italics -- but
-// not a code span, so `$HOME` between backticks stays code. Code spans match
-// here only so the scan steps over them.
-const MATH_OR_CODE = /`[^`\n]+`|(\$\$?)((?:\\.|[^\\$\n])+?)\1/g;
+const CODE_SPAN = /`([^`\n]+)`/g;
+const FORMULA = /(\$\$?)((?:\\.|[^\\$\n])+?)\1/g;
+const MASK = '\0';
 
 // Math rides in the serif faces a LaTeX reader expects; \text{} keeps the
 // label's own font.
@@ -46,52 +49,100 @@ function looksLikeMath(body, before, after) {
   return body.length > 0 && !/^\s|\s$/.test(body) && before !== '\\' && !/\d/.test(after);
 }
 
-export function parseInlineMarkdown(value) {
-  const text = String(value ?? '');
-  const tokens = [];
-  const pattern = new RegExp(MATH_OR_CODE);
-  let cursor = 0;
+// The formulas in text[from, to), added to `spans` in order.
+function findFormulas(text, from, to, spans) {
+  const segment = text.slice(from, to);
+  const pattern = new RegExp(FORMULA);
   let match;
-  while ((match = pattern.exec(text))) {
-    if (!match[1]) continue;
+  while ((match = pattern.exec(segment))) {
     const display = match[1].length === 2;
     const body = match[2];
     const accepted = display
       ? body.trim().length > 0
-      : looksLikeMath(body, text[match.index - 1] ?? '', text[pattern.lastIndex] ?? '');
-    if (!accepted) {
+      : looksLikeMath(body, segment[match.index - 1] ?? '', segment[pattern.lastIndex] ?? '');
+    if (accepted) {
+      spans.push({ start: from + match.index, end: from + pattern.lastIndex, body, display });
+    } else {
       // Not a formula: rescan from the next character, so a later $ can
       // still open one ("costs $5, see $x$").
       pattern.lastIndex = match.index + 1;
-      continue;
     }
-    if (match.index > cursor) parseInlineText(tokens, text.slice(cursor, match.index));
-    const measure = run => tokenWidth(run, 1);
-    for (const run of texRuns(body, { display, measure })) tokens.push({ ...run, math: true });
-    cursor = pattern.lastIndex;
   }
-  if (cursor < text.length || !tokens.length) parseInlineText(tokens, text.slice(cursor));
-  return tokens;
 }
 
-function parseInlineText(tokens, text) {
+// A line's code spans and formulas, in order. A complete code span is code
+// whatever it holds, so dollar signs pair only in the text between code
+// spans: in "Costs $5 and `$x$`" the price never reaches into the code.
+function protectedSpans(text) {
+  const spans = [];
   let cursor = 0;
-  for (const match of text.matchAll(INLINE_TOKEN)) {
-    if (match.index > cursor) appendPlain(tokens, text.slice(cursor, match.index));
-    if (match[2] !== undefined) {
-      appendToken(tokens, { text: match[2], href: match[3] });
-    } else if (match[4] !== undefined || match[5] !== undefined) {
-      appendPlain(tokens, match[4] ?? match[5], { bold: true });
-    } else if (match[6] !== undefined) {
-      appendPlain(tokens, match[6], { strike: true });
-    } else if (match[7] !== undefined) {
-      appendToken(tokens, { text: match[7], code: true });
-    } else {
-      appendPlain(tokens, match[8] ?? match[9], { italic: true });
-    }
+  for (const match of text.matchAll(CODE_SPAN)) {
+    findFormulas(text, cursor, match.index, spans);
+    spans.push({ start: match.index, end: match.index + match[0].length, code: match[1] });
     cursor = match.index + match[0].length;
   }
-  if (cursor < text.length || !tokens.length) appendPlain(tokens, text.slice(cursor));
+  findFormulas(text, cursor, text.length, spans);
+  return spans;
+}
+
+// A code span or formula, in the style of the wrapper around it. A formula
+// keeps its own italics -- digits and function names stay upright inside
+// *emphasis* -- but takes bold, strike-through and a link. One nested too
+// deeply to lay out is shown as typed.
+function appendSpan(tokens, span, source, style) {
+  if (span.code !== undefined) {
+    appendToken(tokens, { text: span.code, ...style, code: true });
+    return;
+  }
+  const { italic, ...mathStyle } = style;
+  const measure = run => tokenWidth({ ...run, ...mathStyle }, 1);
+  const runs = texRuns(span.body, { display: span.display, measure });
+  if (!runs) appendToken(tokens, { text: source, href: null, ...style });
+  else for (const run of runs) tokens.push({ ...run, ...mathStyle, math: true });
+}
+
+export function parseInlineMarkdown(value) {
+  const text = String(value ?? '');
+  const spans = protectedSpans(text);
+  let masked = '';
+  let at = 0;
+  for (const span of spans) {
+    masked += text.slice(at, span.start) + MASK.repeat(span.end - span.start);
+    at = span.end;
+  }
+  masked += text.slice(at);
+
+  const tokens = [];
+  // text[from, to) in `style`, with the spans inside it. A span is masked
+  // whole, so it lies entirely inside a wrapper's content or outside it.
+  const emit = (from, to, style = {}) => {
+    for (const span of spans) {
+      if (span.start < from || span.end > to) continue;
+      appendPlain(tokens, text.slice(from, span.start), style);
+      appendSpan(tokens, span, text.slice(span.start, span.end), style);
+      from = span.end;
+    }
+    appendPlain(tokens, text.slice(from, to), style);
+  };
+  let cursor = 0;
+  for (const match of masked.matchAll(INLINE_TOKEN)) {
+    const start = match.index;
+    const end = start + match[0].length;
+    emit(cursor, start);
+    if (match[2] !== undefined) {
+      const url = end - 1 - match[3].length;
+      emit(start + 1, start + 1 + match[2].length, { href: text.slice(url, end - 1) });
+    } else if (match[4] !== undefined || match[5] !== undefined) {
+      emit(start + 2, end - 2, { bold: true });
+    } else if (match[6] !== undefined) {
+      emit(start + 2, end - 2, { strike: true });
+    } else {
+      emit(start + 1, end - 1, { italic: true });
+    }
+    cursor = end;
+  }
+  emit(cursor, text.length);
+  return tokens;
 }
 
 function lineBlock(raw, baseSize) {

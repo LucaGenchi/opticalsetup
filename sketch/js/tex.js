@@ -157,6 +157,19 @@ function interAtomSpace(left, right, script) {
 
 const sym = (cls, text, extra = {}) => ({ type: 'sym', cls, text, italic: false, ...extra });
 
+// Every way into a deeper level -- a {group}, a script, a \frac or \sqrt
+// argument, a \left delimiter -- passes through parseList or parseAtom, so
+// counting their nesting bounds the parse, and with it the layout that walks
+// the parsed tree. No real formula comes near the limit (about twenty
+// nested groups); a deeper one would overflow the stack.
+const MAX_DEPTH = 40;
+
+class TooDeep extends Error {}
+
+function descend(state) {
+  if (++state.depth > MAX_DEPTH) throw new TooDeep();
+}
+
 function readChar(state) {
   const character = String.fromCodePoint(state.src.codePointAt(state.i));
   state.i += character.length;
@@ -266,6 +279,13 @@ function parseCommand(state) {
 }
 
 function parseAtom(state) {
+  descend(state);
+  const node = readAtom(state);
+  state.depth--;
+  return node;
+}
+
+function readAtom(state) {
   const character = readChar(state);
   if (/\s/.test(character) || character === '&') return null;
   if (character === '{') return { type: 'group', body: parseList(state, '}') };
@@ -276,6 +296,7 @@ function parseAtom(state) {
 }
 
 function parseList(state, closer) {
+  descend(state);
   const nodes = [];
   while (state.i < state.src.length) {
     const character = state.src[state.i];
@@ -297,6 +318,7 @@ function parseList(state, closer) {
     const node = parseAtom(state);
     if (node) nodes.push(node);
   }
+  state.depth--;
   return nodes;
 }
 
@@ -468,13 +490,21 @@ function layoutRoot(node, ctx, measure) {
 // optionally stretch (em width to fit with textLength) and decoration. A
 // trailing run with empty text carries a pen movement still owed to whatever
 // follows the formula. Neighbours that differ in nothing but their text
-// (the digits of 22, the letters of nL) come back as one run.
+// (the digits of 22, the letters of nL) come back as one run. A formula that
+// nests deeper than MAX_DEPTH returns null, for the caller to show as typed.
 const sameStyle = (a, b) => ['italic', 'bold', 'font', 'scale', 'shift', 'decoration']
   .every(key => a[key] === b[key]) && !a.stretch && !b.stretch;
 
 export function texRuns(source, { display = false, measure = () => 0.55 } = {}) {
-  const state = { src: String(source ?? ''), i: 0 };
-  const box = layoutList(parseList(state, null), { scale: 1, display, script: false }, measure);
+  const state = { src: String(source ?? ''), i: 0, depth: 0 };
+  let nodes;
+  try {
+    nodes = parseList(state, null);
+  } catch (error) {
+    if (error instanceof TooDeep) return null;
+    throw error;
+  }
+  const box = layoutList(nodes, { scale: 1, display, script: false }, measure);
   const runs = [];
   let dx = 0;
   for (const run of box.runs) {
