@@ -9,9 +9,9 @@ import { parseSketch, state } from '../sketch/js/state.js';
 import { buildSVG } from '../sketch/js/export.js';
 import {
   formatLength, niceScaleBarLength, zoomConnectors, zoomFrameSVG, zoomGeometry, zoomHitTest, zoomMaxMagnification,
-  normalizeZoomParams, zoomScaleBar, zoomViewBox,
+  normalizeZoomParams, zoomMapper, zoomScaleBar, zoomViewBox,
 } from '../sketch/js/zoom.js';
-import { zoomSceneSVG } from '../sketch/js/zoom-view.js';
+import { zoomPulsePlacement, zoomSceneSVG } from '../sketch/js/zoom-view.js';
 
 const lineLaser = (x, y) => {
   const laser = createElement('cwlaser', x, y);
@@ -247,14 +247,49 @@ test('a turned circle keeps its scale bar level on the bench', () => {
   assert.doesNotMatch(zoomFrameSVG(params, { rot: 0 }), /rotate\(/);
 });
 
-test('the region outline and the connector lines can be dashed', () => {
+test('the outlines dash together, the connector lines on their own', () => {
   const params = createElement('zoom').params;
   const plain = zoomFrameSVG(params);
   assert.doesNotMatch(plain, /stroke-dasharray/);
-  const dashed = zoomFrameSVG({ ...params, regionDash: true, connectorDash: true });
-  assert.match(dashed, /stroke-dasharray="6 4" data-zoom-frame="region"/);
-  assert.equal(dashed.match(/stroke-dasharray="5 4" data-zoom-frame="connector"/g).length, 2);
-  assert.doesNotMatch(dashed, /stroke-dasharray[^>]*data-zoom-frame="view"/, 'the view border stays solid');
+  const outlines = zoomFrameSVG({ ...params, regionDash: true });
+  assert.match(outlines, /stroke-dasharray="6 4" data-zoom-frame="region"/);
+  assert.match(outlines, /stroke-dasharray="6 4" data-zoom-frame="view"/, 'the view is the region enlarged');
+  assert.doesNotMatch(outlines, /stroke-dasharray[^>]*data-zoom-frame="connector"/);
+  const connectors = zoomFrameSVG({ ...params, connectorDash: true });
+  assert.equal(connectors.match(/stroke-dasharray="5 4" data-zoom-frame="connector"/g).length, 2);
+  assert.doesNotMatch(connectors, /stroke-dasharray[^>]*data-zoom-frame="(?:region|view)"/);
+});
+
+test('a pulse marker lands in the view where its point maps, and only near the region', () => {
+  const zoom = createElement('zoom', 300, 0);
+  Object.assign(zoom.params, { shape: 'rect', w: 40, h: 20, mag: 5, insetX: 0, insetY: 200 });
+  zoom.rot = 30;
+  const place = zoomPulsePlacement(zoom);
+  const g = zoomGeometry(zoom.params, zoom.rot);
+  const at = place({ x: 304, y: 2, angle: 10, widthMm: 12 });
+  const expected = zoomMapper(g, zoom)({ x: 304, y: 2 });
+  assert.ok(Math.abs(at.x - expected.x) < 1e-9 && Math.abs(at.y - expected.y) < 1e-9, 'mapped like the rays');
+  assert.equal(at.angle, 10 - 30, 'heading turned into the drawing frame');
+  assert.equal(at.scale, 5, 'a physical packet length grows with the magnification');
+  assert.equal(place({ x: 600, y: 0, angle: 0, widthMm: 12 }), null, 'a packet far from the region is left out');
+});
+
+test('an animation frame draws the pulse packets crossing the region inside the view', () => {
+  const laser = createElement('pulsedlaser', 0, 0);
+  laser.params.beamMode = 'line';
+  // Wider than the schematic packet spacing, so a packet is always inside.
+  const zoom = createElement('zoom', 300, 0);
+  Object.assign(zoom.params, { w: 160, mag: 2, insetX: 0, insetY: 400, scaleBar: false });
+  state.elements = [laser, zoom];
+  state.beams = [];
+  const playback = { speedNsPerSecond: 10, mode: 'schematic' };
+  const frame = buildSVG({ whiteBg: true, animation: { seconds: 0.3, playback } });
+  const bench = frame.match(/class="pulse-marker"/g)?.length || 0;
+  assert.ok(bench > 0, 'the bench shows packets at this time scale');
+  const inView = viewContent(frame).match(/class="pulse-marker"/g)?.length || 0;
+  assert.ok(inView > 0, 'the view shows the packets crossing its region');
+  assert.ok(inView < bench, 'and only those');
+  assert.doesNotMatch(buildSVG({ whiteBg: true }), /pulse-marker/, 'a still export draws no packets, on the bench or in the view');
 });
 
 test('the scale bar can be turned off', () => {

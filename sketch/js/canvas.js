@@ -14,7 +14,7 @@ import {
   OBJECTIVE_FRONT_X, normalizeObjectiveParams, objectiveBackFocalPlaneX, objectiveWorkingDistance,
 } from './objective.js';
 import { immersionLayerSVG } from './immersion.js';
-import { zoomSceneSVG } from './zoom-view.js';
+import { zoomPulsePlacement, zoomSceneSVG } from './zoom-view.js';
 import { clampZoomOffset, normalizeZoomParams, zoomViewContains } from './zoom.js';
 import { polygonScannerState } from './polygon-scanner.js';
 import { mixReading, specimenTimingReading, traceScene, getTraceRevision } from './raytrace.js';
@@ -73,6 +73,9 @@ function renderInteraction() {
 }
 let textEditor = null;
 let pulseTracks = [];
+// The packets drawn on the last pulse frame, as {track, marker}, so a zoom
+// view rebuilt between frames can draw them too.
+let shownPulses = [];
 let writeHits = [];
 let signalHits = [];
 const sampleHitPositions = new Map();
@@ -639,13 +642,14 @@ function renderPulseLayer() {
   if (!pulseLayer) return;
   if (!pulseTracks.length) {
     pulseLayer.innerHTML = '';
+    shownPulses = [];
+    renderZoomPulses();
     cwFallbackActive = false;
     lastCwFallback = null; // a scene with no pulse trains has nothing to switch between
     return;
   }
-  const z = state.view.z || 1;
-  let s = '';
   let suppressed = false;
+  const shown = [];
   for (const track of pulseTracks) {
     // Mechanics mode deliberately decouples pulses from any numeric time
     // scale — every train draws as steady CW so galvo/stage/retroreflector
@@ -658,32 +662,57 @@ function renderPulseLayer() {
       suppressed = true;
       continue;
     }
-    for (const marker of pulseMarkers(track, pulsePlayback.timeNs, { mode: pulsePlayback.mode })) {
-      const physicalMin = 9 / z;
-      // Femtosecond packets are far below a screen pixel even in physical
-      // mode. The minimum glyph is therefore already schematic; scale that
-      // floor by the real duration ratio so GDD remains visible without
-      // misreporting the true c·tau length stored on the marker.
-      const width = pulsePlayback.mode === 'physical'
-        ? Math.max(marker.widthMm, physicalMin * (marker.visualStretch || 1))
-        : marker.widthMm;
-      const rx = Math.max(2 / z, width / 2);
-      const ry = Math.max(2.2 / z, Math.min(5 / z, 2.5 / z + 1.4 * Math.sqrt(Math.max(0, track.intensity || 0)) / z));
-      const transmission = marker.transmission ?? 1;
-      const opacity = Math.max(0.03, Math.min(0.95,
-        (0.45 + 0.45 * (track.intensity || 0)) * transmission));
-      const highlightOpacity = Math.max(0.04, 0.82 * Math.sqrt(transmission));
-      const packetFill = track.bw >= 200 ? 'url(#pulseSpectrum)' : track.color;
-      s += `<g class="pulse-marker" data-duration-fs="${marker.pulseWidthFs.toFixed(3)}" data-gdd-fs2="${marker.gddFs2.toFixed(3)}" transform="translate(${marker.x.toFixed(2)} ${marker.y.toFixed(2)}) rotate(${marker.angle.toFixed(2)})">` +
-        `<ellipse rx="${(rx * 1.65).toFixed(2)}" ry="${(ry * 1.8).toFixed(2)}" fill="${packetFill}" opacity="${(opacity * 0.18).toFixed(2)}"/>` +
-        `<ellipse rx="${rx.toFixed(2)}" ry="${ry.toFixed(2)}" fill="${packetFill}" opacity="${opacity.toFixed(2)}"/>` +
-        `<ellipse rx="${Math.max(1 / z, rx * 0.32).toFixed(2)}" ry="${Math.max(0.8 / z, ry * 0.45).toFixed(2)}" fill="#fff" opacity="${highlightOpacity.toFixed(2)}"/>` +
-        `</g>`;
-    }
+    for (const marker of pulseMarkers(track, pulsePlayback.timeNs, { mode: pulsePlayback.mode })) shown.push({ track, marker });
   }
-  pulseLayer.innerHTML = s;
+  shownPulses = shown;
+  pulseLayer.innerHTML = shown.map(({ track, marker }) => pulseGlyphSVG(track, marker, marker)).join('');
+  renderZoomPulses();
   cwFallbackActive = suppressed;
   announcePulseRepresentation(suppressed);
+}
+
+// One pulse packet, drawn at `at` ({x, y, angle}, plus a `scale` for its
+// physical length inside a zoom's view).
+function pulseGlyphSVG(track, marker, at) {
+  const z = state.view.z || 1;
+  const physicalMin = 9 / z;
+  // Femtosecond packets are far below a screen pixel even in physical
+  // mode. The minimum glyph is therefore already schematic; scale that
+  // floor by the real duration ratio so GDD remains visible without
+  // misreporting the true c·tau length stored on the marker.
+  const width = pulsePlayback.mode === 'physical'
+    ? Math.max(marker.widthMm * (at.scale || 1), physicalMin * (marker.visualStretch || 1))
+    : marker.widthMm;
+  const rx = Math.max(2 / z, width / 2);
+  const ry = Math.max(2.2 / z, Math.min(5 / z, 2.5 / z + 1.4 * Math.sqrt(Math.max(0, track.intensity || 0)) / z));
+  const transmission = marker.transmission ?? 1;
+  const opacity = Math.max(0.03, Math.min(0.95,
+    (0.45 + 0.45 * (track.intensity || 0)) * transmission));
+  const highlightOpacity = Math.max(0.04, 0.82 * Math.sqrt(transmission));
+  const packetFill = track.bw >= 200 ? 'url(#pulseSpectrum)' : track.color;
+  return `<g class="pulse-marker" data-duration-fs="${marker.pulseWidthFs.toFixed(3)}" data-gdd-fs2="${marker.gddFs2.toFixed(3)}" transform="translate(${at.x.toFixed(2)} ${at.y.toFixed(2)}) rotate(${at.angle.toFixed(2)})">` +
+    `<ellipse rx="${(rx * 1.65).toFixed(2)}" ry="${(ry * 1.8).toFixed(2)}" fill="${packetFill}" opacity="${(opacity * 0.18).toFixed(2)}"/>` +
+    `<ellipse rx="${rx.toFixed(2)}" ry="${ry.toFixed(2)}" fill="${packetFill}" opacity="${opacity.toFixed(2)}"/>` +
+    `<ellipse rx="${Math.max(1 / z, rx * 0.32).toFixed(2)}" ry="${Math.max(0.8 / z, ry * 0.45).toFixed(2)}" fill="#fff" opacity="${highlightOpacity.toFixed(2)}"/>` +
+    `</g>`;
+}
+
+// Each zoom's view leaves an empty slot for pulse packets (see
+// renderElements), filled here on every pulse frame so the packets move
+// without redrawing the view, and again whenever the view is rebuilt.
+function renderZoomPulses() {
+  // Most scenes have no zoom; they skip the search on every frame.
+  if (!state.elements.some(el => el.type === 'zoom')) return;
+  const slots = elementLayer?.querySelectorAll('[data-zoom-pulses]');
+  if (!slots?.length) return;
+  for (const slot of slots) {
+    const zoom = state.elements.find(el => el.id === slot.getAttribute('data-zoom-pulses'));
+    const place = zoom && zoomPulsePlacement(zoom);
+    slot.innerHTML = place ? shownPulses.map(({ track, marker }) => {
+      const at = place(marker);
+      return at ? pulseGlyphSVG(track, marker, at) : '';
+    }).join('') : '';
+  }
 }
 
 // Announce only the transition between packet and CW-style drawing, anchored
@@ -872,6 +901,7 @@ function renderElements() {
         drawables: displayedBeamScene?.drawables || [], beams: state.beams,
         elements: allElements, baseElements: state.elements,
         nonScalingStroke: true, background: 'var(--canvas-bg)',
+        pulses: `<g data-zoom-pulses="${esc(el.id)}" pointer-events="none"></g>`,
       })
       : def.svg(el, elements);
     s += `<g data-element-id="${esc(el.id)}" transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})" vector-effect="non-scaling-stroke">${body}</g>`;
@@ -883,6 +913,7 @@ function renderElements() {
     s += `<g transform="translate(${placing.pos.x} ${placing.pos.y}) rotate(${el.rot || 0})" opacity="0.5" vector-effect="non-scaling-stroke">${registry[el.type].svg(el, elements)}</g>`;
   }
   elementLayer.innerHTML = s;
+  renderZoomPulses();
 }
 
 // Focal points of a focusing element, in local coordinates. A point may

@@ -74,21 +74,44 @@ function drawablesSVG(drawables, region, map, nonScalingStroke) {
   return s;
 }
 
+// The bench box around a zoom's region, turned or not.
+function regionBox(zoom, g) {
+  const ex = g.rx * Math.abs(g.cos) + g.ry * Math.abs(g.sin);
+  const ey = g.rx * Math.abs(g.sin) + g.ry * Math.abs(g.cos);
+  return { x0: zoom.x - ex, x1: zoom.x + ex, y0: zoom.y - ey, y1: zoom.y + ey };
+}
+
+// Where a pulse marker on the bench lands in a zoom's view: its point mapped
+// like the rays, its heading turned into the drawing frame, and `scale` for
+// the packet's length on the bench, which grows with the magnification when
+// it is a physical c·τ length. A schematic packet is a mark and keeps its
+// size. Markers clear of the region are left out (null).
+export function zoomPulsePlacement(zoom) {
+  const g = zoomGeometry(zoom.params, zoom.rot);
+  const map = zoomMapper(g, zoom);
+  const region = regionBox(zoom, g);
+  return marker => {
+    const reach = Math.max(12, marker.widthMm || 0);
+    if (!(marker.x >= region.x0 - reach && marker.x <= region.x1 + reach
+      && marker.y >= region.y0 - reach && marker.y <= region.y1 + reach)) return null;
+    const q = map(marker);
+    return { x: q.x, y: q.y, angle: marker.angle - g.turn, scale: g.mag };
+  };
+}
+
 // The zoom drawn in its local frame, view filled. `scene` is what the bench
 // is drawn from: the traced drawables, the manual beams, the elements as
 // drawn (animated poses on the canvas) and the authored ones the immersion
 // layer is derived from. `exporting` leaves out canvas-only elements;
-// `nonScalingStroke` matches the canvas, whose rays keep a screen width.
+// `nonScalingStroke` matches the canvas, whose rays keep a screen width;
+// `pulses` is the view's pulse packets, already placed.
 export function zoomSceneSVG(zoom, scene = {}) {
   const {
     drawables = [], beams = [], elements = [], baseElements = elements,
-    exporting = false, nonScalingStroke = false, background = '#ffffff',
+    exporting = false, nonScalingStroke = false, background = '#ffffff', pulses = '',
   } = scene;
   const g = zoomGeometry(zoom.params, zoom.rot);
-  // The bench box around the region, turned or not.
-  const ex = g.rx * Math.abs(g.cos) + g.ry * Math.abs(g.sin);
-  const ey = g.rx * Math.abs(g.sin) + g.ry * Math.abs(g.cos);
-  const region = { x0: zoom.x - ex, x1: zoom.x + ex, y0: zoom.y - ey, y1: zoom.y + ey };
+  const region = regionBox(zoom, g);
   // Bench -> drawing frame: about the zoom's origin, turned back by the
   // frame's angle, magnified, then moved to the view. Explicit widths are
   // divided by benchStrokes(); a stroke that leaves its width to SVG's
@@ -105,6 +128,10 @@ export function zoomSceneSVG(zoom, scene = {}) {
   let content = onBench(shown.filter(isBackground).map(draw).join(''));
   content += onBench(immersionLayerSVG(elements, beams, { baseElements }));
   content += drawablesSVG(drawables, region, zoomMapper(g, zoom), nonScalingStroke);
+  // Pulse packets, already placed with zoomPulsePlacement(), sit on the rays
+  // and under the parts, as on the bench. The canvas passes an empty slot
+  // here and fills it on every pulse frame.
+  content += pulses;
   // Drawn beams are the Arrow tool's annotations and stay out, like text;
   // fibers are optical parts of the bench and are enlarged.
   content += onBench(beams.filter(b => b.kind === 'fiber' && overlaps(pointsBox(b.pts || []), region)).map(manualBeamSVG).join('')

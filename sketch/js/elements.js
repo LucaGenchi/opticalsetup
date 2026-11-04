@@ -6003,7 +6003,7 @@ export const registry = {
       { key: 'mag', label: 'Magnification (×)', type: 'number', min: 1, max: zoomMaxMagnification, step: 0.5, def: 4 },
       { key: 'insetX', label: 'View offset x (mm)', type: 'number', min: -ZOOM_OFFSET_LIMIT, max: ZOOM_OFFSET_LIMIT, step: 1, def: 110 },
       { key: 'insetY', label: 'View offset y (mm)', type: 'number', min: -ZOOM_OFFSET_LIMIT, max: ZOOM_OFFSET_LIMIT, step: 1, def: -90 },
-      { key: 'regionDash', label: 'Dashed region outline', type: 'checkbox', def: false },
+      { key: 'regionDash', label: 'Dashed outlines (region and view)', type: 'checkbox', def: false },
       { key: 'connectors', label: 'Connector lines', type: 'checkbox', def: true },
       { key: 'connectorDash', label: 'Dashed connector lines', type: 'checkbox', def: false, show: p => p.connectors },
       { key: 'scaleBar', label: 'Scale bar', type: 'checkbox', def: true },

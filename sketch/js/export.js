@@ -12,7 +12,7 @@ import { pulsePeriodNs, pulsesReadAsCW } from './timescale.js';
 import { polygonScannerState } from './polygon-scanner.js';
 import { encodeGIF, imageDataToRGB332, validateGIFOptions } from './gif.js';
 import { immersionLayerSVG } from './immersion.js';
-import { zoomSceneSVG } from './zoom-view.js';
+import { zoomPulsePlacement, zoomSceneSVG } from './zoom-view.js';
 import { download, manualBeamSVG, rotPt } from './util.js';
 
 // Millimetres. Past this a figure is not a bench, it is bad data.
@@ -123,14 +123,18 @@ function animatedElementsAt(seconds, playback) {
   });
 }
 
-function pulseLayerSVG(tracks, timeNs, playback) {
+// `place` maps a bench marker to where it is drawn ({x, y, angle, scale}),
+// or to null to leave it out: a zoom's view passes zoomPulsePlacement().
+function pulseLayerSVG(tracks, timeNs, playback, place = marker => marker) {
   if (playback?.mechanicsMode) return '';
   let body = '';
   for (const track of tracks) {
     if (pulsesReadAsCW(pulsePeriodNs(track.pulse?.repRateMHz), playback?.speedNsPerSecond)) continue;
     for (const marker of pulseMarkers(track, timeNs, { mode: playback?.mode })) {
+      const at = place(marker);
+      if (!at) continue;
       const width = playback?.mode === 'physical'
-        ? Math.max(marker.widthMm, 9 * (marker.visualStretch || 1))
+        ? Math.max(marker.widthMm * (at.scale || 1), 9 * (marker.visualStretch || 1))
         : marker.widthMm;
       const rx = Math.max(2, width / 2);
       const ry = Math.max(2.2, Math.min(5, 2.5 + 1.4 * Math.sqrt(Math.max(0, track.intensity || 0))));
@@ -138,7 +142,7 @@ function pulseLayerSVG(tracks, timeNs, playback) {
       const opacity = Math.max(0.03, Math.min(0.95, (0.45 + 0.45 * (track.intensity || 0)) * transmission));
       const highlightOpacity = Math.max(0.04, 0.82 * Math.sqrt(transmission));
       const fill = track.bw >= 200 ? 'url(#pulseSpectrum)' : track.color;
-      body += `<g class="pulse-marker" data-duration-fs="${marker.pulseWidthFs.toFixed(3)}" data-gdd-fs2="${marker.gddFs2.toFixed(3)}" transform="translate(${marker.x.toFixed(2)} ${marker.y.toFixed(2)}) rotate(${marker.angle.toFixed(2)})">` +
+      body += `<g class="pulse-marker" data-duration-fs="${marker.pulseWidthFs.toFixed(3)}" data-gdd-fs2="${marker.gddFs2.toFixed(3)}" transform="translate(${at.x.toFixed(2)} ${at.y.toFixed(2)}) rotate(${at.angle.toFixed(2)})">` +
         `<ellipse rx="${(rx * 1.65).toFixed(2)}" ry="${(ry * 1.8).toFixed(2)}" fill="${fill}" opacity="${(opacity * 0.18).toFixed(2)}"/>` +
         `<ellipse rx="${rx.toFixed(2)}" ry="${ry.toFixed(2)}" fill="${fill}" opacity="${opacity.toFixed(2)}"/>` +
         `<ellipse rx="${Math.max(1, rx * 0.32).toFixed(2)}" ry="${Math.max(0.8, ry * 0.45).toFixed(2)}" fill="#fff" opacity="${highlightOpacity.toFixed(2)}"/>` +
@@ -183,10 +187,8 @@ export function buildSVG({ whiteBg = false, animation = null, bounds = null } = 
     else body += `<polyline points="${ptsAttr(d.pts)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round" ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}${d.dash && d.dashOffset ? ` stroke-dashoffset="${d.dashOffset}"` : ''}/>`;
   }
 
-  if (animation) {
-    const speed = Math.max(1, Number(playback.speedNsPerSecond) || 10);
-    body += pulseLayerSVG(traced.pulseTracks, animation.seconds * speed, playback);
-  }
+  const pulseTimeNs = animation ? animation.seconds * Math.max(1, Number(playback.speedNsPerSecond) || 10) : null;
+  if (animation) body += pulseLayerSVG(traced.pulseTracks, pulseTimeNs, playback);
 
   for (const mb of state.beams) body += manualBeamSVG(mb);
 
@@ -200,6 +202,7 @@ export function buildSVG({ whiteBg = false, animation = null, bounds = null } = 
     const art = el.type === 'zoom'
       ? zoomSceneSVG(el, {
         drawables: traced.drawables, beams: state.beams, elements, baseElements: state.elements, exporting: true,
+        pulses: animation ? pulseLayerSVG(traced.pulseTracks, pulseTimeNs, playback, zoomPulsePlacement(el)) : '',
       })
       : def.svg(el, elements);
     body += `<g transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})">${art}</g>`;

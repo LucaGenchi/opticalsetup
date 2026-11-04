@@ -261,7 +261,8 @@ export function zoomFrameSVG(params = {}, { content = '', background = '#ffffff'
     s += `<clipPath id="${clipId}">${shapeSVG(g.shape, g.ix, g.iy, g.irx, g.iry, '')}</clipPath>` +
       `<g clip-path="url(#${clipId})">${content}</g>`;
   }
-  s += shapeSVG(g.shape, g.ix, g.iy, g.irx, g.iry, `fill="none" stroke="${color}" stroke-width="1.5" data-zoom-frame="view"`);
+  // The view's border is the region's outline enlarged, so it is dashed with it.
+  s += shapeSVG(g.shape, g.ix, g.iy, g.irx, g.iry, `fill="none" stroke="${color}" stroke-width="1.5"${regionDash} data-zoom-frame="view"`);
   // A circle has no width to lie along: its bar stays level on the bench,
   // turned back about the view's centre, which keeps it inside the circle.
   const bar = scaleBarSVG(zoomScaleBar(params, rot));
