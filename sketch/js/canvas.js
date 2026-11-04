@@ -15,7 +15,7 @@ import {
 } from './objective.js';
 import { immersionLayerSVG } from './immersion.js';
 import { zoomPulsePlacement, zoomSceneSVG } from './zoom-view.js';
-import { clampZoomOffset, normalizeZoomParams, zoomViewContains, zoomViewCornerDrag } from './zoom.js';
+import { clampZoomOffset, normalizeZoomParams, zoomViewContains, zoomViewCorner, zoomViewCornerDrag } from './zoom.js';
 import { polygonScannerState } from './polygon-scanner.js';
 import { mixReading, specimenTimingReading, traceScene, getTraceRevision } from './raytrace.js';
 import {
@@ -1868,7 +1868,14 @@ function onDown(e) {
   const sel = findSelected();
   const scaleCorner = state.embedMode ? null : hitScaleCorner(sel, w);
   if (scaleCorner && sel.type === 'zoom') {
-    drag = { mode: 'zoomscale', el: sel, corner: scaleCorner, base: { ...sel.params }, moved: false };
+    // The handle sits outside the corner; keep the offset between the
+    // pointer and the corner itself, so the drag starts from the current
+    // magnification instead of jumping to the handle's position.
+    const cornerAt = zoomViewCorner(sel.params, sel.rot, scaleCorner);
+    drag = {
+      mode: 'zoomscale', el: sel, corner: scaleCorner, base: { ...sel.params }, moved: false,
+      grab: { x: cornerAt.x - (w.x - sel.x), y: cornerAt.y - (w.y - sel.y) },
+    };
     svg.setPointerCapture(e.pointerId);
     return;
   }
@@ -2080,7 +2087,7 @@ function onMove(e) {
     renderInteraction();
   } else if (drag.mode === 'zoomscale') {
     const next = zoomViewCornerDrag(drag.base, drag.el.rot, drag.corner,
-      { x: w.x - drag.el.x, y: w.y - drag.el.y }, mag => boundedParam(drag.el, 'mag', mag));
+      { x: w.x - drag.el.x + drag.grab.x, y: w.y - drag.el.y + drag.grab.y }, mag => boundedParam(drag.el, 'mag', mag));
     const params = drag.el.params;
     if (next.mag === params.mag && next.insetX === params.insetX && next.insetY === params.insetY) return;
     if (!drag.moved) { pushUndo(); drag.moved = true; }

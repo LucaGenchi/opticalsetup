@@ -181,27 +181,55 @@ export function zoomViewBox(params, rot = 0) {
 // stays where it is on the bench and the view, which keeps the region's
 // shape, grows or shrinks to meet the pointer. `params` are the zoom's at the
 // start of the drag, `corner` is {sx, sy} (±1) in the element's local frame,
-// and `point` is the pointer relative to the element's origin, on the bench.
-// The magnification follows the pointer projected on the view's diagonal, so
-// it changes smoothly whichever way the pointer leaves it; `snap` rounds it
-// (to the field's step) before the view is placed, so the anchor stays exact.
+// and `point` is where the dragged corner should go, relative to the
+// element's origin, on the bench (the pointer plus the grab offset, see
+// zoomViewCorner()). The magnification follows that point projected on the
+// view's diagonal, so it changes smoothly whichever way the pointer leaves
+// it; `snap` rounds it (to the field's step) before the view is placed, so
+// the anchor stays exact.
+//
+// The magnification is bounded by the field and also by how far the view's
+// offset may go: the view's centre moves as it scales, and clamping the
+// centre afterwards would move the corner that is meant to stay put.
 export function zoomViewCornerDrag(params, rot, corner, point, snap = mag => mag) {
-  const g = zoomGeometry(params);
-  const a = (finite(rot) ? rot : 0) * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
-  // Half the view's diagonal towards the dragged corner, per unit of
-  // magnification, on the bench.
-  const hx = corner.sx * g.rx * cos - corner.sy * g.ry * sin;
-  const hy = corner.sx * g.rx * sin + corner.sy * g.ry * cos;
-  const ox = bounded(params.insetX, -ZOOM_OFFSET_LIMIT, ZOOM_OFFSET_LIMIT, 110);
-  const oy = bounded(params.insetY, -ZOOM_OFFSET_LIMIT, ZOOM_OFFSET_LIMIT, -90);
-  const anchor = { x: ox - g.mag * hx, y: oy - g.mag * hy };
+  const { g, hx, hy, anchor } = cornerFrame(params, rot, corner);
+  let lo = 1, hi = zoomMaxMagnification(params);
+  for (const [a, h] of [[anchor.x, hx], [anchor.y, hy]]) {
+    if (Math.abs(h) < 1e-12) continue;
+    const [m1, m2] = [(-ZOOM_OFFSET_LIMIT - a) / h, (ZOOM_OFFSET_LIMIT - a) / h];
+    lo = Math.max(lo, Math.min(m1, m2));
+    hi = Math.min(hi, Math.max(m1, m2));
+  }
+  // The starting magnification always fits; rounding cannot leave the range.
+  lo = Math.min(lo, g.mag);
+  hi = Math.max(hi, g.mag);
   const raw = ((point.x - anchor.x) * hx + (point.y - anchor.y) * hy) / (2 * (hx * hx + hy * hy));
-  const mag = bounded(snap(bounded(raw, 1, zoomMaxMagnification(params), g.mag)), 1, zoomMaxMagnification(params), g.mag);
+  const mag = bounded(snap(bounded(raw, lo, hi, g.mag)), lo, hi, g.mag);
   return {
     mag,
     insetX: clampZoomOffset(anchor.x + mag * hx),
     insetY: clampZoomOffset(anchor.y + mag * hy),
   };
+}
+
+// The view's corner on side `corner`, relative to the element's origin on
+// the bench. A drag keeps the offset between it and the pointer that grabbed
+// its handle (drawn just outside the corner), so grabbing does not rescale.
+export function zoomViewCorner(params, rot, corner) {
+  const { g, hx, hy, anchor } = cornerFrame(params, rot, corner);
+  return { x: anchor.x + 2 * g.mag * hx, y: anchor.y + 2 * g.mag * hy };
+}
+
+// Half the view's diagonal towards `corner`, per unit of magnification, on
+// the bench, and the opposite corner (the anchor) relative to the origin.
+function cornerFrame(params, rot, corner) {
+  const g = zoomGeometry(params);
+  const a = (finite(rot) ? rot : 0) * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+  const hx = corner.sx * g.rx * cos - corner.sy * g.ry * sin;
+  const hy = corner.sx * g.rx * sin + corner.sy * g.ry * cos;
+  const ox = bounded(params.insetX, -ZOOM_OFFSET_LIMIT, ZOOM_OFFSET_LIMIT, 110);
+  const oy = bounded(params.insetY, -ZOOM_OFFSET_LIMIT, ZOOM_OFFSET_LIMIT, -90);
+  return { g, hx, hy, anchor: { x: ox - g.mag * hx, y: oy - g.mag * hy } };
 }
 
 // A length in millimetres as a person writes it on a scale bar.

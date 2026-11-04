@@ -9,7 +9,7 @@ import { parseSketch, state } from '../sketch/js/state.js';
 import { buildSVG } from '../sketch/js/export.js';
 import {
   formatLength, niceScaleBarLength, zoomConnectors, zoomFrameSVG, zoomGeometry, zoomHitTest, zoomMaxMagnification,
-  normalizeZoomParams, zoomMapper, zoomScaleBar, zoomViewBox, zoomViewCornerDrag,
+  normalizeZoomParams, zoomMapper, zoomScaleBar, zoomViewBox, zoomViewCorner, zoomViewCornerDrag,
 } from '../sketch/js/zoom.js';
 import { zoomPulsePlacement, zoomSceneSVG } from '../sketch/js/zoom-view.js';
 
@@ -420,4 +420,44 @@ test('the zoom marks its view as scalable for the canvas corner handles', () => 
   const [box] = registry.zoom.selectionBoxes(zoom);
   assert.equal(box.scalable, true);
   assert.deepEqual({ x0: box.x0, y0: box.y0, x1: box.x1, y1: box.y1 }, zoomViewBox(zoom.params, 0));
+});
+
+// ---- Review of fdf497a (#306) ----
+
+// What the canvas does: the handle is 6 mm outside the corner (in the
+// element's local frame); the drag keeps the offset between the pointer
+// that pressed it and the corner itself.
+const dragFromHandle = (params, rot, corner, moveBy) => {
+  const a = rot * Math.PI / 180;
+  const at = zoomViewCorner(params, rot, corner);
+  const press = { x: at.x + 6 * (corner.sx * Math.cos(a) - corner.sy * Math.sin(a)), y: at.y + 6 * (corner.sx * Math.sin(a) + corner.sy * Math.cos(a)) };
+  const grab = { x: at.x - press.x, y: at.y - press.y };
+  return zoomViewCornerDrag(params, rot, corner, { x: press.x + moveBy.x + grab.x, y: press.y + moveBy.y + grab.y },
+    mag => Math.round(mag * 10) / 10);
+};
+
+test('grabbing a corner handle does not rescale the view', () => {
+  for (const rot of [0, 30, 200]) {
+    for (const w of [30, 0.1]) {
+      const params = { ...createElement('zoom').params, shape: 'rect', w, h: w / 2, mag: 4 };
+      assert.ok(near(zoomViewCorner(params, rot, { sx: 1, sy: -1 }), viewCorner(params, rot, 1, -1)), 'the corner the handle belongs to');
+      assert.equal(dragFromHandle(params, rot, { sx: 1, sy: -1 }, { x: 0, y: 0 }).mag, 4, `${w} mm at ${rot}°: pressed, not moved`);
+      const nudged = dragFromHandle(params, rot, { sx: 1, sy: -1 }, { x: 0.01, y: 0.01 }).mag;
+      assert.ok(Math.abs(nudged - 4) <= 0.2 + 1e-9, `${w} mm at ${rot}°: a 0.01 mm nudge gave ×${nudged}`);
+    }
+  }
+});
+
+test('near the offset limit the magnification stops instead of moving the fixed corner', () => {
+  // The reported case: the view's centre would pass 5000 mm.
+  const start = { ...createElement('zoom').params, shape: 'rect', w: 2000, h: 20, mag: 1, insetX: 4990, insetY: 0 };
+  const anchor = viewCorner(start, 0, -1, -1);
+  const toward2 = viewCorner({ ...start, mag: 2, insetX: 4990 + 1000 }, 0, 1, 1);
+  const next = zoomViewCornerDrag(start, 0, { sx: 1, sy: 1 }, toward2, mag => Math.round(mag * 10) / 10);
+  assert.ok(near(viewCorner({ ...start, ...next }, 0, -1, -1), anchor), `anchor ${JSON.stringify(viewCorner({ ...start, ...next }, 0, -1, -1))}`);
+  // ×1.01 is the most the offset allows; on the 0.1 step that is ×1.0.
+  assert.ok(next.insetX <= 5000 && next.mag <= 1.01 + 1e-9, `×${next.mag}, offset ${next.insetX}`);
+  const unrounded = zoomViewCornerDrag(start, 0, { sx: 1, sy: 1 }, toward2);
+  assert.ok(Math.abs(unrounded.mag - 1.01) < 1e-9 && Math.abs(unrounded.insetX - 5000) < 1e-6, `×${unrounded.mag}, offset ${unrounded.insetX}`);
+  assert.ok(near(viewCorner({ ...start, ...unrounded }, 0, -1, -1), anchor));
 });
