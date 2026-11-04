@@ -15,7 +15,7 @@ import {
 } from './objective.js';
 import { immersionLayerSVG } from './immersion.js';
 import { zoomSceneSVG } from './zoom-view.js';
-import { clampZoomOffset, zoomViewContains } from './zoom.js';
+import { clampZoomOffset, normalizeZoomParams, zoomViewContains } from './zoom.js';
 import { polygonScannerState } from './polygon-scanner.js';
 import { mixReading, specimenTimingReading, traceScene, getTraceRevision } from './raytrace.js';
 import {
@@ -1170,6 +1170,7 @@ function writeParam(el, key, value) {
   else el.params[key] = value;
   if (el.type === 'objective') Object.assign(el.params, normalizeObjectiveParams(el.params));
   if (el.type === 'sclaser') Object.assign(el.params, normalizeSupercontinuumParams(el.params));
+  if (el.type === 'zoom') Object.assign(el.params, normalizeZoomParams(el.params));
 }
 
 // The decimal places of a step such as 0.1, 0.05 or 1e-9. Snapping to a step

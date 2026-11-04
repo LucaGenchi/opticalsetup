@@ -47,6 +47,19 @@ export function zoomMaxMagnification(params = {}) {
   return Math.min(ZOOM_MAG_MAX, Math.max(1, Math.floor(2 * ZOOM_VIEW_MAX / Math.max(w, h)) / 2));
 }
 
+// The magnification and a set scale-bar length are bounded by the region.
+// Left past its bound after the region grew, a field would read one value
+// while the view draws another, and would come back if the region shrank
+// again, unlike a reloaded scene. Every edit of the region runs this, as
+// loading a scene does through the schema.
+export function normalizeZoomParams(params = {}) {
+  const { w } = regionSize(params);
+  return {
+    mag: bounded(params.mag, 1, zoomMaxMagnification(params), 4),
+    scaleBarMm: bounded(params.scaleBarMm, 0, w, 0),
+  };
+}
+
 function drawingFrame(rot) {
   const r = ((((finite(rot) ? rot : 0) % 360) + 540) % 360) - 180;
   const flip = r > 90 || r <= -90;
@@ -189,12 +202,22 @@ export function niceScaleBarLength(regionWidthMm) {
 // shortened, and its label always names the length actually drawn. It lies
 // along the region's width, so on a turned rectangle it follows the beam
 // the rectangle was laid along.
+//
+// The bar and its label must fit the view's height too. Above the bar's
+// baseline `y` they take its thickness, the gap to the label and the label's
+// ascent (about 1.43 font); a rectangle also keeps a pad below. A view too
+// low for that shrinks the font with it, and one too low for a readable
+// label carries no bar at all.
 export function zoomScaleBar(params = {}, rot = 0) {
   if (params.scaleBar === false) return null;
   const g = zoomGeometry(params, rot);
-  const font = Math.min(14, Math.max(6, 0.08 * 2 * Math.min(g.irx, g.iry)));
-  const pad = 0.9 * font;
   const round = g.shape !== 'rect';
+  // A round view keeps the label's top within 0.9 of its half-height above
+  // the centre; the bar itself sits ROUND_BAR_DEPTH below it.
+  const tallest = round ? (ROUND_BAR_DEPTH + 0.9) * g.iry / 1.43 : 2 * g.iry / (1.43 + 0.9);
+  const font = Math.min(14, Math.max(6, 0.16 * Math.min(g.irx, g.iry)), tallest);
+  if (!(font >= 3)) return null;
+  const pad = 0.9 * font, thickness = 0.28 * font;
   const room = round ? 2 * g.irx * Math.sqrt(1 - ROUND_BAR_DEPTH ** 2) - 2 * pad : 2 * g.irx - 2 * pad;
   const asked = params.scaleBarMm > 0 ? params.scaleBarMm : niceScaleBarLength(2 * g.rx);
   const mm = Math.min(finite(asked) ? asked : 0, room / g.mag);
@@ -202,7 +225,7 @@ export function zoomScaleBar(params = {}, rot = 0) {
   const length = mm * g.mag;
   const y = round ? g.iy + ROUND_BAR_DEPTH * g.iry : g.iy + g.iry - pad;
   const x1 = round ? g.ix - length / 2 : g.ix + g.irx - pad - length;
-  return { mm, label: formatLength(mm), x1, x2: x1 + length, y, thickness: Math.max(1, 0.28 * font), font };
+  return { mm, label: formatLength(mm), x1, x2: x1 + length, y, top: y - 1.43 * font, thickness, font };
 }
 
 function shapeSVG(shape, cx, cy, rx, ry, attrs) {

@@ -90,9 +90,11 @@ export function zoomSceneSVG(zoom, scene = {}) {
   const ey = g.rx * Math.abs(g.sin) + g.ry * Math.abs(g.cos);
   const region = { x0: zoom.x - ex, x1: zoom.x + ex, y0: zoom.y - ey, y1: zoom.y + ey };
   // Bench -> drawing frame: about the zoom's origin, turned back by the
-  // frame's angle, magnified, then moved to the view.
+  // frame's angle, magnified, then moved to the view. Explicit widths are
+  // divided by benchStrokes(); a stroke that leaves its width to SVG's
+  // default of 1 inherits the group's 1/mag instead.
   const onBench = body => body
-    ? `<g transform="translate(${g.ix} ${g.iy}) scale(${g.mag}) rotate(${-g.turn}) translate(${-zoom.x} ${-zoom.y})">${benchStrokes(body, g.mag)}</g>`
+    ? `<g transform="translate(${g.ix} ${g.iy}) scale(${g.mag}) rotate(${-g.turn}) translate(${-zoom.x} ${-zoom.y})" stroke-width="${Number((1 / g.mag).toPrecision(4))}">${benchStrokes(body, g.mag)}</g>`
     : '';
   const shown = elements.filter(el => el.id !== zoom.id && magnified(el)
     && !(exporting && registry[el.type].hideInExport)
@@ -103,7 +105,9 @@ export function zoomSceneSVG(zoom, scene = {}) {
   let content = onBench(shown.filter(isBackground).map(draw).join(''));
   content += onBench(immersionLayerSVG(elements, beams, { baseElements }));
   content += drawablesSVG(drawables, region, zoomMapper(g, zoom), nonScalingStroke);
-  content += onBench(beams.filter(b => overlaps(pointsBox(b.pts || []), region)).map(manualBeamSVG).join('')
+  // Drawn beams are the Arrow tool's annotations and stay out, like text;
+  // fibers are optical parts of the bench and are enlarged.
+  content += onBench(beams.filter(b => b.kind === 'fiber' && overlaps(pointsBox(b.pts || []), region)).map(manualBeamSVG).join('')
     + elements.filter(el => el.type === 'display').map(el => displayCableSVG(el, elements)).join('')
     + shown.filter(el => !isBackground(el)).map(draw).join(''));
   const clipId = `zoom-view-${String(zoom.id).replace(/[^A-Za-z0-9_-]/g, '')}`;

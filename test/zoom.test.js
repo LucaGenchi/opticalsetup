@@ -9,7 +9,7 @@ import { parseSketch, state } from '../sketch/js/state.js';
 import { buildSVG } from '../sketch/js/export.js';
 import {
   formatLength, niceScaleBarLength, zoomConnectors, zoomFrameSVG, zoomGeometry, zoomHitTest, zoomMaxMagnification,
-  zoomScaleBar, zoomViewBox,
+  normalizeZoomParams, zoomScaleBar, zoomViewBox,
 } from '../sketch/js/zoom.js';
 import { zoomSceneSVG } from '../sketch/js/zoom-view.js';
 
@@ -278,4 +278,58 @@ test('a manual scale bar too long for the view is shortened and labelled as draw
       assert.ok(inside, `${shape}: bar end inside the view`);
     }
   }
+});
+
+// ---- Review of c79abe4 (#306) ----
+
+test('the magnification follows a region that grows and does not come back when it shrinks', () => {
+  const params = { ...createElement('zoom').params, w: 30, mag: 100 };
+  Object.assign(params, { w: 2000 }, normalizeZoomParams({ ...params, w: 2000 }));
+  assert.equal(params.mag, 2, 'the field reads what the view draws');
+  assert.equal(params.mag, zoomGeometry(params).mag);
+  Object.assign(params, { w: 30 }, normalizeZoomParams({ ...params, w: 30 }));
+  assert.equal(params.mag, 2, 'as after saving and reloading');
+  assert.equal(normalizeZoomParams({ ...params, w: 10, scaleBarMm: 25 }).scaleBarMm, 10,
+    'a set scale bar is no longer than the region');
+});
+
+test('arrows drawn with the Arrow tool are not enlarged; fibers are', () => {
+  const zoom = createElement('zoom', 200, 0);
+  const arrow = { id: 'arrow', kind: 'beam', pts: [{ x: 190, y: 0 }, { x: 210, y: 0 }], width: 2, color: '#e02020', arrow: true };
+  const fiber = { id: 'fiber', kind: 'fiber', pts: [{ x: 190, y: 5 }, { x: 210, y: 5 }], width: 4, color: '#e8a800' };
+  const content = viewContent(zoomSceneSVG(zoom, { beams: [arrow, fiber], elements: [zoom] }));
+  assert.doesNotMatch(content, /#e02020/, 'the arrow stays out of the view');
+  assert.match(content, /#e8a800/, 'the fiber is enlarged');
+});
+
+test('the scale bar and its label fit the view vertically, or are left out', () => {
+  // The reported case: a rectangle 1 mm high at ×4 makes a 4 mm tall view.
+  const thin = { ...createElement('zoom').params, shape: 'rect', w: 30, h: 1, mag: 4 };
+  const bar = zoomScaleBar(thin);
+  if (bar) {
+    const g = zoomGeometry(thin);
+    assert.ok(bar.top >= g.iy - g.iry && bar.y <= g.iy + g.iry, `bar ${bar.top}…${bar.y} inside ${g.iy - g.iry}…${g.iy + g.iry}`);
+  }
+  assert.doesNotMatch(zoomFrameSVG({ ...thin, h: 0.5, mag: 2 }), /data-zoom-scalebar/, 'too low for a readable label');
+  for (const shape of ['rect', 'ellipse']) {
+    for (const h of [1, 2, 4, 8, 20, 60]) {
+      for (const mag of [1, 3, 10]) {
+        const params = { ...createElement('zoom').params, shape, w: 30, h, mag };
+        const g = zoomGeometry(params);
+        const b = zoomScaleBar(params);
+        if (!b) continue;
+        const topLimit = shape === 'rect' ? g.iy - g.iry : g.iy - 0.9 * g.iry;
+        assert.ok(b.top >= topLimit - 1e-9 && b.y <= g.iy + g.iry + 1e-9, `${shape} h ${h} ×${mag}`);
+      }
+    }
+  }
+});
+
+test('a stroke left at the SVG default keeps its bench weight in the view', () => {
+  const camera = createElement('camera', 200, 0);
+  const zoom = createElement('zoom', 200, 0);
+  Object.assign(zoom.params, { w: 40, mag: 100 });
+  const content = viewContent(view(zoom, [camera, zoom]));
+  assert.ok(content.includes('scale(100) rotate(0) translate(-200 0)" stroke-width="0.01"'),
+    'the enlarged group sets the inherited stroke width to 1/mag');
 });
