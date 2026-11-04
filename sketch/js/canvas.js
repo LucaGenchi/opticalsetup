@@ -2086,8 +2086,9 @@ function onMove(e) {
     setStatus(labels);
     renderInteraction();
   } else if (drag.mode === 'zoomscale') {
+    const step = registry.zoom.params.find(spec => spec.key === 'mag')?.step || 0;
     const next = zoomViewCornerDrag(drag.base, drag.el.rot, drag.corner,
-      { x: w.x - drag.el.x + drag.grab.x, y: w.y - drag.el.y + drag.grab.y }, mag => boundedParam(drag.el, 'mag', mag));
+      { x: w.x - drag.el.x + drag.grab.x, y: w.y - drag.el.y + drag.grab.y }, step);
     const params = drag.el.params;
     if (next.mag === params.mag && next.insetX === params.insetX && next.insetY === params.insetY) return;
     if (!drag.moved) { pushUndo(); drag.moved = true; }

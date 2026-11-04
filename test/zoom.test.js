@@ -410,7 +410,7 @@ test('a corner drag follows the diagonal, stays within the bounds, and rounds wi
   assert.equal(zoomViewCornerDrag(start, 0, { sx: 1, sy: 1 }, { x: 1e6, y: 1e6 }).mag, zoomMaxMagnification(start));
   // Rounded to the field's step, with the anchor still exact.
   const rounded = zoomViewCornerDrag(start, 0, { sx: 1, sy: 1 }, { x: corner.x + 7, y: corner.y + 7 },
-    mag => Math.round(mag * 10) / 10);
+    0.1);
   assert.equal(rounded.mag, Math.round(rounded.mag * 10) / 10);
   assert.ok(near(viewCorner({ ...start, ...rounded }, 0, -1, -1), anchor));
 });
@@ -433,7 +433,7 @@ const dragFromHandle = (params, rot, corner, moveBy) => {
   const press = { x: at.x + 6 * (corner.sx * Math.cos(a) - corner.sy * Math.sin(a)), y: at.y + 6 * (corner.sx * Math.sin(a) + corner.sy * Math.cos(a)) };
   const grab = { x: at.x - press.x, y: at.y - press.y };
   return zoomViewCornerDrag(params, rot, corner, { x: press.x + moveBy.x + grab.x, y: press.y + moveBy.y + grab.y },
-    mag => Math.round(mag * 10) / 10);
+    0.1);
 };
 
 test('grabbing a corner handle does not rescale the view', () => {
@@ -453,11 +453,45 @@ test('near the offset limit the magnification stops instead of moving the fixed 
   const start = { ...createElement('zoom').params, shape: 'rect', w: 2000, h: 20, mag: 1, insetX: 4990, insetY: 0 };
   const anchor = viewCorner(start, 0, -1, -1);
   const toward2 = viewCorner({ ...start, mag: 2, insetX: 4990 + 1000 }, 0, 1, 1);
-  const next = zoomViewCornerDrag(start, 0, { sx: 1, sy: 1 }, toward2, mag => Math.round(mag * 10) / 10);
+  const next = zoomViewCornerDrag(start, 0, { sx: 1, sy: 1 }, toward2, 0.1);
   assert.ok(near(viewCorner({ ...start, ...next }, 0, -1, -1), anchor), `anchor ${JSON.stringify(viewCorner({ ...start, ...next }, 0, -1, -1))}`);
   // ×1.01 is the most the offset allows; on the 0.1 step that is ×1.0.
   assert.ok(next.insetX <= 5000 && next.mag <= 1.01 + 1e-9, `×${next.mag}, offset ${next.insetX}`);
   const unrounded = zoomViewCornerDrag(start, 0, { sx: 1, sy: 1 }, toward2);
   assert.ok(Math.abs(unrounded.mag - 1.01) < 1e-9 && Math.abs(unrounded.insetX - 5000) < 1e-6, `×${unrounded.mag}, offset ${unrounded.insetX}`);
   assert.ok(near(viewCorner({ ...start, ...unrounded }, 0, -1, -1), anchor));
+});
+
+// ---- Review of ea1c7cd (#306) ----
+
+test('a corner drag stopped by the offset limit still lands on the 0.1 step', () => {
+  // The reported case: the limit allows ×1.06, which is off the step.
+  const start = { ...createElement('zoom').params, shape: 'rect', w: 2000, h: 20, mag: 1, insetX: 4940, insetY: 0 };
+  const anchor = viewCorner(start, 0, -1, -1);
+  const toward2 = viewCorner({ ...start, mag: 2, insetX: 4940 + 1000 }, 0, 1, 1);
+  const next = zoomViewCornerDrag(start, 0, { sx: 1, sy: 1 }, toward2, 0.1);
+  assert.equal(next.mag, 1, 'the largest step value the limit allows');
+  assert.ok(next.insetX <= 5000);
+  assert.ok(near(viewCorner({ ...start, ...next }, 0, -1, -1), anchor));
+  // Everywhere else along the drag, the step holds and is written without float noise.
+  for (let k = 0; k <= 40; k++) {
+    const target = viewCorner({ ...start, insetX: 0, mag: 1 + k * 0.025 }, 0, 1, 1);
+    const free = { ...start, insetX: 0 };
+    const result = zoomViewCornerDrag(free, 0, { sx: 1, sy: 1 }, target, 0.1);
+    assert.equal(result.mag, Number(result.mag.toFixed(1)), `×${result.mag}`);
+  }
+});
+
+test('a corner drag with no step value inside its range keeps the starting magnification', () => {
+  // An off-step ×4.25 from a saved scene, against the +x limit: growing is
+  // barred, but shrinking is free, so the nearest step value inside is ×4.2.
+  const start = { ...createElement('zoom').params, shape: 'rect', w: 100, h: 20, mag: 4.25, insetX: 5000, insetY: 0 };
+  const grown = viewCorner({ ...start, mag: 6 }, 0, 1, 1);
+  assert.equal(zoomViewCornerDrag(start, 0, { sx: 1, sy: 1 }, grown, 0.1).mag, 4.2);
+  // Wedged on both sides — growing would pass +x, shrinking would pass −y —
+  // the range is ×4.25 alone, with no step value in it.
+  const wedged = { ...start, insetY: -5000 };
+  const next = zoomViewCornerDrag(wedged, 0, { sx: 1, sy: 1 }, viewCorner({ ...wedged, mag: 6 }, 0, 1, 1), 0.1);
+  assert.equal(next.mag, 4.25);
+  assert.ok(near(viewCorner({ ...wedged, ...next }, 0, -1, -1), viewCorner(wedged, 0, -1, -1)));
 });

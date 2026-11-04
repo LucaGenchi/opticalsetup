@@ -185,13 +185,15 @@ export function zoomViewBox(params, rot = 0) {
 // element's origin, on the bench (the pointer plus the grab offset, see
 // zoomViewCorner()). The magnification follows that point projected on the
 // view's diagonal, so it changes smoothly whichever way the pointer leaves
-// it; `snap` rounds it (to the field's step) before the view is placed, so
-// the anchor stays exact.
+// it, and lands on the field's `step` (0 = no step) before the view is
+// placed, so the anchor stays exact.
 //
 // The magnification is bounded by the field and also by how far the view's
 // offset may go: the view's centre moves as it scales, and clamping the
-// centre afterwards would move the corner that is meant to stay put.
-export function zoomViewCornerDrag(params, rot, corner, point, snap = mag => mag) {
+// centre afterwards would move the corner that is meant to stay put. The
+// step is taken inside those bounds: the nearest step value within them, or
+// the starting magnification when no step value fits.
+export function zoomViewCornerDrag(params, rot, corner, point, step = 0) {
   const { g, hx, hy, anchor } = cornerFrame(params, rot, corner);
   let lo = 1, hi = zoomMaxMagnification(params);
   for (const [a, h] of [[anchor.x, hx], [anchor.y, hy]]) {
@@ -200,16 +202,30 @@ export function zoomViewCornerDrag(params, rot, corner, point, snap = mag => mag
     lo = Math.max(lo, Math.min(m1, m2));
     hi = Math.min(hi, Math.max(m1, m2));
   }
-  // The starting magnification always fits; rounding cannot leave the range.
+  // The starting magnification always fits.
   lo = Math.min(lo, g.mag);
   hi = Math.max(hi, g.mag);
   const raw = ((point.x - anchor.x) * hx + (point.y - anchor.y) * hy) / (2 * (hx * hx + hy * hy));
-  const mag = bounded(snap(bounded(raw, lo, hi, g.mag)), lo, hi, g.mag);
+  const mag = onStep(bounded(raw, lo, hi, g.mag), lo, hi, step, g.mag);
   return {
     mag,
     insetX: clampZoomOffset(anchor.x + mag * hx),
     insetY: clampZoomOffset(anchor.y + mag * hy),
   };
+}
+
+// `value` on the grid of `step` and within [lo, hi]: the nearest grid value
+// when it is inside, else the grid value next to the bound that was passed,
+// else (no grid value fits) `fallback`. Written with the step's decimals, so
+// 1.1 is not stored as 1.1000000000000001.
+function onStep(value, lo, hi, step, fallback) {
+  if (!(step > 0)) return value;
+  const decimals = (String(step).split('.')[1] || '').length;
+  const at = k => Number((k * step).toFixed(decimals));
+  let mag = at(Math.round(value / step));
+  if (mag > hi) mag = at(Math.floor(hi / step + 1e-9));
+  if (mag < lo) mag = at(Math.ceil(lo / step - 1e-9));
+  return mag >= lo - 1e-12 && mag <= hi + 1e-12 ? mag : fallback;
 }
 
 // The view's corner on side `corner`, relative to the element's origin on
