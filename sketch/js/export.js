@@ -12,6 +12,7 @@ import { pulsePeriodNs, pulsesReadAsCW } from './timescale.js';
 import { polygonScannerState } from './polygon-scanner.js';
 import { encodeGIF, imageDataToRGB332, validateGIFOptions } from './gif.js';
 import { immersionLayerSVG } from './immersion.js';
+import { zoomSceneSVG } from './zoom-view.js';
 import { download, manualBeamSVG, rotPt } from './util.js';
 
 // Millimetres. Past this a figure is not a bench, it is bad data.
@@ -196,7 +197,12 @@ export function buildSVG({ whiteBg = false, animation = null, bounds = null } = 
   for (const el of elements) {
     const def = registry[el.type];
     if (!def || def.hideInExport) continue;
-    body += `<g transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})">${def.svg(el, elements)}</g>`;
+    const art = el.type === 'zoom'
+      ? zoomSceneSVG(el, {
+        drawables: traced.drawables, beams: state.beams, elements, baseElements: state.elements, exporting: true,
+      })
+      : def.svg(el, elements);
+    body += `<g transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})">${art}</g>`;
     body += labelSVG(el);
   }
 

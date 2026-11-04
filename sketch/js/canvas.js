@@ -8,12 +8,14 @@ import {
   registry, getSize, boxAnchor, getVisualBounds, getDirectManipulation, createElement, labelSVG,
   stageOffsetAt, retroOffsetAt, voxelDepthFactor, displayCableSVG, specimenTypeOf,
   displayActionUpdate, delayLineSweepSpanMm, mixStateText, normalizeSupercontinuumParams,
-  specimenTimingText,
+  specimenTimingText, isRotatable,
 } from './elements.js';
 import {
   OBJECTIVE_FRONT_X, normalizeObjectiveParams, objectiveBackFocalPlaneX, objectiveWorkingDistance,
 } from './objective.js';
 import { immersionLayerSVG } from './immersion.js';
+import { zoomSceneSVG } from './zoom-view.js';
+import { clampZoomOffset, zoomViewContains } from './zoom.js';
 import { polygonScannerState } from './polygon-scanner.js';
 import { mixReading, specimenTimingReading, traceScene, getTraceRevision } from './raytrace.js';
 import {
@@ -855,14 +857,24 @@ function renderHighlights() {
 
 function renderElements() {
   let s = '';
-  const elements = animatedVisualElements().filter(el => !isBackground(el));
+  const allElements = animatedVisualElements();
+  const elements = allElements.filter(el => !isBackground(el));
   for (const el of elements) {
     if (el.type === 'display') s += displayCableSVG(el, elements);
   }
   for (const el of elements) {
     const def = registry[el.type];
     if (!def) continue;
-    s += `<g data-element-id="${esc(el.id)}" transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})" vector-effect="non-scaling-stroke">${def.svg(el, elements)}</g>`;
+    // A zoom's view is the bench redrawn, so it needs the traced rays the
+    // beam layer was just drawn from.
+    const body = el.type === 'zoom'
+      ? zoomSceneSVG(el, {
+        drawables: displayedBeamScene?.drawables || [], beams: state.beams,
+        elements: allElements, baseElements: state.elements,
+        nonScalingStroke: true, background: 'var(--canvas-bg)',
+      })
+      : def.svg(el, elements);
+    s += `<g data-element-id="${esc(el.id)}" transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})" vector-effect="non-scaling-stroke">${body}</g>`;
     s += labelSVG(el);
   }
   // placement ghost
@@ -959,7 +971,7 @@ function renderOverlay() {
     const direct = getDirectManipulation(sel);
     const resizeHandles = (direct?.resize ? resizeHandleLocations(direct.resize, hw, hh) : [])
       .map(h => ({ ...h, x: h.x + off.x, y: h.y + off.y }));
-    const rotateControl = registry[sel.type]?.rotatable === false ? ''
+    const rotateControl = !isRotatable(sel) ? ''
       : `<line x1="${off.x}" y1="${off.y - hh}" x2="${off.x}" y2="${off.y - hh - 18 / z}" stroke="#2f6fed" stroke-width="${1.2 / z}"/>` +
         `<circle id="rotHandle" cx="${off.x}" cy="${off.y - hh - 22 / z}" r="${5 / z}" fill="#fff" stroke="#2f6fed" stroke-width="${1.5 / z}"/>`;
     // Below the box, not above it. A short label's box is narrower than this
@@ -973,6 +985,10 @@ function renderOverlay() {
       : '';
     s += `<g transform="translate(${sel.x} ${sel.y}) rotate(${sel.rot || 0})">` +
       `<rect x="${off.x - hw}" y="${off.y - hh}" width="${2 * hw}" height="${2 * hh}" fill="none" stroke="#2f6fed" stroke-width="${1.2 / z}" stroke-dasharray="${4 / z} ${3 / z}"/>` +
+      // Parts drawn away from the element's box (a zoom's view) are part of
+      // the selection too, and say so.
+      (registry[sel.type]?.selectionBoxes?.(sel) || []).map(b =>
+        `<rect x="${b.x0 - 6}" y="${b.y0 - 6}" width="${b.x1 - b.x0 + 12}" height="${b.y1 - b.y0 + 12}" fill="none" stroke="#2f6fed" stroke-width="${1.2 / z}" stroke-dasharray="${4 / z} ${3 / z}"/>`).join('') +
       rotateControl +
       resizeHandles.map(({ x, y }) =>
         `<rect x="${x - 4.5 / z}" y="${y - 4.5 / z}" width="${9 / z}" height="${9 / z}" rx="${1.4 / z}" fill="#fff" stroke="#2f6fed" stroke-width="${1.5 / z}"/>`).join('') +
@@ -1099,7 +1115,7 @@ function hitElementEditPoint(sel, w) {
 
 function hitRotHandle(sel, w) {
   if (!sel || state.selection.kind !== 'element') return false;
-  if (registry[sel.type]?.rotatable === false) return false;
+  if (!isRotatable(sel)) return false;
   const sz = getSize(sel);
   const off = boxAnchor(sel);
   const l = toLocal(sel, w.x, w.y);
@@ -1544,7 +1560,7 @@ function bindPointer() {
       detail: {
         clientX: e.clientX, clientY: e.clientY,
         kind: inCurrentGroup ? 'multi' : el ? 'element' : 'beam',
-        rotatable: !!el && registry[el.type]?.rotatable !== false,
+        rotatable: !!el && isRotatable(el),
         duplicable: inCurrentGroup || !el || registry[el.type]?.singleton !== true,
       },
     }));
@@ -1856,6 +1872,15 @@ function onDown(e) {
         mode: 'move', el, ox: el.x - w.x, oy: el.y - w.y, moved: false,
         pointerType: e.pointerType, pressClientX: e.clientX, pressClientY: e.clientY, maxDistancePx: 0,
       };
+      // A zoom has two parts that move apart: grabbing its view moves only
+      // the view, and grabbing the region aims it while the view stays where
+      // it is on the bench. Nudging or a group move still carries both.
+      if (el.type === 'zoom') {
+        const local = toLocal(el, w.x, w.y);
+        const view = { x: el.x + el.params.insetX, y: el.y + el.params.insetY };
+        if (zoomViewContains(el.params, local, 6 / state.view.z, el.rot)) drag.view = { ox: view.x - w.x, oy: view.y - w.y };
+        else drag.keepView = view;
+      }
       svg.setPointerCapture(e.pointerId);
     }
     renderAll(); onSelectionChange({ openMobile: state.embedMode });
@@ -1929,12 +1954,25 @@ function onMove(e) {
     state.view.x = drag.vx + (e.clientX - drag.sx);
     state.view.y = drag.vy + (e.clientY - drag.sy);
     renderInteraction();
+  } else if (drag.mode === 'move' && drag.view) {
+    const params = drag.el.params;
+    const insetX = clampZoomOffset(snapPos(w.x + drag.view.ox, e.altKey) - drag.el.x);
+    const insetY = clampZoomOffset(snapPos(w.y + drag.view.oy, e.altKey) - drag.el.y);
+    if (insetX === params.insetX && insetY === params.insetY) return;
+    if (!drag.moved) { pushUndo(); drag.moved = true; }
+    params.insetX = insetX;
+    params.insetY = insetY;
+    renderInteraction();
   } else if (drag.mode === 'move') {
     const { x, y } = snapElPos(drag.el, w.x + drag.ox, w.y + drag.oy, e.altKey);
     if (x === drag.el.x && y === drag.el.y) return;
     if (!drag.moved) { pushUndo(); drag.moved = true; }
     drag.el.x = x;
     drag.el.y = y;
+    if (drag.keepView) {
+      drag.el.params.insetX = clampZoomOffset(drag.keepView.x - x);
+      drag.el.params.insetY = clampZoomOffset(drag.keepView.y - y);
+    }
     renderInteraction();
   } else if (drag.mode === 'rotate') {
     const a = dragRotation(drag, w, e.shiftKey);
