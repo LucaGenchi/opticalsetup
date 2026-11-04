@@ -15,7 +15,7 @@ import {
 } from './objective.js';
 import { immersionLayerSVG } from './immersion.js';
 import { zoomPulsePlacement, zoomSceneSVG } from './zoom-view.js';
-import { clampZoomOffset, normalizeZoomParams, zoomViewContains } from './zoom.js';
+import { clampZoomOffset, normalizeZoomParams, zoomViewContains, zoomViewCornerDrag } from './zoom.js';
 import { polygonScannerState } from './polygon-scanner.js';
 import { mixReading, specimenTimingReading, traceScene, getTraceRevision } from './raytrace.js';
 import {
@@ -1019,7 +1019,11 @@ function renderOverlay() {
       // Parts drawn away from the element's box (a zoom's view) are part of
       // the selection too, and say so.
       (registry[sel.type]?.selectionBoxes?.(sel) || []).map(b =>
-        `<rect x="${b.x0 - 6}" y="${b.y0 - 6}" width="${b.x1 - b.x0 + 12}" height="${b.y1 - b.y0 + 12}" fill="none" stroke="#2f6fed" stroke-width="${1.2 / z}" stroke-dasharray="${4 / z} ${3 / z}"/>`).join('') +
+        `<rect x="${b.x0 - 6}" y="${b.y0 - 6}" width="${b.x1 - b.x0 + 12}" height="${b.y1 - b.y0 + 12}" fill="none" stroke="#2f6fed" stroke-width="${1.2 / z}" stroke-dasharray="${4 / z} ${3 / z}"/>`
+        // Purple, like the tune knob: these corners scale the view, so they
+        // set the magnification rather than the region's size.
+        + (b.scalable ? selectionBoxCorners(b).map(({ x, y }) =>
+          `<rect x="${x - 4.5 / z}" y="${y - 4.5 / z}" width="${9 / z}" height="${9 / z}" rx="${1.4 / z}" fill="#fff" stroke="#8b5cf6" stroke-width="${1.5 / z}"/>`).join('') : '')).join('') +
       rotateControl +
       resizeHandles.map(({ x, y }) =>
         `<rect x="${x - 4.5 / z}" y="${y - 4.5 / z}" width="${9 / z}" height="${9 / z}" rx="${1.4 / z}" fill="#fff" stroke="#2f6fed" stroke-width="${1.5 / z}"/>`).join('') +
@@ -1152,6 +1156,27 @@ function hitRotHandle(sel, w) {
   const l = toLocal(sel, w.x, w.y);
   const hy = off.y - (sz.h / 2 + 6) - 22 / state.view.z;
   return Math.hypot(l.x - off.x, l.y - hy) < 9 / state.view.z;
+}
+
+// The corners of a selection box drawn away from the element's own box, on
+// its outline (6 mm outside it, like the resize handles), with the side each
+// corner is on.
+function selectionBoxCorners(b) {
+  return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sy]) => ({
+    sx, sy, x: sx < 0 ? b.x0 - 6 : b.x1 + 6, y: sy < 0 ? b.y0 - 6 : b.y1 + 6,
+  }));
+}
+
+// A scalable selection box's corner under the pointer (a zoom's view).
+function hitScaleCorner(sel, w) {
+  if (!sel || state.selection.kind !== 'element') return null;
+  const l = toLocal(sel, w.x, w.y), z = state.view.z;
+  for (const box of registry[sel.type]?.selectionBoxes?.(sel) || []) {
+    if (!box.scalable) continue;
+    const corner = selectionBoxCorners(box).find(c => Math.hypot(l.x - c.x, l.y - c.y) < 10 / z);
+    if (corner) return corner;
+  }
+  return null;
 }
 
 function hitResizeHandle(sel, w) {
@@ -1841,6 +1866,12 @@ function onDown(e) {
   }
 
   const sel = findSelected();
+  const scaleCorner = state.embedMode ? null : hitScaleCorner(sel, w);
+  if (scaleCorner && sel.type === 'zoom') {
+    drag = { mode: 'zoomscale', el: sel, corner: scaleCorner, base: { ...sel.params }, moved: false };
+    svg.setPointerCapture(e.pointerId);
+    return;
+  }
   const resizeHandle = hitResizeHandle(sel, w);
   if (resizeHandle) {
     const direct = getDirectManipulation(sel);
@@ -1948,7 +1979,7 @@ function onMove(e) {
   if (statusEl && !drag && !placing && state.tool === 'select') {
     statusEl.textContent = `x ${Math.round(w.x)} mm,  y ${Math.round(w.y)} mm`;
     const hoverSel = findSelected();
-    const resize = hitResizeHandle(hoverSel, w);
+    const resize = hitResizeHandle(hoverSel, w) || hitScaleCorner(hoverSel, w);
     svg.style.cursor = hitElementEditPoint(hoverSel, w) >= 0 ? 'move'
       : resize ? (resize.sx === 0 ? 'ns-resize' : resize.sy === 0 ? 'ew-resize'
       : resize.sx === resize.sy ? 'nwse-resize' : 'nesw-resize')
@@ -2046,6 +2077,15 @@ function onMove(e) {
     for (const [key, next] of changes) writeParam(drag.el, key, next);
     const labels = assignments.map(([key]) => `${key} ${readParam(drag.el, key)}`).join(' · ');
     setStatus(labels);
+    renderInteraction();
+  } else if (drag.mode === 'zoomscale') {
+    const next = zoomViewCornerDrag(drag.base, drag.el.rot, drag.corner,
+      { x: w.x - drag.el.x, y: w.y - drag.el.y }, mag => boundedParam(drag.el, 'mag', mag));
+    const params = drag.el.params;
+    if (next.mag === params.mag && next.insetX === params.insetX && next.insetY === params.insetY) return;
+    if (!drag.moved) { pushUndo(); drag.moved = true; }
+    Object.assign(params, next);
+    setStatus(directValueLabel(drag.el, getDirectManipulation(drag.el).tune));
     renderInteraction();
   } else if (drag.mode === 'tune') {
     const next = tuneDragValue(drag, e.clientY);
@@ -2185,7 +2225,7 @@ function onUp(e) {
   }
   if (!drag) return;
   if (e.type === 'pointercancel') {
-    const wasChange = drag.moved === true && ['move', 'rotate', 'resize', 'resizeAnchor', 'tune', 'editpoint', 'vertex', 'movebeam', 'movemulti'].includes(drag.mode);
+    const wasChange = drag.moved === true && ['move', 'rotate', 'resize', 'resizeAnchor', 'tune', 'zoomscale', 'editpoint', 'vertex', 'movebeam', 'movemulti'].includes(drag.mode);
     drag = null;
     renderAll();
     if (wasChange) { changed(); onSelectionChange(); }
@@ -2205,7 +2245,7 @@ function onUp(e) {
     return;
   }
   const dragMode = drag.mode;
-  const wasChange = drag.moved === true && ['move', 'rotate', 'resize', 'resizeAnchor', 'tune', 'editpoint', 'vertex', 'movebeam', 'movemulti'].includes(dragMode);
+  const wasChange = drag.moved === true && ['move', 'rotate', 'resize', 'resizeAnchor', 'tune', 'zoomscale', 'editpoint', 'vertex', 'movebeam', 'movemulti'].includes(dragMode);
   if ((dragMode === 'move' || dragMode === 'movebeam')
       && Number.isFinite(drag.pressClientX) && Number.isFinite(drag.pressClientY)) {
     drag.maxDistancePx = Math.max(

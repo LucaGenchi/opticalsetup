@@ -6000,7 +6000,7 @@ export const registry = {
       { key: 'shape', label: 'Shape', type: 'select', def: 'circle', options: ZOOM_SHAPES },
       { key: 'w', label: 'Region width (mm)', type: 'number', min: ZOOM_REGION_MIN, max: ZOOM_REGION_MAX, step: 0.1, def: 30 },
       { key: 'h', label: 'Region height (mm)', type: 'number', min: ZOOM_REGION_MIN, max: ZOOM_REGION_MAX, step: 0.1, def: 20, show: p => p.shape !== 'circle' },
-      { key: 'mag', label: 'Magnification (×)', type: 'number', min: 1, max: zoomMaxMagnification, step: 0.5, def: 4 },
+      { key: 'mag', label: 'Magnification (×)', type: 'number', min: 1, max: zoomMaxMagnification, step: 0.1, def: 4 },
       { key: 'insetX', label: 'View offset x (mm)', type: 'number', min: -ZOOM_OFFSET_LIMIT, max: ZOOM_OFFSET_LIMIT, step: 1, def: 110 },
       { key: 'insetY', label: 'View offset y (mm)', type: 'number', min: -ZOOM_OFFSET_LIMIT, max: ZOOM_OFFSET_LIMIT, step: 1, def: -90 },
       { key: 'regionDash', label: 'Dashed outlines (region and view)', type: 'checkbox', def: false },
@@ -6010,10 +6010,11 @@ export const registry = {
       { key: 'scaleBarMm', label: 'Scale bar length (mm) · 0 = automatic', type: 'number', min: 0, max: p => zoomGeometry(p).rx * 2, step: 0.001, def: 0, show: p => p.scaleBar },
       { key: 'frameColor', label: 'Frame color', type: 'color', def: '#475569' },
     ],
-    directHint: 'Drag the enlarged view to move it on its own; drag the region’s outline to aim it while the view stays put. Blue handles resize the region; the purple knob sets the magnification; a rectangle or ellipse turns with the round handle.',
+    directHint: 'Drag the enlarged view to move it on its own; drag the region’s outline to aim it while the view stays put. Blue handles resize the region; the purple corners of the view, or the purple knob, set the magnification; a rectangle or ellipse turns with the round handle.',
     hitTest(el, point, tolerance) { return zoomHitTest(el.params, point, tolerance, el.rot); },
     extraBounds(el) { return [zoomViewBox(el.params, el.rot)]; },
-    selectionBoxes(el) { return [zoomViewBox(el.params, el.rot)]; },
+    // Scalable: its corners carry handles that set the magnification.
+    selectionBoxes(el) { return [{ ...zoomViewBox(el.params, el.rot), scalable: true }]; },
     svg(el) { return zoomFrameSVG(el.params, { rot: el.rot }); },
     // The palette shows a small region and its view side by side, whatever
     // the defaults place where.
@@ -6454,7 +6455,7 @@ const DIRECT = {
       y: p => (p.shape === 'circle' ? null : 'h'),
       uniform: p => (p.shape === 'circle' ? 'w' : null),
     },
-    tune: { key: 'mag', short: 'mag ×', pixelsPerStep: 3 },
+    tune: { key: 'mag', short: 'mag ×', pixelsPerStep: 1 },
   },
   box: { resize: { x: 'w', y: 'h' } },
   blocker: { resize: { x: 'w', y: 'h' } },

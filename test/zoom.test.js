@@ -9,7 +9,7 @@ import { parseSketch, state } from '../sketch/js/state.js';
 import { buildSVG } from '../sketch/js/export.js';
 import {
   formatLength, niceScaleBarLength, zoomConnectors, zoomFrameSVG, zoomGeometry, zoomHitTest, zoomMaxMagnification,
-  normalizeZoomParams, zoomMapper, zoomScaleBar, zoomViewBox,
+  normalizeZoomParams, zoomMapper, zoomScaleBar, zoomViewBox, zoomViewCornerDrag,
 } from '../sketch/js/zoom.js';
 import { zoomPulsePlacement, zoomSceneSVG } from '../sketch/js/zoom-view.js';
 
@@ -367,4 +367,57 @@ test('a stroke left at the SVG default keeps its bench weight in the view', () =
   const content = viewContent(view(zoom, [camera, zoom]));
   assert.ok(content.includes('scale(100) rotate(0) translate(-200 0)" stroke-width="0.01"'),
     'the enlarged group sets the inherited stroke width to 1/mag');
+});
+
+// ---- Setting the magnification from the view's corners ----
+
+// The view's corner on the side (sx, sy) of the element's local frame, on the
+// bench relative to the element's origin.
+const viewCorner = (params, rot, sx, sy) => {
+  const b = zoomViewBox(params, rot);
+  const p = { x: sx < 0 ? b.x0 : b.x1, y: sy < 0 ? b.y0 : b.y1 };
+  const a = rot * Math.PI / 180;
+  return { x: p.x * Math.cos(a) - p.y * Math.sin(a), y: p.x * Math.sin(a) + p.y * Math.cos(a) };
+};
+const near = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < 1e-6;
+
+for (const rot of [0, 30, 200]) {
+  test(`dragging a view corner at ${rot}° scales the view about the opposite corner`, () => {
+    const start = { ...createElement('zoom').params, shape: 'rect', w: 30, h: 12, mag: 3, insetX: 120, insetY: -80 };
+    for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+      const anchor = viewCorner(start, rot, -sx, -sy);
+      const corner = viewCorner(start, rot, sx, sy);
+      // Pull the corner to where a ×6 view would put it.
+      const target = { x: anchor.x + 2 * (corner.x - anchor.x), y: anchor.y + 2 * (corner.y - anchor.y) };
+      const next = zoomViewCornerDrag(start, rot, { sx, sy }, target);
+      const after = { ...start, ...next };
+      assert.ok(Math.abs(next.mag - 6) < 1e-9, `corner ${sx},${sy}: ×${next.mag}`);
+      assert.ok(near(viewCorner(after, rot, -sx, -sy), anchor), 'the opposite corner stays on the bench');
+      assert.ok(near(viewCorner(after, rot, sx, sy), target), 'the dragged corner meets the pointer');
+    }
+  });
+}
+
+test('a corner drag follows the diagonal, stays within the bounds, and rounds without moving the anchor', () => {
+  const start = { ...createElement('zoom').params, mag: 4, insetX: 110, insetY: -90 };
+  const anchor = viewCorner(start, 0, -1, -1);
+  const corner = viewCorner(start, 0, 1, 1);
+  // Off the diagonal: only the part along it counts.
+  const along = zoomViewCornerDrag(start, 0, { sx: 1, sy: 1 }, { x: corner.x + 20, y: corner.y - 20 });
+  assert.ok(Math.abs(along.mag - 4) < 1e-9, 'sideways motion leaves the magnification');
+  // Through the anchor and past it: never below ×1, never past the bound.
+  assert.equal(zoomViewCornerDrag(start, 0, { sx: 1, sy: 1 }, { x: anchor.x - 50, y: anchor.y - 50 }).mag, 1);
+  assert.equal(zoomViewCornerDrag(start, 0, { sx: 1, sy: 1 }, { x: 1e6, y: 1e6 }).mag, zoomMaxMagnification(start));
+  // Rounded to the field's step, with the anchor still exact.
+  const rounded = zoomViewCornerDrag(start, 0, { sx: 1, sy: 1 }, { x: corner.x + 7, y: corner.y + 7 },
+    mag => Math.round(mag * 10) / 10);
+  assert.equal(rounded.mag, Math.round(rounded.mag * 10) / 10);
+  assert.ok(near(viewCorner({ ...start, ...rounded }, 0, -1, -1), anchor));
+});
+
+test('the zoom marks its view as scalable for the canvas corner handles', () => {
+  const zoom = createElement('zoom');
+  const [box] = registry.zoom.selectionBoxes(zoom);
+  assert.equal(box.scalable, true);
+  assert.deepEqual({ x0: box.x0, y0: box.y0, x1: box.x1, y1: box.y1 }, zoomViewBox(zoom.params, 0));
 });

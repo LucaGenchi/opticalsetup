@@ -177,6 +177,33 @@ export function zoomViewBox(params, rot = 0) {
   return g.flip ? { x0: -box.x1, y0: -box.y1, x1: -box.x0, y1: -box.y0 } : box;
 }
 
+// Dragging a corner of the view sets the magnification: the opposite corner
+// stays where it is on the bench and the view, which keeps the region's
+// shape, grows or shrinks to meet the pointer. `params` are the zoom's at the
+// start of the drag, `corner` is {sx, sy} (±1) in the element's local frame,
+// and `point` is the pointer relative to the element's origin, on the bench.
+// The magnification follows the pointer projected on the view's diagonal, so
+// it changes smoothly whichever way the pointer leaves it; `snap` rounds it
+// (to the field's step) before the view is placed, so the anchor stays exact.
+export function zoomViewCornerDrag(params, rot, corner, point, snap = mag => mag) {
+  const g = zoomGeometry(params);
+  const a = (finite(rot) ? rot : 0) * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+  // Half the view's diagonal towards the dragged corner, per unit of
+  // magnification, on the bench.
+  const hx = corner.sx * g.rx * cos - corner.sy * g.ry * sin;
+  const hy = corner.sx * g.rx * sin + corner.sy * g.ry * cos;
+  const ox = bounded(params.insetX, -ZOOM_OFFSET_LIMIT, ZOOM_OFFSET_LIMIT, 110);
+  const oy = bounded(params.insetY, -ZOOM_OFFSET_LIMIT, ZOOM_OFFSET_LIMIT, -90);
+  const anchor = { x: ox - g.mag * hx, y: oy - g.mag * hy };
+  const raw = ((point.x - anchor.x) * hx + (point.y - anchor.y) * hy) / (2 * (hx * hx + hy * hy));
+  const mag = bounded(snap(bounded(raw, 1, zoomMaxMagnification(params), g.mag)), 1, zoomMaxMagnification(params), g.mag);
+  return {
+    mag,
+    insetX: clampZoomOffset(anchor.x + mag * hx),
+    insetY: clampZoomOffset(anchor.y + mag * hy),
+  };
+}
+
 // A length in millimetres as a person writes it on a scale bar.
 export function formatLength(mm) {
   const [value, unit] = mm >= 1 ? [mm, 'mm'] : mm >= 1e-3 ? [mm * 1e3, 'µm'] : [mm * 1e6, 'nm'];
