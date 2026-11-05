@@ -249,6 +249,15 @@ const demoScenes = {
     mkDemo('lens', 150, 130, 90, { f: 70 }),
     mkDemo('zoom', 150, 60, 0, { w: 14, mag: 5, insetX: 140, insetY: 50 }),
   ],
+  // One ruler reads a lens's focal length off the bench, from the lens to
+  // where the beam crosses; another reads the fold angle at a mirror.
+  ruler: () => [
+    mkDemo('cwlaser', 40, 220, 0, { beamMode: 'beam', beamWidth: 16 }),
+    mkDemo('lens', 160, 220, 0, { f: 100, dia: 30 }),
+    mkDemo('mirror', 380, 220, 45, { length: 25.4 }),
+    mkDemo('ruler', 210, 262, 0, { len: 100, text: '$f = {value}$', labelSide: 'below', ticks: true }),
+    mkDemo('ruler', 380, 220, 180, { mode: 'angle', angle: -90, armA: 60, armB: 60, text: '$\\theta = {value}$', decimals: 0 }),
+  ],
   box: () => [
     mkDemo('cwlaser', 60, 160),
     mkDemo('box', 230, 160, 0, { text: 'Enclosure', behavior: 'block' }),

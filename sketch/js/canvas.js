@@ -176,6 +176,34 @@ function snapElPos(el, wx, wy, bypass = false) {
   };
 }
 
+// The component point nearest `w` within a few screen pixels, for measuring
+// between parts of the setup: each element's centre, its optically active
+// point (a laser's aperture, an objective's tip) and the handles of other
+// rulers, so measurements can be chained. Annotations that only frame the
+// figure offer nothing to land on.
+const NO_SNAP_TYPES = new Set(['figureframe', 'highlight', 'zoom', 'textlabel', 'arrowann']);
+function elementSnapPoint(w, excludeId) {
+  const tolerance = 10 / state.view.z;
+  let best = null, distance = tolerance;
+  const consider = (el, x, y) => {
+    const d = Math.hypot(x - w.x, y - w.y);
+    if (Number.isFinite(d) && d < distance) { best = { x, y, el }; distance = d; }
+  };
+  for (const el of state.elements) {
+    if (el.id === excludeId || NO_SNAP_TYPES.has(el.type)) continue;
+    const def = registry[el.type];
+    if (!def) continue;
+    const handles = el.type === 'ruler' ? def.editPoints.get(el) : [{ x: 0, y: 0 }];
+    const active = typeof def.snapPt === 'function' ? def.snapPt(el) : def.snapPt;
+    if (el.type !== 'ruler' && Number.isFinite(active?.x) && Number.isFinite(active?.y)) handles.push(active);
+    for (const p of handles) {
+      const at = toWorld(el, p.x, p.y);
+      consider(el, at.x, at.y);
+    }
+  }
+  return best;
+}
+
 function constrainPoint(origin, point, incrementDeg = 45) {
   const dx = point.x - origin.x, dy = point.y - origin.y;
   const length = Math.hypot(dx, dy);
@@ -2104,18 +2132,25 @@ function onMove(e) {
     setStatus(directValueLabel(drag.el, drag.tune));
     renderInteraction();
   } else if (drag.mode === 'editpoint') {
-    const snapped = { x: snapPos(w.x, e.altKey), y: snapPos(w.y, e.altKey) };
+    // A measuring point (a ruler's end) lands on a component's own point
+    // when it comes close, before falling back to the grid.
+    const onElement = drag.editor.snapToElements && !e.altKey ? elementSnapPoint(w, drag.el.id) : null;
+    const snapped = onElement || { x: snapPos(w.x, e.altKey), y: snapPos(w.y, e.altKey) };
     let local = toLocal(drag.base, snapped.x, snapped.y);
-    if (e.shiftKey) local = constrainPoint(drag.start, local);
+    if (e.shiftKey) local = constrainPoint(drag.editor.constrainOrigin?.(drag.base, drag.i) || drag.start, local);
     const next = drag.editor.candidate(drag.base, drag.i, local);
     if (!next) {
-      setStatus('Boundary cannot cross itself or collapse');
+      setStatus(drag.editor.refusal || 'Boundary cannot cross itself or collapse');
       return;
     }
     if (!drag.moved) { pushUndo(); drag.moved = true; }
     drag.el.x = next.x; drag.el.y = next.y;
-    drag.el.params.vertices = next.vertices;
-    setStatus(`vertex ${drag.i + 1} · ${local.x.toFixed(1)}, ${local.y.toFixed(1)} mm`);
+    if (Number.isFinite(next.rot)) drag.el.rot = next.rot;
+    if (next.vertices) drag.el.params.vertices = next.vertices;
+    if (next.params) Object.assign(drag.el.params, next.params);
+    setStatus(drag.editor.status
+      ? drag.editor.status(drag.el, drag.i) + (onElement ? ` · on ${registry[onElement.el.type]?.label || onElement.el.type}` : '')
+      : `vertex ${drag.i + 1} · ${local.x.toFixed(1)}, ${local.y.toFixed(1)} mm`);
     renderInteraction();
   } else if (drag.mode === 'marquee') {
     drag.x1 = w.x; drag.y1 = w.y;

@@ -18,6 +18,10 @@ import {
   ZOOM_OFFSET_LIMIT, ZOOM_REGION_MAX, ZOOM_REGION_MIN, ZOOM_SHAPES,
   zoomFrameSVG, zoomGeometry, zoomHitTest, zoomMaxMagnification, zoomScaleBarMaxMm, zoomViewBox,
 } from './zoom.js';
+import {
+  RULER_LENGTH_MAX, RULER_LENGTH_MIN, RULER_MODES, rulerConstrainOrigin, rulerEditCandidate,
+  rulerHitTest, rulerLocalBounds, rulerMeasurement, rulerPoints, rulerSVG, rulerValueText,
+} from './ruler.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
 import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenRamanReading, specimenSrsNote, specimenTimingReading, supercontinuumReading, twoBeamPartner, MIN_OVERLAP } from './raytrace.js';
 import { NONLINEAR_ORDER } from './sectioning.js';
@@ -6025,6 +6029,59 @@ export const registry = {
     surfaces: () => [],
   },
 
+  // A dimension line or a pair of arms from a vertex, reading the distance or
+  // the angle it spans (geometry in ruler.js). Its ends are dragged with the
+  // round handles and snap to the grid and to components, so it can measure
+  // between parts of the setup. Diagram-only: no surfaces, never in a ray's way.
+  ruler: {
+    label: 'Ruler', category: 'Annotations',
+    aliases: ['measure', 'measuring tape', 'dimension', 'dimension line', 'distance', 'length', 'angle', 'protractor', 'goniometer', 'caliper'],
+    noLabel: true,
+    paramsTitle: 'Measurement and label',
+    size: { w: 100, h: 20 },
+    size_: el => {
+      const b = rulerLocalBounds(el.params, el.rot);
+      return { w: b.x1 - b.x0, h: b.y1 - b.y0 };
+    },
+    boxAnchor(el) {
+      const b = rulerLocalBounds(el.params, el.rot);
+      return { x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2 };
+    },
+    params: [
+      { key: 'mode', label: 'Measures', type: 'select', def: 'distance', options: RULER_MODES },
+      { key: 'len', label: 'Length (mm)', type: 'number', min: RULER_LENGTH_MIN, max: RULER_LENGTH_MAX, step: 0.1, def: 100, show: p => p.mode !== 'angle' },
+      { key: 'angle', label: 'Angle between arms (°) · + opens counterclockwise', type: 'number', min: -180, max: 180, step: 0.1, def: 45, show: p => p.mode === 'angle' },
+      { key: 'armA', label: 'Arm 1 length (mm)', type: 'number', min: RULER_LENGTH_MIN, max: RULER_LENGTH_MAX, step: 0.1, def: 80, show: p => p.mode === 'angle' },
+      { key: 'armB', label: 'Arm 2 length (mm)', type: 'number', min: RULER_LENGTH_MIN, max: RULER_LENGTH_MAX, step: 0.1, def: 80, show: p => p.mode === 'angle' },
+      { key: 'text', label: 'Label · Markdown, $LaTeX$, {value} = measurement', type: 'text', def: '{value}' },
+      { key: 'decimals', label: 'Decimal places', type: 'number', min: 0, max: 3, step: 1, def: 1 },
+      { key: 'labelSide', label: 'Label side', type: 'select', def: 'above', options: [['above', 'Above the line'], ['below', 'Below the line']], show: p => p.mode !== 'angle' },
+      { key: 'arrows', label: 'Arrowheads', type: 'checkbox', def: true, show: p => p.mode !== 'angle' },
+      { key: 'ticks', label: 'Graduation ticks', type: 'checkbox', def: false, show: p => p.mode !== 'angle' },
+      { key: 'fontSize', label: 'Label size (pt)', type: 'number', min: 6, max: 72, step: 1, def: 12 },
+      { key: 'width', label: 'Line width', type: 'number', min: 0.25, max: 8, step: 0.25, def: 1.2 },
+      { key: 'fill', label: 'Color', type: 'color', def: '#334155' },
+    ],
+    directHint: 'Drag a round handle to move that end; it snaps to the grid and to components (hold Alt for a free point, Shift for 45° steps). Drag the line or the label to move the whole ruler; the square corner handles size the label.',
+    editPoints: {
+      get: el => rulerPoints(el.params),
+      candidate: rulerEditCandidate,
+      constrainOrigin: rulerConstrainOrigin,
+      snapToElements: true,
+      status: el => {
+        const m = rulerMeasurement(el.params);
+        return `${m.kind === 'angle' ? 'angle' : 'distance'} ${rulerValueText({ ...el.params, decimals: 2 })}`;
+      },
+      hint: 'round handles move the ends; they snap to the grid and to components',
+    },
+    hitTest(el, point, tolerance) { return rulerHitTest(el.params, point, tolerance, el.rot); },
+    svg(el) { return rulerSVG(el.params, { rot: el.rot }); },
+    iconSVG() {
+      return rulerSVG({ mode: 'distance', len: 34, text: '', ticks: true, width: 1.4, fill: '#334155' });
+    },
+    surfaces: () => [],
+  },
+
   // ---------------- Custom ----------------
   box: {
     label: 'Custom box', category: 'Custom', size: el => ({ w: el.params.w + 4, h: el.params.h + 4 }),
@@ -6461,6 +6518,9 @@ const DIRECT = {
   box: { resize: { x: 'w', y: 'h' } },
   blocker: { resize: { x: 'w', y: 'h' } },
   textlabel: { resize: { uniform: 'fontSize' } },
+  // Its round handles set the geometry; the square corners size the label,
+  // as on a text label.
+  ruler: { resize: { uniform: 'fontSize' } },
   probe: { resize: { uniform: 'displayScale' } },
   gascell: { resize: { x: 'length', y: 'height' }, tune: { key: 'transparency', short: 'transp.' } },
   window: { resize: { y: 'length' }, tune: { key: 'transparency', short: 'transp.' } },
@@ -6557,13 +6617,14 @@ const ELEMENT_HELP = {
   figureframe: 'Canvas-only export crop. Its border and handles never appear in the exported figure.',
   textlabel: 'Markdown annotation with headings, lists, emphasis, code, and LaTeX formulas between $ signs; web and DOI addresses become clickable links. It does not interact with rays.',
   highlight: 'Background wash for calling out a region of the sketch; always drawn behind rays and elements, never interacts with rays.',
+  ruler: 'Measures a distance in bench millimetres, or the angle between two arms, and labels it with Markdown and LaTeX; {value} in the label is the measurement. It never interacts with rays.',
   zoom: 'Draws a region of the setup again, enlarged, elsewhere on the canvas, with an optional scale bar in bench millimetres. Shapes grow with the magnification while lines keep their weight; text, arrows and probes are not enlarged. It never interacts with rays.',
   box: 'Generic enclosure with explicit pass-through or beam-blocking behavior.',
   gascell: 'Diagram-only gas cell housing for gas-filled hollow-core fiber setups; never bends, blocks, or absorbs a ray.',
   window: 'Diagram-only optical window; never bends, blocks, or absorbs a ray.',
 };
 
-const DIAGRAM_ONLY = new Set(['arrowann', 'textlabel', 'figureframe', 'highlight', 'zoom', 'gascell', 'window']);
+const DIAGRAM_ONLY = new Set(['arrowann', 'textlabel', 'figureframe', 'highlight', 'zoom', 'ruler', 'gascell', 'window']);
 const SHAPERS = new Set(['slm', 'metasurface']);
 
 export function getElementMeta(type, params = {}, context = {}) {
