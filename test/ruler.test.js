@@ -298,3 +298,37 @@ test('a short display formula is boxed where it is drawn', () => {
   assert.ok(textCenter > b.x0 && textCenter < b.x1, `text at ${textCenter} lies inside ${b.x0}…${b.x1}`);
   assert.ok(rulerHitTest(params, { x: textCenter + 2, y: 0 }, 1), 'the drawn text is grabbable');
 });
+
+test('a handle left exactly on a length bound still lets the other one move', () => {
+  // Review of #308: rebuilt from bench coordinates the fixed arm came back as
+  // 0.09999999999999432 or 5000.000000000001 and the drag was refused.
+  const short = makeRuler(380, 220, 0, { mode: 'angle', angle: 90, armA: 80, armB: 0.1 });
+  const [, , shortTip] = world(short);
+  const a = rulerEditCandidate(short, 1, { x: 70, y: -45 });
+  assert.ok(a, 'the drag is accepted');
+  assert.equal(a.params.armB, 0.1, 'the fixed arm is read as its bound');
+  const movedShort = { ...short, ...a, params: { ...short.params, ...a.params } };
+  close(world(movedShort)[2].x, shortTip.x, 1e-9); close(world(movedShort)[2].y, shortTip.y, 1e-9);
+  const long = makeRuler(0, 0, 45, { mode: 'angle', angle: 90, armA: 80, armB: 5000 });
+  const b = rulerEditCandidate(long, 1, { x: 70, y: -45 });
+  assert.ok(b, 'the drag is accepted');
+  assert.equal(b.params.armB, 5000);
+  const distance = makeRuler(380, 220, 45, { len: 5000 });
+  assert.ok(rulerEditCandidate(distance, 1, { x: 2500, y: 0 }), 'a 5000 mm distance can be re-aimed');
+  // Clearly beyond a bound is still refused.
+  assert.equal(rulerFromWorldPoints('distance', [{ x: 0, y: 0 }, { x: 5000.01, y: 0 }]), null);
+  assert.equal(rulerFromWorldPoints('distance', [{ x: 0, y: 0 }, { x: 0.0999, y: 0 }]), null);
+  assert.equal(rulerFromWorldPoints('angle', [{ x: 0, y: 0 }, { x: 5001, y: 0 }, { x: 0, y: 10 }]), null);
+});
+
+test('coordinates near the largest finite number never produce Infinity', () => {
+  // Review of #308: (a.x + b.x) / 2 overflowed for two close ends at 1e308.
+  const next = rulerFromWorldPoints('distance', [{ x: 1e308, y: 0 }, { x: 1e308, y: 100 }]);
+  assert.ok(next && [next.x, next.y, next.rot, next.params.len].every(Number.isFinite), JSON.stringify(next));
+  assert.equal(next.x, 1e308);
+  assert.equal(next.params.len, 100);
+  const far = makeRuler(1.7e308, 0, 0, { len: 100 });
+  const candidate = rulerEditCandidate(far, 1, { x: 50, y: 20 });
+  assert.ok(candidate === null || [candidate.x, candidate.y, candidate.rot, candidate.params.len].every(Number.isFinite));
+  assert.equal(rulerFromWorldPoints('distance', [{ x: -1.7e308, y: 0 }, { x: 1.7e308, y: 0 }]), null, 'an overflowing length is refused');
+});

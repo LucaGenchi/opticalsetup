@@ -25,6 +25,17 @@ const DEG = Math.PI / 180;
 const finite = Number.isFinite;
 const clamp = (value, lo, hi, fallback) => (finite(value) ? Math.min(hi, Math.max(lo, value)) : fallback);
 const lengthOf = (value, fallback) => clamp(value, RULER_LENGTH_MIN, RULER_LENGTH_MAX, fallback);
+// A length rebuilt from bench coordinates carries rounding crumbs: an arm
+// left at exactly 0.1 or 5000 mm comes back as 0.0999999999999943 or
+// 5000.000000000001. Within a billionth of a bound it is that bound;
+// anything further out has no ruler (null).
+const BOUND_TOLERANCE = 1e-9;
+function measuredLength(value) {
+  if (!finite(value)) return null;
+  if (value < RULER_LENGTH_MIN * (1 - BOUND_TOLERANCE) || value > RULER_LENGTH_MAX * (1 + BOUND_TOLERANCE)) return null;
+  return Math.min(RULER_LENGTH_MAX, Math.max(RULER_LENGTH_MIN, value));
+}
+const allFinite = values => values.every(finite);
 const normalDegrees = value => ((value % 360) + 360) % 360;
 
 // A signed angle folded into (−180, 180].
@@ -78,26 +89,26 @@ export function rulerFromWorldPoints(mode, world) {
     if (world.length !== 3) return null;
     const [v, a, b] = world;
     const ax = a.x - v.x, ay = a.y - v.y, bx = b.x - v.x, by = b.y - v.y;
-    const armA = Math.hypot(ax, ay), armB = Math.hypot(bx, by);
-    if (armA < RULER_LENGTH_MIN || armB < RULER_LENGTH_MIN) return null;
-    if (armA > RULER_LENGTH_MAX || armB > RULER_LENGTH_MAX) return null;
+    const armA = measuredLength(Math.hypot(ax, ay)), armB = measuredLength(Math.hypot(bx, by));
+    if (armA === null || armB === null) return null;
     // y points down, so a turn that looks counterclockwise has a negative
     // cross product.
-    const angle = -Math.atan2(ax * by - ay * bx, ax * bx + ay * by) / DEG;
-    return {
-      x: v.x, y: v.y, rot: normalDegrees(Math.atan2(ay, ax) / DEG),
-      params: { armA, armB, angle: signedDegrees(angle) },
-    };
+    const angle = signedDegrees(-Math.atan2(ax * by - ay * bx, ax * bx + ay * by) / DEG);
+    const rot = normalDegrees(Math.atan2(ay, ax) / DEG);
+    if (!allFinite([angle, rot])) return null;
+    return { x: v.x, y: v.y, rot, params: { armA, armB, angle } };
   }
   if (world.length !== 2) return null;
   const [a, b] = world;
-  const len = Math.hypot(b.x - a.x, b.y - a.y);
-  if (len < RULER_LENGTH_MIN || len > RULER_LENGTH_MAX) return null;
-  return {
-    x: (a.x + b.x) / 2, y: (a.y + b.y) / 2,
-    rot: normalDegrees(Math.atan2(b.y - a.y, b.x - a.x) / DEG),
-    params: { len },
-  };
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const len = measuredLength(Math.hypot(dx, dy));
+  if (len === null) return null;
+  // Halfway from a, not (a + b) / 2, which overflows for coordinates near
+  // the largest finite number even when the two ends are close together.
+  const x = a.x + dx / 2, y = a.y + dy / 2;
+  const rot = normalDegrees(Math.atan2(dy, dx) / DEG);
+  if (!allFinite([x, y, rot])) return null;
+  return { x, y, rot, params: { len } };
 }
 
 // Moving one handle to `local` (in the frame of `el` as it was when the drag
