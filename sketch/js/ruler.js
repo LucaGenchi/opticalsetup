@@ -183,10 +183,9 @@ export function rulerClampDirection(vertex, pointer, targets = {}, tolerance = 0
 //   lines -- the segments of each beam axis, and of arrows drawn as beams.
 // A beam axis is the ray along the middle of a traced beam: a sized beam is
 // a fan of spatial samples (path.sample of path.sampleCount) and its middle
-// sample is the axis; a source whose rays carry no sample index (an object
-// arrow's fan, a laser drawn as a line) has as its axis the ray leaving
-// nearest the source's own direction, with all its branches. A point source
-// has no axis: only its centre is a target.
+// sample is the axis. A ray with no sample index (a laser drawn as a line,
+// each ray of an object arrow's fan) is drawn as itself and is a target
+// whole. A point source has no axis: only its centre is a target.
 // Annotations that only frame the figure offer nothing to land on.
 // `definitions` is the element registry, passed in so this module stays
 // free of it.
@@ -197,7 +196,6 @@ const finitePoint = p => finite(p?.x) && finite(p?.y);
 export function rulerAxisPaths(paths = [], elements = []) {
   const byId = new Map(elements.map(el => [el.id, el]));
   const axes = [];
-  const unsampled = new Map();
   for (const path of paths) {
     const pts = (path?.pts || []).filter(finitePoint);
     if (pts.length < 2) continue;
@@ -206,41 +204,11 @@ export function rulerAxisPaths(paths = [], elements = []) {
       if (path.sample === Math.floor((count - 1) / 2) || path.sample === Math.ceil((count - 1) / 2)) axes.push(pts);
       continue;
     }
-    const source = byId.get(path.sourceId);
-    if (!source || NO_AXIS_SOURCES.has(source.type)) continue;
-    if (!unsampled.has(source.id)) unsampled.set(source.id, []);
-    unsampled.get(source.id).push({ path, pts });
-  }
-  // Without sample indices, the tracer still keeps each emitted ray (depth
-  // 0) and each branch a splitter or partial mirror makes (depth 1, 2, ...)
-  // as paths of their own. The axis is the emitted ray leaving nearest the
-  // source's own direction, together with every branch that continues from
-  // it: a branch starts where its parent ended and extends its branch id.
-  for (const [id, group] of unsampled) {
-    const heading = (byId.get(id).rot || 0) * DEG;
-    let best = null, gap = Infinity;
-    for (const item of group) {
-      if ((item.path.depth || 0) !== 0) continue;
-      const leaving = Math.atan2(item.pts[1].y - item.pts[0].y, item.pts[1].x - item.pts[0].x);
-      const turn = Math.abs(Math.atan2(Math.sin(leaving - heading), Math.cos(leaving - heading)));
-      if (turn < gap) { best = item; gap = turn; }
-    }
-    if (!best) continue;
-    const kept = [best];
-    const pending = new Set(group.filter(item => item !== best && (item.path.depth || 0) > 0));
-    for (let grew = true; grew;) {
-      grew = false;
-      for (const item of pending) {
-        const start = item.pts[0];
-        const parent = kept.find(k => {
-          const end = k.pts[k.pts.length - 1];
-          return Math.hypot(end.x - start.x, end.y - start.y) <= 1e-6 * Math.max(1, Math.abs(end.x), Math.abs(end.y))
-            && String(item.path.branch ?? '').startsWith(`${k.path.branch ?? ''}>`);
-        });
-        if (parent) { kept.push(item); pending.delete(item); grew = true; }
-      }
-    }
-    for (const item of kept) axes.push(item.pts);
+    // A ray with no sample index is drawn as itself, not as one strand of a
+    // sized beam, so it is a target, with every branch and continuation the
+    // tracer gives it -- except a point source's, which only clamps at its
+    // centre.
+    if (!NO_AXIS_SOURCES.has(byId.get(path.sourceId)?.type)) axes.push(pts);
   }
   return axes;
 }

@@ -295,6 +295,11 @@ test('coordinates near the largest finite number never produce Infinity', () => 
 
 const applied = (el, result) => ({ ...el, x: result.candidate.x, y: result.candidate.y, rot: result.candidate.rot, params: { ...el.params, ...result.candidate.params } });
 const grid = value => Math.round(value / 25) * 25;
+const hasLine = (targets, p) => targets.lines.some(({ a, b }) => {
+  const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy;
+  const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2;
+  return t >= 0 && t <= 1 && Math.hypot(a.x + t * dx - p.x, a.y + t * dy - p.y) < 1e-6;
+});
 
 test('dragging an arm tip only turns that arm: smooth, its length kept, the other arm still', () => {
   const el = makeRuler(380, 220, 0, { mode: 'angle', angle: 90, armA: 80, armB: 5000 });
@@ -408,7 +413,7 @@ test('the purple knob tunes an angle ruler\'s angle, and the hint follows the mo
   assert.match(registry.ruler.directHint({ mode: 'distance' }), /move that end/);
 });
 
-test('clamp targets: a beam\'s middle ray, an object arrow\'s axis ray, and a point source\'s centre only', () => {
+test('clamp targets: a beam\'s middle ray, an object arrow\'s rays, and a point source\'s centre only', () => {
   // Review of #308: rays with no sample index (object arrow, point source)
   // were all dropped, so an object arrow's visible central ray was no target.
   const targetsFor = elements => rulerClampTargets({ elements, paths: traceScene(elements, []).paths, definitions: registry });
@@ -416,19 +421,16 @@ test('clamp targets: a beam\'s middle ray, an object arrow\'s axis ray, and a po
 
   const arrow = createElement('objarrow', 0, 0);
   const arrowTargets = targetsFor([arrow]);
-  assert.equal(arrowTargets.lines.length, 1, 'one axis ray of the three drawn');
-  const [axis] = rulerAxisPaths(traceScene([arrow], []).paths, [arrow]);
-  close(axis[1].y, axis[0].y, 1e-6, 'the axis ray leaves along the arrow');
-  assert.ok(onAxis(arrowTargets, axis[0].y), 'and it is the target');
+  assert.equal(arrowTargets.lines.length, 3, 'each of the three drawn rays');
+  const axis = rulerAxisPaths(traceScene([arrow], []).paths, [arrow])
+    .find(pts => Math.abs(pts[1].y - pts[0].y) < 1e-6);
+  assert.ok(axis, 'including the ray along the arrow');
+  assert.ok(onAxis(arrowTargets, axis[0].y));
   // A ruler end dropped near the arrow's axis lands on it.
   const hit = rulerClampPoint({ x: 50, y: axis[0].y + 2 }, arrowTargets, 5);
   assert.equal(hit?.label, 'beam axis');
   close(hit.y, axis[0].y, 1e-9);
 
-  const turned = createElement('objarrow', 0, 0);
-  turned.rot = 30;
-  const [turnedAxis] = rulerAxisPaths(traceScene([turned], []).paths, [turned]);
-  close(Math.atan2(turnedAxis[1].y - turnedAxis[0].y, turnedAxis[1].x - turnedAxis[0].x), Math.PI / 6, 1e-6);
 
   const point = createElement('pointsource', 100, 100);
   const pointTargets = targetsFor([point]);
@@ -450,35 +452,36 @@ test('clamp targets: a beam\'s middle ray, an object arrow\'s axis ray, and a po
 });
 
 test('an unsampled beam keeps its branches after a splitter as clamp targets', () => {
-  // Review of #308: only the incident segment of a line-mode laser (or an
-  // object arrow's axis ray) was kept, losing the transmitted and reflected
-  // branches a beamsplitter makes.
-  const hasLineThrough = (targets, p) => targets.lines.some(({ a, b }) => {
-    const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy;
-    const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2;
-    return t >= 0 && t <= 1 && Math.hypot(a.x + t * dx - p.x, a.y + t * dy - p.y) < 1e-6;
-  });
+  // Review of #308: only the incident segment of a line-mode laser was kept,
+  // losing the transmitted and reflected branches a beamsplitter makes.
   const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   const splitter = createElement('bs', 200, 0);
   const scene = [laser, splitter];
   const targets = rulerClampTargets({ elements: scene, paths: traceScene(scene, []).paths, definitions: registry });
-  assert.ok(hasLineThrough(targets, { x: 100, y: 0 }), 'incident');
-  assert.ok(hasLineThrough(targets, { x: 400, y: 0 }), 'transmitted');
-  assert.ok(hasLineThrough(targets, { x: 200, y: -200 }), 'reflected');
+  assert.ok(hasLine(targets, { x: 100, y: 0 }), 'incident');
+  assert.ok(hasLine(targets, { x: 400, y: 0 }), 'transmitted');
+  assert.ok(hasLine(targets, { x: 200, y: -200 }), 'reflected');
   assert.ok(targets.points.some(p => Math.abs(p.x - 200) < 1e-6 && Math.abs(p.y) < 1e-6), 'the split point');
 
-  // An object arrow: its axis ray's branches, never its marginal rays'.
+  // An object arrow's rays all stay targets after the splitter: 3 incident
+  // rays, each with a reflected and a transmitted branch.
   const arrow = createElement('objarrow', 0, 0);
   const arrowScene = [arrow, createElement('bs', 200, 0)];
-  const arrowPaths = traceScene(arrowScene, []).paths;
-  const axes = rulerAxisPaths(arrowPaths, arrowScene);
-  assert.equal(axes.length, 3, 'the axis ray, then its reflected and transmitted branches');
-  const [axis] = rulerAxisPaths(traceScene([arrow], []).paths, [arrow]);
-  for (const pts of axes) {
-    for (const p of pts) {
-      // Every kept point lies on the axis line or on the vertical reflected branch.
-      assert.ok(Math.abs(p.y - axis[0].y) < 1e-6 || Math.abs(p.x - 200) < 1e-6, JSON.stringify(p));
-    }
+  assert.equal(rulerAxisPaths(traceScene(arrowScene, []).paths, arrowScene).length, traceScene(arrowScene, []).paths.length);
+});
+
+test('an unsampled beam stays a clamp target through a lens and a mirror', () => {
+  // Review of #308: depth also counts interactions along one path, so a
+  // line-mode laser through a lens or off a mirror lost its whole axis.
+  for (const [type, rot, far] of [['lens', 0, { x: 400, y: 0 }], ['mirror', 45, { x: 200, y: -300 }]]) {
+    const laser = createElement('cwlaser', 0, 0);
+    laser.params.beamMode = 'line';
+    const optic = createElement(type, 200, 0);
+    optic.rot = rot;
+    const scene = [laser, optic];
+    const targets = rulerClampTargets({ elements: scene, paths: traceScene(scene, []).paths, definitions: registry });
+    assert.ok(hasLine(targets, { x: 100, y: 0 }), `${type}: before it`);
+    assert.ok(hasLine(targets, far), `${type}: after it`);
   }
 });
