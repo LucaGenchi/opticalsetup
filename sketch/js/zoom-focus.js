@@ -80,30 +80,78 @@ export function zoomFoci(zoom, paths = []) {
       return along > ALONG_TOLERANCE && along <= r.len + ALONG_TOLERANCE;
     });
     if (!real) continue;
-    // Where the bundle travels along its axis, from the focus: from where
-    // its rays start on this segment (the optic before) to where they end
-    // (the optic after), as weighted means, so the waist is drawn only
-    // where this beam is.
-    let from = 0, to = 0, weight = 0;
+    // Where the bundle travels: its rays start on the optic before the
+    // focus and end on the optic after it. `from` and `to` span all of it
+    // along the axis, and `ends` are the two optics' faces, as lines
+    // through the outermost rays' start and end points, so the waist can
+    // be cut along each face (a tilted mirror too) rather than square to
+    // the beam.
+    let from = Infinity, to = -Infinity;
     for (const r of group.rays) {
       const s0 = (r.p.x - found.point.x) * found.axis.x + (r.p.y - found.point.y) * found.axis.y;
       const s1 = s0 + r.len * (r.d.x * found.axis.x + r.d.y * found.axis.y);
-      from += r.w * s0; to += r.w * s1; weight += r.w;
+      from = Math.min(from, s0); to = Math.max(to, s1);
     }
-    from /= weight; to /= weight;
     if (![from, to].every(Number.isFinite) || !(from < 0 && to > 0)) continue;
+    const across = p => (p.x - found.point.x) * -found.axis.y + (p.y - found.point.y) * found.axis.x;
+    const outermost = group.rays.reduce((ends, r) => {
+      const t = across(r.p);
+      if (!ends.lo || t < ends.lo.t) ends.lo = { t, r };
+      if (!ends.hi || t > ends.hi.t) ends.hi = { t, r };
+      return ends;
+    }, {});
+    const endOf = r => ({ x: r.p.x + r.len * r.d.x, y: r.p.y + r.len * r.d.y });
+    const ends = [
+      faceLine(outermost.lo.r.p, outermost.hi.r.p, found.point, found.axis, from),
+      faceLine(endOf(outermost.lo.r), endOf(outermost.hi.r), found.point, found.axis, to),
+    ];
     foci.push({
       point: found.point, axis: found.axis, w0Mm: found.w0Mm, zRMm: found.zRMm, na: found.na,
-      from, to, wl: group.wl, color: group.color || wavelengthToColor(group.wl),
+      from, to, ends, wl: group.wl, color: group.color || wavelengthToColor(group.wl),
     });
   }
   return foci;
 }
 
+// An optic's face as the side of a line the focus is on: the line through
+// two points on it, or, when they coincide, the line square to the axis at
+// `s` from the focus. Kept: n·(p − at) ≥ 0.
+function faceLine(a, b, focus, axis, s) {
+  let n = { x: -(b.y - a.y), y: b.x - a.x };
+  let at = a;
+  const len = Math.hypot(n.x, n.y);
+  if (!(len > 1e-12)) {
+    n = { x: axis.x, y: axis.y };
+    at = { x: focus.x + s * axis.x, y: focus.y + s * axis.y };
+  } else {
+    n = { x: n.x / len, y: n.y / len };
+  }
+  if (n.x * (focus.x - at.x) + n.y * (focus.y - at.y) < 0) n = { x: -n.x, y: -n.y };
+  return { at, n };
+}
+
+// The part of a closed outline on the kept side of a line (one pass of
+// Sutherland–Hodgman, which holds for a non-convex outline against a
+// single line).
+function clipToSide(outline, { at, n }) {
+  const side = p => n.x * (p.x - at.x) + n.y * (p.y - at.y);
+  const kept = [];
+  for (let i = 0; i < outline.length; i++) {
+    const p = outline[i], q = outline[(i + 1) % outline.length];
+    const sp = side(p), sq = side(q);
+    if (sp >= 0) kept.push(p);
+    if ((sp >= 0) !== (sq >= 0)) {
+      const t = sp / (sp - sq);
+      kept.push({ x: p.x + t * (q.x - p.x), y: p.y + t * (q.y - p.y) });
+    }
+  }
+  return kept;
+}
+
 // The 1/e² envelope of a focus on the bench, as a closed outline: both
 // edges from `from` to `to` along the beam, measured from the focus,
 // sampled densely near the waist (evenly in asinh(z/zR)) where the curve
-// bends.
+// bends, then cut along the optics' faces in `focus.ends`, when given.
 export function focusEnvelope(focus, from, to, samples = 48) {
   const { point, axis, w0Mm, zRMm } = focus;
   if (!(from < to)) return [];
@@ -117,6 +165,7 @@ export function focusEnvelope(focus, from, to, samples = 48) {
     left.push({ x: cx + w * nx, y: cy + w * ny });
     right.push({ x: cx - w * nx, y: cy - w * ny });
   }
-  const outline = left.concat(right.reverse());
-  return outline.every(p => Number.isFinite(p.x) && Number.isFinite(p.y)) ? outline : [];
+  let outline = left.concat(right.reverse());
+  for (const face of focus.ends || []) outline = clipToSide(outline, face);
+  return outline.length >= 3 && outline.every(p => Number.isFinite(p.x) && Number.isFinite(p.y)) ? outline : [];
 }

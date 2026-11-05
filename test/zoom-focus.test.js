@@ -217,11 +217,28 @@ test('the waist stops at the optic after the focus', () => {
   const traced = traceScene(elements, []);
   const [focus] = zoomFoci(zoom, traced.paths);
   assert.ok(Math.abs(focus.point.x - 110) < 1e-6);
-  assert.ok(Math.abs(focus.to - 2) < 0.05, `the beam travels 2 mm past the focus: ${focus.to}`);
-  assert.ok(Math.abs(focus.from + 10) < 0.05, `and 10 mm before it, from the lens: ${focus.from}`);
+  assert.ok(Math.abs(focus.from + 10) < 0.05, `the beam starts 10 mm before the focus, at the lens: ${focus.from}`);
   const bench = envelopeOnBench(zoom, zoomSceneSVG(zoom, { drawables: traced.drawables, paths: traced.paths, elements }));
-  const right = Math.max(...bench.map(p => p.x));
-  assert.ok(right <= 112 + 0.05, `the envelope ends at the mirror, not the view's edge at 115: ${right}`);
+  // The mirror's face is the line x + y = 112: nothing of the waist lies
+  // behind it, to the drawing's rounding (0.01 in the view, /20 on the bench).
+  const behind = Math.max(...bench.map(p => (p.x + p.y - 112) / Math.SQRT2));
+  assert.ok(behind <= 1e-3, `the envelope stops at the mirror's face: ${behind} mm behind it`);
+  assert.ok(behind >= -1e-3, 'and reaches it');
+  // And at the lens, the face before: x ≥ 100.
+  const fromLens = createElement('zoom', 105, 0);
+  Object.assign(fromLens.params, { shape: 'rect', w: 14, h: 4, mag: 20, insetX: 0, insetY: -120 });
+  const near = envelopeOnBench(fromLens, zoomSceneSVG(fromLens, { drawables: traced.drawables, paths: traced.paths, elements: [...elements, fromLens] }));
+  assert.ok(Math.min(...near.map(p => p.x)) >= 100 - 1e-3, 'nothing of the waist before the lens');
+});
+
+test('the waist is cut along a face, however its outline crosses it', () => {
+  const focus = { point: { x: 0, y: 0 }, axis: { x: 1, y: 0 }, w0Mm: 0.1, zRMm: 1 };
+  // A face at 45° through (2, 0): keep x + y ≤ 2.
+  const cut = focusEnvelope({ ...focus, ends: [{ at: { x: 2, y: 0 }, n: { x: -Math.SQRT1_2, y: -Math.SQRT1_2 } }] }, -5, 5);
+  assert.ok(cut.length >= 3);
+  assert.ok(cut.every(p => p.x + p.y <= 2 + 1e-9), 'nothing past the face');
+  assert.ok(cut.some(p => Math.abs(p.x + p.y - 2) < 1e-9), 'the outline runs along it');
+  assert.deepEqual(focusEnvelope({ ...focus, ends: [{ at: { x: -10, y: 0 }, n: { x: -1, y: 0 } }] }, -5, 5), [], 'a face before the whole envelope leaves nothing');
 });
 
 test('an off-centre focus is drawn to the edge of the view on both sides', () => {
