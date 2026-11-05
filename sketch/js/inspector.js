@@ -144,10 +144,19 @@ export function logSliderValue(position, min, max, step) {
   return ladder[Number.isFinite(i) ? Math.min(ladder.length - 1, Math.max(0, i)) : 0];
 }
 
+// What a number field shows. A param stored exactly (a ruler's dragged
+// geometry) can ask to be shown to fewer places; the stored value changes
+// only when the field itself is edited.
+export function fieldDisplayValue(value, param = {}) {
+  const magnitude = param.negative ? Math.abs(value) : value;
+  return Number.isInteger(param.displayDecimals) && Number.isFinite(magnitude)
+    ? Number(magnitude.toFixed(param.displayDecimals)) : magnitude;
+}
+
 function numberField(labelText, attrs, value, param = {}) {
   const min = Number(param.min), max = Number(param.max), step = Number(param.step);
   const negative = Boolean(param.negative);
-  const displayValue = negative ? Math.abs(value) : value;
+  const displayValue = fieldDisplayValue(value, param);
   // htmlMin lets a field keep a model floor that is NOT on the step ladder:
   // the browser bases stepping on the min attribute, so a 0.15 mm floor with a
   // 0.5 mm step would walk 0.15, 0.65, 1.15. Basing the ladder at 0 gives

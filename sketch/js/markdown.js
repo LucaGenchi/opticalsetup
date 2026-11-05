@@ -85,6 +85,13 @@ function protectedSpans(text) {
   return spans;
 }
 
+// The formulas on one line, as {start, end, body, display}, found exactly as
+// the renderer finds them (code spans excluded, prices left as prose). A
+// ruler uses it to write its measurement as TeX only inside a formula.
+export function formulaSpans(line) {
+  return protectedSpans(String(line ?? '')).filter(span => span.code === undefined);
+}
+
 // A code span or formula, in the style of the wrapper around it. A formula
 // keeps its own italics -- digits and function names stay upright inside
 // *emphasis* -- but takes bold, strike-through and a link. One nested too

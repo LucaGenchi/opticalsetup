@@ -965,6 +965,10 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 :root[data-theme="dark"] :is(.palitem svg, #elementLayer) [data-zoom-frame][stroke="#475569"] { stroke: #94a3b8; }
 :root[data-theme="dark"] #elementLayer :is([data-zoom-scalebar], [data-zoom-focus-label]) { fill: #e5e7eb; }
 :root[data-theme="dark"] #elementLayer :is([data-zoom-scalebar], [data-zoom-focus-label]) * { stroke: var(--canvas-bg); }
+/* A ruler in its default slate turns light on the dark canvas; a colour the
+   user picked is kept, and exports keep the slate. */
+:root[data-theme="dark"] :is(.palitem svg, #elementLayer) [data-ruler] [stroke="#334155"] { stroke: #cbd5e1; }
+:root[data-theme="dark"] :is(.palitem svg, #elementLayer) [data-ruler] [fill="#334155"] { fill: #cbd5e1; }
 
 :root[data-theme="dark"] :is(.palitem svg, #elementLayer) :is(
   [stroke="#111"],

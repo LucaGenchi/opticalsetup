@@ -16,6 +16,7 @@ import {
 import { immersionLayerSVG } from './immersion.js';
 import { zoomPulsePlacement, zoomSceneSVG } from './zoom-view.js';
 import { clampZoomOffset, normalizeZoomParams, zoomViewContains, zoomViewCorner, zoomViewCornerDrag } from './zoom.js';
+import { rulerClampTargets } from './ruler.js';
 import { polygonScannerState } from './polygon-scanner.js';
 import { mixReading, specimenTimingReading, traceScene, getTraceRevision } from './raytrace.js';
 import {
@@ -975,6 +976,11 @@ function renderOverlay() {
   if (placing && placing.pos) {
     s += focalMarkSVG({ ...placing.el, x: placing.pos.x, y: placing.pos.y }, z);
   }
+  // What a dragged ruler arm has clicked onto: the line it now lies along.
+  if (drag?.mode === 'editpoint' && drag.guide) {
+    const { from, to } = drag.guide;
+    s += `<line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}" stroke="#8b5cf6" stroke-width="${1.4 / z}" stroke-dasharray="${5 / z} ${4 / z}" pointer-events="none"/>`;
+  }
   // marquee rectangle while shift-dragging
   if (drag && drag.mode === 'marquee') {
     const x = Math.min(drag.x0, drag.x1), y = Math.min(drag.y0, drag.y1);
@@ -1037,11 +1043,13 @@ function renderOverlay() {
     }
     if (direct?.tune) {
       const side = tuneHandleSide(sel);
-      const knob = toWorld(sel, side * (hw + 25 / z), 0);
-      const edge = toWorld(sel, side * hw, 0);
+      const knob = toWorld(sel, off.x + side * (hw + 25 / z), off.y);
+      const edge = toWorld(sel, off.x + side * hw, off.y);
       const value = directValueLabel(sel, direct.tune);
       const pillWidth = Math.max(48, value.length * 6.2) / z;
-      const pillX = side > 0 ? 10 / z : -10 / z - pillWidth;
+      // The pill reads away from the box on screen, whichever way the
+      // element is turned.
+      const pillX = knob.x >= edge.x ? 10 / z : -10 / z - pillWidth;
       s += `<line x1="${edge.x}" y1="${edge.y}" x2="${knob.x}" y2="${knob.y}" stroke="#8b5cf6" stroke-width="${1.3 / z}"/>` +
         `<circle cx="${knob.x}" cy="${knob.y}" r="${6 / z}" fill="#fff" stroke="#8b5cf6" stroke-width="${1.8 / z}"/>` +
         `<circle cx="${knob.x}" cy="${knob.y}" r="${2.2 / z}" fill="#8b5cf6"/>` +
@@ -1191,15 +1199,22 @@ function hitResizeHandle(sel, w) {
   return corners.find(corner => Math.hypot(l.x - off.x - corner.x, l.y - off.y - corner.y) < 10 / z) || null;
 }
 
+// The local side (+1 or −1 along the element's x) the knob goes on: the
+// screen's right unless the element is near the right edge. An element
+// turned more than a quarter turn has its local x pointing left, so the side
+// flips with it, or the knob would land off the canvas.
 function tuneHandleSide(sel) {
   if (!svg) return 1;
   const screenX = state.view.x + sel.x * state.view.z;
-  return screenX > svg.clientWidth - 110 ? -1 : 1;
+  const right = screenX > svg.clientWidth - 110 ? -1 : 1;
+  return Math.cos((sel.rot || 0) * Math.PI / 180) < 0 ? -right : right;
 }
 
+// Beside the selection box, level with its centre: a box need not be centred
+// on the element's origin (an angle ruler's is not centred on its vertex).
 function tuneHandlePoint(sel) {
-  const sz = getSize(sel), z = state.view.z;
-  return toWorld(sel, tuneHandleSide(sel) * (sz.w / 2 + 6 + 25 / z), 0);
+  const sz = getSize(sel), z = state.view.z, off = boxAnchor(sel);
+  return toWorld(sel, off.x + tuneHandleSide(sel) * (sz.w / 2 + 6 + 25 / z), off.y);
 }
 
 function hitTuneHandle(sel, w) {
@@ -1264,7 +1279,10 @@ export function tuneDragValue(drag, clientY) {
   const pixelsPerStep = drag.tune.pixelsPerStep
     || Math.max(0.2, Math.min(4, 200 / rangeSteps));
   const steps = Math.round((drag.clientY - clientY) / pixelsPerStep);
-  return boundedParam(drag.el, drag.tune.key, drag.value + steps * step);
+  // A knob whose param is signed (a ruler's angle, negative when it opens
+  // clockwise) can turn so that dragging up always enlarges the magnitude.
+  const direction = drag.direction === -1 ? -1 : 1;
+  return boundedParam(drag.el, drag.tune.key, drag.value + direction * steps * step);
 }
 
 // ---------- interactions ----------
@@ -1911,7 +1929,8 @@ function onDown(e) {
     // down and back would leave the pulse at the narrowest band's floor, so
     // each step re-derives it from the duration the drag started with.
     drag = { mode: 'tune', el: sel, tune, clientY: e.clientY, value: readParam(sel, tune.key), moved: false,
-      pulseWidthFs: sel.type === 'sclaser' ? sel.params.pulseWidthFs : undefined };
+      pulseWidthFs: sel.type === 'sclaser' ? sel.params.pulseWidthFs : undefined,
+      direction: typeof tune.direction === 'function' ? tune.direction(sel.params) : 1 };
     svg.setPointerCapture(e.pointerId);
     return;
   }
@@ -2102,6 +2121,24 @@ function onMove(e) {
     if (drag.pulseWidthFs !== undefined) drag.el.params.pulseWidthFs = drag.pulseWidthFs;
     writeParam(drag.el, drag.tune.key, next);
     setStatus(directValueLabel(drag.el, drag.tune));
+    renderInteraction();
+  } else if (drag.mode === 'editpoint' && drag.editor.dragTo) {
+    // An editor that places its own handles (a ruler) gets the pointer as it
+    // is, with what it may click onto, the grid, Shift and Alt.
+    drag.targets ??= rulerClampTargets({
+      elements: state.elements, paths: displayedBeamScene?.paths || [], beams: state.beams,
+      definitions: registry, excludeId: drag.el.id,
+    });
+    const result = drag.editor.dragTo(drag.base, drag.i, w, {
+      targets: drag.targets, tolerance: 10 / state.view.z, clamp: !e.altKey, shift: e.shiftKey,
+      snapGrid: state.snap && !e.altKey ? value => snapToGrid(value, state.view.z) : null,
+    });
+    if (!result) return;
+    if (!drag.moved) { pushUndo(); drag.moved = true; }
+    drag.el.x = result.candidate.x; drag.el.y = result.candidate.y; drag.el.rot = result.candidate.rot;
+    Object.assign(drag.el.params, result.candidate.params);
+    drag.guide = result.guide;
+    setStatus(drag.editor.status(drag.el, drag.i) + (result.label ? ` · on ${result.label}` : ''));
     renderInteraction();
   } else if (drag.mode === 'editpoint') {
     const snapped = { x: snapPos(w.x, e.altKey), y: snapPos(w.y, e.altKey) };
