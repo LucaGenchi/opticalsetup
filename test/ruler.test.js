@@ -448,3 +448,37 @@ test('clamp targets: a beam\'s middle ray, an object arrow\'s axis ray, and a po
   assert.equal(targetsFor([laser, makeRuler(0, 0, 0)]).points.filter(p => p.label === 'Ruler').length, 2, 'another ruler\'s handles');
   assert.equal(rulerClampTargets({ elements: [laser], definitions: registry, excludeId: laser.id }).points.length, 0, 'the dragged ruler itself is excluded');
 });
+
+test('an unsampled beam keeps its branches after a splitter as clamp targets', () => {
+  // Review of #308: only the incident segment of a line-mode laser (or an
+  // object arrow's axis ray) was kept, losing the transmitted and reflected
+  // branches a beamsplitter makes.
+  const hasLineThrough = (targets, p) => targets.lines.some(({ a, b }) => {
+    const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy;
+    const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2;
+    return t >= 0 && t <= 1 && Math.hypot(a.x + t * dx - p.x, a.y + t * dy - p.y) < 1e-6;
+  });
+  const laser = createElement('cwlaser', 0, 0);
+  laser.params.beamMode = 'line';
+  const splitter = createElement('bs', 200, 0);
+  const scene = [laser, splitter];
+  const targets = rulerClampTargets({ elements: scene, paths: traceScene(scene, []).paths, definitions: registry });
+  assert.ok(hasLineThrough(targets, { x: 100, y: 0 }), 'incident');
+  assert.ok(hasLineThrough(targets, { x: 400, y: 0 }), 'transmitted');
+  assert.ok(hasLineThrough(targets, { x: 200, y: -200 }), 'reflected');
+  assert.ok(targets.points.some(p => Math.abs(p.x - 200) < 1e-6 && Math.abs(p.y) < 1e-6), 'the split point');
+
+  // An object arrow: its axis ray's branches, never its marginal rays'.
+  const arrow = createElement('objarrow', 0, 0);
+  const arrowScene = [arrow, createElement('bs', 200, 0)];
+  const arrowPaths = traceScene(arrowScene, []).paths;
+  const axes = rulerAxisPaths(arrowPaths, arrowScene);
+  assert.equal(axes.length, 3, 'the axis ray, then its reflected and transmitted branches');
+  const [axis] = rulerAxisPaths(traceScene([arrow], []).paths, [arrow]);
+  for (const pts of axes) {
+    for (const p of pts) {
+      // Every kept point lies on the axis line or on the vertical reflected branch.
+      assert.ok(Math.abs(p.y - axis[0].y) < 1e-6 || Math.abs(p.x - 200) < 1e-6, JSON.stringify(p));
+    }
+  }
+});

@@ -184,8 +184,9 @@ export function rulerClampDirection(vertex, pointer, targets = {}, tolerance = 0
 // A beam axis is the ray along the middle of a traced beam: a sized beam is
 // a fan of spatial samples (path.sample of path.sampleCount) and its middle
 // sample is the axis; a source whose rays carry no sample index (an object
-// arrow's fan) has as its axis the ray leaving nearest the source's own
-// direction. A point source has no axis: only its centre is a target.
+// arrow's fan, a laser drawn as a line) has as its axis the ray leaving
+// nearest the source's own direction, with all its branches. A point source
+// has no axis: only its centre is a target.
 // Annotations that only frame the figure offer nothing to land on.
 // `definitions` is the element registry, passed in so this module stays
 // free of it.
@@ -208,17 +209,38 @@ export function rulerAxisPaths(paths = [], elements = []) {
     const source = byId.get(path.sourceId);
     if (!source || NO_AXIS_SOURCES.has(source.type)) continue;
     if (!unsampled.has(source.id)) unsampled.set(source.id, []);
-    unsampled.get(source.id).push(pts);
+    unsampled.get(source.id).push({ path, pts });
   }
-  for (const [id, fan] of unsampled) {
+  // Without sample indices, the tracer still keeps each emitted ray (depth
+  // 0) and each branch a splitter or partial mirror makes (depth 1, 2, ...)
+  // as paths of their own. The axis is the emitted ray leaving nearest the
+  // source's own direction, together with every branch that continues from
+  // it: a branch starts where its parent ended and extends its branch id.
+  for (const [id, group] of unsampled) {
     const heading = (byId.get(id).rot || 0) * DEG;
     let best = null, gap = Infinity;
-    for (const pts of fan) {
-      const leaving = Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x);
+    for (const item of group) {
+      if ((item.path.depth || 0) !== 0) continue;
+      const leaving = Math.atan2(item.pts[1].y - item.pts[0].y, item.pts[1].x - item.pts[0].x);
       const turn = Math.abs(Math.atan2(Math.sin(leaving - heading), Math.cos(leaving - heading)));
-      if (turn < gap) { best = pts; gap = turn; }
+      if (turn < gap) { best = item; gap = turn; }
     }
-    if (best) axes.push(best);
+    if (!best) continue;
+    const kept = [best];
+    const pending = new Set(group.filter(item => item !== best && (item.path.depth || 0) > 0));
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const item of pending) {
+        const start = item.pts[0];
+        const parent = kept.find(k => {
+          const end = k.pts[k.pts.length - 1];
+          return Math.hypot(end.x - start.x, end.y - start.y) <= 1e-6 * Math.max(1, Math.abs(end.x), Math.abs(end.y))
+            && String(item.path.branch ?? '').startsWith(`${k.path.branch ?? ''}>`);
+        });
+        if (parent) { kept.push(item); pending.delete(item); grew = true; }
+      }
+    }
+    for (const item of kept) axes.push(item.pts);
   }
   return axes;
 }
