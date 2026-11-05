@@ -102,10 +102,11 @@ export function zoomPulsePlacement(zoom) {
 
 // The diffraction-limited focus of each beam that focuses in the region:
 // its 1/e² envelope, and a note for the view naming its 1/e² radius and
-// Rayleigh range. The envelope is mapped point by point into the view, as
+// Rayleigh range unless that is turned off. The envelope is mapped point by point into the view, as
 // the rays are: a waist is microns wide, and written in bench millimetres
 // to the hundredth it would be rounded into steps once magnified.
 function focusLayer(zoom, g, paths, nonScalingStroke) {
+  const named = zoom.params.focusNote !== false;
   const reach = Math.hypot(g.rx, g.ry);
   const map = zoomMapper(g, zoom);
   let svg = '';
@@ -116,7 +117,7 @@ function focusLayer(zoom, g, paths, nonScalingStroke) {
     svg += `<polygon points="${ptsAttr(outline)}" fill="${focus.color}" fill-opacity="0.28" stroke="${focus.color}" stroke-width="0.8" stroke-opacity="0.9" stroke-linejoin="round"${nonScalingStroke ? ' vector-effect="non-scaling-stroke"' : ''} data-zoom-focus="true"/>`;
     // Two short lines rather than one long one, so a round view of modest
     // size still has room for them.
-    notes.push({ text: `w₀ ${formatLength(focus.w0Mm)}` }, { text: `zR ${formatLength(focus.zRMm)}` });
+    if (named) notes.push({ text: `w₀ ${formatLength(focus.w0Mm)}` }, { text: `zR ${formatLength(focus.zRMm)}` });
   }
   return { svg, notes };
 }
@@ -151,7 +152,8 @@ export function zoomSceneSVG(zoom, scene = {}) {
   let content = onBench(shown.filter(isBackground).map(draw).join(''));
   content += onBench(immersionLayerSVG(elements, beams, { baseElements }));
   content += drawablesSVG(drawables, region, zoomMapper(g, zoom), nonScalingStroke);
-  const focus = zoom.params.diffraction ? focusLayer(zoom, g, paths, nonScalingStroke) : { svg: '', notes: [] };
+  // On unless turned off, so a zoom saved before the setting draws it too.
+  const focus = zoom.params.diffraction !== false ? focusLayer(zoom, g, paths, nonScalingStroke) : { svg: '', notes: [] };
   content += focus.svg;
   // Pulse packets, already placed with zoomPulsePlacement(), sit on the rays
   // and under the parts, as on the bench. The canvas passes an empty slot

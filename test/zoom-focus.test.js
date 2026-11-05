@@ -42,7 +42,9 @@ test('a beam focused in the region gets the Gaussian waist of its cone', () => {
   assert.equal(focus.wl, 532);
 });
 
-test('the view draws the waist and names it only when asked', () => {
+test('the waist and its note are drawn by default, and each can be turned off', () => {
+  assert.equal(createElement('zoom').params.diffraction, true);
+  assert.equal(createElement('zoom').params.focusNote, true);
   const scene = focusedScene();
   const svg = view(scene);
   assert.match(svg, /data-zoom-focus="true"/);
@@ -50,11 +52,16 @@ test('the view draws the waist and names it only when asked', () => {
   // A round view of modest size (60 mm across) still names the waist.
   const modest = focusedScene({ x: 200, y: 0 }, { shape: 'circle', w: 4, mag: 15 });
   assert.match(view(modest), />w₀ 11\.3 µm</);
+  scene.zoom.params.focusNote = false;
+  const unnamed = view(scene);
+  assert.match(unnamed, /data-zoom-focus="true"/, 'note off: the waist is still drawn');
+  assert.doesNotMatch(unnamed, /data-zoom-focus-label|w₀/, 'without its note');
   scene.zoom.params.diffraction = false;
   assert.doesNotMatch(view(scene), /data-zoom-focus/, 'off: the view is the bench as traced');
+  // A zoom saved before the settings existed draws both.
   delete scene.zoom.params.diffraction;
-  assert.doesNotMatch(view(scene), /data-zoom-focus/, 'a scene saved before the setting is unchanged');
-  assert.equal(createElement('zoom').params.diffraction, false);
+  delete scene.zoom.params.focusNote;
+  assert.match(view(scene), /data-zoom-focus="true"[^]*w₀ 11\.3 µm/);
 });
 
 test('a focus outside the region, a collimated beam and a point emitter get no waist', () => {
