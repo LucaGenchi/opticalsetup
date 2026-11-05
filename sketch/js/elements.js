@@ -19,7 +19,7 @@ import {
   zoomFrameSVG, zoomGeometry, zoomHitTest, zoomMaxMagnification, zoomScaleBarMaxMm, zoomViewBox,
 } from './zoom.js';
 import {
-  RULER_LENGTH_MAX, RULER_LENGTH_MIN, RULER_MODES, rulerConstrainOrigin, rulerEditCandidate,
+  RULER_LENGTH_MAX, RULER_LENGTH_MIN, RULER_MODES, rulerEditCandidate, rulerHandleDrag,
   rulerHitTest, rulerLocalBounds, rulerMeasurement, rulerPoints, rulerSVG, rulerValueText,
 } from './ruler.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
@@ -6055,6 +6055,7 @@ export const registry = {
       { key: 'angle', label: 'Angle between arms (°) · + opens counterclockwise', type: 'number', min: -180, max: 180, step: 0.1, def: 45, displayDecimals: 3, show: p => p.mode === 'angle' },
       { key: 'armA', label: 'Arm 1 length (mm)', type: 'number', min: RULER_LENGTH_MIN, max: RULER_LENGTH_MAX, step: 0.1, def: 80, displayDecimals: 3, show: p => p.mode === 'angle' },
       { key: 'armB', label: 'Arm 2 length (mm)', type: 'number', min: RULER_LENGTH_MIN, max: RULER_LENGTH_MAX, step: 0.1, def: 80, displayDecimals: 3, show: p => p.mode === 'angle' },
+      { key: 'autoClamp', label: 'Auto clamp to components and beams', type: 'checkbox', def: true },
       { key: 'text', label: 'Label · Markdown, $LaTeX$, {value} = measurement', type: 'text', def: '{value}' },
       { key: 'decimals', label: 'Decimal places', type: 'number', min: 0, max: 3, step: 1, def: 1 },
       { key: 'labelSide', label: 'Label side', type: 'select', def: 'above', options: [['above', 'Above the line'], ['below', 'Below the line']], show: p => p.mode !== 'angle' },
@@ -6064,17 +6065,20 @@ export const registry = {
       { key: 'width', label: 'Line width', type: 'number', min: 0.25, max: 8, step: 0.25, def: 1.2 },
       { key: 'fill', label: 'Color', type: 'color', def: '#334155' },
     ],
-    directHint: 'Drag a round handle to move that end; it snaps to the grid and to components (hold Alt for a free point, Shift for 45° steps). Drag the line or the label to move the whole ruler; the square corner handles size the label.',
+    directHint: p => (p.mode === 'angle'
+      ? 'Drag an arm’s round tip to turn that arm smoothly about the vertex; its length stays as set. With auto clamp it clicks onto a beam through the vertex or toward a component (hold Alt to turn freely, Shift for 5° steps). The purple knob tunes the angle; the vertex handle moves the whole ruler and clicks onto components and beams.'
+      : 'Drag a round handle to move that end; with auto clamp it clicks onto components and beams, else onto the grid (hold Alt for a free point, Shift for 45° steps). Drag the line or the label to move the whole ruler; the square corner handles size the label.'),
     editPoints: {
       get: el => rulerPoints(el.params),
       candidate: rulerEditCandidate,
-      constrainOrigin: rulerConstrainOrigin,
-      snapToElements: true,
+      // The canvas hands the whole drag over: what to clamp onto, the grid,
+      // Shift and Alt (see rulerHandleDrag).
+      dragTo: rulerHandleDrag,
       status: el => {
         const m = rulerMeasurement(el.params);
         return `${m.kind === 'angle' ? 'angle' : 'distance'} ${rulerValueText({ ...el.params, decimals: 2 })}`;
       },
-      hint: 'round handles move the ends; they snap to the grid and to components',
+      hint: 'round handles: distance ends move, angle arms turn about the vertex; auto clamp clicks onto components and beams',
     },
     hitTest(el, point, tolerance) { return rulerHitTest(el.params, point, tolerance, el.rot); },
     svg(el) { return rulerSVG(el.params, { rot: el.rot }); },
@@ -6522,7 +6526,13 @@ const DIRECT = {
   textlabel: { resize: { uniform: 'fontSize' } },
   // Its round handles set the geometry; the square corners size the label,
   // as on a text label.
-  ruler: { resize: { uniform: 'fontSize' } },
+  ruler: {
+    resize: { uniform: 'fontSize' },
+    // Dragging up opens the angle whichever way its second arm opens; the
+    // direction is fixed when the knob is grabbed, so the drag runs on
+    // smoothly through 0°.
+    tune: { key: 'angle', short: 'θ', when: p => p.mode === 'angle', pixelsPerStep: 0.5, direction: p => (p.angle < 0 ? -1 : 1) },
+  },
   probe: { resize: { uniform: 'displayScale' } },
   gascell: { resize: { x: 'length', y: 'height' }, tune: { key: 'transparency', short: 'transp.' } },
   window: { resize: { y: 'length' }, tune: { key: 'transparency', short: 'transp.' } },

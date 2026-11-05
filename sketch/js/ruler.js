@@ -59,6 +59,7 @@ function settings(params = {}) {
     ticks: params.ticks === true,
     below: params.labelSide === 'below',
     text: typeof params.text === 'string' ? params.text : RULER_VALUE_TOKEN,
+    autoClamp: params.autoClamp !== false,
   };
 }
 
@@ -112,23 +113,145 @@ export function rulerFromWorldPoints(mode, world) {
 }
 
 // Moving one handle to `local` (in the frame of `el` as it was when the drag
-// began) while every other handle stays where it is on the bench.
+// began), with no snapping: see rulerHandleDrag().
 export function rulerEditCandidate(el, index, local) {
-  if (!el || !Number.isInteger(index) || !finite(local?.x) || !finite(local?.y)) return null;
-  const points = rulerPoints(el.params);
-  if (!points[index]) return null;
-  const world = points.map(p => toWorld(el, p));
-  world[index] = toWorld(el, local);
-  return rulerFromWorldPoints(el.params?.mode === 'angle' ? 'angle' : 'distance', world);
+  if (!el || !finite(local?.x) || !finite(local?.y)) return null;
+  return rulerHandleDrag(el, index, toWorld(el, local))?.candidate ?? null;
 }
 
-// The handle a Shift-drag keeps to 45° steps around: the other end of a
-// distance, or the vertex for an arm. The vertex itself has no partner and
-// keeps to steps around where it started.
-export function rulerConstrainOrigin(el, index) {
-  const points = rulerPoints(el?.params);
-  if (el?.params?.mode === 'angle') return index === 0 ? null : points[0];
-  return points[1 - index] ?? null;
+// The point among `targets` nearest `p` within `tolerance` (bench mm): a
+// component's point or a bend in a beam first, then the nearest point on a
+// beam's axis. Null when nothing is that close.
+export function rulerClampPoint(p, targets = {}, tolerance = 0) {
+  let best = null, distance = tolerance;
+  for (const q of targets.points || []) {
+    const d = Math.hypot(q.x - p.x, q.y - p.y);
+    if (finite(d) && d <= distance) { best = { x: q.x, y: q.y, label: q.label }; distance = d; }
+  }
+  if (best) return best;
+  distance = tolerance;
+  for (const line of targets.lines || []) {
+    const { a, b } = line;
+    const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy;
+    if (!(l2 > 0)) continue;
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2));
+    const q = { x: a.x + t * dx, y: a.y + t * dy };
+    const d = Math.hypot(q.x - p.x, q.y - p.y);
+    if (finite(d) && d <= distance) { best = { ...q, label: line.label }; distance = d; }
+  }
+  return best;
+}
+
+// The direction from `vertex` that an arm clicks onto while its tip is
+// dragged to `pointer`: toward a component's point, or along a beam whose
+// axis runs through the vertex, within `tolerance` of the pointer (so it
+// feels the same however long the arm is). In screen degrees (y down, as
+// el.rot), or null.
+export function rulerClampDirection(vertex, pointer, targets = {}, tolerance = 0) {
+  const reach = Math.hypot(pointer.x - vertex.x, pointer.y - vertex.y);
+  if (!(reach > 0)) return null;
+  const heading = Math.atan2(pointer.y - vertex.y, pointer.x - vertex.x);
+  const directions = [];
+  for (const q of targets.points || []) {
+    if (Math.hypot(q.x - vertex.x, q.y - vertex.y) > tolerance) directions.push({ angle: Math.atan2(q.y - vertex.y, q.x - vertex.x), label: q.label });
+  }
+  for (const line of targets.lines || []) {
+    const { a, b } = line;
+    const dx = b.x - a.x, dy = b.y - a.y, length = Math.hypot(dx, dy);
+    if (!(length > 0)) continue;
+    // Only a beam that passes through the vertex defines an arm direction.
+    const offAxis = Math.abs((vertex.x - a.x) * dy - (vertex.y - a.y) * dx) / length;
+    if (!(offAxis <= tolerance / 2)) continue;
+    const along = ((vertex.x - a.x) * dx + (vertex.y - a.y) * dy) / length;
+    if (along < length - tolerance / 2) directions.push({ angle: Math.atan2(dy, dx), label: line.label });
+    if (along > tolerance / 2) directions.push({ angle: Math.atan2(-dy, -dx), label: line.label });
+  }
+  let best = null, gap = tolerance;
+  for (const option of directions) {
+    const turn = Math.atan2(Math.sin(option.angle - heading), Math.cos(option.angle - heading));
+    if (Math.abs(turn) > Math.PI / 2) continue;
+    const miss = reach * Math.abs(Math.sin(turn));
+    if (miss <= gap) { best = { deg: option.angle / DEG, label: option.label }; gap = miss; }
+  }
+  return best;
+}
+
+const ANGLE_STEP = 5;
+
+// A drag of handle `index` to the bench point `pointer`, as
+// { candidate: {x, y, rot, params}, label, guide } or null.
+//
+// - A distance end goes where it is dropped, onto a component, a beam bend
+//   or a beam axis when one is close (auto clamp), else onto the grid.
+//   Shift keeps the line to 45° steps.
+// - An angle's vertex moves the whole ruler, placed the same way.
+// - An angle's arm tip only turns its arm about the vertex: the length stays
+//   as set, there is no grid, and the other arm does not move. Auto clamp
+//   lays the arm along a beam or toward a component; Shift steps the angle
+//   between the arms by 5°.
+//
+// ctx: { targets: {points, lines}, tolerance (bench mm), clamp (false while
+// Alt is held), snapGrid (a function, or null when the grid is off), shift }.
+export function rulerHandleDrag(el, index, pointer, ctx = {}) {
+  if (!el || !Number.isInteger(index) || !finite(pointer?.x) || !finite(pointer?.y)) return null;
+  const s = settings(el.params);
+  const points = rulerPoints(el.params);
+  if (!points[index]) return null;
+  const tolerance = finite(ctx.tolerance) && ctx.tolerance > 0 ? ctx.tolerance : 0;
+  const clamp = s.autoClamp && ctx.clamp !== false && tolerance > 0;
+  const place = p => {
+    const hit = clamp ? rulerClampPoint(p, ctx.targets, tolerance) : null;
+    if (hit) return hit;
+    return typeof ctx.snapGrid === 'function' ? { x: ctx.snapGrid(p.x), y: ctx.snapGrid(p.y) } : { x: p.x, y: p.y };
+  };
+  const world = points.map(p => toWorld(el, p));
+
+  if (s.mode === 'distance') {
+    let to = place(pointer);
+    const partner = world[1 - index];
+    if (ctx.shift) {
+      const length = Math.hypot(to.x - partner.x, to.y - partner.y);
+      const step = Math.PI / 4;
+      const turn = Math.round(Math.atan2(to.y - partner.y, to.x - partner.x) / step) * step;
+      to = { x: partner.x + length * Math.cos(turn), y: partner.y + length * Math.sin(turn) };
+    }
+    world[index] = to;
+    const candidate = rulerFromWorldPoints('distance', world);
+    return candidate && { candidate, label: to.label || null, guide: null };
+  }
+
+  if (index === 0) {
+    const to = place(pointer);
+    const candidate = { x: to.x, y: to.y, rot: normalDegrees(el.rot || 0), params: {} };
+    return allFinite([candidate.x, candidate.y]) ? { candidate, label: to.label || null, guide: null } : null;
+  }
+
+  const vertex = world[0];
+  if (!(Math.hypot(pointer.x - vertex.x, pointer.y - vertex.y) > 0)) return null;
+  const rot = normalDegrees(el.rot || 0);
+  const otherHeading = index === 1 ? rot - s.angle : rot;   // the arm that stays
+  let heading = Math.atan2(pointer.y - vertex.y, pointer.x - vertex.x) / DEG;
+  let label = null;
+  // The angle between the arms if the dragged one points along `h`.
+  const angleFor = h => signedDegrees(index === 2 ? rot - h : h - otherHeading);
+  if (ctx.shift) {
+    const stepped = Math.round(angleFor(heading) / ANGLE_STEP) * ANGLE_STEP;
+    heading = index === 2 ? rot - stepped : otherHeading + stepped;
+  } else if (clamp) {
+    const hit = rulerClampDirection(vertex, pointer, ctx.targets, tolerance);
+    if (hit) { heading = hit.deg; label = hit.label; }
+  }
+  const angle = angleFor(heading);
+  const candidate = index === 2
+    ? { x: vertex.x, y: vertex.y, rot, params: { angle } }
+    : { x: vertex.x, y: vertex.y, rot: normalDegrees(heading), params: { angle } };
+  if (!allFinite([candidate.rot, angle])) return null;
+  const length = index === 1 ? s.armA : s.armB;
+  const guide = label ? {
+    from: vertex,
+    to: { x: vertex.x + Math.cos(heading * DEG) * length * 1.6, y: vertex.y + Math.sin(heading * DEG) * length * 1.6 },
+  } : null;
+  return { candidate, label, guide };
 }
 
 // What the ruler measures: a length in bench millimetres, or the angle

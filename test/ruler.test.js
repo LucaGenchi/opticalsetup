@@ -3,13 +3,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createElement, getElementMeta, getVisualBounds, registry } from '../sketch/js/elements.js';
+import { createElement, getDirectManipulation, getElementMeta, getVisualBounds, registry } from '../sketch/js/elements.js';
 import { detectorReading, traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch, state } from '../sketch/js/state.js';
 import { buildSVG } from '../sketch/js/export.js';
 import { fieldDisplayValue } from '../sketch/js/inspector.js';
 import {
-  rulerConstrainOrigin, rulerEditCandidate, rulerFromWorldPoints, rulerHitTest, rulerLabelText,
+  rulerClampDirection, rulerClampPoint, rulerEditCandidate, rulerFromWorldPoints, rulerHandleDrag, rulerHitTest, rulerLabelText,
   rulerLocalBounds, rulerMeasurement, rulerPoints, rulerSVG, rulerTickStep, rulerValueText,
 } from '../sketch/js/ruler.js';
 
@@ -106,33 +106,6 @@ test('an angle ruler reads the angle between its arms, and its sign says which w
   close(back.x, 40, 1e-9); close(back.y, -30, 1e-9); close(back.rot, 200, 1e-9);
   close(back.params.angle, 37.5, 1e-9); close(back.params.armA, 60, 1e-9); close(back.params.armB, 45, 1e-9);
   assert.equal(rulerValueText(el.params), '37.5°');
-});
-
-test('moving an angle ruler\'s vertex keeps both arm tips on the bench', () => {
-  const el = makeRuler(0, 0, 0);
-  Object.assign(el.params, { mode: 'angle', angle: 90, armA: 50, armB: 50 });
-  const [, tipA, tipB] = world(el);
-  const next = rulerEditCandidate(el, 0, { x: 10, y: -10 });
-  const moved = { ...el, x: next.x, y: next.y, rot: next.rot, params: { ...el.params, ...next.params } };
-  const [, a, b] = world(moved);
-  close(moved.x, 10, 1e-12); close(moved.y, -10, 1e-12);
-  close(a.x, tipA.x, 1e-9); close(a.y, tipA.y, 1e-9);
-  close(b.x, tipB.x, 1e-9); close(b.y, tipB.y, 1e-9);
-  // From (10,−10), between the arms, each tip lies 40 along and 10 back
-  // across, so the angle opens past a right angle.
-  close(moved.params.armA, Math.hypot(40, 10), 1e-9);
-  close(moved.params.angle, 90 + 2 * Math.atan2(10, 40) * 180 / Math.PI, 1e-9);
-  assert.equal(rulerEditCandidate(el, 1, { x: 0, y: 0 }), null, 'an arm of zero length is refused');
-});
-
-test('a Shift-drag keeps to steps around the partner handle', () => {
-  const distance = makeRuler(0, 0, 0);
-  assert.deepEqual(rulerConstrainOrigin(distance, 0), rulerPoints(distance.params)[1]);
-  assert.deepEqual(rulerConstrainOrigin(distance, 1), rulerPoints(distance.params)[0]);
-  const angle = makeRuler(0, 0, 0);
-  angle.params.mode = 'angle';
-  assert.deepEqual(rulerConstrainOrigin(angle, 2), { x: 0, y: 0 }, 'an arm turns about the vertex');
-  assert.equal(rulerConstrainOrigin(angle, 0), null, 'the vertex has no partner');
 });
 
 test('{value} in the label becomes the measurement, written as TeX inside a formula', () => {
@@ -249,19 +222,6 @@ test('the export contains the ruler and its label inside the fitted bounds', () 
   }
 });
 
-test('dragging one arm leaves the other tip exactly where it was, even on a long arm', () => {
-  // Review of #308: rounding the stored angle used to turn the fixed arm, so
-  // a 5000 mm arm's tip moved about 0.02 mm.
-  const el = makeRuler(0, 0, 0, { mode: 'angle', angle: 90, armA: 80, armB: 5000 });
-  const [, , tip] = world(el);
-  const next = rulerEditCandidate(el, 1, { x: 70, y: -45 });
-  const moved = { ...el, x: next.x, y: next.y, rot: next.rot, params: { ...el.params, ...next.params } };
-  const [vertex, dragged, kept] = world(moved);
-  close(kept.x, tip.x, 1e-9); close(kept.y, tip.y, 1e-9);
-  close(dragged.x, 70, 1e-9); close(dragged.y, -45, 1e-9);
-  close(vertex.x, 0, 1e-12); close(vertex.y, 0, 1e-12);
-});
-
 test('the inspector shows dragged geometry to a thousandth without changing it', () => {
   assert.equal(fieldDisplayValue(223.97321265, { displayDecimals: 3 }), 223.973);
   assert.equal(fieldDisplayValue(-147.2648, { displayDecimals: 3 }), -147.265);
@@ -299,22 +259,22 @@ test('a short display formula is boxed where it is drawn', () => {
   assert.ok(rulerHitTest(params, { x: textCenter + 2, y: 0 }, 1), 'the drawn text is grabbable');
 });
 
-test('a handle left exactly on a length bound still lets the other one move', () => {
-  // Review of #308: rebuilt from bench coordinates the fixed arm came back as
+test('a distance end left exactly on a length bound still lets the other one move', () => {
+  // Review of #308: rebuilt from bench coordinates a length came back as
   // 0.09999999999999432 or 5000.000000000001 and the drag was refused.
-  const short = makeRuler(380, 220, 0, { mode: 'angle', angle: 90, armA: 80, armB: 0.1 });
-  const [, , shortTip] = world(short);
-  const a = rulerEditCandidate(short, 1, { x: 70, y: -45 });
-  assert.ok(a, 'the drag is accepted');
-  assert.equal(a.params.armB, 0.1, 'the fixed arm is read as its bound');
-  const movedShort = { ...short, ...a, params: { ...short.params, ...a.params } };
-  close(world(movedShort)[2].x, shortTip.x, 1e-9); close(world(movedShort)[2].y, shortTip.y, 1e-9);
-  const long = makeRuler(0, 0, 45, { mode: 'angle', angle: 90, armA: 80, armB: 5000 });
-  const b = rulerEditCandidate(long, 1, { x: 70, y: -45 });
-  assert.ok(b, 'the drag is accepted');
-  assert.equal(b.params.armB, 5000);
-  const distance = makeRuler(380, 220, 45, { len: 5000 });
-  assert.ok(rulerEditCandidate(distance, 1, { x: 2500, y: 0 }), 'a 5000 mm distance can be re-aimed');
+  for (const rot of [0, 45, 137]) {
+    for (const len of [0.1, 5000]) {
+      const el = makeRuler(380, 220, rot, { len });
+      const [, b] = world(el);
+      const next = rulerEditCandidate(el, 0, rulerPoints(el.params)[0]);
+      assert.ok(next, `len ${len} at ${rot}° is accepted`);
+      close(next.params.len, len, 1e-9, `length ${next.params.len} stays at its bound`);
+      assert.ok(next.params.len >= 0.1 && next.params.len <= 5000, 'and inside the schema');
+      const moved = { ...el, ...next, params: { ...el.params, ...next.params } };
+      close(world(moved)[1].x, b.x, 1e-9); close(world(moved)[1].y, b.y, 1e-9);
+    }
+  }
+  assert.ok(rulerEditCandidate(makeRuler(380, 220, 45, { len: 5000 }), 1, { x: 2500, y: 0 }), 'a 5000 mm distance can be re-aimed');
   // Clearly beyond a bound is still refused.
   assert.equal(rulerFromWorldPoints('distance', [{ x: 0, y: 0 }, { x: 5000.01, y: 0 }]), null);
   assert.equal(rulerFromWorldPoints('distance', [{ x: 0, y: 0 }, { x: 0.0999, y: 0 }]), null);
@@ -331,4 +291,119 @@ test('coordinates near the largest finite number never produce Infinity', () => 
   const candidate = rulerEditCandidate(far, 1, { x: 50, y: 20 });
   assert.ok(candidate === null || [candidate.x, candidate.y, candidate.rot, candidate.params.len].every(Number.isFinite));
   assert.equal(rulerFromWorldPoints('distance', [{ x: -1.7e308, y: 0 }, { x: 1.7e308, y: 0 }]), null, 'an overflowing length is refused');
+});
+
+const applied = (el, result) => ({ ...el, x: result.candidate.x, y: result.candidate.y, rot: result.candidate.rot, params: { ...el.params, ...result.candidate.params } });
+const grid = value => Math.round(value / 25) * 25;
+
+test('dragging an arm tip only turns that arm: smooth, its length kept, the other arm still', () => {
+  const el = makeRuler(380, 220, 0, { mode: 'angle', angle: 90, armA: 80, armB: 5000 });
+  const [vertex, , tipB] = world(el);
+  // Grid snapping is on, but an arm turns continuously: no 25 mm jumps.
+  const result = rulerHandleDrag(el, 1, { x: 380 + 70, y: 220 - 45 }, { snapGrid: grid, tolerance: 0 });
+  const moved = applied(el, result);
+  assert.equal(moved.params.armA, 80, 'arm 1 keeps its length');
+  assert.equal(moved.params.armB, 5000);
+  const [v, a, b] = world(moved);
+  close(v.x, vertex.x, 1e-12); close(v.y, vertex.y, 1e-12);
+  close(b.x, tipB.x, 1e-9); close(b.y, tipB.y, 1e-9);
+  // Arm 1 now points at the pointer, 80 mm out.
+  close(Math.atan2(a.y - v.y, a.x - v.x), Math.atan2(-45, 70), 1e-12);
+  close(Math.hypot(a.x - v.x, a.y - v.y), 80, 1e-9);
+  // Arm 1 turned toward arm 2, so the angle between them closes.
+  close(moved.params.angle, 90 - Math.atan2(45, 70) * 180 / Math.PI, 1e-9);
+  // Dragging arm 2 changes only the angle; rot and lengths stay.
+  const second = applied(el, rulerHandleDrag(el, 2, { x: 380 - 10, y: 220 - 10 }, { snapGrid: grid }));
+  assert.equal(second.rot, 0);
+  close(second.params.angle, 135, 1e-9);
+  assert.equal(second.params.armB, 5000);
+  assert.equal(rulerHandleDrag(el, 2, { x: 380, y: 220 }), null, 'a pointer on the vertex has no direction');
+});
+
+test('auto clamp lays an arm along a beam axis through the vertex, or toward a component', () => {
+  // A beam arrives from the left and folds upwards at the vertex.
+  const targets = {
+    points: [{ x: 300, y: 100, label: 'Lens' }],
+    lines: [
+      { a: { x: 0, y: 200 }, b: { x: 200, y: 200 }, label: 'beam axis' },
+      { a: { x: 200, y: 200 }, b: { x: 200, y: 0 }, label: 'beam axis' },
+      { a: { x: 0, y: 260 }, b: { x: 400, y: 260 }, label: 'beam axis' },   // passes 60 mm below
+    ],
+  };
+  const el = makeRuler(200, 200, 180, { mode: 'angle', angle: -45, armA: 60, armB: 60 });
+  const up = rulerHandleDrag(el, 2, { x: 205, y: 140 }, { targets, tolerance: 8 });
+  assert.equal(up.label, 'beam axis');
+  close(applied(el, up).params.angle, -90, 1e-9, 'clicked exactly onto the folded beam');
+  assert.ok(up.guide, 'the canvas draws the line it clicked onto');
+  const back = rulerHandleDrag(el, 1, { x: 140, y: 196 }, { targets, tolerance: 8 });
+  assert.equal(back.label, 'beam axis');
+  close(applied(el, back).rot, 180, 1e-9, 'arm 1 back along the incoming beam');
+  const lens = rulerHandleDrag(el, 2, { x: 250, y: 152 }, { targets, tolerance: 8 });
+  assert.equal(lens.label, 'Lens');
+  close(applied(el, lens).rot - applied(el, lens).params.angle, Math.atan2(-100, 100) * 180 / Math.PI + 360, 1e-9);
+  // Out of reach, with Alt, or with auto clamp off, the arm follows the pointer.
+  assert.equal(rulerHandleDrag(el, 2, { x: 230, y: 140 }, { targets, tolerance: 8 }).label, null);
+  assert.equal(rulerHandleDrag(el, 2, { x: 205, y: 140 }, { targets, tolerance: 8, clamp: false }).label, null);
+  const off = makeRuler(200, 200, 180, { mode: 'angle', angle: -45, armA: 60, armB: 60, autoClamp: false });
+  assert.equal(rulerHandleDrag(off, 2, { x: 205, y: 140 }, { targets, tolerance: 8 }).label, null);
+  // A beam that misses the vertex defines no direction for it.
+  assert.equal(rulerClampDirection({ x: 200, y: 200 }, { x: 300, y: 262 }, { lines: [targets.lines[2]] }, 8), null);
+});
+
+test('Shift steps the angle between the arms by 5°', () => {
+  const el = makeRuler(0, 0, 30, { mode: 'angle', angle: 40, armA: 50, armB: 50 });
+  for (const index of [1, 2]) {
+    const pointer = { x: 50 * Math.cos(-1.2), y: 50 * Math.sin(-1.2) };
+    const moved = applied(el, rulerHandleDrag(el, index, pointer, { shift: true }));
+    close(moved.params.angle / 5, Math.round(moved.params.angle / 5), 1e-9, `arm ${index}: ${moved.params.angle}`);
+  }
+});
+
+test('the vertex moves the whole ruler, clicking onto components, then the grid', () => {
+  const el = makeRuler(100, 100, 30, { mode: 'angle', angle: 60, armA: 40, armB: 70 });
+  const targets = { points: [{ x: 152, y: 98, label: 'Mirror' }], lines: [{ a: { x: 0, y: 300 }, b: { x: 400, y: 300 }, label: 'beam axis' }] };
+  const onMirror = rulerHandleDrag(el, 0, { x: 149, y: 101 }, { targets, tolerance: 8, snapGrid: grid });
+  assert.equal(onMirror.label, 'Mirror');
+  assert.deepEqual(onMirror.candidate, { x: 152, y: 98, rot: 30, params: {} }, 'only the position changes');
+  const onBeam = rulerHandleDrag(el, 0, { x: 207, y: 296 }, { targets, tolerance: 8, snapGrid: grid });
+  assert.equal(onBeam.label, 'beam axis');
+  close(onBeam.candidate.x, 207, 1e-9); close(onBeam.candidate.y, 300, 1e-9);
+  const onGrid = rulerHandleDrag(el, 0, { x: 61, y: 139 }, { targets, tolerance: 8, snapGrid: grid });
+  assert.deepEqual([onGrid.candidate.x, onGrid.candidate.y, onGrid.label], [50, 150, null]);
+  const free = rulerHandleDrag(el, 0, { x: 61, y: 139 }, { targets, tolerance: 8, snapGrid: null });
+  assert.deepEqual([free.candidate.x, free.candidate.y], [61, 139]);
+});
+
+test('a distance end clicks onto a component, then a beam axis, then the grid; Shift keeps 45° steps', () => {
+  const el = makeRuler(0, 0, 0, { len: 100 });
+  const targets = { points: [{ x: 80, y: 3, label: 'Lens' }], lines: [{ a: { x: 0, y: 60 }, b: { x: 200, y: 60 }, label: 'beam axis' }] };
+  assert.equal(rulerHandleDrag(el, 1, { x: 77, y: 0 }, { targets, tolerance: 8 }).label, 'Lens');
+  const beam = rulerHandleDrag(el, 1, { x: 120, y: 55 }, { targets, tolerance: 8, snapGrid: grid });
+  assert.equal(beam.label, 'beam axis');
+  const end = world(applied(el, beam))[1];
+  close(end.x, 120, 1e-9); close(end.y, 60, 1e-9);
+  const gridEnd = world(applied(el, rulerHandleDrag(el, 1, { x: 112, y: 130 }, { targets, tolerance: 8, snapGrid: grid })))[1];
+  close(gridEnd.x, 100, 1e-9); close(gridEnd.y, 125, 1e-9);
+  const level = applied(el, rulerHandleDrag(el, 1, { x: 90, y: 7 }, { shift: true }));
+  close(level.rot, 0, 1e-9, 'Shift keeps the line level');
+  assert.deepEqual(rulerClampPoint({ x: 0, y: 0 }, targets, 1), null);
+});
+
+test('the purple knob tunes an angle ruler\'s angle, and the hint follows the mode', async () => {
+  globalThis.window ??= { matchMedia: () => ({ matches: true }) };
+  globalThis.document ??= { addEventListener() {}, dispatchEvent() {} };
+  const { tuneDragValue } = await import('../sketch/js/canvas.js');
+  const angle = makeRuler(0, 0, 0, { mode: 'angle' });
+  const tune = getDirectManipulation(angle).tune;
+  assert.equal(tune.key, 'angle');
+  // Dragging up 10 px (20 steps of 0.1°) opens the angle by 2°, either way.
+  const grab = el => ({ mode: 'tune', el, tune, clientY: 0, value: el.params.angle, direction: tune.direction(el.params) });
+  assert.equal(tuneDragValue(grab(angle), -10), 47);
+  const clockwise = makeRuler(0, 0, 0, { mode: 'angle', angle: -90 });
+  assert.equal(tuneDragValue(grab(clockwise), -10), -92);
+  assert.equal(tuneDragValue(grab(clockwise), 10), -88, 'down closes it');
+  assert.equal(tuneDragValue(grab(makeRuler(0, 0, 0, { mode: 'angle', angle: 179 })), -40), 180, 'held at the bound');
+  assert.equal(getDirectManipulation(makeRuler(0, 0, 0)).tune, null, 'a distance ruler has no knob');
+  assert.match(registry.ruler.directHint(angle.params), /turn that arm/);
+  assert.match(registry.ruler.directHint({ mode: 'distance' }), /move that end/);
 });

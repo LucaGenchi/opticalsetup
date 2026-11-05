@@ -1041,7 +1041,9 @@ export function renderInspector() {
       const actions = [direct?.resize ? 'blue handles resize the physical component' : '',
         def.editPoints ? (def.editPoints.hint || 'round blue points reshape the boundary') : '',
         direct?.tune ? `purple knob tunes ${direct.tune.short || direct.tune.param.label}` : ''].filter(Boolean).join(' · ');
-      h += `<div class="direct-hint"><b>On-canvas controls</b><span>${esc(def.directHint || actions)}</span></div>`;
+      // A hint may depend on the element's mode (a ruler's distance or angle).
+      const hint = typeof def.directHint === 'function' ? def.directHint(sel.params) : def.directHint;
+      h += `<div class="direct-hint"><b>On-canvas controls</b><span>${esc(hint || actions)}</span></div>`;
     }
 
     // Most element types render exactly one "Optical behavior" section (or
