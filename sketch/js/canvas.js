@@ -16,6 +16,7 @@ import {
 import { immersionLayerSVG } from './immersion.js';
 import { zoomPulsePlacement, zoomSceneSVG } from './zoom-view.js';
 import { clampZoomOffset, normalizeZoomParams, zoomViewContains, zoomViewCorner, zoomViewCornerDrag } from './zoom.js';
+import { rulerClampTargets } from './ruler.js';
 import { polygonScannerState } from './polygon-scanner.js';
 import { mixReading, specimenTimingReading, traceScene, getTraceRevision } from './raytrace.js';
 import {
@@ -174,43 +175,6 @@ function snapElPos(el, wx, wy, bypass = false) {
     x: snapToGrid(wx + sp.x, state.view.z) - sp.x,
     y: snapToGrid(wy + sp.y, state.view.z) - sp.y,
   };
-}
-
-// What a ruler's handles click onto (auto clamp), in bench coordinates:
-// points -- each component's centre and optically active point (a laser's
-// aperture, an objective's tip), other rulers' handles, and the bends of
-// each beam's central ray, such as the fold at a mirror -- and lines, the
-// segments of those central rays and of the arrows drawn as beams, which
-// stand for the optical axis. Annotations that only frame the figure offer
-// nothing to land on.
-const NO_CLAMP_TYPES = new Set(['figureframe', 'highlight', 'zoom', 'textlabel', 'arrowann']);
-function rulerClampTargets(excludeId) {
-  const points = [], lines = [];
-  const finitePoint = p => Number.isFinite(p?.x) && Number.isFinite(p?.y);
-  for (const el of state.elements) {
-    if (el.id === excludeId || NO_CLAMP_TYPES.has(el.type)) continue;
-    const def = registry[el.type];
-    if (!def) continue;
-    const label = def.label || el.type;
-    const local = el.type === 'ruler' ? def.editPoints.get(el) : [{ x: 0, y: 0 }];
-    const active = typeof def.snapPt === 'function' ? def.snapPt(el) : def.snapPt;
-    if (el.type !== 'ruler' && finitePoint(active)) local.push(active);
-    for (const p of local) points.push({ ...toWorld(el, p.x, p.y), label });
-  }
-  for (const path of displayedBeamScene?.paths || []) {
-    // A sized beam is traced as a fan of rays; its middle one is the axis.
-    const count = Number.isInteger(path.sampleCount) && path.sampleCount > 0 ? path.sampleCount : 1;
-    const sample = Number.isInteger(path.sample) ? path.sample : 0;
-    if (sample !== Math.floor((count - 1) / 2) && sample !== Math.ceil((count - 1) / 2)) continue;
-    const pts = (path.pts || []).filter(finitePoint);
-    for (let i = 0; i + 1 < pts.length; i++) lines.push({ a: pts[i], b: pts[i + 1], label: 'beam axis' });
-    for (let i = 1; i + 1 < pts.length; i++) points.push({ ...pts[i], label: 'beam' });
-  }
-  for (const beam of state.beams) {
-    const pts = (beam.pts || []).filter(finitePoint);
-    for (let i = 0; i + 1 < pts.length; i++) lines.push({ a: pts[i], b: pts[i + 1], label: beam.kind === 'fiber' ? 'fiber' : 'beam' });
-  }
-  return { points, lines };
 }
 
 function constrainPoint(origin, point, incrementDeg = 45) {
@@ -2161,7 +2125,10 @@ function onMove(e) {
   } else if (drag.mode === 'editpoint' && drag.editor.dragTo) {
     // An editor that places its own handles (a ruler) gets the pointer as it
     // is, with what it may click onto, the grid, Shift and Alt.
-    drag.targets ??= rulerClampTargets(drag.el.id);
+    drag.targets ??= rulerClampTargets({
+      elements: state.elements, paths: displayedBeamScene?.paths || [], beams: state.beams,
+      definitions: registry, excludeId: drag.el.id,
+    });
     const result = drag.editor.dragTo(drag.base, drag.i, w, {
       targets: drag.targets, tolerance: 10 / state.view.z, clamp: !e.altKey, shift: e.shiftKey,
       snapGrid: state.snap && !e.altKey ? value => snapToGrid(value, state.view.z) : null,

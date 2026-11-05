@@ -9,7 +9,7 @@ import { parseSketch, state } from '../sketch/js/state.js';
 import { buildSVG } from '../sketch/js/export.js';
 import { fieldDisplayValue } from '../sketch/js/inspector.js';
 import {
-  rulerClampDirection, rulerClampPoint, rulerEditCandidate, rulerFromWorldPoints, rulerHandleDrag, rulerHitTest, rulerLabelText,
+  rulerAxisPaths, rulerClampDirection, rulerClampPoint, rulerClampTargets, rulerEditCandidate, rulerFromWorldPoints, rulerHandleDrag, rulerHitTest, rulerLabelText,
   rulerLocalBounds, rulerMeasurement, rulerPoints, rulerSVG, rulerTickStep, rulerValueText,
 } from '../sketch/js/ruler.js';
 
@@ -406,4 +406,45 @@ test('the purple knob tunes an angle ruler\'s angle, and the hint follows the mo
   assert.equal(getDirectManipulation(makeRuler(0, 0, 0)).tune, null, 'a distance ruler has no knob');
   assert.match(registry.ruler.directHint(angle.params), /turn that arm/);
   assert.match(registry.ruler.directHint({ mode: 'distance' }), /move that end/);
+});
+
+test('clamp targets: a beam\'s middle ray, an object arrow\'s axis ray, and a point source\'s centre only', () => {
+  // Review of #308: rays with no sample index (object arrow, point source)
+  // were all dropped, so an object arrow's visible central ray was no target.
+  const targetsFor = elements => rulerClampTargets({ elements, paths: traceScene(elements, []).paths, definitions: registry });
+  const onAxis = (targets, y) => targets.lines.some(l => Math.abs(l.a.y - y) < 1e-9 && Math.abs(l.b.y - y) < 1e-9);
+
+  const arrow = createElement('objarrow', 0, 0);
+  const arrowTargets = targetsFor([arrow]);
+  assert.equal(arrowTargets.lines.length, 1, 'one axis ray of the three drawn');
+  const [axis] = rulerAxisPaths(traceScene([arrow], []).paths, [arrow]);
+  close(axis[1].y, axis[0].y, 1e-6, 'the axis ray leaves along the arrow');
+  assert.ok(onAxis(arrowTargets, axis[0].y), 'and it is the target');
+  // A ruler end dropped near the arrow's axis lands on it.
+  const hit = rulerClampPoint({ x: 50, y: axis[0].y + 2 }, arrowTargets, 5);
+  assert.equal(hit?.label, 'beam axis');
+  close(hit.y, axis[0].y, 1e-9);
+
+  const turned = createElement('objarrow', 0, 0);
+  turned.rot = 30;
+  const [turnedAxis] = rulerAxisPaths(traceScene([turned], []).paths, [turned]);
+  close(Math.atan2(turnedAxis[1].y - turnedAxis[0].y, turnedAxis[1].x - turnedAxis[0].x), Math.PI / 6, 1e-6);
+
+  const point = createElement('pointsource', 100, 100);
+  const pointTargets = targetsFor([point]);
+  assert.equal(pointTargets.lines.length, 0, 'a point source has no axis');
+  assert.ok(pointTargets.points.some(p => p.x === 100 && p.y === 100), 'its centre clamps');
+
+  const laser = createElement('cwlaser', 0, 50);
+  laser.params.beamMode = 'beam';
+  const laserTargets = targetsFor([laser]);
+  assert.ok(laserTargets.lines.length >= 1 && laserTargets.lines.length <= 2, 'only the middle sample(s) of the fan');
+  assert.ok(onAxis(laserTargets, 50), 'along the beam centre');
+
+  const mirror = createElement('mirror', 200, 50);
+  mirror.rot = 45;
+  const folded = targetsFor([laser, mirror]);
+  assert.ok(folded.points.some(p => p.label === 'beam' && Math.abs(p.y - 50) < 1 && Math.abs(p.x - 200) < 10), 'the fold is a point');
+  assert.equal(targetsFor([laser, makeRuler(0, 0, 0)]).points.filter(p => p.label === 'Ruler').length, 2, 'another ruler\'s handles');
+  assert.equal(rulerClampTargets({ elements: [laser], definitions: registry, excludeId: laser.id }).points.length, 0, 'the dragged ruler itself is excluded');
 });

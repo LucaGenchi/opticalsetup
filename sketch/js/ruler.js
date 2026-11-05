@@ -176,6 +176,76 @@ export function rulerClampDirection(vertex, pointer, targets = {}, tolerance = 0
   return best;
 }
 
+// What a ruler's handles click onto (auto clamp), in bench coordinates:
+//   points -- each component's centre and optically active point (a laser's
+//     aperture, an objective's tip), other rulers' handles, and the bends of
+//     each beam axis, such as the fold at a mirror;
+//   lines -- the segments of each beam axis, and of arrows drawn as beams.
+// A beam axis is the ray along the middle of a traced beam: a sized beam is
+// a fan of spatial samples (path.sample of path.sampleCount) and its middle
+// sample is the axis; a source whose rays carry no sample index (an object
+// arrow's fan) has as its axis the ray leaving nearest the source's own
+// direction. A point source has no axis: only its centre is a target.
+// Annotations that only frame the figure offer nothing to land on.
+// `definitions` is the element registry, passed in so this module stays
+// free of it.
+const NO_CLAMP_TYPES = new Set(['figureframe', 'highlight', 'zoom', 'textlabel', 'arrowann']);
+const NO_AXIS_SOURCES = new Set(['pointsource']);
+const finitePoint = p => finite(p?.x) && finite(p?.y);
+
+export function rulerAxisPaths(paths = [], elements = []) {
+  const byId = new Map(elements.map(el => [el.id, el]));
+  const axes = [];
+  const unsampled = new Map();
+  for (const path of paths) {
+    const pts = (path?.pts || []).filter(finitePoint);
+    if (pts.length < 2) continue;
+    if (Number.isInteger(path.sample)) {
+      const count = Number.isInteger(path.sampleCount) && path.sampleCount > 0 ? path.sampleCount : 1;
+      if (path.sample === Math.floor((count - 1) / 2) || path.sample === Math.ceil((count - 1) / 2)) axes.push(pts);
+      continue;
+    }
+    const source = byId.get(path.sourceId);
+    if (!source || NO_AXIS_SOURCES.has(source.type)) continue;
+    if (!unsampled.has(source.id)) unsampled.set(source.id, []);
+    unsampled.get(source.id).push(pts);
+  }
+  for (const [id, fan] of unsampled) {
+    const heading = (byId.get(id).rot || 0) * DEG;
+    let best = null, gap = Infinity;
+    for (const pts of fan) {
+      const leaving = Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x);
+      const turn = Math.abs(Math.atan2(Math.sin(leaving - heading), Math.cos(leaving - heading)));
+      if (turn < gap) { best = pts; gap = turn; }
+    }
+    if (best) axes.push(best);
+  }
+  return axes;
+}
+
+export function rulerClampTargets({ elements = [], paths = [], beams = [], definitions = {}, excludeId = null } = {}) {
+  const points = [], lines = [];
+  for (const el of elements) {
+    if (!el || el.id === excludeId || NO_CLAMP_TYPES.has(el.type)) continue;
+    const def = definitions[el.type];
+    if (!def || !finite(el.x) || !finite(el.y)) continue;
+    const label = def.label || el.type;
+    const local = el.type === 'ruler' ? rulerPoints(el.params) : [{ x: 0, y: 0 }];
+    const active = typeof def.snapPt === 'function' ? def.snapPt(el) : def.snapPt;
+    if (el.type !== 'ruler' && finitePoint(active)) local.push(active);
+    for (const p of local) points.push({ ...toWorld(el, p), label });
+  }
+  for (const pts of rulerAxisPaths(paths, elements)) {
+    for (let i = 0; i + 1 < pts.length; i++) lines.push({ a: pts[i], b: pts[i + 1], label: 'beam axis' });
+    for (let i = 1; i + 1 < pts.length; i++) points.push({ ...pts[i], label: 'beam' });
+  }
+  for (const beam of beams) {
+    const pts = (beam?.pts || []).filter(finitePoint);
+    for (let i = 0; i + 1 < pts.length; i++) lines.push({ a: pts[i], b: pts[i + 1], label: beam.kind === 'fiber' ? 'fiber' : 'beam' });
+  }
+  return { points, lines };
+}
+
 const ANGLE_STEP = 5;
 
 // A drag of handle `index` to the bench point `pointer`, as
