@@ -201,7 +201,7 @@ export function buildSVG({ whiteBg = false, animation = null, bounds = null } = 
     if (!def || def.hideInExport) continue;
     const art = el.type === 'zoom'
       ? zoomSceneSVG(el, {
-        drawables: traced.drawables, beams: state.beams, elements, baseElements: state.elements, exporting: true,
+        drawables: traced.drawables, paths: traced.paths, beams: state.beams, elements, baseElements: state.elements, exporting: true,
         pulses: animation ? pulseLayerSVG(traced.pulseTracks, pulseTimeNs, playback, zoomPulsePlacement(el)) : '',
       })
       : def.svg(el, elements);

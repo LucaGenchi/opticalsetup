@@ -963,8 +963,8 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 /* A zoom's view takes the canvas colour, so its default frame and its scale
    bar turn light with it. */
 :root[data-theme="dark"] :is(.palitem svg, #elementLayer) [data-zoom-frame][stroke="#475569"] { stroke: #94a3b8; }
-:root[data-theme="dark"] #elementLayer [data-zoom-scalebar] { fill: #e5e7eb; }
-:root[data-theme="dark"] #elementLayer [data-zoom-scalebar] * { stroke: var(--canvas-bg); }
+:root[data-theme="dark"] #elementLayer :is([data-zoom-scalebar], [data-zoom-focus-label]) { fill: #e5e7eb; }
+:root[data-theme="dark"] #elementLayer :is([data-zoom-scalebar], [data-zoom-focus-label]) * { stroke: var(--canvas-bg); }
 
 :root[data-theme="dark"] :is(.palitem svg, #elementLayer) :is(
   [stroke="#111"],

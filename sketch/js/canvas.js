@@ -898,7 +898,7 @@ function renderElements() {
     // beam layer was just drawn from.
     const body = el.type === 'zoom'
       ? zoomSceneSVG(el, {
-        drawables: displayedBeamScene?.drawables || [], beams: state.beams,
+        drawables: displayedBeamScene?.drawables || [], paths: displayedBeamScene?.paths || [], beams: state.beams,
         elements: allElements, baseElements: state.elements,
         nonScalingStroke: true, background: 'var(--canvas-bg)',
         pulses: `<g data-zoom-pulses="${esc(el.id)}" pointer-events="none"></g>`,
