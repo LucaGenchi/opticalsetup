@@ -7,6 +7,7 @@ import { createElement, getElementMeta, getVisualBounds, registry } from '../ske
 import { detectorReading, traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch, state } from '../sketch/js/state.js';
 import { buildSVG } from '../sketch/js/export.js';
+import { fieldDisplayValue } from '../sketch/js/inspector.js';
 import {
   rulerConstrainOrigin, rulerEditCandidate, rulerFromWorldPoints, rulerHitTest, rulerLabelText,
   rulerLocalBounds, rulerMeasurement, rulerPoints, rulerSVG, rulerTickStep, rulerValueText,
@@ -62,10 +63,8 @@ test('dragging one end moves only that end; the other stays where it is on the b
   const moved = { ...el, x: next.x, y: next.y, rot: next.rot, params: { ...el.params, ...next.params } };
   const [a, b] = world(moved);
   close(a.x, fixed.x, 1e-9); close(a.y, fixed.y, 1e-9);
-  // The length is kept to a thousandth, so the dragged end lands within
-  // half a micrometre of the pointer.
-  close(b.x, 50, 5e-4); close(b.y, -50, 5e-4);
-  assert.equal(moved.params.len, 111.803);
+  close(b.x, 50, 1e-9); close(b.y, -50, 1e-9);
+  close(moved.params.len, Math.hypot(100, 50));
   // y points down on the canvas, so a rise of 50 over 100 is a turn of −26.6°.
   close(moved.rot, 360 + Math.atan2(-50, 100) * 180 / Math.PI, 1e-9);
   // Dragging the first end keeps the second one exactly instead.
@@ -117,15 +116,12 @@ test('moving an angle ruler\'s vertex keeps both arm tips on the bench', () => {
   const moved = { ...el, x: next.x, y: next.y, rot: next.rot, params: { ...el.params, ...next.params } };
   const [, a, b] = world(moved);
   close(moved.x, 10, 1e-12); close(moved.y, -10, 1e-12);
-  close(a.x, tipA.x, 1e-3); close(a.y, tipA.y, 1e-3);
-  close(b.x, tipB.x, 1e-3); close(b.y, tipB.y, 1e-3);
+  close(a.x, tipA.x, 1e-9); close(a.y, tipA.y, 1e-9);
+  close(b.x, tipB.x, 1e-9); close(b.y, tipB.y, 1e-9);
   // From (10,−10), between the arms, each tip lies 40 along and 10 back
   // across, so the angle opens past a right angle.
-  close(moved.params.armA, Math.hypot(40, 10), 5e-4);
-  close(moved.params.angle, 90 + 2 * Math.atan2(10, 40) * 180 / Math.PI, 5e-4);
-  for (const key of ['armA', 'armB', 'angle']) {
-    assert.equal(moved.params[key], Math.round(moved.params[key] * 1000) / 1000, `${key} is kept to a thousandth`);
-  }
+  close(moved.params.armA, Math.hypot(40, 10), 1e-9);
+  close(moved.params.angle, 90 + 2 * Math.atan2(10, 40) * 180 / Math.PI, 1e-9);
   assert.equal(rulerEditCandidate(el, 1, { x: 0, y: 0 }), null, 'an arm of zero length is refused');
 });
 
@@ -251,4 +247,54 @@ test('the export contains the ruler and its label inside the fitted bounds', () 
   } finally {
     state.elements = saved;
   }
+});
+
+test('dragging one arm leaves the other tip exactly where it was, even on a long arm', () => {
+  // Review of #308: rounding the stored angle used to turn the fixed arm, so
+  // a 5000 mm arm's tip moved about 0.02 mm.
+  const el = makeRuler(0, 0, 0, { mode: 'angle', angle: 90, armA: 80, armB: 5000 });
+  const [, , tip] = world(el);
+  const next = rulerEditCandidate(el, 1, { x: 70, y: -45 });
+  const moved = { ...el, x: next.x, y: next.y, rot: next.rot, params: { ...el.params, ...next.params } };
+  const [vertex, dragged, kept] = world(moved);
+  close(kept.x, tip.x, 1e-9); close(kept.y, tip.y, 1e-9);
+  close(dragged.x, 70, 1e-9); close(dragged.y, -45, 1e-9);
+  close(vertex.x, 0, 1e-12); close(vertex.y, 0, 1e-12);
+});
+
+test('the inspector shows dragged geometry to a thousandth without changing it', () => {
+  assert.equal(fieldDisplayValue(223.97321265, { displayDecimals: 3 }), 223.973);
+  assert.equal(fieldDisplayValue(-147.2648, { displayDecimals: 3 }), -147.265);
+  assert.equal(fieldDisplayValue(223.97321265, {}), 223.97321265, 'other fields are shown as stored');
+  assert.equal(fieldDisplayValue(-5, { negative: true }), 5);
+  assert.ok(Number.isNaN(fieldDisplayValue(NaN, { displayDecimals: 3 })));
+  for (const key of ['len', 'angle', 'armA', 'armB']) {
+    assert.equal(registry.ruler.params.find(p => p.key === key).displayDecimals, 3, key);
+  }
+});
+
+test('{value} between two formulas stays prose, as the renderer reads it', () => {
+  // Review of #308: "$x$ = {value}; $y$" used to pair the closing $ of the
+  // first formula with the opening $ of the second.
+  const p = { mode: 'distance', len: 100, decimals: 1 };
+  assert.equal(rulerLabelText({ ...p, text: '$x$ = {value}; $y$' }), '$x$ = 100.0 mm; $y$');
+  assert.equal(rulerLabelText({ ...p, text: 'Costs $5 and {value}' }), 'Costs $5 and 100.0 mm', 'a price opens no formula');
+  assert.equal(rulerLabelText({ ...p, text: '`$a {value}$`' }), '`$a 100.0 mm$`', 'a code span is never a formula');
+  assert.equal(rulerLabelText({ ...p, text: '$a$\n$b = {value}$' }), '$a$\n$b = 100.0\\,\\mathrm{mm}$', 'formulas do not pair across lines');
+  const svg = rulerSVG({ ...p, text: '$x$ = {value}; $y$' });
+  assert.doesNotMatch(svg, /mathrm|\\,/, 'no TeX command is drawn as text');
+});
+
+test('a short display formula is boxed where it is drawn', () => {
+  // Review of #308: a $$x$$ line is centred inside a 30 px layout, so its
+  // bounds and hit area must follow the indent, not start at zero.
+  const params = { mode: 'angle', angle: 0, armA: 0.1, armB: 0.1, text: '$$x$$', fontSize: 12 };
+  const svg = rulerSVG(params);
+  const [, tx] = svg.match(/class="ruler-label" transform="translate\(([-\d.]+) /);
+  const [, shift] = svg.match(/rotate\([-\d.]+\) translate\(([-\d.]+) 0\)/);
+  const [, indent] = svg.match(/class="markdown-label"[^>]*><text x="([-\d.]+)"/);
+  const textCenter = Number(tx) + Number(shift) + Number(indent);
+  const b = rulerLocalBounds(params, 0);
+  assert.ok(textCenter > b.x0 && textCenter < b.x1, `text at ${textCenter} lies inside ${b.x0}…${b.x1}`);
+  assert.ok(rulerHitTest(params, { x: textCenter + 2, y: 0 }, 1), 'the drawn text is grabbable');
 });

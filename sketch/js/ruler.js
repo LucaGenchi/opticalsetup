@@ -13,7 +13,7 @@
 //             turned `angle` degrees from it, positive counterclockwise as
 //             seen on screen.
 
-import { markdownLayout, markdownTextSVG } from './markdown.js';
+import { formulaSpans, markdownLayout, markdownTextSVG } from './markdown.js';
 import { esc } from './util.js';
 
 export const RULER_MODES = [['distance', 'Distance'], ['angle', 'Angle']];
@@ -26,9 +26,6 @@ const finite = Number.isFinite;
 const clamp = (value, lo, hi, fallback) => (finite(value) ? Math.min(hi, Math.max(lo, value)) : fallback);
 const lengthOf = (value, fallback) => clamp(value, RULER_LENGTH_MIN, RULER_LENGTH_MAX, fallback);
 const normalDegrees = value => ((value % 360) + 360) % 360;
-// Stored lengths and angles keep a thousandth, the most decimal places a
-// label shows, so the inspector reads 224.973 rather than binary noise.
-const thousandth = value => Math.round(value * 1000) / 1000;
 
 // A signed angle folded into (−180, 180].
 function signedDegrees(value) {
@@ -72,16 +69,16 @@ const toWorld = (el, p) => {
 // The placement and params that put the measured points at `world` (bench
 // coordinates, in the order rulerPoints() gives them). Null when the points
 // do not define a ruler: two ends on top of each other, or an arm of zero
-// length, has no direction to measure along. `keep` names the end of a
-// distance that must stay exactly where it is while the length is rounded
-// (the one not being dragged); the vertex of an angle always does.
-export function rulerFromWorldPoints(mode, world, keep = 0) {
+// length, has no direction to measure along. The geometry is kept exact,
+// never rounded, so a handle that is not dragged stays where it was put (on
+// a component it was snapped to); the inspector rounds only what it shows.
+export function rulerFromWorldPoints(mode, world) {
   if (!Array.isArray(world) || world.some(p => !finite(p?.x) || !finite(p?.y))) return null;
   if (mode === 'angle') {
     if (world.length !== 3) return null;
     const [v, a, b] = world;
     const ax = a.x - v.x, ay = a.y - v.y, bx = b.x - v.x, by = b.y - v.y;
-    const armA = thousandth(Math.hypot(ax, ay)), armB = thousandth(Math.hypot(bx, by));
+    const armA = Math.hypot(ax, ay), armB = Math.hypot(bx, by);
     if (armA < RULER_LENGTH_MIN || armB < RULER_LENGTH_MIN) return null;
     if (armA > RULER_LENGTH_MAX || armB > RULER_LENGTH_MAX) return null;
     // y points down, so a turn that looks counterclockwise has a negative
@@ -89,19 +86,16 @@ export function rulerFromWorldPoints(mode, world, keep = 0) {
     const angle = -Math.atan2(ax * by - ay * bx, ax * bx + ay * by) / DEG;
     return {
       x: v.x, y: v.y, rot: normalDegrees(Math.atan2(ay, ax) / DEG),
-      params: { armA, armB, angle: thousandth(signedDegrees(angle)) || 0 },
+      params: { armA, armB, angle: signedDegrees(angle) },
     };
   }
   if (world.length !== 2) return null;
   const [a, b] = world;
-  const len = thousandth(Math.hypot(b.x - a.x, b.y - a.y));
+  const len = Math.hypot(b.x - a.x, b.y - a.y);
   if (len < RULER_LENGTH_MIN || len > RULER_LENGTH_MAX) return null;
-  const turn = Math.atan2(b.y - a.y, b.x - a.x);
-  const anchor = keep === 1 ? b : a, toward = keep === 1 ? -1 : 1;
   return {
-    x: anchor.x + toward * Math.cos(turn) * len / 2,
-    y: anchor.y + toward * Math.sin(turn) * len / 2,
-    rot: normalDegrees(turn / DEG),
+    x: (a.x + b.x) / 2, y: (a.y + b.y) / 2,
+    rot: normalDegrees(Math.atan2(b.y - a.y, b.x - a.x) / DEG),
     params: { len },
   };
 }
@@ -114,7 +108,7 @@ export function rulerEditCandidate(el, index, local) {
   if (!points[index]) return null;
   const world = points.map(p => toWorld(el, p));
   world[index] = toWorld(el, local);
-  return rulerFromWorldPoints(el.params?.mode === 'angle' ? 'angle' : 'distance', world, 1 - index);
+  return rulerFromWorldPoints(el.params?.mode === 'angle' ? 'angle' : 'distance', world);
 }
 
 // The handle a Shift-drag keeps to 45° steps around: the other end of a
@@ -145,16 +139,23 @@ export function rulerValueText(params = {}, { tex = false } = {}) {
 
 // The label as Markdown: {value} becomes the measurement. Inside a formula
 // it is written as TeX, so "$d = {value}$" sets the unit upright rather than
-// as the italic variables m·m.
-const FORMULA_WITH_TOKEN = /(\$\$?)((?:\\.|[^\\$\n])*?\{value\}(?:\\.|[^\\$\n])*?)\1/g;
+// as the italic variables m·m. Formulas are found line by line with the
+// renderer's own rules (formulaSpans), so the text between two formulas, as
+// in "$x$ = {value}; $y$", is never mistaken for one.
 export function rulerLabelText(params = {}) {
   const s = settings(params);
   if (!s.text.includes(RULER_VALUE_TOKEN)) return s.text;
   const tex = rulerValueText(params, { tex: true });
   const plain = rulerValueText(params);
-  return s.text
-    .replace(FORMULA_WITH_TOKEN, (match, fence, body) => `${fence}${body.split(RULER_VALUE_TOKEN).join(tex)}${fence}`)
-    .split(RULER_VALUE_TOKEN).join(plain);
+  const fill = (part, value) => part.split(RULER_VALUE_TOKEN).join(value);
+  return s.text.split('\n').map(line => {
+    let out = '', cursor = 0;
+    for (const span of formulaSpans(line)) {
+      out += fill(line.slice(cursor, span.start), plain) + fill(line.slice(span.start, span.end), tex);
+      cursor = span.end;
+    }
+    return out + fill(line.slice(cursor), plain);
+  }).join('\n');
 }
 
 // The tick spacing for a graduated ruler: a 1-2-5 step giving about ten
@@ -174,21 +175,25 @@ const barHalf = s => 4 + 1.5 * s.width;
 // down; an angle label stays level on screen, out along the bisector.
 function labelPlacement(s, rot, text) {
   if (!text.trim()) return null;
+  // The drawn text runs from the smallest line indent to the farthest line
+  // end; a centred $$display$$ line is indented inside the layout's width.
   const layout = markdownLayout(text, s.fontSize);
-  const width = Math.max(1, ...layout.lines.map(line => line.width));
+  const left = Math.min(...layout.lines.map(line => line.indent || 0));
+  const right = Math.max(...layout.lines.map(line => (line.indent || 0) + line.width));
+  const width = Math.max(1, right - left);
   const height = layout.height;
   const r = normalDegrees(rot);
   if (s.mode === 'distance') {
     const flipped = r > 90 && r <= 270;
     const side = (s.below ? 1 : -1) * (flipped ? -1 : 1);
     const gap = barHalf(s) + 2;
-    return { cx: 0, cy: side * (gap + height / 2), width, height, turn: flipped ? 180 : 0 };
+    return { cx: 0, cy: side * (gap + height / 2), left, width, height, turn: flipped ? 180 : 0 };
   }
   const radius = arcRadius(s);
   const half = s.angle * DEG / 2;
   // Far enough out that the level box clears the arc in any direction.
   const reach = radius + 4 + Math.hypot(width, height) / 2;
-  return { cx: reach * Math.cos(half), cy: -reach * Math.sin(half), width, height, turn: -r };
+  return { cx: reach * Math.cos(half), cy: -reach * Math.sin(half), left, width, height, turn: -r };
 }
 
 const arcRadius = s => Math.max(6, Math.min(40, 0.35 * Math.min(s.armA, s.armB)));
@@ -302,7 +307,7 @@ export function rulerSVG(params = {}, { rot = 0 } = {}) {
   const text = rulerLabelText(params);
   const place = labelPlacement(s, rot, text);
   if (place) {
-    out += `<g class="ruler-label" transform="translate(${n2(place.cx)} ${n2(place.cy)}) rotate(${n2(place.turn)}) translate(${n2(-place.width / 2)} 0)">` +
+    out += `<g class="ruler-label" transform="translate(${n2(place.cx)} ${n2(place.cy)}) rotate(${n2(place.turn)}) translate(${n2(-place.left - place.width / 2)} 0)">` +
       markdownTextSVG(text, { fontSize: s.fontSize, fill: s.fill }) + '</g>';
   }
   // Marked so the dark theme can lighten the default colour on the canvas.
