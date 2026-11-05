@@ -13,7 +13,8 @@
 import { registry, getVisualBounds, displayCableSVG } from './elements.js';
 import { immersionLayerSVG } from './immersion.js';
 import { manualBeamSVG } from './util.js';
-import { zoomFrameSVG, zoomGeometry, zoomMapper } from './zoom.js';
+import { formatLength, zoomFrameSVG, zoomGeometry, zoomMapper } from './zoom.js';
+import { focusEnvelope, zoomFoci } from './zoom-focus.js';
 
 // Notes about the setup -- text, arrows, probe readouts, the figure frame,
 // other zooms -- keep their own size and are not magnified. A highlight is
@@ -99,16 +100,44 @@ export function zoomPulsePlacement(zoom) {
   };
 }
 
+// The diffraction-limited focus of each beam that focuses in the region:
+// its 1/e² envelope, and a note for the view naming its 1/e² radius and
+// Rayleigh range unless that is turned off. The envelope runs where the
+// beam travels (between the optics before and after its focus) and no
+// further than the region reaches from the focus, which need not be its
+// centre; the view's clip trims the rest. It is mapped point by point into
+// the view, as the rays are: a waist is microns wide, and written in bench
+// millimetres to the hundredth it would be rounded into steps once
+// magnified.
+function focusLayer(zoom, g, paths, nonScalingStroke) {
+  const named = zoom.params.focusNote !== false;
+  const reach = Math.hypot(g.rx, g.ry);
+  const map = zoomMapper(g, zoom);
+  let svg = '';
+  const notes = [];
+  for (const focus of zoomFoci(zoom, paths)) {
+    const span = Math.hypot(focus.point.x - zoom.x, focus.point.y - zoom.y) + reach;
+    const outline = focusEnvelope(focus, Math.max(focus.from, -span), Math.min(focus.to, span)).map(map);
+    if (!outline.length) continue;
+    svg += `<polygon points="${ptsAttr(outline)}" fill="${focus.color}" fill-opacity="0.28" stroke="${focus.color}" stroke-width="0.8" stroke-opacity="0.9" stroke-linejoin="round"${nonScalingStroke ? ' vector-effect="non-scaling-stroke"' : ''} data-zoom-focus="true"/>`;
+    // Two short lines rather than one long one, so a round view of modest
+    // size still has room for them.
+    if (named) notes.push({ text: `w₀ ${formatLength(focus.w0Mm)}` }, { text: `zR ${formatLength(focus.zRMm)}` });
+  }
+  return { svg, notes };
+}
+
 // The zoom drawn in its local frame, view filled. `scene` is what the bench
 // is drawn from: the traced drawables, the manual beams, the elements as
 // drawn (animated poses on the canvas) and the authored ones the immersion
 // layer is derived from. `exporting` leaves out canvas-only elements;
 // `nonScalingStroke` matches the canvas, whose rays keep a screen width;
-// `pulses` is the view's pulse packets, already placed.
+// `pulses` is the view's pulse packets, already placed; `paths` is the
+// traced rays, which the diffraction-limited focus is found from.
 export function zoomSceneSVG(zoom, scene = {}) {
   const {
     drawables = [], beams = [], elements = [], baseElements = elements,
-    exporting = false, nonScalingStroke = false, background = '#ffffff', pulses = '',
+    exporting = false, nonScalingStroke = false, background = '#ffffff', pulses = '', paths = [],
   } = scene;
   const g = zoomGeometry(zoom.params, zoom.rot);
   const region = regionBox(zoom, g);
@@ -128,6 +157,9 @@ export function zoomSceneSVG(zoom, scene = {}) {
   let content = onBench(shown.filter(isBackground).map(draw).join(''));
   content += onBench(immersionLayerSVG(elements, beams, { baseElements }));
   content += drawablesSVG(drawables, region, zoomMapper(g, zoom), nonScalingStroke);
+  // On unless turned off, so a zoom saved before the setting draws it too.
+  const focus = zoom.params.diffraction !== false ? focusLayer(zoom, g, paths, nonScalingStroke) : { svg: '', notes: [] };
+  content += focus.svg;
   // Pulse packets, already placed with zoomPulsePlacement(), sit on the rays
   // and under the parts, as on the bench. The canvas passes an empty slot
   // here and fills it on every pulse frame.
@@ -138,5 +170,5 @@ export function zoomSceneSVG(zoom, scene = {}) {
     + elements.filter(el => el.type === 'display').map(el => displayCableSVG(el, elements)).join('')
     + shown.filter(el => !isBackground(el)).map(draw).join(''));
   const clipId = `zoom-view-${String(zoom.id).replace(/[^A-Za-z0-9_-]/g, '')}`;
-  return zoomFrameSVG(zoom.params, { content, background, clipId, rot: zoom.rot });
+  return zoomFrameSVG(zoom.params, { content, background, clipId, rot: zoom.rot, notes: focus.notes });
 }
