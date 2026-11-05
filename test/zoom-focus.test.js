@@ -98,11 +98,37 @@ test('the envelope is the 1/e² radius: 2w0 across the waist, meeting the cone f
   assert.deepEqual(focusEnvelope({ ...focus, zRMm: NaN }, 20), [], 'non-finite input draws nothing');
 });
 
-test('the waist keeps its weight in the view', () => {
+test('the waist is drawn in the view, at the view\'s line weight', () => {
   const scene = focusedScene();
   const svg = view(scene);
-  const width = Number(svg.match(/<polygon [^>]*stroke-width="([\d.]+)"[^>]*data-zoom-focus/)[1]);
-  assert.ok(Math.abs(width - 0.8 / 20) < 1e-9, 'bench weight divided by the magnification');
+  const polygon = svg.match(/<polygon [^>]*data-zoom-focus[^>]*>/)[0];
+  assert.match(polygon, /stroke-width="0\.8"/);
+});
+
+test('a micron waist behind a short lens is a smooth curve, not rounded into steps', () => {
+  // The reported case: f = 10 mm gives w0 1.14 µm, viewed at ×500.
+  const laser = createElement('cwlaser', 0, 0);
+  const lens = createElement('lens', 150, 0);
+  lens.params.f = 10;
+  const zoom = createElement('zoom', 160, 0);
+  Object.assign(zoom.params, { diffraction: true, w: 0.2, mag: 500, insetX: 60, insetY: -80 });
+  const elements = [laser, lens, zoom];
+  const traced = traceScene(elements, []);
+  const [focus] = zoomFoci(zoom, traced.paths);
+  assert.ok(Math.abs(focus.w0Mm - 1.14e-3) < 1e-5);
+  const svg = zoomSceneSVG(zoom, { drawables: traced.drawables, paths: traced.paths, elements });
+  const pts = svg.match(/<polygon points="([^"]+)"[^>]*data-zoom-focus/)[1].split(' ').map(p => p.split(',').map(Number));
+  const g = zoomGeometry(zoom.params);
+  // Half the samples on each edge; sample 24 is the waist.
+  const across = Math.abs(pts[24][1] - pts[49 + 24][1]);
+  assert.ok(Math.abs(across - 2 * focus.w0Mm * g.mag) < 0.02, `2w0 in the view: ${across} vs ${2 * focus.w0Mm * g.mag}`);
+  // Every sample on the edge is where w(z) puts it, to the drawing's 0.01.
+  const zR = focus.zRMm, w0 = focus.w0Mm;
+  for (const [x, y] of pts.slice(0, 49)) {
+    const z = (x - g.ix) / g.mag;
+    const w = w0 * Math.sqrt(1 + (z / zR) ** 2);
+    assert.ok(Math.abs(Math.abs(y - g.iy) - w * g.mag) < 0.02, `edge at z ${z}`);
+  }
 });
 
 test('the waist note sits on the frame, inside the top of the view, never clipped', () => {
