@@ -8498,7 +8498,9 @@ export function traceScene(elements, beams = [], options = {}) {
 
   invalidateIncompleteCameraFields();
   lastSignalHits = signalHits;
-  return { drawables, pulseTracks, writeHits, signalHits };
+  // `paths` is the traced rays the drawables were made from, for a zoom
+  // that finds where they focus.
+  return { drawables, pulseTracks, writeHits, signalHits, paths: lastPaths };
 }
 
 export function traceAll(elements, beams = []) {

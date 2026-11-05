@@ -328,6 +328,42 @@ export function zoomScaleBar(params = {}, rot = 0) {
   return { mm, label, x1, x2: x1 + length, y, top: y - 1.43 * font, thickness, font };
 }
 
+// Notes at the top of the view, one line each, opposite the scale bar:
+// centred, no wider than the view is where they sit, in a size bounded by
+// the view or smaller. A line too long for a readable size there is left
+// out. Character width is taken as 0.58 of the size, a little over the
+// average of the sans-serif the figures use.
+export function zoomNotes(params = {}, rot = 0, lines = []) {
+  const g = zoomGeometry(params, rot);
+  const round = g.shape !== 'rect';
+  const size = Math.min(9, Math.max(5, 0.13 * Math.min(g.irx, g.iry)));
+  const lineHeight = 1.3 * size, pad = 0.9 * size;
+  const placed = [];
+  lines.forEach((line, k) => {
+    const text = String(line.text ?? '');
+    if (!text) return;
+    // The line's centre, from the top of the view; a round view starts as
+    // far above its centre as its scale bar sits below it.
+    const y = round ? g.iy - ROUND_BAR_DEPTH * g.iry + (k + 0.5) * lineHeight : g.iy - g.iry + pad + (k + 0.5) * lineHeight;
+    const top = y - lineHeight / 2;
+    const room = round
+      ? 2 * g.irx * Math.sqrt(Math.max(0, 1 - ((top - g.iy) / g.iry) ** 2)) - 2 * pad
+      : 2 * g.irx - 2 * pad;
+    const font = Math.min(size, room / (0.58 * [...text].length));
+    if (!(font >= 3) || y + lineHeight / 2 > g.iy + g.iry) return;
+    placed.push({ text, x: g.ix, y, font });
+  });
+  return placed;
+}
+
+const escapeText = text => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+function notesSVG(notes) {
+  if (!notes.length) return '';
+  return `<g data-zoom-focus-label="true" fill="#1f2937" font-weight="600" text-anchor="middle" dominant-baseline="middle">` +
+    notes.map(n => `<text x="${num(n.x)}" y="${num(n.y)}" font-size="${num(n.font)}" stroke="#ffffff" stroke-width="${num(0.22 * n.font)}" paint-order="stroke">${escapeText(n.text)}</text>`).join('') + `</g>`;
+}
+
 function shapeSVG(shape, cx, cy, rx, ry, attrs) {
   return shape === 'rect'
     ? `<rect x="${num(cx - rx)}" y="${num(cy - ry)}" width="${num(2 * rx)}" height="${num(2 * ry)}" ${attrs}/>`
@@ -351,7 +387,7 @@ function scaleBarSVG(bar) {
 // The whole zoom in the element's local frame. `content` is the magnified
 // bench, already in the drawing frame; without it (palette, placement ghost)
 // the view is an empty frame.
-export function zoomFrameSVG(params = {}, { content = '', background = '#ffffff', clipId = 'zoom-view', rot = 0 } = {}) {
+export function zoomFrameSVG(params = {}, { content = '', background = '#ffffff', clipId = 'zoom-view', rot = 0, notes = [] } = {}) {
   const g = zoomGeometry(params, rot);
   const color = params.frameColor || '#475569';
   const regionDash = params.regionDash ? ' stroke-dasharray="6 4"' : '';
@@ -372,7 +408,8 @@ export function zoomFrameSVG(params = {}, { content = '', background = '#ffffff'
   // A circle has no width to lie along: its bar stays level (or plumb) on
   // the bench, turned back about the view's centre, which keeps it inside
   // the circle.
-  const bar = scaleBarSVG(zoomScaleBar(params, rot));
+  // The notes over the view (a focus's waist) stay level with it too.
+  const bar = scaleBarSVG(zoomScaleBar(params, rot)) + notesSVG(zoomNotes(params, rot, notes));
   s += g.shape === 'circle' && bar && g.turn
     ? `<g transform="rotate(${num(-g.turn)} ${num(g.ix)} ${num(g.iy)})">${bar}</g>` : bar;
   return g.flip ? `<g transform="rotate(180)">${s}</g>` : s;
