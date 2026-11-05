@@ -50,7 +50,8 @@ function nearRegion(at, reach, a, b) {
 
 // Every beam focus inside the zoom's region, from the traced paths: each
 // with its bench `point`, beam `axis` (unit), waist `w0Mm`, Rayleigh range
-// `zRMm`, numerical aperture `na`, wavelength `wl` and drawing `color`.
+// `zRMm`, numerical aperture `na`, the stretch of the axis the beam travels
+// (`from` < 0 < `to`, from the focus), wavelength `wl` and drawing `color`.
 export function zoomFoci(zoom, paths = []) {
   const g = zoomGeometry(zoom.params, zoom.rot);
   const reach = Math.hypot(g.rx, g.ry);
@@ -79,24 +80,38 @@ export function zoomFoci(zoom, paths = []) {
       return along > ALONG_TOLERANCE && along <= r.len + ALONG_TOLERANCE;
     });
     if (!real) continue;
+    // Where the bundle travels along its axis, from the focus: from where
+    // its rays start on this segment (the optic before) to where they end
+    // (the optic after), as weighted means, so the waist is drawn only
+    // where this beam is.
+    let from = 0, to = 0, weight = 0;
+    for (const r of group.rays) {
+      const s0 = (r.p.x - found.point.x) * found.axis.x + (r.p.y - found.point.y) * found.axis.y;
+      const s1 = s0 + r.len * (r.d.x * found.axis.x + r.d.y * found.axis.y);
+      from += r.w * s0; to += r.w * s1; weight += r.w;
+    }
+    from /= weight; to /= weight;
+    if (![from, to].every(Number.isFinite) || !(from < 0 && to > 0)) continue;
     foci.push({
       point: found.point, axis: found.axis, w0Mm: found.w0Mm, zRMm: found.zRMm, na: found.na,
-      wl: group.wl, color: group.color || wavelengthToColor(group.wl),
+      from, to, wl: group.wl, color: group.color || wavelengthToColor(group.wl),
     });
   }
   return foci;
 }
 
 // The 1/e² envelope of a focus on the bench, as a closed outline: both
-// edges over ±`halfLength` along the beam, sampled densely near the waist
-// (evenly in asinh(z/zR)) where the curve bends.
-export function focusEnvelope(focus, halfLength, samples = 48) {
+// edges from `from` to `to` along the beam, measured from the focus,
+// sampled densely near the waist (evenly in asinh(z/zR)) where the curve
+// bends.
+export function focusEnvelope(focus, from, to, samples = 48) {
   const { point, axis, w0Mm, zRMm } = focus;
+  if (!(from < to)) return [];
   const nx = -axis.y, ny = axis.x;
-  const uMax = Math.asinh(Math.max(halfLength, zRMm) / zRMm);
+  const u0 = Math.asinh(from / zRMm), u1 = Math.asinh(to / zRMm);
   const left = [], right = [];
   for (let k = 0; k <= samples; k++) {
-    const z = zRMm * Math.sinh(-uMax + 2 * uMax * k / samples);
+    const z = zRMm * Math.sinh(u0 + (u1 - u0) * k / samples);
     const w = w0Mm * Math.sqrt(1 + (z / zRMm) ** 2);
     const cx = point.x + z * axis.x, cy = point.y + z * axis.y;
     left.push({ x: cx + w * nx, y: cy + w * ny });

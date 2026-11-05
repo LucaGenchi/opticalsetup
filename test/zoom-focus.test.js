@@ -91,7 +91,7 @@ test('a virtual focus behind the optic is not drawn', () => {
 
 test('the envelope is the 1/e² radius: 2w0 across the waist, meeting the cone far off', () => {
   const focus = { point: { x: 10, y: 5 }, axis: { x: 0, y: 1 }, w0Mm: 0.01, zRMm: 0.5 };
-  const outline = focusEnvelope(focus, 20, 48);
+  const outline = focusEnvelope(focus, -20, 20, 48);
   assert.equal(outline.length, 98);
   const half = outline.length / 2;
   // Sample 24 is the waist on each edge.
@@ -102,7 +102,7 @@ test('the envelope is the 1/e² radius: 2w0 across the waist, meeting the cone f
   const z = Math.abs(far.y - 5);
   assert.ok(z >= 20 - 1e-9);
   assert.ok(Math.abs(Math.abs(far.x - 10) - 0.01 * Math.sqrt(1 + (z / 0.5) ** 2)) < 1e-12);
-  assert.deepEqual(focusEnvelope({ ...focus, zRMm: NaN }, 20), [], 'non-finite input draws nothing');
+  assert.deepEqual(focusEnvelope({ ...focus, zRMm: NaN }, -20, 20), [], 'non-finite input draws nothing');
 });
 
 test('the waist is drawn in the view, at the view\'s line weight', () => {
@@ -190,4 +190,45 @@ test('a zoom drawing the waist is still diagram-only', () => {
   const plain = focusedScene();
   const bare = traceScene([plain.laser, plain.lens], []).drawables;
   assert.deepEqual(plain.traced.drawables, bare);
+});
+
+// ---- Review of 6ef98b2 (#307) ----
+
+// The envelope's outline back on the bench, from the drawn view points.
+function envelopeOnBench(zoom, svg) {
+  const g = zoomGeometry(zoom.params, zoom.rot);
+  const pts = svg.match(/<polygon points="([^"]+)"[^>]*data-zoom-focus/)[1].split(' ').map(p => p.split(',').map(Number));
+  return pts.map(([x, y]) => {
+    const dx = (x - g.ix) / g.mag, dy = (y - g.iy) / g.mag;
+    return { x: zoom.x + dx * g.cos - dy * g.sin, y: zoom.y + dx * g.sin + dy * g.cos };
+  });
+}
+
+test('the waist stops at the optic after the focus', () => {
+  // The reported case: a mirror at 45° 2 mm past an f = 10 mm focus.
+  const laser = createElement('cwlaser', 0, 0);
+  const lens = createElement('lens', 100, 0);
+  lens.params.f = 10;
+  const mirror = createElement('mirror', 112, 0);
+  mirror.rot = 45;
+  const zoom = createElement('zoom', 110, 0);
+  Object.assign(zoom.params, { shape: 'rect', w: 10, h: 4, mag: 20, insetX: 0, insetY: -120 });
+  const elements = [laser, lens, mirror, zoom];
+  const traced = traceScene(elements, []);
+  const [focus] = zoomFoci(zoom, traced.paths);
+  assert.ok(Math.abs(focus.point.x - 110) < 1e-6);
+  assert.ok(Math.abs(focus.to - 2) < 0.05, `the beam travels 2 mm past the focus: ${focus.to}`);
+  assert.ok(Math.abs(focus.from + 10) < 0.05, `and 10 mm before it, from the lens: ${focus.from}`);
+  const bench = envelopeOnBench(zoom, zoomSceneSVG(zoom, { drawables: traced.drawables, paths: traced.paths, elements }));
+  const right = Math.max(...bench.map(p => p.x));
+  assert.ok(right <= 112 + 0.05, `the envelope ends at the mirror, not the view's edge at 115: ${right}`);
+});
+
+test('an off-centre focus is drawn to the edge of the view on both sides', () => {
+  // The reported case: a 4 × 0.2 mm region centred 1.9 mm before the focus.
+  const scene = focusedScene({ x: 198.1, y: 0 }, { shape: 'rect', w: 4, h: 0.2, mag: 20 });
+  const bench = envelopeOnBench(scene.zoom, view(scene));
+  const xs = bench.map(p => p.x);
+  assert.ok(Math.min(...xs) <= 196.1 + 1e-6, `reaches the region's left edge at 196.1: ${Math.min(...xs)}`);
+  assert.ok(Math.max(...xs) >= 200.1 - 1e-6, `and its right edge at 200.1: ${Math.max(...xs)}`);
 });

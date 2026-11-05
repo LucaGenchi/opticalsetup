@@ -102,9 +102,13 @@ export function zoomPulsePlacement(zoom) {
 
 // The diffraction-limited focus of each beam that focuses in the region:
 // its 1/e² envelope, and a note for the view naming its 1/e² radius and
-// Rayleigh range unless that is turned off. The envelope is mapped point by point into the view, as
-// the rays are: a waist is microns wide, and written in bench millimetres
-// to the hundredth it would be rounded into steps once magnified.
+// Rayleigh range unless that is turned off. The envelope runs where the
+// beam travels (between the optics before and after its focus) and no
+// further than the region reaches from the focus, which need not be its
+// centre; the view's clip trims the rest. It is mapped point by point into
+// the view, as the rays are: a waist is microns wide, and written in bench
+// millimetres to the hundredth it would be rounded into steps once
+// magnified.
 function focusLayer(zoom, g, paths, nonScalingStroke) {
   const named = zoom.params.focusNote !== false;
   const reach = Math.hypot(g.rx, g.ry);
@@ -112,7 +116,8 @@ function focusLayer(zoom, g, paths, nonScalingStroke) {
   let svg = '';
   const notes = [];
   for (const focus of zoomFoci(zoom, paths)) {
-    const outline = focusEnvelope(focus, reach).map(map);
+    const span = Math.hypot(focus.point.x - zoom.x, focus.point.y - zoom.y) + reach;
+    const outline = focusEnvelope(focus, Math.max(focus.from, -span), Math.min(focus.to, span)).map(map);
     if (!outline.length) continue;
     svg += `<polygon points="${ptsAttr(outline)}" fill="${focus.color}" fill-opacity="0.28" stroke="${focus.color}" stroke-width="0.8" stroke-opacity="0.9" stroke-linejoin="round"${nonScalingStroke ? ' vector-effect="non-scaling-stroke"' : ''} data-zoom-focus="true"/>`;
     // Two short lines rather than one long one, so a round view of modest
