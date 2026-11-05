@@ -14,6 +14,10 @@ import { uid } from './util.js';
 import { emissionRayCount, ISOTROPIC_KINDS } from './emission.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
+import {
+  ZOOM_OFFSET_LIMIT, ZOOM_REGION_MAX, ZOOM_REGION_MIN, ZOOM_SHAPES,
+  zoomFrameSVG, zoomGeometry, zoomHitTest, zoomMaxMagnification, zoomScaleBarMaxMm, zoomViewBox,
+} from './zoom.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
 import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenRamanReading, specimenSrsNote, specimenTimingReading, supercontinuumReading, twoBeamPartner, MIN_OVERLAP } from './raytrace.js';
 import { NONLINEAR_ORDER } from './sectioning.js';
@@ -5974,6 +5978,53 @@ export const registry = {
     surfaces: () => [],
   },
 
+  // A region of the bench drawn again, larger, elsewhere on the canvas (see
+  // zoom.js for the geometry). The registry draws only its frames; the canvas
+  // and the export fill the view with the magnified bench (zoom-view.js),
+  // since that needs the traced rays. It is drawn in element order like any
+  // other part, so a label or arrow placed after it can sit on its view.
+  zoom: {
+    label: 'Zoom', category: 'Annotations',
+    aliases: ['magnifier', 'magnified view', 'inset', 'detail view', 'close-up', 'enlargement', 'loupe'],
+    // A turned rectangle or ellipse can lie along a tilted beam; a turned
+    // circle is the same circle, so it offers no rotation handle.
+    rotatable: p => p.shape !== 'circle',
+    noLabel: true,
+    paramsTitle: 'Region and view',
+    size: { w: 40, h: 40 },
+    size_: el => {
+      const g = zoomGeometry(el.params);
+      return { w: 2 * g.rx, h: 2 * g.ry };
+    },
+    params: [
+      { key: 'shape', label: 'Shape', type: 'select', def: 'circle', options: ZOOM_SHAPES },
+      { key: 'w', label: 'Region width (mm)', type: 'number', min: ZOOM_REGION_MIN, max: ZOOM_REGION_MAX, step: 0.1, def: 30 },
+      { key: 'h', label: 'Region height (mm)', type: 'number', min: ZOOM_REGION_MIN, max: ZOOM_REGION_MAX, step: 0.1, def: 20, show: p => p.shape !== 'circle' },
+      { key: 'mag', label: 'Magnification (×)', type: 'number', min: 1, max: zoomMaxMagnification, step: 0.1, def: 4 },
+      { key: 'insetX', label: 'View offset x (mm)', type: 'number', min: -ZOOM_OFFSET_LIMIT, max: ZOOM_OFFSET_LIMIT, step: 1, def: 110 },
+      { key: 'insetY', label: 'View offset y (mm)', type: 'number', min: -ZOOM_OFFSET_LIMIT, max: ZOOM_OFFSET_LIMIT, step: 1, def: -90 },
+      { key: 'regionDash', label: 'Dashed outlines (region and view)', type: 'checkbox', def: false },
+      { key: 'connectors', label: 'Connector lines', type: 'checkbox', def: true },
+      { key: 'connectorDash', label: 'Dashed connector lines', type: 'checkbox', def: false, show: p => p.connectors },
+      { key: 'scaleBar', label: 'Scale bar', type: 'checkbox', def: true },
+      { key: 'scaleBarDirection', label: 'Scale bar direction', type: 'select', def: 'horizontal', options: [['horizontal', 'Horizontal (along the width)'], ['vertical', 'Vertical (along the height)']], show: p => p.scaleBar },
+      { key: 'scaleBarMm', label: 'Scale bar length (mm) · 0 = automatic', type: 'number', min: 0, max: zoomScaleBarMaxMm, step: 0.001, def: 0, show: p => p.scaleBar },
+      { key: 'frameColor', label: 'Frame color', type: 'color', def: '#475569' },
+    ],
+    directHint: 'Drag the enlarged view to move it on its own; drag the region’s outline to aim it while the view stays put. Blue handles resize the region; the purple corners of the view, or the purple knob, set the magnification; a rectangle or ellipse turns with the round handle.',
+    hitTest(el, point, tolerance) { return zoomHitTest(el.params, point, tolerance, el.rot); },
+    extraBounds(el) { return [zoomViewBox(el.params, el.rot)]; },
+    // Scalable: its corners carry handles that set the magnification.
+    selectionBoxes(el) { return [{ ...zoomViewBox(el.params, el.rot), scalable: true }]; },
+    svg(el) { return zoomFrameSVG(el.params, { rot: el.rot }); },
+    // The palette shows a small region and its view side by side, whatever
+    // the defaults place where.
+    iconSVG(el) {
+      return `<g transform="translate(-11 9)">${zoomFrameSVG({ ...el.params, shape: 'circle', w: 10, mag: 2.4, insetX: 16, insetY: -12, scaleBar: false })}</g>`;
+    },
+    surfaces: () => [],
+  },
+
   // ---------------- Custom ----------------
   box: {
     label: 'Custom box', category: 'Custom', size: el => ({ w: el.params.w + 4, h: el.params.h + 4 }),
@@ -6160,6 +6211,14 @@ export const registry = {
 // anchorX: 'left', where the origin is the box's left-middle edge instead —
 // see the textlabel entry above. Consumed by every generic piece of UI that
 // draws or hit-tests a selection box around an element (canvas.js).
+// Whether the element offers rotation. `rotatable: false` never; a function
+// decides from the params, as a zoom does from its shape. Every rotation
+// control (handle, R key, toolbar button, inspector field) asks here.
+export function isRotatable(el) {
+  const rotatable = registry[el?.type]?.rotatable;
+  return typeof rotatable === 'function' ? rotatable(el.params || {}) !== false : rotatable !== false;
+}
+
 export function boxAnchor(el) {
   const d = registry[el.type];
   if (typeof d?.boxAnchor === 'function') return d.boxAnchor(el);
@@ -6390,6 +6449,15 @@ const DIRECT = {
   arrowann: { resize: { x: 'len' }, tune: { key: 'width', short: 'stroke' } },
   figureframe: { resize: { x: 'w', y: 'h', anchor: true } },
   highlight: { resize: { x: 'w', y: 'h', anchor: true } },
+  // Resized about its centre, so a region aimed at a feature stays on it.
+  zoom: {
+    resize: {
+      x: p => (p.shape === 'circle' ? null : 'w'),
+      y: p => (p.shape === 'circle' ? null : 'h'),
+      uniform: p => (p.shape === 'circle' ? 'w' : null),
+    },
+    tune: { key: 'mag', short: 'mag ×', pixelsPerStep: 1 },
+  },
   box: { resize: { x: 'w', y: 'h' } },
   blocker: { resize: { x: 'w', y: 'h' } },
   textlabel: { resize: { uniform: 'fontSize' } },
@@ -6489,12 +6557,13 @@ const ELEMENT_HELP = {
   figureframe: 'Canvas-only export crop. Its border and handles never appear in the exported figure.',
   textlabel: 'Markdown annotation with headings, lists, emphasis, code, and LaTeX formulas between $ signs; web and DOI addresses become clickable links. It does not interact with rays.',
   highlight: 'Background wash for calling out a region of the sketch; always drawn behind rays and elements, never interacts with rays.',
+  zoom: 'Draws a region of the setup again, enlarged, elsewhere on the canvas, with an optional scale bar in bench millimetres. Shapes grow with the magnification while lines keep their weight; text, arrows and probes are not enlarged. It never interacts with rays.',
   box: 'Generic enclosure with explicit pass-through or beam-blocking behavior.',
   gascell: 'Diagram-only gas cell housing for gas-filled hollow-core fiber setups; never bends, blocks, or absorbs a ray.',
   window: 'Diagram-only optical window; never bends, blocks, or absorbs a ray.',
 };
 
-const DIAGRAM_ONLY = new Set(['arrowann', 'textlabel', 'figureframe', 'highlight', 'gascell', 'window']);
+const DIAGRAM_ONLY = new Set(['arrowann', 'textlabel', 'figureframe', 'highlight', 'zoom', 'gascell', 'window']);
 const SHAPERS = new Set(['slm', 'metasurface']);
 
 export function getElementMeta(type, params = {}, context = {}) {
@@ -6673,6 +6742,17 @@ export function getVisualBounds(el, { includeLabel = true, elements = [] } = {})
     const left = el.x + place.x, top = el.y + place.y;
     x0 = Math.min(x0, left); x1 = Math.max(x1, left + place.w);
     y0 = Math.min(y0, top); y1 = Math.max(y1, top + place.h);
+  }
+
+  // Parts drawn away from the element's own box -- a zoom's enlarged view --
+  // given as local boxes and rotated with the element.
+  for (const box of d.extraBounds?.(el) || []) {
+    for (const [lx, ly] of [[box.x0, box.y0], [box.x1, box.y0], [box.x1, box.y1], [box.x0, box.y1]]) {
+      const x = el.x + lx * Math.cos(a) - ly * Math.sin(a);
+      const y = el.y + lx * Math.sin(a) + ly * Math.cos(a);
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+    }
   }
 
   if (includeLabel && el.showLabel && el.label) {

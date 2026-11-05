@@ -6,6 +6,7 @@ import { copyableSelection, pasteObjects } from './clipboard.js';
 import { state, changed, onChange, pushUndo, undo, redo, canUndo, canRedo, findSelected, serialize, parseSketch, replaceScene, loadAutosave, replaceRecoveredAutosave } from './state.js';
 import {
   registry, categories, createElement, getElementMeta, dataPortDirection, findFreePlacement, DRAWING_TOOL_ALIASES,
+  isRotatable,
 } from './elements.js';
 // Registers the redesigned detector catalogue, the Etalon, and the VIPA
 // element onto `registry`. Imported here, not from pwa.js: service-worker
@@ -239,6 +240,14 @@ const demoScenes = {
     mkDemo('lens', 220, 160, 0, { f: 80 }),
     mkDemo('detector', 380, 160, 0, { aperture: 40 }),
     mkDemo('highlight', 220, 160, 0, { w: 110, h: 100 }),
+  ],
+  // A slowly scanning galvo walks the focus of a lens sideways; the zoom
+  // on the focal plane shows the walk, and its scale bar how far it goes.
+  zoom: () => [
+    mkDemo('cwlaser', 40, 230, 0, { beamMode: 'beam', beamWidth: 6 }),
+    mkDemo('galvo', 150, 230, 45, { scanMode: 'sine', scanAmplitude: 2, scanFrequencyHz: 0.3 }),
+    mkDemo('lens', 150, 130, 90, { f: 70 }),
+    mkDemo('zoom', 150, 60, 0, { w: 14, mag: 5, insetX: 140, insetY: 50 }),
   ],
   box: () => [
     mkDemo('cwlaser', 60, 160),
@@ -876,7 +885,7 @@ function buildPalette() {
     const meta = getElementMeta(type, el.params);
     total++;
     return `<button type="button" class="palitem" data-type="${type}" title="${esc(meta.description)}">
-      <svg viewBox="${-vb / 2} ${-vb / 2} ${vb} ${vb}">${def.svg(el)}</svg>
+      <svg viewBox="${-vb / 2} ${-vb / 2} ${vb} ${vb}">${def.iconSVG ? def.iconSVG(el) : def.svg(el)}</svg>
       <span class="pal-copy"><span class="pal-label">${esc(def.label)}</span><span class="pal-desc">${esc(meta.description)}</span></span>
       <i class="cap-dot ${meta.tier}" title="${esc(meta.status)}" aria-label="${esc(meta.status)}"></i></button>`;
   };
@@ -1186,7 +1195,7 @@ function rotateSelected(deg) {
   if (isPlacing()) { rotatePlacing(deg); return; }
   const sel = findSelected();
   if (!sel || state.selection.kind !== 'element') return;
-  if (registry[sel.type]?.rotatable === false) return;
+  if (!isRotatable(sel)) return;
   pushUndo();
   sel.rot = (((sel.rot || 0) + deg) % 360 + 360) % 360;
   changed();

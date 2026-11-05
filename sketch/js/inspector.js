@@ -11,11 +11,12 @@ import {
   signalKindsFor, specimenTypeOf, channelWarning, defaultEmissionWl, drivingExcitationWl,
   EMISSION_ORDER, ISOTROPIC_KINDS, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
   FLUOROPHORES, fluorophoreSpec, normalizeSupercontinuumParams,
-  isVolumeSpecimen,
+  isVolumeSpecimen, isRotatable,
 } from './elements.js';
 import { detectorReading, fiberReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace, weakLightShortfallFromLastTrace } from './raytrace.js';
 import { envelopeAutocorrelation } from './pulse-field.js';
 import { NONLINEAR_ORDER } from './sectioning.js';
+import { normalizeZoomParams } from './zoom.js';
 import { pulseTransmissionAt } from './pulses.js';
 import {
   FIBER_PROPAGATION_FIELDS, normalizeFiberDispersion, HOLLOW_CORE_FIELDS, normalizeHollowCore,
@@ -73,7 +74,8 @@ export const REBUILD_ON_COMMIT_KEYS = [
   'transmitExc', 'specimenType', 'resinFluorescence', 'voxelPreview', 'pzMode', 'showSignalSpot',
   'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode',
   'extension', 'immersion', 'preset', 'material', 'showDepleted', 'modMode',
-  'measurementMode', 'prop', 'sync', 'sourceKind',
+  'measurementMode', 'prop', 'sync', 'sourceKind', 'shape', 'scaleBar', 'connectors',
+  'scaleBarDirection',
 ];
 
 // A param is presentation when it says so, or -- for one that is physical in
@@ -1120,7 +1122,7 @@ export function renderInspector() {
       let positionFields = '';
       positionFields += field('X (mm)', `<input type="number" step="1" data-k="x" value="${Math.round(sel.x * 10) / 10}">`);
       positionFields += field('Y (mm)', `<input type="number" step="1" data-k="y" value="${Math.round(sel.y * 10) / 10}">`);
-      if (def.rotatable !== false) {
+      if (isRotatable(sel)) {
         positionFields += numberField('Angle (°)', 'data-k="rot"', Math.round((sel.rot || 0) * 10) / 10, {
           min: 0, max: 359, step: 1, slider: true,
         });
@@ -1652,6 +1654,7 @@ export function applyInput(inp, rebuild = false) {
   // through "7", and lifting the duration to that momentary band's floor
   // would outlive the edit.
   if (rebuild && sel.type === 'sclaser') Object.assign(sel.params, normalizeSupercontinuumParams(sel.params));
+  if (rebuild && sel.type === 'zoom') Object.assign(sel.params, normalizeZoomParams(sel.params));
   changed();
   if (pkey) {
     refreshReadouts(sel);
@@ -1660,6 +1663,12 @@ export function applyInput(inp, rebuild = false) {
   // Each continuum endpoint sets the other field's valid range. Refresh on
   // commit so the next edit uses the current endpoint, without stealing typing.
   if (rebuild && sel.type === 'sclaser' && ['scMin', 'scMax'].includes(pkey)) {
+    renderInspector();
+    return;
+  }
+  // A zoom's region bounds its magnification and its scale bar, so a new
+  // size can change both fields and their limits.
+  if (rebuild && sel.type === 'zoom' && ['w', 'h'].includes(pkey)) {
     renderInspector();
     return;
   }
