@@ -20,8 +20,10 @@ const world = el => rulerPoints(el.params).map(p => {
   return { x: el.x + p.x * Math.cos(a) - p.y * Math.sin(a), y: el.y + p.x * Math.sin(a) + p.y * Math.cos(a) };
 });
 const allFinite = svg => !/NaN|Infinity/.test(svg);
+// An angle measurement is a goniometer; ruler.js reads its mode from
+// params, so the helper keeps `mode` there for the direct geometry calls.
 const makeRuler = (x, y, rot = 0, params = {}) => {
-  const el = createElement('ruler', x, y);
+  const el = createElement(params.mode === 'angle' ? 'goniometer' : 'ruler', x, y);
   el.rot = rot;
   Object.assign(el.params, params);
   return el;
@@ -186,22 +188,51 @@ test('malformed or extreme params still draw finite geometry', () => {
   }
 });
 
-test('a saved ruler is normalized on load, clamping out-of-range numbers', () => {
+test('a saved ruler or goniometer is normalized on load, clamping out-of-range numbers', () => {
   const scene = parseSketch({
-    elements: [{
-      type: 'ruler', x: 0, y: 0, rot: 10,
-      params: { mode: 'angle', angle: 720, armA: -3, armB: 'x', text: 42, decimals: 9, fill: 'red' },
-    }],
+    elements: [
+      { type: 'goniometer', x: 0, y: 0, rot: 10, params: { angle: 720, armA: -3, armB: 'x', text: 42, decimals: 9, fill: 'red', len: 5 } },
+      { type: 'ruler', x: 0, y: 0, params: { len: 1e9, ticks: 'yes', autoClamp: 0, angle: 30 } },
+    ],
   }, registry);
-  const p = scene.elements[0].params;
-  assert.equal(p.mode, 'angle');
-  assert.equal(p.angle, 180);
-  assert.equal(p.armA, 0.1);
-  assert.equal(p.armB, 80);
-  assert.equal(p.text, '{value}');
-  assert.equal(p.decimals, 3);
-  assert.equal(p.fill, '#334155');
-  assert.equal(p.ticks, false);
+  const g = scene.elements[0].params;
+  assert.equal(g.angle, 180);
+  assert.equal(g.armA, 0.1);
+  assert.equal(g.armB, 80);
+  assert.equal(g.text, '{value}');
+  assert.equal(g.decimals, 3);
+  assert.equal(g.fill, '#334155');
+  assert.equal(g.len, undefined, 'a goniometer stores no length');
+  assert.equal(g.mode, undefined, 'neither stores a mode: the type is the mode');
+  const r = scene.elements[1].params;
+  assert.equal(r.len, 5000);
+  assert.equal(r.ticks, false);
+  assert.equal(r.autoClamp, true);
+  assert.equal(r.angle, undefined, 'a ruler stores no angle');
+});
+
+test('the ruler and the goniometer are two palette objects sharing one geometry', () => {
+  assert.equal(registry.ruler.label, 'Ruler');
+  assert.equal(registry.goniometer.label, 'Goniometer');
+  for (const type of ['ruler', 'goniometer']) {
+    assert.equal(registry[type].category, 'Annotations');
+    assert.equal(getElementMeta(type).tier, 'diagram');
+    assert.ok(!registry[type].params.some(p => p.key === 'mode'), `${type} has no mode switch`);
+  }
+  const ruler = createElement('ruler', 0, 0);
+  const gonio = createElement('goniometer', 0, 0);
+  assert.equal(registry.ruler.editPoints.get(ruler).length, 2, 'two ends');
+  assert.equal(registry.goniometer.editPoints.get(gonio).length, 3, 'vertex and two arm tips');
+  assert.match(registry.ruler.svg(ruler), />100\.0 mm</);
+  assert.match(registry.goniometer.svg(gonio), />45\.0°</);
+  assert.equal(registry.ruler.editPoints.status(ruler), 'ruler 100.00 mm');
+  assert.equal(registry.goniometer.editPoints.status(gonio), 'goniometer 45.00°');
+  // A goniometer's arm drag through the registry turns only that arm.
+  const turned = registry.goniometer.editPoints.dragTo(gonio, 2, { x: 0, y: -50 }, {});
+  assert.deepEqual(turned.candidate.params, { angle: 90 });
+  // Each one's handles are the other's clamp targets.
+  const targets = rulerClampTargets({ elements: [ruler, gonio], definitions: registry, excludeId: ruler.id });
+  assert.equal(targets.points.filter(p => p.label === 'Goniometer').length, 3);
 });
 
 test('the export contains the ruler and its label inside the fitted bounds', () => {
@@ -228,8 +259,9 @@ test('the inspector shows dragged geometry to a thousandth without changing it',
   assert.equal(fieldDisplayValue(223.97321265, {}), 223.97321265, 'other fields are shown as stored');
   assert.equal(fieldDisplayValue(-5, { negative: true }), 5);
   assert.ok(Number.isNaN(fieldDisplayValue(NaN, { displayDecimals: 3 })));
-  for (const key of ['len', 'angle', 'armA', 'armB']) {
-    assert.equal(registry.ruler.params.find(p => p.key === key).displayDecimals, 3, key);
+  assert.equal(registry.ruler.params.find(p => p.key === 'len').displayDecimals, 3, 'len');
+  for (const key of ['angle', 'armA', 'armB']) {
+    assert.equal(registry.goniometer.params.find(p => p.key === key).displayDecimals, 3, key);
   }
 });
 
@@ -394,7 +426,7 @@ test('a distance end clicks onto a component, then a beam axis, then the grid; S
   assert.deepEqual(rulerClampPoint({ x: 0, y: 0 }, targets, 1), null);
 });
 
-test('the purple knob tunes an angle ruler\'s angle, and the hint follows the mode', async () => {
+test('the purple knob tunes a goniometer\'s angle; each object has its own hint', async () => {
   globalThis.window ??= { matchMedia: () => ({ matches: true }) };
   globalThis.document ??= { addEventListener() {}, dispatchEvent() {} };
   const { tuneDragValue } = await import('../sketch/js/canvas.js');
@@ -409,8 +441,8 @@ test('the purple knob tunes an angle ruler\'s angle, and the hint follows the mo
   assert.equal(tuneDragValue(grab(clockwise), 10), -88, 'down closes it');
   assert.equal(tuneDragValue(grab(makeRuler(0, 0, 0, { mode: 'angle', angle: 179 })), -40), 180, 'held at the bound');
   assert.equal(getDirectManipulation(makeRuler(0, 0, 0)).tune, null, 'a distance ruler has no knob');
-  assert.match(registry.ruler.directHint(angle.params), /turn that arm/);
-  assert.match(registry.ruler.directHint({ mode: 'distance' }), /move that end/);
+  assert.match(registry.goniometer.directHint, /turn that arm/);
+  assert.match(registry.ruler.directHint, /move that end/);
 });
 
 test('clamp targets: a beam\'s middle ray, an object arrow\'s rays, and a point source\'s centre only', () => {

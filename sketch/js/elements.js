@@ -19,8 +19,8 @@ import {
   zoomFrameSVG, zoomGeometry, zoomHitTest, zoomMaxMagnification, zoomScaleBarMaxMm, zoomViewBox,
 } from './zoom.js';
 import {
-  RULER_LENGTH_MAX, RULER_LENGTH_MIN, RULER_MODES, rulerEditCandidate, rulerHandleDrag,
-  rulerHitTest, rulerLocalBounds, rulerMeasurement, rulerPoints, rulerSVG, rulerValueText,
+  RULER_LENGTH_MAX, RULER_LENGTH_MIN, rulerEditCandidate, rulerHandleDrag,
+  rulerHitTest, rulerLocalBounds, rulerModeParams, rulerPoints, rulerSVG, rulerValueText,
 } from './ruler.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
 import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenRamanReading, specimenSrsNote, specimenTimingReading, supercontinuumReading, twoBeamPartner, MIN_OVERLAP } from './raytrace.js';
@@ -2997,6 +2997,56 @@ function eyeRefractionLabel(params) {
   if (Math.abs(error) < 0.125) return '0.00 D (emmetropic)';
   const sign = error > 0 ? '+' : '−';
   return `${sign}${Math.abs(error).toFixed(2)} D (${error > 0 ? 'hyperopic' : 'myopic'})`;
+}
+
+// The two measuring annotations share their geometry, handles, auto clamp,
+// label and drawing (ruler.js); each entry lists only its own settings and
+// passes its mode in, so neither can drift from the other.
+const MEASURING_CLAMP = [
+  { key: 'autoClamp', label: 'Auto clamp to components and beams', type: 'checkbox', def: true },
+];
+const MEASURING_LABEL = [
+  { key: 'text', label: 'Label · Markdown, $LaTeX$, {value} = measurement', type: 'text', def: '{value}' },
+  { key: 'decimals', label: 'Decimal places', type: 'number', min: 0, max: 3, step: 1, def: 1 },
+];
+const MEASURING_STYLE = [
+  { key: 'fontSize', label: 'Label size (pt)', type: 'number', min: 6, max: 72, step: 1, def: 12 },
+  { key: 'width', label: 'Line width', type: 'number', min: 0.25, max: 8, step: 0.25, def: 1.2 },
+  { key: 'fill', label: 'Color', type: 'color', def: '#334155' },
+];
+
+function measuringEntry({ label, aliases, params, directHint, hint, icon }) {
+  const moded = el => ({ ...el, params: rulerModeParams(el) });
+  const bounds = el => rulerLocalBounds(rulerModeParams(el), el.rot);
+  return {
+    label, category: 'Annotations', aliases, params, directHint,
+    noLabel: true,
+    paramsTitle: 'Measurement and label',
+    size: { w: 100, h: 20 },
+    size_: el => {
+      const b = bounds(el);
+      return { w: b.x1 - b.x0, h: b.y1 - b.y0 };
+    },
+    boxAnchor(el) {
+      const b = bounds(el);
+      return { x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2 };
+    },
+    editPoints: {
+      get: el => rulerPoints(rulerModeParams(el)),
+      candidate: (el, index, local) => rulerEditCandidate(moded(el), index, local),
+      // The canvas hands the whole drag over: what to clamp onto, the grid,
+      // Shift and Alt (see rulerHandleDrag).
+      dragTo: (el, index, pointer, ctx) => rulerHandleDrag(moded(el), index, pointer, ctx),
+      status: el => `${label.toLowerCase()} ${rulerValueText({ ...rulerModeParams(el), decimals: 2 })}`,
+      hint,
+    },
+    hitTest(el, point, tolerance) { return rulerHitTest(rulerModeParams(el), point, tolerance, el.rot); },
+    svg(el) { return rulerSVG(rulerModeParams(el), { rot: el.rot }); },
+    iconSVG(el) {
+      return rulerSVG({ ...rulerModeParams(el), text: '', width: 1.4, fill: '#334155', ...icon });
+    },
+    surfaces: () => [],
+  };
 }
 
 export const registry = {
@@ -6031,62 +6081,40 @@ export const registry = {
     surfaces: () => [],
   },
 
-  // A dimension line or a pair of arms from a vertex, reading the distance or
-  // the angle it spans (geometry in ruler.js). Its ends are dragged with the
-  // round handles and snap to the grid and to components, so it can measure
-  // between parts of the setup. Diagram-only: no surfaces, never in a ray's way.
-  ruler: {
-    label: 'Ruler', category: 'Annotations',
-    aliases: ['measure', 'measuring tape', 'dimension', 'dimension line', 'distance', 'length', 'angle', 'protractor', 'goniometer', 'caliper'],
-    noLabel: true,
-    paramsTitle: 'Measurement and label',
-    size: { w: 100, h: 20 },
-    size_: el => {
-      const b = rulerLocalBounds(el.params, el.rot);
-      return { w: b.x1 - b.x0, h: b.y1 - b.y0 };
-    },
-    boxAnchor(el) {
-      const b = rulerLocalBounds(el.params, el.rot);
-      return { x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2 };
-    },
+  // The ruler and the goniometer (geometry in ruler.js; see measuringEntry
+  // below the registry). Diagram-only: no surfaces, never in a ray's way.
+  ruler: measuringEntry({
+    label: 'Ruler',
+    aliases: ['measure', 'measuring tape', 'dimension', 'dimension line', 'distance', 'length', 'caliper', 'scale'],
     params: [
-      { key: 'mode', label: 'Measures', type: 'select', def: 'distance', options: RULER_MODES },
-      { key: 'len', label: 'Length (mm)', type: 'number', min: RULER_LENGTH_MIN, max: RULER_LENGTH_MAX, step: 0.1, def: 100, displayDecimals: 3, show: p => p.mode !== 'angle' },
-      { key: 'angle', label: 'Angle between arms (°) · + opens counterclockwise', type: 'number', min: -180, max: 180, step: 0.1, def: 45, displayDecimals: 3, show: p => p.mode === 'angle' },
-      { key: 'armA', label: 'Arm 1 length (mm)', type: 'number', min: RULER_LENGTH_MIN, max: RULER_LENGTH_MAX, step: 0.1, def: 80, displayDecimals: 3, show: p => p.mode === 'angle' },
-      { key: 'armB', label: 'Arm 2 length (mm)', type: 'number', min: RULER_LENGTH_MIN, max: RULER_LENGTH_MAX, step: 0.1, def: 80, displayDecimals: 3, show: p => p.mode === 'angle' },
-      { key: 'autoClamp', label: 'Auto clamp to components and beams', type: 'checkbox', def: true },
-      { key: 'text', label: 'Label · Markdown, $LaTeX$, {value} = measurement', type: 'text', def: '{value}' },
-      { key: 'decimals', label: 'Decimal places', type: 'number', min: 0, max: 3, step: 1, def: 1 },
-      { key: 'labelSide', label: 'Label side', type: 'select', def: 'above', options: [['above', 'Above the line'], ['below', 'Below the line']], show: p => p.mode !== 'angle' },
-      { key: 'arrows', label: 'Arrowheads', type: 'checkbox', def: true, show: p => p.mode !== 'angle' },
-      { key: 'ticks', label: 'Graduation ticks', type: 'checkbox', def: false, show: p => p.mode !== 'angle' },
-      { key: 'fontSize', label: 'Label size (pt)', type: 'number', min: 6, max: 72, step: 1, def: 12 },
-      { key: 'width', label: 'Line width', type: 'number', min: 0.25, max: 8, step: 0.25, def: 1.2 },
-      { key: 'fill', label: 'Color', type: 'color', def: '#334155' },
+      { key: 'len', label: 'Length (mm)', type: 'number', min: RULER_LENGTH_MIN, max: RULER_LENGTH_MAX, step: 0.1, def: 100, displayDecimals: 3 },
+      ...MEASURING_CLAMP,
+      ...MEASURING_LABEL,
+      { key: 'labelSide', label: 'Label side', type: 'select', def: 'above', options: [['above', 'Above the line'], ['below', 'Below the line']] },
+      { key: 'arrows', label: 'Arrowheads', type: 'checkbox', def: true },
+      { key: 'ticks', label: 'Graduation ticks', type: 'checkbox', def: false },
+      ...MEASURING_STYLE,
     ],
-    directHint: p => (p.mode === 'angle'
-      ? 'Drag an arm’s round tip to turn that arm smoothly about the vertex; its length stays as set. With auto clamp it clicks onto a beam through the vertex or toward a component (hold Alt to turn freely, Shift for 5° steps). The purple knob tunes the angle; the vertex handle moves the whole ruler and clicks onto components and beams.'
-      : 'Drag a round handle to move that end; with auto clamp it clicks onto components and beams, else onto the grid (hold Alt for a free point, Shift for 45° steps). Drag the line or the label to move the whole ruler; the square corner handles size the label.'),
-    editPoints: {
-      get: el => rulerPoints(el.params),
-      candidate: rulerEditCandidate,
-      // The canvas hands the whole drag over: what to clamp onto, the grid,
-      // Shift and Alt (see rulerHandleDrag).
-      dragTo: rulerHandleDrag,
-      status: el => {
-        const m = rulerMeasurement(el.params);
-        return `${m.kind === 'angle' ? 'angle' : 'distance'} ${rulerValueText({ ...el.params, decimals: 2 })}`;
-      },
-      hint: 'round handles: distance ends move, angle arms turn about the vertex; auto clamp clicks onto components and beams',
-    },
-    hitTest(el, point, tolerance) { return rulerHitTest(el.params, point, tolerance, el.rot); },
-    svg(el) { return rulerSVG(el.params, { rot: el.rot }); },
-    iconSVG() {
-      return rulerSVG({ mode: 'distance', len: 34, text: '', ticks: true, width: 1.4, fill: '#334155' });
-    },
-    surfaces: () => [],
-  },
+    directHint: 'Drag a round handle to move that end; with auto clamp it clicks onto components and beams, else onto the grid (hold Alt for a free point, Shift for 45° steps). Drag the line or the label to move the whole ruler; the square corner handles size the label.',
+    hint: 'round handles move the ends; auto clamp clicks onto components and beams',
+    icon: { len: 34, ticks: true },
+  }),
+
+  goniometer: measuringEntry({
+    label: 'Goniometer',
+    aliases: ['angle', 'protractor', 'angle gauge', 'angle measure', 'fold angle', 'crossing angle', 'incidence angle'],
+    params: [
+      { key: 'angle', label: 'Angle between arms (°) · + opens counterclockwise', type: 'number', min: -180, max: 180, step: 0.1, def: 45, displayDecimals: 3 },
+      { key: 'armA', label: 'Arm 1 length (mm)', type: 'number', min: RULER_LENGTH_MIN, max: RULER_LENGTH_MAX, step: 0.1, def: 80, displayDecimals: 3 },
+      { key: 'armB', label: 'Arm 2 length (mm)', type: 'number', min: RULER_LENGTH_MIN, max: RULER_LENGTH_MAX, step: 0.1, def: 80, displayDecimals: 3 },
+      ...MEASURING_CLAMP,
+      ...MEASURING_LABEL,
+      ...MEASURING_STYLE,
+    ],
+    directHint: 'Drag an arm’s round tip to turn that arm smoothly about the vertex; its length stays as set. With auto clamp it clicks onto a beam through the vertex or toward a component (hold Alt to turn freely, Shift for 5° steps). The purple knob tunes the angle; the vertex handle moves the whole goniometer and clicks onto components and beams.',
+    hint: 'round handles: the arm tips turn the arms, the vertex moves it; auto clamp clicks onto components and beams',
+    icon: { angle: 50, armA: 32, armB: 32, width: 1.6 },
+  }),
 
   // ---------------- Custom ----------------
   box: {
@@ -6524,14 +6552,15 @@ const DIRECT = {
   box: { resize: { x: 'w', y: 'h' } },
   blocker: { resize: { x: 'w', y: 'h' } },
   textlabel: { resize: { uniform: 'fontSize' } },
-  // Its round handles set the geometry; the square corners size the label,
+  // Their round handles set the geometry; the square corners size the label,
   // as on a text label.
-  ruler: {
+  ruler: { resize: { uniform: 'fontSize' } },
+  goniometer: {
     resize: { uniform: 'fontSize' },
     // Dragging up opens the angle whichever way its second arm opens; the
     // direction is fixed when the knob is grabbed, so the drag runs on
     // smoothly through 0°.
-    tune: { key: 'angle', short: 'θ', when: p => p.mode === 'angle', pixelsPerStep: 0.5, direction: p => (p.angle < 0 ? -1 : 1) },
+    tune: { key: 'angle', short: 'θ', pixelsPerStep: 0.5, direction: p => (p.angle < 0 ? -1 : 1) },
   },
   probe: { resize: { uniform: 'displayScale' } },
   gascell: { resize: { x: 'length', y: 'height' }, tune: { key: 'transparency', short: 'transp.' } },
@@ -6629,14 +6658,15 @@ const ELEMENT_HELP = {
   figureframe: 'Canvas-only export crop. Its border and handles never appear in the exported figure.',
   textlabel: 'Markdown annotation with headings, lists, emphasis, code, and LaTeX formulas between $ signs; web and DOI addresses become clickable links. It does not interact with rays.',
   highlight: 'Background wash for calling out a region of the sketch; always drawn behind rays and elements, never interacts with rays.',
-  ruler: 'Measures a distance in bench millimetres, or the angle between two arms, and labels it with Markdown and LaTeX; {value} in the label is the measurement. It never interacts with rays.',
+  ruler: 'Measures a distance in bench millimetres and labels it with Markdown and LaTeX; {value} in the label is the measurement. It never interacts with rays.',
+  goniometer: 'Measures the angle between two arms from a vertex and labels it with Markdown and LaTeX; {value} in the label is the measurement. It never interacts with rays.',
   zoom: 'Draws a region of the setup again, enlarged, elsewhere on the canvas, with an optional scale bar in bench millimetres. Shapes grow with the magnification while lines keep their weight; text, arrows and probes are not enlarged. Diffraction-limited focus draws an ideal Gaussian waist (w₀ = λ/πNA) where a beam focuses in the region. It never interacts with rays.',
   box: 'Generic enclosure with explicit pass-through or beam-blocking behavior.',
   gascell: 'Diagram-only gas cell housing for gas-filled hollow-core fiber setups; never bends, blocks, or absorbs a ray.',
   window: 'Diagram-only optical window; never bends, blocks, or absorbs a ray.',
 };
 
-const DIAGRAM_ONLY = new Set(['arrowann', 'textlabel', 'figureframe', 'highlight', 'zoom', 'ruler', 'gascell', 'window']);
+const DIAGRAM_ONLY = new Set(['arrowann', 'textlabel', 'figureframe', 'highlight', 'zoom', 'ruler', 'goniometer', 'gascell', 'window']);
 const SHAPERS = new Set(['slm', 'metasurface']);
 
 export function getElementMeta(type, params = {}, context = {}) {

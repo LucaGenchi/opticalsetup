@@ -21,7 +21,6 @@ const VARIANTS = {
   crystal: [{ convert: 'shg' }, { convert: 'opo' }],
   dichroic: [{}, { dtype: 'bandpass' }],
   filter: [{}, { ftype: 'bandpass' }, { ftype: 'nd' }],
-  ruler: [{ mode: 'angle' }],
 };
 
 function tuneCases() {

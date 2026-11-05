@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
-// The ruler annotation: a dimension line that measures a distance on the
-// bench, or two arms from a vertex that measure the angle between them. It
-// is diagram-only (the registry gives it no surfaces), so it never touches a
-// ray. Everything here is DOM-free, so the canvas, the export and the tests
+// The measuring annotations: the ruler, a dimension line that measures a
+// distance on the bench, and the goniometer, two arms from a vertex that
+// measure the angle between them. Both are diagram-only (the registry gives
+// them no surfaces), so they never touch a ray. Everything here is DOM-free, so the canvas, the export and the tests
 // share one geometry.
 //
 // Local frame (the element's own, before el.rot is applied; y points down,
@@ -16,7 +16,12 @@
 import { formulaSpans, markdownLayout, markdownTextSVG } from './markdown.js';
 import { esc } from './util.js';
 
-export const RULER_MODES = [['distance', 'Distance'], ['angle', 'Angle']];
+// Two elements share this geometry: the ruler measures a distance and the
+// goniometer an angle. Neither stores its mode; each registry entry passes
+// it in through rulerModeParams(), and everything below reads params.mode.
+export const RULER_TYPE_MODES = { ruler: 'distance', goniometer: 'angle' };
+export const isRulerType = type => Object.hasOwn(RULER_TYPE_MODES, type);
+export const rulerModeParams = el => ({ ...(el?.params || {}), mode: RULER_TYPE_MODES[el?.type] ?? el?.params?.mode });
 export const RULER_LENGTH_MIN = 0.1;
 export const RULER_LENGTH_MAX = 5000;
 export const RULER_VALUE_TOKEN = '{value}';
@@ -220,9 +225,10 @@ export function rulerClampTargets({ elements = [], paths = [], beams = [], defin
     const def = definitions[el.type];
     if (!def || !finite(el.x) || !finite(el.y)) continue;
     const label = def.label || el.type;
-    const local = el.type === 'ruler' ? rulerPoints(el.params) : [{ x: 0, y: 0 }];
+    const measuring = isRulerType(el.type);
+    const local = measuring ? rulerPoints(rulerModeParams(el)) : [{ x: 0, y: 0 }];
     const active = typeof def.snapPt === 'function' ? def.snapPt(el) : def.snapPt;
-    if (el.type !== 'ruler' && finitePoint(active)) local.push(active);
+    if (!measuring && finitePoint(active)) local.push(active);
     for (const p of local) points.push({ ...toWorld(el, p), label });
   }
   for (const pts of rulerAxisPaths(paths, elements)) {
