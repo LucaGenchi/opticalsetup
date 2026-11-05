@@ -53,11 +53,23 @@ export function zoomMaxMagnification(params = {}) {
 // again, unlike a reloaded scene. Every edit of the region runs this, as
 // loading a scene does through the schema.
 export function normalizeZoomParams(params = {}) {
-  const { w } = regionSize(params);
   return {
     mag: bounded(params.mag, 1, zoomMaxMagnification(params), 4),
-    scaleBarMm: bounded(params.scaleBarMm, 0, w, 0),
+    scaleBarMm: bounded(params.scaleBarMm, 0, zoomScaleBarMaxMm(params), 0),
   };
+}
+
+// The scale bar lies along the region's width unless it is set vertical,
+// when it lies along the region's height. Anything else, as in a scene
+// saved before the choice existed, is horizontal.
+export function zoomScaleBarVertical(params = {}) {
+  return params.scaleBarDirection === 'vertical';
+}
+
+// A set bar is no longer than the region along the bar.
+export function zoomScaleBarMaxMm(params = {}) {
+  const { w, h } = regionSize(params);
+  return zoomScaleBarVertical(params) ? h : w;
 }
 
 function drawingFrame(rot) {
@@ -271,32 +283,49 @@ export function niceScaleBarLength(regionWidthMm) {
 // The bar's placement in the view, in the drawing frame, or null when it is
 // off or cannot fit. A bar asked to be longer than the view can hold is
 // shortened, and its label always names the length actually drawn. It lies
-// along the region's width, so on a turned rectangle it follows the beam
-// the rectangle was laid along.
+// along the region's width, or along its height when set vertical, so on a
+// turned rectangle it follows the sides the rectangle was laid along.
 //
-// The bar and its label must fit the view's height too. Above the bar's
-// baseline `y` they take its thickness, the gap to the label and the label's
-// ascent (about 1.43 font); a rectangle also keeps a pad below. A view too
-// low for that shrinks the font with it, and one too low for a readable
-// label carries no bar at all.
+// The bar and its label must fit across the view too. Beside the bar's
+// baseline they take its thickness, the gap to the label and the label's
+// ascent (about 1.43 font); a rectangle also keeps a pad beyond. A view too
+// narrow across for that shrinks the font with it, and one too narrow for a
+// readable label carries no bar at all.
+//
+// The placement is worked out for a horizontal bar, with `along` the view's
+// half-size along the bar and `across` its half-size across it: below the
+// centre, at the right for a rectangle. A vertical bar is that placement
+// turned a quarter turn back about the view's centre, which puts it right
+// of the centre, at the top for a rectangle, with its label on its left
+// reading upwards.
 export function zoomScaleBar(params = {}, rot = 0) {
   if (params.scaleBar === false) return null;
   const g = zoomGeometry(params, rot);
+  const vertical = zoomScaleBarVertical(params);
+  const along = vertical ? g.iry : g.irx, across = vertical ? g.irx : g.iry;
   const round = g.shape !== 'rect';
-  // A round view keeps the label's top within 0.9 of its half-height above
-  // the centre; the bar itself sits ROUND_BAR_DEPTH below it.
-  const tallest = round ? (ROUND_BAR_DEPTH + 0.9) * g.iry / 1.43 : 2 * g.iry / (1.43 + 0.9);
+  // A round view keeps the label within 0.9 of its half-size across the
+  // bar from the centre; the bar itself sits ROUND_BAR_DEPTH beyond it.
+  const tallest = round ? (ROUND_BAR_DEPTH + 0.9) * across / 1.43 : 2 * across / (1.43 + 0.9);
   const font = Math.min(14, Math.max(6, 0.16 * Math.min(g.irx, g.iry)), tallest);
   if (!(font >= 3)) return null;
   const pad = 0.9 * font, thickness = 0.28 * font;
-  const room = round ? 2 * g.irx * Math.sqrt(1 - ROUND_BAR_DEPTH ** 2) - 2 * pad : 2 * g.irx - 2 * pad;
-  const asked = params.scaleBarMm > 0 ? params.scaleBarMm : niceScaleBarLength(2 * g.rx);
+  const room = round ? 2 * along * Math.sqrt(1 - ROUND_BAR_DEPTH ** 2) - 2 * pad : 2 * along - 2 * pad;
+  const asked = params.scaleBarMm > 0 ? params.scaleBarMm : niceScaleBarLength(2 * (vertical ? g.ry : g.rx));
   const mm = Math.min(finite(asked) ? asked : 0, room / g.mag);
   if (!(mm > 0)) return null;
   const length = mm * g.mag;
-  const y = round ? g.iy + ROUND_BAR_DEPTH * g.iry : g.iy + g.iry - pad;
-  const x1 = round ? g.ix - length / 2 : g.ix + g.irx - pad - length;
-  return { mm, label: formatLength(mm), x1, x2: x1 + length, y, top: y - 1.43 * font, thickness, font };
+  // Offsets from the view's centre: `base` across the bar, `start` along it.
+  const base = round ? ROUND_BAR_DEPTH * across : across - pad;
+  const start = round ? -length / 2 : along - pad - length;
+  const label = formatLength(mm);
+  if (vertical) {
+    // (dx, dy) of the horizontal placement lands at (dy, -dx).
+    return { mm, label, vertical: true, x: g.ix + base, left: g.ix + base - 1.43 * font,
+      y1: g.iy - start - length, y2: g.iy - start, thickness, font };
+  }
+  const x1 = g.ix + start, y = g.iy + base;
+  return { mm, label, x1, x2: x1 + length, y, top: y - 1.43 * font, thickness, font };
 }
 
 function shapeSVG(shape, cx, cy, rx, ry, attrs) {
@@ -308,6 +337,12 @@ function shapeSVG(shape, cx, cy, rx, ry, attrs) {
 function scaleBarSVG(bar) {
   if (!bar) return '';
   const halo = `stroke="#ffffff" stroke-width="${num(0.22 * bar.font)}" paint-order="stroke"`;
+  if (bar.vertical) {
+    const labelX = bar.x - bar.thickness - 0.4 * bar.font;
+    return `<g data-zoom-scalebar="true" fill="#1f2937">` +
+      `<rect x="${num(bar.x - bar.thickness)}" y="${num(bar.y1)}" width="${num(bar.thickness)}" height="${num(bar.y2 - bar.y1)}" ${halo}/>` +
+      `<text transform="translate(${num(labelX)} ${num((bar.y1 + bar.y2) / 2)}) rotate(-90)" text-anchor="middle" font-size="${num(bar.font)}" font-weight="600" ${halo}>${bar.label}</text></g>`;
+  }
   return `<g data-zoom-scalebar="true" fill="#1f2937">` +
     `<rect x="${num(bar.x1)}" y="${num(bar.y - bar.thickness)}" width="${num(bar.x2 - bar.x1)}" height="${num(bar.thickness)}" ${halo}/>` +
     `<text x="${num((bar.x1 + bar.x2) / 2)}" y="${num(bar.y - bar.thickness - 0.4 * bar.font)}" text-anchor="middle" font-size="${num(bar.font)}" font-weight="600" ${halo}>${bar.label}</text></g>`;
@@ -334,8 +369,9 @@ export function zoomFrameSVG(params = {}, { content = '', background = '#ffffff'
   }
   // The view's border is the region's outline enlarged, so it is dashed with it.
   s += shapeSVG(g.shape, g.ix, g.iy, g.irx, g.iry, `fill="none" stroke="${color}" stroke-width="1.5"${regionDash} data-zoom-frame="view"`);
-  // A circle has no width to lie along: its bar stays level on the bench,
-  // turned back about the view's centre, which keeps it inside the circle.
+  // A circle has no width to lie along: its bar stays level (or plumb) on
+  // the bench, turned back about the view's centre, which keeps it inside
+  // the circle.
   const bar = scaleBarSVG(zoomScaleBar(params, rot));
   s += g.shape === 'circle' && bar && g.turn
     ? `<g transform="rotate(${num(-g.turn)} ${num(g.ix)} ${num(g.iy)})">${bar}</g>` : bar;

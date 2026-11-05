@@ -16,7 +16,7 @@ import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, po
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import {
   ZOOM_OFFSET_LIMIT, ZOOM_REGION_MAX, ZOOM_REGION_MIN, ZOOM_SHAPES,
-  zoomFrameSVG, zoomGeometry, zoomHitTest, zoomMaxMagnification, zoomViewBox,
+  zoomFrameSVG, zoomGeometry, zoomHitTest, zoomMaxMagnification, zoomScaleBarMaxMm, zoomViewBox,
 } from './zoom.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
 import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenRamanReading, specimenSrsNote, specimenTimingReading, supercontinuumReading, twoBeamPartner, MIN_OVERLAP } from './raytrace.js';
@@ -6007,7 +6007,8 @@ export const registry = {
       { key: 'connectors', label: 'Connector lines', type: 'checkbox', def: true },
       { key: 'connectorDash', label: 'Dashed connector lines', type: 'checkbox', def: false, show: p => p.connectors },
       { key: 'scaleBar', label: 'Scale bar', type: 'checkbox', def: true },
-      { key: 'scaleBarMm', label: 'Scale bar length (mm) · 0 = automatic', type: 'number', min: 0, max: p => zoomGeometry(p).rx * 2, step: 0.001, def: 0, show: p => p.scaleBar },
+      { key: 'scaleBarDirection', label: 'Scale bar direction', type: 'select', def: 'horizontal', options: [['horizontal', 'Horizontal (along the width)'], ['vertical', 'Vertical (along the height)']], show: p => p.scaleBar },
+      { key: 'scaleBarMm', label: 'Scale bar length (mm) · 0 = automatic', type: 'number', min: 0, max: zoomScaleBarMaxMm, step: 0.001, def: 0, show: p => p.scaleBar },
       { key: 'frameColor', label: 'Frame color', type: 'color', def: '#475569' },
     ],
     directHint: 'Drag the enlarged view to move it on its own; drag the region’s outline to aim it while the view stays put. Blue handles resize the region; the purple corners of the view, or the purple knob, set the magnification; a rectangle or ellipse turns with the round handle.',

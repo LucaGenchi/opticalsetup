@@ -495,3 +495,73 @@ test('a corner drag with no step value inside its range keeps the starting magni
   assert.equal(next.mag, 4.25);
   assert.ok(near(viewCorner({ ...wedged, ...next }, 0, -1, -1), viewCorner(wedged, 0, -1, -1)));
 });
+
+// ---- Vertical scale bar ----
+
+test('the scale bar is horizontal unless set vertical, as in a scene saved before the choice', () => {
+  const params = { ...createElement('zoom').params, shape: 'rect', w: 30, h: 20 };
+  assert.equal(params.scaleBarDirection, 'horizontal');
+  delete params.scaleBarDirection;
+  assert.ok(!zoomScaleBar(params).vertical, 'a missing direction draws the bar along the width');
+  assert.ok(!zoomScaleBar({ ...params, scaleBarDirection: 'diagonal' }).vertical, 'an unknown one too');
+});
+
+test('a vertical scale bar is the horizontal one turned a quarter turn about the view', () => {
+  const close = (a, b) => Math.abs(a - b) < 1e-9;
+  for (const shape of ['rect', 'circle', 'ellipse']) {
+    for (const rot of [0, 30, 200]) {
+      // A square region, so both bars have the same room.
+      const params = { ...createElement('zoom').params, shape, w: 24, h: 24, mag: 5, insetX: 90, insetY: -40 };
+      const g = zoomGeometry(params, rot);
+      const h = zoomScaleBar(params, rot);
+      const v = zoomScaleBar({ ...params, scaleBarDirection: 'vertical' }, rot);
+      assert.ok(v.vertical, `${shape} ${rot}°`);
+      assert.equal(v.mm, h.mm);
+      assert.equal(v.label, h.label);
+      // (dx, dy) → (dy, -dx) about the view's centre.
+      assert.ok(close(v.x - g.ix, h.y - g.iy), 'the baseline');
+      assert.ok(close(v.left - g.ix, h.top - g.iy), 'the label side');
+      assert.ok(close(v.y1 - g.iy, -(h.x2 - g.ix)) && close(v.y2 - g.iy, -(h.x1 - g.ix)), 'the ends');
+    }
+  }
+});
+
+test('a vertical scale bar measures the region height and fits across the view, or is left out', () => {
+  const params = { ...createElement('zoom').params, shape: 'rect', w: 30, h: 8, mag: 4, scaleBarDirection: 'vertical' };
+  const g = zoomGeometry(params);
+  const bar = zoomScaleBar(params);
+  assert.equal(bar.mm, 2, 'automatic length chosen from the 8 mm height');
+  assert.ok(Math.abs(bar.y2 - bar.y1 - bar.mm * g.mag) < 1e-9, 'the drawn length is the labelled length');
+  assert.equal(normalizeZoomParams({ ...params, scaleBarMm: 25 }).scaleBarMm, 8, 'a set bar is no longer than the height');
+  assert.equal(normalizeZoomParams({ ...params, scaleBarDirection: 'horizontal', scaleBarMm: 25 }).scaleBarMm, 25);
+  assert.doesNotMatch(zoomFrameSVG({ ...params, w: 0.5, mag: 2 }), /data-zoom-scalebar/, 'too narrow for a readable label');
+  for (const shape of ['rect', 'ellipse']) {
+    for (const w of [1, 2, 4, 8, 20, 60]) {
+      for (const mag of [1, 3, 10]) {
+        const p = { ...params, shape, w, h: 30, mag, scaleBarMm: 30 };
+        const gg = zoomGeometry(p);
+        const b = zoomScaleBar(p);
+        if (!b) continue;
+        const leftLimit = shape === 'rect' ? gg.ix - gg.irx : gg.ix - 0.9 * gg.irx;
+        assert.ok(b.left >= leftLimit - 1e-9 && b.x <= gg.ix + gg.irx + 1e-9, `${shape} w ${w} ×${mag}: across`);
+        for (const y of [b.y1, b.y2]) {
+          const inside = shape === 'rect'
+            ? Math.abs(y - gg.iy) <= gg.iry + 1e-9
+            : ((b.x - gg.ix) / gg.irx) ** 2 + ((y - gg.iy) / gg.iry) ** 2 <= 1 + 1e-9;
+          assert.ok(inside, `${shape} w ${w} ×${mag}: bar end inside`);
+        }
+      }
+    }
+  }
+});
+
+test('a vertical bar is drawn upright with its label beside it, and stays plumb on a turned circle', () => {
+  const params = { ...createElement('zoom').params, shape: 'circle', w: 24, mag: 5, scaleBarDirection: 'vertical' };
+  const svg = zoomFrameSVG(params);
+  assert.match(svg, /data-zoom-scalebar[^]*rotate\(-90\)/, 'the label reads upwards');
+  const bar = zoomScaleBar(params);
+  const rect = svg.match(/data-zoom-scalebar[^>]*><rect [^>]*width="([\d.]+)" height="([\d.]+)"/);
+  assert.ok(Number(rect[2]) > Number(rect[1]), 'the bar is tall, not wide');
+  assert.ok(Math.abs(Number(rect[2]) - (bar.y2 - bar.y1)) < 1e-3);
+  assert.match(zoomFrameSVG(params, { rot: 30 }), /<g transform="rotate\(-30 [^"]+\)"><g data-zoom-scalebar/, 'turned back on a turned circle');
+});
