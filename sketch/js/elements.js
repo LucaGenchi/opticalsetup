@@ -5892,17 +5892,19 @@ export const registry = {
       { key: 'height', label: 'Height (mm)', type: 'number', min: 2, max: 150, step: 1, def: 22 },
       { key: 'shape', label: 'Shape', type: 'select', def: 'arrow', options: [['arrow', 'Arrow'], ['F', 'Letter F'], ['tree', 'Tree']] },
       // The three options below arrived after Objects were already saved in
-      // sketches. Each default is the behaviour from before, and `migrate`
-      // pins a saved Object without the key to that same value, so a sketch
-      // keeps its look even if a default changes later.
-      { key: 'anchor', label: 'Anchor', type: 'select', def: 'centre',
-        options: [['centre', 'Middle'], ['base', 'Base']], migrate: () => 'centre' },
+      // sketches. A new Object stands on the axis and sends a fan from its
+      // tip that fills the first optic, the ray diagram a lesson draws. A
+      // saved Object without the key is pinned by `migrate` to the behaviour
+      // from before (centred, a fan from the anchor straight ahead), so an
+      // old sketch keeps its look.
+      { key: 'anchor', label: 'Anchor', type: 'select', def: 'base',
+        options: [['base', 'Base'], ['centre', 'Middle']], migrate: () => 'centre' },
       { key: 'raysMode', label: 'Rays', type: 'select', def: 'fan', options: [['fan', 'Show ray fan'], ['none', 'No rays']] },
-      { key: 'raysFrom', label: 'Rays from', type: 'select', def: 'axis',
-        options: [['axis', 'Axis'], ['tip', 'Tip'], ['tipBase', 'Tip and base']],
+      { key: 'raysFrom', label: 'Rays from', type: 'select', def: 'tip',
+        options: [['tip', 'Tip'], ['tipBase', 'Tip and base'], ['axis', 'Axis']],
         show: p => p.raysMode === 'fan', migrate: () => 'axis' },
-      { key: 'aim', label: 'Aim', type: 'select', def: 'ahead',
-        options: [['ahead', 'Ahead'], ['optic', 'First optic']],
+      { key: 'aim', label: 'Aim', type: 'select', def: 'optic',
+        options: [['optic', 'First optic'], ['ahead', 'Ahead']],
         show: p => p.raysMode === 'fan', migrate: () => 'ahead' },
       { key: 'spread', label: 'Fan angle (°)', type: 'number', min: 1, max: 40, step: 1, def: 10, show: p => p.raysMode === 'fan' && p.aim !== 'optic' },
       { key: 'nrays', label: 'Rays per fan', type: 'number', min: 2, max: 21, step: 1, def: 3, show: p => p.raysMode === 'fan' },
@@ -6688,7 +6690,7 @@ const ELEMENT_HELP = {
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
   ledsource: 'Emits a collimated beam of incoherent light from an LED behind its own collimator, with an illustrative single-colour or two-band white spectrum. It never interferes, and its residual divergence is not modelled.',
   pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp. Any optical element within the capture range catches its rays and acts on them as on any light; a lens, a mirror, a fiber tip or a detector collects them, and after any other optic only the range that is left still counts. Light that nothing catches fades out within a short distance. The range is a drawing convention for how far an isotropic emitter stays visible, not an inverse-square calculation. A parabolic mirror with the source at its focus collimates it.',
-  objarrow: 'Traces a ray fan from the object’s anchor on the optical axis, from its tip, or from its tip and its base (the base’s fan drawn in a second colour, at the same wavelength), and separately draws an ideal paraxial image; the image marker does not model downstream clipping. The fan points straight ahead or is aimed to just fill the first lens, glass face or mirror on the object’s axis, narrowed to any slit, iris or stop in front of it; filters and other transmissive optics in between are ignored by the aiming. The shape is centred on its anchor or stands on it.',
+  objarrow: 'Traces a ray fan from the object’s tip, from its tip and its base (the base’s fan drawn in a second colour, at the same wavelength), or from its anchor on the optical axis, and separately draws an ideal paraxial image; the image marker does not model downstream clipping. The fan is aimed to just fill the first lens, glass face or mirror on the object’s axis, narrowed to any slit, iris or stop in front of it, or points straight ahead at a set angle; filters and other transmissive optics in between are ignored by the aiming, and with no optic ahead an aimed fan points straight ahead. The shape stands on its anchor or is centred on it.',
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',
   galvo: 'Reflects rays from a static or animated ideal quasistatic mechanical scan angle; high scan rates use a slowed preview.',

@@ -68,6 +68,29 @@ test('an Object saved before the light options opens centred, with its fan from 
   assert.match(registry.objarrow.svg(object), /<polygon points="0\.0,-10\.0 /);
 });
 
+test('a new Object stands on the axis and fills the first optic from its tip, and keeps that through a save', () => {
+  const object = createElement('objarrow', 0, 0);
+  assert.equal(object.params.anchor, 'base');
+  assert.equal(object.params.raysFrom, 'tip');
+  assert.equal(object.params.aim, 'optic');
+  const lens = createElement('lens', 300, 0);
+  lens.params.f = 100;
+  const result = traceScene([object, lens], []);
+  const tip = imageTip(result);
+  near(tip.x, 450, 1e-9, 'image distance');
+  near(tip.y, object.params.height / 2, 1e-9, 'inverted half-size tip');
+  const rays = raysThroughLens(result, object);
+  assert.equal(rays.length, object.params.nrays);
+  for (const r of rays) near(distanceToLine(tip, r.atLens, r.next), 0, 1e-9, 'ray through the image tip');
+  // A save writes every param, so the reloaded Object is not mistaken for one
+  // saved before the options existed.
+  const saved = { app: 'optics2d', version: 1, beams: [], elements: [object, lens] };
+  const [reloaded] = parseSketch(JSON.stringify(saved), registry).elements;
+  assert.equal(reloaded.params.anchor, 'base');
+  assert.equal(reloaded.params.raysFrom, 'tip');
+  assert.equal(reloaded.params.aim, 'optic');
+});
+
 test('an arrow standing on the axis fills the lens from its tip, and the rays meet at the drawn image tip', () => {
   const { object, elements } = lessonScene();
   const result = traceScene(elements, []);
@@ -198,11 +221,12 @@ test('aimedFanSpan finds a narrow opening exactly and gives up when nothing gets
 
 test('the fan angle is set by the optic while aimed, and the ray limit is 21', () => {
   const object = createElement('objarrow', 0, 0);
-  assert.ok(getDirectManipulation(object).tune, 'the fan-angle knob while pointing straight ahead');
-  object.params.aim = 'optic';
-  assert.equal(getDirectManipulation(object).tune, null, 'no fan-angle knob while aimed');
   const spread = registry.objarrow.params.find(p => p.key === 'spread');
+  assert.equal(getDirectManipulation(object).tune, null, 'no fan-angle knob while aimed');
   assert.equal(spread.show(object.params), false);
+  object.params.aim = 'ahead';
+  assert.ok(getDirectManipulation(object).tune, 'the fan-angle knob while pointing straight ahead');
+  assert.equal(spread.show(object.params), true);
   const saved = { app: 'optics2d', version: 1, beams: [], elements: [{ id: 'o', type: 'objarrow', x: 0, y: 0, rot: 0, params: { nrays: 50 } }] };
   assert.equal(parseSketch(JSON.stringify(saved), registry).elements[0].params.nrays, 21);
 });
