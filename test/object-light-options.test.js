@@ -215,8 +215,57 @@ test('aimedFanSpan finds a narrow opening exactly and gives up when nothing gets
   assert.equal(aimedFanSpan({ x: 0, y: 0 }, objectAimScene(el, [lensSurface, blade(-25, 25)])), null);
   // A filter in front is not a target and not an obstacle.
   const filtered = objectAimScene(el, [lensSurface, { a: { x: 100, y: -12.7 }, b: { x: 100, y: 12.7 }, kind: 'filter' }]);
-  assert.equal(filtered.target.a.x, 300);
+  assert.equal(filtered.targets.length, 1);
+  assert.equal(filtered.targets[0].a.x, 300);
   assert.equal(filtered.obstacles.length, 0);
+});
+
+// Where each of the Object's rays first meets something.
+const firstHits = (result, object) => result.paths.filter(r => r.sourceId === object.id).map(r => r.pts[1]);
+
+test('a curved mirror is filled across its whole face, not only the segment on the axis', () => {
+  // A parabolic mirror is traced as many short segments; the fan must span
+  // all of them (the default OAP is 80 mm long).
+  const object = createElement('objarrow', 0, 0);
+  object.params.nrays = 21;
+  const oap = createElement('oap', 300, 0);
+  const ys = firstHits(traceScene([object, oap], []), object).map(p => p.y);
+  assert.ok(Math.min(...ys) < -39 && Math.max(...ys) > 39, `OAP filled from ${Math.min(...ys)} to ${Math.max(...ys)}`);
+});
+
+test('a conic mirror is aimed at, and a central opening does not split the fan', () => {
+  for (const hole of [0, 20]) {
+    const object = createElement('objarrow', 0, 0);
+    Object.assign(object.params, { anchor: 'centre', nrays: 21 });
+    const mirror = createElement('conicmirror', 300, 0);
+    mirror.params.hole = hole;
+    // A lens behind the mirror must not be picked instead of it.
+    const lens = createElement('lens', 500, 0);
+    const hits = firstHits(traceScene([object, mirror, lens], []), object);
+    const onMirror = hits.filter(p => Math.abs(p.x - 300) < 5);
+    const ys = onMirror.map(p => p.y);
+    assert.ok(Math.min(...ys) < -24 && Math.max(...ys) > 24, `hole ${hole}: mirror filled from ${Math.min(...ys)} to ${Math.max(...ys)}`);
+    if (hole === 0) assert.equal(onMirror.length, 21, 'every ray lands on the mirror');
+    else {
+      // The rays aimed at the opening go through it.
+      assert.ok(onMirror.length < 21 && onMirror.length >= 13, `hole ${hole}: ${onMirror.length} rays on the mirror`);
+      assert.ok(onMirror.every(p => Math.abs(p.y) >= hole / 2 - 1e-6), 'none lands inside the opening');
+    }
+  }
+});
+
+test('with the lens tilted against the Object, the drawn image tip is where the tip’s rays meet', () => {
+  for (const rot of [20, -15]) {
+    const object = createElement('objarrow', 0, 0);
+    const lens = createElement('lens', 300, 0);
+    lens.params.f = 100;
+    lens.rot = rot;
+    const result = traceScene([object, lens], []);
+    const tip = imageTip(result);
+    const paths = result.paths.filter(r => r.sourceId === object.id);
+    assert.equal(paths.length, object.params.nrays);
+    for (const r of paths) near(distanceToLine(tip, r.pts.at(-2), r.pts.at(-1)), 0, 1e-6, `lens at ${rot}°: ray through the drawn tip`);
+  }
 });
 
 test('the fan angle is set by the optic while aimed, and the ray limit is 21', () => {

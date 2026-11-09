@@ -10,7 +10,7 @@ import { NONLINEAR_ORDER, MAX_SPOTS, MIN_HALF_ANGLE, SPOT_SPACING_MM, bundleFocu
 import { POINT_SOURCE_CANVAS_THRESHOLD } from './point-source-rendering.js';
 
 import {
-  registry, OBJ_SHAPES, objectAnchorUnitY, EPI_CAPABLE_KINDS as EPI_KINDS, MIXING_KINDS, phasePlateOpdFraction,
+  registry, OBJ_SHAPES, objectAnchorUnitY, objectEnds, EPI_CAPABLE_KINDS as EPI_KINDS, MIXING_KINDS, phasePlateOpdFraction,
   ISOTROPIC_KINDS, MODIFIER_KINDS, EMISSION_ORDER, EMISSION_OFFSET_NM, NONLINEAR_SIGNAL_KINDS,
   sumFrequencyWl, carsAntiStokesWl, ramanShifts, ramanStokesWl,
   drivingExcitationWl, channelNeedsExcitationProbe, specimenTypeOf,
@@ -8500,7 +8500,21 @@ export function traceScene(elements, beams = [], options = {}) {
     // redraw the object's shape at the image plane, scaled by |m| and
     // vertically flipped when m < 0
     const sh = OBJ_SHAPES[pp.shape] || OBJ_SHAPES.arrow;
-    const toWorldPt = (sx, sy) => add(add(imgBase, mul(u, sx * h0 * Math.abs(m))), mul(v, (anchorY - sy) * h0 * m));
+    let toWorldPt = (sx, sy) => add(add(imgBase, mul(u, sx * h0 * Math.abs(m))), mul(v, (anchorY - sy) * h0 * m));
+    // An Object that sends its fan from the tip or the base, or stands on its
+    // anchor, places the shape between the exact images of its two ends, so
+    // the drawn tip is where the tip's rays meet even when a lens is tilted
+    // against the Object (its image then leans, and the tip's image moves
+    // along the axis too, not only across it). Untilted, this is the same
+    // drawing as above. A centred Object with the fan from its anchor keeps
+    // the drawing it was saved with.
+    if (pp.anchor === 'base' || (pp.raysFrom && pp.raysFrom !== 'axis')) {
+      const { tipY, baseY } = objectEnds(pp);
+      const endImg = [imagePoint(add(p0, mul(v, -baseY))), imagePoint(add(p0, mul(v, -tipY)))];
+      if (!endImg[0] || !endImg[1]) continue;
+      const [imgB, imgT] = endImg;
+      toWorldPt = (sx, sy) => add(add(imgB, mul(sub(imgT, imgB), 0.5 - sy)), mul(u, sx * h0 * Math.abs(m)));
+    }
     for (const ln of sh.lines) {
       drawables.push({ type: 'path', pts: ln.map(q => toWorldPt(q[0], q[1])), color, w: 2.2, opacity: 0.85, dash: true });
     }
