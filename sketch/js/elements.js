@@ -5992,6 +5992,10 @@ export const registry = {
     aliases: ['object arrow', 'imaging object', 'ray fan', 'image formation', 'letter F'],
     size_: el => ({ w: 20, h: 2 * el.params.height + 10 }),
     imaging: true,
+    // The Image readout comes from the last trace, which any edit can change:
+    // the Object's own position, or a lens moved elsewhere in the scene. So it
+    // refreshes in place after every trace, as a tuning OPO's readouts do.
+    liveReadouts: true,
     params: [
       { key: 'height', label: 'Height (mm)', type: 'number', min: 2, max: 150, step: 1, def: 22 },
       { key: 'shape', label: 'Shape', type: 'select', def: 'arrow', options: [['arrow', 'Arrow'], ['F', 'Letter F'], ['tree', 'Tree'], ['point', 'Point'], ['candle', 'Candle'], ['cell', 'Cell'], ['moon', 'Moon']] },

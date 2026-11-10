@@ -50,7 +50,15 @@ function axisHit(o, d, s) {
 // position along that direction, R the radius (positive when the centre of
 // curvature lies further along), n the index after the face. Light starts
 // and ends in air. Returns the focal length and where H and H′ lie (as s),
-// plus the last vertex; null for an afocal run.
+// the first and last vertex, and the run's paraxial matrix { A, B, C, D }
+// from the first vertex to the last (height and angle in air). An afocal run
+// (C = 0: a plane-parallel plate, a telescope) has no focal length or
+// principal planes: it says `afocal` and carries only the matrix. Null for
+// no faces.
+// Below this power (1/mm), a run is treated as afocal: its focal length would
+// be beyond a thousand kilometres and its principal planes as far off.
+const AFOCAL_POWER = 1e-9;
+
 export function paraxialCardinals(faces) {
   if (!faces.length) return null;
   const trace = (y, omega) => {
@@ -64,10 +72,11 @@ export function paraxialCardinals(faces) {
     return { y, omega };
   };
   const r1 = trace(1, 0), r2 = trace(0, 1);
-  const A = r1.y, C = r1.omega, D = r2.omega;
-  if (!(Math.abs(C) > 1e-12)) return null;
+  const A = r1.y, B = r2.y, C = r1.omega, D = r2.omega;
   const first = faces[0].s, last = faces.at(-1).s;
-  return { f: -1 / C, h1: first - (1 - D) / C, h2: last + (1 - A) / C, first, last };
+  if (![A, B, C, D].every(Number.isFinite)) return null;
+  if (!(Math.abs(C) > AFOCAL_POWER)) return { afocal: true, f: Infinity, A, B, C: 0, D, first, last };
+  return { f: -1 / C, h1: first - (1 - D) / C, h2: last + (1 - A) / C, first, last, A, B, C, D };
 }
 
 // The faces of an optic in the order light going along `dir` (world) meets
@@ -93,9 +102,11 @@ function planeAt(el, localX) {
 // Every lens the Object's axis crosses beyond 1 mm, in order, as paraxial
 // steps { t, f, H, H2, exit, el }. `thinFocal(s)` gives a thin surface's
 // focal length at the Object's wavelength; a real optic describes its faces
-// with its registry entry's `paraxialFaces(el, wavelength)`. Null when some
-// lens on the axis has no focal length (an afocal optic, a missing value):
-// no image is drawn then, as before.
+// with its registry entry's `paraxialFaces(el, wavelength)`. A real optic
+// with no power (a plate, a telescope group) is an afocal step: H and H2 are
+// then its first and last vertex planes, and `matrix` carries a ray from one
+// to the other. Null when a thin lens on the axis has no focal length, or an
+// optic cannot describe its faces: no image is drawn then, as before.
 export function objectImagingSteps(el, surfaces, { registry, thinFocal, wavelength }) {
   const u = rotPt(1, 0, el.rot || 0);
   const p0 = { x: el.x, y: el.y };
@@ -127,7 +138,16 @@ export function objectImagingSteps(el, surfaces, { registry, thinFocal, waveleng
     const local = registry[owner.type].paraxialFaces(owner, wavelength);
     const { sign, faces } = facesAlong(owner, local || [], u);
     const card = paraxialCardinals(faces);
-    if (!card || !Number.isFinite(card.f)) return null;
+    if (!card) return null;
+    if (card.afocal) {
+      steps.push({
+        t, f: Infinity, matrix: { A: card.A, B: card.B, D: card.D },
+        H: planeAt(owner, sign * card.first), H2: planeAt(owner, sign * card.last),
+        exit: toWorld(owner, sign * card.last, 0), el: owner, thin: false,
+      });
+      continue;
+    }
+    if (!Number.isFinite(card.f)) return null;
     steps.push({
       t, f: card.f, H: planeAt(owner, sign * card.h1), H2: planeAt(owner, sign * card.h2),
       exit: toWorld(owner, sign * card.last, 0), el: owner, thin: false,
@@ -151,6 +171,22 @@ function throughSteps(rays, steps, upTo = steps.length, onHit = null) {
       const t = (dp.x * e.y - dp.y * e.x) / den;
       const hitP = add(r.p, mul(r.d, t));
       if (onHit) onHit(r, hitP);
+      if (step.matrix) {
+        // An afocal optic: height and slope at its first vertex plane to
+        // height and slope at its last, both measured along the plane and
+        // against its normal the way the light crosses it.
+        const tH = norm(e);
+        const n = perp(tH), np = mul(n, dot(r.d, n) >= 0 ? 1 : -1);
+        const denom = dot(r.d, np);
+        if (Math.abs(denom) < 1e-6) continue;
+        const h = dot(sub(hitP, mul(add(step.H.a, step.H.b), 0.5)), tH);
+        const slope = dot(r.d, tH) / denom;
+        const { A, B, D } = step.matrix;
+        r.p = add(mul(add(step.H2.a, step.H2.b), 0.5), mul(tH, A * h + B * slope));
+        r.d = norm(add(np, mul(tH, D * slope)));
+        if (onHit) onHit(r, r.p);
+        continue;
+      }
       if (step.H2 === step.H) {
         r.p = hitP;
       } else {
@@ -219,7 +255,9 @@ function lineMeet(o, d, s) {
 // on the Object's own plane. `tip` is the tip in world coordinates and
 // `tipDir` its bundle's direction at infinity (null for a nearby Object).
 export function principalRays(el, steps, { tip, tipDir = null }) {
-  const first = steps?.[0];
+  // The construction is the first lens's: an afocal plate or telescope has
+  // no focal points to aim at, and the lines simply cross it.
+  const first = steps?.find(step => !step.matrix);
   if (!first) return [];
   const u = rotPt(1, 0, el.rot || 0), p0 = { x: el.x, y: el.y };
   const centre = lineMeet(p0, u, first.H);

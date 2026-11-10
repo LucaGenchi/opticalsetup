@@ -8472,7 +8472,9 @@ export function traceScene(elements, beams = [], options = {}) {
       : [imageOfPoint(add(p0, mul(v, -baseY)), steps, u, v, k), imageOfPoint(add(p0, mul(v, -tipY)), steps, u, v, k)]);
 
     // What the inspector reads: each intermediate image and the final one.
-    const stages = steps.map((step, i) => {
+    // A plate or telescope (an afocal step) inside the chain only moves the
+    // image the next lens makes, so it has no line of its own.
+    const stages = steps.flatMap((step, i) => (step.matrix && i < steps.length - 1 ? [] : [[step, i]])).map(([step, i]) => {
       const [b, t] = endImages(i + 1);
       const lens = step.el ? (step.el.label || registry[step.el.type]?.label || 'lens') : 'lens';
       if (!b || !t) return { lens, atInfinity: true };

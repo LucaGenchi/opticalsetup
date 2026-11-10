@@ -11,7 +11,9 @@ import { createElement, objectImageReadout, registry, thickLensCardinals } from 
 import { paraxialCardinals } from '../sketch/js/object-imaging.js';
 import { applyObjectivePreset } from '../sketch/js/objective.js';
 import { objectImageReading, traceScene } from '../sketch/js/raytrace.js';
-import { parseSketch } from '../sketch/js/state.js';
+import { parseSketch, state } from '../sketch/js/state.js';
+import { initInspector, refreshMeasurements } from '../sketch/js/inspector.js';
+import { glassIndex } from '../sketch/js/glass.js';
 import { surfaceRowsOf, surfaceTableCardinals } from '../sketch/js/lensgroup.js';
 import { asphericLensCardinals } from '../sketch/js/asphere.js';
 
@@ -207,4 +209,61 @@ test('every shape is drawn, and imaged', () => {
   const cx = pts.reduce((a, p) => a + p.x, 0) / pts.length, cy = pts.reduce((a, p) => a + p.y, 0) / pts.length;
   near(cx, 450, 1e-6, 'point image distance');
   near(cy, 11, 1e-6, 'point image height');
+});
+
+test('a plate in a lens group, which has no focal length, moves the image the next lens makes', () => {
+  const object = createElement('objarrow', 0, 0);
+  object.params.raysFrom = 'principal';
+  const plate = createElement('lensgroup', 150, 0);
+  Object.assign(plate.params, { preset: 'custom', rows: [{ r: 0, thickness: 4, glass: 'nbk7' }, { r: 0, thickness: 4, glass: 'air' }] });
+  const result = traceScene([object, plate, lensAt(300, 100)], []);
+  const reading = objectImageReading(object.id);
+  // A plate t thick brings the object t(1 − 1/n) nearer, here 1.36 mm.
+  const n = glassIndex('nbk7', object.params.wavelength);
+  const s = 300 - 4 * (1 - 1 / n);
+  assert.equal(reading.stages.length, 1, 'the plate has no image line of its own');
+  near(reading.stages[0].distance, s * 100 / (s - 100), 1e-9, 'image after the lens');
+  near(reading.stages[0].m, -100 / (s - 100), 1e-9, 'magnification');
+  // The principal rays are still drawn, through the plate and the lens.
+  assert.equal(result.drawables.filter(d => d.type === 'path' && d.w === 1.4).length, 3);
+  // A plate alone images the object where it appears to be, upright.
+  const alone = createElement('objarrow', 0, 0);
+  traceScene([alone, plate], []);
+  const [own] = objectImageReading(alone.id).stages;
+  assert.equal(own.real, false);
+  near(own.m, 1, 1e-12, 'unmagnified');
+  // The group is centred on its position: the plate's last face is at 152.
+  near(own.distance, 4 * (1 - 1 / n) - 152, 1e-9, 'shifted towards the plate');
+});
+
+test('a tilted thin lens or mirror is aimed at whole, however far it is turned', () => {
+  for (const type of ['lens', 'mirror']) {
+    for (const rot of [30, 46, 60]) {
+      const object = createElement('objarrow', 0, 0);
+      object.params.nrays = 5;
+      const optic = type === 'lens' ? lensAt(300, 100) : createElement('mirror', 300, 0);
+      optic.rot = rot;
+      const paths = objectPaths(traceScene([object, optic], []), object);
+      assert.equal(paths.length, 5);
+      // The second point of every ray is on the optic.
+      const c = Math.cos(rot * Math.PI / 180), s = Math.sin(rot * Math.PI / 180);
+      for (const r of paths) near((r.pts[1].x - 300) * c + r.pts[1].y * s, 0, 1e-6, `${type} at ${rot}°`);
+    }
+  }
+});
+
+test('the Image readout follows a change to the Object’s position', () => {
+  const object = createElement('objarrow', 0, 0);
+  const lens = lensAt(300, 100);
+  const output = { dataset: { p: 'imageReadout' }, textContent: '' };
+  initInspector({ querySelectorAll: selector => (selector === 'output.readout[data-p]' ? [output] : []), querySelector: () => null });
+  Object.assign(state, { elements: [object, lens], beams: [], selection: { kind: 'element', id: object.id } });
+  traceScene(state.elements, []);
+  refreshMeasurements();
+  assert.match(output.textContent, /^Image 150 mm after .* m = −0\.50/);
+  // Moved in the inspector's X field (a position, not a param), retraced.
+  object.x = 100;
+  traceScene(state.elements, []);
+  refreshMeasurements();
+  assert.match(output.textContent, /^Image 200 mm after .* m = −1\.00/);
 });

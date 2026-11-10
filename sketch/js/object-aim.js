@@ -70,6 +70,14 @@ function axisDistance(segments) {
   return x > 0 ? x : Infinity;
 }
 
+// Whether a glass face segment runs along its body's axis (local x) rather
+// than across it.
+function isRim(s) {
+  const body = s.el;
+  const a = body ? toLocal(body, s.a.x, s.a.y) : s.a, b = body ? toLocal(body, s.b.x, s.b.y) : s.b;
+  return Math.abs(b.y - a.y) <= Math.abs(b.x - a.x);
+}
+
 // The optic the Object's axis meets first (all of its target segments) and
 // every opaque surface, in the Object's frame. `surfaces` are the tracer's
 // world-space surfaces. Null when the axis meets no optic.
@@ -81,11 +89,13 @@ export function objectAimScene(el, surfaces) {
     if (OPAQUE_KINDS.has(s.kind)) { obstacles.push(toObject(s)); continue; }
     if (!AIM_TARGET_KINDS.has(s.kind)) continue;
     const local = toObject(s);
-    // The clear aperture is the faces that lie across the axis. A glass
-    // body's rim runs along it: a ray that meets the rim first enters the
-    // glass sideways and is trapped or thrown off, so the rim stops the fan
-    // like an opaque edge.
-    if (Math.abs(local.b.y - local.a.y) <= Math.abs(local.b.x - local.a.x)) { obstacles.push(local); continue; }
+    // A glass body's rim stops the fan like an opaque edge: a ray that meets
+    // the rim first enters the glass sideways and is trapped or thrown off.
+    // Its faces lie across the body's own axis and its rim runs along it, so
+    // the test is made in the body's frame, where a tilted lens keeps its
+    // faces. A thin lens, a metalens or a mirror has no rim: every segment
+    // of it is optic, however it is turned.
+    if (s.kind === 'refract' && isRim(s)) { obstacles.push(local); continue; }
     // One optic is every target segment of one element.
     const owner = s.el || s;
     if (!optics.has(owner)) optics.set(owner, []);

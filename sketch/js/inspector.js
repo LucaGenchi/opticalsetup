@@ -635,7 +635,8 @@ export function refreshMeasurements() {
   }
   const sel = findSelected();
   // An element whose inspector readouts follow the animation clock -- a
-  // tuning OPO -- refreshes those fields in place, without a rebuild.
+  // tuning OPO -- or the last trace -- an Object's image -- refreshes those
+  // fields in place, without a rebuild.
   if (sel && registry[sel.type]?.liveReadouts) { refreshReadouts(sel); return; }
   if (!sel || (!registry[sel.type]?.readoutKind && sel.type !== 'display')) return;
   const current = panel.querySelector('[data-measurements]');
