@@ -267,3 +267,32 @@ test('the Image readout follows a change to the Object’s position', () => {
   refreshMeasurements();
   assert.match(output.textContent, /^Image 200 mm after .* m = −1\.00/);
 });
+
+test('principal rays through a plate before the lens still meet its centre and leave it parallel', () => {
+  const principal = result => result.drawables.filter(d => d.type === 'path' && d.w === 1.4);
+  const slope = (a, b) => (b.y - a.y) / (b.x - a.x);
+  for (const thickness of [4, 100]) {
+    for (const distance of ['finite', 'infinity']) {
+      const label = `${thickness} mm plate, object ${distance}`;
+      const object = createElement('objarrow', 0, 0);
+      Object.assign(object.params, { raysFrom: 'principal', distance, angularSize: 2 });
+      const plate = createElement('lensgroup', 150, 0);
+      Object.assign(plate.params, { preset: 'custom', rows: [{ r: 0, thickness, glass: 'nbk7' }, { r: 0, thickness: 4, glass: 'air' }] });
+      const rays = principal(traceScene([object, plate, lensAt(300, 100)], []));
+      assert.equal(rays.length, distance === 'finite' ? 3 : 2, label);
+      // [start, into the plate, out of it, at the lens, beyond].
+      const [viaCentre, viaFront] = rays.slice(-2).map(r => r.pts);
+      for (const pts of [viaCentre, viaFront]) {
+        assert.equal(pts.length, 5, label);
+        near(pts[3].x, 300, 1e-9, `${label}: at the lens`);
+      }
+      near(viaCentre[3].y, 0, 1e-6, `${label}: through the lens centre`);
+      near(slope(viaCentre[3], viaCentre[4]), slope(viaCentre[2], viaCentre[3]), 1e-9, `${label}: undeviated`);
+      near(slope(viaFront[3], viaFront[4]), 0, 1e-9, `${label}: parallel after the lens`);
+      if (distance === 'finite') {
+        const parallel = rays[0].pts;
+        for (let i = 1; i < parallel.length - 1; i++) near(slope(parallel[i - 1], parallel[i]), 0, 1e-12, `${label}: parallel ray`);
+      }
+    }
+  }
+});

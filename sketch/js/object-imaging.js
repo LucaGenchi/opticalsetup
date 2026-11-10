@@ -244,6 +244,22 @@ function lineMeet(o, d, s) {
   return add(o, mul(d, (dp.x * e.y - dp.y * e.x) / den));
 }
 
+// The root of g near x0 and x1, by the secant method; null when there is
+// none (g does not change with x) or it does not converge.
+function secantRoot(g, x0, x1, tolerance) {
+  let g0 = g(x0), g1 = g(x1);
+  for (let i = 0; i < 16; i++) {
+    if (!Number.isFinite(g0) || !Number.isFinite(g1)) return null;
+    if (Math.abs(g1) <= tolerance) return x1;
+    const slope = (g1 - g0) / (x1 - x0);
+    if (!(Math.abs(slope) > 1e-12)) return null;
+    [x0, g0] = [x1, g1];
+    x1 -= g1 / slope;
+    g1 = g(x1);
+  }
+  return Math.abs(g1) <= tolerance ? x1 : null;
+}
+
 // The textbook construction rays (world { p, d }) for an Object in front of
 // the first lens of its chain, from the Object's tip: parallel to the axis
 // (then through the back focal point); through the lens centre (undeviated;
@@ -254,24 +270,64 @@ function lineMeet(o, d, s) {
 // that bundle through the centre and through the front focal point, started
 // on the Object's own plane. `tip` is the tip in world coordinates and
 // `tipDir` its bundle's direction at infinity (null for a nearby Object).
+//
+// The construction is the first lens's: an afocal plate or telescope has no
+// focal points of its own. One that stands before that lens shifts or turns
+// the rays on their way to it, so they are then chosen through it: the ray
+// that meets the lens at its centre, and the one that leaves it parallel to
+// the axis (the parallel ray stays parallel through an afocal optic).
 export function principalRays(el, steps, { tip, tipDir = null }) {
-  // The construction is the first lens's: an afocal plate or telescope has
-  // no focal points to aim at, and the lines simply cross it.
   const first = steps?.find(step => !step.matrix);
   if (!first) return [];
   const u = rotPt(1, 0, el.rot || 0), p0 = { x: el.x, y: el.y };
   const centre = lineMeet(p0, u, first.H);
   if (!centre) return [];
   const front = sub(centre, mul(u, first.f));
+  // In air all the way to the lens: aimed straight at its centre and its
+  // front focal point.
+  let viaCentre, viaFront = null, parallel = null;
   if (tipDir) {
     const along = dot(tipDir, u);
     if (!(along > 1e-9)) return [];
     const onObjectPlane = q => sub(q, mul(tipDir, dot(sub(q, p0), u) / along));
-    return [{ p: onObjectPlane(centre), d: tipDir }, { p: onObjectPlane(front), d: tipDir }];
+    viaCentre = { p: onObjectPlane(centre), d: tipDir };
+    viaFront = { p: onObjectPlane(front), d: tipDir };
+  } else {
+    parallel = { p: tip, d: u };
+    viaCentre = { p: tip, d: norm(sub(centre, tip)) };
+    const ahead = dot(sub(front, tip), u);
+    if (ahead > 1e-6) viaFront = { p: tip, d: norm(sub(front, tip)) };
+    else if (ahead < -1e-6) viaFront = { p: tip, d: norm(sub(tip, front)) };
   }
-  const rays = [{ p: tip, d: u }, { p: tip, d: norm(sub(centre, tip)) }];
-  const ahead = dot(sub(front, tip), u);
-  if (ahead > 1e-6) rays.push({ p: tip, d: norm(sub(front, tip)) });
-  else if (ahead < -1e-6) rays.push({ p: tip, d: norm(sub(tip, front)) });
-  return rays;
+  const k = steps.indexOf(first);
+  if (k > 0) {
+    // Through the afocal optics before the lens. A nearby tip's rays differ
+    // in their slope against the axis; a bundle's in where they start on the
+    // Object's plane.
+    const w = perp(u);
+    const rayAt = tipDir
+      ? x => ({ p: add(p0, mul(w, x)), d: tipDir })
+      : x => ({ p: tip, d: norm(add(u, mul(w, x))) });
+    const paramOf = r => (tipDir ? dot(sub(r.p, p0), w) : dot(r.d, w) / dot(r.d, u));
+    const step0 = tipDir ? 1 : 1e-3;
+    const tH = norm(sub(first.H.b, first.H.a));
+    const throughTo = (x, upTo) => throughSteps([rayAt(x)], steps, upTo)[0];
+    const offCentre = x => {
+      const r = throughTo(x, k);
+      const hit = lineMeet(r.p, r.d, first.H);
+      return hit ? dot(sub(hit, centre), tH) : NaN;
+    };
+    const offParallel = x => {
+      const { d } = throughTo(x, k + 1);
+      return d.x * u.y - d.y * u.x;
+    };
+    const solve = (g, guess, tolerance) => {
+      const x0 = guess ? paramOf(guess) : 0;
+      const x = secantRoot(g, x0, x0 + step0, tolerance);
+      return x === null ? null : rayAt(x);
+    };
+    viaCentre = solve(offCentre, viaCentre, 1e-9);
+    viaFront = solve(offParallel, viaFront, 1e-12);
+  }
+  return [parallel, viaCentre, viaFront].filter(Boolean);
 }
