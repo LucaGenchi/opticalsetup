@@ -5,7 +5,7 @@ import { registry } from '../../sketch/js/elements.js';
 import { renderAll, zoomFit } from '../../sketch/js/canvas.js';
 import { renderInspector } from '../../sketch/js/inspector.js';
 import { buildShareURL } from '../../sketch/js/share.js';
-import { browserSceneHash, canonicalJSON, canonicalScene, offeredSetup, proposalMatches, takeLateResult } from './snapshot.js';
+import { browserSceneHash, canonicalJSON, canonicalScene, offeredSetup, proposalMatches, resultData } from './snapshot.js';
 // Native autosave is origin-wide. Keep this integration's scenes scoped by ID.
 configureAutosave({ enabled: false });
 const nativeBoot = new Promise(resolve => window.addEventListener('opticalsetup:booted', resolve, { once: true }));
@@ -13,7 +13,24 @@ const hosted = window.parent !== window, pending = new Map();
 let receiveInitialResult;
 const initialResult = new Promise(resolve => { receiveInitialResult = resolve; });
 let nextId = 1, setup, history = [], future = [], requests = [], applying = false, ready = false, busy = false, accepting = false, dragging = false, queued, channel, timer, contextKey = '', navigationGeneration = 0;
-let host = {}, contextFailures = 0, contextRetryAt = 0, provisional = false, liveAbort;
+let host = {}, contextFailures = 0, contextRetryAt = 0, waiting = false;
+// Until a hosted view has the setup it was opened for, the editor is not to be
+// worked in: there is no setup yet to keep the work in. The notice covers the
+// editor and everything else is made inert; this keeps the editor's own
+// keyboard shortcuts, the clipboard and dropped files out as well.
+for (const type of ['keydown', 'keyup', 'paste', 'cut', 'drop']) {
+  window.addEventListener(type, event => {
+    if (!waiting) return;
+    event.stopImmediatePropagation();
+    if (!type.startsWith('key')) event.preventDefault();
+  }, true);
+}
+function setWaiting(on) {
+  const notice = document.getElementById('lab-wait');
+  waiting = on; notice.hidden = !on;
+  for (const part of document.body.children) if (part !== notice) part.inert = on;
+  if (on) notice.querySelector('button').focus({ preventScroll: true });
+}
 // Hash the scene in the form the service hashes it. A state the editor can
 // hold but not load (a fiber dragged onto a single point) stays raw, and the
 // service then answers with the editor's own reason.
@@ -81,20 +98,6 @@ function take(id, fresh) {
   if (!view) throw new Error('Invalid initial snapshot');
   ({ setup, history, future, requests } = view); render(setup.scene, true);
 }
-// Other views of the same setup in this browser follow each other through a channel named after it.
-function openChannel() {
-  try {
-    channel?.close();
-    channel = new BroadcastChannel(key(setup.id));
-    channel.onmessage = async event => {
-      if (dragging || busy) return;
-      const data = event.data;
-      if (data?.setup?.id !== setup.id || data.setup.revision <= setup.revision || data.setup.hash !== await browserSceneHash(data.setup.scene)) return;
-      if (canonicalJSON(nativeScene()) !== canonicalJSON(setup.scene)) { status('Another view changed · Local edit kept', true); return; }
-      ({ setup, history, future, requests } = data); render(setup.scene); persist(false);
-    };
-  } catch { /* isolated host storage may not support browser channels */ }
-}
 async function accept(data) {
   if (!data?.setup?.scene) return;
   const box = document.getElementById('lab-sync'); if (box) box.dataset.lastChatAction = data.action || 'open_setup';
@@ -107,21 +110,7 @@ async function accept(data) {
   accepting = true;
   try {
   await settleManual();
-  if (data.setup.id !== setup.id) {
-    // The result this view was opened for may arrive after the view has started on an empty setup of its own.
-    const placeholder = setup.id;
-    const outcome = await takeLateResult(data, {
-      view: () => ({ provisional, setup, history, future, dragging }),
-      validate: offeredSetup, settle: settleManual,
-      replace: fresh => { take(data.setup.id, fresh); provisional = false; },
-    });
-    if (outcome === 'wait') { queued = data; return; }
-    if (outcome === 'refuse') { status('Chat edit targets another local setup · Current setup kept', true); return; }
-    try { localStorage.removeItem(key(placeholder)); } catch { /* storage may be unavailable */ }
-    // Storage, the channel between views and the live channel now belong to the setup just taken.
-    openChannel(); liveAbort?.abort();
-    if (!data.action || data.setup.revision <= setup.revision) { persist(); return; }
-  }
+  if (data.setup.id !== setup.id) { status('Chat edit targets another local setup · Current setup kept', true); return; }
   if (!data.action) return;
   if (requests.includes(data.clientRequestId)) return;
   if (!proposalMatches(setup, data)) { status('Chat edit was based on an older scene · Ask again using the current setup', true); contextKey = ''; context(); return; }
@@ -149,13 +138,13 @@ function drainQueued() {
 }
 async function connectLive() {
   if (!hosted) return;
+  if (!setup.channel) setup.channel = [...crypto.getRandomValues(new Uint8Array(32))].map(x => x.toString(16).padStart(2, '0')).join('');
+  persist();
   let delay = 1000;
   while (ready) {
-    const box = document.getElementById('lab-sync'), connection = liveAbort = new AbortController();
-    // The channel belongs to the setup, so a view that takes another setup connects again for that one.
-    if (!setup.channel) { setup.channel = [...crypto.getRandomValues(new Uint8Array(32))].map(x => x.toString(16).padStart(2, '0')).join(''); persist(); }
+    const box = document.getElementById('lab-sync');
     try {
-      const response = await fetch(eventsURL, { method: 'POST', credentials: 'omit', referrerPolicy: 'no-referrer', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ channel: setup.channel }), signal: connection.signal });
+      const response = await fetch(eventsURL, { method: 'POST', credentials: 'omit', referrerPolicy: 'no-referrer', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ channel: setup.channel }) });
       if (!response.ok || !response.body) throw new Error('Live chat delivery unavailable');
       const reader = response.body.getReader(), decoder = new TextDecoder(); let buffer = '';
       box.dataset.delivery = 'connected'; delay = 1000;
@@ -174,7 +163,6 @@ async function connectLive() {
       } finally { await reader.cancel(); }
     } catch { /* browser state is retained through transient connection failures */ }
     box.dataset.delivery = 'reconnecting';
-    if (connection.signal.aborted) { delay = 1000; continue; }
     // A refused connection (limit reached, origin not allowed) is retried ever more slowly.
     await new Promise(resolve => setTimeout(resolve, delay)); delay = Math.min(delay * 2, 30000);
   }
@@ -186,7 +174,12 @@ window.addEventListener('message', event => {
   if (message.method === undefined && message.id !== undefined && pending.has(message.id)) {
     const call = pending.get(message.id); pending.delete(message.id); clearTimeout(call.timeout);
     message.error ? call.reject(new Error(message.error.message)) : call.resolve(message.result);
-  } else if (message.method === 'ui/notifications/tool-result') accept(message.params?.structuredContent).catch(() => status('Could not apply chat edit · Local setup kept', true));
+  } else if (message.method === 'ui/notifications/tool-result') {
+    const data = resultData(message.params);
+    // A call that failed gives the waiting view no setup: it stops waiting.
+    if (!data?.setup?.scene) receiveInitialResult(null);
+    accept(data).catch(() => status('Could not apply chat edit · Local setup kept', true));
+  } else if (message.method === 'ui/notifications/tool-cancelled') receiveInitialResult(null);
   else if (message.method === 'ui/notifications/host-context-changed' && message.params?.containerDimensions) reportSize(message.params.containerDimensions);
   else if (message.id !== undefined && ['ui/resource-teardown', 'ping'].includes(message.method)) window.parent.postMessage({ jsonrpc: '2.0', id: message.id, result: {} }, '*');
 });
@@ -282,6 +275,12 @@ async function updateLink() {
   } catch { const a = document.getElementById('official-editor'); if (a) { a.href = 'https://opticalsetup.com/sketch/'; a.textContent = 'Visit OpticalSetup · Save JSON to transfer this large setup'; } }
 }
 window.addEventListener('DOMContentLoaded', async () => {
+  const waitNotice = document.createElement('div');
+  waitNotice.id = 'lab-wait'; waitNotice.hidden = true; waitNotice.setAttribute('role', 'status');
+  waitNotice.innerHTML = '<p>Waiting for the chat to finish…</p><button type="button" id="lab-start-empty">Start with an empty setup instead</button>';
+  document.body.append(waitNotice);
+  waitNotice.querySelector('button').addEventListener('click', () => receiveInitialResult(null));
+  if (hosted) setWaiting(true);
   const openDialog = document.createElement('dialog');
   openDialog.id = 'lab-open-json';
   openDialog.innerHTML = '<form><h2>Open a setup</h2><label for="lab-json-input">Paste your saved OpticalSetup JSON</label><textarea id="lab-json-input" maxlength="750000" spellcheck="false" required></textarea><p id="lab-json-error" role="alert"></p><div><button type="button" id="lab-json-cancel">Cancel</button><button type="submit">Open JSON</button></div></form>';
@@ -339,25 +338,35 @@ window.addEventListener('DOMContentLoaded', async () => {
       window.parent.postMessage({ jsonrpc: '2.0', method: 'ui/notifications/initialized', params: {} }, '*');
       reportSize(host.hostContext?.containerDimensions);
     }
-    // A host can deliver the initial tool result after the handshake response.
-    const incoming = queued || window.openai?.toolOutput || (hosted && await Promise.race([
-      initialResult,
-      new Promise(resolve => setTimeout(resolve, 1200)),
-    ]));
+    // A hosted view is opened for a tool call, and its setup is that call's result. It waits for
+    // the result however long the call takes: a view that started on a setup of its own after a
+    // delay would be on the wrong one when the result came. It stops waiting when the host
+    // reports the call cancelled or failed, or when the user asks for an empty setup.
+    let incoming = queued || window.openai?.toolOutput;
+    if (!incoming && hosted) incoming = await initialResult;
     if (incoming?.setup) take(incoming.setup.id, await offeredSetup(incoming));
     else {
       // Standalone workbench starts with its own local copy, separate from ChatGPT views.
       const id = hosted ? crypto.randomUUID() : 'standalone', local = stored(id);
       if (local) { ({ setup, history, future, requests } = local); render(setup.scene, true); }
       else { const scene = { app: 'optics2d', version: 1, elements: [], beams: [] }; setup = { id, revision: 0, scene, hash: await browserSceneHash(scene) }; render(scene); }
-      // No result came in time: a hosted view may still be given the one it was opened for.
-      provisional = hosted;
     }
-    openChannel();
+    try {
+      channel = new BroadcastChannel(key(setup.id));
+      channel.onmessage = async event => {
+        const data = event.data;
+        if (data?.setup?.id !== setup.id || data.setup.hash !== await browserSceneHash(data.setup.scene)) return;
+        // Decided after the hash: nothing this view did meanwhile is replaced by a message that is by then older.
+        if (dragging || busy || data.setup.revision <= setup.revision) return;
+        if (canonicalJSON(nativeScene()) !== canonicalJSON(setup.scene)) { status('Another view changed · Local edit kept', true); return; }
+        ({ setup, history, future, requests } = data); render(setup.scene); persist(false);
+      };
+    } catch { /* isolated host storage may not support browser channels */ }
+    setWaiting(false);
     ready = true;
     // A copy stored before scenes were hashed in their loaded form is brought to it now.
     await settleManual();
     if (incoming?.action && incoming.setup.revision > setup.revision) await accept(incoming);
     persist(); setInterval(context, 500); connectLive();
-  } catch (error) { status('Local editor · ' + error.message + ' · Save JSON for a backup', true); }
+  } catch (error) { setWaiting(false); status('Local editor · ' + error.message + ' · Save JSON for a backup', true); }
 });

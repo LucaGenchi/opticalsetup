@@ -14,6 +14,13 @@
 #lab-json-error { color: #d88b31; min-height: 20px; }
 .brandblock .version { display: none; }
 
+/* Shown while a view waits for the setup it was opened for. It covers the editor at once and appears after a moment, so a result that is already on its way causes no flash. */
+#lab-wait { position: fixed; inset: 0; z-index: 200; display: grid; place-content: center; justify-items: center; gap: 12px; background: color-mix(in srgb, var(--bg, #fff) 82%, transparent); color: var(--text, #243247); font: 14px system-ui; animation: lab-wait-in 0.2s 0.5s both; }
+#lab-wait[hidden] { display: none; }
+#lab-wait p { margin: 0; }
+#lab-wait button { padding: 6px 12px; }
+@keyframes lab-wait-in { from { opacity: 0; } to { opacity: 1; } }
+
 #official-editor { margin-left: 12px; color: var(--text, #243247); text-underline-offset: 3px; }
 #lab-sync { display: flex; flex-wrap: wrap; gap: 4px; }
 @media (max-width: 899px) {
