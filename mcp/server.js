@@ -133,11 +133,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   }
   const { origin, application, server } = running;
   console.log(`OpticalSetup stateless MCP ${stdio ? 'on standard input and output, view files' : 'listening'} at ${origin}/mcp; no scene database; PNG tool ${screenshots ? 'available' : 'not offered (needs Linux tmpfs and FFmpeg)'}`);
-  const shutdown = grace => {
+  for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, () => {
     application.close(); server.close(() => process.exit(0));
-    setTimeout(() => { server.closeAllConnections(); process.exit(0); }, grace).unref();
-  };
-  for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, () => shutdown(5000));
-  // The client ends a stdio service by closing its input: leave promptly.
-  if (stdio) serveStdio(application.rpc).then(() => shutdown(500));
+    setTimeout(() => { server.closeAllConnections(); process.exit(0); }, 5000).unref();
+  });
+  // The client ends a stdio service by closing its input. By then every answer has been written out;
+  // the listener and its connections are closed and the process ends by itself, which cannot cut
+  // anything short. The timer is only for a handle that would otherwise keep it alive.
+  if (stdio) serveStdio(application.rpc).then(() => {
+    application.close(); server.close(); server.closeAllConnections();
+    setTimeout(() => process.exit(0), 2000).unref();
+  });
 }

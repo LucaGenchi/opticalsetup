@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { PassThrough } from 'node:stream';
+import { PassThrough, Writable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { serveStdio } from '../../mcp/stdio.js';
 import { createApplication } from '../../mcp/server.js';
@@ -70,6 +70,39 @@ test('a request that throws is still answered once, and what is being answered i
   assert.deepEqual(messages.find(message => message.id === 'b').result, { done: true });
   assert.equal(messages.length, 2);
   assert.doesNotMatch(written.join(''), /private detail/);
+});
+
+test('answers still being written when the input closes are written out before the service is done', async () => {
+  const application = createApplication({ origin: 'http://127.0.0.1:5188', screenshots: false });
+  const input = new PassThrough();
+  // A client that reads slowly: each small piece is taken only after a delay.
+  let text = '', outstanding = 0;
+  const output = new Writable({ highWaterMark: 64, write(chunk, encoding, taken) { outstanding++; setTimeout(() => { text += chunk; outstanding--; taken(); }, 2); } });
+  const served = serveStdio(application.rpc, { input, output });
+  const count = 6;
+  for (let id = 1; id <= count; id++) input.write(line({ jsonrpc: '2.0', id, method: 'tools/call', params: { name: 'search_components', arguments: { query: 'lens' } } }));
+  input.write('not JSON\n');
+  input.end();
+  await served;
+  assert.equal(outstanding, 0, 'nothing is still on its way out');
+  assert.equal(output.writableLength, 0);
+  assert.ok(text.endsWith('\n'), 'the last answer is whole');
+  const messages = text.trimEnd().split('\n').map(JSON.parse);
+  assert.deepEqual(messages.map(message => message.id).filter(Number.isInteger).sort((a, b) => a - b), Array.from({ length: count }, (_, i) => i + 1));
+  assert.equal(messages.filter(message => message.id === null && message.error.code === -32700).length, 1);
+  for (const message of messages.filter(m => Number.isInteger(m.id))) assert.ok(message.result.structuredContent.total > 0);
+  application.close();
+});
+
+test('a client that stops reading does not keep the service from finishing', async () => {
+  const input = new PassThrough();
+  const output = new Writable({ write(chunk, encoding, taken) { taken(new Error('EPIPE')); } });
+  const served = serveStdio(async body => ({ jsonrpc: '2.0', id: body.id, result: {} }), { input, output });
+  input.write(line({ jsonrpc: '2.0', id: 1, method: 'ping' }));
+  input.write(line({ jsonrpc: '2.0', id: 2, method: 'ping' }));
+  input.write('not JSON\n');
+  input.end();
+  await served;
 });
 
 // The whole service, started the way Claude Desktop starts it.
@@ -151,4 +184,24 @@ test('a second copy takes another port instead of failing to start', async () =>
     for (const origin of [firstOrigin, secondOrigin]) assert.equal((await fetch(origin + '/mcp/health')).status, 200);
     assert.deepEqual([await first.end(), await second.end()], [0, 0]);
   } finally { first.child.kill('SIGKILL'); second?.child.kill('SIGKILL'); }
+});
+
+test('a burst of large answers followed at once by the end of the input arrives whole', async () => {
+  const child = spawn(process.execPath, [SERVER, '--stdio'], { env: { PATH: process.env.PATH }, stdio: ['pipe', 'pipe', 'ignore'] });
+  try {
+    let text = '';
+    // Read slowly, so that the answers wait in the service while the input is already closed.
+    child.stdout.on('data', chunk => { text += chunk; child.stdout.pause(); setTimeout(() => child.stdout.resume(), 3); });
+    const count = 12;
+    for (let id = 1; id <= count; id++) child.stdin.write(line({ jsonrpc: '2.0', id, method: 'tools/list' }));
+    child.stdin.end();
+    const timer = setTimeout(() => child.kill('SIGKILL'), 20000);
+    const [code] = await once(child, 'close'); clearTimeout(timer);
+    assert.equal(code, 0);
+    assert.ok(text.endsWith('\n'), 'the last answer is not cut');
+    const answers = text.trimEnd().split('\n').map(JSON.parse);
+    assert.deepEqual(answers.map(answer => answer.id).sort((a, b) => a - b), Array.from({ length: count }, (_, i) => i + 1));
+    for (const answer of answers) assert.ok(answer.result.tools.length >= 14);
+    assert.ok(text.length > 400000, 'far more than a pipe holds at once');
+  } finally { child.kill('SIGKILL'); }
 });
