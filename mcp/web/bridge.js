@@ -5,7 +5,7 @@ import { registry } from '../../sketch/js/elements.js';
 import { renderAll, zoomFit } from '../../sketch/js/canvas.js';
 import { renderInspector } from '../../sketch/js/inspector.js';
 import { buildShareURL } from '../../sketch/js/share.js';
-import { browserSceneHash, canonicalJSON, canonicalScene, proposalMatches } from './snapshot.js';
+import { browserSceneHash, canonicalJSON, canonicalScene, mayAdopt, proposalMatches } from './snapshot.js';
 // Native autosave is origin-wide. Keep this integration's scenes scoped by ID.
 configureAutosave({ enabled: false });
 const nativeBoot = new Promise(resolve => window.addEventListener('opticalsetup:booted', resolve, { once: true }));
@@ -13,7 +13,7 @@ const hosted = window.parent !== window, pending = new Map();
 let receiveInitialResult;
 const initialResult = new Promise(resolve => { receiveInitialResult = resolve; });
 let nextId = 1, setup, history = [], future = [], requests = [], applying = false, ready = false, busy = false, accepting = false, dragging = false, queued, channel, timer, contextKey = '', navigationGeneration = 0;
-let host = {}, contextFailures = 0, contextRetryAt = 0;
+let host = {}, contextFailures = 0, contextRetryAt = 0, provisional = false, liveAbort;
 // Hash the scene in the form the service hashes it. A state the editor can
 // hold but not load (a fiber dragged onto a single point) stays raw, and the
 // service then answers with the editor's own reason.
@@ -74,6 +74,31 @@ function render(scene, fit = false) {
   renderAll(); renderInspector(); if (fit && (state.elements.length || state.beams.length)) zoomFit();
   applying = false; controls();
 }
+// Take the setup a result names as this view's own: the copy this browser holds of it, or the result itself.
+async function adopt(incoming) {
+  const local = stored(incoming.setup.id);
+  if (local) ({ setup, history, future, requests } = local);
+  else {
+    const next = copy(incoming.setup);
+    if (next.hash !== await browserSceneHash(next.scene)) throw new Error('Invalid initial snapshot');
+    setup = next; history = []; future = []; requests = [];
+  }
+  render(setup.scene, true);
+}
+// Other views of the same setup in this browser follow each other through a channel named after it.
+function openChannel() {
+  try {
+    channel?.close();
+    channel = new BroadcastChannel(key(setup.id));
+    channel.onmessage = async event => {
+      if (dragging || busy) return;
+      const data = event.data;
+      if (data?.setup?.id !== setup.id || data.setup.revision <= setup.revision || data.setup.hash !== await browserSceneHash(data.setup.scene)) return;
+      if (canonicalJSON(nativeScene()) !== canonicalJSON(setup.scene)) { status('Another view changed · Local edit kept', true); return; }
+      ({ setup, history, future, requests } = data); render(setup.scene); persist(false);
+    };
+  } catch { /* isolated host storage may not support browser channels */ }
+}
 async function accept(data) {
   if (!data?.setup?.scene) return;
   const box = document.getElementById('lab-sync'); if (box) box.dataset.lastChatAction = data.action || 'open_setup';
@@ -86,7 +111,16 @@ async function accept(data) {
   accepting = true;
   try {
   await settleManual();
-  if (data.setup.id !== setup.id) { status('Chat edit targets another local setup · Current setup kept', true); return; }
+  if (data.setup.id !== setup.id) {
+    if (!mayAdopt({ provisional, setup, history, future }, data)) { status('Chat edit targets another local setup · Current setup kept', true); return; }
+    // The result this view was opened for arrived after the view had started on an empty setup of its own.
+    const placeholder = setup.id;
+    await adopt(data); provisional = false;
+    try { localStorage.removeItem(key(placeholder)); } catch { /* storage may be unavailable */ }
+    // Storage, the channel between views and the live channel now belong to the setup just taken.
+    openChannel(); liveAbort?.abort();
+    if (!data.action || data.setup.revision <= setup.revision) { persist(); return; }
+  }
   if (!data.action) return;
   if (requests.includes(data.clientRequestId)) return;
   if (!proposalMatches(setup, data)) { status('Chat edit was based on an older scene · Ask again using the current setup', true); contextKey = ''; context(); return; }
@@ -114,13 +148,13 @@ function drainQueued() {
 }
 async function connectLive() {
   if (!hosted) return;
-  if (!setup.channel) setup.channel = [...crypto.getRandomValues(new Uint8Array(32))].map(x => x.toString(16).padStart(2, '0')).join('');
-  persist();
   let delay = 1000;
   while (ready) {
-    const box = document.getElementById('lab-sync');
+    const box = document.getElementById('lab-sync'), connection = liveAbort = new AbortController();
+    // The channel belongs to the setup, so a view that takes another setup connects again for that one.
+    if (!setup.channel) { setup.channel = [...crypto.getRandomValues(new Uint8Array(32))].map(x => x.toString(16).padStart(2, '0')).join(''); persist(); }
     try {
-      const response = await fetch(eventsURL, { method: 'POST', credentials: 'omit', referrerPolicy: 'no-referrer', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ channel: setup.channel }) });
+      const response = await fetch(eventsURL, { method: 'POST', credentials: 'omit', referrerPolicy: 'no-referrer', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ channel: setup.channel }), signal: connection.signal });
       if (!response.ok || !response.body) throw new Error('Live chat delivery unavailable');
       const reader = response.body.getReader(), decoder = new TextDecoder(); let buffer = '';
       box.dataset.delivery = 'connected'; delay = 1000;
@@ -139,6 +173,7 @@ async function connectLive() {
       } finally { await reader.cancel(); }
     } catch { /* browser state is retained through transient connection failures */ }
     box.dataset.delivery = 'reconnecting';
+    if (connection.signal.aborted) { delay = 1000; continue; }
     // A refused connection (limit reached, origin not allowed) is retried ever more slowly.
     await new Promise(resolve => setTimeout(resolve, delay)); delay = Math.min(delay * 2, 30000);
   }
@@ -308,30 +343,16 @@ window.addEventListener('DOMContentLoaded', async () => {
       initialResult,
       new Promise(resolve => setTimeout(resolve, 1200)),
     ]));
-    if (incoming?.setup) {
-      const local = stored(incoming.setup.id);
-      if (local) { ({ setup, history, future, requests } = local); render(setup.scene, true); }
-      else {
-        setup = copy(incoming.setup);
-        if (setup.hash !== await browserSceneHash(setup.scene)) throw new Error('Invalid initial snapshot');
-        render(setup.scene, true);
-      }
-    } else {
+    if (incoming?.setup) await adopt(incoming);
+    else {
       // Standalone workbench starts with its own local copy, separate from ChatGPT views.
       const id = hosted ? crypto.randomUUID() : 'standalone', local = stored(id);
       if (local) { ({ setup, history, future, requests } = local); render(setup.scene, true); }
       else { const scene = { app: 'optics2d', version: 1, elements: [], beams: [] }; setup = { id, revision: 0, scene, hash: await browserSceneHash(scene) }; render(scene); }
+      // No result came in time: a hosted view may still be given the one it was opened for.
+      provisional = hosted;
     }
-    try {
-      channel = new BroadcastChannel(key(setup.id));
-      channel.onmessage = async event => {
-        if (dragging || busy) return;
-        const data = event.data;
-        if (data?.setup?.id !== setup.id || data.setup.revision <= setup.revision || data.setup.hash !== await browserSceneHash(data.setup.scene)) return;
-        if (canonicalJSON(nativeScene()) !== canonicalJSON(setup.scene)) { status('Another view changed · Local edit kept', true); return; }
-        ({ setup, history, future, requests } = data); render(setup.scene); persist(false);
-      };
-    } catch { /* isolated host storage may not support browser channels */ }
+    openChannel();
     ready = true;
     // A copy stored before scenes were hashed in their loaded form is brought to it now.
     await settleManual();

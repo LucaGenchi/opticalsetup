@@ -13,7 +13,7 @@ import { createApplication } from '../../mcp/server.js';
 import { buildWidget, widgetAsset } from '../../mcp/widget.js';
 import { registry, createElement } from '../../mcp/registry.js';
 import { inspectDocument, emptyDocument } from '../../mcp/scene-api.js';
-import { browserSceneHash, canonicalScene, proposalMatches } from '../../mcp/web/snapshot.js';
+import { browserSceneHash, canonicalScene, mayAdopt, proposalMatches } from '../../mcp/web/snapshot.js';
 import { createDrawnPath } from '../../sketch/js/path-types.js';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -66,6 +66,23 @@ test('a fiber drawn by hand and a glass just placed are accepted with the hash t
     const refused = await call('get_setup', { setup: { id: 'view', revision: 4, scene: raw, hash: await browserSceneHash(raw) } });
     assert.equal(refused.structuredContent.error.code, 'SNAPSHOT_MISMATCH', label);
   }
+});
+
+test('a view that started empty before its tool finished takes the late result, unless something was done in it', async () => {
+  const empty = { app: 'optics2d', version: 1, elements: [], beams: [] };
+  const placeholder = { provisional: true, setup: { id: 'placeholder', revision: 0, scene: empty }, history: [], future: [] };
+  const opened = (await call('open_setup')).structuredContent;
+  const late = (await call('add_components', { setup: opened.setup, clientRequestId: 'late', components: [{ type: 'lens', x: 0, y: 0 }] })).structuredContent;
+  assert.notEqual(late.setup.id, placeholder.setup.id);
+  assert.equal(mayAdopt(placeholder, opened), true, 'the setup the view was opened for');
+  assert.equal(mayAdopt(placeholder, late), true, 'an edit of that setup');
+  // Work done in the placeholder is not thrown away for a result that arrives afterwards.
+  assert.equal(mayAdopt({ ...placeholder, setup: { ...placeholder.setup, revision: 1 }, history: [empty] }, late), false);
+  assert.equal(mayAdopt({ ...placeholder, future: [empty] }, late), false);
+  // A view that was given its setup, or runs outside a chat, never changes setup.
+  assert.equal(mayAdopt({ ...placeholder, provisional: false }, late), false);
+  assert.equal(mayAdopt(placeholder, { setup: { ...late.setup, id: 'placeholder' } }), false, 'its own setup is not another one');
+  for (const nothing of [undefined, null, {}, { setup: {} }]) assert.equal(mayAdopt(placeholder, nothing), false);
 });
 
 test('a handshake client is answered in the revision it asked for, an unknown one in the newest handshake revision', async () => {

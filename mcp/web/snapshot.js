@@ -18,6 +18,13 @@ export async function browserSceneHash(scene) {
   const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalJSON(scene)));
   return Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, '0')).join('');
 }
+// A view opened before its tool has finished starts on an empty setup of its
+// own. Until something is done in it, a result that names another setup is the
+// one the view was opened for, and the view takes it instead of refusing it.
+export function mayAdopt(view, incoming) {
+  return Boolean(view.provisional && incoming?.setup?.id && incoming.setup.id !== view.setup.id
+    && view.setup.revision === 0 && !view.history.length && !view.future.length);
+}
 export function proposalMatches(current, proposal) {
   return proposal.baseRevision === current.revision && proposal.baseHash === current.hash;
 }
