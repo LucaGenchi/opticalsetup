@@ -80,10 +80,16 @@ export function objectAimScene(el, surfaces) {
     if (!s?.a || !s?.b || s.el === el) continue;
     if (OPAQUE_KINDS.has(s.kind)) { obstacles.push(toObject(s)); continue; }
     if (!AIM_TARGET_KINDS.has(s.kind)) continue;
+    const local = toObject(s);
+    // The clear aperture is the faces that lie across the axis. A glass
+    // body's rim runs along it: a ray that meets the rim first enters the
+    // glass sideways and is trapped or thrown off, so the rim stops the fan
+    // like an opaque edge.
+    if (Math.abs(local.b.y - local.a.y) <= Math.abs(local.b.x - local.a.x)) { obstacles.push(local); continue; }
     // One optic is every target segment of one element.
     const owner = s.el || s;
     if (!optics.has(owner)) optics.set(owner, []);
-    optics.get(owner).push(toObject(s));
+    optics.get(owner).push(local);
   }
   let targets = null, nearest = Infinity;
   for (const segments of optics.values()) {
@@ -94,43 +100,39 @@ export function objectAimScene(el, surfaces) {
   return targets ? { targets, obstacles } : null;
 }
 
-// The widest cone of directions from `origin` (Object frame) that reaches the
-// scene's target unobstructed, as angles { lo, hi } in radians from the
-// Object's axis (positive = clockwise on screen). Null when the target is
-// not in front of the origin or nothing gets through.
-export function aimedFanSpan(origin, scene) {
-  const targets = scene?.targets || (scene?.target ? [scene.target] : []);
-  if (!targets.length) return null;
-  const obstacles = scene.obstacles || [];
-  const angle = p => Math.atan2(p.y - origin.y, p.x - origin.x);
-  const ends = targets.flatMap(s => [angle(s.a), angle(s.b)]);
-  if (ends.some(a => !(Math.abs(a) < Math.PI / 2))) return null;
+// The widest run of rays, among a one-parameter family, that reaches the
+// target unobstructed. `rayAt(x)` is the ray for parameter x; `paramOf(p)`
+// is the parameter of the ray through point p. Returns { lo, hi } with the
+// edge inset, or null.
+function widestOpenRun(targets, obstacles, rayAt, paramOf) {
+  const ends = targets.flatMap(s => [paramOf(s.a), paramOf(s.b)]);
+  if (ends.some(x => !Number.isFinite(x))) return null;
   const lo = Math.min(...ends), hi = Math.max(...ends);
   if (!(hi - lo > 1e-9)) return null;
 
-  // What a direction meets first: the optic ('reach'), something opaque
+  // What a ray meets first: the optic ('reach'), something opaque
   // ('block'), or neither ('miss': a hole in the optic, or a gap between it
-  // and the edge of the cone).
-  const meets = a => {
-    const d = { x: Math.cos(a), y: Math.sin(a) };
-    const t = nearestHit(origin, d, targets), tObs = nearestHit(origin, d, obstacles);
+  // and the edge of the run).
+  const meets = x => {
+    const { o, d } = rayAt(x);
+    const t = nearestHit(o, d, targets), tObs = nearestHit(o, d, obstacles);
     if (tObs < t || (Number.isFinite(tObs) && !Number.isFinite(t))) return 'block';
     return Number.isFinite(t) ? 'reach' : 'miss';
   };
 
-  // Every angle where the answer can change, inside the target's own span.
+  // Every parameter where the answer can change, inside the target's span.
   const cuts = [...ends];
   for (const o of obstacles) {
-    cuts.push(angle(o.a), angle(o.b));
+    cuts.push(paramOf(o.a), paramOf(o.b));
     for (const s of targets) {
       const x = crossing(o.a, o.b, s.a, s.b);
-      if (x) cuts.push(angle(x));
+      if (x) cuts.push(paramOf(x));
     }
   }
-  const sorted = [...new Set(cuts.filter(a => a >= lo && a <= hi))].sort((a, b) => a - b);
+  const sorted = [...new Set(cuts.filter(x => x >= lo && x <= hi))].sort((a, b) => a - b);
 
-  // Runs of directions not blocked by anything opaque, each from its first
-  // to its last direction that reaches the optic; the widest one wins.
+  // Runs not blocked by anything opaque, each from its first to its last ray
+  // that reaches the optic; the widest one wins.
   let best = null, run = null;
   for (let i = 0; i + 1 < sorted.length; i++) {
     const a0 = sorted[i], a1 = sorted[i + 1];
@@ -144,4 +146,33 @@ export function aimedFanSpan(origin, scene) {
   if (!best) return null;
   const inset = (best.hi - best.lo) * EDGE_INSET;
   return { lo: best.lo + inset, hi: best.hi - inset };
+}
+
+const sceneTargets = scene => scene?.targets || (scene?.target ? [scene.target] : []);
+
+// The widest cone of directions from `origin` (Object frame) that reaches the
+// scene's target unobstructed, as angles { lo, hi } in radians from the
+// Object's axis (positive = clockwise on screen). Null when the target is
+// not in front of the origin or nothing gets through.
+export function aimedFanSpan(origin, scene) {
+  const targets = sceneTargets(scene);
+  if (!targets.length) return null;
+  const angle = p => Math.atan2(p.y - origin.y, p.x - origin.x);
+  if (targets.some(s => !(Math.abs(angle(s.a)) < Math.PI / 2 && Math.abs(angle(s.b)) < Math.PI / 2))) return null;
+  return widestOpenRun(targets, scene.obstacles || [],
+    a => ({ o: origin, d: { x: Math.cos(a), y: Math.sin(a) } }), angle);
+}
+
+// For an Object at infinity: the widest parallel bundle along `dir` (Object
+// frame, pointing forward) that reaches the target unobstructed. Its rays
+// start on the Object's own plane (local x = 0); the result is the range of
+// their starting heights { lo, hi } (local y). Null when the target is not
+// in front or nothing gets through.
+export function aimedBundleSpan(dir, scene) {
+  const targets = sceneTargets(scene);
+  if (!targets.length || !(dir.x > 1e-9)) return null;
+  if (targets.some(s => !(s.a.x > 0 && s.b.x > 0))) return null;
+  const slope = dir.y / dir.x;
+  return widestOpenRun(targets, scene.obstacles || [],
+    y => ({ o: { x: 0, y }, d: dir }), p => p.y - p.x * slope);
 }
