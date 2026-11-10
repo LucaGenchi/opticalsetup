@@ -10,7 +10,7 @@ import { NONLINEAR_ORDER, MAX_SPOTS, MIN_HALF_ANGLE, SPOT_SPACING_MM, bundleFocu
 import { POINT_SOURCE_CANVAS_THRESHOLD } from './point-source-rendering.js';
 
 import {
-  registry, OBJ_SHAPES, EPI_CAPABLE_KINDS as EPI_KINDS, MIXING_KINDS, phasePlateOpdFraction,
+  registry, OBJ_SHAPES, objectAnchorUnitY, objectEnds, EPI_CAPABLE_KINDS as EPI_KINDS, MIXING_KINDS, phasePlateOpdFraction,
   ISOTROPIC_KINDS, MODIFIER_KINDS, EMISSION_ORDER, EMISSION_OFFSET_NM, NONLINEAR_SIGNAL_KINDS,
   sumFrequencyWl, carsAntiStokesWl, ramanShifts, ramanStokesWl,
   drivingExcitationWl, channelNeedsExcitationProbe, specimenTypeOf,
@@ -8160,7 +8160,9 @@ export function traceScene(elements, beams = [], options = {}) {
     if (!def || !def.source) continue;
     const p = el.params;
     const baseColor = p.autoColor === false && p.color ? p.color : wavelengthToColor(p.wavelength);
-    const local = def.source(el);
+    // The scene's surfaces let a source aim at the optics in front of it (an
+    // Object's "fill the first optic" fan); every other source ignores them.
+    const local = def.source(el, { surfaces });
     // A ray's (wl, bw) stay the centroid/FWHM summary every part of the
     // tracer already reads; `spec` is the true shape — Gaussian for a
     // broadband laser line, flat for a supercontinuum — that wavelength-
@@ -8232,6 +8234,9 @@ export function traceScene(elements, beams = [], options = {}) {
         // A source's own light is what its pulse record describes.
         pulseDescribed: Boolean(pulse),
         objectives: [],
+        // A source can draw some of its rays in a colour of their own (an
+        // Object's base fan); the light itself is unchanged.
+        ...(r.color ? { color: r.color } : {}),
         evan: r.evan || false, evanLen: r.evanLen,
         captureLen: r.captureLen, captureMode: r.captureMode,
         medium: initialBody?.id || null, mediumMaterial: initialMaterial, ior: initialIor,
@@ -8420,6 +8425,13 @@ export function traceScene(elements, beams = [], options = {}) {
   // outgoing lines). This is correct even when the object sits off the
   // shared lens axis (tilted object planes / Scheimpflug) or exactly at a
   // focal plane, unlike a single local-axis paraxial chain.
+  //
+  // p0 is the object's anchor, which is on its axis whether the shape is
+  // centred on it or stands on it. The image is drawn from the anchor's
+  // image, with the shape placed on it as the object's shape is placed on
+  // the anchor (objectAnchorUnitY): for a standing object, p0 and tip0 are
+  // the true base and tip, and the drawn image tip is the tip's own image,
+  // where a fan from the tip comes together.
   for (const el of elements) {
     const def = registry[el.type];
     if (!def || !def.imaging || !el.params.showImage) continue;
@@ -8428,6 +8440,7 @@ export function traceScene(elements, beams = [], options = {}) {
     const v = rotPt(0, -1, el.rot || 0);      // object's "up" direction
     const p0 = { x: el.x, y: el.y };
     const h0 = pp.height;
+    const anchorY = objectAnchorUnitY(pp);
     const tip0 = add(p0, mul(v, h0));
 
     // lens surfaces crossed by the object's own axis ray, ordered by distance
@@ -8487,7 +8500,21 @@ export function traceScene(elements, beams = [], options = {}) {
     // redraw the object's shape at the image plane, scaled by |m| and
     // vertically flipped when m < 0
     const sh = OBJ_SHAPES[pp.shape] || OBJ_SHAPES.arrow;
-    const toWorldPt = (sx, sy) => add(add(imgBase, mul(u, sx * h0 * Math.abs(m))), mul(v, -sy * h0 * m));
+    let toWorldPt = (sx, sy) => add(add(imgBase, mul(u, sx * h0 * Math.abs(m))), mul(v, (anchorY - sy) * h0 * m));
+    // An Object that sends its fan from the tip or the base, or stands on its
+    // anchor, places the shape between the exact images of its two ends, so
+    // the drawn tip is where the tip's rays meet even when a lens is tilted
+    // against the Object (its image then leans, and the tip's image moves
+    // along the axis too, not only across it). Untilted, this is the same
+    // drawing as above. A centred Object with the fan from its anchor keeps
+    // the drawing it was saved with.
+    if (pp.anchor === 'base' || (pp.raysFrom && pp.raysFrom !== 'axis')) {
+      const { tipY, baseY } = objectEnds(pp);
+      const endImg = [imagePoint(add(p0, mul(v, -baseY))), imagePoint(add(p0, mul(v, -tipY)))];
+      if (!endImg[0] || !endImg[1]) continue;
+      const [imgB, imgT] = endImg;
+      toWorldPt = (sx, sy) => add(add(imgB, mul(sub(imgT, imgB), 0.5 - sy)), mul(u, sx * h0 * Math.abs(m)));
+    }
     for (const ln of sh.lines) {
       drawables.push({ type: 'path', pts: ln.map(q => toWorldPt(q[0], q[1])), color, w: 2.2, opacity: 0.85, dash: true });
     }

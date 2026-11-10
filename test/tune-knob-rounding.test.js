@@ -14,7 +14,7 @@ const { tuneDragValue } = await import('../sketch/js/canvas.js');
 // mode, is also checked in the states that show it or change its param.
 const VARIANTS = {
   ledsource: [{ ledPreset: 'custom' }],
-  objarrow: [{ raysMode: 'fan' }],
+  objarrow: [{ raysMode: 'fan', aim: 'ahead' }],
   slm: [{ zeroOrder: true }],
   metasurface: [{ zeroOrder: true }],
   eom: [{ modulate: true }],

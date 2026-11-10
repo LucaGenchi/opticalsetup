@@ -12,6 +12,7 @@ import { conicMirrorGeometry, conicMirrorSize, conicMirrorSVG, conicMirrorSurfac
 import { distToSegment, esc, formatSignal, rotPt, smoothPath, toWorld, wavelengthToColor, newScatterSeed } from './util.js';
 import { uid } from './util.js';
 import { emissionRayCount, ISOTROPIC_KINDS } from './emission.js';
+import { aimedFanSpan, objectAimScene } from './object-aim.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import {
@@ -950,11 +951,12 @@ const layersParam = { key: 'layers', label: 'Optical function', type: 'layers', 
 // object shapes for image-formation diagrams, in unit coords:
 // base at (0,0), tip at (0,-1); the traced image redraws the same shape
 // scaled by the magnification (negative m = inverted)
-// Normalized around y = 0 (the object's anchor, also the ray fan's origin):
-// a shape spanning the full "height" param extends ±0.5 of it either side,
-// so a 20mm-tall shape sits 10mm above and 10mm below the point that's
-// actually irradiating — both the live icon (svg() below) and the redrawn
-// image at the image plane (raytrace.js) read these same coordinates.
+// Normalized around y = 0: a shape spanning the full "height" param extends
+// ±0.5 of it either side. By default y = 0 is the object's anchor (and the
+// axis fan's origin), so a 20mm-tall shape sits 10mm above and 10mm below
+// it; an object anchored at its base stands on the anchor instead
+// (objectAnchorUnitY below). Both the live icon (svg() below) and the
+// redrawn image at the image plane (raytrace.js) read these coordinates.
 export const OBJ_SHAPES = {
   arrow: {
     lines: [[[0, 0.5], [0, -0.22]]],
@@ -974,6 +976,51 @@ export const OBJ_SHAPES = {
     ],
   },
 };
+
+// Where an Object's shape sits on its anchor, as the unit y (in OBJ_SHAPES
+// coordinates) that the anchor marks: 0 for a shape centred on it, 0.5 for a
+// shape standing on it (its base, y = 0.5, at the anchor). A shape point at
+// unit y is (objectAnchorUnitY(p) − y)·height above the anchor; the drawn
+// icon and the image the tracer draws both read this.
+export const objectAnchorUnitY = p => (p?.anchor === 'base' ? 0.5 : 0);
+
+// The Object's tip and base, as local y (y down) relative to its anchor.
+export function objectEnds(p) {
+  const h = p.height, k = objectAnchorUnitY(p);
+  return { tipY: -(k + 0.5) * h, baseY: -(k - 0.5) * h };
+}
+
+// The drawing colour of the second fan (from the base) when an Object sends
+// rays from its tip and its base. It only tells the two fans apart: the light
+// keeps the Object's wavelength, so a dispersive optic treats both alike.
+// Warm light gets a blue partner, green gets magenta, blue gets orange.
+export function objectBaseFanColor(p) {
+  const fixed = p.autoColor === false && typeof p.color === 'string' ? p.color : null;
+  let hue = null;
+  if (fixed) {
+    const hex = fixed.replace('#', '');
+    const full = hex.length === 3 ? hex.split('').map(c => c + c).join('') : hex;
+    if (/^[0-9a-f]{6}$/i.test(full)) {
+      const [r, g, b] = [0, 2, 4].map(i => parseInt(full.slice(i, i + 2), 16) / 255);
+      const max = Math.max(r, g, b), min = Math.min(r, g, b), c = max - min;
+      if (c > 0.08) {
+        const h = max === r ? ((g - b) / c) % 6 : max === g ? (b - r) / c + 2 : (r - g) / c + 4;
+        hue = (h * 60 + 360) % 360;
+      }
+    }
+  } else {
+    const wl = Number(p.wavelength);
+    hue = wl >= 560 || !Number.isFinite(wl) ? 20 : wl >= 490 ? 120 : 230;
+  }
+  if (hue === null) return '#2563eb';
+  if (hue < 75 || hue >= 300) return '#2563eb';
+  if (hue < 180) return '#db2777';
+  return '#ea580c';
+}
+
+// Rays leave a fan's origin this far along their own direction, so every ray
+// lies on a line through the origin itself.
+const OBJECT_FAN_START_MM = 1;
 
 // Infographic card for the beam probe ("?" tool). Every branch draws with its
 // top-left corner at the local origin and reports its own {w, h}, so the
@@ -5844,39 +5891,83 @@ export const registry = {
     params: [
       { key: 'height', label: 'Height (mm)', type: 'number', min: 2, max: 150, step: 1, def: 22 },
       { key: 'shape', label: 'Shape', type: 'select', def: 'arrow', options: [['arrow', 'Arrow'], ['F', 'Letter F'], ['tree', 'Tree']] },
-      { key: 'raysMode', label: 'Rays from axis', type: 'select', def: 'fan', options: [['fan', 'Show ray fan'], ['none', 'No rays']] },
-      { key: 'spread', label: 'Fan angle (°)', type: 'number', min: 1, max: 40, step: 1, def: 10, show: p => p.raysMode === 'fan' },
-      { key: 'nrays', label: 'Rays', type: 'number', min: 2, max: 9, step: 1, def: 3, show: p => p.raysMode === 'fan' },
+      // The three options below arrived after Objects were already saved in
+      // sketches. A new Object stands on the axis and sends a fan from its
+      // tip that fills the first optic, the ray diagram a lesson draws. A
+      // saved Object without the key is pinned by `migrate` to the behaviour
+      // from before (centred, a fan from the anchor straight ahead), so an
+      // old sketch keeps its look.
+      { key: 'anchor', label: 'Anchor', type: 'select', def: 'base',
+        options: [['base', 'Base'], ['centre', 'Middle']], migrate: () => 'centre' },
+      { key: 'raysMode', label: 'Rays', type: 'select', def: 'fan', options: [['fan', 'Show ray fan'], ['none', 'No rays']] },
+      { key: 'raysFrom', label: 'Rays from', type: 'select', def: 'tip',
+        options: [['tip', 'Tip'], ['tipBase', 'Tip and base'], ['axis', 'Axis']],
+        show: p => p.raysMode === 'fan', migrate: () => 'axis' },
+      { key: 'aim', label: 'Aim', type: 'select', def: 'optic',
+        options: [['optic', 'First optic'], ['ahead', 'Ahead']],
+        show: p => p.raysMode === 'fan', migrate: () => 'ahead' },
+      { key: 'spread', label: 'Fan angle (°)', type: 'number', min: 1, max: 40, step: 1, def: 10, show: p => p.raysMode === 'fan' && p.aim !== 'optic' },
+      { key: 'nrays', label: 'Rays per fan', type: 'number', min: 2, max: 21, step: 1, def: 3, show: p => p.raysMode === 'fan' },
       { key: 'showImage', label: 'Draw image formed', type: 'checkbox', def: true },
       { ...P.wavelength, def: 620 },
       P.autoColor, P.color,
     ],
     svg(el) {
-      const p = el.params, h = p.height;
+      const p = el.params, h = p.height, k = objectAnchorUnitY(p);
       const c = p.autoColor === false && p.color ? p.color : wavelengthToColor(p.wavelength);
       const sh = OBJ_SHAPES[p.shape] || OBJ_SHAPES.arrow;
+      const pt = q => `${(q[0] * h).toFixed(1)},${((q[1] - k) * h).toFixed(1)}`;
       let s = `<line x1="-7" y1="0" x2="7" y2="0" stroke="#888" stroke-width="1.2"/>`;
       for (const ln of sh.lines) {
-        s += `<polyline points="${ln.map(q => `${(q[0] * h).toFixed(1)},${(q[1] * h).toFixed(1)}`).join(' ')}" fill="none" stroke="${c}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+        s += `<polyline points="${ln.map(pt).join(' ')}" fill="none" stroke="${c}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
       }
       for (const pg of sh.polys) {
-        s += `<polygon points="${pg.map(q => `${(q[0] * h).toFixed(1)},${(q[1] * h).toFixed(1)}`).join(' ')}" fill="${c}"/>`;
+        s += `<polygon points="${pg.map(pt).join(' ')}" fill="${c}"/>`;
       }
       return s;
     },
-    source(el) {
+    // `scene.surfaces` (the tracer's world-space surfaces) is what an aimed
+    // fan is aimed at; without it an aimed fan points straight ahead.
+    source(el, scene = {}) {
       const p = el.params;
       if (p.raysMode !== 'fan') return [];
       const n = Math.max(2, Math.round(p.nrays)), out = [];
-      // fan from the object's own anchor point (on the shared optical axis,
-      // not the off-axis tip): the central ray is exactly horizontal, so it
-      // passes through the center of every on-axis lens undeviated (h = 0
-      // there) and stays a fixed horizontal reference as the surrounding
-      // rays fan out symmetrically — half clockwise, half counterclockwise
-      // — and bend toward it at each focusing surface.
-      for (let i = 0; i < n; i++) {
-        const a = (-p.spread / 2 + p.spread * i / (n - 1)) * Math.PI / 180;
-        out.push({ x: 1, y: 0, dx: Math.cos(a), dy: Math.sin(a) });
+      const from = p.raysFrom || 'axis', aim = p.aim || 'ahead';
+      if (from === 'axis' && aim === 'ahead') {
+        // fan from the object's own anchor point (on the shared optical axis,
+        // not the off-axis tip): the central ray is exactly horizontal, so it
+        // passes through the center of every on-axis lens undeviated (h = 0
+        // there) and stays a fixed horizontal reference as the surrounding
+        // rays fan out symmetrically — half clockwise, half counterclockwise
+        // — and bend toward it at each focusing surface.
+        for (let i = 0; i < n; i++) {
+          const a = (-p.spread / 2 + p.spread * i / (n - 1)) * Math.PI / 180;
+          out.push({ x: 1, y: 0, dx: Math.cos(a), dy: Math.sin(a) });
+        }
+        return out;
+      }
+      // A fan from the tip (or the tip and the base) is light from that point
+      // of the object, so its rays meet again at that point's image. Aimed at
+      // the first optic, the fan spans exactly the directions that reach the
+      // optic's clear aperture through any slit or iris in front of it, and
+      // follows both as they move, because the tracer asks again every time.
+      const { tipY, baseY } = objectEnds(p);
+      const origins = from === 'tip' ? [{ y: tipY }]
+        : from === 'tipBase' ? [{ y: tipY }, { y: baseY, color: objectBaseFanColor(p) }]
+          : [{ y: 0 }];
+      const aimScene = aim === 'optic' ? objectAimScene(el, scene.surfaces) : null;
+      const half = p.spread / 2 * Math.PI / 180;
+      for (const o of origins) {
+        const origin = { x: 0, y: o.y };
+        const span = aimScene ? aimedFanSpan(origin, aimScene) : null;
+        const lo = span ? span.lo : -half, hi = span ? span.hi : half;
+        for (let i = 0; i < n; i++) {
+          const a = lo + (hi - lo) * i / (n - 1), dx = Math.cos(a), dy = Math.sin(a);
+          out.push({
+            x: origin.x + dx * OBJECT_FAN_START_MM, y: origin.y + dy * OBJECT_FAN_START_MM, dx, dy,
+            ...(o.color ? { color: o.color } : {}),
+          });
+        }
       }
       return out;
     },
@@ -6472,7 +6563,7 @@ const DIRECT = {
   sclaser: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'scMax', short: 'λ max' } },
   ledsource: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'wavelength', short: 'λ', when: p => p.ledPreset === 'custom' } },
   pointsource: { resize: { uniform: 'displayScale' }, tune: { key: 'spread', short: 'angle' } },
-  objarrow: { resize: { y: 'height' }, tune: { key: 'spread', short: 'fan', when: p => p.raysMode === 'fan' } },
+  objarrow: { resize: { y: 'height' }, tune: { key: 'spread', short: 'fan', when: p => p.raysMode === 'fan' && p.aim !== 'optic' } },
   mirror: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
   dmirror: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
   galvo: { resize: { y: 'length' }, tune: { key: 'commandAngle', short: 'center' } },
@@ -6599,7 +6690,7 @@ const ELEMENT_HELP = {
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
   ledsource: 'Emits a collimated beam of incoherent light from an LED behind its own collimator, with an illustrative single-colour or two-band white spectrum. It never interferes, and its residual divergence is not modelled.',
   pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp. Any optical element within the capture range catches its rays and acts on them as on any light; a lens, a mirror, a fiber tip or a detector collects them, and after any other optic only the range that is left still counts. Light that nothing catches fades out within a short distance. The range is a drawing convention for how far an isotropic emitter stays visible, not an inverse-square calculation. A parabolic mirror with the source at its focus collimates it.',
-  objarrow: 'Traces a ray fan from the object’s anchor on the optical axis and separately draws an ideal paraxial image; the image marker does not model downstream clipping.',
+  objarrow: 'Traces a ray fan from the object’s tip, from its tip and its base (the base’s fan drawn in a second colour, at the same wavelength), or from its anchor on the optical axis, and separately draws an ideal paraxial image; the image marker does not model downstream clipping. The fan is aimed to just fill the first lens, glass face or mirror on the object’s axis, narrowed to any slit, iris or stop in front of it, or points straight ahead at a set angle; filters and other transmissive optics in between are ignored by the aiming, and with no optic ahead an aimed fan points straight ahead. The shape stands on its anchor or is centred on it.',
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',
   galvo: 'Reflects rays from a static or animated ideal quasistatic mechanical scan angle; high scan rates use a slowed preview.',
