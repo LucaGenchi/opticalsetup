@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import katex from 'katex';
 import {
-  registry, categories, createElement, getSize, paletteOrderedTypes, DRAWING_TOOL_ALIASES,
+  registry, categories, createElement, getSize, boxAnchor, paletteOrderedTypes, DRAWING_TOOL_ALIASES,
 } from '../sketch/js/elements.js';
 import { componentSearchDocument } from '../sketch/js/search.js';
 // Some registry entries (etalon, vipa, and the detector-instruments variants)
@@ -50,7 +50,10 @@ function iconSVG(type) {
   const el = createElement(type);
   const sz = getSize(el);
   const vb = Math.max(sz.w, sz.h) + 12;
-  return `<svg viewBox="${-vb / 2} ${-vb / 2} ${vb} ${vb}" aria-hidden="true">${def.svg(el)}</svg>`;
+  // Centred on the drawing's box, which need not be centred on the
+  // element's origin (a goniometer's vertex, a text label's left edge).
+  const at = boxAnchor(el);
+  return `<svg viewBox="${at.x - vb / 2} ${at.y - vb / 2} ${vb} ${vb}" aria-hidden="true">${def.svg(el)}</svg>`;
 }
 
 // Wiki summaries are editorial introductions, deliberately shorter than the

@@ -12,8 +12,17 @@ import { conicMirrorGeometry, conicMirrorSize, conicMirrorSVG, conicMirrorSurfac
 import { distToSegment, esc, formatSignal, rotPt, smoothPath, toWorld, wavelengthToColor, newScatterSeed } from './util.js';
 import { uid } from './util.js';
 import { emissionRayCount, ISOTROPIC_KINDS } from './emission.js';
+import { aimedFanSpan, objectAimScene } from './object-aim.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
+import {
+  ZOOM_OFFSET_LIMIT, ZOOM_REGION_MAX, ZOOM_REGION_MIN, ZOOM_SHAPES,
+  zoomFrameSVG, zoomGeometry, zoomHitTest, zoomMaxMagnification, zoomScaleBarMaxMm, zoomViewBox,
+} from './zoom.js';
+import {
+  RULER_LENGTH_MAX, RULER_LENGTH_MIN, rulerEditCandidate, rulerHandleDrag,
+  rulerHitTest, rulerLocalBounds, rulerModeParams, rulerPoints, rulerSVG, rulerValueText,
+} from './ruler.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
 import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenRamanReading, specimenSrsNote, specimenTimingReading, supercontinuumReading, twoBeamPartner, MIN_OVERLAP } from './raytrace.js';
 import { NONLINEAR_ORDER } from './sectioning.js';
@@ -942,11 +951,12 @@ const layersParam = { key: 'layers', label: 'Optical function', type: 'layers', 
 // object shapes for image-formation diagrams, in unit coords:
 // base at (0,0), tip at (0,-1); the traced image redraws the same shape
 // scaled by the magnification (negative m = inverted)
-// Normalized around y = 0 (the object's anchor, also the ray fan's origin):
-// a shape spanning the full "height" param extends ±0.5 of it either side,
-// so a 20mm-tall shape sits 10mm above and 10mm below the point that's
-// actually irradiating — both the live icon (svg() below) and the redrawn
-// image at the image plane (raytrace.js) read these same coordinates.
+// Normalized around y = 0: a shape spanning the full "height" param extends
+// ±0.5 of it either side. By default y = 0 is the object's anchor (and the
+// axis fan's origin), so a 20mm-tall shape sits 10mm above and 10mm below
+// it; an object anchored at its base stands on the anchor instead
+// (objectAnchorUnitY below). Both the live icon (svg() below) and the
+// redrawn image at the image plane (raytrace.js) read these coordinates.
 export const OBJ_SHAPES = {
   arrow: {
     lines: [[[0, 0.5], [0, -0.22]]],
@@ -966,6 +976,51 @@ export const OBJ_SHAPES = {
     ],
   },
 };
+
+// Where an Object's shape sits on its anchor, as the unit y (in OBJ_SHAPES
+// coordinates) that the anchor marks: 0 for a shape centred on it, 0.5 for a
+// shape standing on it (its base, y = 0.5, at the anchor). A shape point at
+// unit y is (objectAnchorUnitY(p) − y)·height above the anchor; the drawn
+// icon and the image the tracer draws both read this.
+export const objectAnchorUnitY = p => (p?.anchor === 'base' ? 0.5 : 0);
+
+// The Object's tip and base, as local y (y down) relative to its anchor.
+export function objectEnds(p) {
+  const h = p.height, k = objectAnchorUnitY(p);
+  return { tipY: -(k + 0.5) * h, baseY: -(k - 0.5) * h };
+}
+
+// The drawing colour of the second fan (from the base) when an Object sends
+// rays from its tip and its base. It only tells the two fans apart: the light
+// keeps the Object's wavelength, so a dispersive optic treats both alike.
+// Warm light gets a blue partner, green gets magenta, blue gets orange.
+export function objectBaseFanColor(p) {
+  const fixed = p.autoColor === false && typeof p.color === 'string' ? p.color : null;
+  let hue = null;
+  if (fixed) {
+    const hex = fixed.replace('#', '');
+    const full = hex.length === 3 ? hex.split('').map(c => c + c).join('') : hex;
+    if (/^[0-9a-f]{6}$/i.test(full)) {
+      const [r, g, b] = [0, 2, 4].map(i => parseInt(full.slice(i, i + 2), 16) / 255);
+      const max = Math.max(r, g, b), min = Math.min(r, g, b), c = max - min;
+      if (c > 0.08) {
+        const h = max === r ? ((g - b) / c) % 6 : max === g ? (b - r) / c + 2 : (r - g) / c + 4;
+        hue = (h * 60 + 360) % 360;
+      }
+    }
+  } else {
+    const wl = Number(p.wavelength);
+    hue = wl >= 560 || !Number.isFinite(wl) ? 20 : wl >= 490 ? 120 : 230;
+  }
+  if (hue === null) return '#2563eb';
+  if (hue < 75 || hue >= 300) return '#2563eb';
+  if (hue < 180) return '#db2777';
+  return '#ea580c';
+}
+
+// Rays leave a fan's origin this far along their own direction, so every ray
+// lies on a line through the origin itself.
+const OBJECT_FAN_START_MM = 1;
 
 // Infographic card for the beam probe ("?" tool). Every branch draws with its
 // top-left corner at the local origin and reports its own {w, h}, so the
@@ -2989,6 +3044,56 @@ function eyeRefractionLabel(params) {
   if (Math.abs(error) < 0.125) return '0.00 D (emmetropic)';
   const sign = error > 0 ? '+' : '−';
   return `${sign}${Math.abs(error).toFixed(2)} D (${error > 0 ? 'hyperopic' : 'myopic'})`;
+}
+
+// The two measuring annotations share their geometry, handles, auto clamp,
+// label and drawing (ruler.js); each entry lists only its own settings and
+// passes its mode in, so neither can drift from the other.
+const MEASURING_CLAMP = [
+  { key: 'autoClamp', label: 'Auto clamp to components and beams', type: 'checkbox', def: true },
+];
+const MEASURING_LABEL = [
+  { key: 'text', label: 'Label · Markdown, $LaTeX$, {value} = measurement', type: 'text', def: '{value}' },
+  { key: 'decimals', label: 'Decimal places', type: 'number', min: 0, max: 3, step: 1, def: 1 },
+];
+const MEASURING_STYLE = [
+  { key: 'fontSize', label: 'Label size (pt)', type: 'number', min: 6, max: 72, step: 1, def: 12 },
+  { key: 'width', label: 'Line width', type: 'number', min: 0.25, max: 8, step: 0.25, def: 1.2 },
+  { key: 'fill', label: 'Color', type: 'color', def: '#334155' },
+];
+
+function measuringEntry({ label, aliases, params, directHint, hint, icon }) {
+  const moded = el => ({ ...el, params: rulerModeParams(el) });
+  const bounds = el => rulerLocalBounds(rulerModeParams(el), el.rot);
+  return {
+    label, category: 'Annotations', aliases, params, directHint,
+    noLabel: true,
+    paramsTitle: 'Measurement and label',
+    size: { w: 100, h: 20 },
+    size_: el => {
+      const b = bounds(el);
+      return { w: b.x1 - b.x0, h: b.y1 - b.y0 };
+    },
+    boxAnchor(el) {
+      const b = bounds(el);
+      return { x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2 };
+    },
+    editPoints: {
+      get: el => rulerPoints(rulerModeParams(el)),
+      candidate: (el, index, local) => rulerEditCandidate(moded(el), index, local),
+      // The canvas hands the whole drag over: what to clamp onto, the grid,
+      // Shift and Alt (see rulerHandleDrag).
+      dragTo: (el, index, pointer, ctx) => rulerHandleDrag(moded(el), index, pointer, ctx),
+      status: el => `${label.toLowerCase()} ${rulerValueText({ ...rulerModeParams(el), decimals: 2 })}`,
+      hint,
+    },
+    hitTest(el, point, tolerance) { return rulerHitTest(rulerModeParams(el), point, tolerance, el.rot); },
+    svg(el) { return rulerSVG(rulerModeParams(el), { rot: el.rot }); },
+    iconSVG(el) {
+      return rulerSVG({ ...rulerModeParams(el), text: '', width: 1.4, fill: '#334155', ...icon });
+    },
+    surfaces: () => [],
+  };
 }
 
 export const registry = {
@@ -5786,39 +5891,83 @@ export const registry = {
     params: [
       { key: 'height', label: 'Height (mm)', type: 'number', min: 2, max: 150, step: 1, def: 22 },
       { key: 'shape', label: 'Shape', type: 'select', def: 'arrow', options: [['arrow', 'Arrow'], ['F', 'Letter F'], ['tree', 'Tree']] },
-      { key: 'raysMode', label: 'Rays from axis', type: 'select', def: 'fan', options: [['fan', 'Show ray fan'], ['none', 'No rays']] },
-      { key: 'spread', label: 'Fan angle (°)', type: 'number', min: 1, max: 40, step: 1, def: 10, show: p => p.raysMode === 'fan' },
-      { key: 'nrays', label: 'Rays', type: 'number', min: 2, max: 9, step: 1, def: 3, show: p => p.raysMode === 'fan' },
+      // The three options below arrived after Objects were already saved in
+      // sketches. A new Object stands on the axis and sends a fan from its
+      // tip that fills the first optic, the ray diagram a lesson draws. A
+      // saved Object without the key is pinned by `migrate` to the behaviour
+      // from before (centred, a fan from the anchor straight ahead), so an
+      // old sketch keeps its look.
+      { key: 'anchor', label: 'Anchor', type: 'select', def: 'base',
+        options: [['base', 'Base'], ['centre', 'Middle']], migrate: () => 'centre' },
+      { key: 'raysMode', label: 'Rays', type: 'select', def: 'fan', options: [['fan', 'Show ray fan'], ['none', 'No rays']] },
+      { key: 'raysFrom', label: 'Rays from', type: 'select', def: 'tip',
+        options: [['tip', 'Tip'], ['tipBase', 'Tip and base'], ['axis', 'Axis']],
+        show: p => p.raysMode === 'fan', migrate: () => 'axis' },
+      { key: 'aim', label: 'Aim', type: 'select', def: 'optic',
+        options: [['optic', 'First optic'], ['ahead', 'Ahead']],
+        show: p => p.raysMode === 'fan', migrate: () => 'ahead' },
+      { key: 'spread', label: 'Fan angle (°)', type: 'number', min: 1, max: 40, step: 1, def: 10, show: p => p.raysMode === 'fan' && p.aim !== 'optic' },
+      { key: 'nrays', label: 'Rays per fan', type: 'number', min: 2, max: 21, step: 1, def: 3, show: p => p.raysMode === 'fan' },
       { key: 'showImage', label: 'Draw image formed', type: 'checkbox', def: true },
       { ...P.wavelength, def: 620 },
       P.autoColor, P.color,
     ],
     svg(el) {
-      const p = el.params, h = p.height;
+      const p = el.params, h = p.height, k = objectAnchorUnitY(p);
       const c = p.autoColor === false && p.color ? p.color : wavelengthToColor(p.wavelength);
       const sh = OBJ_SHAPES[p.shape] || OBJ_SHAPES.arrow;
+      const pt = q => `${(q[0] * h).toFixed(1)},${((q[1] - k) * h).toFixed(1)}`;
       let s = `<line x1="-7" y1="0" x2="7" y2="0" stroke="#888" stroke-width="1.2"/>`;
       for (const ln of sh.lines) {
-        s += `<polyline points="${ln.map(q => `${(q[0] * h).toFixed(1)},${(q[1] * h).toFixed(1)}`).join(' ')}" fill="none" stroke="${c}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+        s += `<polyline points="${ln.map(pt).join(' ')}" fill="none" stroke="${c}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
       }
       for (const pg of sh.polys) {
-        s += `<polygon points="${pg.map(q => `${(q[0] * h).toFixed(1)},${(q[1] * h).toFixed(1)}`).join(' ')}" fill="${c}"/>`;
+        s += `<polygon points="${pg.map(pt).join(' ')}" fill="${c}"/>`;
       }
       return s;
     },
-    source(el) {
+    // `scene.surfaces` (the tracer's world-space surfaces) is what an aimed
+    // fan is aimed at; without it an aimed fan points straight ahead.
+    source(el, scene = {}) {
       const p = el.params;
       if (p.raysMode !== 'fan') return [];
       const n = Math.max(2, Math.round(p.nrays)), out = [];
-      // fan from the object's own anchor point (on the shared optical axis,
-      // not the off-axis tip): the central ray is exactly horizontal, so it
-      // passes through the center of every on-axis lens undeviated (h = 0
-      // there) and stays a fixed horizontal reference as the surrounding
-      // rays fan out symmetrically — half clockwise, half counterclockwise
-      // — and bend toward it at each focusing surface.
-      for (let i = 0; i < n; i++) {
-        const a = (-p.spread / 2 + p.spread * i / (n - 1)) * Math.PI / 180;
-        out.push({ x: 1, y: 0, dx: Math.cos(a), dy: Math.sin(a) });
+      const from = p.raysFrom || 'axis', aim = p.aim || 'ahead';
+      if (from === 'axis' && aim === 'ahead') {
+        // fan from the object's own anchor point (on the shared optical axis,
+        // not the off-axis tip): the central ray is exactly horizontal, so it
+        // passes through the center of every on-axis lens undeviated (h = 0
+        // there) and stays a fixed horizontal reference as the surrounding
+        // rays fan out symmetrically — half clockwise, half counterclockwise
+        // — and bend toward it at each focusing surface.
+        for (let i = 0; i < n; i++) {
+          const a = (-p.spread / 2 + p.spread * i / (n - 1)) * Math.PI / 180;
+          out.push({ x: 1, y: 0, dx: Math.cos(a), dy: Math.sin(a) });
+        }
+        return out;
+      }
+      // A fan from the tip (or the tip and the base) is light from that point
+      // of the object, so its rays meet again at that point's image. Aimed at
+      // the first optic, the fan spans exactly the directions that reach the
+      // optic's clear aperture through any slit or iris in front of it, and
+      // follows both as they move, because the tracer asks again every time.
+      const { tipY, baseY } = objectEnds(p);
+      const origins = from === 'tip' ? [{ y: tipY }]
+        : from === 'tipBase' ? [{ y: tipY }, { y: baseY, color: objectBaseFanColor(p) }]
+          : [{ y: 0 }];
+      const aimScene = aim === 'optic' ? objectAimScene(el, scene.surfaces) : null;
+      const half = p.spread / 2 * Math.PI / 180;
+      for (const o of origins) {
+        const origin = { x: 0, y: o.y };
+        const span = aimScene ? aimedFanSpan(origin, aimScene) : null;
+        const lo = span ? span.lo : -half, hi = span ? span.hi : half;
+        for (let i = 0; i < n; i++) {
+          const a = lo + (hi - lo) * i / (n - 1), dx = Math.cos(a), dy = Math.sin(a);
+          out.push({
+            x: origin.x + dx * OBJECT_FAN_START_MM, y: origin.y + dy * OBJECT_FAN_START_MM, dx, dy,
+            ...(o.color ? { color: o.color } : {}),
+          });
+        }
       }
       return out;
     },
@@ -5973,6 +6122,90 @@ export const registry = {
     },
     surfaces: () => [],
   },
+
+  // A region of the bench drawn again, larger, elsewhere on the canvas (see
+  // zoom.js for the geometry). The registry draws only its frames; the canvas
+  // and the export fill the view with the magnified bench (zoom-view.js),
+  // since that needs the traced rays. It is drawn in element order like any
+  // other part, so a label or arrow placed after it can sit on its view.
+  zoom: {
+    label: 'Zoom', category: 'Annotations',
+    aliases: ['magnifier', 'magnified view', 'inset', 'detail view', 'close-up', 'enlargement', 'loupe'],
+    // A turned rectangle or ellipse can lie along a tilted beam; a turned
+    // circle is the same circle, so it offers no rotation handle.
+    rotatable: p => p.shape !== 'circle',
+    noLabel: true,
+    paramsTitle: 'Region and view',
+    size: { w: 40, h: 40 },
+    size_: el => {
+      const g = zoomGeometry(el.params);
+      return { w: 2 * g.rx, h: 2 * g.ry };
+    },
+    params: [
+      { key: 'shape', label: 'Shape', type: 'select', def: 'circle', options: ZOOM_SHAPES },
+      { key: 'w', label: 'Region width (mm)', type: 'number', min: ZOOM_REGION_MIN, max: ZOOM_REGION_MAX, step: 0.1, def: 30 },
+      { key: 'h', label: 'Region height (mm)', type: 'number', min: ZOOM_REGION_MIN, max: ZOOM_REGION_MAX, step: 0.1, def: 20, show: p => p.shape !== 'circle' },
+      { key: 'mag', label: 'Magnification (×)', type: 'number', min: 1, max: zoomMaxMagnification, step: 0.1, def: 4 },
+      { key: 'insetX', label: 'View offset x (mm)', type: 'number', min: -ZOOM_OFFSET_LIMIT, max: ZOOM_OFFSET_LIMIT, step: 1, def: 110 },
+      { key: 'insetY', label: 'View offset y (mm)', type: 'number', min: -ZOOM_OFFSET_LIMIT, max: ZOOM_OFFSET_LIMIT, step: 1, def: -90 },
+      { key: 'regionDash', label: 'Dashed outlines (region and view)', type: 'checkbox', def: false },
+      { key: 'connectors', label: 'Connector lines', type: 'checkbox', def: true },
+      { key: 'connectorDash', label: 'Dashed connector lines', type: 'checkbox', def: false, show: p => p.connectors },
+      { key: 'diffraction', label: 'Diffraction-limited focus (Gaussian waist)', type: 'checkbox', def: true },
+      { key: 'focusNote', label: 'Waist and Rayleigh range note', type: 'checkbox', def: true, show: p => p.diffraction },
+      { key: 'scaleBar', label: 'Scale bar', type: 'checkbox', def: true },
+      { key: 'scaleBarDirection', label: 'Scale bar direction', type: 'select', def: 'horizontal', options: [['horizontal', 'Horizontal (along the width)'], ['vertical', 'Vertical (along the height)']], show: p => p.scaleBar },
+      { key: 'scaleBarMm', label: 'Scale bar length (mm) · 0 = automatic', type: 'number', min: 0, max: zoomScaleBarMaxMm, step: 0.001, def: 0, show: p => p.scaleBar },
+      { key: 'frameColor', label: 'Frame color', type: 'color', def: '#475569' },
+    ],
+    directHint: 'Drag the enlarged view to move it on its own; drag the region’s outline to aim it while the view stays put. Blue handles resize the region; the purple corners of the view, or the purple knob, set the magnification; a rectangle or ellipse turns with the round handle.',
+    hitTest(el, point, tolerance) { return zoomHitTest(el.params, point, tolerance, el.rot); },
+    extraBounds(el) { return [zoomViewBox(el.params, el.rot)]; },
+    // Scalable: its corners carry handles that set the magnification.
+    selectionBoxes(el) { return [{ ...zoomViewBox(el.params, el.rot), scalable: true }]; },
+    svg(el) { return zoomFrameSVG(el.params, { rot: el.rot }); },
+    // The palette shows a small region and its view side by side, whatever
+    // the defaults place where.
+    iconSVG(el) {
+      return `<g transform="translate(-11 9)">${zoomFrameSVG({ ...el.params, shape: 'circle', w: 10, mag: 2.4, insetX: 16, insetY: -12, scaleBar: false })}</g>`;
+    },
+    surfaces: () => [],
+  },
+
+  // The ruler and the goniometer (geometry in ruler.js; see measuringEntry
+  // below the registry). Diagram-only: no surfaces, never in a ray's way.
+  ruler: measuringEntry({
+    label: 'Ruler',
+    aliases: ['measure', 'measuring tape', 'dimension', 'dimension line', 'distance', 'length', 'caliper', 'scale'],
+    params: [
+      { key: 'len', label: 'Length (mm)', type: 'number', min: RULER_LENGTH_MIN, max: RULER_LENGTH_MAX, step: 0.1, def: 100, displayDecimals: 3 },
+      ...MEASURING_CLAMP,
+      ...MEASURING_LABEL,
+      { key: 'labelSide', label: 'Label side', type: 'select', def: 'above', options: [['above', 'Above the line'], ['below', 'Below the line']] },
+      { key: 'arrows', label: 'Arrowheads', type: 'checkbox', def: true },
+      { key: 'ticks', label: 'Graduation ticks', type: 'checkbox', def: false },
+      ...MEASURING_STYLE,
+    ],
+    directHint: 'Drag a round handle to move that end; with auto clamp it clicks onto components and beams, else onto the grid (hold Alt for a free point, Shift for 45° steps). Drag the line or the label to move the whole ruler; the square corner handles size the label.',
+    hint: 'round handles move the ends; auto clamp clicks onto components and beams',
+    icon: { len: 34, ticks: true },
+  }),
+
+  goniometer: measuringEntry({
+    label: 'Goniometer',
+    aliases: ['angle', 'protractor', 'angle gauge', 'angle measure', 'fold angle', 'crossing angle', 'incidence angle'],
+    params: [
+      { key: 'angle', label: 'Angle between arms (°) · + opens counterclockwise', type: 'number', min: -180, max: 180, step: 0.1, def: 45, displayDecimals: 3 },
+      { key: 'armA', label: 'Arm 1 length (mm)', type: 'number', min: RULER_LENGTH_MIN, max: RULER_LENGTH_MAX, step: 0.1, def: 80, displayDecimals: 3 },
+      { key: 'armB', label: 'Arm 2 length (mm)', type: 'number', min: RULER_LENGTH_MIN, max: RULER_LENGTH_MAX, step: 0.1, def: 80, displayDecimals: 3 },
+      ...MEASURING_CLAMP,
+      ...MEASURING_LABEL,
+      ...MEASURING_STYLE,
+    ],
+    directHint: 'Drag an arm’s round tip to turn that arm smoothly about the vertex; its length stays as set. With auto clamp it clicks onto a beam through the vertex or toward a component (hold Alt to turn freely, Shift for 5° steps). The purple knob tunes the angle; the vertex handle moves the whole goniometer and clicks onto components and beams.',
+    hint: 'round handles: the arm tips turn the arms, the vertex moves it; auto clamp clicks onto components and beams',
+    icon: { angle: 50, armA: 32, armB: 32, width: 1.6 },
+  }),
 
   // ---------------- Custom ----------------
   box: {
@@ -6160,6 +6393,14 @@ export const registry = {
 // anchorX: 'left', where the origin is the box's left-middle edge instead —
 // see the textlabel entry above. Consumed by every generic piece of UI that
 // draws or hit-tests a selection box around an element (canvas.js).
+// Whether the element offers rotation. `rotatable: false` never; a function
+// decides from the params, as a zoom does from its shape. Every rotation
+// control (handle, R key, toolbar button, inspector field) asks here.
+export function isRotatable(el) {
+  const rotatable = registry[el?.type]?.rotatable;
+  return typeof rotatable === 'function' ? rotatable(el.params || {}) !== false : rotatable !== false;
+}
+
 export function boxAnchor(el) {
   const d = registry[el.type];
   if (typeof d?.boxAnchor === 'function') return d.boxAnchor(el);
@@ -6322,7 +6563,7 @@ const DIRECT = {
   sclaser: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'scMax', short: 'λ max' } },
   ledsource: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'wavelength', short: 'λ', when: p => p.ledPreset === 'custom' } },
   pointsource: { resize: { uniform: 'displayScale' }, tune: { key: 'spread', short: 'angle' } },
-  objarrow: { resize: { y: 'height' }, tune: { key: 'spread', short: 'fan', when: p => p.raysMode === 'fan' } },
+  objarrow: { resize: { y: 'height' }, tune: { key: 'spread', short: 'fan', when: p => p.raysMode === 'fan' && p.aim !== 'optic' } },
   mirror: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
   dmirror: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
   galvo: { resize: { y: 'length' }, tune: { key: 'commandAngle', short: 'center' } },
@@ -6390,9 +6631,28 @@ const DIRECT = {
   arrowann: { resize: { x: 'len' }, tune: { key: 'width', short: 'stroke' } },
   figureframe: { resize: { x: 'w', y: 'h', anchor: true } },
   highlight: { resize: { x: 'w', y: 'h', anchor: true } },
+  // Resized about its centre, so a region aimed at a feature stays on it.
+  zoom: {
+    resize: {
+      x: p => (p.shape === 'circle' ? null : 'w'),
+      y: p => (p.shape === 'circle' ? null : 'h'),
+      uniform: p => (p.shape === 'circle' ? 'w' : null),
+    },
+    tune: { key: 'mag', short: 'mag ×', pixelsPerStep: 1 },
+  },
   box: { resize: { x: 'w', y: 'h' } },
   blocker: { resize: { x: 'w', y: 'h' } },
   textlabel: { resize: { uniform: 'fontSize' } },
+  // Their round handles set the geometry; the square corners size the label,
+  // as on a text label.
+  ruler: { resize: { uniform: 'fontSize' } },
+  goniometer: {
+    resize: { uniform: 'fontSize' },
+    // Dragging up opens the angle whichever way its second arm opens; the
+    // direction is fixed when the knob is grabbed, so the drag runs on
+    // smoothly through 0°.
+    tune: { key: 'angle', short: 'θ', pixelsPerStep: 0.5, direction: p => (p.angle < 0 ? -1 : 1) },
+  },
   probe: { resize: { uniform: 'displayScale' } },
   gascell: { resize: { x: 'length', y: 'height' }, tune: { key: 'transparency', short: 'transp.' } },
   window: { resize: { y: 'length' }, tune: { key: 'transparency', short: 'transp.' } },
@@ -6430,7 +6690,7 @@ const ELEMENT_HELP = {
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
   ledsource: 'Emits a collimated beam of incoherent light from an LED behind its own collimator, with an illustrative single-colour or two-band white spectrum. It never interferes, and its residual divergence is not modelled.',
   pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp. Any optical element within the capture range catches its rays and acts on them as on any light; a lens, a mirror, a fiber tip or a detector collects them, and after any other optic only the range that is left still counts. Light that nothing catches fades out within a short distance. The range is a drawing convention for how far an isotropic emitter stays visible, not an inverse-square calculation. A parabolic mirror with the source at its focus collimates it.',
-  objarrow: 'Traces a ray fan from the object’s anchor on the optical axis and separately draws an ideal paraxial image; the image marker does not model downstream clipping.',
+  objarrow: 'Traces a ray fan from the object’s tip, from its tip and its base (the base’s fan drawn in a second colour, at the same wavelength), or from its anchor on the optical axis, and separately draws an ideal paraxial image; the image marker does not model downstream clipping. The fan is aimed to just fill the first lens, glass face or mirror on the object’s axis, narrowed to any slit, iris or stop in front of it, or points straight ahead at a set angle; filters and other transmissive optics in between are ignored by the aiming, and with no optic ahead an aimed fan points straight ahead. The shape stands on its anchor or is centred on it.',
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',
   galvo: 'Reflects rays from a static or animated ideal quasistatic mechanical scan angle; high scan rates use a slowed preview.',
@@ -6487,14 +6747,17 @@ const ELEMENT_HELP = {
   probe: 'Reads the light crossing its sampling circle: average power adds up every beam there, as a power meter would; with several beams, the spectrum sums them, the wavelength view lists them, polarization shows each, and the time view says whether their pulses arrive together or how far apart. With one beam it reads that beam; pulse duration reads the nearest beam.',
   arrowann: 'Diagram annotation; does not interact with rays.',
   figureframe: 'Canvas-only export crop. Its border and handles never appear in the exported figure.',
-  textlabel: 'Markdown annotation with headings, lists, emphasis, and code; web and DOI addresses become clickable links. It does not interact with rays.',
+  textlabel: 'Markdown annotation with headings, lists, emphasis, code, and LaTeX formulas between $ signs; web and DOI addresses become clickable links. It does not interact with rays.',
   highlight: 'Background wash for calling out a region of the sketch; always drawn behind rays and elements, never interacts with rays.',
+  ruler: 'Measures a distance in bench millimetres and labels it with Markdown and LaTeX; {value} in the label is the measurement. It never interacts with rays.',
+  goniometer: 'Measures the angle between two arms from a vertex and labels it with Markdown and LaTeX; {value} in the label is the measurement. It never interacts with rays.',
+  zoom: 'Draws a region of the setup again, enlarged, elsewhere on the canvas, with an optional scale bar in bench millimetres. Shapes grow with the magnification while lines keep their weight; text, arrows and probes are not enlarged. Diffraction-limited focus draws an ideal Gaussian waist (w₀ = λ/πNA) where a beam focuses in the region. It never interacts with rays.',
   box: 'Generic enclosure with explicit pass-through or beam-blocking behavior.',
   gascell: 'Diagram-only gas cell housing for gas-filled hollow-core fiber setups; never bends, blocks, or absorbs a ray.',
   window: 'Diagram-only optical window; never bends, blocks, or absorbs a ray.',
 };
 
-const DIAGRAM_ONLY = new Set(['arrowann', 'textlabel', 'figureframe', 'highlight', 'gascell', 'window']);
+const DIAGRAM_ONLY = new Set(['arrowann', 'textlabel', 'figureframe', 'highlight', 'zoom', 'ruler', 'goniometer', 'gascell', 'window']);
 const SHAPERS = new Set(['slm', 'metasurface']);
 
 export function getElementMeta(type, params = {}, context = {}) {
@@ -6673,6 +6936,17 @@ export function getVisualBounds(el, { includeLabel = true, elements = [] } = {})
     const left = el.x + place.x, top = el.y + place.y;
     x0 = Math.min(x0, left); x1 = Math.max(x1, left + place.w);
     y0 = Math.min(y0, top); y1 = Math.max(y1, top + place.h);
+  }
+
+  // Parts drawn away from the element's own box -- a zoom's enlarged view --
+  // given as local boxes and rotated with the element.
+  for (const box of d.extraBounds?.(el) || []) {
+    for (const [lx, ly] of [[box.x0, box.y0], [box.x1, box.y0], [box.x1, box.y1], [box.x0, box.y1]]) {
+      const x = el.x + lx * Math.cos(a) - ly * Math.sin(a);
+      const y = el.y + lx * Math.sin(a) + ly * Math.cos(a);
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+    }
   }
 
   if (includeLabel && el.showLabel && el.label) {

@@ -6,6 +6,7 @@ import { copyableSelection, pasteObjects } from './clipboard.js';
 import { state, changed, onChange, pushUndo, undo, redo, canUndo, canRedo, findSelected, serialize, parseSketch, replaceScene, loadAutosave, replaceRecoveredAutosave } from './state.js';
 import {
   registry, categories, createElement, getElementMeta, dataPortDirection, findFreePlacement, DRAWING_TOOL_ALIASES,
+  isRotatable,
 } from './elements.js';
 // Registers the redesigned detector catalogue, the Etalon, and the VIPA
 // element onto `registry`. Imported here, not from pwa.js: service-worker
@@ -243,6 +244,28 @@ const demoScenes = {
     mkDemo('detector', 380, 160, 0, { aperture: 40 }),
     mkDemo('highlight', 220, 160, 0, { w: 110, h: 100 }),
   ],
+  // A slowly scanning galvo walks the focus of a lens sideways; the zoom
+  // on the focal plane shows the walk, and its scale bar how far it goes.
+  zoom: () => [
+    mkDemo('cwlaser', 40, 230, 0, { beamMode: 'beam', beamWidth: 6 }),
+    mkDemo('galvo', 150, 230, 45, { scanMode: 'sine', scanAmplitude: 2, scanFrequencyHz: 0.3 }),
+    mkDemo('lens', 150, 130, 90, { f: 70 }),
+    mkDemo('zoom', 150, 60, 0, { w: 14, mag: 5, insetX: 140, insetY: 50 }),
+  ],
+  // A ruler reads a lens's focal length off the bench, from the lens to
+  // where the beam crosses.
+  ruler: () => [
+    mkDemo('cwlaser', 40, 220, 0, { beamMode: 'beam', beamWidth: 16 }),
+    mkDemo('lens', 160, 220, 0, { f: 100, dia: 30 }),
+    mkDemo('ruler', 210, 262, 0, { len: 100, text: '$f = {value}$', labelSide: 'below', ticks: true }),
+  ],
+  // A goniometer reads the fold angle at a mirror, its arms along the
+  // incoming and the reflected beam.
+  goniometer: () => [
+    mkDemo('cwlaser', 40, 220, 0, { beamMode: 'beam', beamWidth: 8 }),
+    mkDemo('mirror', 300, 220, 45, { length: 25.4 }),
+    mkDemo('goniometer', 300, 220, 180, { angle: -90, armA: 80, armB: 80, text: '$\\theta = {value}$', decimals: 0 }),
+  ],
   box: () => [
     mkDemo('cwlaser', 60, 160),
     mkDemo('box', 230, 160, 0, { text: 'Enclosure', behavior: 'block' }),
@@ -474,6 +497,10 @@ const demoScenes = {
         + '- pump *1030 nm*, 200 fs\n'
         + '- signal *515 nm* after the crystal\n'
         + '- residual GDD `+1200 fs^2`\n'
+        + '- phase $\\Delta\\phi = \\frac{2\\pi}{\\lambda}\\,n L$\n'
+        + '\n'
+        + 'LaTeX formulas go between dollar signs; on a line of their own, between two:\n'
+        + '$$n_1 \\sin\\theta_1 = n_2 \\sin\\theta_2$$\n'
         + '\n'
         + '> Double-click any label to edit its Markdown on the canvas.\n'
         + '\n'
@@ -875,7 +902,7 @@ function buildPalette() {
     const meta = getElementMeta(type, el.params);
     total++;
     return `<button type="button" class="palitem" data-type="${type}" title="${esc(meta.description)}">
-      <svg viewBox="${-vb / 2} ${-vb / 2} ${vb} ${vb}">${def.svg(el)}</svg>
+      <svg viewBox="${-vb / 2} ${-vb / 2} ${vb} ${vb}">${def.iconSVG ? def.iconSVG(el) : def.svg(el)}</svg>
       <span class="pal-copy"><span class="pal-label">${esc(def.label)}</span><span class="pal-desc">${esc(meta.description)}</span></span>
       <i class="cap-dot ${meta.tier}" title="${esc(meta.status)}" aria-label="${esc(meta.status)}"></i></button>`;
   };
@@ -1185,7 +1212,7 @@ function rotateSelected(deg) {
   if (isPlacing()) { rotatePlacing(deg); return; }
   const sel = findSelected();
   if (!sel || state.selection.kind !== 'element') return;
-  if (registry[sel.type]?.rotatable === false) return;
+  if (!isRotatable(sel)) return;
   pushUndo();
   sel.rot = (((sel.rot || 0) + deg) % 360 + 360) % 360;
   changed();

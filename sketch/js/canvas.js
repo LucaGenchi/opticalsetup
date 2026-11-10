@@ -9,12 +9,15 @@ import {
   registry, getSize, boxAnchor, getVisualBounds, getDirectManipulation, createElement, labelSVG,
   stageOffsetAt, retroOffsetAt, voxelDepthFactor, displayCableSVG, specimenTypeOf,
   displayActionUpdate, delayLineSweepSpanMm, mixStateText, normalizeSupercontinuumParams,
-  specimenTimingText,
+  specimenTimingText, isRotatable,
 } from './elements.js';
 import {
   OBJECTIVE_FRONT_X, normalizeObjectiveParams, objectiveBackFocalPlaneX, objectiveWorkingDistance,
 } from './objective.js';
 import { immersionLayerSVG } from './immersion.js';
+import { zoomPulsePlacement, zoomSceneSVG } from './zoom-view.js';
+import { clampZoomOffset, normalizeZoomParams, zoomViewContains, zoomViewCorner, zoomViewCornerDrag } from './zoom.js';
+import { rulerClampTargets } from './ruler.js';
 import { polygonScannerState } from './polygon-scanner.js';
 import { mixReading, specimenTimingReading, traceScene, getTraceRevision } from './raytrace.js';
 import {
@@ -72,6 +75,9 @@ function renderInteraction() {
 }
 let textEditor = null;
 let pulseTracks = [];
+// The packets drawn on the last pulse frame, as {track, marker}, so a zoom
+// view rebuilt between frames can draw them too.
+let shownPulses = [];
 let writeHits = [];
 let signalHits = [];
 const sampleHitPositions = new Map();
@@ -638,13 +644,14 @@ function renderPulseLayer() {
   if (!pulseLayer) return;
   if (!pulseTracks.length) {
     pulseLayer.innerHTML = '';
+    shownPulses = [];
+    renderZoomPulses();
     cwFallbackActive = false;
     lastCwFallback = null; // a scene with no pulse trains has nothing to switch between
     return;
   }
-  const z = state.view.z || 1;
-  let s = '';
   let suppressed = false;
+  const shown = [];
   for (const track of pulseTracks) {
     // Mechanics mode deliberately decouples pulses from any numeric time
     // scale — every train draws as steady CW so galvo/stage/retroreflector
@@ -657,32 +664,57 @@ function renderPulseLayer() {
       suppressed = true;
       continue;
     }
-    for (const marker of pulseMarkers(track, pulsePlayback.timeNs, { mode: pulsePlayback.mode })) {
-      const physicalMin = 9 / z;
-      // Femtosecond packets are far below a screen pixel even in physical
-      // mode. The minimum glyph is therefore already schematic; scale that
-      // floor by the real duration ratio so GDD remains visible without
-      // misreporting the true c·tau length stored on the marker.
-      const width = pulsePlayback.mode === 'physical'
-        ? Math.max(marker.widthMm, physicalMin * (marker.visualStretch || 1))
-        : marker.widthMm;
-      const rx = Math.max(2 / z, width / 2);
-      const ry = Math.max(2.2 / z, Math.min(5 / z, 2.5 / z + 1.4 * Math.sqrt(Math.max(0, track.intensity || 0)) / z));
-      const transmission = marker.transmission ?? 1;
-      const opacity = Math.max(0.03, Math.min(0.95,
-        (0.45 + 0.45 * (track.intensity || 0)) * transmission));
-      const highlightOpacity = Math.max(0.04, 0.82 * Math.sqrt(transmission));
-      const packetFill = track.bw >= 200 ? 'url(#pulseSpectrum)' : track.color;
-      s += `<g class="pulse-marker" data-duration-fs="${marker.pulseWidthFs.toFixed(3)}" data-gdd-fs2="${marker.gddFs2.toFixed(3)}" transform="translate(${marker.x.toFixed(2)} ${marker.y.toFixed(2)}) rotate(${marker.angle.toFixed(2)})">` +
-        `<ellipse rx="${(rx * 1.65).toFixed(2)}" ry="${(ry * 1.8).toFixed(2)}" fill="${packetFill}" opacity="${(opacity * 0.18).toFixed(2)}"/>` +
-        `<ellipse rx="${rx.toFixed(2)}" ry="${ry.toFixed(2)}" fill="${packetFill}" opacity="${opacity.toFixed(2)}"/>` +
-        `<ellipse rx="${Math.max(1 / z, rx * 0.32).toFixed(2)}" ry="${Math.max(0.8 / z, ry * 0.45).toFixed(2)}" fill="#fff" opacity="${highlightOpacity.toFixed(2)}"/>` +
-        `</g>`;
-    }
+    for (const marker of pulseMarkers(track, pulsePlayback.timeNs, { mode: pulsePlayback.mode })) shown.push({ track, marker });
   }
-  pulseLayer.innerHTML = s;
+  shownPulses = shown;
+  pulseLayer.innerHTML = shown.map(({ track, marker }) => pulseGlyphSVG(track, marker, marker)).join('');
+  renderZoomPulses();
   cwFallbackActive = suppressed;
   announcePulseRepresentation(suppressed);
+}
+
+// One pulse packet, drawn at `at` ({x, y, angle}, plus a `scale` for its
+// physical length inside a zoom's view).
+function pulseGlyphSVG(track, marker, at) {
+  const z = state.view.z || 1;
+  const physicalMin = 9 / z;
+  // Femtosecond packets are far below a screen pixel even in physical
+  // mode. The minimum glyph is therefore already schematic; scale that
+  // floor by the real duration ratio so GDD remains visible without
+  // misreporting the true c·tau length stored on the marker.
+  const width = pulsePlayback.mode === 'physical'
+    ? Math.max(marker.widthMm * (at.scale || 1), physicalMin * (marker.visualStretch || 1))
+    : marker.widthMm;
+  const rx = Math.max(2 / z, width / 2);
+  const ry = Math.max(2.2 / z, Math.min(5 / z, 2.5 / z + 1.4 * Math.sqrt(Math.max(0, track.intensity || 0)) / z));
+  const transmission = marker.transmission ?? 1;
+  const opacity = Math.max(0.03, Math.min(0.95,
+    (0.45 + 0.45 * (track.intensity || 0)) * transmission));
+  const highlightOpacity = Math.max(0.04, 0.82 * Math.sqrt(transmission));
+  const packetFill = track.bw >= 200 ? 'url(#pulseSpectrum)' : track.color;
+  return `<g class="pulse-marker" data-duration-fs="${marker.pulseWidthFs.toFixed(3)}" data-gdd-fs2="${marker.gddFs2.toFixed(3)}" transform="translate(${at.x.toFixed(2)} ${at.y.toFixed(2)}) rotate(${at.angle.toFixed(2)})">` +
+    `<ellipse rx="${(rx * 1.65).toFixed(2)}" ry="${(ry * 1.8).toFixed(2)}" fill="${packetFill}" opacity="${(opacity * 0.18).toFixed(2)}"/>` +
+    `<ellipse rx="${rx.toFixed(2)}" ry="${ry.toFixed(2)}" fill="${packetFill}" opacity="${opacity.toFixed(2)}"/>` +
+    `<ellipse rx="${Math.max(1 / z, rx * 0.32).toFixed(2)}" ry="${Math.max(0.8 / z, ry * 0.45).toFixed(2)}" fill="#fff" opacity="${highlightOpacity.toFixed(2)}"/>` +
+    `</g>`;
+}
+
+// Each zoom's view leaves an empty slot for pulse packets (see
+// renderElements), filled here on every pulse frame so the packets move
+// without redrawing the view, and again whenever the view is rebuilt.
+function renderZoomPulses() {
+  // Most scenes have no zoom; they skip the search on every frame.
+  if (!state.elements.some(el => el.type === 'zoom')) return;
+  const slots = elementLayer?.querySelectorAll('[data-zoom-pulses]');
+  if (!slots?.length) return;
+  for (const slot of slots) {
+    const zoom = state.elements.find(el => el.id === slot.getAttribute('data-zoom-pulses'));
+    const place = zoom && zoomPulsePlacement(zoom);
+    slot.innerHTML = place ? shownPulses.map(({ track, marker }) => {
+      const at = place(marker);
+      return at ? pulseGlyphSVG(track, marker, at) : '';
+    }).join('') : '';
+  }
 }
 
 // Announce only the transition between packet and CW-style drawing, anchored
@@ -856,14 +888,25 @@ function renderHighlights() {
 
 function renderElements() {
   let s = '';
-  const elements = animatedVisualElements().filter(el => !isBackground(el));
+  const allElements = animatedVisualElements();
+  const elements = allElements.filter(el => !isBackground(el));
   for (const el of elements) {
     if (el.type === 'display') s += displayCableSVG(el, elements);
   }
   for (const el of elements) {
     const def = registry[el.type];
     if (!def) continue;
-    s += `<g data-element-id="${esc(el.id)}" transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})" vector-effect="non-scaling-stroke">${def.svg(el, elements)}</g>`;
+    // A zoom's view is the bench redrawn, so it needs the traced rays the
+    // beam layer was just drawn from.
+    const body = el.type === 'zoom'
+      ? zoomSceneSVG(el, {
+        drawables: displayedBeamScene?.drawables || [], paths: displayedBeamScene?.paths || [], beams: state.beams,
+        elements: allElements, baseElements: state.elements,
+        nonScalingStroke: true, background: 'var(--canvas-bg)',
+        pulses: `<g data-zoom-pulses="${esc(el.id)}" pointer-events="none"></g>`,
+      })
+      : def.svg(el, elements);
+    s += `<g data-element-id="${esc(el.id)}" transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})" vector-effect="non-scaling-stroke">${body}</g>`;
     s += labelSVG(el);
   }
   // placement ghost
@@ -872,6 +915,7 @@ function renderElements() {
     s += `<g transform="translate(${placing.pos.x} ${placing.pos.y}) rotate(${el.rot || 0})" opacity="0.5" vector-effect="non-scaling-stroke">${registry[el.type].svg(el, elements)}</g>`;
   }
   elementLayer.innerHTML = s;
+  renderZoomPulses();
 }
 
 // Focal points of a focusing element, in local coordinates. A point may
@@ -933,6 +977,11 @@ function renderOverlay() {
   if (placing && placing.pos) {
     s += focalMarkSVG({ ...placing.el, x: placing.pos.x, y: placing.pos.y }, z);
   }
+  // What a dragged ruler arm has clicked onto: the line it now lies along.
+  if (drag?.mode === 'editpoint' && drag.guide) {
+    const { from, to } = drag.guide;
+    s += `<line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}" stroke="#8b5cf6" stroke-width="${1.4 / z}" stroke-dasharray="${5 / z} ${4 / z}" pointer-events="none"/>`;
+  }
   // marquee rectangle while shift-dragging
   if (drag && drag.mode === 'marquee') {
     const x = Math.min(drag.x0, drag.x1), y = Math.min(drag.y0, drag.y1);
@@ -960,7 +1009,7 @@ function renderOverlay() {
     const direct = getDirectManipulation(sel);
     const resizeHandles = (direct?.resize ? resizeHandleLocations(direct.resize, hw, hh) : [])
       .map(h => ({ ...h, x: h.x + off.x, y: h.y + off.y }));
-    const rotateControl = registry[sel.type]?.rotatable === false ? ''
+    const rotateControl = !isRotatable(sel) ? ''
       : `<line x1="${off.x}" y1="${off.y - hh}" x2="${off.x}" y2="${off.y - hh - 18 / z}" stroke="#2f6fed" stroke-width="${1.2 / z}"/>` +
         `<circle id="rotHandle" cx="${off.x}" cy="${off.y - hh - 22 / z}" r="${5 / z}" fill="#fff" stroke="#2f6fed" stroke-width="${1.5 / z}"/>`;
     // Below the box, not above it. A short label's box is narrower than this
@@ -974,6 +1023,14 @@ function renderOverlay() {
       : '';
     s += `<g transform="translate(${sel.x} ${sel.y}) rotate(${sel.rot || 0})">` +
       `<rect x="${off.x - hw}" y="${off.y - hh}" width="${2 * hw}" height="${2 * hh}" fill="none" stroke="#2f6fed" stroke-width="${1.2 / z}" stroke-dasharray="${4 / z} ${3 / z}"/>` +
+      // Parts drawn away from the element's box (a zoom's view) are part of
+      // the selection too, and say so.
+      (registry[sel.type]?.selectionBoxes?.(sel) || []).map(b =>
+        `<rect x="${b.x0 - 6}" y="${b.y0 - 6}" width="${b.x1 - b.x0 + 12}" height="${b.y1 - b.y0 + 12}" fill="none" stroke="#2f6fed" stroke-width="${1.2 / z}" stroke-dasharray="${4 / z} ${3 / z}"/>`
+        // Purple, like the tune knob: these corners scale the view, so they
+        // set the magnification rather than the region's size.
+        + (b.scalable ? selectionBoxCorners(b).map(({ x, y }) =>
+          `<rect x="${x - 4.5 / z}" y="${y - 4.5 / z}" width="${9 / z}" height="${9 / z}" rx="${1.4 / z}" fill="#fff" stroke="#8b5cf6" stroke-width="${1.5 / z}"/>`).join('') : '')).join('') +
       rotateControl +
       resizeHandles.map(({ x, y }) =>
         `<rect x="${x - 4.5 / z}" y="${y - 4.5 / z}" width="${9 / z}" height="${9 / z}" rx="${1.4 / z}" fill="#fff" stroke="#2f6fed" stroke-width="${1.5 / z}"/>`).join('') +
@@ -987,11 +1044,13 @@ function renderOverlay() {
     }
     if (direct?.tune) {
       const side = tuneHandleSide(sel);
-      const knob = toWorld(sel, side * (hw + 25 / z), 0);
-      const edge = toWorld(sel, side * hw, 0);
+      const knob = toWorld(sel, off.x + side * (hw + 25 / z), off.y);
+      const edge = toWorld(sel, off.x + side * hw, off.y);
       const value = directValueLabel(sel, direct.tune);
       const pillWidth = Math.max(48, value.length * 6.2) / z;
-      const pillX = side > 0 ? 10 / z : -10 / z - pillWidth;
+      // The pill reads away from the box on screen, whichever way the
+      // element is turned.
+      const pillX = knob.x >= edge.x ? 10 / z : -10 / z - pillWidth;
       s += `<line x1="${edge.x}" y1="${edge.y}" x2="${knob.x}" y2="${knob.y}" stroke="#8b5cf6" stroke-width="${1.3 / z}"/>` +
         `<circle cx="${knob.x}" cy="${knob.y}" r="${6 / z}" fill="#fff" stroke="#8b5cf6" stroke-width="${1.8 / z}"/>` +
         `<circle cx="${knob.x}" cy="${knob.y}" r="${2.2 / z}" fill="#8b5cf6"/>` +
@@ -1100,12 +1159,33 @@ function hitElementEditPoint(sel, w) {
 
 function hitRotHandle(sel, w) {
   if (!sel || state.selection.kind !== 'element') return false;
-  if (registry[sel.type]?.rotatable === false) return false;
+  if (!isRotatable(sel)) return false;
   const sz = getSize(sel);
   const off = boxAnchor(sel);
   const l = toLocal(sel, w.x, w.y);
   const hy = off.y - (sz.h / 2 + 6) - 22 / state.view.z;
   return Math.hypot(l.x - off.x, l.y - hy) < 9 / state.view.z;
+}
+
+// The corners of a selection box drawn away from the element's own box, on
+// its outline (6 mm outside it, like the resize handles), with the side each
+// corner is on.
+function selectionBoxCorners(b) {
+  return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sy]) => ({
+    sx, sy, x: sx < 0 ? b.x0 - 6 : b.x1 + 6, y: sy < 0 ? b.y0 - 6 : b.y1 + 6,
+  }));
+}
+
+// A scalable selection box's corner under the pointer (a zoom's view).
+function hitScaleCorner(sel, w) {
+  if (!sel || state.selection.kind !== 'element') return null;
+  const l = toLocal(sel, w.x, w.y), z = state.view.z;
+  for (const box of registry[sel.type]?.selectionBoxes?.(sel) || []) {
+    if (!box.scalable) continue;
+    const corner = selectionBoxCorners(box).find(c => Math.hypot(l.x - c.x, l.y - c.y) < 10 / z);
+    if (corner) return corner;
+  }
+  return null;
 }
 
 function hitResizeHandle(sel, w) {
@@ -1120,15 +1200,22 @@ function hitResizeHandle(sel, w) {
   return corners.find(corner => Math.hypot(l.x - off.x - corner.x, l.y - off.y - corner.y) < 10 / z) || null;
 }
 
+// The local side (+1 or −1 along the element's x) the knob goes on: the
+// screen's right unless the element is near the right edge. An element
+// turned more than a quarter turn has its local x pointing left, so the side
+// flips with it, or the knob would land off the canvas.
 function tuneHandleSide(sel) {
   if (!svg) return 1;
   const screenX = state.view.x + sel.x * state.view.z;
-  return screenX > svg.clientWidth - 110 ? -1 : 1;
+  const right = screenX > svg.clientWidth - 110 ? -1 : 1;
+  return Math.cos((sel.rot || 0) * Math.PI / 180) < 0 ? -right : right;
 }
 
+// Beside the selection box, level with its centre: a box need not be centred
+// on the element's origin (an angle ruler's is not centred on its vertex).
 function tuneHandlePoint(sel) {
-  const sz = getSize(sel), z = state.view.z;
-  return toWorld(sel, tuneHandleSide(sel) * (sz.w / 2 + 6 + 25 / z), 0);
+  const sz = getSize(sel), z = state.view.z, off = boxAnchor(sel);
+  return toWorld(sel, off.x + tuneHandleSide(sel) * (sz.w / 2 + 6 + 25 / z), off.y);
 }
 
 function hitTuneHandle(sel, w) {
@@ -1155,6 +1242,7 @@ function writeParam(el, key, value) {
   else el.params[key] = value;
   if (el.type === 'objective') Object.assign(el.params, normalizeObjectiveParams(el.params));
   if (el.type === 'sclaser') Object.assign(el.params, normalizeSupercontinuumParams(el.params));
+  if (el.type === 'zoom') Object.assign(el.params, normalizeZoomParams(el.params));
 }
 
 // The decimal places of a step such as 0.1, 0.05 or 1e-9. Snapping to a step
@@ -1192,7 +1280,10 @@ export function tuneDragValue(drag, clientY) {
   const pixelsPerStep = drag.tune.pixelsPerStep
     || Math.max(0.2, Math.min(4, 200 / rangeSteps));
   const steps = Math.round((drag.clientY - clientY) / pixelsPerStep);
-  return boundedParam(drag.el, drag.tune.key, drag.value + steps * step);
+  // A knob whose param is signed (a ruler's angle, negative when it opens
+  // clockwise) can turn so that dragging up always enlarges the magnitude.
+  const direction = drag.direction === -1 ? -1 : 1;
+  return boundedParam(drag.el, drag.tune.key, drag.value + direction * steps * step);
 }
 
 // ---------- interactions ----------
@@ -1275,7 +1366,7 @@ export function beginTextEdit(el = findSelected()) {
   wrapper.setAttribute('aria-label', 'Edit Markdown text annotation');
   wrapper.innerHTML = `<div class="canvas-text-editor-head"><span>Markdown text</span><button type="button">Done</button></div>` +
     `<textarea aria-label="Markdown text" spellcheck="true"></textarea>` +
-    `<div class="canvas-text-editor-help"><span><b>**bold**</b> · <i>*italic*</i> · # heading · - list · [link](https://…)</span><span>⌘↵ done · Esc cancel</span></div>`;
+    `<div class="canvas-text-editor-help"><span><b>**bold**</b> · <i>*italic*</i> · # heading · - list · [link](https://…) · $x^2$ math</span><span>⌘↵ done · Esc cancel</span></div>`;
   svg.parentElement.appendChild(wrapper);
   const textarea = wrapper.querySelector('textarea');
   const done = wrapper.querySelector('button');
@@ -1536,7 +1627,7 @@ function bindPointer() {
       detail: {
         clientX: e.clientX, clientY: e.clientY,
         kind: inCurrentGroup ? 'multi' : el ? 'element' : 'beam',
-        rotatable: !!el && registry[el.type]?.rotatable !== false,
+        rotatable: !!el && isRotatable(el),
         duplicable: inCurrentGroup || !el || registry[el.type]?.singleton !== true,
       },
     }));
@@ -1785,6 +1876,19 @@ function onDown(e) {
   }
 
   const sel = findSelected();
+  const scaleCorner = state.embedMode ? null : hitScaleCorner(sel, w);
+  if (scaleCorner && sel.type === 'zoom') {
+    // The handle sits outside the corner; keep the offset between the
+    // pointer and the corner itself, so the drag starts from the current
+    // magnification instead of jumping to the handle's position.
+    const cornerAt = zoomViewCorner(sel.params, sel.rot, scaleCorner);
+    drag = {
+      mode: 'zoomscale', el: sel, corner: scaleCorner, base: { ...sel.params }, moved: false,
+      grab: { x: cornerAt.x - (w.x - sel.x), y: cornerAt.y - (w.y - sel.y) },
+    };
+    svg.setPointerCapture(e.pointerId);
+    return;
+  }
   const resizeHandle = hitResizeHandle(sel, w);
   if (resizeHandle) {
     const direct = getDirectManipulation(sel);
@@ -1817,7 +1921,8 @@ function onDown(e) {
     // down and back would leave the pulse at the narrowest band's floor, so
     // each step re-derives it from the duration the drag started with.
     drag = { mode: 'tune', el: sel, tune, clientY: e.clientY, value: readParam(sel, tune.key), moved: false,
-      pulseWidthFs: sel.type === 'sclaser' ? sel.params.pulseWidthFs : undefined };
+      pulseWidthFs: sel.type === 'sclaser' ? sel.params.pulseWidthFs : undefined,
+      direction: typeof tune.direction === 'function' ? tune.direction(sel.params) : 1 };
     svg.setPointerCapture(e.pointerId);
     return;
   }
@@ -1848,6 +1953,15 @@ function onDown(e) {
         mode: 'move', el, ox: el.x - w.x, oy: el.y - w.y, moved: false,
         pointerType: e.pointerType, pressClientX: e.clientX, pressClientY: e.clientY, maxDistancePx: 0,
       };
+      // A zoom has two parts that move apart: grabbing its view moves only
+      // the view, and grabbing the region aims it while the view stays where
+      // it is on the bench. Nudging or a group move still carries both.
+      if (el.type === 'zoom') {
+        const local = toLocal(el, w.x, w.y);
+        const view = { x: el.x + el.params.insetX, y: el.y + el.params.insetY };
+        if (zoomViewContains(el.params, local, 6 / state.view.z, el.rot)) drag.view = { ox: view.x - w.x, oy: view.y - w.y };
+        else drag.keepView = view;
+      }
       svg.setPointerCapture(e.pointerId);
     }
     renderAll(); onSelectionChange({ openMobile: state.embedMode });
@@ -1883,7 +1997,7 @@ function onMove(e) {
   if (statusEl && !drag && !placing && state.tool === 'select') {
     statusEl.textContent = `x ${Math.round(w.x)} mm,  y ${Math.round(w.y)} mm`;
     const hoverSel = findSelected();
-    const resize = hitResizeHandle(hoverSel, w);
+    const resize = hitResizeHandle(hoverSel, w) || hitScaleCorner(hoverSel, w);
     svg.style.cursor = hitElementEditPoint(hoverSel, w) >= 0 ? 'move'
       : resize ? (resize.sx === 0 ? 'ns-resize' : resize.sy === 0 ? 'ew-resize'
       : resize.sx === resize.sy ? 'nwse-resize' : 'nesw-resize')
@@ -1921,12 +2035,25 @@ function onMove(e) {
     state.view.x = drag.vx + (e.clientX - drag.sx);
     state.view.y = drag.vy + (e.clientY - drag.sy);
     renderInteraction();
+  } else if (drag.mode === 'move' && drag.view) {
+    const params = drag.el.params;
+    const insetX = clampZoomOffset(snapPos(w.x + drag.view.ox, e.altKey) - drag.el.x);
+    const insetY = clampZoomOffset(snapPos(w.y + drag.view.oy, e.altKey) - drag.el.y);
+    if (insetX === params.insetX && insetY === params.insetY) return;
+    if (!drag.moved) { pushUndo(); drag.moved = true; }
+    params.insetX = insetX;
+    params.insetY = insetY;
+    renderInteraction();
   } else if (drag.mode === 'move') {
     const { x, y } = snapElPos(drag.el, w.x + drag.ox, w.y + drag.oy, e.altKey);
     if (x === drag.el.x && y === drag.el.y) return;
     if (!drag.moved) { pushUndo(); drag.moved = true; }
     drag.el.x = x;
     drag.el.y = y;
+    if (drag.keepView) {
+      drag.el.params.insetX = clampZoomOffset(drag.keepView.x - x);
+      drag.el.params.insetY = clampZoomOffset(drag.keepView.y - y);
+    }
     renderInteraction();
   } else if (drag.mode === 'rotate') {
     const a = dragRotation(drag, w, e.shiftKey);
@@ -1969,6 +2096,16 @@ function onMove(e) {
     const labels = assignments.map(([key]) => `${key} ${readParam(drag.el, key)}`).join(' · ');
     setStatus(labels);
     renderInteraction();
+  } else if (drag.mode === 'zoomscale') {
+    const step = registry.zoom.params.find(spec => spec.key === 'mag')?.step || 0;
+    const next = zoomViewCornerDrag(drag.base, drag.el.rot, drag.corner,
+      { x: w.x - drag.el.x + drag.grab.x, y: w.y - drag.el.y + drag.grab.y }, step);
+    const params = drag.el.params;
+    if (next.mag === params.mag && next.insetX === params.insetX && next.insetY === params.insetY) return;
+    if (!drag.moved) { pushUndo(); drag.moved = true; }
+    Object.assign(params, next);
+    setStatus(directValueLabel(drag.el, getDirectManipulation(drag.el).tune));
+    renderInteraction();
   } else if (drag.mode === 'tune') {
     const next = tuneDragValue(drag, e.clientY);
     if (next === readParam(drag.el, drag.tune.key)) return;
@@ -1976,6 +2113,24 @@ function onMove(e) {
     if (drag.pulseWidthFs !== undefined) drag.el.params.pulseWidthFs = drag.pulseWidthFs;
     writeParam(drag.el, drag.tune.key, next);
     setStatus(directValueLabel(drag.el, drag.tune));
+    renderInteraction();
+  } else if (drag.mode === 'editpoint' && drag.editor.dragTo) {
+    // An editor that places its own handles (a ruler) gets the pointer as it
+    // is, with what it may click onto, the grid, Shift and Alt.
+    drag.targets ??= rulerClampTargets({
+      elements: state.elements, paths: displayedBeamScene?.paths || [], beams: state.beams,
+      definitions: registry, excludeId: drag.el.id,
+    });
+    const result = drag.editor.dragTo(drag.base, drag.i, w, {
+      targets: drag.targets, tolerance: 10 / state.view.z, clamp: !e.altKey, shift: e.shiftKey,
+      snapGrid: state.snap && !e.altKey ? value => snapToGrid(value, state.view.z) : null,
+    });
+    if (!result) return;
+    if (!drag.moved) { pushUndo(); drag.moved = true; }
+    drag.el.x = result.candidate.x; drag.el.y = result.candidate.y; drag.el.rot = result.candidate.rot;
+    Object.assign(drag.el.params, result.candidate.params);
+    drag.guide = result.guide;
+    setStatus(drag.editor.status(drag.el, drag.i) + (result.label ? ` · on ${result.label}` : ''));
     renderInteraction();
   } else if (drag.mode === 'editpoint') {
     const snapped = { x: snapPos(w.x, e.altKey), y: snapPos(w.y, e.altKey) };
@@ -2107,7 +2262,7 @@ function onUp(e) {
   }
   if (!drag) return;
   if (e.type === 'pointercancel') {
-    const wasChange = drag.moved === true && ['move', 'rotate', 'resize', 'resizeAnchor', 'tune', 'editpoint', 'vertex', 'movebeam', 'movemulti'].includes(drag.mode);
+    const wasChange = drag.moved === true && ['move', 'rotate', 'resize', 'resizeAnchor', 'tune', 'zoomscale', 'editpoint', 'vertex', 'movebeam', 'movemulti'].includes(drag.mode);
     drag = null;
     renderAll();
     if (wasChange) { changed(); onSelectionChange(); }
@@ -2127,7 +2282,7 @@ function onUp(e) {
     return;
   }
   const dragMode = drag.mode;
-  const wasChange = drag.moved === true && ['move', 'rotate', 'resize', 'resizeAnchor', 'tune', 'editpoint', 'vertex', 'movebeam', 'movemulti'].includes(dragMode);
+  const wasChange = drag.moved === true && ['move', 'rotate', 'resize', 'resizeAnchor', 'tune', 'zoomscale', 'editpoint', 'vertex', 'movebeam', 'movemulti'].includes(dragMode);
   if ((dragMode === 'move' || dragMode === 'movebeam')
       && Number.isFinite(drag.pressClientX) && Number.isFinite(drag.pressClientY)) {
     drag.maxDistancePx = Math.max(
