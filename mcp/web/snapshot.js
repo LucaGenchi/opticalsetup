@@ -28,6 +28,18 @@ export function resultData(result) {
   }
   return undefined;
 }
+// What ChatGPT's own globals say about the tool result: whether one has
+// arrived, and the object the tool returned if it can be read. `toolOutput` is
+// the structured content; `toolResponseMetadata.mcp_tool_result` is the whole
+// result. Globals that carry neither (a theme change, a call still running,
+// an empty placeholder) are not a result.
+export function globalsResult(globals) {
+  const filled = value => Boolean(value) && typeof value === 'object' && Object.keys(value).length > 0;
+  const output = filled(globals?.toolOutput) ? globals.toolOutput : undefined;
+  const whole = filled(globals?.toolResponseMetadata?.mcp_tool_result) ? resultData(globals.toolResponseMetadata.mcp_tool_result) : undefined;
+  if (!output && !filled(globals?.toolResponseMetadata?.mcp_tool_result)) return { received: false, data: undefined };
+  return { received: true, data: output?.setup ? output : whole?.setup ? whole : output ?? whole };
+}
 // What a result offers a view as its setup, once its hash has been checked;
 // nothing if the hash is wrong. The edit that produced the result counts as
 // applied, so the same result delivered a second time is recognised instead of

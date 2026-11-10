@@ -13,7 +13,7 @@ import { createApplication } from '../../mcp/server.js';
 import { buildWidget, widgetAsset } from '../../mcp/widget.js';
 import { registry, createElement } from '../../mcp/registry.js';
 import { inspectDocument, emptyDocument } from '../../mcp/scene-api.js';
-import { browserSceneHash, canonicalScene, offeredSetup, proposalMatches, resultData } from '../../mcp/web/snapshot.js';
+import { browserSceneHash, canonicalScene, globalsResult, offeredSetup, proposalMatches, resultData } from '../../mcp/web/snapshot.js';
 import { createDrawnPath } from '../../sketch/js/path-types.js';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -95,6 +95,27 @@ test('the view reads a tool result handed over as structured content or only as 
   assert.equal(resultData(failed).setup, undefined);
   assert.equal(resultData({ content: failed.content })?.setup, undefined);
   for (const nothing of [undefined, null, {}, { content: [] }, { content: [{ type: 'text', text: 'not json' }] }, { content: [{ type: 'text', text: '7' }] }]) assert.equal(resultData(nothing), undefined);
+});
+
+test('ChatGPT globals are read as a result only when they carry one, the same result whichever field holds it', async () => {
+  const edit = await call('add_components', { setup: (await call('open_setup')).structuredContent.setup, clientRequestId: 'globals', components: [{ type: 'lens', x: 0, y: 0 }] });
+  const failed = await call('get_setup', {});
+  const data = edit.structuredContent;
+  // The structured content, the whole result, or the whole result with only its text.
+  assert.deepEqual(globalsResult({ toolOutput: data }), { received: true, data });
+  assert.deepEqual(globalsResult({ toolResponseMetadata: { status: 'completed', mcp_tool_result: edit } }), { received: true, data });
+  assert.deepEqual(globalsResult({ toolOutput: null, toolResponseMetadata: { mcp_tool_result: { content: edit.content } } }), { received: true, data });
+  // A failed call has arrived and carries no setup: that is what ends a view's wait.
+  for (const globals of [{ toolOutput: failed.structuredContent }, { toolResponseMetadata: { mcp_tool_result: failed } }, { toolResponseMetadata: { mcp_tool_result: { isError: true, content: [{ type: 'text', text: 'Request failed' }] } } }]) {
+    const result = globalsResult(globals);
+    assert.equal(result.received, true); assert.equal(result.data?.setup, undefined);
+  }
+  // Where one field failed to carry the setup and the other has it, the setup is what counts.
+  assert.deepEqual(globalsResult({ toolOutput: { note: 'x' }, toolResponseMetadata: { mcp_tool_result: edit } }).data, data);
+  // A theme change, a call still running, or an empty placeholder is not a result, so a view keeps waiting.
+  for (const globals of [undefined, null, {}, { theme: 'dark' }, { displayMode: 'fullscreen', maxHeight: 600 }, { toolOutput: null }, { toolOutput: {} }, { toolOutput: undefined, toolResponseMetadata: null }, { toolResponseMetadata: { status: 'in_progress' } }, { toolResponseMetadata: { mcp_tool_result: null } }, { toolInput: { setup: data.setup } }]) {
+    assert.deepEqual(globalsResult(globals), { received: false, data: undefined }, JSON.stringify(globals));
+  }
 });
 
 test('a handshake client is answered in the revision it asked for, an unknown one in the newest handshake revision', async () => {

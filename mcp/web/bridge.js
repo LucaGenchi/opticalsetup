@@ -5,7 +5,7 @@ import { registry } from '../../sketch/js/elements.js';
 import { renderAll, zoomFit } from '../../sketch/js/canvas.js';
 import { renderInspector } from '../../sketch/js/inspector.js';
 import { buildShareURL } from '../../sketch/js/share.js';
-import { browserSceneHash, canonicalJSON, canonicalScene, offeredSetup, proposalMatches, resultData } from './snapshot.js';
+import { browserSceneHash, canonicalJSON, canonicalScene, globalsResult, offeredSetup, proposalMatches, resultData } from './snapshot.js';
 // Native autosave is origin-wide. Keep this integration's scenes scoped by ID.
 configureAutosave({ enabled: false });
 const nativeBoot = new Promise(resolve => window.addEventListener('opticalsetup:booted', resolve, { once: true }));
@@ -174,12 +174,8 @@ window.addEventListener('message', event => {
   if (message.method === undefined && message.id !== undefined && pending.has(message.id)) {
     const call = pending.get(message.id); pending.delete(message.id); clearTimeout(call.timeout);
     message.error ? call.reject(new Error(message.error.message)) : call.resolve(message.result);
-  } else if (message.method === 'ui/notifications/tool-result') {
-    const data = resultData(message.params);
-    // A call that failed gives the waiting view no setup: it stops waiting.
-    if (!data?.setup?.scene) receiveInitialResult(null);
-    accept(data).catch(() => status('Could not apply chat edit · Local setup kept', true));
-  } else if (message.method === 'ui/notifications/tool-cancelled') receiveInitialResult(null);
+  } else if (message.method === 'ui/notifications/tool-result') deliver(resultData(message.params));
+  else if (message.method === 'ui/notifications/tool-cancelled') receiveInitialResult(null);
   else if (message.method === 'ui/notifications/host-context-changed' && message.params?.containerDimensions) reportSize(message.params.containerDimensions);
   else if (message.id !== undefined && ['ui/resource-teardown', 'ping'].includes(message.method)) window.parent.postMessage({ jsonrpc: '2.0', id: message.id, result: {} }, '*');
 });
@@ -191,12 +187,19 @@ function reportSize(box) {
   if (!hosted || box?.height) return;
   window.parent.postMessage({ jsonrpc: '2.0', method: 'ui/notifications/size-changed', params: { width: document.documentElement.clientWidth, height: Math.min(box?.maxHeight || EDITOR_HEIGHT, EDITOR_HEIGHT) } }, '*');
 }
+// The one way in for a tool result, however the host hands it over. A result
+// that has arrived without a setup is a failed call: a view that was waiting
+// for it stops waiting.
+function deliver(data) {
+  if (!data?.setup?.scene) { receiveInitialResult(null); return; }
+  accept(data).catch(() => status('Could not apply chat edit · Local setup kept', true));
+}
 // Some ChatGPT surfaces update legacy globals on the already-mounted view.
 // Keep the standard MCP Apps lifecycle and support that compatibility event.
+// It also fires for a theme or size change, which carries no result.
 window.addEventListener('openai:set_globals', event => {
-  const globals = event.detail?.globals;
-  const data = globals?.toolOutput || globals?.toolResponseMetadata?.mcp_tool_result?.structuredContent;
-  if (data) accept(data).catch(() => status('Could not apply chat edit · Local setup kept', true));
+  const result = globalsResult(event.detail?.globals);
+  if (result.received) deliver(result.data);
 });
 let manualPromise;
 async function settleManual() {
@@ -342,8 +345,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     // the result however long the call takes: a view that started on a setup of its own after a
     // delay would be on the wrong one when the result came. It stops waiting when the host
     // reports the call cancelled or failed, or when the user asks for an empty setup.
-    let incoming = queued || window.openai?.toolOutput;
-    if (!incoming && hosted) incoming = await initialResult;
+    const present = globalsResult(window.openai);
+    let incoming = queued || (present.data?.setup?.scene ? present.data : undefined);
+    if (!incoming && hosted && !present.received) incoming = await initialResult;
     if (incoming?.setup) take(incoming.setup.id, await offeredSetup(incoming));
     else {
       // Standalone workbench starts with its own local copy, separate from ChatGPT views.
