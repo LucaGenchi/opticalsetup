@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { registry, createElement, getElementMeta } from './registry.js';
-import { parseSketch } from '../sketch/js/state.js';
 import { traceScene, detectorReading, fiberReading } from '../sketch/js/raytrace.js';
 import { PATH_TOOLS, createDrawnPath, pathMeta } from '../sketch/js/path-types.js';
 import { pathSchema, pathView, validatePathPoints, applyPathParameters } from './paths.js';
+import { canonicalScene } from './web/snapshot.js';
 import { SceneError } from './errors.js';
 export { SceneError } from './errors.js';
 import { createHash } from 'node:crypto';
@@ -90,7 +90,7 @@ export function normalizeScene(scene) {
     number(el.x, 'x'); number(el.y, 'y');
     if (el.rot !== undefined) number(el.rot, 'rotation');
   }
-  try { return { app: 'optics2d', version: 1, ...parseSketch(scene, registry) }; }
+  try { return canonicalScene(scene, registry); }
   catch (error) { throw new SceneError(error.message); }
 }
 export function emptyDocument(id = 'workspace') {

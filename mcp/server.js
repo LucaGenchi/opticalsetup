@@ -6,23 +6,30 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { handleStatelessRpc, VERSION } from './stateless.js';
 import { buildWidget, widgetAsset, widgetResourceUri } from './widget.js';
-import { compute } from './compute.js';
+import { compute, canRenderScreenshots } from './compute.js';
 import { createLiveRelay } from './relay.js';
 const MAX_BODY = 950000;
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...headers } });
-export function createApplication({ origin, challenge = '', computeScene = compute, revision = 'local' }) {
+const LOOPBACK = ['127.0.0.1', 'localhost', '[::1]'];
+// Claude serves a view from a sandbox origin named by a hash of the connector URL.
+const CLAUDE_SANDBOX = /^https:\/\/[a-f0-9]{16,64}\.claudemcpcontent\.com$/;
+export function createApplication({ origin, challenge = '', computeScene = compute, revision = 'local', screenshots = true }) {
   const originUrl = new URL(origin);
   const relay = createLiveRelay();
   const widgetOrigin = 'https://' + originUrl.hostname.replaceAll('.', '-') + '.web-sandbox.oaiusercontent.com';
+  // A local service answers to every loopback name of its own port; a hosted one only to its public host.
+  const local = LOOPBACK.includes(originUrl.hostname);
+  const hosts = local ? LOOPBACK.map(name => name + (originUrl.port ? ':' + originUrl.port : '')) : [originUrl.host];
+  const origins = local ? hosts.map(name => originUrl.protocol + '//' + name) : [origin];
   if (originUrl.origin !== origin || originUrl.username || originUrl.password) throw new Error('Use an origin without a path or credentials');
   const widget = buildWidget(origin);
   let draining = false;
   const application = async request => {
     if (draining) return json({ error: 'Service restarting; retry with your current browser snapshot' }, 503);
     const url = new URL(request.url), host = request.headers.get('host'), requestOrigin = request.headers.get('origin');
-    if (host && host !== originUrl.host) return json({ error: 'Forbidden host' }, 403);
+    if (host && !hosts.includes(host)) return json({ error: 'Forbidden host' }, 403);
     if (url.pathname === '/mcp/events') {
-      if (requestOrigin && ![origin, widgetOrigin].includes(requestOrigin)) return json({ error: 'Forbidden origin' }, 403);
+      if (requestOrigin && ![...origins, widgetOrigin].includes(requestOrigin) && !CLAUDE_SANDBOX.test(requestOrigin)) return json({ error: 'Forbidden origin' }, 403);
       const cors = requestOrigin ? { 'access-control-allow-origin': requestOrigin, vary: 'Origin' } : {};
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...cors, 'access-control-allow-methods': 'POST', 'access-control-allow-headers': 'content-type' } });
       if (request.method !== 'POST') return json({ error: 'POST required' }, 405, cors);
@@ -39,10 +46,10 @@ export function createApplication({ origin, challenge = '', computeScene = compu
         throw error;
       }
     }
-    if (requestOrigin && requestOrigin !== origin) return json({ error: 'Forbidden origin' }, 403);
-    if (request.method === 'GET' && url.pathname === '/mcp') return json({ error: 'POST required' }, 405);
+    if (requestOrigin && !origins.includes(requestOrigin)) return json({ error: 'Forbidden origin' }, 403);
+    if (['GET', 'DELETE'].includes(request.method) && url.pathname === '/mcp') return json({ error: 'POST required' }, 405, { allow: 'POST' });
     if (request.method === 'GET' || request.method === 'HEAD') {
-      if (url.pathname === '/mcp/health') return json({ ok: true, service: 'OpticalSetup', version: VERSION, revision, storage: 'none', authentication: 'none' });
+      if (url.pathname === '/mcp/health') return json({ ok: true, service: 'OpticalSetup', version: VERSION, revision, storage: 'none', authentication: 'none', screenshots });
       if (url.pathname === '/.well-known/openai-apps-challenge') return challenge ? new Response(challenge, { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } }) : new Response('Challenge not configured', { status: 404 });
       if (url.pathname === '/mcp/workbench') return new Response(await widget, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
       return new Response('Not found', { status: 404 });
@@ -53,7 +60,7 @@ export function createApplication({ origin, challenge = '', computeScene = compu
     if (bytes.byteLength > MAX_BODY) return json({ error: 'Request too large' }, 413);
     let body;
     try { body = JSON.parse(new TextDecoder().decode(bytes)); } catch { return json({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }, 400); }
-    const response = await handleStatelessRpc(body, { html: await widget, origin, compute: computeScene, deliver: (channel, data) => relay.publish(channel, data) });
+    const response = await handleStatelessRpc(body, { html: await widget, origin, compute: computeScene, screenshots, deliver: (channel, data) => relay.publish(channel, data) });
     return response === null ? new Response(null, { status: 202 }) : json(response);
   };
   application.close = () => { draining = true; relay.close(); };
@@ -92,9 +99,10 @@ export async function listen(application, { host = '127.0.0.1', port = 5188 } = 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const port = Number(process.env.PORT || 5188), origin = process.env.PUBLIC_ORIGIN || `http://127.0.0.1:${port}`;
   if (process.env.NODE_ENV === 'production' && !origin.startsWith('https://')) throw new Error('Production requires an HTTPS origin');
-  const application = createApplication({ origin, challenge: process.env.OPENAI_APPS_CHALLENGE, revision: process.env.DEPLOY_REVISION || 'local' });
+  const screenshots = await canRenderScreenshots();
+  const application = createApplication({ origin, challenge: process.env.OPENAI_APPS_CHALLENGE, revision: process.env.DEPLOY_REVISION || 'local', screenshots });
   const server = await listen(application, { port });
-  console.log('OpticalSetup stateless MCP listening; no scene database');
+  console.log(`OpticalSetup stateless MCP listening at ${origin}/mcp; no scene database; PNG tool ${screenshots ? 'available' : 'not offered (needs Linux tmpfs and FFmpeg)'}`);
   for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, () => {
     application.close(); server.close(() => process.exit(0));
     setTimeout(() => { server.closeAllConnections(); process.exit(0); }, 5000).unref();

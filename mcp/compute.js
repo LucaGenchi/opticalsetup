@@ -1,9 +1,15 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { spawn } from 'node:child_process';
-import { mkdtemp, rm, statfs } from 'node:fs/promises';
+import { access, constants, mkdtemp, rm, statfs } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { SceneError } from './scene-api.js';
+const TMPFS = 0x01021994, ffmpeg = () => process.env.FFMPEG || '/usr/bin/ffmpeg';
+// Whether this machine can make the PNG at all: a memory-backed directory and an FFmpeg binary.
+export async function canRenderScreenshots() {
+  const memoryFS = await statfs('/dev/shm').catch(() => null);
+  return memoryFS?.type === TMPFS && access(ffmpeg(), constants.X_OK).then(() => true, () => false);
+}
 let active = 0;
 export async function compute(kind, scene) {
   if (active >= 2) return Promise.reject(new SceneError('Renderer is busy. Retry shortly.', 'BUSY'));
@@ -12,12 +18,12 @@ export async function compute(kind, scene) {
   try {
     if (kind === 'screenshot') {
       const memoryFS = await statfs('/dev/shm').catch(() => null);
-      if (memoryFS?.type !== 0x01021994) throw new SceneError('Memory-backed rendering is unavailable', 'RENDER_UNAVAILABLE');
+      if (memoryFS?.type !== TMPFS) throw new SceneError('Memory-backed rendering is unavailable', 'RENDER_UNAVAILABLE');
       directory = await mkdtemp('/dev/shm/opticalsetup-');
     }
   } catch (error) { active--; throw error; }
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [fileURLToPath(new URL('./render-worker.js', import.meta.url))], { stdio: ['pipe', 'pipe', 'ignore'], env: { PATH: process.env.PATH, FFMPEG: process.env.FFMPEG || '/usr/bin/ffmpeg', MEMORY_DIR: directory || '' } });
+    const child = spawn(process.execPath, [fileURLToPath(new URL('./render-worker.js', import.meta.url))], { stdio: ['pipe', 'pipe', 'ignore'], env: { PATH: process.env.PATH, FFMPEG: ffmpeg(), MEMORY_DIR: directory || '' } });
     let size = 0, done = false; const chunks = [];
     const finish = (error, data) => { if (done) return; done = true; active--; clearTimeout(timer); error ? reject(error) : resolve(data); };
     const timer = setTimeout(() => { child.kill('SIGKILL'); finish(new SceneError('Rendering timed out. Reduce the scene complexity.', 'COMPUTE_TIMEOUT')); }, 15000);

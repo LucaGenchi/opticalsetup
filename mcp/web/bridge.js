@@ -5,7 +5,7 @@ import { registry } from '../../sketch/js/elements.js';
 import { renderAll, zoomFit } from '../../sketch/js/canvas.js';
 import { renderInspector } from '../../sketch/js/inspector.js';
 import { buildShareURL } from '../../sketch/js/share.js';
-import { browserSceneHash, canonicalJSON, proposalMatches } from './snapshot.js';
+import { browserSceneHash, canonicalJSON, canonicalScene, proposalMatches } from './snapshot.js';
 // Native autosave is origin-wide. Keep this integration's scenes scoped by ID.
 configureAutosave({ enabled: false });
 const nativeBoot = new Promise(resolve => window.addEventListener('opticalsetup:booted', resolve, { once: true }));
@@ -13,7 +13,14 @@ const hosted = window.parent !== window, pending = new Map();
 let receiveInitialResult;
 const initialResult = new Promise(resolve => { receiveInitialResult = resolve; });
 let nextId = 1, setup, history = [], future = [], requests = [], applying = false, ready = false, busy = false, accepting = false, dragging = false, queued, channel, timer, contextKey = '', navigationGeneration = 0;
-const nativeScene = () => JSON.parse(serialize());
+let host = {}, contextFailures = 0, contextRetryAt = 0;
+// Hash the scene in the form the service hashes it. A state the editor can
+// hold but not load (a fiber dragged onto a single point) stays raw, and the
+// service then answers with the editor's own reason.
+const nativeScene = () => {
+  const text = serialize();
+  try { return canonicalScene(text, registry); } catch { return JSON.parse(text); }
+};
 const key = id => 'opticalsetup-local-v1:' + id;
 const eventsURL = new URL('../../../events', import.meta.url);
 const copy = value => JSON.parse(JSON.stringify(value));
@@ -23,7 +30,7 @@ function status(message, error = false) {
 }
 function request(method, params) {
   return new Promise((resolve, reject) => {
-    const id = nextId++, timeout = setTimeout(() => { pending.delete(id); reject(new Error('ChatGPT connection timed out')); }, 15000);
+    const id = nextId++, timeout = setTimeout(() => { pending.delete(id); reject(new Error('Chat connection timed out')); }, 15000);
     pending.set(id, { resolve, reject, timeout });
     window.parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
   });
@@ -34,12 +41,14 @@ function controls() {
   }
 }
 function context() {
-  if (!hosted || !setup || busy) return;
+  if (!hosted || !setup || busy || Date.now() < contextRetryAt) return;
   const selection = state.selection, selected = selection?.kind === 'element' ? state.elements.find(x => x.id === selection.id) : null;
   const payload = { setup, selectedComponent: selected ? { id: selected.id, type: selected.type } : null, selectedPathId: selection?.kind === 'beam' ? selection.id : null, undoScene: history.at(-1) || null, redoScene: future.at(-1) || null, storage: 'browser-local' };
   const content = JSON.stringify(payload);
   if (content === contextKey) return; contextKey = content;
-  request('ui/update-model-context', { content: [{ type: 'text', text: 'OpticalSetup current browser snapshot (use this for the next tool call): ' + content }] }).catch(() => { contextKey = ''; });
+  // A host that cannot take the context is asked again, but less and less often.
+  request('ui/update-model-context', { content: [{ type: 'text', text: 'OpticalSetup current browser snapshot (use this for the next tool call): ' + content }] })
+    .then(() => { contextFailures = 0; }, () => { contextKey = ''; contextRetryAt = Date.now() + Math.min(60000, 1000 * 2 ** contextFailures++); });
 }
 function persist(broadcast = true) {
   const local = { setup, history, future, requests };
@@ -94,7 +103,8 @@ async function accept(data) {
   } else { history.push(setup.scene); history = history.slice(-30); future = []; }
   requests.push(data.clientRequestId); requests = requests.slice(-60);
   const fit = data.setup.scene.elements.length > setup.scene.elements.length || data.setup.scene.beams.length > setup.scene.beams.length;
-  setup = copy(data.setup); render(setup.scene, fit); persist();
+  // A proposal computed without the channel (the model left it out) must not cost the view its live channel.
+  setup = { ...copy(data.setup), ...(setup.channel ? { channel: setup.channel } : {}) }; render(setup.scene, fit); persist();
   } finally { accepting = false; drainQueued(); }
 }
 function drainQueued() {
@@ -106,13 +116,14 @@ async function connectLive() {
   if (!hosted) return;
   if (!setup.channel) setup.channel = [...crypto.getRandomValues(new Uint8Array(32))].map(x => x.toString(16).padStart(2, '0')).join('');
   persist();
+  let delay = 1000;
   while (ready) {
     const box = document.getElementById('lab-sync');
     try {
       const response = await fetch(eventsURL, { method: 'POST', credentials: 'omit', referrerPolicy: 'no-referrer', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ channel: setup.channel }) });
       if (!response.ok || !response.body) throw new Error('Live chat delivery unavailable');
       const reader = response.body.getReader(), decoder = new TextDecoder(); let buffer = '';
-      box.dataset.delivery = 'connected';
+      box.dataset.delivery = 'connected'; delay = 1000;
       try {
         while (ready) {
           const { value, done } = await reader.read(); if (done) break;
@@ -128,17 +139,29 @@ async function connectLive() {
       } finally { await reader.cancel(); }
     } catch { /* browser state is retained through transient connection failures */ }
     box.dataset.delivery = 'reconnecting';
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // A refused connection (limit reached, origin not allowed) is retried ever more slowly.
+    await new Promise(resolve => setTimeout(resolve, delay)); delay = Math.min(delay * 2, 30000);
   }
 }
 window.addEventListener('message', event => {
   if (!hosted || event.source !== window.parent || event.data?.jsonrpc !== '2.0') return;
   const message = event.data;
-  if (message.id !== undefined && pending.has(message.id)) {
+  // The host numbers its own requests, so only a message without a method answers one of ours.
+  if (message.method === undefined && message.id !== undefined && pending.has(message.id)) {
     const call = pending.get(message.id); pending.delete(message.id); clearTimeout(call.timeout);
     message.error ? call.reject(new Error(message.error.message)) : call.resolve(message.result);
   } else if (message.method === 'ui/notifications/tool-result') accept(message.params?.structuredContent).catch(() => status('Could not apply chat edit · Local setup kept', true));
+  else if (message.method === 'ui/notifications/host-context-changed' && message.params?.containerDimensions) reportSize(message.params.containerDimensions);
+  else if (message.id !== undefined && ['ui/resource-teardown', 'ping'].includes(message.method)) window.parent.postMessage({ jsonrpc: '2.0', id: message.id, result: {} }, '*');
 });
+// The editor fills whatever height it is given, so it has no content height
+// for a host to measure. Where the host leaves the height open, ask for a
+// workable one; a host that never hears a size can show the view with none.
+const EDITOR_HEIGHT = 680;
+function reportSize(box) {
+  if (!hosted || box?.height) return;
+  window.parent.postMessage({ jsonrpc: '2.0', method: 'ui/notifications/size-changed', params: { width: document.documentElement.clientWidth, height: Math.min(box?.maxHeight || EDITOR_HEIGHT, EDITOR_HEIGHT) } }, '*');
+}
 // Some ChatGPT surfaces update legacy globals on the already-mounted view.
 // Keep the standard MCP Apps lifecycle and support that compatibility event.
 window.addEventListener('openai:set_globals', event => {
@@ -259,6 +282,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('official-editor')?.addEventListener('click', event => {
     if (hosted && window.openai?.openExternal) { event.preventDefault(); window.openai.openExternal({ href: event.currentTarget.href, redirectUrl: false }); }
   });
+  // A sandboxed view cannot open a new tab by itself: ask the host, as MCP Apps defines.
+  document.addEventListener('click', event => {
+    const link = event.target.closest?.('a[target="_blank"]');
+    if (!hosted || !link || window.openai?.openExternal || !host.hostCapabilities?.openLinks || !/^https:/.test(link.href)) return;
+    event.preventDefault(); request('ui/open-link', { url: link.href }).catch(() => status('The chat could not open this link', true));
+  });
   new MutationObserver(controls).observe(document.getElementById('toolbar'), { attributes: true, subtree: true, attributeFilter: ['disabled'] });
   const linkDocs = () => {
     for (const a of document.querySelectorAll('#inspector a[href^="/wiki/"]')) {
@@ -270,8 +299,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   try {
     await nativeBoot;
     if (hosted) {
-      await request('ui/initialize', { protocolVersion: '2026-01-26', appInfo: { name: 'OpticalSetup', version: '1.0.0' }, appCapabilities: {} });
+      host = await request('ui/initialize', { protocolVersion: '2026-01-26', appInfo: { name: 'OpticalSetup', version: '1.0.0' }, appCapabilities: { availableDisplayModes: ['inline', 'fullscreen'] } }) || {};
       window.parent.postMessage({ jsonrpc: '2.0', method: 'ui/notifications/initialized', params: {} }, '*');
+      reportSize(host.hostContext?.containerDimensions);
     }
     // A host can deliver the initial tool result after the handshake response.
     const incoming = queued || window.openai?.toolOutput || (hosted && await Promise.race([
@@ -303,6 +333,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       };
     } catch { /* isolated host storage may not support browser channels */ }
     ready = true;
+    // A copy stored before scenes were hashed in their loaded form is brought to it now.
+    await settleManual();
     if (incoming?.action && incoming.setup.revision > setup.revision) await accept(incoming);
     persist(); setInterval(context, 500); connectLive();
   } catch (error) { status('Local editor · ' + error.message + ' · Save JSON for a backup', true); }
