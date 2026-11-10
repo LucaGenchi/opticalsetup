@@ -5,7 +5,7 @@ import { registry } from '../../sketch/js/elements.js';
 import { renderAll, zoomFit } from '../../sketch/js/canvas.js';
 import { renderInspector } from '../../sketch/js/inspector.js';
 import { buildShareURL } from '../../sketch/js/share.js';
-import { browserSceneHash, canonicalJSON, canonicalScene, mayAdopt, proposalMatches } from './snapshot.js';
+import { browserSceneHash, canonicalJSON, canonicalScene, offeredSetup, proposalMatches, takeLateResult } from './snapshot.js';
 // Native autosave is origin-wide. Keep this integration's scenes scoped by ID.
 configureAutosave({ enabled: false });
 const nativeBoot = new Promise(resolve => window.addEventListener('opticalsetup:booted', resolve, { once: true }));
@@ -74,16 +74,12 @@ function render(scene, fit = false) {
   renderAll(); renderInspector(); if (fit && (state.elements.length || state.beams.length)) zoomFit();
   applying = false; controls();
 }
-// Take the setup a result names as this view's own: the copy this browser holds of it, or the result itself.
-async function adopt(incoming) {
-  const local = stored(incoming.setup.id);
-  if (local) ({ setup, history, future, requests } = local);
-  else {
-    const next = copy(incoming.setup);
-    if (next.hash !== await browserSceneHash(next.scene)) throw new Error('Invalid initial snapshot');
-    setup = next; history = []; future = []; requests = [];
-  }
-  render(setup.scene, true);
+// Take a setup as this view's own in one step, with nothing awaited: the copy
+// this browser holds of it as it is now, or else what the result offered.
+function take(id, fresh) {
+  const view = stored(id) || fresh;
+  if (!view) throw new Error('Invalid initial snapshot');
+  ({ setup, history, future, requests } = view); render(setup.scene, true);
 }
 // Other views of the same setup in this browser follow each other through a channel named after it.
 function openChannel() {
@@ -112,10 +108,15 @@ async function accept(data) {
   try {
   await settleManual();
   if (data.setup.id !== setup.id) {
-    if (!mayAdopt({ provisional, setup, history, future }, data)) { status('Chat edit targets another local setup · Current setup kept', true); return; }
-    // The result this view was opened for arrived after the view had started on an empty setup of its own.
+    // The result this view was opened for may arrive after the view has started on an empty setup of its own.
     const placeholder = setup.id;
-    await adopt(data); provisional = false;
+    const outcome = await takeLateResult(data, {
+      view: () => ({ provisional, setup, history, future, dragging }),
+      validate: offeredSetup, settle: settleManual,
+      replace: fresh => { take(data.setup.id, fresh); provisional = false; },
+    });
+    if (outcome === 'wait') { queued = data; return; }
+    if (outcome === 'refuse') { status('Chat edit targets another local setup · Current setup kept', true); return; }
     try { localStorage.removeItem(key(placeholder)); } catch { /* storage may be unavailable */ }
     // Storage, the channel between views and the live channel now belong to the setup just taken.
     openChannel(); liveAbort?.abort();
@@ -343,7 +344,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       initialResult,
       new Promise(resolve => setTimeout(resolve, 1200)),
     ]));
-    if (incoming?.setup) await adopt(incoming);
+    if (incoming?.setup) take(incoming.setup.id, await offeredSetup(incoming));
     else {
       // Standalone workbench starts with its own local copy, separate from ChatGPT views.
       const id = hosted ? crypto.randomUUID() : 'standalone', local = stored(id);

@@ -13,7 +13,7 @@ import { createApplication } from '../../mcp/server.js';
 import { buildWidget, widgetAsset } from '../../mcp/widget.js';
 import { registry, createElement } from '../../mcp/registry.js';
 import { inspectDocument, emptyDocument } from '../../mcp/scene-api.js';
-import { browserSceneHash, canonicalScene, mayAdopt, proposalMatches } from '../../mcp/web/snapshot.js';
+import { browserSceneHash, canonicalScene, mayAdopt, offeredSetup, proposalMatches, takeLateResult } from '../../mcp/web/snapshot.js';
 import { createDrawnPath } from '../../sketch/js/path-types.js';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -83,6 +83,63 @@ test('a view that started empty before its tool finished takes the late result, 
   assert.equal(mayAdopt({ ...placeholder, provisional: false }, late), false);
   assert.equal(mayAdopt(placeholder, { setup: { ...late.setup, id: 'placeholder' } }), false, 'its own setup is not another one');
   for (const nothing of [undefined, null, {}, { setup: {} }]) assert.equal(mayAdopt(placeholder, nothing), false);
+});
+
+test('work done in the placeholder while a late result is being checked is kept, not replaced', async () => {
+  const empty = { app: 'optics2d', version: 1, elements: [], beams: [] };
+  const late = { setup: { id: 'opened-for', revision: 1, scene: empty } };
+  // A stand-in for the view: its state, and what happens while each of the two waits is under way.
+  const run = async ({ duringCheck = () => {}, duringSettle = () => {}, provisional = true } = {}) => {
+    const state = { provisional, setup: { id: 'placeholder', revision: 0, scene: empty }, history: [], future: [], dragging: false };
+    const steps = [];
+    const outcome = await takeLateResult(late, {
+      view: () => state,
+      validate: async incoming => { steps.push('check'); await null; duringCheck(state); return { setup: incoming.setup }; },
+      settle: async () => { steps.push('settle'); await null; duringSettle(state); },
+      replace: offered => { steps.push('replace'); state.setup = offered.setup; },
+    });
+    return { outcome, steps, state };
+  };
+  const edit = state => { state.history.push(state.setup.scene); state.setup = { ...state.setup, revision: 1 }; };
+
+  const untouched = await run();
+  assert.equal(untouched.outcome, 'taken');
+  assert.deepEqual(untouched.steps, ['check', 'settle', 'replace'], 'the replacement follows both waits');
+  assert.equal(untouched.state.setup.id, 'opened-for');
+
+  // An edit committed while the result's hash was being checked.
+  const committed = await run({ duringCheck: edit });
+  assert.equal(committed.outcome, 'refuse'); assert.ok(!committed.steps.includes('replace'));
+  assert.equal(committed.state.setup.id, 'placeholder'); assert.equal(committed.state.history.length, 1);
+  // An edit still uncommitted at that moment, which only the settling commits.
+  const pending = await run({ duringSettle: edit });
+  assert.equal(pending.outcome, 'refuse'); assert.ok(!pending.steps.includes('replace'));
+  assert.equal(pending.state.setup.revision, 1);
+  // A pointer that went down meanwhile: the result is tried again when it is released.
+  const pressed = await run({ duringCheck: state => { state.dragging = true; } });
+  assert.equal(pressed.outcome, 'wait'); assert.ok(!pressed.steps.includes('replace'));
+  // A view that has its setup is not checked at all.
+  const settled = await run({ provisional: false });
+  assert.equal(settled.outcome, 'refuse'); assert.deepEqual(settled.steps, []);
+  // A result that cannot be checked leaves the placeholder as it was.
+  const state = { provisional: true, setup: { id: 'placeholder', revision: 0, scene: empty }, history: [], future: [], dragging: false };
+  await assert.rejects(takeLateResult(late, { view: () => state, validate: async () => { throw new Error('unreadable'); }, settle: async () => {}, replace: () => { state.setup = late.setup; } }), /unreadable/);
+  assert.equal(state.setup.id, 'placeholder');
+});
+
+test('a view built from an edit result counts that edit as applied, and refuses a result whose hash is wrong', async () => {
+  const opened = (await call('open_setup')).structuredContent;
+  const edit = (await call('add_components', { setup: opened.setup, clientRequestId: 'first-edit', components: [{ type: 'lens', x: 0, y: 0 }] })).structuredContent;
+  const fromEdit = await offeredSetup(edit);
+  assert.deepEqual(fromEdit.setup, edit.setup);
+  // Delivered again, the same result is one the view has already applied, not an edit based on an older scene.
+  assert.deepEqual(fromEdit.requests, ['first-edit']);
+  assert.ok(!proposalMatches(fromEdit.setup, edit), 'which is what it would otherwise look like');
+  assert.deepEqual((await offeredSetup(opened)).requests, []);
+  assert.deepEqual([fromEdit.history, fromEdit.future], [[], []]);
+  assert.equal(await offeredSetup({ ...edit, setup: { ...edit.setup, hash: 'a'.repeat(64) } }), null);
+  fromEdit.setup.scene.elements.length = 0;
+  assert.equal(edit.setup.scene.elements.length, 1, 'the view works on its own copy');
 });
 
 test('a handshake client is answered in the revision it asked for, an unknown one in the newest handshake revision', async () => {
