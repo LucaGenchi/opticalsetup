@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { createServer } from 'node:http';
+import { createServer as createSocketServer } from 'node:net';
 import { once } from 'node:events';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -8,6 +9,7 @@ import { handleStatelessRpc, VERSION } from './stateless.js';
 import { buildWidget, widgetAsset, widgetResourceUri } from './widget.js';
 import { compute, canRenderScreenshots } from './compute.js';
 import { createLiveRelay } from './relay.js';
+import { serveStdio } from './stdio.js';
 const MAX_BODY = 950000;
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...headers } });
 const LOOPBACK = ['127.0.0.1', 'localhost', '[::1]'];
@@ -23,6 +25,8 @@ export function createApplication({ origin, challenge = '', computeScene = compu
   const origins = local ? hosts.map(name => originUrl.protocol + '//' + name) : [origin];
   if (originUrl.origin !== origin || originUrl.username || originUrl.password) throw new Error('Use an origin without a path or credentials');
   const widget = buildWidget(origin);
+  // One answer to a JSON-RPC message, whichever transport brought it. An edit computed here reaches the open view either way.
+  const rpc = async body => handleStatelessRpc(body, { html: await widget, origin, compute: computeScene, screenshots, deliver: (channel, data) => relay.publish(channel, data) });
   let draining = false;
   const application = async request => {
     if (draining) return json({ error: 'Service restarting; retry with your current browser snapshot' }, 503);
@@ -60,10 +64,11 @@ export function createApplication({ origin, challenge = '', computeScene = compu
     if (bytes.byteLength > MAX_BODY) return json({ error: 'Request too large' }, 413);
     let body;
     try { body = JSON.parse(new TextDecoder().decode(bytes)); } catch { return json({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }, 400); }
-    const response = await handleStatelessRpc(body, { html: await widget, origin, compute: computeScene, screenshots, deliver: (channel, data) => relay.publish(channel, data) });
+    const response = await rpc(body);
     return response === null ? new Response(null, { status: 202 }) : json(response);
   };
   application.close = () => { draining = true; relay.close(); };
+  application.rpc = rpc;
   return application;
 }
 export async function listen(application, { host = '127.0.0.1', port = 5188 } = {}) {
@@ -96,15 +101,43 @@ export async function listen(application, { host = '127.0.0.1', port = 5188 } = 
   server.requestTimeout = 20000; server.headersTimeout = 10000;
   await new Promise((res, rej) => { server.once('error', rej); server.listen(port, host, res); }); return server;
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const port = Number(process.env.PORT || 5188), origin = process.env.PUBLIC_ORIGIN || `http://127.0.0.1:${port}`;
-  if (process.env.NODE_ENV === 'production' && !origin.startsWith('https://')) throw new Error('Production requires an HTTPS origin');
-  const screenshots = await canRenderScreenshots();
-  const application = createApplication({ origin, challenge: process.env.OPENAI_APPS_CHALLENGE, revision: process.env.DEPLOY_REVISION || 'local', screenshots });
-  const server = await listen(application, { port });
-  console.log(`OpticalSetup stateless MCP listening at ${origin}/mcp; no scene database; PNG tool ${screenshots ? 'available' : 'not offered (needs Linux tmpfs and FFmpeg)'}`);
-  for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, () => {
-    application.close(); server.close(() => process.exit(0));
-    setTimeout(() => { server.closeAllConnections(); process.exit(0); }, 5000).unref();
+// A loopback port that is free now, for a copy of this service that may not have the usual one.
+export function freePort() {
+  return new Promise((found, failed) => {
+    const socket = createSocketServer();
+    socket.once('error', failed);
+    socket.listen(0, '127.0.0.1', () => { const { port } = socket.address(); socket.close(() => found(port)); });
   });
+}
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  // With --stdio a client starts this service itself and speaks MCP over its standard streams.
+  // The view still needs its files and its live channel, so the loopback listener runs as well.
+  const stdio = process.argv.includes('--stdio');
+  // Standard output then carries MCP messages and nothing else: everything that would be printed goes to standard error.
+  if (stdio) for (const level of ['log', 'info', 'debug']) console[level] = console.error;
+  const screenshots = await canRenderScreenshots();
+  const start = async port => {
+    const origin = process.env.PUBLIC_ORIGIN || `http://127.0.0.1:${port}`;
+    if (process.env.NODE_ENV === 'production' && !origin.startsWith('https://')) throw new Error('Production requires an HTTPS origin');
+    const application = createApplication({ origin, challenge: process.env.OPENAI_APPS_CHALLENGE, revision: process.env.DEPLOY_REVISION || 'local', screenshots });
+    return { origin, application, server: await listen(application, { port }) };
+  };
+  const asked = Number(process.env.PORT || 5188);
+  let running;
+  try { running = await start(asked || await freePort()); }
+  catch (error) {
+    // A second copy (another client, or a service already running by hand) takes a free port instead of failing to start.
+    // A port that was asked for by name is not replaced, and neither is one a public origin points at.
+    if (!stdio || process.env.PORT || process.env.PUBLIC_ORIGIN || error.code !== 'EADDRINUSE') throw error;
+    running = await start(await freePort());
+  }
+  const { origin, application, server } = running;
+  console.log(`OpticalSetup stateless MCP ${stdio ? 'on standard input and output, view files' : 'listening'} at ${origin}/mcp; no scene database; PNG tool ${screenshots ? 'available' : 'not offered (needs Linux tmpfs and FFmpeg)'}`);
+  const shutdown = grace => {
+    application.close(); server.close(() => process.exit(0));
+    setTimeout(() => { server.closeAllConnections(); process.exit(0); }, grace).unref();
+  };
+  for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, () => shutdown(5000));
+  // The client ends a stdio service by closing its input: leave promptly.
+  if (stdio) serveStdio(application.rpc).then(() => shutdown(500));
 }

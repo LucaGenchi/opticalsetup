@@ -17,6 +17,13 @@ With Node.js 22 or later, run `node mcp/server.js`. The server binds to
 `node --test test/mcp/*.test.js`. No npm installation or widget build is
 needed to start the service.
 
+A client that starts its MCP servers itself can run the service with
+`node mcp/server.js --stdio`. It then speaks MCP on its standard input and
+output and logs to standard error. The loopback listener still runs, because
+the view loads its files and its live channel from it. If port 5188 is taken,
+a service started this way takes a free port instead; set `PORT` to insist on
+one.
+
 The PNG screenshot tool needs Linux with a tmpfs at `/dev/shm` and FFmpeg
 with SVG input support. Where either is missing (macOS, for one) the service
 does not list the tool and does not ask the model to verify edits with it;
@@ -51,14 +58,36 @@ and [widget guide](https://developers.openai.com/plugins/build/chatgpt-ui).
 Not yet run in Claude itself; this follows Anthropic's connector
 documentation and is checked here against a simulated host.
 
-- **Claude Code** talks to the local service directly and uses the tools as
-  text (it shows no view):
+- **Claude Desktop, on your own machine**, starts the service itself. Open
+  **Settings > Developer > Edit Config** and add it to
+  `claude_desktop_config.json`, with the path to this repository, then
+  restart Claude Desktop:
+
+  ```json
+  {
+    "mcpServers": {
+      "opticalsetup": {
+        "command": "node",
+        "args": ["/absolute/path/to/opticalsetup/mcp/server.js", "--stdio"]
+      }
+    }
+  }
+  ```
+
+  If Claude Desktop cannot find `node`, give its full path as the command
+  (`which node` prints it). The tools need nothing more. Whether Claude
+  Desktop lets the view load its files from `http://127.0.0.1` is the part
+  still to be seen there.
+- **Claude Code** can start it the same way,
+  `claude mcp add opticalsetup -- node /absolute/path/to/opticalsetup/mcp/server.js --stdio`,
+  or talk to a service that is already running,
   `claude mcp add --transport http opticalsetup http://127.0.0.1:5188/mcp`.
-- **claude.ai, Claude Desktop and the mobile apps** reach a connector from
-  Anthropic's servers, so the service needs a public HTTPS URL: the hosted
-  one, or a tunnel to a local one with `PUBLIC_ORIGIN` set to the tunnel's
-  origin. Add it under **Customize > Connectors > Add custom connector** with
-  "No sign in". See
+  It uses the tools as text and shows no view.
+- **claude.ai and the mobile apps** reach a connector from Anthropic's
+  servers, as Claude Desktop does for a connector added by URL, so the
+  service needs a public HTTPS URL: the hosted one, or a tunnel to a local
+  one with `PUBLIC_ORIGIN` set to the tunnel's origin. Add it under
+  **Customize > Connectors > Add custom connector** with "No sign in". See
   [Test your connector](https://claude.com/docs/connectors/building/testing).
 
 Claude names a view's sandbox origin itself, from a hash of the connector URL,
