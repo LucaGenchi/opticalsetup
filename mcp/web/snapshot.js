@@ -52,3 +52,44 @@ export async function offeredSetup(incoming) {
 export function proposalMatches(current, proposal) {
   return proposal.baseRevision === current.revision && proposal.baseHash === current.hash;
 }
+
+
+/**
+ * A compact, deterministic edit over canonical scenes. Existing item order is
+ * preserved, and additions follow the existing items. No scene metadata is
+ * changed: this deliberately supports component/path mutations, not imports.
+ */
+export function scenePatch(before, after) {
+  const metadata = value => Object.fromEntries(Object.entries(value).filter(([key]) => key !== 'elements' && key !== 'beams'));
+  if (canonicalJSON(metadata(before)) !== canonicalJSON(metadata(after))) throw new Error('Patch changes scene metadata');
+  const diff = kind => {
+    const oldItems = before[kind] || [], newItems = after[kind] || [];
+    const oldById = new Map(oldItems.map(item => [item.id, item]));
+    const newIds = new Set(newItems.map(item => item.id));
+    if (newIds.size !== newItems.length) throw new Error('Duplicate item ID');
+    const remove = oldItems.filter(item => !newIds.has(item.id)).map(item => item.id);
+    const upsert = newItems.filter(item => !oldById.has(item.id) || canonicalJSON(oldById.get(item.id)) !== canonicalJSON(item));
+    return { remove, upsert };
+  };
+  return { elements: diff('elements'), beams: diff('beams') };
+}
+export function applyScenePatch(scene, patch) {
+  const next = JSON.parse(JSON.stringify(scene));
+  for (const kind of ['elements', 'beams']) {
+    const change = patch?.[kind];
+    if (!change || !Array.isArray(change.remove) || !Array.isArray(change.upsert)) throw new Error('Invalid scene patch');
+    const existing = next[kind] || [], removed = new Set(change.remove);
+    const updates = new Map(change.upsert.map(item => [item.id, item]));
+    if (updates.size !== change.upsert.length || change.upsert.some(item => !item || typeof item.id !== 'string')) throw new Error('Duplicate/invalid patch item');
+    if (change.remove.some(id => !existing.some(item => item.id === id))) throw new Error('Patch removes unknown item');
+    if (change.upsert.some(item => removed.has(item.id))) throw new Error('Patch updates a removed item');
+    const seen = new Set();
+    next[kind] = existing.filter(item => !removed.has(item.id)).map(item => {
+      if (!updates.has(item.id)) return item;
+      seen.add(item.id);
+      return updates.get(item.id);
+    });
+    for (const item of change.upsert) if (!seen.has(item.id)) next[kind].push(item);
+  }
+  return next;
+}
