@@ -131,6 +131,15 @@ test('wheel delta modes are converted to pixels and non-finite deltas move nothi
     wheelView(view, point, { deltaY: -48, ctrlKey: true }).z);
   assert.deepEqual(wheelView(view, point, { deltaX: Infinity, deltaY: Number.NaN }), view);
   assert.deepEqual(wheelView(view, point, { deltaY: -Infinity, ctrlKey: true }), view);
+  // A finite delta that overflows once converted, or a pan that overflows the
+  // view, leaves the view where it was.
+  const start = { x: 60, y: 40, z: 1 };
+  assert.deepEqual(wheelView(start, point, { deltaY: Number.MAX_VALUE, deltaMode: 1 }), start);
+  assert.deepEqual(wheelView(start, point, { deltaY: Number.MAX_VALUE, deltaMode: 1, shiftKey: true }), start);
+  assert.deepEqual(wheelView(start, point, { deltaX: -Number.MAX_VALUE, deltaMode: 2 }), start);
+  assert.equal(wheelView(start, point, { deltaY: -Number.MAX_VALUE, deltaMode: 1, ctrlKey: true }).z, 1);
+  const far = { x: -Number.MAX_VALUE, y: 0, z: 1 };
+  assert.deepEqual(wheelView(far, point, { deltaX: Number.MAX_VALUE }), far);
 });
 
 test('Ctrl/Cmd+wheel stops at the zoom limits', () => {

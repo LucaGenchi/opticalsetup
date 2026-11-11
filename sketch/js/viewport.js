@@ -89,8 +89,10 @@ export function wheelView(view, anchor, {
   // WheelEvent deltas can be pixels, lines or pages depending on the device.
   const pageHeight = Number.isFinite(viewportHeight) && viewportHeight > 0 ? viewportHeight : 800;
   const unit = deltaMode === 1 ? 16 : deltaMode === 2 ? pageHeight : 1;
-  const dx = Number.isFinite(deltaX) ? deltaX * unit : 0;
-  const dy = Number.isFinite(deltaY) ? deltaY * unit : 0;
+  // Check after the conversion: a huge finite line/page delta can overflow.
+  const toPx = d => (Number.isFinite(d * unit) ? d * unit : 0);
+  const dx = toPx(deltaX);
+  const dy = toPx(deltaY);
 
   if (ctrlKey || metaKey) {
     const delta = Math.max(-WHEEL_ZOOM_MAX_DELTA, Math.min(WHEEL_ZOOM_MAX_DELTA, dy));
@@ -98,8 +100,10 @@ export function wheelView(view, anchor, {
   }
   // Some browsers turn Shift+wheel into deltaX themselves; others leave it in
   // deltaY, which then pans sideways here.
-  if (shiftKey && dx === 0) return { ...view, x: view.x - dy };
-  return { ...view, x: view.x - dx, y: view.y - dy };
+  const next = shiftKey && dx === 0
+    ? { ...view, x: view.x - dy }
+    : { ...view, x: view.x - dx, y: view.y - dy };
+  return Number.isFinite(next.x) && Number.isFinite(next.y) ? next : { ...view };
 }
 
 // Keep the world point below the initial pinch centre below the moving centre.
