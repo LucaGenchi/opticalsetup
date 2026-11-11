@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Imaging with one lens — Examples | OpticalSetup</title>
+<meta name="description" content="An object 150 mm before a lens of 100 mm focal length: the rays from its tip meet again 300 mm behind the lens, in an image twice the size and upside down.">
+<link rel="canonical" href="https://opticalsetup.com/example-setups/imaging-with-one-lens/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Imaging with one lens — OpticalSetup Examples">
+<meta property="og:description" content="An object 150 mm before a lens of 100 mm focal length: the rays from its tip meet again 300 mm behind the lens, in an image twice the size and upside down.">
+<meta property="og:url" content="https://opticalsetup.com/example-setups/imaging-with-one-lens/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="../../sketch/icons/icon.svg">
+<script>
+  (() => {
+    let savedTheme = null;
+    try { savedTheme = localStorage.getItem('opticalsetup-theme'); } catch (_) { /* storage may be unavailable */ }
+    const systemTheme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = savedTheme === 'dark' || savedTheme === 'light'
+      ? savedTheme
+      : systemTheme;
+  })();
+</script>
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+<link rel="stylesheet" href="../../example-setups/assets/examples.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../calculators/">Calculators</a>
+      <a class="plain" href="../../community/">Community</a>
+      <button type="button" id="btnAbout" class="plain" aria-haspopup="dialog" title="License, copyright and citation">About</button>
+      <button type="button" id="btnTheme" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark mode" title="Switch to dark mode">
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M15.7 12.7A6.5 6.5 0 0 1 7.3 4.3a6.5 6.5 0 1 0 8.4 8.4Z"/>
+        </svg>
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="10" cy="10" r="3.2"/>
+          <path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M16 4l-1.4 1.4M5.4 14.6 4 16"/>
+        </svg>
+      </button>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <dialog id="aboutDialog" class="site-dialog" aria-labelledby="aboutTitle">
+    <div class="site-dialog-head">
+      <div><span class="eyebrow">Free software</span><h2 id="aboutTitle">About OpticalSetup</h2></div>
+      <button type="button" id="aboutClose" class="site-dialog-close" aria-label="Close about dialog">×</button>
+    </div>
+    <p class="about-text" id="aboutVersion" hidden></p>
+    <p class="about-text">Copyright © 2026 Luca Genchi and contributors.</p>
+    <p class="about-text">OpticalSetup is free software: you can redistribute it and/or modify it
+      under the terms of the GNU General Public License as published by the Free Software
+      Foundation, either version 3 of the License, or (at your option) any later version.</p>
+    <p class="about-text">It is distributed in the hope that it will be useful, but
+      <strong>without any warranty</strong>; without even the implied warranty of merchantability
+      or fitness for a particular purpose. See the GNU General Public License for more details.</p>
+    <p class="about-text">The numbers OpticalSetup reports come from models with stated limits; read
+      each component's page in the <a href="../../wiki/">wiki</a> before relying on one.</p>
+    <p class="about-text">If you use OpticalSetup in your research, teaching or publications,
+      please cite the software:</p>
+    <p class="about-text about-citation">Bertoncini, A., &amp; Genchi, L. (2026).
+      <cite>OpticalSetup - the optical workbench software</cite> [Computer software]. Zenodo.
+      <a href="https://doi.org/10.5281/zenodo.23191537" target="_blank" rel="noopener">https://doi.org/10.5281/zenodo.23191537</a></p>
+    <p class="about-links">
+      <a href="../../#cite">BibTeX and version DOIs</a>
+      <a href="../../license.html">License and notices</a>
+      <a href="https://github.com/LucaGenchi/opticalsetup" target="_blank" rel="noopener">Source code</a>
+    </p>
+  </dialog>
+  <script type="module" src="../../wiki/assets/site-header.js"></script>
+  <div class="wiki-shell" style="grid-template-columns: 1fr;">
+    <main class="wiki-article" style="max-width: 760px;">
+      <div class="crumb"><a href="../../example-setups/">Examples</a> / Fundamentals / Imaging with one lens</div>
+      <h1>Imaging with one lens</h1>
+      <p class="tagline" style="margin-top: 10px;">An object 150 mm before a lens of 100 mm focal length: the rays from its tip meet again 300 mm behind the lens, in an image twice the size and upside down.</p>
+
+      <a class="place-cta" href="../../sketch/?example=imaging-with-one-lens">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?example=imaging-with-one-lens&amp;embed=1"
+          title="Imaging with one lens — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace of the setup above, shown as a picture. Open it in the canvas to take it apart, retune it, and save or export it as your own.</p>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Background</h2>
+
+      <p>A lens bends every ray from one point of an object so that they meet
+      again at one point: the image of that point. For a thin lens, the distance
+      s from the object to the lens and the distance s′ from the lens to the
+      image obey 1/s + 1/s′ = 1/f, where f is the focal length, positive for a
+      converging lens<sup class="cite">[<a href="#ref-1">1</a>]</sup>. The image is m = −s′/s times the size of the
+      object. A negative m means the image is upside down<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+      <p>Three cases follow from that one equation. With the object further away
+      than f, the rays converge behind the lens to a real image, which a screen
+      or a sensor placed there shows<sup class="cite">[<a href="#ref-1">1</a>]</sup>. With the object exactly at f, the
+      rays leave parallel and the image is at infinity<sup class="cite">[<a href="#ref-1">1</a>]</sup>. With the object
+      closer than f, the rays still diverge after the lens, as if they came from
+      a larger, upright image on the object's side: a virtual image, which
+      cannot be caught on a screen, and the way a magnifying glass is
+      used<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>What this setup demonstrates</h2>
+      <div class="sim-block">
+
+      <p>An <a href="../../wiki/objarrow/">Object</a> 15&nbsp;mm tall stands
+      150&nbsp;mm before a <a href="../../wiki/lens/">thin lens</a> of
+      f&nbsp;=&nbsp;100&nbsp;mm. It sends five rays from its tip, spread over the
+      central part of the lens. They cross again 300&nbsp;mm behind the lens,
+      30&nbsp;mm below the axis, on a screen placed there. The Object draws the
+      image it forms, and its inspector reads <em>Image 300&nbsp;mm after Lens ·
+      m&nbsp;=&nbsp;−2.00 · real, inverted</em>, which is what the equation gives:
+      1/150 + 1/300 = 1/100 and −300/150 = −2. The two
+      <a href="../../wiki/ruler/">rulers</a> mark s and s′.</p>
+      <p>Things to try, by dragging the Object along the axis (the screen stays
+      where it is, so the rays no longer meet on it):</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>s</th><th>The Object's readout</th></tr></thead>
+        <tbody>
+          <tr><td>300&nbsp;mm</td><td>Image 150&nbsp;mm after Lens · m = −0.50 · real, inverted</td></tr>
+          <tr><td>200&nbsp;mm (2f)</td><td>Image 200&nbsp;mm after Lens · m = −1.00 · real, inverted</td></tr>
+          <tr><td>125&nbsp;mm</td><td>Image 500&nbsp;mm after Lens · m = −4.00 · real, inverted</td></tr>
+          <tr><td>100&nbsp;mm (f)</td><td>Image at infinity after Lens (collimated)</td></tr>
+          <tr><td>60&nbsp;mm</td><td>Image 150&nbsp;mm before Lens · m = 2.50 · virtual, upright</td></tr>
+        </tbody>
+      </table></div>
+      <p>Change the focal length instead and the same readout follows. The
+      <a href="../../calculators/imaging/">Imaging with lenses</a> calculator
+      plots the image distance and the magnification against the object
+      distance, for this thin lens and for a real, thick one.</p>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>The lens is an ideal thin lens: it sends every ray from
+      one point to exactly one point, whatever the ray's height on the lens or its
+      colour. A real singlet does not: rays through its edge focus closer than rays
+      near its centre, and blue focuses closer than red. The
+      <a href="../spherical-aberration-ideal-lens-vs-spherical-singlet/">spherical
+      aberration</a> and <a href="../singlet-vs-achromat-axial-colour/">axial
+      colour</a> examples show both with real glass.</p>
+      <p>The image the Object draws, and its readout, come from a paraxial
+      construction through the lens, not from the drawn rays. With an ideal lens the
+      two agree. Nothing is diffractive: the image has no resolution limit, and the
+      screen records no brightness.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/objarrow/"><svg viewBox="-33 -33 66 66" aria-hidden="true"><polyline points="0.0,11.0 0.0,-4.8" fill="none" stroke="#ff7700" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><polygon points="0.0,-11.0 -3.7,-3.5 3.7,-3.5" fill="#ff7700"/></svg>Object</a><a href="../../wiki/lens/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0,-12.7 Q 9,0 0,12.7 Q -9,0 0,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Thin convex lens</a><a href="../../wiki/ruler/"><svg viewBox="-56 -56 112 112" aria-hidden="true"><g data-ruler="true"><line x1="-44.1" y1="0" x2="44.1" y2="0" stroke="#334155" stroke-width="1.2" stroke-linecap="round"/><line x1="-50" y1="-5.8" x2="-50" y2="5.8" stroke="#334155" stroke-width="1.2" stroke-linecap="round"/><line x1="50" y1="-5.8" x2="50" y2="5.8" stroke="#334155" stroke-width="1.2" stroke-linecap="round"/><path d="M -50,0 L -43.6,-2.56 L -43.6,2.56 Z" fill="#334155"/><path d="M 50,0 L 43.6,-2.56 L 43.6,2.56 Z" fill="#334155"/><g class="ruler-label" transform="translate(0 -19.84) rotate(0) translate(-24.24 0)"><g class="markdown-label" data-markdown="true"><text x="0" y="3.12" text-anchor="start" font-size="12.00" fill="#334155" xml:space="preserve"><tspan>100.0 mm</tspan></text></g></g></g></svg>Ruler</a><a href="../../wiki/thicklens/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M -1.64 12.7 A 60 60 0 0 1 -1.64 -12.7 L 1.64 -12.7 A 60 60 0 0 1 1.64 12.7 L -1.64 12.7 Z" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5" stroke-linejoin="round"/></svg>Thick spherical lens</a><a href="../../wiki/camera/"><svg viewBox="-28 -28 56 56" aria-hidden="true"><rect x="-20" y="-15" width="40" height="30" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">CAM</text><rect x="-24" y="-7" width="5" height="14" fill="#333" stroke="#2b333d"/><circle cx="13" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Camera</a>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://en.wikipedia.org/wiki/Lens" target="_blank" rel="noopener">Wikipedia — Lens (the thin-lens formula, magnification, real and virtual images)</a></li>
+      </ol>
+
+
+    </main>
+  </div>
+  <footer class="wiki-footer">Examples are written and maintained with the project. For setups shared by users, see the <a href="../../community/">community section</a>; for how each component works, see the <a href="../../wiki/">wiki</a>.</footer>
+</body>
+</html>

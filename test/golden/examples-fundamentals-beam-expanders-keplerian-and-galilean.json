@@ -1,0 +1,172 @@
+{
+ "elements": 16,
+ "beams": 0,
+ "drawables": {
+  "count": 156,
+  "byType": {
+   "poly": 144,
+   "path": 12
+  },
+  "colors": {
+   "#ff4200": 156
+  },
+  "points": 600,
+  "sum": [
+   149600,
+   186000
+  ],
+  "bbox": [
+   52,
+   214,
+   464,
+   406
+  ],
+  "digest": "f0a5e063"
+ },
+ "drawnElements": {
+  "textlabel:title": "78dcfd10",
+  "textlabel:note": "54b5517f",
+  "cwlaser:laserK": "3d823b45",
+  "lens:k1": "21f36c16",
+  "lens:k2": "21f36c16",
+  "wavefrontdetector:camK": "75bf1a27",
+  "ruler:ruleK": "aee8ee28",
+  "display:screenK": "fe507ac2",
+  "textlabel:labelK": "66b2973a",
+  "cwlaser:laserG": "3d823b45",
+  "lensc:g1": "36638695",
+  "lens:g2": "21f36c16",
+  "wavefrontdetector:camG": "75bf1a27",
+  "ruler:ruleG": "1b938e95",
+  "display:screenG": "fe507ac2",
+  "textlabel:labelG": "9ca98bd4"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "readouts": {
+  "wavefrontdetector:camK": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 633,
+    "bandMin": 633,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#ff4200",
+    "convergence": {
+     "diverging": false,
+     "fullAngleDeg": 0,
+     "slopePerMm": 0
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 1,
+    "detectorType": "Wavefront detector",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": 1,
+     "s2": 0,
+     "s3": 0
+    },
+    "outputSignal": 1,
+    "polarization": "Linear 0°",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "wavefront",
+    "samples": 25,
+    "saturated": false,
+    "signal": 1,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 1,
+      "sourceId": "laserK"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#ff4200",
+      "continuum": false,
+      "power": 1,
+      "sourceId": "laserK",
+      "wavelength": 633,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 12,
+    "wavelength": 633
+   }
+  },
+  "wavefrontdetector:camG": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 633,
+    "bandMin": 633,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#ff4200",
+    "convergence": {
+     "diverging": false,
+     "fullAngleDeg": 0,
+     "slopePerMm": 0
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 1,
+    "detectorType": "Wavefront detector",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": 1,
+     "s2": 0,
+     "s3": 0
+    },
+    "outputSignal": 1,
+    "polarization": "Linear 0°",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "wavefront",
+    "samples": 25,
+    "saturated": false,
+    "signal": 1,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 1,
+      "sourceId": "laserG"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#ff4200",
+      "continuum": false,
+      "power": 1,
+      "sourceId": "laserG",
+      "wavelength": 633,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 12,
+    "wavelength": 633
+   }
+  }
+ },
+ "fibers": {}
+}

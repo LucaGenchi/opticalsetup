@@ -72,6 +72,7 @@ function uniqueSlug(base, taken) {
 }
 
 const CATEGORY_ORDER = [
+  'Fundamentals',
   'Lens Physics',
   'Reflective Imaging Systems',
   'Beam Routing',
@@ -84,6 +85,18 @@ const CATEGORY_ORDER = [
 // teaching order); the rest follow alphabetically. Names are file names
 // without `.json`, so the order never touches an example's slug.
 const EXAMPLE_ORDER = {
+  'Fundamentals': [
+    'Imaging with one lens',
+    'Beam expanders — Keplerian and Galilean',
+    'Total internal reflection — right-angle prism',
+    'Law of Malus — polarizers and a half-wave plate',
+    'Beam walking — two mirrors and two irises',
+    'Pinhole spatial filter',
+    'Spatial filtering in the Fourier plane — 4f system',
+    'Coupling a laser into a single-mode fiber',
+    'Scan lens and tube lens — galvo to back pupil',
+    'Czerny–Turner spectrometer',
+  ],
   'Microscopy Implementations': [
     'Optical sectioning — linear versus nonlinear',
     'Epi-fluorescence microscope',

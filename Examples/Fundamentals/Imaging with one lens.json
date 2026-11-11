@@ -1,0 +1,132 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "title",
+   "type": "textlabel",
+   "x": -60,
+   "y": 40,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Imaging with one lens**",
+    "fontSize": 24,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "note",
+   "type": "textlabel",
+   "x": -60,
+   "y": 89,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "An object a distance s before a lens of focal length f forms its image at s′,\nwhere 1/s + 1/s′ = 1/f. The image is m = −s′/s times the size of the object:\nhere s = 150 mm and f = 100 mm give s′ = 300 mm and m = −2.",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "object",
+   "type": "objarrow",
+   "x": 60,
+   "y": 300,
+   "rot": 0,
+   "label": "Object",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "height": 15,
+    "shape": "arrow",
+    "raysMode": "fan",
+    "raysFrom": "tip",
+    "aim": "optic",
+    "spread": 10,
+    "nrays": 5,
+    "showImage": true,
+    "wavelength": 620,
+    "autoColor": true,
+    "color": "#e02020"
+   }
+  },
+  {
+   "id": "lens",
+   "type": "lens",
+   "x": 210,
+   "y": 300,
+   "rot": 0,
+   "label": "Lens",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "f": 100,
+    "dia": 50.8,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "screen",
+   "type": "box",
+   "x": 516.5,
+   "y": 300,
+   "rot": 0,
+   "label": "Screen",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "text": "",
+    "w": 10,
+    "h": 90,
+    "behavior": "block",
+    "fill": "#e2e8f0"
+   }
+  },
+  {
+   "id": "ruleS",
+   "type": "ruler",
+   "x": 135,
+   "y": 362,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "len": 150,
+    "autoClamp": false,
+    "text": "s = {value}",
+    "decimals": 0,
+    "labelSide": "below",
+    "arrows": true,
+    "ticks": false,
+    "fontSize": 12,
+    "width": 1.2,
+    "fill": "#334155"
+   }
+  },
+  {
+   "id": "ruleSi",
+   "type": "ruler",
+   "x": 360,
+   "y": 362,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "len": 300,
+    "autoClamp": false,
+    "text": "s′ = {value}",
+    "decimals": 0,
+    "labelSide": "below",
+    "arrows": true,
+    "ticks": false,
+    "fontSize": 12,
+    "width": 1.2,
+    "fill": "#334155"
+   }
+  }
+ ],
+ "beams": []
+}

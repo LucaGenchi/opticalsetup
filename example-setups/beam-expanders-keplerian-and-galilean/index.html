@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beam expanders: Keplerian and Galilean — Examples | OpticalSetup</title>
+<meta name="description" content="Two ways to make a 4 mm laser beam 12 mm wide with two lenses: one focuses the beam between its lenses and is 200 mm long, the other never focuses it and is half that length.">
+<link rel="canonical" href="https://opticalsetup.com/example-setups/beam-expanders-keplerian-and-galilean/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Beam expanders: Keplerian and Galilean — OpticalSetup Examples">
+<meta property="og:description" content="Two ways to make a 4 mm laser beam 12 mm wide with two lenses: one focuses the beam between its lenses and is 200 mm long, the other never focuses it and is half that length.">
+<meta property="og:url" content="https://opticalsetup.com/example-setups/beam-expanders-keplerian-and-galilean/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="../../sketch/icons/icon.svg">
+<script>
+  (() => {
+    let savedTheme = null;
+    try { savedTheme = localStorage.getItem('opticalsetup-theme'); } catch (_) { /* storage may be unavailable */ }
+    const systemTheme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = savedTheme === 'dark' || savedTheme === 'light'
+      ? savedTheme
+      : systemTheme;
+  })();
+</script>
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+<link rel="stylesheet" href="../../example-setups/assets/examples.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../calculators/">Calculators</a>
+      <a class="plain" href="../../community/">Community</a>
+      <button type="button" id="btnAbout" class="plain" aria-haspopup="dialog" title="License, copyright and citation">About</button>
+      <button type="button" id="btnTheme" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark mode" title="Switch to dark mode">
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M15.7 12.7A6.5 6.5 0 0 1 7.3 4.3a6.5 6.5 0 1 0 8.4 8.4Z"/>
+        </svg>
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="10" cy="10" r="3.2"/>
+          <path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M16 4l-1.4 1.4M5.4 14.6 4 16"/>
+        </svg>
+      </button>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <dialog id="aboutDialog" class="site-dialog" aria-labelledby="aboutTitle">
+    <div class="site-dialog-head">
+      <div><span class="eyebrow">Free software</span><h2 id="aboutTitle">About OpticalSetup</h2></div>
+      <button type="button" id="aboutClose" class="site-dialog-close" aria-label="Close about dialog">×</button>
+    </div>
+    <p class="about-text" id="aboutVersion" hidden></p>
+    <p class="about-text">Copyright © 2026 Luca Genchi and contributors.</p>
+    <p class="about-text">OpticalSetup is free software: you can redistribute it and/or modify it
+      under the terms of the GNU General Public License as published by the Free Software
+      Foundation, either version 3 of the License, or (at your option) any later version.</p>
+    <p class="about-text">It is distributed in the hope that it will be useful, but
+      <strong>without any warranty</strong>; without even the implied warranty of merchantability
+      or fitness for a particular purpose. See the GNU General Public License for more details.</p>
+    <p class="about-text">The numbers OpticalSetup reports come from models with stated limits; read
+      each component's page in the <a href="../../wiki/">wiki</a> before relying on one.</p>
+    <p class="about-text">If you use OpticalSetup in your research, teaching or publications,
+      please cite the software:</p>
+    <p class="about-text about-citation">Bertoncini, A., &amp; Genchi, L. (2026).
+      <cite>OpticalSetup - the optical workbench software</cite> [Computer software]. Zenodo.
+      <a href="https://doi.org/10.5281/zenodo.23191537" target="_blank" rel="noopener">https://doi.org/10.5281/zenodo.23191537</a></p>
+    <p class="about-links">
+      <a href="../../#cite">BibTeX and version DOIs</a>
+      <a href="../../license.html">License and notices</a>
+      <a href="https://github.com/LucaGenchi/opticalsetup" target="_blank" rel="noopener">Source code</a>
+    </p>
+  </dialog>
+  <script type="module" src="../../wiki/assets/site-header.js"></script>
+  <div class="wiki-shell" style="grid-template-columns: 1fr;">
+    <main class="wiki-article" style="max-width: 760px;">
+      <div class="crumb"><a href="../../example-setups/">Examples</a> / Fundamentals / Beam expanders: Keplerian and Galilean</div>
+      <h1>Beam expanders: Keplerian and Galilean</h1>
+      <p class="tagline" style="margin-top: 10px;">Two ways to make a 4 mm laser beam 12 mm wide with two lenses: one focuses the beam between its lenses and is 200 mm long, the other never focuses it and is half that length.</p>
+
+      <a class="place-cta" href="../../sketch/?example=beam-expanders-keplerian-and-galilean">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?example=beam-expanders-keplerian-and-galilean&amp;embed=1"
+          title="Beam expanders: Keplerian and Galilean — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace of the setup above, shown as a picture. Open it in the canvas to take it apart, retune it, and save or export it as your own.</p>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Background</h2>
+
+      <p>Two lenses that share a focal point turn a parallel beam into a parallel
+      beam of another width. The first lens sends the beam towards (or away from)
+      the common focal point; the second, one focal length from that point, makes
+      it parallel again. Similar triangles on either side of the focal point give
+      the ratio of the widths: f₂/f₁. This is a telescope used backwards: a
+      telescope's magnification is the focal length of its objective divided by
+      that of its eyepiece<sup class="cite">[<a href="#ref-1">1</a>]</sup>, and a beam sent in through the eyepiece
+      comes out wider by the same factor.</p>
+      <p>The two classical telescopes give the two classical expanders. Kepler's,
+      of 1611, has two converging lenses<sup class="cite">[<a href="#ref-1">1</a>]</sup>: the beam comes to a real
+      focus between them, and the lenses are f₁ + f₂ apart. Galileo's, of 1610,
+      has a diverging lens and a converging one, and no focus in
+      between<sup class="cite">[<a href="#ref-1">1</a>]</sup>: the diverging lens has a negative focal length, so the
+      same sum, f₁ + f₂, is now a difference and the pair is shorter.</p>
+      <p>The focus is what decides between them. A Galilean expander never
+      focuses a collimated beam to a point, so it avoids the effects of high
+      power density, such as dielectric breakdown, that a focusing design can meet
+      with a powerful laser<sup class="cite">[<a href="#ref-2">2</a>]</sup>. A Keplerian expander
+      offers the focus itself: a pinhole placed there cleans the beam, as in the
+      <a href="../pinhole-spatial-filter/">pinhole spatial filter</a>.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>What this setup demonstrates</h2>
+      <div class="sim-block">
+
+      <p>Two 633&nbsp;nm lasers each send a 4&nbsp;mm beam into a pair of thin
+      lenses. The upper pair is Keplerian: f₁&nbsp;=&nbsp;50&nbsp;mm and
+      f₂&nbsp;=&nbsp;150&nbsp;mm, 200&nbsp;mm apart, with the focus drawn 50&nbsp;mm
+      after the first lens. The lower pair is Galilean:
+      a <a href="../../wiki/lensc/">concave lens</a> of f₁&nbsp;=&nbsp;−50&nbsp;mm
+      and the same f₂, 100&nbsp;mm apart. Both widen the beam by 150/50 = 3.</p>
+      <p>Each beam ends on a <a href="../../wiki/wavefrontdetector/">wavefront
+      detector</a>, whose screen reads COLLIMATED, divergence 0.00°. Select a
+      detector and its inspector gives the width of the beam on it: a spot span
+      of 12.0&nbsp;mm, for both.</p>
+      <p>Things to try. Move the second lens of either pair 10&nbsp;mm further
+      from the first: the screen reads CONVERGING, 0.31°; 10&nbsp;mm closer, and
+      it reads DIVERGING by the same angle. This is how a beam expander is
+      focused on the bench. In the upper pair, set f₁ to 25&nbsp;mm and bring the
+      second lens 25&nbsp;mm closer, so that the lenses are again f₁ + f₂ apart:
+      the beam leaves collimated and 24&nbsp;mm wide, six times its width.</p>
+      <p>The second panel of the
+      <a href="../../calculators/imaging/">Imaging with lenses</a> calculator
+      works out the same pairs, thin and with real, thick lenses, and what they
+      do to an object at a finite distance.</p>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>The lenses are ideal thin lenses, so both expanders are
+      free of aberrations at any beam width, and the two designs differ only in
+      length and in the focus. With real singlets they differ in aberrations too,
+      and the best orientation of each lens matters; neither is shown here.</p>
+      <p>The beam is a bundle of 25 parallel rays with sharp edges. There is no
+      Gaussian profile, so the beam does not spread by diffraction after the
+      expander, and no account of how expansion lowers a real beam's divergence.
+      The focus of the Keplerian pair is a point with no size: nothing is computed
+      about the intensity there.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/lens/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0,-12.7 Q 9,0 0,12.7 Q -9,0 0,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Thin convex lens</a><a href="../../wiki/lensc/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M -6,-12.7 L 6,-12.7 Q 0,0 6,12.7 L -6,12.7 Q 0,0 -6,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Thin concave lens</a><a href="../../wiki/telescope/"><svg viewBox="-94 -94 188 188" aria-hidden="true"><line x1="-75" y1="0" x2="75" y2="0" stroke="#b6bdc6" stroke-width="1" stroke-dasharray="4 4"/><path d="M -75,-12.7 Q -66,0 -75,12.7 Q -84,0 -75,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/><path d="M 75,-12.7 Q 84,0 75,12.7 Q 66,0 75,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Conjugated thin lens pair</a><a href="../../wiki/wavefrontdetector/"><svg viewBox="-33 -33 66 66" aria-hidden="true"><rect x="-26" y="-15" width="52" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-27.7" y="-11" width="3.4" height="22" rx="1" fill="#c4b5fd" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">WF</text><circle cx="18" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Wavefront detector</a><a href="../../wiki/ruler/"><svg viewBox="-56 -56 112 112" aria-hidden="true"><g data-ruler="true"><line x1="-44.1" y1="0" x2="44.1" y2="0" stroke="#334155" stroke-width="1.2" stroke-linecap="round"/><line x1="-50" y1="-5.8" x2="-50" y2="5.8" stroke="#334155" stroke-width="1.2" stroke-linecap="round"/><line x1="50" y1="-5.8" x2="50" y2="5.8" stroke="#334155" stroke-width="1.2" stroke-linecap="round"/><path d="M -50,0 L -43.6,-2.56 L -43.6,2.56 Z" fill="#334155"/><path d="M 50,0 L 43.6,-2.56 L 43.6,2.56 Z" fill="#334155"/><g class="ruler-label" transform="translate(0 -19.84) rotate(0) translate(-24.24 0)"><g class="markdown-label" data-markdown="true"><text x="0" y="3.12" text-anchor="start" font-size="12.00" fill="#334155" xml:space="preserve"><tspan>100.0 mm</tspan></text></g></g></g></svg>Ruler</a><a href="../../wiki/cwlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">CW LASER</text><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>CW Laser</a>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://en.wikipedia.org/wiki/Refracting_telescope" target="_blank" rel="noopener">Wikipedia — Refracting telescope (the Galilean and Keplerian designs, magnification)</a></li><li id="ref-2"><a href="https://en.wikipedia.org/wiki/Beam_expander" target="_blank" rel="noopener">Wikipedia — Beam expander</a></li>
+      </ol>
+
+
+    </main>
+  </div>
+  <footer class="wiki-footer">Examples are written and maintained with the project. For setups shared by users, see the <a href="../../community/">community section</a>; for how each component works, see the <a href="../../wiki/">wiki</a>.</footer>
+</body>
+</html>

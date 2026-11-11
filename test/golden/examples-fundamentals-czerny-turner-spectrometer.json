@@ -1,0 +1,124 @@
+{
+ "elements": 22,
+ "beams": 0,
+ "drawables": {
+  "count": 160,
+  "byType": {
+   "path": 160
+  },
+  "colors": {
+   "#1e00ff": 16,
+   "#7c3aed": 16,
+   "#8200c7": 16,
+   "#8b00d4": 16,
+   "#8b1a1a": 16,
+   "#96ff00": 16,
+   "#dbe7f5": 16,
+   "#f6ff00": 16,
+   "#f97316": 16,
+   "#fcff00": 16
+  },
+  "points": 506,
+  "sum": [
+   143956.113,
+   175603.459
+  ],
+  "bbox": [
+   122.0861,
+   279.0223,
+   472.6397,
+   441.4232
+  ],
+  "digest": "19f97abb"
+ },
+ "drawnElements": {
+  "textlabel:title": "a8140029",
+  "textlabel:note": "7e9fb2c7",
+  "pointsource:lamp": "cce6e67a",
+  "lens:condenser": "a29cf81a",
+  "slit:entrance": "af31cbf3",
+  "cmirror:m1": "daf154a6",
+  "grating:grating": "a255d4b4",
+  "cmirror:m2": "3dbe08e3",
+  "slit:exit": "82bb7c7e",
+  "box:wallTop": "18e5ab04",
+  "box:wallBottom": "18e5ab04",
+  "box:wallRight": "b9927af3",
+  "box:wallLeftTop": "368f9eff",
+  "box:wallLeftMid": "c9611713",
+  "box:wallLeftBottom": "a590586f",
+  "spectrometer:detector": "5efe69fb",
+  "display:screen": "34ffe36f",
+  "textlabel:entranceNote": "4d53a15c",
+  "textlabel:gratingNote": "9c7706a5",
+  "textlabel:exitNote": "8d2903fc",
+  "textlabel:m1Note": "a2f62ba6",
+  "textlabel:m2Note": "ebb03c2b"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "readouts": {
+  "spectrometer:detector": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 546.074,
+    "bandMin": 546.074,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#96ff00",
+    "convergence": {
+     "diverging": true,
+     "fullAngleDeg": 5.52867646,
+     "slopePerMm": 0.0232035383
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 0.243902439,
+    "detectorType": "Spectrometer",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": null,
+    "outputSignal": 0.243902439,
+    "polarization": "Unpolarized",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "spectrometer",
+    "samples": 16,
+    "saturated": false,
+    "signal": 0.243902439,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.243902439,
+      "sourceId": "lamp"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#96ff00",
+      "continuum": false,
+      "power": 0.243902439,
+      "sourceId": "lamp",
+      "wavelength": 546.1,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 4.16544619,
+    "wavelength": 546.074
+   }
+  }
+ },
+ "fibers": {}
+}

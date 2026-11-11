@@ -1,0 +1,198 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "title",
+   "type": "textlabel",
+   "x": -60,
+   "y": 40,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Total internal reflection in a right-angle prism**",
+    "fontSize": 24,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "note",
+   "type": "textlabel",
+   "x": -60,
+   "y": 98,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Inside N-BK7 (n = 1.515 at 633 nm) light that meets a face beyond\nthe critical angle, arcsin(1/n) = 41.3°, is reflected completely.\nA right-angle prism uses 45°: once to turn a beam by 90°,\ntwice to send it back.",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "laserA",
+   "type": "cwlaser",
+   "x": 0,
+   "y": 215,
+   "rot": 0,
+   "label": "Laser, 633 nm, 1 mW",
+   "showLabel": true,
+   "params": {
+    "wavelength": 633,
+    "avgPowerW": 0.001,
+    "beamMode": "beam",
+    "beamWidth": 4,
+    "pol": 0,
+    "coherenceLengthMm": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw",
+    "housingLength": 92,
+    "housingHeight": 34,
+    "housingColor": "#3a3f46"
+   }
+  },
+  {
+   "id": "prismA",
+   "type": "freeglass",
+   "x": 230,
+   "y": 215,
+   "rot": 0,
+   "label": "90° turn: one reflection at 45°",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "vertices": [
+     {
+      "x": -12.7,
+      "y": -12.7
+     },
+     {
+      "x": 12.7,
+      "y": 12.7
+     },
+     {
+      "x": -12.7,
+      "y": 12.7
+     }
+    ],
+    "scale": 1,
+    "material": "nbk7",
+    "ior": 1.5,
+    "transEff": 96
+   }
+  },
+  {
+   "id": "meterA",
+   "type": "powermeter",
+   "x": 230,
+   "y": 335,
+   "rot": 90,
+   "label": "Power meter",
+   "showLabel": true,
+   "labelPos": "l",
+   "params": {
+    "aperture": 20
+   }
+  },
+  {
+   "id": "screenA",
+   "type": "display",
+   "x": 360,
+   "y": 335,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "meterA",
+    "displayScale": 0.8,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "laserB",
+   "type": "cwlaser",
+   "x": 0,
+   "y": 446,
+   "rot": 0,
+   "label": "Laser, 633 nm, 1 mW",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "wavelength": 633,
+    "avgPowerW": 0.001,
+    "beamMode": "beam",
+    "beamWidth": 4,
+    "pol": 0,
+    "coherenceLengthMm": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw",
+    "housingLength": 92,
+    "housingHeight": 34,
+    "housingColor": "#3a3f46"
+   }
+  },
+  {
+   "id": "prismB",
+   "type": "freeglass",
+   "x": 290,
+   "y": 455,
+   "rot": 0,
+   "label": "180° return: two reflections at 45°",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "vertices": [
+     {
+      "x": -8.980256121069154,
+      "y": -17.960512242138307
+     },
+     {
+      "x": 8.980256121069154,
+      "y": 0
+     },
+     {
+      "x": -8.980256121069154,
+      "y": 17.960512242138307
+     }
+    ],
+    "scale": 1,
+    "material": "nbk7",
+    "ior": 1.5,
+    "transEff": 96
+   }
+  },
+  {
+   "id": "meterB",
+   "type": "powermeter",
+   "x": 120,
+   "y": 464,
+   "rot": 180,
+   "label": "Power meter",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "aperture": 16
+   }
+  },
+  {
+   "id": "screenB",
+   "type": "display",
+   "x": 250,
+   "y": 560,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "meterB",
+    "displayScale": 0.8,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  }
+ ],
+ "beams": []
+}

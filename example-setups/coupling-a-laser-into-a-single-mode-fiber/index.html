@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coupling a laser into a single-mode fibre — Examples | OpticalSetup</title>
+<meta name="description" content="Two mirrors put the beam on the axis of a lens, and the lens focuses it on the end of the fibre: the layout of every fibre launch, with the one condition a ray model can check, the acceptance angle.">
+<link rel="canonical" href="https://opticalsetup.com/example-setups/coupling-a-laser-into-a-single-mode-fiber/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Coupling a laser into a single-mode fibre — OpticalSetup Examples">
+<meta property="og:description" content="Two mirrors put the beam on the axis of a lens, and the lens focuses it on the end of the fibre: the layout of every fibre launch, with the one condition a ray model can check, the acceptance angle.">
+<meta property="og:url" content="https://opticalsetup.com/example-setups/coupling-a-laser-into-a-single-mode-fiber/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="../../sketch/icons/icon.svg">
+<script>
+  (() => {
+    let savedTheme = null;
+    try { savedTheme = localStorage.getItem('opticalsetup-theme'); } catch (_) { /* storage may be unavailable */ }
+    const systemTheme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = savedTheme === 'dark' || savedTheme === 'light'
+      ? savedTheme
+      : systemTheme;
+  })();
+</script>
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+<link rel="stylesheet" href="../../example-setups/assets/examples.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../calculators/">Calculators</a>
+      <a class="plain" href="../../community/">Community</a>
+      <button type="button" id="btnAbout" class="plain" aria-haspopup="dialog" title="License, copyright and citation">About</button>
+      <button type="button" id="btnTheme" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark mode" title="Switch to dark mode">
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M15.7 12.7A6.5 6.5 0 0 1 7.3 4.3a6.5 6.5 0 1 0 8.4 8.4Z"/>
+        </svg>
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="10" cy="10" r="3.2"/>
+          <path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M16 4l-1.4 1.4M5.4 14.6 4 16"/>
+        </svg>
+      </button>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <dialog id="aboutDialog" class="site-dialog" aria-labelledby="aboutTitle">
+    <div class="site-dialog-head">
+      <div><span class="eyebrow">Free software</span><h2 id="aboutTitle">About OpticalSetup</h2></div>
+      <button type="button" id="aboutClose" class="site-dialog-close" aria-label="Close about dialog">×</button>
+    </div>
+    <p class="about-text" id="aboutVersion" hidden></p>
+    <p class="about-text">Copyright © 2026 Luca Genchi and contributors.</p>
+    <p class="about-text">OpticalSetup is free software: you can redistribute it and/or modify it
+      under the terms of the GNU General Public License as published by the Free Software
+      Foundation, either version 3 of the License, or (at your option) any later version.</p>
+    <p class="about-text">It is distributed in the hope that it will be useful, but
+      <strong>without any warranty</strong>; without even the implied warranty of merchantability
+      or fitness for a particular purpose. See the GNU General Public License for more details.</p>
+    <p class="about-text">The numbers OpticalSetup reports come from models with stated limits; read
+      each component's page in the <a href="../../wiki/">wiki</a> before relying on one.</p>
+    <p class="about-text">If you use OpticalSetup in your research, teaching or publications,
+      please cite the software:</p>
+    <p class="about-text about-citation">Bertoncini, A., &amp; Genchi, L. (2026).
+      <cite>OpticalSetup - the optical workbench software</cite> [Computer software]. Zenodo.
+      <a href="https://doi.org/10.5281/zenodo.23191537" target="_blank" rel="noopener">https://doi.org/10.5281/zenodo.23191537</a></p>
+    <p class="about-links">
+      <a href="../../#cite">BibTeX and version DOIs</a>
+      <a href="../../license.html">License and notices</a>
+      <a href="https://github.com/LucaGenchi/opticalsetup" target="_blank" rel="noopener">Source code</a>
+    </p>
+  </dialog>
+  <script type="module" src="../../wiki/assets/site-header.js"></script>
+  <div class="wiki-shell" style="grid-template-columns: 1fr;">
+    <main class="wiki-article" style="max-width: 760px;">
+      <div class="crumb"><a href="../../example-setups/">Examples</a> / Fundamentals / Coupling a laser into a single-mode fibre</div>
+      <h1>Coupling a laser into a single-mode fibre</h1>
+      <p class="tagline" style="margin-top: 10px;">Two mirrors put the beam on the axis of a lens, and the lens focuses it on the end of the fibre: the layout of every fibre launch, with the one condition a ray model can check, the acceptance angle.</p>
+
+      <a class="place-cta" href="../../sketch/?example=coupling-a-laser-into-a-single-mode-fiber">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?example=coupling-a-laser-into-a-single-mode-fiber&amp;embed=1"
+          title="Coupling a laser into a single-mode fibre — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace of the setup above, shown as a picture. Open it in the canvas to take it apart, retune it, and save or export it as your own.</p>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Background</h2>
+
+      <p>A single-mode fibre guides light in one spatial mode, a spot a few
+      micrometres across. To launch a free-space beam into it, the beam has to be
+      focused on the end of the fibre with a profile similar to that mode and
+      with flat wavefronts<sup class="cite">[<a href="#ref-1">1</a>]</sup>. The core is typically only a couple of
+      microns in diameter and has to be hit, which asks for mechanics of
+      sub-micron precision<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+      <p>The layout is nearly always the same. Two mirrors steer the beam so that
+      it arrives along the axis of a lens, and the lens focuses it on the fibre's
+      end face. The end of the fibre sits on translation stages that set its
+      position across the beam, with further controls for its
+      angle<sup class="cite">[<a href="#ref-1">1</a>]</sup>. The focal length of the lens is chosen so that the
+      focused spot has the size of the fibre's mode.</p>
+      <p>One part of this can be said with rays alone. A fibre accepts light only
+      within a cone around its axis, of half-angle arcsin(NA), where NA is its
+      numerical aperture. A beam of radius r focused by a lens of focal length f
+      converges at a half-angle of arctan(r/f). If that is larger than the
+      acceptance angle, the outer part of the beam cannot be guided, whatever the
+      alignment.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>What this setup demonstrates</h2>
+      <div class="sim-block">
+
+      <p>A 633&nbsp;nm laser, 1&nbsp;mW in a 2&nbsp;mm beam, is folded by two
+      <a href="../../wiki/mirror/">mirrors</a> onto the axis of a
+      <a href="../../wiki/lens/">lens</a> of f&nbsp;=&nbsp;11&nbsp;mm. The end of
+      a <a href="../../wiki/fiber/">fiber</a> stands in its focal plane. The
+      fibre's input NA is 0.12, an acceptance half-angle of 6.9°; the beam
+      converges at arctan(1/11) = 5.2°. The fibre is set to no loss and emits
+      from its far end into the same NA, onto a power meter.</p>
+      <p>The meter reads 1.00&nbsp;mW. What that number means matters: the tracer
+      couples every ray that lands on the end face of the fibre's connector
+      within the acceptance angle, and here all 25 rays of the beam do. It is the
+      condition on the angle, and nothing else.</p>
+      <p>Things to try, each of which the acceptance angle explains. Set the
+      lens to f&nbsp;=&nbsp;4&nbsp;mm: the beam converges at 14°, the outer rays
+      are refused and the meter reads 440&nbsp;µW. Put f back and widen the
+      laser's beam to 4&nbsp;mm: 10.3°, and 600&nbsp;µW. Lower the fibre's
+      input NA to 0.08: 840&nbsp;µW. Turn mirror 2 by 0.5°: the beam crosses
+      the lens 2&nbsp;mm off its centre, the cone arrives tilted, and the meter
+      reads 240&nbsp;µW; at 1° it is dark. The readings move in steps of
+      40&nbsp;µW, one ray of the 25.</p>
+      <p>The enlarged view shows the cone meeting the end face, and prints the
+      waist an ideal Gaussian beam with this cone would have, 2.23&nbsp;µm
+      (λ/(π·NA) for the cone's own NA of 0.09). The tracer does not use that
+      number. Whether it matches the fibre's mode is the question the
+      <a href="../../calculators/fiber-coupling/">Free space to fiber
+      coupling</a> calculator answers, with the efficiency lost to a mismatch in
+      size, an offset, a tilt or a defocus.</p>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>The reading is not a coupling efficiency. The fibre
+      here has no core and no mode: its entrance is the whole end face of the
+      connector, 10&nbsp;mm wide in the drawing, and any ray that meets it within
+      the acceptance angle is coupled in full. A focus that misses the centre of
+      the face by a tenth of a millimetre, or lies a few millimetres in front of
+      it, still reads 1.00&nbsp;mW here; a real single-mode fibre, whose core is
+      micrometres across, would be dark. Pull the fibre's end 3&nbsp;mm back from
+      the focus and the reading does not change.</p>
+      <p>So the setup shows where the focus lies and at what angles the light
+      arrives, and counts the rays inside the cone. The overlap of the focused
+      beam with the fibre's mode, which sets the efficiency of a real launch and
+      its tolerance to position, angle and focus, is not computed on the canvas,
+      nor are the reflection at the end face or the aberrations of a real
+      lens.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/mirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><line x1="0" y1="-12.7" x2="0" y2="12.7" stroke="#444" stroke-width="3.5"/><line x1="-1.5" y1="-12.7" x2="-7.5" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="-6.233333333333333" x2="-7.5" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="0.2333333333333325" x2="-7.5" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="6.699999999999999" x2="-7.5" y2="12.7" stroke="#888" stroke-width="1"/></svg>Mirror</a><a href="../../wiki/lens/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0,-12.7 Q 9,0 0,12.7 Q -9,0 0,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Thin convex lens</a><a href="../../wiki/zoom/"><svg viewBox="-21 -21 42 42" aria-hidden="true"><ellipse cx="0" cy="0" rx="15" ry="15" fill="none" stroke="#475569" stroke-width="1.2" data-zoom-frame="region"/><line x1="5.3341" y1="14.0195" x2="131.3366" y2="-33.9219" stroke="#475569" stroke-width="1" opacity="0.75" data-zoom-frame="connector"/><line x1="-12.6856" y1="-8.0047" x2="59.2575" y2="-122.0187" stroke="#475569" stroke-width="1" opacity="0.75" data-zoom-frame="connector"/><ellipse cx="110" cy="-90" rx="60" ry="60" fill="#ffffff" stroke="none"/><ellipse cx="110" cy="-90" rx="60" ry="60" fill="none" stroke="#475569" stroke-width="1.5" data-zoom-frame="view"/><g data-zoom-scalebar="true" fill="#1f2937"><rect x="100" y="-49.488" width="20" height="2.688" stroke="#ffffff" stroke-width="2.112" paint-order="stroke"/><text x="110" y="-53.328" text-anchor="middle" font-size="9.6" font-weight="600" stroke="#ffffff" stroke-width="2.112" paint-order="stroke">5 mm</text></g></svg>Zoom</a><a href="../../wiki/powermeter/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-24" y="-15" width="48" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-25.7" y="-11" width="3.4" height="22" rx="1" fill="#86efac" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">PWR</text><circle cx="16" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Power meter</a><a href="../../wiki/cwlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">CW LASER</text><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>CW Laser</a><a href="../../wiki/asphericlens/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M -0.26 12.7 L -0.7 11.64 L -1.11 10.58 L -1.47 9.53 L -1.8 8.47 L -2.08 7.41 L -2.32 6.35 L -2.53 5.29 L -2.7 4.23 L -2.83 3.17 L -2.93 2.12 L -2.98 1.06 L -3 0 L -2.98 -1.06 L -2.93 -2.12 L -2.83 -3.18 L -2.7 -4.23 L -2.53 -5.29 L -2.32 -6.35 L -2.08 -7.41 L -1.8 -8.47 L -1.47 -9.52 L -1.11 -10.58 L -0.7 -11.64 L -0.26 -12.7 L 3 -12.7 L 3 -11.64 L 3 -10.58 L 3 -9.53 L 3 -8.47 L 3 -7.41 L 3 -6.35 L 3 -5.29 L 3 -4.23 L 3 -3.17 L 3 -2.12 L 3 -1.06 L 3 0 L 3 1.06 L 3 2.12 L 3 3.18 L 3 4.23 L 3 5.29 L 3 6.35 L 3 7.41 L 3 8.47 L 3 9.52 L 3 10.58 L 3 11.64 L 3 12.7 L -0.26 12.7 Z" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5" stroke-linejoin="round"/></svg>Aspheric lens</a>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://www.rp-photonics.com/fiber_launch_systems.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Fiber Launch Systems</a></li>
+      </ol>
+
+
+    </main>
+  </div>
+  <footer class="wiki-footer">Examples are written and maintained with the project. For setups shared by users, see the <a href="../../community/">community section</a>; for how each component works, see the <a href="../../wiki/">wiki</a>.</footer>
+</body>
+</html>

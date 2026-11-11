@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beam walking: two mirrors and two irises — Examples | OpticalSetup</title>
+<meta name="description" content="Putting a laser beam on a line fixed by two irises with two mirrors: each round of two adjustments leaves 0.44 of the error of the round before.">
+<link rel="canonical" href="https://opticalsetup.com/example-setups/beam-walking-two-mirrors-and-two-irises/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Beam walking: two mirrors and two irises — OpticalSetup Examples">
+<meta property="og:description" content="Putting a laser beam on a line fixed by two irises with two mirrors: each round of two adjustments leaves 0.44 of the error of the round before.">
+<meta property="og:url" content="https://opticalsetup.com/example-setups/beam-walking-two-mirrors-and-two-irises/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="../../sketch/icons/icon.svg">
+<script>
+  (() => {
+    let savedTheme = null;
+    try { savedTheme = localStorage.getItem('opticalsetup-theme'); } catch (_) { /* storage may be unavailable */ }
+    const systemTheme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = savedTheme === 'dark' || savedTheme === 'light'
+      ? savedTheme
+      : systemTheme;
+  })();
+</script>
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+<link rel="stylesheet" href="../../example-setups/assets/examples.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../calculators/">Calculators</a>
+      <a class="plain" href="../../community/">Community</a>
+      <button type="button" id="btnAbout" class="plain" aria-haspopup="dialog" title="License, copyright and citation">About</button>
+      <button type="button" id="btnTheme" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark mode" title="Switch to dark mode">
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M15.7 12.7A6.5 6.5 0 0 1 7.3 4.3a6.5 6.5 0 1 0 8.4 8.4Z"/>
+        </svg>
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="10" cy="10" r="3.2"/>
+          <path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M16 4l-1.4 1.4M5.4 14.6 4 16"/>
+        </svg>
+      </button>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <dialog id="aboutDialog" class="site-dialog" aria-labelledby="aboutTitle">
+    <div class="site-dialog-head">
+      <div><span class="eyebrow">Free software</span><h2 id="aboutTitle">About OpticalSetup</h2></div>
+      <button type="button" id="aboutClose" class="site-dialog-close" aria-label="Close about dialog">×</button>
+    </div>
+    <p class="about-text" id="aboutVersion" hidden></p>
+    <p class="about-text">Copyright © 2026 Luca Genchi and contributors.</p>
+    <p class="about-text">OpticalSetup is free software: you can redistribute it and/or modify it
+      under the terms of the GNU General Public License as published by the Free Software
+      Foundation, either version 3 of the License, or (at your option) any later version.</p>
+    <p class="about-text">It is distributed in the hope that it will be useful, but
+      <strong>without any warranty</strong>; without even the implied warranty of merchantability
+      or fitness for a particular purpose. See the GNU General Public License for more details.</p>
+    <p class="about-text">The numbers OpticalSetup reports come from models with stated limits; read
+      each component's page in the <a href="../../wiki/">wiki</a> before relying on one.</p>
+    <p class="about-text">If you use OpticalSetup in your research, teaching or publications,
+      please cite the software:</p>
+    <p class="about-text about-citation">Bertoncini, A., &amp; Genchi, L. (2026).
+      <cite>OpticalSetup - the optical workbench software</cite> [Computer software]. Zenodo.
+      <a href="https://doi.org/10.5281/zenodo.23191537" target="_blank" rel="noopener">https://doi.org/10.5281/zenodo.23191537</a></p>
+    <p class="about-links">
+      <a href="../../#cite">BibTeX and version DOIs</a>
+      <a href="../../license.html">License and notices</a>
+      <a href="https://github.com/LucaGenchi/opticalsetup" target="_blank" rel="noopener">Source code</a>
+    </p>
+  </dialog>
+  <script type="module" src="../../wiki/assets/site-header.js"></script>
+  <div class="wiki-shell" style="grid-template-columns: 1fr;">
+    <main class="wiki-article" style="max-width: 760px;">
+      <div class="crumb"><a href="../../example-setups/">Examples</a> / Fundamentals / Beam walking: two mirrors and two irises</div>
+      <h1>Beam walking: two mirrors and two irises</h1>
+      <p class="tagline" style="margin-top: 10px;">Putting a laser beam on a line fixed by two irises with two mirrors: each round of two adjustments leaves 0.44 of the error of the round before.</p>
+
+      <a class="place-cta" href="../../sketch/?example=beam-walking-two-mirrors-and-two-irises">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?example=beam-walking-two-mirrors-and-two-irises&amp;embed=1"
+          title="Beam walking: two mirrors and two irises — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace of the setup above, shown as a picture. Open it in the canvas to take it apart, retune it, and save or export it as your own.</p>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Background</h2>
+
+      <p>Most optical setups begin with the same task: a laser beam has to run
+      along a given line, for instance the axis of the lenses that follow. A line
+      in the plane of the table is fixed by two points, and two irises mark them.
+      A beam is also fixed by two numbers, a position and a direction, so two
+      adjustments are needed, and one mirror gives only one. Two mirrors in a
+      row give both.</p>
+      <p>The two adjustments are not independent: turning either mirror moves the
+      beam on both irises. The standard procedure, called beam walking, deals
+      with that by repetition. Turn the first mirror until the beam is centred
+      on the first iris. Turn the second mirror until it is centred on the
+      second iris; it is now a little off the first. Go back to the first
+      mirror, and repeat. Each round leaves a smaller error.</p>
+      <p>How much smaller follows from the geometry. Call a the distance from
+      mirror 1 to mirror 2, b from mirror 2 to iris 1, and c from iris 1 to
+      iris 2. For small angles, a turn of mirror 1 moves the beam on the two
+      irises in the ratio (a+b)&nbsp;:&nbsp;(a+b+c), and a turn of mirror 2 in the
+      ratio b&nbsp;:&nbsp;(b+c). Working through one round, the error is
+      multiplied by</p>
+      <p style="text-align:center">b&nbsp;(a+b+c) / ((a+b)&nbsp;(b+c)),</p>
+      <p>which is always less than one. It is small when the first iris is
+      close to the second mirror and the second iris far away. Pair the mirrors
+      and irises the other way round, mirror 2 with iris 1 and mirror 1 with
+      iris 2, and each round multiplies the error by the inverse of that number:
+      the beam walks away instead.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>What this setup demonstrates</h2>
+      <div class="sim-block">
+
+      <p>A 633&nbsp;nm laser with a 1&nbsp;mm beam is folded by two
+      <a href="../../wiki/mirror/">mirrors</a> at 45° onto a line through two
+      irises, each open to 2&nbsp;mm. (An iris is the
+      <a href="../../wiki/slit/">Slit</a> element: in a top view an opening is a
+      gap.) The distances are a&nbsp;=&nbsp;100&nbsp;mm, b&nbsp;=&nbsp;50&nbsp;mm and
+      c&nbsp;=&nbsp;250&nbsp;mm. As shipped the beam is aligned, and the power
+      meter behind the second iris reads 1.00&nbsp;mW.</p>
+      <p>Now misalign it: select the laser and set its rotation to 1°. The beam
+      meets the plate of the first iris and the meter goes dark; with the irises
+      opened wide it would cross the first 5.4&nbsp;mm and the second 9.8&nbsp;mm
+      from the centre. Then walk it back by turning the mirrors (the round handle
+      on a selected mirror, or its rotation in the inspector). Done exactly, with
+      each step putting the centre of the beam on the centre of its iris, the
+      traced beam gives:</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Round</th><th>Mirror 1 centres iris 1; off iris 2 by</th><th>Mirror 2 centres iris 2; off iris 1 by</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>4.65&nbsp;mm</td><td>0.78&nbsp;mm</td></tr>
+          <tr><td>2</td><td>2.07&nbsp;mm</td><td>0.34&nbsp;mm</td></tr>
+          <tr><td>3</td><td>0.92&nbsp;mm</td><td>0.15&nbsp;mm</td></tr>
+          <tr><td>4</td><td>0.41&nbsp;mm</td><td>0.07&nbsp;mm</td></tr>
+        </tbody>
+      </table></div>
+      <p>Each round leaves 0.444 of the error before it, which is
+      50&nbsp;×&nbsp;400 / (150&nbsp;×&nbsp;300), the formula above. The walk ends
+      with mirror 1 at 46.30° and mirror 2 at 45.80°; type those two rotations
+      and the meter reads 1.00&nbsp;mW again. With a 1&nbsp;mm beam in a 2&nbsp;mm
+      iris, the light starts to come through once the beam is within 1.5&nbsp;mm
+      of the centre and all of it passes within 0.5&nbsp;mm, so the meter is the
+      guide, as it is on the bench.</p>
+      <p>Then try the wrong pairing from the same start: centre the beam on
+      iris 1 with mirror 2, and on iris 2 with mirror 1. After the first step the
+      beam is 23&nbsp;mm off iris 2, further than the 9.8&nbsp;mm it started
+      with, and the next step takes it off the mirrors.</p>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>The setup is a top view, so it shows one of the two
+      planes. On a table each mirror also tilts the beam up and down, and the same
+      walk is done for the height, with the same two mirrors and irises. Height is
+      not part of the drawing.</p>
+      <p>A mirror here turns about the centre of its face, and the beam is 25 rays
+      with sharp edges, so the meter's reading changes in steps of 40&nbsp;µW as
+      rays are cut off. A real mount turns about a point behind the mirror, and a
+      real beam has a smooth profile and is partly transmitted by an iris well
+      before it is centred.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/mirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><line x1="0" y1="-12.7" x2="0" y2="12.7" stroke="#444" stroke-width="3.5"/><line x1="-1.5" y1="-12.7" x2="-7.5" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="-6.233333333333333" x2="-7.5" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="0.2333333333333325" x2="-7.5" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="6.699999999999999" x2="-7.5" y2="12.7" stroke="#888" stroke-width="1"/></svg>Mirror</a><a href="../../wiki/slit/"><svg viewBox="-34.4 -34.4 68.8 68.8" aria-hidden="true"><rect x="-2.5" y="-25.4" width="5" height="21.4" fill="#333"/><rect x="-2.5" y="4" width="5" height="21.4" fill="#333"/></svg>Slit</a><a href="../../wiki/powermeter/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-24" y="-15" width="48" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-25.7" y="-11" width="3.4" height="22" rx="1" fill="#86efac" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">PWR</text><circle cx="16" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Power meter</a><a href="../../wiki/cwlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">CW LASER</text><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>CW Laser</a><a href="../../wiki/goniometer/"><svg viewBox="-60 -60 120 120" aria-hidden="true"><g data-ruler="true"><line x1="0" y1="0" x2="80" y2="0" stroke="#334155" stroke-width="1.2" stroke-linecap="round"/><line x1="0" y1="0" x2="56.57" y2="-56.57" stroke="#334155" stroke-width="1.2" stroke-linecap="round"/><path d="M 28,0 A 28 28 0 0 0 19.8,-19.8" fill="none" stroke="#334155" stroke-width="1.02"/><circle cx="0" cy="0" r="1.72" fill="#334155"/><g class="ruler-label" transform="translate(47.68 -19.75) rotate(0) translate(-15.48 0)"><g class="markdown-label" data-markdown="true"><text x="0" y="3.12" text-anchor="start" font-size="12.00" fill="#334155" xml:space="preserve"><tspan>45.0°</tspan></text></g></g></g></svg>Goniometer</a>
+      </div>
+
+
+
+
+    </main>
+  </div>
+  <footer class="wiki-footer">Examples are written and maintained with the project. For setups shared by users, see the <a href="../../community/">community section</a>; for how each component works, see the <a href="../../wiki/">wiki</a>.</footer>
+</body>
+</html>

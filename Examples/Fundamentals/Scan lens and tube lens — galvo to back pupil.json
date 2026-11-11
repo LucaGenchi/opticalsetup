@@ -1,0 +1,200 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "title",
+   "type": "textlabel",
+   "x": -60,
+   "y": 40,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Scan lens and tube lens: the galvo relayed to the back pupil**",
+    "fontSize": 24,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "note",
+   "type": "textlabel",
+   "x": -60,
+   "y": 89,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "The scan lens and the tube lens image the galvo mirror onto the objective’s back pupil.\nA tilt of the mirror becomes a tilt of the beam about the centre of the pupil:\nthe beam stays in the pupil and the focus moves.",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "laser",
+   "type": "cwlaser",
+   "x": 120,
+   "y": 210,
+   "rot": 90,
+   "label": "Laser, 488 nm, 1.8 mm beam",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "wavelength": 488,
+    "avgPowerW": 0.01,
+    "beamMode": "beam",
+    "beamWidth": 1.8,
+    "pol": 0,
+    "coherenceLengthMm": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw",
+    "housingLength": 92,
+    "housingHeight": 34,
+    "housingColor": "#3a3f46"
+   }
+  },
+  {
+   "id": "galvo",
+   "type": "galvo",
+   "x": 120,
+   "y": 400,
+   "rot": 135,
+   "label": "Galvo mirror",
+   "showLabel": true,
+   "labelPos": "l",
+   "params": {
+    "length": 20,
+    "commandAngle": 0,
+    "scanMode": "triangle",
+    "scanAmplitude": 2,
+    "scanFrequencyHz": 500,
+    "scanPhaseDeg": 90,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "scan",
+   "type": "lens",
+   "x": 170,
+   "y": 400,
+   "rot": 0,
+   "label": "Scan lens, f = 50 mm",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "f": 50,
+    "dia": 25.4,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "tube",
+   "type": "lens",
+   "x": 420,
+   "y": 400,
+   "rot": 0,
+   "label": "Tube lens, f = 200 mm",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "f": 200,
+    "dia": 50.8,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "objective",
+   "type": "objective",
+   "x": 619,
+   "y": 400,
+   "rot": 0,
+   "label": "Objective, f = 10 mm, NA 0.4",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "efl": 10,
+    "workingDistance": 5,
+    "immersion": "air",
+    "immersionIndex": 1.333,
+    "na": 0.4,
+    "showAcceptance": false,
+    "transEff": 100,
+    "frontAperture": 20
+   }
+  },
+  {
+   "id": "sample",
+   "type": "box",
+   "x": 645,
+   "y": 400,
+   "rot": 0,
+   "label": "Sample plane",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "text": "",
+    "w": 10,
+    "h": 30,
+    "behavior": "block",
+    "fill": "#cbd5e1"
+   }
+  },
+  {
+   "id": "zoom",
+   "type": "zoom",
+   "x": 639.75,
+   "y": 400,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "shape": "circle",
+    "w": 1,
+    "h": 20,
+    "mag": 90,
+    "insetX": -40,
+    "insetY": -120,
+    "regionDash": false,
+    "connectors": true,
+    "connectorDash": false,
+    "diffraction": true,
+    "focusNote": true,
+    "scaleBar": true,
+    "scaleBarDirection": "horizontal",
+    "scaleBarMm": 0,
+    "frameColor": "#475569"
+   }
+  },
+  {
+   "id": "imageNote",
+   "type": "textlabel",
+   "x": 178,
+   "y": 362,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Intermediate image",
+    "fontSize": 12,
+    "fill": "#64748b"
+   }
+  },
+  {
+   "id": "pupilNote",
+   "type": "textlabel",
+   "x": 558,
+   "y": 434,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Back pupil",
+    "fontSize": 12,
+    "fill": "#64748b"
+   }
+  }
+ ],
+ "beams": []
+}

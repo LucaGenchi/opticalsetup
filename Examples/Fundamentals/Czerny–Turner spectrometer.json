@@ -1,0 +1,345 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "title",
+   "type": "textlabel",
+   "x": -60,
+   "y": 40,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Czerny–Turner spectrometer**",
+    "fontSize": 24,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "note",
+   "type": "textlabel",
+   "x": -60,
+   "y": 89,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "The entrance slit sits at the focus of the first mirror, which sends a parallel beam\nto the grating. The grating turns each wavelength by its own angle, and the second mirror\nfocuses each one at its own place: the exit slit passes one line.",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "lamp",
+   "type": "pointsource",
+   "x": 122.0861084799665,
+   "y": 287.62890239477014,
+   "rot": 0,
+   "label": "Mercury lamp",
+   "showLabel": true,
+   "labelPos": "l",
+   "params": {
+    "displayScale": 1,
+    "sourceKind": "lamp",
+    "wavelength": 532,
+    "bwMode": "mono",
+    "bandwidth": 400,
+    "lampType": "hg",
+    "spread": 10,
+    "nrays": 16,
+    "catchMode": "all",
+    "captureRange": 1000,
+    "autoColor": true,
+    "color": "#e02020"
+   }
+  },
+  {
+   "id": "condenser",
+   "type": "lens",
+   "x": 159.5861084799665,
+   "y": 287.62890239477014,
+   "rot": 0,
+   "label": "f = 25 mm",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "f": 25,
+    "dia": 12.7,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "entrance",
+   "type": "slit",
+   "x": 234.5861084799665,
+   "y": 287.62890239477014,
+   "rot": 0,
+   "label": "Entrance slit",
+   "showLabel": false,
+   "params": {
+    "gap": 0.5,
+    "length": 25.4
+   }
+  },
+  {
+   "id": "m1",
+   "type": "cmirror",
+   "x": 432.63972222828056,
+   "y": 287.62890239477014,
+   "rot": 352,
+   "label": "Mirror 1",
+   "showLabel": false,
+   "params": {
+    "length": 38.1,
+    "f": 200,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "grating",
+   "type": "grating",
+   "x": 250,
+   "y": 340,
+   "rot": 189.80999999999995,
+   "label": "Grating",
+   "showLabel": false,
+   "params": {
+    "lines": 600,
+    "orders": "1",
+    "transmissive": false,
+    "efficiency": 100,
+    "length": 25.4
+   }
+  },
+  {
+   "id": "m2",
+   "type": "cmirror",
+   "x": 432.63972222828056,
+   "y": 392.37109760522986,
+   "rot": 8,
+   "label": "Mirror 2",
+   "showLabel": false,
+   "params": {
+    "length": 50.8,
+    "f": 200,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "exit",
+   "type": "slit",
+   "x": 234.5861084799665,
+   "y": 392.37109760522986,
+   "rot": 0,
+   "label": "Exit slit",
+   "showLabel": false,
+   "params": {
+    "gap": 1,
+    "length": 50.8
+   }
+  },
+  {
+   "id": "wallTop",
+   "type": "box",
+   "x": 356.1129153541235,
+   "y": 227.62890239477014,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "",
+    "w": 253.05361374831406,
+    "h": 10,
+    "behavior": "block",
+    "fill": "#475569"
+   }
+  },
+  {
+   "id": "wallBottom",
+   "type": "box",
+   "x": 356.1129153541235,
+   "y": 452.37109760522986,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "",
+    "w": 253.05361374831406,
+    "h": 10,
+    "behavior": "block",
+    "fill": "#475569"
+   }
+  },
+  {
+   "id": "wallRight",
+   "type": "box",
+   "x": 477.63972222828056,
+   "y": 340,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "",
+    "w": 10,
+    "h": 214.74219521045973,
+    "behavior": "block",
+    "fill": "#475569"
+   }
+  },
+  {
+   "id": "wallLeftTop",
+   "type": "box",
+   "x": 234.5861084799665,
+   "y": 253.77890239477014,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "",
+    "w": 10,
+    "h": 42.30000000000001,
+    "behavior": "block",
+    "fill": "#475569"
+   }
+  },
+  {
+   "id": "wallLeftMid",
+   "type": "box",
+   "x": 234.5861084799665,
+   "y": 333.65,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "",
+    "w": 10,
+    "h": 66.64219521045976,
+    "behavior": "block",
+    "fill": "#475569"
+   }
+  },
+  {
+   "id": "wallLeftBottom",
+   "type": "box",
+   "x": 234.5861084799665,
+   "y": 432.57109760522985,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "",
+    "w": 10,
+    "h": 29.600000000000023,
+    "behavior": "block",
+    "fill": "#475569"
+   }
+  },
+  {
+   "id": "detector",
+   "type": "spectrometer",
+   "x": 164.5861084799665,
+   "y": 392.37109760522986,
+   "rot": 180,
+   "label": "Detector",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "aperture": 20,
+    "rangeMode": "auto",
+    "rangeMin": 480,
+    "rangeMax": 580,
+    "intensityScale": "density",
+    "labelPeaks": true
+   }
+  },
+  {
+   "id": "screen",
+   "type": "display",
+   "x": 164.5861084799665,
+   "y": 487.37109760522986,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "detector",
+    "displayScale": 0.9,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "entranceNote",
+   "type": "textlabel",
+   "x": 106.5861084799665,
+   "y": 303.62890239477014,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Entrance slit, 0.5 mm",
+    "fontSize": 12,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "gratingNote",
+   "type": "textlabel",
+   "x": 84.5861084799665,
+   "y": 332,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Grating, 600 lines/mm",
+    "fontSize": 12,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "exitNote",
+   "type": "textlabel",
+   "x": 134.5861084799665,
+   "y": 358.37109760522986,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Exit slit, 1 mm",
+    "fontSize": 12,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "m1Note",
+   "type": "textlabel",
+   "x": 490.63972222828056,
+   "y": 279.62890239477014,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Mirror 1, f = 200 mm",
+    "fontSize": 12,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "m2Note",
+   "type": "textlabel",
+   "x": 490.63972222828056,
+   "y": 384.37109760522986,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Mirror 2, f = 200 mm",
+    "fontSize": 12,
+    "fill": "#333333"
+   }
+  }
+ ],
+ "beams": []
+}
