@@ -43,7 +43,7 @@ test('fibers, supplied local history and detector tracing use native models', as
 test('HTTP noauth, origin/host boundaries, JSON limits and exact domain challenge', async () => {
   const app = createApplication({ origin: service.origin, challenge: 'exact-token', computeScene: service.compute });
   const request = (path, options = {}) => app(new Request(service.origin + path, options));
-  assert.equal((await (await request('/mcp/health')).json()).storage, 'none');
+  assert.equal((await (await request('/mcp/health')).json()).storage, 'ephemeral-memory');
   assert.equal(await (await request('/.well-known/openai-apps-challenge')).text(), 'exact-token');
   assert.equal((await request('/mcp')).status, 405);
   assert.equal((await request('/mcp', { method: 'POST', headers: { origin: 'https://evil.example', 'content-type': 'application/json' }, body: '{}' })).status, 403);
@@ -51,7 +51,7 @@ test('HTTP noauth, origin/host boundaries, JSON limits and exact domain challeng
   assert.equal((await request('/mcp', { method: 'POST', body: '{}' })).status, 415);
   assert.equal((await request('/mcp', { method: 'POST', headers: { 'content-type': 'application/json' }, body: 'x'.repeat(950001) })).status, 413);
   const tools = await (await request('/mcp', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list' }) })).json();
-  assert.equal(tools.result.tools.length, 15);
+  assert.equal(tools.result.tools.length, 16);
   assert.equal(tools.result.resultType, 'complete');
   assert.equal(tools.result.ttlMs, 0);
   assert.equal(tools.result.cacheScope, 'private');
