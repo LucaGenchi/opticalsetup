@@ -35,7 +35,6 @@ const lensAt = (x, f) => {
 test('an Object saved before the light options keeps its centred fan from the axis', () => {
   const saved = { app: 'optics2d', version: 1, beams: [], elements: [{ id: 'o', type: 'objarrow', x: 0, y: 0, rot: 0, params: { height: 20 } }] };
   const [object] = parseSketch(JSON.stringify(saved), registry).elements;
-  assert.equal(object.params.anchor, 'centre');
   assert.equal(object.params.raysFrom, 'axis');
   assert.equal(object.params.aim, 'ahead');
 });

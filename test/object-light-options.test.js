@@ -1,27 +1,28 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// The Object's light options: where its rays start (anchor, tip, tip and
-// base), where they point (straight ahead, or filling the first optic), and
-// where the shape sits on its anchor (centred, or standing on it).
+// The Object's light options: where its rays start (its middle, tip, tip and
+// base) and where they point (straight ahead, or filling the first optic).
+// The shape is always centred on the Object's position; one saved standing
+// on it (the retired `anchor: 'base'`) opens moved up to keep its place.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createElement, getDirectManipulation, objectBaseFanColor, registry } from '../sketch/js/elements.js';
+import { createElement, getDirectManipulation, OBJ_SHAPES, objectBaseFanColor, objectEnds, registry } from '../sketch/js/elements.js';
 import { aimedFanSpan, objectAimScene } from '../sketch/js/object-aim.js';
 import { traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
 
 const near = (a, b, tol, label) => assert.ok(Math.abs(a - b) <= tol, `${label}: ${a} vs ${b} (tolerance ${tol})`);
 
-// The lesson scene: an arrow 22 mm tall standing on the axis, 300 mm in front
-// of an f = 100 mm lens (25.4 mm across), so the image is 150 mm behind the
-// lens at m = −0.5, its tip 11 mm below the axis.
-function lessonScene({ params = {}, slitGap = null, rot = 0 } = {}) {
-  const object = createElement('objarrow', 0, 0);
-  object.rot = rot;
+// The lesson scene: an arrow 22 mm tall standing on the axis (its middle
+// 11 mm above it), 300 mm in front of an f = 100 mm lens (25.4 mm across), so
+// the image is 150 mm behind the lens at m = −0.5, its tip 11 mm below the
+// axis.
+function lessonScene({ params = {}, slitGap = null, y = -11 } = {}) {
+  const object = createElement('objarrow', 0, y);
   Object.assign(object.params, {
-    anchor: 'base', raysFrom: 'tip', aim: 'optic', nrays: 21, height: 22, showImage: true, ...params,
+    raysFrom: 'tip', aim: 'optic', nrays: 21, height: 22, showImage: true, ...params,
   });
   const lens = createElement('lens', 300, 0);
   lens.params.f = 100;
@@ -50,13 +51,12 @@ const distanceToLine = (p, a, b) => {
   return Math.abs((p.x - a.x) * dy - (p.y - a.y) * dx) / Math.hypot(dx, dy);
 };
 
-test('an Object saved before the light options opens centred, with its fan from the anchor straight ahead', () => {
+test('an Object saved before the light options opens with its fan from the middle straight ahead', () => {
   const saved = {
     app: 'optics2d', version: 1, beams: [],
     elements: [{ id: 'o', type: 'objarrow', x: 0, y: 0, rot: 0, params: { height: 20, shape: 'arrow', raysMode: 'fan', spread: 10, nrays: 3, showImage: true, wavelength: 620 } }],
   };
   const [object] = parseSketch(JSON.stringify(saved), registry).elements;
-  assert.equal(object.params.anchor, 'centre');
   assert.equal(object.params.raysFrom, 'axis');
   assert.equal(object.params.aim, 'ahead');
   // The fan of before: three rays from (1, 0), 10° across, the middle one on the axis.
@@ -64,13 +64,13 @@ test('an Object saved before the light options opens centred, with its fan from 
   assert.deepEqual(rays.map(r => [r.x, r.y]), [[1, 0], [1, 0], [1, 0]]);
   near(Math.atan2(rays[0].dy, rays[0].dx) * 180 / Math.PI, -5, 1e-12, 'first ray');
   near(rays[1].dy, 0, 1e-15, 'middle ray');
-  // The arrowhead's point is still half the height above the anchor.
+  // The arrowhead's point is still half the height above the Object's position.
   assert.match(registry.objarrow.svg(object), /<polygon points="0\.0,-10\.0 /);
 });
 
 test('a new Object is centred on the axis and fills the first optic from its tip, and keeps that through a save', () => {
   const object = createElement('objarrow', 0, 0);
-  assert.equal(object.params.anchor, 'centre');
+  assert.equal(object.params.anchor, undefined);
   assert.equal(object.params.raysFrom, 'tip');
   assert.equal(object.params.aim, 'optic');
   const lens = createElement('lens', 300, 0);
@@ -88,7 +88,7 @@ test('a new Object is centred on the axis and fills the first optic from its tip
   // saved before the options existed.
   const saved = { app: 'optics2d', version: 1, beams: [], elements: [object, lens] };
   const [reloaded] = parseSketch(JSON.stringify(saved), registry).elements;
-  assert.equal(reloaded.params.anchor, 'centre');
+  assert.equal(reloaded.y, 0);
   assert.equal(reloaded.params.raysFrom, 'tip');
   assert.equal(reloaded.params.aim, 'optic');
 });
@@ -108,8 +108,11 @@ test('an arrow standing on the axis fills the lens from its tip, and the rays me
   near(tip.x, 450, 1e-9, 'image distance');
   near(tip.y, 11, 1e-9, 'image tip height (m = −0.5, inverted)');
   for (const r of rays) near(distanceToLine(tip, r.atLens, r.next), 0, 1e-9, 'ray through the image tip');
-  // The arrow's drawn base sits on the anchor.
-  assert.match(registry.objarrow.svg(object), /<polyline points="0\.0,0\.0 0\.0,-15\.8"/);
+  // The arrow's shaft starts half its height below its position, on the axis,
+  // and nothing else is drawn on that point (no marker of the middle).
+  const svg = registry.objarrow.svg(object);
+  assert.match(svg, /^<polyline points="0\.0,11\.0 0\.0,-4\.8"/);
+  assert.doesNotMatch(svg, /<line /);
 });
 
 test('a slit in front of the lens narrows the aimed fan to the slit, and the image stays put', () => {
@@ -134,12 +137,13 @@ test('a slit in front of the lens narrows the aimed fan to the slit, and the ima
 
 test('the aimed fan follows the lens when the lens moves', () => {
   const { object, lens, elements } = lessonScene();
-  lens.y = 6;
+  // Still across the Object's own axis (y = −11), which picks the optic.
+  lens.y = -6;
   const rays = raysThroughLens(traceScene(elements, []), object);
   const ys = rays.map(r => r.atLens?.y);
   assert.ok(ys.every(Number.isFinite));
-  assert.ok(Math.min(...ys) > 6 - 12.7 && Math.min(...ys) < 6 - 12.7 * 0.985, `lower edge ${Math.min(...ys)}`);
-  assert.ok(Math.max(...ys) < 6 + 12.7 && Math.max(...ys) > 6 + 12.7 * 0.985, `upper edge ${Math.max(...ys)}`);
+  assert.ok(Math.min(...ys) > -6 - 12.7 && Math.min(...ys) < -6 - 12.7 * 0.985, `lower edge ${Math.min(...ys)}`);
+  assert.ok(Math.max(...ys) < -6 + 12.7 && Math.max(...ys) > -6 + 12.7 * 0.985, `upper edge ${Math.max(...ys)}`);
 });
 
 test('tip and base fans: the base fan meets on the axis in a second colour, the tip fan at the image tip', () => {
@@ -158,20 +162,21 @@ test('tip and base fans: the base fan meets on the axis in a second colour, the 
   assert.ok(result.paths.filter(r => r.sourceId === object.id).every(r => r.wl === object.params.wavelength));
 });
 
-test('a centred Object aims from its tip too, and its image is drawn around the anchor’s image', () => {
-  const { object, elements } = lessonScene({ params: { anchor: 'centre' } });
+test('an Object centred on the axis aims from its tip too, and its image is drawn around the axis', () => {
+  const { object, elements } = lessonScene({ y: 0 });
   const result = traceScene(elements, []);
   const tip = imageTip(result);
   near(tip.x, 450, 1e-9, 'image distance');
-  near(tip.y, 5.5, 1e-9, 'tip 11 mm above the anchor images 5.5 mm below the axis');
+  near(tip.y, 5.5, 1e-9, 'tip 11 mm above the axis images 5.5 mm below it');
   for (const r of raysThroughLens(result, object)) near(distanceToLine(tip, r.atLens, r.next), 0, 1e-9, 'ray through the image tip');
 });
 
 test('a turned standing Object still aims at the lens and images its tip where its rays meet', () => {
-  // Object turned 90° (facing down the page) with the lens 300 mm below it.
-  const object = createElement('objarrow', 0, 0);
+  // Object turned 90° (facing down the page), standing on the axis x = 0 (its
+  // up is +x, so its middle is at x = 11), with the lens 300 mm below it.
+  const object = createElement('objarrow', 11, 0);
   object.rot = 90;
-  Object.assign(object.params, { anchor: 'base', raysFrom: 'tip', aim: 'optic', nrays: 7, height: 22, showImage: true });
+  Object.assign(object.params, { raysFrom: 'tip', aim: 'optic', nrays: 7, height: 22, showImage: true });
   const lens = createElement('lens', 0, 300);
   lens.rot = 90;
   lens.params.f = 100;
@@ -191,15 +196,15 @@ test('a turned standing Object still aims at the lens and images its tip where i
 test('with no optic on its axis, or the optic behind it, an aimed fan points straight ahead', () => {
   for (const lensX of [null, -300]) {
     const object = createElement('objarrow', 0, 0);
-    Object.assign(object.params, { anchor: 'base', raysFrom: 'tip', aim: 'optic', nrays: 3, spread: 10 });
+    Object.assign(object.params, { raysFrom: 'tip', aim: 'optic', nrays: 3, spread: 10, height: 22 });
     const elements = [object];
     if (lensX !== null) elements.push(createElement('lens', lensX, 0));
     const surfaces = lensX === null ? [] : [{ a: { x: lensX, y: -12.7 }, b: { x: lensX, y: 12.7 }, kind: 'lens', el: elements[1] }];
     const rays = registry.objarrow.source(object, { surfaces });
     near(Math.atan2(rays[0].dy, rays[0].dx) * 180 / Math.PI, -5, 1e-12, `lens at ${lensX}: first ray`);
     near(Math.atan2(rays[2].dy, rays[2].dx) * 180 / Math.PI, 5, 1e-12, `lens at ${lensX}: last ray`);
-    // Each ray lies on a line through the tip itself.
-    for (const r of rays) near(r.x * r.dy - (r.y + 22) * r.dx, 0, 1e-12, 'ray through the tip');
+    // Each ray lies on a line through the tip itself, 11 mm up.
+    for (const r of rays) near(r.x * r.dy - (r.y + 11) * r.dx, 0, 1e-12, 'ray through the tip');
   }
 });
 
@@ -238,7 +243,7 @@ test('a curved mirror is filled across its whole face, not only the segment on t
 test('a conic mirror is aimed at, and a central opening does not split the fan', () => {
   for (const hole of [0, 20]) {
     const object = createElement('objarrow', 0, 0);
-    Object.assign(object.params, { anchor: 'centre', nrays: 21 });
+    Object.assign(object.params, { nrays: 21 });
     const mirror = createElement('conicmirror', 300, 0);
     mirror.params.hole = hole;
     // A lens behind the mirror must not be picked instead of it.
@@ -290,4 +295,49 @@ test('the base fan’s colour contrasts with the object’s own', () => {
   assert.equal(objectBaseFanColor({ autoColor: false, color: '#0000ff' }), '#ea580c');
   assert.equal(objectBaseFanColor({ autoColor: false, color: '#333333' }), '#2563eb');
   assert.equal(objectBaseFanColor({ autoColor: false, color: 'not a colour' }), '#2563eb');
+});
+
+test('an Object saved standing on its position opens moved up to its middle, its shape and tip fan in place', () => {
+  for (const rot of [0, 90, 210]) {
+    const params = { height: 22, shape: 'tree', anchor: 'base', raysMode: 'fan', raysFrom: 'tip', aim: 'optic', nrays: 7, showImage: true, wavelength: 620 };
+    const saved = { app: 'optics2d', version: 1, beams: [], elements: [{ id: 'o', type: 'objarrow', x: 40, y: -30, rot, params }] };
+    const [object] = parseSketch(JSON.stringify(saved), registry).elements;
+    assert.equal(object.params.anchor, undefined, 'the retired key is dropped');
+    // Its base stood on (40, −30); its middle is half its height up from there.
+    const up = { x: Math.sin(rot * Math.PI / 180), y: -Math.cos(rot * Math.PI / 180) };
+    near(object.x, 40 + 11 * up.x, 1e-9, `rot ${rot}: x`);
+    near(object.y, -30 + 11 * up.y, 1e-9, `rot ${rot}: y`);
+    // The base, in world coordinates, is still where it stood.
+    const { baseY } = objectEnds(object.params);
+    near(object.x - baseY * up.x, 40, 1e-9, `rot ${rot}: base x`);
+    near(object.y - baseY * up.y, -30, 1e-9, `rot ${rot}: base y`);
+  }
+  // A centred Object saved with the key keeps its position.
+  const centred = { app: 'optics2d', version: 1, beams: [], elements: [{ id: 'o', type: 'objarrow', x: 40, y: -30, rot: 0, params: { height: 22, anchor: 'centre' } }] };
+  const [kept] = parseSketch(JSON.stringify(centred), registry).elements;
+  assert.deepEqual([kept.x, kept.y], [40, -30]);
+});
+
+test('the star is an asterisk with one arm up, spanning the height, and its image points the other way', () => {
+  const arms = OBJ_SHAPES.star.lines;
+  assert.equal(arms.length, 5);
+  const centre = arms[0][0];
+  assert.ok(arms.every(a => a[0][0] === centre[0] && a[0][1] === centre[1]), 'every arm leaves the same centre');
+  const tips = arms.map(a => a[1]);
+  const length = q => Math.hypot(q[0] - centre[0], q[1] - centre[1]);
+  for (const q of tips) near(length(q), length(tips[0]), 2e-3, 'equal arms');
+  near(Math.min(...tips.map(q => q[1])), -0.5, 1e-9, 'top arm at the tip');
+  near(Math.max(...tips.map(q => q[1])), 0.5, 1e-9, 'lower arms at the base');
+  assert.deepEqual(tips[0], [0, -0.5], 'the first arm points straight up');
+  // Through a lens at m = −0.5 the up arm is drawn pointing down from the
+  // image's centre.
+  const { object, elements } = lessonScene({ params: { shape: 'star' } });
+  const result = traceScene(elements, []);
+  const image = result.drawables.filter(d => d.type === 'path' && d.dash && d.opacity === 0.85);
+  assert.equal(image.length, 5);
+  const [from, to] = image[0].pts;
+  near(to.x, 450, 1e-9, 'image distance');
+  near(to.y, 11, 1e-9, 'the up arm’s end is the inverted tip');
+  assert.ok(to.y > from.y, 'the arm points down in the image');
+  assert.match(registry.objarrow.svg(object), /^<polyline points="0\.0,1\.2 0\.0,-11\.0"/);
 });

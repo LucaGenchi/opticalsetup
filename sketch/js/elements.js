@@ -952,11 +952,10 @@ const layersParam = { key: 'layers', label: 'Optical function', type: 'layers', 
 // base at (0,0), tip at (0,-1); the traced image redraws the same shape
 // scaled by the magnification (negative m = inverted)
 // Normalized around y = 0: a shape spanning the full "height" param extends
-// ±0.5 of it either side. By default y = 0 is the object's anchor (and the
-// axis fan's origin), so a 20mm-tall shape sits 10mm above and 10mm below
-// it; an object anchored at its base stands on the anchor instead
-// (objectAnchorUnitY below). Both the live icon (svg() below) and the
-// redrawn image at the image plane (raytrace.js) read these coordinates.
+// ±0.5 of it either side. y = 0 is the object's position (and the axis fan's
+// origin), so a 20mm-tall shape sits 10mm above and 10mm below it. Both the
+// live icon (svg() below) and the redrawn image at the image plane
+// (raytrace.js) read these coordinates.
 export const OBJ_SHAPES = {
   arrow: {
     lines: [[[0, 0.5], [0, -0.22]]],
@@ -975,19 +974,19 @@ export const OBJ_SHAPES = {
       [[-0.2, -0.2], [0.2, -0.2], [0, -0.5]],
     ],
   },
+  star: {
+    // an asterisk of five arms, one pointing up, so an inverted image shows
+    // it pointing down (six arms would look the same either way up). The
+    // top arm reaches the tip and the two lower arms the base line.
+    lines: [[[0, 0.053], [0, -0.5]], [[0, 0.053], [0.526, -0.118]], [[0, 0.053], [0.325, 0.5]], [[0, 0.053], [-0.325, 0.5]], [[0, 0.053], [-0.526, -0.118]]],
+    polys: [],
+  },
 };
 
-// Where an Object's shape sits on its anchor, as the unit y (in OBJ_SHAPES
-// coordinates) that the anchor marks: 0 for a shape centred on it, 0.5 for a
-// shape standing on it (its base, y = 0.5, at the anchor). A shape point at
-// unit y is (objectAnchorUnitY(p) − y)·height above the anchor; the drawn
-// icon and the image the tracer draws both read this.
-export const objectAnchorUnitY = p => (p?.anchor === 'base' ? 0.5 : 0);
-
-// The Object's tip and base, as local y (y down) relative to its anchor.
+// The Object's tip and base, as local y (y down) relative to its position,
+// which is the middle of its shape.
 export function objectEnds(p) {
-  const h = p.height, k = objectAnchorUnitY(p);
-  return { tipY: -(k + 0.5) * h, baseY: -(k - 0.5) * h };
+  return { tipY: -p.height / 2, baseY: p.height / 2 };
 }
 
 // The drawing colour of the second fan (from the base) when an Object sends
@@ -5939,15 +5938,12 @@ export const registry = {
     liveReadouts: true,
     params: [
       { key: 'height', label: 'Height (mm)', type: 'number', min: 2, max: 150, step: 1, def: 22 },
-      { key: 'shape', label: 'Shape', type: 'select', def: 'arrow', options: [['arrow', 'Arrow'], ['F', 'Letter F'], ['tree', 'Tree']] },
-      // The three options below arrived after Objects were already saved in
-      // sketches. A new Object is centred on the axis and sends a fan from
-      // its tip that fills the first optic, the ray diagram a lesson draws. A
-      // saved Object without the key is pinned by `migrate` to the behaviour
-      // from before (centred, a fan from the anchor straight ahead), so an
-      // old sketch keeps its look.
-      { key: 'anchor', label: 'Anchor', type: 'select', def: 'centre',
-        options: [['centre', 'Middle'], ['base', 'Base']], migrate: () => 'centre' },
+      { key: 'shape', label: 'Shape', type: 'select', def: 'arrow', options: [['arrow', 'Arrow'], ['F', 'Letter F'], ['tree', 'Tree'], ['star', 'Star']] },
+      // The two options below arrived after Objects were already saved in
+      // sketches. A new Object sends a fan from its tip that fills the first
+      // optic, the ray diagram a lesson draws. A saved Object without the key
+      // is pinned by `migrate` to the behaviour from before (a fan from the
+      // middle straight ahead), so an old sketch keeps its look.
       { key: 'raysMode', label: 'Rays', type: 'select', def: 'fan', options: [['fan', 'Show ray fan'], ['none', 'No rays']] },
       { key: 'raysFrom', label: 'Rays from', type: 'select', def: 'tip',
         options: [['tip', 'Tip'], ['tipBase', 'Tip and base'], ['axis', 'Axis']],
@@ -5965,11 +5961,11 @@ export const registry = {
       P.autoColor, P.color,
     ],
     svg(el) {
-      const p = el.params, h = p.height, k = objectAnchorUnitY(p);
+      const p = el.params, h = p.height;
       const c = p.autoColor === false && p.color ? p.color : wavelengthToColor(p.wavelength);
       const sh = OBJ_SHAPES[p.shape] || OBJ_SHAPES.arrow;
-      const pt = q => `${(q[0] * h).toFixed(1)},${((q[1] - k) * h).toFixed(1)}`;
-      let s = `<line x1="-7" y1="0" x2="7" y2="0" stroke="#888" stroke-width="1.2"/>`;
+      const pt = q => `${(q[0] * h).toFixed(1)},${(q[1] * h).toFixed(1)}`;
+      let s = '';
       for (const ln of sh.lines) {
         s += `<polyline points="${ln.map(pt).join(' ')}" fill="none" stroke="${c}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
       }
@@ -5986,7 +5982,7 @@ export const registry = {
       const n = Math.max(2, Math.round(p.nrays)), out = [];
       const from = p.raysFrom || 'axis', aim = p.aim || 'ahead';
       if (from === 'axis' && aim === 'ahead') {
-        // fan from the object's own anchor point (on the shared optical axis,
+        // fan from the object's own middle point (on the shared optical axis,
         // not the off-axis tip): the central ray is exactly horizontal, so it
         // passes through the center of every on-axis lens undeviated (h = 0
         // there) and stays a fixed horizontal reference as the surrounding
@@ -6742,7 +6738,7 @@ const ELEMENT_HELP = {
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
   ledsource: 'Emits a collimated beam of incoherent light from an LED behind its own collimator, with an illustrative single-colour or two-band white spectrum. It never interferes, and its residual divergence is not modelled.',
   pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp. Any optical element within the capture range catches its rays and acts on them as on any light; a lens, a mirror, a fiber tip or a detector collects them, and after any other optic only the range that is left still counts. Light that nothing catches fades out within a short distance. The range is a drawing convention for how far an isotropic emitter stays visible, not an inverse-square calculation. A parabolic mirror with the source at its focus collimates it.',
-  objarrow: 'Traces a ray fan from the object’s tip, from its tip and its base (the base’s fan drawn in a second colour, at the same wavelength), or from its anchor on the optical axis, and separately draws an ideal paraxial image through every lens on its axis (thin lenses, objectives, and thick lenses, aspheres and lens groups through their cardinal points), with a readout of where each image forms, its magnification and whether it is real and upright; the image marker does not model downstream clipping or aberrations. The fan is aimed to just fill the first lens, glass face or mirror on the object’s axis, narrowed to any slit, iris or stop in front of it, or points straight ahead at a set angle. The shape is centred on its anchor or stands on it.',
+  objarrow: 'Traces a ray fan from the object’s tip, from its tip and its base (the base’s fan drawn in a second colour, at the same wavelength), or from its middle on the optical axis, and separately draws an ideal paraxial image through every lens on its axis (thin lenses, objectives, and thick lenses, aspheres and lens groups through their cardinal points), with a readout of where each image forms, its magnification and whether it is real and upright; the image marker does not model downstream clipping or aberrations. The fan is aimed to just fill the first lens, glass face or mirror on the object’s axis, narrowed to any slit, iris or stop in front of it, or points straight ahead at a set angle. The shape (arrow, letter F, tree or star) is centred on the Object’s position.',
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',
   galvo: 'Reflects rays from a static or animated ideal quasistatic mechanical scan angle; high scan rates use a slowed preview.',
