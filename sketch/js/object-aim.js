@@ -9,9 +9,12 @@
 // The target is the first optic the Object's axis meets: a thin lens, a
 // metalens, a glass face or a mirror (flat, spherical, parabolic or conic).
 // It is the whole optic, every traced segment of it, not only the segment
-// the axis crosses: a curved mirror is traced as many short segments. The
-// fan is the widest cone of directions from the fan's origin that reaches
-// that optic without first meeting anything opaque (a slit, an iris, a lens
+// the axis crosses: a curved mirror is traced as many short segments. Only
+// the optic's central two-thirds is aimed at (AIM_FILL): rays through its
+// very edge leave it at the steepest angles, and the next lens would miss
+// them. The fan is the widest cone of directions from the fan's origin that
+// reaches that central part (or, when a slit or stop lets light through only
+// to the outer part, the whole optic) without first meeting anything opaque (a slit, an iris, a lens
 // stop, a housing). A hole in the optic itself, such as a conic mirror's
 // central opening, does not split the cone: the fan spans the whole optic
 // and the rays aimed at the hole pass through it. Transmissive optics in
@@ -33,6 +36,9 @@ const OPAQUE_KINDS = new Set(['absorb', 'detector']);
 // The fan is drawn this fraction of its width inside each edge, so an edge ray
 // lands on the optic (or through the slit) rather than grazing its rim.
 const EDGE_INSET = 0.005;
+// The fraction of the optic's half-width, either side of its centre, that the
+// fan is aimed at.
+export const AIM_FILL = 2 / 3;
 
 // Distance t along o + t·d to the segment a–b, or Infinity when the ray
 // misses it. The same parametrisation the tracer's own segment test uses.
@@ -82,7 +88,7 @@ function isRim(s) {
 // every opaque surface, in the Object's frame. `surfaces` are the tracer's
 // world-space surfaces. Null when the axis meets no optic.
 export function objectAimScene(el, surfaces) {
-  const toObject = s => ({ a: toLocal(el, s.a.x, s.a.y), b: toLocal(el, s.b.x, s.b.y), kind: s.kind });
+  const toObject = s => ({ a: toLocal(el, s.a.x, s.a.y), b: toLocal(el, s.b.x, s.b.y), kind: s.kind, world: { a: s.a, b: s.b } });
   const optics = new Map(), obstacles = [];
   for (const s of surfaces || []) {
     if (!s?.a || !s?.b || s.el === el) continue;
@@ -101,13 +107,47 @@ export function objectAimScene(el, surfaces) {
     if (!optics.has(owner)) optics.set(owner, []);
     optics.get(owner).push(local);
   }
-  let targets = null, nearest = Infinity;
-  for (const segments of optics.values()) {
+  let targets = null, owner = null, nearest = Infinity;
+  for (const [o, segments] of optics) {
     const t = axisDistance(segments);
     // Beyond 1 mm, as the image construction asks of the lenses it uses.
-    if (t > 1 && t < nearest) { nearest = t; targets = segments; }
+    if (t > 1 && t < nearest) { nearest = t; targets = segments; owner = o; }
   }
-  return targets ? { targets, obstacles } : null;
+  return targets ? { targets: centralPart(targets, owner), whole: targets, obstacles } : null;
+}
+
+// The part of an optic within AIM_FILL of its half-width from its centre.
+// Every optic lays its aperture out along its own local y (a lens pair's two
+// lenses, a mirror's segments, a thick lens's faces), so the cut is made
+// there: |y − centre| ≤ AIM_FILL · half-width, in the optic's own frame,
+// whichever way it is turned. Each segment is cut at the same fractions
+// along its length in the Object's frame. An optic whose centre is a hole
+// wider than that, such as a conic mirror with a large opening, keeps its
+// whole face.
+function centralPart(segments, owner) {
+  const own = owner?.type ? (p => toLocal(owner, p.x, p.y)) : null;
+  const world = segments.map(s => (s.world && own ? [own(s.world.a), own(s.world.b)] : [s.a, s.b]));
+  const ys = world.flat().map(p => p.y);
+  const lo = Math.min(...ys), hi = Math.max(...ys);
+  const centre = (lo + hi) / 2, reach = AIM_FILL * (hi - lo) / 2;
+  const lerp = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+  const cut = [];
+  segments.forEach((s, i) => {
+    const [a, b] = world[i];
+    const ya = a.y - centre, yb = b.y - centre;
+    // The fractions along the segment where |y − centre| ≤ reach.
+    let t0 = 0, t1 = 1;
+    if (Math.abs(yb - ya) < 1e-12) {
+      if (Math.abs(ya) > reach) return;
+    } else {
+      const tAt = y => (y - ya) / (yb - ya);
+      const [p, q] = [tAt(-reach), tAt(reach)].sort((m, n) => m - n);
+      t0 = Math.max(0, p); t1 = Math.min(1, q);
+      if (!(t1 - t0 > 1e-12)) return;
+    }
+    cut.push({ a: lerp(s.a, s.b, t0), b: lerp(s.a, s.b, t1), kind: s.kind });
+  });
+  return cut.length ? cut : segments;
 }
 
 // The widest run of rays, among a one-parameter family, that reaches the
@@ -169,6 +209,11 @@ export function aimedFanSpan(origin, scene) {
   if (!targets.length) return null;
   const angle = p => Math.atan2(p.y - origin.y, p.x - origin.x);
   if (targets.some(s => !(Math.abs(angle(s.a)) < Math.PI / 2 && Math.abs(angle(s.b)) < Math.PI / 2))) return null;
-  return widestOpenRun(targets, scene.obstacles || [],
-    a => ({ o: origin, d: { x: Math.cos(a), y: Math.sin(a) } }), angle);
+  const rayAt = a => ({ o: origin, d: { x: Math.cos(a), y: Math.sin(a) } });
+  const run = widestOpenRun(targets, scene.obstacles || [], rayAt, angle);
+  // A slit or stop that lets light through only to the optic's outer part:
+  // aim through it at the whole optic rather than point straight ahead.
+  if (run || !scene.whole?.length) return run;
+  if (scene.whole.some(s => !(Math.abs(angle(s.a)) < Math.PI / 2 && Math.abs(angle(s.b)) < Math.PI / 2))) return null;
+  return widestOpenRun(scene.whole, scene.obstacles || [], rayAt, angle);
 }

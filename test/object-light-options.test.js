@@ -9,7 +9,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createElement, getDirectManipulation, OBJ_SHAPES, objectBaseFanColor, objectEnds, registry } from '../sketch/js/elements.js';
-import { aimedFanSpan, objectAimScene } from '../sketch/js/object-aim.js';
+import { AIM_FILL, aimedFanSpan, objectAimScene } from '../sketch/js/object-aim.js';
 import { traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
 
@@ -100,10 +100,11 @@ test('an arrow standing on the axis fills the lens from its tip, and the rays me
   assert.equal(rays.length, 21);
   assert.ok(rays.every(r => r.atLens), 'every ray reaches the lens');
   const ys = rays.map(r => r.atLens.y);
-  // Filled to within 1.5 % of the rim on both sides, never past it (the
-  // edge rays are drawn 0.5 % of the fan's width inside the rim).
-  assert.ok(Math.min(...ys) < -12.7 * 0.985 && Math.min(...ys) > -12.7, `lower edge ${Math.min(...ys)}`);
-  assert.ok(Math.max(...ys) > 12.7 * 0.985 && Math.max(...ys) < 12.7, `upper edge ${Math.max(...ys)}`);
+  // Filled to within 1.5 % of two-thirds of the lens radius on both sides,
+  // never past it (the edge rays are drawn 0.5 % of the fan's width inside).
+  const reach = 12.7 * AIM_FILL;
+  assert.ok(Math.min(...ys) < -reach * 0.985 && Math.min(...ys) > -reach, `lower edge ${Math.min(...ys)}`);
+  assert.ok(Math.max(...ys) > reach * 0.985 && Math.max(...ys) < reach, `upper edge ${Math.max(...ys)}`);
   const tip = imageTip(result);
   near(tip.x, 450, 1e-9, 'image distance');
   near(tip.y, 11, 1e-9, 'image tip height (m = −0.5, inverted)');
@@ -116,6 +117,9 @@ test('an arrow standing on the axis fills the lens from its tip, and the rays me
 });
 
 test('a slit in front of the lens narrows the aimed fan to the slit, and the image stays put', () => {
+  // A 4 mm slit lets the tip's light onto the lens from 8.0 mm outwards, so
+  // the fan is cut at two-thirds of its radius; a 0.5 mm one only beyond
+  // that (10.6 to 11.4 mm), so the fan goes through it to the whole lens.
   const open = traceScene(lessonScene().elements, []);
   for (const gap of [4, 0.5]) {
     const { object, elements } = lessonScene({ slitGap: gap });
@@ -124,8 +128,9 @@ test('a slit in front of the lens narrows the aimed fan to the slit, and the ima
     assert.equal(rays.length, 21);
     assert.ok(rays.every(r => r.atLens), `gap ${gap}: every ray passes the slit and reaches the lens`);
     // From the tip, 22 mm up, the slit's opening ±gap/2 at 200 mm maps to
-    // −22 + (y + 22)·1.5 on the lens, cut off by the lens rim at 12.7.
-    const lo = -22 + (-gap / 2 + 22) * 1.5, hi = Math.min(12.7, -22 + (gap / 2 + 22) * 1.5);
+    // −22 + (y + 22)·1.5 on the lens, cut off at two-thirds of the lens
+    // radius, 12.7 mm.
+    const lo = -22 + (-gap / 2 + 22) * 1.5, hi = Math.min(lo > 12.7 * AIM_FILL ? 12.7 : 12.7 * AIM_FILL, -22 + (gap / 2 + 22) * 1.5);
     const ys = rays.map(r => r.atLens.y);
     assert.ok(Math.min(...ys) >= lo && Math.min(...ys) < lo + 0.02 * (hi - lo), `gap ${gap}: lower edge ${Math.min(...ys)} vs ${lo}`);
     assert.ok(Math.max(...ys) <= hi && Math.max(...ys) > hi - 0.02 * (hi - lo), `gap ${gap}: upper edge ${Math.max(...ys)} vs ${hi}`);
@@ -142,8 +147,9 @@ test('the aimed fan follows the lens when the lens moves', () => {
   const rays = raysThroughLens(traceScene(elements, []), object);
   const ys = rays.map(r => r.atLens?.y);
   assert.ok(ys.every(Number.isFinite));
-  assert.ok(Math.min(...ys) > -6 - 12.7 && Math.min(...ys) < -6 - 12.7 * 0.985, `lower edge ${Math.min(...ys)}`);
-  assert.ok(Math.max(...ys) < -6 + 12.7 && Math.max(...ys) > -6 + 12.7 * 0.985, `upper edge ${Math.max(...ys)}`);
+  const reach = 12.7 * AIM_FILL;
+  assert.ok(Math.min(...ys) > -6 - reach && Math.min(...ys) < -6 - reach * 0.985, `lower edge ${Math.min(...ys)}`);
+  assert.ok(Math.max(...ys) < -6 + reach && Math.max(...ys) > -6 + reach * 0.985, `upper edge ${Math.max(...ys)}`);
 });
 
 test('tip and base fans: the base fan meets on the axis in a second colour, the tip fan at the image tip', () => {
@@ -230,14 +236,15 @@ test('aimedFanSpan finds a narrow opening exactly and gives up when nothing gets
 // Where each of the Object's rays first meets something.
 const firstHits = (result, object) => result.paths.filter(r => r.sourceId === object.id).map(r => r.pts[1]);
 
-test('a curved mirror is filled across its whole face, not only the segment on the axis', () => {
+test('a curved mirror is filled across its central two-thirds, not only the segment on the axis', () => {
   // A parabolic mirror is traced as many short segments; the fan must span
-  // all of them (the default OAP is 80 mm long).
+  // those within two-thirds of its half-length (the default OAP is 80 mm
+  // long, so ±26.7 mm).
   const object = createElement('objarrow', 0, 0);
   object.params.nrays = 21;
   const oap = createElement('oap', 300, 0);
   const ys = firstHits(traceScene([object, oap], []), object).map(p => p.y);
-  assert.ok(Math.min(...ys) < -39 && Math.max(...ys) > 39, `OAP filled from ${Math.min(...ys)} to ${Math.max(...ys)}`);
+  assert.ok(Math.min(...ys) < -26 && Math.min(...ys) > -26.7 && Math.max(...ys) > 26 && Math.max(...ys) < 26.7, `OAP filled from ${Math.min(...ys)} to ${Math.max(...ys)}`);
 });
 
 test('a conic mirror is aimed at, and a central opening does not split the fan', () => {
@@ -251,11 +258,12 @@ test('a conic mirror is aimed at, and a central opening does not split the fan',
     const hits = firstHits(traceScene([object, mirror, lens], []), object);
     const onMirror = hits.filter(p => Math.abs(p.x - 300) < 5);
     const ys = onMirror.map(p => p.y);
-    assert.ok(Math.min(...ys) < -24 && Math.max(...ys) > 24, `hole ${hole}: mirror filled from ${Math.min(...ys)} to ${Math.max(...ys)}`);
+    assert.ok(Math.min(...ys) < -16 && Math.max(...ys) > 16, `hole ${hole}: mirror filled from ${Math.min(...ys)} to ${Math.max(...ys)}`);
     if (hole === 0) assert.equal(onMirror.length, 21, 'every ray lands on the mirror');
     else {
-      // The rays aimed at the opening go through it.
-      assert.ok(onMirror.length < 21 && onMirror.length >= 13, `hole ${hole}: ${onMirror.length} rays on the mirror`);
+      // The rays aimed at the opening (10 mm of the 16.7 mm aimed at either
+      // side) go through it.
+      assert.ok(onMirror.length < 21 && onMirror.length >= 7, `hole ${hole}: ${onMirror.length} rays on the mirror`);
       assert.ok(onMirror.every(p => Math.abs(p.y) >= hole / 2 - 1e-6), 'none lands inside the opening');
     }
   }
@@ -340,4 +348,25 @@ test('the star is an asterisk with one arm up, spanning the height, and its imag
   near(to.y, 11, 1e-9, 'the up arm’s end is the inverted tip');
   assert.ok(to.y > from.y, 'the arm points down in the image');
   assert.match(registry.objarrow.svg(object), /^<polyline points="0\.0,1\.2 0\.0,-11\.0"/);
+});
+
+test('an aimed fan through a lens pair reaches the second lens too, aimed at the first lens’s central two-thirds', () => {
+  // A 4 mm object in the front focal plane of a conjugated pair (f = 100 and
+  // 50 mm, 25.4 mm across, 150 mm apart): the tip's rays leave the first
+  // lens parallel, 0.02 rad down, and land 3 mm lower on the second. Aimed at
+  // the first lens's rim they would reach 15.7 mm there, past its edge;
+  // aimed at its central two-thirds, 11.5 mm, inside it.
+  const object = createElement('objarrow', 0, 0);
+  Object.assign(object.params, { height: 4, nrays: 21 });
+  const pair = createElement('telescope', 175, 0);
+  Object.assign(pair.params, { f1: 100, f2: 50 });
+  const result = traceScene([object, pair], []);
+  const paths = result.paths.filter(r => r.sourceId === object.id);
+  assert.equal(paths.length, 21);
+  for (const r of paths) {
+    const i = r.pts.findIndex((p, k) => k > 0 && r.pts[k - 1].x < 250 && p.x >= 250 - 1e-6);
+    assert.ok(i > 0, 'the ray gets as far as the second lens');
+    assert.ok(Math.abs(r.pts[i].y) < 12.7, `lands on the second lens at ${r.pts[i].y}`);
+    assert.ok(r.pts[i + 1], 'and goes on through it');
+  }
 });
