@@ -55,6 +55,7 @@ const PRECACHE_PATHS = [
   "./js/markdown.js",
   "./js/tex.js",
   "./js/object-aim.js",
+  "./js/object-imaging.js",
   "./js/objective.js",
   "./js/parametric.js",
   "./js/parametric-amplifier.js",

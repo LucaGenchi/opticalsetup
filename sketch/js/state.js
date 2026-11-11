@@ -324,6 +324,15 @@ function normalizeElement(raw, definitions, used) {
       x += shift.x; y += shift.y;
     }
   }
+  // For a while an Object could stand on its position (`anchor: 'base'`)
+  // instead of being centred on it. That option is gone; such an Object
+  // moves its position up to the middle of its shape, half its height along
+  // its own up direction, so the shape, and a fan from its tip, stay where
+  // they were.
+  if (raw.type === 'objarrow' && raw.params?.anchor === 'base' && finite(x) && finite(y)) {
+    const up = rotPt(0, -params.height / 2, rot);
+    x += up.x; y += up.y;
+  }
   return {
     id: freshId('e', raw.id, used), type: raw.type, x, y, rot,
     label: typeof raw.label === 'string' ? raw.label : '',
