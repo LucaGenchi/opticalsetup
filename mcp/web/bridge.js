@@ -5,7 +5,7 @@ import { registry } from '../../sketch/js/elements.js';
 import { renderAll, zoomFit } from '../../sketch/js/canvas.js';
 import { renderInspector } from '../../sketch/js/inspector.js';
 import { buildShareURL } from '../../sketch/js/share.js';
-import { browserSceneHash, canonicalJSON, canonicalScene, globalsResult, offeredSetup, proposalMatches, resultData } from './snapshot.js';
+import { browserSceneHash, canonicalJSON, canonicalScene, globalsResult, offeredSetup, proposalMatches, resultData, applyScenePatch } from './snapshot.js';
 // Native autosave is origin-wide. Keep this integration's scenes scoped by ID.
 configureAutosave({ enabled: false });
 const nativeBoot = new Promise(resolve => window.addEventListener('opticalsetup:booted', resolve, { once: true }));
@@ -13,7 +13,7 @@ const hosted = window.parent !== window, pending = new Map();
 let receiveInitialResult;
 const initialResult = new Promise(resolve => { receiveInitialResult = resolve; });
 let nextId = 1, setup, history = [], future = [], requests = [], applying = false, ready = false, busy = false, accepting = false, dragging = false, queued, channel, timer, contextKey = '', navigationGeneration = 0;
-let host = {}, contextFailures = 0, contextRetryAt = 0, waiting = false;
+let host = {}, contextFailures = 0, contextRetryAt = 0, waiting = false, sessionReady = false, sessionSyncTimer;
 // Until a hosted view has the setup it was opened for, the editor is not to be
 // worked in: there is no setup yet to keep the work in. The notice covers the
 // editor and everything else is made inert; this keeps the editor's own
@@ -40,6 +40,39 @@ const nativeScene = () => {
 };
 const key = id => 'opticalsetup-local-v1:' + id;
 const eventsURL = new URL('../../../events', import.meta.url);
+const sessionURL = new URL('../../../session', import.meta.url);
+async function sessionCall(action, payload = {}) {
+  const response = await fetch(sessionURL, {
+    method: 'POST', credentials: 'omit', referrerPolicy: 'no-referrer',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ action, ...payload }),
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error || 'Workbench synchronization unavailable');
+  return body;
+}
+// The whole scene travels directly between browser and service only on
+// bootstrap/manual changes, never through the model. Chat edits use patches.
+async function syncSession() {
+  if (!hosted || !setup?.channel || accepting) return false;
+  const offered = copy(setup);
+  try {
+    await sessionCall('sync', { workspaceRef: offered.channel, setup: offered });
+    sessionReady = true;
+    contextKey = ''; context();
+    if (setup.revision !== offered.revision || setup.hash !== offered.hash) scheduleSessionSync();
+    return true;
+  } catch {
+    sessionReady = false;
+    contextKey = ''; context(); // legacy full snapshot fallback when a host cannot reach the session API
+    return false;
+  }
+}
+function scheduleSessionSync() {
+  if (!hosted || !setup?.channel || accepting) return;
+  clearTimeout(sessionSyncTimer);
+  sessionSyncTimer = setTimeout(() => syncSession(), 160);
+}
 const copy = value => JSON.parse(JSON.stringify(value));
 function status(message, error = false) {
   const el = document.getElementById('lab-status'); if (el) el.textContent = message;
@@ -60,7 +93,17 @@ function controls() {
 function context() {
   if (!hosted || !setup || busy || Date.now() < contextRetryAt) return;
   const selection = state.selection, selected = selection?.kind === 'element' ? state.elements.find(x => x.id === selection.id) : null;
-  const payload = { setup, selectedComponent: selected ? { id: selected.id, type: selected.type } : null, selectedPathId: selection?.kind === 'beam' ? selection.id : null, undoScene: history.at(-1) || null, redoScene: future.at(-1) || null, storage: 'browser-local' };
+  const payload = sessionReady ? {
+    workspaceRef: setup.channel, setupId: setup.id, revision: setup.revision, hash: setup.hash,
+    selectedComponent: selected ? { id: selected.id, type: selected.type } : null,
+    selectedPathId: selection?.kind === 'beam' ? selection.id : null,
+    canUndo: history.length > 0, canRedo: future.length > 0, storage: 'browser-local',
+  } : {
+    setup, selectedComponent: selected ? { id: selected.id, type: selected.type } : null,
+    selectedPathId: selection?.kind === 'beam' ? selection.id : null,
+    undoScene: history.at(-1) || null, redoScene: future.at(-1) || null,
+    storage: 'browser-local',
+  };
   const content = JSON.stringify(payload);
   if (content === contextKey) return; contextKey = content;
   // A host that cannot take the context is asked again, but less and less often.
@@ -72,7 +115,7 @@ function persist(broadcast = true) {
   try { localStorage.setItem(key(setup.id), JSON.stringify(local)); status('Local copy · Save JSON for a backup'); }
   catch { status('Browser storage unavailable · Save JSON to keep this setup', true); }
   if (broadcast) channel?.postMessage(local);
-  controls(); context(); updateLink();
+  controls(); context(); updateLink(); scheduleSessionSync();
   const box = document.getElementById('lab-sync'); if (box) { box.dataset.revision = String(setup.revision); box.dataset.sceneHash = setup.hash; box.dataset.storage = 'local'; box.dataset.setupId = setup.id; }
 }
 function stored(id) {
@@ -99,37 +142,94 @@ function take(id, fresh) {
   ({ setup, history, future, requests } = view); render(setup.scene, true);
 }
 async function accept(data) {
-  if (!data?.setup?.scene) return;
-  const box = document.getElementById('lab-sync'); if (box) box.dataset.lastChatAction = data.action || 'open_setup';
-  if (!ready) {
-    queued = data;
-    receiveInitialResult(data);
-    return;
-  }
+  if (!data?.setup?.scene && !data?.patch && !data?.historyAction) return;
+  const compact = Boolean(data.workspaceRef && (data.patch || data.historyAction));
+  if (!ready) { queued = data; receiveInitialResult(data); return; }
   if (dragging || busy || accepting) { queued = data; return; }
   accepting = true;
+  let applied = false, acceptedScene;
   try {
-  await settleManual();
-  if (data.setup.id !== setup.id) { status('Chat edit targets another local setup · Current setup kept', true); return; }
-  if (!data.action) return;
-  if (requests.includes(data.clientRequestId)) return;
-  if (!proposalMatches(setup, data)) { status('Chat edit was based on an older scene · Ask again using the current setup', true); contextKey = ''; context(); return; }
-  if (data.setup.hash !== await browserSceneHash(data.setup.scene)) { status('Invalid chat snapshot · Local setup kept', true); return; }
-  // A keyboard edit may have happened while the returned scene was hashing.
-  await settleManual();
-  if (dragging || !proposalMatches(setup, data)) { status('Chat edit was based on an older scene · Local setup kept', true); contextKey = ''; context(); return; }
-  if (data.action === 'undo_setup') {
-    if (!history.length || canonicalJSON(history.at(-1)) !== canonicalJSON(data.setup.scene)) { status('Undo history changed · Local setup kept', true); return; }
-    future.push(setup.scene); history.pop();
-  } else if (data.action === 'redo_setup') {
-    if (!future.length || canonicalJSON(future.at(-1)) !== canonicalJSON(data.setup.scene)) { status('Redo history changed · Local setup kept', true); return; }
-    history.push(setup.scene); future.pop();
-  } else { history.push(setup.scene); history = history.slice(-30); future = []; }
-  requests.push(data.clientRequestId); requests = requests.slice(-60);
-  const fit = data.setup.scene.elements.length > setup.scene.elements.length || data.setup.scene.beams.length > setup.scene.beams.length;
-  // A proposal computed without the channel (the model left it out) must not cost the view its live channel.
-  setup = { ...copy(data.setup), ...(setup.channel ? { channel: setup.channel } : {}) }; render(setup.scene, fit); persist();
-  } finally { accepting = false; drainQueued(); }
+    await settleManual();
+    const box = document.getElementById('lab-sync');
+    if (box) box.dataset.lastChatAction = data.action || 'open_setup';
+    const targetId = data.setup?.id || data.setupId;
+    if (targetId !== setup.id || (compact && data.workspaceRef !== setup.channel)) {
+      status('Chat edit targets another local setup · Current setup kept', true); return;
+    }
+    if (!data.action || requests.includes(data.clientRequestId)) return;
+    if (!proposalMatches(setup, data)) {
+      status('Chat edit was based on an older scene · Ask again using the current setup', true);
+      contextKey = ''; context(); return;
+    }
+    let proposal = data;
+    if (compact) {
+      let scene;
+      try {
+        if (data.patch) {
+          scene = applyScenePatch(setup.scene, data.patch);
+        } else {
+          const from = data.historyAction === 'undo_setup' ? history : future;
+          if (!['undo_setup', 'redo_setup'].includes(data.historyAction) || !from.length) {
+            status('Undo/redo history changed · Local setup kept', true); return;
+          }
+          scene = copy(from.at(-1));
+        }
+        const hash = await browserSceneHash(scene);
+        if (data.hash && data.hash !== hash) {
+          status('Invalid incremental edit hash · Local setup kept', true); return;
+        }
+        proposal = { ...data, setup: { ...setup, scene, hash, revision: data.revision } };
+      } catch {
+        status('Invalid incremental edit · Local setup kept', true); return;
+      }
+    } else if (proposal.setup.hash !== await browserSceneHash(proposal.setup.scene)) {
+      status('Invalid chat snapshot · Local setup kept', true); return;
+    }
+    // A manual edit may land while a patch is being verified asynchronously.
+    await settleManual();
+    if (dragging || !proposalMatches(setup, data)) {
+      status('Chat edit was based on an older scene · Local setup kept', true);
+      contextKey = ''; context(); return;
+    }
+    if (proposal.action === 'undo_setup') {
+      if (!history.length || canonicalJSON(history.at(-1)) !== canonicalJSON(proposal.setup.scene)) {
+        status('Undo history changed · Local setup kept', true); return;
+      }
+      future.push(setup.scene); history.pop();
+    } else if (proposal.action === 'redo_setup') {
+      if (!future.length || canonicalJSON(future.at(-1)) !== canonicalJSON(proposal.setup.scene)) {
+        status('Redo history changed · Local setup kept', true); return;
+      }
+      history.push(setup.scene); future.pop();
+    } else { history.push(setup.scene); history = history.slice(-30); future = []; }
+    requests.push(data.clientRequestId); requests = requests.slice(-60);
+    const fit = proposal.setup.scene.elements.length > setup.scene.elements.length || proposal.setup.scene.beams.length > setup.scene.beams.length;
+    setup = { ...copy(proposal.setup), ...(setup.channel ? { channel: setup.channel } : {}) };
+    acceptedScene = setup.scene;
+    render(setup.scene, fit);
+    persist(); applied = true;
+  } finally {
+    if (compact) {
+      try {
+        await sessionCall('ack', {
+          workspaceRef: data.workspaceRef, clientRequestId: data.clientRequestId,
+          applied, ...(applied ? {
+            revision: setup.revision, hash: setup.hash,
+            ...(data.historyAction ? { scene: acceptedScene } : {}),
+          } : {}),
+        });
+      } catch {
+        // Never roll back a locally committed edit because the ack was lost.
+        // After the service drops its pending proposal, the browser resyncs.
+        status('Local edit kept · Chat synchronization needs a retry', true);
+        scheduleSessionSync();
+      }
+    }
+    accepting = false;
+    contextKey = ''; context();
+    if (applied && compact) scheduleSessionSync(); // idempotent mirror consistency check
+    drainQueued();
+  }
 }
 function drainQueued() {
   if (!queued || !ready || dragging || busy || accepting) return;
@@ -142,6 +242,7 @@ async function connectLive() {
   persist();
   let delay = 1000;
   while (ready) {
+    await syncSession();
     const box = document.getElementById('lab-sync');
     try {
       const response = await fetch(eventsURL, { method: 'POST', credentials: 'omit', referrerPolicy: 'no-referrer', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ channel: setup.channel }) });
@@ -157,7 +258,7 @@ async function connectLive() {
           while ((newline = buffer.indexOf('\n')) >= 0) {
             const line = buffer.slice(0, newline); buffer = buffer.slice(newline + 1);
             const data = JSON.parse(line);
-            if (data.setup) await accept(data);
+            if (data.setup || data.patch || data.historyAction) await accept(data);
           }
         }
       } finally { await reader.cancel(); }
@@ -191,8 +292,11 @@ function reportSize(box) {
 // that has arrived without a setup is a failed call: a view that was waiting
 // for it stops waiting.
 function deliver(data) {
-  if (!data?.setup?.scene) { receiveInitialResult(null); return; }
-  accept(data).catch(() => status('Could not apply chat edit · Local setup kept', true));
+  if (!data?.setup?.scene && !data?.workspaceRef) { receiveInitialResult(null); return; }
+  if (!ready) { queued = data; receiveInitialResult(data); return; }
+  if (data.setup?.scene || data.patch || data.historyAction)
+    accept(data).catch(() => status('Could not apply chat edit · Local setup kept', true));
+  // An acknowledged compact result needs no second apply in the existing view.
 }
 // Some ChatGPT surfaces update legacy globals on the already-mounted view.
 // Keep the standard MCP Apps lifecycle and support that compatibility event.
@@ -346,10 +450,15 @@ window.addEventListener('DOMContentLoaded', async () => {
     // delay would be on the wrong one when the result came. It stops waiting when the host
     // reports the call cancelled or failed, or when the user asks for an empty setup.
     const present = globalsResult(window.openai);
-    let incoming = queued || (present.data?.setup?.scene ? present.data : undefined);
+    let incoming = queued || (present.data?.setup?.scene || present.data?.workspaceRef ? present.data : undefined);
     if (!incoming && hosted && !present.received) incoming = await initialResult;
-    if (incoming?.setup) take(incoming.setup.id, await offeredSetup(incoming));
-    else {
+    if (incoming?.setup?.scene) take(incoming.setup.id, await offeredSetup(incoming));
+    else if (incoming?.workspaceRef) {
+      // A host can open a fresh view for a compact edit result. Fetch its
+      // complete bootstrap directly from the mirror, never through the model.
+      const response = await sessionCall('read', { workspaceRef: incoming.workspaceRef });
+      take(response.setup.id, { setup: { ...response.setup, channel: incoming.workspaceRef }, history: [], future: [], requests: incoming.clientRequestId ? [incoming.clientRequestId] : [] });
+    } else {
       // Standalone workbench starts with its own local copy, separate from ChatGPT views.
       const id = hosted ? crypto.randomUUID() : 'standalone', local = stored(id);
       if (local) { ({ setup, history, future, requests } = local); render(setup.scene, true); }
@@ -370,7 +479,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     ready = true;
     // A copy stored before scenes were hashed in their loaded form is brought to it now.
     await settleManual();
-    if (incoming?.action && incoming.setup.revision > setup.revision) await accept(incoming);
+    if (incoming?.action && incoming.setup?.revision > setup.revision) await accept(incoming);
     persist(); setInterval(context, 500); connectLive();
   } catch (error) { setWaiting(false); status('Local editor · ' + error.message + ' · Save JSON for a backup', true); }
 });
