@@ -7,6 +7,7 @@ export function createLiveRelay({ maxConnections = 40, lifetimeMs = 120000, hear
   const valid = token => typeof token === 'string' && /^[a-f0-9]{64}$/.test(token);
   return {
     get connections() { return [...sinks.values()].reduce((n, set) => n + set.size, 0); },
+    connected(token) { return Boolean(sinks.get(token)?.size); },
     close() { for (const close of [...closers]) close(); },
     subscribe(token, signal) {
       if (!valid(token)) throw new Error('Invalid channel');

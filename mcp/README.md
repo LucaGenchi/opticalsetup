@@ -4,9 +4,9 @@ This optional Node service exposes the existing OpticalSetup component registry,
 scene editing, and ray tracer to MCP clients. Hosts that show
 [MCP Apps](https://modelcontextprotocol.io/extensions/apps/overview) (ChatGPT,
 Claude) also get the workbench as a view inside the chat; it is the same browser
-editor. The view keeps its setup and undo history in browser storage. Tools
-process the scene supplied with each request and return a new snapshot. The
-service has no scene database or accounts.
+editor. The view owns the setup and undo history in browser storage. It
+registers the current scene with an in-memory mirror and sends incremental
+updates as it edits. The service has no scene database or accounts.
 
 ## Run locally
 
@@ -37,8 +37,9 @@ Set `PUBLIC_ORIGIN` to the public HTTPS origin, without a trailing slash or
 path, and optionally set `PORT` for the loopback listener. Have the proxy
 preserve the public Host header, forward `/mcp` and `/mcp/*`, and disable
 response buffering for `/mcp/events` so the view receives edits as they
-arrive. The service has no sign-in and each inspection starts a process, so
-put a request rate limit in front of it.
+arrive. Route the MCP calls, event stream, and sync requests for a
+workbench to the same Node process. The service has no sign-in and each
+inspection starts a process, so put a request rate limit in front of it.
 
 GitHub Pages serves static files. A URL such as
 `https://opticalsetup.com/mcp` would require a separate service behind a
@@ -95,9 +96,29 @@ and refuses to show a view that declares any other `ui.domain`. The service
 therefore declares none, and accepts the live channel from
 `https://<hash>.claudemcpcontent.com`.
 
-Limits to keep in mind: a tool takes the whole scene and returns it, so a
-result grows with the scene. The bundled 120-component community setup
-returns about 100,000 characters per edit. Claude Code cuts tool results at
-25,000 tokens unless `MAX_MCP_OUTPUT_TOKENS` is raised, which a scene of
-that size exceeds, and claude.ai stops passing results to the view above
-about 150,000 characters.
+## Working with a connected setup
+
+The workbench context gives the model a `workspaceRef`, the current
+revision, the selection, and component/path counts. Use `get_setup` for
+counts and undo/redo availability, `get_items` to look up IDs and
+controls by page or exact ID, and `inspect_setup` for detector and fiber
+readings. Pass `workspaceRef`, `expectedRevision` and a unique
+`clientRequestId` to edit. The service reports `applied` after the browser
+checks the revision and acknowledges the edit. Repeat the same arguments
+and request ID for an exact retry. On a revision conflict, read the current
+setup before applying another edit. Undo and redo use the browser's history.
+
+Routine edits exchange changed items. Opening or recovering a mirror, and
+some bulk replacements, can transfer the complete scene between the browser
+and service. Opening a view carries any initial scene in widget metadata.
+The mirror holds up to 40 workbenches, with a 750,000-byte scene limit and
+expiry after ten minutes without browser sync. The browser reconnects and
+resends its current scene after a service restart. A workbench must be
+connected to apply an edit. Treat its workspace reference as private: it
+grants read access and lets its holder propose edits to the connected view.
+Use Save JSON to keep a portable copy.
+
+Clients without an interactive view, such as Claude Code, can still pass an
+explicit `setup` snapshot to each tool and use the returned snapshot for the
+next edit. For headless undo/redo, also supply `targetScene`. Results in this
+mode grow with scene size and count toward the host's tool-output limit.

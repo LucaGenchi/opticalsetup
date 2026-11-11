@@ -69,7 +69,7 @@ test('a fiber drawn by hand and a glass just placed are accepted with the hash t
 });
 
 test('a view built from an edit result counts that edit as applied, and refuses a result whose hash is wrong', async () => {
-  const opened = (await call('open_setup')).structuredContent;
+  const opened = resultData(await call('open_setup'));
   const edit = (await call('add_components', { setup: opened.setup, clientRequestId: 'first-edit', components: [{ type: 'lens', x: 0, y: 0 }] })).structuredContent;
   const fromEdit = await offeredSetup(edit);
   assert.deepEqual(fromEdit.setup, edit.setup);
@@ -84,7 +84,7 @@ test('a view built from an edit result counts that edit as applied, and refuses 
 });
 
 test('the view reads a tool result handed over as structured content or only as text, and a failed one as no setup', async () => {
-  const edit = await call('add_components', { setup: (await call('open_setup')).structuredContent.setup, clientRequestId: 'as-text', components: [{ type: 'lens', x: 0, y: 0 }] });
+  const edit = await call('add_components', { setup: (await call('open_setup'))._meta.opticalsetup.setup, clientRequestId: 'as-text', components: [{ type: 'lens', x: 0, y: 0 }] });
   assert.deepEqual(resultData(edit), edit.structuredContent);
   // A host that passes on only the text still gives the view its setup.
   assert.deepEqual(resultData({ content: edit.content }), edit.structuredContent);
@@ -98,7 +98,7 @@ test('the view reads a tool result handed over as structured content or only as 
 });
 
 test('ChatGPT globals are read as a result only when they carry one, the same result whichever field holds it', async () => {
-  const edit = await call('add_components', { setup: (await call('open_setup')).structuredContent.setup, clientRequestId: 'globals', components: [{ type: 'lens', x: 0, y: 0 }] });
+  const edit = await call('add_components', { setup: (await call('open_setup'))._meta.opticalsetup.setup, clientRequestId: 'globals', components: [{ type: 'lens', x: 0, y: 0 }] });
   const failed = await call('get_setup', {});
   const data = edit.structuredContent;
   // The structured content, the whole result, or the whole result with only its text.
@@ -164,7 +164,7 @@ test('a local service answers to every loopback name of its port, a hosted one o
 test('a service that cannot render a PNG neither lists the tool nor asks the model to use it', async () => {
   const without = { screenshots: false };
   const listed = (await rpc('tools/list', undefined, without)).result.tools.map(tool => tool.name);
-  assert.equal(listed.length, 14); assert.ok(!listed.includes('get_setup_screenshot'));
+  assert.equal(listed.length, 15); assert.ok(!listed.includes('get_setup_screenshot'));
   assert.doesNotMatch((await rpc('initialize', {}, without)).result.instructions, /get_setup_screenshot/);
   assert.doesNotMatch((await rpc('server/discover', {}, without)).result.instructions, /get_setup_screenshot/);
   const refused = (await rpc('tools/call', { name: 'get_setup_screenshot', arguments: {} }, without)).result;

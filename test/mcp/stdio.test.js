@@ -39,7 +39,7 @@ test('one line in, at most one line out: a request is answered, a notification a
   const byId = id => messages.filter(message => message.id === id);
   assert.equal(byId(1)[0].result.protocolVersion, '2025-06-18');
   assert.equal(byId(4)[0].error.code, -32601);
-  assert.equal(byId(5)[0].result.structuredContent.setup.revision, 0);
+  assert.equal(byId(5)[0].result.structuredContent.revision, 0);
   assert.equal(byId(2)[0].error.code, -32600);
   assert.equal(byId(9).length, 0);
   // Without an id there is nothing to answer to: the parse error, the batch and the oversized line.
@@ -155,7 +155,7 @@ test('started with --stdio the service speaks MCP on its standard streams, serve
     const meta = (await service.request('resources/read', { uri: 'ui://opticalsetup/workbench.html' })).result.contents[0]._meta;
     assert.equal(meta.ui.domain, undefined, 'a local connector has no sandbox origin to declare');
     assert.deepEqual(meta.ui.csp, { connectDomains: [origin], resourceDomains: [origin] });
-    const opened = (await service.request('tools/call', { name: 'open_setup', arguments: {} })).result.structuredContent.setup;
+    const opened = (await service.request('tools/call', { name: 'open_setup', arguments: {} })).result._meta.opticalsetup.setup;
     const edited = (await service.request('tools/call', { name: 'add_components', arguments: { setup: opened, clientRequestId: 'stdio-1', components: [{ type: 'lens', x: 0, y: 0 }] } })).result;
     assert.equal(edited.structuredContent.setup.scene.elements.length, 1);
     // The same service still answers over HTTP, and what it logs about that goes to standard error.

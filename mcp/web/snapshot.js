@@ -21,12 +21,19 @@ export async function browserSceneHash(scene) {
 // A host hands a tool result to the view as structured content, or only as its
 // text. Either way this is the object the tool returned, or nothing.
 export function resultData(result) {
-  if (result?.structuredContent) return result.structuredContent;
+  if (result?._meta?.opticalsetup?.setup) return result._meta.opticalsetup;
+  if (result?.structuredContent) return openData(result.structuredContent);
   for (const block of result?.content || []) {
     if (block?.type !== 'text') continue;
-    try { const data = JSON.parse(block.text); if (data && typeof data === 'object') return data; } catch { /* not the result */ }
+    try { const data = JSON.parse(block.text); if (data && typeof data === 'object') return openData(data); } catch { /* not the result */ }
   }
   return undefined;
+}
+function openData(data) {
+  if (data?.open && data.componentCount === 0 && data.pathCount === 0) {
+    return { setup: { id: data.setupId, revision: data.revision, hash: data.hash, scene: { app: 'optics2d', version: 1, elements: [], beams: [] } } };
+  }
+  return data;
 }
 // What ChatGPT's own globals say about the tool result: whether one has
 // arrived, and the object the tool returned if it can be read. `toolOutput` is
@@ -35,10 +42,11 @@ export function resultData(result) {
 // an empty placeholder) are not a result.
 export function globalsResult(globals) {
   const filled = value => Boolean(value) && typeof value === 'object' && Object.keys(value).length > 0;
-  const output = filled(globals?.toolOutput) ? globals.toolOutput : undefined;
-  const whole = filled(globals?.toolResponseMetadata?.mcp_tool_result) ? resultData(globals.toolResponseMetadata.mcp_tool_result) : undefined;
-  if (!output && !filled(globals?.toolResponseMetadata?.mcp_tool_result)) return { received: false, data: undefined };
-  return { received: true, data: output?.setup ? output : whole?.setup ? whole : output ?? whole };
+  const output = filled(globals?.toolOutput) ? openData(globals.toolOutput) : undefined;
+  const meta = globals?.toolResponseMetadata;
+  const whole = meta?.opticalsetup?.setup ? meta.opticalsetup : filled(meta?.mcp_tool_result) ? resultData(meta.mcp_tool_result) : undefined;
+  if (!output && !whole && !filled(meta?.mcp_tool_result)) return { received: false, data: undefined };
+  return { received: true, data: whole?.setup ? whole : output ?? whole };
 }
 // What a result offers a view as its setup, once its hash has been checked;
 // nothing if the hash is wrong. The edit that produced the result counts as
@@ -51,45 +59,4 @@ export async function offeredSetup(incoming) {
 }
 export function proposalMatches(current, proposal) {
   return proposal.baseRevision === current.revision && proposal.baseHash === current.hash;
-}
-
-
-/**
- * A compact, deterministic edit over canonical scenes. Existing item order is
- * preserved, and additions follow the existing items. No scene metadata is
- * changed: this deliberately supports component/path mutations, not imports.
- */
-export function scenePatch(before, after) {
-  const metadata = value => Object.fromEntries(Object.entries(value).filter(([key]) => key !== 'elements' && key !== 'beams'));
-  if (canonicalJSON(metadata(before)) !== canonicalJSON(metadata(after))) throw new Error('Patch changes scene metadata');
-  const diff = kind => {
-    const oldItems = before[kind] || [], newItems = after[kind] || [];
-    const oldById = new Map(oldItems.map(item => [item.id, item]));
-    const newIds = new Set(newItems.map(item => item.id));
-    if (newIds.size !== newItems.length) throw new Error('Duplicate item ID');
-    const remove = oldItems.filter(item => !newIds.has(item.id)).map(item => item.id);
-    const upsert = newItems.filter(item => !oldById.has(item.id) || canonicalJSON(oldById.get(item.id)) !== canonicalJSON(item));
-    return { remove, upsert };
-  };
-  return { elements: diff('elements'), beams: diff('beams') };
-}
-export function applyScenePatch(scene, patch) {
-  const next = JSON.parse(JSON.stringify(scene));
-  for (const kind of ['elements', 'beams']) {
-    const change = patch?.[kind];
-    if (!change || !Array.isArray(change.remove) || !Array.isArray(change.upsert)) throw new Error('Invalid scene patch');
-    const existing = next[kind] || [], removed = new Set(change.remove);
-    const updates = new Map(change.upsert.map(item => [item.id, item]));
-    if (updates.size !== change.upsert.length || change.upsert.some(item => !item || typeof item.id !== 'string')) throw new Error('Duplicate/invalid patch item');
-    if (change.remove.some(id => !existing.some(item => item.id === id))) throw new Error('Patch removes unknown item');
-    if (change.upsert.some(item => removed.has(item.id))) throw new Error('Patch updates a removed item');
-    const seen = new Set();
-    next[kind] = existing.filter(item => !removed.has(item.id)).map(item => {
-      if (!updates.has(item.id)) return item;
-      seen.add(item.id);
-      return updates.get(item.id);
-    });
-    for (const item of change.upsert) if (!seen.has(item.id)) next[kind].push(item);
-  }
-  return next;
 }

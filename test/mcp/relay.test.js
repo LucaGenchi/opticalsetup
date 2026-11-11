@@ -34,7 +34,7 @@ test('only the exact widget origin can subscribe; matching stateless edits arriv
     assert.equal(response.headers.get('access-control-allow-origin'), widget);
     assert.deepEqual(decode((await reader.read()).value), { connected: true });
     const rpc = async (name, args) => (await (await req('/mcp', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }) })).json()).result;
-    const setup = { ...(await rpc('open_setup', {})).structuredContent.setup, channel: token };
+    const setup = { ...(await rpc('open_setup', {}))._meta.opticalsetup.setup, channel: token };
     const result = await rpc('add_components', { setup, clientRequestId: 'relay-test', components: [{ type: 'lens', x: 200, y: 200 }] });
     assert.equal(result.structuredContent.delivery, 'sent');
     const delivered = decode((await reader.read()).value);

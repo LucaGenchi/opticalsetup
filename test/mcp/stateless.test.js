@@ -9,7 +9,7 @@ import { inspectDocument, emptyDocument } from '../../mcp/scene-api.js';
 const service = { origin: 'https://mcp.example.com', html: '<html></html>', compute: async (kind, scene) => { if (kind === 'inspect') return inspectDocument({ ...emptyDocument(), scene }); throw Error('Do not fake screenshots in tests'); } };
 const call = async (name, args = {}) => (await handleStatelessRpc({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }, service)).result;
 test('stateless edits are deterministic, isolated, chainable and reject missing snapshots', async () => {
-  const a = (await call('open_setup')).structuredContent.setup, b = (await call('open_setup')).structuredContent.setup;
+  const a = (await call('open_setup'))._meta.opticalsetup.setup, b = (await call('open_setup'))._meta.opticalsetup.setup;
   assert.notEqual(a.id, b.id);
   const args = { setup: a, clientRequestId: 'add-1', components: [{ type: 'cwlaser', x: 100, y: 200, parameters: { wavelength: 532 } }, { type: 'lens', x: 220, y: 200, parameters: { f: 50 } }] };
   const added = (await call('add_components', args)).structuredContent;
@@ -43,7 +43,7 @@ test('fibers, supplied local history and detector tracing use native models', as
 test('HTTP noauth, origin/host boundaries, JSON limits and exact domain challenge', async () => {
   const app = createApplication({ origin: service.origin, challenge: 'exact-token', computeScene: service.compute });
   const request = (path, options = {}) => app(new Request(service.origin + path, options));
-  assert.equal((await (await request('/mcp/health')).json()).storage, 'ephemeral-memory');
+  assert.equal((await (await request('/mcp/health')).json()).storage, 'temporary-memory');
   assert.equal(await (await request('/.well-known/openai-apps-challenge')).text(), 'exact-token');
   assert.equal((await request('/mcp')).status, 405);
   assert.equal((await request('/mcp', { method: 'POST', headers: { origin: 'https://evil.example', 'content-type': 'application/json' }, body: '{}' })).status, 403);
