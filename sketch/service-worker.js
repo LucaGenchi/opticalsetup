@@ -5,7 +5,7 @@
 // family of cache names and only ever deletes, or reads, its own.
 const KEPT_RELEASE = (/\/(v\d+\.\d+)\/sketch\/$/.exec(new URL('./', self.location.href).pathname) || [])[1] || '';
 const CACHE_FAMILY = KEPT_RELEASE ? `opticalsetup-kept-${KEPT_RELEASE}-` : 'opticalsetup-pwa-';
-const CACHE_NAME = `${CACHE_FAMILY}v176`;
+const CACHE_NAME = `${CACHE_FAMILY}v177`;
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -55,6 +55,7 @@ const PRECACHE_PATHS = [
   "./js/markdown.js",
   "./js/tex.js",
   "./js/object-aim.js",
+  "./js/object-imaging.js",
   "./js/objective.js",
   "./js/parametric.js",
   "./js/parametric-amplifier.js",
