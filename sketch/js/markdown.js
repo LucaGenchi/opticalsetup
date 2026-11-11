@@ -2,49 +2,153 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Dependency-free Markdown rendering for SVG text annotations. This is a
 // deliberately small, figure-oriented subset: headings, lists, quotes,
-// emphasis, strong text, strike-through, inline code, links, and line breaks.
-// Raw HTML is never interpreted. The same SVG is used by the workbench and
-// every export path, so saved figures do not depend on foreignObject support.
+// emphasis, strong text, strike-through, inline code, links, line breaks, and
+// LaTeX formulas between $ signs (tex.js). Raw HTML is never interpreted. The
+// same SVG is used by the workbench and every export path, so saved figures do
+// not depend on foreignObject support.
 
 import { esc, linkifyText } from './util.js';
+import { texRuns } from './tex.js';
 
-const INLINE_TOKEN = /(\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|\*\*([^*\n]+)\*\*|__([^_\n]+)__|~~([^~\n]+)~~|`([^`\n]+)`|\*([^*\n]+)\*|_([^_\n]+)_)/gi;
+// Links, strong, strike-through and emphasis. This runs over a copy of the
+// line with its code spans and formulas masked out, so a * or _ inside one
+// never pairs with one outside it -- `$a_1 + b_1$` is math, not italics --
+// while a wrapper around one keeps its style: **$x$** is a bold formula.
+const INLINE_TOKEN = /(\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|\*\*([^*\n]+)\*\*|__([^_\n]+)__|~~([^~\n]+)~~|\*([^*\n]+)\*|_([^_\n]+)_)/gi;
+
+const CODE_SPAN = /`([^`\n]+)`/g;
+const FORMULA = /(\$\$?)((?:\\.|[^\\$\n])+?)\1/g;
+const MASK = '\0';
+
+// Math rides in the serif faces a LaTeX reader expects; \text{} keeps the
+// label's own font.
+const MATH_FONT = "'STIX Two Text', 'Times New Roman', Times, 'Cambria', serif";
 
 const styleKey = token => [token.bold, token.italic, token.strike, token.code, token.href].join('|');
 
 function appendToken(tokens, token) {
   if (!token.text) return;
   const previous = tokens[tokens.length - 1];
-  if (previous && styleKey(previous) === styleKey(token)) previous.text += token.text;
+  if (previous && !previous.math && styleKey(previous) === styleKey(token)) previous.text += token.text;
   else tokens.push(token);
 }
 
 function appendPlain(tokens, value, style = {}) {
-  for (const part of linkifyText(value)) {
+  for (const part of linkifyText(value.replace(/\\\$/g, '$'))) {
     appendToken(tokens, { text: part.text, href: part.href, ...style });
   }
 }
 
-export function parseInlineMarkdown(value) {
-  const text = String(value ?? '');
-  const tokens = [];
-  let cursor = 0;
-  for (const match of text.matchAll(INLINE_TOKEN)) {
-    if (match.index > cursor) appendPlain(tokens, text.slice(cursor, match.index));
-    if (match[2] !== undefined) {
-      appendToken(tokens, { text: match[2], href: match[3] });
-    } else if (match[4] !== undefined || match[5] !== undefined) {
-      appendPlain(tokens, match[4] ?? match[5], { bold: true });
-    } else if (match[6] !== undefined) {
-      appendPlain(tokens, match[6], { strike: true });
-    } else if (match[7] !== undefined) {
-      appendToken(tokens, { text: match[7], code: true });
+// Whether a single-$ pair encloses a formula. `body` is the text between the
+// two dollar signs; `before` and `after` are the characters just outside them
+// ('' at either end of the line). Pandoc's rule: a formula hugs its dollar
+// signs, an escaped \$ never opens one, and a closing $ is never followed by
+// a digit. So "Costs $5 and $10" -- which labels saved before formulas
+// existed may say -- stays prose, while $x$ and $\frac{1}{f}$ render.
+function looksLikeMath(body, before, after) {
+  return body.length > 0 && !/^\s|\s$/.test(body) && before !== '\\' && !/\d/.test(after);
+}
+
+// The formulas in text[from, to), added to `spans` in order.
+function findFormulas(text, from, to, spans) {
+  const segment = text.slice(from, to);
+  const pattern = new RegExp(FORMULA);
+  let match;
+  while ((match = pattern.exec(segment))) {
+    const display = match[1].length === 2;
+    const body = match[2];
+    const accepted = display
+      ? body.trim().length > 0
+      : looksLikeMath(body, segment[match.index - 1] ?? '', segment[pattern.lastIndex] ?? '');
+    if (accepted) {
+      spans.push({ start: from + match.index, end: from + pattern.lastIndex, body, display });
     } else {
-      appendPlain(tokens, match[8] ?? match[9], { italic: true });
+      // Not a formula: rescan from the next character, so a later $ can
+      // still open one ("costs $5, see $x$").
+      pattern.lastIndex = match.index + 1;
     }
+  }
+}
+
+// A line's code spans and formulas, in order. A complete code span is code
+// whatever it holds, so dollar signs pair only in the text between code
+// spans: in "Costs $5 and `$x$`" the price never reaches into the code.
+function protectedSpans(text) {
+  const spans = [];
+  let cursor = 0;
+  for (const match of text.matchAll(CODE_SPAN)) {
+    findFormulas(text, cursor, match.index, spans);
+    spans.push({ start: match.index, end: match.index + match[0].length, code: match[1] });
     cursor = match.index + match[0].length;
   }
-  if (cursor < text.length || !tokens.length) appendPlain(tokens, text.slice(cursor));
+  findFormulas(text, cursor, text.length, spans);
+  return spans;
+}
+
+// The formulas on one line, as {start, end, body, display}, found exactly as
+// the renderer finds them (code spans excluded, prices left as prose). A
+// ruler uses it to write its measurement as TeX only inside a formula.
+export function formulaSpans(line) {
+  return protectedSpans(String(line ?? '')).filter(span => span.code === undefined);
+}
+
+// A code span or formula, in the style of the wrapper around it. A formula
+// keeps its own italics -- digits and function names stay upright inside
+// *emphasis* -- but takes bold, strike-through and a link. One nested too
+// deeply to lay out is shown as typed.
+function appendSpan(tokens, span, source, style) {
+  if (span.code !== undefined) {
+    appendToken(tokens, { text: span.code, ...style, code: true });
+    return;
+  }
+  const { italic, ...mathStyle } = style;
+  const measure = run => tokenWidth({ ...run, ...mathStyle }, 1);
+  const runs = texRuns(span.body, { display: span.display, measure });
+  if (!runs) appendToken(tokens, { text: source, href: null, ...style });
+  else for (const run of runs) tokens.push({ ...run, ...mathStyle, math: true });
+}
+
+export function parseInlineMarkdown(value) {
+  const text = String(value ?? '');
+  const spans = protectedSpans(text);
+  let masked = '';
+  let at = 0;
+  for (const span of spans) {
+    masked += text.slice(at, span.start) + MASK.repeat(span.end - span.start);
+    at = span.end;
+  }
+  masked += text.slice(at);
+
+  const tokens = [];
+  // text[from, to) in `style`, with the spans inside it. A span is masked
+  // whole, so it lies entirely inside a wrapper's content or outside it.
+  const emit = (from, to, style = {}) => {
+    for (const span of spans) {
+      if (span.start < from || span.end > to) continue;
+      appendPlain(tokens, text.slice(from, span.start), style);
+      appendSpan(tokens, span, text.slice(span.start, span.end), style);
+      from = span.end;
+    }
+    appendPlain(tokens, text.slice(from, to), style);
+  };
+  let cursor = 0;
+  for (const match of masked.matchAll(INLINE_TOKEN)) {
+    const start = match.index;
+    const end = start + match[0].length;
+    emit(cursor, start);
+    if (match[2] !== undefined) {
+      const url = end - 1 - match[3].length;
+      emit(start + 1, start + 1 + match[2].length, { href: text.slice(url, end - 1) });
+    } else if (match[4] !== undefined || match[5] !== undefined) {
+      emit(start + 2, end - 2, { bold: true });
+    } else if (match[6] !== undefined) {
+      emit(start + 2, end - 2, { strike: true });
+    } else {
+      emit(start + 1, end - 1, { italic: true });
+    }
+    cursor = end;
+  }
+  emit(cursor, text.length);
   return tokens;
 }
 
@@ -65,6 +169,9 @@ function lineBlock(raw, baseSize) {
     const depth = Math.min(3, Math.floor(ordered[1].length / 2));
     return { text: ordered[3], size: baseSize, prefix: `${ordered[2]}. `, indent: depth * baseSize * 1.05, kind: 'list' };
   }
+  // A formula alone on its line is displayed: centered in the label, with
+  // full-size fractions.
+  if (/^\s*\$\$(?:(?!\$\$).)+\$\$\s*$/.test(raw)) return { text: raw.trim(), size: baseSize, kind: 'display' };
   const quote = raw.match(/^>\s?(.*)$/);
   if (quote) return { text: quote[1], size: baseSize, prefix: '│ ', italic: true, opacity: 0.78, kind: 'quote' };
   return { text: raw, size: baseSize, kind: raw ? 'paragraph' : 'blank' };
@@ -82,19 +189,56 @@ function glyphWidth(character) {
   return 0.55;
 }
 
+// The same, for the serif faces formulas are set in (measured against STIX
+// Two Text; Times New Roman runs within a few percent). Operators carry wide
+// side bearings, so = and + are wider than a letter, and a combining accent
+// rides on the glyph before it.
+function mathGlyphWidth(character) {
+  if (/[\u0300-\u036f\u20d0-\u20ff]/.test(character)) return 0;
+  if (/\s/.test(character)) return 0.25;
+  if (/[ijlft∫⋅]/.test(character)) return 0.29;
+  if (/[,.;:!′|]/.test(character)) return 0.26;
+  if (/[()[\]{}]/.test(character)) return 0.35;
+  if (/[mw]/.test(character)) return 0.76;
+  if (/[MW]/.test(character)) return 0.89;
+  if (/[IJ]/.test(character)) return 0.37;
+  if (/[A-Z\u0391-\u03a9]/.test(character)) return 0.68;
+  if (/[=+−<>±∓≠∝∼×∑∞]/.test(character)) return 0.72;
+  if (/[⟵⟶⟹⟺]/.test(character)) return 1.6;
+  if (/[\u2190-\u21ff]/.test(character)) return 1;
+  return 0.5;
+}
+
 // Monospace has one advance for every glyph, so an inline-code run must not
 // be measured with the proportional table — a `code line` of narrow letters
 // would otherwise come out far too short and crop in the exported figure.
 const MONO_ADVANCE = 0.61;
 
+// A math run carries its own scale (sub- and superscripts, fraction parts),
+// and a stretched fraction bar is exactly as wide as it was told to be.
 function tokenWidth(token, size) {
-  if (token.code) return [...token.text].length * size * MONO_ADVANCE;
-  const units = [...token.text].reduce((sum, character) => sum + glyphWidth(character), 0);
-  return units * size * (token.bold ? 1.045 : 1);
+  if (token.stretch) return token.stretch * size;
+  const scaled = size * (token.scale ?? 1);
+  if (token.code) return [...token.text].length * scaled * MONO_ADVANCE;
+  const advance = token.font === 'math' ? mathGlyphWidth : glyphWidth;
+  const units = [...token.text].reduce((sum, character) => sum + advance(character), 0);
+  return units * scaled * (token.bold ? 1.045 : 1);
 }
 
 function tokensWidth(tokens, size) {
-  return tokens.reduce((sum, token) => sum + tokenWidth(token, size), 0);
+  return tokens.reduce((sum, token) => sum + (token.dx || 0) * size + tokenWidth(token, size), 0);
+}
+
+// How far a line's raised and lowered math (a numerator, a denominator)
+// reaches past the ordinary line box, in px above and below.
+function mathOverhang(tokens, size, descent) {
+  let top = 0, bottom = 0;
+  for (const token of tokens) {
+    if (!token.math || !token.text) continue;
+    top = Math.min(top, token.shift - 0.72 * token.scale);
+    bottom = Math.max(bottom, token.shift + 0.22 * token.scale);
+  }
+  return { above: Math.max(0, -top - 0.93) * size, below: Math.max(0, bottom - descent) * size };
 }
 
 export function markdownLayout(value, baseSize = 14) {
@@ -104,33 +248,47 @@ export function markdownLayout(value, baseSize = 14) {
     const block = lineBlock(raw, safeSize);
     const prefix = block.prefix ? [{ text: block.prefix, bold: block.kind === 'list' }] : [];
     const tokens = [...prefix, ...parseInlineMarkdown(block.text)];
-    const lineHeight = block.size * (block.kind === 'heading' ? 1.23 : 1.34);
+    const spacing = block.kind === 'heading' ? 1.23 : 1.34;
+    const overhang = mathOverhang(tokens, block.size, spacing - 0.93);
     return {
       ...block,
       tokens,
-      lineHeight,
+      lineHeight: block.size * spacing + overhang.above + overhang.below,
+      headroom: overhang.above,
       width: (block.indent || 0) + tokensWidth(tokens, block.size),
     };
   });
+  const width = Math.max(30, ...lines.map(line => line.width));
+  for (const line of lines) {
+    if (line.kind === 'display') line.indent = (width - line.width) / 2;
+  }
   const contentHeight = lines.reduce((sum, line) => sum + line.lineHeight, 0);
   let top = -contentHeight / 2;
   for (const line of lines) {
-    line.baseline = top + line.size * 0.93;
+    line.baseline = top + line.headroom + line.size * 0.93;
     top += line.lineHeight;
   }
   return {
     lines,
-    width: Math.max(30, ...lines.map(line => line.width)),
+    width,
     height: Math.max(safeSize + 10, contentHeight + 8),
   };
 }
 
-function tokenSVG(token) {
-  const decorations = [token.href ? 'underline' : '', token.strike ? 'line-through' : ''].filter(Boolean).join(' ');
+const offset = value => (Math.abs(value) < 0.005 ? '' : value.toFixed(2));
+
+// `dx` and `dy` are px moves from where the previous glyph left the pen; only
+// math runs make them.
+function tokenSVG(token, size, dx = 0, dy = 0) {
+  const decorations = [token.href ? 'underline' : '', token.strike ? 'line-through' : '', token.decoration ?? ''].filter(Boolean).join(' ');
   const attrs = [
+    offset(dx) ? `dx="${offset(dx)}"` : '',
+    offset(dy) ? `dy="${offset(dy)}"` : '',
+    token.scale && token.scale !== 1 ? `font-size="${(size * token.scale).toFixed(2)}"` : '',
     token.bold ? 'font-weight="700"' : '',
-    token.italic ? 'font-style="italic"' : '',
+    token.italic ? 'font-style="italic"' : token.math ? 'font-style="normal"' : '',
     token.code ? 'font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"' : '',
+    token.stretch ? `textLength="${(token.stretch * size).toFixed(2)}" lengthAdjust="spacingAndGlyphs"` : '',
     decorations ? `text-decoration="${decorations}"` : '',
   ].filter(Boolean).join(' ');
   const span = `<tspan${attrs ? ` ${attrs}` : ''}>${esc(token.text)}</tspan>`;
@@ -138,12 +296,36 @@ function tokenSVG(token) {
   return `<a href="${esc(token.href)}" target="_blank" rel="noopener noreferrer" data-text-link="true">${span}</a>`;
 }
 
+// A dy shift persists along a <text>, so each run moves by the difference
+// from the one before, and the first run after a formula comes back down to
+// the baseline. A gap a formula still owes (a dx with no glyph of its own)
+// moves the next run instead. Consecutive math-font runs share one wrapping
+// <tspan> for the font, which leaves their own dx/dy untouched.
+function lineTokensSVG(line) {
+  let shift = 0;
+  let dx = 0;
+  let inMath = false;
+  let out = '';
+  for (const token of line.tokens) {
+    dx += token.dx || 0;
+    if (!token.text) continue;
+    const mathFont = token.font === 'math';
+    if (mathFont !== inMath) out += mathFont ? `<tspan font-family="${MATH_FONT}">` : '</tspan>';
+    inMath = mathFont;
+    const next = token.shift || 0;
+    out += tokenSVG(token, line.size, dx * line.size, (next - shift) * line.size);
+    shift = next;
+    dx = 0;
+  }
+  return inMath ? `${out}</tspan>` : out;
+}
+
 export function markdownTextSVG(value, { fontSize = 14, fill = '#333333' } = {}) {
   const layout = markdownLayout(value, fontSize);
   const body = layout.lines.map(line => {
     if (!line.tokens.some(token => token.text)) return '';
     const attrs = [
-      `x="${line.indent || 0}"`,
+      `x="${+(line.indent || 0).toFixed(2)}"`,
       `y="${line.baseline.toFixed(2)}"`,
       'text-anchor="start"',
       `font-size="${line.size.toFixed(2)}"`,
@@ -153,7 +335,7 @@ export function markdownTextSVG(value, { fontSize = 14, fill = '#333333' } = {})
       line.opacity ? `fill-opacity="${line.opacity}"` : '',
       'xml:space="preserve"',
     ].filter(Boolean).join(' ');
-    return `<text ${attrs}>${line.tokens.map(tokenSVG).join('')}</text>`;
+    return `<text ${attrs}>${lineTokensSVG(line)}</text>`;
   }).join('');
   return `<g class="markdown-label" data-markdown="true">${body}</g>`;
 }

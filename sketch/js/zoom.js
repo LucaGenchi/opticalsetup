@@ -1,0 +1,416 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Zoom: a region of the bench drawn again, larger, somewhere else on the
+// canvas. This module is the pure geometry — where the region and its view
+// sit, the lines that join them, the scale bar — shared by the registry entry
+// (frames only, for the palette and the placement ghost) and zoom-view.js,
+// which fills the view with the magnified bench.
+//
+// Shapes are drawn in the zoom's drawing frame: centred on the element's
+// origin and turned with it, so a rectangle or an ellipse can lie along a
+// tilted beam. The view's offset (insetX, insetY) is kept in bench
+// millimetres instead, so turning the region turns both shapes but does not
+// swing the view around the bench. A rectangle or ellipse turned half a turn
+// is the same shape, so the drawing frame is the element's local frame,
+// turned a further half turn whenever that keeps the scale bar upright
+// (`flip`); `turn` is then the frame's angle on the bench, within ±90°.
+
+export const ZOOM_SHAPES = [['circle', 'Circle'], ['ellipse', 'Ellipse'], ['rect', 'Rectangle']];
+export const ZOOM_REGION_MIN = 0.1;
+export const ZOOM_REGION_MAX = 2000;
+export const ZOOM_OFFSET_LIMIT = 5000;
+const ZOOM_MAG_MAX = 1000;
+// The longest side a view may reach. Past this an export is not a figure but
+// a canvas the browser refuses to allocate.
+const ZOOM_VIEW_MAX = 4000;
+// Where a round view carries its scale bar, as a fraction of its half-height
+// below the centre.
+const ROUND_BAR_DEPTH = 0.72;
+
+const finite = Number.isFinite;
+const bounded = (value, lo, hi, fallback) => Math.min(hi, Math.max(lo, finite(value) ? value : fallback));
+const num = value => Number(value.toFixed(4));
+
+function regionSize(params = {}) {
+  const shape = ZOOM_SHAPES.some(([key]) => key === params.shape) ? params.shape : 'circle';
+  const w = bounded(params.w, ZOOM_REGION_MIN, ZOOM_REGION_MAX, 30);
+  const h = shape === 'circle' ? w : bounded(params.h, ZOOM_REGION_MIN, ZOOM_REGION_MAX, 20);
+  return { shape, w, h };
+}
+
+// A region several metres wide cannot also be magnified a thousand times;
+// the bound follows the region so the view stays drawable. It sits on the
+// field's 0.5 step, so a value clamped to it and rounded to the step is
+// still within it.
+export function zoomMaxMagnification(params = {}) {
+  const { w, h } = regionSize(params);
+  return Math.min(ZOOM_MAG_MAX, Math.max(1, Math.floor(2 * ZOOM_VIEW_MAX / Math.max(w, h)) / 2));
+}
+
+// The magnification and a set scale-bar length are bounded by the region.
+// Left past its bound after the region grew, a field would read one value
+// while the view draws another, and would come back if the region shrank
+// again, unlike a reloaded scene. Every edit of the region runs this, as
+// loading a scene does through the schema.
+export function normalizeZoomParams(params = {}) {
+  return {
+    mag: bounded(params.mag, 1, zoomMaxMagnification(params), 4),
+    scaleBarMm: bounded(params.scaleBarMm, 0, zoomScaleBarMaxMm(params), 0),
+  };
+}
+
+// The scale bar lies along the region's width unless it is set vertical,
+// when it lies along the region's height. Anything else, as in a scene
+// saved before the choice existed, is horizontal.
+export function zoomScaleBarVertical(params = {}) {
+  return params.scaleBarDirection === 'vertical';
+}
+
+// A set bar is no longer than the region along the bar.
+export function zoomScaleBarMaxMm(params = {}) {
+  const { w, h } = regionSize(params);
+  return zoomScaleBarVertical(params) ? h : w;
+}
+
+function drawingFrame(rot) {
+  const r = ((((finite(rot) ? rot : 0) % 360) + 540) % 360) - 180;
+  const flip = r > 90 || r <= -90;
+  return { flip, turn: flip ? (r > 0 ? r - 180 : r + 180) : r };
+}
+
+export function zoomGeometry(params = {}, rot = 0) {
+  const { shape, w, h } = regionSize(params);
+  const mag = bounded(params.mag, 1, zoomMaxMagnification({ shape, w, h }), 4);
+  const { flip, turn } = drawingFrame(rot);
+  const a = turn * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+  const ox = bounded(params.insetX, -ZOOM_OFFSET_LIMIT, ZOOM_OFFSET_LIMIT, 110);
+  const oy = bounded(params.insetY, -ZOOM_OFFSET_LIMIT, ZOOM_OFFSET_LIMIT, -90);
+  return {
+    shape, mag, rx: w / 2, ry: h / 2, turn, flip, cos, sin,
+    ix: ox * cos + oy * sin, iy: -ox * sin + oy * cos,
+    irx: mag * w / 2, iry: mag * h / 2,
+  };
+}
+
+export const clampZoomOffset = value => bounded(value, -ZOOM_OFFSET_LIMIT, ZOOM_OFFSET_LIMIT, 0);
+
+// A point in the element's local frame, in the drawing frame.
+const drawn = (g, p) => (g.flip ? { x: -p.x, y: -p.y } : p);
+
+// Bench point -> point in the view, in the drawing frame, for a zoom whose
+// origin is `at`.
+export function zoomMapper(g, at) {
+  return p => {
+    const dx = p.x - at.x, dy = p.y - at.y;
+    return {
+      x: g.ix + g.mag * (dx * g.cos + dy * g.sin),
+      y: g.iy + g.mag * (-dx * g.sin + dy * g.cos),
+    };
+  };
+}
+
+// The two lines that join the region to its view: the outer edges of their
+// convex hull. The view is the region scaled up, so for a rectangle these
+// join corresponding corners, and for a circle or ellipse they are the
+// common outer tangents. A view that swallows its region has none.
+export function zoomConnectors(g) {
+  if (g.shape === 'rect') return rectBridges(g);
+  // Stretching y by rx/ry turns both ellipses into circles (they share an
+  // aspect ratio) without breaking tangency; solve there and stretch back.
+  const k = g.rx / g.ry;
+  const cx = g.ix, cy = g.iy * k, r1 = g.rx, r2 = g.irx;
+  const d = Math.hypot(cx, cy);
+  if (!(d > r2 - r1 + 1e-9)) return [];
+  const theta = Math.atan2(cy, cx), alpha = Math.acos((r1 - r2) / d);
+  return [theta + alpha, theta - alpha].map(phi => {
+    const nx = Math.cos(phi), ny = Math.sin(phi);
+    return [{ x: r1 * nx, y: r1 * ny / k }, { x: cx + r2 * nx, y: (cy + r2 * ny) / k }];
+  });
+}
+
+function rectBridges(g) {
+  const corners = (cx, cy, rx, ry, view) => [[-1, -1], [1, -1], [1, 1], [-1, 1]]
+    .map(([sx, sy]) => ({ x: cx + sx * rx, y: cy + sy * ry, view }));
+  const hull = convexHull([...corners(0, 0, g.rx, g.ry, false), ...corners(g.ix, g.iy, g.irx, g.iry, true)]);
+  const bridges = [];
+  hull.forEach((a, i) => {
+    const b = hull[(i + 1) % hull.length];
+    if (a.view !== b.view) bridges.push(a.view ? [b, a] : [a, b]);
+  });
+  return bridges.map(pair => pair.map(({ x, y }) => ({ x, y })));
+}
+
+function convexHull(points) {
+  const sorted = [...points].sort((a, b) => a.x - b.x || a.y - b.y);
+  const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const half = list => {
+    const out = [];
+    for (const p of list) {
+      while (out.length >= 2 && cross(out.at(-2), out.at(-1), p) <= 1e-9) out.pop();
+      out.push(p);
+    }
+    return out.slice(0, -1);
+  };
+  return [...half(sorted), ...half(sorted.reverse())];
+}
+
+// Whether a point in the element's local frame falls inside the view, grown
+// by `tolerance`.
+export function zoomViewContains(params, local, tolerance = 0, rot = 0) {
+  const g = zoomGeometry(params, rot);
+  const p = drawn(g, local);
+  const ax = g.irx + tolerance, ay = g.iry + tolerance;
+  const dx = p.x - g.ix, dy = p.y - g.iy;
+  if (g.shape === 'rect') return Math.abs(dx) <= ax && Math.abs(dy) <= ay;
+  return (dx * dx) / (ax * ax) + (dy * dy) / (ay * ay) <= 1;
+}
+
+// The region is an outline over the bench: only its edge is grabbed, so the
+// parts inside it stay selectable. The view is opaque and grabbed anywhere.
+export function zoomHitTest(params, local, tolerance, rot = 0) {
+  if (zoomViewContains(params, local, tolerance, rot)) return true;
+  const g = zoomGeometry(params, rot);
+  const p = drawn(g, local);
+  if (g.shape === 'rect') {
+    const inside = Math.abs(p.x) <= g.rx + tolerance && Math.abs(p.y) <= g.ry + tolerance;
+    return inside && (Math.abs(Math.abs(p.x) - g.rx) <= tolerance || Math.abs(Math.abs(p.y) - g.ry) <= tolerance);
+  }
+  const rho = Math.hypot(p.x, p.y);
+  if (rho < 1e-12) return Math.min(g.rx, g.ry) <= tolerance;
+  const edge = 1 / Math.hypot(p.x / rho / g.rx, p.y / rho / g.ry);
+  return Math.abs(rho - edge) <= tolerance;
+}
+
+// The view's box in the element's local frame, where it lies square with
+// the element, for export bounds, fitting and the selection outline.
+export function zoomViewBox(params, rot = 0) {
+  const g = zoomGeometry(params, rot);
+  const box = { x0: g.ix - g.irx, y0: g.iy - g.iry, x1: g.ix + g.irx, y1: g.iy + g.iry };
+  return g.flip ? { x0: -box.x1, y0: -box.y1, x1: -box.x0, y1: -box.y0 } : box;
+}
+
+// Dragging a corner of the view sets the magnification: the opposite corner
+// stays where it is on the bench and the view, which keeps the region's
+// shape, grows or shrinks to meet the pointer. `params` are the zoom's at the
+// start of the drag, `corner` is {sx, sy} (±1) in the element's local frame,
+// and `point` is where the dragged corner should go, relative to the
+// element's origin, on the bench (the pointer plus the grab offset, see
+// zoomViewCorner()). The magnification follows that point projected on the
+// view's diagonal, so it changes smoothly whichever way the pointer leaves
+// it, and lands on the field's `step` (0 = no step) before the view is
+// placed, so the anchor stays exact.
+//
+// The magnification is bounded by the field and also by how far the view's
+// offset may go: the view's centre moves as it scales, and clamping the
+// centre afterwards would move the corner that is meant to stay put. The
+// step is taken inside those bounds: the nearest step value within them, or
+// the starting magnification when no step value fits.
+export function zoomViewCornerDrag(params, rot, corner, point, step = 0) {
+  const { g, hx, hy, anchor } = cornerFrame(params, rot, corner);
+  let lo = 1, hi = zoomMaxMagnification(params);
+  for (const [a, h] of [[anchor.x, hx], [anchor.y, hy]]) {
+    if (Math.abs(h) < 1e-12) continue;
+    const [m1, m2] = [(-ZOOM_OFFSET_LIMIT - a) / h, (ZOOM_OFFSET_LIMIT - a) / h];
+    lo = Math.max(lo, Math.min(m1, m2));
+    hi = Math.min(hi, Math.max(m1, m2));
+  }
+  // The starting magnification always fits.
+  lo = Math.min(lo, g.mag);
+  hi = Math.max(hi, g.mag);
+  const raw = ((point.x - anchor.x) * hx + (point.y - anchor.y) * hy) / (2 * (hx * hx + hy * hy));
+  const mag = onStep(bounded(raw, lo, hi, g.mag), lo, hi, step, g.mag);
+  return {
+    mag,
+    insetX: clampZoomOffset(anchor.x + mag * hx),
+    insetY: clampZoomOffset(anchor.y + mag * hy),
+  };
+}
+
+// `value` on the grid of `step` and within [lo, hi]: the nearest grid value
+// when it is inside, else the grid value next to the bound that was passed,
+// else (no grid value fits) `fallback`. Written with the step's decimals, so
+// 1.1 is not stored as 1.1000000000000001.
+function onStep(value, lo, hi, step, fallback) {
+  if (!(step > 0)) return value;
+  const decimals = (String(step).split('.')[1] || '').length;
+  const at = k => Number((k * step).toFixed(decimals));
+  let mag = at(Math.round(value / step));
+  if (mag > hi) mag = at(Math.floor(hi / step + 1e-9));
+  if (mag < lo) mag = at(Math.ceil(lo / step - 1e-9));
+  return mag >= lo - 1e-12 && mag <= hi + 1e-12 ? mag : fallback;
+}
+
+// The view's corner on side `corner`, relative to the element's origin on
+// the bench. A drag keeps the offset between it and the pointer that grabbed
+// its handle (drawn just outside the corner), so grabbing does not rescale.
+export function zoomViewCorner(params, rot, corner) {
+  const { g, hx, hy, anchor } = cornerFrame(params, rot, corner);
+  return { x: anchor.x + 2 * g.mag * hx, y: anchor.y + 2 * g.mag * hy };
+}
+
+// Half the view's diagonal towards `corner`, per unit of magnification, on
+// the bench, and the opposite corner (the anchor) relative to the origin.
+function cornerFrame(params, rot, corner) {
+  const g = zoomGeometry(params);
+  const a = (finite(rot) ? rot : 0) * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+  const hx = corner.sx * g.rx * cos - corner.sy * g.ry * sin;
+  const hy = corner.sx * g.rx * sin + corner.sy * g.ry * cos;
+  const ox = bounded(params.insetX, -ZOOM_OFFSET_LIMIT, ZOOM_OFFSET_LIMIT, 110);
+  const oy = bounded(params.insetY, -ZOOM_OFFSET_LIMIT, ZOOM_OFFSET_LIMIT, -90);
+  return { g, hx, hy, anchor: { x: ox - g.mag * hx, y: oy - g.mag * hy } };
+}
+
+// A length in millimetres as a person writes it on a scale bar.
+export function formatLength(mm) {
+  const [value, unit] = mm >= 1 ? [mm, 'mm'] : mm >= 1e-3 ? [mm * 1e3, 'µm'] : [mm * 1e6, 'nm'];
+  return `${Number(value.toPrecision(3))} ${unit}`;
+}
+
+// A round length for an automatic scale bar, for a region `regionWidthMm`
+// across. It reads in bench millimetres, so the answer is what the bar
+// stands for on the bench, before magnification: the largest 1, 2 or 5
+// times a power of ten that is at most a quarter of the region, so the bar
+// spans between a tenth and a quarter of the view. One significant figure
+// keeps 2e-5 from printing as 0.000019999999999999998.
+export function niceScaleBarLength(regionWidthMm) {
+  if (!(regionWidthMm > 0)) return 0;
+  const target = regionWidthMm / 4;
+  const power = 10 ** Math.floor(Math.log10(target));
+  const step = [5, 2, 1].find(m => m * power <= target * (1 + 1e-9)) ?? 1;
+  return Number((step * power).toPrecision(1));
+}
+
+// The bar's placement in the view, in the drawing frame, or null when it is
+// off or cannot fit. A bar asked to be longer than the view can hold is
+// shortened, and its label always names the length actually drawn. It lies
+// along the region's width, or along its height when set vertical, so on a
+// turned rectangle it follows the sides the rectangle was laid along.
+//
+// The bar and its label must fit across the view too. Beside the bar's
+// baseline they take its thickness, the gap to the label and the label's
+// ascent (about 1.43 font); a rectangle also keeps a pad beyond. A view too
+// narrow across for that shrinks the font with it, and one too narrow for a
+// readable label carries no bar at all.
+//
+// The placement is worked out for a horizontal bar, with `along` the view's
+// half-size along the bar and `across` its half-size across it: below the
+// centre, at the right for a rectangle. A vertical bar is that placement
+// turned a quarter turn back about the view's centre, which puts it right
+// of the centre, at the top for a rectangle, with its label on its left
+// reading upwards.
+export function zoomScaleBar(params = {}, rot = 0) {
+  if (params.scaleBar === false) return null;
+  const g = zoomGeometry(params, rot);
+  const vertical = zoomScaleBarVertical(params);
+  const along = vertical ? g.iry : g.irx, across = vertical ? g.irx : g.iry;
+  const round = g.shape !== 'rect';
+  // A round view keeps the label within 0.9 of its half-size across the
+  // bar from the centre; the bar itself sits ROUND_BAR_DEPTH beyond it.
+  const tallest = round ? (ROUND_BAR_DEPTH + 0.9) * across / 1.43 : 2 * across / (1.43 + 0.9);
+  const font = Math.min(14, Math.max(6, 0.16 * Math.min(g.irx, g.iry)), tallest);
+  if (!(font >= 3)) return null;
+  const pad = 0.9 * font, thickness = 0.28 * font;
+  const room = round ? 2 * along * Math.sqrt(1 - ROUND_BAR_DEPTH ** 2) - 2 * pad : 2 * along - 2 * pad;
+  const asked = params.scaleBarMm > 0 ? params.scaleBarMm : niceScaleBarLength(2 * (vertical ? g.ry : g.rx));
+  const mm = Math.min(finite(asked) ? asked : 0, room / g.mag);
+  if (!(mm > 0)) return null;
+  const length = mm * g.mag;
+  // Offsets from the view's centre: `base` across the bar, `start` along it.
+  const base = round ? ROUND_BAR_DEPTH * across : across - pad;
+  const start = round ? -length / 2 : along - pad - length;
+  const label = formatLength(mm);
+  if (vertical) {
+    // (dx, dy) of the horizontal placement lands at (dy, -dx).
+    return { mm, label, vertical: true, x: g.ix + base, left: g.ix + base - 1.43 * font,
+      y1: g.iy - start - length, y2: g.iy - start, thickness, font };
+  }
+  const x1 = g.ix + start, y = g.iy + base;
+  return { mm, label, x1, x2: x1 + length, y, top: y - 1.43 * font, thickness, font };
+}
+
+// Notes at the top of the view, one line each, opposite the scale bar:
+// centred, no wider than the view is where they sit, in a size bounded by
+// the view or smaller. A line too long for a readable size there is left
+// out. Character width is taken as 0.58 of the size, a little over the
+// average of the sans-serif the figures use.
+export function zoomNotes(params = {}, rot = 0, lines = []) {
+  const g = zoomGeometry(params, rot);
+  const round = g.shape !== 'rect';
+  const size = Math.min(9, Math.max(5, 0.13 * Math.min(g.irx, g.iry)));
+  const lineHeight = 1.3 * size, pad = 0.9 * size;
+  const placed = [];
+  lines.forEach((line, k) => {
+    const text = String(line.text ?? '');
+    if (!text) return;
+    // The line's centre, from the top of the view; a round view starts as
+    // far above its centre as its scale bar sits below it.
+    const y = round ? g.iy - ROUND_BAR_DEPTH * g.iry + (k + 0.5) * lineHeight : g.iy - g.iry + pad + (k + 0.5) * lineHeight;
+    const top = y - lineHeight / 2;
+    const room = round
+      ? 2 * g.irx * Math.sqrt(Math.max(0, 1 - ((top - g.iy) / g.iry) ** 2)) - 2 * pad
+      : 2 * g.irx - 2 * pad;
+    const font = Math.min(size, room / (0.58 * [...text].length));
+    if (!(font >= 3) || y + lineHeight / 2 > g.iy + g.iry) return;
+    placed.push({ text, x: g.ix, y, font });
+  });
+  return placed;
+}
+
+const escapeText = text => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+function notesSVG(notes) {
+  if (!notes.length) return '';
+  return `<g data-zoom-focus-label="true" fill="#1f2937" font-weight="600" text-anchor="middle" dominant-baseline="middle">` +
+    notes.map(n => `<text x="${num(n.x)}" y="${num(n.y)}" font-size="${num(n.font)}" stroke="#ffffff" stroke-width="${num(0.22 * n.font)}" paint-order="stroke">${escapeText(n.text)}</text>`).join('') + `</g>`;
+}
+
+function shapeSVG(shape, cx, cy, rx, ry, attrs) {
+  return shape === 'rect'
+    ? `<rect x="${num(cx - rx)}" y="${num(cy - ry)}" width="${num(2 * rx)}" height="${num(2 * ry)}" ${attrs}/>`
+    : `<ellipse cx="${num(cx)}" cy="${num(cy)}" rx="${num(rx)}" ry="${num(ry)}" ${attrs}/>`;
+}
+
+function scaleBarSVG(bar) {
+  if (!bar) return '';
+  const halo = `stroke="#ffffff" stroke-width="${num(0.22 * bar.font)}" paint-order="stroke"`;
+  if (bar.vertical) {
+    const labelX = bar.x - bar.thickness - 0.4 * bar.font;
+    return `<g data-zoom-scalebar="true" fill="#1f2937">` +
+      `<rect x="${num(bar.x - bar.thickness)}" y="${num(bar.y1)}" width="${num(bar.thickness)}" height="${num(bar.y2 - bar.y1)}" ${halo}/>` +
+      `<text transform="translate(${num(labelX)} ${num((bar.y1 + bar.y2) / 2)}) rotate(-90)" text-anchor="middle" font-size="${num(bar.font)}" font-weight="600" ${halo}>${bar.label}</text></g>`;
+  }
+  return `<g data-zoom-scalebar="true" fill="#1f2937">` +
+    `<rect x="${num(bar.x1)}" y="${num(bar.y - bar.thickness)}" width="${num(bar.x2 - bar.x1)}" height="${num(bar.thickness)}" ${halo}/>` +
+    `<text x="${num((bar.x1 + bar.x2) / 2)}" y="${num(bar.y - bar.thickness - 0.4 * bar.font)}" text-anchor="middle" font-size="${num(bar.font)}" font-weight="600" ${halo}>${bar.label}</text></g>`;
+}
+
+// The whole zoom in the element's local frame. `content` is the magnified
+// bench, already in the drawing frame; without it (palette, placement ghost)
+// the view is an empty frame.
+export function zoomFrameSVG(params = {}, { content = '', background = '#ffffff', clipId = 'zoom-view', rot = 0, notes = [] } = {}) {
+  const g = zoomGeometry(params, rot);
+  const color = params.frameColor || '#475569';
+  const regionDash = params.regionDash ? ' stroke-dasharray="6 4"' : '';
+  const connectorDash = params.connectorDash ? ' stroke-dasharray="5 4"' : '';
+  let s = shapeSVG(g.shape, 0, 0, g.rx, g.ry, `fill="none" stroke="${color}" stroke-width="1.2"${regionDash} data-zoom-frame="region"`);
+  if (params.connectors !== false) {
+    for (const [a, b] of zoomConnectors(g)) {
+      s += `<line x1="${num(a.x)}" y1="${num(a.y)}" x2="${num(b.x)}" y2="${num(b.y)}" stroke="${color}" stroke-width="1" opacity="0.75"${connectorDash} data-zoom-frame="connector"/>`;
+    }
+  }
+  s += shapeSVG(g.shape, g.ix, g.iy, g.irx, g.iry, `fill="${background}" stroke="none"`);
+  if (content) {
+    s += `<clipPath id="${clipId}">${shapeSVG(g.shape, g.ix, g.iy, g.irx, g.iry, '')}</clipPath>` +
+      `<g clip-path="url(#${clipId})">${content}</g>`;
+  }
+  // The view's border is the region's outline enlarged, so it is dashed with it.
+  s += shapeSVG(g.shape, g.ix, g.iy, g.irx, g.iry, `fill="none" stroke="${color}" stroke-width="1.5"${regionDash} data-zoom-frame="view"`);
+  // A circle has no width to lie along: its bar stays level (or plumb) on
+  // the bench, turned back about the view's centre, which keeps it inside
+  // the circle.
+  // The notes over the view (a focus's waist) stay level with it too.
+  const bar = scaleBarSVG(zoomScaleBar(params, rot)) + notesSVG(zoomNotes(params, rot, notes));
+  s += g.shape === 'circle' && bar && g.turn
+    ? `<g transform="rotate(${num(-g.turn)} ${num(g.ix)} ${num(g.iy)})">${bar}</g>` : bar;
+  return g.flip ? `<g transform="rotate(180)">${s}</g>` : s;
+}

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Goniometer — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="Measures the angle between two arms on the bench and labels it, with Markdown and LaTeX in the label. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/goniometer/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Goniometer — OpticalSetup Encyclopedia">
+<meta property="og:description" content="Measures the angle between two arms on the bench and labels it, with Markdown and LaTeX in the label.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/goniometer/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="../../sketch/icons/icon.svg">
+<script>
+  (() => {
+    let savedTheme = null;
+    try { savedTheme = localStorage.getItem('opticalsetup-theme'); } catch (_) { /* storage may be unavailable */ }
+    const systemTheme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = savedTheme === 'dark' || savedTheme === 'light'
+      ? savedTheme
+      : systemTheme;
+  })();
+</script>
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../calculators/">Calculators</a>
+      <a class="plain" href="../../community/">Community</a>
+      <button type="button" id="btnAbout" class="plain" aria-haspopup="dialog" title="License, copyright and citation">About</button>
+      <button type="button" id="btnTheme" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark mode" title="Switch to dark mode">
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M15.7 12.7A6.5 6.5 0 0 1 7.3 4.3a6.5 6.5 0 1 0 8.4 8.4Z"/>
+        </svg>
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="10" cy="10" r="3.2"/>
+          <path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M16 4l-1.4 1.4M5.4 14.6 4 16"/>
+        </svg>
+      </button>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <dialog id="aboutDialog" class="site-dialog" aria-labelledby="aboutTitle">
+    <div class="site-dialog-head">
+      <div><span class="eyebrow">Free software</span><h2 id="aboutTitle">About OpticalSetup</h2></div>
+      <button type="button" id="aboutClose" class="site-dialog-close" aria-label="Close about dialog">×</button>
+    </div>
+    <p class="about-text" id="aboutVersion" hidden></p>
+    <p class="about-text">Copyright © 2026 Luca Genchi and contributors.</p>
+    <p class="about-text">OpticalSetup is free software: you can redistribute it and/or modify it
+      under the terms of the GNU General Public License as published by the Free Software
+      Foundation, either version 3 of the License, or (at your option) any later version.</p>
+    <p class="about-text">It is distributed in the hope that it will be useful, but
+      <strong>without any warranty</strong>; without even the implied warranty of merchantability
+      or fitness for a particular purpose. See the GNU General Public License for more details.</p>
+    <p class="about-text">The numbers OpticalSetup reports come from models with stated limits; read
+      each component's page in the <a href="../../wiki/">wiki</a> before relying on one.</p>
+    <p class="about-text">If you use OpticalSetup in your research, teaching or publications,
+      please cite the software:</p>
+    <p class="about-text about-citation">Bertoncini, A., &amp; Genchi, L. (2026).
+      <cite>OpticalSetup - the optical workbench software</cite> [Computer software]. Zenodo.
+      <a href="https://doi.org/10.5281/zenodo.23191537" target="_blank" rel="noopener">https://doi.org/10.5281/zenodo.23191537</a></p>
+    <p class="about-links">
+      <a href="../../#cite">BibTeX and version DOIs</a>
+      <a href="../../license.html">License and notices</a>
+      <a href="https://github.com/LucaGenchi/opticalsetup" target="_blank" rel="noopener">Source code</a>
+    </p>
+  </dialog>
+  <script type="module" src="../../wiki/assets/site-header.js"></script>
+  <div class="wiki-shell">
+
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+
+        <div class="cat">
+          <div class="cat-name">Annotations</div>
+          <ul><li><a href="../../wiki/figureframe/" class="">Figure frame</a></li><li><a href="../../wiki/probe/" class="">Beam probe</a></li><li><a href="../../wiki/highlight/" class="">Highlight</a></li><li><a href="../../wiki/zoom/" class="">Zoom</a></li><li><a href="../../wiki/ruler/" class="">Ruler</a></li><li><a href="../../wiki/goniometer/" class="current">Goniometer</a></li><li><a href="../../wiki/textlabel/" class="">Text label</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul><li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li><li><a href="../../wiki/ledsource/" class="">LED</a></li><li><a href="../../wiki/pointsource/" class="">Point source</a></li><li><a href="../../wiki/objarrow/" class="">Object</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul><li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/dmirror/" class="">D-shaped mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/conicmirror/" class="">Conic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/polygonscanner/" class="">Polygon scanner</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <div class="cat-sub">Ideal lenses</div><ul><li><a href="../../wiki/lens/" class="">Thin convex lens</a></li><li><a href="../../wiki/lensc/" class="">Thin concave lens</a></li><li><a href="../../wiki/telescope/" class="">Conjugated thin lens pair</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li></ul><div class="cat-sub">Real lenses</div><ul><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group</a></li><li><a href="../../wiki/asphericlens/" class="">Aspheric lens</a></li></ul><div class="cat-sub">Metalenses</div><ul><li><a href="../../wiki/metalens/" class="">Metalens</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Fibers</div>
+          <ul><li><a href="../../wiki/fiber/" class="">Optical fiber</a></li><li><a href="../../wiki/barefiber/" class="">Bare fiber</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul><li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul><li><a href="../../wiki/polarizer/" class="">Polarizer</a></li><li><a href="../../wiki/hwp/" class="">Half-wave plate</a></li><li><a href="../../wiki/qwp/" class="">Quarter-wave plate</a></li><li><a href="../../wiki/pbs/" class="">Polarizing beamsplitter</a></li><li><a href="../../wiki/isolator/" class="">Optical isolator</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Beam Block</div>
+          <ul><li><a href="../../wiki/slit/" class="">Slit</a></li><li><a href="../../wiki/beamdump/" class="">Beam dump</a></li><li><a href="../../wiki/blocker/" class="">Invisible blocker</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Wavefront Shaping</div>
+          <ul><li><a href="../../wiki/slm/" class="">Spatial light modulator</a></li><li><a href="../../wiki/metasurface/" class="">Metasurface</a></li><li><a href="../../wiki/dmd/" class="">Digital micromirror device</a></li><li><a href="../../wiki/dm/" class="">Deformable mirror</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul><li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/camera/" class="">Camera</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li><li><a href="../../wiki/polarimeter/" class="">Polarimeter</a></li><li><a href="../../wiki/spectrometer/" class="">Spectrometer</a></li><li><a href="../../wiki/autocorrelator/" class="">Autocorrelator</a></li><li><a href="../../wiki/generaldetector/" class="">General detector</a></li><li><a href="../../wiki/display/" class="">Detector screen</a></li><li><a href="../../wiki/eye/" class="">Human eye</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul><li><a href="../../wiki/chopper/" class="">Chopper</a></li></ul><div class="cat-sub">Acousto-optic</div><ul><li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aod/" class="">Acousto-optic deflector (AOD)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li></ul><div class="cat-sub">Electro-optic</div><ul><li><a href="../../wiki/eom/" class="">Electro-optic modulator (EOM)</a></li><li><a href="../../wiki/phasemodulator/" class="">Phase modulator</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul><li><a href="../../wiki/delayline/" class="">Mechanical delay line</a></li><li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Nonlinear Optics</div>
+          <ul><li><a href="../../wiki/crystal/" class="">Crystal</a></li><li><a href="../../wiki/opo/" class="">OPO</a></li><li><a href="../../wiki/opa/" class="">OPA</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Specimens</div>
+          <ul><li><a href="../../wiki/sample/" class="">Sample</a></li><li><a href="../../wiki/stage/" class="">Sample on piezo stage</a></li><li><a href="../../wiki/phaseplate/" class="">Phase object</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Custom</div>
+          <ul><li><a href="../../wiki/box/" class="">Custom box</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lab elements</div>
+          <ul><li><a href="../../wiki/gascell/" class="">Gas cell</a></li><li><a href="../../wiki/window/" class="">Optical window</a></li></ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#annotations">Annotations</a> / Goniometer</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-34 -74.2842712474619 120 120" aria-hidden="true"><g data-ruler="true"><line x1="0" y1="0" x2="80" y2="0" stroke="#334155" stroke-width="1.2" stroke-linecap="round"/><line x1="0" y1="0" x2="56.57" y2="-56.57" stroke="#334155" stroke-width="1.2" stroke-linecap="round"/><path d="M 28,0 A 28 28 0 0 0 19.8,-19.8" fill="none" stroke="#334155" stroke-width="1.02"/><circle cx="0" cy="0" r="1.72" fill="#334155"/><g class="ruler-label" transform="translate(47.68 -19.75) rotate(0) translate(-15.48 0)"><g class="markdown-label" data-markdown="true"><text x="0" y="3.12" text-anchor="start" font-size="12.00" fill="#334155" xml:space="preserve"><tspan>45.0°</tspan></text></g></g></g></svg></div>
+        <div>
+          <h1>Goniometer</h1>
+        </div>
+      </div>
+      <p class="tagline">Measures the angle between two arms on the bench and labels it, with Markdown and LaTeX in the label.</p>
+      <a class="place-cta" href="../../sketch/?demo=goniometer">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=goniometer&amp;embed=1"
+          title="Goniometer — a live trace of the scene described below"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace, not a picture of one — but this preview is not interactive. Open it in the canvas to move things, change parameters, and save or export your own version.</p>
+
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+      <p>Figures of optical setups state the angles that matter: the fold angle at a mirror, the angle of incidence on a prism or a grating, the crossing angle of two beams in a crystal. Two lines from a vertex with an arc between them, and the angle written beside it, say it on the figure itself.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+        <p>Select the goniometer: it has a round handle at its vertex and one at the tip of each arm. Dragging an arm's tip turns only that arm about the vertex, smoothly and without the grid, keeping its length, which the inspector sets; the other arm stays where it is. The purple knob tunes the angle by itself, dragging up to open it, and the vertex handle moves the whole goniometer. Shift steps the angle by 5°.</p><p>With <em>auto clamp</em>, on by default, the vertex clicks into place near what a measurement usually starts from: a component's centre or its optically active point (a laser's aperture, an objective's tip), another ruler's or goniometer's handle, a bend in a beam such as its fold at a mirror, or a beam's axis; away from these it falls back to the grid when Snap is on. The beam axis is the central ray of each traced beam, a ray drawn on its own (a laser drawn as a line, each ray of an object's fan), or an arrow drawn as a beam; a point source has no single axis, so only its centre is a target. An arm clicks onto a beam whose axis runs through the vertex, or turns toward a component, and a dashed purple line shows what it has clicked onto. Hold Alt to place or turn freely.</p><p>The label is Markdown, as in a text label, with LaTeX formulas between dollar signs, and <code>{value}</code> in it is replaced by the measurement with the chosen number of decimal places. Inside a formula the unit is set upright, and a label without <code>{value}</code> shows no number at all.</p><p>The angle between the arms runs from 0 to 180°; the sign of the stored value only says which way the second arm opens. <code>$\theta = {value}$</code> reads θ&nbsp;=&nbsp;90°. The label stays level, out along the bisector. For a distance, use the ruler.</p><p>The example reads the fold angle at a mirror, with the arms along the incoming and the reflected beam.</p>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The goniometer measures the drawing: the angle between its two arms. It does not attach to a component or follow a beam: an arm laid along a beam stays where it was put when the beam moves. The goniometer is diagram-only and never absorbs or redirects rays.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/ruler/"><svg viewBox="-56 -69.04 112 112" aria-hidden="true"><g data-ruler="true"><line x1="-44.1" y1="0" x2="44.1" y2="0" stroke="#334155" stroke-width="1.2" stroke-linecap="round"/><line x1="-50" y1="-5.8" x2="-50" y2="5.8" stroke="#334155" stroke-width="1.2" stroke-linecap="round"/><line x1="50" y1="-5.8" x2="50" y2="5.8" stroke="#334155" stroke-width="1.2" stroke-linecap="round"/><path d="M -50,0 L -43.6,-2.56 L -43.6,2.56 Z" fill="#334155"/><path d="M 50,0 L 43.6,-2.56 L 43.6,2.56 Z" fill="#334155"/><g class="ruler-label" transform="translate(0 -19.84) rotate(0) translate(-24.24 0)"><g class="markdown-label" data-markdown="true"><text x="0" y="3.12" text-anchor="start" font-size="12.00" fill="#334155" xml:space="preserve"><tspan>100.0 mm</tspan></text></g></g></g></svg>Ruler</a><a href="../../wiki/textlabel/"><svg viewBox="-6 -24.270000000000003 48.540000000000006 48.540000000000006" aria-hidden="true"><g class="markdown-label" data-markdown="true"><text x="0" y="3.64" text-anchor="start" font-size="14.00" fill="#333333" xml:space="preserve"><tspan>Label</tspan></text></g></svg>Text label</a><a href="../../wiki/zoom/"><svg viewBox="-21 -21 42 42" aria-hidden="true"><ellipse cx="0" cy="0" rx="15" ry="15" fill="none" stroke="#475569" stroke-width="1.2" data-zoom-frame="region"/><line x1="5.3341" y1="14.0195" x2="131.3366" y2="-33.9219" stroke="#475569" stroke-width="1" opacity="0.75" data-zoom-frame="connector"/><line x1="-12.6856" y1="-8.0047" x2="59.2575" y2="-122.0187" stroke="#475569" stroke-width="1" opacity="0.75" data-zoom-frame="connector"/><ellipse cx="110" cy="-90" rx="60" ry="60" fill="#ffffff" stroke="none"/><ellipse cx="110" cy="-90" rx="60" ry="60" fill="none" stroke="#475569" stroke-width="1.5" data-zoom-frame="view"/><g data-zoom-scalebar="true" fill="#1f2937"><rect x="100" y="-49.488" width="20" height="2.688" stroke="#ffffff" stroke-width="2.112" paint-order="stroke"/><text x="110" y="-53.328" text-anchor="middle" font-size="9.6" font-weight="600" stroke="#ffffff" stroke-width="2.112" paint-order="stroke">5 mm</text></g></svg>Zoom</a>
+      </div>
+
+
+
+
+    </main>
+  </div>
+  <footer class="wiki-footer">Every "In OpticalSetup" section above says exactly what the model computes and where it stops. Selected quantitative models are checked against independent reference implementations; see <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/docs/validation.md" target="_blank" rel="noopener">the validation table</a>.</footer>
+</body>
+</html>

@@ -222,3 +222,22 @@ export const calculatorCategories = [
   { title: 'Nonlinear optics', slugs: ['nonlinear-conversion', 'opa'] },
   { title: 'Microscopy', slugs: ['point-scanning', 'fluorescence', 'coherent-raman'] },
 ];
+
+// What people type when they look for a page: acronyms, quantities and the
+// names of the setups each page computes -- never a case its "not modelled"
+// list excludes (no NOPA or OPCPA for the collinear, chirp-free OPA page). The hub's search ranks a page by
+// its title first, then these, then its card text, its summary and its
+// section titles. Every calculator needs some; the build refuses otherwise.
+export const calculatorKeywords = {
+  'dispersion': ['GVD', 'GDD', 'TOD', 'group velocity dispersion', 'group delay dispersion', 'group index', 'refractive index', 'Sellmeier', 'chirp', 'pulse broadening', 'pulse stretching', 'glass', 'BK7', 'fused silica', 'sapphire', 'water', 'air'],
+  'dispersion-compensation': ['pulse compressor', 'prism pair', 'prism compressor', 'four-prism', 'grating pair', 'grating compressor', 'Treacy', 'stretcher', 'Martinez', 'CPA', 'GDD', 'TOD', 'FOD', 'chirp', 'negative dispersion'],
+  'fiber-coupling': ['single-mode fiber', 'SMF', 'fibre coupling', 'mode field diameter', 'MFD', 'mode matching', 'LP01', 'V number', 'numerical aperture', 'NA', 'coupling efficiency', 'collimator', 'misalignment', 'overlap integral'],
+  'nonlinear-conversion': ['SHG', 'THG', 'SFG', 'DFG', 'OPO', 'CARS', 'CSRS', 'second harmonic', 'third harmonic', 'frequency doubling', 'sum frequency', 'difference frequency', 'signal idler', 'energy conservation', 'wavelength converter', 'photon energy', 'wavenumber'],
+  'opa': ['OPA', 'parametric amplifier', 'parametric gain', 'signal idler', 'seed', 'pump depletion', 'd_eff', 'deff', 'BBO', 'PPKTP', 'Manley-Rowe'],
+  'point-scanning': ['resolution', 'lateral resolution', 'axial resolution', 'confocal', 'pinhole', 'Airy unit', 'PSF', 'two-photon', '2P', 'three-photon', 'multiphoton', 'field of view', 'FOV', 'galvo', 'raster scan', 'NA', 'objective'],
+  'fluorescence': ['fluorophore', 'fluorescent protein', 'GFP', 'EGFP', 'mCherry', 'FPbase', 'excitation spectrum', 'emission spectrum', 'two-photon', '2P', 'cross section', 'filter', 'dichroic', 'bleed-through', 'crosstalk', 'saturation', 'quantum yield', 'brightness'],
+  'coherent-raman': ['CARS', 'CSRS', 'SRS', 'stimulated Raman', 'Raman shift', 'wavenumber', 'pump Stokes', 'vibrational', 'spectral resolution', 'Raman spectrum', 'reference spectra'],
+  'thin-thick-lens': ['focal length', 'thin lens', 'thick lens', 'singlet', 'lensmaker', 'radius of curvature', 'focused spot', 'beam waist', 'Gaussian beam', 'spherical aberration', 'chromatic aberration', 'plano-convex', 'biconvex', 'Debye'],
+  'imaging': ['object image', 'magnification', 'thin lens equation', 'lens equation', 'real image', 'virtual image', 'telescope', 'Keplerian', 'Galilean', 'beam expander', '4f', 'relay', 'Fourier plane', 'ray diagram', 'afocal'],
+  'lens-design': ['ray tracing', 'prescription', 'spot diagram', 'Seidel', 'aberrations', 'wavefront', 'Zernike', 'OPD', 'PSF', 'Strehl', 'MTF', 'achromat', 'doublet', 'asphere', 'optical design', 'fiber coupling'],
+};

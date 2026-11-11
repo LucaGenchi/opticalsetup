@@ -6,11 +6,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Text label — Optics Encyclopedia | OpticalSetup</title>
-<meta name="description" content="Adds formatted Markdown notes to the canvas, with headings, lists and clickable links. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<meta name="description" content="Adds formatted Markdown notes to the canvas, with headings, lists, LaTeX formulas and clickable links. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
 <link rel="canonical" href="https://opticalsetup.com/wiki/textlabel/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Text label — OpticalSetup Encyclopedia">
-<meta property="og:description" content="Adds formatted Markdown notes to the canvas, with headings, lists and clickable links.">
+<meta property="og:description" content="Adds formatted Markdown notes to the canvas, with headings, lists, LaTeX formulas and clickable links.">
 <meta property="og:url" content="https://opticalsetup.com/wiki/textlabel/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="../../sketch/icons/icon.svg">
@@ -112,7 +112,7 @@
 
         <div class="cat">
           <div class="cat-name">Annotations</div>
-          <ul><li><a href="../../wiki/figureframe/" class="">Figure frame</a></li><li><a href="../../wiki/probe/" class="">Beam probe</a></li><li><a href="../../wiki/highlight/" class="">Highlight</a></li><li><a href="../../wiki/textlabel/" class="current">Text label</a></li></ul>
+          <ul><li><a href="../../wiki/figureframe/" class="">Figure frame</a></li><li><a href="../../wiki/probe/" class="">Beam probe</a></li><li><a href="../../wiki/highlight/" class="">Highlight</a></li><li><a href="../../wiki/zoom/" class="">Zoom</a></li><li><a href="../../wiki/ruler/" class="">Ruler</a></li><li><a href="../../wiki/goniometer/" class="">Goniometer</a></li><li><a href="../../wiki/textlabel/" class="current">Text label</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Sources</div>
@@ -182,12 +182,12 @@
     <main class="wiki-article">
       <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#annotations">Annotations</a> / Text label</div>
       <div class="article-head">
-        <div class="article-icon"><svg viewBox="-24.270000000000003 -24.270000000000003 48.540000000000006 48.540000000000006" aria-hidden="true"><g class="markdown-label" data-markdown="true"><text x="0" y="3.64" text-anchor="start" font-size="14.00" fill="#333333" xml:space="preserve"><tspan>Label</tspan></text></g></svg></div>
+        <div class="article-icon"><svg viewBox="-6 -24.270000000000003 48.540000000000006 48.540000000000006" aria-hidden="true"><g class="markdown-label" data-markdown="true"><text x="0" y="3.64" text-anchor="start" font-size="14.00" fill="#333333" xml:space="preserve"><tspan>Label</tspan></text></g></svg></div>
         <div>
           <h1>Text label</h1>
         </div>
       </div>
-      <p class="tagline">Adds formatted Markdown notes to the canvas, with headings, lists and clickable links.</p>
+      <p class="tagline">Adds formatted Markdown notes to the canvas, with headings, lists, LaTeX formulas and clickable links.</p>
       <a class="place-cta" href="../../sketch/?demo=textlabel">Open in the canvas →</a>
 
       <div class="embed-wrap">
@@ -203,8 +203,8 @@
 
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
-        <p>Place a text label and double-click it, press Enter when selected, or use <em>Edit text</em> to edit on the canvas. Markdown supports headings, lists, emphasis, and code; web and DOI addresses become clickable links. The font-size and color controls set its base appearance.</p><p>The example demonstrates several formatting styles. Keep a short explanation beside the setup and use a link for longer background material. Text grows from its left anchor, while resizing changes the base font size.</p>
-        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>Text is diagram-only and never changes traced rays or scene parameters. Writing a wavelength, efficiency, or model claim in a label does not configure the corresponding optical element.</p></div>
+        <p>Place a text label and double-click it, press Enter when selected, or use <em>Edit text</em> to edit on the canvas. Markdown supports headings, lists, emphasis, and code; web and DOI addresses become clickable links. The font-size and color controls set its base appearance.</p><p>Formulas use LaTeX between dollar signs: <code>$\lambda/2$</code> sits in the line, and a formula alone on its line between double dollar signs, <code>$$\frac{1}{f} = \frac{1}{s} + \frac{1}{s'}$$</code>, is centered with full-size fractions. Greek letters, common symbols and operators, sub- and superscripts, <code>\frac</code>, <code>\sqrt</code>, accents such as <code>\vec</code> and <code>\hat</code>, and <code>\text</code> are supported. Formulas stay ordinary SVG text, so they export with the figure; a price such as $5 stays plain text, and <code>\$</code> writes a literal dollar sign.</p><p>The example demonstrates several formatting styles. Keep a short explanation beside the setup and use a link for longer background material. Text grows from its left anchor, while resizing changes the base font size.</p>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>Text is diagram-only and never changes traced rays or scene parameters. Writing a wavelength, efficiency, or model claim in a label does not configure the corresponding optical element.</p><p>Formula support is a subset of LaTeX laid out without a TeX engine: matrices and environments, stretchy delimiters, and limits above and below a sum are not drawn, and an unsupported command stays visible as typed. Formulas use the system serif fonts, so their exact shapes depend on the fonts installed where the figure is viewed.</p></div>
       </div>
 
 

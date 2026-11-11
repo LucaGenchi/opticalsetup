@@ -5,7 +5,8 @@
 import { copyableSelection, pasteObjects } from './clipboard.js';
 import { state, changed, onChange, pushUndo, undo, redo, canUndo, canRedo, findSelected, serialize, parseSketch, replaceScene, loadAutosave, replaceRecoveredAutosave } from './state.js';
 import {
-  registry, categories, createElement, getElementMeta, dataPortDirection, findFreePlacement,
+  registry, categories, createElement, getElementMeta, dataPortDirection, findFreePlacement, DRAWING_TOOL_ALIASES,
+  isRotatable,
 } from './elements.js';
 // Registers the redesigned detector catalogue, the Etalon, and the VIPA
 // element onto `registry`. Imported here, not from pwa.js: service-worker
@@ -34,6 +35,7 @@ import { qrSVG } from './qr.js';
 import { buildExampleProposalIssueURL } from './proposal.js';
 import { recommendedTimeScale, nextAutoScale, TIME_SCALES, elementDriveHz } from './timescale.js';
 import { initTheme } from './theme.js';
+import { componentSearchDocument, prepareSearchDocument, rankSearch } from './search.js';
 
 const $ = id => document.getElementById(id);
 
@@ -238,6 +240,28 @@ const demoScenes = {
     mkDemo('lens', 220, 160, 0, { f: 80 }),
     mkDemo('detector', 380, 160, 0, { aperture: 40 }),
     mkDemo('highlight', 220, 160, 0, { w: 110, h: 100 }),
+  ],
+  // A slowly scanning galvo walks the focus of a lens sideways; the zoom
+  // on the focal plane shows the walk, and its scale bar how far it goes.
+  zoom: () => [
+    mkDemo('cwlaser', 40, 230, 0, { beamMode: 'beam', beamWidth: 6 }),
+    mkDemo('galvo', 150, 230, 45, { scanMode: 'sine', scanAmplitude: 2, scanFrequencyHz: 0.3 }),
+    mkDemo('lens', 150, 130, 90, { f: 70 }),
+    mkDemo('zoom', 150, 60, 0, { w: 14, mag: 5, insetX: 140, insetY: 50 }),
+  ],
+  // A ruler reads a lens's focal length off the bench, from the lens to
+  // where the beam crosses.
+  ruler: () => [
+    mkDemo('cwlaser', 40, 220, 0, { beamMode: 'beam', beamWidth: 16 }),
+    mkDemo('lens', 160, 220, 0, { f: 100, dia: 30 }),
+    mkDemo('ruler', 210, 262, 0, { len: 100, text: '$f = {value}$', labelSide: 'below', ticks: true }),
+  ],
+  // A goniometer reads the fold angle at a mirror, its arms along the
+  // incoming and the reflected beam.
+  goniometer: () => [
+    mkDemo('cwlaser', 40, 220, 0, { beamMode: 'beam', beamWidth: 8 }),
+    mkDemo('mirror', 300, 220, 45, { length: 25.4 }),
+    mkDemo('goniometer', 300, 220, 180, { angle: -90, armA: 80, armB: 80, text: '$\\theta = {value}$', decimals: 0 }),
   ],
   box: () => [
     mkDemo('cwlaser', 60, 160),
@@ -470,6 +494,10 @@ const demoScenes = {
         + '- pump *1030 nm*, 200 fs\n'
         + '- signal *515 nm* after the crystal\n'
         + '- residual GDD `+1200 fs^2`\n'
+        + '- phase $\\Delta\\phi = \\frac{2\\pi}{\\lambda}\\,n L$\n'
+        + '\n'
+        + 'LaTeX formulas go between dollar signs; on a line of their own, between two:\n'
+        + '$$n_1 \\sin\\theta_1 = n_2 \\sin\\theta_2$$\n'
         + '\n'
         + '> Double-click any label to edit its Markdown on the canvas.\n'
         + '\n'
@@ -869,14 +897,9 @@ function buildPalette() {
     const sz = typeof def.size === 'function' ? def.size(el) : (def.size_ ? def.size_(el) : def.size);
     const vb = Math.max(sz.w, sz.h) + 12;
     const meta = getElementMeta(type, el.params);
-    const parameterSearch = (def.params || []).flatMap(param => [
-      param.label,
-      ...(param.options || []).flatMap(option => option),
-    ]).join(' ');
-    const search = `${def.label} ${cat} ${def.paletteGroup || ''} ${meta.status} ${meta.description} ${(def.aliases || []).join(' ')} ${parameterSearch}`.toLowerCase();
     total++;
-    return `<button type="button" class="palitem" data-type="${type}" data-search="${esc(search)}" title="${esc(meta.description)}">
-      <svg viewBox="${-vb / 2} ${-vb / 2} ${vb} ${vb}">${def.svg(el)}</svg>
+    return `<button type="button" class="palitem" data-type="${type}" title="${esc(meta.description)}">
+      <svg viewBox="${-vb / 2} ${-vb / 2} ${vb} ${vb}">${def.iconSVG ? def.iconSVG(el) : def.svg(el)}</svg>
       <span class="pal-copy"><span class="pal-label">${esc(def.label)}</span><span class="pal-desc">${esc(meta.description)}</span></span>
       <i class="cap-dot ${meta.tier}" title="${esc(meta.status)}" aria-label="${esc(meta.status)}"></i></button>`;
   };
@@ -901,8 +924,7 @@ function buildPalette() {
       const avb = Math.max(asz.w, asz.h) + 12;
       const ameta = getElementMeta('arrowann', arrowEl.params);
       const adesc = 'Draw a straight or multi-point arrow: click waypoints, double-click to finish.';
-      const asearch = `arrow draw beam annotation ${adesc}`.toLowerCase();
-      h += `<button type="button" class="palitem" data-tool="drawarrow" data-type="arrowann" data-search="${esc(asearch)}" title="${esc(adesc)}">
+      h += `<button type="button" class="palitem" data-tool="drawarrow" data-type="arrowann" title="${esc(adesc)}">
         <svg viewBox="${-avb / 2} ${-avb / 2} ${avb} ${avb}">${arrowDef.svg(arrowEl)}</svg>
         <span class="pal-copy"><span class="pal-label">Arrow</span><span class="pal-desc">${esc(adesc)}</span></span>
         <i class="cap-dot ${ameta.tier}" title="${esc(ameta.status)}" aria-label="${esc(ameta.status)}"></i></button>`;
@@ -916,8 +938,7 @@ function buildPalette() {
       // that same function for a real preview, not a hand-drawn stand-in.
       for (const ft of FIBER_TOOLS) {
         const iconBeam = { kind: 'fiber', pts: FIBER_ICON_PTS, color: '#e8a800', width: 4, bare: ft.bare };
-        const fsearch = `fiber optical patch cable ${ft.bare ? 'bare no connector flat termination' : 'connector'} ${ft.desc}`.toLowerCase();
-        h += `<button type="button" class="palitem" data-tool="${ft.tool}" data-search="${esc(fsearch)}" title="${esc(ft.desc)}">
+        h += `<button type="button" class="palitem" data-tool="${ft.tool}" title="${esc(ft.desc)}">
           <svg viewBox="${-FIBER_ICON_VB / 2} ${-FIBER_ICON_VB / 2} ${FIBER_ICON_VB} ${FIBER_ICON_VB}">${manualBeamSVG(iconBeam)}</svg>
           <span class="pal-copy"><span class="pal-label">${esc(ft.label)}</span><span class="pal-desc">${esc(ft.desc)}</span></span>
           <i class="cap-dot simulated" title="Simulated" aria-label="Simulated"></i></button>`;
@@ -950,43 +971,67 @@ function buildPalette() {
     }
     h += `</div></details>`;
   }
-  h += `</div><div id="paletteEmpty" class="palette-empty">No matching component.<br>Try a device, behavior, or category.</div>`;
+  h += `</div><div id="paletteResults" class="catlist palette-results" aria-label="Search results" hidden></div><div id="paletteEmpty" class="palette-empty">No matching component.<br>Try a device, behavior, or category.</div>`;
   pal.innerHTML = h;
   $('libraryCount').textContent = `${total} components`;
-  pal.querySelectorAll('.palitem').forEach(item => {
-    if (item.dataset.tool === 'drawarrow') {
-      item.addEventListener('click', () => { startBeamTool('beam'); closeMobileSheet('palette'); });
-      return;
+  const activate = item => {
+    if (item.dataset.tool === 'drawarrow') startBeamTool('beam');
+    else if (item.dataset.tool === 'fiber' || item.dataset.tool === 'barefiber') startBeamTool(item.dataset.tool);
+    else startPlacing(item.dataset.type);
+    closeMobileSheet('palette');
+  };
+  pal.querySelectorAll('.palitem').forEach(item => item.addEventListener('click', () => activate(item)));
+
+  // A search lists its matches as one ranked list instead of filtering the
+  // groups in place: the best match for "lens" or "power meter" belongs at
+  // the top, not wherever its category happens to sit. Each item's document
+  // is read from what the palette shows (the detector instruments rewrite
+  // their group after load), so it is made on first search, not here.
+  const groups = $('paletteGroups');
+  const results = $('paletteResults');
+  const documents = new WeakMap();
+  const documentFor = item => {
+    if (!documents.has(item)) {
+      const shown = {
+        label: item.querySelector('.pal-label')?.textContent || '',
+        description: item.querySelector('.pal-desc')?.textContent || '',
+        status: item.querySelector('.cap-dot')?.getAttribute('title') || '',
+      };
+      const category = item.closest('.palette-group')?.dataset.category || '';
+      const tool = item.dataset.tool;
+      const doc = tool
+        ? { id: tool, label: shown.label, aliases: DRAWING_TOOL_ALIASES[tool] || [], group: category, description: shown.description, extra: shown.status }
+        : { ...componentSearchDocument(item.dataset.type, registry[item.dataset.type], shown), label: shown.label };
+      documents.set(item, prepareSearchDocument({ ...doc, item }));
     }
-    if (item.dataset.tool === 'fiber' || item.dataset.tool === 'barefiber') {
-      item.addEventListener('click', () => { startBeamTool(item.dataset.tool); closeMobileSheet('palette'); });
-      return;
-    }
-    item.addEventListener('click', () => { startPlacing(item.dataset.type); closeMobileSheet('palette'); });
+    return documents.get(item);
+  };
+  results.addEventListener('click', event => {
+    const item = event.target.closest('.palitem');
+    if (item) activate(item);
   });
 
   const search = $('paletteSearch');
   search.addEventListener('input', () => {
-    const q = search.value.trim().toLowerCase();
-    const terms = q.split(/\s+/).filter(Boolean);
-    let visible = 0;
-    pal.querySelectorAll('.palette-group').forEach(group => {
-      let groupVisible = 0;
-      group.querySelectorAll('.palitem').forEach(item => {
-        const haystack = item.dataset.search;
-        const words = haystack.split(/[^a-z0-9λ]+/).filter(Boolean);
-        const match = !q || terms.every(term => term.length <= 3 ? words.includes(term) : haystack.includes(term));
-        item.hidden = !match;
-        if (match) { visible++; groupVisible++; }
-      });
-      group.hidden = groupVisible === 0;
-      group.querySelectorAll('.palette-subgroup').forEach(section => {
-        section.hidden = ![...section.querySelectorAll('.palitem')].some(item => !item.hidden);
-      });
-      if (q && groupVisible) group.open = true;
-    });
-    $('libraryCount').textContent = q ? `${visible} of ${total}` : `${total} components`;
-    $('paletteEmpty').classList.toggle('is-visible', visible === 0);
+    const items = [...groups.querySelectorAll('.palitem')];
+    const q = search.value.trim();
+    const ranked = q ? rankSearch(items.map(documentFor), q) : [];
+    results.replaceChildren(...ranked.map(({ doc }) => doc.item.cloneNode(true)));
+    groups.hidden = Boolean(q);
+    results.hidden = !q;
+    $('libraryCount').textContent = q ? `${ranked.length} of ${items.length}` : `${items.length} components`;
+    $('paletteEmpty').classList.toggle('is-visible', Boolean(q) && ranked.length === 0);
+  });
+  // Enter takes the best match, so "/ pbs Enter" places a polarizing BS.
+  // Focus then moves to the canvas: left in the search box, R and Escape
+  // would edit the query instead of rotating or cancelling the placement,
+  // since the canvas shortcuts ignore keys typed into a field.
+  search.addEventListener('keydown', event => {
+    const first = results.hidden ? null : results.querySelector('.palitem');
+    if (event.key !== 'Enter' || !first) return;
+    event.preventDefault();
+    activate(first);
+    $('canvas').focus({ preventScroll: true });
   });
 }
 
@@ -1164,7 +1209,7 @@ function rotateSelected(deg) {
   if (isPlacing()) { rotatePlacing(deg); return; }
   const sel = findSelected();
   if (!sel || state.selection.kind !== 'element') return;
-  if (registry[sel.type]?.rotatable === false) return;
+  if (!isRotatable(sel)) return;
   pushUndo();
   sel.rot = (((sel.rot || 0) + deg) % 360 + 360) % 360;
   changed();
