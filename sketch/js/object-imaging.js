@@ -11,9 +11,8 @@
 // same cardinal points the inspector reports for the optic.
 //
 // The construction is the same for any point: trace two rays from it through
-// the steps and intersect what comes out. An object at infinity sends each of
-// its points as a parallel bundle, so its image is where two parallel rays
-// in that direction meet. Everything here is the paraxial model: the real
+// the steps and intersect what comes out. Everything here is the paraxial
+// model: the real
 // glass the tracer follows adds aberrations that a drawn ray fan shows and
 // this construction leaves out.
 
@@ -158,9 +157,8 @@ export function objectImagingSteps(el, surfaces, { registry, thinFocal, waveleng
   return steps;
 }
 
-// Carries rays { p, d } through the first `upTo` steps, in place. `onHit`
-// sees each ray where it meets a step's H and where it leaves its H′.
-function throughSteps(rays, steps, upTo = steps.length, onHit = null) {
+// Carries rays { p, d } through the first `upTo` steps, in place.
+function throughSteps(rays, steps, upTo = steps.length) {
   for (let k = 0; k < upTo; k++) {
     const step = steps[k];
     for (const r of rays) {
@@ -170,7 +168,6 @@ function throughSteps(rays, steps, upTo = steps.length, onHit = null) {
       const dp = sub(step.H.a, r.p);
       const t = (dp.x * e.y - dp.y * e.x) / den;
       const hitP = add(r.p, mul(r.d, t));
-      if (onHit) onHit(r, hitP);
       if (step.matrix) {
         // An afocal optic: height and slope at its first vertex plane to
         // height and slope at its last, both measured along the plane and
@@ -184,7 +181,6 @@ function throughSteps(rays, steps, upTo = steps.length, onHit = null) {
         const { A, B, D } = step.matrix;
         r.p = add(mul(add(step.H2.a, step.H2.b), 0.5), mul(tH, A * h + B * slope));
         r.d = norm(add(np, mul(tH, D * slope)));
-        if (onHit) onHit(r, r.p);
         continue;
       }
       if (step.H2 === step.H) {
@@ -195,7 +191,6 @@ function throughSteps(rays, steps, upTo = steps.length, onHit = null) {
         const h = dot(sub(hitP, mul(add(step.H.a, step.H.b), 0.5)), tH);
         r.p = add(mul(add(step.H2.a, step.H2.b), 0.5), mul(tH2, h));
       }
-      if (onHit && step.H2 !== step.H) onHit(r, r.p);
       r.d = lensBend(r.d, r.p, step.H2, step.f);
     }
   }
@@ -216,118 +211,4 @@ function meet(rA, rB) {
 export function imageOfPoint(P, steps, u, v, upTo = steps.length) {
   const [rA, rB] = throughSteps([{ p: P, d: u }, { p: P, d: norm(add(u, v)) }], steps, upTo);
   return meet(rA, rB);
-}
-
-// The image of a point at infinity seen along `dir` from `P` (a point on the
-// Object's axis): two parallel rays, through P and beside it, intersected.
-export function imageOfDirection(dir, P, steps, upTo = steps.length) {
-  const side = perp(dir);
-  const [rA, rB] = throughSteps([{ p: P, d: dir }, { p: add(P, mul(side, 1)), d: dir }], steps, upTo);
-  return meet(rA, rB);
-}
-
-// One ray from p along d through all the steps, as a construction line: the
-// points where it crosses each lens plane (and leaves a real optic's H′),
-// where it leaves the last one, and in which direction.
-export function rayPathThroughSteps(p, d, steps) {
-  const pts = [p];
-  const [r] = throughSteps([{ p, d }], steps, steps.length, (_, at) => pts.push(at));
-  return { pts, p: r.p, d: r.d };
-}
-
-// Where the line o + t·d meets the line through segment s, or null.
-function lineMeet(o, d, s) {
-  const e = sub(s.b, s.a);
-  const den = d.x * e.y - d.y * e.x;
-  if (Math.abs(den) < 1e-12) return null;
-  const dp = sub(s.a, o);
-  return add(o, mul(d, (dp.x * e.y - dp.y * e.x) / den));
-}
-
-// The root of g near x0 and x1, by the secant method; null when there is
-// none (g does not change with x) or it does not converge.
-function secantRoot(g, x0, x1, tolerance) {
-  let g0 = g(x0), g1 = g(x1);
-  for (let i = 0; i < 16; i++) {
-    if (!Number.isFinite(g0) || !Number.isFinite(g1)) return null;
-    if (Math.abs(g1) <= tolerance) return x1;
-    const slope = (g1 - g0) / (x1 - x0);
-    if (!(Math.abs(slope) > 1e-12)) return null;
-    [x0, g0] = [x1, g1];
-    x1 -= g1 / slope;
-    g1 = g(x1);
-  }
-  return Math.abs(g1) <= tolerance ? x1 : null;
-}
-
-// The textbook construction rays (world { p, d }) for an Object in front of
-// the first lens of its chain, from the Object's tip: parallel to the axis
-// (then through the back focal point); through the lens centre (undeviated;
-// for a real optic, aimed at H and leaving H′ parallel to itself); through
-// the front focal point (then parallel). The third is left out when the tip
-// stands in the front focal plane, where it would run along the plane. For
-// an Object at infinity, whose tip's light is a parallel bundle, the two of
-// that bundle through the centre and through the front focal point, started
-// on the Object's own plane. `tip` is the tip in world coordinates and
-// `tipDir` its bundle's direction at infinity (null for a nearby Object).
-//
-// The construction is the first lens's: an afocal plate or telescope has no
-// focal points of its own. One that stands before that lens shifts or turns
-// the rays on their way to it, so they are then chosen through it: the ray
-// that meets the lens at its centre, and the one that leaves it parallel to
-// the axis (the parallel ray stays parallel through an afocal optic).
-export function principalRays(el, steps, { tip, tipDir = null }) {
-  const first = steps?.find(step => !step.matrix);
-  if (!first) return [];
-  const u = rotPt(1, 0, el.rot || 0), p0 = { x: el.x, y: el.y };
-  const centre = lineMeet(p0, u, first.H);
-  if (!centre) return [];
-  const front = sub(centre, mul(u, first.f));
-  // In air all the way to the lens: aimed straight at its centre and its
-  // front focal point.
-  let viaCentre, viaFront = null, parallel = null;
-  if (tipDir) {
-    const along = dot(tipDir, u);
-    if (!(along > 1e-9)) return [];
-    const onObjectPlane = q => sub(q, mul(tipDir, dot(sub(q, p0), u) / along));
-    viaCentre = { p: onObjectPlane(centre), d: tipDir };
-    viaFront = { p: onObjectPlane(front), d: tipDir };
-  } else {
-    parallel = { p: tip, d: u };
-    viaCentre = { p: tip, d: norm(sub(centre, tip)) };
-    const ahead = dot(sub(front, tip), u);
-    if (ahead > 1e-6) viaFront = { p: tip, d: norm(sub(front, tip)) };
-    else if (ahead < -1e-6) viaFront = { p: tip, d: norm(sub(tip, front)) };
-  }
-  const k = steps.indexOf(first);
-  if (k > 0) {
-    // Through the afocal optics before the lens. A nearby tip's rays differ
-    // in their slope against the axis; a bundle's in where they start on the
-    // Object's plane.
-    const w = perp(u);
-    const rayAt = tipDir
-      ? x => ({ p: add(p0, mul(w, x)), d: tipDir })
-      : x => ({ p: tip, d: norm(add(u, mul(w, x))) });
-    const paramOf = r => (tipDir ? dot(sub(r.p, p0), w) : dot(r.d, w) / dot(r.d, u));
-    const step0 = tipDir ? 1 : 1e-3;
-    const tH = norm(sub(first.H.b, first.H.a));
-    const throughTo = (x, upTo) => throughSteps([rayAt(x)], steps, upTo)[0];
-    const offCentre = x => {
-      const r = throughTo(x, k);
-      const hit = lineMeet(r.p, r.d, first.H);
-      return hit ? dot(sub(hit, centre), tH) : NaN;
-    };
-    const offParallel = x => {
-      const { d } = throughTo(x, k + 1);
-      return d.x * u.y - d.y * u.x;
-    };
-    const solve = (g, guess, tolerance) => {
-      const x0 = guess ? paramOf(guess) : 0;
-      const x = secantRoot(g, x0, x0 + step0, tolerance);
-      return x === null ? null : rayAt(x);
-    };
-    viaCentre = solve(offCentre, viaCentre, 1e-9);
-    viaFront = solve(offParallel, viaFront, 1e-12);
-  }
-  return [parallel, viaCentre, viaFront].filter(Boolean);
 }

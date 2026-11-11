@@ -10,7 +10,7 @@ import { NONLINEAR_ORDER, MAX_SPOTS, MIN_HALF_ANGLE, SPOT_SPACING_MM, bundleFocu
 import { POINT_SOURCE_CANVAS_THRESHOLD } from './point-source-rendering.js';
 
 import {
-  registry, OBJ_SHAPES, objectAnchorUnitY, objectEnds, objectEndAngles, EPI_CAPABLE_KINDS as EPI_KINDS, MIXING_KINDS, phasePlateOpdFraction,
+  registry, OBJ_SHAPES, objectAnchorUnitY, objectEnds, EPI_CAPABLE_KINDS as EPI_KINDS, MIXING_KINDS, phasePlateOpdFraction,
   ISOTROPIC_KINDS, MODIFIER_KINDS, EMISSION_ORDER, EMISSION_OFFSET_NM, NONLINEAR_SIGNAL_KINDS,
   sumFrequencyWl, carsAntiStokesWl, ramanShifts, ramanStokesWl,
   drivingExcitationWl, channelNeedsExcitationProbe, specimenTypeOf,
@@ -67,7 +67,7 @@ import { spectralFieldResult, spectralTermsAt, SPECTRAL_UNAVAILABLE, RECOMBINED_
 import { cameraProfileFromHits } from './camera-profile.js';
 import { MAX_CONVERSION, MAX_OPO_DEPLETION, opoPulse, supercontinuumRange, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength, mixWidthNm, coincidenceGate } from './parametric.js';
 import { asphereSag, asphereSlope } from './asphere.js';
-import { imageOfDirection, imageOfPoint, objectImagingSteps, principalRays, rayPathThroughSteps } from './object-imaging.js';
+import { imageOfPoint, objectImagingSteps } from './object-imaging.js';
 
 // polylines from the most recent traceAll, kept for beam probes
 let lastPaths = [];
@@ -8455,21 +8455,15 @@ export function traceScene(elements, beams = [], options = {}) {
     const h0 = pp.height;
     const anchorY = objectAnchorUnitY(pp);
     const tip0 = add(p0, mul(v, h0));
-    const infinite = pp.distance === 'infinity';
 
     // Every lens on the object's own axis, in order: ideal lens planes and
     // real optics through their principal planes (object-imaging.js).
     const steps = objectImagingSteps(el, surfaces, { registry, thinFocal: s => objectThinFocal(s, pp.wavelength), wavelength: pp.wavelength });
     if (!steps || !steps.length) continue;
 
-    // The images of the object's base and tip (for an object at infinity,
-    // of the directions they are seen along) after the first k lenses.
+    // The images of the object's base and tip after the first k lenses.
     const { tipY, baseY } = objectEnds(pp);
-    const { tipAngle, baseAngle } = objectEndAngles(pp);
-    const dirAt = a => norm(sub(mul(u, Math.cos(a)), mul(v, Math.sin(a))));
-    const endImages = k => (infinite
-      ? [imageOfDirection(dirAt(baseAngle), p0, steps, k), imageOfDirection(dirAt(tipAngle), p0, steps, k)]
-      : [imageOfPoint(add(p0, mul(v, -baseY)), steps, u, v, k), imageOfPoint(add(p0, mul(v, -tipY)), steps, u, v, k)]);
+    const endImages = k => [imageOfPoint(add(p0, mul(v, -baseY)), steps, u, v, k), imageOfPoint(add(p0, mul(v, -tipY)), steps, u, v, k)];
 
     // What the inspector reads: each intermediate image and the final one.
     // A plate or telescope (an afocal step) inside the chain only moves the
@@ -8480,44 +8474,32 @@ export function traceScene(elements, beams = [], options = {}) {
       if (!b || !t) return { lens, atInfinity: true };
       const distance = dot(sub(b, step.exit), u);
       const rise = dot(sub(t, b), v);
-      return {
-        lens, distance, real: distance > 0, upright: rise > 0,
-        m: infinite ? null : rise / h0, height: infinite ? rise : null,
-      };
+      return { lens, distance, real: distance > 0, upright: rise > 0, m: rise / h0 };
     });
-    objectImageStates.set(el.id, { stages, infinite });
+    objectImageStates.set(el.id, { stages });
 
-    let imgBase, imgTip, m;
-    if (infinite) {
-      [imgBase, imgTip] = endImages(steps.length);
-      if (!imgBase || !imgTip) continue;
-      m = dot(sub(imgTip, imgBase), v) / h0;
-    } else {
-      imgBase = imageOfPoint(p0, steps, u, v);
-      imgTip = imageOfPoint(tip0, steps, u, v);
-      if (!imgBase || !imgTip) continue;
-      m = dot(sub(imgTip, imgBase), v) / h0;
-    }
+    const imgBase = imageOfPoint(p0, steps, u, v);
+    const imgTip = imageOfPoint(tip0, steps, u, v);
+    if (!imgBase || !imgTip) continue;
     if (Math.hypot(imgBase.x - p0.x, imgBase.y - p0.y) > MAXLEN) continue;
+
+    const m = dot(sub(imgTip, imgBase), v) / h0;
     if (!Number.isFinite(m) || Math.abs(m) < 1e-6) continue;
     const color = pp.autoColor === false && pp.color ? pp.color : wavelengthToColor(pp.wavelength);
     // redraw the object's shape at the image plane, scaled by |m| and
     // vertically flipped when m < 0
     const sh = OBJ_SHAPES[pp.shape] || OBJ_SHAPES.arrow;
     let toWorldPt = (sx, sy) => add(add(imgBase, mul(u, sx * h0 * Math.abs(m))), mul(v, (anchorY - sy) * h0 * m));
-    // An Object that sends its fan from the tip or the base, stands on its
-    // anchor, or is at infinity places the shape between the exact images of
-    // its two ends, so the drawn tip is where the tip's rays meet even when a
-    // lens is tilted against the Object (its image then leans, and the tip's
-    // image moves along the axis too, not only across it). Untilted, this is
-    // the same drawing as above. A centred, nearby Object with the fan from
-    // its anchor keeps the drawing it was saved with.
-    let imgT = null;
-    if (infinite || pp.anchor === 'base' || (pp.raysFrom && pp.raysFrom !== 'axis')) {
-      const ends = infinite ? [imgBase, imgTip] : endImages(steps.length);
-      if (!ends[0] || !ends[1]) continue;
-      const [imgB] = ends;
-      imgT = ends[1];
+    // An Object that sends its fan from the tip or the base, or stands on its
+    // anchor, places the shape between the exact images of its two ends, so
+    // the drawn tip is where the tip's rays meet even when a lens is tilted
+    // against the Object (its image then leans, and the tip's image moves
+    // along the axis too, not only across it). Untilted, this is the same
+    // drawing as above. A centred Object with the fan from its anchor keeps
+    // the drawing it was saved with.
+    if (pp.anchor === 'base' || (pp.raysFrom && pp.raysFrom !== 'axis')) {
+      const [imgB, imgT] = endImages(steps.length);
+      if (!imgB || !imgT) continue;
       toWorldPt = (sx, sy) => add(add(imgB, mul(sub(imgT, imgB), 0.5 - sy)), mul(u, sx * h0 * Math.abs(m)));
     }
     for (const ln of sh.lines) {
@@ -8525,36 +8507,6 @@ export function traceScene(elements, beams = [], options = {}) {
     }
     for (const pg of sh.polys) {
       drawables.push({ type: 'poly', pts: pg.map(q => toWorldPt(q[0], q[1])), color, opacity: 0.85 });
-    }
-  }
-
-  // Principal rays: the textbook construction from each Object's tip,
-  // through every lens on its axis as through its whole plane (thin lens,
-  // or a real optic's principal planes). Past the last lens a ray runs to
-  // the image and a little beyond; to a virtual image it runs on, and is
-  // drawn back, dashed, to the image tip it appears to come from.
-  for (const el of elements) {
-    const pp = el.params;
-    if (!registry[el.type]?.imaging || pp?.raysMode !== 'fan' || pp.raysFrom !== 'principal') continue;
-    const steps = objectImagingSteps(el, surfaces, { registry, thinFocal: s => objectThinFocal(s, pp.wavelength), wavelength: pp.wavelength });
-    if (!steps || !steps.length) continue;
-    const u = rotPt(1, 0, el.rot || 0), v = rotPt(0, -1, el.rot || 0), p0 = { x: el.x, y: el.y };
-    const infinite = pp.distance === 'infinity';
-    const tip = add(p0, mul(v, -objectEnds(pp).tipY));
-    const tipAngle = objectEndAngles(pp).tipAngle;
-    const tipDir = infinite ? norm(sub(mul(u, Math.cos(tipAngle)), mul(v, Math.sin(tipAngle)))) : null;
-    const image = infinite ? imageOfDirection(tipDir, p0, steps) : imageOfPoint(tip, steps, u, v);
-    const exitPlane = steps.at(-1).exit;
-    const beyond = image ? dot(sub(image, exitPlane), u) : null;
-    const color = pp.autoColor === false && pp.color ? pp.color : wavelengthToColor(pp.wavelength);
-    for (const r of principalRays(el, steps, { tip, tipDir })) {
-      const path = rayPathThroughSteps(r.p, r.d, steps);
-      const along = dot(path.d, u);
-      // How far past the last lens the line is drawn, measured along the axis.
-      const reach = beyond !== null && beyond > 0 ? beyond * 1.25 + 20 : Math.max(150, beyond !== null ? -beyond : 0);
-      const end = along > 1e-9 ? add(path.p, mul(path.d, (reach - dot(sub(path.p, exitPlane), u)) / along)) : add(path.p, mul(path.d, reach));
-      drawables.push({ type: 'path', pts: [...path.pts, end], color, w: 1.4, opacity: 0.9 });
-      if (image && beyond < 0) drawables.push({ type: 'path', pts: [path.p, image], color, w: 1.2, opacity: 0.6, dash: true });
     }
   }
 

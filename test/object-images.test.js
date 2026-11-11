@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// The Object's images: objects at infinity, the image readout, images
-// through real optics (by their cardinal points), principal construction
-// rays, and the extra shapes.
+// The Object's images: the image readout, and images through real optics
+// (by their cardinal points, or their paraxial matrix when they have no
+// power).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -32,33 +32,12 @@ const lensAt = (x, f) => {
   return lens;
 };
 
-test('an Object saved before these options is nearby, and its new options stay out of the way', () => {
+test('an Object saved before the light options keeps its centred fan from the axis', () => {
   const saved = { app: 'optics2d', version: 1, beams: [], elements: [{ id: 'o', type: 'objarrow', x: 0, y: 0, rot: 0, params: { height: 20 } }] };
   const [object] = parseSketch(JSON.stringify(saved), registry).elements;
-  assert.equal(object.params.distance, 'finite');
+  assert.equal(object.params.anchor, 'centre');
   assert.equal(object.params.raysFrom, 'axis');
-});
-
-test('an object at infinity of 0.5° images 2.6 mm tall in the focal plane of a 300 mm lens', () => {
-  const object = createElement('objarrow', 0, 0);
-  Object.assign(object.params, { distance: 'infinity', angularSize: 0.5, nrays: 7 });
-  const result = traceScene([object, lensAt(100, 300)], []);
-  const reading = objectImageReading(object.id);
-  assert.equal(reading.stages.length, 1);
-  near(reading.stages[0].distance, 300, 1e-9, 'image in the focal plane');
-  near(Math.abs(reading.stages[0].height), 300 * Math.tan(0.5 * Math.PI / 180), 1e-9, 'f·tan θ');
-  assert.match(objectImageReadout(reading), /^Image 300 mm after .* · 2\.62 mm tall · real, inverted$/);
-  // The tip's bundle comes together at the drawn image tip.
-  const tip = imageTip(result);
-  near(tip.x, 400, 1e-9, 'drawn in the focal plane');
-  near(tip.y, 2.618, 1e-3, 'drawn 2.6 mm below the axis');
-  const paths = objectPaths(result, object);
-  assert.equal(paths.length, 7);
-  for (const r of paths) near(distanceToLine(tip, r.pts.at(-2), r.pts.at(-1)), 0, 1e-9, 'ray through the drawn tip');
-  // Aimed, the parallel bundle fills the lens (25.4 mm across) edge to edge.
-  const atLens = paths.map(r => r.pts[1].y);
-  assert.ok(Math.min(...atLens) < -12.5 && Math.max(...atLens) > 12.5, `bundle ${Math.min(...atLens)} to ${Math.max(...atLens)}`);
-  assert.ok(paths.every(r => Math.abs(r.pts[1].x - 100) < 1e-6), 'every ray lands on the lens');
+  assert.equal(object.params.aim, 'ahead');
 });
 
 test('the 5× objective with a 200 mm tube lens, object in its front focal plane, reads m = −5.0', () => {
@@ -126,55 +105,6 @@ function reversedFaces(local, x0) {
   return out;
 }
 
-// The drawn principal rays (construction lines) and their dashed returns.
-const principalLines = result => result.drawables.filter(d => d.type === 'path' && d.w === 1.4 && d.opacity === 0.9);
-const dashedReturns = result => result.drawables.filter(d => d.type === 'path' && d.dash && d.w === 1.2);
-
-test('principal rays meet at the drawn image tip, and run back dashed to a virtual image', () => {
-  // The 22 mm arrow is taller than the lens is wide: the construction still
-  // works, through the lens's whole plane.
-  const real = createElement('objarrow', 0, 0);
-  real.params.raysFrom = 'principal';
-  const realResult = traceScene([real, lensAt(300, 100)], []);
-  assert.equal(objectPaths(realResult, real).length, 0, 'construction lines, not traced light');
-  const tip = imageTip(realResult);
-  const lines = principalLines(realResult);
-  assert.equal(lines.length, 3);
-  for (const d of lines) {
-    near(d.pts[0].y, -22, 1e-9, 'from the tip');
-    near(d.pts[1].x, 300, 1e-9, 'bends at the lens plane');
-    near(distanceToLine(tip, d.pts.at(-2), d.pts.at(-1)), 0, 1e-9, 'through the image tip');
-    assert.ok(d.pts.at(-1).x > tip.x, 'drawn past the image');
-  }
-  const slopes = lines.map(d => [(d.pts[1].y - d.pts[0].y) / (d.pts[1].x - d.pts[0].x), (d.pts[2].y - d.pts[1].y) / (d.pts[2].x - d.pts[1].x)]);
-  assert.ok(slopes.some(([a]) => Math.abs(a) < 1e-12), 'one parallel to the axis');
-  assert.ok(slopes.some(([a, b]) => Math.abs(a - b) < 1e-12 && Math.abs(a) > 0), 'one through the centre, undeviated');
-  assert.ok(slopes.some(([a, b]) => Math.abs(b) < 1e-12 && Math.abs(a) > 0), 'one through the front focal point, parallel after');
-  assert.equal(dashedReturns(realResult).length, 0, 'no back-extensions for a real image');
-
-  const virtual = createElement('objarrow', 0, 0);
-  virtual.params.raysFrom = 'principal';
-  const virtualResult = traceScene([virtual, lensAt(60, 100)], []);
-  const reading = objectImageReading(virtual.id);
-  assert.equal(reading.stages[0].real, false);
-  near(reading.stages[0].m, 2.5, 1e-9, 'magnifier');
-  const vTip = imageTip(virtualResult);
-  const dashed = dashedReturns(virtualResult);
-  assert.equal(dashed.length, 3);
-  for (const d of dashed) near(Math.hypot(d.pts[1].x - vTip.x, d.pts[1].y - vTip.y), 0, 1e-9, 'dashed back to the virtual tip');
-  for (const d of principalLines(virtualResult)) near(distanceToLine(vTip, d.pts.at(-2), d.pts.at(-1)), 0, 1e-9, 'outgoing line through the virtual tip');
-});
-
-test('principal rays from an object at infinity cross at its image in the focal plane', () => {
-  const object = createElement('objarrow', 0, 0);
-  Object.assign(object.params, { distance: 'infinity', angularSize: 2, raysFrom: 'principal' });
-  const result = traceScene([object, lensAt(100, 200)], []);
-  const tip = imageTip(result);
-  near(tip.x, 300, 1e-9, 'focal plane');
-  const lines = principalLines(result);
-  assert.equal(lines.length, 2);
-  for (const d of lines) near(distanceToLine(tip, d.pts.at(-2), d.pts.at(-1)), 0, 1e-9, 'through the image tip');
-});
 
 test('a real optic beside the axis is not part of the image chain', () => {
   const object = createElement('objarrow', 0, 0);
@@ -192,31 +122,11 @@ test('the readout lists the intermediate image and the final one', () => {
   assert.equal(objectImageReadout(null), 'No image: no lens on the Object’s axis');
 });
 
-test('every shape is drawn, and imaged', () => {
-  for (const shape of ['point', 'candle', 'cell', 'moon']) {
-    const object = createElement('objarrow', 0, 0);
-    object.params.shape = shape;
-    assert.match(registry.objarrow.svg(object), /<polygon /, `${shape} icon`);
-    const result = traceScene([object, lensAt(300, 100)], []);
-    assert.ok(imageDrawables(result).length >= 1, `${shape} image`);
-    for (const d of imageDrawables(result)) assert.ok(d.pts.every(p => Number.isFinite(p.x) && Number.isFinite(p.y)));
-  }
-  // The point sits at the tip, so its image is the tip's image.
-  const object = createElement('objarrow', 0, 0);
-  object.params.shape = 'point';
-  const result = traceScene([object, lensAt(300, 100)], []);
-  const pts = imageDrawables(result)[0].pts;
-  const cx = pts.reduce((a, p) => a + p.x, 0) / pts.length, cy = pts.reduce((a, p) => a + p.y, 0) / pts.length;
-  near(cx, 450, 1e-6, 'point image distance');
-  near(cy, 11, 1e-6, 'point image height');
-});
-
 test('a plate in a lens group, which has no focal length, moves the image the next lens makes', () => {
   const object = createElement('objarrow', 0, 0);
-  object.params.raysFrom = 'principal';
   const plate = createElement('lensgroup', 150, 0);
   Object.assign(plate.params, { preset: 'custom', rows: [{ r: 0, thickness: 4, glass: 'nbk7' }, { r: 0, thickness: 4, glass: 'air' }] });
-  const result = traceScene([object, plate, lensAt(300, 100)], []);
+  traceScene([object, plate, lensAt(300, 100)], []);
   const reading = objectImageReading(object.id);
   // A plate t thick brings the object t(1 − 1/n) nearer, here 1.36 mm.
   const n = glassIndex('nbk7', object.params.wavelength);
@@ -224,8 +134,15 @@ test('a plate in a lens group, which has no focal length, moves the image the ne
   assert.equal(reading.stages.length, 1, 'the plate has no image line of its own');
   near(reading.stages[0].distance, s * 100 / (s - 100), 1e-9, 'image after the lens');
   near(reading.stages[0].m, -100 / (s - 100), 1e-9, 'magnification');
-  // The principal rays are still drawn, through the plate and the lens.
-  assert.equal(result.drawables.filter(d => d.type === 'path' && d.w === 1.4).length, 3);
+  // A narrow fan from the tip, traced through the real glass, comes together
+  // at the drawn image tip. (Aimed, it would fill the plate, and its edge
+  // rays would pass beside the lens behind it.)
+  Object.assign(object.params, { height: 10, aim: 'ahead', spread: 2, nrays: 5 });
+  const narrow = traceScene([object, plate, lensAt(300, 100)], []);
+  const tip = imageTip(narrow);
+  near(tip.x, 300 + reading.stages[0].distance, 1e-9, 'drawn where the readout says');
+  assert.equal(objectPaths(narrow, object).length, 5);
+  for (const r of objectPaths(narrow, object)) near(distanceToLine(tip, r.pts.at(-2), r.pts.at(-1)), 0, 0.02, 'traced ray through the drawn tip');
   // A plate alone images the object where it appears to be, upright.
   const alone = createElement('objarrow', 0, 0);
   traceScene([alone, plate], []);
@@ -266,33 +183,4 @@ test('the Image readout follows a change to the Object’s position', () => {
   traceScene(state.elements, []);
   refreshMeasurements();
   assert.match(output.textContent, /^Image 200 mm after .* m = −1\.00/);
-});
-
-test('principal rays through a plate before the lens still meet its centre and leave it parallel', () => {
-  const principal = result => result.drawables.filter(d => d.type === 'path' && d.w === 1.4);
-  const slope = (a, b) => (b.y - a.y) / (b.x - a.x);
-  for (const thickness of [4, 100]) {
-    for (const distance of ['finite', 'infinity']) {
-      const label = `${thickness} mm plate, object ${distance}`;
-      const object = createElement('objarrow', 0, 0);
-      Object.assign(object.params, { raysFrom: 'principal', distance, angularSize: 2 });
-      const plate = createElement('lensgroup', 150, 0);
-      Object.assign(plate.params, { preset: 'custom', rows: [{ r: 0, thickness, glass: 'nbk7' }, { r: 0, thickness: 4, glass: 'air' }] });
-      const rays = principal(traceScene([object, plate, lensAt(300, 100)], []));
-      assert.equal(rays.length, distance === 'finite' ? 3 : 2, label);
-      // [start, into the plate, out of it, at the lens, beyond].
-      const [viaCentre, viaFront] = rays.slice(-2).map(r => r.pts);
-      for (const pts of [viaCentre, viaFront]) {
-        assert.equal(pts.length, 5, label);
-        near(pts[3].x, 300, 1e-9, `${label}: at the lens`);
-      }
-      near(viaCentre[3].y, 0, 1e-6, `${label}: through the lens centre`);
-      near(slope(viaCentre[3], viaCentre[4]), slope(viaCentre[2], viaCentre[3]), 1e-9, `${label}: undeviated`);
-      near(slope(viaFront[3], viaFront[4]), 0, 1e-9, `${label}: parallel after the lens`);
-      if (distance === 'finite') {
-        const parallel = rays[0].pts;
-        for (let i = 1; i < parallel.length - 1; i++) near(slope(parallel[i - 1], parallel[i]), 0, 1e-12, `${label}: parallel ray`);
-      }
-    }
-  }
 });

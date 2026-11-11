@@ -172,17 +172,3 @@ export function aimedFanSpan(origin, scene) {
   return widestOpenRun(targets, scene.obstacles || [],
     a => ({ o: origin, d: { x: Math.cos(a), y: Math.sin(a) } }), angle);
 }
-
-// For an Object at infinity: the widest parallel bundle along `dir` (Object
-// frame, pointing forward) that reaches the target unobstructed. Its rays
-// start on the Object's own plane (local x = 0); the result is the range of
-// their starting heights { lo, hi } (local y). Null when the target is not
-// in front or nothing gets through.
-export function aimedBundleSpan(dir, scene) {
-  const targets = sceneTargets(scene);
-  if (!targets.length || !(dir.x > 1e-9)) return null;
-  if (targets.some(s => !(s.a.x > 0 && s.b.x > 0))) return null;
-  const slope = dir.y / dir.x;
-  return widestOpenRun(targets, scene.obstacles || [],
-    y => ({ o: { x: 0, y }, d: dir }), p => p.y - p.x * slope);
-}

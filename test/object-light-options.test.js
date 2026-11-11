@@ -68,9 +68,9 @@ test('an Object saved before the light options opens centred, with its fan from 
   assert.match(registry.objarrow.svg(object), /<polygon points="0\.0,-10\.0 /);
 });
 
-test('a new Object stands on the axis and fills the first optic from its tip, and keeps that through a save', () => {
+test('a new Object is centred on the axis and fills the first optic from its tip, and keeps that through a save', () => {
   const object = createElement('objarrow', 0, 0);
-  assert.equal(object.params.anchor, 'base');
+  assert.equal(object.params.anchor, 'centre');
   assert.equal(object.params.raysFrom, 'tip');
   assert.equal(object.params.aim, 'optic');
   const lens = createElement('lens', 300, 0);
@@ -78,7 +78,9 @@ test('a new Object stands on the axis and fills the first optic from its tip, an
   const result = traceScene([object, lens], []);
   const tip = imageTip(result);
   near(tip.x, 450, 1e-9, 'image distance');
-  near(tip.y, object.params.height / 2, 1e-9, 'inverted half-size tip');
+  // The tip stands half the height above the axis; its image, at m = −0.5,
+  // a quarter of it below.
+  near(tip.y, object.params.height / 4, 1e-9, 'inverted half-size tip');
   const rays = raysThroughLens(result, object);
   assert.equal(rays.length, object.params.nrays);
   for (const r of rays) near(distanceToLine(tip, r.atLens, r.next), 0, 1e-9, 'ray through the image tip');
@@ -86,7 +88,7 @@ test('a new Object stands on the axis and fills the first optic from its tip, an
   // saved before the options existed.
   const saved = { app: 'optics2d', version: 1, beams: [], elements: [object, lens] };
   const [reloaded] = parseSketch(JSON.stringify(saved), registry).elements;
-  assert.equal(reloaded.params.anchor, 'base');
+  assert.equal(reloaded.params.anchor, 'centre');
   assert.equal(reloaded.params.raysFrom, 'tip');
   assert.equal(reloaded.params.aim, 'optic');
 });
