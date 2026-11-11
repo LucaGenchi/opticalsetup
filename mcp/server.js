@@ -9,6 +9,7 @@ import { handleStatelessRpc, VERSION } from './stateless.js';
 import { buildWidget, widgetAsset, widgetResourceUri } from './widget.js';
 import { compute, canRenderScreenshots } from './compute.js';
 import { createLiveRelay } from './relay.js';
+import { createSessionStore } from './session-store.js';
 import { serveStdio } from './stdio.js';
 const MAX_BODY = 950000;
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...headers } });
@@ -18,6 +19,7 @@ const CLAUDE_SANDBOX = /^https:\/\/[a-f0-9]{16,64}\.claudemcpcontent\.com$/;
 export function createApplication({ origin, challenge = '', computeScene = compute, revision = 'local', screenshots = true }) {
   const originUrl = new URL(origin);
   const relay = createLiveRelay();
+  const sessions = createSessionStore();
   const widgetOrigin = 'https://' + originUrl.hostname.replaceAll('.', '-') + '.web-sandbox.oaiusercontent.com';
   // A local service answers to every loopback name of its own port; a hosted one only to its public host.
   const local = LOOPBACK.includes(originUrl.hostname);
@@ -26,7 +28,7 @@ export function createApplication({ origin, challenge = '', computeScene = compu
   if (originUrl.origin !== origin || originUrl.username || originUrl.password) throw new Error('Use an origin without a path or credentials');
   const widget = buildWidget(origin);
   // One answer to a JSON-RPC message, whichever transport brought it. An edit computed here reaches the open view either way.
-  const rpc = async body => handleStatelessRpc(body, { html: await widget, origin, compute: computeScene, screenshots, deliver: (channel, data) => relay.publish(channel, data) });
+  const rpc = async body => handleStatelessRpc(body, { html: await widget, origin, compute: computeScene, screenshots, sessions, deliver: (channel, data) => relay.publish(channel, data) });
   let draining = false;
   const application = async request => {
     if (draining) return json({ error: 'Service restarting; retry with your current browser snapshot' }, 503);
@@ -50,10 +52,31 @@ export function createApplication({ origin, challenge = '', computeScene = compu
         throw error;
       }
     }
+    // Widget-only synchronization never passes the scene through an MCP tool
+    // or the model. The random channel is the bearer capability for a mirror.
+    if (url.pathname === '/mcp/session') {
+      const allowed = requestOrigin && ([...origins, widgetOrigin].includes(requestOrigin) || CLAUDE_SANDBOX.test(requestOrigin));
+      if (!allowed) return json({ error: 'Forbidden widget origin' }, 403);
+      const cors = { 'access-control-allow-origin': requestOrigin, vary: 'Origin' };
+      if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...cors, 'access-control-allow-methods': 'POST', 'access-control-allow-headers': 'content-type' } });
+      if (request.method !== 'POST') return json({ error: 'POST required' }, 405, cors);
+      if (!request.headers.get('content-type')?.startsWith('application/json')) return json({ error: 'JSON required' }, 415, cors);
+      try {
+        const bytes = await request.arrayBuffer();
+        if (bytes.byteLength > MAX_BODY) return json({ error: 'Request too large' }, 413, cors);
+        const body = JSON.parse(new TextDecoder().decode(bytes));
+        if (body.action === 'sync') return json(sessions.sync(body.workspaceRef, body.setup), 200, cors);
+        if (body.action === 'read') return json({ setup: sessions.read(body.workspaceRef) }, 200, cors);
+        if (body.action === 'ack') return json(sessions.ack(body.workspaceRef, body), 200, cors);
+        return json({ error: 'Unknown session action' }, 400, cors);
+      } catch (error) {
+        return json({ error: String(error?.message || 'Invalid session request'), code: error?.code || 'INVALID_SESSION_REQUEST' }, 409, cors);
+      }
+    }
     if (requestOrigin && !origins.includes(requestOrigin)) return json({ error: 'Forbidden origin' }, 403);
     if (['GET', 'DELETE'].includes(request.method) && url.pathname === '/mcp') return json({ error: 'POST required' }, 405, { allow: 'POST' });
     if (request.method === 'GET' || request.method === 'HEAD') {
-      if (url.pathname === '/mcp/health') return json({ ok: true, service: 'OpticalSetup', version: VERSION, revision, storage: 'none', authentication: 'none', screenshots });
+      if (url.pathname === '/mcp/health') return json({ ok: true, service: 'OpticalSetup', version: VERSION, revision, storage: 'ephemeral-memory', authentication: 'capability-ref', sessions: sessions.size, screenshots });
       if (url.pathname === '/.well-known/openai-apps-challenge') return challenge ? new Response(challenge, { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } }) : new Response('Challenge not configured', { status: 404 });
       if (url.pathname === '/mcp/workbench') return new Response(await widget, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
       return new Response('Not found', { status: 404 });
