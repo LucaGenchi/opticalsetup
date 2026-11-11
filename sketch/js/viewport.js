@@ -68,9 +68,20 @@ export function zoomViewAt(view, point, factor, min = VIEW_MIN_ZOOM, max = VIEW_
   };
 }
 
-// Ordinary wheel input zooms toward the pointer, like a drawing workbench.
-// Ctrl/Meta-wheel is also how browsers report trackpad pinch; keep that
-// gesture responsive. Horizontal/Shift-wheel remains available for panning.
+// Zoom rate per pixel of Ctrl/Cmd-wheel delta, and the largest delta one
+// event may use: a mouse notch (about 100 px) zooms at most e^(60·0.012) ≈ 2×
+// instead of jumping several zoom levels, while a trackpad pinch, which sends
+// many small deltas, keeps its continuous feel.
+export const WHEEL_ZOOM_RATE = 0.012;
+export const WHEEL_ZOOM_MAX_DELTA = 60;
+
+// Browsers deliver a trackpad's two-finger swipe as plain wheel events, the
+// same as a mouse wheel, and a trackpad pinch as Ctrl+wheel (Chrome, Edge,
+// Firefox). The two devices cannot be told apart reliably, so the modifier
+// decides, and every device keeps one consistent meaning:
+//   wheel, two-finger swipe  -> pan, both axes (a mouse's X wheel pans sideways)
+//   Shift + wheel            -> pan sideways, for mice with one wheel
+//   Ctrl/Cmd + wheel, pinch  -> zoom at the pointer
 export function wheelView(view, anchor, {
   deltaX = 0, deltaY = 0, deltaMode = 0,
   ctrlKey = false, metaKey = false, shiftKey = false, viewportHeight = 800,
@@ -81,16 +92,14 @@ export function wheelView(view, anchor, {
   const dx = Number.isFinite(deltaX) ? deltaX * unit : 0;
   const dy = Number.isFinite(deltaY) ? deltaY * unit : 0;
 
-  if (shiftKey && !ctrlKey && !metaKey) {
-    // Vertical Shift-wheel (including mice without horizontal wheels) pans X.
-    return { ...view, x: view.x - (dx || dy), y: view.y - (dx ? dy : 0) };
+  if (ctrlKey || metaKey) {
+    const delta = Math.max(-WHEEL_ZOOM_MAX_DELTA, Math.min(WHEEL_ZOOM_MAX_DELTA, dy));
+    return delta === 0 ? { ...view } : zoomViewAt(view, anchor, Math.exp(-delta * WHEEL_ZOOM_RATE));
   }
-  if (dy === 0) return { ...view, x: view.x - dx };
-
-  const pinch = ctrlKey || metaKey;
-  const limit = pinch ? 60 : 300; // prevent large discrete events jumping many zoom levels
-  const delta = Math.max(-limit, Math.min(limit, dy));
-  return zoomViewAt(view, anchor, Math.exp(-delta * (pinch ? 0.012 : 0.002)));
+  // Some browsers turn Shift+wheel into deltaX themselves; others leave it in
+  // deltaY, which then pans sideways here.
+  if (shiftKey && dx === 0) return { ...view, x: view.x - dy };
+  return { ...view, x: view.x - dx, y: view.y - dy };
 }
 
 // Keep the world point below the initial pinch centre below the moving centre.
