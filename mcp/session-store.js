@@ -59,6 +59,11 @@ export function createSessionStore({ ttlMs = 30 * 60_000, maxSessions = 40, ackT
       return { setupId: supplied.id, revision: supplied.revision, hash };
     },
     read(ref) { return copy(current(ref).setup); },
+    receipt(ref, requestId, fingerprint) {
+      const entry = current(ref).receipts.get(requestId);
+      if (entry && entry.fingerprint !== fingerprint) throw new SceneError('clientRequestId reused for another operation', 'REQUEST_ID_REUSED');
+      return entry ? copy(entry.result) : null;
+    },
     offer(ref, { requestId, fingerprint, baseRevision, baseHash, action, nextScene = null, patch = null }) {
       const item = current(ref);
       if (typeof requestId !== 'string' || !requestId || requestId.length > 100) throw new SceneError('Invalid clientRequestId');
