@@ -156,14 +156,22 @@
       couples every ray that lands on the end face of the fibre's connector
       within the acceptance angle, and here all 25 rays of the beam do. It is the
       condition on the angle, and nothing else.</p>
-      <p>Things to try, each of which the acceptance angle explains. Set the
-      lens to f&nbsp;=&nbsp;4&nbsp;mm: the beam converges at 14°, the outer rays
-      are refused and the meter reads 440&nbsp;µW. Put f back and widen the
-      laser's beam to 4&nbsp;mm: 10.3°, and 600&nbsp;µW. Lower the fibre's
-      input NA to 0.08: 840&nbsp;µW. Turn mirror 2 by 0.5°: the beam crosses
-      the lens 2&nbsp;mm off its centre, the cone arrives tilted, and the meter
-      reads 240&nbsp;µW; at 1° it is dark. The readings move in steps of
-      40&nbsp;µW, one ray of the 25.</p>
+      <p>Things to try, each of which the acceptance angle explains. Each one
+      starts from the setup as it opens, so undo a change before making the
+      next:</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>One change to the setup as it opens</th><th>What happens</th><th>Power meter</th></tr></thead>
+        <tbody>
+          <tr><td>Lens to f&nbsp;=&nbsp;4&nbsp;mm</td><td>The beam converges at 14°; the outer rays are refused</td><td>440&nbsp;µW</td></tr>
+          <tr><td>Laser's beam widened to 4&nbsp;mm</td><td>It converges at 10.3°</td><td>600&nbsp;µW</td></tr>
+          <tr><td>Fibre's input NA lowered to 0.08</td><td>The acceptance half-angle falls to 4.6°, below the beam's 5.2°</td><td>840&nbsp;µW</td></tr>
+          <tr><td>Mirror 2 turned by 0.5°</td><td>The beam crosses the lens 2&nbsp;mm off its centre and the cone arrives tilted</td><td>240&nbsp;µW</td></tr>
+          <tr><td>Mirror 2 turned by 1°</td><td>The cone arrives outside the acceptance angle</td><td>no light</td></tr>
+        </tbody>
+      </table></div>
+      <p>The readings move in steps of 40&nbsp;µW, one ray of the 25. Two
+      changes together do not simply add: with the beam at 4&nbsp;mm and the
+      input NA at 0.08, the meter reads 440&nbsp;µW.</p>
       <p>The enlarged view shows the cone meeting the end face, and prints the
       waist an ideal Gaussian beam with this cone would have, 2.23&nbsp;µm
       (λ/(π·NA) for the cone's own NA of 0.09). The tracer does not use that

@@ -48,15 +48,19 @@ export const exampleEntries = [
     inOpticalSetupHtml: `
       <p>An <a href="../../wiki/objarrow/">Object</a> 15&nbsp;mm tall stands
       150&nbsp;mm before a <a href="../../wiki/lens/">thin lens</a> of
-      f&nbsp;=&nbsp;100&nbsp;mm. It sends five rays from its tip, spread over the
+      f&nbsp;=&nbsp;100&nbsp;mm. The Object is centred on the axis, so its tip is
+      7.5&nbsp;mm above it. It sends five rays from its tip, spread over the
       central part of the lens. They cross again 300&nbsp;mm behind the lens,
-      30&nbsp;mm below the axis, on a screen placed there. The Object draws the
-      image it forms, and its inspector reads <em>Image 300&nbsp;mm after Lens ·
-      m&nbsp;=&nbsp;−2.00 · real, inverted</em>, which is what the equation gives:
-      1/150 + 1/300 = 1/100 and −300/150 = −2. The two
+      15&nbsp;mm below the axis: twice as far from the axis as the tip, and on
+      the other side. The Object draws the image it forms there, an arrow
+      30&nbsp;mm tall that points down, and its inspector reads <em>Image
+      300&nbsp;mm after Lens · m&nbsp;=&nbsp;−2.00 · real, inverted</em>, which is
+      what the equation gives: 1/150 + 1/300 = 1/100 and −300/150 = −2. The
+      rays end on a screen that stands 1.5&nbsp;mm behind the image, so that
+      its edge does not hide the drawn image. The two
       <a href="../../wiki/ruler/">rulers</a> mark s and s′.</p>
       <p>Things to try, by dragging the Object along the axis (the screen stays
-      where it is, so the rays no longer meet on it):</p>
+      where it is, so the rays no longer meet in front of it):</p>
       <div class="table-wrap"><table>
         <thead><tr><th>s</th><th>The Object's readout</th></tr></thead>
         <tbody>
@@ -127,11 +131,13 @@ export const exampleEntries = [
       detector and its inspector gives the width of the beam on it: a spot span
       of 12.0&nbsp;mm, for both.</p>
       <p>Things to try. Move the second lens of either pair 10&nbsp;mm further
-      from the first: the screen reads CONVERGING, 0.31°; 10&nbsp;mm closer, and
-      it reads DIVERGING by the same angle. This is how a beam expander is
-      focused on the bench. In the upper pair, set f₁ to 25&nbsp;mm and bring the
-      second lens 25&nbsp;mm closer, so that the lenses are again f₁ + f₂ apart:
-      the beam leaves collimated and 24&nbsp;mm wide, six times its width.</p>
+      from the first: the screen reads CONVERGING, 0.31°. Move it to 10&nbsp;mm
+      closer than where it started instead, and the screen reads DIVERGING by
+      the same angle. This is how a beam expander is focused on the bench. Put
+      the lens back where it started. Then, in the upper pair, set f₁ to
+      25&nbsp;mm and bring the second lens 25&nbsp;mm closer, so that the lenses
+      are again f₁ + f₂ apart, now 175&nbsp;mm: the beam leaves collimated and
+      24&nbsp;mm wide, six times its width.</p>
       <p>The second panel of the
       <a href="../../calculators/imaging/">Imaging with lenses</a> calculator
       works out the same pairs, thin and with real, thick lenses, and what they
@@ -255,9 +261,13 @@ export const exampleEntries = [
       the second. Its inspector gives the polarization, linear at 30°.</p>
       <p>Things to try. Turn the analyzer (its <em>Axis angle</em>):</p>
       <div class="table-wrap"><table>
-        <thead><tr><th>Analyzer</th><th>0°</th><th>30°</th><th>45°</th><th>60°</th><th>90°</th></tr></thead>
+        <thead><tr><th>Analyzer</th><th>Power meter</th></tr></thead>
         <tbody>
-          <tr><td>Power meter</td><td>500&nbsp;µW</td><td>375&nbsp;µW</td><td>250&nbsp;µW</td><td>125&nbsp;µW</td><td>no light</td></tr>
+          <tr><td>0°</td><td>500&nbsp;µW</td></tr>
+          <tr><td>30°</td><td>375&nbsp;µW</td></tr>
+          <tr><td>45°</td><td>250&nbsp;µW</td></tr>
+          <tr><td>60°</td><td>125&nbsp;µW</td></tr>
+          <tr><td>90°</td><td>no light</td></tr>
         </tbody>
       </table></div>
       <p>In the lower setup a laser polarized at 0° passes a polarizer at 0°, a
@@ -345,10 +355,12 @@ export const exampleEntries = [
       iris, the light starts to come through once the beam is within 1.5&nbsp;mm
       of the centre and all of it passes within 0.5&nbsp;mm, so the meter is the
       guide, as it is on the bench.</p>
-      <p>Then try the wrong pairing from the same start: centre the beam on
-      iris 1 with mirror 2, and on iris 2 with mirror 1. After the first step the
-      beam is 23&nbsp;mm off iris 2, further than the 9.8&nbsp;mm it started
-      with, and the next step takes it off the mirrors.</p>`,
+      <p>Then try the wrong pairing from the same start, with the laser at 1°
+      and both mirrors back at 45°: centre the beam on iris 1 with mirror 2, and
+      on iris 2 with mirror 1. After the first step the beam is 23&nbsp;mm off
+      iris 2, further than the 9.8&nbsp;mm it started with. In the next step,
+      turning mirror 1 walks the beam off the edge of mirror 2 while it is still
+      about 5&nbsp;mm from the centre of iris 2.</p>`,
     limitations: `<p>The setup is a top view, so it shows one of the two
       planes. On a table each mirror also tilts the beam up and down, and the same
       walk is done for the height, with the same two mirrors and irises. Height is
@@ -404,12 +416,13 @@ export const exampleEntries = [
       second lens makes the beam parallel again, now 8&nbsp;mm wide. The power
       meter reads 10.0&nbsp;mW: all of the beam, none of the other light.</p>
       <p>Things to try. Open the gap to 11&nbsp;mm or more: the light at 6° gets
-      through as well and the meter reads 11.0&nbsp;mW. Close it again and move
-      the pinhole 0.3&nbsp;mm to the side: the meter goes dark, because the focus
-      is now on the plate. Move the pinhole along the axis: up to 6&nbsp;mm from
-      the focus nothing changes; at 10&nbsp;mm the beam is 0.8&nbsp;mm wide where
-      it meets the 0.5&nbsp;mm gap and the meter reads 6.00&nbsp;mW. A spatial
-      filter is aligned by exactly these three movements.</p>`,
+      through as well and the meter reads 11.0&nbsp;mW. Set the gap back to
+      0.5&nbsp;mm and move the pinhole 0.3&nbsp;mm to the side: the meter goes
+      dark, because the focus is now on the plate. Put the pinhole back on the
+      axis and move it along the axis instead: up to 6&nbsp;mm from the focus
+      nothing changes; at 10&nbsp;mm the beam is 0.8&nbsp;mm wide where it meets
+      the 0.5&nbsp;mm gap and the meter reads 6.00&nbsp;mW. A spatial filter is
+      aligned by exactly these three movements.</p>`,
     limitations: `<p>This is a top view, in two dimensions: the pinhole is a
       slit, a gap in a line, and it filters directions within the plane of the
       drawing only.</p>
@@ -469,10 +482,10 @@ export const exampleEntries = [
       reads 3.00&nbsp;mW.</p>
       <p>Things to try. Narrow the mask to 6&nbsp;mm or less: only the zero order
       passes and the meter reads 1.00&nbsp;mW. Open it to 13&nbsp;mm or more: all
-      five pass, 5.00&nbsp;mW. Set the grating to 100 lines per millimetre: its
-      first orders now land where the second ones did, 6.34&nbsp;mm out, and the
-      8&nbsp;mm mask stops them: 1.00&nbsp;mW. A pattern twice as fine needs an
-      opening twice as wide to reach the image.</p>
+      five pass, 5.00&nbsp;mW. Set the mask back to 8&nbsp;mm and the grating to
+      100 lines per millimetre: its first orders now land where the second ones
+      did, 6.34&nbsp;mm out, and the mask stops them: 1.00&nbsp;mW. A pattern
+      twice as fine needs an opening twice as wide to reach the image.</p>
       <p>The <a href="../../calculators/imaging/">Imaging with lenses</a>
       calculator treats the same pair of lenses as a 4f relay: where the Fourier
       plane lies and where the image forms, for thin lenses and for real ones.</p>`,
@@ -531,14 +544,22 @@ export const exampleEntries = [
       couples every ray that lands on the end face of the fibre's connector
       within the acceptance angle, and here all 25 rays of the beam do. It is the
       condition on the angle, and nothing else.</p>
-      <p>Things to try, each of which the acceptance angle explains. Set the
-      lens to f&nbsp;=&nbsp;4&nbsp;mm: the beam converges at 14°, the outer rays
-      are refused and the meter reads 440&nbsp;µW. Put f back and widen the
-      laser's beam to 4&nbsp;mm: 10.3°, and 600&nbsp;µW. Lower the fibre's
-      input NA to 0.08: 840&nbsp;µW. Turn mirror 2 by 0.5°: the beam crosses
-      the lens 2&nbsp;mm off its centre, the cone arrives tilted, and the meter
-      reads 240&nbsp;µW; at 1° it is dark. The readings move in steps of
-      40&nbsp;µW, one ray of the 25.</p>
+      <p>Things to try, each of which the acceptance angle explains. Each one
+      starts from the setup as it opens, so undo a change before making the
+      next:</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>One change to the setup as it opens</th><th>What happens</th><th>Power meter</th></tr></thead>
+        <tbody>
+          <tr><td>Lens to f&nbsp;=&nbsp;4&nbsp;mm</td><td>The beam converges at 14°; the outer rays are refused</td><td>440&nbsp;µW</td></tr>
+          <tr><td>Laser's beam widened to 4&nbsp;mm</td><td>It converges at 10.3°</td><td>600&nbsp;µW</td></tr>
+          <tr><td>Fibre's input NA lowered to 0.08</td><td>The acceptance half-angle falls to 4.6°, below the beam's 5.2°</td><td>840&nbsp;µW</td></tr>
+          <tr><td>Mirror 2 turned by 0.5°</td><td>The beam crosses the lens 2&nbsp;mm off its centre and the cone arrives tilted</td><td>240&nbsp;µW</td></tr>
+          <tr><td>Mirror 2 turned by 1°</td><td>The cone arrives outside the acceptance angle</td><td>no light</td></tr>
+        </tbody>
+      </table></div>
+      <p>The readings move in steps of 40&nbsp;µW, one ray of the 25. Two
+      changes together do not simply add: with the beam at 4&nbsp;mm and the
+      input NA at 0.08, the meter reads 440&nbsp;µW.</p>
       <p>The enlarged view shows the cone meeting the end face, and prints the
       waist an ideal Gaussian beam with this cone would have, 2.23&nbsp;µm
       (λ/(π·NA) for the cone's own NA of 0.09). The tracer does not use that
@@ -687,12 +708,17 @@ export const exampleEntries = [
       <p>Things to try: turn the grating (its rotation in the inspector) to bring
       another line through. With K&nbsp;=&nbsp;16° the equation above gives:</p>
       <div class="table-wrap"><table>
-        <thead><tr><th>Line</th><th>365.0&nbsp;nm</th><th>404.7&nbsp;nm</th><th>435.8&nbsp;nm</th><th>546.1&nbsp;nm</th><th>577.0 and 579.1&nbsp;nm</th><th>1014.0&nbsp;nm</th></tr></thead>
+        <thead><tr><th>Line</th><th>Grating rotation</th></tr></thead>
         <tbody>
-          <tr><td>Grating rotation</td><td>186.54°</td><td>187.26°</td><td>187.82°</td><td>189.81°</td><td>190.40°</td><td>198.45°</td></tr>
+          <tr><td>365.0&nbsp;nm</td><td>186.54°</td></tr>
+          <tr><td>404.7&nbsp;nm</td><td>187.26°</td></tr>
+          <tr><td>435.8&nbsp;nm</td><td>187.82°</td></tr>
+          <tr><td>546.1&nbsp;nm</td><td>189.81°</td></tr>
+          <tr><td>577.0 and 579.1&nbsp;nm</td><td>190.40°</td></tr>
+          <tr><td>1014.0&nbsp;nm</td><td>198.45°</td></tr>
         </tbody>
       </table></div>
-      <p>Each line passes over a range of about 0.14° around its angle. The two
+      <p>Each line passes over a range of about 0.15° around its angle. The two
       yellow lines pass together: in the plane of the exit slit the spectrum is
       spread by about 8.4&nbsp;nm per millimetre (d&nbsp;cos&nbsp;β / f, with β the
       angle at which the light leaves the grating), so lines 2.1&nbsp;nm apart
