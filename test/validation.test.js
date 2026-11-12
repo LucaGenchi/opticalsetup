@@ -19,6 +19,11 @@ import { allocateParametricAmplifier } from '../sketch/js/parametric-amplifier.j
 import { spectralFieldResult } from '../sketch/js/spectral-coherence.js';
 import { coupledWaveConversion } from '../calculators/opa/coupled-wave.js';
 import { fresnelTransmittances, throughFace } from '../sketch/js/fresnel.js';
+import {
+  rotatorMueller, linearRetarderMueller, linearDiattenuatorMueller, idealPolarizerMueller,
+  idealMirrorMueller, jonesToMueller, fresnelCoefficients, fresnelReflectionMueller,
+  fresnelTransmissionMueller, composeMueller, applyMueller, complex,
+} from '../sketch/js/mueller.js';
 import { computeCompressor } from '../calculators/dispersion-compensation/compressor-calculator.js';
 import { materialDispersion, materialAbbe } from '../calculators/dispersion/materials.js';
 import { DISPERSION_DEFAULTS, computeDispersion } from '../calculators/dispersion/dispersion-calculator.js';
@@ -142,6 +147,42 @@ const APP = {
     const stokes = { s1: Math.cos(chi) * Math.cos(a), s2: Math.cos(chi) * Math.sin(a), s3: Math.sin(chi) };
     const { T, stokes: out } = throughFace(stokes, { Ts: inputs.Ts, Tp: inputs.Tp });
     return { T, ...out };
+  },
+  // The kernel's matrices, flattened as m00 ... m33, and the scalar
+  // consequences the model statement draws from them.
+  mueller: ({ kind, ...inputs }) => {
+    const flat = m => Object.fromEntries(m.flatMap((row, i) => row.map((value, j) => [`m${i}${j}`, value])));
+    const cosI = Number.isFinite(inputs.incidenceDeg) ? Math.cos(inputs.incidenceDeg * Math.PI / 180) : null;
+    const normalized = S => S.map(value => value / S[0]);
+    switch (kind) {
+      case 'rotator': return flat(rotatorMueller(inputs.angleDeg));
+      case 'retarder': return flat(linearRetarderMueller(inputs.axisDeg, inputs.retardanceDeg));
+      case 'diattenuator': return flat(linearDiattenuatorMueller(inputs.axisDeg, inputs.tMax, inputs.tMin));
+      case 'polarizer': return flat(idealPolarizerMueller(inputs.axisDeg));
+      case 'mirror': return flat(idealMirrorMueller());
+      case 'jones': return flat(jonesToMueller(inputs.jones.map(row => row.map(([re, im]) => complex(re, im)))));
+      case 'reflection': return flat(fresnelReflectionMueller(inputs.n1, inputs.n2, cosI));
+      case 'transmission': return flat(fresnelTransmissionMueller(inputs.n1, inputs.n2, cosI));
+      case 'brewster': {
+        const m = fresnelReflectionMueller(inputs.n1, inputs.n2, cosI);
+        return { Rp: m[0][0] + m[0][1] };
+      }
+      case 'handedness': {
+        const c = fresnelCoefficients(inputs.n1, inputs.n2, cosI);
+        const S = normalized(applyMueller(fresnelReflectionMueller(inputs.n1, inputs.n2, cosI), [1, 0, 0, 1]));
+        return { rp: c.rp.re, rs: c.rs.re, s3: S[3] };
+      }
+      case 'tirRetardance': {
+        const { rs, rp } = fresnelCoefficients(inputs.n1, inputs.n2, cosI);
+        return { retardanceDeg: (Math.atan2(rs.im, rs.re) - Math.atan2(rp.im, rp.re)) * 180 / Math.PI };
+      }
+      case 'rhomb': {
+        const one = fresnelReflectionMueller(inputs.n1, inputs.n2, cosI);
+        const S = normalized(applyMueller(composeMueller(one, one), [1, 0, 1, 0]));
+        return { s1: S[1], s2: S[2], s3: S[3] };
+      }
+      default: throw new Error(`unknown mueller case ${kind}`);
+    }
   },
   // A traced scene: the reference's layout, read at its detector. The
   // reference states the GDD of the paths; a thin lens's estimated glass is a
@@ -369,7 +410,7 @@ const APP = {
   },
 };
 
-for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'dispersion-compensation', 'lens-design', 'lens-coherent', 'fiber-coupling', 'point-scanning', 'thick-lens', 'imaging']) {
+for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'mueller', 'dispersion-compensation', 'lens-design', 'lens-coherent', 'fiber-coupling', 'point-scanning', 'thick-lens', 'imaging']) {
   const model = expected(name);
   for (const c of model.cases) {
     test(`${model.id}: ${c.name}`, () => {

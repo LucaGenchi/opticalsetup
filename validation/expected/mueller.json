@@ -1,0 +1,1104 @@
+{
+ "app": "sketch/js/mueller.js: rotatorMueller, linearRetarderMueller, linearDiattenuatorMueller, idealPolarizerMueller, idealMirrorMueller, jonesToMueller, fresnelCoefficients, fresnelReflectionMueller, fresnelTransmissionMueller",
+ "cases": [
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 1.0,
+    "m01": 0.0,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": 0.0,
+    "m11": 0.5,
+    "m12": -0.8660254038,
+    "m13": 0.0,
+    "m20": 0.0,
+    "m21": 0.8660254038,
+    "m22": 0.5,
+    "m23": 0.0,
+    "m30": 0.0,
+    "m31": 0.0,
+    "m32": 0.0,
+    "m33": 1.0
+   },
+   "inputs": {
+    "angleDeg": 30,
+    "kind": "rotator"
+   },
+   "name": "rotator 30 deg",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 1.0,
+    "m01": 0.0,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": 0.0,
+    "m11": 0.8660254038,
+    "m12": 0.5,
+    "m13": 0.0,
+    "m20": 0.0,
+    "m21": -0.5,
+    "m22": 0.8660254038,
+    "m23": 0.0,
+    "m30": 0.0,
+    "m31": 0.0,
+    "m32": 0.0,
+    "m33": 1.0
+   },
+   "inputs": {
+    "angleDeg": -15,
+    "kind": "rotator"
+   },
+   "name": "rotator -15 deg",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 1.0,
+    "m01": 0.0,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": 0.0,
+    "m11": 1.0,
+    "m12": 0.0,
+    "m13": 0.0,
+    "m20": 0.0,
+    "m21": 0.0,
+    "m22": 0.0,
+    "m23": -1.0,
+    "m30": 0.0,
+    "m31": 0.0,
+    "m32": 1.0,
+    "m33": 0.0
+   },
+   "inputs": {
+    "axisDeg": 0,
+    "kind": "retarder",
+    "retardanceDeg": 90
+   },
+   "name": "retarder axis 0 deg, retardance 90 deg",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 1.0,
+    "m01": 0.0,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": 0.0,
+    "m11": 0.7803300859,
+    "m12": 0.126826484,
+    "m13": 0.6123724357,
+    "m20": 0.0,
+    "m21": 0.126826484,
+    "m22": 0.9267766953,
+    "m23": -0.3535533906,
+    "m30": 0.0,
+    "m31": -0.6123724357,
+    "m32": 0.3535533906,
+    "m33": 0.7071067812
+   },
+   "inputs": {
+    "axisDeg": 30,
+    "kind": "retarder",
+    "retardanceDeg": 45
+   },
+   "name": "retarder axis 30 deg, retardance 45 deg",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 1.0,
+    "m01": 0.0,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": 0.0,
+    "m11": 0.198565734,
+    "m12": -0.9551121657,
+    "m13": 0.2198463104,
+    "m20": 0.0,
+    "m21": -0.9551121657,
+    "m22": -0.1382583548,
+    "m23": 0.2620026302,
+    "m30": 0.0,
+    "m31": -0.2198463104,
+    "m32": -0.2620026302,
+    "m33": -0.9396926208
+   },
+   "inputs": {
+    "axisDeg": -20,
+    "kind": "retarder",
+    "retardanceDeg": 200
+   },
+   "name": "retarder axis -20 deg, retardance 200 deg",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 1.0,
+    "m01": 0.0,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": 0.0,
+    "m11": 0.0,
+    "m12": 1.0,
+    "m13": 0.0,
+    "m20": 0.0,
+    "m21": 1.0,
+    "m22": 0.0,
+    "m23": 0.0,
+    "m30": 0.0,
+    "m31": 0.0,
+    "m32": 0.0,
+    "m33": -1.0
+   },
+   "inputs": {
+    "axisDeg": 22.5,
+    "kind": "retarder",
+    "retardanceDeg": 180
+   },
+   "name": "retarder axis 22.5 deg, retardance 180 deg",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 0.75,
+    "m01": 0.15,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": 0.15,
+    "m11": 0.75,
+    "m12": 0.0,
+    "m13": 0.0,
+    "m20": 0.0,
+    "m21": 0.0,
+    "m22": 0.7348469228,
+    "m23": 0.0,
+    "m30": 0.0,
+    "m31": 0.0,
+    "m32": 0.0,
+    "m33": 0.7348469228
+   },
+   "inputs": {
+    "axisDeg": 0,
+    "kind": "diattenuator",
+    "tMax": 0.9,
+    "tMin": 0.6
+   },
+   "name": "diattenuator axis 0 deg, 0.9 and 0.6",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 0.45,
+    "m01": 0.1197070502,
+    "m02": 0.3288924173,
+    "m03": 0.0,
+    "m10": 0.1197070502,
+    "m11": 0.3023964006,
+    "m12": 0.05372331665,
+    "m13": 0.0,
+    "m20": 0.3288924173,
+    "m21": 0.05372331665,
+    "m22": 0.4304463119,
+    "m23": 0.0,
+    "m30": 0.0,
+    "m31": 0.0,
+    "m32": 0.0,
+    "m33": 0.2828427125
+   },
+   "inputs": {
+    "axisDeg": 35,
+    "kind": "diattenuator",
+    "tMax": 0.8,
+    "tMin": 0.1
+   },
+   "name": "diattenuator axis 35 deg, 0.8 and 0.1",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 0.5,
+    "m01": 0.5,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": 0.5,
+    "m11": 0.5,
+    "m12": 0.0,
+    "m13": 0.0,
+    "m20": 0.0,
+    "m21": 0.0,
+    "m22": 0.0,
+    "m23": 0.0,
+    "m30": 0.0,
+    "m31": 0.0,
+    "m32": 0.0,
+    "m33": 0.0
+   },
+   "inputs": {
+    "axisDeg": 0,
+    "kind": "polarizer"
+   },
+   "name": "ideal polarizer axis 0 deg",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 0.5,
+    "m01": -0.25,
+    "m02": 0.4330127019,
+    "m03": 0.0,
+    "m10": -0.25,
+    "m11": 0.125,
+    "m12": -0.2165063509,
+    "m13": 0.0,
+    "m20": 0.4330127019,
+    "m21": -0.2165063509,
+    "m22": 0.375,
+    "m23": 0.0,
+    "m30": 0.0,
+    "m31": 0.0,
+    "m32": 0.0,
+    "m33": 0.0
+   },
+   "inputs": {
+    "axisDeg": 60,
+    "kind": "polarizer"
+   },
+   "name": "ideal polarizer axis 60 deg",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 1.0,
+    "m01": 0.0,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": 0.0,
+    "m11": 1.0,
+    "m12": 0.0,
+    "m13": 0.0,
+    "m20": 0.0,
+    "m21": 0.0,
+    "m22": -1.0,
+    "m23": 0.0,
+    "m30": 0.0,
+    "m31": 0.0,
+    "m32": 0.0,
+    "m33": -1.0
+   },
+   "inputs": {
+    "kind": "mirror"
+   },
+   "name": "ideal mirror, diag(1, 1, -1, -1)",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 0.62,
+    "m01": 0.2,
+    "m02": 0.16,
+    "m03": -0.48,
+    "m10": 0.16,
+    "m11": 0.32,
+    "m12": 0.1,
+    "m13": -0.04,
+    "m20": 0.0,
+    "m21": -0.08,
+    "m22": 0.28,
+    "m23": 0.06,
+    "m30": -0.52,
+    "m31": -0.14,
+    "m32": -0.16,
+    "m33": 0.56
+   },
+   "inputs": {
+    "jones": [
+     [
+      [
+       0.8,
+       0.1
+      ],
+      [
+       0.2,
+       -0.3
+      ]
+     ],
+     [
+      [
+       -0.1,
+       0.4
+      ],
+      [
+       0.5,
+       0.2
+      ]
+     ]
+    ],
+    "kind": "jones"
+   },
+   "name": "Mueller matrix of a general complex Jones matrix",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 0.04152262598,
+    "m01": -0.01627347943,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": -0.01627347943,
+    "m11": 0.04152262598,
+    "m12": 0.0,
+    "m13": 0.0,
+    "m20": 0.0,
+    "m21": 0.0,
+    "m22": -0.0382008159,
+    "m23": 0.0,
+    "m30": 0.0,
+    "m31": 0.0,
+    "m32": 0.0,
+    "m33": -0.0382008159
+   },
+   "inputs": {
+    "incidenceDeg": 30.0,
+    "kind": "reflection",
+    "n1": 1.0,
+    "n2": 1.5
+   },
+   "name": "Fresnel reflection n 1.0 to 1.5 at 30 deg, below Brewster",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 0.07396449704,
+    "m01": -0.07396449704,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": -0.07396449704,
+    "m11": 0.07396449704,
+    "m12": 0.0,
+    "m13": 0.0,
+    "m20": 0.0,
+    "m21": 0.0,
+    "m22": 0.0,
+    "m23": 0.0,
+    "m30": 0.0,
+    "m31": 0.0,
+    "m32": 0.0,
+    "m33": 0.0
+   },
+   "inputs": {
+    "incidenceDeg": 56.309932474020215,
+    "kind": "reflection",
+    "n1": 1.0,
+    "n2": 1.5
+   },
+   "name": "Fresnel reflection n 1.0 to 1.5 at 56.3099 deg, at Brewster",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 0.1710425354,
+    "m01": -0.1285521426,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": -0.1285521426,
+    "m11": 0.1710425354,
+    "m12": 0.0,
+    "m13": 0.0,
+    "m20": 0.0,
+    "m21": 0.0,
+    "m22": 0.1128268388,
+    "m23": 0.0,
+    "m30": 0.0,
+    "m31": 0.0,
+    "m32": 0.0,
+    "m33": 0.1128268388
+   },
+   "inputs": {
+    "incidenceDeg": 70.0,
+    "kind": "reflection",
+    "n1": 1.0,
+    "n2": 1.5
+   },
+   "name": "Fresnel reflection n 1.0 to 1.5 at 70 deg, above Brewster",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 0.04172851819,
+    "m01": -0.01733470733,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": -0.01733470733,
+    "m11": 0.04172851819,
+    "m12": 0.0,
+    "m13": 0.0,
+    "m20": 0.0,
+    "m21": 0.0,
+    "m22": -0.03795757042,
+    "m23": 0.0,
+    "m30": 0.0,
+    "m31": 0.0,
+    "m32": 0.0,
+    "m33": -0.03795757042
+   },
+   "inputs": {
+    "incidenceDeg": 20.0,
+    "kind": "reflection",
+    "n1": 1.5,
+    "n2": 1.0
+   },
+   "name": "Fresnel reflection n 1.5 to 1.0 at 20 deg, inside glass, below the critical angle",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 1.0,
+    "m01": 0.0,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": 0.0,
+    "m11": 1.0,
+    "m12": 0.0,
+    "m13": 0.0,
+    "m20": 0.0,
+    "m21": 0.0,
+    "m22": 0.7069575713,
+    "m23": 0.7072559596,
+    "m30": 0.0,
+    "m31": 0.0,
+    "m32": -0.7072559596,
+    "m33": 0.7069575713
+   },
+   "inputs": {
+    "incidenceDeg": 54.6,
+    "kind": "reflection",
+    "n1": 1.51,
+    "n2": 1.0
+   },
+   "name": "Fresnel reflection n 1.51 to 1.0 at 54.6 deg, total internal reflection, Fresnel rhomb angle",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 1.0,
+    "m01": 0.0,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": 0.0,
+    "m11": 1.0,
+    "m12": 0.0,
+    "m13": 0.0,
+    "m20": 0.0,
+    "m21": 0.0,
+    "m22": 0.7081882579,
+    "m23": 0.7060236479,
+    "m30": 0.0,
+    "m31": 0.0,
+    "m32": -0.7060236479,
+    "m33": 0.7081882579
+   },
+   "inputs": {
+    "incidenceDeg": 50.0,
+    "kind": "reflection",
+    "n1": 1.5,
+    "n2": 1.0
+   },
+   "name": "Fresnel reflection n 1.5 to 1.0 at 50 deg, total internal reflection",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 0.958477374,
+    "m01": 0.01627347943,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": 0.01627347943,
+    "m11": 0.958477374,
+    "m12": 0.0,
+    "m13": 0.0,
+    "m20": 0.0,
+    "m21": 0.0,
+    "m22": 0.9583392147,
+    "m23": 0.0,
+    "m30": 0.0,
+    "m31": 0.0,
+    "m32": 0.0,
+    "m33": 0.9583392147
+   },
+   "inputs": {
+    "incidenceDeg": 30.0,
+    "kind": "transmission",
+    "n1": 1.0,
+    "n2": 1.5
+   },
+   "name": "Fresnel transmission n 1.0 to 1.5 at 30.0 deg",
+   "note": "reference from (n2 cos t / n1 cos i)|t|^2, the app from 1 - |r|^2",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 0.8795383056,
+    "m01": 0.1204616936,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": 0.1204616936,
+    "m11": 0.8795383056,
+    "m12": 0.0,
+    "m13": 0.0,
+    "m20": 0.0,
+    "m21": 0.0,
+    "m22": 0.871250028,
+    "m23": 0.0,
+    "m30": 0.0,
+    "m31": 0.0,
+    "m32": 0.0,
+    "m33": 0.871250028
+   },
+   "inputs": {
+    "incidenceDeg": 59.6964,
+    "kind": "transmission",
+    "n1": 1.0,
+    "n2": 1.7112
+   },
+   "name": "Fresnel transmission n 1.0 to 1.7112 at 59.6964 deg",
+   "note": "reference from (n2 cos t / n1 cos i)|t|^2, the app from 1 - |r|^2",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 0.9138620085,
+    "m01": 0.08494787463,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": 0.08494787463,
+    "m11": 0.9138620085,
+    "m12": 0.0,
+    "m13": 0.0,
+    "m20": 0.0,
+    "m21": 0.0,
+    "m22": 0.9099052859,
+    "m23": 0.0,
+    "m30": 0.0,
+    "m31": 0.0,
+    "m32": 0.0,
+    "m33": 0.9099052859
+   },
+   "inputs": {
+    "incidenceDeg": 35.0,
+    "kind": "transmission",
+    "n1": 1.5,
+    "n2": 1.0
+   },
+   "name": "Fresnel transmission n 1.5 to 1.0 at 35.0 deg",
+   "note": "reference from (n2 cos t / n1 cos i)|t|^2, the app from 1 - |r|^2",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "Rp": 0.0
+   },
+   "inputs": {
+    "incidenceDeg": 56.309932474020215,
+    "kind": "brewster",
+    "n1": 1.0,
+    "n2": 1.5
+   },
+   "name": "R_p vanishes at Brewster's angle, n 1 to 1.5",
+   "tolerance": {
+    "Rp": 1e-12
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "rp": 0.09201336305,
+    "rs": -0.3033370453,
+    "s3": -0.5555555556
+   },
+   "inputs": {
+    "incidenceDeg": 45.0,
+    "kind": "handedness",
+    "n1": 1.0,
+    "n2": 1.5
+   },
+   "name": "r_p sign and circular light reflected below Brewster, n 1 to 1.5 at 45.0 deg",
+   "note": "s3 of reflected light that arrives with s3 = +1: negative below Brewster (reversed, as by the ideal mirror), positive above it",
+   "tolerance": {
+    "rp": 1e-09,
+    "rs": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "rp": -0.1138568406,
+    "rs": -0.4775593783,
+    "s3": 0.4511822402
+   },
+   "inputs": {
+    "incidenceDeg": 65.0,
+    "kind": "handedness",
+    "n1": 1.0,
+    "n2": 1.5
+   },
+   "name": "r_p sign and circular light reflected above Brewster, n 1 to 1.5 at 65.0 deg",
+   "note": "s3 of reflected light that arrives with s3 = +1: negative below Brewster (reversed, as by the ideal mirror), positive above it",
+   "tolerance": {
+    "rp": 1e-09,
+    "rs": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "retardanceDeg": 45.01208898
+   },
+   "inputs": {
+    "incidenceDeg": 54.6,
+    "kind": "tirRetardance",
+    "n1": 1.51,
+    "n2": 1.0
+   },
+   "name": "retardance of one total internal reflection, n 1.51 to 1 at 54.6 deg",
+   "note": "Born and Wolf closed form; arg(r_s) - arg(r_p) from the coefficients agrees to 1e-9 degrees (asserted above)",
+   "tolerance": {
+    "retardanceDeg": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "retardanceDeg": 44.91230245
+   },
+   "inputs": {
+    "incidenceDeg": 50.0,
+    "kind": "tirRetardance",
+    "n1": 1.5,
+    "n2": 1.0
+   },
+   "name": "retardance of one total internal reflection, n 1.5 to 1 at 50.0 deg",
+   "note": "Born and Wolf closed form; arg(r_s) - arg(r_p) from the coefficients agrees to 1e-9 degrees (asserted above)",
+   "tolerance": {
+    "retardanceDeg": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "s1": 0.0,
+    "s2": -0.000421984826,
+    "s3": -0.999999911
+   },
+   "inputs": {
+    "incidenceDeg": 54.6,
+    "kind": "rhomb",
+    "n1": 1.51,
+    "n2": 1.0
+   },
+   "name": "Fresnel rhomb: two total internal reflections at 54.6 deg in n 1.51 on linear 45 deg",
+   "note": "both reflections in the drawing plane, each in the p, s basis of its own rays",
+   "tolerance": {
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  }
+ ],
+ "citations": [
+  "D. H. Goldstein, Polarized Light, 3rd ed. (CRC Press, 2011), ch. 5 and 6: Jones and Mueller matrices of rotators, retarders and diattenuators. The app keeps its retardance sign, Goldstein's with delta -> -delta.",
+  "M. Born and E. Wolf, Principles of Optics, 7th ed., Cambridge University Press (1999), section 1.5.2 (Fresnel coefficients and their signs) and section 1.5.4 (phase change on total internal reflection; the Fresnel rhomb)"
+ ],
+ "convergence": "Closed form; no discretisation.",
+ "domain": "Rotations and axes from -20 to 60 degrees, retardances 45-200 degrees, diattenuation 0-0.9; interfaces n = 1-1.71 at 20-70 degrees, two of them beyond the critical angle.",
+ "fidelity": "computed",
+ "id": "mueller",
+ "outside_scope": "Absorbing media (complex indices), coatings, depolarization and circular diattenuation are not modelled. Handedness labels follow the app's existing convention until step A2 of the Physics in 2D track.",
+ "provenance": "Closed-form Jones matrices transcribed from the sources; analytic limits (Brewster, sign of r_p, unit modulus beyond the critical angle, the closed-form TIR retardance, the perfect-conductor limit) asserted in the module.",
+ "reference": "Mueller matrices measured from Jones matrices with four probe states; Fresnel coefficients in complex arithmetic, transmission from t with the obliquity factor; total-internal-reflection retardance from the Born and Wolf closed form",
+ "reference_file": "validation/reference/mueller.py",
+ "scope": "Fully polarized light through ideal linear elements; lossless, non-magnetic interfaces between real indices, total internal reflection included. In this version the tracer uses the retarder, the polarizer and the transmission diattenuator; the mirror, rotator and Fresnel reflection matrices are not applied by any element yet.",
+ "title": "Mueller and Jones kernel: retarder, diattenuator, polarizer, mirror and Fresnel matrices",
+ "tolerance_rationale": "1e-9 absolute: two double-precision evaluations of the same algebra, stored to 10 significant digits."
+}

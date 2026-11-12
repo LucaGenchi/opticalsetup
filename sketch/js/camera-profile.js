@@ -10,6 +10,7 @@
 // discrete ray samples themselves added as coherent fields.
 
 import { spectralFieldResult, spectralTermsAt, SPECTRAL_UNAVAILABLE } from './spectral-coherence.js';
+import { jonesOverlap, linearJones, normalizeJones } from './mueller.js';
 import { wavelengthToColor } from './util.js';
 
 const EPS = 1e-10;
@@ -28,37 +29,23 @@ function finiteComplex(value) {
   return null;
 }
 
+// The hit's polarization as a unit Jones vector (E_p, E_s): its own Jones
+// vector when it carries one, else linear light at its angle with its phase.
 function normalizedJones(hit) {
   if (Array.isArray(hit.jones) && hit.jones.length === 2) {
     const x = finiteComplex(hit.jones[0]), y = finiteComplex(hit.jones[1]);
     if (x && y) {
-      const norm = Math.hypot(x.re, x.im, y.re, y.im);
-      if (norm > EPS) return [{ re: x.re / norm, im: x.im / norm }, { re: y.re / norm, im: y.im / norm }];
+      const unit = normalizeJones([x, y], EPS);
+      if (unit) return unit;
     }
   }
   if (!Number.isFinite(hit.pol)) return null;
-  const angle = hit.pol * Math.PI / 180;
-  const phase = Number.isFinite(hit.phaseOffset) ? hit.phaseOffset : 0;
-  const re = Math.cos(phase), im = Math.sin(phase);
-  return [
-    { re: Math.cos(angle) * re, im: Math.cos(angle) * im },
-    { re: Math.sin(angle) * re, im: Math.sin(angle) * im },
-  ];
+  return linearJones(hit.pol, Number.isFinite(hit.phaseOffset) ? hit.phaseOffset : 0);
 }
 
 function sameJones(a, b) {
   if (!a || !b) return false;
   return a.every((value, index) => Math.abs(value.re - b[index].re) < 1e-8 && Math.abs(value.im - b[index].im) < 1e-8);
-}
-
-function jonesOverlap(left, right) {
-  // left† right
-  let re = 0, im = 0;
-  for (let i = 0; i < 2; i++) {
-    re += left[i].re * right[i].re + left[i].im * right[i].im;
-    im += left[i].re * right[i].im - left[i].im * right[i].re;
-  }
-  return { re, im };
 }
 
 function hexChannels(color) {
