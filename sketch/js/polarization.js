@@ -1,7 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Normalized Stokes-vector helpers. s1/s2 describe linear polarization and
-// s3 circular handedness; unpolarized light is represented by null.
+// s3 circular handedness; unpolarized light is represented by null. The
+// basis, the sign conventions and the matrices live in mueller.js.
+
+import { applyMueller, idealPolarizerMueller, linearRetarderMueller, stokesVector } from './mueller.js';
 
 const D2R = Math.PI / 180;
 
@@ -16,28 +19,14 @@ export function cloneStokes(stokes) {
 
 export function retarder(stokes, axisDeg, retardanceDeg) {
   if (!stokes) return null;
-  const a = 2 * axisDeg * D2R;
-  const delta = retardanceDeg * D2R;
-  const axis = { x: Math.cos(a), y: Math.sin(a), z: 0 };
-  const v = { x: stokes.s1, y: stokes.s2, z: stokes.s3 };
-  const c = Math.cos(delta), s = Math.sin(delta);
-  const dot = axis.x * v.x + axis.y * v.y;
-  const cross = {
-    x: axis.y * v.z,
-    y: -axis.x * v.z,
-    z: axis.x * v.y - axis.y * v.x,
-  };
-  return {
-    s1: v.x * c + cross.x * s + axis.x * dot * (1 - c),
-    s2: v.y * c + cross.y * s + axis.y * dot * (1 - c),
-    s3: v.z * c + cross.z * s,
-  };
+  const [, s1, s2, s3] = applyMueller(linearRetarderMueller(axisDeg, retardanceDeg), stokesVector(stokes));
+  return { s1, s2, s3 };
 }
 
 export function analyzerTransmission(stokes, axisDeg) {
   if (!stokes) return 0.5;
-  const a = 2 * axisDeg * D2R;
-  return Math.min(1, Math.max(0, 0.5 * (1 + stokes.s1 * Math.cos(a) + stokes.s2 * Math.sin(a))));
+  const [T] = applyMueller(idealPolarizerMueller(axisDeg), stokesVector(stokes));
+  return Math.min(1, Math.max(0, T));
 }
 
 // The linear-polarization azimuth encoded in a Stokes vector's s1/s2 plane,
