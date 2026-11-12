@@ -44,12 +44,13 @@ export function createApplication({ origin, challenge = '', computeScene = compu
       if (url.pathname === '/mcp/sync') {
         try {
           const bytes = await request.arrayBuffer();
-          if (bytes.byteLength > MAX_BODY) return json({ error: 'Request too large' }, 413, cors);
+          if (bytes.byteLength > MAX_BODY) return json({ error: 'Request too large', message: 'it is larger than the live workbench takes' }, 413, cors);
           return json(mirror.sync(JSON.parse(new TextDecoder().decode(bytes))), 200, cors);
         } catch (error) {
           const code = error instanceof SceneError ? error.code : 'INVALID_SYNC';
           const status = ['REVISION_CONFLICT', 'RESYNC_REQUIRED'].includes(code) ? 409 : ['WORKSPACE_UNAVAILABLE', 'BUSY'].includes(code) ? 503 : 400;
-          return json({ error: code }, status, cors);
+          // The reason a scene was refused is the editor's own, and the view shows it to the user.
+          return json({ error: code, ...(error instanceof SceneError && { message: error.message }) }, status, cors);
         }
       }
       try {

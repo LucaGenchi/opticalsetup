@@ -45,6 +45,7 @@ export const TOOLS = LAB_TOOLS.filter(t => !['replace_setup', 'save_setup_screen
     .replaceAll('get_setup.paths', 'get_items with kind path')
     .replace('Returns actual IDs and normalized parameters. ', 'Returns the IDs added. ')
     .replace('Reports normalized parameters after the edit.', 'Read normalized parameters with get_items and details.')
+    .replace('current IDs/revision from get_setup', 'component IDs from get_items and the revision from get_setup')
     + ' Use workspaceRef and expectedRevision. Success confirms the workbench applied the edit. Standalone clients can supply an explicit setup snapshot.';
   t.outputSchema = { ...output, properties: { setupId: { type: 'string' }, revision, hash: { type: 'string' }, setup: setupSchema } };
   return t;

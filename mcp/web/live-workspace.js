@@ -35,7 +35,7 @@ export function createLiveWorkspace({ current, receive, changed }) {
   // A new editor mount owns its channel. Other tabs may share browser storage,
   // while their relay credentials and temporary server mirrors stay independent.
   const channel = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
-  let connected = false, sending = false, confirmed, workspaceRef, latest, retryTimer, connectionGeneration = 0;
+  let connected = false, sending = false, confirmed, workspaceRef, refused, latest, retryTimer, connectionGeneration = 0;
   const acknowledgements = [];
   async function flush() {
     if (sending || !connected || (!latest && !acknowledgements.length)) return;
@@ -45,7 +45,7 @@ export function createLiveWorkspace({ current, receive, changed }) {
     const state = ack?.state || latest;
     const { id, revision, hash, scene, canUndo, canRedo } = state;
     const base = confirmed;
-    const payload = ack?.rejected ? { channel, rejected: true, deliveryId: ack.id } : {
+    const payload = ack?.rejected ? { channel, rejected: true, deliveryId: ack.id, ...(ack.busy && { busy: true }) } : {
       channel, id, revision, hash, canUndo, canRedo, ...(ack && { deliveryId: ack.id }),
     };
     let retry = false;
@@ -70,7 +70,11 @@ export function createLiveWorkspace({ current, receive, changed }) {
       }
       if (generation !== connectionGeneration) return;
       if (response.status >= 500) throw new Error('Sync unavailable');
-      if (response.ok && !ack?.rejected) { confirmed = state; workspaceRef = result.workspaceRef; }
+      if (response.ok && !ack?.rejected) { confirmed = state; workspaceRef = result.workspaceRef; refused = undefined; }
+      // A scene the service does not take (too large for it, or one the editor holds but cannot load)
+      // is set aside until it changes or the next heartbeat offers it again. The reason is kept, so
+      // the view can say why the chat does not follow.
+      else if (!ack?.rejected && [400, 413].includes(response.status)) refused = result.message || 'the service could not read it';
       if (ack) acknowledgements.shift();
       if (!ack?.rejected && latest && sameVersion(latest, state)) latest = undefined;
     } catch { retry = true; }
@@ -84,31 +88,38 @@ export function createLiveWorkspace({ current, receive, changed }) {
     }
   }
   return {
-    get reference() { return connected && sameVersion(confirmed, current()) ? workspaceRef : undefined; },
-    update(deliveryId, rejected = false) {
+    // The reference names this view for as long as it is open, so it is kept through a reconnection
+    // and while a change is on its way to the service.
+    get reference() { return workspaceRef; },
+    get connected() { return connected; },
+    get synced() { return connected && sameVersion(confirmed, current()); },
+    get problem() { return refused; },
+    update(deliveryId, rejected = false, busy = false) {
       latest = current();
-      if (deliveryId) acknowledgements.push({ id: deliveryId, rejected, state: latest });
+      if (deliveryId) acknowledgements.push({ id: deliveryId, rejected, busy, state: latest });
       changed(connected);
       void flush();
     },
     async connect() {
-      let delay = 1000;
+      // The service ends every stream at its time limit, and edits cannot reach the view until the
+      // next one is open: a stream that was working is reopened after a quarter of a second. One
+      // that could not be opened is retried ever more slowly.
+      let delay = 250;
       while (true) {
         try {
           await followEvents(channel, async event => {
             if (event.connected || event.ping) {
               connected = true;
-              delay = 1000;
+              delay = 250;
               this.update();
             } else if (event.deliveryId) await receive(event);
           });
         } catch { /* transient connection failure */ }
         connected = false;
-        workspaceRef = undefined;
         connectionGeneration++;
         changed(false);
         await pause(delay);
-        delay = Math.min(delay * 2, 30000);
+        delay = Math.min(delay * 4, 30000);
       }
     },
   };
