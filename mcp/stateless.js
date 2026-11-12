@@ -22,7 +22,7 @@ const curve = {
 };
 const output = { type: 'object', additionalProperties: true };
 const descriptions = {
-  open_setup: 'Open the interactive OpticalSetup workbench. Pass workspaceRef to reopen a connected setup, or omit it to start an empty one. A standalone client can supply an explicit setup snapshot to open it in the workbench.',
+  open_setup: 'Open the interactive OpticalSetup workbench. Pass workspaceRef to reopen a connected setup, or omit it to start an empty one. Returns the workspaceRef of the view it opens, which can be used at once. A standalone client can supply an explicit setup snapshot to open it in the workbench.',
   get_setup: 'Get the workbench revision, component and path counts, and undo/redo availability. Use get_items for IDs and controls. A standalone client can summarize its own explicit setup snapshot.',
   inspect_setup: 'Run the native 2D tracer on the current workspace. Returns a page of detector and fiber readings with model limits. Filter by IDs with ids. A reading keeps its numbers and notes and leaves out its sampled curves (a spectrum, a pulse envelope), naming each with its length. To read one, pass a single ID in ids with curve, and sampleOffset and sampleLimit for the window. A standalone client can pass an explicit setup snapshot.',
   get_setup_screenshot: 'Render the setup as a fitted PNG using the native geometry and tracer. Supply expectedRevision to verify a specific edit. The returned image is a static scene export.',
@@ -64,7 +64,7 @@ TOOLS.push({
 });
 const canRender = service => service?.screenshots !== false;
 const toolsFor = service => canRender(service) ? TOOLS : TOOLS.filter(t => t.name !== 'get_setup_screenshot');
-const instructionsFor = service => 'Open the OpticalSetup workbench before editing. Its model context gives a workspaceRef, current revision and selection once connected. Pass workspaceRef to get_setup, get_items and inspect_setup. Pass it with expectedRevision to edit. Each edit needs a unique clientRequestId. For exact retries reuse the same ID and arguments. Only status applied confirms the browser accepted an edit. If the workbench changed, read get_setup again. If the reference is unavailable, ask the user to open or reconnect the workbench. Keep the existing view open while editing. Browser storage owns the scene and Undo/Redo. Standalone clients may supply their own full setup and chain the returned snapshots. Discover native controls with search_components/get_component_schema. Fibers and manual beams use the path tools.' + (canRender(service) ? ' Verify an edit with get_setup_screenshot.' : '') + ' Describe the limits of the existing 2D model. The service cannot purchase or publish anything, send messages, or certify clinical safety. Official website: https://opticalsetup.com.';
+const instructionsFor = service => 'Open the OpticalSetup workbench before editing. open_setup returns a workspaceRef for the view it opens; the workbench context repeats it, with the current revision and selection. Pass workspaceRef to get_setup, get_items and inspect_setup. Pass it with expectedRevision to edit. Each edit needs a unique clientRequestId. For exact retries reuse the same ID and arguments. Only status applied confirms the browser accepted an edit. If the workbench changed, read get_setup again. If the reference is unavailable, ask the user to open or reconnect the workbench. Keep the existing view open while editing. Browser storage owns the scene and Undo/Redo. A client that shows no workbench view cannot use that reference: it supplies its own full setup and chains the returned snapshots. Discover native controls with search_components/get_component_schema. Fibers and manual beams use the path tools.' + (canRender(service) ? ' Verify an edit with get_setup_screenshot.' : '') + ' Describe the limits of the existing 2D model. The service cannot purchase or publish anything, send messages, or certify clinical safety. Official website: https://opticalsetup.com.';
 // Every handshake-era revision is served the same way, so a client is answered in the revision it asked for.
 const HANDSHAKE_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
 function validate(schema, value, path = 'arguments', depth = 0) {
@@ -217,16 +217,19 @@ export async function handleStatelessRpc(body, service) {
           if (args.setup && args.workspaceRef) throw new SceneError('Use either workspaceRef or setup.');
           if (args.workspaceRef && !service.mirror) throw new SceneError('Open the OpticalSetup workbench to connect a workspace.', 'WORKSPACE_UNAVAILABLE');
           if (name === 'open_setup') {
-            const setup = args.workspaceRef ? service.mirror.read(args.workspaceRef) : snapshot(args.setup);
-            const open = { ...summary(setup), open: true };
+            const setup = args.workspaceRef ? await service.mirror.read(args.workspaceRef) : snapshot(args.setup);
+            // The view that this call opens does not exist yet. The model is given the reference it
+            // will answer to, and the view the ticket that takes it up, which the model never sees.
+            const invitation = service.mirror?.invite();
+            const open = { ...summary(setup), ...(invitation && { workspaceRef: invitation.workspaceRef }), open: true };
             const { id, revision, hash, scene, channel } = setup;
-            response = { ...result(open), _meta: { opticalsetup: { setup: { id, revision, hash, scene, ...(channel && { channel }) } } } };
+            response = { ...result(open), _meta: { opticalsetup: { setup: { id, revision, hash, scene, ...(channel && { channel }) }, ...(invitation && { ticket: invitation.ticket }) } } };
           } else if (args.workspaceRef && editNames.has(name)) {
             if (args.expectedRevision === undefined || args.targetScene) throw new SceneError('Workspace edits require expectedRevision and use browser-owned history.');
             const applied = await service.mirror.edit(name, args, mutate);
             response = result(applied);
           } else if (args.workspaceRef) {
-            response = await readSetup(name, service.mirror.read(args.workspaceRef), args, service);
+            response = await readSetup(name, await service.mirror.read(args.workspaceRef), args, service);
           } else {
             if (!args.setup) throw new SceneError('A workspaceRef or explicit setup snapshot is required.');
             const setup = snapshot(args.setup);

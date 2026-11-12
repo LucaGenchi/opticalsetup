@@ -20,8 +20,7 @@ async function until(test, what, ms = 3000) {
 }
 
 // One service and one view. `slow` delays the view's answer to a proposal, as a busy or throttled tab does.
-function open(t, { mirrorOptions, slow = 0, initial = snapshot() } = {}) {
-  let app = createApplication({ origin, mirrorOptions });
+function open(t, { mirrorOptions, slow = 0, initial = snapshot(), ticket, app = createApplication({ origin, mirrorOptions }) } = {}) {
   const streams = [], sent = [];
   let stopped = false;
   globalThis.fetch = (url, init) => {
@@ -36,6 +35,7 @@ function open(t, { mirrorOptions, slow = 0, initial = snapshot() } = {}) {
   // What the editor does with its setup, without the editor: bridge.js applies a proposal the same way.
   const view = { setup: initial, history: [], future: [], states: [], held: false };
   view.live = createLiveWorkspace({
+    ticket,
     current: () => ({ ...view.setup, canUndo: Boolean(view.history.length), canRedo: Boolean(view.future.length) }),
     receive: async proposal => {
       if (slow) await sleep(slow);
@@ -160,4 +160,18 @@ test('after the service restarts the view sends its scene again under the same r
   const setup = await rpc(context.app, 'get_setup', { workspaceRef });
   assert.equal(setup.revision, 1); assert.equal(setup.componentCount, 1); assert.equal(setup.canUndo, true);
   assert.equal((await rpc(context.app, 'add_components', lens(workspaceRef, 1, 'after', 50))).status, 'applied');
+});
+
+test('a view opened by a tool call answers to the reference that call returned, from the first edit of the same turn', async t => {
+  const app = createApplication({ origin });
+  const opened = (await app.rpc({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'open_setup', arguments: {} } })).result;
+  const { workspaceRef } = opened.structuredContent, { ticket, setup } = opened._meta.opticalsetup;
+  // The model does not wait for the view: its edit is on its way before the view has loaded.
+  const edit = rpc(app, 'add_components', lens(workspaceRef, 0, 'same-turn'));
+  await sleep(150);
+  const { view, synced } = open(t, { app, initial: setup, ticket });
+  assert.equal((await edit).status, 'applied');
+  await synced();
+  assert.equal(view.live.reference, workspaceRef);
+  assert.equal(view.setup.scene.elements.length, 1);
 });

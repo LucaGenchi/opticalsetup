@@ -420,3 +420,82 @@ test('a list of caveats is never left out as a curve, and a list of colours is',
   assert.deepEqual(compact.branches, [{ gates: { omitted: 9, curve: 'branches.0.gates' } }]);
   assert.equal(compactReading(null), null);
 });
+
+test('the reference in the open result works before its view exists, and only the ticket takes it up', async t => {
+  let now = 0;
+  const app = createApplication({ origin, mirrorOptions: { openMs: 400, maxInvitations: 3, now: () => now } });
+  t.after(() => app.close());
+  const opened = await rpc(app, 'open_setup', {});
+  const { workspaceRef } = opened.structuredContent, { ticket, setup } = opened._meta.opticalsetup;
+  assert.match(workspaceRef, /^[a-f0-9]{64}$/); assert.match(ticket, /^[a-f0-9]{64}$/);
+  assert.ok(!JSON.stringify([opened.structuredContent, opened.content]).includes(ticket), 'the model is not shown the ticket');
+  // The model edits in the turn that opened the workbench; the view registers a moment later.
+  const call = rpc(app, 'add_components', { workspaceRef, expectedRevision: 0, clientRequestId: 'same-turn', components: [{ type: 'lens', x: 0, y: 0 }] });
+  await sleep(100);
+  // Knowing the reference is not enough to take it up.
+  const other = 'c'.repeat(64), intruder = await subscribe(app, other);
+  assert.notEqual((await (await sync(app, setup, { channel: other, ticket: workspaceRef })).json()).workspaceRef, workspaceRef);
+  const reader = await subscribe(app);
+  assert.equal((await (await sync(app, setup, { ticket })).json()).workspaceRef, workspaceRef);
+  const proposal = await proposalFrom(reader, call);
+  const scene = applyScenePatch(setup.scene, proposal.patch);
+  const applied = delta(setup, scene, { deliveryId: proposal.deliveryId, canUndo: true, ticket });
+  assert.equal((await (await sync(app, applied)).json()).workspaceRef, workspaceRef);
+  const result = (await call).structuredContent;
+  assert.equal(result.status, 'applied'); assert.equal(result.workspaceRef, workspaceRef);
+  assert.equal((await rpc(app, 'get_setup', { workspaceRef })).structuredContent.workspaceRef, workspaceRef);
+  // The view's own channel is still what confirms: the ticket and the reference cannot.
+  for (const channel of [ticket, workspaceRef]) assert.equal((await sync(app, applied, { channel })).status, 503);
+
+  // Reopening gives the new view a reference of its own, good at once, and the first view keeps the one it has.
+  const reopened = await rpc(app, 'open_setup', { workspaceRef });
+  assert.notEqual(reopened.structuredContent.workspaceRef, workspaceRef);
+  assert.deepEqual(reopened._meta.opticalsetup.setup.scene, scene);
+  assert.equal((await rpc(app, 'get_setup', { workspaceRef })).structuredContent.revision, 1);
+
+  // One reference names one view. The same result shown a second time (a reloaded chat, a second tab)
+  // registers with the same ticket: the later view holds the reference, and the earlier one is told its own.
+  const again = 'd'.repeat(64), second = await subscribe(app, again);
+  const current = { id: setup.id, revision: 1, hash: applied.hash, scene };
+  assert.equal((await (await sync(app, current, { channel: again, ticket, canUndo: true })).json()).workspaceRef, workspaceRef);
+  assert.equal((await (await sync(app, current, { ticket, canUndo: true })).json()).workspaceRef, sceneHash(token));
+  // An edit by the reference goes to the view that holds it, and to no other.
+  const move = rpc(app, 'move_components', { workspaceRef, expectedRevision: 1, clientRequestId: 'to-holder', components: [{ id: scene.elements[0].id, dx: 5 }] });
+  const moveProposal = await proposalFrom(second, move);
+  const moved = applyScenePatch(scene, moveProposal.patch);
+  assert.equal((await sync(app, delta({ ...current, revision: 1 }, moved, { channel: again, deliveryId: moveProposal.deliveryId, canUndo: true, ticket }))).status, 200);
+  assert.equal((await move).structuredContent.status, 'applied');
+  assert.equal((await rpc(app, 'get_setup', { workspaceRef })).structuredContent.revision, 2);
+  // The earlier view was sent nothing, kept its scene, and is still read under its own reference.
+  assert.equal((await rpc(app, 'get_setup', { workspaceRef: sceneHash(token) })).structuredContent.revision, 1);
+  // When the holder is gone the reference names nobody. It does not go back to the earlier view, which is still here.
+  await second.cancel();
+  now = 500000;
+  assert.equal((await sync(app, current, { ticket, canUndo: true })).status, 200);
+  now = 700000;
+  assert.equal((await rpc(app, 'get_setup', { workspaceRef })).structuredContent.error.code, 'WORKSPACE_UNAVAILABLE');
+  assert.equal((await rpc(app, 'get_setup', { workspaceRef: sceneHash(token) })).structuredContent.revision, 1);
+  assert.equal((await (await sync(app, current, { ticket, canUndo: true })).json()).workspaceRef, sceneHash(token));
+  const third = await subscribe(app, other);
+
+  // A reference nobody takes up: the call waits for the view, then says what to do.
+  const lonely = (await rpc(app, 'open_setup', {})).structuredContent.workspaceRef;
+  const started = Date.now();
+  const error = (await rpc(app, 'get_setup', { workspaceRef: lonely })).structuredContent.error;
+  assert.equal(error.code, 'WORKSPACE_UNAVAILABLE'); assert.match(error.message, /explicit setup snapshot/);
+  assert.ok(Date.now() - started >= 350);
+  // Only so many views are waited for. One opened past that is not waited for, and is still taken up by its ticket.
+  await rpc(app, 'open_setup', {}); await rpc(app, 'open_setup', {});
+  const crowded = await rpc(app, 'open_setup', {});
+  const before = Date.now();
+  assert.equal((await rpc(app, 'get_setup', { workspaceRef: crowded.structuredContent.workspaceRef })).structuredContent.error.code, 'WORKSPACE_UNAVAILABLE');
+  assert.ok(Date.now() - before < 200);
+  const late = 'e'.repeat(64), fourth = await subscribe(app, late);
+  assert.equal((await (await sync(app, setup, { channel: late, ticket: crowded._meta.opticalsetup.ticket })).json()).workspaceRef, crowded.structuredContent.workspaceRef);
+  // An invitation is not waited for once its time is up.
+  now += 130000;
+  const expired = Date.now();
+  assert.equal((await rpc(app, 'get_setup', { workspaceRef: lonely })).structuredContent.error.code, 'WORKSPACE_UNAVAILABLE');
+  assert.ok(Date.now() - expired < 200);
+  for (const stream of [intruder, reader, third, fourth]) await stream.cancel();
+});

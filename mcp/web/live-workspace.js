@@ -31,7 +31,7 @@ export async function followEvents(channel, receive) {
   } finally { await reader.cancel(); }
 }
 
-export function createLiveWorkspace({ current, receive, changed }) {
+export function createLiveWorkspace({ current, receive, changed, ticket }) {
   // A new editor mount owns its channel. Other tabs may share browser storage,
   // while their relay credentials and temporary server mirrors stay independent.
   const channel = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
@@ -46,7 +46,7 @@ export function createLiveWorkspace({ current, receive, changed }) {
     const { id, revision, hash, scene, canUndo, canRedo } = state;
     const base = confirmed;
     const payload = ack?.rejected ? { channel, rejected: true, deliveryId: ack.id, ...(ack.busy && { busy: true }) } : {
-      channel, id, revision, hash, canUndo, canRedo, ...(ack && { deliveryId: ack.id }),
+      channel, ...(ticket && { ticket }), id, revision, hash, canUndo, canRedo, ...(ack && { deliveryId: ack.id }),
     };
     let retry = false;
     try {

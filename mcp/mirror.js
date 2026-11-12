@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
+import { randomBytes } from 'node:crypto';
 import { SceneError } from './errors.js';
 import { LIMITS } from './scene-api.js';
 import { snapshot, sceneHash, setupVersion } from './stateless.js';
@@ -9,13 +10,28 @@ import { proposalMatches } from './web/snapshot.js';
 const isToken = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const sameVersion = (a, b) => a.revision === b.revision && a.hash === b.hash;
 const unavailable = () => new SceneError('Open the OpticalSetup workbench and wait for it to reconnect. Then use its current workspace reference.', 'WORKSPACE_UNAVAILABLE');
+const unopened = () => new SceneError('No workbench view has connected for this reference yet. Retry shortly. A client that does not show the workbench passes an explicit setup snapshot instead.', 'WORKSPACE_UNAVAILABLE');
 const conflict = () => new SceneError('The workbench changed. Read get_setup again before editing.', 'REVISION_CONFLICT');
 const engaged = () => new SceneError('The workbench is in the middle of a manual edit and did not take this one. Nothing changed. Retry shortly.', 'BUSY');
 const unshared = reason => new SceneError(`The workbench now holds a setup the chat cannot follow: ${reason}. It cannot be read or edited from here until that changes. Tell the user.`, 'WORKSPACE_NOT_SHARED');
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-export function createSceneMirror({ relay, ttlMs = 600000, maxWorkspaces = 40, ackMs = 5000, reconnectMs = 3000, maxUnconfirmed = 8, now = Date.now }) {
+export function createSceneMirror({ relay, ttlMs = 600000, maxWorkspaces = 40, ackMs = 5000, reconnectMs = 3000, maxUnconfirmed = 8, openMs = 8000, inviteMs = 120000, maxInvitations = 200, now = Date.now }) {
   const entries = new Map();
+  // open_setup gives the model a reference before the view it opens exists, so the call that
+  // opened the workbench can be followed by edits. That reference is the hash of a ticket, which
+  // the same result gives to the view alone, and a view takes the reference up by registering
+  // with the ticket. Its channel stays its own: only the channel reads the stream or confirms.
+  // One reference names one view. A stored result can be shown again (a reloaded chat, a second
+  // tab), and then the view that registered last holds the reference. The earlier one is told
+  // its own reference in the answer to its next sync, and goes on working under that.
+  const invitations = new Map(), holders = new Map();
+  const named = entry => holders.get(entry.invited) === entry.ref ? entry.invited : entry.ref;
+  const drop = ref => {
+    const entry = entries.get(ref);
+    entries.delete(ref);
+    if (entry && holders.get(entry.invited) === ref) holders.delete(entry.invited);
+  };
   const finish = (entry, error, value) => {
     const pending = entry.pending;
     if (!pending) return;
@@ -36,49 +52,69 @@ export function createSceneMirror({ relay, ttlMs = 600000, maxWorkspaces = 40, a
   };
   // A view reopens its live stream whenever the service ends it at its time limit, and after a
   // network fault. An edit that arrives in between waits for the view instead of failing.
-  const reconnected = async (ref, entry) => {
+  const reconnected = async entry => {
     for (let waited = 0; waited < reconnectMs && !relay.connected(entry.channel); waited += 50) await pause(50);
-    if (entries.get(ref) !== entry || !relay.connected(entry.channel)) throw unavailable();
+    if (entries.get(entry.ref) !== entry || !relay.connected(entry.channel)) throw unavailable();
   };
   const prune = () => {
     for (const [ref, entry] of entries) {
       if (entry.touched + ttlMs > now()) continue;
       finish(entry, unavailable());
-      entries.delete(ref);
+      drop(ref);
     }
+    for (const [ref, until] of invitations) if (until <= now()) invitations.delete(ref);
   };
   const sweep = setInterval(prune, Math.min(ttlMs, 30000));
   sweep.unref();
   function get(ref) {
     prune();
-    const entry = entries.get(ref);
+    const entry = entries.get(holders.get(ref) ?? ref);
     if (!entry) throw unavailable();
     return entry;
+  }
+  // A view takes a moment to load after the call that opened it has returned. A call that names
+  // its reference meanwhile waits for it, for as long as a view is still expected.
+  async function reach(ref) {
+    for (let waited = 0; waited < openMs && invitations.get(ref) > now() && !holders.has(ref); waited += 50) await pause(50);
+    if (invitations.get(ref) > now() && !holders.has(ref)) throw unopened();
+    return get(ref);
   }
 
   return {
     close() {
       clearInterval(sweep);
       for (const entry of entries.values()) finish(entry, unavailable());
-      entries.clear();
+      entries.clear(); invitations.clear(); holders.clear();
     },
-    read(ref) {
-      const entry = get(ref);
+    // The reference goes to the model and the ticket to the view, in the same tool result.
+    invite() {
+      prune();
+      const ticket = randomBytes(32).toString('hex'), workspaceRef = sceneHash(ticket);
+      // Only so many views are waited for at once. Past that the reference is as good as any
+      // other: its view takes it up when it registers, and a call made before then is not kept waiting.
+      if (invitations.size < maxInvitations) invitations.set(workspaceRef, now() + inviteMs);
+      return { ticket, workspaceRef };
+    },
+    async read(ref) {
+      const entry = await reach(ref);
       if (entry.refused) throw unshared(entry.refused);
-      return entry.current;
+      return { ...entry.current, workspaceRef: named(entry) };
     },
     sync(data) {
       prune();
       if (!isToken(data?.channel) || !relay.connected(data.channel)) throw unavailable();
       // The reference authorizes MCP reads and proposals. Only the browser's
       // separate preimage can register a scene, read its stream or acknowledge.
-      const workspaceRef = sceneHash(data.channel);
-      const entry = entries.get(workspaceRef);
+      const ref = sceneHash(data.channel);
+      const entry = entries.get(ref);
+      // The reference the model knows this view by: the one its open result gave, while this view
+      // holds it, and otherwise the view's own.
+      const answer = () => ({ workspaceRef: named(entries.get(ref) ?? { ref }) });
       const current = entry?.current;
       if (data.rejected === true) {
         if (data.deliveryId === entry?.pending?.id) finish(entry, data.busy === true ? engaged() : conflict());
         entry?.overdue.delete(data.deliveryId);
-        return { workspaceRef };
+        return answer();
       }
       const { id, revision, hash, canUndo, canRedo } = data;
       if (!isToken(hash) || typeof canUndo !== 'boolean' || typeof canRedo !== 'boolean') throw new SceneError('Invalid workbench state');
@@ -91,7 +127,7 @@ export function createSceneMirror({ relay, ttlMs = 600000, maxWorkspaces = 40, a
       if (current && id === current.id && sameVersion(current, data)) {
         entry.touched = now();
         entry.refused = null;
-        return { workspaceRef };
+        return answer();
       }
       if (current && revision === current.revision) throw conflict();
       if (!entry && entries.size >= maxWorkspaces) {
@@ -100,7 +136,7 @@ export function createSceneMirror({ relay, ttlMs = 600000, maxWorkspaces = 40, a
         // One whose edit is still unconfirmed keeps its place, and with it what the browser may yet say of that edit.
         const [gone] = [...entries].filter(([, other]) => !other.pending && !other.overdue.size && !relay.connected(other.channel)).sort((a, b) => a[1].touched - b[1].touched);
         if (!gone) throw new SceneError('Too many active workbenches. Retry shortly.', 'BUSY');
-        entries.delete(gone[0]);
+        drop(gone[0]);
       }
       let scene = data.scene, setup;
       if (!scene && (!current || !proposalMatches(current, data))) throw new SceneError('The workbench needs to send its current scene.', 'RESYNC_REQUIRED');
@@ -116,16 +152,20 @@ export function createSceneMirror({ relay, ttlMs = 600000, maxWorkspaces = 40, a
         if (entry) entry.refused = error instanceof SceneError ? error.message : 'the service could not read it';
         throw error;
       }
-      const next = { ...setup, workspaceRef, canUndo, canRedo };
-      if (!entry) entries.set(workspaceRef, { current: next, channel: data.channel, touched: now(), receipts: new Map(), pending: null, overdue: new Map(), refused: null });
-      else {
+      const next = { ...setup, canUndo, canRedo };
+      if (!entry) {
+        const invited = isToken(data.ticket) ? sceneHash(data.ticket) : null;
+        entries.set(ref, { ref, invited, current: next, channel: data.channel, touched: now(), receipts: new Map(), pending: null, overdue: new Map(), refused: null });
+        // The view that registers last with a ticket holds its reference: it is the one on screen now.
+        if (invited) { holders.set(invited, ref); invitations.delete(invited); }
+      } else {
         entry.current = next;
         entry.touched = now();
         entry.refused = null;
         if (confirmed) {
           const patch = diffScene(current.scene, next.scene);
           const receipt = {
-            status: 'applied', workspaceRef, ...setupVersion(next), canUndo, canRedo,
+            status: 'applied', workspaceRef: named(entry), ...setupVersion(next), canUndo, canRedo,
             changed: [...(patch.elements?.put || []).map(item => item.id), ...(patch.beams?.put || []).map(item => item.id)],
             removed: [...(patch.elements?.remove || []), ...(patch.beams?.remove || [])],
           };
@@ -137,10 +177,10 @@ export function createSceneMirror({ relay, ttlMs = 600000, maxWorkspaces = 40, a
         entry.overdue.clear();
         if (entry.pending) finish(entry, conflict());
       }
-      return { workspaceRef };
+      return answer();
     },
     async edit(name, args, mutate) {
-      const entry = get(args.workspaceRef);
+      const entry = await reach(args.workspaceRef);
       const { receipts, channel } = entry;
       const fingerprint = sceneHash({ name, args });
       // The same request again is answered with what became of it the first time.
@@ -153,7 +193,7 @@ export function createSceneMirror({ relay, ttlMs = 600000, maxWorkspaces = 40, a
       let outcome = earlier();
       if (outcome) return outcome;
       if (!relay.connected(channel)) {
-        await reconnected(args.workspaceRef, entry);
+        await reconnected(entry);
         if ((outcome = earlier())) return outcome;
       }
       const { current, pending, overdue } = entry;

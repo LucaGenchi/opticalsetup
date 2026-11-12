@@ -98,8 +98,10 @@ therefore declares none, and accepts the live channel from
 
 ## Working with a connected setup
 
-The workbench context gives the model a `workspaceRef`, the current
-revision, the selection, and component/path counts. Use `get_setup` for
+`open_setup` returns a `workspaceRef` for the view it opens, so the model
+can edit in the same turn; a call that names it waits up to eight seconds
+for the view to load. The workbench context repeats the reference, with the
+current revision, the selection, and component/path counts. Use `get_setup` for
 counts and undo/redo availability, `get_items` to look up IDs and
 controls by page or exact ID, and `inspect_setup` for detector and fiber
 readings. Pass `workspaceRef`, `expectedRevision` and a unique
@@ -140,9 +142,24 @@ does not follow it, and reads and edits by its reference fail with
 scene the mirror took last, until the scene is one it takes again. The
 browser reconnects and resends its current scene after a
 service restart, under the same reference. A workbench must be
-connected to apply an edit. Treat its workspace reference as private: it
+connected to apply an edit. Treat the workspace reference as private: it
 grants read access and lets its holder propose edits to the connected view.
 Use Save JSON to keep a portable copy.
+
+The reference is the hash of a ticket that the open result carries in its
+metadata for the view alone. A view takes the reference up by registering
+with the ticket; knowing the reference is not enough. The view's channel
+stays its own, and only the channel reads the stream or confirms an edit.
+One reference names one view. A stored result can be shown again, in a
+reloaded chat or a second tab, and then the view that registered last holds
+the reference. The earlier view goes on working under a reference of its
+own, which its workbench context gives. When the holder is gone the
+reference names nobody; it does not go back to the earlier view. The
+service waits for at most 200 opened views at a time, each for two minutes.
+A reference that is still good after a reload does not keep the scene: the
+scene is the copy in browser storage, as before. In a client that shows no
+view, the first call by the reference waits those eight seconds and is then
+told to pass an explicit setup.
 
 Clients without an interactive view, such as Claude Code, can still pass an
 explicit `setup` snapshot to each tool and use the returned snapshot for the

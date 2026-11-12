@@ -188,9 +188,11 @@ async function connectLegacy(token) {
     delay = Math.min(delay * 2, 30000);
   }
 }
-function connectLive() {
+function connectLive(ticket) {
   if (!hosted) return;
   liveWorkspace = createLiveWorkspace({
+    // The result that opened this view carries the ticket for the reference the model was given.
+    ticket: /^[a-f0-9]{64}$/.test(ticket) ? ticket : undefined,
     current: () => ({ ...setup, canUndo: Boolean(history.length), canRedo: Boolean(future.length) }),
     receive: acceptIncremental,
     changed: connected => {
@@ -418,6 +420,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (incoming?.action && incoming.setup.revision > setup.revision) await accept(incoming);
     persist();
     if (incoming?.open && incoming.setupId !== setup.id) status('The chat did not provide the requested setup · Open a saved JSON copy', true);
-    setInterval(context, 500); connectLive();
+    setInterval(context, 500); connectLive(incoming?.ticket);
   } catch (error) { setWaiting(false); status('Local editor · ' + error.message + ' · Save JSON for a backup', true); }
 });
