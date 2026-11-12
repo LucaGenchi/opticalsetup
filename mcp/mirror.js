@@ -10,6 +10,7 @@ import { proposalMatches } from './web/snapshot.js';
 const isToken = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const sameVersion = (a, b) => a.revision === b.revision && a.hash === b.hash;
 const unavailable = () => new SceneError('Open the OpticalSetup workbench and wait for it to reconnect. Then use its current workspace reference.', 'WORKSPACE_UNAVAILABLE');
+const tooLarge = 'it is larger than the live workbench takes';
 const unopened = () => new SceneError('No workbench view has connected for this reference yet. Retry shortly. A client that does not show the workbench passes an explicit setup snapshot instead.', 'WORKSPACE_UNAVAILABLE');
 const conflict = () => new SceneError('The workbench changed. Read get_setup again before editing.', 'REVISION_CONFLICT');
 const engaged = () => new SceneError('The workbench is in the middle of a manual edit and did not take this one. Nothing changed. Retry shortly.', 'BUSY');
@@ -119,6 +120,11 @@ export function createSceneMirror({ relay, ttlMs = 600000, maxWorkspaces = 40, a
       const { id, revision, hash, canUndo, canRedo } = data;
       if (!isToken(hash) || typeof canUndo !== 'boolean' || typeof canRedo !== 'boolean') throw new SceneError('Invalid workbench state');
       if (current && (id !== current.id || revision < current.revision)) throw conflict();
+      // The view holds a scene whose sync would not fit in a request, and says so in its place.
+      if (data.oversized === true) {
+        if (entry) entry.refused = tooLarge;
+        throw new SceneError(tooLarge);
+      }
       const pending = entry?.pending;
       const acknowledge = pending && data.deliveryId === pending.id;
       // The edit this confirms: the one being waited for, or one whose wait has already ended.
@@ -145,7 +151,7 @@ export function createSceneMirror({ relay, ttlMs = 600000, maxWorkspaces = 40, a
         // The editor has no such limit, so the view is given the reason in words it can show.
         if (scene?.elements?.length > LIMITS.elements || scene?.beams?.length > LIMITS.beams) throw new SceneError(`it has more than ${LIMITS.elements} components or ${LIMITS.beams} paths`);
         setup = snapshot({ id, revision, hash, scene });
-        if (Buffer.byteLength(JSON.stringify(setup.scene)) > 750000) throw new SceneError('it is larger than the live workbench takes');
+        if (Buffer.byteLength(JSON.stringify(setup.scene)) > 750000) throw new SceneError(tooLarge);
       } catch (error) {
         // The view now holds a scene this mirror cannot take, so the scene held here is no longer
         // the workbench. It is not read or edited in its place: the chat is told why instead.

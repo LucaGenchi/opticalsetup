@@ -5,8 +5,13 @@ import { diffScene } from './scene-patch.js';
 const url = route => new URL('../../../' + route, import.meta.url);
 const post = body => ({
   method: 'POST', credentials: 'omit', referrerPolicy: 'no-referrer',
-  headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+  headers: { 'content-type': 'application/json' }, body: typeof body === 'string' ? body : JSON.stringify(body),
 });
+// The service takes a request of up to 950,000 bytes. A sync that would be larger is not sent.
+export const MAX_SYNC = 900000;
+const size = text => new TextEncoder().encode(text).length;
+// An answer that is not JSON (a listener or a proxy that refused the request) still has a status.
+const read = async response => { try { return await response.json(); } catch { return {}; } };
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 const sameVersion = (a, b) => a?.revision === b?.revision && a?.hash === b?.hash;
 
@@ -35,7 +40,7 @@ export function createLiveWorkspace({ current, receive, changed, ticket }) {
   // A new editor mount owns its channel. Other tabs may share browser storage,
   // while their relay credentials and temporary server mirrors stay independent.
   const channel = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
-  let connected = false, sending = false, confirmed, workspaceRef, refused, latest, retryTimer, connectionGeneration = 0;
+  let connected = false, sending = false, confirmed, workspaceRef, refused, latest, retryTimer, connectionGeneration = 0, ceiling = MAX_SYNC;
   const acknowledgements = [];
   async function flush() {
     if (sending || !connected || (!latest && !acknowledgements.length)) return;
@@ -47,6 +52,20 @@ export function createLiveWorkspace({ current, receive, changed, ticket }) {
     const base = confirmed;
     const payload = ack?.rejected ? { channel, rejected: true, deliveryId: ack.id, ...(ack.busy && { busy: true }) } : {
       channel, ...(ticket && { ticket }), id, revision, hash, canUndo, canRedo, ...(ack && { deliveryId: ack.id }),
+    };
+    // A scene whose sync would not fit in a request is not sent. The view says so in its place, in
+    // a few bytes, so that the service stops answering for the scene it took before.
+    const notice = JSON.stringify({ channel, ...(ticket && { ticket }), id, revision, hash, canUndo, canRedo, oversized: true });
+    const sync = async body => {
+      const text = JSON.stringify(body), bytes = size(text);
+      let response = await fetch(url('sync'), post(body.rejected || bytes <= ceiling ? text : notice));
+      // Something on the way may take less than the service does. What it refuses as too large is
+      // reported the same way, and nothing of that size is sent again.
+      if (response.status === 413 && !body.rejected) {
+        ceiling = Math.min(ceiling, bytes - 1);
+        response = await fetch(url('sync'), post(notice));
+      }
+      return [response, await read(response)];
     };
     let retry = false;
     try {
@@ -61,12 +80,10 @@ export function createLiveWorkspace({ current, receive, changed, ticket }) {
           }
         }
       }
-      let response = await fetch(url('sync'), post(payload));
-      let result = await response.json();
+      let [response, result] = await sync(payload);
       if (result.error === 'RESYNC_REQUIRED' && !ack?.rejected) {
         delete payload.patch;
-        response = await fetch(url('sync'), post({ ...payload, scene }));
-        result = await response.json();
+        [response, result] = await sync({ ...payload, scene });
       }
       if (generation !== connectionGeneration) return;
       if (response.status >= 500) throw new Error('Sync unavailable');

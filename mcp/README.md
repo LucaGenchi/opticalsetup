@@ -107,8 +107,10 @@ controls by page or exact ID, and `inspect_setup` for detector and fiber
 readings. Pass `workspaceRef`, `expectedRevision` and a unique
 `clientRequestId` to edit. The service reports `applied` after the browser
 checks the revision and acknowledges the edit. Repeat the same arguments
-and request ID for an exact retry. On a revision conflict, read the current
-setup before applying another edit. Undo and redo use the browser's history.
+and request ID for an exact retry. It reports what became of that edit, even
+when the setup has changed since or is no longer shared. On a revision
+conflict, read the current setup before applying another edit. Undo and redo
+use the browser's history.
 
 The service waits five seconds for that acknowledgement. An edit the browser
 applies later is still recorded, so repeating the call reports it as
@@ -125,6 +127,9 @@ leaves out the curves the editor plots from it: a spectrum, a pulse envelope,
 a field. Each one is named in its place with its length, for example
 `{"omitted": 1024, "curve": "pulse.envelope.intensity"}`. What sums a curve
 up (band limits, duration, energy, peak power) is in the reading beside it.
+The rule is a limit on what one answer carries: any list of nine or more
+items is left out. The lists of caveats (`approximations`, `phaseIssues`)
+are the exception and always arrive whole.
 To read a curve, pass one ID in `ids` with `curve`; `sampleOffset` and
 `sampleLimit` (128 by default, 256 at most) choose the window. This is the
 same with a `workspaceRef` and with an explicit `setup`.
@@ -139,7 +144,12 @@ is still unconfirmed. A scene the mirror does not take, such as one with
 more than 200 components, stays in the browser. The view says why the chat
 does not follow it, and reads and edits by its reference fail with
 `WORKSPACE_NOT_SHARED` and the same reason, instead of answering from the
-scene the mirror took last, until the scene is one it takes again. The
+scene the mirror took last, until the scene is one it takes again. A scene
+whose sync would not fit in a request to the service (950,000 bytes; one
+very long text label is enough) is not sent at all: the view tells the
+service so in a few bytes, with the same result. If something on the way
+refuses a request as too large, the view reports it the same way and does
+not send that size again. The
 browser reconnects and resends its current scene after a
 service restart, under the same reference. A workbench must be
 connected to apply an edit. Treat the workspace reference as private: it

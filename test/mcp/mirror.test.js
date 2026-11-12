@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { createApplication } from '../../mcp/server.js';
-import { sceneHash, snapshot, compactReading } from '../../mcp/stateless.js';
+import { sceneHash, snapshot, compactReading, CAVEATS } from '../../mcp/stateless.js';
 import { inspectDocument, emptyDocument } from '../../mcp/scene-api.js';
 import { diffScene, applyScenePatch } from '../../mcp/web/scene-patch.js';
 import { createDrawnPath } from '../../sketch/js/path-types.js';
@@ -408,8 +408,8 @@ test('a reading leaves its sampled curves out, and one curve is read a window at
   await reader.cancel();
 });
 
-test('a list of caveats is never left out as a curve, and a list of colours is', () => {
-  const notes = Array.from({ length: 12 }, (_, index) => 'Approximation number ' + index);
+test('a list of caveats is never left out, and a list of colours is', () => {
+  const notes = Array.from({ length: 12 }, (_, index) => 'Approximation' + index);
   const colours = Array.from({ length: 12 }, () => '#ff3030');
   const compact = compactReading({ approximations: notes, profileColors: colours, profile: Array(12).fill(0.5), short: [1, 2, 3], pulse: null, branches: [{ gates: Array(9).fill({ opl: 1 }) }] });
   assert.deepEqual(compact.approximations, notes);
@@ -498,4 +498,51 @@ test('the reference in the open result works before its view exists, and only th
   assert.equal((await rpc(app, 'get_setup', { workspaceRef: lonely })).structuredContent.error.code, 'WORKSPACE_UNAVAILABLE');
   assert.ok(Date.now() - expired < 200);
   for (const stream of [intruder, reader, third, fourth]) await stream.cancel();
+});
+
+test('a setup too large to send is reported by the view, and the chat is not given the old one', async t => {
+  const app = createApplication({ origin });
+  t.after(() => app.close());
+  const reader = await subscribe(app);
+  const setup = snapshot({ revision: 0, scene: { elements: [{ type: 'cwlaser', id: 'laser', x: 0, y: 0 }, { type: 'powermeter', id: 'meter', x: 300, y: 0 }] } });
+  const { workspaceRef } = await (await sync(app, setup)).json();
+  // The view holds a scene whose sync would not fit in a request, so it says so instead of sending it.
+  const notice = await sync(app, { id: setup.id, revision: 1, hash: 'b'.repeat(64), oversized: true });
+  assert.equal(notice.status, 400);
+  assert.match((await notice.json()).message, /larger than the live workbench takes/);
+  for (const name of ['get_setup', 'get_items', 'inspect_setup']) {
+    const { error } = (await rpc(app, name, { workspaceRef })).structuredContent;
+    assert.equal(error.code, 'WORKSPACE_NOT_SHARED', name); assert.match(error.message, /larger than the live workbench takes/, name);
+  }
+  // Another channel cannot say this of the workbench: the notice counts only from the view's own channel.
+  assert.equal((await sync(app, { id: setup.id, revision: 1, hash: 'b'.repeat(64), oversized: true }, { channel: 'c'.repeat(64) })).status, 503);
+  // A scene that fits is read again.
+  const smaller = { ...setup.scene, elements: setup.scene.elements.slice(1) };
+  assert.equal((await sync(app, { id: setup.id, revision: 2, hash: sceneHash(smaller), scene: smaller })).status, 200);
+  assert.equal((await rpc(app, 'get_setup', { workspaceRef })).structuredContent.componentCount, 1);
+  await reader.cancel();
+});
+
+test('every list of text in a bundled reading is either kept whole as a caveat or known to be data', async () => {
+  // A caveat list is protected by name. A new kind of text list has to be put on one side or the
+  // other here, so that it cannot be left out of a reading unnoticed once it grows long.
+  const data = new Set(['profileColors']), found = new Set();
+  const walk = (value, key) => {
+    if (Array.isArray(value)) { if (value.some(item => typeof item === 'string')) found.add(key); value.forEach(item => walk(item, key)); }
+    else if (value && typeof value === 'object') for (const [name, item] of Object.entries(value)) walk(item, name);
+  };
+  const folder = new URL('../../Examples/', import.meta.url);
+  for (const group of await readdir(folder, { withFileTypes: true })) {
+    if (!group.isDirectory()) continue;
+    for (const name of await readdir(new URL(group.name + '/', folder))) {
+      if (!name.endsWith('.json')) continue;
+      const scene = JSON.parse(await readFile(new URL(group.name + '/' + name, folder), 'utf8'));
+      const traced = inspectDocument({ ...emptyDocument(), scene: snapshot({ revision: 0, scene }).scene });
+      for (const item of [...traced.detectors, ...traced.paths]) walk(item.reading, '');
+    }
+  }
+  assert.ok(found.has('phaseIssues') && found.has('profileColors'), 'the bundled scenes do have readings with lists of text');
+  for (const key of found) assert.ok(CAVEATS.has(key) || data.has(key), 'a reading has a list of text named ' + key);
+  const long = Array.from({ length: 12 }, (_, index) => 'note' + index);
+  assert.deepEqual(compactReading({ interference: { phaseIssues: long } }).interference.phaseIssues, long);
 });

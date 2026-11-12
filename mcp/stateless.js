@@ -64,7 +64,7 @@ TOOLS.push({
 });
 const canRender = service => service?.screenshots !== false;
 const toolsFor = service => canRender(service) ? TOOLS : TOOLS.filter(t => t.name !== 'get_setup_screenshot');
-const instructionsFor = service => 'Open the OpticalSetup workbench before editing. open_setup returns a workspaceRef for the view it opens; the workbench context repeats it, with the current revision and selection. Pass workspaceRef to get_setup, get_items and inspect_setup. Pass it with expectedRevision to edit. Each edit needs a unique clientRequestId. For exact retries reuse the same ID and arguments. Only status applied confirms the browser accepted an edit. If the workbench changed, read get_setup again. If the reference is unavailable, ask the user to open or reconnect the workbench. Keep the existing view open while editing. Browser storage owns the scene and Undo/Redo. A client that shows no workbench view cannot use that reference: it supplies its own full setup and chains the returned snapshots. Discover native controls with search_components/get_component_schema. Fibers and manual beams use the path tools.' + (canRender(service) ? ' Verify an edit with get_setup_screenshot.' : '') + ' Describe the limits of the existing 2D model. The service cannot purchase or publish anything, send messages, or certify clinical safety. Official website: https://opticalsetup.com.';
+const instructionsFor = service => 'Open the OpticalSetup workbench before editing. open_setup returns a workspaceRef for the view it opens; the workbench context repeats it, with the current revision and selection. Pass workspaceRef to get_setup, get_items and inspect_setup. Pass it with expectedRevision to edit. Each edit needs a unique clientRequestId. For exact retries reuse the same ID and arguments: the retry reports what became of that edit, even if the setup has changed since. Only status applied confirms the browser accepted an edit. If the workbench changed, read get_setup again. If the reference is unavailable, ask the user to open or reconnect the workbench. Keep the existing view open while editing. Browser storage owns the scene and Undo/Redo. A client that shows no workbench view cannot use that reference: it supplies its own full setup and chains the returned snapshots. Discover native controls with search_components/get_component_schema. Fibers and manual beams use the path tools.' + (canRender(service) ? ' Verify an edit with get_setup_screenshot.' : '') + ' Describe the limits of the existing 2D model. The service cannot purchase or publish anything, send messages, or certify clinical safety. Official website: https://opticalsetup.com.';
 // Every handshake-era revision is served the same way, so a client is answered in the revision it asked for.
 const HANDSHAKE_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
 function validate(schema, value, path = 'arguments', depth = 0) {
@@ -140,12 +140,14 @@ function selectedItems(setup, args) {
 // A reading is the editor's own object, and some of its fields are the curves the editor plots:
 // a spectrum, a pulse envelope, a field. They are nearly all of its size, and the numbers that
 // sum them up (band limits, duration, energy, peak power) are in the reading beside them. So a
-// reading gives each curve's name and length in its place, and one curve is read by that name,
-// a window at a time. A list of notes is never a curve, however long: caveats always arrive.
-const CURVE_FROM = 9;
-const isCurve = value => Array.isArray(value) && value.length >= CURVE_FROM && !value.every(item => typeof item === 'string' && item.includes(' '));
+// reading gives each long list's name and length in its place, and one list is read by that
+// name, a window at a time. The length is a limit on what one answer carries, not a judgement of
+// what a curve is. The lists of caveats are named here and always arrive whole.
+const LIST_LIMIT = 8;
+export const CAVEATS = new Set(['approximations', 'phaseIssues']);
+const leftOut = (value, key) => Array.isArray(value) && value.length > LIST_LIMIT && !CAVEATS.has(key);
 export function compactReading(value, path = []) {
-  if (isCurve(value)) return { omitted: value.length, curve: path.join('.') };
+  if (leftOut(value, path.at(-1))) return { omitted: value.length, curve: path.join('.') };
   if (Array.isArray(value)) return value.map((item, index) => compactReading(item, [...path, index]));
   if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, compactReading(item, [...path, key])]));
   return value;
@@ -157,7 +159,7 @@ function curveWindow(readings, args) {
   const path = args.curve.split('.');
   let value = item?.reading;
   for (const key of path) value = value && typeof value === 'object' && Object.hasOwn(value, key) ? value[key] : undefined;
-  if (!isCurve(value)) throw new SceneError(`${id} has no curve named ${args.curve}. Use a name its reading gives.`);
+  if (!leftOut(value, path.at(-1))) throw new SceneError(`${id} has no curve named ${args.curve}. Use a name its reading gives.`);
   const offset = args.sampleOffset ?? 0, end = offset + (args.sampleLimit ?? 128);
   // A sample that holds a curve of its own gives its name in turn, so a window stays a window.
   const values = value.slice(offset, end).map((sample, index) => compactReading(sample, [...path, offset + index]));
