@@ -7,6 +7,7 @@ import { createApplication } from '../../mcp/server.js';
 import { sceneHash, snapshot } from '../../mcp/stateless.js';
 import { inspectDocument, emptyDocument } from '../../mcp/scene-api.js';
 import { diffScene, applyScenePatch } from '../../mcp/web/scene-patch.js';
+import { createDrawnPath } from '../../sketch/js/path-types.js';
 import { resultData, globalsResult } from '../../mcp/web/snapshot.js';
 
 const origin = 'https://mcp.example.com';
@@ -220,6 +221,46 @@ test('an edit the browser confirms after the wait has ended is still recorded as
   await reader.cancel();
 });
 
+test('an unconfirmed edit keeps its outcome through a second one, a changed call and a full mirror', async t => {
+  const app = createApplication({ origin, mirrorOptions: { ackMs: 60, maxWorkspaces: 1, maxUnconfirmed: 2 } });
+  t.after(() => app.close());
+  let reader = await subscribe(app);
+  const setup = snapshot();
+  const { workspaceRef } = await (await sync(app, setup)).json();
+  const lens = (clientRequestId, x) => ({ workspaceRef, expectedRevision: 0, clientRequestId, components: [{ type: 'lens', x, y: 0 }] });
+  const first = rpc(app, 'add_components', lens('first', 0));
+  const firstProposal = await proposalFrom(reader, first);
+  assert.equal((await first).structuredContent.error.code, 'EDIT_UNCONFIRMED');
+  // Its ID still names that edit: other arguments under it are refused.
+  assert.equal((await rpc(app, 'add_components', lens('first', 9))).structuredContent.error.code, 'REQUEST_ID_REUSED');
+  // A second edit left unconfirmed does not take the place of the first.
+  const second = rpc(app, 'add_components', lens('second', 50));
+  await proposalFrom(reader, second);
+  assert.equal((await second).structuredContent.error.code, 'EDIT_UNCONFIRMED');
+  // No more are sent until the browser has answered for these.
+  const third = (await rpc(app, 'add_components', lens('third', 90))).structuredContent.error;
+  assert.equal(third.code, 'EDIT_UNCONFIRMED'); assert.match(third.message, /earlier edits/);
+  // The view goes. While its edits are unconfirmed its mirror is not given to another view.
+  await reader.cancel();
+  const other = await subscribe(app, 'c'.repeat(64));
+  assert.equal((await (await sync(app, setup, { channel: 'c'.repeat(64) })).json()).error, 'BUSY');
+  await other.cancel();
+  // It returns and says it applied the first.
+  reader = await subscribe(app);
+  const scene = applyScenePatch(setup.scene, firstProposal.patch);
+  assert.equal((await sync(app, delta(setup, scene, { deliveryId: firstProposal.deliveryId, canUndo: true }))).status, 200);
+  const again = (await rpc(app, 'add_components', lens('first', 0))).structuredContent;
+  assert.equal(again.status, 'applied'); assert.equal(again.revision, 1); assert.equal(again.changed.length, 1);
+  // The second was computed on the scene the first replaced, so it cannot have been applied.
+  assert.equal((await rpc(app, 'add_components', lens('second', 50))).structuredContent.error.code, 'REVISION_CONFLICT');
+  assert.equal((await rpc(app, 'get_setup', { workspaceRef })).structuredContent.componentCount, 1);
+  // With nothing left unconfirmed, a view that has gone gives up its place again.
+  await reader.cancel();
+  const next = await subscribe(app, 'c'.repeat(64));
+  assert.equal((await sync(app, setup, { channel: 'c'.repeat(64) })).status, 200);
+  await next.cancel();
+});
+
 test('an edit that arrives while the view is reopening its stream waits for it', async t => {
   const app = createApplication({ origin, mirrorOptions: { reconnectMs: 400 } });
   t.after(() => app.close());
@@ -248,34 +289,50 @@ test('an edit that arrives while the view is reopening its stream waits for it',
   assert.equal((await rpc(app, 'get_setup', { workspaceRef })).structuredContent.revision, 1);
 });
 
-test('a scene the mirror does not take is refused with the reason, and the mirror keeps what it had', async t => {
+test('a scene the mirror does not take is refused with the reason, and the chat is told instead of reading the old one', async t => {
   const app = createApplication({ origin });
   t.after(() => app.close());
   const reader = await subscribe(app);
-  const setup = snapshot();
+  const setup = snapshot({ revision: 0, scene: { elements: [{ type: 'cwlaser', id: 'laser', x: 0, y: 0 }, { type: 'powermeter', id: 'meter', x: 300, y: 0 }] } });
   // A view in Claude registers from its sandbox origin, as a view in ChatGPT does from its own.
   const claude = 'https://0123456789abcdef0123456789abcdef.claudemcpcontent.com';
   const registered = await request(app, '/mcp/sync', { channel: token, canUndo: false, canRedo: false, ...setup }, claude);
   assert.equal(registered.headers.get('access-control-allow-origin'), claude);
   const { workspaceRef } = await registered.json();
+  // The user removes the laser and builds past what the mirror takes.
   const many = { ...setup.scene, elements: Array.from({ length: 201 }, (_, index) => ({ type: 'lens', id: 'lens' + index, x: index, y: 0 })) };
   const refused = await sync(app, { id: setup.id, revision: 1, hash: sceneHash(many), scene: many });
   assert.equal(refused.status, 400);
   assert.match((await refused.json()).message, /more than 200 components or 100 paths/);
-  assert.equal((await rpc(app, 'get_setup', { workspaceRef })).structuredContent.revision, 0);
+  // The mirror still holds the scene with the laser. Reading it would describe a setup that is gone.
+  const edit = { workspaceRef, expectedRevision: 0, clientRequestId: 'on-old-scene', components: [{ id: 'meter', dx: 5 }] };
+  for (const [name, args] of [['get_setup', { workspaceRef }], ['get_items', { workspaceRef }], ['inspect_setup', { workspaceRef }], ['open_setup', { workspaceRef }], ['move_components', edit]]) {
+    const { error } = (await rpc(app, name, args)).structuredContent;
+    assert.equal(error.code, 'WORKSPACE_NOT_SHARED', name);
+    assert.match(error.message, /more than 200 components or 100 paths/, name);
+  }
+  // A scene it takes is read again, under the same reference.
+  const fewer = { ...many, elements: many.elements.slice(0, 200) };
+  const taken = await sync(app, { id: setup.id, revision: 2, hash: sceneHash(snapshot({ revision: 2, scene: fewer }).scene), scene: fewer });
+  assert.equal((await taken.json()).workspaceRef, workspaceRef);
+  const info = (await rpc(app, 'get_setup', { workspaceRef })).structuredContent;
+  assert.equal(info.revision, 2); assert.equal(info.componentCount, 200);
   await reader.cancel();
 });
 
-test('a connected inspection reads one page of detectors, each with what it models', async t => {
+test('a connected inspection reads one page of detectors and fibers, each with what it models', async t => {
   const app = createApplication({ origin, computeScene: async (kind, scene) => inspectDocument({ ...emptyDocument(), scene }) });
   t.after(() => app.close());
   const reader = await subscribe(app);
   const setup = snapshot({ revision: 0, scene: { elements: [
     { type: 'cwlaser', id: 'laser', x: 0, y: 0 }, { type: 'powermeter', id: 'meter', x: 300, y: 0 }, { type: 'detector', id: 'spare', x: 300, y: 200 },
+  ], beams: [
+    { ...createDrawnPath('fiber', [{ x: 0, y: 300 }, { x: 200, y: 300 }]), id: 'hollow', fiberModel: 'argon' },
+    { ...createDrawnPath('fiber', [{ x: 0, y: 400 }, { x: 200, y: 400 }]), id: 'patch' },
   ] } });
   const { workspaceRef } = await (await sync(app, setup)).json();
   const first = (await rpc(app, 'inspect_setup', { workspaceRef, limit: 1 })).structuredContent;
-  assert.equal(first.total, 2); assert.equal(first.items.length, 1); assert.equal(first.nextOffset, 1);
+  assert.equal(first.total, 4); assert.equal(first.items.length, 1); assert.equal(first.nextOffset, 1);
   assert.equal(first.items[0].id, 'meter');
   assert.ok(first.items[0].reading.signal > 0);
   // The model is told what each reading stands for, not only the reading.
@@ -285,5 +342,12 @@ test('a connected inspection reads one page of detectors, each with what it mode
   const spare = (await rpc(app, 'inspect_setup', { workspaceRef, ids: ['spare'] })).structuredContent;
   assert.equal(spare.total, 1); assert.equal(spare.items[0].reading, null);
   assert.ok(spare.items[0].capability.description);
+  // A fiber says what its model leaves out, and a linear one that it has no readout of its own.
+  const { items } = (await rpc(app, 'inspect_setup', { workspaceRef, ids: ['hollow', 'patch'] })).structuredContent;
+  assert.deepEqual(items.map(item => item.kind), ['fiber', 'fiber']);
+  assert.match(items[0].capability.limits, /argon capillary model; no ionization/);
+  assert.equal(items[0].readoutNote, undefined);
+  assert.match(items[1].capability.limits, /linear delay, attenuation and constant dispersion/);
+  assert.match(items[1].readoutNote, /no dedicated solver readout/);
   await reader.cancel();
 });

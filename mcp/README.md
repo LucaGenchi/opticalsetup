@@ -110,7 +110,10 @@ setup before applying another edit. Undo and redo use the browser's history.
 
 The service waits five seconds for that acknowledgement. An edit the browser
 applies later is still recorded, so repeating the call reports it as
-`applied` instead of applying it twice. A view reopens its live stream every
+`applied` instead of applying it twice. Up to eight edits can be waiting for
+the browser's answer this way. They were all computed on the same scene, so
+at most one of them is applied, and the others then report a revision
+conflict. A view reopens its live stream every
 two minutes, and after a network fault; an edit that arrives in between
 waits up to three seconds for the view. An edit that arrives while a pointer
 is down in the editor is refused as `BUSY`, with nothing changed.
@@ -120,10 +123,13 @@ some bulk replacements, can transfer the complete scene between the browser
 and service. Opening a view carries any initial scene in widget metadata.
 The mirror holds up to 40 workbenches, with a 750,000-byte scene limit and
 expiry after ten minutes without browser sync. When it is full, a view that
-has closed gives up its place to one that is open. A scene the mirror does
-not take, such as one with more than 200 components, stays in the browser:
-the view says why the chat does not follow it, and the mirror keeps the last
-scene it took. The browser reconnects and resends its current scene after a
+has closed gives up its place to one that is open, unless one of its edits
+is still unconfirmed. A scene the mirror does not take, such as one with
+more than 200 components, stays in the browser. The view says why the chat
+does not follow it, and reads and edits by its reference fail with
+`WORKSPACE_NOT_SHARED` and the same reason, instead of answering from the
+scene the mirror took last, until the scene is one it takes again. The
+browser reconnects and resends its current scene after a
 service restart, under the same reference. A workbench must be
 connected to apply an edit. Treat its workspace reference as private: it
 grants read access and lets its holder propose edits to the connected view.

@@ -138,7 +138,7 @@ test('a scene the service does not take leaves the view saying why, until the sc
   assert.match(view.live.problem, /more than 200 components/);
   assert.equal(view.live.synced, false);
   assert.equal(view.live.reference, workspaceRef);
-  assert.equal((await rpc(app, 'get_setup', { workspaceRef })).componentCount, 0, 'the mirror keeps the last scene it took');
+  assert.equal((await rpc(app, 'get_setup', { workspaceRef })).error.code, 'WORKSPACE_NOT_SHARED', 'the chat is not given the scene the view no longer holds');
   view.edit(many);
   await synced();
   assert.equal(view.live.problem, undefined);
