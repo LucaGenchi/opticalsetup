@@ -1,0 +1,178 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "title",
+   "type": "textlabel",
+   "x": -120,
+   "y": 40,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Pinhole spatial filter**",
+    "fontSize": 24,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "note",
+   "type": "textlabel",
+   "x": -120,
+   "y": 89,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "A lens turns direction into position: light along the axis meets at the focal point,\nlight at an angle θ meets f·tan θ to the side. The pinhole in the focal plane passes\nthe first and blocks the second. In this top view the pinhole is a slit.",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "laser",
+   "type": "cwlaser",
+   "x": -80,
+   "y": 260,
+   "rot": 0,
+   "label": "Laser, 10 mW",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "wavelength": 633,
+    "avgPowerW": 0.01,
+    "beamMode": "beam",
+    "beamWidth": 4,
+    "pol": 0,
+    "coherenceLengthMm": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw",
+    "housingLength": 92,
+    "housingHeight": 34,
+    "housingColor": "#3a3f46"
+   }
+  },
+  {
+   "id": "stray",
+   "type": "cwlaser",
+   "x": -89.85258298436315,
+   "y": 219.02484239907983,
+   "rot": 6,
+   "label": "Light at 6° to the axis, 1 mW",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "wavelength": 633,
+    "avgPowerW": 0.001,
+    "beamMode": "beam",
+    "beamWidth": 4,
+    "pol": 0,
+    "coherenceLengthMm": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw",
+    "housingLength": 92,
+    "housingHeight": 34,
+    "housingColor": "#3a3f46"
+   }
+  },
+  {
+   "id": "lens1",
+   "type": "lens",
+   "x": 300,
+   "y": 260,
+   "rot": 0,
+   "label": "f = 50 mm",
+   "showLabel": true,
+   "params": {
+    "f": 50,
+    "dia": 25.4,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "pinhole",
+   "type": "slit",
+   "x": 350,
+   "y": 260,
+   "rot": 0,
+   "label": "Pinhole, 0.5 mm",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "gap": 0.5,
+    "length": 25.4
+   }
+  },
+  {
+   "id": "lens2",
+   "type": "lens",
+   "x": 450,
+   "y": 260,
+   "rot": 0,
+   "label": "f = 100 mm",
+   "showLabel": true,
+   "params": {
+    "f": 100,
+    "dia": 50.8,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "meter",
+   "type": "powermeter",
+   "x": 560,
+   "y": 260,
+   "rot": 0,
+   "label": "Power meter",
+   "showLabel": true,
+   "params": {
+    "aperture": 44
+   }
+  },
+  {
+   "id": "screen",
+   "type": "display",
+   "x": 560,
+   "y": 170,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "meter",
+    "displayScale": 0.8,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "zoom",
+   "type": "zoom",
+   "x": 350,
+   "y": 257,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "shape": "circle",
+    "w": 20,
+    "h": 20,
+    "mag": 5,
+    "insetX": 0,
+    "insetY": 120,
+    "regionDash": false,
+    "connectors": true,
+    "connectorDash": false,
+    "diffraction": false,
+    "focusNote": true,
+    "scaleBar": true,
+    "scaleBarDirection": "horizontal",
+    "scaleBarMm": 0,
+    "frameColor": "#475569"
+   }
+  }
+ ],
+ "beams": []
+}

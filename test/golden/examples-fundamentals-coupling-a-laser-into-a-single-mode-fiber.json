@@ -1,0 +1,107 @@
+{
+ "elements": 9,
+ "beams": 1,
+ "drawables": {
+  "count": 114,
+  "byType": {
+   "poly": 104,
+   "path": 10
+  },
+  "colors": {
+   "#ff4200": 114
+  },
+  "points": 436,
+  "sum": [
+   99615.8,
+   113880
+  ],
+  "bbox": [
+   52,
+   209,
+   636,
+   332.8889
+  ],
+  "digest": "9863f81f"
+ },
+ "drawnElements": {
+  "textlabel:title": "253fcf76",
+  "textlabel:note": "22dafd4a",
+  "cwlaser:laser": "2bbe6fcb",
+  "mirror:m1": "81e74feb",
+  "mirror:m2": "81e74feb",
+  "lens:lens": "a29cf81a",
+  "powermeter:meter": "bcb70dbd",
+  "display:screen": "83926600",
+  "zoom:zoom": "ff3f2669"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "readouts": {
+  "powermeter:meter": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 633,
+    "bandMin": 633,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#ff4200",
+    "convergence": {
+     "diverging": true,
+     "fullAngleDeg": 13.7841902,
+     "slopePerMm": 0.0416918649
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 1,
+    "detectorType": "Power meter",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": 1,
+     "s2": 0,
+     "s3": 0
+    },
+    "outputSignal": 1,
+    "polarization": "Linear 0°",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "power",
+    "samples": 9,
+    "saturated": false,
+    "signal": 1,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 1,
+      "sourceId": "laser"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#ff4200",
+      "continuum": false,
+      "power": 1,
+      "sourceId": "laser",
+      "wavelength": 633,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 5.77775065,
+    "wavelength": 633
+   }
+  }
+ },
+ "fibers": {}
+}

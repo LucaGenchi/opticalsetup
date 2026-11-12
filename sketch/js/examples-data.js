@@ -9,6 +9,60 @@
 // tools/build-examples-pages.mjs's generated pages.
 export const examples = [
   {
+    "group": "Fundamentals",
+    "name": "Imaging with one lens",
+    "path": "../Examples/Fundamentals/Imaging%20with%20one%20lens.json",
+    "slug": "imaging-with-one-lens"
+  },
+  {
+    "group": "Fundamentals",
+    "name": "Beam expanders — Keplerian and Galilean",
+    "path": "../Examples/Fundamentals/Beam%20expanders%20%E2%80%94%20Keplerian%20and%20Galilean.json",
+    "slug": "beam-expanders-keplerian-and-galilean"
+  },
+  {
+    "group": "Fundamentals",
+    "name": "Total internal reflection — right angle prism",
+    "path": "../Examples/Fundamentals/Total%20internal%20reflection%20%E2%80%94%20right-angle%20prism.json",
+    "slug": "total-internal-reflection-right-angle-prism"
+  },
+  {
+    "group": "Fundamentals",
+    "name": "Law of Malus — polarizers and a half wave plate",
+    "path": "../Examples/Fundamentals/Law%20of%20Malus%20%E2%80%94%20polarizers%20and%20a%20half-wave%20plate.json",
+    "slug": "law-of-malus-polarizers-and-a-half-wave-plate"
+  },
+  {
+    "group": "Fundamentals",
+    "name": "Pinhole spatial filter",
+    "path": "../Examples/Fundamentals/Pinhole%20spatial%20filter.json",
+    "slug": "pinhole-spatial-filter"
+  },
+  {
+    "group": "Fundamentals",
+    "name": "Spatial filtering in the Fourier plane — 4f system",
+    "path": "../Examples/Fundamentals/Spatial%20filtering%20in%20the%20Fourier%20plane%20%E2%80%94%204f%20system.json",
+    "slug": "spatial-filtering-in-the-fourier-plane-4f-system"
+  },
+  {
+    "group": "Fundamentals",
+    "name": "Coupling a laser into a single mode fiber",
+    "path": "../Examples/Fundamentals/Coupling%20a%20laser%20into%20a%20single-mode%20fiber.json",
+    "slug": "coupling-a-laser-into-a-single-mode-fiber"
+  },
+  {
+    "group": "Fundamentals",
+    "name": "Scan lens and tube lens — galvo to back pupil",
+    "path": "../Examples/Fundamentals/Scan%20lens%20and%20tube%20lens%20%E2%80%94%20galvo%20to%20back%20pupil.json",
+    "slug": "scan-lens-and-tube-lens-galvo-to-back-pupil"
+  },
+  {
+    "group": "Fundamentals",
+    "name": "Czerny–Turner monochromator",
+    "path": "../Examples/Fundamentals/Czerny%E2%80%93Turner%20monochromator.json",
+    "slug": "czerny-turner-monochromator"
+  },
+  {
     "group": "Lens Physics",
     "name": "Singlet vs achromat — axial colour",
     "path": "../Examples/Lens%20Physics/Singlet%20vs%20achromat%20%E2%80%94%20axial%20colour.json",
