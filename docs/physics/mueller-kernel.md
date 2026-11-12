@@ -93,8 +93,14 @@ The kernel writes each matrix in closed form:
   T_p = 1 − r_p² and T_s = 1 − r_s², as
   [prism-fresnel.md](prism-fresnel.md) describes. Beyond it there is none.
 
-Inputs that give no finite coefficient (a non-finite index or angle, a zero
-index) return `null`, never a non-finite number.
+The Fresnel functions do not validate their inputs; they return `null` only
+when the formulas give no finite coefficient, so they never return a
+non-finite number. That happens for a NaN index or cosine, an infinite
+index, or n₂ = 0. The absolute value of the cosine is clamped to [0, 1], so
+an infinite cosine counts as normal incidence. An incident index of zero, or
+a negative index, is not rejected and gives finite but unphysical
+coefficients; the callers pass the positive indices of glass and air. This
+is how `fresnelTransmittances` behaved before the kernel, kept unchanged.
 
 ## What the tracer uses
 

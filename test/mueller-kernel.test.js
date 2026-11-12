@@ -235,6 +235,11 @@ test('kernel: inputs with no finite answer return null, never non-finite numbers
     assert.equal(fresnelReflectionMueller(n1, n2, cos), null);
     assert.equal(fresnelTransmissionMueller(n1, n2, cos), null);
   }
+  // Not validated, as before the kernel: an infinite cosine is clamped to
+  // normal incidence, and a zero incident index still gives finite numbers.
+  assert.deepEqual(fresnelCoefficients(1, 1.5, Infinity), fresnelCoefficients(1, 1.5, 1));
+  const zero = fresnelCoefficients(0, 1.5, 0.5);
+  assert.ok([zero.rs, zero.rp, zero.ts, zero.tp].every(v => Number.isFinite(v.re) && Number.isFinite(v.im)));
   assert.equal(normalizeJones([c(0), c(0)]), null);
   assert.equal(normalizeJones([c(1e-12), c(0)]), null);
   assert.deepEqual(stokesVector(null), [1, 0, 0, 0]);
