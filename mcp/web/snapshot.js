@@ -9,6 +9,15 @@ import { parseSketch } from '../../sketch/js/state.js';
 export function canonicalScene(scene, registry) {
   return JSON.parse(JSON.stringify({ app: 'optics2d', version: 1, ...parseSketch(scene, registry) }));
 }
+// A copy this browser stored under an earlier version of the editor is brought
+// to the form the editor loads today: its scene and every scene in its undo
+// and redo lists, so that an undo lands on a scene both sides hash alike. The
+// revision stays, because nothing was edited; the hash is the caller's to
+// refresh. A list holding a scene that no longer loads is dropped whole.
+export function loadedCopy(value, registry) {
+  const bring = scenes => { try { return scenes.map(scene => canonicalScene(scene, registry)); } catch { return []; } };
+  return { ...value, setup: { ...value.setup, scene: canonicalScene(value.setup.scene, registry) }, history: bring(value.history), future: bring(value.future) };
+}
 export function canonicalJSON(value) {
   if (Array.isArray(value)) return '[' + value.map(canonicalJSON).join(',') + ']';
   if (value && typeof value === 'object') return '{' + Object.keys(value).sort().filter(k => value[k] !== undefined).map(k => JSON.stringify(k) + ':' + canonicalJSON(value[k])).join(',') + '}';
