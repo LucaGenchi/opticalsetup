@@ -13,7 +13,7 @@ import { createApplication } from '../../mcp/server.js';
 import { buildWidget, widgetAsset } from '../../mcp/widget.js';
 import { registry, createElement } from '../../mcp/registry.js';
 import { inspectDocument, emptyDocument } from '../../mcp/scene-api.js';
-import { browserSceneHash, canonicalScene, globalsResult, offeredSetup, proposalMatches, resultData } from '../../mcp/web/snapshot.js';
+import { browserSceneHash, canonicalJSON, canonicalScene, globalsResult, loadedCopy, offeredSetup, proposalMatches, resultData } from '../../mcp/web/snapshot.js';
 import { createDrawnPath } from '../../sketch/js/path-types.js';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -48,6 +48,30 @@ test('the form both sides hash is a fixed point for every palette element, drawn
     const once = canonicalScene(scene, registry);
     assert.deepEqual(canonicalScene(once, registry), once, `${label} changes when it is normalized a second time`);
   }
+});
+
+test('a copy stored under an earlier editor is brought to today\'s form with its undo history, as no edit', async () => {
+  // An Object that stood on its position (`anchor: 'base'`), as the editor saved it before that option went.
+  const old = (x, height = 40) => ({ app: 'optics2d', version: 1, beams: [], elements: [{ id: 'e1', type: 'objarrow', x, y: 100, rot: 0, params: { height, anchor: 'base' } }] });
+  const value = { setup: { id: 'view', revision: 3, scene: old(120), hash: 'as stored' }, history: [old(80), old(100)], future: [old(140)], requests: ['r1'] };
+  const copy = loadedCopy(value, registry);
+  assert.equal(copy.setup.revision, 3, 'bringing a copy up to date is not an edit');
+  assert.deepEqual(copy.requests, ['r1']);
+  assert.deepEqual([...copy.history, copy.setup.scene, ...copy.future].map(scene => [scene.elements[0].x, scene.elements[0].y, scene.elements[0].params.anchor]),
+    [[80, 80, undefined], [100, 80, undefined], [120, 80, undefined], [140, 80, undefined]], 'every scene moved its Object to the middle of its shape');
+  for (const scene of [...copy.history, ...copy.future]) assert.deepEqual(canonicalScene(scene, registry), scene, 'a scene in the lists is in the form both sides hash');
+  // The step back the view now offers is one the service accepts and the view recognises as its own.
+  const setup = { ...copy.setup, hash: await browserSceneHash(copy.setup.scene) };
+  const undone = await call('undo_setup', { setup, targetScene: copy.history.at(-1), clientRequestId: 'undo-migrated' });
+  assert.equal(undone.isError, undefined, undone.content[0].text.slice(0, 160));
+  assert.equal(canonicalJSON(undone.structuredContent.setup.scene), canonicalJSON(copy.history.at(-1)));
+  // The same step with the list as it was stored is the one the view refused.
+  assert.notEqual(canonicalJSON(undone.structuredContent.setup.scene), canonicalJSON(value.history.at(-1)));
+  assert.deepEqual(loadedCopy(copy, registry), copy, 'a copy already in today\'s form is left as it is');
+  const broken = loadedCopy({ ...value, history: [old(80), 'not a scene'] }, registry);
+  assert.deepEqual(broken.history, [], 'a list with a scene that no longer loads is dropped whole');
+  assert.equal(broken.future.length, 1);
+  assert.throws(() => loadedCopy({ ...value, setup: { ...value.setup, scene: 'not a scene' } }, registry));
 });
 
 test('a fiber drawn by hand and a glass just placed are accepted with the hash the view computed', async () => {

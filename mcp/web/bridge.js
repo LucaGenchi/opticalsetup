@@ -7,7 +7,7 @@ import { renderInspector } from '../../sketch/js/inspector.js';
 import { buildShareURL } from '../../sketch/js/share.js';
 import { createLiveWorkspace, followEvents } from './live-workspace.js';
 import { applyScenePatch } from './scene-patch.js';
-import { browserSceneHash, canonicalJSON, canonicalScene, globalsResult, offeredSetup, proposalMatches, resultData } from './snapshot.js';
+import { browserSceneHash, canonicalJSON, canonicalScene, globalsResult, loadedCopy, offeredSetup, proposalMatches, resultData } from './snapshot.js';
 // Native autosave is origin-wide. Keep this integration's scenes scoped by ID.
 configureAutosave({ enabled: false });
 const nativeBoot = new Promise(resolve => window.addEventListener('opticalsetup:booted', resolve, { once: true }));
@@ -99,7 +99,7 @@ function stored(id) {
   try {
     const value = JSON.parse(localStorage.getItem(key(id)));
     if (value?.setup?.id !== id || !Array.isArray(value.history) || !Array.isArray(value.future) || !Array.isArray(value.requests)) return null;
-    parseSketch(value.setup.scene, registry); return value;
+    return loadedCopy(value, registry);
   } catch { return null; }
 }
 function render(scene, fit = false) {
@@ -413,6 +413,9 @@ window.addEventListener('DOMContentLoaded', async () => {
         ({ setup, history, future, requests } = data); render(setup.scene); persist(false);
       };
     } catch { /* isolated host storage may not support browser channels */ }
+    // A stored copy brought to today's form keeps its revision and takes the hash of the scene it now holds.
+    const held = setup.scene, hash = await browserSceneHash(held);
+    if (setup.scene === held && setup.hash !== hash) setup = { ...setup, hash };
     setWaiting(false);
     ready = true;
     // A copy stored before scenes were hashed in their loaded form is brought to it now.
