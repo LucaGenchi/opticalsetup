@@ -557,7 +557,7 @@ test('a setup too large to send is reported by the view, and the chat is not giv
   const setup = snapshot({ revision: 0, scene: { elements: [{ type: 'cwlaser', id: 'laser', x: 0, y: 0 }, { type: 'powermeter', id: 'meter', x: 300, y: 0 }] } });
   const { workspaceRef } = await (await sync(app, setup)).json();
   // The view holds a scene whose sync would not fit in a request, so it says so instead of sending it.
-  const notice = await sync(app, { id: setup.id, revision: 1, hash: 'b'.repeat(64), oversized: true });
+  const notice = await sync(app, { id: setup.id, revision: 1, hash: 'b'.repeat(64), unsent: 'oversized' });
   assert.equal(notice.status, 400);
   assert.match((await notice.json()).message, /larger than the live workbench takes/);
   for (const name of ['get_setup', 'get_items', 'inspect_setup']) {
@@ -565,7 +565,11 @@ test('a setup too large to send is reported by the view, and the chat is not giv
     assert.equal(error.code, 'WORKSPACE_NOT_SHARED', name); assert.match(error.message, /larger than the live workbench takes/, name);
   }
   // Another channel cannot say this of the workbench: the notice counts only from the view's own channel.
-  assert.equal((await sync(app, { id: setup.id, revision: 1, hash: 'b'.repeat(64), oversized: true }, { channel: 'c'.repeat(64) })).status, 503);
+  assert.equal((await sync(app, { id: setup.id, revision: 1, hash: 'b'.repeat(64), unsent: 'oversized' }, { channel: 'c'.repeat(64) })).status, 503);
+  // A scene that did not get through is said the same way, with its own reason. Anything else is not a notice.
+  assert.match((await (await sync(app, { id: setup.id, revision: 1, hash: 'b'.repeat(64), unsent: 'undelivered' })).json()).message, /could not be sent to the service/);
+  assert.match((await rpc(app, 'get_setup', { workspaceRef })).structuredContent.error.message, /could not be sent to the service/);
+  assert.equal((await (await sync(app, { id: setup.id, revision: 1, hash: 'b'.repeat(64), unsent: 'constructor' })).json()).error, 'RESYNC_REQUIRED');
   // A scene that fits is read again.
   const smaller = { ...setup.scene, elements: setup.scene.elements.slice(1) };
   assert.equal((await sync(app, { id: setup.id, revision: 2, hash: sceneHash(smaller), scene: smaller })).status, 200);

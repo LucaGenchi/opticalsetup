@@ -149,7 +149,12 @@ whose sync would not fit in a request to the service (950,000 bytes; one
 very long text label is enough) is not sent at all: the view tells the
 service so in a few bytes, with the same result. If something on the way
 refuses a request as too large, the view reports it the same way and does
-not send that size again. The
+not send that size again. If a larger request fails with no answer the
+browser may read, as when a proxy refuses it without CORS headers, the view
+cannot tell that from a lost connection: it tells the service in a few
+bytes that the scene has not reached it, and goes on trying, less and less
+often. A proxy in front of the service should take requests of 950,000
+bytes. The
 browser reconnects and resends its current scene after a
 service restart, under the reference of its own channel. A workbench must
 be connected to apply an edit. Treat the workspace reference as private: it

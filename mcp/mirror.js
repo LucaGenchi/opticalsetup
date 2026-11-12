@@ -11,6 +11,8 @@ const isToken = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(valu
 const sameVersion = (a, b) => a.revision === b.revision && a.hash === b.hash;
 const unavailable = () => new SceneError('Open the OpticalSetup workbench and wait for it to reconnect. Then use its current workspace reference.', 'WORKSPACE_UNAVAILABLE');
 const tooLarge = 'it is larger than the live workbench takes';
+// What a view says of a scene it holds and has not been able to send here.
+const unsent = { oversized: tooLarge, undelivered: 'it could not be sent to the service' };
 const unopened = () => new SceneError('No workbench view has connected for this reference yet. Retry shortly. A client that does not show the workbench passes an explicit setup snapshot instead.', 'WORKSPACE_UNAVAILABLE');
 const conflict = () => new SceneError('The workbench changed. Read get_setup again before editing.', 'REVISION_CONFLICT');
 const engaged = () => new SceneError('The workbench is in the middle of a manual edit and did not take this one. Nothing changed. Retry shortly.', 'BUSY');
@@ -119,10 +121,11 @@ export function createSceneMirror({ relay, ttlMs = 600000, maxWorkspaces = 40, a
       const { id, revision, hash, canUndo, canRedo } = data;
       if (!isToken(hash) || typeof canUndo !== 'boolean' || typeof canRedo !== 'boolean') throw new SceneError('Invalid workbench state');
       if (current && (id !== current.id || revision < current.revision)) throw conflict();
-      // The view holds a scene whose sync would not fit in a request, and says so in its place.
-      if (data.oversized === true) {
-        if (entry) entry.refused = tooLarge;
-        throw new SceneError(tooLarge);
+      // The view holds a scene that it has not sent: its sync would not fit in a request, or did
+      // not get through. It says so in a few bytes, and the scene held here stops being read for it.
+      if (typeof data.unsent === 'string' && Object.hasOwn(unsent, data.unsent)) {
+        if (entry) entry.refused = unsent[data.unsent];
+        throw new SceneError(unsent[data.unsent]);
       }
       const pending = entry?.pending;
       const acknowledge = pending && data.deliveryId === pending.id;

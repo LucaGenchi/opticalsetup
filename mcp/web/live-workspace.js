@@ -9,6 +9,8 @@ const post = body => ({
 });
 // The service takes a request of up to 950,000 bytes. A sync that would be larger is not sent.
 export const MAX_SYNC = 900000;
+// A request this small is not refused anywhere for its size.
+const SMALL = 16384;
 const size = text => new TextEncoder().encode(text).length;
 // An answer that is not JSON (a listener or a proxy that refused the request) still has a status.
 const read = async response => { try { return await response.json(); } catch { return {}; } };
@@ -36,11 +38,11 @@ export async function followEvents(channel, receive) {
   } finally { await reader.cancel(); }
 }
 
-export function createLiveWorkspace({ current, receive, changed, ticket }) {
+export function createLiveWorkspace({ current, receive, changed, ticket, retryMs = 1000 }) {
   // A new editor mount owns its channel. Other tabs may share browser storage,
   // while their relay credentials and temporary server mirrors stay independent.
   const channel = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
-  let connected = false, sending = false, confirmed, workspaceRef, refused, latest, retryTimer, connectionGeneration = 0, ceiling = MAX_SYNC;
+  let connected = false, sending = false, confirmed, workspaceRef, refused, latest, retryTimer, connectionGeneration = 0, ceiling = MAX_SYNC, retryDelay = retryMs;
   const acknowledgements = [];
   async function flush() {
     if (sending || !connected || (!latest && !acknowledgements.length)) return;
@@ -53,17 +55,33 @@ export function createLiveWorkspace({ current, receive, changed, ticket }) {
     const payload = ack?.rejected ? { channel, rejected: true, deliveryId: ack.id, ...(ack.busy && { busy: true }) } : {
       channel, ...(ticket && { ticket }), id, revision, hash, canUndo, canRedo, ...(ack && { deliveryId: ack.id }),
     };
-    // A scene whose sync would not fit in a request is not sent. The view says so in its place, in
-    // a few bytes, so that the service stops answering for the scene it took before.
-    const notice = JSON.stringify({ channel, ...(ticket && { ticket }), id, revision, hash, canUndo, canRedo, oversized: true });
+    // A scene that cannot be sent is not read by the chat in the old one's place: the view says so
+    // in a few bytes, and the service stops answering for the scene it took before.
+    const notice = why => JSON.stringify({ channel, ...(ticket && { ticket }), id, revision, hash, canUndo, canRedo, unsent: why });
     const sync = async body => {
-      const text = JSON.stringify(body), bytes = size(text);
-      let response = await fetch(url('sync'), post(body.rejected || bytes <= ceiling ? text : notice));
-      // Something on the way may take less than the service does. What it refuses as too large is
-      // reported the same way, and nothing of that size is sent again.
-      if (response.status === 413 && !body.rejected) {
-        ceiling = Math.min(ceiling, bytes - 1);
-        response = await fetch(url('sync'), post(notice));
+      const text = JSON.stringify(body), bytes = size(text), stateful = !body.rejected;
+      // A sync that would not fit in a request is not sent at all.
+      let response;
+      if (stateful && bytes > ceiling) response = await fetch(url('sync'), post(notice('oversized')));
+      else {
+        try { response = await fetch(url('sync'), post(text)); }
+        catch (error) {
+          // No answer, or none the browser may read. A proxy that refuses a body as too large can
+          // answer without the headers a browser needs, which looks like a lost connection. The
+          // request is sent again later either way; meanwhile, if a few bytes do get through, the
+          // service is told that this scene has not reached it.
+          if (stateful && bytes > SMALL) {
+            const told = await fetch(url('sync'), post(notice('undelivered'))).then(read, () => null);
+            if (told?.message && generation === connectionGeneration) refused = told.message;
+          }
+          throw error;
+        }
+        // Something on the way may take less than the service does. What it refuses as too large
+        // is reported the same way, and nothing of that size is sent again.
+        if (stateful && response.status === 413) {
+          ceiling = Math.min(ceiling, bytes - 1);
+          response = await fetch(url('sync'), post(notice('oversized')));
+        }
       }
       return [response, await read(response)];
     };
@@ -87,6 +105,7 @@ export function createLiveWorkspace({ current, receive, changed, ticket }) {
       }
       if (generation !== connectionGeneration) return;
       if (response.status >= 500) throw new Error('Sync unavailable');
+      retryDelay = retryMs;
       if (response.ok && !ack?.rejected) { confirmed = state; workspaceRef = result.workspaceRef; refused = undefined; }
       // A scene the service does not take (too large for it, or one the editor holds but cannot load)
       // is set aside until it changes or the next heartbeat offers it again. The reason is kept, so
@@ -99,8 +118,10 @@ export function createLiveWorkspace({ current, receive, changed, ticket }) {
       sending = false;
       changed(connected);
       if (retry) {
+        // What keeps failing is tried again less and less often. A change or a reopened stream tries at once.
         clearTimeout(retryTimer);
-        retryTimer = setTimeout(flush, 1000);
+        retryTimer = setTimeout(flush, retryDelay);
+        retryDelay = Math.min(retryDelay * 2, 30 * retryMs);
       } else if (latest || acknowledgements.length) void flush();
     }
   }
