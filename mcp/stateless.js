@@ -144,7 +144,8 @@ async function readSetup(name, setup, args, service) {
   if (name === 'inspect_setup') {
     const traced = await service.compute('inspect', setup.scene);
     if (!setup.workspaceRef) return result({ ...traced, ...setupVersion(setup) });
-    const detectors = (traced.detectors || []).map(({ id, type, reading }) => ({ id, type, reading, kind: 'detector' }));
+    // Each reading comes with what its detector models, as it does for a standalone snapshot.
+    const detectors = (traced.detectors || []).map(({ id, type, reading, capability }) => ({ id, type, reading, capability, kind: 'detector' }));
     const fibers = (traced.paths || []).filter(({ type }) => ['fiber', 'barefiber'].includes(type))
       .map(({ id, type, reading, readoutNote }) => ({ id, type, reading, readoutNote, kind: 'fiber' }));
     const matches = [...detectors, ...fibers].filter(item => !args.ids || args.ids.includes(item.id));

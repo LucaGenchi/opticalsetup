@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { createApplication } from '../../mcp/server.js';
 import { sceneHash, snapshot } from '../../mcp/stateless.js';
+import { inspectDocument, emptyDocument } from '../../mcp/scene-api.js';
 import { diffScene, applyScenePatch } from '../../mcp/web/scene-patch.js';
 import { resultData, globalsResult } from '../../mcp/web/snapshot.js';
 
@@ -262,5 +263,27 @@ test('a scene the mirror does not take is refused with the reason, and the mirro
   assert.equal(refused.status, 400);
   assert.match((await refused.json()).message, /more than 200 components or 100 paths/);
   assert.equal((await rpc(app, 'get_setup', { workspaceRef })).structuredContent.revision, 0);
+  await reader.cancel();
+});
+
+test('a connected inspection reads one page of detectors, each with what it models', async t => {
+  const app = createApplication({ origin, computeScene: async (kind, scene) => inspectDocument({ ...emptyDocument(), scene }) });
+  t.after(() => app.close());
+  const reader = await subscribe(app);
+  const setup = snapshot({ revision: 0, scene: { elements: [
+    { type: 'cwlaser', id: 'laser', x: 0, y: 0 }, { type: 'powermeter', id: 'meter', x: 300, y: 0 }, { type: 'detector', id: 'spare', x: 300, y: 200 },
+  ] } });
+  const { workspaceRef } = await (await sync(app, setup)).json();
+  const first = (await rpc(app, 'inspect_setup', { workspaceRef, limit: 1 })).structuredContent;
+  assert.equal(first.total, 2); assert.equal(first.items.length, 1); assert.equal(first.nextOffset, 1);
+  assert.equal(first.items[0].id, 'meter');
+  assert.ok(first.items[0].reading.signal > 0);
+  // The model is told what each reading stands for, not only the reading.
+  assert.equal(first.items[0].capability.status, 'Simulated');
+  assert.match(first.items[0].capability.description, /optical power/);
+  assert.match(first.scope, /2D models/);
+  const spare = (await rpc(app, 'inspect_setup', { workspaceRef, ids: ['spare'] })).structuredContent;
+  assert.equal(spare.total, 1); assert.equal(spare.items[0].reading, null);
+  assert.ok(spare.items[0].capability.description);
   await reader.cancel();
 });
