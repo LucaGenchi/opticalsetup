@@ -122,12 +122,22 @@ Verdet constants, optical constants of metals, spectra) follow three rules.
 A licence that asks for attribution gets a section in
 `THIRD-PARTY-NOTICES.md`, as the Raman reference spectra have.
 
-Records that existed before this rule are exempt until step A3 of the
-[Physics in 2D track](roadmap.md#physics-in-2d) brings them to it: the glass
-and crystal dispersion fits, the Raman reference spectra and the fluorophore
-spectra. The spectra already carry a licence; they gain the access status,
-and each fluorophore record names the source of its measured curves, which
-is not always the paper credited for the protein.
+A record states its access by citing a source listed in
+`sketch/js/source-access.js`, keyed by DOI (or URL, or the description of a
+printed source), with the status OpenAlex gives and the date it was looked
+up. `dataRuleProblems` in the same module checks all three rules for one
+record; `test/material-catalogue.test.js` and `test/source-access.test.js`
+run it on every shipped record, and fail when one lacks a licence, a primary
+source or an access status.
+
+The records that existed before this rule were brought to it in step A3a of
+the [Physics in 2D track](roadmap.md#physics-in-2d): the glass and crystal
+dispersion fits (now in `sketch/js/materials/catalogue.js`), the Raman
+reference spectra and the fluorophore spectra
+([material-catalogue.md](physics/material-catalogue.md)). One gap remains:
+for 65 of the 71 fluorophore records FPbase records no source for the curves
+themselves, so those records credit the protein's paper and the curves'
+own source is unknown.
 
 ## What reviewers check
 
