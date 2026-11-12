@@ -263,8 +263,9 @@ can name, and records the decisions the steps rest on.
 
 - **S, setup:** S0 Roadmap section and data rule.
 - **A, foundations:** A1 Mueller and Jones kernel; A2 Polarization at
-  reflections; A3 Material catalogue; A4 Shared surface library; A5 Readout
-  scope.
+  reflections; A3 Material catalogue, in two pull requests (A3a the shared
+  catalogue and the provenance of the existing records, A3b new crystal and
+  Verdet data); A4 Shared surface library; A5 Readout scope.
 - **T, teaching:** T1 Fundamentals examples; T2 Optical path and group delay
   at the beam probe.
 - **P, polarization and crystals:** P1 Fresnel choice on glass elements;
