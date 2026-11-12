@@ -29,7 +29,7 @@ export async function buildWidget(origin) {
 export async function widgetAsset(path) {
   const file = path.slice('/mcp/assets/'.length);
   const types = { js: 'text/javascript', json: 'application/json', svg: 'image/svg+xml', png: 'image/png' };
-  const allowed = /^(?:mcp\/web\/[a-z-]+\.js|sketch\/js\/[a-z0-9-]+\.js|sketch\/data\/(?:[a-z0-9-]+\/)*[a-z0-9-]+\.json|sketch\/icons\/[a-z0-9-]+\.(?:svg|png)|(?:Examples|community-submissions)\/(?:[^/%]+\/)*[^/%]+\.json)$/i;
+  const allowed = /^(?:mcp\/web\/[a-z-]+\.js|sketch\/js\/(?:[a-z0-9-]+\/)*[a-z0-9-]+\.js|sketch\/data\/(?:[a-z0-9-]+\/)*[a-z0-9-]+\.json|sketch\/icons\/[a-z0-9-]+\.(?:svg|png)|(?:Examples|community-submissions)\/(?:[^/%]+\/)*[^/%]+\.json)$/i;
   if (!allowed.test(file)) return new Response('Not found', { status: 404 });
   if (file.includes('\\') || file.split('/').some(part => part === '.' || part === '..')) return new Response('Not found', { status: 404 });
   const pathOnDisk = resolve(fileURLToPath(root), file);
