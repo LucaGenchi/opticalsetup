@@ -318,12 +318,14 @@ Where the track meets the phases above:
    until then are the opposite of this convention.
 6. **Light split by a birefringent element** is treated as two mutually
    incoherent beams in the first version, and the readout says so. The two
-   beams are orthogonally polarized, so their powers add exactly at any
-   detector that does not analyse polarization. Two results need the
-   relative phase of the beams, which this version does not keep: the
-   polarization state read where the two still overlap, and the power after
-   a later element that projects both onto one axis while they overlap. The
-   app warns in both cases. Coherent recombination may follow later.
+   beams leave the element orthogonally polarized, and the sum of their
+   powers is exact for as long as they stay orthogonal where they overlap.
+   Anything that depends on their relative phase is not modelled in this
+   version: the polarization state where the two overlap, and their
+   interference once later elements have given them a common polarization
+   component, whether one element acts on both or separate elements act on
+   each. The app warns in those cases. Coherent recombination may follow
+   later.
 7. **Refracting surfaces keep today's settings:** prisms apply Fresnel
    transmission; other glass elements keep their per-surface transmission. A
    "bare glass (Fresnel)" choice is added where it is missing.
