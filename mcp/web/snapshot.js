@@ -69,9 +69,14 @@ export function globalsResult(globals) {
 // nothing if the hash is wrong. The edit that produced the result counts as
 // applied, so the same result delivered a second time is recognised instead of
 // being read as an edit based on an older scene.
-export async function offeredSetup(incoming) {
-  const setup = JSON.parse(JSON.stringify(incoming.setup));
-  if (setup.hash !== await browserSceneHash(setup.scene)) return null;
+// A result made under an earlier editor is checked against the hash it came
+// with and then brought to today's form, as a stored copy is: same revision,
+// no undo step, and the hash of the scene it now holds.
+export async function offeredSetup(incoming, registry) {
+  const offered = JSON.parse(JSON.stringify(incoming.setup));
+  if (offered.hash !== await browserSceneHash(offered.scene)) return null;
+  let scene; try { scene = canonicalScene(offered.scene, registry); } catch { return null; }
+  const setup = canonicalJSON(scene) === canonicalJSON(offered.scene) ? offered : { ...offered, scene, hash: await browserSceneHash(scene) };
   return { setup, history: [], future: [], requests: incoming.clientRequestId ? [incoming.clientRequestId] : [] };
 }
 export function proposalMatches(current, proposal) {

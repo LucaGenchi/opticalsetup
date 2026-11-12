@@ -68,6 +68,17 @@ test('a copy stored under an earlier editor is brought to today\'s form with its
   // The same step with the list as it was stored is the one the view refused.
   assert.notEqual(canonicalJSON(undone.structuredContent.setup.scene), canonicalJSON(value.history.at(-1)));
   assert.deepEqual(loadedCopy(copy, registry), copy, 'a copy already in today\'s form is left as it is');
+  // A chat result made under the earlier editor and shown again, with no copy in this browser.
+  const result = { setup: { id: 'view', revision: 4, scene: old(120), hash: await browserSceneHash(old(120)) }, clientRequestId: 'r9' };
+  const offered = await offeredSetup(result, registry);
+  assert.equal(offered.setup.revision, 4, 'taking an earlier result is not an edit');
+  assert.deepEqual([offered.history, offered.future, offered.requests], [[], [], ['r9']]);
+  assert.deepEqual(offered.setup.scene, copy.setup.scene, 'the scene is the one the editor shows');
+  assert.equal(offered.setup.hash, await browserSceneHash(offered.setup.scene));
+  assert.equal((await call('get_setup', { setup: offered.setup })).isError, undefined, 'the service reads the setup the view now holds');
+  assert.equal(await offeredSetup({ ...result, setup: { ...result.setup, hash: offered.setup.hash } }, registry), null, 'the hash it came with is still the one checked');
+  const current = { setup: offered.setup };
+  assert.deepEqual((await offeredSetup(current, registry)).setup, offered.setup, 'a result in today\'s form is taken as it is');
   // A tab still on the earlier editor sends its copy as it holds it: that one is not taken.
   assert.equal(inLoadedForm(copy, registry), true);
   assert.equal(inLoadedForm(value, registry), false, 'a current scene in the earlier form');
@@ -102,14 +113,14 @@ test('a fiber drawn by hand and a glass just placed are accepted with the hash t
 test('a view built from an edit result counts that edit as applied, and refuses a result whose hash is wrong', async () => {
   const opened = resultData(await call('open_setup'));
   const edit = (await call('add_components', { setup: opened.setup, clientRequestId: 'first-edit', components: [{ type: 'lens', x: 0, y: 0 }] })).structuredContent;
-  const fromEdit = await offeredSetup(edit);
+  const fromEdit = await offeredSetup(edit, registry);
   assert.deepEqual(fromEdit.setup, edit.setup);
   // Delivered again, the same result is one the view has already applied, not an edit based on an older scene.
   assert.deepEqual(fromEdit.requests, ['first-edit']);
   assert.ok(!proposalMatches(fromEdit.setup, edit), 'which is what it would otherwise look like');
-  assert.deepEqual((await offeredSetup(opened)).requests, []);
+  assert.deepEqual((await offeredSetup(opened, registry)).requests, []);
   assert.deepEqual([fromEdit.history, fromEdit.future], [[], []]);
-  assert.equal(await offeredSetup({ ...edit, setup: { ...edit.setup, hash: 'a'.repeat(64) } }), null);
+  assert.equal(await offeredSetup({ ...edit, setup: { ...edit.setup, hash: 'a'.repeat(64) } }, registry), null);
   fromEdit.setup.scene.elements.length = 0;
   assert.equal(edit.setup.scene.elements.length, 1, 'the view works on its own copy');
 });
