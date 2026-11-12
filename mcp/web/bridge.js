@@ -348,7 +348,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const present = globalsResult(window.openai);
     let incoming = queued || (present.data?.setup?.scene ? present.data : undefined);
     if (!incoming && hosted && !present.received) incoming = await initialResult;
-    if (incoming?.setup) take(incoming.setup.id, await offeredSetup(incoming));
+    if (incoming?.setup) take(incoming.setup.id, await offeredSetup(incoming, registry));
     else {
       // Standalone workbench starts with its own local copy, separate from ChatGPT views.
       const id = hosted ? crypto.randomUUID() : 'standalone', local = stored(id);
