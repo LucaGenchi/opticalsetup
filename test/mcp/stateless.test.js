@@ -39,6 +39,14 @@ test('fibers, supplied local history and detector tracing use native models', as
   const detector = (await call('add_components', { setup, clientRequestId: 'detectors', components: [{ type: 'cwlaser', x: 100, y: 200, parameters: { wavelength: 532 } }, { type: 'detector', x: 300, y: 200 }] })).structuredContent.setup;
   const reading = (await call('inspect_setup', { setup: detector })).structuredContent;
   assert.equal(reading.detectors.length, 1); assert.ok(reading.detectors[0].reading); assert.equal(reading.hash, detector.hash);
+  // A snapshot inspection gives the same compact readings, and the same way to one curve.
+  const broadband = (await call('add_components', { setup, clientRequestId: 'broadband', components: [{ type: 'sclaser', x: 100, y: 200 }, { type: 'spectrometer', x: 300, y: 200 }] })).structuredContent.setup;
+  const [spectrometer] = (await call('inspect_setup', { setup: broadband })).structuredContent.detectors;
+  assert.ok(spectrometer.reading.signal > 0 && spectrometer.capability.description);
+  assert.equal(spectrometer.reading.spectrum.curve, 'spectrum'); assert.ok(spectrometer.reading.spectrum.omitted > 8);
+  const window = (await call('inspect_setup', { setup: broadband, ids: [spectrometer.id], curve: 'spectrum', sampleLimit: 3 })).structuredContent;
+  assert.equal(window.total, spectrometer.reading.spectrum.omitted); assert.equal(window.values.length, 3); assert.ok(window.values[0].wavelength > 0);
+  assert.equal(window.hash, broadband.hash);
 });
 test('HTTP noauth, origin/host boundaries, JSON limits and exact domain challenge', async () => {
   const app = createApplication({ origin: service.origin, challenge: 'exact-token', computeScene: service.compute });

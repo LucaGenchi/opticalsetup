@@ -118,6 +118,15 @@ two minutes, and after a network fault; an edit that arrives in between
 waits up to three seconds for the view. An edit that arrives while a pointer
 is down in the editor is refused as `BUSY`, with nothing changed.
 
+A reading from `inspect_setup` keeps its numbers, notes and model limits and
+leaves out the curves the editor plots from it: a spectrum, a pulse envelope,
+a field. Each one is named in its place with its length, for example
+`{"omitted": 1024, "curve": "pulse.envelope.intensity"}`. What sums a curve
+up (band limits, duration, energy, peak power) is in the reading beside it.
+To read a curve, pass one ID in `ids` with `curve`; `sampleOffset` and
+`sampleLimit` (128 by default, 256 at most) choose the window. This is the
+same with a `workspaceRef` and with an explicit `setup`.
+
 Routine edits exchange changed items. Opening or recovering a mirror, and
 some bulk replacements, can transfer the complete scene between the browser
 and service. Opening a view carries any initial scene in widget metadata.

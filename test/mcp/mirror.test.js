@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { createApplication } from '../../mcp/server.js';
-import { sceneHash, snapshot } from '../../mcp/stateless.js';
+import { sceneHash, snapshot, compactReading } from '../../mcp/stateless.js';
 import { inspectDocument, emptyDocument } from '../../mcp/scene-api.js';
 import { diffScene, applyScenePatch } from '../../mcp/web/scene-patch.js';
 import { createDrawnPath } from '../../sketch/js/path-types.js';
@@ -350,4 +350,73 @@ test('a connected inspection reads one page of detectors and fibers, each with w
   assert.match(items[1].capability.limits, /linear delay, attenuation and constant dispersion/);
   assert.match(items[1].readoutNote, /no dedicated solver readout/);
   await reader.cancel();
+});
+
+test('a reading leaves its sampled curves out, and one curve is read a window at a time', async t => {
+  const app = createApplication({ origin, computeScene: async (kind, scene) => inspectDocument({ ...emptyDocument(), scene }) });
+  t.after(() => app.close());
+  const reader = await subscribe(app);
+  const scene = JSON.parse(await readFile(new URL('../../Examples/Ultrashort Pulses/Hollow-core pulse compressor.json', import.meta.url), 'utf8'));
+  const setup = snapshot({ revision: 0, scene });
+  const { workspaceRef } = await (await sync(app, setup)).json();
+  // With their curves, the three readings of this setup were 280,000 characters, more than a chat host passes on.
+  const traced = inspectDocument({ ...emptyDocument(), scene: setup.scene });
+  assert.ok(size(traced.detectors.map(item => item.reading)) > 150000);
+  const page = await rpc(app, 'inspect_setup', { workspaceRef });
+  assert.ok(size(page.content) < 12000, 'the page is ' + size(page.content) + ' bytes');
+  const { items } = page.structuredContent;
+  assert.deepEqual(items.map(item => item.id).sort(), ['hcf-before', 'hcf-fiber', 'hcf-output']);
+  // What sums a curve up stays in the reading: the band, the duration, the energy, the peak power.
+  const { reading } = items.find(item => item.id === 'hcf-output');
+  assert.ok(reading.signal > 0 && reading.bandMin < reading.wavelength && reading.wavelength < reading.bandMax);
+  const { envelope } = reading.pulse;
+  assert.ok(envelope.fwhmFs > 0 && envelope.energyJ > 0 && envelope.peakPowerW > 0);
+  // Each curve is named where it was, with its length. Short lists are not curves.
+  assert.deepEqual(envelope.intensity, { omitted: 1024, curve: 'pulse.envelope.intensity' });
+  assert.deepEqual(reading.pulse.trains[0].envelope.timeFs, { omitted: 1024, curve: 'pulse.trains.0.envelope.timeFs' });
+  assert.equal(reading.spectrum.curve, 'spectrum');
+  assert.ok(Array.isArray(reading.pulse.trains) && Array.isArray(reading.sourceFractions) && Array.isArray(reading.approximations));
+  const fiber = items.find(item => item.id === 'hcf-fiber');
+  assert.deepEqual(fiber.reading.field.re, { omitted: 1024, curve: 'field.re' });
+  assert.ok(fiber.reading.metrics.fwhmFs > 0 && fiber.reading.bIntegral > 0);
+  assert.match(fiber.capability.limits, /argon capillary/);
+
+  // One curve of one reading, in windows that are the tracer's own samples.
+  const whole = traced.detectors.find(item => item.id === 'hcf-output').reading;
+  const curve = args => rpc(app, 'inspect_setup', { workspaceRef, ids: ['hcf-output'], curve: 'pulse.envelope.intensity', ...args });
+  const first = (await curve({})).structuredContent;
+  assert.equal(first.total, 1024); assert.equal(first.offset, 0); assert.equal(first.nextOffset, 128); assert.equal(first.revision, 0);
+  assert.deepEqual(first.values, whole.pulse.envelope.intensity.slice(0, 128));
+  const last = (await curve({ sampleOffset: 1000, sampleLimit: 256 })).structuredContent;
+  assert.deepEqual(last.values, whole.pulse.envelope.intensity.slice(1000)); assert.equal(last.nextOffset, null);
+  assert.deepEqual((await curve({ sampleOffset: 5000 })).structuredContent.values, []);
+  const lines = await rpc(app, 'inspect_setup', { workspaceRef, ids: ['hcf-output'], curve: 'spectrum', sampleLimit: 256 });
+  assert.deepEqual(lines.structuredContent.values, whole.spectrum); assert.ok(size(lines.content) < 40000);
+  assert.deepEqual((await rpc(app, 'inspect_setup', { workspaceRef, ids: ['hcf-fiber'], curve: 'spectrum.w', sampleLimit: 4 })).structuredContent.values, traced.paths[0].reading.spectrum.w.slice(0, 4));
+  // What is not one curve of one reading is refused in words.
+  const refused = async args => (await rpc(app, 'inspect_setup', { workspaceRef, ...args })).structuredContent.error?.message;
+  assert.match(await refused({ curve: 'spectrum' }), /Name one reading/);
+  assert.match(await refused({ ids: ['hcf-output', 'hcf-before'], curve: 'spectrum' }), /Name one reading/);
+  assert.match(await refused({ ids: ['absent'], curve: 'spectrum' }), /absent has no curve named spectrum/);
+  assert.match(await refused({ ids: ['hcf-output'], curve: 'pulse.trains' }), /no curve named pulse.trains/);
+  assert.match(await refused({ ids: ['hcf-output'], curve: 'signal' }), /no curve named signal/);
+  assert.match(await refused({ ids: ['hcf-output'], curve: 'spectrum.length' }), /no curve named/);
+  assert.match(await refused({ ids: ['hcf-output'], curve: '__proto__.constructor' }), /no curve named/);
+  assert.match(await refused({ ids: ['hcf-output'], curve: 'spectrum..x' }), /invalid format/);
+  assert.match(await refused({ ids: ['hcf-output'], sampleLimit: 10 }), /Name it with curve/);
+  assert.match(await refused({ ids: ['hcf-output'], curve: 'spectrum', sampleLimit: 257 }), /numeric bounds/);
+  await reader.cancel();
+});
+
+test('a list of caveats is never left out as a curve, and a list of colours is', () => {
+  const notes = Array.from({ length: 12 }, (_, index) => 'Approximation number ' + index);
+  const colours = Array.from({ length: 12 }, () => '#ff3030');
+  const compact = compactReading({ approximations: notes, profileColors: colours, profile: Array(12).fill(0.5), short: [1, 2, 3], pulse: null, branches: [{ gates: Array(9).fill({ opl: 1 }) }] });
+  assert.deepEqual(compact.approximations, notes);
+  assert.deepEqual(compact.profileColors, { omitted: 12, curve: 'profileColors' });
+  assert.deepEqual(compact.profile, { omitted: 12, curve: 'profile' });
+  assert.deepEqual(compact.short, [1, 2, 3]);
+  assert.equal(compact.pulse, null);
+  assert.deepEqual(compact.branches, [{ gates: { omitted: 9, curve: 'branches.0.gates' } }]);
+  assert.equal(compactReading(null), null);
 });

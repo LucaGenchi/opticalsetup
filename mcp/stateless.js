@@ -16,11 +16,15 @@ const workspaceRef = { type: 'string', pattern: '^[a-f0-9]{64}$', description: '
 const revision = { type: 'integer', minimum: 0, maximum: 1000000000 };
 const page = { offset: { type: 'integer', minimum: 0, maximum: 300 }, limit: { type: 'integer', minimum: 1, maximum: 20 } };
 const ids = { type: 'array', minItems: 1, maxItems: 20, items: { type: 'string' } };
+const curve = {
+  curve: { type: 'string', maxLength: 120, pattern: '^[A-Za-z0-9_]+(\\.[A-Za-z0-9_]+)*$', description: 'Name of one sampled curve, exactly as a reading gives it. Needs exactly one ID in ids.' },
+  sampleOffset: { type: 'integer', minimum: 0, maximum: 100000 }, sampleLimit: { type: 'integer', minimum: 1, maximum: 256 },
+};
 const output = { type: 'object', additionalProperties: true };
 const descriptions = {
   open_setup: 'Open the interactive OpticalSetup workbench. Pass workspaceRef to reopen a connected setup, or omit it to start an empty one. A standalone client can supply an explicit setup snapshot to open it in the workbench.',
   get_setup: 'Get the workbench revision, component and path counts, and undo/redo availability. Use get_items for IDs and controls. A standalone client can summarize its own explicit setup snapshot.',
-  inspect_setup: 'Run the native 2D tracer on the current workspace. Returns a page of detector and fiber readings with model limits. Filter by IDs with ids. A standalone client can pass an explicit setup snapshot.',
+  inspect_setup: 'Run the native 2D tracer on the current workspace. Returns a page of detector and fiber readings with model limits. Filter by IDs with ids. A reading keeps its numbers and notes and leaves out its sampled curves (a spectrum, a pulse envelope), naming each with its length. To read one, pass a single ID in ids with curve, and sampleOffset and sampleLimit for the window. A standalone client can pass an explicit setup snapshot.',
   get_setup_screenshot: 'Render the setup as a fitted PNG using the native geometry and tracer. Supply expectedRevision to verify a specific edit. The returned image is a static scene export.',
   undo_setup: 'Undo the last workbench edit at expectedRevision. The browser owns its history. Only standalone snapshot clients need to supply targetScene.',
   redo_setup: 'Redo the last undone workbench edit at expectedRevision. The browser owns its history. Only standalone snapshot clients need to supply targetScene.',
@@ -39,7 +43,7 @@ export const TOOLS = LAB_TOOLS.filter(t => !['replace_setup', 'save_setup_screen
   if (properties.expectedRevision) properties.expectedRevision = revision;
   properties.setup = { ...setupSchema, description: 'Explicit full snapshot for standalone clients. In a workbench always use workspaceRef instead.' };
   if (historyEdit(t.name)) properties.targetScene = { ...sceneSchema, description: 'Standalone snapshot mode only: the caller’s undo or redo scene.' };
-  if (t.name === 'inspect_setup') Object.assign(properties, { ...page, ids });
+  if (t.name === 'inspect_setup') Object.assign(properties, { ...page, ids, ...curve });
   t.inputSchema = object(properties, t.inputSchema.required.filter(key => key !== 'expectedRevision'));
   t.description = descriptions[t.name] || original.description
     .replaceAll('get_setup.paths', 'get_items with kind path')
@@ -133,6 +137,32 @@ function selectedItems(setup, args) {
   return { ...setupVersion(setup), ...paginate(matches.map(({ parameters, points, capability, ...item }) =>
     args.details ? { ...item, parameters, points, capability } : item), args) };
 }
+// A reading is the editor's own object, and some of its fields are the curves the editor plots:
+// a spectrum, a pulse envelope, a field. They are nearly all of its size, and the numbers that
+// sum them up (band limits, duration, energy, peak power) are in the reading beside them. So a
+// reading gives each curve's name and length in its place, and one curve is read by that name,
+// a window at a time. A list of notes is never a curve, however long: caveats always arrive.
+const CURVE_FROM = 9;
+const isCurve = value => Array.isArray(value) && value.length >= CURVE_FROM && !value.every(item => typeof item === 'string' && item.includes(' '));
+export function compactReading(value, path = []) {
+  if (isCurve(value)) return { omitted: value.length, curve: path.join('.') };
+  if (Array.isArray(value)) return value.map((item, index) => compactReading(item, [...path, index]));
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, compactReading(item, [...path, key])]));
+  return value;
+}
+const compactItem = item => ({ ...item, reading: compactReading(item.reading) });
+function curveWindow(readings, args) {
+  if (args.ids?.length !== 1) throw new SceneError('Name one reading in ids to read a curve.');
+  const [id] = args.ids, item = readings.find(reading => reading.id === id);
+  const path = args.curve.split('.');
+  let value = item?.reading;
+  for (const key of path) value = value && typeof value === 'object' && Object.hasOwn(value, key) ? value[key] : undefined;
+  if (!isCurve(value)) throw new SceneError(`${id} has no curve named ${args.curve}. Use a name its reading gives.`);
+  const offset = args.sampleOffset ?? 0, end = offset + (args.sampleLimit ?? 128);
+  // A sample that holds a curve of its own gives its name in turn, so a window stays a window.
+  const values = value.slice(offset, end).map((sample, index) => compactReading(sample, [...path, offset + index]));
+  return { id, type: item.type, curve: args.curve, total: value.length, offset, values, nextOffset: end < value.length ? end : null };
+}
 async function readSetup(name, setup, args, service) {
   if (args.expectedRevision !== undefined && args.expectedRevision !== setup.revision) throw new SceneError('The setup has a different revision. Read get_setup again.', 'REVISION_CONFLICT');
   if (name === 'get_setup_screenshot') {
@@ -143,12 +173,17 @@ async function readSetup(name, setup, args, service) {
   }
   if (name === 'inspect_setup') {
     const traced = await service.compute('inspect', setup.scene);
-    if (!setup.workspaceRef) return result({ ...traced, ...setupVersion(setup) });
+    const { detectors = [], paths = [] } = traced;
+    if (args.curve) return result({ ...setupVersion(setup), ...curveWindow([...detectors, ...paths], args) });
+    if (args.sampleOffset !== undefined || args.sampleLimit !== undefined) throw new SceneError('sampleOffset and sampleLimit read one curve. Name it with curve.');
+    if (!setup.workspaceRef) return result({ ...traced, detectors: detectors.map(compactItem), paths: paths.map(compactItem), ...setupVersion(setup) });
     // Each reading comes with what its detector or fiber models, as it does for a standalone snapshot.
-    const detectors = (traced.detectors || []).map(({ id, type, reading, capability }) => ({ id, type, reading, capability, kind: 'detector' }));
-    const fibers = (traced.paths || []).filter(({ type }) => ['fiber', 'barefiber'].includes(type))
-      .map(({ id, type, reading, readoutNote, capability }) => ({ id, type, reading, readoutNote, capability, kind: 'fiber' }));
-    const matches = [...detectors, ...fibers].filter(item => !args.ids || args.ids.includes(item.id));
+    const readings = [
+      ...detectors.map(({ id, type, reading, capability }) => ({ id, type, reading, capability, kind: 'detector' })),
+      ...paths.filter(({ type }) => ['fiber', 'barefiber'].includes(type))
+        .map(({ id, type, reading, readoutNote, capability }) => ({ id, type, reading, readoutNote, capability, kind: 'fiber' })),
+    ];
+    const matches = readings.filter(item => !args.ids || args.ids.includes(item.id)).map(compactItem);
     return result({ ...setupVersion(setup), scope: traced.scope, ...paginate(matches, args) });
   }
   if (name === 'get_items') return result(selectedItems(setup, args));
