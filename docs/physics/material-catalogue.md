@@ -85,8 +85,13 @@ rad/(T·m), or `null` outside that range or for a record without one.
   A2 (handedness) and P2 (the Faraday rotator) fix the viewing direction.
   It gives −130.6 rad/(T·m) at 633 nm and −37.5 rad/(T·m) at 1064 nm, the
   values Vojna et al. tabulate. Slezák et al. measured six samples: at room
-  temperature |V| ranged from 122.4 to 155.5 rad/(T·m) at 632 nm, so a value
-  for an unspecified sample is good to about ±10 %.
+  temperature |V| ranged from 122.4 to 155.5 rad/(T·m) at 632 nm and from
+  36.6 to 44.2 rad/(T·m) at 1064 nm. NG6 sits near the low end: the other
+  samples read from 6.6 % below to 18.6 % above it at 632 nm, and from 2.4 %
+  below to 17.9 % above it at 1064 nm. The F and G above follow from Slezák's
+  Table 2 with T_w = +5.9 K as printed there. The paper's text describes
+  T_w as negative, an inconsistency that a later temperature-dependent
+  model has to resolve.
 - **Licence.** Vojna et al. publish under CC BY 4.0;
   `THIRD-PARTY-NOTICES.md` credits them. Both papers are open access
   (gold).
@@ -175,8 +180,8 @@ the gap rather than guess.
   The catalogue reproduces every row of the four tables to within
   5.2 × 10⁻⁷, the rounding of the printing. The module checks that the printed
   measured values lie within the residuals Ghosh reports. Those residuals
-  reach 0.0013 for the extraordinary index of calcite near 2.1 µm, and the
-  record says so.
+  reach 0.0013 for the extraordinary index of calcite near 2.1 µm, where the
+  fit lies above the measurement, and the record says so.
 - **YVO₄:** the source tabulates no indices; its measurements are in an
   unpublished NASA report. These cases check the transcription of its two
   equations.

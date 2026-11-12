@@ -242,7 +242,7 @@ const RECORDS = [
       range: [204, 2172], conditions: 'room temperature; extraordinary ray (E ∥ optic axis)', indexReference: 'unstated',
       datasetRecord: 'main/CaCO3/nk/Ghosh-e.yml',
     },
-    accuracyNote: 'Ghosh fits handbook data with an RMS deviation of 0.0003 (ordinary) and 0.0004 (extraordinary); above 1.4 µm the extraordinary fit falls below the measured index by up to 0.0013 at 2.1 µm.',
+    accuracyNote: 'Ghosh fits handbook data with an RMS deviation of 0.0003 (ordinary) and 0.0004 (extraordinary); from about 1.16 µm the extraordinary fit exceeds the measured index, by up to 0.0013 at 2.1 µm.',
   },
   {
     id: 'yvo4', kind: 'uniaxial', group: 'crystal', label: 'Yttrium orthovanadate, YVO₄', opticalSign: 'positive',
@@ -274,9 +274,9 @@ const RECORDS = [
       range: [500, 1100], temperatureK: 295,
       dataset: 'vojna2019', reference: 'slezak2016',
       sample: 'single crystal, sample NG6 (Northrop-Grumman, 6 mm)',
-      conditions: 'Room temperature. Vojna et al. tabulate F and G for TGG from Slezák et al., Table 2, sample NG6; those values follow from that table at 295 K.',
+      conditions: 'Room temperature. Vojna et al. tabulate F and G for TGG from Slezák et al., Table 2, sample NG6; those values follow from that table at 295 K with T_w = +5.9 K as printed there, although the text of Slezák et al. describes T_w as negative, an inconsistency that matters for any later temperature dependence.',
       signConvention: 'Negative, as Slezák et al. state for TGG. Vojna et al.: the Verdet constant is negative if the medium rotates the polarization clockwise when the beam propagates parallel to the magnetic field; the viewing direction is not stated, and step A2 fixes the app\'s.',
-      spreadNote: 'Slezák et al. measured six TGG samples: at room temperature |V| ranged from 122.4 to 155.5 rad/(T·m) at 632 nm and from 36.6 to 44.2 rad/(T·m) at 1064 nm, so a value for an unspecified sample is good to about ±10 %.',
+      spreadNote: 'Slezák et al. measured six TGG samples: at room temperature |V| ranged from 122.4 to 155.5 rad/(T·m) at 632 nm and from 36.6 to 44.2 rad/(T·m) at 1064 nm. This record is sample NG6, near the low end (131.1 and 37.5 rad/(T·m)): the other samples read from 6.6 % below to 18.6 % above it at 632 nm, and from 2.4 % below to 17.9 % above it at 1064 nm.',
     },
   },
   {

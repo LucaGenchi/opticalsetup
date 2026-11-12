@@ -162,7 +162,7 @@ def cases():
             "expected": {"verdetRadPerTm": -printed},
             "tolerance": {"verdetRadPerTm": 0.06},
             "absolute": True,
-            "note": "printed to one decimal in the source; sample NG6 at 295 K, other samples differ by up to about 10 %",
+            "note": "printed to one decimal in the source; sample NG6 at 295 K; Slezak's six samples range from 122.4 to 155.5 rad/(T m) at 632 nm and from 36.6 to 44.2 rad/(T m) at 1064 nm",
         })
     for wavelength in (532, 800, 1030):
         out.append({
@@ -190,7 +190,7 @@ MODEL = {
     ],
     "fidelity": "computed",
     "scope": "Principal indices of calcite (204-2172 nm), quartz (198-2053 nm) and YVO4 (488-3390 nm) at room temperature; the TGG index at 20 C between 404.66 and 1176.68 nm; the TGG Verdet constant at room temperature (295 K) between 500 and 1100 nm.",
-    "outside_scope": "fitIndex and verdetConstant return null outside these ranges. No temperature dependence. The calcite extraordinary fit is up to 0.0013 below the measured index near 2.1 um; the TGG Verdet constant varies by about 10 % between samples. No canvas element uses these records yet.",
+    "outside_scope": "fitIndex and verdetConstant return null outside these ranges. No temperature dependence. The calcite extraordinary fit is up to 0.0013 above the measured index near 2.1 um. The TGG Verdet constant is that of sample NG6; Slezak's six samples range from 6.6 % below to 18.6 % above it at 632 nm. No canvas element uses these records yet.",
     "provenance": "Ghosh's printed computed indices are the expected values, and the module checks its own evaluation of his Table 1 against them; Vojna's F and G are derived in the module from Slezak's Table 2 at 295 K.",
     "domain": "Six to eight wavelengths per Ghosh table; six wavelengths per YVO4 ray; Schlarb's nine measurements and one interpolated point; five wavelengths for the Verdet constant.",
     "convergence": "Closed forms and linear interpolation; no discretisation.",
