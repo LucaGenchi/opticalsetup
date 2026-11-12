@@ -101,6 +101,34 @@ without a reason is a bug report.
 - In the pull request, state: user-visible behaviour, the reference and the
   tolerance, the scope, and the exact checks run.
 
+## Third-party data
+
+Measured data and fitted coefficients that the app ships (dispersion fits,
+Verdet constants, optical constants of metals, spectra) follow three rules.
+
+1. **Open licence.** The dataset or table the values come from is in the
+   public domain or under an open licence that allows redistribution with the
+   GPL code (for example CC0 or CC BY); values whose licence is unknown or
+   restrictive are not added.
+2. **Primary source cited.** Each record names the paper or datasheet that
+   measured or fitted it, with the wavelength range, temperature and
+   conditions it states, both in the record and on the wiki page that uses
+   it; when the values reach the app through a compilation, the record names
+   the compilation and the primary source.
+3. **Access stated.** Each record says whether its primary source is open
+   access; when two sources are equally good, the open-access one is
+   preferred.
+
+A licence that asks for attribution gets a section in
+`THIRD-PARTY-NOTICES.md`, as the Raman reference spectra have.
+
+Records that existed before this rule are exempt until step A3 of the
+[Physics in 2D track](roadmap.md#physics-in-2d) brings them to it: the glass
+and crystal dispersion fits, the Raman reference spectra and the fluorophore
+spectra. The spectra already carry a licence; they gain the access status,
+and each fluorophore record names the source of its measured curves, which
+is not always the paper credited for the protein.
+
 ## What reviewers check
 
 - Is there a reference file written from the sources, with its conventions,
@@ -112,3 +140,5 @@ without a reason is a bug report.
   scope stated where users read it?
 - Are the units in the function names and the JSON fields?
 - Do the golden snapshots change only where the description says they should?
+- Does every new dataset have an open licence, a cited primary source and a
+  stated access status?
