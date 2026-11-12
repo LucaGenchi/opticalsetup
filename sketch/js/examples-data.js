@@ -34,12 +34,6 @@ export const examples = [
   },
   {
     "group": "Fundamentals",
-    "name": "Beam walking — two mirrors and two irises",
-    "path": "../Examples/Fundamentals/Beam%20walking%20%E2%80%94%20two%20mirrors%20and%20two%20irises.json",
-    "slug": "beam-walking-two-mirrors-and-two-irises"
-  },
-  {
-    "group": "Fundamentals",
     "name": "Pinhole spatial filter",
     "path": "../Examples/Fundamentals/Pinhole%20spatial%20filter.json",
     "slug": "pinhole-spatial-filter"
@@ -64,9 +58,9 @@ export const examples = [
   },
   {
     "group": "Fundamentals",
-    "name": "Czerny–Turner spectrometer",
-    "path": "../Examples/Fundamentals/Czerny%E2%80%93Turner%20spectrometer.json",
-    "slug": "czerny-turner-spectrometer"
+    "name": "Czerny–Turner monochromator",
+    "path": "../Examples/Fundamentals/Czerny%E2%80%93Turner%20monochromator.json",
+    "slug": "czerny-turner-monochromator"
   },
   {
     "group": "Lens Physics",

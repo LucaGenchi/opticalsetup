@@ -165,85 +165,6 @@ test('law of Malus: the analyzer passes cos² θ of half the LED, the half-wave 
   }
 });
 
-// Where the centre of the beam crosses the plane of each iris, measured from
-// the iris's centre, with both irises opened wide and the beam a single ray.
-async function walkErrors(state) {
-  const { scene, traced, get } = await run('Beam walking — two mirrors and two irises', find => {
-    find('laser').params.beamMode = 'line';
-    find('laser').rot = state.laser; find('m1').rot = state.m1; find('m2').rot = state.m2;
-    for (const id of ['iris1', 'iris2']) find(id).params.gap = 25;
-  });
-  const axis = get('iris1').y;
-  const at = x => {
-    for (const drawable of traced.drawables) {
-      const pts = drawable.pts || [];
-      for (let i = 0; i < pts.length - 1; i++) {
-        const a = pts[i], b = pts[i + 1];
-        if ((a.x - x) * (b.x - x) <= 0 && Math.abs(b.x - a.x) > 1e-9 && Math.abs(a.y - axis) < 60) {
-          return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x) - axis;
-        }
-      }
-    }
-    return NaN;
-  };
-  assert.ok(scene.elements.length > 0);
-  return { iris1: at(get('iris1').x), iris2: at(get('iris2').x) };
-}
-
-// Turn one mirror until the beam is centred on one iris (secant method).
-async function centre(state, mirror, iris) {
-  let a = state[mirror], b = a + 0.05;
-  let fa = (await walkErrors({ ...state, [mirror]: a }))[iris], fb = (await walkErrors({ ...state, [mirror]: b }))[iris];
-  for (let i = 0; i < 40 && Math.abs(fb) > 1e-10; i++) {
-    const c = b - fb * (b - a) / (fb - fa);
-    a = b; fa = fb; b = c; fb = (await walkErrors({ ...state, [mirror]: b }))[iris];
-  }
-  return { ...state, [mirror]: b };
-}
-
-test('beam walking: the aligned setup passes, a 1° turn of the laser darkens it, the quoted mirror angles restore it', async () => {
-  const NAME = 'Beam walking — two mirrors and two irises';
-  close((await run(NAME)).watts('meter'), 1 * mW, 1e-12);
-  assert.equal((await run(NAME, get => { get('laser').rot = 1; })).watts('meter'), 0);
-  const walked = await run(NAME, get => { get('laser').rot = 1; get('m1').rot = 46.30; get('m2').rot = 45.80; });
-  close(walked.watts('meter'), 1 * mW, 1e-12);
-});
-
-test('beam walking: each round leaves b(a+b+c)/((a+b)(b+c)) of the error, and the wrong pairing diverges', async () => {
-  let state = { laser: 1, m1: 45, m2: 45 };
-  const start = await walkErrors(state);
-  close(Math.abs(start.iris1), 5.41, 0.005);
-  close(Math.abs(start.iris2), 9.77, 0.005);
-  const table = [[4.65, 0.78], [2.07, 0.34], [0.92, 0.15], [0.41, 0.07]];
-  let previous = null;
-  for (const [offIris2, offIris1] of table) {
-    state = await centre(state, 'm1', 'iris1');
-    const afterFirst = await walkErrors(state);
-    state = await centre(state, 'm2', 'iris2');
-    const afterSecond = await walkErrors(state);
-    close(Math.abs(afterFirst.iris2), offIris2, 0.006);
-    close(Math.abs(afterSecond.iris1), offIris1, 0.006);
-    // a = 100, b = 50, c = 250 mm.
-    if (previous !== null) close(Math.abs(afterFirst.iris2) / previous, 50 * 400 / (150 * 300), 0.002);
-    previous = Math.abs(afterFirst.iris2);
-  }
-  for (let round = 0; round < 12; round++) {
-    state = await centre(state, 'm1', 'iris1');
-    state = await centre(state, 'm2', 'iris2');
-  }
-  close(state.m1, 46.30, 0.005);
-  close(state.m2, 45.80, 0.005);
-  // Mirror 2 for iris 1 first: the beam ends further from iris 2 than it started.
-  const wrongStart = await centre({ laser: 1, m1: 45, m2: 45 }, 'm2', 'iris1');
-  const wrong = await walkErrors(wrongStart);
-  close(Math.abs(wrong.iris2), 22.8, 0.05);
-  // Mirror 1 for iris 2 next: the beam runs off mirror 2 about 5 mm short of the centre.
-  const nearEdge = await walkErrors({ ...wrongStart, m1: 43.75 });
-  close(Math.abs(nearEdge.iris2), 5, 0.5);
-  const pastEdge = await walkErrors({ ...wrongStart, m1: 43.65 });
-  assert.ok(Number.isNaN(pastEdge.iris1) && Number.isNaN(pastEdge.iris2), 'the beam has left mirror 2');
-});
-
 test('pinhole spatial filter: the gap passes the beam on the axis and stops the light at 6°', async () => {
   const NAME = 'Pinhole spatial filter';
   const shipped = await run(NAME);
@@ -368,7 +289,7 @@ test('scan relay: 2° on the mirror is 1° at the pupil and 0.17 mm at the focus
 });
 
 test('Czerny–Turner: each grating rotation on the page brings its own mercury line through the exit slit', async () => {
-  const NAME = 'Czerny–Turner spectrometer';
+  const NAME = 'Czerny–Turner monochromator';
   const TOTAL = 4.1; // the lamp's line weights, summed
   const shipped = await run(NAME);
   close(shipped.get('grating').rot, 189.81, 1e-9);
@@ -391,7 +312,7 @@ test('Czerny–Turner: each grating rotation on the page brings its own mercury 
 });
 
 test('Czerny–Turner: slits 198 mm from the mirrors, 8.4 nm per millimetre at the exit slit, each line passing over 0.15°', async () => {
-  const NAME = 'Czerny–Turner spectrometer';
+  const NAME = 'Czerny–Turner monochromator';
   const shipped = await run(NAME);
   const between = (a, b) => Math.hypot(shipped.get(a).x - shipped.get(b).x, shipped.get(a).y - shipped.get(b).y);
   // (R/2) cos θ for f = 200 mm used at θ = 8°: the focus in the plane of the drawing.
@@ -417,7 +338,7 @@ test('Czerny–Turner: slits 198 mm from the mirrors, 8.4 nm per millimetre at t
 });
 
 test('Czerny–Turner: an 8 mm exit slit lets the yellow pair through beside the green line', async () => {
-  const r = (await run('Czerny–Turner spectrometer', get => { get('exit').params.gap = 8; })).reading('detector');
+  const r = (await run('Czerny–Turner monochromator', get => { get('exit').params.gap = 8; })).reading('detector');
   close(r.bandMin, 546.074, 1e-6);
   close(r.bandMax, 579.07, 1e-6);
   close(r.signal, 1.8 / 4.1, 1e-9);

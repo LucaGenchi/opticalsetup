@@ -90,12 +90,11 @@ const EXAMPLE_ORDER = {
     'Beam expanders — Keplerian and Galilean',
     'Total internal reflection — right-angle prism',
     'Law of Malus — polarizers and a half-wave plate',
-    'Beam walking — two mirrors and two irises',
     'Pinhole spatial filter',
     'Spatial filtering in the Fourier plane — 4f system',
     'Coupling a laser into a single-mode fiber',
     'Scan lens and tube lens — galvo to back pupil',
-    'Czerny–Turner spectrometer',
+    'Czerny–Turner monochromator',
   ],
   'Microscopy Implementations': [
     'Optical sectioning — linear versus nonlinear',

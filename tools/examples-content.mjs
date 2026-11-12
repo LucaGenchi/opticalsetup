@@ -295,87 +295,6 @@ export const exampleEntries = [
   },
 
   {
-    match: 'Beam walking — two mirrors and two irises',
-    title: 'Beam walking: two mirrors and two irises',
-    tagline: 'Putting a laser beam on a line fixed by two irises with two mirrors: each round of two adjustments leaves 0.44 of the error of the round before.',
-    html: `
-      <p>Most optical setups begin with the same task: a laser beam has to run
-      along a given line, for instance the axis of the lenses that follow. A line
-      in the plane of the table is fixed by two points, and two irises mark them.
-      A beam is also fixed by two numbers, a position and a direction, so two
-      adjustments are needed, and one mirror gives only one. Two mirrors in a
-      row give both.</p>
-      <p>The two adjustments are not independent: turning either mirror moves the
-      beam on both irises. The standard procedure, called beam walking, deals
-      with that by repetition. Turn the first mirror until the beam is centred
-      on the first iris. Turn the second mirror until it is centred on the
-      second iris; it is now a little off the first. Go back to the first
-      mirror, and repeat. Each round leaves a smaller error.</p>
-      <p>How much smaller follows from the geometry. Call a the distance from
-      mirror 1 to mirror 2, b from mirror 2 to iris 1, and c from iris 1 to
-      iris 2. For small angles, a turn of mirror 1 moves the beam on the two
-      irises in the ratio (a+b)&nbsp;:&nbsp;(a+b+c), and a turn of mirror 2 in the
-      ratio b&nbsp;:&nbsp;(b+c). Working through one round, the error is
-      multiplied by</p>
-      <p style="text-align:center">b&nbsp;(a+b+c) / ((a+b)&nbsp;(b+c)),</p>
-      <p>which is always less than one. It is small when the first iris is
-      close to the second mirror and the second iris far away. Pair the mirrors
-      and irises the other way round, mirror 2 with iris 1 and mirror 1 with
-      iris 2, and each round multiplies the error by the inverse of that number:
-      the beam walks away instead.</p>`,
-    inOpticalSetupTitle: 'What this setup demonstrates',
-    inOpticalSetupHtml: `
-      <p>A 633&nbsp;nm laser with a 1&nbsp;mm beam is folded by two
-      <a href="../../wiki/mirror/">mirrors</a> at 45° onto a line through two
-      irises, each open to 2&nbsp;mm. (An iris is the
-      <a href="../../wiki/slit/">Slit</a> element: in a top view an opening is a
-      gap.) The distances are a&nbsp;=&nbsp;100&nbsp;mm, b&nbsp;=&nbsp;50&nbsp;mm and
-      c&nbsp;=&nbsp;250&nbsp;mm. As shipped the beam is aligned, and the power
-      meter behind the second iris reads 1.00&nbsp;mW.</p>
-      <p>Now misalign it: select the laser and set its rotation to 1°. The beam
-      meets the plate of the first iris and the meter goes dark; with the irises
-      opened wide it would cross the first 5.4&nbsp;mm and the second 9.8&nbsp;mm
-      from the centre. Then walk it back by turning the mirrors (the round handle
-      on a selected mirror, or its rotation in the inspector). Done exactly, with
-      each step putting the centre of the beam on the centre of its iris, the
-      traced beam gives:</p>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Round</th><th>Mirror 1 centres iris 1; off iris 2 by</th><th>Mirror 2 centres iris 2; off iris 1 by</th></tr></thead>
-        <tbody>
-          <tr><td>1</td><td>4.65&nbsp;mm</td><td>0.78&nbsp;mm</td></tr>
-          <tr><td>2</td><td>2.07&nbsp;mm</td><td>0.34&nbsp;mm</td></tr>
-          <tr><td>3</td><td>0.92&nbsp;mm</td><td>0.15&nbsp;mm</td></tr>
-          <tr><td>4</td><td>0.41&nbsp;mm</td><td>0.07&nbsp;mm</td></tr>
-        </tbody>
-      </table></div>
-      <p>Each round leaves 0.444 of the error before it, which is
-      50&nbsp;×&nbsp;400 / (150&nbsp;×&nbsp;300), the formula above. The walk ends
-      with mirror 1 at 46.30° and mirror 2 at 45.80°; type those two rotations
-      and the meter reads 1.00&nbsp;mW again. With a 1&nbsp;mm beam in a 2&nbsp;mm
-      iris, the light starts to come through once the beam is within 1.5&nbsp;mm
-      of the centre and all of it passes within 0.5&nbsp;mm, so the meter is the
-      guide, as it is on the bench.</p>
-      <p>Then try the wrong pairing from the same start, with the laser at 1°
-      and both mirrors back at 45°: centre the beam on iris 1 with mirror 2, and
-      on iris 2 with mirror 1. After the first step the beam is 23&nbsp;mm off
-      iris 2, further than the 9.8&nbsp;mm it started with. In the next step,
-      turning mirror 1 walks the beam off the edge of mirror 2 while it is still
-      about 5&nbsp;mm from the centre of iris 2.</p>`,
-    limitations: `<p>The setup is a top view, so it shows one of the two
-      planes. On a table each mirror also tilts the beam up and down, and the same
-      walk is done for the height, with the same two mirrors and irises. Height is
-      not part of the drawing.</p>
-      <p>A mirror here turns about the centre of its face, and the beam is 25 rays
-      with sharp edges, so the meter's reading changes in steps of 40&nbsp;µW as
-      rays are cut off. A real mount turns about a point behind the mirror, and a
-      real beam has a smooth profile and is partly transmitted by an iris well
-      before it is centred.</p>`,
-    citations: [],
-    resources: [],
-    related: ['mirror', 'slit', 'powermeter', 'cwlaser', 'goniometer'],
-  },
-
-  {
     match: 'Pinhole spatial filter',
     title: 'Pinhole spatial filter',
     tagline: 'A lens brings light travelling along its axis to one point and light at any other angle to another; a pinhole at the first point passes the beam and stops the rest.',
@@ -658,8 +577,8 @@ export const exampleEntries = [
   },
 
   {
-    match: 'Czerny–Turner spectrometer',
-    title: 'Czerny–Turner spectrometer',
+    match: 'Czerny–Turner monochromator',
+    title: 'Czerny–Turner monochromator',
     tagline: 'A slit, two concave mirrors and a grating: the lines of a mercury lamp are spread across the plane of the exit slit, and turning the grating brings them through it one at a time.',
     html: `
       <p>The classical grating monochromator is the Czerny–Turner
