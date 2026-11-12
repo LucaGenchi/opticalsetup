@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The law of Malus — Examples | OpticalSetup</title>
+<meta name="description" content="A polarizer passes cos² θ of light polarized at an angle θ to its axis: half of an unpolarized beam, nothing through crossed polarizers, and everything again once a half-wave plate turns the polarization between them.">
+<link rel="canonical" href="https://opticalsetup.com/example-setups/law-of-malus-polarizers-and-a-half-wave-plate/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="The law of Malus — OpticalSetup Examples">
+<meta property="og:description" content="A polarizer passes cos² θ of light polarized at an angle θ to its axis: half of an unpolarized beam, nothing through crossed polarizers, and everything again once a half-wave plate turns the polarization between them.">
+<meta property="og:url" content="https://opticalsetup.com/example-setups/law-of-malus-polarizers-and-a-half-wave-plate/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="../../sketch/icons/icon.svg">
+<script>
+  (() => {
+    let savedTheme = null;
+    try { savedTheme = localStorage.getItem('opticalsetup-theme'); } catch (_) { /* storage may be unavailable */ }
+    const systemTheme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = savedTheme === 'dark' || savedTheme === 'light'
+      ? savedTheme
+      : systemTheme;
+  })();
+</script>
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+<link rel="stylesheet" href="../../example-setups/assets/examples.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../calculators/">Calculators</a>
+      <a class="plain" href="../../community/">Community</a>
+      <button type="button" id="btnAbout" class="plain" aria-haspopup="dialog" title="License, copyright and citation">About</button>
+      <button type="button" id="btnTheme" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark mode" title="Switch to dark mode">
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M15.7 12.7A6.5 6.5 0 0 1 7.3 4.3a6.5 6.5 0 1 0 8.4 8.4Z"/>
+        </svg>
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="10" cy="10" r="3.2"/>
+          <path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M16 4l-1.4 1.4M5.4 14.6 4 16"/>
+        </svg>
+      </button>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <dialog id="aboutDialog" class="site-dialog" aria-labelledby="aboutTitle">
+    <div class="site-dialog-head">
+      <div><span class="eyebrow">Free software</span><h2 id="aboutTitle">About OpticalSetup</h2></div>
+      <button type="button" id="aboutClose" class="site-dialog-close" aria-label="Close about dialog">×</button>
+    </div>
+    <p class="about-text" id="aboutVersion" hidden></p>
+    <p class="about-text">Copyright © 2026 Luca Genchi and contributors.</p>
+    <p class="about-text">OpticalSetup is free software: you can redistribute it and/or modify it
+      under the terms of the GNU General Public License as published by the Free Software
+      Foundation, either version 3 of the License, or (at your option) any later version.</p>
+    <p class="about-text">It is distributed in the hope that it will be useful, but
+      <strong>without any warranty</strong>; without even the implied warranty of merchantability
+      or fitness for a particular purpose. See the GNU General Public License for more details.</p>
+    <p class="about-text">The numbers OpticalSetup reports come from models with stated limits; read
+      each component's page in the <a href="../../wiki/">wiki</a> before relying on one.</p>
+    <p class="about-text">If you use OpticalSetup in your research, teaching or publications,
+      please cite the software:</p>
+    <p class="about-text about-citation">Bertoncini, A., &amp; Genchi, L. (2026).
+      <cite>OpticalSetup - the optical workbench software</cite> [Computer software]. Zenodo.
+      <a href="https://doi.org/10.5281/zenodo.23191537" target="_blank" rel="noopener">https://doi.org/10.5281/zenodo.23191537</a></p>
+    <p class="about-links">
+      <a href="../../#cite">BibTeX and version DOIs</a>
+      <a href="../../license.html">License and notices</a>
+      <a href="https://github.com/LucaGenchi/opticalsetup" target="_blank" rel="noopener">Source code</a>
+    </p>
+  </dialog>
+  <script type="module" src="../../wiki/assets/site-header.js"></script>
+  <div class="wiki-shell" style="grid-template-columns: 1fr;">
+    <main class="wiki-article" style="max-width: 760px;">
+      <div class="crumb"><a href="../../example-setups/">Examples</a> / Fundamentals / The law of Malus</div>
+      <h1>The law of Malus</h1>
+      <p class="tagline" style="margin-top: 10px;">A polarizer passes cos² θ of light polarized at an angle θ to its axis: half of an unpolarized beam, nothing through crossed polarizers, and everything again once a half-wave plate turns the polarization between them.</p>
+
+      <a class="place-cta" href="../../sketch/?example=law-of-malus-polarizers-and-a-half-wave-plate">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?example=law-of-malus-polarizers-and-a-half-wave-plate&amp;embed=1"
+          title="The law of Malus — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace of the setup above, shown as a picture. Open it in the canvas to take it apart, retune it, and save or export it as your own.</p>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Background</h2>
+
+      <p>An ideal linear polarizer transmits the part of the light whose electric
+      field lies along its axis. For light already linearly polarized at an angle
+      θ to that axis, the transmitted intensity is I = I₀&nbsp;cos²&nbsp;θ, the
+      law named after Étienne-Louis Malus<sup class="cite">[<a href="#ref-1">1</a>]</sup>. Unpolarized light is an
+      even mixture of all directions, and the average of cos²&nbsp;θ over all
+      angles is one half: an ideal polarizer passes half of it<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+      <p>Two polarizers in a row make the law visible. The first sets the
+      polarization; the second, usually called the analyzer, passes cos²&nbsp;θ
+      of what the first let through, θ now being the angle between the two axes.
+      With the axes at right angles the polarizers are crossed and no light
+      passes<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+      <p>A half-wave plate between them changes that. It turns linear
+      polarization by twice the angle between the polarization and the plate's
+      fast axis<sup class="cite">[<a href="#ref-2">2</a>]</sup>, and absorbs nothing. With its axis at 45° it turns the
+      polarization by 90°, onto the axis of the crossed analyzer, and all the
+      light passes. A wave plate turned in front of a fixed polarizer is the
+      usual way to set the power of a polarized laser beam without touching the
+      laser.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>What this setup demonstrates</h2>
+      <div class="sim-block">
+
+      <p>In the upper setup a red <a href="../../wiki/ledsource/">LED</a>, 1&nbsp;mW
+      and unpolarized, passes a <a href="../../wiki/polarizer/">polarizer</a> at 0°
+      and an analyzer at 30°. The power meter reads 375&nbsp;µW: half of the
+      light after the first polarizer, and cos²&nbsp;30° = 0.75 of that after
+      the second. Its inspector gives the polarization, linear at 30°.</p>
+      <p>Things to try. Turn the analyzer (its <em>Axis angle</em>):</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Analyzer</th><th>Power meter</th></tr></thead>
+        <tbody>
+          <tr><td>0°</td><td>500&nbsp;µW</td></tr>
+          <tr><td>30°</td><td>375&nbsp;µW</td></tr>
+          <tr><td>45°</td><td>250&nbsp;µW</td></tr>
+          <tr><td>60°</td><td>125&nbsp;µW</td></tr>
+          <tr><td>90°</td><td>no light</td></tr>
+        </tbody>
+      </table></div>
+      <p>In the lower setup a laser polarized at 0° passes a polarizer at 0°, a
+      <a href="../../wiki/hwp/">half-wave plate</a> and an analyzer at 90°. The
+      plate's fast axis is at 45°, and the power meter reads the laser's full
+      1.00&nbsp;mW, polarized at 90°. Turn the plate: at 0° the meter is dark,
+      at 22.5° it reads 500&nbsp;µW, at 30°, 750&nbsp;µW. The transmitted
+      fraction is sin²&nbsp;2a for a fast axis at an angle a, because the
+      polarization is turned by 2a and the analyzer is at 90°.</p>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>The polarizers are ideal: they pass all of the light
+      polarized along their axis and none of the other. A real polarizer loses a
+      little of the first and leaks a little of the second, so crossed polarizers
+      are never completely dark. The half-wave plate is a half wave at every
+      wavelength; a real plate is made for one wavelength range, and away from it
+      the light leaves elliptically polarized.</p>
+      <p>The polarization is carried as a Stokes vector, which holds for these
+      elements met head-on. Reflections from mirrors do not yet change the
+      polarization state in the app.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/polarizer/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#cfd8e3" stroke="#54606e" stroke-width="1.4"/><g transform="rotate(0)"><circle r="8.5" fill="#fff" stroke="#54606e" stroke-width="1.2"/><line x1="-6" y1="0" x2="6" y2="0" stroke="#54606e" stroke-width="1.6"/><path d="M -8,0 L -4,-2.4 L -4,2.4 Z M 8,0 L 4,-2.4 L 4,2.4 Z" fill="#54606e"/></g></svg>Polarizer</a><a href="../../wiki/hwp/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#f3e3c3" stroke="#a08340" stroke-width="1.4"/><text x="0" y="-18.7" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#7a6430" >λ/2</text></svg>λ/2 waveplate</a><a href="../../wiki/qwp/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#e8d5ef" stroke="#8a5fa8" stroke-width="1.4"/><text x="0" y="-18.7" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#6a4a80" >λ/4</text></svg>λ/4 waveplate</a><a href="../../wiki/pbs/"><svg viewBox="-20.7 -20.7 41.4 41.4" aria-hidden="true"><rect x="-12.7" y="-12.7" width="25.4" height="25.4" fill="#d5e3f0" stroke="#3f6a92" stroke-width="1.6"/><line x1="-12.7" y1="12.7" x2="12.7" y2="-12.7" stroke="#3f6a92" stroke-width="1.6"/><text x="-12.7" y="20.7" text-anchor="start" dominant-baseline="central" font-size="8.5" fill="#3f6a92" font-weight="600" >PBS</text></svg>Polarizing BS</a><a href="../../wiki/polarimeter/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-24" y="-15" width="48" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-25.7" y="-11" width="3.4" height="22" rx="1" fill="#f9a8d4" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">POL</text><circle cx="16" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Polarimeter</a><a href="../../wiki/powermeter/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-24" y="-15" width="48" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-25.7" y="-11" width="3.4" height="22" rx="1" fill="#86efac" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">PWR</text><circle cx="16" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Power meter</a><a href="../../wiki/ledsource/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-45" y="-14" width="16" height="28" fill="#3a4349"/><rect x="-46" y="-19" width="3" height="38" rx="1" fill="#59636b" stroke="#2a3136" stroke-width="0.8"/><rect x="-41" y="-19" width="3" height="38" rx="1" fill="#59636b" stroke="#2a3136" stroke-width="0.8"/><rect x="-36" y="-19" width="3" height="38" rx="1" fill="#59636b" stroke="#2a3136" stroke-width="0.8"/><rect x="-31" y="-19" width="25" height="38" rx="2" fill="#2f3a36" stroke="#1d2522" stroke-width="1.5"/><text x="-18.5" y="0"  text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="700" letter-spacing="0.6" fill="#fff">LED</text><rect x="-6" y="-17" width="52" height="34" fill="#6b757d" fill-opacity="0.55" stroke="#2a3136" stroke-width="1.2"/><polygon points="-2,-2 46,-8 46,8 -2,2" fill="#cbd8ea" opacity="0.3"/><rect x="-6" y="-3.5" width="4" height="7" rx="1" fill="#cbd8ea" stroke="#1d2522" stroke-width="0.8"/><path d="M 46,-8 L 52,-8 Q 58,0 52,8 L 46,8 Z" fill="#cbd8ea" fill-opacity="0.75" stroke="#444" stroke-width="1"/></svg>LED</a>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://en.wikipedia.org/wiki/Polarizer" target="_blank" rel="noopener">Wikipedia — Polarizer (Malus’s law and its use)</a></li><li id="ref-2"><a href="https://en.wikipedia.org/wiki/Waveplate" target="_blank" rel="noopener">Wikipedia — Waveplate (half-wave plate)</a></li>
+      </ol>
+
+
+    </main>
+  </div>
+  <footer class="wiki-footer">Examples are written and maintained with the project. For setups shared by users, see the <a href="../../community/">community section</a>; for how each component works, see the <a href="../../wiki/">wiki</a>.</footer>
+</body>
+</html>

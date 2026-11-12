@@ -1,0 +1,261 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "title",
+   "type": "textlabel",
+   "x": -60,
+   "y": 40,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Beam expanders: Keplerian and Galilean**",
+    "fontSize": 24,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "note",
+   "type": "textlabel",
+   "x": -60,
+   "y": 89,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Two lenses with a common focal point widen a collimated beam by f₂/f₁, here 3 times.\nThe Keplerian pair focuses the beam between its lenses;\nthe Galilean pair does not, and is shorter.",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "laserK",
+   "type": "cwlaser",
+   "x": 0,
+   "y": 220,
+   "rot": 0,
+   "label": "Laser, 4 mm beam",
+   "showLabel": true,
+   "params": {
+    "wavelength": 633,
+    "avgPowerW": 0.001,
+    "beamMode": "beam",
+    "beamWidth": 4,
+    "pol": 0,
+    "coherenceLengthMm": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw",
+    "housingLength": 92,
+    "housingHeight": 34,
+    "housingColor": "#3a3f46"
+   }
+  },
+  {
+   "id": "k1",
+   "type": "lens",
+   "x": 170,
+   "y": 220,
+   "rot": 0,
+   "label": "f₁ = 50 mm",
+   "showLabel": true,
+   "params": {
+    "f": 50,
+    "dia": 25.4,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "k2",
+   "type": "lens",
+   "x": 370,
+   "y": 220,
+   "rot": 0,
+   "label": "f₂ = 150 mm",
+   "showLabel": true,
+   "params": {
+    "f": 150,
+    "dia": 25.4,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "camK",
+   "type": "wavefrontdetector",
+   "x": 490,
+   "y": 220,
+   "rot": 0,
+   "label": "Wavefront detector",
+   "showLabel": false,
+   "params": {
+    "aperture": 30
+   }
+  },
+  {
+   "id": "ruleK",
+   "type": "ruler",
+   "x": 270,
+   "y": 188,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "len": 200,
+    "autoClamp": false,
+    "text": "f₁ + f₂ = {value}",
+    "decimals": 0,
+    "labelSide": "above",
+    "arrows": true,
+    "ticks": false,
+    "fontSize": 12,
+    "width": 1.2,
+    "fill": "#334155"
+   }
+  },
+  {
+   "id": "screenK",
+   "type": "display",
+   "x": 625,
+   "y": 220,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "camK",
+    "displayScale": 0.8,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "labelK",
+   "type": "textlabel",
+   "x": -60,
+   "y": 150,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Keplerian**: two converging lenses",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "laserG",
+   "type": "cwlaser",
+   "x": 0,
+   "y": 400,
+   "rot": 0,
+   "label": "Laser, 4 mm beam",
+   "showLabel": true,
+   "params": {
+    "wavelength": 633,
+    "avgPowerW": 0.001,
+    "beamMode": "beam",
+    "beamWidth": 4,
+    "pol": 0,
+    "coherenceLengthMm": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw",
+    "housingLength": 92,
+    "housingHeight": 34,
+    "housingColor": "#3a3f46"
+   }
+  },
+  {
+   "id": "g1",
+   "type": "lensc",
+   "x": 170,
+   "y": 400,
+   "rot": 0,
+   "label": "f₁ = −50 mm",
+   "showLabel": true,
+   "params": {
+    "f": -50,
+    "dia": 25.4,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "g2",
+   "type": "lens",
+   "x": 270,
+   "y": 400,
+   "rot": 0,
+   "label": "f₂ = 150 mm",
+   "showLabel": true,
+   "params": {
+    "f": 150,
+    "dia": 25.4,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "camG",
+   "type": "wavefrontdetector",
+   "x": 490,
+   "y": 400,
+   "rot": 0,
+   "label": "Wavefront detector",
+   "showLabel": false,
+   "params": {
+    "aperture": 30
+   }
+  },
+  {
+   "id": "ruleG",
+   "type": "ruler",
+   "x": 220,
+   "y": 368,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "len": 100,
+    "autoClamp": false,
+    "text": "f₁ + f₂ = {value}",
+    "decimals": 0,
+    "labelSide": "above",
+    "arrows": true,
+    "ticks": false,
+    "fontSize": 12,
+    "width": 1.2,
+    "fill": "#334155"
+   }
+  },
+  {
+   "id": "screenG",
+   "type": "display",
+   "x": 625,
+   "y": 400,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "camG",
+    "displayScale": 0.8,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "labelG",
+   "type": "textlabel",
+   "x": -60,
+   "y": 330,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Galilean**: a diverging lens, then a converging one",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  }
+ ],
+ "beams": []
+}

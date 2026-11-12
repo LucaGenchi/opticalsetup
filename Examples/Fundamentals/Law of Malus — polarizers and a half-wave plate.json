@@ -1,0 +1,225 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "title",
+   "type": "textlabel",
+   "x": -60,
+   "y": 40,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**The law of Malus**",
+    "fontSize": 24,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "note",
+   "type": "textlabel",
+   "x": -60,
+   "y": 89,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "A polarizer passes the part of the light polarized along its axis. Behind a first polarizer,\na second one at an angle θ to it passes cos² θ of the power.\nA half-wave plate turns the polarization by twice its own angle.",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "labelA",
+   "type": "textlabel",
+   "x": -60,
+   "y": 145,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Two polarizers**: the analyzer at θ = 30° passes cos² 30° = 0.75",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "led",
+   "type": "ledsource",
+   "x": 0,
+   "y": 215,
+   "rot": 0,
+   "label": "LED, unpolarized, 1 mW",
+   "showLabel": true,
+   "params": {
+    "ledPreset": "red",
+    "wavelength": 530,
+    "bandwidth": 30,
+    "avgPowerW": 0.001,
+    "beamMode": "beam",
+    "beamWidth": 4,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw"
+   }
+  },
+  {
+   "id": "polA",
+   "type": "polarizer",
+   "x": 150,
+   "y": 215,
+   "rot": 0,
+   "label": "Polarizer, 0°",
+   "showLabel": true,
+   "params": {
+    "pangle": 0,
+    "length": 25.4
+   }
+  },
+  {
+   "id": "anaA",
+   "type": "polarizer",
+   "x": 270,
+   "y": 215,
+   "rot": 0,
+   "label": "Analyzer, 30°",
+   "showLabel": true,
+   "params": {
+    "pangle": 30,
+    "length": 25.4
+   }
+  },
+  {
+   "id": "meterA",
+   "type": "powermeter",
+   "x": 420,
+   "y": 215,
+   "rot": 0,
+   "label": "Power meter",
+   "showLabel": false,
+   "params": {
+    "aperture": 30
+   }
+  },
+  {
+   "id": "screenA",
+   "type": "display",
+   "x": 540,
+   "y": 215,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "meterA",
+    "displayScale": 0.8,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "labelB",
+   "type": "textlabel",
+   "x": -60,
+   "y": 330,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Crossed polarizers** pass nothing, until a half-wave plate at 45° turns the polarization by 90°",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "laser",
+   "type": "cwlaser",
+   "x": 0,
+   "y": 400,
+   "rot": 0,
+   "label": "Laser, polarized at 0°, 1 mW",
+   "showLabel": true,
+   "params": {
+    "wavelength": 633,
+    "avgPowerW": 0.001,
+    "beamMode": "beam",
+    "beamWidth": 4,
+    "pol": 0,
+    "coherenceLengthMm": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw",
+    "housingLength": 92,
+    "housingHeight": 34,
+    "housingColor": "#3a3f46"
+   }
+  },
+  {
+   "id": "polB",
+   "type": "polarizer",
+   "x": 150,
+   "y": 400,
+   "rot": 0,
+   "label": "Polarizer, 0°",
+   "showLabel": true,
+   "params": {
+    "pangle": 0,
+    "length": 25.4
+   }
+  },
+  {
+   "id": "hwp",
+   "type": "hwp",
+   "x": 235,
+   "y": 400,
+   "rot": 0,
+   "label": "Fast axis at 45°",
+   "showLabel": true,
+   "params": {
+    "a": 45,
+    "length": 25.4
+   }
+  },
+  {
+   "id": "anaB",
+   "type": "polarizer",
+   "x": 320,
+   "y": 400,
+   "rot": 0,
+   "label": "Analyzer, 90°",
+   "showLabel": true,
+   "params": {
+    "pangle": 90,
+    "length": 25.4
+   }
+  },
+  {
+   "id": "meterB",
+   "type": "powermeter",
+   "x": 420,
+   "y": 400,
+   "rot": 0,
+   "label": "Power meter",
+   "showLabel": false,
+   "params": {
+    "aperture": 30
+   }
+  },
+  {
+   "id": "screenB",
+   "type": "display",
+   "x": 540,
+   "y": 400,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "meterB",
+    "displayScale": 0.8,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  }
+ ],
+ "beams": []
+}

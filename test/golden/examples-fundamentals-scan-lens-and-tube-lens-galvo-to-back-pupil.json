@@ -1,0 +1,59 @@
+{
+ "elements": 11,
+ "beams": 0,
+ "drawables": {
+  "count": 130,
+  "byType": {
+   "poly": 120,
+   "path": 10
+  },
+  "colors": {
+   "#00f7ff": 130
+  },
+  "points": 500,
+  "sum": [
+   172000,
+   193773.046
+  ],
+  "bbox": [
+   119.1,
+   262,
+   640,
+   407.1051
+  ],
+  "digest": "6757ad57"
+ },
+ "drawnElements": {
+  "textlabel:title": "d5e207d1",
+  "textlabel:note": "f77dac1c",
+  "cwlaser:laser": "ba036736",
+  "galvo:galvo": "65f105a0",
+  "lens:scan": "21f36c16",
+  "lens:tube": "f2f7b085",
+  "objective:objective": "4b9b09b5",
+  "box:sample": "bed80361",
+  "zoom:zoom": "f31a01c8",
+  "textlabel:imageNote": "c309c89c",
+  "textlabel:pupilNote": "70a4d9af"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "readouts": {
+  "objective:objective": {
+   "objectivePupil": {
+    "beamDiameter": 7.56721573,
+    "fill": 0.945901966,
+    "pupilDiameter": 8,
+    "transmitted": 1
+   }
+  }
+ },
+ "fibers": {}
+}

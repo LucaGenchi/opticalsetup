@@ -1,0 +1,595 @@
+{
+ "elements": 15,
+ "beams": 0,
+ "drawables": {
+  "count": 182,
+  "byType": {
+   "poly": 168,
+   "path": 14
+  },
+  "colors": {
+   "#ff4200": 104,
+   "#ff4f00": 78
+  },
+  "points": 700,
+  "sum": [
+   157300,
+   224500
+  ],
+  "bbox": [
+   52,
+   213,
+   396,
+   402
+  ],
+  "digest": "2f1f6cf1"
+ },
+ "drawnElements": {
+  "textlabel:title": "4ed12a44",
+  "textlabel:note": "2b8ef04f",
+  "textlabel:labelA": "26ab7f5e",
+  "ledsource:led": "1bd95c5d",
+  "polarizer:polA": "4cf8e4bb",
+  "polarizer:anaA": "f9a27fcb",
+  "powermeter:meterA": "2a3190b9",
+  "display:screenA": "f68b58d4",
+  "textlabel:labelB": "07c250ce",
+  "cwlaser:laser": "3d823b45",
+  "polarizer:polB": "4cf8e4bb",
+  "hwp:hwp": "1dcc48f5",
+  "polarizer:anaB": "785d97dd",
+  "powermeter:meterB": "bcb70dbd",
+  "display:screenB": "8acd5e6b"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "readouts": {
+  "powermeter:meterA": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 639,
+    "bandMin": 621,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#ff4f00",
+    "convergence": {
+     "diverging": false,
+     "fullAngleDeg": 0,
+     "slopePerMm": 0
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 0.375,
+    "detectorType": "Power meter",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": 0.5,
+     "s2": 0.866025404,
+     "s3": 0
+    },
+    "outputSignal": 0.375,
+    "polarization": "Linear 30°",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "power",
+    "samples": 25,
+    "saturated": false,
+    "signal": 0.375,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.375,
+      "sourceId": "led"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": "led#0",
+      "color": "#ffa600",
+      "continuum": true,
+      "power": 0.000106372497,
+      "sourceId": "led",
+      "wavelength": 607.1,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ffa200",
+      "continuum": true,
+      "power": 0.000309489597,
+      "sourceId": "led",
+      "wavelength": 608,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff9f00",
+      "continuum": true,
+      "power": 0.000442950379,
+      "sourceId": "led",
+      "wavelength": 609,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff9b00",
+      "continuum": true,
+      "power": 0.000623715327,
+      "sourceId": "led",
+      "wavelength": 610,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff9800",
+      "continuum": true,
+      "power": 0.000864052384,
+      "sourceId": "led",
+      "wavelength": 611,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff9500",
+      "continuum": true,
+      "power": 0.00117764948,
+      "sourceId": "led",
+      "wavelength": 611.9,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff9100",
+      "continuum": true,
+      "power": 0.0015791171,
+      "sourceId": "led",
+      "wavelength": 612.9,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff8d00",
+      "continuum": true,
+      "power": 0.00208321908,
+      "sourceId": "led",
+      "wavelength": 613.9,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff8a00",
+      "continuum": true,
+      "power": 0.00270382059,
+      "sourceId": "led",
+      "wavelength": 614.9,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff8600",
+      "continuum": true,
+      "power": 0.00345257493,
+      "sourceId": "led",
+      "wavelength": 615.9,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff8300",
+      "continuum": true,
+      "power": 0.00433741195,
+      "sourceId": "led",
+      "wavelength": 616.8,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff7f00",
+      "continuum": true,
+      "power": 0.00536093509,
+      "sourceId": "led",
+      "wavelength": 617.8,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff7b00",
+      "continuum": true,
+      "power": 0.00651887634,
+      "sourceId": "led",
+      "wavelength": 618.8,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff7700",
+      "continuum": true,
+      "power": 0.00779879049,
+      "sourceId": "led",
+      "wavelength": 619.8,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff7400",
+      "continuum": true,
+      "power": 0.00917918413,
+      "sourceId": "led",
+      "wavelength": 620.7,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff7000",
+      "continuum": true,
+      "power": 0.0106292648,
+      "sourceId": "led",
+      "wavelength": 621.7,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff6c00",
+      "continuum": true,
+      "power": 0.0121094576,
+      "sourceId": "led",
+      "wavelength": 622.7,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff6800",
+      "continuum": true,
+      "power": 0.0135727694,
+      "sourceId": "led",
+      "wavelength": 623.7,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff6500",
+      "continuum": true,
+      "power": 0.0149669934,
+      "sourceId": "led",
+      "wavelength": 624.6,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff6100",
+      "continuum": true,
+      "power": 0.0162376427,
+      "sourceId": "led",
+      "wavelength": 625.6,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff5d00",
+      "continuum": true,
+      "power": 0.0173314026,
+      "sourceId": "led",
+      "wavelength": 626.6,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff5900",
+      "continuum": true,
+      "power": 0.0181998061,
+      "sourceId": "led",
+      "wavelength": 627.6,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff5500",
+      "continuum": true,
+      "power": 0.0188027826,
+      "sourceId": "led",
+      "wavelength": 628.5,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff5100",
+      "continuum": true,
+      "power": 0.0191117215,
+      "sourceId": "led",
+      "wavelength": 629.5,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff4d00",
+      "continuum": true,
+      "power": 0.0191117215,
+      "sourceId": "led",
+      "wavelength": 630.5,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff4900",
+      "continuum": true,
+      "power": 0.0188027826,
+      "sourceId": "led",
+      "wavelength": 631.5,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff4500",
+      "continuum": true,
+      "power": 0.0181998061,
+      "sourceId": "led",
+      "wavelength": 632.4,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff4000",
+      "continuum": true,
+      "power": 0.0173314026,
+      "sourceId": "led",
+      "wavelength": 633.4,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff3c00",
+      "continuum": true,
+      "power": 0.0162376427,
+      "sourceId": "led",
+      "wavelength": 634.4,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff3700",
+      "continuum": true,
+      "power": 0.0149669934,
+      "sourceId": "led",
+      "wavelength": 635.4,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff3300",
+      "continuum": true,
+      "power": 0.0135727694,
+      "sourceId": "led",
+      "wavelength": 636.3,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff2e00",
+      "continuum": true,
+      "power": 0.0121094576,
+      "sourceId": "led",
+      "wavelength": 637.3,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff2900",
+      "continuum": true,
+      "power": 0.0106292648,
+      "sourceId": "led",
+      "wavelength": 638.3,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff2400",
+      "continuum": true,
+      "power": 0.00917918413,
+      "sourceId": "led",
+      "wavelength": 639.3,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff2000",
+      "continuum": true,
+      "power": 0.00779879049,
+      "sourceId": "led",
+      "wavelength": 640.2,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff1a00",
+      "continuum": true,
+      "power": 0.00651887634,
+      "sourceId": "led",
+      "wavelength": 641.2,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff1500",
+      "continuum": true,
+      "power": 0.00536093509,
+      "sourceId": "led",
+      "wavelength": 642.2,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff0e00",
+      "continuum": true,
+      "power": 0.00433741195,
+      "sourceId": "led",
+      "wavelength": 643.2,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff0800",
+      "continuum": true,
+      "power": 0.00345257493,
+      "sourceId": "led",
+      "wavelength": 644.1,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff0000",
+      "continuum": true,
+      "power": 0.00270382059,
+      "sourceId": "led",
+      "wavelength": 645.1,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff0000",
+      "continuum": true,
+      "power": 0.00208321908,
+      "sourceId": "led",
+      "wavelength": 646.1,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff0000",
+      "continuum": true,
+      "power": 0.0015791171,
+      "sourceId": "led",
+      "wavelength": 647.1,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff0000",
+      "continuum": true,
+      "power": 0.00117764948,
+      "sourceId": "led",
+      "wavelength": 648.1,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff0000",
+      "continuum": true,
+      "power": 0.000864052384,
+      "sourceId": "led",
+      "wavelength": 649,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff0000",
+      "continuum": true,
+      "power": 0.000623715327,
+      "sourceId": "led",
+      "wavelength": 650,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff0000",
+      "continuum": true,
+      "power": 0.000442950379,
+      "sourceId": "led",
+      "wavelength": 651,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff0000",
+      "continuum": true,
+      "power": 0.000309489597,
+      "sourceId": "led",
+      "wavelength": 652,
+      "widthNm": 0.975816537
+     },
+     {
+      "bandId": "led#0",
+      "color": "#ff0000",
+      "continuum": true,
+      "power": 0.000106372497,
+      "sourceId": "led",
+      "wavelength": 652.9,
+      "widthNm": 0.975816537
+     }
+    ],
+    "spotSpan": 4,
+    "wavelength": 630
+   }
+  },
+  "powermeter:meterB": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 633,
+    "bandMin": 633,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#ff4200",
+    "convergence": {
+     "diverging": false,
+     "fullAngleDeg": 0,
+     "slopePerMm": 0
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 1,
+    "detectorType": "Power meter",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": -1,
+     "s2": 1.2246468e-16,
+     "s3": 0
+    },
+    "outputSignal": 1,
+    "polarization": "Linear 90°",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "power",
+    "samples": 25,
+    "saturated": false,
+    "signal": 1,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 1,
+      "sourceId": "laser"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#ff4200",
+      "continuum": false,
+      "power": 1,
+      "sourceId": "laser",
+      "wavelength": 633,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 4,
+    "wavelength": 633
+   }
+  }
+ },
+ "fibers": {}
+}

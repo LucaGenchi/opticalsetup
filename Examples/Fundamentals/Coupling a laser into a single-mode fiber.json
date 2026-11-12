@@ -1,0 +1,212 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "title",
+   "type": "textlabel",
+   "x": -60,
+   "y": 40,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Coupling a laser into a single-mode fiber**",
+    "fontSize": 24,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "note",
+   "type": "textlabel",
+   "x": -60,
+   "y": 80,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Two mirrors steer the beam onto the axis of a lens, which focuses it on the fiber’s end face.\nThe tracer couples every ray that reaches the face within the fiber’s acceptance angle, arcsin(NA).",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "laser",
+   "type": "cwlaser",
+   "x": 0,
+   "y": 330,
+   "rot": 0,
+   "label": "Laser, 633 nm, 1 mW",
+   "showLabel": true,
+   "params": {
+    "wavelength": 633,
+    "avgPowerW": 0.001,
+    "beamMode": "beam",
+    "beamWidth": 2,
+    "pol": 0,
+    "coherenceLengthMm": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw",
+    "housingLength": 92,
+    "housingHeight": 34,
+    "housingColor": "#3a3f46"
+   }
+  },
+  {
+   "id": "m1",
+   "type": "mirror",
+   "x": 160,
+   "y": 330,
+   "rot": 45,
+   "label": "Mirror 1",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "length": 25.4,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "m2",
+   "type": "mirror",
+   "x": 160,
+   "y": 210,
+   "rot": 45,
+   "label": "Mirror 2",
+   "showLabel": true,
+   "labelPos": "l",
+   "params": {
+    "length": 25.4,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "lens",
+   "type": "lens",
+   "x": 280,
+   "y": 210,
+   "rot": 0,
+   "label": "f = 11 mm",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "f": 11,
+    "dia": 12.7,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "meter",
+   "type": "powermeter",
+   "x": 660,
+   "y": 330,
+   "rot": 0,
+   "label": "Power meter",
+   "showLabel": true,
+   "params": {
+    "aperture": 30
+   }
+  },
+  {
+   "id": "screen",
+   "type": "display",
+   "x": 660,
+   "y": 245,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "meter",
+    "displayScale": 0.8,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "zoom",
+   "type": "zoom",
+   "x": 288,
+   "y": 210,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "shape": "circle",
+    "w": 20,
+    "h": 20,
+    "mag": 5,
+    "insetX": 110,
+    "insetY": 78,
+    "regionDash": false,
+    "connectors": true,
+    "connectorDash": false,
+    "diffraction": true,
+    "focusNote": true,
+    "scaleBar": true,
+    "scaleBarDirection": "horizontal",
+    "scaleBarMm": 0,
+    "frameColor": "#475569"
+   }
+  }
+ ],
+ "beams": [
+  {
+   "id": "fiber",
+   "kind": "fiber",
+   "pts": [
+    {
+     "x": 291,
+     "y": 210
+    },
+    {
+     "x": 360,
+     "y": 210
+    },
+    {
+     "x": 520,
+     "y": 210
+    },
+    {
+     "x": 570,
+     "y": 240
+    },
+    {
+     "x": 570,
+     "y": 300
+    },
+    {
+     "x": 590,
+     "y": 330
+    },
+    {
+     "x": 612,
+     "y": 330
+    }
+   ],
+   "color": "#e8a800",
+   "width": 4,
+   "bare": false,
+   "propagate": true,
+   "inputNA": 0.12,
+   "groupIndex": 1.468,
+   "lossDbPerM": 0,
+   "lengthM": 0,
+   "beta2Ps2PerKm": 0,
+   "out0": {
+    "mode": "diverge",
+    "na": 0.12,
+    "focal": 20,
+    "dia": 6
+   },
+   "out1": {
+    "mode": "diverge",
+    "na": 0.12,
+    "focal": 20,
+    "dia": 6
+   }
+  }
+ ]
+}

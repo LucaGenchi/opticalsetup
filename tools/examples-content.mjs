@@ -22,6 +22,654 @@ function cite(...nums) {
 }
 
 export const exampleEntries = [
+  // ---- Fundamentals: a first course in geometric optics, and the setups a
+  // new member of an optics lab meets first. Every number quoted below is the
+  // tracer's own for the scene as shipped or after the change described.
+  {
+    match: 'Imaging with one lens',
+    title: 'Imaging with one lens',
+    tagline: 'An object 150 mm before a lens of 100 mm focal length: the rays from its tip meet again 300 mm behind the lens, in an image twice the size and upside down.',
+    html: `
+      <p>A lens bends every ray from one point of an object so that they meet
+      again at one point: the image of that point. For a thin lens, the distance
+      s from the object to the lens and the distance s′ from the lens to the
+      image obey 1/s + 1/s′ = 1/f, where f is the focal length, positive for a
+      converging lens${cite(1)}. The image is m = −s′/s times the size of the
+      object. A negative m means the image is upside down${cite(1)}.</p>
+      <p>Three cases follow from that one equation. With the object further away
+      than f, the rays converge behind the lens to a real image, which a screen
+      or a sensor placed there shows${cite(1)}. With the object exactly at f, the
+      rays leave parallel and the image is at infinity${cite(1)}. With the object
+      closer than f, the rays still diverge after the lens, as if they came from
+      a larger, upright image on the object's side: a virtual image, which
+      cannot be caught on a screen, and the way a magnifying glass is
+      used${cite(1)}.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>An <a href="../../wiki/objarrow/">Object</a> 15&nbsp;mm tall stands
+      150&nbsp;mm before a <a href="../../wiki/lens/">thin lens</a> of
+      f&nbsp;=&nbsp;100&nbsp;mm. The Object is centred on the axis, so its tip is
+      7.5&nbsp;mm above it. It sends five rays from its tip, spread over the
+      central part of the lens. They cross again 300&nbsp;mm behind the lens,
+      15&nbsp;mm below the axis: twice as far from the axis as the tip, and on
+      the other side. The Object draws the image it forms there, an arrow
+      30&nbsp;mm tall that points down, and its inspector reads <em>Image
+      300&nbsp;mm after Lens · m&nbsp;=&nbsp;−2.00 · real, inverted</em>, which is
+      what the equation gives: 1/150 + 1/300 = 1/100 and −300/150 = −2. The
+      rays end on a screen that stands 1.5&nbsp;mm behind the image, so that
+      its edge does not hide the drawn image. The two
+      <a href="../../wiki/ruler/">rulers</a> mark s and s′.</p>
+      <p>Things to try, by dragging the Object along the axis (the screen stays
+      where it is, so the rays no longer meet in front of it):</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>s</th><th>The Object's readout</th></tr></thead>
+        <tbody>
+          <tr><td>300&nbsp;mm</td><td>Image 150&nbsp;mm after Lens · m = −0.50 · real, inverted</td></tr>
+          <tr><td>200&nbsp;mm (2f)</td><td>Image 200&nbsp;mm after Lens · m = −1.00 · real, inverted</td></tr>
+          <tr><td>125&nbsp;mm</td><td>Image 500&nbsp;mm after Lens · m = −4.00 · real, inverted</td></tr>
+          <tr><td>100&nbsp;mm (f)</td><td>Image at infinity after Lens (collimated)</td></tr>
+          <tr><td>60&nbsp;mm</td><td>Image 150&nbsp;mm before Lens · m = 2.50 · virtual, upright</td></tr>
+        </tbody>
+      </table></div>
+      <p>Change the focal length instead and the same readout follows. The
+      <a href="../../calculators/imaging/">Imaging with lenses</a> calculator
+      plots the image distance and the magnification against the object
+      distance, for this thin lens and for a real, thick one.</p>`,
+    limitations: `<p>The lens is an ideal thin lens: it sends every ray from
+      one point to exactly one point, whatever the ray's height on the lens or its
+      colour. A real singlet does not: rays through its edge focus closer than rays
+      near its centre, and blue focuses closer than red. The
+      <a href="../spherical-aberration-ideal-lens-vs-spherical-singlet/">spherical
+      aberration</a> and <a href="../singlet-vs-achromat-axial-colour/">axial
+      colour</a> examples show both with real glass.</p>
+      <p>The image the Object draws, and its readout, come from a paraxial
+      construction through the lens, not from the drawn rays. With an ideal lens the
+      two agree. Nothing is diffractive: the image has no resolution limit, and the
+      screen records no brightness.</p>`,
+    citations: [
+      { label: 'Wikipedia — Lens (the thin-lens formula, magnification, real and virtual images)', url: 'https://en.wikipedia.org/wiki/Lens' },
+    ],
+    resources: [],
+    related: ['objarrow', 'lens', 'ruler', 'thicklens', 'camera'],
+  },
+
+  {
+    match: 'Beam expanders — Keplerian and Galilean',
+    title: 'Beam expanders: Keplerian and Galilean',
+    tagline: 'Two ways to make a 4 mm laser beam 12 mm wide with two lenses: one focuses the beam between its lenses and is 200 mm long, the other never focuses it and is half that length.',
+    html: `
+      <p>Two lenses that share a focal point turn a parallel beam into a parallel
+      beam of another width. The first lens sends the beam towards (or away from)
+      the common focal point; the second, one focal length from that point, makes
+      it parallel again. Similar triangles on either side of the focal point give
+      the ratio of the widths: f₂/f₁. This is a telescope used backwards: a
+      telescope's magnification is the focal length of its objective divided by
+      that of its eyepiece${cite(1)}, and a beam sent in through the eyepiece
+      comes out wider by the same factor.</p>
+      <p>The two classical telescopes give the two classical expanders. Kepler's,
+      of 1611, has two converging lenses${cite(1)}: the beam comes to a real
+      focus between them, and the lenses are f₁ + f₂ apart. Galileo's, of 1610,
+      has a diverging lens and a converging one, and no focus in
+      between${cite(1)}: the diverging lens has a negative focal length, so the
+      same sum, f₁ + f₂, is now a difference and the pair is shorter.</p>
+      <p>The focus is what decides between them. A Galilean expander never
+      focuses a collimated beam to a point, so it avoids the effects of high
+      power density, such as dielectric breakdown, that a focusing design can meet
+      with a powerful laser${cite(2)}. A Keplerian expander
+      offers the focus itself: a pinhole placed there cleans the beam, as in the
+      <a href="../pinhole-spatial-filter/">pinhole spatial filter</a>.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>Two 633&nbsp;nm lasers each send a 4&nbsp;mm beam into a pair of thin
+      lenses. The upper pair is Keplerian: f₁&nbsp;=&nbsp;50&nbsp;mm and
+      f₂&nbsp;=&nbsp;150&nbsp;mm, 200&nbsp;mm apart, with the focus drawn 50&nbsp;mm
+      after the first lens. The lower pair is Galilean:
+      a <a href="../../wiki/lensc/">concave lens</a> of f₁&nbsp;=&nbsp;−50&nbsp;mm
+      and the same f₂, 100&nbsp;mm apart. Both widen the beam by 150/50 = 3.</p>
+      <p>Each beam ends on a <a href="../../wiki/wavefrontdetector/">wavefront
+      detector</a>, whose screen reads COLLIMATED, divergence 0.00°. Select a
+      detector and its inspector gives the width of the beam on it: a spot span
+      of 12.0&nbsp;mm, for both.</p>
+      <p>Things to try. Move the second lens of either pair 10&nbsp;mm further
+      from the first: the screen reads CONVERGING, 0.31°. Move it to 10&nbsp;mm
+      closer than where it started instead, and the screen reads DIVERGING by
+      the same angle. This is how a beam expander is focused on the bench. Put
+      the lens back where it started. Then, in the upper pair, set f₁ to
+      25&nbsp;mm and bring the second lens 25&nbsp;mm closer, so that the lenses
+      are again f₁ + f₂ apart, now 175&nbsp;mm: the beam leaves collimated and
+      24&nbsp;mm wide, six times its width.</p>
+      <p>The second panel of the
+      <a href="../../calculators/imaging/">Imaging with lenses</a> calculator
+      works out the same pairs, thin and with real, thick lenses, and what they
+      do to an object at a finite distance.</p>`,
+    limitations: `<p>The lenses are ideal thin lenses, so both expanders are
+      free of aberrations at any beam width, and the two designs differ only in
+      length and in the focus. With real singlets they differ in aberrations too,
+      and the best orientation of each lens matters; neither is shown here.</p>
+      <p>The beam is a bundle of 25 parallel rays with sharp edges. There is no
+      Gaussian profile, so the beam does not spread by diffraction after the
+      expander, and no account of how expansion lowers a real beam's divergence.
+      The focus of the Keplerian pair is a point with no size: nothing is computed
+      about the intensity there.</p>`,
+    citations: [
+      { label: 'Wikipedia — Refracting telescope (the Galilean and Keplerian designs, magnification)', url: 'https://en.wikipedia.org/wiki/Refracting_telescope' },
+      { label: 'Wikipedia — Beam expander', url: 'https://en.wikipedia.org/wiki/Beam_expander' },
+    ],
+    resources: [],
+    related: ['lens', 'lensc', 'telescope', 'wavefrontdetector', 'ruler', 'cwlaser'],
+  },
+
+  {
+    match: 'Total internal reflection — right angle prism',
+    title: 'Total internal reflection in a right-angle prism',
+    tagline: 'Light inside glass that meets a face at 45° cannot leave: a right-angle prism turns a beam by 90° with one such reflection, and sends it back with two.',
+    html: `
+      <p>Light passing from glass to air bends away from the normal of the
+      surface. As the angle of incidence inside the glass grows, the refracted
+      ray leans further over, until at the critical angle, arcsin(1/n) for glass
+      of index n in air, it runs along the surface. Beyond that angle there is
+      no refracted ray: the light is completely reflected back into the
+      glass${cite(1)}.</p>
+      <p>For common optical glass the critical angle is close to 42°, just under
+      45°, and that makes a prism with angles of 45°, 90° and 45° a mirror with no
+      coating. A beam entering one of the short faces meets the long face at 45°
+      and is turned by 90°. A beam entering the long face is reflected by both
+      short faces in turn and leaves through the long face again, turned by
+      180° and shifted sideways: the Porro prism, named after Ignazio Porro, and
+      used in pairs to turn the image upright in binoculars${cite(1, 2)}.</p>
+      <p>The reflection is total, but the light is not confined to the glass. An
+      evanescent wave runs along the outside of the face, its amplitude falling
+      off exponentially with distance; a second piece of glass brought close
+      enough picks it up, and the reflection is no longer total (frustrated total
+      internal reflection)${cite(1)}. The reflection also shifts the phase of the
+      two polarizations by different amounts, which the Fresnel rhomb uses to do the work of
+      a quarter-wave plate${cite(1)}.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>Both prisms are drawn with <a href="../../wiki/freeglass/">Freeform
+      glass</a>, a polygon of N-BK7 with short faces of 25.4&nbsp;mm. (The
+      <a href="../../wiki/prism/">Prism</a> element is an isosceles prism whose
+      apex angle stops at 80°.) At 633&nbsp;nm the glass catalogue gives
+      n&nbsp;=&nbsp;1.515, so the critical angle is 41.3°.</p>
+      <p>In the upper setup the beam enters a short face head-on, meets the long
+      face at 45° and leaves through the other short face, turned by 90°. In the
+      lower one it enters the long face, 9&nbsp;mm above the middle, is reflected
+      by both short faces and returns parallel to itself, 18&nbsp;mm lower.</p>
+      <p>Each power meter reads 922&nbsp;µW of the laser's 1&nbsp;mW. None of
+      the loss is at the reflections. Freeform glass has a setting for the
+      transmission of each face a ray crosses, here 96%, the value for uncoated
+      glass of this index met head-on (the reflected part is ((n−1)/(n+1))²,
+      4.2%). Each beam crosses two faces: 0.96² = 0.9216.</p>
+      <p>Things to try. Set the per-surface transmission of a prism to 100%: its
+      meter reads 1.00&nbsp;mW, all of the light. Select the upper prism, choose
+      <em>Constant index</em> as its glass model and lower the index: at 1.42
+      the critical angle is 44.8° and the beam is still reflected; at 1.41 it
+      is 45.2°, more than the 45° at which the beam arrives, and the beam leaves
+      through the long face instead. The limit is n&nbsp;=&nbsp;1/sin&nbsp;45° =
+      1.414. Turn the lower prism by up to 5.5° either way: the beam still comes
+      back parallel to the way it went in, which is what makes two mirrors at 90°
+      a retroreflector in their plane. Past 5.6° one of the two reflections
+      falls below the critical angle and the light leaves the prism there.</p>`,
+    limitations: `<p>Below the critical angle the tracer sends all of the
+      light through the face, less the per-surface setting. Real glass reflects a
+      part that depends on the angle and on the polarization, and that part rises
+      steeply to 100% as the critical angle is approached; here the change at the
+      critical angle is a step. The faces the beam enters and leaves by keep their
+      set transmission at any angle, with no Fresnel calculation.</p>
+      <p>There is no evanescent wave, so a second prism brought up to the
+      reflecting face does not frustrate the reflection, however close. The
+      polarization comes out of the reflection as it went in: the phase shift
+      between the two polarizations is not applied, so a Fresnel rhomb drawn this
+      way leaves linear light linear.</p>`,
+    citations: [
+      { label: 'Wikipedia — Total internal reflection', url: 'https://en.wikipedia.org/wiki/Total_internal_reflection' },
+      { label: 'Wikipedia — Porro prism', url: 'https://en.wikipedia.org/wiki/Porro_prism' },
+    ],
+    resources: [],
+    related: ['freeglass', 'prism', 'retroreflector', 'powermeter', 'cwlaser'],
+  },
+
+  {
+    match: 'Law of Malus — polarizers and a half wave plate',
+    title: 'The law of Malus',
+    tagline: 'A polarizer passes cos² θ of light polarized at an angle θ to its axis: half of an unpolarized beam, nothing through crossed polarizers, and everything again once a half-wave plate turns the polarization between them.',
+    html: `
+      <p>An ideal linear polarizer transmits the part of the light whose electric
+      field lies along its axis. For light already linearly polarized at an angle
+      θ to that axis, the transmitted intensity is I = I₀&nbsp;cos²&nbsp;θ, the
+      law named after Étienne-Louis Malus${cite(1)}. Unpolarized light is an
+      even mixture of all directions, and the average of cos²&nbsp;θ over all
+      angles is one half: an ideal polarizer passes half of it${cite(1)}.</p>
+      <p>Two polarizers in a row make the law visible. The first sets the
+      polarization; the second, usually called the analyzer, passes cos²&nbsp;θ
+      of what the first let through, θ now being the angle between the two axes.
+      With the axes at right angles the polarizers are crossed and no light
+      passes${cite(1)}.</p>
+      <p>A half-wave plate between them changes that. It turns linear
+      polarization by twice the angle between the polarization and the plate's
+      fast axis${cite(2)}, and absorbs nothing. With its axis at 45° it turns the
+      polarization by 90°, onto the axis of the crossed analyzer, and all the
+      light passes. A wave plate turned in front of a fixed polarizer is the
+      usual way to set the power of a polarized laser beam without touching the
+      laser.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>In the upper setup a red <a href="../../wiki/ledsource/">LED</a>, 1&nbsp;mW
+      and unpolarized, passes a <a href="../../wiki/polarizer/">polarizer</a> at 0°
+      and an analyzer at 30°. The power meter reads 375&nbsp;µW: half of the
+      light after the first polarizer, and cos²&nbsp;30° = 0.75 of that after
+      the second. Its inspector gives the polarization, linear at 30°.</p>
+      <p>Things to try. Turn the analyzer (its <em>Axis angle</em>):</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Analyzer</th><th>Power meter</th></tr></thead>
+        <tbody>
+          <tr><td>0°</td><td>500&nbsp;µW</td></tr>
+          <tr><td>30°</td><td>375&nbsp;µW</td></tr>
+          <tr><td>45°</td><td>250&nbsp;µW</td></tr>
+          <tr><td>60°</td><td>125&nbsp;µW</td></tr>
+          <tr><td>90°</td><td>no light</td></tr>
+        </tbody>
+      </table></div>
+      <p>In the lower setup a laser polarized at 0° passes a polarizer at 0°, a
+      <a href="../../wiki/hwp/">half-wave plate</a> and an analyzer at 90°. The
+      plate's fast axis is at 45°, and the power meter reads the laser's full
+      1.00&nbsp;mW, polarized at 90°. Turn the plate: at 0° the meter is dark,
+      at 22.5° it reads 500&nbsp;µW, at 30°, 750&nbsp;µW. The transmitted
+      fraction is sin²&nbsp;2a for a fast axis at an angle a, because the
+      polarization is turned by 2a and the analyzer is at 90°.</p>`,
+    limitations: `<p>The polarizers are ideal: they pass all of the light
+      polarized along their axis and none of the other. A real polarizer loses a
+      little of the first and leaks a little of the second, so crossed polarizers
+      are never completely dark. The half-wave plate is a half wave at every
+      wavelength; a real plate is made for one wavelength range, and away from it
+      the light leaves elliptically polarized.</p>
+      <p>The polarization is carried as a Stokes vector, which holds for these
+      elements met head-on. Reflections from mirrors do not yet change the
+      polarization state in the app.</p>`,
+    citations: [
+      { label: 'Wikipedia — Polarizer (Malus’s law and its use)', url: 'https://en.wikipedia.org/wiki/Polarizer' },
+      { label: 'Wikipedia — Waveplate (half-wave plate)', url: 'https://en.wikipedia.org/wiki/Waveplate' },
+    ],
+    resources: [],
+    related: ['polarizer', 'hwp', 'qwp', 'pbs', 'polarimeter', 'powermeter', 'ledsource'],
+  },
+
+  {
+    match: 'Pinhole spatial filter',
+    title: 'Pinhole spatial filter',
+    tagline: 'A lens brings light travelling along its axis to one point and light at any other angle to another; a pinhole at the first point passes the beam and stops the rest.',
+    html: `
+      <p>A laser beam that has passed a few optics is rarely clean. Dust,
+      scratches and stray reflections add light that travels in slightly
+      different directions from the beam itself, and it shows as rings and
+      speckle on the beam's profile. A spatial filter removes it, and is commonly
+      used to clean up the output of lasers${cite(1)}.</p>
+      <p>The filter rests on what a lens does to direction. A lens brings all
+      rays parallel to its axis to one point, the focal point, and all rays
+      parallel to each other at an angle θ to the axis to another point, a
+      distance f&nbsp;tan&nbsp;θ to the side. In the focal plane, position stands
+      for direction. In wave terms the lens forms there the Fourier transform of
+      the beam: the centre of the pattern corresponds to a perfect, wide plane
+      wave, and light further from the centre to finer structure across the
+      beam${cite(1)}.</p>
+      <p>A small aperture in that plane, the pinhole, passes only the central
+      spot${cite(1)}. A second lens, one focal length behind the pinhole, makes
+      the light parallel again, so the filter is also a beam expander, wider by
+      the ratio of the two focal lengths. The size of the pinhole is a
+      compromise, chosen from the focal length of the lens and the wavelength:
+      too small a hole improves the beam further but costs power${cite(1)}.
+      The beam that leaves has a smooth profile, which can be almost a perfect
+      Gaussian${cite(1)}.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>A 633&nbsp;nm laser sends a 4&nbsp;mm beam of 10&nbsp;mW along the axis of
+      two <a href="../../wiki/lens/">lenses</a>, f&nbsp;=&nbsp;50&nbsp;mm and
+      f&nbsp;=&nbsp;100&nbsp;mm, placed 150&nbsp;mm apart. A second laser of
+      1&nbsp;mW, at 6° to the axis and aimed at the centre of the first lens,
+      stands for light that travels in another direction. In the focal plane of
+      the first lens stands the pinhole: a <a href="../../wiki/slit/">Slit</a>
+      with a gap of 0.5&nbsp;mm.</p>
+      <p>The beam along the axis comes to a focus in the gap and goes through.
+      The light at 6° comes to a focus 50&nbsp;mm × tan&nbsp;6° = 5.3&nbsp;mm to
+      the side, on the plate, and stops there; the enlarged view shows both. The
+      second lens makes the beam parallel again, now 8&nbsp;mm wide. The power
+      meter reads 10.0&nbsp;mW: all of the beam, none of the other light.</p>
+      <p>Things to try. Open the gap to 11&nbsp;mm or more: the light at 6° gets
+      through as well and the meter reads 11.0&nbsp;mW. Set the gap back to
+      0.5&nbsp;mm and move the pinhole 0.3&nbsp;mm to the side: the meter goes
+      dark, because the focus is now on the plate. Put the pinhole back on the
+      axis and move it along the axis instead: up to 6&nbsp;mm from the focus
+      nothing changes; at 10&nbsp;mm the beam is 0.8&nbsp;mm wide where it meets
+      the 0.5&nbsp;mm gap and the meter reads 6.00&nbsp;mW. A spatial filter is
+      aligned by exactly these three movements.</p>`,
+    limitations: `<p>This is a top view, in two dimensions: the pinhole is a
+      slit, a gap in a line, and it filters directions within the plane of the
+      drawing only.</p>
+      <p>The setup shows the geometry of a spatial filter, not its effect on a
+      beam profile. A traced beam is a bundle of rays that meet in a point with no
+      size, so any gap passes it completely, and the 0.5&nbsp;mm gap, the smallest
+      the Slit offers, is far wider than a real pinhole. A real focus has a size
+      set by diffraction, and the pinhole is chosen a little larger than it. Light
+      scattered at small angles lands within that spot's surroundings, close to the
+      axis; here the unwanted light is one beam at one large angle, chosen so that
+      the drawing shows it. The smooth, nearly Gaussian profile a real filter
+      produces, and the power it costs, are not computed.</p>`,
+    citations: [
+      { label: 'Wikipedia — Spatial filter', url: 'https://en.wikipedia.org/wiki/Spatial_filter' },
+    ],
+    resources: [],
+    related: ['slit', 'lens', 'zoom', 'powermeter', 'cwlaser', 'telescope'],
+  },
+
+  {
+    match: 'Spatial filtering in the Fourier plane — 4f system',
+    title: 'Spatial filtering in the Fourier plane',
+    tagline: 'Two lenses, four focal lengths: a grating placed in front is split into its diffraction orders, each focused at its own point between the lenses, where a mask decides which of them reach the image.',
+    html: `
+      <p>A fine pattern lit by a laser beam sends light into several directions:
+      a grating of period d sends it into the orders m = 0, ±1, ±2…, at angles
+      given by sin&nbsp;θ = mλ/d. The finer the pattern, the larger the angles.
+      Each order is one spatial frequency of the pattern, m/d lines per
+      millimetre.</p>
+      <p>A lens one focal length behind the pattern brings each direction to its
+      own point in its back focal plane, where the field is the Fourier transform
+      of the field in the front focal plane${cite(1)}. A second lens, placed so
+      that the two share that plane, puts the light together again in its own
+      back focal plane, as an inverted image of the pattern. Input, first lens,
+      Fourier plane, second lens and output are each one focal length apart: the
+      4f arrangement${cite(1)}.</p>
+      <p>The plane between the lenses is where the image can be edited. A mask
+      there acts on the spatial frequencies one by one. An opening that passes
+      only the centre removes the high frequencies, and the image loses its fine
+      detail: it is blurred${cite(1)}. The
+      <a href="../pinhole-spatial-filter/">pinhole spatial filter</a> is the
+      extreme case, where the mask keeps the centre alone.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>A 633&nbsp;nm laser, 5&nbsp;mW in a 4&nbsp;mm beam, lights a
+      <a href="../../wiki/grating/">transmission grating</a> of 50 lines per
+      millimetre, set to send the orders −2 to +2. The first orders leave at
+      1.81° and the second at 3.63°. Two <a href="../../wiki/lens/">lenses</a> of
+      f&nbsp;=&nbsp;100&nbsp;mm follow: the first 100&nbsp;mm after the grating, the
+      second 300&nbsp;mm after it, and the output plane lies at 400&nbsp;mm.</p>
+      <p>In the Fourier plane, 200&nbsp;mm after the grating, the five orders come
+      to five points: on the axis, 3.17&nbsp;mm either side of it, and
+      6.34&nbsp;mm either side (f&nbsp;tan&nbsp;θ; the enlarged view shows them).
+      The mask there is a <a href="../../wiki/slit/">Slit</a> with an 8&nbsp;mm
+      gap. It passes the orders 0 and ±1 and stops ±2. Behind the second lens the
+      three remaining beams cross again in the output plane, on a power meter that
+      reads 3.00&nbsp;mW.</p>
+      <p>Things to try. Narrow the mask to 6&nbsp;mm or less: only the zero order
+      passes and the meter reads 1.00&nbsp;mW. Open it to 13&nbsp;mm or more: all
+      five pass, 5.00&nbsp;mW. Set the mask back to 8&nbsp;mm and the grating to
+      100 lines per millimetre: its first orders now land where the second ones
+      did, 6.34&nbsp;mm out, and the mask stops them: 1.00&nbsp;mW. A pattern
+      twice as fine needs an opening twice as wide to reach the image.</p>
+      <p>The <a href="../../calculators/imaging/">Imaging with lenses</a>
+      calculator treats the same pair of lenses as a 4f relay: where the Fourier
+      plane lies and where the image forms, for thin lenses and for real ones.</p>`,
+    limitations: `<p>The tracer follows rays, so it shows which orders
+      pass the mask and how much power they carry, and nothing more. It does not
+      compute the image: the pattern of lines that the orders rebuild by
+      interference where they cross, and how that pattern changes when orders are
+      removed (with the zero order alone, uniform light with no lines at all). The
+      power meter in the output plane adds the power of the beams.</p>
+      <p>The grating sends the same power into each order it is set to trace, a
+      fifth each here. A real grating's orders are unequal, and their strengths are
+      what encodes the shape of its lines. The mask is a slit, so it can pass a
+      band around the axis but not block the centre alone; and, as everywhere in
+      this top view, only spatial frequencies in the plane of the drawing
+      exist.</p>`,
+    citations: [
+      { label: 'Wikipedia — Fourier optics (the Fourier-transforming property of a lens; the 4F correlator)', url: 'https://en.wikipedia.org/wiki/Fourier_optics' },
+    ],
+    resources: [],
+    related: ['grating', 'lens', 'slit', 'zoom', 'telescope', 'powermeter'],
+  },
+
+  {
+    match: 'Coupling a laser into a single mode fiber',
+    title: 'Coupling a laser into a single-mode fibre',
+    tagline: 'Two mirrors put the beam on the axis of a lens, and the lens focuses it on the end of the fibre: the layout of every fibre launch, with the one condition a ray model can check, the acceptance angle.',
+    html: `
+      <p>A single-mode fibre guides light in one spatial mode, a spot a few
+      micrometres across. To launch a free-space beam into it, the beam has to be
+      focused on the end of the fibre with a profile similar to that mode and
+      with flat wavefronts${cite(1)}. The core is typically only a couple of
+      microns in diameter and has to be hit, which asks for mechanics of
+      sub-micron precision${cite(1)}.</p>
+      <p>The layout is nearly always the same. Two mirrors steer the beam so that
+      it arrives along the axis of a lens, and the lens focuses it on the fibre's
+      end face. The end of the fibre sits on translation stages that set its
+      position across the beam, with further controls for its
+      angle${cite(1)}. The focal length of the lens is chosen so that the
+      focused spot has the size of the fibre's mode.</p>
+      <p>One part of this can be said with rays alone. A fibre accepts light only
+      within a cone around its axis, of half-angle arcsin(NA), where NA is its
+      numerical aperture. A beam of radius r focused by a lens of focal length f
+      converges at a half-angle of arctan(r/f). If that is larger than the
+      acceptance angle, the outer part of the beam cannot be guided, whatever the
+      alignment.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>A 633&nbsp;nm laser, 1&nbsp;mW in a 2&nbsp;mm beam, is folded by two
+      <a href="../../wiki/mirror/">mirrors</a> onto the axis of a
+      <a href="../../wiki/lens/">lens</a> of f&nbsp;=&nbsp;11&nbsp;mm. The end of
+      a <a href="../../wiki/fiber/">fiber</a> stands in its focal plane. The
+      fibre's input NA is 0.12, an acceptance half-angle of 6.9°; the beam
+      converges at arctan(1/11) = 5.2°. The fibre is set to no loss and emits
+      from its far end into the same NA, onto a power meter.</p>
+      <p>The meter reads 1.00&nbsp;mW. What that number means matters: the tracer
+      couples every ray that lands on the end face of the fibre's connector
+      within the acceptance angle, and here all 25 rays of the beam do. It is the
+      condition on the angle, and nothing else.</p>
+      <p>Things to try, each of which the acceptance angle explains. Each one
+      starts from the setup as it opens, so undo a change before making the
+      next:</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>One change to the setup as it opens</th><th>What happens</th><th>Power meter</th></tr></thead>
+        <tbody>
+          <tr><td>Lens to f&nbsp;=&nbsp;4&nbsp;mm</td><td>The beam converges at 14°; the outer rays are refused</td><td>440&nbsp;µW</td></tr>
+          <tr><td>Laser's beam widened to 4&nbsp;mm</td><td>It converges at 10.3°</td><td>600&nbsp;µW</td></tr>
+          <tr><td>Fibre's input NA lowered to 0.08</td><td>The acceptance half-angle falls to 4.6°, below the beam's 5.2°</td><td>840&nbsp;µW</td></tr>
+          <tr><td>Mirror 2 turned by 0.5°</td><td>The beam crosses the lens 2&nbsp;mm off its centre and the cone arrives tilted</td><td>240&nbsp;µW</td></tr>
+          <tr><td>Mirror 2 turned by 1°</td><td>The cone arrives outside the acceptance angle</td><td>no light</td></tr>
+        </tbody>
+      </table></div>
+      <p>The readings move in steps of 40&nbsp;µW, one ray of the 25. Two
+      changes together do not simply add: with the beam at 4&nbsp;mm and the
+      input NA at 0.08, the meter reads 440&nbsp;µW.</p>
+      <p>The enlarged view shows the cone meeting the end face, and prints the
+      waist an ideal Gaussian beam with this cone would have, 2.23&nbsp;µm
+      (λ/(π·NA) for the cone's own NA of 0.09). The tracer does not use that
+      number. Whether it matches the fibre's mode is the question the
+      <a href="../../calculators/fiber-coupling/">Free space to fiber
+      coupling</a> calculator answers, with the efficiency lost to a mismatch in
+      size, an offset, a tilt or a defocus.</p>`,
+    limitations: `<p>The reading is not a coupling efficiency. The fibre
+      here has no core and no mode: its entrance is the whole end face of the
+      connector, 10&nbsp;mm wide in the drawing, and any ray that meets it within
+      the acceptance angle is coupled in full. A focus that misses the centre of
+      the face by a tenth of a millimetre, or lies a few millimetres in front of
+      it, still reads 1.00&nbsp;mW here; a real single-mode fibre, whose core is
+      micrometres across, would be dark. Pull the fibre's end 3&nbsp;mm back from
+      the focus and the reading does not change.</p>
+      <p>So the setup shows where the focus lies and at what angles the light
+      arrives, and counts the rays inside the cone. The overlap of the focused
+      beam with the fibre's mode, which sets the efficiency of a real launch and
+      its tolerance to position, angle and focus, is not computed on the canvas,
+      nor are the reflection at the end face or the aberrations of a real
+      lens.</p>`,
+    citations: [
+      { label: 'RP Photonics Encyclopedia — Fiber Launch Systems', url: 'https://www.rp-photonics.com/fiber_launch_systems.html' },
+    ],
+    resources: [],
+    related: ['mirror', 'lens', 'zoom', 'powermeter', 'cwlaser', 'asphericlens'],
+  },
+
+  {
+    match: 'Scan lens and tube lens — galvo to back pupil',
+    title: 'Scan lens and tube lens: the galvo relayed to the back pupil',
+    tagline: 'Two lenses image a scanning mirror onto the back pupil of an objective, so that turning the mirror tilts the beam in the pupil without moving it, and the focus sweeps across the sample.',
+    html: `
+      <p>A laser-scanning microscope moves a focused spot across the sample by
+      changing the angle at which the beam enters the objective. An objective
+      turns angle into position: a parallel beam entering at an angle θ is
+      focused f&nbsp;tan&nbsp;θ from the axis, f being the objective's focal
+      length. But the beam must still pass through the objective's back pupil at
+      every angle. If it simply swung from a mirror some distance away it would
+      slide across the pupil and be cut off at the ends of the scan.</p>
+      <p>The answer is to image the mirror onto the pupil. The scan mirror turns
+      about an axis in the focal plane of a first lens, the scan lens. Together
+      with the tube lens it forms an afocal telescope that projects an enlarged
+      image of the beam at the mirror onto the back pupil of the objective, so
+      that the beam only pivots within the pupil, without any lateral shift,
+      while the focus moves across the sample${cite(1)}.</p>
+      <p>The same two lenses set two other things. They widen the beam by the
+      ratio of their focal lengths, and that ratio is chosen so that the beam
+      roughly fills the pupil, which is what gives the objective its numerical
+      aperture${cite(1)}. And they reduce the scan angle by the same ratio: a
+      telescope that magnifies the beam demagnifies its angles.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>A 488&nbsp;nm laser with a 1.8&nbsp;mm beam meets a
+      <a href="../../wiki/galvo/">galvo mirror</a> that swings ±2° about its
+      resting angle. A scan lens of f&nbsp;=&nbsp;50&nbsp;mm stands 50&nbsp;mm
+      after the mirror and a tube lens of f&nbsp;=&nbsp;200&nbsp;mm a further
+      250&nbsp;mm on: the two share a focal point, where the beam comes to a
+      focus (the intermediate image). The <a href="../../wiki/objective/">objective</a>,
+      f&nbsp;=&nbsp;10&nbsp;mm and NA&nbsp;0.4, has its back pupil 200&nbsp;mm
+      after the tube lens, where the image of the mirror lies.</p>
+      <p>The lenses widen the beam four times, to 7.2&nbsp;mm in a pupil of
+      8&nbsp;mm. A turn of the mirror by 2° turns the beam by 4°, which the
+      lenses reduce to 1° at the pupil, and the focus moves 10&nbsp;mm ×
+      tan&nbsp;1° = 0.17&nbsp;mm. The enlarged view, 1&nbsp;mm across, shows the
+      focus sweeping along the sample plane as the scan plays (500&nbsp;Hz,
+      slowed down by the canvas's time scale). Select the objective at any
+      moment of the scan: its inspector reports the back pupil 90% to 95%
+      filled, <em>all through</em>.</p>
+      <p>Things to try. Set the mirror's scan waveform to <em>Static</em> and
+      its centre angle to 2°: the beam stays tilted, the focus stays at the
+      end of its sweep, and the objective still reports <em>all through</em>.
+      Now move the objective 50&nbsp;mm closer to the tube lens. The pupil is no
+      longer where the mirror is imaged: the tilted beam has slid 0.9&nbsp;mm
+      across it, and the inspector reports it <em>overfilled, about 80%
+      through</em>. Set the angle back to 0° and all of the beam passes again:
+      only the ends of a scan are cut, which in an image shows as dark
+      edges.</p>`,
+    limitations: `<p>The scan lens and the tube lens are ideal thin lenses,
+      and the objective is a single ideal plane with a stop at its back focal
+      plane. Real scan and tube lenses are corrected, multi-element designs: the article
+      cited above compares the aberrations of achromats and of more elaborate
+      designs used as scan lenses. None of those aberrations exist in this setup,
+      and the focus is as sharp at the edge of the scan as on the axis.</p>
+      <p>The scan is in the plane of the drawing only. A microscope scans in two
+      directions, with a second mirror that cannot sit in the same place as the
+      first; the ways around that (a second relay, or two mirrors close together)
+      are not drawn. The waist printed in the enlarged view is the size an ideal
+      Gaussian beam with this cone would have, and the sample is a plain
+      block: no fluorescence is produced.</p>`,
+    citations: [
+      { label: 'A. Negrean and H. D. Mansvelder, “Optimal lens design and use in laser-scanning microscopy,” Biomedical Optics Express 5, 1588 (2014)', url: 'https://doi.org/10.1364/BOE.5.001588' },
+    ],
+    resources: [],
+    related: ['galvo', 'lens', 'objective', 'zoom', 'telescope', 'polygonscanner'],
+  },
+
+  {
+    match: 'Czerny–Turner monochromator',
+    title: 'Czerny–Turner monochromator',
+    tagline: 'A slit, two concave mirrors and a grating: the lines of a mercury lamp are spread across the plane of the exit slit, and turning the grating brings them through it one at a time.',
+    html: `
+      <p>The classical grating monochromator is the Czerny–Turner
+      design${cite(1)}. Light is focused on an entrance slit and diverges behind
+      it. A concave mirror, with the slit at its focus, makes the light parallel
+      and sends it to a diffraction grating, which turns each wavelength by a
+      slightly different angle. A second concave mirror turns those directions
+      into positions: it forms an image of the entrance slit in each wavelength,
+      side by side in the plane of the exit slit, so that only a narrow range of
+      wavelengths gets through${cite(1, 2)}.</p>
+      <p>The grating stands on a rotation stage, and its angle sets the
+      wavelength at the centre of the pass band${cite(1)}. With the mirrors and
+      slits fixed, the directions to and from the grating are fixed too, at an
+      angle 2K to each other, and the grating equation becomes
+      mλ/d = 2&nbsp;sin&nbsp;φ&nbsp;cos&nbsp;K for a grating of period d turned by
+      φ from the position in which it would act as a plain mirror. The
+      wavelength does not follow the angle linearly, which instruments correct in
+      software${cite(1)}.</p>
+      <p>The width of the band that passes depends on the widths of the slits and
+      on the dispersion, the range of wavelengths per unit of slit
+      width${cite(2)}. A narrower band improves the resolution and lowers the
+      signal-to-noise ratio${cite(2)}. With a detector behind the exit slit and a motor on the
+      grating, this is the scanning monochromator described on the
+      <a href="../../wiki/spectrometer/">spectrometer</a> page; with a detector
+      array in place of the exit slit, the same optics make a spectrograph.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>A mercury lamp (a <a href="../../wiki/pointsource/">Point source</a> set
+      to a gas discharge lamp) is imaged by a small lens onto an entrance slit of
+      0.5&nbsp;mm. Two <a href="../../wiki/cmirror/">concave mirrors</a> of
+      f&nbsp;=&nbsp;200&nbsp;mm, each turning the light by 16°, stand 198&nbsp;mm
+      from the slits and 190&nbsp;mm from a reflection
+      <a href="../../wiki/grating/">grating</a> of 600 lines per millimetre, of
+      which the first order is traced. The exit slit is 1&nbsp;mm wide. Grey
+      walls stand for the housing: they absorb what the grating sends
+      elsewhere.</p>
+      <p>The lamp's light reaches the grating as one parallel beam and leaves it
+      as one beam per line, each in its own direction and drawn in its own
+      colour. As shipped the grating is turned to 189.81°, 9.81° from the mirror
+      position, and the green line at 546.07&nbsp;nm passes the exit slit. The
+      detector behind it is a <a href="../../wiki/spectrometer/">Spectrometer</a>
+      element, used here only to show what arrives: its screen shows that one
+      line, and its inspector a relative ray weight of 0.24, the share of the
+      lamp's light the app gives that line. The violet and blue lines and the
+      yellow pair end on the plate of the slit.</p>
+      <p>Things to try: turn the grating (its rotation in the inspector) to bring
+      another line through. With K&nbsp;=&nbsp;16° the equation above gives:</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Line</th><th>Grating rotation</th></tr></thead>
+        <tbody>
+          <tr><td>365.0&nbsp;nm</td><td>186.54°</td></tr>
+          <tr><td>404.7&nbsp;nm</td><td>187.26°</td></tr>
+          <tr><td>435.8&nbsp;nm</td><td>187.82°</td></tr>
+          <tr><td>546.1&nbsp;nm</td><td>189.81°</td></tr>
+          <tr><td>577.0 and 579.1&nbsp;nm</td><td>190.40°</td></tr>
+          <tr><td>1014.0&nbsp;nm</td><td>198.45°</td></tr>
+        </tbody>
+      </table></div>
+      <p>Each line passes over a range of about 0.15° around its angle. The two
+      yellow lines pass together: in the plane of the exit slit the spectrum is
+      spread by about 8.4&nbsp;nm per millimetre (d&nbsp;cos&nbsp;β / f, with β the
+      angle at which the light leaves the grating), so lines 2.1&nbsp;nm apart
+      land 0.25&nbsp;mm apart, inside the 1&nbsp;mm slit. This instrument does not
+      separate them; a longer focal length, a finer grating or a narrower slit
+      would. Open the exit slit to 8&nbsp;mm with the grating at 189.81° and the
+      yellow pair joins the green line: the detector shows both and reads
+      0.44.</p>`,
+    limitations: `<p>Only the focus in the plane of the drawing is shown. A
+      spherical mirror used at an angle θ focuses the rays in the plane of the
+      turn at (R/2)&nbsp;cos&nbsp;θ and the rays in the plane across it at
+      (R/2)/cos&nbsp;θ: here 198.1&nbsp;mm and 202.0&nbsp;mm. The slits stand at
+      the first, where the image of the entrance slit is sharp across its width;
+      along the slit, out of the drawing, a real instrument's image is stretched
+      by this astigmatism, and the slit's height does not exist here.</p>
+      <p>The lamp is a point at the centre of the entrance slit, so the width of
+      that slit plays no part in the width of the line images, as it does in a
+      real instrument. The lines have no width of their own and the grating no
+      resolving limit: what separates two lines here is the geometry of the rays
+      and the exit slit alone. The grating sends all of each line into the one
+      order traced, whatever the wavelength; a real grating's efficiency varies
+      across the spectrum and some light goes to other orders, which a real
+      housing has to absorb. The strengths of the lamp's lines are nominal, so the
+      detector's readings compare lines only roughly.</p>`,
+    citations: [
+      { label: 'RP Photonics Encyclopedia — Monochromators', url: 'https://www.rp-photonics.com/monochromators.html' },
+      { label: 'Wikipedia — Monochromator', url: 'https://en.wikipedia.org/wiki/Monochromator' },
+    ],
+    resources: [],
+    related: ['grating', 'cmirror', 'slit', 'pointsource', 'spectrometer', 'lens', 'box'],
+  },
+
   {
     match: 'Gregorian telescope — element by element',
     title: 'Gregorian telescope',

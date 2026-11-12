@@ -1,0 +1,166 @@
+{
+ "elements": 10,
+ "beams": 0,
+ "drawables": {
+  "count": 234,
+  "byType": {
+   "poly": 216,
+   "path": 18
+  },
+  "colors": {
+   "#ff4200": 234
+  },
+  "points": 900,
+  "sum": [
+   205829.994,
+   319570
+  ],
+  "bbox": [
+   52,
+   213,
+   291.9803,
+   466
+  ],
+  "digest": "4fb2a18f"
+ },
+ "drawnElements": {
+  "textlabel:title": "ee83662f",
+  "textlabel:note": "07dd9f99",
+  "cwlaser:laserA": "3d823b45",
+  "freeglass:prismA": "1219b69b",
+  "powermeter:meterA": "652f6bf1",
+  "display:screenA": "fbb28652",
+  "cwlaser:laserB": "3d823b45",
+  "freeglass:prismB": "a7191b5e",
+  "powermeter:meterB": "1410d754",
+  "display:screenB": "fbb28652"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "readouts": {
+  "powermeter:meterA": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 633,
+    "bandMin": 633,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#ff4200",
+    "convergence": {
+     "diverging": false,
+     "fullAngleDeg": 0,
+     "slopePerMm": 0
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 0.9216,
+    "detectorType": "Power meter",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": 1,
+     "s2": 0,
+     "s3": 0
+    },
+    "outputSignal": 0.9216,
+    "polarization": "Linear 0°",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "power",
+    "samples": 25,
+    "saturated": false,
+    "signal": 0.9216,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.9216,
+      "sourceId": "laserA"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#ff4200",
+      "continuum": false,
+      "power": 0.9216,
+      "sourceId": "laserA",
+      "wavelength": 633,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 4,
+    "wavelength": 633
+   }
+  },
+  "powermeter:meterB": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 633,
+    "bandMin": 633,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#ff4200",
+    "convergence": {
+     "diverging": false,
+     "fullAngleDeg": 0,
+     "slopePerMm": 0
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 0.9216,
+    "detectorType": "Power meter",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": 1,
+     "s2": 0,
+     "s3": 0
+    },
+    "outputSignal": 0.9216,
+    "polarization": "Linear 0°",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "power",
+    "samples": 25,
+    "saturated": false,
+    "signal": 0.9216,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.9216,
+      "sourceId": "laserB"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#ff4200",
+      "continuum": false,
+      "power": 0.9216,
+      "sourceId": "laserB",
+      "wavelength": 633,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 4,
+    "wavelength": 633
+   }
+  }
+ },
+ "fibers": {}
+}
