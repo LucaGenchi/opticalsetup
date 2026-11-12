@@ -11,7 +11,6 @@ const isToken = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(valu
 const sameVersion = (a, b) => a.revision === b.revision && a.hash === b.hash;
 const unavailable = () => new SceneError('Open the OpticalSetup workbench and wait for it to reconnect. Then use its current workspace reference.', 'WORKSPACE_UNAVAILABLE');
 const tooLarge = 'it is larger than the live workbench takes';
-const outcomeUnknown = () => new SceneError('This edit was sent to an earlier view of the workbench, which went away before confirming it, so its outcome is not known. Read the current setup with get_setup and get_items, and use a new clientRequestId to edit again.', 'EDIT_UNCONFIRMED');
 const unopened = () => new SceneError('No workbench view has connected for this reference yet. Retry shortly. A client that does not show the workbench passes an explicit setup snapshot instead.', 'WORKSPACE_UNAVAILABLE');
 const conflict = () => new SceneError('The workbench changed. Read get_setup again before editing.', 'REVISION_CONFLICT');
 const engaged = () => new SceneError('The workbench is in the middle of a manual edit and did not take this one. Nothing changed. Retry shortly.', 'BUSY');
@@ -22,55 +21,22 @@ export function createSceneMirror({ relay, ttlMs = 600000, maxWorkspaces = 40, a
   const entries = new Map();
   // open_setup gives the model a reference before the view it opens exists, so the call that
   // opened the workbench can be followed by edits. That reference is the hash of a ticket, which
-  // the same result gives to the view alone, and a view takes the reference up by registering
-  // with the ticket. Its channel stays its own: only the channel reads the stream or confirms.
-  // One reference names one view. A stored result can be shown again (a reloaded chat, a second
-  // tab), and then the view that registered last takes the reference. The earlier one is told
-  // that it moved, and the reference that is now its own, in the answer to its next sync.
-  // An edit made by a reference has one outcome, whichever view holds the reference later:
-  // - the reference does not move while its view is connected and owes an answer for an edit;
-  // - when it moves, the outcomes recorded for it go with it, and an edit that a view which has
-  //   gone never answered for is recorded as not known, so the same call is never sent again
-  //   to another view;
-  // - a call that is still waiting for a view has been sent to none, and goes to the view that
-  //   holds the reference when it is sent.
-  const invitations = new Map(), holders = new Map(), claims = new Map();
-  const named = entry => holders.get(entry.invited) === entry.ref ? entry.invited : entry.ref;
-  const take = (alias, next) => {
-    const previous = entries.get(holders.get(alias));
-    if (previous && previous !== next) {
-      for (const [request, record] of previous.receipts) if (!next.receipts.has(request)) next.receipts.set(request, record);
-      for (const edit of [previous.pending, ...previous.overdue.values()]) {
-        if (edit && !next.receipts.has(edit.requestId)) next.receipts.set(edit.requestId, { fingerprint: edit.fingerprint, unknown: true });
-      }
-      while (next.receipts.size > 60) next.receipts.delete(next.receipts.keys().next().value);
-    }
-    holders.set(alias, next.ref);
-    claims.delete(alias);
-    next.held = true;
-  };
-  const settle = alias => {
-    const next = entries.get(claims.get(alias));
-    if (!next) { claims.delete(alias); return; }
-    const holder = entries.get(holders.get(alias));
-    if (holder && relay.connected(holder.channel) && (holder.pending || holder.overdue.size)) return;
-    take(alias, next);
-  };
-  const find = ref => {
-    if (claims.has(ref)) settle(ref);
-    return entries.get(holders.get(ref) ?? ref);
-  };
-  const drop = ref => {
-    const entry = entries.get(ref);
-    if (!entry) return;
-    const alias = entry.invited;
-    if (claims.get(alias) === ref) claims.delete(alias);
-    if (holders.get(alias) === ref) {
-      const next = entries.get(claims.get(alias));
-      if (next) take(alias, next);
-      else holders.delete(alias);
-    }
-    entries.delete(ref);
+  // the same result gives to the view alone, and the first view to register with the ticket
+  // while it is expected takes the reference. Its channel stays its own: only the channel reads
+  // the stream or confirms.
+  // The reference is then that one view's for good. A stored result can be shown again (a
+  // reloaded chat, a second tab) and the new view presents the same ticket, but the reference
+  // never moves to it: an edit made by a reference would otherwise have its outcome on one view
+  // and its retry on another. A later view works under its own reference. The binding outlives
+  // the view's mirror, so the same view comes back to its reference and no other view can.
+  const invitations = new Map(), holders = new Map();
+  const named = entry => entry.invited ?? entry.ref;
+  const find = ref => entries.get(holders.get(ref) ?? ref);
+  // A view reopens its live stream whenever the service ends it at its time limit, and after a
+  // network fault. An edit that arrives in between waits for the view instead of failing.
+  const reconnected = async entry => {
+    for (let waited = 0; waited < reconnectMs && !relay.connected(entry.channel); waited += 50) await pause(50);
+    if (entries.get(entry.ref) !== entry || !relay.connected(entry.channel)) throw unavailable();
   };
   const finish = (entry, error, value) => {
     const pending = entry.pending;
@@ -93,8 +59,8 @@ export function createSceneMirror({ relay, ttlMs = 600000, maxWorkspaces = 40, a
   const prune = () => {
     for (const [ref, entry] of entries) {
       if (entry.touched + ttlMs > now()) continue;
-      drop(ref);
       finish(entry, unavailable());
+      entries.delete(ref);
     }
     for (const [ref, until] of invitations) if (until <= now()) invitations.delete(ref);
   };
@@ -118,14 +84,14 @@ export function createSceneMirror({ relay, ttlMs = 600000, maxWorkspaces = 40, a
     close() {
       clearInterval(sweep);
       for (const entry of entries.values()) finish(entry, unavailable());
-      entries.clear(); invitations.clear(); holders.clear(); claims.clear();
+      entries.clear(); invitations.clear(); holders.clear();
     },
     // The reference goes to the model and the ticket to the view, in the same tool result.
     invite() {
       prune();
       const ticket = randomBytes(32).toString('hex'), workspaceRef = sceneHash(ticket);
-      // Only so many views are waited for at once. Past that the reference is as good as any
-      // other: its view takes it up when it registers, and a call made before then is not kept waiting.
+      // Only so many views are expected at once. A view opened past that is not given this
+      // reference: it works under its own, as a view does that receives no ticket.
       if (invitations.size < maxInvitations) invitations.set(workspaceRef, now() + inviteMs);
       return { ticket, workspaceRef };
     },
@@ -141,16 +107,9 @@ export function createSceneMirror({ relay, ttlMs = 600000, maxWorkspaces = 40, a
       // separate preimage can register a scene, read its stream or acknowledge.
       const ref = sceneHash(data.channel);
       const entry = entries.get(ref);
-      // The reference the model knows this view by: the one its open result gave, while this view
-      // holds it, and otherwise the view's own. A view that held the first is told while another
-      // view that is here holds it.
-      const answer = () => {
-        const now = entries.get(ref);
-        if (!now) return { workspaceRef: ref };
-        if (claims.has(now.invited)) settle(now.invited);
-        const holder = entries.get(holders.get(now.invited));
-        return { workspaceRef: named(now), ...(now.held && holder && holder !== now && relay.connected(holder.channel) && { superseded: true }) };
-      };
+      // The reference the model knows this view by: the one its open result gave, if this view
+      // took it, and otherwise the view's own.
+      const answer = () => ({ workspaceRef: named(entries.get(ref) ?? { ref }) });
       const current = entry?.current;
       if (data.rejected === true) {
         if (data.deliveryId === entry?.pending?.id) finish(entry, data.busy === true ? engaged() : conflict());
@@ -182,7 +141,7 @@ export function createSceneMirror({ relay, ttlMs = 600000, maxWorkspaces = 40, a
         // One whose edit is still unconfirmed keeps its place, and with it what the browser may yet say of that edit.
         const [gone] = [...entries].filter(([, other]) => !other.pending && !other.overdue.size && !relay.connected(other.channel)).sort((a, b) => a[1].touched - b[1].touched);
         if (!gone) throw new SceneError('Too many active workbenches. Retry shortly.', 'BUSY');
-        drop(gone[0]);
+        entries.delete(gone[0]);
       }
       let scene = data.scene, setup;
       if (!scene && (!current || !proposalMatches(current, data))) throw new SceneError('The workbench needs to send its current scene.', 'RESYNC_REQUIRED');
@@ -200,10 +159,17 @@ export function createSceneMirror({ relay, ttlMs = 600000, maxWorkspaces = 40, a
       }
       const next = { ...setup, canUndo, canRedo };
       if (!entry) {
-        const invited = isToken(data.ticket) ? sceneHash(data.ticket) : null;
-        entries.set(ref, { ref, invited, current: next, channel: data.channel, touched: now(), receipts: new Map(), pending: null, overdue: new Map(), refused: null, held: false });
-        // The view that registers last with a ticket is the one on screen now, and takes its reference.
-        if (invited) { invitations.delete(invited); claims.set(invited, ref); settle(invited); }
+        // The ticket counts for the view that the reference is already bound to, and for the first
+        // view to present it while a view is still expected. For any other it counts for nothing.
+        const alias = isToken(data.ticket) ? sceneHash(data.ticket) : null;
+        const invited = alias && (holders.get(alias) === ref || (!holders.has(alias) && invitations.get(alias) > now())) ? alias : null;
+        entries.set(ref, { ref, invited, current: next, channel: data.channel, touched: now(), receipts: new Map(), pending: null, overdue: new Map(), refused: null });
+        if (invited) {
+          invitations.delete(invited);
+          holders.set(invited, ref);
+          // A binding is kept after its view's mirror has gone, up to a limit: the oldest of those goes first.
+          for (const [other, view] of holders) { if (holders.size <= maxInvitations) break; if (!entries.has(view)) holders.delete(other); }
+        }
       } else {
         entry.current = next;
         entry.touched = now();
@@ -226,28 +192,23 @@ export function createSceneMirror({ relay, ttlMs = 600000, maxWorkspaces = 40, a
       return answer();
     },
     async edit(name, args, mutate) {
-      let entry = await reach(args.workspaceRef);
+      const entry = await reach(args.workspaceRef);
+      const { receipts, channel } = entry;
       const fingerprint = sceneHash({ name, args });
       // The same request again is answered with what became of it the first time.
       const earlier = () => {
-        const previous = entry.receipts.get(args.clientRequestId) || [entry.pending, ...entry.overdue.values()].find(edit => edit?.requestId === args.clientRequestId);
+        const previous = receipts.get(args.clientRequestId) || [entry.pending, ...entry.overdue.values()].find(edit => edit?.requestId === args.clientRequestId);
         if (previous && previous.fingerprint !== fingerprint) throw new SceneError('clientRequestId was already used for a different edit', 'REQUEST_ID_REUSED');
-        if (previous?.unknown) throw outcomeUnknown();
         // An overdue edit has neither: the same call again sends it again, under the same delivery.
         return previous && (previous.receipt ?? previous.promise);
       };
       let outcome = earlier();
       if (outcome) return outcome;
-      // A view reopens its live stream whenever the service ends it at its time limit, and after a
-      // network fault. An edit that arrives in between waits for the view instead of failing.
-      // It has been sent to no view yet, so if the reference moves meanwhile it goes with it.
-      for (let waited = 0; waited < reconnectMs && entry && !relay.connected(entry.channel); waited += 50) {
-        await pause(50);
-        entry = find(args.workspaceRef);
+      if (!relay.connected(channel)) {
+        await reconnected(entry);
+        if ((outcome = earlier())) return outcome;
       }
-      if (!entry || !relay.connected(entry.channel)) throw unavailable();
-      if ((outcome = earlier())) return outcome;
-      const { receipts, channel, current, pending, overdue } = entry;
+      const { current, pending, overdue } = entry;
       if (entry.refused) throw unshared(entry.refused);
       if (args.expectedRevision !== current.revision) throw conflict();
       if (pending) throw new SceneError('The workbench is applying an edit. Retry shortly.', 'BUSY');

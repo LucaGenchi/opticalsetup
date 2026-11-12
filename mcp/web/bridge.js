@@ -15,7 +15,7 @@ const hosted = window.parent !== window, pending = new Map();
 let receiveInitialResult;
 const initialResult = new Promise(resolve => { receiveInitialResult = resolve; });
 let nextId = 1, setup, history = [], future = [], requests = [], applying = false, ready = false, busy = false, accepting = false, dragging = false, queued, channel, timer, contextKey = '', navigationGeneration = 0;
-let liveWorkspace, noted = '', kept = ['Local setup · Save JSON for a backup', false];
+let liveWorkspace, unshared = false, kept = ['Local setup · Save JSON for a backup', false];
 let host = {}, contextFailures = 0, contextRetryAt = 0, waiting = false;
 // Until a hosted view has the setup it was opened for, the editor is not to be
 // worked in: there is no setup yet to keep the work in. The notice covers the
@@ -48,14 +48,11 @@ function status(message, error = false) {
   const box = document.getElementById('lab-sync'); if (box) box.dataset.error = String(error);
 }
 // What the status line says when nothing else is being reported: where the setup is kept, or,
-// while the service does not take the scene, why the chat does not follow it, or that the chat's
-// reference now names another view of this setup. The chat works on the service's copy; the
-// setup itself is unaffected and stays in this browser.
-const standing = () => liveWorkspace?.problem ? 'unshared' : liveWorkspace?.superseded ? 'superseded' : '';
+// while the service does not take the scene, why the chat does not follow it. The chat works on
+// the service's copy; the setup itself is unaffected and stays in this browser.
 function note() {
   const problem = liveWorkspace?.problem;
   if (problem) status('The chat cannot follow this setup · ' + problem, true);
-  else if (liveWorkspace?.superseded) status('Another view of this setup now follows the chat · Use that one for chat edits', true);
   else status(...kept);
 }
 function request(method, params) {
@@ -81,9 +78,7 @@ function context() {
     selectedPathId: selection?.kind === 'beam' ? selection.id : null,
     canUndo: Boolean(history.length), canRedo: Boolean(future.length),
     connection: liveWorkspace?.problem ? 'this setup is not shared with the chat: ' + liveWorkspace.problem
-      : !workspaceRef ? 'waiting for workbench sync'
-      : liveWorkspace.superseded ? 'another view of this setup now holds the reference that open_setup returned; this view answers to the workspaceRef given here'
-      : liveWorkspace.connected ? 'connected' : 'reconnecting',
+      : !workspaceRef ? 'waiting for workbench sync' : liveWorkspace.connected ? 'connected' : 'reconnecting',
   };
   const content = JSON.stringify(payload);
   if (content === contextKey) return; contextKey = content;
@@ -204,7 +199,7 @@ function connectLive(ticket) {
       const box = document.getElementById('lab-sync');
       if (box) box.dataset.delivery = liveWorkspace.synced ? 'connected' : connected ? 'syncing' : 'reconnecting';
       // Said when it starts and taken back when it ends, so other reports are not written over meanwhile.
-      if (standing() !== noted) { noted = standing(); note(); }
+      if (Boolean(liveWorkspace.problem) !== unshared) { unshared = !unshared; note(); }
       context();
     },
   });

@@ -151,37 +151,31 @@ service so in a few bytes, with the same result. If something on the way
 refuses a request as too large, the view reports it the same way and does
 not send that size again. The
 browser reconnects and resends its current scene after a
-service restart, under the same reference. A workbench must be
-connected to apply an edit. Treat the workspace reference as private: it
+service restart, under the reference of its own channel. A workbench must
+be connected to apply an edit. Treat the workspace reference as private: it
 grants read access and lets its holder propose edits to the connected view.
 Use Save JSON to keep a portable copy.
 
 The reference is the hash of a ticket that the open result carries in its
-metadata for the view alone. A view takes the reference up by registering
-with the ticket; knowing the reference is not enough. The view's channel
-stays its own, and only the channel reads the stream or confirms an edit.
-One reference names one view. A stored result can be shown again, in a
-reloaded chat or a second tab, and then the view that registered last takes
-the reference. The earlier view is told so: its status line says that
-another view of the setup now follows the chat, and it goes on working under
-a reference of its own, which its workbench context gives. When the holder
-is gone the reference names nobody; it does not go back to the earlier view.
-The service waits for at most 200 opened views at a time, each for two
-minutes.
+metadata for the view alone. The first view to register with the ticket,
+within two minutes of the call, takes the reference; knowing the reference
+is not enough. The view's channel stays its own, and only the channel reads
+the stream or confirms an edit.
 
-An edit made by a reference has one outcome, whichever view holds the
-reference later. The reference does not move while its view is connected
-and has not yet answered for an edit. When it moves, the outcomes recorded
-for it go with it, so an exact retry still reports them. An edit that a view
-which has gone never answered for is recorded as not known: the same call
-again says so, and is not sent to another view. A call that is still waiting
-for a view to reconnect has been sent to none, and goes to the view that
-holds the reference when it is sent.
-
-A reference that is still good after a reload does not keep the scene: the
-scene is the copy in browser storage, as before. In a client that shows no
-view, the first call by the reference waits those eight seconds and is then
-told to pass an explicit setup.
+The reference then names that one view for good. A stored result can be
+shown again, in a reloaded chat or a second tab, and the new view presents
+the same ticket, but the reference never moves to it: the new view works
+under a reference of its own, which its workbench context gives. An edit and
+its exact retry therefore always reach the same view. The service remembers
+which view a reference belongs to after that view's mirror has expired (for
+up to 200 references), so the same view comes back to its reference and no
+other view can take it. After a service restart this is forgotten, and every
+view goes on under its own reference. The service expects at most 200 opened
+views at a time; one opened past that works under its own reference too.
+A reference does not keep the scene: the scene is the copy in browser
+storage, as before. In a client that shows no view, the first call by the
+reference waits those eight seconds and is then told to pass an explicit
+setup.
 
 Clients without an interactive view, such as Claude Code, can still pass an
 explicit `setup` snapshot to each tool and use the returned snapshot for the
