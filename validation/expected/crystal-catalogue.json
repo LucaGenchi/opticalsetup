@@ -1,0 +1,944 @@
+{
+ "app": "sketch/js/materials/catalogue.js: fitIndex, verdetConstant",
+ "cases": [
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.882184
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "ordinary",
+    "record": "calcite",
+    "wavelengthNm": 204.0
+   },
+   "name": "calcite ordinary at 204 nm (Ghosh 1999, Table 2)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.88224",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.719253
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "ordinary",
+    "record": "calcite",
+    "wavelengthNm": 303.0
+   },
+   "name": "calcite ordinary at 303 nm (Ghosh 1999, Table 2)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.71959",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.679808
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "ordinary",
+    "record": "calcite",
+    "wavelengthNm": 410.0
+   },
+   "name": "calcite ordinary at 410 nm (Ghosh 1999, Table 2)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.68014",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.658364
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "ordinary",
+    "record": "calcite",
+    "wavelengthNm": 589.0
+   },
+   "name": "calcite ordinary at 589 nm (Ghosh 1999, Table 2)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.65835",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.648797
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "ordinary",
+    "record": "calcite",
+    "wavelengthNm": 801.0
+   },
+   "name": "calcite ordinary at 801 nm (Ghosh 1999, Table 2)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.64869",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.642899
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "ordinary",
+    "record": "calcite",
+    "wavelengthNm": 1042.0
+   },
+   "name": "calcite ordinary at 1042 nm (Ghosh 1999, Table 2)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.64276",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.633793
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "ordinary",
+    "record": "calcite",
+    "wavelengthNm": 1541.0
+   },
+   "name": "calcite ordinary at 1541 nm (Ghosh 1999, Table 2)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.63381",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.620926
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "ordinary",
+    "record": "calcite",
+    "wavelengthNm": 2172.0
+   },
+   "name": "calcite ordinary at 2172 nm (Ghosh 1999, Table 2)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.62099",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.570667
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "extraordinary",
+    "record": "calcite",
+    "wavelengthNm": 204.0
+   },
+   "name": "calcite extraordinary at 204 nm (Ghosh 1999, Table 3)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.57081",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.513654
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "extraordinary",
+    "record": "calcite",
+    "wavelengthNm": 303.0
+   },
+   "name": "calcite extraordinary at 303 nm (Ghosh 1999, Table 3)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.51365",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.496173
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "extraordinary",
+    "record": "calcite",
+    "wavelengthNm": 410.0
+   },
+   "name": "calcite extraordinary at 410 nm (Ghosh 1999, Table 3)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.4964",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.486139
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "extraordinary",
+    "record": "calcite",
+    "wavelengthNm": 589.0
+   },
+   "name": "calcite extraordinary at 589 nm (Ghosh 1999, Table 3)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.4864",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.481904
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "extraordinary",
+    "record": "calcite",
+    "wavelengthNm": 801.0
+   },
+   "name": "calcite extraordinary at 801 nm (Ghosh 1999, Table 3)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.48216",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.479776
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "extraordinary",
+    "record": "calcite",
+    "wavelengthNm": 1042.0
+   },
+   "name": "calcite extraordinary at 1042 nm (Ghosh 1999, Table 3)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.47985",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.477861
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "extraordinary",
+    "record": "calcite",
+    "wavelengthNm": 1497.0
+   },
+   "name": "calcite extraordinary at 1497 nm (Ghosh 1999, Table 3)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.47744",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.476269
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "extraordinary",
+    "record": "calcite",
+    "wavelengthNm": 2100.0
+   },
+   "name": "calcite extraordinary at 2100 nm (Ghosh 1999, Table 3)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.47492",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.650902
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "ordinary",
+    "record": "quartz",
+    "wavelengthNm": 198.0
+   },
+   "name": "quartz ordinary at 198 nm (Ghosh 1999, Table 4)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.65087",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.567554
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "ordinary",
+    "record": "quartz",
+    "wavelengthNm": 340.0
+   },
+   "name": "quartz ordinary at 340 nm (Ghosh 1999, Table 4)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.56747",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.544206
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "ordinary",
+    "record": "quartz",
+    "wavelengthNm": 589.3
+   },
+   "name": "quartz ordinary at 589.3 nm (Ghosh 1999, Table 4)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.54424",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.535126
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "ordinary",
+    "record": "quartz",
+    "wavelengthNm": 991.4
+   },
+   "name": "quartz ordinary at 991.4 nm (Ghosh 1999, Table 4)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.53514",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.527813
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "ordinary",
+    "record": "quartz",
+    "wavelengthNm": 1541.4
+   },
+   "name": "quartz ordinary at 1541.4 nm (Ghosh 1999, Table 4)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.52781",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.521832
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "ordinary",
+    "record": "quartz",
+    "wavelengthNm": 1945.7
+   },
+   "name": "quartz ordinary at 1945.7 nm (Ghosh 1999, Table 4)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.52184",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.663972
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "extraordinary",
+    "record": "quartz",
+    "wavelengthNm": 198.0
+   },
+   "name": "quartz extraordinary at 198 nm (Ghosh 1999, Table 5)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.66394",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.577457
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "extraordinary",
+    "record": "quartz",
+    "wavelengthNm": 340.0
+   },
+   "name": "quartz extraordinary at 340 nm (Ghosh 1999, Table 5)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.57737",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.557478
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "extraordinary",
+    "record": "quartz",
+    "wavelengthNm": 508.0
+   },
+   "name": "quartz extraordinary at 508 nm (Ghosh 1999, Table 5)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.55746",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.543901
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "extraordinary",
+    "record": "quartz",
+    "wavelengthNm": 991.4
+   },
+   "name": "quartz extraordinary at 991.4 nm (Ghosh 1999, Table 5)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.54392",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.536292
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "extraordinary",
+    "record": "quartz",
+    "wavelengthNm": 1541.4
+   },
+   "name": "quartz extraordinary at 1541.4 nm (Ghosh 1999, Table 5)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.5363",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.530055
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "extraordinary",
+    "record": "quartz",
+    "wavelengthNm": 1945.7
+   },
+   "name": "quartz extraordinary at 1945.7 nm (Ghosh 1999, Table 5)",
+   "note": "the fit's value printed in the source to six decimals; measured 1.53004",
+   "tolerance": {
+    "index": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 2.02942168633
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "ordinary",
+    "record": "yvo4",
+    "wavelengthNm": 488.0
+   },
+   "name": "YVO4 ordinary at 488 nm (Lomheim and DeShazer 1978, Eq. 21)",
+   "note": "transcription check: the source tabulates no indices",
+   "tolerance": {
+    "index": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.99138170877
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "ordinary",
+    "record": "yvo4",
+    "wavelengthNm": 632.8
+   },
+   "name": "YVO4 ordinary at 632.8 nm (Lomheim and DeShazer 1978, Eq. 21)",
+   "note": "transcription check: the source tabulates no indices",
+   "tolerance": {
+    "index": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.95800776476
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "ordinary",
+    "record": "yvo4",
+    "wavelengthNm": 1064.0
+   },
+   "name": "YVO4 ordinary at 1064 nm (Lomheim and DeShazer 1978, Eq. 21)",
+   "note": "transcription check: the source tabulates no indices",
+   "tolerance": {
+    "index": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.95151810247
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "ordinary",
+    "record": "yvo4",
+    "wavelengthNm": 1342.0
+   },
+   "name": "YVO4 ordinary at 1342 nm (Lomheim and DeShazer 1978, Eq. 21)",
+   "note": "transcription check: the source tabulates no indices",
+   "tolerance": {
+    "index": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.94556404675
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "ordinary",
+    "record": "yvo4",
+    "wavelengthNm": 2000.0
+   },
+   "name": "YVO4 ordinary at 2000 nm (Lomheim and DeShazer 1978, Eq. 21)",
+   "note": "transcription check: the source tabulates no indices",
+   "tolerance": {
+    "index": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.94241781716
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "ordinary",
+    "record": "yvo4",
+    "wavelengthNm": 3390.0
+   },
+   "name": "YVO4 ordinary at 3390 nm (Lomheim and DeShazer 1978, Eq. 21)",
+   "note": "transcription check: the source tabulates no indices",
+   "tolerance": {
+    "index": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 2.26998259941
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "extraordinary",
+    "record": "yvo4",
+    "wavelengthNm": 488.0
+   },
+   "name": "YVO4 extraordinary at 488 nm (Lomheim and DeShazer 1978, Eq. 20)",
+   "note": "transcription check: the source tabulates no indices",
+   "tolerance": {
+    "index": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 2.21498469408
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "extraordinary",
+    "record": "yvo4",
+    "wavelengthNm": 632.8
+   },
+   "name": "YVO4 extraordinary at 632.8 nm (Lomheim and DeShazer 1978, Eq. 20)",
+   "note": "transcription check: the source tabulates no indices",
+   "tolerance": {
+    "index": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 2.16745489898
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "extraordinary",
+    "record": "yvo4",
+    "wavelengthNm": 1064.0
+   },
+   "name": "YVO4 extraordinary at 1064 nm (Lomheim and DeShazer 1978, Eq. 20)",
+   "note": "transcription check: the source tabulates no indices",
+   "tolerance": {
+    "index": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 2.15828849754
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "extraordinary",
+    "record": "yvo4",
+    "wavelengthNm": 1342.0
+   },
+   "name": "YVO4 extraordinary at 1342 nm (Lomheim and DeShazer 1978, Eq. 20)",
+   "note": "transcription check: the source tabulates no indices",
+   "tolerance": {
+    "index": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 2.14989995742
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "extraordinary",
+    "record": "yvo4",
+    "wavelengthNm": 2000.0
+   },
+   "name": "YVO4 extraordinary at 2000 nm (Lomheim and DeShazer 1978, Eq. 20)",
+   "note": "transcription check: the source tabulates no indices",
+   "tolerance": {
+    "index": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 2.14547549637
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": "extraordinary",
+    "record": "yvo4",
+    "wavelengthNm": 3390.0
+   },
+   "name": "YVO4 extraordinary at 3390 nm (Lomheim and DeShazer 1978, Eq. 20)",
+   "note": "transcription check: the source tabulates no indices",
+   "tolerance": {
+    "index": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 2.0178
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": null,
+    "record": "tgg",
+    "wavelengthNm": 404.66
+   },
+   "name": "TGG at 404.66 nm (Schlarb and Sugg 1994, measured)",
+   "tolerance": {
+    "index": 1e-12
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 2.0057
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": null,
+    "record": "tgg",
+    "wavelengthNm": 435.83
+   },
+   "name": "TGG at 435.83 nm (Schlarb and Sugg 1994, measured)",
+   "tolerance": {
+    "index": 1e-12
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.9765
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": null,
+    "record": "tgg",
+    "wavelengthNm": 546.07
+   },
+   "name": "TGG at 546.07 nm (Schlarb and Sugg 1994, measured)",
+   "tolerance": {
+    "index": 1e-12
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.9656
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": null,
+    "record": "tgg",
+    "wavelengthNm": 633.0
+   },
+   "name": "TGG at 633 nm (Schlarb and Sugg 1994, measured)",
+   "tolerance": {
+    "index": 1e-12
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.9434
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": null,
+    "record": "tgg",
+    "wavelengthNm": 1079.81
+   },
+   "name": "TGG at 1079.81 nm (Schlarb and Sugg 1994, measured)",
+   "tolerance": {
+    "index": 1e-12
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.9432
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": null,
+    "record": "tgg",
+    "wavelengthNm": 1084.45
+   },
+   "name": "TGG at 1084.45 nm (Schlarb and Sugg 1994, measured)",
+   "tolerance": {
+    "index": 1e-12
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.942
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": null,
+    "record": "tgg",
+    "wavelengthNm": 1140.91
+   },
+   "name": "TGG at 1140.91 nm (Schlarb and Sugg 1994, measured)",
+   "tolerance": {
+    "index": 1e-12
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.9421
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": null,
+    "record": "tgg",
+    "wavelengthNm": 1152.28
+   },
+   "name": "TGG at 1152.28 nm (Schlarb and Sugg 1994, measured)",
+   "tolerance": {
+    "index": 1e-12
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.9415
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": null,
+    "record": "tgg",
+    "wavelengthNm": 1176.68
+   },
+   "name": "TGG at 1176.68 nm (Schlarb and Sugg 1994, measured)",
+   "tolerance": {
+    "index": 1e-12
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "index": 1.95730251337
+   },
+   "inputs": {
+    "kind": "index",
+    "ray": null,
+    "record": "tgg",
+    "wavelengthNm": 800
+   },
+   "name": "TGG at 800 nm, linear interpolation between the 633 and 1079.81 nm measurements",
+   "note": "linear interpolation, not a dispersion model",
+   "tolerance": {
+    "index": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "verdetRadPerTm": -130.6
+   },
+   "inputs": {
+    "kind": "verdet",
+    "record": "tgg",
+    "wavelengthNm": 633
+   },
+   "name": "TGG Verdet constant at 633 nm (Vojna et al. 2019, Table 2; negative, Slezak et al. 2016)",
+   "note": "printed to one decimal in the source; sample NG6 at 295 K, other samples differ by up to about 10 %",
+   "tolerance": {
+    "verdetRadPerTm": 0.06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "verdetRadPerTm": -37.5
+   },
+   "inputs": {
+    "kind": "verdet",
+    "record": "tgg",
+    "wavelengthNm": 1064
+   },
+   "name": "TGG Verdet constant at 1064 nm (Vojna et al. 2019, Table 2; negative, Slezak et al. 2016)",
+   "note": "printed to one decimal in the source; sample NG6 at 295 K, other samples differ by up to about 10 %",
+   "tolerance": {
+    "verdetRadPerTm": 0.06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "verdetRadPerTm": -201.871239821
+   },
+   "inputs": {
+    "kind": "verdet",
+    "record": "tgg",
+    "wavelengthNm": 532
+   },
+   "name": "TGG Verdet constant at 532 nm (Vojna et al. 2019, Eq. 13 with Table 2)",
+   "note": "transcription check of the single-transition model",
+   "tolerance": {
+    "verdetRadPerTm": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "verdetRadPerTm": -74.409573882
+   },
+   "inputs": {
+    "kind": "verdet",
+    "record": "tgg",
+    "wavelengthNm": 800
+   },
+   "name": "TGG Verdet constant at 800 nm (Vojna et al. 2019, Eq. 13 with Table 2)",
+   "note": "transcription check of the single-transition model",
+   "tolerance": {
+    "verdetRadPerTm": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "verdetRadPerTm": -40.603905082
+   },
+   "inputs": {
+    "kind": "verdet",
+    "record": "tgg",
+    "wavelengthNm": 1030
+   },
+   "name": "TGG Verdet constant at 1030 nm (Vojna et al. 2019, Eq. 13 with Table 2)",
+   "note": "transcription check of the single-transition model",
+   "tolerance": {
+    "verdetRadPerTm": 1e-09
+   }
+  }
+ ],
+ "citations": [
+  "G. Ghosh, 'Dispersion-equation coefficients for the refractive index and birefringence of calcite and quartz crystals,' Opt. Commun. 163, 95-102 (1999), Tables 1-5",
+  "T. S. Lomheim and L. G. DeShazer, 'Optical-absorption intensities of trivalent neodymium in the uniaxial crystal yttrium orthovanadate,' J. Appl. Phys. 49, 5517-5522 (1978), Eqs. (20) and (21)",
+  "U. Schlarb and B. Sugg, 'Refractive index of terbium gallium garnet,' Phys. Status Solidi B 182, K91-K93 (1994), through the refractiveindex.info database (CC0)",
+  "D. Vojna, O. Slezak, A. Lucianetti and T. Mocek, 'Verdet constant of magneto-active materials developed for high-power Faraday devices,' Appl. Sci. 9, 3160 (2019), Eq. (13) and Table 2 (CC BY 4.0)",
+  "O. Slezak, R. Yasuhara, A. Lucianetti and T. Mocek, 'Temperature-wavelength dependence of terbium gallium garnet ceramics Verdet constant,' Opt. Mater. Express 6, 3683-3691 (2016), Table 2"
+ ],
+ "convergence": "Closed forms and linear interpolation; no discretisation.",
+ "domain": "Six to eight wavelengths per Ghosh table; six wavelengths per YVO4 ray; Schlarb's nine measurements and one interpolated point; five wavelengths for the Verdet constant.",
+ "fidelity": "computed",
+ "id": "crystal-catalogue",
+ "outside_scope": "fitIndex and verdetConstant return null outside these ranges. No temperature dependence. The calcite extraordinary fit is up to 0.0013 below the measured index near 2.1 um; the TGG Verdet constant varies by about 10 % between samples. No canvas element uses these records yet.",
+ "provenance": "Ghosh's printed computed indices are the expected values, and the module checks its own evaluation of his Table 1 against them; Vojna's F and G are derived in the module from Slezak's Table 2 at 295 K.",
+ "reference": "Indices printed in the sources (Ghosh's Tables 2-5, Schlarb's measurements) and Vojna's tabulated Verdet constants; Lomheim's equations and Vojna's model evaluated here",
+ "reference_file": "validation/reference/crystal_catalogue.py",
+ "scope": "Principal indices of calcite (204-2172 nm), quartz (198-2053 nm) and YVO4 (488-3390 nm) at room temperature; the TGG index at 20 C between 404.66 and 1176.68 nm; the TGG Verdet constant at room temperature (295 K) between 500 and 1100 nm.",
+ "title": "Crystal records and Verdet data of the material catalogue",
+ "tolerance_rationale": "1e-6 for indices printed to six decimals; 0.06 rad/(T m) for Verdet constants printed to one decimal; 1e-9 or 1e-12 where the case is the evaluation of a transcribed equation or a tabulated value."
+}

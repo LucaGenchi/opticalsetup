@@ -12,9 +12,12 @@ puts every dispersion fit in one catalogue,
 shipped under the data rule of
 [adding-physics.md](../adding-physics.md#third-party-data).
 
-A3 is split in two pull requests. A3a, this one, moves the existing records
-and states their provenance. It changes no index, no range and no reading. A3b adds
-new data: calcite, YVO₄, LiNbO₃ and Verdet constants.
+A3 is split in two pull requests. A3a moved the existing records and stated
+their provenance; it changed no index, no range and no reading. A3b adds new
+records (calcite, YVO₄ and terbium gallium garnet) and the first Verdet
+data. No canvas element, calculator or lens designer lists the new records
+yet: they become selectable in P2 (Faraday rotator), P3, P4 and P6, so A3b
+changes no reading either.
 
 ## Records
 
@@ -27,12 +30,15 @@ Each record is one material:
   use the crystal (P3, P4, P6), not to the record.
 
 Two kinds are reserved for the steps that need them: `biaxial` (P7) and a
-tabulated complex index (P8). The optional Verdet block arrives with the
-first Verdet data in A3b.
+tabulated complex index (P8). A record may also carry a Verdet block
+(below).
 
 Every fit keeps its source's own formula: the Sellmeier form
 n² − 1 = A + Σ Bλ²/(λ² − C), or Ciddor's form n − 1 = Σ B/(C − λ⁻²) for air,
-with λ in µm. It also keeps its domain in nm, its conditions and what its
+with λ in µm, or, where the source gives measured indices and no formula,
+the table itself (`tabulated`), interpolated linearly between its points and
+never beyond them. `fitIndex(fit, wavelengthNm)` evaluates any form and
+returns `null` outside the fit's domain. It also keeps its domain in nm, its conditions and what its
 indices are relative to (air, vacuum, or not stated by the source).
 
 | Record | Kind | Fits | Primary source | Access |
@@ -48,6 +54,9 @@ indices are relative to (air, vacuum, or not stated by the source).
 | Silicon | isotropic | Salzberg and Villa, fit by Tatian | J. Opt. Soc. Am. 47, 244 (1957); Appl. Opt. 23, 4477 (1984) | closed, both |
 | Water | isotropic | Daimon and Masumura, 20 °C, absolute | Appl. Opt. 46, 3811 (2007) | closed |
 | Air | isotropic | Ciddor, standard dry air, absolute | Appl. Opt. 35, 1566 (1996) | closed |
+| Calcite (A3b) | uniaxial, negative | Ghosh, 204–2172 nm | Opt. Commun. 163, 95 (1999) | closed |
+| YVO₄ (A3b) | uniaxial, positive | Lomheim and DeShazer, one term per ray, 488–3390 nm | J. Appl. Phys. 49, 5517 (1978), Eqs. (20)–(21) | closed |
+| TGG (A3b) | isotropic, tabulated | Schlarb and Sugg, nine indices at 20 °C, 404.66–1176.68 nm | Phys. Status Solidi B 182, K91 (1994) | closed |
 
 The canvas glass elements list the twelve glasses and crystals that have
 always been canvas glasses (the ten SCHOTT glasses, fused silica and CaF₂),
@@ -55,6 +64,55 @@ in the same order. A glass element traces one index, so it lists only
 isotropic records. A birefringent crystal is never offered there with a
 single index. The dispersion calculator lists a uniaxial crystal as its two
 principal entries, each marked birefringent, as before.
+
+## Verdet constants
+
+A record's `verdet` block gives the Verdet constant's model, its
+parameters, its sign, the wavelength range and temperature its source
+measured, the sample, and the dataset and primary reference it comes from.
+`verdetConstant(record, wavelengthNm)` returns the signed value in
+rad/(T·m), or `null` outside that range or for a record without one.
+
+- **TGG.** The single-transition model of Vojna et al. (2019, Eq. 13),
+  |V(λ)| = F λ₀²/(λ² − λ₀²) + G, with F = 820.3 rad/(T·m), G = −6.2 rad/(T·m)
+  and λ₀ = 239.3 nm from their Table 2. Vojna et al. take these from Slezák
+  et al. (2016), Table 2, sample NG6, a 6 mm Northrop-Grumman single
+  crystal: Slezák's B, C, D and T_w give exactly these F and G at 295 K. The
+  model is valid from 500 to 1100 nm, the range Slezák measured. The sign
+  is negative, as Slezák et al. state for TGG; Vojna et al. define a
+  negative constant as a clockwise rotation when the beam travels along
+  the field, without saying from which side the rotation is seen, so step
+  A2 (handedness) and P2 (the Faraday rotator) fix the viewing direction.
+  It gives −130.6 rad/(T·m) at 633 nm and −37.5 rad/(T·m) at 1064 nm, the
+  values Vojna et al. tabulate. Slezák et al. measured six samples: at room
+  temperature |V| ranged from 122.4 to 155.5 rad/(T·m) at 632 nm, so a value
+  for an unspecified sample is good to about ±10 %.
+- **Licence.** Vojna et al. publish under CC BY 4.0;
+  `THIRD-PARTY-NOTICES.md` credits them. Both papers are open access
+  (gold).
+
+## Left out, and why
+
+- **Congruent LiNbO₃.** The refractiveindex.info database (CC0) reproduces
+  the fit of D. E. Zelmon, D. L. Small and D. Jundt, J. Opt. Soc. Am. B 14,
+  3319 (1997), which is not open access. It is added in a later pull
+  request, once the coefficients have been checked against the paper. That
+  check matters: Gayer et al. (2008) report that the ordinary and
+  extraordinary parameters of Zelmon's MgO-doped fit appear to have been
+  swapped in the paper.
+- **MgO-doped LiNbO₃.** Gayer et al., Appl. Phys. B 91, 343 (2008), give a
+  temperature-dependent fit for 5 % MgO-doped congruent LiNbO₃, but its
+  coefficients are published only in that paper, which is not open access,
+  and no openly licensed dataset reproduces them. The data rule admits
+  values only from a dataset or table with an open licence, so the fit is
+  not added until one exists.
+- **α-BBO.** No citable measurement or fit was found; supplier equations
+  without a source do not meet the data rule.
+- **The Verdet constant of fused silica.** No open primary source with a
+  bulk dispersion law was found. The values available are for fibres, in
+  a preprint or a thesis, and differ from one another by several percent.
+- **Temperature dependence** of every index and of the Verdet constant:
+  each record holds at the temperature its source states.
 
 ## Provenance
 
@@ -71,6 +129,13 @@ principal entries, each marked birefringent, as before.
   - **Fused silica:** 210–3710 nm here, 210–6700 nm in the database, which
     cites a later check of the formula up to 6.7 µm. 3.71 µm is where
     Malitson's measurements end.
+  The A3b records were compared with the same commit: the calcite and YVO₄
+  coefficients and domains are identical to the database's, as is TGG's
+  table of nine indices. The calcite and YVO₄ coefficients were also checked
+  against their papers (Ghosh, Table 1; Lomheim and DeShazer, Eqs. 20–21),
+  which are not open access and which Luca supplied; they are the
+  database's. Schlarb and Sugg's paper was not consulted: the TGG table is
+  the database's transcription of it.
 - **Access.** The access status of each primary source is in
   `sketch/js/source-access.js`, keyed by DOI (or URL, or the description of
   a printed source). It was looked up in OpenAlex on 2026-11-12. The statuses
@@ -99,6 +164,26 @@ curves FPbase attributes to a paper (Molina et al. 2019, for the R-GECO1,
 jRGECO1a and jRCaMP1a states) name it in `spectraReferences`. Naming a source
 for the other 65 needs a source that FPbase does not give. This step records
 the gap rather than guess.
+
+## Checks of the A3b records
+
+`validation/reference/crystal_catalogue.py` (55 cases in
+[docs/validation.md](../validation.md)):
+
+- **Calcite and quartz** against the indices Ghosh's fit gives in his
+  Tables 2–5, printed to six decimals, at six to eight wavelengths per table.
+  The catalogue reproduces every row of the four tables to within
+  5.2 × 10⁻⁷, the rounding of the printing. The module checks that the printed
+  measured values lie within the residuals Ghosh reports. Those residuals
+  reach 0.0013 for the extraordinary index of calcite near 2.1 µm, and the
+  record says so.
+- **YVO₄:** the source tabulates no indices; its measurements are in an
+  unpublished NASA report. These cases check the transcription of its two
+  equations.
+- **TGG index:** Schlarb's nine measurements and one interpolated point.
+- **TGG Verdet constant:** Vojna's tabulated values at 633 and 1064 nm, and
+  the model at three other wavelengths. The module also derives Vojna's F
+  and G from Slezák's Table 2.
 
 ## Checks
 

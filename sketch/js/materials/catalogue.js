@@ -12,12 +12,19 @@
 //              the optical sign. The orientation of the optic axis belongs to
 //              the element that uses the crystal, not to the record.
 // Two kinds are reserved for the steps that need them: `biaxial` (P7) and a
-// tabulated complex index (P8). An optional `verdet` block is added with the
-// first Verdet data (A3b).
+// tabulated complex index (P8). A record may carry a `verdet` block: the
+// Verdet constant's model, parameters, sign, wavelength range, temperature
+// and reference (see verdetConstant below).
 //
 // Formula forms, each the source's own, with λ in µm:
 //   'sellmeier'  n² − 1 = A + Σ B λ² / (λ² − C)      C in µm²
 //   'gas'        n − 1  = Σ B / (C − λ⁻²)             C in µm⁻²
+//   'tabulated'  measured (λ in nm, n) pairs, interpolated linearly in λ
+//                between them; no extrapolation
+// fitIndex() evaluates any of them. The canvas, the dispersion calculator
+// and the lens designer evaluate the forms they list with their own code;
+// the records added in A3b (calcite, YVO₄, TGG) are not listed by
+// any of them yet: they become selectable in P2, P3, P4 and P6.
 // `range` is the fit's domain in nm; `indexReference` is what the indices
 // are relative to ('air', 'vacuum', or 'unstated' where the source as
 // consulted does not say).
@@ -89,9 +96,34 @@ export const MATERIAL_REFERENCES = Object.freeze({
     citation: 'M. Daimon and A. Masumura, “Measurement of the refractive index of distilled water from the near-infrared region to the ultraviolet region,” Appl. Opt. 46, 3811–3820 (2007)',
     source: 'https://doi.org/10.1364/AO.46.003811',
   },
+  lomheim1978: {
+    citation: 'T. S. Lomheim and L. G. DeShazer, “Optical-absorption intensities of trivalent neodymium in the uniaxial crystal yttrium orthovanadate,” J. Appl. Phys. 49, 5517–5522 (1978), Eqs. (20) and (21)',
+    source: 'https://doi.org/10.1063/1.324471',
+    note: 'The fit is to indices measured from 0.488 to 3.39 µm and reported in M. Birnbaum and L. G. DeShazer, NASA contract NAS 5-22387, final technical report (1976), unpublished. The paper tabulates no indices.',
+  },
+  schlarb1994: {
+    citation: 'U. Schlarb and B. Sugg, “Refractive index of terbium gallium garnet,” Phys. Status Solidi B 182, K91–K93 (1994)',
+    source: 'https://doi.org/10.1002/pssb.2221820238',
+  },
   ciddor1996: {
     citation: 'P. E. Ciddor, “Refractive index of air: new equations for the visible and near infrared,” Appl. Opt. 35, 1566–1573 (1996)',
     source: 'https://doi.org/10.1364/AO.35.001566',
+  },
+});
+
+// The Verdet data and the open compilation they reach the app through.
+export const VERDET_DATASETS = Object.freeze({
+  vojna2019: {
+    name: 'D. Vojna, O. Slezák, A. Lucianetti and T. Mocek, “Verdet constant of magneto-active materials developed for high-power Faraday devices,” Appl. Sci. 9, 3160 (2019), Table 2',
+    licence: 'CC-BY-4.0',
+    source: 'https://doi.org/10.3390/app9153160',
+  },
+});
+
+export const VERDET_REFERENCES = Object.freeze({
+  slezak2016: {
+    citation: 'O. Slezák, R. Yasuhara, A. Lucianetti and T. Mocek, “Temperature-wavelength dependence of terbium gallium garnet ceramics Verdet constant,” Opt. Mater. Express 6, 3683–3691 (2016), Table 2, sample NG6',
+    source: 'https://doi.org/10.1364/OME.6.003683',
   },
 });
 
@@ -198,6 +230,56 @@ const RECORDS = [
     },
   },
   {
+    id: 'calcite', kind: 'uniaxial', group: 'crystal', label: 'Calcite, CaCO₃', opticalSign: 'negative',
+    reference: 'ghosh1999',
+    ordinary: {
+      form: 'sellmeier', A: 0.73358749, terms: [[0.96464345, 1.94325203e-2], [1.82831454, 120]],
+      range: [204, 2172], conditions: 'room temperature; ordinary ray', indexReference: 'unstated',
+      datasetRecord: 'main/CaCO3/nk/Ghosh-o.yml',
+    },
+    extraordinary: {
+      form: 'sellmeier', A: 0.35859695, terms: [[0.82427830, 1.06689543e-2], [0.14429128, 120]],
+      range: [204, 2172], conditions: 'room temperature; extraordinary ray (E ∥ optic axis)', indexReference: 'unstated',
+      datasetRecord: 'main/CaCO3/nk/Ghosh-e.yml',
+    },
+    accuracyNote: 'Ghosh fits handbook data with an RMS deviation of 0.0003 (ordinary) and 0.0004 (extraordinary); above 1.4 µm the extraordinary fit falls below the measured index by up to 0.0013 at 2.1 µm.',
+  },
+  {
+    id: 'yvo4', kind: 'uniaxial', group: 'crystal', label: 'Yttrium orthovanadate, YVO₄', opticalSign: 'positive',
+    reference: 'lomheim1978',
+    ordinary: {
+      form: 'sellmeier', A: 0, terms: [[2.7665, 0.026884]],
+      range: [488, 3390], conditions: 'room temperature; ordinary ray (σ)', indexReference: 'unstated',
+      datasetRecord: 'main/YVO4/nk/Birnbaum-o.yml',
+    },
+    extraordinary: {
+      form: 'sellmeier', A: 0, terms: [[3.5930, 0.032103]],
+      range: [488, 3390], conditions: 'room temperature; extraordinary ray (π, E ∥ optic axis)', indexReference: 'unstated',
+      datasetRecord: 'main/YVO4/nk/Birnbaum-e.yml',
+    },
+    accuracyNote: 'A one-term fit per ray; the source states no residual and tabulates no indices.',
+  },
+  {
+    id: 'tgg', kind: 'isotropic', group: 'crystal', label: 'Terbium gallium garnet, TGG',
+    form: 'tabulated',
+    points: [[404.66, 2.0178], [435.83, 2.0057], [546.07, 1.9765], [633.00, 1.9656], [1079.81, 1.9434],
+      [1084.45, 1.9432], [1140.91, 1.9420], [1152.28, 1.9421], [1176.68, 1.9415]],
+    range: [404.66, 1176.68], conditions: '20 °C; single crystal; interferometric measurement', indexReference: 'unstated',
+    reference: 'schlarb1994', datasetRecord: 'main/Tb3Ga5O12/nk/Schlarb.yml',
+    accuracyNote: 'Nine measured indices quoted to four decimals; between them the index is interpolated linearly, which is not a dispersion model.',
+    verdet: {
+      model: 'single-transition',
+      // |V(λ)| = F λ0² / (λ² − λ0²) + G (Vojna et al., Eq. 13); the sign below applies to the whole.
+      F: 820.3, G: -6.2, lambda0Nm: 239.3, unit: 'rad/(T·m)', sign: -1,
+      range: [500, 1100], temperatureK: 295,
+      dataset: 'vojna2019', reference: 'slezak2016',
+      sample: 'single crystal, sample NG6 (Northrop-Grumman, 6 mm)',
+      conditions: 'Room temperature. Vojna et al. tabulate F and G for TGG from Slezák et al., Table 2, sample NG6; those values follow from that table at 295 K.',
+      signConvention: 'Negative, as Slezák et al. state for TGG. Vojna et al.: the Verdet constant is negative if the medium rotates the polarization clockwise when the beam propagates parallel to the magnetic field; the viewing direction is not stated, and step A2 fixes the app\'s.',
+      spreadNote: 'Slezák et al. measured six TGG samples: at room temperature |V| ranged from 122.4 to 155.5 rad/(T·m) at 632 nm and from 36.6 to 44.2 rad/(T·m) at 1064 nm, so a value for an unspecified sample is good to about ±10 %.',
+    },
+  },
+  {
     id: 'yag', kind: 'isotropic', group: 'crystal', label: 'Yttrium aluminium garnet, YAG (undoped)',
     form: 'sellmeier', A: 0, terms: [[2.282, 0.01185], [3.27644, 282.734]],
     range: [400, 5000], conditions: 'room temperature', indexReference: 'unstated',
@@ -267,4 +349,44 @@ export function materialProvenance(record) {
     ranges: principalFits(record).map(({ fit }) => fit.range),
     conditions: principalFits(record).map(({ fit }) => fit.conditions),
   };
+}
+
+// The index of one fit at a vacuum wavelength in nm, or null outside the
+// fit's domain or for an unknown form.
+export function fitIndex(fit, wavelengthNm) {
+  const nm = Number(wavelengthNm);
+  if (!fit || !Number.isFinite(nm) || nm < fit.range[0] || nm > fit.range[1]) return null;
+  if (fit.form === 'tabulated') {
+    const points = fit.points;
+    for (let i = 1; i < points.length; i++) {
+      const [x1, n1] = points[i - 1], [x2, n2] = points[i];
+      if (nm <= x2) return n1 + (n2 - n1) * (nm - x1) / (x2 - x1);
+    }
+    return null;
+  }
+  const um = nm / 1000, l2 = um * um;
+  if (fit.form === 'gas') {
+    let n = 1;
+    for (const [B, C] of fit.terms) n += B / (C - 1 / l2);
+    return Number.isFinite(n) ? n : null;
+  }
+  if (fit.form === 'sellmeier') {
+    let n2 = 1 + (fit.A || 0);
+    for (const [B, C] of fit.terms) n2 += B * l2 / (l2 - C);
+    return n2 > 0 && Number.isFinite(n2) ? Math.sqrt(n2) : null;
+  }
+  return null;
+}
+
+// The signed Verdet constant of a record at a vacuum wavelength in nm, in
+// rad/(T·m), or null when the record has none or the wavelength is outside
+// the range its source measured.
+export function verdetConstant(record, wavelengthNm) {
+  const v = record?.verdet;
+  const nm = Number(wavelengthNm);
+  if (!v || !Number.isFinite(nm) || nm < v.range[0] || nm > v.range[1]) return null;
+  if (v.model !== 'single-transition') return null;
+  const l0 = v.lambda0Nm * v.lambda0Nm;
+  const magnitude = v.F * l0 / (nm * nm - l0) + v.G;
+  return Number.isFinite(magnitude) ? v.sign * magnitude : null;
 }

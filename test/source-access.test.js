@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import {
   ACCESS_STATUSES, OPEN_ACCESS_STATUSES, SOURCE_ACCESS, SOURCE_ACCESS_CHECKED, dataRuleProblems, isOpenAccess, sourceAccess, sourceKey,
 } from '../sketch/js/source-access.js';
-import { CATALOGUE_DATASET, MATERIAL_REFERENCES } from '../sketch/js/materials/catalogue.js';
+import { CATALOGUE_DATASET, MATERIAL_REFERENCES, VERDET_DATASETS, VERDET_REFERENCES } from '../sketch/js/materials/catalogue.js';
 import { SPECTRUM_SOURCES } from '../calculators/coherent-raman/spectra-index.js';
 import { FLUOROPHORE_SOURCES } from '../sketch/js/fluorophore-library.js';
 
@@ -60,6 +60,8 @@ test('access: the table lists no source that nothing cites', () => {
   const cited = new Set([
     CATALOGUE_DATASET.source,
     ...Object.values(MATERIAL_REFERENCES).flatMap(r => [r.source, r.fit?.source]),
+    ...Object.values(VERDET_DATASETS).map(d => d.source),
+    ...Object.values(VERDET_REFERENCES).map(r => r.source),
     ...Object.values(SPECTRUM_SOURCES).map(s => s.paper),
     FLUOROPHORE_SOURCES.fpbase.paper,
     ...FLUOROPHORES.flatMap(fluorophoreSources),

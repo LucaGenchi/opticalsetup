@@ -48,6 +48,11 @@ export const SOURCE_ACCESS = Object.freeze({
   // Sources without a DOI or URL, keyed by a short description.
   [DODGE_HANDBOOK]: 'closed',
   '10.1364/ao.23.004477': 'closed',
+  // Crystal records and Verdet data added in step A3b
+  '10.1063/1.324471': 'closed',
+  '10.1002/pssb.2221820238': 'closed',
+  '10.3390/app9153160': 'gold',
+  '10.1364/ome.6.003683': 'gold',
   // Raman reference spectra (calculators/coherent-raman/spectra/)
   '10.1016/j.vibspec.2020.103021': 'closed',
   '10.1038/s41597-025-04848-6': 'gold',

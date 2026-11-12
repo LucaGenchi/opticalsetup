@@ -24,6 +24,7 @@ import {
   idealMirrorMueller, jonesToMueller, fresnelCoefficients, fresnelReflectionMueller,
   fresnelTransmissionMueller, composeMueller, applyMueller, complex,
 } from '../sketch/js/mueller.js';
+import { MATERIAL_RECORDS, fitIndex, verdetConstant } from '../sketch/js/materials/catalogue.js';
 import { computeCompressor } from '../calculators/dispersion-compensation/compressor-calculator.js';
 import { materialDispersion, materialAbbe } from '../calculators/dispersion/materials.js';
 import { DISPERSION_DEFAULTS, computeDispersion } from '../calculators/dispersion/dispersion-calculator.js';
@@ -183,6 +184,12 @@ const APP = {
       }
       default: throw new Error(`unknown mueller case ${kind}`);
     }
+  },
+  // A catalogue record's principal index, or its Verdet constant.
+  'crystal-catalogue': ({ kind, record, ray, wavelengthNm }) => {
+    const r = MATERIAL_RECORDS.get(record);
+    if (kind === 'verdet') return { verdetRadPerTm: verdetConstant(r, wavelengthNm) };
+    return { index: fitIndex(ray ? r[ray] : r, wavelengthNm) };
   },
   // A traced scene: the reference's layout, read at its detector. The
   // reference states the GDD of the paths; a thin lens's estimated glass is a
@@ -410,7 +417,7 @@ const APP = {
   },
 };
 
-for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'mueller', 'dispersion-compensation', 'lens-design', 'lens-coherent', 'fiber-coupling', 'point-scanning', 'thick-lens', 'imaging']) {
+for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'mueller', 'crystal-catalogue', 'dispersion-compensation', 'lens-design', 'lens-coherent', 'fiber-coupling', 'point-scanning', 'thick-lens', 'imaging']) {
   const model = expected(name);
   for (const c of model.cases) {
     test(`${model.id}: ${c.name}`, () => {
