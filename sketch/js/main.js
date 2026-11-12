@@ -39,6 +39,9 @@ import { componentSearchDocument, prepareSearchDocument, rankSearch } from './se
 
 const $ = id => document.getElementById(id);
 
+// Load setup files relative to the editor, including when it runs in an MCP widget.
+const editorBase = new URL('../', import.meta.url);
+
 // ---------- wiki embed scenes ----------
 // Each demo needs a light source (and sometimes a second one, or a probe)
 // so the showcased component's actual optical function is visible, not
@@ -1299,7 +1302,7 @@ async function loadExample(index) {
   if (!ex) return;
   if (hasScene() && !confirm(`Load example “${ex.name}”? This replaces the current sketch (Undo brings it back).`)) return;
   try {
-    const res = await fetch(ex.path);
+    const res = await fetch(new URL(ex.path, editorBase));
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const scene = parseSketch(await res.text(), registry);
     pushUndo();
@@ -1353,7 +1356,7 @@ async function loadCommunity(index) {
   if (!entry) return;
   if (hasScene() && !confirm(`Load “${entry.name}” from the community? This replaces the current sketch (Undo brings it back).`)) return;
   try {
-    const res = await fetch(entry.path);
+    const res = await fetch(new URL(entry.path, editorBase));
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     const scene = parseSketch(JSON.stringify(data.scene), registry);
@@ -2031,7 +2034,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     try {
       const entry = community.find(e => e.slug === communitySlug);
       if (!entry) throw new Error('Unknown community setup');
-      const res = await fetch(entry.path);
+      const res = await fetch(new URL(entry.path, editorBase));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const scene = parseSketch(JSON.stringify(data.scene), registry);
@@ -2048,7 +2051,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     try {
       const entry = examples.find(e => e.slug === exampleSlug);
       if (!entry) throw new Error('Unknown example');
-      const res = await fetch(entry.path);
+      const res = await fetch(new URL(entry.path, editorBase));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const scene = parseSketch(await res.text(), registry);
       state.elements.push(...scene.elements);
@@ -2131,4 +2134,5 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     syncMobileSheets();
   });
+  window.dispatchEvent(new Event('opticalsetup:booted'));
 });

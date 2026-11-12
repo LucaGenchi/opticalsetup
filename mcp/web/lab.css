@@ -1,0 +1,30 @@
+/* SPDX-FileCopyrightText: 2026 Luca Genchi and contributors */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#lab-sync { position: fixed; bottom: 12px; left: 12px; z-index: 100; max-width: calc(100vw - 24px); padding: 7px 12px; border: 1px solid var(--border, #dce3eb); border-radius: 8px; background: var(--panel, #fff); color: var(--text, #243247); font: 12px system-ui; box-shadow: 0 2px 12px #0001; }
+#lab-conflict button { margin-left: 8px; padding: 4px 8px; }
+#lab-sync[data-error="true"] { border-color: #d88b31; }
+.nav-group, #btnShare, #btnPropose { display: none !important; }
+#mobileMenu [for="mobileExampleSel"], #mobileMenu [for="mobileCommunitySel"], #mobileExampleSel, #mobileCommunitySel, #mobileMenu [data-mobile-action="share"], #btnMobilePropose, #btnMobileAbout { display: none !important; }
+:is(#lab-open-json, #lab-save-json) { width: min(680px, calc(100vw - 40px)); background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+:is(#lab-open-json, #lab-save-json)::backdrop { background: #0008; }
+:is(#lab-open-json, #lab-save-json) h2 { margin: 0 0 16px; }
+:is(#lab-open-json, #lab-save-json) label { display: block; margin-bottom: 8px; }
+:is(#lab-open-json, #lab-save-json) textarea { width: 100%; height: min(40vh, 300px); box-sizing: border-box; resize: vertical; background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 12px; font: 12px monospace; }
+#lab-open-json form > div, #lab-save-json > div { display: flex; gap: 12px; justify-content: flex-end; }
+#lab-json-error { color: #d88b31; min-height: 20px; }
+.brandblock .version { display: none; }
+
+/* Shown while a view waits for the setup it was opened for. It covers the editor at once and appears after a moment, so a result that is already on its way causes no flash. */
+#lab-wait { position: fixed; inset: 0; z-index: 200; display: grid; place-content: center; justify-items: center; gap: 12px; background: color-mix(in srgb, var(--bg, #fff) 82%, transparent); color: var(--text, #243247); font: 14px system-ui; animation: lab-wait-in 0.2s 0.5s both; }
+#lab-wait[hidden] { display: none; }
+#lab-wait p { margin: 0; }
+#lab-wait button { padding: 6px 12px; }
+@keyframes lab-wait-in { from { opacity: 0; } to { opacity: 1; } }
+
+#official-editor { margin-left: 12px; color: var(--text, #243247); text-underline-offset: 3px; }
+#lab-sync { display: flex; flex-wrap: wrap; gap: 4px; }
+@media (max-width: 899px) {
+  /* Leave the native Add/properties controls and bottom sheets unobstructed. */
+  #lab-sync { position: static; flex: none; max-width: none; margin: 0; border-radius: 0; border-width: 1px 0 0; box-shadow: none; z-index: 20; padding-bottom: max(7px, env(safe-area-inset-bottom)); }
+  #official-editor { margin-left: 0; }
+}

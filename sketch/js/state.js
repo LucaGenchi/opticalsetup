@@ -409,13 +409,19 @@ export function parseSketch(text, definitions = null) {
 
 export function onChange(fn) { listeners.push(fn); }
 
+// A host with its own scene storage can opt out before the editor boots.
+let nativeAutosaveEnabled = true;
+export function configureAutosave({ enabled = true } = {}) {
+  nativeAutosaveEnabled = Boolean(enabled);
+}
+
 export function changed() {
   // Wiki/example/community embeds are deliberately interactive enough to let
   // readers try parameters, but they must never replace the user's real
   // workbench autosave when both pages share the same origin.
   if (state.autosaveRecovery) {
     state.autosaved = false;
-  } else if (!state.embedMode) {
+  } else if (!state.embedMode && nativeAutosaveEnabled) {
     // Whether this succeeded is not private bookkeeping: storage can be
     // disabled, full, or partitioned in private browsing, and a caller about
     // to discard the only other copy of the scene -- the share fragment --
@@ -491,6 +497,7 @@ export function deserialize(text, { resetHistory = true, definitions = null } = 
 }
 
 export function loadAutosave(definitions = null) {
+  if (!nativeAutosaveEnabled) return false;
   let text = null;
   try {
     text = localStorage.getItem(AUTOSAVE_KEY);
