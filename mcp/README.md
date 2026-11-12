@@ -161,11 +161,23 @@ metadata for the view alone. A view takes the reference up by registering
 with the ticket; knowing the reference is not enough. The view's channel
 stays its own, and only the channel reads the stream or confirms an edit.
 One reference names one view. A stored result can be shown again, in a
-reloaded chat or a second tab, and then the view that registered last holds
-the reference. The earlier view goes on working under a reference of its
-own, which its workbench context gives. When the holder is gone the
-reference names nobody; it does not go back to the earlier view. The
-service waits for at most 200 opened views at a time, each for two minutes.
+reloaded chat or a second tab, and then the view that registered last takes
+the reference. The earlier view is told so: its status line says that
+another view of the setup now follows the chat, and it goes on working under
+a reference of its own, which its workbench context gives. When the holder
+is gone the reference names nobody; it does not go back to the earlier view.
+The service waits for at most 200 opened views at a time, each for two
+minutes.
+
+An edit made by a reference has one outcome, whichever view holds the
+reference later. The reference does not move while its view is connected
+and has not yet answered for an edit. When it moves, the outcomes recorded
+for it go with it, so an exact retry still reports them. An edit that a view
+which has gone never answered for is recorded as not known: the same call
+again says so, and is not sent to another view. A call that is still waiting
+for a view to reconnect has been sent to none, and goes to the view that
+holds the reference when it is sent.
+
 A reference that is still good after a reload does not keep the scene: the
 scene is the copy in browser storage, as before. In a client that shows no
 view, the first call by the reference waits those eight seconds and is then

@@ -500,6 +500,78 @@ test('the reference in the open result works before its view exists, and only th
   for (const stream of [intruder, reader, third, fourth]) await stream.cancel();
 });
 
+test('an edit by an opened reference keeps one outcome when another view takes the reference', async t => {
+  const app = createApplication({ origin, mirrorOptions: { ackMs: 60, reconnectMs: 600 } });
+  t.after(() => app.close());
+  const other = 'c'.repeat(64), third = 'd'.repeat(64);
+  const opened = await rpc(app, 'open_setup', {});
+  const { workspaceRef } = opened.structuredContent, { ticket, setup } = opened._meta.opticalsetup;
+  const a = await subscribe(app);
+  assert.equal((await (await sync(app, setup, { ticket })).json()).workspaceRef, workspaceRef);
+  const lens = (clientRequestId, x, expectedRevision = 0) => ({ workspaceRef, expectedRevision, clientRequestId, components: [{ type: 'lens', x, y: 0 }] });
+  // The first view receives an edit and does not answer in time.
+  const first = rpc(app, 'add_components', lens('first', 0));
+  const proposal = await proposalFrom(a, first);
+  assert.equal((await first).structuredContent.error.code, 'EDIT_UNCONFIRMED');
+  // The same result is shown again. The second view registers with the same ticket, at the scene the
+  // result carried. It does not take the reference while the first view is here and owes an answer.
+  const b = await subscribe(app, other);
+  const sentToSecond = b.read().then(({ value }) => decode(value));
+  assert.equal((await (await sync(app, setup, { channel: other, ticket })).json()).workspaceRef, sceneHash(other));
+  // The first view confirms late.
+  const scene = applyScenePatch(setup.scene, proposal.patch);
+  const confirmed = await (await sync(app, delta(setup, scene, { deliveryId: proposal.deliveryId, canUndo: true, ticket }))).json();
+  // With nothing owed the reference moves to the view that registered last, and the first view is
+  // told so, with the reference that is now its own.
+  assert.equal(confirmed.workspaceRef, sceneHash(token)); assert.equal(confirmed.superseded, true);
+  assert.equal((await (await sync(app, setup, { channel: other, ticket })).json()).workspaceRef, workspaceRef);
+  assert.equal((await rpc(app, 'get_setup', { workspaceRef })).structuredContent.revision, 0);
+  // The exact call again reports what became of it on the view that received it.
+  const again = (await rpc(app, 'add_components', lens('first', 0))).structuredContent;
+  assert.equal(again.status, 'applied'); assert.equal(again.revision, 1);
+  assert.equal((await rpc(app, 'add_components', lens('first', 9))).structuredContent.error.code, 'REQUEST_ID_REUSED');
+  // It was not sent to the second view: the first thing that view receives is the next edit.
+  const next = rpc(app, 'add_components', lens('next', 50));
+  const nextProposal = await sentToSecond;
+  assert.equal(nextProposal.clientRequestId, 'next');
+  const second = applyScenePatch(setup.scene, nextProposal.patch);
+  assert.equal((await sync(app, delta(setup, second, { channel: other, deliveryId: nextProposal.deliveryId, canUndo: true, ticket }))).status, 200);
+  assert.equal((await next).structuredContent.status, 'applied');
+
+  // The holder goes while one of its edits is unconfirmed. A new view takes the reference at once,
+  // and what became of that edit is not known: the same call again says so and is sent to nobody.
+  const held = { id: setup.id, revision: 1, hash: sceneHash(second), scene: second };
+  const lost = rpc(app, 'add_components', lens('lost', 90, 1));
+  await proposalFrom(b, lost);
+  assert.equal((await lost).structuredContent.error.code, 'EDIT_UNCONFIRMED');
+  await b.cancel();
+  // The first view is told that another view follows the chat only while that view is here.
+  const alone = await (await sync(app, { id: setup.id, revision: 1, hash: sceneHash(scene) }, { ticket, canUndo: true })).json();
+  assert.equal(alone.workspaceRef, sceneHash(token)); assert.equal(alone.superseded, undefined);
+  const c = await subscribe(app, third);
+  const sentToThird = c.read().then(({ value, done }) => done ? null : decode(value));
+  assert.equal((await (await sync(app, held, { channel: third, ticket, canUndo: true })).json()).workspaceRef, workspaceRef);
+  const unknown = (await rpc(app, 'add_components', lens('lost', 90, 1))).structuredContent.error;
+  assert.equal(unknown.code, 'EDIT_UNCONFIRMED'); assert.match(unknown.message, /earlier view/);
+  assert.equal((await rpc(app, 'add_components', lens('lost', 91, 1))).structuredContent.error.code, 'REQUEST_ID_REUSED');
+
+  // An edit that waits for a view has been sent to none. It goes to the view that holds the
+  // reference when it is sent, which is also the one a read by the reference returns.
+  await c.cancel();
+  assert.equal(await sentToThird, null, 'the view that took the reference was not sent the edit whose outcome is not known');
+  const waiting = rpc(app, 'add_components', lens('waiting', 120, 1));
+  await sleep(100);
+  const fourth = 'e'.repeat(64), d = await subscribe(app, fourth);
+  assert.equal((await (await sync(app, held, { channel: fourth, ticket, canUndo: true })).json()).workspaceRef, workspaceRef);
+  const waited = await proposalFrom(d, waiting);
+  assert.equal(waited.clientRequestId, 'waiting');
+  const last = applyScenePatch(second, waited.patch);
+  assert.equal((await sync(app, delta(held, last, { channel: fourth, deliveryId: waited.deliveryId, canUndo: true, ticket }))).status, 200);
+  assert.equal((await waiting).structuredContent.status, 'applied');
+  assert.equal((await rpc(app, 'get_setup', { workspaceRef })).structuredContent.revision, 2);
+  for (const stream of [a, d]) await stream.cancel();
+});
+
 test('a setup too large to send is reported by the view, and the chat is not given the old one', async t => {
   const app = createApplication({ origin });
   t.after(() => app.close());

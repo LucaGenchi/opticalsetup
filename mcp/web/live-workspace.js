@@ -40,7 +40,7 @@ export function createLiveWorkspace({ current, receive, changed, ticket }) {
   // A new editor mount owns its channel. Other tabs may share browser storage,
   // while their relay credentials and temporary server mirrors stay independent.
   const channel = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
-  let connected = false, sending = false, confirmed, workspaceRef, refused, latest, retryTimer, connectionGeneration = 0, ceiling = MAX_SYNC;
+  let connected = false, sending = false, confirmed, workspaceRef, refused, superseded = false, latest, retryTimer, connectionGeneration = 0, ceiling = MAX_SYNC;
   const acknowledgements = [];
   async function flush() {
     if (sending || !connected || (!latest && !acknowledgements.length)) return;
@@ -87,7 +87,7 @@ export function createLiveWorkspace({ current, receive, changed, ticket }) {
       }
       if (generation !== connectionGeneration) return;
       if (response.status >= 500) throw new Error('Sync unavailable');
-      if (response.ok && !ack?.rejected) { confirmed = state; workspaceRef = result.workspaceRef; refused = undefined; }
+      if (response.ok && !ack?.rejected) { confirmed = state; workspaceRef = result.workspaceRef; refused = undefined; superseded = result.superseded === true; }
       // A scene the service does not take (too large for it, or one the editor holds but cannot load)
       // is set aside until it changes or the next heartbeat offers it again. The reason is kept, so
       // the view can say why the chat does not follow.
@@ -111,6 +111,8 @@ export function createLiveWorkspace({ current, receive, changed, ticket }) {
     get connected() { return connected; },
     get synced() { return connected && sameVersion(confirmed, current()); },
     get problem() { return refused; },
+    // Another view of the same setup has taken the reference the chat was given for this one.
+    get superseded() { return superseded; },
     update(deliveryId, rejected = false, busy = false) {
       latest = current();
       if (deliveryId) acknowledgements.push({ id: deliveryId, rejected, busy, state: latest });
