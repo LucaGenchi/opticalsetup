@@ -120,9 +120,14 @@ Verdet constants, optical constants of metals, spectra) follow three rules.
    preferred.
 
 A licence that asks for attribution gets a section in
-`THIRD-PARTY-NOTICES.md`, as the Raman reference spectra have. Step A3 of the
-[Physics in 2D track](roadmap.md#physics-in-2d) adds these fields to the
-records that existed before this rule.
+`THIRD-PARTY-NOTICES.md`, as the Raman reference spectra have.
+
+Records that existed before this rule are exempt until step A3 of the
+[Physics in 2D track](roadmap.md#physics-in-2d) brings them to it: the glass
+and crystal dispersion fits, the Raman reference spectra and the fluorophore
+spectra. The spectra already carry a licence; they gain the access status,
+and each fluorophore record names the source of its measured curves, which
+is not always the paper credited for the protein.
 
 ## What reviewers check
 
