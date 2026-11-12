@@ -18,6 +18,14 @@ export function loadedCopy(value, registry) {
   const bring = scenes => { try { return scenes.map(scene => canonicalScene(scene, registry)); } catch { return []; } };
   return { ...value, setup: { ...value.setup, scene: canonicalScene(value.setup.scene, registry) }, history: bring(value.history), future: bring(value.future) };
 }
+// Whether a copy another tab sent is already in that form. One that is not
+// comes from a tab still running an earlier editor, and is not taken.
+export function inLoadedForm(value, registry) {
+  try {
+    const lists = copy => [copy.setup.scene, copy.history, copy.future];
+    return Array.isArray(value.history) && Array.isArray(value.future) && canonicalJSON(lists(loadedCopy(value, registry))) === canonicalJSON(lists(value));
+  } catch { return false; }
+}
 export function canonicalJSON(value) {
   if (Array.isArray(value)) return '[' + value.map(canonicalJSON).join(',') + ']';
   if (value && typeof value === 'object') return '{' + Object.keys(value).sort().filter(k => value[k] !== undefined).map(k => JSON.stringify(k) + ':' + canonicalJSON(value[k])).join(',') + '}';

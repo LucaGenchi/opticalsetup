@@ -13,7 +13,7 @@ import { createApplication } from '../../mcp/server.js';
 import { buildWidget, widgetAsset } from '../../mcp/widget.js';
 import { registry, createElement } from '../../mcp/registry.js';
 import { inspectDocument, emptyDocument } from '../../mcp/scene-api.js';
-import { browserSceneHash, canonicalJSON, canonicalScene, globalsResult, loadedCopy, offeredSetup, proposalMatches, resultData } from '../../mcp/web/snapshot.js';
+import { browserSceneHash, canonicalJSON, canonicalScene, globalsResult, inLoadedForm, loadedCopy, offeredSetup, proposalMatches, resultData } from '../../mcp/web/snapshot.js';
 import { createDrawnPath } from '../../sketch/js/path-types.js';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -68,6 +68,13 @@ test('a copy stored under an earlier editor is brought to today\'s form with its
   // The same step with the list as it was stored is the one the view refused.
   assert.notEqual(canonicalJSON(undone.structuredContent.setup.scene), canonicalJSON(value.history.at(-1)));
   assert.deepEqual(loadedCopy(copy, registry), copy, 'a copy already in today\'s form is left as it is');
+  // A tab still on the earlier editor sends its copy as it holds it: that one is not taken.
+  assert.equal(inLoadedForm(copy, registry), true);
+  assert.equal(inLoadedForm(value, registry), false, 'a current scene in the earlier form');
+  assert.equal(inLoadedForm({ ...copy, history: [old(80)] }, registry), false, 'an undo step in the earlier form');
+  assert.equal(inLoadedForm({ ...copy, future: [old(140)] }, registry), false, 'a redo step in the earlier form');
+  assert.equal(inLoadedForm({ ...copy, history: undefined }, registry), false);
+  assert.equal(inLoadedForm({ ...copy, setup: { ...copy.setup, scene: 'not a scene' } }, registry), false);
   const broken = loadedCopy({ ...value, history: [old(80), 'not a scene'] }, registry);
   assert.deepEqual(broken.history, [], 'a list with a scene that no longer loads is dropped whole');
   assert.equal(broken.future.length, 1);

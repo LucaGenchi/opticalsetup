@@ -5,7 +5,7 @@ import { registry } from '../../sketch/js/elements.js';
 import { renderAll, zoomFit } from '../../sketch/js/canvas.js';
 import { renderInspector } from '../../sketch/js/inspector.js';
 import { buildShareURL } from '../../sketch/js/share.js';
-import { browserSceneHash, canonicalJSON, canonicalScene, globalsResult, loadedCopy, offeredSetup, proposalMatches, resultData } from './snapshot.js';
+import { browserSceneHash, canonicalJSON, canonicalScene, globalsResult, inLoadedForm, loadedCopy, offeredSetup, proposalMatches, resultData } from './snapshot.js';
 // Native autosave is origin-wide. Keep this integration's scenes scoped by ID.
 configureAutosave({ enabled: false });
 const nativeBoot = new Promise(resolve => window.addEventListener('opticalsetup:booted', resolve, { once: true }));
@@ -360,6 +360,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       channel.onmessage = async event => {
         const data = event.data;
         if (data?.setup?.id !== setup.id || data.setup.hash !== await browserSceneHash(data.setup.scene)) return;
+        if (!inLoadedForm(data, registry)) { if (data.setup.revision > setup.revision) status('Another tab runs an earlier editor · Reload that tab', true); return; }
         // Decided after the hash: nothing this view did meanwhile is replaced by a message that is by then older.
         if (dragging || busy || data.setup.revision <= setup.revision) return;
         if (canonicalJSON(nativeScene()) !== canonicalJSON(setup.scene)) { status('Another view changed · Local edit kept', true); return; }
