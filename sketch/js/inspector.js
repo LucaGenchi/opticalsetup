@@ -75,7 +75,7 @@ export const REBUILD_ON_COMMIT_KEYS = [
   'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode',
   'extension', 'immersion', 'preset', 'material', 'showDepleted', 'modMode',
   'measurementMode', 'prop', 'sync', 'sourceKind', 'shape', 'scaleBar', 'connectors',
-  'scaleBarDirection', 'diffraction', 'aim',
+  'scaleBarDirection', 'diffraction', 'aim', 'showImage',
 ];
 
 // A param is presentation when it says so, or -- for one that is physical in
@@ -635,7 +635,8 @@ export function refreshMeasurements() {
   }
   const sel = findSelected();
   // An element whose inspector readouts follow the animation clock -- a
-  // tuning OPO -- refreshes those fields in place, without a rebuild.
+  // tuning OPO -- or the last trace -- an Object's image -- refreshes those
+  // fields in place, without a rebuild.
   if (sel && registry[sel.type]?.liveReadouts) { refreshReadouts(sel); return; }
   if (!sel || (!registry[sel.type]?.readoutKind && sel.type !== 'display')) return;
   const current = panel.querySelector('[data-measurements]');

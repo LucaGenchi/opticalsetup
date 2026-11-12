@@ -68,6 +68,44 @@ export function zoomViewAt(view, point, factor, min = VIEW_MIN_ZOOM, max = VIEW_
   };
 }
 
+// Zoom rate per pixel of Ctrl/Cmd-wheel delta, and the largest delta one
+// event may use: a mouse notch (about 100 px) zooms at most e^(60·0.012) ≈ 2×
+// instead of jumping several zoom levels, while a trackpad pinch, which sends
+// many small deltas, keeps its continuous feel.
+export const WHEEL_ZOOM_RATE = 0.012;
+export const WHEEL_ZOOM_MAX_DELTA = 60;
+
+// Browsers deliver a trackpad's two-finger swipe as plain wheel events, the
+// same as a mouse wheel, and a trackpad pinch as Ctrl+wheel (Chrome, Edge,
+// Firefox). The two devices cannot be told apart reliably, so the modifier
+// decides, and every device keeps one consistent meaning:
+//   wheel, two-finger swipe  -> pan, both axes (a mouse's X wheel pans sideways)
+//   Shift + wheel            -> pan sideways, for mice with one wheel
+//   Ctrl/Cmd + wheel, pinch  -> zoom at the pointer
+export function wheelView(view, anchor, {
+  deltaX = 0, deltaY = 0, deltaMode = 0,
+  ctrlKey = false, metaKey = false, shiftKey = false, viewportHeight = 800,
+} = {}) {
+  // WheelEvent deltas can be pixels, lines or pages depending on the device.
+  const pageHeight = Number.isFinite(viewportHeight) && viewportHeight > 0 ? viewportHeight : 800;
+  const unit = deltaMode === 1 ? 16 : deltaMode === 2 ? pageHeight : 1;
+  // Check after the conversion: a huge finite line/page delta can overflow.
+  const toPx = d => (Number.isFinite(d * unit) ? d * unit : 0);
+  const dx = toPx(deltaX);
+  const dy = toPx(deltaY);
+
+  if (ctrlKey || metaKey) {
+    const delta = Math.max(-WHEEL_ZOOM_MAX_DELTA, Math.min(WHEEL_ZOOM_MAX_DELTA, dy));
+    return delta === 0 ? { ...view } : zoomViewAt(view, anchor, Math.exp(-delta * WHEEL_ZOOM_RATE));
+  }
+  // Some browsers turn Shift+wheel into deltaX themselves; others leave it in
+  // deltaY, which then pans sideways here.
+  const next = shiftKey && dx === 0
+    ? { ...view, x: view.x - dy }
+    : { ...view, x: view.x - dx, y: view.y - dy };
+  return Number.isFinite(next.x) && Number.isFinite(next.y) ? next : { ...view };
+}
+
 // Keep the world point below the initial pinch centre below the moving centre.
 // This combines two-finger panning and scaling without accumulating drift.
 export function pinchView(startView, startCenter, startDistance, center, distance, min = VIEW_MIN_ZOOM, max = VIEW_MAX_ZOOM) {

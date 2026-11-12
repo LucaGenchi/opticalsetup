@@ -1,0 +1,46 @@
+{
+ "elements": 7,
+ "beams": 0,
+ "drawables": {
+  "count": 7,
+  "byType": {
+   "path": 6,
+   "poly": 1
+  },
+  "colors": {
+   "#ff7700": 7
+  },
+  "points": 20,
+  "sum": [
+   6462.4786,
+   6054.0817
+  ],
+  "bbox": [
+   60.9872,
+   283.2355,
+   515.1,
+   316.7607
+  ],
+  "digest": "c6952f4c"
+ },
+ "drawnElements": {
+  "textlabel:title": "f7f1037a",
+  "textlabel:note": "8df4bd16",
+  "objarrow:object": "3a334ca0",
+  "lens:lens": "f2f7b085",
+  "box:screen": "200128d4",
+  "ruler:ruleS": "9ba672fd",
+  "ruler:ruleSi": "a7c38802"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "readouts": {},
+ "fibers": {}
+}

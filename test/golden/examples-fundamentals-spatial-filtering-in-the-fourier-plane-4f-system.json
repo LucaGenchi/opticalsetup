@@ -1,0 +1,113 @@
+{
+ "elements": 10,
+ "beams": 0,
+ "drawables": {
+  "count": 364,
+  "byType": {
+   "poly": 336,
+   "path": 28
+  },
+  "colors": {
+   "#ff4200": 364
+  },
+  "points": 1400,
+  "sum": [
+   396100,
+   420000
+  ],
+  "bbox": [
+   12,
+   291.6573,
+   530,
+   308.3427
+  ],
+  "digest": "88335cfb"
+ },
+ "drawnElements": {
+  "textlabel:title": "53378386",
+  "textlabel:note": "f5ec7f8c",
+  "cwlaser:laser": "3d823b45",
+  "grating:grating": "a255d4b4",
+  "lens:lens1": "f2f7b085",
+  "slit:mask": "99d0da0f",
+  "lens:lens2": "f2f7b085",
+  "powermeter:meter": "bcb70dbd",
+  "display:screen": "001c7b37",
+  "zoom:zoom": "199fbec6"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "readouts": {
+  "powermeter:meter": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 633,
+    "bandMin": 633,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#ff4200",
+    "convergence": {
+     "atFocus": true,
+     "diverging": false,
+     "fullAngleDeg": 3.62742863,
+     "rayleighMm": 0.201143688,
+     "slopePerMm": null,
+     "waistAheadMm": -3.10319796e-13,
+     "waistMm": 0.00636619772,
+     "wavelengthNm": 633
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 0.6,
+    "detectorType": "Power meter",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": 1,
+     "s2": 0,
+     "s3": 0
+    },
+    "outputSignal": 0.6,
+    "polarization": "Linear 0°",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "power",
+    "samples": 75,
+    "saturated": false,
+    "signal": 0.6,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.6,
+      "sourceId": "laser"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#ff4200",
+      "continuum": false,
+      "power": 0.6,
+      "sourceId": "laser",
+      "wavelength": 633,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 4,
+    "wavelength": 633
+   }
+  }
+ },
+ "fibers": {}
+}

@@ -4,6 +4,7 @@
 
 import { transformLimitedDurationFs, spectrumWeight } from './spectrum.js';
 import { quadraticPhasePulse } from './pulse-field.js';
+import { canvasGlassRecords } from './materials/catalogue.js';
 //
 // Each entry carries the published three-term Sellmeier coefficients
 //
@@ -14,85 +15,17 @@ import { quadraticPhasePulse } from './pulse-field.js';
 // infrared zero-GVD crossing while leaving visible ray geometry effectively
 // unchanged. These room-temperature catalogue curves still do not model
 // absorption, temperature, stress, coatings, or manufacturing tolerances.
+
 const LAMBDA_D = 587.6, LAMBDA_F = 486.1, LAMBDA_C = 656.3;
 const C_METRES_PER_SECOND = 299792458;
 
-const CATALOGUE = [
-  {
-    id: 'nbk7', label: 'N-BK7 crown (nd 1.517 / V 64.2)',
-    B: [1.03961212, 0.231792344, 1.01046945],
-    C: [0.00600069867, 0.0200179144, 103.560653],
-    range: [300, 2500],
-  },
-  {
-    id: 'silica', label: 'Fused silica (nd 1.459 / V 67.8)',
-    B: [0.6961663, 0.4079426, 0.8974794],
-    C: [0.0684043 ** 2, 0.1162414 ** 2, 9.896161 ** 2],
-    range: [210, 3710],
-  },
-  {
-    // Malitson, Appl. Opt. 2, 1103 (1963), 24 °C; the same coefficients the
-    // dispersion calculator lists.
-    id: 'caf2', label: 'Calcium fluoride, CaF₂ (nd 1.434 / V 95.0)',
-    B: [0.5675888, 0.4710914, 3.8484723],
-    C: [0.050263605 ** 2, 0.1003909 ** 2, 34.649040 ** 2],
-    range: [230, 9700],
-  },
-  {
-    id: 'nfk51a', label: 'N-FK51A fluorite crown (nd 1.487 / V 84.5)',
-    B: [0.971247817, 0.216901417, 0.904651666],
-    C: [0.00472301995, 0.0153575612, 168.68133],
-    range: [290, 2500],
-  },
-  {
-    id: 'nsk16', label: 'N-SK16 dense crown (nd 1.620 / V 60.3)',
-    B: [1.34317774, 0.241144399, 0.994317969],
-    C: [0.00704687339, 0.0229005, 92.7508526],
-    range: [310, 2500],
-  },
-  {
-    id: 'f2', label: 'F2 flint (nd 1.620 / V 36.4)',
-    B: [1.34533359, 0.209073176, 0.937357162],
-    C: [0.00997743871, 0.0470450767, 111.886764],
-    range: [320, 2500],
-  },
-  {
-    id: 'nsf5', label: 'N-SF5 flint (nd 1.673 / V 32.3)',
-    B: [1.52481889, 0.187085527, 1.42729015],
-    C: [0.011254756, 0.0588995392, 129.141675],
-    range: [380, 2500],
-  },
-  {
-    id: 'nsf10', label: 'N-SF10 dense flint (nd 1.728 / V 28.5)',
-    B: [1.62153902, 0.256287842, 1.64447552],
-    C: [0.0122241457, 0.0595736775, 147.468793],
-    range: [380, 2500],
-  },
-  {
-    id: 'nsf11', label: 'N-SF11 dense flint (nd 1.785 / V 25.7)',
-    B: [1.73759695, 0.313747346, 1.89878101],
-    C: [0.013188707, 0.0623068142, 155.23629],
-    range: [370, 2500],
-  },
-  {
-    id: 'nsf14', label: 'N-SF14 dense flint (nd 1.762 / V 26.5)',
-    B: [1.69022361, 0.288870052, 1.7045187],
-    C: [0.0130512113, 0.061369188, 149.517689],
-    range: [365, 2500],
-  },
-  {
-    id: 'nsf57', label: 'N-SF57 dense flint (nd 1.847 / V 23.8)',
-    B: [1.87543831, 0.37375749, 2.30001797],
-    C: [0.0141749518, 0.0640509927, 177.389795],
-    range: [370, 2500],
-  },
-  {
-    id: 'nlasf9', label: 'N-LASF9 lanthanum dense flint (nd 1.850 / V 32.2)',
-    B: [2.00029547, 0.298926886, 1.80691843],
-    C: [0.0121426017, 0.0538736236, 156.530829],
-    range: [365, 2500],
-  },
-];
+// The canvas glasses, from the shared material catalogue
+// (sketch/js/materials/catalogue.js), in the shape the tracer reads.
+const CATALOGUE = canvasGlassRecords().map(record => ({
+  id: record.id, label: record.label,
+  B: record.terms.map(([B]) => B), C: record.terms.map(([, C]) => C),
+  range: record.range,
+}));
 
 export const GLASSES = new Map(CATALOGUE.map(g => [g.id, { ...g }]));
 

@@ -5,7 +5,7 @@
 // family of cache names and only ever deletes, or reads, its own.
 const KEPT_RELEASE = (/\/(v\d+\.\d+)\/sketch\/$/.exec(new URL('./', self.location.href).pathname) || [])[1] || '';
 const CACHE_FAMILY = KEPT_RELEASE ? `opticalsetup-kept-${KEPT_RELEASE}-` : 'opticalsetup-pwa-';
-const CACHE_NAME = `${CACHE_FAMILY}v177`;
+const CACHE_NAME = `${CACHE_FAMILY}v182`;
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -53,8 +53,11 @@ const PRECACHE_PATHS = [
   "./js/lensgroup.js",
   "./js/main.js",
   "./js/markdown.js",
+  "./js/materials/catalogue.js",
+  "./js/mueller.js",
   "./js/tex.js",
   "./js/object-aim.js",
+  "./js/object-imaging.js",
   "./js/objective.js",
   "./js/parametric.js",
   "./js/parametric-amplifier.js",
@@ -62,6 +65,7 @@ const PRECACHE_PATHS = [
   "./js/polarization.js",
   "./js/polygon.js",
   "./js/proposal.js",
+  "./js/source-access.js",
   "./js/pulse-field.js",
   "./js/path-phase.js",
   "./js/path-types.js",
@@ -87,6 +91,15 @@ const PRECACHE_PATHS = [
   "./js/zoom.js",
   "./js/zoom-focus.js",
   "./js/zoom-view.js",
+  "../Examples/Fundamentals/Imaging%20with%20one%20lens.json",
+  "../Examples/Fundamentals/Beam%20expanders%20%E2%80%94%20Keplerian%20and%20Galilean.json",
+  "../Examples/Fundamentals/Total%20internal%20reflection%20%E2%80%94%20right-angle%20prism.json",
+  "../Examples/Fundamentals/Law%20of%20Malus%20%E2%80%94%20polarizers%20and%20a%20half-wave%20plate.json",
+  "../Examples/Fundamentals/Pinhole%20spatial%20filter.json",
+  "../Examples/Fundamentals/Spatial%20filtering%20in%20the%20Fourier%20plane%20%E2%80%94%204f%20system.json",
+  "../Examples/Fundamentals/Coupling%20a%20laser%20into%20a%20single-mode%20fiber.json",
+  "../Examples/Fundamentals/Scan%20lens%20and%20tube%20lens%20%E2%80%94%20galvo%20to%20back%20pupil.json",
+  "../Examples/Fundamentals/Czerny%E2%80%93Turner%20monochromator.json",
   "../Examples/Lens%20Physics/Singlet%20vs%20achromat%20%E2%80%94%20axial%20colour.json",
   "../Examples/Lens%20Physics/Spherical%20aberration%20%E2%80%94%20ideal%20lens%20vs%20spherical%20singlet.json",
   "../Examples/Lens%20Physics/Spherical%20aberration%20%E2%80%94%20sphere%20vs%20asphere%20vs%20ideal%20lens.json",
@@ -103,10 +116,10 @@ const PRECACHE_PATHS = [
   "../Examples/Nonlinear%20Optics/Near%20infrared%20supercontinuum%20in%20YAG.json",
   "../Examples/Nonlinear%20Optics/Optical%20parametric%20oscillator%20%E2%80%94%20ring%20cavity%2C%20element%20by%20element.json",
   "../Examples/Nonlinear%20Optics/Synchronously%20pumped%20picosecond%20OPO.json",
-  "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
+  "../Examples/Microscopy%20Implementations/Optical%20sectioning%20%E2%80%94%20linear%20versus%20nonlinear.json",
   "../Examples/Microscopy%20Implementations/Epi-fluorescence%20microscope.json",
   "../Examples/Microscopy%20Implementations/Multiphoton%20microscope%20%E2%80%94%20SHG%20and%20two%20photon%20fluorescence.json",
-  "../Examples/Microscopy%20Implementations/Optical%20sectioning%20%E2%80%94%20linear%20versus%20nonlinear.json",
+  "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
   "../Examples/Ophthalmology/Retinal%20imaging%20%E2%80%94%20Linnik%20interferometer%20with%20a%20model%20eye.json",
   "../Examples/Optical%20Communications/DWDM%20link%20%E2%80%94%20dispersion%20compensation.json",
   "../Examples/Scanning/Polygon%20scanner%20%E2%80%94%20line%20scanning.json",
