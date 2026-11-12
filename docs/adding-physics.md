@@ -101,6 +101,44 @@ without a reason is a bug report.
 - In the pull request, state: user-visible behaviour, the reference and the
   tolerance, the scope, and the exact checks run.
 
+## Third-party data
+
+Measured data and fitted coefficients that the app ships (dispersion fits,
+Verdet constants, optical constants of metals, spectra) follow three rules.
+
+1. **Open licence.** The dataset or table the values come from is in the
+   public domain or under an open licence that allows redistribution with the
+   GPL code (for example CC0 or CC BY); values whose licence is unknown or
+   restrictive are not added.
+2. **Primary source cited.** Each record names the paper or datasheet that
+   measured or fitted it, with the wavelength range, temperature and
+   conditions it states, both in the record and on the wiki page that uses
+   it; when the values reach the app through a compilation, the record names
+   the compilation and the primary source.
+3. **Access stated.** Each record says whether its primary source is open
+   access; when two sources are equally good, the open-access one is
+   preferred.
+
+A licence that asks for attribution gets a section in
+`THIRD-PARTY-NOTICES.md`, as the Raman reference spectra have.
+
+A record states its access by citing a source listed in
+`sketch/js/source-access.js`, keyed by DOI (or URL, or the description of a
+printed source), with the status OpenAlex gives and the date it was looked
+up. `dataRuleProblems` in the same module checks all three rules for one
+record; `test/material-catalogue.test.js` and `test/source-access.test.js`
+run it on every shipped record, and fail when one lacks a licence, a primary
+source or an access status.
+
+The records that existed before this rule were brought to it in step A3a of
+the [Physics in 2D track](roadmap.md#physics-in-2d): the glass and crystal
+dispersion fits (now in `sketch/js/materials/catalogue.js`), the Raman
+reference spectra and the fluorophore spectra
+([material-catalogue.md](physics/material-catalogue.md)). One gap remains:
+for 65 of the 71 fluorophore records FPbase records no source for the curves
+themselves, so those records credit the protein's paper and the curves'
+own source is unknown.
+
 ## What reviewers check
 
 - Is there a reference file written from the sources, with its conventions,
@@ -112,3 +150,5 @@ without a reason is a bug report.
   scope stated where users read it?
 - Are the units in the function names and the JSON fields?
 - Do the golden snapshots change only where the description says they should?
+- Does every new dataset have an open licence, a cited primary source and a
+  stated access status?

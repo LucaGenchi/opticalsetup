@@ -1,0 +1,171 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "title",
+   "type": "textlabel",
+   "x": -60,
+   "y": 40,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Spatial filtering in the Fourier plane**",
+    "fontSize": 24,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "note",
+   "type": "textlabel",
+   "x": -60,
+   "y": 89,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "A grating splits the beam into orders, one direction for each spatial frequency it holds.\nThe first lens brings each order to its own point in its focal plane,\nwhere a mask selects which ones the second lens recombines.",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "laser",
+   "type": "cwlaser",
+   "x": -40,
+   "y": 300,
+   "rot": 0,
+   "label": "Laser, 633 nm, 5 mW",
+   "showLabel": true,
+   "params": {
+    "wavelength": 633,
+    "avgPowerW": 0.005,
+    "beamMode": "beam",
+    "beamWidth": 4,
+    "pol": 0,
+    "coherenceLengthMm": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw",
+    "housingLength": 92,
+    "housingHeight": 34,
+    "housingColor": "#3a3f46"
+   }
+  },
+  {
+   "id": "grating",
+   "type": "grating",
+   "x": 130,
+   "y": 300,
+   "rot": 0,
+   "label": "Object: grating, 50 lines/mm",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "lines": 50,
+    "orders": "-2,-1,0,1,2",
+    "transmissive": true,
+    "efficiency": 100,
+    "length": 25.4
+   }
+  },
+  {
+   "id": "lens1",
+   "type": "lens",
+   "x": 230,
+   "y": 300,
+   "rot": 0,
+   "label": "f = 100 mm",
+   "showLabel": true,
+   "params": {
+    "f": 100,
+    "dia": 50.8,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "mask",
+   "type": "slit",
+   "x": 330,
+   "y": 300,
+   "rot": 0,
+   "label": "Mask in the Fourier plane",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "gap": 8,
+    "length": 50.8
+   }
+  },
+  {
+   "id": "lens2",
+   "type": "lens",
+   "x": 430,
+   "y": 300,
+   "rot": 0,
+   "label": "f = 100 mm",
+   "showLabel": true,
+   "params": {
+    "f": 100,
+    "dia": 50.8,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "meter",
+   "type": "powermeter",
+   "x": 554,
+   "y": 300,
+   "rot": 0,
+   "label": "Image plane",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "aperture": 30
+   }
+  },
+  {
+   "id": "screen",
+   "type": "display",
+   "x": 560,
+   "y": 210,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "meter",
+    "displayScale": 0.8,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "zoom",
+   "type": "zoom",
+   "x": 330,
+   "y": 300,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "shape": "circle",
+    "w": 20,
+    "h": 20,
+    "mag": 5,
+    "insetX": 0,
+    "insetY": 120,
+    "regionDash": false,
+    "connectors": true,
+    "connectorDash": false,
+    "diffraction": false,
+    "focusNote": true,
+    "scaleBar": true,
+    "scaleBarDirection": "horizontal",
+    "scaleBarMm": 0,
+    "frameColor": "#475569"
+   }
+  }
+ ],
+ "beams": []
+}

@@ -1,0 +1,108 @@
+{
+ "elements": 10,
+ "beams": 0,
+ "drawables": {
+  "count": 130,
+  "byType": {
+   "poly": 120,
+   "path": 10
+  },
+  "colors": {
+   "#ff4200": 130
+  },
+  "points": 500,
+  "sum": [
+   145993.128,
+   128485.776
+  ],
+  "bbox": [
+   -38.3465,
+   222.4713,
+   536,
+   265.2552
+  ],
+  "digest": "02c4f981"
+ },
+ "drawnElements": {
+  "textlabel:title": "b8d61653",
+  "textlabel:note": "f085c28c",
+  "cwlaser:laser": "3d823b45",
+  "cwlaser:stray": "3d823b45",
+  "lens:lens1": "21f36c16",
+  "slit:pinhole": "af31cbf3",
+  "lens:lens2": "f2f7b085",
+  "powermeter:meter": "2f8df1b8",
+  "display:screen": "a6363840",
+  "zoom:zoom": "199fbec6"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "readouts": {
+  "powermeter:meter": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 633,
+    "bandMin": 633,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#ff4200",
+    "convergence": {
+     "diverging": false,
+     "fullAngleDeg": 0,
+     "slopePerMm": 0
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 1,
+    "detectorType": "Power meter",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": 1,
+     "s2": 0,
+     "s3": 0
+    },
+    "outputSignal": 1,
+    "polarization": "Linear 0°",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "power",
+    "samples": 25,
+    "saturated": false,
+    "signal": 1,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 1,
+      "sourceId": "laser"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#ff4200",
+      "continuum": false,
+      "power": 1,
+      "sourceId": "laser",
+      "wavelength": 633,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 8,
+    "wavelength": 633
+   }
+  }
+ },
+ "fibers": {}
+}

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Total internal reflection in a right-angle prism — Examples | OpticalSetup</title>
+<meta name="description" content="Light inside glass that meets a face at 45° cannot leave: a right-angle prism turns a beam by 90° with one such reflection, and sends it back with two.">
+<link rel="canonical" href="https://opticalsetup.com/example-setups/total-internal-reflection-right-angle-prism/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Total internal reflection in a right-angle prism — OpticalSetup Examples">
+<meta property="og:description" content="Light inside glass that meets a face at 45° cannot leave: a right-angle prism turns a beam by 90° with one such reflection, and sends it back with two.">
+<meta property="og:url" content="https://opticalsetup.com/example-setups/total-internal-reflection-right-angle-prism/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="../../sketch/icons/icon.svg">
+<script>
+  (() => {
+    let savedTheme = null;
+    try { savedTheme = localStorage.getItem('opticalsetup-theme'); } catch (_) { /* storage may be unavailable */ }
+    const systemTheme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = savedTheme === 'dark' || savedTheme === 'light'
+      ? savedTheme
+      : systemTheme;
+  })();
+</script>
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+<link rel="stylesheet" href="../../example-setups/assets/examples.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../calculators/">Calculators</a>
+      <a class="plain" href="../../community/">Community</a>
+      <button type="button" id="btnAbout" class="plain" aria-haspopup="dialog" title="License, copyright and citation">About</button>
+      <button type="button" id="btnTheme" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark mode" title="Switch to dark mode">
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M15.7 12.7A6.5 6.5 0 0 1 7.3 4.3a6.5 6.5 0 1 0 8.4 8.4Z"/>
+        </svg>
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="10" cy="10" r="3.2"/>
+          <path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M16 4l-1.4 1.4M5.4 14.6 4 16"/>
+        </svg>
+      </button>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <dialog id="aboutDialog" class="site-dialog" aria-labelledby="aboutTitle">
+    <div class="site-dialog-head">
+      <div><span class="eyebrow">Free software</span><h2 id="aboutTitle">About OpticalSetup</h2></div>
+      <button type="button" id="aboutClose" class="site-dialog-close" aria-label="Close about dialog">×</button>
+    </div>
+    <p class="about-text" id="aboutVersion" hidden></p>
+    <p class="about-text">Copyright © 2026 Luca Genchi and contributors.</p>
+    <p class="about-text">OpticalSetup is free software: you can redistribute it and/or modify it
+      under the terms of the GNU General Public License as published by the Free Software
+      Foundation, either version 3 of the License, or (at your option) any later version.</p>
+    <p class="about-text">It is distributed in the hope that it will be useful, but
+      <strong>without any warranty</strong>; without even the implied warranty of merchantability
+      or fitness for a particular purpose. See the GNU General Public License for more details.</p>
+    <p class="about-text">The numbers OpticalSetup reports come from models with stated limits; read
+      each component's page in the <a href="../../wiki/">wiki</a> before relying on one.</p>
+    <p class="about-text">If you use OpticalSetup in your research, teaching or publications,
+      please cite the software:</p>
+    <p class="about-text about-citation">Bertoncini, A., &amp; Genchi, L. (2026).
+      <cite>OpticalSetup - the optical workbench software</cite> [Computer software]. Zenodo.
+      <a href="https://doi.org/10.5281/zenodo.23191537" target="_blank" rel="noopener">https://doi.org/10.5281/zenodo.23191537</a></p>
+    <p class="about-links">
+      <a href="../../#cite">BibTeX and version DOIs</a>
+      <a href="../../license.html">License and notices</a>
+      <a href="https://github.com/LucaGenchi/opticalsetup" target="_blank" rel="noopener">Source code</a>
+    </p>
+  </dialog>
+  <script type="module" src="../../wiki/assets/site-header.js"></script>
+  <div class="wiki-shell" style="grid-template-columns: 1fr;">
+    <main class="wiki-article" style="max-width: 760px;">
+      <div class="crumb"><a href="../../example-setups/">Examples</a> / Fundamentals / Total internal reflection in a right-angle prism</div>
+      <h1>Total internal reflection in a right-angle prism</h1>
+      <p class="tagline" style="margin-top: 10px;">Light inside glass that meets a face at 45° cannot leave: a right-angle prism turns a beam by 90° with one such reflection, and sends it back with two.</p>
+
+      <a class="place-cta" href="../../sketch/?example=total-internal-reflection-right-angle-prism">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?example=total-internal-reflection-right-angle-prism&amp;embed=1"
+          title="Total internal reflection in a right-angle prism — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace of the setup above, shown as a picture. Open it in the canvas to take it apart, retune it, and save or export it as your own.</p>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Background</h2>
+
+      <p>Light passing from glass to air bends away from the normal of the
+      surface. As the angle of incidence inside the glass grows, the refracted
+      ray leans further over, until at the critical angle, arcsin(1/n) for glass
+      of index n in air, it runs along the surface. Beyond that angle there is
+      no refracted ray: the light is completely reflected back into the
+      glass<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+      <p>For common optical glass the critical angle is close to 42°, just under
+      45°, and that makes a prism with angles of 45°, 90° and 45° a mirror with no
+      coating. A beam entering one of the short faces meets the long face at 45°
+      and is turned by 90°. A beam entering the long face is reflected by both
+      short faces in turn and leaves through the long face again, turned by
+      180° and shifted sideways: the Porro prism, named after Ignazio Porro, and
+      used in pairs to turn the image upright in binoculars<sup class="cite">[<a href="#ref-1">1</a>,<a href="#ref-2">2</a>]</sup>.</p>
+      <p>The reflection is total, but the light is not confined to the glass. An
+      evanescent wave runs along the outside of the face, its amplitude falling
+      off exponentially with distance; a second piece of glass brought close
+      enough picks it up, and the reflection is no longer total (frustrated total
+      internal reflection)<sup class="cite">[<a href="#ref-1">1</a>]</sup>. The reflection also shifts the phase of the
+      two polarizations by different amounts, which the Fresnel rhomb uses to do the work of
+      a quarter-wave plate<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>What this setup demonstrates</h2>
+      <div class="sim-block">
+
+      <p>Both prisms are drawn with <a href="../../wiki/freeglass/">Freeform
+      glass</a>, a polygon of N-BK7 with short faces of 25.4&nbsp;mm. (The
+      <a href="../../wiki/prism/">Prism</a> element is an isosceles prism whose
+      apex angle stops at 80°.) At 633&nbsp;nm the glass catalogue gives
+      n&nbsp;=&nbsp;1.515, so the critical angle is 41.3°.</p>
+      <p>In the upper setup the beam enters a short face head-on, meets the long
+      face at 45° and leaves through the other short face, turned by 90°. In the
+      lower one it enters the long face, 9&nbsp;mm above the middle, is reflected
+      by both short faces and returns parallel to itself, 18&nbsp;mm lower.</p>
+      <p>Each power meter reads 922&nbsp;µW of the laser's 1&nbsp;mW. None of
+      the loss is at the reflections. Freeform glass has a setting for the
+      transmission of each face a ray crosses, here 96%, the value for uncoated
+      glass of this index met head-on (the reflected part is ((n−1)/(n+1))²,
+      4.2%). Each beam crosses two faces: 0.96² = 0.9216.</p>
+      <p>Things to try. Set the per-surface transmission of a prism to 100%: its
+      meter reads 1.00&nbsp;mW, all of the light. Select the upper prism, choose
+      <em>Constant index</em> as its glass model and lower the index: at 1.42
+      the critical angle is 44.8° and the beam is still reflected; at 1.41 it
+      is 45.2°, more than the 45° at which the beam arrives, and the beam leaves
+      through the long face instead. The limit is n&nbsp;=&nbsp;1/sin&nbsp;45° =
+      1.414. Turn the lower prism by up to 5.5° either way: the beam still comes
+      back parallel to the way it went in, which is what makes two mirrors at 90°
+      a retroreflector in their plane. Past 5.6° one of the two reflections
+      falls below the critical angle and the light leaves the prism there.</p>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>Below the critical angle the tracer sends all of the
+      light through the face, less the per-surface setting. Real glass reflects a
+      part that depends on the angle and on the polarization, and that part rises
+      steeply to 100% as the critical angle is approached; here the change at the
+      critical angle is a step. The faces the beam enters and leaves by keep their
+      set transmission at any angle, with no Fresnel calculation.</p>
+      <p>There is no evanescent wave, so a second prism brought up to the
+      reflecting face does not frustrate the reflection, however close. The
+      polarization comes out of the reflection as it went in: the phase shift
+      between the two polarizations is not applied, so a Fresnel rhomb drawn this
+      way leaves linear light linear.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/freeglass/"><svg viewBox="-46 -46 92 92" aria-hidden="true"><path d="M -36 -24 L 30 -24 L 38 20 L -26 26 L -36 -24 Z" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5" stroke-linejoin="round"/></svg>Freeform glass</a><a href="../../wiki/prism/"><svg viewBox="-23.664696837416493 -23.664696837416493 47.329393674832986 47.329393674832986" aria-hidden="true"><path d="M 0,-12.7 L -14.664696837416493,12.7 L 14.664696837416493,12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Prism</a><a href="../../wiki/retroreflector/"><svg viewBox="-23.7 -23.7 47.4 47.4" aria-hidden="true"><path d="M -12.7,12.7 L 0,0 L -12.7,-12.7" fill="#e8eaee" fill-opacity="0.3" stroke="#444" stroke-width="3.5"/></svg>Retroreflector</a><a href="../../wiki/powermeter/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-24" y="-15" width="48" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-25.7" y="-11" width="3.4" height="22" rx="1" fill="#86efac" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">PWR</text><circle cx="16" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Power meter</a><a href="../../wiki/cwlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">CW LASER</text><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>CW Laser</a>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://en.wikipedia.org/wiki/Total_internal_reflection" target="_blank" rel="noopener">Wikipedia — Total internal reflection</a></li><li id="ref-2"><a href="https://en.wikipedia.org/wiki/Porro_prism" target="_blank" rel="noopener">Wikipedia — Porro prism</a></li>
+      </ol>
+
+
+    </main>
+  </div>
+  <footer class="wiki-footer">Examples are written and maintained with the project. For setups shared by users, see the <a href="../../community/">community section</a>; for how each component works, see the <a href="../../wiki/">wiki</a>.</footer>
+</body>
+</html>

@@ -5,24 +5,25 @@
 // index, GVD and TOD from published dispersion formulas, with analytic
 // wavelength derivatives up to third order. DOM-free.
 //
-// The workbench's catalogue glasses (the SCHOTT glasses, fused silica and CaF₂)
-// take their coefficients from sketch/js/glass.js, so the calculator and the
-// tracer share one source; the crystals, liquids and gases are
-// calculator-only. Each entry keeps its source's own
-// formula form, so a transcription can be compared with the source directly:
+// Every material comes from the shared catalogue
+// (sketch/js/materials/catalogue.js), which the canvas and the lens designer
+// read too, so the three evaluate the same coefficients. The catalogue keeps
+// each source's own formula form, so a transcription can be compared with
+// the source directly:
 //
 //   'sellmeier'  n² − 1 = A + Σ B λ² / (λ² − C)      λ in µm, C in µm²
 //   'gas'        n − 1  = Σ B / (C − λ⁻²)             λ in µm, C in µm⁻²
 //
-// Coefficients were transcribed from the refractiveindex.info database
-// (CC0), which cites each primary source listed in `ref`; the page's
-// reference list gives those sources. `range` is the source's fit domain in
-// nm: outside it the functions return null rather than extrapolating.
-// `indexReference` is what the source's indices are relative to: 'air' (the
-// SCHOTT catalogue), 'vacuum' (absolute: Daimon and Masumura's water,
-// Ciddor's air) or 'unstated' where the source as consulted does not say.
+// The catalogue records each fit's dataset (refractiveindex.info, CC0), its
+// primary source and that source's access status. `range` is the source's
+// fit domain in nm: outside it the functions return null rather than
+// extrapolating. `indexReference` is what the source's indices are relative
+// to: 'air' (the SCHOTT catalogue), 'vacuum' (absolute: Daimon and
+// Masumura's water, Ciddor's air) or 'unstated' where the source as
+// consulted does not say. A uniaxial crystal appears here as its two
+// principal entries, ordinary and extraordinary.
 
-import { GLASSES } from '../../sketch/js/glass.js';
+import { MATERIAL_RECORDS } from '../../sketch/js/materials/catalogue.js';
 
 const C_METRES_PER_SECOND = 299792458;
 // Fraunhofer d, F and C lines for the Abbe number (true wavelengths, nm).
@@ -32,59 +33,34 @@ const GLASS = 'Optical glass (SCHOTT)';
 const CRYSTAL = 'Fused silica and crystals';
 const FLUID = 'Liquids and gases';
 
-const catalogueGlass = (id, group, extra = {}) => {
-  const g = GLASSES.get(id);
-  return { id, label: g.label, group, form: 'sellmeier', A: 0, terms: g.B.map((B, i) => [B, g.C[i]]), range: g.range, ...extra };
+const fitEntry = (fit, fields) => ({
+  ...fields, form: fit.form, ...(fit.form === 'sellmeier' ? { A: fit.A } : {}),
+  terms: fit.terms.map(term => [...term]), range: [...fit.range],
+});
+
+const isotropic = (id, group) => {
+  const record = MATERIAL_RECORDS.get(id);
+  return fitEntry(record, {
+    id, label: record.dispersionLabel ?? record.label, group,
+    ref: record.reference, conditions: record.conditions, indexReference: record.indexReference,
+  });
+};
+
+const principal = (id, ray, group) => {
+  const record = MATERIAL_RECORDS.get(id), fit = record[ray];
+  return fitEntry(fit, {
+    id: `${id}-${ray === 'ordinary' ? 'o' : 'e'}`, label: `${record.label}, ${ray} ray`, group,
+    ref: record.reference, conditions: fit.conditions, birefringent: true, indexReference: fit.indexReference,
+  });
 };
 
 const MATERIAL_LIST = [
-  catalogueGlass('nbk7', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
-  catalogueGlass('nfk51a', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
-  catalogueGlass('nsk16', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
-  catalogueGlass('f2', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
-  catalogueGlass('nsf5', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
-  catalogueGlass('nsf10', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
-  catalogueGlass('nsf11', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
-  catalogueGlass('nsf14', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
-  catalogueGlass('nsf57', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
-  catalogueGlass('nlasf9', GLASS, { ref: 'schott', conditions: '20 °C; index relative to air', indexReference: 'air' }),
-
-  catalogueGlass('silica', CRYSTAL, { ref: 'malitson1965', conditions: '20 °C', indexReference: 'unstated' }),
-  catalogueGlass('caf2', CRYSTAL, { label: 'Calcium fluoride, CaF₂', ref: 'malitson1963', conditions: '24 °C', indexReference: 'unstated' }),
-  { id: 'sapphire-o', label: 'Sapphire, Al₂O₃, ordinary ray', group: CRYSTAL, form: 'sellmeier', A: 0,
-    terms: [[1.4313493, 0.0726631 ** 2], [0.65054713, 0.1193242 ** 2], [5.3414021, 18.028251 ** 2]],
-    range: [200, 5000], ref: 'malitson1972', conditions: '20 °C; ordinary ray (E ⟂ c axis)', birefringent: true, indexReference: 'unstated' },
-  { id: 'sapphire-e', label: 'Sapphire, Al₂O₃, extraordinary ray', group: CRYSTAL, form: 'sellmeier', A: 0,
-    terms: [[1.5039759, 0.0740288 ** 2], [0.55069141, 0.1216529 ** 2], [6.5927379, 20.072248 ** 2]],
-    range: [200, 5000], ref: 'malitson1972', conditions: '20 °C; extraordinary ray (E ∥ c axis)', birefringent: true, indexReference: 'unstated' },
-  { id: 'quartz-o', label: 'Crystalline quartz, SiO₂, ordinary ray', group: CRYSTAL, form: 'sellmeier', A: 0.28604141,
-    terms: [[1.07044083, 1.00585997e-2], [1.10202242, 100]],
-    range: [198, 2053.1], ref: 'ghosh1999', conditions: 'room temperature; ordinary ray', birefringent: true, indexReference: 'unstated' },
-  { id: 'quartz-e', label: 'Crystalline quartz, SiO₂, extraordinary ray', group: CRYSTAL, form: 'sellmeier', A: 0.28851804,
-    terms: [[1.09509924, 1.02101864e-2], [1.15662475, 100]],
-    range: [198, 2053.1], ref: 'ghosh1999', conditions: 'room temperature; extraordinary ray (E ∥ optic axis)', birefringent: true, indexReference: 'unstated' },
-  { id: 'bbo-o', label: 'β-barium borate, BBO, ordinary ray', group: CRYSTAL, form: 'sellmeier', A: 0,
-    terms: [[0.90291, 0.003926], [0.83155, 0.018786], [0.76536, 60.01]],
-    range: [188, 5200], ref: 'tamosauskas2018', conditions: 'room temperature; ordinary ray', birefringent: true, indexReference: 'unstated' },
-  { id: 'bbo-e', label: 'β-barium borate, BBO, extraordinary ray', group: CRYSTAL, form: 'sellmeier', A: 0,
-    terms: [[1.151075, 0.007142], [0.21803, 0.02259], [0.656, 263]],
-    range: [188, 5200], ref: 'tamosauskas2018', conditions: 'room temperature; extraordinary ray (E ∥ optic axis)', birefringent: true, indexReference: 'unstated' },
-  { id: 'yag', label: 'Yttrium aluminium garnet, YAG (undoped)', group: CRYSTAL, form: 'sellmeier', A: 0,
-    terms: [[2.282, 0.01185], [3.27644, 282.734]],
-    range: [400, 5000], ref: 'zelmon1998', conditions: 'room temperature', indexReference: 'unstated' },
-  { id: 'znse', label: 'Zinc selenide, ZnSe (CVD)', group: CRYSTAL, form: 'sellmeier', A: 0,
-    terms: [[4.45813734, 0.200859853 ** 2], [0.467216334, 0.391371166 ** 2], [2.89566290, 47.1362108 ** 2]],
-    range: [540, 18200], ref: 'connolly1979', conditions: '23 °C', indexReference: 'unstated' },
-  { id: 'si', label: 'Silicon, Si', group: CRYSTAL, form: 'sellmeier', A: 0,
-    terms: [[10.6684293, 0.301516485 ** 2], [0.0030434748, 1.13475115 ** 2], [1.54133408, 1104 ** 2]],
-    range: [1357, 11040], ref: 'salzberg1957', conditions: '26 °C; purity not stated by the source', indexReference: 'unstated' },
-
-  { id: 'water', label: 'Water, H₂O (distilled)', group: FLUID, form: 'sellmeier', A: 0,
-    terms: [[5.684027565e-1, 5.101829712e-3], [1.726177391e-1, 1.821153936e-2], [2.086189578e-2, 2.620722293e-2], [1.130748688e-1, 1.069792721e1]],
-    range: [182, 1129], ref: 'daimon2007', conditions: '20.0 °C; absolute index', indexReference: 'vacuum' },
-  { id: 'air', label: 'Air (standard, dry)', group: FLUID, form: 'gas',
-    terms: [[0.05792105, 238.0185], [0.00167917, 57.362]],
-    range: [230, 1690], ref: 'ciddor1996', conditions: '15 °C, 101.325 kPa, dry, 450 ppm CO₂; absolute index', indexReference: 'vacuum' },
+  ...['nbk7', 'nfk51a', 'nsk16', 'f2', 'nsf5', 'nsf10', 'nsf11', 'nsf14', 'nsf57', 'nlasf9'].map(id => isotropic(id, GLASS)),
+  isotropic('silica', CRYSTAL),
+  isotropic('caf2', CRYSTAL),
+  ...['sapphire', 'quartz', 'bbo'].flatMap(id => [principal(id, 'ordinary', CRYSTAL), principal(id, 'extraordinary', CRYSTAL)]),
+  ...['yag', 'znse', 'si'].map(id => isotropic(id, CRYSTAL)),
+  ...['water', 'air'].map(id => isotropic(id, FLUID)),
 ];
 
 export const MATERIALS = new Map(MATERIAL_LIST.map(m => [m.id, m]));

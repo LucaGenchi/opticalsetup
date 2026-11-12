@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spatial filtering in the Fourier plane — Examples | OpticalSetup</title>
+<meta name="description" content="Two lenses, four focal lengths: a grating placed in front is split into its diffraction orders, each focused at its own point between the lenses, where a mask decides which of them reach the image.">
+<link rel="canonical" href="https://opticalsetup.com/example-setups/spatial-filtering-in-the-fourier-plane-4f-system/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Spatial filtering in the Fourier plane — OpticalSetup Examples">
+<meta property="og:description" content="Two lenses, four focal lengths: a grating placed in front is split into its diffraction orders, each focused at its own point between the lenses, where a mask decides which of them reach the image.">
+<meta property="og:url" content="https://opticalsetup.com/example-setups/spatial-filtering-in-the-fourier-plane-4f-system/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="../../sketch/icons/icon.svg">
+<script>
+  (() => {
+    let savedTheme = null;
+    try { savedTheme = localStorage.getItem('opticalsetup-theme'); } catch (_) { /* storage may be unavailable */ }
+    const systemTheme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = savedTheme === 'dark' || savedTheme === 'light'
+      ? savedTheme
+      : systemTheme;
+  })();
+</script>
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+<link rel="stylesheet" href="../../example-setups/assets/examples.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../calculators/">Calculators</a>
+      <a class="plain" href="../../community/">Community</a>
+      <button type="button" id="btnAbout" class="plain" aria-haspopup="dialog" title="License, copyright and citation">About</button>
+      <button type="button" id="btnTheme" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark mode" title="Switch to dark mode">
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M15.7 12.7A6.5 6.5 0 0 1 7.3 4.3a6.5 6.5 0 1 0 8.4 8.4Z"/>
+        </svg>
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="10" cy="10" r="3.2"/>
+          <path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M16 4l-1.4 1.4M5.4 14.6 4 16"/>
+        </svg>
+      </button>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <dialog id="aboutDialog" class="site-dialog" aria-labelledby="aboutTitle">
+    <div class="site-dialog-head">
+      <div><span class="eyebrow">Free software</span><h2 id="aboutTitle">About OpticalSetup</h2></div>
+      <button type="button" id="aboutClose" class="site-dialog-close" aria-label="Close about dialog">×</button>
+    </div>
+    <p class="about-text" id="aboutVersion" hidden></p>
+    <p class="about-text">Copyright © 2026 Luca Genchi and contributors.</p>
+    <p class="about-text">OpticalSetup is free software: you can redistribute it and/or modify it
+      under the terms of the GNU General Public License as published by the Free Software
+      Foundation, either version 3 of the License, or (at your option) any later version.</p>
+    <p class="about-text">It is distributed in the hope that it will be useful, but
+      <strong>without any warranty</strong>; without even the implied warranty of merchantability
+      or fitness for a particular purpose. See the GNU General Public License for more details.</p>
+    <p class="about-text">The numbers OpticalSetup reports come from models with stated limits; read
+      each component's page in the <a href="../../wiki/">wiki</a> before relying on one.</p>
+    <p class="about-text">If you use OpticalSetup in your research, teaching or publications,
+      please cite the software:</p>
+    <p class="about-text about-citation">Bertoncini, A., &amp; Genchi, L. (2026).
+      <cite>OpticalSetup - the optical workbench software</cite> [Computer software]. Zenodo.
+      <a href="https://doi.org/10.5281/zenodo.23191537" target="_blank" rel="noopener">https://doi.org/10.5281/zenodo.23191537</a></p>
+    <p class="about-links">
+      <a href="../../#cite">BibTeX and version DOIs</a>
+      <a href="../../license.html">License and notices</a>
+      <a href="https://github.com/LucaGenchi/opticalsetup" target="_blank" rel="noopener">Source code</a>
+    </p>
+  </dialog>
+  <script type="module" src="../../wiki/assets/site-header.js"></script>
+  <div class="wiki-shell" style="grid-template-columns: 1fr;">
+    <main class="wiki-article" style="max-width: 760px;">
+      <div class="crumb"><a href="../../example-setups/">Examples</a> / Fundamentals / Spatial filtering in the Fourier plane</div>
+      <h1>Spatial filtering in the Fourier plane</h1>
+      <p class="tagline" style="margin-top: 10px;">Two lenses, four focal lengths: a grating placed in front is split into its diffraction orders, each focused at its own point between the lenses, where a mask decides which of them reach the image.</p>
+
+      <a class="place-cta" href="../../sketch/?example=spatial-filtering-in-the-fourier-plane-4f-system">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?example=spatial-filtering-in-the-fourier-plane-4f-system&amp;embed=1"
+          title="Spatial filtering in the Fourier plane — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace of the setup above, shown as a picture. Open it in the canvas to take it apart, retune it, and save or export it as your own.</p>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Background</h2>
+
+      <p>A fine pattern lit by a laser beam sends light into several directions:
+      a grating of period d sends it into the orders m = 0, ±1, ±2…, at angles
+      given by sin&nbsp;θ = mλ/d. The finer the pattern, the larger the angles.
+      Each order is one spatial frequency of the pattern, m/d lines per
+      millimetre.</p>
+      <p>A lens one focal length behind the pattern brings each direction to its
+      own point in its back focal plane, where the field is the Fourier transform
+      of the field in the front focal plane<sup class="cite">[<a href="#ref-1">1</a>]</sup>. A second lens, placed so
+      that the two share that plane, puts the light together again in its own
+      back focal plane, as an inverted image of the pattern. Input, first lens,
+      Fourier plane, second lens and output are each one focal length apart: the
+      4f arrangement<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+      <p>The plane between the lenses is where the image can be edited. A mask
+      there acts on the spatial frequencies one by one. An opening that passes
+      only the centre removes the high frequencies, and the image loses its fine
+      detail: it is blurred<sup class="cite">[<a href="#ref-1">1</a>]</sup>. The
+      <a href="../pinhole-spatial-filter/">pinhole spatial filter</a> is the
+      extreme case, where the mask keeps the centre alone.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>What this setup demonstrates</h2>
+      <div class="sim-block">
+
+      <p>A 633&nbsp;nm laser, 5&nbsp;mW in a 4&nbsp;mm beam, lights a
+      <a href="../../wiki/grating/">transmission grating</a> of 50 lines per
+      millimetre, set to send the orders −2 to +2. The first orders leave at
+      1.81° and the second at 3.63°. Two <a href="../../wiki/lens/">lenses</a> of
+      f&nbsp;=&nbsp;100&nbsp;mm follow: the first 100&nbsp;mm after the grating, the
+      second 300&nbsp;mm after it, and the output plane lies at 400&nbsp;mm.</p>
+      <p>In the Fourier plane, 200&nbsp;mm after the grating, the five orders come
+      to five points: on the axis, 3.17&nbsp;mm either side of it, and
+      6.34&nbsp;mm either side (f&nbsp;tan&nbsp;θ; the enlarged view shows them).
+      The mask there is a <a href="../../wiki/slit/">Slit</a> with an 8&nbsp;mm
+      gap. It passes the orders 0 and ±1 and stops ±2. Behind the second lens the
+      three remaining beams cross again in the output plane, on a power meter that
+      reads 3.00&nbsp;mW.</p>
+      <p>Things to try. Narrow the mask to 6&nbsp;mm or less: only the zero order
+      passes and the meter reads 1.00&nbsp;mW. Open it to 13&nbsp;mm or more: all
+      five pass, 5.00&nbsp;mW. Set the mask back to 8&nbsp;mm and the grating to
+      100 lines per millimetre: its first orders now land where the second ones
+      did, 6.34&nbsp;mm out, and the mask stops them: 1.00&nbsp;mW. A pattern
+      twice as fine needs an opening twice as wide to reach the image.</p>
+      <p>The <a href="../../calculators/imaging/">Imaging with lenses</a>
+      calculator treats the same pair of lenses as a 4f relay: where the Fourier
+      plane lies and where the image forms, for thin lenses and for real ones.</p>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>The tracer follows rays, so it shows which orders
+      pass the mask and how much power they carry, and nothing more. It does not
+      compute the image: the pattern of lines that the orders rebuild by
+      interference where they cross, and how that pattern changes when orders are
+      removed (with the zero order alone, uniform light with no lines at all). The
+      power meter in the output plane adds the power of the beams.</p>
+      <p>The grating sends the same power into each order it is set to trace, a
+      fifth each here. A real grating's orders are unequal, and their strengths are
+      what encodes the shape of its lines. The mask is a slit, so it can pass a
+      band around the axis but not block the centre alone; and, as everywhere in
+      this top view, only spatial frequencies in the plane of the drawing
+      exist.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/grating/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="0" y="-12.7" width="6" height="25.4" fill="#e8e0f0" stroke="#5d5575" stroke-width="1.5"/><line x1="0" y1="-9.7" x2="4" y2="-9.7" stroke="#333" stroke-width="1"/><line x1="0" y1="-4.699999999999999" x2="4" y2="-4.699999999999999" stroke="#333" stroke-width="1"/><line x1="0" y1="0.3000000000000007" x2="4" y2="0.3000000000000007" stroke="#333" stroke-width="1"/><line x1="0" y1="5.300000000000001" x2="4" y2="5.300000000000001" stroke="#333" stroke-width="1"/></svg>Diffraction grating</a><a href="../../wiki/lens/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0,-12.7 Q 9,0 0,12.7 Q -9,0 0,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Thin convex lens</a><a href="../../wiki/slit/"><svg viewBox="-34.4 -34.4 68.8 68.8" aria-hidden="true"><rect x="-2.5" y="-25.4" width="5" height="21.4" fill="#333"/><rect x="-2.5" y="4" width="5" height="21.4" fill="#333"/></svg>Slit</a><a href="../../wiki/zoom/"><svg viewBox="-21 -21 42 42" aria-hidden="true"><ellipse cx="0" cy="0" rx="15" ry="15" fill="none" stroke="#475569" stroke-width="1.2" data-zoom-frame="region"/><line x1="5.3341" y1="14.0195" x2="131.3366" y2="-33.9219" stroke="#475569" stroke-width="1" opacity="0.75" data-zoom-frame="connector"/><line x1="-12.6856" y1="-8.0047" x2="59.2575" y2="-122.0187" stroke="#475569" stroke-width="1" opacity="0.75" data-zoom-frame="connector"/><ellipse cx="110" cy="-90" rx="60" ry="60" fill="#ffffff" stroke="none"/><ellipse cx="110" cy="-90" rx="60" ry="60" fill="none" stroke="#475569" stroke-width="1.5" data-zoom-frame="view"/><g data-zoom-scalebar="true" fill="#1f2937"><rect x="100" y="-49.488" width="20" height="2.688" stroke="#ffffff" stroke-width="2.112" paint-order="stroke"/><text x="110" y="-53.328" text-anchor="middle" font-size="9.6" font-weight="600" stroke="#ffffff" stroke-width="2.112" paint-order="stroke">5 mm</text></g></svg>Zoom</a><a href="../../wiki/telescope/"><svg viewBox="-94 -94 188 188" aria-hidden="true"><line x1="-75" y1="0" x2="75" y2="0" stroke="#b6bdc6" stroke-width="1" stroke-dasharray="4 4"/><path d="M -75,-12.7 Q -66,0 -75,12.7 Q -84,0 -75,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/><path d="M 75,-12.7 Q 84,0 75,12.7 Q 66,0 75,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Conjugated thin lens pair</a><a href="../../wiki/powermeter/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-24" y="-15" width="48" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-25.7" y="-11" width="3.4" height="22" rx="1" fill="#86efac" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">PWR</text><circle cx="16" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Power meter</a>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://en.wikipedia.org/wiki/Fourier_optics" target="_blank" rel="noopener">Wikipedia — Fourier optics (the Fourier-transforming property of a lens; the 4F correlator)</a></li>
+      </ol>
+
+
+    </main>
+  </div>
+  <footer class="wiki-footer">Examples are written and maintained with the project. For setups shared by users, see the <a href="../../community/">community section</a>; for how each component works, see the <a href="../../wiki/">wiki</a>.</footer>
+</body>
+</html>

@@ -249,6 +249,100 @@ capillary scenes.
 | 5.2 Content as Markdown | Wiki and example write-ups as Markdown with front matter, built at deploy time; generated HTML no longer committed | A wiki edit is a readable diff |
 | 5.3 Reproducible share links | A share link records the engine version that produced it, and the site keeps that engine, its renderer and its assets loadable, with a stated storage policy (see PR #67) | A link opened later renders as it did when shared |
 
+## Physics in 2D
+
+Decided by Luca and Andrea in November 2026. This track extends the physics
+the tracer models (polarization at reflections, crystals, Gaussian beams,
+lenses and glass) without leaving the 2D workbench. Its implementation guide
+is [issue #313](https://github.com/LucaGenchi/opticalsetup/issues/313), which
+says what each step must do, when it is done, and in which order the pull
+requests are opened. This section gives every step an ID that a pull request
+can name, and records the decisions the steps rest on.
+
+### Steps
+
+- **S, setup:** S0 Roadmap section and data rule.
+- **A, foundations:** A1 Mueller and Jones kernel; A2 Polarization at
+  reflections; A3 Material catalogue, in two pull requests (A3a the shared
+  catalogue and the provenance of the existing records, A3b new crystal and
+  Verdet data); A4 Shared surface library; A5 Readout scope.
+- **T, teaching:** T1 Fundamentals examples; T2 Optical path and group delay
+  at the beam probe.
+- **P, polarization and crystals:** P1 Fresnel choice on glass elements;
+  P2 Faraday rotator and physical isolator; P3 Uniaxial crystals and beam
+  displacer; P4 Crystal waveplates; P5 Polarizing prisms; P6 Phase matching;
+  P7 Biaxial crystals in a principal plane; P8 Metal mirrors.
+- **G, Gaussian beams:** G1 Beam propagation in the drawing plane; G2 Beam
+  envelope; G3 Out-of-plane beam size; G4 Cavity eigenmode and stability;
+  G5 Interference profiles on cameras.
+- **L, lenses and glass:** L1 Larger glass catalogue; L2 Aspheric rows in
+  lens groups; L3 Import of `.zmx` lens files; L4 Cylindrical lens; L5 Axicon
+  section.
+
+A pull request of this track starts its title with the step ID, for example
+"A2: Polarization at reflections"; that is the step it names under the rule
+"One PR, one step" below. The order of work, in rounds of at most two open
+pull requests, is kept in the issue, together with the list that is ticked as
+steps merge. Listing a step here is not a commitment to ship it: the issue
+confirms its later rounds again before they start.
+
+Where the track meets the phases above:
+
+- A5 adds a scope field to the readout record of step 1.2, not a second
+  labelling system.
+- G1 is the first estimator of Phase 4: spot size and Rayleigh range from a
+  beam parameter propagated along the path.
+- P6 supplies the phase-matching angles of the calculator backlog. Its
+  conversion factor is relative (decision 8 below); the undepleted SHG
+  efficiency of Phase 4 waits for G1 and G3.
+- A step that adds a field to the ray record states what a child ray inherits
+  at each kind of interaction, as step 0.6 asks.
+
+### Decisions
+
+1. **The workbench stays 2D**, as the README states.
+2. **Two out-of-plane quantities enter as numbers or settings, never as
+   geometry:** a crystal optic axis perpendicular to the drawing plane, and
+   the out-of-plane Gaussian beam size, shown only when it differs noticeably
+   from the in-plane size. (s polarization is out of the plane by
+   definition.)
+3. **Accuracy first.** A correction that changes readouts in existing scenes
+   is accepted when it makes the physics more accurate. The golden diff is
+   explained in the pull request, and the release notes on GitHub list the
+   change under "Changes to existing setups", as for v1.1.0.
+4. **Third-party data** carry an open licence, cite their primary source and
+   state whether that source is open access. The rule is the "Third-party
+   data" section of `docs/adding-physics.md`.
+5. **Handedness of circular polarization** follows Born and Wolf:
+   right-handed when the field rotates clockwise as seen looking towards the
+   source. Step A2 fixes the basis and corrects the circular labels, which
+   until then are the opposite of this convention.
+6. **Light split by a birefringent element** is treated as two mutually
+   incoherent beams in the first version, and the readout says so. The two
+   beams leave the element orthogonally polarized, and the sum of their
+   powers is exact for as long as they stay orthogonal where they overlap.
+   Anything that depends on their relative phase is not modelled in this
+   version: the polarization state where the two overlap, and their
+   interference once later elements have given them a common polarization
+   component, whether one element acts on both or separate elements act on
+   each. The app warns in those cases. Coherent recombination may follow
+   later.
+7. **Refracting surfaces keep today's settings:** prisms apply Fresnel
+   transmission; other glass elements keep their per-surface transmission. A
+   "bare glass (Fresnel)" choice is added where it is missing.
+8. **Phase matching reports a relative conversion factor.** An absolute
+   efficiency comes only after G1 and G3, labelled with its assumptions.
+9. **Lasers are drawn as rays by default;** the beam envelope is an option
+   per source.
+10. **Beam-height changes and vertical folds** are a documented limit, noted
+    on the mirror element and in the wiki.
+11. **The lens designer keeps its skew-ray trace;** the canvas stays
+    meridional.
+
+The issue also states the three conditions under which a 2D trace gives the
+same result as a 3D trace of the same optical model, and what stays out of
+scope.
+
 ## Order and parallel work
 
 1. Phase 0, including the coverage inventory (0.4), the inheritance rules
