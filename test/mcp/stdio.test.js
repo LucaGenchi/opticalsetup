@@ -8,7 +8,8 @@ import { once } from 'node:events';
 import { PassThrough, Writable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { serveStdio } from '../../mcp/stdio.js';
-import { createApplication } from '../../mcp/server.js';
+import { createServer } from 'node:http';
+import { createApplication, freePort, sameService } from '../../mcp/server.js';
 
 const SERVER = fileURLToPath(new URL('../../mcp/server.js', import.meta.url));
 const line = message => JSON.stringify(message) + '\n';
@@ -137,7 +138,8 @@ const viewOrigin = async service => {
 };
 
 test('started with --stdio the service speaks MCP on its standard streams, serves the view its files, and leaves when its input closes', async () => {
-  const service = start({ MCP_DIAGNOSTICS: '1' });
+  // A port of its own, so that a copy already running on this machine is not the one that answers.
+  const service = start({ MCP_DIAGNOSTICS: '1', PORT: String(await freePort()) });
   try {
     const initialized = await service.request('initialize', { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'claude-ai', version: '1' } });
     assert.equal(initialized.result.serverInfo.name, 'OpticalSetup');
@@ -172,22 +174,84 @@ test('started with --stdio the service speaks MCP on its standard streams, serve
   } finally { service.child.kill('SIGKILL'); }
 });
 
-test('a second copy takes another port instead of failing to start', async () => {
-  const first = start();
+const call = async (service, name, args) => (await service.request('tools/call', { name, arguments: args })).result;
+
+test('a second copy on the same machine passes its calls to the first, so a view and the chat meet in one place', async () => {
+  const PORT = String(await freePort());
+  const first = start({ PORT });
   let second;
   try {
-    const firstOrigin = await viewOrigin(first);
-    second = start();
-    const secondOrigin = await viewOrigin(second);
-    assert.ok(firstOrigin && secondOrigin);
-    assert.notEqual(firstOrigin, secondOrigin);
-    for (const origin of [firstOrigin, secondOrigin]) assert.equal((await fetch(origin + '/mcp/health')).status, 200);
-    assert.deepEqual([await first.end(), await second.end()], [0, 0]);
+    const origin = await viewOrigin(first);
+    assert.equal(origin, 'http://127.0.0.1:' + PORT);
+    second = start({ PORT });
+    // Whichever copy a client asks for the view, it is the view of the one service.
+    assert.equal(await viewOrigin(second), origin);
+    assert.match(second.errors(), /passing its calls to the copy already running at http:\/\/127\.0\.0\.1:\d+\/mcp/);
+    assert.doesNotMatch(second.errors(), /view files at/, 'the second copy opens no listener of its own');
+    assert.deepEqual((await second.request('ping')).result, {});
+    second.notify('notifications/initialized');
+    // A workbench opened through the second copy is expected by the first: it waits for that view
+    // instead of answering that it has never heard of the reference.
+    const opened = await call(second, 'open_setup', {});
+    const reference = opened.structuredContent.workspaceRef;
+    assert.match(reference, /^[a-f0-9]{64}$/);
+    const unknown = await call(first, 'get_setup', { workspaceRef: 'f'.repeat(64) });
+    assert.match(unknown.content[0].text, /wait for it to reconnect/);
+    const expected = await call(first, 'get_setup', { workspaceRef: reference });
+    assert.match(expected.content[0].text, /No workbench view has connected for this reference yet/);
+    // An explicit setup is edited through either copy alike.
+    const setup = opened._meta.opticalsetup.setup;
+    const edited = await call(second, 'add_components', { setup, clientRequestId: 'shared-1', components: [{ type: 'lens', x: 0, y: 0 }] });
+    assert.equal(edited.structuredContent.setup.scene.elements.length, 1);
+    for (const text of second.lines) assert.equal(JSON.parse(text).jsonrpc, '2.0', 'the output carries MCP messages and nothing else');
+    assert.deepEqual([await second.end(), await first.end()], [0, 0]);
   } finally { first.child.kill('SIGKILL'); second?.child.kill('SIGKILL'); }
 });
 
+test('when the first copy goes, the second takes its place at the same address', async () => {
+  const PORT = String(await freePort());
+  const first = start({ PORT });
+  let second;
+  try {
+    const origin = await viewOrigin(first);
+    second = start({ PORT });
+    assert.equal(await viewOrigin(second), origin);
+    assert.equal(await first.end(), 0);
+    await assert.rejects(fetch(origin + '/mcp/health'), 'nothing answers at the address for a moment');
+    // The next call finds the first copy gone, and is answered all the same.
+    const tools = (await second.request('tools/list')).result.tools.map(tool => tool.name);
+    assert.ok(tools.includes('open_setup'));
+    assert.match(second.errors(), /view files at http:\/\/127\.0\.0\.1:\d+\/mcp/);
+    assert.equal((await fetch(origin + '/mcp/health')).status, 200, 'a view opened from the first copy finds a service where it looks');
+    assert.equal(await viewOrigin(second), origin);
+    // Several calls arriving together while the first copy is gone are all answered, by one listener.
+    const third = start({ PORT });
+    try {
+      assert.equal(await viewOrigin(third), origin);
+      assert.equal(await second.end(), 0);
+      const answers = await Promise.all([third.request('ping'), third.request('tools/list'), third.request('ping')]);
+      assert.deepEqual(answers.map(answer => Boolean(answer.result)), [true, true, true]);
+      assert.equal((await fetch(origin + '/mcp/health')).status, 200);
+      assert.equal(await third.end(), 0);
+    } finally { third.child.kill('SIGKILL'); }
+  } finally { first.child.kill('SIGKILL'); second?.child.kill('SIGKILL'); }
+});
+
+test('a port held by something that is not this service is not shared: a named port fails to start', async () => {
+  const stranger = createServer((request, response) => { response.writeHead(200, { 'content-type': 'application/json' }); response.end('{"ok":true,"service":"Something else"}'); });
+  await new Promise(done => stranger.listen(0, '127.0.0.1', done));
+  const service = start({ PORT: String(stranger.address().port) });
+  try {
+    const [code] = await once(service.child, 'exit');
+    assert.notEqual(code, 0);
+    assert.match(service.errors(), /EADDRINUSE/);
+    assert.equal(service.lines.length, 0, 'nothing was written where MCP messages go');
+    assert.equal(await sameService('http://127.0.0.1:' + stranger.address().port), false);
+  } finally { service.child.kill('SIGKILL'); stranger.close(); }
+});
+
 test('a burst of large answers followed at once by the end of the input arrives whole', async () => {
-  const child = spawn(process.execPath, [SERVER, '--stdio'], { env: { PATH: process.env.PATH }, stdio: ['pipe', 'pipe', 'ignore'] });
+  const child = spawn(process.execPath, [SERVER, '--stdio'], { env: { PATH: process.env.PATH, PORT: String(await freePort()) }, stdio: ['pipe', 'pipe', 'ignore'] });
   try {
     let text = '';
     // Read slowly, so that the answers wait in the service while the input is already closed.

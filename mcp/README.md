@@ -20,9 +20,17 @@ needed to start the service.
 A client that starts its MCP servers itself can run the service with
 `node mcp/server.js --stdio`. It then speaks MCP on its standard input and
 output and logs to standard error. The loopback listener still runs, because
-the view loads its files and its live channel from it. If port 5188 is taken,
-a service started this way takes a free port instead; set `PORT` to insist on
-one.
+the view loads its files and its live channel from it.
+
+A client may start the service more than once; Claude Desktop starts two
+copies for one chat, one that hands it the view and one that takes its tool
+calls. Workbenches live in the memory of one process, so only the first copy
+on a machine keeps them. A copy started with `--stdio` that finds this
+service already on its port (5188, or the one `PORT` names) opens no listener
+and passes every message to that copy. If that copy goes away, the next call
+makes this one take its place at the same address; the views then register
+again, as after a restart. If something else holds port 5188, the service
+takes a free port instead. With `PORT` set it does not: it fails to start.
 
 The PNG screenshot tool needs Linux with a tmpfs at `/dev/shm` and FFmpeg
 with SVG input support. Where either is missing (macOS, for one) the service

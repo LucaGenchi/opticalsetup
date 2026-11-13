@@ -125,6 +125,23 @@ export function freePort() {
     socket.listen(0, '127.0.0.1', () => { const { port } = socket.address(); socket.close(() => found(port)); });
   });
 }
+// Whether the service at a loopback origin is a copy of this one, at this version.
+export async function sameService(origin) {
+  try {
+    const health = await (await fetch(origin + '/mcp/health', { signal: AbortSignal.timeout(1500) })).json();
+    return health.ok === true && health.service === 'OpticalSetup' && health.version === VERSION;
+  } catch { return false; }
+}
+// One JSON-RPC message answered by the copy at that origin. It throws when that copy does not answer as this service does.
+export function forwardRpc(origin) {
+  return async body => {
+    const response = await fetch(origin + '/mcp', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
+    if (response.status === 202) return null;
+    const answer = await response.json();
+    if (Array.isArray(answer) ? !answer.length : answer?.jsonrpc !== '2.0') throw new Error('Not an MCP answer');
+    return answer;
+  };
+}
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   // With --stdio a client starts this service itself and speaks MCP over its standard streams.
   // The view still needs its files and its live channel, so the loopback listener runs as well.
@@ -136,28 +153,50 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     const origin = process.env.PUBLIC_ORIGIN || `http://127.0.0.1:${port}`;
     if (process.env.NODE_ENV === 'production' && !origin.startsWith('https://')) throw new Error('Production requires an HTTPS origin');
     const application = createApplication({ origin, challenge: process.env.OPENAI_APPS_CHALLENGE, revision: process.env.DEPLOY_REVISION || 'local', screenshots });
-    return { origin, application, server: await listen(application, { port }) };
+    const server = await listen(application, { port });
+    console.log(`OpticalSetup MCP ${stdio ? 'on standard input and output, view files' : 'listening'} at ${origin}/mcp; no scene database; PNG tool ${screenshots ? 'available' : 'not offered (needs Linux tmpfs and FFmpeg)'}`);
+    return { origin, application, server };
   };
   const asked = Number(process.env.PORT || 5188);
-  let running;
+  // `running` is this copy's own service. `shared` is the address of another copy on this machine that
+  // answers for this one: a client can start the service more than once (Claude Desktop does, for one
+  // chat), and a view opened through one copy must be the view the other copy's tool calls reach. So
+  // only the first copy keeps workbenches; a later one passes every message to it.
+  let running, shared, taking;
   try { running = await start(asked || await freePort()); }
   catch (error) {
-    // A second copy (another client, or a service already running by hand) takes a free port instead of failing to start.
-    // A port that was asked for by name is not replaced, and neither is one a public origin points at.
-    if (!stdio || process.env.PORT || process.env.PUBLIC_ORIGIN || error.code !== 'EADDRINUSE') throw error;
-    running = await start(await freePort());
+    if (!stdio || process.env.PUBLIC_ORIGIN || error.code !== 'EADDRINUSE') throw error;
+    const holder = `http://127.0.0.1:${asked}`;
+    if (await sameService(holder)) {
+      shared = forwardRpc(holder);
+      console.log(`OpticalSetup MCP on standard input and output, passing its calls to the copy already running at ${holder}/mcp`);
+    }
+    // Something else holds the port. A port that was asked for by name is not replaced; the usual one is.
+    else if (process.env.PORT) throw error;
+    else running = await start(await freePort());
   }
-  const { origin, application, server } = running;
-  console.log(`OpticalSetup MCP ${stdio ? 'on standard input and output, view files' : 'listening'} at ${origin}/mcp; no scene database; PNG tool ${screenshots ? 'available' : 'not offered (needs Linux tmpfs and FFmpeg)'}`);
+  // When the copy it relied on has gone, this one takes its place at the same address, where the views
+  // opened from that copy look for the service. If yet another copy got there first, that one answers.
+  const takeOver = () => taking ??= start(asked).then(own => { running = own; }, error => { taking = undefined; if (error.code !== 'EADDRINUSE') throw error; });
+  const rpc = async body => {
+    if (running) return running.application.rpc(body);
+    try { return await shared(body); }
+    catch {
+      await takeOver();
+      return running ? running.application.rpc(body) : shared(body);
+    }
+  };
+  const close = () => { running?.application.close(); running?.server.close(); };
   for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, () => {
-    application.close(); server.close(() => process.exit(0));
-    setTimeout(() => { server.closeAllConnections(); process.exit(0); }, 5000).unref();
+    close(); if (!running) process.exit(0);
+    running.server.once('close', () => process.exit(0));
+    setTimeout(() => { running.server.closeAllConnections(); process.exit(0); }, 5000).unref();
   });
   // The client ends a stdio service by closing its input. By then every answer has been written out;
   // the listener and its connections are closed and the process ends by itself, which cannot cut
   // anything short. The timer is only for a handle that would otherwise keep it alive.
-  if (stdio) serveStdio(application.rpc).then(() => {
-    application.close(); server.close(); server.closeAllConnections();
+  if (stdio) serveStdio(rpc).then(() => {
+    close(); running?.server.closeAllConnections();
     setTimeout(() => process.exit(0), 2000).unref();
   });
 }
