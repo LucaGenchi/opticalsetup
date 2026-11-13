@@ -75,7 +75,7 @@ export const REBUILD_ON_COMMIT_KEYS = [
   'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode',
   'extension', 'immersion', 'preset', 'material', 'showDepleted', 'modMode',
   'measurementMode', 'prop', 'sync', 'sourceKind', 'shape', 'scaleBar', 'connectors',
-  'scaleBarDirection', 'diffraction', 'aim', 'showImage',
+  'scaleBarDirection', 'diffraction', 'aim', 'showImage', 'raysFrom',
 ];
 
 // A param is presentation when it says so, or -- for one that is physical in

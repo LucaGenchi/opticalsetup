@@ -1,0 +1,245 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// The Object's principal rays: three textbook construction rays from the tip,
+// drawn lens by lens from each lens's object to its image.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import { createElement, registry } from '../sketch/js/elements.js';
+import { objectImageReading, traceScene } from '../sketch/js/raytrace.js';
+import { parseSketch } from '../sketch/js/state.js';
+
+const near = (a, b, tol, label) => assert.ok(Math.abs(a - b) <= tol, `${label}: ${a} vs ${b} (tolerance ${tol})`);
+const lensAt = (x, f) => {
+  const lens = createElement('lens', x, 0);
+  lens.params.f = f;
+  return lens;
+};
+const objectAt = (x, y = 0, height = 22) => {
+  const object = createElement('objarrow', x, y);
+  Object.assign(object.params, { height, raysFrom: 'principal' });
+  return object;
+};
+// The drawing styles the image block gives the construction.
+const solid = r => r.drawables.filter(d => d.type === 'path' && d.w === 1.8 && d.opacity === 0.9 && !d.dash);
+const dashed = r => r.drawables.filter(d => d.type === 'path' && d.w === 1.4 && d.dash === '5 4');
+const planes = r => r.drawables.filter(d => d.type === 'path' && d.color === '#94a3b8' && d.dash === '3 3');
+const distanceToLine = (p, a, b) => {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  return Math.abs((p.x - a.x) * dy - (p.y - a.y) * dx) / Math.hypot(dx, dy);
+};
+// Whether a polyline passes through p (on one of its segments, within tol).
+const passes = (pts, p, tol = 1e-9) => pts.slice(1).some((b, i) => {
+  const a = pts[i];
+  const t = ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / ((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
+  return t >= -1e-12 && t <= 1 + 1e-12 && distanceToLine(p, a, b) <= tol;
+});
+const allFinite = r => r.drawables.every(d => (d.pts || []).every(p => Number.isFinite(p.x) && Number.isFinite(p.y)));
+
+test('one lens: the three rays have their textbook properties and meet at the image tip', () => {
+  // Tip at y = −11 (up is −y), 300 mm before a 100 mm lens: image 150 mm
+  // after it, half size, inverted, so its tip is at (450, +5.5).
+  const object = objectAt(0);
+  const result = traceScene([object, lensAt(300, 100)], []);
+  const rays = solid(result);
+  assert.equal(rays.length, 3);
+  assert.equal(result.paths.filter(r => r.sourceId === object.id).length, 0, 'principal rays are drawn, not traced');
+  const tip = { x: 450, y: 5.5 };
+  for (const ray of rays) {
+    near(ray.pts[0].x, 0, 1e-9, 'starts at the tip x');
+    near(ray.pts[0].y, -11, 1e-9, 'starts at the tip y');
+    assert.ok(passes(ray.pts, tip), `meets at the image tip: ${JSON.stringify(ray.pts)}`);
+    near(ray.pts[1].x, 300, 1e-9, 'bends at the lens');
+  }
+  const [parallel, chief, focal] = rays;
+  near(parallel.pts[1].y, -11, 1e-9, 'parallel ray stays at the tip height');
+  assert.ok(passes(parallel.pts, { x: 400, y: 0 }), 'parallel ray then crosses the back focal point');
+  near(chief.pts[1].y, 0, 1e-9, 'chief ray meets the lens centre');
+  near(distanceToLine(chief.pts[2], chief.pts[0], chief.pts[1]), 0, 1e-9, 'chief ray is undeviated');
+  assert.ok(passes(focal.pts, { x: 200, y: 0 }), 'focal ray crosses the front focal point');
+  near(focal.pts[2].y, focal.pts[1].y, 1e-9, 'focal ray leaves parallel to the axis');
+  assert.equal(dashed(result).length, 0, 'a real image needs no dashed line');
+  assert.equal(planes(result).length, 0, 'every ray meets the 25.4 mm lens inside its glass');
+});
+
+test('a virtual image: rays diverge and dashed lines lead back to the upright image', () => {
+  // 60 mm before a 100 mm lens: virtual image 150 mm before the lens,
+  // 2.5× and upright, its tip at (−90, −27.5).
+  const object = objectAt(0);
+  const result = traceScene([object, lensAt(60, 100)], []);
+  assert.equal(solid(result).length, 3);
+  const back = dashed(result);
+  assert.equal(back.length, 3);
+  for (const d of back) {
+    near(d.pts.at(-1).x, -90, 1e-9, 'dashed to the virtual tip x');
+    near(d.pts.at(-1).y, -27.5, 1e-9, 'dashed to the virtual tip y');
+  }
+  assert.equal(objectImageReading(object.id).stages[0].real, false);
+  // The focal ray meets the lens plane at −27.5, beyond the 12.7 mm rim.
+  const ext = planes(result);
+  assert.equal(ext.length, 1);
+  near(ext[0].pts[0].y, -12.7, 1e-9, 'extension starts at the rim');
+  near(ext[0].pts[1].y, -27.5, 1e-9, 'and reaches the ray');
+});
+
+test('two lenses: each lens gets its own three rays, from its object to its image', () => {
+  // Image 1 at (450, +5.5); 150 mm before lens 2 (f 100) at 600, so image 2
+  // is 300 mm after it at (900, −11), upright overall.
+  const object = objectAt(0);
+  const result = traceScene([object, lensAt(300, 100), lensAt(600, 100)], []);
+  const rays = solid(result);
+  assert.equal(rays.length, 6);
+  const image1 = { x: 450, y: 5.5 }, image2 = { x: 900, y: -11 };
+  for (const ray of rays.slice(0, 3)) {
+    const end = ray.pts.at(-1);
+    near(end.x, image1.x, 1e-9, 'lens 1 rays end at image 1');
+    near(end.y, image1.y, 1e-9, 'lens 1 rays end at image 1');
+  }
+  for (const ray of rays.slice(3)) {
+    near(ray.pts[0].x, image1.x, 1e-9, 'lens 2 rays start at image 1');
+    near(ray.pts[0].y, image1.y, 1e-9, 'lens 2 rays start at image 1');
+    near(ray.pts[1].x, 600, 1e-9, 'and bend at lens 2');
+    assert.ok(passes(ray.pts, image2), 'lens 2 rays meet at image 2');
+  }
+  near(rays[4].pts[1].y, 0, 1e-9, 'lens 2 chief ray through its centre');
+});
+
+test('an object in the front focal plane: two parallel rays, then two rays into the next lens focus', () => {
+  // Lens 1 at 100 (f 100) collimates the tip; lens 2 at 300 (f 100) images
+  // it in its back focal plane at (400, +11). No ray leaves lens 1 parallel to
+  // the axis, and none reaches lens 2 parallel to the axis.
+  const object = objectAt(0);
+  const result = traceScene([object, lensAt(100, 100), lensAt(300, 100)], []);
+  const rays = solid(result);
+  assert.equal(rays.length, 4);
+  const slope = ray => (ray.pts.at(-1).y - ray.pts.at(-2).y) / (ray.pts.at(-1).x - ray.pts.at(-2).x);
+  near(slope(rays[0]), slope(rays[1]), 1e-12, 'lens 1 sends both rays out parallel');
+  for (const ray of rays.slice(2)) assert.ok(passes(ray.pts, { x: 400, y: 11 }), 'lens 2 rays meet in its focal plane');
+  // With no real image to start from, lens 2's rays arrive over the second
+  // half of the gap, not out of lens 1's plane.
+  for (const ray of rays.slice(2)) near(ray.pts[0].x, 200, 1e-9, 'lens 2 rays start mid-gap');
+  // Lens 1's chief ray reaches lens 2's plane at +22, past its 12.7 mm rim:
+  // that plane is drawn on to it.
+  const ext = planes(result).map(p => p.pts.map(q => [q.x, Number(q.y.toFixed(9))]));
+  assert.deepEqual(ext, [[[300, 12.7], [300, 22]]]);
+});
+
+test('a virtual object: lens 1 aims past lens 2 (dashed), lens 2 rays meet at its image', () => {
+  // Image 1 would form at (450, +5.5), 50 mm beyond lens 2 at 400 (f 100):
+  // a virtual object, imaged at 33.3 mm after lens 2.
+  const object = objectAt(0);
+  const result = traceScene([object, lensAt(300, 100), lensAt(400, 100)], []);
+  const rays = solid(result);
+  assert.equal(rays.length, 6);
+  const toImage1 = dashed(result);
+  assert.equal(toImage1.length, 3);
+  for (const d of toImage1) {
+    near(d.pts[0].x, 400, 1e-9, 'dashed from lens 2');
+    near(d.pts[1].x, 450, 1e-9, 'to where image 1 would be');
+  }
+  const image2 = { x: 400 + 100 / 3, y: 11 / 3 };
+  for (const ray of rays.slice(3)) {
+    near(ray.pts[0].x, 350, 1e-9, 'lens 2 rays arrive over the second half of the gap');
+    assert.ok(passes(ray.pts, image2, 1e-9), 'and meet at image 2');
+  }
+});
+
+test('a plate before the lens: the rays bend in it and keep their properties at the lens', () => {
+  const object = objectAt(0, 0, 4);
+  const plate = createElement('lensgroup', 150, 0);
+  Object.assign(plate.params, { preset: 'custom', rows: [{ r: 0, thickness: 100, glass: 'nbk7' }, { r: 0, thickness: 4, glass: 'air' }] });
+  const result = traceScene([object, plate, lensAt(300, 100)], []);
+  const rays = solid(result);
+  assert.equal(rays.length, 3);
+  const [parallel, chief, focal] = rays;
+  for (const ray of rays) {
+    near(ray.pts[0].x, 0, 1e-9, 'starts at the real tip');
+    near(ray.pts[0].y, -2, 1e-9, 'starts at the real tip');
+  }
+  const atLens = ray => ray.pts.find(p => Math.abs(p.x - 300) < 1e-9);
+  near(atLens(chief).y, 0, 1e-9, 'chief ray meets the lens centre through the plate');
+  near(atLens(parallel).y, -2, 1e-9, 'parallel ray reaches the lens at the tip height');
+  near(focal.pts.at(-1).y, focal.pts.at(-2).y, 1e-9, 'focal ray leaves parallel');
+  // The rays meet at the drawn image tip, which the plate has moved.
+  const image = rays.map(r => r.pts.at(-2));
+  near(image[0].x, image[1].x, 1e-9, 'parallel and chief meet');
+  near(image[0].y, image[1].y, 1e-9, 'parallel and chief meet');
+  // A plate carries rays without bending them: the slope inside differs
+  // from outside, and it is the same on both sides.
+  const slope = (a, b) => (b.y - a.y) / (b.x - a.x);
+  const [p0, p1, p2, p3] = chief.pts;
+  assert.ok(Math.abs(slope(p1, p2)) < Math.abs(slope(p0, p1)), 'flatter inside the glass');
+  near(slope(p0, p1), slope(p2, p3), 1e-9, 'same slope either side of the plate');
+});
+
+test('a thick lens: rays cross between its principal planes at constant height, both planes drawn', () => {
+  const object = objectAt(0, 0, 10);
+  const thick = createElement('thicklens', 300, 0);
+  const result = traceScene([object, thick], []);
+  const rays = solid(result);
+  assert.equal(rays.length, 3);
+  for (const ray of rays) near(ray.pts[1].y, ray.pts[2].y, 1e-9, 'same height on H and H′');
+  const ext = planes(result);
+  assert.equal(ext.length, 2, 'H and H′');
+  const reading = objectImageReading(object.id);
+  assert.equal(reading.stages.length, 1);
+  // The three rays meet at the drawn image tip (the arrowhead's first point).
+  const tip = result.drawables.find(d => d.type === 'poly' && d.opacity === 0.85).pts[0];
+  for (const ray of rays) assert.ok(passes(ray.pts, tip, 1e-9), 'meets at the drawn image tip');
+});
+
+test('with no lens, with rays off, or before the option existed: no principal rays', () => {
+  const alone = objectAt(0);
+  const none = traceScene([alone], []);
+  assert.equal(solid(none).length + dashed(none).length + planes(none).length, 0);
+  assert.deepEqual(registry.objarrow.source(alone, { surfaces: [] }), [], 'no traced fan either');
+
+  const off = objectAt(0);
+  off.params.raysMode = 'none';
+  assert.equal(solid(traceScene([off, lensAt(300, 100)], [])).length, 0);
+
+  const saved = { app: 'optics2d', version: 1, beams: [], elements: [{ id: 'o', type: 'objarrow', x: 0, y: 0, rot: 0, params: { height: 20 } }] };
+  assert.equal(parseSketch(JSON.stringify(saved), registry).elements[0].params.raysFrom, 'axis');
+});
+
+test('the principal rays draw without the image marker, and hide the fan controls', () => {
+  const object = objectAt(0);
+  object.params.showImage = false;
+  const result = traceScene([object, lensAt(300, 100)], []);
+  assert.equal(solid(result).length, 3);
+  assert.equal(result.drawables.filter(d => d.opacity === 0.85).length, 0, 'no image marker');
+  const shown = key => registry.objarrow.params.find(p => p.key === key).show(object.params);
+  assert.equal(shown('aim'), false);
+  assert.equal(shown('nrays'), false);
+  assert.equal(shown('spread'), false);
+  object.params.raysFrom = 'tip';
+  assert.equal(shown('aim'), true);
+  assert.equal(shown('nrays'), true);
+});
+
+test('edge cases stay finite: tip on the lens axis, object just off the focal plane, tilted lens', () => {
+  const onAxis = objectAt(0, 11);
+  const r1 = traceScene([onAxis, lensAt(300, 100)], []);
+  assert.ok(allFinite(r1));
+  assert.ok(solid(r1).length >= 1);
+
+  const nearFocus = objectAt(200 - 1e-4);
+  const r2 = traceScene([nearFocus, lensAt(300, 100)], []);
+  assert.ok(allFinite(r2));
+  for (const ray of [...solid(r2), ...dashed(r2)]) {
+    for (let i = 1; i < ray.pts.length; i++) {
+      assert.ok(Math.hypot(ray.pts[i].x - ray.pts[i - 1].x, ray.pts[i].y - ray.pts[i - 1].y) <= 6000 + 1e-6, 'segments capped');
+    }
+  }
+
+  const tilted = lensAt(300, 100);
+  tilted.rot = 20;
+  const object = objectAt(0);
+  const r3 = traceScene([object, tilted], []);
+  assert.ok(allFinite(r3));
+  const rays = solid(r3);
+  assert.equal(rays.length, 3);
+  const meet = rays[0].pts.at(-2);
+  for (const ray of rays.slice(1)) assert.ok(passes(ray.pts, meet, 1e-6), 'the three still meet with a tilted lens');
+});

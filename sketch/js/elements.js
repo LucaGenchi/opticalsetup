@@ -1021,10 +1021,18 @@ export function objectBaseFanColor(p) {
 // lies on a line through the origin itself.
 const OBJECT_FAN_START_MM = 1;
 
+// A traced fan: every ray option except the principal rays, which the image
+// construction draws lens by lens.
+function objectTracesFan(p) {
+  return p.raysMode === 'fan' && p.raysFrom !== 'principal';
+}
+
 // The fan angle is set by hand only for a fan pointing straight ahead.
 function objectShowsFanAngle(p) {
-  return p.raysMode === 'fan' && p.aim !== 'optic';
+  return objectTracesFan(p) && p.aim !== 'optic';
 }
+
+const OBJECT_PRINCIPAL_NOTE = 'Three construction rays from the tip for each lens on the axis, from its object to its image: parallel then through the focus, through the centre, through the front focus then parallel. Drawn, not traced: nothing in the scene stops them. Dashed: a virtual image. Grey dashes: a lens plane drawn on past the glass, or a thick lens’s principal planes.';
 
 const signedText = (v, digits) => v.toFixed(digits).replace('-', '−');
 const mmText = v => `${Number(Math.abs(v).toPrecision(4))} mm`;
@@ -5946,13 +5954,14 @@ export const registry = {
       // middle straight ahead), so an old sketch keeps its look.
       { key: 'raysMode', label: 'Rays', type: 'select', def: 'fan', options: [['fan', 'Show ray fan'], ['none', 'No rays']] },
       { key: 'raysFrom', label: 'Rays from', type: 'select', def: 'tip',
-        options: [['tip', 'Tip'], ['tipBase', 'Tip and base'], ['axis', 'Axis']],
-        show: p => p.raysMode === 'fan', migrate: () => 'axis' },
+        options: [['tip', 'Tip'], ['tipBase', 'Tip and base'], ['axis', 'Axis'], ['principal', 'Principal rays']],
+        show: p => p.raysMode === 'fan', migrate: () => 'axis',
+        note: p => (p.raysFrom === 'principal' ? OBJECT_PRINCIPAL_NOTE : '') },
       { key: 'aim', label: 'Aim', type: 'select', def: 'optic',
         options: [['optic', 'First optic'], ['ahead', 'Ahead']],
-        show: p => p.raysMode === 'fan', migrate: () => 'ahead' },
+        show: objectTracesFan, migrate: () => 'ahead' },
       { key: 'spread', label: 'Fan angle (°)', type: 'number', min: 1, max: 40, step: 1, def: 10, show: objectShowsFanAngle },
-      { key: 'nrays', label: 'Rays per fan', type: 'number', min: 2, max: 21, step: 1, def: 3, show: p => p.raysMode === 'fan' },
+      { key: 'nrays', label: 'Rays per fan', type: 'number', min: 2, max: 21, step: 1, def: 3, show: objectTracesFan },
       { key: 'showImage', label: 'Draw image formed', type: 'checkbox', def: true },
       // Where each image forms, read from the trace's own image construction.
       { key: 'imageReadout', label: 'Image', type: 'readout', wide: true, show: p => p.showImage,
@@ -5978,7 +5987,8 @@ export const registry = {
     // fan is aimed at; without it an aimed fan points straight ahead.
     source(el, scene = {}) {
       const p = el.params;
-      if (p.raysMode !== 'fan') return [];
+      // Principal rays are drawn by the image construction, not traced.
+      if (!objectTracesFan(p)) return [];
       const n = Math.max(2, Math.round(p.nrays)), out = [];
       const from = p.raysFrom || 'axis', aim = p.aim || 'ahead';
       if (from === 'axis' && aim === 'ahead') {
@@ -6739,7 +6749,7 @@ const ELEMENT_HELP = {
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
   ledsource: 'Emits a collimated beam of incoherent light from an LED behind its own collimator, with an illustrative single-colour or two-band white spectrum. It never interferes, and its residual divergence is not modelled.',
   pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp. Any optical element within the capture range catches its rays and acts on them as on any light; a lens, a mirror, a fiber tip or a detector collects them, and after any other optic only the range that is left still counts. Light that nothing catches fades out within a short distance. The range is a drawing convention for how far an isotropic emitter stays visible, not an inverse-square calculation. A parabolic mirror with the source at its focus collimates it.',
-  objarrow: 'Traces a ray fan from the object’s tip, from its tip and its base (the base’s fan drawn in a second colour, at the same wavelength), or from its middle on the optical axis, and separately draws an ideal paraxial image through every lens on its axis (thin lenses, objectives, and thick lenses, aspheres and lens groups through their cardinal points), with a readout of where each image forms, its magnification and whether it is real and upright; the image marker does not model downstream clipping or aberrations. The fan is aimed at the central two-thirds of the first lens, glass face or mirror on the object’s axis, narrowed to any slit, iris or stop in front of it, or points straight ahead at a set angle. Keeping off the edge, where rays leave at the steepest angles, helps the lenses after it catch them; a tall object close to the first lens’s focal plane can still send its edge rays past the next lens. The shape (arrow, letter F, tree or star) is centred on the Object’s position.',
+  objarrow: 'Traces a ray fan from the object’s tip, from its tip and its base (the base’s fan drawn in a second colour, at the same wavelength), or from its middle on the optical axis, or draws the three textbook principal rays from its tip lens by lens, as a construction that nothing in the scene stops; and it separately draws an ideal paraxial image through every lens on its axis (thin lenses, objectives, and thick lenses, aspheres and lens groups through their cardinal points), with a readout of where each image forms, its magnification and whether it is real and upright; the image marker does not model downstream clipping or aberrations. The fan is aimed at the central two-thirds of the first lens, glass face or mirror on the object’s axis, narrowed to any slit, iris or stop in front of it, or points straight ahead at a set angle. Keeping off the edge, where rays leave at the steepest angles, helps the lenses after it catch them; a tall object close to the first lens’s focal plane can still send its edge rays past the next lens. The shape (arrow, letter F, tree or star) is centred on the Object’s position.',
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',
   galvo: 'Reflects rays from a static or animated ideal quasistatic mechanical scan angle; high scan rates use a slowed preview.',
