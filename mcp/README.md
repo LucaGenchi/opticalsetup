@@ -42,9 +42,9 @@ the earlier workbenches. A client that sends no such header is answered as
 before.
 
 This does not keep a message from a program that is not this service, or
-from a build older than this check, if one takes the port: that program
-receives the one message that finds it there and may act on it; its answer
-is not taken, and nothing more is sent. The view has the same limit, since it loads its files
+from a build older than this check, if one takes the port: messages already
+on their way may reach it, and it may act on them. Their answers are not
+taken, and once the mismatch is detected nothing more is sent. The view has the same limit, since it loads its files
 and its live channel from that port.
 
 A copy that relies on another one never takes its place. If a call is not
