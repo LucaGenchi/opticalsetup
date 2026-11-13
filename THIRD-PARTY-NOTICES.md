@@ -66,6 +66,19 @@ straight two-point baseline subtracted, and min–max scaled to 0–1000.
   name each ROD entry and its contributors. Only spectra contributed to ROD
   directly are used, not the RRUFF spectra it also republishes.
 
+## Verdet constants
+
+The material catalogue (`sketch/js/materials/catalogue.js`) ships the
+Verdet constant of terbium gallium garnet (TGG) as the parameters of a
+single-transition model, F = 820.3 rad/(T·m), G = −6.2 rad/(T·m) and
+λ₀ = 239.3 nm, taken unchanged from Table 2 of D. Vojna, O. Slezák,
+A. Lucianetti and T. Mocek, "Verdet constant of magneto-active materials
+developed for high-power Faraday devices", *Applied Sciences* 9, 3160
+(2019), doi:10.3390/app9153160. Licensed under CC BY 4.0,
+https://creativecommons.org/licenses/by/4.0/. The catalogue adds the sign,
+negative as O. Slezák et al., *Optical Materials Express* 6, 3683 (2016)
+state for TGG, from whose Table 2 the parameters come.
+
 ## Fluorophore spectra
 
 The fluorescence calculator ships measured excitation and emission spectra
