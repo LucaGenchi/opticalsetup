@@ -31,10 +31,26 @@ opens no listener and passes every message to that copy. The build is a
 digest of the service's and the editor's files, which `/mcp/health` reports
 as `build`; the version number alone does not tell two checkouts apart.
 
-A copy that relies on another one never takes its place. If a call does not
-get through while that copy is still there, the call fails with a message
-that it may have been carried out all the same: read the setup before
-repeating it. If that copy has gone, or another program holds its port,
+What a relying copy checks is the build, on every message, not the process.
+Each message it passes on names its build in an `x-opticalsetup-build`
+header. A service of another build refuses such a message before reading it
+(HTTP 409), and every answer on `/mcp` carries the build that gave it; an
+answer without the same build is not taken. So if another build of this
+service takes the port between two calls, it carries nothing out. A copy of
+the same build that took the port is used as the first was; it holds none of
+the earlier workbenches. A client that sends no such header is answered as
+before.
+
+This does not keep a message from a program that is not this service, or
+from a build older than this check, if one takes the port: that program
+receives the one message that finds it there and may act on it; its answer
+is not taken, and nothing more is sent. The view has the same limit, since it loads its files
+and its live channel from that port.
+
+A copy that relies on another one never takes its place. If a call is not
+answered by its build while that build still holds the port, the call fails
+with a message that it may have been carried out all the same: read the
+setup before repeating it. If the port is empty or held by anything else,
 nothing more is sent, and every call fails with a message to restart the
 client that started OpticalSetup. For Claude Desktop that is the app itself,
 which starts and ends both copies together.

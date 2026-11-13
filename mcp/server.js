@@ -17,6 +17,8 @@ import { serveStdio } from './stdio.js';
 const MAX_BODY = 950000;
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...headers } });
 const LOOPBACK = ['127.0.0.1', 'localhost', '[::1]'];
+// Names a build of this service on a call to /mcp: the one the caller expects, and the one that answered.
+const BUILD_HEADER = 'x-opticalsetup-build';
 // Claude serves a view from a sandbox origin named by a hash of the connector URL.
 const CLAUDE_SANDBOX = /^https:\/\/[a-f0-9]{16,64}\.claudemcpcontent\.com$/;
 export function createApplication({ origin, challenge = '', computeScene = compute, revision = 'local', build = '', screenshots = true, mirrorOptions }) {
@@ -77,13 +79,17 @@ export function createApplication({ origin, challenge = '', computeScene = compu
       return new Response('Not found', { status: 404 });
     }
     if (request.method !== 'POST' || url.pathname !== '/mcp') return new Response('Not found', { status: 404 });
-    if (!request.headers.get('content-type')?.startsWith('application/json')) return json({ error: 'JSON required' }, 415);
+    // Every answer on /mcp names the build that gave it. A caller that names the build it expects is
+    // answered by that build only: another one refuses the message before reading it.
+    const named = build ? { [BUILD_HEADER]: build } : {}, expected = request.headers.get(BUILD_HEADER);
+    if (expected !== null && expected !== build) return json({ error: 'Another build of OpticalSetup answers here' }, 409, named);
+    if (!request.headers.get('content-type')?.startsWith('application/json')) return json({ error: 'JSON required' }, 415, named);
     const bytes = await request.arrayBuffer();
-    if (bytes.byteLength > MAX_BODY) return json({ error: 'Request too large' }, 413);
+    if (bytes.byteLength > MAX_BODY) return json({ error: 'Request too large' }, 413, named);
     let body;
-    try { body = JSON.parse(new TextDecoder().decode(bytes)); } catch { return json({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }, 400); }
+    try { body = JSON.parse(new TextDecoder().decode(bytes)); } catch { return json({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }, 400, named); }
     const response = await rpc(body);
-    return response === null ? new Response(null, { status: 202 }) : json(response);
+    return response === null ? new Response(null, { status: 202, headers: named }) : json(response, 200, named);
   };
   application.close = () => { draining = true; mirror.close(); relay.close(); };
   application.rpc = rpc;
@@ -151,10 +157,14 @@ export async function sameService(origin, build) {
     return health.ok === true && health.service === 'OpticalSetup' && health.version === VERSION && Boolean(build) && health.build === build;
   } catch { return false; }
 }
-// One JSON-RPC message answered by the copy at that origin. It throws when that copy does not answer as this service does.
-export function forwardRpc(origin) {
+// One JSON-RPC message answered by the copy of that build at that origin. The message names the
+// build, so another build of this service refuses it unread, and an answer counts only if it names
+// the same build. It throws when the answer is not that copy's.
+export function forwardRpc(origin, build) {
+  if (!build) throw new Error('A build is needed to pass messages on');
   return async body => {
-    const response = await fetch(origin + '/mcp', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
+    const response = await fetch(origin + '/mcp', { method: 'POST', headers: { 'content-type': 'application/json', [BUILD_HEADER]: build }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
+    if (response.headers.get(BUILD_HEADER) !== build) throw new Error('Not an answer of this build');
     if (response.status === 202) return null;
     const answer = await response.json();
     if (Array.isArray(answer) ? !answer.length : answer?.jsonrpc !== '2.0') throw new Error('Not an MCP answer');
@@ -162,11 +172,12 @@ export function forwardRpc(origin) {
   };
 }
 // The messages of a copy that relies on another copy on this machine. `forward` sends one to that
-// copy, and `same` says whether the service at that address is still a copy of this one.
-// A message is sent only to a holder that was confirmed: the one this copy was started against, and
-// after any failure only one that `same` has just confirmed again. Once the address is found empty
-// or held by something else, nothing more is sent, and every request is answered with the reason
-// until the client starts the service again. This copy never takes the other one's place.
+// copy and throws unless the answer is that build's, and `same` says whether the service at that
+// address is still a copy of this build. What is promised is the build, not the process: a copy of
+// the same build that took the address is used as the first was. After a message that was not
+// answered by this build, `same` decides: still this build, and that one call is reported as lost;
+// otherwise nothing more is sent, and every request is answered with the reason until the client
+// starts the service again. This copy never takes the other one's place.
 export function relyOn({ forward, same }) {
   let gone = false;
   const answer = (body, message) => (body && typeof body === 'object' && !Array.isArray(body) && body.id === undefined ? null
@@ -205,7 +216,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     if (!stdio || process.env.PUBLIC_ORIGIN || error.code !== 'EADDRINUSE') throw error;
     const holder = `http://127.0.0.1:${asked}`;
     if (await sameService(holder, build)) {
-      shared = relyOn({ forward: forwardRpc(holder), same: () => sameService(holder, build) });
+      shared = relyOn({ forward: forwardRpc(holder, build), same: () => sameService(holder, build) });
       console.log(`OpticalSetup MCP on standard input and output, passing its calls to the copy already running at ${holder}/mcp`);
     }
     // Something else holds the port, or a copy of this service from another build, which may not behave

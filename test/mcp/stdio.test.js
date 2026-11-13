@@ -9,7 +9,7 @@ import { PassThrough, Writable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { serveStdio } from '../../mcp/stdio.js';
 import { createServer } from 'node:http';
-import { buildIdentity, createApplication, freePort, relyOn, sameService } from '../../mcp/server.js';
+import { buildIdentity, createApplication, forwardRpc, freePort, relyOn, sameService } from '../../mcp/server.js';
 
 const SERVER = fileURLToPath(new URL('../../mcp/server.js', import.meta.url));
 const line = message => JSON.stringify(message) + '\n';
@@ -319,6 +319,77 @@ test('a copy that relies on another one sends a message only to a holder that wa
   assert.deepEqual(answers.map(answer => answer.error.code), [-32603, -32603, -32603]);
   assert.match((await burst.rpc(ping(4))).error.message, /no longer running/);
   assert.equal(burst.log.filter(step => step === 'forward 4').length, 0);
+});
+
+test('a message meant for one build is answered by no other, even by one that takes the address and answers at once', async t => {
+  // The real service and the real forwarding, with the network replaced by a direct call: `holder`
+  // is whatever answers at the address now.
+  const origin = 'http://127.0.0.1:5188', header = 'x-opticalsetup-build';
+  const service = build => { const application = createApplication({ origin, build }); t.after(() => application.close()); return application; };
+  let holder, seen;
+  const real = globalThis.fetch; t.after(() => { globalThis.fetch = real; });
+  globalThis.fetch = async (url, init) => { const response = await holder(new Request(url, init)); seen.push(new URL(url).pathname + ' ' + response.status); return response; };
+  const open = id => ({ jsonrpc: '2.0', id, method: 'tools/call', params: { name: 'open_setup', arguments: {} } });
+  const post = (headers = {}, body = open(9)) => holder(new Request(origin + '/mcp', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) }));
+  const relying = () => { holder = service('build-a'); seen = []; return relyOn({ forward: forwardRpc(origin, 'build-a'), same: () => sameService(origin, 'build-a') }); };
+  assert.throws(() => forwardRpc(origin, ''), /build is needed/, 'a copy that does not know its own build passes nothing on');
+
+  // The service itself: it names its build on every answer, and refuses a message that names another.
+  holder = service('build-a');
+  const plain = await post();
+  assert.equal(plain.status, 200, 'a client that names no build is answered as before');
+  assert.equal(plain.headers.get(header), 'build-a');
+  assert.equal(typeof (await plain.json()).result.structuredContent.workspaceRef, 'string');
+  assert.equal((await post({ [header]: 'build-a' })).status, 200);
+  const note = await post({ [header]: 'build-a' }, { jsonrpc: '2.0', method: 'notifications/initialized' });
+  assert.equal(note.status, 202); assert.equal(note.headers.get(header), 'build-a');
+  const other = await post({ [header]: 'build-b' });
+  assert.equal(other.status, 409); assert.equal(other.headers.get(header), 'build-a');
+  assert.equal((await other.json()).result, undefined, 'the message was not carried out');
+  assert.equal((await post({ [header]: 'build-b' }, 'not a message')).status, 409, 'it is refused before it is read');
+
+  // Another build takes the address between two calls and would answer at once: it refuses the
+  // message, and nothing more is sent.
+  let rpc = relying();
+  assert.equal(typeof (await rpc(open(1))).result.structuredContent.workspaceRef, 'string');
+  assert.deepEqual(seen, ['/mcp 200'], 'while the same build answers, nothing else is asked');
+  holder = service('build-b');
+  assert.equal((await post()).status, 200, 'the other build answers a caller that names no build');
+  const refused = await rpc(open(2));
+  assert.equal(refused.id, 2); assert.equal(refused.error.code, -32603);
+  assert.match(refused.error.message, /no longer running\. Restart the client/);
+  assert.deepEqual(seen, ['/mcp 200', '/mcp 409', '/mcp/health 200'], 'the other build refused the message, and its health settled what holds the address');
+  assert.match((await rpc(open(3))).error.message, /no longer running/);
+  assert.equal(await rpc({ jsonrpc: '2.0', method: 'notifications/initialized' }), null);
+  assert.equal(seen.length, 3, 'nothing was sent after that');
+
+  // Something that does not know the rule (an earlier build, another program) answers at once with
+  // a well-formed result: the answer is not taken, and nothing more is sent.
+  rpc = relying();
+  await rpc(open(1));
+  let reached = 0;
+  holder = async request => (new URL(request.url).pathname === '/mcp'
+    ? (reached++, new Response(JSON.stringify({ jsonrpc: '2.0', id: 2, result: { by: 'stranger' } }), { headers: { 'content-type': 'application/json' } }))
+    : new Response('Not found', { status: 404 }));
+  const untaken = await rpc(open(2));
+  assert.equal(untaken.result, undefined); assert.match(untaken.error.message, /no longer running/);
+  assert.match((await rpc(open(3))).error.message, /no longer running/);
+  assert.equal(reached, 1, 'it received the one message that found it there, and no other');
+
+  // A copy of the same build that took the address is used as the first was.
+  rpc = relying();
+  await rpc(open(1));
+  holder = service('build-a');
+  assert.equal(typeof (await rpc(open(2))).result.structuredContent.workspaceRef, 'string');
+  assert.deepEqual(seen, ['/mcp 200', '/mcp 200']);
+
+  // The same build answering without its name (a failure inside it) loses that call only.
+  rpc = relying();
+  const working = holder; let failing = true;
+  holder = request => (failing && new URL(request.url).pathname === '/mcp' ? new Response('Setup processing failed', { status: 500 }) : working(request));
+  assert.match((await rpc(open(1))).error.message, /did not answer this call\. It may still have been carried out/);
+  failing = false;
+  assert.equal(typeof (await rpc(open(2))).result.structuredContent.workspaceRef, 'string');
 });
 
 test('a burst of large answers followed at once by the end of the input arrives whole', async () => {
