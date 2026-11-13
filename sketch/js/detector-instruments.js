@@ -805,7 +805,9 @@ function cameraMap(reading, sensor, elements) {
 function polarizationGlyph(reading) {
   const text = String(reading.polarization), match = /(?:Linear|Elliptical)\s+(-?[\d.]+)°/.exec(text), rotation = match ? -Number(match[1]) : 0;
   if (/^Linear/.test(text)) return `<g transform="translate(-24 1) rotate(${rotation})" stroke="#e2f1f5" stroke-width="1.5"><line x1="-9" y1="0" x2="9" y2="0"/><path d="M 9,0 L 5,-2.5 M 9,0 L 5,2.5 M -9,0 L -5,-2.5 M -9,0 L -5,2.5"/></g>`;
-  if (/^Circular/.test(text)) return `<g transform="translate(-24 1)" fill="none" stroke="#e2f1f5" stroke-width="1.5"><circle r="8"/><path d="M 5.5,-5.8 L 9,-5.2 L 7.4,-1.8" fill="#e2f1f5"/></g>`;
+  // Readouts say "Right circular" or "Left circular"; the arrow turns
+  // clockwise for right (Born and Wolf, seen looking towards the source).
+  if (/circular$/i.test(text)) return `<g transform="translate(-24 1)${/^Left/.test(text) ? ' scale(-1 1)' : ''}" fill="none" stroke="#e2f1f5" stroke-width="1.5"><circle r="8"/><path d="M 5.5,-5.8 L 9,-5.2 L 7.4,-1.8" fill="#e2f1f5"/></g>`;
   if (/^Elliptical/.test(text)) return `<g transform="translate(-24 1) rotate(${rotation})" fill="none" stroke="#e2f1f5" stroke-width="1.5"><ellipse rx="9" ry="4.5"/><path d="M 5.4,-3.5 L 8.8,-2.8 L 7.2,0.1" fill="#e2f1f5"/></g>`;
   return `<g transform="translate(-24 1)" stroke="#8fa7b5"><line x1="-8" y1="-5" x2="8" y2="5"/><line x1="-8" y1="5" x2="8" y2="-5"/><circle r="8" fill="none" stroke-dasharray="2 2"/></g>`;
 }

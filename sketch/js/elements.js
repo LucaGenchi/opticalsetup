@@ -1080,9 +1080,13 @@ function probePolCard(rd) {
     lab = `${Math.round(dop * 100)} % polarized · ${elliptical ? 'elliptical' : 'linear'} ${Math.round(angle)}°`;
     labSize = 7;
   } else if (rd.pol === 'c') {
-    icon = `<path d="M 8,2 A 8.2 8.2 0 1 1 3,-7.7" fill="none" stroke="#333" stroke-width="1.6"/>` +
-      `<path d="M 3,-7.7 L 7.5,-8.5 L 4.5,-3.6 Z" fill="#333"/>`;
-    lab = 'circular';
+    // The arrow turns clockwise for right circular light, the way Born and
+    // Wolf define it (seen looking towards the source), and is mirrored for
+    // left circular light (docs/model-details.md, polarization basis).
+    const left = rd.stokes ? rd.stokes.s3 < 0 : false;
+    icon = `<g${left ? ' transform="scale(-1,1)"' : ''}><path d="M 8,2 A 8.2 8.2 0 1 1 3,-7.7" fill="none" stroke="#333" stroke-width="1.6"/>` +
+      `<path d="M 3,-7.7 L 7.5,-8.5 L 4.5,-3.6 Z" fill="#333"/></g>`;
+    lab = rd.stokes ? (left ? 'left circular' : 'right circular') : 'circular';
   } else if (typeof rd.pol === 'number') {
     icon = `<g transform="rotate(${-rd.pol})"><line x1="-8.5" y1="0" x2="8.5" y2="0" stroke="#333" stroke-width="1.6"/>` +
       `<path d="M 10,0 L 4.5,-3 L 4.5,3 Z M -10,0 L -4.5,-3 L -4.5,3 Z" fill="#333"/></g>`;

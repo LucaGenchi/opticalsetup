@@ -13,15 +13,15 @@
   "points": 600,
   "sum": [
    155000,
-   232500
+   244500
   ],
   "bbox": [
    52,
-   213,
+   233,
    496,
-   710
+   730
   ],
-  "digest": "90f7f663"
+  "digest": "abc58171"
  },
  "drawnElements": {
   "textlabel:title": "b23857c5",
@@ -29,13 +29,13 @@
   "textlabel:labelA": "c016a4be",
   "cwlaser:laserA": "3d823b45",
   "qwp:qwp": "2a7eef7d",
-  "probe:probeA": "dfb2c71f",
+  "probe:probeA": "f811180d",
   "mirror:m1": "81e74feb",
-  "probe:probeB": "dfb2c71f",
+  "probe:probeB": "b0285431",
   "mirror:m2": "81e74feb",
-  "probe:probeC": "dfb2c71f",
+  "probe:probeC": "f811180d",
   "polarimeter:polC": "f5975a42",
-  "display:screenC": "4e4d80d5",
+  "display:screenC": "503309ec",
   "textlabel:labelB": "24422c57",
   "cwlaser:laserB": "3d823b45",
   "mirror:m3": "81e74feb",
