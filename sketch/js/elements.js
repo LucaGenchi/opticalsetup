@@ -2433,6 +2433,12 @@ const pulsedInterferenceParams = type => [
   },
 ];
 
+// Which crossing an axis angle refers to (docs/model-details.md, polarization
+// basis): measured from the drawing plane towards the viewer, for light
+// crossing the element along its forward direction. Light crossing it the
+// other way meets the same physical axis, which in its own frame lies at −θ.
+const AXIS_CROSSING_NOTE = 'Measured from the drawing plane towards you, for light crossing left to right before the element is rotated; light crossing the other way sees this axis at −θ.';
+
 const POL_PARAM = { key: 'pol', label: 'Polarization (°)', type: 'number', min: 0, max: 180, step: 5, def: 0 };
 
 // Repetition rate and emission offset are the pulse-train timing both pulsed
@@ -4342,7 +4348,7 @@ export const registry = {
     aliases: ['polariser', 'linear polarizer', 'analyzer', 'analyser', 'Glan-Taylor', 'Glan-Thompson', 'wire grid polarizer', 'polarization filter', 'Malus'],
     size_: el => ({ w: 24, h: el.params.length + 6 }),
     params: [
-      { key: 'pangle', label: 'Axis angle (°)', type: 'number', min: 0, max: 180, step: 5, def: 0 },
+      { key: 'pangle', label: 'Axis angle (°)', type: 'number', min: 0, max: 180, step: 5, def: 0, note: AXIS_CROSSING_NOTE },
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
     ],
     svg(el) {
@@ -4366,7 +4372,7 @@ export const registry = {
     aliases: ['HWP', 'half-wave plate', 'lambda/2', 'λ/2 plate', 'waveplate', 'wave plate', 'retarder', 'polarization rotator', 'polarisation rotator'],
     size_: el => ({ w: 18, h: el.params.length + 6 }),
     params: [
-      { key: 'a', label: 'Fast axis (°)', type: 'number', min: 0, max: 180, step: 5, def: 22.5 },
+      { key: 'a', label: 'Fast axis (°)', type: 'number', min: 0, max: 180, step: 5, def: 22.5, note: AXIS_CROSSING_NOTE },
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
     ],
     svg(el) {
@@ -4385,7 +4391,7 @@ export const registry = {
     aliases: ['QWP', 'quarter-wave plate', 'lambda/4', 'λ/4 plate', 'waveplate', 'wave plate', 'retarder', 'circular polarization', 'circular polarisation'],
     size_: el => ({ w: 18, h: el.params.length + 6 }),
     params: [
-      { key: 'a', label: 'Fast axis (°)', type: 'number', min: 0, max: 180, step: 5, def: 45 },
+      { key: 'a', label: 'Fast axis (°)', type: 'number', min: 0, max: 180, step: 5, def: 45, note: AXIS_CROSSING_NOTE },
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
     ],
     svg(el) {
@@ -5414,7 +5420,7 @@ export const registry = {
       { key: 'modulate', label: 'Apply voltage', type: 'checkbox', def: false },
       // Irrelevant in the H↔V flip drive, where the required axis is derived
       // from whatever polarization actually arrives.
-      { key: 'a', label: 'Crystal axis (°)', type: 'number', min: 0, max: 180, step: 5, def: 0, show: p => p.modulate && !(p.driveMode === 'switching' && p.switchMode !== 'custom') },
+      { key: 'a', label: 'Crystal axis (°)', type: 'number', min: 0, max: 180, step: 5, def: 0, note: AXIS_CROSSING_NOTE, show: p => p.modulate && !(p.driveMode === 'switching' && p.switchMode !== 'custom') },
       {
         key: 'driveMode', label: 'Drive', type: 'select', def: 'static',
         options: [['static', 'Static retardance'], ['switching', 'Switching (square wave)']],

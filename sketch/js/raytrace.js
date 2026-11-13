@@ -48,10 +48,11 @@ const CHOP_SCHEMATIC_PERIOD_MM = 14;
 // the three cannot disagree about whether a beam exists.
 const MIN_DRAWN_INTENSITY = 1e-12;
 import {
-  linearStokes, cloneStokes, retarder as applyRetarder, analyzerTransmission,
+  linearStokes, cloneStokes, retarder as applyRetarder, analyzerTransmission, polarizationRelation,
   legacyPolarization, polarizationDescription,
 } from './polarization.js';
 import { fresnelTransmittances, throughFace } from './fresnel.js';
+import { mirroredStokes } from './mueller.js';
 import { arcParameterAtPoint, circularArcThrough } from './polygon.js';
 import {
   gddGroupDelayDifferenceFs, glassGVD, glassGroupDelayDifferenceFs, glassIndex,
@@ -2210,6 +2211,8 @@ function invalidateIncompleteCameraFields() {
 }
 
 const phaseWrap = phase => Math.atan2(Math.sin(phase), Math.cos(phase));
+export const POLARIZATION_NOT_COMBINED = 'Coherent beams met at a beamsplitter in polarization states that are neither identical nor orthogonal, and it added their powers; a camera with interference on weights their interference by the overlap of the two states, other readings show the added powers';
+export const POLARIZATION_ORTHOGONAL = 'Coherent beams met at a beamsplitter in orthogonal polarization states; their powers add exactly, but the polarization of their sum depends on their relative phase, which is not modelled, so the state shown is their power-weighted average';
 const quantized = (value, scale) => Math.round(value * scale);
 
 function coherentChildKey(ray, surface, child) {
@@ -2220,8 +2223,11 @@ function coherentChildKey(ray, surface, child) {
 }
 
 function polarizationKey(ray) {
-  if (ray.stokes) return ['s', ray.stokes.s1, ray.stokes.s2, ray.stokes.s3]
-    .map(value => Number.isFinite(value) ? Number(value).toFixed(9) : 'x').join(':');
+  // Rounded to nine decimals, with −0 written as 0: a reflection changes the
+  // sign of s2 and s3, and a round-off term such as the 1e-16 in linear 90°
+  // must not make two equal states look different.
+  if (ray.stokes) return 's:' + [ray.stokes.s1, ray.stokes.s2, ray.stokes.s3]
+    .map(value => Number.isFinite(value) ? (Math.round(value * 1e9) / 1e9 + 0).toFixed(9) : 'x').join(':');
   return Number.isFinite(ray.pol) ? `p:${Number(ray.pol).toFixed(9)}` : 'unpolarized';
 }
 
@@ -2230,9 +2236,13 @@ function recordCoherentArrival(ray, hit, children, arrivals) {
       || !ray.coherenceId || !Number.isInteger(ray.sample) || (!ray.phaseValid && !ray.spectralSource)
       || !(ray.intensity > 0) || !(ray.power > 0)) return;
   const positionKey = `${quantized(hit.p.x, 1e6)}:${quantized(hit.p.y, 1e6)}`;
+  // Fields are batched by where they meet, not by the state they arrive in:
+  // a reflection changes the state (reflectPolarization), so two arms that
+  // reach the splitter in different states can leave a port in the same one.
+  // What leaves each port is grouped by its outgoing state below.
   const batchKey = JSON.stringify([
     surfaceInteractionKey(hit.surface), ray.coherenceId, ray.sample,
-    Number(ray.wl).toFixed(9), positionKey, polarizationKey(ray),
+    Number(ray.wl).toFixed(9), positionKey,
   ]);
   const incomingKey = `${quantized(ray.dx, 1e8)}:${quantized(ray.dy, 1e8)}`;
   for (const child of children) {
@@ -2241,9 +2251,15 @@ function recordCoherentArrival(ray, hit, children, arrivals) {
       : ray.power * (child.intensity !== undefined && ray.intensity > 0
         ? child.intensity / ray.intensity : 1);
     if (!(power > 0) || !(intensity > 0)) continue;
+    const outgoing = {
+      stokes: 'stokes' in child ? child.stokes : ray.stokes,
+      pol: 'pol' in child ? child.pol : ray.pol,
+    };
     arrivals.push({
       batchKey,
       incomingKey,
+      stateKey: polarizationKey(outgoing),
+      stokes: outgoing.stokes || null,
       outputKey: `${quantized(child.d.x, 1e8)}:${quantized(child.d.y, 1e8)}`,
       childKey: coherentChildKey(ray, hit.surface, child),
       power,
@@ -2280,90 +2296,125 @@ function extendCoherentPlan(arrivals, plan = new Map()) {
       if (!outputs.has(item.outputKey)) outputs.set(item.outputKey, []);
       outputs.get(item.outputKey).push(item);
     }
-    for (const fields of outputs.values()) {
-      if (new Set(fields.map(item => item.incomingKey)).size < 2) continue;
-      if (fields.some(field => field.spectralSource)) {
-        const representative = [...fields].sort((a, b) => a.childKey.localeCompare(b.childKey))[0];
-        const terms = fields.flatMap(field => field.spectralTerms || []);
-        const result = fields.every(field => field.phaseValid && field.spectralSource === fields[0].spectralSource)
-          ? spectralFieldResult(fields[0].spectralSource, terms) : null;
-        for (const field of fields) {
-          if (!result) {
-            next.set(field.childKey, { power: field.power, intensity: field.intensity,
-              phaseOffset: field.outputPhase, fieldGroupCount: field.fieldGroupCount,
-              phaseIssue: fields.some(f => !f.phaseValid && f.phaseIssue)
-                ? `Broadband interference unavailable: ${fields.find(f => !f.phaseValid && f.phaseIssue).phaseIssue}; powers added without interference`
-                : SPECTRAL_UNAVAILABLE, phaseValid: false });
-            continue;
-          }
-          const keep = field === representative;
-          next.set(field.childKey, {
-            power: keep ? result.power : 0,
-            intensity: keep ? result.power / field.weightUnit : 0,
-            phaseOffset: field.outputPhase,
-            fieldGroupCount: fields.reduce((sum, item) => sum + item.fieldGroupCount, 0),
-            retainZeroField: keep && result.power <= 1e-12,
-            coherentlySuppressed: !keep,
-            spec: result.spec,
-            spectralField: { source: fields[0].spectralSource, power: result.power,
-              terms: terms.map(t => ({ amplitude: t.amplitude,
-                opdMm: t.opdMm - field.opl, phaseRad: t.phaseRad - field.outputPhase })) },
-          });
-        }
-        continue;
+    for (const port of outputs.values()) {
+      if (new Set(port.map(item => item.incomingKey)).size < 2) continue;
+      // Fields are combined only with fields that leave in the same state.
+      // Orthogonal states add their powers exactly. States that are neither
+      // identical nor orthogonal would interfere in part: here their powers
+      // are added and the reading says so. Each field carries on with its own
+      // state and phase, so a camera downstream still weights their cross
+      // term by the overlap of the two states (camera-profile.js).
+      const states = new Map();
+      for (const item of port) {
+        if (!states.has(item.stateKey)) states.set(item.stateKey, []);
+        states.get(item.stateKey).push(item);
       }
-      const reference = fields[0].phase;
-      let re = 0, im = 0;
-      for (const field of fields) {
-        const relative = phaseWrap(field.phase - reference);
-        const amplitude = Math.sqrt(field.power);
-        re += amplitude * Math.cos(relative);
-        im += amplitude * Math.sin(relative);
+      const groups = [...states.values()];
+      for (const fields of groups) {
+        if (new Set(fields.map(item => item.incomingKey)).size >= 2) combineCoherentFields(fields, next);
       }
-      // Fully coherent result. Its phase is what continues downstream: with
-      // partial coherence the ports move toward each other, so the phase
-      // matters progressively less, and at zero visibility they are equal.
-      const groupedPhase = reference + Math.atan2(im, re);
-      // Power is built the way partial coherence actually works, rather than
-      // from the vector sum above: every field contributes its own power
-      // unconditionally, and each *pair* contributes an interference term
-      // scaled by how well those two fields still overlap in time. A pair
-      // whose paths differ by much more than the source's coherence length
-      // simply adds its power and makes no fringe. With an ideal source every
-      // visibility is 1 and this reduces exactly to |sum of amplitudes|^2.
-      let groupedPower = 0;
-      for (const field of fields) groupedPower += Math.max(0, field.power);
-      for (let i = 0; i < fields.length; i++) {
-        for (let j = i + 1; j < fields.length; j++) {
-          const a = fields[i], b = fields[j];
-          // A pair is only as coherent as the shorter of the two envelopes.
-          const lengths = [a.coherenceLengthMm, b.coherenceLengthMm].filter(value => value > 0);
-          const coherenceLengthMm = lengths.length ? Math.min(...lengths) : 0;
-          const visibility = fringeVisibility(a.opl - b.opl, coherenceLengthMm);
-          if (visibility <= 0) continue;
-          groupedPower += 2 * Math.sqrt(Math.max(0, a.power) * Math.max(0, b.power))
-            * Math.cos(phaseWrap(a.phase - b.phase)) * visibility;
-        }
-      }
-      groupedPower = Math.max(0, groupedPower);
-      const representative = [...fields].sort((a, b) => a.childKey.localeCompare(b.childKey))[0];
-      const fieldGroupCount = fields.reduce((sum, field) => sum + field.fieldGroupCount, 0);
-      for (const field of fields) {
-        const keep = field === representative;
+      // Orthogonal states add their powers exactly, but the state of their
+      // sum depends on their relative phase, which the ray's Stokes vector
+      // does not carry: the reading says its polarization is an average.
+      const relations = groups.flatMap((a, i) => groups.slice(i + 1).map(b =>
+        polarizationRelation(a[0].stokes, b[0].stokes)));
+      const note = relations.includes('partial') ? POLARIZATION_NOT_COMBINED
+        : relations.includes('orthogonal') ? POLARIZATION_ORTHOGONAL : null;
+      if (!note) continue;
+      for (const field of port) {
         next.set(field.childKey, {
-          power: keep ? groupedPower : 0,
-          intensity: keep && field.weightUnit > 0 ? groupedPower / field.weightUnit : 0,
-          phaseOffset: keep
-            ? phaseWrap(groupedPhase - 2 * Math.PI * field.opl / field.wavelengthMm)
-            : 0,
-          fieldGroupCount,
-          retainZeroField: keep && groupedPower <= 1e-12,
-          coherentlySuppressed: !keep,
+          ...(next.get(field.childKey) || { power: field.power, intensity: field.intensity,
+            phaseOffset: field.outputPhase, fieldGroupCount: field.fieldGroupCount }),
+          polarizationNote: note,
         });
       }
     }
   }
   return next;
+}
+
+// One group of fields that leave a splitter port in the same state, combined
+// coherently.
+function combineCoherentFields(fields, next) {
+  if (fields.some(field => field.spectralSource)) {
+    const representative = [...fields].sort((a, b) => a.childKey.localeCompare(b.childKey))[0];
+    const terms = fields.flatMap(field => field.spectralTerms || []);
+    const result = fields.every(field => field.phaseValid && field.spectralSource === fields[0].spectralSource)
+      ? spectralFieldResult(fields[0].spectralSource, terms) : null;
+    for (const field of fields) {
+      if (!result) {
+        next.set(field.childKey, { power: field.power, intensity: field.intensity,
+          phaseOffset: field.outputPhase, fieldGroupCount: field.fieldGroupCount,
+          phaseIssue: fields.some(f => !f.phaseValid && f.phaseIssue)
+            ? `Broadband interference unavailable: ${fields.find(f => !f.phaseValid && f.phaseIssue).phaseIssue}; powers added without interference`
+            : SPECTRAL_UNAVAILABLE, phaseValid: false });
+        continue;
+      }
+      const keep = field === representative;
+      next.set(field.childKey, {
+        power: keep ? result.power : 0,
+        intensity: keep ? result.power / field.weightUnit : 0,
+        phaseOffset: field.outputPhase,
+        fieldGroupCount: fields.reduce((sum, item) => sum + item.fieldGroupCount, 0),
+        retainZeroField: keep && result.power <= 1e-12,
+        coherentlySuppressed: !keep,
+        spec: result.spec,
+        spectralField: { source: fields[0].spectralSource, power: result.power,
+          terms: terms.map(t => ({ amplitude: t.amplitude,
+            opdMm: t.opdMm - field.opl, phaseRad: t.phaseRad - field.outputPhase })) },
+      });
+    }
+    return;
+  }
+  const reference = fields[0].phase;
+  let re = 0, im = 0;
+  for (const field of fields) {
+    const relative = phaseWrap(field.phase - reference);
+    const amplitude = Math.sqrt(field.power);
+    re += amplitude * Math.cos(relative);
+    im += amplitude * Math.sin(relative);
+  }
+  // Fully coherent result. Its phase is what continues downstream: with
+  // partial coherence the ports move toward each other, so the phase
+  // matters progressively less, and at zero visibility they are equal.
+  const groupedPhase = reference + Math.atan2(im, re);
+  // Power is built the way partial coherence actually works, rather than
+  // from the vector sum above: every field contributes its own power
+  // unconditionally, and each *pair* contributes an interference term
+  // scaled by how well those two fields still overlap in time. A pair
+  // whose paths differ by much more than the source's coherence length
+  // simply adds its power and makes no fringe. With an ideal source every
+  // visibility is 1 and this reduces exactly to |sum of amplitudes|^2.
+  let groupedPower = 0;
+  for (const field of fields) groupedPower += Math.max(0, field.power);
+  for (let i = 0; i < fields.length; i++) {
+    for (let j = i + 1; j < fields.length; j++) {
+      const a = fields[i], b = fields[j];
+      // A pair is only as coherent as the shorter of the two envelopes.
+      const lengths = [a.coherenceLengthMm, b.coherenceLengthMm].filter(value => value > 0);
+      const coherenceLengthMm = lengths.length ? Math.min(...lengths) : 0;
+      const visibility = fringeVisibility(a.opl - b.opl, coherenceLengthMm);
+      if (visibility <= 0) continue;
+      groupedPower += 2 * Math.sqrt(Math.max(0, a.power) * Math.max(0, b.power))
+        * Math.cos(phaseWrap(a.phase - b.phase)) * visibility;
+    }
+  }
+  groupedPower = Math.max(0, groupedPower);
+  const representative = [...fields].sort((a, b) => a.childKey.localeCompare(b.childKey))[0];
+  const fieldGroupCount = fields.reduce((sum, field) => sum + field.fieldGroupCount, 0);
+  for (const field of fields) {
+    const keep = field === representative;
+    next.set(field.childKey, {
+      power: keep ? groupedPower : 0,
+      intensity: keep && field.weightUnit > 0 ? groupedPower / field.weightUnit : 0,
+      phaseOffset: keep
+        ? phaseWrap(groupedPhase - 2 * Math.PI * field.opl / field.wavelengthMm)
+        : 0,
+      fieldGroupCount,
+      retainZeroField: keep && groupedPower <= 1e-12,
+      coherentlySuppressed: !keep,
+    });
+  }
 }
 
 function coherentPlansEqual(left, right) {
@@ -2376,6 +2427,7 @@ function coherentPlansEqual(left, right) {
         || value.fieldGroupCount !== other.fieldGroupCount
         || value.retainZeroField !== other.retainZeroField
         || value.coherentlySuppressed !== other.coherentlySuppressed
+        || value.polarizationNote !== other.polarizationNote
         || value.phaseValid !== other.phaseValid
         || JSON.stringify(value.spectralField) !== JSON.stringify(other.spectralField)) return false;
   }
@@ -4341,6 +4393,48 @@ function polModThrough(ray, transmissionOf) {
 
 const withGate = (pulse, gate) => ({ ...pulse, gates: [...(pulse.gates || []), gate] });
 
+// The axis angle an element presents to this ray. An axis is set for light
+// crossing the element along its forward direction (local +x); light that
+// crosses it backwards sees the reciprocal element, which for a retarder or
+// a polarizer is the same element at −θ (mueller.js, reciprocalMueller). The
+// angle is measured from p̂ = ŝ × k̂, and p̂ turns over with the ray.
+function crossingAxisDeg(surface, d, axisDeg) {
+  const forward = rotPt(1, 0, surface.el?.rot || 0);
+  return dot(d, forward) < 0 ? -axisDeg : axisDeg;
+}
+const legacyAxis = a => (a < 0 ? a + 180 : a);
+
+// A specular reflection turns the state by the ideal mirror, diag(1, 1, −1,
+// −1): ŝ stays out of the screen while p̂ = ŝ × k̂ turns over with the ray.
+// It applies to every child that leaves on the side the light arrived from --
+// plane, curved, conic and D-shaped mirrors, galvo and polygon facets, DMD,
+// deformable and SLM surfaces, dichroic, beamsplitter and etalon
+// reflections, reflective grating orders, total internal reflection, and the
+// two mirrors of a retroreflector -- unless the element states the outgoing
+// state itself (a polarizing beamsplitter's ports, generated light) or the
+// light is scattered diffusely, which keeps its state as before.
+function reflectPolarization(ray, children, n) {
+  if (!n || !(ray.stokes || ray.polMod)) return;
+  const arriving = ray.dx * n.x + ray.dy * n.y;
+  if (!arriving) return;
+  for (const child of children) {
+    if ('stokes' in child || child.scattered) continue;
+    if (!(dot(child.d, n) * arriving < 0)) continue;
+    const stokes = mirroredStokes(ray.stokes);
+    if (stokes && (stokes.s2 !== ray.stokes.s2 || stokes.s3 !== ray.stokes.s3)) {
+      // The ray carries on with the new state, as at a prism face; the
+      // segment it starts on is recorded for probes (segmentPolarization).
+      child.stokes = stokes;
+      child.pol = legacyPolarization(stokes);
+      child.faceStokes = true;
+    }
+    const polMod = 'polMod' in child ? child.polMod : ray.polMod;
+    if (polMod) {
+      child.polMod = { ...polMod, stokesHigh: mirroredStokes(polMod.stokesHigh), stokesLow: mirroredStokes(polMod.stokesLow) };
+    }
+  }
+}
+
 const retardPolMod = (polMod, axisDeg, retardanceDeg) => ({
   ...polMod,
   stokesHigh: applyRetarder(polMod.stokesHigh, axisDeg, retardanceDeg),
@@ -4389,7 +4483,7 @@ function retinalScatter(ray, hit, s, d, n, fraction) {
     out.push({
       d: norm(add(mul(inward, cosine), mul(along, sine))),
       intensity: ray.intensity * fraction * share / count,
-      tag: 'retina-S' + k, retainWeak: true,
+      tag: 'retina-S' + k, retainWeak: true, scattered: true,
     });
   }
   return out;
@@ -4498,6 +4592,7 @@ function interact(ray, hit) {
     : data.parab ? parabolaNormal()
       : data.asphere ? asphereNormal()
       : perp(t);
+  interactionNormal = n;
 
   switch (k) {
     case 'absorb': return [];
@@ -5411,40 +5506,42 @@ function interact(ray, hit) {
       return [{ d, pulse, tag: 'gate' }];
     }
     case 'polarizer': {
-      const a = data.a || 0;
+      const a = crossingAxisDeg(s, d, data.a || 0);
       if (ray.polMod) {
         const m = polModThrough(ray, s => analyzerTransmission(s, a));
         const stokes = linearStokes(a);
         if (!ray.pulse) {
           if (m.mean <= MIN_RETAINED_POWER_INT) return [];
-          return [{ d, intensity: ray.intensity * m.mean, pol: a, stokes, polMod: null, retainWeak: true, tag: 'pol' }];
+          return [{ d, intensity: ray.intensity * m.mean, pol: legacyAxis(a), stokes, polMod: null, retainWeak: true, tag: 'pol' }];
         }
         if (Math.max(m.high, m.low) <= MIN_RETAINED_POWER_INT) return [];
-        return [{ d, pol: a, stokes, polMod: null, pulse: withGate(ray.pulse, m.gate), retainWeak: true, tag: 'pol' }];
+        return [{ d, pol: legacyAxis(a), stokes, polMod: null, pulse: withGate(ray.pulse, m.gate), retainWeak: true, tag: 'pol' }];
       }
       const f = analyzerTransmission(ray.stokes, a);
       if (f <= MIN_RETAINED_POWER_INT) return [];
       const stokes = linearStokes(a);
-      return [{ d, intensity: ray.intensity * f, pol: a, stokes, retainWeak: true, tag: 'pol' }];
+      return [{ d, intensity: ray.intensity * f, pol: legacyAxis(a), stokes, retainWeak: true, tag: 'pol' }];
     }
     case 'wp': {
       if (!ray.stokes) return [{ d }];
       const retardance = data.half ? 180 : 90;
-      const stokes = applyRetarder(ray.stokes, data.a || 0, retardance);
+      const axis = crossingAxisDeg(s, d, data.a || 0);
+      const stokes = applyRetarder(ray.stokes, axis, retardance);
       return [{
         d, stokes, pol: legacyPolarization(stokes), tag: data.half ? 'hwp' : 'qwp',
         // A waveplate after a switching EOM retards both modulation states,
         // so the alternation survives (rotated) instead of being erased.
-        ...(ray.polMod ? { polMod: retardPolMod(ray.polMod, data.a || 0, retardance) } : {}),
+        ...(ray.polMod ? { polMod: retardPolMod(ray.polMod, axis, retardance) } : {}),
       }];
     }
     case 'retarder': {
       if (!ray.stokes) return [{ d }];
+      const axis = crossingAxisDeg(s, d, data.a || 0);
       if (!data.switching) {
-        const stokes = applyRetarder(ray.stokes, data.a || 0, data.retardance || 0);
+        const stokes = applyRetarder(ray.stokes, axis, data.retardance || 0);
         return [{
           d, stokes, pol: legacyPolarization(stokes), tag: 'ret',
-          ...(ray.polMod ? { polMod: retardPolMod(ray.polMod, data.a || 0, data.retardance || 0) } : {}),
+          ...(ray.polMod ? { polMod: retardPolMod(ray.polMod, axis, data.retardance || 0) } : {}),
         }];
       }
       // A square-wave-driven EOM alternates between two polarization states.
@@ -5456,7 +5553,7 @@ function interact(ray, hit) {
       // resolution (a probe or a detector placed directly after the EOM)
       // genuinely measures: a partially polarized beam.
       const duty = Math.min(1, Math.max(0, data.duty ?? 0.5));
-      const lo = applyRetarder(ray.stokes, data.a || 0, data.retardanceLow || 0);
+      const lo = applyRetarder(ray.stokes, axis, data.retardanceLow || 0);
       // "Flip" drive is the half-wave switch a Pockels cell is normally used
       // for: whatever linear state comes in, the driven state is rotated 90°
       // from it (and circular handedness reverses). In Stokes terms that is
@@ -5464,7 +5561,7 @@ function interact(ray, hit) {
       // works for any input polarization.
       const hi = data.flip
         ? { s1: -ray.stokes.s1, s2: -ray.stokes.s2, s3: -ray.stokes.s3 }
-        : applyRetarder(ray.stokes, data.a || 0, data.retardanceHigh || 0);
+        : applyRetarder(ray.stokes, axis, data.retardanceHigh || 0);
       const stokes = {
         s1: duty * hi.s1 + (1 - duty) * lo.s1,
         s2: duty * hi.s2 + (1 - duty) * lo.s2,
@@ -5562,7 +5659,7 @@ function interact(ray, hit) {
         let stokes = ray.stokes, retarded = false, pulse = ray.pulse, gated = false;
         for (const c of channels) {
           if (c.kind === 'phase' && stokes) {
-            stokes = applyRetarder(stokes, c.axis ?? 45, c.retardance ?? 90);
+            stokes = applyRetarder(stokes, crossingAxisDeg(s, d, c.axis ?? 45), c.retardance ?? 90);
             retarded = true;
           } else if (c.kind === 'srs' && ray.pulse) {
             const transferred = srsTransferGate(c, ray, data.incidentBeams, s.el?.id || null, volume ? volume.share(2) : 1);
@@ -6378,6 +6475,9 @@ let interactionReshapesPulse = false;
 // pulse's record be kept for the whole train a port carries rather than for
 // the one ray that happened to be traced.
 let interactionPorts = null;
+// The surface normal at the hit being interacted with, for the reflection
+// rule (reflectPolarization).
+let interactionNormal = null;
 
 // ---- Whose light a pulse record describes ----
 // A pulse's record -- its emitted band, the pieces filters left of it, its
@@ -7301,8 +7401,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // it without collecting it: it applies to what leaves this interaction.
       const rangeLeft = r.rangeLeft;
       r.rangeLeft = null;
-      interactionRay = r; interactionReshapesPulse = false; interactionPorts = null;
+      interactionRay = r; interactionReshapesPulse = false; interactionPorts = null; interactionNormal = null;
       const children = interact(r, hit);
+      reflectPolarization(r, children, interactionNormal);
+      interactionNormal = null;
       const ports = interactionPorts;
       interactionPorts = null;
       const passive = passiveInteraction(hit.surface, children);
@@ -7340,6 +7442,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           child.phaseIssue = override.phaseIssue;
           child.approximation = override.phaseIssue;
         }
+        if (override.polarizationNote && !child.approximation) child.approximation = override.polarizationNote;
       }
       // A filter, dichroic or grating order that changes the shape of a
       // pulse's spectrum changes its duration by itself, and leaves the

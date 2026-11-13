@@ -37,11 +37,11 @@ def thick_lens(r1, r2, thickness, n):
 
 def retarder_mueller(axis_deg, retardance_deg):
     """Goldstein's linear retarder with fast axis at theta and retardance
-    delta, written so that a positive delta rotates the Stokes vector the
-    same way the app's Rodrigues rotation does (the app's handedness
-    convention is Goldstein's with delta -> -delta)."""
+    delta, in his published sign, which the app has used since step A2 of
+    the Physics in 2D track: a quarter-wave plate at 45 degrees turns linear
+    0 degrees into S3 = +1, right circular in Born and Wolf's sense."""
     t = 2 * math.radians(axis_deg)
-    d = -math.radians(retardance_deg)
+    d = math.radians(retardance_deg)
     c2, s2, cd, sd = math.cos(t), math.sin(t), math.cos(d), math.sin(d)
     return [
         [c2 * c2 + s2 * s2 * cd, c2 * s2 * (1 - cd), -s2 * sd],
@@ -166,20 +166,19 @@ def cases():
     #   i.e. the slow axis is retarded by delta = 90 deg.
     #   For theta = 45 deg on J = (1, 0):
     #     W J = (1/2)(1 + i, 1 - i),  Ex conj(Ey) = (1/4)(1+i)(1+i) = i/2,
-    #     so S1 = S2 = 0 and S3 = 2 Im(i/2) = +1 in that convention.
-    #   The app uses the opposite sign of the retardance (Goldstein with
-    #   delta -> -delta). Its equivalent Jones matrix is therefore
-    #     W_app = R(-theta) diag(1, -i) R(theta),
-    #   which gives, on J = (1, 0):
-    #     theta = +45 deg:   S = (0, 0, -1)
-    #     theta = -45 deg:   S = (0, 0, +1)
-    #     theta = 22.5 deg:  S = (1/2, 1/2, -1/sqrt(2))
-    #   and on J = (0, 1) at +45 deg, S3 = +1. These are the values asserted.
+    #     so S1 = S2 = 0 and S3 = 2 Im(i/2) = +1 in that convention: right
+    #     circular in Born and Wolf's sense, clockwise seen looking towards
+    #     the source. The app has used this convention since step A2 of the
+    #     Physics in 2D track (before it, delta -> -delta), so on J = (1, 0):
+    #     theta = +45 deg:   S = (0, 0, +1)
+    #     theta = -45 deg:   S = (0, 0, -1)
+    #     theta = 22.5 deg:  S = (1/2, 1/2, +1/sqrt(2))
+    #   and on J = (0, 1) at +45 deg, S3 = -1. These are the values asserted.
     for axis, pol, name, expect in (
-        (45, 0, "quarter-wave at 45 deg on linear 0 deg -> circular", (0.0, 0.0, -1.0)),
-        (-45, 0, "quarter-wave at -45 deg on linear 0 deg -> circular, opposite hand", (0.0, 0.0, 1.0)),
-        (45, 90, "quarter-wave at 45 deg on linear 90 deg -> circular, opposite hand", (0.0, 0.0, 1.0)),
-        (22.5, 0, "quarter-wave at 22.5 deg on linear 0 deg -> elliptical", (0.5, 0.5, -1 / math.sqrt(2))),
+        (45, 0, "quarter-wave at 45 deg on linear 0 deg -> circular", (0.0, 0.0, 1.0)),
+        (-45, 0, "quarter-wave at -45 deg on linear 0 deg -> circular, opposite hand", (0.0, 0.0, -1.0)),
+        (45, 90, "quarter-wave at 45 deg on linear 90 deg -> circular, opposite hand", (0.0, 0.0, -1.0)),
+        (22.5, 0, "quarter-wave at 22.5 deg on linear 0 deg -> elliptical", (0.5, 0.5, 1 / math.sqrt(2))),
     ):
         out.append({
             "name": name,
@@ -187,7 +186,7 @@ def cases():
             "expected": {"s1": sig(expect[0]), "s2": sig(expect[1]), "s3": sig(expect[2])},
             "tolerance": {"s1": 1e-9, "s2": 1e-9, "s3": 1e-9},
             "absolute": True,
-            "note": "Jones-derived Stokes vector; Goldstein convention with delta -> -delta",
+            "note": "Jones-derived Stokes vector; Goldstein's published convention",
         })
     return out
 
@@ -199,7 +198,7 @@ MODEL = {
     "reference": "ABCD system matrix; Goldstein Mueller matrices with Jones-derived circular cases; reflectivity finesse inverted by bisection, with the exact Airy finesse recorded alongside",
     "citations": [
         "E. Hecht, Optics, 5th ed., section 6.2 (thick lens cardinal points), section 8.13 (Stokes parameters and Mueller matrices)",
-        "D. H. Goldstein, Polarized Light, 3rd ed. (CRC Press, 2011), ch. 6: Mueller matrices of retarders and polarizers. The app follows this convention with delta -> -delta, equivalent to the Jones matrix R(-theta) diag(1, -i) R(theta); the circular cases here are derived from that matrix by hand, an algebraic check of the declared convention rather than an experimental one.",
+        "D. H. Goldstein, Polarized Light, 3rd ed. (CRC Press, 2011), ch. 6: Mueller matrices of retarders and polarizers. The app follows this convention (since step A2; before it, delta -> -delta), equivalent for a quarter-wave plate to the Jones matrix R(-theta) diag(1, i) R(theta); the circular cases here are derived from that matrix by hand, an algebraic check of the declared convention rather than an experimental one.",
         "M. Born and E. Wolf, Principles of Optics, 7th ed., section 7.6 (Fabry-Perot), for the reflectivity finesse",
         "N. Ismail, C. C. Kores, D. Geskus and M. Pollnau, 'Fabry-Perot resonator: spectral line shapes, generic and related Airy distributions, linewidths, finesses, and performance at low or frequency-dependent reflectivity', Opt. Express 24, 16366-16389 (2016), doi:10.1364/OE.24.016366, Eq. (32) for the exact Airy finesse",
     ],

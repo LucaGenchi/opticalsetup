@@ -14,7 +14,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createElement } from '../sketch/js/elements.js';
-import { detectorReading, traceAll } from '../sketch/js/raytrace.js';
+import '../sketch/js/detector-instruments.js';
+import {
+  detectorReading, traceAll, POLARIZATION_NOT_COMBINED, POLARIZATION_ORTHOGONAL,
+} from '../sketch/js/raytrace.js';
 import { rotPt } from '../sketch/js/util.js';
 
 const D2R = Math.PI / 180;
@@ -185,7 +188,7 @@ test('A2 case 5: diagonal light returned by one mirror and by two folds reads as
   const detector = () => make('detector', 200, 200, {}, 90);
   const after = (field, returns) => {
     let f = returns(field);
-    f = mirror(f, -45, Math.SQRT1_2); // the beamsplitter's reflection, half the power
+    f = mirror(f, 45, Math.SQRT1_2); // the beamsplitter's coating, normal at +45°: half the power
     f = polarizer(f, 90, 45);
     return stokesOf(f).I * 0.5 * P0; // and half the power was transmitted on the way out
   };
@@ -202,4 +205,90 @@ test('A2 case 5: diagonal light returned by one mirror and by two folds reads as
   close(normal, expectedNormal, 'one mirror at normal incidence', 1e-9 * P0);
   close(roof, expectedRoof, 'two 45° folds', 1e-9 * P0);
   assert.ok(Math.abs(expectedNormal - expectedRoof) > 0.1 * P0, 'the two returns differ');
+});
+
+// Interference between arms that reflect a different number of times. The
+// issue's version is a Michelson with a flat mirror in one arm and a
+// retroreflector in the other; in the tracer it cannot be built as such: the
+// retroreflector element carries no carrier phase, and its return is offset,
+// so the two returns never meet the beamsplitter at one point. A
+// Mach–Zehnder whose second arm turns through 90° with two flat mirrors (a
+// pentamirror) instead of one has the same property: at each output port
+// the two fields have been reflected an odd and an even number of times.
+// Circular light cannot be tested this way, because a waveplate carries no
+// carrier phase either; diagonal light, which a reflection also turns into
+// its mirror image (s2 changes sign), takes its place.
+function machZehnder({ pol, pentamirror, wavelength = 633, camera = false }) {
+  const full = { refl: 100 };
+  const elements = [
+    make('cwlaser', -100, 0, { pol, wavelength, beamMode: 'beam', beamWidth: 4 }),
+    make('bs', 100, 0),
+    make('mirror', 300, 0, full, 45),
+    ...(pentamirror
+      ? [make('mirror', 100, -260, full, 67.5), make('mirror', 160, -200, full, 112.5)]
+      : [make('mirror', 100, -200, full, 45)]),
+    make('bs', 300, -200),
+  ];
+  const right = camera ? make('camera', 450, -200, { pixels: 64 }, 0) : make('detector', 450, -200, {}, 0);
+  const up = make('detector', 300, -350, {}, -90);
+  traceAll([...elements, right, up]);
+  return { right: detectorReading(right.id), up: detectorReading(up.id) };
+}
+
+// The right port over a scan of the wavelength that moves the pentamirror
+// arm's extra 85 mm through almost two fringes (the equal arms do not move).
+function rightPortScan(options) {
+  return Array.from({ length: 16 }, (_, k) => {
+    const read = machZehnder({ ...options, wavelength: 633 + k * 0.0005 });
+    return { power: read.right?.signal ?? 0, total: (read.right?.signal ?? 0) + (read.up?.signal ?? 0), read: read.right };
+  });
+}
+
+test('A2: arms reflected the same number of times still interfere fully', () => {
+  for (const pol of [0, 45]) {
+    const { right, up } = machZehnder({ pol, pentamirror: false });
+    close(right.signal, 1, `linear ${pol}°: all the light leaves the right port`);
+    assert.equal(up, null, `linear ${pol}°: nothing leaves the upper port`);
+    assert.deepEqual(right.approximations, [], `linear ${pol}°: no caveat`);
+  }
+});
+
+test('A2: arms reflected an odd and an even number of times interfere only when the state survives the reflection', () => {
+  // Linear 0° (p) is kept by a reflection: the arms still interfere, and the
+  // right port moves with the wavelength. In the tracer only the beam's axial
+  // sample overlaps, because the pentamirror arm arrives with its profile
+  // turned over; that limit is the tracer's and predates A2.
+  const p = rightPortScan({ pol: 0, pentamirror: true });
+  const powers = p.map(item => item.power);
+  assert.ok(Math.max(...powers) - Math.min(...powers) > 0.03, 'linear 0°: the port power moves with the wavelength');
+  for (const item of p) close(item.total, 1, 'linear 0°: energy is conserved');
+
+  // Diagonal light returns as the two diagonals: orthogonal, so the powers
+  // add exactly, at every wavelength, and the reading says that the state of
+  // the sum is an average.
+  for (const item of rightPortScan({ pol: 45, pentamirror: true })) {
+    close(item.power, 0.5, 'diagonal: half the light at the right port');
+    close(item.total, 1, 'diagonal: energy is conserved');
+    assert.ok(item.read.approximations.includes(POLARIZATION_ORTHOGONAL), 'diagonal: the reading says the state is an average');
+  }
+
+  // Linear 30° returns as 30° and −30°, neither identical nor orthogonal:
+  // their partial interference is not modelled, the powers are added and the
+  // reading says so.
+  for (const item of rightPortScan({ pol: 30, pentamirror: true })) {
+    close(item.power, 0.5, 'linear 30°: powers added');
+    assert.ok(item.read.approximations.includes(POLARIZATION_NOT_COMBINED), 'linear 30°: the reading carries the caveat');
+  }
+});
+
+test('A2: a camera still weights the interference of unequal states by their overlap', () => {
+  // The beamsplitter adds the powers of linear 30° and −30°, but each field
+  // carries on with its own state and phase, and the camera's pixels weight
+  // their cross term by the overlap of the two states, |⟨a|b⟩| = cos 60° =
+  // 0.5: fringes of visibility 0.5 around half the power.
+  const powers = rightPortScan({ pol: 30, pentamirror: true, camera: true }).map(item => item.power);
+  const visibility = (Math.max(...powers) - Math.min(...powers)) / (Math.max(...powers) + Math.min(...powers));
+  assert.ok(visibility > 0.45 && visibility <= 0.5 + 1e-9, `visibility ${visibility}`);
+  // Orthogonal diagonals make none.
+  for (const item of rightPortScan({ pol: 45, pentamirror: true, camera: true })) close(item.power, 0.5, 'diagonal on a camera');
 });

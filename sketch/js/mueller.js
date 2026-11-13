@@ -9,15 +9,24 @@
 // - Jones vectors are (E_p, E_s). p lies in the drawing plane, perpendicular
 //   to the ray; s points out of the plane. The app's polarization angle is
 //   measured from p, so 0° is p and 90° is s.
-// - The field is E(t) = Re{J exp(−iωt)}.
+// - The field is E(t) = Re{J exp(−iωt)}, so a path of optical length L adds
+//   the phase e^(+ikL) and the slow axis of a retarder lags by e^(+iδ).
+// - k̂ is along the ray, ŝ = +ẑ points out of the screen (the canvas y axis
+//   points down) and p̂ = ŝ × k̂, so (p̂, ŝ, k̂) is right-handed. An element's
+//   axis angle is measured from p̂ towards ŝ for light crossing the element
+//   along its own forward direction (local +x); light crossing it backwards
+//   sees the reciprocal matrix (reciprocalMueller).
 // - Stokes vectors are S = (S0, S1, S2, S3) with S0 = |E_p|² + |E_s|²,
 //   S1 = |E_p|² − |E_s|², S2 = 2 Re(E_p E_s*), S3 = 2 Im(E_p E_s*). Rays carry
 //   the normalized part (s1, s2, s3) = (S1, S2, S3) / S0, and null for
 //   unpolarized light.
-// - Retardance keeps the app's existing sign: Goldstein's Mueller matrices
-//   with δ → −δ, the Jones matrix R(−θ) diag(1, e^(−iδ)) R(θ) for an element
-//   whose axis setting is θ, with R(a) = [[cos a, sin a], [−sin a, cos a]].
-//   Step A2 of the Physics in 2D track is the only step that may change it.
+// - Retardance follows Goldstein's published matrices: the Jones matrix
+//   R(−θ) diag(1, e^(+iδ)) R(θ) for an element whose fast axis is at θ, with
+//   R(a) = [[cos a, sin a], [−sin a, cos a]]. A quarter-wave plate with its
+//   fast axis at 45° turns linear 0° light into s3 = +1, right circular in
+//   Born and Wolf's sense (clockwise seen looking towards the source). Until
+//   step A2 of the Physics in 2D track the app used δ → −δ, which made θ the
+//   slow axis and swapped every circular label.
 //
 // Matrices are 4 × 4 arrays of rows; complex numbers are { re, im }.
 
@@ -65,8 +74,9 @@ export function rotatorMueller(angleDeg) {
   ];
 }
 
-// A linear retarder: a rotation of (s1, s2, s3) by +δ about the axis
-// (cos 2θ, sin 2θ, 0) of the Poincaré sphere (Rodrigues' formula).
+// A linear retarder with its fast axis at θ: a rotation of (s1, s2, s3) by
+// −δ about the axis (cos 2θ, sin 2θ, 0) of the Poincaré sphere (Rodrigues'
+// formula), Goldstein's matrix for a retarder of retardance δ.
 export function linearRetarderMueller(axisDeg, retardanceDeg) {
   const a = 2 * axisDeg * D2R;
   const delta = retardanceDeg * D2R;
@@ -74,9 +84,9 @@ export function linearRetarderMueller(axisDeg, retardanceDeg) {
   const c = Math.cos(delta), s = Math.sin(delta);
   return [
     [1, 0, 0, 0],
-    [0, c + x * x * (1 - c), x * y * (1 - c), y * s],
-    [0, x * y * (1 - c), c + y * y * (1 - c), -x * s],
-    [0, -y * s, x * s, c],
+    [0, c + x * x * (1 - c), x * y * (1 - c), -y * s],
+    [0, x * y * (1 - c), c + y * y * (1 - c), x * s],
+    [0, y * s, -x * s, c],
   ];
 }
 
@@ -98,7 +108,8 @@ export const idealPolarizerMueller = axisDeg => linearDiattenuatorMueller(axisDe
 
 // The reflection of an ideal mirror: the Jones matrix diag(1, −1) in the
 // p, s basis. s1 is kept; s2 and s3 change sign, because p̂ = ŝ × k̂ turns
-// over with the ray while ŝ does not. Nothing in the tracer applies it yet.
+// over with the ray while ŝ does not. The tracer applies it at every
+// specular reflection.
 export function idealMirrorMueller() {
   return [
     [1, 0, 0, 0],
@@ -106,6 +117,24 @@ export function idealMirrorMueller() {
     [0, 0, -1, 0],
     [0, 0, 0, -1],
   ];
+}
+
+// The same element crossed backwards. Reciprocity gives the Jones matrix
+// J_back = Q·Jᵀ·Q with Q = diag(1, −1) (R. Bhandari, Opt. Lett. 33, 854
+// (2008)); in Stokes terms that is D·Mᵀ·D with D = diag(1, 1, −1, 1). A
+// retarder or polarizer at θ becomes the same element at −θ; a reciprocal
+// rotation keeps its sense; the ideal mirror is its own reciprocal.
+// Non-reciprocal elements (a Faraday rotator, the ideal isolator gate) do
+// not obey it and are handled where they are traced.
+export function reciprocalMueller(m) {
+  const D = [1, 1, -1, 1];
+  return [0, 1, 2, 3].map(i => [0, 1, 2, 3].map(j => D[i] * m[j][i] * D[j]));
+}
+
+// Applies the ideal mirror to a normalized state; null (unpolarized) stays
+// null.
+export function mirroredStokes(stokes) {
+  return stokes ? { s1: stokes.s1, s2: -stokes.s2, s3: -stokes.s3 } : null;
 }
 
 // ---------------------------------------------------------------- Jones
