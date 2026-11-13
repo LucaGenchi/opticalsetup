@@ -50,6 +50,8 @@ test('one lens: the three rays have their textbook properties and meet at the im
     near(ray.pts[0].x, 0, 1e-9, 'starts at the tip x');
     near(ray.pts[0].y, -11, 1e-9, 'starts at the tip y');
     assert.ok(passes(ray.pts, tip), `meets at the image tip: ${JSON.stringify(ray.pts)}`);
+    near(ray.pts.at(-1).x, tip.x, 1e-9, 'ends on the image, not past it');
+    near(ray.pts.at(-1).y, tip.y, 1e-9, 'ends on the image, not past it');
     near(ray.pts[1].x, 300, 1e-9, 'bends at the lens');
   }
   const [parallel, chief, focal] = rays;
@@ -108,51 +110,53 @@ test('two lenses: each lens gets its own three rays, from its object to its imag
     near(ray.pts[0].x, image1.x, 1e-9, 'lens 2 rays start at image 1');
     near(ray.pts[0].y, image1.y, 1e-9, 'lens 2 rays start at image 1');
     near(ray.pts[1].x, 600, 1e-9, 'and bend at lens 2');
-    assert.ok(passes(ray.pts, image2), 'lens 2 rays meet at image 2');
+    near(ray.pts.at(-1).x, image2.x, 1e-9, 'lens 2 rays end on image 2');
+    near(ray.pts.at(-1).y, image2.y, 1e-9, 'lens 2 rays end on image 2');
   }
   near(rays[4].pts[1].y, 0, 1e-9, 'lens 2 chief ray through its centre');
 });
 
-test('an object in the front focal plane: two parallel rays, then two rays into the next lens focus', () => {
+test('an object in the front focal plane: the collimated rays go on through the next lens into its focus', () => {
   // Lens 1 at 100 (f 100) collimates the tip; lens 2 at 300 (f 100) images
-  // it in its back focal plane at (400, +11). No ray leaves lens 1 parallel to
-  // the axis, and none reaches lens 2 parallel to the axis.
+  // it in its back focal plane at (400, +11). With no real image between
+  // them, lens 2 starts no rays of its own: lens 1's two rays (parallel and
+  // centre; none leaves lens 1 parallel to the axis) are one connected path
+  // each, bent at lens 2 into its focus.
   const object = objectAt(0);
   const result = traceScene([object, lensAt(100, 100, 50.8), lensAt(300, 100, 50.8)], []);
   const rays = solid(result);
-  assert.equal(rays.length, 4);
-  const slope = ray => (ray.pts.at(-1).y - ray.pts.at(-2).y) / (ray.pts.at(-1).x - ray.pts.at(-2).x);
-  near(slope(rays[0]), slope(rays[1]), 1e-12, 'lens 1 sends both rays out parallel');
-  for (const ray of rays.slice(2)) assert.ok(passes(ray.pts, { x: 400, y: 11 }), 'lens 2 rays meet in its focal plane');
-  // With no real image to start from, lens 2's rays arrive over the second
-  // half of the gap, not out of lens 1's plane.
-  for (const ray of rays.slice(2)) near(ray.pts[0].x, 200, 1e-9, 'lens 2 rays start mid-gap');
-  assert.equal(planes(result).length, 0);
-  // With 25.4 mm lenses, lens 1's chief ray would reach lens 2 at +22, past
-  // its 12.7 mm rim, and is left out; lens 2's centre ray would leave
-  // lens 1's space at −22 but only has to meet lens 2, at its centre.
+  assert.equal(rays.length, 2);
+  const slope = (a, b) => (b.y - a.y) / (b.x - a.x);
+  for (const ray of rays) {
+    near(ray.pts[0].x, 0, 1e-9, 'starts at the tip');
+    assert.deepEqual(ray.pts.slice(1, 3).map(q => q.x), [100, 300], 'crosses lens 1, then lens 2');
+    near(ray.pts.at(-1).x, 400, 1e-9, 'ends on the image');
+    near(ray.pts.at(-1).y, 11, 1e-9, 'ends on the image');
+  }
+  near(slope(rays[0].pts[1], rays[0].pts[2]), slope(rays[1].pts[1], rays[1].pts[2]), 1e-12, 'parallel between the lenses');
+  assert.equal(dashed(result).length + planes(result).length, 0);
+  // With 25.4 mm lenses, lens 1's centre ray would reach lens 2 at +22,
+  // past its 12.7 mm rim, and is left out.
   const small = solid(traceScene([objectAt(0), lensAt(100, 100), lensAt(300, 100)], []));
-  assert.equal(small.length, 3);
+  assert.equal(small.length, 1);
   assert.ok(small.every(ray => ray.pts.every(p => !(Math.abs(p.x - 300) < 1e-9) || Math.abs(p.y) <= 12.7)), 'nothing crosses lens 2 outside its glass');
 });
 
-test('a virtual object: lens 1 aims past lens 2 (dashed), lens 2 rays meet at its image', () => {
-  // Image 1 would form at (450, +5.5), 50 mm beyond lens 2 at 400 (f 100):
-  // a virtual object, imaged at 33.3 mm after lens 2.
+test('an image that would form beyond the next lens: lens 1 rays go on through lens 2 to its image', () => {
+  // Image 1 would form at (450, +5.5), 50 mm beyond lens 2 at 400 (f 100);
+  // lens 2 bends the converging rays to (433.3, 3.67). No ray starts in
+  // mid-air and none is dashed.
   const object = objectAt(0);
   const result = traceScene([object, lensAt(300, 100), lensAt(400, 100)], []);
   const rays = solid(result);
-  assert.equal(rays.length, 6);
-  const toImage1 = dashed(result);
-  assert.equal(toImage1.length, 3);
-  for (const d of toImage1) {
-    near(d.pts[0].x, 400, 1e-9, 'dashed from lens 2');
-    near(d.pts[1].x, 450, 1e-9, 'to where image 1 would be');
-  }
+  assert.equal(rays.length, 3);
+  assert.equal(dashed(result).length, 0);
   const image2 = { x: 400 + 100 / 3, y: 11 / 3 };
-  for (const ray of rays.slice(3)) {
-    near(ray.pts[0].x, 350, 1e-9, 'lens 2 rays arrive over the second half of the gap');
-    assert.ok(passes(ray.pts, image2, 1e-9), 'and meet at image 2');
+  for (const ray of rays) {
+    near(ray.pts[0].x, 0, 1e-9, 'starts at the tip');
+    assert.deepEqual(ray.pts.slice(1, 3).map(q => q.x), [300, 400], 'crosses lens 1, then lens 2');
+    near(ray.pts.at(-1).x, image2.x, 1e-9, 'ends on image 2');
+    near(ray.pts.at(-1).y, image2.y, 1e-9, 'ends on image 2');
   }
 });
 
@@ -172,8 +176,9 @@ test('a plate before the lens: the rays bend in it and keep their properties at 
   near(atLens(chief).y, 0, 1e-9, 'chief ray meets the lens centre through the plate');
   near(atLens(parallel).y, -2, 1e-9, 'parallel ray reaches the lens at the tip height');
   near(focal.pts.at(-1).y, focal.pts.at(-2).y, 1e-9, 'focal ray leaves parallel');
+  near(parallel.pts.at(-1).x, focal.pts.at(-1).x, 1e-9, 'all end on the image');
   // The rays meet at the drawn image tip, which the plate has moved.
-  const image = rays.map(r => r.pts.at(-2));
+  const image = rays.map(r => r.pts.at(-1));
   near(image[0].x, image[1].x, 1e-9, 'parallel and chief meet');
   near(image[0].y, image[1].y, 1e-9, 'parallel and chief meet');
   // A plate carries rays without bending them: the slope inside differs
@@ -275,6 +280,9 @@ test('edge cases stay finite: tip on the lens axis, object just off the focal pl
   assert.ok(allFinite(r3));
   const rays = solid(r3);
   assert.equal(rays.length, 3);
-  const meet = rays[0].pts.at(-2);
-  for (const ray of rays.slice(1)) assert.ok(passes(ray.pts, meet, 1e-6), 'the three still meet with a tilted lens');
+  const meet = rays[0].pts.at(-1);
+  for (const ray of rays.slice(1)) {
+    near(ray.pts.at(-1).x, meet.x, 1e-6, 'the three still meet with a tilted lens');
+    near(ray.pts.at(-1).y, meet.y, 1e-6, 'the three still meet with a tilted lens');
+  }
 });

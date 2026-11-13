@@ -221,27 +221,28 @@ export function imageOfPoint(P, steps, u, v, upTo = steps.length) {
 }
 
 // ---------------------------------------------------------------------------
-// Principal rays: the three textbook construction rays from the Object's tip,
-// drawn lens by lens. Each lens gets its own three rays, from its own object
-// point (the image the optics before it form) to its own image:
+// Principal rays: the three textbook construction rays from the Object's tip:
 //   - parallel to the lens's axis, then through its back focal point;
 //   - through the centre (of H, leaving from the centre of H′), undeviated;
 //   - through its front focal point, then parallel to the axis.
-// An object point at infinity (the lens before made a collimated beam) has no
-// ray parallel to the axis; an image at infinity has no ray leaving parallel.
-// Each ray is a straight line on either side of the lens, and every line is
-// fixed by the object point and the image point the chain already computes,
-// so the three rays of one lens meet exactly at its drawn image.
+// The first lens draws them from the tip, and any later lens with a real
+// image formed before it draws its own three from that image. A lens with
+// no real image before it (behind a collimated beam, or before an image that
+// would form beyond it) draws none: the rays that reach it bend there and go
+// on, so every drawn ray is one connected path, as in a textbook diagram of
+// a microscope. A lens whose object is at infinity has no ray parallel to
+// the axis, and one whose image is at infinity has no ray leaving parallel.
+// Each ray is a straight line between optics, fixed by the image points the
+// chain already computes, so the rays meet exactly at each drawn image, and
+// end there when the image is real.
 //
-// The rays are drawn, not traced: they do not interact with anything in the
-// scene. A plate or telescope group (an afocal step) between lenses carries
-// them, through its paraxial matrix. A dashed line is drawn only for a
-// virtual image: back to an image behind the lens, or on from the next lens
-// to an image the lens would have formed beyond it. A ray is drawn only if
-// every optic it crosses on the way catches it within its glass (Luca's rule
-// on #319): a construction ray that would meet a lens outside the glass is
-// left out rather than bent in empty air. A thick lens, asphere or lens group
-// shows its principal planes across its glass, since that is where the
+// The rays are drawn, not traced: they do not interact with anything else in
+// the scene. A plate or telescope group (an afocal step) carries them through
+// its paraxial matrix. A dashed line leads back to a virtual image. A ray is
+// drawn only if every optic it crosses catches it within its glass (Luca's
+// rule on #319): a construction ray that would meet a lens outside the glass
+// is left out rather than bent in empty air. A thick lens, asphere or lens
+// group shows its principal planes across its glass, since that is where the
 // construction bends its rays.
 
 function frameOf(plane, u) {
@@ -315,9 +316,9 @@ function capped(pts, maxLen) {
 // The principal rays of the chain `steps` for the point `tip` (an Object's
 // tip), with u the Object's axis and v its up direction. Returns
 // { rays: [{ pts, dashed, lens }], planes: [{ pts }] }: solid and dashed ray
-// pieces (lens = which lens of the chain they belong to, from 0), and the
-// principal planes of the real optics that drew rays. Empty when the chain
-// has no lens with power.
+// pieces (lens = the lens of the chain whose three rays they are, from 0),
+// and the principal planes of the real optics the rays cross. Empty when the
+// chain has no lens with power.
 export function principalRays(steps, tip, u, v, { maxLen = 6000 } = {}) {
   const out = { rays: [], planes: [] };
   if (!steps?.length || !finitePt(tip)) return out;
@@ -335,10 +336,28 @@ export function principalRays(steps, tip, u, v, { maxLen = 6000 } = {}) {
   // A ray is drawn only where it really crosses glass: a height h on a
   // step's plane must lie within that optic's half-aperture.
   const inGlass = (h, step) => !(step.half > 0) || (Number.isFinite(h) && Math.abs(h) <= step.half + 1e-9);
+  const mid = plane => mul(add(plane.a, plane.b), 0.5);
+  // Whether the image in space j forms there for real: ahead of the step
+  // before it, and not beyond the step after it.
+  const realIn = j => {
+    const R = imgs[j];
+    if (!R) return false;
+    return ahead(mid(steps[j - 1].H2), R, u) > 0 && (j === N || ahead(R, mid(steps[j].H), u) >= 0);
+  };
+  // A lens draws its own three rays from the object, and from a real image
+  // formed between it and the lens before. Any other lens (behind a
+  // collimated beam, or before an image that would form beyond it) bends
+  // the rays that reach it instead, so every drawn ray is one connected
+  // path of light.
+  const starts = lenses.filter((k, li) => {
+    if (li === 0) return true;
+    for (let j = lenses[li - 1] + 1; j <= k; j++) if (realIn(j)) return true;
+    return false;
+  });
   const drawnAt = new Set();
-  lenses.forEach((k, li) => {
+  for (const k of starts) {
+    const li = lenses.indexOf(k);
     const p = li > 0 ? lenses[li - 1] : -1;
-    const m = li < lenses.length - 1 ? lenses[li + 1] : -1;
     const step = steps[k];
     const F1 = frameOf(step.H, u), F2 = frameOf(step.H2, u);
     const O = imgs[k], I = imgs[k + 1];
@@ -357,93 +376,89 @@ export function principalRays(steps, tip, u, v, { maxLen = 6000 } = {}) {
     for (const ray of candidates) {
       if (!ray.din || !ray.dout || !inGlass(ray.h, step)) continue;
       const hit1 = pointOn(ray.h, F1), hit2 = pointOn(ray.h, F2);
+      const crossed = [k];
 
-      // Back from the lens to where this lens's light starts: through any
-      // afocal steps after the lens before, to the image that lens formed
-      // when it lies between them, else to the lens before.
+      // Back from the lens to where its light starts, crossing any afocal
+      // steps in between: the object for the first lens, else the real
+      // image the lens starts from (in whichever space it forms).
       const back = [hit1];
-      let cur = hit1, d = ray.din, ok = true;
-      for (let a = k - 1; a > p; a--) {
+      let cur = hit1, d = ray.din, ok = true, space = k;
+      while (!(li > 0 && realIn(space)) && space > p + 1) {
+        const a = space - 1;
         const X2 = linePlane(cur, d, steps[a].H2);
         const prev = X2 && afocalBack(steps[a], X2, d, u);
         if (!prev || !inGlass(heightOn(X2, frameOf(steps[a].H2, u)), steps[a])
           || !inGlass(heightOn(prev.p, frameOf(steps[a].H, u)), steps[a])) { ok = false; break; }
         back.push(X2, prev.p);
-        cur = prev.p; d = prev.d;
+        cur = prev.p; d = prev.d; space = a;
       }
-      if (!ok) continue;
-      const Q = imgs[p + 1];
-      if (p < 0) back.push(Q);
-      else {
-        const B = linePlane(cur, d, steps[p].H2);
-        if (Q && ahead(Q, cur, d) > 0 && (!B || ahead(B, Q, d) >= 0)) back.push(Q);
-        else if (!B || (back.length > 1 && !inGlass(heightOn(B, frameOf(steps[p].H2, u)), steps[p]))) continue;
-        // No real image to start from (a virtual object, or one at
-        // infinity): the rays are aimed at this lens, so they arrive over
-        // the second half of the gap rather than out of the lens before,
-        // where they could cross its plane far from the glass. Through a
-        // plate they start on the lens before.
-        else back.push(back.length > 1 ? B : add(cur, mul(sub(B, cur), 0.5)));
-      }
+      if (!ok || (li > 0 && !realIn(space))) continue;
+      back.push(li === 0 ? tip : imgs[space]);
       const pts = back.reverse();
       if (step.H2 !== step.H) pts.push(hit2);
 
-      // On from the lens: through any afocal steps, to this lens's image
-      // where it forms before the next lens, else to the next lens.
+      // On from the lens: through every step after it, bending at each
+      // lens towards that lens's image, until the rays meet at a real image
+      // with a lens still ahead (which starts its own rays there), or the
+      // last space.
       const dashed = [];
       cur = hit2; d = ray.dout;
-      const last = m < 0 ? N : m;
-      for (let j = k + 1; j <= last; j++) {
+      for (let j = k + 1; j <= N; j++) {
         const R = imgs[j];
         const next = j < N ? linePlane(cur, d, steps[j].H) : null;
         const reaches = R && ahead(cur, R, d) > 0 && (!next || ahead(R, next, d) >= 0);
-        if (reaches && m < 0) {
-          if (j === N) {
-            // The final image: the rays cross there and go on a little.
-            const dist = Math.hypot(R.x - cur.x, R.y - cur.y);
-            pts.push(R, add(R, mul(d, clamp(0.3 * dist, 15, 120))));
-            break;
-          }
-          // A real image before a plate or telescope after the last lens:
-          // the rays cross there and go on through it to the final image.
-          pts.push(R);
-        }
         if (j === N) {
-          // The last lens with its image out of reach: out and back (dashed)
-          // to a virtual image, or straight on to one at infinity.
-          const dist = R ? Math.hypot(R.x - cur.x, R.y - cur.y) : 2 * Math.abs(step.f);
-          pts.push(add(cur, mul(d, clamp(dist, 80, 400))));
-          if (R) dashed.push([cur, R]);
+          if (reaches) pts.push(R); // a real final image: the rays end on it
+          else {
+            // A virtual final image (dashed back to it) or one at infinity.
+            const dist = R ? Math.hypot(R.x - cur.x, R.y - cur.y) : 2 * Math.abs(step.f);
+            pts.push(add(cur, mul(d, clamp(dist, 80, 400))));
+            if (R) dashed.push([cur, R]);
+          }
           break;
         }
-        if (reaches && m >= 0) { pts.push(R); break; }
-        if (j === m) {
-          if (!next) { ok = false; break; }
-          // Arriving at the next lens outside its glass, the ray would
-          // miss it: not drawn.
-          if (!inGlass(heightOn(next, frameOf(steps[m].H, u)), steps[m])) { ok = false; break; }
-          pts.push(next);
-          if (R && ahead(next, R, d) > 0) dashed.push([next, R]);
-          else if (R && ahead(R, cur, d) > 0) dashed.push([cur, R]);
-          break;
+        if (reaches) {
+          pts.push(R);
+          // The next lens starts its own rays from this image.
+          if (lenses.some(x => x >= j)) break;
+          // Only plates or telescopes ahead: on through them.
+        } else if (R && ahead(R, cur, d) > 0 && !steps[j].matrix) {
+          // A virtual image the next lens works from: dashed back to it.
+          dashed.push([cur, R]);
         }
-        // An afocal step ahead: carry the ray through it.
         if (!next) { ok = false; break; }
-        const after = afocalForward(steps[j], next, d, u);
-        if (!after || !inGlass(heightOn(next, frameOf(steps[j].H, u)), steps[j])
-          || !inGlass(heightOn(after.p, frameOf(steps[j].H2, u)), steps[j])) { ok = false; break; }
-        pts.push(next, after.p);
-        cur = after.p; d = after.d;
+        const nextStep = steps[j];
+        if (!inGlass(heightOn(next, frameOf(nextStep.H, u)), nextStep)) { ok = false; break; }
+        if (nextStep.matrix) {
+          const after = afocalForward(nextStep, next, d, u);
+          if (!after || !inGlass(heightOn(after.p, frameOf(nextStep.H2, u)), nextStep)) { ok = false; break; }
+          pts.push(next, after.p);
+          cur = after.p; d = after.d;
+          continue;
+        }
+        // A lens this ray reaches without a real image before it: it bends
+        // there towards the lens's image (all rays of a point leave a lens
+        // through its image), or parallel to the rest when that image is at
+        // infinity.
+        const G1 = frameOf(nextStep.H, u), G2 = frameOf(nextStep.H2, u);
+        const h = heightOn(next, G1);
+        const exit = pointOn(h, G2);
+        const out2 = imgs[j + 1] ? towards(exit, imgs[j + 1], G2) : forward(dirIn(j + 1), G2);
+        if (!out2) { ok = false; break; }
+        pts.push(next);
+        if (nextStep.H2 !== nextStep.H) pts.push(exit);
+        crossed.push(j);
+        cur = exit; d = out2;
       }
       if (!ok || !pts.every(finitePt)) continue;
       out.rays.push({ pts: capped(pts, maxLen), dashed: false, lens: li });
       for (const seg of dashed) {
         if (seg.every(finitePt)) out.rays.push({ pts: capped(seg, maxLen), dashed: true, lens: li });
       }
-      drawnAt.add(k);
+      for (const c of crossed) drawnAt.add(c);
     }
-  });
-  // A real optic with rays drawn shows its two principal planes across its
+  }
+  // A real optic the rays cross shows its two principal planes across its
   // glass, where the construction bends them.
   for (const k of drawnAt) {
     const step = steps[k];
