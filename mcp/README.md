@@ -4,9 +4,9 @@ This optional Node service exposes the existing OpticalSetup component registry,
 scene editing, and ray tracer to MCP clients. Hosts that show
 [MCP Apps](https://modelcontextprotocol.io/extensions/apps/overview) (ChatGPT,
 Claude) also get the workbench as a view inside the chat; it is the same browser
-editor. The view keeps its setup and undo history in browser storage. Tools
-process the scene supplied with each request and return a new snapshot. The
-service has no scene database or accounts.
+editor. The view owns the setup and undo history in browser storage. It
+registers the current scene with an in-memory mirror and sends incremental
+updates as it edits. The service has no scene database or accounts.
 
 ## Run locally
 
@@ -20,9 +20,44 @@ needed to start the service.
 A client that starts its MCP servers itself can run the service with
 `node mcp/server.js --stdio`. It then speaks MCP on its standard input and
 output and logs to standard error. The loopback listener still runs, because
-the view loads its files and its live channel from it. If port 5188 is taken,
-a service started this way takes a free port instead; set `PORT` to insist on
-one.
+the view loads its files and its live channel from it.
+
+A client may start the service more than once; Claude Desktop starts two
+copies for one chat, one that hands it the view and one that takes its tool
+calls. Workbenches live in the memory of one process, so only the first copy
+on a machine keeps them. A copy started with `--stdio` that finds the same
+build of this service already on its port (5188, or the one `PORT` names)
+opens no listener and passes every message to that copy. The build is a
+digest of the service's and the editor's files, which `/mcp/health` reports
+as `build`; the version number alone does not tell two checkouts apart.
+
+What a relying copy checks is the build, on every message, not the process.
+Each message it passes on names its build in an `x-opticalsetup-build`
+header. A service of another build refuses such a message before reading it
+(HTTP 409), and every answer on `/mcp` carries the build that gave it; an
+answer without the same build is not taken. So if another build of this
+service takes the port between two calls, it carries nothing out. A copy of
+the same build that took the port is used as the first was; it holds none of
+the earlier workbenches. A client that sends no such header is answered as
+before.
+
+This does not keep a message from a program that is not this service, or
+from a build older than this check, if one takes the port: messages already
+on their way may reach it, and it may act on them. Their answers are not
+taken, and once the mismatch is detected nothing more is sent. The view has the same limit, since it loads its files
+and its live channel from that port.
+
+A copy that relies on another one never takes its place. If a call is not
+answered by its build while that build still holds the port, the call fails
+with a message that it may have been carried out all the same: read the
+setup before repeating it. If the port is empty or held by anything else,
+nothing more is sent, and every call fails with a message to restart the
+client that started OpticalSetup. For Claude Desktop that is the app itself,
+which starts and ends both copies together.
+
+If something else holds port 5188, or another build of this service, the
+service takes a free port and says on standard error that it runs apart
+from it. With `PORT` set it does not: it fails to start.
 
 The PNG screenshot tool needs Linux with a tmpfs at `/dev/shm` and FFmpeg
 with SVG input support. Where either is missing (macOS, for one) the service
@@ -37,8 +72,9 @@ Set `PUBLIC_ORIGIN` to the public HTTPS origin, without a trailing slash or
 path, and optionally set `PORT` for the loopback listener. Have the proxy
 preserve the public Host header, forward `/mcp` and `/mcp/*`, and disable
 response buffering for `/mcp/events` so the view receives edits as they
-arrive. The service has no sign-in and each inspection starts a process, so
-put a request rate limit in front of it.
+arrive. Route the MCP calls, event stream, and sync requests for a
+workbench to the same Node process. The service has no sign-in and each
+inspection starts a process, so put a request rate limit in front of it.
 
 GitHub Pages serves static files. A URL such as
 `https://opticalsetup.com/mcp` would require a separate service behind a
@@ -95,9 +131,93 @@ and refuses to show a view that declares any other `ui.domain`. The service
 therefore declares none, and accepts the live channel from
 `https://<hash>.claudemcpcontent.com`.
 
-Limits to keep in mind: a tool takes the whole scene and returns it, so a
-result grows with the scene. The bundled 120-component community setup
-returns about 100,000 characters per edit. Claude Code cuts tool results at
-25,000 tokens unless `MAX_MCP_OUTPUT_TOKENS` is raised, which a scene of
-that size exceeds, and claude.ai stops passing results to the view above
-about 150,000 characters.
+## Working with a connected setup
+
+`open_setup` returns a `workspaceRef` for the view it opens, so the model
+can edit in the same turn; a call that names it waits up to eight seconds
+for the view to load. The workbench context repeats the reference, with the
+current revision, the selection, and component/path counts. Use `get_setup` for
+counts and undo/redo availability, `get_items` to look up IDs and
+controls by page or exact ID, and `inspect_setup` for detector and fiber
+readings. Pass `workspaceRef`, `expectedRevision` and a unique
+`clientRequestId` to edit. The service reports `applied` after the browser
+checks the revision and acknowledges the edit. Repeat the same arguments
+and request ID for an exact retry. It reports what became of that edit, even
+when the setup has changed since or is no longer shared. On a revision
+conflict, read the current setup before applying another edit. Undo and redo
+use the browser's history.
+
+The service waits five seconds for that acknowledgement. An edit the browser
+applies later is still recorded, so repeating the call reports it as
+`applied` instead of applying it twice. Up to eight edits can be waiting for
+the browser's answer this way. They were all computed on the same scene, so
+at most one of them is applied, and the others then report a revision
+conflict. A view reopens its live stream every
+two minutes, and after a network fault; an edit that arrives in between
+waits up to three seconds for the view. An edit that arrives while a pointer
+is down in the editor is refused as `BUSY`, with nothing changed.
+
+A reading from `inspect_setup` keeps its numbers, notes and model limits and
+leaves out the curves the editor plots from it: a spectrum, a pulse envelope,
+a field. Each one is named in its place with its length, for example
+`{"omitted": 1024, "curve": "pulse.envelope.intensity"}`. What sums a curve
+up (band limits, duration, energy, peak power) is in the reading beside it.
+The rule is a limit on what one answer carries: any list of nine or more
+items is left out. The lists of caveats (`approximations`, `phaseIssues`)
+are the exception and always arrive whole.
+To read a curve, pass one ID in `ids` with `curve`; `sampleOffset` and
+`sampleLimit` (128 by default, 256 at most) choose the window. This is the
+same with a `workspaceRef` and with an explicit `setup`.
+
+Routine edits exchange changed items. Opening or recovering a mirror, and
+some bulk replacements, can transfer the complete scene between the browser
+and service. Opening a view carries any initial scene in widget metadata.
+The mirror holds up to 40 workbenches, with a 750,000-byte scene limit and
+expiry after ten minutes without browser sync. When it is full, a view that
+has closed gives up its place to one that is open, unless one of its edits
+is still unconfirmed. A scene the mirror does not take, such as one with
+more than 200 components, stays in the browser. The view says why the chat
+does not follow it, and reads and edits by its reference fail with
+`WORKSPACE_NOT_SHARED` and the same reason, instead of answering from the
+scene the mirror took last, until the scene is one it takes again. A scene
+whose sync would not fit in a request to the service (950,000 bytes; one
+very long text label is enough) is not sent at all: the view tells the
+service so in a few bytes, with the same result. If something on the way
+refuses a request as too large, the view reports it the same way and does
+not send that size again. If a larger request fails with no answer the
+browser may read, as when a proxy refuses it without CORS headers, the view
+cannot tell that from a lost connection: it tells the service in a few
+bytes that the scene has not reached it, and goes on trying, less and less
+often. A proxy in front of the service should take requests of 950,000
+bytes. The
+browser reconnects and resends its current scene after a
+service restart, under the reference of its own channel. A workbench must
+be connected to apply an edit. Treat the workspace reference as private: it
+grants read access and lets its holder propose edits to the connected view.
+Use Save JSON to keep a portable copy.
+
+The reference is the hash of a ticket that the open result carries in its
+metadata for the view alone. The first view to register with the ticket,
+within two minutes of the call, takes the reference; knowing the reference
+is not enough. The view's channel stays its own, and only the channel reads
+the stream or confirms an edit.
+
+The reference then names that one view for good. A stored result can be
+shown again, in a reloaded chat or a second tab, and the new view presents
+the same ticket, but the reference never moves to it: the new view works
+under a reference of its own, which its workbench context gives. An edit and
+its exact retry therefore always reach the same view. The service remembers
+which view a reference belongs to after that view's mirror has expired (for
+up to 200 references), so the same view comes back to its reference and no
+other view can take it. After a service restart this is forgotten, and every
+view goes on under its own reference. The service expects at most 200 opened
+views at a time; one opened past that works under its own reference too.
+A reference does not keep the scene: the scene is the copy in browser
+storage, as before. In a client that shows no view, the first call by the
+reference waits those eight seconds and is then told to pass an explicit
+setup.
+
+Clients without an interactive view, such as Claude Code, can still pass an
+explicit `setup` snapshot to each tool and use the returned snapshot for the
+next edit. For headless undo/redo, also supply `targetScene`. Results in this
+mode grow with scene size and count toward the host's tool-output limit.

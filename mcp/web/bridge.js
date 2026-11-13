@@ -5,6 +5,8 @@ import { registry } from '../../sketch/js/elements.js';
 import { renderAll, zoomFit } from '../../sketch/js/canvas.js';
 import { renderInspector } from '../../sketch/js/inspector.js';
 import { buildShareURL } from '../../sketch/js/share.js';
+import { createLiveWorkspace, followEvents } from './live-workspace.js';
+import { applyScenePatch } from './scene-patch.js';
 import { browserSceneHash, canonicalJSON, canonicalScene, globalsResult, inLoadedForm, loadedCopy, offeredSetup, proposalMatches, resultData } from './snapshot.js';
 // Native autosave is origin-wide. Keep this integration's scenes scoped by ID.
 configureAutosave({ enabled: false });
@@ -13,6 +15,7 @@ const hosted = window.parent !== window, pending = new Map();
 let receiveInitialResult;
 const initialResult = new Promise(resolve => { receiveInitialResult = resolve; });
 let nextId = 1, setup, history = [], future = [], requests = [], applying = false, ready = false, busy = false, accepting = false, dragging = false, queued, channel, timer, contextKey = '', navigationGeneration = 0;
+let liveWorkspace, unshared = false, kept = ['Local setup · Save JSON for a backup', false];
 let host = {}, contextFailures = 0, contextRetryAt = 0, waiting = false;
 // Until a hosted view has the setup it was opened for, the editor is not to be
 // worked in: there is no setup yet to keep the work in. The notice covers the
@@ -39,11 +42,18 @@ const nativeScene = () => {
   try { return canonicalScene(text, registry); } catch { return JSON.parse(text); }
 };
 const key = id => 'opticalsetup-local-v1:' + id;
-const eventsURL = new URL('../../../events', import.meta.url);
 const copy = value => JSON.parse(JSON.stringify(value));
 function status(message, error = false) {
   const el = document.getElementById('lab-status'); if (el) el.textContent = message;
   const box = document.getElementById('lab-sync'); if (box) box.dataset.error = String(error);
+}
+// What the status line says when nothing else is being reported: where the setup is kept, or,
+// while the service does not take the scene, why the chat does not follow it. The chat works on
+// the service's copy; the setup itself is unaffected and stays in this browser.
+function note() {
+  const problem = liveWorkspace?.problem;
+  if (problem) status('The chat cannot follow this setup · ' + problem, true);
+  else status(...kept);
 }
 function request(method, params) {
   return new Promise((resolve, reject) => {
@@ -60,19 +70,29 @@ function controls() {
 function context() {
   if (!hosted || !setup || busy || Date.now() < contextRetryAt) return;
   const selection = state.selection, selected = selection?.kind === 'element' ? state.elements.find(x => x.id === selection.id) : null;
-  const payload = { setup, selectedComponent: selected ? { id: selected.id, type: selected.type } : null, selectedPathId: selection?.kind === 'beam' ? selection.id : null, undoScene: history.at(-1) || null, redoScene: future.at(-1) || null, storage: 'browser-local' };
+  const workspaceRef = liveWorkspace?.reference;
+  const payload = {
+    ...(workspaceRef && { workspaceRef }), setupId: setup.id, revision: setup.revision,
+    componentCount: setup.scene.elements.length, pathCount: setup.scene.beams.length,
+    selectedComponent: selected ? { id: selected.id, type: selected.type } : null,
+    selectedPathId: selection?.kind === 'beam' ? selection.id : null,
+    canUndo: Boolean(history.length), canRedo: Boolean(future.length),
+    connection: liveWorkspace?.problem ? 'this setup is not shared with the chat: ' + liveWorkspace.problem
+      : !workspaceRef ? 'waiting for workbench sync' : liveWorkspace.connected ? 'connected' : 'reconnecting',
+  };
   const content = JSON.stringify(payload);
   if (content === contextKey) return; contextKey = content;
   // A host that cannot take the context is asked again, but less and less often.
-  request('ui/update-model-context', { content: [{ type: 'text', text: 'OpticalSetup current browser snapshot (use this for the next tool call): ' + content }] })
+  request('ui/update-model-context', { content: [{ type: 'text', text: 'OpticalSetup current workbench: ' + content }] })
     .then(() => { contextFailures = 0; }, () => { contextKey = ''; contextRetryAt = Date.now() + Math.min(60000, 1000 * 2 ** contextFailures++); });
 }
-function persist(broadcast = true) {
+function persist(broadcast = true, deliveryId) {
   const local = { setup, history, future, requests };
-  try { localStorage.setItem(key(setup.id), JSON.stringify(local)); status('Local copy · Save JSON for a backup'); }
-  catch { status('Browser storage unavailable · Save JSON to keep this setup', true); }
+  try { localStorage.setItem(key(setup.id), JSON.stringify(local)); kept = ['Local copy · Save JSON for a backup', false]; }
+  catch { kept = ['Browser storage unavailable · Save JSON to keep this setup', true]; }
+  note();
   if (broadcast) channel?.postMessage(local);
-  controls(); context(); updateLink();
+  controls(); liveWorkspace?.update(deliveryId); context(); updateLink();
   const box = document.getElementById('lab-sync'); if (box) { box.dataset.revision = String(setup.revision); box.dataset.sceneHash = setup.hash; box.dataset.storage = 'local'; box.dataset.setupId = setup.id; }
 }
 function stored(id) {
@@ -98,7 +118,7 @@ function take(id, fresh) {
   if (!view) throw new Error('Invalid initial snapshot');
   ({ setup, history, future, requests } = view); render(setup.scene, true);
 }
-async function accept(data) {
+async function accept(data, deliveryId) {
   if (!data?.setup?.scene) return;
   const box = document.getElementById('lab-sync'); if (box) box.dataset.lastChatAction = data.action || 'open_setup';
   if (!ready) {
@@ -106,29 +126,31 @@ async function accept(data) {
     receiveInitialResult(data);
     return;
   }
-  if (dragging || busy || accepting) { queued = data; return; }
+  if (dragging || accepting || (busy && !deliveryId)) { if (!deliveryId) queued = data; return; }
   accepting = true;
   try {
-  await settleManual();
-  if (data.setup.id !== setup.id) { status('Chat edit targets another local setup · Current setup kept', true); return; }
-  if (!data.action) return;
-  if (requests.includes(data.clientRequestId)) return;
-  if (!proposalMatches(setup, data)) { status('Chat edit was based on an older scene · Ask again using the current setup', true); contextKey = ''; context(); return; }
-  if (data.setup.hash !== await browserSceneHash(data.setup.scene)) { status('Invalid chat snapshot · Local setup kept', true); return; }
-  // A keyboard edit may have happened while the returned scene was hashing.
-  await settleManual();
-  if (dragging || !proposalMatches(setup, data)) { status('Chat edit was based on an older scene · Local setup kept', true); contextKey = ''; context(); return; }
-  if (data.action === 'undo_setup') {
-    if (!history.length || canonicalJSON(history.at(-1)) !== canonicalJSON(data.setup.scene)) { status('Undo history changed · Local setup kept', true); return; }
-    future.push(setup.scene); history.pop();
-  } else if (data.action === 'redo_setup') {
-    if (!future.length || canonicalJSON(future.at(-1)) !== canonicalJSON(data.setup.scene)) { status('Redo history changed · Local setup kept', true); return; }
-    history.push(setup.scene); future.pop();
-  } else { history.push(setup.scene); history = history.slice(-30); future = []; }
-  requests.push(data.clientRequestId); requests = requests.slice(-60);
-  const fit = data.setup.scene.elements.length > setup.scene.elements.length || data.setup.scene.beams.length > setup.scene.beams.length;
-  // A proposal computed without the channel (the model left it out) must not cost the view its live channel.
-  setup = { ...copy(data.setup), ...(setup.channel ? { channel: setup.channel } : {}) }; render(setup.scene, fit); persist();
+    await settleManual();
+    if (data.setup.id !== setup.id) { status('Chat edit targets another local setup · Current setup kept', true); return; }
+    if (!data.action) return;
+    const requestId = deliveryId || data.clientRequestId;
+    if (requests.includes(requestId)) return;
+    if (!proposalMatches(setup, data)) { status('Chat edit was based on an older scene · Ask again using the current setup', true); contextKey = ''; context(); return; }
+    if (data.setup.hash !== await browserSceneHash(data.setup.scene)) { status('Invalid chat snapshot · Local setup kept', true); return; }
+    // A keyboard edit may have happened while the returned scene was hashing.
+    await settleManual();
+    if (dragging || !proposalMatches(setup, data)) { status('Chat edit was based on an older scene · Local setup kept', true); contextKey = ''; context(); return; }
+    if (data.action === 'undo_setup') {
+      if (!history.length || canonicalJSON(history.at(-1)) !== canonicalJSON(data.setup.scene)) { status('Undo history changed · Local setup kept', true); return; }
+      future.push(setup.scene); history.pop();
+    } else if (data.action === 'redo_setup') {
+      if (!future.length || canonicalJSON(future.at(-1)) !== canonicalJSON(data.setup.scene)) { status('Redo history changed · Local setup kept', true); return; }
+      history.push(setup.scene); future.pop();
+    } else { history.push(setup.scene); history = history.slice(-30); future = []; }
+    requests.push(requestId); requests = requests.slice(-60);
+    const fit = data.setup.scene.elements.length > setup.scene.elements.length || data.setup.scene.beams.length > setup.scene.beams.length;
+    // A proposal computed without the channel (the model left it out) must not cost the view its live channel.
+    setup = { ...copy(data.setup), ...(setup.channel ? { channel: setup.channel } : {}) }; render(setup.scene, fit); persist(true, deliveryId);
+    return true;
   } finally { accepting = false; drainQueued(); }
 }
 function drainQueued() {
@@ -136,36 +158,53 @@ function drainQueued() {
   const data = queued; queued = null;
   accept(data).catch(() => status('Could not apply chat edit · Local setup kept', true));
 }
-async function connectLive() {
-  if (!hosted) return;
-  if (!setup.channel) setup.channel = [...crypto.getRandomValues(new Uint8Array(32))].map(x => x.toString(16).padStart(2, '0')).join('');
-  persist();
+async function acceptIncremental(proposal) {
+  let applied = false;
+  try {
+    await settleManual();
+    if (dragging || !proposalMatches(setup, proposal)) return;
+    const scene = proposal.action === 'undo_setup' ? history.at(-1) :
+      proposal.action === 'redo_setup' ? future.at(-1) : applyScenePatch(setup.scene, proposal.patch);
+    if (!scene) return;
+    const hash = proposal.hash || await browserSceneHash(scene);
+    applied = await accept({ ...proposal, setup: { ...setup, scene, hash, revision: proposal.baseRevision + 1 } }, proposal.deliveryId);
+  } catch { status('Could not apply chat edit · Local setup kept', true); }
+  finally {
+    // Refused while a pointer is down in the editor and the scene is still the one the edit was
+    // computed on: the editor was engaged, nothing has changed, and the chat is told so.
+    if (!applied) liveWorkspace.update(proposal.deliveryId, true, dragging && proposalMatches(setup, proposal));
+  }
+}
+async function connectLegacy(token) {
   let delay = 1000;
   while (ready) {
-    const box = document.getElementById('lab-sync');
     try {
-      const response = await fetch(eventsURL, { method: 'POST', credentials: 'omit', referrerPolicy: 'no-referrer', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ channel: setup.channel }) });
-      if (!response.ok || !response.body) throw new Error('Live chat delivery unavailable');
-      const reader = response.body.getReader(), decoder = new TextDecoder(); let buffer = '';
-      box.dataset.delivery = 'connected'; delay = 1000;
-      try {
-        while (ready) {
-          const { value, done } = await reader.read(); if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          if (buffer.length > 1000000) throw new Error('Live response too large');
-          let newline;
-          while ((newline = buffer.indexOf('\n')) >= 0) {
-            const line = buffer.slice(0, newline); buffer = buffer.slice(newline + 1);
-            const data = JSON.parse(line);
-            if (data.setup) await accept(data);
-          }
-        }
-      } finally { await reader.cancel(); }
-    } catch { /* browser state is retained through transient connection failures */ }
-    box.dataset.delivery = 'reconnecting';
-    // A refused connection (limit reached, origin not allowed) is retried ever more slowly.
-    await new Promise(resolve => setTimeout(resolve, delay)); delay = Math.min(delay * 2, 30000);
+      await followEvents(token, async data => {
+        delay = 1000;
+        if (data.setup) await accept(data);
+      });
+    } catch { /* browser state survives transient connection failures */ }
+    await new Promise(resolve => setTimeout(resolve, delay));
+    delay = Math.min(delay * 2, 30000);
   }
+}
+function connectLive(ticket) {
+  if (!hosted) return;
+  liveWorkspace = createLiveWorkspace({
+    // The result that opened this view carries the ticket for the reference the model was given.
+    ticket: /^[a-f0-9]{64}$/.test(ticket) ? ticket : undefined,
+    current: () => ({ ...setup, canUndo: Boolean(history.length), canRedo: Boolean(future.length) }),
+    receive: acceptIncremental,
+    changed: connected => {
+      const box = document.getElementById('lab-sync');
+      if (box) box.dataset.delivery = liveWorkspace.synced ? 'connected' : connected ? 'syncing' : 'reconnecting';
+      // Said when it starts and taken back when it ends, so other reports are not written over meanwhile.
+      if (Boolean(liveWorkspace.problem) !== unshared) { unshared = !unshared; note(); }
+      context();
+    },
+  });
+  void liveWorkspace.connect();
+  if (setup.channel) void connectLegacy(setup.channel);
 }
 window.addEventListener('message', event => {
   if (!hosted || event.source !== window.parent || event.data?.jsonrpc !== '2.0') return;
@@ -191,7 +230,7 @@ function reportSize(box) {
 // that has arrived without a setup is a failed call: a view that was waiting
 // for it stops waiting.
 function deliver(data) {
-  if (!data?.setup?.scene) { receiveInitialResult(null); return; }
+  if (!data?.setup?.scene) { receiveInitialResult(data?.open ? data : null); return; }
   accept(data).catch(() => status('Could not apply chat edit · Local setup kept', true));
 }
 // Some ChatGPT surfaces update legacy globals on the already-mounted view.
@@ -230,8 +269,12 @@ async function localHistory(action) {
   await settleManual(); if (!setup || dragging) return;
   const from = action === 'undo' ? history : future, to = action === 'undo' ? future : history;
   if (!from.length) return;
-  const scene = from.pop(); to.push(setup.scene);
-  setup = { ...setup, scene, revision: setup.revision + 1, hash: await browserSceneHash(scene) };
+  const base = setup, scene = from.at(-1);
+  const hash = await browserSceneHash(scene);
+  await settleManual();
+  if (setup !== base || dragging) return;
+  from.pop(); to.push(base.scene);
+  setup = { ...base, scene, revision: base.revision + 1, hash };
   render(scene); persist();
 }
 window.addEventListener('click', event => {
@@ -253,9 +296,12 @@ window.addEventListener('click', event => {
     (async () => {
       await settleManual();
       if (!setup || dragging || (!state.elements.length && !state.beams.length)) return;
-      history.push(copy(setup.scene)); history = history.slice(-30); future = [];
-      const scene = { app: 'optics2d', version: 1, elements: [], beams: [] };
-      setup = { ...setup, scene, revision: setup.revision + 1, hash: await browserSceneHash(scene) };
+      const base = setup, scene = { app: 'optics2d', version: 1, elements: [], beams: [] };
+      const hash = await browserSceneHash(scene);
+      await settleManual();
+      if (setup !== base || dragging) return;
+      history.push(copy(base.scene)); history = history.slice(-30); future = [];
+      setup = { ...base, scene, revision: base.revision + 1, hash };
       render(scene); persist();
     })().catch(() => status('Could not clear setup · Local setup kept', true));
   } else localHistory(id === 'btnUndo' ? 'undo' : 'redo');
@@ -346,9 +392,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     // delay would be on the wrong one when the result came. It stops waiting when the host
     // reports the call cancelled or failed, or when the user asks for an empty setup.
     const present = globalsResult(window.openai);
-    let incoming = queued || (present.data?.setup?.scene ? present.data : undefined);
+    let incoming = queued || present.data;
     if (!incoming && hosted && !present.received) incoming = await initialResult;
     if (incoming?.setup) take(incoming.setup.id, await offeredSetup(incoming, registry));
+    else if (incoming?.open && stored(incoming.setupId)) take(incoming.setupId);
     else {
       // Standalone workbench starts with its own local copy, separate from ChatGPT views.
       const id = hosted ? crypto.randomUUID() : 'standalone', local = stored(id);
@@ -375,6 +422,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     // A copy stored before scenes were hashed in their loaded form is brought to it now.
     await settleManual();
     if (incoming?.action && incoming.setup.revision > setup.revision) await accept(incoming);
-    persist(); setInterval(context, 500); connectLive();
+    persist();
+    if (incoming?.open && incoming.setupId !== setup.id) status('The chat did not provide the requested setup · Open a saved JSON copy', true);
+    setInterval(context, 500); connectLive(incoming?.ticket);
   } catch (error) { setWaiting(false); status('Local editor · ' + error.message + ' · Save JSON for a backup', true); }
 });

@@ -9,7 +9,7 @@ import { inspectDocument, emptyDocument } from '../../mcp/scene-api.js';
 const service = { origin: 'https://mcp.example.com', html: '<html></html>', compute: async (kind, scene) => { if (kind === 'inspect') return inspectDocument({ ...emptyDocument(), scene }); throw Error('Do not fake screenshots in tests'); } };
 const call = async (name, args = {}) => (await handleStatelessRpc({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }, service)).result;
 test('stateless edits are deterministic, isolated, chainable and reject missing snapshots', async () => {
-  const a = (await call('open_setup')).structuredContent.setup, b = (await call('open_setup')).structuredContent.setup;
+  const a = (await call('open_setup'))._meta.opticalsetup.setup, b = (await call('open_setup'))._meta.opticalsetup.setup;
   assert.notEqual(a.id, b.id);
   const args = { setup: a, clientRequestId: 'add-1', components: [{ type: 'cwlaser', x: 100, y: 200, parameters: { wavelength: 532 } }, { type: 'lens', x: 220, y: 200, parameters: { f: 50 } }] };
   const added = (await call('add_components', args)).structuredContent;
@@ -39,11 +39,19 @@ test('fibers, supplied local history and detector tracing use native models', as
   const detector = (await call('add_components', { setup, clientRequestId: 'detectors', components: [{ type: 'cwlaser', x: 100, y: 200, parameters: { wavelength: 532 } }, { type: 'detector', x: 300, y: 200 }] })).structuredContent.setup;
   const reading = (await call('inspect_setup', { setup: detector })).structuredContent;
   assert.equal(reading.detectors.length, 1); assert.ok(reading.detectors[0].reading); assert.equal(reading.hash, detector.hash);
+  // A snapshot inspection gives the same compact readings, and the same way to one curve.
+  const broadband = (await call('add_components', { setup, clientRequestId: 'broadband', components: [{ type: 'sclaser', x: 100, y: 200 }, { type: 'spectrometer', x: 300, y: 200 }] })).structuredContent.setup;
+  const [spectrometer] = (await call('inspect_setup', { setup: broadband })).structuredContent.detectors;
+  assert.ok(spectrometer.reading.signal > 0 && spectrometer.capability.description);
+  assert.equal(spectrometer.reading.spectrum.curve, 'spectrum'); assert.ok(spectrometer.reading.spectrum.omitted > 8);
+  const window = (await call('inspect_setup', { setup: broadband, ids: [spectrometer.id], curve: 'spectrum', sampleLimit: 3 })).structuredContent;
+  assert.equal(window.total, spectrometer.reading.spectrum.omitted); assert.equal(window.values.length, 3); assert.ok(window.values[0].wavelength > 0);
+  assert.equal(window.hash, broadband.hash);
 });
 test('HTTP noauth, origin/host boundaries, JSON limits and exact domain challenge', async () => {
   const app = createApplication({ origin: service.origin, challenge: 'exact-token', computeScene: service.compute });
   const request = (path, options = {}) => app(new Request(service.origin + path, options));
-  assert.equal((await (await request('/mcp/health')).json()).storage, 'none');
+  assert.equal((await (await request('/mcp/health')).json()).storage, 'temporary-memory');
   assert.equal(await (await request('/.well-known/openai-apps-challenge')).text(), 'exact-token');
   assert.equal((await request('/mcp')).status, 405);
   assert.equal((await request('/mcp', { method: 'POST', headers: { origin: 'https://evil.example', 'content-type': 'application/json' }, body: '{}' })).status, 403);
@@ -51,7 +59,7 @@ test('HTTP noauth, origin/host boundaries, JSON limits and exact domain challeng
   assert.equal((await request('/mcp', { method: 'POST', body: '{}' })).status, 415);
   assert.equal((await request('/mcp', { method: 'POST', headers: { 'content-type': 'application/json' }, body: 'x'.repeat(950001) })).status, 413);
   const tools = await (await request('/mcp', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list' }) })).json();
-  assert.equal(tools.result.tools.length, 15);
+  assert.equal(tools.result.tools.length, 16);
   assert.equal(tools.result.resultType, 'complete');
   assert.equal(tools.result.ttlMs, 0);
   assert.equal(tools.result.cacheScope, 'private');

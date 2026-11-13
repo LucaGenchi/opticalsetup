@@ -38,12 +38,19 @@ export async function browserSceneHash(scene) {
 // A host hands a tool result to the view as structured content, or only as its
 // text. Either way this is the object the tool returned, or nothing.
 export function resultData(result) {
-  if (result?.structuredContent) return result.structuredContent;
+  if (result?._meta?.opticalsetup?.setup) return result._meta.opticalsetup;
+  if (result?.structuredContent) return openData(result.structuredContent);
   for (const block of result?.content || []) {
     if (block?.type !== 'text') continue;
-    try { const data = JSON.parse(block.text); if (data && typeof data === 'object') return data; } catch { /* not the result */ }
+    try { const data = JSON.parse(block.text); if (data && typeof data === 'object') return openData(data); } catch { /* not the result */ }
   }
   return undefined;
+}
+function openData(data) {
+  if (data?.open && data.componentCount === 0 && data.pathCount === 0) {
+    return { setup: { id: data.setupId, revision: data.revision, hash: data.hash, scene: { app: 'optics2d', version: 1, elements: [], beams: [] } } };
+  }
+  return data;
 }
 // What ChatGPT's own globals say about the tool result: whether one has
 // arrived, and the object the tool returned if it can be read. `toolOutput` is
@@ -52,10 +59,11 @@ export function resultData(result) {
 // an empty placeholder) are not a result.
 export function globalsResult(globals) {
   const filled = value => Boolean(value) && typeof value === 'object' && Object.keys(value).length > 0;
-  const output = filled(globals?.toolOutput) ? globals.toolOutput : undefined;
-  const whole = filled(globals?.toolResponseMetadata?.mcp_tool_result) ? resultData(globals.toolResponseMetadata.mcp_tool_result) : undefined;
-  if (!output && !filled(globals?.toolResponseMetadata?.mcp_tool_result)) return { received: false, data: undefined };
-  return { received: true, data: output?.setup ? output : whole?.setup ? whole : output ?? whole };
+  const output = filled(globals?.toolOutput) ? openData(globals.toolOutput) : undefined;
+  const meta = globals?.toolResponseMetadata;
+  const whole = meta?.opticalsetup?.setup ? meta.opticalsetup : filled(meta?.mcp_tool_result) ? resultData(meta.mcp_tool_result) : undefined;
+  if (!output && !whole && !filled(meta?.mcp_tool_result)) return { received: false, data: undefined };
+  return { received: true, data: whole?.setup ? whole : output ?? whole };
 }
 // What a result offers a view as its setup, once its hash has been checked;
 // nothing if the hash is wrong. The edit that produced the result counts as
