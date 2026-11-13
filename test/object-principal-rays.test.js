@@ -229,6 +229,42 @@ test('a thick lens: rays cross between its principal planes at constant height, 
   for (const ray of rays) assert.ok(passes(ray.pts, tip, 1e-9), 'meets at the drawn image tip');
 });
 
+test('a meniscus with its principal planes outside the glass: a ray that would pass it by is not drawn', () => {
+  // Andrea's case on #319: R1 60, R2 57, 6 mm thick, 25.4 mm across. Its
+  // principal planes lie near x = 540, far beyond the glass (297–304.4), so
+  // the centre ray from the tip at (280, −15) would meet H at height 0 yet
+  // cross the lens faces above the 12.7 mm rim.
+  const meniscus = () => {
+    const m = createElement('thicklens', 300, 0);
+    Object.assign(m.params, { r1: 60, r2: 57, thickness: 6, dia: 25.4, glass: 'nbk7' });
+    return m;
+  };
+  const faces = [297, 304.432833];
+  const crossingsInGlass = rays => {
+    for (const ray of rays) {
+      for (const x of faces) {
+        let crossed = false;
+        for (let i = 1; i < ray.pts.length; i++) {
+          const a = ray.pts[i - 1], b = ray.pts[i];
+          if ((a.x - x) * (b.x - x) > 0 || a.x === b.x) continue;
+          crossed = true;
+          const y = a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x);
+          assert.ok(Math.abs(y) <= 12.7 + 1e-6, `crosses the face plane x = ${x} within the glass (y = ${y})`);
+        }
+        assert.ok(crossed, `crosses the face plane x = ${x}`);
+      }
+    }
+  };
+  // Close and tall: every principal ray would pass the glass by.
+  const close = traceScene([objectAt(280, 0, 30), meniscus()], []);
+  assert.equal(solid(close).length, 0);
+  assert.ok(allFinite(close));
+  // Far and small: all three cross the glass and are drawn.
+  const far = solid(traceScene([objectAt(0, 0, 4), meniscus()], []));
+  assert.equal(far.length, 3);
+  crossingsInGlass(far);
+});
+
 test('with no lens, with rays off, or before the option existed: no principal rays', () => {
   const alone = objectAt(0);
   const none = traceScene([alone], []);

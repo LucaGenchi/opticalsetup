@@ -157,6 +157,9 @@ export function objectImagingSteps(el, surfaces, { registry, thinFocal, waveleng
     steps.push({
       t, f: card.f, H: planeAt(owner, sign * card.h1), H2: planeAt(owner, sign * card.h2),
       exit: toWorld(owner, sign * card.last, 0), el: owner, thin: false, half,
+      // The planes of its first and last vertex: where its glass begins and
+      // ends along the axis (its principal planes can lie outside it).
+      faces: [planeAt(owner, sign * card.first), planeAt(owner, sign * card.last)],
     });
   }
   steps.sort((a, b) => a.t - b.t);
@@ -300,6 +303,16 @@ function afocalForward(step, X1, d, u) {
 }
 
 const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
+
+// Where segment a–b crosses the (infinite) line of `plane`, or null.
+function segmentPlane(a, b, plane) {
+  const d = sub(b, a), e = sub(plane.b, plane.a);
+  const den = d.x * e.y - d.y * e.x;
+  if (Math.abs(den) < 1e-12) return null;
+  const dp = sub(plane.a, a);
+  const s = (dp.x * e.y - dp.y * e.x) / den;
+  return s >= -1e-12 && s <= 1 + 1e-12 ? add(a, mul(d, s)) : null;
+}
 
 // Shortens a polyline so that no segment is longer than `maxLen`, stopping
 // at the first one that was, so a ray to a far-off image stays drawable.
@@ -451,6 +464,22 @@ export function principalRays(steps, tip, u, v, { maxLen = 6000 } = {}) {
         cur = exit; d = out2;
       }
       if (!ok || !pts.every(finitePt)) continue;
+      // A thick lens, asphere or lens group bends the construction at its
+      // principal planes, which can lie outside its glass (a meniscus): the
+      // drawn path must also cross both its vertex planes within the glass,
+      // or it would pass the lens by.
+      const missesGlass = crossed.some(c => (steps[c].faces || []).some(face => {
+        const F = frameOf(face, u);
+        let crossings = 0;
+        for (let i = 1; i < pts.length; i++) {
+          const x = segmentPlane(pts[i - 1], pts[i], face);
+          if (!x) continue;
+          crossings++;
+          if (!inGlass(heightOn(x, F), steps[c])) return true;
+        }
+        return crossings === 0;
+      }));
+      if (missesGlass) continue;
       out.rays.push({ pts: capped(pts, maxLen), dashed: false, lens: li });
       for (const seg of dashed) {
         if (seg.every(finitePt)) out.rays.push({ pts: capped(seg, maxLen), dashed: true, lens: li });
