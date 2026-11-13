@@ -278,9 +278,20 @@ the same port in the same polarization state. Orthogonal states (two pure states
 opposite points of the Poincaré sphere) add their powers exactly; the polarization of
 their sum depends on their relative phase, which the ray does not carry, so the reading
 shows their power-weighted average and says so. States that are neither identical nor
-orthogonal would interfere in part: the beamsplitter adds their powers and the reading
-says so; each field carries on with its own state and phase, and a camera with
-interference on still weights their cross term by the overlap of the two states. Two
+orthogonal would interfere in part: the beamsplitter adds their powers, but each field
+carries on with its own state and phase, so a reading that rebuilds the fields of every
+path it integrates (a camera with interference on, a broadband source's spectral
+reconstruction) still weights their cross term by the overlap of the two states; a
+reading that does not keeps the added powers and says so.
+
+The Stokes vector does not carry the field's overall phase, and the mirror does not
+keep it for every state: diag(1, −1) leaves p alone and turns s over. A reflection
+therefore also adds that sign to the coherent phase (π for every linear state except
+p, in the representation (cos θ, sin θ) with θ in [0°, 180°) that cameras use), and a
+fully reflecting mirror no longer adds a separate π for every state. Between arms with
+the same number of reflections nothing changes; between arms that differ by one, s
+light keeps the fringe it had before step A2 and p light now has the opposite one, as
+the reflected field vectors require. Two
 arms that differ by one reflection (a flat fold in one, a two-mirror fold in the other)
 return diagonal or circular light in orthogonal states, so such light makes no fringes
 there, while p or s light does.

@@ -289,6 +289,78 @@ test('A2: a camera still weights the interference of unequal states by their ove
   const powers = rightPortScan({ pol: 30, pentamirror: true, camera: true }).map(item => item.power);
   const visibility = (Math.max(...powers) - Math.min(...powers)) / (Math.max(...powers) + Math.min(...powers));
   assert.ok(visibility > 0.45 && visibility <= 0.5 + 1e-9, `visibility ${visibility}`);
+  const camera = machZehnder({ pol: 30, pentamirror: true, camera: true }).right;
+  assert.ok(!camera.approximations.includes(POLARIZATION_NOT_COMBINED), 'the camera rebuilt it: no caveat');
   // Orthogonal diagonals make none.
   for (const item of rightPortScan({ pol: 45, pentamirror: true, camera: true })) close(item.power, 0.5, 'diagonal on a camera');
+});
+
+test('A2: the coherent phase keeps the mirror\'s sign: p and s light swap the bright and dark sides of the fringe', () => {
+  // Andrea's review of #320: the mirror's Jones matrix diag(1, −1) keeps p and
+  // turns s over, so between arms reflected an odd and an even number of
+  // times the interference term of s light is that of p light reversed. The
+  // reference follows the axial ray's complex field vector through both arms
+  // of the pentamirror Mach–Zehnder: perfect-conductor reflections, a
+  // beamsplitter that reflects like the mirror with amplitude i√R (the
+  // app's lossless convention) and transmits with √T, and the path phase
+  // e^(ikL). Only the axial sample overlaps at the second beamsplitter (the
+  // pentamirror arm arrives with its profile turned over), so the reading is
+  // 0.5 + w (I − 0.5) with I the axial intensity and w the axial sample's
+  // share of the beam: one w must fit p and s at both wavelengths.
+  const times = (field, amplitude) => ({ ...field, E: field.E.map(e => cmul(e, amplitude)) });
+  const phase = (field, radians) => times(field, c(Math.cos(radians), Math.sin(radians)));
+  const half = Math.SQRT1_2;
+  const axialIntensity = (pol, wavelength) => {
+    const k = 2 * Math.PI / (wavelength * 1e-6);
+    const start = linearField(pol, { x: 1, y: 0 });
+    let a = times(start, c(half));                // BS1, transmitted
+    a = mirror(a, 45);                            // the fold mirror
+    a = times(mirror(a, 45), c(0, half));         // BS2, reflected to the right port
+    a = phase(a, k * 400);
+    let b = times(mirror(start, 45), c(0, half)); // BS1, reflected
+    b = mirror(mirror(b, 67.5), 112.5);           // the two-mirror fold
+    b = times(b, c(half));                        // BS2, transmitted to the right port
+    b = phase(b, k * (400 + 60 * Math.SQRT2));
+    assert.ok(a.k.every((x, i) => Math.abs(x - b.k[i]) < 1e-12), 'both arms leave along the same direction');
+    return a.E.reduce((sum, e, i) => sum + cabs2(cadd(e, b.E[i])), 0);
+  };
+  const shares = [];
+  for (const wavelength of [633, 633.0005]) {
+    for (const pol of [0, 90]) {
+      const I = axialIntensity(pol, wavelength);
+      assert.ok(Math.abs(I - 0.5) > 0.1, `a clear fringe at ${wavelength} nm`);
+      const read = machZehnder({ pol, pentamirror: true, wavelength }).right.signal;
+      shares.push((read - 0.5) / (I - 0.5));
+    }
+    close(axialIntensity(0, wavelength) - 0.5, -(axialIntensity(90, wavelength) - 0.5), 'the reference: s is p reversed');
+  }
+  assert.ok(shares[0] > 0.01, `the axial share ${shares[0]} is positive`);
+  for (const share of shares) close(share, shares[0], 'one axial share for p and s at both wavelengths', 1e-9);
+});
+
+test('A2: a reading that rebuilds the fields downstream drops the "not combined" caveat', () => {
+  // Andrea's reproduction on #320: a 200 fs pulse at 633 nm, linear 30°,
+  // through the pentamirror Mach–Zehnder with a delay line evening out the
+  // two arms. The beamsplitter adds the powers of 30° and −30°, but the
+  // detector's broadband reconstruction weights their interference by the
+  // overlap of the two states, cos 60° = 0.5: 0.5 (1 + 0.5) = 0.75 at equal
+  // paths, and its reading carries no caveat. The CW power meter in the same
+  // place keeps the added powers and the caveat.
+  const full = { refl: 100 };
+  const elements = [
+    make('pulsedlaser', -100, 0, { pol: 30, wavelength: 633, beamMode: 'beam', beamWidth: 4, durationFs: 200, interference: true }),
+    make('bs', 100, 0),
+    make('delayline', 200, 0, { delayMm: 60 * Math.SQRT2 }),
+    make('mirror', 300, 0, full, 45),
+    make('mirror', 100, -260, full, 67.5), make('mirror', 160, -200, full, 112.5),
+    make('bs', 300, -200),
+  ];
+  const right = make('detector', 450, -200, {}, 0);
+  traceAll([...elements, right]);
+  const read = detectorReading(right.id);
+  close(read.signal, 0.75, 'interference weighted by the overlap', 1e-6);
+  assert.equal(read.interference?.applied, true);
+  assert.ok(!read.approximations.includes(POLARIZATION_NOT_COMBINED), 'no caveat where the interference was rebuilt');
+  const cw = machZehnder({ pol: 30, pentamirror: true }).right;
+  assert.ok(cw.approximations.includes(POLARIZATION_NOT_COMBINED), 'the CW power meter keeps it');
 });

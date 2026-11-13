@@ -52,7 +52,7 @@ import {
   legacyPolarization, polarizationDescription,
 } from './polarization.js';
 import { fresnelTransmittances, throughFace } from './fresnel.js';
-import { mirroredStokes } from './mueller.js';
+import { mirroredStokes, linearJones } from './mueller.js';
 import { arcParameterAtPoint, circularArcThrough } from './polygon.js';
 import {
   gddGroupDelayDifferenceFs, glassGVD, glassGroupDelayDifferenceFs, glassIndex,
@@ -1835,6 +1835,16 @@ export function detectorReading(elementId) {
   // source that shows no trace in this reading at all -- so every reading
   // says it may be low.
   const weakLightIncomplete = weakLightShortfall.size > 0;
+  // The beamsplitter added the powers of fields in partly overlapping
+  // states, but each carried on with its own state and phase. A reading that
+  // rebuilt the fields of every path it integrates (a camera with
+  // interference on, a broadband source's spectral reconstruction) has
+  // weighted their interference by the overlap of the two states, so the
+  // caveat does not apply to it.
+  if (cameraResult?.interference?.applied && !cameraResult.interference.partial) {
+    const at = approximations.indexOf(POLARIZATION_NOT_COMBINED);
+    if (at >= 0) approximations.splice(at, 1);
+  }
   if (weakLightIncomplete) approximations.push(WEAK_LIGHT_NOTE);
   return {
     signal,
@@ -2211,7 +2221,7 @@ function invalidateIncompleteCameraFields() {
 }
 
 const phaseWrap = phase => Math.atan2(Math.sin(phase), Math.cos(phase));
-export const POLARIZATION_NOT_COMBINED = 'Coherent beams met at a beamsplitter in polarization states that are neither identical nor orthogonal, and it added their powers; a camera with interference on weights their interference by the overlap of the two states, other readings show the added powers';
+export const POLARIZATION_NOT_COMBINED = 'Coherent beams met at a beamsplitter in polarization states that are neither identical nor orthogonal; it added their powers, and this reading does not rebuild their partial interference';
 export const POLARIZATION_ORTHOGONAL = 'Coherent beams met at a beamsplitter in orthogonal polarization states; their powers add exactly, but the polarization of their sum depends on their relative phase, which is not modelled, so the state shown is their power-weighted average';
 const quantized = (value, scale) => Math.round(value * scale);
 
@@ -2302,8 +2312,10 @@ function extendCoherentPlan(arrivals, plan = new Map()) {
       // Orthogonal states add their powers exactly. States that are neither
       // identical nor orthogonal would interfere in part: here their powers
       // are added and the reading says so. Each field carries on with its own
-      // state and phase, so a camera downstream still weights their cross
-      // term by the overlap of the two states (camera-profile.js).
+      // state and phase, so a reading that rebuilds the fields downstream (a
+      // camera, a broadband reconstruction; camera-profile.js) still weights
+      // their cross term by the overlap of the two states, and drops the
+      // caveat.
       const states = new Map();
       for (const item of port) {
         if (!states.has(item.stateKey)) states.set(item.stateKey, []);
@@ -4413,13 +4425,21 @@ const legacyAxis = a => (a < 0 ? a + 180 : a);
 // two mirrors of a retroreflector -- unless the element states the outgoing
 // state itself (a polarizing beamsplitter's ports, generated light) or the
 // light is scattered diffusely, which keeps its state as before.
+//
+// The Stokes vector drops the field's overall phase, and the mirror's Jones
+// matrix diag(1, −1) does not keep it for every state: it leaves p alone and
+// turns s over. The coherent phase therefore takes the difference
+// (reflectionPhase), so that the scalar phase and the state together still
+// describe the reflected field.
 function reflectPolarization(ray, children, n) {
-  if (!n || !(ray.stokes || ray.polMod)) return;
+  if (!n) return;
   const arriving = ray.dx * n.x + ray.dy * n.y;
   if (!arriving) return;
   for (const child of children) {
     if ('stokes' in child || child.scattered) continue;
     if (!(dot(child.d, n) * arriving < 0)) continue;
+    child.phaseShift = (Number.isFinite(child.phaseShift) ? child.phaseShift : 0) + reflectionPhase(ray.stokes);
+    if (!(ray.stokes || ray.polMod)) continue;
     const stokes = mirroredStokes(ray.stokes);
     if (stokes && (stokes.s2 !== ray.stokes.s2 || stokes.s3 !== ray.stokes.s3)) {
       // The ray carries on with the new state, as at a prism face; the
@@ -4433,6 +4453,23 @@ function reflectPolarization(ray, children, n) {
       child.polMod = { ...polMod, stokesHigh: mirroredStokes(polMod.stokesHigh), stokesLow: mirroredStokes(polMod.stokesLow) };
     }
   }
+}
+
+// The phase a reflection adds to the coherent field, beyond the element's own
+// (a beamsplitter's π/2). A perfect conductor reflects with Jones matrix
+// diag(1, −1) in the p, s basis (Born and Wolf's signs: r_p = +1, r_s = −1).
+// A linear state at θ is carried, here and on cameras, as the real Jones
+// vector (cos θ, sin θ) with θ in [0°, 180°) (linearJones), and the mirror
+// sends it to the mirrored state's vector times ±1: +1 for p (θ = 0), −1 for
+// every other angle, s included. Coherent light is always linear here (a
+// waveplate carries no carrier phase); any other polarized state gets 0, and
+// unpolarized light keeps the single π every mirror gave before step A2.
+function reflectionPhase(stokes) {
+  if (!stokes) return Math.PI;
+  const before = legacyPolarization(stokes), after = legacyPolarization(mirroredStokes(stokes));
+  if (typeof before !== 'number' || typeof after !== 'number') return 0;
+  const a = linearJones(before), b = linearJones(after);
+  return b[0].re * a[0].re - b[1].re * a[1].re < 0 ? Math.PI : 0;
 }
 
 const retardPolMod = (polMod, axisDeg, retardanceDeg) => ({
@@ -4653,7 +4690,9 @@ function interact(ray, hit) {
       // nearestMetHit); the light that leaves carries that pass in its count.
       const passes = data.pickoff ? { pickoffPasses: pickoffPass(ray, data.pickoff).passes } : {};
       const R = Math.min(1, Math.max(0, (data.refl ?? 100) / 100));
-      if (R >= 1) return [{ d: reflect(d, n), phaseShift: Math.PI, ...passes }];
+      // The mirror's sign is carried by the state (reflectionPhase): a perfect
+      // conductor keeps p and turns s over, rather than turning both.
+      if (R >= 1) return [{ d: reflect(d, n), phaseShift: 0, ...passes }];
       const out = [];
       if (R > 0) out.push({ d: reflect(d, n), intensity: ray.intensity * R, tag: 'R', retainWeak: true, ...passes });
       // Solid polygon wheels absorb coating losses; leaking through the
