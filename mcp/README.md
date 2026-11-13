@@ -31,12 +31,13 @@ opens no listener and passes every message to that copy. The build is a
 digest of the service's and the editor's files, which `/mcp/health` reports
 as `build`; the version number alone does not tell two checkouts apart.
 
-If that copy goes away, the next call makes this one take its place at the
-same address. The views then register again, as after a restart, and what
-the first copy remembered is gone: a call that was under way may have been
-applied although its answer was lost, so read the setup before repeating
-it. If another program took the port first, it is sent nothing and the call
-fails with a message that says so.
+A copy that relies on another one never takes its place. If a call does not
+get through while that copy is still there, the call fails with a message
+that it may have been carried out all the same: read the setup before
+repeating it. If that copy has gone, or another program holds its port,
+nothing more is sent, and every call fails with a message to restart the
+client that started OpticalSetup. For Claude Desktop that is the app itself,
+which starts and ends both copies together.
 
 If something else holds port 5188, or another build of this service, the
 service takes a free port and says on standard error that it runs apart

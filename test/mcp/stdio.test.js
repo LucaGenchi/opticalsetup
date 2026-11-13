@@ -208,7 +208,7 @@ test('a second copy on the same machine passes its calls to the first, so a view
   } finally { first.child.kill('SIGKILL'); second?.child.kill('SIGKILL'); }
 });
 
-test('when the first copy goes, the second takes its place at the same address', async () => {
+test('when the first copy goes, the second says so on every call and takes nobody\'s place', async () => {
   const PORT = String(await freePort());
   const first = start({ PORT });
   let second;
@@ -217,22 +217,22 @@ test('when the first copy goes, the second takes its place at the same address',
     second = start({ PORT });
     assert.equal(await viewOrigin(second), origin);
     assert.equal(await first.end(), 0);
-    await assert.rejects(fetch(origin + '/mcp/health'), 'nothing answers at the address for a moment');
-    // The next call finds the first copy gone, and is answered all the same.
-    const tools = (await second.request('tools/list')).result.tools.map(tool => tool.name);
-    assert.ok(tools.includes('open_setup'));
-    assert.match(second.errors(), /view files at http:\/\/127\.0\.0\.1:\d+\/mcp/);
-    assert.equal((await fetch(origin + '/mcp/health')).status, 200, 'a view opened from the first copy finds a service where it looks');
-    assert.equal(await viewOrigin(second), origin);
-    // Several calls arriving together while the first copy is gone are all answered, by one listener.
+    for (const method of ['tools/list', 'ping']) {
+      const answer = await second.request(method);
+      assert.equal(answer.result, undefined);
+      assert.equal(answer.error.code, -32603);
+      assert.match(answer.error.message, /no longer running\. Restart the client/);
+    }
+    await assert.rejects(fetch(origin + '/mcp/health'), 'the second copy opened no listener at that address');
+    assert.doesNotMatch(second.errors(), /view files at/);
+    // A copy started afterwards finds the port free and is the service again.
     const third = start({ PORT });
     try {
       assert.equal(await viewOrigin(third), origin);
-      assert.equal(await second.end(), 0);
-      const answers = await Promise.all([third.request('ping'), third.request('tools/list'), third.request('ping')]);
-      assert.deepEqual(answers.map(answer => Boolean(answer.result)), [true, true, true]);
       assert.equal((await fetch(origin + '/mcp/health')).status, 200);
-      assert.equal(await third.end(), 0);
+      // The second copy stays as it was: what it relied on was replaced, and it was told to be restarted.
+      assert.match((await second.request('ping')).error.message, /no longer running/);
+      assert.deepEqual([await second.end(), await third.end()], [0, 0]);
     } finally { third.child.kill('SIGKILL'); }
   } finally { first.child.kill('SIGKILL'); second?.child.kill('SIGKILL'); }
 });
@@ -279,43 +279,46 @@ test('a copy of this service from another build is not shared with', async () =>
   } finally { first.child.kill('SIGKILL'); }
 });
 
-test('a copy that relied on another one sends nothing to a program that took the port afterwards', async () => {
-  const ping = { jsonrpc: '2.0', id: 7, method: 'ping' }, taken = Object.assign(new Error('taken'), { code: 'EADDRINUSE' });
-  const local = { application: { rpc: async body => ({ jsonrpc: '2.0', id: body.id, result: { by: 'own' } }) } };
-  const set = ({ reachable, own, same }) => {
+test('a copy that relies on another one sends a message only to a holder that was confirmed', async () => {
+  const ping = id => ({ jsonrpc: '2.0', id, method: 'ping' });
+  const set = ({ reachable, same }) => {
     const log = [];
     const rpc = relyOn({
-      forward: async body => { log.push('forward'); if (!reachable()) throw new Error('gone'); return { jsonrpc: '2.0', id: body.id, result: { by: 'other' } }; },
-      own: async () => { log.push('own'); return own(); },
+      forward: async body => { log.push('forward ' + body.id); if (!reachable()) throw new Error('gone'); return { jsonrpc: '2.0', id: body.id, result: { by: 'other' } }; },
       same: async () => { log.push('same'); return same(); },
     });
     return { rpc, log };
   };
-  // While the other copy answers, nothing else is tried.
+  // While the other copy answers, nothing else is asked.
   const steady = set({ reachable: () => true });
-  assert.deepEqual((await steady.rpc(ping)).result, { by: 'other' });
-  assert.deepEqual(steady.log, ['forward']);
-  // The other copy has gone and the port is free: this copy answers from then on, and starts once.
-  const heir = set({ reachable: () => false, own: () => local });
-  assert.deepEqual((await Promise.all([heir.rpc(ping), heir.rpc(ping), heir.rpc(ping)])).map(answer => answer.result.by), ['own', 'own', 'own']);
-  assert.deepEqual(heir.log.filter(step => step === 'own'), ['own']);
-  assert.deepEqual((await heir.rpc(ping)).result, { by: 'own' });
-  assert.equal(heir.rpc.running(), local);
-  // The port was taken first by a copy of this service: the message goes there, after asking who it is.
-  let back = false;
-  const third = set({ reachable: () => back, own: () => { back = true; throw taken; }, same: () => true });
-  assert.deepEqual((await third.rpc(ping)).result, { by: 'other' });
-  assert.deepEqual(third.log, ['forward', 'own', 'same', 'forward']);
-  // The port was taken first by another program: it is sent nothing, and the client is told.
-  const stranger = set({ reachable: () => false, own: () => { throw taken; }, same: () => false });
-  const refused = await stranger.rpc(ping);
-  assert.equal(refused.id, 7); assert.equal(refused.error.code, -32603);
-  assert.match(refused.error.message, /another program now holds its port/);
-  assert.deepEqual(stranger.log, ['forward', 'own', 'same'], 'the message was not sent a second time');
+  assert.deepEqual((await steady.rpc(ping(1))).result, { by: 'other' });
+  assert.deepEqual(steady.log, ['forward 1']);
+  // One call fails while the other copy is still there: that call is not repeated, and the next one goes through.
+  let up = false;
+  const hiccup = set({ reachable: () => up, same: () => true });
+  const lost = await hiccup.rpc(ping(1));
+  assert.equal(lost.id, 1); assert.equal(lost.error.code, -32603);
+  assert.match(lost.error.message, /did not answer this call\. It may still have been carried out/);
+  up = true;
+  assert.deepEqual((await hiccup.rpc(ping(2))).result, { by: 'other' });
+  assert.deepEqual(hiccup.log, ['forward 1', 'same', 'forward 2'], 'a failed call is sent once');
+  // The address is empty, or held by another program or another build: nothing more is ever sent,
+  // even if whatever holds the address would answer.
+  let answering = false;
+  const stranger = set({ reachable: () => answering, same: () => false });
+  const refused = await stranger.rpc(ping(1));
+  assert.equal(refused.id, 1); assert.equal(refused.error.code, -32603);
+  assert.match(refused.error.message, /no longer running\. Restart the client/);
+  answering = true;
+  for (const id of [2, 3]) assert.match((await stranger.rpc(ping(id))).error.message, /no longer running/);
+  assert.deepEqual(stranger.log, ['forward 1', 'same'], 'the holder that was not confirmed received no later message');
   assert.equal(await stranger.rpc({ jsonrpc: '2.0', method: 'notifications/initialized' }), null, 'a notification gets no answer');
-  // A failure to start that is not about the port is not hidden.
-  const broken = set({ reachable: () => false, own: () => { throw new Error('no such file'); } });
-  await assert.rejects(broken.rpc(ping), /no such file/);
+  // Calls that fail together are each answered, and none is sent after the refusal.
+  const burst = set({ reachable: () => false, same: () => false });
+  const answers = await Promise.all([burst.rpc(ping(1)), burst.rpc(ping(2)), burst.rpc(ping(3))]);
+  assert.deepEqual(answers.map(answer => answer.error.code), [-32603, -32603, -32603]);
+  assert.match((await burst.rpc(ping(4))).error.message, /no longer running/);
+  assert.equal(burst.log.filter(step => step === 'forward 4').length, 0);
 });
 
 test('a burst of large answers followed at once by the end of the input arrives whole', async () => {

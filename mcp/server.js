@@ -162,27 +162,23 @@ export function forwardRpc(origin) {
   };
 }
 // The messages of a copy that relies on another copy on this machine. `forward` sends one to that
-// copy, `own` starts this copy's own service at the same address, and `same` says whether the
-// service now at that address is a copy of this one.
-// While the other copy answers, it answers. When it does not, this copy takes its place, where the
-// views opened from it look for the service. If the address was taken first, the message goes there
-// only after `same` has said so again: another program that took the port is sent nothing.
-export function relyOn({ forward, own, same }) {
-  let running, taking;
-  const takeOver = () => taking ??= own().then(service => { running = service; }, error => { taking = undefined; if (error.code !== 'EADDRINUSE') throw error; });
-  const refused = body => (body && typeof body === 'object' && !Array.isArray(body) && body.id === undefined ? null
-    : { jsonrpc: '2.0', id: body?.id ?? null, error: { code: -32603, message: 'The OpticalSetup service this one relied on has gone, and another program now holds its port. Restart the client that started OpticalSetup.' } });
-  const rpc = async body => {
-    if (running) return running.application.rpc(body);
-    try { return await forward(body); }
-    catch {
-      await takeOver();
-      if (running) return running.application.rpc(body);
-      return await same() ? forward(body) : refused(body);
+// copy, and `same` says whether the service at that address is still a copy of this one.
+// A message is sent only to a holder that was confirmed: the one this copy was started against, and
+// after any failure only one that `same` has just confirmed again. Once the address is found empty
+// or held by something else, nothing more is sent, and every request is answered with the reason
+// until the client starts the service again. This copy never takes the other one's place.
+export function relyOn({ forward, same }) {
+  let gone = false;
+  const answer = (body, message) => (body && typeof body === 'object' && !Array.isArray(body) && body.id === undefined ? null
+    : { jsonrpc: '2.0', id: body?.id ?? null, error: { code: -32603, message } });
+  return async body => {
+    if (!gone) {
+      try { return await forward(body); } catch { /* decided below */ }
+      if (await same()) return answer(body, 'The OpticalSetup service did not answer this call. It may still have been carried out: read the setup before repeating it.');
+      gone = true;
     }
+    return answer(body, 'The OpticalSetup service this one relied on is no longer running. Restart the client that started OpticalSetup, then open the workbench again.');
   };
-  rpc.running = () => running;
-  return rpc;
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   // With --stdio a client starts this service itself and speaks MCP over its standard streams.
@@ -209,7 +205,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     if (!stdio || process.env.PUBLIC_ORIGIN || error.code !== 'EADDRINUSE') throw error;
     const holder = `http://127.0.0.1:${asked}`;
     if (await sameService(holder, build)) {
-      shared = relyOn({ forward: forwardRpc(holder), own: () => start(asked), same: () => sameService(holder, build) });
+      shared = relyOn({ forward: forwardRpc(holder), same: () => sameService(holder, build) });
       console.log(`OpticalSetup MCP on standard input and output, passing its calls to the copy already running at ${holder}/mcp`);
     }
     // Something else holds the port, or a copy of this service from another build, which may not behave
@@ -220,18 +216,17 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
       running = await start(await freePort());
     }
   }
-  const service = () => running || shared?.running();
-  const close = () => { service()?.application.close(); service()?.server.close(); };
+  const close = () => { running?.application.close(); running?.server.close(); };
   for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, () => {
-    const own = service(); close(); if (!own) process.exit(0);
-    own.server.once('close', () => process.exit(0));
-    setTimeout(() => { own.server.closeAllConnections(); process.exit(0); }, 5000).unref();
+    close(); if (!running) process.exit(0);
+    running.server.once('close', () => process.exit(0));
+    setTimeout(() => { running.server.closeAllConnections(); process.exit(0); }, 5000).unref();
   });
   // The client ends a stdio service by closing its input. By then every answer has been written out;
   // the listener and its connections are closed and the process ends by itself, which cannot cut
   // anything short. The timer is only for a handle that would otherwise keep it alive.
   if (stdio) serveStdio(running ? running.application.rpc : shared).then(() => {
-    close(); service()?.server.closeAllConnections();
+    close(); running?.server.closeAllConnections();
     setTimeout(() => process.exit(0), 2000).unref();
   });
 }
