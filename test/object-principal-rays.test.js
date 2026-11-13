@@ -173,6 +173,30 @@ test('a plate before the lens: the rays bend in it and keep their properties at 
   near(slope(p0, p1), slope(p2, p3), 1e-9, 'same slope either side of the plate');
 });
 
+test('a plate after the last lens: the rays cross at the lens image, go on through the plate and lead back to the final image', () => {
+  // Andrea's case on #319: lens at 300 (f 100) images the tip at (450, +5.5);
+  // a 100 mm N-BK7 plate from 600 moves the final image to x ≈ 484.0, which
+  // the light leaving the plate appears to come from (virtual).
+  const object = objectAt(0);
+  const plate = createElement('lensgroup', 600, 0);
+  Object.assign(plate.params, { preset: 'custom', rows: [{ r: 0, thickness: 100, glass: 'nbk7' }, { r: 0, thickness: 4, glass: 'air' }] });
+  const result = traceScene([object, lensAt(300, 100), plate], []);
+  const tip = result.drawables.find(d => d.type === 'poly' && d.opacity === 0.85).pts[0];
+  near(tip.x, 484.016896, 1e-5, 'drawn final image');
+  const rays = solid(result);
+  assert.equal(rays.length, 3);
+  for (const ray of rays) {
+    assert.ok(passes(ray.pts, { x: 450, y: 5.5 }, 1e-9), 'crosses at the lens image');
+    assert.ok(ray.pts.at(-1).x > 700, `goes on through the plate: ${JSON.stringify(ray.pts.at(-1))}`);
+  }
+  const back = dashed(result);
+  assert.equal(back.length, 3);
+  for (const d of back) {
+    near(d.pts.at(-1).x, tip.x, 1e-9, 'dashed back to the final image x');
+    near(d.pts.at(-1).y, tip.y, 1e-9, 'dashed back to the final image y');
+  }
+});
+
 test('a thick lens: rays cross between its principal planes at constant height, both planes drawn', () => {
   const object = objectAt(0, 0, 10);
   const thick = createElement('thicklens', 300, 0);

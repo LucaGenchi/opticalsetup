@@ -393,10 +393,15 @@ export function principalRays(steps, tip, u, v, { maxLen = 6000 } = {}) {
         const next = j < N ? linePlane(cur, d, steps[j].H) : null;
         const reaches = R && ahead(cur, R, d) > 0 && (!next || ahead(R, next, d) >= 0);
         if (reaches && m < 0) {
-          // The last lens's image: the rays cross there and go on a little.
-          const dist = Math.hypot(R.x - cur.x, R.y - cur.y);
-          pts.push(R, add(R, mul(d, clamp(0.3 * dist, 15, 120))));
-          break;
+          if (j === N) {
+            // The final image: the rays cross there and go on a little.
+            const dist = Math.hypot(R.x - cur.x, R.y - cur.y);
+            pts.push(R, add(R, mul(d, clamp(0.3 * dist, 15, 120))));
+            break;
+          }
+          // A real image before a plate or telescope after the last lens:
+          // the rays cross there and go on through it to the final image.
+          pts.push(R);
         }
         if (j === N) {
           // The last lens with its image out of reach: out and back (dashed)
@@ -406,7 +411,7 @@ export function principalRays(steps, tip, u, v, { maxLen = 6000 } = {}) {
           if (R) dashed.push([cur, R]);
           break;
         }
-        if (reaches) { pts.push(R); break; }
+        if (reaches && m >= 0) { pts.push(R); break; }
         if (j === m) {
           if (!next) { ok = false; break; }
           pts.push(next);
