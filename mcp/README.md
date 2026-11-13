@@ -25,12 +25,22 @@ the view loads its files and its live channel from it.
 A client may start the service more than once; Claude Desktop starts two
 copies for one chat, one that hands it the view and one that takes its tool
 calls. Workbenches live in the memory of one process, so only the first copy
-on a machine keeps them. A copy started with `--stdio` that finds this
-service already on its port (5188, or the one `PORT` names) opens no listener
-and passes every message to that copy. If that copy goes away, the next call
-makes this one take its place at the same address; the views then register
-again, as after a restart. If something else holds port 5188, the service
-takes a free port instead. With `PORT` set it does not: it fails to start.
+on a machine keeps them. A copy started with `--stdio` that finds the same
+build of this service already on its port (5188, or the one `PORT` names)
+opens no listener and passes every message to that copy. The build is a
+digest of the service's and the editor's files, which `/mcp/health` reports
+as `build`; the version number alone does not tell two checkouts apart.
+
+If that copy goes away, the next call makes this one take its place at the
+same address. The views then register again, as after a restart, and what
+the first copy remembered is gone: a call that was under way may have been
+applied although its answer was lost, so read the setup before repeating
+it. If another program took the port first, it is sent nothing and the call
+fails with a message that says so.
+
+If something else holds port 5188, or another build of this service, the
+service takes a free port and says on standard error that it runs apart
+from it. With `PORT` set it does not: it fails to start.
 
 The PNG screenshot tool needs Linux with a tmpfs at `/dev/shm` and FFmpeg
 with SVG input support. Where either is missing (macOS, for one) the service

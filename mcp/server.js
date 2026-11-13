@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { createServer } from 'node:http';
 import { createServer as createSocketServer } from 'node:net';
+import { createHash } from 'node:crypto';
+import { readFile, readdir } from 'node:fs/promises';
 import { once } from 'node:events';
-import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { join, relative, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { handleStatelessRpc, VERSION } from './stateless.js';
 import { buildWidget, widgetAsset, widgetResourceUri } from './widget.js';
 import { compute, canRenderScreenshots } from './compute.js';
@@ -17,7 +19,7 @@ const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(d
 const LOOPBACK = ['127.0.0.1', 'localhost', '[::1]'];
 // Claude serves a view from a sandbox origin named by a hash of the connector URL.
 const CLAUDE_SANDBOX = /^https:\/\/[a-f0-9]{16,64}\.claudemcpcontent\.com$/;
-export function createApplication({ origin, challenge = '', computeScene = compute, revision = 'local', screenshots = true, mirrorOptions }) {
+export function createApplication({ origin, challenge = '', computeScene = compute, revision = 'local', build = '', screenshots = true, mirrorOptions }) {
   const originUrl = new URL(origin);
   const widgetOrigin = 'https://' + originUrl.hostname.replaceAll('.', '-') + '.web-sandbox.oaiusercontent.com';
   // A local service answers to every loopback name of its own port; a hosted one only to its public host.
@@ -69,7 +71,7 @@ export function createApplication({ origin, challenge = '', computeScene = compu
     if (requestOrigin && !origins.includes(requestOrigin)) return json({ error: 'Forbidden origin' }, 403);
     if (['GET', 'DELETE'].includes(request.method) && url.pathname === '/mcp') return json({ error: 'POST required' }, 405, { allow: 'POST' });
     if (request.method === 'GET' || request.method === 'HEAD') {
-      if (url.pathname === '/mcp/health') return json({ ok: true, service: 'OpticalSetup', version: VERSION, revision, storage: 'temporary-memory', authentication: 'none', screenshots });
+      if (url.pathname === '/mcp/health') return json({ ok: true, service: 'OpticalSetup', version: VERSION, revision, build, storage: 'temporary-memory', authentication: 'none', screenshots });
       if (url.pathname === '/.well-known/openai-apps-challenge') return challenge ? new Response(challenge, { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } }) : new Response('Challenge not configured', { status: 404 });
       if (url.pathname === '/mcp/workbench') return new Response(await widget, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
       return new Response('Not found', { status: 404 });
@@ -125,11 +127,28 @@ export function freePort() {
     socket.listen(0, '127.0.0.1', () => { const { port } = socket.address(); socket.close(() => found(port)); });
   });
 }
-// Whether the service at a loopback origin is a copy of this one, at this version.
-export async function sameService(origin) {
+// What this copy of the service is made of: a digest of the service's own files and of the editor it
+// runs and hands to the view. Two copies with the same digest behave alike; the version number alone
+// does not say so, since it stays the same from one checkout to the next.
+export async function buildIdentity(root = fileURLToPath(new URL('../', import.meta.url))) {
+  const files = [];
+  const walk = async (folder, deep) => {
+    for (const entry of await readdir(join(root, folder), { withFileTypes: true })) {
+      const path = folder + '/' + entry.name;
+      if (entry.isDirectory()) { if (deep) await walk(path, deep); }
+      else if (/\.(?:js|css|html)$/.test(entry.name)) files.push(path);
+    }
+  };
+  await walk('mcp', false); await walk('mcp/web', false); await walk('sketch', true);
+  const digest = createHash('sha256');
+  for (const path of files.sort()) digest.update(path + '\0').update(await readFile(join(root, path))).update('\0');
+  return digest.digest('hex').slice(0, 32);
+}
+// Whether the service at a loopback origin is a copy of this one: the same service, version and build.
+export async function sameService(origin, build) {
   try {
     const health = await (await fetch(origin + '/mcp/health', { signal: AbortSignal.timeout(1500) })).json();
-    return health.ok === true && health.service === 'OpticalSetup' && health.version === VERSION;
+    return health.ok === true && health.service === 'OpticalSetup' && health.version === VERSION && Boolean(build) && health.build === build;
   } catch { return false; }
 }
 // One JSON-RPC message answered by the copy at that origin. It throws when that copy does not answer as this service does.
@@ -142,61 +161,77 @@ export function forwardRpc(origin) {
     return answer;
   };
 }
+// The messages of a copy that relies on another copy on this machine. `forward` sends one to that
+// copy, `own` starts this copy's own service at the same address, and `same` says whether the
+// service now at that address is a copy of this one.
+// While the other copy answers, it answers. When it does not, this copy takes its place, where the
+// views opened from it look for the service. If the address was taken first, the message goes there
+// only after `same` has said so again: another program that took the port is sent nothing.
+export function relyOn({ forward, own, same }) {
+  let running, taking;
+  const takeOver = () => taking ??= own().then(service => { running = service; }, error => { taking = undefined; if (error.code !== 'EADDRINUSE') throw error; });
+  const refused = body => (body && typeof body === 'object' && !Array.isArray(body) && body.id === undefined ? null
+    : { jsonrpc: '2.0', id: body?.id ?? null, error: { code: -32603, message: 'The OpticalSetup service this one relied on has gone, and another program now holds its port. Restart the client that started OpticalSetup.' } });
+  const rpc = async body => {
+    if (running) return running.application.rpc(body);
+    try { return await forward(body); }
+    catch {
+      await takeOver();
+      if (running) return running.application.rpc(body);
+      return await same() ? forward(body) : refused(body);
+    }
+  };
+  rpc.running = () => running;
+  return rpc;
+}
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   // With --stdio a client starts this service itself and speaks MCP over its standard streams.
   // The view still needs its files and its live channel, so the loopback listener runs as well.
   const stdio = process.argv.includes('--stdio');
   // Standard output then carries MCP messages and nothing else: everything that would be printed goes to standard error.
   if (stdio) for (const level of ['log', 'info', 'debug']) console[level] = console.error;
-  const screenshots = await canRenderScreenshots();
+  const screenshots = await canRenderScreenshots(), build = await buildIdentity();
   const start = async port => {
     const origin = process.env.PUBLIC_ORIGIN || `http://127.0.0.1:${port}`;
     if (process.env.NODE_ENV === 'production' && !origin.startsWith('https://')) throw new Error('Production requires an HTTPS origin');
-    const application = createApplication({ origin, challenge: process.env.OPENAI_APPS_CHALLENGE, revision: process.env.DEPLOY_REVISION || 'local', screenshots });
+    const application = createApplication({ origin, challenge: process.env.OPENAI_APPS_CHALLENGE, revision: process.env.DEPLOY_REVISION || 'local', build, screenshots });
     const server = await listen(application, { port });
     console.log(`OpticalSetup MCP ${stdio ? 'on standard input and output, view files' : 'listening'} at ${origin}/mcp; no scene database; PNG tool ${screenshots ? 'available' : 'not offered (needs Linux tmpfs and FFmpeg)'}`);
     return { origin, application, server };
   };
   const asked = Number(process.env.PORT || 5188);
-  // `running` is this copy's own service. `shared` is the address of another copy on this machine that
-  // answers for this one: a client can start the service more than once (Claude Desktop does, for one
-  // chat), and a view opened through one copy must be the view the other copy's tool calls reach. So
-  // only the first copy keeps workbenches; a later one passes every message to it.
-  let running, shared, taking;
+  // A client can start the service more than once (Claude Desktop does, for one chat), and a view
+  // opened through one copy must be the view the other copy's tool calls reach. So only the first
+  // copy on a machine keeps workbenches; a later copy of the same build passes every message to it.
+  let running, shared;
   try { running = await start(asked || await freePort()); }
   catch (error) {
     if (!stdio || process.env.PUBLIC_ORIGIN || error.code !== 'EADDRINUSE') throw error;
     const holder = `http://127.0.0.1:${asked}`;
-    if (await sameService(holder)) {
-      shared = forwardRpc(holder);
+    if (await sameService(holder, build)) {
+      shared = relyOn({ forward: forwardRpc(holder), own: () => start(asked), same: () => sameService(holder, build) });
       console.log(`OpticalSetup MCP on standard input and output, passing its calls to the copy already running at ${holder}/mcp`);
     }
-    // Something else holds the port. A port that was asked for by name is not replaced; the usual one is.
+    // Something else holds the port, or a copy of this service from another build, which may not behave
+    // as this one does. A port that was asked for by name is not replaced; the usual one is.
     else if (process.env.PORT) throw error;
-    else running = await start(await freePort());
-  }
-  // When the copy it relied on has gone, this one takes its place at the same address, where the views
-  // opened from that copy look for the service. If yet another copy got there first, that one answers.
-  const takeOver = () => taking ??= start(asked).then(own => { running = own; }, error => { taking = undefined; if (error.code !== 'EADDRINUSE') throw error; });
-  const rpc = async body => {
-    if (running) return running.application.rpc(body);
-    try { return await shared(body); }
-    catch {
-      await takeOver();
-      return running ? running.application.rpc(body) : shared(body);
+    else {
+      console.log(`Port ${asked} is held by another program or by another build of OpticalSetup: this copy runs apart from it, and a view opened through one is not reached through the other.`);
+      running = await start(await freePort());
     }
-  };
-  const close = () => { running?.application.close(); running?.server.close(); };
+  }
+  const service = () => running || shared?.running();
+  const close = () => { service()?.application.close(); service()?.server.close(); };
   for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, () => {
-    close(); if (!running) process.exit(0);
-    running.server.once('close', () => process.exit(0));
-    setTimeout(() => { running.server.closeAllConnections(); process.exit(0); }, 5000).unref();
+    const own = service(); close(); if (!own) process.exit(0);
+    own.server.once('close', () => process.exit(0));
+    setTimeout(() => { own.server.closeAllConnections(); process.exit(0); }, 5000).unref();
   });
   // The client ends a stdio service by closing its input. By then every answer has been written out;
   // the listener and its connections are closed and the process ends by itself, which cannot cut
   // anything short. The timer is only for a handle that would otherwise keep it alive.
-  if (stdio) serveStdio(rpc).then(() => {
-    close(); running?.server.closeAllConnections();
+  if (stdio) serveStdio(running ? running.application.rpc : shared).then(() => {
+    close(); service()?.server.closeAllConnections();
     setTimeout(() => process.exit(0), 2000).unref();
   });
 }

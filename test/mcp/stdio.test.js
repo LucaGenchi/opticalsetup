@@ -9,7 +9,7 @@ import { PassThrough, Writable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { serveStdio } from '../../mcp/stdio.js';
 import { createServer } from 'node:http';
-import { createApplication, freePort, sameService } from '../../mcp/server.js';
+import { buildIdentity, createApplication, freePort, relyOn, sameService } from '../../mcp/server.js';
 
 const SERVER = fileURLToPath(new URL('../../mcp/server.js', import.meta.url));
 const line = message => JSON.stringify(message) + '\n';
@@ -246,8 +246,76 @@ test('a port held by something that is not this service is not shared: a named p
     assert.notEqual(code, 0);
     assert.match(service.errors(), /EADDRINUSE/);
     assert.equal(service.lines.length, 0, 'nothing was written where MCP messages go');
-    assert.equal(await sameService('http://127.0.0.1:' + stranger.address().port), false);
+    assert.equal(await sameService('http://127.0.0.1:' + stranger.address().port, await buildIdentity()), false);
   } finally { service.child.kill('SIGKILL'); stranger.close(); }
+});
+
+test('a copy of this service from another build is not shared with', async () => {
+  const build = await buildIdentity();
+  assert.match(build, /^[a-f0-9]{32}$/);
+  assert.equal(await buildIdentity(), build, 'the same files give the same identity');
+  // The same service and version, as an earlier checkout would answer: without a build, or with another.
+  for (const other of [undefined, 'f'.repeat(32)]) {
+    const answer = JSON.stringify({ ok: true, service: 'OpticalSetup', version: '1.0.0', revision: 'local', ...(other && { build: other }) });
+    const earlier = createServer((request, response) => { response.writeHead(200, { 'content-type': 'application/json' }); response.end(answer); });
+    await new Promise(done => earlier.listen(0, '127.0.0.1', done));
+    const address = 'http://127.0.0.1:' + earlier.address().port;
+    const service = start({ PORT: String(earlier.address().port) });
+    try {
+      assert.equal(await sameService(address, build), false);
+      assert.equal(await sameService(address, ''), false, 'a copy that does not know its own build shares with nobody');
+      const [code] = await once(service.child, 'exit');
+      assert.notEqual(code, 0, 'a named port held by another build fails to start');
+      assert.equal(service.lines.length, 0);
+    } finally { service.child.kill('SIGKILL'); earlier.close(); }
+  }
+  // A running copy says which build it is, and that one is shared with.
+  const PORT = String(await freePort()), first = start({ PORT });
+  try {
+    const origin = await viewOrigin(first);
+    assert.equal((await (await fetch(origin + '/mcp/health')).json()).build, build);
+    assert.equal(await sameService(origin, build), true);
+    assert.equal(await first.end(), 0);
+  } finally { first.child.kill('SIGKILL'); }
+});
+
+test('a copy that relied on another one sends nothing to a program that took the port afterwards', async () => {
+  const ping = { jsonrpc: '2.0', id: 7, method: 'ping' }, taken = Object.assign(new Error('taken'), { code: 'EADDRINUSE' });
+  const local = { application: { rpc: async body => ({ jsonrpc: '2.0', id: body.id, result: { by: 'own' } }) } };
+  const set = ({ reachable, own, same }) => {
+    const log = [];
+    const rpc = relyOn({
+      forward: async body => { log.push('forward'); if (!reachable()) throw new Error('gone'); return { jsonrpc: '2.0', id: body.id, result: { by: 'other' } }; },
+      own: async () => { log.push('own'); return own(); },
+      same: async () => { log.push('same'); return same(); },
+    });
+    return { rpc, log };
+  };
+  // While the other copy answers, nothing else is tried.
+  const steady = set({ reachable: () => true });
+  assert.deepEqual((await steady.rpc(ping)).result, { by: 'other' });
+  assert.deepEqual(steady.log, ['forward']);
+  // The other copy has gone and the port is free: this copy answers from then on, and starts once.
+  const heir = set({ reachable: () => false, own: () => local });
+  assert.deepEqual((await Promise.all([heir.rpc(ping), heir.rpc(ping), heir.rpc(ping)])).map(answer => answer.result.by), ['own', 'own', 'own']);
+  assert.deepEqual(heir.log.filter(step => step === 'own'), ['own']);
+  assert.deepEqual((await heir.rpc(ping)).result, { by: 'own' });
+  assert.equal(heir.rpc.running(), local);
+  // The port was taken first by a copy of this service: the message goes there, after asking who it is.
+  let back = false;
+  const third = set({ reachable: () => back, own: () => { back = true; throw taken; }, same: () => true });
+  assert.deepEqual((await third.rpc(ping)).result, { by: 'other' });
+  assert.deepEqual(third.log, ['forward', 'own', 'same', 'forward']);
+  // The port was taken first by another program: it is sent nothing, and the client is told.
+  const stranger = set({ reachable: () => false, own: () => { throw taken; }, same: () => false });
+  const refused = await stranger.rpc(ping);
+  assert.equal(refused.id, 7); assert.equal(refused.error.code, -32603);
+  assert.match(refused.error.message, /another program now holds its port/);
+  assert.deepEqual(stranger.log, ['forward', 'own', 'same'], 'the message was not sent a second time');
+  assert.equal(await stranger.rpc({ jsonrpc: '2.0', method: 'notifications/initialized' }), null, 'a notification gets no answer');
+  // A failure to start that is not about the port is not hidden.
+  const broken = set({ reachable: () => false, own: () => { throw new Error('no such file'); } });
+  await assert.rejects(broken.rpc(ping), /no such file/);
 });
 
 test('a burst of large answers followed at once by the end of the input arrives whole', async () => {
