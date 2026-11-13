@@ -34,6 +34,12 @@ export const examples = [
   },
   {
     "group": "Fundamentals",
+    "name": "Handedness after a mirror",
+    "path": "../Examples/Fundamentals/Handedness%20after%20a%20mirror.json",
+    "slug": "handedness-after-a-mirror"
+  },
+  {
+    "group": "Fundamentals",
     "name": "Pinhole spatial filter",
     "path": "../Examples/Fundamentals/Pinhole%20spatial%20filter.json",
     "slug": "pinhole-spatial-filter"

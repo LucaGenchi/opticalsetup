@@ -768,12 +768,26 @@ export const wikiEntries = [
         that, each incident ray splits into a reflected branch carrying fraction
         <span class="w">R</span> of the intensity and a transmitted branch carrying
         <span class="w">1 − R</span>, which is how a partially-reflective cavity mirror or
-        output coupler is modeled.</p>`,
-      formulas: [],
+        output coupler is modeled.</p>
+        <p>The reflection also changes the polarization the way an ideal mirror does. The
+        s direction points out of the screen and stays put, while the p direction, in the
+        drawing plane and perpendicular to the ray, turns over with the ray. In Stokes terms
+        <span class="w">s₁</span> is kept and <span class="w">s₂</span> and
+        <span class="w">s₃</span> change sign: p and s light come back as they went in, one
+        diagonal becomes the other, and right circular light becomes left circular. Every
+        specular reflection in the app does this, from dichroics and beamsplitters to
+        gratings and the two faces of a retroreflector, so two mirrors give the state back
+        and one does not.</p>`,
+      formulas: [
+        { tex: 'M_{\\text{mirror}} = \\operatorname{diag}(1,\\;1,\\;-1,\\;-1)', caption: 'The Mueller matrix of an ideal mirror, acting on (S₀, S₁, S₂, S₃) in the basis of the ray: p in the drawing plane, s out of it.' },
+      ],
       limitations: `<p>Reflectivity is a single flat number: real coatings vary with angle
         of incidence and polarization (s- vs p-plane), and a metal mirror's reflectance
         varies with wavelength. None of that is modeled — <span class="w">R</span> is
-        constant regardless of incidence angle, polarization, or color.</p>`,
+        constant regardless of incidence angle, polarization, or color. The polarization
+        change is that of an ideal mirror: the small phase difference a real metal or
+        dielectric coating adds between s and p, which turns linear light slightly
+        elliptical, is not modeled.</p>`,
     },
     related: ['cmirror', 'cmirrorx', 'oap', 'galvo', 'retroreflector', 'bs'],
     resources: [
@@ -2236,6 +2250,10 @@ export const wikiEntries = [
         polarization, or put it perpendicular, and nothing changes — a half-wave plate does
         nothing to light already polarized along one of its own axes. Send circular light
         through and the handedness flips.</p>
+        <p>The axis angle is measured from the drawing plane towards you, for light crossing
+        the plate left to right before it is rotated. Light crossing it the other way, after
+        a mirror for instance, meets the same physical axis, which in its own frame lies at
+        the opposite angle, −θ, as the inspector notes.</p>
         <p>Two consequences are worth knowing. The plate is <strong>lossless</strong>: it
         changes the state, never the intensity, so a power-control stage needs the polarizer
         after it to convert the rotation into attenuation. And <strong>unpolarized light
@@ -2311,10 +2329,17 @@ export const wikiEntries = [
         light from a horizontally polarized input.</p>
         <p>The full range of behaviour is there and can be read off any detector that
         reports polarization. Linear light at 0° with the axis at 45° comes out fully
+        circular: right circular, in Born and Wolf's convention, because the field turns
+        clockwise as seen looking towards the source. A mirror after the plate makes it left
         circular. Rotate the axis to 0° or 90° and the light passes through still linear.
         Set it to 22.5° and the output is elliptical, with the tilt of the ellipse and the
         amount of circularity both visible in a <a href="../detector/">polarimeter's</a>
         Stokes readout. Feed circular light in and linear light comes out.</p>
+        <p>The axis angle is set for light crossing the plate left to right before it is
+        rotated; light crossing it back sees the same physical axis at −θ. That is what
+        makes the double pass work as it does on a real bench: out through the plate at 45°,
+        off a mirror and back through it, horizontal light returns vertical, so a
+        <a href="../pbs/">polarizing beamsplitter</a> sends it to its other port.</p>
         <p>Two quarter-wave plates in series with the same axis are equivalent to one
         half-wave plate — worth trying, because it makes concrete that retardance simply
         accumulates.</p>

@@ -1,0 +1,117 @@
+{
+ "elements": 19,
+ "beams": 0,
+ "drawables": {
+  "count": 156,
+  "byType": {
+   "poly": 144,
+   "path": 12
+  },
+  "colors": {
+   "#ff4200": 156
+  },
+  "points": 600,
+  "sum": [
+   155000,
+   232500
+  ],
+  "bbox": [
+   52,
+   213,
+   496,
+   710
+  ],
+  "digest": "90f7f663"
+ },
+ "drawnElements": {
+  "textlabel:title": "b23857c5",
+  "textlabel:intro": "826d1166",
+  "textlabel:labelA": "c016a4be",
+  "cwlaser:laserA": "3d823b45",
+  "qwp:qwp": "2a7eef7d",
+  "probe:probeA": "dfb2c71f",
+  "mirror:m1": "81e74feb",
+  "probe:probeB": "dfb2c71f",
+  "mirror:m2": "81e74feb",
+  "probe:probeC": "dfb2c71f",
+  "polarimeter:polC": "f5975a42",
+  "display:screenC": "4e4d80d5",
+  "textlabel:labelB": "24422c57",
+  "cwlaser:laserB": "3d823b45",
+  "mirror:m3": "81e74feb",
+  "probe:probeD": "c8e64a10",
+  "polarizer:ana": "3637178f",
+  "powermeter:meter": "75b5bebb",
+  "display:screenD": "1fee6ee6"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "readouts": {
+  "polarimeter:polC": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 633,
+    "bandMin": 633,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#ff4200",
+    "convergence": {
+     "diverging": false,
+     "fullAngleDeg": 0,
+     "slopePerMm": 0
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 1,
+    "detectorType": "Polarimeter",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": 6.123234e-17,
+     "s2": 6.123234e-17,
+     "s3": 1
+    },
+    "outputSignal": 1,
+    "polarization": "Right circular",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "polarimeter",
+    "samples": 25,
+    "saturated": false,
+    "signal": 1,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 1,
+      "sourceId": "laserA"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#ff4200",
+      "continuum": false,
+      "power": 1,
+      "sourceId": "laserA",
+      "wavelength": 633,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 4,
+    "wavelength": 633
+   }
+  }
+ },
+ "fibers": {}
+}

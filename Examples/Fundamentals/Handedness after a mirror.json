@@ -1,0 +1,271 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "title",
+   "type": "textlabel",
+   "x": -60,
+   "y": 40,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Handedness after a mirror**",
+    "fontSize": 24,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "intro",
+   "type": "textlabel",
+   "x": -60,
+   "y": 89,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "A mirror keeps s, the direction out of the drawing, and turns p over with the ray. Right circular light\ncomes back left circular, one diagonal comes back as the other, and p and s come back as they went in.",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "labelA",
+   "type": "textlabel",
+   "x": -60,
+   "y": 145,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Circular light**: a quarter-wave plate at 45° makes it right circular, and each mirror reverses the handedness",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "laserA",
+   "type": "cwlaser",
+   "x": 0,
+   "y": 215,
+   "rot": 0,
+   "label": "Laser, polarized at 0°, 1 mW",
+   "showLabel": true,
+   "params": {
+    "wavelength": 633,
+    "avgPowerW": 0.001,
+    "beamMode": "beam",
+    "beamWidth": 4,
+    "pol": 0,
+    "coherenceLengthMm": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw"
+   }
+  },
+  {
+   "id": "qwp",
+   "type": "qwp",
+   "x": 130,
+   "y": 215,
+   "rot": 0,
+   "label": "λ/4, fast axis 45°",
+   "showLabel": true,
+   "params": {
+    "a": 45,
+    "length": 25.4
+   }
+  },
+  {
+   "id": "probeA",
+   "type": "probe",
+   "x": 210,
+   "y": 215,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "prop": "pol"
+   }
+  },
+  {
+   "id": "m1",
+   "type": "mirror",
+   "x": 320,
+   "y": 215,
+   "rot": -45,
+   "label": "Mirror 1",
+   "showLabel": true,
+   "params": {
+    "length": 25.4,
+    "refl": 100
+   },
+   "labelPos": "t"
+  },
+  {
+   "id": "probeB",
+   "type": "probe",
+   "x": 320,
+   "y": 300,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "prop": "pol"
+   }
+  },
+  {
+   "id": "m2",
+   "type": "mirror",
+   "x": 320,
+   "y": 385,
+   "rot": -45,
+   "label": "Mirror 2",
+   "showLabel": true,
+   "params": {
+    "length": 25.4,
+    "refl": 100
+   },
+   "labelPos": "b"
+  },
+  {
+   "id": "probeC",
+   "type": "probe",
+   "x": 410,
+   "y": 385,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "prop": "pol"
+   }
+  },
+  {
+   "id": "polC",
+   "type": "polarimeter",
+   "x": 520,
+   "y": 385,
+   "rot": 0,
+   "label": "Polarimeter",
+   "showLabel": false,
+   "params": {}
+  },
+  {
+   "id": "screenC",
+   "type": "display",
+   "x": 640,
+   "y": 385,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "polC",
+    "displayScale": 0.8,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "labelB",
+   "type": "textlabel",
+   "x": -60,
+   "y": 500,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Diagonal light**: after one mirror, an analyzer at 45° passes none of it",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "laserB",
+   "type": "cwlaser",
+   "x": 0,
+   "y": 570,
+   "rot": 0,
+   "label": "Laser, polarized at 45°, 1 mW",
+   "showLabel": true,
+   "params": {
+    "wavelength": 633,
+    "avgPowerW": 0.001,
+    "beamMode": "beam",
+    "beamWidth": 4,
+    "pol": 45,
+    "coherenceLengthMm": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw"
+   }
+  },
+  {
+   "id": "m3",
+   "type": "mirror",
+   "x": 320,
+   "y": 570,
+   "rot": -45,
+   "label": "Mirror",
+   "showLabel": true,
+   "params": {
+    "length": 25.4,
+    "refl": 100
+   },
+   "labelPos": "t"
+  },
+  {
+   "id": "probeD",
+   "type": "probe",
+   "x": 320,
+   "y": 640,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "prop": "pol"
+   }
+  },
+  {
+   "id": "ana",
+   "type": "polarizer",
+   "x": 320,
+   "y": 710,
+   "rot": 90,
+   "label": "Analyzer, 45°",
+   "showLabel": true,
+   "params": {
+    "pangle": 45,
+    "length": 25.4
+   }
+  },
+  {
+   "id": "meter",
+   "type": "powermeter",
+   "x": 320,
+   "y": 800,
+   "rot": 90,
+   "label": "Power meter",
+   "showLabel": false,
+   "params": {
+    "aperture": 30
+   }
+  },
+  {
+   "id": "screenD",
+   "type": "display",
+   "x": 450,
+   "y": 800,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "meter",
+    "displayScale": 0.8,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  }
+ ],
+ "beams": []
+}

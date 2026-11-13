@@ -12,7 +12,8 @@ import { readFile } from 'node:fs/promises';
 import { registry, objectImageReadout } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
 import { parseSketch } from '../sketch/js/state.js';
-import { traceScene, objectImageReading } from '../sketch/js/raytrace.js';
+import { traceScene, objectImageReading, probeAt } from '../sketch/js/raytrace.js';
+import { polarizationDescription } from '../sketch/js/polarization.js';
 import { enhancedReading } from '../sketch/js/detector-measurements.js';
 import { glassIndex } from '../sketch/js/glass.js';
 import { zoomFoci } from '../sketch/js/zoom-focus.js';
@@ -162,6 +163,29 @@ test('law of Malus: the analyzer passes cos² θ of half the LED, the half-wave 
   for (const [angle, microwatts] of [[0, 0], [22.5, 500], [30, 750]]) {
     const r = await run(NAME, get => { get('hwp').params.a = angle; });
     close(r.watts('meterB'), microwatts * 1e-6, 1e-12, `plate at ${angle}°`);
+  }
+});
+
+test('handedness after a mirror: each mirror reverses circular light, one mirror swaps the diagonals', async () => {
+  const NAME = 'Handedness after a mirror';
+  const states = r => ['probeA', 'probeB', 'probeC', 'probeD'].map(id => {
+    const el = r.get(id), found = probeAt(el.x, el.y);
+    return found ? polarizationDescription(found.stokes) : null;
+  });
+  const shipped = await run(NAME);
+  assert.deepEqual(states(shipped), ['Right circular', 'Left circular', 'Right circular', 'Linear 135°']);
+  assert.equal(shipped.reading('polC').polarization, 'Right circular');
+  close(shipped.reading('polC').normalizedStokes.s3, 1, 1e-12, 's3');
+  assert.equal(shipped.watts('meter'), 0);
+  // Each row of the page's table is one change from the setup as it opens.
+  const plate = await run(NAME, get => { get('qwp').params.a = 135; });
+  assert.deepEqual(states(plate).slice(0, 3), ['Left circular', 'Right circular', 'Left circular']);
+  close(plate.reading('polC').normalizedStokes.s3, -1, 1e-12, 's3');
+  close((await run(NAME, get => { get('ana').params.pangle = 135; })).watts('meter'), 1 * mW, 1e-12);
+  for (const pol of [0, 90]) {
+    const r = await run(NAME, get => { get('laserB').params.pol = pol; });
+    assert.equal(states(r)[3], `Linear ${pol}°`);
+    close(r.watts('meter'), 0.5 * mW, 1e-12, `laser at ${pol}°`);
   }
 });
 
