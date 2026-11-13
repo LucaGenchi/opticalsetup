@@ -454,7 +454,7 @@ export function objectImageReading(elementId) {
   return objectImageStates.get(elementId) || null;
 }
 
-// The lens-plane extensions and principal planes an Object's principal rays
+// The principal planes of a real optic an Object's principal rays
 // bend at: a neutral grey, so they read as construction, not light.
 const PRINCIPAL_PLANE_COLOR = '#94a3b8';
 

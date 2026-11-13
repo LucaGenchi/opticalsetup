@@ -1032,7 +1032,7 @@ function objectShowsFanAngle(p) {
   return objectTracesFan(p) && p.aim !== 'optic';
 }
 
-const OBJECT_PRINCIPAL_NOTE = 'Three construction rays from the tip for each lens on the axis, from its object to its image: parallel then through the focus, through the centre, through the front focus then parallel. Drawn, not traced: nothing in the scene stops them. Dashed: a virtual image. Grey dashes: a lens plane drawn on past the glass, or a thick lens’s principal planes.';
+const OBJECT_PRINCIPAL_NOTE = 'Three construction rays from the tip for each lens on the axis, from its object to its image: parallel then through the focus, through the centre, through the front focus then parallel. A ray that would miss the glass of a lens or plate on its way is left out. Drawn, not traced: nothing else in the scene stops them. Dashed: a virtual image. Grey dashes: a thick lens’s principal planes.';
 
 const signedText = (v, digits) => v.toFixed(digits).replace('-', '−');
 const mmText = v => `${Number(Math.abs(v).toPrecision(4))} mm`;
