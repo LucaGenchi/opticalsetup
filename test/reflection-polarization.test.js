@@ -348,7 +348,7 @@ test('A2: a reading that rebuilds the fields downstream drops the "not combined"
   // place keeps the added powers and the caveat.
   const full = { refl: 100 };
   const elements = [
-    make('pulsedlaser', -100, 0, { pol: 30, wavelength: 633, beamMode: 'beam', beamWidth: 4, durationFs: 200, interference: true }),
+    make('pulsedlaser', -100, 0, { pol: 30, wavelength: 633, beamMode: 'beam', beamWidth: 4, pulseWidthFs: 200, interference: true }),
     make('bs', 100, 0),
     make('delayline', 200, 0, { delayMm: 60 * Math.SQRT2 }),
     make('mirror', 300, 0, full, 45),
