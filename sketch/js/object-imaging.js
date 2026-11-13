@@ -349,13 +349,17 @@ export function principalRays(steps, tip, u, v, { maxLen = 6000 } = {}) {
   // A ray is drawn only where it really crosses glass: a height h on a
   // step's plane must lie within that optic's half-aperture.
   const inGlass = (h, step) => !(step.half > 0) || (Number.isFinite(h) && Math.abs(h) <= step.half + 1e-9);
-  const mid = plane => mul(add(plane.a, plane.b), 0.5);
-  // Whether the image in space j forms there for real: ahead of the step
-  // before it, and not beyond the step after it.
+  // Whether the image in space j forms there for real: on the far side of
+  // the plane it leaves the step before through, and not beyond the plane of
+  // the step after. Measured across each plane (along its normal), so a
+  // tilted lens is judged by where its plane really is. A ray in space j
+  // runs from one plane to the next through that image, so this one test
+  // decides both where a lens starts its own rays and where rays end.
+  const side = (P, plane) => { const F = frameOf(plane, u); return dot(sub(P, F.mid), F.np); };
   const realIn = j => {
     const R = imgs[j];
     if (!R) return false;
-    return ahead(mid(steps[j - 1].H2), R, u) > 0 && (j === N || ahead(R, mid(steps[j].H), u) >= 0);
+    return side(R, steps[j - 1].H2) > 0 && (j === N || side(R, steps[j].H) <= 0);
   };
   // A lens draws its own three rays from the object, and from a real image
   // formed between it and the lens before. Any other lens (behind a
@@ -419,7 +423,7 @@ export function principalRays(steps, tip, u, v, { maxLen = 6000 } = {}) {
       for (let j = k + 1; j <= N; j++) {
         const R = imgs[j];
         const next = j < N ? linePlane(cur, d, steps[j].H) : null;
-        const reaches = R && ahead(cur, R, d) > 0 && (!next || ahead(R, next, d) >= 0);
+        const reaches = realIn(j);
         if (j === N) {
           if (reaches) pts.push(R); // a real final image: the rays end on it
           else {

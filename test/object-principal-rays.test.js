@@ -265,6 +265,40 @@ test('a meniscus with its principal planes outside the glass: a ray that would p
   crossingsInGlass(far);
 });
 
+test('a tilted next lens: where an image is real is judged across its plane, for starts and ends alike', () => {
+  // Andrea's cases on #319. Lens 2 at 447 (f 5) turned −45°: image 1 at
+  // (450, 5.5) lies before its tilted plane, so it is real; lens 1's rays end
+  // there and lens 2 draws its own rays from it. Its image is virtual, so
+  // they leave the lens and dashed lines lead back to the drawn tip.
+  const object = objectAt(0);
+  const tilted = lensAt(447, 5, 50.8);
+  tilted.rot = -45;
+  const result = traceScene([object, lensAt(300, 100, 50.8), tilted], []);
+  const tip = result.drawables.find(d => d.type === 'poly' && d.opacity === 0.85).pts[0];
+  const rays = solid(result);
+  assert.ok(rays.length > 3, 'lens 2 adds its own rays');
+  for (const ray of rays.filter(r => Math.abs(r.pts[0].x) < 1e-9)) {
+    near(ray.pts.at(-1).x, 450, 1e-9, 'lens 1 rays end on image 1');
+    near(ray.pts.at(-1).y, 5.5, 1e-9, 'lens 1 rays end on image 1');
+  }
+  assert.equal(rays.filter(r => Math.abs(r.pts[0].x - 450) < 1e-9).length, 3, 'lens 2 draws three from image 1');
+  const back = dashed(result);
+  assert.equal(back.length, 3);
+  for (const d of back) {
+    near(d.pts.at(-1).x, tip.x, 1e-6, 'dashed back to the drawn tip');
+    near(d.pts.at(-1).y, tip.y, 1e-6, 'dashed back to the drawn tip');
+  }
+  // Lens 2 at 451 (f 100) turned +20°: image 1 lies beyond its plane, so it
+  // is not real and lens 2 starts no rays of its own; lens 1's rays go on
+  // through it, and none starts at (450, 5.5).
+  const beyond = lensAt(451, 100, 50.8);
+  beyond.rot = 20;
+  const r2 = solid(traceScene([objectAt(0), lensAt(300, 100, 50.8), beyond], []));
+  assert.ok(r2.length >= 1);
+  assert.ok(r2.every(ray => Math.abs(ray.pts[0].x) < 1e-9), 'every ray starts at the tip');
+  assert.ok(r2.every(ray => ray.pts.length >= 4), 'and goes on through lens 2');
+});
+
 test('with no lens, with rays off, or before the option existed: no principal rays', () => {
   const alone = objectAt(0);
   const none = traceScene([alone], []);
