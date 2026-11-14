@@ -15,7 +15,8 @@ import { parseSketch } from '../sketch/js/state.js';
 import { traceScene, objectImageReading, probeAt } from '../sketch/js/raytrace.js';
 import { polarizationDescription } from '../sketch/js/polarization.js';
 import { enhancedReading } from '../sketch/js/detector-measurements.js';
-import { glassIndex } from '../sketch/js/glass.js';
+import { glassIndex, glassIndexUnbucketed } from '../sketch/js/glass.js';
+import { fresnelCoefficients } from '../sketch/js/mueller.js';
 import { zoomFoci } from '../sketch/js/zoom-focus.js';
 import { formatLength } from '../sketch/js/zoom.js';
 
@@ -380,4 +381,79 @@ test('Czerny–Turner: an 8 mm exit slit lets the yellow pair through beside the
   close(r.bandMin, 546.074, 1e-6);
   close(r.bandMax, 579.07, 1e-6);
   close(r.signal, 1.8 / 4.1, 1e-9);
+});
+
+test('Brewster window: p passes whole, s loses 27 %, four plates leave LED light 57 % polarized', async () => {
+  const NAME = 'Brewster window';
+  const shipped = await run(NAME);
+  const mW = id => shipped.watts(id) * 1e3;
+  // Brewster's angle for n = 1.5, the plates' turn.
+  close(shipped.get('plateP').rot, Math.atan(1.5) * 180 / Math.PI, 1e-9, 'turn');
+  close(Math.atan(1.5) * 180 / Math.PI, 56.3, 0.05, '56.3°');
+  for (const id of ['plateP', 'plateS', 'pile1', 'pile4']) assert.equal(shipped.get(id).params.surfaceModel, 'fresnel', id);
+  close(mW('meterP'), 1.00, 0.005, 'p');
+  close(mW('meterS'), 0.726, 0.0005, 's');
+  // About 15 % of s reflected at each face: (1 − R)² = 0.726.
+  close(1 - Math.sqrt(0.726025), 0.148, 0.0005, 'per face');
+  const pile = shipped.reading('polC');
+  assert.equal(pile.polarization, 'Partly linear 0°');
+  close(pile.detectedPowerW * 1e3, 0.639, 0.0005, 'pile power');
+  close(pile.normalizedStokes.s1, 0.57, 0.005, 'DoP');
+  // All of p, 28 % of s: (1 − R_s)^8 for eight faces.
+  close((pile.detectedPowerW * 1e3 - 0.5) / 0.5, 0.28, 0.005, 's fraction');
+  // Things to try.
+  const turned = await run(NAME, get => { get('plateP').rot = 30; get('plateS').rot = 30; });
+  close(turned.watts('meterP') * 1e6, 950, 0.5, '30° p');
+  close(turned.watts('meterS') * 1e6, 888, 0.5, '30° s');
+  const flat = await run(NAME, get => { get('plateP').params.surfaceModel = 'transmission'; get('plateS').params.surfaceModel = 'transmission'; });
+  close(flat.watts('meterP') * 1e6, 960, 0.5, 'per-surface p');
+  close(flat.watts('meterS') * 1e6, 960, 0.5, 'per-surface s');
+  const two = await run(NAME, (get, beam, scene) => { scene.elements = scene.elements.filter(e => e.id !== 'pile3' && e.id !== 'pile4'); });
+  const twoPlates = two.reading('polC');
+  close(twoPlates.detectedPowerW * 1e6, 764, 0.5, 'two plates power');
+  close(twoPlates.normalizedStokes.s1, 0.31, 0.005, 'two plates DoP');
+});
+
+test('Fresnel rhomb: two total internal reflections make circular light from 450 to 1064 nm', async () => {
+  const NAME = 'Fresnel rhomb as an achromatic quarter-wave retarder';
+  const shipped = await run(NAME);
+  // The rhomb: N-BK7, acute angle 54.6°, both faces of bare glass.
+  const rhomb = shipped.get('rhombB');
+  assert.equal(rhomb.params.material, 'nbk7');
+  assert.equal(rhomb.params.surfaceModel, 'fresnel');
+  const [a, b, , d] = rhomb.params.vertices;
+  const acute = Math.abs(Math.atan2(b.y - a.y, b.x - a.x) - Math.atan2(d.y - a.y, d.x - a.x)) * 180 / Math.PI;
+  close(acute, 54.6, 1e-6, 'acute angle');
+  // Each reflection's retardance from the kernel, at each wavelength's index.
+  const retardance = nm => {
+    const { rs, rp } = fresnelCoefficients(glassIndexUnbucketed('nbk7', nm), 1, Math.cos(54.6 * Math.PI / 180));
+    return (Math.atan2(rs.im, rs.re) - Math.atan2(rp.im, rp.re)) * 180 / Math.PI;
+  };
+  close(retardance(450), 45.8, 0.05, '450 nm');
+  close(retardance(1064), 44.8, 0.05, '1064 nm');
+  close(2 * retardance(450), 91.6, 0.05, 'two at 450');
+  close(2 * retardance(1064), 89.7, 0.05, 'two at 1064');
+  const blue = shipped.reading('polB'), infrared = shipped.reading('polR');
+  for (const r of [blue, infrared]) {
+    assert.equal(r.polarization, 'Left circular');
+    close(r.normalizedStokes.s3, -1.00, 0.005, 's3');
+  }
+  close(blue.normalizedStokes.s2, -0.03, 0.005, 's2 at 450');
+  close(infrared.normalizedStokes.s2, 0.01, 0.005, 's2 at 1064');
+  close(blue.detectedPowerW * 1e6, 915, 0.5, 'power at 450');
+  close(infrared.detectedPowerW * 1e6, 920, 0.5, 'power at 1064');
+  // The end faces each reflect about 4 %.
+  const n450 = glassIndexUnbucketed('nbk7', 450);
+  close(((n450 - 1) / (n450 + 1)) ** 2, 0.04, 0.005, 'end face');
+  assert.equal(shipped.reading('polT').polarization, 'Linear 45°');
+  // Things to try.
+  const right = (await run(NAME, get => { get('laserB').params.pol = 135; })).reading('polB');
+  assert.equal(right.polarization, 'Right circular');
+  close(right.normalizedStokes.s3, 1.00, 0.005, 's3 at 135°');
+  for (const pol of [0, 90]) {
+    assert.equal((await run(NAME, get => { get('laserB').params.pol = pol; })).reading('polB').polarization, `Linear ${pol}°`);
+  }
+  const red = (await run(NAME, get => { get('laserB').params.wavelength = 633; })).reading('polB');
+  assert.equal(red.polarization, 'Left circular');
+  close(red.normalizedStokes.s2, -0.01, 0.005, 's2 at 633');
 });

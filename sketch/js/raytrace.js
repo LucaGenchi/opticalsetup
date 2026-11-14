@@ -52,7 +52,7 @@ import {
   legacyPolarization, polarizationDescription,
 } from './polarization.js';
 import { fresnelTransmittances, throughFace } from './fresnel.js';
-import { mirroredStokes, linearJones } from './mueller.js';
+import { applyMueller, fresnelReflectionMueller, mirroredStokes, linearJones, stokesVector } from './mueller.js';
 import { arcParameterAtPoint, circularArcThrough } from './polygon.js';
 import {
   gddGroupDelayDifferenceFs, glassGVD, glassGroupDelayDifferenceFs, glassIndex,
@@ -4477,6 +4477,32 @@ function reflectPolarization(ray, children, n) {
   }
 }
 
+// Total internal reflection at a face that follows Fresnel (a prism, or glass
+// set to bare glass): |r_s| = |r_p| = 1, so no power is lost, but s and p
+// come back with different phases, the retardance of total internal
+// reflection (Born and Wolf, section 1.5.4). fresnelReflectionMueller carries
+// both that retardance and the mirror's own turn of p̂, so it replaces the
+// ideal mirror reflectPolarization would otherwise apply. Unpolarized light
+// stays unpolarized. Glass carries no carrier phase (carrierPhaseIssue), so
+// only the state changes. Glass on per-surface transmission keeps the ideal
+// mirror.
+function totalReflectionPolarization(ray, n1, n2, cosIncidence) {
+  const m = fresnelReflectionMueller(n1, n2, cosIncidence);
+  if (!m) return {};
+  const turn = stokes => {
+    if (!stokes) return null;
+    const [S0, S1, S2, S3] = applyMueller(m, stokesVector(stokes));
+    return S0 > 0 ? { s1: S1 / S0, s2: S2 / S0, s3: S3 / S0 } : { ...stokes };
+  };
+  if (!(ray.stokes || ray.polMod)) return {};
+  // Setting `stokes` (null for unpolarized light) tells reflectPolarization
+  // this child's state is already set, so the mirror is not applied twice.
+  const stokes = turn(ray.stokes);
+  const out = { stokes, pol: legacyPolarization(stokes), faceStokes: true };
+  if (ray.polMod) out.polMod = { ...ray.polMod, stokesHigh: turn(ray.polMod.stokesHigh), stokesLow: turn(ray.polMod.stokesLow) };
+  return out;
+}
+
 // The phase a reflection adds to the coherent field, beyond the element's own
 // (a beamsplitter's π/2). A perfect conductor reflects with Jones matrix
 // diag(1, −1) in the p, s basis (Born and Wolf's signs: r_p = +1, r_s = −1).
@@ -4837,6 +4863,7 @@ function interact(ray, hit) {
             d: reflect(d, n), wl, bw: bandwidth, ...specField, ...colorField, intensity,
             ior: inside ? materialIor : (ray.ior || 1),
             tag: tag ? `${tag}-tir` : 'tir',
+            ...(data.fresnel ? totalReflectionPolarization(ray, n1, n2, dot(d, n)) : {}),
           };
         }
         // A prism face transmits by Fresnel at its real angle and acts as a

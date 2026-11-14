@@ -1,0 +1,308 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "title",
+      "type": "textlabel",
+      "x": -60,
+      "y": 40,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**Fresnel rhomb as an achromatic quarter-wave retarder**",
+        "fontSize": 24,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "intro",
+      "type": "textlabel",
+      "x": -60,
+      "y": 89,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "A rhomb of bare N-BK7 glass totally reflects the beam twice at 54.6°. Each total internal reflection shifts the phase of s against p by about 45°,\nso the two together act as a quarter-wave plate. The delay comes from the index alone, which changes little with wavelength.",
+        "fontSize": 14,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "labelA",
+      "type": "textlabel",
+      "x": -60,
+      "y": 150,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**Blue, 450 nm**, polarized at 45°: leaves circular",
+        "fontSize": 14,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "laserB",
+      "type": "cwlaser",
+      "x": 0,
+      "y": 230,
+      "rot": 0,
+      "label": "Laser 450 nm, polarized at 45°",
+      "showLabel": true,
+      "params": {
+        "wavelength": 450,
+        "avgPowerW": 0.001,
+        "beamMode": "beam",
+        "beamWidth": 1,
+        "pol": 45,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "rhombB",
+      "type": "freeglass",
+      "x": 163.76395481349235,
+      "y": 239.78153354874266,
+      "rot": 0,
+      "label": "Bare glass (Fresnel)",
+      "showLabel": true,
+      "params": {
+        "vertices": [
+          {
+            "x": -13.763955,
+            "y": -17.142343
+          },
+          {
+            "x": 13.763955,
+            "y": 2.420725
+          },
+          {
+            "x": 13.763955,
+            "y": 17.142343
+          },
+          {
+            "x": -13.763955,
+            "y": -2.420725
+          }
+        ],
+        "scale": 1,
+        "material": "nbk7",
+        "surfaceModel": "fresnel"
+      }
+    },
+    {
+      "id": "polB",
+      "type": "polarimeter",
+      "x": 330,
+      "y": 249.56306709748532,
+      "rot": 0,
+      "label": "Polarimeter",
+      "showLabel": false,
+      "params": {}
+    },
+    {
+      "id": "screenB",
+      "type": "display",
+      "x": 470,
+      "y": 249.56306709748532,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "sensorId": "polB",
+        "displayScale": 0.8,
+        "screenOn": true,
+        "displayView": "main"
+      }
+    },
+    {
+      "id": "labelR",
+      "type": "textlabel",
+      "x": -60,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**Infrared, 1064 nm**, the same rhomb: still circular",
+        "fontSize": 14,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "laserR",
+      "type": "cwlaser",
+      "x": 0,
+      "y": 410,
+      "rot": 0,
+      "label": "Laser 1064 nm, polarized at 45°",
+      "showLabel": true,
+      "params": {
+        "wavelength": 1064,
+        "avgPowerW": 0.001,
+        "beamMode": "beam",
+        "beamWidth": 1,
+        "pol": 45,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "rhombR",
+      "type": "freeglass",
+      "x": 163.76395481349235,
+      "y": 419.7815335487427,
+      "rot": 0,
+      "label": "Bare glass (Fresnel)",
+      "showLabel": true,
+      "params": {
+        "vertices": [
+          {
+            "x": -13.763955,
+            "y": -17.142343
+          },
+          {
+            "x": 13.763955,
+            "y": 2.420725
+          },
+          {
+            "x": 13.763955,
+            "y": 17.142343
+          },
+          {
+            "x": -13.763955,
+            "y": -2.420725
+          }
+        ],
+        "scale": 1,
+        "material": "nbk7",
+        "surfaceModel": "fresnel"
+      }
+    },
+    {
+      "id": "polR",
+      "type": "polarimeter",
+      "x": 330,
+      "y": 429.5630670974853,
+      "rot": 0,
+      "label": "Polarimeter",
+      "showLabel": false,
+      "params": {}
+    },
+    {
+      "id": "screenR",
+      "type": "display",
+      "x": 470,
+      "y": 429.5630670974853,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "sensorId": "polR",
+        "displayScale": 0.8,
+        "screenOn": true,
+        "displayView": "main"
+      }
+    },
+    {
+      "id": "labelT",
+      "type": "textlabel",
+      "x": -60,
+      "y": 510,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**Per-surface transmission**: the glass's default setting reflects like an ideal mirror, and 45° light leaves as it came",
+        "fontSize": 14,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "laserT",
+      "type": "cwlaser",
+      "x": 0,
+      "y": 590,
+      "rot": 0,
+      "label": "Laser 450 nm, polarized at 45°",
+      "showLabel": true,
+      "params": {
+        "wavelength": 450,
+        "avgPowerW": 0.001,
+        "beamMode": "beam",
+        "beamWidth": 1,
+        "pol": 45,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "rhombT",
+      "type": "freeglass",
+      "x": 163.76395481349235,
+      "y": 599.7815335487427,
+      "rot": 0,
+      "label": "Per-surface transmission",
+      "showLabel": true,
+      "params": {
+        "vertices": [
+          {
+            "x": -13.763955,
+            "y": -17.142343
+          },
+          {
+            "x": 13.763955,
+            "y": 2.420725
+          },
+          {
+            "x": 13.763955,
+            "y": 17.142343
+          },
+          {
+            "x": -13.763955,
+            "y": -2.420725
+          }
+        ],
+        "scale": 1,
+        "material": "nbk7",
+        "surfaceModel": "transmission"
+      }
+    },
+    {
+      "id": "polT",
+      "type": "polarimeter",
+      "x": 330,
+      "y": 609.5630670974853,
+      "rot": 0,
+      "label": "Polarimeter",
+      "showLabel": false,
+      "params": {}
+    },
+    {
+      "id": "screenT",
+      "type": "display",
+      "x": 470,
+      "y": 609.5630670974853,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "sensorId": "polT",
+        "displayScale": 0.8,
+        "screenOn": true,
+        "displayView": "main"
+      }
+    }
+  ],
+  "beams": []
+}

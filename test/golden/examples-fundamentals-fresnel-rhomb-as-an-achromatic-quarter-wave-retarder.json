@@ -1,0 +1,232 @@
+{
+ "elements": 17,
+ "beams": 0,
+ "drawables": {
+  "count": 390,
+  "byType": {
+   "poly": 360,
+   "path": 30
+  },
+  "colors": {
+   "#0046ff": 260,
+   "#8b1a1a": 130
+  },
+  "points": 1500,
+  "sum": [
+   250216.742,
+   629672.301
+  ],
+  "bbox": [
+   52,
+   229.5,
+   306,
+   610.0631
+  ],
+  "digest": "5828a709"
+ },
+ "drawnElements": {
+  "textlabel:title": "ec630c5c",
+  "textlabel:intro": "be26d7c3",
+  "textlabel:labelA": "0f84b96c",
+  "cwlaser:laserB": "337830f0",
+  "freeglass:rhombB": "cca0577a",
+  "polarimeter:polB": "728babb6",
+  "display:screenB": "7b7525e5",
+  "textlabel:labelR": "90eb301e",
+  "cwlaser:laserR": "337830f0",
+  "freeglass:rhombR": "cca0577a",
+  "polarimeter:polR": "bef78fd4",
+  "display:screenR": "9c3fb316",
+  "textlabel:labelT": "336775a9",
+  "cwlaser:laserT": "337830f0",
+  "freeglass:rhombT": "cca0577a",
+  "polarimeter:polT": "728babb6",
+  "display:screenT": "28dbc628"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "readouts": {
+  "polarimeter:polB": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 450,
+    "bandMin": 450,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#0046ff",
+    "convergence": {
+     "diverging": false,
+     "fullAngleDeg": 0,
+     "slopePerMm": 0
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 0.915327052,
+    "detectorType": "Polarimeter",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": 6.123234e-17,
+     "s2": -0.0275289748,
+     "s3": -0.999621006
+    },
+    "outputSignal": 0.915327052,
+    "polarization": "Left circular",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "polarimeter",
+    "samples": 25,
+    "saturated": false,
+    "signal": 0.915327052,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.915327052,
+      "sourceId": "laserB"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#0046ff",
+      "continuum": false,
+      "power": 0.915327052,
+      "sourceId": "laserB",
+      "wavelength": 450,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 1,
+    "wavelength": 450
+   }
+  },
+  "polarimeter:polR": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 1064,
+    "bandMin": 1064,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#ff3030",
+    "convergence": {
+     "diverging": false,
+     "fullAngleDeg": 0,
+     "slopePerMm": 0
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 0.919965863,
+    "detectorType": "Polarimeter",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": 5.72118873e-18,
+     "s2": 0.00573726285,
+     "s3": -0.999983542
+    },
+    "outputSignal": 0.919965863,
+    "polarization": "Left circular",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "polarimeter",
+    "samples": 25,
+    "saturated": false,
+    "signal": 0.919965863,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.919965863,
+      "sourceId": "laserR"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#8b1a1a",
+      "continuum": false,
+      "power": 0.919965863,
+      "sourceId": "laserR",
+      "wavelength": 1064,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 1,
+    "wavelength": 1064
+   }
+  },
+  "polarimeter:polT": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 450,
+    "bandMin": 450,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#0046ff",
+    "convergence": {
+     "diverging": false,
+     "fullAngleDeg": 0,
+     "slopePerMm": 0
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 0.9604,
+    "detectorType": "Polarimeter",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": 6.123234e-17,
+     "s2": 1,
+     "s3": 0
+    },
+    "outputSignal": 0.9604,
+    "polarization": "Linear 45°",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "polarimeter",
+    "samples": 25,
+    "saturated": false,
+    "signal": 0.9604,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.9604,
+      "sourceId": "laserT"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#0046ff",
+      "continuum": false,
+      "power": 0.9604,
+      "sourceId": "laserT",
+      "wavelength": 450,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 1,
+    "wavelength": 450
+   }
+  }
+ },
+ "fibers": {}
+}

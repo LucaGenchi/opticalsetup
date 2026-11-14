@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fresnel rhomb as an achromatic quarter-wave retarder — Examples | OpticalSetup</title>
+<meta name="description" content="Two total internal reflections inside a glass rhomb shift the phase of s against p by a quarter wave, nearly the same from blue to infrared, so linear light at 45° leaves circular.">
+<link rel="canonical" href="https://opticalsetup.com/example-setups/fresnel-rhomb-as-an-achromatic-quarter-wave-retarder/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Fresnel rhomb as an achromatic quarter-wave retarder — OpticalSetup Examples">
+<meta property="og:description" content="Two total internal reflections inside a glass rhomb shift the phase of s against p by a quarter wave, nearly the same from blue to infrared, so linear light at 45° leaves circular.">
+<meta property="og:url" content="https://opticalsetup.com/example-setups/fresnel-rhomb-as-an-achromatic-quarter-wave-retarder/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="../../sketch/icons/icon.svg">
+<script>
+  (() => {
+    let savedTheme = null;
+    try { savedTheme = localStorage.getItem('opticalsetup-theme'); } catch (_) { /* storage may be unavailable */ }
+    const systemTheme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = savedTheme === 'dark' || savedTheme === 'light'
+      ? savedTheme
+      : systemTheme;
+  })();
+</script>
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+<link rel="stylesheet" href="../../example-setups/assets/examples.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../calculators/">Calculators</a>
+      <a class="plain" href="../../community/">Community</a>
+      <button type="button" id="btnAbout" class="plain" aria-haspopup="dialog" title="License, copyright and citation">About</button>
+      <button type="button" id="btnTheme" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark mode" title="Switch to dark mode">
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M15.7 12.7A6.5 6.5 0 0 1 7.3 4.3a6.5 6.5 0 1 0 8.4 8.4Z"/>
+        </svg>
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="10" cy="10" r="3.2"/>
+          <path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M16 4l-1.4 1.4M5.4 14.6 4 16"/>
+        </svg>
+      </button>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <dialog id="aboutDialog" class="site-dialog" aria-labelledby="aboutTitle">
+    <div class="site-dialog-head">
+      <div><span class="eyebrow">Free software</span><h2 id="aboutTitle">About OpticalSetup</h2></div>
+      <button type="button" id="aboutClose" class="site-dialog-close" aria-label="Close about dialog">×</button>
+    </div>
+    <p class="about-text" id="aboutVersion" hidden></p>
+    <p class="about-text">Copyright © 2026 Luca Genchi and contributors.</p>
+    <p class="about-text">OpticalSetup is free software: you can redistribute it and/or modify it
+      under the terms of the GNU General Public License as published by the Free Software
+      Foundation, either version 3 of the License, or (at your option) any later version.</p>
+    <p class="about-text">It is distributed in the hope that it will be useful, but
+      <strong>without any warranty</strong>; without even the implied warranty of merchantability
+      or fitness for a particular purpose. See the GNU General Public License for more details.</p>
+    <p class="about-text">The numbers OpticalSetup reports come from models with stated limits; read
+      each component's page in the <a href="../../wiki/">wiki</a> before relying on one.</p>
+    <p class="about-text">If you use OpticalSetup in your research, teaching or publications,
+      please cite the software:</p>
+    <p class="about-text about-citation">Bertoncini, A., &amp; Genchi, L. (2026).
+      <cite>OpticalSetup - the optical workbench software</cite> [Computer software]. Zenodo.
+      <a href="https://doi.org/10.5281/zenodo.23191537" target="_blank" rel="noopener">https://doi.org/10.5281/zenodo.23191537</a></p>
+    <p class="about-links">
+      <a href="../../#cite">BibTeX and version DOIs</a>
+      <a href="../../license.html">License and notices</a>
+      <a href="https://github.com/LucaGenchi/opticalsetup" target="_blank" rel="noopener">Source code</a>
+    </p>
+  </dialog>
+  <script type="module" src="../../wiki/assets/site-header.js"></script>
+  <div class="wiki-shell" style="grid-template-columns: 1fr;">
+    <main class="wiki-article" style="max-width: 760px;">
+      <div class="crumb"><a href="../../example-setups/">Examples</a> / Fundamentals / Fresnel rhomb as an achromatic quarter-wave retarder</div>
+      <h1>Fresnel rhomb as an achromatic quarter-wave retarder</h1>
+      <p class="tagline" style="margin-top: 10px;">Two total internal reflections inside a glass rhomb shift the phase of s against p by a quarter wave, nearly the same from blue to infrared, so linear light at 45° leaves circular.</p>
+
+      <a class="place-cta" href="../../sketch/?example=fresnel-rhomb-as-an-achromatic-quarter-wave-retarder">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?example=fresnel-rhomb-as-an-achromatic-quarter-wave-retarder&amp;embed=1"
+          title="Fresnel rhomb as an achromatic quarter-wave retarder — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace of the setup above, shown as a picture. Open it in the canvas to take it apart, retune it, and save or export it as your own.</p>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Background</h2>
+
+      <p>Total internal reflection returns all of the light, but not with the
+      same phase for the two polarizations: s and p come back shifted against
+      each other by an amount that depends on the angle of incidence and on the
+      index of the glass<sup class="cite">[<a href="#ref-1">1</a>]</sup>. Fresnel found that two such reflections at
+      the right angle add up to a quarter wave, and built a rhomb of glass that
+      makes circular light from linear light at 45°<sup class="cite">[<a href="#ref-2">2</a>]</sup>.</p>
+      <p>A waveplate gets its quarter wave from a thickness of birefringent
+      crystal, which is exactly a quarter wave only at its design wavelength.
+      The rhomb gets it from the index of glass, which changes little across
+      the visible and near infrared, so the rhomb is nearly
+      achromatic<sup class="cite">[<a href="#ref-2">2</a>]</sup>. (The app’s own quarter-wave plate is ideal: a
+      quarter wave at every wavelength.)</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>What this setup demonstrates</h2>
+      <div class="sim-block">
+
+      <p>Each rhomb is <a href="../../wiki/freeglass/">freeform glass</a> of
+      N-BK7, a parallelogram with an acute angle of 54.6°. The beam enters and
+      leaves through its end faces at normal incidence and is totally reflected
+      twice in between, at 54.6°.</p>
+      <p>With its surfaces set to <em>Bare glass (Fresnel)</em>, each reflection
+      shifts s against p by 45.8° at 450&nbsp;nm and by 44.8° at 1064&nbsp;nm.
+      Laser light polarized at 45° leaves left circular at both wavelengths: the
+      <a href="../../wiki/polarimeter/">polarimeter</a> in the inspector reads
+      S₃/S₀ = −1.00, and S₂/S₀ = −0.03 at 450&nbsp;nm and +0.01 at 1064&nbsp;nm,
+      the small remainder of a retardance of 91.6° and 89.7° instead of 90°. The
+      two end faces each reflect 4 % of the light, and the polarimeter reads
+      915&nbsp;µW and 920&nbsp;µW.</p>
+      <p>The third rhomb keeps the default <em>Per-surface transmission</em>.
+      It reflects as an ideal mirror, with no phase between s and p, and the
+      light leaves linear at 45°.</p>
+      <p>Things to try, each a single change from the setup as it opens:</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Change</th><th>Reading</th></tr></thead>
+        <tbody>
+          <tr><td>Blue laser polarized at 135°</td><td>right circular, S₃/S₀ = +1.00</td></tr>
+          <tr><td>Blue laser polarized at 0° or 90°</td><td>linear 0° or 90°: p and s are each reflected without change</td></tr>
+          <tr><td>Blue laser at 633&nbsp;nm</td><td>left circular, S₂/S₀ = −0.01</td></tr>
+        </tbody>
+      </table></div>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>The glass is lossless and uncoated. The end faces are
+      met at normal incidence, where they change no polarization; the part of
+      the light they reflect is not drawn. Every ray and face normal lies in the
+      drawing plane, so s is out of the drawing at every face.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/freeglass/"><svg viewBox="-46 -46 92 92" aria-hidden="true"><path d="M -36 -24 L 30 -24 L 38 20 L -26 26 L -36 -24 Z" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5" stroke-linejoin="round"/></svg>Freeform glass</a><a href="../../wiki/prism/"><svg viewBox="-23.664696837416493 -23.664696837416493 47.329393674832986 47.329393674832986" aria-hidden="true"><path d="M 0,-12.7 L -14.664696837416493,12.7 L 14.664696837416493,12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Prism</a><a href="../../wiki/qwp/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#e8d5ef" stroke="#8a5fa8" stroke-width="1.4"/><text x="0" y="-18.7" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#6a4a80" >λ/4</text></svg>λ/4 waveplate</a><a href="../../wiki/polarimeter/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-24" y="-15" width="48" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-25.7" y="-11" width="3.4" height="22" rx="1" fill="#f9a8d4" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">POL</text><circle cx="16" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Polarimeter</a>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://en.wikipedia.org/wiki/Total_internal_reflection" target="_blank" rel="noopener">Wikipedia — Total internal reflection (phase shifts)</a></li><li id="ref-2"><a href="https://en.wikipedia.org/wiki/Fresnel_rhomb" target="_blank" rel="noopener">Wikipedia — Fresnel rhomb</a></li>
+      </ol>
+
+
+    </main>
+  </div>
+  <footer class="wiki-footer">Examples are written and maintained with the project. For setups shared by users, see the <a href="../../community/">community section</a>; for how each component works, see the <a href="../../wiki/">wiki</a>.</footer>
+</body>
+</html>

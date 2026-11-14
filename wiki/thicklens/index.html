@@ -259,12 +259,16 @@
     </div>
         <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>This is a 2D meridional geometric trace with spherical or plane
         faces only. It does not model skew rays, diffraction, aspheres, full 3D off-axis
-        aberrations, Fresnel/coating behavior, stress birefringence, manufacturing
+        aberrations, coatings, stress birefringence, manufacturing
         tolerances, temperature dependence, or absorption bands. GDD uses the analytic
         second derivative of the selected Sellmeier curve and the actual traced distance
         in glass; the material contribution is generally within a few percent where the
-        catalogue curve is valid. Per-surface transmission is a flat
-        configured percentage applied at each face, not a Fresnel or coating calculation. Treat axial spherical and visible chromatic behavior as
+        catalogue curve is valid. With <em>Surfaces</em> set to <em>Per-surface transmission</em>, the default,
+        each face applies a flat configured percentage and total internal reflection
+        acts as an ideal mirror. Set to <em>Bare glass (Fresnel)</em>, each face
+        transmits s and p by the Fresnel equations at the angle the ray actually meets
+        it, as a prism's faces do, and total internal reflection shifts the phase of s
+        against p; the reflected part of the light is not traced. Treat axial spherical and visible chromatic behavior as
         meaningful within this model and off-axis behavior as qualitative.</p></div>
       </div>
 

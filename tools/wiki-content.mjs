@@ -1025,12 +1025,16 @@ export const wikiEntries = [
       ],
       limitations: `<p>This is a 2D meridional geometric trace with spherical or plane
         faces only. It does not model skew rays, diffraction, aspheres, full 3D off-axis
-        aberrations, Fresnel/coating behavior, stress birefringence, manufacturing
+        aberrations, coatings, stress birefringence, manufacturing
         tolerances, temperature dependence, or absorption bands. GDD uses the analytic
         second derivative of the selected Sellmeier curve and the actual traced distance
         in glass; the material contribution is generally within a few percent where the
-        catalogue curve is valid. Per-surface transmission is a flat
-        configured percentage applied at each face, not a Fresnel or coating calculation. Treat axial spherical and visible chromatic behavior as
+        catalogue curve is valid. With <em>Surfaces</em> set to <em>Per-surface transmission</em>, the default,
+        each face applies a flat configured percentage and total internal reflection
+        acts as an ideal mirror. Set to <em>Bare glass (Fresnel)</em>, each face
+        transmits s and p by the Fresnel equations at the angle the ray actually meets
+        it, as a prism's faces do, and total internal reflection shifts the phase of s
+        against p; the reflected part of the light is not traced. Treat axial spherical and visible chromatic behavior as
         meaningful within this model and off-axis behavior as qualitative.</p>`,
     },
     related: ['lens', 'lensc', 'objective', 'prism', 'freeglass'],
@@ -1162,7 +1166,13 @@ export const wikiEntries = [
         centring tolerance, and no coating, so reflectivity does not vary with wavelength or
         angle. A real asphere is corrected for one conjugate and one wavelength; this one is
         as good as its prescription at every wavelength the glass transmits, with only the
-        catalogue dispersion moving the answer.</p>`,
+        catalogue dispersion moving the answer.</p>
+        <p>With <em>Surfaces</em> set to <em>Per-surface transmission</em>, the default,
+        each face applies a flat configured percentage and total internal reflection
+        acts as an ideal mirror. Set to <em>Bare glass (Fresnel)</em>, each face
+        transmits s and p by the Fresnel equations at the angle the ray actually meets
+        it, as a prism's faces do, and total internal reflection shifts the phase of s
+        against p; the reflected part of the light is not traced.</p>`,
     },
     related: ['thicklens', 'lens', 'lensgroup', 'oap', 'metalens'],
     citations: [
@@ -1250,13 +1260,17 @@ export const wikiEntries = [
         faces. On-axis spherical and visible longitudinal chromatic behavior emerge from
         the geometry and are meaningful within that scope; off-axis behavior is
         qualitative. The model does not include skew rays, aspheres, diffraction,
-        quantitative coma or astigmatism, field curvature, coatings, Fresnel reflection,
+        quantitative coma or astigmatism, field curvature, coatings,
         cement index, manufacturing tolerances, or a full optical-design merit function.
         The 0.06&nbsp;mm cement gap is a tracer workaround rather than a physical cement
         model. Catalogue glasses use two-term visible-band Cauchy fits anchored to nd and
         Abbe number${cite(1)}, not full Sellmeier curves; deep-UV, infrared, and temporal
-        dispersion claims are outside this element's scope. Per-surface transmission is
-        a configured percentage, not coating physics.</p>`,
+        dispersion claims are outside this element's scope. With <em>Surfaces</em> set to <em>Per-surface transmission</em>, the default,
+        each face applies a flat configured percentage and total internal reflection
+        acts as an ideal mirror. Set to <em>Bare glass (Fresnel)</em>, each face
+        transmits s and p by the Fresnel equations at the angle the ray actually meets
+        it, as a prism's faces do, and total internal reflection shifts the phase of s
+        against p; the reflected part of the light is not traced.</p>`,
     },
     related: ['thicklens', 'lens', 'objective', 'prism', 'freeglass'],
     citations: [
@@ -1887,7 +1901,10 @@ export const wikiEntries = [
         app's 0°) at Brewster's angle crosses without loss, which is why compressor
         prisms are cut for it, while s-polarized light loses several percent per face.
         The face also turns linear polarization toward p and leaves unpolarized light
-        partly p-polarized.</p>`,
+        partly p-polarized. Past the critical angle the ray is totally reflected with no
+        loss, but s and p come back shifted in phase against each other, so light
+        polarized at an angle between them leaves elliptical, as in a Fresnel
+        rhomb.</p>`,
       formulas: [
         { tex: 'n^2(\\lambda)=1+\\sum_i\\frac{B_i\\lambda^2}{\\lambda^2-C_i}', caption: 'The selected glass\'s published three-term Sellmeier curve.' },
       ],
@@ -1999,9 +2016,13 @@ export const wikiEntries = [
       formulas: [],
       limitations: `<p>The catalogue options use published Sellmeier curves, so GDD
         follows the actual traced distance and is generally within a few percent where
-        those curves are valid. Absorption bands and temperature are not modeled;
-        per-surface transmission is a flat configured number rather than a computed
-        coating or bulk loss. Circular-arc segments are true 2D arcs, but the whole element
+        those curves are valid. Absorption bands, coatings and temperature are not
+        modeled. With <em>Surfaces</em> set to <em>Per-surface transmission</em>, the default,
+        each face applies a flat configured percentage and total internal reflection
+        acts as an ideal mirror. Set to <em>Bare glass (Fresnel)</em>, each face
+        transmits s and p by the Fresnel equations at the angle the ray actually meets
+        it, as a prism's faces do, and total internal reflection shifts the phase of s
+        against p; the reflected part of the light is not traced. Circular-arc segments are true 2D arcs, but the whole element
         is still a 2D cross-section — it represents a freeform profile, not a true freeform
         3D surface. Nested or overlapping glass bodies are not surface-merged.</p>`,
     },
@@ -2112,7 +2133,11 @@ export const wikiEntries = [
         saved rod keeps its authored behavior; that mode has no material GDD. Selecting a
         catalogue glass enables Sellmeier refraction and path-length GDD, generally within
         a few percent where the curve is valid, but still omits absorption, temperature,
-        coatings, and higher-order pulse effects. There's no
+        coatings, and higher-order pulse effects. Its faces transmit a fixed 96&nbsp;% each
+        by default, and total internal reflection at the side walls acts as an ideal
+        mirror; set <em>Surfaces</em> to <em>Bare glass (Fresnel)</em> and each face
+        transmits s and p by the Fresnel equations at its real angle, while total internal
+        reflection shifts the phase of s against p. There's no
         cylindrical or lensing geometry either: despite the name, this is a rectangular
         slab cross-section with flat ends, not a focusing rod lens.</p>`,
     },

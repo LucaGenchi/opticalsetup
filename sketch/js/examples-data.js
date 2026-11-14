@@ -40,6 +40,18 @@ export const examples = [
   },
   {
     "group": "Fundamentals",
+    "name": "Brewster window",
+    "path": "../Examples/Fundamentals/Brewster%20window.json",
+    "slug": "brewster-window"
+  },
+  {
+    "group": "Fundamentals",
+    "name": "Fresnel rhomb as an achromatic quarter wave retarder",
+    "path": "../Examples/Fundamentals/Fresnel%20rhomb%20as%20an%20achromatic%20quarter-wave%20retarder.json",
+    "slug": "fresnel-rhomb-as-an-achromatic-quarter-wave-retarder"
+  },
+  {
+    "group": "Fundamentals",
     "name": "Pinhole spatial filter",
     "path": "../Examples/Fundamentals/Pinhole%20spatial%20filter.json",
     "slug": "pinhole-spatial-filter"

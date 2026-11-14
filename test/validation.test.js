@@ -140,6 +140,24 @@ const APP = {
     return { x: r.x, y: r.y };
   },
   fresnel: ({ kind, ...inputs }) => {
+    if (kind === 'scene') {
+      // A traced layout: power at the detector relative to the laser's own,
+      // and the state it reads (step P1, glass set to bare glass).
+      const make = (type, x, y, rot = 0, params = {}) => {
+        const element = createElement(type, x, y);
+        element.rot = rot;
+        Object.assign(element.params, params);
+        return element;
+      };
+      const laser = () => make('cwlaser', 0, 0, 0, { ...inputs.laser, pol: inputs.pol });
+      const reference = make('detector', 300, 0);
+      traceScene([laser(), reference]);
+      const P0 = detectorReading(reference.id).signal;
+      const detector = make('detector', inputs.detector.x, inputs.detector.y, inputs.detector.rot);
+      traceScene([laser(), ...inputs.elements.map(e => make(e.type, e.x, e.y, e.rot, e.params)), detector]);
+      const read = detectorReading(detector.id);
+      return { power: (read?.signal ?? 0) / P0, ...(read?.normalizedStokes ?? {}) };
+    }
     if (kind === 'transmittance') {
       return fresnelTransmittances(inputs.n1, inputs.n2, Math.cos(inputs.incidenceDeg * Math.PI / 180));
     }
