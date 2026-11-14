@@ -18,8 +18,10 @@ from the amplitude coefficients t with the obliquity factor
 
 Conventions, as the app declares them: Jones vectors (E_p, E_s), field
 Re{J exp(-i omega t)}, S3 = 2 Im(E_p conj(E_s)); a retarder with axis setting
-theta and retardance delta is R(-theta) diag(1, exp(-i delta)) R(theta) with
-R(a) = [[cos a, sin a], [-sin a, cos a]] (Goldstein with delta -> -delta);
+theta (its fast axis) and retardance delta is R(-theta) diag(1, exp(+i delta))
+R(theta) with R(a) = [[cos a, sin a], [-sin a, cos a]], Goldstein's published
+matrix: the slow axis lags by exp(+i delta) under exp(-i omega t). Until step
+A2 of the Physics in 2D track the app used delta -> -delta;
 Fresnel signs of Born and Wolf, section 1.5.2, in which a perfect conductor
 gives r_p = +1 and r_s = -1, the ideal mirror diag(1, -1).
 
@@ -97,7 +99,7 @@ def rotator(angle_deg):
 
 
 def retarder(axis_deg, retardance_deg):
-    return in_frame(axis_deg, (1 + 0j, cmath.exp(-1j * math.radians(retardance_deg))))
+    return in_frame(axis_deg, (1 + 0j, cmath.exp(1j * math.radians(retardance_deg))))
 
 
 def diattenuator(axis_deg, t_max, t_min):
@@ -274,12 +276,12 @@ MODEL = {
     "app": "sketch/js/mueller.js: rotatorMueller, linearRetarderMueller, linearDiattenuatorMueller, idealPolarizerMueller, idealMirrorMueller, jonesToMueller, fresnelCoefficients, fresnelReflectionMueller, fresnelTransmissionMueller",
     "reference": "Mueller matrices measured from Jones matrices with four probe states; Fresnel coefficients in complex arithmetic, transmission from t with the obliquity factor; total-internal-reflection retardance from the Born and Wolf closed form",
     "citations": [
-        "D. H. Goldstein, Polarized Light, 3rd ed. (CRC Press, 2011), ch. 5 and 6: Jones and Mueller matrices of rotators, retarders and diattenuators. The app keeps its retardance sign, Goldstein's with delta -> -delta.",
+        "D. H. Goldstein, Polarized Light, 3rd ed. (CRC Press, 2011), ch. 5 and 6: Jones and Mueller matrices of rotators, retarders and diattenuators, with Goldstein's retardance sign (adopted in step A2; the app used delta -> -delta before).",
         "M. Born and E. Wolf, Principles of Optics, 7th ed., Cambridge University Press (1999), section 1.5.2 (Fresnel coefficients and their signs) and section 1.5.4 (phase change on total internal reflection; the Fresnel rhomb)",
     ],
     "fidelity": "computed",
-    "scope": "Fully polarized light through ideal linear elements; lossless, non-magnetic interfaces between real indices, total internal reflection included. In this version the tracer uses the retarder, the polarizer and the transmission diattenuator; the mirror, rotator and Fresnel reflection matrices are not applied by any element yet.",
-    "outside_scope": "Absorbing media (complex indices), coatings, depolarization and circular diattenuation are not modelled. Handedness labels follow the app's existing convention until step A2 of the Physics in 2D track.",
+    "scope": "Fully polarized light through ideal linear elements; lossless, non-magnetic interfaces between real indices, total internal reflection included. The tracer uses the retarder, the polarizer, the transmission diattenuator and, since step A2, the ideal mirror at every specular reflection; the rotator and the Fresnel reflection matrices are not applied by any element yet. Reflections and backward crossings are checked against explicit field vectors in reflection.py.",
+    "outside_scope": "Absorbing media (complex indices), coatings, depolarization and circular diattenuation are not modelled.",
     "provenance": "Closed-form Jones matrices transcribed from the sources; analytic limits (Brewster, sign of r_p, unit modulus beyond the critical angle, the closed-form TIR retardance, the perfect-conductor limit) asserted in the module.",
     "domain": "Rotations and axes from -20 to 60 degrees, retardances 45-200 degrees, diattenuation 0-0.9; interfaces n = 1-1.71 at 20-70 degrees, two of them beyond the critical angle.",
     "convergence": "Closed form; no discretisation.",

@@ -235,6 +235,67 @@ as intensities. An incomplete trace or a route through an optic whose carrier ph
 not represented falls back to conservative deposited intensity rather than inventing a
 phase.
 
+**Polarization basis.** Every polarization state, element axis and readout uses one
+basis. k̂ points along the ray; ŝ = +ẑ points out of the screen (the canvas's y axis
+points down, so the physical axes are x right, y up and z out of the screen);
+p̂ = ŝ × k̂ lies in the drawing plane, perpendicular to the ray, so that (p̂, ŝ, k̂)
+is right-handed. A linear angle is measured from p̂ towards ŝ: 0° is p, 90° is s. The
+field is E(t) = Re{J exp(−iωt)}, the time dependence the optical-path phase already
+uses, so a longer optical path adds the phase e^(+ikL). Stokes parameters are
+S1 = |E_p|² − |E_s|², S2 = 2 Re(E_p E_s*) and S3 = 2 Im(E_p E_s*). Handedness follows
+Born and Wolf: S3 > 0 is right circular, the field turning clockwise as seen looking
+towards the source. A waveplate's angle marks its fast axis, the direction of the lower
+index; its slow axis lags by e^(+iδ), Goldstein's published retarder matrix, so a
+quarter-wave plate with its fast axis at 45° turns linear 0° light into right circular
+light. Before step A2 of the Physics in 2D track the app used the opposite sign of δ,
+which made the set angle behave as the slow axis and swapped every circular label;
+powers through polarizers never changed.
+
+Every specular reflection (plane, curved, conic and D-shaped mirrors, galvo and polygon
+facets, DMD, deformable and SLM surfaces, dichroic, beamsplitter and etalon
+reflections, reflective grating orders, total internal reflection, and the two mirrors
+of a retroreflector) applies the ideal mirror, diag(1, 1, −1, −1) on (S0, S1, S2, S3):
+ŝ stays out of the screen while p̂ turns over with the ray, so S1 is kept and S2 and S3
+change sign. A reflection therefore turns right circular light into left circular light
+and one diagonal into the other. Elements that state the outgoing state themselves (a
+polarizing beamsplitter's ports, generated light) and diffuse scattering keep their own
+rule. The mirror is ideal: the retardance of real coatings and metals (step P8) and of
+total internal reflection in glass (step P1) is not modelled yet.
+
+An element's axis angle is fixed to the element and set for light crossing it along its
+forward direction (left to right before the element is rotated), as the inspector
+says. Light crossing it the other way sees the reciprocal element, J_back = Q·Jᵀ·Q with
+Q = diag(1, −1) (R. Bhandari, Opt. Lett. 33, 854 (2008)): for a retarder or a
+polarizer, the same element at −θ. A round trip through an element and a mirror at
+normal incidence therefore has the Jones matrix Q·Jᵀ·J, which is not the inverse of
+the forward pass: a quarter-wave plate at 45° returns p light as s light, which is how
+a polarizing beamsplitter and a quarter-wave plate send the returning beam to the other
+port. The ideal isolator gate is non-reciprocal by construction; it leaves the state
+unchanged in its forward direction and blocks the other.
+
+Coherent fields that meet at a beamsplitter are combined only with fields that leave
+the same port in the same polarization state. Orthogonal states (two pure states at
+opposite points of the Poincaré sphere) add their powers exactly; the polarization of
+their sum depends on their relative phase, which the ray does not carry, so the reading
+shows their power-weighted average and says so. States that are neither identical nor
+orthogonal would interfere in part: the beamsplitter adds their powers, but each field
+carries on with its own state and phase, so a reading that rebuilds the fields of every
+path it integrates (a camera with interference on, a broadband source's spectral
+reconstruction) still weights their cross term by the overlap of the two states; a
+reading that does not keeps the added powers and says so.
+
+The Stokes vector does not carry the field's overall phase, and the mirror does not
+keep it for every state: diag(1, −1) leaves p alone and turns s over. A reflection
+therefore also adds that sign to the coherent phase (π for every linear state except
+p, in the representation (cos θ, sin θ) with θ in [0°, 180°) that cameras use), and a
+fully reflecting mirror no longer adds a separate π for every state. Between arms with
+the same number of reflections nothing changes; between arms that differ by one, s
+light keeps the fringe it had before step A2 and p light now has the opposite one, as
+the reflected field vectors require. Two
+arms that differ by one reflection (a flat fold in one, a two-mirror fold in the other)
+return diagonal or circular light in orthogonal states, so such light makes no fringes
+there, while p or s light does.
+
 A point source's rays are caught within its capture range (1 m by default, 110
 mm to 100 m; 165 mm for a sketch saved before the control existed). What catches
 them is set on the source ("Caught by"). By default ("Any optic") it is every

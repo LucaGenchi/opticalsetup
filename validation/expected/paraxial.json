@@ -82,7 +82,7 @@
    "expected": {
     "s1": 6.123233996e-17,
     "s2": 6.123233996e-17,
-    "s3": -1.0
+    "s3": 1.0
    },
    "inputs": {
     "axisDeg": 45,
@@ -101,7 +101,7 @@
    "expected": {
     "s1": 0.5,
     "s2": 5.302876194e-17,
-    "s3": 0.8660254038
+    "s3": -0.8660254038
    },
    "inputs": {
     "axisDeg": 0,
@@ -120,7 +120,7 @@
    "expected": {
     "s1": 2.220446049e-16,
     "s2": 1.0,
-    "s3": -8.659560562e-17
+    "s3": 8.659560562e-17
    },
    "inputs": {
     "axisDeg": 22.5,
@@ -139,7 +139,7 @@
    "expected": {
     "s1": -0.4013465084,
     "s2": 0.5949771634,
-    "s3": 0.6963642403
+    "s3": -0.6963642403
    },
    "inputs": {
     "axisDeg": 10,
@@ -158,7 +158,7 @@
    "expected": {
     "s1": -0.25,
     "s2": 0.4330127019,
-    "s3": 0.8660254038
+    "s3": -0.8660254038
    },
    "inputs": {
     "axisDeg": -30,
@@ -371,7 +371,7 @@
    "expected": {
     "s1": 0.0,
     "s2": 0.0,
-    "s3": -1.0
+    "s3": 1.0
    },
    "inputs": {
     "axisDeg": 45,
@@ -379,7 +379,7 @@
     "retardanceDeg": 90
    },
    "name": "quarter-wave at 45 deg on linear 0 deg -> circular",
-   "note": "Jones-derived Stokes vector; Goldstein convention with delta -> -delta",
+   "note": "Jones-derived Stokes vector; Goldstein's published convention",
    "tolerance": {
     "s1": 1e-09,
     "s2": 1e-09,
@@ -391,7 +391,7 @@
    "expected": {
     "s1": 0.0,
     "s2": 0.0,
-    "s3": 1.0
+    "s3": -1.0
    },
    "inputs": {
     "axisDeg": -45,
@@ -399,7 +399,7 @@
     "retardanceDeg": 90
    },
    "name": "quarter-wave at -45 deg on linear 0 deg -> circular, opposite hand",
-   "note": "Jones-derived Stokes vector; Goldstein convention with delta -> -delta",
+   "note": "Jones-derived Stokes vector; Goldstein's published convention",
    "tolerance": {
     "s1": 1e-09,
     "s2": 1e-09,
@@ -411,7 +411,7 @@
    "expected": {
     "s1": 0.0,
     "s2": 0.0,
-    "s3": 1.0
+    "s3": -1.0
    },
    "inputs": {
     "axisDeg": 45,
@@ -419,7 +419,7 @@
     "retardanceDeg": 90
    },
    "name": "quarter-wave at 45 deg on linear 90 deg -> circular, opposite hand",
-   "note": "Jones-derived Stokes vector; Goldstein convention with delta -> -delta",
+   "note": "Jones-derived Stokes vector; Goldstein's published convention",
    "tolerance": {
     "s1": 1e-09,
     "s2": 1e-09,
@@ -431,7 +431,7 @@
    "expected": {
     "s1": 0.5,
     "s2": 0.5,
-    "s3": -0.7071067812
+    "s3": 0.7071067812
    },
    "inputs": {
     "axisDeg": 22.5,
@@ -439,7 +439,7 @@
     "retardanceDeg": 90
    },
    "name": "quarter-wave at 22.5 deg on linear 0 deg -> elliptical",
-   "note": "Jones-derived Stokes vector; Goldstein convention with delta -> -delta",
+   "note": "Jones-derived Stokes vector; Goldstein's published convention",
    "tolerance": {
     "s1": 1e-09,
     "s2": 1e-09,
@@ -449,7 +449,7 @@
  ],
  "citations": [
   "E. Hecht, Optics, 5th ed., section 6.2 (thick lens cardinal points), section 8.13 (Stokes parameters and Mueller matrices)",
-  "D. H. Goldstein, Polarized Light, 3rd ed. (CRC Press, 2011), ch. 6: Mueller matrices of retarders and polarizers. The app follows this convention with delta -> -delta, equivalent to the Jones matrix R(-theta) diag(1, -i) R(theta); the circular cases here are derived from that matrix by hand, an algebraic check of the declared convention rather than an experimental one.",
+  "D. H. Goldstein, Polarized Light, 3rd ed. (CRC Press, 2011), ch. 6: Mueller matrices of retarders and polarizers. The app follows this convention (since step A2; before it, delta -> -delta), equivalent for a quarter-wave plate to the Jones matrix R(-theta) diag(1, i) R(theta); the circular cases here are derived from that matrix by hand, an algebraic check of the declared convention rather than an experimental one.",
   "M. Born and E. Wolf, Principles of Optics, 7th ed., section 7.6 (Fabry-Perot), for the reflectivity finesse",
   "N. Ismail, C. C. Kores, D. Geskus and M. Pollnau, 'Fabry-Perot resonator: spectral line shapes, generic and related Airy distributions, linewidths, finesses, and performance at low or frequency-dependent reflectivity', Opt. Express 24, 16366-16389 (2016), doi:10.1364/OE.24.016366, Eq. (32) for the exact Airy finesse"
  ],

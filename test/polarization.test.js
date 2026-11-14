@@ -18,10 +18,15 @@ function nearly(actual, expected, tolerance = 1e-9) {
 test('quarter-wave retardance respects fast-axis alignment and handedness', () => {
   const aligned = retarder(linearStokes(0), 0, 90);
   assert.equal(polarizationDescription(aligned), 'Linear 0°');
+  // Born and Wolf: the field turns from the fast axis towards the input
+  // direction. With the fast axis at 0° and the input at +45° it turns from
+  // 0° towards +45°, anticlockwise seen looking towards the source: left
+  // circular.
   const plus = retarder(linearStokes(45), 0, 90);
   const minus = retarder(linearStokes(-45), 0, 90);
-  assert.equal(polarizationDescription(plus), 'Right circular');
-  assert.equal(polarizationDescription(minus), 'Left circular');
+  assert.equal(polarizationDescription(plus), 'Left circular');
+  assert.equal(polarizationDescription(minus), 'Right circular');
+  assert.equal(polarizationDescription(retarder(linearStokes(0), 45, 90)), 'Right circular');
 });
 
 test('waveplate integration preserves aligned linear input', () => {

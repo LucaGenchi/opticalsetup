@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Handedness after a mirror — Examples | OpticalSetup</title>
+<meta name="description" content="A mirror reverses the handedness of circular light and swaps the two diagonals, while p and s light come back as they went in: two mirrors give the state back, one does not.">
+<link rel="canonical" href="https://opticalsetup.com/example-setups/handedness-after-a-mirror/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Handedness after a mirror — OpticalSetup Examples">
+<meta property="og:description" content="A mirror reverses the handedness of circular light and swaps the two diagonals, while p and s light come back as they went in: two mirrors give the state back, one does not.">
+<meta property="og:url" content="https://opticalsetup.com/example-setups/handedness-after-a-mirror/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="../../sketch/icons/icon.svg">
+<script>
+  (() => {
+    let savedTheme = null;
+    try { savedTheme = localStorage.getItem('opticalsetup-theme'); } catch (_) { /* storage may be unavailable */ }
+    const systemTheme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = savedTheme === 'dark' || savedTheme === 'light'
+      ? savedTheme
+      : systemTheme;
+  })();
+</script>
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+<link rel="stylesheet" href="../../example-setups/assets/examples.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../calculators/">Calculators</a>
+      <a class="plain" href="../../community/">Community</a>
+      <button type="button" id="btnAbout" class="plain" aria-haspopup="dialog" title="License, copyright and citation">About</button>
+      <button type="button" id="btnTheme" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark mode" title="Switch to dark mode">
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M15.7 12.7A6.5 6.5 0 0 1 7.3 4.3a6.5 6.5 0 1 0 8.4 8.4Z"/>
+        </svg>
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="10" cy="10" r="3.2"/>
+          <path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M16 4l-1.4 1.4M5.4 14.6 4 16"/>
+        </svg>
+      </button>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <dialog id="aboutDialog" class="site-dialog" aria-labelledby="aboutTitle">
+    <div class="site-dialog-head">
+      <div><span class="eyebrow">Free software</span><h2 id="aboutTitle">About OpticalSetup</h2></div>
+      <button type="button" id="aboutClose" class="site-dialog-close" aria-label="Close about dialog">×</button>
+    </div>
+    <p class="about-text" id="aboutVersion" hidden></p>
+    <p class="about-text">Copyright © 2026 Luca Genchi and contributors.</p>
+    <p class="about-text">OpticalSetup is free software: you can redistribute it and/or modify it
+      under the terms of the GNU General Public License as published by the Free Software
+      Foundation, either version 3 of the License, or (at your option) any later version.</p>
+    <p class="about-text">It is distributed in the hope that it will be useful, but
+      <strong>without any warranty</strong>; without even the implied warranty of merchantability
+      or fitness for a particular purpose. See the GNU General Public License for more details.</p>
+    <p class="about-text">The numbers OpticalSetup reports come from models with stated limits; read
+      each component's page in the <a href="../../wiki/">wiki</a> before relying on one.</p>
+    <p class="about-text">If you use OpticalSetup in your research, teaching or publications,
+      please cite the software:</p>
+    <p class="about-text about-citation">Bertoncini, A., &amp; Genchi, L. (2026).
+      <cite>OpticalSetup - the optical workbench software</cite> [Computer software]. Zenodo.
+      <a href="https://doi.org/10.5281/zenodo.23191537" target="_blank" rel="noopener">https://doi.org/10.5281/zenodo.23191537</a></p>
+    <p class="about-links">
+      <a href="../../#cite">BibTeX and version DOIs</a>
+      <a href="../../license.html">License and notices</a>
+      <a href="https://github.com/LucaGenchi/opticalsetup" target="_blank" rel="noopener">Source code</a>
+    </p>
+  </dialog>
+  <script type="module" src="../../wiki/assets/site-header.js"></script>
+  <div class="wiki-shell" style="grid-template-columns: 1fr;">
+    <main class="wiki-article" style="max-width: 760px;">
+      <div class="crumb"><a href="../../example-setups/">Examples</a> / Fundamentals / Handedness after a mirror</div>
+      <h1>Handedness after a mirror</h1>
+      <p class="tagline" style="margin-top: 10px;">A mirror reverses the handedness of circular light and swaps the two diagonals, while p and s light come back as they went in: two mirrors give the state back, one does not.</p>
+
+      <a class="place-cta" href="../../sketch/?example=handedness-after-a-mirror">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?example=handedness-after-a-mirror&amp;embed=1"
+          title="Handedness after a mirror — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace of the setup above, shown as a picture. Open it in the canvas to take it apart, retune it, and save or export it as your own.</p>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Background</h2>
+
+      <p>Circular light is right-handed when its field turns clockwise as seen
+      by someone looking towards the source, and left-handed when it turns the
+      other way<sup class="cite">[<a href="#ref-1">1</a>]</sup>. A quarter-wave plate makes it from linear light at
+      45° to the plate's fast axis<sup class="cite">[<a href="#ref-2">2</a>]</sup>: in that convention, linear light
+      along 0° through a plate whose fast axis is at 45° comes out right
+      circular.</p>
+      <p>A mirror reverses the handedness<sup class="cite">[<a href="#ref-1">1</a>]</sup>. The reason is a matter of
+      directions. Of the two directions across the ray, the one perpendicular
+      to the plane of incidence, s, is the same before and after the
+      reflection; the one in the plane, p, turns over with the ray. The field
+      still turns the same way in space, but the light now travels the other
+      way, and seen looking towards its new source the rotation runs
+      backwards. A second mirror reverses it again.</p>
+      <p>The same happens to linear light at any angle other than along p or s.
+      Light polarized at +45° leaves the mirror at −45°, which is 135°: the
+      mirror image. An analyzer at 45° that would pass all of it before the mirror
+      passes none of it after. Light along p or along s is its own mirror
+      image and leaves unchanged.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>What this setup demonstrates</h2>
+      <div class="sim-block">
+
+      <p>In the upper setup a laser polarized at 0° passes a
+      <a href="../../wiki/qwp/">quarter-wave plate</a> with its fast axis at
+      45°, then two <a href="../../wiki/mirror/">mirrors</a>. Three beam probes
+      show the polarization on the way: right circular after the plate, left
+      circular after the first mirror, right circular after the second. The
+      <a href="../../wiki/polarimeter/">polarimeter</a> at the end reads right
+      circular, with s₃ = +1.</p>
+      <p>In the lower setup a laser polarized at 45° meets one mirror. The probe
+      after it reads linear 135°, and the power meter behind an
+      <a href="../../wiki/polarizer/">analyzer</a> at 45° reads nothing.</p>
+      <p>Things to try, each a single change from the setup as it opens:</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Change</th><th>Reading</th></tr></thead>
+        <tbody>
+          <tr><td>Fast axis of the plate at 135°</td><td>left, right, left circular; the polarimeter reads s₃ = −1</td></tr>
+          <tr><td>Analyzer at 135°</td><td>the power meter reads 1.00&nbsp;mW</td></tr>
+          <tr><td>Lower laser polarized at 0°</td><td>the probe reads linear 0° and the power meter 500&nbsp;µW</td></tr>
+          <tr><td>Lower laser polarized at 90°</td><td>the probe reads linear 90° and the power meter 500&nbsp;µW</td></tr>
+        </tbody>
+      </table></div>
+      <p>An element's axis angle is fixed to the element. Light crossing a plate
+      or a polarizer in the other direction, after a mirror for instance, sees
+      the same axis at the opposite angle in its own frame, and the inspector
+      says which direction the angle refers to.</p>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>The mirrors are ideal: they add no phase between s and p.
+      A real metal or dielectric mirror adds some, which turns linear light at
+      45° slightly elliptical and circular light slightly elliptical, by an
+      amount that depends on the coating and the angle of incidence. Every ray
+      and mirror normal lies in the drawing plane, so s is out of the drawing at
+      every mirror; a fold out of the plane, as in a periscope, is not
+      drawn.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/qwp/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#e8d5ef" stroke="#8a5fa8" stroke-width="1.4"/><text x="0" y="-18.7" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#6a4a80" >λ/4</text></svg>λ/4 waveplate</a><a href="../../wiki/mirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><line x1="0" y1="-12.7" x2="0" y2="12.7" stroke="#444" stroke-width="3.5"/><line x1="-1.5" y1="-12.7" x2="-7.5" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="-6.233333333333333" x2="-7.5" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="0.2333333333333325" x2="-7.5" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="6.699999999999999" x2="-7.5" y2="12.7" stroke="#888" stroke-width="1"/></svg>Mirror</a><a href="../../wiki/polarizer/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#cfd8e3" stroke="#54606e" stroke-width="1.4"/><g transform="rotate(0)"><circle r="8.5" fill="#fff" stroke="#54606e" stroke-width="1.2"/><line x1="-6" y1="0" x2="6" y2="0" stroke="#54606e" stroke-width="1.6"/><path d="M -8,0 L -4,-2.4 L -4,2.4 Z M 8,0 L 4,-2.4 L 4,2.4 Z" fill="#54606e"/></g></svg>Polarizer</a><a href="../../wiki/polarimeter/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-24" y="-15" width="48" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-25.7" y="-11" width="3.4" height="22" rx="1" fill="#f9a8d4" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">POL</text><circle cx="16" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Polarimeter</a><a href="../../wiki/probe/"><svg viewBox="-24 -24 48 48" aria-hidden="true"><circle r="4.5" fill="none" stroke="#e07020" stroke-width="1.6"/><line x1="0" y1="-8" x2="0" y2="8" stroke="#e07020" stroke-width="1"/><line x1="-8" y1="0" x2="8" y2="0" stroke="#e07020" stroke-width="1"/><line x1="0" y1="-9" x2="0" y2="-22" stroke="#e07020" stroke-width="1"/><g class="probe-card" transform="rotate(0) translate(-42.00,-58.00) scale(1.5)"><rect x="0" y="0" width="56" height="24" rx="4" fill="#fff" stroke="#c9ced6"/><text x="28" y="12" text-anchor="middle" dominant-baseline="central" font-size="8" fill="#9aa2ad">no beam</text></g></svg>Beam probe (?)</a><a href="../../wiki/powermeter/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-24" y="-15" width="48" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-25.7" y="-11" width="3.4" height="22" rx="1" fill="#86efac" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">PWR</text><circle cx="16" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Power meter</a>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://en.wikipedia.org/wiki/Circular_polarization" target="_blank" rel="noopener">Wikipedia — Circular polarization (handedness conventions)</a></li><li id="ref-2"><a href="https://en.wikipedia.org/wiki/Waveplate" target="_blank" rel="noopener">Wikipedia — Waveplate (quarter-wave plate)</a></li>
+      </ol>
+
+
+    </main>
+  </div>
+  <footer class="wiki-footer">Examples are written and maintained with the project. For setups shared by users, see the <a href="../../community/">community section</a>; for how each component works, see the <a href="../../wiki/">wiki</a>.</footer>
+</body>
+</html>

@@ -103,10 +103,10 @@
     "m20": 0.0,
     "m21": 0.0,
     "m22": 0.0,
-    "m23": -1.0,
+    "m23": 1.0,
     "m30": 0.0,
     "m31": 0.0,
-    "m32": 1.0,
+    "m32": -1.0,
     "m33": 0.0
    },
    "inputs": {
@@ -144,14 +144,14 @@
     "m10": 0.0,
     "m11": 0.7803300859,
     "m12": 0.126826484,
-    "m13": 0.6123724357,
+    "m13": -0.6123724357,
     "m20": 0.0,
     "m21": 0.126826484,
     "m22": 0.9267766953,
-    "m23": -0.3535533906,
+    "m23": 0.3535533906,
     "m30": 0.0,
-    "m31": -0.6123724357,
-    "m32": 0.3535533906,
+    "m31": 0.6123724357,
+    "m32": -0.3535533906,
     "m33": 0.7071067812
    },
    "inputs": {
@@ -189,14 +189,14 @@
     "m10": 0.0,
     "m11": 0.198565734,
     "m12": -0.9551121657,
-    "m13": 0.2198463104,
+    "m13": -0.2198463104,
     "m20": 0.0,
     "m21": -0.9551121657,
     "m22": -0.1382583548,
-    "m23": 0.2620026302,
+    "m23": -0.2620026302,
     "m30": 0.0,
-    "m31": -0.2198463104,
-    "m32": -0.2620026302,
+    "m31": 0.2198463104,
+    "m32": 0.2620026302,
     "m33": -0.9396926208
    },
    "inputs": {
@@ -1087,18 +1087,18 @@
   }
  ],
  "citations": [
-  "D. H. Goldstein, Polarized Light, 3rd ed. (CRC Press, 2011), ch. 5 and 6: Jones and Mueller matrices of rotators, retarders and diattenuators. The app keeps its retardance sign, Goldstein's with delta -> -delta.",
+  "D. H. Goldstein, Polarized Light, 3rd ed. (CRC Press, 2011), ch. 5 and 6: Jones and Mueller matrices of rotators, retarders and diattenuators, with Goldstein's retardance sign (adopted in step A2; the app used delta -> -delta before).",
   "M. Born and E. Wolf, Principles of Optics, 7th ed., Cambridge University Press (1999), section 1.5.2 (Fresnel coefficients and their signs) and section 1.5.4 (phase change on total internal reflection; the Fresnel rhomb)"
  ],
  "convergence": "Closed form; no discretisation.",
  "domain": "Rotations and axes from -20 to 60 degrees, retardances 45-200 degrees, diattenuation 0-0.9; interfaces n = 1-1.71 at 20-70 degrees, two of them beyond the critical angle.",
  "fidelity": "computed",
  "id": "mueller",
- "outside_scope": "Absorbing media (complex indices), coatings, depolarization and circular diattenuation are not modelled. Handedness labels follow the app's existing convention until step A2 of the Physics in 2D track.",
+ "outside_scope": "Absorbing media (complex indices), coatings, depolarization and circular diattenuation are not modelled.",
  "provenance": "Closed-form Jones matrices transcribed from the sources; analytic limits (Brewster, sign of r_p, unit modulus beyond the critical angle, the closed-form TIR retardance, the perfect-conductor limit) asserted in the module.",
  "reference": "Mueller matrices measured from Jones matrices with four probe states; Fresnel coefficients in complex arithmetic, transmission from t with the obliquity factor; total-internal-reflection retardance from the Born and Wolf closed form",
  "reference_file": "validation/reference/mueller.py",
- "scope": "Fully polarized light through ideal linear elements; lossless, non-magnetic interfaces between real indices, total internal reflection included. In this version the tracer uses the retarder, the polarizer and the transmission diattenuator; the mirror, rotator and Fresnel reflection matrices are not applied by any element yet.",
+ "scope": "Fully polarized light through ideal linear elements; lossless, non-magnetic interfaces between real indices, total internal reflection included. The tracer uses the retarder, the polarizer, the transmission diattenuator and, since step A2, the ideal mirror at every specular reflection; the rotator and the Fresnel reflection matrices are not applied by any element yet. Reflections and backward crossings are checked against explicit field vectors in reflection.py.",
  "title": "Mueller and Jones kernel: retarder, diattenuator, polarizer, mirror and Fresnel matrices",
  "tolerance_rationale": "1e-9 absolute: two double-precision evaluations of the same algebra, stored to 10 significant digits."
 }

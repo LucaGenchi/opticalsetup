@@ -90,6 +90,7 @@ const EXAMPLE_ORDER = {
     'Beam expanders — Keplerian and Galilean',
     'Total internal reflection — right-angle prism',
     'Law of Malus — polarizers and a half-wave plate',
+    'Handedness after a mirror',
     'Pinhole spatial filter',
     'Spatial filtering in the Fourier plane — 4f system',
     'Coupling a laser into a single-mode fiber',

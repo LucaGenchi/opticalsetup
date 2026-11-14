@@ -42,6 +42,19 @@ export function stokesAngleDeg(stokes) {
 // switching EOM at 50% duty, say) averages to the origin of the Poincaré
 // sphere, and reporting that as a definite azimuth would be a plain lie —
 // the azimuth of a zero-length vector is meaningless.
+// How two states that meet coherently relate: 'same' (they interfere
+// fully), 'orthogonal' (two pure states at opposite points of the Poincaré
+// sphere, which add their powers exactly) or 'partial' (anything else,
+// unpolarized against polarized included). Rounding below 1e-9 is ignored.
+export function polarizationRelation(a, b, tolerance = 1e-9) {
+  if (!a && !b) return 'same';
+  if (!a || !b) return 'partial';
+  if (Math.abs(a.s1 - b.s1) <= tolerance && Math.abs(a.s2 - b.s2) <= tolerance && Math.abs(a.s3 - b.s3) <= tolerance) return 'same';
+  const pure = s => Math.abs(Math.hypot(s.s1, s.s2, s.s3) - 1) <= tolerance;
+  if (pure(a) && pure(b) && a.s1 * b.s1 + a.s2 * b.s2 + a.s3 * b.s3 <= -1 + tolerance) return 'orthogonal';
+  return 'partial';
+}
+
 export const degreeOfPolarization = stokes =>
   (stokes ? Math.min(1, Math.hypot(stokes.s1, stokes.s2, stokes.s3)) : 0);
 

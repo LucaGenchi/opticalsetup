@@ -4,14 +4,15 @@
 // functions that now delegate to it give the results they gave before, the
 // closed-form matrices agree with the Jones matrices that define the app's
 // conventions, and the edges return null rather than non-finite numbers.
+// Step A2 changed the retardance sign and added the reciprocal matrix.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
   applyMueller, composeMueller, complex, fresnelCoefficients, fresnelReflectionMueller,
   fresnelTransmissionMueller, idealMirrorMueller, idealPolarizerMueller, jonesOverlap, jonesToMueller,
-  linearDiattenuatorMueller, linearJones, linearRetarderMueller, normalizeJones, rotatorMueller,
-  stokesFromJones, stokesVector,
+  linearDiattenuatorMueller, linearJones, linearRetarderMueller, mirroredStokes, normalizeJones,
+  reciprocalMueller, rotatorMueller, stokesFromJones, stokesVector,
 } from '../sketch/js/mueller.js';
 import { analyzerTransmission, retarder } from '../sketch/js/polarization.js';
 import { fresnelTransmittances, throughFace } from '../sketch/js/fresnel.js';
@@ -110,12 +111,15 @@ test('kernel: the analyzer, the Fresnel transmittances, the face and the camera 
   }
 });
 
-test('kernel: the retarder agrees with the previous Rodrigues rotation to round-off', () => {
+// Step A2 adopted Goldstein's published retardance sign: the retarder is the
+// rotation A1 froze with the retardance reversed, so every power is unchanged
+// and only the sign of s3 (the handedness) moves.
+test('kernel: the retarder is the previous Rodrigues rotation with the retardance reversed', () => {
   const random = generator(2);
   let worst = 0;
   for (const stokes of pureStates(random, 300)) {
     for (const [axis, ret] of [[45, 90], [0, 180], [22.5, 90], [360 * random(), 720 * random() - 360], [-90 * random(), 45]]) {
-      const got = retarder(stokes, axis, ret), want = legacy.retarder(stokes, axis, ret);
+      const got = retarder(stokes, axis, ret), want = legacy.retarder(stokes, axis, -ret);
       if (!stokes) { assert.equal(got, null); continue; }
       for (const key of ['s1', 's2', 's3']) worst = Math.max(worst, Math.abs(got[key] - want[key]));
     }
@@ -161,7 +165,8 @@ test('kernel: a Mueller matrix acts on Stokes vectors as its Jones matrix acts o
 
 test('kernel: each closed-form matrix is the Mueller matrix of the Jones matrix that defines it', () => {
   for (const [axis, ret] of [[0, 90], [45, 90], [30, 45], [-20, 200], [22.5, 180]]) {
-    const J = inFrame(axis, [c(1), c(Math.cos(-ret * D2R), Math.sin(-ret * D2R))]);
+    // The field is Re{J exp(−iωt)}: the slow axis lags by e^(+iδ).
+    const J = inFrame(axis, [c(1), c(Math.cos(ret * D2R), Math.sin(ret * D2R))]);
     assertMatrixClose(linearRetarderMueller(axis, ret), jonesToMueller(J), 1e-14, `retarder ${axis}/${ret}`);
   }
   for (const [axis, tMax, tMin] of [[0, 0.9, 0.6], [35, 0.8, 0.1], [-70, 1, 0.3]]) {
@@ -177,10 +182,34 @@ test('kernel: each closed-form matrix is the Mueller matrix of the Jones matrix 
     assertMatrixClose(rotatorMueller(angle), jonesToMueller(J), 1e-14, `rotator ${angle}`);
   }
   assertMatrixClose(idealMirrorMueller(), jonesToMueller([[c(1), c(0)], [c(0), c(-1)]]), 0, 'mirror');
-  // The retarder keeps the app's sign: a quarter-wave plate at 45° turns
-  // linear 0° into s3 = −1 (the validation row of paraxial.py).
+  // A quarter-wave plate with its fast axis at 45° turns linear 0° into
+  // s3 = +1, right circular (the validation row of paraxial.py).
   const S = applyMueller(linearRetarderMueller(45, 90), stokesVector({ s1: 1, s2: 0, s3: 0 }));
-  assert.ok(Math.abs(S[3] + 1) < 1e-15);
+  assert.ok(Math.abs(S[3] - 1) < 1e-15);
+});
+
+test('kernel: an element crossed backwards is the reciprocal Q·Jᵀ·Q', () => {
+  const Q = [[c(1), c(0)], [c(0), c(-1)]];
+  const transpose = J => [[J[0][0], J[1][0]], [J[0][1], J[1][1]]];
+  const back = J => mulJ(Q, mulJ(transpose(J), Q));
+  const random = generator(5);
+  const value = () => c(2 * random() - 1, 2 * random() - 1);
+  for (let i = 0; i < 50; i++) {
+    const J = [[value(), value()], [value(), value()]];
+    assertMatrixClose(reciprocalMueller(jonesToMueller(J)), jonesToMueller(back(J)), 1e-12, `general ${i}`);
+  }
+  // A retarder or polarizer at θ becomes the same element at −θ; a reciprocal
+  // rotation keeps its sense; the mirror is its own reciprocal.
+  for (const [axis, ret] of [[45, 90], [30, 45], [-20, 200], [100, 180]]) {
+    assertMatrixClose(reciprocalMueller(linearRetarderMueller(axis, ret)), linearRetarderMueller(-axis, ret), 1e-14, `retarder ${axis}`);
+  }
+  for (const axis of [0, 35, 120]) {
+    assertMatrixClose(reciprocalMueller(idealPolarizerMueller(axis)), idealPolarizerMueller(-axis), 1e-14, `polarizer ${axis}`);
+  }
+  assertMatrixClose(reciprocalMueller(rotatorMueller(25)), rotatorMueller(25), 1e-14, 'rotator');
+  assertMatrixClose(reciprocalMueller(idealMirrorMueller()), idealMirrorMueller(), 0, 'mirror');
+  assert.deepEqual(mirroredStokes({ s1: 0.6, s2: 0.48, s3: 0.64 }), { s1: 0.6, s2: -0.48, s3: -0.64 });
+  assert.equal(mirroredStokes(null), null);
 });
 
 test('kernel: composition applies the first matrix first', () => {

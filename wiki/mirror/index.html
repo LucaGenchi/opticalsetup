@@ -224,10 +224,26 @@
         <span class="w">R</span> of the intensity and a transmitted branch carrying
         <span class="w">1 − R</span>, which is how a partially-reflective cavity mirror or
         output coupler is modeled.</p>
+        <p>The reflection also changes the polarization the way an ideal mirror does. The
+        s direction points out of the screen and stays put, while the p direction, in the
+        drawing plane and perpendicular to the ray, turns over with the ray. In Stokes terms
+        <span class="w">s₁</span> is kept and <span class="w">s₂</span> and
+        <span class="w">s₃</span> change sign: p and s light come back as they went in, one
+        diagonal becomes the other, and right circular light becomes left circular. Every
+        specular reflection in the app does this, from dichroics and beamsplitters to
+        gratings and the two faces of a retroreflector, so two mirrors give the state back
+        and one does not.</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>M</mi><mtext>mirror</mtext></msub><mo>=</mo><mi mathvariant="normal">diag</mi><mo>⁡</mo><mo stretchy="false">(</mo><mn>1</mn><mo separator="true">,</mo><mtext>  </mtext><mn>1</mn><mo separator="true">,</mo><mtext>  </mtext><mo>−</mo><mn>1</mn><mo separator="true">,</mo><mtext>  </mtext><mo>−</mo><mn>1</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">M_{\text{mirror}} = \operatorname{diag}(1,\;1,\;-1,\;-1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">M</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3175em;"><span style="top:-2.55em;margin-left:-0.109em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">mirror</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mop"><span class="mord mathrm" style="margin-right:0.0139em;">diag</span></span><span class="mopen">(</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">−</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">−</span><span class="mord">1</span><span class="mclose">)</span></span></span></span></span></div>
+      <div class="caption">The Mueller matrix of an ideal mirror, acting on (S₀, S₁, S₂, S₃) in the basis of the ray: p in the drawing plane, s out of it.</div>
+    </div>
         <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>Reflectivity is a single flat number: real coatings vary with angle
         of incidence and polarization (s- vs p-plane), and a metal mirror's reflectance
         varies with wavelength. None of that is modeled — <span class="w">R</span> is
-        constant regardless of incidence angle, polarization, or color.</p></div>
+        constant regardless of incidence angle, polarization, or color. The polarization
+        change is that of an ideal mirror: the small phase difference a real metal or
+        dielectric coating adds between s and p, which turns linear light slightly
+        elliptical, is not modeled.</p></div>
       </div>
 
 

@@ -12,15 +12,20 @@ basis, the sign conventions and the matrices in one module,
 polarization at reflections (A2), the Fresnel choice on glass elements (P1)
 and the crystals (P3 onward) build on it.
 
-This step changes no reading: the functions that delegate to the kernel give
-the results they gave before (see "Checks" below).
+Step A1 changed no reading: the functions that delegate to the kernel gave
+the results they had given before (see "Checks" below).
 
 ## Basis and conventions
 
 - **Jones vectors** are (E_p, E_s). p lies in the drawing plane,
   perpendicular to the ray; s points out of the plane. The app's polarization
   angle is measured from p, so 0° is p and 90° is s.
-- **Time dependence:** the field is E(t) = Re{J exp(−iωt)}.
+- **Time dependence:** the field is E(t) = Re{J exp(−iωt)}, so a longer
+  optical path adds the phase e^(+ikL).
+- **Directions:** k̂ along the ray, ŝ = +ẑ out of the screen (the canvas's y
+  axis points down), p̂ = ŝ × k̂, so (p̂, ŝ, k̂) is right-handed. The full
+  statement, with reflections and backward crossings, is the polarization
+  basis in [model-details.md](../model-details.md).
 - **Stokes vectors** are S = (S₀, S₁, S₂, S₃) with
 
       S₀ = |E_p|² + |E_s|²,   S₁ = |E_p|² − |E_s|²,
@@ -28,13 +33,15 @@ the results they gave before (see "Checks" below).
 
   Rays carry the normalized part (s₁, s₂, s₃) = (S₁, S₂, S₃) / S₀, and `null`
   for unpolarized light, which the kernel reads as (1, 0, 0, 0).
-- **Retardance sign:** the app's existing convention is kept. It is
-  Goldstein's Mueller matrices with δ → −δ, which is the Jones matrix
-  R(−θ) diag(1, e^(−iδ)) R(θ) for an element whose axis setting is θ, with
-  R(a) = [[cos a, sin a], [−sin a, cos a]]. A quarter-wave plate at 45° turns
-  linear 0° into s₃ = −1, which the readout calls "Left circular" (the
-  validation row "quarter-wave at 45 deg on linear 0 deg"). Step A2 is the
-  only step that may change this convention or the handedness labels.
+- **Retardance sign:** Goldstein's published matrices, adopted in step A2:
+  the Jones matrix R(−θ) diag(1, e^(+iδ)) R(θ) for an element whose fast axis
+  is at θ, with R(a) = [[cos a, sin a], [−sin a, cos a]]; under exp(−iωt) the
+  slow axis lags by e^(+iδ). A quarter-wave plate with its fast axis at 45°
+  turns linear 0° into s₃ = +1, right circular in Born and Wolf's sense (the
+  field turns clockwise as seen looking towards the source), which is what the
+  readout calls it. Until A2 the app used δ → −δ, so that the set angle
+  behaved as the slow axis and every circular label was swapped; powers
+  through polarizers were the same either way.
 - **Fresnel signs** are those of Born and Wolf (§1.5.2). In the p, s basis
   above, with p̂ = ŝ × k̂ on the incident and on the reflected ray, a perfect
   conductor gives r_p = +1 and r_s = −1 at every angle. That is the ideal
@@ -46,9 +53,13 @@ The kernel writes each matrix in closed form:
 
 - **Rotator** by an angle α (azimuth turned from p towards s): s₁ and s₂
   turn by 2α.
-- **Linear retarder** with axis θ and retardance δ: a rotation of
-  (s₁, s₂, s₃) by +δ about the axis (cos 2θ, sin 2θ, 0) of the Poincaré
-  sphere (Rodrigues' formula).
+- **Linear retarder** with fast axis θ and retardance δ: a rotation of
+  (s₁, s₂, s₃) by −δ about the axis (cos 2θ, sin 2θ, 0) of the Poincaré
+  sphere (Rodrigues' formula); +δ before step A2.
+- **Reciprocal element** (light crossing it backwards, step A2):
+  J_back = Q·Jᵀ·Q with Q = diag(1, −1) (Bhandari 2008), in Stokes terms
+  D·Mᵀ·D with D = diag(1, 1, −1, 1). A retarder or polarizer at θ becomes the
+  same element at −θ; a reciprocal rotation keeps its sense.
 - **Linear diattenuator** that transmits t_max along its axis θ and t_min
   across it (Goldstein, ch. 6). With m = (t_max + t_min)/2,
   d = (t_max − t_min)/2, x = √(t_max t_min), c = cos 2θ, s = sin 2θ:

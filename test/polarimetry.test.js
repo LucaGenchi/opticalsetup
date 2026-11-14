@@ -27,7 +27,7 @@ test('prepared pure states land where the Poincare sphere says they should', () 
     ['linear 0', 0, null, { s1: 1, s2: 0, s3: 0 }, /^Linear 0/],
     ['linear 45', 45, null, { s1: 0, s2: 1, s3: 0 }, /^Linear 45/],
     ['linear 90', 90, null, { s1: -1, s2: 0, s3: 0 }, /^Linear 90/],
-    ['circular', 0, 45, { s1: 0, s2: 0, s3: -1 }, /circular/i],
+    ['circular', 0, 45, { s1: 0, s2: 0, s3: 1 }, /^Right circular/],
   ];
   for (const [name, pol, qwpAxis, expected, label] of cases) {
     const elements = [beam(pol)];
@@ -118,7 +118,10 @@ function truthStokes() {
 test('the classical four-intensity method reproduces the direct readout', () => {
   const truth = truthStokes();
   // Schaefer et al. Eq. (15): a rotated analyzer, plus one measurement with a
-  // quarter-wave plate inserted to reach the circular component.
+  // quarter-wave plate inserted to reach the circular component. The sign of
+  // S3 follows the app's convention (docs/model-details.md): with the field
+  // Re{E exp(−iωt)}, a plate with its fast axis at 0° followed by an analyzer
+  // at 45° passes |E_p + i E_s|²/2 = (S0 + S3)/2.
   const i0 = measureIntensity(prepareElliptical, 0);
   const i90 = measureIntensity(prepareElliptical, 90);
   const i45 = measureIntensity(prepareElliptical, 45);
@@ -127,7 +130,7 @@ test('the classical four-intensity method reproduces the direct readout', () => 
   const s0 = i0 + i90;
   const s1 = i0 - i90;
   const s2 = 2 * i45 - s0;
-  const s3 = s0 - 2 * i45q;
+  const s3 = 2 * i45q - s0;
 
   assert.ok(Math.abs(s0 - truth.s0) < 1e-9, `S0: ${s0} vs ${truth.s0}`);
   assert.ok(Math.abs(s1 - truth.s1) < 1e-9, `S1: ${s1} vs ${truth.s1}`);
@@ -139,7 +142,8 @@ test('the rotating quarter-wave plate method reproduces it too', () => {
   const truth = truthStokes();
   // Schaefer et al. Eq. (17)-(19): rotate the waveplate, keep the analyzer
   // fixed, and pull the Stokes parameters out of the Fourier coefficients.
-  // Nyquist on the 4th harmonic needs at least 8 samples; use 16.
+  // Nyquist on the 4th harmonic needs at least 8 samples; use 16. In the
+  // app's convention the sin 2θ coefficient is −S3.
   const N = 16, toRad = Math.PI / 180;
   let a = 0, b = 0, c = 0, d = 0;
   for (let n = 0; n < N; n++) {
@@ -155,5 +159,5 @@ test('the rotating quarter-wave plate method reproduces it too', () => {
   assert.ok(Math.abs((a - c) - truth.s0) < 1e-9, `S0 = A - C: ${a - c} vs ${truth.s0}`);
   assert.ok(Math.abs(2 * c - truth.s1) < 1e-9, `S1 = 2C: ${2 * c} vs ${truth.s1}`);
   assert.ok(Math.abs(2 * d - truth.s2) < 1e-9, `S2 = 2D: ${2 * d} vs ${truth.s2}`);
-  assert.ok(Math.abs(b - truth.s3) < 1e-9, `S3 = B: ${b} vs ${truth.s3}`);
+  assert.ok(Math.abs(-b - truth.s3) < 1e-9, `S3 = −B: ${-b} vs ${truth.s3}`);
 });
