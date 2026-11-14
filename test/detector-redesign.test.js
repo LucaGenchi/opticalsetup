@@ -239,7 +239,7 @@ test('the wavefront fit weighs each source by its watts', () => {
   assert.ok(even.divergenceDeg > 1, `expected a strong tilt, got ${even.divergenceDeg}`);
 });
 
-test('polarimeter reports state, Stokes parameters, and a visual glyph', () => {
+test('polarimeter reports state, Stokes parameters, and the state on a Poincaré sphere', () => {
   const laser = createElement('cwlaser', 0, 0);
   laser.params.pol = 30;
   const polarimeter = createElement('polarimeter', 300, 0);
@@ -250,6 +250,8 @@ test('polarimeter reports state, Stokes parameters, and a visual glyph', () => {
   assert.match(svg, /S0/);
   assert.match(svg, /S1/);
   assert.match(svg, /DoP/);
+  // Linear 30° sits on the equator at 2θ = 60°: (cos 60°, sin 60°, 0).
+  assert.match(svg, /data-poincare-point="0\.5,0\.87,0"/);
 });
 
 test('spectrometer reports wavelength, bandwidth, and spectrum samples', () => {

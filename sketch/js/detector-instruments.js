@@ -18,6 +18,7 @@ import {
   sampledAutocorrelationReading,
 } from './glass.js';
 import { esc, formatSignal, smoothPath, wavelengthToColor } from './util.js';
+import { poincareSphereSVG } from './poincare.js';
 
 export const DETECTOR_TYPES = [
   'detector', 'camera', 'pmt', 'powermeter', 'wavefrontdetector',
@@ -30,7 +31,7 @@ const DESCRIPTIONS = {
   pmt: 'Amplifies a faint signal \u2014 fluorescence, microscopy, single-point detection \u2014 into a readable one, and reports whether it clears the tube\u2019s own dark floor.',
   powermeter: 'Reports absolute optical power by carrying each source\u2019s configured watts through everything that attenuated it on the way here.',
   wavefrontdetector: 'Fits ray angle against position across its face to report whether the beam is collimated, converging or diverging, and its full cone angle; within three Rayleigh ranges of a focus, the Gaussian waist, its Rayleigh range and where it lies.',
-  polarimeter: 'Reports polarization state, normalized Stokes parameters, and a visual linear, circular, elliptical, or unpolarized representation.',
+  polarimeter: 'Reports polarization state, degree of polarization and Stokes parameters, and plots the state on a Poincaré sphere.',
   spectrometer: 'Reports centre wavelength, detected spectral range, bandwidth, and a qualitative spectrum.',
   generaldetector: 'Reports intensity, power, beam size, wavefront, polarization and Stokes parameters, wavelength and bandwidth, plus pulse repetition rate and duration.',
   autocorrelator: 'Measures the intensity autocorrelation of a pulse and infers its duration by dividing out a deconvolution factor — which means it only reads correctly if the assumed pulse shape matches the real one.',
@@ -108,7 +109,7 @@ registry.wavefrontdetector = instrumentDefinition({
 });
 registry.polarimeter = instrumentDefinition({
   label: 'Polarimeter', code: 'POL', readoutKind: 'polarimeter', paletteOrder: 6, width: 48, accent: '#f9a8d4',
-  aliases: ['stokes', 'polarization detector', 'polarisation detector', 'polarization analyzer', 'polarisation analyser'],
+  aliases: ['stokes', 'polarization detector', 'polarisation detector', 'polarization analyzer', 'polarisation analyser', 'Poincaré sphere', 'Poincare sphere', 'degree of polarization'],
 });
 registry.spectrometer = instrumentDefinition({
   label: 'Spectrometer', code: 'SPEC', readoutKind: 'spectrometer', paletteOrder: 7, width: 54, accent: '#fde68a',
@@ -802,14 +803,20 @@ function cameraMap(reading, sensor, elements) {
     `<text x="40" y="7" text-anchor="end" font-size="4" fill="#6d8796">INTENSITY</text><text x="40" y="14" text-anchor="end" font-size="6" fill="#d9e8ee">Σw ${compactNumber(reading.signal)}</text>`;
 }
 
-function polarizationGlyph(reading) {
-  const text = String(reading.polarization), match = /(?:Linear|Elliptical)\s+(-?[\d.]+)°/.exec(text), rotation = match ? -Number(match[1]) : 0;
-  if (/^Linear/.test(text)) return `<g transform="translate(-24 1) rotate(${rotation})" stroke="#e2f1f5" stroke-width="1.5"><line x1="-9" y1="0" x2="9" y2="0"/><path d="M 9,0 L 5,-2.5 M 9,0 L 5,2.5 M -9,0 L -5,-2.5 M -9,0 L -5,2.5"/></g>`;
-  // Readouts say "Right circular" or "Left circular"; the arrow turns
-  // clockwise for right (Born and Wolf, seen looking towards the source).
-  if (/circular$/i.test(text)) return `<g transform="translate(-24 1)${/^Left/.test(text) ? ' scale(-1 1)' : ''}" fill="none" stroke="#e2f1f5" stroke-width="1.5"><circle r="8"/><path d="M 5.5,-5.8 L 9,-5.2 L 7.4,-1.8" fill="#e2f1f5"/></g>`;
-  if (/^Elliptical/.test(text)) return `<g transform="translate(-24 1) rotate(${rotation})" fill="none" stroke="#e2f1f5" stroke-width="1.5"><ellipse rx="9" ry="4.5"/><path d="M 5.4,-3.5 L 8.8,-2.8 L 7.2,0.1" fill="#e2f1f5"/></g>`;
-  return `<g transform="translate(-24 1)" stroke="#8fa7b5"><line x1="-8" y1="-5" x2="8" y2="5"/><line x1="-8" y1="5" x2="8" y2="-5"/><circle r="8" fill="none" stroke-dasharray="2 2"/></g>`;
+// The polarimeter's screen: the measured state on a Poincaré sphere at the
+// left, its name, degree of polarization and Stokes parameters at the right.
+// The sphere plots only a measured vector: a reading without one (no field,
+// or hits that carried no Stokes vector) shows the sphere empty rather than
+// a point invented from its label.
+function polarimeterScreen(reading) {
+  const state = String(reading.polarization).toUpperCase();
+  const stateSize = Math.max(3.4, Math.min(6, 50 / Math.max(1, state.length * 0.62)));
+  const { s0, s1, s2, s3 } = reading.stokes;
+  return poincareSphereSVG(reading.normalizedStokes || null, { cx: -28, cy: 0.5, r: 9.2, fontSize: 3 }) +
+    `<text x="-11" y="-7.5" font-size="${stateSize.toFixed(2)}" font-weight="760" fill="#f5e8f1">${esc(state)}</text>` +
+    `<text x="-11" y="-1.5" font-size="4.4" fill="#b99aaa">DoP ${(100 * reading.stokes.normalized.degree).toFixed(0)}%</text>` +
+    `<text x="-11" y="4.5" font-size="4.1" fill="#d9e8ee">S0 ${compactNumber(s0)}  S1 ${compactNumber(s1)}</text>` +
+    `<text x="-11" y="10.3" font-size="4.1" fill="#d9e8ee">S2 ${compactNumber(s2)}  S3 ${compactNumber(s3)}</text>`;
 }
 
 function formatPower(watts, signal) {
@@ -1099,8 +1106,7 @@ function panel(sensor, reading, elements, view) {
     const divergence = wave.state === 'COLLIMATED' ? '0.00°' : `${wave.divergenceDeg.toFixed(2)}°`;
     return header(name, 'WAVEFRONT + INTENSITY', reading.pulse) + `<text x="35" y="-4" text-anchor="end" font-size="8.2" font-weight="780" fill="#e9e3ff">${wave.state}</text><text x="35" y="4" text-anchor="end" font-size="5.2" fill="#a99bd4">DIVERGENCE ${divergence}</text>${intensity}`;
   }
-  if (sensor.type === 'polarimeter') return header(name, 'POLARIZATION · STOKES', reading.pulse) + polarizationGlyph(reading) +
-    `<text x="-11" y="-5" font-size="6" font-weight="760" fill="#f5e8f1">${esc(String(reading.polarization).toUpperCase())}</text><text x="-11" y="3" font-size="4.4" fill="#b99aaa">DoP ${(100 * reading.stokes.normalized.degree).toFixed(0)}%</text><text x="-11" y="11" font-size="4.2" fill="#d9e8ee">S0 ${compactNumber(reading.stokes.s0)}  S1 ${compactNumber(reading.stokes.s1)}</text><text x="35" y="11" text-anchor="end" font-size="4.2" fill="#d9e8ee">S2 ${compactNumber(reading.stokes.s2)}  S3 ${compactNumber(reading.stokes.s3)}</text>`;
+  if (sensor.type === 'polarimeter') return header(name, 'POLARIZATION · STOKES', reading.pulse) + polarimeterScreen(reading);
   if (sensor.type === 'spectrometer') {
     // No mode line here — a spectrometer only ever shows this one labeled
     // plot, so "WAVELENGTH + BANDWIDTH" restated nothing the plot and its
