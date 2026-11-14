@@ -4864,8 +4864,8 @@ export const wikiEntries = [
         its own fast axis, through an angle equal to its retardance. Prepared states land
         where they should: a linear source reads
         <span class="w">(1, 0, 0)</span>, the same beam through a quarter-wave plate at 45°
-        reads <span class="w">(0, 0, −1)</span> — circular — and at 22.5° reads
-        <span class="w">(0.5, 0.5, −0.707)</span>, still fully polarized.</p>
+        reads <span class="w">(0, 0, 1)</span> — right circular — and at 22.5° reads
+        <span class="w">(0.5, 0.5, 0.707)</span>, still fully polarized.</p>
         <p>The polarimeter reports <span class="w">S₀</span> as the arriving intensity,
         the three normalized components scaled to it, the degree of polarization, and a plain
         description of the state. It gets those from the power-weighted mean of every ray
