@@ -11,7 +11,7 @@ import { transformLimitedBandwidthNm } from '../sketch/js/spectrum.js';
 import { hollowCoreCoefficients, marcatiliLossDbPerM } from '../sketch/js/fiber.js';
 import { propagateEnvelope, fieldMetrics } from '../sketch/js/pulse-field.js';
 import { createElement, estimatedThinLensThicknessMm, thickLensCardinals } from '../sketch/js/elements.js';
-import { traceScene, detectorReading } from '../sketch/js/raytrace.js';
+import { traceScene, detectorReading, beamAtPoint, beamTracksFromLastTrace } from '../sketch/js/raytrace.js';
 import { analyzerTransmission, linearStokes, retarder } from '../sketch/js/polarization.js';
 import { finesseForReflectivity, reflectivityForFinesse } from '../sketch/js/etalon.js';
 import { parametricGainCoefficient, parametricPair, parametricSmallSignalGain } from '../sketch/js/parametric.js';
@@ -227,6 +227,29 @@ const APP = {
     traceScene([laser(), ...inputs.elements.map(e => make(e.type, e.x, e.y, e.rot, e.params)), detector]);
     const read = detectorReading(detector.id);
     return { power: (read?.signal ?? 0) / P0, ...(read?.normalizedStokes ?? {}) };
+  },
+  // A scene traced on the canvas; the matrix the companions measured after
+  // a stated interaction of one beam track (step G1), or a waist after a lens.
+  'beam-propagation': ({ kind, elements, vertex, track, waistUm, m2, focalMm, lensX }) => {
+    if (kind === 'waist') {
+      const laser = createElement('cwlaser', 0, 0);
+      Object.assign(laser.params, { beamMode: 'beam', beamWidth: 2, wavelength: 1000, beamWaistUm: waistUm, beamWaistPosMm: lensX - 52, beamM2: m2 });
+      const lens = createElement('lens', lensX, 0);
+      lens.params.f = focalMm;
+      traceScene([laser, lens]);
+      const [after] = beamAtPoint(lensX + 0.01, 0, 0.001);
+      return { waistUm: after.waistUm, distanceMm: after.waistAheadMm + 0.01 };
+    }
+    const scene = elements.map(e => {
+      const el = createElement(e.type, e.x, e.y);
+      el.rot = e.rot;
+      Object.assign(el.params, e.params);
+      return el;
+    });
+    traceScene(scene);
+    const state = beamTracksFromLastTrace()[track].q[vertex];
+    const { A, B, C, D } = state.matrix;
+    return kind === 'determinant' ? { determinant: A * D - B * C } : { A, B, C, D };
   },
   'crystal-catalogue': ({ kind, record, ray, wavelengthNm }) => {
     const r = MATERIAL_RECORDS.get(record);
@@ -459,7 +482,7 @@ const APP = {
   },
 };
 
-for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'mueller', 'reflection', 'crystal-catalogue', 'dispersion-compensation', 'lens-design', 'lens-coherent', 'fiber-coupling', 'point-scanning', 'thick-lens', 'imaging']) {
+for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'mueller', 'reflection', 'crystal-catalogue', 'dispersion-compensation', 'lens-design', 'lens-coherent', 'fiber-coupling', 'point-scanning', 'thick-lens', 'imaging', 'beam-propagation']) {
   const model = expected(name);
   for (const c of model.cases) {
     test(`${model.id}: ${c.name}`, () => {

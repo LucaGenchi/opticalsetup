@@ -67,6 +67,11 @@ import {
 } from './spectrum.js';
 import { spectralFieldResult, spectralTermsAt, SPECTRAL_UNAVAILABLE, RECOMBINED_PULSE_UNAVAILABLE } from './spectral-coherence.js';
 import { cameraProfileFromHits } from './camera-profile.js';
+import {
+  CLIP_RADII, COMPANION_STEP, PARAXIAL_LIMIT_RAD, companionStarts, fiberBeamParameter, measuredMatrix, segmentGap, sourceBeamParameter,
+} from './beam-propagation.js';
+import { beamFromQ, propagateQ, qFromWaist, transformQ } from './gaussian-beam.js';
+import { lp01 } from './lp01.js';
 import { MAX_CONVERSION, MAX_OPO_DEPLETION, opoPulse, supercontinuumRange, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength, mixWidthNm, coincidenceGate } from './parametric.js';
 import { asphereSag, asphereSlope } from './asphere.js';
 import { imageOfPoint, objectImagingSteps, principalRays } from './object-imaging.js';
@@ -239,7 +244,7 @@ export function phasePlateIllumination(elementId) {
 let compressorGdd = new Map();
 
 function recordCompressor(elementId, incoming, outgoing, faint = false) {
-  if (!elementId || !Number.isFinite(incoming)) return;
+  if (companionMode || !elementId || !Number.isFinite(incoming)) return;
   const seen = compressorGdd.get(elementId);
   // several rays cross it; the widest-magnitude arrival is the representative.
   // A faint arrival (under 2 % of its source) stands in only when nothing
@@ -261,7 +266,7 @@ export function compressorGddReading(elementId) {
 let metalensHits = new Map();
 
 function recordMetalensHit(elementId, wavelengthNm, focalLengthMm) {
-  if (!elementId || !Number.isFinite(wavelengthNm) || !Number.isFinite(focalLengthMm)) return;
+  if (companionMode || !elementId || !Number.isFinite(wavelengthNm) || !Number.isFinite(focalLengthMm)) return;
   let hits = metalensHits.get(elementId);
   if (!hits) { hits = new Map(); metalensHits.set(elementId, hits); }
   hits.set(wavelengthNm.toFixed(6), { wavelengthNm, focalLengthMm });
@@ -452,6 +457,25 @@ export function specimenRamanReading(elementId) {
 
 // Each Object's images as the last trace constructed them, for its readout.
 let objectImageStates = new Map();
+
+// Step G1 (docs/physics/beam-propagation.md): while companion rays are moved
+// through an interaction, interact() must not record anything about the
+// scene; the propagated beams of the last trace, by central path; and what
+// each detector reads of them.
+let companionMode = false;
+// The companions' starting offset and tilt (COMPANION_STEP unless a trace
+// asks for others: the test suite shrinks them to show convergence).
+let companionStep = COMPANION_STEP;
+let lastBeamTracks = [];
+let beamReadings = new Map();
+// Kept beside the rays rather than on them, so a traced path stays plain
+// data: the steps a ray carrying a beam parameter has met (absent once it
+// declines), the detectors it hit, and the propagated track of a path.
+let beamStepLists = new WeakMap();
+let beamDetectorHitsOf = new WeakMap();
+let beamTrackOf = new WeakMap();
+// The beam parameter starts with no steps on a ray that carries a seed.
+const beamStepsOf = ray => beamStepLists.get(ray) ?? (ray?.beamSeed && !ray.beamIssue ? [] : null);
 export function objectImageReading(elementId) {
   return objectImageStates.get(elementId) || null;
 }
@@ -1941,6 +1965,15 @@ export function detectorReading(elementId) {
     interference,
     dark,
   };
+  // The propagated beam parameter (step G1): per branch, in the drawing
+  // plane; its Gouy phase assumes a circular beam until G3. Where it exists,
+  // the waist of a focus plane is the propagated one, not the cone estimate.
+  const beam = detectorBeam(elementId);
+  // Each branch's Gouy phase is the one quantity in it that assumes a
+  // circular beam (until G3); it carries that scope itself (`gouyScope`)
+  // rather than tagging every summary of the reading with it.
+  if (beam) reading.beam = beam;
+  if (reading.convergence?.atFocus) reading.convergence = focusFromBeam(reading.convergence, beam);
   // What each quantity assumes about the direction out of the drawing plane
   // (issue #313, A5).
   reading.scope = readingScope(reading);
@@ -2647,6 +2680,7 @@ function crossingSameSpecimen(ray, surface) {
 }
 
 function recordProbeBeam(surface, ray, hit = null) {
+  if (companionMode) return;
   const probeKey = probeKeyOf(surface);
   let seen = specimenProbe.get(probeKey);
   if (!seen) specimenProbe.set(probeKey, seen = []);
@@ -3365,6 +3399,21 @@ function fiberEmissionRays(c) {
       const d = rotv(dir, -half + 2 * half * i / (K - 1));
       rays.push({ ...common, x: o.x, y: o.y, dx: d.x, dy: d.y, sample: i });
     }
+  }
+  // Step G1: a fiber whose mode is known starts a beam on its end face; the
+  // central ray carries it. Otherwise light that came in with a beam
+  // parameter leaves without one, and says why.
+  const central = rays[Math.floor((K - 1) / 2)];
+  const mode = cfg.mode === 'focus'
+    ? { issue: 'its focusing output is drawn as a cone, with no lens position to propagate through' }
+    : fiberBeamParameter(b, c.wl, V => lp01(V).best.ratio);
+  if (central && mode.q) {
+    central.beamSeed = {
+      ...mode, q: propagateQ(mode.q, 0.1), p: { x: central.x, y: central.y }, d: { x: central.dx, y: central.dy }, n: 1,
+      sourceId: b.id, elementId: b.id, fiber: true,
+    };
+  } else if (central && c.beamCarried) {
+    central.beamIssue = { elementId: b.id, element: 'Fiber', reason: `the fiber starts no beam parameter: ${mode.issue}` };
   }
   return rays;
 }
@@ -7094,6 +7143,331 @@ function nextPathPhase(r, c, surface) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Beam propagation in the drawing plane (step G1, docs/physics/
+// beam-propagation.md). A source with a beam parameter marks one central ray;
+// every interaction it meets is kept as a step (the surface, the hit, the ray
+// as it arrived and which child it continued as). After the final trace two
+// companion rays replay those steps through the tracer's own intersections
+// and interact(), so the measured ray-transfer matrix, and with it the beam,
+// cannot disagree with the drawn rays.
+
+// Surfaces with no paraxial model: the beam parameter stops there.
+const NO_PARAXIAL_MODEL = new Set(['diffuser', 'dm', 'dmd', 'shaper', 'specimen', 'fluor', 'retina', 'metalens', 'opoin', 'opapump', 'opaseed']);
+
+function beamElementName(surface) {
+  const el = surface?.el;
+  return el ? (el.label || registry[el.type]?.label || el.type) : 'An optic';
+}
+
+function beamStepIssue(parent, surface, child) {
+  const issue = reason => ({ elementId: surface.el?.id || null, element: beamElementName(surface), reason });
+  if (NO_PARAXIAL_MODEL.has(surface.kind) || (surface.kind === 'attenuate' && surface.data?.specimen)) {
+    return issue('it has no paraxial model');
+  }
+  if (child.wl !== undefined && child.wl !== parent.wl) {
+    return issue('it converts the wavelength, and generated light starts no beam parameter in this version');
+  }
+  if ('sourceId' in child && child.sourceId !== parent.sourceId) return issue('the light leaving it is generated there');
+  if (child.speckle && !parent.speckle) return issue('it scatters the beam');
+  return null;
+}
+
+// The step a child (or the continuing ray itself) adds, or the reason its
+// beam parameter stops here.
+function continueBeam(target, parent, parentSteps, base, child, childIndex, vertex, origin) {
+  const issue = beamStepIssue(parent, base.surface, child);
+  if (issue) {
+    beamStepLists.delete(target);
+    target.beamIssue = issue;
+    return;
+  }
+  const index = target.mediumMaterial ? (glassIndex(target.mediumMaterial, target.wl) || target.ior || 1) : (target.ior || 1);
+  beamStepLists.set(target, [...parentSteps, {
+    ...base, childIndex, dout: norm({ x: child.d.x, y: child.d.y }), origin: { x: origin.x, y: origin.y },
+    nOut: index, owner: target, vertex,
+  }]);
+}
+
+// A companion meets the surface the central ray met at this step, extended
+// beyond a straight facet's ends: the companions are a micrometre away.
+function companionHit(companion, surface) {
+  const { p, d } = companion;
+  const hit = surface.data.asphere ? rayAsphereHit(p, d, surface)
+    : surface.data.arc ? rayArcHit(p, d, surface) : rayInfiniteLineHit(p, d, surface);
+  return hit ? { ...hit, surface, ambiguous: false } : null;
+}
+
+// interact() on a companion: a copy of the central ray as it arrived, moved
+// to the companion, with nothing recorded about the scene.
+function companionInteract(snapshot, companion, hit) {
+  const saved = [interactionRay, interactionReshapesPulse, interactionPorts, interactionNormal];
+  companionMode = true;
+  try {
+    const ray = { ...snapshot, x: companion.p.x, y: companion.p.y, dx: companion.d.x, dy: companion.d.y };
+    interactionRay = ray; interactionReshapesPulse = false; interactionPorts = null; interactionNormal = null;
+    return interact(ray, hit);
+  } catch (_) {
+    return null;
+  } finally {
+    companionMode = false;
+    [interactionRay, interactionReshapesPulse, interactionPorts, interactionNormal] = saved;
+  }
+}
+
+const formatBeamMm = mm => (mm < 1 ? `${Number((mm * 1000).toPrecision(3))} µm` : `${Number(mm.toPrecision(3))} mm`);
+const beamRadiusMm = (q, seed, index) => (beamFromQ(q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index })?.radiusUm ?? NaN) / 1000;
+const samePoint = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < 1e-6;
+
+// An element's edge within CLIP_RADII beam radii of the central ray between
+// two interactions clips the beam. The elements met at either end are left
+// to hitEdgeIssue, and a pickoff the ray passes by is not in its way.
+function beamClipIssue(from, to, q, index, seed, surfaces, exclude) {
+  const length = Math.hypot(to.x - from.x, to.y - from.y);
+  if (!(length > 0)) return null;
+  for (const surface of surfaces) {
+    if (!surface.a || !surface.b || surface.data?.pickoff) continue;
+    if (surface.el?.id && exclude.has(surface.el.id)) continue;
+    const gap = segmentGap(from, to, surface.a, surface.b);
+    const w = beamRadiusMm(propagateQ(q, gap.along * length), seed, index);
+    if (Number.isFinite(w) && gap.distance < CLIP_RADII * w) {
+      return {
+        elementId: surface.el?.id || null, element: beamElementName(surface),
+        reason: `its edge lies ${formatBeamMm(gap.distance)} from the beam's centre, within ${CLIP_RADII} beam radii, so it clips the beam`,
+      };
+    }
+  }
+  return null;
+}
+
+// The next surface of the same element that continues `surface` smoothly
+// past `joint` (the facets of a curved mirror), or null at a real edge.
+function smoothNeighbour(surface, joint, surfaces) {
+  const end = samePoint(surface.a, joint) ? surface.b : surface.a;
+  const into = norm(sub(joint, end));
+  for (const other of surfaces) {
+    if (other === surface || other.kind !== surface.kind || !other.el || other.el.id !== surface.el?.id) continue;
+    const far = samePoint(other.a, joint) ? other.b : samePoint(other.b, joint) ? other.a : null;
+    if (!far) continue;
+    if (dot(into, norm(sub(far, joint))) > Math.cos(10 * D2R)) return other;
+  }
+  return null;
+}
+
+// The beam's footprint on the surface it meets, CLIP_RADII radii either
+// side of the central ray (wider on a tilted surface), must lie on that
+// surface or its smooth continuation.
+function hitEdgeIssue(step, w, surfaces) {
+  const surface = step.surface;
+  if (!(w > 0) || !surface.a || !surface.b || surface.kind === 'detector' || surface.kind === 'retina') return null;
+  const normal = surface.data.arc
+    ? norm(sub(step.hit.p, { x: surface.data.arc.cx, y: surface.data.arc.cy }))
+    : perp(norm(sub(surface.b, surface.a)));
+  const need = CLIP_RADII * w / Math.max(0.05, Math.abs(dot(step.din, normal)));
+  for (const end of [surface.a, surface.b]) {
+    let reach = Math.hypot(step.hit.p.x - end.x, step.hit.p.y - end.y);
+    let current = surface, joint = end;
+    for (let guard = 0; reach < need && guard < 64; guard++) {
+      const next = smoothNeighbour(current, joint, surfaces);
+      if (!next) break;
+      reach += Math.hypot(next.b.x - next.a.x, next.b.y - next.a.y);
+      joint = samePoint(next.a, joint) ? next.b : next.a;
+      current = next;
+    }
+    if (reach < need) {
+      return {
+        elementId: surface.el?.id || null, element: beamElementName(surface),
+        reason: `the beam reaches its edge (${formatBeamMm(reach)} from the beam's centre along it, within ${CLIP_RADII} beam radii), so it clips the beam`,
+      };
+    }
+  }
+  return null;
+}
+
+// The beam after one more step, from the state after the last.
+function advanceBeam(prev, step, seed, surfaces) {
+  const elementId = step.surface.el?.id || null, element = beamElementName(step.surface);
+  const fail = reason => ({ ...prev, issue: typeof reason === 'string' ? { elementId, element, reason } : reason });
+  const clip = beamClipIssue(prev.p, step.hit.p, prev.q, prev.n, seed, surfaces, new Set([prev.elementId, elementId].filter(Boolean)));
+  if (clip) return fail(clip);
+  const arriving = Math.hypot(step.hit.p.x - prev.p.x, step.hit.p.y - prev.p.y);
+  const edge = hitEdgeIssue(step, beamRadiusMm(propagateQ(prev.q, arriving), seed, prev.n), surfaces);
+  if (edge) return fail(edge);
+  const companions = [];
+  for (const companion of prev.companions) {
+    const hit = companionHit(companion, step.surface);
+    if (!hit) return fail('a companion ray misses it, so the beam cannot be followed');
+    const child = companionInteract(step.ray, companion, hit)?.[step.childIndex];
+    if (!child?.d || dot(norm(child.d), step.dout) < Math.cos(0.01)) return fail('a companion ray leaves the central ray\'s path there');
+    const o = child.origin || hit.p;
+    companions.push({ p: { x: o.x, y: o.y }, d: norm(child.d) });
+  }
+  const matrix = measuredMatrix({ p: step.origin, d: step.dout }, companions, step.nOut, seed.n, companionStep);
+  const q = matrix && transformQ(seed.q, matrix, seed.n, step.nOut);
+  if (!q) return fail('the measured ray-transfer matrix does not describe a beam after it');
+  const beam = beamFromQ(q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index: step.nOut });
+  if (!(beam.halfDivergenceMrad <= PARAXIAL_LIMIT_RAD * 1000)) {
+    return fail(`the beam's far-field half-angle after it, ${Math.round(beam.halfDivergenceMrad)} mrad, exceeds the paraxial limit of ${PARAXIAL_LIMIT_RAD * 1000} mrad`);
+  }
+  return { companions, q, n: step.nOut, p: step.origin, d: step.dout, elementId, matrix, issue: null };
+}
+
+// Every central path of the last trace with its beam parameter at each of
+// its vertices (`q[vertex]`, valid along the segment that starts there), or
+// the reason it stops (`issue`, from `issueVertex` on).
+function propagateBeams(paths, surfaces) {
+  const memo = new Map();
+  const tracks = [];
+  for (const path of paths) {
+    const seed = path.beamSeed;
+    if (!seed) continue;
+    const track = { path, seed, q: [], issue: path.beamIssue || null, issueVertex: path.beamIssue ? 0 : null };
+    beamTrackOf.set(path, track);
+    tracks.push(track);
+    const steps = beamStepsOf(path);
+    if (!steps) continue;
+    let state = {
+      companions: companionStarts(seed.p, seed.d, companionStep), q: seed.q, n: seed.n, p: seed.p, d: seed.d,
+      elementId: seed.elementId, matrix: { A: 1, B: 0, C: 0, D: 1 }, issue: null,
+    };
+    if (!steps.length || steps[0].owner === path) track.q[0] = { q: seed.q, n: seed.n, p: seed.p, d: seed.d, elementId: seed.elementId, matrix: state.matrix };
+    for (const step of steps) {
+      let next = memo.get(step);
+      if (!next) {
+        next = advanceBeam(state, step, seed, surfaces);
+        memo.set(step, next);
+      }
+      state = next;
+      if (state.issue) {
+        track.issue = state.issue;
+        track.issueVertex = step.owner === path ? step.vertex : 0;
+        break;
+      }
+      if (step.owner === path) {
+        track.q[step.vertex] = { q: state.q, n: state.n, p: step.origin, d: step.dout, elementId: state.elementId, matrix: state.matrix };
+      }
+    }
+  }
+  for (const track of tracks) {
+    for (const hit of beamDetectorHitsOf.get(track.path) || []) addBeamReading(track, hit, surfaces);
+  }
+  return tracks;
+}
+
+// The beam parameter of a track at a vertex, or null past its decline.
+function trackStateAt(track, vertex) {
+  if (track.issue && track.issueVertex !== null && vertex >= track.issueVertex) return null;
+  for (let j = vertex; j >= 0; j--) if (track.q[j]) return track.q[j];
+  return null;
+}
+
+function addBeamReading(track, hit, surfaces) {
+  const id = hit.surface.el?.id;
+  if (!id) return;
+  const { seed } = track;
+  const entry = { sourceId: seed.sourceId, branch: track.path.branch || '', wavelengthNm: seed.wavelengthNm, m2: seed.m2, beam: null, issue: null };
+  const at = trackStateAt(track, Math.max(0, hit.vertex - 1));
+  if (!at) entry.issue = track.issue || { elementId: null, element: 'The beam', reason: 'no beam parameter reaches this detector' };
+  else {
+    const clip = beamClipIssue(at.p, hit.p, at.q, at.n, seed, surfaces, new Set([id, at.elementId].filter(Boolean)));
+    if (clip) entry.issue = clip;
+    else {
+      const along = dot(sub(hit.p, at.p), at.d);
+      entry.q = propagateQ(at.q, along);
+      entry.n = at.n;
+      entry.beam = beamFromQ(entry.q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index: at.n });
+    }
+  }
+  if (!beamReadings.has(id)) beamReadings.set(id, []);
+  beamReadings.get(id).push(entry);
+}
+
+const beamBranchReading = entry => ({
+  sourceId: entry.sourceId, wavelengthNm: entry.wavelengthNm, m2: entry.m2, index: entry.n,
+  ...entry.beam, gouyScope: 'circular',
+});
+
+// What a detector reads of the propagated beams that reach it: one entry
+// per source and branch, and the declines, each naming the element and the
+// reason. Two branches of one source on one face add as fields, which no
+// single beam parameter describes.
+export function detectorBeam(elementId) {
+  const entries = beamReadings.get(elementId);
+  if (!entries?.length) return null;
+  const bySource = new Map();
+  for (const entry of entries.filter(e => e.beam)) {
+    const list = bySource.get(entry.sourceId) || [];
+    if (!list.some(other => other.branch === entry.branch)) list.push(entry);
+    bySource.set(entry.sourceId, list);
+  }
+  const branches = [], declined = [];
+  const decline = item => {
+    if (!declined.some(d => d.element === item.element && d.reason === item.reason)) declined.push(item);
+  };
+  for (const [sourceId, list] of bySource) {
+    if (list.length > 1) decline({ sourceId, elementId, element: 'This detector', reason: 'branches of one source recombine here, so no single beam parameter describes the light' });
+    else branches.push(beamBranchReading(list[0]));
+  }
+  for (const entry of entries) if (!entry.beam && entry.issue) decline({ sourceId: entry.sourceId, ...entry.issue });
+  return { branches, declined };
+}
+
+// A focus plane's waist: the propagated beam's where there is exactly one,
+// the cone estimate otherwise, each labelled.
+function focusFromBeam(convergence, beam) {
+  if (beam && beam.branches.length === 1 && !beam.declined.length) {
+    const b = beam.branches[0];
+    return { ...convergence, waistMm: b.waistUm / 1000, rayleighMm: b.rayleighMm, waistAheadMm: b.waistAheadMm, wavelengthNm: b.wavelengthNm, waistModel: 'propagated' };
+  }
+  return Number.isFinite(convergence.waistMm) ? { ...convergence, waistModel: 'cone' } : convergence;
+}
+
+// The propagated beams crossing a circle of `radius` about (x, y), one per
+// source and branch: the beam there, or why there is none.
+export function beamAtPoint(x, y, radius = 5) {
+  const point = { x, y };
+  const found = new Map();
+  for (const track of lastBeamTracks) {
+    if (track.path.hidden) continue;
+    const pts = track.path.pts || [];
+    const key = `${track.seed.sourceId}|${track.path.branch || ''}`;
+    if (found.has(key)) continue;
+    for (let i = 0; i < pts.length - 1; i++) {
+      if (distToSegment(point, pts[i], pts[i + 1]) > radius) continue;
+      const at = trackStateAt(track, i);
+      const base = { sourceId: track.seed.sourceId, branch: track.path.branch || '', wavelengthNm: track.seed.wavelengthNm, m2: track.seed.m2 };
+      if (!at) {
+        found.set(key, { ...base, issue: track.issue || { elementId: null, element: 'The beam', reason: 'no beam parameter here' } });
+      } else {
+        const q = propagateQ(at.q, dot(sub(point, at.p), at.d));
+        found.set(key, { ...base, index: at.n, q, ...beamFromQ(q, { wavelengthNm: track.seed.wavelengthNm, m2: track.seed.m2, index: at.n }) });
+      }
+      break;
+    }
+  }
+  return [...found.values()];
+}
+
+// The tracks of the last trace, for tests and the zoom: each with its
+// path, seed, per-vertex states (beam parameter and measured matrix) and
+// any decline.
+export const beamTracksFromLastTrace = () => lastBeamTracks;
+// The propagated track of one traced path, or null.
+export const beamTrackOfPath = path => beamTrackOf.get(path) || null;
+
+// The beam parameter along segment `segment` of a traced path (the zoom's
+// waist): q at the segment's start vertex `p`, travelling along `d`, with
+// what turns q into a beam; null where the path has none.
+export function beamOnPathSegment(path, segment) {
+  const track = beamTrackOf.get(path);
+  const at = track && trackStateAt(track, segment);
+  if (!at) return null;
+  const start = path.pts?.[segment];
+  if (!start) return null;
+  const q = propagateQ(at.q, dot(sub(start, at.p), at.d));
+  return { q, p: { x: start.x, y: start.y }, d: at.d, index: at.n, wavelengthNm: track.seed.wavelengthNm, m2: track.seed.m2 };
+}
+
 function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent = null) {
   const done = [];
   // Genuine branches weaker than the old 2 % drawing floor, spent against
@@ -7446,7 +7820,13 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           });
         }
       }
-      if (!coherent?.dryRun && (hit.surface.kind === 'detector' || hit.surface.kind === 'retina')) recordDetectorHit(r, hit);
+      if (!coherent?.dryRun && (hit.surface.kind === 'detector' || hit.surface.kind === 'retina')) {
+        recordDetectorHit(r, hit);
+        if (r.beamSeed) {
+          if (!beamDetectorHitsOf.has(r)) beamDetectorHitsOf.set(r, []);
+          beamDetectorHitsOf.get(r).push({ surface: hit.surface, p: { x: hit.p.x, y: hit.p.y }, vertex: r.pts.length - 1 });
+        }
+      }
       if (hit.surface.kind === 'phaseplate') {
         // Same bookkeeping as the delay line, except the added path depends on
         // where this particular ray crossed the aperture -- which is what turns
@@ -7515,6 +7895,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             parametricPath: unionPath(r.parametricPath),
             // A summed loop's factor rides through the fiber with its power.
             loopSum: r.loopSum || 1,
+            beamCarried: Boolean(beamStepsOf(r)),
           });
         }
         break; // the connector absorbs the incoming beam either way
@@ -7532,6 +7913,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // it without collecting it: it applies to what leaves this interaction.
       const rangeLeft = r.rangeLeft;
       r.rangeLeft = null;
+      // A ray carrying a beam parameter keeps what the companions need to
+      // follow it through this interaction (step G1).
+      const beamSteps = beamStepsOf(r);
+      const beamStep = beamSteps ? { surface: hit.surface, hit, ray: { ...r }, din: { x: r.dx, y: r.dy } } : null;
       interactionRay = r; interactionReshapesPulse = false; interactionPorts = null; interactionNormal = null;
       const children = interact(r, hit);
       reflectPolarization(r, children, interactionNormal);
@@ -7743,6 +8128,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           }
           r.groupDelayDifferenceFs = c0.groupDelayDifferenceFs;
         }
+        if (beamStep) continueBeam(r, r, beamSteps, beamStep, c0, 0, r.pts.length - 1, hit.p);
         r.loopVia = '0'; r.loopViaPassive = passive;
         r.last = hit.surface; r.depth++;
         continue;
@@ -7778,7 +8164,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           ? c.groupDelayDifferenceFs : r.groupDelayDifferenceFs;
         const inheritedRange = rangeLeft && !c.evan && !('sourceId' in c) ? rangeLeft
           : c.tag === 'T' ? carriedEvan : null;
-        stack.push({
+        const childRay = ({
           x: ox, y: oy, dx: c.d.x, dy: c.d.y,
           // Anything that reaches here starts a new branch string: a real
           // split, and also a lone child that changes the light's state (a new
@@ -7919,6 +8305,16 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           loopTail: r.loopTail ? { ...r.loopTail } : null,
           loopSum: r.loopSum || 1,
         });
+        // The beam parameter rides with each branch (step G1): the child
+        // starts where this interaction leaves it.
+        if (beamStep) {
+          childRay.beamSeed = r.beamSeed;
+          continueBeam(childRay, r, beamSteps, beamStep, c, ci, 0, { x: ox, y: oy });
+        } else if (r.beamIssue) {
+          childRay.beamSeed = r.beamSeed;
+          childRay.beamIssue = r.beamIssue;
+        }
+        stack.push(childRay);
       }
       break;
     }
@@ -8393,6 +8789,12 @@ export function traceScene(elements, beams = [], options = {}) {
   specimenTimingStates = new Map();
   specimenSrsNotes = new Map();
   specimenFocusReadings = new Map();
+  lastBeamTracks = [];
+  beamReadings = new Map();
+  companionStep = options.companionStep || COMPANION_STEP;
+  beamStepLists = new WeakMap();
+  beamDetectorHitsOf = new WeakMap();
+  beamTrackOf = new WeakMap();
 
   // Sources are emitted twice when a specimen needs two-colour mixing: once
   // as a cheap probe that only records which wavelengths reach each specimen
@@ -8447,6 +8849,9 @@ export function traceScene(elements, beams = [], options = {}) {
         inputChirp: timing.inputGddFs2 < 0 ? 'negative' : 'positive',
       } : {}),
     } : null;
+    // Step G1: the beam parameter the laser starts, carried by its central
+    // ray (the one that also writes voxels).
+    const beamSource = sourceBeamParameter(el.type, p);
     const rays0 = local.map(r => {
       const o = toWorld(el, r.x, r.y);
       const d = rotPt(r.dx, r.dy, el.rot || 0);
@@ -8510,6 +8915,14 @@ export function traceScene(elements, beams = [], options = {}) {
         sourceId: el.id,
         originId: el.id,
         writeReference: r.sample === undefined || r.sample === Math.floor((K - 1) / 2),
+        ...(beamSource && !r.evan && (r.sample === undefined || r.sample === Math.floor((K - 1) / 2)) ? {
+          beamSeed: {
+            ...beamSource, q: initialIor === 1 ? beamSource.q
+              : qFromWaist({ ...beamSource, index: initialIor, zMm: -beamSource.waistPosMm }),
+            p: { x: o.x, y: o.y }, d: { x: d.x, y: d.y }, n: initialIor,
+            sourceId: el.id, elementId: el.id,
+          },
+        } : {}),
       };
     });
     const allPaths = collect
@@ -8665,6 +9078,7 @@ export function traceScene(elements, beams = [], options = {}) {
     for (const c of couplings) noteWeakLightShortfall(c.originId, c.power);
   }
   emitFibers(true);
+  lastBeamTracks = propagateBeams(lastPowerPaths, surfaces);
   // image formation for Object elements: locate the image of the object's
   // base and tip by tracing each through every lens on its axis using real
   // per-surface thin-lens physics (two rays per point, then intersect the

@@ -526,7 +526,10 @@ export const exampleEntries = [
       beam profile. A traced beam is a bundle of rays that meet in a point with no
       size, so any gap passes it completely, and the 0.5&nbsp;mm gap, the smallest
       the Slit offers, is far wider than a real pinhole. A real focus has a size
-      set by diffraction, and the pinhole is chosen a little larger than it. Light
+      set by diffraction, and the pinhole is chosen a little larger than it. The
+      tracer follows the laser's Gaussian beam beside the rays: a beam probe set
+      to <em>Gaussian beam size</em> in the gap reads a waist of 5.04&nbsp;µm,
+      about 10&nbsp;µm across at 1/e², fifty times narrower than the gap. Light
       scattered at small angles lands within that spot's surroundings, close to the
       axis; here the unwanted light is one beam at one large angle, chosen so that
       the drawing shows it. The smooth, nearly Gaussian profile a real filter
@@ -657,9 +660,13 @@ export const exampleEntries = [
       changes together do not simply add: with the beam at 4&nbsp;mm and the
       input NA at 0.08, the meter reads 440&nbsp;µW.</p>
       <p>The enlarged view shows the cone meeting the end face, and prints the
-      waist an ideal Gaussian beam with this cone would have, 2.23&nbsp;µm
-      (λ/(π·NA) for the cone's own NA of 0.09). The tracer does not use that
-      number. Whether it matches the fibre's mode is the question the
+      waist of the laser's Gaussian beam as the tracer propagates it through
+      the lens: 2.21&nbsp;µm, lying 1.6&nbsp;µm beyond the end face. The laser's
+      1&nbsp;mm beam has its waist at the output, 348&nbsp;mm before the lens, so the
+      focus falls a little past the focal point. The ideal Gaussian of the
+      rays' cone, λ/(π·NA) for its NA of 0.09, would say 2.23&nbsp;µm. The power
+      meter uses neither number. Whether the waist matches the fibre's mode is
+      the question the
       <a href="../../calculators/fiber-coupling/">Free space to fiber
       coupling</a> calculator answers, with the efficiency lost to a mismatch in
       size, an offset, a tilt or a defocus.</p>`,

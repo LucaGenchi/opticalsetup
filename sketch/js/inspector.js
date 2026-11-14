@@ -475,6 +475,36 @@ export function fiberMeasurementHTML(beam) {
   }
 }
 
+// The propagated Gaussian beam at a detector (step G1), per source and
+// branch, in the drawing plane; or why a beam parameter does not reach it,
+// naming the element and the reason.
+const beamLength = mm => (!Number.isFinite(mm) ? '∞'
+  : Math.abs(mm) < 1 ? `${Number((mm * 1000).toPrecision(3))} µm`
+    : Math.abs(mm) < 1e4 ? `${Number(mm.toPrecision(3))} mm` : `${Number((mm / 1000).toPrecision(3))} m`);
+export function beamRowsHTML(beam, nameOf = () => '') {
+  if (!beam) return '';
+  let h = '';
+  const several = beam.branches.length + beam.declined.length > 1;
+  for (const b of beam.branches) {
+    const who = several && nameOf(b.sourceId) ? ` · ${esc(nameOf(b.sourceId))}` : '';
+    const ahead = Math.abs(b.waistAheadMm) < 1e-3 * b.rayleighMm ? 'on this face'
+      : `${beamLength(Math.abs(b.waistAheadMm))} ${b.waistAheadMm > 0 ? 'ahead' : 'behind'}`;
+    const wavefront = !Number.isFinite(b.curvatureMm) ? 'flat (at the waist)'
+      : `R ${beamLength(Math.abs(b.curvatureMm))}, ${b.curvatureMm < 0 ? 'converging' : 'diverging'}`;
+    h += `<dt>Beam radius w${who}</dt><dd data-beam-radius>${beamLength(b.radiusUm / 1000)} (1/e², in the drawing plane)</dd>
+      <dt>Wavefront</dt><dd>${wavefront}</dd>
+      <dt>Waist w₀</dt><dd data-beam-waist>${beamLength(b.waistUm / 1000)}, ${ahead}</dd>
+      <dt>Rayleigh range</dt><dd>${beamLength(b.rayleighMm)}${b.index && Math.abs(b.index - 1) > 1e-6 ? ` (in n = ${b.index.toFixed(3)})` : ''}</dd>
+      <dt>Gouy phase</dt><dd>${b.gouyDeg.toFixed(1)}° from the waist (assumes a circular beam)</dd>
+      ${b.m2 > 1 ? `<dt>Beam quality</dt><dd>M² = ${b.m2}</dd>` : ''}`;
+  }
+  for (const d of beam.declined) {
+    const who = several && nameOf(d.sourceId) ? ` · ${esc(nameOf(d.sourceId))}` : '';
+    h += `<dt>Beam parameter${who}</dt><dd data-beam-declined>Not propagated: ${esc(d.element)}: ${esc(d.reason)}</dd>`;
+  }
+  return h;
+}
+
 function measurementHTML(el) {
   const viaDisplay = el.type === 'display';
   const source = viaDisplay ? resolveDisplaySensor(el, state.elements) : el;
@@ -603,6 +633,7 @@ function measurementHTML(el) {
       <dt>Spectrum</dt><dd>${spectral}</dd>
       <dt>Polarization</dt><dd>${esc(rd.polarization)}</dd>
       <dt>Spot span</dt><dd>${spot}</dd>`}
+      ${beamRowsHTML(rd.beam, id => { const s = state.elements.find(e => e.id === id); return s ? sensorName(s) : ''; })}
       ${sampleRow}
       ${detectorRows}
       ${pulseRows}
@@ -1227,6 +1258,12 @@ export function renderInspector() {
         propagationFields += field('Fiber model', `<select data-k="fiberModel"><option value="linear" ${!argon ? 'selected' : ''}>Linear dispersion</option><option value="argon" ${argon ? 'selected' : ''}>Hollow core · argon</option></select>`);
         propagationFields += numberField('Input NA', 'data-k="inputNA"', b.inputNA ?? 0.22, { min: 0.01, max: 0.95, step: 0.01 });
         if (!argon) propagationFields += field('Group index', `<input type="number" data-k="groupIndex" min="1" max="2.2" step="0.001" value="${b.groupIndex ?? 1.468}">`);
+        // A step-index fiber's output starts a Gaussian beam (step G1) only
+        // when its single-mode core is known: with the input NA it gives V,
+        // and the best Gaussian of the LP01 mode at the end face.
+        if (!argon) {
+          propagationFields += numberField('Single-mode core Ø (µm, 0 = not set)', 'data-k="singleModeCoreUm"', b.singleModeCoreUm ?? 0, { min: 0, max: 100, step: 0.1 });
+        }
         const hollowSettings = argon ? normalizeHollowCore(b) : null;
         if (argon) {
           propagationFields += field('Loss model', `<select data-k="lossModel">${CAPILLARY_LOSS_MODELS.map(([v, l]) => `<option value="${v}" ${hollowSettings.lossModel === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`);

@@ -124,7 +124,10 @@ function sampleWavefront(sensor, reading) {
   // (the tracer finds no spread of angles).
   if (c.atFocus) {
     const gaussian = Number.isFinite(c.waistMm) && Number.isFinite(c.rayleighMm)
-      ? { waistMm: c.waistMm, rayleighMm: c.rayleighMm, wavelengthNm: c.wavelengthNm, waistAheadMm: c.waistAheadMm ?? 0 } : {};
+      ? { waistMm: c.waistMm, rayleighMm: c.rayleighMm, wavelengthNm: c.wavelengthNm, waistAheadMm: c.waistAheadMm ?? 0,
+        // 'propagated' (the source's beam parameter, step G1) or 'cone' (the
+        // ideal Gaussian of the traced cone, where no beam parameter arrives).
+        waistModel: c.waistModel || 'cone' } : {};
     return { state: 'FOCUS PLANE', divergenceDeg: c.fullAngleDeg, signedDivergenceDeg: 0, ...gaussian };
   }
   const signed = c.diverging ? c.fullAngleDeg : -c.fullAngleDeg;

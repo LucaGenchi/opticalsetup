@@ -1,0 +1,826 @@
+{
+ "app": "sketch/js/beam-propagation.js: companionStarts, measuredMatrix; sketch/js/raytrace.js: propagateBeams; sketch/js/gaussian-beam.js: transformQ, beamFromQ",
+ "cases": [
+  {
+   "absolute": true,
+   "expected": {
+    "A": 1.0,
+    "B": 148.0,
+    "C": -0.01,
+    "D": -0.48
+   },
+   "inputs": {
+    "elements": [
+     {
+      "params": {
+       "beamMode": "beam",
+       "beamWidth": 2,
+       "wavelength": 1000
+      },
+      "rot": 0,
+      "type": "cwlaser",
+      "x": 0,
+      "y": 0
+     },
+     {
+      "params": {
+       "f": 100
+      },
+      "rot": 0,
+      "type": "lens",
+      "x": 200,
+      "y": 0
+     }
+    ],
+    "kind": "matrix",
+    "track": 0,
+    "vertex": 1
+   },
+   "name": "thin lens f = 100 mm, 148 mm after the laser",
+   "note": "free space then a thin lens",
+   "tolerance": {
+    "A": 1e-06,
+    "B": 0.0002,
+    "C": 1e-08,
+    "D": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "determinant": 1
+   },
+   "inputs": {
+    "elements": [
+     {
+      "params": {
+       "beamMode": "beam",
+       "beamWidth": 2,
+       "wavelength": 1000
+      },
+      "rot": 0,
+      "type": "cwlaser",
+      "x": 0,
+      "y": 0
+     },
+     {
+      "params": {
+       "f": 100
+      },
+      "rot": 0,
+      "type": "lens",
+      "x": 200,
+      "y": 0
+     }
+    ],
+    "kind": "determinant",
+    "track": 0,
+    "vertex": 1
+   },
+   "name": "thin lens f = 100 mm, 148 mm after the laser: companion invariant n (y1 u2 - y2 u1)",
+   "note": "determinant of the reduced matrix",
+   "tolerance": {
+    "determinant": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "A": 1.0,
+    "B": 145.0,
+    "C": -0.00845837006642,
+    "D": -0.22646365963
+   },
+   "inputs": {
+    "elements": [
+     {
+      "params": {
+       "beamMode": "beam",
+       "beamWidth": 2,
+       "wavelength": 1000
+      },
+      "rot": 0,
+      "type": "cwlaser",
+      "x": 0,
+      "y": 0
+     },
+     {
+      "params": {
+       "glass": "nbk7",
+       "r1": 60,
+       "r2": -60,
+       "thickness": 6
+      },
+      "rot": 0,
+      "type": "thicklens",
+      "x": 200,
+      "y": 0
+     }
+    ],
+    "kind": "matrix",
+    "track": 0,
+    "vertex": 1
+   },
+   "name": "thick lens R1 = 60, R2 = -60, 6 mm of N-BK7 at 1000 nm, front surface",
+   "note": "refraction at a sphere",
+   "tolerance": {
+    "A": 1e-06,
+    "B": 0.0002,
+    "C": 1e-08,
+    "D": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "determinant": 1
+   },
+   "inputs": {
+    "elements": [
+     {
+      "params": {
+       "beamMode": "beam",
+       "beamWidth": 2,
+       "wavelength": 1000
+      },
+      "rot": 0,
+      "type": "cwlaser",
+      "x": 0,
+      "y": 0
+     },
+     {
+      "params": {
+       "glass": "nbk7",
+       "r1": 60,
+       "r2": -60,
+       "thickness": 6
+      },
+      "rot": 0,
+      "type": "thicklens",
+      "x": 200,
+      "y": 0
+     }
+    ],
+    "kind": "determinant",
+    "track": 0,
+    "vertex": 1
+   },
+   "name": "thick lens R1 = 60, R2 = -60, 6 mm of N-BK7 at 1000 nm, front surface: companion invariant n (y1 u2 - y2 u1)",
+   "note": "determinant of the reduced matrix",
+   "tolerance": {
+    "determinant": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "A": 0.966334894726,
+    "B": 144.098653419,
+    "C": -0.0166319882141,
+    "D": -1.44530339632
+   },
+   "inputs": {
+    "elements": [
+     {
+      "params": {
+       "beamMode": "beam",
+       "beamWidth": 2,
+       "wavelength": 1000
+      },
+      "rot": 0,
+      "type": "cwlaser",
+      "x": 0,
+      "y": 0
+     },
+     {
+      "params": {
+       "glass": "nbk7",
+       "r1": 60,
+       "r2": -60,
+       "thickness": 6
+      },
+      "rot": 0,
+      "type": "thicklens",
+      "x": 200,
+      "y": 0
+     }
+    ],
+    "kind": "matrix",
+    "track": 0,
+    "vertex": 2
+   },
+   "name": "thick lens R1 = 60, R2 = -60, 6 mm of N-BK7 at 1000 nm, both surfaces",
+   "note": "a thick lens as a product of surface matrices",
+   "tolerance": {
+    "A": 1e-06,
+    "B": 0.0002,
+    "C": 1e-08,
+    "D": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "determinant": 1
+   },
+   "inputs": {
+    "elements": [
+     {
+      "params": {
+       "beamMode": "beam",
+       "beamWidth": 2,
+       "wavelength": 1000
+      },
+      "rot": 0,
+      "type": "cwlaser",
+      "x": 0,
+      "y": 0
+     },
+     {
+      "params": {
+       "glass": "nbk7",
+       "r1": 60,
+       "r2": -60,
+       "thickness": 6
+      },
+      "rot": 0,
+      "type": "thicklens",
+      "x": 200,
+      "y": 0
+     }
+    ],
+    "kind": "determinant",
+    "track": 0,
+    "vertex": 2
+   },
+   "name": "thick lens R1 = 60, R2 = -60, 6 mm of N-BK7 at 1000 nm, both surfaces: companion invariant n (y1 u2 - y2 u1)",
+   "note": "determinant of the reduced matrix",
+   "tolerance": {
+    "determinant": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "A": -1.0,
+    "B": -148.0,
+    "C": 0.0108239220029,
+    "D": 0.601940456433
+   },
+   "inputs": {
+    "elements": [
+     {
+      "params": {
+       "beamMode": "beam",
+       "beamWidth": 2,
+       "wavelength": 1000
+      },
+      "rot": 0,
+      "type": "cwlaser",
+      "x": 0,
+      "y": 0
+     },
+     {
+      "params": {
+       "f": 100
+      },
+      "rot": 22.5,
+      "type": "cmirror",
+      "x": 200,
+      "y": 0
+     }
+    ],
+    "kind": "matrix",
+    "track": 0,
+    "vertex": 1
+   },
+   "name": "concave mirror f = 100 mm at 22.5 degrees incidence, in the plane",
+   "note": "in-plane focal length (R/2) cos theta; a reflection negates the matrix",
+   "tolerance": {
+    "A": 1e-06,
+    "B": 0.0002,
+    "C": 1e-08,
+    "D": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "determinant": 1
+   },
+   "inputs": {
+    "elements": [
+     {
+      "params": {
+       "beamMode": "beam",
+       "beamWidth": 2,
+       "wavelength": 1000
+      },
+      "rot": 0,
+      "type": "cwlaser",
+      "x": 0,
+      "y": 0
+     },
+     {
+      "params": {
+       "f": 100
+      },
+      "rot": 22.5,
+      "type": "cmirror",
+      "x": 200,
+      "y": 0
+     }
+    ],
+    "kind": "determinant",
+    "track": 0,
+    "vertex": 1
+   },
+   "name": "concave mirror f = 100 mm at 22.5 degrees incidence, in the plane: companion invariant n (y1 u2 - y2 u1)",
+   "note": "determinant of the reduced matrix",
+   "tolerance": {
+    "determinant": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "A": 1.03040205506,
+    "B": 142.195483598,
+    "C": 0.0,
+    "D": 0.970494958831
+   },
+   "inputs": {
+    "elements": [
+     {
+      "params": {
+       "beamMode": "beam",
+       "beamWidth": 2,
+       "wavelength": 1000
+      },
+      "rot": 0,
+      "type": "cwlaser",
+      "x": 0,
+      "y": 0
+     },
+     {
+      "params": {
+       "ior": 1.5,
+       "material": "constant",
+       "vertices": [
+        {
+         "x": -20,
+         "y": -30
+        },
+        {
+         "x": 20,
+         "y": -30
+        },
+        {
+         "x": 0,
+         "y": 30
+        }
+       ]
+      },
+      "rot": 0,
+      "type": "freeglass",
+      "x": 200,
+      "y": 0
+     }
+    ],
+    "kind": "matrix",
+    "track": 0,
+    "vertex": 1
+   },
+   "name": "tilted plane interface (prism entry face), n = 1.5",
+   "note": "anamorphic factor cos t2/cos t1 of a tilted plane interface",
+   "tolerance": {
+    "A": 1e-06,
+    "B": 0.0002,
+    "C": 1e-08,
+    "D": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "determinant": 1
+   },
+   "inputs": {
+    "elements": [
+     {
+      "params": {
+       "beamMode": "beam",
+       "beamWidth": 2,
+       "wavelength": 1000
+      },
+      "rot": 0,
+      "type": "cwlaser",
+      "x": 0,
+      "y": 0
+     },
+     {
+      "params": {
+       "ior": 1.5,
+       "material": "constant",
+       "vertices": [
+        {
+         "x": -20,
+         "y": -30
+        },
+        {
+         "x": 20,
+         "y": -30
+        },
+        {
+         "x": 0,
+         "y": 30
+        }
+       ]
+      },
+      "rot": 0,
+      "type": "freeglass",
+      "x": 200,
+      "y": 0
+     }
+    ],
+    "kind": "determinant",
+    "track": 0,
+    "vertex": 1
+   },
+   "name": "tilted plane interface (prism entry face), n = 1.5: companion invariant n (y1 u2 - y2 u1)",
+   "note": "determinant of the reduced matrix",
+   "tolerance": {
+    "determinant": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "A": 0.883727880715,
+    "B": 133.543149419,
+    "C": 0.0,
+    "D": 1.13157004755
+   },
+   "inputs": {
+    "elements": [
+     {
+      "params": {
+       "beamMode": "beam",
+       "beamWidth": 2,
+       "wavelength": 1000
+      },
+      "rot": 0,
+      "type": "cwlaser",
+      "x": 0,
+      "y": 0
+     },
+     {
+      "params": {
+       "ior": 1.5,
+       "material": "constant",
+       "vertices": [
+        {
+         "x": -20,
+         "y": -30
+        },
+        {
+         "x": 20,
+         "y": -30
+        },
+        {
+         "x": 0,
+         "y": 30
+        }
+       ]
+      },
+      "rot": 0,
+      "type": "freeglass",
+      "x": 200,
+      "y": 0
+     }
+    ],
+    "kind": "matrix",
+    "track": 0,
+    "vertex": 2
+   },
+   "name": "prism, n = 1.5, after the exit face",
+   "note": "two tilted interfaces and the path inside",
+   "tolerance": {
+    "A": 1e-06,
+    "B": 0.0002,
+    "C": 1e-08,
+    "D": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "determinant": 1
+   },
+   "inputs": {
+    "elements": [
+     {
+      "params": {
+       "beamMode": "beam",
+       "beamWidth": 2,
+       "wavelength": 1000
+      },
+      "rot": 0,
+      "type": "cwlaser",
+      "x": 0,
+      "y": 0
+     },
+     {
+      "params": {
+       "ior": 1.5,
+       "material": "constant",
+       "vertices": [
+        {
+         "x": -20,
+         "y": -30
+        },
+        {
+         "x": 20,
+         "y": -30
+        },
+        {
+         "x": 0,
+         "y": 30
+        }
+       ]
+      },
+      "rot": 0,
+      "type": "freeglass",
+      "x": 200,
+      "y": 0
+     }
+    ],
+    "kind": "determinant",
+    "track": 0,
+    "vertex": 2
+   },
+   "name": "prism, n = 1.5, after the exit face: companion invariant n (y1 u2 - y2 u1)",
+   "note": "determinant of the reduced matrix",
+   "tolerance": {
+    "determinant": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "A": -1.02815566937,
+    "B": -152.167039067,
+    "C": -0.0,
+    "D": -0.972615363401
+   },
+   "inputs": {
+    "elements": [
+     {
+      "params": {
+       "beamMode": "beam",
+       "beamWidth": 2,
+       "wavelength": 1000
+      },
+      "rot": 0,
+      "type": "cwlaser",
+      "x": 0,
+      "y": 0
+     },
+     {
+      "params": {
+       "lines": 600,
+       "orders": "1"
+      },
+      "rot": 20,
+      "type": "grating",
+      "x": 200,
+      "y": 0
+     }
+    ],
+    "kind": "matrix",
+    "track": 1,
+    "vertex": 0
+   },
+   "name": "reflection grating 600 l/mm, first order, 20 degrees incidence, 1000 nm",
+   "note": "the grating's in-plane anamorphic factor",
+   "tolerance": {
+    "A": 1e-06,
+    "B": 0.0002,
+    "C": 1e-08,
+    "D": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "determinant": 1
+   },
+   "inputs": {
+    "elements": [
+     {
+      "params": {
+       "beamMode": "beam",
+       "beamWidth": 2,
+       "wavelength": 1000
+      },
+      "rot": 0,
+      "type": "cwlaser",
+      "x": 0,
+      "y": 0
+     },
+     {
+      "params": {
+       "lines": 600,
+       "orders": "1"
+      },
+      "rot": 20,
+      "type": "grating",
+      "x": 200,
+      "y": 0
+     }
+    ],
+    "kind": "determinant",
+    "track": 1,
+    "vertex": 0
+   },
+   "name": "reflection grating 600 l/mm, first order, 20 degrees incidence, 1000 nm: companion invariant n (y1 u2 - y2 u1)",
+   "note": "determinant of the reduced matrix",
+   "tolerance": {
+    "determinant": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "A": -3.0,
+    "B": 56.0,
+    "C": 0.0,
+    "D": -0.333333333333
+   },
+   "inputs": {
+    "elements": [
+     {
+      "params": {
+       "beamMode": "beam",
+       "beamWidth": 2,
+       "wavelength": 1000
+      },
+      "rot": 0,
+      "type": "cwlaser",
+      "x": 0,
+      "y": 0
+     },
+     {
+      "params": {
+       "f": 50
+      },
+      "rot": 0,
+      "type": "lens",
+      "x": 100,
+      "y": 0
+     },
+     {
+      "params": {
+       "f": 150
+      },
+      "rot": 0,
+      "type": "lens",
+      "x": 300,
+      "y": 0
+     }
+    ],
+    "kind": "matrix",
+    "track": 0,
+    "vertex": 2
+   },
+   "name": "Keplerian expander f1 = 50, f2 = 150 mm",
+   "note": "magnification -3",
+   "tolerance": {
+    "A": 1e-06,
+    "B": 0.0002,
+    "C": 1e-08,
+    "D": 1e-06
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "determinant": 1
+   },
+   "inputs": {
+    "elements": [
+     {
+      "params": {
+       "beamMode": "beam",
+       "beamWidth": 2,
+       "wavelength": 1000
+      },
+      "rot": 0,
+      "type": "cwlaser",
+      "x": 0,
+      "y": 0
+     },
+     {
+      "params": {
+       "f": 50
+      },
+      "rot": 0,
+      "type": "lens",
+      "x": 100,
+      "y": 0
+     },
+     {
+      "params": {
+       "f": 150
+      },
+      "rot": 0,
+      "type": "lens",
+      "x": 300,
+      "y": 0
+     }
+    ],
+    "kind": "determinant",
+    "track": 0,
+    "vertex": 2
+   },
+   "name": "Keplerian expander f1 = 50, f2 = 150 mm: companion invariant n (y1 u2 - y2 u1)",
+   "note": "determinant of the reduced matrix",
+   "tolerance": {
+    "determinant": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "distanceMm": 0.998987813723,
+    "waistUm": 3.18148750949
+   },
+   "inputs": {
+    "focalMm": 1.0,
+    "kind": "waist",
+    "lensX": 200,
+    "m2": 1,
+    "waistUm": 100
+   },
+   "name": "waist after an ideal thin lens, 100 um at 1 um, waist on the lens, z_R >> f (f = 1 mm)",
+   "note": "the q law through the lens",
+   "tolerance": {
+    "distanceMm": 1e-06,
+    "waistUm": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "distanceMm": 15.7079632679,
+    "waistUm": 70.7106781187
+   },
+   "inputs": {
+    "focalMm": 31.41592653589793,
+    "kind": "waist",
+    "lensX": 200,
+    "m2": 1,
+    "waistUm": 100
+   },
+   "name": "waist after an ideal thin lens, 100 um at 1 um, waist on the lens, f = z_R = 31.416 mm",
+   "note": "the q law through the lens",
+   "tolerance": {
+    "distanceMm": 1e-06,
+    "waistUm": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "distanceMm": 7.85398163397,
+    "waistUm": 70.7106781187
+   },
+   "inputs": {
+    "focalMm": 15.707963267948966,
+    "kind": "waist",
+    "lensX": 200,
+    "m2": 2,
+    "waistUm": 100
+   },
+   "name": "waist after an ideal thin lens, 100 um at 1 um, waist on the lens, M^2 = 2, f = z_R = 15.708 mm",
+   "note": "the q law through the lens",
+   "tolerance": {
+    "distanceMm": 1e-06,
+    "waistUm": 1e-06
+   }
+  }
+ ],
+ "citations": [
+  "H. Kogelnik and T. Li, 'Laser beams and resonators,' Appl. Opt. 5, 1550-1567 (1966)",
+  "A. E. Siegman, Lasers (University Science Books, 1986), chapters 15 and 20",
+  "P. A. Belanger, 'Beam propagation and the ABCD ray matrices,' Opt. Lett. 16, 196-198 (1991)"
+ ],
+ "convergence": "The app's companions are a first-order finite difference; test/beam-propagation.test.js shows the measured matrices converging to these as the offset and tilt shrink.",
+ "domain": "One scene per element kind, read after a stated interaction; three waist cases.",
+ "fidelity": "computed",
+ "id": "beam-propagation",
+ "outside_scope": "The out-of-plane beam (G3), aberrations beyond first order, clipping (declined, not modelled), elements without a paraxial model (declined).",
+ "provenance": "Expected matrices and waists computed here from the analytic forms; the issue's three waist values asserted from the q law.",
+ "reference": "Analytic ray-transfer matrices (free space, thin lens, spherical surface, tilted concave mirror, tilted plane interface, prism, grating) multiplied in order, and the q law through them ([code](../validation/reference/beam_propagation.py))",
+ "reference_file": "validation/reference/beam_propagation.py",
+ "scope": "Paraxial Gaussian beams in the drawing plane, through elements met with the central ray in the plane; thin and thick lenses, a tilted concave mirror, plane interfaces, a prism, a grating, a two-lens expander; ideal-thin-lens waists for M^2 = 1 and 2.",
+ "title": "Beam propagation in the drawing plane: measured ray-transfer matrices and the Gaussian beam",
+ "tolerance_rationale": "1e-6 on A and D, 2e-4 mm on B (about 1e-6 of the paths), 1e-8 mm^-1 on C, all absolute, 1e-6 on the determinant: the companions' finite-difference error at 0.1 um and 1 urad stays inside these for every case (up to about 1e-4 mm on B). Waists 1e-6 relative."
+}

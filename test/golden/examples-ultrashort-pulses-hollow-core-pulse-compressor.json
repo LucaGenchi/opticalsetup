@@ -132,6 +132,17 @@
     "approximations": [],
     "bandMax": 806.431558,
     "bandMin": 793.568442,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "An optic",
+       "elementId": null,
+       "reason": "its edge lies 100 µm from the beam's centre, within 1.5 beam radii, so it clips the beam",
+       "sourceId": "hcf-fiber"
+      }
+     ]
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#ff3030",
@@ -4616,6 +4627,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -5114,6 +5126,17 @@
     "approximations": [],
     "bandMax": 806.431558,
     "bandMin": 793.568442,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "An optic",
+       "elementId": null,
+       "reason": "its edge lies 100 µm from the beam's centre, within 1.5 beam radii, so it clips the beam",
+       "sourceId": "hcf-fiber"
+      }
+     ]
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#ff3030",
@@ -9598,6 +9621,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",

@@ -106,6 +106,17 @@
     "approximations": [],
     "bandMax": 808.031234,
     "bandMin": 791.968766,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "This detector",
+       "elementId": "etn24g3r",
+       "reason": "branches of one source recombine here, so no single beam parameter describes the light",
+       "sourceId": "e9incbv0"
+      }
+     ]
+    },
     "centroid": 6.82648382e-14,
     "coherentPaths": 2,
     "color": "#ff3030",
@@ -204,6 +215,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -1692,6 +1704,17 @@
     "approximations": [],
     "bandMax": null,
     "bandMin": null,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "This detector",
+       "elementId": "eq4a46pm",
+       "reason": "branches of one source recombine here, so no single beam parameter describes the light",
+       "sourceId": "e9incbv0"
+      }
+     ]
+    },
     "centroid": null,
     "coherentPaths": 2,
     "color": "#5d7380",
@@ -1732,6 +1755,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",

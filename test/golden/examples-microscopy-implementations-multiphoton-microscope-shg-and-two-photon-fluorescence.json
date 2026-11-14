@@ -213,6 +213,17 @@
     "approximations": [],
     "bandMax": 529.506649,
     "bandMin": 484.493351,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "SP700",
+       "elementId": "e227dxsg",
+       "reason": "it converts the wavelength, and generated light starts no beam parameter in this version",
+       "sourceId": "evgazbrh"
+      }
+     ]
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#00ff38",
@@ -295,6 +306,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -766,6 +778,17 @@
     "approximations": [],
     "bandMax": 930.824992,
     "bandMin": 909.175008,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "SP700",
+       "elementId": "e227dxsg",
+       "reason": "it converts the wavelength, and generated light starts no beam parameter in this version",
+       "sourceId": "evgazbrh"
+      }
+     ]
+    },
     "centroid": 3.18263934e-14,
     "coherentPaths": 0,
     "color": "#ff3030",
@@ -777,6 +800,7 @@
      "slopePerMm": null,
      "waistAheadMm": 0,
      "waistMm": 0.00976589486,
+     "waistModel": "cone",
      "wavelengthNm": 920
     },
     "dark": false,
@@ -937,6 +961,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -1408,6 +1433,17 @@
     "approximations": [],
     "bandMax": 467.013665,
     "bandMin": 460,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "SP700",
+       "elementId": "e227dxsg",
+       "reason": "it converts the wavelength, and generated light starts no beam parameter in this version",
+       "sourceId": "evgazbrh"
+      }
+     ]
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#007bff",
@@ -1490,6 +1526,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",

@@ -25,7 +25,7 @@ import {
   rulerHitTest, rulerLocalBounds, rulerModeParams, rulerPoints, rulerSVG, rulerValueText,
 } from './ruler.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
-import { compressorGddReading, detectorReading, metalensReading, mixReading, objectImageReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenRamanReading, specimenSrsNote, specimenTimingReading, supercontinuumReading, twoBeamPartner, MIN_OVERLAP } from './raytrace.js';
+import { beamAtPoint, compressorGddReading, detectorReading, metalensReading, mixReading, objectImageReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenRamanReading, specimenSrsNote, specimenTimingReading, supercontinuumReading, twoBeamPartner, MIN_OVERLAP } from './raytrace.js';
 import { NONLINEAR_ORDER } from './sectioning.js';
 import { opaSettings, opaGainAt, MAX_OPA_STAGES, MAX_GATE_BANDWIDTH_RATIO, MIN_PHASE_KEPT_GAIN } from './opa.js';
 import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, mixOverlap, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
@@ -39,6 +39,8 @@ import {
   linewidthForCoherenceLengthNm, resolveSourceSpectrum, spectrumSamples, supercontinuumTransformLimitFs, transformLimitedBandwidthNm,
 } from './spectrum.js';
 import { coherencePathMm } from './spectral-coherence.js';
+import { sourceBeamParameter } from './beam-propagation.js';
+import { beamFromQ } from './gaussian-beam.js';
 import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
   pointInBoundary, sampleBoundary,
@@ -1154,8 +1156,57 @@ function probePolCard(rd) {
   };
 }
 
+// The propagated Gaussian beam where the probe stands (step G1): its 1/e²
+// radius and wavefront, the waist and Rayleigh range, per source and branch,
+// in the drawing plane; or why there is no beam parameter there, naming the
+// element and the reason in full.
+const probeBeamLength = mm => (!Number.isFinite(mm) ? '∞'
+  : Math.abs(mm) < 1 ? `${Number((mm * 1000).toPrecision(3))} µm`
+    : Math.abs(mm) < 1e4 ? `${Number(mm.toPrecision(3))} mm` : `${Number((mm / 1000).toPrecision(3))} m`);
+function wrapWords(text, width) {
+  const lines = [];
+  let line = '';
+  for (const word of String(text).split(/\s+/)) {
+    if (line && (line + ' ' + word).length > width) { lines.push(line); line = word; }
+    else line = line ? `${line} ${word}` : word;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+function probeBeamCard(el, elements = []) {
+  const found = beamAtPoint(el.x, el.y, probeSampleDiameterMm(el.params) / 2);
+  const rows = [];
+  const named = found.length > 1;
+  for (const b of found.slice(0, 3)) {
+    const source = elements.find(item => item?.id === b.sourceId);
+    const who = named ? `${source?.label || registry[source?.type]?.label || 'Beam'}: ` : '';
+    if (b.issue) {
+      for (const [i, text] of wrapWords(`${who}not propagated: ${b.issue.element}: ${b.issue.reason}`, 46).entries()) {
+        rows.push({ text, size: 7, color: '#b45309', bold: i === 0 && Boolean(who) });
+      }
+      continue;
+    }
+    const wave = !Number.isFinite(b.curvatureMm) ? 'flat wavefront' : `R ${probeBeamLength(Math.abs(b.curvatureMm))} ${b.curvatureMm < 0 ? 'converging' : 'diverging'}`;
+    const ahead = Math.abs(b.waistAheadMm) < 1e-3 * b.rayleighMm ? 'here'
+      : `${probeBeamLength(Math.abs(b.waistAheadMm))} ${b.waistAheadMm > 0 ? 'ahead' : 'behind'}`;
+    rows.push({ text: `${who}w ${probeBeamLength(b.radiusUm / 1000)} · ${wave}`, size: 9, color: '#333', bold: true });
+    rows.push({ text: `waist ${probeBeamLength(b.waistUm / 1000)} ${ahead} · zR ${probeBeamLength(b.rayleighMm)}`, size: 7.5, color: '#444' });
+  }
+  if (!found.length) rows.push({ text: 'no Gaussian beam here', size: 8, color: '#9aa2ad' });
+  else rows.push({ text: 'in the drawing plane', size: 6.5, color: '#8a93a0' });
+  const w = Math.max(56, ...rows.map(r => r.text.length * r.size * 0.56 + 14));
+  let y = 4, body = '';
+  for (const r of rows) {
+    y += r.size + 3;
+    body += `<text x="7" y="${y.toFixed(1)}" font-size="${r.size}"${r.bold ? ' font-weight="700"' : ''} fill="${r.color}">${esc(r.text)}</text>`;
+  }
+  const h = y + 6;
+  return { w, h, body: `<rect x="0" y="0" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="#fff" stroke="#c9ced6"/>${body}` };
+}
+
 function probeCard(el, rd, elements = []) {
   const prop = el.params.prop;
+  if (prop === 'beam') return probeBeamCard(el, elements);
   // Two or more beams crossing the sampling circle: the spectrum, wavelength,
   // polarization and time views describe all of them. With one, every view
   // reads the nearest beam, as it always has.
@@ -2450,6 +2501,30 @@ const beamShapeParams = beamWidthDef => [
   { key: 'beamWidth', label: 'Beam width (mm)', type: 'number', min: 1, max: 60, step: 0.5, def: beamWidthDef, show: p => p.beamMode === 'beam' },
 ];
 
+// The Gaussian beam a CW or pulsed laser starts (step G1,
+// docs/physics/beam-propagation.md): by default from what the laser already
+// has, a 1/e² radius of half its Beam width with the waist at its output and
+// M² = 1; these three settings override that. A laser drawn as a simple line
+// has a beam parameter only when its waist is set. Collapsed: the defaults
+// keep the beam the laser always drew.
+const formatBeamLength = mm => (mm < 1 ? `${Number((mm * 1000).toPrecision(3))} µm`
+  : mm < 1e4 ? `${Number(mm.toPrecision(3))} mm` : `${Number((mm / 1000).toPrecision(3))} m`);
+const gaussianBeamParams = type => [
+  { key: 'beamHeading', label: 'Gaussian beam', type: 'section', open: false },
+  { key: 'beamWaistUm', label: 'Waist w₀ (µm, 0 = half the beam width)', type: 'number', min: 0, max: 100000, step: 10, def: 0 },
+  { key: 'beamWaistPosMm', label: 'Waist after the output (mm)', type: 'number', min: -100000, max: 100000, step: 1, def: 0 },
+  { key: 'beamM2', label: 'Beam quality M²', type: 'number', min: 1, max: 100, step: 0.1, def: 1 },
+  {
+    key: 'beamParameter', label: 'Beam parameter', type: 'readout',
+    readout: p => {
+      const beam = sourceBeamParameter(type, p);
+      if (!beam) return 'None: a simple line has no beam parameter unless its waist is set';
+      const shape = beamFromQ(beam.q, beam);
+      return `w₀ ${formatBeamLength(beam.waistUm / 1000)}${beam.derived ? ' (half the beam width)' : ''} · zR ${formatBeamLength(shape.rayleighMm)} · θ ${Number(shape.halfDivergenceMrad.toPrecision(3))} mrad`;
+    },
+  },
+];
+
 // New sources opt in; old saved sources keep their power-only behavior.
 // The panel closes the source's controls, after the pulse and bandwidth
 // settings that decide how far apart two arms can be and still interfere.
@@ -3200,6 +3275,7 @@ export const registry = {
       P.autoColor, P.color,
       pinnedParam('temporalMode', 'cw'),
       ...laserHousingParams('#3a3f46', '#22252a'),
+      ...gaussianBeamParams('cwlaser'),
     ],
     svg(el) {
       const ap = laserAperture(el);
@@ -3278,6 +3354,7 @@ export const registry = {
       },
       SHOW_PULSE_PARAM,
       pinnedParam('temporalMode', 'pulsed'),
+      ...gaussianBeamParams('pulsedlaser'),
       // Drawn in Label & appearance; the Interference panel stays last.
       ...laserHousingParams('#3a3f46', '#22252a'),
       ...pulsedInterferenceParams('pulsedlaser'),
@@ -6095,6 +6172,7 @@ export const registry = {
         ['pol', 'Polarization'],
         ['duration', 'Pulse duration'],
         ['time', 'Intensity over time'],
+        ['beam', 'Gaussian beam size'],
       ] },
       // The wavelength axis frames itself from the light by default, on the
       // spectrometer's own principle. A fixed window is there for comparing

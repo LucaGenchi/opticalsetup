@@ -12,7 +12,7 @@ import { readFile } from 'node:fs/promises';
 import { registry, objectImageReadout } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
 import { parseSketch } from '../sketch/js/state.js';
-import { traceScene, objectImageReading, probeAt } from '../sketch/js/raytrace.js';
+import { beamAtPoint, traceScene, objectImageReading, probeAt } from '../sketch/js/raytrace.js';
 import { polarizationDescription } from '../sketch/js/polarization.js';
 import { enhancedReading } from '../sketch/js/detector-measurements.js';
 import { glassIndex, glassIndexUnbucketed } from '../sketch/js/glass.js';
@@ -269,13 +269,19 @@ test('fiber coupling: the reading is the count of rays inside the acceptance con
   close(await microwatts((get, fiber) => { get('laser').params.beamWidth = 4; fiber.inputNA = 0.08; }), 440, 1e-6);
 });
 
-test('fiber coupling: the enlarged view prints a 2.23 µm waist, and 0.5° on mirror 2 moves the beam 2 mm on the lens', async () => {
+test('fiber coupling: the enlarged view prints a 2.21 µm waist, and 0.5° on mirror 2 moves the beam 2 mm on the lens', async () => {
   const NAME = 'Coupling a laser into a single-mode fiber';
   const shipped = await run(NAME);
   const foci = zoomFoci(shipped.get('zoom'), shipped.traced.paths);
   assert.equal(foci.length, 1);
-  assert.equal(formatLength(foci[0].w0Mm), '2.23 µm');
+  // The laser's propagated beam (step G1): 2.21 µm, 1.6 µm past the end
+  // face; the cone estimate λ/(π·NA) at NA 0.09 would say 2.23 µm.
+  assert.equal(foci[0].model, 'propagated');
+  assert.equal(formatLength(foci[0].w0Mm), '2.21 µm');
   close(foci[0].na, 0.09, 0.005);
+  const fiber = shipped.scene.beams.find(b => b.kind === 'fiber');
+  const face = fiber.pts[0];
+  close(Math.hypot(foci[0].point.x - face.x, foci[0].point.y - face.y), 0.0016, 0.0001);
   const turned = await run(NAME, get => { get('m2').rot += 0.5; });
   const lens = turned.get('lens');
   const onLens = crossings(turned.traced, lens.x - 1e-6).filter(c => Math.abs(c.y - lens.y) < lens.params.dia / 2);
@@ -456,4 +462,13 @@ test('Fresnel rhomb: two total internal reflections make circular light from 450
   const red = (await run(NAME, get => { get('laserB').params.wavelength = 633; })).reading('polB');
   assert.equal(red.polarization, 'Left circular');
   close(red.normalizedStokes.s2, -0.01, 0.005, 's2 at 633');
+});
+
+test('pinhole spatial filter: the laser\'s Gaussian beam has a 5.04 µm waist in the gap', async () => {
+  const NAME = 'Pinhole spatial filter';
+  const shipped = await run(NAME);
+  const pinhole = shipped.get('pinhole');
+  const [beam] = beamAtPoint(pinhole.x, pinhole.y, 0.2).filter(b => b.sourceId === 'laser');
+  assert.equal(beam.waistUm.toFixed(2), '5.04');
+  close(2 * beam.waistUm / (pinhole.params.gap * 1000), 1 / 50, 0.002);
 });

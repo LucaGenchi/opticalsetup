@@ -105,6 +105,17 @@
     "approximations": [],
     "bandMax": 550.531915,
     "bandMin": 499.468085,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "Sample on piezo stage",
+       "elementId": "stage",
+       "reason": "it has no paraxial model",
+       "sourceId": "excitation"
+      }
+     ]
+    },
     "centroid": -1.06022952e-14,
     "coherentPaths": 0,
     "color": "#2bff1a",
@@ -224,6 +235,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",

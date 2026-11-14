@@ -487,6 +487,17 @@
     "approximations": [],
     "bandMax": 627.65625,
     "bandMin": 627.65625,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "SP1000",
+       "elementId": "eapb46vw",
+       "reason": "it converts the wavelength, and generated light starts no beam parameter in this version",
+       "sourceId": "evgazbrh"
+      }
+     ]
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#ff5900",
@@ -569,6 +580,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -617,6 +629,17 @@
     "approximations": [],
     "bandMax": 627.65625,
     "bandMin": 627.65625,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "SP1000",
+       "elementId": "eapb46vw",
+       "reason": "it converts the wavelength, and generated light starts no beam parameter in this version",
+       "sourceId": "evgazbrh"
+      }
+     ]
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#ff5900",
@@ -699,6 +722,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -1056,6 +1080,17 @@
     "approximations": [],
     "bandMax": 780.447616,
     "bandMin": 779.552384,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "SP1000",
+       "elementId": "eapb46vw",
+       "reason": "it converts the wavelength, and generated light starts no beam parameter in this version",
+       "sourceId": "evgazbrh"
+      }
+     ]
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#ff3030",
@@ -1162,6 +1197,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -1408,6 +1444,25 @@
     "approximations": [],
     "bandMax": 1030.7803,
     "bandMin": 1029.2197,
+    "beam": {
+     "branches": [
+      {
+       "curvatureMm": 63462.963,
+       "gouyDeg": 6.24514778,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 0.218572789,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 1508.95481,
+       "rayleighMm": 6862.7024,
+       "sourceId": "ex99xumu",
+       "waistAheadMm": -751,
+       "waistUm": 1500,
+       "wavelengthNm": 1030
+      }
+     ],
+     "declined": []
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#ff3030",
@@ -1510,6 +1565,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
