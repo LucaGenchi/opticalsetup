@@ -134,8 +134,8 @@ n(λ) = nd + (nd − 1)/Vd · [ψ₁(λ) + (a₁ + b₁·Vd)·ψ₂(λ) + (a₂ 
 with λ in µm, ψ₁ = (λ⁻² − λd⁻²)/(λF⁻² − λC⁻²), ψ₂ = (λ⁻⁴ − λd⁻⁴) −
 (λF⁻⁴ − λC⁻⁴)·ψ₁ and ψ₃ = (λ² − λd²) − (λF² − λC²)·ψ₁. Each basis term is
 zero at the d line and ψ₂, ψ₃ are equal at F and C, so the model returns nd
-and Vd exactly. a₁ = 0.04144, b₁ = −5.553 × 10⁻⁴, a₂ = −0.1396 and
-b₂ = −3.130 × 10⁻³ are a least-squares fit to the 84 catalogue glasses over
+and Vd exactly. a₁ = 0.04138, b₁ = −5.543 × 10⁻⁴, a₂ = −0.1387 and
+b₂ = −3.144 × 10⁻³ are a least-squares fit to the 84 catalogue glasses over
 365–1014 nm, which the validation reference refits. Its range is 365–1014
 nm; outside it `fitIndex` returns `null`.
 
@@ -143,7 +143,7 @@ nm; outside it `fitIndex` returns `null`.
 |---|---|---|---|
 | 435.8–706.5 (g to r lines) | 1.6 × 10⁻⁵ | 1.4 × 10⁻⁴ | 1.4 × 10⁻³ |
 | 404.7–1014 | 4.2 × 10⁻⁵ | 4.1 × 10⁻⁴ | 4.4 × 10⁻³ |
-| 365–404.7 | 4.0 × 10⁻⁴ | 2.6 × 10⁻³ | 7.2 × 10⁻³ |
+| 365–404.7 | 3.9 × 10⁻⁴ | 2.6 × 10⁻³ | 7.3 × 10⁻³ |
 
 The errors are absolute index differences against the 84 glasses, sampled
 at 41 wavelengths per glass and range. The largest belong to the densest

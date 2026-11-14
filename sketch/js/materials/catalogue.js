@@ -490,7 +490,7 @@ export function findGlass(name) {
 const LINE_D_UM = 0.5875618, LINE_F_UM = 0.4861327, LINE_C_UM = 0.6562725;
 export const MODEL_GLASS = Object.freeze({
   formula: 'n(λ) = nd + (nd − 1)/Vd · [ψ₁(λ) + (a₁ + b₁·Vd)·ψ₂(λ) + (a₂ + b₂·Vd)·ψ₃(λ)]',
-  coefficients: Object.freeze({ a1: 0.04144199435, b1: -0.000555291968, a2: -0.1395902527, b2: -0.003129887996 }),
+  coefficients: Object.freeze({ a1: 0.04137775011, b1: -0.0005542841944, a2: -0.1387176762, b2: -0.003143568094 }),
   range: Object.freeze([365, 1014]),
   fittedTo: 'the 84 canvas glasses from a manufacturer\'s catalogue (all but fused silica and CaF₂)',
   // Absolute index error against those glasses, sampled over each range;
@@ -498,7 +498,7 @@ export const MODEL_GLASS = Object.freeze({
   error: Object.freeze({
     visible: Object.freeze({ range: Object.freeze([435.8, 706.5]), median: 1.6e-5, p95: 1.4e-4, max: 1.4e-3 }),
     main: Object.freeze({ range: Object.freeze([404.7, 1014]), median: 4.2e-5, p95: 4.1e-4, max: 4.4e-3 }),
-    ultraviolet: Object.freeze({ range: Object.freeze([365, 404.7]), median: 4.0e-4, p95: 2.6e-3, max: 7.2e-3 }),
+    ultraviolet: Object.freeze({ range: Object.freeze([365, 404.7]), median: 3.9e-4, p95: 2.6e-3, max: 7.3e-3 }),
   }),
   note: 'The largest errors belong to the densest flints near their ultraviolet absorption edge. Outside 365–1014 nm fitIndex returns null, as for any fit; the canvas holds a catalogue glass at the edge of its range instead.',
 });

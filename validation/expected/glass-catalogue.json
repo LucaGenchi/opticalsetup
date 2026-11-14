@@ -17409,14 +17409,14 @@
   {
    "absolute": true,
    "expected": {
-    "index": 1.72865498472447
+    "index": 1.72281135087778
    },
    "inputs": {
     "kind": "index",
     "record": "nsf5",
-    "wavelengthNm": 370.0
+    "wavelengthNm": 380.0
    },
-   "name": "N-SF5 evaluated at 370.0 nm",
+   "name": "N-SF5 evaluated at 380.0 nm",
    "note": "transcription check of the dataset's formula",
    "tolerance": {
     "index": 1e-09
@@ -17425,14 +17425,14 @@
   {
    "absolute": true,
    "expected": {
-    "index": 1.64397849540905
+    "index": 1.64389887045321
    },
    "inputs": {
     "kind": "index",
     "record": "nsf5",
-    "wavelengthNm": 1435.0
+    "wavelengthNm": 1440.0
    },
-   "name": "N-SF5 evaluated at 1435.0 nm",
+   "name": "N-SF5 evaluated at 1440.0 nm",
    "note": "transcription check of the dataset's formula",
    "tolerance": {
     "index": 1e-09
@@ -25544,10 +25544,10 @@
   {
    "absolute": true,
    "expected": {
-    "a1": 0.0414419943516,
-    "a2": -0.139590252672,
-    "b1": -0.000555291968091,
-    "b2": -0.00312988799569
+    "a1": 0.0413777501113,
+    "a2": -0.138717676161,
+    "b1": -0.000554284194432,
+    "b2": -0.0031435680941
    },
    "inputs": {
     "kind": "model-coefficients"
@@ -25599,8 +25599,8 @@
   },
   {
    "expected": {
-    "max": 0.0072,
-    "median": 0.0004,
+    "max": 0.0073,
+    "median": 0.00039,
     "p95": 0.0026
    },
    "inputs": {
@@ -25618,7 +25618,7 @@
   {
    "absolute": true,
    "expected": {
-    "index": 1.53636489955
+    "index": 1.5363649493
    },
    "inputs": {
     "kind": "model",
@@ -25635,7 +25635,7 @@
   {
    "absolute": true,
    "expected": {
-    "index": 1.52239146559
+    "index": 1.52239146707
    },
    "inputs": {
     "kind": "model",
@@ -25669,7 +25669,7 @@
   {
    "absolute": true,
    "expected": {
-    "index": 1.51433785798
+    "index": 1.51433785946
    },
    "inputs": {
     "kind": "model",
@@ -25686,7 +25686,7 @@
   {
    "absolute": true,
    "expected": {
-    "index": 1.50759156845
+    "index": 1.50759156541
    },
    "inputs": {
     "kind": "model",
@@ -25703,7 +25703,7 @@
   {
    "absolute": true,
    "expected": {
-    "index": 1.8714901201
+    "index": 1.87147341477
    },
    "inputs": {
     "kind": "model",
@@ -25720,7 +25720,7 @@
   {
    "absolute": true,
    "expected": {
-    "index": 1.80653592958
+    "index": 1.80653545956
    },
    "inputs": {
     "kind": "model",
@@ -25754,7 +25754,7 @@
   {
    "absolute": true,
    "expected": {
-    "index": 1.77597829719
+    "index": 1.77597782716
    },
    "inputs": {
     "kind": "model",
@@ -25771,7 +25771,7 @@
   {
    "absolute": true,
    "expected": {
-    "index": 1.75494679206
+    "index": 1.75494849717
    },
    "inputs": {
     "kind": "model",
@@ -25788,7 +25788,7 @@
   {
    "absolute": true,
    "expected": {
-    "index": 1.83139318171
+    "index": 1.83138926979
    },
    "inputs": {
     "kind": "model",
@@ -25805,7 +25805,7 @@
   {
    "absolute": true,
    "expected": {
-    "index": 1.79969340417
+    "index": 1.7996932942
    },
    "inputs": {
     "kind": "model",
@@ -25839,7 +25839,7 @@
   {
    "absolute": true,
    "expected": {
-    "index": 1.78305786296
+    "index": 1.78305775298
    },
    "inputs": {
     "kind": "model",
@@ -25856,7 +25856,7 @@
   {
    "absolute": true,
    "expected": {
-    "index": 1.77020772889
+    "index": 1.77020813055
    },
    "inputs": {
     "kind": "model",
@@ -25873,7 +25873,7 @@
   {
    "absolute": true,
    "expected": {
-    "index": 1.80054577187
+    "index": 1.80053268902
    },
    "inputs": {
     "kind": "model",
@@ -25890,7 +25890,7 @@
   {
    "absolute": true,
    "expected": {
-    "index": 1.74657402011
+    "index": 1.74657365202
    },
    "inputs": {
     "kind": "model",
@@ -25924,7 +25924,7 @@
   {
    "absolute": true,
    "expected": {
-    "index": 1.72085897773
+    "index": 1.72085860965
    },
    "inputs": {
     "kind": "model",
@@ -25941,7 +25941,7 @@
   {
    "absolute": true,
    "expected": {
-    "index": 1.70289688302
+    "index": 1.70289821883
    },
    "inputs": {
     "kind": "model",
