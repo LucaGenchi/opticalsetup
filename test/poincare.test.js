@@ -174,7 +174,7 @@ test('the Stokes numbers round to 0.01, so round-off reads 0.00 and no -0.00 app
   assert.deepEqual(stokesDisplay({ stokes: { s0: NaN, s1: NaN, s2: 0, s3: 0 }, detectedPowerW: Infinity }).values, ['0.00', '0.00', '0.00', '0.00']);
 });
 
-test('the polarimeter weighs a mix by watts; a camera keeps its own weighting, with its label and vector from one calculation', async () => {
+test('the polarimeter, the general detector and the camera weigh a mix by watts, with label and vector from one calculation', async () => {
   const { createElement } = await import('../sketch/js/elements.js');
   await import('../sketch/js/detector-instruments.js');
   const { traceScene } = await import('../sketch/js/raytrace.js');
@@ -191,18 +191,14 @@ test('the polarimeter weighs a mix by watts; a camera keeps its own weighting, w
     traceScene(elements, []);
     return enhancedReading(detector, elements);
   };
-  for (const type of ['polarimeter', 'generaldetector']) {
+  for (const type of ['polarimeter', 'generaldetector', 'camera']) {
     const reading = read(type);
     assert.equal(reading.polarization, 'Partly linear 90°', type);
     close(reading.normalizedStokes.s1, -0.5, 1e-9, `${type} s1`);
+    // The camera's vector comes from the same reconstruction as its label,
+    // so the sphere can never contradict the label.
+    assert.equal(reading.polarization, polarizationDescription(reading.normalizedStokes), type);
   }
-  // A camera counts each source as a fraction of itself, as before this
-  // change (a known limit: the two beams weigh equally). What changed is
-  // that its vector comes from the same reconstruction as its label, so the
-  // sphere can never contradict the label.
-  const camera = read('camera');
-  assert.equal(camera.polarization, polarizationDescription(camera.normalizedStokes));
-  assert.equal(camera.polarization, 'Unpolarized');
 });
 
 test('S0 falls back to relative power when the watts cover only some of the light', async () => {
