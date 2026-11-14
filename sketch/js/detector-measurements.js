@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Qualitative measurements derived from the ray tracer for detector screens.
 
+import { readingScope } from './readout-scope.js';
 import { metalensFocalLength, registry } from './elements.js';
 import { detectorReading, probeAt } from './raytrace.js';
 import {
@@ -169,7 +170,7 @@ export function enhancedReading(sensor, elements = []) {
   const reading = detectorReading(sensor.id);
   if (!reading) return null;
   const power = detectedPower(reading, elements);
-  return {
+  const enhanced = {
     ...reading,
     beamDiameter: reading.samples > 1 ? Math.max(0, reading.spotSpan) : 0,
     stokes: sampleStokes(sensor, reading),
@@ -181,6 +182,9 @@ export function enhancedReading(sensor, elements = []) {
     // power field of its own, so the watt figure is a floor, not the total.
     powerCoversAllArrivals: power.complete,
   };
+  // The quantities added here carry their scope too (issue #313, A5).
+  enhanced.scope = { ...readingScope(enhanced), ...(reading.scope || {}) };
+  return enhanced;
 }
 
 function lensBend(direction, hitPoint, surface, focalLength) {

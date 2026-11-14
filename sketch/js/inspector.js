@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Right-hand inspector: edit properties of the selected element or manual beam.
 
+import { statedScopes } from './readout-scope.js';
 import { state, changed, pushUndo, findSelected } from './state.js';
 import { emissionRayCount, emissionRayCountAfterKindChange, EMISSION_RAY_LIMITS } from './emission.js';
 import { MAX_AOTF_CHANNELS, newAotfChannel, normalizeAotfChannels } from './aotf.js';
@@ -286,6 +287,13 @@ function inspectorHead(def, meta, element = null) {
     <div class="inspector-desc">${esc(meta.description)}</div>
     ${meta.note ? `<div class="inspector-note${noteClass}">${esc(meta.note)}</div>` : ''}
   </div>`;
+}
+
+// What the reading assumes about the direction out of the drawing plane
+// (issue #313, A5), for the detailed readout. Empty where there is nothing to
+// state (statedScopes): the row is then left out.
+function readoutScopeHTML(rd) {
+  return statedScopes(rd, 'detail').map(scope => esc(scope.label)).join('<br>');
 }
 
 function sensorName(el) {
@@ -589,6 +597,7 @@ function measurementHTML(el) {
     <div class="measurement-status"><span class="signal-light" style="background:${statusColor}"></span>${statusText}</div>
     <dl class="measurement-grid">
       ${rd.approximations?.length ? `<dt>Caveat</dt><dd style="color:#f59e0b">${rd.approximations.map(esc).join('<br>')}</dd>` : ''}
+      ${readoutScopeHTML(rd) ? `<dt>Scope</dt><dd data-readout-scope>${readoutScopeHTML(rd)}</dd>` : ''}
       <dt>${isCamera ? 'Relative intensity' : 'Relative ray weight'}</dt><dd>${signal}</dd>
       ${isCamera ? cameraOpticalRows : `
       <dt>Spectrum</dt><dd>${spectral}</dd>

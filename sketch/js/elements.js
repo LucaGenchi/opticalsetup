@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
+import { scopeTag } from './readout-scope.js';
 import { conicMirrorGeometry, conicMirrorSize, conicMirrorSVG, conicMirrorSurfaces } from './conic-mirror.js';
 // Registry of optical elements.
 // Local coordinates: element centered at (0,0); default optical propagation is along +x.
@@ -517,11 +518,15 @@ function shortPolarization(polarization = '') {
     .slice(0, 12);
 }
 
+// The mode line names the view and, as issue #313 (A5) asks, the scope: a
+// detailed view always states it, a summary only when it is not "in the
+// drawing plane".
 function displayViewName(view, rd) {
-  if (view === 'spectrum') return 'λ SAMPLES';
-  if (view === 'detail') return 'DETAIL';
-  if (rd?.readoutKind === 'camera') return 'INTENSITY PROFILE';
-  return rd?.readoutKind === 'pmt' ? 'PMT OUTPUT' : 'REL SIGNAL';
+  const name = view === 'spectrum' ? 'λ SAMPLES' : view === 'detail' ? 'DETAIL'
+    : rd?.readoutKind === 'camera' ? 'INTENSITY PROFILE'
+      : rd?.readoutKind === 'pmt' ? 'PMT OUTPUT' : 'REL SIGNAL';
+  const tag = scopeTag(rd, view);
+  return tag ? `${name} · ${tag}` : name;
 }
 
 function cameraCoherentPathCount(reading) {

@@ -381,6 +381,18 @@ one after another.
   `docs/adding-physics.md` once step 0.5 has landed. Until then, the model
   statement, reference and tolerance go in the pull request description.
 - **No readout without its labels** once 1.2 has landed.
+- **Every readout states its scope** (issue #313, step A5): in the drawing
+  plane, out of the plane (a number only), meridional rays only, or assumes a
+  circular beam (`sketch/js/readout-scope.js`). Every reading carries it. A
+  scope other than "in the drawing plane" is shown wherever it applies, in
+  summaries too; "in the drawing plane" is shown in the detailed readouts of
+  the detectors that measure the light's spatial distribution (camera,
+  wavefront detector), since power, spectrum, polarization and timing do not
+  depend on it. A quantity
+  that needs a beam area (irradiance, fluence, conversion efficiency, damage
+  estimates) is computed only under an explicit circular-beam assumption.
+  `test/readout-scope.test.js` fails when a detector reading carries a
+  quantity with no scope.
 - **Golden snapshots are updated deliberately.** A PR that changes them
   explains the physics reason in its description.
 - **One PR, one step.** Every PR names the roadmap step it implements.
