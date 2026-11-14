@@ -34,8 +34,9 @@ tabulated complex index (P8). A record may also carry a Verdet block
 (below).
 
 Every fit keeps its source's own formula: the Sellmeier form
-n² − 1 = A + Σ Bλ²/(λ² − C), or Ciddor's form n − 1 = Σ B/(C − λ⁻²) for air,
-with λ in µm, or, where the source gives measured indices and no formula,
+n² − 1 = A + Σ Bλ²/(λ² − C), the power series n² = A + Σ c λ^p of the HOYA
+catalogue and some CDGM glasses (L1), or Ciddor's form n − 1 = Σ B/(C − λ⁻²)
+for air, with λ in µm, or, where the source gives measured indices and no formula,
 the table itself (`tabulated`), interpolated linearly between its points and
 never beyond them. `fitIndex(fit, wavelengthNm)` evaluates any form and
 returns `null` outside the fit's domain. It also keeps its domain in nm, its conditions and what its
@@ -57,13 +58,97 @@ indices are relative to (air, vacuum, or not stated by the source).
 | Calcite (A3b) | uniaxial, negative | Ghosh, 204–2172 nm | Opt. Commun. 163, 95 (1999) | closed |
 | YVO₄ (A3b) | uniaxial, positive | Lomheim and DeShazer, one term per ray, 488–3390 nm | J. Appl. Phys. 49, 5517 (1978), Eqs. (20)–(21) | closed |
 | TGG (A3b) | isotropic, tabulated | Schlarb and Sugg, nine indices at 20 °C, 404.66–1176.68 nm | Phys. Status Solidi B 182, K91 (1994) | closed |
+| 74 catalogue glasses (L1): 42 SCHOTT, 19 OHARA, 7 CDGM, 6 HOYA, listed below | isotropic | each maker's Zemax catalogue, 20 °C (OHARA 25 °C), relative to air | SCHOTT (2017-01-20), OHARA (2017-11-30), CDGM (2022-06), HOYA (2017-04-01) data sheets and Zemax catalogues | datasheet (free from the maker) |
 
 The canvas glass elements list the twelve glasses and crystals that have
 always been canvas glasses (the ten SCHOTT glasses, fused silica and CaF₂),
-in the same order. A glass element traces one index, so it lists only
+in the same order, under "Common glasses", then the larger catalogue of L1
+under each maker's name. A glass element traces one index, so it lists only
 isotropic records. A birefringent crystal is never offered there with a
 single index. The dispersion calculator lists a uniaxial crystal as its two
 principal entries, each marked birefringent, as before.
+
+## The larger glass catalogue (L1)
+
+Step L1 adds the glasses of common catalogue lenses: crown, flint and
+lanthanum glasses and the moulding glasses of catalogue aspheres, from four
+makers' Zemax catalogues as the refractiveindex.info database reproduces
+them (records `specs/<maker>/optical/<name>.yml` at commit `e6d15e36`).
+The data sit in `sketch/js/materials/glasses.js`; each record keeps the
+catalogue's own nd and Vd, which its label quotes.
+
+- **SCHOTT:** N-BAF10, N-BAF52, N-BAK1, N-BAK4, N-BALF4, N-F2, N-FK5, N-K5,
+  N-KF9, N-KZFS4, N-KZFS8, N-LAF2, N-LAK14, N-LAK21, N-LAK22, N-LASF44,
+  N-PSK53A, N-SF1, N-SF2, N-SF4, N-SF6, N-SF6HT, N-SF8, N-SF15, N-SF66,
+  N-SK2, N-SK4, N-SK11, N-SK14, N-SSK2, N-SSK5, N-SSK8, N-ZK7, SF2, SF5,
+  SF10, SF11, SF57 and the moulding glasses P-BK7, P-SK57, P-LASF47, P-SF68.
+- **OHARA (25 °C):** S-BSL7, S-BAL35, S-BAH11, S-PHM52, S-LAL18, S-LAH58,
+  S-LAH64, S-LAH79, S-TIM2, S-TIH6, S-TIH11, S-TIH53, S-NPH1, S-NPH2,
+  S-FPL51, S-FPL53 and the moulding glasses L-BAL35, L-BAL42, L-LAH53.
+- **CDGM:** H-K9L, H-ZF52, H-ZLAF52 and the moulding glasses D-K59, D-ZK3,
+  D-ZLAF52LA, D-LAF79.
+- **HOYA:** E-FD10, NBFD10, TAFD5F and the moulding glasses M-BACD5N,
+  M-LAC130, M-TAFD305.
+
+**Checked against the catalogues.** Every fit reproduces its catalogue's
+nd to within 4.8 × 10⁻⁶ and Vd to within 0.0051, and the indices the SCHOTT,
+OHARA and CDGM data sheets tabulate at the spectral lines to within 5.0 ×
+10⁻⁶ (69 glasses; the data sheets print five or six decimals). The SCHOTT
+sheets print the line wavelengths rounded to 0.1 nm while their indices
+belong to the true lines; compared at the rounded wavelengths a dense flint
+would seem off by 3 × 10⁻⁵ at the h line. The HOYA glasses and nine others
+have no page in those editions of the data sheets and are checked against
+nd and Vd only (`validation/reference/glass_catalogue.py`).
+
+**Left out.** SUMITA's catalogue: its fits (K-VC89, K-PBK40, K-PG325,
+K-CSK120) miss the catalogue's own nd by up to 2.1 × 10⁻⁵ and Vd by up to
+0.12, so they cannot pass a five-decimal check. The moulded-state variants
+(SUMITA "(M)", CDGM "-25"), whose index differs from the annealed glass by
+about 10⁻³: a record holds the catalogue's annealed glass, and a moulded
+lens may differ from it by that much.
+
+**Ranges.** Several fits end early: OHARA L-LAH53 at 700 nm, L-BAL42 at
+900 nm, HOYA's and CDGM H-ZLAF52 at about 1014 nm. The canvas holds a glass
+at the edge of its fit, as before; the dispersion calculator declines
+outside it.
+
+### Names in lens files
+
+`findGlass(name)` returns the record a lens file's glass name means. It
+compares names with case, spaces, hyphens and underscores removed, so
+`NBK7`, `n-bk7` and `N BK7` all find N-BK7 and `SLAH64` finds S-LAH64, and
+then tries a short alias table for names that are not a catalogue spelling:
+`BK7` (SCHOTT's withdrawn lead glass, traced as N-BK7 as the app always
+has), `FUSED SILICA`, `F_SILICA` and `SIO2` for fused silica, `CAF2` for
+calcium fluoride. An unknown name returns `null`; step L3 then builds a
+model glass from the file's nd and Vd.
+
+### The model glass
+
+Two numbers do not fix a dispersion curve. `modelGlass(nd, Vd)` uses the
+"normal line": the relative partial dispersion (n(λ) − nd)/(nF − nC) of
+optical glasses is close to a linear function of Vd at every wavelength.
+
+n(λ) = nd + (nd − 1)/Vd · [ψ₁(λ) + (a₁ + b₁·Vd)·ψ₂(λ) + (a₂ + b₂·Vd)·ψ₃(λ)]
+
+with λ in µm, ψ₁ = (λ⁻² − λd⁻²)/(λF⁻² − λC⁻²), ψ₂ = (λ⁻⁴ − λd⁻⁴) −
+(λF⁻⁴ − λC⁻⁴)·ψ₁ and ψ₃ = (λ² − λd²) − (λF² − λC²)·ψ₁. Each basis term is
+zero at the d line and ψ₂, ψ₃ are equal at F and C, so the model returns nd
+and Vd exactly. a₁ = 0.04144, b₁ = −5.553 × 10⁻⁴, a₂ = −0.1396 and
+b₂ = −3.130 × 10⁻³ are a least-squares fit to the 84 catalogue glasses over
+365–1014 nm, which the validation reference refits. Its range is 365–1014
+nm; outside it `fitIndex` returns `null`.
+
+| Range (nm) | Median error | 95th percentile | Largest |
+|---|---|---|---|
+| 435.8–706.5 (g to r lines) | 1.6 × 10⁻⁵ | 1.4 × 10⁻⁴ | 1.4 × 10⁻³ |
+| 404.7–1014 | 4.2 × 10⁻⁵ | 4.1 × 10⁻⁴ | 4.4 × 10⁻³ |
+| 365–404.7 | 4.0 × 10⁻⁴ | 2.6 × 10⁻³ | 7.2 × 10⁻³ |
+
+The errors are absolute index differences against the 84 glasses, sampled
+at 41 wavelengths per glass and range. The largest belong to the densest
+flints near their ultraviolet absorption edge. The model is for a glass a lens file names but the catalogue lacks; no canvas
+menu offers it.
 
 ## Verdet constants
 

@@ -20,10 +20,14 @@ const LAMBDA_D = 587.6, LAMBDA_F = 486.1, LAMBDA_C = 656.3;
 const C_METRES_PER_SECOND = 299792458;
 
 // The canvas glasses, from the shared material catalogue
-// (sketch/js/materials/catalogue.js), in the shape the tracer reads.
+// (sketch/js/materials/catalogue.js), in the shape the tracer reads: a
+// three-term Sellmeier fit keeps its B and C lists; a power-series fit
+// (form 'polynomial', n² = A + Σ c λ^p) keeps A and its [c, p] terms.
 const CATALOGUE = canvasGlassRecords().map(record => ({
-  id: record.id, label: record.label,
-  B: record.terms.map(([B]) => B), C: record.terms.map(([, C]) => C),
+  id: record.id, label: record.label, group: record.menuGroup, form: record.form,
+  ...(record.form === 'polynomial'
+    ? { A: record.A, terms: record.terms.map(term => [...term]) }
+    : { A: record.A || 0, B: record.terms.map(([B]) => B), C: record.terms.map(([, C]) => C) }),
   range: record.range,
 }));
 
@@ -36,7 +40,9 @@ export const GLASSES = new Map(CATALOGUE.map(g => [g.id, { ...g }]));
 export const LEGACY_GLASS_ID = 'bk7';
 export const LEGACY_GLASS_REPLACEMENT = 'nbk7';
 
-export const GLASS_OPTIONS = CATALOGUE.map(g => [g.id, GLASSES.get(g.id).label]);
+// [id, label, menu group]: the select menus put the first twelve glasses
+// under "Common glasses" and the larger catalogue under each maker's name.
+export const GLASS_OPTIONS = CATALOGUE.map(g => [g.id, GLASSES.get(g.id).label, g.group]);
 
 export const isDispersiveGlass = id => GLASSES.has(id);
 
@@ -78,7 +84,18 @@ export function isWavelengthInGlassRange(id, wavelength) {
 function sellmeierTerms(glass, wavelengthNm) {
   const wavelengthUm = boundedWavelengthNm(wavelengthNm, glass) / 1000;
   const lambda2 = wavelengthUm * wavelengthUm;
-  let squaredIndex = 1, first = 0, second = 0;
+  if (glass.form === 'polynomial') {
+    // n² = A + Σ c λ^p, so d(n²)/dλ = Σ c p λ^(p−1) and the second
+    // derivative Σ c p (p − 1) λ^(p−2).
+    let squaredIndex = glass.A, first = 0, second = 0;
+    for (const [c, p] of glass.terms) {
+      squaredIndex += c * wavelengthUm ** p;
+      first += c * p * wavelengthUm ** (p - 1);
+      second += c * p * (p - 1) * wavelengthUm ** (p - 2);
+    }
+    return { wavelengthUm, squaredIndex, first, second };
+  }
+  let squaredIndex = 1 + glass.A, first = 0, second = 0;
   for (let i = 0; i < glass.B.length; i++) {
     const B = glass.B[i], C = glass.C[i], denominator = lambda2 - C;
     const denominator2 = denominator * denominator;

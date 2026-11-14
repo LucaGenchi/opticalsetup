@@ -19,8 +19,11 @@
 // Formula forms, each the source's own, with λ in µm:
 //   'sellmeier'  n² − 1 = A + Σ B λ² / (λ² − C)      C in µm²
 //   'gas'        n − 1  = Σ B / (C − λ⁻²)             C in µm⁻²
+//   'polynomial' n² = A + Σ c λ^p                     (the power series of
+//                the HOYA and some CDGM catalogues; terms are [c, p])
 //   'tabulated'  measured (λ in nm, n) pairs, interpolated linearly in λ
 //                between them; no extrapolation
+//   'model'      a model glass built from nd and Vd alone (modelGlass below)
 // fitIndex() evaluates any of them. The canvas, the dispersion calculator
 // and the lens designer evaluate the forms they list with their own code;
 // the records added in A3b (calcite, YVO₄, TGG) are not listed by
@@ -36,7 +39,10 @@
 // CATALOGUE_DATASET.comparedAt and agree to round-off; the two fit domains
 // that differ from the dataset's are noted on their records.
 
-import { DODGE_HANDBOOK, SCHOTT_DATASHEET_URL, sourceAccess } from '../source-access.js';
+import {
+  CDGM_DATASHEET_URL, DODGE_HANDBOOK, HOYA_DATASHEET_URL, OHARA_DATASHEET_URL, SCHOTT_DATASHEET_URL, sourceAccess,
+} from '../source-access.js';
+import { CATALOGUE_GLASS_ROWS, GLASS_MAKERS, glassId } from './glasses.js';
 
 export const CATALOGUE_DATASET = Object.freeze({
   id: 'refractiveindex-info',
@@ -56,6 +62,18 @@ export const MATERIAL_REFERENCES = Object.freeze({
   schott: {
     citation: 'SCHOTT AG, Optical glass data sheets and Zemax catalogue (2017-01-20)',
     source: SCHOTT_DATASHEET_URL,
+  },
+  ohara: {
+    citation: 'OHARA Inc., Optical glass data sheets and Zemax catalogue (2017-11-30)',
+    source: OHARA_DATASHEET_URL,
+  },
+  cdgm: {
+    citation: 'CDGM Glass Co., Ltd., Optical glass data sheets and Zemax catalogue (2022-06)',
+    source: CDGM_DATASHEET_URL,
+  },
+  hoya: {
+    citation: 'HOYA Corporation, Zemax catalogue (2017-04-01)',
+    source: HOYA_DATASHEET_URL,
   },
   malitson1965: {
     citation: 'I. H. Malitson, “Interspecimen comparison of the refractive index of fused silica,” J. Opt. Soc. Am. 55, 1205–1208 (1965)',
@@ -129,8 +147,12 @@ export const VERDET_REFERENCES = Object.freeze({
 
 const SCHOTT_CONDITIONS = '20 °C; index relative to air';
 
+// The canvas's glass menus list the first twelve glasses as "Common glasses"
+// and the larger catalogue of step L1 under each manufacturer's name.
+export const COMMON_GLASS_GROUP = 'Common glasses';
+
 const schottGlass = (id, label, B, C, range, datasetRecord, extra = {}) => ({
-  id, kind: 'isotropic', group: 'glass', canvas: true, label, form: 'sellmeier', A: 0,
+  id, kind: 'isotropic', group: 'glass', canvas: true, menuGroup: COMMON_GLASS_GROUP, label, form: 'sellmeier', A: 0,
   terms: B.map((b, i) => [b, C[i]]), range, conditions: SCHOTT_CONDITIONS, indexReference: 'air',
   reference: 'schott', datasetRecord, ...extra,
 });
@@ -141,7 +163,7 @@ const RECORDS = [
     [1.03961212, 0.231792344, 1.01046945], [0.00600069867, 0.0200179144, 103.560653],
     [300, 2500], 'specs/schott/optical/N-BK7.yml'),
   {
-    id: 'silica', kind: 'isotropic', group: 'glass', canvas: true, label: 'Fused silica (nd 1.459 / V 67.8)',
+    id: 'silica', kind: 'isotropic', group: 'glass', canvas: true, menuGroup: COMMON_GLASS_GROUP, label: 'Fused silica (nd 1.459 / V 67.8)',
     form: 'sellmeier', A: 0,
     terms: [[0.6961663, 0.0684043 ** 2], [0.4079426, 0.1162414 ** 2], [0.8974794, 9.896161 ** 2]],
     range: [210, 3710], conditions: '20 °C', indexReference: 'unstated',
@@ -150,7 +172,7 @@ const RECORDS = [
   },
   {
     // Malitson, Appl. Opt. 2, 1103 (1963), 24 °C.
-    id: 'caf2', kind: 'isotropic', group: 'crystal', canvas: true, label: 'Calcium fluoride, CaF₂ (nd 1.434 / V 95.0)',
+    id: 'caf2', kind: 'isotropic', group: 'crystal', canvas: true, menuGroup: COMMON_GLASS_GROUP, label: 'Calcium fluoride, CaF₂ (nd 1.434 / V 95.0)',
     dispersionLabel: 'Calcium fluoride, CaF₂', form: 'sellmeier', A: 0,
     terms: [[0.5675888, 0.050263605 ** 2], [0.4710914, 0.1003909 ** 2], [3.8484723, 34.649040 ** 2]],
     range: [230, 9700], conditions: '24 °C', indexReference: 'unstated',
@@ -314,6 +336,25 @@ const RECORDS = [
   },
 ];
 
+// The glasses of step L1 (sketch/js/materials/glasses.js), after the
+// records above. Their nd and Vd are the catalogue's own numbers, kept with
+// the record; the label quotes them.
+const CATALOGUE_TEMPERATURE = { 293: '20 °C', 298: '25 °C' };
+const catalogueGlass = row => {
+  const maker = GLASS_MAKERS[row.maker];
+  return {
+    id: glassId(row.name), kind: 'isotropic', group: 'glass', canvas: true, menuGroup: maker.name,
+    maker: maker.name, name: row.name,
+    label: `${row.name} (nd ${row.nd.toFixed(3)} / V ${row.vd.toFixed(1)})`,
+    form: row.form, A: row.A, terms: row.terms, range: row.range,
+    conditions: `${row.temperatureK ? CATALOGUE_TEMPERATURE[row.temperatureK] ?? `${row.temperatureK} K` : 'temperature not stated by the dataset'}; index relative to air`,
+    indexReference: 'air', reference: maker.reference,
+    datasetRecord: `specs/${row.maker}/optical/${row.name}.yml`,
+    catalogue: { nd: row.nd, vd: row.vd },
+  };
+};
+RECORDS.push(...CATALOGUE_GLASS_ROWS.map(catalogueGlass));
+
 const freeze = value => {
   if (value && typeof value === 'object') {
     Object.values(value).forEach(freeze);
@@ -323,6 +364,7 @@ const freeze = value => {
 };
 
 export const MATERIAL_RECORDS = freeze(new Map(RECORDS.map(record => [record.id, record])));
+if (MATERIAL_RECORDS.size !== RECORDS.length) throw new Error('material catalogue: duplicate record id');
 
 // The isotropic glasses the canvas's glass elements offer, in menu order. A
 // glass element traces one index, so it never lists a uniaxial record.
@@ -375,7 +417,109 @@ export function fitIndex(fit, wavelengthNm) {
     for (const [B, C] of fit.terms) n2 += B * l2 / (l2 - C);
     return n2 > 0 && Number.isFinite(n2) ? Math.sqrt(n2) : null;
   }
+  if (fit.form === 'polynomial') {
+    let n2 = fit.A;
+    for (const [c, p] of fit.terms) n2 += c * um ** p;
+    return n2 > 0 && Number.isFinite(n2) ? Math.sqrt(n2) : null;
+  }
+  if (fit.form === 'model') return modelGlassIndex(fit, um);
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// Names in lens files.
+//
+// A lens file names its glass as its catalogue spells it, often without the
+// hyphen or in another case ("NBK7", "n-bk7", "S-LAH64", "SLAH64"). findGlass
+// compares names with case, spaces, hyphens and underscores removed, then
+// tries the aliases below: names that are not a catalogue glass's own
+// spelling but mean one of these records.
+const normalGlassName = name => String(name ?? '').toUpperCase().replace(/[\s_\-]/g, '');
+
+export const GLASS_ALIASES = Object.freeze({
+  // SCHOTT's lead-containing BK7 left the catalogue; its eco successor
+  // N-BK7 is the glass the app has always traced for it (see glass.js).
+  BK7: 'nbk7',
+  SILICA: 'silica', FUSEDSILICA: 'silica', FSILICA: 'silica', SIO2: 'silica', SILICAGLASS: 'silica',
+  CAF2: 'caf2', CALCIUMFLUORIDE: 'caf2',
+  // N-SF6HT is N-SF6 with higher transmittance; the two share one fit.
+  NSF6HTULTRA: 'nsf6ht',
+});
+
+const NAME_INDEX = new Map();
+for (const record of RECORDS) {
+  if (!record.canvas || record.kind !== 'isotropic') continue;
+  // A catalogue name carries a digit (N-BK7, S-LAH64); fused silica and
+  // CaF₂ are reached through the aliases.
+  const name = record.name ?? record.label.split(' ')[0];
+  if (/\d/.test(name)) NAME_INDEX.set(normalGlassName(name), record.id);
+}
+
+// The catalogue record a lens file's glass name means: { id, record, via }
+// with via 'name' or 'alias', or null when the catalogue has no such glass
+// (the caller may then build a model glass from the file's nd and Vd).
+export function findGlass(name) {
+  const key = normalGlassName(name);
+  if (!key) return null;
+  const byName = NAME_INDEX.get(key);
+  if (byName) return { id: byName, record: MATERIAL_RECORDS.get(byName), via: 'name' };
+  const byAlias = GLASS_ALIASES[key];
+  if (byAlias) return { id: byAlias, record: MATERIAL_RECORDS.get(byAlias), via: 'alias' };
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// The model glass: a dispersion curve from nd and Vd alone.
+//
+// Two numbers do not fix a dispersion curve. Optical glasses lie close to a
+// "normal line": the relative partial dispersion (n(λ) − nd)/(nF − nC) is
+// nearly a linear function of Vd at every wavelength. The model writes it as
+//
+//   n(λ) = nd + (nF − nC) · [ψ₁(λ) + (a₁ + b₁·Vd)·ψ₂(λ) + (a₂ + b₂·Vd)·ψ₃(λ)],
+//   nF − nC = (nd − 1)/Vd,
+//
+// with λ in µm and the basis
+//   ψ₁ = (λ⁻² − λd⁻²)/(λF⁻² − λC⁻²)
+//   ψ₂ = (λ⁻⁴ − λd⁻⁴) − (λF⁻⁴ − λC⁻⁴)·ψ₁
+//   ψ₃ = (λ² − λd²) − (λF² − λC²)·ψ₁,
+// each zero at the d line and ψ₂, ψ₃ equal at F and C, so the model returns
+// nd and Vd exactly for any coefficients. a₁, b₁, a₂, b₂ are a least-squares
+// fit, by validation/reference/glass_catalogue.py, to the 84 catalogue
+// glasses of MODEL_GLASS.fittedTo over 365–1014 nm; the validation suite
+// refits them and checks the error statement below.
+const LINE_D_UM = 0.5875618, LINE_F_UM = 0.4861327, LINE_C_UM = 0.6562725;
+export const MODEL_GLASS = Object.freeze({
+  formula: 'n(λ) = nd + (nd − 1)/Vd · [ψ₁(λ) + (a₁ + b₁·Vd)·ψ₂(λ) + (a₂ + b₂·Vd)·ψ₃(λ)]',
+  coefficients: Object.freeze({ a1: 0.04144199435, b1: -0.000555291968, a2: -0.1395902527, b2: -0.003129887996 }),
+  range: Object.freeze([365, 1014]),
+  fittedTo: 'the 84 canvas glasses from a manufacturer\'s catalogue (all but fused silica and CaF₂)',
+  // Absolute index error against those glasses, sampled over each range;
+  // the maximum is rounded up, so it bounds every sample.
+  error: Object.freeze({
+    visible: Object.freeze({ range: Object.freeze([435.8, 706.5]), median: 1.6e-5, p95: 1.4e-4, max: 1.4e-3 }),
+    main: Object.freeze({ range: Object.freeze([404.7, 1014]), median: 4.2e-5, p95: 4.1e-4, max: 4.4e-3 }),
+    ultraviolet: Object.freeze({ range: Object.freeze([365, 404.7]), median: 4.0e-4, p95: 2.6e-3, max: 7.2e-3 }),
+  }),
+  note: 'The largest errors belong to the densest flints near their ultraviolet absorption edge. Outside 365–1014 nm fitIndex returns null, as for any fit; the canvas holds a catalogue glass at the edge of its range instead.',
+});
+
+function modelGlassIndex(fit, um) {
+  const { a1, b1, a2, b2 } = MODEL_GLASS.coefficients;
+  const psi1 = l => (l ** -2 - LINE_D_UM ** -2) / (LINE_F_UM ** -2 - LINE_C_UM ** -2);
+  const p1 = psi1(um);
+  const psi2 = (um ** -4 - LINE_D_UM ** -4) - (LINE_F_UM ** -4 - LINE_C_UM ** -4) * p1;
+  const psi3 = (um ** 2 - LINE_D_UM ** 2) - (LINE_F_UM ** 2 - LINE_C_UM ** 2) * p1;
+  const n = fit.nd + (fit.nd - 1) / fit.vd * (p1 + (a1 + b1 * fit.vd) * psi2 + (a2 + b2 * fit.vd) * psi3);
+  return Number.isFinite(n) ? n : null;
+}
+
+// A model-glass fit for a glass known only by nd and Vd (a lens file's GLAS
+// line for a name the catalogue lacks), or null for numbers no optical glass
+// has. Evaluate it with fitIndex; outside its range fitIndex returns null.
+export function modelGlass(nd, vd) {
+  const n = Number(nd), v = Number(vd);
+  if (!(n > 1.2 && n < 2.5) || !(v > 10 && v < 110)) return null;
+  return Object.freeze({ form: 'model', nd: n, vd: v, range: MODEL_GLASS.range, conditions: 'model glass from nd and Vd', indexReference: 'air' });
 }
 
 // The signed Verdet constant of a record at a vacuum wavelength in nm, in
