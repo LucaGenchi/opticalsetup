@@ -11,11 +11,18 @@ const evidence = 'Equations checked against independent Python references, with 
 const DISPERSION_REFS = {
   schott: 1, malitson1965: 2, malitson1963: 3, malitson1972: 4, ghosh1999: 5, tamosauskas2018: 6,
   zelmon1998: 7, connolly1979: [8, 9], salzberg1957: [10, 9], daimon2007: 11, ciddor1996: 12,
+  ohara: 14, cdgm: 15, hoya: 16,
 };
-const formulaText = m => m.form === 'gas' ? 'n − 1 = Σ B/(C − λ⁻²)' : `n² − 1 = ${m.A ? 'A + ' : ''}Σ Bλ²/(λ² − C)`;
+const formulaText = m => {
+  if (m.form === 'gas') return 'n − 1 = Σ B/(C − λ⁻²)';
+  if (m.form === 'polynomial') return 'n² = A + Σ c λ<sup>p</sup>';
+  return `n² − 1 = ${m.A ? 'A + ' : ''}Σ Bλ²/(λ² − C)`;
+};
 const coefficientCell = m => [
-  ...(m.A ? [`A = ${m.A}`] : []),
-  ...m.terms.map(([B, C], i) => `B${i + 1} = ${B}, C${i + 1} = ${+C.toPrecision(10)}`),
+  ...(m.A || m.form === 'polynomial' ? [`A = ${m.A}`] : []),
+  ...m.terms.map(([B, C], i) => (m.form === 'polynomial'
+    ? `c${i + 1} = ${B}, p${i + 1} = ${C}`
+    : `B${i + 1} = ${B}, C${i + 1} = ${+C.toPrecision(10)}`)),
 ].join('<br>');
 const REFERENCE_TEXT = { air: 'air', vacuum: 'vacuum (absolute)', unstated: 'not stated' };
 const materialRows = [...MATERIALS.values()].map(m => `<tr><th scope="row">${m.label}</th><td>${formulaText(m)}</td><td>${coefficientCell(m)}</td><td>${m.range.join('–')}</td><td>${m.conditions}</td><td>${REFERENCE_TEXT[m.indexReference]}</td><td>${cite(...[DISPERSION_REFS[m.ref]].flat())}</td></tr>`).join('\n');
@@ -67,14 +74,14 @@ export const wavelengthCalculators = [
         formulas2: [{ tex: String.raw`\tau_0=K\frac{\lambda_0^2}{c\,\Delta\lambda},\qquad \tau_{\text{Gauss}}=\tau_0\sqrt{1+\left(\frac{4\ln2\;\mathrm{GDD}}{\tau_0^2}\right)^2}` }],
       },
       { id: 'materials', title: 'Materials, coefficients and sources',
-        html: `<p>Coefficients were transcribed from the refractiveindex.info database ${cite(13)}, which is in the public domain (CC0), and are attributed to the primary source of each fit. SCHOTT glasses follow the manufacturer’s catalogue ${cite(1)}. The domain is the source’s fit range, not a transmission guarantee: silicon, for example, absorbs below about 1.1 µm, and the page refuses wavelengths outside each domain instead of extrapolating.</p><div class="table-scroll"><table class="param-table"><thead><tr><th>Material</th><th>Formula (λ in µm)</th><th>Coefficients</th><th>Domain (nm)</th><th>Conditions</th><th>Index relative to</th><th>Source</th></tr></thead><tbody>\n${materialRows}\n</tbody></table></div><p>The ten SCHOTT glasses, fused silica and CaF₂ are the canvas’s own glasses, from the same catalogue, so this page and the tracer evaluate the same curves. The ordinary and extraordinary entries of sapphire, quartz and BBO are principal indices: they hold for light polarized perpendicular or parallel to the optic axis. A beam at another angle in a uniaxial crystal sees an angle-dependent extraordinary index, which is not modelled.</p>`,
+        html: `<p>Coefficients were transcribed from the refractiveindex.info database ${cite(13)}, which is in the public domain (CC0), and are attributed to the primary source of each fit. Optical glasses follow their manufacturer’s catalogue: SCHOTT ${cite(1)}, OHARA ${cite(14)}, CDGM ${cite(15)} and HOYA ${cite(16)}; HOYA’s and some CDGM fits are the catalogue’s power series in λ rather than a Sellmeier sum. The domain is the source’s fit range, not a transmission guarantee: silicon, for example, absorbs below about 1.1 µm, and the page refuses wavelengths outside each domain instead of extrapolating.</p><div class="table-scroll"><table class="param-table"><thead><tr><th>Material</th><th>Formula (λ in µm)</th><th>Coefficients</th><th>Domain (nm)</th><th>Conditions</th><th>Index relative to</th><th>Source</th></tr></thead><tbody>\n${materialRows}\n</tbody></table></div><p>Every optical glass listed, fused silica and CaF₂ are the canvas’s own glasses, from the same catalogue, so this page and the tracer evaluate the same curves. The ordinary and extraordinary entries of sapphire, quartz and BBO are principal indices: they hold for light polarized perpendicular or parallel to the optic axis. A beam at another angle in a uniaxial crystal sees an angle-dependent extraordinary index, which is not modelled.</p>`,
       },
       { id: 'precision', title: 'Precision and limits',
         html: '<p>An independent Python reference evaluates each source formula in its own published form, in 50-digit decimal arithmetic, and differentiates k(ω) = nω/c numerically in angular frequency. That route differs from the analytic wavelength derivatives used here. n, n<sub>g</sub>, GVD and TOD agree to 10⁻⁹ relative, or 10⁻⁹ fs²/mm and fs³/mm absolute near a zero crossing. The catalogue’s published n<sub>d</sub> and Abbe numbers separately anchor every SCHOTT glass. The four canvas glasses are also checked against the tracer’s own getters.</p><p>The digits describe the fit, not a real sample. Fits carry their own residuals (Malitson quotes about 10⁻⁵ in index for fused silica), and batch, temperature and stress move real indices further. The SCHOTT catalogue gives indices relative to air at its reference conditions; the water and air fits are absolute; for fused silica and the crystals the sources as consulted do not say, and the materials table records which applies. The page applies no air-to-vacuum correction. Converting to absolute indices (n × n<sub>air</sub> for standard air) raises n by about 3 × 10⁻⁴ × n and also changes the GVD. For N-BK7, for example, it adds 0.19 fs²/mm at 300 nm, 0.045 fs²/mm at 800 nm (0.1 %), 0.020 fs²/mm at 1300 nm (1 %) and 0.003 fs²/mm at 1690 nm. Near a zero-GVD wavelength the relative change has no bound: fused silica’s zero moves by about 0.2 nm. The added group delay L(n<sub>g</sub> − 1)/c and optical path L(n − 1) are excesses over the same path in the medium the fit is relative to, and the page labels them accordingly: air for the SCHOTT glasses, vacuum for water and air, and “the fit’s reference medium” where that is not stated. Against air instead of vacuum the readings differ by L(n<sub>g,air</sub> − 1)/c and L(n<sub>air</sub> − 1), under 0.1 % for the solids here.</p><p>The pulse rows describe a transform-limited input with the stated shape. They do not model a measured spectrum, spectral phase already on the pulse, nonlinear propagation or TOD-induced reshaping. Graphs sample 241 wavelengths; hover, use the arrow keys or open the data tables to read them.</p>',
       },
     ],
     references: [
-      { label: 'SCHOTT AG, Optical glass data sheets and Zemax catalogue (2017-01-20): N-BK7, N-FK51A, N-SK16, F2, N-SF5, N-SF10, N-SF11, N-SF14, N-SF57 and N-LASF9 dispersion constants, nd and Vd.', url: 'https://www.schott.com/shop/medias/schott-optical-glass-collection-datasheets-english-march2018.pdf?context=bWFzdGVyfHJvb3R8NTQwMzA2MXxhcHBsaWNhdGlvbi9wZGZ8aDllL2hlZS84ODE3NDA4ODY4MzgyLnBkZnw2Y2VlYjY0Njk3YzBkYzU4NDliOGMxMzVmNjgwZmRiYzdlYWMxYmJmZDU1NjdmYjIxYzU5MTQ4NmE1YjhmMGQ2' },
+      { label: 'SCHOTT AG, Optical glass data sheets and Zemax catalogue (2017-01-20): dispersion constants, nd and Vd of the SCHOTT glasses.', url: 'https://www.schott.com/shop/medias/schott-optical-glass-collection-datasheets-english-march2018.pdf?context=bWFzdGVyfHJvb3R8NTQwMzA2MXxhcHBsaWNhdGlvbi9wZGZ8aDllL2hlZS84ODE3NDA4ODY4MzgyLnBkZnw2Y2VlYjY0Njk3YzBkYzU4NDliOGMxMzVmNjgwZmRiYzdlYWMxYmJmZDU1NjdmYjIxYzU5MTQ4NmE1YjhmMGQ2' },
       { label: 'I. H. Malitson, “Interspecimen comparison of the refractive index of fused silica,” J. Opt. Soc. Am. 55, 1205–1208 (1965).', url: 'https://doi.org/10.1364/JOSA.55.001205' },
       { label: 'I. H. Malitson, “A redetermination of some optical properties of calcium fluoride,” Appl. Opt. 2, 1103–1107 (1963).', url: 'https://doi.org/10.1364/AO.2.001103' },
       { label: 'I. H. Malitson and M. J. Dodge, “Refractive index and birefringence of synthetic sapphire,” J. Opt. Soc. Am. 62, 1405 (1972); dispersion formula in M. J. Dodge, Handbook of Laser Science and Technology, Vol. IV, CRC Press (1986), p. 30.', url: 'https://opg.optica.org/josa/abstract.cfm?uri=josa-62-11-1336' },
@@ -87,6 +94,9 @@ export const wavelengthCalculators = [
       { label: 'M. Daimon and A. Masumura, “Measurement of the refractive index of distilled water from the near-infrared region to the ultraviolet region,” Appl. Opt. 46, 3811–3820 (2007).', url: 'https://doi.org/10.1364/AO.46.003811' },
       { label: 'P. E. Ciddor, “Refractive index of air: new equations for the visible and near infrared,” Appl. Opt. 35, 1566–1573 (1996).', url: 'https://doi.org/10.1364/AO.35.001566' },
       { label: 'M. N. Polyanskiy, “Refractiveindex.info database of optical constants,” Sci. Data 11, 94 (2024); database released under CC0.', url: 'https://doi.org/10.1038/s41597-023-02898-2' },
+      { label: 'OHARA Inc., Optical glass data sheets and Zemax catalogue (2017-11-30): dispersion constants, nd and Vd of the OHARA glasses.', url: 'https://www.ohara-inc.co.jp/en/product/optical/list/' },
+      { label: 'CDGM Glass Co., Ltd., Optical glass data sheets and Zemax catalogue (2022-06): dispersion constants, nd and Vd of the CDGM glasses.', url: 'http://www.cdgmgd.com/go.htm?k=Download&url=downList' },
+      { label: 'HOYA Corporation, Zemax catalogue (2017-04-01): dispersion constants, nd and Vd of the HOYA glasses.', url: 'http://www.hoya-opticalworld.com/english/datadownload/' },
     ],
   },
   {

@@ -7,6 +7,7 @@
 // catalogue, the chirp to compensate from the material calculator's data.
 
 import { GLASS_OPTIONS, GLASSES, MAX_SOURCE_GDD_FS2 } from '../../sketch/js/glass.js';
+import { COMMON_GLASS_GROUP } from '../../sketch/js/materials/catalogue.js';
 import { gaussianPulseDurationAfterGDD, sech2PulseDurationAfterGDD } from '../../sketch/js/glass.js';
 import { MATERIALS, MATERIAL_OPTIONS, materialDispersion, materialIndexDerivatives } from '../dispersion/materials.js';
 import { defaultsFor, parseInputs, unavailable } from '../assets/calculator-inputs.js';
@@ -15,7 +16,10 @@ import { LAYOUTS, buildLayout, buildFigure, dispersionAt, fourthOrder, phaseJet,
 const C_NM_PER_FS = 299.792458;
 const C_MM_PER_FS = 2.99792458e-4;
 const TIME_BANDWIDTH = { gauss: 0.441, sech2: 0.315 };
-const PRISM_GLASSES = GLASS_OPTIONS.filter(([id]) => MATERIALS.has(id));
+// The prism glasses: the common glasses the dispersion calculator lists
+// (the larger catalogue of step L1 is not offered for prisms).
+const PRISM_GLASSES = GLASS_OPTIONS.filter(([id, , group]) => group === COMMON_GLASS_GROUP && MATERIALS.has(id))
+  .map(([id, label]) => [id, label]);
 const PRISMS = ['prism-pair', 'four-prism'];
 const GRATINGS = ['grating-pair', 'four-grating', 'stretcher'];
 const PAIRS = ['grating-pair', 'four-grating'];

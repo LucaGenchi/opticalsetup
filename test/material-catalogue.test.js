@@ -31,7 +31,7 @@ test('catalogue: every record states its range, conditions, dataset, licence, re
     const fits = principalFits(record);
     assert.equal(fits.length, record.kind === 'uniaxial' ? 2 : 1);
     for (const { fit } of fits) {
-      assert.ok(['sellmeier', 'gas', 'tabulated'].includes(fit.form), `${record.id}: form`);
+      assert.ok(['sellmeier', 'gas', 'tabulated', 'polynomial'].includes(fit.form), `${record.id}: form`);
       assert.ok(fit.range[0] > 0 && fit.range[1] > fit.range[0], `${record.id}: range`);
       assert.ok(typeof fit.conditions === 'string' && fit.conditions.length > 0, `${record.id}: conditions`);
       assert.ok(['air', 'vacuum', 'unstated'].includes(fit.indexReference), `${record.id}: index reference`);
@@ -108,7 +108,7 @@ test('catalogue: canvas, dispersion calculator and lens designer return identica
       compared++;
     }
   }
-  assert.equal(compared, 12 * 65);
+  assert.equal(compared, canvasGlassRecords().length * 65);
   // Every fit the calculator lists reaches it with its own coefficients.
   // The records added in A3b are not listed anywhere yet: they become
   // selectable in P2, P3, P4 and P6.

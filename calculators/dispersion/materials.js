@@ -13,6 +13,7 @@
 //
 //   'sellmeier'  n² − 1 = A + Σ B λ² / (λ² − C)      λ in µm, C in µm²
 //   'gas'        n − 1  = Σ B / (C − λ⁻²)             λ in µm, C in µm⁻²
+//   'polynomial' n²     = A + Σ c λ^p                  λ in µm
 //
 // The catalogue records each fit's dataset (refractiveindex.info, CC0), its
 // primary source and that source's access status. `range` is the source's
@@ -23,7 +24,7 @@
 // consulted does not say. A uniaxial crystal appears here as its two
 // principal entries, ordinary and extraordinary.
 
-import { MATERIAL_RECORDS } from '../../sketch/js/materials/catalogue.js';
+import { COMMON_GLASS_GROUP, MATERIAL_RECORDS } from '../../sketch/js/materials/catalogue.js';
 
 const C_METRES_PER_SECOND = 299792458;
 // Fraunhofer d, F and C lines for the Abbe number (true wavelengths, nm).
@@ -34,7 +35,7 @@ const CRYSTAL = 'Fused silica and crystals';
 const FLUID = 'Liquids and gases';
 
 const fitEntry = (fit, fields) => ({
-  ...fields, form: fit.form, ...(fit.form === 'sellmeier' ? { A: fit.A } : {}),
+  ...fields, form: fit.form, ...(fit.form === 'sellmeier' || fit.form === 'polynomial' ? { A: fit.A } : {}),
   terms: fit.terms.map(term => [...term]), range: [...fit.range],
 });
 
@@ -56,6 +57,10 @@ const principal = (id, ray, group) => {
 
 const MATERIAL_LIST = [
   ...['nbk7', 'nfk51a', 'nsk16', 'f2', 'nsf5', 'nsf10', 'nsf11', 'nsf14', 'nsf57', 'nlasf9'].map(id => isotropic(id, GLASS)),
+  // The larger catalogue of step L1, in the catalogue's order, one group per
+  // maker (the SCHOTT glasses join the group above).
+  ...[...MATERIAL_RECORDS.values()].filter(record => record.canvas && record.menuGroup !== COMMON_GLASS_GROUP)
+    .map(record => isotropic(record.id, `Optical glass (${record.maker})`)),
   isotropic('silica', CRYSTAL),
   isotropic('caf2', CRYSTAL),
   ...['sapphire', 'quartz', 'bbo'].flatMap(id => [principal(id, 'ordinary', CRYSTAL), principal(id, 'extraordinary', CRYSTAL)]),
@@ -79,6 +84,17 @@ export function isInMaterialRange(id, wavelengthNm) {
 //   'sellmeier'  B λ²/(λ² − C)     = B + B·C/(λ² − C)            K = B·C,   s = C
 //   'gas'        B/(C − λ⁻²)       = (B/C) + (B/C²)/(λ² − 1/C)   K = B/C²,  s = 1/C
 function formulaTerms(material, um) {
+  if (material.form === 'polynomial') {
+    // n² = A + Σ c λ^p: each term's k-th derivative is c p (p−1)… λ^(p−k).
+    let v = material.A, d1 = 0, d2 = 0, d3 = 0;
+    for (const [c, p] of material.terms) {
+      v += c * um ** p;
+      d1 += c * p * um ** (p - 1);
+      d2 += c * p * (p - 1) * um ** (p - 2);
+      d3 += c * p * (p - 1) * (p - 2) * um ** (p - 3);
+    }
+    return { v, d1, d2, d3 };
+  }
   const l2 = um * um;
   let v = material.form === 'gas' ? 1 : 1 + material.A, d1 = 0, d2 = 0, d3 = 0;
   for (const [B, C] of material.terms) {
@@ -95,7 +111,7 @@ function formulaTerms(material, um) {
 }
 
 // n and dⁿn/dλⁿ (µm⁻ⁿ) at a vacuum wavelength in nm, or null outside the
-// fit domain. For 'sellmeier' the derivatives follow from S = n²:
+// fit domain. For 'sellmeier' and 'polynomial' the derivatives follow from S = n²:
 // S' = 2nn', S'' = 2n'² + 2nn'', S''' = 6n'n'' + 2nn'''.
 export function materialIndexDerivatives(id, wavelengthNm) {
   const material = MATERIALS.get(id);

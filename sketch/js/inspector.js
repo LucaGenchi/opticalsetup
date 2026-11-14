@@ -85,6 +85,22 @@ export const REBUILD_ON_COMMIT_KEYS = [
 // params.
 const isAppearance = (p, sel) => (typeof p.appearance === 'function' ? p.appearance(sel.params) : Boolean(p.appearance));
 
+// <option>s for [value, label, disabled, group] entries. An entry with a
+// group goes into an <optgroup> of that name, consecutive entries sharing
+// it; an entry without one stays at the top level, in its place.
+function groupedOptionsHtml(options, selected) {
+  let html = '', open = null;
+  for (const [ov, ol, disabled, group] of options) {
+    if ((group ?? null) !== open) {
+      if (open !== null) html += '</optgroup>';
+      if (group) html += `<optgroup label="${esc(group)}">`;
+      open = group ?? null;
+    }
+    html += `<option value="${esc(ov)}" ${ov === selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}>${esc(ol)}</option>`;
+  }
+  return open !== null ? `${html}</optgroup>` : html;
+}
+
 function field(labelText, inputHTML, className = '') {
   return `<label class="field${className ? ` ${className}` : ''}"><span>${esc(labelText)}</span>${inputHTML}</label>`;
 }
@@ -746,7 +762,7 @@ function surfaceTableHTML(sel) {
       field('Radius R (mm)', `<input type="number" data-si="${i}" data-sk="r" min="${-ROW_RADIUS_MAX}" max="${ROW_RADIUS_MAX}" step="0.1" value="${row.r}">`) +
       field('To next (mm)', `<input type="number" data-si="${i}" data-sk="thickness" min="${ROW_THICKNESS_MIN}" max="${ROW_THICKNESS_MAX}" step="0.1" value="${row.thickness}" ${last ? 'disabled aria-disabled="true"' : ''}>`) +
       field('Medium after', `<select data-si="${i}" data-sk="glass" ${last ? 'disabled aria-disabled="true"' : ''}>` +
-        [[AIR, 'Air'], ...GLASS_OPTIONS].map(([value, label]) => `<option value="${value}" ${row.glass === value ? 'selected' : ''}>${esc(label)}</option>`).join('') +
+        groupedOptionsHtml([[AIR, 'Air'], ...GLASS_OPTIONS].map(([value, label, group]) => [value, label, false, group]), row.glass) +
         `</select>`) +
       `</div>` +
       `<label class="surface-stop-toggle"><span><input type="checkbox" data-si="${i}" data-sk="stop" ${row.stop ? 'checked' : ''} ${row.glass !== AIR ? 'disabled' : ''}> Aperture stop after this surface</span>` +
@@ -889,12 +905,10 @@ function paramField(p, sel) {
   if (p.type === 'color') return field(p.label, `<input type="color" data-p="${p.key}" value="${v}">`);
   if (p.type === 'select') {
     const options = [
-      ...(p.options || []).map(([ov, ol]) => [ov, ol, false]),
+      ...(p.options || []).map(([ov, ol, group]) => [ov, ol, false, group]),
       ...(p.legacyOptions || []).filter(([ov]) => ov === v).map(([ov, ol]) => [ov, ol, true]),
     ];
-    return field(p.label, `<select data-p="${p.key}">`
-      + options.map(([ov, ol, disabled]) => `<option value="${ov}" ${ov === v ? 'selected' : ''} ${disabled ? 'disabled' : ''}>${esc(ol)}</option>`).join('')
-      + `</select>`) + note;
+    return field(p.label, `<select data-p="${p.key}">${groupedOptionsHtml(options, v)}</select>`) + note;
   }
   if (p.type === 'derived-select') {
     const selected = p.get(sel.params);
