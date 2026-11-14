@@ -1095,10 +1095,16 @@ function coherentCameraPolarization(camera, hits) {
     && Math.abs(left.s2 - right.s2) < 1e-7
     && Math.abs(left.s3 - right.s3) < 1e-7;
 
-  // Each contribution counts as a fraction of its own source, as it always
-  // has here: unlike the other sensors' mean, a camera does not yet weigh a
-  // mix of sources by their watts (the reconstruction does not keep the
-  // originating source of re-emitted light, which that would need).
+  // Each reconstructed contribution is a fraction of its own source. It is
+  // weighed by the watts that source delivers, as the other sensors' mean is
+  // (hitsWeighedByWatts). A contribution is keyed by `sourceId`, which a
+  // specimen relabels to itself when it emits, so the source whose watts
+  // count is found on the contribution's own hits: `originId`, the laser
+  // that pumped it. Should one contribution gather several origins (one
+  // specimen excited by two lasers), its watts are their mean, weighed by
+  // each origin's share of the arriving hits.
+  const originOf = hit => hit.originId || hit.sourceId || null;
+  const contributions = [];
   for (const entry of camera.spectralPowers || []) {
     const power = Math.max(0, Number(entry.power) || 0);
     if (!(power > 1e-12)) continue;
@@ -1114,11 +1120,43 @@ function coherentCameraPolarization(camera, hits) {
     // mixture needs a vector-field camera model; report that honestly rather
     // than reusing the pre-interference ray average.
     if (!state || states.some(candidate => !sameState(state, candidate))) return null;
-    total += power;
-    s1 += state.s1 * power;
-    s2 += state.s2 * power;
-    s3 += state.s3 * power;
+    const shares = new Map();
+    for (const hit of matching) {
+      const share = Number.isFinite(hit.power) && hit.power > 0 ? hit.power : 0;
+      shares.set(originOf(hit), (shares.get(originOf(hit)) || 0) + share);
+    }
+    contributions.push({ power, state, shares });
   }
+  const origins = new Set(contributions.flatMap(c => [...c.shares.keys()]));
+  const watts = new Map([...origins].map(id => [id, sourceWattsById.get(id)]));
+  // No watts to compare when only one source arrives, or when any source
+  // has no power setting: the fractions stand, as in hitsWeighedByWatts.
+  const rated = origins.size > 1 && [...watts.values()].every(w => Number.isFinite(w) && w >= 0);
+  const weightOf = ({ power, shares }) => {
+    if (!rated) return power;
+    let shareSum = 0, wattSum = 0;
+    for (const [id, share] of shares) {
+      shareSum += share;
+      wattSum += share * watts.get(id);
+    }
+    return shareSum > 0 ? power * wattSum / shareSum : 0;
+  };
+  const weights = contributions.map(weightOf);
+  // The weights are rescaled to the fractions' total before any threshold:
+  // the 1e-12 floors compare contributions with each other, and watts left
+  // in them would turn that into a physical floor that a nanowatt beam
+  // behind an ND filter fell under.
+  const fractions = contributions.reduce((sum, c) => sum + c.power, 0);
+  const weighed = weights.reduce((sum, w) => sum + w, 0);
+  const scale = rated && weighed > 0 && Number.isFinite(weighed) ? fractions / weighed : (rated ? 0 : 1);
+  contributions.forEach(({ state }, index) => {
+    const weight = weights[index] * scale;
+    if (!(Number.isFinite(weight) && weight > 0)) return;
+    total += weight;
+    s1 += state.s1 * weight;
+    s2 += state.s2 * weight;
+    s3 += state.s3 * weight;
+  });
   if (!(total > 1e-12)) return { polarization: 'No detected field', stokes: null };
   const stokes = { s1: s1 / total, s2: s2 / total, s3: s3 / total };
   return { polarization: polarizationDescription(stokes), stokes };
