@@ -926,21 +926,13 @@ function addSample(samples, wl, power, continuum = false, sourceId = null, width
 // signal, which other readouts compare it with -- so only the balance
 // between sources changes. When any source has no power setting there are no
 // watts to compare, and the fractions stand as before.
-// The watts of each source in a mix, or null when there is nothing to weigh
-// (fewer than two sources) or no watts to compare (a source without a power
-// setting), in which case each contribution stays a fraction of its source.
-function sourceWattWeights(ids) {
-  const origins = new Set(ids);
-  if (origins.size < 2) return null;
-  const watts = new Map([...origins].map(id => [id, sourceWattsById.get(id)]));
-  return [...watts.values()].every(w => Number.isFinite(w) && w >= 0) ? watts : null;
-}
-
 function hitsWeighedByWatts(hits) {
   const live = hits.filter(hit => Number.isFinite(hit.power) && hit.power > 0);
   const originOf = hit => hit.originId || hit.sourceId || null;
-  const watts = sourceWattWeights(live.map(originOf));
-  if (!watts) return hits;
+  const origins = new Set(live.map(originOf));
+  if (origins.size < 2) return hits;
+  const watts = new Map([...origins].map(id => [id, sourceWattsById.get(id)]));
+  if ([...watts.values()].some(w => !(Number.isFinite(w) && w >= 0))) return hits;
   const fractions = live.reduce((sum, hit) => sum + hit.power, 0);
   const weighed = live.reduce((sum, hit) => sum + hit.power * watts.get(originOf(hit)), 0);
   if (!(weighed > 0)) return hits;
@@ -1103,12 +1095,13 @@ function coherentCameraPolarization(camera, hits) {
     && Math.abs(left.s2 - right.s2) < 1e-7
     && Math.abs(left.s3 - right.s3) < 1e-7;
 
-  // Weighed by the watts each source delivers, as the other sensors' mean is,
-  // so a camera's label and vector agree with theirs.
-  const entries = (camera.spectralPowers || []).filter(entry => Math.max(0, Number(entry.power) || 0) > 1e-12);
-  const watts = sourceWattWeights(entries.map(entry => entry.sourceId || null));
-  for (const entry of entries) {
-    const power = Math.max(0, Number(entry.power) || 0) * (watts ? watts.get(entry.sourceId || null) : 1);
+  // Each contribution counts as a fraction of its own source, as it always
+  // has here: unlike the other sensors' mean, a camera does not yet weigh a
+  // mix of sources by their watts (the reconstruction does not keep the
+  // originating source of re-emitted light, which that would need).
+  for (const entry of camera.spectralPowers || []) {
+    const power = Math.max(0, Number(entry.power) || 0);
+    if (!(power > 1e-12)) continue;
     const matching = hits.filter(hit => (hit.sourceId || null) === (entry.sourceId || null)
       && Math.abs(Number(hit.wl) - Number(entry.wavelength)) < 1e-7
       && Boolean(hit.spectralContinuum || hit.spec || hit.bw > 0) === Boolean(entry.continuum)
