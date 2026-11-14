@@ -4868,7 +4868,12 @@ export const wikiEntries = [
         <span class="w">(0.5, 0.5, 0.707)</span>, still fully polarized.</p>
         <p>The polarimeter reports <span class="w">S₀</span> as the arriving intensity,
         the three normalized components scaled to it, the degree of polarization, and a plain
-        description of the state. It gets those from the power-weighted mean of every ray
+        description of the state, and it plots that state on a Poincaré sphere, small on its
+        detector screen and larger in the inspector. The sphere is seen obliquely, with
+        <span class="w">+S₁</span> (linear 0°) coming out of the page to the lower left,
+        <span class="w">+S₂</span> (linear 45°) to the right and <span class="w">+S₃</span>
+        (right circular) up; a state behind the centre is drawn hollow, and a dashed drop to
+        the equator shows how far it lies above or below it. It gets those from the power-weighted mean of every ray
         landing on its face — which means <strong>partially polarized and unpolarized light
         are representable</strong>, even though no individual ray can be either. Two equally
         strong counter-polarized beams on one face average to the centre of the sphere and are
