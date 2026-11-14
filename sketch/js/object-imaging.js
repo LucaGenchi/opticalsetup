@@ -18,21 +18,6 @@
 
 import { toWorld, rotPt, dot, sub, add, mul, norm, perp } from './util.js';
 
-// The thin-lens bend the tracer applies at a lens surface (its lensBend):
-// tangent-space u′ = u − h/f, with h measured from the segment's midpoint.
-function lensBend(dir, hitP, s, f) {
-  const t = norm(sub(s.b, s.a));
-  const n = perp(t);
-  const sgn = dot(dir, n) >= 0 ? 1 : -1;
-  const np = mul(n, sgn);
-  const h = dot(sub(hitP, mul(add(s.a, s.b), 0.5)), t);
-  const denom = dot(dir, np);
-  if (Math.abs(denom) < 1e-6 || !f) return dir;
-  const u = dot(dir, t) / denom;
-  const u2 = u - h / f;
-  return norm(add(np, mul(t, u2)));
-}
-
 // Distance along o + t·d to the segment a–b (within it), or Infinity.
 function axisHit(o, d, s) {
   const e = sub(s.b, s.a);
@@ -167,60 +152,55 @@ export function objectImagingSteps(el, surfaces, { registry, thinFocal, waveleng
   return steps;
 }
 
-// Carries rays { p, d } through the first `upTo` steps, in place.
-function throughSteps(rays, steps, upTo = steps.length) {
+// The image of point P through the first `upTo` steps, as homogeneous
+// coordinates { x, y, w } (w = 0: a point at infinity, (x, y) the direction
+// its rays run in). Each step maps points exactly, in the frame of its own
+// planes: a lens by the Gaussian lens equation, which is the tracer's
+// thin-lens bend u′ = u − h/f (tangent slopes, h along the lens) applied to
+// every ray through the point, and an afocal step by its matrix. Mapping the
+// point itself, rather than intersecting two traced rays, keeps a tilted
+// lens right: a steep helper ray could cross its plane against the light
+// and be bent the wrong way (Andrea on #319).
+function imageHomog(P, steps, u, upTo = steps.length) {
+  let X = P.x, Y = P.y, W = 1;
   for (let k = 0; k < upTo; k++) {
     const step = steps[k];
-    for (const r of rays) {
-      const e = sub(step.H.b, step.H.a);
-      const den = r.d.x * e.y - r.d.y * e.x;
-      if (Math.abs(den) < 1e-9) continue;
-      const dp = sub(step.H.a, r.p);
-      const t = (dp.x * e.y - dp.y * e.x) / den;
-      const hitP = add(r.p, mul(r.d, t));
-      if (step.matrix) {
-        // An afocal optic: height and slope at its first vertex plane to
-        // height and slope at its last, both measured along the plane and
-        // against its normal the way the light crosses it.
-        const tH = norm(e);
-        const n = perp(tH), np = mul(n, dot(r.d, n) >= 0 ? 1 : -1);
-        const denom = dot(r.d, np);
-        if (Math.abs(denom) < 1e-6) continue;
-        const h = dot(sub(hitP, mul(add(step.H.a, step.H.b), 0.5)), tH);
-        const slope = dot(r.d, tH) / denom;
-        const { A, B, D } = step.matrix;
-        r.p = add(mul(add(step.H2.a, step.H2.b), 0.5), mul(tH, A * h + B * slope));
-        r.d = norm(add(np, mul(tH, D * slope)));
-        continue;
-      }
-      if (step.H2 === step.H) {
-        r.p = hitP;
-      } else {
-        // Leave H′ at the height it met H.
-        const tH = norm(e), tH2 = norm(sub(step.H2.b, step.H2.a));
-        const h = dot(sub(hitP, mul(add(step.H.a, step.H.b), 0.5)), tH);
-        r.p = add(mul(add(step.H2.a, step.H2.b), 0.5), mul(tH2, h));
-      }
-      r.d = lensBend(r.d, r.p, step.H2, step.f);
+    const F1 = frameOf(step.H, u), F2 = frameOf(step.H2, u);
+    // Along the light (z, before the plane < 0) and across the optic (h).
+    const rx = X - W * F1.mid.x, ry = Y - W * F1.mid.y;
+    const z = rx * F1.np.x + ry * F1.np.y, h = rx * F1.t.x + ry * F1.t.y;
+    let z2, h2, w2;
+    if (step.matrix) {
+      // Rays through (z, h) meet again at z′ = (Az − B)/D, h′ = Ah.
+      const { A, B, D } = step.matrix;
+      z2 = A * z - B * W; h2 = A * D * h; w2 = D * W;
+    } else {
+      // 1/z′ = 1/z + 1/f, h′ = h z′/z, from H to H′ at the same height.
+      const f = step.f;
+      z2 = f * z; h2 = f * h; w2 = z + f * W;
     }
+    X = w2 * F2.mid.x + z2 * F2.np.x + h2 * F2.t.x;
+    Y = w2 * F2.mid.y + z2 * F2.np.y + h2 * F2.t.y;
+    W = w2;
+    // Keep the numbers in range over a long chain.
+    const scale = Math.max(Math.abs(X), Math.abs(Y), Math.abs(W));
+    if (!(scale > 0) || !Number.isFinite(scale)) return null;
+    X /= scale; Y /= scale; W /= scale;
   }
-  return rays;
+  return { x: X, y: Y, w: W };
 }
 
-function meet(rA, rB) {
-  const den2 = rA.d.x * rB.d.y - rA.d.y * rB.d.x;
-  if (Math.abs(den2) < 1e-9) return null; // image at infinity
-  const dp2 = sub(rB.p, rA.p);
-  const tA = (dp2.x * rB.d.y - dp2.y * rB.d.x) / den2;
-  const pt = add(rA.p, mul(rA.d, tA));
-  return Number.isFinite(pt.x) && Number.isFinite(pt.y) ? pt : null;
-}
+// Beyond this distance (mm) an image counts as at infinity.
+const FAR_IMAGE = 1e9;
 
-// The image of point P after the first `upTo` steps: two rays from P, along
-// the axis u and along u + v (never parallel to it), intersected.
+// The image of point P after the first `upTo` steps, or null when it lies at
+// infinity. (v, the Object's up direction, is no longer needed.)
 export function imageOfPoint(P, steps, u, v, upTo = steps.length) {
-  const [rA, rB] = throughSteps([{ p: P, d: u }, { p: P, d: norm(add(u, v)) }], steps, upTo);
-  return meet(rA, rB);
+  const H = imageHomog(P, steps, u, upTo);
+  if (!H || !(Math.abs(H.w) > 0)) return null;
+  const pt = { x: H.x / H.w, y: H.y / H.w };
+  if (!Number.isFinite(pt.x) || !Number.isFinite(pt.y)) return null;
+  return Math.hypot(pt.x - P.x, pt.y - P.y) > FAR_IMAGE ? null : pt;
 }
 
 // ---------------------------------------------------------------------------
@@ -300,7 +280,6 @@ function afocalForward(step, X1, d, u) {
   return { p: pointOn(A * heightOn(X1, F1) + B * s1, F2), d: norm(add(F2.np, mul(F2.t, D * s1))) };
 }
 
-const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 
 // Where segment a–b crosses the (infinite) line of `plane`, or null.
 function segmentPlane(a, b, plane) {
@@ -342,7 +321,7 @@ export function principalRays(steps, tip, u, v, { maxLen = 6000 } = {}) {
   }
   // The direction of a ray from the tip in space j (all are parallel there
   // when the image in that space is at infinity).
-  const dirIn = j => throughSteps([{ p: tip, d: u }], steps, j)[0].d;
+  const dirIn = j => { const H = imageHomog(tip, steps, u, j); return H ? norm({ x: H.x, y: H.y }) : null; };
   const lenses = steps.flatMap((s, i) => (s.matrix ? [] : [i]));
   // A ray is drawn only where it really crosses glass: a height h on a
   // step's plane must lie within that optic's half-aperture.
@@ -416,9 +395,9 @@ export function principalRays(steps, tip, u, v, { maxLen = 6000 } = {}) {
       if (j === N) {
         if (reaches) pts.push(R); // a real final image: the rays end on it
         else {
-          // A virtual final image (dashed back to it) or one at infinity.
-          const dist = R ? Math.hypot(R.x - cur.x, R.y - cur.y) : 2 * Math.abs(step.f);
-          pts.push(add(cur, mul(d, clamp(dist, 80, 400))));
+          // A virtual final image (dashed back to it) or one at infinity:
+          // the rays run on to the edge of the trace, as traced light does.
+          pts.push(add(cur, mul(d, maxLen)));
           if (R) dashed.push([cur, R]);
         }
         break;

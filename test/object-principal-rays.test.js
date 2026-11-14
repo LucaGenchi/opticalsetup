@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The Object's principal rays: three textbook construction rays from the tip,
-// drawn lens by lens from each lens's object to its image.
+// carried from the first lens through every later one to the last image.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -79,6 +79,12 @@ test('a virtual image: rays diverge and dashed lines lead back to the upright im
   }
   assert.equal(objectImageReading(object.id).stages[0].real, false);
   assert.equal(planes(result).length, 0, 'a thin lens never gets grey lines');
+  // Nothing stops them after the lens: they run on to the edge of the trace
+  // (Luca on #319), not a short stub.
+  for (const ray of solid(result)) {
+    const [a, b] = ray.pts.slice(-2);
+    near(Math.hypot(b.x - a.x, b.y - a.y), 6000, 1e-6, 'last segment runs to the trace edge');
+  }
 });
 
 test('a ray that would meet a lens outside its glass is not drawn', () => {
@@ -294,6 +300,38 @@ test('a tilted next lens: where the final image is real is judged across its pla
   assert.ok(r2.every(ray => Math.abs(ray.pts[0].x) < 1e-9), 'every ray starts at the tip');
   assert.ok(r2.every(ray => ray.pts.length >= 4), 'and goes on through lens 2');
   assert.ok(r2.every(ray => !passes(ray.pts, { x: 450, y: 5.5 }, 1e-6)), 'without crossing image 1');
+});
+test('a tilted relay lens: every drawn ray leaves it by the thin-lens law, onto its real image', () => {
+  // Andrea's case on #319: lens 2 (f 100, 100 mm across) at 600 turned −30°.
+  // Image 1 at (450, 5.5) lies 130 mm before its plane, so the final image is
+  // real, near (1059.4, −16.8); the old two-ray image made it virtual.
+  const object = objectAt(0);
+  const second = lensAt(600, 100, 100);
+  second.rot = -30;
+  const result = traceScene([object, lensAt(300, 100, 100), second], []);
+  const rays = solid(result);
+  assert.equal(rays.length, 3);
+  assert.equal(dashed(result).length, 0);
+  const rad = -30 * Math.PI / 180;
+  const t = { x: -Math.sin(rad), y: Math.cos(rad) };
+  const np = { x: t.y, y: -t.x };
+  const slope = (a, b) => {
+    const d = { x: b.x - a.x, y: b.y - a.y };
+    return (d.x * t.x + d.y * t.y) / (d.x * np.x + d.y * np.y);
+  };
+  const end = rays[0].pts.at(-1);
+  for (const ray of rays) {
+    const i = ray.pts.findIndex(p => Math.abs((p.x - 600) * np.x + p.y * np.y) < 1e-9);
+    assert.ok(i > 0, 'the ray bends on lens 2');
+    const [a, P, b] = ray.pts.slice(i - 1, i + 2);
+    const h = (P.x - 600) * t.x + P.y * t.y;
+    near(slope(P, b), slope(a, P) - h / 100, 1e-9, "u' = u − h/f");
+    near(ray.pts.at(-1).x, end.x, 1e-9, 'all meet on one image');
+    near(ray.pts.at(-1).y, end.y, 1e-9, 'all meet on one image');
+  }
+  near(end.x, 1059.364, 1e-3, 'real image x');
+  near(end.y, -16.843, 1e-3, 'real image y');
+  assert.equal(objectImageReading(object.id).stages.at(-1).real, true);
 });
 test('with no lens, with rays off, or before the option existed: no principal rays', () => {
   const alone = objectAt(0);
