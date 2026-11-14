@@ -228,16 +228,14 @@ export function imageOfPoint(P, steps, u, v, upTo = steps.length) {
 //   - parallel to the lens's axis, then through its back focal point;
 //   - through the centre (of H, leaving from the centre of H′), undeviated;
 //   - through its front focal point, then parallel to the axis.
-// The first lens draws them from the tip, and any later lens with a real
-// image formed before it draws its own three from that image. A lens with
-// no real image before it (behind a collimated beam, or before an image that
-// would form beyond it) draws none: the rays that reach it bend there and go
-// on, so every drawn ray is one connected path, as in a textbook diagram of
-// a microscope. A lens whose object is at infinity has no ray parallel to
-// the axis, and one whose image is at infinity has no ray leaving parallel.
+// The first lens draws them from the tip. Every later lens bends the rays
+// that reach it, and they pass through any real image formed on the way, so
+// each drawn ray is one connected path of light from the object to the last
+// image. A first lens whose object is at infinity has no ray parallel to the
+// axis, and one whose image is at infinity has no ray leaving parallel.
 // Each ray is a straight line between optics, fixed by the image points the
-// chain already computes, so the rays meet exactly at each drawn image, and
-// end there when the image is real.
+// chain already computes, so the rays meet exactly at each image, and end
+// on the last one when it is real.
 //
 // The rays are drawn, not traced: they do not interact with anything else in
 // the scene. A plate or telescope group (an afocal step) carries them through
@@ -353,143 +351,130 @@ export function principalRays(steps, tip, u, v, { maxLen = 6000 } = {}) {
   // the plane it leaves the step before through, and not beyond the plane of
   // the step after. Measured across each plane (along its normal), so a
   // tilted lens is judged by where its plane really is. A ray in space j
-  // runs from one plane to the next through that image, so this one test
-  // decides both where a lens starts its own rays and where rays end.
+  // runs from one plane to the next through that image, so this test
+  // decides where the rays end.
   const side = (P, plane) => { const F = frameOf(plane, u); return dot(sub(P, F.mid), F.np); };
   const realIn = j => {
     const R = imgs[j];
     if (!R) return false;
     return side(R, steps[j - 1].H2) > 0 && (j === N || side(R, steps[j].H) <= 0);
   };
-  // A lens draws its own three rays from the object, and from a real image
-  // formed between it and the lens before. Any other lens (behind a
-  // collimated beam, or before an image that would form beyond it) bends
-  // the rays that reach it instead, so every drawn ray is one connected
-  // path of light.
-  const starts = lenses.filter((k, li) => {
-    if (li === 0) return true;
-    for (let j = lenses[li - 1] + 1; j <= k; j++) if (realIn(j)) return true;
-    return false;
-  });
+  // Only the first lens draws its three rays, from the tip. Every later lens
+  // bends the rays that reach it, through any real image formed before it,
+  // so each drawn ray is one connected path of light from the object to the
+  // last image (Luca's call on #319, after testing a relay).
+  const k = lenses[0];
+  if (k === undefined) return out;
+  const step = steps[k];
+  const F1 = frameOf(step.H, u), F2 = frameOf(step.H2, u);
+  const O = imgs[k], I = imgs[k + 1];
+  const dIn = O ? null : forward(dirIn(k), F1);
+  const dOut = I ? null : forward(dirIn(k + 1), F2);
+  const candidates = [];
+  if (O) {
+    const h = heightOn(O, F1);
+    candidates.push({ h, din: F1.np, dout: I ? towards(pointOn(h, F2), I, F2) : dOut });
+  }
+  candidates.push({ h: 0, din: O ? towards(O, F1.mid, F1) : dIn, dout: I ? towards(F2.mid, I, F2) : dOut });
+  if (I) {
+    const h = heightOn(I, F2);
+    candidates.push({ h, din: O ? towards(O, pointOn(h, F1), F1) : dIn, dout: F2.np });
+  }
   const drawnAt = new Set();
-  for (const k of starts) {
-    const li = lenses.indexOf(k);
-    const p = li > 0 ? lenses[li - 1] : -1;
-    const step = steps[k];
-    const F1 = frameOf(step.H, u), F2 = frameOf(step.H2, u);
-    const O = imgs[k], I = imgs[k + 1];
-    const dIn = O ? null : forward(dirIn(k), F1);
-    const dOut = I ? null : forward(dirIn(k + 1), F2);
-    const candidates = [];
-    if (O) {
-      const h = heightOn(O, F1);
-      candidates.push({ h, din: F1.np, dout: I ? towards(pointOn(h, F2), I, F2) : dOut });
-    }
-    candidates.push({ h: 0, din: O ? towards(O, F1.mid, F1) : dIn, dout: I ? towards(F2.mid, I, F2) : dOut });
-    if (I) {
-      const h = heightOn(I, F2);
-      candidates.push({ h, din: O ? towards(O, pointOn(h, F1), F1) : dIn, dout: F2.np });
-    }
-    for (const ray of candidates) {
-      if (!ray.din || !ray.dout || !inGlass(ray.h, step)) continue;
-      const hit1 = pointOn(ray.h, F1), hit2 = pointOn(ray.h, F2);
-      const crossed = [k];
+  for (const ray of candidates) {
+    if (!ray.din || !ray.dout || !inGlass(ray.h, step)) continue;
+    const hit1 = pointOn(ray.h, F1), hit2 = pointOn(ray.h, F2);
+    const crossed = [k];
 
-      // Back from the lens to where its light starts, crossing any afocal
-      // steps in between: the object for the first lens, else the real
-      // image the lens starts from (in whichever space it forms).
-      const back = [hit1];
-      let cur = hit1, d = ray.din, ok = true, space = k;
-      while (!(li > 0 && realIn(space)) && space > p + 1) {
-        const a = space - 1;
-        const X2 = linePlane(cur, d, steps[a].H2);
-        const prev = X2 && afocalBack(steps[a], X2, d, u);
-        if (!prev || !inGlass(heightOn(X2, frameOf(steps[a].H2, u)), steps[a])
-          || !inGlass(heightOn(prev.p, frameOf(steps[a].H, u)), steps[a])) { ok = false; break; }
-        back.push(X2, prev.p);
-        cur = prev.p; d = prev.d; space = a;
-      }
-      if (!ok || (li > 0 && !realIn(space))) continue;
-      back.push(li === 0 ? tip : imgs[space]);
-      const pts = back.reverse();
-      if (step.H2 !== step.H) pts.push(hit2);
-
-      // On from the lens: through every step after it, bending at each
-      // lens towards that lens's image, until the rays meet at a real image
-      // with a lens still ahead (which starts its own rays there), or the
-      // last space.
-      const dashed = [];
-      cur = hit2; d = ray.dout;
-      for (let j = k + 1; j <= N; j++) {
-        const R = imgs[j];
-        const next = j < N ? linePlane(cur, d, steps[j].H) : null;
-        const reaches = realIn(j);
-        if (j === N) {
-          if (reaches) pts.push(R); // a real final image: the rays end on it
-          else {
-            // A virtual final image (dashed back to it) or one at infinity.
-            const dist = R ? Math.hypot(R.x - cur.x, R.y - cur.y) : 2 * Math.abs(step.f);
-            pts.push(add(cur, mul(d, clamp(dist, 80, 400))));
-            if (R) dashed.push([cur, R]);
-          }
-          break;
-        }
-        if (reaches) {
-          pts.push(R);
-          // The next lens starts its own rays from this image.
-          if (lenses.some(x => x >= j)) break;
-          // Only plates or telescopes ahead: on through them.
-        } else if (R && ahead(R, cur, d) > 0 && !steps[j].matrix) {
-          // A virtual image the next lens works from: dashed back to it.
-          dashed.push([cur, R]);
-        }
-        if (!next) { ok = false; break; }
-        const nextStep = steps[j];
-        if (!inGlass(heightOn(next, frameOf(nextStep.H, u)), nextStep)) { ok = false; break; }
-        if (nextStep.matrix) {
-          const after = afocalForward(nextStep, next, d, u);
-          if (!after || !inGlass(heightOn(after.p, frameOf(nextStep.H2, u)), nextStep)) { ok = false; break; }
-          pts.push(next, after.p);
-          cur = after.p; d = after.d;
-          continue;
-        }
-        // A lens this ray reaches without a real image before it: it bends
-        // there towards the lens's image (all rays of a point leave a lens
-        // through its image), or parallel to the rest when that image is at
-        // infinity.
-        const G1 = frameOf(nextStep.H, u), G2 = frameOf(nextStep.H2, u);
-        const h = heightOn(next, G1);
-        const exit = pointOn(h, G2);
-        const out2 = imgs[j + 1] ? towards(exit, imgs[j + 1], G2) : forward(dirIn(j + 1), G2);
-        if (!out2) { ok = false; break; }
-        pts.push(next);
-        if (nextStep.H2 !== nextStep.H) pts.push(exit);
-        crossed.push(j);
-        cur = exit; d = out2;
-      }
-      if (!ok || !pts.every(finitePt)) continue;
-      // A thick lens, asphere or lens group bends the construction at its
-      // principal planes, which can lie outside its glass (a meniscus): the
-      // drawn path must also cross both its vertex planes within the glass,
-      // or it would pass the lens by.
-      const missesGlass = crossed.some(c => (steps[c].faces || []).some(face => {
-        const F = frameOf(face, u);
-        let crossings = 0;
-        for (let i = 1; i < pts.length; i++) {
-          const x = segmentPlane(pts[i - 1], pts[i], face);
-          if (!x) continue;
-          crossings++;
-          if (!inGlass(heightOn(x, F), steps[c])) return true;
-        }
-        return crossings === 0;
-      }));
-      if (missesGlass) continue;
-      out.rays.push({ pts: capped(pts, maxLen), dashed: false, lens: li });
-      for (const seg of dashed) {
-        if (seg.every(finitePt)) out.rays.push({ pts: capped(seg, maxLen), dashed: true, lens: li });
-      }
-      for (const c of crossed) drawnAt.add(c);
+    // Back from the lens to the tip, crossing any plates or telescopes
+    // before it.
+    const back = [hit1];
+    let cur = hit1, d = ray.din, ok = true, space = k;
+    while (space > 0) {
+      const a = space - 1;
+      const X2 = linePlane(cur, d, steps[a].H2);
+      const prev = X2 && afocalBack(steps[a], X2, d, u);
+      if (!prev || !inGlass(heightOn(X2, frameOf(steps[a].H2, u)), steps[a])
+        || !inGlass(heightOn(prev.p, frameOf(steps[a].H, u)), steps[a])) { ok = false; break; }
+      back.push(X2, prev.p);
+      cur = prev.p; d = prev.d; space = a;
     }
+    if (!ok) continue;
+    back.push(tip);
+    const pts = back.reverse();
+    if (step.H2 !== step.H) pts.push(hit2);
+
+    // On from the lens: through every step after it, bending at each
+    // lens towards that lens's image, through any real image on the way,
+    // to the last space.
+    const dashed = [];
+    cur = hit2; d = ray.dout;
+    for (let j = k + 1; j <= N; j++) {
+      const R = imgs[j];
+      const next = j < N ? linePlane(cur, d, steps[j].H) : null;
+      const reaches = realIn(j);
+      if (j === N) {
+        if (reaches) pts.push(R); // a real final image: the rays end on it
+        else {
+          // A virtual final image (dashed back to it) or one at infinity.
+          const dist = R ? Math.hypot(R.x - cur.x, R.y - cur.y) : 2 * Math.abs(step.f);
+          pts.push(add(cur, mul(d, clamp(dist, 80, 400))));
+          if (R) dashed.push([cur, R]);
+        }
+        break;
+      }
+      if (reaches) {
+        // A real image on the way: the ray passes through it and goes on.
+        pts.push(R);
+      } else if (R && ahead(R, cur, d) > 0 && !steps[j].matrix) {
+        // A virtual image the next lens works from: dashed back to it.
+        dashed.push([cur, R]);
+      }
+      if (!next) { ok = false; break; }
+      const nextStep = steps[j];
+      if (!inGlass(heightOn(next, frameOf(nextStep.H, u)), nextStep)) { ok = false; break; }
+      if (nextStep.matrix) {
+        const after = afocalForward(nextStep, next, d, u);
+        if (!after || !inGlass(heightOn(after.p, frameOf(nextStep.H2, u)), nextStep)) { ok = false; break; }
+        pts.push(next, after.p);
+        cur = after.p; d = after.d;
+        continue;
+      }
+      // A later lens: the ray bends there towards the lens's image (all rays of a point leave a lens
+      // through its image), or parallel to the rest when that image is at
+      // infinity.
+      const G1 = frameOf(nextStep.H, u), G2 = frameOf(nextStep.H2, u);
+      const h = heightOn(next, G1);
+      const exit = pointOn(h, G2);
+      const out2 = imgs[j + 1] ? towards(exit, imgs[j + 1], G2) : forward(dirIn(j + 1), G2);
+      if (!out2) { ok = false; break; }
+      pts.push(next);
+      if (nextStep.H2 !== nextStep.H) pts.push(exit);
+      crossed.push(j);
+      cur = exit; d = out2;
+    }
+    if (!ok || !pts.every(finitePt)) continue;
+    // A thick lens, asphere or lens group bends the construction at its
+    // principal planes, which can lie outside its glass (a meniscus): the
+    // drawn path must also cross both its vertex planes within the glass,
+    // or it would pass the lens by.
+    const missesGlass = crossed.some(c => (steps[c].faces || []).some(face => {
+      const F = frameOf(face, u);
+      let crossings = 0;
+      for (let i = 1; i < pts.length; i++) {
+        const x = segmentPlane(pts[i - 1], pts[i], face);
+        if (!x) continue;
+        crossings++;
+        if (!inGlass(heightOn(x, F), steps[c])) return true;
+      }
+      return crossings === 0;
+    }));
+    if (missesGlass) continue;
+    out.rays.push({ pts: capped(pts, maxLen), dashed: false, lens: 0 });
+    for (const seg of dashed) {
+      if (seg.every(finitePt)) out.rays.push({ pts: capped(seg, maxLen), dashed: true, lens: 0 });
+    }
+    for (const c of crossed) drawnAt.add(c);
   }
   // A real optic the rays cross shows its two principal planes across its
   // glass, where the construction bends them.

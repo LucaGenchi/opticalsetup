@@ -93,29 +93,27 @@ test('a ray that would meet a lens outside its glass is not drawn', () => {
   assert.equal(planes(result).length, 0, 'no plane drawn on past the glass');
 });
 
-test('two lenses: each lens gets its own three rays, from its object to its image', () => {
+test('two lenses: the rays from the tip pass through image 1 and bend at lens 2 onto image 2', () => {
   // Image 1 at (450, +5.5); 150 mm before lens 2 (f 100) at 600, so image 2
-  // is 300 mm after it at (900, −11), upright overall.
-  const object = objectAt(0);
-  const result = traceScene([object, lensAt(300, 100), lensAt(600, 100)], []);
+  // is 300 mm after it at (900, −11), upright overall. Luca on #319: lens 2
+  // starts no rays of its own; the rays from the tip go on through image 1.
+  const result = traceScene([objectAt(0), lensAt(300, 100, 50.8), lensAt(600, 100, 50.8)], []);
   const rays = solid(result);
-  assert.equal(rays.length, 6);
+  assert.equal(rays.length, 3);
   const image1 = { x: 450, y: 5.5 }, image2 = { x: 900, y: -11 };
-  for (const ray of rays.slice(0, 3)) {
-    const end = ray.pts.at(-1);
-    near(end.x, image1.x, 1e-9, 'lens 1 rays end at image 1');
-    near(end.y, image1.y, 1e-9, 'lens 1 rays end at image 1');
+  for (const ray of rays) {
+    near(ray.pts[0].x, 0, 1e-9, 'every ray starts at the tip');
+    assert.ok(passes(ray.pts, image1, 1e-9), 'and passes through image 1');
+    assert.ok(ray.pts.some(p => Math.abs(p.x - 600) < 1e-9), 'and bends at lens 2');
+    near(ray.pts.at(-1).x, image2.x, 1e-9, 'ending on image 2');
+    near(ray.pts.at(-1).y, image2.y, 1e-9, 'ending on image 2');
   }
-  for (const ray of rays.slice(3)) {
-    near(ray.pts[0].x, image1.x, 1e-9, 'lens 2 rays start at image 1');
-    near(ray.pts[0].y, image1.y, 1e-9, 'lens 2 rays start at image 1');
-    near(ray.pts[1].x, 600, 1e-9, 'and bend at lens 2');
-    near(ray.pts.at(-1).x, image2.x, 1e-9, 'lens 2 rays end on image 2');
-    near(ray.pts.at(-1).y, image2.y, 1e-9, 'lens 2 rays end on image 2');
-  }
-  near(rays[4].pts[1].y, 0, 1e-9, 'lens 2 chief ray through its centre');
+  assert.equal(dashed(result).length, 0);
+  // The parallel ray crosses image 1 heading up and meets a one-inch lens 2
+  // at 22 mm, outside its 12.7 mm glass: it is left out, the other two stay.
+  const small = solid(traceScene([objectAt(0), lensAt(300, 100, 50.8), lensAt(600, 100)], []));
+  assert.equal(small.length, 2);
 });
-
 test('an object in the front focal plane: the collimated rays go on through the next lens into its focus', () => {
   // Lens 1 at 100 (f 100) collimates the tip; lens 2 at 300 (f 100) images
   // it in its back focal plane at (400, +11). With no real image between
@@ -265,40 +263,38 @@ test('a meniscus with its principal planes outside the glass: a ray that would p
   crossingsInGlass(far);
 });
 
-test('a tilted next lens: where an image is real is judged across its plane, for starts and ends alike', () => {
+test('a tilted next lens: where the final image is real is judged across its plane', () => {
   // Andrea's cases on #319. Lens 2 at 447 (f 5) turned −45°: image 1 at
-  // (450, 5.5) lies before its tilted plane, so it is real; lens 1's rays end
-  // there and lens 2 draws its own rays from it. Its image is virtual, so
-  // they leave the lens and dashed lines lead back to the drawn tip.
+  // (450, 5.5) lies before its tilted plane, so the rays cross it, bend at
+  // lens 2 and leave it; its image is virtual, so dashed lines lead back to
+  // the drawn tip.
   const object = objectAt(0);
   const tilted = lensAt(447, 5, 50.8);
   tilted.rot = -45;
   const result = traceScene([object, lensAt(300, 100, 50.8), tilted], []);
   const tip = result.drawables.find(d => d.type === 'poly' && d.opacity === 0.85).pts[0];
   const rays = solid(result);
-  assert.ok(rays.length > 3, 'lens 2 adds its own rays');
-  for (const ray of rays.filter(r => Math.abs(r.pts[0].x) < 1e-9)) {
-    near(ray.pts.at(-1).x, 450, 1e-9, 'lens 1 rays end on image 1');
-    near(ray.pts.at(-1).y, 5.5, 1e-9, 'lens 1 rays end on image 1');
+  assert.ok(rays.length >= 1);
+  for (const ray of rays) {
+    near(ray.pts[0].x, 0, 1e-9, 'every ray starts at the tip');
+    assert.ok(passes(ray.pts, { x: 450, y: 5.5 }, 1e-9), 'and crosses image 1');
   }
-  assert.equal(rays.filter(r => Math.abs(r.pts[0].x - 450) < 1e-9).length, 3, 'lens 2 draws three from image 1');
   const back = dashed(result);
-  assert.equal(back.length, 3);
+  assert.equal(back.length, rays.length);
   for (const d of back) {
     near(d.pts.at(-1).x, tip.x, 1e-6, 'dashed back to the drawn tip');
     near(d.pts.at(-1).y, tip.y, 1e-6, 'dashed back to the drawn tip');
   }
-  // Lens 2 at 451 (f 100) turned +20°: image 1 lies beyond its plane, so it
-  // is not real and lens 2 starts no rays of its own; lens 1's rays go on
-  // through it, and none starts at (450, 5.5).
+  // Lens 2 at 451 (f 100) turned +20°: image 1 lies beyond its plane, so the
+  // rays never reach it; they bend at lens 2 before it and do not pass it.
   const beyond = lensAt(451, 100, 50.8);
   beyond.rot = 20;
   const r2 = solid(traceScene([objectAt(0), lensAt(300, 100, 50.8), beyond], []));
   assert.ok(r2.length >= 1);
   assert.ok(r2.every(ray => Math.abs(ray.pts[0].x) < 1e-9), 'every ray starts at the tip');
   assert.ok(r2.every(ray => ray.pts.length >= 4), 'and goes on through lens 2');
+  assert.ok(r2.every(ray => !passes(ray.pts, { x: 450, y: 5.5 }, 1e-6)), 'without crossing image 1');
 });
-
 test('with no lens, with rays off, or before the option existed: no principal rays', () => {
   const alone = objectAt(0);
   const none = traceScene([alone], []);
