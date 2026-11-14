@@ -722,7 +722,17 @@ function displayDetail(rd) {
   }).join('');
 }
 
+// A compact screen states its scope (issue #313, A5) on a small line under
+// the sensor's name, by the same rule as the full-size screens.
 function compactDisplayReading(sensorName, rd, view) {
+  const tag = scopeTag(rd, view);
+  const line = tag
+    ? `<text x="-35" y="-10.5" font-size="3.6" font-weight="700" letter-spacing="0.3" fill="#648092" data-readout-scope="${esc(tag)}">${esc(tag)}</text>`
+    : '';
+  return compactDisplayBody(sensorName, rd, view) + line;
+}
+
+function compactDisplayBody(sensorName, rd, view) {
   const header = `<text x="-35" y="-17" font-size="6" font-weight="760" letter-spacing="0.4" fill="#8fa9b8">${esc(sensorName.toUpperCase().slice(0, 11))}</text>`;
   const cameraState = rd.readoutKind === 'camera' ? cameraReadingState(rd) : null;
   const cameraBadge = cameraState?.badge

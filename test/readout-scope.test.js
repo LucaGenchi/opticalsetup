@@ -23,8 +23,8 @@ const at = (type, x, y, params = {}, rot = 0, id = type) => {
 };
 const laser = () => at('cwlaser', 0, 0, { beamMode: 'beam', beamWidth: 4, wavelength: 633, avgPowerW: 0.001 }, 0, 'laser');
 
-function screen(elements, sensorId, view) {
-  const display = at('display', 0, 200, { sensorId, displayView: view, screenOn: true }, 0, 'screen');
+function screen(elements, sensorId, view, displayScale) {
+  const display = at('display', 0, 200, { sensorId, displayView: view, screenOn: true, ...(displayScale ? { displayScale } : {}) }, 0, 'screen');
   traceScene([...elements, display], []);
   return registry.display.svg(display, [...elements, display]);
 }
@@ -70,14 +70,21 @@ test('a reading lists a scope only for the quantities it holds', () => {
 
 test('"in the drawing plane" is stated by the camera and the wavefront detector, in detail only', () => {
   const camera = [laser(), at('camera', 300, 0)];
+  const general = [laser(), at('generaldetector', 300, 0)];
   assert.match(screen(camera, 'camera', 'detail'), /DETAIL · IN PLANE/);
   assert.doesNotMatch(screen(camera, 'camera', 'main'), /IN PLANE/);
+  // A small screen uses the compact renderer, which states it too (Andrea's
+  // review: at scale 0.3 the tag was missing).
+  for (const scale of [0.3, 0.6, 1]) {
+    assert.match(screen(camera, 'camera', 'detail', scale), /IN PLANE/, `detail at scale ${scale}`);
+    assert.doesNotMatch(screen(camera, 'camera', 'main', scale), /IN PLANE/, `summary at scale ${scale}`);
+    assert.doesNotMatch(screen(general, 'generaldetector', 'detail', scale), /IN PLANE/, `general detector at scale ${scale}`);
+  }
   traceScene([laser(), at('wavefrontdetector', 300, 0)], []);
   assert.deepEqual(statedScopes(detectorReading('wavefrontdetector'), 'detail').map(scope => scope.id), ['plane']);
   assert.deepEqual(statedScopes(detectorReading('wavefrontdetector'), 'main'), []);
   // Power, spectrum, polarization and timing do not depend on how the light
   // is spread across the beam: these detectors leave the plane unsaid.
-  const general = [laser(), at('generaldetector', 300, 0)];
   assert.doesNotMatch(screen(general, 'generaldetector', 'detail'), /IN PLANE/);
   assert.doesNotMatch(screen(general, 'generaldetector', 'main'), /IN PLANE/);
   for (const type of ['powermeter', 'polarimeter', 'spectrometer', 'detector']) {
