@@ -368,14 +368,14 @@ export const exampleEntries = [
       <p>Light meeting a glass surface is partly reflected, by an amount that
       depends on the angle and on the polarization. For light polarized in the
       plane of incidence, p, the reflection vanishes at one angle, Brewster’s
-      angle, where tan θ<sub>B</sub> = n<sub>2</sub>/n<sub>1</sub>${cite(1)}:
+      angle, where tan θ<sub>B</sub> = n<sub>2</sub>/n<sub>1</sub>${cite(1, 3)}:
       56.3° from air into glass of index 1.5. Light polarized across that
       plane, s, is still partly reflected there.</p>
       <p>A plate of glass turned to Brewster’s angle therefore passes p light
       without loss at either face. Laser tubes are closed with such windows for
-      that reason${cite(1)}. Unpolarized light loses part of its s half at
+      that reason${cite(3)}. Unpolarized light loses part of its s half at
       every face, so a stack of plates at Brewster’s angle, a pile of plates,
-      leaves it more and more polarized along p${cite(2)}.</p>`,
+      leaves it more and more polarized along p${cite(2, 4)}.</p>`,
     inOpticalSetupTitle: 'What this setup demonstrates',
     inOpticalSetupHtml: `
       <p>Each plate is <a href="../../wiki/freeglass/">freeform glass</a> of
@@ -421,9 +421,9 @@ export const exampleEntries = [
       <p>Total internal reflection returns all of the light, but not with the
       same phase for the two polarizations: s and p come back shifted against
       each other by an amount that depends on the angle of incidence and on the
-      index of the glass${cite(1)}. Fresnel found that two such reflections at
+      index of the glass${cite(1, 2, 3)}. Fresnel found that two such reflections at
       the right angle add up to a quarter wave, and built a rhomb of glass that
-      makes circular light from linear light at 45°${cite(2)}.</p>
+      makes circular light from linear light at 45°${cite(5)}.</p>
       <p>A waveplate gets its quarter wave from a thickness of birefringent
       crystal, which is exactly a quarter wave only at its design wavelength.
       The rhomb gets it from the index of glass, which changes little across
