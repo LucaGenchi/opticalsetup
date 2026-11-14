@@ -45,7 +45,12 @@ not taken from the tracer:
 
 These scenes are in double precision, stored to 10 significant digits, with
 a tolerance of 1e-9: the tracer finds each hit point by intersection, so its
-angles agree with the closed forms to about 1e-12.
+angles agree with the closed forms to about 1e-12. Every layout number that
+comes out of a trigonometric function is rounded to 6 decimals before it is
+used (platform trigonometry differs in its last bits, and the inputs are
+stored in the expected file), and the expected field is computed from the
+rounded layout, so the app traces exactly the geometry the reference
+describes.
 """
 from decimal import Decimal as D, getcontext
 import math
@@ -139,7 +144,8 @@ def _scene_cases():
     # Plates: 10 mm thick, 60 mm tall, the beam along +x meeting the front
     # face at the plate's turn angle; the rear face is parallel, so the
     # beam leaves at the same angle, displaced but parallel.
-    brewster = math.degrees(math.atan(n))
+    # Rounded: the angle is stored as the plate's turn.
+    brewster = round(math.degrees(math.atan(n)), 6)
     for angle in (30.0, brewster):
         theta_t = math.degrees(math.asin(math.sin(math.radians(angle)) / n))
         J = M.matmul(M.transmission_jones(n, 1.0, theta_t), M.transmission_jones(1.0, n, angle))
@@ -156,13 +162,13 @@ def _scene_cases():
                 "absolute": True,
             })
             if angle == brewster and pol == 0:
-                assert abs(power - 1) < 1e-12  # p passes a Brewster plate whole
+                assert abs(power - 1) < 1e-12  # p passes a Brewster plate whole (angle rounded to 1e-6 deg)
     # Fresnel rhomb. Long faces at alpha = 90 - 54.6 degrees to the beam,
     # end faces perpendicular to it; the beam (along +x, at y = 0) enters the
     # left end at mid-height, reflects off the lower face, then the upper,
     # and leaves the right end along +x again.
-    n, inc, t = 1.51, 54.6, 12.0
-    alpha = math.radians(90 - inc)
+    n, design, t = 1.51, 54.6, 12.0
+    alpha = math.radians(90 - design)
     height = t / math.cos(alpha)            # length of each end face
     y0 = height / 2                         # entry point on the left end (x = 0)
     x1 = y0 / math.tan(alpha)               # first reflection, on the lower face
@@ -173,7 +179,13 @@ def _scene_cases():
     # The right end sits where the leaving beam is at its mid-height.
     X = (y2 - height / 2) / math.tan(alpha)
     assert X > x2
-    rhomb_vertices = [(0, 0), (X, X * math.tan(alpha)), (X, X * math.tan(alpha) + height), (0, height)]
+    # The stored outline, rounded so that the long faces stay exactly parallel
+    # (one direction vector) and the ends exactly perpendicular to the beam;
+    # the angle of incidence is then that of the rounded faces.
+    X, Y, height, y0, y2 = (round(v, 6) for v in (X, X * math.tan(alpha), height, y0, y2))
+    rhomb_vertices = [(0, 0), (X, Y), (X, Y + height), (0, height)]
+    inc = 90 - math.degrees(math.atan2(Y, X))
+    assert abs(inc - design) < 1e-5
     entry_y = y2  # the beam leaves at height y2 relative to the entry at y0
     for model in ("fresnel", "transmission"):
         rhomb = glass(150, -y0, 0, rhomb_vertices, n, model)
@@ -192,7 +204,7 @@ def _scene_cases():
         if model == "fresnel":
             assert abs(abs(s3) - 1) < 2e-3  # nearly circular
         out.append({
-            "name": f"Fresnel rhomb, n {n} at {inc} deg, {'bare glass' if model == 'fresnel' else 'per-surface transmission'}, linear 45 deg in",
+            "name": f"Fresnel rhomb, n {n} at {design} deg, {'bare glass' if model == 'fresnel' else 'per-surface transmission'}, linear 45 deg in",
             "inputs": {"kind": "scene", "pol": 45, "laser": {"beamWidth": 1},
                        "elements": [rhomb], "detector": {"x": 150 + X + 60, "y": entry_y - y0, "rot": 0}},
             "expected": {"power": clean(power), "s1": clean(s1), "s2": clean(s2), "s3": clean(s3)},
