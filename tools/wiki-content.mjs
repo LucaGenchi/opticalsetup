@@ -4827,7 +4827,7 @@ export const wikiEntries = [
         <span class="w">φ</span> in front of it, the transmitted intensity
         is${cite(1)}</p>`,
       formulas3: [
-        { tex: 'I(\\theta, \\varphi) = \\tfrac{1}{2}\\left(S_0 + S_1\\cos 2\\theta + S_2 \\sin 2\\theta \\cos\\varphi - S_3 \\sin 2\\theta \\sin\\varphi \\right)', caption: 'Three measurements with no waveplate (θ = 0°, 45°, 90°) give S₀, S₁ and S₂; a fourth with a quarter-wave plate inserted (φ = 90°) at θ = 45° gives S₃, since S₃ = S₀ − 2I(45°, 90°).' },
+        { tex: 'I(\\theta, \\varphi) = \\tfrac{1}{2}\\left(S_0 + S_1\\cos 2\\theta + S_2 \\sin 2\\theta \\cos\\varphi + S_3 \\sin 2\\theta \\sin\\varphi \\right)', caption: 'Three measurements with no waveplate (θ = 0°, 45°, 90°) give S₀, S₁ and S₂; a fourth with a quarter-wave plate inserted (φ = 90°, fast axis at 0°) at θ = 45° gives S₃, since S₃ = 2I(45°, 90°) − S₀. The sign of the S₃ term follows this app\'s convention, S₃ > 0 for right circular (Born and Wolf); under the opposite handedness convention the term changes sign.' },
       ],
       html4: `
         <p>It works, but Schaefer and colleagues list its weaknesses plainly${cite(1)}: the
@@ -4841,7 +4841,7 @@ export const wikiEntries = [
         Nothing is inserted or removed mid-measurement, only one element moves, and the
         transmitted intensity becomes a truncated Fourier series${cite(1)}:</p>`,
       formulas4: [
-        { tex: 'I(\\theta) = \\tfrac{1}{2}\\left(A + B\\sin 2\\theta + C\\cos 4\\theta + D\\sin 4\\theta\\right), \\qquad \\begin{aligned} S_0 &= A - C & S_1 &= 2C \\\\ S_2 &= 2D & S_3 &= B \\end{aligned}', caption: 'All four parameters fall out of the harmonic content of one continuous scan. Because the highest term is the fourth harmonic, Nyquist requires at least eight samples per rotation — and in practice many more are taken and least-squares fitted, so every point improves the result instead of one point being decisive.' },
+        { tex: 'I(\\theta) = \\tfrac{1}{2}\\left(A + B\\sin 2\\theta + C\\cos 4\\theta + D\\sin 4\\theta\\right), \\qquad \\begin{aligned} S_0 &= A - C & S_1 &= 2C \\\\ S_2 &= 2D & S_3 &= -B \\end{aligned}', caption: 'All four parameters fall out of the harmonic content of one continuous scan, with the analyzer at 0°. S₃ = −B in this app\'s convention (S₃ > 0 right circular); under the opposite handedness convention it reads S₃ = B. Because the highest term is the fourth harmonic, Nyquist requires at least eight samples per rotation — and in practice many more are taken and least-squares fitted, so every point improves the result instead of one point being decisive.' },
       ],
       html5: `
         <p>Thorlabs have a short build video that walks through both methods on a real bench,
@@ -4883,7 +4883,7 @@ export const wikiEntries = [
         <p>Both published methods have been checked against it. Building the classical
         four-intensity measurement out of a polarizer, a quarter-wave plate and a plain
         <a href="../detector/">photodetector</a>, then applying
-        <span class="w">S₀ = I(0°)+I(90°)</span> and the rest, recovers the polarimeter's own
+        <span class="w">S₀ = I(0°)+I(90°)</span> and the rest, with the signs above, recovers the polarimeter's own
         numbers to better than one part in 10¹⁵. So does the rotating-waveplate method:
         sixteen intensities through a rotating quarter-wave plate and a fixed analyzer,
         Fourier-analyzed into <span class="w">A, B, C, D</span>, give back the same Stokes
