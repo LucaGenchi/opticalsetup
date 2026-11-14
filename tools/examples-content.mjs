@@ -326,7 +326,8 @@ export const exampleEntries = [
       show the polarization on the way: right circular after the plate, left
       circular after the first mirror, right circular after the second. The
       <a href="../../wiki/polarimeter/">polarimeter</a> at the end reads right
-      circular, with s₃ = +1.</p>
+      circular, with s₃ = +1: its screen puts the state at the north pole of
+      the Poincaré sphere.</p>
       <p>In the lower setup a laser polarized at 45° meets one mirror. The probe
       after it reads linear 135°, and the power meter behind an
       <a href="../../wiki/polarizer/">analyzer</a> at 45° reads nothing.</p>
@@ -334,7 +335,7 @@ export const exampleEntries = [
       <div class="table-wrap"><table>
         <thead><tr><th>Change</th><th>Reading</th></tr></thead>
         <tbody>
-          <tr><td>Fast axis of the plate at 135°</td><td>left, right, left circular; the polarimeter reads s₃ = −1</td></tr>
+          <tr><td>Fast axis of the plate at 135°</td><td>left, right, left circular; the polarimeter reads s₃ = −1, the south pole</td></tr>
           <tr><td>Analyzer at 135°</td><td>the power meter reads 1.00&nbsp;mW</td></tr>
           <tr><td>Lower laser polarized at 0°</td><td>the probe reads linear 0° and the power meter 500&nbsp;µW</td></tr>
           <tr><td>Lower laser polarized at 90°</td><td>the probe reads linear 90° and the power meter 500&nbsp;µW</td></tr>

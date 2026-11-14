@@ -1095,6 +1095,10 @@ function coherentCameraPolarization(camera, hits) {
     && Math.abs(left.s2 - right.s2) < 1e-7
     && Math.abs(left.s3 - right.s3) < 1e-7;
 
+  // Each contribution counts as a fraction of its own source, as it always
+  // has here: unlike the other sensors' mean, a camera does not yet weigh a
+  // mix of sources by their watts (the reconstruction does not keep the
+  // originating source of re-emitted light, which that would need).
   for (const entry of camera.spectralPowers || []) {
     const power = Math.max(0, Number(entry.power) || 0);
     if (!(power > 1e-12)) continue;
@@ -1115,8 +1119,9 @@ function coherentCameraPolarization(camera, hits) {
     s2 += state.s2 * power;
     s3 += state.s3 * power;
   }
-  if (!(total > 1e-12)) return 'No detected field';
-  return polarizationDescription({ s1: s1 / total, s2: s2 / total, s3: s3 / total });
+  if (!(total > 1e-12)) return { polarization: 'No detected field', stokes: null };
+  const stokes = { s1: s1 / total, s2: s2 / total, s3: s3 / total };
+  return { polarization: polarizationDescription(stokes), stokes };
 }
 
 // Shown on a reading whose gates could not be timed against the pulse train.
@@ -1518,7 +1523,18 @@ export function detectorReading(elementId) {
     sourceFractions.splice(0, sourceFractions.length, ...[...arrived].map(([sourceId, fraction]) => ({ sourceId, fraction })));
   }
   const polarizationHits = readoutKind === 'camera' ? cameraHits : activeHits;
-  const stokesHits = polarizationHits.filter(h => h.stokes);
+  // A ray from an unpolarized source (an LED, a lamp) carries neither a
+  // Stokes vector nor a polarization label: it is unpolarized light, the
+  // origin of the sphere, and it still counts towards the mix. Without it an
+  // LED alone gave no vector at all, and an LED beside a polarized laser read
+  // "Mixed" instead of the partly polarized state the two make together.
+  const UNPOLARIZED = { s1: 0, s2: 0, s3: 0 };
+  // Weighed by the watts each source delivers, as the spectrum is: a hit's
+  // power is a fraction of its own source, so otherwise a 3 mW LED beside a
+  // 1 mW laser counted as equal and read 50 % polarized instead of 25 %.
+  const stokesHits = hitsWeighedByWatts(polarizationHits
+    .map(h => (h.stokes || h.pol !== undefined ? h : { ...h, stokes: UNPOLARIZED })))
+    .filter(h => h.stokes);
   const numericPol = polarizationHits.filter(h => typeof h.pol === 'number').map(h => h.pol);
   let polarization = 'Unpolarized';
   // The power-weighted mean of every arriving hit's Stokes vector. This is
@@ -1529,8 +1545,8 @@ export function detectorReading(elementId) {
   // itself, not just the sentence describing it -- deriving them separately
   // let the label and the numbers disagree on one reading.
   let normalizedStokes = null;
-  if (stokesHits.length === polarizationHits.length) {
-    const sw = stokesHits.reduce((sum, h) => sum + Math.max(0, h.power), 0);
+  const sw = stokesHits.reduce((sum, h) => sum + Math.max(0, h.power), 0);
+  if (stokesHits.length && stokesHits.length === polarizationHits.length && sw > 0) {
     normalizedStokes = {
       s1: stokesHits.reduce((sum, h) => sum + h.stokes.s1 * h.power, 0) / sw,
       s2: stokesHits.reduce((sum, h) => sum + h.stokes.s2 * h.power, 0) / sw,
@@ -1543,8 +1559,10 @@ export function detectorReading(elementId) {
     polarization = hi - lo < 0.5 ? `Linear ${Math.round((lo + hi) / 2)}°` : 'Mixed linear';
   } else if (polarizationHits.some(h => h.pol !== undefined)) polarization = 'Mixed';
   if (readoutKind === 'camera' && !dark && cameraResult) {
-    polarization = coherentCameraPolarization(cameraResult, polarizationHits)
-      || 'Not resolved for camera mix';
+    // The label and the vector come from the same reconstructed contributions.
+    const resolved = coherentCameraPolarization(cameraResult, polarizationHits);
+    polarization = resolved ? resolved.polarization : 'Not resolved for camera mix';
+    if (resolved) normalizedStokes = resolved.stokes;
   }
   if (dark) {
     polarization = 'No detected field';

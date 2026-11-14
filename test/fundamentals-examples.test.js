@@ -177,8 +177,9 @@ test('handedness after a mirror: each mirror reverses circular light, one mirror
   assert.equal(shipped.reading('polC').polarization, 'Right circular');
   close(shipped.reading('polC').normalizedStokes.s3, 1, 1e-12, 's3');
   assert.equal(shipped.watts('meter'), 0);
-  // The probe cards and the polarimeter's screen draw the handedness: a
-  // clockwise arrow for right circular, mirrored for left.
+  // The probe cards draw the handedness, a clockwise arrow for right
+  // circular and mirrored for left; the polarimeter's screen puts the state
+  // at the north pole of its Poincaré sphere for right, the south for left.
   const card = (r, id) => registry.probe.svg(r.get(id), r.scene.elements);
   assert.match(card(shipped, 'probeA'), /right circular/);
   assert.doesNotMatch(card(shipped, 'probeA'), /scale\(-1,1\)/);
@@ -187,14 +188,13 @@ test('handedness after a mirror: each mirror reverses circular light, one mirror
   const screen = shipped.get('screenC');
   const shown = registry.display.svg(screen, shipped.scene.elements);
   assert.match(shown, /RIGHT CIRCULAR/);
-  assert.match(shown, /<circle r="8"\/>/, 'the circular glyph, not the unpolarized one');
-  assert.doesNotMatch(shown, /scale\(-1 1\)/);
+  assert.match(shown, /data-poincare-point="0,0,1"/);
   // Each row of the page's table is one change from the setup as it opens.
   const plate = await run(NAME, get => { get('qwp').params.a = 135; });
   assert.deepEqual(states(plate).slice(0, 3), ['Left circular', 'Right circular', 'Left circular']);
   close(plate.reading('polC').normalizedStokes.s3, -1, 1e-12, 's3');
   assert.match(registry.display.svg(plate.get('screenC'), plate.scene.elements), /LEFT CIRCULAR/);
-  assert.match(registry.display.svg(plate.get('screenC'), plate.scene.elements), /scale\(-1 1\)/);
+  assert.match(registry.display.svg(plate.get('screenC'), plate.scene.elements), /data-poincare-point="0,0,-1"/);
   close((await run(NAME, get => { get('ana').params.pangle = 135; })).watts('meter'), 1 * mW, 1e-12);
   for (const pol of [0, 90]) {
     const r = await run(NAME, get => { get('laserB').params.pol = pol; });

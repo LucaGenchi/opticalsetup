@@ -72,7 +72,15 @@ export function legacyPolarization(stokes) {
 
 export function polarizationDescription(stokes) {
   if (!stokes) return 'Unpolarized';
-  if (degreeOfPolarization(stokes) < DEPOLARIZED) return 'Unpolarized';
+  const degree = degreeOfPolarization(stokes);
+  if (degree < DEPOLARIZED) return 'Unpolarized';
+  // Partly polarized light (an LED beside a laser, two incoherent beams) is
+  // named by the shape of its polarized part, so 56 % polarized light at 0°
+  // reads "Partly linear 0°", not "Elliptical 0°" for a vector with no S3.
+  if (degree < 0.985) {
+    const part = polarizationDescription({ s1: stokes.s1 / degree, s2: stokes.s2 / degree, s3: stokes.s3 / degree });
+    return `Partly ${part.charAt(0).toLowerCase()}${part.slice(1)}`;
+  }
   if (Math.abs(stokes.s3) > 0.985) return stokes.s3 > 0 ? 'Right circular' : 'Left circular';
   const linearDegree = Math.hypot(stokes.s1, stokes.s2);
   const angle = stokesAngleDeg(stokes);
