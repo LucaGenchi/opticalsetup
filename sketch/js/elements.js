@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
+import { scopeTag } from './readout-scope.js';
 import { conicMirrorGeometry, conicMirrorSize, conicMirrorSVG, conicMirrorSurfaces } from './conic-mirror.js';
 // Registry of optical elements.
 // Local coordinates: element centered at (0,0); default optical propagation is along +x.
@@ -517,11 +518,15 @@ function shortPolarization(polarization = '') {
     .slice(0, 12);
 }
 
+// The mode line names the view and, as issue #313 (A5) asks, the scope: a
+// detailed view always states it, a summary only when it is not "in the
+// drawing plane".
 function displayViewName(view, rd) {
-  if (view === 'spectrum') return 'λ SAMPLES';
-  if (view === 'detail') return 'DETAIL';
-  if (rd?.readoutKind === 'camera') return 'INTENSITY PROFILE';
-  return rd?.readoutKind === 'pmt' ? 'PMT OUTPUT' : 'REL SIGNAL';
+  const name = view === 'spectrum' ? 'λ SAMPLES' : view === 'detail' ? 'DETAIL'
+    : rd?.readoutKind === 'camera' ? 'INTENSITY PROFILE'
+      : rd?.readoutKind === 'pmt' ? 'PMT OUTPUT' : 'REL SIGNAL';
+  const tag = scopeTag(rd, view);
+  return tag ? `${name} · ${tag}` : name;
 }
 
 function cameraCoherentPathCount(reading) {
@@ -717,7 +722,17 @@ function displayDetail(rd) {
   }).join('');
 }
 
+// A compact screen states its scope (issue #313, A5) on a small line under
+// the sensor's name, by the same rule as the full-size screens.
 function compactDisplayReading(sensorName, rd, view) {
+  const tag = scopeTag(rd, view);
+  const line = tag
+    ? `<text x="-35" y="-10.5" font-size="3.6" font-weight="700" letter-spacing="0.3" fill="#648092" data-readout-scope="${esc(tag)}">${esc(tag)}</text>`
+    : '';
+  return compactDisplayBody(sensorName, rd, view) + line;
+}
+
+function compactDisplayBody(sensorName, rd, view) {
   const header = `<text x="-35" y="-17" font-size="6" font-weight="760" letter-spacing="0.4" fill="#8fa9b8">${esc(sensorName.toUpperCase().slice(0, 11))}</text>`;
   const cameraState = rd.readoutKind === 'camera' ? cameraReadingState(rd) : null;
   const cameraBadge = cameraState?.badge

@@ -5,6 +5,7 @@
 // and returns drawables: stroked polylines (line-mode / beam edges) and filled
 // polygons (beam-mode envelope between the two edge rays).
 
+import { readingScope } from './readout-scope.js';
 import { emissionRayCount } from './emission.js';
 import { NONLINEAR_ORDER, MAX_SPOTS, MIN_HALF_ANGLE, SPOT_SPACING_MM, bundleFocus, gaussianFocus, linearPathFraction, volumeEmissionPoints } from './sectioning.js';
 import { POINT_SOURCE_CANVAS_THRESHOLD } from './point-source-rendering.js';
@@ -1906,7 +1907,7 @@ export function detectorReading(elementId) {
     if (at >= 0) approximations.splice(at, 1);
   }
   if (weakLightIncomplete) approximations.push(WEAK_LIGHT_NOTE);
-  return {
+  const reading = {
     signal,
     approximations,
     ...(weakLightIncomplete ? { weakLightIncomplete: true } : {}),
@@ -1940,6 +1941,10 @@ export function detectorReading(elementId) {
     interference,
     dark,
   };
+  // What each quantity assumes about the direction out of the drawing plane
+  // (issue #313, A5).
+  reading.scope = readingScope(reading);
+  return reading;
 }
 
 // sample the beam nearest to (x,y): returns {wl, bw, pol, intensity} or null

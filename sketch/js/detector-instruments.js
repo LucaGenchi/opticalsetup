@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Detector catalogue redesign and detector-aware screen panels.
 
+import { scopeTag } from './readout-scope.js';
 import {
-  OBJ_SHAPES, createElement, displayDensity, displayRenderScale, getElementMeta, registry, resolveDisplaySensor,
+  createElement, displayDensity, displayRenderScale, getElementMeta, registry, resolveDisplaySensor,
   resolvedDisplayView,
 } from './elements.js';
 import { detectorReading } from './raytrace.js';
@@ -224,7 +225,7 @@ registry.display.aliases = [...new Set([...(registry.display.aliases || []), 'de
 // keeping it last leaves the general detector immediately before the screen.
 if (registry.eye) registry.eye.paletteOrder = 21;
 
-function header(name, mode, pulse) {
+function header(name, mode, pulse, scope = '') {
   const title = String(name).toUpperCase(), size = Math.max(3.7, Math.min(6, 46 / Math.max(1, title.length * 0.62)));
   const titleLine = `<text x="-36" y="-23.5" font-size="${size.toFixed(2)}" font-weight="760" letter-spacing="0.35" fill="#9eb5c3">${esc(title)}</text>`;
   // A falsy mode omits the second line entirely — used where it would only
@@ -235,7 +236,7 @@ function header(name, mode, pulse) {
   // longest modes (e.g. "WAVELENGTH + BANDWIDTH") past the screen's right
   // edge at a fixed 4.5, so size it against the 72-unit usable width the
   // same way the title is sized.
-  const modeText = `${mode}${pulse ? ' · PULSE' : ''}`;
+  const modeText = `${mode}${pulse ? ' · PULSE' : ''}${scope ? ` · ${scope}` : ''}`;
   const modeSize = Math.max(3.1, Math.min(4.5, 72 / Math.max(1, modeText.length * 0.62)));
   return titleLine +
     `<text x="-36" y="-16.5" font-size="${modeSize.toFixed(2)}" font-weight="700" letter-spacing="0.35" fill="${pulse ? '#67e8f9' : '#648092'}">${esc(modeText)}</text>`;
@@ -760,49 +761,6 @@ function peakLabels(peaks, xAt, baseline) {
   }).join('') + `</g>`;
 }
 
-function profile(reading) {
-  const values = reading.profile || [], maximum = Math.max(...values, 1e-9), width = values.length ? 70 / values.length : 0;
-  return values.map((value, index) => {
-    if (!(value > 0)) return '';
-    const height = Math.max(0.6, 20 * value / maximum);
-    return `<rect data-profile-bin="${index}" x="${(-35 + index * width).toFixed(2)}" y="${(11 - height).toFixed(2)}" width="${Math.max(0.3, width - 0.4).toFixed(2)}" height="${height.toFixed(2)}" rx="0.3" fill="${reading.profileColors?.[index] || reading.color}"/>`;
-  }).join('') + `<line x1="-35" y1="11.5" x2="35" y2="11.5" stroke="#294453" stroke-width="0.8"/>`;
-}
-
-function objectGlyph(image) {
-  if (!image) return '';
-  const shape = OBJ_SHAPES[image.shape] || OBJ_SHAPES.arrow, cx = -8, cy = 1;
-  const height = clamp(Math.abs(image.localTipY - image.localBaseY) * 0.9, 7, 20), sign = image.magnification < 0 ? -1 : 1;
-  const point = value => ({ x: cx + value[0] * height, y: cy + value[1] * height * sign });
-  let svg = `<g data-camera-object-image="true"><title>Object image falls on camera</title>`;
-  for (const line of shape.lines || []) svg += `<polyline points="${line.map(item => { const p = point(item); return `${p.x.toFixed(2)},${p.y.toFixed(2)}`; }).join(' ')}" fill="none" stroke="${image.color}" stroke-width="1.25"/>`;
-  for (const polygon of shape.polys || []) svg += `<polygon points="${polygon.map(item => { const p = point(item); return `${p.x.toFixed(2)},${p.y.toFixed(2)}`; }).join(' ')}" fill="${image.color}"/>`;
-  return svg + `</g><text x="-34" y="14" font-size="3.3" font-weight="760" fill="#e2f1f5">OBJECT IMAGE</text>`;
-}
-
-function cameraMap(reading, sensor, elements) {
-  const values = reading.profile || [], columns = Math.min(24, values.length), rows = clamp(Math.round(sensor.params.rows || 12), 6, 16);
-  if (!columns) return '';
-  const grouped = Array.from({ length: columns }, (_, column) => {
-    const start = Math.floor(column * values.length / columns), end = Math.max(start + 1, Math.floor((column + 1) * values.length / columns));
-    const slice = values.slice(start, end), value = slice.reduce((sum, sample) => sum + sample, 0);
-    return { value, index: start, color: reading.profileColors?.[start] || reading.color };
-  });
-  const maximum = Math.max(...grouped.map(item => item.value), 1e-9), x0 = -35, y0 = -11, width = 54, height = 24;
-  let pixels = '';
-  for (let column = 0; column < columns; column++) {
-    const level = grouped[column].value / maximum, sigma = 1.4 + level * rows * 0.19;
-    for (let row = 0; row < rows; row++) {
-      const dy = row - (rows - 1) / 2, intensity = level * Math.exp(-(dy * dy) / (2 * sigma * sigma));
-      if (intensity < 0.035) continue;
-      pixels += `<rect data-camera-pixel="${column}:${row}" x="${(x0 + column * width / columns).toFixed(2)}" y="${(y0 + row * height / rows).toFixed(2)}" width="${Math.max(0.35, width / columns - 0.25).toFixed(2)}" height="${Math.max(0.35, height / rows - 0.25).toFixed(2)}" fill="${grouped[column].color}" opacity="${clamp(0.15 + 0.85 * intensity, 0, 1).toFixed(2)}"/>`;
-    }
-  }
-  return `<rect x="${x0}" y="${y0}" width="${width}" height="${height}" rx="1.5" fill="#031119" stroke="#294453"/>${pixels}${objectGlyph(objectImageAtCamera(sensor, elements))}` +
-    `<text x="22" y="-6" font-size="4" fill="#6d8796">BEAM Ø</text><text x="40" y="1" text-anchor="end" font-size="6" fill="#d9e8ee">${reading.beamDiameter > 0 ? `${reading.beamDiameter.toFixed(1)} mm` : 'POINT'}</text>` +
-    `<text x="40" y="7" text-anchor="end" font-size="4" fill="#6d8796">INTENSITY</text><text x="40" y="14" text-anchor="end" font-size="6" fill="#d9e8ee">Σw ${compactNumber(reading.signal)}</text>`;
-}
-
 // The polarimeter's screen: the measured state on a Poincaré sphere at the
 // left, its name, degree of polarization and Stokes parameters at the right.
 // The sphere plots only a measured vector: a reading without one (no field,
@@ -1044,40 +1002,33 @@ function autocorrelationPlot(sensor, reading) {
 
 function panel(sensor, reading, elements, view) {
   const name = sensor.label || registry[sensor.type].label;
-  if (sensor.type === 'camera') {
-    if (view === 'detail') return header(name, 'SPATIAL METRICS', reading.pulse) + metrics([
-      ['INTENSITY', `Σw ${compactNumber(reading.signal)}`], ['BEAM Ø', reading.beamDiameter > 0 ? `${reading.beamDiameter.toFixed(2)} mm` : 'POINT'],
-      ['CENTROID', Number.isFinite(reading.centroid) ? `${reading.centroid.toFixed(2)} mm` : '—'], ['MAP', `${reading.profile?.length || 0}×${sensor.params.rows || 12}`],
-    ]);
-    if (view === 'spectrum') return header(name, 'LINE PROFILE', reading.pulse) + profile(reading);
-    return header(name, '2D INTENSITY', reading.pulse) + cameraMap(reading, sensor, elements);
-  }
+  const tag = scopeTag(reading, view);
   if (sensor.type === 'detector') {
     // A pulsed arrival has real temporal structure, so the screen becomes an
     // oscilloscope rather than a single averaged number. CW light keeps the
     // plain intensity readout — there is nothing to plot against time.
     const window = detectorTimeWindow(sensor, elements);
     const scope = reading.pulse ? scopePlot(reading, window) : null;
-    if (scope) return header(name, scopeMode('OSCILLOSCOPE', window), reading.pulse) + scope;
-    return header(name, 'REL INTENSITY', reading.pulse) +
+    if (scope) return header(name, scopeMode('OSCILLOSCOPE', window), reading.pulse, tag) + scope;
+    return header(name, 'REL INTENSITY', reading.pulse, tag) +
       `<circle cx="-31" cy="-1" r="2.3" fill="${reading.color}"/><text x="35" y="4" text-anchor="end" font-size="15" font-weight="780" fill="#ecf7fa">${compactNumber(reading.signal)}</text><text x="35" y="12" text-anchor="end" font-size="5" fill="#7892a1">Σw · REL INTENSITY</text>`;
   }
   if (sensor.type === 'autocorrelator' && (sensor.params?.measurementMode || 'auto') === 'cross') {
     const { svg, note } = crossCorrelationScope(sensor, reading);
-    if (svg) return header(name, 'CROSS-CORRELATION', reading.pulse) + svg;
+    if (svg) return header(name, 'CROSS-CORRELATION', reading.pulse, tag) + svg;
     const [state, hint] = String(note).split('|');
-    return header(name, 'CROSS-CORRELATION', reading.pulse)
+    return header(name, 'CROSS-CORRELATION', reading.pulse, tag)
       + metrics(hint ? [['STATE', state], ['', hint]] : [['STATE', state]], 1);
   }
   if (sensor.type === 'autocorrelator') {
     const plot = autocorrelationPlot(sensor, reading);
     if (plot && plot.note) {
       const [state, hint] = String(plot.note).split('|');
-      return header(name, 'AUTOCORRELATION', reading.pulse)
+      return header(name, 'AUTOCORRELATION', reading.pulse, tag)
         + metrics(hint ? [['STATE', state], ['', hint]] : [['STATE', state]], 1);
     }
-    if (plot) return header(name, 'AUTOCORRELATION', reading.pulse) + plot;
-    return header(name, 'AUTOCORRELATION', reading.pulse) + metrics([
+    if (plot) return header(name, 'AUTOCORRELATION', reading.pulse, tag) + plot;
+    return header(name, 'AUTOCORRELATION', reading.pulse, tag) + metrics([
       ['STATE', reading.pulse?.mixed ? 'MIXED TRAINS' : 'NO PULSE'],
       ['DURATION', '—'],
     ]);
@@ -1089,10 +1040,10 @@ function panel(sensor, reading, elements, view) {
     const window = detectorTimeWindow(sensor, elements);
     const scope = reading.pulse ? scopePlot(reading, window) : null;
     if (scope) {
-      return header(name, scopeMode('PMT', window), reading.pulse) + scope +
+      return header(name, scopeMode('PMT', window), reading.pulse, tag) + scope +
         `<text x="35" y="-8" text-anchor="end" font-size="4.6" font-weight="700" fill="${verdict?.key === 'linear' ? '#7fd7a6' : '#f0b46a'}">${esc((verdict?.label || '').toUpperCase())}</text>`;
     }
-    return header(name, 'LOW-LIGHT INTENSITY', reading.pulse) + metrics([
+    return header(name, 'LOW-LIGHT INTENSITY', reading.pulse, tag) + metrics([
       ['INPUT', `\u03a3w ${compactNumber(reading.signal)}`], ['GAIN', `\u00d7${compactNumber(reading.gain)}`],
       ['PMT OUTPUT', `${compactNumber(reading.outputSignal)} a.u.`],
       ['S / DARK', Number.isFinite(reading.snr) ? `${compactNumber(reading.snr)}\u00d7` : '\u2014'],
@@ -1108,7 +1059,7 @@ function panel(sensor, reading, elements, view) {
     const partial = reading.detectedPowerW != null && reading.powerCoversAllArrivals === false
       ? '<text x="-36" y="17.5" font-size="4.4" font-weight="700" fill="#f0b46a">+ UNRATED SOURCE</text>'
       : '';
-    return header(name, 'OPTICAL POWER', reading.pulse)
+    return header(name, 'OPTICAL POWER', reading.pulse, tag)
       + `<text x="35" y="6" text-anchor="end" font-size="14" font-weight="780" fill="#ecf7fa">${value}</text>`
       + `<text x="35" y="14" text-anchor="end" font-size="5.2" fill="#86efac">${unit}</text>`
       + partial;
@@ -1124,12 +1075,12 @@ function panel(sensor, reading, elements, view) {
       const gaussian = Number.isFinite(wave.waistMm)
         ? line(5.5, `w₀ ${focusLength(wave.waistMm)} · zR ${focusLength(wave.rayleighMm)}`) + line(11, `WAIST ${waistPlace(wave)}`) : '';
       const low = `<text x="35" y="16.5" text-anchor="end" font-size="5.2" fill="#d9e8ee">INTENSITY Σw ${compactNumber(reading.signal)}</text>`;
-      return header(name, 'WAVEFRONT + INTENSITY', reading.pulse) + `<text x="35" y="-6.5" text-anchor="end" font-size="8.2" font-weight="780" fill="#e9e3ff">${wave.state}</text>${line(0, `CONE ${wave.divergenceDeg.toFixed(2)}°${at}`)}${gaussian}${gaussian ? low : intensity}`;
+      return header(name, 'WAVEFRONT + INTENSITY', reading.pulse, tag) + `<text x="35" y="-6.5" text-anchor="end" font-size="8.2" font-weight="780" fill="#e9e3ff">${wave.state}</text>${line(0, `CONE ${wave.divergenceDeg.toFixed(2)}°${at}`)}${gaussian}${gaussian ? low : intensity}`;
     }
     const divergence = wave.state === 'COLLIMATED' ? '0.00°' : `${wave.divergenceDeg.toFixed(2)}°`;
-    return header(name, 'WAVEFRONT + INTENSITY', reading.pulse) + `<text x="35" y="-4" text-anchor="end" font-size="8.2" font-weight="780" fill="#e9e3ff">${wave.state}</text><text x="35" y="4" text-anchor="end" font-size="5.2" fill="#a99bd4">DIVERGENCE ${divergence}</text>${intensity}`;
+    return header(name, 'WAVEFRONT + INTENSITY', reading.pulse, tag) + `<text x="35" y="-4" text-anchor="end" font-size="8.2" font-weight="780" fill="#e9e3ff">${wave.state}</text><text x="35" y="4" text-anchor="end" font-size="5.2" fill="#a99bd4">DIVERGENCE ${divergence}</text>${intensity}`;
   }
-  if (sensor.type === 'polarimeter') return header(name, 'POLARIZATION · STOKES', reading.pulse) + polarimeterScreen(reading);
+  if (sensor.type === 'polarimeter') return header(name, 'POLARIZATION · STOKES', reading.pulse, tag) + polarimeterScreen(reading);
   if (sensor.type === 'spectrometer') {
     // No mode line here — a spectrometer only ever shows this one labeled
     // plot, so "WAVELENGTH + BANDWIDTH" restated nothing the plot and its
@@ -1139,14 +1090,14 @@ function panel(sensor, reading, elements, view) {
     // caption underneath.
     // No bandwidth caption: a single number cannot describe several lines,
     // and it read as the span between the outermost ones.
-    return header(name, null, reading.pulse) + spectrumPlot(reading, sensor, 1);
+    return header(name, null, reading.pulse, tag) + spectrumPlot(reading, sensor, 1);
   }
   if (sensor.type === 'generaldetector' && view === 'spectrum') {
-    return header(name, 'GENERAL · SPECTRUM', reading.pulse) + spectrumPlot(reading, sensor);
+    return header(name, 'GENERAL · SPECTRUM', reading.pulse, tag) + spectrumPlot(reading, sensor);
   }
   if (sensor.type === 'generaldetector' && view === 'detail') {
     const { values: [s0, s1, s2, s3], unit } = stokesDisplay(reading);
-    return header(name, 'STOKES + PULSE TIMING', reading.pulse) + metrics([
+    return header(name, 'STOKES + PULSE TIMING', reading.pulse, tag) + metrics([
       [`S0 ${unit}`, s0], ['S1', s1], ['S2', s2],
       ['S3', s3], ['REP RATE', pulseRate(reading.pulse)], ['PULSE DURATION', pulseDuration(reading.pulse)],
     ], 3);
@@ -1162,7 +1113,7 @@ function panel(sensor, reading, elements, view) {
     const size = focused ? ['WAIST w₀ / zR', waistAndRange(wavefront.waistMm, wavefront.rayleighMm)]
       : ['BEAM Ø', reading.beamDiameter > 0 ? `${reading.beamDiameter.toFixed(2)} mm` : 'POINT'];
     const shape = focused ? ['FOCUS PLANE', waistPlace(wavefront)] : ['WAVEFRONT', wave];
-    return header(name, 'ALL LIGHT PROPERTIES', reading.pulse) + metrics([
+    return header(name, 'ALL LIGHT PROPERTIES', reading.pulse, tag) + metrics([
       ['POWER / INTENSITY', `${power} ${unit}`], size, shape,
       ['POLARIZATION', String(reading.polarization).toUpperCase()], ['WAVELENGTH', spectrumLabel(reading)], ['PULSE', reading.pulse ? `${pulseRate(reading.pulse)}·${pulseDuration(reading.pulse)}`.replace(/ /g, '') : 'CW'],
     ], 3);
