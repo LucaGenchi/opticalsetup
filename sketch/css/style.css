@@ -729,6 +729,24 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 .camera-profile svg { display: block; width: 100%; height: 52px; overflow: visible; }
 .camera-profile-axis { display: flex; justify-content: space-between; margin-top: 1px; color: var(--muted); font-size: 8.5px; font-variant-numeric: tabular-nums; }
 .camera-profile-note { margin-top: 5px; color: #9a620d; font-size: 8.5px; line-height: 1.35; }
+.poincare-card { margin-top: 9px; padding-top: 8px; border-top: 1px solid #dce8e3; }
+.poincare-body { display: flex; align-items: center; gap: 10px; }
+.poincare-body svg { display: block; flex: 1 1 auto; min-width: 0; max-width: 168px; height: auto; overflow: visible; font-family: inherit; }
+.poincare-values { display: grid; grid-template-columns: auto auto; gap: 4px 8px; margin: 0; font-size: 10px; flex: 0 0 auto; }
+.poincare-values dt { color: var(--muted); }
+.poincare-values dd { margin: 0; color: var(--text); font-variant-numeric: tabular-nums; text-align: right; }
+.poincare-note { margin-top: 6px; }
+.ps-sphere { fill: #eef6f3; stroke: #7d958c; stroke-width: 0.6; }
+.ps-front { fill: none; stroke: #9fb3ab; stroke-width: 0.45; }
+.ps-back { fill: none; stroke: #c3d2cc; stroke-width: 0.4; stroke-dasharray: 1.2 1.2; }
+.ps-axis { stroke: #5e746c; stroke-width: 0.55; }
+.ps-axis-back { stroke: #a9bbb4; stroke-width: 0.45; stroke-dasharray: 1 1; }
+.ps-label { fill: var(--muted); font-weight: 700; }
+.ps-vector { stroke: #c0267a; stroke-width: 1.1; }
+.ps-vector-back { stroke: #c0267a; stroke-width: 0.9; stroke-dasharray: 1.4 1; }
+.ps-drop { stroke: #c0267a; stroke-width: 0.45; stroke-dasharray: 1 1; opacity: 0.7; }
+.ps-point { fill: #c0267a; stroke: #fff; stroke-width: 0.6; }
+.ps-point-back { fill: #fff; stroke: #c0267a; stroke-width: 0.8; }
 .measurement-foot { margin-top: 9px; color: var(--muted); font-size: 9px; line-height: 1.35; }
 .empty-inspector { padding: 2px 2px 0; }
 .empty-kicker { margin-bottom: 5px; color: var(--accent); font-size: 9.5px; font-weight: 760; letter-spacing: 0.7px; text-transform: uppercase; }
@@ -953,6 +971,15 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 :root[data-theme="dark"] .camera-profile-mode.warning { border-color: #72541d; background: #302719; color: #f0bd6a; }
 :root[data-theme="dark"] .camera-profile-mode.cancelled { color: #94a3b8; }
 :root[data-theme="dark"] .camera-profile-note { color: #d7a756; }
+:root[data-theme="dark"] .poincare-card { border-color: #2f5145; }
+:root[data-theme="dark"] .ps-sphere { fill: #102a22; stroke: #5d8475; }
+:root[data-theme="dark"] .ps-front { stroke: #4f7466; }
+:root[data-theme="dark"] .ps-back { stroke: #34544a; }
+:root[data-theme="dark"] .ps-axis { stroke: #9cb8ad; }
+:root[data-theme="dark"] .ps-axis-back { stroke: #4d6d61; }
+:root[data-theme="dark"] :is(.ps-vector, .ps-vector-back, .ps-drop) { stroke: #f9a8d4; }
+:root[data-theme="dark"] .ps-point { fill: #f9a8d4; stroke: #182923; }
+:root[data-theme="dark"] .ps-point-back { fill: #182923; stroke: #f9a8d4; }
 :root[data-theme="dark"] .no-signal .signal-light { background: #707b88; }
 
 /* Labels outside an optic and the tuning-pill text sit on the dark canvas,

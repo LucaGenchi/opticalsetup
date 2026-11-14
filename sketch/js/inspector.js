@@ -35,6 +35,7 @@ import {
 } from './objective.js';
 import { immersionCouplingStatus } from './immersion.js';
 import { esc, formatSignal } from './util.js';
+import { poincarePoint, poincareSphereSVG } from './poincare.js';
 import { WIKI_TYPES } from './wiki-types.js';
 import { GLASS_OPTIONS } from './glass.js';
 import {
@@ -547,6 +548,7 @@ function measurementHTML(el) {
       <dt>Sensor pixels</dt><dd>${rd.profile?.length || 0}</dd>`
     : readoutKind === 'autocorrelator' ? autocorrelatorRows(rd, source)
     : readoutKind === 'retina' ? retinaPowerRow(source) : '';
+  const poincare = readoutKind === 'polarimeter' ? poincareCardHTML(rd) : '';
   let cameraProfile = '';
   if (isCamera && rd.profile) {
     const halfSpan = cameraAxisHalfSpan(source);
@@ -597,10 +599,33 @@ function measurementHTML(el) {
       ${pulseRows}
     </dl>
     ${cameraProfile}
+    ${poincare}
     ${pulseTimeline}
     ${verdict ? `<div class="measurement-foot pmt-verdict ${esc(verdict.key)}">${esc(verdict.detail)}</div>` : ''}
     <div class="measurement-foot">${measurementFoot}</div>
   </div>`;
+}
+
+// The polarimeter's state on a Poincaré sphere, with the normalized Stokes
+// vector it plots. Only a measured vector is plotted: without one the sphere
+// stays empty and says why, rather than placing a point guessed from a label.
+function poincareCardHTML(rd) {
+  const point = poincarePoint(rd.normalizedStokes);
+  const signed = value => `${value < 0 ? '−' : '+'}${Math.abs(value).toFixed(2)}`;
+  const values = point
+    ? `<dl class="poincare-values"><dt>S₁/S₀</dt><dd>${signed(point.s1)}</dd><dt>S₂/S₀</dt><dd>${signed(point.s2)}</dd><dt>S₃/S₀</dt><dd>${signed(point.s3)}</dd><dt>DoP</dt><dd>${(100 * point.degree).toFixed(0)}%</dd></dl>`
+    : '';
+  const note = point
+    ? 'Fully polarized light lies on the surface, partly polarized light inside at a radius equal to its degree of polarization. +S₁ is linear 0°, +S₂ linear 45°, +S₃ right circular (R, Born and Wolf) and −S₃ left circular (L).'
+    : 'No Stokes vector was measured for this light, so no state is plotted.';
+  return `<div class="poincare-card">
+      <div class="camera-profile-head"><span>Poincaré sphere</span><strong class="camera-profile-mode">${esc(rd.polarization)}</strong></div>
+      <div class="poincare-body">
+        <svg viewBox="-34 -31 68 62" role="img" aria-label="Poincaré sphere: ${esc(rd.polarization)}">${poincareSphereSVG(rd.normalizedStokes || null, { r: 22, palette: 'css', meridians: true, labels: 'full', fontSize: 4.6 })}</svg>
+        ${values}
+      </div>
+      <div class="measurement-foot poincare-note">${note}</div>
+    </div>`;
 }
 
 // Every instrument that measures something can drive a detector screen, so
