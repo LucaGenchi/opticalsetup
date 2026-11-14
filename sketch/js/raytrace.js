@@ -67,7 +67,7 @@ import { spectralFieldResult, spectralTermsAt, SPECTRAL_UNAVAILABLE, RECOMBINED_
 import { cameraProfileFromHits } from './camera-profile.js';
 import { MAX_CONVERSION, MAX_OPO_DEPLETION, opoPulse, supercontinuumRange, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength, mixWidthNm, coincidenceGate } from './parametric.js';
 import { asphereSag, asphereSlope } from './asphere.js';
-import { imageOfPoint, objectImagingSteps } from './object-imaging.js';
+import { imageOfPoint, objectImagingSteps, principalRays } from './object-imaging.js';
 
 // polylines from the most recent traceAll, kept for beam probes
 let lastPaths = [];
@@ -453,6 +453,10 @@ let objectImageStates = new Map();
 export function objectImageReading(elementId) {
   return objectImageStates.get(elementId) || null;
 }
+
+// The principal planes of a real optic an Object's principal rays
+// bend at: a neutral grey, so they read as construction, not light.
+const PRINCIPAL_PLANE_COLOR = '#94a3b8';
 
 // A thin lens surface's focal length for an Object's image construction.
 function objectThinFocal(s, wavelength) {
@@ -8440,8 +8444,10 @@ export function traceScene(elements, beams = [], options = {}) {
   objectImageStates = new Map();
   for (const el of elements) {
     const def = registry[el.type];
-    if (!def || !def.imaging || !el.params.showImage) continue;
+    if (!def || !def.imaging) continue;
     const pp = el.params;
+    const principal = pp.raysMode === 'fan' && pp.raysFrom === 'principal';
+    if (!pp.showImage && !principal) continue;
     const u = rotPt(1, 0, el.rot || 0);       // object's forward axis
     const v = rotPt(0, -1, el.rot || 0);      // object's "up" direction
     const p0 = { x: el.x, y: el.y };
@@ -8452,9 +8458,24 @@ export function traceScene(elements, beams = [], options = {}) {
     // real optics through their principal planes (object-imaging.js).
     const steps = objectImagingSteps(el, surfaces, { registry, thinFocal: s => objectThinFocal(s, pp.wavelength), wavelength: pp.wavelength });
     if (!steps || !steps.length) continue;
+    const { tipY, baseY } = objectEnds(pp);
+
+    // The three textbook rays from the tip, lens by lens: drawn, not traced.
+    if (principal) {
+      const color = pp.autoColor === false && pp.color ? pp.color : wavelengthToColor(pp.wavelength);
+      const drawing = principalRays(steps, add(p0, mul(v, -tipY)), u, v, { maxLen: MAXLEN });
+      for (const plane of drawing.planes) {
+        drawables.push({ type: 'path', pts: plane.pts, color: PRINCIPAL_PLANE_COLOR, w: 1, opacity: 0.7, dash: '3 3' });
+      }
+      for (const ray of drawing.rays) {
+        drawables.push(ray.dashed
+          ? { type: 'path', pts: ray.pts, color, w: 1.4, opacity: 0.6, dash: '5 4' }
+          : { type: 'path', pts: ray.pts, color, w: 1.8, opacity: 0.9 });
+      }
+    }
+    if (!pp.showImage) continue;
 
     // The images of the object's base and tip after the first k lenses.
-    const { tipY, baseY } = objectEnds(pp);
     const endImages = k => [imageOfPoint(add(p0, mul(v, -baseY)), steps, u, v, k), imageOfPoint(add(p0, mul(v, -tipY)), steps, u, v, k)];
 
     // What the inspector reads: each intermediate image and the final one.
