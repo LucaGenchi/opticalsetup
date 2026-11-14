@@ -91,6 +91,8 @@ const EXAMPLE_ORDER = {
     'Total internal reflection — right-angle prism',
     'Law of Malus — polarizers and a half-wave plate',
     'Handedness after a mirror',
+    'Brewster window',
+    'Fresnel rhomb as an achromatic quarter-wave retarder',
     'Pinhole spatial filter',
     'Spatial filtering in the Fourier plane — 4f system',
     'Coupling a laser into a single-mode fiber',

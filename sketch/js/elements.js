@@ -123,6 +123,22 @@ export function surfaceTransmission(params = {}) {
   return Math.min(1, Math.max(0, pct / 100));
 }
 
+// How a glass body's faces treat light: the per-surface transmission it has
+// always had (the default, so saved setups read as before), or bare glass,
+// where each face transmits by Fresnel at its real angle of incidence, s and
+// p separately, as a prism's faces do, and total internal reflection carries
+// its s-p retardance (docs/physics/prism-fresnel.md).
+const SURFACE_MODEL_OPTIONS = [['transmission', 'Per-surface transmission'], ['fresnel', 'Bare glass (Fresnel)']];
+const surfaceModelParam = (transmissionLabel = 'Per-surface transmission') => ({
+  key: 'surfaceModel', label: 'Surfaces', type: 'select', def: 'transmission',
+  options: [['transmission', transmissionLabel], SURFACE_MODEL_OPTIONS[1]],
+});
+const usesTransmission = p => p.surfaceModel !== 'fresnel';
+// The tracer's data for one face: a Fresnel face, or a fixed transmission.
+export function glassSurfaceData(params = {}, transmission = surfaceTransmission(params)) {
+  return params.surfaceModel === 'fresnel' ? { fresnel: true } : { transmission };
+}
+
 // Closed boundary for the glass body, plus the centre thickness actually used:
 // a strongly biconvex lens with too little centre thickness would have its two
 // faces cross at the rim, so the thickness is raised until a real edge remains.
@@ -3765,7 +3781,8 @@ export const registry = {
       { key: 'thickness', label: 'Centre thickness (mm)', type: 'number', min: 0.5, max: 60, step: 0.1, def: 6 },
       { key: 'dia', label: 'Diameter', type: 'optsize', def: 25.4 },
       { key: 'glass', label: 'Glass', type: 'select', def: 'nbk7', options: GLASS_OPTIONS },
-      { key: 'transEff', label: 'Per-surface transmission (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
+      surfaceModelParam(),
+      { key: 'transEff', label: 'Per-surface transmission (%)', type: 'number', min: 0, max: 100, step: 1, def: 98, show: usesTransmission },
       { key: 'shape', label: 'Shape', type: 'readout', readout: p => thickLensShapeName(p) },
       {
         key: 'realizedGeometry', label: 'Geometry used', type: 'readout',
@@ -3787,7 +3804,7 @@ export const registry = {
       return boundarySegments(g.points).map((segment, i) => ({
         x1: segment.a.x, y1: segment.a.y, x2: segment.b.x, y2: segment.b.y, kind: 'refract',
         data: {
-          material: el.params.glass, transmission: surfaceTransmission(el.params),
+          material: el.params.glass, ...glassSurfaceData(el.params),
           topologyKey: `face-${i}`,
           ...(segment.kind === 'arc' ? { arcPoint: { x: segment.through.x, y: segment.through.y } } : {}),
         },
@@ -3826,7 +3843,8 @@ export const registry = {
       { key: 'thickness', label: 'Centre thickness (mm)', type: 'number', min: 0.5, max: 60, step: 0.1, def: 6 },
       { key: 'dia', label: 'Diameter', type: 'optsize', def: 25.4 },
       { key: 'glass', label: 'Glass', type: 'select', def: 'nbk7', options: GLASS_OPTIONS },
-      { key: 'transEff', label: 'Per-surface transmission (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
+      surfaceModelParam(),
+      { key: 'transEff', label: 'Per-surface transmission (%)', type: 'number', min: 0, max: 100, step: 1, def: 98, show: usesTransmission },
       { key: 'shape', label: 'Surface types', type: 'readout', readout: p => asphericSurfaceSummary(p) },
       {
         key: 'realizedGeometry', label: 'Geometry used', type: 'readout',
@@ -3856,8 +3874,7 @@ export const registry = {
       const frontBottom = geometry.frontPoints.at(-1);
       const rearBottom = geometry.rearPoints[0];
       const rearTop = geometry.rearPoints.at(-1);
-      const transmission = surfaceTransmission(el.params);
-      const common = { material: el.params.glass, transmission };
+      const common = { material: el.params.glass, ...glassSurfaceData(el.params) };
       const worldProfile = (vertexX, profile) => {
         const vertex = toWorld(el, vertexX, 0);
         return {
@@ -3946,7 +3963,8 @@ export const registry = {
         },
       },
       { key: 'dia', label: 'Clear aperture', type: 'optsize', def: 25.4 },
-      { key: 'transEff', label: 'Per-surface transmission (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
+      surfaceModelParam(),
+      { key: 'transEff', label: 'Per-surface transmission (%)', type: 'number', min: 0, max: 100, step: 1, def: 98, show: usesTransmission },
       {
         key: 'assembly', label: 'Assembly', type: 'readout',
         readout: p => {
@@ -3993,7 +4011,7 @@ export const registry = {
     },
     surfaces(el) {
       const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
-      const transmission = surfaceTransmission(el.params);
+      const faces = glassSurfaceData(el.params);
       // Every body contributes its own closed boundary. The topology key has
       // to be unique per body AND per face: the tracer uses it to tell one
       // interaction from another, and two bodies of one element would
@@ -4001,7 +4019,7 @@ export const registry = {
       const refracting = g.bodies.flatMap((body, b) => boundarySegments(body.points).map((segment, i) => ({
         x1: segment.a.x, y1: segment.a.y, x2: segment.b.x, y2: segment.b.y, kind: 'refract',
         data: {
-          material: body.glass, transmission,
+          material: body.glass, ...faces,
           topologyKey: `body-${b}-face-${i}`,
           ...(segment.kind === 'arc' ? { arcPoint: { x: segment.through.x, y: segment.through.y } } : {}),
         },
@@ -4543,7 +4561,8 @@ export const registry = {
       { key: 'scale', label: 'Overall scale', type: 'number', min: 0.1, max: 10, step: 0.05, def: 1 },
       { key: 'material', label: 'Glass model', type: 'select', def: 'constant', options: [['constant', 'Constant index'], ...GLASS_OPTIONS] },
       { key: 'ior', label: 'Refractive index', type: 'number', min: 1.01, max: 2.5, step: 0.01, def: 1.5, show: p => p.material === 'constant' },
-      { key: 'transEff', label: 'Per-surface transmission (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
+      surfaceModelParam(),
+      { key: 'transEff', label: 'Per-surface transmission (%)', type: 'number', min: 0, max: 100, step: 1, def: 98, show: usesTransmission },
     ],
     svg(el) {
       const path = boundaryPathData(freeglassPoints(el));
@@ -4555,7 +4574,7 @@ export const registry = {
       return boundarySegments(points).map((segment, i) => ({
         x1: segment.a.x, y1: segment.a.y, x2: segment.b.x, y2: segment.b.y, kind: 'refract',
         data: {
-          material, ior: el.params.ior, transmission: surfaceTransmission(el.params),
+          material, ior: el.params.ior, ...glassSurfaceData(el.params),
           topologyKey: `edge-${i}`,
           ...(segment.kind === 'arc'
             ? { arcPoint: { x: segment.through.x, y: segment.through.y } }
@@ -5833,6 +5852,7 @@ export const registry = {
       { key: 'dia', label: 'Diameter', type: 'optsize', def: 12.7 },
       { key: 'material', label: 'Glass model', type: 'select', def: 'constant', options: [['constant', 'Constant index'], ...GLASS_OPTIONS] },
       { key: 'ior', label: 'Refractive index', type: 'number', min: 1.01, max: 2.5, step: 0.01, def: 1.52, show: p => p.material === 'constant' },
+      surfaceModelParam('Fixed transmission, 96 % per face'),
     ],
     size_: el => ({ w: el.params.rodlen + 4, h: (el.params.dia || 10) + 4 }),
     svg(el) {
@@ -5844,7 +5864,7 @@ export const registry = {
       const data = {
         material: isDispersiveGlass(el.params.material) ? el.params.material : undefined,
         ior: el.params.ior || 1.52,
-        transmission: 0.96,
+        ...glassSurfaceData(el.params, 0.96),
       };
       // All four faces are dielectric boundaries. The tracer tracks whether a
       // ray is inside this rod, so it refracts on entry/exit and reflects when

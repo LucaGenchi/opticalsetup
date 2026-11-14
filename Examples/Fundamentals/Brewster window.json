@@ -1,0 +1,410 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "title",
+      "type": "textlabel",
+      "x": -60,
+      "y": 40,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**Brewster window**",
+        "fontSize": 24,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "intro",
+      "type": "textlabel",
+      "x": -60,
+      "y": 89,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "A plate of bare glass (n = 1.5) turned to Brewster's angle, 56.3°, passes p light, polarized in the drawing,\nwithout loss at either face; s light, polarized out of the drawing, loses part of its power at each face.",
+        "fontSize": 14,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "labelA",
+      "type": "textlabel",
+      "x": -60,
+      "y": 150,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**p light** (polarized at 0°): all of it passes",
+        "fontSize": 14,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "laserP",
+      "type": "cwlaser",
+      "x": 0,
+      "y": 220,
+      "rot": 0,
+      "label": "Laser, polarized at 0° (p), 1 mW",
+      "showLabel": true,
+      "params": {
+        "wavelength": 633,
+        "avgPowerW": 0.001,
+        "beamMode": "beam",
+        "beamWidth": 1,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "plateP",
+      "type": "freeglass",
+      "x": 200,
+      "y": 220,
+      "rot": 56.309932474020215,
+      "label": "Bare glass at Brewster's angle",
+      "showLabel": true,
+      "params": {
+        "vertices": [
+          {
+            "x": -3,
+            "y": -40
+          },
+          {
+            "x": 3,
+            "y": -40
+          },
+          {
+            "x": 3,
+            "y": 40
+          },
+          {
+            "x": -3,
+            "y": 40
+          }
+        ],
+        "scale": 1,
+        "material": "constant",
+        "ior": 1.5,
+        "surfaceModel": "fresnel"
+      }
+    },
+    {
+      "id": "meterP",
+      "type": "powermeter",
+      "x": 360,
+      "y": 223,
+      "rot": 0,
+      "label": "Power meter",
+      "showLabel": false,
+      "params": {
+        "aperture": 30
+      }
+    },
+    {
+      "id": "screenP",
+      "type": "display",
+      "x": 490,
+      "y": 223,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "sensorId": "meterP",
+        "displayScale": 0.8,
+        "screenOn": true,
+        "displayView": "main"
+      }
+    },
+    {
+      "id": "labelB",
+      "type": "textlabel",
+      "x": -60,
+      "y": 300,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**s light** (polarized at 90°): about 27 % is reflected away at the two faces",
+        "fontSize": 14,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "laserS",
+      "type": "cwlaser",
+      "x": 0,
+      "y": 370,
+      "rot": 0,
+      "label": "Laser, polarized at 90° (s), 1 mW",
+      "showLabel": true,
+      "params": {
+        "wavelength": 633,
+        "avgPowerW": 0.001,
+        "beamMode": "beam",
+        "beamWidth": 1,
+        "pol": 90,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "plateS",
+      "type": "freeglass",
+      "x": 200,
+      "y": 370,
+      "rot": 56.309932474020215,
+      "showLabel": false,
+      "params": {
+        "vertices": [
+          {
+            "x": -3,
+            "y": -40
+          },
+          {
+            "x": 3,
+            "y": -40
+          },
+          {
+            "x": 3,
+            "y": 40
+          },
+          {
+            "x": -3,
+            "y": 40
+          }
+        ],
+        "scale": 1,
+        "material": "constant",
+        "ior": 1.5,
+        "surfaceModel": "fresnel"
+      }
+    },
+    {
+      "id": "meterS",
+      "type": "powermeter",
+      "x": 360,
+      "y": 373,
+      "rot": 0,
+      "label": "Power meter",
+      "showLabel": false,
+      "params": {
+        "aperture": 30
+      }
+    },
+    {
+      "id": "screenS",
+      "type": "display",
+      "x": 490,
+      "y": 373,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "sensorId": "meterS",
+        "displayScale": 0.8,
+        "screenOn": true,
+        "displayView": "main"
+      }
+    },
+    {
+      "id": "labelC",
+      "type": "textlabel",
+      "x": -60,
+      "y": 450,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**Unpolarized light** through four plates: each passes all of p and part of s, so the light leaves partly polarized",
+        "fontSize": 14,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "led",
+      "type": "ledsource",
+      "x": 0,
+      "y": 520,
+      "rot": 0,
+      "label": "LED, unpolarized, 1 mW",
+      "showLabel": true,
+      "params": {
+        "ledPreset": "red",
+        "wavelength": 630,
+        "bandwidth": 20,
+        "avgPowerW": 0.001,
+        "beamMode": "beam",
+        "beamWidth": 1,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "pile1",
+      "type": "freeglass",
+      "x": 150,
+      "y": 520,
+      "rot": 56.309932474020215,
+      "label": "Four plates at Brewster's angle",
+      "showLabel": true,
+      "params": {
+        "vertices": [
+          {
+            "x": -3,
+            "y": -40
+          },
+          {
+            "x": 3,
+            "y": -40
+          },
+          {
+            "x": 3,
+            "y": 40
+          },
+          {
+            "x": -3,
+            "y": 40
+          }
+        ],
+        "scale": 1,
+        "material": "constant",
+        "ior": 1.5,
+        "surfaceModel": "fresnel"
+      }
+    },
+    {
+      "id": "pile2",
+      "type": "freeglass",
+      "x": 185,
+      "y": 520,
+      "rot": 56.309932474020215,
+      "showLabel": false,
+      "params": {
+        "vertices": [
+          {
+            "x": -3,
+            "y": -40
+          },
+          {
+            "x": 3,
+            "y": -40
+          },
+          {
+            "x": 3,
+            "y": 40
+          },
+          {
+            "x": -3,
+            "y": 40
+          }
+        ],
+        "scale": 1,
+        "material": "constant",
+        "ior": 1.5,
+        "surfaceModel": "fresnel"
+      }
+    },
+    {
+      "id": "pile3",
+      "type": "freeglass",
+      "x": 220,
+      "y": 520,
+      "rot": 56.309932474020215,
+      "showLabel": false,
+      "params": {
+        "vertices": [
+          {
+            "x": -3,
+            "y": -40
+          },
+          {
+            "x": 3,
+            "y": -40
+          },
+          {
+            "x": 3,
+            "y": 40
+          },
+          {
+            "x": -3,
+            "y": 40
+          }
+        ],
+        "scale": 1,
+        "material": "constant",
+        "ior": 1.5,
+        "surfaceModel": "fresnel"
+      }
+    },
+    {
+      "id": "pile4",
+      "type": "freeglass",
+      "x": 255,
+      "y": 520,
+      "rot": 56.309932474020215,
+      "showLabel": false,
+      "params": {
+        "vertices": [
+          {
+            "x": -3,
+            "y": -40
+          },
+          {
+            "x": 3,
+            "y": -40
+          },
+          {
+            "x": 3,
+            "y": 40
+          },
+          {
+            "x": -3,
+            "y": 40
+          }
+        ],
+        "scale": 1,
+        "material": "constant",
+        "ior": 1.5,
+        "surfaceModel": "fresnel"
+      }
+    },
+    {
+      "id": "polC",
+      "type": "polarimeter",
+      "x": 360,
+      "y": 531,
+      "rot": 0,
+      "label": "Polarimeter",
+      "showLabel": false,
+      "params": {}
+    },
+    {
+      "id": "screenC",
+      "type": "display",
+      "x": 490,
+      "y": 531,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "sensorId": "polC",
+        "displayScale": 0.8,
+        "screenOn": true,
+        "displayView": "main"
+      }
+    }
+  ],
+  "beams": []
+}

@@ -39,7 +39,7 @@ function backFocalDistance(type, params, height, wavelength = 587.6) {
 test('aspheric lens exposes two standard even-asphere faces and direct controls', () => {
   const lens = createElement('asphericlens');
   assert.deepEqual(Object.keys(lens.params), [
-    'r1', 'k1', 'r2', 'k2', 'thickness', 'dia', 'glass', 'transEff',
+    'r1', 'k1', 'r2', 'k2', 'thickness', 'dia', 'glass', 'surfaceModel', 'transEff',
     'a4_1', 'a6_1', 'a8_1', 'a4_2', 'a6_2', 'a8_2',
   ]);
   assert.equal(lens.params.k1, -0.58);

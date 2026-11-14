@@ -70,7 +70,7 @@ export function initInspector(el) { panel = el; }
 // without a readout fails the suite instead of silently hiding its controls
 // until the user reselects the element.
 export const REBUILD_ON_COMMIT_KEYS = [
-  'dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode',
+  'dtype', 'ftype', 'surfaceModel', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode',
   'raysMode', 'zeroOrder', 'modulate', 'modShape', 'mode', 'scanMode', 'moveMode',
   'transmitExc', 'specimenType', 'resinFluorescence', 'voxelPreview', 'pzMode', 'showSignalSpot',
   'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode',

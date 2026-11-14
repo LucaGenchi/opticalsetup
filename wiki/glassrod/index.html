@@ -244,7 +244,11 @@
         saved rod keeps its authored behavior; that mode has no material GDD. Selecting a
         catalogue glass enables Sellmeier refraction and path-length GDD, generally within
         a few percent where the curve is valid, but still omits absorption, temperature,
-        coatings, and higher-order pulse effects. There's no
+        coatings, and higher-order pulse effects. Its faces transmit a fixed 96&nbsp;% each
+        by default, and total internal reflection at the side walls acts as an ideal
+        mirror; set <em>Surfaces</em> to <em>Bare glass (Fresnel)</em> and each face
+        transmits s and p by the Fresnel equations at its real angle, while total internal
+        reflection shifts the phase of s against p. There's no
         cylindrical or lensing geometry either: despite the name, this is a rectangular
         slab cross-section with flat ends, not a focusing rod lens.</p></div>
       </div>

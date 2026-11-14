@@ -361,6 +361,117 @@ export const exampleEntries = [
   },
 
   {
+    match: 'Brewster window',
+    title: 'Brewster window',
+    tagline: 'At Brewster’s angle a glass surface reflects none of the light polarized in the plane of incidence: a plate turned to that angle passes p light whole and takes part of s, and a pile of such plates polarizes unpolarized light.',
+    html: `
+      <p>Light meeting a glass surface is partly reflected, by an amount that
+      depends on the angle and on the polarization. For light polarized in the
+      plane of incidence, p, the reflection vanishes at one angle, Brewster’s
+      angle, where tan θ<sub>B</sub> = n<sub>2</sub>/n<sub>1</sub>${cite(1, 3)}:
+      56.3° from air into glass of index 1.5. Light polarized across that
+      plane, s, is still partly reflected there.</p>
+      <p>A plate of glass turned to Brewster’s angle therefore passes p light
+      without loss at either face. Laser tubes are closed with such windows for
+      that reason${cite(3)}. Unpolarized light loses part of its s half at
+      every face, so a stack of plates at Brewster’s angle, a pile of plates,
+      leaves it more and more polarized along p${cite(2, 4)}.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>Each plate is <a href="../../wiki/freeglass/">freeform glass</a> of
+      index 1.5 with its surfaces set to <em>Bare glass (Fresnel)</em>, so each
+      face transmits s and p by the Fresnel equations at the angle the ray
+      actually meets it. The plates are turned to 56.3°.</p>
+      <p>In the first row a laser polarized at 0°, p in the drawing, passes one
+      plate and the <a href="../../wiki/powermeter/">power meter</a> reads
+      1.00&nbsp;mW: nothing is lost. In the second row the laser is polarized at
+      90°, s, and the meter reads 726&nbsp;µW: each face reflects about 15 % of
+      it. In the third row an unpolarized <a href="../../wiki/ledsource/">LED</a>
+      passes four plates. The <a href="../../wiki/polarimeter/">polarimeter</a>
+      reads 639&nbsp;µW, partly linear 0°, with a degree of polarization of 57 %:
+      all of the p half arrives, and 28 % of the s half.</p>
+      <p>Things to try, each a single change from the setup as it opens:</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Change</th><th>Reading</th></tr></thead>
+        <tbody>
+          <tr><td>Both single plates turned to 30°</td><td>p 950&nbsp;µW, s 888&nbsp;µW: away from Brewster’s angle p is reflected too</td></tr>
+          <tr><td>Both single plates set to Per-surface transmission</td><td>p and s both 960&nbsp;µW (98 % a face, the same for both)</td></tr>
+          <tr><td>Two of the four plates removed</td><td>the polarimeter reads 764&nbsp;µW and a degree of polarization of 31 %</td></tr>
+        </tbody>
+      </table></div>`,
+    limitations: `<p>Only the light that passes each face is followed: the part
+      a face reflects is not drawn, and reflections between the faces of a plate
+      (ghosts) and their interference are not modelled. The plates are lossless
+      and uncoated, with one index at every wavelength.</p>`,
+    citations: [
+      { label: 'M. Born and E. Wolf, Principles of Optics, 7th ed. (Cambridge University Press, 1999), §1.5.2: the Fresnel formulae', url: 'https://doi.org/10.1017/CBO9781139644181' },
+      { label: 'M. Lintz, J. Guéna, M.-A. Bouchiat and D. Chauvat, “Demonstration of an optical polarization magnifier with low birefringence,” Review of Scientific Instruments 76, 043102 (2005): a pile of uncoated plates at Brewster incidence passes p whole and attenuates s; interference inside the plates (free preprint: arXiv:physics/0410044)', url: 'https://doi.org/10.1063/1.1879292' },
+      { label: 'Wikipedia — Brewster’s angle', url: 'https://en.wikipedia.org/wiki/Brewster%27s_angle' },
+      { label: 'Wikipedia — Polarizer (Brewster-angle and pile-of-plates polarizers)', url: 'https://en.wikipedia.org/wiki/Polarizer' },
+    ],
+    resources: [],
+    related: ['freeglass', 'glassrod', 'prism', 'powermeter', 'polarimeter', 'ledsource'],
+  },
+
+  {
+    match: 'Fresnel rhomb as an achromatic quarter wave retarder',
+    title: 'Fresnel rhomb as an achromatic quarter-wave retarder',
+    tagline: 'Two total internal reflections inside a glass rhomb shift the phase of s against p by a quarter wave, nearly the same from blue to infrared, so linear light at 45° leaves circular.',
+    html: `
+      <p>Total internal reflection returns all of the light, but not with the
+      same phase for the two polarizations: s and p come back shifted against
+      each other by an amount that depends on the angle of incidence and on the
+      index of the glass${cite(1, 2, 3)}. Fresnel found that two such reflections at
+      the right angle add up to a quarter wave, and built a rhomb of glass that
+      makes circular light from linear light at 45°${cite(5)}.</p>
+      <p>A waveplate gets its quarter wave from a thickness of birefringent
+      crystal, which is exactly a quarter wave only at its design wavelength.
+      The rhomb gets it from the index of glass, which changes little across
+      the visible and near infrared, so the rhomb is nearly
+      achromatic${cite(2)}. (The app’s own quarter-wave plate is ideal: a
+      quarter wave at every wavelength.)</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>Each rhomb is <a href="../../wiki/freeglass/">freeform glass</a> of
+      N-BK7, a parallelogram with an acute angle of 54.6°. The beam enters and
+      leaves through its end faces at normal incidence and is totally reflected
+      twice in between, at 54.6°.</p>
+      <p>With its surfaces set to <em>Bare glass (Fresnel)</em>, each reflection
+      shifts s against p by 45.8° at 450&nbsp;nm and by 44.8° at 1064&nbsp;nm.
+      Laser light polarized at 45° leaves left circular at both wavelengths: the
+      <a href="../../wiki/polarimeter/">polarimeter</a> in the inspector reads
+      S₃/S₀ = −1.00, and S₂/S₀ = −0.03 at 450&nbsp;nm and +0.01 at 1064&nbsp;nm,
+      the small remainder of a retardance of 91.6° and 89.7° instead of 90°. The
+      two end faces each reflect 4 % of the light, and the polarimeter reads
+      915&nbsp;µW and 920&nbsp;µW.</p>
+      <p>The third rhomb keeps the default <em>Per-surface transmission</em>.
+      It reflects as an ideal mirror, with no phase between s and p, and the
+      light leaves linear at 45°.</p>
+      <p>Things to try, each a single change from the setup as it opens:</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Change</th><th>Reading</th></tr></thead>
+        <tbody>
+          <tr><td>Blue laser polarized at 135°</td><td>right circular, S₃/S₀ = +1.00</td></tr>
+          <tr><td>Blue laser polarized at 0° or 90°</td><td>linear 0° or 90°: p and s are each reflected without change</td></tr>
+          <tr><td>Blue laser at 633&nbsp;nm</td><td>left circular, S₂/S₀ = −0.01</td></tr>
+        </tbody>
+      </table></div>`,
+    limitations: `<p>The glass is lossless and uncoated. The end faces are
+      met at normal incidence, where they change no polarization; the part of
+      the light they reflect is not drawn. Every ray and face normal lies in the
+      drawing plane, so s is out of the drawing at every face.</p>`,
+    citations: [
+      { label: 'M. Born and E. Wolf, Principles of Optics, 7th ed. (Cambridge University Press, 1999), §1.5.4, pp. 49–53: total reflection and the phase difference it puts between s and p', url: 'https://doi.org/10.1017/CBO9781139644181' },
+      { label: 'D. Mawet et al., “Fresnel rhombs as achromatic phase shifters for infrared nulling interferometry,” Optics Express 15, 12850 (2007): the s–p phase shift of total internal reflection (eq. 2), and a rhomb’s achromaticity limited only by the dispersion of its glass (open access)', url: 'https://doi.org/10.1364/OE.15.012850' },
+      { label: 'M. Mansuripur, OPTI 501, University of Arizona, solution to chapter 7 problem 22: the phase difference in closed form, its minimum, and the rhomb angles 50.23° and 53.25° for n = 1.5', url: 'https://wp.optics.arizona.edu/opti501/wp-content/uploads/sites/109/2022/05/Chapter-07-Problem-22.pdf' },
+      { label: 'Wikipedia — Total internal reflection (phase shifts)', url: 'https://en.wikipedia.org/wiki/Total_internal_reflection' },
+      { label: 'Wikipedia — Fresnel rhomb', url: 'https://en.wikipedia.org/wiki/Fresnel_rhomb' },
+    ],
+    resources: [],
+    related: ['freeglass', 'prism', 'qwp', 'polarimeter'],
+  },
+
+  {
     match: 'Pinhole spatial filter',
     title: 'Pinhole spatial filter',
     tagline: 'A lens brings light travelling along its axis to one point and light at any other angle to another; a pinhole at the first point passes the beam and stops the rest.',

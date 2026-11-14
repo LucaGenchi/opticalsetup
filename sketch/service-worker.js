@@ -5,7 +5,7 @@
 // family of cache names and only ever deletes, or reads, its own.
 const KEPT_RELEASE = (/\/(v\d+\.\d+)\/sketch\/$/.exec(new URL('./', self.location.href).pathname) || [])[1] || '';
 const CACHE_FAMILY = KEPT_RELEASE ? `opticalsetup-kept-${KEPT_RELEASE}-` : 'opticalsetup-pwa-';
-const CACHE_NAME = `${CACHE_FAMILY}v186`;
+const CACHE_NAME = `${CACHE_FAMILY}v187`;
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -96,6 +96,8 @@ const PRECACHE_PATHS = [
   "../Examples/Fundamentals/Total%20internal%20reflection%20%E2%80%94%20right-angle%20prism.json",
   "../Examples/Fundamentals/Law%20of%20Malus%20%E2%80%94%20polarizers%20and%20a%20half-wave%20plate.json",
   "../Examples/Fundamentals/Handedness%20after%20a%20mirror.json",
+  "../Examples/Fundamentals/Brewster%20window.json",
+  "../Examples/Fundamentals/Fresnel%20rhomb%20as%20an%20achromatic%20quarter-wave%20retarder.json",
   "../Examples/Fundamentals/Pinhole%20spatial%20filter.json",
   "../Examples/Fundamentals/Spatial%20filtering%20in%20the%20Fourier%20plane%20%E2%80%94%204f%20system.json",
   "../Examples/Fundamentals/Coupling%20a%20laser%20into%20a%20single-mode%20fiber.json",

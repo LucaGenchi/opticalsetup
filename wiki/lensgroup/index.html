@@ -263,13 +263,17 @@
         faces. On-axis spherical and visible longitudinal chromatic behavior emerge from
         the geometry and are meaningful within that scope; off-axis behavior is
         qualitative. The model does not include skew rays, aspheres, diffraction,
-        quantitative coma or astigmatism, field curvature, coatings, Fresnel reflection,
+        quantitative coma or astigmatism, field curvature, coatings,
         cement index, manufacturing tolerances, or a full optical-design merit function.
         The 0.06&nbsp;mm cement gap is a tracer workaround rather than a physical cement
         model. Catalogue glasses use two-term visible-band Cauchy fits anchored to nd and
         Abbe number<sup class="cite">[<a href="#ref-1">1</a>]</sup>, not full Sellmeier curves; deep-UV, infrared, and temporal
-        dispersion claims are outside this element's scope. Per-surface transmission is
-        a configured percentage, not coating physics.</p></div>
+        dispersion claims are outside this element's scope. With <em>Surfaces</em> set to <em>Per-surface transmission</em>, the default,
+        each face applies a flat configured percentage and total internal reflection
+        acts as an ideal mirror. Set to <em>Bare glass (Fresnel)</em>, each face
+        transmits s and p by the Fresnel equations at the angle the ray actually meets
+        it, as a prism's faces do, and total internal reflection shifts the phase of s
+        against p; the reflected part of the light is not traced.</p></div>
       </div>
 
 

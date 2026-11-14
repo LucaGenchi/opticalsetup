@@ -235,9 +235,13 @@
         boundary is sampled by wavelength and visibly disperses into a spectrum.</p>
         <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The catalogue options use published Sellmeier curves, so GDD
         follows the actual traced distance and is generally within a few percent where
-        those curves are valid. Absorption bands and temperature are not modeled;
-        per-surface transmission is a flat configured number rather than a computed
-        coating or bulk loss. Circular-arc segments are true 2D arcs, but the whole element
+        those curves are valid. Absorption bands, coatings and temperature are not
+        modeled. With <em>Surfaces</em> set to <em>Per-surface transmission</em>, the default,
+        each face applies a flat configured percentage and total internal reflection
+        acts as an ideal mirror. Set to <em>Bare glass (Fresnel)</em>, each face
+        transmits s and p by the Fresnel equations at the angle the ray actually meets
+        it, as a prism's faces do, and total internal reflection shifts the phase of s
+        against p; the reflected part of the light is not traced. Circular-arc segments are true 2D arcs, but the whole element
         is still a 2D cross-section — it represents a freeform profile, not a true freeform
         3D surface. Nested or overlapping glass bodies are not surface-merged.</p></div>
       </div>

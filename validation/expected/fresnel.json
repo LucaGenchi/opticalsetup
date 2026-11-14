@@ -1,6 +1,478 @@
 {
- "app": "sketch/js/fresnel.js: fresnelTransmittances, throughFace",
+ "app": "sketch/js/fresnel.js: fresnelTransmittances, throughFace; traced scenes through free-form glass set to bare glass (Fresnel)",
  "cases": [
+  {
+   "absolute": true,
+   "expected": {
+    "power": 0.9501392263,
+    "s1": 1.0,
+    "s2": 0.0,
+    "s3": 0.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 0,
+     "x": 320,
+     "y": 0
+    },
+    "elements": [
+     {
+      "params": {
+       "ior": 1.5,
+       "material": "constant",
+       "surfaceModel": "fresnel",
+       "vertices": [
+        {
+         "x": -5.0,
+         "y": -30.0
+        },
+        {
+         "x": 5.0,
+         "y": -30.0
+        },
+        {
+         "x": 5.0,
+         "y": 30.0
+        },
+        {
+         "x": -5.0,
+         "y": 30.0
+        }
+       ]
+      },
+      "rot": 30.0,
+      "type": "freeglass",
+      "x": 150.0,
+      "y": 0.0
+     }
+    ],
+    "kind": "scene",
+    "laser": {
+     "beamWidth": 1
+    },
+    "pol": 0
+   },
+   "name": "plate of n 1.5 at 30 deg, linear 0 deg in",
+   "tolerance": {
+    "power": 1e-09,
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "power": 0.887748179,
+    "s1": -1.0,
+    "s2": 0.0,
+    "s3": 0.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 0,
+     "x": 320,
+     "y": 0
+    },
+    "elements": [
+     {
+      "params": {
+       "ior": 1.5,
+       "material": "constant",
+       "surfaceModel": "fresnel",
+       "vertices": [
+        {
+         "x": -5.0,
+         "y": -30.0
+        },
+        {
+         "x": 5.0,
+         "y": -30.0
+        },
+        {
+         "x": 5.0,
+         "y": 30.0
+        },
+        {
+         "x": -5.0,
+         "y": 30.0
+        }
+       ]
+      },
+      "rot": 30.0,
+      "type": "freeglass",
+      "x": 150.0,
+      "y": 0.0
+     }
+    ],
+    "kind": "scene",
+    "laser": {
+     "beamWidth": 1
+    },
+    "pol": 90
+   },
+   "name": "plate of n 1.5 at 30 deg, linear 90 deg in",
+   "tolerance": {
+    "power": 1e-09,
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "power": 0.9189437026,
+    "s1": 0.03394715429,
+    "s2": 0.9994236293,
+    "s3": 0.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 0,
+     "x": 320,
+     "y": 0
+    },
+    "elements": [
+     {
+      "params": {
+       "ior": 1.5,
+       "material": "constant",
+       "surfaceModel": "fresnel",
+       "vertices": [
+        {
+         "x": -5.0,
+         "y": -30.0
+        },
+        {
+         "x": 5.0,
+         "y": -30.0
+        },
+        {
+         "x": 5.0,
+         "y": 30.0
+        },
+        {
+         "x": -5.0,
+         "y": 30.0
+        }
+       ]
+      },
+      "rot": 30.0,
+      "type": "freeglass",
+      "x": 150.0,
+      "y": 0.0
+     }
+    ],
+    "kind": "scene",
+    "laser": {
+     "beamWidth": 1
+    },
+    "pol": 45
+   },
+   "name": "plate of n 1.5 at 30 deg, linear 45 deg in",
+   "tolerance": {
+    "power": 1e-09,
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "power": 1.0,
+    "s1": 1.0,
+    "s2": 0.0,
+    "s3": 0.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 0,
+     "x": 320,
+     "y": 0
+    },
+    "elements": [
+     {
+      "params": {
+       "ior": 1.5,
+       "material": "constant",
+       "surfaceModel": "fresnel",
+       "vertices": [
+        {
+         "x": -5.0,
+         "y": -30.0
+        },
+        {
+         "x": 5.0,
+         "y": -30.0
+        },
+        {
+         "x": 5.0,
+         "y": 30.0
+        },
+        {
+         "x": -5.0,
+         "y": 30.0
+        }
+       ]
+      },
+      "rot": 56.309932,
+      "type": "freeglass",
+      "x": 150.0,
+      "y": 0.0
+     }
+    ],
+    "kind": "scene",
+    "laser": {
+     "beamWidth": 1
+    },
+    "pol": 0
+   },
+   "name": "plate of n 1.5 at Brewster, linear 0 deg in",
+   "tolerance": {
+    "power": 1e-09,
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "power": 0.7260250047,
+    "s1": -1.0,
+    "s2": 0.0,
+    "s3": 0.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 0,
+     "x": 320,
+     "y": 0
+    },
+    "elements": [
+     {
+      "params": {
+       "ior": 1.5,
+       "material": "constant",
+       "surfaceModel": "fresnel",
+       "vertices": [
+        {
+         "x": -5.0,
+         "y": -30.0
+        },
+        {
+         "x": 5.0,
+         "y": -30.0
+        },
+        {
+         "x": 5.0,
+         "y": 30.0
+        },
+        {
+         "x": -5.0,
+         "y": 30.0
+        }
+       ]
+      },
+      "rot": 56.309932,
+      "type": "freeglass",
+      "x": 150.0,
+      "y": 0.0
+     }
+    ],
+    "kind": "scene",
+    "laser": {
+     "beamWidth": 1
+    },
+    "pol": 90
+   },
+   "name": "plate of n 1.5 at Brewster, linear 90 deg in",
+   "tolerance": {
+    "power": 1e-09,
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "power": 0.8630125023,
+    "s1": 0.1587317649,
+    "s2": 0.9873217443,
+    "s3": 0.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 0,
+     "x": 320,
+     "y": 0
+    },
+    "elements": [
+     {
+      "params": {
+       "ior": 1.5,
+       "material": "constant",
+       "surfaceModel": "fresnel",
+       "vertices": [
+        {
+         "x": -5.0,
+         "y": -30.0
+        },
+        {
+         "x": 5.0,
+         "y": -30.0
+        },
+        {
+         "x": 5.0,
+         "y": 30.0
+        },
+        {
+         "x": -5.0,
+         "y": 30.0
+        }
+       ]
+      },
+      "rot": 56.309932,
+      "type": "freeglass",
+      "x": 150.0,
+      "y": 0.0
+     }
+    ],
+    "kind": "scene",
+    "laser": {
+     "beamWidth": 1
+    },
+    "pol": 45
+   },
+   "name": "plate of n 1.5 at Brewster, linear 45 deg in",
+   "tolerance": {
+    "power": 1e-09,
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "power": 0.9191343382,
+    "s1": 0.0,
+    "s2": -0.0004219756929,
+    "s3": -0.999999911
+   },
+   "inputs": {
+    "detector": {
+     "rot": 0,
+     "x": 237.52791,
+     "y": 19.563067
+    },
+    "elements": [
+     {
+      "params": {
+       "ior": 1.51,
+       "material": "constant",
+       "surfaceModel": "fresnel",
+       "vertices": [
+        {
+         "x": -13.763955,
+         "y": -17.1423425
+        },
+        {
+         "x": 13.763955,
+         "y": 2.4207245
+        },
+        {
+         "x": 13.763955,
+         "y": 17.1423425
+        },
+        {
+         "x": -13.763955,
+         "y": -2.4207245
+        }
+       ]
+      },
+      "rot": 0,
+      "type": "freeglass",
+      "x": 163.763955,
+      "y": 9.781533499999998
+     }
+    ],
+    "kind": "scene",
+    "laser": {
+     "beamWidth": 1
+    },
+    "pol": 45
+   },
+   "name": "Fresnel rhomb, n 1.51 at 54.6 deg, bare glass, linear 45 deg in",
+   "tolerance": {
+    "power": 1e-09,
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "power": 0.9604,
+    "s1": 0.0,
+    "s2": 1.0,
+    "s3": 0.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 0,
+     "x": 237.52791,
+     "y": 19.563067
+    },
+    "elements": [
+     {
+      "params": {
+       "ior": 1.51,
+       "material": "constant",
+       "surfaceModel": "transmission",
+       "vertices": [
+        {
+         "x": -13.763955,
+         "y": -17.1423425
+        },
+        {
+         "x": 13.763955,
+         "y": 2.4207245
+        },
+        {
+         "x": 13.763955,
+         "y": 17.1423425
+        },
+        {
+         "x": -13.763955,
+         "y": -2.4207245
+        }
+       ]
+      },
+      "rot": 0,
+      "type": "freeglass",
+      "x": 163.763955,
+      "y": 9.781533499999998
+     }
+    ],
+    "kind": "scene",
+    "laser": {
+     "beamWidth": 1
+    },
+    "pol": 45
+   },
+   "name": "Fresnel rhomb, n 1.51 at 54.6 deg, per-surface transmission, linear 45 deg in",
+   "tolerance": {
+    "power": 1e-09,
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
   {
    "expected": {
     "Tp": 0.96,
@@ -390,14 +862,14 @@
   "E. Hecht, Optics, 5th ed., Pearson (2017), section 4.6.2"
  ],
  "convergence": "Closed form; no discretisation.",
- "domain": "Air to glass and glass to air for n = 1.45-1.71 at 0-80 degrees; s, p, 45-degree linear, circular and elliptical inputs.",
+ "domain": "Air to glass and glass to air for n = 1.45-1.71 at 0-80 degrees; s, p, 45-degree linear, circular and elliptical inputs; traced plates at 30 degrees and Brewster's angle, and a Fresnel rhomb (n = 1.51, 54.6 degrees).",
  "fidelity": "computed",
  "id": "fresnel",
- "outside_scope": "Beyond the critical angle the tracer reflects the ray totally, as before; absorption and coatings are not modelled",
+ "outside_scope": "Absorption, coatings, multiple reflections inside a plate (ghosts) and interference between them are not modelled; total internal reflection carries the Fresnel retardance only where a face follows Fresnel (prisms, glass set to bare glass)",
  "provenance": "Closed-form Fresnel coefficients; analytic limits (normal incidence, Brewster from either side) asserted in the module.",
  "reference": "Textbook amplitude transmission coefficients with the obliquity factor (n2 cos t / n1 cos i)|t|^2 in 40-digit decimals; output state from Jones vectors",
  "reference_file": "validation/reference/fresnel.py",
  "scope": "Lossless, uncoated, non-magnetic interfaces between real indices, below the critical angle",
- "title": "Fresnel transmission and polarization at prism faces",
+ "title": "Fresnel transmission and polarization at prism faces and bare glass",
  "tolerance_rationale": "1e-12: double-precision agreement with closed-form expressions (absolute for the Stokes components)."
 }
