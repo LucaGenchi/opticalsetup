@@ -156,7 +156,11 @@
      ],
      "reason": "disabled"
     },
-    "normalizedStokes": null,
+    "normalizedStokes": {
+     "s1": 0,
+     "s2": 0,
+     "s3": 0
+    },
     "outputSignal": 0.0316191263,
     "polarization": "Unpolarized",
     "profile": [

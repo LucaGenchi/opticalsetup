@@ -359,7 +359,11 @@
     "detectorType": "PMT",
     "gain": 10,
     "interference": null,
-    "normalizedStokes": null,
+    "normalizedStokes": {
+     "s1": 0,
+     "s2": 0,
+     "s3": 0
+    },
     "outputSignal": 0.0294896321,
     "polarization": "Unpolarized",
     "profile": null,
@@ -893,7 +897,11 @@
     "detectorType": "PMT",
     "gain": 10,
     "interference": null,
-    "normalizedStokes": null,
+    "normalizedStokes": {
+     "s1": 0,
+     "s2": 0,
+     "s3": 0
+    },
     "outputSignal": 0.050151725,
     "polarization": "Unpolarized",
     "profile": null,

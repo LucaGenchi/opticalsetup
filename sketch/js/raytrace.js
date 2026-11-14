@@ -1518,7 +1518,18 @@ export function detectorReading(elementId) {
     sourceFractions.splice(0, sourceFractions.length, ...[...arrived].map(([sourceId, fraction]) => ({ sourceId, fraction })));
   }
   const polarizationHits = readoutKind === 'camera' ? cameraHits : activeHits;
-  const stokesHits = polarizationHits.filter(h => h.stokes);
+  // A ray from an unpolarized source (an LED, a lamp) carries neither a
+  // Stokes vector nor a polarization label: it is unpolarized light, the
+  // origin of the sphere, and it still counts towards the mix. Without it an
+  // LED alone gave no vector at all, and an LED beside a polarized laser read
+  // "Mixed" instead of the partly polarized state the two make together.
+  const UNPOLARIZED = { s1: 0, s2: 0, s3: 0 };
+  // Weighed by the watts each source delivers, as the spectrum is: a hit's
+  // power is a fraction of its own source, so otherwise a 3 mW LED beside a
+  // 1 mW laser counted as equal and read 50 % polarized instead of 25 %.
+  const stokesHits = hitsWeighedByWatts(polarizationHits
+    .map(h => (h.stokes || h.pol !== undefined ? h : { ...h, stokes: UNPOLARIZED })))
+    .filter(h => h.stokes);
   const numericPol = polarizationHits.filter(h => typeof h.pol === 'number').map(h => h.pol);
   let polarization = 'Unpolarized';
   // The power-weighted mean of every arriving hit's Stokes vector. This is
@@ -1529,8 +1540,8 @@ export function detectorReading(elementId) {
   // itself, not just the sentence describing it -- deriving them separately
   // let the label and the numbers disagree on one reading.
   let normalizedStokes = null;
-  if (stokesHits.length === polarizationHits.length) {
-    const sw = stokesHits.reduce((sum, h) => sum + Math.max(0, h.power), 0);
+  const sw = stokesHits.reduce((sum, h) => sum + Math.max(0, h.power), 0);
+  if (stokesHits.length && stokesHits.length === polarizationHits.length && sw > 0) {
     normalizedStokes = {
       s1: stokesHits.reduce((sum, h) => sum + h.stokes.s1 * h.power, 0) / sw,
       s2: stokesHits.reduce((sum, h) => sum + h.stokes.s2 * h.power, 0) / sw,

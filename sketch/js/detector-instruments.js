@@ -811,12 +811,32 @@ function cameraMap(reading, sensor, elements) {
 function polarimeterScreen(reading) {
   const state = String(reading.polarization).toUpperCase();
   const stateSize = Math.max(3.4, Math.min(6, 50 / Math.max(1, state.length * 0.62)));
-  const { s0, s1, s2, s3 } = reading.stokes;
+  const { values: [s0, s1, s2, s3], unit } = stokesDisplay(reading);
   return poincareSphereSVG(reading.normalizedStokes || null, { cx: -28, cy: 0.5, r: 9.2, fontSize: 3 }) +
     `<text x="-11" y="-7.5" font-size="${stateSize.toFixed(2)}" font-weight="760" fill="#f5e8f1">${esc(state)}</text>` +
-    `<text x="-11" y="-1.5" font-size="4.4" fill="#b99aaa">DoP ${(100 * reading.stokes.normalized.degree).toFixed(0)}%</text>` +
-    `<text x="-11" y="4.5" font-size="4.1" fill="#d9e8ee">S0 ${compactNumber(s0)}  S1 ${compactNumber(s1)}</text>` +
-    `<text x="-11" y="10.3" font-size="4.1" fill="#d9e8ee">S2 ${compactNumber(s2)}  S3 ${compactNumber(s3)}</text>`;
+    `<text x="-11" y="-1.5" font-size="4.4" fill="#b99aaa">DoP ${(100 * reading.stokes.normalized.degree).toFixed(0)}%  ·  ${esc(unit)}</text>` +
+    `<text x="-11" y="4.5" font-size="4.1" fill="#d9e8ee">S0 ${s0}  S1 ${s1}</text>` +
+    `<text x="-11" y="10.3" font-size="4.1" fill="#d9e8ee">S2 ${s2}  S3 ${s3}</text>`;
+}
+
+// The Stokes parameters as a screen shows them: in power units, since S0 is
+// the total power that arrives, with S1-S3 in the same unit, each to two
+// decimals so round-off reads 0.00 rather than 6.1e-17. Without a calibrated
+// power the tracer's relative ray weight stands in, labelled as such.
+export function stokesDisplay(reading) {
+  const { s0, s1, s2, s3 } = reading.stokes;
+  const watts = reading.detectedPowerW;
+  const ratio = value => (s0 > 0 && Number.isFinite(value) ? value / s0 : 0);
+  let total = Number.isFinite(s0) ? s0 : 0, unit = 'rel. power';
+  if (Number.isFinite(watts) && watts > 0) {
+    const [scale, name] = watts >= 1 ? [1, 'W'] : watts >= 1e-3 ? [1e3, 'mW'] : watts >= 1e-6 ? [1e6, 'µW'] : [1e9, 'nW'];
+    total = watts * scale; unit = name;
+  }
+  const fixed = value => {
+    const rounded = Math.round(value * 100) / 100;
+    return (Number.isFinite(rounded) && rounded !== 0 ? rounded : 0).toFixed(2);
+  };
+  return { values: [total, total * ratio(s1), total * ratio(s2), total * ratio(s3)].map(fixed), unit };
 }
 
 function formatPower(watts, signal) {
@@ -1121,10 +1141,13 @@ function panel(sensor, reading, elements, view) {
   if (sensor.type === 'generaldetector' && view === 'spectrum') {
     return header(name, 'GENERAL · SPECTRUM', reading.pulse) + spectrumPlot(reading, sensor);
   }
-  if (sensor.type === 'generaldetector' && view === 'detail') return header(name, 'STOKES + PULSE TIMING', reading.pulse) + metrics([
-    ['S0', compactNumber(reading.stokes.s0)], ['S1', compactNumber(reading.stokes.s1)], ['S2', compactNumber(reading.stokes.s2)],
-    ['S3', compactNumber(reading.stokes.s3)], ['REP RATE', pulseRate(reading.pulse)], ['PULSE DURATION', pulseDuration(reading.pulse)],
-  ], 3);
+  if (sensor.type === 'generaldetector' && view === 'detail') {
+    const { values: [s0, s1, s2, s3], unit } = stokesDisplay(reading);
+    return header(name, 'STOKES + PULSE TIMING', reading.pulse) + metrics([
+      [`S0 ${unit}`, s0], ['S1', s1], ['S2', s2],
+      ['S3', s3], ['REP RATE', pulseRate(reading.pulse)], ['PULSE DURATION', pulseDuration(reading.pulse)],
+    ], 3);
+  }
   if (sensor.type === 'generaldetector') {
     const [power, unit] = formatPower(reading.detectedPowerW, reading.signal);
     const wavefront = reading.wavefront;

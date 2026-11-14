@@ -4866,18 +4866,21 @@ export const wikiEntries = [
         <span class="w">(1, 0, 0)</span>, the same beam through a quarter-wave plate at 45°
         reads <span class="w">(0, 0, 1)</span> — right circular — and at 22.5° reads
         <span class="w">(0.5, 0.5, 0.707)</span>, still fully polarized.</p>
-        <p>The polarimeter reports <span class="w">S₀</span> as the arriving intensity,
-        the three normalized components scaled to it, the degree of polarization, and a plain
+        <p>The polarimeter reports <span class="w">S₀</span> as the power that arrives, in
+        watts (in the tracer's relative units when a source has no power setting), the other
+        three in the same unit, each to two decimals, the degree of polarization, and a plain
         description of the state, and it plots that state on a Poincaré sphere, small on its
         detector screen and larger in the inspector. The sphere is seen obliquely, with
         <span class="w">+S₁</span> (linear 0°) coming out of the page to the lower left,
         <span class="w">+S₂</span> (linear 45°) to the right and <span class="w">+S₃</span>
         (right circular) up; a state behind the centre is drawn hollow, and a dashed drop to
-        the equator shows how far it lies above or below it. It gets those from the power-weighted mean of every ray
-        landing on its face — which means <strong>partially polarized and unpolarized light
-        are representable</strong>, even though no individual ray can be either. Two equally
-        strong counter-polarized beams on one face average to the centre of the sphere and are
-        correctly reported as unpolarized, with <span class="w">S₀</span> undiminished.</p>
+        the equator shows how far it lies above or below it. It gets those from the mean of every ray
+        landing on its face, weighed by the watts each source delivers — which means
+        <strong>partially polarized and unpolarized light are representable</strong>. A ray from
+        an unpolarized source such as an LED counts as the centre of the sphere. Two equally
+        strong counter-polarized beams on one face average to that centre and are correctly
+        reported as unpolarized, with <span class="w">S₀</span> undiminished; a 3 mW LED beside a
+        1 mW laser polarized at 0° reads <span class="w">(0.25, 0, 0)</span>, “Partly linear 0°”.</p>
 
         <h3>The instrument is a shortcut, not a separate physics</h3>
         <p>This element does not measure anything: it reads out a vector the tracer has been

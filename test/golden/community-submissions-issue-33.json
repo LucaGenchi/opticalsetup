@@ -6761,9 +6761,13 @@
     "detectorType": "Photodetector",
     "gain": null,
     "interference": null,
-    "normalizedStokes": null,
+    "normalizedStokes": {
+     "s1": 0.555555556,
+     "s2": 0,
+     "s3": 0
+    },
     "outputSignal": 0.140625,
-    "polarization": "Mixed",
+    "polarization": "Partly linear 0°",
     "profile": null,
     "profileColors": null,
     "profileMode": null,
@@ -8127,9 +8131,13 @@
     "detectorType": "Photodetector",
     "gain": null,
     "interference": null,
-    "normalizedStokes": null,
+    "normalizedStokes": {
+     "s1": 0.555555556,
+     "s2": 0,
+     "s3": 0
+    },
     "outputSignal": 0.140625,
-    "polarization": "Mixed",
+    "polarization": "Partly linear 0°",
     "profile": null,
     "profileColors": null,
     "profileMode": null,

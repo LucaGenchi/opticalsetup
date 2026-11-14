@@ -85,7 +85,11 @@
     "detectorType": "Spectrometer",
     "gain": null,
     "interference": null,
-    "normalizedStokes": null,
+    "normalizedStokes": {
+     "s1": 0,
+     "s2": 0,
+     "s3": 0
+    },
     "outputSignal": 0.243902439,
     "polarization": "Unpolarized",
     "profile": null,

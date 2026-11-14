@@ -87,3 +87,89 @@ test('the inspector palette writes classes only, so the theme sets the colours',
   }
   for (const label of ['S₁ 0°', 'S₂ 45°', 'S₃ R', '>L<']) assert.ok(svg.includes(label), label);
 });
+
+test('an LED reads unpolarized at the centre of the sphere, with S0 the power that arrives', async () => {
+  const { registry, createElement } = await import('../sketch/js/elements.js');
+  await import('../sketch/js/detector-instruments.js');
+  const { traceScene } = await import('../sketch/js/raytrace.js');
+  const { enhancedReading } = await import('../sketch/js/detector-measurements.js');
+  const { stokesDisplay } = await import('../sketch/js/detector-instruments.js');
+  const scene = (extra = []) => {
+    const led = createElement('ledsource', 0, 0);
+    led.params.avgPowerW = 0.1;
+    const polarimeter = createElement('polarimeter', 200, 0);
+    const screen = createElement('display', 350, 0);
+    Object.assign(screen.params, { sensorId: polarimeter.id, screenOn: true });
+    const elements = [led, ...extra, polarimeter, screen];
+    traceScene(elements, []);
+    return { reading: enhancedReading(polarimeter, elements), shown: registry.display.svg(screen, elements) };
+  };
+  // An LED carries no Stokes vector of its own: it is unpolarized light, the
+  // origin of the sphere, not "no measurement".
+  const alone = scene();
+  assert.equal(alone.reading.polarization, 'Unpolarized');
+  assert.deepEqual(alone.reading.normalizedStokes, { s1: 0, s2: 0, s3: 0 });
+  assert.match(alone.shown, /cx="-28" cy="0.5"[^>]*data-poincare-point="0,0,0"/);
+  // S0 is the total power, 100 mW here, not the relative ray weight 1.
+  assert.deepEqual(stokesDisplay(alone.reading), { values: ['100.00', '0.00', '0.00', '0.00'], unit: 'mW' });
+  assert.match(alone.shown, /S0 100\.00 {2}S1 0\.00/);
+  assert.match(alone.shown, /DoP 0% {2}· {2}mW/);
+  // Through a polarizer the LED's light is fully polarized at the polarizer's
+  // axis, and half its power is left.
+  const polarizer = createElement('polarizer', 100, 0);
+  polarizer.params.pangle = 0;
+  const filtered = scene([polarizer]);
+  assert.equal(filtered.reading.polarization, 'Linear 0°');
+  assert.deepEqual(stokesDisplay(filtered.reading), { values: ['50.00', '50.00', '0.00', '0.00'], unit: 'mW' });
+});
+
+test('an LED beside a polarized laser reads partly polarized, inside the sphere', async () => {
+  const { createElement } = await import('../sketch/js/elements.js');
+  const { traceScene } = await import('../sketch/js/raytrace.js');
+  const { enhancedReading } = await import('../sketch/js/detector-measurements.js');
+  await import('../sketch/js/detector-instruments.js');
+  // Two parallel beams side by side on one polarimeter: an unpolarized LED
+  // and a laser polarized at 0°. The incoherent sum of their Stokes vectors,
+  // weighed by the watts each delivers, gives S1/S0 = P_laser / (P_laser + P_led).
+  const reading = (ledW, laserW) => {
+    const led = createElement('ledsource', 0, -6);
+    Object.assign(led.params, { avgPowerW: ledW, beamWidth: 2 });
+    const laser = createElement('cwlaser', 0, 6);
+    Object.assign(laser.params, { avgPowerW: laserW, pol: 0, beamWidth: 2 });
+    const polarimeter = createElement('polarimeter', 200, 0);
+    const elements = [led, laser, polarimeter];
+    traceScene(elements, []);
+    return enhancedReading(polarimeter, elements);
+  };
+  const equal = reading(0.001, 0.001);
+  assert.equal(equal.polarization, 'Partly linear 0°');
+  close(equal.normalizedStokes.s1, 0.5, 1e-9, 'equal powers');
+  // A 3 mW LED beside a 1 mW laser: 25 % polarized, not the 50 % that
+  // counting each source once would give.
+  const unequal = reading(0.003, 0.001);
+  close(unequal.normalizedStokes.s1, 0.25, 1e-9, '3:1');
+  assert.equal(unequal.normalizedStokes.s2, 0);
+  assert.equal(unequal.normalizedStokes.s3, 0);
+});
+
+test('partly polarized light is named by its polarized part, not as elliptical', async () => {
+  const { polarizationDescription } = await import('../sketch/js/polarization.js');
+  assert.equal(polarizationDescription({ s1: 0.556, s2: 0, s3: 0 }), 'Partly linear 0°');
+  assert.equal(polarizationDescription({ s1: 0, s2: 0, s3: -0.5 }), 'Partly left circular');
+  assert.equal(polarizationDescription({ s1: 0.3, s2: 0.3, s3: 0.3 }), 'Partly elliptical 23°');
+  // The boundaries are unchanged: depolarized below 0.02, fully polarized from 0.985.
+  assert.equal(polarizationDescription({ s1: 0.01, s2: 0, s3: 0 }), 'Unpolarized');
+  assert.equal(polarizationDescription({ s1: 0.99, s2: 0, s3: 0 }), 'Linear 0°');
+  assert.equal(polarizationDescription({ s1: 0, s2: 0, s3: 1 }), 'Right circular');
+});
+
+test('the Stokes numbers round to 0.01, so round-off reads 0.00 and no -0.00 appears', async () => {
+  const { stokesDisplay } = await import('../sketch/js/detector-instruments.js');
+  const shown = stokesDisplay({ stokes: { s0: 1, s1: 6.1e-17, s2: -1.2e-16, s3: -1 }, detectedPowerW: 0.001 });
+  assert.deepEqual(shown, { values: ['1.00', '0.00', '0.00', '-1.00'], unit: 'mW' });
+  // No calibrated power: the relative ray weight, labelled as such.
+  assert.deepEqual(stokesDisplay({ stokes: { s0: 0.5, s1: 0.25, s2: 0, s3: 0 }, detectedPowerW: null }),
+    { values: ['0.50', '0.25', '0.00', '0.00'], unit: 'rel. power' });
+  // A non-finite value never reaches the screen.
+  assert.deepEqual(stokesDisplay({ stokes: { s0: NaN, s1: NaN, s2: 0, s3: 0 }, detectedPowerW: Infinity }).values, ['0.00', '0.00', '0.00', '0.00']);
+});
