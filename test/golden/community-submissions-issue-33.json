@@ -776,9 +776,9 @@
      "reason": "insufficient coherent overlap"
     },
     "normalizedStokes": {
-     "s1": 0.727272727,
-     "s2": -1.66997291e-17,
-     "s3": -0.272727273
+     "s1": 6.123234e-17,
+     "s2": -6.123234e-17,
+     "s3": -1
     },
     "outputSignal": 0.75,
     "polarization": "Left circular",

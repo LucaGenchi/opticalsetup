@@ -822,13 +822,16 @@ function polarimeterScreen(reading) {
 // The Stokes parameters as a screen shows them: in power units, since S0 is
 // the total power that arrives, with S1-S3 in the same unit, each to two
 // decimals so round-off reads 0.00 rather than 6.1e-17. Without a calibrated
-// power the tracer's relative ray weight stands in, labelled as such.
+// power for all of the light -- a source with no power setting, or watts that
+// cover only some of what arrives -- the tracer's relative ray weight stands
+// in, labelled as such: the vector is a mix of all of it, so scaling it by a
+// partial power would invent an absolute S1.
 export function stokesDisplay(reading) {
   const { s0, s1, s2, s3 } = reading.stokes;
   const watts = reading.detectedPowerW;
   const ratio = value => (s0 > 0 && Number.isFinite(value) ? value / s0 : 0);
   let total = Number.isFinite(s0) ? s0 : 0, unit = 'rel. power';
-  if (Number.isFinite(watts) && watts > 0) {
+  if (Number.isFinite(watts) && watts > 0 && reading.powerCoversAllArrivals !== false) {
     const [scale, name] = watts >= 1 ? [1, 'W'] : watts >= 1e-3 ? [1e3, 'mW'] : watts >= 1e-6 ? [1e6, 'µW'] : [1e9, 'nW'];
     total = watts * scale; unit = name;
   }

@@ -173,3 +173,46 @@ test('the Stokes numbers round to 0.01, so round-off reads 0.00 and no -0.00 app
   // A non-finite value never reaches the screen.
   assert.deepEqual(stokesDisplay({ stokes: { s0: NaN, s1: NaN, s2: 0, s3: 0 }, detectedPowerW: Infinity }).values, ['0.00', '0.00', '0.00', '0.00']);
 });
+
+test('a camera weighs a mix by watts like the other sensors, and its label agrees with its vector', async () => {
+  const { createElement } = await import('../sketch/js/elements.js');
+  await import('../sketch/js/detector-instruments.js');
+  const { traceScene } = await import('../sketch/js/raytrace.js');
+  const { enhancedReading } = await import('../sketch/js/detector-measurements.js');
+  // Two independent beams, fully collected: 1 mW at 0° and 3 mW at 90°. The
+  // camera's label used to come from source-relative contributions and read
+  // "Unpolarized" beside a 50 % vector.
+  for (const type of ['camera', 'polarimeter', 'generaldetector']) {
+    const a = createElement('cwlaser', 0, -6);
+    Object.assign(a.params, { avgPowerW: 0.001, pol: 0, beamWidth: 2 });
+    const b = createElement('cwlaser', 0, 6);
+    Object.assign(b.params, { avgPowerW: 0.003, pol: 90, beamWidth: 2, wavelength: 532 });
+    const detector = createElement(type, 200, 0);
+    const elements = [a, b, detector];
+    traceScene(elements, []);
+    const reading = enhancedReading(detector, elements);
+    assert.equal(reading.polarization, 'Partly linear 90°', type);
+    close(reading.normalizedStokes.s1, -0.5, 1e-9, `${type} s1`);
+  }
+});
+
+test('S0 falls back to relative power when the watts cover only some of the light', async () => {
+  const { createElement } = await import('../sketch/js/elements.js');
+  const { traceScene } = await import('../sketch/js/raytrace.js');
+  const { enhancedReading } = await import('../sketch/js/detector-measurements.js');
+  const { stokesDisplay } = await import('../sketch/js/detector-instruments.js');
+  // A 100 mW laser at 0° beside a point source with no power setting: 100 mW
+  // is the laser alone, while the vector mixes both, so their product would
+  // be an invented absolute S1.
+  const laser = createElement('cwlaser', 0, -6);
+  Object.assign(laser.params, { avgPowerW: 0.1, pol: 0, beamWidth: 2 });
+  const point = createElement('pointsource', 60, 6);
+  const polarimeter = createElement('polarimeter', 200, 0);
+  const elements = [laser, point, polarimeter];
+  traceScene(elements, []);
+  const reading = enhancedReading(polarimeter, elements);
+  assert.equal(reading.powerCoversAllArrivals, false);
+  const shown = stokesDisplay(reading);
+  assert.equal(shown.unit, 'rel. power');
+  close(Number(shown.values[1]) / Number(shown.values[0]), reading.normalizedStokes.s1, 0.01, 'S1/S0');
+});
