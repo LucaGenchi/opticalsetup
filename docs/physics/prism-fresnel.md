@@ -120,3 +120,22 @@ incidence `T = 4 n₁ n₂ / (n₁ + n₂)²`, `T_p = 1` at Brewster's angle
 - E. Hecht, *Optics*, 5th ed., §4.6.2.
 - M. Born and E. Wolf, *Principles of Optics*, 7th ed., §1.5.4 (total
   reflection and its phase change).
+- D. Mawet et al., "Fresnel rhombs as achromatic phase shifters for
+  infrared nulling interferometry," *Optics Express* 15, 12850 (2007),
+  doi:10.1364/OE.15.012850 (open access). Eq. 2 is the s–p phase shift of
+  total internal reflection used here, with the same magnitude as
+  δ_p − δ_s; §2.2 states that a bare rhomb's achromaticity is limited by the
+  dispersion of its glass.
+- M. Mansuripur, OPTI 501, University of Arizona, solution to chapter 7
+  problem 22: the same phase difference in closed form, its minimum
+  (tan²θ = 2/(n² − 1)), and the rhomb angles 50.23° and 53.25° for n = 1.5,
+  which the closed form here reproduces (written there as 135° per
+  reflection, because its r_p carries an extra factor −1).
+- M. Lintz, J. Guéna, M.-A. Bouchiat and D. Chauvat, "Demonstration of an
+  optical polarization magnifier with low birefringence," *Review of
+  Scientific Instruments* 76, 043102 (2005), doi:10.1063/1.1879292 (preprint
+  arXiv:physics/0410044). A pile of uncoated plates at Brewster incidence
+  passes p whole and attenuates s; for n = 1.45 the s amplitude falls by
+  0.8737 a plate, i.e. (1 − R_s) with R_s the per-face reflectance used here.
+  The paper also shows the interference inside each plate, which the tracer
+  does not model.

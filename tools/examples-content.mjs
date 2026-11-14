@@ -404,6 +404,8 @@ export const exampleEntries = [
       (ghosts) and their interference are not modelled. The plates are lossless
       and uncoated, with one index at every wavelength.</p>`,
     citations: [
+      { label: 'M. Born and E. Wolf, Principles of Optics, 7th ed. (Cambridge University Press, 1999), §1.5.2: the Fresnel formulae', url: 'https://doi.org/10.1017/CBO9781139644181' },
+      { label: 'M. Lintz, J. Guéna, M.-A. Bouchiat and D. Chauvat, “Demonstration of an optical polarization magnifier with low birefringence,” Review of Scientific Instruments 76, 043102 (2005): a pile of uncoated plates at Brewster incidence passes p whole and attenuates s; interference inside the plates (free preprint: arXiv:physics/0410044)', url: 'https://doi.org/10.1063/1.1879292' },
       { label: 'Wikipedia — Brewster’s angle', url: 'https://en.wikipedia.org/wiki/Brewster%27s_angle' },
       { label: 'Wikipedia — Polarizer (Brewster-angle and pile-of-plates polarizers)', url: 'https://en.wikipedia.org/wiki/Polarizer' },
     ],
@@ -459,6 +461,9 @@ export const exampleEntries = [
       the light they reflect is not drawn. Every ray and face normal lies in the
       drawing plane, so s is out of the drawing at every face.</p>`,
     citations: [
+      { label: 'M. Born and E. Wolf, Principles of Optics, 7th ed. (Cambridge University Press, 1999), §1.5.4, pp. 49–53: total reflection and the phase difference it puts between s and p', url: 'https://doi.org/10.1017/CBO9781139644181' },
+      { label: 'D. Mawet et al., “Fresnel rhombs as achromatic phase shifters for infrared nulling interferometry,” Optics Express 15, 12850 (2007): the s–p phase shift of total internal reflection (eq. 2), and a rhomb’s achromaticity limited only by the dispersion of its glass (open access)', url: 'https://doi.org/10.1364/OE.15.012850' },
+      { label: 'M. Mansuripur, OPTI 501, University of Arizona, solution to chapter 7 problem 22: the phase difference in closed form, its minimum, and the rhomb angles 50.23° and 53.25° for n = 1.5', url: 'https://wp.optics.arizona.edu/opti501/wp-content/uploads/sites/109/2022/05/Chapter-07-Problem-22.pdf' },
       { label: 'Wikipedia — Total internal reflection (phase shifts)', url: 'https://en.wikipedia.org/wiki/Total_internal_reflection' },
       { label: 'Wikipedia — Fresnel rhomb', url: 'https://en.wikipedia.org/wiki/Fresnel_rhomb' },
     ],
