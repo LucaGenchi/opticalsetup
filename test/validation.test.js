@@ -22,7 +22,7 @@ import { fresnelTransmittances, throughFace } from '../sketch/js/fresnel.js';
 import {
   rotatorMueller, linearRetarderMueller, linearDiattenuatorMueller, idealPolarizerMueller,
   idealMirrorMueller, jonesToMueller, fresnelCoefficients, fresnelReflectionMueller,
-  fresnelTransmissionMueller, composeMueller, applyMueller, complex,
+  fresnelTransmissionMueller, composeMueller, applyMueller, complex, reciprocalMueller,
 } from '../sketch/js/mueller.js';
 import { MATERIAL_RECORDS, fitIndex, verdetConstant } from '../sketch/js/materials/catalogue.js';
 import { computeCompressor } from '../calculators/dispersion-compensation/compressor-calculator.js';
@@ -186,6 +186,30 @@ const APP = {
     }
   },
   // A catalogue record's principal index, or its Verdet constant.
+  // A traced scene laid out by the reference, read at its detector, with
+  // the power relative to the laser's own; or a reciprocal matrix.
+  reflection: inputs => {
+    if (inputs.kind === 'reciprocal') {
+      const m = inputs.element === 'retarder' ? linearRetarderMueller(inputs.axisDeg, inputs.retardanceDeg)
+        : inputs.element === 'polarizer' ? idealPolarizerMueller(inputs.axisDeg) : rotatorMueller(inputs.angleDeg);
+      const back = reciprocalMueller(m);
+      return Object.fromEntries(back.flatMap((row, i) => row.map((v, k) => [`m${i}${k}`, v])));
+    }
+    const make = (type, x, y, rot = 0, params = {}) => {
+      const element = createElement(type, x, y);
+      element.rot = rot;
+      Object.assign(element.params, params);
+      return element;
+    };
+    const laser = () => make('cwlaser', 0, 0, 0, { pol: inputs.pol });
+    const reference = make('detector', 300, 0);
+    traceScene([laser(), reference]);
+    const P0 = detectorReading(reference.id).signal;
+    const detector = make('detector', inputs.detector.x, inputs.detector.y, inputs.detector.rot);
+    traceScene([laser(), ...inputs.elements.map(e => make(e.type, e.x, e.y, e.rot, e.params)), detector]);
+    const read = detectorReading(detector.id);
+    return { power: (read?.signal ?? 0) / P0, ...(read?.normalizedStokes ?? {}) };
+  },
   'crystal-catalogue': ({ kind, record, ray, wavelengthNm }) => {
     const r = MATERIAL_RECORDS.get(record);
     if (kind === 'verdet') return { verdetRadPerTm: verdetConstant(r, wavelengthNm) };
@@ -417,7 +441,7 @@ const APP = {
   },
 };
 
-for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'mueller', 'crystal-catalogue', 'dispersion-compensation', 'lens-design', 'lens-coherent', 'fiber-coupling', 'point-scanning', 'thick-lens', 'imaging']) {
+for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'mueller', 'reflection', 'crystal-catalogue', 'dispersion-compensation', 'lens-design', 'lens-coherent', 'fiber-coupling', 'point-scanning', 'thick-lens', 'imaging']) {
   const model = expected(name);
   for (const c of model.cases) {
     test(`${model.id}: ${c.name}`, () => {

@@ -218,9 +218,10 @@ export const exampleEntries = [
       set transmission at any angle, with no Fresnel calculation.</p>
       <p>There is no evanescent wave, so a second prism brought up to the
       reflecting face does not frustrate the reflection, however close. The
-      polarization comes out of the reflection as it went in: the phase shift
-      between the two polarizations is not applied, so a Fresnel rhomb drawn this
-      way leaves linear light linear.</p>`,
+      reflection changes the polarization as an ideal mirror does, keeping p and
+      s and swapping the two diagonals, but the phase shift total internal
+      reflection adds between the two polarizations is not applied, so a Fresnel
+      rhomb drawn this way leaves linear light linear.</p>`,
     citations: [
       { label: 'Wikipedia — Total internal reflection', url: 'https://en.wikipedia.org/wiki/Total_internal_reflection' },
       { label: 'Wikipedia — Porro prism', url: 'https://en.wikipedia.org/wiki/Porro_prism' },
@@ -284,14 +285,78 @@ export const exampleEntries = [
       wavelength; a real plate is made for one wavelength range, and away from it
       the light leaves elliptically polarized.</p>
       <p>The polarization is carried as a Stokes vector, which holds for these
-      elements met head-on. Reflections from mirrors do not yet change the
-      polarization state in the app.</p>`,
+      elements met head-on. A mirror placed in the beam would act as an ideal
+      mirror: p and s light come back as they went in, and the two diagonals
+      swap.</p>`,
     citations: [
       { label: 'Wikipedia — Polarizer (Malus’s law and its use)', url: 'https://en.wikipedia.org/wiki/Polarizer' },
       { label: 'Wikipedia — Waveplate (half-wave plate)', url: 'https://en.wikipedia.org/wiki/Waveplate' },
     ],
     resources: [],
     related: ['polarizer', 'hwp', 'qwp', 'pbs', 'polarimeter', 'powermeter', 'ledsource'],
+  },
+  {
+    match: 'Handedness after a mirror',
+    title: 'Handedness after a mirror',
+    tagline: 'A mirror reverses the handedness of circular light and swaps the two diagonals, while p and s light come back as they went in: two mirrors give the state back, one does not.',
+    html: `
+      <p>Circular light is right-handed when its field turns clockwise as seen
+      by someone looking towards the source, and left-handed when it turns the
+      other way${cite(1)}. A quarter-wave plate makes it from linear light at
+      45° to the plate's fast axis${cite(2)}: in that convention, linear light
+      along 0° through a plate whose fast axis is at 45° comes out right
+      circular.</p>
+      <p>A mirror reverses the handedness${cite(1)}. The reason is a matter of
+      directions. Of the two directions across the ray, the one perpendicular
+      to the plane of incidence, s, is the same before and after the
+      reflection; the one in the plane, p, turns over with the ray. The field
+      still turns the same way in space, but the light now travels the other
+      way, and seen looking towards its new source the rotation runs
+      backwards. A second mirror reverses it again.</p>
+      <p>The same happens to linear light at any angle other than along p or s.
+      Light polarized at +45° leaves the mirror at −45°, which is 135°: the
+      mirror image. An analyzer at 45° that would pass all of it before the mirror
+      passes none of it after. Light along p or along s is its own mirror
+      image and leaves unchanged.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>In the upper setup a laser polarized at 0° passes a
+      <a href="../../wiki/qwp/">quarter-wave plate</a> with its fast axis at
+      45°, then two <a href="../../wiki/mirror/">mirrors</a>. Three beam probes
+      show the polarization on the way: right circular after the plate, left
+      circular after the first mirror, right circular after the second. The
+      <a href="../../wiki/polarimeter/">polarimeter</a> at the end reads right
+      circular, with s₃ = +1.</p>
+      <p>In the lower setup a laser polarized at 45° meets one mirror. The probe
+      after it reads linear 135°, and the power meter behind an
+      <a href="../../wiki/polarizer/">analyzer</a> at 45° reads nothing.</p>
+      <p>Things to try, each a single change from the setup as it opens:</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Change</th><th>Reading</th></tr></thead>
+        <tbody>
+          <tr><td>Fast axis of the plate at 135°</td><td>left, right, left circular; the polarimeter reads s₃ = −1</td></tr>
+          <tr><td>Analyzer at 135°</td><td>the power meter reads 1.00&nbsp;mW</td></tr>
+          <tr><td>Lower laser polarized at 0°</td><td>the probe reads linear 0° and the power meter 500&nbsp;µW</td></tr>
+          <tr><td>Lower laser polarized at 90°</td><td>the probe reads linear 90° and the power meter 500&nbsp;µW</td></tr>
+        </tbody>
+      </table></div>
+      <p>An element's axis angle is fixed to the element. Light crossing a plate
+      or a polarizer in the other direction, after a mirror for instance, sees
+      the same axis at the opposite angle in its own frame, and the inspector
+      says which direction the angle refers to.</p>`,
+    limitations: `<p>The mirrors are ideal: they add no phase between s and p.
+      A real metal or dielectric mirror adds some, which turns linear light at
+      45° slightly elliptical and circular light slightly elliptical, by an
+      amount that depends on the coating and the angle of incidence. Every ray
+      and mirror normal lies in the drawing plane, so s is out of the drawing at
+      every mirror; a fold out of the plane, as in a periscope, is not
+      drawn.</p>`,
+    citations: [
+      { label: 'Wikipedia — Circular polarization (handedness conventions)', url: 'https://en.wikipedia.org/wiki/Circular_polarization' },
+      { label: 'Wikipedia — Waveplate (quarter-wave plate)', url: 'https://en.wikipedia.org/wiki/Waveplate' },
+    ],
+    resources: [],
+    related: ['qwp', 'mirror', 'polarizer', 'polarimeter', 'probe', 'powermeter'],
   },
 
   {
@@ -2126,8 +2191,10 @@ export const exampleEntries = [
       because they arrive from opposite directions.</p>`,
     limitations: `<p>The polarization is carried as a Stokes vector through ideal
       components: the PBS has perfect extinction, the wave plates have exactly their
-      nominal retardance at this wavelength, and the mirror reflects without changing
-      the polarization state other than by reversing the direction of travel. A real
+      nominal retardance at this wavelength, and the mirror is ideal, adding no phase
+      between s and p. The returning light meets the quarter-wave plate's axis from
+      the other side, at −45° in its own frame, which is why the two passes add up to
+      a half-wave plate rather than cancelling. A real
       cube leaks about a part in a thousand, a real plate is a quarter wave at one
       wavelength and one angle only, and a real target may depolarize — each of these
       sends some of the return back to the source, and none is modelled.</p>

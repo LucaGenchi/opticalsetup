@@ -1,0 +1,972 @@
+{
+ "app": "sketch/js/raytrace.js: reflectPolarization, crossingAxisDeg, through traceScene and detectorReading; sketch/js/mueller.js: reciprocalMueller",
+ "cases": [
+  {
+   "absolute": true,
+   "expected": {
+    "power": 1.0,
+    "s1": 1.0,
+    "s2": 0.0,
+    "s3": 0.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 90,
+     "x": 200,
+     "y": 200
+    },
+    "elements": [
+     {
+      "params": {},
+      "rot": -45,
+      "type": "mirror",
+      "x": 200,
+      "y": 0
+     }
+    ],
+    "kind": "scene",
+    "pol": 0
+   },
+   "name": "linear 0 deg after one 45 deg fold",
+   "note": "s2 and s3 change sign at the reflection",
+   "tolerance": {
+    "power": 1e-09,
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "power": 1.0,
+    "s1": 0.0,
+    "s2": -1.0,
+    "s3": 0.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 90,
+     "x": 200,
+     "y": 200
+    },
+    "elements": [
+     {
+      "params": {},
+      "rot": -45,
+      "type": "mirror",
+      "x": 200,
+      "y": 0
+     }
+    ],
+    "kind": "scene",
+    "pol": 45
+   },
+   "name": "linear 45 deg after one 45 deg fold",
+   "note": "s2 and s3 change sign at the reflection",
+   "tolerance": {
+    "power": 1e-09,
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "power": 1.0,
+    "s1": 0.5,
+    "s2": -0.8660254038,
+    "s3": 0.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 90,
+     "x": 200,
+     "y": 200
+    },
+    "elements": [
+     {
+      "params": {},
+      "rot": -45,
+      "type": "mirror",
+      "x": 200,
+      "y": 0
+     }
+    ],
+    "kind": "scene",
+    "pol": 30
+   },
+   "name": "linear 30 deg after one 45 deg fold",
+   "note": "s2 and s3 change sign at the reflection",
+   "tolerance": {
+    "power": 1e-09,
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "power": 0.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 90,
+     "x": 200,
+     "y": 240
+    },
+    "elements": [
+     {
+      "params": {},
+      "rot": -45,
+      "type": "mirror",
+      "x": 200,
+      "y": 0
+     },
+     {
+      "params": {
+       "pangle": 45
+      },
+      "rot": 90,
+      "type": "polarizer",
+      "x": 200,
+      "y": 120
+     }
+    ],
+    "kind": "scene",
+    "pol": 45
+   },
+   "name": "linear 45 deg, one fold, polarizer at 45 deg",
+   "note": "the fold turns +45 into -45 before the polarizer",
+   "tolerance": {
+    "power": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "power": 1.0,
+    "s1": 0.0,
+    "s2": -1.0,
+    "s3": 0.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 90,
+     "x": 200,
+     "y": 240
+    },
+    "elements": [
+     {
+      "params": {},
+      "rot": -45,
+      "type": "mirror",
+      "x": 200,
+      "y": 0
+     },
+     {
+      "params": {
+       "pangle": 135
+      },
+      "rot": 90,
+      "type": "polarizer",
+      "x": 200,
+      "y": 120
+     }
+    ],
+    "kind": "scene",
+    "pol": 45
+   },
+   "name": "linear 45 deg, one fold, polarizer at 135 deg",
+   "note": "the fold turns +45 into -45 before the polarizer",
+   "tolerance": {
+    "power": 1e-09,
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "power": 1.0,
+    "s1": 0.0,
+    "s2": 0.0,
+    "s3": 1.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 0,
+     "x": 300,
+     "y": 0
+    },
+    "elements": [
+     {
+      "params": {
+       "a": 45
+      },
+      "rot": 0,
+      "type": "qwp",
+      "x": 120,
+      "y": 0
+     }
+    ],
+    "kind": "scene",
+    "pol": 0
+   },
+   "name": "quarter-wave at 45 deg on linear 0 deg: right circular",
+   "note": "the field turns clockwise seen looking towards the source",
+   "tolerance": {
+    "power": 1e-09,
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "power": 1.0,
+    "s1": 0.0,
+    "s2": 0.0,
+    "s3": -1.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 90,
+     "x": 250,
+     "y": 200
+    },
+    "elements": [
+     {
+      "params": {
+       "a": 45
+      },
+      "rot": 0,
+      "type": "qwp",
+      "x": 120,
+      "y": 0
+     },
+     {
+      "params": {},
+      "rot": -45,
+      "type": "mirror",
+      "x": 250,
+      "y": 0
+     }
+    ],
+    "kind": "scene",
+    "pol": 0
+   },
+   "name": "right circular after one fold: left circular",
+   "note": "a reflection reverses the handedness",
+   "tolerance": {
+    "power": 1e-09,
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "power": 1.0,
+    "s1": 0.0,
+    "s2": 0.0,
+    "s3": 1.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 0,
+     "x": 450,
+     "y": 200
+    },
+    "elements": [
+     {
+      "params": {
+       "a": 45
+      },
+      "rot": 0,
+      "type": "qwp",
+      "x": 120,
+      "y": 0
+     },
+     {
+      "params": {},
+      "rot": -45,
+      "type": "mirror",
+      "x": 250,
+      "y": 0
+     },
+     {
+      "params": {},
+      "rot": -45,
+      "type": "mirror",
+      "x": 250,
+      "y": 200
+     }
+    ],
+    "kind": "scene",
+    "pol": 0
+   },
+   "name": "right circular after two folds: right circular",
+   "note": "two reflections restore it",
+   "tolerance": {
+    "power": 1e-09,
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "power": 1.0,
+    "s1": -1.0,
+    "s2": 0.0,
+    "s3": 0.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 90,
+     "x": 200,
+     "y": 150
+    },
+    "elements": [
+     {
+      "params": {},
+      "rot": 0,
+      "type": "pbs",
+      "x": 200,
+      "y": 0
+     },
+     {
+      "params": {
+       "a": 45
+      },
+      "rot": 0,
+      "type": "qwp",
+      "x": 300,
+      "y": 0
+     },
+     {
+      "params": {},
+      "rot": 0,
+      "type": "mirror",
+      "x": 400,
+      "y": 0
+     }
+    ],
+    "kind": "scene",
+    "pol": 0
+   },
+   "name": "PBS, quarter-wave at 45 deg, mirror, back: all light at the other port",
+   "note": "the round trip through the plate is Q J^T J; horizontal returns vertical",
+   "tolerance": {
+    "power": 1e-09,
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "power": 0.25,
+    "s1": 0.0,
+    "s2": 1.0,
+    "s3": 0.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 90,
+     "x": 200,
+     "y": 200
+    },
+    "elements": [
+     {
+      "params": {},
+      "rot": 0,
+      "type": "bs",
+      "x": 200,
+      "y": 0
+     },
+     {
+      "params": {
+       "a": 30
+      },
+      "rot": 0,
+      "type": "hwp",
+      "x": 300,
+      "y": 0
+     },
+     {
+      "params": {},
+      "rot": 0,
+      "type": "mirror",
+      "x": 400,
+      "y": 0
+     }
+    ],
+    "kind": "scene",
+    "pol": 45
+   },
+   "name": "diagonal light, half-wave at 30 deg and back: the mirror's result",
+   "note": "a half-wave plate at any angle leaves the round trip unchanged",
+   "tolerance": {
+    "power": 1e-09,
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "power": 0.25,
+    "s1": 0.0,
+    "s2": 1.0,
+    "s3": 0.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 90,
+     "x": 200,
+     "y": 200
+    },
+    "elements": [
+     {
+      "params": {},
+      "rot": 0,
+      "type": "bs",
+      "x": 200,
+      "y": 0
+     },
+     {
+      "params": {
+       "a": 75
+      },
+      "rot": 0,
+      "type": "hwp",
+      "x": 300,
+      "y": 0
+     },
+     {
+      "params": {},
+      "rot": 0,
+      "type": "mirror",
+      "x": 400,
+      "y": 0
+     }
+    ],
+    "kind": "scene",
+    "pol": 45
+   },
+   "name": "diagonal light, half-wave at 75 deg and back: the mirror's result",
+   "note": "a half-wave plate at any angle leaves the round trip unchanged",
+   "tolerance": {
+    "power": 1e-09,
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "power": 0.25,
+    "s1": 0.0,
+    "s2": 1.0,
+    "s3": 0.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 90,
+     "x": 200,
+     "y": 200
+    },
+    "elements": [
+     {
+      "params": {},
+      "rot": 0,
+      "type": "bs",
+      "x": 200,
+      "y": 0
+     },
+     {
+      "params": {},
+      "rot": 0,
+      "type": "mirror",
+      "x": 400,
+      "y": 0
+     }
+    ],
+    "kind": "scene",
+    "pol": 45
+   },
+   "name": "diagonal light, mirror only, picked off by the beamsplitter",
+   "note": "reference for the half-wave rows",
+   "tolerance": {
+    "power": 1e-09,
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "power": 0.1467060222,
+    "s1": -0.5,
+    "s2": 0.8660254038,
+    "s3": 0.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 90,
+     "x": 200,
+     "y": 200
+    },
+    "elements": [
+     {
+      "params": {},
+      "rot": 0,
+      "type": "bs",
+      "x": 200,
+      "y": 0
+     },
+     {
+      "params": {
+       "pangle": 60
+      },
+      "rot": 0,
+      "type": "polarizer",
+      "x": 300,
+      "y": 0
+     },
+     {
+      "params": {},
+      "rot": 0,
+      "type": "mirror",
+      "x": 400,
+      "y": 0
+     }
+    ],
+    "kind": "scene",
+    "pol": 20
+   },
+   "name": "linear 20 deg, polarizer at 60 deg and back",
+   "note": "the polarizer passes on the return all that it passed (cos^2 40 deg)",
+   "tolerance": {
+    "power": 1e-09,
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "power": 0.25,
+    "s1": 0.0,
+    "s2": 1.0,
+    "s3": 0.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 90,
+     "x": 200,
+     "y": 200
+    },
+    "elements": [
+     {
+      "params": {},
+      "rot": 0,
+      "type": "bs",
+      "x": 200,
+      "y": 0
+     },
+     {
+      "params": {},
+      "rot": 0,
+      "type": "mirror",
+      "x": 350,
+      "y": 0
+     },
+     {
+      "params": {
+       "pangle": 45
+      },
+      "rot": 90,
+      "type": "polarizer",
+      "x": 200,
+      "y": 100
+     }
+    ],
+    "kind": "scene",
+    "pol": 45
+   },
+   "name": "diagonal light returned by one mirror, analyzer at 45 deg",
+   "note": "one reflection: the mirror image of the two-fold return",
+   "tolerance": {
+    "power": 1e-09,
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "power": 0.0
+   },
+   "inputs": {
+    "detector": {
+     "rot": 90,
+     "x": 200,
+     "y": 200
+    },
+    "elements": [
+     {
+      "params": {},
+      "rot": 0,
+      "type": "bs",
+      "x": 200,
+      "y": 0
+     },
+     {
+      "params": {
+       "length": 10
+      },
+      "rot": -45,
+      "type": "mirror",
+      "x": 350,
+      "y": 0
+     },
+     {
+      "params": {
+       "length": 10
+      },
+      "rot": 45,
+      "type": "mirror",
+      "x": 350,
+      "y": 8
+     },
+     {
+      "params": {
+       "pangle": 45
+      },
+      "rot": 90,
+      "type": "polarizer",
+      "x": 200,
+      "y": 100
+     }
+    ],
+    "kind": "scene",
+    "pol": 45
+   },
+   "name": "diagonal light returned by two 45 deg folds, analyzer at 45 deg",
+   "note": "two reflections: the state of the one-mirror return mirrored",
+   "tolerance": {
+    "power": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 1.0,
+    "m01": 0.0,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": 0.0,
+    "m11": 0.0,
+    "m12": 0.0,
+    "m13": 1.0,
+    "m20": 0.0,
+    "m21": 0.0,
+    "m22": 1.0,
+    "m23": 0.0,
+    "m30": 0.0,
+    "m31": -1.0,
+    "m32": 0.0,
+    "m33": 0.0
+   },
+   "inputs": {
+    "axisDeg": 45,
+    "element": "retarder",
+    "kind": "reciprocal",
+    "retardanceDeg": 90
+   },
+   "name": "retarder at 45 deg, 90 deg, crossed backwards",
+   "note": "Mueller matrix of Q J^T Q, measured with four probe states",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 1.0,
+    "m01": 0.0,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": 0.0,
+    "m11": 0.7803300859,
+    "m12": -0.126826484,
+    "m13": 0.6123724357,
+    "m20": 0.0,
+    "m21": -0.126826484,
+    "m22": 0.9267766953,
+    "m23": 0.3535533906,
+    "m30": 0.0,
+    "m31": -0.6123724357,
+    "m32": -0.3535533906,
+    "m33": 0.7071067812
+   },
+   "inputs": {
+    "axisDeg": 30,
+    "element": "retarder",
+    "kind": "reciprocal",
+    "retardanceDeg": 45
+   },
+   "name": "retarder at 30 deg, 45 deg, crossed backwards",
+   "note": "Mueller matrix of Q J^T Q, measured with four probe states",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 1.0,
+    "m01": 0.0,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": 0.0,
+    "m11": 0.198565734,
+    "m12": 0.9551121657,
+    "m13": 0.2198463104,
+    "m20": 0.0,
+    "m21": 0.9551121657,
+    "m22": -0.1382583548,
+    "m23": -0.2620026302,
+    "m30": 0.0,
+    "m31": -0.2198463104,
+    "m32": 0.2620026302,
+    "m33": -0.9396926208
+   },
+   "inputs": {
+    "axisDeg": -20,
+    "element": "retarder",
+    "kind": "reciprocal",
+    "retardanceDeg": 200
+   },
+   "name": "retarder at -20 deg, 200 deg, crossed backwards",
+   "note": "Mueller matrix of Q J^T Q, measured with four probe states",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 0.5,
+    "m01": 0.5,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": 0.5,
+    "m11": 0.5,
+    "m12": 0.0,
+    "m13": 0.0,
+    "m20": 0.0,
+    "m21": 0.0,
+    "m22": 0.0,
+    "m23": 0.0,
+    "m30": 0.0,
+    "m31": 0.0,
+    "m32": 0.0,
+    "m33": 0.0
+   },
+   "inputs": {
+    "axisDeg": 0,
+    "element": "polarizer",
+    "kind": "reciprocal"
+   },
+   "name": "polarizer at 0 deg, crossed backwards",
+   "note": "Mueller matrix of Q J^T Q, measured with four probe states",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 0.5,
+    "m01": 0.1710100717,
+    "m02": -0.4698463104,
+    "m03": 0.0,
+    "m10": 0.1710100717,
+    "m11": 0.05848888922,
+    "m12": -0.1606969024,
+    "m13": 0.0,
+    "m20": -0.4698463104,
+    "m21": -0.1606969024,
+    "m22": 0.4415111108,
+    "m23": 0.0,
+    "m30": 0.0,
+    "m31": 0.0,
+    "m32": 0.0,
+    "m33": 0.0
+   },
+   "inputs": {
+    "axisDeg": 35,
+    "element": "polarizer",
+    "kind": "reciprocal"
+   },
+   "name": "polarizer at 35 deg, crossed backwards",
+   "note": "Mueller matrix of Q J^T Q, measured with four probe states",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "m00": 1.0,
+    "m01": 0.0,
+    "m02": 0.0,
+    "m03": 0.0,
+    "m10": 0.0,
+    "m11": 0.6427876097,
+    "m12": -0.7660444431,
+    "m13": 0.0,
+    "m20": 0.0,
+    "m21": 0.7660444431,
+    "m22": 0.6427876097,
+    "m23": 0.0,
+    "m30": 0.0,
+    "m31": 0.0,
+    "m32": 0.0,
+    "m33": 1.0
+   },
+   "inputs": {
+    "angleDeg": 25,
+    "element": "rotator",
+    "kind": "reciprocal"
+   },
+   "name": "rotator by 25 deg, crossed backwards: the same sense",
+   "note": "Mueller matrix of Q J^T Q, measured with four probe states",
+   "tolerance": {
+    "m00": 1e-09,
+    "m01": 1e-09,
+    "m02": 1e-09,
+    "m03": 1e-09,
+    "m10": 1e-09,
+    "m11": 1e-09,
+    "m12": 1e-09,
+    "m13": 1e-09,
+    "m20": 1e-09,
+    "m21": 1e-09,
+    "m22": 1e-09,
+    "m23": 1e-09,
+    "m30": 1e-09,
+    "m31": 1e-09,
+    "m32": 1e-09,
+    "m33": 1e-09
+   }
+  }
+ ],
+ "citations": [
+  "M. Born and E. Wolf, Principles of Optics, 7th ed., Cambridge University Press (1999), section 1.4.2 (handedness: right-handed when the field turns clockwise seen looking towards the source) and section 1.5.2 (reflection at a perfect conductor)",
+  "R. Bhandari, 'Transpose symmetry of the Jones matrix and topological phases,' Opt. Lett. 33, 854-856 (2008): the reciprocal Jones matrix of an element crossed backwards",
+  "R. J. Potton, 'Reciprocity in optics,' Rep. Prog. Phys. 67, 717-754 (2004): background on reciprocity"
+ ],
+ "convergence": "Closed form; no discretisation.",
+ "domain": "Linear inputs at 0-45 degrees and circular light made by a quarter-wave plate; folds at 45 degrees and returns at normal incidence; waveplates and polarizers at 0-75 degrees crossed both ways.",
+ "fidelity": "computed",
+ "id": "reflection",
+ "outside_scope": "Real coatings and metals (their retardance on reflection, step P8), Fresnel retardance on total internal reflection (step P1), depolarization, non-reciprocal elements (Faraday rotation, step P2) and out-of-plane beam folds.",
+ "provenance": "The field rules are the definitions above; the round-trip consequences are asserted in the module before the cases are written.",
+ "reference": "Explicit field vectors followed through each layout (perfect-conductor reflection E_r = -E + 2(E.n)n, waveplate axes fixed in space, Stokes read in the arriving ray's basis); reciprocal Jones matrices Q J^T Q measured with four probe states",
+ "reference_file": "validation/reference/reflection.py",
+ "scope": "Ideal specular reflections and ideal linear elements in the drawing plane: every ray and surface normal in the plane, so s is out of the plane at every surface. A mirror is a perfect conductor; a beamsplitter reflects and transmits with real amplitudes; a polarizing beamsplitter transmits p and reflects s.",
+ "title": "Polarization at reflections and backward crossings",
+ "tolerance_rationale": "1e-9 absolute: the same algebra in double precision, stored to 10 significant digits."
+}
