@@ -3298,6 +3298,9 @@ function mergeCoupling(into, c) {
   // A summed cavity loop's factor, which decides how far faint light is
   // followed: the larger one keeps every merged share followed.
   into.loopSum = Math.max(into.loopSum || 1, c.loopSum || 1);
+  // Only the central ray carries a beam parameter (step G1); the merged
+  // emission came in with one if any of its couplings did.
+  into.beamCarried ||= Boolean(c.beamCarried);
 }
 
 // What makes two fiber couplings different light, beyond where and when they
@@ -7157,11 +7160,17 @@ const NO_PARAXIAL_MODEL = new Set(['diffuser', 'dm', 'dmd', 'shaper', 'specimen'
 
 function beamElementName(surface) {
   const el = surface?.el;
-  return el ? (el.label || registry[el.type]?.label || el.type) : 'An optic';
+  if (el) return el.label || registry[el.type]?.label || el.type;
+  // A fiber's connectors belong to the fiber path, not to an element.
+  if (surface?.data?.beam) return surface.data.beam.kind === 'fiber' ? 'Fiber' : 'Manual beam';
+  return 'An optic';
 }
 
+// What a surface belongs to: its element, or the fiber whose connector it is.
+const surfaceOwnerId = surface => surface?.el?.id ?? surface?.data?.beam?.id ?? null;
+
 function beamStepIssue(parent, surface, child) {
-  const issue = reason => ({ elementId: surface.el?.id || null, element: beamElementName(surface), reason });
+  const issue = reason => ({ elementId: surfaceOwnerId(surface), element: beamElementName(surface), reason });
   if (NO_PARAXIAL_MODEL.has(surface.kind) || (surface.kind === 'attenuate' && surface.data?.specimen)) {
     return issue('it has no paraxial model');
   }
@@ -7227,12 +7236,13 @@ function beamClipIssue(from, to, q, index, seed, surfaces, exclude) {
   if (!(length > 0)) return null;
   for (const surface of surfaces) {
     if (!surface.a || !surface.b || surface.data?.pickoff) continue;
-    if (surface.el?.id && exclude.has(surface.el.id)) continue;
+    const owner = surfaceOwnerId(surface);
+    if (owner && exclude.has(owner)) continue;
     const gap = segmentGap(from, to, surface.a, surface.b);
     const w = beamRadiusMm(propagateQ(q, gap.along * length), seed, index);
     if (Number.isFinite(w) && gap.distance < CLIP_RADII * w) {
       return {
-        elementId: surface.el?.id || null, element: beamElementName(surface),
+        elementId: surfaceOwnerId(surface), element: beamElementName(surface),
         reason: `its edge lies ${formatBeamMm(gap.distance)} from the beam's centre, within ${CLIP_RADII} beam radii, so it clips the beam`,
       };
     }
@@ -7276,7 +7286,7 @@ function hitEdgeIssue(step, w, surfaces) {
     }
     if (reach < need) {
       return {
-        elementId: surface.el?.id || null, element: beamElementName(surface),
+        elementId: surfaceOwnerId(surface), element: beamElementName(surface),
         reason: `the beam reaches its edge (${formatBeamMm(reach)} from the beam's centre along it, within ${CLIP_RADII} beam radii), so it clips the beam`,
       };
     }
@@ -7286,7 +7296,7 @@ function hitEdgeIssue(step, w, surfaces) {
 
 // The beam after one more step, from the state after the last.
 function advanceBeam(prev, step, seed, surfaces) {
-  const elementId = step.surface.el?.id || null, element = beamElementName(step.surface);
+  const elementId = surfaceOwnerId(step.surface), element = beamElementName(step.surface);
   const fail = reason => ({ ...prev, issue: typeof reason === 'string' ? { elementId, element, reason } : reason });
   const clip = beamClipIssue(prev.p, step.hit.p, prev.q, prev.n, seed, surfaces, new Set([prev.elementId, elementId].filter(Boolean)));
   if (clip) return fail(clip);
@@ -7319,8 +7329,10 @@ function propagateBeams(paths, surfaces) {
   const memo = new Map();
   const tracks = [];
   for (const path of paths) {
-    const seed = path.beamSeed;
-    if (!seed) continue;
+    // A path that only carries a decline (a fiber that starts no beam) still
+    // gets a track, so the detectors it reaches can say why.
+    if (!path.beamSeed && !path.beamIssue) continue;
+    const seed = path.beamSeed || { sourceId: path.sourceId || path.originId || null, wavelengthNm: path.wl, m2: 1, elementId: null };
     const track = { path, seed, q: [], issue: path.beamIssue || null, issueVertex: path.beamIssue ? 0 : null };
     beamTrackOf.set(path, track);
     tracks.push(track);
@@ -7822,7 +7834,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       }
       if (!coherent?.dryRun && (hit.surface.kind === 'detector' || hit.surface.kind === 'retina')) {
         recordDetectorHit(r, hit);
-        if (r.beamSeed) {
+        if (r.beamSeed || r.beamIssue) {
           if (!beamDetectorHitsOf.has(r)) beamDetectorHitsOf.set(r, []);
           beamDetectorHitsOf.get(r).push({ surface: hit.surface, p: { x: hit.p.x, y: hit.p.y }, vertex: r.pts.length - 1 });
         }

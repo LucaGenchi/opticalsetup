@@ -7254,6 +7254,17 @@
     "approximations": [],
     "bandMax": 516.625628,
     "bandMin": 513.374372,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "Fiber",
+       "elementId": "bpv3aahl",
+       "reason": "the fiber starts no beam parameter: the fiber has no single-mode core set, so its output mode is not known",
+       "sourceId": "e0cr5gu6"
+      }
+     ]
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#1fff00",
@@ -7336,6 +7347,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",

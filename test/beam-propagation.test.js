@@ -235,3 +235,31 @@ test('G1: the probe can show the Gaussian beam where it stands', () => {
   traceScene(blocked);
   assert.match(registry.probe.svg(behind, blocked), /not propagated/);
 });
+
+test('G1: a fiber relaunches a beam from its mode, not clipped by its own connector', () => {
+  // A hollow-core capillary: its 80 µm beam (0.64 of a 125 µm core radius)
+  // starts 0.1 mm past the end face, within 1.5 w of the connector's own
+  // edges, which must not count as clipping it.
+  const sketch = (fiber) => parseSketch(JSON.stringify({ version: 1, elements: [
+    { id: 'L', type: 'cwlaser', x: 0, y: 0, rot: 0, params: { beamMode: 'beam', beamWidth: 2, wavelength: 1000 } },
+    { id: 'lens', type: 'lens', x: 150, y: 0, rot: 0, params: { f: 100 } },
+    { id: 'D', type: 'detector', x: 700, y: 0, rot: 0, params: {} },
+  ], beams: [{ id: 'F', kind: 'fiber', pts: [{ x: 250, y: 0 }, { x: 400, y: 0 }], propagate: true, inputNA: 0.12, out1: { mode: 'diverge', na: 0.05 }, out0: { mode: 'diverge', na: 0.05 }, ...fiber }] }), registry);
+  const hollow = sketch({ fiberModel: 'argon', coreDiameterUm: 250 });
+  traceScene(hollow.elements, hollow.beams);
+  let beam = detectorReading('D').beam;
+  assert.deepEqual(beam.declined, []);
+  close(beam.branches[0].waistUm, 80, 1e-9, 'HE11 Gaussian');
+  assert.equal(beam.branches[0].sourceId, 'F');
+  // A step-index fiber set single-mode: the LP01 Gaussian at V = 1.51.
+  const single = sketch({ singleModeCoreUm: 4 });
+  traceScene(single.elements, single.beams);
+  beam = detectorReading('D').beam;
+  const V = 2 * Math.PI * 2e-3 * 0.12 / 1e-3;
+  close(beam.branches[0].waistUm, lp01(V).best.ratio * 2, 1e-9, 'LP01 Gaussian');
+  // Without a core set, light that came in with a beam says why none leaves.
+  const plain = sketch({});
+  traceScene(plain.elements, plain.beams);
+  assert.match(detectorReading('D').beam.declined[0].reason, /no single-mode core/);
+  assert.equal(detectorReading('D').beam.declined[0].element, 'Fiber');
+});
