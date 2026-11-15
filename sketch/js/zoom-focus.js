@@ -129,7 +129,7 @@ export function zoomFoci(zoom, paths = []) {
     foci.push({
       point: found.point, axis: found.axis, w0Mm: found.w0Mm, zRMm: found.zRMm, na: found.na,
       from, to, ends, wl: group.wl, color: group.color || wavelengthToColor(group.wl),
-      model: found.model || 'cone',
+      model: found.model || 'cone', estimate: found.estimate || null,
     });
   }
   return foci;
@@ -156,6 +156,7 @@ function propagatedFocus(group) {
     ok: true, model: 'propagated',
     point: { x: beam.p.x + beam.d.x * along, y: beam.p.y + beam.d.y * along }, axis: { ...beam.d },
     w0Mm: shape.waistUm / 1000, zRMm: shape.rayleighMm, na: Math.sin(Math.atan(shape.halfDivergenceMrad / 1000)),
+    estimate: beam.estimate || null,
   };
 }
 

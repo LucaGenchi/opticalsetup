@@ -126,7 +126,11 @@ function focusLayer(zoom, g, paths, nonScalingStroke) {
       notes.push({ text: `w₀ ${formatLength(focus.w0Mm)}` }, { text: `zR ${formatLength(focus.zRMm)}` });
       // The waist of a propagated beam (step G1), or the ideal Gaussian of
       // the traced cone where no beam parameter arrives: say which.
-      notes.push({ text: focus.model === 'propagated' ? 'beam parameter' : 'cone estimate' });
+      // Past an ideal lens met far from its axis the beam parameter is an
+      // estimate, and the note says by how much (short enough to fit where
+      // "beam parameter" does; the probe and detectors name the lens).
+      notes.push({ text: focus.model !== 'propagated' ? 'cone estimate'
+        : focus.estimate ? `estimate ±${focus.estimate.deviationPercent}%` : 'beam parameter' });
     }
   }
   return { svg, notes };

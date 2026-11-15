@@ -77,8 +77,10 @@ cos³θ_out / cos³θ_in in the drawing plane (0.7 % at 4°, 5.7 % for a beam
 there. The beam still follows the matrix as measured, which is what the drawn
 rays do: a collimated beam and an already converging one focus where the rays
 cross. Where the determinant along the path has moved more than 1 % from 1,
-every readout of that beam says its values are an estimate, names the lens and
-gives the percentage. (Keeping the size A and the focusing C and choosing
+every readout of that beam says its values are an estimate: the probe and the
+detector cards name the lens and give the percentage, and the focus screens of
+the wavefront and general detectors and the zoom's note add "EST. ±5.7 %" or
+"estimate ±5.7%" to the waist. (Keeping the size A and the focusing C and choosing
 D = (1 + B·C)/A would make the step lossless, but it keeps only a collimated
 beam's focus: a converging beam then focused 1.3 mm away from the rays'
 crossing in a two-lens case. Rescaling A, B, C and D by 1/√det leaves q

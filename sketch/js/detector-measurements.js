@@ -127,7 +127,7 @@ function sampleWavefront(sensor, reading) {
       ? { waistMm: c.waistMm, rayleighMm: c.rayleighMm, wavelengthNm: c.wavelengthNm, waistAheadMm: c.waistAheadMm ?? 0,
         // 'propagated' (the source's beam parameter, step G1) or 'cone' (the
         // ideal Gaussian of the traced cone, where no beam parameter arrives).
-        waistModel: c.waistModel || 'cone' } : {};
+        waistModel: c.waistModel || 'cone', ...(c.estimate ? { estimate: c.estimate } : {}) } : {};
     return { state: 'FOCUS PLANE', divergenceDeg: c.fullAngleDeg, signedDivergenceDeg: 0, ...gaussian };
   }
   const signed = c.diverging ? c.fullAngleDeg : -c.fullAngleDeg;

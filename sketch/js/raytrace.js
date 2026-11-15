@@ -7569,7 +7569,10 @@ export function detectorBeam(elementId) {
 function focusFromBeam(convergence, beam) {
   if (beam && beam.branches.length === 1 && !beam.declined.length) {
     const b = beam.branches[0];
-    return { ...convergence, waistMm: b.waistUm / 1000, rayleighMm: b.rayleighMm, waistAheadMm: b.waistAheadMm, wavelengthNm: b.wavelengthNm, waistModel: 'propagated' };
+    return { ...convergence, waistMm: b.waistUm / 1000, rayleighMm: b.rayleighMm, waistAheadMm: b.waistAheadMm, wavelengthNm: b.wavelengthNm, waistModel: 'propagated',
+      // Past an ideal lens met far from its axis the waist is an estimate,
+      // and every display of it says so.
+      ...(b.estimate ? { estimate: b.estimate } : {}) };
   }
   return Number.isFinite(convergence.waistMm) ? { ...convergence, waistModel: 'cone' } : convergence;
 }
@@ -7684,7 +7687,7 @@ export function beamOnPathSegment(path, segment) {
   const exclude = new Set([at.elementId, beamVertexOwnersOf.get(path)?.[segment + 1]].filter(Boolean));
   const seed = at.seed || track.seed;
   return {
-    q, p: { x: start.x, y: start.y }, d: at.d, index: at.n, wavelengthNm: seed.wavelengthNm, m2: seed.m2,
+    q, p: { x: start.x, y: start.y }, d: at.d, index: at.n, wavelengthNm: seed.wavelengthNm, m2: seed.m2, estimate: at.estimate || null,
     // Whether an edge clips the beam before `distanceMm` past the segment's
     // start: the zoom asks up to its drawn stretch and the waist.
     clipWithin: distanceMm => beamClipIssue(at.p, { x: start.x + at.d.x * distanceMm, y: start.y + at.d.y * distanceMm },

@@ -10,7 +10,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createElement, registry } from '../sketch/js/elements.js';
-import { traceScene, detectorReading, beamAtPoint, beamTracksFromLastTrace } from '../sketch/js/raytrace.js';
+import { traceScene, traceAll, detectorReading, beamAtPoint, beamTracksFromLastTrace } from '../sketch/js/raytrace.js';
 import { sourceBeamParameter, noBeamReason, fiberBeamParameter, measuredMatrix, companionStarts, segmentGap } from '../sketch/js/beam-propagation.js';
 import { beamFromQ, qFromWaist, transformQ, thinLensMatrix, freeSpaceMatrix, composeMatrices } from '../sketch/js/gaussian-beam.js';
 import { gaussianBeam, thinLensFocus } from '../calculators/assets/gaussian-beam.js';
@@ -18,6 +18,7 @@ import { lp01 } from '../sketch/js/lp01.js';
 import { beamRowsHTML } from '../sketch/js/inspector.js';
 import { estimateText } from '../sketch/js/elements.js';
 import { zoomFoci } from '../sketch/js/zoom-focus.js';
+import { zoomSceneSVG } from '../sketch/js/zoom-view.js';
 import { parseSketch } from '../sketch/js/state.js';
 
 const make = (type, x, y, params = {}, rot = 0) => {
@@ -569,4 +570,28 @@ test('G1 (review 4): filtered light keeps its beam, at the centre wavelength of 
   assert.equal(notched.branches.length, 1, JSON.stringify(notched));
   assert.equal(notched.branches[0].spectralParts, 2);
   assert.deepEqual(notched.declined, []);
+});
+
+test('G1 (review 6): the estimate follows the waist into the zoom and the focus screens', async () => {
+  // Andrea's case: a 2 mm beam 20 mm above the axis of an f = 100 mm lens,
+  // focusing at (300, 0); the probe marks it an estimate (5.7 %).
+  await import('../sketch/js/detector-instruments.js');
+  const source = () => make('cwlaser', 0, 20, { beamMode: 'beam', beamWidth: 2, wavelength: 633 });
+  const lens = () => make('lens', 200, 0, { f: 100, dia: 100 });
+  const zoom = make('zoom', 300, 0, { w: 10, h: 10, diffraction: true });
+  const zoomed = [source(), lens(), zoom];
+  const traced = traceScene(zoomed, []);
+  const [focus] = zoomFoci(zoom, traced.paths);
+  assert.equal(focus.model, 'propagated');
+  assert.equal(focus.estimate.deviationPercent, 5.7);
+  assert.match(zoomSceneSVG(zoom, { drawables: traced.drawables, paths: traced.paths, elements: zoomed }), />estimate ±5\.7%</);
+  // A general detector with its face on the focus (27 mm behind its centre)
+  // and its screen.
+  const general = make('generaldetector', 327, 0, { aperture: 30 });
+  const display = make('display', 450, 80, { sensorId: general.id, displayView: 'main' });
+  const scene = [source(), lens(), general, display];
+  traceAll(scene);
+  const reading = detectorReading(general.id);
+  assert.equal(reading.convergence?.estimate?.deviationPercent, 5.7, JSON.stringify(reading.convergence));
+  assert.match(registry.display.svg(display, scene), /w₀ \/ zR \(EST\. ±5\.7%\)/);
 });
