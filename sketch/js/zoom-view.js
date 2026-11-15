@@ -122,7 +122,15 @@ function focusLayer(zoom, g, paths, nonScalingStroke) {
     svg += `<polygon points="${ptsAttr(outline)}" fill="${focus.color}" fill-opacity="0.28" stroke="${focus.color}" stroke-width="0.8" stroke-opacity="0.9" stroke-linejoin="round"${nonScalingStroke ? ' vector-effect="non-scaling-stroke"' : ''} data-zoom-focus="true"/>`;
     // Two short lines rather than one long one, so a round view of modest
     // size still has room for them.
-    if (named) notes.push({ text: `w₀ ${formatLength(focus.w0Mm)}` }, { text: `zR ${formatLength(focus.zRMm)}` });
+    if (named) {
+      notes.push({ text: `w₀ ${formatLength(focus.w0Mm)}` }, { text: `zR ${formatLength(focus.zRMm)}` });
+      // The waist of a propagated beam (step G1), or the ideal Gaussian of
+      // the traced cone where no beam parameter arrives: say which.
+      // Past an ideal lens met far from its axis the beam parameter is an
+      // estimate. No error bar: the model gives none (the probe and the
+      // detector cards say why, naming the lens).
+      notes.push({ text: focus.model !== 'propagated' ? 'cone estimate' : focus.estimate ? 'estimate' : 'beam parameter' });
+    }
   }
   return { svg, notes };
 }

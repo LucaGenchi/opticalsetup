@@ -16,10 +16,12 @@
 //               its size in it. Anything that needs a beam area (irradiance,
 //               fluence, a 2D image) is computed only under this assumption.
 //
-// Today every detector readout is "in the drawing plane": none needs a beam
-// area, and the camera shows its profile in the plane only. The other three
-// are here for the steps that bring them (G1-G5), so that a readout taking one
-// of them on states it the same way.
+// Every detector readout is "in the drawing plane": none needs a beam area,
+// and the camera shows its profile in the plane only. The first quantity with
+// another scope is the Gouy phase of a propagated beam (step G1), which
+// assumes a circular beam until G3 and carries that scope beside its value;
+// the others are here for the steps that bring them (G3-G5), so that a
+// readout taking one of them on states it the same way.
 //
 // Scope is one field of the readout record that roadmap step 1.2 will give
 // every readout ({ value, unit, approximation, evidence, caveats }), not a
@@ -75,6 +77,10 @@ export const READING_SCOPES = Object.freeze({
   wavefront: 'plane',
   bandwidth: 'plane',
   detectedPowerW: 'plane',
+  // The propagated Gaussian beam (step G1): radius, wavefront, waist and
+  // Rayleigh range per branch, in the drawing plane. The Gouy phase in it
+  // assumes a circular beam and says so itself (gouyScope).
+  beam: 'plane',
 });
 
 // Keys of a reading that describe it rather than measure anything: how it was

@@ -67,6 +67,11 @@ import {
 } from './spectrum.js';
 import { spectralFieldResult, spectralTermsAt, SPECTRAL_UNAVAILABLE, RECOMBINED_PULSE_UNAVAILABLE } from './spectral-coherence.js';
 import { cameraProfileFromHits } from './camera-profile.js';
+import {
+  CLIP_RADII, COMPANION_STEP, PARAXIAL_LIMIT_RAD, companionStarts, fiberBeamParameter, measuredMatrix, segmentGap, sourceBeamParameter,
+} from './beam-propagation.js';
+import { beamFromQ, composeMatrices, propagateQ, qFromWaist, transformQ } from './gaussian-beam.js';
+import { lp01 } from './lp01.js';
 import { MAX_CONVERSION, MAX_OPO_DEPLETION, opoPulse, supercontinuumRange, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength, mixWidthNm, coincidenceGate } from './parametric.js';
 import { asphereSag, asphereSlope } from './asphere.js';
 import { imageOfPoint, objectImagingSteps, principalRays } from './object-imaging.js';
@@ -207,6 +212,7 @@ export function specimenIncidentBeams(elementId) {
 let objectivePupilHits = new Map();
 
 function recordObjectivePupil(elementId, radius, pupilRadius) {
+  if (companionMode) return;
   if (!elementId || !Number.isFinite(radius) || !Number.isFinite(pupilRadius)) return;
   const seen = objectivePupilHits.get(elementId);
   if (!seen) objectivePupilHits.set(elementId, { pupilRadius, beamRadius: radius });
@@ -220,6 +226,7 @@ function recordObjectivePupil(elementId, radius, pupilRadius) {
 let phasePlateSpans = new Map();
 
 function recordPhasePlateSpan(elementId, u) {
+  if (companionMode) return;
   if (!elementId || !Number.isFinite(u)) return;
   const seen = phasePlateSpans.get(elementId);
   if (!seen) phasePlateSpans.set(elementId, { lo: u, hi: u });
@@ -239,7 +246,7 @@ export function phasePlateIllumination(elementId) {
 let compressorGdd = new Map();
 
 function recordCompressor(elementId, incoming, outgoing, faint = false) {
-  if (!elementId || !Number.isFinite(incoming)) return;
+  if (companionMode || !elementId || !Number.isFinite(incoming)) return;
   const seen = compressorGdd.get(elementId);
   // several rays cross it; the widest-magnitude arrival is the representative.
   // A faint arrival (under 2 % of its source) stands in only when nothing
@@ -261,7 +268,7 @@ export function compressorGddReading(elementId) {
 let metalensHits = new Map();
 
 function recordMetalensHit(elementId, wavelengthNm, focalLengthMm) {
-  if (!elementId || !Number.isFinite(wavelengthNm) || !Number.isFinite(focalLengthMm)) return;
+  if (companionMode || !elementId || !Number.isFinite(wavelengthNm) || !Number.isFinite(focalLengthMm)) return;
   let hits = metalensHits.get(elementId);
   if (!hits) { hits = new Map(); metalensHits.set(elementId, hits); }
   hits.set(wavelengthNm.toFixed(6), { wavelengthNm, focalLengthMm });
@@ -271,6 +278,7 @@ function recordMetalensHit(elementId, wavelengthNm, focalLengthMm) {
 let opoStates = new Map();
 
 function recordOpo(elementId, state) {
+  if (companionMode) return;
   if (elementId) opoStates.set(elementId, state);
 }
 
@@ -313,6 +321,7 @@ export const MIX_CONVERTS = new Set(['shg']);
 let mixStates = new Map();
 
 function recordMix(elementId, pair) {
+  if (companionMode) return;
   if (!elementId) return;
   let pairs = mixStates.get(elementId);
   if (!pairs) mixStates.set(elementId, pairs = new Map());
@@ -335,6 +344,7 @@ let specimenTimingStates = new Map();
 let specimenSrsNotes = new Map();
 
 function recordSrsNote(elementId, note) {
+  if (companionMode) return;
   if (elementId) specimenSrsNotes.set(elementId, note);
 }
 
@@ -351,6 +361,7 @@ export function specimenFocusReading(elementId) {
 }
 
 function recordSpecimenTiming(elementId, reading) {
+  if (companionMode) return;
   if (!elementId) return;
   const held = specimenTimingStates.get(elementId);
   // A channel that is mixing has more to say than one that cannot, and one that
@@ -452,6 +463,33 @@ export function specimenRamanReading(elementId) {
 
 // Each Object's images as the last trace constructed them, for its readout.
 let objectImageStates = new Map();
+
+// Step G1 (docs/physics/beam-propagation.md): while companion rays are moved
+// through an interaction, interact() must not record anything about the
+// scene; the propagated beams of the last trace, by central path; and what
+// each detector reads of them.
+let companionMode = false;
+// The companions' starting offset and tilt (COMPANION_STEP unless a trace
+// asks for others: the test suite shrinks them to show convergence).
+let companionStep = COMPANION_STEP;
+let lastBeamTracks = [];
+let beamReadings = new Map();
+// Kept beside the rays rather than on them, so a traced path stays plain
+// data: the steps a ray carrying a beam parameter has met (absent once it
+// declines), the detectors it hit, and the propagated track of a path.
+let beamStepLists = new WeakMap();
+let beamDetectorHitsOf = new WeakMap();
+let beamTrackOf = new WeakMap();
+// What a ray carrying a beam parameter met at each vertex of its path (the
+// owner of the surface hit there), so a probe on a segment can leave out the
+// element that ends it, as advanceBeam does.
+let beamVertexOwnersOf = new WeakMap();
+// The surfaces of the last trace, for clip checks up to a probed point.
+let lastBeamSurfaces = [];
+// The beam parameter starts with no steps on a ray that carries a seed.
+const beamStepsOf = ray => beamStepLists.get(ray) ?? (ray?.beamSeed && !ray.beamIssue ? [] : null);
+// Whether a ray is still collecting steps: not once its beam has stopped.
+const collectingBeamSteps = ray => (ray?.beamIssue ? null : beamStepsOf(ray));
 export function objectImageReading(elementId) {
   return objectImageStates.get(elementId) || null;
 }
@@ -1941,6 +1979,15 @@ export function detectorReading(elementId) {
     interference,
     dark,
   };
+  // The propagated beam parameter (step G1): per branch, in the drawing
+  // plane; its Gouy phase assumes a circular beam until G3. Where it exists,
+  // the waist of a focus plane is the propagated one, not the cone estimate.
+  const beam = detectorBeam(elementId);
+  // Each branch's Gouy phase is the one quantity in it that assumes a
+  // circular beam (until G3); it carries that scope itself (`gouyScope`)
+  // rather than tagging every summary of the reading with it.
+  if (beam) reading.beam = beam;
+  if (reading.convergence?.atFocus) reading.convergence = focusFromBeam(reading.convergence, beam);
   // What each quantity assumes about the direction out of the drawing plane
   // (issue #313, A5).
   reading.scope = readingScope(reading);
@@ -2271,6 +2318,7 @@ function carrierPhaseIssue(surface) {
 }
 
 function markIncompleteCoherence(ray, reason) {
+  if (companionMode) return;
   if (!ray.phaseValid || !ray.coherenceId || incompleteCoherenceIds.has(ray.coherenceId)) return;
   incompleteCoherenceIds.set(ray.coherenceId, reason);
 }
@@ -2647,6 +2695,7 @@ function crossingSameSpecimen(ray, surface) {
 }
 
 function recordProbeBeam(surface, ray, hit = null) {
+  if (companionMode) return;
   const probeKey = probeKeyOf(surface);
   let seen = specimenProbe.get(probeKey);
   if (!seen) specimenProbe.set(probeKey, seen = []);
@@ -3264,6 +3313,9 @@ function mergeCoupling(into, c) {
   // A summed cavity loop's factor, which decides how far faint light is
   // followed: the larger one keeps every merged share followed.
   into.loopSum = Math.max(into.loopSum || 1, c.loopSum || 1);
+  // Only the central ray carries a beam parameter (step G1); the merged
+  // emission came in with one if any of its couplings did.
+  into.beamCarried ||= Boolean(c.beamCarried);
 }
 
 // What makes two fiber couplings different light, beyond where and when they
@@ -3365,6 +3417,21 @@ function fiberEmissionRays(c) {
       const d = rotv(dir, -half + 2 * half * i / (K - 1));
       rays.push({ ...common, x: o.x, y: o.y, dx: d.x, dy: d.y, sample: i });
     }
+  }
+  // Step G1: a fiber whose mode is known starts a beam on its end face; the
+  // central ray carries it. Otherwise light that came in with a beam
+  // parameter leaves without one, and says why.
+  const central = rays[Math.floor((K - 1) / 2)];
+  const mode = cfg.mode === 'focus'
+    ? { issue: 'its focusing output is drawn as a cone, with no lens position to propagate through' }
+    : fiberBeamParameter(b, c.wl, V => lp01(V).best.ratio);
+  if (central && mode.q) {
+    central.beamSeed = {
+      ...mode, q: propagateQ(mode.q, 0.1), p: { x: central.x, y: central.y }, d: { x: central.dx, y: central.dy }, n: 1,
+      sourceId: b.id, elementId: b.id, elementName: 'Fiber', fiber: true,
+    };
+  } else if (central && c.beamCarried) {
+    central.beamIssue = { elementId: b.id, element: 'Fiber', reason: `it starts no Gaussian beam: ${mode.issue}` };
   }
   return rays;
 }
@@ -6356,7 +6423,7 @@ function interact(ray, hit) {
       const tuningNote = data.tuning && Number.isInteger(data.tuning.index)
         ? { index: data.tuning.index, count: data.tuning.count } : null;
       const firstState = state => {
-        if (elementId && !opoStates.has(elementId)) opoStates.set(elementId, { ...state, tuning: tuningNote });
+        if (!companionMode && elementId && !opoStates.has(elementId)) opoStates.set(elementId, { ...state, tuning: tuningNote });
       };
       if (!(angleDeg <= OPO_ACCEPTANCE_DEG + 1e-9)) {
         firstState({ state: 'rejected', angleDeg });
@@ -6459,16 +6526,16 @@ function interact(ray, hit) {
           const lo = Number(data.scMinNm ?? 430), hi = Number(data.scMaxNm ?? 870);
           band = { state: 'manual', minNm: Math.min(lo, hi), maxNm: Math.max(lo, hi) };
         } else if (!ray.pulse) {
-          if (crystalId && !supercontinuumStates.has(crystalId)) supercontinuumStates.set(crystalId, { state: 'cw' });
+          if (!companionMode && crystalId && !supercontinuumStates.has(crystalId)) supercontinuumStates.set(crystalId, { state: 'cw' });
           return data.transmitPump ? [{ d }] : [];
         } else {
           band = { pumpNm: ray.wl, medium: data.scMedium, ...supercontinuumRange(ray.wl, data.scMedium) };
           if (band.state !== 'estimate') {
-            if (crystalId && !supercontinuumStates.has(crystalId)) supercontinuumStates.set(crystalId, band);
+            if (!companionMode && crystalId && !supercontinuumStates.has(crystalId)) supercontinuumStates.set(crystalId, band);
             return data.transmitPump ? [{ d }] : [];
           }
         }
-        if (crystalId) supercontinuumStates.set(crystalId, band);
+        if (!companionMode && crystalId) supercontinuumStates.set(crystalId, band);
         wl = (band.minNm + band.maxNm) / 2; bw = band.maxNm - band.minNm; spec = flatSpectrum(band.minNm, band.maxNm);
       }
       // A crystal with a non-zero chi(2) does not choose between doubling and
@@ -6850,6 +6917,7 @@ function fannedBandCovered(pulse, hits) {
 // plan specimens and OPAs, and the coherent planning passes (dryRun), run the
 // same budget over the same light.
 function noteWeakLightShortfall(originId, power, coherent) {
+  if (companionMode) return;
   if (specimenProbe || coherent?.dryRun || !(power > 0)) return;
   const key = originId || null;
   weakLightShortfall.set(key, (weakLightShortfall.get(key) || 0) + power);
@@ -7094,6 +7162,664 @@ function nextPathPhase(r, c, surface) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Beam propagation in the drawing plane (step G1, docs/physics/
+// beam-propagation.md). A source with a beam parameter marks one central ray;
+// every interaction it meets is kept as a step (the surface, the hit, the ray
+// as it arrived and which child it continued as). After the final trace two
+// companion rays replay those steps through the tracer's own intersections
+// and interact(), so the measured ray-transfer matrix is the drawn rays' own.
+// The beam adds the diffraction the drawn rays leave out, and the readouts
+// say where that moves it away from them (drawnRaysApart).
+
+// Surfaces with no paraxial model: the beam parameter stops there.
+// What each of them does to the beam, for the readout.
+const NO_PARAXIAL_MODEL = new Map([
+  ['diffuser', 'it scatters the light into many directions'],
+  ['dm', 'its surface is shaped point by point, not as one curvature'],
+  ['dmd', 'its micromirrors cut the beam into a pattern'],
+  ['shaper', 'its pattern reshapes the beam'],
+  ['specimen', 'the specimen scatters and absorbs the light'],
+  ['fluor', 'the specimen scatters and absorbs the light'],
+  ['retina', 'the retina is a diffuse surface'],
+  ['metalens', 'a metasurface lens has no first-order (ABCD) model here'],
+  ['opoin', 'a parametric crystal generates new beams'],
+  ['opapump', 'a parametric crystal generates new beams'],
+  ['opaseed', 'a parametric crystal generates new beams'],
+]);
+const NOT_FOLLOWED = 'so the Gaussian beam is not followed past it';
+
+function beamElementName(surface) {
+  const el = surface?.el;
+  if (el) return el.label || registry[el.type]?.label || el.type;
+  // A fiber's connectors belong to the fiber path, not to an element.
+  if (surface?.data?.beam) return surface.data.beam.kind === 'fiber' ? 'Fiber' : 'Manual beam';
+  return 'An optic';
+}
+
+// What a surface belongs to: its element, or the fiber whose connector it is.
+const surfaceOwnerId = surface => surface?.el?.id ?? surface?.data?.beam?.id ?? null;
+
+function beamStepIssue(parent, surface, child) {
+  const issue = reason => ({ elementId: surfaceOwnerId(surface), element: beamElementName(surface), reason });
+  const kind = surface.kind === 'attenuate' && surface.data?.specimen ? 'specimen' : surface.kind;
+  if (NO_PARAXIAL_MODEL.has(kind)) return issue(`${NO_PARAXIAL_MODEL.get(kind)}, ${NOT_FOLLOWED}`);
+  // Converted light is told by where it comes from, not by its wavelength
+  // (a conversion can land inside the pump's own band): a crystal set to
+  // convert hands every light it generates an explicit wavelength, while
+  // the pump passing through keeps the one it had.
+  const converting = surface.kind === 'transmit' && surface.data?.convert && surface.data.convert !== 'none';
+  if (converting && child.wl !== undefined) {
+    return issue('it converts the wavelength: the light it generates is new light, whose beam is not computed (the light that passes unconverted keeps its own)');
+  }
+  if ('sourceId' in child && child.sourceId !== parent.sourceId) return issue(`the light leaving it is generated there, ${NOT_FOLLOWED}`);
+  if (child.speckle && !parent.speckle) return issue(`it scatters the light, ${NOT_FOLLOWED}`);
+  return null;
+}
+
+// The step a child (or the continuing ray itself) adds, or the reason its
+// beam parameter stops here.
+function continueBeam(target, parent, parentSteps, base, child, childIndex, vertex, origin) {
+  const issue = beamStepIssue(parent, base.surface, child);
+  if (issue) {
+    // The beam stops at this interaction, not before it: the ray keeps the
+    // steps it met so far, and the decline holds from this vertex of its
+    // path on (a child's from its start).
+    beamStepLists.set(target, parentSteps);
+    target.beamIssue = { ...issue, atVertex: vertex };
+    // The wavelength the readout names is the one of the light that is
+    // declined: a crystal's generated light carries its own, not the pump's.
+    const before = parent.beamSeedNow || parent.beamSeed;
+    if (before && child.wl > 0 && child.wl !== before.wavelengthNm) target.beamIssueSeed = { ...before, wavelengthNm: child.wl };
+    return;
+  }
+  // A part of the spectrum already present (dispersive glass, a grating, a
+  // filter, a dichroic separating it) whose centre wavelength differs: the
+  // same beam goes on, evaluated at the centre wavelength of the light that
+  // is there. A laser's waist is the same at every wavelength, so its
+  // Rayleigh range scales as 1/λ; a supercontinuum's waist scales with λ
+  // (sourceBeamParameter), so its Rayleigh range does too. The distance from
+  // the waist does not change.
+  const now = parent.beamSeedNow || parent.beamSeed;
+  const ratio = now && child.wl > 0 ? child.wl / now.wavelengthNm : 1;
+  const seed = now && Math.abs(ratio - 1) > 1e-12
+    ? (now.scalesWithWavelength
+      ? { ...now, wavelengthNm: child.wl, waistUm: now.waistUm * ratio, q: { re: now.q.re, im: now.q.im * ratio } }
+      : { ...now, wavelengthNm: child.wl, q: { re: now.q.re, im: now.q.im / ratio } })
+    : null;
+  target.beamSeedNow = seed || now;
+  const index = target.mediumMaterial ? (glassIndex(target.mediumMaterial, target.wl) || target.ior || 1) : (target.ior || 1);
+  beamStepLists.set(target, [...parentSteps, {
+    ...base, childIndex, dout: norm({ x: child.d.x, y: child.d.y }), origin: { x: origin.x, y: origin.y },
+    nOut: index, owner: target, vertex, seed,
+  }]);
+}
+
+// A lossless optic keeps the determinant of its reduced matrix at 1, and an
+// aberration-free lens keeps a beam's quality M². The ideal lens met off its
+// axis does not keep the determinant (its perfect imaging onto a flat focal
+// plane gives cos³θ_out / cos³θ_in), so there it is not a physical lens. The
+// beam still follows the matrix as measured, which is what the drawn rays do
+// (their focus, for a collimated or a converging beam alike); where the
+// determinant has moved more than this from 1, the readout says its values
+// are an estimate and by how much the ideal lens fails to keep the beam
+// quality.
+const ESTIMATE_DEVIATION = 0.01;
+function beamEstimate(matrix, prev, step) {
+  const det = matrix.A * matrix.D - matrix.B * matrix.C;
+  const deviation = Math.abs(det - 1);
+  if (!(deviation > ESTIMATE_DEVIATION)) return null;
+  // Named after the optic that moved it, the last one that did.
+  const p = prev.matrix, prevDet = p.A * p.D - p.B * p.C;
+  const moved = Math.abs(det / prevDet - 1) > 1e-4;
+  return moved || !prev.estimate
+    ? { elementId: surfaceOwnerId(step.surface), element: beamElementName(step.surface), deviationPercent: Number((deviation * 100).toFixed(1)) }
+    : { ...prev.estimate, deviationPercent: Number((deviation * 100).toFixed(1)) };
+}
+
+// A companion meets the surface the central ray met at this step, extended
+// beyond a straight facet's ends: the companions are a micrometre away.
+function companionHit(companion, surface) {
+  const { p, d } = companion;
+  const hit = surface.data.asphere ? rayAsphereHit(p, d, surface)
+    : surface.data.arc ? rayArcHit(p, d, surface) : rayInfiniteLineHit(p, d, surface);
+  return hit ? { ...hit, surface, ambiguous: false } : null;
+}
+
+// interact() on a companion: a copy of the central ray as it arrived, moved
+// to the companion, with nothing recorded about the scene.
+function companionInteract(snapshot, companion, hit) {
+  const saved = [interactionRay, interactionReshapesPulse, interactionPorts, interactionNormal];
+  companionMode = true;
+  try {
+    const ray = { ...snapshot, x: companion.p.x, y: companion.p.y, dx: companion.d.x, dy: companion.d.y };
+    interactionRay = ray; interactionReshapesPulse = false; interactionPorts = null; interactionNormal = null;
+    return interact(ray, hit);
+  } catch (_) {
+    return null;
+  } finally {
+    companionMode = false;
+    [interactionRay, interactionReshapesPulse, interactionPorts, interactionNormal] = saved;
+  }
+}
+
+const formatBeamMm = mm => (mm < 0.9995 ? `${Number((mm * 1000).toPrecision(3))} µm` : `${Number(mm.toPrecision(3))} mm`);
+const beamRadiusMm = (q, seed, index) => (beamFromQ(q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index })?.radiusUm ?? NaN) / 1000;
+const samePoint = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < 1e-6;
+
+// An element's edge within CLIP_RADII beam radii of the central ray between
+// two interactions clips the beam. The elements met at either end are left
+// to hitEdgeIssue, and a pickoff the ray passes by is not in its way.
+function beamClipIssue(from, to, q, index, seed, surfaces, exclude) {
+  const length = Math.hypot(to.x - from.x, to.y - from.y);
+  if (!(length > 0)) return null;
+  for (const surface of surfaces) {
+    if (!surface.a || !surface.b || surface.data?.pickoff) continue;
+    const owner = surfaceOwnerId(surface);
+    if (owner && exclude.has(owner)) continue;
+    const gap = segmentGap(from, to, surface.a, surface.b);
+    const w = beamRadiusMm(propagateQ(q, gap.along * length), seed, index);
+    if (Number.isFinite(w) && gap.distance < CLIP_RADII * w) {
+      return {
+        elementId: surfaceOwnerId(surface), element: beamElementName(surface),
+        reason: `its edge lies ${formatBeamMm(gap.distance)} from the beam's centre, closer than ${CLIP_RADII} beam radii (${formatBeamMm(CLIP_RADII * w)} here): it clips the beam, which is no longer Gaussian past it`,
+      };
+    }
+  }
+  return null;
+}
+
+// The next surface of the same element that continues `surface` smoothly
+// past `joint` (the facets of a curved mirror), or null at a real edge.
+function smoothNeighbour(surface, joint, surfaces) {
+  const end = samePoint(surface.a, joint) ? surface.b : surface.a;
+  const into = norm(sub(joint, end));
+  for (const other of surfaces) {
+    if (other === surface || other.kind !== surface.kind || !other.el || other.el.id !== surface.el?.id) continue;
+    const far = samePoint(other.a, joint) ? other.b : samePoint(other.b, joint) ? other.a : null;
+    if (!far) continue;
+    if (dot(into, norm(sub(far, joint))) > Math.cos(10 * D2R)) return other;
+  }
+  return null;
+}
+
+// The beam's footprint on the surface it meets, CLIP_RADII radii either
+// side of the central ray (wider on a tilted surface), must lie on that
+// surface or its smooth continuation.
+function hitEdgeIssue(step, w, surfaces) {
+  const surface = step.surface;
+  if (!(w > 0) || !surface.a || !surface.b || surface.kind === 'detector' || surface.kind === 'retina') return null;
+  const normal = surface.data.arc
+    ? norm(sub(step.hit.p, { x: surface.data.arc.cx, y: surface.data.arc.cy }))
+    : perp(norm(sub(surface.b, surface.a)));
+  const need = CLIP_RADII * w / Math.max(0.05, Math.abs(dot(step.din, normal)));
+  for (const end of [surface.a, surface.b]) {
+    let reach = Math.hypot(step.hit.p.x - end.x, step.hit.p.y - end.y);
+    let current = surface, joint = end;
+    for (let guard = 0; reach < need && guard < 64; guard++) {
+      const next = smoothNeighbour(current, joint, surfaces);
+      if (!next) break;
+      reach += Math.hypot(next.b.x - next.a.x, next.b.y - next.a.y);
+      joint = samePoint(next.a, joint) ? next.b : next.a;
+      current = next;
+    }
+    if (reach < need) {
+      return {
+        elementId: surfaceOwnerId(surface), element: beamElementName(surface),
+        reason: `its edge lies ${formatBeamMm(reach)} from the beam's centre along its surface, closer than ${CLIP_RADII} beam radii (${formatBeamMm(need)} here${need > CLIP_RADII * w * 1.001 ? ', widened by the tilt' : ''}): it clips the beam, which is no longer Gaussian past it`,
+      };
+    }
+  }
+  return null;
+}
+
+// The beam parameter a state of the track holds for `seed`: every state's
+// matrix runs from the track's start, where the seed's q is given.
+const qForSeed = (state, seed) => transformQ(seed.q, state.matrix, seed.n || 1, state.n);
+const paraxialReason = beam => `it focuses the beam too steeply for the Gaussian-beam formulas, which hold for small angles: half-angle ${Math.round(beam.halfDivergenceMrad)} mrad, above ${PARAXIAL_LIMIT_RAD * 1000} mrad`;
+
+// A part of the spectrum this step leaves at another wavelength was part of
+// the light all along, with a beam of its own size (a supercontinuum's
+// waist scales with λ): its path so far is checked again with that beam,
+// against every edge it passed and every surface it met, and against the
+// paraxial limit; the first failure, or null.
+function beamTrailIssue(trail, seed, surfaces) {
+  const start = beamFromQ(seed.q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index: seed.n || 1 });
+  if (!(start?.halfDivergenceMrad <= PARAXIAL_LIMIT_RAD * 1000)) {
+    return { elementId: seed.elementId, element: seed.elementName || 'The source', reason: `the beam it starts spreads too fast for the Gaussian-beam formulas, which hold for small angles: half-angle ${Math.round(start?.halfDivergenceMrad ?? Infinity)} mrad, above ${PARAXIAL_LIMIT_RAD * 1000} mrad` };
+  }
+  for (const { from, step, after } of trail) {
+    const q = qForSeed(from, seed);
+    const elementId = surfaceOwnerId(step.surface);
+    const clip = beamClipIssue(from.p, step.hit.p, q, from.n, seed, surfaces, new Set([from.elementId, elementId].filter(Boolean)));
+    if (clip) return clip;
+    const arriving = Math.hypot(step.hit.p.x - from.p.x, step.hit.p.y - from.p.y);
+    const edge = hitEdgeIssue(step, beamRadiusMm(propagateQ(q, arriving), seed, from.n), surfaces);
+    if (edge) return edge;
+    const beam = beamFromQ(qForSeed(after, seed), { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index: after.n });
+    if (!(beam?.halfDivergenceMrad <= PARAXIAL_LIMIT_RAD * 1000)) {
+      return { elementId, element: beamElementName(step.surface), reason: paraxialReason(beam || { halfDivergenceMrad: Infinity }) };
+    }
+  }
+  return null;
+}
+
+// The beam after one more step, from the state after the last. Declines
+// that depend on the wavelength (an edge closer than 1.5 w, focusing past
+// the paraxial limit) are `soft`: the beam is declined from there, but the
+// companions go on, so that a later step that leaves a part of the spectrum
+// at another wavelength can check that part's own beam along the whole path
+// and take it up again. Declines that do not depend on it (companions that
+// part from the central ray) stop the track.
+function advanceBeam(prev, step, sourceSeed, surfaces) {
+  const elementId = surfaceOwnerId(step.surface), element = beamElementName(step.surface);
+  const fail = reason => ({ ...prev, issue: typeof reason === 'string' ? { elementId, element, reason } : reason });
+  // The beam arriving is the one at the wavelength in force so far; a step
+  // that leaves a part of the spectrum with another centre switches to it,
+  // and that part's own beam is what reaches this surface.
+  const before = prev.seed || sourceSeed;
+  const seed = step.seed || before;
+  const reseeded = seed !== before;
+  const companions = [];
+  for (const companion of prev.companions) {
+    const hit = companionHit(companion, step.surface);
+    if (!hit) return fail('the beam cannot be followed through it: a ray just beside the beam\'s centre misses it');
+    const child = companionInteract(step.ray, companion, hit)?.[step.childIndex];
+    if (!child?.d || dot(norm(child.d), step.dout) < Math.cos(0.01)) return fail('the beam cannot be followed through it: rays just beside the beam\'s centre take another path there');
+    const o = child.origin || hit.p;
+    companions.push({ p: { x: o.x, y: o.y }, d: norm(child.d) });
+  }
+  const matrix = measuredMatrix({ p: step.origin, d: step.dout }, companions, step.nOut, seed.n, companionStep);
+  const q = matrix && transformQ(seed.q, matrix, seed.n, step.nOut);
+  const arrivingQ = reseeded ? qForSeed(prev, seed) : prev.q;
+  if (!q || !arrivingQ) return fail('the beam cannot be followed through it');
+  // The path so far, for a part of the spectrum that a later step leaves.
+  const trail = [...(prev.trail || []), { from: prev, step, after: { matrix, n: step.nOut } }];
+  const state = { companions, q, n: step.nOut, p: step.origin, d: step.dout, elementId, matrix, estimate: beamEstimate(matrix, prev, step), seed, trail, issue: null };
+  // A beam declined at this wavelength stays declined, with the same
+  // decline, until a part at another one is left; that part is checked
+  // along the whole path first, and a decline it meets is its own.
+  const earlier = reseeded ? beamTrailIssue(prev.trail || [], seed, surfaces) : prev.issue;
+  if (earlier) return { ...state, issue: earlier.soft ? earlier : { ...earlier, soft: true } };
+  const named = issue => ({ ...(typeof issue === 'string' ? { elementId, element, reason: issue } : issue), soft: true });
+  const clip = beamClipIssue(prev.p, step.hit.p, arrivingQ, prev.n, seed, surfaces, new Set([prev.elementId, elementId].filter(Boolean)));
+  if (clip) return { ...state, issue: named(clip) };
+  const arriving = Math.hypot(step.hit.p.x - prev.p.x, step.hit.p.y - prev.p.y);
+  const edge = hitEdgeIssue(step, beamRadiusMm(propagateQ(arrivingQ, arriving), seed, prev.n), surfaces);
+  if (edge) return { ...state, issue: named(edge) };
+  const beam = beamFromQ(q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index: step.nOut });
+  if (!(beam?.halfDivergenceMrad <= PARAXIAL_LIMIT_RAD * 1000)) return { ...state, issue: named(paraxialReason(beam || { halfDivergenceMrad: Infinity })) };
+  return state;
+}
+
+// Every central path of the last trace with its beam parameter at each of
+// its vertices (`q[vertex]`, valid along the segment that starts there), or
+// the reason it stops (`issue`, from `issueVertex` on).
+function propagateBeams(paths, surfaces) {
+  lastBeamSurfaces = surfaces;
+  const memo = new Map();
+  const tracks = [];
+  for (const path of paths) {
+    // A path that only carries a decline (a fiber that starts no beam) still
+    // gets a track, so the detectors it reaches can say why.
+    if (!path.beamSeed && !path.beamIssue) continue;
+    const seed = path.beamSeed || { sourceId: path.sourceId || path.originId || null, wavelengthNm: path.wl, m2: 1, elementId: null };
+    // The wavelength in force where the beam stops: the path's own at its end
+    // (a part a filter left keeps its centre past a diffuser), or the one at
+    // the step that declines.
+    const track = { path, seed, issueSeed: path.beamIssueSeed || path.beamSeedNow || null, q: [], issue: path.beamIssue || null, issueVertex: path.beamIssue ? (path.beamIssue.atVertex ?? 0) : null };
+    beamTrackOf.set(path, track);
+    tracks.push(track);
+    // The beam a source or fiber starts is held to the paraxial limit too
+    // (a soft decline: a part of its spectrum may still start within it).
+    const start = path.beamSeed && beamFromQ(seed.q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index: seed.n || 1 });
+    const startIssue = start && !(start.halfDivergenceMrad <= PARAXIAL_LIMIT_RAD * 1000) ? {
+      elementId: seed.elementId, element: seed.elementName || 'The source', soft: true,
+      reason: `the beam it starts spreads too fast for the Gaussian-beam formulas, which hold for small angles: half-angle ${Math.round(start.halfDivergenceMrad)} mrad, above ${PARAXIAL_LIMIT_RAD * 1000} mrad`,
+    } : null;
+    const steps = beamStepsOf(path);
+    if (!steps) {
+      if (startIssue) Object.assign(track, { issue: startIssue, issueVertex: 0 });
+      continue;
+    }
+    let state = {
+      companions: companionStarts(seed.p, seed.d, companionStep), q: seed.q, n: seed.n, p: seed.p, d: seed.d,
+      elementId: seed.elementId, matrix: { A: 1, B: 0, C: 0, D: 1 }, estimate: null, seed, trail: [], issue: startIssue,
+    };
+    if (!startIssue && (!steps.length || steps[0].owner === path)) track.q[0] = { q: seed.q, n: seed.n, p: seed.p, d: seed.d, elementId: seed.elementId, matrix: state.matrix, seed };
+    // A soft decline in force: from which vertex, why, at which wavelength.
+    // A later step that takes the beam up again closes it into
+    // `track.declines`, the stretches where this path has no beam.
+    let open = startIssue ? { issue: startIssue, from: 0, seed } : null;
+    track.declines = [];
+    for (const step of steps) {
+      let next = memo.get(step);
+      if (!next) {
+        next = advanceBeam(state, step, seed, surfaces);
+        memo.set(step, next);
+      }
+      state = next;
+      const vertex = step.owner === path ? step.vertex : 0;
+      if (state.issue?.soft) {
+        // The same decline carried on, or a new one: a part at another
+        // wavelength declined for its own reason starts a stretch of its
+        // own, and the earlier explanation keeps only the stretch before.
+        if (open?.issue !== state.issue) {
+          if (open && vertex > open.from) track.declines.push({ ...open, to: vertex });
+          open = { issue: state.issue, from: vertex, seed: step.seed || state.seed };
+        }
+        continue;
+      }
+      if (open) {
+        if (vertex > open.from) track.declines.push({ ...open, to: vertex });
+        open = null;
+      }
+      if (state.issue) {
+        if (track.issueVertex === null || vertex <= track.issueVertex) {
+          track.issue = state.issue;
+          track.issueVertex = vertex;
+          track.issueSeed = step.seed || state.seed || track.issueSeed;
+        }
+        break;
+      }
+      if (step.owner === path) {
+        track.q[step.vertex] = { q: state.q, n: state.n, p: step.origin, d: step.dout, elementId: state.elementId, matrix: state.matrix, seed: state.seed, estimate: state.estimate };
+      }
+    }
+    // A soft decline still in force at the end holds to the end of the path.
+    if (open && (track.issueVertex === null || open.from <= track.issueVertex)) {
+      track.issue = open.issue;
+      track.issueVertex = open.from;
+      track.issueSeed = open.seed;
+    }
+  }
+  for (const track of tracks) {
+    for (const hit of beamDetectorHitsOf.get(track.path) || []) addBeamReading(track, hit, surfaces);
+  }
+  return tracks;
+}
+
+// The beam parameter of a track at a vertex, or null where it is declined:
+// past its decline, or within a stretch a later step took the beam up
+// again after.
+const trackDeclineAt = (track, vertex) => track.declines?.find(d => vertex >= d.from && vertex < d.to) || null;
+function trackStateAt(track, vertex) {
+  if (trackDeclineAt(track, vertex)) return null;
+  if (track.issue && track.issueVertex !== null && vertex >= track.issueVertex) return null;
+  for (let j = vertex; j >= 0; j--) if (track.q[j]) return track.q[j];
+  return null;
+}
+// Why a track has no beam at a vertex, and the wavelength in force there.
+const trackIssueAt = (track, vertex) => trackDeclineAt(track, vertex)?.issue || track.issue;
+const trackIssueSeedAt = (track, vertex) => trackDeclineAt(track, vertex)?.seed || track.issueSeed;
+
+function addBeamReading(track, hit, surfaces) {
+  const id = hit.surface.el?.id;
+  if (!id) return;
+  const vertex = Math.max(0, hit.vertex - 1);
+  const at = trackStateAt(track, vertex);
+  // The beam at the wavelength in force where the light arrives.
+  const seed = at?.seed || trackIssueSeedAt(track, vertex) || track.seed;
+  const entry = { sourceId: seed.sourceId, branch: track.path.branch || '', wavelengthNm: seed.wavelengthNm, m2: seed.m2, beam: null, issue: null, power: hit.power, p: hit.p };
+  if (!at) entry.issue = trackIssueAt(track, vertex) || { elementId: null, element: 'The beam', reason: 'no Gaussian beam reaches this detector' };
+  else {
+    const clip = beamClipIssue(at.p, hit.p, at.q, at.n, seed, surfaces, new Set([id, at.elementId].filter(Boolean)));
+    if (clip) entry.issue = clip;
+    else {
+      const along = dot(sub(hit.p, at.p), at.d);
+      entry.q = propagateQ(at.q, along);
+      entry.n = at.n;
+      entry.beam = beamFromQ(entry.q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index: at.n });
+      entry.estimate = at.estimate || null;
+      entry.notes = beamReadingNotes(at, along, seed, entry.beam);
+    }
+  }
+  if (!beamReadings.has(id)) beamReadings.set(id, []);
+  beamReadings.get(id).push(entry);
+}
+
+// A decline as a readout states it: the element and the reason (the vertex
+// it holds from is the tracer's bookkeeping).
+const beamIssueReading = ({ atVertex, soft, ...issue }) => issue;
+
+// A source's drawn rays leave its output parallel, at the edge of the waist
+// (sourceBeamParameter): they are the beam's geometric part, without
+// diffraction. Through a lossless system the beam radius is that geometric
+// ray and a diffraction ray added in quadrature, w² = y_g² + y_d², and the
+// beam's waist lies |u_d / u_g| Rayleigh ranges from where the geometric
+// rays cross. Within a Rayleigh range of that crossing the drawn rays show
+// where the beam focuses. Beyond it, diffraction moves the focus, and the
+// readout says so with both places wherever the card would contradict the
+// drawing: the beam is wider than √2 times the geometric ray's height, or it
+// converges where the drawn rays diverge (or the reverse). Drawn rays that
+// stay parallel are contradicted only by a beam wider than √2 times them,
+// as a beam is beyond one Rayleigh range of its waist. A supercontinuum's
+// part at another wavelength is compared with its own waist's geometric
+// ray, which crosses where the drawn rays do.
+const DRAWN_PARALLEL_MM = 1e5;
+function drawnRaysApart(at, along, seed, beam) {
+  if (!seed?.parallelRays || !beam || !at?.matrix) return null;
+  const h = seed.waistUm / 1000;
+  const y = h * (at.matrix.A + along * at.matrix.C / at.n), slope = h * at.matrix.C / at.n;
+  const w = beam.radiusUm / 1000, wider = w * w > 2 * y * y;
+  const crossAheadMm = slope !== 0 ? -y / slope : Infinity;
+  if (!(Math.abs(crossAheadMm) < DRAWN_PARALLEL_MM)) return wider ? { parallel: true, waistAheadMm: beam.waistAheadMm } : null;
+  if (!(Math.abs(crossAheadMm - beam.waistAheadMm) > beam.rayleighMm)) return null;
+  const opposite = Math.abs(crossAheadMm) > 1e-6 && Math.abs(beam.waistAheadMm) > 1e-3 * beam.rayleighMm && crossAheadMm * beam.waistAheadMm < 0;
+  return wider || opposite ? { crossAheadMm, waistAheadMm: beam.waistAheadMm } : null;
+}
+// What a reading adds about how to read it: where the drawn rays part from
+// the beam, and a supercontinuum's band centre (its Beam width's wavelength).
+const beamReadingNotes = (at, along, seed, beam) => {
+  const apart = drawnRaysApart(at, along, seed, beam);
+  return { ...(apart ? { drawnRays: apart } : {}), ...(seed.scalesWithWavelength ? { bandCentreNm: seed.referenceNm } : {}) };
+};
+
+const beamBranchReading = (entry, spectralParts = 1) => ({
+  sourceId: entry.sourceId, wavelengthNm: entry.wavelengthNm, m2: entry.m2, index: entry.n,
+  ...entry.beam, gouyScope: 'circular', ...(spectralParts > 1 ? { spectralParts } : {}),
+  ...(entry.estimate ? { estimate: entry.estimate } : {}), ...entry.notes,
+});
+
+// What a group of overlapping branches of one source reads. Branches of the
+// same light (the same wavelength) add as fields: they interfere, and no
+// single beam describes them. Branches of different wavelengths are parts of
+// one spectrum that a dispersive element or a filter separated: they add in
+// power, and the strongest stands for them. Null when no light arrives.
+const sameWavelength = (a, b) => Math.abs(a.wavelengthNm - b.wavelengthNm) < 1e-3;
+function overlapReading(group, powerOf) {
+  const lit = group.filter(item => powerOf(item) > LIT_W);
+  if (!lit.length) return null;
+  if (group.some((item, i) => group.some((other, j) => j > i && sameWavelength(item, other)))) return { recombine: true };
+  const strongest = lit.reduce((best, item) => (powerOf(item) > powerOf(best) ? item : best));
+  return { item: strongest, parts: group.length };
+}
+
+// Light below this power (W) is not there: a dark port of an interferometer
+// keeps its path with nothing on it. The probe's other views use the same.
+const LIT_W = 1e-12;
+const RECOMBINE_REASON = 'branches of one source recombine here: they overlap and add as fields (they interfere), so no single Gaussian beam describes the light';
+
+// Groups of branches that overlap: `near(a, b)` joins two.
+function overlapGroups(items, near) {
+  const groups = [];
+  for (const item of items) {
+    const joined = groups.filter(group => group.some(other => near(item, other)));
+    const merged = [item, ...joined.flat()];
+    for (const group of joined) groups.splice(groups.indexOf(group), 1);
+    groups.push(merged);
+  }
+  return groups;
+}
+
+// What a detector reads of the propagated beams that reach it: one entry
+// per source and branch, and the declines, each naming the element and the
+// reason. Branches of one source whose spots overlap on the face add as
+// fields, which no single beam parameter describes; separate spots are read
+// one by one. Only light that arrives counts: a dark interference port reads
+// no beam.
+export function detectorBeam(elementId) {
+  const entries = beamReadings.get(elementId);
+  if (!entries?.length) return null;
+  const bySource = new Map();
+  for (const entry of entries) {
+    const list = bySource.get(entry.sourceId) || [];
+    if (!list.some(other => other.branch === entry.branch)) list.push(entry);
+    bySource.set(entry.sourceId, list);
+  }
+  const branches = [], declined = [];
+  const decline = item => {
+    if (!declined.some(d => d.element === item.element && d.reason === item.reason)) declined.push(item);
+  };
+  const near = (a, b) => Math.hypot(a.p.x - b.p.x, a.p.y - b.p.y) < CLIP_RADII * (a.beam.radiusUm + b.beam.radiusUm) / 1000;
+  for (const [sourceId, list] of bySource) {
+    if (!list.some(entry => entry.power > LIT_W)) continue;
+    for (const group of overlapGroups(list.filter(entry => entry.beam), near)) {
+      const read = overlapReading(group, entry => entry.power);
+      if (!read) continue;
+      if (read.recombine) decline({ sourceId, wavelengthNm: group[0].wavelengthNm, elementId, element: 'This detector', reason: RECOMBINE_REASON });
+      else branches.push(beamBranchReading(read.item, read.parts));
+    }
+    for (const entry of list) {
+      if (entry.beam || !entry.issue || !(entry.power > LIT_W)) continue;
+      decline({ sourceId, wavelengthNm: entry.wavelengthNm, ...beamIssueReading(entry.issue) });
+    }
+  }
+  return branches.length || declined.length ? { branches, declined } : null;
+}
+
+// A focus plane's waist: the propagated beam's where there is exactly one,
+// the cone estimate otherwise, each labelled.
+function focusFromBeam(convergence, beam) {
+  if (beam && beam.branches.length === 1 && !beam.declined.length) {
+    const b = beam.branches[0];
+    return { ...convergence, waistMm: b.waistUm / 1000, rayleighMm: b.rayleighMm, waistAheadMm: b.waistAheadMm, wavelengthNm: b.wavelengthNm, waistModel: 'propagated',
+      // Past an ideal lens met far from its axis the waist is an estimate,
+      // and every display of it says so.
+      ...(b.estimate ? { estimate: b.estimate } : {}) };
+  }
+  return Number.isFinite(convergence.waistMm) ? { ...convergence, waistModel: 'cone' } : convergence;
+}
+
+// The point of segment AB nearest P, and the 2D cross product.
+function closestOnSegment(P, A, B) {
+  const ab = sub(B, A), len2 = dot(ab, ab);
+  const t = len2 > 0 ? Math.min(1, Math.max(0, dot(sub(P, A), ab) / len2)) : 0;
+  return { x: A.x + ab.x * t, y: A.y + ab.y * t };
+}
+const cross = (a, b) => a.x * b.y - a.y * b.x;
+
+// The beam a track has at `point` on its segment `i`, or why it has none.
+function trackBeamAt(track, i, point) {
+  const at = trackStateAt(track, i);
+  const seed = at?.seed || trackIssueSeedAt(track, i) || track.seed;
+  const base = { sourceId: seed.sourceId, branch: track.path.branch || '', wavelengthNm: seed.wavelengthNm, m2: seed.m2 };
+  // The beam where the segment passes closest to the point: a probe whose
+  // circle reaches past the segment's end reads the beam at that end, not
+  // extrapolated through the element that ends it.
+  const pts = track.path.pts;
+  const along = at ? Math.min(Math.max(dot(sub(point, at.p), at.d), dot(sub(pts[i], at.p), at.d)), dot(sub(pts[i + 1], at.p), at.d)) : 0;
+  // An edge between the last interaction and the probed point clips the
+  // beam there, though the next interaction has not been reached.
+  // The element that ends this segment is checked where the beam meets
+  // it (hitEdgeIssue), not as an edge lying ahead of the probe.
+  const ahead = beamVertexOwnersOf.get(track.path)?.[i + 1] ?? null;
+  const clip = at && beamClipIssue(at.p, { x: at.p.x + at.d.x * along, y: at.p.y + at.d.y * along }, at.q, at.n,
+    seed, lastBeamSurfaces, new Set([at.elementId, ahead].filter(Boolean)));
+  if (!at || clip) return { ...base, issue: beamIssueReading(clip || trackIssueAt(track, i) || { elementId: null, element: 'The beam', reason: 'no Gaussian beam reaches this point' }) };
+  const q = propagateQ(at.q, along);
+  const beam = beamFromQ(q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index: at.n });
+  return { ...base, index: at.n, q, ...beam, ...(at.estimate ? { estimate: at.estimate } : {}), ...beamReadingNotes(at, along, seed, beam) };
+}
+
+// The propagated beams crossing a circle of `radius` about (x, y): one
+// entry per source and branch that carries light there, each with its
+// direction of travel; or why there is none. Branches of one source that
+// travel together through the circle add as fields there (the output of an
+// interferometer), so they give one decline, as on a detector; a dark port,
+// whose path carries no light, gives nothing.
+export function beamAtPoint(x, y, radius = 5) {
+  const point = { x, y };
+  const arrivals = [];
+  const seen = new Set();
+  for (const track of lastBeamTracks) {
+    if (track.path.hidden) continue;
+    const key = `${track.seed.sourceId}|${track.path.branch || ''}`;
+    if (seen.has(key)) continue;
+    const pts = track.path.pts || [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      if (distToSegment(point, pts[i], pts[i + 1]) > radius) continue;
+      seen.add(key);
+      const reading = trackBeamAt(track, i, point);
+      const near = closestOnSegment(point, pts[i], pts[i + 1]);
+      arrivals.push({ track, power: track.path.segmentPowers?.[i] ?? 0, direction: norm(sub(pts[i + 1], pts[i])), near, reading });
+      break;
+    }
+  }
+  const found = [];
+  const bySource = new Map();
+  for (const arrival of arrivals) {
+    const list = bySource.get(arrival.track.seed.sourceId) || [];
+    list.push(arrival);
+    bySource.set(arrival.track.seed.sourceId, list);
+  }
+  // Two branches recombine when they travel together (directions within
+  // 0.1 rad) and overlap across the beam, closer than 1.5 (w₁ + w₂), as on
+  // a detector: parallel beams side by side in a wide circle are two beams,
+  // and crossing beams are listed apart.
+  const together = (a, b) => dot(a.direction, b.direction) > Math.cos(0.1)
+    && Math.abs(cross(sub(b.near, a.near), a.direction)) < CLIP_RADII * (a.reading.radiusUm + b.reading.radiusUm) / 1000;
+  for (const list of bySource.values()) {
+    if (!list.some(arrival => arrival.power > LIT_W)) continue;
+    const withBeam = list.filter(arrival => !arrival.reading.issue).map(arrival => ({ ...arrival, wavelengthNm: arrival.reading.wavelengthNm }));
+    for (const group of overlapGroups(withBeam, together)) {
+      const read = overlapReading(group, arrival => arrival.power);
+      if (!read) continue;
+      if (read.recombine) {
+        const { reading, direction } = group.find(arrival => arrival.power > LIT_W);
+        found.push({ sourceId: reading.sourceId, branch: reading.branch, wavelengthNm: reading.wavelengthNm, m2: reading.m2, direction,
+          issue: { elementId: null, element: 'Here', reason: RECOMBINE_REASON } });
+      } else found.push({ ...read.item.reading, direction: read.item.direction, ...(read.parts > 1 ? { spectralParts: read.parts } : {}) });
+    }
+    // Light that lost its beam upstream says why, once per reason.
+    for (const { reading, direction, power } of list) {
+      if (!reading.issue || !(power > LIT_W)) continue;
+      if (found.some(f => f.issue && f.sourceId === reading.sourceId && f.issue.element === reading.issue.element && f.issue.reason === reading.issue.reason)) continue;
+      found.push({ ...reading, direction });
+    }
+  }
+  return found;
+}
+
+// The tracks of the last trace, for tests and the zoom: each with its
+// path, seed, per-vertex states (beam parameter and measured matrix) and
+// any decline.
+export const beamTracksFromLastTrace = () => lastBeamTracks;
+// The propagated track of one traced path, or null.
+export const beamTrackOfPath = path => beamTrackOf.get(path) || null;
+
+// The beam parameter along segment `segment` of a traced path (the zoom's
+// waist): q at the segment's start vertex `p`, travelling along `d`, with
+// what turns q into a beam; null where the path has none.
+export function beamOnPathSegment(path, segment) {
+  const track = beamTrackOf.get(path);
+  const at = track && trackStateAt(track, segment);
+  if (!at) return null;
+  const start = path.pts?.[segment];
+  if (!start) return null;
+  const q = propagateQ(at.q, dot(sub(start, at.p), at.d));
+  // The element that ends this segment is checked where the beam meets it.
+  const exclude = new Set([at.elementId, beamVertexOwnersOf.get(path)?.[segment + 1]].filter(Boolean));
+  const seed = at.seed || track.seed;
+  return {
+    q, p: { x: start.x, y: start.y }, d: at.d, index: at.n, wavelengthNm: seed.wavelengthNm, m2: seed.m2, estimate: at.estimate || null,
+    // Whether an edge clips the beam before `distanceMm` past the segment's
+    // start: the zoom asks up to its drawn stretch and the waist.
+    clipWithin: distanceMm => beamClipIssue(at.p, { x: start.x + at.d.x * distanceMm, y: start.y + at.d.y * distanceMm },
+      at.q, at.n, seed, lastBeamSurfaces, exclude),
+  };
+}
+
 function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent = null) {
   const done = [];
   // Genuine branches weaker than the old 2 % drawing floor, spent against
@@ -7335,6 +8061,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         break;
       }
       appendPoint(r, { x: hit.p.x, y: hit.p.y }, hit.t);
+      if (r.beamSeed) {
+        if (!beamVertexOwnersOf.has(r)) beamVertexOwnersOf.set(r, []);
+        beamVertexOwnersOf.get(r)[r.pts.length - 1] = surfaceOwnerId(hit.surface);
+      }
       const interactionKey = surfaceInteractionKey(hit.surface);
       r.segmentEvents[r.segmentEvents.length - 1] = interactionKey;
       if (hit.ambiguous && hit.surface.kind === 'refract') break;
@@ -7446,7 +8176,13 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           });
         }
       }
-      if (!coherent?.dryRun && (hit.surface.kind === 'detector' || hit.surface.kind === 'retina')) recordDetectorHit(r, hit);
+      if (!coherent?.dryRun && (hit.surface.kind === 'detector' || hit.surface.kind === 'retina')) {
+        recordDetectorHit(r, hit);
+        if (r.beamSeed || r.beamIssue) {
+          if (!beamDetectorHitsOf.has(r)) beamDetectorHitsOf.set(r, []);
+          beamDetectorHitsOf.get(r).push({ surface: hit.surface, p: { x: hit.p.x, y: hit.p.y }, vertex: r.pts.length - 1, power: r.power });
+        }
+      }
       if (hit.surface.kind === 'phaseplate') {
         // Same bookkeeping as the delay line, except the added path depends on
         // where this particular ray crossed the aperture -- which is what turns
@@ -7515,6 +8251,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             parametricPath: unionPath(r.parametricPath),
             // A summed loop's factor rides through the fiber with its power.
             loopSum: r.loopSum || 1,
+            beamCarried: Boolean(collectingBeamSteps(r)),
           });
         }
         break; // the connector absorbs the incoming beam either way
@@ -7532,6 +8269,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // it without collecting it: it applies to what leaves this interaction.
       const rangeLeft = r.rangeLeft;
       r.rangeLeft = null;
+      // A ray carrying a beam parameter keeps what the companions need to
+      // follow it through this interaction (step G1).
+      const beamSteps = collectingBeamSteps(r);
+      const beamStep = beamSteps ? { surface: hit.surface, hit, ray: { ...r }, din: { x: r.dx, y: r.dy } } : null;
       interactionRay = r; interactionReshapesPulse = false; interactionPorts = null; interactionNormal = null;
       const children = interact(r, hit);
       reflectPolarization(r, children, interactionNormal);
@@ -7743,6 +8484,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           }
           r.groupDelayDifferenceFs = c0.groupDelayDifferenceFs;
         }
+        if (beamStep) continueBeam(r, r, beamSteps, beamStep, c0, 0, r.pts.length - 1, hit.p);
         r.loopVia = '0'; r.loopViaPassive = passive;
         r.last = hit.surface; r.depth++;
         continue;
@@ -7778,7 +8520,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           ? c.groupDelayDifferenceFs : r.groupDelayDifferenceFs;
         const inheritedRange = rangeLeft && !c.evan && !('sourceId' in c) ? rangeLeft
           : c.tag === 'T' ? carriedEvan : null;
-        stack.push({
+        const childRay = ({
           x: ox, y: oy, dx: c.d.x, dy: c.d.y,
           // Anything that reaches here starts a new branch string: a real
           // split, and also a lone child that changes the light's state (a new
@@ -7919,6 +8661,23 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           loopTail: r.loopTail ? { ...r.loopTail } : null,
           loopSum: r.loopSum || 1,
         });
+        // The beam parameter rides with each branch (step G1): the child
+        // starts where this interaction leaves it.
+        if (beamStep) {
+          childRay.beamSeed = r.beamSeed;
+          childRay.beamSeedNow = r.beamSeedNow;
+          continueBeam(childRay, r, beamSteps, beamStep, c, ci, 0, { x: ox, y: oy });
+        } else if (r.beamIssue) {
+          // Declined upstream: the branch carries the reason from its start.
+          childRay.beamSeed = r.beamSeed;
+          childRay.beamIssue = { ...r.beamIssue, atVertex: 0 };
+          // ...and the wavelength of the light it carries: the one in force
+          // where it was declined, or the new one a later conversion (or a
+          // part of the spectrum) gives this branch.
+          const held = r.beamIssueSeed || r.beamSeedNow || r.beamSeed;
+          childRay.beamIssueSeed = held && c.wl > 0 && c.wl !== held.wavelengthNm ? { ...held, wavelengthNm: c.wl } : held;
+        }
+        stack.push(childRay);
       }
       break;
     }
@@ -8393,6 +9152,13 @@ export function traceScene(elements, beams = [], options = {}) {
   specimenTimingStates = new Map();
   specimenSrsNotes = new Map();
   specimenFocusReadings = new Map();
+  lastBeamTracks = [];
+  beamReadings = new Map();
+  companionStep = options.companionStep || COMPANION_STEP;
+  beamStepLists = new WeakMap();
+  beamDetectorHitsOf = new WeakMap();
+  beamTrackOf = new WeakMap();
+  beamVertexOwnersOf = new WeakMap();
 
   // Sources are emitted twice when a specimen needs two-colour mixing: once
   // as a cheap probe that only records which wavelengths reach each specimen
@@ -8447,6 +9213,9 @@ export function traceScene(elements, beams = [], options = {}) {
         inputChirp: timing.inputGddFs2 < 0 ? 'negative' : 'positive',
       } : {}),
     } : null;
+    // Step G1: the beam parameter the laser starts, carried by its central
+    // ray (the one that also writes voxels).
+    const beamSource = sourceBeamParameter(el.type, p);
     const rays0 = local.map(r => {
       const o = toWorld(el, r.x, r.y);
       const d = rotPt(r.dx, r.dy, el.rot || 0);
@@ -8510,6 +9279,13 @@ export function traceScene(elements, beams = [], options = {}) {
         sourceId: el.id,
         originId: el.id,
         writeReference: r.sample === undefined || r.sample === Math.floor((K - 1) / 2),
+        ...(beamSource && !r.evan && (r.sample === undefined || r.sample === Math.floor((K - 1) / 2)) ? {
+          beamSeed: {
+            ...beamSource, q: initialIor === 1 ? beamSource.q : qFromWaist({ ...beamSource, index: initialIor }),
+            p: { x: o.x, y: o.y }, d: { x: d.x, y: d.y }, n: initialIor,
+            sourceId: el.id, elementId: el.id, elementName: el.label || registry[el.type]?.label || el.type,
+          },
+        } : {}),
       };
     });
     const allPaths = collect
@@ -8665,6 +9441,7 @@ export function traceScene(elements, beams = [], options = {}) {
     for (const c of couplings) noteWeakLightShortfall(c.originId, c.power);
   }
   emitFibers(true);
+  lastBeamTracks = propagateBeams(lastPowerPaths, surfaces);
   // image formation for Object elements: locate the image of the object's
   // base and tip by tracing each through every lens on its axis using real
   // per-surface thin-lens physics (two rays per point, then intersect the

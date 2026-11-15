@@ -12,6 +12,13 @@
 //
 // Units: λ in nm, beam radii in µm, distances and focal lengths in mm,
 // angles in mrad.
+//
+// Every function here goes through the beam parameter q of
+// sketch/js/gaussian-beam.js, the propagation the canvas tracer uses for its
+// beams (step G1), so the pages and the canvas cannot disagree on a Gaussian
+// beam's waist.
+
+import { beamFromQ, propagateQ, qFromWaist, thinLensMatrix, transformQ } from '../../sketch/js/gaussian-beam.js';
 
 // A half angle for a refusal: the formulas' own number while it still
 // means something.
@@ -29,24 +36,23 @@ export function gaussianBeam({ waistUm, wavelengthNm, m2 = 1, index = 1 }) {
 // Radius, wavefront radius of curvature (Infinity at the waist) and Gouy
 // phase z mm from the waist.
 export function beamAt(beam, zMm) {
-  const t = zMm / beam.rayleighMm;
-  return {
-    radiusUm: beam.waistUm * Math.sqrt(1 + t * t),
-    curvatureMm: zMm === 0 ? Infinity : zMm * (1 + 1 / (t * t)),
-    gouyDeg: Math.atan(t) * 180 / Math.PI,
-  };
+  const here = beamFromQ(qFromWaist({ ...beam, zMm }), beam);
+  return { radiusUm: here.radiusUm, curvatureMm: here.curvatureMm, gouyDeg: here.gouyDeg };
 }
 
-// An ideal thin lens of focal length f, `distanceMm` after the waist
-// (Self, Appl. Opt. 22, 658 (1983)): the new waist, its distance after the
-// lens (negative for a virtual waist before it) and the magnification.
+// An ideal thin lens of focal length f, `distanceMm` after the waist: the
+// new waist, its distance after the lens (negative for a virtual waist
+// before it) and the magnification. The q law through the lens's matrix,
+// which is Self's closed form (Appl. Opt. 22, 658 (1983)) evaluated another
+// way: magnification 1/√((1 − s/f)² + (z_R/f)²).
 export function thinLensFocus(beam, distanceMm, focalMm) {
-  const s = distanceMm, f = focalMm, zr = beam.rayleighMm;
-  const magnification = 1 / Math.sqrt((1 - s / f) ** 2 + (zr / f) ** 2);
-  const out = gaussianBeam({ ...beam, waistUm: beam.waistUm * magnification });
+  const atLens = propagateQ(qFromWaist(beam), distanceMm);
+  const index = beam.index ?? 1;
+  const after = transformQ(atLens, thinLensMatrix(focalMm, index), index, index);
+  const waist = beamFromQ(after, beam);
   return {
-    beam: out, magnification,
-    distanceMm: f + (s - f) * f * f / ((s - f) ** 2 + zr * zr),
-    lensRadiusUm: beamAt(beam, s).radiusUm,
+    beam: gaussianBeam({ ...beam, waistUm: waist.waistUm }), magnification: waist.waistUm / beam.waistUm,
+    distanceMm: waist.waistAheadMm,
+    lensRadiusUm: beamFromQ(atLens, beam).radiusUm,
   };
 }

@@ -137,7 +137,35 @@ export const wikiEntries = [
         the one place a linewidth enters this source. It changes no ray and no colour; it
         decides how far the two arms of an interferometer may differ before their fringes
         fade. Fields recombining at a beamsplitter are weighted, pair by pair, by a Gaussian
-        visibility in their path difference.</p>`,
+        visibility in their path difference.</p>
+        <h3>Gaussian beam</h3>
+        <p>A laser drawn with a size also starts a Gaussian beam: a 1/e² radius
+        <span class="w">w</span> of half its Beam width (the Beam width is the 1/e² diameter),
+        with the waist at its output. The only other setting, in the collapsed <em>Gaussian
+        beam</em> section, is the beam quality M² (1 for an ideal beam; a larger value spreads
+        faster, as a multimode or diode laser does). A laser drawn as a simple line starts no
+        Gaussian beam. The tracer follows the beam parameter <span class="w">q</span> through
+        every optic with a paraxial model: two companion rays, one displaced and one tilted by
+        a hair, follow the central ray through the same surfaces, and their offsets give each
+        element's in-plane ray-transfer matrix, so the beam passes every optic as the drawn
+        rays do. The drawn rays leave out diffraction, though, which a narrow beam cannot: a
+        beam whose Rayleigh range is short beside the distances it travels spreads faster than
+        its drawn rays, and a lens focuses it where it images the laser's waist, not at its
+        focal point. For a 0.1&nbsp;mm beam at 633&nbsp;nm, 148&nbsp;mm before an
+        f&nbsp;=&nbsp;100&nbsp;mm lens, the drawn rays cross at the focal point while the beam's
+        waist lies 295&nbsp;mm past the lens; where that matters, the readouts say so with both
+        places. The beam probe, the general detector and the zoom then report its radius, the
+        wavefront's radius of curvature, the waist, the Rayleigh range and M², in the drawing
+        plane; a camera shows the beam's size and a wavefront detector its size and wavefront.
+        Where filters or dispersive glass separate the spectrum, each part keeps the beam at
+        its own centre wavelength. Where an ideal lens is met far from its axis the beam follows
+        the drawn rays, and the readout says its values are an estimate, because an ideal lens
+        met that far off its axis does not keep the beam quality. The beam stops, and the readout names the element and the
+        reason, at an optic with no paraxial model (a diffuser, a specimen), where an edge
+        comes within 1.5&nbsp;<span class="w">w</span> of the beam's centre (it clips the beam,
+        which is then no longer Gaussian), where the far-field half-angle exceeds
+        0.2&nbsp;rad, at a wavelength conversion, and where branches of the same light overlap
+        again.</p>`,
       formulas: [
         { tex: 'V(\\Delta L) = \\exp\\!\\left[-4\\ln 2\\left(\\frac{\\Delta L}{l_c}\\right)^{2}\\right]', caption: 'Fringe visibility against arm mismatch. The coherence length l_c is the full width at half maximum of this envelope, so ΔL = l_c/2 halves the contrast.' },
         { tex: 'l_c = \\frac{2\\ln 2}{\\pi}\\,\\frac{\\lambda^{2}}{\\Delta\\lambda}', caption: 'The linewidth the inspector reports as implied by a given coherence length — the Gaussian convention standard in optical coherence tomography, where l_c is the axial resolution.' },
@@ -230,6 +258,34 @@ export const wikiEntries = [
     },
     inOpticalSetup: {
       html: `
+        <h3>Gaussian beam</h3>
+        <p>Like the CW Laser, a pulsed laser drawn with a size also starts a Gaussian beam: a 1/e² radius
+        <span class="w">w</span> of half its Beam width (the Beam width is the 1/e² diameter),
+        with the waist at its output. The only other setting, in the collapsed <em>Gaussian
+        beam</em> section, is the beam quality M² (1 for an ideal beam; a larger value spreads
+        faster, as a multimode or diode laser does). A laser drawn as a simple line starts no
+        Gaussian beam. The tracer follows the beam parameter <span class="w">q</span> through
+        every optic with a paraxial model: two companion rays, one displaced and one tilted by
+        a hair, follow the central ray through the same surfaces, and their offsets give each
+        element's in-plane ray-transfer matrix, so the beam passes every optic as the drawn
+        rays do. The drawn rays leave out diffraction, though, which a narrow beam cannot: a
+        beam whose Rayleigh range is short beside the distances it travels spreads faster than
+        its drawn rays, and a lens focuses it where it images the laser's waist, not at its
+        focal point. For a 0.1&nbsp;mm beam at 633&nbsp;nm, 148&nbsp;mm before an
+        f&nbsp;=&nbsp;100&nbsp;mm lens, the drawn rays cross at the focal point while the beam's
+        waist lies 295&nbsp;mm past the lens; where that matters, the readouts say so with both
+        places. The beam probe, the general detector and the zoom then report its radius, the
+        wavefront's radius of curvature, the waist, the Rayleigh range and M², in the drawing
+        plane; a camera shows the beam's size and a wavefront detector its size and wavefront.
+        Where filters or dispersive glass separate the spectrum, each part keeps the beam at
+        its own centre wavelength. Where an ideal lens is met far from its axis the beam follows
+        the drawn rays, and the readout says its values are an estimate, because an ideal lens
+        met that far off its axis does not keep the beam quality. The beam stops, and the readout names the element and the
+        reason, at an optic with no paraxial model (a diffuser, a specimen), where an edge
+        comes within 1.5&nbsp;<span class="w">w</span> of the beam's centre (it clips the beam,
+        which is then no longer Gaussian), where the far-field half-angle exceeds
+        0.2&nbsp;rad, at a wavelength conversion, and where branches of the same light overlap
+        again.</p>
         <h3>Interference</h3>
         <p>With <strong>Beam with size</strong> and <strong>Interference</strong> enabled,
         split copies of this source interfere through ideal beamsplitters, fully reflective
@@ -452,6 +508,21 @@ export const wikiEntries = [
     },
     inOpticalSetup: {
       html: `
+        <h3>Gaussian beam</h3>
+        <p>Drawn with a size, the supercontinuum also starts a Gaussian beam, as the CW Laser
+        does, with the beam quality M² in the collapsed <em>Gaussian beam</em> section. A
+        fibre supercontinuum leaves a single-mode photonic crystal fibre: every colour leaves
+        in the fibre's one transverse mode${cite(2, 3, 4)}, and commercial sources specify M² below 1.1${cite(5)}. The
+        beam is not the same size at every colour, though. The collimator images the fibre's
+        mode, so the collimated beam grows roughly in proportion to the wavelength and spreads
+        at about the same angle at every colour: one commercial source gives about 1, 2 and
+        3&nbsp;mm at 530, 1100 and 2000&nbsp;nm${cite(5)}. The Beam width is therefore the 1/e² diameter
+        at the band's centre, and each part of the band that a filter, a dichroic or a prism
+        separates starts with a waist in proportion to its wavelength: with a
+        400–2000&nbsp;nm band and a 2&nbsp;mm Beam width, the part a 600&nbsp;nm short-pass
+        leaves, centred at 500&nbsp;nm, starts 0.83&nbsp;mm wide. The readouts give the beam
+        at one wavelength, the band's centre or the centre of the part that is there, and say
+        so. The drawn rays keep the Beam width at every colour.</p>
         <h3>Interference</h3>
         <p>With <strong>Beam with size</strong> and <strong>Interference</strong> enabled,
         split copies of this source interfere through ideal beamsplitters, fully reflective
@@ -522,11 +593,21 @@ export const wikiEntries = [
         of these sources, is not represented. The endpoint estimate is not a propagated
         complex field: it cannot reproduce sub-pulses, wavelength-dependent intensity,
         non-monotonic group delay, higher-order phase inside the band, or nonlinear evolution.
-        It is a bounded temporal-span estimate, not a pulse-reconstruction claim.</p>`,
+        It is a bounded temporal-span estimate, not a pulse-reconstruction claim.</p>
+        <p>The Gaussian beam's size in proportion to the wavelength idealises a collimated
+        fibre output: a real fibre's mode grows somewhat with wavelength (the commercial
+        figures above grow a little more slowly than the wavelength), a lens collimator adds
+        chromatic focal shifts that a mirror collimator avoids, and M² can rise above 1 at
+        high pump power. A continuum generated in a multimode fibre is not a single-mode
+        beam.</p>`,
     },
     related: ['cwlaser', 'pulsedlaser', 'prism', 'filter'],
     citations: [
       { label: 'J. M. Dudley, G. Genty and S. Coen, “Supercontinuum generation in photonic crystal fiber,” Reviews of Modern Physics 78, 1135–1184 (2006) — temporal structure, coherence and higher-order dispersion limits of real continua', url: 'https://doi.org/10.1103/RevModPhys.78.1135' },
+      { label: 'T. A. Birks, J. C. Knight and P. St. J. Russell, “Endlessly single-mode photonic crystal fiber,” Optics Letters 22, 961–963 (1997) — a photonic crystal fibre that is single-mode at every wavelength', url: 'https://doi.org/10.1364/OL.22.000961' },
+      { label: 'G. J. Esposito, A. Harris, D. Burns and G. McConnell, “Measurement of white-light supercontinuum beam properties from a photonic crystal fibre using a laser scanning confocal microscope,” Measurement Science and Technology 18, 2609–2615 (2007) — M² close to 1 across the visible', url: 'https://doi.org/10.1088/0957-0233/18/8/036' },
+      { label: 'X. Hu et al., “High average power, strictly all-fiber supercontinuum source with good beam quality,” Optics Letters 36, 2659–2661 (2011) — single-mode operation verified across 500–1700 nm', url: 'https://doi.org/10.1364/OL.36.002659' },
+      { label: 'NKT Photonics, SuperK EXTREME/FIANIUM datasheet — M² < 1.1; collimated beam diameter ≈ 1 mm at 530 nm, ≈ 2 mm at 1100 nm, ≈ 3 mm at 2000 nm', url: 'https://www.tlsbv.nl/wp-content/uploads/2020/06/TLS-superk-extreme-fianium.pdf' },
     ],
     resources: [
       { label: 'RP Photonics Encyclopedia — Supercontinuum Generation', url: 'https://www.rp-photonics.com/supercontinuum_generation.html' },
@@ -1611,6 +1692,13 @@ export const wikiEntries = [
         route you want, and double-click to finish. The result is a path, not a component,
         so it curves smoothly through its waypoints and can be reshaped afterwards by
         dragging the round handles. Everything optical about it lives on that path.</p>
+        <p>A fiber whose output mode is known starts a Gaussian beam on its end face: set its
+        <em>single-mode core</em> diameter and, with the input NA, V = 2π·a·NA/λ gives the
+        exact LP<sub>01</sub> mode, whose best-coupling Gaussian is the output beam (between
+        V&nbsp;=&nbsp;1.2 and 2.405); a hollow-core capillary starts the Gaussian of 0.64 of its
+        core radius that couples best to its HE<sub>11</sub> mode. The output cone drawn is
+        still the fiber's NA, so the drawn rays and the beam's own divergence need not
+        agree.</p>
         
         <p>The connectors drawn at each end are the terminated patch cable you would pick
         up off a bench. For the same component without them — a cleaved or spliced fiber,
@@ -4271,23 +4359,28 @@ export const wikiEntries = [
         2&nbsp;atan(15/10). The traced spot there
         is a point, which no real beam reaches, so the panel also gives the
         <strong>waist</strong> <span class="w">w₀</span> and <strong>Rayleigh range</strong>
-        <span class="w">z<sub>R</sub></span> an ideal Gaussian beam would have focused in that
-        cone, at the light's mean wavelength. The 10&nbsp;mm, 532&nbsp;nm beam of a
-        <span class="w">f</span>&nbsp;=&nbsp;100&nbsp;mm lens reads a 5.72° cone,
-        <span class="w">w₀</span>&nbsp;=&nbsp;3.39&nbsp;µm and
-        <span class="w">z<sub>R</sub></span>&nbsp;=&nbsp;67.9&nbsp;µm.</p>
+        <span class="w">z<sub>R</sub></span>: those of the laser's propagated Gaussian beam
+        where one arrives (see the CW Laser), otherwise those of an ideal Gaussian beam focused
+        in that cone at the light's mean wavelength, marked <strong>CONE EST.</strong> The
+        10&nbsp;mm, 532&nbsp;nm beam of a <span class="w">f</span>&nbsp;=&nbsp;100&nbsp;mm lens
+        reads a 5.72° cone, <span class="w">w₀</span>&nbsp;=&nbsp;3.39&nbsp;µm and
+        <span class="w">z<sub>R</sub></span>&nbsp;=&nbsp;67.7&nbsp;µm (the cone estimate gives
+        67.9&nbsp;µm). The two part company when the beam's own Rayleigh range is not long
+        against the focal length: a 1&nbsp;mm beam through an
+        <span class="w">f</span>&nbsp;=&nbsp;2&nbsp;m lens has its waist, 409&nbsp;µm wide,
+        1.30&nbsp;m before the geometric focus, where the cone estimate would put 677&nbsp;µm.</p>
         <p>A face placed by hand rarely lands exactly on that point, so it reads
         <strong>FOCUS PLANE</strong> anywhere within three Rayleigh ranges of the waist, where
         a Gaussian beam is at most √10 times its waist wide, and also says how far
         <strong>ahead</strong> (further along the beam) or <strong>behind</strong> the waist
         lies. The waist is placed where the rays' spread is least, and the cone, waist and
         Rayleigh range are the focus's own wherever the face sits in that zone. For that lens
-        the zone is ±0.204&nbsp;mm: a face 0.1&nbsp;mm short of the focus reads the waist
+        the zone is ±0.203&nbsp;mm: a face 0.1&nbsp;mm short of the focus reads the waist
         100&nbsp;µm ahead. Beyond it the fitted CONVERGING or DIVERGING 5.73° returns. A cone
         whose half-angle is under 10⁻⁴&nbsp;rad, too slow to place its focus (as for a
         specimen), reads FOCUS PLANE only on the focus itself.</p>`,
       formulas2: [
-        { tex: 'w_0 = \\frac{\\lambda}{\\pi\\,\\mathrm{NA}}, \\qquad z_R = \\frac{\\pi w_0^2}{\\lambda}, \\qquad \\mathrm{NA} = \\sin\\frac{\\Theta_{\\text{full}}}{2}', caption: 'The diffraction-limited waist radius and Rayleigh range of an M² = 1 Gaussian beam focused in air with the measured cone: the same model the specimens use for their focus.' },
+        { tex: 'w_0 = \\frac{\\lambda}{\\pi\\,\\mathrm{NA}}, \\qquad z_R = \\frac{\\pi w_0^2}{\\lambda}, \\qquad \\mathrm{NA} = \\sin\\frac{\\Theta_{\\text{full}}}{2}', caption: 'The cone estimate, used where no propagated beam arrives: the diffraction-limited waist radius and Rayleigh range of an M² = 1 Gaussian beam focused in air with the measured cone, the same model the specimens use for their focus.' },
       ],
       limitations: `<p>A straight line through <span class="w">θ(h)</span> has exactly one
         shape term in it, and that term is <strong>defocus</strong>. Tilt is fitted and thrown
@@ -6171,7 +6264,7 @@ export const wikiEntries = [
     summary: "Collects light at one sensor face and reports multiple beam properties, combining power, spectrum, polarization, wavefront, and pulse information in one instrument.",
     realWorld: { html: `<p>A laboratory normally measures optical power, spectrum, polarization, beam shape, and pulse timing with different instruments. Each instrument has its own acceptance, resolution, and calibration; no single generic detector replaces all of them.</p>` },
     inOpticalSetup: {
-      html: `<p>The general detector combines the workbench's supported readings at one active face. Point the face toward the incoming beam and attach a detector screen to inspect the available views. The example uses a pulsed source so both spectral and temporal properties are present.</p><p>Reduce the active height or move the detector off-axis to see how clipping changes the collected signal. Power in watts depends on the source power specified in the scene.</p>`,
+      html: `<p>The general detector combines the workbench's supported readings at one active face. Point the face toward the incoming beam and attach a detector screen to inspect the available views. The example uses a pulsed source so both spectral and temporal properties are present.</p><p>Its inspector card also lists the Gaussian beam of every laser or supercontinuum drawn with a size that reaches it, one block per beam: the 1/e² radius, the wavefront and its radius of curvature, the waist and how far ahead or behind it lies, the Rayleigh range, M² and the Gouy phase. Real instruments see less, and their cards show only that: a camera the beam's size on its face, a wavefront detector its size and wavefront, and a photodetector, PMT or power meter none of it.</p><p>Reduce the active height or move the detector off-axis to see how clipping changes the collected signal. Power in watts depends on the source power specified in the scene.</p>`,
       limitations: `<p>This is a convenient composite diagnostic, not a model of one physical instrument. Its wavefront and spectral readings inherit the ray tracer's approximations; it does not add a calibrated noise floor or independent laboratory measurements.</p>`,
     }, related: ['detector', 'powermeter', 'spectrometer', 'polarimeter', 'display'],
   },
@@ -6438,7 +6531,7 @@ export const wikiEntries = [
     summary: "Reads the nearby traced beam without intercepting it, showing a selected spectrum, wavelength, power, polarization, pulse duration, or intensity-over-time view.",
     realWorld: { html: `<p>Laboratory beam diagnostics normally require a sensor or pickoff that interacts with the light. A non-intercepting label in a ray diagram instead communicates a property already known from the model; it is not a physical measuring instrument.</p>` },
     inOpticalSetup: {
-      html: `<p>Place the crosshair near a traced beam and select the property to show. Spectrum and time views provide range controls; pulse duration requires suitable pulsed light. With one beam in its sampling circle, the spectrum, wavelength, polarization, duration and time views describe the nearest traced beam. When <strong>several beams</strong> cross the circle, four views describe all of them: the <em>spectrum</em> sums their spectral densities, each weighted by its watts (when a source has no power setting, every beam is weighted by its share of its own source's power instead, and the card says <em>relative</em>); the <em>wavelength</em> view lists each colour; <em>polarization</em> shows one disc per beam, named by its wavelength; and the <em>time</em> view draws every train on one axis and says whether the pulses arrive together (within half a pulse duration — the duration at the probe where it is known, otherwise the source's, and the card then says so), which beam comes first and by how much, or that trains at different repetition rates have no fixed delay. Beams of one kind of light are told apart by the route they took: the sampling rays of one beam are one beam however a lens spreads their path lengths, while two arms of a split pulsed laser are two beams as soon as their pulses arrive apart — 200 fs of arm difference is read as 0.2 ps — so a delay line can be aligned by watching the delay go to zero. Arms that arrive together count as one beam, and so do arms a whole number of repetition periods apart (the round trips of a synchronously pumped cavity), which land on the same pulses — unless a chopper, AOM or other modulator gates the train, since the modulation does not repeat with the laser period and such arms stay apart. The circle is drawn dashed whenever it decides what is read. <strong>Average power</strong> is different: it adds up every beam that crosses the probe's sampling circle (10 mm across unless set otherwise, drawn dashed around the crosshair), each with the watts its own source contributes, exactly as a power meter adds up what reaches its face — so a probe and a meter on the same light read the same. Two beams that overlap, such as an OPA's seed and the gain it received, are read together; widen or narrow the circle to take in several beams or one. A beam is counted where it enters the circle, so light split or reflected inside the circle is not counted twice, and light emitted inside it is not counted.</p><p>The example puts a spectrum probe between a broadband source and a detector. Move it away from the beam, then back, to see its dependence on the selected location. It never absorbs light or creates a new optical branch.</p>`,
+      html: `<p>Place the crosshair near a traced beam and select the property to show. The <em>Gaussian beam size</em> view lists the propagated Gaussian beam where the probe stands, one bullet per property (its 1/e² radius, the wavefront and its radius of curvature, the waist, the Rayleigh range and M², in the drawing plane), or says why the light there has none: the element that stopped it, two arms of one beam that overlap again, or a source that starts none (a laser or supercontinuum drawn as a simple line, an LED). Several beams are named by their wavelength and direction of travel. Where diffraction matters, as for a narrow beam whose Rayleigh range is short beside the distances it travels, the drawn rays, which leave it out, do not show where the beam goes, and the card says so with the beam's waist and where the drawn rays cross; for a supercontinuum it says the beam is read at one wavelength. Spectrum and time views provide range controls; pulse duration requires suitable pulsed light. With one beam in its sampling circle, the spectrum, wavelength, polarization, duration and time views describe the nearest traced beam. When <strong>several beams</strong> cross the circle, four views describe all of them: the <em>spectrum</em> sums their spectral densities, each weighted by its watts (when a source has no power setting, every beam is weighted by its share of its own source's power instead, and the card says <em>relative</em>); the <em>wavelength</em> view lists each colour; <em>polarization</em> shows one disc per beam, named by its wavelength; and the <em>time</em> view draws every train on one axis and says whether the pulses arrive together (within half a pulse duration — the duration at the probe where it is known, otherwise the source's, and the card then says so), which beam comes first and by how much, or that trains at different repetition rates have no fixed delay. Beams of one kind of light are told apart by the route they took: the sampling rays of one beam are one beam however a lens spreads their path lengths, while two arms of a split pulsed laser are two beams as soon as their pulses arrive apart — 200 fs of arm difference is read as 0.2 ps — so a delay line can be aligned by watching the delay go to zero. Arms that arrive together count as one beam, and so do arms a whole number of repetition periods apart (the round trips of a synchronously pumped cavity), which land on the same pulses — unless a chopper, AOM or other modulator gates the train, since the modulation does not repeat with the laser period and such arms stay apart. The circle is drawn dashed whenever it decides what is read. <strong>Average power</strong> is different: it adds up every beam that crosses the probe's sampling circle (10 mm across unless set otherwise, drawn dashed around the crosshair), each with the watts its own source contributes, exactly as a power meter adds up what reaches its face — so a probe and a meter on the same light read the same. Two beams that overlap, such as an OPA's seed and the gain it received, are read together; widen or narrow the circle to take in several beams or one. A beam is counted where it enters the circle, so light split or reflected inside the circle is not counted twice, and light emitted inside it is not counted.</p><p>The example puts a spectrum probe between a broadband source and a detector. Move it away from the beam, then back, to see its dependence on the selected location. It never absorbs light or creates a new optical branch.</p>`,
       limitations: `<p>This is a diagnostic annotation with direct access to traced properties. It does not represent a laboratory probe's calibration, noise, or disturbance of the beam; its sampling circle is a counting area, not a physical aperture, and a beam that only grazes it counts in full.</p>`,
     }, related: ['display', 'spectrometer', 'polarimeter', 'detector'],
   },
@@ -6465,7 +6558,7 @@ export const wikiEntries = [
     summary: "Draws a region of the setup again, enlarged, elsewhere on the canvas, with an optional scale bar, so small features such as a displaced focus become visible.",
     realWorld: { html: `<p>Figures of optical setups often carry an enlarged inset of a small region: the focus of an objective inside a specimen, the overlap of two beams in a crystal, the walk of a scanned spot. The inset is joined to the region it enlarges by an outline and connector lines, and a scale bar tells the reader what the enlarged distances are.</p>` },
     inOpticalSetup: {
-      html: `<p>Place a zoom and drag its region onto the part of the setup to enlarge: the outline of the region is what you grab, so the components inside it stay selectable. The view shows that region at the chosen magnification and can be dragged anywhere on its own; dragging the region aims it while the view stays where it is, and nudging with the arrow keys moves both. The blue handles resize the region about its centre. The magnification is set by dragging a purple corner of the view, which grows or shrinks it while the opposite corner stays put, or with the purple knob. Choose a circle, an ellipse or a rectangle; the view has the same shape. A rectangle or an ellipse can be turned with the round handle to lie along a tilted beam: both shapes turn, the view stays where it is on the bench, and the enlarged bench keeps its orientation, so a tilted beam is still tilted in the view. The outlines of the region and of the view can be drawn dashed together, the connector lines on their own, and the connector lines can be turned off.</p><p>Shapes grow with the magnification, but lines keep their weight, so a traced ray stays a fine line and the view shows where rays really cross. Beam envelopes are areas and grow with everything else. Pulse packets pass through the view as they cross the region: a schematic packet keeps its size, as a mark does, while a physical packet's length, c times its duration, grows with the magnification. Text labels, arrows, probes and other zooms are not enlarged: they belong to the figure rather than to the bench, and a label placed after the zoom can be drawn on its view. The scale bar measures bench millimetres, the coordinates the tracer computes in; left at 0 its length is chosen automatically, and a length that would not fit is shortened, with the label naming the length drawn. The bar is horizontal, along the region's width, or vertical, along its height, with its label beside it reading upwards; on a turned rectangle or ellipse it follows the turned sides, and on a circle it stays level or plumb.</p><p>Traced rays meet at a geometric point, which no real beam reaches. With <em>Diffraction-limited focus</em>, on by default, every beam that focuses inside the region is drawn with the waist an ideal Gaussian beam would have in the same cone: its 1/e² radius w(z) = w₀·√(1 + (z/z<sub>R</sub>)²), with w₀ = λ/(π·NA) and Rayleigh range z<sub>R</sub> = π·w₀²/λ, and a note at the top of the view naming w₀ and z<sub>R</sub>, which has its own switch. The focus is found as a volume specimen finds it: the plane where the beam's sampling rays spread least, with the numerical aperture of its outermost rays and the light's centre wavelength. Far from the focus the envelope meets the rays' cone, so it joins the traced beam. A beam's waist is usually microns wide, so it shows at high magnification, or for a slow beam; the note names it whatever the magnification, when the view is large enough to hold it. Rays leaving an emitter and a virtual focus behind a diverging optic get none.</p><p>The example scans a galvo slowly in front of a lens. The zoom sits on the focal plane, where the focus walks sideways as the mirror turns, and the scale bar shows how far.</p>`,
+      html: `<p>Place a zoom and drag its region onto the part of the setup to enlarge: the outline of the region is what you grab, so the components inside it stay selectable. The view shows that region at the chosen magnification and can be dragged anywhere on its own; dragging the region aims it while the view stays where it is, and nudging with the arrow keys moves both. The blue handles resize the region about its centre. The magnification is set by dragging a purple corner of the view, which grows or shrinks it while the opposite corner stays put, or with the purple knob. Choose a circle, an ellipse or a rectangle; the view has the same shape. A rectangle or an ellipse can be turned with the round handle to lie along a tilted beam: both shapes turn, the view stays where it is on the bench, and the enlarged bench keeps its orientation, so a tilted beam is still tilted in the view. The outlines of the region and of the view can be drawn dashed together, the connector lines on their own, and the connector lines can be turned off.</p><p>Shapes grow with the magnification, but lines keep their weight, so a traced ray stays a fine line and the view shows where rays really cross. Beam envelopes are areas and grow with everything else. Pulse packets pass through the view as they cross the region: a schematic packet keeps its size, as a mark does, while a physical packet's length, c times its duration, grows with the magnification. Text labels, arrows, probes and other zooms are not enlarged: they belong to the figure rather than to the bench, and a label placed after the zoom can be drawn on its view. The scale bar measures bench millimetres, the coordinates the tracer computes in; left at 0 its length is chosen automatically, and a length that would not fit is shortened, with the label naming the length drawn. The bar is horizontal, along the region's width, or vertical, along its height, with its label beside it reading upwards; on a turned rectangle or ellipse it follows the turned sides, and on a circle it stays level or plumb.</p><p>Traced rays meet at a geometric point, which no real beam reaches. With <em>Diffraction-limited focus</em>, on by default, every beam that focuses inside the region is drawn with its waist: its 1/e² radius w(z) = w₀·√(1 + (z/z<sub>R</sub>)²), and a note at the top of the view naming w₀ and z<sub>R</sub>, which has its own switch. Where the light carries a propagated Gaussian beam (a CW or pulsed laser or a supercontinuum drawn with a size, a single-mode fiber; see the CW Laser), the waist is that beam's, and the note says <em>beam parameter</em>; a beam whose waist lies outside the bundle's stretch gets none there. Elsewhere it is the waist an ideal Gaussian beam would have in the same cone, w₀ = λ/(π·NA) with z<sub>R</sub> = π·w₀²/λ, and the note says <em>cone estimate</em>. The focus is found as a volume specimen finds it: the plane where the beam's sampling rays spread least, with the numerical aperture of its outermost rays and the light's centre wavelength. Far from the focus the envelope meets the rays' cone, so it joins the traced beam. A beam's waist is usually microns wide, so it shows at high magnification, or for a slow beam; the note names it whatever the magnification, when the view is large enough to hold it. Rays leaving an emitter and a virtual focus behind a diverging optic get none.</p><p>The example scans a galvo slowly in front of a lens. The zoom sits on the focal plane, where the focus walks sideways as the mirror turns, and the scale bar shows how far.</p>`,
       limitations: `<p>The view shows the traced geometry and nothing more. Rays are ideal lines: an ideal focus stays a point however far it is enlarged. The diffraction-limited focus is the ideal Gaussian (M² = 1) waist of the rays' cone in air, not a wave-optics calculation: aberrations, a medium's index, clipping by an aperture and a beam's real M² are not computed, the drawn bundle's outermost rays are taken as its 1/e² edge, and a broadband beam is taken at its centre wavelength. A component's drawing is enlarged as drawn, which for many parts is schematic rather than to scale. The view shows the bench's own pulse packets: where the time scale draws a train as steady light, so does the view, and a packet crosses a small region only briefly. The zoom is diagram-only and never absorbs or redirects rays.</p>`,
     }, related: ['highlight', 'figureframe', 'textlabel'],
   },

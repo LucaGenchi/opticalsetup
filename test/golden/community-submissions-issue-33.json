@@ -691,6 +691,18 @@
     "approximations": [],
     "bandMax": 651.965369,
     "bandMin": 636.034631,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "Thin convex lens",
+       "elementId": "evba3j2u",
+       "reason": "its edge lies 9.47 mm from the beam's centre along its surface, closer than 1.5 beam radii (10.1 mm here): it clips the beam, which is no longer Gaussian past it",
+       "sourceId": "eega2fx6",
+       "wavelengthNm": 644
+      }
+     ]
+    },
     "centroid": -3.83669105,
     "coherentPaths": 0,
     "color": "#ff0c00",
@@ -951,6 +963,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -1422,6 +1435,18 @@
     "approximations": [],
     "bandMax": 651.536876,
     "bandMin": 646.838293,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "Mirror",
+       "elementId": "ecyp262p",
+       "reason": "its edge lies 13.2 mm from the beam's centre along its surface, closer than 1.5 beam radii (13.8 mm here, widened by the tilt): it clips the beam, which is no longer Gaussian past it",
+       "sourceId": "eoriz5x9",
+       "wavelengthNm": 649.187584
+      }
+     ]
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#ff0000",
@@ -1504,6 +1529,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -2016,6 +2042,33 @@
     "approximations": [],
     "bandMax": 1070.93889,
     "bandMin": 528.530556,
+    "beam": {
+     "branches": [
+      {
+       "curvatureMm": 243344616,
+       "gouyDeg": 0.0271562148,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 0.054189075,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 6250.0007,
+       "rayleighMm": 115336.901,
+       "sourceId": "ealoa8hz",
+       "waistAheadMm": -54.6657001,
+       "waistUm": 6250,
+       "wavelengthNm": 1064
+      }
+     ],
+     "declined": [
+      {
+       "element": "Crystal",
+       "elementId": "edcwbjkb",
+       "reason": "it converts the wavelength: the light it generates is new light, whose beam is not computed (the light that passes unconverted keeps its own)",
+       "sourceId": "ealoa8hz",
+       "wavelengthNm": 532
+      }
+     ]
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#ffd722",
@@ -2098,6 +2151,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -3001,6 +3055,18 @@
     "approximations": [],
     "bandMax": 491.77913,
     "bandMin": 484.22087,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "SLM",
+       "elementId": "e44y00vk",
+       "reason": "its pattern reshapes the beam, so the Gaussian beam is not followed past it",
+       "sourceId": "ef7fg21z",
+       "wavelengthNm": 488
+      }
+     ]
+    },
     "centroid": -1.7045586,
     "coherentPaths": 0,
     "color": "#00f7ff",
@@ -3311,6 +3377,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -3782,6 +3849,25 @@
     "approximations": [],
     "bandMax": 783.730132,
     "bandMin": 776.269868,
+    "beam": {
+     "branches": [
+      {
+       "curvatureMm": 69397923.5,
+       "gouyDeg": 0.109943152,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 0.043179428,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 5750.01058,
+       "rayleighMm": 133165.265,
+       "sourceId": "el9jqbcq",
+       "waistAheadMm": -255.527144,
+       "waistUm": 5750,
+       "wavelengthNm": 780
+      }
+     ],
+     "declined": []
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#ff0000",
@@ -3864,6 +3950,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -4335,6 +4422,18 @@
     "approximations": [],
     "bandMax": 641.433983,
     "bandMin": 628.566017,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "Mirror",
+       "elementId": "ezohr0hw",
+       "reason": "its edge lies 12.4 mm from the beam's centre along its surface, closer than 1.5 beam radii (15.4 mm here, widened by the tilt): it clips the beam, which is no longer Gaussian past it",
+       "sourceId": "edazsscr",
+       "wavelengthNm": 635
+      }
+     ]
+    },
     "centroid": 1.14369483,
     "coherentPaths": 0,
     "color": "#ff3900",
@@ -4609,6 +4708,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -5080,6 +5180,18 @@
     "approximations": [],
     "bandMax": 471.354349,
     "bandMin": 468.645651,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "Mirror",
+       "elementId": "e9y2lyyi",
+       "reason": "its edge lies 6.93 mm from the beam's centre along its surface, closer than 1.5 beam radii (7.42 mm here, widened by the tilt): it clips the beam, which is no longer Gaussian past it",
+       "sourceId": "e72y9ybh",
+       "wavelengthNm": 470
+      }
+     ]
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#00a9ff",
@@ -5198,6 +5310,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -5669,6 +5782,18 @@
     "approximations": [],
     "bandMax": 533.599524,
     "bandMin": 530.400476,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "Mirror",
+       "elementId": "evhneld7",
+       "reason": "its edge lies 6.93 mm from the beam's centre along its surface, closer than 1.5 beam radii (9.55 mm here, widened by the tilt): it clips the beam, which is no longer Gaussian past it",
+       "sourceId": "eplwudba",
+       "wavelengthNm": 532
+      }
+     ]
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#65ff00",
@@ -5751,6 +5876,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -6222,6 +6348,18 @@
     "approximations": [],
     "bandMax": 536.494043,
     "bandMin": 527.505957,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "Mirror",
+       "elementId": "evhneld7",
+       "reason": "its edge lies 6.93 mm from the beam's centre along its surface, closer than 1.5 beam radii (9.55 mm here, widened by the tilt): it clips the beam, which is no longer Gaussian past it",
+       "sourceId": "eplwudba",
+       "wavelengthNm": 532
+      }
+     ]
+    },
     "centroid": 3.5625,
     "coherentPaths": 0,
     "color": "#65ff00",
@@ -6482,6 +6620,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -7131,6 +7270,18 @@
     "approximations": [],
     "bandMax": 516.625628,
     "bandMin": 513.374372,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "Fiber",
+       "elementId": "bpv3aahl",
+       "reason": "it starts no Gaussian beam: no single-mode core is set, so its output mode is not known",
+       "sourceId": "e0cr5gu6",
+       "wavelengthNm": 515
+      }
+     ]
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#1fff00",
@@ -7213,6 +7364,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -7684,6 +7836,25 @@
     "approximations": [],
     "bandMax": 453.267286,
     "bandMin": 446.732714,
+    "beam": {
+     "branches": [
+      {
+       "curvatureMm": 2.11040816,
+       "gouyDeg": 89.5030287,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 88.4615717,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 186.683,
+       "rayleighMm": 0.018304309,
+       "sourceId": "e9xej9i6",
+       "waistAheadMm": -2.11024939,
+       "waistUm": 1.61922794,
+       "wavelengthNm": 450
+      }
+     ],
+     "declined": []
+    },
     "centroid": 0.270800148,
     "coherentPaths": 0,
     "color": "#0046ff",
@@ -7944,6 +8115,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",

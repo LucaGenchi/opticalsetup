@@ -50,6 +50,25 @@
     "approximations": [],
     "bandMax": 532.693889,
     "bandMin": 531.306111,
+    "beam": {
+     "branches": [
+      {
+       "curvatureMm": -133.87106,
+       "gouyDeg": -0.0805294802,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 30.0000296,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 5.64469531,
+       "rayleighMm": 0.188156139,
+       "sourceId": "source",
+       "waistAheadMm": 0.000264454488,
+       "waistUm": 5.64468974,
+       "wavelengthNm": 532
+      }
+     ],
+     "declined": []
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#65ff00",
@@ -57,10 +76,11 @@
      "atFocus": true,
      "diverging": false,
      "fullAngleDeg": 3.436716,
-     "rayleighMm": 0.188325851,
+     "rayleighMm": 0.188156139,
      "slopePerMm": null,
-     "waistAheadMm": 0,
-     "waistMm": 0.00564723486,
+     "waistAheadMm": 0.000264454488,
+     "waistMm": 0.00564468974,
+     "waistModel": "propagated",
      "wavelengthNm": 532
     },
     "dark": false,
@@ -137,6 +157,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",

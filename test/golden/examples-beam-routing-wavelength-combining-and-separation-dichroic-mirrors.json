@@ -58,6 +58,53 @@
     "approximations": [],
     "bandMax": 640,
     "bandMin": 488,
+    "beam": {
+     "branches": [
+      {
+       "curvatureMm": 51629.6282,
+       "gouyDeg": 5.48082743,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 0.203718327,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 1004.59278,
+       "rayleighMm": 4908.73852,
+       "sourceId": "laser-640",
+       "waistAheadMm": -471,
+       "waistUm": 1000,
+       "wavelengthNm": 640
+      },
+      {
+       "curvatureMm": 70759.5725,
+       "gouyDeg": 4.55359864,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 0.178571846,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 1003.16649,
+       "rayleighMm": 5599.9869,
+       "sourceId": "laser-561",
+       "waistAheadMm": -446,
+       "waistUm": 1000,
+       "wavelengthNm": 561
+      },
+      {
+       "curvatureMm": 140309.01,
+       "gouyDeg": 2.63256151,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 0.155335224,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 1001.05649,
+       "rayleighMm": 6437.68987,
+       "sourceId": "laser-488",
+       "waistAheadMm": -296,
+       "waistUm": 1000,
+       "wavelengthNm": 488
+      }
+     ],
+     "declined": []
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#d8ff7a",
@@ -91,6 +138,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -165,6 +213,25 @@
     "approximations": [],
     "bandMax": 488,
     "bandMin": 488,
+    "beam": {
+     "branches": [
+      {
+       "curvatureMm": 78872.7633,
+       "gouyDeg": 4.69757376,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 0.155335224,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 1003.37047,
+       "rayleighMm": 6437.68986,
+       "sourceId": "laser-488",
+       "waistAheadMm": -529,
+       "waistUm": 1000,
+       "wavelengthNm": 488
+      }
+     ],
+     "declined": []
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#00f7ff",
@@ -198,6 +265,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -246,6 +314,25 @@
     "approximations": [],
     "bandMax": 561,
     "bandMin": 561,
+    "beam": {
+     "branches": [
+      {
+       "curvatureMm": 38657.5324,
+       "gouyDeg": 8.4206847,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 0.178571846,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 1010.89795,
+       "rayleighMm": 5599.9869,
+       "sourceId": "laser-561",
+       "waistAheadMm": -829,
+       "waistUm": 1000,
+       "wavelengthNm": 561
+      }
+     ],
+     "declined": []
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#c6ff00",
@@ -279,6 +366,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -327,6 +415,25 @@
     "approximations": [],
     "bandMax": 640,
     "bandMin": 640,
+    "beam": {
+     "branches": [
+      {
+       "curvatureMm": 28291.6438,
+       "gouyDeg": 10.1522643,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 0.203718327,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 1015.90624,
+       "rayleighMm": 4908.73852,
+       "sourceId": "laser-640",
+       "waistAheadMm": -879,
+       "waistUm": 1000,
+       "wavelengthNm": 640
+      }
+     ],
+     "declined": []
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#ff2100",
@@ -360,6 +467,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",

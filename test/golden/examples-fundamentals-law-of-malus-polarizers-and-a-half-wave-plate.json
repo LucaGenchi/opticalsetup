@@ -560,6 +560,25 @@
     "approximations": [],
     "bandMax": 633,
     "bandMin": 633,
+    "beam": {
+     "branches": [
+      {
+       "curvatureMm": 1145999.03,
+       "gouyDeg": 0.992730715,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 0.100745079,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 2000.30024,
+       "rayleighMm": 19852.0863,
+       "sourceId": "laser",
+       "waistAheadMm": -344,
+       "waistUm": 2000,
+       "wavelengthNm": 633
+      }
+     ],
+     "declined": []
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#ff4200",
@@ -593,6 +612,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",

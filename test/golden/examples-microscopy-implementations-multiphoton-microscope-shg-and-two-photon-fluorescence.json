@@ -213,6 +213,18 @@
     "approximations": [],
     "bandMax": 529.506649,
     "bandMin": 484.493351,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "Sample on piezo stage",
+       "elementId": "e17so0o1",
+       "reason": "the specimen scatters and absorbs the light, so the Gaussian beam is not followed past it",
+       "sourceId": "evgazbrh",
+       "wavelengthNm": 507
+      }
+     ]
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#00ff38",
@@ -295,6 +307,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -766,6 +779,18 @@
     "approximations": [],
     "bandMax": 930.824992,
     "bandMin": 909.175008,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "Sample on piezo stage",
+       "elementId": "e17so0o1",
+       "reason": "the specimen scatters and absorbs the light, so the Gaussian beam is not followed past it",
+       "sourceId": "evgazbrh",
+       "wavelengthNm": 920
+      }
+     ]
+    },
     "centroid": 3.18263934e-14,
     "coherentPaths": 0,
     "color": "#ff3030",
@@ -777,6 +802,7 @@
      "slopePerMm": null,
      "waistAheadMm": 0,
      "waistMm": 0.00976589486,
+     "waistModel": "cone",
      "wavelengthNm": 920
     },
     "dark": false,
@@ -937,6 +963,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -1408,6 +1435,25 @@
     "approximations": [],
     "bandMax": 467.013665,
     "bandMin": 460,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "Sample on piezo stage",
+       "elementId": "e17so0o1",
+       "reason": "the specimen scatters and absorbs the light, so the Gaussian beam is not followed past it",
+       "sourceId": "evgazbrh",
+       "wavelengthNm": 463.862619
+      },
+      {
+       "element": "Objective",
+       "elementId": "etsvxovm",
+       "reason": "it focuses the beam too steeply for the Gaussian-beam formulas, which hold for small angles: half-angle 231 mrad, above 200 mrad",
+       "sourceId": "evgazbrh",
+       "wavelengthNm": 920
+      }
+     ]
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#007bff",
@@ -1490,6 +1536,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
