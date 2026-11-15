@@ -141,7 +141,15 @@ each part carries the beam on at its own centre wavelength (a long-pass that
 moves the centre to 800.76 nm, the two parts a notch leaves). A laser's
 waist is the same at every wavelength, so the Rayleigh range scales as 1/λ;
 a supercontinuum's waist scales with λ (above), so its Rayleigh range does
-too. The distance from the waist does not change. Parts of one spectrum that
+too. The distance from the waist does not change. That part of the
+spectrum was part of the light all along, with a beam of its own size, so
+where a step leaves it, its path so far is checked again with its own beam:
+every edge it passed, every surface it met (the step's own footprint
+included) and the paraxial limit. A 1750 nm part of a 14 mm continuum
+(centre 1200 nm) that a long-pass leaves is declined at the 25.4 mm
+filter's edge (1.5 w = 15.3 mm), or at an edge before the filter that the
+band's centre passed; a 500 nm part of a 20 mm continuum (1.5 w = 6.25 mm)
+passes the same filter. Parts of one spectrum that
 reach the same place are one beam: they add in power, and the strongest is
 read, marked "strongest of N spectral parts". Converted light is told by
 where it comes from, not by its wavelength, since a conversion can land
@@ -187,15 +195,21 @@ travels, is the opposite: a 0.1 mm beam at 633 nm (z_R = 12.4 mm) 148 mm
 before an f = 100 mm lens is focused where the lens images the laser's
 waist, 295 mm past the lens, while the drawn rays cross at the focal point,
 100 mm past it; between the two the drawn rays diverge and the beam still
-converges. Where diffraction dominates both (the beam is wider than √2
-times the geometric ray's height, and its waist lies more than a Rayleigh
-range from the drawn rays' crossing, or they stay parallel) the probe and
-the detector cards say "The drawn rays leave out diffraction, which matters
-for this beam: its waist is 145 mm ahead, while the drawn rays cross 50 mm
-behind" (the example at 150 mm past the lens). Straight out of a laser the
-note starts where the beam leaves its Rayleigh range (w > √2 w₀). At the
-beam's own waist, and for the 0.5 mm and wider beams of the same case,
-nothing is added. The drawn rays are not changed.
+converges. Within a Rayleigh range of the drawn rays' crossing the drawing
+shows where the beam focuses. Where the beam's waist lies further away, and
+the card would contradict the drawing (the beam is wider than √2 times the
+geometric ray's height, or it converges where the drawn rays diverge, or the
+reverse), the probe and the detector cards say "The drawn rays leave out
+diffraction, which matters for this beam: its waist is 145 mm ahead, while
+the drawn rays cross 50 mm behind" (the example at 150 mm past the lens;
+15.3 mm before the beam's waist, where the drawn rays are as wide as the
+beam but diverge, it reads "15.3 mm ahead … 180 mm behind"). Drawn rays
+that stay parallel are contradicted only by a beam wider than √2 times them:
+straight out of a laser the note starts where the beam leaves its Rayleigh
+range (w > √2 w₀). The 0.5 mm and wider beams of the same case (a 0.5 mm
+beam focuses 4.9 mm past the drawn focus, within its 31.5 mm Rayleigh
+range), and a 2 mm beam through a telescope 1 mm too long, get no note. The
+drawn rays are not changed.
 
 Only light that is there counts. A dark port of an interferometer keeps its
 traced path with no power on it: neither the probe nor a detector reads a

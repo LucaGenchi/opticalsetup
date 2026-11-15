@@ -7369,18 +7369,57 @@ function hitEdgeIssue(step, w, surfaces) {
   return null;
 }
 
+// The beam parameter a state of the track holds for `seed`: every state's
+// matrix runs from the track's start, where the seed's q is given.
+const qForSeed = (state, seed) => transformQ(seed.q, state.matrix, seed.n || 1, state.n);
+const paraxialReason = beam => `it focuses the beam too steeply for the Gaussian-beam formulas, which hold for small angles: half-angle ${Math.round(beam.halfDivergenceMrad)} mrad, above ${PARAXIAL_LIMIT_RAD * 1000} mrad`;
+
+// A part of the spectrum this step leaves at another wavelength was part of
+// the light all along, with a beam of its own size (a supercontinuum's
+// waist scales with λ): its path so far is checked again with that beam,
+// against every edge it passed and every surface it met, and against the
+// paraxial limit; the first failure, or null.
+function beamTrailIssue(trail, seed, surfaces) {
+  const start = beamFromQ(seed.q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index: seed.n || 1 });
+  if (!(start?.halfDivergenceMrad <= PARAXIAL_LIMIT_RAD * 1000)) {
+    return { elementId: seed.elementId, element: seed.elementName || 'The source', reason: `the beam it starts spreads too fast for the Gaussian-beam formulas, which hold for small angles: half-angle ${Math.round(start?.halfDivergenceMrad ?? Infinity)} mrad, above ${PARAXIAL_LIMIT_RAD * 1000} mrad` };
+  }
+  for (const { from, step, after } of trail) {
+    const q = qForSeed(from, seed);
+    const elementId = surfaceOwnerId(step.surface);
+    const clip = beamClipIssue(from.p, step.hit.p, q, from.n, seed, surfaces, new Set([from.elementId, elementId].filter(Boolean)));
+    if (clip) return clip;
+    const arriving = Math.hypot(step.hit.p.x - from.p.x, step.hit.p.y - from.p.y);
+    const edge = hitEdgeIssue(step, beamRadiusMm(propagateQ(q, arriving), seed, from.n), surfaces);
+    if (edge) return edge;
+    const beam = beamFromQ(qForSeed(after, seed), { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index: after.n });
+    if (!(beam?.halfDivergenceMrad <= PARAXIAL_LIMIT_RAD * 1000)) {
+      return { elementId, element: beamElementName(step.surface), reason: paraxialReason(beam || { halfDivergenceMrad: Infinity }) };
+    }
+  }
+  return null;
+}
+
 // The beam after one more step, from the state after the last.
 function advanceBeam(prev, step, sourceSeed, surfaces) {
   const elementId = surfaceOwnerId(step.surface), element = beamElementName(step.surface);
   const fail = reason => ({ ...prev, issue: typeof reason === 'string' ? { elementId, element, reason } : reason });
   // The beam arriving is the one at the wavelength in force so far; a step
-  // that leaves a part of the spectrum with another centre switches to it.
+  // that leaves a part of the spectrum with another centre switches to it,
+  // and that part's own beam is what reaches this surface.
   const before = prev.seed || sourceSeed;
   const seed = step.seed || before;
-  const clip = beamClipIssue(prev.p, step.hit.p, prev.q, prev.n, before, surfaces, new Set([prev.elementId, elementId].filter(Boolean)));
+  const reseeded = seed !== before;
+  if (reseeded) {
+    const earlier = beamTrailIssue(prev.trail || [], seed, surfaces);
+    if (earlier) return fail(earlier);
+  }
+  const arrivingQ = reseeded ? qForSeed(prev, seed) : prev.q;
+  if (!arrivingQ) return fail('the beam cannot be followed through it');
+  const clip = beamClipIssue(prev.p, step.hit.p, arrivingQ, prev.n, seed, surfaces, new Set([prev.elementId, elementId].filter(Boolean)));
   if (clip) return fail(clip);
   const arriving = Math.hypot(step.hit.p.x - prev.p.x, step.hit.p.y - prev.p.y);
-  const edge = hitEdgeIssue(step, beamRadiusMm(propagateQ(prev.q, arriving), before, prev.n), surfaces);
+  const edge = hitEdgeIssue(step, beamRadiusMm(propagateQ(arrivingQ, arriving), seed, prev.n), surfaces);
   if (edge) return fail(edge);
   const companions = [];
   for (const companion of prev.companions) {
@@ -7395,10 +7434,10 @@ function advanceBeam(prev, step, sourceSeed, surfaces) {
   const q = matrix && transformQ(seed.q, matrix, seed.n, step.nOut);
   if (!q) return fail('the beam cannot be followed through it');
   const beam = beamFromQ(q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index: step.nOut });
-  if (!(beam.halfDivergenceMrad <= PARAXIAL_LIMIT_RAD * 1000)) {
-    return fail(`it focuses the beam too steeply for the Gaussian-beam formulas, which hold for small angles: half-angle ${Math.round(beam.halfDivergenceMrad)} mrad, above ${PARAXIAL_LIMIT_RAD * 1000} mrad`);
-  }
-  return { companions, q, n: step.nOut, p: step.origin, d: step.dout, elementId, matrix, estimate: beamEstimate(matrix, prev, step), seed, issue: null };
+  if (!(beam.halfDivergenceMrad <= PARAXIAL_LIMIT_RAD * 1000)) return fail(paraxialReason(beam));
+  // The path so far, for a part of the spectrum that a later step leaves.
+  const trail = [...(prev.trail || []), { from: prev, step, after: { matrix, n: step.nOut } }];
+  return { companions, q, n: step.nOut, p: step.origin, d: step.dout, elementId, matrix, estimate: beamEstimate(matrix, prev, step), seed, trail, issue: null };
 }
 
 // Every central path of the last trace with its beam parameter at each of
@@ -7433,7 +7472,7 @@ function propagateBeams(paths, surfaces) {
     if (!steps) continue;
     let state = {
       companions: companionStarts(seed.p, seed.d, companionStep), q: seed.q, n: seed.n, p: seed.p, d: seed.d,
-      elementId: seed.elementId, matrix: { A: 1, B: 0, C: 0, D: 1 }, estimate: null, seed, issue: null,
+      elementId: seed.elementId, matrix: { A: 1, B: 0, C: 0, D: 1 }, estimate: null, seed, trail: [], issue: null,
     };
     if (!steps.length || steps[0].owner === path) track.q[0] = { q: seed.q, n: seed.n, p: seed.p, d: seed.d, elementId: seed.elementId, matrix: state.matrix, seed };
     for (const step of steps) {
@@ -7503,24 +7542,26 @@ const beamIssueReading = ({ atVertex, ...issue }) => issue;
 // diffraction. Through a lossless system the beam radius is that geometric
 // ray and a diffraction ray added in quadrature, w² = y_g² + y_d², and the
 // beam's waist lies |u_d / u_g| Rayleigh ranges from where the geometric
-// rays cross. Where diffraction dominates both (the beam is wider than √2
-// times the geometric ray's height here, and its waist is more than a
-// Rayleigh range from their crossing, or they stay parallel), the drawn rays
-// do not show where the beam goes, and the readout says so with both places.
-// A supercontinuum's part at another wavelength is compared with its own
-// waist's geometric ray, which crosses where the drawn rays do.
+// rays cross. Within a Rayleigh range of that crossing the drawn rays show
+// where the beam focuses. Beyond it, diffraction moves the focus, and the
+// readout says so with both places wherever the card would contradict the
+// drawing: the beam is wider than √2 times the geometric ray's height, or it
+// converges where the drawn rays diverge (or the reverse). Drawn rays that
+// stay parallel are contradicted only by a beam wider than √2 times them,
+// as a beam is beyond one Rayleigh range of its waist. A supercontinuum's
+// part at another wavelength is compared with its own waist's geometric
+// ray, which crosses where the drawn rays do.
 const DRAWN_PARALLEL_MM = 1e5;
 function drawnRaysApart(at, along, seed, beam) {
   if (!seed?.parallelRays || !beam || !at?.matrix) return null;
   const h = seed.waistUm / 1000;
   const y = h * (at.matrix.A + along * at.matrix.C / at.n), slope = h * at.matrix.C / at.n;
-  const w = beam.radiusUm / 1000;
-  if (!(w * w > 2 * y * y)) return null;
+  const w = beam.radiusUm / 1000, wider = w * w > 2 * y * y;
   const crossAheadMm = slope !== 0 ? -y / slope : Infinity;
-  if (Math.abs(crossAheadMm) < DRAWN_PARALLEL_MM) {
-    return Math.abs(crossAheadMm - beam.waistAheadMm) > beam.rayleighMm ? { crossAheadMm, waistAheadMm: beam.waistAheadMm } : null;
-  }
-  return { parallel: true, waistAheadMm: beam.waistAheadMm };
+  if (!(Math.abs(crossAheadMm) < DRAWN_PARALLEL_MM)) return wider ? { parallel: true, waistAheadMm: beam.waistAheadMm } : null;
+  if (!(Math.abs(crossAheadMm - beam.waistAheadMm) > beam.rayleighMm)) return null;
+  const opposite = Math.abs(crossAheadMm) > 1e-6 && Math.abs(beam.waistAheadMm) > 1e-3 * beam.rayleighMm && crossAheadMm * beam.waistAheadMm < 0;
+  return wider || opposite ? { crossAheadMm, waistAheadMm: beam.waistAheadMm } : null;
 }
 // What a reading adds about how to read it: where the drawn rays part from
 // the beam, and a supercontinuum's band centre (its Beam width's wavelength).

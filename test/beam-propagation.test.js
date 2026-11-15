@@ -687,3 +687,49 @@ test('G1 (review 7): where diffraction matters, the readout says the drawn rays 
   assert.equal(beyond.drawnRays.parallel, true);
   assert.match(drawnRaysText(beyond.drawnRays), /its waist is 12\.5 mm behind, while the drawn rays stay parallel$/);
 });
+
+test('G1 (review 8): a spectral part is checked for clipping with its own beam, along its whole path', () => {
+  // Andrea's cases: a 400–2000 nm supercontinuum, a 25.4 mm filter.
+  const sc = beamWidth => make('sclaser', 0, 0, { beamMode: 'beam', beamWidth, scMin: 400, scMax: 2000 });
+  // 20 mm at the centre: the 500 nm part a short-pass leaves is 4.17 mm in
+  // radius, 1.5 w = 6.25 mm, inside the filter's 12.7 mm half-length.
+  traceScene([sc(20), make('filter', 200, 0, { ftype: 'shortpass', cutoff: 600, trans: 1 }), make('detector', 400, 0)]);
+  const [small] = beamAtPoint(300, 0, 1);
+  assert.equal(small.issue, undefined, small.issue?.reason);
+  close(small.radiusUm, 20000 / 2 * 500 / 1200, 20, 'w at 500 nm');
+  // 14 mm: the 1750 nm part a long-pass leaves is 10.2 mm in radius,
+  // 1.5 w = 15.3 mm, past the filter's edge.
+  traceScene([sc(14), make('filter', 200, 0, { ftype: 'longpass', cutoff: 1500, trans: 1 }), make('detector', 400, 0)]);
+  const [large] = beamAtPoint(300, 0, 1);
+  assert.match(large.issue?.reason || '', /its edge lies 12\.7 mm from the beam's centre along its surface, closer than 1\.5 beam radii \(15\.3 mm here\)/);
+  // An edge before the filter that passes the band's centre (1.5 w =
+  // 10.5 mm < 12 mm) clips the larger 1750 nm part (15.3 mm), and names it.
+  const edge = make('blocker', 100, 42, { w: 4, h: 60 });
+  edge.label = 'Edge block';
+  traceScene([sc(14), edge, make('filter', 200, 0, { ftype: 'longpass', cutoff: 1500, trans: 1, length: 50 }), make('detector', 400, 0)]);
+  assert.equal(beamAtPoint(150, 0, 1)[0].issue, undefined, 'the whole band passes the edge');
+  const [part] = beamAtPoint(300, 0, 1);
+  assert.equal(part.issue?.element, 'Edge block');
+  assert.match(part.issue.reason, /its edge lies 12 mm from the beam's centre, closer than 1\.5 beam radii \(15\.3 mm here\)/);
+});
+
+test('G1 (review 8): the note also covers a beam converging where the drawn rays diverge, beyond a Rayleigh range', () => {
+  traceScene([laser({ beamWidth: 0.1, wavelength: 633 }), make('lens', 200, 0, { f: 100 }), make('detector', 700, 0)]);
+  // Andrea's point: 15.3 mm before the beam's waist the drawn rays, 0.18 mm
+  // apart, are as wide as the beam but diverge from their crossing 180 mm
+  // behind, while the beam converges.
+  const [b] = beamAtPoint(480, 0, 1);
+  assert.equal(drawnRaysText(b.drawnRays), 'The drawn rays leave out diffraction, which matters for this beam: its waist is 15.3 mm ahead, while the drawn rays cross 180 mm behind');
+  // Within a Rayleigh range of the drawn rays' crossing they show where the
+  // beam focuses: a 0.5 mm beam converging 2 mm past the drawn focus (its
+  // waist is 4.9 mm past it, z_R = 31.5 mm) gets no note.
+  traceScene([laser({ beamWidth: 0.5, wavelength: 633 }), make('lens', 200, 0, { f: 100 }), make('detector', 700, 0)]);
+  const [inside] = beamAtPoint(302, 0, 1);
+  assert.ok(inside.curvatureMm < 0, 'converging past the drawn focus');
+  assert.equal(inside.drawnRays, undefined);
+  // A 2 mm beam through a telescope 1 mm too long: the drawn rays cross
+  // 9.6 m away and its waist is elsewhere, but the drawing shows its size
+  // and direction: no note.
+  traceScene([laser({ beamWidth: 2, wavelength: 633 }), make('lens', 100, 0, { f: 100 }), make('lens', 301, 0, { f: 100 }), make('detector', 900, 0)]);
+  for (const x of [400, 600, 850]) assert.equal(beamAtPoint(x, 0, 1)[0].drawnRays, undefined, `telescope at ${x}`);
+});
