@@ -11,7 +11,7 @@
 // index by 3e-6 at the d line: invisible on the canvas, but a micrometre of
 // focus and a visible residue on an aplanatic surface in a lens design.
 
-import { GLASSES, isWavelengthInGlassRange, glassWavelengthRange } from '../../../sketch/js/glass.js';
+import { GLASSES, glassIndexUnbucketed, isWavelengthInGlassRange, glassWavelengthRange } from '../../../sketch/js/glass.js';
 
 export const AIR = 'air';
 export const CONSTANT = 'constant';
@@ -19,7 +19,7 @@ export const INDEX_MIN = 1, INDEX_MAX = 4;
 
 export const MATERIAL_OPTIONS = [
   [AIR, 'Air'],
-  ...[...GLASSES.values()].map(g => [g.id, g.label]),
+  ...[...GLASSES.values()].map(g => [g.id, g.label, g.group]),
   [CONSTANT, 'Constant index (no dispersion)'],
 ];
 
@@ -47,12 +47,9 @@ export function materialIndex(id, wavelengthNm, constantIndex = 1.5) {
   if (id === CONSTANT) return constantIndex;
   const glass = GLASSES.get(id);
   if (!glass) return 1;
-  // Held at the edge of the fit outside it, as glass.js does.
-  const um = Math.min(glass.range[1], Math.max(glass.range[0], wavelengthNm)) / 1000;
-  const l2 = um * um;
-  let n2 = 1;
-  for (let i = 0; i < glass.B.length; i++) n2 += glass.B[i] * l2 / (l2 - glass.C[i]);
-  return Math.sqrt(n2);
+  // At the exact wavelength (no cache buckets), held at the edge of the fit
+  // outside it, as glass.js does for every form of fit it reads.
+  return glassIndexUnbucketed(id, Math.min(glass.range[1], Math.max(glass.range[0], wavelengthNm)));
 }
 
 // Null when the index is the catalogue fit's own; otherwise the fit range,

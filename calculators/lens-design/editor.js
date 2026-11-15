@@ -199,7 +199,19 @@ export function createEditor(host, { presets, onChange, onPreset, onImport, onEx
   host.append(el('h2', { class: 'bench-heading', text: 'Lens data' }), tableWrap,
     el('div', { class: 'bench-table-actions' }, addLast), openNote);
 
-  const MATERIALS = MATERIAL_OPTIONS.map(o => [o[0], shortMaterial(o)]);
+  // [id, short label, menu group]; a group becomes an <optgroup>.
+  const MATERIALS = MATERIAL_OPTIONS.map(o => [o[0], shortMaterial(o), o[2]]);
+  const materialOptions = () => {
+    const nodes = [];
+    let group = null;
+    for (const [v, t, g] of MATERIALS) {
+      if (g && (!group || group.label !== g)) { group = el('optgroup', { label: g }); nodes.push(group); }
+      if (!g) group = null;
+      const option = el('option', { value: v, text: t });
+      if (group) group.append(option); else nodes.push(option);
+    }
+    return nodes;
+  };
   const PERFECT = 'perfect-lens';
   const cellInput = (label, value, apply, opts = {}) => {
     const input = el('input', { type: 'text', inputMode: 'decimal', spellcheck: false, value, 'aria-label': label, class: 'bench-cell' });
@@ -237,7 +249,7 @@ export function createEditor(host, { presets, onChange, onPreset, onImport, onEx
       thickness.title = 'Not used: the image plane is placed by the “Image plane at” setting.';
     }
     const sel = el('select', { 'aria-label': `Material after surface ${n}`, class: 'bench-cell bench-material' },
-      ...MATERIALS.map(([v, t]) => el('option', { value: v, text: t })),
+      ...materialOptions(),
       el('option', { value: PERFECT, text: 'Perfect lens' }));
     sel.value = ideal ? PERFECT : s.material;
     sel.addEventListener('change', () => commit(x => {

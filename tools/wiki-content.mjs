@@ -1034,7 +1034,9 @@ export const wikiEntries = [
         resulting profile so the sign convention can be checked directly.</p>
         <p>The selectable catalogue glasses (fused silica, calcium fluoride (CaF₂) and the SCHOTT N-BK7, N-FK51A,
         N-SK16, F2, N-SF5, N-SF10, N-SF11, N-SF14, N-SF57 and N-LASF9) use each glass's
-        published d-line index and Abbe number${cite(4, 5)}. If a requested radius is too
+        published dispersion fit${cite(4, 5)}, listed as "Common glasses"; under each maker's
+        name the menu also lists 74 more crown, flint, lanthanum and moulding glasses from the
+        SCHOTT, OHARA, CDGM and HOYA catalogues. If a requested radius is too
         small for the clear aperture, or the centre thickness would make the faces cross,
         the inspector shows the exact constructible geometry the tracer uses instead of
         hiding the adjustment.</p>
@@ -1926,7 +1928,8 @@ export const wikiEntries = [
         across their band, and each sample refracts with its own wavelength-dependent
         index, so the beam visibly fans into a spectrum. Fused silica, CaF₂ and the SCHOTT
         glasses N-BK7, N-FK51A, N-SK16, F2, N-SF5, N-SF10, N-SF11, N-SF14, N-SF57 and N-LASF9 are
-        selectable; existing sketches still default to N-BK7.</p>
+        selectable, with 74 more glasses from the SCHOTT, OHARA, CDGM and HOYA catalogues
+        under each maker's name; existing sketches still default to N-BK7.</p>
         <p>For a pulse, each colour carries the phase of its own traced path: the
         index of the glass times the distance inside it, plus the air between. A
         detector reads the GDD from those phases, so it includes what the geometry
@@ -2049,9 +2052,10 @@ export const wikiEntries = [
         custom cross-section (a light pipe's tapered profile, a freeform prism, a
         corrective wedge) refracts and totally-internally-reflects exactly like the
         fixed-geometry <a href="../prism/">Prism</a>, just without being locked to a
-        triangle. Choose a constant refractive index or one of twelve catalogue models:
-        fused silica, calcium fluoride (CaF₂) and the SCHOTT glasses N-BK7, N-FK51A, N-SK16, F2, N-SF5, N-SF10, N-SF11,
-        N-SF14, N-SF57 and N-LASF9. A broadband beam through a catalogue-glass
+        triangle. Choose a constant refractive index or a catalogue glass: fused silica,
+        calcium fluoride (CaF₂) and the SCHOTT glasses N-BK7, N-FK51A, N-SK16, F2, N-SF5, N-SF10, N-SF11,
+        N-SF14, N-SF57 and N-LASF9, or one of 74 more from the SCHOTT, OHARA, CDGM and HOYA
+        catalogues. A broadband beam through a catalogue-glass
         boundary is sampled by wavelength and visibly disperses into a spectrum.</p>`,
       formulas: [],
       limitations: `<p>The catalogue options use published Sellmeier curves, so GDD

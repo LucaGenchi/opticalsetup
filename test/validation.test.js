@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-import { glassAbbe, glassGVD, glassGroupDelayDifferenceFs, glassGroupIndex, glassIndex, gaussianPulseDurationAfterGDD, sech2PulseDurationAfterGDD, AUTOCORRELATION_FACTORS } from '../sketch/js/glass.js';
+import { glassAbbe, glassGVD, glassGroupDelayDifferenceFs, glassGroupIndex, glassIndex, glassIndexUnbucketed, gaussianPulseDurationAfterGDD, sech2PulseDurationAfterGDD, AUTOCORRELATION_FACTORS } from '../sketch/js/glass.js';
 import { transformLimitedBandwidthNm } from '../sketch/js/spectrum.js';
 import { hollowCoreCoefficients, marcatiliLossDbPerM } from '../sketch/js/fiber.js';
 import { propagateEnvelope, fieldMetrics } from '../sketch/js/pulse-field.js';
@@ -24,7 +24,7 @@ import {
   idealMirrorMueller, jonesToMueller, fresnelCoefficients, fresnelReflectionMueller,
   fresnelTransmissionMueller, composeMueller, applyMueller, complex, reciprocalMueller,
 } from '../sketch/js/mueller.js';
-import { MATERIAL_RECORDS, fitIndex, verdetConstant } from '../sketch/js/materials/catalogue.js';
+import { MATERIAL_RECORDS, MODEL_GLASS, fitIndex, modelGlass, verdetConstant } from '../sketch/js/materials/catalogue.js';
 import { computeCompressor } from '../calculators/dispersion-compensation/compressor-calculator.js';
 import { materialDispersion, materialAbbe } from '../calculators/dispersion/materials.js';
 import { DISPERSION_DEFAULTS, computeDispersion } from '../calculators/dispersion/dispersion-calculator.js';
@@ -250,6 +250,19 @@ const APP = {
     const state = beamTracksFromLastTrace()[track].q[vertex];
     const { A, B, C, D } = state.matrix;
     return kind === 'determinant' ? { determinant: A * D - B * C } : { A, B, C, D };
+  },
+  // The tracer's own evaluation (glass.js) for the catalogue glasses; the
+  // catalogue's for the model glass.
+  'glass-catalogue': ({ kind, record, wavelengthNm, nd, vd, range }) => {
+    if (kind === 'abbe') return { nd: glassIndexUnbucketed(record, 587.5618), vd: glassAbbe(record) };
+    if (kind === 'index') return { index: glassIndexUnbucketed(record, wavelengthNm) };
+    if (kind === 'model') return { index: fitIndex(modelGlass(nd, vd), wavelengthNm) };
+    if (kind === 'model-coefficients') return { ...MODEL_GLASS.coefficients };
+    if (kind === 'model-error') {
+      const { median, p95, max } = MODEL_GLASS.error[range];
+      return { median, p95, max };
+    }
+    throw new Error(kind);
   },
   'crystal-catalogue': ({ kind, record, ray, wavelengthNm }) => {
     const r = MATERIAL_RECORDS.get(record);
@@ -482,7 +495,7 @@ const APP = {
   },
 };
 
-for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'mueller', 'reflection', 'crystal-catalogue', 'dispersion-compensation', 'lens-design', 'lens-coherent', 'fiber-coupling', 'point-scanning', 'thick-lens', 'imaging', 'beam-propagation']) {
+for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'mueller', 'reflection', 'crystal-catalogue', 'dispersion-compensation', 'lens-design', 'lens-coherent', 'fiber-coupling', 'point-scanning', 'thick-lens', 'imaging', 'glass-catalogue', 'beam-propagation']) {
   const model = expected(name);
   for (const c of model.cases) {
     test(`${model.id}: ${c.name}`, () => {

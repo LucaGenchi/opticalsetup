@@ -308,7 +308,9 @@ test('a traced rod of every catalogue glass matches the dispersion calculator', 
   // only the material functions. 25 mm, 800 nm, 50 fs transform-limited
   // Gaussian, whose bandwidth the calculator is given as 0.441 λ²/(cτ).
   const bandwidthNm = 0.441 * 800 ** 2 / (299.792458 * 50);
-  for (const id of GLASSES.keys()) {
+  // Glasses whose fit ends below 800 nm are left out: the canvas holds them
+  // at the edge of the fit, while the calculator declines (tested elsewhere).
+  for (const id of [...GLASSES.keys()].filter(id => GLASSES.get(id).range[1] >= 800)) {
     const laser = createElement('pulsedlaser', 60, 0);
     Object.assign(laser.params, {
       wavelength: 800, beamMode: 'line', pulseWidthFs: 50,

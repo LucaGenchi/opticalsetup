@@ -27,12 +27,20 @@ export const OPEN_ACCESS_STATUSES = new Set(['gold', 'hybrid', 'bronze', 'green'
 export const ACCESS_STATUSES = new Set([...OPEN_ACCESS_STATUSES, 'closed']);
 
 export const SCHOTT_DATASHEET_URL = 'https://www.schott.com/en-us/products/optical-glass-p1000267/downloads';
+// The other glass makers' download pages, as the refractiveindex.info
+// records cite them (step L1).
+export const OHARA_DATASHEET_URL = 'https://www.ohara-inc.co.jp/en/product/optical/list/';
+export const CDGM_DATASHEET_URL = 'http://www.cdgmgd.com/go.htm?k=Download&url=downList';
+export const HOYA_DATASHEET_URL = 'http://www.hoya-opticalworld.com/english/datadownload/';
 
 // A printed handbook with no DOI: the published form of the sapphire fit.
 export const DODGE_HANDBOOK = 'M. J. Dodge, “Refractive index,” in Handbook of Laser Science and Technology, Vol. IV, CRC Press (1986), p. 30';
 
 export const SOURCE_ACCESS = Object.freeze({
   [SCHOTT_DATASHEET_URL]: 'datasheet',
+  [OHARA_DATASHEET_URL]: 'datasheet',
+  [CDGM_DATASHEET_URL]: 'datasheet',
+  [HOYA_DATASHEET_URL]: 'datasheet',
   // Dispersion fits (sketch/js/materials/catalogue.js) and the database they were transcribed from
   '10.1016/s0030-4018(99)00091-7': 'closed',
   '10.1038/s41597-023-02898-2': 'gold',
