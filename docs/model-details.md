@@ -267,8 +267,9 @@ Total internal reflection at a face that follows Fresnel (every prism face, and 
 of a thick lens, aspheric lens, lens group, freeform glass or glass rod set to *Surfaces:
 Bare glass (Fresnel)*) uses the Fresnel reflection matrix of step A1 in place of the
 ideal mirror (`fresnelReflectionMueller` in `sketch/js/mueller.js`, step P1). No power is
-lost, but s and p come back with different phases: p and s stay p and s, and any other
-state changes, so two reflections at 54.6° in glass of index 1.51 (a Fresnel rhomb) turn
+lost, but s and p come back with different phases: p and s, and their incoherent
+mixtures (unpolarized light included), remain unchanged; states with nonzero S2 or S3
+undergo a retardance, so two reflections at 54.6° in glass of index 1.51 (a Fresnel rhomb) turn
 linear 45° into circular light. Glass on per-surface transmission keeps the ideal mirror.
 Glass carries no coherent carrier phase in the tracer, so only the polarization state
 changes. The model, its sign conventions and its references are in
